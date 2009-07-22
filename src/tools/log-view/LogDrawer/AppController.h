@@ -14,10 +14,13 @@ struct Group;
 
 @interface AppController : NSObject {
     IBOutlet LogView *logView;
+    IBOutlet NSScrollView *scrollView;
 }
 
 - (NSColor *)groupColor:(struct Group *)g;
 
 - (IBAction)test:(id)sender;
+
+- (IBAction)open:(id)sender;
 
 @end

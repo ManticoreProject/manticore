@@ -4,7 +4,14 @@
  */
 
 #import <Cocoa/Cocoa.h>
-#define DIVIDER_THICKNESS ( 30 )
+
+
+#pragma mark Defined Constants
+
+#define Y_PADDING ( 3 )
+#define X_PADDING ( 25 )
+
+#define DIVIDER_THICKNESS ( 17 )
 
 /// Customized subclass of NSSplitView
 /** CustomSplitView is a subclass of NSView that provides
@@ -16,6 +23,7 @@
     /// [self subviews] should be and only be the BandViews being displayed
 }
 
+@property (readonly, assign) NSRect shapeBounds;
 
 /// Override to change divider thickness
 - (CGFloat)dividerThickness;

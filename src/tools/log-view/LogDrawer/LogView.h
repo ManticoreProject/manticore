@@ -33,6 +33,8 @@ enum ZoomLevel {
     uint64_t logWidth;
     LogFile *logFile;
     
+    NSRulerView *ruler;
+    
     CGFloat timeTick; ///< The number of pixel between two adjacent time ticks
     
     int cur_state;
@@ -45,8 +47,16 @@ enum ZoomLevel {
 @property (readwrite, assign) uint64_t logX;
 @property (readwrite, assign) uint64_t logWidth;
 @property (readwrite, assign) CGFloat timeTick;
+@property (readwrite, assign) NSRulerView *ruler;
+@property (readonly) uint64_t pivot;
+@property (readonly) uint64_t scale;
 
-- (void)setLogFile:(LogFile *)logFileVal;
+- (IBAction)zoomIn:(id)sender;
+- (IBAction)zoomOut:(id)sender;
+
+
+
+- (IBAction)setLogFile:(LogFile *)logFileVal;
 
 /// Calculate the image in the bounds of a point in the logFile
 - (CGFloat)image:(uint64_t)p;

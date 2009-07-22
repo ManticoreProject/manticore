@@ -7,16 +7,23 @@
 #import "LogView.h"
 #import "VProc.hxx"
 #import "log-desc.hxx"
+#import "CustomSplitView.h"
 
+
+#define DEFAULT_LOG_VIEW_WIDTH ( 5000 )
 #define MIN_BAND_HEIGHT ( 50 )
 #define SINGLETON_COLOR ( [NSColor yellowColor] )
 #define LOG_VIEW_BACKGROUND_COLOR ( [NSColor blackColor] )
-#define DEFAULT_TIME_TICK ( 20 )
+#define DEFAULT_TIME_TICK ( 55 )
 #define TICK_LINE_COLOR ( [NSColor cyanColor] )
 #define TICK_LINE_WIDTH ( 0.1 )
 
 @implementation LogView
 
+- (BOOL)isOpaque
+{
+    return YES;
+}
 
 
 
@@ -24,12 +31,13 @@
 @synthesize logWidth;
 @synthesize zoomLevel;
 @synthesize timeTick;
+@synthesize ruler;
 
 - (id)initWithFrame:(NSRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
 	NSRect f = [self frame];
-	f.size.width = 3000; // XXX For testing, to make it easy to see a big frame
+	f.size.width = DEFAULT_LOG_VIEW_WIDTH;
 	[self setFrame:f];
 	splitView = [[CustomSplitView alloc] initWithFrame:self.bounds];
 	messageView = [[MessageView alloc] initWithFrame:self.bounds];
@@ -55,15 +63,33 @@
     return self;
 }
 
-- (void)drawRect:(NSRect)rect {
+- (void)drawRect:(NSRect)rect
+{
+    // Draw Background
     [LOG_VIEW_BACKGROUND_COLOR set];
     [NSBezierPath fillRect:[self bounds]];
     
+    NSString *TickName = @"Ticks";
+
+    // Set up the ruler
+    NSArray *upArray = [NSArray arrayWithObjects:[NSNumber numberWithFloat:2.0], nil];
+    NSArray *downArray = [NSArray arrayWithObjects:
+			  [NSNumber numberWithFloat:0.5], [NSNumber numberWithFloat:0.2], nil];
+    [NSRulerView registerUnitWithName:TickName
+			 abbreviation:@"tks"
+	 unitToPointsConversionFactor:timeTick
+			  stepUpCycle:upArray
+			stepDownCycle:downArray];
+    ruler.measurementUnits = TickName;
+    ruler.originOffset = X_PADDING;
+    
+    // Draw tick lines
     NSBezierPath *verticalLine = [[NSBezierPath alloc] init];
+    NSRect shapeBounds = splitView.shapeBounds;
     NSRect bounds = self.bounds;
     
-    NSPoint s = NSMakePoint(bounds.origin.x, bounds.origin.y);
-    NSPoint f = NSMakePoint(bounds.origin.x, bounds.origin.y + bounds.size.height);
+    NSPoint s = NSMakePoint(shapeBounds.origin.x, bounds.origin.y);
+    NSPoint f = NSMakePoint(shapeBounds.origin.x, bounds.origin.y + bounds.size.height);
     
     [TICK_LINE_COLOR set];
     verticalLine.lineWidth = TICK_LINE_WIDTH;
@@ -82,7 +108,7 @@
 
 - (CGFloat)image:(uint64_t)p
 {
-    NSRect bounds = [self bounds];
+    NSRect bounds = splitView.shapeBounds;
     uint64_t scale = bounds.size.width / logWidth;
     return bounds.origin.x + scale * (p - logX);
 }
@@ -148,6 +174,7 @@ int sillyNumber = 0;
     NSRect bounds = [self bounds];
     CGFloat min_height = 
 	logFile.nVProcs * (MIN_BAND_HEIGHT + [splitView dividerThickness]);
+    NSLog(@"min height = %f, nVProcs = %d", min_height, logFile.nVProcs);
     if (bounds.size.height < min_height)
     {
 	bounds.size.height = min_height;
@@ -158,6 +185,7 @@ int sillyNumber = 0;
     NSRect frame = self.frame;
     frame.size.width = bounds.size.width;
     frame.size.height = bounds.size.height;
+    NSLog(@"Setting logview frame to %f,%f,%f,%f", frame.origin.x, frame.origin.y, frame.size.width, frame.size.height);
     self.frame = frame;
     self.bounds = bounds;
     
@@ -347,7 +375,7 @@ int sillyNumber = 0;
     }
 }
 
-- (void)setLogFile:(LogFile *)logFileVal
+- (IBAction)setLogFile:(LogFile *)logFileVal
 {
     logFile = logFileVal;
     [self readNewData];
@@ -359,6 +387,9 @@ int sillyNumber = 0;
 #define MAX_DEEP_ZOOM_WIDTH ( -1 )
 /// The largest number of nanoseconds that can be displayed at medium zoom
 #define MAX_MEDIUM_ZOOM_WIDTH ( 10000000 )
+
+/// The ratio of the scale at one zoom level to that of the next zoom level
+#define ZOOM_FACTOR ( 1.2 )
 
 - (void)setZoomWithWidth:(uint64_t)width
 {
@@ -384,7 +415,7 @@ int sillyNumber = 0;
 {
     logX = logXVal;
     logWidth = logWidthVal;
-    NSLog(@"start time = %qu, end time = %qu", logX, logX + logWidth);
+    NSLog(@"start time = %qu, end time = %qu, logWidth = %qu", logX, logX + logWidth, logWidth);
     [self setZoomWithWidth:logWidth];
     if (logFile)
     {
@@ -400,5 +431,64 @@ int sillyNumber = 0;
 
     [self setStart:pivot - frac * size andWidth:size];
 }
+
+- (IBAction)zoomIn:(id)sender
+{
+    [self resizeIntervalToSize:logWidth / ZOOM_FACTOR
+		    aboutPivot:self.pivot];
+}
+- (IBAction)zoomOut:(id)sender
+{
+    [self resizeIntervalToSize:logWidth * ZOOM_FACTOR
+		    aboutPivot:self.pivot];    
+}
+
+- (uint64_t)scale
+{
+    return logWidth / self.visibleRect.size.width;
+}
+
+- (uint64_t)pivot
+{
+    NSRect vr = self.visibleRect;
+    NSLog(@"pivot is at %f in a vr starting at %f of length %f", vr.origin.x + vr.size.width / 2,
+	  vr.origin.x, vr.size.width);
+
+    // For now, just use the center of the visible rectangle
+    return [self preImage:vr.origin.x + vr.size.width / 2];
+}
+
+#pragma mark Mouse Events
+
+- (void)mouseDown:(NSEvent *)event
+{
+    NSLog(@"mouse went down");
+    uint64_t newWidth;
+    switch (event.buttonNumber) {
+	case 0:
+	    NSLog(@"Button 0 was clicked");
+	    if (event.modifierFlags & NSControlKeyMask)
+	    {
+		newWidth = logWidth / ZOOM_FACTOR;
+	    }
+	    else
+	    {
+		newWidth = logWidth * ZOOM_FACTOR;
+	    }
+	    break;
+	case NSRightMouseDown:
+	    NSLog(@"Button 1 was clicked");
+	    newWidth = logWidth * ZOOM_FACTOR;
+	    break;
+	default:
+	    NSLog(@"Unrecognized mouse button was clicked");
+	    return;
+    }
+    NSPoint point = [self convertPoint:event.locationInWindow fromView:nil];
+    CGFloat p = point.x;
+    [self resizeIntervalToSize:newWidth
+		    aboutPivot:[self preImage:p]];
+}
+
 
 @end

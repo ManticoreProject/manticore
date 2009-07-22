@@ -7,6 +7,7 @@
 #import "BandView.h"
 #import "ShapeRep.h"
 #import "log-desc.hxx"
+#import "CustomSplitView.h"
 
 
 #define XRADIUS ( 10 )
@@ -14,14 +15,19 @@
 #define DEFAULT_BAND_COLOR ( [NSColor greenColor] )
 #define BAND_BORDER_THICKNESS ( 2 )
 #define BAND_ROUNDING_RADIUS ( 10 )
-#define Y_PADDING ( 3 )
-#define X_PADDING ( 25 )
+
 
 /// DIAMOND_PADDING is the amount of space allowed between adjacent diamonds
 /// It may be negative to allow the diamonds to overlap
 #define DIAMOND_PADDING ( 5 )
 
 @implementation BandView
+
+
+- (BOOL)isOpaque
+{
+    return YES;
+}
 
 /// Return the bounds of this BandView, but shrunk a little
 - (NSRect)shapeBounds

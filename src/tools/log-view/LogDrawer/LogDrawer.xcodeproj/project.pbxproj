@@ -11,8 +11,6 @@
 		523D60021014FD2100CD8552 /* Navigator.m in Sources */ = {isa = PBXBuildFile; fileRef = 523D60011014FD2100CD8552 /* Navigator.m */; };
 		5248C056101643C9006A2BD8 /* primes-p4.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 5248C055101643C9006A2BD8 /* primes-p4.mlg */; };
 		529ED9F2100D2FFF00D8B8B1 /* AppController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 529ED9F1100D2FFF00D8B8B1 /* AppController.mm */; };
-		529ED9FD100D316C00D8B8B1 /* event-view.json in Resources */ = {isa = PBXBuildFile; fileRef = 529ED9FC100D316C00D8B8B1 /* event-view.json */; };
-		529ED9FF100D318600D8B8B1 /* log-events.json in Resources */ = {isa = PBXBuildFile; fileRef = 529ED9FE100D318600D8B8B1 /* log-events.json */; };
 		529EDA5E100D337E00D8B8B1 /* fact.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 529EDA5C100D337E00D8B8B1 /* fact.mlg */; };
 		529EDA5F100D337E00D8B8B1 /* fact2.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 529EDA5D100D337E00D8B8B1 /* fact2.mlg */; };
 		52A58D9A100FAF3900C3F0ED /* fib.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 52A58D99100FAF3900C3F0ED /* fib.mlg */; };
@@ -60,8 +58,6 @@
 		529ED966100D244E00D8B8B1 /* DynamicRep.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = DynamicRep.hxx; sourceTree = "<group>"; };
 		529ED9F0100D2FFF00D8B8B1 /* AppController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppController.h; sourceTree = "<group>"; };
 		529ED9F1100D2FFF00D8B8B1 /* AppController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AppController.mm; sourceTree = "<group>"; };
-		529ED9FC100D316C00D8B8B1 /* event-view.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "event-view.json"; sourceTree = "<group>"; };
-		529ED9FE100D318600D8B8B1 /* log-events.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "log-events.json"; sourceTree = "<group>"; };
 		529EDA5C100D337E00D8B8B1 /* fact.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; path = fact.mlg; sourceTree = "<group>"; };
 		529EDA5D100D337E00D8B8B1 /* fact2.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; path = fact2.mlg; sourceTree = "<group>"; };
 		52A58D99100FAF3900C3F0ED /* fib.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; path = fib.mlg; sourceTree = "<group>"; };
@@ -210,8 +206,6 @@
 		529EDA00100D318B00D8B8B1 /* Jason Files */ = {
 			isa = PBXGroup;
 			children = (
-				529ED9FE100D318600D8B8B1 /* log-events.json */,
-				529ED9FC100D316C00D8B8B1 /* event-view.json */,
 			);
 			name = "Jason Files";
 			sourceTree = "<group>";
@@ -519,8 +513,6 @@
 				52E796C0100677730031A217 /* logdrawer.doxygen.config in Resources */,
 				52E798231007C6790031A217 /* default-log-paths_h.in in Resources */,
 				52E7985E1007C6790031A217 /* JSON_parser.h.gch in Resources */,
-				529ED9FD100D316C00D8B8B1 /* event-view.json in Resources */,
-				529ED9FF100D318600D8B8B1 /* log-events.json in Resources */,
 				529EDA5E100D337E00D8B8B1 /* fact.mlg in Resources */,
 				529EDA5F100D337E00D8B8B1 /* fact2.mlg in Resources */,
 				52A58D9A100FAF3900C3F0ED /* fib.mlg in Resources */,

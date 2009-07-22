@@ -57,7 +57,9 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 
     // read the header
     NSData *fileHeader = [f readDataOfLength:LOGBLOCK_SZB];
-    header = (LogFileHeader_t *)[fileHeader bytes];
+    // Protect this header, it could be garbage collected when fileHeader is.
+    header = (LogFileHeader_t *) malloc(fileHeader.length);
+    memcpy(header, fileHeader.bytes, fileHeader.length);
 
     // check the header
     if (header->magic != LOG_MAGIC)
