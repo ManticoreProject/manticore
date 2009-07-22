@@ -7,7 +7,9 @@
  All implementations throw exceptions.
 */
 
+#import "Exceptions.h"
 #import "EventShape.h"
+#import "Utils.h"
 
 
 @implementation EventShape
@@ -15,12 +17,14 @@
 
 - (void)drawShape
 {
-	@throw @"EventShape: instances of eventShape must override drawShape";
+	[Exceptions raise:@"EventShape: instances of eventShape must override drawShape"];
+    return;
 }
 
 - (BOOL)containsPoint:(NSPoint)p;
 {
-	@throw @"EventShape: instances of eventShape must override containsPoint";
+	[Exceptions raise:@"EventShape: instances of eventShape must override containsPoint"];
+    return YES;
 }
 
 

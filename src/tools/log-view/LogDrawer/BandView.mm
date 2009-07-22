@@ -4,10 +4,12 @@
  *
  */
 
+#import "Exceptions.h"
 #import "BandView.h"
 #import "ShapeRep.h"
 #import "log-desc.hxx"
 #import "CustomSplitView.h"
+#import "Utils.h"
 
 
 #define XRADIUS ( 10 )
@@ -240,7 +242,7 @@
 {
     Interval *i = [intervalMap objectForKey:(id)(g->Desc())];
     if (!i)
-	@throw @"BandView addIntervalEnd: called with an end event with no corresponding start event";
+	[Exceptions raise:@"BandView addIntervalEnd: called with an end event with no corresponding start event"];
     NSRect r = i.rect;
     [i setWidth:s - r.origin.x end:e];
 }

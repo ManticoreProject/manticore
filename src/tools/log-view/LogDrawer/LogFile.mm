@@ -6,14 +6,16 @@
 
 
 
+
 #import "LogFile.h"
 #import "log-file.h"
 #import "VProc.hxx"
 #import <sys/stat.h>
 #import "DynamicEventRep.hxx"
 #import "log-desc.hxx"
+#import "Utils.h"
+#import "Exceptions.h"
 
-// class LogFileDesc; // Why does this not work?
 
 /// Load a log file into a LogFileDesc c++ class
 extern LogFileDesc *LoadLogDesc(const char *, const char *);
@@ -25,7 +27,8 @@ extern LogFileDesc *LoadLogDesc(const char *, const char *);
 
 void fileError(void)
 {
-    @throw @"LogFile: file access error";
+    [Utils foo];
+    [Exceptions raise:@"LogFile: file access error"];
 }
 
 /// convert a timestamp to nanoseconds
@@ -63,11 +66,12 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 
     // check the header
     if (header->magic != LOG_MAGIC)
-	@throw @"bogus magic number";
+	[Exceptions raise:@"bogus magic number"];
     if (header->hdrSzB != sizeof(LogFileHeader_t))
-	@throw @"bad header size";
+	[Exceptions raise:@"bad header size"];
     if (header->majorVersion != LOG_VERSION_MAJOR)
-	@throw @"wrong version";
+	// XXX Don't worry about versions for now
+	//[Exceptions raise:@"wrong version"];
     if (header->bufSzB != LogBufSzB)
     {
 	// recompute block size
@@ -86,7 +90,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
     {
 	struct stat st;
 	if (stat([filename cStringUsingEncoding:NSASCIIStringEncoding], &st) < 0)
-	    @throw @"LogFile: could not stat the given file";
+	    [Exceptions raise:@"LogFile: could not stat the given file"];
 	fileSize = st.st_size;
     }
 
@@ -95,7 +99,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
     int NEventsPerBuf = (LogBufSzB / sizeof(LogEvent_t)) - 1;
     int numBufs = (fileSize / LogBufSzB) - 1;
     if (numBufs <= 0)
-	@throw @"LogFile: There are no buffers in the logfile";
+	[Exceptions raise:@"LogFile: There are no buffers in the logfile"];
     // Maximum number of events in the entire log file
     int MaxNumEvents = NEventsPerBuf * numBufs;
 
@@ -178,7 +182,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
     for (int i = 0; i < header->nVProcs; ++i)
     {
 	if (vProcs_c_array[i] == NULL)
-	    @throw @"Did not find enough vProcs in the log file";
+	    [Exceptions raise:@"Did not find enough vProcs in the log file"];
     }
 
     vProcs = [[NSMutableArray alloc] initWithCapacity:header->nVProcs];
@@ -192,12 +196,14 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 
 
 - (LogFile *)initWithFilename:(NSString *)filenameVal
-	 andEventDescFilename:(NSString *)eventDesc
-	   andLogDescFilename:(NSString *)logDesc
+	 andLogEventsFilename:(NSString *)logEvents
+	   andLogViewFilename:(NSString *)logView
 {
-    LogFileDesc *descVal = LoadLogDesc([logDesc UTF8String], [eventDesc UTF8String]);
+    LogFileDesc *descVal = LoadLogDesc([logEvents UTF8String], [logView UTF8String]);
     if (descVal == NULL)
-	@throw @"Could not load the two log description files";
+    {
+	[Exceptions raise:@"Could not load the two log description files"];
+    }
     return [self initWithFilename:filenameVal
 		   andLogFileDesc:descVal];
 }
@@ -260,6 +266,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
     return header->startTime;
 }
  */
+
 - (uint32_t)resolution
 {
     return header->resolution;

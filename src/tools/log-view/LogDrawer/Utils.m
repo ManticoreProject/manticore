@@ -3,9 +3,9 @@
  \date 7/7/09
  */
 
-#import "Utils.h"
-#import <Foundation/Foundation.h>
 
+#import <Foundation/Foundation.h>
+#import "Utils.h"
 
 
 BOOL between(CGFloat a, CGFloat b, CGFloat c)
@@ -33,3 +33,25 @@ CGFloat pointToLineSegmentDistance(NSPoint p, NSPoint start, NSPoint end)
 		       (start.x - p.x)   * (end.y - start.y) )
 		/ euclideanDistance(start, end);
 }
+
+
+
+
+@implementation Utils
+
++ (void)foo
+{
+    return;
+}
+
++ (void)exn:(NSString *)s
+{
+    @throw [NSException exceptionWithName:@"Visualizer Exception"
+				   reason:s
+				 userInfo:nil];
+    return;
+}
+
+@end
+
+

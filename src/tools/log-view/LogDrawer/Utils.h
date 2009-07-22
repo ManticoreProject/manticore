@@ -17,7 +17,12 @@ CGFloat euclideanDistance(NSPoint a, NSPoint b);
  * \return the distance between p and the line defined by start and end
  */
 CGFloat pointToLineSegmentDistance(NSPoint p, NSPoint start, NSPoint end);
-
-
 /// Determine if a is between b and c
 BOOL between(CGFloat a, CGFloat b, CGFloat c);
+
+
+
+@interface Utils
++ (void)exn:(NSString *)s;
++ (void)foo;
+@end

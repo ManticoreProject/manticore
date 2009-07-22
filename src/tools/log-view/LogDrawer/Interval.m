@@ -6,6 +6,8 @@
 
 
 
+#import "Exceptions.h"
+#import "Utils.h"
 #import "Interval.h"
 
 
@@ -67,7 +69,7 @@
     rect.size.width = w;
     roundedRect = [[NSBezierPath alloc] init];
     if (!roundedRect)
-	@throw @"could not allocate roundedRect";
+	[Exceptions raise:@"could not allocate roundedRect"];
     [roundedRect appendBezierPathWithRoundedRect:rect
 					 xRadius:X_ROUNDING_RADIUS
 					 yRadius:Y_ROUNDING_RADIUS];
@@ -78,7 +80,7 @@
 - (void)drawShape
 {
 	if (!rect.size.width)
-	    @throw @"Interval: asked to draw shape when rectangle size was uninitialized";
+	    [Exceptions raise:@"Interval: asked to draw shape when rectangle size was uninitialized"];
 	[color set];
 	[roundedRect fill];
 	[[NSColor blackColor] set];

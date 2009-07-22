@@ -4,10 +4,12 @@
  *
  */
 
+#import "Utils.h"
 #import "LogView.h"
 #import "VProc.hxx"
 #import "log-desc.hxx"
 #import "CustomSplitView.h"
+#import "Exceptions.h"
 
 
 #define DEFAULT_LOG_VIEW_WIDTH ( 5000 )
@@ -162,8 +164,9 @@ int sillyNumber = 0;
 	case 6:
 	    return [NSColor brownColor];
 	default:
-	    @throw @"Can't decide on a color for state";
+	    [Exceptions raise:@"Can't decide on a color for state"];
     }
+    return nil;
 }
 
 
@@ -367,10 +370,10 @@ int sillyNumber = 0;
 	    [self readNewDataDeepZoom];
 	    break;
 	case zoomLevelMedium:
-	    @throw @"medium level zooming is unimplemented";
+	    [Exceptions raise:@"medium level zooming is unimplemented"];
 	    break;
 	case zoomLevelShallow:
-	    @throw @"shallow level zooming is unimplemented";
+	    [Exceptions raise:@"shallow level zooming is unimplemented"];
 	    break;
     }
 }

@@ -49,8 +49,8 @@ struct LogFileDesc;
  * \return the initialized LogView
  */
 - (LogFile *)initWithFilename:(NSString *)filename
-	 andEventDescFilename:(NSString *)eventDesc
-	   andLogDescFilename:(NSString *)logDesc;
+	 andLogEventsFilename:(NSString *)logEvents
+	   andLogViewFilename:(NSString *)logView;
 
 /// The start time of the log file
 - (uint64_t)start;
