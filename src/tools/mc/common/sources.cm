@@ -19,6 +19,7 @@ Library
   structure CFunctions
   structure ConstArith
   structure Error
+  structure ExnName
   structure FloatLit
   structure IntegerLit
   structure Literal
@@ -51,6 +52,7 @@ is
   check-var-counts-fn.sml
   const-arith.sml
   error.sml
+  exn-name.sml
   float-lit.sml
   integer-lit.sml
   literal.sml
