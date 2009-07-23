@@ -195,12 +195,25 @@ structure ArityRaising : sig
    * conventions and incompatible calls. This unifies the convention
    * across the two functions.
    *)
-    fun sigMeet (sig1, sig2) = let
+    fun sigMeet (sig1, sig1Type, sig2) = let
 	  fun removeDerivedPaths (p, q::qs) = if isPrefix(p, q)
 		then removeDerivedPaths (p, qs)
 		else q::qs
 	    | removeDerivedPaths (_, []) = []
           val defaultArgPath = (0,[])
+          val CPSTy.T_Fun(params, _) = sig1Type
+          (* We only check against the signature being merged into. This
+           * is because we'll ue the result of our signature creation process
+           * and feed it through sigMeet a second time to make sure it's compatible
+           * with all of the predecessors.
+           *)
+          fun isSafeToSelect (i, l) = i < List.length params
+                                      andalso isSafeSelection (l, List.nth (params, i))
+          and isSafeSelection (i::l, CTy.T_Tuple (_, tys)) =
+              i < List.length tys
+              andalso isSafeSelection (l, List.nth (tys, i))
+            | isSafeSelection (i::l, _) = false
+            | isSafeSelection (_, _) = true
 	  fun f (p::ps, q::qs, mergedSig) = (case compareRevPath(p, q)
 		 of PathLess => f(ps, q::qs, p::mergedSig)
 		  | PathPrefix => f (ps, removeDerivedPaths (p, qs), p::mergedSig)
@@ -215,7 +228,9 @@ structure ArityRaising : sig
                                       else List.revAppend(ps, mergedSig)
 	    | f ([], qs, mergedSig) = if compareRevPath (defaultArgPath, hd qs) = PathEq
                                       then (hd qs)::mergedSig
-                                      else List.revAppend(qs, mergedSig)
+                                      else (if List.all isSafeToSelect qs
+                                            then List.revAppend(qs, mergedSig)
+                                            else [defaultArgPath])
 	  in
 	    List.rev (f (sig1, sig2, []))
 	  end
@@ -267,6 +282,10 @@ structure ArityRaising : sig
 
     (* Compute param list from the final signature,
      * vmap of the VAR->PATH mappings, and original params
+     * If a variable doesn't exist in the parammap for the input
+     * sign, then it's a parameter that was added for signature-matching
+     * with other functions that share call sites and will be unused
+     * in the function.
      *)
     fun computeParamList (origParams, vmap, sign) = let
         fun computeParam paramPath = 
@@ -606,8 +625,14 @@ structure ArityRaising : sig
       | sigOfFuns (l as f::r) = let
             val canMeet = List.foldl (fn (g, b) => if (b) then (isCandidate g) else b) true l
         in
-            if (canMeet) then
-	        List.foldl (fn (g, sign) => sigMeet(#sign(getInfo g), sign)) (#sign(getInfo f)) r
+            if (canMeet) then let
+                    fun meetSigs (g, sign) =
+                        sigMeet(#sign(getInfo g), CV.typeOf g, sign)
+                    val proposed = List.foldl meetSigs
+                                              (#sign(getInfo f)) r
+                in
+                    List.foldl meetSigs proposed l
+                end
             else
                 [(0, [])]
         end

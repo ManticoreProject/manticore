@@ -258,7 +258,10 @@ structure CheckCPS : sig
 			    if (i < List.length tys) andalso CTU.equal(CV.typeOf y, List.nth (tys, i))
 			      then ()
 			      else error["type mismatch in Update: ",
-				     "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]
+				     "#", Int.toString i, "(", v2s x, ") := ", v2s y,
+                                         " array type: ", CPSTyUtil.toString (CV.typeOf x),
+                                         " expected: ", CPSTyUtil.toString (List.nth (tys, i)),
+                                         " got: ", CPSTyUtil.toString (CV.typeOf y), "\n"]
 			| ty => error[v2s x, ":", CTU.toString ty, " is not a mutable tuple: ",
                                     "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]
 		      (* end case *))
