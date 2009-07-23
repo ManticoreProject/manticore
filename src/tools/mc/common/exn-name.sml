@@ -37,12 +37,11 @@ structure ExnName :> sig
 
     fun stampOf (ExnName {stamp=s, ...}) = s
 
-    infix ** 
-    fun f ** (x, y) = (f x, f y)
+    fun >> f (x, y) = (f x, f y)
 
-    fun same (e, f) = Stamp.same (stampOf ** (e, f))
-    fun compare (e, f) = Stamp.compare (stampOf ** (e, f))
-    val hash = Stamp.hash o stampOf
+    val same    = Stamp.same o (>> stampOf)
+    val compare = Stamp.compare o (>> stampOf)
+    val hash    = Stamp.hash o stampOf
 
     fun toString (ExnName {name=e, stamp=s}) = e ^ Stamp.toString s
 
