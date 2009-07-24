@@ -3,6 +3,7 @@
  * \date 7/10/09
  
  Define the internal representation of a logfile.
+ 
  */
 
 #import <Cocoa/Cocoa.h>
@@ -14,6 +15,10 @@ struct LogFileDesc;
 
 
 /// Represents the data in a logfile
+/**
+ This class will act as the file's owner in the Document Architucture.
+ To Display the file, it will use a Logview.
+ **/
 @interface LogFile : NSDocument {
     NSString *filename; ///< Name of the represented log file
     struct _LogFileHeader_t *header; ///< the header of the log file, as defined in log-file.h
@@ -26,12 +31,12 @@ struct LogFileDesc;
     // things already found in the header
     // They must therefore be properly initialized when file is read
 
-    uint64_t start;
-    uint64_t firstTime;
-    uint64_t lastTime;
+    uint64_t start; ///< The start of the log, according to the log file
+    uint64_t firstTime; ///< The time the first event in the log file was logged
+    uint64_t lastTime; ///< The time the last event in the log file was logged
     
-    NSString *date; ///< Cache of header.date is string format as reported by ctime(3)
-    NSString *clockName; ///< Cache of header.clockName
+    NSString *date;
+    NSString *clockName;
     
 }
 
@@ -56,16 +61,10 @@ struct LogFileDesc;
 //  	 andLogEventsFilename:(NSString *)logEvents
 //  	   andLogViewFilename:(NSString *)logView;
 
-/// The start time of the log file
 - (uint64_t)start;
-/// The time the first event was logged, meaningless if there are no events
 - (uint64_t)firstTime;
-/// The time the last event was logged, meaningless if there are no events
 - (uint64_t)lastTime;
 
-- (BOOL)readFromFileWrapper:(NSFileWrapper *)fileWrapper
-		     ofType:(NSString *)typeName
-		      error:(NSError **)outError;
 
 @property (readonly) struct LogFileDesc *desc;
 @property (readonly) NSString	*filename;

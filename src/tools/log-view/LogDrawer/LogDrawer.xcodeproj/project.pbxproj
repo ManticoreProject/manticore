@@ -7,9 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		523D60021014FD2100CD8552 /* Navigator.m in Sources */ = {isa = PBXBuildFile; fileRef = 523D60011014FD2100CD8552 /* Navigator.m */; };
-		5248C056101643C9006A2BD8 /* primes-p4.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 5248C055101643C9006A2BD8 /* primes-p4.mlg */; };
-		529ED9F2100D2FFF00D8B8B1 /* AppController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 529ED9F1100D2FFF00D8B8B1 /* AppController.mm */; };
 		529EDA5E100D337E00D8B8B1 /* fact.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 529EDA5C100D337E00D8B8B1 /* fact.mlg */; };
 		529EDA5F100D337E00D8B8B1 /* fact2.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 529EDA5D100D337E00D8B8B1 /* fact2.mlg */; };
 		52A58D9A100FAF3900C3F0ED /* fib.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 52A58D99100FAF3900C3F0ED /* fib.mlg */; };
@@ -25,7 +22,6 @@
 		52E7962A10065AC80031A217 /* MessageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7961C10065AC70031A217 /* MessageView.m */; };
 		52E7962B10065AC80031A217 /* BandView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E7961E10065AC70031A217 /* BandView.mm */; };
 		52E7962C10065AC80031A217 /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E7962110065AC80031A217 /* Utils.m */; };
-		52E796C0100677730031A217 /* logdrawer.doxygen.config in Resources */ = {isa = PBXBuildFile; fileRef = 52E796BF100677730031A217 /* logdrawer.doxygen.config */; };
 		52E798231007C6790031A217 /* default-log-paths_h.in in Resources */ = {isa = PBXBuildFile; fileRef = 52E797BC1007C6790031A217 /* default-log-paths_h.in */; };
 		52E798241007C6790031A217 /* event-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52E797BD1007C6790031A217 /* event-desc.cxx */; };
 		52E7985C1007C6790031A217 /* json.c in Sources */ = {isa = PBXBuildFile; fileRef = 52E797F71007C6790031A217 /* json.c */; };
@@ -38,7 +34,7 @@
 		52E79AC21007F0AE0031A217 /* TestLogFile.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E79AC11007F0AE0031A217 /* TestLogFile.mm */; };
 		52E79CE2100B8C690031A217 /* CustomSplitView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E79CE1100B8C690031A217 /* CustomSplitView.m */; };
 		52F079551019F5FB009401D2 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52F079541019F5FB009401D2 /* MainMenu.xib */; };
-		52F0795A1019F60B009401D2 /* MyDocument.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52F079591019F60B009401D2 /* MyDocument.xib */; };
+		52F0795A1019F60B009401D2 /* LogFile.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52F079591019F60B009401D2 /* LogFile.xib */; };
 		52F36EC1100E237A001CCBD6 /* EventUtils.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52F36EC0100E237A001CCBD6 /* EventUtils.mm */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
@@ -53,12 +49,7 @@
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		32CA4F630368D1EE00C91783 /* LogDrawer_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogDrawer_Prefix.pch; sourceTree = "<group>"; };
-		523D60001014FD2100CD8552 /* Navigator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Navigator.h; sourceTree = "<group>"; };
-		523D60011014FD2100CD8552 /* Navigator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Navigator.m; sourceTree = "<group>"; };
-		5248C055101643C9006A2BD8 /* primes-p4.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; name = "primes-p4.mlg"; path = "../../../../../../../primes-p4.mlg"; sourceTree = SOURCE_ROOT; };
 		529ED966100D244E00D8B8B1 /* DynamicRep.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = DynamicRep.hxx; sourceTree = "<group>"; };
-		529ED9F0100D2FFF00D8B8B1 /* AppController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppController.h; sourceTree = "<group>"; };
-		529ED9F1100D2FFF00D8B8B1 /* AppController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AppController.mm; sourceTree = "<group>"; };
 		529EDA5C100D337E00D8B8B1 /* fact.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; path = fact.mlg; sourceTree = "<group>"; };
 		529EDA5D100D337E00D8B8B1 /* fact2.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; path = fact2.mlg; sourceTree = "<group>"; };
 		52A58D99100FAF3900C3F0ED /* fib.mlg */ = {isa = PBXFileReference; lastKnownFileType = file; path = fib.mlg; sourceTree = "<group>"; };
@@ -88,7 +79,6 @@
 		52E7961E10065AC70031A217 /* BandView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = BandView.mm; sourceTree = "<group>"; };
 		52E7962010065AC80031A217 /* Utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Utils.h; sourceTree = "<group>"; };
 		52E7962110065AC80031A217 /* Utils.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Utils.m; sourceTree = "<group>"; };
-		52E796BF100677730031A217 /* logdrawer.doxygen.config */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = logdrawer.doxygen.config; path = ../logdrawer.doxygen.config; sourceTree = SOURCE_ROOT; };
 		52E7974B1007C5EB0031A217 /* DynamicEventRep.hxx */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = DynamicEventRep.hxx; sourceTree = "<group>"; };
 		52E797BC1007C6790031A217 /* default-log-paths_h.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = "default-log-paths_h.in"; path = "../../log-common/default-log-paths_h.in"; sourceTree = "<group>"; };
 		52E797BD1007C6790031A217 /* event-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "event-desc.cxx"; sourceTree = "<group>"; };
@@ -112,7 +102,7 @@
 		52E79CE0100B8C690031A217 /* CustomSplitView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CustomSplitView.h; sourceTree = "<group>"; };
 		52E79CE1100B8C690031A217 /* CustomSplitView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CustomSplitView.m; sourceTree = "<group>"; };
 		52F079541019F5FB009401D2 /* MainMenu.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MainMenu.xib; sourceTree = "<group>"; };
-		52F079591019F60B009401D2 /* MyDocument.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MyDocument.xib; sourceTree = "<group>"; };
+		52F079591019F60B009401D2 /* LogFile.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = LogFile.xib; sourceTree = "<group>"; };
 		52F36EC0100E237A001CCBD6 /* EventUtils.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventUtils.mm; sourceTree = "<group>"; };
 		52F36EC8100E2470001CCBD6 /* EventUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventUtils.h; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -162,14 +152,12 @@
 			children = (
 				52E79CA9100B85B50031A217 /* Design */,
 				52E7960110065AC70031A217 /* Classes */,
-				52E796BE100677500031A217 /* Configuration */,
 				29B97315FDCFA39411CA2CEA /* Other Sources */,
 				29B97317FDCFA39411CA2CEA /* Resources */,
 				29B97323FDCFA39411CA2CEA /* Frameworks */,
 				19C28FACFE9D520D11CA2CBB /* Products */,
-				5248C055101643C9006A2BD8 /* primes-p4.mlg */,
 				52F079541019F5FB009401D2 /* MainMenu.xib */,
-				52F079591019F60B009401D2 /* MyDocument.xib */,
+				52F079591019F60B009401D2 /* LogFile.xib */,
 			);
 			name = LogDrawer;
 			sourceTree = "<group>";
@@ -242,10 +230,13 @@
 		52E7960110065AC70031A217 /* Classes */ = {
 			isa = PBXGroup;
 			children = (
+				52E798E51007CB820031A217 /* LogFile.h */,
+				52E79A001007E2A90031A217 /* LogFile.mm */,
+				52E7961910065AC70031A217 /* LogView.h */,
+				52E7961A10065AC70031A217 /* LogView.mm */,
 				52E7961F10065AC70031A217 /* Utils */,
 				52E7960510065AC70031A217 /* EventRep */,
 				52E7960610065AC70031A217 /* Render */,
-				52E79E1A100BD61C0031A217 /* Controllers */,
 				52E7960210065AC70031A217 /* Test */,
 			);
 			includeInIndex = 1;
@@ -275,7 +266,7 @@
 		52E7960610065AC70031A217 /* Render */ = {
 			isa = PBXGroup;
 			children = (
-				52E7961810065AC70031A217 /* LogView */,
+				52E7961810065AC70031A217 /* LogViewComponents */,
 				52E7960710065AC70031A217 /* ShapeRep */,
 			);
 			name = Render;
@@ -325,15 +316,13 @@
 			name = Utils;
 			sourceTree = "<group>";
 		};
-		52E7961810065AC70031A217 /* LogView */ = {
+		52E7961810065AC70031A217 /* LogViewComponents */ = {
 			isa = PBXGroup;
 			children = (
-				52E7961910065AC70031A217 /* LogView.h */,
-				52E7961A10065AC70031A217 /* LogView.mm */,
 				52E79CF8100B8F4C0031A217 /* Background */,
 				52E79CF9100B8F5B0031A217 /* Foreground */,
 			);
-			name = LogView;
+			name = LogViewComponents;
 			sourceTree = "<group>";
 		};
 		52E7961F10065AC70031A217 /* Utils */ = {
@@ -346,14 +335,6 @@
 				52B84FD51017903A00D0883F /* Exceptions.m */,
 			);
 			name = Utils;
-			sourceTree = "<group>";
-		};
-		52E796BE100677500031A217 /* Configuration */ = {
-			isa = PBXGroup;
-			children = (
-				52E796BF100677730031A217 /* logdrawer.doxygen.config */,
-			);
-			name = Configuration;
 			sourceTree = "<group>";
 		};
 		52E7974C1007C5FF0031A217 /* Dynamic */ = {
@@ -413,8 +394,6 @@
 				529ED827100CF10600D8B8B1 /* DynamicEvents */,
 				52E798E81007CB8D0031A217 /* VProc.hxx */,
 				52E798E91007CB8D0031A217 /* VProc.mm */,
-				52E798E51007CB820031A217 /* LogFile.h */,
-				52E79A001007E2A90031A217 /* LogFile.mm */,
 			);
 			name = Representations;
 			sourceTree = "<group>";
@@ -445,17 +424,6 @@
 				52E7961E10065AC70031A217 /* BandView.mm */,
 			);
 			name = Foreground;
-			sourceTree = "<group>";
-		};
-		52E79E1A100BD61C0031A217 /* Controllers */ = {
-			isa = PBXGroup;
-			children = (
-				529ED9F0100D2FFF00D8B8B1 /* AppController.h */,
-				529ED9F1100D2FFF00D8B8B1 /* AppController.mm */,
-				523D60001014FD2100CD8552 /* Navigator.h */,
-				523D60011014FD2100CD8552 /* Navigator.m */,
-			);
-			name = Controllers;
 			sourceTree = "<group>";
 		};
 		52F36F01100E25D2001CCBD6 /* Utils */ = {
@@ -520,15 +488,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */,
-				52E796C0100677730031A217 /* logdrawer.doxygen.config in Resources */,
 				52E798231007C6790031A217 /* default-log-paths_h.in in Resources */,
 				52E7985E1007C6790031A217 /* JSON_parser.h.gch in Resources */,
 				529EDA5E100D337E00D8B8B1 /* fact.mlg in Resources */,
 				529EDA5F100D337E00D8B8B1 /* fact2.mlg in Resources */,
 				52A58D9A100FAF3900C3F0ED /* fib.mlg in Resources */,
-				5248C056101643C9006A2BD8 /* primes-p4.mlg in Resources */,
 				52F079551019F5FB009401D2 /* MainMenu.xib in Resources */,
-				52F0795A1019F60B009401D2 /* MyDocument.xib in Resources */,
+				52F0795A1019F60B009401D2 /* LogFile.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -560,9 +526,7 @@
 				52E79A011007E2A90031A217 /* LogFile.mm in Sources */,
 				52E79AC21007F0AE0031A217 /* TestLogFile.mm in Sources */,
 				52E79CE2100B8C690031A217 /* CustomSplitView.m in Sources */,
-				529ED9F2100D2FFF00D8B8B1 /* AppController.mm in Sources */,
 				52F36EC1100E237A001CCBD6 /* EventUtils.mm in Sources */,
-				523D60021014FD2100CD8552 /* Navigator.m in Sources */,
 				52B84FD61017903A00D0883F /* Exceptions.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

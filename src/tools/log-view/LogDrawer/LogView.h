@@ -9,6 +9,7 @@
 #import "MessageView.h"
 #import "BandView.h"
 
+@class LogFile;
 
 struct Group;
 struct StateGroup;
@@ -29,6 +30,8 @@ enum ZoomLevel {
 @interface LogView : NSView {
     IBOutlet CustomSplitView *splitView; ///< The background view, and the view that contains the BandViews
     IBOutlet MessageView *messageView; ///< The foreground view, and the view that displays dependent events
+
+    // The following fields define the interval in the associated log file which is being viewed
     uint64_t logX;
     uint64_t logWidth;
     
@@ -54,7 +57,7 @@ enum ZoomLevel {
 - (IBAction)zoomOut:(id)sender;
 
 
-- (void)readNewData:(void *)lf;
+- (void)readNewData:(LogFile *)lf;
 
 /// Calculate the image in the bounds of a point in the logFile
 - (CGFloat)image:(uint64_t)p;

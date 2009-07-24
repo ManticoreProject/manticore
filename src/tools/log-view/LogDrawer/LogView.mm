@@ -172,7 +172,7 @@ int sillyNumber = 0;
 
 
 
-- (void)readNewDataDeepZoom:(void *)lf
+- (void)readNewDataDeepZoom:(LogFile *)lf
 {
     LogFile *logFile = (LogFile *) lf;
     NSRect bounds = [self bounds];
@@ -229,7 +229,7 @@ int sillyNumber = 0;
 	    EventDesc *eventDesc = description(events[i], nil);
 	    if (eventDesc)
 	    {
-		NSLog(@"Loaded eventDesc with description %s", eventDesc->Description());
+		// NSLog(@"Loaded eventDesc with description %s", eventDesc->Description());
 	    }
 	    else
 	    {
@@ -262,6 +262,8 @@ int sillyNumber = 0;
 		
 		// For now, we set the stateGroup to be the one containing
 		// the first event, if such a state exists
+		if (0)
+		{
 		if (!stateGroup)
 		{
 		    // NSLog(@"stateGroup is uninitialized, checking event for groups to use");
@@ -278,6 +280,7 @@ int sillyNumber = 0;
 			       [self colorForState:stateGroup->StartState()]];
 			}
 		    }
+		}
 		}
 		// Warning, NOT an ELSE clause!! must be an if. see logic above.
 		if (stateGroup)
@@ -371,7 +374,7 @@ int sillyNumber = 0;
 
 /// Read data from log file.  The data read corresponds to the interval
 /// (logX, logX + logWidth)
-- (void)readNewData:(void *)lf
+- (void)readNewData:(LogFile *)lf
 {
     switch (zoomLevel)
     {

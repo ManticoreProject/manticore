@@ -28,6 +28,8 @@ extern LogFileDesc *LoadLogDesc(const char *, const char *);
 
 - (LogFile *)init
 {
+    NSLog(@"Intialized");
+    
     if (![super init])
 	return nil;
     desc = LoadLogDesc(DEFAULT_LOG_EVENTS_PATH, DEFAULT_LOG_VIEW_PATH);
@@ -319,15 +321,18 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
     return nil;
 }
 
-- (BOOL)readFromFileWrapper:(NSFileWrapper *)fileWrapper ofType:(NSString *)typeName error:(NSError **)outError
+// - (BOOL)readFromFileWrapper:(NSFileWrapper *)fileWrapper ofType:(NSString *)typeName error:(NSError **)outError
+- (BOOL)readFromURL:(NSURL *)absoluteURL ofType:(NSString *)typeName error:(NSError **)outError
 {
-    NSLog(@"readFromFileWrapper was called");
+    NSLog(@"readFromFileWrapper was called to read url of type %@", typeName);
     size_t LogBufSzB = LOGBLOCK_SZB;
-    if (!fileWrapper.isRegularFile)
+    
+    if (!absoluteURL.isFileURL)
     {
 	[Exceptions raise:@"LogFile was asked to read data that was not from a file"];
     }
-    filename = fileWrapper.filename;
+    filename = absoluteURL.absoluteString;
+    NSLog(@" filename is %@", filename);
     if (!filename)
     {
 	[Exceptions raise:@"LogFile could not get a name for given fileWrapper"];
@@ -495,7 +500,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 
 - (NSString *)windowNibName 
 {
-    return @"MyDocument";
+    return @"LogFile";
 }
 
 - (void)windowControllerDidLoadNib:(NSWindowController *)windowController 
