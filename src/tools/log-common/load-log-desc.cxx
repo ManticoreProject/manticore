@@ -103,8 +103,9 @@ static ArgDesc *GetArgs (JSON_Value_t *v)
 LogFileDesc *LoadLogDesc (const char *logDescFile, const char *logViewFile)
 {
     LogFileDescLoader loader;
-
-    if (loader.GetLogEventsFile (JSON_ParseFile (logDescFile))
+    JSON_Value_t *jVal = JSON_ParseFile (logDescFile);
+    bool r1 = loader.GetLogEventsFile (jVal);
+    if (r1
     && loader.GetLogViewFile (JSON_ParseFile (logViewFile)))
 	return loader.FileDesc();
     else
