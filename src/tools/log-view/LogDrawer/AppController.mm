@@ -31,6 +31,7 @@
 
 - (IBAction)test:(id)sender
 {
+    /*
     scrollView.hasHorizontalRuler = YES;
     scrollView.rulersVisible = YES;
     logView.ruler = scrollView.horizontalRulerView;
@@ -46,6 +47,7 @@
     uint64_t width = (lt - ft) / fraction;
     [logView setStart:lt - width andWidth:width];
     [logView setLogFile:lf];
+     */
     
 
 }

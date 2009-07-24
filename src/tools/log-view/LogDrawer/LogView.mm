@@ -10,6 +10,7 @@
 #import "log-desc.hxx"
 #import "CustomSplitView.h"
 #import "Exceptions.h"
+#import "LogFile.h"
 
 
 #define DEFAULT_LOG_VIEW_WIDTH ( 5000 )
@@ -50,7 +51,6 @@
 	splitView.bounds = splitViewBounds;
 	[self addSubview:messageView];
 	
-	logFile = nil;
 	stateGroup = NULL;
 	cur_state = 0;
 	timeTick = DEFAULT_TIME_TICK;
@@ -172,8 +172,9 @@ int sillyNumber = 0;
 
 
 
-- (void)readNewDataDeepZoom
+- (void)readNewDataDeepZoom:(void *)lf
 {
+    LogFile *logFile = (LogFile *) lf;
     NSRect bounds = [self bounds];
     CGFloat min_height = 
 	logFile.nVProcs * (MIN_BAND_HEIGHT + [splitView dividerThickness]);
@@ -226,6 +227,14 @@ int sillyNumber = 0;
 	{
 	    // NSLog(@"checking if event %d of %d is in timespan", i, vp.numEvents);
 	    EventDesc *eventDesc = description(events[i], nil);
+	    if (eventDesc)
+	    {
+		NSLog(@"Loaded eventDesc with description %s", eventDesc->Description());
+	    }
+	    else
+	    {
+		NSLog(@"Could not load event desc");
+	    }
 	    if (events[i].timestamp >= logX &&
 	        events[i].timestamp <= logX + logWidth)
 	    {
@@ -362,12 +371,12 @@ int sillyNumber = 0;
 
 /// Read data from log file.  The data read corresponds to the interval
 /// (logX, logX + logWidth)
-- (void)readNewData
+- (void)readNewData:(void *)lf
 {
     switch (zoomLevel)
     {
 	case zoomLevelDeep:
-	    [self readNewDataDeepZoom];
+	    [self readNewDataDeepZoom:lf];
 	    break;
 	case zoomLevelMedium:
 	    [Exceptions raise:@"medium level zooming is unimplemented"];
@@ -376,12 +385,6 @@ int sillyNumber = 0;
 	    [Exceptions raise:@"shallow level zooming is unimplemented"];
 	    break;
     }
-}
-
-- (IBAction)setLogFile:(LogFile *)logFileVal
-{
-    logFile = logFileVal;
-    [self readNewData];
 }
 
 #pragma mark Zoomming
@@ -420,11 +423,6 @@ int sillyNumber = 0;
     logWidth = logWidthVal;
     NSLog(@"start time = %qu, end time = %qu, logWidth = %qu", logX, logX + logWidth, logWidth);
     [self setZoomWithWidth:logWidth];
-    if (logFile)
-    {
-	[self readNewData];
-	[self setNeedsDisplay:YES];
-    }
 }
 
 - (void)resizeIntervalToSize:(uint64_t)size aboutPivot:(uint64_t)pivot

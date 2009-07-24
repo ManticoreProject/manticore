@@ -23,7 +23,6 @@
 
 
 
-
 /// The current representation of Dynamic Events.
 /** A single dynamic event corresponds to exactly one instance of a LogEvent_t
  * found in a single log file.
@@ -72,10 +71,12 @@ STATIC_INLINE ArgValue getArg(DynamicEvent event, LogFileDesc *desc, int argNum)
 }
 
 
+/*
+ 
+ 
 #pragma mark References Accessors
 
 
-/*
  
 /// Get this event's destinations.  The event must be a message source event.
 STATIC_INLINE DynamicEvent **getRefDsts(DynamicEvent e)

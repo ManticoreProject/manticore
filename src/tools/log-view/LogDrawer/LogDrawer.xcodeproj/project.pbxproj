@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 1DDD58140DA1D0A300B32029 /* MainMenu.xib */; };
 		523D60021014FD2100CD8552 /* Navigator.m in Sources */ = {isa = PBXBuildFile; fileRef = 523D60011014FD2100CD8552 /* Navigator.m */; };
 		5248C056101643C9006A2BD8 /* primes-p4.mlg in Resources */ = {isa = PBXBuildFile; fileRef = 5248C055101643C9006A2BD8 /* primes-p4.mlg */; };
 		529ED9F2100D2FFF00D8B8B1 /* AppController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 529ED9F1100D2FFF00D8B8B1 /* AppController.mm */; };
@@ -38,6 +37,8 @@
 		52E79A011007E2A90031A217 /* LogFile.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E79A001007E2A90031A217 /* LogFile.mm */; };
 		52E79AC21007F0AE0031A217 /* TestLogFile.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E79AC11007F0AE0031A217 /* TestLogFile.mm */; };
 		52E79CE2100B8C690031A217 /* CustomSplitView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E79CE1100B8C690031A217 /* CustomSplitView.m */; };
+		52F079551019F5FB009401D2 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52F079541019F5FB009401D2 /* MainMenu.xib */; };
+		52F0795A1019F60B009401D2 /* MyDocument.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52F079591019F60B009401D2 /* MyDocument.xib */; };
 		52F36EC1100E237A001CCBD6 /* EventUtils.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52F36EC0100E237A001CCBD6 /* EventUtils.mm */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
@@ -48,7 +49,6 @@
 		089C165DFE840E0CC02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = /System/Library/Frameworks/Cocoa.framework; sourceTree = "<absolute>"; };
 		13E42FB307B3F0F600E4EEF1 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = /System/Library/Frameworks/CoreData.framework; sourceTree = "<absolute>"; };
-		1DDD58150DA1D0A300B32029 /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		29B97316FDCFA39411CA2CEA /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
@@ -111,6 +111,8 @@
 		52E79CAA100B85F10031A217 /* LogDrawer.xcclassmodel */ = {isa = PBXFileReference; explicitFileType = wrapper.xcclassmodel; path = LogDrawer.xcclassmodel; sourceTree = "<group>"; };
 		52E79CE0100B8C690031A217 /* CustomSplitView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CustomSplitView.h; sourceTree = "<group>"; };
 		52E79CE1100B8C690031A217 /* CustomSplitView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CustomSplitView.m; sourceTree = "<group>"; };
+		52F079541019F5FB009401D2 /* MainMenu.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MainMenu.xib; sourceTree = "<group>"; };
+		52F079591019F60B009401D2 /* MyDocument.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MyDocument.xib; sourceTree = "<group>"; };
 		52F36EC0100E237A001CCBD6 /* EventUtils.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventUtils.mm; sourceTree = "<group>"; };
 		52F36EC8100E2470001CCBD6 /* EventUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventUtils.h; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -166,6 +168,8 @@
 				29B97323FDCFA39411CA2CEA /* Frameworks */,
 				19C28FACFE9D520D11CA2CBB /* Products */,
 				5248C055101643C9006A2BD8 /* primes-p4.mlg */,
+				52F079541019F5FB009401D2 /* MainMenu.xib */,
+				52F079591019F60B009401D2 /* MyDocument.xib */,
 			);
 			name = LogDrawer;
 			sourceTree = "<group>";
@@ -184,7 +188,6 @@
 			children = (
 				8D1107310486CEB800E47090 /* Info.plist */,
 				089C165CFE840E0CC02AAC07 /* InfoPlist.strings */,
-				1DDD58140DA1D0A300B32029 /* MainMenu.xib */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -245,6 +248,7 @@
 				52E79E1A100BD61C0031A217 /* Controllers */,
 				52E7960210065AC70031A217 /* Test */,
 			);
+			includeInIndex = 1;
 			name = Classes;
 			sourceTree = "<group>";
 		};
@@ -516,7 +520,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */,
-				1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */,
 				52E796C0100677730031A217 /* logdrawer.doxygen.config in Resources */,
 				52E798231007C6790031A217 /* default-log-paths_h.in in Resources */,
 				52E7985E1007C6790031A217 /* JSON_parser.h.gch in Resources */,
@@ -524,6 +527,8 @@
 				529EDA5F100D337E00D8B8B1 /* fact2.mlg in Resources */,
 				52A58D9A100FAF3900C3F0ED /* fib.mlg in Resources */,
 				5248C056101643C9006A2BD8 /* primes-p4.mlg in Resources */,
+				52F079551019F5FB009401D2 /* MainMenu.xib in Resources */,
+				52F0795A1019F60B009401D2 /* MyDocument.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -571,14 +576,6 @@
 				089C165DFE840E0CC02AAC07 /* English */,
 			);
 			name = InfoPlist.strings;
-			sourceTree = "<group>";
-		};
-		1DDD58140DA1D0A300B32029 /* MainMenu.xib */ = {
-			isa = PBXVariantGroup;
-			children = (
-				1DDD58150DA1D0A300B32029 /* English */,
-			);
-			name = MainMenu.xib;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */

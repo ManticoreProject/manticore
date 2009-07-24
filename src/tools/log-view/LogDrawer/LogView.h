@@ -8,7 +8,7 @@
 #import "CustomSplitView.h"
 #import "MessageView.h"
 #import "BandView.h"
-#import "LogFile.h"
+
 
 struct Group;
 struct StateGroup;
@@ -31,7 +31,6 @@ enum ZoomLevel {
     IBOutlet MessageView *messageView; ///< The foreground view, and the view that displays dependent events
     uint64_t logX;
     uint64_t logWidth;
-    LogFile *logFile;
     
     NSRulerView *ruler;
     
@@ -55,8 +54,7 @@ enum ZoomLevel {
 - (IBAction)zoomOut:(id)sender;
 
 
-
-- (IBAction)setLogFile:(LogFile *)logFileVal;
+- (void)readNewData:(void *)lf;
 
 /// Calculate the image in the bounds of a point in the logFile
 - (CGFloat)image:(uint64_t)p;

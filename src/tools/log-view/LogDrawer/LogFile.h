@@ -6,6 +6,7 @@
  */
 
 #import <Cocoa/Cocoa.h>
+#import "LogView.h"
 struct _LogFileHeader_t;
 struct LogFileDesc;
 
@@ -13,11 +14,13 @@ struct LogFileDesc;
 
 
 /// Represents the data in a logfile
-@interface LogFile : NSObject {
+@interface LogFile : NSDocument {
     NSString *filename; ///< Name of the represented log file
     struct _LogFileHeader_t *header; ///< the header of the log file, as defined in log-file.h
     NSMutableArray *vProcs; ///< an array containing header.nVProcs VProcs sorted by vpId
 
+    IBOutlet LogView *logView;
+    
     struct LogFileDesc *desc; ///< The description of this file
     // These variables are to provide more convinient representations of some
     // things already found in the header
@@ -32,25 +35,26 @@ struct LogFileDesc;
     
 }
 
+- (IBAction)test:(id)sender;
 
-/// Initialize using a file and a description of it
-/** Initialize
- * \param filename name of the log file to represent
- * \param desc the description of the log file format and semantics
- * \return the initialized LogView
- */
-- (LogFile *)initWithFilename:(NSString *)filename andLogFileDesc:(struct LogFileDesc *)desc;
-
-/// Initialize using only filenames
-/** Initialize
- * \param filename name of the log file to represent
- * \param eventDesc the jason file describing the format of events in the log
- * \param logDesc the jason file describing the semantics of events in the log
- * \return the initialized LogView
- */
-- (LogFile *)initWithFilename:(NSString *)filename
-	 andLogEventsFilename:(NSString *)logEvents
-	   andLogViewFilename:(NSString *)logView;
+//  /// Initialize using a file and a description of it
+//  /** Initialize
+//   * \param filename name of the log file to represent
+//   * \param desc the description of the log file format and semantics
+//   * \return the initialized LogView
+//   */
+//  - (LogFile *)initWithFilename:(NSString *)filename andLogFileDesc:(struct LogFileDesc *)desc;
+//  
+//  /// Initialize using only filenames
+//  /** Initialize
+//   * \param filename name of the log file to represent
+//   * \param eventDesc the jason file describing the format of events in the log
+//   * \param logDesc the jason file describing the semantics of events in the log
+//   * \return the initialized LogView
+//   */
+//  - (LogFile *)initWithFilename:(NSString *)filename
+//  	 andLogEventsFilename:(NSString *)logEvents
+//  	   andLogViewFilename:(NSString *)logView;
 
 /// The start time of the log file
 - (uint64_t)start;
@@ -59,12 +63,17 @@ struct LogFileDesc;
 /// The time the last event was logged, meaningless if there are no events
 - (uint64_t)lastTime;
 
+- (BOOL)readFromFileWrapper:(NSFileWrapper *)fileWrapper
+		     ofType:(NSString *)typeName
+		      error:(NSError **)outError;
+
 @property (readonly) struct LogFileDesc *desc;
 @property (readonly) NSString	*filename;
 @property (readonly) NSMutableArray *vProcs;
 
 @property (readonly) NSString *date;
 @property (readonly) NSString *clockName;
+
 
 
 @property (readonly) uint64_t	magic;		///< to identify log files
