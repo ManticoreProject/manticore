@@ -27,4 +27,9 @@
     [self.superview mouseDown:event];
 }
 
+- (BOOL)isOpaque
+{
+    return NO;
+}
+
 @end

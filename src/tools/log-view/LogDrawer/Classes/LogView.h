@@ -35,7 +35,7 @@ enum ZoomLevel {
     uint64_t logX;
     uint64_t logWidth;
     
-    NSRulerView *ruler;
+    IBOutlet NSRulerView *ruler;
     
     CGFloat timeTick; ///< The number of pixel between two adjacent time ticks
     

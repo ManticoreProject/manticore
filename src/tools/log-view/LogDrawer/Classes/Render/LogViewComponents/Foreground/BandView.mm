@@ -78,7 +78,7 @@
     [bandPath fill];
     [[NSColor blackColor] set];
     [bandPath stroke];
-
+    
 
     int i; // for help with NSLogging
 
@@ -112,7 +112,7 @@
 	[e drawShape];
 	++i;
     }
-    // NSLog(@"Drew %d singletons", i);
+    NSLog(@"Drew %d singletons", i);
 }
 
 #pragma mark Singletons

@@ -38,6 +38,10 @@ struct LogFileDesc;
     NSString *date;
     NSString *clockName;
     
+    NSWindowController *window;
+    
+    BOOL enabled;
+    
 }
 
 - (IBAction)test:(id)sender;
@@ -65,6 +69,7 @@ struct LogFileDesc;
 - (uint64_t)firstTime;
 - (uint64_t)lastTime;
 
+@property (readwrite, assign) BOOL enabled;
 
 @property (readonly) struct LogFileDesc *desc;
 @property (readonly) NSString	*filename;
@@ -73,7 +78,7 @@ struct LogFileDesc;
 @property (readonly) NSString *date;
 @property (readonly) NSString *clockName;
 
-
+@property (readwrite, assign) NSWindowController *window;
 
 @property (readonly) uint64_t	magic;		///< to identify log files
 @property (readonly) uint32_t	majorVersion;   ///< version info

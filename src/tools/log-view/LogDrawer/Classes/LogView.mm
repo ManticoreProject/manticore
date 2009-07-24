@@ -14,12 +14,12 @@
 
 
 #define DEFAULT_LOG_VIEW_WIDTH ( 5000 )
-#define MIN_BAND_HEIGHT ( 50 )
+#define MIN_BAND_HEIGHT ( 200 )
 #define SINGLETON_COLOR ( [NSColor yellowColor] )
 #define LOG_VIEW_BACKGROUND_COLOR ( [NSColor blackColor] )
 #define DEFAULT_TIME_TICK ( 55 )
 #define TICK_LINE_COLOR ( [NSColor cyanColor] )
-#define TICK_LINE_WIDTH ( 0.1 )
+#define TICK_LINE_WIDTH ( 0.02 )
 
 @implementation LogView
 
@@ -41,6 +41,7 @@
     if (self) {
 	NSRect f = [self frame];
 	f.size.width = DEFAULT_LOG_VIEW_WIDTH;
+	f.size.height = self.superview.bounds.size.height;
 	[self setFrame:f];
 	splitView = [[CustomSplitView alloc] initWithFrame:self.bounds];
 	messageView = [[MessageView alloc] initWithFrame:self.bounds];
@@ -94,8 +95,8 @@
     NSPoint f = NSMakePoint(shapeBounds.origin.x, bounds.origin.y + bounds.size.height);
     
     [TICK_LINE_COLOR set];
-    verticalLine.lineWidth = TICK_LINE_WIDTH;
-    verticalLine.flatness = .3;
+    [verticalLine setLineWidth:TICK_LINE_WIDTH];
+
     while (s.x < bounds.origin.x + bounds.size.width)
     {
 
@@ -245,8 +246,8 @@ int sillyNumber = 0;
 #pragma mark SINGLETONS
 	/////////////// SINGLETONS ///////////////////
 
-
-		if (events[i].desc->isSimpleEvent())
+		// FIXME makes only singletons happen
+		if (1) // (events[i].desc->isSimpleEvent())
 		{
 		    // NSLog(@"adding singleton");
 		    // The event is a singleton
@@ -255,6 +256,8 @@ int sillyNumber = 0;
 			     withColor:SINGLETON_COLOR
 			      andStart:drawingPosition];
 		}
+		continue;
+
 		// Convert this event into a shape, once for each group it is in
 		
 	/////////////// STATE GROUPS ///////////////////
