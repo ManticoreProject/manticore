@@ -167,6 +167,9 @@ bool LogFileDescLoader::GetLogViewFile (JSON_Value_t *v)
 
     assert (this->_desc->_root != 0);
 
+  // finish up by computing the per-event info
+    this->_desc->_InitEventInfo ();
+
     return true;
 
 }
