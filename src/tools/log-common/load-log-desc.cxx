@@ -15,7 +15,11 @@
 
 class LogFileDescLoader {
   public:
-    LogFileDescLoader () { this->_desc = 0; this->_nextId = 0; }
+    LogFileDescLoader ()
+    {
+	this->_desc = 0;
+	this->_nextId = 1;  // 0 is reserved for NoEvent
+    }
 
     LogFileDesc *FileDesc () const { return this->_desc; }
 
