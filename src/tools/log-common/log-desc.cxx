@@ -102,6 +102,10 @@ void StateGroup::AddTransition (int i, EventDesc *evt, const char *st)
 	if (strcmp(this->_stateNames.at(state), st) == 0)
 	    break;
     }
+    if (state == this->_stateNames.size()) {
+	fprintf(stderr, "unknown state name \"%s\"\n", st);
+	exit(1);
+    }
 
   // then add the transition info
     this->_transitions.at(i)._event = evt;
@@ -217,6 +221,7 @@ void LogFileDesc::_InitEventInfo ()
 	    std::vector<EventDesc *> evts = grp->Events();
 	    for (std::vector<EventDesc *>::iterator iter = evts.begin();  iter < evts.end();  iter++) {
 		EventDesc *ed = *iter;
+		assert (ed != 0);
 		AddGroup<StateGroup> (this->_info[ed->Id()]->stateGrps, grp);
 	    }
 	}
