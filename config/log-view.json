@@ -82,12 +82,12 @@
 		      ["VProcWakeup", "Active"],
 		      ["MinorGCStart", "GC"],	["MinorGCEnd", "Active"],
 		      ["MajorGCStart", "GC"],	["MajorGCEnd", "Active"],
-		      ["GlobalGCInit", "GC"],	["GlobalGCVPStart", "Start"], ["GlobalGCEnd", "Active"],
+		      ["GlobalGCInit", "GC"],	["GlobalGCVPStart", "GC"], ["GlobalGCEnd", "Active"],
 		      ["PromoteStart", "GC"],	["PromoteEnd", "Active"],
 		      ["VProcStartIdle", "Idle"],
 		      ["VProcStartMain", "Active"],
 		      ["VProcIdle", "Idle"],
-		      ["VProcSleep", "Sleeping"]
+		      ["VProcSleep", "Sleep"]
 		    ]
 		}
 	      ]
