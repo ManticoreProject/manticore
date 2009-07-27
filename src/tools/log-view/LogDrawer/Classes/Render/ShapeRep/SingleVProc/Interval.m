@@ -80,7 +80,9 @@
 - (void)drawShape
 {
 	if (!rect.size.width)
-	    [Exceptions raise:@"Interval: asked to draw shape when rectangle size was uninitialized"];
+	{
+	    // [Exceptions raise:@"Interval: asked to draw shape when rectangle size was uninitialized"];
+	}
 	[color set];
 	[roundedRect fill];
 	[[NSColor blackColor] set];

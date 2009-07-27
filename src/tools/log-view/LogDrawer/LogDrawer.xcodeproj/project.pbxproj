@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		52917ED2101E142E0053F9EF /* ObjCGroup.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52917ED1101E142E0053F9EF /* ObjCGroup.mm */; };
+		52917ED8101E147D0053F9EF /* InternalGroup.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52917ED7101E147D0053F9EF /* InternalGroup.mm */; };
+		52917EDB101E14830053F9EF /* LeafGroup.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52917EDA101E14830053F9EF /* LeafGroup.mm */; };
+		52917EE7101E34330053F9EF /* OutlineViewDataSource.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52917EE6101E34330053F9EF /* OutlineViewDataSource.mm */; };
 		52E798241007C6790031A217 /* event-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52E797BD1007C6790031A217 /* event-desc.cxx */; };
 		52E7985C1007C6790031A217 /* json.c in Sources */ = {isa = PBXBuildFile; fileRef = 52E797F71007C6790031A217 /* json.c */; };
 		52E7985D1007C6790031A217 /* JSON_parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 52E797F91007C6790031A217 /* JSON_parser.c */; };
@@ -47,6 +51,15 @@
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		32CA4F630368D1EE00C91783 /* LogDrawer_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogDrawer_Prefix.pch; sourceTree = "<group>"; };
+		52917ED0101E142E0053F9EF /* ObjCGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ObjCGroup.h; sourceTree = "<group>"; };
+		52917ED1101E142E0053F9EF /* ObjCGroup.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ObjCGroup.mm; sourceTree = "<group>"; };
+		52917ED6101E147D0053F9EF /* InternalGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InternalGroup.h; sourceTree = "<group>"; };
+		52917ED7101E147D0053F9EF /* InternalGroup.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = InternalGroup.mm; sourceTree = "<group>"; };
+		52917ED9101E14830053F9EF /* LeafGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LeafGroup.h; sourceTree = "<group>"; };
+		52917EDA101E14830053F9EF /* LeafGroup.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LeafGroup.mm; sourceTree = "<group>"; };
+		52917EE5101E34330053F9EF /* OutlineViewDataSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OutlineViewDataSource.h; sourceTree = "<group>"; };
+		52917EE6101E34330053F9EF /* OutlineViewDataSource.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = OutlineViewDataSource.mm; sourceTree = "<group>"; };
+		52917EEA101E36200053F9EF /* Groups.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Groups.h; sourceTree = "<group>"; };
 		52E797BD1007C6790031A217 /* event-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "event-desc.cxx"; sourceTree = "<group>"; };
 		52E797BE1007C6790031A217 /* event-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "event-desc.hxx"; sourceTree = "<group>"; };
 		52E797F71007C6790031A217 /* json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = json.c; path = "../../log-common/json.c"; sourceTree = "<group>"; };
@@ -186,6 +199,38 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		52917ECE101E14100053F9EF /* cppGroups */ = {
+			isa = PBXGroup;
+			children = (
+				52E7981E1007C6790031A217 /* log-desc.cxx */,
+				52E7981F1007C6790031A217 /* log-desc.hxx */,
+			);
+			name = cppGroups;
+			sourceTree = "<group>";
+		};
+		52917ECF101E141D0053F9EF /* ObjCGroups */ = {
+			isa = PBXGroup;
+			children = (
+				52917ED9101E14830053F9EF /* LeafGroup.h */,
+				52917EDA101E14830053F9EF /* LeafGroup.mm */,
+				52917ED0101E142E0053F9EF /* ObjCGroup.h */,
+				52917ED1101E142E0053F9EF /* ObjCGroup.mm */,
+				52917ED6101E147D0053F9EF /* InternalGroup.h */,
+				52917ED7101E147D0053F9EF /* InternalGroup.mm */,
+				52917EEA101E36200053F9EF /* Groups.h */,
+			);
+			name = ObjCGroups;
+			sourceTree = "<group>";
+		};
+		52917EE4101E33C20053F9EF /* OutlineView */ = {
+			isa = PBXGroup;
+			children = (
+				52917EE5101E34330053F9EF /* OutlineViewDataSource.h */,
+				52917EE6101E34330053F9EF /* OutlineViewDataSource.mm */,
+			);
+			name = OutlineView;
+			sourceTree = "<group>";
+		};
 		529EDA02100D31B500D8B8B1 /* JSON File Format */ = {
 			isa = PBXGroup;
 			children = (
@@ -223,8 +268,8 @@
 		52E798821007C6C90031A217 /* GroupDesc */ = {
 			isa = PBXGroup;
 			children = (
-				52E7981E1007C6790031A217 /* log-desc.cxx */,
-				52E7981F1007C6790031A217 /* log-desc.hxx */,
+				52917ECF101E141D0053F9EF /* ObjCGroups */,
+				52917ECE101E14100053F9EF /* cppGroups */,
 			);
 			name = GroupDesc;
 			path = "../../log-common";
@@ -294,6 +339,7 @@
 		52F07A57101A0A32009401D2 /* Render */ = {
 			isa = PBXGroup;
 			children = (
+				52917EE4101E33C20053F9EF /* OutlineView */,
 				52F07A58101A0A32009401D2 /* LogViewComponents */,
 				52F07A61101A0A32009401D2 /* ShapeRep */,
 			);
@@ -490,6 +536,10 @@
 				52F07A8D101A0A32009401D2 /* Utils.m in Sources */,
 				52F07ABE101A0ADB009401D2 /* AppController.mm in Sources */,
 				52F07ABF101A0ADB009401D2 /* Navigator.m in Sources */,
+				52917ED2101E142E0053F9EF /* ObjCGroup.mm in Sources */,
+				52917ED8101E147D0053F9EF /* InternalGroup.mm in Sources */,
+				52917EDB101E14830053F9EF /* LeafGroup.mm in Sources */,
+				52917EE7101E34330053F9EF /* OutlineViewDataSource.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

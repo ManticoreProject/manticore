@@ -29,7 +29,7 @@ struct IntervalGroup;
     
     NSColor *bandColor;
     
-    
+    CGFloat cur_interval_height;
     CGFloat cur_singleton_height;
     NSMapTable *intervalMap; //< IntervalGroup -> most recently added interval event from that group
 }

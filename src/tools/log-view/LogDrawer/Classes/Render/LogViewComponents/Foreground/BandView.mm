@@ -23,6 +23,8 @@
 /// It may be negative to allow the diamonds to overlap
 #define DIAMOND_PADDING ( 5 )
 
+#define INTERVAL_PADDING ( 5 )
+
 @implementation BandView
 
 
@@ -57,6 +59,7 @@
 	bandColor = DEFAULT_BAND_COLOR;
 	NSRect bounds = self.shapeBounds;
 	cur_singleton_height = bounds.size.height / 2;
+	cur_interval_height = bounds.size.height / 2;
 	srandom(time(NULL));
 	intervalMap = [NSMapTable
 		       mapTableWithKeyOptions:NSPointerFunctionsCStringPersonality
@@ -167,7 +170,7 @@
 #pragma mark States
 - (void)addState:(void *)e withColor:(NSColor *)c andStart:(CGFloat)s;
 {
-    NSLog(@"BandView is adding a state event");
+   // NSLog(@"BandView is adding a state event");
     NSRect bounds = self.bounds;
     
     // For now, this state's rectangle extends to the end of the BandView
@@ -216,7 +219,18 @@
 // FIXME use a better algorithm for picking height
 - (CGFloat)heightForIntervalAt:(CGFloat)x fromGroup:(Group *)g
 {
-    return self.shapeBounds.size.height / 2;
+    return self.shapeBounds.size.height / 6;
+}
+
+- (CGFloat)intervalHeightForIntervalOfHeight:(CGFloat)h
+{
+    CGFloat height = self.bounds.size.height;
+    cur_interval_height += h + INTERVAL_PADDING;
+    if (cur_interval_height >= height - (h + INTERVAL_PADDING))
+    {
+	cur_interval_height -= height - 2 * (h + INTERVAL_PADDING);
+    }
+    return cur_interval_height;
 }
 
 - (void)addIntervalStart:(void *)e
@@ -225,12 +239,12 @@
 		andStart:(CGFloat)s
 {
     NSRect bounds = self.shapeBounds;
-    NSLog(@"BandView is adding an interval event");
+    // NSLog(@"BandView is adding an interval event");
+    CGFloat h = [self heightForIntervalAt:s fromGroup:g];
     Interval *i = [[Interval alloc]
 		   initWithX:s
-		   y:bounds.origin.y
-		   height:[self heightForIntervalAt:s
-					  fromGroup:g]
+		   y:[self intervalHeightForIntervalOfHeight:h]
+		   height:h
 		   color:c
 		   start:e];
     [intervalMap setObject:i forKey:(id)(g->Desc())];

@@ -85,7 +85,8 @@
 			stepDownCycle:downArray];
     ruler.measurementUnits = TickName;
     ruler.originOffset = X_PADDING;
-    
+    ruler.needsDisplay = YES;
+    ruler.clientView = self;
     // Draw tick lines
     NSBezierPath *verticalLine = [[NSBezierPath alloc] init];
     NSRect shapeBounds = splitView.shapeBounds;
@@ -247,7 +248,7 @@ int sillyNumber = 0;
 	/////////////// SINGLETONS ///////////////////
 
 		// FIXME makes only singletons happen
-		if (1) // (events[i].desc->isSimpleEvent())
+		if (events[i].desc->isSimpleEvent())
 		{
 		    // NSLog(@"adding singleton");
 		    // The event is a singleton
@@ -256,8 +257,7 @@ int sillyNumber = 0;
 			     withColor:SINGLETON_COLOR
 			      andStart:drawingPosition];
 		}
-		continue;
-
+		
 		// Convert this event into a shape, once for each group it is in
 		
 	/////////////// STATE GROUPS ///////////////////
@@ -265,8 +265,7 @@ int sillyNumber = 0;
 		
 		// For now, we set the stateGroup to be the one containing
 		// the first event, if such a state exists
-		if (0)
-		{
+		
 		if (!stateGroup)
 		{
 		    // NSLog(@"stateGroup is uninitialized, checking event for groups to use");
@@ -278,13 +277,13 @@ int sillyNumber = 0;
 			if (states->size() >=1)
 			{
 			    stateGroup = states->at(0);
-			    NSLog(@"Initializing stateGroup to %@", stateGroup);
+			    NSLog(@"Initializing stateGroup to %s", stateGroup->Desc());
 			    [band setStateStartColor:
 			       [self colorForState:stateGroup->StartState()]];
 			}
 		    }
 		}
-		}
+		
 		// Warning, NOT an ELSE clause!! must be an if. see logic above.
 		if (stateGroup)
 		{
@@ -312,8 +311,8 @@ int sillyNumber = 0;
 		{
 		    for (int h = 0; h < intervals->size(); ++h)
 		    {
-			// NSLog(@"checking interval %s", intervals->at(i)->Desc());
-		        IntervalGroup *intervalGroup = intervals->at(i);
+			// NSLog(@"checking interval %s", intervals->at(h)->Desc());
+		        IntervalGroup *intervalGroup = intervals->at(h);
 		        if (eventDesc == intervalGroup->Start())
 		        {
 		    	[band addIntervalStart:&events[i]
@@ -341,6 +340,7 @@ int sillyNumber = 0;
 		{
 		    for (int h = 0; h < dependents->size(); ++h)
 		    {
+			NSLog(@"checking dependents");
 			DependentGroup *dependentGroup = dependents->at(h);
 			if (eventDesc == dependentGroup->Src())
 			{

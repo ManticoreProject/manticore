@@ -16,6 +16,7 @@
 #import "Utils.h"
 #import "Exceptions.h"
 #import "default-log-paths.h"
+#import "OutlineViewDataSource.h"
 
 
 /// Load a log file into a LogFileDesc c++ class
@@ -30,7 +31,7 @@ extern LogFileDesc *LoadLogDesc(const char *, const char *);
 
 - (LogFile *)init
 {
-    NSLog(@"Intialized");
+   // NSLog(@"Intialized");
     
     if (![super init])
 	return nil;
@@ -135,6 +136,8 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 
 - (NSString *)description
 {
+    return @"<<< LogFile object: ... >>>";
+    /*
     NSMutableString *ret = [NSMutableString stringWithFormat:
 	@"<<< LogFile object: version (%d,%d,%d), CPUs: %d, nVProcs: %d, bufSize %d, headerSize %d\n \tvProcs:\n", self.majorVersion, self.minorVersion, self.patchVersion,
 	  self.nCPUs, self.nVProcs, self.bufSzB, self.hdrSzB];
@@ -146,6 +149,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
     }
     [ret appendString:@" >>>\n"];
     return ret;
+     */
 }
 
 
@@ -255,8 +259,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	if (vProcs_c_array[log->vpId] == NULL)
 	{
 	    // This vProc does not yet exist, create it, and initialize it for this block
-	    cur_vProc = vProcs_c_array[log->vpId] = [[VProc alloc] initWithVpId:log->vpId];
-	    
+	    cur_vProc = vProcs_c_array[log->vpId] = [[VProc alloc] initWithVpId:log->vpId];	    
 	    firstFreeEvent = 0;
 	    events = cur_vProc.events =
 		(DynamicEvent (*)[]) malloc(numEventsInBlock * sizeof(DynamicEvent));
@@ -344,7 +347,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 
 - (void)windowControllerDidLoadNib:(NSWindowController *)windowController 
 {
-    NSLog(@" did load nib : logView = %x, enabled = %d", logView, enabled);
+    // NSLog(@" did load nib : logView = %x, enabled = %d", logView, enabled);
     [super windowControllerDidLoadNib:windowController];
     /*
     double fraction = 10;
@@ -357,11 +360,32 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 	[Exceptions raise:@"LogFile was not properly initialized with a logView"];
     }
     double frac = 3;
-    NSLog(@"enabled = %d", enabled);
     if (self.enabled)
     {
 	[logView setStart:self.firstTime andWidth:(self.lastTime - self.firstTime) / frac];
 	[logView readNewData:self];
+    }
+    
+    if (outlineView)
+    {
+	outlineView.dataSource = [[OutlineViewDataSource alloc]
+				  initWithLogDesc:self.desc];
+	NSArray *columns = outlineView.tableColumns;
+	int i = 0;
+	for (NSTableColumn *column in columns)
+	{
+	    if (i >= 2)
+		[Exceptions raise:@"Too many columns in NSOutlineView"];
+	    else
+	    {
+		column.identifier = [NSNumber numberWithInt:i];
+	    }
+	    ++i;
+	}
+    }
+    else
+    {
+	[Exceptions raise:@"LogFile: outlineView was not propertly initialized"];
     }
   
 }

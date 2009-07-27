@@ -24,6 +24,7 @@ struct LogFileDesc;
     struct _LogFileHeader_t *header; ///< the header of the log file, as defined in log-file.h
     NSMutableArray *vProcs; ///< an array containing header.nVProcs VProcs sorted by vpId
 
+    IBOutlet NSOutlineView *outlineView;
     IBOutlet LogView *logView;
     
     struct LogFileDesc *desc; ///< The description of this file
