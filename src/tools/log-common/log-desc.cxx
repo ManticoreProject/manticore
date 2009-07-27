@@ -40,6 +40,10 @@ Group::~Group ()
     delete this->_desc;
 }
 
+bool Group::containsEvent (EventDesc *) const
+{
+    return false;
+}
 
 /***** class EventGroup member functions *****/
 
@@ -52,6 +56,22 @@ EventGroup::EventGroup (const char *desc, int nEvents, int nGroups)
 
 EventGroup::~EventGroup ()
 {
+}
+
+bool EventGroup::containsEvent (EventDesc *evt) const
+{
+  /* check the list of events */
+    for (int i = 0;  i < this->_events.size();  i++) {
+	if (this->_events[i] == evt)
+	    return true;
+    }
+  /* recursively check sub-groups */
+    for (int i = 0;  i < this->_groups.size();  i++) {
+	if (this->_groups[i]->containsEvent(evt))
+	    return true;
+    }
+  /* otherwise, not in this group */
+    return false;
 }
 
 void EventGroup::AddEvent (int i, EventDesc *item)
@@ -78,6 +98,15 @@ StateGroup::StateGroup (const char *desc, int nStates, int nTransitions)
 
 StateGroup::~StateGroup ()
 {
+}
+
+bool StateGroup::containsEvent (EventDesc *evt) const
+{
+    for (int i = 0;  i < this->_transitions.size();  i++) {
+	if (this->_transitions.at(i)._event == evt)
+	    return true;
+    }
+    return false;
 }
 
 int StateGroup::NextState (int st, EventDesc *evt) const
@@ -136,6 +165,11 @@ IntervalGroup::~IntervalGroup ()
 {
 }
 
+bool IntervalGroup::containsEvent (EventDesc *evt) const
+{
+    return (this->_start == evt) || (this->_end == evt);
+}
+
 
 /***** class DependentGroup member functions *****/
 
@@ -147,6 +181,11 @@ DependentGroup::DependentGroup (const char *desc, EventDesc *src, EventDesc *dst
 
 DependentGroup::~DependentGroup ()
 {
+}
+
+bool DependentGroup::containsEvent (EventDesc *evt) const
+{
+    return (this->_src == evt) || (this->_dst == evt);
 }
 
 

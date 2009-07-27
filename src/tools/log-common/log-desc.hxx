@@ -37,6 +37,9 @@ class Group {
 
     void SetGroup (Group *grp) { this->_grp = grp; }
 
+  /// Is the given event a member of this group?
+    virtual bool containsEvent (EventDesc *evt) const;
+
   protected:
     const char	*_desc;		/*!< the event's description */
     GroupKind	_kind;		/*!< the kind of group */
@@ -51,6 +54,9 @@ class Group {
 class EventGroup : public Group {
   public:
     ~EventGroup ();
+
+  /// Is the given event a member of this group?
+    bool containsEvent (EventDesc *evt) const;
 
   /// return the number of events in this group
     int NumEvents () const { return this->_events.size(); }
@@ -89,6 +95,9 @@ class StateGroup : public Group {
   public:
     ~StateGroup ();
 
+  /// Is the given event a member of this group?
+    bool containsEvent (EventDesc *evt) const;
+
     int StartState () const	{ return this->_start; }
     int NextState (int st, EventDesc *evt) const;
 
@@ -117,6 +126,9 @@ class IntervalGroup : public Group {
   public:
     ~IntervalGroup ();
 
+  /// Is the given event a member of this group?
+    bool containsEvent (EventDesc *evt) const;
+
     EventDesc *Start () const	{ return this->_start; }
     EventDesc *End () const	{ return this->_end; }
 
@@ -135,6 +147,9 @@ class IntervalGroup : public Group {
 class DependentGroup : public Group {
   public:
     ~DependentGroup ();
+
+  /// Is the given event a member of this group?
+    bool containsEvent (EventDesc *evt) const;
 
     EventDesc *Src () const	{ return this->_src; }
     EventDesc *Dst () const	{ return this->_dst; }
@@ -164,6 +179,7 @@ class LogDescVisitor {
  */
 class LogFileDesc {
   public:
+    EventGroup *Root () const { return this->_root; }
     int NumEventKinds () const { return this->_events->size(); }
     EventDesc *FindEventById (int id) const { return this->_events->at(id); }
     EventDesc *FindEventByName (const char *name) const;
