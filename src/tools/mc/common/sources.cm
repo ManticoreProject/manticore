@@ -18,6 +18,8 @@ Library
   structure ExpansionOpts
   structure CFunctions
   structure ConstArith
+  structure Effect
+  structure ExnName
   structure Error
   structure FloatLit
   structure IntegerLit
@@ -50,6 +52,8 @@ is
   c-functions.sml
   check-var-counts-fn.sml
   const-arith.sml
+  effect.sml
+  exn-name.sml
   error.sml
   float-lit.sml
   integer-lit.sml
