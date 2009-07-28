@@ -8,6 +8,7 @@
 #import "CustomSplitView.h"
 #import "MessageView.h"
 #import "BandView.h"
+@class LogFile;
 
 @class LogFile;
 
@@ -35,7 +36,9 @@ enum ZoomLevel {
     uint64_t logX;
     uint64_t logWidth;
     
-    IBOutlet NSRulerView *ruler;
+    NSRulerView *ruler;
+    IBOutlet NSScrollView *scrollView;
+    IBOutlet LogFile *logFile;
     
     CGFloat timeTick; ///< The number of pixel between two adjacent time ticks
     
@@ -44,6 +47,8 @@ enum ZoomLevel {
     
     enum ZoomLevel zoomLevel;
 }
+
+@property (readwrite, assign) NSScrollView *scrollView;
 
 @property (readwrite, assign) enum ZoomLevel zoomLevel;
 @property (readwrite, assign) uint64_t logX;

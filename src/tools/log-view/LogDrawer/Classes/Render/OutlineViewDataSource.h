@@ -6,6 +6,8 @@
 
 #import <Cocoa/Cocoa.h>
 #import "Groups.h"
+#import "LogFile.h"
+#import "LogView.h"
 struct LogFileDesc;
 
 
@@ -14,7 +16,13 @@ struct LogFileDesc;
  */
 @interface OutlineViewDataSource : NSObject {
     ObjCGroup *root;
+    IBOutlet LogFile *logFile;
+    IBOutlet LogView *logView;
 }
+
+@property (readwrite, assign) LogFile *logFile;
+@property (readwrite, assign) LogView *logView;
+@property (readonly) ObjCGroup *root;
 
 - (OutlineViewDataSource *)initWithLogDesc:(struct LogFileDesc *)desc;
 

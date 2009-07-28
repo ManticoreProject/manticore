@@ -20,12 +20,13 @@
     // Drawing code here.
 }
 
-
+/*
 - (void)mouseDown:(NSEvent *)event
 {
     NSLog(@"Message view received a mouse down");
     [self.superview mouseDown:event];
 }
+*/
 
 - (BOOL)isOpaque
 {

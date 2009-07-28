@@ -10,6 +10,7 @@
 #import "LogView.h"
 struct _LogFileHeader_t;
 struct LogFileDesc;
+struct EventDesc;
 
 // union _LogTS_t;
 
@@ -69,8 +70,11 @@ struct LogFileDesc;
 - (uint64_t)start;
 - (uint64_t)firstTime;
 - (uint64_t)lastTime;
+- (BOOL)isHidden:(struct EventDesc *)eventDesc;
 
 @property (readwrite, assign) BOOL enabled;
+@property (readonly) uint64_t logX;
+@property (readonly) uint64_t logWidth;
 
 @property (readonly) struct LogFileDesc *desc;
 @property (readonly) NSString	*filename;

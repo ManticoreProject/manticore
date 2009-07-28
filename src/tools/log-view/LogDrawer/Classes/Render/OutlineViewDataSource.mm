@@ -12,6 +12,9 @@
 
 @implementation OutlineViewDataSource
 
+@synthesize logFile;
+@synthesize logView;
+@synthesize root;
 
 - (OutlineViewDataSource *)initWithLogDesc:(struct LogFileDesc *)desc
 {
@@ -100,7 +103,7 @@
 	}
 	else if (ident.intValue == 1)
 	{
-	    return [NSNumber numberWithBool:((ObjCGroup *)item).enabled];
+	    return ((ObjCGroup *)item).enabled;
 	}
 	else
 	{
@@ -125,9 +128,8 @@
 	[Exceptions raise:@"Can't edit a table column whose identifier is not 1"];
 
 
-    NSNumber *objectNumber = object;
-    int enabledVal = objectNumber.intValue;
-    ((ObjCGroup *)item).enabled = enabledVal;
+    ((ObjCGroup *)item).enabled = object;
+    [logView readNewData:logFile];
 }
 
 @end

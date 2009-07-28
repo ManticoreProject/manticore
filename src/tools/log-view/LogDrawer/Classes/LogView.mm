@@ -25,11 +25,13 @@
 
 - (BOOL)isOpaque
 {
-    return YES;
+    return NO;
 }
 
 
 
+
+@synthesize scrollView;
 @synthesize logX;
 @synthesize logWidth;
 @synthesize zoomLevel;
@@ -39,6 +41,7 @@
 - (id)initWithFrame:(NSRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
+
 	NSRect f = [self frame];
 	f.size.width = DEFAULT_LOG_VIEW_WIDTH;
 	f.size.height = self.superview.bounds.size.height;
@@ -51,6 +54,7 @@
 	splitViewBounds.origin.y += DIVIDER_THICKNESS;
 	splitView.bounds = splitViewBounds;
 	[self addSubview:messageView];
+
 	
 	stateGroup = NULL;
 	cur_state = 0;
@@ -60,8 +64,21 @@
 	 * Note: this may cause poor performance if they are not reinitialized
 	 * before the first call to setLogFile
 	 */
+	
+
 	logX = 0;
 	logWidth = -1;
+	
+	NSString *TickName = @"Ticks";
+	NSArray *upArray = [NSArray arrayWithObjects:[NSNumber numberWithFloat:2.0], nil];
+	NSArray *downArray = [NSArray arrayWithObjects:
+			      [NSNumber numberWithFloat:0.5], [NSNumber numberWithFloat:0.2], nil];
+	[NSRulerView registerUnitWithName:TickName
+			     abbreviation:@"tks"
+	     unitToPointsConversionFactor:timeTick
+			      stepUpCycle:upArray
+			    stepDownCycle:downArray];
+	
     }
     return self;
 }
@@ -72,21 +89,8 @@
     [LOG_VIEW_BACKGROUND_COLOR set];
     [NSBezierPath fillRect:[self bounds]];
     
-    NSString *TickName = @"Ticks";
+    
 
-    // Set up the ruler
-    NSArray *upArray = [NSArray arrayWithObjects:[NSNumber numberWithFloat:2.0], nil];
-    NSArray *downArray = [NSArray arrayWithObjects:
-			  [NSNumber numberWithFloat:0.5], [NSNumber numberWithFloat:0.2], nil];
-    [NSRulerView registerUnitWithName:TickName
-			 abbreviation:@"tks"
-	 unitToPointsConversionFactor:timeTick
-			  stepUpCycle:upArray
-			stepDownCycle:downArray];
-    ruler.measurementUnits = TickName;
-    ruler.originOffset = X_PADDING;
-    ruler.needsDisplay = YES;
-    ruler.clientView = self;
     // Draw tick lines
     NSBezierPath *verticalLine = [[NSBezierPath alloc] init];
     NSRect shapeBounds = splitView.shapeBounds;
@@ -107,8 +111,21 @@
 	s.x += timeTick;
 	f.x += timeTick;
     }
+
 }
 
+- (void)awakeFromNib
+{
+    ruler = [[NSRulerView alloc] initWithScrollView:scrollView
+					orientation:NSHorizontalRuler];
+    NSLog(@"scrollview is %@", scrollView);
+    scrollView.horizontalRulerView = ruler;
+    NSLog(@"ruler is %@", ruler);
+    scrollView.rulersVisible = true;
+    ruler.needsDisplay = true;
+    ruler.measurementUnits = @"Ticks";
+    ruler.originOffset = splitView.shapeBounds.origin.x;
+}
 
 - (CGFloat)image:(uint64_t)p
 {
@@ -241,9 +258,22 @@ int sillyNumber = 0;
 	        events[i].timestamp <= logX + logWidth)
 	    {
 		// NSLog(@"Found event in timespan, checking for shapes to draw");
-	    
-	    CGFloat drawingPosition =
-		bandBounds.origin.x + scale * (events[i].timestamp - logX);		
+		
+		
+		
+#pragma mark Filtering
+	/////////////////// FILTERING ////////////////
+		if ([logFile isHidden:eventDesc])
+		{
+		    // NSLog(@"Filtering out event %s", eventDesc->Description());
+		    continue;
+		}
+		
+		
+		
+		
+		CGFloat drawingPosition =
+		    bandBounds.origin.x + scale * (events[i].timestamp - logX);		
 #pragma mark SINGLETONS
 	/////////////// SINGLETONS ///////////////////
 
@@ -425,8 +455,8 @@ int sillyNumber = 0;
 
 - (void)setStart:(uint64_t)logXVal andWidth:(uint64_t)logWidthVal
 {
-    logX = logXVal;
-    logWidth = logWidthVal;
+    self.logX = logXVal;
+    self.logWidth = logWidthVal;
     NSLog(@"start time = %qu, end time = %qu, logWidth = %qu", logX, logX + logWidth, logWidth);
     [self setZoomWithWidth:logWidth];
 }
@@ -443,11 +473,13 @@ int sillyNumber = 0;
 {
     [self resizeIntervalToSize:logWidth / ZOOM_FACTOR
 		    aboutPivot:self.pivot];
+    [self readNewData:logFile];
 }
 - (IBAction)zoomOut:(id)sender
 {
     [self resizeIntervalToSize:logWidth * ZOOM_FACTOR
 		    aboutPivot:self.pivot];    
+    [self readNewData:logFile];
 }
 
 - (uint64_t)scale
@@ -467,6 +499,7 @@ int sillyNumber = 0;
 
 #pragma mark Mouse Events
 
+/*
 - (void)mouseDown:(NSEvent *)event
 {
     NSLog(@"mouse went down");
@@ -496,6 +529,6 @@ int sillyNumber = 0;
     [self resizeIntervalToSize:newWidth
 		    aboutPivot:[self preImage:p]];
 }
-
+*/
 
 @end

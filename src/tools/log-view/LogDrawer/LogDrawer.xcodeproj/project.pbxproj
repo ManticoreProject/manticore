@@ -71,7 +71,6 @@
 		52E7981E1007C6790031A217 /* log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "log-desc.cxx"; sourceTree = "<group>"; };
 		52E7981F1007C6790031A217 /* log-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "log-desc.hxx"; sourceTree = "<group>"; };
 		52E798EE1007D01E0031A217 /* log-file.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "log-file.h"; path = "../../../include/log-file.h"; sourceTree = SOURCE_ROOT; };
-		52E79CAA100B85F10031A217 /* LogDrawer.xcclassmodel */ = {isa = PBXFileReference; explicitFileType = wrapper.xcclassmodel; path = LogDrawer.xcclassmodel; sourceTree = "<group>"; };
 		52F07A4B101A0A32009401D2 /* DynamicRep.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = DynamicRep.hxx; sourceTree = "<group>"; };
 		52F07A4D101A0A32009401D2 /* DynamicEventRep.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = DynamicEventRep.hxx; sourceTree = "<group>"; };
 		52F07A4E101A0A32009401D2 /* DynamicEventRep.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DynamicEventRep.mm; sourceTree = "<group>"; };
@@ -161,7 +160,6 @@
 			isa = PBXGroup;
 			children = (
 				52F07A48101A0A32009401D2 /* Classes */,
-				52E79CA9100B85B50031A217 /* Design */,
 				29B97315FDCFA39411CA2CEA /* Other Sources */,
 				29B97317FDCFA39411CA2CEA /* Resources */,
 				29B97323FDCFA39411CA2CEA /* Frameworks */,
@@ -282,14 +280,6 @@
 				529EDA02100D31B500D8B8B1 /* JSON File Format */,
 			);
 			name = "File Formats";
-			sourceTree = "<group>";
-		};
-		52E79CA9100B85B50031A217 /* Design */ = {
-			isa = PBXGroup;
-			children = (
-				52E79CAA100B85F10031A217 /* LogDrawer.xcclassmodel */,
-			);
-			name = Design;
 			sourceTree = "<group>";
 		};
 		52F07A48101A0A32009401D2 /* Classes */ = {

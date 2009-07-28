@@ -29,6 +29,16 @@ extern LogFileDesc *LoadLogDesc(const char *, const char *);
 @synthesize window;
 @synthesize enabled;
 
+- (uint64_t)logX
+{
+    return logView.logX;
+}
+- (uint64_t)logWidth
+{
+    return logView.logWidth;
+}
+
+
 - (LogFile *)init
 {
    // NSLog(@"Intialized");
@@ -41,6 +51,7 @@ extern LogFileDesc *LoadLogDesc(const char *, const char *);
     {
 	[Exceptions raise:@"Could not load the two log description files"];
     }
+
     
     return self;
 }
@@ -359,17 +370,14 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
     {
 	[Exceptions raise:@"LogFile was not properly initialized with a logView"];
     }
-    double frac = 3;
-    if (self.enabled)
-    {
-	[logView setStart:self.firstTime andWidth:(self.lastTime - self.firstTime) / frac];
-	[logView readNewData:self];
-    }
-    
+
+    // Set up the outlineView with the appropriate datasource
     if (outlineView)
     {
 	outlineView.dataSource = [[OutlineViewDataSource alloc]
 				  initWithLogDesc:self.desc];
+	((OutlineViewDataSource *)(outlineView.dataSource)).logFile = self;
+	((OutlineViewDataSource *)(outlineView.dataSource)).logView = logView;
 	NSArray *columns = outlineView.tableColumns;
 	int i = 0;
 	for (NSTableColumn *column in columns)
@@ -387,9 +395,59 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
     {
 	[Exceptions raise:@"LogFile: outlineView was not propertly initialized"];
     }
+    
+    
+
+    
+    double frac = 3;
+    if (self.enabled)
+    {
+	[logView setStart:self.firstTime andWidth:(self.lastTime - self.firstTime) / frac];
+	[logView readNewData:self];
+    }
+    
   
 }
 
+
+#pragma mark Filtering
+
+BOOL containsEventDescAndIsDisabled(ObjCGroup *g, EventDesc *eventDesc)
+{
+    if (g.cppGroup->containsEvent(eventDesc) && (g.enabled.intValue == 0))
+	return YES;
+    else
+    {
+	if (g.kind != EVENT_GROUP)
+	    return NO;
+	else
+	{
+	    InternalGroup *G = (InternalGroup *)g;
+	    for (int i = 0; i < G.numKids; ++i)
+	    {
+		if (containsEventDescAndIsDisabled([G kid:i], eventDesc))
+		    return YES;
+	    }
+	    return NO;
+	}
+    }
+}
+
+// XXX FIXME this method is not correct, it is sort of correct.
+// Using this method is a hack, it should not exist.
+// Instead, there should be ONE internal representation of groups.
+// That representation should track the enabled state of each group.
+
+// Instead of using cpp methods that return vectors of containing groups,
+// filtering should use objective c methods that return NSArrays
+// of enabled containing groups.
+- (BOOL)isHidden:(EventDesc *)eventDesc
+{
+    return containsEventDescAndIsDisabled(((OutlineViewDataSource *)(outlineView.dataSource)).root, eventDesc);
+}
+
+
+#pragma mark Testing
 - (IBAction)test:(id)sender
 {
 

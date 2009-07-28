@@ -30,7 +30,7 @@
 
 - (BOOL)isOpaque
 {
-    return YES;
+    return NO;
 }
 
 /// Return the bounds of this BandView, but shrunk a little
@@ -115,7 +115,7 @@
 	[e drawShape];
 	++i;
     }
-    NSLog(@"Drew %d singletons", i);
+    // NSLog(@"Drew %d singletons", i);
 }
 
 #pragma mark Singletons
@@ -259,6 +259,42 @@
 	[Exceptions raise:@"BandView addIntervalEnd: called with an end event with no corresponding start event"];
     NSRect r = i.rect;
     [i setWidth:s - r.origin.x end:e];
+}
+
+#pragma mark Mouse Events
+
+- (void)mouseDown:(NSEvent *)e
+{
+    NSLog(@"Mouse was clicked");
+    NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
+    for (EventShape *e in states)
+    {
+	if ([e containsPoint:p])
+	{
+	    NSLog(@"State clicked");
+	}
+    }
+    for (EventShape *e in intervals)
+    {
+	if ([e containsPoint:p])
+	{
+    	    NSLog(@"Interval clicked");
+	}
+    }
+    for (EventShape *e in messages)
+    {
+	if ([e containsPoint:p])
+	{
+	    NSLog(@"Message clicked");	    
+	}
+    }
+    for (EventShape *e in singletons)
+    {
+	if ([e containsPoint:p])
+	{
+	    NSLog(@"Singleton clicked");	    
+	}
+    }
 }
 
 @end
