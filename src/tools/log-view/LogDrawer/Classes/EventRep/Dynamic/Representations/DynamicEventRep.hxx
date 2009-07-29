@@ -20,7 +20,7 @@
 #import "event-desc.hxx"
 #import "log-desc.hxx"
 #define STATIC_INLINE static inline
-
+struct LogFileDesc;
 
 
 /// The current representation of Dynamic Events.
@@ -51,21 +51,25 @@ struct DynamicEvent_struct
 /// The DynamicEvent type is exposed in the interface, but not the DynamitEvent_struct
 typedef DynamicEvent_struct DynamicEvent;
 
+STATIC_INLINE struct struct_log_event dynamicEventValue(DynamicEvent e)
+{
+    return e.value;
+}
 
 /// The time the event was logged in nanoseconds
-STATIC_INLINE uint64_t timeStamp(DynamicEvent event, LogFileDesc *desc)
+STATIC_INLINE uint64_t dynamicEventTimeStamp(DynamicEvent event, struct LogFileDesc *desc)
 {
     return event.timestamp;
 }
 
 /// The static version of this event
-STATIC_INLINE EventDesc *description(DynamicEvent event, LogFileDesc *desc)
+STATIC_INLINE EventDesc *dynamicEventDescription(DynamicEvent event, struct LogFileDesc *desc)
 {
     return event.desc;
 }
 
 /// Recover the arguments of this event
-STATIC_INLINE ArgValue getArg(DynamicEvent event, LogFileDesc *desc, int argNum)
+STATIC_INLINE ArgValue dynamicEventGetArg(DynamicEvent event, struct LogFileDesc *desc, int argNum)
 {
     return event.desc->GetArg(&event.value, argNum);
 }

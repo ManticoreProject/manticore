@@ -23,13 +23,12 @@
     switch(cppRoot->Kind())
     {
 	case EVENT_GROUP:
-	    root = [[InternalGroup alloc] initWithCppGroup:cppRoot];
+	    // All roots must be of kind EVENT_GROUP
+	    root = [[ObjCEventGroup alloc] initWithCppGroup:cppRoot];
 	    break;
 	case STATE_GROUP:
 	case INTERVAL_GROUP:
 	case DEPENDENT_GROUP:
-	    root = [[LeafGroup alloc] initWithCppGroup:cppRoot];
-	    break;
 	default:
 	    [Exceptions raise:@"OutlineViewDataSource: root has no known kind"];
     }
@@ -57,7 +56,7 @@
     }
     if (((ObjCGroup *)item).kind != EVENT_GROUP)
 	[Exceptions raise:@"OutlineVieDataSource was asked for a child of a leaf node"];
-    return [item kid:index];
+    return [((ObjCEventGroup *)item).kids objectAtIndex:index];
 }
 
 - (BOOL)outlineView:(NSOutlineView *)outlineView
@@ -83,7 +82,7 @@
     if (item == nil) return 1;
     if (((ObjCGroup *)item).kind != EVENT_GROUP)
 	[Exceptions raise:@"OutlineVieDataSource was asked for a child of a leaf node"];
-    return ((InternalGroup *)item).numKids;
+    return ((ObjCEventGroup *)item).kids.count;
 }
 
 	     -(id)outlineView:(NSOutlineView *)outlineView

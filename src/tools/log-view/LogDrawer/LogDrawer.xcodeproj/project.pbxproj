@@ -8,9 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		52917ED2101E142E0053F9EF /* ObjCGroup.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52917ED1101E142E0053F9EF /* ObjCGroup.mm */; };
-		52917ED8101E147D0053F9EF /* InternalGroup.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52917ED7101E147D0053F9EF /* InternalGroup.mm */; };
-		52917EDB101E14830053F9EF /* LeafGroup.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52917EDA101E14830053F9EF /* LeafGroup.mm */; };
+		52917ED8101E147D0053F9EF /* ObjCEventGroup.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52917ED7101E147D0053F9EF /* ObjCEventGroup.mm */; };
 		52917EE7101E34330053F9EF /* OutlineViewDataSource.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52917EE6101E34330053F9EF /* OutlineViewDataSource.mm */; };
+		52DC843D101F8F33008ED77F /* ObjCStateGroup.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52DC843C101F8F33008ED77F /* ObjCStateGroup.mm */; };
+		52DC8443101F8F52008ED77F /* ObjCIntervalGroup.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52DC8442101F8F52008ED77F /* ObjCIntervalGroup.mm */; };
+		52DC8480101F906D008ED77F /* StaticEvent.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52DC847F101F906D008ED77F /* StaticEvent.mm */; };
+		52DC8562101FAF79008ED77F /* ObjCDependentGroup.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52DC8561101FAF79008ED77F /* ObjCDependentGroup.mm */; };
 		52E798241007C6790031A217 /* event-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52E797BD1007C6790031A217 /* event-desc.cxx */; };
 		52E7985C1007C6790031A217 /* json.c in Sources */ = {isa = PBXBuildFile; fileRef = 52E797F71007C6790031A217 /* json.c */; };
 		52E7985D1007C6790031A217 /* JSON_parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 52E797F91007C6790031A217 /* JSON_parser.c */; };
@@ -53,13 +56,19 @@
 		32CA4F630368D1EE00C91783 /* LogDrawer_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogDrawer_Prefix.pch; sourceTree = "<group>"; };
 		52917ED0101E142E0053F9EF /* ObjCGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ObjCGroup.h; sourceTree = "<group>"; };
 		52917ED1101E142E0053F9EF /* ObjCGroup.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ObjCGroup.mm; sourceTree = "<group>"; };
-		52917ED6101E147D0053F9EF /* InternalGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InternalGroup.h; sourceTree = "<group>"; };
-		52917ED7101E147D0053F9EF /* InternalGroup.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = InternalGroup.mm; sourceTree = "<group>"; };
-		52917ED9101E14830053F9EF /* LeafGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LeafGroup.h; sourceTree = "<group>"; };
-		52917EDA101E14830053F9EF /* LeafGroup.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LeafGroup.mm; sourceTree = "<group>"; };
+		52917ED6101E147D0053F9EF /* ObjCEventGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ObjCEventGroup.h; sourceTree = "<group>"; };
+		52917ED7101E147D0053F9EF /* ObjCEventGroup.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ObjCEventGroup.mm; sourceTree = "<group>"; };
 		52917EE5101E34330053F9EF /* OutlineViewDataSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OutlineViewDataSource.h; sourceTree = "<group>"; };
 		52917EE6101E34330053F9EF /* OutlineViewDataSource.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = OutlineViewDataSource.mm; sourceTree = "<group>"; };
 		52917EEA101E36200053F9EF /* Groups.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Groups.h; sourceTree = "<group>"; };
+		52DC843B101F8F33008ED77F /* ObjCStateGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ObjCStateGroup.h; sourceTree = "<group>"; };
+		52DC843C101F8F33008ED77F /* ObjCStateGroup.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ObjCStateGroup.mm; sourceTree = "<group>"; };
+		52DC8441101F8F52008ED77F /* ObjCIntervalGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ObjCIntervalGroup.h; sourceTree = "<group>"; };
+		52DC8442101F8F52008ED77F /* ObjCIntervalGroup.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ObjCIntervalGroup.mm; sourceTree = "<group>"; };
+		52DC847E101F906D008ED77F /* StaticEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StaticEvent.h; sourceTree = "<group>"; };
+		52DC847F101F906D008ED77F /* StaticEvent.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = StaticEvent.mm; sourceTree = "<group>"; };
+		52DC8560101FAF79008ED77F /* ObjCDependentGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ObjCDependentGroup.h; sourceTree = "<group>"; };
+		52DC8561101FAF79008ED77F /* ObjCDependentGroup.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ObjCDependentGroup.mm; sourceTree = "<group>"; };
 		52E797BD1007C6790031A217 /* event-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = "event-desc.cxx"; sourceTree = "<group>"; };
 		52E797BE1007C6790031A217 /* event-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = "event-desc.hxx"; sourceTree = "<group>"; };
 		52E797F71007C6790031A217 /* json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = json.c; path = "../../log-common/json.c"; sourceTree = "<group>"; };
@@ -209,13 +218,16 @@
 		52917ECF101E141D0053F9EF /* ObjCGroups */ = {
 			isa = PBXGroup;
 			children = (
-				52917ED9101E14830053F9EF /* LeafGroup.h */,
-				52917EDA101E14830053F9EF /* LeafGroup.mm */,
 				52917ED0101E142E0053F9EF /* ObjCGroup.h */,
 				52917ED1101E142E0053F9EF /* ObjCGroup.mm */,
-				52917ED6101E147D0053F9EF /* InternalGroup.h */,
-				52917ED7101E147D0053F9EF /* InternalGroup.mm */,
-				52917EEA101E36200053F9EF /* Groups.h */,
+				52917ED7101E147D0053F9EF /* ObjCEventGroup.mm */,
+				52917ED6101E147D0053F9EF /* ObjCEventGroup.h */,
+				52DC843B101F8F33008ED77F /* ObjCStateGroup.h */,
+				52DC843C101F8F33008ED77F /* ObjCStateGroup.mm */,
+				52DC8441101F8F52008ED77F /* ObjCIntervalGroup.h */,
+				52DC8442101F8F52008ED77F /* ObjCIntervalGroup.mm */,
+				52DC8560101FAF79008ED77F /* ObjCDependentGroup.h */,
+				52DC8561101FAF79008ED77F /* ObjCDependentGroup.mm */,
 			);
 			name = ObjCGroups;
 			sourceTree = "<group>";
@@ -239,6 +251,15 @@
 				52E797FB1007C6790031A217 /* JSON_parser.h.gch */,
 			);
 			name = "JSON File Format";
+			sourceTree = "<group>";
+		};
+		52DC847D101F905E008ED77F /* ObjCEvents */ = {
+			isa = PBXGroup;
+			children = (
+				52DC847E101F906D008ED77F /* StaticEvent.h */,
+				52DC847F101F906D008ED77F /* StaticEvent.mm */,
+			);
+			name = ObjCEvents;
 			sourceTree = "<group>";
 		};
 		52E7974D1007C6070031A217 /* Static */ = {
@@ -266,6 +287,8 @@
 		52E798821007C6C90031A217 /* GroupDesc */ = {
 			isa = PBXGroup;
 			children = (
+				52DC847D101F905E008ED77F /* ObjCEvents */,
+				52917EEA101E36200053F9EF /* Groups.h */,
 				52917ECF101E141D0053F9EF /* ObjCGroups */,
 				52917ECE101E14100053F9EF /* cppGroups */,
 			);
@@ -527,9 +550,12 @@
 				52F07ABE101A0ADB009401D2 /* AppController.mm in Sources */,
 				52F07ABF101A0ADB009401D2 /* Navigator.m in Sources */,
 				52917ED2101E142E0053F9EF /* ObjCGroup.mm in Sources */,
-				52917ED8101E147D0053F9EF /* InternalGroup.mm in Sources */,
-				52917EDB101E14830053F9EF /* LeafGroup.mm in Sources */,
+				52917ED8101E147D0053F9EF /* ObjCEventGroup.mm in Sources */,
 				52917EE7101E34330053F9EF /* OutlineViewDataSource.mm in Sources */,
+				52DC843D101F8F33008ED77F /* ObjCStateGroup.mm in Sources */,
+				52DC8443101F8F52008ED77F /* ObjCIntervalGroup.mm in Sources */,
+				52DC8480101F906D008ED77F /* StaticEvent.mm in Sources */,
+				52DC8562101FAF79008ED77F /* ObjCDependentGroup.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

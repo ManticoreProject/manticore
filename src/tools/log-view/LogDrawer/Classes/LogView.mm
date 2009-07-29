@@ -193,7 +193,7 @@ int sillyNumber = 0;
 
 - (void)readNewDataDeepZoom:(LogFile *)lf
 {
-    LogFile *logFile = (LogFile *) lf;
+    logFile = (LogFile *) lf;
     NSRect bounds = [self bounds];
     CGFloat min_height = 
 	logFile.nVProcs * (MIN_BAND_HEIGHT + [splitView dividerThickness]);
@@ -245,7 +245,7 @@ int sillyNumber = 0;
 	for (int i = 0; i < vp.numEvents; ++i)
 	{
 	    // NSLog(@"checking if event %d of %d is in timespan", i, vp.numEvents);
-	    EventDesc *eventDesc = description(events[i], nil);
+	    EventDesc *eventDesc = dynamicEventDescription(events[i], nil);
 	    if (eventDesc)
 	    {
 		// NSLog(@"Loaded eventDesc with description %s", eventDesc->Description());

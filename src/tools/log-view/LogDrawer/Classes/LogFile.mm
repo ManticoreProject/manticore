@@ -411,7 +411,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *header)
 
 
 #pragma mark Filtering
-
+/*
 BOOL containsEventDescAndIsDisabled(ObjCGroup *g, EventDesc *eventDesc)
 {
     if (g.cppGroup->containsEvent(eventDesc) && (g.enabled.intValue == 0))
@@ -432,6 +432,7 @@ BOOL containsEventDescAndIsDisabled(ObjCGroup *g, EventDesc *eventDesc)
 	}
     }
 }
+ */
 
 // XXX FIXME this method is not correct, it is sort of correct.
 // Using this method is a hack, it should not exist.
@@ -441,11 +442,16 @@ BOOL containsEventDescAndIsDisabled(ObjCGroup *g, EventDesc *eventDesc)
 // Instead of using cpp methods that return vectors of containing groups,
 // filtering should use objective c methods that return NSArrays
 // of enabled containing groups.
+/*
 - (BOOL)isHidden:(EventDesc *)eventDesc
 {
     return containsEventDescAndIsDisabled(((OutlineViewDataSource *)(outlineView.dataSource)).root, eventDesc);
 }
-
+*/
+- (BOOL)isHidden:(EventDesc *)eventDesc
+{
+    return NO;
+}
 
 #pragma mark Testing
 - (IBAction)test:(id)sender
