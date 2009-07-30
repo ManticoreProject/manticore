@@ -68,8 +68,8 @@ fun quickhull' (a, b, S) =
 
 (* takes a set of 2d points and returns the convex hull for those points *)	
 fun quickhull S = 
-    if lengthP S = 0 then
-	[| |]
+    if lengthP S <= 1 then
+	S
     else
 	let
 	    val p0 = subP (S, 0)
