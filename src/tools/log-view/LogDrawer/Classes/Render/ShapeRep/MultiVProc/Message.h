@@ -20,6 +20,8 @@
 	void *receiver; //!< The event where this message was received
 }
 
+@property (readonly) void *sender;
+
 /*!
  The arrow head.
  It should point rightwards along the positive x-axis.

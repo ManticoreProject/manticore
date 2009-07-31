@@ -30,6 +30,8 @@
 
 @implementation Interval
 
+@synthesize start;
+@synthesize end;
 @synthesize rect;
 
 #pragma mark Initializations

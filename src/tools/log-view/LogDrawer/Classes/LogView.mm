@@ -6,11 +6,10 @@
 
 #import "Utils.h"
 #import "LogView.h"
-#import "VProc.hxx"
+#import "VProc.h"
 #import "log-desc.hxx"
 #import "CustomSplitView.h"
 #import "Exceptions.h"
-#import "LogFile.h"
 
 
 #define DEFAULT_LOG_VIEW_WIDTH ( 5000 )
@@ -29,20 +28,15 @@
 }
 
 
-
-
 @synthesize scrollView;
-@synthesize logX;
-@synthesize logWidth;
-@synthesize zoomLevel;
 @synthesize timeTick;
-@synthesize ruler;
 
-- (id)initWithFrame:(NSRect)frame {
-    self = [super initWithFrame:frame];
-    if (self) {
-
-	NSRect f = [self frame];
+- (id)initWithFrame:(NSRect)frame
+{
+ 
+    if (![super initWithFrame:frame]) return nil;
+    /*
+    NSRect f = [self frame];
 	f.size.width = DEFAULT_LOG_VIEW_WIDTH;
 	f.size.height = self.superview.bounds.size.height;
 	[self setFrame:f];
@@ -54,34 +48,14 @@
 	splitViewBounds.origin.y += DIVIDER_THICKNESS;
 	splitView.bounds = splitViewBounds;
 	[self addSubview:messageView];
+*/
+    timeTick = DEFAULT_TIME_TICK;
+
 
 	
-	stateGroup = NULL;
-	cur_state = 0;
-	timeTick = DEFAULT_TIME_TICK;
-	/* for lack of any other reasonable choice,
-	 * logX and logWidth are initialized to the minimum and maximum values.
-	 * Note: this may cause poor performance if they are not reinitialized
-	 * before the first call to setLogFile
-	 */
-	
-
-	logX = 0;
-	logWidth = -1;
-	
-	NSString *TickName = @"Ticks";
-	NSArray *upArray = [NSArray arrayWithObjects:[NSNumber numberWithFloat:2.0], nil];
-	NSArray *downArray = [NSArray arrayWithObjects:
-			      [NSNumber numberWithFloat:0.5], [NSNumber numberWithFloat:0.2], nil];
-	[NSRulerView registerUnitWithName:TickName
-			     abbreviation:@"tks"
-	     unitToPointsConversionFactor:timeTick
-			      stepUpCycle:upArray
-			    stepDownCycle:downArray];
-	
-    }
     return self;
 }
+
 
 - (void)drawRect:(NSRect)rect
 {
@@ -116,30 +90,9 @@
 
 - (void)awakeFromNib
 {
-    ruler = [[NSRulerView alloc] initWithScrollView:scrollView
-					orientation:NSHorizontalRuler];
-    NSLog(@"scrollview is %@", scrollView);
-    scrollView.horizontalRulerView = ruler;
-    NSLog(@"ruler is %@", ruler);
-    scrollView.rulersVisible = true;
-    ruler.needsDisplay = true;
-    ruler.measurementUnits = @"Ticks";
-    ruler.originOffset = splitView.shapeBounds.origin.x;
+
 }
 
-- (CGFloat)image:(uint64_t)p
-{
-    NSRect bounds = splitView.shapeBounds;
-    uint64_t scale = bounds.size.width / logWidth;
-    return bounds.origin.x + scale * (p - logX);
-}
-
-- (uint64_t)preImage:(CGFloat)p
-{
-    NSRect bounds = [self bounds];
-    uint64_t scale = logWidth / bounds.size.width;
-    return logX + scale * (p - bounds.origin.x);
-}
 
 int sillyNumber = 0;
 
@@ -169,7 +122,7 @@ int sillyNumber = 0;
     switch (state)
     {
 	case 0:
-	    return [NSColor blueColor];
+	    return [NSColor greenColor];
 	case 1:
 	    return [NSColor redColor];
 	case 2:
@@ -179,7 +132,7 @@ int sillyNumber = 0;
 	case 4:
 	    return [NSColor purpleColor];
 	case 5:
-	    return [NSColor greenColor];
+	    return [NSColor blueColor];
 	case 6:
 	    return [NSColor brownColor];
 	default:
@@ -190,13 +143,18 @@ int sillyNumber = 0;
 
 
 
-
-- (void)readNewDataDeepZoom:(LogFile *)lf
+- (void)displayInterval:(struct LogInterval *)logInterval
+	    atZoomLevel:(enum ZoomLevel)zoomLevel
+	    fromLogData:(LogData *)logData
+	     filteredBy:(GroupFilter *)filter;
 {
+<<<<<<< .mine
+=======
     logFile = (LogFile *) lf;
+>>>>>>> .r4014
     NSRect bounds = [self bounds];
     CGFloat min_height = 
-	logFile.nVProcs * (MIN_BAND_HEIGHT + [splitView dividerThickness]);
+	logData.nVProcs * (MIN_BAND_HEIGHT + [splitView dividerThickness]);
     NSLog(@"min height = %f, nVProcs = %d", min_height, logFile.nVProcs);
     if (bounds.size.height < min_height)
     {
@@ -208,7 +166,7 @@ int sillyNumber = 0;
     NSRect frame = self.frame;
     frame.size.width = bounds.size.width;
     frame.size.height = bounds.size.height;
-    NSLog(@"Setting logview frame to %f,%f,%f,%f", frame.origin.x, frame.origin.y, frame.size.width, frame.size.height);
+    // NSLog(@"Setting logview frame to %f,%f,%f,%f", frame.origin.x, frame.origin.y, frame.size.width, frame.size.height);
     self.frame = frame;
     self.bounds = bounds;
     
@@ -232,6 +190,7 @@ int sillyNumber = 0;
 	NSRect curFrame = NSMakeRect(splitViewBounds.origin.x, v * band_height,
 				     splitViewBounds.size.width, band_height);
         BandView *band = [[BandView alloc] initWithFrame:curFrame];
+	band.selectedEvent = selectedEvent;
 	NSRect bandBounds = band.shapeBounds;
 
 	// Converts from intervals in log file to intervals in log view
@@ -239,7 +198,7 @@ int sillyNumber = 0;
 
 	
 	NSRect splitViewFrame = [splitView frame];
-	NSLog(@"adding a band for VProc with vpId %d", v);
+	// NSLog(@"adding a band for VProc with vpId %d", v);
 
 
 	for (int i = 0; i < vp.numEvents; ++i)
@@ -261,14 +220,7 @@ int sillyNumber = 0;
 		
 		
 		
-#pragma mark Filtering
-	/////////////////// FILTERING ////////////////
-		if ([logFile isHidden:eventDesc])
-		{
-		    // NSLog(@"Filtering out event %s", eventDesc->Description());
-		    continue;
-		}
-		
+
 		
 		
 		
@@ -315,7 +267,7 @@ int sillyNumber = 0;
 		}
 		
 		// Warning, NOT an ELSE clause!! must be an if. see logic above.
-		if (stateGroup)
+		if (stateGroup && [filter enabled:stateGroup] != 0)
 		{
 		    // This function returns -1 if this event does not mark
 		    // a transition in this state
@@ -343,6 +295,8 @@ int sillyNumber = 0;
 		    {
 			// NSLog(@"checking interval %s", intervals->at(h)->Desc());
 		        IntervalGroup *intervalGroup = intervals->at(h);
+			if ([filter enabled:intervalGroup].intValue == 0) continue;
+			
 		        if (eventDesc == intervalGroup->Start())
 		        {
 		    	[band addIntervalStart:&events[i]
@@ -372,6 +326,8 @@ int sillyNumber = 0;
 		    {
 			NSLog(@"checking dependents");
 			DependentGroup *dependentGroup = dependents->at(h);
+			if ([filter enabled:dependentGroup].intValue == 0) continue;
+			
 			if (eventDesc == dependentGroup->Src())
 			{
 			    // 
@@ -405,130 +361,8 @@ int sillyNumber = 0;
     [splitView setNeedsDisplay:YES];
 }
 
-/// Read data from log file.  The data read corresponds to the interval
-/// (logX, logX + logWidth)
-- (void)readNewData:(LogFile *)lf
-{
-    switch (zoomLevel)
-    {
-	case zoomLevelDeep:
-	    [self readNewDataDeepZoom:lf];
-	    break;
-	case zoomLevelMedium:
-	    [Exceptions raise:@"medium level zooming is unimplemented"];
-	    break;
-	case zoomLevelShallow:
-	    [Exceptions raise:@"shallow level zooming is unimplemented"];
-	    break;
-    }
-}
 
-#pragma mark Zoomming
 
-/// The largest number of nanoseconds that can be displayed at deep zoom
-#define MAX_DEEP_ZOOM_WIDTH ( -1 )
-/// The largest number of nanoseconds that can be displayed at medium zoom
-#define MAX_MEDIUM_ZOOM_WIDTH ( 10000000 )
 
-/// The ratio of the scale at one zoom level to that of the next zoom level
-#define ZOOM_FACTOR ( 1.2 )
-
-- (void)setZoomWithWidth:(uint64_t)width
-{
-    NSLog(@"Zoom is %qu", width);
-    if (width < MAX_DEEP_ZOOM_WIDTH)
-    {
-	NSLog(@"Entering deep zoom");
-	zoomLevel = zoomLevelDeep;
-    }
-    else if (width < MAX_MEDIUM_ZOOM_WIDTH)
-    {
-	NSLog(@"Entering medium zoom");
-	zoomLevel = zoomLevelMedium;
-    }
-    else
-    {
-	NSLog(@"Entering shallow zoom");
-	zoomLevel = zoomLevelShallow;
-    }
-}
-
-- (void)setStart:(uint64_t)logXVal andWidth:(uint64_t)logWidthVal
-{
-    self.logX = logXVal;
-    self.logWidth = logWidthVal;
-    NSLog(@"start time = %qu, end time = %qu, logWidth = %qu", logX, logX + logWidth, logWidth);
-    [self setZoomWithWidth:logWidth];
-}
-
-- (void)resizeIntervalToSize:(uint64_t)size aboutPivot:(uint64_t)pivot
-{
-    assert( logX <= pivot && pivot <= logX + logWidth );
-    uint64_t frac = (pivot - logX) / logWidth;
-
-    [self setStart:pivot - frac * size andWidth:size];
-}
-
-- (IBAction)zoomIn:(id)sender
-{
-    [self resizeIntervalToSize:logWidth / ZOOM_FACTOR
-		    aboutPivot:self.pivot];
-    [self readNewData:logFile];
-}
-- (IBAction)zoomOut:(id)sender
-{
-    [self resizeIntervalToSize:logWidth * ZOOM_FACTOR
-		    aboutPivot:self.pivot];    
-    [self readNewData:logFile];
-}
-
-- (uint64_t)scale
-{
-    return logWidth / self.visibleRect.size.width;
-}
-
-- (uint64_t)pivot
-{
-    NSRect vr = self.visibleRect;
-    NSLog(@"pivot is at %f in a vr starting at %f of length %f", vr.origin.x + vr.size.width / 2,
-	  vr.origin.x, vr.size.width);
-
-    // For now, just use the center of the visible rectangle
-    return [self preImage:vr.origin.x + vr.size.width / 2];
-}
-
-#pragma mark Mouse Events
-
-/*
-- (void)mouseDown:(NSEvent *)event
-{
-    NSLog(@"mouse went down");
-    uint64_t newWidth;
-    switch (event.buttonNumber) {
-	case 0:
-	    NSLog(@"Button 0 was clicked");
-	    if (event.modifierFlags & NSControlKeyMask)
-	    {
-		newWidth = logWidth / ZOOM_FACTOR;
-	    }
-	    else
-	    {
-		newWidth = logWidth * ZOOM_FACTOR;
-	    }
-	    break;
-	case NSRightMouseDown:
-	    NSLog(@"Button 1 was clicked");
-	    newWidth = logWidth * ZOOM_FACTOR;
-	    break;
-	default:
-	    NSLog(@"Unrecognized mouse button was clicked");
-	    return;
-    }
-    NSPoint point = [self convertPoint:event.locationInWindow fromView:nil];
-    CGFloat p = point.x;
-    [self resizeIntervalToSize:newWidth
-		    aboutPivot:[self preImage:p]];
-}
-*/
 
 @end

@@ -6,6 +6,7 @@
 #import <Cocoa/Cocoa.h>
 #import "MessageView.h"
 #import "State.h"
+#import "SelectedEvent.h"
 
 struct IntervalGroup;
 
@@ -17,6 +18,8 @@ struct IntervalGroup;
 @interface BandView : NSView {
     /// The MessageView this band should use to display its dependent events
     IBOutlet MessageView *messageView;
+    
+    SelectedEvent *selectedEvent;
     
     NSMutableArray *states;
     NSMutableArray *intervals;
@@ -34,6 +37,7 @@ struct IntervalGroup;
     NSMapTable *intervalMap; //< IntervalGroup -> most recently added interval event from that group
 }
 
+@property (readwrite, assign) SelectedEvent *selectedEvent;
 @property (readonly, assign) NSRect shapeBounds; ///< The rectangle which shapes may be drawn in
 
 - (void)setStateStartColor:(NSColor *)c;

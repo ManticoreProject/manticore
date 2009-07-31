@@ -8,18 +8,10 @@
 #import "CustomSplitView.h"
 #import "MessageView.h"
 #import "BandView.h"
-@class LogFile;
+#import "LogDoc.h"
 
-@class LogFile;
 
-struct Group;
-struct StateGroup;
 
-enum ZoomLevel {
-    zoomLevelDeep,
-    zoomLevelMedium,
-    zoomLevelShallow
-};
 
 /// Display a log file
 /**
@@ -31,52 +23,25 @@ enum ZoomLevel {
 @interface LogView : NSView {
     IBOutlet CustomSplitView *splitView; ///< The background view, and the view that contains the BandViews
     IBOutlet MessageView *messageView; ///< The foreground view, and the view that displays dependent events
-
-    // The following fields define the interval in the associated log file which is being viewed
-    uint64_t logX;
-    uint64_t logWidth;
+    IBOutlet NSScrollView *scrollView; ///< The scroll view containing this LogView
     
-    NSRulerView *ruler;
-    IBOutlet NSScrollView *scrollView;
-    IBOutlet LogFile *logFile;
+    CGFloat timeTick; ///< The number of 1/72 inches between two adjacent time ticks
     
-    CGFloat timeTick; ///< The number of pixel between two adjacent time ticks
+    IBOutlet id target;
     
-    int cur_state;
-    struct StateGroup *stateGroup; //< The group of state events to display
-    
-    enum ZoomLevel zoomLevel;
 }
 
 @property (readwrite, assign) NSScrollView *scrollView;
-
 @property (readwrite, assign) enum ZoomLevel zoomLevel;
-@property (readwrite, assign) uint64_t logX;
-@property (readwrite, assign) uint64_t logWidth;
 @property (readwrite, assign) CGFloat timeTick;
-@property (readwrite, assign) NSRulerView *ruler;
-@property (readonly) uint64_t pivot;
-@property (readonly) uint64_t scale;
-
-- (IBAction)zoomIn:(id)sender;
-- (IBAction)zoomOut:(id)sender;
 
 
-- (void)readNewData:(LogFile *)lf;
+- (void)displayInterval:(struct LogInterval *)logInterval
+	    atZoomLevel:(enum ZoomLevel)zoomLevel
+	    fromLogData:(LogData *)logData
+	     filteredBy:(GroupFilter *)filter
 
-/// Calculate the image in the bounds of a point in the logFile
-- (CGFloat)image:(uint64_t)p;
-/// Calculate the preimage in the logFile of a point in the bounds
-- (uint64_t)preImage:(CGFloat)p;
 
-/// Set the endpoints of the interval of the logFile being shown
-- (void)setStart:(uint64_t)logXVal andWidth:(uint64_t)logWidthVal;
 
-/// Adjust the size of the logFile interval using a pivot and a new width
-/** Linearly change logX and logWidth such that pivot is in the same place,
-  * but logWidth = size.
-  * invariant: pivot <= logWidth >= 0
-  */
-- (void)resizeIntervalToSize:(uint64_t)size aboutPivot:(uint64_t)pivot;
 
 @end

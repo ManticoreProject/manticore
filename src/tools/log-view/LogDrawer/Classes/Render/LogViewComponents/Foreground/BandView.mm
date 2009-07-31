@@ -27,10 +27,11 @@
 
 @implementation BandView
 
+@synthesize selectedEvent;
 
 - (BOOL)isOpaque
 {
-    return NO;
+    return YES;
 }
 
 /// Return the bounds of this BandView, but shrunk a little
@@ -72,6 +73,7 @@
 
 #pragma mark Drawing
 - (void)drawRect:(NSRect)rect {
+    /*
     [bandColor set];
     NSBezierPath *bandPath =
 	[NSBezierPath bezierPathWithRoundedRect:self.shapeBounds
@@ -81,7 +83,7 @@
     [bandPath fill];
     [[NSColor blackColor] set];
     [bandPath stroke];
-    
+    */
 
     int i; // for help with NSLogging
 
@@ -267,31 +269,36 @@
 {
     NSLog(@"Mouse was clicked");
     NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
-    for (EventShape *e in states)
+    for (State *e in states)
     {
 	if ([e containsPoint:p])
 	{
+	    
+	    selectedEvent.value = (DynamicEvent_struct *)(e.start);
 	    NSLog(@"State clicked");
 	}
     }
-    for (EventShape *e in intervals)
+    for (Interval *e in intervals)
     {
 	if ([e containsPoint:p])
 	{
+	    selectedEvent.value = (DynamicEvent_struct *)(e.start);
     	    NSLog(@"Interval clicked");
 	}
     }
-    for (EventShape *e in messages)
+    for (Message *e in messages)
     {
 	if ([e containsPoint:p])
 	{
+	    selectedEvent.value = (DynamicEvent_struct *)(e.sender);
 	    NSLog(@"Message clicked");	    
 	}
     }
-    for (EventShape *e in singletons)
+    for (Singleton *e in singletons)
     {
 	if ([e containsPoint:p])
 	{
+	    selectedEvent.value = (DynamicEvent_struct *)(e.start);
 	    NSLog(@"Singleton clicked");	    
 	}
     }

@@ -18,7 +18,7 @@
 			<key>LSTypeIsPackage</key>
 			<false/>
 			<key>NSDocumentClass</key>
-			<string>LogFile</string>
+			<string>LogDoc</string>
 			<key>NSPersistentStoreTypeKey</key>
 			<string>XML</string>
 		</dict>

@@ -7,7 +7,6 @@
 #import <Cocoa/Cocoa.h>
 // #import "DynamicRep.hxx"
 #import "LogView.h"
-#import "LogFile.h"
 // #import "log-desc.hxx"
 
 struct Group;

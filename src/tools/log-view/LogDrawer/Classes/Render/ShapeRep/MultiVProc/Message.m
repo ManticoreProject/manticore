@@ -25,6 +25,8 @@
 
 @implementation Message
 
+@synthesize sender;
+
 #pragma mark Initializations
 
 + (void)inititialize

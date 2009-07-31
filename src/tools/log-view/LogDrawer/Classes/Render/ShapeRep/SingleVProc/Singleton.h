@@ -24,6 +24,8 @@
 	void *start; //!< The corresponding event
 }
 
+@property (readonly) void *start;
+
 /// Testing function.  Generates a warining.
 - (Singleton *)initWithX:(CGFloat)x;
 ///Initialize

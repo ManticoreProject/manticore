@@ -11,6 +11,8 @@
 
 @implementation Singleton
 
+@synthesize start;
+
 #pragma mark Initializations
 
 - (Singleton *)initWithX:(CGFloat)x

@@ -18,6 +18,8 @@
 }
 
 @property (readonly, assign) NSRect rect;
+@property (readonly) void *start;
+@property (readonly) void *end;
 
 /// Testing function.  Implementation prints a warning.
 - (Interval *)initWithRect:(NSRect)r;

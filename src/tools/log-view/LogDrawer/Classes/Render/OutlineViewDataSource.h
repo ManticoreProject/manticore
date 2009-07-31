@@ -5,26 +5,27 @@
  */
 
 #import <Cocoa/Cocoa.h>
-#import "Groups.h"
-#import "LogFile.h"
-#import "LogView.h"
+#import "GroupFilter.h"
+@class LogView;
+@class LogFile;
 struct LogFileDesc;
-
+struct Group;
 
 /** OutlineViewDataSource implements the NSOutlineViewDataSource informal protocol.
  * It displays an outline for Groups.
  */
-@interface OutlineViewDataSource : NSObject {
-    ObjCGroup *root;
+@interface OutlineViewDataSource : GroupFilter {
     IBOutlet LogFile *logFile;
     IBOutlet LogView *logView;
+    struct LogFileDesc *desc;
+    struct Group *root;
+    NSMutableDictionary *map;
 }
 
 @property (readwrite, assign) LogFile *logFile;
 @property (readwrite, assign) LogView *logView;
-@property (readonly) ObjCGroup *root;
 
-- (OutlineViewDataSource *)initWithLogDesc:(struct LogFileDesc *)desc;
+- (OutlineViewDataSource *)initWithLogDesc:(struct LogFileDesc *)descVal;
 
 - (id)outlineView:(NSOutlineView *)outlineView
 	    child:(NSInteger)index
@@ -45,5 +46,6 @@ struct LogFileDesc;
      setObjectValue:(id)object
      forTableColumn:(NSTableColumn *)tableColumn
 	     byItem:(id)item;
+
 
 @end
