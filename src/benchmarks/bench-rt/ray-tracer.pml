@@ -12,6 +12,9 @@ val INFINITY : double = 1.0e20;
 type vec = (double * double * double)
 val sqrt = Double.sqrt
 
+fun debugprinter (b,n) = if b then Print.print ("true"^Double.toString(n)) else Print.print ("#")
+
+
 (* Note the following code is broken for negative vectors, but it was in the original
  * version.
  *)
@@ -117,11 +120,11 @@ datatype CSG =
 
 fun implicitPolyhedron (norm : vec,d : double,pos : vec,dir : vec) = (let 
     val denom = vecdot norm dir;
-    val numer = vecdot norm pos;
+    val numer = vecdot norm pos + d;
   in 
     (if (denom < EPSILON) andalso (numer > 0.0) then (false,0.0)
      else (let 
-             val t = ~numer / denom;
+             val t = numer / denom;
 	     val tFar = if denom > 0.0  andalso t < INFINITY then t else INFINITY;
              val tNear = if denom < 0.0 andalso t > ~INFINITY then t else ~INFINITY;
           in 
@@ -129,9 +132,16 @@ fun implicitPolyhedron (norm : vec,d : double,pos : vec,dir : vec) = (let
            end)
     ) end)
 
-fun polyhedronIntersect (lyst,n) = case lyst of 
-  nil => if n = 0.0 then (false, n) else (true,n)
-| (b,x)::xs => if x > 0.0 andalso x < n then polyhedronIntersect(xs,x) else polyhedronIntersect(xs,n)
+
+
+fun polyhedronIntersect (lyst) = let val x = List.hd lyst
+                                     val y = List.tl lyst
+                                     val f = (fn ((b0, d0), (b1,d1)) => if b0 andalso b1 then (if (d0 < d1 andalso d0 > 0.0) then (true,d0) else (true, d1))
+                                                                        else if b0 then (b0,d0)
+									else if b1 then (b1,d1)
+									else (false,0.0))
+                                   in
+                                     (List.foldr f x y) end;
 
 fun implicit (pos,dir,obj : CSG) = case obj of
   prim p => (case p of
@@ -151,7 +161,11 @@ fun implicit (pos,dir,obj : CSG) = case obj of
 	  else (true, slo)
 	  end
     end)
-  | Polyhedron (poly,surf) =>  polyhedronIntersect (List.map implicitPolyhedron (List.map (fn (x,d) => (x,d,pos,dir)) poly), 0.0)
+  | Polyhedron (poly,surf) =>  let val a = polyhedronIntersect (List.map implicitPolyhedron (List.map (fn (x,d) => (x,d,pos,dir)) poly))
+                                   val _ = debugprinter(a)
+                                in
+                                   a
+                                end
   | Hyperboloid (center,skirt,height,s)=> (let 
          val (x0,y0,z0) = vecsub pos center
 	 val bm = vecdot (x0,y0,z0) dir
@@ -321,7 +335,7 @@ val testlights = Point((4.0,3.0,2.0), (0.288675,0.288675,0.288675)) ::
 val lookfrom = (2.1, 1.3, 1.7);
 val background = (0.078, 0.361, 0.753);
 val testhyper = Hyperboloid ((0.0,0.0,0.0),0.5,1.0,s3)  :: nil;
-val testpolyhedron = Polyhedron (  ((0.0,3.0,2.0),1.0) :: ((0.0,1.0,5.0),4.0) :: ((0.0,4.0,7.0),3.0):: ((6.0,5.0,1.0),2.0):: ((6.0,2.0,3.0),7.0) :: ((6.0,7.0,4.0),5.0) :: nil,s3  ) :: nil;
+val testpolyhedron = Polyhedron (  ((0.2,0.0,0.0),0.5) :: ((0.0,0.2,0.0),0.5) :: ((0.0,0.0,0.2),0.5):: ((~0.2,0.0,0.0),0.5):: ((0.0,~0.2,0.0),0.5) :: ((0.0,0.0,~0.2),0.5) :: nil,s3  ) :: nil;
 val world = List.map (fn x => prim x) testpolyhedron;
 (* val world = List.map (fn x => prim x) testspheres; *)
 (*%%%%%%%*)
@@ -596,7 +610,6 @@ fun ray winsize = let
       Print.print (Long.toString (e-b))
     end
 
-
-val _ = ray(PrimIO.readInt ())
+val _ = ray(PrimIO.readInt ()) 
 
 
