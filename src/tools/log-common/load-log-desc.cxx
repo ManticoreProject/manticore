@@ -13,6 +13,23 @@
 #include "log-desc.hxx"
 #include "json.h"
 
+/* NOTE: this table should agree with the "alignAndSize" function in
+ * src/gen/log-gen/event-sig.sml.
+ */
+static struct {
+    int		szb;	// size of argument in bytes
+    int		alignb;	// alignment restriction in bytes
+}	ArgTyInfo[] = {
+	{ 8, 8 },	// ADDR
+	{ 4, 4 },	// INT
+	{ 4, 4 },	// WORD
+	{ 4, 4 },	// FLOAT
+	{ 8, 8 },	// DOUBLE
+	{ 8, 8 },	// NEW_ID
+	{ 8, 8 },	// EVENT_ID
+	/* no entries for STR0, ... */
+    };
+
 class LogFileDescLoader {
   public:
     LogFileDescLoader ()
@@ -38,6 +55,8 @@ class LogFileDescLoader {
     LogFileDesc		*_desc;
     int			_nextId;
 
+    ArgDesc *_GetArgs (JSON_Value_t *v);
+
 };
 
 inline char *CopyString (const char *s)
@@ -50,9 +69,10 @@ inline char *CopyString (const char *s)
  *  \param v the JSON object that represents the array of argument descriptors.
  *  \return the argument descriptors.
  */
-static ArgDesc *GetArgs (JSON_Value_t *v)
+ArgDesc *LogFileDescLoader::_GetArgs (JSON_Value_t *v)
 {
     unsigned int location = 12;  /* the argument area starts at byte 12 */
+    unsigned int nextLoc;
 
     assert ((v->tag == JSON_array) || (v->u.array.length > 0));
 
@@ -67,7 +87,8 @@ static ArgDesc *GetArgs (JSON_Value_t *v)
 	JSON_Value_t *loc = JSON_GetField(arg, "loc");
 	const char *desc = JSON_GetString(JSON_GetField(arg, "desc"));
 	if ((name == 0) || (tyStr == 0) || (desc == 0)) {
-	    free (ads);
+	    delete[] ads;
+	    this->Error ("badly formed argument\n");
 	    return 0;
 	}
 
@@ -83,17 +104,41 @@ static ArgDesc *GetArgs (JSON_Value_t *v)
 	else if (strcasecmp(tyStr, "id") == 0) ty = EVENT_ID;
 	else if (sscanf(tyStr, "str%d", &n) == 1) ty = (ArgType)((int)STR0 + n);
 	else {
-	    free (ads);
+	    delete[] ads;
+	    this->Error ("unrecognized argument type \"%s\" for field \"%s\"\n",
+		tyStr, name);
 	    return 0;
 	}
 
       /* compute the location (if not given) */
-	/* FIXME */
+	int sz, align;
+	if (ty >= STR0) {
+	    sz = ty - STR0;
+	    align = 1;
+	}
+	else {
+	    sz = ArgTyInfo[ty].szb;
+	    align = ArgTyInfo[ty].szb;
+	}
+	if (loc != 0) {
+	    if (loc->tag != JSON_int) {
+		delete[] ads;
+		this->Error ("expected integer for \"loc\" field\n");
+		return 0;
+	    }
+	    location = loc->u.integer;
+	}
+	else {
+	    location = (location + (align-1)) & ~(align-1);
+	}
+	nextLoc = location + sz;
 
 	ads[i].name = CopyString(name);
 	ads[i].ty = ty;
 	ads[i].loc = location;
 	ads[i].desc = CopyString(desc);
+
+	location = nextLoc;
     }
 
     return ads;
@@ -190,7 +235,7 @@ EventDesc *LogFileDescLoader::NewEvent (JSON_Value_t *v)
     ArgDesc *ads;
     if (args->u.array.length == 0)
 	ads = 0;
-    else if ((ads = GetArgs(args)) == 0) {
+    else if ((ads = this->_GetArgs(args)) == 0) {
 	this->Error("bad argument for event %s\n", name);
 	return 0;
     }
