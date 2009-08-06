@@ -309,18 +309,24 @@ Group *LogFileDescLoader::NewGroup (JSON_Value_t *v)
     }
     else if (strcasecmp(kindStr, "state") == 0) {
 	JSON_Value_t *states = JSON_GetField(v, "states");
+	JSON_Value_t *colors = JSON_GetField(v, "colors");
 	JSON_Value_t *trans = JSON_GetField(v, "transitions");
 	if ((states == 0) || (states->tag != JSON_array)
 	|| (trans == 0) || (trans->tag != JSON_array))
 	    return 0;
 	int nStates = states->u.array.length;
+	if ((colors != 0)
+	&& ((colors->tag != JSON_array) || (colors->u.array.length != nStates)))
+	    return 0;
+	int nColors = (colors == 0) ? 0 : colors->u.array.length;
 	int nTrans = trans->u.array.length;
 	if ((nStates == 0) || (nTrans == 0)) return 0;
 	StateGroup *grp = new StateGroup (desc, nStates, nTrans);
       /* add the state names */
 	for (int i = 0;  i < nStates;  i++) {
 	    grp->AddState(i,
-		CopyString(JSON_GetString(states->u.array.elems[i])));
+		JSON_GetString(states->u.array.elems[i]),
+		(colors == 0) ? 0 : JSON_GetString(colors->u.array.elems[i]));
 	}
       /* add the transitions */
 	for (int i = 0;  i < nTrans;  i++) {
@@ -340,23 +346,25 @@ Group *LogFileDescLoader::NewGroup (JSON_Value_t *v)
     else if (strcasecmp(kindStr, "interval") == 0) {
 	EventDesc *a = this->GetEventField (v, "start");
 	EventDesc *b = this->GetEventField (v, "end");
+	const char *color = JSON_GetString(JSON_GetField(v, "color"));
 	if ((a == 0) || (b == 0))
 	    return 0;
 	else {
 	    a->SetAttr (ATTR_INTERVAL);
 	    b->SetAttr (ATTR_INTERVAL);
-	    return new IntervalGroup (desc, a, b);
+	    return new IntervalGroup (desc, a, b, color);
 	}
     }
     else if (strcasecmp(kindStr, "dependent") == 0) {
 	EventDesc *src = this->GetEventField (v, "src");
 	EventDesc *dst = this->GetEventField (v, "dst");
+	const char *color = JSON_GetString(JSON_GetField(v, "color"));
 	if ((src == 0) || (dst == 0))
 	    return 0;
 	else {
 	    src->SetAttr (ATTR_DEPENDENT);
 	    dst->SetAttr (ATTR_DEPENDENT);
-	    return new DependentGroup (desc, src, dst);
+	    return new DependentGroup (desc, src, dst, color);
 	}
     }
     else {

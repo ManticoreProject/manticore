@@ -23,8 +23,10 @@ struct EventGrpInfo {
 
 inline char *CopyString (const char *s)
 {
-    if (s == 0) return 0;
-    return strcpy (new char[strlen(s)+1], s);
+    if (s == 0)
+	return 0;
+    else
+	return strcpy (new char[strlen(s)+1], s);
 }
 
 /***** class Group member functions *****/
@@ -91,6 +93,7 @@ void EventGroup::AddGroup (int i, Group *item)
 StateGroup::StateGroup (const char *desc, int nStates, int nTransitions)
     : Group (desc, STATE_GROUP),
 	_stateNames(nStates, (const char *)0),
+	_stateColors(nStates, (const char *)0),
 	_transitions(nTransitions, StateTransition()),
 	_events()
 {
@@ -98,6 +101,10 @@ StateGroup::StateGroup (const char *desc, int nStates, int nTransitions)
 
 StateGroup::~StateGroup ()
 {
+    for (int i = 0;  i < this->_stateNames.size();  i++) {
+	delete this->_stateNames[i];
+	delete this->_stateColors[i];
+    }
 }
 
 bool StateGroup::containsEvent (EventDesc *evt) const
@@ -118,9 +125,10 @@ int StateGroup::NextState (int st, EventDesc *evt) const
     return -1;
 }
 
-void StateGroup::AddState (int i, const char *st)
+void StateGroup::AddState (int i, const char *st, const char *color)
 {
     this->_stateNames.at(i) = CopyString(st);
+    this->_stateColors.at(i) = CopyString(color);
 }
 
 void StateGroup::AddTransition (int i, EventDesc *evt, const char *st)
@@ -155,14 +163,15 @@ void StateGroup::AddTransition (int i, EventDesc *evt, const char *st)
 
 /***** class IntervalGroup member functions *****/
 
-IntervalGroup::IntervalGroup (const char *desc, EventDesc *a, EventDesc *b)
+IntervalGroup::IntervalGroup (const char *desc, EventDesc *a, EventDesc *b, const char *color)
     : Group (desc, INTERVAL_GROUP),
-	_start(a), _end(b)
+	_start(a), _end(b), _color(CopyString(color))
 {
 }
 
 IntervalGroup::~IntervalGroup ()
 {
+    delete this->_color;
 }
 
 bool IntervalGroup::containsEvent (EventDesc *evt) const
@@ -173,14 +182,15 @@ bool IntervalGroup::containsEvent (EventDesc *evt) const
 
 /***** class DependentGroup member functions *****/
 
-DependentGroup::DependentGroup (const char *desc, EventDesc *src, EventDesc *dst)
+DependentGroup::DependentGroup (const char *desc, EventDesc *src, EventDesc *dst, const char *color)
     : Group (desc, DEPENDENT_GROUP),
-	_src(src), _dst(dst)
+	_src(src), _dst(dst), _color(CopyString(color))
 {
 }
 
 DependentGroup::~DependentGroup ()
 {
+    delete this->_color;
 }
 
 bool DependentGroup::containsEvent (EventDesc *evt) const

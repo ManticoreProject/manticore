@@ -98,22 +98,24 @@ class StateGroup : public Group {
   /// Is the given event a member of this group?
     bool containsEvent (EventDesc *evt) const;
 
-    int StartState () const	{ return this->_start; }
+    int StartState () const { return this->_start; }
     int NextState (int st, EventDesc *evt) const;
 
     const char *StateName (int i) const	{ return this->_stateNames.at(i); }
+    const char *StateColor (int i) const { return this->_stateColors.at(i); }
 
     std::vector<EventDesc *> Events() const { return this->_events; }
 
   protected:
     StateGroup (const char *desc, int nStates, int nTransitions);
 
-    void AddState (int i, const char *st);
+    void AddState (int i, const char *st, const char *color);
     void AddTransition (int i, EventDesc *evt, const char *st);
 
   private:
     int				_start;		//!< the initial state
     std::vector<const char *>	_stateNames;	//!< the state names
+    std::vector<const char *>	_stateColors;	//!< the state colors
     std::vector<StateTransition> _transitions;	//!< the transition table
     std::vector<EventDesc *>	_events;	//!< the events in the group
 
@@ -131,13 +133,15 @@ class IntervalGroup : public Group {
 
     EventDesc *Start () const	{ return this->_start; }
     EventDesc *End () const	{ return this->_end; }
+    const char *Color () const	{ return this->_color; }
 
   protected:
-    explicit IntervalGroup (const char *desc, EventDesc *a, EventDesc *b);
+    explicit IntervalGroup (const char *desc, EventDesc *a, EventDesc *b, const char *color);
 
   private:
     EventDesc	*_start;
     EventDesc	*_end;
+    const char	*_color;
 
     friend class LogFileDescLoader;
 
@@ -153,13 +157,15 @@ class DependentGroup : public Group {
 
     EventDesc *Src () const	{ return this->_src; }
     EventDesc *Dst () const	{ return this->_dst; }
+    const char *Color () const	{ return this->_color; }
 
   protected:
-    explicit DependentGroup (const char *desc, EventDesc *src, EventDesc *dst);
+    explicit DependentGroup (const char *desc, EventDesc *src, EventDesc *dst, const char *color);
 
   private:
     EventDesc	*_src;
     EventDesc	*_dst;
+    const char	*_color;
 
     friend class LogFileDescLoader;
 
