@@ -17,10 +17,8 @@ Group
 	signature ROPE	
 	functor   RopeFn
 
-(* uncomment for testing =>
- *      structure ListSeq
- *      structure TestRopes
- *)
+	structure ListSeq
+	structure TestRopes
 
 is
 
@@ -31,7 +29,6 @@ is
         rope-fn.sml
 	rope-sig.sml
 
-(* uncomment for testing =>
- *      list-seq.sml
- *      test-ropes.sml
- *)
+	list-seq.sml
+	test-ropes.sml
+
