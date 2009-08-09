@@ -480,7 +480,7 @@ functor RopeFn (
              val len' = S.length s div 2
 	     val (s1, s2) = S.cut (s, len')
              in
-               (Leaf s1, Leaf s2)
+               (mkLeaf s1, mkLeaf s2)
 	     end
 	 | Cat (_, _, r1, r2) => (r1, r2)
         (* end case *))
