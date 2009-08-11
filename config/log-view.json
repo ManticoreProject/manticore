@@ -39,24 +39,32 @@
  *
  *	groups	-- an array of subgroups.
  *
- * If the kind field is "STATE", then there are two additional fields:
+ * If the kind field is "STATE", then there are three or four additional fields:
  *
  *	start   -- the initial state
  *
  *	states	-- an array of state names.
  *
+ *	colors  -- an optional array of colors; one per state
+ *
  *	transitions
  *		-- an array of transitions, which are event name/state name pairs
  *
- * If the kind field is "INTERVAL", then there are two additional fields:
+ * If the kind field is "INTERVAL", then there are three additional fields:
+ *
  *	start	-- the start of the interval
  *
  *	end	-- the end of the interval
  *
+ *	color	-- an optional color specification
+ *
  * If the kind field is "DEPENDENT", then there are two additional fields:
+ *
  *	src	-- the source of the dependent event
  *
  *	dst	-- the destination of the interval
+ *
+ *	color	-- an optional color specification
  */
 {
   "date" : "0x20090721",
