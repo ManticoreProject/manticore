@@ -12,6 +12,7 @@
 #include "log-desc.hxx"
 #include <string.h>
 #include <stdio.h> /* FIXME: replace error message in AddTransition with something else */
+#include <stdlib.h> /* FIXME: replace exit in AddTransition with something else */
 #include <stack>
 #include <assert.h>
 
