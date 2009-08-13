@@ -1,16 +1,13 @@
-//
-//  Box.m
-//  LogDrawer
-//
-//  Created by Korei Klein on 7/29/09.
-//  Copyright 2009 __MyCompanyName__. All rights reserved.
-//
+/** \file  Box.m
+ * \author Korei Klein
+ * \date 7/29/09
+ *
+ */
 
 #import "Box.h"
 
 
 @implementation Box
-@synthesize value;
 
 + (Box *)box:(void *)valueVal
 {
@@ -19,14 +16,20 @@
     return b;
 }
 
+- (void)setValue:(void *)valueVal
+{
+    value = valueVal;
+}
+
+
 - (void *)unbox
 {
-    return self.value;
+    return value;
 }
 
 - (BOOL)isEqual:(Box *)e
 {
-    return (e.value == self.value);
+    return ([e unbox] == value);
 }
 
 @end

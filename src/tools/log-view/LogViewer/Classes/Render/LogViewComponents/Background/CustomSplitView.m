@@ -38,7 +38,10 @@
     // NSLog(@"CustomSplitView is drawing a rectangle");
 }
 
-
+- (void)mouseDown:(NSEvent *)e
+{
+    [self.superview mouseDown:e];
+}
 
 #pragma mark Divider Thickness
 - (CGFloat)dividerThickness

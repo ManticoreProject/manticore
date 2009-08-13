@@ -86,6 +86,7 @@ NSString *asciiToNSString(const char *s)
 }
 - (NSArray *)toArray
 {
+ //   NSLog(@"VProcMaps: converting to an array of dependents");
     NSMutableArray *ret = [[NSMutableArray alloc] init];
     NSEnumerator *objects = [table objectEnumerator];
     

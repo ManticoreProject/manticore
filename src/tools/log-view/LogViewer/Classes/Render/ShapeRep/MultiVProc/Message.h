@@ -6,6 +6,8 @@
 
 #import <Cocoa/Cocoa.h>
 #import "EventShape.h"
+#import "Detail.h"
+
 
 /// Represent a message event by drawing an arrow
 @interface Message : EventShape {
@@ -15,18 +17,13 @@
 	
 	CGFloat lineWidth; //!< Width of the arrow
 	
-	void *sender; //!< The event where this message was sent
-	void *receiver; //!< The event where this message was received
+	event *sender; //!< The event where this message was sent
+	event *receiver; //!< The event where this message was received
 }
 
-@property (readonly) void *sender;
+@property (readonly) event *sender;
+@property (readonly) event * receiver;
 
-/*!
- The arrow head.
- It should point rightwards along the positive x-axis.
- The tip of the arrow head should be at the origin
- */
-NSBezierPath *arrowHead; //!< arrowhead
 
 
 
@@ -36,8 +33,8 @@ NSBezierPath *arrowHead; //!< arrowhead
 ///Initialize
 - (Message *)initArrowFromPoint:(NSPoint)p1
 			toPoint:(NSPoint)p2
-			 sender:(void *)s
-		       receiver:(void *)r;
+			 sender:(event *)s
+		       receiver:(event *)r;
 ///Initialize
 /*! initialize
  \param p1 the point where the arrow starts
@@ -51,8 +48,8 @@ NSBezierPath *arrowHead; //!< arrowhead
 			toPoint:(NSPoint)p2
 			  color:(NSColor *)c
 		      lineWidth:(CGFloat)w
-			 sender:(void *)s
-		       receiver:(void *)r;
+			 sender:(event *)s
+		       receiver:(event *)r;
 
 
 /// Determine if a point lies within the area this shape is drawn on

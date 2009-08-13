@@ -26,6 +26,8 @@
 {
 	if (![super init])
 		return nil;
+    
+  //  NSLog(@"state being initialized at %f width %f", r.origin.x, r.size.width);
 	rect = r;
 	color = c;
 	start = startVal;
@@ -54,5 +56,11 @@
 		);
 		
 }
+
+- (shapeTag)kind
+{
+    return STATE_SHAPE;
+}
+
 
 @end

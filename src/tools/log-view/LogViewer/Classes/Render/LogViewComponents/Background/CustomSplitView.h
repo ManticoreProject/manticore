@@ -11,7 +11,7 @@
 #define Y_PADDING ( 3 )
 #define X_PADDING ( 25 )
 
-#define DIVIDER_THICKNESS ( 17 )
+#define DIVIDER_THICKNESS ( 25 )
 
 /// Customized subclass of NSSplitView
 /** CustomSplitView is a subclass of NSView that provides

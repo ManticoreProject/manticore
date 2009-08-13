@@ -14,9 +14,9 @@
 
 #define DEFAULT_ENABLED_STATE ( [NSNumber numberWithInt:1] )
 
+
 @implementation OutlineViewDataSource
 
-@synthesize logDoc;
 
 
 - (OutlineViewDataSource *)initWithLogDesc:(struct LogFileDesc *)descVal
@@ -27,6 +27,7 @@
     root = desc->Root();
     logDoc = logDocVal;
     map = [[NSMutableDictionary alloc] init];
+    boxes = [[NSMutableArray alloc] init];
     // NSNumber *n = [map objectForKey:@"All Events"];
    // NSLog(@"number n = %@, (s == s) = %d", n, [@"mee" isEqual:@"me"]);
     // Group *cppRoot = desc->Root(); //  [Exceptions raise:@"OutlineVieDataSource: how does one find the root?"];
@@ -65,14 +66,18 @@
 	else // index == 0
 	{
 	    NSLog(@"returning root");
-	    return [Box box:(void *)root];
+	    Box *b = [Box box:(void *)root];
+	    [boxes addObject:b];
+	    return b;
 	}
     }
     Group *g = (Group *)[((Box *)item) unbox];
     if (g->Kind() != EVENT_GROUP)
 	[Exceptions raise:@"OutlineViewDataSource: asked for the child of a leaf node"];
     EventGroup *G = (EventGroup *)g;
-    return (id)[Box box:(void *)(G->Kid(index))];
+    Box *b = [Box box:(void *)(G->Kid(index))];
+    [boxes addObject:b];
+    return (Box *)b;
     /*
     if (((ObjCGroup *)item).kind != EVENT_GROUP)
 	[Exceptions raise:@"OutlineVieDataSource was asked for a child of a leaf node"];
@@ -123,7 +128,9 @@
     if (item == nil)
 	[Exceptions raise:@"nil has no valueForTableColumn"];
     NSNumber *ident = tableColumn.identifier;
-    Group *g = (Group *)[((Box *)item) unbox];
+    Box *b = (Box *)item;
+    // NSLog(@"Box is %@", b);
+    Group *g = (Group *)[b unbox];
     if (ident)
     {
 	if (ident.intValue == 0)
@@ -231,7 +238,7 @@
 	}
     }
     
-
+	
     [self setParentByKids:g->Parent()];
 }
 - (void)outlineView:(NSOutlineView *)outlineView

@@ -1,10 +1,8 @@
-//
-//  Box.h
-//  LogDrawer
-//
-//  Created by Korei Klein on 7/29/09.
-//  Copyright 2009 __MyCompanyName__. All rights reserved.
-//
+/** \file  Box.h
+ * \author Korei Klein
+ * \date 7/29/09
+ *
+ */
 
 #import <Cocoa/Cocoa.h>
 
@@ -13,7 +11,6 @@
     void *value;
 }
 
-@property void *value;
 + (Box *)box:(void *)valueVal;
 - (void *)unbox;
 

@@ -12,7 +12,7 @@
 /// Color of arrow
 #define DEFAULT_MESSAGE_COLOR ([NSColor greenColor])
 /// Width of arrow
-#define DEFAULT_LINE_WIDTH (1)
+#define DEFAULT_LINE_WIDTH ( 3 )
 
 /// Size of arrow
 #define ARROW_HEAD_WIDTH (6)
@@ -23,13 +23,22 @@
 #define CLICK_RANGE (5.5)
 
 
+/*!
+ The arrow head.
+ It should point rightwards along the positive x-axis.
+ The tip of the arrow head should be at the origin
+ */
+static NSBezierPath *arrowHead; //!< arrowhead
+
+
 @implementation Message
 
 @synthesize sender;
+@synthesize receiver;
 
 #pragma mark Initializations
 
-+ (void)inititialize
+- (void)initArrowHead
 {
     // Initialize the arrowHead
     arrowHead = [[NSBezierPath alloc] init];
@@ -41,6 +50,8 @@
      NSZeroPoint];
     [arrowHead lineToPoint:
      NSMakePoint(- ARROW_HEAD_HEIGHT, - ARROW_HEAD_WIDTH / 2)];
+    
+ //   NSLog(@"arrowHead just created %@", arrowHead);
 }
 
 - (Message *)initArrowFromPoint:(NSPoint)p1
@@ -55,8 +66,8 @@
 
 - (Message *)initArrowFromPoint:(NSPoint)p1
 			toPoint:(NSPoint)p2
-			 sender:(void *)s
-		       receiver:(void *)r
+			 sender:(event *)s
+		       receiver:(event *)r
 {
 	// Okay initialization. Arrows are assumed to be black
 	return [self initArrowFromPoint:p1
@@ -71,8 +82,8 @@
 			toPoint:(NSPoint)p2
 			  color:(NSColor *)c
 		      lineWidth:(CGFloat)w
-			 sender:(void *)s
-		       receiver:(void *)r
+			 sender:(event *)s
+		       receiver:(event *)r
 {
 	if (![super init])
 		return nil;
@@ -91,12 +102,15 @@
 	NSAffineTransform *T = [NSAffineTransform transform];
 	NSAffineTransform *A = [NSAffineTransform transform];
 	CGFloat theta = (1 / (2 * 3.14159) ) * 360 * atan( (end.y - start.y) / (end.x - start.x) );
-	NSLog(@"theta = %f", theta);
+	//NSLog(@"theta = %f", theta);
 	[T rotateByDegrees: theta];
 	[A translateXBy:end.x yBy:end.y];
 	
+	if (!arrowHead) self.initArrowHead;
 	path = [arrowHead copy];
-	[path transformUsingAffineTransform:T];
+	//NSLog(@"path just initialized from arrow %@ as %@", arrowHead, path);
+	
+    [path transformUsingAffineTransform:T];
 	[path transformUsingAffineTransform:A];
 	
 	// Create the arrow body
@@ -118,13 +132,18 @@
 		between(p.y, start.y, end.y));
 }
 
-
+- (shapeTag)kind
+{
+    return MESSAGE_SHAPE;
+}
 
 - (void)drawShape
 {
+    //NSLog(@"path being drawn for arrow %@", path);
 	[color set];
 	[path stroke];
 }
+
 
 @end
 

@@ -18,12 +18,18 @@
     NSMutableArray *times; // NSNumbers of floats of when to print the corresponding time value
     NSMutableArray *timeValues; // NSString *s that must be printed in accordance with tick lines
     NSMutableDictionary *timeValueAttributes;
+    
+    LogDoc *logDoc;
+    
+    NSMutableArray *dependents;
 }
 
 - (MessageView *)initWithFrame:(NSRect)frame
 			logDoc:(LogDoc *)logDocVal
 		    dependents:(NSArray *)dependentsVal;
 
+
+- (BOOL)bandReceivedEvent:(NSEvent *)e;
 
 - (void)displayTime:(uint64_t)t atPosition:(CGFloat)f;
 

@@ -17,7 +17,7 @@
 /// The value need not be exact, it is used to guess an initial size
 /// For the Details array.
 #define ESTIMATED_DETAILS_PER_EVENT ( 0.4 )
-#define MAX_NUM_EVENTS ( 1000000 )
+#define MAX_NUM_EVENTS ( 6000000 )
 
 /// How much should the array grow by each time it runs out of space
 #define APPAY_INC ( 100 )
@@ -91,18 +91,20 @@ static inline int min( int a, int b)
     details_size = ESTIMATED_DETAILS_PER_EVENT * events_size + allStates.count;
     details = (TaggedDetail_struct * *) malloc(sizeof(TaggedDetail_struct *) * details_size);
 
-    int i = 0;
     for (Box *stateGroupBox in allStates)
     {
+	
 	StateGroup *stateGroup = (StateGroup *) [stateGroupBox unbox];
-	details[i]->type = stateGroup;
-	details[i]->data.state.state = stateGroup->StartState();
-	details[i]->data.state.start = NULL; //< The detail starts at the begginig of time
-	details[i]->data.state.end = NULL;   //< The detail ends at the end of time
+	details[numDetails] = (TaggedDetail_struct *) malloc
+		    (sizeof(TaggedDetail_struct));
+	details[numDetails]->type = stateGroup;
+	details[numDetails]->data.state.state = stateGroup->StartState();
+	details[numDetails]->data.state.start = NULL; //< The detail starts at the begginig of time
+	details[numDetails]->data.state.end = NULL;   //< The detail ends at the end of time
 	
-	[stateMap addDetail:&details[i]->data.state forStateGroup:stateGroup];
+	[stateMap addDetail:&details[numDetails]->data.state forStateGroup:stateGroup];
 	
-	++i;
+	++numDetails;
     }
     
     
@@ -113,6 +115,11 @@ static inline int min( int a, int b)
     return self;
 }
 
+double cur_interval_height = 0.0;
+- (double)nextIntervalHeight:(struct Interval_Detail *)i
+{
+    return cur_interval_height += 20.0;
+}
 
 - (void)readBlock:(LogBuffer_t *)logBuffer
 	numEvents:(int)n
@@ -228,9 +235,14 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 
 
 	    // FIXME XXX
+	
+	
+	
+	
 #pragma mark States
 	    ///////////////// STATES      ////////////////////
-	for (int i = 0; i < 0;)//stateGroups->size(); ++i)
+	// NSLog(@"VProc.mm: number of state groups %d", n_state_groups);
+	for (int i = 0; i < n_state_groups; ++i)
 	    {
 		StateGroup *stateGroup = stateGroups->at(i);
 		struct State_Detail *mostRecentStateDetail =
@@ -240,14 +252,20 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 
 		details[numDetails] = (TaggedDetail_struct *) malloc(sizeof(struct TaggedDetail_struct));
 		details[numDetails]->type = stateGroup;
-		struct State_Detail *next_stateDetail = &(details[numDetails++]->data.state);
+		struct State_Detail *next_stateDetail = &(details[numDetails]->data.state);
 
 		next_stateDetail->state = stateGroup->NextState
 		    (mostRecentStateDetail->state, eventDesc);
 
+		// NSLog(@"VProc.mm: mostRecentStateDetail = %#x", mostRecentStateDetail);
 		mostRecentStateDetail->end = cur_event;
+		//NSLog(@"VProc.mm: found state event at time %qu", cur_event->timestamp);
 		next_stateDetail->start = cur_event;
 		next_stateDetail->end = NULL;
+		[stateMap addDetail:&details[numDetails]->data.state forStateGroup:stateGroup];
+		
+		
+		++numDetails;
 	    }
 
 #pragma mark Intervals
@@ -263,6 +281,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 			&(details[numDetails++]->data.interval);
 		    next_intervalDetail->start = cur_event;
 		    next_intervalDetail->end = NULL;
+		    next_intervalDetail->height = 0; //< To be adjusted later
 
 		    [intervalMap addDetail:next_intervalDetail
 			  forIntervalGroup:intervalGroup];
@@ -281,6 +300,9 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 
 		    mostRecentIntervalDetail->end = cur_event;
 
+		    mostRecentIntervalDetail->height = [self nextIntervalHeight:mostRecentIntervalDetail];
+
+		    
 		    [intervalMap addDetail:NULL
 			forIntervalGroup:intervalGroup];
 		}
@@ -290,11 +312,12 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 	    ///////////////// DEPENDENTS  ////////////////////
 	    for (int i = 0; i < n_dependent_groups; ++i)
 	    {
-		NSLog(@"Found a dependent");
+
 		DependentGroup *dependentGroup = dependentGroups->at(i);
 		uint64_t ident = GetDependentId(cur_event, eventDesc);
-		
+			
 		TaggedDetail_struct *d = [dependentMap getDetailForIdentifier:ident];
+		NSLog(@"Found a dependent with id = %#qx", ident);
 		if (d == NULL)
 		{
 		    // Initialize this detail
@@ -332,19 +355,22 @@ andDependentGroup:(DependentGroup *)g
 
     if (eventDesc == g->Src())
     {
+	NSLog(@"VProc.mm: found dependent 0x%x source adding event 0x%x", d, e);
 	assert(d->src == 0); //< src should be uninitialized
 	d->src = e;
+	d->vpId = vpId;
     }
     else
     {
         assert (eventDesc == g->Dst());
 
+	NSLog(@"VProc.mm: found dependent 0x%x destination", d);
         [self MakeDetailBigEnoughToHoldNewEvent:d];
 	d->dsts[d->n_dsts] = (Dependent_Dst *) malloc (sizeof(Dependent_Dst));
 	d->dsts[d->n_dsts]->vpId = vpId;
-	d->dsts[d->n_dsts]->event.value = e->value;
+	d->dsts[d->n_dsts++]->value = e;
 
-        d->dsts[d->n_dsts++]->event.timestamp = e->timestamp;
+
     }
     return;
 }

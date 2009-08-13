@@ -8,6 +8,13 @@
 #import <Cocoa/Cocoa.h>
 
 
+typedef enum {
+    SIMPLE_SHAPE,
+    STATE_SHAPE,
+    INTERVAL_SHAPE,
+    MESSAGE_SHAPE
+} shapeTag;
+
 /// A superclass to shapes.
 /*! After initialization, shapes all export sort of the same interface.
  * Methods of EventShape should encompass all this generic functionality.
@@ -16,13 +23,19 @@
  * because certain shapes correspond to multiple events.
  */
 @interface EventShape : NSObject {
-	NSColor *color; //!< Color of the shape. not Null.
+    NSColor *color; //!< Color of the shape. not Null.
+    NSString *description;
 }
+
 
 /// Draw the shape
 - (void)drawShape;
 
 /// Determine if a point lies within the area this shape is drawn on
 - (BOOL)containsPoint:(NSPoint)p;
+
+- (shapeTag)kind;
+
+@property (readwrite, assign) NSString *description;
 
 @end

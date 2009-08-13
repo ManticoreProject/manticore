@@ -8,10 +8,11 @@
 
 #import "GroupFilter.h"
 #import "Exceptions.h"
-
+#import "LogDoc.h"
 
 @implementation GroupFilter
 
+@synthesize logDoc;
 
 - (NSNumber *)enabled:(struct Group *)g
 {

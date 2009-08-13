@@ -22,7 +22,8 @@ BOOL between(CGFloat a, CGFloat b, CGFloat c);
 
 
 
-@interface Utils
-+ (void)exn:(NSString *)s;
-+ (void)foo;
+@interface Utils : NSObject
+{
+}
+
 @end

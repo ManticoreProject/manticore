@@ -7,6 +7,9 @@
 
 #import "Detail.h"
 
+
+#define DEFAULT_INTERVAL_HEIGHT ( 10 )
+
 @class VProc;
 @class LogDoc;
 @class SelectedEvent;
@@ -31,7 +34,8 @@ struct IntervalGroup;
 
     LogDoc *logDoc;
     
-    SelectedEvent *selectedEvent;
+    VProc *vProc;
+    
     
     NSMutableArray *states;
     NSMutableArray *intervals;
@@ -43,8 +47,8 @@ struct IntervalGroup;
     CGFloat cur_singleton_height;
 }
 
+@property (readwrite, assign) MessageView *messageView;
 @property (readwrite, assign) id target;
-@property (readwrite, assign) SelectedEvent *selectedEvent;
 @property (readonly, assign) NSRect shapeBounds; ///< The rectangle which shapes may be drawn in
 
 - (BandView *)initWithFrame:(NSRect)frame logDoc:(LogDoc *)logDocVal vProc:(VProc *)vp filter:(GroupFilter *)filter;

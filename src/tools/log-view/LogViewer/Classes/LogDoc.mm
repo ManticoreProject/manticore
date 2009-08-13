@@ -11,15 +11,27 @@
 #import "LogView.h"
 #import "OutlineViewDataSource.h"
 #import "log-desc.hxx"
+#import "TimeDisplay.h"
+#import "DetailAccess.h"
+#import "DetailInfoController.h"
+#import "DetailInfoView.h"
+#import "ShapeRep.h"
 
-#define DEFAULT_ZOOM_FACTOR ( 1.2 )
 
+#define DETAIL_INFO_NIB_NAME ( @"DetailInfo" )
+#define DEFAULT_ZOOM_FACTOR ( 3.16227 )
+#define MIN_LOGINTERVAL_WIDTH ( 50 )
 @implementation LogDoc
 
 static LogFileDesc *logDesc;
 - (LogFileDesc *)logDesc
 {
     return logDesc;
+}
+
+- (IBAction)drewTicks:(LogView *)sender
+{
+    [timeDisplay drewTicks:sender];
 }
 
 /// Cause logView to display logData according to
@@ -36,7 +48,28 @@ static LogFileDesc *logDesc;
     return logData.filename;
 }
 
+- (void)setNilValueForKey:(NSString *)key
+{
+    if ([key isEqualToString:@"horizontalPosition"])
+	self.horizontalPosition = 0;
+    else
+	[super setNilValueForKey:key];
+}
+
+- (void)setHorizontalPosition:(float)n
+{
+    NSLog(@"LogDoc is setting the horizontal position to %f", n);
+    horizontalPosition = n;
+    timeDisplay.needsDisplay = true;
+}
+- (float)horizontalPosition
+{
+    NSLog(@"LogDoc is returning the horizontal position");
+    return horizontalPosition;
+}
+
 #pragma mark Synthesis
+@synthesize timeDisplay;
 @synthesize zoomFactor;
 @synthesize logView;
 @synthesize logData;
@@ -67,6 +100,8 @@ static LogFileDesc *logDesc;
     logInterval = nil;
     zoomFactor = DEFAULT_ZOOM_FACTOR;
     enabled = false;
+    
+    detailInfoController = nil;
     
     
     return self;
@@ -140,8 +175,33 @@ static LogFileDesc *logDesc;
 
     if (self.enabled)
     {
+	if (!detailInfoTarget)
+	{
+	    [Exceptions raise:@"LogDoc: did not have an initiailized detailInfoTarget"];
+	}
+	struct LogFileDesc *logDesc = self.logDesc;
+	detailInfoController = [[DetailInfoController alloc] initWithNibName:DETAIL_INFO_NIB_NAME
+								      bundle:nil
+								     logDesc:(struct LogFileDesc *)logDesc];
+	
+	DetailInfoView *detailInfoView = detailInfoController.div;
+	NSRect newFrame = detailInfoTarget.frame;
+	NSLog(@"newFrame is %f %f %f %f'",
+	      newFrame.origin.x, newFrame.origin.y,
+	      newFrame.size.width, newFrame.size.height);
+	
+	[detailInfoView setFrame:newFrame];
+	[detailInfoTarget.superview addSubview:detailInfoView];
+	NSLog(@"added view %@ to logView %@ in that frame", detailInfoView, logView);
+//	[logView replaceSubview:detailInfoTarget with:detailInfoView];
+	detailInfoView.needsDisplay = true;
+	detailInfoView.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
+	
+	
 	if (!outlineViewDataSource)
 	{
+	    NSLog(@"enabled state = %d", self.enabled);
+	    
 	    [Exceptions raise:@"Did not have an initialized outlineViewDataSource while enabled"];
 	}
 	outlineView.dataSource = outlineViewDataSource;
@@ -151,6 +211,9 @@ static LogFileDesc *logDesc;
 	NSLog(@"Log Doc has logInterval %qu, %qu, for bounds from %f to %f",
 	    logInterval->x, logInterval->width, logView.splitView.shapeBounds.origin.x,
 	      logView.splitView.shapeBounds.size.width);
+	
+	NSLog(@"LogDoc is opening a drawer %@", drawer);
+	[drawer open];
     }
 }
 
@@ -166,6 +229,7 @@ static LogFileDesc *logDesc;
 {
     return NO;
 }
+
 - (NSData *)dataOfType:(NSString *)typeName error:(NSError **)outError
 {
     [Exceptions raise:@"LogDoc can't write data"];
@@ -199,6 +263,11 @@ static LogFileDesc *logDesc;
     }   
 }
 
+- (void)printLogInterval
+{
+   // NSLog(@"LogDoc->LogInterval = { %qu, %qu }", logInterval->x, logInterval->width);
+}
+
 /// Take a point in the logData to the corresponding point in the logView
 - (CGFloat)image:(uint64_t)p
 {
@@ -219,25 +288,140 @@ static LogFileDesc *logDesc;
 {
     return r.origin.x + r.size.width / 2;
 }
-
+- (void)zoomBy:(double)scale aboutPivot:(uint64_t)pivot
+{
+   // NSLog(@"pivot = %qu", pivot);
+    self.printLogInterval;
+    logInterval->x = pivot - scale * (pivot - logInterval->x);
+    logInterval->width = logInterval->width * scale;
+    [self flush];
+}
 - (void)zoomBy:(double)scale
 {
-    uint64_t pivot = [self preImage:[self xMidPoint:logView.splitView.bounds]];
-    self.logInterval->x = pivot - scale * (pivot - logInterval->x);
-    self.logInterval->width = logInterval->width * scale;
+    uint64_t pivot = [self preImage:[self xMidPoint:logView.splitView.visibleRect]];
+    [self zoomBy:scale aboutPivot:pivot];
 }
+
+- (void)zoomInAboutPivot:(uint64_t)pivot
+{
+    [self zoomBy:1 / zoomFactor aboutPivot:pivot];
+}
+- (void)zoomOutAboutPivot:(uint64_t)pivot
+{
+    [self zoomBy:1 * zoomFactor aboutPivot:pivot];
+}
+
+
 
 - (IBAction)zoomIn:(id)sender
 {
-    double scale = logInterval->width / zoomFactor;
+    self.printLogInterval;
+    double scale = 1 / zoomFactor;
+    if (scale * logInterval->width < MIN_LOGINTERVAL_WIDTH)
+    {
+	NSLog(@"Not continuing to zoom.  Reached minimum width");
+	return;
+    }
     [self zoomBy:scale];
+    self.printLogInterval;
 }
 
 - (IBAction)zoomOut:(id)sender
 {
-    double scale = logInterval->width * zoomFactor;
+    self.printLogInterval;
+    double scale = 1 * zoomFactor;
     [self zoomBy:scale];
+    self.printLogInterval;
+}
+- (IBAction)zoom:(NSSegmentedControl *)sender
+{
+    NSInteger n = sender.selectedSegment;
+    if (n == 0)
+    {
+	[self zoomOut:sender];
+    }
+    if (n == 1)
+    {
+	[self zoomIn:sender];
+    }
+    else
+    {
+	[Exceptions raise:@"LogDoc: asked to zoom, but no segment of the sender is selected"];
+    }
+}
+
+- (BOOL)isInInterval:(Detail)d
+{
+    uint64_t fst = logInterval->x;
+    uint64_t lst = logInterval->width + fst;
+    Group *g = Detail_Type(d);
+    event *c, *b;
+    switch (g->Kind())
+    {
+	case EVENT_GROUP:
+	    uint64_t a = Event_Time(*Detail_Simple_value(d));
+	    return (fst <= a && a <= lst);
+	    break;
+	case INTERVAL_GROUP:
+	    c = Detail_Interval_start(d);
+	    b = Detail_Interval_end(d);
+	    if (c == NULL || b == NULL) return true;
+	    if (Event_Time(*c) > lst ||
+		Event_Time(*b) < fst)
+		return false;
+	    else return true;
+	    break;
+	case STATE_GROUP:
+	    c = Detail_State_start(d);
+	    b = Detail_State_end(d);
+	    if (c == NULL || b == NULL) return true;
+	    if (Event_Time(*c) > lst ||
+		Event_Time(*b) < fst)
+		return false;
+	    else return true;
+	    break;
+	case DEPENDENT_GROUP:
+	    return false; /// XXX FIXME
+	    break;
+    }
+    
+    [Exceptions raise:@"Controll should not reach here"];
+    return false;
 }
 
 
+#pragma mark Info
+
+- (void)displayDetail:(EventShape *)d
+{
+    [detailInfoController displayDetail:d];
+}
+
+
+#pragma mark Printing
+
+
+
+- (void)printShowingPrintPanel:(BOOL)showPanels
+{
+    NSLog(@"LogDoc is being asked to print");
+    NSPrintOperation *op = [NSPrintOperation
+			    printOperationWithView:scrollView
+			    printInfo:[self printInfo]];
+    op.showPanels = showPanels;
+    
+    [self runModalPrintOperation:op
+			delegate:nil
+		  didRunSelector:NULL
+		     contextInfo:NULL];
+}
+
+
+
+
 @end
+
+
+
+
+

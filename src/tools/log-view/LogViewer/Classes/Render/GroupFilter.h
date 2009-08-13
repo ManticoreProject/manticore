@@ -7,11 +7,14 @@
 //
 
 #import <Cocoa/Cocoa.h>
-
+@class LogDoc;
 
 @interface GroupFilter : NSObject {
+    IBOutlet LogDoc *logDoc;
 
 }
+
+@property (readwrite, assign) LogDoc *logDoc;
 
 - (NSNumber *)enabled:(struct Group *)g;
 

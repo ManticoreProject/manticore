@@ -62,4 +62,10 @@
 	return [path containsPoint:p];
 }
 
+- (shapeTag)kind
+{
+    return SIMPLE_SHAPE;
+}
+
+
 @end

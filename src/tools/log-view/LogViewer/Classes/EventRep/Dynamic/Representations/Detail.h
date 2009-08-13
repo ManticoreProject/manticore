@@ -38,6 +38,7 @@ struct Simple_Detail
 
 struct Interval_Detail
 {
+    double height;
     event *start; ///< Not NULL
     event *end;   ///< NULL iff this Interval_Detail ends at the end of the file
 };
@@ -45,7 +46,7 @@ struct Interval_Detail
 struct Dependent_Dst
 {
     int32_t vpId;
-    struct event_struct event;
+    event *value;
 };
 
 
@@ -53,6 +54,7 @@ struct Dependent_Dst
 struct Dependent_Detail
 {
     event *src; ///< Not NULL
+    int32_t vpId;
 
     // The following three fields can exists in one of two states
     // 1. n_dsts == dsts_array_size == dsts == 0

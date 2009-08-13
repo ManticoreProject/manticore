@@ -26,12 +26,24 @@
     IBOutlet MessageView *messageView; ///< The foreground view, and the view that displays dependent events
     IBOutlet NSScrollView *scrollView; ///< The scroll view containing this LogView
     
+    NSMutableArray *bands;
+    CGFloat band_height;
+    
     CGFloat timeTick; ///< The number of 1/72 inches between two adjacent time ticks
     
     IBOutlet id target;
     
+    BOOL enabled;
+    
+    NSMutableArray *ticks;
+    
 }
 
+@property (readwrite, assign) NSMutableArray *bands;
+
+@property (readonly) CGFloat band_height;
+@property (readwrite, assign) BOOL enabled;
+@property (readonly) NSArray *ticks;
 @property (readonly) CustomSplitView *splitView;
 @property (readwrite, assign) NSScrollView *scrollView;
 @property (readwrite, assign) CGFloat timeTick;
@@ -42,7 +54,7 @@
 	    fromLogData:(LogData *)logData
 	     filteredBy:(GroupFilter *)filter;
 
-
+- (void)bigTickAt:(CGFloat)t;
 
 
 @end

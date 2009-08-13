@@ -14,13 +14,13 @@ struct Group;
  * It displays an outline for Groups.
  */
 @interface OutlineViewDataSource : GroupFilter {
-    IBOutlet LogDoc *logDoc;
     struct LogFileDesc *desc;
     struct Group *root;
     NSMutableDictionary *map;
+    
+    NSMutableArray *boxes; //< For GC
 }
 
-@property (readwrite, assign) LogDoc *logDoc;
 
 - (OutlineViewDataSource *)initWithLogDesc:(struct LogFileDesc *)descVal
 				    logDoc:logDocVal;

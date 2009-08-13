@@ -12,25 +12,35 @@
 #import "CustomSplitView.h"
 #import "LogDoc.h"
 #import "LogData.h"
+#import "TimeDisplay.h"
 
 
 
 #define DEFAULT_LOG_VIEW_WIDTH ( 5000 )
-#define MIN_BAND_HEIGHT ( 200 )
+#define MIN_BAND_HEIGHT ( 60 )
 #define SINGLETON_COLOR ( [NSColor yellowColor] )
 #define LOG_VIEW_BACKGROUND_COLOR ( [NSColor blackColor] )
 #define DEFAULT_TIME_TICK ( 55 )
+
+// Color and width of small tick lines
 #define TICK_LINE_COLOR ( [NSColor cyanColor] )
-#define TICK_LINE_WIDTH ( 0.02 )
+#define TICK_LINE_WIDTH ( 1 )
+
+// Color and width of large tick lines
+#define BIG_TICK_LINE_COLOR ( [NSColor redColor] )
+#define BIG_TICK_LINE_WIDTH ( 2 )
 
 @implementation LogView
 
 - (BOOL)isOpaque
 {
-    return NO;
+    return YES;
 }
 
-
+@synthesize band_height;
+@synthesize bands;
+@synthesize enabled;
+@synthesize ticks;
 @synthesize scrollView;
 @synthesize timeTick;
 @synthesize splitView;
@@ -52,8 +62,7 @@
     // splitView.bounds = splitViewBounds;
     //[self addSubview:messageView];
     timeTick = DEFAULT_TIME_TICK;
-
-
+    ticks = [[NSMutableArray alloc] init];
 	
     return self;
 }
@@ -61,43 +70,57 @@
 
 - (void)drawRect:(NSRect)rect
 {
+    if (!logDoc.enabled) return;
+    if (!self.enabled) return;
     // Draw Background
     [LOG_VIEW_BACKGROUND_COLOR set];
     [NSBezierPath fillRect:[self bounds]];
-    for (id i in self.splitView.subviews)
-    {
-	NSLog(@"object %@", i);
-    }
-    
-    
 
     // Draw tick lines
     NSBezierPath *verticalLine = [[NSBezierPath alloc] init];
-    NSRect shapeBounds = splitView.shapeBounds;
     NSRect bounds = self.bounds;
     
-    NSPoint s = NSMakePoint(shapeBounds.origin.x, bounds.origin.y);
-    NSPoint f = NSMakePoint(shapeBounds.origin.x, bounds.origin.y + bounds.size.height);
-    
+
     [TICK_LINE_COLOR set];
-    [verticalLine setLineWidth:TICK_LINE_WIDTH];
+    verticalLine.lineWidth = TICK_LINE_WIDTH;
 
-    while (s.x < bounds.origin.x + bounds.size.width)
+    NSPoint s;
+    NSPoint f;
+    s.y = bounds.origin.y;
+    f.y = bounds.origin.y + bounds.size.height;
+    for (NSNumber *x in ticks)
     {
-
+	assert( x != nil);
+	s.x = f.x = x.floatValue;
 	[verticalLine moveToPoint:s];
 	[verticalLine lineToPoint:f];
-	[verticalLine stroke];
 
-	s.x += timeTick;
-	f.x += timeTick;
     }
+    [verticalLine stroke];
+
+    //NSLog(@"number of ticks %d", ticks.count);
+    [logDoc drewTicks:self];
+    
+
 
 }
 
-- (void)awakeFromNib
+- (void)bigTickAt:(CGFloat)t
 {
-
+    NSRect bounds = self.bounds;
+    
+    NSBezierPath *verticalLine = [[NSBezierPath alloc] init];
+    verticalLine.lineWidth = BIG_TICK_LINE_WIDTH;
+    [BIG_TICK_LINE_COLOR set];
+    
+    NSPoint s, f;
+    s.x = f.x = t;
+    s.y = bounds.origin.y;
+    f.y = bounds.origin.y + bounds.size.height;
+    
+    [verticalLine moveToPoint:s];
+    [verticalLine lineToPoint:f];
+    [verticalLine stroke];
 }
 
 
@@ -159,13 +182,13 @@ int sillyNumber = 0;
     
 
     
-    CGFloat min_height = splitView.dividerThickness +
-	logData.vProcs.count * (MIN_BAND_HEIGHT + splitView.dividerThickness);
+    CGFloat min_height = DIVIDER_THICKNESS +
+	logData.vProcs.count * (MIN_BAND_HEIGHT + DIVIDER_THICKNESS);
     
     if (bounds.size.height < min_height) bounds.size.height = min_height;
     
-    CGFloat band_height =
-	(bounds.size.height - logData.vProcs.count * splitView.dividerThickness) /
+    band_height =
+	(bounds.size.height - (1 + logData.vProcs.count * DIVIDER_THICKNESS)) /
 		logData.vProcs.count;
     NSRect frame = self.frame;
     frame.size.width = bounds.size.width;
@@ -180,30 +203,29 @@ int sillyNumber = 0;
     splitViewBounds.origin.y += DIVIDER_THICKNESS;
     splitViewBounds.size.height -= 2 * DIVIDER_THICKNESS;
     CustomSplitView *newSplitView = [[CustomSplitView alloc] initWithFrame:splitViewBounds];
-    MessageView *newMessageView = [[MessageView alloc] initWithFrame:splitViewBounds
-							      logDoc:logDoc
-							  dependents:logData.dependentDetails];
-
-    
+ 
     
     if (splitView) [self replaceSubview:splitView with:newSplitView];
     else [self addSubview:newSplitView];
-    if (messageView) [self replaceSubview:messageView with:newMessageView];
-    else [self addSubview:newMessageView];
-    NSLog(@"Added messageView %@ with bounds : %f %f %f %f", newMessageView,
-	newMessageView.bounds.origin.x, newMessageView.bounds.origin.y,
-	newMessageView.bounds.size.width, newMessageView.bounds.size.height);
 
     
     splitView = newSplitView;
-    messageView = newMessageView;
+
     
-    // Add numbers to the message view
-    for (CGFloat x = bounds.origin.x; x < bounds.origin.x + bounds.size.width; x += timeTick)
+    
+    // Add tick lines
+    NSRect shapeBounds = splitView.shapeBounds;
+    
+    float x = shapeBounds.origin.x;
+    ticks = [[NSMutableArray alloc] init];
+    while (x < shapeBounds.origin.x + shapeBounds.size.width)
     {
-	[newMessageView displayTime:[logDoc preImage:x] //< Note: this call only works if splitView is initialized
-			 atPosition:x];
+	[ticks addObject:[NSNumber numberWithFloat:x]];
+	x += timeTick;
     }
+
+    
+    bands = [[NSMutableArray alloc] init];
     
     int v = 0;
     for (VProc *vp in logData.vProcs)
@@ -211,22 +233,52 @@ int sillyNumber = 0;
 	BandView *band =[[BandView alloc]
 			       initWithFrame:NSMakeRect
 			       (splitViewBounds.origin.x,
-				     v * band_height,
+				     DIVIDER_THICKNESS +
+					(v * (band_height + DIVIDER_THICKNESS)),
 				     splitViewBounds.size.width,
 				     band_height)
 			       logDoc:logDoc
 			       vProc:vp
 			       filter:filter];
-	band.target = target;
+	//NSLog(@"logView is adding band %@ to array %@", band, bands);
+	[bands addObject:band];
 	[splitView addSubview:band];
+	band.target = target;
 	 ++v;
     }
+    
+    
+    MessageView *newMessageView = [[MessageView alloc] initWithFrame:splitViewBounds
+							      logDoc:logDoc
+							  dependents:logData.dependentDetails];
+    
+    if (messageView) [self replaceSubview:messageView with:newMessageView];
+    else [self addSubview:newMessageView];
+ //   NSLog(@"Added messageView %@ with bounds : %f %f %f %f", newMessageView,
+	//  newMessageView.bounds.origin.x, newMessageView.bounds.origin.y,
+	//  newMessageView.bounds.size.width, newMessageView.bounds.size.height);
+    messageView = newMessageView;
+    
+    for (BandView *band in bands)
+    {
+	band.messageView = messageView;
+    }
+    
     [splitView adjustSubviews];
     [self setNeedsDisplay:YES];
     [messageView setNeedsDisplay:YES];
     [splitView setNeedsDisplay:YES];
+    self.enabled = true;
 }
 
+
+
+
+- (void)mouseDown:(NSEvent *)e
+{
+    NSLog(@"Mouse down in logView");
+
+}
 
 /*
  

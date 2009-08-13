@@ -13,6 +13,7 @@
 
 @implementation EventShape
 
+@synthesize description;
 
 - (void)drawShape
 {
@@ -26,6 +27,11 @@
     return YES;
 }
 
+- (shapeTag)kind
+{
+    [Exceptions raise:@"EventShape: instances of eventShape must override kind"];
+    return STATE_SHAPE;
+}
 
 
 @end

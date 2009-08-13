@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 1DDD58140DA1D0A300B32029 /* MainMenu.xib */; };
+		52A6E9C210309B0D00D803AD /* EventInfoView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52A6E9C110309B0D00D803AD /* EventInfoView.m */; };
 		52AE52FE1028D6AB007AED7A /* VProc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C41028D6AA007AED7A /* VProc.mm */; };
 		52AE52FF1028D6AB007AED7A /* VProcMaps.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C61028D6AA007AED7A /* VProcMaps.mm */; };
 		52AE53001028D6AB007AED7A /* LogData.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C81028D6AA007AED7A /* LogData.mm */; };
@@ -17,8 +18,7 @@
 		52AE53041028D6AB007AED7A /* GroupFilter.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52D11028D6AB007AED7A /* GroupFilter.m */; };
 		52AE53051028D6AB007AED7A /* CustomSplitView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52D51028D6AB007AED7A /* CustomSplitView.m */; };
 		52AE53061028D6AB007AED7A /* BandView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52D81028D6AB007AED7A /* BandView.mm */; };
-		52AE53071028D6AB007AED7A /* MessageView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52DA1028D6AB007AED7A /* MessageView.m */; };
-		52AE53081028D6AB007AED7A /* SelectedEvent.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52DC1028D6AB007AED7A /* SelectedEvent.mm */; };
+		52AE53071028D6AB007AED7A /* MessageView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52DA1028D6AB007AED7A /* MessageView.mm */; };
 		52AE53091028D6AB007AED7A /* OutlineViewDataSource.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52DE1028D6AB007AED7A /* OutlineViewDataSource.mm */; };
 		52AE530A1028D6AB007AED7A /* EventShape.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52E11028D6AB007AED7A /* EventShape.m */; };
 		52AE530B1028D6AB007AED7A /* Message.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52E41028D6AB007AED7A /* Message.m */; };
@@ -26,13 +26,21 @@
 		52AE530D1028D6AB007AED7A /* Singleton.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52EA1028D6AB007AED7A /* Singleton.m */; };
 		52AE530E1028D6AB007AED7A /* State.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52EC1028D6AB007AED7A /* State.m */; };
 		52AE53131028D6AB007AED7A /* Exceptions.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52F91028D6AB007AED7A /* Exceptions.m */; };
-		52AE53141028D6AB007AED7A /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52FB1028D6AB007AED7A /* Utils.m */; };
 		52AE532E1028D931007AED7A /* event-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52AE532C1028D931007AED7A /* event-desc.cxx */; };
 		52AE53331028D942007AED7A /* json.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE532F1028D942007AED7A /* json.c */; };
 		52AE53341028D942007AED7A /* JSON_parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53311028D942007AED7A /* JSON_parser.c */; };
 		52AE53391028D97C007AED7A /* log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53371028D97C007AED7A /* log-desc.cxx */; };
 		52AE53511028DA8F007AED7A /* load-log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53501028DA8F007AED7A /* load-log-desc.cxx */; };
+		52AE54481029DAFB007AED7A /* TimeDisplay.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE54471029DAFB007AED7A /* TimeDisplay.m */; };
+		52AE5DA6102C9F67007AED7A /* EventInfo.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52AE5DA5102C9F67007AED7A /* EventInfo.xib */; };
+		52AE5DAA102C9FB5007AED7A /* EventInfoController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5DA9102C9FB5007AED7A /* EventInfoController.mm */; };
+		52AE5DB1102CA3ED007AED7A /* EventArg.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5DB0102CA3ED007AED7A /* EventArg.mm */; };
+		52AE5E24102CAA21007AED7A /* DetailInfoController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5E23102CAA21007AED7A /* DetailInfoController.mm */; };
+		52AE5E26102CAA3A007AED7A /* DetailInfo.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52AE5E25102CAA3A007AED7A /* DetailInfo.xib */; };
+		52AE5E2A102CABAA007AED7A /* DetailInfoView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5E29102CABAA007AED7A /* DetailInfoView.m */; };
 		52BACE9D1028D43D00C76CA9 /* LogDoc.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52BACE9C1028D43D00C76CA9 /* LogDoc.xib */; };
+		52E4D4D310330929003396BE /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D4D210330929003396BE /* AppDelegate.m */; };
+		52E4D60610346120003396BE /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D60510346120003396BE /* Utils.m */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
@@ -47,6 +55,8 @@
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		32CA4F630368D1EE00C91783 /* LogViewer_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogViewer_Prefix.pch; sourceTree = "<group>"; };
+		52A6E9C010309B0D00D803AD /* EventInfoView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventInfoView.h; sourceTree = "<group>"; };
+		52A6E9C110309B0D00D803AD /* EventInfoView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EventInfoView.m; sourceTree = "<group>"; };
 		52AE52BD1028D6AA007AED7A /* Detail.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Detail.h; sourceTree = "<group>"; };
 		52AE52BE1028D6AA007AED7A /* DetailAccess.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailAccess.h; sourceTree = "<group>"; };
 		52AE52C31028D6AA007AED7A /* VProc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VProc.h; sourceTree = "<group>"; };
@@ -68,9 +78,7 @@
 		52AE52D71028D6AB007AED7A /* BandView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BandView.h; sourceTree = "<group>"; };
 		52AE52D81028D6AB007AED7A /* BandView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = BandView.mm; sourceTree = "<group>"; };
 		52AE52D91028D6AB007AED7A /* MessageView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MessageView.h; sourceTree = "<group>"; };
-		52AE52DA1028D6AB007AED7A /* MessageView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MessageView.m; sourceTree = "<group>"; };
-		52AE52DB1028D6AB007AED7A /* SelectedEvent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SelectedEvent.h; sourceTree = "<group>"; };
-		52AE52DC1028D6AB007AED7A /* SelectedEvent.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SelectedEvent.mm; sourceTree = "<group>"; };
+		52AE52DA1028D6AB007AED7A /* MessageView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MessageView.mm; sourceTree = "<group>"; };
 		52AE52DD1028D6AB007AED7A /* OutlineViewDataSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OutlineViewDataSource.h; sourceTree = "<group>"; };
 		52AE52DE1028D6AB007AED7A /* OutlineViewDataSource.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = OutlineViewDataSource.mm; sourceTree = "<group>"; };
 		52AE52E01028D6AB007AED7A /* EventShape.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventShape.h; sourceTree = "<group>"; };
@@ -87,7 +95,6 @@
 		52AE52F81028D6AB007AED7A /* Exceptions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Exceptions.h; sourceTree = "<group>"; };
 		52AE52F91028D6AB007AED7A /* Exceptions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Exceptions.m; sourceTree = "<group>"; };
 		52AE52FA1028D6AB007AED7A /* Utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Utils.h; sourceTree = "<group>"; };
-		52AE52FB1028D6AB007AED7A /* Utils.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Utils.m; sourceTree = "<group>"; };
 		52AE532A1028D8C5007AED7A /* log-file.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "log-file.h"; path = "../../../include/log-file.h"; sourceTree = SOURCE_ROOT; };
 		52AE532B1028D8D5007AED7A /* default-log-paths.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "default-log-paths.h"; path = "../../log-common/default-log-paths.h"; sourceTree = SOURCE_ROOT; };
 		52AE532C1028D931007AED7A /* event-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "event-desc.cxx"; path = "../../log-common/event-desc.cxx"; sourceTree = SOURCE_ROOT; };
@@ -99,7 +106,22 @@
 		52AE53371028D97C007AED7A /* log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "log-desc.cxx"; path = "../../log-common/log-desc.cxx"; sourceTree = SOURCE_ROOT; };
 		52AE53381028D97C007AED7A /* log-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = "log-desc.hxx"; path = "../../log-common/log-desc.hxx"; sourceTree = SOURCE_ROOT; };
 		52AE53501028DA8F007AED7A /* load-log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "load-log-desc.cxx"; path = "../../log-common/load-log-desc.cxx"; sourceTree = SOURCE_ROOT; };
+		52AE54461029DAFB007AED7A /* TimeDisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TimeDisplay.h; path = ../TimeDisplay.h; sourceTree = "<group>"; };
+		52AE54471029DAFB007AED7A /* TimeDisplay.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TimeDisplay.m; sourceTree = "<group>"; };
+		52AE5DA5102C9F67007AED7A /* EventInfo.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = EventInfo.xib; sourceTree = "<group>"; };
+		52AE5DA8102C9FB5007AED7A /* EventInfoController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventInfoController.h; sourceTree = "<group>"; };
+		52AE5DA9102C9FB5007AED7A /* EventInfoController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventInfoController.mm; sourceTree = "<group>"; };
+		52AE5DAF102CA3ED007AED7A /* EventArg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventArg.h; sourceTree = "<group>"; };
+		52AE5DB0102CA3ED007AED7A /* EventArg.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventArg.mm; sourceTree = "<group>"; };
+		52AE5E22102CAA21007AED7A /* DetailInfoController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailInfoController.h; sourceTree = "<group>"; };
+		52AE5E23102CAA21007AED7A /* DetailInfoController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DetailInfoController.mm; sourceTree = "<group>"; };
+		52AE5E25102CAA3A007AED7A /* DetailInfo.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = DetailInfo.xib; sourceTree = "<group>"; };
+		52AE5E28102CABAA007AED7A /* DetailInfoView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailInfoView.h; sourceTree = "<group>"; };
+		52AE5E29102CABAA007AED7A /* DetailInfoView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DetailInfoView.m; sourceTree = "<group>"; };
 		52BACE9C1028D43D00C76CA9 /* LogDoc.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = LogDoc.xib; sourceTree = "<group>"; };
+		52E4D4D110330929003396BE /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		52E4D4D210330929003396BE /* AppDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		52E4D60510346120003396BE /* Utils.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Utils.m; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* LogViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LogViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -151,6 +173,8 @@
 				29B97323FDCFA39411CA2CEA /* Frameworks */,
 				19C28FACFE9D520D11CA2CBB /* Products */,
 				52BACE9C1028D43D00C76CA9 /* LogDoc.xib */,
+				52AE5DA5102C9F67007AED7A /* EventInfo.xib */,
+				52AE5E25102CAA3A007AED7A /* DetailInfo.xib */,
 			);
 			name = LogViewer;
 			sourceTree = "<group>";
@@ -196,6 +220,8 @@
 				52AE52CD1028D6AA007AED7A /* Render */,
 				52AE52EE1028D6AB007AED7A /* Test */,
 				52AE52F71028D6AB007AED7A /* Utils */,
+				52E4D4D110330929003396BE /* AppDelegate.h */,
+				52E4D4D210330929003396BE /* AppDelegate.m */,
 			);
 			path = Classes;
 			sourceTree = "<group>";
@@ -237,9 +263,9 @@
 				52AE52CF1028D6AA007AED7A /* Box.m */,
 				52AE52D01028D6AA007AED7A /* GroupFilter.h */,
 				52AE52D11028D6AB007AED7A /* GroupFilter.m */,
-				52AE52D21028D6AB007AED7A /* LogViewComponents */,
 				52AE52DD1028D6AB007AED7A /* OutlineViewDataSource.h */,
 				52AE52DE1028D6AB007AED7A /* OutlineViewDataSource.mm */,
+				52AE52D21028D6AB007AED7A /* LogViewComponents */,
 				52AE52DF1028D6AB007AED7A /* ShapeRep */,
 			);
 			path = Render;
@@ -250,8 +276,8 @@
 			children = (
 				52AE52D31028D6AB007AED7A /* Background */,
 				52AE52D61028D6AB007AED7A /* Foreground */,
-				52AE52DB1028D6AB007AED7A /* SelectedEvent.h */,
-				52AE52DC1028D6AB007AED7A /* SelectedEvent.mm */,
+				52AE54471029DAFB007AED7A /* TimeDisplay.m */,
+				52AE5E21102CA96A007AED7A /* Detail Info */,
 			);
 			path = LogViewComponents;
 			sourceTree = "<group>";
@@ -270,8 +296,9 @@
 			children = (
 				52AE52D71028D6AB007AED7A /* BandView.h */,
 				52AE52D81028D6AB007AED7A /* BandView.mm */,
+				52AE54461029DAFB007AED7A /* TimeDisplay.h */,
 				52AE52D91028D6AB007AED7A /* MessageView.h */,
-				52AE52DA1028D6AB007AED7A /* MessageView.m */,
+				52AE52DA1028D6AB007AED7A /* MessageView.mm */,
 			);
 			path = Foreground;
 			sourceTree = "<group>";
@@ -284,7 +311,6 @@
 				52AE52E21028D6AB007AED7A /* MultiVProc */,
 				52AE52E51028D6AB007AED7A /* ShapeRep.h */,
 				52AE52E61028D6AB007AED7A /* SingleVProc */,
-				52AE52ED1028D6AB007AED7A /* Utils */,
 			);
 			path = ShapeRep;
 			sourceTree = "<group>";
@@ -311,13 +337,6 @@
 			path = SingleVProc;
 			sourceTree = "<group>";
 		};
-		52AE52ED1028D6AB007AED7A /* Utils */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Utils;
-			sourceTree = "<group>";
-		};
 		52AE52EE1028D6AB007AED7A /* Test */ = {
 			isa = PBXGroup;
 			children = (
@@ -331,7 +350,7 @@
 				52AE52F81028D6AB007AED7A /* Exceptions.h */,
 				52AE52F91028D6AB007AED7A /* Exceptions.m */,
 				52AE52FA1028D6AB007AED7A /* Utils.h */,
-				52AE52FB1028D6AB007AED7A /* Utils.m */,
+				52E4D60510346120003396BE /* Utils.m */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -352,6 +371,23 @@
 				52AE532A1028D8C5007AED7A /* log-file.h */,
 			);
 			name = Static;
+			sourceTree = "<group>";
+		};
+		52AE5E21102CA96A007AED7A /* Detail Info */ = {
+			isa = PBXGroup;
+			children = (
+				52AE5E22102CAA21007AED7A /* DetailInfoController.h */,
+				52AE5E23102CAA21007AED7A /* DetailInfoController.mm */,
+				52AE5DA8102C9FB5007AED7A /* EventInfoController.h */,
+				52AE5DA9102C9FB5007AED7A /* EventInfoController.mm */,
+				52AE5DAF102CA3ED007AED7A /* EventArg.h */,
+				52AE5DB0102CA3ED007AED7A /* EventArg.mm */,
+				52AE5E28102CABAA007AED7A /* DetailInfoView.h */,
+				52AE5E29102CABAA007AED7A /* DetailInfoView.m */,
+				52A6E9C010309B0D00D803AD /* EventInfoView.h */,
+				52A6E9C110309B0D00D803AD /* EventInfoView.m */,
+			);
+			name = "Detail Info";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -400,6 +436,8 @@
 				8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */,
 				1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */,
 				52BACE9D1028D43D00C76CA9 /* LogDoc.xib in Resources */,
+				52AE5DA6102C9F67007AED7A /* EventInfo.xib in Resources */,
+				52AE5E26102CAA3A007AED7A /* DetailInfo.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -420,8 +458,7 @@
 				52AE53041028D6AB007AED7A /* GroupFilter.m in Sources */,
 				52AE53051028D6AB007AED7A /* CustomSplitView.m in Sources */,
 				52AE53061028D6AB007AED7A /* BandView.mm in Sources */,
-				52AE53071028D6AB007AED7A /* MessageView.m in Sources */,
-				52AE53081028D6AB007AED7A /* SelectedEvent.mm in Sources */,
+				52AE53071028D6AB007AED7A /* MessageView.mm in Sources */,
 				52AE53091028D6AB007AED7A /* OutlineViewDataSource.mm in Sources */,
 				52AE530A1028D6AB007AED7A /* EventShape.m in Sources */,
 				52AE530B1028D6AB007AED7A /* Message.m in Sources */,
@@ -429,12 +466,19 @@
 				52AE530D1028D6AB007AED7A /* Singleton.m in Sources */,
 				52AE530E1028D6AB007AED7A /* State.m in Sources */,
 				52AE53131028D6AB007AED7A /* Exceptions.m in Sources */,
-				52AE53141028D6AB007AED7A /* Utils.m in Sources */,
 				52AE532E1028D931007AED7A /* event-desc.cxx in Sources */,
 				52AE53331028D942007AED7A /* json.c in Sources */,
 				52AE53341028D942007AED7A /* JSON_parser.c in Sources */,
 				52AE53391028D97C007AED7A /* log-desc.cxx in Sources */,
 				52AE53511028DA8F007AED7A /* load-log-desc.cxx in Sources */,
+				52AE54481029DAFB007AED7A /* TimeDisplay.m in Sources */,
+				52AE5DAA102C9FB5007AED7A /* EventInfoController.mm in Sources */,
+				52AE5DB1102CA3ED007AED7A /* EventArg.mm in Sources */,
+				52AE5E24102CAA21007AED7A /* DetailInfoController.mm in Sources */,
+				52AE5E2A102CABAA007AED7A /* DetailInfoView.m in Sources */,
+				52A6E9C210309B0D00D803AD /* EventInfoView.m in Sources */,
+				52E4D4D310330929003396BE /* AppDelegate.m in Sources */,
+				52E4D60610346120003396BE /* Utils.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -496,6 +540,7 @@
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_ENABLE_OBJC_GC = required;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;

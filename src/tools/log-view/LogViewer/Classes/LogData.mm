@@ -19,29 +19,27 @@
 #import "Box.h"
 
 
-/* I do not know c++ !
 
-class Visitor : public LogDescVisitor {
+
+class StateInitialzationVisitor : public LogDescVisitor {
 public:
-    Visitor () { }
+    StateInitialzationVisitor() { this->_states = [[NSMutableArray alloc] init]; }
     void VisitGroup (EventGroup *) { }
-    void VisitStateGroup (StateGroup *grp)
-    {
+    void VisitStateGroup (StateGroup *grp) {
+	[this->_states addObject:[Box box:grp]];
     }
     void VisitIntervalGroup (IntervalGroup *grp) { }
     void VisitDependentGroup (DependentGroup *grp) { }
-    NSMutableArray *Result() {
-	for (int i = 0; i < res.size(); ++i)
-	{
-	    [a addObject:
-	}
-    }
+    
+    NSMutableArray *States () { return this->_states; }
 
 private:
-    std::vector<StateGroup *> *res;
+    NSMutableArray *_states;
+};
 
-}
-*/
+
+
+
 
 
 @implementation LogData
@@ -53,6 +51,7 @@ private:
 {
     return dependentMap.toArray;
 }
+
 
 /* convert a timestamp to nanoseconds */
 static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
@@ -77,10 +76,11 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
     
     dependentMap = [[DependentMap alloc] init];
     
-    allStates = [[NSMutableArray alloc] init];
-    // XXX make this work !!!!!!!
-    // Visitor visitor(allStates);
-    // logDesc->PreOrderWalk(&visitor);
+    StateInitialzationVisitor *v = new StateInitialzationVisitor();
+    logDesc->PreOrderWalk(v);
+    
+    allStates = v->States();
+    delete v;
     
     int LogBufSzB = LOGBLOCK_SZB;
     
