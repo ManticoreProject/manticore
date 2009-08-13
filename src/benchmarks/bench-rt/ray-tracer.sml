@@ -1,6 +1,41 @@
-fun not b = if b then false else true
-val sqrt = Double.sqrt;
-fun expt a = let fun expt' b = Double.pow(a, b) in expt' end;
+local
+(* definitions to match the Manticore basis *)
+type double = real
+val sqrtd = Math.sqrt
+fun fail msg = raise Fail msg
+val powd = Math.pow
+val itod = real
+val dtos = Real.toString
+val tand = Math.tan
+val gettimeofday = Time.toReal o Time.now
+val deq = Real.==
+
+abstype image = IMG of (Word8.word * Word8.word * Word8.word) Array2.array
+with
+fun newImage (wid, ht) = IMG(Array2.array(ht, wid, (0w0, 0w0, 0w0)))
+fun updateImage3d (IMG img, i, j, r, g, b) = let
+      fun cvt x = Word8.fromInt(Real.round(x * 255.0))
+      in
+	Array2.update(img, j, i, (cvt r, cvt g, cvt b))
+      end
+fun freeImage _ = ()
+fun outputImage (IMG img, outFile) = let
+      val outS = BinIO.openOut outFile
+      fun out x = BinIO.output1(outS, x)
+      fun outRGB (r, g, b) = (out r; out g; out b)
+      fun pr s = BinIO.output(outS, Byte.stringToBytes s)
+      val (h, w) = Array2.dimensions img
+      in
+        pr "P6\n";
+	pr(concat[Int.toString w, " ", Int.toString h, "\n"]);
+	pr "255\n";
+	Array2.app Array2.RowMajor outRGB img;
+	BinIO.closeOut outS
+      end
+end
+
+val sqrt = sqrtd;
+fun expt a = let fun expt' b = powd(a, b) in expt' end;
 val pi : double = 3.14159265359;
 (*
  *
@@ -8,24 +43,35 @@ val pi : double = 3.14159265359;
  *)
 val EPSILON : double = 1.0e~6;
 val INFINITY : double = 1.0e20;
-
-type vec = (double * double * double)
-val sqrt = Double.sqrt
-
-fun debugprinter (b,n) = if b then Print.print ("true"^Double.toString(n)) else Print.print ("#")
-
-
-(* Note the following code is broken for negative vectors, but it was in the original
- * version.
+fun map f = let
+      fun mapf l = (case l of nil => nil | x::xs => f x :: mapf xs)
+      in
+	mapf
+      end;
+fun fold f = let
+      fun foldf s0 = let
+	    fun fold' l = (case l of nil => s0 | x::xs => f (x, foldf s0 xs))
+	    in
+	      fold'
+	    end
+      in
+	foldf
+      end;
+fun hd l = (case l
+       of nil => fail("expecting a head")
+	| x::xs => x);
+fun tl l = (case l
+       of nil => fail("expecting a tail")
+	| x::xs => xs);
+(*
+ * convenient vector operations
  *)
-fun zerovector ((x,y,z) : vec) =
-      (x < EPSILON andalso y < EPSILON andalso z < EPSILON);
-
+type vec = (double * double * double);
 fun vecadd ((x1,y1,z1) : vec) = let fun add (x2,y2,z2) = (x1+x2, y1+y2, z1+z2) in add end;
 fun vecsum (x : vec list) = let
       fun f (a, b) = vecadd a b
       in
-	List.foldr f (0.0,0.0,0.0) x
+	fold f (0.0,0.0,0.0) x
       end;
 fun vecsub ((x1,y1,z1) : vec) = let fun sub (x2,y2,z2) = (x1-x2, y1-y2, z1-z2) in sub end;
 fun vecmult ((x1,y1,z1) : vec) = let fun mul (x2,y2,z2) = (x1*x2, y1*y2, z1*z2) in mul end;
@@ -35,8 +81,18 @@ fun vecnorm ((x,y,z) : vec) = let
 fun vecscale ((x,y,z) : vec) = let fun scale a = (a*x, a*y, a*z) in scale end;
 fun vecdot ((x1,y1,z1) : vec) = let fun dot (x2,y2,z2) = x1*x2 + y1*y2 + z1*z2 in dot end;
 fun veccross ((x1,y1,z1) : vec) = let fun cross (x2,y2,z2) = (y1*z2-y2*z1, z1*x2-z2*x1, x1*y2-x2*y1) in cross end;
+(* Note the following code is broken for negative vectors, but it was in the original
+ * version.
+ *)
+fun zerovector ((x,y,z) : vec) =
+      (x < EPSILON andalso y < EPSILON andalso z < EPSILON);
 
-
+type point = (double * double);
+fun pointsub  ((x1,y1): point) = let fun sub (x2,y2) = (x1-x2, y1-y2) in sub end;
+fun pointdot ((x1,y1): point) = let fun dot (x2,y2) = x1*x2 + y1*y2 in dot end;
+(*
+ * type declarations
+ *)
 datatype Light
   = Directional of (vec * vec)		(* direction, color *)
   | Point of (vec * vec)		(* position, color *)
@@ -99,8 +155,8 @@ fun bodysurf surf = (case surf
 datatype Prim = 
 (*  pos, radius, surface type  *)
 Sphere of vec * double * Surfspec list
-(* pos ,[(a,b,c),d], surface type *)
-| Polyhedron of (vec * double) list * Surfspec list
+(* pos ,[(a,b,c),d, vertices], surface type *)
+| Polyhedron of (vec * double * (double * double) list) list * Surfspec list
 (* pos, skirt radius, height surface type*)
 | Hyperboloid of vec * double * double * Surfspec list
 (* pos, rmax, [zmin, zmax], thetamax, surface type *)
@@ -118,13 +174,27 @@ datatype CSG =
 | Difference of Prim * CSG
 
 
+fun polygonX (x,y) = x;
+fun polygonY (x,y) = y;
 
+fun pointInPolygon (p : (double * double),g : (double * double) list,b) = if List.length(g) < 2 then b 
+  else let val u0 = List.hd g;
+           val u1 = List.hd (List.tl g);
+        in
+          (if (polygonY(p) < polygonY(u1)) andalso (polygonY(u0) <= polygonY(p)) andalso ( (polygonY(p) - polygonY(u0))*(polygonX(u1)-polygonX(u0))  > ( (polygonX(p) - polygonX(u0)) * (polygonY(u1) - polygonY(u0)) )) then pointInPolygon(p,(List.tl(g)), not b)   
+           else if (polygonY(p) < polygonY(u0)) andalso ( (polygonY(p) - polygonY(u0))*(polygonX(u1) -polygonX(u0)) <  ((polygonX(p) - polygonX(u0)) * (polygonY(u1) - polygonY(u0))) ) then pointInPolygon(p,(List.tl(g)), not b)  
+           else pointInPolygon(p,(List.tl(g)),b)
+          )
+      end; 
 
+fun project2D (norm : vec) = let val (x0,y0,z0) = norm
+                                 val (x,y,z) = (abs(x0),abs(y0),abs(z0)) 
+ in (if x >= y andalso x >= z then (fn (a : double,b : double,c : double) => (b,c)) else if y >= x andalso y >= z then (fn (a : double,b : double,c : double) => (a,c)) else (fn (a : double,b : double,c : double) => (a,b)) ) end;
 
-
-fun implicitPolyhedron (norm : vec,d : double,pos : vec,dir : vec) = (let 
+fun implicitPolyhedron (norm : vec,d : double,polygon : (double * double) list, pos : vec,dir : vec) = (let 
     val denom = vecdot norm dir;
     val numer = vecdot norm pos + d;
+    val polygonlist = List.last(polygon)::polygon
   in 
     (if (denom < EPSILON) andalso (numer > 0.0) then (false,0.0)
      else (let 
@@ -132,7 +202,15 @@ fun implicitPolyhedron (norm : vec,d : double,pos : vec,dir : vec) = (let
 	     val tFar = if denom > 0.0  andalso t < INFINITY then t else INFINITY;
              val tNear = if denom < 0.0 andalso t > ~INFINITY then t else ~INFINITY;
           in 
-            (if (tNear > tFar) then (false,0.0) else  (true,t))
+            (if (tNear > tFar) then (false,0.0) 
+             else  
+                  let val f = project2D(norm);          
+                      val p = f(vecadd pos (vecscale dir t))
+		      val b = pointInPolygon(p,polygonlist,false)
+                 in
+                   (b,t) 
+
+              end)
            end)
     ) end)
 
@@ -165,7 +243,7 @@ fun implicit (pos,dir,obj : CSG) = case obj of
 	  else (true, slo)
 	  end
     end)
-  | Polyhedron (poly,surf) =>  polyhedronIntersect (List.map implicitPolyhedron (List.map (fn (x,d) => (x,d,pos,dir)) poly))
+  | Polyhedron (poly,surf) =>  polyhedronIntersect (List.map implicitPolyhedron (List.map (fn (x,d,polygon) => (x,d,polygon,pos,dir)) poly))
   | Hyperboloid (center,skirt,height,s)=> (let 
          val (x0,y0,z0) = vecsub pos center
 	 val bm = vecdot (x0,y0,z0) dir
@@ -229,9 +307,9 @@ fun CSGsurf (obj) = case obj of prim p => Primsurf(p)
 | Difference (p,c) => Primsurf(p)
 
 
-fun greaterThan (x,d0) = (fn (y,d1) => d0 > d1)
-fun eqwal  (x,d0) =  (fn (y,d1) => d0 = d1)
-fun lessThan (x,d0) = (fn (y,d1) => d0 < d1)
+fun greaterThan (x,d0 : double,v) = (fn (y,d1 : double,v) => d0 > d1)
+fun eqwal  (x,d0 : double,v) =  (fn (y,d1 : double,v) => deq (d0,d1))
+fun lessThan (x,d0 : double,v) = (fn (y,d1 : double,v) => d0 < d1)
 
 fun polySortByDistance xs = (
 	  case xs
@@ -245,13 +323,20 @@ fun polySortByDistance xs = (
 		  end);
 
 
-fun polyNorm (poly,pos) = List.hd (List.filter (fn (v) => 0.0 = vecdot (1.0,1.0,1.0) (vecsub v pos) )   (List.map (fn (a,b) => a) (polySortByDistance poly))) 
-    
+fun polyNorm (poly : (vec * double * (double * double) list) list,pos) = 
+    let val veclist = (List.map (fn ((a,b,c),d) => (a,b,c)) (List.filter (fn ((a,b,c),d) => let  val pt = if abs(a) > 0.0 then (~d/a,0.0,0.0) else if abs(b) > 0.0 then (0.0,~d/b,0.0) else (0.0,0.0,~d/c)  in
+                     (EPSILON >= vecdot (a,b,c) (vecsub pt pos)  ) end)   
+                 (List.map (fn (n,d0,v) => (n,d0)) (polySortByDistance poly))) )
+       in
+       case veclist of
+       nil => pos
+      | vlist => List.hd vlist
+      end
 
 
 fun Primnorm (pos,p) = (case p of
     Sphere (center,rad,surf) => vecscale (vecsub pos center) (1.0/rad)
-  | Polyhedron (poly,surf) => pos
+  | Polyhedron (poly,surf) => polyNorm(poly,pos)
   | Hyperboloid (center,skirt,height,s)=> vecscale (vecsub pos center) (1.0/skirt)
   | Paraboloid (center,rad,(zmin,zmax),t,s) => vecscale (vecsub pos center) (1.0)
   | Torus (p,(majorrad,minorrad),(phimin,phimax),t,s) => vecscale (vecsub pos p) (1.0)
@@ -262,6 +347,7 @@ fun CSGnorm (pos, obj) = case obj of prim p => Primnorm(pos, p)
 | Union (p,c) => Primnorm(pos,p)
 | Intersection (p,c) => Primnorm(pos,p)
 | Difference (p,c) => Primnorm(pos,p)
+
 
 
 
@@ -292,15 +378,14 @@ val greensurf = (Ambient (0.0,0.1,0.0)) :: (Diffuse (0.0,0.3,0.0)) ::
 	     (Specular (0.4,0.8,0.4)) :: nil;
 val bluesurf = (Ambient (0.0,0.0,0.1)) :: (Diffuse (0.0,0.0,0.3)) ::
 	    (Specular (0.4,0.4,0.8)) :: nil;
-
-(*%%%%%%
-%% interesting transmission test
-% testspheres = ((Sphere (0.,0.,0.) 2. redsurf)::
-% 	       (Sphere ((-2.1),(-2.),(-2.2)) .5 bluesurf)::
-% 	       (Sphere ((-2.8),3.5,(-1.8)) 1.7 greensurf)::nil);
-% testlights = (Directional (1.,(-1.),1.) (1.,1.,1.))::
-% 	     (Point ((-3.),(-3.),(-3.)) (1.,1.,1.))::nil;
-%%%%%%%
+(*
+val testspheres = ((Sphere ((0.0,0.0,0.0), 2.0, redsurf))::
+ 	       (Sphere (((~2.1),(~2.0),(~2.2)), 0.5, bluesurf))::
+ 	       (Sphere (((~2.8),3.5,(~1.8)), 1.7, greensurf)::nil));
+val testlights = (Directional ((1.0,(~1.0),1.0), (1.0,1.0,1.0)))::
+ 	     (Point (((~3.0),(~3.0),(~3.0)), (1.0,1.0,1.0))::nil);
+*)
+(*%%%%%
 %% trivial transmission test
 % testspheres = ((Sphere ((-1.5),0.,0.) 3. redsurf)::
 % 	       (Sphere (1.5, 7.5, 0.) 4. greensurf)::nil);
@@ -332,30 +417,25 @@ val testspheres =
 val testlights = Point((4.0,3.0,2.0), (0.288675,0.288675,0.288675)) ::
               Point((1.0, ~4.0,4.0), (0.288675,0.288675,0.288675)) ::
               Point((~3.0,1.0,5.0), (0.288675,0.288675,0.288675)) :: nil;
-val lookfrom = (2.1, 1.3, 1.7);
+
+val lookfrom = (2.0, 2.0, 2.0);
 val background = (0.078, 0.361, 0.753);
-val testhyper = Hyperboloid ((0.0,0.0,0.0),0.5,1.0,s3)  :: nil;
-val testpolyhedron = Polyhedron (  ((0.2,0.0,0.0),0.5) :: ((0.0,0.2,0.0),0.5) :: ((0.0,0.0,0.2),0.5):: ((~0.2,0.0,0.0),0.5):: ((0.0,~0.2,0.0),0.5) :: ((0.0,0.0,~0.2),0.5) :: nil,s3  ) :: nil;
-val world = List.map (fn x => prim x) testpolyhedron;
-(* val world = List.map (fn x => prim x) testspheres; *)
+val testpolyhedron = Polyhedron (  ( (~1.0,0.0,0.0), 1.0, ( (0.0,0.0)::(0.0,1.0)::(1.0,1.0)::(1.0,0.0)::nil  ) )::
+                                   ( (0.0,~1.0,0.0), 1.0, ( (1.0,0.0)::(1.0,1.0)::(0.0,1.0)::(0.0,0.0)::nil  ) )::
+                                   ( (0.0,0.0,1.0),  1.0, ( (0.0,0.0)::(1.0,0.0)::(1.0,1.0)::(0.0,1.0)::nil  ) )::
+                                   ( (1.0,0.0,0.0),  1.0, ( (1.0,0.0)::(1.0,1.0)::(0.0,1.0)::(0.0,0.0)::nil  ) )::
+                                   ( (0.0,1.0,0.0),  1.0, ( (0.0,0.0)::(0.0,1.0)::(1.0,1.0)::(1.0,0.0)::nil  ) )::
+				   ( (0.0,0.0,~1.0), 1.0, ( (1.0,0.0)::(0.0,0.0)::(0.0,1.0)::(1.0,1.0)::nil  ) )::nil,  
+                                s2)::nil
+
+val world = List.map (fn x => prim x) (testpolyhedron@testspheres);
 (*%%%%%%%*)
 
-
-
-(*
-% for shading, need normal at a point
-*)
-fun spherenormal (pos, sp) = let
-      val Sphere(spos, rad, _) = sp;
-      in
-	vecscale (vecsub pos spos) (1.0/rad)
-      end;
 
 (*
 % compute camera parameters
 *)
 fun dtor x = x * pi / 180.0;
-fun tand x = x;
 fun camparams (lookfrom, lookat, vup, fov, winsize) = let
     val initfirstray = vecsub lookat lookfrom;   (* pre-normalized! *)
     val (lookdir, dist) = vecnorm initfirstray;
@@ -363,8 +443,8 @@ fun camparams (lookfrom, lookat, vup, fov, winsize) = let
     val (scrnj, _) = vecnorm (veccross scrni lookdir);
     val xfov = fov;
     val yfov = fov;
-    val xwinsize = (Double.fromInt winsize);  (* for now, square window *)
-    val ywinsize = (Double.fromInt winsize);
+    val xwinsize = (itod winsize);  (* for now, square window *)
+    val ywinsize = (itod winsize);
     val magx = 2.0 * dist * (tand (dtor (xfov / 2.0))) / xwinsize;
     val magy = 2.0 * dist * (tand (dtor (yfov / 2.0))) / ywinsize;
     val scrnx = vecscale scrni magx;
@@ -382,8 +462,8 @@ fun camparams (lookfrom, lookat, vup, fov, winsize) = let
 *)
 fun tracepixel (spheres, lights, x, y, firstray, scrnx, scrny) = let
   val pos = lookfrom;
-  val (dir, _) = vecnorm (vecadd (vecadd firstray (vecscale scrnx (Double.fromInt x)))
-		    (vecscale scrny (Double.fromInt y)));
+  val (dir, _) = vecnorm (vecadd (vecadd firstray (vecscale scrnx (itod x)))
+		    (vecscale scrny (itod y)));
   val (hit, dist, sp) = trace (spheres, pos, dir);  (* pick first intersection *)
 						(* return color of the pixel x,y *)
   in
@@ -396,7 +476,7 @@ fun tracepixel (spheres, lights, x, y, firstray, scrnx, scrny) = let
 (*
 % find first intersection point in set of all objects
 *)
-and trace (spheres : CSG list, pos, dir) = let
+and trace (spheres, pos, dir) = let
     (* make a list of the distances to intersection for each hit object *)
     fun sphmap l = (case l
 	   of nil => nil
@@ -412,10 +492,10 @@ and trace (spheres : CSG list, pos, dir) = let
     (* return a sphere and its distance *)
     in
       case dists
-       of nil => (false, INFINITY, (List.hd spheres))  (* missed all *)
+       of nil => (false, INFINITY, (hd spheres))  (* missed all *)
         | first::rest => let
 	    fun min ((d1, s1), (d2, s2)) = if (d1 < d2) then (d1,s1) else (d2,s2)
-	    val (mindist, sp) = List.foldr min first rest
+	    val (mindist, sp) = fold min first rest
 	    in
 	      (true, mindist, sp)
 	    end
@@ -437,7 +517,7 @@ def testshade _ =
    in
 %     shade testlights sp testpos testdir dist (1.,1.,1.)
 %     (hit?, dist, sp)
-     CSGnorm testhitpos sp
+     spherenormal testhitpos sp
   };
 *)
 
@@ -451,7 +531,7 @@ and shade (lights, sp, lookpos, dir, dist, contrib) = let
     val refl = vecadd dir (vecscale norm ((~2.0)*(vecdot dir norm)));
     (*  diff is diffuse and specular contribution *)
     fun lightray' l = lightray (l, hitpos, norm, refl, surf)
-    val diff = vecsum (List.map lightray' lights);
+    val diff = vecsum (map lightray' lights);
     val transmitted = transmitsurf surf;
     val simple = vecadd amb diff;
     (* calculate transmitted ray; it adds onto "simple" *)
@@ -579,37 +659,89 @@ and shadowed (pos, dir, lcolor) = let (* need to offset just a bit *)
 (*
 % "main" routine
 *)
-(* parallel version *)
+
+in
+
+(* sequential version of the code *)
 fun ray winsize = let
-    val img = Image.new (winsize, winsize)
+      val lights = testlights;
+      val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
+      val img = newImage (winsize, winsize)
+      fun f (i, j) = let
+	    val (r, g, b) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
+	    in
+	      updateImage3d (img, i, j, r, g, b)
+	    end
+      fun lp i = if (i < winsize)
+	    then let
+	      fun lp' j = if (j < winsize)
+		    then (f(i, j); lp'(j+1))
+		    else ()
+	      in
+		lp' 0; lp(i+1)
+	      end
+	    else ();
+      val t0 = Time.now()
+      val _ = lp 0;
+      val t = Time.-(Time.now(), t0)
+      in
+	print(concat[
+	    Time.fmt 3 t, " seconds\n"
+	  ]);
+	outputImage(img, "out.ppm"); freeImage img
+      end;
+
+(* sequential version of the code that builds the image first as a list *)
+fun ray' winsize = let
     val lights = testlights;
     val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
-    fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny);
-    val b = Time.now ();
-    val scene = [| [| f(i, j) | j in [| 0 to winsize-1 |] |] | i in [| 0 to winsize-1 |] |]
-    val e = Time.now ();
-    fun output i = if i < winsize
-        then let
-          fun loop j = if j < winsize
-              then let
-                val (r, g, b) = subP (subP (scene, i), j)
-                in
-                   Image.update3d (img, i, j, r, g, b); 
-                   loop (j+1)
-                end
-              else output (i+1)
-          in
-             loop 0
-          end
-        else ()
+    val img = newImage (winsize, winsize)
+    fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
+    fun lp (i, is) = if (i < winsize)
+	  then let
+	    fun lp' (j, is) = if (j < winsize)
+		  then lp'(j+1, (i,j,f(i,j)) :: is)
+		  else is
+	    in
+	      lp(i+1, lp' (0, is))
+	    end
+	  else is
+    val b = gettimeofday ();
+    val vs = lp (0, nil)
+    val e = gettimeofday ();
+    fun output vs = (case vs
+        of nil => ()
+	 | (i,j,(r,g,b)) :: vs => (updateImage3d (img, i, j, r, g, b); output vs)
+        (* end case *))
+    in
+      output vs; outputImage(img, "out.ppm"); freeImage img;
+      print (dtos (e-b) ^ " seconds\n")
+    end;
 
-    in      
-      output 0;
-      Image.output("out.ppm", img); 
-      Image.free img;
-      Print.print (Long.toString (e-b))
-    end
+(*
+fun run (outFile, sz) = let
+      val outS = BinIO.openOut outFile
+      fun out x = BinIO.output1(outS, Word8.fromInt(Real.round(x * 255.0)))
+      fun outRGB (r, g, b) = (out r; out g; out b)
+      fun pr s = BinIO.output(outS, Byte.stringToBytes s)
+      val t0 = Time.now()
+      val img = ray sz
+      val t = Time.-(Time.now(), t0)
+      in
+	print(concat[
+	    Time.fmt 3 t, " seconds\n"
+	  ]);
+        pr "P6\n";
+	pr(concat[Int.toString sz, " ", Int.toString sz, "\n"]);
+	pr "255\n";
+	Array2.app Array2.RowMajor outRGB img;
+	BinIO.closeOut outS
+      end;
 
-val _ = ray(PrimIO.readInt ()) 
+run ("out.ppm", 1024)
+*)
 
+end;
+
+fun run sz = ray sz;
 
