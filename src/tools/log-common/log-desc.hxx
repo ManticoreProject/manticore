@@ -109,6 +109,7 @@ class StateGroup : public Group {
   protected:
     StateGroup (const char *desc, int nStates, int nTransitions);
 
+    void SetStart (const char *st);
     void AddState (int i, const char *st, const char *color);
     void AddTransition (int i, EventDesc *evt, const char *st);
 

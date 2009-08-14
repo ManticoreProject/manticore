@@ -308,10 +308,12 @@ Group *LogFileDescLoader::NewGroup (JSON_Value_t *v)
 	return grp;
     }
     else if (strcasecmp(kindStr, "state") == 0) {
+	const char *start = JSON_GetString(JSON_GetField(v, "start"));
 	JSON_Value_t *states = JSON_GetField(v, "states");
 	JSON_Value_t *colors = JSON_GetField(v, "colors");
 	JSON_Value_t *trans = JSON_GetField(v, "transitions");
-	if ((states == 0) || (states->tag != JSON_array)
+	if ((start == 0)
+	|| (states == 0) || (states->tag != JSON_array)
 	|| (trans == 0) || (trans->tag != JSON_array))
 	    return 0;
 	int nStates = states->u.array.length;
@@ -341,6 +343,8 @@ Group *LogFileDescLoader::NewGroup (JSON_Value_t *v)
 	    grp->AddTransition (i, evt, stName);
 	    evt->SetAttr (ATTR_STATE);
 	}
+      /* record the start state */
+	grp->SetStart (start);
 	return grp;
     }
     else if (strcasecmp(kindStr, "interval") == 0) {

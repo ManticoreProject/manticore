@@ -127,6 +127,23 @@ int StateGroup::NextState (int st, EventDesc *evt) const
     return -1;
 }
 
+void StateGroup::SetStart (const char *st)
+{
+  // first map the state name to an index
+    int state;
+    for (state = 0;  state < this->_stateNames.size();  state++) {
+	if (strcmp(this->_stateNames.at(state), st) == 0)
+	    break;
+    }
+    if (state == this->_stateNames.size()) {
+	fprintf(stderr, "unknown state name \"%s\"\n", st);
+	exit(1);
+    }
+
+    this->_start = state;
+
+}
+
 void StateGroup::AddState (int i, const char *st, const char *color)
 {
     this->_stateNames.at(i) = CopyString(st);
