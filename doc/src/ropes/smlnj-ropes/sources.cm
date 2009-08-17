@@ -18,7 +18,7 @@ Group
 	functor   RopeFn
 
 	structure ListSeq
-	structure TestRopes
+(*	structure TestRopes*)
 
 is
 
@@ -30,5 +30,5 @@ is
 	rope-sig.sml
 
 	list-seq.sml
-	test-ropes.sml
+(*	test-ropes.sml*)
 
