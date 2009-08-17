@@ -15,7 +15,7 @@
 #include "vproc.h"
 #include "heap.h"
 #include "os-threads.h"
-#include "asm-offsets.h"
+#include "asm-offsets.h" /* for RUNTIME_MAGIC */
 #include "inline-log.h"
 
 static void PingLoop ();

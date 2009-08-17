@@ -4,6 +4,9 @@
  * All rights reserved.
  *
  * HLOps for logging events
+ *
+ * WARNING: this file is generated; do not edit!!!  Any changes should be
+ * applied to src/gen/log-gen/templates/logging_pml.in.
  *)
 
 #include "log-events.def"
@@ -15,13 +18,37 @@ structure Logging =
 
 #ifdef ENABLE_LOGGING
 
-	define @NextLogEvent (vp : vproc) : addr(any) =
-(* FIXME *)
+	extern void *ASM_NextLogEvent (void *);
+	extern void ASM_GetTimeStamp (void *);
+
+	define @NextLogEventSlow (vp : vproc) : addr(any) =
+	      let adr : addr(any) = ccall ASM_NextLogEvent(vp)
+	      return (adr)
+	    ;
+
+      (* return a pointer to the next event in the buffer *)
+	define inline @NextLogEvent (vp : vproc, evt : int) : addr(any) =
+	    let logBufAdr : addr(any) = VPLoad(vp, LOG)
+	    let nextAdr : addr(int) = AdrAdd32(logBufAdr, LOGBUF_NEXT_OFFSET)
+	    let index : int = I32FetchAndAdd(nextAdr, 1)
+	    (* in *)
+	      if I32Lt(index, LOGBUF_SZ) then
+		let offset : int =
+		      I32Add(LOGBUF_START_OFFSET, I32Mul(LOG_EVENT_SZB, index))
+		let addr : addr(any) = AdrAdd32(nextAdr, offset)
+		return (addr)
+	      else
+		@NextLogEventSlow(vp)
 	  ;
 
-      (* fill in the timestamp field of the event *)
-	define @LogTimestamp (ep : addr(any)) : () =
-(* FIXME *)
+      (* allocate a new event record and initialize its timestamp
+       * and event fields.  Return a pointer to the event record.
+       *)
+	define @NewEvent (vp : vproc, evt : int) : addr(any) =
+	    let ep : addr(any) = @NextLogEvent(vp)
+	    do ccall ASM_GetTimeStamp(ep)
+	    do AdrStoreI32(AdrAdd32(ep, LOG_EVENT_KIND_OFFSET), evt)
+	    return (ep)
 	  ;
 
 @GENERIC-LOG-HLOPS@

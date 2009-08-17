@@ -195,11 +195,25 @@ structure ArityRaising : sig
    * conventions and incompatible calls. This unifies the convention
    * across the two functions.
    *)
-    fun sigMeet (sig1, sig2) = let
+    fun sigMeet (sig1, sig1Type, sig2) = let
 	  fun removeDerivedPaths (p, q::qs) = if isPrefix(p, q)
 		then removeDerivedPaths (p, qs)
 		else q::qs
 	    | removeDerivedPaths (_, []) = []
+          val defaultArgPath = (0,[])
+          val CPSTy.T_Fun(params, _) = sig1Type
+          (* We only check against the signature being merged into. This
+           * is because we'll ue the result of our signature creation process
+           * and feed it through sigMeet a second time to make sure it's compatible
+           * with all of the predecessors.
+           *)
+          fun isSafeToSelect (i, l) = i < List.length params
+                                      andalso isSafeSelection (l, List.nth (params, i))
+          and isSafeSelection (i::l, CTy.T_Tuple (_, tys)) =
+              i < List.length tys
+              andalso isSafeSelection (l, List.nth (tys, i))
+            | isSafeSelection (i::l, _) = false
+            | isSafeSelection (_, _) = true
 	  fun f (p::ps, q::qs, mergedSig) = (case compareRevPath(p, q)
 		 of PathLess => f(ps, q::qs, p::mergedSig)
 		  | PathPrefix => f (ps, removeDerivedPaths (p, qs), p::mergedSig)
@@ -208,8 +222,15 @@ structure ArityRaising : sig
 		      then f (removeDerivedPaths (q, ps), qs, q::mergedSig)
 		      else f (p::ps, qs, q::mergedSig)
 		(* end case *))
-	    | f (ps, [], mergedSig) = List.revAppend(ps, mergedSig)
-	    | f ([], qs, mergedSig) = List.revAppend(qs, mergedSig)
+            | f ([], [], mergedSig) = mergedSig
+	    | f (ps, [], mergedSig) = if compareRevPath (defaultArgPath, hd ps) = PathEq
+                                      then (hd ps)::mergedSig
+                                      else List.revAppend(ps, mergedSig)
+	    | f ([], qs, mergedSig) = if compareRevPath (defaultArgPath, hd qs) = PathEq
+                                      then (hd qs)::mergedSig
+                                      else (if List.all isSafeToSelect qs
+                                            then List.revAppend(qs, mergedSig)
+                                            else [defaultArgPath])
 	  in
 	    List.rev (f (sig1, sig2, []))
 	  end
@@ -261,6 +282,10 @@ structure ArityRaising : sig
 
     (* Compute param list from the final signature,
      * vmap of the VAR->PATH mappings, and original params
+     * If a variable doesn't exist in the parammap for the input
+     * sign, then it's a parameter that was added for signature-matching
+     * with other functions that share call sites and will be unused
+     * in the function.
      *)
     fun computeParamList (origParams, vmap, sign) = let
         fun computeParam paramPath = 
@@ -272,7 +297,16 @@ structure ArityRaising : sig
                 in
                     case ParamMap.firsti vmap'
                      of SOME(VAR(x), _) => x
-                      | _ => raise Fail ("Signature contains invalid path")
+                      | _ => let
+                            val baseParam = List.nth (origParams, i)
+                            fun findSubtype (i::l, CTy.T_Tuple (_, tys)) =
+                                findSubtype (l, List.nth (tys, i))
+                              | findSubtype (i::l, _) = raise Fail ("Signature contains invalid path")
+                              | findSubtype (_, ty) = ty
+                            val paramType = findSubtype (l, CV.typeOf baseParam)
+                        in
+                            CV.new ("unused", paramType)
+                        end
                 end
     in
         List.map computeParam sign
@@ -297,24 +331,26 @@ structure ArityRaising : sig
    * properties:
    *
    *	1) f's argument type is a non-mutable tuple
-   *	2) and either
+   *    2) f does not escape, so we can replace all copies of it
+   *	3) and either
    *	      a) f has lexically known application sites
    *	      b) f has a member of a set of known functions with known call sites
    *)
     fun markCandidate f = let
 	  fun mark () =
-		if ((CV.appCntOf f > 0)
-		orelse (case CFA.equivalentFuns f of [] => false | _ => true))
-		  then (case CV.typeOf f
+		if (not(CFA.isEscaping f)) 
+                   andalso ((CV.appCntOf f > 0)
+		            orelse (case CFA.equivalentFuns f of [] => false | _ => true))
+		then (case CV.typeOf f
 		     of CTy.T_Fun(tys, _) =>
-			  if List.exists (fn CTy.T_Tuple(false, _) => true | _ => false) tys
-			    then (
-                              ST.tick cntCandidateFun;
-			      setFn (f, ref []))
-			    else ()
+			if List.exists (fn CTy.T_Tuple(false, _) => true | _ => false) tys
+			then (
+                            ST.tick cntCandidateFun;
+			    setFn (f, ref []))
+			else ()
 		      | _ => ()
-		    (* end case *))
-		  else () 
+		     (* end case *))
+		else () 
 	  in
 	    case CV.kindOf f
 	     of C.VK_Fun _ => mark ()
@@ -351,8 +387,8 @@ structure ArityRaising : sig
 	  sign : fun_sig,
           params : C.var list,
           rets : C.var list,
-          flat : C.var option,
-          flatParams : C.var list option
+          newParams : C.var list option,
+          newRets : C.var list option
 	}
     local
       val {clrFn, getFn : CV.var -> info, setFn, ...} =
@@ -360,13 +396,14 @@ structure ArityRaising : sig
     in
     val clearInfo = clrFn
     val getInfo = getFn
-    fun setInfo (f, vmap, pmap, params, rets, flat, flatParams) =
-	  setFn (f, {vmap=vmap, pmap=pmap, sign=computeMaxSig pmap, params=params, rets=rets, flat=flat, flatParams=flatParams});
+    fun setInfo (f, vmap, pmap, params, rets, sign, newParams, newRets) =
+	  setFn (f, {vmap=vmap, pmap=pmap, sign=sign, params=params, rets=rets,
+                newParams=newParams, newRets=newRets});
     end
 
 (* +DEBUG *)
     fun printCandidate f = let
-	  val {vmap, pmap, sign, params, flat, ...} = getInfo f
+	  val {vmap, pmap, sign, params, ...} = getInfo f
 	  in
 	    print(concat["candidate ", CV.toString f, " : ", sigToString sign, "\n"]);
 	    print "  vmap:\n";
@@ -377,7 +414,7 @@ structure ArityRaising : sig
 		])) vmap;
 	    print "  call sites:\n";
 	    List.app (fn site => print(concat["    ", siteToString site, "\n"])) (getSites f);
-            print (" new name: " ^ (case flat of SOME(x) => CV.toString x | _ => "NONE") ^ " param names:");
+            print " new param names:";
             List.app (fn v => print (CV.toString v ^ " ")) (computeParamList (params, vmap, sign)); print "\n"
 	  end
 (* -DEBUG *)
@@ -550,7 +587,7 @@ structure ArityRaising : sig
 		      end
 		in
 		  ST.tick cntCandidateFun;
-		  setInfo (f, vmap, pmap, params, rets, NONE, NONE);
+		  setInfo (f, vmap, pmap, params, rets, computeMaxSig pmap, NONE, NONE);
 		  candidates := f :: !candidates
 		end (* analyseCandidate *)
 	(* walk an expression looking for candidates *)
@@ -588,18 +625,104 @@ structure ArityRaising : sig
       | sigOfFuns (l as f::r) = let
             val canMeet = List.foldl (fn (g, b) => if (b) then (isCandidate g) else b) true l
         in
-            if (canMeet) then
-	        List.foldl (fn (g, sign) => sigMeet(#sign(getInfo g), sign)) (#sign(getInfo f)) r
+            if (canMeet) then let
+                    fun meetSigs (g, sign) =
+                        sigMeet(#sign(getInfo g), CV.typeOf g, sign)
+                    val proposed = List.foldl meetSigs
+                                              (#sign(getInfo f)) r
+                in
+                    List.foldl meetSigs proposed l
+                end
             else
-                []
+                [(0, [])]
         end
 
-  (* for each candidate function, analyse the arguments of its call sites *)
+    fun computeValidSignatures (candidateSet) = let
+        val candidateList = VSet.listItems candidateSet
+        val _ = if !flatteningDebug
+                then print (concat["Merging signatures for: ",
+                                   concat(List.foldr (fn (a, rr) => (CV.toString a)::" "::rr)
+                                                     [] candidateList),
+                                   "\n"])
+                else ()
+        val sharedSig = sigOfFuns candidateList
+        fun setNewSignature (candidate) =
+            if isCandidate candidate
+            then let
+                    val {vmap, pmap, params, rets, sign, newParams, newRets} = getInfo candidate
+                in
+                    if !flatteningDebug
+                    then print (concat[CV.toString candidate, " ORIG: ",
+                                       sigToString sign, " NEW: ",
+                                       sigToString sharedSig, "\n"])
+                    else ();
+                    setInfo (candidate, vmap, pmap, params, rets, sharedSig, newParams, newRets)
+                end
+            else ()
+    in
+        List.app setNewSignature candidateList
+    end
+
+  (* property for tracking whether a candidate function shares its callsites
+   * with other functions. If it does, its parameters/arguments cannot be
+   * trimmed during useless variable elimination (UVE) or we may have mismatched
+   * calls.
+   * TODO: It would be nice to push the UVE parameter elimination up into
+   * the valid signature computation or as an extra pass over the shared
+   * callsite candidate sets.
+   *)
+    local
+      val {setFn, getFn, peekFn, ...} = CV.newProp (fn f => false)
+    in
+    fun isShared f = getFn f
+    fun setShared f = (
+        if !flatteningDebug andalso not(isShared f)
+        then print (concat[CV.toString f, " is marked with shared call sites.\n"])
+        else ();
+        setFn (f, true))
+    end
+
+    (* for each candidate function, analyse the arguments of its call sites
+     * For any candidate functions that share a call site, they will need to have
+     * identical flattened signatures.*)
     fun analyse m = let
 	  val candidates = gather m
-	  in
-            candidates
-	  end
+          val sites = List.foldr (fn (f, s) => getSites f @ s) [] candidates
+          (*
+           * Find the sets (a) containing those callees. Create one site (b) with all of
+           * those and the callees, and return the list of sets:
+           * (candidateSets - a) union b
+           *)
+          fun candidateUnion (SITE{callees,...}, candidateSets) = let
+              val _ = if !flatteningDebug
+                      then print (concat["Proceesing site with callees: ",
+                                         List.foldr (fn (callee, rr) => concat[CV.toString callee,
+                                                                               " ", rr]) ""
+                                         callees, "\n"])
+                      else ()
+              fun partByCallee (set) = (List.exists
+                                            (fn (callee) => VSet.member (set, callee))
+                                            callees)
+              val (difference, remainder) = List.partition partByCallee candidateSets
+              val calleeSet = VSet.addList (VSet.empty, callees)
+	      val _ =  if List.length callees > 1
+		       then List.app setShared callees
+		       else ()
+              val newSet = (case difference
+                             of [] => calleeSet
+                              | a => (if VSet.numItems (hd a) > 1
+                                      then (List.app (fn (s) => VSet.app setShared s) a)
+                                      else ();
+                                      List.foldr VSet.union VSet.empty (calleeSet::a))
+                           (* end case *))
+          in
+              newSet::remainder
+          end
+          val sharedSiteCandidates = List.foldr candidateUnion [] sites
+          val _ = List.app computeValidSignatures sharedSiteCandidates
+    in
+        candidates
+    end
 
   (***** Usefulness *****)
 
@@ -796,10 +919,275 @@ structure ArityRaising : sig
     fun isFlat f = getFn f
     end
 
+    fun cfaGetLambdas(v) =
+        case CFACPS.valueOf v
+         of CFACPS.LAMBDAS(l) =>
+            CPS.Var.Set.listItems l
+          | _ => []
+        
+
+    (*
+     * Before performing the actual flattening, go through and figure out the new signatures.
+     * Note that some of the return continuations may be flattening candidates, so we need
+     * to first flatten all candidate functions then go back through the candidates and process
+     * their return continuations to handle situations where we don't yet know what the
+     * new signature will be on the return continuation at the time we're processing the
+     * function that takes one as an argument.
+     *)
+    fun flattenSignatureInfo (C.MODULE{body=fb,...}) = let
+        val changed = ref false
+        (*
+         * After we've flattened several functions, we need to transform any formals
+         * or return continuations to have the new type. This is slightly tricky
+         * because the functions can appear as fields in a tuple.
+         * We also have to do some extra work to handle polymorphism - if we reach
+         * a parameter in the target functions whose type differs, just promote it
+         * to any. The type being different is an indicator that it's not actually
+         * used in the calling function, but is just passed along.
+         *)
+        fun transformParam(retVar) = let
+            fun getParamFunType (l) = let
+                val l::lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
+                fun mergeSignatures (base, new) = let
+                    val CPSTy.T_Fun(baseParams, baseRets) = base
+                    val CPSTy.T_Fun(newParams, newRets) = new
+                    fun bestMatch (t1, t2) =
+                        if CPSTyUtil.equal (t1, t2)
+                        then t1
+                        else CPSTy.T_Any
+                    val args' = ListPair.map bestMatch (baseParams, newParams)
+                    val rets' = ListPair.map bestMatch (baseRets, newRets)
+                in
+                    CPSTy.T_Fun (args', rets')
+                end
+            in
+                foldr mergeSignatures l lambdas
+            end
+            fun buildType (CPSTy.T_Tuple (heap, tys), cpsValues) = let
+                fun updateSlot (origTy, cpsValue) = (
+                    case cpsValue
+                     of CFACPS.LAMBDAS(l) => getParamFunType l
+                      | CFACPS.TUPLE (values) => buildType (origTy, values)
+                      | _ => origTy
+                (* end case *))
+                val newTys = ListPair.map updateSlot (tys, cpsValues)
+            in
+                CPSTy.T_Tuple (heap, newTys)
+            end
+              | buildType (ty, _) = ty
+        in
+            case CFACPS.valueOf retVar
+             of CFACPS.LAMBDAS(l) => let
+                    val newType = getParamFunType l
+                in
+                    if CPSTyUtil.equal (CV.typeOf retVar, newType)
+                    then ()
+                    else (changed := true;
+                          CV.setType (retVar, newType))
+                end
+
+              | CFACPS.TUPLE(values) => let
+                    val newType = buildType (CV.typeOf retVar, values)
+                in
+                    if CPSTyUtil.equal (CV.typeOf retVar, newType)
+                    then ()
+                    else (changed := true;
+                          CV.setType (retVar, newType))
+                end
+              | _ => ()
+        end
+        and handleLambda(func as C.FB{f, params, rets, body}) =
+	    if not (isCandidate f)
+            then walkBody (body, handleLambda)
+	    else let
+                    val _ = if !flatteningDebug
+                            then print (concat["Generating new signature for: ",
+                                               CV.toString f, " ORIG: ",
+                                               CPSTyUtil.toString (CV.typeOf f)])
+                            else ()
+		    val {vmap, pmap, params, rets, sign, ...} = getInfo f
+		    val newParams = computeParamList (params, vmap, sign)
+                    val newParams = if not(isShared f)
+                                    then List.filter getUseful newParams
+                                    else newParams
+                    val newRets = if not(isShared f)
+                                  then List.filter getUseful rets
+                                  else rets
+		    val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
+                    val _ = if !flatteningDebug
+                            then print (concat[" NEW: ", CPSTyUtil.toString (newType), "\n"])
+                            else ()
+                    val _ = CV.setType (f, newType)
+                    val _ = setFlat (f)
+		    val _ = setInfo (f, vmap, pmap, params, rets, sign, SOME(newParams), SOME(newRets))
+	        in
+                    walkBody (body, handleLambda)
+	        end
+        and handleParams(func as C.FB{f, params, rets, body}) =
+	    if not (isCandidate f)
+            then let
+                    val _ = if !flatteningDebug
+                            then print (concat["Flattening non-candidate params ",
+                                               CV.toString f, " orig: ",
+                                               CPSTyUtil.toString (CV.typeOf f)])
+                            else ()
+                    val _ = List.app transformParam params
+                    val _ = List.app transformParam rets
+		    val newType = CTy.T_Fun (List.map CV.typeOf params, List.map CV.typeOf rets)
+                    val _ = CV.setType (f, newType)
+                    val _ = if !flatteningDebug
+                            then print (concat[" new: ", CPSTyUtil.toString newType, "\n"])
+                            else ()
+                in
+                    walkBody (body, handleParams)
+                end
+            else let
+                    val _ = if !flatteningDebug
+                            then print (concat["Flattening candidate params ",
+                                               CV.toString f, " orig: ",
+                                               CPSTyUtil.toString (CV.typeOf f)])
+                            else ()
+		    val {vmap, pmap, params, rets, sign,
+                         newParams=SOME(newParams), newRets=SOME(newRets)} = getInfo f
+                    (* Need to transform the originals as well because they're used for the
+                     * type coercions later in the flattened applications.
+                     *)
+                    val _ = List.app transformParam params
+                    val _ = List.app transformParam rets
+                    val _ = List.app transformParam newParams
+                    val _ = List.app transformParam newRets
+		    val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
+                    val _ = CV.setType (f, newType)
+		    val _ = setInfo (f, vmap, pmap, params, rets, sign, SOME(newParams), SOME(newRets))
+                    val _ = if !flatteningDebug
+                            then print (concat[" new: ", CPSTyUtil.toString newType, "\n"])
+                            else ()
+                in
+                    walkBody (body, handleParams)
+                end
+        and walkBody (C.Exp(_, e), p) = (
+            case e
+             of C.Let (_, _, e) => walkBody (e, p)
+              | C.Fun (lambdas, body) => (List.app p lambdas; walkBody (body, p))
+              | C.Cont (f, body) => (p f; walkBody (body, p))
+              | C.If (_, e1, e2) => (walkBody (e1, p); walkBody (e2, p))
+              | C.Switch (_, cases, body) => (
+                List.app (fn (_, e) => walkBody (e, p)) cases;
+                Option.app (fn x => walkBody (x,p)) body)
+              | C.Apply (_, _, _) => ()
+              | C.Throw (_, _) => ())
+        (*
+         * If we change the signature of a function that was passed in as an argument
+         * to an earlier function, we may need to go back and fix it up. Therefore, we
+         * iterate until we reach a fixpoint.
+         *)
+        fun loopParams (fb) = (
+            handleParams (fb);
+            if (!changed)
+            then (changed := false; loopParams (fb))
+            else ())
+    in
+        handleLambda(fb);
+        loopParams(fb)
+    end
+
+    (*
+     * Flattening can change parameter types in function bodies. To propagate
+     * those changes along, we use a quick function to fix up let bindings.
+     * Note that we skip any lets with multiple LHS's.
+     *)
+    fun fixLet (lhs, rhs) = let
+        (* Only return a changed type if it's likely to be different.
+         * For many RHS values, it's neither straightforward nor necessary to
+         * compute a new type value, as it can't have been changed by the
+         * flattening transformation.
+         *)
+        fun typeOfRHS(C.Var ([v])) = SOME (CV.typeOf v)
+          | typeOfRHS(C.Var (vars)) = NONE
+          | typeOfRHS(C.Cast (typ, var)) = (* if the cast is or contains a function type,
+                                            * we may have updated it in an incompatible way
+                                            * for the cast, so just fill in our type.
+                                            * This frequently happens around the generated _cast
+                                            * for ropes code
+                                            *)
+            let
+                val rhsType = CV.typeOf var
+                fun cleanup (CTy.T_Tuple (b, dstTys), CTy.T_Tuple (b', srcTys)) =
+                    CTy.T_Tuple (b, ListPair.map cleanup (dstTys, srcTys))
+                  | cleanup (dst as CTy.T_Fun(_, _), src as CTy.T_Fun (_, _)) =
+                    if CPSTyUtil.soundMatch (dst, src)
+                    then dst
+                    else src
+                  | cleanup (dst, _) = dst
+            in
+                SOME (cleanup (typ, rhsType))
+            end
+          | typeOfRHS(C.Const (_, typ)) = SOME(typ)
+          | typeOfRHS(C.Select (i, v)) = (
+            (* Select is often used as a pseudo-cast, so only "change" the type if we've 
+             * come across a slot that is a function type, which we might have updated.
+             *)
+            case CV.typeOf v
+             of CTy.T_Tuple (_, tys) => (
+                case List.nth (tys, i)
+                 of newTy as CTy.T_Fun (_, _) => SOME (newTy)
+                  | _ => NONE
+                (* end case *))
+              | ty => raise Fail (concat [CV.toString v,
+                                          " was not of tuple type, was: ",
+                                          CPSTyUtil.toString ty])
+            (* end case *))
+          | typeOfRHS(C.Update (_, _, _)) = NONE
+          | typeOfRHS(C.AddrOf (i, v)) = NONE
+          | typeOfRHS(C.Alloc (CPSTy.T_Tuple(b, tys), vars)) = let
+                (*
+                 * Types of items stored into an alloc are frequently wrong relative to
+                 * how they're going to be used (i.e. a :enum(0) in for a ![any, any]).
+                 * Only update function types.
+                 *)
+                fun chooseType (ty, v) = let
+                    val vTy = CV.typeOf v
+                in
+                    case vTy
+                     of CTy.T_Fun(_, _) => vTy
+                      | _ => ty
+                end
+            in
+                SOME (CPSTy.T_Tuple(b, ListPair.map chooseType (tys, vars)))
+            end
+          | typeOfRHS(C.Alloc (_, vars)) = raise Fail "encountered an alloc that didn't originally have a tuple type."
+          | typeOfRHS(C.Promote (v)) = SOME (CV.typeOf v)
+          | typeOfRHS(C.Prim (prim)) = NONE (* do I need to do this one? *)
+          | typeOfRHS(C.CCall (cfun, _)) = NONE
+          | typeOfRHS(C.HostVProc) = NONE
+          | typeOfRHS(C.VPLoad (_, _)) = NONE
+          | typeOfRHS(C.VPStore (_, _, _)) = NONE
+          | typeOfRHS(C.VPAddr (_, _)) = NONE
+    in
+        (case lhs
+          of [v] => (
+             case typeOfRHS (rhs)
+              (* Even if we got a new type back, if the existing one is equal or more
+               * specific, stick with the old one.
+               *)
+              of SOME(ty) => if not(CPSTyUtil.soundMatch (CV.typeOf v, ty))
+                             then (if !flatteningDebug
+                                   then print (concat["Changing ", CV.toString v,
+                                                      " from: ", CPSTyUtil.toString (CV.typeOf v),
+                                                      " to: ", CPSTyUtil.toString ty, "\n"])
+                                   else ();
+                                   CV.setType (v, ty))
+                             else ()
+               | NONE => ()
+             (* end case *))
+           | _ => ()
+        (* end case *))
+    end
+
     (* walk down the tree and:
-     * - turn candidate functions into a specialized version and the
-     * original, which calls the specialized with the extra arguments
-     * - in the body of the specialized version, remove any variables
+     * 1) turn candidate functions into their specialized version
+     * 2) change any calls to candidate functions (or known call sites to
+     * candidate functions) to use the new args/rets
      *)
     fun flatten (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
           fun genUseless(useless, body) = let
@@ -821,23 +1209,35 @@ structure ArityRaising : sig
                 | CTy.T_CFun (_) => cast ()
                 | CTy.T_VProc => cast()
           end
-	  fun flattenApplyThrow (ppt, g, args, retArgs) = if isCandidate g
-		then let
-		  val {sign, params, rets, flat=SOME(f), flatParams=SOME(fParams), ...} = getInfo g
+	  fun flattenApplyThrow (ppt, g, args, retArgs) = let
+              val lambdas = cfaGetLambdas g
+          in
+              if isCandidate g orelse (List.length lambdas > 0 andalso
+                                       isCandidate (List.hd lambdas))
+	      then let
+                  val f = if isCandidate g
+                          then g
+                          else List.hd lambdas
+                  val _ = if !flatteningDebug
+                          then print (concat["Flattening call to: ", CV.toString f,
+                                             " through variable: ", CV.toString g, "\n"])
+                          else ()
+		  val {sign, params, rets, newRets=SOME(newRets),
+                       newParams=SOME(fParams), ...} = getInfo f
 		  fun genCall (sign, params, newArgs, progress, args') =
                         if null sign
 			  then (case retArgs
 			     of SOME(retArgs) => let
                                     val filteredRetArgs = ListPair.foldr
-                                        (fn (a,b,rr) => if getUseful a
+                                        (fn (a,b,rr) => if getUseful a orelse isShared f
                                                         then b::rr
                                                         else rr)
                                         []
                                         (rets, retArgs)
                                 in
-                                    C.Exp(ppt, C.Apply(f, rev newArgs, filteredRetArgs))
+                                    C.Exp(ppt, C.Apply(g, rev newArgs, filteredRetArgs))
                                 end
-			      | NONE => C.Exp(ppt, C.Throw(f, rev newArgs))
+			      | NONE => C.Exp(ppt, C.Throw(g, rev newArgs))
 			    (* end case *))
 			  else let
 			    fun genResult (varBase, path) =
@@ -854,7 +1254,9 @@ structure ArityRaising : sig
 						                               "SEL into any of var: ", CV.toString varBase,
 						                               " probably flattening var that isn't guaranteed to be that type.\n"
 						                              ])
-					            | _ => raise Fail "SEL from non tuple/any type"
+					            | _ => raise Fail (concat[
+                                                                       "SEL from non tuple/any type: ",
+                                                                       CV.toString varBase])
 					      (* end case *))
 				              val newVar = CV.new ("letFlat", newType)
 				              val rhs = C.Select (hd path, varBase)
@@ -877,7 +1279,7 @@ structure ArityRaising : sig
                                       (* Flattened functions will lose any useless parameters.
                                        * We know they only have known call sites (by construction).
                                        *)
-                                      if shouldSkipUseless param
+                                      if shouldSkipUseless param andalso not(isShared f)
                                       then genCall (tl sign, tl params, newArgs, NONE, args')
 				      else genResult (varBase, path)
 				    end
@@ -888,10 +1290,18 @@ structure ArityRaising : sig
                       let
                           val argType = CV.typeOf arg
                       in
-                          if CPSTyUtil.equal (paramType, argType)
+                          if CPSTyUtil.soundMatch (argType, paramType)
                           then cleanupArgsBeforeCall (sign, params, newArgs, progress, paramTypes, orig, arg::accum)
                           else let
                                   val typed = CV.new ("coerced", paramType)
+                                  val _ = if !flatteningDebug
+                                          then print (concat["Coercing from: ",
+                                                             CPSTyUtil.toString argType,
+                                                             " to: ",
+                                                             CPSTyUtil.toString paramType,
+                                                             " for argument: ",
+                                                             CV.toString arg, "\n"])
+                                          else ()
                               in
                                   C.mkLet ([typed], C.Cast(paramType, arg),
                                            cleanupArgsBeforeCall (sign, params, newArgs, progress,
@@ -903,7 +1313,7 @@ structure ArityRaising : sig
                     | cleanupArgsBeforeCall (sign, params, newArgs, progress, _, _, accum) =
                       raise Fail (concat["Can't happen - call to method had mismatched arg/params.",
                                          CV.toString g])
-                  val CTy.T_Fun(paramTypes, _)  = CV.typeOf g
+                  val paramTypes = List.map CV.typeOf params
 		  in
                     (* Often, original tupled arguments are of type :any instead of what
                      * they will be at the landing site of the call, relying on Apply to
@@ -932,16 +1342,7 @@ structure ArityRaising : sig
 		          | NONE => translateArgs (args, [],
                                                    fn x => C.Exp (ppt, C.Throw(g, x)))
                     end
-          and useCountOfVar(encl, v) = if not(isCandidate(encl))
-		then ~1
-		else let
-		  val {vmap, pmap,...} = getInfo encl
-                  in
-		    case ParamMap.find (vmap, VAR v)
-		     of SOME(path) => !(valOf(PMap.find(pmap, path)))
-		      | NONE => ~2
-		    (* end case *)
-                  end
+          end
           and shouldSkipUseless (v) = if getUseful v
 		then false
 		else (ST.tick (cntUselessElim); true)
@@ -955,7 +1356,7 @@ structure ArityRaising : sig
                   if not(isCandidate encl)
                   then NONE
                   else let
-                          val {vmap,sign, flatParams=SOME(newParams), ...} = getInfo encl
+                          val {vmap,sign, newParams=SOME(newParams), ...} = getInfo encl
                       in
                           case ParamMap.find (vmap, VAR (y))
                            of SOME(path) => findInSign(0, sign, SEL (i, path), newParams)
@@ -967,7 +1368,7 @@ structure ArityRaising : sig
               if not(isCandidate encl)
               then NONE
               else let
-                      val {vmap,sign, flatParams=SOME(newParams), ...} = getInfo encl
+                      val {vmap,sign, newParams=SOME(newParams), ...} = getInfo encl
                   in
                       case ParamMap.find (vmap, VAR (v))
                        of SOME(path) => findInSign(0, sign, path, newParams)
@@ -980,96 +1381,64 @@ structure ArityRaising : sig
 		     * use count is now zero, omit it
 		     *)
 		      if List.exists (fn x => CV.same(x, v)) newParams
-		      orelse useCountOfVar (encl, v) = 0
 		      orelse shouldSkipUseless (v)
 			then walkExp (encl, newParams, e)
 			else (case rhs
                                of C.Select(i, y) => (
                                   case findAlias (v, encl, i, y)
-                                   of SOME(v') => C.mkLet ([v], C.Var ([v']),
-                                                           walkExp (encl, newParams, e))
-                                    | NONE => C.mkLet([v], rhs, walkExp (encl, newParams, e))
+                                   of SOME(v') => (fixLet ([v], C.Var([v']));
+                                                   C.mkLet ([v], C.Var ([v']),
+                                                            walkExp (encl, newParams, e)))
+                                    | NONE => (fixLet ([v], rhs);
+                                               C.mkLet([v], rhs, walkExp (encl, newParams, e)))
                                   (* end case *))
-                                | _ => C.mkLet([v], rhs, walkExp (encl, newParams, e))
+                                | C.Cast(ty,x) => (fixLet ([v], rhs);
+                                                   C.mkLet ([v], C.Cast (CV.typeOf v, x),
+                                                            walkExp (encl, newParams, e)))
+                                | _ => (fixLet ([v], rhs);
+                                        C.mkLet([v], rhs, walkExp (encl, newParams, e)))
                              (* end case *)))
 		  | (C.Let(vars, rhs, e)) =>
 		      if List.exists (fn v => List.exists (fn x => CV.same(x, v)) newParams) vars
 			then raise Fail ("Can't lift variable from multi-bind on LHS of let")
-			else C.Exp(ppt, C.Let(vars, rhs, walkExp (encl, newParams, e)))
+			else C.mkLet(vars, rhs, walkExp (encl, newParams, e))
 		  | (C.Fun(fbs, e)) => let
-                      val _ = List.app handleLambda fbs
-		      val newfuns = List.foldr (fn (f,rr) => handleLambdaBody (f,false) @ rr) [] fbs
+		      val newfuns = List.foldr (fn (f,rr) => handleLambdaBody (f,false) :: rr) [] fbs
                       val newfuns' = List.filter (fn (C.FB{f,...}) => not(shouldSkipUseless f)) newfuns
 		      in
                         if null (newfuns')
                         then walkExp (encl, newParams, e)
                         else C.mkFun (newfuns', walkExp (encl, newParams, e))
 		      end
-		  | (C.Cont(fb, e)) => (handleLambda(fb);
-                                        case handleLambdaBody (fb, true)
-		       of [fl as C.FB{f=fl',...}, stb as C.FB{f=stb',...}] => let
-			    val inner = (if shouldSkipUseless stb'
-					 then walkExp (encl, newParams, e)
-					 else C.mkCont (stb, walkExp (encl, newParams, e)))
-			    in
-                              if shouldSkipUseless fl'
-				then inner
-				else C.mkCont(fl, inner)
-			    end
-			| [single as C.FB{f=single',...}] => (
-			    if shouldSkipUseless single'
-			      then walkExp (encl, newParams, e)
-			      else C.mkCont(single, walkExp (encl, newParams, e)))
-			| _ => raise Fail "Invalid return from handleLambdaBody"
-		      (* end case *))
+		  | (C.Cont(fb, e)) => (
+                    let
+                        val single as C.FB{f=single',...} = handleLambdaBody (fb, true)
+                    in
+			if shouldSkipUseless single'
+			then walkExp (encl, newParams, e)
+			else C.mkCont(single, walkExp (encl, newParams, e))
+                    end)
 		  | (C.If(x, e1, e2)) =>
-		      C.Exp(ppt, C.If(x, walkExp (encl, newParams, e1), walkExp (encl, newParams, e2)))
+		      C.mkIf(x, walkExp (encl, newParams, e1), walkExp (encl, newParams, e2))
 		  | (C.Switch(x, cases, dflt)) =>
-		      C.Exp(ppt, C.Switch(x,
-			List.map (fn (tag,exp) => (tag,walkExp (encl, newParams, exp))) cases,
-			Option.map (fn (f) => walkExp (encl, newParams, f)) dflt))
+		      C.mkSwitch(x,
+			         List.map (fn (tag,exp) => (tag,walkExp (encl, newParams, exp))) cases,
+			         Option.map (fn (f) => walkExp (encl, newParams, f)) dflt)
 		  | (C.Apply(g, args, rets)) => flattenApplyThrow (ppt, g, args, SOME(rets))
 		  | (C.Throw(k, args)) => flattenApplyThrow (ppt, k, args, NONE)
 		(* end case *))
 
         (* Returns flattened version of candidate functions *)
-        and handleLambda(func as C.FB{f, params, rets, body}) =
-	      if not (isCandidate f)
-                then ()
-		else let
-		  val {vmap, pmap, params, rets, sign, ...} = getInfo f
-		  val newParams = computeParamList (params, vmap, sign)
-                  val newParams = List.filter getUseful newParams
-                  val newRets = List.filter getUseful rets
-		  val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
-		  val flat = CV.new ("flat"^CV.nameOf f, newType)
-                  val _ = setFlat (flat)
-                  val _ = if getUseful f then setUseful flat else ()
-		  val _ = setInfo (f, vmap, pmap, params, rets, SOME flat, SOME newParams)
-		(* Create a stub with the old name that just SEL's and jumps to the flat version. *)
-		  in
-                        ()
-		  end
         and handleLambdaBody (func as C.FB{f, params, rets, body}, isCont) =
             if not (isCandidate f)
-            then [C.FB{f=f, params=params, rets=rets, body=walkExp (f, params, body)}]
+            then C.FB{f=f, params=params, rets=rets, body=walkExp (f, params, body)}
             else let
-		  val {params, rets, flat=SOME(flat), flatParams=SOME(newParams), ...} = getInfo f
+		  val {params, rets, newParams=SOME(newParams), newRets=SOME(newRets), ...} = getInfo f
 		  val body = walkExp (f, newParams, body)
-		  val paramCopy = List.map CV.copy params
-		  val retsCopy = List.map CV.copy rets
-                  val _ = ListPair.app (fn (a,b) => if getUseful a then setUseful b else ()) (params, paramCopy)
-                  val _ = ListPair.app (fn (a,b) => if getUseful a then setUseful b else ()) (rets, retsCopy)
-		  val stub = flattenApplyThrow (
-			ProgPt.new(), f, paramCopy,
-			if not(isCont) then SOME retsCopy else NONE) 
-                  val newRets = List.filter getUseful rets
-		  val stubLambda = C.mkLambda (C.FB{f=f, params=paramCopy, rets=retsCopy, body=stub})
-		  val lambda = C.mkLambda(C.FB{f=flat, params=newParams, rets=newRets, body=body})
+		  val lambda = C.mkLambda(C.FB{f=f, params=newParams, rets=newRets, body=body})
                 in
-                    setFB (f, stubLambda);
-                    setFB (flat, lambda);
-                    [lambda, stubLambda]
+                    setFB (f, lambda);
+                    lambda
                 end
             
 	in
@@ -1146,7 +1515,18 @@ structure ArityRaising : sig
      *
      * Additionally, if we've gotten to a point where any of the C.Fun lambdas have
      * had all of their return continuations eliminated, change those into C.Cont
+     *
+     * Do not clean up arguments on:
+     * - non-candidate functions (we don't necessarily know all of their call sites)
+     * - those with shared signatures (we did the best we could during flattening)
+     * - functions passed as arguments (i.e. return continuations). (we would need
+     * to fix up the types all the way through the functions, which means yet another
+     * pass)
      *)
+    fun skipParamCleanup (f) =
+        not(isFlat f) orelse
+        isShared f orelse
+        (CV.useCount f > CV.appCntOf f)
     fun cleanupParams (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
         fun cleanupExp (exp as C.Exp(ppt, e)) = (
             case e
@@ -1175,7 +1555,7 @@ structure ArityRaising : sig
               | C.Switch (v, cases, body) => C.mkSwitch(v, List.map (fn (tag,e) => (tag, cleanupExp e))
                                                                     cases, Option.map cleanupExp body)
               | C.Apply (f, args, retArgs) => (
-                if not(isFlat f) 
+                if skipParamCleanup f
                 then (case CV.typeOf f
                        of CPSTy.T_Fun (_, []) => C.mkThrow (f, args)
                         | _ => exp 
@@ -1199,7 +1579,7 @@ structure ArityRaising : sig
                                  (* end case *))
                 )
               | C.Throw (k, args) => (
-                if not (isFlat k) 
+                if skipParamCleanup k
                 then exp
                 else case getFB k
                       of SOME(C.FB{params,...}) => 
@@ -1210,7 +1590,7 @@ structure ArityRaising : sig
                        | NONE => exp
                 (* end case *)))
         and cleanupLambda (lambda as C.FB{f, params, rets, body}) =
-            if not (isFlat f) 
+            if skipParamCleanup f
             then C.mkLambda(C.FB{f=f,params=params,rets=rets,body=cleanupExp body})
             else let
                     val params' = List.filter (fn p => (CV.useCount p) > 0) params
@@ -1237,11 +1617,16 @@ structure ArityRaising : sig
 	  then let
 	    val candidates = analyse m
             val _ = scanUseful (m, 0)
+            val _ = flattenSignatureInfo m
 	    val m' = flatten m
             (* FIXME: should mainain census counts! *)
 	    val _ = Census.census m'
             val m' = cleanupBody m'
             val m' = cleanupParams m'
+            (* Sometimes cleanupParams can remove a param that is still used
+             * in a let binding. One more pass over the body to clean those up!
+             *)
+            val m' = cleanupBody m'
 	    in
 	      if !flatteningDebug
 		then List.app printCandidate candidates

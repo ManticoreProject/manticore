@@ -1,0 +1,29 @@
+This directory contains programs that are used to generate offsets into the
+various runtime data structures.  The programs are
+
+	gen-asm-offsets
+		generates offsets that are used by the runtime-system
+		assembly code
+
+	gen-runtime-constants
+		generates offsets that are used in the basis HLOps
+
+	gen-runtime-offsets
+		generates offsets that are used by the compiler
+
+To guarantee that a consistent view of the offsets is used by compiler,
+runtime, and basis library, we compute a CRC32 fingerprint of the
+constants (see crc.[ch]).  The fingerprint is computed over the following
+symbols in the following order (the order is important!!):
+
+	the VProc offsets defined in vproc-offsets-ins.c
+
+	value of mask to get vproc address from allocation pointer
+
+	size of LogBuffer_t type in bytes
+	offset of LogBuffer_t::next
+	offset of LogBuffer_t::log
+
+	size of LogEvent_t type in bytes
+	offset of LogEvent_t::event
+	offset of LogEvent_t::data

@@ -8,6 +8,7 @@ structure CPSTyUtil : sig
 
     val equal : (CPSTy.ty * CPSTy.ty) -> bool
     val match : (CPSTy.ty * CPSTy.ty) -> bool
+    val soundMatch : (CPSTy.ty * CPSTy.ty) -> bool
     val validCast : (CPSTy.ty * CPSTy.ty) -> bool
 
     val toString : CPSTy.ty -> string
@@ -73,25 +74,32 @@ structure CPSTyUtil : sig
   (* does the first type "match" the second type (i.e., can values of the first
    * type be used wherever the second type is expected)?
    *)
-    fun match (ty1, ty2) = (case (ty1, ty2)
+    fun match' (ty1, ty2, sound) = (case (ty1, ty2)
 	   of (CTy.T_Addr ty1, CTy.T_Addr ty2) => equal(ty1, ty2)
 	    | (CTy.T_Raw rty1, CTy.T_Raw rty2) => (rty1 = rty2)
 	    | (fromTy, CTy.T_Any) => isKind CTy.K_UNIFORM (kindOf fromTy)
 	  (* the following shouldn't be here, since it isn't really sound, but we need it
 	   * to handle surface-language polymorphism, which is translated to T_Any.
 	   *)
-	    | (CTy.T_Any, toTy) => isKind CTy.K_UNIFORM (kindOf toTy)
+	    | (CTy.T_Any, toTy) => if sound
+                                   then false
+                                   else isKind CTy.K_UNIFORM (kindOf toTy)
 	    | (CTy.T_Enum w1, CTy.T_Enum w2) => (w1 <= w2)
 	    | (CTy.T_Enum _, CTy.T_Tuple _) => true
 	    | (CTy.T_Tuple(isMut1, tys1), CTy.T_Tuple(isMut2, tys2)) =>
 		(isMut1 orelse not isMut2)
-		andalso ListPair.allEq match (tys1, tys2)
+		andalso ListPair.allEq (fn (x,y) => match' (x,y,sound))
+                                       (tys1, tys2)
 	    | (CTy.T_Fun(argTys1, contTys1), CTy.T_Fun(argTys2, contTys2)) =>
 	      (* Note contravariance for arguments! *)
-		ListPair.allEq match (argTys2, argTys1)
-                andalso ListPair.allEq match (contTys2, contTys1)
+		ListPair.allEq (fn (x,y) => match' (x,y,sound)) (argTys2, argTys1)
+                andalso ListPair.allEq (fn (x,y) => match' (x,y,sound))
+                                       (contTys2, contTys1)
 	    | _ => equal(ty1, ty2)
 	  (* end case *))
+
+    fun match (ty1, ty2) = match' (ty1, ty2, false)
+    fun soundMatch (ty1, ty2) = match' (ty1, ty2, true)
              
   (* is a cast from the first type to the second type valid? *)
     fun validCast (CTy.T_Raw rty1, CTy.T_Raw rty2) = (rty1 = rty2)

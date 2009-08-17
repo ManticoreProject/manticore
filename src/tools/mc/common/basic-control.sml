@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu/)
  * All rights reserved.
  *
- * Basic controls for the mc compiler.
+ * Basic controls for the pmlc compiler.
  *)
 
 structure BasicControl :  sig
@@ -28,6 +28,9 @@ structure BasicControl :  sig
 
   (* link with debug version of runtime mode *)
     val debug : bool Controls.control
+
+  (* enable collection of GC and memory statistics *)
+    val gcStats : bool Controls.control
 
   (* enable logging mode *)
     val logging : bool Controls.control
@@ -87,7 +90,7 @@ structure BasicControl :  sig
 
   end = struct
 
-    val topRegistry = ControlRegistry.new {help = "mc controls"}
+    val topRegistry = ControlRegistry.new {help = "pmlc controls"}
 
     fun nest (prefix, reg, pri) = ControlRegistry.nest topRegistry {
 	    prefix = SOME prefix,
@@ -157,10 +160,19 @@ structure BasicControl :  sig
 	    default = "round-robin"
 	  }
 
+  (* enable collection of GC and memory statistics *)
+    val gcStats : bool Controls.control = Controls.genControl {
+	    name = "gcstats",
+	    pri = [0, 1, 3],
+	    obscurity = 0,
+	    help = "enable collection of GC statistics",
+	    default = false
+	  }
+
   (* enable logging mode *)
     val logging : bool Controls.control = Controls.genControl {
 	    name = "log",
-	    pri = [0, 1, 3],
+	    pri = [0, 1, 4],
 	    obscurity = 0,
 	    help = "enable logging of event history",
 	    default = false

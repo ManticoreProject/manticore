@@ -38,7 +38,7 @@ ML_MAKEDEPEND_FLAGS =
 
 #### End of system configuration section. ####
 
-PROGRAM =		mc
+PROGRAM =		pmlc
 TARGET =		@TARGET@
 HEAP_IMAGE =		$(PROGRAM).@SMLNJ_HEAP_SUFFIX@
 ROOT_CM =		driver/$(TARGET).cm

@@ -61,4 +61,9 @@ structure Float =
     fun max (x, y) = if x > y then x else y
     fun min (x, y) = if x < y then x else y
 
+    fun compare (x : float, y) = 
+	if x < y then LESS 
+	else if x > y then GREATER
+	else EQUAL
+
   end

@@ -26,8 +26,15 @@ structure ASTUtil : sig
   (* create an AST list given a list of expressions and a type *)
     val mkList : AST.exp list * AST.ty -> AST.exp
 
-  (* create an AST int based on an SML int *)
-    val mkInt : int -> AST.exp
+  (* create an AST int from an SML int *)
+    val mkIntConst : int -> AST.const
+    val mkInt      : int -> AST.exp
+
+  (* boolean constants *)
+    val trueConst  : AST.const
+    val falseConst : AST.const
+    val trueExp    : AST.exp
+    val falseExp   : AST.exp
 
   (* create an expression that applies a function *)
     val mkApplyExp : (AST.exp * AST.exp list) -> AST.exp
@@ -38,7 +45,7 @@ structure ASTUtil : sig
   (* create an if expression *)
     val mkIfExp : (AST.exp * AST.exp * AST.exp) -> AST.exp
 
-  (* create an expression for a variable and its concete types *)
+  (* create an expression for a variable and its concrete types *)
     val mkVarExp : (AST.var * AST.ty list) -> AST.exp
 
   (* make a fresh copy of an expression *)
@@ -108,7 +115,13 @@ structure ASTUtil : sig
 
     fun mkArray (exps, ty) = raise Fail "todo: ASTUtil.mkArray"
 
-    fun mkInt n = A.ConstExp (A.LConst (Literal.Int (IntInf.fromInt n), Basis.intTy))
+    fun mkIntConst n = A.LConst (Literal.Int (IntInf.fromInt n), Basis.intTy)
+    fun mkInt n = A.ConstExp (mkIntConst n)
+
+    val trueConst  = A.LConst (Literal.trueLit, Basis.boolTy)
+    val falseConst = A.LConst (Literal.falseLit, Basis.boolTy)
+    val trueExp    = A.ConstExp trueConst
+    val falseExp   = A.ConstExp falseConst
 
     fun mkApplyExp (e, es) = 
 	A.ApplyExp (e, mkTupleExp(es), TypeUtil.rangeType(TypeOf.exp(e)))
@@ -184,5 +197,4 @@ structure ASTUtil : sig
 	in
 	    copyExpWalk s e
 	end
-
   end

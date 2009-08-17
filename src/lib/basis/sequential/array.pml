@@ -29,11 +29,13 @@ structure Array64 =
  
     (* allocate and initialize an array *)
       define inline @array (n : int, elt : any / exh : exh) : array =
-	  let elt : any = (any)elt
-	  let elt : any = promote(elt)
-	  let data : any = ccall M_NewArray(host_vproc, n, elt)
-	  let arr : array = alloc(data, n)
-	  return(arr)
+          if I32Lt (n, 0) then
+	      throw exh (Fail (@"Array64.@array: negative size"))
+	  else
+	      let elt : any = (any)elt
+	      let elt : any = promote(elt)
+	      let data : any = ccall M_NewArray(host_vproc, n, elt)
+	      return(alloc(data, n))
 	;
 
       define inline @length (arr : array / exh : exh) : int =

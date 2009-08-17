@@ -71,6 +71,9 @@ JSON_Value_t *JSON_GetField (JSON_Value_t *v, const char *name);
 /*! \brief Return the given item from a JSON array */
 JSON_Value_t *JSON_GetElem (JSON_Value_t *v, int i);
 
+/*! \brief return the character pointer for a string value (or 0 if
+ *  the JSON value is not a string.
+ */
 const char *JSON_GetString (JSON_Value_t *v);
 
 #ifdef __cplusplus

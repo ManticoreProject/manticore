@@ -1,0 +1,589 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 45;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 1DDD58140DA1D0A300B32029 /* MainMenu.xib */; };
+		52A6E9C210309B0D00D803AD /* EventInfoView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52A6E9C110309B0D00D803AD /* EventInfoView.m */; };
+		52AE52FE1028D6AB007AED7A /* VProc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C41028D6AA007AED7A /* VProc.mm */; };
+		52AE52FF1028D6AB007AED7A /* VProcMaps.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C61028D6AA007AED7A /* VProcMaps.mm */; };
+		52AE53001028D6AB007AED7A /* LogData.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C81028D6AA007AED7A /* LogData.mm */; };
+		52AE53011028D6AB007AED7A /* LogDoc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52CA1028D6AA007AED7A /* LogDoc.mm */; };
+		52AE53021028D6AB007AED7A /* LogView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52CC1028D6AA007AED7A /* LogView.mm */; };
+		52AE53031028D6AB007AED7A /* Box.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52CF1028D6AA007AED7A /* Box.m */; };
+		52AE53041028D6AB007AED7A /* GroupFilter.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52D11028D6AB007AED7A /* GroupFilter.m */; };
+		52AE53051028D6AB007AED7A /* CustomSplitView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52D51028D6AB007AED7A /* CustomSplitView.m */; };
+		52AE53061028D6AB007AED7A /* BandView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52D81028D6AB007AED7A /* BandView.mm */; };
+		52AE53071028D6AB007AED7A /* MessageView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52DA1028D6AB007AED7A /* MessageView.mm */; };
+		52AE53091028D6AB007AED7A /* OutlineViewDataSource.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52DE1028D6AB007AED7A /* OutlineViewDataSource.mm */; };
+		52AE530A1028D6AB007AED7A /* EventShape.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52E11028D6AB007AED7A /* EventShape.m */; };
+		52AE530B1028D6AB007AED7A /* Message.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52E41028D6AB007AED7A /* Message.m */; };
+		52AE530C1028D6AB007AED7A /* Interval.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52E81028D6AB007AED7A /* Interval.m */; };
+		52AE530D1028D6AB007AED7A /* Singleton.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52EA1028D6AB007AED7A /* Singleton.m */; };
+		52AE530E1028D6AB007AED7A /* State.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52EC1028D6AB007AED7A /* State.m */; };
+		52AE53131028D6AB007AED7A /* Exceptions.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52F91028D6AB007AED7A /* Exceptions.m */; };
+		52AE532E1028D931007AED7A /* event-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52AE532C1028D931007AED7A /* event-desc.cxx */; };
+		52AE53331028D942007AED7A /* json.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE532F1028D942007AED7A /* json.c */; };
+		52AE53341028D942007AED7A /* JSON_parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53311028D942007AED7A /* JSON_parser.c */; };
+		52AE53391028D97C007AED7A /* log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53371028D97C007AED7A /* log-desc.cxx */; };
+		52AE53511028DA8F007AED7A /* load-log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53501028DA8F007AED7A /* load-log-desc.cxx */; };
+		52AE54481029DAFB007AED7A /* TimeDisplay.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE54471029DAFB007AED7A /* TimeDisplay.m */; };
+		52AE5DA6102C9F67007AED7A /* EventInfo.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52AE5DA5102C9F67007AED7A /* EventInfo.xib */; };
+		52AE5DAA102C9FB5007AED7A /* EventInfoController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5DA9102C9FB5007AED7A /* EventInfoController.mm */; };
+		52AE5DB1102CA3ED007AED7A /* EventArg.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5DB0102CA3ED007AED7A /* EventArg.mm */; };
+		52AE5E24102CAA21007AED7A /* DetailInfoController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5E23102CAA21007AED7A /* DetailInfoController.mm */; };
+		52AE5E26102CAA3A007AED7A /* DetailInfo.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52AE5E25102CAA3A007AED7A /* DetailInfo.xib */; };
+		52AE5E2A102CABAA007AED7A /* DetailInfoView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5E29102CABAA007AED7A /* DetailInfoView.m */; };
+		52BACE9D1028D43D00C76CA9 /* LogDoc.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52BACE9C1028D43D00C76CA9 /* LogDoc.xib */; };
+		52E4D4D310330929003396BE /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D4D210330929003396BE /* AppDelegate.m */; };
+		52E4D60610346120003396BE /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D60510346120003396BE /* Utils.m */; };
+		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
+		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
+		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		089C165DFE840E0CC02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = /System/Library/Frameworks/Cocoa.framework; sourceTree = "<absolute>"; };
+		13E42FB307B3F0F600E4EEF1 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = /System/Library/Frameworks/CoreData.framework; sourceTree = "<absolute>"; };
+		1DDD58150DA1D0A300B32029 /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		29B97316FDCFA39411CA2CEA /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
+		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
+		32CA4F630368D1EE00C91783 /* LogViewer_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogViewer_Prefix.pch; sourceTree = "<group>"; };
+		52A6E9C010309B0D00D803AD /* EventInfoView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventInfoView.h; sourceTree = "<group>"; };
+		52A6E9C110309B0D00D803AD /* EventInfoView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EventInfoView.m; sourceTree = "<group>"; };
+		52AE52BD1028D6AA007AED7A /* Detail.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Detail.h; sourceTree = "<group>"; };
+		52AE52BE1028D6AA007AED7A /* DetailAccess.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailAccess.h; sourceTree = "<group>"; };
+		52AE52C31028D6AA007AED7A /* VProc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VProc.h; sourceTree = "<group>"; };
+		52AE52C41028D6AA007AED7A /* VProc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = VProc.mm; sourceTree = "<group>"; };
+		52AE52C51028D6AA007AED7A /* VProcMaps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VProcMaps.h; sourceTree = "<group>"; };
+		52AE52C61028D6AA007AED7A /* VProcMaps.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = VProcMaps.mm; sourceTree = "<group>"; };
+		52AE52C71028D6AA007AED7A /* LogData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogData.h; sourceTree = "<group>"; };
+		52AE52C81028D6AA007AED7A /* LogData.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogData.mm; sourceTree = "<group>"; };
+		52AE52C91028D6AA007AED7A /* LogDoc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogDoc.h; sourceTree = "<group>"; };
+		52AE52CA1028D6AA007AED7A /* LogDoc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogDoc.mm; sourceTree = "<group>"; };
+		52AE52CB1028D6AA007AED7A /* LogView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogView.h; sourceTree = "<group>"; };
+		52AE52CC1028D6AA007AED7A /* LogView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogView.mm; sourceTree = "<group>"; };
+		52AE52CE1028D6AA007AED7A /* Box.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Box.h; sourceTree = "<group>"; };
+		52AE52CF1028D6AA007AED7A /* Box.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Box.m; sourceTree = "<group>"; };
+		52AE52D01028D6AA007AED7A /* GroupFilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GroupFilter.h; sourceTree = "<group>"; };
+		52AE52D11028D6AB007AED7A /* GroupFilter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GroupFilter.m; sourceTree = "<group>"; };
+		52AE52D41028D6AB007AED7A /* CustomSplitView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CustomSplitView.h; sourceTree = "<group>"; };
+		52AE52D51028D6AB007AED7A /* CustomSplitView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CustomSplitView.m; sourceTree = "<group>"; };
+		52AE52D71028D6AB007AED7A /* BandView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BandView.h; sourceTree = "<group>"; };
+		52AE52D81028D6AB007AED7A /* BandView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = BandView.mm; sourceTree = "<group>"; };
+		52AE52D91028D6AB007AED7A /* MessageView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MessageView.h; sourceTree = "<group>"; };
+		52AE52DA1028D6AB007AED7A /* MessageView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MessageView.mm; sourceTree = "<group>"; };
+		52AE52DD1028D6AB007AED7A /* OutlineViewDataSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OutlineViewDataSource.h; sourceTree = "<group>"; };
+		52AE52DE1028D6AB007AED7A /* OutlineViewDataSource.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = OutlineViewDataSource.mm; sourceTree = "<group>"; };
+		52AE52E01028D6AB007AED7A /* EventShape.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventShape.h; sourceTree = "<group>"; };
+		52AE52E11028D6AB007AED7A /* EventShape.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EventShape.m; sourceTree = "<group>"; };
+		52AE52E31028D6AB007AED7A /* Message.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Message.h; sourceTree = "<group>"; };
+		52AE52E41028D6AB007AED7A /* Message.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Message.m; sourceTree = "<group>"; };
+		52AE52E51028D6AB007AED7A /* ShapeRep.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShapeRep.h; sourceTree = "<group>"; };
+		52AE52E71028D6AB007AED7A /* Interval.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Interval.h; sourceTree = "<group>"; };
+		52AE52E81028D6AB007AED7A /* Interval.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Interval.m; sourceTree = "<group>"; };
+		52AE52E91028D6AB007AED7A /* Singleton.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Singleton.h; sourceTree = "<group>"; };
+		52AE52EA1028D6AB007AED7A /* Singleton.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Singleton.m; sourceTree = "<group>"; };
+		52AE52EB1028D6AB007AED7A /* State.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = State.h; sourceTree = "<group>"; };
+		52AE52EC1028D6AB007AED7A /* State.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = State.m; sourceTree = "<group>"; };
+		52AE52F81028D6AB007AED7A /* Exceptions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Exceptions.h; sourceTree = "<group>"; };
+		52AE52F91028D6AB007AED7A /* Exceptions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Exceptions.m; sourceTree = "<group>"; };
+		52AE52FA1028D6AB007AED7A /* Utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Utils.h; sourceTree = "<group>"; };
+		52AE532A1028D8C5007AED7A /* log-file.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "log-file.h"; path = "../../../include/log-file.h"; sourceTree = SOURCE_ROOT; };
+		52AE532B1028D8D5007AED7A /* default-log-paths.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "default-log-paths.h"; path = "../../log-common/default-log-paths.h"; sourceTree = SOURCE_ROOT; };
+		52AE532C1028D931007AED7A /* event-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "event-desc.cxx"; path = "../../log-common/event-desc.cxx"; sourceTree = SOURCE_ROOT; };
+		52AE532D1028D931007AED7A /* event-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = "event-desc.hxx"; path = "../../log-common/event-desc.hxx"; sourceTree = SOURCE_ROOT; };
+		52AE532F1028D942007AED7A /* json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = json.c; path = "../../log-common/json.c"; sourceTree = SOURCE_ROOT; };
+		52AE53301028D942007AED7A /* json.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = json.h; path = "../../log-common/json.h"; sourceTree = SOURCE_ROOT; };
+		52AE53311028D942007AED7A /* JSON_parser.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = JSON_parser.c; path = "../../log-common/JSON_parser.c"; sourceTree = SOURCE_ROOT; };
+		52AE53321028D942007AED7A /* JSON_parser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = JSON_parser.h; path = "../../log-common/JSON_parser.h"; sourceTree = SOURCE_ROOT; };
+		52AE53371028D97C007AED7A /* log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "log-desc.cxx"; path = "../../log-common/log-desc.cxx"; sourceTree = SOURCE_ROOT; };
+		52AE53381028D97C007AED7A /* log-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = "log-desc.hxx"; path = "../../log-common/log-desc.hxx"; sourceTree = SOURCE_ROOT; };
+		52AE53501028DA8F007AED7A /* load-log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "load-log-desc.cxx"; path = "../../log-common/load-log-desc.cxx"; sourceTree = SOURCE_ROOT; };
+		52AE54461029DAFB007AED7A /* TimeDisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TimeDisplay.h; path = ../TimeDisplay.h; sourceTree = "<group>"; };
+		52AE54471029DAFB007AED7A /* TimeDisplay.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TimeDisplay.m; sourceTree = "<group>"; };
+		52AE5DA5102C9F67007AED7A /* EventInfo.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = EventInfo.xib; sourceTree = "<group>"; };
+		52AE5DA8102C9FB5007AED7A /* EventInfoController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventInfoController.h; sourceTree = "<group>"; };
+		52AE5DA9102C9FB5007AED7A /* EventInfoController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventInfoController.mm; sourceTree = "<group>"; };
+		52AE5DAF102CA3ED007AED7A /* EventArg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventArg.h; sourceTree = "<group>"; };
+		52AE5DB0102CA3ED007AED7A /* EventArg.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventArg.mm; sourceTree = "<group>"; };
+		52AE5E22102CAA21007AED7A /* DetailInfoController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailInfoController.h; sourceTree = "<group>"; };
+		52AE5E23102CAA21007AED7A /* DetailInfoController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DetailInfoController.mm; sourceTree = "<group>"; };
+		52AE5E25102CAA3A007AED7A /* DetailInfo.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = DetailInfo.xib; sourceTree = "<group>"; };
+		52AE5E28102CABAA007AED7A /* DetailInfoView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailInfoView.h; sourceTree = "<group>"; };
+		52AE5E29102CABAA007AED7A /* DetailInfoView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DetailInfoView.m; sourceTree = "<group>"; };
+		52BACE9C1028D43D00C76CA9 /* LogDoc.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = LogDoc.xib; sourceTree = "<group>"; };
+		52E4D4D110330929003396BE /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		52E4D4D210330929003396BE /* AppDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		52E4D60510346120003396BE /* Utils.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Utils.m; sourceTree = "<group>"; };
+		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		8D1107320486CEB800E47090 /* LogViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LogViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8D11072E0486CEB800E47090 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1058C7A0FEA54F0111CA2CBB /* Linked Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */,
+			);
+			name = "Linked Frameworks";
+			sourceTree = "<group>";
+		};
+		1058C7A2FEA54F0111CA2CBB /* Other Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				29B97324FDCFA39411CA2CEA /* AppKit.framework */,
+				13E42FB307B3F0F600E4EEF1 /* CoreData.framework */,
+				29B97325FDCFA39411CA2CEA /* Foundation.framework */,
+			);
+			name = "Other Frameworks";
+			sourceTree = "<group>";
+		};
+		19C28FACFE9D520D11CA2CBB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8D1107320486CEB800E47090 /* LogViewer.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		29B97314FDCFA39411CA2CEA /* LogViewer */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52B81028D6AA007AED7A /* Classes */,
+				29B97315FDCFA39411CA2CEA /* Other Sources */,
+				29B97317FDCFA39411CA2CEA /* Resources */,
+				29B97323FDCFA39411CA2CEA /* Frameworks */,
+				19C28FACFE9D520D11CA2CBB /* Products */,
+				52BACE9C1028D43D00C76CA9 /* LogDoc.xib */,
+				52AE5DA5102C9F67007AED7A /* EventInfo.xib */,
+				52AE5E25102CAA3A007AED7A /* DetailInfo.xib */,
+			);
+			name = LogViewer;
+			sourceTree = "<group>";
+		};
+		29B97315FDCFA39411CA2CEA /* Other Sources */ = {
+			isa = PBXGroup;
+			children = (
+				32CA4F630368D1EE00C91783 /* LogViewer_Prefix.pch */,
+				29B97316FDCFA39411CA2CEA /* main.m */,
+			);
+			name = "Other Sources";
+			sourceTree = "<group>";
+		};
+		29B97317FDCFA39411CA2CEA /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				8D1107310486CEB800E47090 /* Info.plist */,
+				089C165CFE840E0CC02AAC07 /* InfoPlist.strings */,
+				1DDD58140DA1D0A300B32029 /* MainMenu.xib */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		29B97323FDCFA39411CA2CEA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1058C7A0FEA54F0111CA2CBB /* Linked Frameworks */,
+				1058C7A2FEA54F0111CA2CBB /* Other Frameworks */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		52AE52B81028D6AA007AED7A /* Classes */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52B91028D6AA007AED7A /* EventRep */,
+				52AE52C71028D6AA007AED7A /* LogData.h */,
+				52AE52C81028D6AA007AED7A /* LogData.mm */,
+				52AE52C91028D6AA007AED7A /* LogDoc.h */,
+				52AE52CA1028D6AA007AED7A /* LogDoc.mm */,
+				52AE52CB1028D6AA007AED7A /* LogView.h */,
+				52AE52CC1028D6AA007AED7A /* LogView.mm */,
+				52AE52CD1028D6AA007AED7A /* Render */,
+				52AE52EE1028D6AB007AED7A /* Test */,
+				52AE52F71028D6AB007AED7A /* Utils */,
+				52E4D4D110330929003396BE /* AppDelegate.h */,
+				52E4D4D210330929003396BE /* AppDelegate.m */,
+			);
+			path = Classes;
+			sourceTree = "<group>";
+		};
+		52AE52B91028D6AA007AED7A /* EventRep */ = {
+			isa = PBXGroup;
+			children = (
+				52AE53291028D8A9007AED7A /* Static */,
+				52AE52BA1028D6AA007AED7A /* Dynamic */,
+			);
+			path = EventRep;
+			sourceTree = "<group>";
+		};
+		52AE52BA1028D6AA007AED7A /* Dynamic */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52BC1028D6AA007AED7A /* Representations */,
+			);
+			path = Dynamic;
+			sourceTree = "<group>";
+		};
+		52AE52BC1028D6AA007AED7A /* Representations */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52BD1028D6AA007AED7A /* Detail.h */,
+				52AE52BE1028D6AA007AED7A /* DetailAccess.h */,
+				52AE52C31028D6AA007AED7A /* VProc.h */,
+				52AE52C41028D6AA007AED7A /* VProc.mm */,
+				52AE52C51028D6AA007AED7A /* VProcMaps.h */,
+				52AE52C61028D6AA007AED7A /* VProcMaps.mm */,
+			);
+			path = Representations;
+			sourceTree = "<group>";
+		};
+		52AE52CD1028D6AA007AED7A /* Render */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52CE1028D6AA007AED7A /* Box.h */,
+				52AE52CF1028D6AA007AED7A /* Box.m */,
+				52AE52D01028D6AA007AED7A /* GroupFilter.h */,
+				52AE52D11028D6AB007AED7A /* GroupFilter.m */,
+				52AE52DD1028D6AB007AED7A /* OutlineViewDataSource.h */,
+				52AE52DE1028D6AB007AED7A /* OutlineViewDataSource.mm */,
+				52AE52D21028D6AB007AED7A /* LogViewComponents */,
+				52AE52DF1028D6AB007AED7A /* ShapeRep */,
+			);
+			path = Render;
+			sourceTree = "<group>";
+		};
+		52AE52D21028D6AB007AED7A /* LogViewComponents */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52D31028D6AB007AED7A /* Background */,
+				52AE52D61028D6AB007AED7A /* Foreground */,
+				52AE54471029DAFB007AED7A /* TimeDisplay.m */,
+				52AE5E21102CA96A007AED7A /* Detail Info */,
+			);
+			path = LogViewComponents;
+			sourceTree = "<group>";
+		};
+		52AE52D31028D6AB007AED7A /* Background */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52D41028D6AB007AED7A /* CustomSplitView.h */,
+				52AE52D51028D6AB007AED7A /* CustomSplitView.m */,
+			);
+			path = Background;
+			sourceTree = "<group>";
+		};
+		52AE52D61028D6AB007AED7A /* Foreground */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52D71028D6AB007AED7A /* BandView.h */,
+				52AE52D81028D6AB007AED7A /* BandView.mm */,
+				52AE54461029DAFB007AED7A /* TimeDisplay.h */,
+				52AE52D91028D6AB007AED7A /* MessageView.h */,
+				52AE52DA1028D6AB007AED7A /* MessageView.mm */,
+			);
+			path = Foreground;
+			sourceTree = "<group>";
+		};
+		52AE52DF1028D6AB007AED7A /* ShapeRep */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52E01028D6AB007AED7A /* EventShape.h */,
+				52AE52E11028D6AB007AED7A /* EventShape.m */,
+				52AE52E21028D6AB007AED7A /* MultiVProc */,
+				52AE52E51028D6AB007AED7A /* ShapeRep.h */,
+				52AE52E61028D6AB007AED7A /* SingleVProc */,
+			);
+			path = ShapeRep;
+			sourceTree = "<group>";
+		};
+		52AE52E21028D6AB007AED7A /* MultiVProc */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52E31028D6AB007AED7A /* Message.h */,
+				52AE52E41028D6AB007AED7A /* Message.m */,
+			);
+			path = MultiVProc;
+			sourceTree = "<group>";
+		};
+		52AE52E61028D6AB007AED7A /* SingleVProc */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52E71028D6AB007AED7A /* Interval.h */,
+				52AE52E81028D6AB007AED7A /* Interval.m */,
+				52AE52E91028D6AB007AED7A /* Singleton.h */,
+				52AE52EA1028D6AB007AED7A /* Singleton.m */,
+				52AE52EB1028D6AB007AED7A /* State.h */,
+				52AE52EC1028D6AB007AED7A /* State.m */,
+			);
+			path = SingleVProc;
+			sourceTree = "<group>";
+		};
+		52AE52EE1028D6AB007AED7A /* Test */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Test;
+			sourceTree = "<group>";
+		};
+		52AE52F71028D6AB007AED7A /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52F81028D6AB007AED7A /* Exceptions.h */,
+				52AE52F91028D6AB007AED7A /* Exceptions.m */,
+				52AE52FA1028D6AB007AED7A /* Utils.h */,
+				52E4D60510346120003396BE /* Utils.m */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+		52AE53291028D8A9007AED7A /* Static */ = {
+			isa = PBXGroup;
+			children = (
+				52AE53501028DA8F007AED7A /* load-log-desc.cxx */,
+				52AE53371028D97C007AED7A /* log-desc.cxx */,
+				52AE53381028D97C007AED7A /* log-desc.hxx */,
+				52AE532F1028D942007AED7A /* json.c */,
+				52AE53301028D942007AED7A /* json.h */,
+				52AE53311028D942007AED7A /* JSON_parser.c */,
+				52AE53321028D942007AED7A /* JSON_parser.h */,
+				52AE532C1028D931007AED7A /* event-desc.cxx */,
+				52AE532D1028D931007AED7A /* event-desc.hxx */,
+				52AE532B1028D8D5007AED7A /* default-log-paths.h */,
+				52AE532A1028D8C5007AED7A /* log-file.h */,
+			);
+			name = Static;
+			sourceTree = "<group>";
+		};
+		52AE5E21102CA96A007AED7A /* Detail Info */ = {
+			isa = PBXGroup;
+			children = (
+				52AE5E22102CAA21007AED7A /* DetailInfoController.h */,
+				52AE5E23102CAA21007AED7A /* DetailInfoController.mm */,
+				52AE5DA8102C9FB5007AED7A /* EventInfoController.h */,
+				52AE5DA9102C9FB5007AED7A /* EventInfoController.mm */,
+				52AE5DAF102CA3ED007AED7A /* EventArg.h */,
+				52AE5DB0102CA3ED007AED7A /* EventArg.mm */,
+				52AE5E28102CABAA007AED7A /* DetailInfoView.h */,
+				52AE5E29102CABAA007AED7A /* DetailInfoView.m */,
+				52A6E9C010309B0D00D803AD /* EventInfoView.h */,
+				52A6E9C110309B0D00D803AD /* EventInfoView.m */,
+			);
+			name = "Detail Info";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8D1107260486CEB800E47090 /* LogViewer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C01FCF4A08A954540054247B /* Build configuration list for PBXNativeTarget "LogViewer" */;
+			buildPhases = (
+				8D1107290486CEB800E47090 /* Resources */,
+				8D11072C0486CEB800E47090 /* Sources */,
+				8D11072E0486CEB800E47090 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LogViewer;
+			productInstallPath = "$(HOME)/Applications";
+			productName = LogViewer;
+			productReference = 8D1107320486CEB800E47090 /* LogViewer.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		29B97313FDCFA39411CA2CEA /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "LogViewer" */;
+			compatibilityVersion = "Xcode 3.1";
+			hasScannedForEncodings = 1;
+			mainGroup = 29B97314FDCFA39411CA2CEA /* LogViewer */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				8D1107260486CEB800E47090 /* LogViewer */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8D1107290486CEB800E47090 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */,
+				1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */,
+				52BACE9D1028D43D00C76CA9 /* LogDoc.xib in Resources */,
+				52AE5DA6102C9F67007AED7A /* EventInfo.xib in Resources */,
+				52AE5E26102CAA3A007AED7A /* DetailInfo.xib in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8D11072C0486CEB800E47090 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8D11072D0486CEB800E47090 /* main.m in Sources */,
+				52AE52FE1028D6AB007AED7A /* VProc.mm in Sources */,
+				52AE52FF1028D6AB007AED7A /* VProcMaps.mm in Sources */,
+				52AE53001028D6AB007AED7A /* LogData.mm in Sources */,
+				52AE53011028D6AB007AED7A /* LogDoc.mm in Sources */,
+				52AE53021028D6AB007AED7A /* LogView.mm in Sources */,
+				52AE53031028D6AB007AED7A /* Box.m in Sources */,
+				52AE53041028D6AB007AED7A /* GroupFilter.m in Sources */,
+				52AE53051028D6AB007AED7A /* CustomSplitView.m in Sources */,
+				52AE53061028D6AB007AED7A /* BandView.mm in Sources */,
+				52AE53071028D6AB007AED7A /* MessageView.mm in Sources */,
+				52AE53091028D6AB007AED7A /* OutlineViewDataSource.mm in Sources */,
+				52AE530A1028D6AB007AED7A /* EventShape.m in Sources */,
+				52AE530B1028D6AB007AED7A /* Message.m in Sources */,
+				52AE530C1028D6AB007AED7A /* Interval.m in Sources */,
+				52AE530D1028D6AB007AED7A /* Singleton.m in Sources */,
+				52AE530E1028D6AB007AED7A /* State.m in Sources */,
+				52AE53131028D6AB007AED7A /* Exceptions.m in Sources */,
+				52AE532E1028D931007AED7A /* event-desc.cxx in Sources */,
+				52AE53331028D942007AED7A /* json.c in Sources */,
+				52AE53341028D942007AED7A /* JSON_parser.c in Sources */,
+				52AE53391028D97C007AED7A /* log-desc.cxx in Sources */,
+				52AE53511028DA8F007AED7A /* load-log-desc.cxx in Sources */,
+				52AE54481029DAFB007AED7A /* TimeDisplay.m in Sources */,
+				52AE5DAA102C9FB5007AED7A /* EventInfoController.mm in Sources */,
+				52AE5DB1102CA3ED007AED7A /* EventArg.mm in Sources */,
+				52AE5E24102CAA21007AED7A /* DetailInfoController.mm in Sources */,
+				52AE5E2A102CABAA007AED7A /* DetailInfoView.m in Sources */,
+				52A6E9C210309B0D00D803AD /* EventInfoView.m in Sources */,
+				52E4D4D310330929003396BE /* AppDelegate.m in Sources */,
+				52E4D60610346120003396BE /* Utils.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		089C165CFE840E0CC02AAC07 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				089C165DFE840E0CC02AAC07 /* English */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		1DDD58140DA1D0A300B32029 /* MainMenu.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				1DDD58150DA1D0A300B32029 /* English */,
+			);
+			name = MainMenu.xib;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		C01FCF4B08A954540054247B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				COPY_PHASE_STRIP = NO;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = LogViewer_Prefix.pch;
+				INFOPLIST_FILE = Info.plist;
+				INSTALL_PATH = "$(HOME)/Applications";
+				PRODUCT_NAME = LogViewer;
+			};
+			name = Debug;
+		};
+		C01FCF4C08A954540054247B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_MODEL_TUNING = G5;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = LogViewer_Prefix.pch;
+				INFOPLIST_FILE = Info.plist;
+				INSTALL_PATH = "$(HOME)/Applications";
+				PRODUCT_NAME = LogViewer;
+			};
+			name = Release;
+		};
+		C01FCF4F08A954540054247B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_ENABLE_OBJC_GC = required;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PREBINDING = NO;
+				SDKROOT = macosx10.5;
+			};
+			name = Debug;
+		};
+		C01FCF5008A954540054247B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				PREBINDING = NO;
+				SDKROOT = macosx10.5;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C01FCF4A08A954540054247B /* Build configuration list for PBXNativeTarget "LogViewer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C01FCF4B08A954540054247B /* Debug */,
+				C01FCF4C08A954540054247B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C01FCF4E08A954540054247B /* Build configuration list for PBXProject "LogViewer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C01FCF4F08A954540054247B /* Debug */,
+				C01FCF5008A954540054247B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 29B97313FDCFA39411CA2CEA /* Project object */;
+}

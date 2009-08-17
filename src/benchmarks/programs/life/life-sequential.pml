@@ -153,9 +153,8 @@ structure Main (* : sig
 
     fun show pr = compose (compose (app (fn s => (pr s; pr "\n"))) plot) alive
 
-    fun doit () = show (fn _ => ()) (nthgen(gun, 50))
-
-    val () = show Print.print (nthgen(gun, 50))
+    val _ = PrimIO.readInt ()
+    val () = show print (nthgen(gun, PrimIO.readInt()))
 
   end (* Life *)
 

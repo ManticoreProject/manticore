@@ -21,7 +21,7 @@ structure Main : sig
 
     val rootDir = "@MANTICORE_ROOT@"
     val templateDir = "@MANTICORE_ROOT@/src/gen/log-gen/templates"
-    val jsonFile = "@MANTICORE_ROOT@/config/log-events.json"
+    val jsonFile = "@DEFAULT_LOG_EVENTS_PATH@"
 
     fun mkTarget (template, path, gen) =
 	  (P.concat(templateDir, template), P.concat(rootDir, path), gen)

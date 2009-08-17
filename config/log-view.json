@@ -1,0 +1,162 @@
+/* log-view.json
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * This file describes a "semantics" of the events that can be logged by the Manticore
+ * system.  It is used by viewing programs to provide structure to the log files.
+ *
+ * The file is a single JSON object with three fields:
+ *
+ *	date	-- a string representing the YYYYMMDD date as a hexadecimal literal.
+ *
+ *	version	-- an array of three integers representing the major, minor, and patch-level
+ *		   version numbers of the file.  The version numbers should be increased as
+ *		   follows:
+ *			-- increase the patch number when changing the description of an event or
+ *			   argument, or changing the group structure.
+ *			-- increase the minor-version number when adding new events to the end of
+ *			   the file.  Such changes should not effect existing logs with the same
+ *			   major-version number.
+ *			-- increase the major version number when changing the order of events,
+ *			   or changing the order, number, or type of arguments of existing events.
+ *
+ *	root	-- the root event group
+ *
+ * All groups have the following two fields:
+ *
+ *	desc	-- English-language description of group
+ *
+ *	kind	-- one of
+ *			"GROUP"		-- group of events and groups
+ *			"STATE"		-- state group
+ *			"INTERVAL"	-- interval event group
+ *			"DEPENDENT"	-- dependent event group
+ *
+ * If the kind field is "GROUP", then there are two additional fields:
+ *
+ *	events	-- an array of event descriptors.
+ *
+ *	groups	-- an array of subgroups.
+ *
+ * If the kind field is "STATE", then there are three or four additional fields:
+ *
+ *	start   -- the initial state
+ *
+ *	states	-- an array of state names.
+ *
+ *	colors  -- an optional array of colors; one per state
+ *
+ *	transitions
+ *		-- an array of transitions, which are event name/state name pairs
+ *
+ * If the kind field is "INTERVAL", then there are three additional fields:
+ *
+ *	start	-- the start of the interval
+ *
+ *	end	-- the end of the interval
+ *
+ *	color	-- an optional color specification
+ *
+ * If the kind field is "DEPENDENT", then there are two additional fields:
+ *
+ *	src	-- the source of the dependent event
+ *
+ *	dst	-- the destination of the interval
+ *
+ *	color	-- an optional color specification
+ */
+{
+  "date" : "0x20090721",
+  "version" : [0, 0, 0],
+  "root" : {
+      "desc" : "All events",
+      "kind" : "GROUP",
+      "events" : [ "NoEvent" ],
+      "groups" : [
+	  { "desc" : "VProc events",
+	    "kind" : "GROUP",
+	    "events" : [
+		"VProcStartIdle", "VProcStartMain", "VProcExitMain",
+		"VProcSleep", "VProcWakeup",
+		"PreemptSignal", "GCSignal"
+	      ],
+	    "groups" : [
+		{ "desc" : "VProc status",
+		  "kind" : "STATE",
+		  "start" : "Active",
+		  "states" : ["Active", "GC", "Idle", "Sleep"],
+		  "transitions" : [
+		      ["VProcWakeup", "Active"],
+		      ["MinorGCStart", "GC"],	["MinorGCEnd", "Active"],
+		      ["MajorGCStart", "GC"],	["MajorGCEnd", "Active"],
+		      ["GlobalGCInit", "GC"],	["GlobalGCVPStart", "GC"], ["GlobalGCEnd", "Active"],
+		      ["PromoteStart", "GC"],	["PromoteEnd", "Active"],
+		      ["VProcStartIdle", "Idle"],
+		      ["VProcStartMain", "Active"],
+		      ["VProcIdle", "Idle"],
+		      ["VProcSleep", "Sleep"]
+		    ]
+		}
+	      ]
+	  },
+	  { "desc" : "GC events",
+	    "kind" : "GROUP",
+	    "events" : [ ],
+	    "groups" : [
+		{ "desc"  : "Minor GC",
+		  "kind"  : "INTERVAL",
+		  "start" : "MinorGCStart",
+		  "end"   : "MinorGCEnd"
+		},
+		{ "desc"  : "Major GC",
+		  "kind"  : "INTERVAL",
+		  "start" : "MajorGCStart",
+		  "end"   : "MajorGCEnd"
+		},
+		{ "desc"  : "Global GC",
+		  "kind"  : "INTERVAL",
+		  "start" : "GlobalGCInit",
+		  "end"   : "GlobalGCEnd"
+		},
+		{ "desc"  : "VProc Global GC",
+		  "kind"  : "INTERVAL",
+		  "start" : "GlobalGCVPStart",
+		  "end"   : "GlobalGCVPDone"
+		},
+		{ "desc"  : "Promotion",
+		  "kind"  : "INTERVAL",
+		  "start" : "PromoteStart",
+		  "end"   : "PromoteEnd"
+		},
+		{ "desc"  : "Global GC startup",
+		  "kind"  : "DEPENDENT",
+		  "src"   : "GlobalGCInit",
+		  "dst"   : "GCSignal"
+		}
+	      ]
+	  },
+	  { "desc" : "Runtime events",
+	    "kind" : "GROUP",
+	    "events" : ["RTPreemption",  "RTFuture1Spawn", "RTFuture1Touch", "RTFuture1Steal"],
+	    "groups" : []
+	  },
+	  { "desc" : "Thread events",
+	    "kind" : "GROUP",
+	    "events" : ["ThdExit"],
+	    "groups" : [
+		{ "desc" : "Local thread spawn",
+		  "kind" : "DEPENDENT",
+		  "src"  : "ThdSpawn",
+		  "dst"  : "ThdStart"
+		},
+		{ "desc" : "Remote thread spawn",
+		  "kind" : "DEPENDENT",
+		  "src"  : "ThdSpawnOn",
+		  "dst"  : "ThdStart"
+		}
+	      ]
+	  }
+	]
+    }
+}

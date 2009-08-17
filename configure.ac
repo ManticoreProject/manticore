@@ -304,6 +304,15 @@ AC_SUBST(MANTICORE_BASISDIR)
 AC_SUBST(HEAP_IMAGE_DIR)
 AC_SUBST(INSTALL_SMLNJ_WRAPPER)
 
+dnl
+dnl the log-file descriptions
+dnl
+DEFAULT_LOG_EVENTS_PATH=$MANTICORE_ROOT/config/log-events.json
+DEFAULT_LOG_VIEW_PATH=$MANTICORE_ROOT/config/log-view.json
+AC_SUBST(DEFAULT_LOG_EVENTS_PATH)
+AC_SUBST(DEFAULT_LOG_VIEW_PATH)
+
+
 dnl ******************** Runtime system parameters ********************
 
 AC_DEFINE([MAX_NUM_VPROCS], [16], [maximum number of virtual processors])
@@ -389,7 +398,7 @@ typedef struct manticore_value *Value_t;
 
 dnl for the benchmark programs, we need the path to the PML compiler
 dnl
-PMLC=$MANTICORE_BINDIR/mc
+PMLC=$MANTICORE_BINDIR/pmlc
 AC_SUBST(PMLC)
 
 dnl for the benchmark programs, we need the path to the MLton compiler
@@ -450,6 +459,8 @@ dnl ***** SML source files *****
 dnl ***** CM files *****
   src/tools/mc/codegen/group.cm:src/tools/mc/codegen/group_cm.in
   src/tools/mc/codegen/wrapper.cm:src/tools/mc/codegen/wrapper_cm.in
+dnl ***** header files *****
+  src/tools/log-common/default-log-paths.h:src/tools/log-common/default-log-paths_h.in
 )
 AC_CONFIG_HEADERS(src/include/manticore-config.h:config/config_h.in)
 
@@ -493,6 +504,7 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-debug, [debug])
     MK_BUILD_DIR(mcrt-log, [logging])
     MK_BUILD_DIR(mcrt-log-debug, [logging debug])
+    MK_BUILD_DIR(mcrt-stats, [stats])
 fi
 
 AC_OUTPUT

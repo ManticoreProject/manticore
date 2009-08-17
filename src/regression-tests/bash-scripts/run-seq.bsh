@@ -5,8 +5,8 @@
 #
 
 DIR=`pwd`
-MC="sml @SMLcmdname=mc @SMLload=$DIR/../../src/tools/mc/mc"
-MCFLAGS="-Csequential=true -Cclos.convert-style=flatWithCFA"
+PMLC="sml @SMLcmdname=pmlc @SMLload=$DIR/../../src/tools/mc/pmlc"
+PMLCFLAGS="-sequential"
 DATE=$( date +"%F-%H-%M-%S" )
 REPORT_FILE=report-$DATE
 REPORT="$DIR/reports/$REPORT_FILE"
@@ -28,7 +28,7 @@ do
      if [ -e "$fname.ok" ] ; then
        echo -n "checking $g/$f ..."
        echo "checking $g/$f" >> $LOG
-       $MC $MCFLAGS $f 2>> $LOG
+       $PMLC $PMLCFLAGS $f 2>> $LOG
        if [ "$?" -eq "0" ] ; then
 	 ./a.out > $fname.test
 	 diffs=$(diff $fname.test $fname.ok)

@@ -492,7 +492,8 @@ structure CFACPS : sig
                         end)
                       else addInfo
                 val addInfo' = fn (x, y) => addInfo (x, getValue y)
-                val eqInfo' = fn (x, y) => (addInfo' (x, y); addInfo' (y, x))
+(*                val eqInfo' = fn (x, y) => (addInfo' (x, y); addInfo' (y, x))*)
+                val eqInfo' = fn (x, y) => (addInfo' (x, y))
               (* record that a given variable escapes *)
                 fun escape x = escapingValue (getValue x)
                 fun doLambda (CPS.FB {f, body, ...}) = (

@@ -44,6 +44,7 @@ structure SubstVar =
 	    | exp (A.VarExp (x, ts)) = A.VarExp (s x, ts)
 	    | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
 	    | exp (ov as A.OverloadExp _) = ov
+	    | exp (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, exp e)
           in
 	     exp e
           end

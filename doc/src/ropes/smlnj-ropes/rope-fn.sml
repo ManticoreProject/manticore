@@ -35,7 +35,7 @@ functor RopeFn (
     structure S : SEQ
     val maxLeafSize : int
 
-  ) : ROPE = struct
+  ) (*: ROPE*) = struct
 
     structure S = S
     type 'a seq = 'a S.seq
@@ -75,7 +75,7 @@ functor RopeFn (
   (* ex: split ([1,2,3], 1) => ([1],[2,3])  *)
   (* ex: split ([1,2,3], 2) => ([1,2],[3])  *)
   (* ex: split ([1,2,3], 4) => ([1,2,3],[]) *)
-    fun split (xs, n) = let
+    fun split (xs : 'a list, n : int) : ('a list * 'a list) = let
       fun loop (n, taken, []) = (List.rev taken, [])
 	| loop (n, taken, L as h::t) = 
             if n = 0 then
@@ -115,14 +115,18 @@ functor RopeFn (
 		int *     (* length *)
 		'a rope * (* left subtree *)
 		'a rope   (* right subtree *))
-      | Leaf of (int *    (* length *)
-		 'a seq   (* sequence *))
+      | Leaf of 'a seq    (* sequence *)
 
   (* maxLeafSize : int *)
     val maxLeafSize = maxLeafSize
 
-  (* empty : 'a rope *)
-    val empty = Leaf (0, S.empty)
+  (* mkLeaf : 'a seq -> 'a rope *)
+  (* this constructor maintains the invariant that the leaf size must be 
+   * <= to the constant maxLeafSize *)
+    fun mkLeaf (seq : 'a seq) : 'a rope = 
+	  if S.length seq > maxLeafSize 
+	    then raise Fail "RopeFn.mkLeaf: bogus leaf size"
+	  else Leaf seq
 
   (* toString : ('a -> string) -> 'a rope -> string *)
     fun toString show r = let
@@ -133,7 +137,7 @@ functor RopeFn (
       val indent = List.map (fn s => indenter ^ s) 
       fun build r =
        (case r
-	 of Leaf (_, xs) => let 
+	 of Leaf xs => let 
               fun b args = 
                (case args
 	         of (nil, acc) => "]" :: acc
@@ -165,14 +169,14 @@ functor RopeFn (
       | isBalanced (Cat (depth, len, _, _)) = (depth <= ((ceilingLg len) + 2))
 
   (* singleton : 'a -> 'a rope *)
-    fun singleton x = Leaf (1, S.singleton x)
+    fun singleton x = Leaf (S.singleton x)
 
   (* isEmpty : 'a rope -> bool *)
-    fun isEmpty (Leaf (len, _)) = (len = 0)
+    fun isEmpty (Leaf seq) = (S.length seq = 0)
       | isEmpty (Cat (_, len, _, _)) = (len = 0)
 
   (* length : 'a rope -> int *)
-    fun length (Leaf (len, _)) = len
+    fun length (Leaf seq) = S.length seq
       | length (Cat (_, len, _, _)) = len
 
   (* depth : 'a rope -> int *)
@@ -185,7 +189,7 @@ functor RopeFn (
 
   (* subInBounds : 'a rope * int -> 'a *)
   (* pre: inBounds (r, i) *)
-    fun subInBounds (Leaf (_, s), i) = S.sub (s, i)
+    fun subInBounds (Leaf s, i) = S.sub (s, i)
       | subInBounds (Cat (_, len, r1, r2), i) = 
          (if i < length r1 then
             subInBounds (r1, i)
@@ -229,7 +233,7 @@ functor RopeFn (
 
   (* mkInitialBalancer : int -> 'a balancer *)
   (* takes a rope length, and returns a rope balancer *)
-    fun mkInitialBalancer len = let
+    fun mkInitialBalancer (len : int) : 'a balancer = let
       val blen = balancerLen len
       fun initEntry n = (fib (n+2), fib (n+3), NONE)
       in
@@ -250,7 +254,7 @@ functor RopeFn (
     fun absorbLeft (s, r) = let
       val slen = S.length s
       fun build (Cat (d, len, r1, r2)) = Cat (d, len+slen, build r1, r2)
-	| build (Leaf (len, s')) = Leaf (len+slen, S.append (s, s'))
+	| build (Leaf s') = Leaf (S.append (s, s'))
       in
         build r
       end
@@ -261,7 +265,7 @@ functor RopeFn (
     fun absorbRight (r, s) = let
       val slen = S.length s
       fun build (Cat (d, len, r1, r2)) = Cat (d, len+slen, r1, build r2)
-	| build (Leaf (len, s')) = Leaf (len+slen, S.append (s', s))
+	| build (Leaf s') = Leaf (S.append (s', s))
       in
         build r
       end
@@ -277,43 +281,41 @@ functor RopeFn (
   (* - if the left rope is a cat and the right is a leaf, and the right leaf can be *)
   (*     packed into the rightmost leaf of the left, it is *)
   (* - symm. case to previous *)
-    fun appendWithoutBalancing (r1, r2) =
+    fun appendWithoutBalancing (r1 : 'a rope, r2 : 'a rope) : 'a rope =
      (if isEmpty r1 then 
         r2
       else if isEmpty r2 then
 	r1
       else (case (r1, r2)
-        of (Leaf (len1, s1), Leaf (len2, s2)) =>
-	     if (len1 + len2) <= maxLeafSize
-	     then Leaf (len1 + len2, S.append (s1, s2))
+        of (Leaf s1, Leaf s2) =>
+	     if (S.length s1 + S.length s2) <= maxLeafSize
+	     then mkLeaf (S.append (s1, s2))
 	     else let
 	       val df  = maxLeafSize - S.length s1
 	       val s1' = S.append (s1, S.take (s2, df))
 	       val s2' = S.drop (s2, df)
-	       val lf1 = Leaf (maxLeafSize, s1')
-	       val lf2 = Leaf (len2 - df, s2')
 	       in
-                 Cat (1, len1 + len2, lf1, lf2)
+                 Cat (1, S.length s1 + S.length s2, mkLeaf s1', mkLeaf s2')
                end
-	 | (Cat (d, len1, r1, r2), Leaf (len2, s2)) => let
+	 | (Cat (d, len1, r1, r2), Leaf s2) => let
 	     val c = Cat (d, len1, r1, r2)
-	     val leaf = Leaf (len2, s2)
+	     val leaf = mkLeaf s2
 	     val rmost = rightmostLeaf r2
-	     val n = length rmost + len2
+	     val n = length rmost + S.length s2
 	     in
 	       if n <= maxLeafSize 
-	       then Cat (d, len1 + len2, r1, absorbRight (r2, s2))
-	       else Cat (d+1, len1 + len2, c, leaf)
+	       then Cat (d, len1 + S.length s2, r1, absorbRight (r2, s2))
+	       else Cat (d+1, len1 + S.length s2, c, leaf)
 	     end
-	 | (Leaf (len1, s1), Cat (d, len2, r1, r2)) => let
-	     val leaf = Leaf (len1, s1)
+	 | (Leaf s1, Cat (d, len2, r1, r2)) => let
+	     val leaf = mkLeaf s1
 	     val c = Cat (d, len2, r1, r2)
 	     val lmost = leftmostLeaf r1
-	     val n = len1 + length lmost
+	     val n = S.length s1 + length lmost
 	     in
 	       if n <= maxLeafSize
-	       then Cat (d, len1 + len2, absorbLeft (s1, r1), r2)
-	       else Cat (d+1, len1 + len2, leaf, c)
+	       then Cat (d, S.length s1 + len2, absorbLeft (s1, r1), r2)
+	       else Cat (d+1, S.length s1 + len2, leaf, c)
 	     end 
 	 | _ => let
              val newDepth = 1 + Int.max (depth r1, depth r2)
@@ -333,7 +335,7 @@ functor RopeFn (
 	   | (_, _, SOME r) => appendWithoutBalancing (r, acc)
           (* end case *))
       in
-        List.foldl f empty balancer
+        List.foldl f (mkLeaf S.empty) balancer
       end
 
   (* insert : 'a rope * 'a balancer -> 'a balancer *)
@@ -341,7 +343,7 @@ functor RopeFn (
   (* invariant: the length of the rope at position i is in its interval, that is, *)
   (*   greater than or equal to the lower bound, and less that the upper bound. *)
   (* See \cite{bap:ropes} for details. *)
-    fun insert (r, balancer) = 
+    fun insert (r : 'a rope, balancer : 'a balancer) : 'a balancer = 
      (case balancer
         of nil => (* this case should never be reached *)
 	          (raise Fail "BUG: empty balancer")
@@ -384,7 +386,7 @@ functor RopeFn (
 
   (* toSeq : 'a rope -> 'a seq *)
   (* return the fringe of the data at the leaves of a rope as a sequence *)
-    fun toSeq (Leaf (_, s)) = s
+    fun toSeq (Leaf s) = s
       | toSeq (Cat (_, _, rL, rR)) = S.append (toSeq rL, toSeq rR)
 
   (* leafFromList : 'a list -> 'a rope *)
@@ -392,7 +394,7 @@ functor RopeFn (
       val n = List.length xs
       in
         if n <= maxLeafSize 
-	then Leaf (n, S.fromList xs)
+	then mkLeaf (S.fromList xs)
         else raise Fail "too big"
       end
 
@@ -409,14 +411,14 @@ functor RopeFn (
   (* Given a list, construct a balanced rope. *)
   (* Balancing is unnecessary, since the algorithm ensures balance. *)
   (* The leaves will be packed to the left.  *)
-    fun fromList xs = let
+    fun fromList (xs : 'a list) : 'a rope = let
       val ldata = chop (xs, maxLeafSize)
       val leaves = List.map leafFromList ldata
-      fun build [] = empty
+      fun build [] = mkLeaf S.empty
 	| build [r] = r
 	| build rs = build (appendPairs rs)
       in
-        build leaves      
+        build leaves
       end
 
   (* fromSeq : 'a seq -> 'a rope *)
@@ -434,10 +436,10 @@ functor RopeFn (
   (* pre: inBounds(r, i) *)
     fun splitAtWithoutBalancing (r, i) = 
      (case r
-        of Leaf (len, s) => let
+        of Leaf s => let
 	     val (s1, s2) = S.cut (s, i+1)
 	     in
-	       (Leaf (S.length s1, s1), Leaf (S.length s2, s2))
+	       (mkLeaf s1, mkLeaf s2)
 	     end
 	 | Cat (depth, len, r1, r2) =>
 	     if i = length r1 - 1 then
@@ -474,21 +476,21 @@ functor RopeFn (
   (* If a rope is a Leaf, splits it into two leaves of roughly equal size. *)
     fun naturalSplit r =
      (case r
-        of Leaf (len, s) => let
-             val len' = len div 2
+        of Leaf s => let
+             val len' = S.length s div 2
 	     val (s1, s2) = S.cut (s, len')
              in
-               (Leaf (len', s1), Leaf (len - len', s2))
+               (mkLeaf s1, mkLeaf s2)
 	     end
 	 | Cat (_, _, r1, r2) => (r1, r2)
         (* end case *))
 
   (* subrope : 'a rope * int * int -> 'a rope *)
   (* Get the rope for indices [start,start+len-1]. *)
-    fun subrope (r, start, len) = let
-      fun get (Leaf (lenLf, s), st, len) =
-            if st < lenLf andalso len + st - 1 < lenLf
-	    then Leaf (len, S.subseq (s, st, len))
+    fun subrope (r : 'a rope, start : int, len : int) : 'a rope = let
+      fun get (Leaf s, st, len) =
+            if st < S.length s andalso len + st - 1 < S.length s
+	    then mkLeaf (S.subseq (s, st, len))
 	    else raise Subscript
 	| get (Cat (_, lenRope, rL, rR), st, len) =
             if len > lenRope
@@ -498,10 +500,10 @@ functor RopeFn (
               val nLeft = Int.min (len, lenL - st)
 	      val nRight = len - nLeft
               val left = if nLeft = 0
-			 then empty
+			 then mkLeaf S.empty
 			 else get (rL, st, nLeft)
 	      val right = if nRight = 0
-			  then empty
+			  then mkLeaf S.empty
 			  else get (rR, st + nLeft - lenL, nRight)
               in
                 appendWithoutBalancing (left, right)
@@ -515,7 +517,7 @@ functor RopeFn (
   (* cut the rope r into r[0, ..., n-1] and r[n, ..., length r] *)
     fun cut (r, n) =
 	  if n = 0
-	     then (empty, r)
+	     then (mkLeaf S.empty, r)
 	  else splitAt(r, n - 1)
 
   (* take : 'a rope * int -> 'a rope *)
@@ -526,7 +528,7 @@ functor RopeFn (
 
   (* toList : 'a rope -> 'a list *)
     fun toList r = let
-      fun build (Leaf (_, s)) = S.toList s
+      fun build (Leaf s) = S.toList s
 	| build (Cat (_, _, rL, rR)) = build rL @ build rR
       in
         build r
@@ -535,13 +537,13 @@ functor RopeFn (
   (* rev : 'a rope -> 'a rope *)
   (* pre: the input is balanced *)
   (* post: the output is balanced *)
-    fun rev (Leaf (len, s)) = Leaf (len, S.rev s)
+    fun rev (Leaf s) = mkLeaf (S.rev s)
       | rev (Cat (d, len, r1, r2)) = Cat (d, len, rev r2, rev r1)
 
   (* map : ('a -> 'b) -> 'a rope -> 'b rope *)
   (* post : the output has the same shape as the input *)
     fun map f r = let
-      fun m (Leaf (len, s)) = Leaf (len, S.map f s)
+      fun m (Leaf s) = mkLeaf (S.map f s)
 	| m (Cat (d, len, r1, r2)) = Cat (d, len, m r1, m r2)
       in
         m r
@@ -549,10 +551,10 @@ functor RopeFn (
 
   (* mapPartial : ('a -> 'b option) -> 'a rope -> 'b rope *)
     fun mapPartial f = let
-      fun m (Leaf (len, s)) = let
+      fun m (Leaf s) = let
             val s' = S.mapPartial f s
             in
-	      Leaf (S.length s', s')
+	      mkLeaf s'
             end
 	| m (Cat (_, _, rL, rR)) = appendWithoutBalancing (m rL, m rR)
       in
@@ -564,10 +566,10 @@ functor RopeFn (
   (* Strategy: First, filter all the ropes and append without balancing. *)
   (*           Then balance the whole thing if needed. *)
     fun filter pred = let
-      fun filt (Leaf (len, s)) = let
+      fun filt (Leaf s) = let
             val s' = S.filter pred s
             in
-              Leaf (S.length s', s')
+              mkLeaf s'
             end
 	| filt (Cat (_, _, r1, r2)) = 
             appendWithoutBalancing (filt r1, filt r2)
@@ -580,19 +582,19 @@ functor RopeFn (
 
   (* foldl : ('a * 'b -> 'b) -> 'b -> 'a rope -> 'b *)
     fun foldl f z r = let
-      fun fdl (Leaf (_, s), acc) = S.foldl f acc s
+      fun fdl (Leaf s, acc) = S.foldl f acc s
 	| fdl (Cat (_, _, rL, rR), acc) = fdl (rR, fdl (rL, acc))
       in
         fdl (r, z)
       end
 
   (* foldr : ('a * 'b -> 'b) -> 'b -> 'a rope -> 'b *)
-    fun foldr f z (Leaf (_, s)) = S.foldr f z s
+    fun foldr f z (Leaf s) = S.foldr f z s
       | foldr f z (Cat (_, _, rL, rR)) = foldr f (foldr f z rR) rL
 
   (* app : ('a -> unit) -> 'a rope -> unit *)
     fun app f r = let
-      fun go (Leaf (_, s)) = S.app f s
+      fun go (Leaf s) = S.app f s
 	| go (Cat (_, _, rL, rR)) = (go rL; go rR)
       in 
         go r 
@@ -600,7 +602,7 @@ functor RopeFn (
 
   (* find : ('a -> bool) -> 'a rope -> 'a option *)
     fun find pred r = let
-      fun find (Leaf (_, s)) = S.find pred s
+      fun find (Leaf s) = S.find pred s
 	| find (Cat (_, _, rL, rR)) = 
            (case find rL
 	      of NONE => find rR
@@ -611,7 +613,7 @@ functor RopeFn (
 
   (* exists : ('a -> bool) -> 'a rope -> bool *)
     fun exists pred r = let
-      fun any (Leaf (_, s)) = S.exists pred s
+      fun any (Leaf s) = S.exists pred s
 	| any (Cat (_, _, rL, rR)) = any rL orelse any rR
       in
         any r
@@ -619,7 +621,7 @@ functor RopeFn (
 
   (* all : ('a -> bool) -> 'a rope -> bool *)
     fun all pred r = let
-      fun all (Leaf (_, s)) = S.all pred s
+      fun all (Leaf s) = S.all pred s
 	| all (Cat (_, _, rL, rR)) = all rL andalso all rR
       in
         all r

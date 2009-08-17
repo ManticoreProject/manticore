@@ -19,74 +19,105 @@
 #include "value.h"
 #include "request-codes.h"
 #include "../vproc/scheduler.h"
+#include "log-file.h"
+#include "crc.h"
 
-extern uint32_t CRC32 (void *buf, int nBytes);
+/* since LOGBUF_SZ is defined in log-file.h, we have to be tricky */
+static int LogBufSz = LOGBUF_SZ;
+#undef LOGBUF_SZ
 
-#define PR_OFFSET(obj, symb, lab)						\
+/* print the definition of a symbol */
+#define PR_DEFINE(symb, val)							\
+	printf("#define " #symb " %#0lx\n", (uint64_t)val)
+
+/* print a value definition and record it in the CRC buffer */
+#define PR_VALUE(tag, var, value)						\
+	do {									\
+	    bp = AddCRCData (bp, #tag, value);					\
+	    PR_DEFINE(var, value);						\
+	} while (0)
+
+/* print a field offset and record it in the CRC buffer */
+#define PR_OFFSET(obj, var, lab)						\
 	do {									\
 	    uint32_t _offset = (int)((Addr_t)&(obj.lab) - (Addr_t)&obj);	\
-	    strncpy((char *)(buf+len), #lab, sizeof(#lab));			\
-	    len += sizeof(#lab);						\
-	    buf[len++] = ((_offset >> 8) & 0xff);				\
-	    buf[len++] = _offset & 0xff;					\
-	    printf("#define " #symb " %d\n", _offset);				\
+	    PR_VALUE(lab, var, _offset);					\
 	} while (0)
-#define VP_OFFSET(obj, symb, lab, local)	PR_OFFSET(obj, symb, lab)
 
-#define PR_DEFINE(symb)			\
-	printf("#define " #symb " %d\n", symb)
+/* print a VProc_t field offset and record it in the CRC buffer */
+#define VP_OFFSET(obj, symb, lab, local)		PR_OFFSET(obj, symb, lab)
+
+/* print a field offset without recording it in the CRC buffer */
+#define PR_OFFSET_NOCRC(obj, var, lab)						\
+	do {									\
+	    uint32_t _offset = (int)((Addr_t)&(obj.lab) - (Addr_t)&obj);	\
+	    PR_DEFINE(var, _offset);						\
+	} while (0)
 
 int main ()
 {
     VProc_t		vp;
+    LogBuffer_t		logBuffer;
+    LogEvent_t		logEvent;
     SchedActStkItem_t	actcons;
     RdyQItem_t		rdyq;
-    unsigned char	buf[2048];
-    int			len = 0;
+    unsigned char	buf[8*1024];
+    char		*bp = (char *)buf;
 
     printf ("#ifndef _ASM_OFFSETS_H_\n");
     printf ("#define _ASM_OFFSETS_H_\n");
+
+    printf ("\n#ifdef NOT_C_SOURCE\n");
 
     printf ("\n/* offsets into the VProc_t structure */\n");
 #include "vproc-offsets-ins.c"
 
     printf("\n/* mask to get address of VProc from alloc pointer */\n");
-    printf("#define VP_MASK %#08lx\n", ~((Addr_t)VP_HEAP_SZB-1));
+    PR_VALUE(vpMask, VP_MASK, ~((Addr_t)VP_HEAP_SZB-1));
 
-    printf ("\n/* magic number */\n");
-    printf ("#define RUNTIME_MAGIC %#0x\n", CRC32(buf, len));
+    printf ("\n/* offsets into the log buffer */\n");
+    PR_VALUE(logBufferSz, LOGBUF_SZ, LogBufSz);
+    PR_OFFSET(logBuffer, LOGBUF_NEXT_OFFSET, next);
+    PR_OFFSET(logBuffer, LOGBUF_START_OFFSET, log);
 
-    printf("\n#ifdef NOT_C_SOURCE\n");
+    printf ("\n/* offsets into a log event */\n");
+    PR_VALUE(logEventSzB, LOG_EVENT_SZB, sizeof(LogEvent_t));
+    PR_OFFSET(logEvent, LOG_EVENT_KIND_OFFSET, event);
+    PR_OFFSET(logEvent, LOG_EVENT_DATA_OFFSET, data);
 
     printf("\n/* constants for the scheduler-action stack elements */\n");
-    printf("#define ACTCONS_HDR %d\n", VEC_HDR(2));
-    printf("#define ACTCONS_SZB %d\n", sizeof(SchedActStkItem_t) + WORD_SZB);
-    PR_OFFSET(actcons, ACTCONS_ACT, act);
-    PR_OFFSET(actcons, ACTCONS_LINK, link);
+    PR_DEFINE(ACTCONS_HDR, VEC_HDR(2));
+    PR_DEFINE(ACTCONS_SZB, sizeof(SchedActStkItem_t) + WORD_SZB);
+    PR_OFFSET_NOCRC(actcons, ACTCONS_ACT, act);
+    PR_OFFSET_NOCRC(actcons, ACTCONS_LINK, link);
 
     printf("\n/* constants for the ready queue elements */\n");
-    printf("#define RDYQ_HDR %d\n", VEC_HDR(3));
-    printf("#define RDYQ_SZB %d\n", sizeof(RdyQItem_t) + WORD_SZB);
-    PR_OFFSET(rdyq, RDYQ_FIBER, fiber);
-    PR_OFFSET(rdyq, RDYQ_TID, tid);
-    PR_OFFSET(rdyq, RDYQ_LINK, link);
+    PR_DEFINE(RDYQ_HDR, VEC_HDR(3));
+    PR_DEFINE(RDYQ_SZB, sizeof(RdyQItem_t) + WORD_SZB);
+    PR_OFFSET_NOCRC(rdyq, RDYQ_FIBER, fiber);
+    PR_OFFSET_NOCRC(rdyq, RDYQ_TID, tid);
+    PR_OFFSET_NOCRC(rdyq, RDYQ_LINK, link);
     
     printf("\n/* Stack-frame size */\n");
-    PR_DEFINE(FRAME_SZB);
+    PR_DEFINE(FRAME_SZB, FRAME_SZB);
 
     printf("\n/* request codes for when Manticore returns to C */\n");
-    PR_DEFINE(REQ_GC);
-    PR_DEFINE(REQ_Return);
-    PR_DEFINE(REQ_UncaughtExn);
-    PR_DEFINE(REQ_Sleep);
+    PR_DEFINE(REQ_GC, REQ_GC);
+    PR_DEFINE(REQ_Return, REQ_Return);
+    PR_DEFINE(REQ_UncaughtExn, REQ_UncaughtExn);
+    PR_DEFINE(REQ_Sleep, REQ_Sleep);
 
     printf("\n/* common Manticore unboxed values */\n");
-    PR_DEFINE(M_FALSE);
-    PR_DEFINE(M_TRUE);
-    PR_DEFINE(M_UNIT);
-    PR_DEFINE(M_NIL);
+    PR_DEFINE(M_UNIT, M_UNIT);
+    PR_DEFINE(M_FALSE, M_FALSE);
+    PR_DEFINE(M_TRUE, M_TRUE);
+    PR_DEFINE(M_NIL, M_NIL);
 
     printf ("\n#endif /* NOT_C_SOURCE */\n");
+
+    printf ("\n/* magic number */\n");
+    printf ("#define RUNTIME_MAGIC %#0x\n", CRC32(buf, bp - (char *)buf));
+
     printf ("\n#endif\n");
 
    return 0;
