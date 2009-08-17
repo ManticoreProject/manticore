@@ -947,7 +947,7 @@ structure ArityRaising : sig
          *)
         fun transformParam(retVar) = let
             fun getParamFunType (l) = let
-                val l::lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
+                val lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
                 fun mergeSignatures (base, new) = let
                     val CPSTy.T_Fun(baseParams, baseRets) = base
                     val CPSTy.T_Fun(newParams, newRets) = new
@@ -961,7 +961,13 @@ structure ArityRaising : sig
                     CPSTy.T_Fun (args', rets')
                 end
             in
-                foldr mergeSignatures l lambdas
+                if List.length lambdas = 0
+                then CV.typeOf retVar
+                else let
+                        val l::lambdas = lambdas
+                    in
+                        foldr mergeSignatures l lambdas
+                    end
             end
             fun buildType (CPSTy.T_Tuple (heap, tys), cpsValues) = let
                 fun updateSlot (origTy, cpsValue) = (
