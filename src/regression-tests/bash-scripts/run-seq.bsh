@@ -19,15 +19,15 @@ ulimit -c unlimited
 
 rm -rf $LOG
 
-for g in seq-*
+for g in basics seq-* 
 do
 ( cd $g;
-   for f in *.pml
+   for f in *.pml *.mlb
    do
-     fname=${f%.pml}
+     fname=${f%.*}
      if [ -e "$fname.ok" ] ; then
-       echo -n "checking $fname ... "
-       echo "checking $fname" >> $LOG
+       echo -n "checking $g/$f ..."
+       echo "checking $g/$f" >> $LOG
        $MC $MCFLAGS $f 2>> $LOG
        if [ "$?" -eq "0" ] ; then
 	 ./a.out > $fname.test
@@ -55,3 +55,5 @@ do
 done
 
 )
+
+echo "Report available at: $REPORT"

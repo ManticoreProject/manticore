@@ -61,7 +61,8 @@ structure FloatArraySeq = struct
       fun lp (xs, i) = 
         if List.null xs then a
 	else let
-          val (h::t) = xs
+          val h = List.hd xs
+          val t = List.tl xs
           val _ = A.update (a, i, h)
           in
             lp (t, i+1)

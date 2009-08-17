@@ -1,0 +1,7 @@
+fib(0) is 0.
+fib(1) is 1.
+fib(5) is 5.
+fib(10) is 55.
+fib(20) is 6765.
+fib(31) is 1346269.
+fib(33) is 3524578.

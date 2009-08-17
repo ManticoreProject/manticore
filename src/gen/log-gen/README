@@ -4,6 +4,7 @@ includes
 
 	include/log-events.h
 	lib/basis/include/log-events.def
+	lib/basis/misc/logging.pml
 	lib/runtime/include/inline-log.h
 
 The log-events.json file includes a description of the specification-

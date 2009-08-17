@@ -1,0 +1,26 @@
+(* logging.pml
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * HLOps for logging events
+ *)
+
+#include "log-events.def"
+
+structure Logging =
+  struct
+
+#ifdef ENABLE_LOGGING
+    _primcode (
+@GENERIC-LOG-HLOPS@
+
+@LOG-HLOPS@
+      )
+#else /* !ENABLE_LOGGING */
+
+@DUMMY-LOG-HLOPS@
+
+#endif
+
+  end
