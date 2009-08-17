@@ -23,3 +23,5 @@ is
   gen-inline-log-h.sml
   gen-log-events-def.sml
   gen-log-events-h.sml
+  gen-logging-pml.sml
+

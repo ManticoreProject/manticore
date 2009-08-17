@@ -1,14 +1,19 @@
-/* crc.c
+/*! \file crc.c
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
- * All rights reserved.
+ * \author John Reppy
  *
  * This code is based on public domain code.  It computes a CRC32 hash of
  * the VProc offsets, which is used to check that the runtime system and
  * compiler are using the same offset values.
  */
 
+/*
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ */
+
 #include "manticore-rt.h"
+#include "crc.h"
 
 #define POLYNOMIAL (uint32_t)0xedb88320
 
@@ -44,3 +49,4 @@ uint32_t CRC32 (void *buf, int nBytes)
     return Compute(crc, (unsigned char *)buf, nBytes);
 
 } /* end of CRC32 */
+

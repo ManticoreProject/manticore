@@ -49,7 +49,7 @@ functor GeneratorFn (G : GENERATOR) : sig
 		      | (SOME id) => (
 			  case (List.find (fn (id', h) => id = id') hooks)
 			   of (SOME(_, h)) => h ()
-			    | NONE => raise Fail "bogus placeholder"
+			    | NONE => raise Fail(concat["bogus placeholder \"", id, "\""])
 			  (* end case *))
 		    (* end case *);
 		    lp())

@@ -129,11 +129,12 @@ structure GenInlineLogH : GENERATOR =
    * descriptors.
    *)
     fun computeSigMap logDesc = let
-	  fun doEvent (LoadFile.EVT{sign, args, genId, ...}, map) = (case Map.find(map, sign)
+	  val isSourceEvt = LoadFile.hasAttr LoadFile.ATTR_SRC
+	  fun doEvent (evt as LoadFile.EVT{sign, args, ...}, map) = (case Map.find(map, sign)
 		 of SOME _ => map
 		  | NONE => let
 		      val argInfo = {
-			      isSource = genId,
+			      isSource = isSourceEvt evt,
 			      args = List.map (fn {loc, ty, ...} => (loc, ty)) args
 			    }
 		      in
@@ -145,6 +146,8 @@ structure GenInlineLogH : GENERATOR =
 	  end
 
     fun hooks (outS, logDesc : LoadFile.log_file_desc) = let
+	(* filter out the PML-only events *)
+	  val logDesc = LoadFile.filterEvents (not o (LoadFile.hasAttr LoadFile.ATTR_PML)) logDesc
 	  val sigMap = computeSigMap logDesc
 	  fun genericLogFuns () = Map.appi (genForSig outS) sigMap
 	  fun logFunctions () = LoadFile.applyToEvents (genLogMacro outS) logDesc

@@ -134,31 +134,31 @@ structure InitialBasis : sig
       infixr 8 -->
     in
     val lte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
-	       [int_lte, long_lte, integer_lte, float_lte, double_lte, char_lte, rune_lte, string_lte])
+	       [int_lte, long_lte, integer_lte, float_lte, double_lte])
     val lt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
-	       [int_lt, long_lt, integer_lt, float_lt, double_lt, char_lt, rune_lt, string_lt])
+	       [int_lt, long_lt, integer_lt, float_lt, double_lt])
     val gte = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
-	       [int_gte, long_gte, integer_gte, float_gte, double_gte, char_gte, rune_gte, string_gte])
+	       [int_gte, long_gte, integer_gte, float_gte, double_gte])
     val gt = (tyScheme(Types.Order, fn tv => (tv ** tv --> boolTy)),
-	       [int_gt, long_gt, integer_gt, float_gt, double_gt, char_gt, rune_gt, string_gt])
+	       [int_gt, long_gt, integer_gt, float_gt, double_gt])
 
     val plus = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
-	       [int_plus, long_plus, integer_plus, float_plus, double_plus])
+	       [int_plus, long_plus, float_plus, double_plus])
     val minus = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
-	       [int_minus, long_minus, integer_minus, float_minus, double_minus])
+	       [int_minus, long_minus, float_minus, double_minus])
     val times = (tyScheme(Types.Num, fn tv => (tv ** tv --> tv)),
-	       [int_times, long_times, integer_times, float_times, double_times])
+	       [int_times, long_times, float_times, double_times])
 
     val fdiv = (tyScheme(Types.Float, fn tv => (tv ** tv --> tv)),
 		[float_fdiv, double_fdiv])
 
     val div = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
-	       [int_div, long_div, integer_div])
+	       [int_div, long_div])
     val mod = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
-	       [int_mod, long_mod, integer_mod])
+	       [int_mod, long_mod])
 
     val neg = (tyScheme(Types.Num, fn tv => (tv --> tv)),
-		[int_neg, long_neg, integer_neg, float_neg, double_neg])
+		[int_neg, long_neg, float_neg, double_neg])
     end (* local *)
 
   (* create wrapper code for a high-level operation. *)
@@ -298,16 +298,6 @@ structure InitialBasis : sig
 		  long_neg,
 		  long_plus,
 		  long_times,
-		  integer_div,
-		  integer_gt,
-		  integer_gte,
-		  integer_lt,
-		  integer_lte,
-		  integer_minus,
-		  integer_mod,
-		  integer_neg,
-		  integer_plus,
-		  integer_times,
 		  float_fdiv,
 		  float_gt,
 		  float_gte,
@@ -326,18 +316,6 @@ structure InitialBasis : sig
 		  double_neg,
 		  double_plus,
 		  double_times,
-		  char_gt,
-		  char_gte,
-		  char_lt,
-		  char_lte,
-		  rune_gt,
-		  rune_gte,
-		  rune_lt,
-		  rune_lte,
-		  string_gt,
-		  string_gte,
-		  string_lt,
-		  string_lte,
 		  list_append,
 		  string_concat
 		]

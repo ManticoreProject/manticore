@@ -11,16 +11,33 @@
 structure Logging =
   struct
 
-#ifdef ENABLE_LOGGING
     _primcode (
+
+#ifdef ENABLE_LOGGING
+
+	define @NextLogEvent (vp : vproc) : addr(any) =
+(* FIXME *)
+	  ;
+
+      (* fill in the timestamp field of the event *)
+	define @LogTimestamp (ep : addr(any)) : () =
+(* FIXME *)
+	  ;
+
 @GENERIC-LOG-HLOPS@
 
 @LOG-HLOPS@
-      )
+
 #else /* !ENABLE_LOGGING */
 
 @DUMMY-LOG-HLOPS@
 
 #endif
+
+@WRAPPED-LOG-HLOPS@
+
+      )
+
+@LOG-FUNCTIONS@
 
   end
