@@ -160,14 +160,7 @@ datatype Prim =
 Sphere of vec * double * Surfspec list
 (* [pos of first virtex,(a,b,c),d, 2dvertices], surface type *)
 | Polymesh of (vec*vec * double * (double * double) list) list * Surfspec list
-(* pos, skirt radius, height surface type*)
-| Hyperboloid of vec * double * double * Surfspec list
-(* pos, rmax, [zmin, zmax], thetamax, surface type *)
-| Paraboloid of vec * double * (double * double) * double * Surfspec list
-(* pos, [majorrad,minorrad], [phimin,phimax], thetamax, surface type *)
-| Torus of vec * (double * double) * (double * double) * double * Surfspec list
-(* pos, (width, height, depth), surface type *)
-| Cuboid of vec * vec * Surfspec list
+
 
 
 datatype CSG = 
@@ -271,48 +264,7 @@ fun implicit (pos,dir,obj : CSG) = case obj of
 	  end
     end)
   | Polymesh (poly,surf) =>  polymeshIntersect (List.map implicitPolymesh (List.map (fn (vpos,x,d,polygon) => (vpos,x,d,polygon,pos,vecnormlz(dir))) poly))
-  | Hyperboloid (center,skirt,height,s)=> (let 
-         val (x0,y0,z0) = vecsub pos center
-	 val bm = vecdot (x0,y0,z0) dir
-	 val (x1,y1,z1) = dir
-	 val a = x1*x1 + y1*y1 - z1*z1;
-	 val b = x0*x1 + y0*y1 - z0*z1;
-	 val c = x0*x0 + y0*y0 - z0*z0;
-	 val disc = b*b - 4.0*a*c;
-       in
-        if (disc < 0.0) then (false,0.0)
-        else let 
-            val slo = ~bm - (sqrt disc);
-	  val shi = ~bm + (sqrt disc);
-	  in
-	  if (slo < 0.0) then  (* pick smallest positive intersection *)
-	      if (shi < 0.0) then (false, 0.0)
-	      else (true, shi)
-	  else (true, slo)
-	  end
-    end)
-  | Paraboloid (center,rad,(zmin,zmax),t,s) => (let 
-         val (x0,y0,z0) = vecsub pos center
-         val bm = vecdot (x0,y0,z0) dir
-	 val (x1,y1,z1) = dir
-	 val a = x1*x1 + y1*y1
-	 val b = x0*x1 + y0*y1 + z1
-	 val c = x0*x0 + y0*y0 + z0
-	 val disc = b*b - 4.0*a*c
-        in
-        if (disc < 0.0) then (false,0.0)
-        else let 
-            val slo = ~bm - (sqrt disc);
-	  val shi = ~bm + (sqrt disc);
-	  in
-	  if (slo < 0.0) then  (* pick smallest positive intersection *)
-	      if (shi < 0.0) then (false, 0.0)
-	      else (true, shi)
-	  else (true, slo)
-	  end
-    end)
-  | Torus (p,(majorrad,minorrad),(phimin,phimax),t,s) => (true,0.0)
-  | Cuboid (p,(width,height,depth),s) => (true,0.0)
+  
   )
 | Union (p,c) => (true,0.0)
 | Intersection (p,c) => (true,0.0)
@@ -322,10 +274,7 @@ fun implicit (pos,dir,obj : CSG) = case obj of
 fun Primsurf (p) = (case p of
     Sphere (center,rad,surf) => surf
   | Polymesh (poly,surf) => surf
-  | Hyperboloid (center,skirt,height,s)=> s
-  | Paraboloid (center,rad,(zmin,zmax),t,s) => s
-  | Torus (p,(majorrad,minorrad),(phimin,phimax),t,s) => s
-  | Cuboid (p,(width,height,depth),s) => s
+  
   )
 
 fun CSGsurf (obj) = case obj of prim p => Primsurf(p)
@@ -364,10 +313,6 @@ fun polyNorm (poly : (vec* vec * double * (double * double) list) list,pos) =
 fun Primnorm (pos,p) = (case p of
     Sphere (center,rad,surf) => vecscale (vecsub pos center) (1.0/rad)
   | Polymesh (poly,surf) => polyNorm(poly,pos)
-  | Hyperboloid (center,skirt,height,s)=> vecscale (vecsub pos center) (1.0/skirt)
-  | Paraboloid (center,rad,(zmin,zmax),t,s) => vecscale (vecsub pos center) (1.0)
-  | Torus (p,(majorrad,minorrad),(phimin,phimax),t,s) => vecscale (vecsub pos p) (1.0)
-  | Cuboid (p,(width,height,depth),s) => vecscale (vecsub pos p) (1.0)
   )
 
 fun CSGnorm (pos, obj) = case obj of prim p => Primnorm(pos, p)
