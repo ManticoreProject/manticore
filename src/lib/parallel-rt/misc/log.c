@@ -19,6 +19,7 @@
 #include "inline-log.h"
 #include "os-threads.h"
 #include "vproc.h"
+#include "atomic-ops.h"
 
 static int	LogFD = -1;
 
@@ -93,28 +94,35 @@ void InitLog (VProc_t *vp)
 
 /* SwapLogBuffers:
  *
- * Swap the current log buffer with the previous one after writing the previous
- * buffer to disk.
+ * Swap the current log buffer with the previous one and then write it to
+ * disk.
  */
-void SwapLogBuffers (VProc_t *vp)
+void SwapLogBuffers (VProc_t *vp, LogBuffer_t *curBuf)
 {
     LogBuffer_t	*nextBuf;
 
     nextBuf = vp->prevLog;
-    if (nextBuf->next != 0) {
+
+/* FIXME: in the software-polling version, we don't need the CAS, since there
+ * is no preemption.
+ */
+
+  // atomically set the current log buffer to be nextBuf; if this operation
+  // fails, then we must have been preempted and the signal handler did the swap.
+    if (CompareAndSwapPtr(&(vp->log), curBuf, nextBuf) == curBuf) {
+	vp->prevLog = curBuf;
+      // write the buffer to a file
 	ssize_t nb;
 	do {
-	    nb = write (LogFD, nextBuf, LOGBLOCK_SZB);
+	    nb = write (LogFD, curBuf, LOGBLOCK_SZB);
 	    if ((nb < 0) && (errno != EINTR)) {
 		Error("Failure writing log data; errno = %d\n", errno);
 		break;
 	    }
 	} while (nb < 0);
+      // reset curBuf's next pointer for its next use
+	curBuf->next = 0;
     }
-    vp->prevLog = vp->log;
-    vp->log = nextBuf;
-
-    nextBuf->next = 0;
 
 }
 
@@ -128,10 +136,6 @@ void FinishLog ()
   /* first flush out any remaining vproc buffers. */
     for (int i = 0;  i < NumVProcs;  i++) {
 	VProc_t *vp = VProcs[i];
-	if (vp->prevLog->next != 0) {
-	    write (LogFD, vp->prevLog, LOGBLOCK_SZB);
-	    vp->prevLog->next = 0;
-	}
 	if (vp->log->next != 0) {
 	    write (LogFD, vp->log, LOGBLOCK_SZB);
 	    vp->log->next = 0;
