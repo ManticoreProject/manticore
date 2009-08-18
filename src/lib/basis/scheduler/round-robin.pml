@@ -70,7 +70,9 @@ structure RoundRobin =
 		let item : Option.option = VProcQueue.@dequeue-from-atomic(self)
 		case item
 		 of Option.NONE => 
-		    let currTime : Time.time = Time.@now ()
+(* FIXME: figure out why vproc timeouts are causing cml benchmarks to freeze *)
+throw dispatch ()
+(*		    let currTime : Time.time = Time.@now ()
 	            let nextSleepingDeadline : Time.time = apply nextSleepingDeadline ()
                     if I64Eq (nextSleepingDeadline, 0:long) then
 			do VProc.@sleep-from-atomic (self)
@@ -81,6 +83,7 @@ structure RoundRobin =
 			let timeToSleepUsec : Time.time = I64Sub (nextSleepingDeadline, currTime)
 			do VProc.@nanosleep-from-atomic (self, U64Mul (timeToSleepUsec, 1000:long))
 			throw dispatch ()
+*)
 		  | Option.SOME(qitem : VProcQueue.queue_item) =>
 		    do SchedulerAction.@dispatch-from-atomic (self, switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
 		    throw dispatch()
