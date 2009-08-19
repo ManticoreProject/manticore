@@ -440,10 +440,9 @@ void VProcNanosleep (VProc_t *vp, Time_t nsec)
     MutexLock (&(vp->lock));
 // QUESTION: do we really need an AtomicWriteValue here, since we are inside a lock?
 	AtomicWriteValue (&(vp->sleeping), M_TRUE);
-	while (CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake)) {
-	    if (vp->landingPad != M_NIL)
-		break;
-	}
+	while ((vp->landingPad == M_NIL)
+	&& CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake))
+	    continue;
 	AtomicWriteValue (&(vp->sleeping), M_FALSE);
     MutexUnlock (&(vp->lock));
 
