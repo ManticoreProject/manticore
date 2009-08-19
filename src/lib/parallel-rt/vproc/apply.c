@@ -71,17 +71,17 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	      /* request a minor GC */
 		MinorGC (vp);
 	    }
-
-	    if (limitPtr == 0) {
+	  /* check for asynchronous signals */
+	    if (vp->limitPtr == 0) {
 #ifndef NDEBUG
 	      if (DebugFlg)
 		SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
 #endif
 	      /* an asynchronous signal has arrived */
 	        vp->sigPending = M_TRUE;
+		vp->limitPtr = LimitPtr(vp);
 	    }
-
-	  /* check for pending signals */
+	  /* is there a pending signal that we can deliver? */
 	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
 		Value_t resumeK = AllocUniform (vp, 3,
 					       PtrToValue(&ASM_Resume),
