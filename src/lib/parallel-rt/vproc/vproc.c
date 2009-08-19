@@ -43,7 +43,6 @@ static pthread_key_t	VProcInfoKey;
 static Barrier_t	InitBarrier;	/* barrier for initialization */
 
 /********** Globals **********/
-int			NumHWThreads;
 int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
@@ -109,7 +108,9 @@ void VProcInit (bool isSequential, Options_t *opts)
 #endif
 
 #ifndef NDEBUG
-    SayDebug("%d/%d processors allocated to vprocs\n", NumVProcs, NumHWThreads);
+    SayDebug("%d/%d hardware threads allocated to vprocs (%s)\n",
+	NumVProcs, NumHWThreads,
+	denseLayout ? "dense layout" : "non-dense layout");
 #endif
 
 #ifdef ENABLE_LOGGING
@@ -122,7 +123,7 @@ void VProcInit (bool isSequential, Options_t *opts)
 	Die ("unable to create VProcInfoKey");
     }
 
-  // Initialize vprocs */
+  /* Initialize vprocs */
     BarrierInit (&InitBarrier, NumVProcs+1);
 
     InitData_t *initData = NEWVEC(InitData_t, NumVProcs);
@@ -150,7 +151,7 @@ void VProcInit (bool isSequential, Options_t *opts)
 	int nd = 0;
 	int core = 0;
 	for (int i = 0;  i < NumVProcs;  i++) {
-	    initData[nd].loc = Location(nd, core, 0);
+	    initData[i].loc = Location(nd, core, 0);
 	    if (++nd == NumHWNodes) {
 		nd = 0;
 		core++;
@@ -162,7 +163,7 @@ void VProcInit (bool isSequential, Options_t *opts)
 	int core = 0;
 	int thd = 0;
 	for (int i = 0;  i < NumVProcs;  i++) {
-	    initData[nd].loc = Location(nd, core, thd);
+	    initData[i].loc = Location(nd, core, thd);
 	    if (++nd == NumHWNodes) {
 		nd = 0;
 		if (++core == NumCoresPerNode) {
