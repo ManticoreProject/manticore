@@ -44,8 +44,8 @@ STATIC_INLINE Addr_t LimitPtr (VProc_t *vp)
 
 STATIC_INLINE Addr_t SetLimitPtr (VProc_t *vp, Addr_t newLimitPtr)
 {
-  Value_t oldLimitPtr = AtomicExchangeValue((Value_t*)&(vp->limitPtr), AddrToValue(newLimitPtr));
-  return ValueToAddr(oldLimitPtr);
+    Value_t oldLimitPtr = AtomicExchangeValue((Value_t*)&(vp->limitPtr), AddrToValue(newLimitPtr));
+    return ValueToAddr(oldLimitPtr);
 }
 
 /* return true of the given address is within the given vproc heap */

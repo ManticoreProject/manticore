@@ -94,8 +94,9 @@ void VProcInit (bool isSequential, Options_t *opts)
 #endif
 
 #ifndef NDEBUG
-    SayDebug("%d/%d processors allocated to vprocs (%s)\n", NumVProcs, NumHWThreads,
-	         denseLayout ? "dense layout" : "non-dense layout");
+    SayDebug("%d/%d processors allocated to vprocs (%s)\n",
+	NumVProcs, NumHWThreads,
+	denseLayout ? "dense layout" : "non-dense layout");
 #endif
 
 #ifdef ENABLE_LOGGING
@@ -340,7 +341,7 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
  */
 void VProcZeroLimitPtr (VProc_t *vp)
 {
-  SetLimitPtr(vp, 0);
+    SetLimitPtr(vp, 0);
 }
 
 /*! \brief interrupt a remote vproc to take part in a global collection.
@@ -362,11 +363,12 @@ void VProcPreempt (VProc_t *self, VProc_t *vp)
 {
   /*
 #ifndef NDEBUG
-    if (DebugFlg)
+    if (DebugFlg) {
 	if (self == 0)
-	  SayDebug("Timer interrupt on vproc %d from %d.\n", self->id, vp->id);
+	    SayDebug("Timer interrupt on vproc %d from %d.\n", self->id, vp->id);
 	else
-	  SayDebug("[%2d] Signaling vproc %d.\n", self->id, vp->id);
+	    SayDebug("[%2d] Signaling vproc %d.\n", self->id, vp->id);
+    }
 #endif
   */
     VProcZeroLimitPtr(vp);
@@ -402,14 +404,15 @@ void VProcSleep (VProc_t *vp)
 
 #define ONE_SECOND         1000000000L
 
-static struct timespec TimespecAdd (struct timespec time1, struct timespec time2)
+/* add two timespec values */
+STATIC_INLINE struct timespec TimespecAdd (struct timespec time1, struct timespec time2)
 {
     struct timespec result;
     result.tv_sec = time1.tv_sec + time2.tv_sec;
     result.tv_nsec = time1.tv_nsec + time2.tv_nsec;
-    if (result.tv_nsec > ONE_SECOND) {			/* Carry? */
+    while (result.tv_nsec > ONE_SECOND) {
         result.tv_sec++;  
-	result.tv_nsec = result.tv_nsec - ONE_SECOND;
+	result.tv_nsec -= ONE_SECOND;
     }
     return result;
 }
@@ -420,7 +423,7 @@ static struct timespec TimespecAdd (struct timespec time1, struct timespec time2
  */
 void VProcNanosleep (VProc_t *vp, Time_t nsec)
 {
-    struct timespec delta, currTime, timeToWake;
+    struct timespec delta, currTime;
 
     delta.tv_sec = nsec / ONE_SECOND;
     delta.tv_nsec = nsec % ONE_SECOND;
@@ -432,21 +435,25 @@ void VProcNanosleep (VProc_t *vp, Time_t nsec)
 #ifndef NDEBUG
     if (DebugFlg)
         SayDebug ("[%2d] VProcNanosleep for %lu seconds and %lu nanoseconds\n", 
-		                 vp->id, (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec);
+	    vp->id, (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec);
 #endif
 
-    MutexLock(&(vp->lock));
-	struct timeval t;
-	gettimeofday (&t, 0);
-	currTime.tv_sec = t.tv_sec;
-	currTime.tv_nsec = t.tv_usec * 1000;
-	timeToWake = TimespecAdd (delta, currTime); // wall clock time indicating when the vproc should wake
+    struct timeval t;
+    gettimeofday (&t, 0);
+    currTime.tv_sec = t.tv_sec;
+    currTime.tv_nsec = t.tv_usec * 1000;
+// wall clock time indicating when the vproc should wake
+    struct timespec timeToWake = TimespecAdd (delta, currTime);
+
+    MutexLock (&(vp->lock));
+// QUESTION: do we really need an AtomicWriteValue here, since we are inside a lock?
 	AtomicWriteValue (&(vp->sleeping), M_TRUE);
-	while (CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake))
-	  if (vp->landingPad != M_NIL)
-	    break;
+	while (CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake)) {
+	    if (vp->landingPad != M_NIL)
+		break;
+	}
 	AtomicWriteValue (&(vp->sleeping), M_FALSE);
-    MutexUnlock(&(vp->lock));
+    MutexUnlock (&(vp->lock));
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -467,6 +474,7 @@ static void IdleVProc (VProc_t *vp, void *arg)
 #endif
 
     VProcSleep(vp);
+
   /* Activate scheduling code on the vproc. */
     Value_t envP = vp->schedCont;
     Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
