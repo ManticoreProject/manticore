@@ -132,7 +132,7 @@ void VProcInit (bool isSequential, Options_t *opts)
     else if (NumVProcs <= NumHWNodes) {
       /* at most one vproc per node */
 	for (int nd = 0;  nd < NumVProcs;  nd++)
-	    initData[i].loc = Location(nd, 0, 0);
+	    initData[nd].loc = Location(nd, 0, 0);
     }
     else if (NumVProcs <= NumHWCores) {
       /* at most one vproc per core */
