@@ -74,7 +74,7 @@ typedef struct {
     Location_t		loc;
 } LocArg_t;
 
-/*! \brief initialize a thread at a given location */
+/*! \brief initialize an OS thread at a given location */
 static void *InitWithLocation (void *arg)
 {
     LocArg_t *locArg = (LocArg_t *)arg;
@@ -86,7 +86,7 @@ static void *InitWithLocation (void *arg)
     CPU_ZERO(&cpus);
     CPU_SET(LogicalId(locArg->loc), &cpus);
     if (sched_setaffinity (0, sizeof(cpu_set_t), &cpus) == -1) {
-	Warning("**** unable to set affinity\n");
+	Warning("unable to set affinity to processor %d\n", LogicalId(locArg->loc));
     }
 #endif
 
