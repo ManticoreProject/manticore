@@ -337,13 +337,6 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
 
 }
 
-/*! \brief set a vproc's limit pointer to zero
- */
-void VProcZeroLimitPtr (VProc_t *vp)
-{
-    SetLimitPtr(vp, 0);
-}
-
 /*! \brief interrupt a remote vproc to take part in a global collection.
  *  \param self the host vproc.
  *  \param vp the remote vproc.
@@ -353,7 +346,7 @@ void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
     vp->globalGCPending = true;
     assert(vp->currentFLS != M_NIL);
     VProcSendSignal(self, vp, vp->currentFLS, vp->dummyK);
-    VProcZeroLimitPtr(vp);
+    SetLimitPtr (vp, 0);
 }
 
 /*! \brief send a preemption to a remote vproc.
@@ -371,7 +364,7 @@ void VProcPreempt (VProc_t *self, VProc_t *vp)
     }
 #endif
   */
-    VProcZeroLimitPtr(vp);
+    SetLimitPtr (vp, 0);
 }
 
 /*! \brief put the vproc to sleep until a signal arrives
