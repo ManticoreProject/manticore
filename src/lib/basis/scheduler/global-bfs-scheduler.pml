@@ -17,9 +17,6 @@ structure GlobalBFSScheduler (* :
 
     _primcode (
 
-#define MAX_STEAL_ATTEMPTS          1000
-#define MAX_SLEEP_TIME_USECS        2000000:long
-
       define @new-worker (readyQ : LockedQueue.queue / exh : exh) : cont (vproc, ImplicitThread.worker) =
 	  cont schedulerLoop (self : vproc, s : PT.signal) =
             cont run (thd : ImplicitThread.thread) = 
@@ -27,27 +24,19 @@ structure GlobalBFSScheduler (* :
               do ImplicitThread.@run-from-atomic (self, act, thd / exh)
               throw exh (Match)
 
-	    cont dispatch (numStealAttempts : int, sleepTime : Time.time) =
+	    cont dispatch () =
 	      let thd : Option.option = LockedQueue.@dequeue-from-atomic (readyQ)
 	      case thd
 	       of Option.NONE =>
-                  if I32Lte (numStealAttempts, MAX_STEAL_ATTEMPTS) then
-		      throw dispatch (I32Add (numStealAttempts, 1), sleepTime)
-		  else
-		      let _ : vproc = SchedulerAction.@sleep-in-atomic (self, I64Add (sleepTime, 100:long))
-		      let sleepTime : Time.time = if U64Lt (sleepTime, MAX_SLEEP_TIME_USECS) then
-						      return (U64Mul (sleepTime, 2:long))
-						  else
-						      return (MAX_SLEEP_TIME_USECS)
-
-		      throw dispatch (0, sleepTime)
+                  let _ : vproc = SchedulerAction.@yield-in-atomic (self)
+		  throw dispatch ()
 		| Option.SOME(thd : ImplicitThread.thread) =>
 		  throw run (thd)
 	      end
 
 	   case s
 	    of PT.STOP =>
-	       throw dispatch (0, 1:long)
+	       throw dispatch ()
 	     | PT.PREEMPT(k : PT.fiber) =>
 	       let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
                let _ : vproc = SchedulerAction.@yield-in-atomic (self)

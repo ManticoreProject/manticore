@@ -9,8 +9,28 @@
 structure ImplicitThread (* :
   sig
 
+  (* Work groups
+   * 
+   * Work groups are collections of workers that execute implicit threads. Differet work groups may employ different 
+   * scheduling policies to determine the order in which to execute threads. This module does not define a particular
+   * scheduling policy, but rather provides a uniform interface between client code and scheduling code.
+   *
+   *)
     type work_group
 
+  (* Scoping rules and the work group stack
+   *
+   * We use a dynamic scoping discipline for work groups. At any instant, exactly one work group is in scope, which
+   * we call the current work group. The current work group serves as the target for our implicitly-threaded
+   * scheduling operations. For instance, the call to ImplicitThread.@spawn(thd) enqueues the given thread on
+   * the current work group. 
+   *
+   * Client code may assign the current work group temporarily by using runOnWorkGroup. This operation enforces 
+   * our dynamic scoping rule by restoring the previous worker once the given thunk has returned its value. We 
+   * implement this behaviour by dynamically maintaining a stack of work work group references. We also provide
+   * an operation called defaultWorkGroupBegin, which initializes the work-group stack. We use this operation
+   * in the spawn operation for CML threads.
+   *)
     val runOnWorkGroup : work_group * (unit -> 'a) -> 'a
     val currentWorkGroup : unit -> work_group
     val defaultWorkGroupBegin : work_group -> unit
@@ -180,6 +200,7 @@ structure ImplicitThread (* :
 
 	(* push the given work group on the top of the work-group stack *)
 	  define (* inline *) @push-work-group (group : work_group / exh : exh) : () =
+              do @seed-ite (/ exh)
 	      let ite : FLS.ite = FLS.@get-ite ( / exh)
 	      let newStk : List.list = List.CONS(group, SELECT(ITE_STACK_OFF, ite))
 	      do FLS.@set-ite (alloc (newStk, SELECT(ITE_CANCELABLE_OFF, ite)) / exh)
@@ -323,13 +344,11 @@ structure ImplicitThread (* :
 	  return ()
 	;
 
-    (* begin the dynamic scope of a work group *)
+    (* enter the dynamic scope of a work group *)
       define (* inline *) @work-group-begin (group : work_group / exh : exh) : () =
 	  do @migrate-to-top-level-sched (/ exh)
-	  do @seed-ite (/ exh)
 	  do @push-work-group (group / exh)
-	(* assign the continuation of the current thread to the first thread on the work group's 
-	 * ready queue *)
+	(* migrate the current thread to the given work group *)
 	  cont k (x : unit) = return ()
 	  let thd : thread = @new-thread (k / exh)
 	  do @spawn-thread (thd / exh)
@@ -356,7 +375,6 @@ structure ImplicitThread (* :
 	;
 
       define @default-work-group-begin (defaultGroup : work_group / exh : exh) : unit =
-	  do @seed-ite (/ exh)
 	  do @push-work-group (defaultGroup / exh)
 	  return (UNIT)
 	;

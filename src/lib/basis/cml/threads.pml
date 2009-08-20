@@ -31,8 +31,8 @@ structure Threads (*: sig
 		(* in *)
 		  let defaultImplicitThreadSched : ImplicitThread.work_group = 
 						   @get-default-implicit-thread-sched (UNIT / exh)
-                (* run the body of the thread with the default implicit-thread scheduler in scope *)
-                  ImplicitThread.@run-on-work-group (defaultImplicitThreadSched, f / exh)
+                  let _ : unit = ImplicitThread.@default-work-group-begin (defaultImplicitThreadSched / exh)
+                  apply f (UNIT / exh)
 	      (* in *)
 		SchedulerAction.@stop ()
 	    (* in *)
