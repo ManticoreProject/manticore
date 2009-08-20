@@ -154,7 +154,12 @@ structure Main (* : sig
     fun show pr = compose (compose (app (fn s => (pr s; pr "\n"))) plot) alive
 
     val _ = PrimIO.readInt ()
-    val () = show print (nthgen(gun, PrimIO.readInt()))
+    val N = PrimIO.readInt()
+    val b = Time.now ()
+(* uncomment "show print" below if you wish to see the output *)
+    val _ = (*show print*) (nthgen(gun, N))
+    val e = Time.now ()
+    val _ = Print.printLn (Time.toString (e-b))
 
   end (* Life *)
 
