@@ -67,7 +67,7 @@ fi
 
 PROG_EXE=$BENCH_NAME-run
 
-MC="mc"
+MC="pmlc"
 # compiler flags
 MCFLAGS=""
 SEQFLAGS="$MCFLAGS -Csequential=true"
@@ -82,7 +82,7 @@ if [ -z "$SEQ_PML_PATH" ] ; then
 fi
 SEQ_PROG_EXE=$BENCH_NAME-seq
 echo "Compiling sequential program: $MC -o $SEQ_PROG_EXE $SEQFLAGS $SEQ_PML_PATH"
-$MC -o $SEQ_PROG_EXE $SEQFLAGS $SEQ_PML_PATH /dev/null
+$MC -o $SEQ_PROG_EXE $SEQFLAGS $SEQ_PML_PATH > /dev/null
 
 # metadata
 ARCH=$( uname -m )
