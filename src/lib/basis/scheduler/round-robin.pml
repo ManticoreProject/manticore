@@ -22,7 +22,9 @@ structure RoundRobin =
 		fun enq (self : vproc, fls : FLS.fls, k : PT.fiber) : () = VProcQueue.@enqueue-from-atomic (self, fls, k)
 		let item : Option.option = VProcQueue.@dequeue-from-atomic(self)
 		case item
-		 of Option.NONE => throw dispatch ()
+		 of Option.NONE => 
+		    do VProc.@sleep-from-atomic (self)
+                    throw dispatch ()
 		  | Option.SOME(qitem : VProcQueue.queue_item) =>
 		    do SchedulerAction.@dispatch-from-atomic (self, switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
 		    throw dispatch()
