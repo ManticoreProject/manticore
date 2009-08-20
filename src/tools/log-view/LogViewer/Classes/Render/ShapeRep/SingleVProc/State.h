@@ -32,4 +32,7 @@
 		    end:(event *)endVal;
 
 
+// Print yourself using NSLog
+- (void)nslog;
+
 @end

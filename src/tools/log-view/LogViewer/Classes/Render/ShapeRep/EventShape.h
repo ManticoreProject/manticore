@@ -6,6 +6,7 @@
 */
 
 #import <Cocoa/Cocoa.h>
+#define TINY_WIDTH ( 1 )
 
 
 typedef enum {

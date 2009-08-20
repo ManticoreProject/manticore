@@ -14,6 +14,9 @@ struct TaggedDetail_struct;
 @class TimeDisplay;
 @class DetailInfoController;
 @class EventShape;
+@class GroupFilter;
+@class Summary;
+@class SummaryView;
 struct LogDescFile;
 
 struct LogInterval {
@@ -54,6 +57,10 @@ enum ZoomLevel {
     double zoomFactor;
     
     IBOutlet NSPanel *infoPanel;
+    
+    Summary *summary;
+    SummaryView *summaryView;
+    IBOutlet NSView *summaryViewTarget;
 }
 
 
@@ -70,7 +77,7 @@ enum ZoomLevel {
 @property (readwrite, assign) struct LogInterval *logInterval;
 @property (readonly) struct LogFileDesc *logDesc;
 @property (readonly) BOOL enabled;
-
+@property (readonly) GroupFilter *filter;
 
 
 - (void)flush;

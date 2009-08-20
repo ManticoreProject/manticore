@@ -357,7 +357,7 @@ int sillyNumber = 0;
  [band setStateStartColor:
  [self colorForState:stateGroup->StartState()]];
  }
- }
+ } calloc
  }
  
  // Warning, NOT an ELSE clause!! must be an if. see logic above.

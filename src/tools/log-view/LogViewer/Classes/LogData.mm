@@ -46,6 +46,7 @@ private:
 
 @synthesize desc;
 @synthesize dependentMap;
+@synthesize allStates;
 
 - (NSArray *)dependentDetails
 {
@@ -80,6 +81,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
     logDesc->PreOrderWalk(v);
     
     allStates = v->States();
+    
     delete v;
     
     int LogBufSzB = LOGBLOCK_SZB;
@@ -92,6 +94,8 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
     // Protect this header, it could be garbage collected when fileHeader is.
     header = (LogFileHeader_t *) malloc(fileHeader.length);
     memcpy(header, fileHeader.bytes, fileHeader.length);
+    
+    // NSLog(@"starttime for file is at %qu", GetTimestamp(&header->startTime, header));
 
     // check the header
     if (header->magic != LOG_MAGIC) [Exceptions raise:@"bogus magic number"];
@@ -151,6 +155,7 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
         else
 	{
     	   // This vProc exists, simply add the block
+	    assert( vProcs_c_array[log->vpId].events != 0 );
 	   [vProcs_c_array[log->vpId] readBlock:log numEvents:NEventsPerBuf];
         }
     }
@@ -298,7 +303,7 @@ BOOL containsEventDescAndIsDisabled(ObjCGroup *g, EventDesc *eventDesc)
     else
     {
 	if (g.kind != EVENT_GROUP)
-	    return NO;
+	    return NO; free
 	else
 	{
 	    InternalGroup *G = (InternalGroup *)g;

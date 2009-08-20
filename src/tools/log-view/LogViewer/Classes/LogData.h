@@ -44,6 +44,7 @@ struct LogFileDesc;
 - (uint64_t)firstTime;
 - (uint64_t)lastTime;
 
+@property (readonly) NSArray *allStates;
 @property (readonly) NSArray *dependentDetails;
 @property (readonly) struct LogFileDesc *desc;
 @property (readonly) NSString	*filename;

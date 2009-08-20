@@ -12,6 +12,7 @@
 #import "Detail.h"
 #import "VProcMaps.h"
 #import "Box.h"
+#import "Utils.h"
 
 /// The number of details for each event on average.
 /// The value need not be exact, it is used to guess an initial size
@@ -64,8 +65,10 @@ static inline int min( int a, int b)
 	     allStates:(NSArray *)allStates
 	  dependentMap:(DependentMap *)dependentMapVal
 {
+
     if (![super init]) return nil;
     
+    first_event_times = [[NSMutableArray alloc] init];
     // Initialize start and end to the latest and earliest times respectively
     start = -1;
     end = 0;
@@ -81,24 +84,27 @@ static inline int min( int a, int b)
     int events_to_read = min(n, logBuffer->next);
     numEvents = 0;
     events_size = MAX_NUM_EVENTS;// events_to_read
-    events = (event *)malloc(sizeof(event) * events_size);
-    
+    events = (event *)[Utils calloc:events_size size:sizeof(event)];
+
+    event * e = events;
     // The array of details and the initial states are related
     // They must be initialized in tandem
 #pragma mark Detail and State Initialization
     
     numDetails = 0;
     details_size = ESTIMATED_DETAILS_PER_EVENT * events_size + allStates.count;
-    details = (TaggedDetail_struct * *) malloc(sizeof(TaggedDetail_struct *) * details_size);
+    details = (TaggedDetail_struct * *) [Utils calloc:details_size size:sizeof(TaggedDetail_struct *)];
+
 
     for (Box *stateGroupBox in allStates)
     {
 	
 	StateGroup *stateGroup = (StateGroup *) [stateGroupBox unbox];
-	details[numDetails] = (TaggedDetail_struct *) malloc
-		    (sizeof(TaggedDetail_struct));
+	details[numDetails] = (TaggedDetail_struct *) [Utils calloc:1
+							       size:sizeof(TaggedDetail_struct)];
 	details[numDetails]->type = stateGroup;
 	details[numDetails]->data.state.state = stateGroup->StartState();
+	//NSLog(@"StateGroup %s has start state %d", stateGroup->Desc(), details[numDetails]->data.state.state);
 	details[numDetails]->data.state.start = NULL; //< The detail starts at the begginig of time
 	details[numDetails]->data.state.end = NULL;   //< The detail ends at the end of time
 	
@@ -172,15 +178,18 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
     if (d->n_dsts == 0)
     {
         // Create the array
-        d->dsts = (Dependent_Dst **) malloc
-        (d->dsts_array_size = DSTS_ARRAY_INC);
+        d->dsts = (Dependent_Dst **) [Utils calloc:(d->dsts_array_size = DSTS_ARRAY_INC)
+					      size:sizeof(Dependent_Dst *)];
     }
     else if (d->n_dsts == d->dsts_array_size)
     {
         // Grow the array
-        d->dsts = (Dependent_Dst **) realloc
-        (d->dsts,
-         sizeof(event) * (d->dsts_array_size = d->dsts_array_size + DSTS_ARRAY_INC));
+        d->dsts = (Dependent_Dst **) [Utils realloc:d->dsts
+					       size:sizeof(Dependent_Dst *) * (d->dsts_array_size = d->dsts_array_size + DSTS_ARRAY_INC)];
+    }
+    else
+    {
+	assert (d->n_dsts < d->dsts_array_size);
     }
 }
     
@@ -194,8 +203,9 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
     for (int i = 0; i < n; ++i, ++numEvents)
     {
 	// Add the event
-	event temp1;
-	temp1.timestamp = events[numEvents].timestamp;
+	//event temp1;
+	//temp1.timestamp = events[numEvents].timestamp;
+	event * e = events;
 	event *cur_event = &events[numEvents];
 
 	cur_event->timestamp = GetTimestamp(&array[i].timestamp, header);
@@ -204,6 +214,22 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 	// Recompute start and end times
 	if (cur_event->timestamp >= end) end = cur_event->timestamp;
 	if (cur_event->timestamp <= start) start = cur_event->timestamp;
+	
+	if (i == 0)
+	{
+	    // cur_event is the first in its block; check that we havn't seen
+	    // it before, and add it to the array of first events
+	    for (NSNumber *n in first_event_times)
+	    {
+		if (n.unsignedLongLongValue == cur_event->timestamp)
+		{
+		    NSLog(@" ************ VProc.mm: DUPLICATE BLOCK DETECTED IN LOGFILE");
+		    return;
+		}
+	    }
+	    NSNumber *n = [NSNumber numberWithUnsignedLongLong:cur_event->timestamp];
+	    [first_event_times addObject:n];
+	}
 
 	
 	// Add the associated details
@@ -223,10 +249,10 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 	n_more_details += n_dependent_groups;
 	if (numDetails + n_more_details > details_size)
 	{
-	    details = (TaggedDetail_struct * *) realloc(
-		details,
-		(details_size = details_size + n_more_details + DSTS_ARRAY_INC) * sizeof(TaggedDetail_struct *)
-		);
+	    details = (TaggedDetail_struct * *)
+		[Utils realloc:details
+			  size:(details_size = details_size + n_more_details + DSTS_ARRAY_INC) *
+				    sizeof(TaggedDetail_struct *)];
 	}
 
 	
@@ -235,7 +261,6 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 
 
 	    // FIXME XXX
-	
 	
 	
 	
@@ -250,8 +275,10 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 		if (mostRecentStateDetail == NULL)
 		    [Exceptions raise:@"States were not properly initialized"];
 
-		details[numDetails] = (TaggedDetail_struct *) malloc(sizeof(struct TaggedDetail_struct));
+		details[numDetails] = (TaggedDetail_struct *) [Utils calloc:1
+								       size:sizeof(struct TaggedDetail_struct)];
 		details[numDetails]->type = stateGroup;
+		details[numDetails]->eventDesc = eventDesc;
 		struct State_Detail *next_stateDetail = &(details[numDetails]->data.state);
 
 		next_stateDetail->state = stateGroup->NextState
@@ -259,7 +286,21 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 
 		// NSLog(@"VProc.mm: mostRecentStateDetail = %#x", mostRecentStateDetail);
 		mostRecentStateDetail->end = cur_event;
+		if (mostRecentStateDetail->start != NULL)
+		{
+		    if (mostRecentStateDetail->start->timestamp > cur_event->timestamp)
+		    {
+			NSLog(@"********** BAD: ON VPROC %d AN EVENT ENDED BEFORE IT STARTED.\n start at %qu end at %qu\n IGNORING. starttime",
+			      vpId, mostRecentStateDetail->start->timestamp, mostRecentStateDetail->end->timestamp);
+			// assert ( 0 );
+		    }
+		    
+		}
 		//NSLog(@"VProc.mm: found state event at time %qu", cur_event->timestamp);
+		if (cur_event->timestamp == 0)
+		{
+		    NSLog(@"0 timestampped event %x", cur_event);
+		}
 		next_stateDetail->start = cur_event;
 		next_stateDetail->end = NULL;
 		[stateMap addDetail:&details[numDetails]->data.state forStateGroup:stateGroup];
@@ -275,8 +316,10 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 		IntervalGroup *intervalGroup = intervalGroups->at(i);
 		if (eventDesc == intervalGroup->Start())
 		{
-		    details[numDetails] = (TaggedDetail_struct *) malloc(sizeof(struct TaggedDetail_struct));
+		    details[numDetails] = (TaggedDetail_struct *) [Utils calloc:1
+									   size:sizeof(struct TaggedDetail_struct)];
 		    details[numDetails]->type = intervalGroup;
+		    details[numDetails]->eventDesc = eventDesc;
 		    struct Interval_Detail *next_intervalDetail =
 			&(details[numDetails++]->data.interval);
 		    next_intervalDetail->start = cur_event;
@@ -317,12 +360,14 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 		uint64_t ident = GetDependentId(cur_event, eventDesc);
 			
 		TaggedDetail_struct *d = [dependentMap getDetailForIdentifier:ident];
-		NSLog(@"Found a dependent with id = %#qx", ident);
+		//NSLog(@"Found a dependent with id = %#qx", ident);
 		if (d == NULL)
 		{
 		    // Initialize this detail
-		    d = (TaggedDetail_struct *) calloc(1, sizeof(struct TaggedDetail_struct));
+		    d = (TaggedDetail_struct *) [Utils calloc:1
+							 size:sizeof(struct TaggedDetail_struct)];
 		    d->type = dependentGroup;
+		    d->eventDesc = eventDesc;
 		    // put d in state 1 as described in Detail.h
 		    d->data.dependent.n_dsts = 0;
 		    d->data.dependent.dsts_array_size = 0;
@@ -355,7 +400,7 @@ andDependentGroup:(DependentGroup *)g
 
     if (eventDesc == g->Src())
     {
-	NSLog(@"VProc.mm: found dependent 0x%x source adding event 0x%x", d, e);
+	//NSLog(@"VProc.mm: found dependent 0x%x source adding event 0x%x", d, e);
 	assert(d->src == 0); //< src should be uninitialized
 	d->src = e;
 	d->vpId = vpId;
@@ -364,9 +409,10 @@ andDependentGroup:(DependentGroup *)g
     {
         assert (eventDesc == g->Dst());
 
-	NSLog(@"VProc.mm: found dependent 0x%x destination", d);
+	//NSLog(@"VProc.mm: found dependent 0x%x destination", d);
         [self MakeDetailBigEnoughToHoldNewEvent:d];
-	d->dsts[d->n_dsts] = (Dependent_Dst *) malloc (sizeof(Dependent_Dst));
+	d->dsts[d->n_dsts] = (Dependent_Dst *) [Utils calloc:1
+							size:sizeof(Dependent_Dst)];
 	d->dsts[d->n_dsts]->vpId = vpId;
 	d->dsts[d->n_dsts++]->value = e;
 
@@ -387,6 +433,7 @@ andDependentGroup:(DependentGroup *)g
 	@"<< VProc %d, %d events:", vpId, numEvents];
     for (int i = 0; i < numEvents; ++i)
     {
+a dependent with id
 	[ret appendString:@"\n"];
 	[ret appendString:@"\t\t\t"];
 	[ret appendString:DynamicEventDescription((*events)[i])];

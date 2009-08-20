@@ -168,7 +168,7 @@
 /// the states of their descendents
 - (void)setParentByKids:(Group *)g
 {
-    if (g == 0) return;
+    if (g == NULL) return;
     if (g->Kind() != EVENT_GROUP)
     {
 	[Exceptions raise:@"Found a parent which has no children.  Impossible!"];

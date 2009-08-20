@@ -111,7 +111,7 @@
 {
     if (s == NULL)
     {
-	NSLog(@"DetailInfoController: clearing the view");
+	//NSLog(@"DetailInfoController: clearing the view");
 	[self clearAll];
     }
     Singleton *single;

@@ -4,6 +4,8 @@
  */
 
 #import "State.h"
+#import "log-desc.hxx"
+#import "DetailAccess.h"
 
 #pragma mark Defaults
 /// Color of states
@@ -30,6 +32,7 @@
   //  NSLog(@"state being initialized at %f width %f", r.origin.x, r.size.width);
 	rect = r;
 	color = c;
+    //NSLog(@"color is %@", c);
 	start = startVal;
 	end = endVal;
 
@@ -62,5 +65,18 @@
     return STATE_SHAPE;
 }
 
+
+- (void)nslog
+{
+    NSLog(@"Logging State");
+    if (start == NULL) NSLog(@"start == null");
+    else
+    {
+	// StateGroup *g = Event_Type(*start);
+	NSLog(@"start at %qu for some group", Event_Time(*start));//, g->Desc());
+    }
+    if (end == NULL) NSLog(@"end == null");
+    else NSLog(@"end at %qu for some group", Event_Time(*end));
+}
 
 @end

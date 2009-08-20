@@ -13,6 +13,10 @@ STATIC_INLINE struct Group *Detail_Type(Detail d)
 {
     return d->type;
 }
+STATIC_INLINE struct EventDesc *Detail_EventDesc(Detail d)
+{
+    return d->eventDesc;
+}
 STATIC_INLINE event *Detail_State_start(Detail d)
 {
     return d->data.state.start;
