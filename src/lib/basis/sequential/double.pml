@@ -66,4 +66,6 @@ structure Double =
     fun max (x : double, y) = if x > y then x else y
     fun min (x : double, y) = if x < y then x else y
 
+    fun compare (x : double, y) = if x = y then EQUAL else if x < y then LESS else GREATER
+
   end
