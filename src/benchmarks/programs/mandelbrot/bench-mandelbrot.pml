@@ -1,3 +1,4 @@
+val _ = PrimIO.readInt ()
 val N = PrimIO.readInt ()
 val (mandelbrotSet, t) = Time.timeToEval (fn () => Mandelbrot.mandelbrot N)
 
