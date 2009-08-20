@@ -29,4 +29,4 @@ fun outputImg i = if i < N
 val () = (outputImg 0; Image.output("mand.ppm", image); Image.free image)
 
 (*val _ = Print.printLn (PArray.toString (PArray.toString Int.toString ",") "\n" mandelbrotSet)*)
-val () = Print.printLn(Long.toString t)
+val () = Print.printLn(Time.toString t)
