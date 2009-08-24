@@ -86,3 +86,11 @@ void LocalHeapConsistencyCheck (VProc_t *vp, Word_t *beginHeap, Word_t *endHeap)
     }
 
 }
+
+void DebugPromote (VProc_t *vp, char *loc, char *lhs, char *rhs)
+{
+#ifndef NDEBUG
+    if (DebugFlg)
+        SayDebug("[%2d] %s: let %s = promote(%s)\n", vp->id, loc, lhs, rhs);
+#endif
+}
