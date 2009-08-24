@@ -19,22 +19,26 @@ struct LogFileDesc;
 @interface LogData : NSObject {
     NSString *filename; ///< Name of the represented log file
     struct _LogFileHeader_t *header; ///< the header of the log file, as defined in log-file.h
-    
+
     NSMutableArray *vProcs; ///< an array containing header.nVProcs VProcs sorted by vpId
     DependentMap *dependentMap;
     
+    NSMutableArray *dependentDetails;
+
     struct LogFileDesc *desc; ///< The description of this file
 
-    
+    NSMutableArray *first_event_times;
+
+
     uint64_t start; ///< The start of the log, according to the log file
     uint64_t firstTime; ///< The time the first event in the log file was logged
     uint64_t lastTime; ///< The time the last event in the log file was logged
-    
+
     NSString *date;
     NSString *clockName;
-    
+
     NSMutableArray *allStates;
-    
+
 }
 
 - (LogData *)initWithFilename:(NSString *)filename
