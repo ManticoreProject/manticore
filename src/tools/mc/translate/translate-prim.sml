@@ -189,6 +189,21 @@ structure TranslatePrim : sig
 	    ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis [checkCFun]), [self, v, t]))
 	  ] end
 
+  (* generate debugging messages for object promotions *)
+    fun debugPromote (loc, [lhs], x) = let
+	  val self = newTmp BTy.T_VProc
+	  val t = newTmp BTy.T_Any
+	  val lhsN = newTmp BTy.T_Any
+	  val xN = newTmp BTy.T_Any
+	  val locS = Error.locToString(Error.location(!errStrm, loc))
+	  in [
+	    ([self], BOM.E_HostVProc),
+	    ([t], BOM.E_Const(Literal.String locS, BTy.T_Any)),
+	    ([lhsN], BOM.E_Const(Literal.String (BOM.Var.toString lhs), BTy.T_Any)),
+	    ([xN], BOM.E_Const(Literal.String (BOM.Var.toString x), BTy.T_Any)),
+	    ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis ["DebugPromote"]), [self, t, lhsN, xN]))
+	  ] end
+
     fun cvtPrim (loc, lhs, p, xs, body) = 
 	  if not(Controls.get BasicControl.debug)
 	    then BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
@@ -325,7 +340,11 @@ structure TranslatePrim : sig
 				  cvtSimpleExp(loc, findCFun, arg, fn x =>
 				    BOM.mkStmt(lhs', BOM.E_VPStore(offset, vp, x), body')))
 		      | BPT.RHS_Promote arg =>
-			  cvtSimpleExp(loc, findCFun, arg, fn x => BOM.mkStmt(lhs', BOM.E_Promote x, body'))
+			  cvtSimpleExp(loc, findCFun, arg, fn x => 
+				if not(Controls.get BasicControl.debug) then
+				    BOM.mkStmt(lhs', BOM.E_Promote x, body')
+				else
+				    BOM.mkStmts(debugPromote (loc, lhs', x) @ [(lhs', BOM.E_Promote x)], body'))
 		      | BPT.RHS_CCall(f, args) => let
 			  val cfun = findCFun f
 			  in
