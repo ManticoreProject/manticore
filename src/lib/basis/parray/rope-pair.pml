@@ -51,8 +51,8 @@ structure RopePair (* : ROPE_PAIR *) = struct
     fun fastMapP (f, r1, r2) = let
       fun lp ropes = 
        (case ropes
-	  of (R.LEAF (len1, s1), R.LEAF (len2, s2)) => 
-               R.LEAF (len1, S.map2 (f, s1, s2))
+	  of (R.LEAF s1, R.LEAF s2) => 
+               R.mkLeaf (S.map2 (f, s1, s2))
 	   | (R.CAT (d1, len1, r1L, r1R), R.CAT (d2, len2, r2L, r2R)) =>
                R.CAT (| d1, len1, lp (r1L, r2L), lp (r1R, r2R) |)
 	   | _ => failwith "BUG" (* this shouldn't have been called *)
@@ -68,12 +68,12 @@ structure RopePair (* : ROPE_PAIR *) = struct
     fun mapP' (f, ropeS, ropeL) = let
       fun go (n, r) = 
        (case r
-          of R.LEAF (len, sS) => let
-               val (lo, hi) = (n, n+len)
+          of R.LEAF sS => let
+               val (lo, hi) = (n, n+S.length sS)
 	       val sL = R.partialSeq (ropeL, lo, hi)
 	       val s = S.map2 (f, sS, sL)
                in
-		 R.LEAF (len, s)
+		 R.mkLeaf s
                end
 	   | R.CAT (d, len, rL, rR) => let
 	       val (rL', rR') = (| go (n, rL), go (n + R.length rL, rR) |)
@@ -111,11 +111,11 @@ structure RopePair (* : ROPE_PAIR *) = struct
   (* post: output ropes have exactly the shape as the input rope. *)
     fun unzipP rope = 
      (case rope
-        of R.LEAF (len, l) => let
+        of R.LEAF l => let
 	     val (l1, l2) = S.unzip l
 	     in
-	       (R.LEAF (len, l1), 
-		R.LEAF (len, l2))
+	       (R.mkLeaf l1, 
+		R.mkLeaf l2)
 	     end
 	 | R.CAT (d, len, r1, r2) => let
 	     val ((r11, r12), (r21, r22)) = (| unzipP r1, unzipP r2 |)

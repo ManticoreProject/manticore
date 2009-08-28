@@ -2,7 +2,7 @@ structure TestRope = struct
 
 
     structure S = ListSeq
-    structure R = Ropes
+    structure R = Rope
     val print = Print.print
     val itos = Int.toString
     fun not b = if b then false else true
@@ -21,14 +21,14 @@ structure TestRope = struct
     fun f n = lo + n
     in
       if len <= R.maxLeafSize
-      then R.fromSeq (List.tabulate (len, f))
-      else R.concatWithoutBalancing (R.fromSeq (List.tabulate (R.maxLeafSize, f)),
+      then R.fromSeq (R.S.tabulate (len, f))
+      else R.concatWithoutBalancing (R.fromSeq (R.S.tabulate (R.maxLeafSize, f)),
 				     spineRope (lo + R.maxLeafSize, hi))
     end
 
   fun invert r = (
         case r
-	 of R.LEAF(_, _) => r
+	 of R.LEAF _ => r
 	  | R.CAT(depth, len, r1, r2) => R.CAT(depth, len, invert r2, invert r1)
         (* end case *))
 
