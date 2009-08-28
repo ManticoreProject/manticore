@@ -1,4 +1,4 @@
-(* ropes.mlb
+(* rope.mlb
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -16,10 +16,10 @@
 
   max-leaf-size.pml
 
-  ropes.pml 
+  rope.pml 
   rope2.pml
   rope-pair.pml
   float-rope.pml
   int-rope.pml
 
-  test-ropes.pml
+(*  test-rope.pml *)

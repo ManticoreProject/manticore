@@ -82,6 +82,7 @@ union Detail_union
 struct TaggedDetail_struct
 {
     struct Group *type;
+    struct EventDesc *eventDesc;
     union Detail_union data;
 };
 

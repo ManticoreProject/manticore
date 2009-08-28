@@ -1,4 +1,4 @@
-/** \file  LogDoc.m
+/** \file  LogDoc.mm
  * \author Korei Klein
  * \date 730/09
  *
@@ -16,12 +16,23 @@
 #import "DetailInfoController.h"
 #import "DetailInfoView.h"
 #import "ShapeRep.h"
+#import "GroupFilter.h"
+#import "Summary.h"
+#import "SummaryView.h"
+#import "Box.h"
 
 
 #define DETAIL_INFO_NIB_NAME ( @"DetailInfo" )
 #define DEFAULT_ZOOM_FACTOR ( 3.16227 )
 #define MIN_LOGINTERVAL_WIDTH ( 50 )
+
+
 @implementation LogDoc
+
+- (GroupFilter *)filter
+{
+    return outlineViewDataSource;
+}
 
 static LogFileDesc *logDesc;
 - (LogFileDesc *)logDesc
@@ -40,7 +51,57 @@ static LogFileDesc *logDesc;
     [logView displayInterval:logInterval
 		 atZoomLevel:[self zoomLevelForInterval:logInterval]
 		 fromLogData:self.logData
-		  filteredBy:outlineViewDataSource];
+		  filteredBy:self.filter];
+
+    StateGroup *resourceState;
+    {
+	if (logData.allStates == NULL)
+    	{
+    	    [Exceptions raise:@"LogDoc: can't flush when logData has no allStates property"];
+    	}
+    	if (logData.allStates.count <= 0)
+    	{
+    	    [Exceptions raise:@"LogDoc: can't flush when logData's allStates has no first element"];
+    	}
+    	Box *b = [logData.allStates objectAtIndex:0];
+	resourceState = (StateGroup *) [b unbox];
+    }
+    
+   // NSLog(@"RESOURCE state is %s", resourceState->Desc());
+
+    CGFloat summary_view_column_width = DEFAULT_SUMMARY_VIEW_COLUMN_WIDTH;
+    // FIXME only looks at the first vproc, really this initialization should set summary
+    // to an average of all vprocs
+    double viewWidth = logView.bounds.size.width;
+    double scale = logInterval->width / viewWidth;
+    summary = [Summary coarseSummaryFromLogData:logData
+				       forState:resourceState
+				       forVProc:0
+				       withSize:scale *     summary_view_column_width
+				       andStart:logInterval->x
+				      andNumber:viewWidth / summary_view_column_width];
+    assert (summaryViewTarget != nil);
+    NSRect frame = summaryViewTarget.bounds;
+    frame.size.width = viewWidth;
+    
+    
+
+    SummaryView *oldSummaryView = summaryView;
+    summaryView = [[SummaryView alloc] initWithFrame:frame
+					  andSummary:summary
+					 columnWidth:summary_view_column_width];
+    
+    if (summaryViewTarget.subviews.count == 0)
+    {
+	[summaryViewTarget addSubview:summaryView];
+    }
+    else
+    {
+	[summaryViewTarget replaceSubview:oldSummaryView with:summaryView];
+    }
+    
+    summaryView.needsDisplay = true;
+     
     logView.needsDisplay = true;
 }
 - (NSString *)filename
@@ -58,13 +119,13 @@ static LogFileDesc *logDesc;
 
 - (void)setHorizontalPosition:(float)n
 {
-    NSLog(@"LogDoc is setting the horizontal position to %f", n);
+  //  NSLog(@"LogDoc is setting the horizontal position to %f", n);
     horizontalPosition = n;
     timeDisplay.needsDisplay = true;
 }
 - (float)horizontalPosition
 {
-    NSLog(@"LogDoc is returning the horizontal position");
+ //   NSLog(@"LogDoc is returning the horizontal position");
     return horizontalPosition;
 }
 
@@ -96,7 +157,7 @@ static LogFileDesc *logDesc;
     if (![super init]) return nil;
     
     logData = nil;
-    NSLog(@"LogDoc: setting enabled to false");
+   // NSLog(@"LogDoc: setting enabled to false");
     logInterval = nil;
     zoomFactor = DEFAULT_ZOOM_FACTOR;
     enabled = false;
@@ -127,9 +188,9 @@ static LogFileDesc *logDesc;
 	[Exceptions raise:@"LogFile was asked to read data that was not from a file"];
     }
     NSString *filename = absoluteURL.absoluteString;
-    NSLog(@" URL filename %@", filename);
+   // NSLog(@" URL filename %@", filename);
     filename = [filename substringFromIndex:16];
-    NSLog(@" actual filename is %@", filename);
+   // NSLog(@" actual filename is %@", filename);
     if (!filename)
     {
 	[Exceptions raise:@"LogFile could not get a name for given fileWrapper"];
@@ -144,7 +205,7 @@ static LogFileDesc *logDesc;
     outlineViewDataSource = [[OutlineViewDataSource alloc]
 			     initWithLogDesc:logDesc
 			     logDoc:self];
-    NSLog(@"LogDoc: setting enabled = true");
+   // NSLog(@"LogDoc: setting enabled = true");
     enabled = true;
     
     return YES;
@@ -179,10 +240,11 @@ static LogFileDesc *logDesc;
 	{
 	    [Exceptions raise:@"LogDoc: did not have an initiailized detailInfoTarget"];
 	}
-	struct LogFileDesc *logDesc = self.logDesc;
-	detailInfoController = [[DetailInfoController alloc] initWithNibName:DETAIL_INFO_NIB_NAME
-								      bundle:nil
-								     logDesc:(struct LogFileDesc *)logDesc];
+	LogFileDesc *logDesc = self.logDesc;
+	DetailInfoController *dic = [[DetailInfoController alloc] initWithNibName:DETAIL_INFO_NIB_NAME
+								      bundle:(NSBundle *)nil
+								     logDesc:logDesc];
+	detailInfoController = dic;
 	
 	DetailInfoView *detailInfoView = detailInfoController.div;
 	NSRect newFrame = detailInfoTarget.frame;
@@ -208,11 +270,11 @@ static LogFileDesc *logDesc;
 		
 	[self flush];
 	
-	NSLog(@"Log Doc has logInterval %qu, %qu, for bounds from %f to %f",
-	    logInterval->x, logInterval->width, logView.splitView.shapeBounds.origin.x,
-	      logView.splitView.shapeBounds.size.width);
+	//NSLog(@"Log Doc has logInterval %qu, %qu, for bounds from %f to %f",
+	//    logInterval->x, logInterval->width, logView.splitView.shapeBounds.origin.x,
+	//      logView.splitView.shapeBounds.size.width);
 	
-	NSLog(@"LogDoc is opening a drawer %@", drawer);
+	//NSLog(@"LogDoc is opening a drawer %@", drawer);
 	[drawer open];
     }
 }
@@ -350,6 +412,8 @@ static LogFileDesc *logDesc;
     }
 }
 
+uint64_t g_counter = 0;
+
 - (BOOL)isInInterval:(Detail)d
 {
     uint64_t fst = logInterval->x;
@@ -374,7 +438,17 @@ static LogFileDesc *logDesc;
 	case STATE_GROUP:
 	    c = Detail_State_start(d);
 	    b = Detail_State_end(d);
-	    if (c == NULL || b == NULL) return true;
+	    if (c == NULL && b == NULL) return true;
+	    if (c == NULL) // && b != NULL
+	    {
+		return Event_Time(*b) >= fst;
+	    }
+	    if (b == NULL) // && c != NULL
+	    {
+		BOOL ret = Event_Time(*c) <= lst;
+		if (ret) NSLog(@"Found a stategroup in interval, whose start is not in the interval");
+		return ret;
+	    }
 	    if (Event_Time(*c) > lst ||
 		Event_Time(*b) < fst)
 		return false;
@@ -385,6 +459,10 @@ static LogFileDesc *logDesc;
 	    break;
     }
     
+    NSLog(@"g = %s, g->Kind() = %d", g->Desc(), g->Kind());
+    ++g_counter;
+    int n = * ((int *)0);
+    NSLog(@"%d", n);
     [Exceptions raise:@"Controll should not reach here"];
     return false;
 }

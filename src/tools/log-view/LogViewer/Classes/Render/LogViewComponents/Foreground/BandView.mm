@@ -22,7 +22,8 @@
 #define BAND_BORDER_THICKNESS ( 2 )
 #define BAND_ROUNDING_RADIUS ( 10 )
 
-#define DEFAULT_COLOR ( [NSColor redColor] )
+
+#define DEBUG
 
 
 /// DIAMOND_PADDING is the amount of space allowed between adjacent diamonds
@@ -86,6 +87,15 @@
 		Group *g = Detail_Type(details[i]);
 		int doDisplay = [filter enabled:g].intValue;
 		// NSLog(@"doDisplay = %d", doDisplay);
+#ifdef DEBUG
+		if (g->Kind() == STATE_GROUP)
+		{
+		    if (Detail_State_start(details[i]) == NULL)
+		    {
+			NSLog(@"Detail number %d is being added, with no start event", i);
+		    }
+		}
+#endif
 		if (doDisplay == 1)
 		{
 		    [self addDetail:details[i]];
@@ -129,34 +139,7 @@
    // NSLog(@"BandView drew %d shapes", a + b + c);
 }
 
-#pragma mark Colors
 
-- (NSColor *)colorFromFormatString:(const char *)s
-{
-    if (s == NULL)
-    {
-	NSLog(@"***** BandView.mm: a color in log-view.json was uninitialized.\n\
-	\t\tReturning a default color instead");
-	return DEFAULT_COLOR;
-    }
-
-    double scale_max = 255.0;
-    uint32_t r, g, b, a;
-
-    char *format = "#%2x%2x%2x%2x";
-    sscanf(s, format, &r, &g, &b, &a);
-
-    CGFloat R, G, B, A;
-    R = r / scale_max;
-    G = g / scale_max;
-    B = b / scale_max;
-    A = a / scale_max;
-
-    // NSLog(@"returning a new color %f %f %f %f", R, G, B, A);
-
-    NSColor *ret = [NSColor colorWithCalibratedRed:R green:G blue:B alpha:A];
-    return ret;
-}
 
 
 #pragma mark Simples
@@ -228,7 +211,7 @@
 {
     int i = Detail_State_state(d);
     const char *color_string = g->StateColor(i);
-    NSColor *ret = [self colorFromFormatString:color_string];
+    NSColor *ret = [Utils colorFromFormatString:color_string];
     return ret;
 }
 
@@ -264,15 +247,16 @@ int color_int = 0;
     r.size.height = bounds.size.height;
     event *start = Detail_State_start(d);
     event *end = Detail_State_end(d);
- //  NSLog(@"BandView: state start %#x and end %#x", start, end);
+   //NSLog(@"BandView: state start %#x and end %#x", start, end);
     
     r.origin.x = [logDoc image:start ? Event_Time(*start) : logDoc.logInterval->x];
     r.size.width = [logDoc image:(end ? Event_Time(*end) : logDoc.logInterval->x + logDoc.logInterval->width)] - r.origin.x;
 
+    if (r.size.width <= TINY_WIDTH) ;//return;
     State *state = [[State alloc] initWithRect:r
-					    color:c
-					    start:Detail_State_start(d)
-					      end:Detail_State_end(d)];
+					 color:c
+					 start:start
+					   end:end];
     
     NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
     state.description = [NSString stringWithString:S];
@@ -284,7 +268,7 @@ int color_int = 0;
 - (NSColor *)colorForInterval:(Detail)d withGroup:(IntervalGroup *)g
 {
     const char *color_string = g->Color();
-    NSColor *ret = [self colorFromFormatString:color_string];
+    NSColor *ret = [Utils colorFromFormatString:color_string];
     return ret;
 }
 
@@ -315,13 +299,14 @@ int color_int = 0;
     event *end = Detail_Interval_end(d);
     if (start == NULL || end == NULL)
     {
-	NSLog(@"BandView.mm: skipping an interval whose start or end does not exist");
+	NSLog(@"BandView.mm: an interval whose start or end does not exist");
 	return;
     }
     NSColor *c = [self colorForInterval:d withGroup:g];
     NSRect r;
     r.origin.x = [logDoc image:Event_Time(*start)];
     r.size.width = [logDoc image:Event_Time(*end)] - r.origin.x;
+    if (r.size.width <= TINY_WIDTH) return;
     r.size.height = DEFAULT_INTERVAL_HEIGHT;
     r.origin.y = [self intervalHeightForIntervalOfHeight:r.size.height forDetail:(Detail)d];
    // NSLog(@"BandView is adding an interval: origin = %f, %f size = %f %f",
@@ -388,6 +373,7 @@ int color_int = 0;
 	if ([a containsPoint:p])
 	{
 	    [logDoc displayDetail:a];
+	    [a nslog];
 	    NSLog(@"State clicked");
 	}
     }
@@ -430,7 +416,7 @@ int color_int = 0;
      /// If you set it to the color for the start state of a vproc and have the BandView
      /// display from somewhere in the middle of the log, then the color may be inaccurate.
      - (void)setStateStartColor:(NSColor *)c
-     {
+     { color is
      NSRect bounds = [self bounds];
      lastState = [[State alloc]
      initWithRect:NSMakeRect(bounds.origin.x,

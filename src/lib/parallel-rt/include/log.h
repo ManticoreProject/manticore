@@ -13,7 +13,7 @@
 
 extern void InitLogFile (const char *name, int nvps, int ncpus);
 extern void InitLog (VProc_t *vp);
-extern void SwapLogBuffers (VProc_t *vp);
+extern void SwapLogBuffers (VProc_t *vp, LogBuffer_t *curBuf);
 extern void FinishLog ();
 
 #endif /* !_LOG_H_ */

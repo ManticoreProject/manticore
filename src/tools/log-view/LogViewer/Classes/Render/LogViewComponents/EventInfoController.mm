@@ -42,8 +42,9 @@
 {
 
     if (![super initWithNibName:n bundle:b]) return nil;
-    NSLog(@"EventInfoController %@ was just initialized with nib %@ and eiv %@", self, n, eiv);
+ //   NSLog(@"EventInfoController %@ was just initialized with nib %@ and eiv %@", self, n, eiv);
 
+    // Strangely, this log message is necessary
     NSLog(@"eiv and self.view %@ %@", eiv, self.view);
     assert (eiv == self.view);
 
@@ -87,7 +88,7 @@
     args = [[NSMutableArray alloc] init];
     for (int i = 0; i < eventDesc->NArgs(); ++i)
     {
-	NSLog(@"EventInfoController: Adding argument to array");
+//	NSLog(@"EventInfoController: Adding argument to array");
 	// XXX Maybe get rid of this call and this Event_Value function
 	// They perhaps should not be part of all possible interfaces to
 	// events
@@ -131,7 +132,7 @@
     NSString *S = e ? [NSString stringWithCString:eventDesc->Description()] : @"";
     self.name = [NSString stringWithString:S];
     [table reloadData];
-    NSLog(@"table is %@", table);
+ //   NSLog(@"table is %@", table);
     self.view.needsDisplay = YES;
 
 }
@@ -142,12 +143,12 @@
 {
     if (eiv == NULL)
     {
-	NSLog(@"EventInfoController: asked for numberOfRowsInTableView before eiv was initialized");
+//	NSLog(@"EventInfoController: asked for numberOfRowsInTableView before eiv was initialized");
 	return 0; //< Is this okay, not okay???!?!?
     }
     if (eiv.table == NULL)
     {
-	NSLog(@"EventInfoController: asked for number of rows in table when eiv was initialized but one of its components was not");
+//	NSLog(@"EventInfoController: asked for number of rows in table when eiv was initialized but one of its components was not");
 	return 0; //< ??!??!?
     }
     assert (t == eiv.table);
@@ -157,7 +158,7 @@
     assert (eventDesc != nil);
     assert (args != nil);
 
-    NSLog(@"returning number of arguments in args for time %d", args.count);
+   // NSLog(@"returning number of arguments in args for time %d", args.count);
     return args.count;
 
 }

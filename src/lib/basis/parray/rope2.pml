@@ -11,7 +11,7 @@
 
 structure Rope2 = struct
 
-  structure R = Ropes
+  structure R = Rope
 
   structure S = ArraySeq (* ListSeq *)
 
@@ -100,7 +100,7 @@ structure Rope2 = struct
   fun mapP (f, rope) = let
     fun m r =
      (case r
-        of LEAF2 (len, s1, s2) => R.LEAF (len, S.map2 (f, s1, s2))
+        of LEAF2 (len, s1, s2) => R.LEAF (S.map2 (f, s1, s2))
 	 | CAT2 (dpt, len, r1, r2) => R.CAT (| dpt, len, m r1, m r2 |)
        (* esac *))
     in

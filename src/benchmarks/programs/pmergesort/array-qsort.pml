@@ -1,9 +1,9 @@
 structure ArrayQSort =
   struct
 
-    val sub = Ropes.S.sub
-    val update = Ropes.S.update
-    val length = Ropes.S.length
+    val sub = Rope.S.sub
+    val update = Rope.S.update
+    val length = Rope.S.length
     fun greater ord = 
 	(case ord
 	  of GREATER => true

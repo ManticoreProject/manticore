@@ -28,7 +28,7 @@ structure TranslatePComp : sig
 				   t)
 	       val f = A.FunExp (x1, c1, t)
 	       val e1' = trExp e1
-	       val mapPV = BasisEnv.getVarFromBasis ["Ropes", "mapP"]
+	       val mapPV = BasisEnv.getVarFromBasis ["Rope", "mapP"]
 	       val mapP = A.VarExp (mapPV, [t1, t])
 	       val resTy = Basis.parrayTy t
 	       fun map arr = A.ApplyExp (mapP, A.TupleExp [f, arr], resTy)
@@ -37,7 +37,7 @@ structure TranslatePComp : sig
 		   of NONE => map e1'
 		    | SOME pred => let
                         val pred' = trExp pred
-                        val filterPV = BasisEnv.getVarFromBasis ["Ropes", "filterP"]
+                        val filterPV = BasisEnv.getVarFromBasis ["Rope", "filterP"]
 			val filterP = A.VarExp (filterPV, [t])
 			val tmpV = Var.new ("tmp", t1)
 			val cs = A.CaseExp (A.VarExp (tmpV, []),

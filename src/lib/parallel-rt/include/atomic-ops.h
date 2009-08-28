@@ -17,16 +17,6 @@
  *	    return old;
  *	}
  *
- *	bool BoolCompareAndSwap (void **ptr, void *key, void *new)
- *	{
- *	    if (*ptr == key) {
- *		*ptr = new;
- *		return true;
- *	    }
- *	    else
- *		return false;
- *	}
- *
  *	int TestAndSwap (int *ptr, int new)
  *	{
  *	    int old = *ptr;
@@ -74,22 +64,17 @@
 
 #ifdef HAVE_BUILTIN_ATOMIC_OPS
 
-STATIC_INLINE bool BoolCompareAndSwapValue (volatile Value_t *ptr, Value_t key, Value_t new)
-{
-    return __sync_bool_compare_and_swap (ptr, key, new);
-}
-
-STATIC_INLINE bool BoolCompareAndSwapWord (volatile Word_t *ptr, Word_t key, Word_t new)
-{
-    return __sync_bool_compare_and_swap (ptr, key, new);
-}
-
 STATIC_INLINE Value_t CompareAndSwapValue (volatile Value_t *ptr, Value_t key, Value_t new)
 {
     return __sync_val_compare_and_swap (ptr, key, new);
 }
 
 STATIC_INLINE Word_t CompareAndSwapWord (volatile Word_t *ptr, Word_t key, Word_t new)
+{
+    return __sync_val_compare_and_swap (ptr, key, new);
+}
+
+STATIC_INLINE void *CompareAndSwapPtr (volatile void **ptr, void *key, void *new)
 {
     return __sync_val_compare_and_swap (ptr, key, new);
 }
@@ -156,6 +141,21 @@ STATIC_INLINE Value_t CompareAndSwapValue (volatile Value_t *ptr, Value_t old, V
 STATIC_INLINE Word_t CompareAndSwapWord (volatile Word_t *ptr, Word_t old, Word_t new)
 {
     Word_t result;
+
+    __asm__ __volatile__ (
+	"movq %2,%%rcx\n\t"		/* %rcx = new */
+	"movq %1,%%rax\n\t"		/* %rax = old */
+	"lock; cmpxchgq %%rcx,%3;\n\t"	/* cmpxchg %rcx,ptr */
+        "movq %%rax,%0;\n"		/* result = %rax */
+	    : "=r" (result)
+ 	    : "g" (old), "g" (new), "m" (*ptr)
+  	    : "memory", "%rax", "%rcx");
+    return result;
+}
+
+STATIC_INLINE void *CompareAndSwapPtr (volatile void **ptr, void *old, void *new)
+{
+    void *result;
 
     __asm__ __volatile__ (
 	"movq %2,%%rcx\n\t"		/* %rcx = new */

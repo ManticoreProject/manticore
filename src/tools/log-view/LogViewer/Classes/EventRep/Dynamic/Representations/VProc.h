@@ -25,6 +25,13 @@ struct LogFileDesc;
     int numEvents; //< number of events in events
     int events_size; //< size of events
     
+    // Workaround and safety mechanism
+    // This array is used to detect when two calls
+    // to readBlock pass in the same block.
+    // Any two calls to readBlock must pass different blocks,
+    // but in case they don't first_event_times can be used to check.
+    NSMutableArray *first_event_times;
+    
     Detail *details;
     int numDetails;
     int details_size;

@@ -19,8 +19,6 @@
  */
 #define DEFAULT_INTERVAL_COLOR ([NSColor redColor])
 
-/// If an interval's width is less than TINY_WIDTH, hitbox testing is done differently
-#define TINY_WIDTH ( 5 )
 #define CONTAINMENT_PADDING ( 3 )
 
 /// Determines the geometry of interval shape corners
@@ -57,6 +55,7 @@
     }
     else
     {
+	
 	roundedRect = [[NSBezierPath alloc] init];
 #if ROUNDING
 	[roundedRect moveToPoint:rect.origin];
@@ -67,6 +66,7 @@
 	s.y += rect.size.height;
 	[roundedRect lineToPoint:s];
 #endif
+	 
     }
     color = c;
     start = s;
@@ -85,7 +85,7 @@
     NSRect r = rect;
 
     if (r.size.width < TINY_WIDTH)
-	r.size.width = 2;
+	r.size.width = 2; malloc
     [NSBezierPath fillRect:r];
     return;
     roundedRect = [NSBezierPath bezierPathWithRoundedRect:rect

@@ -13,6 +13,7 @@
 #import "LogView.h"
 #import "LogDoc.h"
 #import "log-desc.hxx"
+#import "GroupFilter.h"
 
 
 
@@ -114,6 +115,9 @@ uint64_t myExp(uint64_t a, uint n)
 	struct TaggedDetail_struct *d = (TaggedDetail_struct *) [b unbox];
 	for (int i = 0; i < Detail_Dependent_n_dsts(d); ++i)
 	{
+	    Group *g = Detail_Type(d);
+	    if ([logDoc.filter enabled:g].intValue != 1) continue;
+	    
 	    Message *m = [self messageFromDependent:d dst:i];
 
 

@@ -20,7 +20,7 @@ fun bench (seqSz, n) =
 	()
     end
 
-val () = ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), fn () => 
+val () = ImplicitThread.runOnWorkGroup(WorkStealing.workGroup(), fn () => 
 			 bench(PrimIO.readInt(), PrimIO.readInt()))
 
 

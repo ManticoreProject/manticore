@@ -10,9 +10,8 @@ structure SMVM = struct
 
   val println = Print.printLn
 
-  val sub = Ropes.sub
-  val tabP = Ropes.tabP
-  val sumP = (fn a => Ropes.reduceP (fn (x,y) => x + y, 0.0, a))
+  val sub = PArray.sub
+  val sumP = (fn a => reduceP (fn (x,y) => x + y, 0.0, a))
 
   val _ = Rand.seed ()
 
@@ -50,7 +49,7 @@ structure SMVM = struct
     end
 *)
 
-  fun dotp (sv, v) = sumP [| x * sub(v,i) | (i,x) in sv |]
+  fun dotp (sv, v) = sumP [| x * subP(v, i) | (i,x) in sv |]
 
 (*
   val _ = let

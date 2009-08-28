@@ -18,10 +18,10 @@
 - (EventInfoView *)initWithFrame:(NSRect)frame {
     if (![super initWithFrame:frame]) return nil;
     
-    NSLog(@"EventInfoView: I am being initialized into %f %f %f %f of %@",
-	  self.bounds.origin.x, self.bounds.origin.y,
-	  self.bounds.size.width, self.bounds.size.height,
-	  self.superview);
+  //  NSLog(@"EventInfoView: I am being initialized into %f %f %f %f of %@",
+//	  self.bounds.origin.x, self.bounds.origin.y,
+//	  self.bounds.size.width, self.bounds.size.height,
+//	  self.superview);
     
     table = nil;
     

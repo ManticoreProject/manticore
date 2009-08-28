@@ -74,7 +74,7 @@ typedef struct {
     Location_t		loc;
 } LocArg_t;
 
-/*! \brief initialize a thread at a given location */
+/*! \brief initialize an OS thread at a given location */
 static void *InitWithLocation (void *arg)
 {
     LocArg_t *locArg = (LocArg_t *)arg;

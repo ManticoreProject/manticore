@@ -35,7 +35,7 @@ functor RopeFn (
     structure S : SEQ
     val maxLeafSize : int
 
-  ) (*: ROPE*) = struct
+  ) : ROPE = struct
 
     structure S = S
     type 'a seq = 'a S.seq
@@ -127,6 +127,8 @@ functor RopeFn (
 	  if S.length seq > maxLeafSize 
 	    then raise Fail "RopeFn.mkLeaf: bogus leaf size"
 	  else Leaf seq
+
+    val empty : 'a rope = Leaf S.empty
 
   (* toString : ('a -> string) -> 'a rope -> string *)
     fun toString show r = let

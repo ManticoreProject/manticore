@@ -38,7 +38,7 @@ STATIC_INLINE LogEvent_t *NextLogEvent (VProc_t *vp)
 	    return &(buf->log[index]);
 	    break;
 	}
-	SwapLogBuffers (vp);
+	SwapLogBuffers (vp, buf);
     } while (true);
 
 }

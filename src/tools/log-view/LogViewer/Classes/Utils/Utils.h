@@ -20,10 +20,15 @@ CGFloat pointToLineSegmentDistance(NSPoint p, NSPoint start, NSPoint end);
 /// Determine if a is between b and c
 BOOL between(CGFloat a, CGFloat b, CGFloat c);
 
+#define DEFAULT_COLOR ( [NSColor redColor] )
 
 
 @interface Utils : NSObject
 {
 }
+
++ (NSColor *)colorFromFormatString:(const char *)s;
++ (void *)calloc:(size_t)a size:(size_t)b;
++ (void *)realloc:(void *)a size:(size_t)b;
 
 @end

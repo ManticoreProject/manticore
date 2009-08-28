@@ -10,7 +10,7 @@
 structure PMergesort =
   struct
 
-    structure R = Ropes
+    structure R = Rope
 
     fun less ord = 
 	(case ord
