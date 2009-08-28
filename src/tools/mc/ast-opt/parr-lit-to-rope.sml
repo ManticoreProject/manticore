@@ -13,7 +13,7 @@ structure ParrLitToRope : sig
    *      ==>
    *   let val (x1, ..., xn) = (| e1, ..., en |)
    *   in
-   *     Ropes.fromList [x0, ..., xn]
+   *     Rope.fromList [x0, ..., xn]
    *   end
    *)
     val tr : AST.exp list * Types.ty -> AST.exp
@@ -33,7 +33,7 @@ structure ParrLitToRope : sig
   (* Make a rope expression from an expression which is a list in the surface language. *)
     fun mkRopeFromList (ty, listExp) = let
       val ropeFromList = 
-       (case BEnv.getValFromBasis ["Ropes", "fromList"]
+       (case BEnv.getValFromBasis ["Rope", "fromList"]
           of MEnv.Var x => x
 	   | _ => raise Fail "expected a ModuleEnv.val_bind Var variant"
        (* end case *))
@@ -59,12 +59,12 @@ structure ParrLitToRope : sig
   (* Given a list of expressions, which were in a parallel array, and their type, *)
   (* build a rope out of them. *)
     fun tr ([], ty) = let
-          val e = BEnv.getVarFromBasis ["Ropes", "empty"]
+          val e = BEnv.getVarFromBasis ["Rope", "empty"]
           in
             AST.VarExp (e, [ty])
           end
       | tr ([e], ty) = let
-          val sing = BEnv.getVarFromBasis ["Ropes", "singleton"]
+          val sing = BEnv.getVarFromBasis ["Rope", "singleton"]
           in
 	    AST.ApplyExp (AST.VarExp (sing, [ty]), e, Basis.parrayTy ty)
           end

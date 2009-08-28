@@ -1,4 +1,4 @@
-(* ropes.pml  
+(* rope.pml  
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -6,7 +6,7 @@
  * A implementation of ropes in Manticore.
  *)
 
-structure Ropes (* : ROPES *) = struct
+structure Rope (* : ROPE *) = struct
 
     structure S = ArraySeq (* ListSeq *)
 

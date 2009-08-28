@@ -585,8 +585,8 @@ structure FloatRope = struct
     fun mapPolyP (f, rope) = let
       fun m r =
        (case r
-          of LEAF (len, s) => Ropes.LEAF (len, S.mapPoly (f, s))
-	   | CAT (dpt, len, r1, r2) => Ropes.CAT (| dpt, len, m r1, m r2 |)
+          of LEAF (len, s) => Rope.LEAF (len, S.mapPoly (f, s))
+	   | CAT (dpt, len, r1, r2) => Rope.CAT (| dpt, len, m r1, m r2 |)
          (* end case *))
       in
         m rope

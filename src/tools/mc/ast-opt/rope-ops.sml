@@ -13,7 +13,7 @@ structure RopeOps : sig
   end = struct
 
     fun ropeOp opname = 
-     (case BasisEnv.getValFromBasis ["Ropes", opname]
+     (case BasisEnv.getValFromBasis ["Rope", opname]
         of ModuleEnv.Var oper => oper
 	 | _ => raise Fail ("rope operator " ^ opname ^ " not found in basis")
         (* end case *))

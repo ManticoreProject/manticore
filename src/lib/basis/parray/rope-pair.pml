@@ -8,8 +8,8 @@
 
 structure RopePair (* : ROPE_PAIR *) = struct
 
-    structure S = Ropes.S
-    structure R = Ropes
+    structure S = Rope.S
+    structure R = Rope
 
     datatype option = datatype Option.option
 

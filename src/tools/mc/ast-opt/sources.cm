@@ -18,7 +18,7 @@ Library
   structure Nester
   structure PrintAST  
   structure PrintTypes
-  structure Ropes
+  structure Rope
   structure TestUtils	
   structure TranslatePCase
   structure TranslatePComp
@@ -49,7 +49,7 @@ is
   elaborate.sml
   hash.sml
   nester.sml
-  ropes.sml
+  rope.sml
   test-utils.sml
   translate-pcase.sml
   translate-pcomp.sml

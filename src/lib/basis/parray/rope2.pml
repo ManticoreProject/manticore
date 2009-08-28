@@ -11,7 +11,7 @@
 
 structure Rope2 = struct
 
-  structure R = Ropes
+  structure R = Rope
 
   structure S = ArraySeq (* ListSeq *)
 

@@ -14,7 +14,7 @@ structure TranslateParr  : sig
 
     structure A   = AST
     structure AB  = Basis
-    structure R   = Ropes
+    structure R   = Rope
     structure B   = BOM
     structure BTy = BOMTy
     structure BU  = BOMUtil
@@ -144,15 +144,15 @@ structure TranslateParr  : sig
 	  end
 
     local
-	fun ropeTy (env, ty) = TranslateTypes.tr(env, Ropes.ropeTy ty)
+	fun ropeTy (env, ty) = TranslateTypes.tr(env, R.ropeTy ty)
 	val rawIntTy = BTy.T_Raw BTy.T_Int
 	val mkArray = ASTUtil.mkArray
     in
   (* ropeBOM : env * (env * A.exp * (BV.var -> B.exp)) -> _ rope * A.ty -> B.exp *)
     fun ropeBOM (env, trExpToV) (r, t) =
 	let val ropeTy = ropeTy(env, t)
-	    val TranslateEnv.DCon(ropeLeaf, _) = TranslateTypes.trDataCon(env, Ropes.ropeLeaf())
-	    val TranslateEnv.DCon(ropeCat, _) = TranslateTypes.trDataCon(env, Ropes.ropeCat())
+	    val TranslateEnv.DCon(ropeLeaf, _) = TranslateTypes.trDataCon(env, R.ropeLeaf())
+	    val TranslateEnv.DCon(ropeCat, _) = TranslateTypes.trDataCon(env, R.ropeCat())
 	    val nV = B.Var.new ("n", rawIntTy)
 	    val rV = B.Var.new ("r", ropeTy)
 	in case r

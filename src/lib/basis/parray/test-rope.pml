@@ -1,6 +1,6 @@
-structure TestRopes = struct
+structure TestRope = struct
 
-(*
+
     structure S = ListSeq
     structure R = Ropes
     val print = Print.print
@@ -86,5 +86,5 @@ structure TestRopes = struct
 	  R.length r2
         end
 *)
-*)
+
 end

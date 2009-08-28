@@ -35,7 +35,7 @@ end = struct
       getTyc ["List", "list"])
 
     val memoRopeTyc : T.tycon Memo.memo = Memo.new (fn _ =>
-      getTyc ["Ropes", "rope"])
+      getTyc ["Rope", "rope"])
 
     val memoSeqTyc : T.tycon Memo.memo = Memo.new (fn _ =>
       getTyc ["ListSeq", "seq"])
@@ -47,10 +47,10 @@ end = struct
       getDCon ["List", "CONS"])
 
     val memoRopeLEAF : A.dcon Memo.memo = Memo.new (fn _ =>
-      getDCon ["Ropes", "LEAF"])
+      getDCon ["Rope", "LEAF"])
 
     val memoRopeCAT : A.dcon Memo.memo = Memo.new (fn _ =>
-      getDCon ["Ropes", "CAT"])
+      getDCon ["Rope", "CAT"])
 
   in
 
@@ -92,7 +92,7 @@ end = struct
 (* As a side-effect, this function raises Fail if the arg "rope" is *)
 (* neither a rope nor a rope of tuples. *)
   fun typesInRopeTupleType rope = let
-    val ropeTyCon = BasisEnv.getTyConFromBasis ["Ropes", "rope"]
+    val ropeTyCon = BasisEnv.getTyConFromBasis ["Rope", "rope"]
     val rTy = TypeOf.exp rope
     val typesInTuple = 
      (case rTy

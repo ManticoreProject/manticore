@@ -9,10 +9,10 @@
 structure PArray = struct
 
     _primcode (
-	define inline @to-rope (x : parray / _ : exh) : Ropes.rope =
-	    return ((Ropes.rope)x)
+	define inline @to-rope (x : parray / _ : exh) : Rope.rope =
+	    return ((Rope.rope)x)
 	  ;
-	define inline @from-rope (x : Ropes.rope / _ : exh) : parray =
+	define inline @from-rope (x : Rope.rope / _ : exh) : parray =
 	    return ((parray)x)
 	  ;
       )
@@ -20,25 +20,25 @@ structure PArray = struct
     type 'a parray = 'a parray
 
     local
-      val toRope : 'a parray -> 'a Ropes.rope = _prim(@to-rope)
-      val fromRope : 'a Ropes.rope -> 'a parray = _prim(@from-rope)
+      val toRope : 'a parray -> 'a Rope.rope = _prim(@to-rope)
+      val fromRope : 'a Rope.rope -> 'a parray = _prim(@from-rope)
     in
 
   (* FIXME too tightly coupled *)
-    fun sub (pa, i) = Ropes.sub(toRope pa, i)
-    fun length pa = Ropes.length(toRope pa)
-    fun reduce (rator, init, pa) = Ropes.reduceP (rator, init, toRope pa)
-    fun filter (pred, pa) = fromRope(Ropes.filterP (pred, toRope pa))
-    fun map (f, pa) = fromRope(Ropes.mapP (f, toRope pa))
-    fun rev pa = fromRope(Ropes.revP(toRope pa))
-    fun fromList l = fromRope(Ropes.fromList l)
-    fun concat (pa1, pa2) = fromRope(Ropes.concat(toRope pa1, toRope pa2))
-    fun tabulateWithPred (n, f) = fromRope(Ropes.tabP(n, f))
+    fun sub (pa, i) = Rope.sub(toRope pa, i)
+    fun length pa = Rope.length(toRope pa)
+    fun reduce (rator, init, pa) = Rope.reduceP (rator, init, toRope pa)
+    fun filter (pred, pa) = fromRope(Rope.filterP (pred, toRope pa))
+    fun map (f, pa) = fromRope(Rope.mapP (f, toRope pa))
+    fun rev pa = fromRope(Rope.revP(toRope pa))
+    fun fromList l = fromRope(Rope.fromList l)
+    fun concat (pa1, pa2) = fromRope(Rope.concat(toRope pa1, toRope pa2))
+    fun tabulateWithPred (n, f) = fromRope(Rope.tabP(n, f))
 
   (* repP : int * 'a -> 'a parray *)
   (* called "dist" in NESL and Keller *)
   (* called "replicateP" in DPH impl *)
-    fun repP (n, x) = fromRope(Ropes.tabP (n, fn _ => x))
+    fun repP (n, x) = fromRope(Rope.tabP (n, fn _ => x))
 
   end (* local *)
 

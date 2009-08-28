@@ -1,10 +1,10 @@
-(* ropes.sml
+(* rope.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *)
 
-structure Ropes : sig
+structure Rope : sig
 
     val maxLeafSize  : unit -> int
     val ropeTyc      : unit -> Types.tycon
@@ -43,4 +43,4 @@ structure Ropes : sig
 	    | _ => raise Fail "wrong kind for CAT"
           (* end case *))
 
-  end (* structure Ropes *)
+  end (* structure Rope *)

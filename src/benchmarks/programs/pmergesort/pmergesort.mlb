@@ -1,11 +1,7 @@
-../../../lib/basis/implicit-threading/ropes.mlb
-
 list-quicksort.pml
-ann "expansion-opt" "pval.cilk5-work-stealing"
-in
-  pmergesort.pml
-  array-qsort.pml
-  pmergesort-with-seq-bc.pml
-  (*test-pmergesort.pml*)
-  bench-pmergesort.pml
-end
+pmergesort.pml
+array-qsort.pml
+pmergesort-with-seq-bc.pml
+(*test-pmergesort.pml*)
+bench-pmergesort.pml
+

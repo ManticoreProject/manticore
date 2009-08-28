@@ -95,7 +95,7 @@ functor MainFn (
 	      TreeShake.shakeProgram p2s)
 	  else p2s
 
-    fun getPArrImpl () = BasisEnv.getTyConFromBasis ["Ropes", "rope"]
+    fun getPArrImpl () = BasisEnv.getTyConFromBasis ["Rope", "rope"]
 
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, bEnv, mEnv, file) = let
