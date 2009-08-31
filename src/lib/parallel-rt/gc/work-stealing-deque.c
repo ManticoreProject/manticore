@@ -30,7 +30,8 @@ typedef struct WorkGroupList_s WorkGroupList_t;
 
 static WorkGroupList_t **PerVProcLists;          
 
-/* \brief must call this function once at startup */
+/* \brief call this function once during runtime initialization to initialize
+ *     gc state */
 void M_InitWorkGroupList ()
 {
   PerVProcLists = NEWVEC(WorkGroupList_t*, NumVProcs);
@@ -156,6 +157,13 @@ static int MoveLeft (int i, int sz)
     return i - 1;
 }
 
+/* The root-set-partitioning optimization partitions the root set into the subset
+ * needed by minor collections only and the subset needed by global collections. 
+ *
+ * FIXME: this code is broken
+ */
+#ifdef ROOT_SET_OPTIMIZATION
+
 /* \brief add the deque elements to the root set to be used by a minor collection
  * \param self the host vproc
  * \param rootPtr pointer to the root set
@@ -212,6 +220,44 @@ Value_t **M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr)
   }
   return rootPtr;
 }
+
+#else /* no root-set optimization: instead we just add the entire deque to each local 
+       * collection */
+
+/* \brief add the deque elements to the root set to be used by a minor collection
+ * \param self the host vproc
+ * \param rootPtr pointer to the root set
+ * \return the updated root set
+ */
+Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
+{
+  for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
+    for (DequeList_t *deques = wgList->deques; deques != NULL; deques = deques->next) {
+      Deque_t *deque = deques->deque;
+      // iterate through the deque in the direction going from the new to the old end
+      for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
+	int j = MoveLeft (i, deque->maxSz); 
+                  // i points one element to right of the element we want to scan
+	if (deque->elts[j] != M_NIL)
+	  // the jth element is in the local heap
+	  *rootPtr++ = &(deque->elts[j]);
+      }	    
+    }
+  }
+  return rootPtr;
+}
+
+/* \brief add the deque elements to the root set to be used by a global collection
+ * \param self the host vproc
+ * \param rootPtr pointer to the root set
+ * \return the updated root set
+ */
+Value_t **M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr)
+{
+  return rootPtr;
+}
+
+#endif /*! ROOT_SET_OPTIMIZATION */
 
 /* \brief returns a list of all deques on the host vproc corresponding to the given work group
  * \param self the host vproc

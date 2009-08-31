@@ -25,7 +25,8 @@ struct Deque_s {
 };
 typedef struct Deque_s Deque_t;
 
-/* \brief must call this function once at startup */
+/* \brief call this function once during runtime initialization to initialize
+ *     gc state */
 void M_InitWorkGroupList ();
 
 /* \brief allocate a deque on the given vproc to by used by the given group
