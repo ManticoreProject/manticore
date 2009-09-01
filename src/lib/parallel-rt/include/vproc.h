@@ -57,8 +57,16 @@ struct struct_vproc {
   /* the following fields may be changed by remote vprocs */
     Mutex_t	lock;		//!< lock for VProc state
     Cond_t	wait;		//!< for waiting when idle
-    Value_t     landingPad;     //!< the head of the landing pad (stack)
-    Addr_t	limitPtr;	//!< heap-limit pointer
+    Value_t     landingPad;     //!< the head of the landing pad (stack). 
+                                //!< this memory is used by the atomic compare-and-
+                                //!< swap instruction, which is why we use padding below
+                                //!< to avoid false sharing.
+    char        pad1[64 - sizeof(Addr_t)];   
+    Addr_t	limitPtr;	//!< heap-limit pointer.
+                                //!< this memory is used by the atomic-write
+                                //!< instruction, which is why we use padding
+                                //!< below to avoid false sharing.
+    char        pad2[64 - sizeof(Addr_t)];
     bool	globalGCPending; //!< true when this vproc has been signaled that
 				//! global GC has started, but it has not
 				//! started yet.
