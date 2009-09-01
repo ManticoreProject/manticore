@@ -17,7 +17,7 @@
 
 /********** VProc local heaps **********/
 
-/* VP_HEAP_SZB */		/* defined in manticore-rt.h */
+/* VP_HEAP_SZB */		/* defined in machine/sizes.h */
 #define VP_HEAP_MASK		((Addr_t)(VP_HEAP_SZB-1))
 #define VP_HEAP_DATA_SZB	((Addr_t)(VP_HEAP_SZB - sizeof(VProc_t)))
 
