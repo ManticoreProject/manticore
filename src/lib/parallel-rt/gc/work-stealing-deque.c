@@ -186,7 +186,7 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 	    // the jth element is in the local heap
 	    *rootPtr++ = &(deque->elts[j]);
 	  } else {
-	    /* the jth element must be in the global heap, so we do not need to add it
+	    /* the jth element points to the global heap, so we do not need to add it
 	     * to the root set. elements to the right of the jth position must also 
 	     * point to the global heap, so it is safe to return the current root set. this
 	     * property always holds for two reasons:
@@ -195,8 +195,11 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 	     */
 #ifndef NDEBUG
 	    // check that none of the elements to the right of the jth element point to the local heap
-	    for (int i = j; j != deque->old; i = MoveLeft (i, deque->maxSz))
-	      assert (!ELT_POINTS_TO_LOCAL_HEAP(deque, MoveLeft (i, deque->maxSz)));
+      	    for (int i = j; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
+	      int j = MoveLeft (i, deque->maxSz);	   
+	      if (deque->elts[j] != M_NIL)
+		assert (!ELT_POINTS_TO_LOCAL_HEAP(deque, j));
+	    }
 #endif
 	    return rootPtr;
 	  }
@@ -222,7 +225,7 @@ Value_t **M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr)
                   // i points one element to right of the element we want to scan
 	if (deque->elts[j] != M_NIL)
 	  if (!ELT_POINTS_TO_LOCAL_HEAP(deque, j))
-	    // the jth element is in the local heap
+	    // the jth element points to the global heap
 	    *rootPtr++ = &(deque->elts[j]);
       }	    
     }
@@ -248,7 +251,6 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 	int j = MoveLeft (i, deque->maxSz); 
                   // i points one element to right of the element we want to scan
 	if (deque->elts[j] != M_NIL)
-	  // the jth element is in the local heap
 	  *rootPtr++ = &(deque->elts[j]);
       }	    
     }
