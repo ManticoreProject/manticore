@@ -164,6 +164,9 @@ static int MoveLeft (int i, int sz)
  */
 #ifdef ROOT_SET_OPTIMIZATION
 
+// returns true if the ith element of the deque points into the local heap
+#define ELT_POINTS_TO_LOCAL_HEAP(deque, i) (IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(deque->elts[i]))->sts))
+
 /* \brief add the deque elements to the root set to be used by a minor collection
  * \param self the host vproc
  * \param rootPtr pointer to the root set
@@ -176,21 +179,27 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
       Deque_t *deque = deques->deque;
       // iterate through the deque in the direction going from the new to the old end
       for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
-	int j = MoveLeft (i, deque->maxSz); 
+	int j = MoveLeft (i, deque->maxSz);
                   // i points one element to right of the element we want to scan
 	if (deque->elts[j] != M_NIL)
-	  if (IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(deque->elts[j]))->sts))
+	  if (ELT_POINTS_TO_LOCAL_HEAP(deque, j)) {
 	    // the jth element is in the local heap
 	    *rootPtr++ = &(deque->elts[j]);
-	  else
+	  } else {
 	    /* the jth element must be in the global heap, so we do not need to add it
-	     * to the root set. elements to the right of the jth position must also be
-	     * in the global heap, so it is safe to return the current root set. this
+	     * to the root set. elements to the right of the jth position must also 
+	     * point to the global heap, so it is safe to return the current root set. this
 	     * property always holds for two reasons:
 	     *   1. new elements can only be inserted at the new (rightmost) end of the deque
 	     *   2. elements are not explicitly promoted when inserted into the deque
 	     */
+#ifndef NDEBUG
+	    // check that none of the elements to the right of the jth element point to the local heap
+	    for (int i = j; j != deque->old; i = MoveLeft (i, deque->maxSz))
+	      assert (!ELT_POINTS_TO_LOCAL_HEAP(deque, MoveLeft (i, deque->maxSz)));
+#endif
 	    return rootPtr;
+	  }
       }	    
     }
   }
@@ -212,7 +221,7 @@ Value_t **M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr)
 	int j = MoveLeft (i, deque->maxSz); 
                   // i points one element to right of the element we want to scan
 	if (deque->elts[j] != M_NIL)
-	  if (!IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(deque->elts[j]))->sts))
+	  if (!ELT_POINTS_TO_LOCAL_HEAP(deque, j))
 	    // the jth element is in the local heap
 	    *rootPtr++ = &(deque->elts[j]);
       }	    
