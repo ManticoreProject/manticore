@@ -41,8 +41,7 @@ fun bench () = let
     val t = treeAdd tree
     val e = Time.now ()
     in
-      Print.print(Long.toString (e-b))
+      Print.print(Time.toString (e-b))
     end
 
 val _ = ImplicitThread.runWithGroup(MultiprogrammedWorkStealing.workGroup(), bench)
-
