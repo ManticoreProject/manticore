@@ -2,11 +2,15 @@
  * \author Korei Klein
  * \date 7/30/09
  *
+ * The behavior of all functions defined in this module should be
+ * apparent from their names.
+ *
  */
 
 #import "Detail.h"
 
 #define STATIC_INLINE static //static inline
+
 
 
 STATIC_INLINE struct Group *Detail_Type(Detail d)
@@ -82,3 +86,4 @@ STATIC_INLINE struct struct_log_event Event_Value(event e)
 {
     return e.value;
 }
+

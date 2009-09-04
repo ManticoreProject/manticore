@@ -35,6 +35,7 @@ typedef enum {
 /// Determine if a point lies within the area this shape is drawn on
 - (BOOL)containsPoint:(NSPoint)p;
 
+/// Each concrete instance of EventShape should implement kind differently to distinguish itself
 - (shapeTag)kind;
 
 @property (readwrite, assign) NSString *description;

@@ -17,8 +17,11 @@
 
 
 
+/// The font of the text used to represent times
 #define TIME_VALUE_FONT_NAME ( @"Helvetica" )
+/// The size of the font of the text used to represent times
 #define TIME_VALUE_FONT_SIZE ( 8 )
+/// The color of the text used to represent times
 #define TIME_VALUE_COLOR ( [NSColor whiteColor] )
 /// Number of rightmost digits of the time value to display
 #define TIME_VALUE_NUM_DIGITS ( 4 )
@@ -27,6 +30,7 @@
 #define TIME_VALUE_PADDING ( 14 )
 
 
+/// Exponentiation function
 uint64_t myExp(uint64_t a, uint n)
 {
     uint64_t ret = 1;
@@ -36,19 +40,11 @@ uint64_t myExp(uint64_t a, uint n)
 
 @implementation MessageView
 
+/// Determine how high a vproc should be based on its identifier
 - (CGFloat)heightForVp:(int32_t)vp
 {
     return ((logDoc.logView.bands.count - vp - 1) * (logDoc.logView.band_height + DIVIDER_THICKNESS)) +
 	logDoc.logView.band_height / 2;
-    NSPoint p = NSMakePoint(0, (logDoc.logView.band_height / 2));
-    NSArray *bands = logDoc.logView.bands;
-    //NSLog(@"messageview has found bands %@", bands);
-    BandView *band = [bands objectAtIndex:vp];
-    //NSLog(@"Finding height for message in band %@", band);
-
-    NSPoint q = [self convertPoint:p fromView:band];
-
-    return q.y;
 }
 
 - (Message *)messageFromDependent:(struct TaggedDetail_struct *)d dst:(int)i
@@ -89,7 +85,7 @@ uint64_t myExp(uint64_t a, uint n)
     Group *g = Detail_Type(d);
     NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
     message.description = [NSString stringWithString:S];
-    
+
     return message;
 }
 
@@ -109,6 +105,8 @@ uint64_t myExp(uint64_t a, uint n)
     times = [[NSMutableArray alloc] init];
     timeValues = [[NSMutableArray alloc] init];
 
+    // dependents will contain one message for every dependent
+    // in dependentsVal which is enabled
     dependents = [[NSMutableArray alloc] init];
     for (Box *b in dependentsVal)
     {
@@ -117,9 +115,8 @@ uint64_t myExp(uint64_t a, uint n)
 	{
 	    Group *g = Detail_Type(d);
 	    if ([logDoc.filter enabled:g].intValue != 1) continue;
-	    
-	    Message *m = [self messageFromDependent:d dst:i];
 
+	    Message *m = [self messageFromDependent:d dst:i];
 
 	    if (m == nil) continue;
 	    //NSLog(@"MessageView is adding a dependent event %@", m);
@@ -130,38 +127,8 @@ uint64_t myExp(uint64_t a, uint n)
     return self;
 }
 
-- (void)displayTime:(uint64_t)t atPosition:(CGFloat)f
-{
-   // NSLog(@"messageview is adding a time to display, position %f, time %qu", f, t);
-    NSString *stringRep = [NSString stringWithFormat:@"%qu", (t / TIME_VALUE_ROUNDING) % myExp(10, TIME_VALUE_NUM_DIGITS)];
-    NSNumber *n = [NSNumber numberWithFloat:f];
-    [times addObject:n];
-    [timeValues addObject:stringRep];
-}
-
-
-- (void)drawTimeValue:(NSString *)s atTime:(CGFloat)f
-{
-    NSRect bounds = self.visibleRect;
-    NSPoint p = NSMakePoint
-	(f, bounds.origin.y + bounds.size.height - TIME_VALUE_PADDING);
-    [s drawAtPoint:p withAttributes:timeValueAttributes];
-}
 
 - (void)drawRect:(NSRect)rect {
-    /*
-    [[NSColor clearColor] set];
-    [NSBezierPath fillRect:self.bounds];
-    assert (times.count == timeValues.count);
-    //NSLog(@"Message view has %d numbers to draw", times.count);
-    for (int i = 0; i < times.count; ++i)
-    {
-	//NSLog(@"MessageView is drawing a number");
-	NSNumber *n = [times objectAtIndex:i];
-	[self drawTimeValue:[timeValues objectAtIndex:i]
-		     atTime:n.floatValue];
-    }
-    */
     for (Message *m in dependents)
     {
 	//NSLog(@"messageview is drawing %@", m);
@@ -170,7 +137,7 @@ uint64_t myExp(uint64_t a, uint n)
 }
 
 /// Alerts the messageView that the mouse has been clicked
-/// Return: whether or not this click corresponded to a message
+/// Return: whether or not this click clicked on a message
 - (BOOL)bandReceivedEvent:(NSEvent *)e
 {
     NSLog(@"MessageView is checking if a message was clicked on");
@@ -188,14 +155,6 @@ uint64_t myExp(uint64_t a, uint n)
     return NO;
 }
 
-/*
-- (void)mouseDown:(NSEvent *)event
-{
-    NSLog(@"Message view received a mouse down");
-    [self.superview mouseDown:event];
-}
- */
-
 - (BOOL)isOpaque
 {
     return YES;
@@ -204,3 +163,38 @@ uint64_t myExp(uint64_t a, uint n)
 
 
 @end
+
+
+// OLD CODE
+
+/*
+/// Store the given time as needing display
+- (void)displayTime:(uint64_t)t atPosition:(CGFloat)f
+{
+   // NSLog(@"messageview is adding a time to display, position %f, time %qu", f, t);
+    NSString *stringRep = [NSString stringWithFormat:@"%qu", (t / TIME_VALUE_ROUNDING) % myExp(10, TIME_VALUE_NUM_DIGITS)];
+    NSNumber *n = [NSNumber numberWithFloat:f];
+    [times addObject:n];
+    [timeValues addObject:stringRep];
+}
+
+
+/// draw a time.  It should have already been stored as needing display by @selector(displayTime:atPosition:)
+- (void)drawTimeValue:(NSString *)s atTime:(CGFloat)f
+{
+    NSRect bounds = self.visibleRect;
+    NSPoint p = NSMakePoint
+	(f, bounds.origin.y + bounds.size.height - TIME_VALUE_PADDING);
+    [s drawAtPoint:p withAttributes:timeValueAttributes];
+}
+*/
+
+
+
+/*
+- (void)mouseDown:(NSEvent *)event
+{
+    NSLog(@"Message view received a mouse down");
+    [self.superview mouseDown:event];
+}
+ */

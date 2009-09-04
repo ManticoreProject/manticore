@@ -22,7 +22,8 @@ BOOL between(CGFloat a, CGFloat b, CGFloat c);
 
 #define DEFAULT_COLOR ( [NSColor redColor] )
 
-
+/// Dummy utility class
+/// We only keep this class around so we can import its static methods
 @interface Utils : NSObject
 {
 }

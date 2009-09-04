@@ -14,8 +14,11 @@
 
 - (PieSlice *)initWithFraction:(double)fractionVal andConsumer:(NSObject *)c
 {
-    if (![super init]) return nil;
-    
+    if (![super init])
+    {
+	NSLog(@"PieSlice could not init");
+	return nil;
+    }
     fraction = fractionVal;
     consumer = c;
     return self;
@@ -36,8 +39,16 @@
 }
 - (void)divideBy:(uint64_t)a
 {
+    // NSLog(@"PieSlice %@ dividing %f by %qu to get %f", self, fraction, a, fraction / a);
     assert ( a != 0 );
-    fraction /= a;
+    fraction = fraction / a;
+}
+
+
+- (PieSlice *)copy
+{
+    NSNumber *n = [NSNumber numberWithInt:((NSNumber *)consumer).intValue];
+    return [[PieSlice alloc] initWithFraction:fraction andConsumer:n];
 }
 
 @end

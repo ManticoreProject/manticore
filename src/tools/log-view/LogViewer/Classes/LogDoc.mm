@@ -22,9 +22,18 @@
 #import "Box.h"
 
 
+/// Name of the nib file which contains the detail info view
 #define DETAIL_INFO_NIB_NAME ( @"DetailInfo" )
+
+/// Name of the nib whose views this controller will manage
+#define WINDOW_NIB_NAME ( @"LogDoc" )
+
+/// Determines how much bigger/smaller the view get when zooming in/out
+/// sqrt(10) is a fun ZOOM_FACTOR
 #define DEFAULT_ZOOM_FACTOR ( 3.16227 )
-#define MIN_LOGINTERVAL_WIDTH ( 50 )
+
+/// Do not display events whose timespan (in floats) would be less than MIN_LOGINTERVAL_WIDTH
+#define MIN_LOGINTERVAL_WIDTH ( 20 )
 
 
 @implementation LogDoc
@@ -45,7 +54,7 @@ static LogFileDesc *logDesc;
     [timeDisplay drewTicks:sender];
 }
 
-/// Cause logView to display logData according to
+/// Cause logView to display logData according to currently set parameters
 - (void)flush
 {
     [logView displayInterval:logInterval
@@ -66,13 +75,15 @@ static LogFileDesc *logDesc;
     	Box *b = [logData.allStates objectAtIndex:0];
 	resourceState = (StateGroup *) [b unbox];
     }
-    
+
    // NSLog(@"RESOURCE state is %s", resourceState->Desc());
+
+#pragma mark Display Summary View
 
     CGFloat summary_view_column_width = DEFAULT_SUMMARY_VIEW_COLUMN_WIDTH;
     // FIXME only looks at the first vproc, really this initialization should set summary
     // to an average of all vprocs
-    double viewWidth = logView.bounds.size.width;
+    double viewWidth = scrollView.bounds.size.width;
     double scale = logInterval->width / viewWidth;
     summary = [Summary coarseSummaryFromLogData:logData
 				       forState:resourceState
@@ -83,14 +94,14 @@ static LogFileDesc *logDesc;
     assert (summaryViewTarget != nil);
     NSRect frame = summaryViewTarget.bounds;
     frame.size.width = viewWidth;
-    
-    
+
+
 
     SummaryView *oldSummaryView = summaryView;
     summaryView = [[SummaryView alloc] initWithFrame:frame
 					  andSummary:summary
 					 columnWidth:summary_view_column_width];
-    
+
     if (summaryViewTarget.subviews.count == 0)
     {
 	[summaryViewTarget addSubview:summaryView];
@@ -99,9 +110,9 @@ static LogFileDesc *logDesc;
     {
 	[summaryViewTarget replaceSubview:oldSummaryView with:summaryView];
     }
-    
+
     summaryView.needsDisplay = true;
-     
+
     logView.needsDisplay = true;
 }
 - (NSString *)filename
@@ -149,25 +160,29 @@ static LogFileDesc *logDesc;
     {
 	[Exceptions raise:@"Could not load the two log description files"];
     }
-    
+
 }
 
 - (LogDoc *)init
 {
     if (![super init]) return nil;
-    
+
     logData = nil;
    // NSLog(@"LogDoc: setting enabled to false");
     logInterval = nil;
     zoomFactor = DEFAULT_ZOOM_FACTOR;
     enabled = false;
-    
+
     detailInfoController = nil;
-    
-    
+
+
     return self;
 }
 
+/** When logView is to display some portion of LogData for the first time
+  * it needs to know what portion of the data to display.
+  * Configure how that portion is to be computed by implementing initialLogInterval
+  */
 - (struct LogInterval *)initialLogInterval:(LogData *)logDataVal
 {
     struct LogInterval *i = (LogInterval *) malloc(sizeof(struct LogInterval));
@@ -181,7 +196,7 @@ static LogFileDesc *logDesc;
 
 - (BOOL)readFromURL:(NSURL *)absoluteURL ofType:(NSString *)typeName error:(NSError **)outError
 {
-    
+
     // Get the filename
     if (!absoluteURL.isFileURL)
     {
@@ -195,33 +210,30 @@ static LogFileDesc *logDesc;
     {
 	[Exceptions raise:@"LogFile could not get a name for given fileWrapper"];
     }
-    
+
     logData = [[LogData alloc] initWithFilename:filename
 				 andLogFileDesc:logDesc];
-    // Read the default interval into logDoc
+    // Initialize logInterval according to the initialLogInterval configuration function
     self.logInterval = [self initialLogInterval:logData];
 
-    
+
     outlineViewDataSource = [[OutlineViewDataSource alloc]
 			     initWithLogDesc:logDesc
 			     logDoc:self];
    // NSLog(@"LogDoc: setting enabled = true");
     enabled = true;
-    
+
     return YES;
 }
 
 
-- (void)windowControllerDidLoadNib:(NSWindowController *)windowController 
+- (void)windowControllerDidLoadNib:(NSWindowController *)windowController
 {
     [super windowControllerDidLoadNib:windowController];
 
     if (!logView) [Exceptions raise:@"LogDoc was not properly initialized with a logView"];
     if (!outlineView) [Exceptions raise:@"LogDoc was not properly initialized with a outlineView"];
-    
-    
 
-    
 #pragma mark tableColumns Initialization
     NSArray *columns = outlineView.tableColumns;
     int i = 0;
@@ -241,29 +253,44 @@ static LogFileDesc *logDesc;
 	    [Exceptions raise:@"LogDoc: did not have an initiailized detailInfoTarget"];
 	}
 	LogFileDesc *logDesc = self.logDesc;
-	DetailInfoController *dic = [[DetailInfoController alloc] initWithNibName:DETAIL_INFO_NIB_NAME
-								      bundle:(NSBundle *)nil
-								     logDesc:logDesc];
-	detailInfoController = dic;
-	
-	DetailInfoView *detailInfoView = detailInfoController.div;
-	NSRect newFrame = detailInfoTarget.frame;
-	NSLog(@"newFrame is %f %f %f %f'",
-	      newFrame.origin.x, newFrame.origin.y,
-	      newFrame.size.width, newFrame.size.height);
-	
-	[detailInfoView setFrame:newFrame];
-	[detailInfoTarget.superview addSubview:detailInfoView];
-	NSLog(@"added view %@ to logView %@ in that frame", detailInfoView, logView);
-//	[logView replaceSubview:detailInfoTarget with:detailInfoView];
-	detailInfoView.needsDisplay = true;
-	detailInfoView.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
+
+
+	// Because some of the UI is created programmatically and some of the UI is created
+	// in interface builder, it is necessary to do a small dance here to get things into the right places
+	{
+	    // Load the nib into memory and get its controller
+	    DetailInfoController *dic = [[DetailInfoController alloc] initWithNibName:DETAIL_INFO_NIB_NAME
+	    							      bundle:(NSBundle *)nil
+	    							     logDesc:logDesc];
+	    detailInfoController = dic;
+
+	    // Get the detailInfoView, but do not display it yet
+	    DetailInfoView *detailInfoView = detailInfoController.div;
+
+	    // detailInfoTarget is a placeholder view. it is used as follows
+	    // detailInfoTarget is created in interface builder as a custom view with nothing in it
+	    // the only important properties of detailInfoTarget are
+		    // 0. it is a view
+		    // 1. its frame is the frame we would like to use for the detailInfoView
+	    // as such, we now get rid of detailInfoTarget, and use its frame to initialize detailInfoView
+	    // so that detailInfoView takes up the same space tha detailInfoTarget used to take up
+	    NSRect newFrame = detailInfoTarget.frame;
+	    //NSLog(@"newFrame is %f %f %f %f'",
+	    //      newFrame.origin.x, newFrame.origin.y,
+	    //      newFrame.size.width, newFrame.size.height);
+
+	    [detailInfoView setFrame:newFrame];
+	    [detailInfoTarget.superview addSubview:detailInfoView];
+	    //NSLog(@"added view %@ to logView %@ in that frame", detailInfoView, logView);
+	    detailInfoView.needsDisplay = true;
+	    detailInfoView.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
+	}
 	
 	
 	if (!outlineViewDataSource)
 	{
 	    NSLog(@"enabled state = %d", self.enabled);
-	    
+
 	    [Exceptions raise:@"Did not have an initialized outlineViewDataSource while enabled"];
 	}
 	outlineView.dataSource = outlineViewDataSource;
@@ -287,24 +314,22 @@ static LogFileDesc *logDesc;
 {
     return NO;
 }
-- (BOOL)applicationShouldOpenUntitledFile:(NSApplication *)sender
-{
-    return NO;
-}
+
 
 - (NSData *)dataOfType:(NSString *)typeName error:(NSError **)outError
 {
     [Exceptions raise:@"LogDoc can't write data"];
     return nil;
 }
-- (NSString *)windowNibName 
+
+- (NSString *)windowNibName
 {
-    return @"LogDoc";
+    return WINDOW_NIB_NAME;
 }
 
 #pragma mark Zooming
 
-/// The largest number of nanoseconds that can be displayed at deep zoom
+/// The largest number of nanoseconds that can be displayed at deep zoom, given in uint64_t
 #define MAX_DEEP_ZOOM_WIDTH ( -1 )
 /// The largest number of nanoseconds that can be displayed at medium zoom
 #define MAX_MEDIUM_ZOOM_WIDTH ( 10000000 )
@@ -322,7 +347,7 @@ static LogFileDesc *logDesc;
     else
     {
 	return zoomLevelShallow;
-    }   
+    }
 }
 
 - (void)printLogInterval
@@ -346,10 +371,13 @@ static LogFileDesc *logDesc;
     return logInterval->x + scale * (p - shapeBounds.origin.x);
 }
 
+/// Horizontal midpoint of an NSRect
 - (CGFloat)xMidPoint:(NSRect)r
 {
     return r.origin.x + r.size.width / 2;
 }
+
+
 - (void)zoomBy:(double)scale aboutPivot:(uint64_t)pivot
 {
    // NSLog(@"pivot = %qu", pivot);
@@ -395,6 +423,9 @@ static LogFileDesc *logDesc;
     [self zoomBy:scale];
     self.printLogInterval;
 }
+
+
+
 - (IBAction)zoom:(NSSegmentedControl *)sender
 {
     NSInteger n = sender.selectedSegment;
@@ -412,6 +443,7 @@ static LogFileDesc *logDesc;
     }
 }
 
+// For debugging purposes
 uint64_t g_counter = 0;
 
 - (BOOL)isInInterval:(Detail)d
@@ -458,17 +490,17 @@ uint64_t g_counter = 0;
 	    return false; /// XXX FIXME
 	    break;
     }
-    
-    NSLog(@"g = %s, g->Kind() = %d", g->Desc(), g->Kind());
+
+    //NSLog(@"g = %s, g->Kind() = %d", g->Desc(), g->Kind());
     ++g_counter;
-    int n = * ((int *)0);
-    NSLog(@"%d", n);
+    // int n = * ((int *)0);
+    //NSLog(@"%d", n);
     [Exceptions raise:@"Controll should not reach here"];
     return false;
 }
 
 
-#pragma mark Info
+#pragma mark Detail Info
 
 - (void)displayDetail:(EventShape *)d
 {
@@ -478,8 +510,6 @@ uint64_t g_counter = 0;
 
 #pragma mark Printing
 
-
-
 - (void)printShowingPrintPanel:(BOOL)showPanels
 {
     NSLog(@"LogDoc is being asked to print");
@@ -487,7 +517,7 @@ uint64_t g_counter = 0;
 			    printOperationWithView:scrollView
 			    printInfo:[self printInfo]];
     op.showPanels = showPanels;
-    
+
     [self runModalPrintOperation:op
 			delegate:nil
 		  didRunSelector:NULL

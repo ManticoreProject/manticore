@@ -14,25 +14,14 @@
 #import "Box.h"
 #import "Utils.h"
 
-/// The number of details for each event on average.
-/// The value need not be exact, it is used to guess an initial size
-/// For the Details array.
-#define ESTIMATED_DETAILS_PER_EVENT ( 0.4 )
-#define MAX_NUM_EVENTS ( 6000000 )
 
-/// How much should the array grow by each time it runs out of space
-#define APPAY_INC ( 100 )
-
+/// Convenient ordered minimum function
 static inline int min( int a, int b)
 {
     return a < b ? a : b;
 }
 
-
-
 @implementation VProc
-
-
 
 #pragma mark Synthesis
 
@@ -57,69 +46,73 @@ static inline int min( int a, int b)
 
 #pragma mark Initialization
 
-/// Initialize
-- (VProc *)initWithLog:(LogBuffer_t *)logBuffer
-	    andLogDesc:(LogFileDesc *)logDescVal
-		header:(LogFileHeader_t *)headerVal
-	     numEvents:(int)n
-	     allStates:(NSArray *)allStates
-	  dependentMap:(DependentMap *)dependentMapVal
+- (VProc *)initWithVpId:(uint32_t)i
+		   events:(event **)eventsVal numEvents:(uint64_t)n
+		  details:(Detail *)detailsVal numDetails:(uint64_t)m
+		  logDesc:(struct LogFileDesc *)logDescVal
+		    start:(uint64_t)firstTime end:(uint64_t)lastTime
+		   header:(LogFileHeader_t *)hdr;
 {
-
     if (![super init]) return nil;
-    
-    first_event_times = [[NSMutableArray alloc] init];
-    // Initialize start and end to the latest and earliest times respectively
-    start = -1;
-    end = 0;
 
-    header = headerVal;
-    vpId = logBuffer->vpId;
+    vpId = i;
+    start = firstTime;
+    end = lastTime;
+    header = hdr;
+    details = detailsVal;
+    numDetails = m;
+    events = eventsVal;
+    numEvents = n;
     logDesc = logDescVal;
 
-    stateMap = [[StateMap alloc] init];
-    intervalMap = [[IntervalMap alloc] init];
-    dependentMap = dependentMapVal;
-    
-    int events_to_read = min(n, logBuffer->next);
-    numEvents = 0;
-    events_size = MAX_NUM_EVENTS;// events_to_read
-    events = (event *)[Utils calloc:events_size size:sizeof(event)];
+  //  NSLog(@"Newly initialized VProc has numEvents = %qu numDetails = %qu", numEvents, numDetails);
 
-    event * e = events;
-    // The array of details and the initial states are related
-    // They must be initialized in tandem
-#pragma mark Detail and State Initialization
-    
-    numDetails = 0;
-    details_size = ESTIMATED_DETAILS_PER_EVENT * events_size + allStates.count;
-    details = (TaggedDetail_struct * *) [Utils calloc:details_size size:sizeof(TaggedDetail_struct *)];
-
-
-    for (Box *stateGroupBox in allStates)
-    {
-	
-	StateGroup *stateGroup = (StateGroup *) [stateGroupBox unbox];
-	details[numDetails] = (TaggedDetail_struct *) [Utils calloc:1
-							       size:sizeof(TaggedDetail_struct)];
-	details[numDetails]->type = stateGroup;
-	details[numDetails]->data.state.state = stateGroup->StartState();
-	//NSLog(@"StateGroup %s has start state %d", stateGroup->Desc(), details[numDetails]->data.state.state);
-	details[numDetails]->data.state.start = NULL; //< The detail starts at the begginig of time
-	details[numDetails]->data.state.end = NULL;   //< The detail ends at the end of time
-	
-	[stateMap addDetail:&details[numDetails]->data.state forStateGroup:stateGroup];
-	
-	++numDetails;
-    }
-    
-    
-    [self read:events_to_read eventsFrom:logBuffer->log];
-    
-    // assert( numEvents == events_size );
-    
     return self;
 }
+
+
+#pragma mark Description
+
+- (NSString *)description
+{
+    return @"<<< VProc >>>";
+}
+
+
+@end
+
+/*
+
+// The number of details for each event on average.
+// The value need not be exact, it is used to guess an initial size
+// For the Details array.
+//#define ESTIMATED_DETAILS_PER_EVENT ( 0.4 )
+
+
+// How much should the array grow by each time it runs out of space
+//#define APPAY_INC ( 100 )
+
+//#define MAX_NUM_EVENTS ( 6000000 )
+
+
+{
+    NSMutableString *ret = [NSMutableString stringWithFormat:
+	@"<< VProc %d, %d events:", vpId, numEvents];
+    for (int i = 0; i < numEvents; ++i)
+    {
+a dependent with id
+	[ret appendString:@"\n"];
+	[ret appendString:@"\t\t\t"];
+	[ret appendString:DynamicEventDescription((*events)[i])];
+    }
+    [ret appendString:@" >>"];
+    return ret;
+}
+
+
+
+
+
 
 double cur_interval_height = 0.0;
 - (double)nextIntervalHeight:(struct Interval_Detail *)i
@@ -131,21 +124,21 @@ double cur_interval_height = 0.0;
 	numEvents:(int)n
 {
     int eventsToRead = min(n, logBuffer->next);
-    
+
     assert( numEvents + eventsToRead < events_size );
-    
+
     // events = (event *) realloc(events, sizeof(event) * (events_size = events_size + eventsToRead));
-    
+
     [self read:eventsToRead eventsFrom:logBuffer->log];
 }
 
 /// Find the identifier for this dependent event
-/** This function makes a very serious assumption:
- * 1. Every dependent event's identifier is the first of its arguments whose
- type is EVENT_ID, and such an argument exists
-
- If this assumption is not met, the function will raise an exception.
-*/
+// * This function makes a very serious assumption:
+// * 1. Every dependent event's identifier is the first of its arguments whose
+// type is EVENT_ID, and such an argument exists
+//
+// If this assumption is not met, the function will raise an exception.
+//
 uint64_t GetDependentId(event *e, EventDesc *eventDesc)
 {
     for (int i = 0; i < eventDesc->NArgs(); ++i)
@@ -161,14 +154,14 @@ uint64_t GetDependentId(event *e, EventDesc *eventDesc)
 	@"VProc.mm: GetDependentId: arguments did not meet a necessary assumption"];
 	return -1;
 }
-/* convert a timestamp to nanoseconds */
+// convert a timestamp to nanoseconds
 static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 {
     if (Hdr->tsKind == LOGTS_MACH_ABSOLUTE)
 	return ts->ts_mach;
     else if (Hdr->tsKind == LOGTS_TIMESPEC)
 	return ts->ts_val.sec * 1000000000 + ts->ts_val.frac;
-    else /* Hdr->tsKind == LOGTS_TIMEVAL */
+    else // Hdr->tsKind == LOGTS_TIMEVAL
 	return ts->ts_val.sec * 1000000000 + ts->ts_val.frac * 1000;
 }
 
@@ -192,8 +185,8 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 	assert (d->n_dsts < d->dsts_array_size);
     }
 }
-    
-    
+
+
 /// Main event reading logic
 /// Assume: events is big enough to hold all the events
 /// Assume: details may not be big enough to hold all the details
@@ -421,26 +414,70 @@ andDependentGroup:(DependentGroup *)g
     return;
 }
 
-#pragma mark Description
 
-- (NSString *)description
+- (VProc *)initWithLog:(LogBuffer_t *)logBuffer
+	    andLogDesc:(LogFileDesc *)logDescVal
+		header:(LogFileHeader_t *)headerVal
+	     numEvents:(int)n
+	     allStates:(NSArray *)allStates
+	  dependentMap:(DependentMap *)dependentMapVal
 {
-    return @"<<< VProc >>>";
-}
-/*
-{
-    NSMutableString *ret = [NSMutableString stringWithFormat:
-	@"<< VProc %d, %d events:", vpId, numEvents];
-    for (int i = 0; i < numEvents; ++i)
+
+    if (![super init]) return nil;
+
+    first_event_times = [[NSMutableArray alloc] init];
+    // Initialize start and end to the latest and earliest times respectively
+    start = -1;
+    end = 0;
+
+    header = headerVal;
+    vpId = logBuffer->vpId;
+    logDesc = logDescVal;
+
+    stateMap = [[StateMap alloc] init];
+    intervalMap = [[IntervalMap alloc] init];
+    dependentMap = dependentMapVal;
+
+    int events_to_read = min(n, logBuffer->next);
+    numEvents = 0;
+    events_size = MAX_NUM_EVENTS;// events_to_read
+    events = (event *)[Utils calloc:events_size size:sizeof(event)];
+
+    event * e = events;
+    // The array of details and the initial states are related
+    // They must be initialized in tandem
+
+#pragma mark Detail and State Initialization
+
+    numDetails = 0;
+    details_size = ESTIMATED_DETAILS_PER_EVENT * events_size + allStates.count;
+    details = (TaggedDetail_struct * *) [Utils calloc:details_size size:sizeof(TaggedDetail_struct *)];
+
+
+    for (Box *stateGroupBox in allStates)
     {
-a dependent with id
-	[ret appendString:@"\n"];
-	[ret appendString:@"\t\t\t"];
-	[ret appendString:DynamicEventDescription((*events)[i])];
+	
+	StateGroup *stateGroup = (StateGroup *) [stateGroupBox unbox];
+	details[numDetails] = (TaggedDetail_struct *) [Utils calloc:1
+							       size:sizeof(TaggedDetail_struct)];
+	details[numDetails]->type = stateGroup;
+	details[numDetails]->data.state.state = stateGroup->StartState();
+	//NSLog(@"StateGroup %s has start state %d", stateGroup->Desc(), details[numDetails]->data.state.state);
+	details[numDetails]->data.state.start = NULL; //< The detail starts at the begginig of time
+	details[numDetails]->data.state.end = NULL;   //< The detail ends at the end of time
+	
+	[stateMap addDetail:&details[numDetails]->data.state forStateGroup:stateGroup];
+	
+	++numDetails;
     }
-    [ret appendString:@" >>"];
-    return ret;
+
+
+    [self read:events_to_read eventsFrom:logBuffer->log];
+
+    // assert( numEvents == events_size );
+
+    return self;
 }
+
 */
 
-@end

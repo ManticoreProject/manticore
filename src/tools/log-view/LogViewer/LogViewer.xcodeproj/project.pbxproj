@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 1DDD58140DA1D0A300B32029 /* MainMenu.xib */; };
+		52007217104327620075E884 /* LogDataUtils.c in Sources */ = {isa = PBXBuildFile; fileRef = 52007216104327620075E884 /* LogDataUtils.c */; };
 		52A6E9C210309B0D00D803AD /* EventInfoView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52A6E9C110309B0D00D803AD /* EventInfoView.m */; };
 		52AE52FE1028D6AB007AED7A /* VProc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C41028D6AA007AED7A /* VProc.mm */; };
 		52AE52FF1028D6AB007AED7A /* VProcMaps.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C61028D6AA007AED7A /* VProcMaps.mm */; };
@@ -39,6 +40,7 @@
 		52AE5E26102CAA3A007AED7A /* DetailInfo.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52AE5E25102CAA3A007AED7A /* DetailInfo.xib */; };
 		52AE5E2A102CABAA007AED7A /* DetailInfoView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5E29102CABAA007AED7A /* DetailInfoView.m */; };
 		52BACE9D1028D43D00C76CA9 /* LogDoc.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52BACE9C1028D43D00C76CA9 /* LogDoc.xib */; };
+		52CAAC05105192C40003196F /* README in Resources */ = {isa = PBXBuildFile; fileRef = 52CAAC04105192C40003196F /* README */; };
 		52CC76041039BF69006A0DCD /* SummaryView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52CC76031039BF69006A0DCD /* SummaryView.mm */; };
 		52E4D4D310330929003396BE /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D4D210330929003396BE /* AppDelegate.m */; };
 		52E4D60610346120003396BE /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D60510346120003396BE /* Utils.m */; };
@@ -60,6 +62,8 @@
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		29B97325FDCFA39411CA2CEA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		32CA4F630368D1EE00C91783 /* LogViewer_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogViewer_Prefix.pch; sourceTree = "<group>"; };
+		52007215104327620075E884 /* LogDataUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogDataUtils.h; sourceTree = "<group>"; };
+		52007216104327620075E884 /* LogDataUtils.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = LogDataUtils.c; sourceTree = "<group>"; };
 		52A6E9C010309B0D00D803AD /* EventInfoView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventInfoView.h; sourceTree = "<group>"; };
 		52A6E9C110309B0D00D803AD /* EventInfoView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EventInfoView.m; sourceTree = "<group>"; };
 		52AE52BD1028D6AA007AED7A /* Detail.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Detail.h; sourceTree = "<group>"; };
@@ -112,7 +116,7 @@
 		52AE53381028D97C007AED7A /* log-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = "log-desc.hxx"; path = "../../log-common/log-desc.hxx"; sourceTree = SOURCE_ROOT; };
 		52AE53501028DA8F007AED7A /* load-log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "load-log-desc.cxx"; path = "../../log-common/load-log-desc.cxx"; sourceTree = SOURCE_ROOT; };
 		52AE54461029DAFB007AED7A /* TimeDisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TimeDisplay.h; path = ../TimeDisplay.h; sourceTree = "<group>"; };
-		52AE54471029DAFB007AED7A /* TimeDisplay.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TimeDisplay.m; sourceTree = "<group>"; };
+		52AE54471029DAFB007AED7A /* TimeDisplay.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = TimeDisplay.m; path = ../TimeDisplay.m; sourceTree = "<group>"; };
 		52AE5DA5102C9F67007AED7A /* EventInfo.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = EventInfo.xib; sourceTree = "<group>"; };
 		52AE5DA8102C9FB5007AED7A /* EventInfoController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventInfoController.h; sourceTree = "<group>"; };
 		52AE5DA9102C9FB5007AED7A /* EventInfoController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventInfoController.mm; sourceTree = "<group>"; };
@@ -124,6 +128,7 @@
 		52AE5E28102CABAA007AED7A /* DetailInfoView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailInfoView.h; sourceTree = "<group>"; };
 		52AE5E29102CABAA007AED7A /* DetailInfoView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DetailInfoView.m; sourceTree = "<group>"; };
 		52BACE9C1028D43D00C76CA9 /* LogDoc.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = LogDoc.xib; sourceTree = "<group>"; };
+		52CAAC04105192C40003196F /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
 		52CC76021039BF69006A0DCD /* SummaryView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SummaryView.h; sourceTree = "<group>"; };
 		52CC76031039BF69006A0DCD /* SummaryView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SummaryView.mm; sourceTree = "<group>"; };
 		52E4D4D110330929003396BE /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -182,6 +187,7 @@
 		29B97314FDCFA39411CA2CEA /* LogViewer */ = {
 			isa = PBXGroup;
 			children = (
+				52CAAC04105192C40003196F /* README */,
 				52AE52B81028D6AA007AED7A /* Classes */,
 				29B97315FDCFA39411CA2CEA /* Other Sources */,
 				29B97317FDCFA39411CA2CEA /* Resources */,
@@ -222,14 +228,24 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		52007214104327450075E884 /* LogData */ = {
+			isa = PBXGroup;
+			children = (
+				52AE52C71028D6AA007AED7A /* LogData.h */,
+				52AE52C81028D6AA007AED7A /* LogData.mm */,
+				52007215104327620075E884 /* LogDataUtils.h */,
+				52007216104327620075E884 /* LogDataUtils.c */,
+			);
+			name = LogData;
+			sourceTree = "<group>";
+		};
 		52AE52B81028D6AA007AED7A /* Classes */ = {
 			isa = PBXGroup;
 			children = (
 				52CC75E71039A68C006A0DCD /* Summary View */,
 				52E4D6D91034BD0F003396BE /* Summary */,
 				52AE52B91028D6AA007AED7A /* EventRep */,
-				52AE52C71028D6AA007AED7A /* LogData.h */,
-				52AE52C81028D6AA007AED7A /* LogData.mm */,
+				52007214104327450075E884 /* LogData */,
 				52AE52C91028D6AA007AED7A /* LogDoc.h */,
 				52AE52CA1028D6AA007AED7A /* LogDoc.mm */,
 				52AE52CB1028D6AA007AED7A /* LogView.h */,
@@ -293,7 +309,6 @@
 			children = (
 				52AE52D31028D6AB007AED7A /* Background */,
 				52AE52D61028D6AB007AED7A /* Foreground */,
-				52AE54471029DAFB007AED7A /* TimeDisplay.m */,
 				52AE5E21102CA96A007AED7A /* Detail Info */,
 			);
 			path = LogViewComponents;
@@ -316,6 +331,7 @@
 				52AE54461029DAFB007AED7A /* TimeDisplay.h */,
 				52AE52D91028D6AB007AED7A /* MessageView.h */,
 				52AE52DA1028D6AB007AED7A /* MessageView.mm */,
+				52AE54471029DAFB007AED7A /* TimeDisplay.m */,
 			);
 			path = Foreground;
 			sourceTree = "<group>";
@@ -487,6 +503,7 @@
 				52BACE9D1028D43D00C76CA9 /* LogDoc.xib in Resources */,
 				52AE5DA6102C9F67007AED7A /* EventInfo.xib in Resources */,
 				52AE5E26102CAA3A007AED7A /* DetailInfo.xib in Resources */,
+				52CAAC05105192C40003196F /* README in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -533,6 +550,7 @@
 				52E4D6E21034BD40003396BE /* PieSlice.m in Sources */,
 				52E4D72B1035DA1B003396BE /* DetailEnumerator.mm in Sources */,
 				52CC76041039BF69006A0DCD /* SummaryView.mm in Sources */,
+				52007217104327620075E884 /* LogDataUtils.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

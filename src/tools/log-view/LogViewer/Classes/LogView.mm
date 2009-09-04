@@ -16,18 +16,26 @@
 
 
 
+/// Default width (in floats, representing 72nds of an inc) of the logView
 #define DEFAULT_LOG_VIEW_WIDTH ( 5000 )
+/// Minimum height of a bandView.  If bandviews do not fit at the height, then the user must
+/// use the vertical scrollbar to scroll through them
 #define MIN_BAND_HEIGHT ( 60 )
+/// Color of singleton/simple events
 #define SINGLETON_COLOR ( [NSColor yellowColor] )
+/// Background color of the LogView.  Drawn behind tick lines and bandViews.
 #define LOG_VIEW_BACKGROUND_COLOR ( [NSColor blackColor] )
+/// default distance in floats between tick lines
 #define DEFAULT_TIME_TICK ( 55 )
 
-// Color and width of small tick lines
+/// Color of small tick lines
 #define TICK_LINE_COLOR ( [NSColor cyanColor] )
+/// Width of small tick lines
 #define TICK_LINE_WIDTH ( 1 )
 
-// Color and width of large tick lines
+/// Color of big tick lines
 #define BIG_TICK_LINE_COLOR ( [NSColor redColor] )
+/// Width of big tick lines
 #define BIG_TICK_LINE_WIDTH ( 2 )
 
 @implementation LogView
@@ -47,7 +55,7 @@
 
 - (id)initWithFrame:(NSRect)frame
 {
- 
+
     if (![super initWithFrame:frame]) return nil;
     NSRect f = [self frame];
     f.size.width = DEFAULT_LOG_VIEW_WIDTH;
@@ -70,17 +78,20 @@
 
 - (void)drawRect:(NSRect)rect
 {
+    // check if logDoc and self are in their enabled states
     if (!logDoc.enabled) return;
     if (!self.enabled) return;
+
     // Draw Background
     [LOG_VIEW_BACKGROUND_COLOR set];
     [NSBezierPath fillRect:[self bounds]];
 
-    // Draw tick lines
     NSBezierPath *verticalLine = [[NSBezierPath alloc] init];
     NSRect bounds = self.bounds;
-    
 
+
+    // Create the path for tick lines
+    // OPTIMIZE: cache the verticalline path
     [TICK_LINE_COLOR set];
     verticalLine.lineWidth = TICK_LINE_WIDTH;
 
@@ -96,79 +107,35 @@
 	[verticalLine lineToPoint:f];
 
     }
+
+    // Draw tick lines
     [verticalLine stroke];
 
     //NSLog(@"number of ticks %d", ticks.count);
     [logDoc drewTicks:self];
-    
+
 
 
 }
 
+/// Draw a bigTick
+/// Currently unused.
 - (void)bigTickAt:(CGFloat)t
 {
     NSRect bounds = self.bounds;
-    
+
     NSBezierPath *verticalLine = [[NSBezierPath alloc] init];
     verticalLine.lineWidth = BIG_TICK_LINE_WIDTH;
     [BIG_TICK_LINE_COLOR set];
-    
+
     NSPoint s, f;
     s.x = f.x = t;
     s.y = bounds.origin.y;
     f.y = bounds.origin.y + bounds.size.height;
-    
+
     [verticalLine moveToPoint:s];
     [verticalLine lineToPoint:f];
     [verticalLine stroke];
-}
-
-
-int sillyNumber = 0;
-
-/// For Testing, return a new interesting color
-- (NSColor *)sillyNextColor
-{
-    if (sillyNumber == 0)
-    {
-	sillyNumber = 1;
-	return [NSColor redColor];
-    }
-    else {
-	sillyNumber = 0;
-	return [NSColor blackColor];
-    }
-}
-
-
-/// FIXME pick better colors
-- (NSColor *)colorForIntervalGroup:(IntervalGroup *)g
-{
-    return [NSColor blueColor];
-}
-/// Return the color that a state should be drawn in
-- (NSColor *)colorForState:(int)state
-{
-    switch (state)
-    {
-	case 0:
-	    return [NSColor greenColor];
-	case 1:
-	    return [NSColor redColor];
-	case 2:
-	    return [NSColor grayColor];
-	case 3:
-	    return [NSColor orangeColor];
-	case 4:
-	    return [NSColor purpleColor];
-	case 5:
-	    return [NSColor blueColor];
-	case 6:
-	    return [NSColor brownColor];
-	default:
-	    [Exceptions raise:@"Can't decide on a color for state"];
-    }
-    return nil;
 }
 
 
@@ -178,15 +145,16 @@ int sillyNumber = 0;
 	    fromLogData:(LogData *)logData
 	     filteredBy:(GroupFilter *)filter;
 {
+    // The current bounds may not be suitable for displaying the requested data
+    // modify them so that they are suitable
     NSRect bounds = [self bounds];
-    
 
-    
+    // Minimum height of the LogView
     CGFloat min_height = DIVIDER_THICKNESS +
 	logData.vProcs.count * (MIN_BAND_HEIGHT + DIVIDER_THICKNESS);
-    
+
     if (bounds.size.height < min_height) bounds.size.height = min_height;
-    
+
     band_height =
 	(bounds.size.height - (1 + logData.vProcs.count * DIVIDER_THICKNESS)) /
 		logData.vProcs.count;
@@ -196,26 +164,29 @@ int sillyNumber = 0;
     // NSLog(@"Setting logview frame to %f,%f,%f,%f", frame.origin.x, frame.origin.y, frame.size.width, frame.size.height);
     self.frame = frame;
     self.bounds = bounds;
-    
- 
-    // The old subviews no longer have valid shapes on them, remove them
+
+
+    // The old subviews no longer have valid shapes on them
+
+    // Here we replace the old splitView with a fresh one
+    // We deal with the message view later
     NSRect splitViewBounds = bounds;
     splitViewBounds.origin.y += DIVIDER_THICKNESS;
     splitViewBounds.size.height -= 2 * DIVIDER_THICKNESS;
     CustomSplitView *newSplitView = [[CustomSplitView alloc] initWithFrame:splitViewBounds];
- 
-    
+
+
     if (splitView) [self replaceSubview:splitView with:newSplitView];
     else [self addSubview:newSplitView];
 
-    
+
     splitView = newSplitView;
 
-    
-    
+
+
     // Add tick lines
     NSRect shapeBounds = splitView.shapeBounds;
-    
+
     float x = shapeBounds.origin.x;
     ticks = [[NSMutableArray alloc] init];
     while (x < shapeBounds.origin.x + shapeBounds.size.width)
@@ -224,10 +195,11 @@ int sillyNumber = 0;
 	x += timeTick;
     }
 
-    
+
     bands = [[NSMutableArray alloc] init];
-    
+
     int v = 0;
+   // NSLog(@"LogView: must add %d bands, one for each vproc", logData.vProcs.count);
     for (VProc *vp in logData.vProcs)
     {
 	BandView *band =[[BandView alloc]
@@ -246,24 +218,26 @@ int sillyNumber = 0;
 	band.target = target;
 	 ++v;
     }
-    
-    
+
+
+    // Not it is time to replace the old messageView with a new message View
     MessageView *newMessageView = [[MessageView alloc] initWithFrame:splitViewBounds
 							      logDoc:logDoc
 							  dependents:logData.dependentDetails];
-    
+
     if (messageView) [self replaceSubview:messageView with:newMessageView];
     else [self addSubview:newMessageView];
  //   NSLog(@"Added messageView %@ with bounds : %f %f %f %f", newMessageView,
 	//  newMessageView.bounds.origin.x, newMessageView.bounds.origin.y,
 	//  newMessageView.bounds.size.width, newMessageView.bounds.size.height);
     messageView = newMessageView;
-    
+
     for (BandView *band in bands)
     {
 	band.messageView = messageView;
     }
-    
+
+    // Manage the views a bit more
     [splitView adjustSubviews];
     [self setNeedsDisplay:YES];
     [messageView setNeedsDisplay:YES];
@@ -272,29 +246,39 @@ int sillyNumber = 0;
 }
 
 
-
-
 - (void)mouseDown:(NSEvent *)e
 {
-    NSLog(@"Mouse down in logView");
-
+    NSLog(@"Mouse went down in LogView");
 }
 
+@end
+
+
+
+
+
+
+
+
+
+
+
+
 /*
- 
- 
+
+
  BandView *band = [[BandView alloc] initWithFrame:curFrame];
  band.selectedEvent = selectedEvent;
  NSRect bandBounds = band.shapeBounds;
- 
+
  // Converts from intervals in log file to intervals in log view
  double scale = bandBounds.size.width / logWidth;
- 
- 
+
+
  NSRect splitViewFrame = [splitView frame];
  // NSLog(@"adding a band for VProc with vpId %d", v);
- 
- 
+
+
  for (int i = 0; i < vp.numEvents; ++i)
  {
  // NSLog(@"checking if event %d of %d is in timespan", i, vp.numEvents);
@@ -311,19 +295,19 @@ int sillyNumber = 0;
  events[i].timestamp <= logX + logWidth)
  {
  // NSLog(@"Found event in timespan, checking for shapes to draw");
- 
- 
- 
- 
- 
- 
- 
+
+
+
+
+
+
+
  CGFloat drawingPosition =
  bandBounds.origin.x + scale * (events[i].timestamp - logX);		
  #pragma mark SINGLETONS
  /////////////// SINGLETONS ///////////////////
- 
- // FIXME makes only singletons happen
+
+ // makes only singletons happen
  if (events[i].desc->isSimpleEvent())
  {
  // NSLog(@"adding singleton");
@@ -333,15 +317,15 @@ int sillyNumber = 0;
  withColor:SINGLETON_COLOR
  andStart:drawingPosition];
  }
- 
+
  // Convert this event into a shape, once for each group it is in
- 
+
  /////////////// STATE GROUPS ///////////////////
  #pragma mark STATE GROUPS
- 
+
  // For now, we set the stateGroup to be the one containing
  // the first event, if such a state exists
- 
+
  if (!stateGroup)
  {
  // NSLog(@"stateGroup is uninitialized, checking event for groups to use");
@@ -359,7 +343,7 @@ int sillyNumber = 0;
  }
  } calloc
  }
- 
+
  // Warning, NOT an ELSE clause!! must be an if. see logic above.
  if (stateGroup && [filter enabled:stateGroup] != 0)
  {
@@ -390,7 +374,7 @@ int sillyNumber = 0;
  // NSLog(@"checking interval %s", intervals->at(h)->Desc());
  IntervalGroup *intervalGroup = intervals->at(h);
  if ([filter enabled:intervalGroup].intValue == 0) continue;
- 
+
  if (eventDesc == intervalGroup->Start())
  {
  [band addIntervalStart:&events[i]
@@ -407,11 +391,11 @@ int sillyNumber = 0;
  }
  }
  }
- 
- 
+
+
  #pragma mark DEPENDENT GROUPS
  ///////////////// DEPENDENT GROUPS ////////////////
- 
+
  std::vector<DependentGroup *> *dependents =
  logFile.desc->DependentGroups(eventDesc);
  if (dependents)
@@ -421,7 +405,7 @@ int sillyNumber = 0;
  NSLog(@"checking dependents");
  DependentGroup *dependentGroup = dependents->at(h);
  if ([filter enabled:dependentGroup].intValue == 0) continue;
- 
+
  if (eventDesc == dependentGroup->Src())
  {
  // 
@@ -435,7 +419,7 @@ int sillyNumber = 0;
   NSLog(@"\tAdding event at time %qu, position %f to band", events[i].timestamp, drawingPosition);
  [band addState:&events[i] withColor:[self sillyNextColor]
  andStart:drawingPosition];
- 
+
 	}
 	else {
 	    // The event is not part of the current timespan
@@ -447,8 +431,60 @@ int sillyNumber = 0;
 	[splitView addSubview:band];
 	[band setNeedsDisplay:YES];
 	++v;
+
+
+
+
+int sillyNumber = 0;
+/// For Testing, return a new interesting color
+- (NSColor *)sillyNextColor
+{
+    if (sillyNumber == 0)
+    {
+	sillyNumber = 1;
+	return [NSColor redColor];
+    }
+    else
+    {
+	sillyNumber = 0;
+	return [NSColor blackColor];
+    }
+}
+
+/// pick better colors
+- (NSColor *)colorForIntervalGroup:(IntervalGroup *)g
+{
+    return [NSColor blueColor];
+}
+
+
+
+
+/// Return the color that a state should be drawn in
+- (NSColor *)colorForState:(int)state
+{
+    switch (state)
+    {
+	case 0:
+	    return [NSColor greenColor];
+	case 1:
+	    return [NSColor redColor];
+	case 2:
+	    return [NSColor grayColor];
+	case 3:
+	    return [NSColor orangeColor];
+	case 4:
+	    return [NSColor purpleColor];
+	case 5:
+	    return [NSColor blueColor];
+	case 6:
+	    return [NSColor brownColor];
+	default:
+	    [Exceptions raise:@"Can't decide on a color for state"];
+    }
+    return nil;
+}
+
 	
  */
 
-
-@end

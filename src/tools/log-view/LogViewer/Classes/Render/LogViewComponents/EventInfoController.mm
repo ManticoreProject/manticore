@@ -1,4 +1,4 @@
-/** \file  EventDetailController.mm
+/** \file  EventInfoController.mm
   *
   * \author Korei Klein
   * \date 8/7/09
@@ -17,13 +17,23 @@
 
 #pragma mark Definitions
 
+/// String to display if an event does not have a name
 #define NO_NAME ( @"" )
+/// String to display if an event does not have a description
 #define NO_DESCRIPTION ( @"" )
 
 
+// The following constants define the names of columns
+// each column corresponds to an attribute of an argument.
+// Each row corresponds to an argument.
+
+/// The name used to identify the Name column
 #define COLUMN_NAME_NAME ( @"Name" )
+/// The name used to identify the Type column
 #define COLUMN_NAME_TYPE ( @"Type" )
+/// The name used to identify the Description column
 #define COLUMN_NAME_DESCRIPTION ( @"Description" )
+/// The name used to identify the Value column
 #define COLUMN_NAME_VALUE ( @"Value" )
 
 
@@ -44,7 +54,7 @@
     if (![super initWithNibName:n bundle:b]) return nil;
  //   NSLog(@"EventInfoController %@ was just initialized with nib %@ and eiv %@", self, n, eiv);
 
-    // Strangely, this log message is necessary
+    // Strangely, this log message is necessary, without it problems start to arise
     NSLog(@"eiv and self.view %@ %@", eiv, self.view);
     assert (eiv == self.view);
 
@@ -75,15 +85,15 @@
 - (void)setValueNotNull:(event *)e
 {
     assert (e != NULL);
-    
+
     value = e;
     // Set the view to display the event
     eventDesc = logDesc->FindEventById(Event_Id(*e));
-    
+
     self.description = [NSString stringWithCString:eventDesc->Description()
 					  encoding:NSASCIIStringEncoding];
     self.description = [NSString stringWithString:description];
-    
+
     // Initialize args
     args = [[NSMutableArray alloc] init];
     for (int i = 0; i < eventDesc->NArgs(); ++i)
@@ -129,7 +139,7 @@
     {
 	[self setValueNotNull:e];
     }
-    NSString *S = e ? [NSString stringWithCString:eventDesc->Description()] : @"";
+    NSString *S = e ? [NSString stringWithCString:eventDesc->Description() encoding:NSASCIIStringEncoding] : NO_NAME ;
     self.name = [NSString stringWithString:S];
     [table reloadData];
  //   NSLog(@"table is %@", table);
@@ -171,8 +181,8 @@
     assert (value != nil);
     assert (eventDesc != nil);
     assert (args != nil);
-    
-    
+
+
 
     EventArg *arg = [args objectAtIndex:i];
 

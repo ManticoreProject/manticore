@@ -1,9 +1,9 @@
 /** \file LogData.h
  * \author Korei Klein
  * \date 7/10/09
- 
+
  Define the internal representation of a logfile.
- 
+
  */
 
 #import <Cocoa/Cocoa.h>
@@ -22,7 +22,7 @@ struct LogFileDesc;
 
     NSMutableArray *vProcs; ///< an array containing header.nVProcs VProcs sorted by vpId
     DependentMap *dependentMap;
-    
+
     NSMutableArray *dependentDetails;
 
     struct LogFileDesc *desc; ///< The description of this file
@@ -41,6 +41,15 @@ struct LogFileDesc;
 
 }
 
+/// Main initialization method for LogData.
+/**
+ * This method reads data from the .mlg log-file filename whose
+ * interpretation is given by logDesc and initializes self to be
+ * a LogData object representing that data.
+ *
+ * This method is large.
+ * As such, its implementation is broken into many passes, clearly delimited by comments.
+ */
 - (LogData *)initWithFilename:(NSString *)filename
 	       andLogFileDesc:(struct LogFileDesc *)logDesc;
 

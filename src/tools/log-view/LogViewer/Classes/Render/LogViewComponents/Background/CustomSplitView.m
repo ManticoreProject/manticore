@@ -1,6 +1,8 @@
 /** \file CustomSplitView.m
  * \author Korei Klein
  * \date 7/13/09
+ *
+ *
  */
 
 #import "CustomSplitView.h"
@@ -14,7 +16,8 @@
 }
 
 
-/// Return the bounds of this CustomSplitView, but shrunk a little
+/// Return the bounds of this CustomSplitView,
+/// but shrunk a little to make drawing a bit prettier
 - (NSRect)shapeBounds
 {
     NSRect r = self.bounds;
@@ -43,7 +46,10 @@
     [self.superview mouseDown:e];
 }
 
+
+
 #pragma mark Divider Thickness
+/// Customize this SplitView by changing the distance between adjacent bands
 - (CGFloat)dividerThickness
 {
     return DIVIDER_THICKNESS;

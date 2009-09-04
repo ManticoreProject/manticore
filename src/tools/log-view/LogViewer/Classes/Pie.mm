@@ -75,7 +75,11 @@
 
 
 
-#define STOCHASTIC_LEEWAY ( 0.2 )
+/** because of rounding errors, it may not be the case that the sum of the consumers in a pie
+  * is equal to 1.0, but it should be close.  We will consider the pie to be well formed iff
+  * the sum of the consumption of resources is within STOCHASTIC_ERROR of 1.0
+  */
+#define STOCHASTIC_ERROR ( 0.2 )
 - (void)assertStochastic
 {
     double res = 0.0;
@@ -83,7 +87,7 @@
     {
 	res += ps.fraction;
     }
-    assert ( abs (1 - res) < STOCHASTIC_LEEWAY );
+    assert ( abs (1 - res) < STOCHASTIC_ERROR );
 }
 
 
@@ -92,9 +96,18 @@
 {
     assert (n != NULL);
     PieSlice *ps = [consumers objectAtIndex:n.intValue];
-    ps.fraction += a;
+    ps.fraction = ps.fraction + a;
 }
 
+- (Pie *)copy
+{
+    Pie *res = [[Pie alloc] init];
+    for (PieSlice *ps in consumers)
+    {
+	[res.consumers addObject:[ps copy]];
+    }
+    return res;
+}
 
 
 @end

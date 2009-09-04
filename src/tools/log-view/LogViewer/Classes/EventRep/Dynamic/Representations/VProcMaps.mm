@@ -8,7 +8,10 @@
 #import "VProcMaps.h"
 #import "Box.h"
 #import "log-desc.hxx"
+#import "Exceptions.h"
 
+/// This file converts so frequently between ascii strings and NSString that
+/// it is convenient to abstract that work into a function call
 NSString *asciiToNSString(const char *s)
 {
     NSString *ret = [NSString stringWithCString:s encoding:NSASCIIStringEncoding];
@@ -23,7 +26,7 @@ NSString *asciiToNSString(const char *s)
 {
     if (![super init]) return nil;
     dict = [[NSMutableDictionary alloc] init];
-    
+
     return self;
 }
 - (void)addDetail:(struct State_Detail *)d forStateGroup:(struct StateGroup *)g
@@ -82,7 +85,7 @@ NSString *asciiToNSString(const char *s)
 		NSPointerFunctionsObjectPersonality |
 		NSPointerFunctionsOpaqueMemory
 	    ];
-  */  
+  */
     return self;
 }
 - (NSArray *)toArray
@@ -90,7 +93,7 @@ NSString *asciiToNSString(const char *s)
  //   NSLog(@"VProcMaps: converting to an array of dependents");
     NSMutableArray *ret = [[NSMutableArray alloc] init];
     NSEnumerator *objects = [table objectEnumerator];
-    
+
     Box *b;
     while (b = [objects nextObject])
     {
@@ -114,6 +117,55 @@ NSString *asciiToNSString(const char *s)
 }
 
 @end
+
+NSNumber *incr(NSNumber *n)
+{
+    NSNumber *ret;
+    if (n == NULL)
+    {
+	[Exceptions raise:@"VprocMaps.mm: incr: can't increment a null number"];
+    }
+    else
+    {
+	int intValue = n.intValue;
+	++intValue;
+	ret = [NSNumber numberWithInt:intValue];
+    }
+    return ret;
+}
+
+
+@implementation DependentSizeMap
+
+- (DependentSizeMap *)init
+{
+    if (![super init]) return nil;
+    dict = [[NSMutableDictionary alloc] init];
+    //table = [NSMapTable
+	     //mapTableWithKeyOptions:NSPointerFunctionsOpaqueMemory | NSPointerFunctionsIntegerPersonality
+	     //valueOptions:NSPointerFunctionsOpaqueMemory | NSPointerFunctionsObjectPersonality];
+    return self;
+}
+
+- (void)incrementCountForIdentifier:(uint64_t)u
+{
+    NSNumber *key = [NSNumber numberWithUnsignedLongLong:u];
+    NSNumber *n = [dict objectForKey:key];
+    if (n == NULL) n = [NSNumber numberWithInt:0];
+
+    [dict setObject:incr(n) forKey:key];
+}
+
+- (int)countForIdentifier:(uint64_t)u
+{
+    NSNumber *key = [NSNumber numberWithUnsignedLongLong:u];
+    NSNumber *n = [dict objectForKey:key];
+    if (n == NULL) return 0;
+    else return n.intValue;
+}
+
+@end
+
 
 
 

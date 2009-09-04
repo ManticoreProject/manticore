@@ -79,27 +79,14 @@
 	{
 	    if (![logDoc isInInterval:details[i]])
 	    {
-//		Group *g = Detail_Type(details[i]);
-//		if (g->Kind() == STATE_GROUP
+		// Pass.  Only read in details which are in the interval
 	    }
 	    else
 	    {
-		Group *g = Detail_Type(details[i]);
-		int doDisplay = [filter enabled:g].intValue;
-		// NSLog(@"doDisplay = %d", doDisplay);
-#ifdef DEBUG
-		if (g->Kind() == STATE_GROUP)
-		{
-		    if (Detail_State_start(details[i]) == NULL)
-		    {
-			NSLog(@"Detail number %d is being added, with no start event", i);
-		    }
-		}
-#endif
-		if (doDisplay == 1)
-		{
+		// Add details whose enabled state is 1
+		// don't add enabled state 0 or state -1 details
+		if ( [filter enabled:Detail_Type(details[i])].intValue == 1)
 		    [self addDetail:details[i]];
-		}
 	    }
 	}
     }
@@ -111,7 +98,7 @@
 
    // [[NSColor blueColor] set];
    // [NSBezierPath fillRect:self.bounds];
-    
+
     int a = 0;
     for (State *e in states)
     {
@@ -144,11 +131,13 @@
 
 #pragma mark Simples
 
+/// Configurtation function to determine the color of a simple detail
 - (NSColor *)colorForSimple:(Detail)d
 {
     return [NSColor yellowColor];
 }
 
+/// Configuration alorithm for determining the heigh of a simple detail
 - (CGFloat)singletonHeight
 {
     CGFloat height = self.bounds.size.height;
@@ -160,9 +149,9 @@
     return cur_singleton_height;
 }
 
-// XXX CURRENTLY UNUSED
-/// Return the fraction of the current height at which the next singleton should
-/// be placed
+// CURRENTLY UNUSED
+// Return the fraction of the current height at which the next singleton should
+// be placed
 - (CGFloat)singletonHeightOld
 {
     NSRect bounds = self.shapeBounds;
@@ -207,6 +196,8 @@
 #pragma mark States
 
 
+/// Configurtation function to determine the color of a state detail
+/// Now uses configuration information parsed from log-view.json into the group hierarchy
 - (NSColor *)colorForState:(Detail)d withGroup:(StateGroup *)g
 {
     int i = Detail_State_state(d);
@@ -216,7 +207,7 @@
 }
 
 
-// XXX CURRENTLY UNUSED
+// CURRENTLY UNUSED
 int color_int = 0;
 - (NSColor *)colorForStateOld:(Detail)d
 {
@@ -248,7 +239,7 @@ int color_int = 0;
     event *start = Detail_State_start(d);
     event *end = Detail_State_end(d);
    //NSLog(@"BandView: state start %#x and end %#x", start, end);
-    
+
     r.origin.x = [logDoc image:start ? Event_Time(*start) : logDoc.logInterval->x];
     r.size.width = [logDoc image:(end ? Event_Time(*end) : logDoc.logInterval->x + logDoc.logInterval->width)] - r.origin.x;
 
@@ -257,7 +248,7 @@ int color_int = 0;
 					 color:c
 					 start:start
 					   end:end];
-    
+
     NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
     state.description = [NSString stringWithString:S];
     [states addObject:state];
@@ -265,6 +256,7 @@ int color_int = 0;
 
 #pragma mark Intervals
 
+/// Configurtation function to determine the color of an interval detail
 - (NSColor *)colorForInterval:(Detail)d withGroup:(IntervalGroup *)g
 {
     const char *color_string = g->Color();
@@ -272,7 +264,7 @@ int color_int = 0;
     return ret;
 }
 
-// XXX CURRENTLY UNUSED
+// CURRENTLY UNUSED
 - (NSColor *)colorForIntervalOld:(Detail)d
 {
     return [NSColor redColor];
@@ -282,8 +274,9 @@ int color_int = 0;
 {
     assert (Detail_Type(d)->Kind() == INTERVAL_GROUP );
     return fmod (Detail_Interval_height(d), ( self.bounds.size.height - h - INTERVAL_PADDING ));
-    
-    
+
+/* CURRENTLY UNUSED
+
      CGFloat height = self.bounds.size.height;
      cur_interval_height += h + INTERVAL_PADDING;
      if (cur_interval_height >= height - (h + INTERVAL_PADDING))
@@ -291,6 +284,7 @@ int color_int = 0;
 	cur_interval_height -= height - 2 * (h + INTERVAL_PADDING);
      }
      return cur_interval_height;
+     */
 }
 
 - (void)addInterval:(IntervalGroup *)g forDetail:(Detail)d
@@ -348,9 +342,15 @@ int color_int = 0;
 
 #pragma mark Mouse Events
 
+// Perform the appropriate kind of zooming based on the clicks the user makes
 
 - (void)mouseDown:(NSEvent *)e
 {
+    // If the user is holding down either the shift or the control key
+    // Then we interpret the event as follows:
+    // The user does not want the DetailInfoView to display information about the detail
+    // he clicked on.  Instead the user is trying to zoom in/out if he pressed shift/control
+    // respectively.
     if (e.modifierFlags & NSShiftKeyMask)
     {
 	NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
@@ -363,7 +363,13 @@ int color_int = 0;
 	[logDoc zoomOutAboutPivot:[logDoc preImage:p.x]];
 	return;
     }
-    
+
+    // No important keys were being held down while the user clicked the mouse.
+    // We interpret the event as follows:
+    //	    The user was trying to click on a dependent detail.
+    //	    If all dependent details are to far away from the click, then
+    //	    the user was trying to click on some nearby state, interval, or simple event
+
     NSLog(@"Bandview is sending a messageView %@ the mouse event %@", messageView, e);
     if ([messageView bandReceivedEvent:e]) return;
     NSLog(@"Mouse was clicked on band for VProc %d", vProc.vpId);
@@ -375,14 +381,16 @@ int color_int = 0;
 	    [logDoc displayDetail:a];
 	    [a nslog];
 	    NSLog(@"State clicked");
+	    return;
 	}
     }
     for (Interval *a in intervals)
     {
 	if ([a containsPoint:p])
 	{
-    	    NSLog(@"Interval clicked");
 	    [logDoc displayDetail:a];
+    	    NSLog(@"Interval clicked");
+	    return;
 	}
     }
 
@@ -392,9 +400,10 @@ int color_int = 0;
 	{
     	    [logDoc displayDetail:a];
 	    NSLog(@"Singleton clicked");	    
+	    return;
 	}
     }
-    
+
     //[self.superview mouseDown:e];
 }
 

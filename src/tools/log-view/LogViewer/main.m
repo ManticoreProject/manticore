@@ -1,10 +1,8 @@
-//
-//  main.m
-//  LogViewer
-//
-//  Created by Korei Klein on 8/4/09.
-//  Copyright __MyCompanyName__ 2009. All rights reserved.
-//
+/** \file  main.m
+ * \author Korei Klein
+ * \date 8/4/09
+ *
+ */
 
 #import <Cocoa/Cocoa.h>
 

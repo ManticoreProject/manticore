@@ -1,10 +1,8 @@
-//
-//  EventArg.m
-//  LogViewer
-//
-//  Created by Korei Klein on 8/7/09.
-//  Copyright 2009 __MyCompanyName__. All rights reserved.
-//
+/** \file  EventArg.m
+\author Korei Klein
+\date 8/7/09
+
+*/
 
 #import "EventArg.h"
 #import "log-file.h"

@@ -6,11 +6,16 @@
 
 #import <Cocoa/Cocoa.h>
 
-
+/**
+ * A PieSlice is meant to act as a consumer in a Pie.
+ */
 @interface PieSlice : NSObject {
-    /// The fraction of the pice which this slice represents
+    /// The fraction of the pie which this slice represents
+    /// or, some scalar multiple of the amount of time this slice represents
     double fraction;
     /// The consumer which this slice represents
+    /// Right now it is implemented as some state of a stateGroup g
+    ///	    thus it is an NSNumber containing an integer
     NSObject *consumer;
 }
 
@@ -26,6 +31,6 @@
 - (void)divideBy:(uint64_t)a;
 
 
-
+- (PieSlice *)copy;
 
 @end

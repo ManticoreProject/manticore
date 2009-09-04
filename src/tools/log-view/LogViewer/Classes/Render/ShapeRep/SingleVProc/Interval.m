@@ -19,6 +19,9 @@
  */
 #define DEFAULT_INTERVAL_COLOR ([NSColor redColor])
 
+/// If an interval i has width which is less than TINY_WIDTH,
+/// when testing to see if i contains a point p,
+/// pretend that i is CONTAINMENT_PADDING wider on its left and right sides
 #define CONTAINMENT_PADDING ( 3 )
 
 /// Determines the geometry of interval shape corners
@@ -26,6 +29,7 @@
 /// Determines the geometry of interval shape corners
 #define Y_ROUNDING_RADIUS (5)
 
+/// Determines if rectangles will be rounded or not
 #define ROUNDING 0
 
 @implementation Interval
@@ -81,19 +85,7 @@
 - (void)drawShape
 {
     [color set];
-    /*
-    NSRect r = rect;
 
-    if (r.size.width < TINY_WIDTH)
-	r.size.width = 2; malloc
-    [NSBezierPath fillRect:r];
-    return;
-    roundedRect = [NSBezierPath bezierPathWithRoundedRect:rect
-						  xRadius:X_ROUNDING_RADIUS
-						  yRadius:Y_ROUNDING_RADIUS];
-     */
-    
-    
     if (rect.size.width > TINY_WIDTH)
     {
 #if ROUNDING

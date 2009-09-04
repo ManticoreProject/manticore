@@ -1,4 +1,4 @@
-/*! \file State.m
+/*! \file State.mm
  \author Korei Klein
  \date 7/7/09
  */
@@ -8,6 +8,7 @@
 #import "DetailAccess.h"
 
 #pragma mark Defaults
+
 /// Color of states
 #define DEFAULT_STATE_COLOR ([NSColor blueColor])
 
@@ -66,6 +67,7 @@
 }
 
 
+/// For help in testing
 - (void)nslog
 {
     NSLog(@"Logging State");

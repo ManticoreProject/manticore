@@ -16,15 +16,19 @@
 /// Width of the border of a diamond
 #define DEFAULT_LINE_WIDTH (.6)
 
-/// Represents an singleton event as a diamond
+
+
+/// Represents a singleton event as a diamond
 @interface Singleton : EventShape {
 	NSPoint place; //!< point at which to display the diamond
 	NSBezierPath *path; //!< the diamond (a cache of place).
-    
+
     event *eventVal;
 }
 
 @property (readonly) event *eventVal;
+
+/// Initialize
 - (Singleton *)initWithPoint:(NSPoint)p
 		       color:(NSColor *)c
 		       event:(event *)eventVal;

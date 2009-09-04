@@ -1,10 +1,8 @@
-//
-//  DetailEnumerator.h
-//  LogViewer
-//
-//  Created by Korei Klein on 8/14/09.
-//  Copyright 2009 __MyCompanyName__. All rights reserved.
-//
+/** \file  DetailEnumerator.h
+ * \author Korei Klein
+ * \date 8/14/09
+ *
+ */
 
 #import <Cocoa/Cocoa.h>
 #import "LogData.h"

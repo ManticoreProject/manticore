@@ -1,21 +1,22 @@
-//
-//  Exceptions.m
-//  LogDrawer
-//
-//  Created by Korei Klein on 7/22/09.
-//  Copyright 2009 __MyCompanyName__. All rights reserved.
-//
+/** \file  Exceptions.m
+ * \author Korei Klein
+ * \date 7/22/09
+ *
+ */
 
 #import "Exceptions.h"
 
 
 @implementation Exceptions
 
+
+
 + (void)raise:(NSString *)s
 {
-    @throw [NSException exceptionWithName:@"Visualizer Exception"
-				   reason:s
-				 userInfo:nil];
+    NSLog(@" ****** Uncaught Exception");
+    NSLog(s);
+    int n = * ( (int *) 0);
+    NSLog(@"%d", n);
     return;
 }
 

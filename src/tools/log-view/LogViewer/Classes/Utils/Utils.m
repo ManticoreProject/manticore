@@ -84,6 +84,7 @@ CGFloat pointToLineSegmentDistance(NSPoint p, NSPoint start, NSPoint end)
 }
 + (void *)realloc:(void *)a size:(size_t)b
 {
+    NSLog(@" ************ warning: realloc is slow.  You shouldn't use it.");
     void * ret = realloc(a, b);
     if (ret == NULL)
     {
