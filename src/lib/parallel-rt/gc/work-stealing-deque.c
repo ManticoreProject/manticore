@@ -76,7 +76,7 @@ Value_t M_DequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size)
   deque->nClaimed = 1;         // implicitly claim the deque for the allocating process
   for (int i = 0; i < size; i++)
     deque->elts[i] = M_NIL;
-  // add the deque to the deque list of the given work group
+  // add the deque to the list of deques owned by the work group
   WorkGroupList_t *workGroup = FindWorkGroup (self, workGroupId);
   workGroup->deques = ConsDeque (deque, workGroup->deques);
   return (PtrToValue (deque));
@@ -157,12 +157,13 @@ static int MoveLeft (int i, int sz)
     return i - 1;
 }
 
+#ifdef ROOT_SET_OPTIMIZATION
+
 /* The root-set-partitioning optimization partitions the root set into the subset
  * needed by minor collections only and the subset needed by global collections. 
  *
  * FIXME: this code is broken
  */
-#ifdef ROOT_SET_OPTIMIZATION
 
 // returns true if the ith element of the deque points into the local heap
 #define ELT_POINTS_TO_LOCAL_HEAP(deque, i) (IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(deque->elts[i]))->sts))
@@ -219,14 +220,19 @@ Value_t **M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr)
   for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
     for (DequeList_t *deques = wgList->deques; deques != NULL; deques = deques->next) {
       Deque_t *deque = deques->deque;
+      bool inGlobalHeap = false;    // true, if all elements remaining must be in the global heap
       // iterate through the deque in the direction going from the new to the old end
       for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
 	int j = MoveLeft (i, deque->maxSz); 
                   // i points one element to right of the element we want to scan
 	if (deque->elts[j] != M_NIL)
-	  if (!ELT_POINTS_TO_LOCAL_HEAP(deque, j))
+	  if (inGlobalHeap) {
 	    // the jth element points to the global heap
 	    *rootPtr++ = &(deque->elts[j]);
+	  } else if (!ELT_POINTS_TO_LOCAL_HEAP(deque, j)) {
+	    *rootPtr++ = &(deque->elts[j]);     // j points to the youngest element in the global heap
+	    inGlobalHeap = true;
+	  } else {}
       }	    
     }
   }
