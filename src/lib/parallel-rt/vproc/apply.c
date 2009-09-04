@@ -60,7 +60,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 #endif
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
 
-	Addr_t limitPtr = SetLimitPtr(vp, LimitPtr(vp));
+	Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
 
 	switch (req) {
 	  case REQ_GC:
@@ -72,27 +72,21 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		MinorGC (vp);
 	    }
 	  /* check for asynchronous signals */
-	    if (vp->limitPtr == 0) {
+	    if (oldLimitPtr == 0) {
 #ifndef NDEBUG
 	      if (DebugFlg)
 		SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
 #endif
 	      /* an asynchronous signal has arrived */
 	        vp->sigPending = M_TRUE;
-		vp->limitPtr = LimitPtr(vp);
 	    }
+
 	  /* is there a pending signal that we can deliver? */
 	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
 		Value_t resumeK = AllocUniform (vp, 3,
 					       PtrToValue(&ASM_Resume),
 					       vp->stdCont,
 					       vp->stdEnvPtr);
-#ifndef NDEBUG
-		/*
-		  if (DebugFlg)
-		      SayDebug ("[%2d] resumeK = %p\n", vp->id, resumeK);
-		*/
-#endif
 	      /* pass the signal to scheduling code in the BOM runtime */
 		envP = vp->schedCont;
 		codeP = ValueToAddr(ValueToCont(envP)->cp);
@@ -120,7 +114,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	  case REQ_Sleep:	/* make the VProc idle */
 	    {
 	       Time_t timeToSleep = *((Time_t*)(vp->stdArg));
-	       if (timeToSleep == 0)
+	       if (timeToSleep == 0)    /* convention: if timeToSleep == 0, sleep indefinitely */
 		   VProcSleep(vp);
 	       else
 		   VProcNanosleep(vp, timeToSleep);
