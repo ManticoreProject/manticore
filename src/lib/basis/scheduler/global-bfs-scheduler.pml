@@ -73,7 +73,7 @@ structure GlobalBFSScheduler (* :
 						terminated
 					      / exh)
 	fun spawnWorker (dst : vproc / exh : exh) : () =
-	    let worker : Word64.word = ImplicitThread.@spawn-worker (group, dst, fls, initWorker / exh)
+	    let worker : Word64.word = ImplicitThread.@spawn-worker (dst, fls, initWorker / exh)
 	    return ()
 	do VProc.@for-each-vproc (spawnWorker / exh)
 	return (group)

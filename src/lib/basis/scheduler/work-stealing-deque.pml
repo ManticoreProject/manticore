@@ -30,6 +30,8 @@ structure WorkStealingDeque (* :
       define inline @is-full-from-atomic (self : vproc, deque : deque) : bool;
       define inline @is-empty-from-atomic (self : vproc, deque : deque) : bool;
       define inline @is-claimed-from-atomic (self : vproc, deque : deque) : bool;
+    (* returns the number of elements contained in the deque *)
+      define inline @size (deque : deque) : int;
 
       define inline @push-new-end-from-atomic (self : vproc, deque : deque, elt : any) : ();
       define inline @pop-new-end-from-atomic (self : vproc, deque : deque) : Option.option;
@@ -107,11 +109,9 @@ structure WorkStealingDeque (* :
 #define LOAD_DEQUE_NCLAIMED(deque)        AdrLoadI32 ((addr(int))AdrAddI64 (&0(deque), DEQUE_NCLAIMED_OFFB:long))
 #define STORE_DEQUE_NCLAIMED(deque, c)    AdrStoreI32 ((addr(int))AdrAddI64 (&0(deque), DEQUE_NCLAIMED_OFFB:long), c)
 
-(*    local*)
-
       _primcode (
 
-	define (* inline *) @num-elts (deque : deque) : int =
+	define (* inline *) @size (deque : deque) : int =
 	    if I32Lte (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_NEW(deque)) then
 		return (I32Sub (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_OLD(deque)))
 	    else 
@@ -193,11 +193,6 @@ structure WorkStealingDeque (* :
 		return (I32Add (i, 1))
 	  ;
 
-      )
-
-(*    in *)
-
-    _primcode (
 
       define (* inline *) @is-empty (deque : deque) : bool =
 	  if I32Eq (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_OLD(deque)) then
@@ -207,7 +202,7 @@ structure WorkStealingDeque (* :
 	;
 
       define (* inline *) @is-full (deque : deque) : bool =
-	  let size : int = @num-elts (deque)
+	  let size : int = @size (deque)
         (* leave one space open *)
 	  if I32Gte (size, I32Sub (LOAD_DEQUE_MAX_SIZE(deque), 1)) then
 	      return (true)
@@ -312,7 +307,7 @@ structure WorkStealingDeque (* :
     (* double the size of the deque *)
       define @double-size-from-atomic (self : vproc, workGroupId : UID.uid, deque : deque) : deque =
           do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
-	  let size : int = @num-elts (deque)
+	  let size : int = @size (deque)
 	  let newDeque : deque = @new-from-atomic (self, workGroupId, I32Mul (LOAD_DEQUE_MAX_SIZE(deque), 2))
         (* maintain the original order of the deque by popping from the old end of the original deque
 	 * and pushing on the new end of the fresh deque
@@ -353,7 +348,5 @@ structure WorkStealingDeque (* :
 	;
 
     )
-
-(*    end *)
 
   end

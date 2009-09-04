@@ -6,6 +6,8 @@
  * The Work Stealing scheduler.
  *)
 
+#define DEFAULT_DEQUE_SZ            128
+
 structure WorkStealing (* :
   sig
 
@@ -65,14 +67,21 @@ structure WorkStealing (* :
       (* returns a thread taken from the "old" end of one of the deques local to the given vproc, if such a
        * thread exists *)
 	define @steal-thread-from-atomic (self : vproc, workGroupId : UID.uid) : (* ImplicitThread.thread *) Option.option =
-	    fun isNonEmpty (deque : [D.deque] / exh : exh) : bool =
+          (* here we determine whether a given deque can be a target for a steal. our criteria is that the deque
+	   * contains at least two ready threads. we exclude deques with only one thread, as this thread was
+	   * begin executed by the worker local to the current vproc.
+	   *)
+	    fun canSteal (deque : [D.deque] / exh : exh) : bool =
 		let deque : D.deque = #0(deque)
-		let isEmpty : bool = D.@is-empty-from-atomic (self, deque)
-		PrimBool.@not (isEmpty)
+		let size : int = D.@size (deque)
+                if I32Gt(size, 1) then
+		   return (true)
+		else
+		    return (false)
 	    let localDeques : List.list = D.@local-deques-from-atomic (self, workGroupId)
             cont exh (_ : exn) = return (Option.NONE)
-	    let nonEmptyDeques : List.list = PrimList.@filter (isNonEmpty, localDeques / exh)
-	    let thd : Option.option = case nonEmptyDeques
+	    let victimDeques : List.list = PrimList.@filter (canSteal, localDeques / exh)
+	    let thd : Option.option = case victimDeques
 				       of List.nil =>
 					  return (Option.NONE)
 					| List.CONS (deque : [D.deque], _ : List.list) =>
@@ -112,17 +121,18 @@ structure WorkStealing (* :
 		     do #0(ch) := x
 		     return ()
 		   | Option.SOME (thd : ImplicitThread.thread) => (* successful: stole thd *)
+(*do ccall M_PrintPtr("steal",thd)*)
 		     let x : Option.option = promote (Option.SOME(List.CONS (thd, nil)))
 		     do #0(ch) := x
 		     return ()
 		 end
+(*do ccall M_PrintPtr("failed",stolenThread)*)
 	      SchedulerAction.@stop ()
 	  (* send the thief fiber to the victim vproc *)
 	    do VProc.@send-high-priority-signal-from-atomic (thiefVP, victimVP, thief)
 	    fun wait () : List.list =
 		case #0(ch)
 		 of Option.NONE =>
-		    do Pause()
 		    let _ : vproc = SchedulerAction.@yield-in-atomic (thiefVP)
 		    apply wait ()
 		  | Option.SOME (thds : List.list) =>
@@ -132,40 +142,43 @@ structure WorkStealing (* :
 	    apply wait ()
 	  ;
 
-      (* loop until at least one ready thread has been stolen; the result is the list of stolen threads *)
-	define @find-work-in-atomic (self : vproc, 
-				     workGroupId : UID.uid,
-				     pickVictim : fun (vproc / -> (* [vproc] *) Option.option))
-					                    : (* ImplicitThread.thread *) List.list =
-          (* try to mug a worker local to this vproc *)
-	    let muggedThreads : List.list = @mug-from-atomic (self, workGroupId)
-	    case muggedThreads
-	     of List.CONS (_ : ImplicitThread.thread, _ : List.list) =>
-		(* successful mugging *)
-		return (muggedThreads)
-	      | List.nil =>
-		(* mugging failed; try to steal *)
-		let victimVP : Option.option = apply pickVictim (self)
-                case victimVP
-		 of Option.NONE =>
-		    (* no victims currently available *)
-		    return (List.nil)
-		  | Option.SOME (victimVP : [vproc]) =>
-		    @thief-from-atomic (self, #0(victimVP), workGroupId)
-                end		    
-	    end
+      (* this hlop provides a mechanism for busy waiting. the input represents the quantity
+       * log_2(maximum number of cycles to wait). the function that we return waits for an
+       * exponentially increasing number of cycles each time it is invoked, until the maximum
+       * wait period is reached, at which time the waiting period is reset and the function
+       * returns true. for example, supposing maxSpinCyclesLg=2, we have
+       *   f()=false (wait for 2 cycles); f()=false (wait for 4 cycles); f()=true (wait for 0 cycles) ...
+       *)
+	define (* inline *) @mk-wait-fun (maxSpinCyclesLg : int) : fun( / -> bool) =
+	    let spinCyclesLg : ![int] = alloc (1)
+	    fun spin (n : int) : () = 
+		if I32Lte(n, 0) then 
+		    do Pause ()                    
+		    return () 
+		else
+		    do apply spin (I32Sub (n, 1))
+		    apply spin (I32Sub (n, 1))
+	    fun doit () : bool =
+		do apply spin (#0(spinCyclesLg))
+		if I32Lte (#0(spinCyclesLg), maxSpinCyclesLg) then
+		    do #0(spinCyclesLg) := I32Add (#0(spinCyclesLg), 1)
+		    return (true)
+		else
+		    do #0(spinCyclesLg) := 1
+		    return (false)
+	    return (doit)
 	  ;
 
 	define @new-worker (workGroupId : UID.uid, 
 			    isTerminated : fun (/ -> bool), 
   		            assignedDeques : Arr.array,
                             pickVictim : fun (vproc / -> (* [vproc] *) Option.option)
-			  / exh : exh) 
-	                                         : cont (vproc, ImplicitThread.worker) =
+			  / exh : exh)                           : cont (vproc, ImplicitThread.worker) =
 	    cont impossible () = 
 	      do assert_fail()
 	      throw exh (Fail(@"WorkStealing.@designated-worker: impossible"))
 	    cont schedulerLoop (self : vproc, worker : ImplicitThread.worker, deque : D.deque, sign : PT.signal) =
+              let workerFLS : FLS.fls = FLS.@get ()
 	      cont dispatch (thd : ImplicitThread.thread) = 
 		cont act (sign : PT.signal) = throw schedulerLoop (self, worker, deque, sign)
 		do @set-assigned-deque-from-atomic (self, assignedDeques, deque / exh)
@@ -183,13 +196,72 @@ structure WorkStealing (* :
 		 end
 	      case sign
 	       of PT.STOP =>
-		  let thd : Option.option = D.@pop-new-end-from-atomic (self, deque)
+                (* restart the worker loop *)
+		  cont foundWork (self : vproc, thds : (* ImplicitThread.thread *) List.list) =
+		    do D.@add-list-from-atomic (self, deque, thds)
+		    do @set-assigned-deque-from-atomic (self, assignedDeques, deque / exh)
+	            throw schedulerLoop (self, worker, deque, PT.STOP)
+		(* try to find work for the given vproc. the result is a list of stolen work. *)
+		  fun findRemoteWork (self : vproc) : List.list =
+		     (* try to mug another deque that is local to this vproc *)
+		       let muggedThreads : List.list = @mug-from-atomic (self, workGroupId)
+		       case muggedThreads
+			of List.CONS (_ : ImplicitThread.thread, _ : List.list) =>
+			   (* mugging was successful *)
+			   return (muggedThreads)
+			 | List.nil =>
+			   (* mugging failed; try to steal *)
+			   let victimVP : Option.option = apply pickVictim (self)
+			   case victimVP
+			    of Option.NONE =>
+			       (* no victims currently available *)
+			       return (List.nil)
+			     | Option.SOME (victimVP : [vproc]) =>
+			       @thief-from-atomic (self, #0(victimVP), workGroupId)
+			   end		    
+		       end
+		  let waitFn : fun (/ -> bool) = @mk-wait-fun (20)
+		  let nVProcs : int = VProc.@num-vprocs ()
+		  let nStealAttempts : int = I32Mul (nVProcs, 2)
+                (* loop until work appears on the local deque, or a steal attempt succeeds *)
+		  cont findRemoteWorkLp (nTries : int) =
+PRINT_MSG("steal attempt")
+		    let self : vproc = SchedulerAction.@atomic-begin ()
+                  (* it is important to yield here, since we want to give other threads a chance
+		   * to add work to the local deque.
+		   *)
+                    let self : vproc = SchedulerAction.@yield-in-atomic (self)
+		    let thd : Option.option = D.@pop-new-end-from-atomic (self, deque)
+		    do case thd
+			of Option.NONE =>
+			   (* there is no local work *)			    
+			    return ()
+			  | Option.SOME (thd : ImplicitThread.thread) =>
+			    throw foundWork (self, List.CONS(thd, List.nil))
+			end
+		    let stolenThds : List.list = apply findRemoteWork (self)
+		    case stolenThds
+		     of List.nil =>
+		      (* our steal attempt failed *)
+			if I32Gt (nTries, nStealAttempts) then
+			  (* we've exceeded the maximum number of consecutive steal attempts. now we
+			   * spin wait for a while so that we avoid flooding busy workers with thief
+			   * fibers.
+			   *)
+			    do SchedulerAction.@atomic-end (self)
+			    let cycleComplete : bool = apply waitFn ()  
+			    throw findRemoteWorkLp (0)
+			else
+			    throw findRemoteWorkLp (I32Add(nTries, 1))
+		      | List.CONS (thd : ImplicitThread.thread, thds : List.list) =>
+		      (* successful steal *)
+			throw foundWork (self, stolenThds)
+		    end
+                  let thd : Option.option = D.@pop-new-end-from-atomic (self, deque)
 		  case thd
 		   of Option.NONE =>
-		      let _ : vproc = SchedulerAction.@yield-in-atomic (self)
-		      let stolenThds : List.list = @find-work-in-atomic (self, workGroupId, pickVictim)
-                      do D.@add-list-from-atomic (self, deque, stolenThds)
-		      throw schedulerLoop (self, worker, deque, PT.STOP)
+		      (* there is no local work *)			    
+		      throw findRemoteWorkLp (0)
 		    | Option.SOME (thd : ImplicitThread.thread) =>
 		      throw dispatch (thd)
 		  end
@@ -209,7 +281,7 @@ structure WorkStealing (* :
 		  throw impossible ()
 	      end (* schedulerLoop *)
 	    cont initWorker (self : vproc, worker : ImplicitThread.worker) =	      
-	      let deque : D.deque = D.@new-from-atomic (self, workGroupId, 128)
+	      let deque : D.deque = D.@new-from-atomic (self, workGroupId, DEFAULT_DEQUE_SZ)
 	      do @set-assigned-deque-from-atomic (self, assignedDeques, deque / exh)
 	      throw schedulerLoop (self, worker, deque, PT.STOP)
 	    return (initWorker)
@@ -235,6 +307,7 @@ structure WorkStealing (* :
 		let isFull : bool = D.@is-full (deque)
 		case isFull
 		 of true =>  (* the deque is full: let the scheduler loop choose the next action *)
+		    PRINT_DEBUG("WorkStealing: full deque")
 		    let self : vproc = SchedulerAction.@yield-in-atomic (self)
 		    apply lp (self)
 		  | false =>
@@ -296,7 +369,7 @@ structure WorkStealing (* :
 							terminated
 						      / exh)
 	    fun spawnWorker (dst : vproc / exh : exh) : () =
-		let worker : Word64.word = ImplicitThread.@spawn-worker (group, dst, fls, initWorker / exh)
+		let worker : Word64.word = ImplicitThread.@spawn-worker (dst, fls, initWorker / exh)
 		return ()
 	    do VProc.@for-each-vproc (spawnWorker / exh)
 	    return (group)

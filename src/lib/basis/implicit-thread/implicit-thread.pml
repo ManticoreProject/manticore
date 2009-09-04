@@ -62,8 +62,7 @@ structure ImplicitThread (* :
 			    / exh : exh) : work_group;
     (* spawn the worker initialized by initWorker (using the given fls) on the vproc dst. signals
      * are masked on entry to initWorker. *)
-      define inline @spawn-worker (group : work_group, 
-				   dst : vproc, 
+      define inline @spawn-worker (dst : vproc, 
 				   workerFLS : FLS.fls, 
 				   initWorker : cont (vproc, worker) 
 				 / exh : exh) : worker;
@@ -257,8 +256,7 @@ structure ImplicitThread (* :
 
     (* spawn the worker initialized by initWorker (using the given fls) on the vproc dst. signals
      * are masked on entry to initWorker. *)
-      define inline @spawn-worker (group : work_group, 
-				   dst : vproc, 
+      define inline @spawn-worker (dst : vproc, 
 				   workerFLS : FLS.fls, 
 				   initWorker : cont (vproc, worker)
 				 / exh : exh) : worker =
