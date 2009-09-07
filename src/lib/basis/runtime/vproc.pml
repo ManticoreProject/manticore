@@ -201,7 +201,9 @@ structure VProc (* :
           cont exit () = return(Q_EMPTY)
           let ldgPadOrig : queue_item = vpload(VP_LANDING_PAD, self)
           do if Equal(ldgPadOrig, Q_EMPTY)
-	      then throw exit()
+	      then 
+		 do Pause()
+		 throw exit()
 	      else return()
           let x : queue_item = CAS((addr(queue_item))vpaddr(VP_LANDING_PAD, self), ldgPadOrig, Q_EMPTY)
           if Equal(x, ldgPadOrig)
