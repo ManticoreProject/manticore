@@ -69,11 +69,10 @@ structure WorkStealing (* :
 	define @steal-thread-from-atomic (self : vproc, workGroupId : UID.uid) : (* ImplicitThread.thread *) Option.option =
           (* here we determine whether a given deque can be a target for a steal. our criteria is that the deque
 	   * contains at least two ready threads. we exclude deques with only one thread, as this thread was
-	   * begin executed by the worker local to the current vproc.
+	   * being executed by the worker local to the current vproc.
 	   *)
 	    fun canSteal (deque : [D.deque] / exh : exh) : bool =
-		let deque : D.deque = #0(deque)
-		let size : int = D.@size (deque)
+		let size : int = D.@size (#0(deque))
                 if I32Gt(size, 1) then
 		   return (true)
 		else
@@ -96,14 +95,16 @@ structure WorkStealing (* :
 								      : (* ImplicitThread.thread *) List.list =
 	    do assert (NotEqual (thiefVP, victimVP))
 	  (* communication channel used to pass the result of the steal from the victim vproc back to the
-	   * originating vproc thiefVP *)
-	    let ch : ![Option.option] = alloc (Option.NONE)
-	    let ch : ![Option.option] = promote (ch)
-	  (* the thief fiber executes on victimVP *)
+	   * thief. the channel is initially nil, but once the steal attempt completes the channel is
+	   * seeded with the list of stolen threads.
+	   *)
+	    let ch : ![(* ImplicitThread.thread List.list *) Option.option] = alloc (Option.NONE)
+	    let ch : ![(* ImplicitThread.thread List.list *) Option.option] = promote (ch)
+	  (* the thief fiber executes on the victim vproc *)
 	    cont thief (_ : unit) =
 	      let self : vproc = SchedulerAction.@atomic-begin ()
 	      do assert (Equal (self, victimVP))
-	    (* try to mug first *)
+	    (* try to mug before stealing *)
 	      let muggedThreads : List.list = @mug-from-atomic (self, workGroupId)
 	      do case muggedThreads
 		  of List.nil => 
@@ -120,7 +121,7 @@ structure WorkStealing (* :
 		     let x : Option.option = promote (Option.SOME(List.nil))
 		     do #0(ch) := x
 		     return ()
-		   | Option.SOME (thd : ImplicitThread.thread) => (* successful: stole thd *)
+		   | Option.SOME (thd : ImplicitThread.thread) => (* successfully stole thd *)
 (*do ccall M_PrintPtr("steal",thd)*)
 		     let x : Option.option = promote (Option.SOME(List.CONS (thd, nil)))
 		     do #0(ch) := x
@@ -133,6 +134,7 @@ structure WorkStealing (* :
 	    fun wait () : List.list =
 		case #0(ch)
 		 of Option.NONE =>
+		    do Pause()
 		    let _ : vproc = SchedulerAction.@yield-in-atomic (thiefVP)
 		    apply wait ()
 		  | Option.SOME (thds : List.list) =>
@@ -150,16 +152,15 @@ structure WorkStealing (* :
        *   f()=false (wait for 2 cycles); f()=false (wait for 4 cycles); f()=true (wait for 0 cycles) ...
        *)
 	define (* inline *) @mk-wait-fun (maxSpinCyclesLg : int) : fun( / -> bool) =
-	    let spinCyclesLg : ![int] = alloc (1)
-	    fun spin (n : int) : () = 
-		if I32Lte(n, 0) then 
-		    do Pause ()                    
-		    return () 
-		else
-		    do apply spin (I32Sub (n, 1))
-		    apply spin (I32Sub (n, 1))
+	    let spinCyclesLg : ![int] = alloc (1)	    
 	    fun doit () : bool =
-		do apply spin (#0(spinCyclesLg))
+		let spinCycles : int = I32LSh (1, #0(spinCyclesLg))
+                fun spin (i : int) : () =
+		    if I32Lt (i, spinCycles) then
+			return ()
+		    else
+			apply spin (I32Add (i, 1))
+		do apply spin (0)
 		if I32Lte (#0(spinCyclesLg), maxSpinCyclesLg) then
 		    do #0(spinCyclesLg) := I32Add (#0(spinCyclesLg), 1)
 		    return (true)
@@ -220,12 +221,9 @@ structure WorkStealing (* :
 			       @thief-from-atomic (self, #0(victimVP), workGroupId)
 			   end		    
 		       end
-		  let waitFn : fun (/ -> bool) = @mk-wait-fun (20)
-		  let nVProcs : int = VProc.@num-vprocs ()
-		  let nStealAttempts : int = I32Mul (nVProcs, 2)
+		  let waitFn : fun (/ -> bool) = @mk-wait-fun (10)
                 (* loop until work appears on the local deque, or a steal attempt succeeds *)
 		  cont findRemoteWorkLp (nTries : int) =
-PRINT_MSG("steal attempt")
 		    let self : vproc = SchedulerAction.@atomic-begin ()
                   (* it is important to yield here, since we want to give other threads a chance
 		   * to add work to the local deque.
@@ -234,7 +232,7 @@ PRINT_MSG("steal attempt")
 		    let thd : Option.option = D.@pop-new-end-from-atomic (self, deque)
 		    do case thd
 			of Option.NONE =>
-			   (* there is no local work *)			    
+			   (* there was no local work available on the other workers *)
 			    return ()
 			  | Option.SOME (thd : ImplicitThread.thread) =>
 			    throw foundWork (self, List.CONS(thd, List.nil))
@@ -243,10 +241,11 @@ PRINT_MSG("steal attempt")
 		    case stolenThds
 		     of List.nil =>
 		      (* our steal attempt failed *)
-			if I32Gt (nTries, nStealAttempts) then
+		        let nVProcs : int = VProc.@num-vprocs ()
+			if I32Gt (nTries, nVProcs) then
 			  (* we've exceeded the maximum number of consecutive steal attempts. now we
-			   * spin wait for a while so that we avoid flooding busy workers with thief
-			   * fibers.
+			   * spin wait for a while so that we avoid flooding busy workers steal
+			   * attempts.
 			   *)
 			    do SchedulerAction.@atomic-end (self)
 			    let cycleComplete : bool = apply waitFn ()  
@@ -273,7 +272,8 @@ PRINT_MSG("steal attempt")
                       throw schedulerLoop (self, worker, newDeque, sign)
 		    | false =>
 		      let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
-		      do D.@push-new-end-from-atomic (self, deque, thd)  (* make the thread available to thieves *)
+		    (* make the thread available to other workers *)
+		      do D.@push-new-end-from-atomic (self, deque, thd)
 		      let _ : vproc = SchedulerAction.@yield-in-atomic (self)
                       throw schedulerLoop (self, worker, deque, PT.STOP)
 		 end
