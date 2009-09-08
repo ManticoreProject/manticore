@@ -158,8 +158,8 @@ fun bodysurf surf = (case surf
 datatype Prim = 
 (*  pos, radius, surface type  *)
 Sphere of vec * double * Surfspec list
-(* [pos of first virtex,(a,b,c),d, 2dvertices], surface type *)
-| Polymesh of (vec*vec * double * (double * double) list) list * Surfspec list
+(* [(a,b,c),d, vertices], surface type *)
+| Polymesh of (vec * double * vec list * bool) list * Surfspec list
 
 
 
@@ -168,6 +168,109 @@ datatype CSG =
 | Union of Prim * CSG
 | Intersection of Prim * CSG
 | Difference of Prim * CSG
+
+
+
+
+datatype BoundingSphereHierarchy =
+  bsleaf of vec * double * CSG list
+| bsbranch of vec * double * BoundingSphereHierarchy * BoundingSphereHierarchy
+
+
+fun distance (x0,y0,z0) = (fn (x1,y1,z1) => sqrt (   (x1 - x0)*(x1 - x0) + (y1 - y0)*(y1 - y0) + (z1 - z0)*(z1 - z0)  ) )
+
+fun sgreaterThan (d0 : double,y) = (fn (d1 : double,x) => d0 > d1)
+fun seqwal  (d0 : double,y) =  (fn (d1 : double,x) => deq (d0,d1))
+fun slessThan (d0 : double,y) = (fn (d1 : double,x) => d0 < d1)
+
+fun polySortByDot xs = (
+	  case xs
+	   of nil => nil
+	    | p :: xs => let
+		  val lt = List.filter (sgreaterThan p) xs
+		  val eq = p :: List.filter (seqwal p) xs
+		  val gt = List.filter (slessThan p) xs
+	          in
+		    polySortByDot lt @ eq @ polySortByDot gt
+		  end);
+fun primBoundingSphere (quidjibo) = case quidjibo of 
+  Sphere(pos,r,surf) => bsleaf(pos,r,[prim(quidjibo)]) 
+(* 218-221 of Mathematics for 3D Programming and Computer Graphics *)
+| Polymesh(poly,surf) =>  let val P = List.concat(List.map (fn (norm,d,vert,b) => List.map (fn x =>  x )  vert) poly);
+                              val N = Real.fromInt (List.length P);
+                              val m = vecscale (vecsum P) (1.0 / N);
+			      val (mx,my,mz) = m; 
+			      val c11 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(x- mx)) P)) * (1.0 / N);
+			      val c22 = (fold op+ 0.0 (List.map (fn (x,y,z) => (y - my)*(y - my)) P)) * (1.0 / N);
+			      val c33 = (fold op+ 0.0 (List.map (fn (x,y,z) => (z - mz)*(z - mz)) P)) * (1.0 / N);
+			      val c12 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(y - my)) P)) * (1.0 / N);
+			      val c13 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(z - mz)) P)) * (1.0 / N);
+			      val c23 = (fold op+ 0.0 (List.map (fn (x,y,z) => (y - my)*(z - mz)) P)) * (1.0 / N);
+(* 135-138 of Mathematics for 3D Programming and Computer Graphics *)
+			      val a = ~c11 - (c22 * c33);
+			      val b = c11*c22*c33 + c22*c33;
+			      val c = ~(c11*c22*c33);
+			      val p = b - (1.0/3.0)*a*a;
+			      val q = (2.0/27.0)*a*a*a - (1.0/3.0)*a*b + c;
+(*
+			      val D = ~4.0*p*p*p - 27.0*q*q;
+			      val r = powd((~0.5*q + sqrt(~(1.0/108.0)*D))  , (1.0/3.0));
+			      val s = powd( (~0.5*q - sqrt(~(1.0/108.0)*D)) , (1.0/3.0));
+*)
+			      val p' = (p / 3.0); 
+			      val q' = (q / 2.0);
+			      val m = sqrt(~p / 3.0);
+			      val theta = (1.0/3.0)*Math.acos(~q' / sqrt(~p'*p'*p') );
+			      val x1 = 2.0*m*Math.cos(theta);
+			      val x2 = 2.0*sqrt(~p')*Math.cos(theta + (2.0*Math.pi / 3.0));
+			      val x3 = 2.0*sqrt(~p')*Math.cos(theta - (2.0*Math.pi/3.0));
+			      val Y1 = ~(c12 + (c13*c23 / (x1 - c33))) / (c22 - x1 + c23*c23/(x1 - c33));
+			      val Y2 = ~(c12 + (c13*c23 / (x2 - c33))) / (c22 - x2 + c23*c23/(x2 - c33));
+			      val Y3 = ~(c12 + (c13*c23 / (x3 - c33))) / (c22 - x3 + c23*c23/(x3 - c33));
+			      val Z1 = (c13 + Y1*c23) / (x1 - c33);
+			      val Z2 = (c13 + Y2*c23) / (x2 - c33);
+			      val Z3 = (c13 + Y3*c23) / (x3 - c33);
+			      val X1' = c11 - x1 + Y1*c12 + Z1*c13;
+			      val Y1' = c12 + Y1*(c22 - x1) + Z1*c23;
+			      val Z1' = c13 + Y1*c23 + Z1*(c33 - x1);
+			      val X2' = c11 - x2 + Y2*c12 + Z2*c13;
+			      val Y2' = c12 + Y2*(c22 - x2) + Z2*c23;
+			      val Z2' = c13 + Y2*c23 + Z2*(c33 - x2);
+			      val X3' = c11 - x3 + Y3*c12 + Z3*c13;
+			      val Y3' = c12 + Y3*(c22 - x3) + Z3*c23;
+			      val Z3' = c13 + Y3*c23 + Z3*(c33 - x3);
+			      val (R,S,T) = if abs(x1) >= abs(x2) andalso abs(x2) >= abs(x3) then ((X1',Y1',Z1'),(X2',Y2',Z2'),(X3',Y3',Z3'))
+			                    else if abs(x1) >= abs(x3) andalso abs(x3) >= abs(x2) then ((X1',Y1',Z1'),(X3',Y3',Z3'),(X2',Y2',Z2'))
+                                            else if abs(x2) >= abs(x1) andalso abs(x1) >= abs(x3) then ((X2',Y2',Z2'),(X1',Y1',Z1'),(X3',Y3',Z3'))
+					    else if abs(x2) >= abs(x3) andalso abs(x3) >= abs(x1) then ((X2',Y2',Z2'),(X3',Y3',Z3'),(X1',Y1',Z1'))
+					    else if abs(x3) >= abs(x1) andalso abs(x1) >= abs(x2) then ((X3',Y3',Z3'),(X1',Y1',Z1'),(X2',Y2',Z2'))
+					    else ((X3',Y3',Z3'),(X2',Y2',Z2'),(X1',Y1',Z1'));
+(* 223-224 of Mathematics for 3D Game Programming and Computer Graphics *)
+                              val P' = polySortByDot(List.map (fn x => (vecdot R x, x)) P);
+			      val Pk = #2(List.hd P');
+			      val Pl = #2(List.hd (List.rev P'));
+			      val Q = vecscale (vecadd Pk Pl) 0.5;
+			      val radius = distance Pk Q;
+                          in
+                            bsleaf(Q,radius,[prim(quidjibo)])
+                          end;
+
+fun constructBoundingSphereHierarchy (wrld) = 
+    let val lmnt = List.map ( fn x => case x of 
+                                             prim p => 0.0
+
+					     | Union(p,c) => 0.0
+					     | Intersection(p,c) => 0.0
+					     | Difference(p,c) => 0.0
+    
+                            )
+       in 
+         0.0
+       end;
+
+
+fun polygonNegation (pos: vec, d: double, poly: vec list, b : bool) = (pos,d,poly, not b)
+
 
 
 fun polygonX (x,y) = x;
@@ -185,21 +288,6 @@ in
    else pointInPolygon(p,List.tl(g),b)
 end
 
-(*
-
-(* p. 703 of  Geometric Tools for Computer Graphics *)
-fun pointInPolygon (p : (double * double),g : (double * double) list,b) = if List.length(g) < 2 then b 
-  else let val u0 = List.hd g;
-           val u1 = List.hd (List.tl g);
-        in
-          (if (polygonY(p) < polygonY(u1)) andalso (polygonY(u0) <= polygonY(p)) andalso ( (polygonY(p) - polygonY(u0))*(polygonX(u1)-polygonX(u0))  > ( (polygonX(p) - polygonX(u0)) * (polygonY(u1) - polygonY(u0)) )) then pointInPolygon(p,(List.tl(g)), not b)   
-           else if (polygonY(p) < polygonY(u0)) andalso ( ((polygonY(p) - polygonY(u0))*(polygonX(u1) -polygonX(u0))) <  (((polygonX(p) - polygonX(u0)) * (polygonY(u1) - polygonY(u0)))) ) then pointInPolygon(p,(List.tl(g)), not b)  
-           else pointInPolygon(p,(List.tl(g)),b)
-          )
-      end; 
-
-*)
-
 fun project2D (norm : vec) = let val (x0,y0,z0) = norm
                                  val (x,y,z) = (abs(x0),abs(y0),abs(z0)) 
  in (if x > y andalso x > z then (fn (a : double,b : double,c : double) => (b,c)) else if y > x andalso y > z then (fn (a : double,b : double,c : double) => (a,c)) else (fn (a : double,b : double,c : double) => (a,b)) ) end;
@@ -208,10 +296,10 @@ fun project2D (norm : vec) = let val (x0,y0,z0) = norm
 
 
 (* p. 490-491, 496-497 of Geometric Tools for Computer Graphics *)
-fun implicitPolymesh (vpos: vec, norm : vec,d : double,polygon : (double * double) list, pos : vec,dir : vec) = (let
+fun implicitPolymesh (norm : vec,d : double,polygon : vec list, boo, pos : vec,dir : vec) = (let
     val denom = vecdot norm dir;
+    val vpos = List.hd polygon;
     val numer = vecdot norm pos + d;
-    val polygonlist = List.last(polygon)::polygon
   in 
     (if (denom < EPSILON) andalso (numer > 0.0) then (false,0.0)
      else (let 
@@ -226,7 +314,8 @@ fun implicitPolymesh (vpos: vec, norm : vec,d : double,polygon : (double * doubl
              else  
                   let val f = project2D(norm);          
                       val p = f(vecadd pos (vecscale dir t0))
-		      val b = pointInPolygon(p,polygonlist,false)
+		      val polygonlist = List.map f (List.last(polygon)::polygon)
+		      val b = pointInPolygon(p,polygonlist,boo)
                  in
                    (b,t0) 
 
@@ -263,7 +352,7 @@ fun implicit (pos,dir,obj : CSG) = case obj of
 	  else (true, slo)
 	  end
     end)
-  | Polymesh (poly,surf) =>  polymeshIntersect (List.map implicitPolymesh (List.map (fn (vpos,x,d,polygon) => (vpos,x,d,polygon,pos,vecnormlz(dir))) poly))
+  | Polymesh (poly,surf) =>  polymeshIntersect (List.map implicitPolymesh (List.map (fn (x,d,polygon,boo) => (x,d,polygon,boo,pos,vecnormlz(dir))) poly))
   
   )
 | Union (p,c) => (true,0.0)
@@ -283,9 +372,9 @@ fun CSGsurf (obj) = case obj of prim p => Primsurf(p)
 | Difference (p,c) => Primsurf(p)
 
 
-fun greaterThan (vpos,x,d0 : double,v) = (fn (vpos,y,d1 : double,v) => d0 > d1)
-fun eqwal  (vpos,x,d0 : double,v) =  (fn (vpos,y,d1 : double,v) => deq (d0,d1))
-fun lessThan (vpos,x,d0 : double,v) = (fn (vpos,y,d1 : double,v) => d0 < d1)
+fun greaterThan (x,d0 : double,v,b) = (fn (y,d1 : double,v,b) => d0 > d1)
+fun eqwal  (x,d0 : double,v,b) =  (fn (y,d1 : double,v,b) => deq (d0,d1))
+fun lessThan (x,d0 : double,v,b) = (fn (y,d1 : double,v,b) => d0 < d1)
 
 fun polySortByDistance xs = (
 	  case xs
@@ -299,10 +388,10 @@ fun polySortByDistance xs = (
 		  end);
 
 
-fun polyNorm (poly : (vec* vec * double * (double * double) list) list,pos) = 
+fun polyNorm (poly : (vec * double * vec list * bool) list,pos) = 
     let val veclist = (List.map (fn ((a,b,c),d) => (a,b,c)) (List.filter (fn ((a,b,c),d) => let  val pt = if abs(a) > 0.0 then (~d/a,0.0,0.0) else if abs(b) > 0.0 then (0.0,~d/b,0.0) else (0.0,0.0,~d/c)  in
                      (EPSILON >= vecdot (a,b,c) (vecsub pt pos)  ) end)   
-                 (List.map (fn (vpos,n,d0,v) => (n,d0)) (polySortByDistance poly))) )
+                 (List.map (fn (n,d0,v,b) => (n,d0)) (polySortByDistance poly))) )
        in
        case veclist of
        nil => pos
@@ -390,20 +479,19 @@ val testlights = Point((4.0,3.0,2.0), (0.288675,0.288675,0.288675)) ::
               Point((1.0, ~4.0,4.0), (0.288675,0.288675,0.288675)) ::
               Point((~3.0,1.0,5.0), (0.288675,0.288675,0.288675)) :: nil;
 
-val lookfrom = (5.0, 5.0, 0.0);
+val lookfrom = (0.0, ~3.0, 0.0);
 val background = (0.078, 0.361, 0.753);
- val testpolyhedron = Polymesh (  ( (0.0,0.0,0.0),(~1.0,0.0,0.0), 0.0, ( (0.0,0.0)::(0.0,1.0)::(1.0,1.0)::(1.0,0.0)::nil  ) )::
-                                   ( (1.0,0.0,0.0),(0.0,~1.0,0.0), 0.0, ( (1.0,0.0)::(1.0,1.0)::(0.0,1.0)::(0.0,0.0)::nil  ) )::
-                                   ( (0.0,0.0,1.0),(0.0,0.0,1.0),  0.0, ( (0.0,0.0)::(1.0,0.0)::(1.0,1.0)::(0.0,1.0)::nil  ) )::
-                                   ( (1.0,1.0,0.0),(1.0,0.0,0.0),  0.0, ( (1.0,0.0)::(1.0,1.0)::(0.0,1.0)::(0.0,0.0)::nil  ) )::
-                                   ( (0.0,1.0,0.0),(0.0,1.0,0.0),  0.0, ( (0.0,0.0)::(0.0,1.0)::(1.0,1.0)::(1.0,0.0)::nil  ) )::
-				   ( (1.0,0.0,0.0),(0.0,0.0,~1.0), 0.0, ( (1.0,0.0)::(0.0,0.0)::(0.0,1.0)::(1.0,1.0)::nil  ) )::nil,  
+ val testpolyhedron = Polymesh (  (  (~1.0,0.0,0.0), 0.0, ( (0.0,0.0,0.0)::(0.0,0.0,1.0)::(0.0,1.0,1.0)::(0.0,1.0,0.0)::nil  ), false )::
+                                   ( (0.0,~1.0,0.0), 0.0, ( (1.0,0.0,0.0)::(1.0,0.0,1.0)::(0.0,0.0,1.0)::(0.0,0.0,0.0)::nil  ), false )::
+                                   ( (0.0,0.0,1.0),  0.0, ( (0.0,0.0,1.0)::(1.0,0.0,1.0)::(1.0,1.0,1.0)::(0.0,1.0,1.0)::nil  ), false )::
+                                   ( (1.0,0.0,0.0),  0.0, ( (1.0,0.0,0.0)::(1.0,0.0,1.0)::(1.0,1.0,1.0)::(1.0,1.0,0.0)::nil  ), false )::
+                                   ( (0.0,1.0,0.0),  0.0, ( (0.0,1.0,0.0)::(0.0,1.0,1.0)::(1.0,1.0,1.0)::(1.0,1.0,0.0)::nil  ), false )::
+				   ( (0.0,0.0,~1.0), 0.0, ( (1.0,0.0,0.0)::(0.0,0.0,0.0)::(0.0,1.0,0.0)::(1.0,1.0,0.0)::nil  ), false )::nil,  
                                 s2)::nil
 
-(*
-val testpolyhedron = Polymesh (  ( (0.0,0.0,0.0),(~1.0,0.0,0.0), 0.0, ( (0.0,0.0)::(1.0,1.0)::(2.0,0.0)::nil  ) )::nil, s3)::Polymesh (  ( (0.0,0.0,0.0),(~1.0,0.0,0.0), 0.0, ( (0.0,0.0)::(1.0,~1.0)::(2.0,0.0)::nil  ) )::nil, s2)::nil
-*)                              
-val world = List.map (fn x => prim x) (testpolyhedron@testspheres);
+                            
+val world = List.map (fn x => prim x)  (testpolyhedron@testspheres);
+
 (*%%%%%%%*)
 
 
