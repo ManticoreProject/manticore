@@ -255,19 +255,54 @@ fun primBoundingSphere (quidjibo) = case quidjibo of
                             bsleaf(Q,radius,[prim(quidjibo)])
                           end;
 
-fun constructBoundingSphereHierarchy (wrld) = 
-    let val lmnt = List.map ( fn x => case x of 
-                                             prim p => 0.0
+fun ngreaterThan (d0 : double) = (fn (d1 : double) => d0 > d1)
+fun neqwal  (d0 : double) =  (fn (d1 : double) => deq (d0,d1))
+fun nlessThan (d0 : double) = (fn (d1 : double) => d0 < d1)
 
-					     | Union(p,c) => 0.0
-					     | Intersection(p,c) => 0.0
-					     | Difference(p,c) => 0.0
-    
-                            )
-       in 
-         0.0
-       end;
+fun numSort xs = (
+	  case xs
+	   of nil => nil
+	    | p :: xs => let
+		  val lt = List.filter (ngreaterThan p) xs
+		  val eq = p :: List.filter (neqwal p) xs
+		  val gt = List.filter (nlessThan p) xs
+	          in
+		    numSort lt @ eq @ numSort gt
+		  end);
 
+fun enclosingArea(lyst) = 0.0;
+
+fun findK (B) = let 
+                val enclosedB = enclosingArea(B);
+		val N = List.length(B);
+		val N' = Real.fromInt(N);
+                val Xsorted = List.map (fn (x,y) => x) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(x), (pos,r,clist))  end) B));  
+		val Ysorted = List.map (fn (x,y) => x) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(y), (pos,r,clist))  end) B)); 
+		val Zsorted = List.map (fn (x,y) => x) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(z), (pos,r,clist))  end) B)); 
+                val Xsorted' = List.tabulate (N, (fn (x) => let val Q = List.take(Xsorted,x)
+                                                                                   val W = List.drop(Xsorted,x)
+                                                                                   val x' = Real.fromInt(x)
+                                                                                in
+                                                                                   x'*(enclosingArea(Q) / enclosedB) + (N' - x')*(enclosingArea(W) / enclosedB)  
+                                                                     end)  )
+
+	        val Ysorted' = List.tabulate (N, (fn (x) => let val Q = List.take(Ysorted,x)
+                                                                                   val W = List.drop(Ysorted,x)
+
+										   val x' = Real.fromInt(x)
+                                                                                in
+                                                                                   x'*(enclosingArea(Q) / enclosedB) + (N' - x')*(enclosingArea(W) / enclosedB)  
+                                                                     end)  )
+                val Zsorted' = List.tabulate (N, (fn (x) => let val Q = List.take(Zsorted,x)
+                                                                                   val W = List.drop(Zsorted,x)
+
+										   val x' = Real.fromInt(x)
+                                                                                in
+                                                                                   x'*(enclosingArea(Q) / enclosedB) + (N' - x')*(enclosingArea(W) / enclosedB)  
+                                                                     end)  )
+        in  
+           List.hd(numSort(Xsorted'@Ysorted'@Zsorted'))
+        end;
 
 fun polygonNegation (pos: vec, d: double, poly: vec list, b : bool) = (pos,d,poly, not b)
 
