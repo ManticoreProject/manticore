@@ -193,67 +193,75 @@ fun polySortByDot xs = (
 	          in
 		    polySortByDot lt @ eq @ polySortByDot gt
 		  end);
-fun primBoundingSphere (quidjibo) = case quidjibo of 
-  Sphere(pos,r,surf) => bsleaf(pos,r,[prim(quidjibo)]) 
-(* 218-221 of Mathematics for 3D Programming and Computer Graphics *)
-| Polymesh(poly,surf) =>  let val P = List.concat(List.map (fn (norm,d,vert,b) => List.map (fn x =>  x )  vert) poly);
-                              val N = Real.fromInt (List.length P);
-                              val m = vecscale (vecsum P) (1.0 / N);
-			      val (mx,my,mz) = m; 
-			      val c11 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(x- mx)) P)) * (1.0 / N);
-			      val c22 = (fold op+ 0.0 (List.map (fn (x,y,z) => (y - my)*(y - my)) P)) * (1.0 / N);
-			      val c33 = (fold op+ 0.0 (List.map (fn (x,y,z) => (z - mz)*(z - mz)) P)) * (1.0 / N);
-			      val c12 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(y - my)) P)) * (1.0 / N);
-			      val c13 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(z - mz)) P)) * (1.0 / N);
-			      val c23 = (fold op+ 0.0 (List.map (fn (x,y,z) => (y - my)*(z - mz)) P)) * (1.0 / N);
+
+
+fun pointListEnclosingSphere (P) = let
+   val N = Real.fromInt (List.length P);
+   val m = vecscale (vecsum P) (1.0 / N);
+   val (mx,my,mz) = m; 
+   val c11 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(x- mx)) P)) * (1.0 / N);
+   val c22 = (fold op+ 0.0 (List.map (fn (x,y,z) => (y - my)*(y - my)) P)) * (1.0 / N);
+   val c33 = (fold op+ 0.0 (List.map (fn (x,y,z) => (z - mz)*(z - mz)) P)) * (1.0 / N);
+   val c12 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(y - my)) P)) * (1.0 / N);
+   val c13 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(z - mz)) P)) * (1.0 / N);
+   val c23 = (fold op+ 0.0 (List.map (fn (x,y,z) => (y - my)*(z - mz)) P)) * (1.0 / N);
 (* 135-138 of Mathematics for 3D Programming and Computer Graphics *)
-			      val a = ~c11 - (c22 * c33);
-			      val b = c11*c22*c33 + c22*c33;
-			      val c = ~(c11*c22*c33);
-			      val p = b - (1.0/3.0)*a*a;
-			      val q = (2.0/27.0)*a*a*a - (1.0/3.0)*a*b + c;
-(*
-			      val D = ~4.0*p*p*p - 27.0*q*q;
-			      val r = powd((~0.5*q + sqrt(~(1.0/108.0)*D))  , (1.0/3.0));
-			      val s = powd( (~0.5*q - sqrt(~(1.0/108.0)*D)) , (1.0/3.0));
-*)
-			      val p' = (p / 3.0); 
-			      val q' = (q / 2.0);
-			      val m = sqrt(~p / 3.0);
-			      val theta = (1.0/3.0)*Math.acos(~q' / sqrt(~p'*p'*p') );
-			      val x1 = 2.0*m*Math.cos(theta);
-			      val x2 = 2.0*sqrt(~p')*Math.cos(theta + (2.0*Math.pi / 3.0));
-			      val x3 = 2.0*sqrt(~p')*Math.cos(theta - (2.0*Math.pi/3.0));
-			      val Y1 = ~(c12 + (c13*c23 / (x1 - c33))) / (c22 - x1 + c23*c23/(x1 - c33));
-			      val Y2 = ~(c12 + (c13*c23 / (x2 - c33))) / (c22 - x2 + c23*c23/(x2 - c33));
-			      val Y3 = ~(c12 + (c13*c23 / (x3 - c33))) / (c22 - x3 + c23*c23/(x3 - c33));
-			      val Z1 = (c13 + Y1*c23) / (x1 - c33);
-			      val Z2 = (c13 + Y2*c23) / (x2 - c33);
-			      val Z3 = (c13 + Y3*c23) / (x3 - c33);
-			      val X1' = c11 - x1 + Y1*c12 + Z1*c13;
-			      val Y1' = c12 + Y1*(c22 - x1) + Z1*c23;
-			      val Z1' = c13 + Y1*c23 + Z1*(c33 - x1);
-			      val X2' = c11 - x2 + Y2*c12 + Z2*c13;
-			      val Y2' = c12 + Y2*(c22 - x2) + Z2*c23;
-			      val Z2' = c13 + Y2*c23 + Z2*(c33 - x2);
-			      val X3' = c11 - x3 + Y3*c12 + Z3*c13;
-			      val Y3' = c12 + Y3*(c22 - x3) + Z3*c23;
-			      val Z3' = c13 + Y3*c23 + Z3*(c33 - x3);
-			      val (R,S,T) = if abs(x1) >= abs(x2) andalso abs(x2) >= abs(x3) then ((X1',Y1',Z1'),(X2',Y2',Z2'),(X3',Y3',Z3'))
-			                    else if abs(x1) >= abs(x3) andalso abs(x3) >= abs(x2) then ((X1',Y1',Z1'),(X3',Y3',Z3'),(X2',Y2',Z2'))
-                                            else if abs(x2) >= abs(x1) andalso abs(x1) >= abs(x3) then ((X2',Y2',Z2'),(X1',Y1',Z1'),(X3',Y3',Z3'))
-					    else if abs(x2) >= abs(x3) andalso abs(x3) >= abs(x1) then ((X2',Y2',Z2'),(X3',Y3',Z3'),(X1',Y1',Z1'))
-					    else if abs(x3) >= abs(x1) andalso abs(x1) >= abs(x2) then ((X3',Y3',Z3'),(X1',Y1',Z1'),(X2',Y2',Z2'))
-					    else ((X3',Y3',Z3'),(X2',Y2',Z2'),(X1',Y1',Z1'));
+   val a = ~c11 - (c22 * c33);
+   val b = c11*c22*c33 + c22*c33;
+   val c = ~(c11*c22*c33);
+   val p = b - (1.0/3.0)*a*a;
+   val q = (2.0/27.0)*a*a*a - (1.0/3.0)*a*b + c;
+   val p' = (p / 3.0); 
+   val q' = (q / 2.0);
+   val m = sqrt(~p / 3.0);
+   val theta = (1.0/3.0)*Math.acos(~q' / sqrt(~p'*p'*p') );
+   val x1 = 2.0*m*Math.cos(theta);
+   val x2 = 2.0*sqrt(~p')*Math.cos(theta + (2.0*Math.pi / 3.0));
+   val x3 = 2.0*sqrt(~p')*Math.cos(theta - (2.0*Math.pi/3.0));
+   val Y1 = ~(c12 + (c13*c23 / (x1 - c33))) / (c22 - x1 + c23*c23/(x1 - c33));
+   val Y2 = ~(c12 + (c13*c23 / (x2 - c33))) / (c22 - x2 + c23*c23/(x2 - c33));
+   val Y3 = ~(c12 + (c13*c23 / (x3 - c33))) / (c22 - x3 + c23*c23/(x3 - c33));
+   val Z1 = (c13 + Y1*c23) / (x1 - c33);
+   val Z2 = (c13 + Y2*c23) / (x2 - c33);
+   val Z3 = (c13 + Y3*c23) / (x3 - c33);
+   val X1' = c11 - x1 + Y1*c12 + Z1*c13;
+   val Y1' = c12 + Y1*(c22 - x1) + Z1*c23;
+   val Z1' = c13 + Y1*c23 + Z1*(c33 - x1);
+   val X2' = c11 - x2 + Y2*c12 + Z2*c13;
+   val Y2' = c12 + Y2*(c22 - x2) + Z2*c23;
+   val Z2' = c13 + Y2*c23 + Z2*(c33 - x2);
+   val X3' = c11 - x3 + Y3*c12 + Z3*c13;
+   val Y3' = c12 + Y3*(c22 - x3) + Z3*c23;
+   val Z3' = c13 + Y3*c23 + Z3*(c33 - x3);
+   val (R,S,T) = if abs(x1) >= abs(x2) andalso abs(x2) >= abs(x3) then ((X1',Y1',Z1'),(X2',Y2',Z2'),(X3',Y3',Z3'))
+                 else if abs(x1) >= abs(x3) andalso abs(x3) >= abs(x2) then ((X1',Y1',Z1'),(X3',Y3',Z3'),(X2',Y2',Z2'))
+                 else if abs(x2) >= abs(x1) andalso abs(x1) >= abs(x3) then ((X2',Y2',Z2'),(X1',Y1',Z1'),(X3',Y3',Z3'))
+		 else if abs(x2) >= abs(x3) andalso abs(x3) >= abs(x1) then ((X2',Y2',Z2'),(X3',Y3',Z3'),(X1',Y1',Z1'))
+		 else if abs(x3) >= abs(x1) andalso abs(x1) >= abs(x2) then ((X3',Y3',Z3'),(X1',Y1',Z1'),(X2',Y2',Z2'))
+		 else ((X3',Y3',Z3'),(X2',Y2',Z2'),(X1',Y1',Z1'));
 (* 223-224 of Mathematics for 3D Game Programming and Computer Graphics *)
-                              val P' = polySortByDot(List.map (fn x => (vecdot R x, x)) P);
-			      val Pk = #2(List.hd P');
-			      val Pl = #2(List.hd (List.rev P'));
-			      val Q = vecscale (vecadd Pk Pl) 0.5;
-			      val radius = distance Pk Q;
-                          in
-                            bsleaf(Q,radius,[prim(quidjibo)])
+   val P' = polySortByDot(List.map (fn x => (vecdot R x, x)) P);
+   val Pk = #2(List.hd P');
+   val Pl = #2(List.hd (List.rev P'));
+   val Q = vecscale (vecadd Pk Pl) 0.5;
+   val radius = distance Pk Q;
+in 
+   (Q,radius)
+end;
+
+fun primBoundingSphere (quidjibo) = case quidjibo of 
+  Sphere(pos,r,surf) => (pos,r,[prim(quidjibo)]) 
+(* 218-221 of Mathematics for 3D Programming and Computer Graphics *)
+| Polymesh(poly,surf) =>  let val (pos,rad) = pointListEnclosingSphere(List.concat(List.map (fn (norm,d,vert,b) => List.map (fn x =>  x )  vert) poly));
+                          in                           
+                              (pos,rad,[prim(quidjibo)])
                           end;
+
+fun csgBoundingSphere (csg) = case csg of
+  prim(p) => primBoundingSphere(p)
+| Union(p,c) => primBoundingSphere(p)
+| Intersection(p,c) => primBoundingSphere(p)
+| Difference(p,c) => primBoundingSphere(p)
 
 fun ngreaterThan (d0 : double) = (fn (d1 : double) => d0 > d1)
 fun neqwal  (d0 : double) =  (fn (d1 : double) => deq (d0,d1))
@@ -270,15 +278,32 @@ fun numSort xs = (
 		    numSort lt @ eq @ numSort gt
 		  end);
 
-fun enclosingArea(lyst) = 0.0;
+fun enclosingSphere ((p0,r0,foo),(p1,r1,bar)) = 
+    let val dir = vecnormlz (vecsub p1 p0); 
+        val p0' = (vecadd p0 (vecscale (vecscale dir ~1.0) r0)); 
+        val p1' = vecadd p1 (vecscale dir r1);
+        val pos = vecscale (vecadd p0' p1') 0.5;
+        val rad = distance p1' pos; 
+    in
+       (pos,rad,foo@bar)
+    end;             
 
+fun enclosingArea(lyst) = 
+   let val (pos,rad) = pointListEnclosingSphere(List.concat (List.map (fn (p,r,x) =>   (vecadd p (r,0.0,0.0))::(vecadd p (0.0,r,0.0))::(vecadd p (0.0,0.0,r))::(vecadd p (~r,0.0,0.0))::(vecadd p (0.0,~r,0.0))::(vecadd p (0.0,0.0,~r))::nil) lyst))
+   in 
+      (4.0*Math.pi*rad*rad)
+   end; 
+                    
+
+
+(* 72 of Geometric Data Structures for Computer Graphics *)
 fun findK (B) = let 
                 val enclosedB = enclosingArea(B);
 		val N = List.length(B);
 		val N' = Real.fromInt(N);
-                val Xsorted = List.map (fn (x,y) => x) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(x), (pos,r,clist))  end) B));  
-		val Ysorted = List.map (fn (x,y) => x) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(y), (pos,r,clist))  end) B)); 
-		val Zsorted = List.map (fn (x,y) => x) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(z), (pos,r,clist))  end) B)); 
+                val Xsorted = List.map (fn (x,y) => y) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(x), (pos,r,clist))  end) B));  
+		val Ysorted = List.map (fn (x,y) => y) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(y), (pos,r,clist))  end) B)); 
+		val Zsorted = List.map (fn (x,y) => y) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(z), (pos,r,clist))  end) B)); 
                 val Xsorted' = List.tabulate (N, (fn (x) => let val Q = List.take(Xsorted,x)
                                                                                    val W = List.drop(Xsorted,x)
                                                                                    val x' = Real.fromInt(x)
@@ -300,9 +325,24 @@ fun findK (B) = let
                                                                                 in
                                                                                    x'*(enclosingArea(Q) / enclosedB) + (N' - x')*(enclosingArea(W) / enclosedB)  
                                                                      end)  )
+               val Xfirst = Real.round(List.hd(numSort(Xsorted')));
+               val Yfirst = Real.round(List.hd(numSort(Ysorted')));
+               val Zfirst = Real.round(List.hd(numSort(Zsorted')));
         in  
-           List.hd(numSort(Xsorted'@Ysorted'@Zsorted'))
+           if Xfirst <= Yfirst andalso Xfirst <= Zfirst then (Xfirst, Xsorted)
+           else if Yfirst <= Xfirst andalso Yfirst <= Zfirst then (Yfirst,Ysorted)
+           else (Zfirst,Zsorted)
         end;
+
+fun toPointList(lyst) = List.map (fn x => csgBoundingSphere x) lyst
+
+fun constructBSH (lyst) = 
+    if List.length(lyst) < 2 then bsleaf(List.hd(lyst))
+    else let val (k,slist) = findK(lyst)
+             val (pos,rad) = pointListEnclosingSphere(List.concat (List.map (fn (p,r,x) =>   (vecadd p (r,0.0,0.0))::(vecadd p (0.0,r,0.0))::(vecadd p (0.0,0.0,r))::(vecadd p (~r,0.0,0.0))::(vecadd p (0.0,~r,0.0))::(vecadd p (0.0,0.0,~r))::nil) lyst))
+         in
+           bsbranch(pos,rad,constructBSH(List.take(slist,k)), constructBSH(List.drop(slist,k)) )
+         end;
 
 fun polygonNegation (pos: vec, d: double, poly: vec list, b : bool) = (pos,d,poly, not b)
 
