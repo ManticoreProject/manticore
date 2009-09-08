@@ -88,8 +88,8 @@ static int DequeNumElts (Deque_t *deque)
 {
   if (deque->old <= deque->new)
     return deque->new - deque->old;
-  else
-    return deque->maxSz - deque->old - deque->new;
+  else  // wrapped around
+    return deque->maxSz - deque->old + deque->new;
 }
 
 static DequeList_t *PruneDequeList (DequeList_t *deques)

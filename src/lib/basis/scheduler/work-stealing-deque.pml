@@ -114,10 +114,10 @@ structure WorkStealingDeque (* :
 	define (* inline *) @size (deque : deque) : int =
 	    if I32Lte (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_NEW(deque)) then
 		return (I32Sub (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_OLD(deque)))
-	    else 
-		return (I32Sub (LOAD_DEQUE_MAX_SIZE(deque), 
-				I32Sub (LOAD_DEQUE_OLD(deque), 
-					LOAD_DEQUE_NEW(deque))))
+	    else (* wrapped around *)
+		return (I32Add (I32Sub (LOAD_DEQUE_MAX_SIZE(deque), 
+					LOAD_DEQUE_OLD(deque)), 
+				LOAD_DEQUE_NEW(deque)))
 	  ;
 
 	define @assert-in-bounds (deque : deque, i : int) : () =
