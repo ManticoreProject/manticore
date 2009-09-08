@@ -152,7 +152,8 @@ structure WorkStealing (* :
        *   f()=false (wait for 2 cycles); f()=false (wait for 4 cycles); f()=true (wait for 0 cycles) ...
        *)
 	define (* inline *) @mk-wait-fun (maxSpinCyclesLg : int) : fun( / -> bool) =
-	    let spinCyclesLg : ![int] = alloc (1)	    
+	    let spinCyclesLg : ![int] = alloc (1)
+            let spinCyclesLg : ![int] = promote (spinCyclesLg)
 	    fun doit () : bool =
 		let spinCycles : int = I32LSh (1, #0(spinCyclesLg))
                 fun spin (i : int) : () =
