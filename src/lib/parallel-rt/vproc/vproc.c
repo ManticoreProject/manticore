@@ -198,7 +198,10 @@ void *NewVProc (void *arg)
     VProc_t* vproc = AllocVProcMemory (initData->id, initData->loc);
     if (vproc == 0) {
 	Die ("unable to allocate memory for vproc %d\n", initData->id);
+    } else if (((Addr_t)vproc & VP_HEAP_MASK) != 0) {
+      Die ("misaligned vproc pointer\n");
     }
+
     VProcs[initData->id] = vproc;
 
   /* initialize the vproc structure */
