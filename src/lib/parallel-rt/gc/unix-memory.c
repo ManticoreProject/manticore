@@ -85,7 +85,7 @@ void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks)
 	*nBlocks = 0;
 	return 0;
     }
-    else if ((Addr_t)memObj & (blkSzB-1) != 0) {
+    else if (((Addr_t)memObj & (blkSzB-1)) != 0) {
         UnmapMemory (memObj, szb);
 	*nBlocks = 0;
 	return 0;
