@@ -195,7 +195,7 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 	     *   2. elements are not explicitly promoted when inserted into the deque
 	     */
 #ifndef NDEBUG
-	    // check that none of the elements to the right of the jth element point to the local heap
+	    // check that none of the elements to the left of the jth element point to the local heap
       	    for (int i = j; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
 	      int j = MoveLeft (i, deque->maxSz);	   
 	      if (deque->elts[j] != M_NIL)
@@ -213,10 +213,10 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 /* \brief add the deque elements to the root set to be used by a global collection
  * \param self the host vproc
  * \param rootPtr pointer to the root set
- * \return the updated root set
  */
-Value_t **M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr)
+void M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rp)
 {
+  for (; *rp != 0; rp++); // postcondition: rp points at the end of the root set array
   for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
     for (DequeList_t *deques = wgList->deques; deques != NULL; deques = deques->next) {
       Deque_t *deque = deques->deque;
@@ -228,15 +228,17 @@ Value_t **M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr)
 	if (deque->elts[j] != M_NIL)
 	  if (inGlobalHeap) {
 	    // the jth element points to the global heap
-	    *rootPtr++ = &(deque->elts[j]);
+	    *rp++ = &(deque->elts[j]);
 	  } else if (!ELT_POINTS_TO_LOCAL_HEAP(deque, j)) {
-	    *rootPtr++ = &(deque->elts[j]);     // j points to the youngest element in the global heap
+	    *rp++ = &(deque->elts[j]);     // j points to the youngest element in the global heap
 	    inGlobalHeap = true;
-	  } else {}
+	  } else {
+	    // the jth element should point to the local heap
+	  }
       }	    
     }
   }
-  return rootPtr;
+  *rp++ = 0;
 }
 
 #else /* no root-set optimization: instead we just add the entire deque to each local 

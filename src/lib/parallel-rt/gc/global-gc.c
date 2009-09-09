@@ -284,7 +284,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     LogGlobalGCVPStart (vp);
 
   /* collect roots that were pruned away from the minor collector's root set */
-    roots = M_AddDequeEltsToGlobalRoots(vp, roots);
+    M_AddDequeEltsToGlobalRoots(vp, roots);
 
   /* scan the vproc's roots */
     for (int i = 0;  roots[i] != 0;  i++) {

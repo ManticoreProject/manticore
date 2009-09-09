@@ -53,9 +53,8 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr);
 /* \brief add the deque elements to the root set to be used by a global collection
  * \param self the host vproc
  * \param rootPtr pointer to the root set
- * \return the updated root set
  */
-Value_t **M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr);
+void M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr);
 
 /* \brief returns a list of all deques on the host vproc corresponding to the given work group
  * \param self the host vproc
