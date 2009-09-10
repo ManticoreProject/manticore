@@ -154,35 +154,34 @@ structure VProc (* :
      *) 
       define @send-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
           do assert(NotEqual(self, dst))
-          cont exit () = return()
 	  fun lp () : () =
 	      let ldgPadOrig : queue_item = vpload(VP_LANDING_PAD, dst)
 	      let ldgPadNew : queue_item = alloc(fls, k, ldgPadOrig)
 	      let ldgPadNew : queue_item = promote(ldgPadNew)
 	      let x : queue_item = CAS((addr(queue_item))vpaddr(VP_LANDING_PAD,dst), ldgPadOrig, ldgPadNew)
-	      if NotEqual(x, ldgPadOrig)
-		then
+	      if NotEqual(x, ldgPadOrig) then
 		  do Pause ()
 		  apply lp ()
-		else
-		    let sleeping : bool = vpload(VP_SLEEPING, dst)
-		    do case sleeping
-		       of true =>
-			    do ccall VProcWake(dst)
-			    return()
-			| false => return()
-		      end
-                    throw exit()
+	      else
+		  let sleeping : bool = vpload(VP_SLEEPING, dst)
+		  do case sleeping
+		      of true =>
+			 do ccall VProcWake(dst)
+		         return()
+		       | false => 
+			 return()
+		     end
+                  return()
 	  do apply lp()
         (* trigger a preemption on the destination vproc *)
           fun preempt () : () =
 	      let limitPtrOrig : any = vpload(LIMIT_PTR, dst)
               let x : any = CAS((addr(any))vpaddr(LIMIT_PTR, dst), limitPtrOrig, $0)
-              if Equal (limitPtrOrig, x) then
-		  return ()
-	      else
+              if NotEqual (x, limitPtrOrig) then
 		  do Pause()
 		  apply preempt()
+	      else
+		  return ()
           do apply preempt()
 	  return()
       ;

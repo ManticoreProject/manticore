@@ -37,6 +37,10 @@ structure VProcQueue (* :
 
     (**** Remote-queue operations ****)
 
+    (* poll the landing pad for threads. if there are threads, we move them to the local thread queue
+     * and return true. otherwise we return false.
+     *)
+      define inline @poll-landing-pad-from-atomic (vp : vproc) : bool:
     (* enqueue on a given vproc *)
       define @enqueue-on-vproc-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
     (* enqueue on a remote vproc *)
@@ -113,39 +117,23 @@ structure VProcQueue (* :
 
     (* dequeue from the local queue  *)
       define inline @dequeue-from-atomic (vp : vproc) : O.option =
-	  let hd : queue_item = vpload (VP_RDYQ_HD, vp)
-	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
-        (* FIXME: remove the landing-pad check when we can safely perform the check during pre-emptions. *)
-	  let landingPadItems : queue_item = VProc.@recv-from-atomic(vp)
-          if NotEqual(landingPadItems, Q_EMPTY)
-             then
-	      let newHd : queue_item = @queue-append (SELECT(LINK_OFF, landingPadItems), hd)
-	      do vpstore (VP_RDYQ_HD, vp, newHd)
-	      return(O.SOME(landingPadItems))
-	  else if NotEqual(hd, Q_EMPTY)
-	     then
-	      (* got a thread from the primary list *)
-	        do vpstore (VP_RDYQ_HD, vp, SELECT(LINK_OFF, hd))
-	        return (O.SOME (hd))
-	  else if NotEqual(tl, Q_EMPTY)
-	     then
-	      (* got a thread from the secondary list *)
-		do vpstore (VP_RDYQ_TL, vp, Q_EMPTY)
-		let qitem : queue_item = @queue-reverse (SELECT(FLS_OFF, tl), 
-							 SELECT(FIBER_OFF, tl), 
-							 (queue_item)SELECT(LINK_OFF, tl))
-		do vpstore (VP_RDYQ_HD, vp, (queue_item)SELECT(LINK_OFF, qitem))
-		return (O.SOME(qitem))
+	  let hd : queue_item = vpload (VP_RDYQ_HD, vp)	  
+          if NotEqual(hd, Q_EMPTY) then
+	    (* got a thread from the primary list *)
+	      do vpstore (VP_RDYQ_HD, vp, SELECT(LINK_OFF, hd))
+	      return (O.SOME (hd))
 	  else
-	      (* try to get threads from the landing pad *)
-	        let landingPadItems : queue_item = VProc.@recv-from-atomic(vp)
-                if Equal(landingPadItems, Q_EMPTY)
-		   then 
-		    return(O.NONE)
-		else
-		    let newHd : queue_item = @queue-append (SELECT(LINK_OFF, landingPadItems), hd)
-		    do vpstore (VP_RDYQ_HD, vp, newHd)
-		    return(O.SOME(landingPadItems))
+	      let tl : queue_item = vpload (VP_RDYQ_TL, vp)
+	      if NotEqual(tl, Q_EMPTY) then
+		(* got a thread from the secondary list *)
+		  do vpstore (VP_RDYQ_TL, vp, Q_EMPTY)
+		  let qitem : queue_item = @queue-reverse (SELECT(FLS_OFF, tl), 
+							   SELECT(FIBER_OFF, tl), 
+							   (queue_item)SELECT(LINK_OFF, tl))
+		  do vpstore (VP_RDYQ_HD, vp, (queue_item)SELECT(LINK_OFF, qitem))
+		  return (O.SOME(qitem))
+	      else
+                  return (O.NONE)
 	    ;
 
     (* enqueue on the local queue. NOTE: signals must be masked *)
@@ -200,6 +188,20 @@ structure VProcQueue (* :
 	;
 
     (**** Remote-queue operations ****)
+
+    (* poll the landing pad for threads. if there are threads, we move them to the local thread queue
+     * and return true. otherwise we return false.
+     *)
+      define inline @poll-landing-pad-from-atomic (vp : vproc) : bool =
+	  let landingPadItems : queue_item = VProc.@recv-from-atomic(vp)
+	  if Equal (landingPadItems, Q_EMPTY) then
+	      return (false)
+	  else
+	      let hd : queue_item = vpload (VP_RDYQ_HD, vp)
+	      let newHd : queue_item = @queue-append (landingPadItems, hd)
+	      do vpstore (VP_RDYQ_HD, vp, newHd)
+	      return (true)
+	;
 
     (* enqueue on a given vproc. NOTE: signals must be masked  *)
       define inline @enqueue-on-vproc-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
