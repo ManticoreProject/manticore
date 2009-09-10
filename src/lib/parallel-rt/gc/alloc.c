@@ -33,23 +33,6 @@ Value_t AllocUniform (VProc_t *vp, int nElems, ...)
     return PtrToValue(obj);
 }
 
-/*! \brief allocate a vector seeded with some initial values.
- *  \param vp the host vproc
- *  \param values the values used to initialize the vector
- *  \return the allocated and initialized vector
- */
-Value_t AllocVector (VProc_t *vp, ListCons_t values)
-{
-    Word_t	*obj = (Word_t *)(vp->allocPtr);
-
-    for (int i = 0; values != M_NIL; values = (ListCons_t)values->tl, i++)
-        obj[i] = (Word_t)values->hd;
-
-    obj[-1] = VEC_HDR(i);
-    vp->allocPtr += WORD_SZB * (i+1);
-    return PtrToValue(obj);
-}
-
 /*! \brief allocate a non-uniform tuple of values.
  *  \param vp the host vproc
  *  \param nElems the number of tuple elements.
@@ -73,6 +56,30 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
 
     vp->allocPtr += WORD_SZB * (nElems+1);
     return PtrToValue(obj);
+}
+
+/*! \brief allocate a vector seeded with some initial values.
+ *  \param vp the host vproc
+ *  \param values the values used to initialize the vector
+ *  \return the allocated and initialized vector
+ *  The vector type is defined in basis/sequential/vector.pml.
+ */
+Value_t AllocVector (VProc_t *vp, Value_t values)
+{
+    Word_t	*obj = (Word_t *)(vp->allocPtr);    
+    int         i    = 0;
+
+    while (values != M_NIL) {
+	ListCons_t *valueList = (ListCons_t*)ValueToPtr(values);
+	obj[i] = (Word_t)valueList->hd;
+	values = valueList->tl;
+	i++;
+    }
+
+    obj[-1] = VEC_HDR(i);
+    vp->allocPtr += WORD_SZB * (i+1);
+    
+    return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(i));
 }
 
 /*! \brief allocate a wrapped word value.
