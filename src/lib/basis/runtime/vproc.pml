@@ -39,9 +39,7 @@ structure VProc (* :
      * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
      *) 
       define @send-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
-    (* receive pending signals from the host vproc's landing pad. 
-     * PRECONDITION: Equal(vp, host_vproc)
-     *)
+    (* returns threads that have been placed on the given vproc's landing pad *)
       define @recv-from-atomic (self : vproc) : queue_item;
     (* put the vproc to sleep until a signal arrives on its landing pad 
      * PRECONDITION: Equal(self, host_vproc)
@@ -173,7 +171,7 @@ structure VProc (* :
 		     end
                   return()
 	  do apply lp()
-        (* trigger a preemption on the destination vproc *)
+        (* trigger a preemption on the destination vproc by zeroing out the vproc's limit pointer *)
           fun preempt () : () =
 	      let limitPtrOrig : any = vpload(LIMIT_PTR, dst)
               let x : any = CAS((addr(any))vpaddr(LIMIT_PTR, dst), limitPtrOrig, $0)
@@ -186,21 +184,25 @@ structure VProc (* :
 	  return()
       ;
 
-    (* receive pending signals from the host vproc's landing pad.
-     * PRECONDITION: Equal(vp, host_vproc)
-     *)
+    (* returns threads that have been placed on the given vproc's landing pad *)
       define @recv-from-atomic (self : vproc) : queue_item =
-          cont exit () = return(Q_EMPTY)
           let ldgPadOrig : queue_item = vpload(VP_LANDING_PAD, self)
-          do if Equal(ldgPadOrig, Q_EMPTY)
-	      then 
-		 do Pause()
-		 throw exit()
-	      else return()
-          let x : queue_item = CAS((addr(queue_item))vpaddr(VP_LANDING_PAD, self), ldgPadOrig, Q_EMPTY)
-          if Equal(x, ldgPadOrig)
-	      then return(x)
-	      else return(Q_EMPTY)
+          if Equal (ldgPadOrig, Q_EMPTY) then
+	      return (Q_EMPTY)
+	  else
+	    (* the landing pad will remain empty until the function below succeeds in removing all the
+	     * existing threads. this property holds because other vprocs may only add threads to the landing
+	     * pad but cannot remove any threads.
+	     *) 
+	      fun lp () : queue_item =
+		  let ldgPadOrig : queue_item = vpload(VP_LANDING_PAD, self)
+                  let x : queue_item = CAS((addr(queue_item))vpaddr(VP_LANDING_PAD, self), ldgPadOrig, Q_EMPTY)
+                  if Equal(ldgPadOrig, x) then
+		      return(x)
+		  else
+		      do Pause()
+                      apply lp()
+               apply lp()
       ;
 
     (* put the vproc to sleep until a signal arrives on its landing pad 
