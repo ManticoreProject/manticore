@@ -44,7 +44,7 @@ RANLIB =	ranlib
 #
 # View path
 #
-VPATH =		../../include:../../gc:../../vproc:../../misc:../../machine:../../config
+VPATH =		../../include:../../gc:../../vproc:../../misc:../../cpu:../../machine:../../config
 
 GC_SRCS = 	minor-gc.c \
 		major-gc.c \
@@ -59,8 +59,10 @@ MISC_SRCS =	main.c \
 		apply.c \
 		basis.c \
 		options.c \
-		topology.c \
 		image.c
+
+CPU_SRCS =	cpuid.c \
+		topology.c
 
 ifeq ($(ENABLE_LOGGING),true)
   CPPFLAGS += -DENABLE_LOGGING
@@ -80,7 +82,7 @@ ifeq ($(ENABLE_GC_STATS),false)
   CPPFLAGS += -DNO_GC_STATS
 endif
 
-C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS)
+C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS) $(CPU_SRCS)
 C_OBJS		= $(patsubst %.c,%.o,$(C_SRCS))
 
 ASM_SRCS	= asm-glue.S asm-scheduler.S
