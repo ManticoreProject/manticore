@@ -211,7 +211,8 @@ fun polySortByDot xs = (
 		  end);
 
 
-fun pointListEnclosingSphere (P) = let
+fun pointListEnclosingSphere (P) = case P of nil => ((0.0,0.0,0.0),0.0)
+| _ => let
    val N = Real.fromInt (List.length P);
    val m = vecscale (vecsum P) (1.0 / N);
    val (mx,my,mz) = m; 
@@ -352,8 +353,9 @@ fun findK (B) = let
 
 fun toPointList(lyst) = List.map (fn x => csgBoundingSphere x) lyst
 
-fun constructBSH (lyst) = 
-    if List.length(lyst) < 2 then bsleaf(List.hd(lyst))
+fun constructBSH (lyst) = case lyst of
+ nil => bsleaf((0.0,0.0,0.0),0.0,nil)
+| _  =>  if List.length(lyst) < 2 then bsleaf(List.hd(lyst))
     else let val (k,slist) = findK(lyst)
              val (pos,rad) = pointListEnclosingSphere(List.concat (List.map (fn (p,r,x) =>   (vecadd p (r,0.0,0.0))::(vecadd p (0.0,r,0.0))::(vecadd p (0.0,0.0,r))::(vecadd p (~r,0.0,0.0))::(vecadd p (0.0,~r,0.0))::(vecadd p (0.0,0.0,~r))::nil) lyst))
          in
