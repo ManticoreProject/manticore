@@ -176,6 +176,22 @@ datatype BoundingSphereHierarchy =
   bsleaf of vec * double * CSG list
 | bsbranch of vec * double * BoundingSphereHierarchy * BoundingSphereHierarchy
 
+fun sphereIntersect(center,rad,pos,dir) = (let val m = vecsub pos center;  (* x - center *)
+    val m2 = vecdot m m;    (* (x-center).(x-center) *)
+    val bm = vecdot m dir;  (* (x-center).dir *)
+    val disc = bm * bm - m2 + rad * rad;  (* discriminant *)
+    in
+      if (disc < 0.0) then false  (* imaginary solns only *)
+      else let
+	  val slo = ~bm - (sqrt disc);
+	  val shi = ~bm + (sqrt disc);
+	  in
+	  if (slo < 0.0) then 
+	      if (shi < 0.0) then false
+	      else true
+	  else true 
+	  end
+    end)
 
 fun distance (x0,y0,z0) = (fn (x1,y1,z1) => sqrt (   (x1 - x0)*(x1 - x0) + (y1 - y0)*(y1 - y0) + (z1 - z0)*(z1 - z0)  ) )
 
@@ -249,12 +265,12 @@ in
    (Q,radius)
 end;
 
-fun primBoundingSphere (quidjibo) = case quidjibo of 
-  Sphere(pos,r,surf) => (pos,r,[prim(quidjibo)]) 
+fun primBoundingSphere (prm) = case prm of 
+  Sphere(pos,r,surf) => (pos,r,[prim(prm)]) 
 (* 218-221 of Mathematics for 3D Programming and Computer Graphics *)
 | Polymesh(poly,surf) =>  let val (pos,rad) = pointListEnclosingSphere(List.concat(List.map (fn (norm,d,vert,b) => List.map (fn x =>  x )  vert) poly));
                           in                           
-                              (pos,rad,[prim(quidjibo)])
+                              (pos,rad,[prim(prm)])
                           end;
 
 fun csgBoundingSphere (csg) = case csg of
@@ -343,6 +359,10 @@ fun constructBSH (lyst) =
          in
            bsbranch(pos,rad,constructBSH(List.take(slist,k)), constructBSH(List.drop(slist,k)) )
          end;
+
+fun traverseBSH(spheres,pos,dir) = case spheres of 
+  bsleaf(v,d,objlist) => if sphereIntersect(v,d,pos,dir) then objlist else nil
+| bsbranch(v,d,bsh,bsh') => if sphereIntersect(v,d,pos,dir) then traverseBSH(bsh,pos,dir)@traverseBSH(bsh',pos,dir) else nil;
 
 fun polygonNegation (pos: vec, d: double, poly: vec list, b : bool) = (pos,d,poly, not b)
 
@@ -565,7 +585,7 @@ val background = (0.078, 0.361, 0.753);
                                 s2)::nil
 
                             
-val world = List.map (fn x => prim x)  (testpolyhedron@testspheres);
+val world = constructBSH(List.map (fn x => csgBoundingSphere(prim x))  (testpolyhedron@testspheres));
 
 (*%%%%%%%*)
 
@@ -613,7 +633,6 @@ fun tracepixel (spheres, lights, x, y, firstray, scrnx, scrny) = let
 
 (*
 % find first intersection point in set of all objects
-*)
 and trace (spheres, pos, dir) = let
     (* make a list of the distances to intersection for each hit object *)
     fun sphmap l = (case l
@@ -638,6 +657,32 @@ and trace (spheres, pos, dir) = let
 	      (true, mindist, sp)
 	    end
     end
+*)
+and trace (spheres, pos, dir) = let
+    (* make a list of the distances to intersection for each hit object *)
+    fun sphmap l = (case l
+	   of nil => nil
+	    | (x::xs) => let
+	      val (hit, where') = implicit (pos, dir, x)
+	      in
+		if hit then
+		  (where', x) :: (sphmap xs)
+		else
+		  (sphmap xs)
+	      end)
+    val dists = sphmap (traverseBSH(spheres,pos,dir));
+    (* return a sphere and its distance *)
+    in
+      case dists
+       of nil => (false, INFINITY, prim(Sphere((0.0,0.0,0.0), 0.0, s3)))  (* missed all *)
+        | first::rest => let
+	    fun min ((d1, s1), (d2, s2)) = if (d1 < d2) then (d1,s1) else (d2,s2)
+	    val (mindist, sp) = fold min first rest
+	    in
+	      (true, mindist, sp)
+	    end
+    end
+
 
 (*
 % complete shader, given set of lights, sphere which was hit, ray which hit
