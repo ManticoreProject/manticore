@@ -13,6 +13,7 @@
 #include <string.h>
 
 typedef enum {
+	Unknown,
 	Intel,
 	AMD
 } Vendor_t;
@@ -24,7 +25,7 @@ typedef struct {
     uint16_t	szKB;	//!< cache size in kilobytes
 } CacheInfo_t;
 
-// Leaf 2 cache and TLB information
+// Leaf 2 cache and TLB information for Intel
 static CacheInfo_t	CacheInfoTbl[256] = {
 		// level, assoc, lineSzB, szKB
 	[0x00] = { 0,  0,   0,     0 },	// Null descriptor
@@ -110,6 +111,21 @@ static CacheInfo_t	CacheInfoTbl[256] = {
 	[0xff] = { 0,  0,   0,     0 }, // No cache info in leaf 2
     };
 
+uint16_t	AssocTable[16] = {
+	[0x0] = 0,	// disabled
+	[0x1] = 1,	// direct mapped
+	[0x2] = 2,	// 2-way
+	[0x4] = 4,	// 4-way
+	[0x6] = 8,	// 8-way
+	[0x8] = 16,	// ...
+	[0xa] = 32,
+	[0xb] = 48,
+	[0xc] = 64,
+	[0xd] = 96,
+	[0xe] = 128,
+	[0xf] = 0xffff,	// fully associative
+    };
+
 //! \brief CPUID info by register
 typedef struct {
     uint32_t	eax;	//!< %eax contents
@@ -132,7 +148,7 @@ typedef struct {
     unsigned char edx[4];
 } CPUID_Leaf2_t;
 
-//! \brief deterministic cache info (leaf 4)
+//! \brief deterministic cache info (Intel: leaf 4)
 typedef struct {
   // EAX
     unsigned		cacheType : 5;
@@ -152,16 +168,32 @@ typedef struct {
     unsigned		wrinvd : 1;
     unsigned		inclusive : 1;
     unsigned		unused2 : 30;
-} CPUID_Leaf4_t;
+} CPUID_Intel_Leaf4_t;
+
+//! \brief L2/L3 Cache and L2 TLB info (AMD: 0x80000006)
+typedef struct {
+    uint32_t		tlb1;	// L2 TLB info for large pages
+    uint32_t		tlb2;	// L2 TLB info for small pages
+    unsigned		l2LineSz : 8;
+    unsigned		l2LinesPerTag : 4;
+    unsigned		l2Assoc : 4;
+    unsigned		l2SizeKB : 16;
+    unsigned		l3LineSz : 8;
+    unsigned		l3LinesPerTag : 4;
+    unsigned		l3Assoc : 4;
+    unsigned		unused : 2;
+    unsigned		l3Size : 14;
+} CPUID_AMD_X6_t;
 
 typedef struct {
     uint32_t	op;	//!< the operation
     union {
-	CPUID_Regs_t	regs;
-	uint32_t	data[4];
-	CPUID_Leaf0_t	basicInfo;
-	CPUID_Leaf2_t	cacheInfo;
-	CPUID_Leaf4_t	cacheParams;
+	CPUID_Regs_t		regs;
+	uint32_t		data[4];
+	CPUID_Leaf0_t		basicInfo;
+	CPUID_Leaf2_t		cacheInfo;
+	CPUID_Intel_Leaf4_t	intelCacheParams;
+	CPUID_AMD_X6_t		amdCacheParams;
     }		u;
 } CPUID_t;
 
@@ -170,7 +202,26 @@ static void CPUID (uint32_t leaf, uint32_t op2, CPUID_t *info);
 
 
 /***** Local functions *****/
-	
+
+static Vendor_t Vendor ()
+{
+    CPUID_t	info;
+
+  // get vendor info
+    CPUID (0, 0, &info);
+
+  // NOTE: that the natural order of the string is %ebx:%edx:%ecx, but
+  // the basicInfo struct order is %ebx:%ecx:%edx
+  //
+    if (strncmp(info.u.basicInfo.id, "AuthcAMDenti", 12) == 0)
+	return AMD;
+    else if (strncmp(info.u.basicInfo.id, "AuthcAMDenti", 12) == 0)
+	return Intel;
+    else
+	return Unknown;
+
+}
+
 /*! \brief invoke the CPUID instruction with the given operation
  *	   and return the values returned in %eax, %ebx, %ecx, %edx.
  *  \param leaf specifies which leaf of the info tree we want.
@@ -207,35 +258,49 @@ static void CPUID (uint32_t leaf, uint32_t op2, CPUID_t *info)
 int main (int argc, char **argv)
 {
     CPUID_t	info;
-    CPUID_Leaf4_t *p = &(info.u.cacheParams);
 
   // get vendor info
-    CPUID (0, 0, &info);
-    char buf[16];
-    strncpy (buf, info.u.basicInfo.id, 4);
-    strncpy (buf+4, info.u.basicInfo.id+8, 4);
-    strncpy (buf+8, info.u.basicInfo.id+4, 4);
-    printf("vendor = %s\n", buf);
-    printf("max CPUID code = %d\n", info.u.basicInfo.max);
+    Vendor_t vendor = Vendor ();
 
-    int i = 0;
-    do {
-	CPUID (4, i, &info);
-	if (p->cacheType != 0) {
-	    printf("***** %d *****\n", i++);
-	    printf("  max cores      = %d\n", p->maxCoreId + 1);
-	    printf("  max threads    = %d\n", p->maxThdId + 1);
-	    printf("  cache type     = level %d %s%s\n",
-		p->level,
-		(p->cacheType == 1) ? "data"
-		: ((p->cacheType == 2) ? "instruction" : "unified"),
-		p->inclusive ? " (inclusive)" : "");
-	    printf("  associativity  = %d way\n", p->assoc + 1);
-	    printf("  line size      = %d\n", p->sysLineSz + 1);
-	    printf("  num partitions = %d\n", p->lineSz + 1);
-	    printf("  num sets       = %d\n", p->numSets + 1);
+    if (vendor == Intel) {
+	CPUID_Intel_Leaf4_t *p = &(info.u.intelCacheParams);
+	int i = 0;
+	do {
+	    CPUID (4, i, &info);
+	    if (p->cacheType != 0) {
+		printf("***** %d *****\n", i++);
+		printf("  max cores      = %d\n", p->maxCoreId + 1);
+		printf("  max threads    = %d\n", p->maxThdId + 1);
+		printf("  cache type     = level %d %s%s\n",
+		    p->level,
+		    (p->cacheType == 1) ? "data"
+		    : ((p->cacheType == 2) ? "instruction" : "unified"),
+		    p->inclusive ? " (inclusive)" : "");
+		printf("  associativity  = %d way\n", p->assoc + 1);
+		printf("  line size      = %d\n", p->sysLineSz + 1);
+		printf("  num partitions = %d\n", p->lineSz + 1);
+		printf("  num sets       = %d\n", p->numSets + 1);
+	    }
+	} while (p->cacheType != 0);
+    }
+    else if (vendor == AMD) {
+	CPUID_AMD_X6_t *p = &(info.u.amdCacheParams);
+	CPUID (0x80000006, 0, &info);
+	if (p->l2Assoc != 0) {
+	    printf("L2 cache:\n");
+	    printf("  size           = %dKB\n", p->l2LineSz);
+	    printf("  associativity  = %d way\n", AssocTable[p->l2Assoc]);
+	    printf("  line size      = %d\n", p->l2LineSz);
+	    printf("  lines/tag      = %d\n", p->l2LinesPerTag);
 	}
-    } while (p->cacheType != 0);
+	if (p->l3Assoc != 0) {
+	    printf("L3 cache:\n");
+	    printf("  size           = %dKB\n", p->l3LineSz * 512);
+	    printf("  associativity  = %d way\n", AssocTable[p->l3Assoc]);
+	    printf("  line size      = %d\n", p->l3LineSz);
+	    printf("  lines/tag      = %d\n", p->l3LinesPerTag);
+	}
+    }
 
     return 0;
 
