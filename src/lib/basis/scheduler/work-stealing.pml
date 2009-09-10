@@ -130,7 +130,8 @@ structure WorkStealing (* :
 (*do ccall M_PrintPtr("failed",stolenThread)*)
 	      SchedulerAction.@stop ()
 	  (* send the thief fiber to the victim vproc *)
-	    do VProc.@send-high-priority-signal-from-atomic (thiefVP, victimVP, thief)
+	    let fls : FLS.fls = FLS.@get()
+	    do VProc.@send-from-atomic (thiefVP, victimVP, fls, thief)
 	    fun wait () : List.list =
 		case #0(ch)
 		 of Option.NONE =>
@@ -179,10 +180,10 @@ structure WorkStealing (* :
 	    cont impossible () = 
 	      do assert_fail()
 	      throw exh (Fail(@"WorkStealing.@designated-worker: impossible"))
-	    cont schedulerLoop (self : vproc, worker : ImplicitThread.worker, deque : D.deque, sign : PT.signal) =
+	    cont schedulerLoop (self : vproc, deque : D.deque, sign : PT.signal) =
               let workerFLS : FLS.fls = FLS.@get ()
 	      cont dispatch (thd : ImplicitThread.thread) = 
-		cont act (sign : PT.signal) = throw schedulerLoop (self, worker, deque, sign)
+		cont act (sign : PT.signal) = throw schedulerLoop (self, deque, sign)
 		do @set-assigned-deque-from-atomic (self, assignedDeques, deque / exh)
 		do ImplicitThread.@run-from-atomic (self, act, thd / exh)
 		throw impossible ()
@@ -202,7 +203,7 @@ structure WorkStealing (* :
 		  cont foundWork (self : vproc, thds : (* ImplicitThread.thread *) List.list) =
 		    do D.@add-list-from-atomic (self, deque, thds)
 		    do @set-assigned-deque-from-atomic (self, assignedDeques, deque / exh)
-	            throw schedulerLoop (self, worker, deque, PT.STOP)
+	            throw schedulerLoop (self, deque, PT.STOP)
 		(* try to find work for the given vproc. the result is a list of stolen work. *)
 		  fun findRemoteWork (self : vproc) : List.list =
 		     (* try to mug another deque that is local to this vproc *)
@@ -270,13 +271,13 @@ structure WorkStealing (* :
 		  case isFull
 		   of true => (* the deque is full: resize the deque and then preempt the thread *)
 		      let newDeque : D.deque = D.@double-size-from-atomic (self, workGroupId, deque)
-                      throw schedulerLoop (self, worker, newDeque, sign)
+                      throw schedulerLoop (self, newDeque, sign)
 		    | false =>
 		      let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
 		    (* make the thread available to other workers *)
 		      do D.@push-new-end-from-atomic (self, deque, thd)
 		      let _ : vproc = SchedulerAction.@yield-in-atomic (self)
-                      throw schedulerLoop (self, worker, deque, PT.STOP)
+                      throw schedulerLoop (self, deque, PT.STOP)
 		 end
 	       | _ =>
 		  throw impossible ()
@@ -284,7 +285,7 @@ structure WorkStealing (* :
 	    cont initWorker (self : vproc, worker : ImplicitThread.worker) =	      
 	      let deque : D.deque = D.@new-from-atomic (self, workGroupId, DEFAULT_DEQUE_SZ)
 	      do @set-assigned-deque-from-atomic (self, assignedDeques, deque / exh)
-	      throw schedulerLoop (self, worker, deque, PT.STOP)
+	      throw schedulerLoop (self, deque, PT.STOP)
 	    return (initWorker)
 	  ;
 

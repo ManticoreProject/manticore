@@ -38,12 +38,7 @@ structure VProc (* :
     (* place a signal on the landing pad of the remote vproc. 
      * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
      *) 
-      define @send-signal-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
-    (* place a signal on the landing pad of the remote vproc. the vproc is guaranteed
-     * to handle the signal within a constant number of computational steps.
-     * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
-     *) 
-      define @send-high-priority-signal-from-atomic (self : vproc, dst : vproc, k : PT.fiber) : ();
+      define @send-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
     (* receive pending signals from the host vproc's landing pad. 
      * PRECONDITION: Equal(vp, host_vproc)
      *)
@@ -76,7 +71,6 @@ structure VProc (* :
       extern void *SleepCont (void *) __attribute__((alloc));
       extern void *ListVProcs (void *) __attribute__((alloc));
       extern void VProcWake (void *);
-      extern void VProcPreempt (void *, void*);
 
     (* returns the total number of vprocs *)
       define inline @num-vprocs () : int =
@@ -180,17 +174,16 @@ structure VProc (* :
 		      end
                     throw exit()
 	  do apply lp()
-	  return()
-      ;
-
-    (* place a high-priority signal on the landing pad of the remote vproc. the vproc is guaranteed
-     * to handle the signal within a constant number of computational steps.
-     * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
-     *) 
-      define @send-high-priority-signal-from-atomic (self : vproc, dst : vproc, k : PT.fiber) : () =
-          let fls : FLS.fls = FLS.@get-in-atomic(self)
-          do @send-from-atomic(self, dst, fls, k)
-          do ccall VProcPreempt(self, dst)
+        (* trigger a preemption on the destination vproc *)
+          fun preempt () : () =
+	      let limitPtrOrig : any = vpload(LIMIT_PTR, dst)
+              let x : any = CAS((addr(any))vpaddr(LIMIT_PTR, dst), limitPtrOrig, $0)
+              if Equal (limitPtrOrig, x) then
+		  return ()
+	      else
+		  do Pause()
+		  apply preempt()
+          do apply preempt()
 	  return()
       ;
 

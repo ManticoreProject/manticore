@@ -219,7 +219,8 @@ structure Cancelation (* : sig
 			  apply cancelAndWait(self, cs1, L.CONS(c, cs2))
 			| false =>
 			  let dummyK : PT.fiber = vpload(VP_DUMMYK, self)
-			  do VProc.@send-high-priority-signal-from-atomic(self, #0(inactive), dummyK)
+	                  let fls : FLS.fls = FLS.@get()
+			  do VProc.@send-from-atomic(self, #0(inactive), fls, dummyK)
 			  apply cancelAndWait(self, cs1, L.CONS(c, cs2))
                       end
 		       
