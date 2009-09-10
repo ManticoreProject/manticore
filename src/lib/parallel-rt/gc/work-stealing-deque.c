@@ -269,11 +269,10 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 /* \brief add the deque elements to the root set to be used by a global collection
  * \param self the host vproc
  * \param rootPtr pointer to the root set
- * \return the updated root set
  */
-Value_t **M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr)
+void M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr)
 {
-  return rootPtr;
+  // all roots should have been collected by the local root scanner above
 }
 
 #endif /*! ROOT_SET_OPTIMIZATION */
