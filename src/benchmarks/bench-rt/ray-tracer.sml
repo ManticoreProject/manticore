@@ -367,6 +367,7 @@ fun constructBSH (lyst) = (case lyst
        of nil => bsleaf((0.0,0.0,0.0),0.0,nil)
 	| [x] => bsleaf x
 	| _ => let
+(* FIXME: just compute the sphere that encloses the two children, instead of reverting to the point soup *)
 	    val (k,slist) = findK(lyst)
 	    val (pos,rad) = pointListEnclosingSphere(List.concat (List.map (fn (p,r,x) =>   (vecadd p (r,0.0,0.0))::(vecadd p (0.0,r,0.0))::(vecadd p (0.0,0.0,r))::(vecadd p (~r,0.0,0.0))::(vecadd p (0.0,~r,0.0))::(vecadd p (0.0,0.0,~r))::nil) lyst))
 	    val (left, right) = if (k = 0)
@@ -601,7 +602,7 @@ val background = (0.078, 0.361, 0.753);
                                 s2)::nil
 
                             
-val world = constructBSH(List.map (fn x => csgBoundingSphere(prim x))  (testpolyhedron@testspheres));
+val world = constructBSH(List.map (fn x => csgBoundingSphere(prim x)) (testpolyhedron@testspheres));
 
 (*%%%%%%%*)
 
