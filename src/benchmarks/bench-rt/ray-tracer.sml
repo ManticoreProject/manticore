@@ -1,6 +1,7 @@
+type double = real
+type vec = (double * double * double);
 local
 (* definitions to match the Manticore basis *)
-type double = real
 val sqrtd = Math.sqrt
 fun fail msg = raise Fail msg
 val powd = Math.pow
@@ -63,10 +64,16 @@ fun hd l = (case l
 fun tl l = (case l
        of nil => fail("expecting a tail")
 	| x::xs => xs);
+fun split (l, n) = let
+      fun split' (0, prefix, suffix) = (rev prefix, suffix)
+	| split' (i, prefix, []) = (rev prefix, [])
+	| split' (i, prefix, x::xs) = split' (i-1, x::prefix, xs)
+      in
+	split' (n, [], l)
+      end
 (*
  * convenient vector operations
  *)
-type vec = (double * double * double);
 fun vecadd ((x1,y1,z1) : vec) = let fun add (x2,y2,z2) = (x1+x2, y1+y2, z1+z2) in add end;
 fun vecsum (x : vec list) = let
       fun f (a, b) = vecadd a b
@@ -158,7 +165,7 @@ fun bodysurf surf = (case surf
 datatype Prim = 
 (*  pos, radius, surface type  *)
 Sphere of vec * double * Surfspec list
-(* [(a,b,c),d, vertices], surface type *)
+(* [normal, offset, vertices, negation], surface type *)
 | Polymesh of (vec * double * vec list * bool) list * Surfspec list
 
 
@@ -176,15 +183,17 @@ datatype BoundingSphereHierarchy =
   bsleaf of vec * double * CSG list
 | bsbranch of vec * double * BoundingSphereHierarchy * BoundingSphereHierarchy
 
+(* sphere-ray intersection test *)
 fun sphereIntersect(center,rad,pos,dir) = (let val m = vecsub pos center;  (* x - center *)
     val m2 = vecdot m m;    (* (x-center).(x-center) *)
     val bm = vecdot m dir;  (* (x-center).dir *)
-    val disc = bm * bm - m2 + rad * rad;  (* discriminant *)
+    val disc2 = bm * bm - m2 + rad * rad;  (* discriminant squared *)
     in
-      if (disc < 0.0) then false  (* imaginary solns only *)
+      if (disc2 < 0.0) then false  (* imaginary solns only *)
       else let
-	  val slo = ~bm - (sqrt disc);
-	  val shi = ~bm + (sqrt disc);
+	  val disc = sqrt disc2
+	  val slo = ~bm - disc;
+	  val shi = ~bm + disc;
 	  in
 	  if (slo < 0.0) then 
 	      if (shi < 0.0) then false
@@ -211,23 +220,29 @@ fun polySortByDot xs = (
 		  end);
 
 
+(* computes sphere that encloses a list of points *)
 fun pointListEnclosingSphere (P) = case P of nil => ((0.0,0.0,0.0),0.0)
 | _ => let
    val N = Real.fromInt (List.length P);
-   val m = vecscale (vecsum P) (1.0 / N);
+   val oneOverN = 1.0 / N
+   val m = vecscale (vecsum P) oneOverN
    val (mx,my,mz) = m; 
-   val c11 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(x- mx)) P)) * (1.0 / N);
-   val c22 = (fold op+ 0.0 (List.map (fn (x,y,z) => (y - my)*(y - my)) P)) * (1.0 / N);
-   val c33 = (fold op+ 0.0 (List.map (fn (x,y,z) => (z - mz)*(z - mz)) P)) * (1.0 / N);
-   val c12 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(y - my)) P)) * (1.0 / N);
-   val c13 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(z - mz)) P)) * (1.0 / N);
-   val c23 = (fold op+ 0.0 (List.map (fn (x,y,z) => (y - my)*(z - mz)) P)) * (1.0 / N);
+   val c11 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(x - mx)) P)) * oneOverN
+   val c22 = (fold op+ 0.0 (List.map (fn (x,y,z) => (y - my)*(y - my)) P)) * oneOverN
+   val c33 = (fold op+ 0.0 (List.map (fn (x,y,z) => (z - mz)*(z - mz)) P)) * oneOverN
+   val c12 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(y - my)) P)) * oneOverN
+   val c13 = (fold op+ 0.0 (List.map (fn (x,y,z) => (x - mx)*(z - mz)) P)) * oneOverN
+   val c23 = (fold op+ 0.0 (List.map (fn (x,y,z) => (y - my)*(z - mz)) P)) * oneOverN
+   val c21 = c12
+   val c31 = c13
+   val c32 = c23
 (* 135-138 of Mathematics for 3D Programming and Computer Graphics *)
-   val a = ~c11 - (c22 * c33);
-   val b = c11*c22*c33 + c22*c33;
-   val c = ~(c11*c22*c33);
+   val a = ~(c11 + c22 + c33)
+   val b = (c11*c22 - c11*c33 - c22*c33 + c23*c32 + c12*c21 + c13*c31)
+   val c = (c11*c22*c33 - c11*c23*c32 - c12*c21*c33 + c12*c23*c31 + c13*c21*c32 - c13*c22*c31)
    val p = b - (1.0/3.0)*a*a;
    val q = (2.0/27.0)*a*a*a - (1.0/3.0)*a*b + c;
+   val disc = ~4.0 * p * p * p - 27.0 * q * q
    val p' = (p / 3.0); 
    val q' = (q / 2.0);
    val m = sqrt(~p / 3.0);
@@ -259,7 +274,7 @@ fun pointListEnclosingSphere (P) = case P of nil => ((0.0,0.0,0.0),0.0)
 (* 223-224 of Mathematics for 3D Game Programming and Computer Graphics *)
    val P' = polySortByDot(List.map (fn x => (vecdot R x, x)) P);
    val Pk = #2(List.hd P');
-   val Pl = #2(List.hd (List.rev P'));
+   val Pl = #2(List.last P')                               ;
    val Q = vecscale (vecadd Pk Pl) 0.5;
    val radius = distance Pk Q;
 in 
@@ -276,7 +291,7 @@ fun primBoundingSphere (prm) = case prm of
 
 fun csgBoundingSphere (csg) = case csg of
   prim(p) => primBoundingSphere(p)
-| Union(p,c) => primBoundingSphere(p)
+| Union(p,c) => primBoundingSphere(p) (* FIXME: find parent sphere of children *)
 | Intersection(p,c) => primBoundingSphere(p)
 | Difference(p,c) => primBoundingSphere(p)
 
@@ -295,16 +310,7 @@ fun numSort xs = (
 		    numSort lt @ eq @ numSort gt
 		  end);
 
-fun enclosingSphere ((p0,r0,foo),(p1,r1,bar)) = 
-    let val dir = vecnormlz (vecsub p1 p0); 
-        val p0' = (vecadd p0 (vecscale (vecscale dir ~1.0) r0)); 
-        val p1' = vecadd p1 (vecscale dir r1);
-        val pos = vecscale (vecadd p0' p1') 0.5;
-        val rad = distance p1' pos; 
-    in
-       (pos,rad,foo@bar)
-    end;             
-
+(* surface area of the sphere that encloses the point list *)
 fun enclosingArea(lyst) = 
    let val (pos,rad) = pointListEnclosingSphere(List.concat (List.map (fn (p,r,x) =>   (vecadd p (r,0.0,0.0))::(vecadd p (0.0,r,0.0))::(vecadd p (0.0,0.0,r))::(vecadd p (~r,0.0,0.0))::(vecadd p (0.0,~r,0.0))::(vecadd p (0.0,0.0,~r))::nil) lyst))
    in 
@@ -312,21 +318,24 @@ fun enclosingArea(lyst) =
    end; 
                     
 
-
 (* 72 of Geometric Data Structures for Computer Graphics *)
 fun findK (B) = let 
                 val enclosedB = enclosingArea(B);
 		val N = List.length(B);
 		val N' = Real.fromInt(N);
+val _ = print(concat["enclosedB = ", Real.toString enclosedB, ", N = ", Int.toString N, "\n"])
                 val Xsorted = List.map (fn (x,y) => y) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(x), (pos,r,clist))  end) B));  
 		val Ysorted = List.map (fn (x,y) => y) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(y), (pos,r,clist))  end) B)); 
-		val Zsorted = List.map (fn (x,y) => y) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(z), (pos,r,clist))  end) B)); 
-                val Xsorted' = List.tabulate (N, (fn (x) => let val Q = List.take(Xsorted,x)
-                                                                                   val W = List.drop(Xsorted,x)
-                                                                                   val x' = Real.fromInt(x)
-                                                                                in
-                                                                                   x'*(enclosingArea(Q) / enclosedB) + (N' - x')*(enclosingArea(W) / enclosedB)  
-                                                                     end)  )
+		val Zsorted = List.map (fn (x,y) => y) (polySortByDot (List.map (fn (pos,r,clist) =>  let val (x,y,z) = pos in (abs(z), (pos,r,clist))  end) B));
+(* FIXME: use a single pass with left and right sublists and best candidate so far
+ * loop parameters.  This will replace the computation of Xfirst, etc.
+ *) 
+                val Xsorted' = List.tabulate (N, (fn (x) => let
+		      val (Q, W) = split(Xsorted, x)
+		      val x' = Real.fromInt(x)
+		      in
+			x'*(enclosingArea(Q) / enclosedB) + (N' - x')*(enclosingArea(W) / enclosedB)  
+		      end))
 
 	        val Ysorted' = List.tabulate (N, (fn (x) => let val Q = List.take(Ysorted,x)
                                                                                    val W = List.drop(Ysorted,x)
@@ -342,25 +351,30 @@ fun findK (B) = let
                                                                                 in
                                                                                    x'*(enclosingArea(Q) / enclosedB) + (N' - x')*(enclosingArea(W) / enclosedB)  
                                                                      end)  )
-               val Xfirst = Real.round(List.hd(numSort(Xsorted')));
-               val Yfirst = Real.round(List.hd(numSort(Ysorted')));
-               val Zfirst = Real.round(List.hd(numSort(Zsorted')));
+               val Xfirst = Real.round(List.hd(numSort(Xsorted'))) handle ex => raise ex
+               val Yfirst = Real.round(List.hd(numSort(Ysorted'))) handle ex => raise ex
+               val Zfirst = Real.round(List.hd(numSort(Zsorted'))) handle ex => raise ex
         in  
            if Xfirst <= Yfirst andalso Xfirst <= Zfirst then (Xfirst, Xsorted)
            else if Yfirst <= Xfirst andalso Yfirst <= Zfirst then (Yfirst,Ysorted)
            else (Zfirst,Zsorted)
-        end;
+        end
+handle ex => raise ex
 
 fun toPointList(lyst) = List.map (fn x => csgBoundingSphere x) lyst
 
-fun constructBSH (lyst) = case lyst of
- nil => bsleaf((0.0,0.0,0.0),0.0,nil)
-| _  =>  if List.length(lyst) < 2 then bsleaf(List.hd(lyst))
-    else let val (k,slist) = findK(lyst)
-             val (pos,rad) = pointListEnclosingSphere(List.concat (List.map (fn (p,r,x) =>   (vecadd p (r,0.0,0.0))::(vecadd p (0.0,r,0.0))::(vecadd p (0.0,0.0,r))::(vecadd p (~r,0.0,0.0))::(vecadd p (0.0,~r,0.0))::(vecadd p (0.0,0.0,~r))::nil) lyst))
-         in
-           bsbranch(pos,rad,constructBSH(List.take(slist,k)), constructBSH(List.drop(slist,k)) )
-         end;
+fun constructBSH (lyst) = (case lyst
+       of nil => bsleaf((0.0,0.0,0.0),0.0,nil)
+	| [x] => bsleaf x
+	| _ => let
+	    val (k,slist) = findK(lyst)
+	    val (pos,rad) = pointListEnclosingSphere(List.concat (List.map (fn (p,r,x) =>   (vecadd p (r,0.0,0.0))::(vecadd p (0.0,r,0.0))::(vecadd p (0.0,0.0,r))::(vecadd p (~r,0.0,0.0))::(vecadd p (0.0,~r,0.0))::(vecadd p (0.0,0.0,~r))::nil) lyst))
+	    val (left, right) = if (k = 0)
+		  then split(slist, k+1)
+		  else split(slist, k)
+	    in
+	       bsbranch(pos,rad,constructBSH left, constructBSH right)
+	    end)
 
 fun traverseBSH(spheres,pos,dir) = case spheres of 
   bsleaf(v,d,objlist) => if sphereIntersect(v,d,pos,dir) then objlist else nil
@@ -433,7 +447,7 @@ fun polymeshIntersect (lyst) = let val x = List.hd lyst
 
 fun implicit (pos,dir,obj : CSG) = case obj of
   prim p => (case p of
-    Sphere (center,rad,surf) => (let val m = vecsub pos center;  (* x - center *)
+    Sphere (center,rad,surf) => let val m = vecsub pos center;  (* x - center *)
     val m2 = vecdot m m;    (* (x-center).(x-center) *)
     val bm = vecdot m dir;  (* (x-center).dir *)
     val disc = bm * bm - m2 + rad * rad;  (* discriminant *)
@@ -448,7 +462,7 @@ fun implicit (pos,dir,obj : CSG) = case obj of
 	      else (true, shi)
 	  else (true, slo)
 	  end
-    end)
+    end
   | Polymesh (poly,surf) =>  polymeshIntersect (List.map implicitPolymesh (List.map (fn (x,d,polygon,boo) => (x,d,polygon,boo,pos,vecnormlz(dir))) poly))
   
   )
