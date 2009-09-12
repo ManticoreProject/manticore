@@ -57,19 +57,14 @@ struct struct_vproc {
   /* the following fields may be changed by remote vprocs */
     Mutex_t	lock;		//!< lock for VProc state
     Cond_t	wait;		//!< for waiting when idle
-    char        pad1[128 - sizeof(Cond_t)];
-    Value_t     landingPad;     //!< the head of the landing pad (stack). 
-                                //!< this memory is used by the atomic compare-and-
-                                //!< swap instruction, which is why we use padding below
-                                //!< to avoid false sharing. The Intel optimization manual
-                                //!< suggests 128 bytes of padding.
-    char        pad2[128 - sizeof(Addr_t)];   
-    Addr_t	limitPtr;	//!< heap-limit pointer.
-                                //!< this memory is used by the atomic-write
-                                //!< instruction, which is why we use padding
-                                //!< below to avoid false sharing.
-    char        pad3[128 - sizeof(Addr_t)];
-    bool	globalGCPending; //!< true when this vproc has been signaled that
+    Value_t     landingPad __attribute__((aligned(64)));     
+                                //!< the head of the landing pad (stack).                                
+    Addr_t	limitPtr __attribute__((aligned(64)));     
+                                //!< heap-limit pointer. this field plays the 
+                                //!< additional role of recording asynchronous events,
+                                //!< which is the only reason why the field is shared.
+    bool	globalGCPending __attribute__((aligned(64)));
+                                //!< true when this vproc has been signaled that
 				//! global GC has started, but it has not
 				//! started yet.
 
