@@ -115,6 +115,7 @@ structure IntArraySeq = struct
         lp 1 (* we already did 0 *)
       end
 
+(*
 (* mapPoly : (int -> 'a) * seq -> 'a Array64.seq *)
   fun mapPoly (f, s) =
     if null s then (raise Fail "can't!")
@@ -132,6 +133,7 @@ structure IntArraySeq = struct
       in
         lp 1 (* we already did 0 *)
       end
+*)
 
   fun map2 (f, s1, s2) = 
     if null s1 then s1

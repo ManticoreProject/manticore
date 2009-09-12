@@ -11,6 +11,7 @@
 
   list-seq.pml
   array-seq.pml
+  vector-seq.pml
   float-array-seq.pml
   int-array-seq.pml
 

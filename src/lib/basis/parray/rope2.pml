@@ -13,7 +13,7 @@ structure Rope2 = struct
 
   structure R = Rope
 
-  structure S = ArraySeq (* ListSeq *)
+  structure S = VectorSeq (* ArraySeq *) (* ListSeq *)
 
   datatype option = datatype Option.option
 

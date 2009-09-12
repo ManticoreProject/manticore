@@ -579,7 +579,7 @@ structure FloatRope = struct
       in
         m rope
       end          
-
+(*
   (* mapPolyP : (float -> float) * float_rope -> float_rope *)
   (* post : the output has the same shape as the input *)
     fun mapPolyP (f, rope) = let
@@ -591,7 +591,7 @@ structure FloatRope = struct
       in
         m rope
       end          
-
+*)
   (* sumP : float_rope -> float *)
     fun sumP rope = let
       fun add (x:float, y:float) = x+y

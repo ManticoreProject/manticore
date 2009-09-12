@@ -24,6 +24,7 @@ end
 ../misc/debug.mlb
 ann "cpp" "../include/prim.def,../include/assert.def"
 in
+  vector.pml
   array.pml
   float-array.pml
   int-array.pml
