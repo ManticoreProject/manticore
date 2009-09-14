@@ -24,7 +24,7 @@ structure WorkStealing (* :
       _primcode (
         
       (* returns the assigned deque for the host vproc *)
-	define (* inline *) @get-assigned-deque-from-atomic (self : vproc / exh : exh) : D.deque =
+	define inline @get-assigned-deque-from-atomic (self : vproc / exh : exh) : D.deque =
 	    let deques : any = ImplicitThread.@get-scheduler-state (/ exh)
             do assert (NotEqual (deques, enum(0):any))
 	    let id : int = VProc.@vproc-id (self)
@@ -34,7 +34,7 @@ structure WorkStealing (* :
 	  ;
         
       (* set the assigned deque for the host vproc *)
-	define (* inline *) @set-assigned-deque-from-atomic (self : vproc, 
+	define inline @set-assigned-deque-from-atomic (self : vproc, 
 							     assignedDeques : Arr.array,
 							     deque : D.deque / exh : exh) : () =
 	    let id : int = VProc.@vproc-id (self)
@@ -152,7 +152,7 @@ structure WorkStealing (* :
        * returns true. for example, supposing maxSpinCyclesLg=2, we have
        *   f()=false (wait for 2 cycles); f()=false (wait for 4 cycles); f()=true (wait for 0 cycles) ...
        *)
-	define (* inline *) @mk-wait-fun (maxSpinCyclesLg : int) : fun( / -> bool) =
+	define inline @mk-wait-fun (maxSpinCyclesLg : int) : fun( / -> bool) =
 	    let spinCyclesLg : ![int] = alloc (1)
             let spinCyclesLg : ![int] = promote (spinCyclesLg)
 	    fun doit () : bool =
@@ -290,7 +290,7 @@ structure WorkStealing (* :
 	  ;
 
       (* return true, if there was an element on the deque *)
-	define (* inline *) @remove-thread (/ exh : exh) : bool =
+	define inline @remove-thread (/ exh : exh) : bool =
 	    let self : vproc = SchedulerAction.@atomic-begin ()
 	    let deque : D.deque = @get-assigned-deque-from-atomic (self / exh)
 	    let k : Option.option = D.@pop-new-end-from-atomic (self, deque)
@@ -303,7 +303,7 @@ structure WorkStealing (* :
 	    end
 	  ;
 
-	define (* inline *) @spawn-thread (thd : ImplicitThread.thread / exh : exh) : () =
+	define inline @spawn-thread (thd : ImplicitThread.thread / exh : exh) : () =
 	    fun lp (self : vproc) : () =
 		let deque : D.deque = @get-assigned-deque-from-atomic (self / exh)
 		let isFull : bool = D.@is-full (deque)
@@ -322,7 +322,7 @@ structure WorkStealing (* :
 	  ;
 
       (* one of several policies for resuming a thread. here we create a deque containing just the given thread. *)
-	define (* inline *) @resume-thread-on-new-deque (thd : ImplicitThread.thread / exh : exh) : () =
+	define inline @resume-thread-on-new-deque (thd : ImplicitThread.thread / exh : exh) : () =
 	    let self : vproc = SchedulerAction.@atomic-begin ()
 	    let workGroup : ImplicitThread.work_group = ImplicitThread.@current-work-group (UNIT / exh)
 	    let workGroupId : UID.uid = ImplicitThread.@work-group-id (workGroup)

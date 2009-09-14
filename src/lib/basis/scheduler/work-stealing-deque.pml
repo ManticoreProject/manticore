@@ -111,7 +111,7 @@ structure WorkStealingDeque (* :
 
       _primcode (
 
-	define (* inline *) @size (deque : deque) : int =
+	define inline @size (deque : deque) : int =
 	    if I32Lte (LOAD_DEQUE_OLD(deque), LOAD_DEQUE_NEW(deque)) then
 		return (I32Sub (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_OLD(deque)))
 	    else (* wrapped around *)
@@ -139,7 +139,7 @@ structure WorkStealingDeque (* :
   	            return ()
 	  ;
 
-	define (* inline *) @assert-ptr (deque : deque, i : int) : () =
+	define inline @assert-ptr (deque : deque, i : int) : () =
 #ifndef NDEBUG
 	    do ccall M_AssertDequeAddr (deque, i, AdrAddI64 (&0(deque), 
 				   I64Add (DEQUE_ELTS_OFFB:long,         (* the byte offset of elts *)
@@ -148,7 +148,7 @@ structure WorkStealingDeque (* :
 	    return ()
 	  ;
 
-	define (* inline *) @update (deque : deque, i : int, elt : any) : () =
+	define inline @update (deque : deque, i : int, elt : any) : () =
 	    do @assert-in-bounds (deque, i)
             do @assert-ptr (deque, i)
 	    do AdrStore (AdrAddI64 (&0(deque), 
@@ -158,7 +158,7 @@ structure WorkStealingDeque (* :
 	    return ()
 	  ;
 
-	define (* inline *) @sub (deque : deque, i : int) : any =
+	define inline @sub (deque : deque, i : int) : any =
 	    do @assert-in-bounds (deque, i)
             do @assert-ptr (deque, i)
 	    let elt : any = AdrLoad (AdrAddI64 (&0(deque),         (* the byte offset of elts *)
@@ -178,7 +178,7 @@ structure WorkStealingDeque (* :
 	  ;
 
       (* move the index i one position left w.r.t. the deque size sz *)
-	define (* inline *) @move-left (i : int, sz : int) : int =
+	define inline @move-left (i : int, sz : int) : int =
 	    if I32Lte (i, 0) then
 		return (I32Sub (sz, 1))
 	    else
@@ -186,7 +186,7 @@ structure WorkStealingDeque (* :
 	  ;
 
       (* move the index i one position right w.r.t. the deque size sz *)
-	define (* inline *) @move-right (i : int, sz : int) : int =
+	define inline @move-right (i : int, sz : int) : int =
 	    if I32Gte (i, I32Sub (sz, 1)) then
 		return (0)
 	    else
@@ -194,14 +194,14 @@ structure WorkStealingDeque (* :
 	  ;
 
 
-      define (* inline *) @is-empty (deque : deque) : bool =
+      define inline @is-empty (deque : deque) : bool =
 	  if I32Eq (LOAD_DEQUE_NEW(deque), LOAD_DEQUE_OLD(deque)) then
 	      return (true)
 	  else
 	      return (false)
 	;
 
-      define (* inline *) @is-full (deque : deque) : bool =
+      define inline @is-full (deque : deque) : bool =
 	  let size : int = @size (deque)
         (* leave one space open *)
 	  if I32Gte (size, I32Sub (LOAD_DEQUE_MAX_SIZE(deque), 1)) then
@@ -210,22 +210,22 @@ structure WorkStealingDeque (* :
 	      return (false)
 	;
 
-      define (* inline *) @new-from-atomic (self : vproc, workerId : UID.uid, size : int) : deque =
+      define inline @new-from-atomic (self : vproc, workerId : UID.uid, size : int) : deque =
 	  let deque : deque = ccall M_DequeAlloc (self, workerId, size)
           return (deque)
 	;
 
-       define (* inline *) @is-full-from-atomic (self : vproc, deque : deque) : bool =
+       define inline @is-full-from-atomic (self : vproc, deque : deque) : bool =
            do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
 	   @is-full (deque)
 	 ;
 
-       define (* inline *) @is-empty-from-atomic (self : vproc, deque : deque) : bool =
+       define inline @is-empty-from-atomic (self : vproc, deque : deque) : bool =
            do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
 	   @is-empty (deque)
 	 ;
       
-      define (* inline *) @is-claimed-from-atomic (self : vproc, deque : deque) : bool =
+      define inline @is-claimed-from-atomic (self : vproc, deque : deque) : bool =
           if I32Eq (LOAD_DEQUE_NCLAIMED(deque), 0) then
 	      return (false)
 	  else
@@ -233,7 +233,7 @@ structure WorkStealingDeque (* :
         ;
        
     (* precondition: the deque is not full *)
-      define (* inline *) @push-new-end-from-atomic (self : vproc, deque : deque, elt : any) : () =
+      define inline @push-new-end-from-atomic (self : vproc, deque : deque, elt : any) : () =
 	  do assert (NotEqual (deque, enum(0):any))
 	  do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
 	  do @check-deque (deque)
@@ -248,7 +248,7 @@ structure WorkStealingDeque (* :
 	  return ()
 	;
 
-      define (* inline *) @pop-new-end-from-atomic (self : vproc, deque : deque) : Option.option =
+      define inline @pop-new-end-from-atomic (self : vproc, deque : deque) : Option.option =
 	  do assert (NotEqual (deque, enum(0):any))
 	  do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
 	  do @check-deque (deque)
@@ -267,7 +267,7 @@ structure WorkStealingDeque (* :
 	  end
 	;
 
-      define (* inline *) @pop-old-end-from-atomic (self : vproc, deque : deque) : Option.option =
+      define inline @pop-old-end-from-atomic (self : vproc, deque : deque) : Option.option =
 	  do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
 	  do @check-deque (deque)
 	  let isEmpty : bool = @is-empty (deque)
@@ -292,7 +292,7 @@ structure WorkStealingDeque (* :
           return (localDeques)
         ;
 
-      define (* inline *) @release-from-atomic (self : vproc, deque : deque) : () =
+      define inline @release-from-atomic (self : vproc, deque : deque) : () =
           do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
           do STORE_DEQUE_NCLAIMED(deque, I32Sub (LOAD_DEQUE_NCLAIMED(deque), 1))
           return ()
