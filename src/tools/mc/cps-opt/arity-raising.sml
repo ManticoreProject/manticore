@@ -947,7 +947,7 @@ structure ArityRaising : sig
          *)
         fun transformParam(retVar) = let
             fun getParamFunType (l) = let
-                val l::lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
+                val lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
                 fun mergeSignatures (base, new) = let
                     val CPSTy.T_Fun(baseParams, baseRets) = base
                     val CPSTy.T_Fun(newParams, newRets) = new
@@ -961,7 +961,13 @@ structure ArityRaising : sig
                     CPSTy.T_Fun (args', rets')
                 end
             in
-                foldr mergeSignatures l lambdas
+                if List.length lambdas = 0
+                then CV.typeOf retVar
+                else let
+                        val l::lambdas = lambdas
+                    in
+                        foldr mergeSignatures l lambdas
+                    end
             end
             fun buildType (CPSTy.T_Tuple (heap, tys), cpsValues) = let
                 fun updateSlot (origTy, cpsValue) = (
@@ -1202,7 +1208,13 @@ structure ArityRaising : sig
               case typ
                of CTy.T_Any => C.mkLet ([useless], C.Const(Literal.Enum(0w0), CTy.T_Any), body)
                 | CTy.T_Enum (_) => C.mkLet ([useless], C.Const(Literal.Enum(0w0), typ), body)
-                | CTy.T_Raw (_) => C.mkLet ([useless], C.Const(Literal.Enum(0w0), typ), body)
+                | CTy.T_Raw(RawTypes.T_Byte) => C.mkLet ([useless], C.Const(Literal.Int(0), typ), body)
+                | CTy.T_Raw(RawTypes.T_Short) => C.mkLet ([useless], C.Const(Literal.Int(0), typ), body)
+                | CTy.T_Raw(RawTypes.T_Int) => C.mkLet ([useless], C.Const(Literal.Int(0), typ), body)
+                | CTy.T_Raw(RawTypes.T_Long) => C.mkLet ([useless], C.Const(Literal.Int(0), typ), body)
+                | CTy.T_Raw(RawTypes.T_Float) => C.mkLet ([useless], C.Const(Literal.Float(FloatLit.zero (true)), typ), body)
+                | CTy.T_Raw(RawTypes.T_Double) => C.mkLet ([useless], C.Const(Literal.Float(FloatLit.zero (true)), typ), body)
+                | CTy.T_Raw(RawTypes.T_Vec128) => C.mkLet ([useless], C.Const(Literal.Enum(0w0), typ), body)
                 | CTy.T_Tuple (_, _) => cast ()
                 | CTy.T_Addr (_) => cast ()
                 | CTy.T_Fun (_, _) => cast ()
