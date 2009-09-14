@@ -14,16 +14,18 @@ structure BenchPMergesort =
 
     fun benchMergesort (seqSz, n, sort) = let
 	  val r = randomRope n
-          val (r, t) = Time.timeToEval(fn () => sort Int.compare r)
+	  val b = Time.now ()
+	  val r = sort Int.compare r
+	  val t = Time.now () - b
           in
-	    Print.printLn(Long.toString t);
+	    Print.printLn(Time.toString t);
 	    (*Print.printLn(Ropes.toString Int.toString r);*)
 	    ()
 	  end
 
-    val () = ImplicitThread.runWithGroup(SwpWorkStealing.workGroup(), fn () => ( 
-     benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesortWithSeqBc.pMergesort)
-(*   benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesort.pMergesort)*)
+    val () = ImplicitThread.runOnWorkGroup(WorkStealing.workGroup(), fn () => ( 
+(*     benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesortWithSeqBc.pMergesort) *)
+   benchMergesort(PrimIO.readInt(), PrimIO.readInt(), PMergesort.pMergesort)
 (*    benchQuicksort(PrimIO.readInt(), PrimIO.readInt())*)))
 
   end
