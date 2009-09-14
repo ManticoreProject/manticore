@@ -58,9 +58,12 @@ struct struct_vproc {
   /* the following fields may be changed by remote vprocs */
     Mutex_t	lock;		//!< lock for VProc state
     Cond_t	wait;		//!< for waiting when idle
-    Value_t     landingPad;     //!< the head of the landing pad (stack)
-    Addr_t	limitPtr;	//!< heap-limit pointer
-    bool	globalGCPending; //!< true when this vproc has been signaled that
+    Value_t     landingPad __attribute__((aligned(64)));
+                                //!< the head of the landing pad (stack)
+    Addr_t	limitPtr __attribute__((aligned(64)));	
+                                 //!< heap-limit pointer
+    bool	globalGCPending __attribute__((aligned(64))); 
+                                //!< true when this vproc has been signaled that
 				//! global GC has started, but it has not
 				//! started yet.
 
