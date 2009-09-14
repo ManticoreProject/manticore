@@ -7,7 +7,6 @@
 #include "manticore-rt.h"
 #include <stdio.h>
 #include <signal.h>
-#include <ucontext.h>
 #if defined (TARGET_DARWIN)
 #  include <sys/sysctl.h>
 #endif
