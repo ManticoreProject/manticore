@@ -71,7 +71,12 @@ structure VectorSeq =
 
     fun map (f, s) = tabulate (length s, fn i => f (sub (s, i)))
 
-    fun map2 (f, s1, s2) = (raise Fail "todo")
+    fun map2 (f, s1, s2) = let
+      fun min (m, n) = if m < n then m else n
+      val minlen = min (length s1, length s2)
+      in
+	tabulate (minlen, fn i => f (sub (s1, i), sub (s2, i)))
+      end
 
     fun foldr (f, z, s) = let
       val len = length s
