@@ -1,6 +1,8 @@
 val _ = PrimIO.readInt ()
 val N = PrimIO.readInt ()
-val (mandelbrotSet, t) = Time.timeToEval (fn () => Mandelbrot.mandelbrot N)
+val b = Time.now ()
+val mandelbrotSet = ImplicitThread.runOnWorkGroup (WorkStealing.workGroup (), fn () => Mandelbrot.mandelbrot N)
+val t = Time.now () - b
 
 (* write the mandelbrot set to a ppm file *)
 fun pix2rgb cnt = 
