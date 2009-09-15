@@ -6,10 +6,12 @@ structure Quicksort = struct
 	else
 	    let
 		val p = subP (xs, lengthP xs div 2)
-		val (lt, gt) = (| quicksort (filterP (fn x => x < p, xs)), 
-				  quicksort (filterP (fn x => x > p, xs)) |)
+		val (lt, eq, gt) = (| filterP (fn x => x < p, xs), 
+				      filterP (fn x => x = p, xs),
+				      filterP (fn x => x > p, xs) |)
+		val (l, u) = (| quicksort lt, quicksort gt |)
 	    in
-		concatP (lt, (concatP (filterP (fn x => x = p, xs), gt)))
+		concatP (l, (concatP (eq, u)))
 	    end
 
 end
