@@ -3,22 +3,6 @@
  * Parallel quickhull written by Josh and Mike
  *) 
 
-fun isLess c = (case c of LESS => true | _ => false)
-fun isEqual c = (case c of EQUAL => true | _ => false)
-fun isGreater c = (case c of GREATER => true | _ => false)
-
-fun quicksort (cmp, xs) =
-    if lengthP xs <= 1 then
-	xs
-    else
-	let
-	    val p = subP (xs, lengthP xs div 2)
-	    val (lt, gt) = (| quicksort (cmp, filterP (fn x => isLess (cmp (x, p)), xs)), 
-			      quicksort (cmp, filterP (fn x => isGreater (cmp (x, p)), xs)) |)
-	in
-	    concatP (lt, (concatP (filterP (fn x => isEqual (cmp (x, p)), xs), gt)))
-	end
-
 type point = float * float
 
 fun samePoint ((x1, y1), (x2, y2)) = 
@@ -28,14 +12,23 @@ fun samePoint ((x1, y1), (x2, y2)) =
 
 fun distance ((q, w), (z, x)) = Float.sqrt ((q - z) * (q - z) + (w - x) * (w - x))
 
-fun lastP x = subP (x, lengthP x - 1)
+fun maxP (f, m, xs) = 
+    let
+	fun max (x, y) = 
+	    (case f (x, y)
+	      of GREATER => x
+	       | _ => y)
+    in
+	reduceP (max, m, xs)
+    end
 
 (* returns the point farthest from the line (a, b) in S *)
 fun farthest (a, b, S) = 
     let
 	fun dist x = (distance (a, x) + distance (b, x), x)
 	fun cmp ((d1, _), (d2, _)) = Float.compare (d1, d2)
-	val (_, pt) = lastP (quicksort (cmp, mapP (dist, S)))
+	val dpts = mapP (dist, S)
+	val (_, pt) = maxP (cmp, dpts!0, dpts)
     in
 	pt
     end
@@ -72,7 +65,7 @@ fun quickhull S =
 	S
     else
 	let
-	    val p0 = subP (S, 0)
+	    val p0 = S!0
 	    fun belowAndLeft ((x1, y1), (x2, y2)) = if x1 < x2 andalso y1 < y2 then (x1, y1) else (x2, y2)
 	    fun aboveAndRight ((x1, y1), (x2, y2)) = if x1 > x2 andalso y1 > y2 then (x1, y1) else (x2, y2)
 	    (* points x0 and y0 lie on the convex hull *)
