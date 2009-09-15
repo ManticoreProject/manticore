@@ -246,7 +246,7 @@ fun pointListEnclosingSphere (P) = case P of nil => ((0.0,0.0,0.0),0.0)
    val p' = (p / 3.0); 
    val q' = (q / 2.0);
    val m = sqrt(~p / 3.0);
-   val theta = (1.0/3.0)*Math.acos(~q' / sqrt(~p'*p'*p') );
+   val theta = (1.0/3.0)*Math.acos(~q' / sqrt(~(p'*p'*p')) );
    val x1 = 2.0*m*Math.cos(theta);
    val x2 = 2.0*sqrt(~p')*Math.cos(theta + (2.0*Math.pi / 3.0));
    val x3 = 2.0*sqrt(~p')*Math.cos(theta - (2.0*Math.pi/3.0));
@@ -284,7 +284,7 @@ end;
 fun primBoundingSphere (prm) = case prm of 
   Sphere(pos,r,surf) => (pos,r,[prim(prm)]) 
 (* 218-221 of Mathematics for 3D Programming and Computer Graphics *)
-| Polymesh(poly,surf) =>  let val (pos,rad) = pointListEnclosingSphere(List.concat(List.map (fn (norm,d,vert,b) => List.map (fn x =>  x )  vert) poly));
+| Polymesh(poly,surf) =>  let val (pos,rad) = pointListEnclosingSphere(List.concat(List.map (fn (norm,d,vert,b) =>  vert) poly));
                           in                           
                               (pos,rad,[prim(prm)])
                           end;
@@ -369,7 +369,16 @@ fun constructBSH (lyst) = (case lyst
 	| _ => let
 (* FIXME: just compute the sphere that encloses the two children, instead of reverting to the point soup *)
 	    val (k,slist) = findK(lyst)
+(*
 	    val (pos,rad) = pointListEnclosingSphere(List.concat (List.map (fn (p,r,x) =>   (vecadd p (r,0.0,0.0))::(vecadd p (0.0,r,0.0))::(vecadd p (0.0,0.0,r))::(vecadd p (~r,0.0,0.0))::(vecadd p (0.0,~r,0.0))::(vecadd p (0.0,0.0,~r))::nil) lyst))
+*)
+            val (p0,r0,x) = List.hd slist
+	    val (p1,r1,y) = List.last slist
+	    val dir = vecnormlz(vecsub p0 p1)
+	    val p0' = vecadd p0 (vecscale dir ~1.0)
+	    val p1' = vecadd p1 dir
+	    val pos = vecscale (vecadd p0' p1') 0.5
+	    val rad = distance pos p1'
 	    val (left, right) = if (k = 0)
 		  then split(slist, k+1)
 		  else split(slist, k)
