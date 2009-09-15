@@ -17,6 +17,7 @@ structure Time =
       typedef ml_time = [time];
 
       extern long M_GetTime();
+      extern double M_GetCPUTime();
 
     (* get the current time *)
       define inline @now () : time =
@@ -29,9 +30,15 @@ structure Time =
 	  return (alloc(t))
 	;
 
+      define inline @cpu-time (_ : unit / exh : exh) : ml_double =
+	  let t : double = ccall M_GetCPUTime()
+	  return (alloc(t))
+	;
+
     )
 
     val now : unit -> time = _prim(@now-w)
+    val cpuTime : unit -> double = _prim(@cpu-time)
 
     fun fromSecs t = t * 1000000
     fun toSecs t = t div 1000000

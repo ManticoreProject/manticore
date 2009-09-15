@@ -160,6 +160,11 @@ Time_t M_GetTime ()
     return 1000000 * t.tv_sec + t.tv_usec;
 }
 
+double M_GetCPUTime ()
+{
+  return ((double)clock ()) / CLOCKS_PER_SEC;
+}
+
 /* M_GetNumProcs:
  *
  * Return the number of hardware processors.  On processors with
