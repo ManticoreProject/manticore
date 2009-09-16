@@ -54,6 +54,8 @@ extern Value_t WrapWord (VProc_t *vp, Word_t i);
 extern Value_t AllocString (VProc_t *vp, const char *s);
 extern Value_t AllocRaw (VProc_t *vp, uint32_t sz);
 
+STATIC_INLINE Value_t ManticoreBool (bool b)  { return b ? M_TRUE : M_FALSE; }
+
 STATIC_INLINE Value_t Cons (VProc_t *vp, Value_t a, Value_t b)
 {
     return AllocUniform (vp, 2, a, b);

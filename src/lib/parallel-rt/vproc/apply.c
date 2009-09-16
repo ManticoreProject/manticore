@@ -113,15 +113,16 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    Die ("uncaught exception\n");
 	  case REQ_Sleep:	/* make the VProc idle */
 	    {
+	       Value_t status = M_TRUE;
 	       Time_t timeToSleep = *((Time_t*)(vp->stdArg));
 	       if (timeToSleep == 0)    /* convention: if timeToSleep == 0, sleep indefinitely */
 		   VProcSleep(vp);
 	       else
-		   VProcNanosleep(vp, timeToSleep);
+		   status = VProcNanosleep(vp, timeToSleep);
 	       assert (vp->wakeupCont != M_NIL);
 	       envP = vp->wakeupCont;
 	       codeP = ValueToAddr (ValueToCont(envP)->cp);
-	       arg = M_UNIT;
+	       arg = AllocNonUniform (vp, 1, PTR(status));
 	       retCont = M_UNIT;
 	       exnCont = M_UNIT;
 	       vp->wakeupCont = M_NIL;

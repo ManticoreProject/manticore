@@ -418,9 +418,12 @@ STATIC_INLINE struct timespec TimespecAdd (struct timespec time1, struct timespe
 /*! \brief put the vproc to sleep. the vproc unblocks when either a signal arrives or the given time has elapsed.
  *  \param vp the vproc that is being put to sleep
  *  \param nsec the number of nanoseconds to sleep
+ *  \return the return value depends on how the vproc was brought out of sleeping: true if by a remote vproc and
+            false if by a POSIX signal or timeout
  */
-void VProcNanosleep (VProc_t *vp, Time_t nsec)
+Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
 {
+    int status = 0;
     struct timespec delta, currTime;
 
     delta.tv_sec = nsec / ONE_SECOND;
@@ -447,16 +450,20 @@ void VProcNanosleep (VProc_t *vp, Time_t nsec)
 // QUESTION: do we really need an AtomicWriteValue here, since we are inside a lock?
 	AtomicWriteValue (&(vp->sleeping), M_TRUE);
 	while ((vp->landingPad == M_NIL)
-	&& CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake))
+	       && (status = CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake)))
 	    continue;
 	AtomicWriteValue (&(vp->sleeping), M_FALSE);
     MutexUnlock (&(vp->lock));
 
 #ifndef NDEBUG
-    if (DebugFlg)
-        SayDebug("[%2d] VProcNanosleep exiting\n", vp->id);
+      SayDebug("[%2d] VProcNanosleep exiting (awoken by %s)\n", vp->id, 
+	       status == 0          ? "another vproc"
+	    : (status == ETIMEDOUT  ? "timeout"
+	    : (status == EINTR      ? "interrupt" 
+	    : "an error")));
 #endif
-
+    
+    return ManticoreBool (status == 0);
 }
 
 /* IdleVProc:
@@ -569,4 +576,3 @@ Value_t SleepCont (VProc_t *self)
 {
     return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 }
-

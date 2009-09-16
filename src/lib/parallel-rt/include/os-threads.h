@@ -13,10 +13,10 @@
 #include <pthread.h>
 #include <signal.h>
 #include <assert.h>
+#include <errno.h>
 
 #ifndef NDEBUG
-//#  define CHECK_RETURN(e)	assert((e) == 0)
-#  define CHECK_RETURN(e)	e
+#  define CHECK_RETURN(e)	assert((e) == 0)
 #else
 #  define CHECK_RETURN(e)	e
 #endif
@@ -97,9 +97,9 @@ STATIC_INLINE void CondWait (Cond_t *cond, Mutex_t *mu)
     CHECK_RETURN(pthread_cond_wait (cond, mu));
 }
 
-STATIC_INLINE bool CondTimedWait (Cond_t *cond, Mutex_t *mu, const struct timespec *abstime)
+STATIC_INLINE int CondTimedWait (Cond_t *cond, Mutex_t *mu, const struct timespec *abstime)
 {
-    return (pthread_cond_timedwait (cond, mu, abstime) == 0);
+    return pthread_cond_timedwait (cond, mu, abstime);
 }
 
 STATIC_INLINE void CondSignal (Cond_t *cond)

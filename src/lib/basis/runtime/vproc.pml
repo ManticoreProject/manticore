@@ -47,9 +47,11 @@ structure VProc (* :
       define @sleep-from-atomic (vp : vproc) : ();
     (* put the vproc to sleep until either a signal arrives on its landing pad or the given amount
      * of time has elapsed
+     * the return value depends on how the vproc was brought out of sleeping: true if by
+     * a remote vproc and false if by a POSIX signal or timeout
      * PRECONDITION: Equal(self, host_vproc)
      *)
-      define @nanosleep-from-atomic (vp : vproc, nsec : long) : ();
+      define @nanosleep-from-atomic (vp : vproc, nsec : long) : bool;
 
     )
 
@@ -210,7 +212,7 @@ structure VProc (* :
      *)
       define @sleep-from-atomic (vp : vproc) : () =
 	  fun sleep () : () =
-              cont wakeupK (x : unit) = return ()
+              cont wakeupK (b : bool) = return ()
 	    (* the C runtime expects the resumption continuation to be in vp->wakeupCont *)
 	      do vpstore(VP_WAKEUP_CONT, vp, wakeupK)
 	      let sleepK : cont(long) = ccall SleepCont (vp)
@@ -222,17 +224,19 @@ structure VProc (* :
 
     (* put the vproc to sleep until either a signal arrives on its landing pad or the given time
      * has elapsed. the time is in nanoseconds.
+     * the return value depends on how the vproc was brought out of sleeping: true if by
+     * a remote vproc and false if by a POSIX signal or timeout
      * PRECONDITION: Equal(self, host_vproc)
      *)
-      define @nanosleep-from-atomic (vp : vproc, nsec : long) : () =
+      define @nanosleep-from-atomic (vp : vproc, nsec : long) : bool =
+          cont wakeupK (b : bool) = return (b)
 	  fun sleep () : () =
-              cont wakeupK (x : unit) = return ()
 	    (* the C runtime expects the resumption continuation to be in vp->wakeupCont *)
 	      do vpstore(VP_WAKEUP_CONT, vp, wakeupK)
 	      let sleepK : cont(long) = ccall SleepCont (vp)
 	      throw sleepK(nsec)
 	  do apply sleep()
-	  return()
+	  return(true)
 	;
 
     )

@@ -105,7 +105,7 @@ extern VProc_t *VProcSelf ();
 void VProcPreempt (VProc_t *self, VProc_t *vp);
 void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
 void VProcSleep (VProc_t *vp);
-void VProcNanosleep (VProc_t *vp, Time_t nsec);
+Value_t VProcNanosleep (VProc_t *vp, Time_t nsec);
 void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp);
 
 #endif /* !_VPROC_H_ */
