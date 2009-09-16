@@ -16,6 +16,9 @@
 #ifdef HAVE_MACH_ABSOLUTE_TIME
 #  include <mach/mach_time.h>
 #endif
+#ifdef HAVE_AIO_RETURN
+#  include <aio.h>
+#endif
 #include "inline-log.h"
 #include "os-threads.h"
 #include "vproc.h"
