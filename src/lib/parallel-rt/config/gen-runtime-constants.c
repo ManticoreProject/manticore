@@ -23,7 +23,7 @@ static int LogBufSz = LOGBUF_SZ;
 
 /* print the definition of a symbol */
 #define PR_DEFINE(symb, val)							\
-	printf("    val " #symb " : IntInf.int = %#0lx\n", (uint64_t)val)
+	printf("    val " #symb " : IntInf.int = %#0llx\n", (uint64_t)val)
 
 /* print a value definition and record it in the CRC buffer */
 #define PR_VALUE(tag, var, value)						\
