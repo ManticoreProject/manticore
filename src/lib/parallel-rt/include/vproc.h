@@ -38,6 +38,9 @@ struct struct_vproc {
 				//!  top 8 bits of the counter hold the VProc ID.
     LogBuffer_t	*log;	        //!< current buffer for logging events
     LogBuffer_t	*prevLog;       //!< previous buffer for logging events
+#ifdef HAVE_AIO_RETURN
+    struct aiocb *logCB;	//!< AIO control buffer for log file
+#endif
 			      /* GC parameters */
     Addr_t	nurseryBase;	//!< Base address of current nursery area
     Addr_t	oldTop;		//!< Old objects live in the space from the
