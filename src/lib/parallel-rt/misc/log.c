@@ -112,7 +112,7 @@ void SwapLogBuffers (VProc_t *vp, LogBuffer_t *curBuf)
 #ifdef HAVE_AIO_RETURN
   /* wait for any pending pending I/O operations */
     if (vp->logCB->aio_buf != 0) {
-	struct aiocb list[1] = { vp->logCB->aio_buf };
+	struct aiocb *list[1] = { vp->logCB->aio_buf };
 	int sts;
 	do {
 	    sts = aio_suspend (list, 1, 0);
