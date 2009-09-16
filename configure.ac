@@ -204,6 +204,10 @@ dnl check for /proc/cpuinfo
 dnl
 AC_CHECK_FILES(/proc/cpuinfo)
 
+dnl check for asynchronous I/O support
+dnl
+AC_CHECK_FUNCS(aio_return)
+
 dnl ******************** SML/NJ configuration ********************
 dnl
 
