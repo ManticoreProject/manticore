@@ -88,17 +88,16 @@ $MC -o $SEQ_PROG_EXE $SEQFLAGS $SEQ_PML_PATH > /dev/null
 ARCH=$( uname -m )
 OS=$( uname -s )
 MACHINE=$( uname -n )
-echo -e "(* $LOG_FILE_NAME *)" >> $LOG_FILE_NAME
-echo -e "(* ARCH:\t$ARCH OS:\t$OS MACHINE:\t$MACHINE *)" >> $LOG_FILE_NAME
-echo -e "(* MCFLAGS\t$MCFLAGS *)" >> $LOG_FILE_NAME
+echo -e "val logFileName = \"$LOG_FILE_NAME\"" >> $LOG_FILE_NAME
+echo -e "val arch = \"$ARCH\"" >> $LOG_FILE_NAME
+echo -e "val os = \"$OS\"" >> $LOG_FILE_NAME
+echo -e "val machine = \"$MACHINE\"" >> $LOG_FILE_NAME
+echo -e "val mcflags = \"$MCFLAGS\"" >> $LOG_FILE_NAME
 SVN_REVISION=$( svn info | grep Revision )
-echo -e "(* SVN $SVN_REVISION *)" >> $LOG_FILE_NAME
+echo -e "val svnRevision = \"$SVN_REVISION\"" >> $LOG_FILE_NAME
 SVN_URL=$( svn info | grep URL )
-echo -e "(* SVN $SVN_URL *)" >> $LOG_FILE_NAME
-echo -e "(* PML SOURCE FILE: $PML_PATH *)" >> $LOG_FILE_NAME
-echo -e "(* The time field is in microseconds. *)" >> $LOG_FILE_NAME
-echo -e "(* The size field is the problem size. *)" >> $LOG_FILE_NAME
-echo -e "(* The seqCutoff field is the number of elements for which we switch to sequential evaluation. *)" >> $LOG_FILE_NAME
+echo -e "val svnURL = \"$SVN_URL\"" >> $LOG_FILE_NAME
+echo -e "val pmlSourceFile = \"$PML_PATH\"" >> $LOG_FILE_NAME
 
 PARFLAGS="$MCFLAGS"
 echo "Compiling parallel program: $MC -o $PROG_EXE $PARFLAGS $PML_PATH 2> /dev/null"
