@@ -176,8 +176,8 @@ void AllocToSpaceChunk (VProc_t *vp)
 #ifndef NDEBUG
     if (GCDebug > GC_DEBUG_NONE)
 	SayDebug("[%2d] AllocToSpaceChunk: %ld Kb at %p..%p (node %d)\n",
-	    vp->id, chunk->szB/1024, chunk->baseAddr,
-	    chunk->baseAddr+chunk->szB, chunk->where);
+	    vp->id, chunk->szB/1024, (void *)(chunk->baseAddr),
+	    (void *)(chunk->baseAddr+chunk->szB), chunk->where);
 #endif
 
 }
@@ -211,8 +211,8 @@ VProc_t *AllocVProcMemory (int id, Location_t loc)
 #ifndef NDEBUG
     if (GCDebug > GC_DEBUG_NONE)
 	SayDebug("     AllocVProcMemory(%d): %ld Kb at %p..%p (node %d)\n",
-	    id, chunk->szB/1024, chunk->baseAddr,
-	    chunk->baseAddr+chunk->szB, chunk->where);
+	    id, chunk->szB/1024, (void *)(chunk->baseAddr),
+	    (void *)(chunk->baseAddr+chunk->szB), chunk->where);
 #endif
 
     return vproc;
