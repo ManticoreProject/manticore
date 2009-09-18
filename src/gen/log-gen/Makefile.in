@@ -44,7 +44,13 @@ $(HEAP_IMAGE):
 	touch .depend
 	$(ML_MAKEDEPEND) $(ML_MAKEDEPEND_FLAGS) -n -f .depend sources.cm $(HEAP_IMAGE)
 
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),devclean)
+ifneq ($(MAKECMDGOALS),distclean)
 sinclude .depend
+endif
+endif
+endif
 
 local-install:	$(HEAP_IMAGE)
 	$(INSTALL_SMLNJ_WRAPPER) $(PROGRAM) $(BINDIR)
