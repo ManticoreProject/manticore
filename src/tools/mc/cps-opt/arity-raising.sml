@@ -570,24 +570,9 @@ structure ArityRaising : sig
 	       *  3) for any path p in dom(pmap) with pmap(p) > 0, either p
 	       *     is in the list or is derived from a path in the list.
 	       *)
-		val args = let
-		    (* construct an initial list of paths with non-zero use counts in lexical
-		     * order.
-		     *)
-		      val paths = PMap.foldri (fn (p, ref 0, l) => l | (p, _, l) => p::l) [] pmap
-		    (* filter out paths that are derived from others on the list; for this
-		     * process, we rely on the ordering used to structure the pmap.
-		     *)
-		      fun filter ([], _, l) = List.rev l
-			| filter (p::r, q, l) = if isDerivedFrom(q, p)
-			    then filter (r, q, l)
-			    else filter (r, p, p::l)
-		      in
-			filter (paths, PARAM ~1, [])
-		      end
 		in
 		  ST.tick cntCandidateFun;
-		  setInfo (f, vmap, pmap, params, rets, computeMaxSig pmap, NONE, NONE);
+		  setInfo (f, vmap, pmap, params, rets, computeSig pmap, NONE, NONE);
 		  candidates := f :: !candidates
 		end (* analyseCandidate *)
 	(* walk an expression looking for candidates *)
@@ -619,6 +604,7 @@ structure ArityRaising : sig
   (* Attempt to come up with a combined signature via sigMeet. Note
    * that non-candidate calls cancel out any attempt to further simplify
    * the signature.
+   * TODO: this needs to make sure the selections have identical representation formats!
    *)
     fun sigOfFuns [] = raise Fail "no functions"
       | sigOfFuns [f] = #sign(getInfo f)
@@ -925,7 +911,6 @@ structure ArityRaising : sig
             CPS.Var.Set.listItems l
           | _ => []
         
-
     (*
      * Before performing the actual flattening, go through and figure out the new signatures.
      * Note that some of the return continuations may be flattening candidates, so we need
@@ -948,6 +933,9 @@ structure ArityRaising : sig
         fun transformParam(retVar) = let
             fun getParamFunType (l) = let
                 val lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
+                val _ = if !flatteningDebug
+                        then print (concat["Merging signatures for fn types: ", concat(List.map (fn x => ((CPSTyUtil.toString x)^" ")) lambdas), "\n"])
+                        else ()
                 fun mergeSignatures (base, new) = let
                     val CPSTy.T_Fun(baseParams, baseRets) = base
                     val CPSTy.T_Fun(newParams, newRets) = new
@@ -1035,7 +1023,7 @@ structure ArityRaising : sig
                     val _ = if !flatteningDebug
                             then print (concat["Flattening non-candidate params ",
                                                CV.toString f, " orig: ",
-                                               CPSTyUtil.toString (CV.typeOf f)])
+                                               CPSTyUtil.toString (CV.typeOf f), "\n"])
                             else ()
                     val _ = List.app transformParam params
                     val _ = List.app transformParam rets
@@ -1223,6 +1211,33 @@ structure ArityRaising : sig
           end
 	  fun flattenApplyThrow (ppt, g, args, retArgs) = let
               val lambdas = cfaGetLambdas g
+              fun matchTypes (paramType::paramTypes, arg::orig, accum, final) =
+                  let
+                      val argType = CV.typeOf arg
+                  in
+                      if CPSTyUtil.soundMatch (argType, paramType)
+                      then matchTypes (paramTypes, orig, arg::accum, final)
+                      else let
+                              val typed = CV.new ("coerced", paramType)
+                              val _ = if !flatteningDebug
+                                      then print (concat["Coercing from: ",
+                                                         CPSTyUtil.toString argType,
+                                                         " to: ",
+                                                         CPSTyUtil.toString paramType,
+                                                         " for argument: ",
+                                                         CV.toString arg, "\n"])
+                                      else ()
+                              val _ = if getUseful arg then setUseful typed else ()
+                          in
+                              C.mkLet ([typed], C.Cast(paramType, arg),
+                                       matchTypes (paramTypes, orig, typed::accum, final))
+                          end
+                  end
+                | matchTypes (paramTypes, [], accum, final) =
+                  final (rev accum)
+                | matchTypes (_, _, accum, final) =
+                  raise Fail (concat["Can't happen - call to method had mismatched arg/params.",
+                                     CV.toString g])
           in
               if isCandidate g orelse (List.length lambdas > 0 andalso
                                        isCandidate (List.hd lambdas))
@@ -1232,10 +1247,12 @@ structure ArityRaising : sig
                           else List.hd lambdas
                   val _ = if !flatteningDebug
                           then print (concat["Flattening call to: ", CV.toString f,
+                                             if isCandidate g then " candidate" else " non-candidate",
                                              " through variable: ", CV.toString g, "\n"])
                           else ()
 		  val {sign, params, rets, newRets=SOME(newRets),
                        newParams=SOME(fParams), ...} = getInfo f
+                  val CPSTy.T_Fun(callParamTypes, retTypes) = CV.typeOf g
 		  fun genCall (sign, params, newArgs, progress, args') =
                         if null sign
 			  then (case retArgs
@@ -1245,18 +1262,20 @@ structure ArityRaising : sig
                                                         then b::rr
                                                         else rr)
                                         []
-                                        (rets, retArgs)
+                                        (newRets, retArgs)
                                 in
-                                    C.Exp(ppt, C.Apply(g, rev newArgs, filteredRetArgs))
+                                    matchTypes (callParamTypes, rev newArgs, [],
+                                                fn finalArgs =>
+                                                   C.Exp(ppt, C.Apply(g, finalArgs, filteredRetArgs)))
                                 end
-			      | NONE => C.Exp(ppt, C.Throw(g, rev newArgs))
+			      | NONE => matchTypes (callParamTypes, rev newArgs, [], 
+                                                    fn finalArgs => C.Exp(ppt, C.Throw(g, finalArgs)))
 			    (* end case *))
 			  else let
 			    fun genResult (varBase, path) =
                                   if length path = 0
 				  then genCall (tl sign, tl params, varBase :: newArgs, NONE, args')
-				  else (
-                                      case peekAlias ((hd path), varBase)
+				  else (case peekAlias ((hd path), varBase)
                                        of SOME (v') => genCall (sign, params, newArgs, SOME (v', tl path), args')
                                         | NONE => let
 				              val newType = (
@@ -1269,13 +1288,13 @@ structure ArityRaising : sig
 					            | _ => raise Fail (concat[
                                                                        "SEL from non tuple/any type: ",
                                                                        CV.toString varBase])
-					      (* end case *))
+				              (* end case *))
 				              val newVar = CV.new ("letFlat", newType)
 				              val rhs = C.Select (hd path, varBase)
 				          in
 				              if length path = 1
 					      then C.mkLet ([newVar], rhs,
-					                    genCall (tl sign, tl params, newVar :: newArgs, NONE, args'))
+                                                            genCall (tl sign, tl params, newVar :: newArgs, NONE, args'))
 					      else C.mkLet ([newVar], rhs,
 					                    genCall (sign, params, newArgs, SOME (newVar, tl path), args'))
                                           end
@@ -1326,7 +1345,7 @@ structure ArityRaising : sig
                       raise Fail (concat["Can't happen - call to method had mismatched arg/params.",
                                          CV.toString g])
                   val paramTypes = List.map CV.typeOf params
-		  in
+ 		  in
                     (* Often, original tupled arguments are of type :any instead of what
                      * they will be at the landing site of the call, relying on Apply to
                      * implicitly cast them. Since we're checking types in our flat-sels
@@ -1335,7 +1354,12 @@ structure ArityRaising : sig
                      *)
                     cleanupArgsBeforeCall (sign, fParams, [], NONE, paramTypes, args, [])
 		  end
-		else let (* Not a call to a candidate function. Keep arguments in place *)
+		else let 
+                        (* Not a call to a candidate function. Keep arguments in place,
+                         * but also make sure that they don't need to be translated to match
+                         * the appropriate types. Args may have been retyped during flattening
+                         * of the enclosing function.
+                         *)
                         fun translateArgs (v::vl, accum, final) =
                             if shouldSkipUseless v
                             then (let
@@ -1346,13 +1370,19 @@ structure ArityRaising : sig
                             else translateArgs (vl, v::accum, final)
                           | translateArgs ([], accum, final) =
                             final (rev accum)
+                        val CPSTy.T_Fun(paramTypes, retTypes) = CV.typeOf g
                     in
-                        case retArgs
-		         of SOME(retArgs) => translateArgs (args, [],
-                                           fn x => translateArgs (retArgs, [],
-                                              fn y => C.Exp(ppt, C.Apply(g, x, y))))
-		          | NONE => translateArgs (args, [],
-                                                   fn x => C.Exp (ppt, C.Throw(g, x)))
+                        matchTypes (paramTypes, args, [],
+                          fn newArgs =>
+                             case retArgs
+                              of SOME(retArgs) =>
+                                 matchTypes (retTypes, retArgs, [],
+                                          fn newRets =>
+                                             translateArgs (newArgs, [],
+                                              fn x => translateArgs (newRets, [],
+                                                fn y => C.Exp(ppt, C.Apply(g, x, y)))))
+                               | NONE => translateArgs (newArgs, [],
+                                           fn x => C.Exp (ppt, C.Throw(g, x))))
                     end
           end
           and shouldSkipUseless (v) = if getUseful v
