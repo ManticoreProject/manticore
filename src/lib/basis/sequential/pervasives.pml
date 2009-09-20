@@ -14,3 +14,6 @@ val map = List.map
 val foldl = List.foldl
 val foldr = List.foldr
 val nth = List.nth
+
+fun fst (x, _) = x
+fun snd (_, y) = y

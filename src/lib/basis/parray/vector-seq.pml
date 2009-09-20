@@ -104,17 +104,17 @@ structure VectorSeq =
       if null s then empty
       else let
 	val len = length s
-	fun lpttz (i, acc) = 
+	fun lp (i, acc) = 
 	  if i < 0 then
 	    fromList acc
 	  else let
 	    val x = sub (s, i)
 	    in
-	      if pred x then lpttz (i-1, x::acc)
-	      else lpttz (i-1, acc) 
+	      if pred x then lp (i-1, x::acc)
+	      else lp (i-1, acc) 
 	    end
 	in
-	  lpttz (len-1, nil)
+	  lp (len-1, nil)
 	end
 
     fun zip (s1, s2) = let
@@ -125,10 +125,9 @@ structure VectorSeq =
 	else tabulate (len, fn i => (sub(s1, i), sub(s2, i)))
       end
 
-    fun unzip s = (tabulate (length s, fn i => let val (x, _) = sub (s, i)
-					       in x end),
-		   tabulate (length s, fn i => let val (_, y) = sub (s, i)
-					       in y end))
+    fun unzip s = 
+      (tabulate (length s, fn i => fst (sub (s, i))),
+       tabulate (length s, fn i => snd (sub (s, i))))
 
     fun update (s, i, x) = tabulate (length s, fn j => if i = j then x
 						       else sub (s, j))
