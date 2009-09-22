@@ -15,4 +15,5 @@
     locked-queue.pml
     barrier.pml
     cilk-5-deque.pml
+    spin-wait.pml
   end
