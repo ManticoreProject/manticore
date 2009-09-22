@@ -433,13 +433,20 @@ and shadowed (pos, dir, lcolor) = let (* need to offset just a bit *)
 *)
 (* parallel version *)
 fun ray winsize = let
+
+    val cb = Time.cpuTime ()
+    val b = Time.now ()
+
     val img = Image.new (winsize, winsize)
-    val lights = testlights;
-    val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
-    fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny);
-    val b = Time.now ();
-    val scene = [| [| f(i, j) | j in [| 0 to winsize-1 |] |] | i in [| 0 to winsize-1 |] |]
-    val e = Time.now ();
+    val scene = ImplicitThread.runOnWorkGroup(WorkStealing.workGroup(), fn () => 
+	   let
+	       val lights = testlights
+	       val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize)
+	       fun f (i, j) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
+	   in
+	       [| [| f(i, j) | j in [| 0 to winsize-1 |] |] | i in [| 0 to winsize-1 |] |]
+	   end)
+
     fun output i = if i < winsize
         then let
           fun loop j = if j < winsize
@@ -455,18 +462,18 @@ fun ray winsize = let
           end
         else ()
 
+    val _ = output 0
+    val _ = Image.output("out.ppm", img)
+    val _ = Image.free img
+			   
+    val t = Time.now () - b
+    val ct = Time.cpuTime () - cb
+
     in      
-      output 0;
-      Image.output("out.ppm", img); 
-      Image.free img;
-      Print.print (Long.toString (e-b))
+      Print.printLn (Time.toString t);
+(*      Print.print ("{ wall= " ^ Time.toString t) ^ ",cpu= " ^ Double.toString ct ^ " }");*)
+      ()
     end
 
-
-(*but this reveals a CPS error:*)
-val _ = ray(PrimIO.readInt ())
-(* won't compile with this
 val _ = PrimIO.readInt ()
-val _ = ImplicitThread.runWithGroup(SwpWorkStealing.workGroup(), fn () => ( 
-               ray (PrimIO.readInt ())))
-*)
+val _ = ray (PrimIO.readInt ())

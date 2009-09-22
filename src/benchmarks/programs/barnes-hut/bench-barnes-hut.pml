@@ -131,12 +131,12 @@ fun benchmark () =
 		iter (oneStep ps, i + 1)
 	    else
 		ps
-	val t0 = Time.now()
 	val particles = fromListP (readParticles ())
-	val tree = iter (particles, 0)
+	val t0 = Time.now()
+	val tree = iter (particles, 0) 
 	val t = (Time.now() - t0)
     in
 	Print.printLn (Time.toString t)
     end
 
-val () = ImplicitThread.runWithGroup(SwpWorkStealing.workGroup(), benchmark)
+val () = ImplicitThread.runOnWorkGroup(WorkStealing.workGroup(), benchmark)

@@ -462,9 +462,10 @@ fun ray winsize = let
 
 (* sequential version of the code *)
 fun ray winsize = let
-    val lights = testlights;
-    val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize);
+    val b = Time.now ()
+    val lights = testlights
     val img = Image.new (winsize, winsize)
+    val (firstray, scrnx, scrny) = camparams (lookfrom, lookat, vup, fov, winsize)
     fun f (i, j) = let
 	  val (r, g, b) = tracepixel (world, lights, i, j, firstray, scrnx, scrny)
 	  in
@@ -478,10 +479,11 @@ fun ray winsize = let
 	    in
 	      lp' 0; lp(i+1)
 	    end
-	  else ();
-    val (_, t) = Time.timeToEval(fn () => (lp 0; Image.output("out.ppm", img); Image.free img))
+	  else ()
+    val _ = (lp 0; Image.output("out.ppm", img); Image.free img)
+    val t = Time.now () - b
     in
-      Print.print(Long.toString t)
+      Print.print(Time.toString t)
     end;
 
 (* sequential version of the code that builds the image first as a list *)
@@ -508,7 +510,7 @@ fun ray' winsize = let
         (* end case *))
     in
       output vs; Image.output("out.ppm", img); Image.free img;
-      Print.print (Long.toString (e-b))
+      Print.print (Time.toString (e-b))
     end;
 
 val _ = PrimIO.readInt ()  (* for consistency with the other benchmarks *)

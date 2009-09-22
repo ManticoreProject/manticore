@@ -1,12 +1,14 @@
-structure R = FloatRope
-structure S = FloatScan
+structure R = Rope
+structure S = Scan
 
 val _ = PrimIO.readInt ()
-val a = R.tabP (PrimIO.readInt (), fn _ => Float.fromInt (Rand.inRangeInt (0, 100)))
+val a = R.tabP (PrimIO.readInt (), fn _ => (Rand.inRangeInt (0, 100)))
 fun doit () =
     let
-	val (s, t) = Time.timeToEval (fn () => S.plusScan a)
-	val _ = Print.printLn (Long.toString t)
+	val b = Time.now ()
+	val s = S.plusScan a
+	val t = Time.now () - b
+	val _ = Print.printLn (Time.toString t)
     in () end
 
-val _ = ImplicitThread.runWithGroup (SwpWorkStealing.workGroup (), doit)
+val _ = ImplicitThread.runOnWorkGroup (WorkStealing.workGroup (), doit)
