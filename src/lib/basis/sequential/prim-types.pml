@@ -32,8 +32,9 @@ structure PrimTypes =
     datatype signal 
       = STOP
       | PREEMPT of fiber                (* the argument is the resumption fiber. *)
-      | SLEEP of (fiber * long)         (* blocking for a given time interval. the second argument
-					 * is the time to sleep in microseconds *)
+      | SLEEP of (fiber * long)         (* the first argument is the resumption fiber,
+					 * and the second is the minimum time to sleep
+					 * given in nanoseconds. *)
       | UNBLOCK of (fiber * fiber)
       | BLOCK of fiber
 
