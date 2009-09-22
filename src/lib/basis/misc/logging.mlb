@@ -1,0 +1,4 @@
+ann "cpp" "../include/prim.def"
+in
+    logging.pml
+end

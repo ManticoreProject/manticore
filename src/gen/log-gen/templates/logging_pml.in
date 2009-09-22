@@ -9,6 +9,7 @@
  * applied to src/gen/log-gen/templates/logging_pml.in.
  *)
 
+#include "runtime-offsets.def"
 #include "log-events.def"
 
 structure Logging =
@@ -18,37 +19,42 @@ structure Logging =
 
 #ifdef ENABLE_LOGGING
 
-	extern void *ASM_NextLogEvent (void *);
 	extern void ASM_GetTimeStamp (void *);
-
-	define @NextLogEventSlow (vp : vproc) : addr(any) =
-	      let adr : addr(any) = ccall ASM_NextLogEvent(vp)
-	      return (adr)
-	    ;
+        extern void SwapLogBuffers (void *, void *);
 
       (* return a pointer to the next event in the buffer *)
 	define inline @NextLogEvent (vp : vproc, evt : int) : addr(any) =
-	    let logBufAdr : addr(any) = VPLoad(vp, LOG)
-	    let nextAdr : addr(int) = AdrAdd32(logBufAdr, LOGBUF_NEXT_OFFSET)
-	    let index : int = I32FetchAndAdd(nextAdr, 1)
-	    (* in *)
-	      if I32Lt(index, LOGBUF_SZ) then
-		let offset : int =
-		      I32Add(LOGBUF_START_OFFSET, I32Mul(LOG_EVENT_SZB, index))
-		let addr : addr(any) = AdrAdd32(nextAdr, offset)
-		return (addr)
-	      else
-		@NextLogEventSlow(vp)
-	  ;
+            fun lp () : addr(any) =
+	    	let logBufAdr : addr(any) = vpload(LOG, vp)
+		let nextAdr : addr(any) = AdrAddI32(logBufAdr, LOGBUF_NEXT_OFFSET)
+                let nextAdr : addr(int) = (addr(int))nextAdr
+		let index : int = I32FetchAndAdd(nextAdr, 1)
+		(* in *)
+		  if I32Lt(index, LOGBUF_SZ) then
+		    let offset : int =
+			  I32Add(LOGBUF_START_OFFSET, I32Mul(LOG_EVENT_SZB, index))
+		    let bufAddr : addr(any) = AdrAddI32((addr(any))nextAdr, offset)
+		    return (bufAddr)
+		  else
+		    do ccall SwapLogBuffers (vp, logBufAdr)
+                    apply lp ()
+            apply lp ()
+          ;
 
       (* allocate a new event record and initialize its timestamp
        * and event fields.  Return a pointer to the event record.
        *)
 	define @NewEvent (vp : vproc, evt : int) : addr(any) =
-	    let ep : addr(any) = @NextLogEvent(vp)
+	    let ep : addr(any) = @NextLogEvent(vp, evt)
 	    do ccall ASM_GetTimeStamp(ep)
-	    do AdrStoreI32(AdrAdd32(ep, LOG_EVENT_KIND_OFFSET), evt)
+	    do AdrStoreI32((addr(int))AdrAddI32(ep, LOG_EVENT_KIND_OFFSET), evt)
 	    return (ep)
+	  ;
+
+      (* generate a unique event ID. Return the new ID. *)
+	define @NewEventId (vp : vproc) : long =
+	    let eidPtr : addr(long) = vpload(EVENT_ID, vp)
+	    return (I64FetchAndAdd(eidPtr, 1:long))
 	  ;
 
 @GENERIC-LOG-HLOPS@

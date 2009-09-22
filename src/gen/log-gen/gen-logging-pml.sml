@@ -28,7 +28,7 @@ structure GenLoggingPML : GENERATOR =
 	  fun genParams ([], _)= ()
 	    | genParams ((_, ty)::r, i) = let
 		fun next cty = (
-		      prl [", ", cty, "a", Int.toString i];
+		      prl [", ", "a", Int.toString i, " : ", cty];
 		      genParams (r, i+1))
 		in
 		  case ty
@@ -52,16 +52,16 @@ structure GenLoggingPML : GENERATOR =
 		in
 		  pr "\t    ";
 		  case ty
-		   of Sig.ADDR => prf("do AdrStoreAdr(AdrAdd32(evt, %d), %s)\n", items)
-		    | Sig.INT => prf("do AdrStoreI32(AdrAdd32(evt, %d), %s)\n", items)
-		    | Sig.WORD => prf("do AdrStoreI32(AdrAdd32(evt, %d), %s)\n", items)
-		    | Sig.FLOAT => prf("do AdrStoreF32(AdrAdd32(evt, %d), %s)\n", items)
-		    | Sig.DOUBLE => prf("do AdrStoreF64(AdrAdd32(evt, %d), %s)\n", items)
-		    | Sig.EVENT_ID => prf("do AdrStoreI64(AdrAdd32(evt, %d), %s)\n", items)
+		   of Sig.ADDR => prf("do AdrStoreAdr((addr(any))AdrAddI32(ep, %d), %s)\n", items)
+		    | Sig.INT => prf("do AdrStoreI32((addr(int))AdrAddI32(ep, %d), %s)\n", items)
+		    | Sig.WORD => prf("do AdrStoreI32((addr(int))AdrAddI32(ep, %d), %s)\n", items)
+		    | Sig.FLOAT => prf("do AdrStoreF32((addr(float))AdrAddI32(ep, %d), %s)\n", items)
+		    | Sig.DOUBLE => prf("do AdrStoreF64((addr(double))AdrAddI32(ep, %d), %s)\n", items)
+		    | Sig.EVENT_ID => prf("do AdrStoreI64((addr(long))AdrAddI32(ep, %d), %s)\n", items)
 		    | Sig.NEW_ID => (
 			pr "let newId : long = @NewEventId(vp)\n";
 			pr "\t    ";
-			prf("do AdrStoreI64(AdrAdd32(evt, %d), newId)\n", [F.WORD loc]))
+			prf("do AdrStoreI64((addr(long))AdrAddI32(ep, %d), newId)\n", [F.WORD loc]))
 		    | Sig.STR n => ()
 		  (* end case *);
 		  genCopy (r, i+1)
@@ -85,7 +85,7 @@ structure GenLoggingPML : GENERATOR =
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl l = TextIO.output(outS, concat l)
 	  val isSource = LoadFile.hasAttr LoadFile.ATTR_SRC evt
-	  val retTy = if isSource then "long" else "unit"
+	  val retTy = if isSource then "long" else "()"
 	  fun argToBOMTy ({ty, ...} : Sig.arg_desc) = (case ty
 		 of Sig.ADDR => "any"
 		  | Sig.INT => "int"
@@ -200,7 +200,7 @@ structure GenLoggingPML : GENERATOR =
 	  fun pr s = TextIO.output(outS, s)
 	  fun prl l = TextIO.output(outS, concat l)
 	  val isSource = LoadFile.hasAttr LoadFile.ATTR_SRC evt
-	  val retTy = if isSource then "long" else "unit"
+	  val retTy = if isSource then "long" else "()"
 	  fun argToBOMTy ({ty, ...} : Sig.arg_desc) = (case ty
 		 of Sig.ADDR => "any"
 		  | Sig.INT => "int"
