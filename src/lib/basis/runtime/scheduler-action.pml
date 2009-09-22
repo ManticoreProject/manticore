@@ -34,11 +34,11 @@ structure SchedulerAction (* :
       define inline @yield-from-atomic (vp : vproc) : ();
       define inline @yield () : ();
 
-    (* block the fiber until the given time has elapsed *)
-      define inline @sleep-in-atomic (vp : vproc, t : Time.time) : ();  
+    (* blocks the current fiber for a minimum of t nanoseconds *)
+      define inline @sleep-in-atomic (vp : vproc, t : long) : ();  
 			                         (* returns the new host vproc *)
-      define inline @sleep-from-atomic (vp : vproc, t : Time.time) : ();
-      define inline @sleep (t : Time.time) : ();
+      define inline @sleep-from-atomic (vp : vproc, t : long) : ();
+      define inline @sleep (t : long) : ();
 
     (* create a fiber *)
       define inline @fiber (f : PT.fiber_fun / exh : exh) : PT.fiber;
@@ -146,8 +146,8 @@ structure SchedulerAction (* :
 	  return ()
 	;
 
-    (* block the fiber until the given time has elapsed , masking signals upon return *)
-      define inline @sleep-in-atomic (vp : vproc, t : Time.time) : vproc =
+    (* blocks the current fiber for a minimum of t nanoseconds *)
+      define inline @sleep-in-atomic (vp : vproc, t : long) : vproc =
 	  cont k (x : unit) = 
 	    let vp : vproc = @atomic-begin()         (* mask signals before resuming *)
 	    return(vp)
@@ -156,15 +156,13 @@ structure SchedulerAction (* :
 	  return(vp)
 	;
 
-    (* block the fiber until the given time has elapsed *)
-      define inline @sleep-from-atomic (vp : vproc, t : Time.time) : () =
+      define inline @sleep-from-atomic (vp : vproc, t : long) : () =
 	  cont k (x : unit) = return ()
 	  do @forward-from-atomic (vp, PT.SLEEP(k, t))
 	  return ()
 	;
 
-    (* block the fiber until the given time has elapsed *)
-      define inline @sleep (t : Time.time) : () =
+      define inline @sleep (t : long) : () =
 	  cont k (x : unit) = return ()
 	  do @forward (PT.SLEEP(k, t))
 	  return ()
