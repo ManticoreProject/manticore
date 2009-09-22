@@ -210,4 +210,13 @@ structure List =
                          else (genfn n)::(loop(n+1))
             in loop 0 end
 
+    fun partition pred l = let
+          fun loop (l,trueList,falseList) = 
+	      (case l
+		of nil => (rev trueList, rev falseList)
+		 | h::t =>
+                   if pred h then loop(t, h::trueList, falseList)
+                   else loop(t, trueList, h::falseList))
+          in loop (l,nil,nil) end
+
   end

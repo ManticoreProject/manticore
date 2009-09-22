@@ -19,6 +19,7 @@ structure PrimList =
 	define (* inline *) @map-w = List.map;
 	define (* inline *) @append-w = List.append;
 	define (* inline *) @filter-w = List.filter;
+	define (* inline *) @partition-w = List.partition;
       )
 
     in
@@ -60,6 +61,11 @@ structure PrimList =
       define (* inline *) @filter (f : fun(any / exh -> bool), ls : list / exh : exh) : list =
 	  let filter : fun (list / exh -> list) = @filter-w (f / exh)
           apply filter (ls / exh)
+	;
+
+      define (* inline *) @partition (f : fun(any / exh -> bool), ls : list / exh : exh) : [list,list] =
+	  let partition : fun (list / exh -> [list,list]) = @partition-w (f / exh)
+          apply partition (ls / exh)
 	;
 
     )
