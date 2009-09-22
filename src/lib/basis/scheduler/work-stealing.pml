@@ -156,6 +156,7 @@ structure WorkStealing (* :
 	      do assert_fail()
 	      throw exh (Fail(@"WorkStealing.@designated-worker: impossible"))
 	    cont schedulerLoop (self : vproc, deque : D.deque, sign : PT.signal) =
+              let vpId : int = VProc.@vproc-id (self)
               let workerFLS : FLS.fls = FLS.@get ()
 	      cont dispatch (thd : ImplicitThread.thread) = 
 (*do ccall M_Print ("dispatch\n")*)
@@ -179,6 +180,7 @@ structure WorkStealing (* :
 		  cont foundWork (self : vproc, thds : (* ImplicitThread.thread *) List.list) =
 		    do D.@add-list-from-atomic (self, deque, thds)
 		    do @set-assigned-deque-from-atomic (self, assignedDeques, deque / exh)
+		    do Arr.@update (idle, vpId, false / exh)
 	            throw schedulerLoop (self, deque, PT.STOP)
 		(* try to find work for the given vproc. the result is a list of stolen work. *)
 		  fun findRemoteWork (self : vproc) : List.list =
@@ -233,9 +235,7 @@ structure WorkStealing (* :
 			   * spin wait for a while so that we avoid flooding busy workers by making
 			   * too many steal attempts.
 			   *)
-			    do SchedulerAction.@atomic-end (self)
-                            let vpId : int = VProc.@vproc-id (self)
-                            do Arr.@update (idle, vpId, true / exh)
+			    do SchedulerAction.@atomic-end (self)                            
 			    let reset : bool = apply waitFn ()
                             do case reset
 				of true =>
@@ -243,8 +243,7 @@ structure WorkStealing (* :
                                    return ()
 				 | false =>
 				   return()
-                               end
-                            do Arr.@update (idle, vpId, false / exh)
+                               end                            
 			    throw findRemoteWorkLp (0)
 			else
 			    throw findRemoteWorkLp (I32Add(nTries, 1))
@@ -255,7 +254,8 @@ structure WorkStealing (* :
                   let thd : Option.option = D.@pop-new-end-from-atomic (self, deque)
 		  case thd
 		   of Option.NONE =>
-		      (* there is no local work *)			    
+		      (* there is no local work *)
+		      do Arr.@update (idle, vpId, true / exh)
 		      throw findRemoteWorkLp (0)
 		    | Option.SOME (thd : ImplicitThread.thread) =>
 		      throw dispatch (thd)
