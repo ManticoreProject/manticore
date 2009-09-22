@@ -93,6 +93,7 @@ structure WorkStealing (* :
       (* send a thief from thiefVP to steal from victimVP. the result list is the list of stolen threads. *)
 	define @thief-from-atomic (thiefVP : vproc, victimVP : vproc, workGroupId : UID.uid)
 								      : (* ImplicitThread.thread *) List.list =
+(*do ccall M_Print ("thief\n")*)
 	    do assert (NotEqual (thiefVP, victimVP))
 	  (* communication channel used to pass the result of the steal from the victim vproc back to the
 	   * thief. the channel is initially nil, but once the steal attempt completes the channel is
@@ -145,36 +146,10 @@ structure WorkStealing (* :
 	    apply wait ()
 	  ;
 
-      (* this hlop provides a mechanism for busy waiting. the input represents the quantity
-       * log_2(maximum number of cycles to wait). the function that we return waits for an
-       * exponentially increasing number of cycles each time it is invoked, until the maximum
-       * wait period is reached, at which time the waiting period is reset and the function
-       * returns true. for example, supposing maxSpinCyclesLg=2, we have
-       *   f()=false (wait for 2 cycles); f()=false (wait for 4 cycles); f()=true (wait for 0 cycles) ...
-       *)
-	define inline @mk-wait-fun (maxSpinCyclesLg : int) : fun( / -> bool) =
-	    let spinCyclesLg : ![int] = alloc (1)
-            let spinCyclesLg : ![int] = promote (spinCyclesLg)
-	    fun doit () : bool =
-		let spinCycles : int = I32LSh (1, #0(spinCyclesLg))
-                fun spin (i : int) : () =
-		    if I32Lt (i, spinCycles) then
-			return ()
-		    else
-			apply spin (I32Add (i, 1))
-		do apply spin (0)
-		if I32Lte (#0(spinCyclesLg), maxSpinCyclesLg) then
-		    do #0(spinCyclesLg) := I32Add (#0(spinCyclesLg), 1)
-		    return (true)
-		else
-		    do #0(spinCyclesLg) := 1
-		    return (false)
-	    return (doit)
-	  ;
-
 	define @new-worker (workGroupId : UID.uid, 
 			    isTerminated : fun (/ -> bool), 
   		            assignedDeques : Arr.array,
+		            idle : (* bool *) Arr.array,
                             pickVictim : fun (vproc / -> (* [vproc] *) Option.option)
 			  / exh : exh)                           : cont (vproc, ImplicitThread.worker) =
 	    cont impossible () = 
@@ -183,6 +158,7 @@ structure WorkStealing (* :
 	    cont schedulerLoop (self : vproc, deque : D.deque, sign : PT.signal) =
               let workerFLS : FLS.fls = FLS.@get ()
 	      cont dispatch (thd : ImplicitThread.thread) = 
+(*do ccall M_Print ("dispatch\n")*)
 		cont act (sign : PT.signal) = throw schedulerLoop (self, deque, sign)
 		do @set-assigned-deque-from-atomic (self, assignedDeques, deque / exh)
 		do ImplicitThread.@run-from-atomic (self, act, thd / exh)
@@ -220,10 +196,18 @@ structure WorkStealing (* :
 			       (* no victims currently available *)
 			       return (List.nil)
 			     | Option.SOME (victimVP : [vproc]) =>
-			       @thief-from-atomic (self, #0(victimVP), workGroupId)
+                               let victimVP : vproc = #0(victimVP)
+			       let victimId : int = VProc.@vproc-id (victimVP)
+			       let idle : bool = Arr.@sub (idle, victimId / exh)
+			       case idle
+				of true =>
+				   return (List.nil)
+				 | false =>
+				   @thief-from-atomic (self, victimVP, workGroupId)
+                               end
 			   end		    
 		       end
-		  let waitFn : fun (/ -> bool) = @mk-wait-fun (10)
+		  let waitFn : fun (/ -> bool) = SpinWait.@mk-spin-wait-fun (15)
                 (* loop until work appears on the local deque, or a steal attempt succeeds *)
 		  cont findRemoteWorkLp (nTries : int) =
 		    let self : vproc = SchedulerAction.@atomic-begin ()
@@ -245,12 +229,22 @@ structure WorkStealing (* :
 		      (* our steal attempt failed *)
 		        let nVProcs : int = VProc.@num-vprocs ()
 			if I32Gt (nTries, nVProcs) then
-			  (* we've exceeded the maximum number of consecutive steal attempts. now we
-			   * spin wait for a while so that we avoid flooding busy workers steal
-			   * attempts.
+			  (* this worker exceeded its maximum number of consecutive steal attempts. now we
+			   * spin wait for a while so that we avoid flooding busy workers by making
+			   * too many steal attempts.
 			   *)
 			    do SchedulerAction.@atomic-end (self)
-			    let cycleComplete : bool = apply waitFn ()  
+                            let vpId : int = VProc.@vproc-id (self)
+                            do Arr.@update (idle, vpId, true / exh)
+			    let reset : bool = apply waitFn ()
+                            do case reset
+				of true =>
+				   do SchedulerAction.@sleep (300000:long)
+                                   return ()
+				 | false =>
+				   return()
+                               end
+                            do Arr.@update (idle, vpId, false / exh)
 			    throw findRemoteWorkLp (0)
 			else
 			    throw findRemoteWorkLp (I32Add(nTries, 1))
@@ -352,8 +346,9 @@ structure WorkStealing (* :
 			return (Option.SOME (alloc (victimVP)))
 	    let nVProcs : int = VProc.@num-vprocs ()
 	    let assignedDeques : Arr.array = Arr.@array (nVProcs, enum(0):any / exh)
+            let idle : Arr.array = Arr.@array (nVProcs, false / exh)
 	    let initWorker : cont (vproc, ImplicitThread.worker) = 
-			     @new-worker (uid, isTerminated, assignedDeques, pickVictim / exh)
+			     @new-worker (uid, isTerminated, assignedDeques, idle, pickVictim / exh)
 	    fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
 		do @spawn-thread (thd / exh)
 		return (UNIT)
