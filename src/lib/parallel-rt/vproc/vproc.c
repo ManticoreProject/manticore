@@ -435,7 +435,7 @@ Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
 
 #ifndef NDEBUG
     if (DebugFlg)
-        SayDebug ("[%2d] VProcNanosleep for %lu seconds and %lu nanoseconds\n", 
+        SayDebug ("[%2d] VProcNanosleep for %llu seconds and %llu nanoseconds\n", 
 	    vp->id, (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec);
 #endif
 
@@ -456,11 +456,12 @@ Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
     MutexUnlock (&(vp->lock));
 
 #ifndef NDEBUG
-      SayDebug("[%2d] VProcNanosleep exiting (awoken by %s)\n", vp->id, 
-	       status == 0          ? "another vproc"
-	    : (status == ETIMEDOUT  ? "timeout"
-	    : (status == EINTR      ? "interrupt" 
-	    : "an error")));
+    if (DebugFlg)
+	SayDebug("[%2d] VProcNanosleep exiting (awoken by %s)\n", vp->id, 
+		 status == 0          ? "another vproc"
+	      : (status == ETIMEDOUT  ? "timeout"
+	      : (status == EINTR      ? "interrupt" 
+	      : "an error")));
 #endif
     
     return ManticoreBool (status == 0);
