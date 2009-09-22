@@ -18,34 +18,43 @@ structure GlobalBFSScheduler (* :
     _primcode (
 
       define @new-worker (readyQ : LockedQueue.queue / exh : exh) : cont (vproc, ImplicitThread.worker) =
-	  cont schedulerLoop (self : vproc, s : PT.signal) =
-            cont run (thd : ImplicitThread.thread) = 
-              cont act (s : PT.signal) = throw schedulerLoop (self, s)
-              do ImplicitThread.@run-from-atomic (self, act, thd / exh)
-              throw exh (Match)
-
-	    cont dispatch () =
-	      let thd : Option.option = LockedQueue.@dequeue-from-atomic (readyQ)
-	      case thd
-	       of Option.NONE =>
-                  let _ : vproc = SchedulerAction.@yield-in-atomic (self)
-		  throw dispatch ()
-		| Option.SOME(thd : ImplicitThread.thread) =>
-		  throw run (thd)
-	      end
-
-	   case s
-	    of PT.STOP =>
-	       throw dispatch ()
-	     | PT.PREEMPT(k : PT.fiber) =>
-	       let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
-               let _ : vproc = SchedulerAction.@yield-in-atomic (self)
-	       throw run (thd)
-	     | _ => 
-	       throw exh (Match)
-	   end
-
 	  cont initWorker (self : vproc, worker : ImplicitThread.worker) =
+	    let waitFn : fun (/ -> bool) = SpinWait.@mk-spin-wait-fun (15)
+	    cont schedulerLoop (self : vproc, s : PT.signal) =
+	      cont run (thd : ImplicitThread.thread) = 
+		cont act (s : PT.signal) = throw schedulerLoop (self, s)
+		do ImplicitThread.@run-from-atomic (self, act, thd / exh)
+		throw exh (Match)
+
+	      cont dispatch () =
+		let thd : Option.option = LockedQueue.@dequeue-from-atomic (readyQ)
+		case thd
+		 of Option.NONE =>
+		    let _ : vproc = SchedulerAction.@yield-in-atomic (self)
+		    let reset : bool = apply waitFn ()
+                    do case reset
+			of true =>
+			   do SchedulerAction.@sleep (300000:long)
+                           return ()
+			 | false =>
+			   return()
+                       end
+		    throw dispatch ()
+		  | Option.SOME(thd : ImplicitThread.thread) =>
+		    throw run (thd)
+		end
+
+	     case s
+	      of PT.STOP =>
+		 throw dispatch ()
+	       | PT.PREEMPT(k : PT.fiber) =>
+		 let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
+		 let _ : vproc = SchedulerAction.@yield-in-atomic (self)
+		 throw run (thd)
+	       | _ => 
+		 throw exh (Match)
+	     end
+
 	    throw schedulerLoop (self, PT.STOP)
 
 	  return (initWorker)
