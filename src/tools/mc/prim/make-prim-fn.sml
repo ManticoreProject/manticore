@@ -195,7 +195,7 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("ArrStoreF64",	mk Prim3 (P.ArrStoreF64,	(adrTy, i32, f64),	uTy)),
 		("ArrStore",	mk Prim3 (P.ArrStore,		(adrTy, i32, f64),	uTy)),
 		("I32FetchAndAdd", mk Prim2 (P.I32FetchAndAdd,	(i32, i32),		i32)),
-		("I64FetchAndAdd", mk Prim2 (P.I32FetchAndAdd,	(i64, i64),		i64)),
+		("I64FetchAndAdd", mk Prim2 (P.I64FetchAndAdd,	(i64, i64),		i64)),
 		("CAS",		mk Prim3 (P.CAS,		(adrTy, aTy, aTy),	aTy)),
 		("Pause",	mk0 (P.Pause,						uTy)),
 		("FenceRead",	mk0 (P.FenceRead,					uTy)),
