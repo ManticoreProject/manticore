@@ -31,6 +31,7 @@ structure GlobalBFSScheduler (* :
 		case thd
 		 of Option.NONE =>
 		    let _ : vproc = SchedulerAction.@yield-in-atomic (self)
+                    do SchedulerAction.@atomic-end (self)
 		    let reset : bool = apply waitFn ()
                     do case reset
 			of true =>
@@ -39,6 +40,7 @@ structure GlobalBFSScheduler (* :
 			 | false =>
 			   return()
                        end
+                    let _ : vproc = SchedulerAction.@atomic-begin ()
 		    throw dispatch ()
 		  | Option.SOME(thd : ImplicitThread.thread) =>
 		    throw run (thd)
