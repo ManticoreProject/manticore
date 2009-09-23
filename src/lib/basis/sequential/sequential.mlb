@@ -45,3 +45,7 @@ left-priorityq.pml
 
 (* prevasive definitions *)
 pervasives.pml
+ann "cpp" "../include/prim.def"
+in
+    ../misc/logging.pml
+end

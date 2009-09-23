@@ -22,14 +22,10 @@ structure Logging =
 	extern void ASM_GetTimeStamp (void *);
         extern void SwapLogBuffers (void *, void *);
 
-	define @NextLogEventSlow (vp : vproc) : () =
-	    do ccall SwapLogBuffers(vp, logBufAdr)
-	    return()
-	  ;
-
-      (* return a pointer to the next event in the buffer *)
-	define inline @NextLogEvent (vp : vproc, evt : int) : addr(any) =
+	define @NextLogEventSlow (vp : vproc) : addr(any) =
             fun lp () : addr(any) =
+	    	let logBufAdr : addr(any) = vpload(LOG, vp)
+		do ccall SwapLogBuffers (vp, logBufAdr)
 	    	let logBufAdr : addr(any) = vpload(LOG, vp)
 		let nextAdr : addr(any) = AdrAddI32(logBufAdr, LOGBUF_NEXT_OFFSET)
                 let nextAdr : addr(int) = (addr(int))nextAdr
@@ -41,9 +37,24 @@ structure Logging =
 		    let bufAddr : addr(any) = AdrAddI32((addr(any))nextAdr, offset)
 		    return (bufAddr)
 		  else
-		    do @NextLogEventSlow (vp)
                     apply lp ()
             apply lp ()
+	  ;
+
+      (* return a pointer to the next event in the buffer *)
+	define inline @NextLogEvent (vp : vproc, evt : int) : addr(any) =
+	    let logBufAdr : addr(any) = vpload(LOG, vp)
+	    let nextAdr : addr(any) = AdrAddI32(logBufAdr, LOGBUF_NEXT_OFFSET)
+	    let nextAdr : addr(int) = (addr(int))nextAdr
+	    let index : int = I32FetchAndAdd(nextAdr, 1)
+	    (* in *)
+	      if I32Lt(index, LOGBUF_SZ) then
+		let offset : int =
+		      I32Add(LOGBUF_START_OFFSET, I32Mul(LOG_EVENT_SZB, index))
+		let bufAddr : addr(any) = AdrAddI32((addr(any))nextAdr, offset)
+		return (bufAddr)
+	      else
+		@NextLogEventSlow (vp)
           ;
 
       (* allocate a new event record and initialize its timestamp
