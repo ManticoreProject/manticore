@@ -22,6 +22,11 @@ structure Logging =
 	extern void ASM_GetTimeStamp (void *);
         extern void SwapLogBuffers (void *, void *);
 
+	define @NextLogEventSlow (vp : vproc) : () =
+	    do ccall SwapLogBuffers(vp, logBufAdr)
+	    return()
+	  ;
+
       (* return a pointer to the next event in the buffer *)
 	define inline @NextLogEvent (vp : vproc, evt : int) : addr(any) =
             fun lp () : addr(any) =
@@ -36,7 +41,7 @@ structure Logging =
 		    let bufAddr : addr(any) = AdrAddI32((addr(any))nextAdr, offset)
 		    return (bufAddr)
 		  else
-		    do ccall SwapLogBuffers (vp, logBufAdr)
+		    do @NextLogEventSlow (vp)
                     apply lp ()
             apply lp ()
           ;
