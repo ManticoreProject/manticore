@@ -100,6 +100,7 @@ class StateGroup : public Group {
 
     int StartState () const { return this->_start; }
     int NextState (int st, EventDesc *evt) const;
+    int NumStates () const { return this->_stateNames.size(); }
 
     const char *StateName (int i) const	{ return this->_stateNames.at(i); }
     const char *StateColor (int i) const { return this->_stateColors.at(i); }
