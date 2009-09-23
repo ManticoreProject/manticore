@@ -26,7 +26,7 @@
     Pie *ret = [[Pie alloc] init];
 
 
-    for (int i = 0; i < g->NStates(); ++i)
+    for (int i = 0; i < g->NumStates(); ++i)
     {
 	PieSlice *ps = [[PieSlice alloc] initWithFraction:0.0
 					      andConsumer:[NSNumber numberWithInt:i]];

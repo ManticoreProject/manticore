@@ -452,12 +452,11 @@ uint64_t g_counter = 0;
     uint64_t lst = logInterval->width + fst;
     Group *g = Detail_Type(d);
     event *c, *b;
-    switch (g->Kind())
-    {
-	case EVENT_GROUP:
+    switch (g->Kind()) {
+        case EVENT_GROUP: {
 	    uint64_t a = Event_Time(*Detail_Simple_value(d));
 	    return (fst <= a && a <= lst);
-	    break;
+	  } break;
 	case INTERVAL_GROUP:
 	    c = Detail_Interval_start(d);
 	    b = Detail_Interval_end(d);

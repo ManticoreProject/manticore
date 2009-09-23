@@ -75,19 +75,17 @@
 	    self.value = [NSString stringWithFormat:
 			  @"%qu", argValue.id];
 	    break;
-    	case STR0:
-	    self.size = [NSString stringWithFormat:
-			 @"%d chars", (MAX_STRLEN + 1)];
-	    self.type = @"fixed length string";
-	    const char *s = (const char *) malloc(MAX_STRLEN + 1);
-	    memcpy((void *)s, &(argValue.str), MAX_STRLEN + 1);
-	    NSString *S = [NSString stringWithCString:s
-					     encoding:NSASCIIStringEncoding];
-	    
-	    self.value = S;
-	    break;
+    	case STR0: {
+		self.size = [NSString stringWithFormat: @"%d chars", (MAX_STRLEN + 1)];
+		self.type = @"fixed length string";
+		const char *s = (const char *) malloc(MAX_STRLEN + 1);
+		memcpy((void *)s, &(argValue.str), MAX_STRLEN + 1);
+		NSString *S = [NSString stringWithCString:s encoding:NSASCIIStringEncoding];
+		self.value = S;
+	    } break;
 	default:
 	    [Exceptions raise:@"unrecognized argument type found in event description"];
+	    break;
     }
     return self;
 }

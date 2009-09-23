@@ -4,9 +4,6 @@
 
  */
 
-
-
-
 #import "LogData.h"
 #import "log-file.h"
 #import "VProc.h"

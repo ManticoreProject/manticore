@@ -8,7 +8,6 @@
 
 #import <Cocoa/Cocoa.h>
 #import "VProcMaps.h"
-struct _LogFileHeader_t;
 struct LogFileDesc;
 
 /// Represents the data in a logfile
@@ -18,7 +17,7 @@ struct LogFileDesc;
  **/
 @interface LogData : NSObject {
     NSString *filename; ///< Name of the represented log file
-    struct _LogFileHeader_t *header; ///< the header of the log file, as defined in log-file.h
+    struct struct_logfilehdr *header; ///< the header of the log file, as defined in log-file.h
 
     NSMutableArray *vProcs; ///< an array containing header.nVProcs VProcs sorted by vpId
     DependentMap *dependentMap;
