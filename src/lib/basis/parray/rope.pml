@@ -331,7 +331,16 @@ structure Rope (* : ROPE *) = struct
 
   (* balanceIfNecessary : 'a rope -> 'a rope *)
   (* balance a rope only when it is unbalanced *)
-    fun balanceIfNecessary r = if isBalanced r then r else balance r
+    fun balanceIfNecessary r = 
+     if isBalanced r 
+        then r 
+        else let
+          val _ = Logging.logRopeRebalanceBegin (length r)
+	  val r' = balance r
+	  val _ = Logging.logRopeRebalanceEnd (length r)
+	  in
+	     r'
+	  end
 
   (* ***** ROPE CONSTRUCTION ***** *)
 

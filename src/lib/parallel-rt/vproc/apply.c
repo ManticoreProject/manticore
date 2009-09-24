@@ -11,6 +11,7 @@
 #include "request-codes.h"
 #include "scheduler.h"
 #include "heap.h"
+#include "inline-log.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
@@ -95,6 +96,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		exnCont = M_UNIT;
 		vp->atomic = M_TRUE;
 		vp->sigPending = M_FALSE;
+		LogPreemptSignal(vp);
 	    }
 	    else {
 	      /* setup the return from GC */

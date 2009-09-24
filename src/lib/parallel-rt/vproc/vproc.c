@@ -357,6 +357,7 @@ void VProcPreempt (VProc_t *self, VProc_t *vp)
     }
 #endif
   */
+    LogPreemptVProc (vp, vp->id);
     SetLimitPtr (vp, 0);
 }
 
