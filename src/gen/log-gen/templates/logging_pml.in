@@ -69,7 +69,7 @@ structure Logging =
 
       (* generate a unique event ID. Return the new ID. *)
 	define @NewEventId (vp : vproc) : long =
-	    let eidPtr : addr(long) = vpload(EVENT_ID, vp)
+	    let eidPtr : addr(long) = vpaddr(EVENT_ID, vp)
 	    return (I64FetchAndAdd(eidPtr, 1:long))
 	  ;
 
