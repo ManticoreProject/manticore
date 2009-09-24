@@ -56,7 +56,7 @@
  *	desc	-- English-language description of event
  */
 {
-  "date" : "0x20090721",
+  "date" : "0x20090923",
   "version" : [0, 0, 0],
   "events" : [
       { "name" : "VProcStartIdle",
@@ -81,11 +81,19 @@
       },
       { "name" : "VProcWakeup",
 	"args" : [],
-	"desc" : "wakeup vproc from sleep"
+	"desc" : "wakeup vproc from sleep/idle"
+      },
+      { "name" : "PreemptVProc",
+	"args" : [
+	    {"name" : "vpid", "ty" : "int", "desc" : "ID of the vproc being preempted"}
+	  ],
+	"attrs" : ["rt"],
+	"desc" : "time-slice preemption of a vproc"
       },
       { "name" : "PreemptSignal",
 	"args" : [],
-	"desc" : "preemption signal occurs"
+	"attrs" : ["rt"],
+	"desc" : "preemption signal received"
       },
       { "name" : "GCSignal",
 	"args" : [
@@ -165,28 +173,7 @@
 	"attrs" : ["rt"],
 	"desc" : "object promotion ends"
       },
-      { "name" : "RTPreemption",
-	"args" : [],
-	"desc" : "preemption handler invoked"
-      },
-      { "name" : "RTFuture1Spawn",
-	"args" : [
-	    {"name" : "fut", "ty" : "addr", "desc" : ""}
-	  ],
-	"desc" : "spawned future"
-      },
-      { "name" : "RTFuture1Touch",
-	"args" : [
-	    {"name" : "fut", "ty" : "addr", "desc" : ""}
-	  ],
-	"desc" : "touched future"
-      },
-      { "name" : "RTFuture1Steal",
-	"args" : [
-	    {"name" : "fut", "ty" : "addr", "desc" : ""}
-	  ],
-	"desc" : "stole future"
-      },
+    /* CML thread events */
       { "name" : "ThdSpawn",
 	"args" : [
 	    {"name" : "id", "ty" : "new-id", "desc" : ""}
@@ -206,13 +193,150 @@
 	    {"name" : "id", "ty" : "id", "desc" : ""}
 	  ],
 	"attrs" : ["pml"],
-	"desc" : "local thread spawned"
+	"desc" : "thread body starts execution"
       },
       { "name" : "ThdExit",
 	"args" : [],
 	"attrs" : ["pml"],
-	"desc" : "local thread spawned"
-      }
+	"desc" : "thread exits"
+      },
+    /* CML message-passing events */
+      { "name" : "MsgSendOffered",
+	"args" : [
+	    {"name" : "msgid", "ty" : "new-id", "desc" : "unique ID of message"}
+	  ],
+	"attrs" : ["src", "pml"],
+	"desc" : "blocked message send operation"
+      },
+      { "name" : "MsgSendResumed",
+	"args" : [
+	    {"name" : "mgid", "ty" : "id", "desc" : "unique ID of message"}
+	  ],
+	"attrs" : ["pml"],
+	"desc" : "resumed message send operation"
+      },
+      { "name" : "MsgRecv",
+	"args" : [
+	    {"name" : "msgid", "ty" : "id", "desc" : "unique ID of received message"}
+	  ],
+	"attrs" : ["pml"],
+	"desc" : "matching message receive operation"
+      },
+      { "name" : "MsgRecvOffered",
+	"args" : [
+	    {"name" : "opid", "ty" : "new-id", "desc" : "unique ID of recv operation"}
+	  ],
+	"attrs" : ["src", "pml"],
+	"desc" : "blocked message receive operation"
+      },
+      { "name" : "MsgRecvResumed",
+	"args" : [
+	    {"name" : "msgid", "ty" : "id", "desc" : "unique ID of message"},
+	    {"name" : "opid", "ty" : "id", "desc" : "unique ID of recv operation"}
+	  ],
+	"attrs" : ["pml"],
+	"desc" : "blocked message receive operation"
+      },
+      { "name" : "MsgSend",
+	"args" : [
+	    {"name" : "msgid", "ty" : "new-id", "desc" : "unique ID of message"},
+	    {"name" : "id", "ty" : "id", "desc" : "unique ID of recv operation"}
+	  ],
+	"attrs" : ["src", "pml"],
+	"desc" : "matching message send operation"
+      },
+    /* implicit threading/work-stealing events */
+      { "name" : "WSInit",
+	"args" : [
+	    {"name" : "wgid", "ty" : "new-id", "desc" : "unique ID of work group"}
+	 ],
+        "attrs" : ["src", "pml"],
+	"desc" : "work-stealing group initialization"
+      },
+      { "name" : "WSWorkerInit",
+        "args" : [
+	    {"name" : "wid", "ty" : "new-id", "desc" : "unique ID of the worker"},
+	    {"name" : "wgid", "ty" : "id", "desc" : "unique ID of the work group"}
+	],
+       "attrs" : ["src", "pml"],
+       "desc" : "work-stealing worker initialization"
+      },
+      { "name" : "WSExecute",
+       "args" : [
+	    {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
+	],
+       "attrs" : ["pml"],
+       "desc" : "work stealing execution of work items"
+      },
+      { "name" : "WSPreempted",
+        "args" : [
+	    {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
+	],
+       "attrs" : ["pml"],
+       "desc" : "work-stealing worker has been preempted"
+      },
+     { "name" : "WSThiefSend",
+       "args" : [
+	    {"name" : "tid", "ty" : "new-id", "desc" : "unique ID of the thief"},
+	    {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
+	],
+       "attrs" : ["src", "pml"],
+       "desc" : "work-stealing thief send"
+      },
+      { "name" : "WSThiefBegin",
+	"args" : [
+	     {"name" : "tid", "ty" : "id", "desc" : "unique ID of the thief"},
+	     {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
+	 ],
+	"attrs" : ["pml"],
+	"desc" : "work-stealing thief begins executing on the victim vproc"
+       },
+      { "name" : "WSThiefEnd",
+	"args" : [
+	     {"name" : "tid", "ty" : "id", "desc" : "unique ID of the thief"},
+	     {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
+	 ],
+	"attrs" : ["pml"],
+	"desc" : "work-stealing thief ends executing on the victim vproc"
+       },
+       { "name" : "WSThiefSuccessful",
+	 "args" : [
+	      {"name" : "tid", "ty" : "id", "desc" : "unique ID of the thief"},
+	      {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
+	  ],
+	 "attrs" : ["pml"],
+	 "desc" : "work-stealing thief successfully stole a work item"
+	},
+       { "name" : "WSThiefUnsuccessful",
+	 "args" : [
+	      {"name" : "tid", "ty" : "id", "desc" : "unique ID of the thief"},
+	      {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
+	  ],
+	 "attrs" : ["pml"],
+	 "desc" : "work-stealing thief failed to steal a work item"
+	},
+       { "name" : "WSSleep",
+	 "args" : [
+	      {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
+	  ],
+	 "attrs" : ["pml"],
+	 "desc" : "work-stealing worker goes to sleep"
+	},
+    /* rope events */
+       { "name" : "RopeRebalanceBegin",
+	 "args" : [
+	      {"name" : "length", "ty" : "int", "desc" : "size of the rope"}
+	  ],
+	 "attrs" : ["pml"],
+	 "desc" : "A rope is being rebalanced."
+       },
+       { "name" : "RopeRebalanceEnd",
+	 "args" : [
+	      {"name" : "length", "ty" : "int", "desc" : "size of the rope"}
+	  ],
+	 "attrs" : ["pml"],
+	 "desc" : "A rope is finished being rebalanced."
+       }
     ]
 }
 

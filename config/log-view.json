@@ -136,11 +136,6 @@
 		}
 	      ]
 	  },
-	  { "desc" : "Runtime events",
-	    "kind" : "GROUP",
-	    "events" : ["RTPreemption",  "RTFuture1Spawn", "RTFuture1Touch", "RTFuture1Steal"],
-	    "groups" : []
-	  },
 	  { "desc" : "Thread events",
 	    "kind" : "GROUP",
 	    "events" : ["ThdExit"],
@@ -156,6 +151,65 @@
 		  "dst"  : "ThdStart"
 		}
 	      ]
+	  },
+	  { "desc" : "Ropes",
+	    "kind" : "GROUP",
+	    "events" : [ ],
+	    "groups" : [
+		{ "desc" : "Rope rebalancing",
+		  "kind" : "INTERVAL",
+		  "start"  : "RopeRebalanceBegin",
+		  "end"  : "RopeRebalanceEnd"
+		}
+	      ]
+	   },
+	  { "desc" : "Work stealing worker status",
+	    "kind" : "STATE",
+	    "start" : "Inactive",
+	    "states" : ["Inactive", "Busy", "Thief", "Sleeping"],
+	    "transitions" : [
+		["WSWorkerInit", "Inactive"],
+		["WSExecute", "Busy"],
+		["WSPreempted", "Inactive"],
+		["WSThiefSend", "Thief"],
+		["WSSleep", "Sleeping"]
+	      ]
+	   },
+	  { "desc" : "Work stealing thief events",
+	    "kind" : "GROUP",
+	    "events" : [ ],
+	    "groups" : [
+		{ "desc"  : "Thief send",
+		  "kind"  : "DEPENDENT",
+		  "src"   : "WSThiefSend",
+		  "dst"   : "WSThiefBegin"
+		},
+		{ "desc"  : "Thief execution",
+		  "kind"  : "INTERVAL",
+		  "start" : "WSThiefBegin",
+		  "end"   : "WSThiefEnd"
+		},
+		{ "desc"  : "Thief total time to successfully steal",
+		  "kind"  : "INTERVAL",
+		  "start" : "WSThiefSend",
+		  "end"   : "WSThiefSuccessful"
+		},
+		{ "desc"  : "Thief total time to attempt a steal",
+		  "kind"  : "INTERVAL",
+		  "start" : "WSThiefSend",
+		  "end"   : "WSThiefUnsuccessful"
+		},
+		{ "desc"  : "Steal",
+		  "kind"  : "DEPENDENT",
+		  "src"   : "WSThiefEnd",
+		  "dst"   : "WSThiefSuccessful"
+		},
+		{ "desc"  : "Failed steal attempt",
+		  "kind"  : "DEPENDENT",
+		  "src"   : "WSThiefEnd",
+		  "dst"   : "WSThiefUnsuccessful"
+		}
+            ]
 	  }
 	]
     }
