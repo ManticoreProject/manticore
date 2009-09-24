@@ -53,10 +53,11 @@ fun quickhull' (a, b, S) =
     else
 	let
 	    val c = farthest (a, b, S)  (* c must also be on the convex hull *)
+	    val (rightOfac, rightOfcb) = (| pointsRightOf (a, c, S), pointsRightOf (c, b, S) |)
 	in
 	    concatP ([| c |], 
-		     concatP (| quickhull' (a, c, pointsRightOf (a, c, S)), 
-			        quickhull' (c, b, pointsRightOf (c, b, S)) |))
+		     concatP (| quickhull' (a, c, rightOfac), 
+			        quickhull' (c, b, rightOfcb) |))
 	end
 
 (* takes a set of 2d points and returns the convex hull for those points *)	
@@ -72,8 +73,9 @@ fun quickhull S =
 	    val (x0, y0) = (| reduceP (belowAndLeft, p0, S), reduceP (aboveAndRight, p0, S) |)
 	    (* remove x0 and y0 from S *)
 	    val S = filterP (fn p => not (samePoint (p, x0) orelse samePoint (p, y0)), S)
+	    val (rightOfx0y0, rightOfy0x0) = (| pointsRightOf (x0, y0, S), pointsRightOf (y0, x0, S) |)
 	in
 	    concatP ([| x0, y0 |], 
-		     concatP (| quickhull' (x0, y0, pointsRightOf (x0, y0, S)),
-		                quickhull' (y0, x0, pointsRightOf (y0, x0, S)) |))
+		     concatP (| quickhull' (x0, y0, rightOfx0y0),
+		                quickhull' (y0, x0, rightOfy0x0) |))
 	end
