@@ -47,7 +47,6 @@ structure GenLoggingPML : GENERATOR =
 	  fun genCopy ([], _) = ()
 	    | genCopy ((loc, ty)::r, i) = let
 		val param = "a" ^ Int.toString i
-		val loc = loc - Sig.argStart
 		val items = [F.WORD loc, F.STR param]
 		in
 		  pr "\t    ";
