@@ -49,7 +49,7 @@ typedef union {			    // union of timestamp reps.
  * and 32-bit builds, so be careful about alignment and make sure that
  * the total size is a multiple of 8.
  */
-typedef struct {
+typedef struct struct_logfilehdr {
     uint64_t		magic;		// to identify log files
     uint32_t		majorVersion;
     uint32_t		minorVersion;

@@ -145,9 +145,7 @@ if test x"$ac_cv_func_posix_memalign" != xyes ; then
     AC_CHECK_FUNCS(valloc)
   fi
 fi
-dnl
-dnl FIXME: clock_gettime requires librt on linux, so we need a special test for it.
-dnl
+
 AC_CHECK_FUNCS(mach_absolute_time)
 AC_CHECK_TYPES([struct timespec])
 
@@ -169,6 +167,7 @@ if test "$ac_cv_func_clock_gettime" = "no" ; then
   LIBS=$save_LIBS
 fi
 
+AC_CHECK_FUNCS(pthread_getcpuclockid)
 AC_CHECK_FUNCS(sigtimedwait nanosleep)
 
 dnl
