@@ -87,7 +87,7 @@
 	"args" : [
 	    {"name" : "vpid", "ty" : "int", "desc" : "ID of the vproc being preempted"}
 	  ],
-	"attrs" : ["rt"],
+	"attrs" : [],
 	"desc" : "time-slice preemption of a vproc"
       },
       { "name" : "PreemptSignal",
