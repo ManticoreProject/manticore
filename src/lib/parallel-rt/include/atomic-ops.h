@@ -74,7 +74,7 @@ STATIC_INLINE Word_t CompareAndSwapWord (volatile Word_t *ptr, Word_t key, Word_
     return __sync_val_compare_and_swap (ptr, key, new);
 }
 
-STATIC_INLINE void *CompareAndSwapPtr (volatile void **ptr, void *key, void *new)
+STATIC_INLINE void *CompareAndSwapPtr (void *volatile *ptr, void *key, void *new)
 {
     return __sync_val_compare_and_swap (ptr, key, new);
 }
@@ -153,7 +153,7 @@ STATIC_INLINE Word_t CompareAndSwapWord (volatile Word_t *ptr, Word_t old, Word_
     return result;
 }
 
-STATIC_INLINE void *CompareAndSwapPtr (volatile void **ptr, void *old, void *new)
+STATIC_INLINE void *CompareAndSwapPtr (void *volatile *ptr, void *key, void *new)
 {
     void *result;
 

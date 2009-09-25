@@ -210,7 +210,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
     assert ((vp->globNextW % WORD_SZB) == 0);
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_ALL)
-	SayDebug("[%2d] PromoteObj(%p, %p)\n", vp->id, vp, root);
+	SayDebug("[%2d] PromoteObj(%p, %p)\n", vp->id, (void *)vp, (void *)root);
 #endif
 
   /* NOTE: the following test probably ought to happen before the runtime
@@ -239,7 +239,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 #endif
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_ALL)
-	    SayDebug("[%2d]  ==> %p; %lld bytes\n", vp->id, root, nBytesCopied);
+	    SayDebug("[%2d]  ==> %p; %lld bytes\n", vp->id, (void *)root, nBytesCopied);
 #endif
     }
 #ifndef NDEBUG

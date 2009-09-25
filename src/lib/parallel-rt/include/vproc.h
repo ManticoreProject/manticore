@@ -33,9 +33,12 @@ struct struct_vproc {
     Value_t	stdExnCont;	//!< holds value of standard exception-cont. reg.
     Addr_t	allocPtr;	//!< allocation pointer
 			      /* logging support */
-    uint64_t	eventId;	//!< counter for generating event IDs; the
+/* NOTE: these volatile annotations are not required for the SWP branch */
+    volatile uint64_t
+		eventId;	//!< counter for generating event IDs; the
 				//!  top 8 bits of the counter hold the VProc ID.
-    LogBuffer_t	*log;	        //!< current buffer for logging events
+    volatile LogBuffer_t
+		*log;		//!< current buffer for logging events
     LogBuffer_t	*prevLog;       //!< previous buffer for logging events
 			      /* GC parameters */
     Addr_t	nurseryBase;	//!< Base address of current nursery area
