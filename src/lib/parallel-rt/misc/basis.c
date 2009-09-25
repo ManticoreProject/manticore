@@ -28,7 +28,7 @@ Value_t M_IntToString (int32_t n)
 Value_t M_LongToString (int64_t n)
 {
     char buf[32];
-    snprintf(buf, sizeof(buf), "%ld", n);
+    snprintf(buf, sizeof(buf), "%lld", n);
     return AllocString (VProcSelf(), buf);
 }
 
@@ -246,7 +246,7 @@ void M_PrintPtr (const char *name, void *ptr)
  */
 void M_PrintLong (int64_t n)
 {
-    Say("%ld", n);
+    Say("%lld", n);
 }
 
 /* M_PrintInt:

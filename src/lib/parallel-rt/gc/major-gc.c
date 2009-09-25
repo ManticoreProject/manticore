@@ -239,7 +239,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 #endif
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_ALL)
-	    SayDebug("[%2d]  ==> %p; %ld bytes\n", vp->id, root, nBytesCopied);
+	    SayDebug("[%2d]  ==> %p; %lld bytes\n", vp->id, root, nBytesCopied);
 #endif
     }
 #ifndef NDEBUG
@@ -253,10 +253,10 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	    Die("PromoteObj: unexpected from-space pointer %p\n", ValueToPtr(root));
 */
 	else if (IS_VPROC_CHUNK(cq->sts)) {
-	    Die("PromoteObj: unexpected remote pointer %p%p\n", ValueToPtr(root));
+	    Die("PromoteObj: unexpected remote pointer %p\n", ValueToPtr(root));
 	}
 	else if (cq->sts == FREE_CHUNK) {
-	    Die("PromoteObj: unexpected free-space pointer %p%p\n", ValueToPtr(root));
+	    Die("PromoteObj: unexpected free-space pointer %p\n", ValueToPtr(root));
 	}
     }
 #endif
