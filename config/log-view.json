@@ -86,7 +86,6 @@
 		  "kind" : "STATE",
 		  "start" : "Active",
 		  "states" : ["Active", "GC", "Idle", "Sleep"],
-/*		  "colors" : ["00ff0000", "0000ff00", "f0f00000", "ff000000"], */
 		  "transitions" : [
 		      ["VProcWakeup", "Active"],
 		      ["MinorGCStart", "GC"],	["MinorGCEnd", "Active"],
@@ -186,7 +185,7 @@
 		  "kind"  : "DEPENDENT",
 		  "src"   : "WSThiefSend",
 		  "dst"   : "WSThiefBegin"
-		},
+		}
 /*
 		{ "desc"  : "Thief execution",
 		  "kind"  : "INTERVAL",
