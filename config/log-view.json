@@ -86,6 +86,7 @@
 		  "kind" : "STATE",
 		  "start" : "Active",
 		  "states" : ["Active", "GC", "Idle", "Sleep"],
+/*		  "colors" : ["00ff0000", "0000ff00", "f0f00000", "ff000000"], */
 		  "transitions" : [
 		      ["VProcWakeup", "Active"],
 		      ["MinorGCStart", "GC"],	["MinorGCEnd", "Active"],
@@ -163,6 +164,7 @@
 		}
 	      ]
 	   },
+/*
 	  { "desc" : "Work stealing worker status",
 	    "kind" : "STATE",
 	    "start" : "Inactive",
@@ -175,6 +177,7 @@
 		["WSSleep", "Sleeping"]
 	      ]
 	   },
+*/
 	  { "desc" : "Work stealing thief events",
 	    "kind" : "GROUP",
 	    "events" : [ ],
@@ -184,6 +187,7 @@
 		  "src"   : "WSThiefSend",
 		  "dst"   : "WSThiefBegin"
 		},
+/*
 		{ "desc"  : "Thief execution",
 		  "kind"  : "INTERVAL",
 		  "start" : "WSThiefBegin",
@@ -199,6 +203,8 @@
 		  "start" : "WSThiefSend",
 		  "end"   : "WSThiefUnsuccessful"
 		},
+*/
+/*
 		{ "desc"  : "Steal",
 		  "kind"  : "DEPENDENT",
 		  "src"   : "WSThiefEnd",
@@ -209,6 +215,7 @@
 		  "src"   : "WSThiefEnd",
 		  "dst"   : "WSThiefUnsuccessful"
 		}
+*/
             ]
 	  }
 	]
