@@ -17,7 +17,7 @@ struct TaggedDetail_struct;
 @class GroupFilter;
 @class Summary;
 @class SummaryView;
-struct LogDescFile;
+struct LogFileDesc;
 
 /// Represents an interval of time in the log file
 struct LogInterval {
@@ -38,6 +38,8 @@ enum ZoomLevel {
  */
 @interface LogDoc : NSDocument {
     IBOutlet NSWindow *window; ///< The window object containing the LogView
+
+    struct LogFileDesc *logDesc;
 
     IBOutlet LogView *logView; ///< The most important view object
     IBOutlet LogData *logData; ///< The most important model object

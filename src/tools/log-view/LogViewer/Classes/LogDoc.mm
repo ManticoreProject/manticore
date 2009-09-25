@@ -1,7 +1,11 @@
-/** \file  LogDoc.mm
- * \author Korei Klein
- * \date 730/09
+/*! \file LogDoc.mm
  *
+ * \author Korei Klein
+ */
+
+/*
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
  */
 
 #import "LogDoc.h"
@@ -21,6 +25,11 @@
 #import "SummaryView.h"
 #import "Box.h"
 
+/* keep a cache of the log-file description structure.  Note that this
+ * code will have to be changed if we ever want to support multiple
+ * descriptions.
+ */
+static LogFileDesc *LFDCache = 0;
 
 /// Name of the nib file which contains the detail info view
 #define DETAIL_INFO_NIB_NAME ( @"DetailInfo" )
@@ -43,10 +52,9 @@
     return outlineViewDataSource;
 }
 
-static LogFileDesc *logDesc;
 - (LogFileDesc *)logDesc
 {
-    return logDesc;
+    return LFDCache;
 }
 
 - (IBAction)drewTicks:(LogView *)sender
@@ -148,15 +156,14 @@ static LogFileDesc *logDesc;
 @synthesize outlineView;
 @synthesize outlineViewDataSource;
 @synthesize logInterval;
-@synthesize logDesc;
 @synthesize enabled;
 
 
 #pragma mark Initializations
 + (void)initialize
 {
-    logDesc = LoadLogDesc(DEFAULT_LOG_EVENTS_PATH, DEFAULT_LOG_VIEW_PATH);
-    if (logDesc == NULL)
+    LFDCache = LoadLogDesc(DEFAULT_LOG_EVENTS_PATH, DEFAULT_LOG_VIEW_PATH);
+    if (LFDCache == 0)
     {
 	[Exceptions raise:@"Could not load the two log description files"];
     }
@@ -252,17 +259,16 @@ static LogFileDesc *logDesc;
 	{
 	    [Exceptions raise:@"LogDoc: did not have an initiailized detailInfoTarget"];
 	}
-	LogFileDesc *logDesc = self.logDesc;
+	LogFileDesc *lfd = self.logDesc;
 
 
 	// Because some of the UI is created programmatically and some of the UI is created
 	// in interface builder, it is necessary to do a small dance here to get things into the right places
 	{
 	    // Load the nib into memory and get its controller
-	    DetailInfoController *dic = [[DetailInfoController alloc] initWithNibName:DETAIL_INFO_NIB_NAME
+	    detailInfoController = [[DetailInfoController alloc] initWithNibName:DETAIL_INFO_NIB_NAME
 	    							      bundle:(NSBundle *)nil
-	    							     logDesc:logDesc];
-	    detailInfoController = dic;
+								      logDesc:lfd];
 
 	    // Get the detailInfoView, but do not display it yet
 	    DetailInfoView *detailInfoView = detailInfoController.div;
