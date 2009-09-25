@@ -183,6 +183,8 @@ structure VProc (* :
 	      else
 		  return ()
           do apply preempt()
+          let dstId : int = @vproc-id (dst)
+          do Logging.@log-PreemptVProc (self, dstId)
 	  return()
       ;
 
