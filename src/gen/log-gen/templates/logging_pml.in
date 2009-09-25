@@ -35,7 +35,7 @@ structure Logging =
 	      if I32Lt(index, LOGBUF_SZ) then
 		let offset : int =
 		      I32Add(LOGBUF_START_OFFSET, I32Mul(LOG_EVENT_SZB, index))
-		let addr : addr(any) = AdrAdd32(nextAdr, offset)
+		let addr : addr(any) = AdrAdd32(logBufAdr, offset)
 		return (addr)
 	      else
 		@NextLogEventSlow(vp)
