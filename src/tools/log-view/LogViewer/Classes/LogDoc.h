@@ -39,8 +39,6 @@ enum ZoomLevel {
 @interface LogDoc : NSDocument {
     IBOutlet NSWindow *window; ///< The window object containing the LogView
 
-    struct LogFileDesc *logDesc;
-
     IBOutlet LogView *logView; ///< The most important view object
     IBOutlet LogData *logData; ///< The most important model object
     IBOutlet NSScrollView *scrollView; ///< The view object in which logView is embedded

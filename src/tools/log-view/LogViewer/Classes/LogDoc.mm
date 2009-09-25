@@ -219,13 +219,13 @@ static LogFileDesc *LFDCache = 0;
     }
 
     logData = [[LogData alloc] initWithFilename:filename
-				 andLogFileDesc:logDesc];
+				 andLogFileDesc:self.logDesc];
     // Initialize logInterval according to the initialLogInterval configuration function
     self.logInterval = [self initialLogInterval:logData];
 
 
     outlineViewDataSource = [[OutlineViewDataSource alloc]
-			     initWithLogDesc:logDesc
+			     initWithLogDesc:self.logDesc
 			     logDoc:self];
    // NSLog(@"LogDoc: setting enabled = true");
     enabled = true;
