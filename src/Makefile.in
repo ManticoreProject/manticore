@@ -52,13 +52,14 @@ install:
 
 #################### Cleanup ####################
 
-CLEAN_SUBDIRS =		$(SUBDIRS)
+CLEAN_SUBDIRS =		$(SUBDIRS) gen/log-gen
 CLEAN_FILES =
 DISTCLEAN_FILES =	include/manticore-config.h \
 			lib/basis/include/log-events.def \
 			lib/basis/include/runtime-offsets.def \
-			lib/hlops/include/log-events.def \
-			lib/hlops/include/runtime-offsets.def \
+			lib/basis/misc/logging.pml \
+			lib/parallel-rt/include/inline-log.h \
+			tools/log-common/default-log-paths.h
 
 DEVCLEAN_FILES =
 

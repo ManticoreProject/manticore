@@ -54,7 +54,8 @@ local-install:	$(HEAP_IMAGE)
 CLEAN_SUBDIRS =
 CLEAN_FILES =		$(HEAP_IMAGE) \
 			.depend
-DISTCLEAN_FILES =	Makefile
+DISTCLEAN_FILES =	Makefile \
+			main.sml
 DEVCLEAN_FILES =
 
 include @MANTICORE_MKDIR@/clean-rules.gmk
