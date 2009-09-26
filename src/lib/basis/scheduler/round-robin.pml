@@ -24,11 +24,11 @@ structure RoundRobin =
 
           (* list of sleeping threads local to the vproc; the third element of the thread object
 	   * records the time at which the thread becomes ready to execute. *)
-	    let sleeping : ![(* [FLS.fls, PT.fiber, long] *) List.list] = alloc (List.nil)
-	    let sleeping : ![(* [FLS.fls, PT.fiber, long] *) List.list] = promote (sleeping)
+	    let sleeping : ![(* [FLS.fls, PT.fiber, ml_long] *) List.list] = alloc (List.nil)
+	    let sleeping : ![(* [FLS.fls, PT.fiber, ml_long] *) List.list] = promote (sleeping)
 
 	    fun addToSleepingList (fls : FLS.fls, fiber : PT.fiber, sleepDurationNs : long) : () =
-		let timeToWake : long = I64Add (#0(currTime), sleepDurationNs)
+		let timeToWake : ml_long = alloc(I64Add (#0(currTime), sleepDurationNs))
                 let newSleeping : List.list = promote (List.CONS (alloc (fls, fiber, timeToWake), #0(sleeping)))
 		do #0(sleeping) := newSleeping
 		return ()
@@ -39,11 +39,11 @@ structure RoundRobin =
               (* update the current time *)
 		let t : long = Time.@now ()
 		do #0(currTime) := t
-		fun f (slEnt : [FLS.fls, PT.fiber, long] / exh : exh) : bool =
-		    if I64Gte (#2(slEnt), #0(currTime)) then return (true) else return (false)
+		fun f (slEnt : [FLS.fls, PT.fiber, ml_long] / exh : exh) : bool =
+		    if I64Lt (#0(#2(slEnt)), t) then return (true) else return (false)
 	      (* the first list contains ready threads and second contains sleeping threads *)
 		let res : [List.list, List.list] = PrimList.@partition (f, #0(sleeping) / exh)
-		fun enq (thread : [FLS.fls, PT.fiber, long] / exh : exh) : () =
+		fun enq (thread : [FLS.fls, PT.fiber, ml_long] / exh : exh) : () =
 		    do VProcQueue.@enqueue-from-atomic (self, #0(thread), #1(thread))
 		    return ()
 		do PrimList.@app (enq, #0(res) / exh)
@@ -51,7 +51,7 @@ structure RoundRobin =
 		do #0(sleeping) := newSleeping
 		return ()
 
-            let spinWait : fun ( / -> bool) = SpinWait.@mk-spin-wait-fun (15)
+            let spinWait : fun ( / -> bool) = SpinWait.@mk-spin-wait-fun (20)
 
 	    cont switch (s : PT.signal) =
 
