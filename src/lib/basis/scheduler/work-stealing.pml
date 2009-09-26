@@ -220,7 +220,7 @@ structure WorkStealing (* :
 				end
 			    end		    
 			end
-		   let waitFn : fun (/ -> bool) = SpinWait.@mk-spin-wait-fun (15)
+		   let waitFn : fun (/ -> bool) = SpinWait.@mk-spin-wait-fun (20)
 		 (* loop until work appears on the local deque, or a steal attempt succeeds *)
 		   cont findRemoteWorkLp (nTries : int) =
 		     let self : vproc = SchedulerAction.@atomic-begin ()
@@ -251,7 +251,7 @@ structure WorkStealing (* :
 			     do case reset
 				 of true =>
 				    do Logging.@log-WSSleep (self, wid)
-				    do SchedulerAction.@sleep (300000:long)
+				    do SchedulerAction.@sleep (300000000:long)
 				    return ()
 				  | false =>
 				    return()

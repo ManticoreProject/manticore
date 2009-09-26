@@ -35,7 +35,7 @@ structure GlobalBFSScheduler (* :
 		    let reset : bool = apply waitFn ()
                     do case reset
 			of true =>
-			   do SchedulerAction.@sleep (300000:long)
+			   do SchedulerAction.@sleep (300000000:long)
                            return ()
 			 | false =>
 			   return()
