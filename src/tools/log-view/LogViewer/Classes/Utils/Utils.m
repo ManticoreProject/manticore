@@ -50,20 +50,21 @@ CGFloat pointToLineSegmentDistance(NSPoint p, NSPoint start, NSPoint end)
 	return DEFAULT_COLOR;
     }
     
-    double scale_max = 255.0;
     uint32_t r, g, b, a;
     
-    char *format = "#%2x%2x%2x%2x";
-    if (sscanf(s, format, &r, &g, &b, &a) != 4)
-    {
+    int nItems = sscanf(s, "#%2x%2x%2x%2x", &r, &g, &b, &a);
+    if (nItems == 3) {
+        a = 255;
+    }
+    else if (nItems != 4) {
 	[Exceptions raise:@"BandView.mm: sscanf failure"];
     }
     
     CGFloat R, G, B, A;
-    R = r / scale_max;
-    G = g / scale_max;
-    B = b / scale_max;
-    A = a / scale_max;
+    R = (CGFloat)r / 255.0;
+    G = (CGFloat)g / 255.0;
+    B = (CGFloat)b / 255.0;
+    A = (CGFloat)a / 255.0;
     
     // NSLog(@"returning a new color %f %f %f %f", R, G, B, A);
     
