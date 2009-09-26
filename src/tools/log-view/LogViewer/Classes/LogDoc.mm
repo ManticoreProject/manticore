@@ -461,39 +461,36 @@ uint64_t g_counter = 0;
     switch (g->Kind()) {
         case EVENT_GROUP: {
 	    uint64_t a = Event_Time(*Detail_Simple_value(d));
-	    return (fst <= a && a <= lst);
+	    return (fst <= a) && (a <= lst);
 	  } break;
 	case INTERVAL_GROUP:
 	    c = Detail_Interval_start(d);
 	    b = Detail_Interval_end(d);
 	    if (c == NULL || b == NULL) return true;
-	    if (Event_Time(*c) > lst ||
-		Event_Time(*b) < fst)
+	    if ((Event_Time(*c) > lst) || (Event_Time(*b) < fst))
 		return false;
-	    else return true;
+	    else
+		return true;
 	    break;
 	case STATE_GROUP:
 	    c = Detail_State_start(d);
 	    b = Detail_State_end(d);
 	    if (c == NULL && b == NULL) return true;
-	    if (c == NULL) // && b != NULL
-	    {
+	    if (c == NULL) { // && b != NULL
 		return Event_Time(*b) >= fst;
 	    }
-	    if (b == NULL) // && c != NULL
-	    {
+	    if (b == NULL) {// && c != NULL
 		BOOL ret = Event_Time(*c) <= lst;
 		if (ret) NSLog(@"Found a stategroup in interval, whose start is not in the interval");
 		return ret;
 	    }
-	    if (Event_Time(*c) > lst ||
-		Event_Time(*b) < fst)
+	    if ((Event_Time(*c) > lst) || (Event_Time(*b) < fst))
 		return false;
-	    else return true;
+	    else
+		return true;
 	    break;
 	case DEPENDENT_GROUP:
 	    return false; /// XXX FIXME
-	    break;
     }
 
     //NSLog(@"g = %s, g->Kind() = %d", g->Desc(), g->Kind());
