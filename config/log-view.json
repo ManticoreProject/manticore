@@ -45,7 +45,9 @@
  *
  *	states	-- an array of state names.
  *
- *	colors  -- an optional array of colors; one per state
+ *	colors  -- an optional array of colors; one per state.  Colors are
+ *		   specified using the syntax "#rrggbb" or "#rrggbbaa", where
+ *		   the rr, gg, bb, and aa are two-digit hex numbers.
  *
  *	transitions
  *		-- an array of transitions, which are event name/state name pairs
@@ -86,6 +88,7 @@
 		  "kind" : "STATE",
 		  "start" : "Active",
 		  "states" : ["Active", "GC", "Idle", "Sleep"],
+		  "colors" : ["#00ff00", "#0000ff", "#c0c000", "#ff0000"],
 		  "transitions" : [
 		      ["VProcWakeup", "Active"],
 		      ["MinorGCStart", "GC"],	["MinorGCEnd", "Active"],
@@ -107,22 +110,26 @@
 		{ "desc"  : "Minor GC",
 		  "kind"  : "INTERVAL",
 		  "start" : "MinorGCStart",
-		  "end"   : "MinorGCEnd"
+		  "end"   : "MinorGCEnd",
+		  "color" : "#ffffff40"
 		},
 		{ "desc"  : "Major GC",
 		  "kind"  : "INTERVAL",
 		  "start" : "MajorGCStart",
-		  "end"   : "MajorGCEnd"
+		  "end"   : "MajorGCEnd",
+		  "color" : "#ffffff40"
 		},
 		{ "desc"  : "Global GC",
 		  "kind"  : "INTERVAL",
 		  "start" : "GlobalGCInit",
-		  "end"   : "GlobalGCEnd"
+		  "end"   : "GlobalGCEnd",
+		  "color" : "#ffffff40"
 		},
 		{ "desc"  : "VProc Global GC",
 		  "kind"  : "INTERVAL",
 		  "start" : "GlobalGCVPStart",
-		  "end"   : "GlobalGCVPDone"
+		  "end"   : "GlobalGCVPDone",
+		  "color" : "#ffffff40"
 		},
 		{ "desc"  : "Promotion",
 		  "kind"  : "INTERVAL",
@@ -132,7 +139,8 @@
 		{ "desc"  : "Global GC startup",
 		  "kind"  : "DEPENDENT",
 		  "src"   : "GlobalGCInit",
-		  "dst"   : "GCSignal"
+		  "dst"   : "GCSignal",
+		  "color" : "#1f001f"
 		}
 	      ]
 	  },
@@ -143,12 +151,14 @@
 		{ "desc" : "Local thread spawn",
 		  "kind" : "DEPENDENT",
 		  "src"  : "ThdSpawn",
-		  "dst"  : "ThdStart"
+		  "dst"  : "ThdStart",
+		  "color" : "#1f001f"
 		},
 		{ "desc" : "Remote thread spawn",
 		  "kind" : "DEPENDENT",
 		  "src"  : "ThdSpawnOn",
-		  "dst"  : "ThdStart"
+		  "dst"  : "ThdStart",
+		  "color" : "#1f001f"
 		}
 	      ]
 	  },
@@ -184,7 +194,8 @@
 		{ "desc"  : "Thief send",
 		  "kind"  : "DEPENDENT",
 		  "src"   : "WSThiefSend",
-		  "dst"   : "WSThiefBegin"
+		  "dst"   : "WSThiefBegin",
+		  "color" : "#1f001f"
 		}
 /*
 		{ "desc"  : "Thief execution",
