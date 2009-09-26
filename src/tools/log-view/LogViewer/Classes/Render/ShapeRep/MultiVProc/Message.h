@@ -25,8 +25,6 @@
 @property (readonly) event * receiver;
 
 
-
-
 ///Initialize
 - (Message *)initArrowFromPoint:(NSPoint)p1
 			toPoint:(NSPoint)p2;

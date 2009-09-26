@@ -10,7 +10,7 @@
 #pragma mark Constants
 
 /// Color of arrow
-#define DEFAULT_MESSAGE_COLOR ([NSColor greenColor])
+#define DEFAULT_MESSAGE_COLOR ([NSColor orangeColor])
 /// Width of arrow
 #define DEFAULT_LINE_WIDTH ( 3 )
 
@@ -43,13 +43,9 @@ static NSBezierPath *arrowHead; //!< arrowhead
     // Initialize the arrowHead
     arrowHead = [[NSBezierPath alloc] init];
     
-    
-    [arrowHead moveToPoint:
-     NSMakePoint( - ARROW_HEAD_HEIGHT, ARROW_HEAD_WIDTH / 2)];
-    [arrowHead lineToPoint:
-     NSZeroPoint];
-    [arrowHead lineToPoint:
-     NSMakePoint(- ARROW_HEAD_HEIGHT, - ARROW_HEAD_WIDTH / 2)];
+    [arrowHead moveToPoint: NSMakePoint( - ARROW_HEAD_HEIGHT, ARROW_HEAD_WIDTH / 2)];
+    [arrowHead lineToPoint: NSZeroPoint];
+    [arrowHead lineToPoint: NSMakePoint(- ARROW_HEAD_HEIGHT, - ARROW_HEAD_WIDTH / 2)];
     
  //   NSLog(@"arrowHead just created %@", arrowHead);
 }
@@ -85,41 +81,41 @@ static NSBezierPath *arrowHead; //!< arrowhead
 			 sender:(event *)s
 		       receiver:(event *)r
 {
-	if (![super init])
-		return nil;
-	
-	start = p1;
-	end = p2;
-	
-	// Do simple initializations
-	color = c;
-	lineWidth = w;
-	
-	sender = s;
-	receiver = r;
-	
-	// Create the arrow head
-	NSAffineTransform *T = [NSAffineTransform transform];
-	NSAffineTransform *A = [NSAffineTransform transform];
-	CGFloat theta = (1 / (2 * 3.14159) ) * 360 * atan( (end.y - start.y) / (end.x - start.x) );
-	//NSLog(@"theta = %f", theta);
-	[T rotateByDegrees: theta];
-	[A translateXBy:end.x yBy:end.y];
-	
-	if (!arrowHead) self.initArrowHead;
-	path = [arrowHead copy];
-	//NSLog(@"path just initialized from arrow %@ as %@", arrowHead, path);
-	
+    if (![super init])
+	return nil;
+    
+    start = p1;
+    end = p2;
+    
+    // Do simple initializations
+    color = c;
+    lineWidth = w;
+    
+    sender = s;
+    receiver = r;
+    
+    // Create the arrow head
+    NSAffineTransform *T = [NSAffineTransform transform];
+    NSAffineTransform *A = [NSAffineTransform transform];
+    CGFloat theta = (1 / (2 * 3.14159) ) * 360 * atan( (end.y - start.y) / (end.x - start.x) );
+    //NSLog(@"theta = %f", theta);
+    [T rotateByDegrees: theta];
+    [A translateXBy:end.x yBy:end.y];
+    
+    if (!arrowHead) self.initArrowHead;
+    path = [arrowHead copy];
+    //NSLog(@"path just initialized from arrow %@ as %@", arrowHead, path);
+    
     [path transformUsingAffineTransform:T];
-	[path transformUsingAffineTransform:A];
-	
-	// Create the arrow body
-	[path moveToPoint:start];
-	[path lineToPoint:end];
-	
-	[path setLineWidth:lineWidth];
-	
-	return self;
+    [path transformUsingAffineTransform:A];
+    
+    // Create the arrow body
+    [path moveToPoint:start];
+    [path lineToPoint:end];
+    
+    [path setLineWidth:lineWidth];
+    
+    return self;
 }
 
 
@@ -127,9 +123,9 @@ static NSBezierPath *arrowHead; //!< arrowhead
 - (BOOL)containsPoint:(NSPoint)p
 {
 	CGFloat d = pointToLineSegmentDistance(p, start, end);
-	return (d <= CLICK_RANGE &&
-		between(p.x, start.x, end.x) &&
-		between(p.y, start.y, end.y));
+	return ((d <= CLICK_RANGE)
+	    && between(p.x, start.x, end.x)
+	    && between(p.y, start.y, end.y));
 }
 
 - (shapeTag)kind
@@ -140,8 +136,8 @@ static NSBezierPath *arrowHead; //!< arrowhead
 - (void)drawShape
 {
     //NSLog(@"path being drawn for arrow %@", path);
-	[color set];
-	[path stroke];
+    [color set];
+    [path stroke];
 }
 
 
