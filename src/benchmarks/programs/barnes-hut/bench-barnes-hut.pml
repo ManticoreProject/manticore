@@ -125,18 +125,23 @@ fun debug () = let
 fun benchmark () =
     let
 	val nSteps = readint()
-	fun iter (ps, i) =
-	    if i < nSteps then
-(* FIXME: read the top-level box from the input *)
-		iter (oneStep ps, i + 1)
-	    else
-		ps
-	val particles = fromListP (readParticles ())
 	val t0 = Time.now()
-	val tree = iter (particles, 0) 
+	val tree = ImplicitThread.runOnWorkGroup(WorkStealing.workGroup(), fn () =>
+	    let
+		val particles = fromListP (readParticles ())
+		fun iter (ps, i) =
+		    if i < nSteps then
+			(* FIXME: read the top-level box from the input *)
+			iter (oneStep ps, i + 1)
+		    else
+			ps
+
+	    in
+		iter (particles, 0) 
+	    end)
 	val t = (Time.now() - t0)
     in
 	Print.printLn (Time.toString t)
     end
 
-val () = ImplicitThread.runOnWorkGroup(WorkStealing.workGroup(), benchmark)
+val () = benchmark ()

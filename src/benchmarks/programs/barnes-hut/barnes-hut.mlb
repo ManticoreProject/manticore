@@ -1,6 +1,2 @@
-ann "expansion-opt" "pval.cilk5-work-stealing"
-in
-
 barnes-hut.pml
 bench-barnes-hut.pml
-end

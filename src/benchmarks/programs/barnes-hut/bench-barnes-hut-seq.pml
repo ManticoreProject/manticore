@@ -76,8 +76,8 @@ fun benchmark () =
 		iter (oneStep ps, i + 1)
 	    else
 		ps
-	val particles = readParticles ()
 	val t0 = Time.now()
+	val particles = readParticles ()
 	val tree = iter (particles, 0)
 	val t = (Time.now() - t0)
     in
