@@ -99,13 +99,17 @@ fun buildTree (box, particles : mass_point parray) : bh_tree =
 		    val b2 = BOX (llx,  midy, midx,  ruy)
 		    val b3 = BOX (midx, midy, rux,   ruy)
 		    val b4 = BOX (midx, lly,  rux,   midy)
+		    val (pb1, pb2, pb3, pb4) = (| filterP (inBox b1, particles),
+						  filterP (inBox b2, particles),
+						  filterP (inBox b3, particles),
+						  filterP (inBox b4, particles) |)
 		    val depth' = depth + 1
+		    val (q1, q2, q3, q4) = (| build (depth', b1, pb1),
+					      build (depth', b2, pb2),
+					      build (depth', b3, pb3),
+					      build (depth', b4, pb4) |)
 		in
-		    BHT_QUAD (| x, y, m, 
-		                build (depth', b1, filterP (inBox b1, particles)),
-		                build (depth', b2, filterP (inBox b2, particles)),
-		                build (depth', b3, filterP (inBox b3, particles)),
-		                build (depth', b4, filterP (inBox b4, particles)) |)
+		    BHT_QUAD (x, y, m, q1, q2, q3, q4)
 		end
     in
 	build (0, box, particles)
