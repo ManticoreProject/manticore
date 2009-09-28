@@ -187,7 +187,6 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
     int MaxNumEvents = NEventsPerBuf*numBufs;
     Events = new Event[MaxNumEvents];
     NumEvents = 0;
-    uint64_t startTime = GetTimestamp (&(Hdr->startTime));
 
   /* read in the events */
     for (int i = 0;  i < numBufs;  i++) {
@@ -200,7 +199,7 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
 	    LogEvent_t *lp = &(log->log[j]);
 	    Event *ep = &(Events[NumEvents++]);
 	  /* extract event and data fields */
-	    ep->timestamp = GetTimestamp(&(lp->timestamp)) - startTime;
+	    ep->timestamp = GetTimestamp(&(lp->timestamp));
 	    ep->vpId = log->vpId;
 	    ep->desc = logFileDesc->FindEventById (lp->event);
 /* FIXME: skip data for now */
@@ -209,6 +208,17 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
 
   /* sort the events by timestamp */
     qsort (Events, NumEvents, sizeof(Event), CompareEvent);
+
+  /* Adjust the timestamps to be relative to the start of the run */
+    uint64_t startTime = GetTimestamp (&(Hdr->startTime));
+    if (Events[0].timestamp < startTime) {
+	fprintf (stdout, "** Warning: first event occurs %lld ns. before start\n",
+	    startTime - Events[0].timestamp);
+	startTime = Events[0].timestamp;
+    }
+    for (int i = 0;  i < NumEvents;  i++) {
+	Events[i].timestamp -= startTime;
+    }
 
     fclose (f);
     delete buf;
