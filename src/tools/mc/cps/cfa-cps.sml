@@ -49,10 +49,13 @@ structure CFACPS : sig
     val debugFlg : bool ref
     val resultsFlg : bool ref
 
+  (* flags related to different CFA algorithms *)
+    val rcCFAFlg  : bool ref
   end = struct
 
     val debugFlg = ref false
     val resultsFlg = ref false
+    val rcCFAFlg = ref false
 
     structure CV = CPS.Var
     structure VSet = CV.Set
