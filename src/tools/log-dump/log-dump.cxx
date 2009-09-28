@@ -154,7 +154,8 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
 	exit (1);
     }
     if (Hdr->hdrSzB != sizeof(LogFileHeader_t)) {
-	fprintf(stderr, "bogus header size %d (expected %d)\n", Hdr->hdrSzB, sizeof(LogFileHeader_t));
+	fprintf(stderr, "bogus header size %d (expected %d)\n",
+	    Hdr->hdrSzB, (int)sizeof(LogFileHeader_t));
 	exit (1);
     }
     if (Hdr->majorVersion != LOG_VERSION_MAJOR) {
