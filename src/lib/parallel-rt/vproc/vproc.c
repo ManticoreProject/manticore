@@ -451,7 +451,8 @@ Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
 // QUESTION: do we really need an AtomicWriteValue here, since we are inside a lock?
 	AtomicWriteValue (&(vp->sleeping), M_TRUE);
 	while ((vp->landingPad == M_NIL)
-	       && (status = CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake)))
+	     /* nonzero status indicates an error, OS interrupt, or timeout */
+	       && !(status = CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake)))
 	    continue;
 	AtomicWriteValue (&(vp->sleeping), M_FALSE);
     MutexUnlock (&(vp->lock));
@@ -464,6 +465,8 @@ Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
 	      : (status == EINTR      ? "interrupt" 
 	      : "an error")));
 #endif
+
+    assert (status == 0 || status == ETIMEDOUT || status == EINTR);
     
     return ManticoreBool (status == 0);
 }
