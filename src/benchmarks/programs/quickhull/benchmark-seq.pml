@@ -7,8 +7,8 @@ val _ = Print.printLn (PArray.toString p2s ", " H)
 
 fun bench (seqSz, n) = 
     let
-	val pts = tabP (n, fn _ => (Rand.randFloat (~100000.0, 100000.0), Rand.randFloat (~100000.0, 100000.0)))
 	val b = Time.now ()
+	val pts = tabP (n, fn _ => (Rand.randFloat (~100000.0, 100000.0), Rand.randFloat (~100000.0, 100000.0)))
         val hull = quickhull pts
 	val e = Time.now ()
     in
