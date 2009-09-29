@@ -439,7 +439,7 @@ static LogFileDesc *LFDCache = 0;
     {
 	[self zoomOut:sender];
     }
-    if (n == 1)
+    else if (n == 1)
     {
 	[self zoomIn:sender];
     }

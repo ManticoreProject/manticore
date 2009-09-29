@@ -12,9 +12,9 @@
 		</object>
 		<object class="NSMutableArray" key="IBDocument.EditedObjectIDs">
 			<bool key="EncodedWithXMLCoder">YES</bool>
-			<integer value="73"/>
 			<integer value="97"/>
 			<integer value="2"/>
+			<integer value="73"/>
 		</object>
 		<object class="NSArray" key="IBDocument.PluginDependencies">
 			<bool key="EncodedWithXMLCoder">YES</bool>
@@ -72,7 +72,8 @@
 											<string key="NSClassName">LogView</string>
 										</object>
 									</object>
-									<string key="NSFrame">{{1, 1}, {1396, 636}}</string>
+									<string key="NSFrame">{{1, 1}, {1386, 636}}</string>
+									<string key="NSBounds">{{0, 14}, {1386, 636}}</string>
 									<reference key="NSSuperview" ref="216641869"/>
 									<reference key="NSNextKeyView" ref="346144702"/>
 									<reference key="NSDocView" ref="346144702"/>
@@ -90,27 +91,26 @@
 								<object class="NSScroller" id="25300825">
 									<reference key="NSNextResponder" ref="216641869"/>
 									<int key="NSvFlags">256</int>
-									<string key="NSFrame">{{1397, 1}, {15, 636}}</string>
+									<string key="NSFrame">{{1387, 1}, {15, 636}}</string>
 									<reference key="NSSuperview" ref="216641869"/>
 									<bool key="NSEnabled">YES</bool>
 									<reference key="NSTarget" ref="216641869"/>
 									<string key="NSAction">_doScroller:</string>
-									<double key="NSCurValue">1</double>
 									<double key="NSPercent">0.97846153846153849</double>
 								</object>
 								<object class="NSScroller" id="435357282">
 									<reference key="NSNextResponder" ref="216641869"/>
 									<int key="NSvFlags">256</int>
-									<string key="NSFrame">{{1, 637}, {1396, 15}}</string>
+									<string key="NSFrame">{{1, 637}, {1386, 15}}</string>
 									<reference key="NSSuperview" ref="216641869"/>
 									<bool key="NSEnabled">YES</bool>
 									<int key="NSsFlags">1</int>
 									<reference key="NSTarget" ref="216641869"/>
 									<string key="NSAction">_doScroller:</string>
-									<double key="NSPercent">0.9331550802139037</double>
+									<double key="NSPercent">0.92647058823529416</double>
 								</object>
 							</object>
-							<string key="NSFrame">{{10, 239}, {1413, 653}}</string>
+							<string key="NSFrame">{{20, 239}, {1403, 653}}</string>
 							<reference key="NSSuperview" ref="1006"/>
 							<reference key="NSNextKeyView" ref="492037341"/>
 							<int key="NSsFlags">242</int>
@@ -121,13 +121,13 @@
 						<object class="NSCustomView" id="118950589">
 							<reference key="NSNextResponder" ref="1006"/>
 							<int key="NSvFlags">258</int>
-							<string key="NSFrame">{{10, 900}, {1413, 39}}</string>
+							<string key="NSFrame">{{20, 900}, {1403, 39}}</string>
 							<reference key="NSSuperview" ref="1006"/>
 							<string key="NSClassName">TimeDisplay</string>
 						</object>
 						<object class="NSSegmentedControl" id="265014338">
 							<reference key="NSNextResponder" ref="1006"/>
-							<int key="NSvFlags">264</int>
+							<int key="NSvFlags">256</int>
 							<string key="NSFrame">{{20, 946}, {62, 23}}</string>
 							<reference key="NSSuperview" ref="1006"/>
 							<bool key="NSEnabled">YES</bool>
@@ -160,8 +160,8 @@
 						</object>
 						<object class="NSCustomView" id="22867990">
 							<reference key="NSNextResponder" ref="1006"/>
-							<int key="NSvFlags">266</int>
-							<string key="NSFrame">{{10, 65}, {1399, 166}}</string>
+							<int key="NSvFlags">258</int>
+							<string key="NSFrame">{{20, 20}, {1403, 211}}</string>
 							<reference key="NSSuperview" ref="1006"/>
 							<string key="NSClassName">NSView</string>
 						</object>
@@ -908,14 +908,14 @@
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
-					<string>{{1687, 293}, {179, 649}}</string>
+					<string>{{908, 293}, {179, 649}}</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
-					<string>{{144, 443}, {943, 284}}</string>
+					<string>{{-1096, 602}, {943, 284}}</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
-					<string>{{144, 443}, {943, 284}}</string>
+					<string>{{-1096, 602}, {943, 284}}</string>
 					<integer value="1"/>
 					<string>{3.40282e+38, 3.40282e+38}</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>

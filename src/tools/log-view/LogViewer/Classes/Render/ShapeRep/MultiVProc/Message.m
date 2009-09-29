@@ -56,19 +56,21 @@ static NSBezierPath *arrowHead; //!< arrowhead
 	NSLog(@" ****\tMessage:\tBad initialization");
 	return [self initArrowFromPoint:p1
 				toPoint:p2
+				  color:DEFAULT_COLOR
 				 sender:nil
 			       receiver:nil];
 }
 
 - (Message *)initArrowFromPoint:(NSPoint)p1
 			toPoint:(NSPoint)p2
+			  color:(NSColor *)c
 			 sender:(event *)s
 		       receiver:(event *)r
 {
 	// Okay initialization. Arrows are assumed to be black
 	return [self initArrowFromPoint:p1
 				toPoint:p2
-				  color:DEFAULT_MESSAGE_COLOR
+				  color:c
 			      lineWidth:DEFAULT_LINE_WIDTH
 				 sender:s
 			       receiver:r];
