@@ -55,11 +55,16 @@ structure PMergesort =
 	else 
 	    let
 		val (xsL, xsR) = R.splitAt (xs, R.length xs div 2 - 1)
+	      (* note: currently pmergesort is not stable due to the choice of
+	       * partition below, since ysL may contain some elements equal to 
+	       * lastElt xsL. one possible fix is to use another binary search to
+	       * ensure that ysL contains those elements < (lastElt xsL)
+	       *)
 		val (ysL, ysR) = R.cut (ys, binarySearch cmp (lastElt xsL, ys))
 	    in
 		R.concat (| pMerge cmp (xsL, ysL), pMerge cmp (xsR, ysR) |)
 	    end
-
+	    
     fun pMergesort cmp xs = 
 	if R.length xs <= 1 then
 	    xs
