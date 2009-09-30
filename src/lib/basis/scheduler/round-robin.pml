@@ -67,8 +67,8 @@ structure RoundRobin =
 			let reset : bool = apply spinWait ()
 			case reset
 			 of true => 
-			  (* sleep for at least 300 microseconds *)
-			    let _ : bool = VProc.@nanosleep-from-atomic (self, 300000:long)
+			  (* sleep for at least 700 microseconds *)
+			    let _ : bool = VProc.@nanosleep-from-atomic (self, 700000:long)
 			    do apply wakeupSleepingThreads ()
 			    throw dispatch ()
 			  | false => 
