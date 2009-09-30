@@ -17,3 +17,5 @@ val nth = List.nth
 
 fun fst (x, _) = x
 fun snd (_, y) = y
+
+val isSome = Option.isSome
