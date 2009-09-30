@@ -2,7 +2,6 @@ structure TicTacToe = struct
 
   val mapP = (fn f => fn xs => mapP (f, xs))
   val foldP = (fn f => fn id => fn xs => reduceP (f, id, xs))
-  val tabP = (fn n => (fn f => tabP (n, f)))
   fun maxP xs = reduceP (fn (x, currMax) => if x > currMax then x else currMax, subP(xs,0), xs)
   fun minP xs = reduceP (fn (x, currMax) => if x < currMax then x else currMax, subP(xs,0), xs)
 (* admittedlythis is stupid, we instead want some short-circuiting version of allP *)
@@ -32,9 +31,6 @@ structure TicTacToe = struct
 
   (* top : 'a rose_tree -> 'a *)
   fun top (Rose (x, _)) = x
-
-  (* mkLeaf : 'a -> 'a rose_tree *)
-  fun mkLeaf x = Rose (x, [| |])
 
   (* isOccupied : board * int -> bool *)
   fun isOccupied (b,i) = isSome(subP(b,i))
@@ -87,8 +83,8 @@ structure TicTacToe = struct
 
   (* putAt : 'a * 'a parray * int -> 'a parray *)
   fun putAt (x, xs, i) =
-        tabP (lengthP xs)
-	     (fn j => if (j=i) then
+        tabP (lengthP xs,
+	     fn j => if (j=i) then
 			  x
 		      else
 			  subP(xs,j))
@@ -103,17 +99,17 @@ structure TicTacToe = struct
   type game_tree = (board * int) rose_tree
 
   (* allMoves : board -> int parray *)
-  fun allMoves b = 
-      let fun f n =
-	      if n = lengthP b then
-		  [| |]
-	      else
-		  (case subP(b,n)
-		    of SOME _ => f(n+1)
-		     | NONE => concatP([| n |], f(n+1)))
-      in
-	  f 0
-      end
+  fun allMoves b = let
+        fun f n =
+	    if n = lengthP b then
+		[| |]
+	    else
+		(case subP(b,n)
+		  of SOME _ => f(n+1)
+		   | NONE => concatP([| n |], f(n+1)))
+        in
+          f 0
+        end
 
   (* successors : board * player -> board parray *)
   (* A list of all possible successor states given a board and a player to move. *)
@@ -125,13 +121,30 @@ structure TicTacToe = struct
   (* X is max, O is min *)
   fun minimax (p : player) (b : board) : game_tree =
         if gameOver(b) then
-	  mkLeaf (b, score b)
+	  Rose ((b, score b), [| |])
 	else let 
           val trees = mapP (minimax (other p)) (successors (b, p))
 	  val scores = mapP (compose (snd, top)) trees
-	  val selectFrom = (case p of X => maxP | O => minP)
 	  in
-		Rose ((b, selectFrom scores), trees)
+		case p
+		 of X => Rose ((b, maxP scores), trees)
+		  | Y => Rose ((b, minP scores), trees)
 	  end
 
-  end
+  (* go : unit -> (board * int) * int *)
+  fun go () = let
+    val t0 = Time.now ()
+    val tree = ImplicitThread.runOnWorkGroup(WorkStealing.workGroup(), fn _ => let
+	val empty : board = tabP (9, fn _ => NONE)
+        in
+	  minimax X empty
+	end)
+    val t1 = Time.now ()
+    in
+      Print.printLn (Time.toString (t1-t0));
+      ()
+    end
+
+  val _ = go ()
+
+end
