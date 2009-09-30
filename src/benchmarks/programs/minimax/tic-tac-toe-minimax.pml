@@ -1,5 +1,10 @@
 structure TicTacToe = struct
 
+(* NOTE: this benchmark is very sensitive to the choice of max leaf size. In fact,
+ * any leaf size less than the max number of choices of moves (which is 9 for tic tac toe)
+ * will result in sequential execution.
+ *)
+
   val mapP = (fn f => fn xs => mapP (f, xs))
   val foldP = (fn f => fn id => fn xs => reduceP (f, id, xs))
   fun maxP xs = reduceP (fn (x, currMax) => if x > currMax then x else currMax, subP(xs,0), xs)
