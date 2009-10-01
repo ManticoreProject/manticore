@@ -8,9 +8,6 @@
  *
  *)
 
-    fun fst (x, _) = x
-    fun snd (_, x) = x
-
     fun less ord = 
 	(case ord
 	  of LESS => true
@@ -38,7 +35,7 @@
 	    lp (0, R.length xs)
 	end
 
-  (* split ys lazily in two: those elements <= x and those >= x. the split is
+  (* split ys in two lazily: those elements <= x and those >= x. the split is
    * arbitrary when for the elements of y that are equal to x.
    *)
     fun fsplit cmp (ys : 'a parray future, x : 'a) : ('a parray future * 'a parray future) =
