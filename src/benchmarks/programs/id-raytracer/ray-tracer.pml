@@ -148,6 +148,11 @@ val s2 = (Ambient (0.035,0.0325,0.025)) :: (Diffuse(0.5,0.45,0.35)) ::
        (Specular(0.8,0.8,0.8)) :: (Specpow 3.0) :: (Reflect 0.5) :: nil;
 val s3 = (Ambient (0.1,0.0,0.0)) :: (Diffuse (0.3,0.0,0.0)) ::
 	   (Specular (0.8,0.4,0.4)) :: (Transmit 0.7) :: nil;
+
+fun randSphere _ = 
+    Sphere ((Rand.randDouble (0.0, 1.0), Rand.randDouble (0.0, 1.0), Rand.randDouble (0.0, 1.0)),
+	    Rand.randDouble (0.01, 0.08), s2)
+
 val testspheres =
      Sphere((0.0,0.0,0.0), 0.5, s3) ::
      Sphere((0.272166,0.272166,0.544331), 0.166667, s2) ::
@@ -164,7 +169,7 @@ val testlights = Point((4.0,3.0,2.0), (0.288675,0.288675,0.288675)) ::
               Point((~3.0,1.0,5.0), (0.288675,0.288675,0.288675)) :: nil;
 val lookfrom = (2.1, 1.3, 1.7);
 val background = (0.078, 0.361, 0.753);
-val world = testspheres;
+val world = testspheres @ List.tabulate (500, randSphere)
 (*%%%%%%%*)
 
 
@@ -461,7 +466,6 @@ fun ray winsize = let
              loop 0
           end
         else ()
-
     val _ = output 0
     val _ = Image.output("out.ppm", img)
     val _ = Image.free img
