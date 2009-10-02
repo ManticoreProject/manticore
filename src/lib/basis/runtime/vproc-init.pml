@@ -46,6 +46,9 @@ structure VProcInit (* :
      *)
       define @bootstrap (mkAct : fun (vproc / exh -> PT.sched_act) / exh : exh) : () =
 	  let self : vproc = SchedulerAction.@atomic-begin()
+          let nVProcs : int = VProc.@num-vprocs()
+          let shutdownCnt : ![int] = alloc(nVProcs)
+          let shutdownCnt : ![int] = promote(shutdownCnt)
         (* initialize fields in the vproc structure *)
           fun initVPFields (vp : vproc / exh : exh) : () =
               (**** vp->schedCont ****)
@@ -64,6 +67,22 @@ structure VProcInit (* :
 	            return()
 	        let dummyK : PT.fiber = promote(dummyK)
 	        do vpstore(VP_DUMMYK, vp, dummyK)
+              (**** vp->shutdownCont ****)
+              (* precondition: signals are masked *)
+		cont shutdownCont (_ : unit) =
+                   do assert(Equal(vp, host_vproc))
+		   let cnt : int = I32FetchAndAdd(&0(shutdownCnt), ~1)
+	           fun wait () : () =
+		       if I32Eq (#0(shutdownCnt), 0) then
+			   do ccall VProcExit(vp)
+			   do assert(false)
+			   return ()
+		       else
+			   do Pause()
+			   apply wait()
+	           apply wait()
+                let shutdownCont : PT.fiber = promote(shutdownCont)
+                do vpstore(VP_SHUTDOWN_CONT, vp, shutdownCont)
               (**** vp->actionStk ****)
                 let act : PT.sched_act = apply mkAct (vp / exh)
 		let stk : [PT.sched_act, any] = vpload (VP_ACTION_STK, vp)

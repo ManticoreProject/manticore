@@ -21,9 +21,11 @@ struct struct_vproc {
     Value_t	sleeping;       //!< true, when the vproc is sleeping
     Value_t	currentFLS;	//!< the current fiber's local storage
     Value_t	actionStk;	//!< the top of the signal-action stack
-    Value_t     schedCont;      //!< continuation that invokes the current scheduler
-    Value_t     dummyK;         //!< trivial fiber that immediate terminates
-    Value_t     wakeupCont;     //!< continuation that wakes the vproc
+    Value_t    schedCont;      //!< continuation that invokes the current scheduler
+    Value_t    dummyK;         //!< trivial fiber that immediate terminates
+    Value_t    wakeupCont;     //!< continuation that wakes the vproc
+    Value_t    shutdownCont;   //!< continuation used by vprocs to shutdown the runtime
+    Value_t    shutdownPending; //!< true, when runtime shutdown is pending
     Value_t	rdyQHd;		//!< the head of the primary ready queue
     Value_t	rdyQTl;		//!< the tail of the primary ready queue
 			      /* VProc registers */
@@ -40,9 +42,6 @@ struct struct_vproc {
     volatile LogBuffer_t
 		*log;		//!< current buffer for logging events
     LogBuffer_t	*prevLog;       //!< previous buffer for logging events
-#ifdef HAVE_AIO_RETURN
-    struct aiocb *logCB;	//!< AIO control buffer for log file
-#endif
 			      /* GC parameters */
     Addr_t	nurseryBase;	//!< Base address of current nursery area
     Addr_t	oldTop;		//!< Old objects live in the space from the
@@ -103,7 +102,8 @@ STATIC_INLINE Addr_t VProcHeap (VProc_t *vp)
 
 /* the array of vprocs */
 extern int		NumVProcs;
-extern VProc_t		*VProcs[MAX_NUM_VPROCS];
+extern VProc_t	*VProcs[MAX_NUM_VPROCS];
+extern bool           ShutdownFlg;
 
 extern void VProcInit (bool isSequential, Options_t *opts);
 extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
@@ -113,12 +113,5 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
 void VProcSleep (VProc_t *vp);
 Value_t VProcNanosleep (VProc_t *vp, Time_t nsec);
 void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp);
-
-/* Runtime shutdown sequence */
-extern bool                 Shutdown;
-extern VProc_t              *ShutdownVProc;  // the vproc assigned to complete the
-                                             // shutdown process
-void VProcFinish (VProc_t *vp);
-
 
 #endif /* !_VPROC_H_ */

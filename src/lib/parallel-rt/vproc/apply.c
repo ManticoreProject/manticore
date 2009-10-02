@@ -36,23 +36,6 @@ Value_t ApplyFun (VProc_t *vp, Value_t f, Value_t arg)
 
 } /* end of ApplyFun */
 
-/* \brief run Manticore scheduler initialization
- * \param vp the host vproc
- * \return the result of the application.
- *
- * Precondition: the schedCont field has been initialized by the PML runtime.
- */
-Value_t ApplySched (VProc_t *vp)
-{
-  /* get the code and environment pointers for the initial scheduler */
-    Value_t envP = vp->schedCont;
-    Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
-
-    RunManticore (vp, codeP, vp->dummyK, envP);
-
-    return vp->stdArg;
-
-} /* end of ApplyFun */
 
 /* \brief Run Manticore code.
  * \param vp the host vproc
@@ -70,10 +53,24 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
     while (1) {
 #ifndef NDEBUG
+      /*
 	if (DebugFlg)
 	    SayDebug("[%2d] ASM_Apply(%p, %p, %p, %p, %p, %p)\n",
 		vp->id, vp, codeP, arg, envP, retCont, exnCont);
+      */
 #endif
+	if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
+	  /* schedule a continuation that will cleanly shut down the runtime */
+	    envP = vp->shutdownCont;
+	    codeP = ValueToAddr(ValueToCont(envP)->cp);
+	    arg = M_UNIT;
+	    retCont = M_UNIT;
+	    exnCont = M_UNIT;
+	    vp->atomic = M_TRUE;
+	    vp->sigPending = M_FALSE;
+	    vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
+	}
+
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
 
 	Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
@@ -125,14 +122,17 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    }
 	    break;
 	  case REQ_Return:	/* returning from a function call */
-	    {
-	       Shutdown = true;
-	       ShutdownVProc = vp;
-	     /* synchronize with other vprocs by requesting a global GC */
-	       vp->globalGCPending = true;
-	       MinorGC(vp);
-	       return;
+	  /* shutdown the runtime
+	   * in the future we should create a new request code to handle shutdown.
+	   */
+	    ShutdownFlg = true;
+	    for (int i = 0; i < NumVProcs; i++) {
+	      /* force each vproc to check for shutdown */
+		VProc_t *wvp = VProcs[i];
+		VProcSendSignal(vp, wvp, wvp->currentFLS, wvp->dummyK);
+		VProcPreempt (vp, wvp);
 	    }
+	    break;
 	  case REQ_UncaughtExn:	/* raising an exception */
 	    Die ("uncaught exception\n");
 	  case REQ_Sleep:	/* make the VProc idle */

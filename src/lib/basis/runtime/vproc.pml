@@ -71,6 +71,7 @@ structure VProc (* :
       extern void *SleepCont (void *) __attribute__((alloc));
       extern void *ListVProcs (void *) __attribute__((alloc));
       extern void VProcWake (void *);
+      extern void VProcExit (void *);
 
     (* returns the total number of vprocs *)
       define inline @num-vprocs () : int =

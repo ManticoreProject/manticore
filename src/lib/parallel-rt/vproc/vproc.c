@@ -42,13 +42,13 @@ static int GetNumCPUs ();
 static pthread_key_t	VProcInfoKey;
 
 static Barrier_t	InitBarrier;	/* barrier for initialization */
+static Barrier_t      ShutdownBarrier; /* barrier for shutdown */
 
 /********** Globals **********/
 int			NumVProcs;
 int			NumIdleVProcs;
-VProc_t			*VProcs[MAX_NUM_VPROCS];
-bool                    Shutdown;
-VProc_t                 *ShutdownVProc;
+VProc_t		*VProcs[MAX_NUM_VPROCS];
+bool                    ShutdownFlg = false;
 
 extern int ASM_VProcSleep;
 
@@ -115,6 +115,7 @@ void VProcInit (bool isSequential, Options_t *opts)
 
   /* Initialize vprocs */
     BarrierInit (&InitBarrier, NumVProcs+1);
+    BarrierInit (&ShutdownBarrier, NumVProcs);
 
     InitData_t *initData = NEWVEC(InitData_t, NumVProcs);
     initData[0].id = 0;
@@ -221,6 +222,8 @@ void *NewVProc (void *arg)
     vproc->schedCont = M_NIL;
     vproc->dummyK = M_NIL;
     vproc->wakeupCont = M_NIL;
+    vproc->shutdownCont = M_NIL;
+    vproc->shutdownPending = M_FALSE;
     vproc->rdyQHd = M_NIL;
     vproc->rdyQTl = M_NIL;
     vproc->landingPad = M_NIL;
@@ -265,33 +268,26 @@ void *NewVProc (void *arg)
 
 } /* VProcCreate */
 
-/* \brief terminate the Manticore runtime
- * \param vp the host vproc
- * \param resV the result of the program execution
- */
-static void TerminateRuntime (VProc_t *vp, Value_t resV)
-{
-    LogVProcExitMain (vp);
-
-#ifndef NDEBUG
-    Say("res = ");
-    SayValue (resV);
-    Say("\n");
-#endif
-
-#ifdef ENABLE_LOGGING
-    FinishLog ();
-#endif
-
-    exit (0);
-}
-
-/*! \brief finish an individual vproc's execution
+/*! \brief exit the runtime
  *  \param vp the host vproc
  */
-void VProcFinish (VProc_t *vp)
+void VProcExit (VProc_t *vp)
 {
-    ThreadExit ();
+    BarrierWait(&ShutdownBarrier);
+
+    if (vp == VProcs[0]) {
+      /* assign vproc 0 to finalize the runtime state */
+	LogVProcExitMain (vp);
+	
+#ifdef ENABLE_LOGGING
+	FinishLog ();
+#endif
+	
+	exit (0);
+    }
+    else {
+	ThreadExit ();
+    }    
 }
 
 /* MainVProc:
@@ -315,7 +311,8 @@ static void MainVProc (VProc_t *vp, void *arg)
     FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
     Value_t resV = ApplyFun (vp, PtrToValue(&fn), PtrToValue(arg));
 
-    TerminateRuntime (vp, resV);
+  /* should never get here! */
+    assert (0);
 }
 
 /*! \brief return a pointer to the VProc that the caller is running on.
@@ -501,11 +498,14 @@ static void IdleVProc (VProc_t *vp, void *arg)
 
     VProcSleep(vp);
 
-    Value_t resV = ApplySched(vp);
+  /* Activate scheduling code on the vproc. */
+    Value_t envP = vp->schedCont;
+    Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
+    RunManticore (vp, codeP, vp->dummyK, envP);
 
-    TerminateRuntime (vp, resV);
-
-} /* end of IdleVProc */
+  /* should never get here! */
+    assert (0);
+}
 
 static int GetNumCPUs ()
 {
