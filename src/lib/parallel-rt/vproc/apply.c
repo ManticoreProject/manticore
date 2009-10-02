@@ -36,6 +36,23 @@ Value_t ApplyFun (VProc_t *vp, Value_t f, Value_t arg)
 
 } /* end of ApplyFun */
 
+/* \brief run Manticore scheduler initialization
+ * \param vp the host vproc
+ * \return the result of the application.
+ *
+ * Precondition: the schedCont field has been initialized by the PML runtime.
+ */
+Value_t ApplySched (VProc_t *vp)
+{
+  /* get the code and environment pointers for the initial scheduler */
+    Value_t envP = vp->schedCont;
+    Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
+
+    RunManticore (vp, codeP, vp->dummyK, envP);
+
+    return vp->stdArg;
+
+} /* end of ApplyFun */
 
 /* \brief Run Manticore code.
  * \param vp the host vproc
@@ -53,11 +70,9 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
     while (1) {
 #ifndef NDEBUG
-      /*
 	if (DebugFlg)
 	    SayDebug("[%2d] ASM_Apply(%p, %p, %p, %p, %p, %p)\n",
 		vp->id, vp, codeP, arg, envP, retCont, exnCont);
-      */
 #endif
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
 
@@ -110,7 +125,14 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    }
 	    break;
 	  case REQ_Return:	/* returning from a function call */
-	    return;
+	    {
+	       Shutdown = true;
+	       ShutdownVProc = vp;
+	     /* synchronize with other vprocs by requesting a global GC */
+	       vp->globalGCPending = true;
+	       MinorGC(vp);
+	       return;
+	    }
 	  case REQ_UncaughtExn:	/* raising an exception */
 	    Die ("uncaught exception\n");
 	  case REQ_Sleep:	/* make the VProc idle */

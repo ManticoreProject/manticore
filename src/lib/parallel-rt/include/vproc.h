@@ -40,6 +40,9 @@ struct struct_vproc {
     volatile LogBuffer_t
 		*log;		//!< current buffer for logging events
     LogBuffer_t	*prevLog;       //!< previous buffer for logging events
+#ifdef HAVE_AIO_RETURN
+    struct aiocb *logCB;	//!< AIO control buffer for log file
+#endif
 			      /* GC parameters */
     Addr_t	nurseryBase;	//!< Base address of current nursery area
     Addr_t	oldTop;		//!< Old objects live in the space from the
@@ -110,5 +113,12 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
 void VProcSleep (VProc_t *vp);
 Value_t VProcNanosleep (VProc_t *vp, Time_t nsec);
 void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp);
+
+/* Runtime shutdown sequence */
+extern bool                 Shutdown;
+extern VProc_t              *ShutdownVProc;  // the vproc assigned to complete the
+                                             // shutdown process
+void VProcFinish (VProc_t *vp);
+
 
 #endif /* !_VPROC_H_ */

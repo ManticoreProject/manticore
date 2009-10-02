@@ -212,6 +212,21 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	}
     MutexUnlock (&GCLock);
 
+  /* Runtime shutdown sequence
+   *
+   * The vproc that initiated the shutdown returns to the vproc-apply loop, while
+   * other vprocs call the finish function.
+   */
+    if (Shutdown)
+	if (ShutdownVProc == self) {
+#ifdef ENABLE_LOGGING
+	    LogGlobalGCEnd (self, NumGlobalGCs);
+#endif
+	    return;
+	} else {
+	    VProcFinish (self);
+	}
+
   /* allocate the initial chunk for the vproc */
     AllocToSpaceChunk (self);
 

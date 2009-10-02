@@ -47,6 +47,8 @@ static Barrier_t	InitBarrier;	/* barrier for initialization */
 int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
+bool                    Shutdown;
+VProc_t                 *ShutdownVProc;
 
 extern int ASM_VProcSleep;
 
@@ -263,6 +265,34 @@ void *NewVProc (void *arg)
 
 } /* VProcCreate */
 
+/* \brief terminate the Manticore runtime
+ * \param vp the host vproc
+ * \param resV the result of the program execution
+ */
+static void TerminateRuntime (VProc_t *vp, Value_t resV)
+{
+    LogVProcExitMain (vp);
+
+#ifndef NDEBUG
+    Say("res = ");
+    SayValue (resV);
+    Say("\n");
+#endif
+
+#ifdef ENABLE_LOGGING
+    FinishLog ();
+#endif
+
+    exit (0);
+}
+
+/*! \brief finish an individual vproc's execution
+ *  \param vp the host vproc
+ */
+void VProcFinish (VProc_t *vp)
+{
+    pthread_exit (NULL);
+}
 
 /* MainVProc:
  *
@@ -285,20 +315,7 @@ static void MainVProc (VProc_t *vp, void *arg)
     FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
     Value_t resV = ApplyFun (vp, PtrToValue(&fn), PtrToValue(arg));
 
-#ifndef NDEBUG
-    Say("res = ");
-    SayValue (resV);
-    Say("\n");
-#endif
-
-    LogVProcExitMain (vp);
-
-#ifdef ENABLE_LOGGING
-    FinishLog ();
-#endif
-
-    exit (0);
-
+    TerminateRuntime (vp, resV);
 }
 
 /*! \brief return a pointer to the VProc that the caller is running on.
@@ -484,16 +501,9 @@ static void IdleVProc (VProc_t *vp, void *arg)
 
     VProcSleep(vp);
 
-  /* Activate scheduling code on the vproc. */
-    Value_t envP = vp->schedCont;
-    Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
-    RunManticore (vp, codeP, vp->dummyK, envP);
+    Value_t resV = ApplySched(vp);
 
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] return from RunManticore in idle vproc\n", vp->id);
-#endif
-    exit (0);
+    TerminateRuntime (vp, resV);
 
 } /* end of IdleVProc */
 
