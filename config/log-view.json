@@ -173,11 +173,12 @@
 		}
 	      ]
 	   },
-/*
+
 	  { "desc" : "Work stealing worker status",
 	    "kind" : "STATE",
 	    "start" : "Inactive",
 	    "states" : ["Inactive", "Busy", "Thief", "Sleeping"],
+  	    "colors" : ["#00ff00", "#0000ff", "#c0c000", "#ff0000"],
 	    "transitions" : [
 		["WSWorkerInit", "Inactive"],
 		["WSExecute", "Busy"],
@@ -186,7 +187,7 @@
 		["WSSleep", "Sleeping"]
 	      ]
 	   },
-*/
+
 	  { "desc" : "Work stealing thief events",
 	    "kind" : "GROUP",
 	    "events" : [ ],
