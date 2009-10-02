@@ -111,7 +111,6 @@ extern void Say (const char *fmt, ...)
 	__attribute__ ((format(printf, 1, 2)));
 
 extern Value_t ApplyFun (VProc_t *vp, Value_t f, Value_t arg);
-extern Value_t ApplySched (VProc_t *vp);
 extern void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP);
 
 /* debugging support */
