@@ -291,7 +291,7 @@ static void TerminateRuntime (VProc_t *vp, Value_t resV)
  */
 void VProcFinish (VProc_t *vp)
 {
-    pthread_exit (NULL);
+    ThreadExit ();
 }
 
 /* MainVProc:

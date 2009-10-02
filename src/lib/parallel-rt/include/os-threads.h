@@ -47,6 +47,13 @@ STATIC_INLINE void ThreadKill (OSThread_t tid, int sig)
 
 } /* end of ThreadKill */
 
+/*! \brief exit the calling thread.
+ */
+STATIC_INLINE void ThreadExit ()
+{
+    pthread_exit (0);
+}
+
 
 /********** Mutual exclusion synchronization **********/
 

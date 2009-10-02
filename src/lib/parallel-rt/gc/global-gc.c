@@ -223,7 +223,8 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    LogGlobalGCEnd (self, NumGlobalGCs);
 #endif
 	    return;
-	} else {
+	}
+	else {
 	    VProcFinish (self);
 	}
 
