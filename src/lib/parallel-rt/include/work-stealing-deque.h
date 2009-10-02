@@ -17,11 +17,11 @@
  * NOTE: deques that are not claimed and contain zero elements are be freed by the memory manager
  */
 struct Deque_s {
-  int32_t       old;           // pointer to the oldest element in the deque
-  int32_t       new;           // pointer to the address immediately to the right of the newest element
-  int32_t       maxSz;         // max number of elements
-  int32_t       nClaimed;      // the number of processes that hold a reference to the deque
-  Value_t       elts[1];       // elements of the deque
+    int32_t       old;           // pointer to the oldest element in the deque
+    int32_t       new;           // pointer to the address immediately to the right of the newest element
+    int32_t       maxSz;         // max number of elements
+    int32_t       nClaimed;      // the number of processes that hold a reference to the deque
+    Value_t       elts[1];       // elements of the deque
 };
 typedef struct Deque_s Deque_t;
 
