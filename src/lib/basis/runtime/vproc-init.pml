@@ -42,7 +42,6 @@ structure VProcInit (* :
         (**** vp->shutdownCont ****)
           cont shutdownCont (_ : unit) =
 	     do ccall VProcExit(vp)
-	     do assert(false)
              return ()
           let shutdownCont : PT.fiber = promote(shutdownCont)
           do vpstore(VP_SHUTDOWN_CONT, vp, shutdownCont)
@@ -84,7 +83,6 @@ structure VProcInit (* :
 	           fun wait () : () =
 		       if I32Eq (#0(shutdownCnt), 0) then
 			   do ccall VProcExit(vp)
-			   do assert(false)
 			   return ()
 		       else
 			   do Pause()
