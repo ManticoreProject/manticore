@@ -436,7 +436,7 @@ functor HeapTransferFn (
       in
          {initRoots=initRoots, restoredRoots=restoredRoots, rootPtr=rootPtr, rootTemps=rootTemps, rootArgs=rootArgs}
       end (* processGCRoots *)
-
+(*
   fun genAllocCCall' varDefTbl (lhs, fLabel, CFunctions.CProto(retTy, paramTys, _), fArgs, retFun, roots) = let
       val retLabel = LabelCode.getName retFun
       val retParams = LabelCode.getParamRegs retFun
@@ -483,6 +483,9 @@ functor HeapTransferFn (
       in
         genAllocCCall' varDefTbl (lhs, fLabel, fPrototype, fArgs, retFun, roots)
       end
+*)
+
+  fun genAllocCCall _ _ = raise Fail "HeapTransferFn: allocCCall"
 
   fun moveMLTree (r, mlt) = (case MTy.treeToMLRisc mlt
 	of T.GPR e => move (r, e))
