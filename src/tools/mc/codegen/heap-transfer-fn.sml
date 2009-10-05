@@ -318,61 +318,75 @@ functor HeapTransferFn (
   fun cvtCTy (CFunctions.PointerTy) = CTy.C_PTR
     | cvtCTy (CFunctions.BaseTy rTy) = rawTyToCTy rTy
     | cvtCTy (CFunctions.VoidTy) = CTy.C_void
-				   
+		
+  local		   
   (* remove a register from a list of registers *)
   fun removeReg reg regs = List.filter (not o (fn r => CellsBasis.sameCell(reg, r))) regs
 
-  fun ccall {lhs, name, retTy, paramTys, cArgs, backupRegs, saveAllocationPointer} = let
-      val conv = if backupRegs then "ccall-bare" else "ccall"
-      val {callseq, result} = CCall.genCall {
-	    name=name, 
-	    args=cArgs,
-	    proto={conv=conv, retTy=retTy, paramTys=paramTys},
-	    paramAlloc=fn _ => false,
-	    structRet=fn _ => T.REG (64, Regs.retReg),
-	    saveRestoreDedicated=fn _ => {save=[], restore=[]},
-	    callComment=NONE
-	  } 
-      (* for each caller-save register, allocate a fresh temporary and generate save/restore operations that
-       * copy the dedicated registers to/from the temporaries.
-       *)
-      fun saveRegs rs = let
-	  fun loop ([], (tmps, ss)) = {
-	        saves=T.COPY (MTy.wordTy, tmps, ss),
-		restores=T.COPY (MTy.wordTy, ss, tmps)
-	      }
-	    | loop (r :: rs, (tmps, ss)) = loop (rs, (newReg () :: tmps, r :: ss))
-          in
-	    loop (rs, ([], []))
-          end (* saveRegs *)
-      val {saves, restores} = if saveAllocationPointer
-          then saveRegs (removeReg Regs.apReg Regs.saveRegs)
-          else saveRegs Regs.saveRegs
-      val (vpReg, setVP) = hostVProc ()
-      (* statements to save/restore the allocation pointer from the vproc *)
-      val (saveAP, restoreAP) = if saveAllocationPointer
-    	  then let
-             val apReg = T.REG(MTy.wordTy, Regs.apReg)
-	     val save = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.allocPtr, vpReg, apReg)
-	     val restore = T.MV(MTy.wordTy, Regs.apReg,	VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.allocPtr, vpReg))
-             in
-	        ([save], [restore])
-             end
-           else ([], []) 
+  (* list of registers that are both dedicated in Manticore and caller-save in C but excluding the 
+   * stack- and frame-pointer registers. 
+   *)
+  val dedicatedSaveRegs =
+      removeReg Regs.spReg (
+        removeReg (valOf Regs.fpReg) (
+	    List.filter 
+		(fn r => List.exists (fn callerSaveR => CellsBasis.sameCell(r,callerSaveR)) Regs.saveRegs)
+		Regs.dedicatedRegs))
 
-      val stms = setVP
-		 :: saveAP 
-		 @ [saves]
-		 @ callseq
-		 @ restores 
-		 :: restoreAP
-      fun convResult (T.GPR e, v) = MTy.EXP (szOfVar v, e)
-	| convResult (T.FPR e, v) = MTy.FEXP (szOfVar v, e)
-	| convResult _ = raise Fail "convResult"
-      val result = ListPair.map convResult (result, lhs)
+  (* create two instructions: one to copy each register to a fresh pseudo register and another
+   * to copy each pseudo register back to its original register. 
+   *)
+    fun saveRegs registers = let
+      fun loop ([], (tmps, ss)) = {
+	    saves=T.COPY (MTy.wordTy, tmps, ss),
+	    restores=T.COPY (MTy.wordTy, ss, tmps)
+	  }
+	| loop (r :: registers, (tmps, ss)) = loop (registers, (newReg () :: tmps, r :: ss))
       in
-          {stms=stms, result=result}
+	loop (registers, ([], []))
       end
+  in
+  
+    fun ccall {lhs, name, retTy, paramTys, cArgs, saveAllocationPointer} = let
+	val {callseq, result} = CCall.genCall {
+	      name=name, 
+	      args=cArgs,
+	      proto={conv="ccall", retTy=retTy, paramTys=paramTys},
+	      paramAlloc=fn _ => false,
+	      structRet=fn _ => T.REG (64, Regs.retReg),
+	      saveRestoreDedicated=fn _ => {save=[], restore=[]},
+	      callComment=NONE
+	    }
+	val (vpReg, setVP) = hostVProc ()
+	(* statements to save/restore the allocation pointer from the vproc *)
+	val (saveAP, restoreAP) = if saveAllocationPointer
+	    then let
+	       val apReg = T.REG(MTy.wordTy, Regs.apReg)
+	       val save = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.allocPtr, vpReg, apReg)
+	       val restore = T.MV(MTy.wordTy, Regs.apReg,
+				  VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.allocPtr, vpReg))
+	       in
+		  ([save], [restore])
+	       end
+	     else ([], [])
+	val {saves, restores} = if saveAllocationPointer
+	    then saveRegs (removeReg Regs.apReg dedicatedSaveRegs)
+	    else saveRegs dedicatedSaveRegs
+	val stms = setVP
+		   :: saveAP 
+		   @ [saves]
+		   @ callseq
+		   @ restores 
+		   :: restoreAP
+	fun convResult (T.GPR e, v) = MTy.EXP (szOfVar v, e)
+	  | convResult (T.FPR e, v) = MTy.FEXP (szOfVar v, e)
+	  | convResult _ = raise Fail "convResult"
+	val result = ListPair.map convResult (result, lhs)
+	in
+	    {stms=stms, result=result}
+	end
+
+  end (* local *)
 
   fun mlriscToCArg (T.GPR rexp) = CCall.ARG rexp
     | mlriscToCArg (T.FPR fexp) = CCall.FARG fexp
@@ -394,7 +408,7 @@ functor HeapTransferFn (
         ccall {lhs=lhs, 
 	       name=VarDef.defOf varDefTbl f, 
 	       retTy=cvtCTy retTy, paramTys=List.map cvtCTy paramTys, 
-	       cArgs=List.map (varToCArg varDefTbl) args, backupRegs=allocates, saveAllocationPointer=allocates}
+	       cArgs=List.map (varToCArg varDefTbl) args, saveAllocationPointer=allocates}
       end (* genCCall *)
       
   (* Promote an object to the global heap. *)
@@ -402,7 +416,7 @@ functor HeapTransferFn (
       ccall {lhs=[lhs], 
 	     name=T.LABEL RuntimeLabels.promote,
 	     retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_PTR], 
-	     cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl arg], backupRegs=false, saveAllocationPointer=true}
+	     cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl arg], saveAllocationPointer=true}
 
   (* Take the CFG variables for the GC roots and return MLRISC code that initializes and restores
    * the roots and also return the root pointer, register temps for the roots, and values for the roots
@@ -452,7 +466,7 @@ functor HeapTransferFn (
       *)      
       val {stms=stmsC, result=resultC} = ccall {lhs=lhs, name=fLabel, 
                retTy=cvtCTy retTy, paramTys=List.map cvtCTy paramTys, 
-	       cArgs=fArgs, backupRegs=true, saveAllocationPointer=false}
+	       cArgs=fArgs, saveAllocationPointer=false}
       in
          List.concat [
 	    Copy.copy {dst=rootTemps, src=rootArgs},
@@ -566,7 +580,7 @@ functor HeapTransferFn (
       val {stms=getGlobalChunkStms, ...} = 
 	  ccall {lhs=[], name=T.LABEL RuntimeLabels.getGlobalChunk,
 	     retTy=CTy.C_void, paramTys=[CTy.C_PTR], 
-	     cArgs=[CCall.ARG VProcOps.genHostVP'], backupRegs=false, saveAllocationPointer=true}
+	     cArgs=[CCall.ARG VProcOps.genHostVP'], saveAllocationPointer=true}
       val continueStms = genGoto varDefTbl nogc
      (* Call into the runtime system to allocate a global heap chunk. *)
       val getChunkStms = List.concat [
