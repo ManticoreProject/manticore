@@ -33,10 +33,19 @@ structure VProcInit (* :
 
     (* bootstrap the vproc for purely-sequential execution *)
       define @bootstrap-sequential ( / exh : exh) : () =
+          let vp : vproc = host_vproc
+        (**** vp->schedCont ****)
 	  cont schedCont (k : PT.fiber) = throw k(UNIT)
-	  do vpstore(VP_SCHED_CONT, host_vproc, schedCont)
+	  do vpstore(VP_SCHED_CONT, vp, schedCont)
           let fls : FLS.fls = FLS.@new(UNIT / exh)
-          do vpstore(CURRENT_FLS, host_vproc, fls)
+          do vpstore(CURRENT_FLS, vp, fls)
+        (**** vp->shutdownCont ****)
+          cont shutdownCont (_ : unit) =
+	     do ccall VProcExit(vp)
+	     do assert(false)
+             return ()
+          let shutdownCont : PT.fiber = promote(shutdownCont)
+          do vpstore(VP_SHUTDOWN_CONT, vp, shutdownCont)
 	  return()
 	;
 
@@ -68,7 +77,7 @@ structure VProcInit (* :
 	        let dummyK : PT.fiber = promote(dummyK)
 	        do vpstore(VP_DUMMYK, vp, dummyK)
               (**** vp->shutdownCont ****)
-              (* precondition: signals are masked *)
+              (* Signals must be masked before invoking the shutdown function. *)
 		cont shutdownCont (_ : unit) =
                    do assert(Equal(vp, host_vproc))
 		   let cnt : int = I32FetchAndAdd(&0(shutdownCnt), ~1)
