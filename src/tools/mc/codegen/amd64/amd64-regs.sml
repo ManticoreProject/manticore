@@ -23,7 +23,7 @@ structure AMD64Regs : MANTICORE_REGS = struct
     val spReg = C.rsp
     val fpReg = SOME C.rbp
     val apReg = C.rsi
-    val limReg = C.GPReg 11
+    val limReg = C.r11
     val dedicatedRegs = [argReg, closReg, retReg, exhReg, spReg, apReg, valOf fpReg, limReg]
     val dedicatedFRegs = []
   
