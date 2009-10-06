@@ -206,12 +206,14 @@ void *NewVProc (void *arg)
     }
 #endif
 
-    VProc_t* vproc = AllocVProcMemory (initData->id, initData->loc);
-    if (vproc == 0) {
+    Addr_t vprocHeap = AllocVProcMemory (initData->id, initData->loc);
+    if (vprocHeap == 0) {
 	Die ("unable to allocate memory for vproc %d\n", initData->id);
-    } else if (((Addr_t)vproc & VP_HEAP_MASK) != 0) {
+    } else if ((vprocHeap & VP_HEAP_MASK) != 0) {
 	Die ("misaligned vproc pointer\n");
     }
+
+    VProc_t *vproc = NEW(VProc_t);
 
     VProcs[initData->id] = vproc;
 
@@ -220,7 +222,7 @@ void *NewVProc (void *arg)
     vproc->hostID = pthread_self();
     vproc->location = initData->loc;
 
-    vproc->oldTop = VProcHeap(vproc);
+    vproc->heapBase = vproc->oldTop = vprocHeap;
     InitVProcHeap (vproc);
 
     vproc->inManticore = M_FALSE;
@@ -238,7 +240,7 @@ void *NewVProc (void *arg)
     vproc->stdEnvPtr = M_UNIT;
     vproc->stdCont = M_NIL;
     vproc->stdExnCont = M_UNIT;
-    vproc->limitPtr = (Addr_t)vproc + VP_HEAP_SZB - ALLOC_BUF_SZB;
+    vproc->limitPtr = vproc->heapBase + VP_HEAP_SZB - ALLOC_BUF_SZB;;
     SetAllocPtr (vproc);
     vproc->currentFLS = M_NIL;
 

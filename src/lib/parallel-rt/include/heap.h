@@ -18,7 +18,7 @@
 
 /* VP_HEAP_SZB */		/* defined in manticore-rt.h */
 #define VP_HEAP_MASK		((Addr_t)(VP_HEAP_SZB-1))
-#define VP_HEAP_DATA_SZB	((Addr_t)(VP_HEAP_SZB - sizeof(VProc_t)))
+#define VP_HEAP_DATA_SZB	((Addr_t)(VP_HEAP_SZB))
 
 #define MAJOR_GC_THRESHOLD	((Addr_t)(VP_HEAP_DATA_SZB >> 1))
 
@@ -29,7 +29,7 @@
 STATIC_INLINE void SetAllocPtr (VProc_t *vp)
 {
     extern Addr_t MaxNurserySzB;
-    Addr_t top = (Addr_t)vp + VP_HEAP_SZB;
+    Addr_t top = vp->heapBase + VP_HEAP_SZB;
     Addr_t szB = ROUNDDOWN((top - vp->oldTop) / 2, WORD_SZB);
     if (szB > MaxNurserySzB) szB = MaxNurserySzB;
     vp->nurseryBase = (top - szB);
@@ -48,6 +48,6 @@ STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
 extern void HeapInit (Options_t *opts);
 extern void InitVProcHeap (VProc_t *vp);
 extern void AllocToSpaceChunk (VProc_t *vp);
-extern VProc_t *AllocVProcMemory (int id, Location_t loc);
+extern Addr_t AllocVProcMemory (int id, Location_t loc);
 
 #endif /* !_HEAP_H_ */

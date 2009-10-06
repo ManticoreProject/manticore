@@ -45,6 +45,7 @@ struct struct_vproc {
     struct aiocb *logCB;	//!< AIO control buffer for log file
 #endif
 			      /* GC parameters */
+    Addr_t      heapBase;       //!< Base address of the vproc heap
     Addr_t	nurseryBase;	//!< Base address of current nursery area
     Addr_t	oldTop;		//!< Old objects live in the space from the
 				//! heap base to the oldTop.
@@ -102,7 +103,7 @@ typedef void (*VProcFn_t) (VProc_t *vp, void *arg);
 /* Return the base address of the VProc's heap */
 STATIC_INLINE Addr_t VProcHeap (VProc_t *vp)
 {
-    return ((Addr_t)vp) + sizeof(VProc_t);
+    return vp->heapBase;
 }
 
 /* the array of vprocs */
