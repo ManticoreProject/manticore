@@ -56,11 +56,11 @@ GCDebugLevel_t		HeapCheck;	// Flag that controls heap checking
  */
 void HeapInit (Options_t *opts)
 {
-    MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, VP_HEAP_DATA_SZB/2);
+    MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, VP_HEAP_SZB/2);
     if (MaxNurserySzB < MIN_NURSERY_SZB)
 	MaxNurserySzB = MIN_NURSERY_SZB;
 
-    MajorGCThreshold = VP_HEAP_DATA_SZB / 10;
+    MajorGCThreshold = VP_HEAP_SZB / 10;
     if (MajorGCThreshold < MIN_NURSERY_SZB)
 	MajorGCThreshold = MIN_NURSERY_SZB;
 
