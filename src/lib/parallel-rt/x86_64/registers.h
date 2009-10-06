@@ -15,6 +15,6 @@
 #define STD_CONT_REG        %r8           /* standard return continuation */
 #define STD_EXH_REG         %r9           /* standard exception handler */
 #define ALLOC_PTR_REG       %rsi          /* allocation pointer */
-#define LIMIT_PTR_REG       %r11          /* limit pointer */
+#define VPROC_PTR_REG       %r11          /* vproc pointer */
 
 #endif /* !_REGISTERS_H_ */
