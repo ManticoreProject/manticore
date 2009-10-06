@@ -62,7 +62,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  val _ = cfa module
 	  val module = allocChecks module
           val _ = cfaClear module
-          val module = allocCCalls module
+(*          val module = allocCCalls module *)
 	  in
 	    module
 	  end

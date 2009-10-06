@@ -41,7 +41,7 @@ structure AMD64Regs : MANTICORE_REGS = struct
 	C.rbx :: C.Regs CellsBasis.GP {from=12, to=15, step=1} 
     val svidCallerSaves =
 	[C.rax, C.rcx, C.rdx, C.rsi, C.rdi] @ 
-	C.Regs CellsBasis.GP {from=8, to=11, step=1}
+	C.Regs CellsBasis.GP {from=7, to=11, step=1}
   
     val saveRegs = svidCallerSaves
     val availRegs = miscRegs
