@@ -184,13 +184,13 @@ void AllocToSpaceChunk (VProc_t *vp)
 
 /*! \brief Allocate a VProc's local memory object.
  */
-VProc_t *AllocVProcMemory (int id, Location_t loc)
+Addr_t AllocVProcMemory (int id, Location_t loc)
 {
     assert (VP_HEAP_SZB >= BIBOP_PAGE_SZB);
 
     int nPages = 1;
     MutexLock (&HeapLock);
-	VProc_t *vproc = (VProc_t *)AllocMemory (&nPages, VP_HEAP_SZB, nPages);
+	Addr_t vproc = AllocMemory (&nPages, VP_HEAP_SZB, nPages);
 	if (vproc == 0) {
 	    MutexUnlock (&HeapLock);
 	    return 0;

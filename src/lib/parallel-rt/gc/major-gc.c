@@ -69,8 +69,8 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
-    Addr_t	heapBase = (Addr_t)vp;		/* used to text for pointers into the */
-						/* local heap */
+    Addr_t	heapBase = (Addr_t)vp->heapBase;  /* used to test for pointers into the */
+						  /* local heap */
     Addr_t	oldBase = VProcHeap(vp);	
     Addr_t	oldSzB = vp->oldTop - oldBase;
   /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
@@ -205,7 +205,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
  */
 Value_t PromoteObj (VProc_t *vp, Value_t root)
 {
-    Addr_t	heapBase = (Addr_t)vp;
+    Addr_t	heapBase = (Addr_t)vp->heapBase;
 
     assert ((vp->globNextW % WORD_SZB) == 0);
 #ifndef NDEBUG
