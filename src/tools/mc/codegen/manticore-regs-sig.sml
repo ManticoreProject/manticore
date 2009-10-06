@@ -22,6 +22,7 @@ signature MANTICORE_REGS = sig
     val fpReg : gpr option	        (* frame-pointer register *)
     val apReg : gpr     		(* allocation-pointer register *)
     val limReg : gpr	        	(* heap limit register *)
+    val vprocPtrReg : gpr               (* vproc pointer *)
     val dedicatedRegs : gpr list	(* dedicated general-purpose registers *)
 					(* (this includes spReg and apReg) *)
     val dedicatedFRegs : fpr list	(* dedicated floating-point registers *) 

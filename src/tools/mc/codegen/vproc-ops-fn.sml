@@ -48,7 +48,7 @@ functor VProcOpsFn (
     val ty = MTy.wordTy
     val memory = ManticoreRegion.memory
 
-    val genHostVP' = T.ANDB(ty, T.REG(ty, Regs.apReg), T.LI Spec.ABI.vpMask)
+    val genHostVP' = T.REG(ty, Regs.vprocPtrReg)
 
     val genHostVP = MTy.EXP(ty, genHostVP')
   

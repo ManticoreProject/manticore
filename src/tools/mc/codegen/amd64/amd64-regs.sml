@@ -24,7 +24,8 @@ structure AMD64Regs : MANTICORE_REGS = struct
     val fpReg = SOME C.rbp
     val apReg = C.rsi
     val limReg = C.r11
-    val dedicatedRegs = [argReg, closReg, retReg, exhReg, spReg, apReg, valOf fpReg, limReg]
+    val vprocPtrReg = C.r10
+    val dedicatedRegs = [argReg, closReg, retReg, exhReg, spReg, apReg, valOf fpReg, limReg, vprocPtrReg]
     val dedicatedFRegs = []
   
     val allRegs = C.Regs CellsBasis.GP {from=0, to=15, step=1}
@@ -45,7 +46,7 @@ structure AMD64Regs : MANTICORE_REGS = struct
   
     val saveRegs = svidCallerSaves
     val availRegs = miscRegs
-    val argRegs = [closReg, retReg, exhReg, C.r10] @ (C.Regs CellsBasis.GP {from=12, to=15, step=1})
+    val argRegs = [closReg, retReg, exhReg] @ (C.Regs CellsBasis.GP {from=12, to=15, step=1})
 
     val allFRegs = C.Regs CellsBasis.FP {from=0, to=15, step=1}
     val svidCallerSaveSSE = allFRegs  

@@ -9,8 +9,7 @@
 #include "asm-offsets.h"
 #include "registers.h"
 
-#define TMP_REG1            %r10          /* must be caller save */
-#define TMP_REG2            %r15          /* must be caller save */	
+#define TMP_REG1            %rcx          /* must be caller save */
 
 /* Stack frame layout */
 #define RBX_OFF		(-2*8)	/* offset off %rbp for saving %rbx */
@@ -44,16 +43,16 @@ _GSYM(ASM_Apply):
 	movq	%r14,R14_OFF(%rbp)
 	movq	%r15,R15_OFF(%rbp)
       /* setup standard arguments to the Manticore function */
-	movq	%rdi,%r10		/* save vproc pointer in %r10 */
+	movq	%rdi,VPROC_PTR_REG	/* save vproc pointer */
 	movq	%rsi,%r12		/* save code pointer in %r12 */
 	movq	%rdx,STD_ARG_REG	/* standard argument */
 	movq	%rcx,STD_EP_REG		/* environment pointer */
 	movq	%r8,STD_CONT_REG	/* return continuation */	
 	movq	%r9,STD_EXH_REG		/* exception continuation */
       /* load Manticore state */
-	movq	ALLOC_PTR(%r10),ALLOC_PTR_REG	/* load allocation pointer */
-	movq	LIMIT_PTR(%r10),LIMIT_PTR_REG	/* limit pointer */
-	movq	$M_TRUE,IN_MANTICORE(%r10) /* we are running manticore code now! */
+	movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG	/* load allocation pointer */
+	movq	LIMIT_PTR(VPROC_PTR_REG),LIMIT_PTR_REG	/* limit pointer */
+	movq	$M_TRUE,IN_MANTICORE(VPROC_PTR_REG) /* we are running manticore code now! */
 	jmp	*%r12
 
 /* code address for uncaught exception continuation */
@@ -110,23 +109,15 @@ switch_to_c:
 	jmp 	invalidate_spill_area
 continue_to_c:		
 #endif
-	/* the sequential GC does not store the VProc at the base of its heap */
-#ifdef SEQUENTIAL_RT
-	call	VProcSelf
-	movq	%rax,TMP_REG2
-#else
-      /* compute the vproc pointer from the allocation pointer */
-	movq	ALLOC_PTR_REG,TMP_REG2
-	andq	$VP_MASK,TMP_REG2
-#endif
+
       /* mark that we are not running Manticore code anymore */
-	movq	$M_FALSE,IN_MANTICORE(TMP_REG2)
+	movq	$M_FALSE,IN_MANTICORE(VPROC_PTR_REG)
       /* save Manticore state */
-	movq	STD_ARG_REG,STD_ARG(TMP_REG2)
-	movq	STD_EP_REG,STD_EP(TMP_REG2)
-	movq	STD_CONT_REG,STD_CONT(TMP_REG2)
-	movq	STD_EXH_REG,STD_EXH(TMP_REG2)
-	movq	ALLOC_PTR_REG,ALLOC_PTR(TMP_REG2)
+	movq	STD_ARG_REG,STD_ARG(VPROC_PTR_REG)
+	movq	STD_EP_REG,STD_EP(VPROC_PTR_REG)
+	movq	STD_CONT_REG,STD_CONT(VPROC_PTR_REG)
+	movq	STD_EXH_REG,STD_EXH(VPROC_PTR_REG)
+	movq	ALLOC_PTR_REG,ALLOC_PTR(VPROC_PTR_REG)
       /* restore C callee-save registers */
 	movq	RBX_OFF(%rbp),%rbx
 	movq	R12_OFF(%rbp),%r12
