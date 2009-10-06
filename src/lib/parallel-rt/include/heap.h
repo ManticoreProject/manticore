@@ -18,9 +18,8 @@
 
 /* VP_HEAP_SZB */		/* defined in manticore-rt.h */
 #define VP_HEAP_MASK		((Addr_t)(VP_HEAP_SZB-1))
-#define VP_HEAP_DATA_SZB	((Addr_t)(VP_HEAP_SZB))
 
-#define MAJOR_GC_THRESHOLD	((Addr_t)(VP_HEAP_DATA_SZB >> 1))
+#define MAJOR_GC_THRESHOLD	((Addr_t)(VP_HEAP_SZB >> 1))
 
 #define ALLOC_BUF_SZB		((Addr_t)(4*ONE_K))	/* slop at end of nursery */
 #define MIN_NURSERY_SZB		((Addr_t)(16*ONE_K))	/* minimum nursery size */

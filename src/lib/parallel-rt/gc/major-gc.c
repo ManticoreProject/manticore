@@ -185,7 +185,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     if (HeapCheck >= GC_DEBUG_MAJOR) {
 	if (GCDebug >= GC_DEBUG_MAJOR)
 	    SayDebug ("[%2d] Checking heap consistency\n", vp->id);
-	bzero ((void *)(vp->oldTop), VP_HEAP_DATA_SZB - youngSzB);
+	bzero ((void *)(vp->oldTop), VP_HEAP_SZB - youngSzB);
 	CheckAfterGlobalGC (vp, roots);
     }
 #endif

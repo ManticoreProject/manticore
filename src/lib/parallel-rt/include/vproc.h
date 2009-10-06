@@ -113,10 +113,10 @@ extern VProc_t		*VProcs[MAX_NUM_VPROCS];
 extern void VProcInit (bool isSequential, Options_t *opts);
 extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
 extern VProc_t *VProcSelf ();
-void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig);
-void VProcPreempt (VProc_t *self, VProc_t *vp);
-void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
-void VProcSleep (VProc_t *vp);
-void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp);
+extern void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig);
+extern void VProcPreempt (VProc_t *self, VProc_t *vp);
+extern void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
+extern void VProcSleep (VProc_t *vp);
+extern void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp);
 
 #endif /* !_VPROC_H_ */

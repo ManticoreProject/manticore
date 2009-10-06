@@ -164,7 +164,7 @@ void MinorGC (VProc_t *vp)
     }
 
     assert ((Addr_t)nextScan >= VProcHeap(vp));
-    Addr_t avail = VP_HEAP_DATA_SZB - ((Addr_t)nextScan - VProcHeap(vp));
+    Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - VProcHeap(vp));
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MINOR) {
 bzero(nextScan, avail); /* clear unused part of local heap */

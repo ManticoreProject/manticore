@@ -206,11 +206,15 @@ void *NewVProc (void *arg)
     }
 #endif
 
+/* FIXME: we should really allocate a chunk of memory per package and then
+ * partition it among the vprocs running on the package (thus reducing false
+ * sharing in the L2/3 caches).
+ */
+
+  // alocate the vproc's local heap
     Addr_t vprocHeap = AllocVProcMemory (initData->id, initData->loc);
     if (vprocHeap == 0) {
 	Die ("unable to allocate memory for vproc %d\n", initData->id);
-    } else if ((vprocHeap & VP_HEAP_MASK) != 0) {
-	Die ("misaligned vproc pointer\n");
     }
 
     VProc_t *vproc = NEW(VProc_t);
