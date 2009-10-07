@@ -32,6 +32,15 @@ Value_t M_LongToString (int64_t n)
     return AllocString (VProcSelf(), buf);
 }
 
+/* M_Word64ToString:
+ */
+Value_t M_Word64ToString (uint64_t n)
+{
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%lu", n);
+    return AllocString (VProcSelf(), buf);
+}
+
 /* M_FloatToString:
  */
 Value_t M_FloatToString (float f)
@@ -135,16 +144,25 @@ double M_GetTimeOfDay ()
 
 }
 
-/* Return the time of day as an integer number of microseconds.
- */
-Word_t M_GetTime ()
+Time_t M_GetTime ()
 {
     struct timeval t;
-    
-    gettimeofday (&t, NULL);
-    
-    return 1000000*(Word_t)t.tv_sec + (Word_t)t.tv_usec;
 
+#if HAVE_CLOCK_GETTIME
+    struct timespec time;
+    clock_gettime (CLOCK_REALTIME, &time);
+    t.tv_sec = time.tv_sec;
+    t.tv_usec = time.tv_nsec / 1000;
+#else
+    gettimeofday (&t, 0);
+#endif
+
+    return 1000000 * t.tv_sec + t.tv_usec;
+}
+
+double M_GetCPUTime ()
+{
+  return ((double)clock ()) / CLOCKS_PER_SEC;
 }
 
 /* M_GetNumProcs:

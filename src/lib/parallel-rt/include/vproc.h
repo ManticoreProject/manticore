@@ -25,6 +25,8 @@ struct struct_vproc {
     Value_t     schedCont;      //!< continuation that invokes the current scheduler
     Value_t     dummyK;         //!< trivial fiber that immediate terminates
     Value_t     wakeupCont;     //!< continuation that wakes the vproc
+    Value_t    shutdownCont;   //!< continuation used by vprocs to shutdown the runtime
+    Value_t    shutdownPending; //!< true, when runtime shutdown is pending
     Value_t	rdyQHd;		//!< the head of the primary ready queue
     Value_t	rdyQTl;		//!< the tail of the primary ready queue
 			      /* VProc registers */
@@ -109,6 +111,7 @@ STATIC_INLINE Addr_t VProcHeap (VProc_t *vp)
 /* the array of vprocs */
 extern int		NumVProcs;
 extern VProc_t		*VProcs[MAX_NUM_VPROCS];
+extern bool           ShutdownFlg;
 
 extern void VProcInit (bool isSequential, Options_t *opts);
 extern VProc_t *VProcCreate (VProcFn_t f, void *arg);

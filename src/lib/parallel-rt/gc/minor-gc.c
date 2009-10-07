@@ -89,6 +89,7 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->schedCont);
     *rp++ = &(vp->dummyK);
     *rp++ = &(vp->wakeupCont);
+    *rp++ = &(vp->shutdownCont);
     *rp++ = &(vp->rdyQHd);
     *rp++ = &(vp->rdyQTl);
     *rp++ = &(vp->landingPad);

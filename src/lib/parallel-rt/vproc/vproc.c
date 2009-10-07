@@ -7,8 +7,10 @@
 #include "manticore-rt.h"
 #include <stdio.h>
 #include <signal.h>
+#include <time.h>
 #if defined (TARGET_DARWIN)
 #  include <sys/sysctl.h>
+#include <errno.h>
 #endif
 #include "os-memory.h"
 #include "os-threads.h"
@@ -19,7 +21,6 @@
 #include "gc.h"
 #include "options.h"
 #include "value.h"
-#include "scheduler.h"
 #include "inline-log.h"
 #include "time.h"
 
@@ -40,11 +41,13 @@ static int GetNumCPUs ();
 static pthread_key_t	VProcInfoKey;
 
 static Barrier_t	InitBarrier;	/* barrier for initialization */
+static Barrier_t      ShutdownBarrier; /* barrier for shutdown */
 
 /********** Globals **********/
 int			NumVProcs;
 int			NumIdleVProcs;
-VProc_t			*VProcs[MAX_NUM_VPROCS];
+VProc_t		*VProcs[MAX_NUM_VPROCS];
+bool                    ShutdownFlg = false;
 
 extern int ASM_VProcSleep;
 
@@ -124,6 +127,7 @@ void VProcInit (bool isSequential, Options_t *opts)
 
   /* Initialize vprocs */
     BarrierInit (&InitBarrier, NumVProcs+1);
+    BarrierInit (&ShutdownBarrier, NumVProcs);
 
     InitData_t *initData = NEWVEC(InitData_t, NumVProcs);
     initData[0].id = 0;
@@ -249,6 +253,8 @@ void *NewVProc (void *arg)
     vproc->schedCont = M_NIL;
     vproc->dummyK = M_NIL;
     vproc->wakeupCont = M_NIL;
+    vproc->shutdownCont = M_NIL;
+    vproc->shutdownPending = M_FALSE;
     vproc->rdyQHd = M_NIL;
     vproc->rdyQTl = M_NIL;
     vproc->landingPad = M_NIL;
@@ -300,6 +306,31 @@ void *NewVProc (void *arg)
 
 } /* VProcCreate */
 
+/*! \brief exit the runtime
+ *  \param vp the host vproc
+ */
+void VProcExit (VProc_t *vp)
+{
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcExit\n", vp->id);
+#endif
+    BarrierWait(&ShutdownBarrier);
+
+    if (vp == VProcs[0]) {
+      /* assign vproc 0 to finalize the runtime state */
+	LogVProcExitMain (vp);
+	
+#ifdef ENABLE_LOGGING
+	FinishLog ();
+#endif
+	
+	exit (0);
+    }
+    else {
+	ThreadExit ();
+    }    
+}
 
 /* MainVProc:
  *
@@ -322,20 +353,8 @@ static void MainVProc (VProc_t *vp, void *arg)
     FunClosure_t fn = {.cp = PtrToValue(&mantEntry), .ep = M_UNIT};
     Value_t resV = ApplyFun (vp, PtrToValue(&fn), PtrToValue(arg));
 
-#ifndef NDEBUG
-    Say("res = ");
-    SayValue (resV);
-    Say("\n");
-#endif
-
-    LogVProcExitMain (vp);
-
-#ifdef ENABLE_LOGGING
-    FinishLog ();
-#endif
-
-    exit (0);
-
+  /* should never get here! */
+    assert (0);
 }
 
 /*! \brief return a pointer to the VProc that the caller is running on.
@@ -449,6 +468,77 @@ void VProcSleep (VProc_t *vp)
 
 }
 
+
+#define ONE_SECOND         1000000000L
+
+/* add two timespec values */
+STATIC_INLINE struct timespec TimespecAdd (struct timespec time1, struct timespec time2)
+{
+    struct timespec result;
+    result.tv_sec = time1.tv_sec + time2.tv_sec;
+    result.tv_nsec = time1.tv_nsec + time2.tv_nsec;
+    while (result.tv_nsec > ONE_SECOND) {
+        result.tv_sec++;  
+	result.tv_nsec -= ONE_SECOND;
+    }
+    return result;
+}
+
+/*! \brief put the vproc to sleep. the vproc unblocks when either a signal arrives or the given time has elapsed.
+ *  \param vp the vproc that is being put to sleep
+ *  \param nsec the number of nanoseconds to sleep
+ *  \return the return value depends on how the vproc was brought out of sleeping: true if by a remote vproc and
+            false if by a POSIX signal or timeout
+ */
+Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
+{
+    int status = 0;
+    struct timespec delta, currTime;
+
+    delta.tv_sec = nsec / ONE_SECOND;
+    delta.tv_nsec = nsec % ONE_SECOND;
+
+    assert (vp == VProcSelf());
+
+    LogVProcSleep (vp);
+
+#ifndef NDEBUG
+    if (DebugFlg)
+        SayDebug ("[%2d] VProcNanosleep for %llu seconds and %llu nanoseconds\n", 
+	    vp->id, (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec);
+#endif
+
+    struct timeval t;
+    gettimeofday (&t, 0);
+    currTime.tv_sec = t.tv_sec;
+    currTime.tv_nsec = t.tv_usec * 1000;
+// wall clock time indicating when the vproc should wake
+    struct timespec timeToWake = TimespecAdd (delta, currTime);
+
+    MutexLock (&(vp->lock));
+// QUESTION: do we really need an AtomicWriteValue here, since we are inside a lock?
+	AtomicWriteValue (&(vp->sleeping), M_TRUE);
+	while ((vp->landingPad == M_NIL)
+	     /* nonzero status indicates an error, OS interrupt, or timeout */
+	       && !(status = CondTimedWait (&(vp->wait), &(vp->lock), &timeToWake)))
+	    continue;
+	AtomicWriteValue (&(vp->sleeping), M_FALSE);
+    MutexUnlock (&(vp->lock));
+
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcNanosleep exiting (awoken by %s)\n", vp->id, 
+		 status == 0          ? "another vproc"
+	      : (status == ETIMEDOUT  ? "timeout"
+	      : (status == EINTR      ? "interrupt" 
+	      : "an error")));
+#endif
+
+    assert (status == 0 || status == ETIMEDOUT || status == EINTR);
+    
+    return ManticoreBool (status == 0);
+}
+
 /* IdleVProc:
  */
 static void IdleVProc (VProc_t *vp, void *arg)
@@ -466,12 +556,8 @@ static void IdleVProc (VProc_t *vp, void *arg)
     Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);
     RunManticore (vp, codeP, vp->dummyK, envP);
 
-#ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] return from RunManticore in idle vproc\n", vp->id);
-#endif
-    exit (0);
-
+  /* should never get here! */
+    assert (0);
 } /* end of IdleVProc */
 
 /* SigHandler:

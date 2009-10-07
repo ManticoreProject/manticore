@@ -47,6 +47,13 @@ STATIC_INLINE void ThreadKill (OSThread_t tid, int sig)
 
 } /* end of ThreadKill */
 
+/*! \brief exit the calling thread.
+ */
+STATIC_INLINE void ThreadExit ()
+{
+    pthread_exit (0);
+}
+
 
 /********** Mutual exclusion synchronization **********/
 
@@ -95,6 +102,11 @@ STATIC_INLINE void DestroyCond (Cond_t *cond)
 STATIC_INLINE void CondWait (Cond_t *cond, Mutex_t *mu)
 {
     CHECK_RETURN(pthread_cond_wait (cond, mu));
+}
+
+STATIC_INLINE int CondTimedWait (Cond_t *cond, Mutex_t *mu, const struct timespec *abstime)
+{
+    return pthread_cond_timedwait (cond, mu, abstime);
 }
 
 STATIC_INLINE void CondSignal (Cond_t *cond)

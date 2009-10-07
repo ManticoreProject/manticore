@@ -1,0 +1,24 @@
+(* scheduler.mlb
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Schedulers.
+ *)
+
+  ../sequential/sequential.mlb
+  ../misc/debug.mlb
+  ../runtime/runtime.mlb
+  ../synch/synch.mlb
+  ../implicit-thread/implicit-thread.mlb
+
+  ann "cpp" "../include/prim.def"
+  in
+    ../misc/uid.pml
+  end
+
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    global-bfs-scheduler.pml
+    work-stealing.pml
+  end

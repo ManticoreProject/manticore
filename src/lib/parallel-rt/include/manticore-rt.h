@@ -89,6 +89,8 @@ typedef struct struct_logbuf LogBuffer_t;
  */
 typedef unsigned int Location_t;
 
+typedef long int Time_t;
+
 STATIC_INLINE bool ValueIsBoxed (Value_t v) { return (((Addr_t)v & 0x3) == 0); }
 
 /* type conversions  */

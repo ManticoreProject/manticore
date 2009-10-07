@@ -1,0 +1,14 @@
+(* def-implicit-thread-sched.mlb
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Initialize the default implicit-thread scheduler.
+ *)
+
+  scheduler.mlb
+
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    def-implicit-thread-sched.pml
+  end

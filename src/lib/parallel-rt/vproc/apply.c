@@ -57,9 +57,21 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		vp->id, vp, codeP, arg, envP, retCont, exnCont);
       */
 #endif
+	if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
+	  /* schedule a continuation that will cleanly shut down the runtime */
+	    envP = vp->shutdownCont;
+	    codeP = ValueToAddr(ValueToCont(envP)->cp);
+	    arg = M_UNIT;
+	    retCont = M_UNIT;
+	    exnCont = M_UNIT;
+	    vp->sigPending = M_FALSE;
+	    vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
+	}
+
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
 #ifndef NDEBUG
 #endif
+
 	switch (req) {
 	  case REQ_GC:
 	  /* check to see if we actually need to do a GC, since this request
@@ -103,18 +115,35 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    }
 	    break;
 	  case REQ_Return:	/* returning from a function call */
-	    return;
+	  /* shutdown the runtime
+	   * in the future we should create a new request code to handle shutdown.
+	   */
+	    ShutdownFlg = true;
+	    for (int i = 0; i < NumVProcs; i++) {
+	      /* force each vproc to check for shutdown */
+		VProc_t *wvp = VProcs[i];
+		VProcSendSignal(vp, wvp, wvp->currentFLS, wvp->dummyK);
+		VProcPreempt (vp, wvp);
+	    }
+	    break;
 	  case REQ_UncaughtExn:	/* raising an exception */
 	    Die ("uncaught exception\n");
 	  case REQ_Sleep:	/* make the VProc idle */
-	    VProcSleep(vp);
-	    assert (vp->wakeupCont != M_NIL);
-	    envP = vp->wakeupCont;
-	    codeP = ValueToAddr (ValueToCont(envP)->cp);
-	    arg = M_UNIT;
-	    retCont = M_UNIT;
-	    exnCont = M_UNIT;
-	    vp->wakeupCont = M_NIL;
+	    {
+	       Value_t status = M_TRUE;
+	       Time_t timeToSleep = *((Time_t*)(vp->stdArg));
+	       if (timeToSleep == 0)    /* convention: if timeToSleep == 0, sleep indefinitely */
+		   VProcSleep(vp);
+	       else
+		   status = VProcNanosleep(vp, timeToSleep);
+	       assert (vp->wakeupCont != M_NIL);
+	       envP = vp->wakeupCont;
+	       codeP = ValueToAddr (ValueToCont(envP)->cp);
+	       arg = AllocNonUniform (vp, 1, PTR(status));
+	       retCont = M_UNIT;
+	       exnCont = M_UNIT;
+	       vp->wakeupCont = M_NIL;
+	    }
 	    break;
 	  default:
 	    Die("unknown signal %d\n", req);

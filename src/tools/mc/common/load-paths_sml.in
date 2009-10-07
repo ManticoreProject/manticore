@@ -32,10 +32,10 @@ structure LoadPaths =
     val runtimeBasisLib = join (runtimeBasisDir, "runtime.mlb")
 
   (* scheduling *)
-    val schedsDir = join (basisDir, "schedulers")
+    val schedsDir = join (basisDir, "scheduler")
 
   (* scheduling library *)
-    val schedsLib = join (schedsDir, "schedulers.mlb")
+    val schedsLib = join (schedsDir, "scheduler.mlb")
 
   (* top-level scheduler library *)
     fun topLevelSchedLib sched = join (schedsDir, OS.Path.joinBaseExt{base=sched, ext=SOME "mlb"})
@@ -44,10 +44,10 @@ structure LoadPaths =
     val defImplicitThreadSchedLib = join (schedsDir, "def-implicit-thread-sched.mlb")
 
   (* implicit threading *)
-    val implicitThreadingDir = join (basisDir, "implicit-threading")
+    val implicitThreadingDir = join (basisDir, "implicit-thread")
 
   (* implicit-threading library *)
-    val implicitThreadingLib = join (implicitThreadingDir, "implicit-threading.mlb")
+    val implicitThreadingLib = join (implicitThreadingDir, "implicit-thread.mlb")
 
   (* CML *)
     val cmlDir = join (basisDir, "cml")

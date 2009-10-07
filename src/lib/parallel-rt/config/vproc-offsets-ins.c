@@ -28,6 +28,7 @@
     VP_OFFSET(vp, VP_SCHED_CONT, schedCont, false);
     VP_OFFSET(vp, VP_DUMMYK, dummyK, false);
     VP_OFFSET(vp, VP_WAKEUP_CONT, wakeupCont, true);
+    VP_OFFSET(vp, VP_SHUTDOWN_CONT, shutdownCont, true);
     VP_OFFSET(vp, VP_RDYQ_HD, rdyQHd, true);
     VP_OFFSET(vp, VP_RDYQ_TL, rdyQTl, true);
     VP_OFFSET(vp, STD_ARG, stdArg, true);

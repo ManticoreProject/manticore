@@ -58,6 +58,30 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     return PtrToValue(obj);
 }
 
+/*! \brief allocate a vector seeded with some initial values.
+ *  \param vp the host vproc
+ *  \param values the values used to initialize the vector
+ *  \return the allocated and initialized vector
+ *  The vector type is defined in basis/sequential/vector.pml.
+ */
+Value_t AllocVector (VProc_t *vp, Value_t values)
+{
+    Word_t	*obj = (Word_t *)(vp->allocPtr);    
+    int         i    = 0;
+
+    while (values != M_NIL) {
+	ListCons_t *valueList = (ListCons_t*)ValueToPtr(values);
+	obj[i] = (Word_t)valueList->hd;
+	values = valueList->tl;
+	i++;
+    }
+
+    obj[-1] = VEC_HDR(i);
+    vp->allocPtr += WORD_SZB * (i+1);
+    
+    return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(i));
+}
+
 /*! \brief allocate a wrapped word value.
  */
 Value_t WrapWord (VProc_t *vp, Word_t i)
@@ -266,6 +290,33 @@ Value_t GlobalAllocIntArray (VProc_t *vp, int nElems, int32_t elt)
     Word_t *obj = (Word_t*)(vp->globNextW);
     obj[-1] = RAW_HDR(nWords);
     int *arr = (int*)obj;
+    for (int i = 0;  i < nElems;  i++) {
+	arr[i] = elt;
+    }
+
+    vp->globNextW += WORD_SZB * (nWords+1);
+    return PtrToValue(obj);
+}
+
+/*! \brief allocate an array of word64s in the global heap
+ *  \param vp the host vproc
+ *  \param nElems the number of elements in the array
+ *  \param elt the initial value for the array elements
+ *  \return pointer to the beginning of the array
+ */
+Value_t GlobalAllocWord64Array (VProc_t *vp, int nElems, uint64_t elt)
+{
+    int nWords = BYTES_TO_WORDS(nElems * sizeof(uint64_t));
+  /* the array must fit into a global chunk */
+    assert(HEAP_CHUNK_SZB > WORD_SZB*(nWords+1));
+
+    if (vp->globNextW + WORD_SZB * (nWords+1) >= vp->globLimit) {
+	AllocToSpaceChunk(vp);
+    }
+
+    Word_t *obj = (Word_t*)(vp->globNextW);
+    obj[-1] = RAW_HDR(nWords);
+    uint64_t *arr = (uint64_t*)obj;
     for (int i = 0;  i < nElems;  i++) {
 	arr[i] = elt;
     }
