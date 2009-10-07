@@ -42,6 +42,7 @@ structure Contract : sig
     val cntUnusedSelect         = ST.newCounter "contract:unused-select"
     val cntSelectConst          = ST.newCounter "contract:select-const"
     val cntReallocElim          = ST.newCounter "contract:realloc-elim"
+    val cntPromote		= ST.newCounter "contract:promote-elim"
     val cntDeadFun              = ST.newCounter "contract:dead-fun"
     val cntDeadRecFun           = ST.newCounter "contract:dead-rec-fun"
     val cntDeadCont             = ST.newCounter "contract:dead-cont"
@@ -248,6 +249,14 @@ structure Contract : sig
                   | _ => FAIL
                 (* end case *))
             | B.E_Prim p => PrimContract.contract (env, x, p)
+	  (* remove promote operations for the flat-heap version of the compiler *)
+	    | B.E_Promote y => let
+		val (env, casts) = extendWithCasts {env = env, fromVars = [y], toVars = [x]}
+		in
+		  ST.tick cntPromote;
+		  dec y;
+		  OK(casts, env)
+		end
             | _ => FAIL
           (* end case *))
 
