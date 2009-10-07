@@ -23,6 +23,7 @@
 #include "value.h"
 #include "inline-log.h"
 #include "time.h"
+#include <errno.h>
 
 typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
