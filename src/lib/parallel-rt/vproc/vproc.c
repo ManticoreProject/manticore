@@ -217,7 +217,19 @@ void *NewVProc (void *arg)
 	Die ("unable to allocate memory for vproc %d\n", initData->id);
     }
 
+  /* we want 64-byte alignment for the whole object so that the 64-byte-aligned
+   * fields are actually aligned on 64-byte boundaries.
+   */
+#if defined(HAVE_POSIX_MEMALIGN)
+    VProc_t *vproc = 0;
+    posix_memalign ((void **)&vproc, 64, sizeof(VProc_t));
+#elif defined(HAVE_MEMALIGN)
+    VProc_t *vproc = (VProc_t *) memalign (64, sizeof(VProc_t));
+#elif defined(HAVE_VALLOC)
+    VProc_t *vproc = (VProc_t *) valloc (sizeof(VProc_t));
+#else
     VProc_t *vproc = NEW(VProc_t);
+#endif
 
     VProcs[initData->id] = vproc;
 
