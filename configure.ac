@@ -381,12 +381,16 @@ dnl
 dnl config.h stuff
 AH_TOP([
 /*
- * COPYRIGHT (c) 2007 Manticore project. (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2009 Manticore project. (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  */
 
 #ifndef _MANTICORE_CONFIG_H_
 #define _MANTICORE_CONFIG_H_
+
+#if defined(NO_GC_STATS) && (! defined(NDEBUG))
+#  define NDEBUG /* NO_GC_STATS implies NDEBUG */
+#endif
 ])
 AH_BOTTOM([
 
