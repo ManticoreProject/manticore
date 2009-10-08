@@ -205,8 +205,9 @@ functor MainFn (
           \    -h               produce minimal help listing\n\
           \    -h<level>        help listing with obscurity limit\n\
           \    -version         show version\n\
-	  \    -debug           build an executable with debugging enabled\n\
 	  \    -log             build an executable with logging enabled\n\
+	  \    -gcStats         build an executable with GC statistics enabled\n\
+	  \    -debug           build an executable with debugging enabled\n\
 	  \    -sequential      compile a sequential-mode program\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
@@ -292,6 +293,7 @@ functor MainFn (
 		| "-sequential" => set BasicControl.sequential
 		| "-verbose" => (Controls.set(BasicControl.verbose, 1); processArgs args)
 		| "-log" => set BasicControl.logging
+		| "-gcstats" => set BasicControl.gcStats
 		| "-debug" => set BasicControl.debug
 		| _ => badopt ()
 	      (* end case *))
