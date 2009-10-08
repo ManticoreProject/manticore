@@ -58,7 +58,7 @@ void MinorGC (VProc_t *vp)
 
     LogMinorGCStart (vp, (uint32_t)allocSzB);
 
-    assert (VProcHeap(vp) <= (Addr_t)nextScan);
+    assert (vp->heapBase <= (Addr_t)nextScan);
     assert ((Addr_t)nextScan < vp->nurseryBase);
     assert (vp->nurseryBase < vp->allocPtr);
 
@@ -144,8 +144,8 @@ void MinorGC (VProc_t *vp)
 	}
     }
 
-    assert ((Addr_t)nextScan >= VProcHeap(vp));
-    Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - VProcHeap(vp));
+    assert ((Addr_t)nextScan >= vp->heapBase);
+    Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - vp->heapBase);
 #ifndef NO_GC_STATS
     vp->nMinorGCs++;
     vp->minorStats.nBytesAlloc += vp->allocPtr - vp->nurseryBase - WORD_SZB;
@@ -199,7 +199,7 @@ static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
 		SayDebug("CheckLocalPtr: unexpected remote pointer %p at %p in %s\n",
 		    ValueToPtr(v), addr, where);
 	    }
-	    else if (! inAddrRange(VProcHeap(self), self->oldTop - VProcHeap(self), ValueToAddr(v))) {
+	    else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {
 		SayDebug("CheckLocalPtr: local pointer %p at %p in %s is out of bounds\n",
 		    ValueToPtr(v), addr, where);
 	    }
@@ -226,7 +226,7 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
   // check the local heap
     {
 	Word_t *top = (Word_t *)(self->oldTop);
-	Word_t *p = (Word_t *)VProcHeap(self);
+	Word_t *p = (Word_t *)self->heapBase;
 	while (p < top) {
 	    Word_t hdr = *p++;
 	    if (isMixedHdr(hdr)) {

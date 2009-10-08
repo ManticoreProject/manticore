@@ -90,10 +90,11 @@ struct struct_vproc {
     uint32_t	nPromotes;	//!< number of promotions
     uint32_t	nMinorGCs;	//!< number of minor GCs by this vproc
     uint32_t	nMajorGCs;	//!< number of major GCs by this vproc
-    GCCntrs_t	minorStats;
-    GCCntrs_t	majorStats;
-    GCCntrs_t	globalStats;
-    uint64_t	nBytesPromoted;
+    GCCntrs_t	minorStats;	//!< information about minor GCs on this vproc
+    GCCntrs_t	majorStats;	//!< information about major GCs on this vproc
+    GCCntrs_t	globalStats;	//!< information about this vproc's part in
+				//!  global GCs.
+    uint64_t	nBytesPromoted;	//!< the number of bytes promoted on this vproc
 #endif
 #ifndef ENABLE_LOGGING	      /* GC counters for logging info */
 
@@ -109,16 +110,10 @@ typedef enum {
 /* the type of the initial function to run in a vproc */
 typedef void (*VProcFn_t) (VProc_t *vp, void *arg);
 
-/* Return the base address of the VProc's heap */
-STATIC_INLINE Addr_t VProcHeap (VProc_t *vp)
-{
-    return vp->heapBase;
-}
-
 /* the array of vprocs */
 extern int		NumVProcs;
 extern VProc_t		*VProcs[MAX_NUM_VPROCS];
-extern bool           ShutdownFlg;
+extern bool		ShutdownFlg;
 
 extern void VProcInit (bool isSequential, Options_t *opts);
 extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
