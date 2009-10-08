@@ -608,7 +608,10 @@ structure ArityRaising : sig
   (* Attempt to come up with a combined signature via sigMeet. Note
    * that non-candidate calls cancel out any attempt to further simplify
    * the signature.
-   * TODO: this needs to make sure the selections have identical representation formats!
+   * After we come up with a proposed signature, we pass back through to get the
+   * final version that works with valid selection paths from all of the shared functions.
+   * To ensure compatible representations, we pass over all of the functions, pulling out
+   * type associated with each parameter and ensuring it works.
    *)
     fun sigOfFuns [] = raise Fail "no functions"
       | sigOfFuns [f] = #sign(getInfo f)
@@ -620,8 +623,23 @@ structure ArityRaising : sig
                         sigMeet(#sign(getInfo g), CV.typeOf g, sign)
                     val proposed = List.foldl meetSigs
                                               (#sign(getInfo f)) r
+                    val final = List.foldl meetSigs proposed l
+                    fun getTypes (f) = let
+                        val {params, vmap, ...} = getInfo f
+                        val paramList = computeParamList (params, vmap, final)
+                    in
+                        List.map CV.typeOf paramList
+                    end
+                    fun compatibleTypings ([], []) = true
+                      | compatibleTypings (ty1::tys1, ty2::tys2) =
+                        CPSTyUtil.equal (ty1, ty2) andalso compatibleTypings (tys1, tys2)
+                      | compatibleTypings (_, _) = raise Fail "Type lists of different lengths."
+                    fun checkAll (ty1, ty2::tys2) = compatibleTypings (ty1, ty2) andalso checkAll (ty2, tys2)
+                      | checkAll (ty1, []) = true
                 in
-                    List.foldl meetSigs proposed l
+                    if checkAll ((getTypes f), (List.map getTypes r))
+                    then final
+                    else [(0, [])]
                 end
             else
                 [(0, [])]
