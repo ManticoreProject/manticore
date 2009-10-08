@@ -6,7 +6,7 @@
 
 DIR=`pwd`
 PMLC="sml @SMLcmdname=pmlc @SMLload=$DIR/../../src/tools/mc/pmlc"
-PMLCFLAGS="-sequential -Ccps.cfa-rc=true"
+PMLCFLAGS="-sequential"
 DATE=$( date +"%F-%H-%M-%S" )
 REPORT_FILE=report-$DATE
 REPORT="$DIR/reports/$REPORT_FILE"
