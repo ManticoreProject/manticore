@@ -33,8 +33,14 @@ STATIC_INLINE void *MapMemory (void *base, size_t szb)
   /* NOTE: we use -1 as the fd argument, because Mac OS X uses the fd for
    * Mach VM flags when MAP_ANON has been specified.
    */
-    return mmap(base, szb, PROT_ALL, MAP_PRIVATE|MAP_ANON, -1, 0);
+    int flags = MAP_PRIVATE|MAP_ANON;
+    if (base != 0)
+	flags |= MAP_FIXED;
+
+    return mmap(base, szb, PROT_ALL, flags, -1, 0);
+
 }
+
 STATIC_INLINE void UnmapMemory (void *base, size_t szb)
 {
     munmap (base, szb);
