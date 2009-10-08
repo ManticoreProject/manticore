@@ -203,6 +203,10 @@ dnl check for /proc/cpuinfo
 dnl
 AC_CHECK_FILES(/proc/cpuinfo)
 
+dnl check for asynchronous I/O support
+dnl
+AC_CHECK_FUNCS(aio_return)
+
 dnl ******************** SML/NJ configuration ********************
 dnl
 
@@ -377,12 +381,16 @@ dnl
 dnl config.h stuff
 AH_TOP([
 /*
- * COPYRIGHT (c) 2007 Manticore project. (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2009 Manticore project. (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  */
 
 #ifndef _MANTICORE_CONFIG_H_
 #define _MANTICORE_CONFIG_H_
+
+#if defined(NO_GC_STATS) && (! defined(NDEBUG))
+#  define NDEBUG /* NO_GC_STATS implies NDEBUG */
+#endif
 ])
 AH_BOTTOM([
 
@@ -481,7 +489,7 @@ AC_CONFIG_LINKS([
 dnl
 dnl generate the runtime-constants files
 dnl
-AC_CONFIG_COMMANDS([runtime-consts], [./config/gen-runtime-consts.sh])
+AC_CONFIG_COMMANDS([runtime-consts], [config/gen-runtime-consts.sh])
 
 dnl
 dnl generate makefiles for runtime library builds
