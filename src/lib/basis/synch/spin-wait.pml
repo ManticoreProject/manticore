@@ -19,7 +19,6 @@ structure SpinWait =
        * returns true when the sequence of calls has passed the maximum number of cycles. *)
 	define inline @mk-spin-wait-fun (maxSpinCyclesLg : int) : fun( / -> bool) =
 	    let spinCyclesLg : ![int] = alloc (1)
-            let spinCyclesLg : ![int] = promote (spinCyclesLg)
 	    fun doit () : bool =
 		let spinCycles : int = I32LSh (1, #0(spinCyclesLg))
                 fun spin (i : int) : () =
