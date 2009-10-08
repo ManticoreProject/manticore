@@ -10,9 +10,12 @@ PMLCFLAGS=""
 DATE=$( date +"%F-%H-%M-%S" )
 REPORT_FILE=report-$DATE
 REPORT="$DIR/reports/$REPORT_FILE"
+LOG="$DIR/LOG"
 
 # allow core dumps
 ulimit -c unlimited
+
+rm -rf $LOG
 
 ( cd goals;
 
@@ -24,21 +27,25 @@ do
      fname=${f%.pml}
      if [ -e "$fname.ok" ] ; then
        echo -n "checking $g/$f ..."
-       $PMLC $PMLCFLAGS $f 2> /dev/null
+       echo "checking $g/$f" >> $LOG
+       $PMLC $PMLCFLAGS $f 2>> $LOG 1>> $LOG
        if [ "$?" -eq "0" ] ; then
 	 ./a.out > $fname.test
 	 diffs=$(diff $fname.test $fname.ok)
 	 status=$(diff $fname.test $fname.ok | wc -l)
 	 if [ $status -eq "0" ] ; then
 	   echo "***** Check succeeded for goal $g in file $f." >> $REPORT
+	   echo "ok" >> $LOG
 	   echo "ok"
 	 else
 	   echo "***** Check failed for goal $g in file $f." >> $REPORT
 	   diff $fname.test $fname.ok >> $REPORT
+           echo "fail" >> $LOG
 	   echo "fail"
 	 fi
        else
 	 echo "***** Compile failed for goal $g in file $f." >> $REPORT
+         echo "fail" >> $LOG
 	 echo "fail"
        fi
        rm -f a.out $fname.s $fname.test
