@@ -59,6 +59,10 @@ structure ArityRaising : sig
     val cntUselessScanPasses    = ST.newCounter "cps-arity:useless-scan-passes"
     val cntFunsToConts          = ST.newCounter "cps-arity:funs-to-conts"
 
+    val cntUnusedStmt           = ST.newCounter "cps-arity:unused-stmt"
+    val cntUnusedParam          = ST.newCounter "cps-arity:unused-param"
+    val cntUnusedArg            = ST.newCounter "cps-arity:unused-arg"
+    val cntCleanupPasses        = ST.newCounter "cps-arity:cleanup-passes"
 
   (***** Analysis *****)
 
@@ -1496,11 +1500,27 @@ structure ArityRaising : sig
     (*
      * Given our incremental approach to flattening and useless elimination, it would be
      * technically better to iterate CFA+flat+useless+Census+contract to a fixpoint. However,
-     * that's really slow. Doing these next two cleanup passes (remove zero-count let bindings
-     * and then zero-count parameters) catches the vast majority of what's left after a single
-     * iteration of CFA+flat+usless+census.
+     * that's really slow. We instead just iterate this cleanup pass to a fixpoint.
+     *
+     * Flatten+useless elim can leave around useCnt=0 params on flattened functions.
+     * This removes them, cleans up the types, and cleans up the call sites.
+     * It also cleans up any unused let bindings.
+     *
+     * Additionally, if we've gotten to a point where any of the C.Fun lambdas have
+     * had all of their return continuations eliminated, change those into C.Cont
+     *
+     * Do not clean up arguments on:
+     * - non-candidate functions (we don't necessarily know all of their call sites)
+     * - those with shared signatures (we did the best we could during flattening)
+     * - functions passed as arguments (i.e. return continuations). (we would need
+     * to fix up the types all the way through the functions, which means yet another
+     * pass)
      *)
-    fun cleanupBody (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
+    fun skipParamCleanup (f) =
+        not(isFlat f) orelse
+        isShared f orelse
+        (CV.useCount f > CV.appCntOf f)
+    fun cleanup (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
         fun decCountsRHS (rhs) = (
             case rhs
              of C.Var (vars) => List.app Census.decUseCnt vars
@@ -1518,61 +1538,26 @@ structure ArityRaising : sig
 	      | C.VPStore (_, v1, v2) => (Census.decUseCnt v1; Census.decUseCnt v2)
 	      | C.VPAddr (_, v) => Census.decUseCnt v
         (* end case *))
-
         fun cleanupExp (exp as C.Exp(ppt, e)) = (
             case e
-             of C.Let ([x], rhs, e) =>
-                if CV.useCount x > 0 orelse isEffectful (rhs, externs)
-                then C.mkLet ([x], rhs, cleanupExp e)
-                else (decCountsRHS rhs; cleanupExp e)
-              | C.Let (vars, rhs, e) => C.mkLet (vars, rhs, cleanupExp e)
-              | C.Fun (lambdas, body) => let
-                    val lambdas = List.map cleanupLambda lambdas
-                    val body = cleanupExp body
+             of C.Let ([x], rhs, e) => (if CV.useCount x > 0 orelse isEffectful (rhs, externs)
+                                        then C.mkLet ([x], rhs, cleanupExp e)
+                                        else (ST.tick cntUnusedStmt; decCountsRHS rhs; cleanupExp e))
+              | C.Let ([], rhs, e) => C.mkLet ([], rhs, cleanupExp e)
+              | C.Let (vars, C.Var(rhsV), e) => let
+                    fun checkOne (v, r) =
+                        if CV.useCount v > 0
+                        then (ST.tick cntUnusedStmt; true)
+                        else (Census.decUseCnt r; false)
+                    val paired = ListPair.zip (vars, rhsV)
+                    val filtered = List.filter checkOne paired
+                    val (vars', rhsV') = ListPair.unzip filtered
                 in
-                    C.mkFun (lambdas, body)
+                    if length vars' = 0
+                    then cleanupExp e
+                    else C.mkLet (vars', C.Var(rhsV'), cleanupExp e)
                 end
-              | C.Cont (f, body) => C.mkCont (cleanupLambda f, cleanupExp body)
-              | C.If (v, e1, e2) => C.mkIf (v, cleanupExp e1, cleanupExp e2)
-              | C.Switch (v, cases, body) => C.mkSwitch(v, List.map (fn (tag,e) => (tag, cleanupExp e))
-                                                                    cases, Option.map cleanupExp body)
-              | C.Apply (f, args, retArgs) => C.mkApply (f, args, retArgs)
-              | C.Throw (k, args) => C.mkThrow (k, args)
-                (* end case *))
-        and cleanupLambda (lambda as C.FB{f, params, rets, body}) =
-            C.mkLambda(C.FB{f=f,params=params,rets=rets,body=cleanupExp body})
-    in
-        C.MODULE{
-	name=name, externs=externs,
-	body = C.mkLambda(C.FB{
-                          f=main,params=modParams,rets=modRets,
-                          body= cleanupExp (modBody)
-		         })
-	}
-    end
-        
-    (*
-     * Flatten+useless elim can leave around useCnt=0 params on flattened functions.
-     * This removes them, cleans up the types, and cleans up the call sites.
-     *
-     * Additionally, if we've gotten to a point where any of the C.Fun lambdas have
-     * had all of their return continuations eliminated, change those into C.Cont
-     *
-     * Do not clean up arguments on:
-     * - non-candidate functions (we don't necessarily know all of their call sites)
-     * - those with shared signatures (we did the best we could during flattening)
-     * - functions passed as arguments (i.e. return continuations). (we would need
-     * to fix up the types all the way through the functions, which means yet another
-     * pass)
-     *)
-    fun skipParamCleanup (f) =
-        not(isFlat f) orelse
-        isShared f orelse
-        (CV.useCount f > CV.appCntOf f)
-    fun cleanupParams (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
-        fun cleanupExp (exp as C.Exp(ppt, e)) = (
-            case e
-             of C.Let (vars, rhs, e) => C.mkLet (vars, rhs, cleanupExp e)
+              | C.Let (_, _, _) => raise Fail "let-binding had multiple LHS but not a multi-var-bind RHS."
               | C.Fun (lambdas, body) => let
                     val lambdas = List.map cleanupLambda lambdas
                     fun emitFunsOrConts((l as C.FB{rets,...})::lambdas, accum) =
@@ -1605,10 +1590,10 @@ structure ArityRaising : sig
                 else case getFB f
                       of SOME(C.FB{params,rets,...}) => let
                              val newArgs = ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
-                                                                  else (Census.decUseCnt b ; rr))
+                                                                  else (ST.tick cntUnusedArg; Census.decUseCnt b ; rr))
                                                           [] (params, args)
                              val newRets = ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
-                                                                  else (Census.decUseCnt b ; rr))
+                                                                  else (ST.tick cntUnusedArg; Census.decUseCnt b ; rr))
                                                           [] (rets, retArgs)
                          in
                              case CV.kindOf f
@@ -1627,7 +1612,7 @@ structure ArityRaising : sig
                       of SOME(C.FB{params,...}) => 
                          C.mkThrow(k,
                                    ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
-                                                                  else (Census.decUseCnt b ; rr))
+                                                                  else (ST.tick cntUnusedArg; Census.decUseCnt b ; rr))
                                                   [] (params, args))
                        | NONE => exp
                 (* end case *)))
@@ -1637,6 +1622,8 @@ structure ArityRaising : sig
             else let
                     val params' = List.filter (fn p => (CV.useCount p) > 0) params
                     val rets' = List.filter (fn p => (CV.useCount p) > 0) rets
+                    val _ = ST.bump (cntUnusedParam, ((length params) + (length rets)) -
+                                                     ((length params') + (length rets')))
 		    val newType = CTy.T_Fun (List.map CV.typeOf params', List.map CV.typeOf rets')
                     val _ = CV.setType (f, newType)
                     val fb = C.FB{f=f,params=params',rets=rets',body=cleanupExp body}
@@ -1653,6 +1640,19 @@ structure ArityRaising : sig
 	}
     end
 
+    fun cleanupLoop (body) = let
+        fun getCounters() = (ST.count cntUnusedStmt) +
+                            (ST.count cntUnusedParam) +
+                            (ST.count cntUnusedArg)
+        val start = getCounters()
+        val _ = ST.tick cntCleanupPasses
+        val body' = cleanup (body)
+    in
+        if getCounters() <> start
+        then cleanupLoop (body')
+        else body'
+    end
+
   (***** Transformation *****)
 
     fun transform m = if !enableArityRaising
@@ -1663,12 +1663,7 @@ structure ArityRaising : sig
 	    val m' = flatten m
             (* FIXME: should mainain census counts! *)
 	    val _ = Census.census m'
-            val m' = cleanupBody m'
-            val m' = cleanupParams m'
-            (* Sometimes cleanupParams can remove a param that is still used
-             * in a let binding. One more pass over the body to clean those up!
-             *)
-            val m' = cleanupBody m'
+            val m' = cleanupLoop m'
 	    in
 	      if !flatteningDebug
 		then List.app printCandidate candidates
