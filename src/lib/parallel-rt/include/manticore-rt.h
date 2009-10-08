@@ -87,9 +87,10 @@ typedef struct struct_logbuf LogBuffer_t;
  *
  * The location is encoded as node:core:thread.
  */
-typedef unsigned int Location_t;
+typedef uint32_t Location_t;
 
-typedef long int Time_t;
+/*! \brief time values are numbers of nanoseconds */
+typedef uint64_t Time_t;
 
 STATIC_INLINE bool ValueIsBoxed (Value_t v) { return (((Addr_t)v & 0x3) == 0); }
 

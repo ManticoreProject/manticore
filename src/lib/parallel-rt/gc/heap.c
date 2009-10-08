@@ -32,6 +32,7 @@ Addr_t		MajorGCThreshold; /* when the size of the nursery goes below this limit 
 MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
 MemChunk_t	**FreeChunks;	/* lists of free chunks, one per node */
 
+
 /* The BIBOP maps addresses to the memory chunks containing the address.
  * It is used by the global collector and access to it is protected by
  * the HeapLock.
@@ -51,6 +52,13 @@ GCDebugLevel_t		GCDebug;	// Flag that controls GC debugging output
 GCDebugLevel_t		HeapCheck;	// Flag that controls heap checking
 #endif
 
+#ifndef NO_GC_STATS
+uint32_t	NumGlobalGCs = 0;
+static bool	ReportStatsFlg = false;	// true for report enabled
+static bool	DetailStatsFlg = false;	// true for detailed report (per-vproc)
+static bool	CSVStatsFlg = false;	// true for CSV-format report
+#endif
+
 /* HeapInit:
  *
  */
@@ -63,6 +71,10 @@ void HeapInit (Options_t *opts)
     MajorGCThreshold = VP_HEAP_SZB / 10;
     if (MajorGCThreshold < MIN_NURSERY_SZB)
 	MajorGCThreshold = MIN_NURSERY_SZB;
+
+#ifndef NO_GC_STATS
+    /* process command-line args */
+#endif
 
 #ifndef NDEBUG
     const char *debug = GetStringOpt (opts, "-gcdebug", DebugFlg ? GC_DEBUG_DEFAULT : "none");
@@ -265,3 +277,39 @@ static GCDebugLevel_t ParseGCLevel (const char *debug)
 }
 #endif
 
+#ifndef NO_GC_STATS
+
+void ReportGCStats ()
+{
+    if (! ReportStatsFlg)
+	return;
+
+  // compute summary information
+    uint32_t nPromotes = 0;
+    uint32_t nMinorGCs = 0;
+    uint32_t nMajorGCs = 0;
+    GCCntrs_t totMinor = { 0, 0 };
+    GCCntrs_t totMajor = { 0, 0 };
+    GCCntrs_t totGlobal = { 0, 0 };
+    uint64_t nBytesPromoted = 0;
+    for (int i = 0;  i < NumVProcs;  i++) {
+	VProc_t *vp = VProcs[i];
+	nPromotes += vp->nPromotes;
+	nMinorGCs += vp->nMinorGCs;
+	nMajorGCs += vp->nMajorGCs;
+	totMinor.nBytesAlloc += vp->minorStats.nBytesAlloc;
+	totMinor.nBytesCopied += vp->minorStats.nBytesCopied;
+	totMajor.nBytesAlloc += vp->majorStats.nBytesAlloc;
+	totMajor.nBytesCopied += vp->majorStats.nBytesCopied;
+	totGlobal.nBytesAlloc += vp->globalStats.nBytesAlloc;
+	totGlobal.nBytesCopied += vp->globalStats.nBytesCopied;
+	nBytesPromoted += vp->nBytesPromoted;
+    }
+
+    if (DetailStatsFlg) {
+      // report summary stats
+    }
+
+}
+
+#endif

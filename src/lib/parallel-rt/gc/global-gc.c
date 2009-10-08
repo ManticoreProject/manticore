@@ -86,10 +86,6 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 		newObj[i] = p[i];
 	    }
 	    vp->globNextW = (Addr_t)(newObj+len+1);
-#ifndef NO_GC_STATS
-/* FIXME: we should really compute this information on a per-chunk basis */
-	    vp->nBytesCopied += WORD_SZB*(len+1);
-#endif
 	    return PtrToValue(newObj);
 	}
 	else {
@@ -183,10 +179,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
       /* finish the GC setup for this vproc */
 	self->globToSpTl = (MemChunk_t *)0;
 	self->globToSpHd = (MemChunk_t *)0;
-#ifndef NO_GC_STATS
-	self->nWordsScanned = 0;
-	self->nBytesCopied = 0;
-#endif
 
       // here the leader waits for the followers and the followers wait for the
       // leader to say "go"
@@ -217,12 +209,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   /* start GC for this vproc */
     GlobalGC (self, roots);
 
-#ifndef NO_GC_STATS
-  /* add this vproc's counts to the global counters */
-    FetchAndAdd64 ((int64_t *)&NWordsScanned, self->nWordsScanned);
-    FetchAndAdd64 ((int64_t *)&NBytesCopied, self->nBytesCopied);
-#endif
-
 #ifndef NDEBUG
     if (HeapCheck >= GC_DEBUG_GLOBAL) {
 	if (GCDebug >= GC_DEBUG_GLOBAL)
@@ -246,7 +232,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		if (GCDebug >= GC_DEBUG_GLOBAL)
 		    SayDebug("[%2d]   Free-Space chunk %#tx..%#tx\n",
 			self->id, cp->baseAddr, cp->baseAddr+cp->szB);
-		/*DEBUG bzero((void*)cp->baseAddr, cp->szB);*/
 #endif
 		MemChunk_t *cq = cp->next;
 		int nd = cp->where;
@@ -312,10 +297,6 @@ static void ScanVProcHeap (VProc_t *vp)
     Word_t *top = (Word_t *)(vp->oldTop);
     Word_t *scanPtr = (Word_t *)VProcHeap(vp);
 
-#ifndef NO_GC_STATS
-    vp->nWordsScanned += (top - scanPtr);
-#endif
-
     while (scanPtr < top) {
 	Word_t hdr = *scanPtr++;  // get object header
 	if (isMixedHdr(hdr)) {
@@ -364,9 +345,6 @@ static void ScanGlobalToSpace (VProc_t *vp)
     Word_t	*scanTop = UsedTopOfChunk(vp, scanChunk);
 
     do {
-#ifndef NO_GC_STATS
-	vp->nWordsScanned += ((Word_t)scanTop - (Word_t)scanPtr);
-#endif
 	while (scanPtr < scanTop) {
 	    Word_t hdr = *scanPtr++;  // get object header
 	    if (isMixedHdr(hdr)) {

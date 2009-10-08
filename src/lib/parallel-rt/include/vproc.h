@@ -11,6 +11,14 @@
 #include "manticore-rt.h"
 #include "os-threads.h"
 
+#ifndef NO_GC_STATS
+typedef struct {	    //!< counters for a GC
+    uint64_t	nBytesAlloc;	//!< number of bytes allocated in the region being
+				//!  collected
+    uint64_t	nBytesCopied;	//!< number of live bytes copied in the GC
+} GCCntrs_t;
+#endif
+
 /* WARNING:
  * Changing the vproc struct might require modifying ../config/vproc-offsets-ins.c.
  */
@@ -25,8 +33,8 @@ struct struct_vproc {
     Value_t     schedCont;      //!< continuation that invokes the current scheduler
     Value_t     dummyK;         //!< trivial fiber that immediate terminates
     Value_t     wakeupCont;     //!< continuation that wakes the vproc
-    Value_t    shutdownCont;   //!< continuation used by vprocs to shutdown the runtime
-    Value_t    shutdownPending; //!< true, when runtime shutdown is pending
+    Value_t	shutdownCont;   //!< continuation used by vprocs to shutdown the runtime
+    Value_t	shutdownPending; //!< true, when runtime shutdown is pending
     Value_t	rdyQHd;		//!< the head of the primary ready queue
     Value_t	rdyQTl;		//!< the tail of the primary ready queue
 			      /* VProc registers */
@@ -79,14 +87,13 @@ struct struct_vproc {
   /* additional optional fields used for stats etc. */
 			      /* GC stats */
 #ifndef NO_GC_STATS
-    int32_t	nLocalPtrs;	//!< counter of pointers into local heap that
-				//!  are scanned in minor GC
-    int32_t	nGlobPtrs;	//!< counter of pointers into global heap that
-				//!  are scanned in minor GC
-    uint64_t	nWordsScanned;	//!< counter of words scanned by this vpro
-				//! c during global GC
-    uint64_t	nBytesCopied;	//!< counter of bytes copied by this vproc
-				//!  during global GC
+    uint32_t	nPromotes;	//!< number of promotions
+    uint32_t	nMinorGCs;	//!< number of minor GCs by this vproc
+    uint32_t	nMajorGCs;	//!< number of major GCs by this vproc
+    GCCntrs_t	minorStats;
+    GCCntrs_t	majorStats;
+    GCCntrs_t	globalStats;
+    uint64_t	nBytesPromoted;
 #endif
 #ifndef ENABLE_LOGGING	      /* GC counters for logging info */
 
@@ -121,5 +128,6 @@ extern void VProcPreempt (VProc_t *self, VProc_t *vp);
 extern void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
 extern void VProcSleep (VProc_t *vp);
 extern void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp);
+extern Value_t VProcNanosleep (VProc_t *vp, Time_t nsec);
 
 #endif /* !_VPROC_H_ */

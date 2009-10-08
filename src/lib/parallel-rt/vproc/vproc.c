@@ -42,12 +42,12 @@ static int GetNumCPUs ();
 static pthread_key_t	VProcInfoKey;
 
 static Barrier_t	InitBarrier;	/* barrier for initialization */
-static Barrier_t      ShutdownBarrier; /* barrier for shutdown */
+static Barrier_t	ShutdownBarrier; /* barrier for shutdown */
 
 /********** Globals **********/
 int			NumVProcs;
 int			NumIdleVProcs;
-VProc_t		*VProcs[MAX_NUM_VPROCS];
+VProc_t			*VProcs[MAX_NUM_VPROCS];
 bool                    ShutdownFlg = false;
 
 extern int ASM_VProcSleep;
@@ -274,6 +274,19 @@ void *NewVProc (void *arg)
     InitLog (vproc);
 #endif
 
+#ifndef NO_GC_STATS
+    vproc->nPromotes = 0;
+    vproc->nMinorGCs = 0;
+    vproc->nMajorGCs = 0;
+    vproc->minorStats.nBytesAlloc = 0;
+    vproc->minorStats.nBytesCopied = 0;
+    vproc->majorStats.nBytesAlloc = 0;
+    vproc->majorStats.nBytesCopied = 0;
+    vproc->globalStats.nBytesAlloc = 0;
+    vproc->globalStats.nBytesCopied = 0;
+    vproc->nBytesPromoted = 0;
+#endif
+
   /* store a pointer to the VProc info as thread-specific data */
     pthread_setspecific (VProcInfoKey, vproc);
 
@@ -321,11 +334,15 @@ void VProcExit (VProc_t *vp)
     if (vp == VProcs[0]) {
       /* assign vproc 0 to finalize the runtime state */
 	LogVProcExitMain (vp);
-	
+
 #ifdef ENABLE_LOGGING
 	FinishLog ();
 #endif
-	
+
+#ifndef NO_GC_STATS
+	ReportGCStats ();
+#endif
+
 	exit (0);
     }
     else {
@@ -696,4 +713,3 @@ Value_t SleepCont (VProc_t *self)
 {
     return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
 }
-

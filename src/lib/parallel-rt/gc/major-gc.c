@@ -207,6 +207,10 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 {
     Addr_t	heapBase = (Addr_t)vp->heapBase;
 
+#ifndef NO_GC_STATS
+    vp->nPromotes++;
+#endif
+
     assert ((vp->globNextW % WORD_SZB) == 0);
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_ALL)
@@ -236,7 +240,9 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	    Addr_t tp = (p->next == 0) ? vp->globNextW : p->usedTop;
 	    nBytesCopied += (tp - base);
 	}
+	vp->nBytesPromoted += nBytesCopied;
 #endif
+
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_ALL)
 	    SayDebug("[%2d]  ==> %p; %lld bytes\n", vp->id, (void *)root, nBytesCopied);

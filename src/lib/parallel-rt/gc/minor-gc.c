@@ -19,14 +19,8 @@
 #include "inline-log.h"
 #include "bibop.h"
 
-extern Addr_t	MajorGCThreshold; /* when the size of the nursery goes below this limit */
-				/* it is time to do a GC. */
-
-#ifdef NO_GC_STATS
-#  define INCR_STAT(cntr) 	do { } while (0)
-#else
-#  define INCR_STAT(cntr)	do { (cntr)++; } while (0)
-#endif
+extern Addr_t	MajorGCThreshold;	/* when the size of the nursery goes below */
+					/* this limit it is time to do a GC. */
 
 #ifndef NDEBUG
 static void CheckMinorGC (VProc_t *self, Value_t **roots);
@@ -73,11 +67,6 @@ void MinorGC (VProc_t *vp)
 	SayDebug("[%2d] Minor GC starting\n", vp->id);
 #endif
 
-#ifndef NO_GC_STATS
-    vp->nLocalPtrs = 0;
-    vp->nGlobPtrs = 0;
-#endif
-
   /* gather the roots.  The protocol is that the stdCont register holds
    * the return address (which is not in the heap) and that the stdEnvPtr
    * holds the GC root.
@@ -108,11 +97,8 @@ void MinorGC (VProc_t *vp)
 	Value_t p = *roots[i];
 	if (isPtr(p)) {
 	    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
-		INCR_STAT(vp->nLocalPtrs);
 		*roots[i] = ForwardObj(p, &nextW);
 	    }
-	    else
-		INCR_STAT(vp->nGlobPtrs);
 	}
     }
 
@@ -130,11 +116,8 @@ void MinorGC (VProc_t *vp)
 		    Value_t v = *scanP;
 		    if (isPtr(v)) {
 			if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
-			    INCR_STAT(vp->nLocalPtrs);
 			    *scanP = ForwardObj(v, &nextW);
 			}
-			else
-			    INCR_STAT(vp->nGlobPtrs);
 		    }
 		}
 		tagBits >>= 1;
@@ -149,11 +132,8 @@ void MinorGC (VProc_t *vp)
 		Value_t v = *(Value_t *)nextScan;
 		if (isPtr(v)) {
 		    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
-			INCR_STAT(vp->nLocalPtrs);
 			*nextScan = (Word_t)ForwardObj(v, &nextW);
 		    }
-		    else
-			INCR_STAT(vp->nGlobPtrs);
 		}
 	    }
 	}
@@ -166,6 +146,11 @@ void MinorGC (VProc_t *vp)
 
     assert ((Addr_t)nextScan >= VProcHeap(vp));
     Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - VProcHeap(vp));
+#ifndef NO_GC_STATS
+    vp->nMinorGCs++;
+    vp->minorStats.nBytesAlloc += vp->allocPtr - vp->nurseryBase - WORD_SZB;
+    vp->minorStats.nBytesCopied += (Addr_t)nextScan - vp->oldTop;
+#endif
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MINOR) {
 bzero(nextScan, avail); /* clear unused part of local heap */
@@ -173,10 +158,6 @@ bzero(nextScan, avail); /* clear unused part of local heap */
 	    vp->id, (Addr_t)nextScan - vp->oldTop,
 	    vp->allocPtr - vp->nurseryBase - WORD_SZB,
 	    (int)avail);
-#ifndef NO_GC_STATS
-	SayDebug("[%2d] pointers scanned: %d local / %d global\n",
-	    vp->id, vp->nLocalPtrs, vp->nGlobPtrs);
-#endif /* !NO_GC_STATS */
     }
 #endif /* !NDEBUG */
 
