@@ -1242,6 +1242,16 @@ structure ArityRaising : sig
                 | matchTypes (_, _, accum, final) =
                   raise Fail (concat["Can't happen - call to method had mismatched arg/params.",
                                      CV.toString g])
+              fun translateArgs (v::vl, accum, final) =
+                  if shouldSkipUseless v
+                  then (let
+                            val useless = CV.copy v
+                        in
+                            genUseless (useless, translateArgs (vl, useless::accum, final))
+                        end)
+                  else translateArgs (vl, v::accum, final)
+                | translateArgs ([], accum, final) =
+                  final (rev accum)
           in
               if isCandidate g orelse (List.length lambdas > 0 andalso
                                        isCandidate (List.hd lambdas))
@@ -1270,7 +1280,9 @@ structure ArityRaising : sig
                                 in
                                     matchTypes (callParamTypes, rev newArgs, [],
                                                 fn finalArgs =>
-                                                   C.Exp(ppt, C.Apply(g, finalArgs, filteredRetArgs)))
+                                                   translateArgs (filteredRetArgs, [],
+                                                     fn finalRets =>
+                                                        C.Exp(ppt, C.Apply(g, finalArgs, finalRets))))
                                 end
 			      | NONE => matchTypes (callParamTypes, rev newArgs, [], 
                                                     fn finalArgs => C.Exp(ppt, C.Throw(g, finalArgs)))
@@ -1364,16 +1376,6 @@ structure ArityRaising : sig
                          * the appropriate types. Args may have been retyped during flattening
                          * of the enclosing function.
                          *)
-                        fun translateArgs (v::vl, accum, final) =
-                            if shouldSkipUseless v
-                            then (let
-                                      val useless = CV.copy v
-                                  in
-                                      genUseless (useless, translateArgs (vl, useless::accum, final))
-                                  end)
-                            else translateArgs (vl, v::accum, final)
-                          | translateArgs ([], accum, final) =
-                            final (rev accum)
                         val CPSTy.T_Fun(paramTypes, retTypes) = CV.typeOf g
                     in
                         matchTypes (paramTypes, args, [],
