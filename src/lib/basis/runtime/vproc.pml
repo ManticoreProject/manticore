@@ -175,6 +175,34 @@ structure VProc (* :
 		     end
                   return()
 	  do apply lp()
+	  return()
+      ;
+
+    (* place a signal on the landing pad of the remote vproc. we interrupt remote vproc in the hope that
+     * the signal is received more quickly.
+     * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
+     *) 
+      define @send-and-preempt-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
+          do assert(NotEqual(self, dst))
+	  fun lp () : () =
+	      let ldgPadOrig : queue_item = vpload(VP_LANDING_PAD, dst)
+	      let ldgPadNew : queue_item = alloc(fls, k, ldgPadOrig)
+	      let ldgPadNew : queue_item = promote(ldgPadNew)
+	      let x : queue_item = CAS((addr(queue_item))vpaddr(VP_LANDING_PAD,dst), ldgPadOrig, ldgPadNew)
+	      if NotEqual(x, ldgPadOrig) then
+		  do Pause ()
+		  apply lp ()
+	      else
+		  let sleeping : bool = vpload(VP_SLEEPING, dst)
+		  do case sleeping
+		      of true =>
+			 do ccall VProcWake(dst)
+		         return()
+		       | false => 
+			 return()
+		     end
+                  return()
+	  do apply lp()
 	  do ccall VProcPreempt (self, dst)
           let dstId : int = @vproc-id (dst)
           do Logging.@log-PreemptVProc (self, dstId)
