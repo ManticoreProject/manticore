@@ -39,6 +39,11 @@ structure VProc (* :
      * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
      *) 
       define @send-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
+    (* place a signal on the landing pad of the remote vproc. we interrupt remote vproc in the hope that
+     * the signal is received more quickly.
+     * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
+     *) 
+      define @send-and-preempt-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
     (* returns threads that have been placed on the given vproc's landing pad *)
       define @recv-from-atomic (self : vproc) : queue_item;
     (* put the vproc to sleep until a signal arrives on its landing pad 
