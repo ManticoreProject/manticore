@@ -19,3 +19,18 @@ fun fst (x, _) = x
 fun snd (_, y) = y
 
 val isSome = Option.isSome
+
+(* input argument provided by passing -i <inputArgument> to the program. the value
+ * defaults to 0 if no input was provided. *)
+local
+  _primcode (
+      extern int M_GetInputArgument ();
+  define @get-input-argument (_ : unit / _ : exh) : ml_int =
+      let arg : int = ccall M_GetInputArgument ()
+      return (alloc(arg))
+    ;
+  )
+  val getInputArgument : unit -> int = _prim (@get-input-argument)
+in
+val inputArgument : int = getInputArgument ()
+end (* local *)
