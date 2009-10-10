@@ -16,6 +16,9 @@
 #ifndef NDEBUG
 #include <string.h>
 #endif
+#ifndef NO_GC_STATS
+#include <stdio.h>
+#endif
 
 Mutex_t		HeapLock;	/* lock for protecting heap data structures */
 
@@ -31,6 +34,8 @@ Addr_t		MajorGCThreshold; /* when the size of the nursery goes below this limit 
 				/* it is time to do a GC. */
 MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
 MemChunk_t	**FreeChunks;	/* lists of free chunks, one per node */
+uint32_t	NumGlobalGCs = 0;
+
 
 /* The BIBOP maps addresses to the memory chunks containing the address.
  * It is used by the global collector and access to it is protected by
@@ -51,6 +56,12 @@ GCDebugLevel_t		GCDebug;	// Flag that controls GC debugging output
 GCDebugLevel_t		HeapCheck;	// Flag that controls heap checking
 #endif
 
+#ifndef NO_GC_STATS
+static bool	ReportStatsFlg = true;	// true for report enabled
+static bool	DetailStatsFlg = false;	// true for detailed report (per-vproc)
+static bool	CSVStatsFlg = false;	// true for CSV-format report
+#endif
+
 /* HeapInit:
  *
  */
@@ -63,6 +74,10 @@ void HeapInit (Options_t *opts)
     MajorGCThreshold = VP_HEAP_SZB / 10;
     if (MajorGCThreshold < MIN_NURSERY_SZB)
 	MajorGCThreshold = MIN_NURSERY_SZB;
+
+#ifndef NO_GC_STATS
+    /* process command-line args */
+#endif
 
 #ifndef NDEBUG
     const char *debug = GetStringOpt (opts, "-gcdebug", DebugFlg ? GC_DEBUG_DEFAULT : "none");
@@ -176,8 +191,8 @@ void AllocToSpaceChunk (VProc_t *vp)
 #ifndef NDEBUG
     if (GCDebug > GC_DEBUG_NONE)
 	SayDebug("[%2d] AllocToSpaceChunk: %ld Kb at %p..%p (node %d)\n",
-	    vp->id, chunk->szB/1024, chunk->baseAddr,
-	    chunk->baseAddr+chunk->szB, chunk->where);
+	    vp->id, chunk->szB/1024, (void *)(chunk->baseAddr),
+	    (void *)(chunk->baseAddr+chunk->szB), chunk->where);
 #endif
 
 }
@@ -188,10 +203,10 @@ Addr_t AllocVProcMemory (int id, Location_t loc)
 {
     assert (VP_HEAP_SZB >= BIBOP_PAGE_SZB);
 
-    int nPages = 1;
+    int nPages = VP_HEAP_SZB / BIBOP_PAGE_SZB;
     MutexLock (&HeapLock);
-	Addr_t vproc = AllocMemory (&nPages, VP_HEAP_SZB, nPages);
-	if (vproc == 0) {
+	Addr_t vpHeap = (Addr_t) AllocMemory (&nPages, BIBOP_PAGE_SZB, nPages);
+	if (vpHeap == 0) {
 	    MutexUnlock (&HeapLock);
 	    return 0;
 	}
@@ -201,7 +216,7 @@ Addr_t AllocVProcMemory (int id, Location_t loc)
 	    MutexUnlock (&HeapLock);
 	    return 0;
 	}
-	chunk->baseAddr = (Addr_t)vproc;
+	chunk->baseAddr = vpHeap;
 	chunk->szB = VP_HEAP_SZB;
 	chunk->sts = VPROC_CHUNK(id);
 	chunk->where = LocationNode(loc);
@@ -211,11 +226,11 @@ Addr_t AllocVProcMemory (int id, Location_t loc)
 #ifndef NDEBUG
     if (GCDebug > GC_DEBUG_NONE)
 	SayDebug("     AllocVProcMemory(%d): %ld Kb at %p..%p (node %d)\n",
-	    id, chunk->szB/1024, chunk->baseAddr,
-	    chunk->baseAddr+chunk->szB, chunk->where);
+	    id, chunk->szB/1024, (void *)(chunk->baseAddr),
+	    (void *)(vpHeap+chunk->szB), chunk->where);
 #endif
 
-    return vproc;
+    return vpHeap;
 
 }
 
@@ -265,3 +280,140 @@ static GCDebugLevel_t ParseGCLevel (const char *debug)
 }
 #endif
 
+#ifndef NO_GC_STATS
+
+STATIC_INLINE void PrintNum (FILE *f, int wid, Addr_t nbytes)
+{
+    if (nbytes < 64 * ONE_K)
+	fprintf (f, " %*d", wid, (int)nbytes);
+    else if (nbytes < 64 * ONE_MEG)
+	fprintf (f, " %*dk", wid-1, (int)(nbytes >> 10));
+    else
+	fprintf (f, " %*dM", wid-1, (int)(nbytes >> 20));
+
+}
+
+STATIC_INLINE void PrintPct (FILE *f, uint64_t n, uint64_t m)
+{
+    if (m == 0)
+	fprintf (f, "( na )");
+    else {
+	double pct = 100.0 * (double)n / (double)m;
+	if (pct < 1.0)
+	    fprintf (f, "(%3.1f%%)", pct);
+	else
+	    fprintf (f, "(%2f%%) ", pct);
+    }
+
+}
+
+void ReportGCStats ()
+{
+    char buffer[256], *bp;
+
+    if (! ReportStatsFlg)
+	return;
+
+    FILE *outF = stdout;
+
+  // compute summary information
+    uint32_t nPromotes = 0;
+    uint32_t nMinorGCs = 0;
+    uint32_t nMajorGCs = 0;
+    GCCntrs_t totMinor = { 0, 0 };
+    GCCntrs_t totMajor = { 0, 0 };
+    GCCntrs_t totGlobal = { 0, 0 };
+    uint64_t nBytesPromoted = 0;
+    for (int i = 0;  i < NumVProcs;  i++) {
+	VProc_t *vp = VProcs[i];
+	nPromotes += vp->nPromotes;
+	nMinorGCs += vp->nMinorGCs;
+	nMajorGCs += vp->nMajorGCs;
+	totMinor.nBytesAlloc += vp->minorStats.nBytesAlloc;
+	totMinor.nBytesCopied += vp->minorStats.nBytesCopied;
+	totMajor.nBytesAlloc += vp->majorStats.nBytesAlloc;
+	totMajor.nBytesCopied += vp->majorStats.nBytesCopied;
+	totGlobal.nBytesAlloc += vp->globalStats.nBytesAlloc;
+	totGlobal.nBytesCopied += vp->globalStats.nBytesCopied;
+	nBytesPromoted += vp->nBytesPromoted;
+    }
+
+  // print the header
+    if (CSVStatsFlg) {
+    }
+    else {
+	fprintf(outF, "             Minor GCs                  Major GCs                Promotions         Global GCs\n");
+	fprintf(outF, "      num   alloc     copied     num   alloc      copied       num    bytes   num   alloc     copied\n");
+	fprintf(outF, "--- ------ ------- ------------- ----- ------- ------------- ------- ------- ----- ------- -------------\n");
+    }
+
+    if (DetailStatsFlg) {
+      // report per-vproc stats
+	for (int i = 0;  i < NumVProcs;  i++) {
+	    VProc_t *vp = VProcs[i];
+	    if (CSVStatsFlg) {
+	      // use comma-separated-values format
+		fprintf (outF,
+		    "p%02d, %d, %lld, %lld, %d, %lld, %lld, %d, %lld, %d, %lld, %lld\n",
+		    i,
+		    nMinorGCs, totMinor.nBytesAlloc, totMinor.nBytesCopied,
+		    nMajorGCs, totMajor.nBytesAlloc, totMajor.nBytesCopied,
+		    nPromotes, nBytesPromoted,
+		    NumGlobalGCs, totGlobal.nBytesAlloc, totGlobal.nBytesCopied);
+	    }
+	    else {
+	      // minor GCs
+		fprintf (outF, "p%02d %6d", i, vp->nMinorGCs);
+		PrintNum (outF, 7, vp->minorStats.nBytesAlloc);
+		PrintNum (outF, 7, vp->minorStats.nBytesCopied);
+	      // major GCs
+		fprintf (outF, " %5d", vp->nMajorGCs);
+		PrintNum (outF, 7, vp->majorStats.nBytesAlloc);
+		PrintNum (outF, 7, vp->majorStats.nBytesCopied);
+	      // promotions
+		PrintNum (outF, 7, vp->nPromotes);
+		PrintNum (outF, 7, vp->nBytesPromoted);
+	      // global GCs
+		fprintf (outF, " %5d", NumGlobalGCs);
+		PrintNum (outF, 7, vp->globalStats.nBytesAlloc);
+		PrintNum (outF, 7, vp->globalStats.nBytesCopied);
+		fprintf (outF, "\n");
+	    }
+	}
+    }
+
+  // report the summary stats
+    if (CSVStatsFlg) {
+      // use comma-separated-values format
+	fprintf (outF,
+	    "TOT, %d, %lld, %lld, %d, %lld, %lld, %d, %lld, %d, %lld, %lld\n",
+	    nMinorGCs, totMinor.nBytesAlloc, totMinor.nBytesCopied,
+	    nMajorGCs, totMajor.nBytesAlloc, totMajor.nBytesCopied,
+	    nPromotes, nBytesPromoted,
+	    NumGlobalGCs, totGlobal.nBytesAlloc, totGlobal.nBytesCopied);
+    }
+    else {
+      // minor GCs
+	fprintf (outF, "TOT %6d", nMinorGCs);
+	PrintNum (outF, 7, totMinor.nBytesAlloc);
+	PrintNum (outF, 7, totMinor.nBytesCopied);
+	PrintPct (outF, totMinor.nBytesCopied, totMinor.nBytesAlloc);
+      // major GCs
+	fprintf (outF, " %5d", nMajorGCs);
+	PrintNum (outF, 7, totMajor.nBytesAlloc);
+	PrintNum (outF, 7, totMajor.nBytesCopied);
+	PrintPct (outF, totMajor.nBytesCopied, totMajor.nBytesAlloc);
+      // promotions
+	PrintNum (outF, 7, nPromotes);
+	PrintNum (outF, 7, nBytesPromoted);
+      // global GCs
+	fprintf (outF, " %5d", NumGlobalGCs);
+	PrintNum (outF, 7, totGlobal.nBytesAlloc);
+	PrintNum (outF, 7, totGlobal.nBytesCopied);
+	PrintPct (outF, totGlobal.nBytesCopied, totGlobal.nBytesAlloc);
+	fprintf (outF, "\n");
+    }
+
+}
+
+#endif

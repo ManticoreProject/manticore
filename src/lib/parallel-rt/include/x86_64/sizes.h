@@ -12,7 +12,7 @@
 /* log2 of the BIBOP page size */
 #define PAGE_BITS	20	/* one-megabyte pages in the global heap */
 
-/* size of VProc local heap (including space for VProc_t data) */
+/* size of VProc local heap */
 #ifndef VP_HEAP_SZB
 #  define VP_HEAP_SZB		ONE_MEG
 #endif

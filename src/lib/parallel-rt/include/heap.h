@@ -61,4 +61,10 @@ extern void InitVProcHeap (VProc_t *vp);
 extern void AllocToSpaceChunk (VProc_t *vp);
 extern Addr_t AllocVProcMemory (int id, Location_t loc);
 
+extern uint32_t	NumGlobalGCs;
+
+#ifndef NO_GC_STATS
+extern void ReportGCStats ();
+#endif
+
 #endif /* !_HEAP_H_ */
