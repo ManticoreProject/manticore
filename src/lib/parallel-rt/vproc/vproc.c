@@ -11,6 +11,7 @@
 #if defined (TARGET_DARWIN)
 #  include <sys/sysctl.h>
 #endif
+#include <errno.h>
 #include "os-memory.h"
 #include "os-threads.h"
 #include "atomic-ops.h"
@@ -249,7 +250,7 @@ void *NewVProc (void *arg)
     vproc->stdEnvPtr = M_UNIT;
     vproc->stdCont = M_NIL;
     vproc->stdExnCont = M_UNIT;
-    SetLimitPtr(vproc, LimitPtr(vproc));
+    vproc->limitPtr = LimitPtr(vproc);
     SetAllocPtr (vproc);
     vproc->currentFLS = M_NIL;
 
@@ -258,6 +259,19 @@ void *NewVProc (void *arg)
 
 #ifdef ENABLE_LOGGING
     InitLog (vproc);
+#endif
+
+#ifndef NO_GC_STATS
+    vproc->nPromotes = 0;
+    vproc->nMinorGCs = 0;
+    vproc->nMajorGCs = 0;
+    vproc->minorStats.nBytesAlloc = 0;
+    vproc->minorStats.nBytesCopied = 0;
+    vproc->majorStats.nBytesAlloc = 0;
+    vproc->majorStats.nBytesCopied = 0;
+    vproc->globalStats.nBytesAlloc = 0;
+    vproc->globalStats.nBytesCopied = 0;
+    vproc->nBytesPromoted = 0;
 #endif
 
   /* store a pointer to the VProc info as thread-specific data */
@@ -291,16 +305,24 @@ void *NewVProc (void *arg)
  */
 void VProcExit (VProc_t *vp)
 {
+#ifndef NDEBUG
+    if (DebugFlg)
+	SayDebug("[%2d] VProcExit\n", vp->id);
+#endif
     BarrierWait(&ShutdownBarrier);
 
     if (vp == VProcs[0]) {
       /* assign vproc 0 to finalize the runtime state */
 	LogVProcExitMain (vp);
-	
+
 #ifdef ENABLE_LOGGING
 	FinishLog ();
 #endif
-	
+
+#ifndef NO_GC_STATS
+	ReportGCStats ();
+#endif
+
 	exit (0);
     }
     else {
@@ -490,12 +512,23 @@ Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
     MutexUnlock (&(vp->lock));
 
 #ifndef NDEBUG
-    if (DebugFlg)
-	SayDebug("[%2d] VProcNanosleep exiting (awoken by %s)\n", vp->id, 
-		 status == 0          ? "another vproc"
-	      : (status == ETIMEDOUT  ? "timeout"
-	      : (status == EINTR      ? "interrupt" 
-	      : "an error")));
+    if (DebugFlg) {
+	switch (status) {
+	  case 0:
+	    SayDebug("[%2d] VProcNanosleep exiting (awoken by another vproc)\n", vp->id);
+	    break;
+	  case ETIMEDOUT:
+	    SayDebug("[%2d] VProcNanosleep exiting (awoken by timeout)\n", vp->id);
+	    break;
+	  case EINTR:
+	    SayDebug("[%2d] VProcNanosleep exiting (awoken by interrupt)\n", vp->id);
+	    break;
+	  default:
+	    SayDebug("[%2d] VProcNanosleep exiting; status = %d, errno = %d\n",
+		vp->id, status, errno);
+	    break;
+	}
+    }
 #endif
 
     assert (status == 0 || status == ETIMEDOUT || status == EINTR);
@@ -515,7 +548,6 @@ static void IdleVProc (VProc_t *vp, void *arg)
 #endif
 
     VProcSleep(vp);
-
   /* Activate scheduling code on the vproc. */
     Value_t envP = vp->schedCont;
     Addr_t codeP = ValueToAddr(ValueToCont(envP)->cp);

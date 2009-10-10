@@ -13,7 +13,6 @@
 #include <pthread.h>
 #include <signal.h>
 #include <assert.h>
-#include <errno.h>
 
 #ifndef NDEBUG
 #  define CHECK_RETURN(e)	assert((e) == 0)

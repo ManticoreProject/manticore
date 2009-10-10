@@ -153,7 +153,7 @@ STATIC_INLINE Word_t CompareAndSwapWord (volatile Word_t *ptr, Word_t old, Word_
     return result;
 }
 
-STATIC_INLINE void *CompareAndSwapPtr (void *volatile *ptr, void *key, void *new)
+STATIC_INLINE void *CompareAndSwapPtr (void *volatile *ptr, void *old, void *new)
 {
     void *result;
 

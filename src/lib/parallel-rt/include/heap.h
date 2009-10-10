@@ -36,9 +36,10 @@ STATIC_INLINE void SetAllocPtr (VProc_t *vp)
     vp->allocPtr = vp->nurseryBase + WORD_SZB;
 }
 
+/* return the limit pointer value for the given vproc */
 STATIC_INLINE Addr_t LimitPtr (VProc_t *vp)
 {
-    return vp->heapBase + VP_HEAP_SZB - ALLOC_BUF_SZB;;
+    return vp->heapBase + VP_HEAP_SZB - ALLOC_BUF_SZB;
 }
 
 STATIC_INLINE Addr_t SetLimitPtr (VProc_t *vp, Addr_t newLimitPtr)
@@ -60,5 +61,11 @@ extern void HeapInit (Options_t *opts);
 extern void InitVProcHeap (VProc_t *vp);
 extern void AllocToSpaceChunk (VProc_t *vp);
 extern Addr_t AllocVProcMemory (int id, Location_t loc);
+
+extern uint32_t	NumGlobalGCs;
+
+#ifndef NO_GC_STATS
+extern void ReportGCStats ();
+#endif
 
 #endif /* !_HEAP_H_ */
