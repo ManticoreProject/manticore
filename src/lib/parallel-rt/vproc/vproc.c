@@ -11,6 +11,7 @@
 #if defined (TARGET_DARWIN)
 #  include <sys/sysctl.h>
 #endif
+#include <errno.h>
 #include "os-memory.h"
 #include "os-threads.h"
 #include "atomic-ops.h"
@@ -249,7 +250,7 @@ void *NewVProc (void *arg)
     vproc->stdEnvPtr = M_UNIT;
     vproc->stdCont = M_NIL;
     vproc->stdExnCont = M_UNIT;
-    SetLimitPtr(vproc, LimitPtr(vproc));
+    vproc->limitPtr = LimitPtr(vproc);
     SetAllocPtr (vproc);
     vproc->currentFLS = M_NIL;
 
