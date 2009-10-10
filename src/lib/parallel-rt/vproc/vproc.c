@@ -23,7 +23,6 @@
 #include "value.h"
 #include "inline-log.h"
 #include "time.h"
-#include <errno.h>
 
 typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
@@ -485,7 +484,6 @@ void VProcSleep (VProc_t *vp)
 #endif
 
 }
-
 
 #define ONE_SECOND         1000000000L
 

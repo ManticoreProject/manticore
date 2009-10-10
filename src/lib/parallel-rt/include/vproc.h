@@ -30,9 +30,9 @@ struct struct_vproc {
     Value_t	sleeping;       //!< true, when the vproc is sleeping
     Value_t	currentFLS;	//!< the current fiber's local storage
     Value_t	actionStk;	//!< the top of the signal-action stack
-    Value_t     schedCont;      //!< continuation that invokes the current scheduler
-    Value_t     dummyK;         //!< trivial fiber that immediate terminates
-    Value_t     wakeupCont;     //!< continuation that wakes the vproc
+    Value_t	schedCont;      //!< continuation that invokes the current scheduler
+    Value_t	dummyK;         //!< trivial fiber that immediate terminates
+    Value_t	wakeupCont;     //!< continuation that wakes the vproc
     Value_t	shutdownCont;   //!< continuation used by vprocs to shutdown the runtime
     Value_t	shutdownPending; //!< true, when runtime shutdown is pending
     Value_t	rdyQHd;		//!< the head of the primary ready queue
@@ -77,9 +77,9 @@ struct struct_vproc {
     Cond_t	wait;		//!< for waiting when idle
     Value_t     landingPad __attribute__((aligned(64)));
                                 //!< the head of the landing pad (stack)
-    Addr_t	limitPtr __attribute__((aligned(64)));	
-                                 //!< heap-limit pointer
-    bool	globalGCPending __attribute__((aligned(64))); 
+    Addr_t	limitPtr __attribute__((aligned(64)));
+                                //!< heap-limit pointer
+    bool	globalGCPending __attribute__((aligned(64)));
                                 //!< true when this vproc has been signaled that
 				//! global GC has started, but it has not
 				//! started yet.
