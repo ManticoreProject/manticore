@@ -41,7 +41,7 @@ structure FreeVars : sig
 
   (* is a variable externally bound? *)
     fun isExtern x = (case V.kindOf x
-	   of CPS.VK_Extern _ => true
+	   of CPS.VK_CFun _ => true
 	    | _ => false
 	  (* end case *))
 

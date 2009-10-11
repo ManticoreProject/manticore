@@ -32,6 +32,13 @@ structure CPSOptControls =
                   pri = [0, 1],
                   obscurity = 0,
                   help = "print results of cfa"
+                },
+              Controls.control {
+                  ctl = CFACPS.rcCFAFlg,
+                  name = "cfa-rc",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "use reference counted cfa"
                 }
             ]
 

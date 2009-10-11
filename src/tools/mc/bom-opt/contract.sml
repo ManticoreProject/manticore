@@ -99,8 +99,10 @@ structure Contract : sig
   (********** effect analysis **********)
     fun pureRHS (B.E_Update _) = false
       | pureRHS (B.E_Prim p) = PrimUtil.isPure p
-(* FIXME: check if cf is bound to a pure C function *)
-      | pureRHS (B.E_CCall(cf, _)) = false
+      | pureRHS (B.E_CCall(cf, _)) = (case BV.kindOf cf
+	   of B.VK_CFun cf => CFunctions.isPure cf
+	    | _ => false
+	  (* end case *))
       | pureRHS (B.E_VPStore _) = false
       | pureRHS _ = true
 

@@ -49,18 +49,26 @@ structure CFACPS : sig
     val debugFlg : bool ref
     val resultsFlg : bool ref
 
+  (* flags related to different CFA algorithms *)
+    val rcCFAFlg  : bool ref
   end = struct
 
     val debugFlg = ref false
     val resultsFlg = ref false
+    val rcCFAFlg = ref false
 
     structure CV = CPS.Var
     structure VSet = CV.Set
+    structure ST = Stats
 
     datatype callers
       = Unknown                 (* possible unknown call callers *)
       | Known of VSet.set       (* only called from known locations; the labels are the *)
                                 (* entry labels of the functions that call the target *)
+
+  (***** Statistics *****)
+    val cntPasses		= ST.newCounter "cps-cfa:num-passes"
+    val cntPPTsVisited		= ST.newCounter "cps-cfa:ppts-visited"
 
     fun setToString vs = let
 	  fun f [] = ["}"]
@@ -477,6 +485,7 @@ structure CFACPS : sig
 
     fun analyze (CPS.MODULE{body, ...}) = let
           fun onePass () = let
+                val _ = ST.tick cntPasses
                 val addInfo = if !debugFlg
                       then (fn (x, v) => let
                         val prevV = getValue x
@@ -499,7 +508,9 @@ structure CFACPS : sig
                 fun doLambda (CPS.FB {f, body, ...}) = (
                       addInfo(f, LAMBDAS(VSet.singleton f));
                       doExp body)
-                and doExp (CPS.Exp(_, t)) = (case t
+                and doExp (CPS.Exp(_, t)) = (
+		      ST.tick cntPPTsVisited;
+                      case t
 		       of (CPS.Let (xs, rhs, e)) => (doRhs (xs, rhs); doExp e)
 			| (CPS.Fun (fbs, e)) => (List.app doLambda fbs; doExp e)
 			| (CPS.Cont (fb, e)) => (doLambda fb; doExp e)

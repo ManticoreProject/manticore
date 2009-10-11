@@ -56,11 +56,12 @@ structure CPS =
       | VK_Fun of lambda
       | VK_Cont of lambda
       | VK_Param of lambda
-      | VK_Extern of string
+      | VK_CFun of c_fun
 
     withtype var = (var_kind, ty) VarRep.var_rep
          and cond = var Prim.cond
          and prim = var Prim.prim
+	 and c_fun = var CFunctions.c_fun
 
     datatype module = MODULE of {
 	name : Atom.atom,
@@ -73,7 +74,7 @@ structure CPS =
       | varKindToString (VK_Fun _) = "Fun"
       | varKindToString (VK_Cont _) = "Cont"
       | varKindToString (VK_Param _) = "Param"
-      | varKindToString (VK_Extern _) = "Extern"
+      | varKindToString (VK_CFun _) = "CFun"
 
     structure Var = struct
 	local
@@ -87,7 +88,7 @@ structure CPS =
 	    end)
 	in
 	open V
-	fun isExtern (VarRep.V{kind = ref(VK_Extern _), ...}) = true
+	fun isExtern (VarRep.V{kind = ref(VK_CFun _), ...}) = true
 	  | isExtern _ = false
       (* application counts for functions and continuations *)
 	local
@@ -144,9 +145,12 @@ structure CPS =
     fun mkApply arg = mkExp(Apply arg)
     fun mkThrow arg = mkExp(Throw arg)
 
-    fun mkCFun arg = (
-	  Var.setKind(#var arg, VK_Extern(#name arg));
-	  CFunctions.CFun arg)
+    fun mkCFun arg = let
+	  val cf = CFunctions.CFun arg
+	  in
+	    Var.setKind(#var arg, VK_CFun cf);
+	    cf
+	  end
 
     fun mkLets ([], e) = e
       | mkLets ((lhs, rhs)::r, e) = mkLet (lhs, rhs, mkLets(r, e))
