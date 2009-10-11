@@ -34,7 +34,7 @@ done
 echo "running Manticore 1P benchmarks"
 echo "" >> $f
 echo "Manticore 1P:" >> $f
-for i in 0 1 2 3 4 5 6 7 8 9 9 10 11 12 ; do
+for i in 0 1 2 3 4 5 6 7 8 9 ; do
   primes-mc1 -p 1 $N >> $f
 done
 
