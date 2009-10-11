@@ -32,7 +32,6 @@ in
 end
 option.pml
 result.pml
-(* trap.pml *) (* obsolete *)
 ann "cpp" "../include/prim.def,../include/assert.def"
 in
   prim-list.pml

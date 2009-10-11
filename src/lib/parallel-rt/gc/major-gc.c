@@ -182,8 +182,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     vp->majorStats.nBytesCopied += nBytesCopied + youngSzB;
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MAJOR) {
-	SayDebug("[%2d] Major GC finished: %ld/%ld old bytes copied\n",
-	    vp->id, nBytesCopied, oldSzB);
+	SayDebug("[%2d] Major GC finished: %d/%lld old bytes copied\n",
+	    vp->id, nBytesCopied, (uint64_t)oldSzB);
     }
 #endif /* !NDEBUG */
 #endif /* !NO_GC_STATS */
