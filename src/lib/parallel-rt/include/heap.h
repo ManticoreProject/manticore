@@ -35,6 +35,12 @@ STATIC_INLINE void SetAllocPtr (VProc_t *vp)
     vp->allocPtr = vp->nurseryBase + WORD_SZB;
 }
 
+/* return the limit pointer value for the given vproc */
+STATIC_INLINE Addr_t LimitPtr (VProc_t *vp)
+{
+    return vp->heapBase + VP_HEAP_SZB - ALLOC_BUF_SZB;
+}
+
 /* return true of the given address is within the given vproc heap */
 STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
 {

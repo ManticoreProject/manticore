@@ -10,8 +10,8 @@
 #include <time.h>
 #if defined (TARGET_DARWIN)
 #  include <sys/sysctl.h>
-#include <errno.h>
 #endif
+#include <errno.h>
 #include "os-memory.h"
 #include "os-threads.h"
 #include "atomic-ops.h"
@@ -262,7 +262,7 @@ void *NewVProc (void *arg)
     vproc->stdEnvPtr = M_UNIT;
     vproc->stdCont = M_NIL;
     vproc->stdExnCont = M_UNIT;
-    vproc->limitPtr = vproc->heapBase + VP_HEAP_SZB - ALLOC_BUF_SZB;;
+    vproc->limitPtr = LimitPtr(vproc);
     SetAllocPtr (vproc);
     vproc->currentFLS = M_NIL;
 
