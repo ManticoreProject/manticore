@@ -24,7 +24,7 @@ Value_t M_Arguments ()
 	const char **args = Options();
 	VProc_t *vp = VProcSelf();
 	Value_t l = M_NIL;
-	for (int i = nArgs-1;  i >= 0;  i++) {
+	for (int i = nArgs-1;  i >= 0;  i--) {
 	    l = Cons(vp, AllocString(vp, args[i]), l);
 	}
 	return l;

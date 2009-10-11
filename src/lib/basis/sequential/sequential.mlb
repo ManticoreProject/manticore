@@ -32,7 +32,7 @@ in
 end
 option.pml
 result.pml
-trap.pml
+(* trap.pml *) (* obsolete *)
 ann "cpp" "../include/prim.def,../include/assert.def"
 in
   prim-list.pml
@@ -49,3 +49,6 @@ ann "cpp" "../include/prim.def"
 in
     ../misc/logging.pml
 end
+
+command-line.pml
+
