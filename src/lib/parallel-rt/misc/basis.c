@@ -7,12 +7,32 @@
 #include "manticore-rt.h"
 #include <stdio.h>
 #include <string.h>
+#include <sys/time.h>
+#include <math.h>
 #include "vproc.h"
 #include "topology.h"
 #include "value.h"
 #include "heap.h"
-#include <sys/time.h>
-#include <math.h>
+#include "options.h"
+
+/* M_Arguments : unit -> string list
+ */
+Value_t M_Arguments ()
+{
+    int nArgs = NumOptions();
+    if (nArgs > 0) {
+	const char **args = Options();
+	VProc_t *vp = VProcSelf();
+	Value_t l = M_NIL;
+	for (int i = nArgs-1;  i >= 0;  i++) {
+	    l = Cons(vp, AllocString(vp, args[i]), l);
+	}
+	return l;
+    }
+    else
+	return M_NIL;
+
+}
 
 /* M_IntToString:
  */
@@ -37,7 +57,7 @@ Value_t M_LongToString (int64_t n)
 Value_t M_Word64ToString (uint64_t n)
 {
     char buf[32];
-    snprintf(buf, sizeof(buf), "%lu", n);
+    snprintf(buf, sizeof(buf), "%llu", n);
     return AllocString (VProcSelf(), buf);
 }
 
@@ -198,7 +218,8 @@ void M_AssertNotLocalPtr (Value_t item)
    * at least be sure that it is not in the local queue
    */
     if (inVPHeap ((Addr_t)VProcSelf(), (Addr_t)item)) {
-	Die ("Pointer %p is in the local heap when it should be in the global heap\n", item);
+	Die ("Pointer %p is in the local heap when it should be in the global heap\n",
+	    (void *)item);
     }
 
 }
