@@ -201,7 +201,7 @@ fun fromHexString s = let
 <COMMENT> .|"\n"		=> (skip ());
 
 <PRIMCODE> {id}			=> (Keywords.bomIdToken yytext);
-<PRIMCODE> {qualifiedhlid}	=> (T.QHLOP(mkQHLOpId yytext))
+<PRIMCODE> {qualifiedhlid}	=> (T.QHLOP(mkQHLOpId yytext));
 <PRIMCODE> {qualifiedid}	=> (T.QID(mkQId yytext));
 <PRIMCODE> {hlid}		=> (T.HLOP(cvtHLOpId yytext));
 <PRIMCODE> "("			=> (primPush(); T.LP);
