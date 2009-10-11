@@ -56,6 +56,8 @@ structure Primes : sig
 
 structure Main = struct
 
+    val dfltN = 5000
+
     fun testit n = let
 	  fun thd () = let
 		val p = Primes.nthPrime n
@@ -85,6 +87,14 @@ structure Main = struct
 	    RunCML.doit (thd, NONE)
 	  end
 
-    fun main _ = (timeit 5000; OS.Process.success)
+    fun main (_, args) = let
+	  val n = (case args
+		 of arg::_ => Option.getOpt (Int.fromString arg, dfltN)
+		  | _ => dfltN
+		(* end case *))
+	  in
+	    timeit n;
+	    OS.Process.success
+	  end
 
   end
