@@ -9,11 +9,18 @@
 #include <string.h>
 #include <sys/time.h>
 #include <math.h>
+#include <ctype.h>
 #include "vproc.h"
 #include "topology.h"
 #include "value.h"
 #include "heap.h"
 #include "options.h"
+
+/* is a string in hex format? */
+STATIC_INLINE bool isHex (const char *s, int len)
+{
+    return ((len >= 3) && (s[0] == '0') && ((s[1] == 'x') || (s[1] == 'X')));
+}
 
 /* M_Arguments : unit -> string list
  */
@@ -43,6 +50,37 @@ Value_t M_IntToString (int32_t n)
     return AllocString (VProcSelf(), buf);
 }
 
+/* M_IntFromString : string -> int option
+ */
+Value_t M_IntFromString (SequenceHdr_t *s)
+{
+    int len = s->len;
+    const char *str = (const char *)(s->data);
+
+  // skip leading white space
+    while ((len > 0) && isspace(*str)) {
+	len--;
+	str++;
+    }
+
+    Value_t result = M_NONE;
+
+    if (len > 0) {
+	int32_t n;
+	if (isHex (str, len)) {
+	    if (sscanf(str, "%x", (uint32_t *)&n) != 1)
+		return M_NONE;
+	}
+	else if (sscanf(str, "%d", &n) != 1)
+	    return M_NONE;
+	VProc_t *vp = VProcSelf();
+	return Some(vp, WrapWord(vp, (Word_t)n));
+    }
+    else
+	return M_NONE;
+
+}
+
 /* M_LongToString:
  */
 Value_t M_LongToString (int64_t n)
@@ -50,6 +88,37 @@ Value_t M_LongToString (int64_t n)
     char buf[32];
     snprintf(buf, sizeof(buf), "%lld", n);
     return AllocString (VProcSelf(), buf);
+}
+
+/* M_LongFromString : string -> long option
+ */
+Value_t M_LongFromString (SequenceHdr_t *s)
+{
+    int len = s->len;
+    const char *str = (const char *)(s->data);
+
+  // skip leading white space
+    while ((len > 0) && isspace(*str)) {
+	len--;
+	str++;
+    }
+
+    Value_t result = M_NONE;
+
+    if (len > 0) {
+	int64_t n;
+	if (isHex (str, len)) {
+	    if (sscanf(str, "%llx", (uint64_t *)&n) != 1)
+		return M_NONE;
+	}
+	else if (sscanf(str, "%lld", &n) != 1)
+	    return M_NONE;
+	VProc_t *vp = VProcSelf();
+	return Some(vp, WrapWord(vp, (Word_t)n));
+    }
+    else
+	return M_NONE;
+
 }
 
 /* M_Word64ToString:

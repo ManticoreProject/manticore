@@ -15,10 +15,16 @@ structure Int =
     _primcode (
 
       extern void *M_IntToString (int) __attribute__((alloc,pure));
+      extern void *M_IntFromString (void *) __attribute__((alloc,pure));
       extern int M_CeilingLg (int) __attribute__((pure));
 
       define inline @to-string (n : ml_int / exh : exh) : ml_string =
 	  let res : ml_string = ccall M_IntToString (unwrap(n))
+	    return (res)
+      ;
+
+      define inline @from-string (s : ml_string / exh : exh) : Option.option =
+	  let res : Option.option = ccall M_IntFromString (s)
 	    return (res)
       ;
 
@@ -30,6 +36,9 @@ structure Int =
     )
 
     val toString : int -> string = _prim(@to-string)
+    val fromString : string -> int Option.option = _prim(@from-string)
+
+(* FIXME: why is this function here? It is not part of the INT API *)
     val ceilingLg : int -> int = _prim(@ceiling-lg)
 
   (* abs : int -> int *)
@@ -50,6 +59,7 @@ structure Int =
 
     fun sameSign (m, n) = (sign(m) = sign(n))
 
+(* FIXME: why is this function here? It is not part of the INT API *)
   (* fib : int -> int *)
   (* Compute the nth Fibonacci number, where *)
   (*   fib 0 is 0, fib 1 is 1, fib 2 is 1, etc. *)
