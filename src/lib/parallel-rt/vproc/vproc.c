@@ -48,9 +48,8 @@ static Barrier_t	ShutdownBarrier; /* barrier for shutdown */
 /********** Globals **********/
 int			NumVProcs;
 int			NumIdleVProcs;
-VProc_t		*VProcs[MAX_NUM_VPROCS];
+VProc_t			*VProcs[MAX_NUM_VPROCS];
 bool                    ShutdownFlg = false;
-static int             InputArgument = 0;      /* value provided by -i <Input> argument */
 
 extern int ASM_VProcSleep;
 
@@ -62,18 +61,12 @@ struct struct_queue_item {
     QueueItem_t	*next;	//!< link field
 };
 
-int M_GetInputArgument () {
-    return InputArgument;
-}
-
 /* VProcInit:
  *
  * Initialization for the VProc management system.
  */
 void VProcInit (bool isSequential, Options_t *opts)
 {
-    InputArgument = GetIntOpt (opts, "-i", InputArgument);
-
     bool	denseLayout = false;	// in dense mode, we'll allocate
 					// the first n logical processors.
 					// Otherwise, we spread the load
