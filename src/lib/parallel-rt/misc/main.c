@@ -49,6 +49,9 @@ int main (int argc, const char **argv)
     DebugFlg = GetFlagOpt (opts, "-d");
 #endif
 
+  /* get the time quantum in milliseconds */
+    TimeQ = GetIntOpt(opts, "-q", DFLT_TIME_Q_MS);
+
     if (mantMagic != RUNTIME_MAGIC) {
 	Die("runtime/compiler inconsistency\n");
     }
@@ -56,9 +59,6 @@ int main (int argc, const char **argv)
     DiscoverTopology ();
     HeapInit (opts);
     VProcInit ((bool)SequentialFlag, opts);
-
-  /* get the time quantum in milliseconds */
-    TimeQ = GetIntOpt(opts, "-q", DFLT_TIME_Q_MS);
 
     PingLoop();
 

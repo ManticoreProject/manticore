@@ -7,12 +7,32 @@
 #include "manticore-rt.h"
 #include <stdio.h>
 #include <string.h>
+#include <sys/time.h>
+#include <math.h>
 #include "vproc.h"
 #include "topology.h"
 #include "value.h"
 #include "heap.h"
-#include <sys/time.h>
-#include <math.h>
+#include "options.h"
+
+/* M_Arguments : unit -> string list
+ */
+Value_t M_Arguments ()
+{
+    int nArgs = NumOptions();
+    if (nArgs > 0) {
+	const char **args = Options();
+	VProc_t *vp = VProcSelf();
+	Value_t l = M_NIL;
+	for (int i = nArgs-1;  i >= 0;  i--) {
+	    l = Cons(vp, AllocString(vp, args[i]), l);
+	}
+	return l;
+    }
+    else
+	return M_NIL;
+
+}
 
 /* M_IntToString:
  */

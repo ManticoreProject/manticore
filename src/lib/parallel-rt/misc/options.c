@@ -1,9 +1,12 @@
 /*! \file options.c
+ *
  * \brief Support for command-line options.
  *
  * \author John Reppy
- *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ */
+
+/*
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  */
 
@@ -20,6 +23,8 @@ struct struct_opts {
     const char	**argv;		/* array of argument pointers */
 };
 
+static Options_t *Opts = 0;
+
 Options_t *InitOptions (int argc, const char **argv)
 {
     Options_t *opts = NEW(Options_t);
@@ -31,6 +36,9 @@ Options_t *InitOptions (int argc, const char **argv)
     for (int i = 1;  i < argc;  i++, opts->argc++) {
 	  opts->argv[i-1] = argv[i];
     }
+
+  // we cache the options for the NumOptions and Options functions
+    Opts = opts;
 
     return opts;
 }
@@ -46,6 +54,20 @@ static void CompressOpts (Options_t *opts, int i, int n)
 
 }
 
+
+/*! \brief return the number of unconsumed options.
+ */
+int NumOptions ()
+{
+    return Opts->argc;
+}
+
+/*! return the remaining vector of options.
+ */
+const char **Options ()
+{
+    return Opts->argv;
+}
 
 bool GetFlagOpt (Options_t *opts, const char *flg)
 {
