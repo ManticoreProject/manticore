@@ -508,8 +508,9 @@ structure CFACPS : sig
                 fun doLambda (CPS.FB {f, body, ...}) = (
                       addInfo(f, LAMBDAS(VSet.singleton f));
                       doExp body)
-                and doExp (CPS.Exp(_, t)) = (ST.tick cntPPTsVisited ;
-                     case t
+                and doExp (CPS.Exp(_, t)) = (
+		      ST.tick cntPPTsVisited;
+                      case t
 		       of (CPS.Let (xs, rhs, e)) => (doRhs (xs, rhs); doExp e)
 			| (CPS.Fun (fbs, e)) => (List.app doLambda fbs; doExp e)
 			| (CPS.Cont (fb, e)) => (doLambda fb; doExp e)
