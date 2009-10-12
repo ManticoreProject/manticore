@@ -43,7 +43,8 @@ structure CheckCPS : sig
       | vkToString (C.VK_Fun _) = "VK_Fun"
       | vkToString (C.VK_Cont _) = "VK_Cont"
       | vkToString (C.VK_Param _) = "VK_Param"
-      | vkToString (C.VK_Extern x) = concat["VK_Extern(", x, ")"]
+      | vkToString (C.VK_CFun cf) =
+	  concat["VK_CFun(", CFunctions.nameOf cf, ")"]
 
     fun typesOf xs = List.map CV.typeOf xs
 
