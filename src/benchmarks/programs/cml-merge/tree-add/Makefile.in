@@ -1,0 +1,25 @@
+# Makefile for tree-add benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+#PMLCFLAGS =	-Cdebug=true
+
+TARGET =	tree-add
+
+all:		$(TARGET) $(TARGET)-seq-elison
+
+$(TARGET):	tree-add.mlb tree-add.pml
+	$(PMLC) $(PMLCFLAGS) -o $(TARGET) tree-add.mlb
+
+$(TARGET)-seq-elison:	tree-add.mlb tree-add.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET)-seq-elison tree-add.mlb
+
+.PHONY: clean
+clean:
+	rm -f $(TARGET) $(TARGET)-seq-elison

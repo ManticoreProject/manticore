@@ -1,0 +1,25 @@
+# Makefile for pfib benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+#PMLCFLAGS =	-Cdebug=true
+
+TARGET =	pfib
+
+all:		$(TARGET) $(TARGET)-seq-elison
+
+$(TARGET):	pfib.mlb pfib.pml
+	$(PMLC) $(PMLCFLAGS) -o $(TARGET) pfib.mlb
+
+$(TARGET)-seq-elison:	pfib.mlb pfib.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET)-seq-elison pfib.mlb
+
+.PHONY: clean
+clean:
+	rm -f $(TARGET) $(TARGET)-seq-elison

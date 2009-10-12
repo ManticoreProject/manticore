@@ -1,0 +1,34 @@
+# Makefile for pmergesort benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+#PMLCFLAGS =	-Cdebug=true
+
+TARGET =	pmergesort
+
+all:		$(TARGET)-par $(TARGET)-seq-elison $(TARGET)-smlnj
+
+$(TARGET)-par:	pmergesort.mlb pmergesort.pml
+	$(PMLC) $(PMLCFLAGS) -o $(TARGET)-par pmergesort.mlb
+
+$(TARGET)-seq-elison:	pmergesort.mlb pmergesort.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET)-seq-elison pmergesort.mlb
+
+$(TARGET)-par-seq-bc:	pmergesort-with-seq-bc.mlb pmergesort-with-seq-bc.pml
+	$(PMLC) $(PMLCFLAGS) -o $(TARGET)-par pmergesort-with-seq-bc.mlb
+
+$(TARGET)-seq-elison-seq-bc:	pmergesort-with-seq-bc.mlb pmergesort-with-seq-bc.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET)-seq-elison pmergesort-with-seq-bc.mlb
+
+$(TARGET)-smlnj:	pmergesort.cm pmergesort-fn.sml
+	echo "SMLofNJ.exportFn(\"pmergesort-fn\", Main.main);" | $(SMLNJ) pmergesort.cm
+
+.PHONY: clean
+clean:
+	rm -f $(TARGET)-par $(TARGET)-seq-elison *.s

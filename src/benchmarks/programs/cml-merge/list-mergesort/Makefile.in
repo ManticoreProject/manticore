@@ -1,0 +1,22 @@
+# Makefile for pmergesort benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+#PMLCFLAGS =	-Cdebug=true
+
+TARGET =	list-mergesort
+
+all:		$(TARGET)
+
+$(TARGET):	list-mergesort.mlb list-mergesort.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET) list-mergesort.mlb
+
+.PHONY: clean
+clean:
+	rm -f $(TARGET) *.s

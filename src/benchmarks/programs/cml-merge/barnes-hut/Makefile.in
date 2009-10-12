@@ -1,0 +1,28 @@
+# Makefile for barnes-hut benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+#PMLCFLAGS =	-Cdebug=true
+
+TARGET =	barnes-hut
+
+all:		$(TARGET)-par $(TARGET)-seq-elison $(TARGET)-smlnj
+
+$(TARGET)-par:	barnes-hut.mlb barnes-hut.pml
+	$(PMLC) $(PMLCFLAGS) -o $(TARGET)-par barnes-hut.mlb
+
+$(TARGET)-seq-elison:	barnes-hut.mlb barnes-hut.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET)-seq-elison barnes-hut.mlb
+
+$(TARGET)-smlnj:	barnes-hut.cm barnes-hut.sml
+	echo "SMLofNJ.exportFn(\"barnes-hut\", Main.main);" | $(SMLNJ) barnes-hut.cm
+
+.PHONY: clean
+clean:
+	rm -f $(TARGET)-par $(TARGET)-seq-elison *.s

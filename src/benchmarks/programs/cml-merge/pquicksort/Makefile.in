@@ -1,0 +1,25 @@
+# Makefile for pquicksort benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+#PMLCFLAGS =	-Cdebug=true
+
+TARGET =	pquicksort
+
+all:		$(TARGET)-par $(TARGET)-seq-elison
+
+$(TARGET)-par:	pquicksort.mlb pquicksort.pml
+	$(PMLC) $(PMLCFLAGS) -o $(TARGET)-par pquicksort.mlb
+
+$(TARGET)-seq-elison:	pquicksort.mlb pquicksort.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET)-seq-elison pquicksort.mlb
+
+.PHONY: clean
+clean:
+	rm -f $(TARGET)-par $(TARGET)-seq-elison *.s

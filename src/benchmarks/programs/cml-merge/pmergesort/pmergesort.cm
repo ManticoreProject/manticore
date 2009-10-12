@@ -1,0 +1,22 @@
+(* pmergesort.cm
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Parallel mergesort using ropes
+ * 
+ *   Mike Rainey (mrainey@cs.uchicago.edu)
+ *
+ *)
+
+Group
+
+	structure Main
+
+is
+
+	$/basis.cm
+	$/smlnj-lib.cm
+
+	../common/rope-smlnj/sources.cm
+	pmergesort-fn.sml

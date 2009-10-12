@@ -1,0 +1,12 @@
+Group
+
+	structure Main
+
+is
+
+	$/basis.cm
+	$/smlnj-lib.cm
+
+	vector2.sml
+	../common/run-seq.sml
+	barnes-hut.sml
