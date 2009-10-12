@@ -62,13 +62,13 @@ structure RoundRobin =
 	    {
 	      while(1) {
 		for (int i = 0; i < 2000; i++) {
-		  if (wakeupSleepingThreads ())
-		    return;  // some thread is ready to wake up
 		  if (pollLandingPad ())
 		    return;  // there is an incoming ready thread
 		  Pause();  // reduce power consumption
 		  for (int j = 0; j < 1000; j++); // spin for a while
 		}
+		if (wakeupSleepingThreads ())
+		  return;  // some thread is ready to wake up
 		/* sleep for one millisecond by calling into the OS */
 		VProcNanosleep (1ms);
 	      }
@@ -78,11 +78,6 @@ structure RoundRobin =
 	    fun waitForWork () : () =
 		cont workIsAvailable () = return ()
 		fun lp1 (i : int) : () =
-		    let w : bool = apply wakeupSleepingThreads ()
-		    do case w
-			of true => throw workIsAvailable ()
-			 | false => return ()
-                       end
 		    let w : bool = VProcQueue.@poll-landing-pad-from-atomic (self)
 		    do case w
 			of true => throw workIsAvailable ()
@@ -90,9 +85,14 @@ structure RoundRobin =
                        end
 		    do Pause ()
 		    fun lp2 (j : int) : () = 
-			if I32Gt (j, 1000) then return () else apply lp2 (I32Add (j, 1))
+			if I32Gt (j, 100000) then return () else apply lp2 (I32Add (j, 1))
 		    do apply lp2 (0)
 		    if I32Gt (i, 2000) then
+			let w : bool = apply wakeupSleepingThreads ()
+			do case w
+			    of true => throw workIsAvailable ()
+			     | false => return ()
+			   end
 			let _ : bool = VProc.@nanosleep-from-atomic (self, 1000000:long)
 			apply lp1 (0)
 		    else
