@@ -6,6 +6,7 @@
 
 prim-types.pml
 order.pml
+option.pml
 int.pml
 long.pml
 word64.pml
@@ -30,9 +31,7 @@ in
   int-array.pml
   word64-array.pml
 end
-option.pml
 result.pml
-trap.pml
 ann "cpp" "../include/prim.def,../include/assert.def"
 in
   prim-list.pml
@@ -49,3 +48,6 @@ ann "cpp" "../include/prim.def"
 in
     ../misc/logging.pml
 end
+
+command-line.pml
+

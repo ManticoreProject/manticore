@@ -34,8 +34,8 @@ structure RoundRobin =
 		return ()
 
 	    (* check the sleeping list for threads that are ready to wake up. we move any such threads
-	     * to the ready queue. *)
-	    fun wakeupSleepingThreads () : () =
+	     * to the ready queue. we return true when we have moved any thread to the ready queue. *)
+	    fun wakeupSleepingThreads () : bool =
               (* update the current time *)
 		let t : long = Time.@now ()
 		do #0(currTime) := t
@@ -49,38 +49,67 @@ structure RoundRobin =
 		do PrimList.@app (enq, #0(res) / exh)
                 let newSleeping : List.list = promote (#1(res))
 		do #0(sleeping) := newSleeping
-		return ()
+		case #0(res)
+		 of List.nil => return (false)
+		  | List.CONS (_ : any, r : List.list) => return (true)
+                end
 
-            let spinWait : fun ( / -> bool) = SpinWait.@mk-spin-wait-fun (20)
+	  (* 
+	    Here we wait until either a thread wakes from a sleeping state or an ready thread
+	    has been placed on the landing pad by a remote vproc.
+
+	    void waitForWork () 
+	    {
+	      while(1) {
+		for (int i = 0; i < 2000; i++) {
+		  if (pollLandingPad ())
+		    return;  // there is an incoming ready thread
+		  Pause();  // reduce power consumption
+		  for (int j = 0; j < 500; j++); // spin for a while
+		}
+		if (wakeupSleepingThreads ())
+		  return;  // some thread is ready to wake up
+		/* sleep for one millisecond by calling into the OS */
+		VProcNanosleep (1ms);
+	      }
+	    }
+
+	   *)
+	    fun waitForWork () : () =
+		cont workIsAvailable () = return ()  (* leave the waitForWork loop *)
+		fun lp1 (i : int) : () =
+		    let w : bool = VProcQueue.@poll-landing-pad-from-atomic (self)
+		    do case w
+			of true => throw workIsAvailable ()
+			 | false => return ()
+                       end
+		    do Pause ()
+		    fun lp2 (j : int) : () = 
+			if I32Gt (j, 500) then return () else apply lp2 (I32Add (j, 1))
+		    do apply lp2 (0)
+		    if I32Gt (i, 2000) then return () else apply lp1 (I32Add (i, 1))
+		do apply lp1 (0)
+		let w : bool = apply wakeupSleepingThreads ()
+		do case w
+		    of true => throw workIsAvailable ()
+		     | false => return ()
+		   end
+		let _ : bool = VProc.@nanosleep-from-atomic (self, 1000000:long)
+                apply waitForWork ()
 
 	    cont switch (s : PT.signal) =
-
-	      cont dispatch () =
-		let item : Option.option = VProcQueue.@dequeue-from-atomic(self)
-		case item
-		 of Option.NONE => 
-		    let threadsOnLp : bool = VProcQueue.@poll-landing-pad-from-atomic (self)
-		    case threadsOnLp
-		     of true =>
-			throw dispatch ()
-		      | false =>
-			let reset : bool = apply spinWait ()
-			case reset
-			 of true => 
-			  (* sleep for at least 700 microseconds *)
-			    let _ : bool = VProc.@nanosleep-from-atomic (self, 700000:long)
-			    do apply wakeupSleepingThreads ()
-			    throw dispatch ()
-			  | false => 
-			    throw dispatch ()
-			end
-		    end
-		  | Option.SOME(qitem : VProcQueue.queue_item) =>
-		    do SchedulerAction.@dispatch-from-atomic (self, switch, 
-					      SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
-		    throw dispatch ()
-		end
-
+	     (* pick the next thread to run *)
+		cont dispatch () =
+		  let item : Option.option = VProcQueue.@dequeue-from-atomic(self)
+		  case item
+		   of Option.NONE => 
+		      do apply waitForWork ()
+		      throw dispatch ()
+		    | Option.SOME(qitem : VProcQueue.queue_item) =>
+		      do SchedulerAction.@dispatch-from-atomic (self, switch, 
+						SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
+		      throw dispatch ()
+		  end
 	      case s
 		of PT.STOP => 
 		   throw dispatch ()
@@ -88,7 +117,7 @@ structure RoundRobin =
 		   let fls : FLS.fls = FLS.@get-in-atomic (self)
 		   do VProcQueue.@enqueue-from-atomic (self, fls, k)
 		   let _ : bool = VProcQueue.@poll-landing-pad-from-atomic (self)
-		   do apply wakeupSleepingThreads ()
+		   let _ : bool = apply wakeupSleepingThreads ()
 		   throw dispatch () 
 		 | PT.SLEEP (k : PT.fiber, durationNs : long) =>
 		   let fls : FLS.fls = FLS.@get-in-atomic (self)

@@ -251,7 +251,7 @@ structure WorkStealing (* :
 			     do case reset
 				 of true =>
 				    do Logging.@log-WSSleep (self, wid)
-				    do SchedulerAction.@sleep (700000:long)
+				    do SchedulerAction.@sleep (1000000:long)
 				    return ()
 				  | false =>
 				    return()
