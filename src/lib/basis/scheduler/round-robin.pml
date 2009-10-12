@@ -65,7 +65,7 @@ structure RoundRobin =
 		  if (pollLandingPad ())
 		    return;  // there is an incoming ready thread
 		  Pause();  // reduce power consumption
-		  for (int j = 0; j < 1000; j++); // spin for a while
+		  for (int j = 0; j < 500; j++); // spin for a while
 		}
 		if (wakeupSleepingThreads ())
 		  return;  // some thread is ready to wake up
