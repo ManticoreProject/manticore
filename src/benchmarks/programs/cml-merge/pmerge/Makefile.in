@@ -1,0 +1,25 @@
+# Makefile for pmerge benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+#PMLCFLAGS =	-Cdebug=true
+
+TARGET =	pmerge
+
+all:		$(TARGET)-par $(TARGET)-seq-elison
+
+$(TARGET)-par:	pmerge.mlb pmerge.pml
+	$(PMLC) $(PMLCFLAGS) -o $(TARGET)-par pmerge.mlb
+
+$(TARGET)-seq-elison:	pmerge.mlb pmerge.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET)-seq-elison pmerge.mlb
+
+.PHONY: clean
+clean:
+	rm -f $(TARGET)-par $(TARGET)-seq-elison *.s

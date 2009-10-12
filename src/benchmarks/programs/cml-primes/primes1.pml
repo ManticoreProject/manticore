@@ -56,6 +56,8 @@ structure Primes (*: sig
 
 structure Main = struct
 
+    val dfltN = 5000
+
     fun timeit n = let
 	  val t0 = Time.now()
 	  val p = Primes.nthPrime n
@@ -68,15 +70,16 @@ structure Main = struct
 	      ])
 	  end
 
+    fun main (_, args) = let
+	  val n = (case args
+		 of arg::_ => Option.getOpt (Int.fromString arg, dfltN)
+		  | _ => dfltN
+		(* end case *))
+	  in
+	    timeit n
+	  end
+
   end
 
 (* running with "-p 1" *)
-(*val _ = Main.timeit 350*)	(* works *)
-(*val _ = Main.timeit 351*)	(* works *)
-(*val _ = Main.timeit 352*)		(* works *)
-(*val _ = Main.timeit 353*)	(* fails *)
-(*val _ = Main.timeit 356*)
-(*val _ = Main.timeit 362*)
-(*val _ = Main.timeit 375*)	(* fails *)
-(*val _ = Main.timeit 2000*)
-val _ = Main.timeit 5000
+val _ = Main.main (CommandLine.name(), CommandLine.arguments())

@@ -1,0 +1,28 @@
+# Makefile for mandelbrot benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+#PMLCFLAGS =	-Cdebug=true
+
+TARGET =	mandelbrot
+
+all:		$(TARGET)-par $(TARGET)-seq-elison $(TARGET)-seq
+
+$(TARGET)-par:	mandelbrot-par.mlb mandelbrot-par.pml
+	$(PMLC) $(PMLCFLAGS) -o $(TARGET)-par mandelbrot-par.mlb
+
+$(TARGET)-seq-elison:	mandelbrot-par.mlb mandelbrot-par.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET)-seq-elison mandelbrot-par.mlb
+
+$(TARGET)-seq:	mandelbrot-seq.mlb mandelbrot-seq.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET)-seq mandelbrot-seq.mlb
+
+.PHONY: clean
+clean:
+	rm -f $(TARGET)-par $(TARGET)-seq-elison $(TARGET)-seq *.s mand.ppm

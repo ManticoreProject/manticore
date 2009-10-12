@@ -1,0 +1,25 @@
+# Makefile for plus-scan benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+#PMLCFLAGS =	-Cdebug=true
+
+TARGET =	plus-scan
+
+all:		$(TARGET)-par $(TARGET)-seq-elison
+
+$(TARGET)-par:	plus-scan.mlb plus-scan.pml
+	$(PMLC) $(PMLCFLAGS) -o $(TARGET)-par plus-scan.mlb
+
+$(TARGET)-seq-elison:	plus-scan.mlb plus-scan.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET)-seq-elison plus-scan.mlb
+
+.PHONY: clean
+clean:
+	rm -f $(TARGET)-par $(TARGET)-seq-elison *.s

@@ -1,0 +1,25 @@
+# Makefile for minimax benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+#PMLCFLAGS =	-Cdebug=true
+
+TARGET =	ttt
+
+all:		$(TARGET)-par $(TARGET)-smlnj
+
+$(TARGET)-par:	ttt-par.mlb ttt-par.pml
+	$(PMLC) $(PMLCFLAGS) -o $(TARGET)-par ttt-par.mlb
+
+$(TARGET)-smlnj:	ttt.cm ttt.sml
+	echo "SMLofNJ.exportFn(\"ttt\", Main.main);" | $(SMLNJ) ttt.cm
+
+.PHONY: clean
+clean:
+	rm -f $(TARGET)-par $(TARGET)-seq-elison *.s

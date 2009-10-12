@@ -1,0 +1,22 @@
+# Makefile for pquicksort benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+#PMLCFLAGS =	-Cdebug=true
+
+TARGET =	list-quicksort
+
+all:		$(TARGET)
+
+$(TARGET):	list-quicksort.mlb list-quicksort.pml
+	$(PMLC) $(PMLCFLAGS) -Csequential=true -o $(TARGET) list-quicksort.mlb
+
+.PHONY: clean
+clean:
+	rm -f $(TARGET) *.s
