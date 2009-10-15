@@ -24,6 +24,7 @@ signature ALLOC =
 	    args : MTy.mlrisc_tree list
 	  } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 
+(* not for flat heap
   (* allocate a list of types in the global heap, and initialize them *)
   (* generate code to allocate a tuple object in the global heap *)
     val genGlobalAlloc : {
@@ -31,15 +32,18 @@ signature ALLOC =
 	    tys : CFG.ty list,
 	    args : MTy.mlrisc_tree list
 	  } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
+*)
 
   (* heap limit check.  evaluates to true when the heap contains sufficient
    * space for the given size.
    *)
     val genAllocCheck : word -> {stms : MTy.T.stm list, allocCheck : MTy.T.ccexp}
 
+(* not for flat heap
   (* global heap limit check.  evaluates to true when the global heap contains sufficient
    * space for the given size.
    *)
     val genGlobalAllocCheck : word -> {stms : MTy.T.stm list, allocCheck : MTy.T.ccexp}
+*)
 
   end (* ALLOC *)

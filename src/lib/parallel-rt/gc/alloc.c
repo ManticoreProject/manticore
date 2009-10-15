@@ -12,6 +12,13 @@
 #include "gc-inline.h"
 #include "gc.h"
 
+/* in the flat-heap model, the vp->allocNextW field holds the
+ * allocation pointer.
+ */
+#define allocPtr allocNextW
+#define globNextW allocNextW
+#define globLimit allocTop
+
 /*! \brief allocate a tuple of uniform values.
  *  \param vp the host vproc
  *  \param nElems the number of tuple elements.

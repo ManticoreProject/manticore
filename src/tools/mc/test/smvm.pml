@@ -2,7 +2,7 @@ type vector = int parray;
 
 type sparse_vector = (int * int) parray;
 
-fun dotp (sv, v) = sumP [| x * (v!i) | (i,x) in sv |];
+fun dotp (sv, v) = PArray.sumP [| x * (v!i) | (i,x) in sv |];
 
 val sv0 = [| (0, 1), (5, 1) |];
 
@@ -21,7 +21,7 @@ val sm0 = [| sv0, sv0 |];
 val smvm0 = smvm (sm0, v0);
 
 fun vtos v =
-   let val n = plen v
+   let val n = PArray.length v
        fun build (m, acc) =
          if (m >= n) then
            acc
@@ -35,5 +35,5 @@ fun vtos v =
 
 val _ = print ("Testing smvm: expecting [|2,2|] => " ^ (vtos smvm0) ^ "\n");
 
-print "Done.\n"
+val _ = print "Done.\n"
 

@@ -36,8 +36,10 @@ signature RUNTIME_CONSTANTS =
     val stdExnCont : IntInf.int
     val allocPtr : IntInf.int
     val limitPtr : IntInf.int
+(* not for flat heap
     val globNextW : IntInf.int
     val globLimit : IntInf.int
+*)
 
   (* mask to get address of VProc from allocation pointer *)
     val vpMask : IntInf.int

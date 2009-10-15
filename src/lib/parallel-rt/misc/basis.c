@@ -281,6 +281,7 @@ Value_t M_Test ()
     return Some(VProcSelf(), AllocUniform (VProcSelf(), 1, 2));
 }
 
+#ifndef NDEBUG
 void M_AssertNotLocalPtr (Value_t item)
 {
   /* item must be a pointer in the global queue, and thus we can
@@ -292,6 +293,7 @@ void M_AssertNotLocalPtr (Value_t item)
     }
 
 }
+#endif
 
 Value_t M_Die (const char *message)
 {

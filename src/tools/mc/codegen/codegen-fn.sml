@@ -286,6 +286,9 @@ if MChkTy.check stm
 			emitStms stms;
 			bindExp ([lhs], [ptr], ["alloc ", v2s lhs, " = ", String.concat (List.map v2s vs)])
 		      end
+| gen (M.E_GAlloc _) = raise Fail "GAlloc not supported in flat heap"
+| gen (M.E_Promote _) = raise Fail "Promote not supported in flat heap"
+(* Promote and GAlloc not supported in flat heap
 		  | gen (M.E_GAlloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let 
 		      val {ptr, stms} = BE.Alloc.genGlobalAlloc {
 			      isMut = isMut,
@@ -297,12 +300,13 @@ if MChkTy.check stm
 			  stms, String.concat("galloc " :: v2s lhs :: " = " :: List.map v2s vs)));
 			bindExp ([lhs], [ptr], [])
 		      end
-		  | gen (M.E_Promote (lhs, v)) =  let
+		  | gen (M.E_Promote (lhs, v)) = let
 		      val {stms, result} = BE.Transfer.genPromote varDefTbl {lhs=lhs, arg=v}
 		      in
 			emitStms stms;
 			bindExp ([lhs], result, ["promote"])
 		      end
+*)
 		  | gen (M.E_Prim0 p) = emitStms(annotateStms(genPrim0 p, PrimUtil.nameOf p))
 		  | gen (M.E_Prim(lhs, p)) = emitStms(annotateStms(genPrim (lhs, p), PrimUtil.nameOf p))
 		  | gen (M.E_CCall(lhs, f, args)) = let 

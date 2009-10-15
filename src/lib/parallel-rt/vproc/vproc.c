@@ -231,7 +231,7 @@ void *NewVProc (void *arg)
     vproc->hostID = pthread_self();
     vproc->location = initData->loc;
 
-    vproc->heapBase = vproc->oldTop = vprocHeap;
+    vproc->heapBase = vprocHeap;
     InitVProcHeap (vproc);
 
     vproc->atomic = M_TRUE;
@@ -262,16 +262,16 @@ void *NewVProc (void *arg)
 #endif
 
 #ifndef NO_GC_STATS
-    vproc->nPromotes = 0;
+//    vproc->nPromotes = 0;
     vproc->nMinorGCs = 0;
     vproc->nMajorGCs = 0;
     vproc->minorStats.nBytesAlloc = 0;
     vproc->minorStats.nBytesCopied = 0;
-    vproc->majorStats.nBytesAlloc = 0;
-    vproc->majorStats.nBytesCopied = 0;
+//    vproc->majorStats.nBytesAlloc = 0;
+//    vproc->majorStats.nBytesCopied = 0;
     vproc->globalStats.nBytesAlloc = 0;
     vproc->globalStats.nBytesCopied = 0;
-    vproc->nBytesPromoted = 0;
+//    vproc->nBytesPromoted = 0;
 #endif
 
   /* store a pointer to the VProc info as thread-specific data */

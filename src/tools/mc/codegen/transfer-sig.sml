@@ -39,10 +39,12 @@ signature TRANSFER = sig
 	VarDef.var_def_tbl -> {hck : CFG.heap_check_kind, szb : word, nogc : CFG.jump}
 	  -> {stms : stms, return : (Label.label * stms * MTy.T.mlrisc list) Option.option}
 
+(* not supported in flat-heap version
   (* promote an object to the global heap *)
     val genPromote : VarDef.var_def_tbl -> 
  	{lhs: CFG.var, arg: CFG.var} -> 
 		     {stms : stms, result : MTy.mlrisc_tree list}
+*)
 
   (* apply a C function f to args.  the result goes in lhs. *)
     val genCCall : VarDef.var_def_tbl ->

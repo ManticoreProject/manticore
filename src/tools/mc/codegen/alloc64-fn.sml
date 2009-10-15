@@ -149,6 +149,7 @@ functor Alloc64Fn (
 	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=stms @ [ptrMv, bumpAp] }
 	  end (* genAlloc *)
 
+(* not for flat heap
   (* allocate arguments in the global heap *)
     fun genGlobalAlloc {tys=[], ...} = raise Fail "GAlloc[]"
       | genGlobalAlloc {isMut, tys, args} = let
@@ -176,6 +177,7 @@ functor Alloc64Fn (
 	  in
 	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: stms @ [bumpAp] }
 	  end
+*)
 
 (* FIXME: this value should come from the runtime constants *)
     val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
@@ -206,6 +208,7 @@ functor Alloc64Fn (
 	}
       end
 
+(*
   (* This expression checks that there are at least szB bytes available in the
    * global heap.
    *
@@ -229,5 +232,6 @@ functor Alloc64Fn (
 			       T.SUB (MTy.wordTy, globalLP, globalAP),
 			       T.LI (Word.toLargeInt szB))}
 	end
+*)
 
   end (* Alloc64Fn *)

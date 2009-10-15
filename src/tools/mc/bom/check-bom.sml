@@ -71,6 +71,7 @@ structure CheckBOM : sig
 	    lp x
 	  end
 
+(* Not needed for flat-heap version
   (* check for assignments of unpromoted values; return true if okay and false
    * otherwise.
    *)
@@ -85,6 +86,8 @@ structure CheckBOM : sig
 		(* end case *))
 	      else true
 	  end
+*)
+fun checkAssign _ = true
 
     fun check (phase, module) = let
 	  val B.MODULE{name, externs, hlops, rewrites, body} = module

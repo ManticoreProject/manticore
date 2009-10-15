@@ -54,19 +54,17 @@ struct struct_vproc {
     struct aiocb *logCB;	//!< AIO control buffer for log file
 #endif
 			      /* GC parameters */
-    Addr_t      heapBase;       //!< Base address of the vproc heap
-    Addr_t	nurseryBase;	//!< Base address of current nursery area
-    Addr_t	oldTop;		//!< Old objects live in the space from the
-				//! heap base to the oldTop.
     MemChunk_t	*globToSpHd;	//!< pointer to the head of the list of global-heap
 				//! to-space memory chunks allocated by this vproc.
     MemChunk_t	*globToSpTl;	//!< pointer to the tail of the list of global-heap
 				//! to-space memory chunks allocated by this vproc.
 				//! This chunk is the current allocation chunk for
 				//! the vproc.
-    Addr_t	globNextW;	//!< pointer to next word to allocate in
-				//! global heap
-    Addr_t	globLimit;	//!< limit pointer for to-space chunk
+    Addr_t      heapBase;       //!< Base address of the current alloc chunk, which
+				//! is globToSpHd.
+    Addr_t	allocNextW;	//!< pointer to next word to allocate in current
+				//! chunk (used in GC)
+    Addr_t	allocTop;	//!< limit pointer for current to-space chunk
     int		id;		//!< index of this vproc in VProcs[] array
     OSThread_t	hostID;		//!< PThread ID of host
     Location_t	location;	//!< the physical location that hosts this vproc.
@@ -88,14 +86,12 @@ struct struct_vproc {
   /* additional optional fields used for stats etc. */
 			      /* GC stats */
 #ifndef NO_GC_STATS
-    uint32_t	nPromotes;	//!< number of promotions
     uint32_t	nMinorGCs;	//!< number of minor GCs by this vproc
     uint32_t	nMajorGCs;	//!< number of major GCs by this vproc
     GCCntrs_t	minorStats;	//!< information about minor GCs on this vproc
-    GCCntrs_t	majorStats;	//!< information about major GCs on this vproc
     GCCntrs_t	globalStats;	//!< information about this vproc's part in
 				//!  global GCs.
-    uint64_t	nBytesPromoted;	//!< the number of bytes promoted on this vproc
+//    uint64_t	nBytesPromoted;	//!< the number of bytes promoted on this vproc
 #endif
 #ifndef ENABLE_LOGGING	      /* GC counters for logging info */
 

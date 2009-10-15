@@ -139,7 +139,7 @@ structure Contract : sig
   (********** Contraction **********)
 
   (* extend the environment with a mapping from the "toVars" to the "fromVars" (i.e.,
-   * instances of a ftoVarromVar will be replaced with the corresponding fromVar),
+   * instances of a toVar will be replaced with the corresponding fromVar),
    * inserting type casts as necessary
    *)
     fun extendWithCasts {env, fromVars, toVars} = let
@@ -255,8 +255,9 @@ structure Contract : sig
 	    | B.E_Promote y => let
 		val (env, casts) = extendWithCasts {env = env, fromVars = [y], toVars = [x]}
 		in
+print(concat["elim ", BV.toString x, " = promote(", BV.toString y, ")\n"]);
 		  ST.tick cntPromote;
-		  dec y;
+		  inc y;
 		  OK(casts, env)
 		end
             | _ => FAIL

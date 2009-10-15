@@ -38,7 +38,6 @@ uint64_t		GlobalGCUId;	// Unique ID of current global GC
 #endif
 
 static void GlobalGC (VProc_t *vp, Value_t **roots);
-static void ScanVProcHeap (VProc_t *vp);
 static void ScanGlobalToSpace (VProc_t *vp);
 #ifndef NDEBUG
 void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
@@ -69,11 +68,11 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
       // we need to atomically update the header to a forward pointer, so frst
       // we allocate space for the object and then we try to install the forward
       // pointer.
-	Word_t *nextW = (Word_t *)vp->globNextW;
+	Word_t *nextW = (Word_t *)vp->allocNextW;
 	int len = GetLength(oldHdr);
-	if (nextW+len >= (Word_t *)(vp->globLimit)) {
+	if (nextW+len >= (Word_t *)(vp->allocTop)) {
 	    AllocToSpaceChunk (vp);
-	    nextW = (Word_t *)vp->globNextW;
+	    nextW = (Word_t *)vp->allocNextW;
 	}
      // try to install the forward pointer
 	Word_t fwdPtr = MakeForwardPtr(oldHdr, nextW);
@@ -84,7 +83,7 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 	    for (int i = 0;  i < len;  i++) {
 		newObj[i] = p[i];
 	    }
-	    vp->globNextW = (Addr_t)(newObj+len+1);
+	    vp->allocNextW = (Addr_t)(newObj+len+1);
 	    return PtrToValue(newObj);
 	}
 	else {
@@ -162,7 +161,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    p->sts = FROM_SP_CHUNK;
 #ifndef NO_GC_STATS
 	    uint32_t used = (p == self->globToSpTl)
-		? (self->globNextW - WORD_SZB) - p->baseAddr
+		? (self->allocNextW - WORD_SZB) - p->baseAddr
 		: p->usedTop - p->baseAddr;
 	    self->globalStats.nBytesAlloc += used;
 #if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
@@ -172,7 +171,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	}
 	p = self->globToSpTl;
 	if (p != (MemChunk_t *)0) {
-	    p->usedTop = self->globNextW - WORD_SZB;
+	    p->usedTop = self->allocNextW - WORD_SZB;
 	    p->next = FromSpaceChunks;
 	    FromSpaceChunks = self->globToSpHd;
 	}
@@ -222,7 +221,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   // compute the number of bytes copied in this GC on this vproc
     for (p = self->globToSpHd;  p != (MemChunk_t *)0;  p = p->next) {
 	uint32_t used = (p == self->globToSpTl)
-	    ? (self->globNextW - WORD_SZB) - p->baseAddr
+	    ? (self->allocNextW - WORD_SZB) - p->baseAddr
 	    : p->usedTop - p->baseAddr;
 	self->globalStats.nBytesCopied += used;
 #if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
@@ -293,8 +292,6 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 	}
     }
 
-    ScanVProcHeap (vp);
-
   /* scan to-space chunks */
     ScanGlobalToSpace (vp);
 
@@ -306,52 +303,6 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 #endif
 
 } /* end of GlobalGC */
-
-/*! \brief Scan the vproc's local heap.  Since we have already done a major GC,
- *  all objects are known to be live.
- */
-static void ScanVProcHeap (VProc_t *vp)
-{
-    Word_t *top = (Word_t *)(vp->oldTop);
-    Word_t *scanPtr = (Word_t *)vp->heapBase;
-
-    while (scanPtr < top) {
-	Word_t hdr = *scanPtr++;  // get object header
-	if (isMixedHdr(hdr)) {
-	  // a record
-	    Word_t tagBits = GetMixedBits(hdr);
-	    Word_t *scanP = scanPtr;
-	    while (tagBits != 0) {
-		if (tagBits & 0x1) {
-		    Value_t p = *(Value_t *)scanP;
-		    if (isFromSpacePtr(p)) {
-			*scanP = (Word_t)ForwardObj(vp, p);
-		    }
-		}
-		tagBits >>= 1;
-		scanP++;
-	    }
-	    scanPtr += GetMixedSizeW(hdr);
-	}
-	else if (isVectorHdr(hdr)) {
-	  // an array of pointers
-	    int len = GetVectorLen(hdr);
-	    for (int i = 0;  i < len;  i++, scanPtr++) {
-		Value_t v = (Value_t)*scanPtr;
-		if (isFromSpacePtr(v)) {
-		    *scanPtr = (Word_t)ForwardObj(vp, v);
-		}
-	    }
-	}
-	else {
-	    assert (isRawHdr(hdr));
-	  // we can just skip raw objects
-	    scanPtr += GetRawSizeW(hdr);
-	}
-    }
-    assert (scanPtr == top);
-
-} /* end of ScanVProcHeap */
 
 /*! \brief Scan the to-space objects that have been copied by this vproc
  *  \param vp the vproc doing the scanning
@@ -400,7 +351,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 
       /* recompute the scan top, switching chunks if necessary */
 	if (vp->globToSpTl == scanChunk)
-	    scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
+	    scanTop = (Word_t *)(vp->allocNextW - WORD_SZB);
 	else if (scanPtr == (Word_t *)scanChunk->usedTop) {
 	    scanChunk = scanChunk->next;
 	    assert (scanChunk != (MemChunk_t *)0);
@@ -414,8 +365,9 @@ static void ScanGlobalToSpace (VProc_t *vp)
 
 }
 
+#define NDEBUG
 #ifndef NDEBUG
-void CheckGlobalAddr (VProc_t *self, void *addr, char *where);
+//void CheckGlobalAddr (VProc_t *self, void *addr, char *where);
 
 /* Check that the given address points *to* an object in the global heap.
  */
@@ -438,8 +390,8 @@ void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
 		self->id, (void *)hdr, addr, cq->sts, where);
 	}
     }
-  */
     CheckGlobalAddr (self, addr, where);
+  */
 }
 
 /* Check that the given address points *into* an object in the global heap. That is,

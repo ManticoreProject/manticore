@@ -29,7 +29,7 @@ static bool isGlobalHeapPtr (Value_t v)
 void LocalHeapConsistencyCheck (VProc_t *vp, Word_t *beginHeap, Word_t *endHeap)
 {
     Word_t	*nextScan = beginHeap;
-    Addr_t	nurseryBase = vp->nurseryBase;
+    Addr_t	nurseryBase = vp->heapBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
 
     while (nextScan < endHeap-1) {

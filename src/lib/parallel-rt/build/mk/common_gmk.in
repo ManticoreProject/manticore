@@ -36,7 +36,7 @@ CC =		@CC@
 CFLAGS =	@CFLAGS@ @CFLAG_M64@ @PTHREAD_CFLAGS@
 LDFLAGS =
 INCLUDES =	-I. -I../../include -I../../../../include
-CPPFLAGS =	@CPPFLAGS@ $(INCLUDES) -D@TARGET_OS@ -D@TARGET_CPU@
+CPPFLAGS =	@CPPFLAGS@ $(INCLUDES) -D@TARGET_OS@ -D@TARGET_CPU@ -DFLAT_HEAP
 AR =		ar
 ARFLAGS =	rcv
 RANLIB =	ranlib
@@ -47,7 +47,6 @@ RANLIB =	ranlib
 VPATH =		../../include:../../gc:../../vproc:../../misc:../../cpu:../../machine:../../config
 
 GC_SRCS = 	minor-gc.c \
-		major-gc.c \
 		global-gc.c \
 		heap.c \
 		unix-memory.c \

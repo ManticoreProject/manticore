@@ -410,13 +410,15 @@ functor HeapTransferFn (
 	       retTy=cvtCTy retTy, paramTys=List.map cvtCTy paramTys, 
 	       cArgs=List.map (varToCArg varDefTbl) args, saveAllocationPointer=allocates}
       end (* genCCall *)
-      
+
+(* not supported in flat-heap version
   (* Promote an object to the global heap. *)
   fun genPromote varDefTbl {lhs, arg} = 
       ccall {lhs=[lhs], 
 	     name=T.LABEL RuntimeLabels.promote,
 	     retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_PTR], 
 	     cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl arg], saveAllocationPointer=true}
+*)
 
   (* Take the CFG variables for the GC roots and return MLRISC code that initializes and restores
    * the roots and also return the root pointer, register temps for the roots, and values for the roots
@@ -575,6 +577,8 @@ functor HeapTransferFn (
     *  noGCRoots (roots)
     *
     *)
+    | genHeapCheck varDefTbl {hck=CFG.HCK_Global, szb, nogc} = raise Fail "flat heap"
+(*
     | genHeapCheck varDefTbl {hck=CFG.HCK_Global, szb, nogc} = let
       val getChunkLab = newLabel "getChunk"
       val {stms=getGlobalChunkStms, ...} = 
@@ -598,6 +602,7 @@ functor HeapTransferFn (
       in
 	  {stms=chkStms @ getChunkStms, return=NONE}
       end (* genHeapCheck *)
+*)
 
   (* bind a parameter *)
   fun bindParam (param, k) = (case (param, k)

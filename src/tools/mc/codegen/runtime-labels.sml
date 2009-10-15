@@ -22,10 +22,12 @@ structure RuntimeLabels =
     val sequential = global "SequentialFlag"
   (* runtime code to invoke the GC *)
     val initGC = global "ASM_InvokeGC"
+(* not supported in flat-heap version
   (* runtime code to promote objects *)
     val promote = global "PromoteObj"
   (* runtime code to get a new global-heap chunk *)
     val getGlobalChunk = global "GetChunkForVProc"
+*)
     end (* local *)
 
   end (* RuntimeLabels *)
