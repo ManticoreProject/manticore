@@ -296,8 +296,10 @@ STATIC_INLINE void PrintPct (FILE *f, uint64_t n, uint64_t m)
 	double pct = 100.0 * (double)n / (double)m;
 	if (pct < 1.0)
 	    fprintf (f, "(%3.1f%%)", pct);
+	else if (pct < 100.0)
+	    fprintf (f, "(%2.0f%%) ", pct);
 	else
-	    fprintf (f, "(%2f%%) ", pct);
+	    fprintf (f, "(100%%)");
     }
 
 }
@@ -321,6 +323,9 @@ void ReportGCStats ()
     uint64_t nBytesPromoted = 0;
     for (int i = 0;  i < NumVProcs;  i++) {
 	VProc_t *vp = VProcs[i];
+      // include any memory allocated since the last minor GC
+	vp->minorStats.nBytesAlloc += vp->allocPtr - vp->nurseryBase - WORD_SZB;
+      // count the stats for this VProc
 	nPromotes += vp->nPromotes;
 	nMinorGCs += vp->nMinorGCs;
 	nMajorGCs += vp->nMajorGCs;
