@@ -210,11 +210,11 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     GlobalGC (self, roots);
 
 #ifndef NDEBUG
-    if (HeapCheck >= GC_DEBUG_GLOBAL) {
-	if (GCDebug >= GC_DEBUG_GLOBAL)
-	    SayDebug ("[%2d] Checking heap consistency\n", self->id);
-	CheckAfterGlobalGC (self, roots);
-    }
+//    if (HeapCheck >= GC_DEBUG_GLOBAL) {
+//	if (GCDebug >= GC_DEBUG_GLOBAL)
+//	    SayDebug ("[%2d] Checking heap consistency\n", self->id);
+//	CheckAfterGlobalGC (self, roots);
+//    }
 #endif
 
 #ifndef NO_GC_STATS

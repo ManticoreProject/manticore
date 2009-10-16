@@ -71,6 +71,8 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
 	}
 
+SayDebug("[%2d] ASM_Apply: heapBase = %p, allocPtr = %p; limitPtr = %p\n",
+vp->id, (void *)(vp->heapBase), (void *)(vp->allocPtr), (void *)(vp->limitPtr));
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
 
 	Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));

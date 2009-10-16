@@ -12,11 +12,9 @@
 #include "gc-inline.h"
 #include "gc.h"
 
-/* in the flat-heap model, the vp->allocNextW field holds the
- * allocation pointer.
+/* in the flat-heap model, we always allocate from the current chunk
  */
-#define allocPtr allocNextW
-#define globNextW allocNextW
+#define globNextW allocPtr
 #define globLimit allocTop
 
 /*! \brief allocate a tuple of uniform values.

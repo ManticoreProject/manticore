@@ -284,6 +284,7 @@ Value_t M_Test ()
 #ifndef NDEBUG
 void M_AssertNotLocalPtr (Value_t item)
 {
+#ifndef FLAT_HEAP /* not for flat heap */
   /* item must be a pointer in the global queue, and thus we can
    * at least be sure that it is not in the local queue
    */
@@ -291,7 +292,7 @@ void M_AssertNotLocalPtr (Value_t item)
 	Die ("Pointer %p is in the local heap when it should be in the global heap\n",
 	    (void *)item);
     }
-
+#endif
 }
 #endif
 

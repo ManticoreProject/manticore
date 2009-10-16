@@ -401,7 +401,6 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
  */
 void VProcPreempt (VProc_t *self, VProc_t *vp)
 {
-  /*
 #ifndef NDEBUG
     if (DebugFlg) {
 	if (self == 0)
@@ -410,7 +409,6 @@ void VProcPreempt (VProc_t *self, VProc_t *vp)
 	    SayDebug("[%2d] Signaling vproc %d.\n", self->id, vp->id);
     }
 #endif
-  */
     LogPreemptVProc (vp, vp->id);
     SetLimitPtr (vp, 0);
 }

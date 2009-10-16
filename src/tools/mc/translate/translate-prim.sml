@@ -174,58 +174,8 @@ structure TranslatePrim : sig
 	    | _ => raise (fail["arity mismatch for conditional ", Atom.toString cond])
 	  (* end case *))
 
-  (* generate a dynamic check that the given variable is a valid pointer to the global heap *)
-  (* the argument pointsToHeapObject must be false whenever the pointer might point into the middle
-   * of a heap object.
-   *)
-    fun checkGlobalPtr (loc, v, pointsToHeapObject) = let
-	  val self = newTmp BTy.T_VProc
-	  val t = newTmp BTy.T_Any
-	  val locS = Error.locToString(Error.location(!errStrm, loc))
-	  val checkCFun = if pointsToHeapObject then "CheckGlobalPtr" else "CheckGlobalAddr"
-	  in [
-	    ([self], BOM.E_HostVProc),
-	    ([t], BOM.E_Const(Literal.String (locS ^ " at " ^ BOM.Var.toString v), BTy.T_Any)),
-	    ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis [checkCFun]), [self, v, t]))
-	  ] end
-
-  (* generate debugging messages for object promotions *)
-    fun debugPromote (loc, [lhs], x) = let
-	  val self = newTmp BTy.T_VProc
-	  val t = newTmp BTy.T_Any
-	  val lhsN = newTmp BTy.T_Any
-	  val xN = newTmp BTy.T_Any
-	  val locS = Error.locToString(Error.location(!errStrm, loc))
-	  in [
-	    ([self], BOM.E_HostVProc),
-	    ([t], BOM.E_Const(Literal.String locS, BTy.T_Any)),
-	    ([lhsN], BOM.E_Const(Literal.String (BOM.Var.toString lhs), BTy.T_Any)),
-	    ([xN], BOM.E_Const(Literal.String (BOM.Var.toString x), BTy.T_Any)),
-	    ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis ["DebugPromote"]), [self, t, lhsN, xN]))
-	  ] end
-
-    fun cvtPrim (loc, lhs, p, xs, body) = 
-	  if not(Controls.get BasicControl.debug)
-	    then BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
-	    else (case mkPrim(p, xs)
-	       of prim as BOM.E_Prim(Prim.CAS(x, new, old)) =>
-		    BOM.mkStmts (
-		      checkGlobalPtr(loc, x, false) @
-		      checkGlobalPtr(loc, new, false) @
-		      checkGlobalPtr(loc, old, false) @
-		      [(lhs, prim)],
-		      body)
-(*
-		| prim as BOM.E_Prim(Prim.BCAS(x, new, old)) =>
-		    BOM.mkStmts (
-		      checkGlobalPtr(loc, x, false) @
-		      checkGlobalPtr(loc, new, false) @
-		      checkGlobalPtr(loc, old, false) @
-		      [(lhs, prim)],
-		      body)
-*)
-		| prim => BOM.mkStmts ([(lhs, mkPrim(p, xs))], body)
-	      (* end case *))
+    fun cvtPrim (loc, lhs, p, xs, body) =
+	  BOM.mkStmt (lhs, mkPrim(p, xs), body)
 
   (* convert a variable expression to either an ordinary variable or a nullary constructor *)
     fun cvtVar (x, k) = (case lookupVarOrDCon x
@@ -328,23 +278,14 @@ structure TranslatePrim : sig
 		      | BPT.RHS_Update(i, arg, rhs) => 
 			cvtSimpleExp(loc, findCFun, arg, fn x =>
 			  cvtSimpleExp(loc, findCFun, rhs, fn y =>
-			    if not(Controls.get BasicControl.debug) then 
-				BOM.mkStmt(lhs', BOM.E_Update(i, x, y), body')
-			    else
-				BOM.mkStmts(checkGlobalPtr(loc, x, true) @
-					    checkGlobalPtr(loc, y, false) @
-					    [(lhs', BOM.E_Update(i, x, y))],
-					    body')))
+			    BOM.mkStmt(lhs', BOM.E_Update(i, x, y), body')))
 		      | BPT.RHS_VPStore(offset, vp, arg) =>
 			  cvtSimpleExp(loc, findCFun, vp, fn vp =>
-				  cvtSimpleExp(loc, findCFun, arg, fn x =>
-				    BOM.mkStmt(lhs', BOM.E_VPStore(offset, vp, x), body')))
+			    cvtSimpleExp(loc, findCFun, arg, fn x =>
+			      BOM.mkStmt(lhs', BOM.E_VPStore(offset, vp, x), body')))
 		      | BPT.RHS_Promote arg =>
 			  cvtSimpleExp(loc, findCFun, arg, fn x => 
-				if not(Controls.get BasicControl.debug) then
-				    BOM.mkStmt(lhs', BOM.E_Promote x, body')
-				else
-				    BOM.mkStmts(debugPromote (loc, lhs', x) @ [(lhs', BOM.E_Promote x)], body'))
+			    BOM.mkStmt(lhs', BOM.E_Promote x, body'))
 		      | BPT.RHS_CCall(f, args) => let
 			  val cfun = findCFun f
 			  in

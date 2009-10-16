@@ -14,7 +14,7 @@
 
 /* size of VProc local heap */
 #ifndef VP_HEAP_SZB
-#  define VP_HEAP_SZB		ONE_MEG
+#  define VP_HEAP_SZB		(4*ONE_MEG)
 #endif
 
 /* sizes for the stack frame used to run Manticore code */

@@ -13,7 +13,11 @@
 #include "topology.h"
 
 /* size of a heap chunk */
-#define HEAP_CHUNK_SZB		((Addr_t)(4*ONE_MEG))
+#define HEAP_CHUNK_SZB		(4*ONE_MEG)
+
+#if (HEAP_CHUNK_SZB != VP_HEAP_SZB)
+#  error inconsistent sizes
+#endif
 
 /********** VProc local heaps **********/
 
