@@ -196,7 +196,7 @@
 		  "kind"  : "DEPENDENT",
 		  "src"   : "WSThiefSend",
 		  "dst"   : "WSThiefBegin",
-		  "color" : "#1f001f"
+		  "color" : "#d000d0"
 		}
 /*
 		{ "desc"  : "Thief execution",
