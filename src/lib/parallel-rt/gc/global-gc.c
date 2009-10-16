@@ -132,7 +132,8 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #endif
 #ifndef NDEBUG
 	    if (GCDebug >= GC_DEBUG_GLOBAL)
-	        SayDebug("[%2d] Initiating global GC %d (%d processors)\n", self->id, NumGlobalGCs, NumVProcs);
+	        SayDebug("[%2d] Initiating global GC %d (%d processors)\n",
+		    self->id, NumGlobalGCs, NumVProcs);
 #endif
 #ifndef NO_GC_STATS
 	    FromSpaceSzb = 0;
@@ -155,8 +156,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    assert (p->sts == TO_SP_CHUNK);
 #ifndef NDEBUG
 	    if (GCDebug >= GC_DEBUG_GLOBAL)
-		SayDebug("[%2d]   From-Space chunk %#tx..%#tx\n",
-		    self->id, p->baseAddr, p->baseAddr+p->szB);
+		SayDebug("[%2d]   From-Space chunk %p..%p\n",
+		    self->id, (void *)(p->baseAddr),
+		    (void *)(p->baseAddr+p->szB));
 #endif
 	    p->sts = FROM_SP_CHUNK;
 #ifndef NO_GC_STATS
@@ -256,6 +258,15 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 /* NOTE: at some point we may want to release memory back to the OS */
 	    GlobalGCInProgress = false;
 	MutexUnlock (&HeapLock);
+      // recalculate the FromSpaceLimit
+	if (BASE_GLOBAL_HEAP_SZB < ToSpaceSz)
+	    ToSpaceLimit = ToSpaceSz + (NumVProcs * PER_VPROC_HEAP_SZB);
+	else
+	    ToSpaceLimit = BASE_GLOBAL_HEAP_SZB + (NumVProcs * PER_VPROC_HEAP_SZB);
+#ifndef NDEBUG
+	if (GCDebug >= GC_DEBUG_GLOBAL)
+	    SayDebug("[%2d] ToSpaceLimit = %ld\n", self->id, ToSpaceLimit >> 20);
+#endif
     }
 
   /* synchronize on from-space being reclaimed */

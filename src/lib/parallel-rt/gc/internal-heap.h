@@ -40,6 +40,15 @@ struct struct_chunk {
 
 /********** Global heap **********/
 
+/* global-heap-size constants */
+#ifndef NDEBUG
+#  define BASE_GLOBAL_HEAP_SZB	HEAP_CHUNK_SZB
+#  define PER_VPROC_HEAP_SZB	HEAP_CHUNK_SZB
+#else
+#  define BASE_GLOBAL_HEAP_SZB	(512 * ONE_MEG)
+#  define PER_VPROC_HEAP_SZB	(256 * ONE_MEG)
+#endif
+
 extern Mutex_t		HeapLock;	/* lock for protecting heap data structures */
 extern Addr_t		GlobalVM;	/* amount of memory allocated to Global heap */
 					/*  (includingfree chunks). */

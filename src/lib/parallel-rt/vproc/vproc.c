@@ -242,7 +242,8 @@ void *NewVProc (void *arg)
     vproc->hostID = pthread_self();
     vproc->location = initData->loc;
 
-    vproc->heapBase = vproc->oldTop = vprocHeap;
+    vproc->heapBase =
+    vproc->oldTop = vprocHeap;
     InitVProcHeap (vproc);
 
     vproc->inManticore = M_FALSE;
@@ -415,6 +416,14 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
 
 }
 
+/*! \brief send a preemption to a remote vproc.
+ *  \param vp the remote vproc to preempt.
+ */
+void VProcPreempt (VProc_t *self, VProc_t *vp)
+{
+    VProcSendUnixSignal(vp, PreemptSignal);
+}
+
 /*! \brief interrupt a remote vproc to take part in a global collection.
  *  \param self the host vproc.
  *  \param vp the remote vproc.
@@ -427,14 +436,6 @@ void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
     VProcSendUnixSignal(vp, GCSignal);
 }
 
-/*! \brief send a preemption to a remote vproc.
- *  \param vp the remote vproc to preempt.
- */
-void VProcPreempt (VProc_t *self, VProc_t *vp)
-{
-    VProcSendUnixSignal(vp, PreemptSignal);
-}
-
 /*! \brief send an asynchronous signal to another VProc.
  *  \param vp the target VProc.
  *  \param sig the signal.
@@ -444,7 +445,7 @@ void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig)
 #ifndef NDEBUG
   if (DebugFlg) {
       VProc_t *self = VProcSelf();
-      if (self) 
+      if (self != 0) 
   	  SayDebug("[%2d] VProcSendUnixSignal: vp = %d, sig = %d\n", self->id, vp->id, sig);
       else 
 	  SayDebug("VProcSendUnixSignal: vp = %d, sig = %d\n", vp->id, sig);
