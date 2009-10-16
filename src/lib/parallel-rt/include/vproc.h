@@ -62,9 +62,7 @@ struct struct_vproc {
 				//! the vproc.
     Addr_t      heapBase;       //!< Base address of the current alloc chunk, which
 				//! is globToSpHd.
-    Addr_t	allocNextW;	//!< pointer to next word to allocate in current
-				//! chunk (used in GC)
-    Addr_t	allocTop;	//!< limit pointer for current to-space chunk
+    Addr_t	allocTop;	//!< top of current to-space chunk
     int		id;		//!< index of this vproc in VProcs[] array
     OSThread_t	hostID;		//!< PThread ID of host
     Location_t	location;	//!< the physical location that hosts this vproc.
@@ -76,7 +74,7 @@ struct struct_vproc {
                                 //!< the head of the landing pad (stack)
     Addr_t	limitPtr __attribute__((aligned(64)));
                                 //!< heap-limit pointer. this field plays the
-                                //!< additional role of recording asynchronous events,
+                                //!< additional role of signaling asynchronous events,
                                 //!< which is the reason why the field is shared.
     bool	globalGCPending __attribute__((aligned(64)));
                                 //!< true when this vproc has been signaled that

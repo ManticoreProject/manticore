@@ -68,11 +68,11 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
       // we need to atomically update the header to a forward pointer, so frst
       // we allocate space for the object and then we try to install the forward
       // pointer.
-	Word_t *nextW = (Word_t *)vp->allocNextW;
+	Word_t *nextW = (Word_t *)vp->allocPtr;
 	int len = GetLength(oldHdr);
 	if (nextW+len >= (Word_t *)(vp->allocTop)) {
 	    AllocToSpaceChunk (vp);
-	    nextW = (Word_t *)vp->allocNextW;
+	    nextW = (Word_t *)vp->allocPtr;
 	}
      // try to install the forward pointer
 	Word_t fwdPtr = MakeForwardPtr(oldHdr, nextW);
@@ -83,7 +83,7 @@ STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
 	    for (int i = 0;  i < len;  i++) {
 		newObj[i] = p[i];
 	    }
-	    vp->allocNextW = (Addr_t)(newObj+len+1);
+	    vp->allocPtr = (Addr_t)(newObj+len+1);
 	    return PtrToValue(newObj);
 	}
 	else {
@@ -132,7 +132,8 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #endif
 #ifndef NDEBUG
 	    if (GCDebug >= GC_DEBUG_GLOBAL)
-	        SayDebug("[%2d] Initiating global GC %d (%d processors)\n", self->id, NumGlobalGCs, NumVProcs);
+	        SayDebug("[%2d] Initiating global GC %d (%d processors)\n",
+		    self->id, NumGlobalGCs, NumVProcs);
 #endif
 #ifndef NO_GC_STATS
 	    FromSpaceSzb = 0;
@@ -155,13 +156,14 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    assert (p->sts == TO_SP_CHUNK);
 #ifndef NDEBUG
 	    if (GCDebug >= GC_DEBUG_GLOBAL)
-		SayDebug("[%2d]   From-Space chunk %#tx..%#tx\n",
-		    self->id, p->baseAddr, p->baseAddr+p->szB);
+		SayDebug("[%2d]   From-Space chunk %p..%p\n",
+		    self->id, (void *)(p->baseAddr),
+		    (void *)(p->baseAddr+p->szB));
 #endif
 	    p->sts = FROM_SP_CHUNK;
 #ifndef NO_GC_STATS
 	    uint32_t used = (p == self->globToSpTl)
-		? (self->allocNextW - WORD_SZB) - p->baseAddr
+		? (self->allocPtr - WORD_SZB) - p->baseAddr
 		: p->usedTop - p->baseAddr;
 	    self->globalStats.nBytesAlloc += used;
 #if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
@@ -171,7 +173,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	}
 	p = self->globToSpTl;
 	if (p != (MemChunk_t *)0) {
-	    p->usedTop = self->allocNextW - WORD_SZB;
+	    p->usedTop = self->allocPtr - WORD_SZB;
 	    p->next = FromSpaceChunks;
 	    FromSpaceChunks = self->globToSpHd;
 	}
@@ -221,7 +223,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   // compute the number of bytes copied in this GC on this vproc
     for (p = self->globToSpHd;  p != (MemChunk_t *)0;  p = p->next) {
 	uint32_t used = (p == self->globToSpTl)
-	    ? (self->allocNextW - WORD_SZB) - p->baseAddr
+	    ? (self->allocPtr - WORD_SZB) - p->baseAddr
 	    : p->usedTop - p->baseAddr;
 	self->globalStats.nBytesCopied += used;
 #if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
@@ -256,6 +258,15 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 /* NOTE: at some point we may want to release memory back to the OS */
 	    GlobalGCInProgress = false;
 	MutexUnlock (&HeapLock);
+      // recalculate the FromSpaceLimit
+	if (BASE_GLOBAL_HEAP_SZB < ToSpaceSz)
+	    ToSpaceLimit = ToSpaceSz + (NumVProcs * PER_VPROC_HEAP_SZB);
+	else
+	    ToSpaceLimit = BASE_GLOBAL_HEAP_SZB + (NumVProcs * PER_VPROC_HEAP_SZB);
+#ifndef NDEBUG
+	if (GCDebug >= GC_DEBUG_GLOBAL)
+	    SayDebug("[%2d] ToSpaceLimit = %ld\n", self->id, ToSpaceLimit >> 20);
+#endif
     }
 
   /* synchronize on from-space being reclaimed */
@@ -351,7 +362,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 
       /* recompute the scan top, switching chunks if necessary */
 	if (vp->globToSpTl == scanChunk)
-	    scanTop = (Word_t *)(vp->allocNextW - WORD_SZB);
+	    scanTop = (Word_t *)(vp->allocPtr - WORD_SZB);
 	else if (scanPtr == (Word_t *)scanChunk->usedTop) {
 	    scanChunk = scanChunk->next;
 	    assert (scanChunk != (MemChunk_t *)0);

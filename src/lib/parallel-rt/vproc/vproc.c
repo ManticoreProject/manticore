@@ -404,7 +404,7 @@ void VProcPreempt (VProc_t *self, VProc_t *vp)
 #ifndef NDEBUG
     if (DebugFlg) {
 	if (self == 0)
-	    SayDebug("Timer interrupt on vproc %d from %d.\n", self->id, vp->id);
+	    SayDebug("Timer interrupt on vproc %d.\n", vp->id);
 	else
 	    SayDebug("[%2d] Signaling vproc %d.\n", self->id, vp->id);
     }

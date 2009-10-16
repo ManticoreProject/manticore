@@ -66,8 +66,9 @@ void MinorGC (VProc_t *vp)
 	AllocToSpaceChunk (vp);
     }
 
-  /* reset the allocation and limit pointers */
-    SetAllocPtr (vp);
+  /* reset the limit pointers (the allocation pointer should already be
+   * correct, since it is set by AllocToSpaceChunk().
+   */
     if (SetLimitPtr(vp, vp->allocTop - ALLOC_BUF_SZB) == 0)
 	SetLimitPtr(vp, 0);  // pending preemption
 

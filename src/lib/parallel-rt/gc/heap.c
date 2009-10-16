@@ -109,12 +109,7 @@ void HeapInit (Options_t *opts)
     GlobalVM = 0;
     FreeVM = 0;
     ToSpaceSz = 0;
-#ifndef NDEBUG
-//    ToSpaceLimit = 16 * ONE_MEG;  /* FIXME: what should this be? */
-    ToSpaceLimit = 8 * ONE_MEG;
-#else
-    ToSpaceLimit = 1024 * ONE_MEG;
-#endif
+    ToSpaceLimit = BASE_GLOBAL_HEAP_SZB; // we don't know the number of vprocs yet!
     TotalVM = 0;
     FromSpaceChunks = (MemChunk_t *)0;
     FreeChunks = NEWVEC(MemChunk_t *, NumHWNodes);
@@ -182,13 +177,14 @@ void AllocToSpaceChunk (VProc_t *vp)
 	vp->globToSpTl = chunk;
     }
     else {
-	vp->globToSpTl->usedTop = vp->allocNextW - WORD_SZB;
+	vp->globToSpTl->usedTop = vp->allocPtr - WORD_SZB;
 	vp->globToSpTl->next = chunk;
 	vp->globToSpTl = chunk;
     }
 
-    vp->allocNextW = chunk->baseAddr + WORD_SZB;
+    vp->heapBase = chunk->baseAddr;
     vp->allocTop = chunk->baseAddr + chunk->szB;
+    SetAllocPtr (vp);
 
 #ifndef NDEBUG
     if (GCDebug > GC_DEBUG_NONE)
