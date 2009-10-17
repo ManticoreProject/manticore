@@ -14,6 +14,7 @@ extern Options_t *InitOptions (int argc, const char **argv);
 extern bool GetFlagOpt (Options_t *opts, const char *flg);
 extern int GetIntOpt (Options_t *opts, const char *opt, int dflt);
 extern const char *GetStringOpt (Options_t *opts, const char *opt, const char *dflt);
+extern const char *GetStringEqOpt (Options_t *opts, const char *opt, const char *dflt);
 
 /* get a size option; the suffixes "k" and "m" are supported */
 extern Addr_t GetSizeOpt (Options_t *opts, const char *opt, Addr_t dfltScale, Addr_t dflt);
