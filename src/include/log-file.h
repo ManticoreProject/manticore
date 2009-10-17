@@ -75,7 +75,7 @@ typedef struct struct_log_event {
 
 struct struct_logbuf {
     int32_t		vpId;		// ID of vproc that owns this buffer
-    int32_t		next;		// next entry to use in the log[] array
+    volatile int32_t	next;		// next entry to use in the log[] array
     char		pad[sizeof(LogEvent_t) - 8];
     LogEvent_t		log[LOGBUF_SZ];
 };
