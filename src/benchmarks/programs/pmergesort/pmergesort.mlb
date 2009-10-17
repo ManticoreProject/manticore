@@ -1,7 +1,0 @@
-list-quicksort.pml
-pmergesort.pml
-array-qsort.pml
-pmergesort-with-seq-bc.pml
-(*test-pmergesort.pml*)
-bench-pmergesort.pml
-

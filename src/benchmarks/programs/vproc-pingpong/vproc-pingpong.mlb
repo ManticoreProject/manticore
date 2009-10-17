@@ -1,4 +1,0 @@
-  ann "cpp" "../../../lib/basis/include/prim.def,../../../lib/basis/include/debug.def,../../../lib/basis/include/assert.def"
-  in
-    vproc-pingpong.pml
-  end
