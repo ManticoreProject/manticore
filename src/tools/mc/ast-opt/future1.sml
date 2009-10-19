@@ -26,7 +26,7 @@ structure Future1 : sig
 
     local 
 
-      val futureModuleName = "EagerFuture"
+      val futureModuleName = "MultilispFuture"
 
       fun getTyc id = BasisEnv.getTyConFromBasis [futureModuleName, id]
       fun getVar id = BasisEnv.getVarFromBasis [futureModuleName, id]
