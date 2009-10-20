@@ -55,10 +55,8 @@ structure Scan = struct
        (* end case *))
 
   (* ***** FULL SCANS (as opp. to short-circuiting ***** *)
-  
-  (* seqscan : num -> num seq -> num seq * num *)
-  (* Does a prefix scan starting from the given seed value. *)
-  (* Returns the scanned sequence and the total. *)
+
+(*  
     fun seqscan seed seq =
       if S.null seq then (S.empty, seed)
       else let
@@ -74,6 +72,25 @@ structure Scan = struct
         in
           lp (0, seed)
         end
+*)
+
+  (* seqscan : num -> num seq -> num seq * num *)
+  (* Does a prefix scan starting from the given seed value. *)
+  (* Returns the scanned sequence and the total. *)
+  (* NOTE: this version more efficient with immutable vectors, since updates are costly *)
+    fun seqscan seed seq =
+	if S.null seq then (S.empty, seed)
+	else let
+	    val len = S.length seq
+          (* we accumulate the prefix, res, in reverse order *)
+	    fun lp (i, last, res) =
+		if i >= len then
+		    (S.fromListRev (res, len), last)
+		else
+		    lp (i+1, last + S.sub (seq, i), last :: res)
+	    in
+	      lp (0, seed, nil)
+	    end
 
   (* seqsum : num -> num seq -> num *)
     fun seqsum seed s = let
