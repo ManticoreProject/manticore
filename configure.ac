@@ -158,7 +158,7 @@ AC_MSG_CHECKING([for clock_gettime])
 AC_LINK_IFELSE(
   AC_LANG_PROGRAM(
     [[#include <time.h>]],
-    [[struct timespec t; clock_gettime(CLOCK_REALTIME, &s); ]]),
+    [[struct timespec t; clock_gettime(CLOCK_REALTIME, &t); ]]),
   [ ac_cv_func_clock_gettime=yes;
     AC_DEFINE(HAVE_CLOCK_GETTIME, [1], [is clock_gettime available?])],
   [ac_cv_func_clock_gettime=no])
