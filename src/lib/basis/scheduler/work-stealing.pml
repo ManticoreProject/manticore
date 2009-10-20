@@ -106,17 +106,6 @@ structure WorkStealing (* :
 	      let self : vproc = SchedulerAction.@atomic-begin ()
               do Logging.@log-WSThiefBegin (self, tid, wid)
 	      do assert (Equal (self, victimVP))
-	    (* try to mug before stealing *)
-	      let muggedThreads : List.list = @mug-from-atomic (self, workGroupId)
-	      do case muggedThreads
-		  of List.nil => 
-		     return ()
-		   | List.CONS (_ : ImplicitThread.thread, _ : List.list) =>
-		     let x : Option.option = promote (Option.SOME(muggedThreads))
-		     do #0(ch) := x
-		     SchedulerAction.@stop ()
-		 end
-	    (* unsuccessful mugging attempt, try to steal *)
 	      let stolenThread : Option.option = @steal-thread-from-atomic (self, workGroupId)
 	      do case stolenThread
 		  of Option.NONE => (* unsuccessful steal attempt *)
@@ -153,6 +142,7 @@ structure WorkStealing (* :
 	define @new-worker (workGroupId : UID.uid, 
 			    wgid : long,                   (* unique id for logging *)
 			    isTerminated : fun (/ -> bool), 
+			    setActive : fun (bool / ->),
   		            assignedDeques : Arr.array,
 		            idle : (* bool *) Arr.array,
                             pickVictim : fun (vproc / -> (* [vproc] *) Option.option)
@@ -175,16 +165,6 @@ structure WorkStealing (* :
 		  do @set-assigned-deque-from-atomic (self, assignedDeques, deque / exh)
 		  do ImplicitThread.@run-from-atomic (self, act, thd / exh)
 		  throw impossible ()
-		let isFinished : bool = apply isTerminated ()
-		do case isFinished
-		    of true =>
-		       let _ : List.list = D.@to-list-from-atomic (self, deque) (* empty the deque *)
-		       do D.@release-from-atomic (self, deque)
-		       do SchedulerAction.@stop-from-atomic (self)
-		       throw impossible ()
-		     | false =>
-		       return ()
-		   end
 		case sign
 		 of PT.STOP =>
 		  (* restart the worker loop *)
@@ -195,30 +175,21 @@ structure WorkStealing (* :
 		      throw schedulerLoop (self, deque, PT.STOP)
 		  (* try to find work for the given vproc. the result is a list of stolen work. *)
 		    fun findRemoteWork (self : vproc) : List.list =
-		       (* try to mug another deque that is local to this vproc *)
-			 let muggedThreads : List.list = @mug-from-atomic (self, workGroupId)
-			 case muggedThreads
-			  of List.CONS (_ : ImplicitThread.thread, _ : List.list) =>
-			    (* mugging was successful *)
-			    return (muggedThreads)
-			  | List.nil =>
-			    (* mugging failed; try to steal *)
-			    let victimVP : Option.option = apply pickVictim (self)
-			    case victimVP
-			     of Option.NONE =>
-				(* no victims currently available *)
+			let victimVP : Option.option = apply pickVictim (self)
+			case victimVP
+			 of Option.NONE =>
+			    (* no victims currently available *)
+			    return (List.nil)
+			  | Option.SOME (victimVP : [vproc]) =>
+			    let victimVP : vproc = #0(victimVP)
+			    let victimId : int = VProc.@vproc-id (victimVP)
+			    let idle : bool = Arr.@sub (idle, victimId / exh)
+			    case idle
+			     of true =>
 				return (List.nil)
-			      | Option.SOME (victimVP : [vproc]) =>
-				let victimVP : vproc = #0(victimVP)
-				let victimId : int = VProc.@vproc-id (victimVP)
-				let idle : bool = Arr.@sub (idle, victimId / exh)
-				case idle
-				 of true =>
-				    return (List.nil)
-				  | false =>
-				    @thief-from-atomic (self, victimVP, workGroupId, wid)
-				end
-			    end		    
+			      | false =>
+				@thief-from-atomic (self, victimVP, workGroupId, wid)
+			    end
 			end
 		   let waitFn : fun (/ -> bool) = SpinWait.@mk-spin-wait-fun (20)
 		 (* loop until work appears on the local deque, or a steal attempt succeeds *)
@@ -246,7 +217,9 @@ structure WorkStealing (* :
 			    * spin wait for a while so that we avoid flooding busy workers by making
 			    * too many steal attempts.
 			    *)
-			     do SchedulerAction.@atomic-end (self)                            
+
+			     do SchedulerAction.@atomic-end (self)
+                             do apply setActive (false)
 			     let reset : bool = apply waitFn ()
 			     do case reset
 				 of true =>
@@ -255,7 +228,13 @@ structure WorkStealing (* :
 				    return ()
 				  | false =>
 				    return()
-				end                            
+				end
+		             let terminated : bool = apply isTerminated ()
+                             do case terminated
+				 of true => let _ : unit = SchedulerAction.@stop() return ()
+				  | false => return ()
+                                end
+                             do apply setActive (true)              
 			     throw findRemoteWorkLp (0)
 			 else
 			     throw findRemoteWorkLp (I32Add(nTries, 1))
@@ -341,10 +320,29 @@ structure WorkStealing (* :
 	define @work-group (_ : unit / exh : exh) : ImplicitThread.work_group =
 	    let fls : FLS.fls = FLS.@get ()
 	    let uid : UID.uid = UID.@new (/ exh)
-	    let terminated : ![bool] = ImplicitThread.@terminated-flag ()
+	    let nVProcs : int = VProc.@num-vprocs ()
+          (* when #0(nIdle) = nVProcs the work, the work group is finished *)
+            let nIdle : ![int] = alloc (0)
+            let nIdle : ![int] = promote (nIdle)
+          (* true, if the work group is finished *)
+            let terminated : ![bool] = alloc (false)
+            let terminated : ![bool] = promote (terminated)
+          (* mark a worker as active by applying this function to "true" and inactive by applying to "false" *)
+	    fun setActive (active : bool) : () =
+		case active
+		 of true =>
+		    let _ : int = I32FetchAndAdd (&0(nIdle), ~1)
+		    return ()
+		  | false =>
+		    let nAlreadyIdle : int = I32FetchAndAdd (&0(nIdle), 1)
+		    if I32Eq (nAlreadyIdle, I32Sub(nVProcs, 1)) then
+			do #0(terminated) := true
+                        return ()
+		    else
+			return ()
+                end
 	    fun isTerminated () : bool = return (#0(terminated))
 	    fun pickVictim (self : vproc) : (* [vproc] *) Option.option =
-		let nVProcs : int = VProc.@num-vprocs ()
 		if I32Lte (nVProcs, 1) then
 		    return (Option.NONE)
 		else
@@ -362,7 +360,7 @@ structure WorkStealing (* :
             let wgid : long = Logging.@log-WSInit (self)
             do SchedulerAction.@atomic-end (self)
 	    let initWorker : cont (vproc, ImplicitThread.worker) = 
-			     @new-worker (uid, wgid, isTerminated, assignedDeques, idle, pickVictim / exh)
+			     @new-worker (uid, wgid, isTerminated, setActive, assignedDeques, idle, pickVictim / exh)
 	    fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
 		do @spawn-thread (thd / exh)
 		return (UNIT)
