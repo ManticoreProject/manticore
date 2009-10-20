@@ -69,6 +69,8 @@ const char **Options ()
     return Opts->argv;
 }
 
+/*! \brief Check to see if a flag is specified in the command-line arguments.
+ */
 bool GetFlagOpt (Options_t *opts, const char *flg)
 {
     for (int i = 0;  i < opts->argc;  i++) {
@@ -92,7 +94,8 @@ int GetIntOpt (Options_t *opts, const char *opt, int dflt)
 		long arg = strtol (opts->argv[i], 0, 10);
 		CompressOpts (opts, i-1, 2);
 		return arg;
-	    } else {
+	    }
+	    else {
 		CompressOpts (opts, i-1, 1);
 		Error("%s: missing argument for `%s' option\n", opts->cmd, opt);
 		opts->errors = true;
@@ -114,7 +117,8 @@ const char *GetStringOpt (Options_t *opts, const char *opt, const char *dflt)
 		const char *arg = opts->argv[i];
 		CompressOpts (opts, i-1, 2);
 		return arg;
-	    } else {
+	    }
+	    else {
 		CompressOpts (opts, i-1, 1);
 		Error("%s: missing argument for `%s' option\n", opts->cmd, opt);
 		opts->errors = true;
@@ -126,6 +130,34 @@ const char *GetStringOpt (Options_t *opts, const char *opt, const char *dflt)
     return dflt;
 
 } /* end of GetStringOpt */
+
+/* GetStringEqOpt:
+ *
+ * Handle an argument with the format:
+ *
+ *	-option[=value]
+ *
+ * If the option is not present, then 0 is returned; if the argument is present,
+ * but there is no "=value" part, then dflt is returned.  Otherwise value is
+ * returned.
+ */
+const char *GetStringEqOpt (Options_t *opts, const char *opt, const char *dflt)
+{
+    int		len = strlen(opt);
+    for (int i = 0;  i < opts->argc;  i++) {
+	if (strncmp(opt, opts->argv[i], len) == 0) {
+	    const char *arg = opts->argv[i];
+	    CompressOpts (opts, i, 1);
+	    if (arg[len] == '=')
+		return (arg + len + 1);
+	    else if (arg[len] == '\0')
+		return dflt;
+	}
+    }
+
+    return 0;
+
+} /* end of GetStringEqOpt */
 
 /* get a size option; the suffixes "k" and "m" are supported */
 Addr_t GetSizeOpt (Options_t *opts, const char *opt, Addr_t dfltScale, Addr_t dflt)
