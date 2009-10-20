@@ -14,6 +14,8 @@ structure VectorSeq =
 
     val fromList = V.fromList
 
+    val fromListRev = V.fromListRev
+
     val empty = fromList nil
 
     fun singleton s = fromList (s::nil)

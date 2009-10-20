@@ -87,6 +87,33 @@ Value_t AllocVector (VProc_t *vp, Value_t values)
     return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(i));
 }
 
+/*! \brief allocate a vector seeded with some initial values, which are provided in reverse order.
+ *  \param vp the host vproc
+ *  \param values the values used to initialize the vector
+ *  \param len the size of the vector
+ *  \return the allocated and initialized vector
+ *  The vector type is defined in basis/sequential/vector.pml.
+ */
+Value_t AllocVectorRev (VProc_t *vp, Value_t values, int len)
+{
+    Word_t	*obj = (Word_t *)(vp->allocPtr);    
+    int         i    = 0;
+
+    while (values != M_NIL) {
+	ListCons_t *valueList = (ListCons_t*)ValueToPtr(values);
+	obj[len - i - 1] = (Word_t)valueList->hd;
+	values = valueList->tl;
+	i++;
+    }
+
+    obj[-1] = VEC_HDR(i);
+    vp->allocPtr += WORD_SZB * (i+1);
+
+    assert (len == i);
+    
+    return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(i));
+}
+
 /*! \brief allocate a wrapped word value.
  */
 Value_t WrapWord (VProc_t *vp, Word_t i)

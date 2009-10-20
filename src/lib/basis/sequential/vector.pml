@@ -13,9 +13,15 @@ structure Vector =
       typedef vector = [ (* array data *) ![any], (* number of elements *) int ];
 
       extern void* AllocVector (void*, void*) __attribute__((alloc));
+      extern void* AllocVectorRev (void*, void*, int) __attribute__((alloc));
 
       define (* inline *) @from-list (values : List.list / exh : exh) : vector =
 	  let vec : vector = ccall AllocVector (host_vproc, values)
+	  return (vec)
+	;
+
+      define (* inline *) @from-list-rev (arg : [List.list, ml_int] / exh : exh) : vector =
+	  let vec : vector = ccall AllocVector (host_vproc, #0(arg), #1(arg))
 	  return (vec)
 	;
 
@@ -38,6 +44,8 @@ structure Vector =
     type 'a vector = _prim (vector)
 
     val fromList : 'a list -> 'a vector = _prim (@from-list)
+  (* same as fromList, but expects that the list is in reverse order *)
+    val fromListRev : 'a list * int -> 'a vector = _prim (@from-list-rev)
     val length : 'a vector -> int = _prim (@length)
     val sub : 'a vector * int -> 'a = _prim (@sub)
 
