@@ -358,6 +358,7 @@ structure ImplicitThread (* :
       define @work-group-end (/ exh : exh) : () =
 	  let _ : Option.option = @pop-work-group (/ exh)
 	  do @migrate-to-top-level-sched (/ exh)
+          do SchedulerAction.@yield ()  (* give the scheduler a chance to clean up *)
 	  return ()
 	;
 
