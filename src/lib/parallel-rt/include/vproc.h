@@ -98,6 +98,7 @@ struct struct_vproc {
     GCCntrs_t	globalStats;	//!< information about this vproc's part in
 				//!  global GCs.
     uint64_t	nBytesPromoted;	//!< the number of bytes promoted on this vproc
+    Timer_t	promoteTimer;	//!< used to track time taken by promotions
 #endif
 #ifndef ENABLE_LOGGING	      /* GC counters for logging info */
 

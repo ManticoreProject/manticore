@@ -218,6 +218,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 
 #ifndef NO_GC_STATS
     vp->nPromotes++;
+    TIMER_Start(&(vp->promoteTimer));
 #endif
 
     assert ((vp->globNextW % WORD_SZB) == 0);
@@ -274,6 +275,10 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	    Die("PromoteObj: unexpected free-space pointer %p\n", ValueToPtr(root));
 	}
     }
+#endif
+
+#ifndef NO_GC_STATS
+    TIMER_Stop (&(vp->promoteTimer));
 #endif
 
     return root;

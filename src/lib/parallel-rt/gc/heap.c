@@ -347,6 +347,7 @@ void ReportGCStats ()
     FILE *outF = stdout;
 
   // compute summary information
+    double maxTime = 0.0;
     uint32_t nPromotes = 0;
     uint32_t nMinorGCs = 0;
     uint32_t nMajorGCs = 0;
@@ -354,8 +355,11 @@ void ReportGCStats ()
     GCSummary_t totMajor = { 0, 0, 0.0 };
     GCSummary_t totGlobal = { 0, 0, 0.0 };
     uint64_t nBytesPromoted = 0;
+    double totPromoteTime = 0.0;
     for (int i = 0;  i < NumVProcs;  i++) {
 	VProc_t *vp = VProcs[i];
+	double t = TIMER_GetTime (&(vp->timer));
+	if (t > maxTime) maxTime = t;
       // include any memory allocated since the last minor GC
 	vp->minorStats.nBytesAlloc += vp->allocPtr - vp->nurseryBase - WORD_SZB;
       // count the stats for this VProc
@@ -372,53 +376,64 @@ void ReportGCStats ()
 	totGlobal.nBytesCopied += vp->globalStats.nBytesCopied;
 	totGlobal.time += TIMER_GetTime (&(vp->globalStats.timer));
 	nBytesPromoted += vp->nBytesPromoted;
+	totPromoteTime += TIMER_GetTime (&(vp->promoteTimer));
     }
 
   // print the header
     if (CSVStatsFlg) {
     }
     else {
-	fprintf(outF, "                 Minor GCs                          Major GCs                  Promotions                Global GCs\n");
-	fprintf(outF, "      num   alloc     copied      time    num   alloc      copied     time     num    bytes   num   alloc     copied      time\n");
-	fprintf(outF, "--- ------ ------- ------------- ------- ----- ------- ------------- ------- ------- ------- ----- ------- ------------- -------\n");
+	fprintf(outF, "         Time                    Minor GCs                          Major GCs                      Promotions                    Global GCs\n");
+	fprintf(outF, "     total    gc      num   alloc     copied      time    num   alloc      copied     time     num    bytes   time    num   alloc     copied      time\n");
+	fprintf(outF, "--- ------- ------- ------ ------- ------------- ------- ----- ------- ------------- ------- ------- ------- ------- ----- ------- ------------- -------\n");
     }
 
     if (DetailStatsFlg && (NumVProcs > 1)) {
       // report per-vproc stats
 	for (int i = 0;  i < NumVProcs;  i++) {
 	    VProc_t *vp = VProcs[i];
+	    double minorT = TIMER_GetTime (&(vp->minorStats.timer));
+	    double majorT = TIMER_GetTime (&(vp->majorStats.timer));
+	    double promoteT = TIMER_GetTime (&(vp->promoteTimer));
+	    double globalT = TIMER_GetTime (&(vp->globalStats.timer));
 	    if (CSVStatsFlg) {
 	      // use comma-separated-values format
 		fprintf (outF,
-		    "p%02d, %d, %lld, %lld, %f, %d, %lld, %lld, %f, %d, %lld, %d, %lld, %lld, %f\n",
+		    "p%02d, %f, %f, %d, %lld, %lld, %f, %d, %lld, %lld, %f, %d, %lld, %f, %d, %lld, %lld, %f\n",
 		    i,
+		    TIMER_GetTime (&(vp->timer)), minorT + majorT + promoteT + globalT,
 		    vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCopied, TIMER_GetTime (&(vp->minorStats.timer)),
 		    vp->nMajorGCs, vp->majorStats.nBytesAlloc, vp->majorStats.nBytesCopied, TIMER_GetTime (&(vp->majorStats.timer)),
-		    vp->nPromotes, vp->nBytesPromoted,
+		    vp->nPromotes, vp->nBytesPromoted, TIMER_GetTime (&(vp->promoteTimer)),
 		    NumGlobalGCs, vp->globalStats.nBytesAlloc, vp->globalStats.nBytesCopied, TIMER_GetTime (&(vp->globalStats.timer)));
 	    }
 	    else {
+		fprintf (outF, "p%02d", i);
+	      // time
+		PrintTime (outF, TIMER_GetTime (&(vp->timer)));
+		PrintTime (outF, minorT + majorT + promoteT + globalT);
 	      // minor GCs
-		fprintf (outF, "p%02d %6d", i, vp->nMinorGCs);
+		fprintf (outF, " %6d", vp->nMinorGCs);
 		PrintNum (outF, 7, vp->minorStats.nBytesAlloc);
 		PrintNum (outF, 7, vp->minorStats.nBytesCopied);
 		PrintPct (outF, vp->minorStats.nBytesCopied, vp->minorStats.nBytesAlloc);
-		PrintTime (outF, TIMER_GetTime (&(vp->minorStats.timer)));
+		PrintTime (outF, minorT);
 	      // major GCs
 		fprintf (outF, " %5d", vp->nMajorGCs);
 		PrintNum (outF, 7, vp->majorStats.nBytesAlloc);
 		PrintNum (outF, 7, vp->majorStats.nBytesCopied);
 		PrintPct (outF, vp->majorStats.nBytesCopied, vp->majorStats.nBytesAlloc);
-		PrintTime (outF, TIMER_GetTime (&(vp->majorStats.timer)));
+		PrintTime (outF, majorT);
 	      // promotions
 		PrintNum (outF, 7, vp->nPromotes);
 		PrintNum (outF, 7, vp->nBytesPromoted);
+		PrintTime (outF, promoteT);
 	      // global GCs
 		fprintf (outF, " %5d", NumGlobalGCs);
 		PrintNum (outF, 7, vp->globalStats.nBytesAlloc);
 		PrintNum (outF, 7, vp->globalStats.nBytesCopied);
 		PrintPct (outF, vp->globalStats.nBytesCopied, vp->globalStats.nBytesAlloc);
-		PrintTime (outF, TIMER_GetTime (&(vp->globalStats.timer)));
+		PrintTime (outF, globalT);
 		fprintf (outF, "\n");
 	    }
 	}
@@ -426,18 +441,13 @@ void ReportGCStats ()
 
   // report the summary stats
     double timeScale = 1.0 / (double)NumVProcs;
-    if (CSVStatsFlg) {
-      // use comma-separated-values format
-	fprintf (outF,
-	    "TOT, %d, %lld, %lld, %f, %d, %lld, %lld, %f, %d, %lld, %d, %lld, %lld, %f\n",
-	    nMinorGCs, totMinor.nBytesAlloc, totMinor.nBytesCopied, timeScale * totMinor.time,
-	    nMajorGCs, totMajor.nBytesAlloc, totMajor.nBytesCopied, timeScale * totMajor.time,
-	    nPromotes, nBytesPromoted,
-	    NumGlobalGCs, totGlobal.nBytesAlloc, totGlobal.nBytesCopied, timeScale * totGlobal.time);
-    }
-    else {
+    if (! CSVStatsFlg) { /* we only report summary stats for the formatted version */
+	fprintf (outF, "TOT");
+      // time
+	PrintTime (outF, maxTime);
+	PrintTime (outF, timeScale * (totMinor.time + totMajor.time + totPromoteTime + totGlobal.time));
       // minor GCs
-	fprintf (outF, "TOT %6d", nMinorGCs);
+	fprintf (outF, " %6d", nMinorGCs);
 	PrintNum (outF, 7, totMinor.nBytesAlloc);
 	PrintNum (outF, 7, totMinor.nBytesCopied);
 	PrintPct (outF, totMinor.nBytesCopied, totMinor.nBytesAlloc);
@@ -451,6 +461,7 @@ void ReportGCStats ()
       // promotions
 	PrintNum (outF, 7, nPromotes);
 	PrintNum (outF, 7, nBytesPromoted);
+	PrintTime (outF, timeScale * totPromoteTime);
       // global GCs
 	fprintf (outF, " %5d", NumGlobalGCs);
 	PrintNum (outF, 7, totGlobal.nBytesAlloc);

@@ -290,6 +290,7 @@ void *NewVProc (void *arg)
     vproc->globalStats.nBytesCopied = 0;
     TIMER_Init (&(vproc->globalStats.timer));
     vproc->nBytesPromoted = 0;
+    TIMER_Init (&(vproc->promoteTimer));
 #endif
 
   /* store a pointer to the VProc info as thread-specific data */
