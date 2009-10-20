@@ -82,6 +82,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 #ifndef NO_GC_STATS
     vp->nMajorGCs++;
     vp->majorStats.nBytesAlloc += top - heapBase;
+    TIMER_Start(&(vp->majorStats.timer));
 #endif
 
     assert (heapBase <= vp->oldTop);
@@ -180,6 +181,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	nBytesCopied += (tp - base);
     }
     vp->majorStats.nBytesCopied += nBytesCopied + youngSzB;
+    TIMER_Stop(&(vp->majorStats.timer));
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MAJOR) {
 	SayDebug("[%2d] Major GC finished: %d/%lld old bytes copied\n",

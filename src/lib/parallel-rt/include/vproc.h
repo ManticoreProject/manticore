@@ -10,12 +10,14 @@
 #include <pthread.h>
 #include "manticore-rt.h"
 #include "os-threads.h"
+#include "timer.h"
 
 #ifndef NO_GC_STATS
 typedef struct {	    //!< counters for a GC
     uint64_t	nBytesAlloc;	//!< number of bytes allocated in the region being
 				//!  collected
     uint64_t	nBytesCopied;	//!< number of live bytes copied in the GC
+    Timer_t	timer;		//!< used to track time spent in GC
 } GCCntrs_t;
 #endif
 
@@ -85,6 +87,7 @@ struct struct_vproc {
 				//! started yet.
 
   /* additional optional fields used for stats etc. */
+    Timer_t	timer;		//!< tracks the execution time of this vproc
 			      /* GC stats */
 #ifndef NO_GC_STATS
     uint32_t	nPromotes;	//!< number of promotions

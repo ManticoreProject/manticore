@@ -116,6 +116,10 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
     bool	leaderVProc;
 
+#ifndef NO_GC_STATS
+    TIMER_Start(&(self->globalStats.timer));
+#endif
+
     self->globalGCPending = false;
     self->sigPending = false;
 
@@ -273,6 +277,10 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     BarrierWait (&GCBarrier2);
 
     LogGlobalGCEnd (self, NumGlobalGCs);
+
+#ifndef NO_GC_STATS
+    TIMER_Stop(&(self->globalStats.timer));
+#endif
 
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_GLOBAL) {
