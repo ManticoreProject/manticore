@@ -231,7 +231,8 @@ void *NewVProc (void *arg)
     vproc->hostID = pthread_self();
     vproc->location = initData->loc;
 
-    vproc->heapBase = vproc->oldTop = vprocHeap;
+    vproc->heapBase =
+    vproc->oldTop = vprocHeap;
     InitVProcHeap (vproc);
 
     vproc->atomic = M_TRUE;
@@ -261,17 +262,23 @@ void *NewVProc (void *arg)
     InitLog (vproc);
 #endif
 
+    TIMER_Init (&(vproc->timer));
+
 #ifndef NO_GC_STATS
     vproc->nPromotes = 0;
     vproc->nMinorGCs = 0;
     vproc->nMajorGCs = 0;
     vproc->minorStats.nBytesAlloc = 0;
     vproc->minorStats.nBytesCopied = 0;
+    TIMER_Init (&(vproc->minorStats.timer));
     vproc->majorStats.nBytesAlloc = 0;
     vproc->majorStats.nBytesCopied = 0;
+    TIMER_Init (&(vproc->majorStats.timer));
     vproc->globalStats.nBytesAlloc = 0;
     vproc->globalStats.nBytesCopied = 0;
+    TIMER_Init (&(vproc->globalStats.timer));
     vproc->nBytesPromoted = 0;
+    TIMER_Init (&(vproc->promoteTimer));
 #endif
 
   /* store a pointer to the VProc info as thread-specific data */
@@ -285,6 +292,9 @@ void *NewVProc (void *arg)
 
   /* Wait until all vprocs have been initialized */
     BarrierWait (&InitBarrier);
+
+  /* start the timer */
+    TIMER_Start (&(vproc->timer));
 
 #ifndef NDEBUG
     if (DebugFlg)
@@ -305,10 +315,15 @@ void *NewVProc (void *arg)
  */
 void VProcExit (VProc_t *vp)
 {
+  /* stop the timer */
+    TIMER_Stop (&(vp->timer));
+
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] VProcExit\n", vp->id);
+	SayDebug("[%2d] VProcExit: %7.3f seconds\n",
+	    vp->id, TIMER_GetTime(&(vp->timer)));
 #endif
+
     BarrierWait(&ShutdownBarrier);
 
     if (vp == VProcs[0]) {

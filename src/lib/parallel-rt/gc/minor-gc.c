@@ -59,6 +59,10 @@ void MinorGC (VProc_t *vp)
 
     LogMinorGCStart (vp, (uint32_t)allocSzB);
 
+#ifndef NO_GC_STATS
+    TIMER_Start(&(vp->minorStats.timer));
+#endif
+
     assert (vp->heapBase <= (Addr_t)nextScan);
     assert ((Addr_t)nextScan < vp->nurseryBase);
     assert (vp->nurseryBase < vp->allocPtr);
@@ -152,6 +156,7 @@ void MinorGC (VProc_t *vp)
     vp->nMinorGCs++;
     vp->minorStats.nBytesAlloc += vp->allocPtr - vp->nurseryBase - WORD_SZB;
     vp->minorStats.nBytesCopied += (Addr_t)nextScan - vp->oldTop;
+    TIMER_Stop(&(vp->minorStats.timer));
 #endif
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MINOR) {

@@ -82,6 +82,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 #ifndef NO_GC_STATS
     vp->nMajorGCs++;
     vp->majorStats.nBytesAlloc += top - heapBase;
+    TIMER_Start(&(vp->majorStats.timer));
 #endif
 
     assert (heapBase <= vp->oldTop);
@@ -180,6 +181,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	nBytesCopied += (tp - base);
     }
     vp->majorStats.nBytesCopied += nBytesCopied + youngSzB;
+    TIMER_Stop(&(vp->majorStats.timer));
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MAJOR) {
 	SayDebug("[%2d] Major GC finished: %d/%lld old bytes copied\n",
@@ -216,6 +218,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 
 #ifndef NO_GC_STATS
     vp->nPromotes++;
+    TIMER_Start(&(vp->promoteTimer));
 #endif
 
     assert ((vp->globNextW % WORD_SZB) == 0);
@@ -272,6 +275,10 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	    Die("PromoteObj: unexpected free-space pointer %p\n", ValueToPtr(root));
 	}
     }
+#endif
+
+#ifndef NO_GC_STATS
+    TIMER_Stop (&(vp->promoteTimer));
 #endif
 
     return root;

@@ -117,6 +117,10 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
     bool	leaderVProc;
 
+#ifndef NO_GC_STATS
+    TIMER_Start(&(self->globalStats.timer));
+#endif
+
     self->globalGCPending = false;
     self->sigPending = false;
 
@@ -274,6 +278,10 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     BarrierWait (&GCBarrier2);
 
     LogGlobalGCEnd (self, NumGlobalGCs);
+
+#ifndef NO_GC_STATS
+    TIMER_Stop(&(self->globalStats.timer));
+#endif
 
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_GLOBAL) {
@@ -436,7 +444,7 @@ void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
     if (isHeapPtr(PtrToValue(addr))) {
 	Word_t *ptr = (Word_t*)addr;
 	Word_t hdr = ptr[-1];
-	if (isMixedHdr(hdr) || isVectorHdr(hdr)) {
+	if (isMixedHdr(hdr) || isVectorHdr(hdr) || isRawHdr(hdr)) {
 	  // the header word is valid
 	}
 	else if (isRawHdr(hdr)) {
