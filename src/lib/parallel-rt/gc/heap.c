@@ -13,10 +13,8 @@
 #include "os-threads.h"
 #include "options.h"
 #include "internal-heap.h"
-#ifndef NDEBUG
-#include <string.h>
-#endif
 #ifndef NO_GC_STATS
+#include <string.h>
 #include <stdio.h>
 #endif
 
@@ -57,7 +55,9 @@ GCDebugLevel_t		HeapCheck;	// Flag that controls heap checking
 #endif
 
 #ifndef NO_GC_STATS
-static bool	ReportStatsFlg = true;	// true for report enabled
+static void ParseGCStatsOptions (Options_t *opts);
+
+static bool	ReportStatsFlg = false;	// true for report enabled
 static bool	DetailStatsFlg = false;	// true for detailed report (per-vproc)
 static bool	CSVStatsFlg = false;	// true for CSV-format report
 #endif
@@ -76,7 +76,7 @@ void HeapInit (Options_t *opts)
 	MajorGCThreshold = MIN_NURSERY_SZB;
 
 #ifndef NO_GC_STATS
-    /* process command-line args */
+    ParseGCStatsOptions (opts);
 #endif
 
 #ifndef NDEBUG
@@ -277,6 +277,19 @@ static GCDebugLevel_t ParseGCLevel (const char *debug)
 
 #ifndef NO_GC_STATS
 
+/* process command-line args */
+static void ParseGCStatsOptions (Options_t *opts)
+{
+    const char *report = GetStringEqOpt (opts, "-gcstats", "summary");
+
+    if (report != 0) {
+	ReportStatsFlg = true;
+	if (strstr(report, "csv") != 0) CSVStatsFlg = true;
+	if (strstr(report, "all") != 0) DetailStatsFlg = true;
+    }
+
+}
+
 STATIC_INLINE void PrintNum (FILE *f, int wid, Addr_t nbytes)
 {
     if (nbytes < 64 * ONE_K)
@@ -342,8 +355,8 @@ void ReportGCStats ()
     if (CSVStatsFlg) {
     }
     else {
-	fprintf(outF, "             Minor GCs                  Major GCs                Promotions         Global GCs\n");
-	fprintf(outF, "      num   alloc     copied     num   alloc      copied       num    bytes   num   alloc     copied\n");
+	fprintf(outF, "             Minor GCs                  Major GCs               Promotions           Global GCs\n");
+	fprintf(outF, "      num   alloc     copied      num   alloc      copied      num    bytes   num   alloc     copied\n");
 	fprintf(outF, "--- ------ ------- ------------- ----- ------- ------------- ------- ------- ----- ------- -------------\n");
     }
 
@@ -356,20 +369,22 @@ void ReportGCStats ()
 		fprintf (outF,
 		    "p%02d, %d, %lld, %lld, %d, %lld, %lld, %d, %lld, %d, %lld, %lld\n",
 		    i,
-		    nMinorGCs, totMinor.nBytesAlloc, totMinor.nBytesCopied,
-		    nMajorGCs, totMajor.nBytesAlloc, totMajor.nBytesCopied,
-		    nPromotes, nBytesPromoted,
-		    NumGlobalGCs, totGlobal.nBytesAlloc, totGlobal.nBytesCopied);
+		    vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCopied,
+		    vp->nMajorGCs, vp->majorStats.nBytesAlloc, vp->majorStats.nBytesCopied,
+		    vp->nPromotes, vp->nBytesPromoted,
+		    NumGlobalGCs, vp->globalStats.nBytesAlloc, vp->globalStats.nBytesCopied);
 	    }
 	    else {
 	      // minor GCs
 		fprintf (outF, "p%02d %6d", i, vp->nMinorGCs);
 		PrintNum (outF, 7, vp->minorStats.nBytesAlloc);
 		PrintNum (outF, 7, vp->minorStats.nBytesCopied);
+		PrintPct (outF, vp->minorStats.nBytesCopied, vp->minorStats.nBytesAlloc);
 	      // major GCs
 		fprintf (outF, " %5d", vp->nMajorGCs);
 		PrintNum (outF, 7, vp->majorStats.nBytesAlloc);
 		PrintNum (outF, 7, vp->majorStats.nBytesCopied);
+		PrintPct (outF, vp->majorStats.nBytesCopied, vp->majorStats.nBytesAlloc);
 	      // promotions
 		PrintNum (outF, 7, vp->nPromotes);
 		PrintNum (outF, 7, vp->nBytesPromoted);
@@ -377,6 +392,7 @@ void ReportGCStats ()
 		fprintf (outF, " %5d", NumGlobalGCs);
 		PrintNum (outF, 7, vp->globalStats.nBytesAlloc);
 		PrintNum (outF, 7, vp->globalStats.nBytesCopied);
+		PrintPct (outF, vp->globalStats.nBytesCopied, vp->globalStats.nBytesAlloc);
 		fprintf (outF, "\n");
 	    }
 	}
