@@ -369,10 +369,10 @@ void ReportGCStats ()
 		fprintf (outF,
 		    "p%02d, %d, %lld, %lld, %d, %lld, %lld, %d, %lld, %d, %lld, %lld\n",
 		    i,
-		    nMinorGCs, totMinor.nBytesAlloc, totMinor.nBytesCopied,
-		    nMajorGCs, totMajor.nBytesAlloc, totMajor.nBytesCopied,
-		    nPromotes, nBytesPromoted,
-		    NumGlobalGCs, totGlobal.nBytesAlloc, totGlobal.nBytesCopied);
+		    vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCopied,
+		    vp->nMajorGCs, vp->majorStats.nBytesAlloc, vp->majorStats.nBytesCopied,
+		    vp->nPromotes, vp->nBytesPromoted,
+		    NumGlobalGCs, vp->globalStats.nBytesAlloc, vp->globalStats.nBytesCopied);
 	    }
 	    else {
 	      // minor GCs
