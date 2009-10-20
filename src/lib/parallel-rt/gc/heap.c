@@ -67,6 +67,7 @@ static bool	CSVStatsFlg = false;	// true for CSV-format report
  */
 void HeapInit (Options_t *opts)
 {
+#ifndef FLAT_HEAP
     MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, VP_HEAP_SZB/2);
     if (MaxNurserySzB < MIN_NURSERY_SZB)
 	MaxNurserySzB = MIN_NURSERY_SZB;
@@ -74,6 +75,7 @@ void HeapInit (Options_t *opts)
     MajorGCThreshold = VP_HEAP_SZB / 10;
     if (MajorGCThreshold < MIN_NURSERY_SZB)
 	MajorGCThreshold = MIN_NURSERY_SZB;
+#endif
 
 #ifndef NO_GC_STATS
     ParseGCStatsOptions (opts);
@@ -175,13 +177,14 @@ void AllocToSpaceChunk (VProc_t *vp)
 	vp->globToSpTl = chunk;
     }
     else {
-	vp->globToSpTl->usedTop = vp->globNextW - WORD_SZB;
+	vp->globToSpTl->usedTop = vp->allocPtr - WORD_SZB;
 	vp->globToSpTl->next = chunk;
 	vp->globToSpTl = chunk;
     }
 
-    vp->globNextW = chunk->baseAddr + WORD_SZB;
-    vp->globLimit = chunk->baseAddr + chunk->szB;
+    vp->heapBase = chunk->baseAddr;
+    vp->allocTop = chunk->baseAddr + chunk->szB;
+    SetAllocPtr (vp);
 
 #ifndef NDEBUG
     if (GCDebug > GC_DEBUG_NONE)
@@ -327,28 +330,28 @@ void ReportGCStats ()
     FILE *outF = stdout;
 
   // compute summary information
-    uint32_t nPromotes = 0;
+//    uint32_t nPromotes = 0;
     uint32_t nMinorGCs = 0;
     uint32_t nMajorGCs = 0;
     GCCntrs_t totMinor = { 0, 0 };
-    GCCntrs_t totMajor = { 0, 0 };
+//    GCCntrs_t totMajor = { 0, 0 };
     GCCntrs_t totGlobal = { 0, 0 };
-    uint64_t nBytesPromoted = 0;
+//    uint64_t nBytesPromoted = 0;
     for (int i = 0;  i < NumVProcs;  i++) {
 	VProc_t *vp = VProcs[i];
       // include any memory allocated since the last minor GC
 	vp->minorStats.nBytesAlloc += vp->allocPtr - vp->heapBase - WORD_SZB;
       // count the stats for this VProc
-	nPromotes += vp->nPromotes;
+//	nPromotes += vp->nPromotes;
 	nMinorGCs += vp->nMinorGCs;
 	nMajorGCs += vp->nMajorGCs;
 	totMinor.nBytesAlloc += vp->minorStats.nBytesAlloc;
 	totMinor.nBytesCopied += vp->minorStats.nBytesCopied;
-	totMajor.nBytesAlloc += vp->majorStats.nBytesAlloc;
-	totMajor.nBytesCopied += vp->majorStats.nBytesCopied;
+//	totMajor.nBytesAlloc += vp->majorStats.nBytesAlloc;
+//	totMajor.nBytesCopied += vp->majorStats.nBytesCopied;
 	totGlobal.nBytesAlloc += vp->globalStats.nBytesAlloc;
 	totGlobal.nBytesCopied += vp->globalStats.nBytesCopied;
-	nBytesPromoted += vp->nBytesPromoted;
+//	nBytesPromoted += vp->nBytesPromoted;
     }
 
   // print the header
@@ -369,10 +372,10 @@ void ReportGCStats ()
 		fprintf (outF,
 		    "p%02d, %d, %lld, %lld, %d, %lld, %lld, %d, %lld, %d, %lld, %lld\n",
 		    i,
-		    nMinorGCs, totMinor.nBytesAlloc, totMinor.nBytesCopied,
-		    nMajorGCs, totMajor.nBytesAlloc, totMajor.nBytesCopied,
-		    nPromotes, nBytesPromoted,
-		    NumGlobalGCs, totGlobal.nBytesAlloc, totGlobal.nBytesCopied);
+		    vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCopied,
+		    /* vp->nMajorGCs, vp->majorStats.nBytesAlloc, vp->majorStats.nBytesCopied,*/ 0, 0LL, 0LL,
+		    /* vp->nPromotes, vp->nBytesPromoted, */ 0, 0LL,
+		    NumGlobalGCs, vp->globalStats.nBytesAlloc, vp->globalStats.nBytesCopied);
 	    }
 	    else {
 	      // minor GCs
@@ -381,13 +384,13 @@ void ReportGCStats ()
 		PrintNum (outF, 7, vp->minorStats.nBytesCopied);
 		PrintPct (outF, vp->minorStats.nBytesCopied, vp->minorStats.nBytesAlloc);
 	      // major GCs
-		fprintf (outF, " %5d", vp->nMajorGCs);
-		PrintNum (outF, 7, vp->majorStats.nBytesAlloc);
-		PrintNum (outF, 7, vp->majorStats.nBytesCopied);
-		PrintPct (outF, vp->majorStats.nBytesCopied, vp->majorStats.nBytesAlloc);
+//		fprintf (outF, " %5d", vp->nMajorGCs);
+//		PrintNum (outF, 7, vp->majorStats.nBytesAlloc);
+//		PrintNum (outF, 7, vp->majorStats.nBytesCopied);
+//		PrintPct (outF, vp->majorStats.nBytesCopied, vp->majorStats.nBytesAlloc);
 	      // promotions
-		PrintNum (outF, 7, vp->nPromotes);
-		PrintNum (outF, 7, vp->nBytesPromoted);
+		PrintNum (outF, 7, /*vp->nPromotes*/ 0);
+		PrintNum (outF, 7, /*vp->nBytesPromoted*/ 0);
 	      // global GCs
 		fprintf (outF, " %5d", NumGlobalGCs);
 		PrintNum (outF, 7, vp->globalStats.nBytesAlloc);
@@ -404,8 +407,8 @@ void ReportGCStats ()
 	fprintf (outF,
 	    "TOT, %d, %lld, %lld, %d, %lld, %lld, %d, %lld, %d, %lld, %lld\n",
 	    nMinorGCs, totMinor.nBytesAlloc, totMinor.nBytesCopied,
-	    nMajorGCs, totMajor.nBytesAlloc, totMajor.nBytesCopied,
-	    nPromotes, nBytesPromoted,
+	    /* nMajorGCs, totMajor.nBytesAlloc, totMajor.nBytesCopied, */ 0, 0LL, 0LL,
+	    /* nPromotes, nBytesPromoted, */ 0, 0LL,
 	    NumGlobalGCs, totGlobal.nBytesAlloc, totGlobal.nBytesCopied);
     }
     else {
@@ -415,13 +418,13 @@ void ReportGCStats ()
 	PrintNum (outF, 7, totMinor.nBytesCopied);
 	PrintPct (outF, totMinor.nBytesCopied, totMinor.nBytesAlloc);
       // major GCs
-	fprintf (outF, " %5d", nMajorGCs);
-	PrintNum (outF, 7, totMajor.nBytesAlloc);
-	PrintNum (outF, 7, totMajor.nBytesCopied);
-	PrintPct (outF, totMajor.nBytesCopied, totMajor.nBytesAlloc);
+//	fprintf (outF, " %5d", nMajorGCs);
+//	PrintNum (outF, 7, totMajor.nBytesAlloc);
+//	PrintNum (outF, 7, totMajor.nBytesCopied);
+//	PrintPct (outF, totMajor.nBytesCopied, totMajor.nBytesAlloc);
       // promotions
-	PrintNum (outF, 7, nPromotes);
-	PrintNum (outF, 7, nBytesPromoted);
+	PrintNum (outF, 7, /*nPromotes*/ 0);
+	PrintNum (outF, 7, /*nBytesPromoted*/ 0);
       // global GCs
 	fprintf (outF, " %5d", NumGlobalGCs);
 	PrintNum (outF, 7, totGlobal.nBytesAlloc);
