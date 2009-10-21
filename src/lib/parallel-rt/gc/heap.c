@@ -424,10 +424,10 @@ void ReportGCStats ()
 	      // standard-ml record format
 		fprintf (outF,
 		    "{processor=%d, \n\
-                      minor={num=%d, alloc=%lld, copied=%lld, time=%f}, \n\
-                      major={num=%d, alloc=%lld, copied=%lld, time=%f}, \n\
-                      promotion={num=%d, bytes=%lld, time=%f}, \n\
-                      global={num=%d, alloc=%lld, copied=%lld, time=%f}} ::\n",
+                      minor={num=%d, alloc=%lld:Int64.int, copied=%lld:Int64.int, time=%f}, \n\
+                      major={num=%d, alloc=%lld:Int64.int, copied=%lld:Int64.int, time=%f}, \n\
+                      promotion={num=%d, bytes=%lld:Int64.int, time=%f}, \n\
+                      global={num=%d, alloc=%lld:Int64.int, copied=%lld:Int64.int, time=%f}} ::\n",
 		    i,
 		    vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCopied, TIMER_GetTime (&(vp->minorStats.timer)),
 		    vp->nMajorGCs, vp->majorStats.nBytesAlloc, vp->majorStats.nBytesCopied, TIMER_GetTime (&(vp->majorStats.timer)),
@@ -464,10 +464,25 @@ void ReportGCStats ()
 		fprintf (outF, "\n");
 	    }
 	}
-    }
 
-    if ( SMLStatsFlg ) {
-	fprintf (outF, "nil\n");
+	if (SMLStatsFlg) {
+	    fprintf (outF, "nil\n");
+	}
+
+    } else if (SMLStatsFlg) {
+      // report the summary stats in standard-ml record format
+	double timeScale = 1.0 / (double)NumVProcs;
+	fprintf (outF,
+		 "{processor=%d, \n\
+                   minor={num=%d, alloc=%lld:Int64.int, copied=%lld:Int64.int, time=%f}, \n \
+                   major={num=%d, alloc=%lld:Int64.int, copied=%lld:Int64.int, time=%f}, \n \
+                   promotion={num=%d, bytes=%lld:Int64.int, time=%f}, \n \
+                   global={num=%d, alloc=%lld:Int64.int, copied=%lld:Int64.int, time=%f}} :: nil\n",
+		 0,
+		 nMinorGCs, totMinor.nBytesAlloc, totMinor.nBytesCopied, timeScale * totMinor.time,
+		 nMajorGCs, totMajor.nBytesAlloc, totMajor.nBytesCopied, timeScale * totMajor.time,
+		 nPromotes, nBytesPromoted, timeScale * totPromoteTime,
+		 NumGlobalGCs, totGlobal.nBytesAlloc, totGlobal.nBytesCopied, timeScale * totGlobal.time);
     }
 
   // report the summary stats
@@ -501,7 +516,7 @@ void ReportGCStats ()
 	PrintTime (outF, timeScale * totGlobal.time);
 	fprintf (outF, "\n");
     }
-
+    
     fclose (outF);
 }
 
