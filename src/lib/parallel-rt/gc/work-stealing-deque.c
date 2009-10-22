@@ -157,7 +157,7 @@ static int MoveLeft (int i, int sz)
 	return i - 1;
 }
 
-#define ROOT_SET_OPTIMIZATION 1
+#define ROOT_SET_OPTIMIZATION 0
 #ifdef ROOT_SET_OPTIMIZATION
 
 /* The root-set-partitioning optimization partitions the root set into the subset
