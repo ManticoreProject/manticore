@@ -517,7 +517,9 @@ void ReportGCStats ()
 	fprintf (outF, "\n");
     }
     
-    fclose (outF);
+    if (outF != stdout) {
+	fclose (outF);
+    }
 }
 
 #endif
