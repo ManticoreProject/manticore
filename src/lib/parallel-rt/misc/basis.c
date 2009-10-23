@@ -525,20 +525,19 @@ Value_t M_TextIOInputLine (void *instream)
 
 Value_t M_StringTokenize (Value_t str, Value_t sep)
 {
-    VProc_t            *vp = VProcSelf ();
+    VProc_t             *vp = VProcSelf ();
     SequenceHdr_t	*strS = (SequenceHdr_t *)ValueToPtr(str);
     SequenceHdr_t	*sepS = (SequenceHdr_t *)ValueToPtr(sep);
     char                *strData = (char*)strS->data;
     char                *sepData = (char*)sepS->data;
     Value_t             l = M_NIL;
-    char                buf[1024];
+    char                buf[strS->len+1];
 
-    memcpy (buf, strData, strS->len);
-
+    memcpy (buf, strData, strS->len+1);
     char *token = strtok(buf, sepData);
     while(token != NULL) {
 	l = Cons (vp, AllocString (vp, token), l);
-	token = strtok(NULL, " ");
+	token = strtok(NULL, sepData);
     }
     return l;
 }
