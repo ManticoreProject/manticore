@@ -148,6 +148,30 @@ Value_t M_DoubleToString (double f)
     return AllocString (VProcSelf(), buf);
 }
 
+Value_t M_DoubleFromString (Value_t str)
+{
+    VProc_t             *vp = VProcSelf ();
+    SequenceHdr_t	*strS = (SequenceHdr_t *)ValueToPtr(str);
+    if (strS->len < 1) {
+	return M_NONE;
+    }
+    else {
+	char *strData = (char*)strS->data;
+	if (strData[0] == '~')
+	    strData[0] = '-';
+	double d;
+	int ret = sscanf (strData, "%lf", &d);
+	RawDouble_t rd;
+	rd.d = d;
+	if (ret > 0) {
+	    return Some (vp, AllocNonUniform(vp, 1, DOUBLE(rd)));
+	}
+	else {
+	    return M_NONE;
+	}
+    }
+}
+
 /* M_Print:
  */
 void M_Print (const char *s)
@@ -469,4 +493,45 @@ int M_CeilingLg (int v)
 {
   int lg = M_FloorLg(v);
   return lg + (v - (1<<lg) > 0);
+}
+
+void *M_TextIOOpenIn (Value_t filename)
+{
+    SequenceHdr_t	*filenameS = (SequenceHdr_t *)ValueToPtr(filename);
+
+    return fopen ((char*)(filenameS->data), "r");
+}
+
+void M_TextIOCloseIn (void *instream)
+{
+    fclose (instream);
+}
+
+Value_t M_TextIOInputLine (void *instream)
+{
+    VProc_t *vp         = VProcSelf ();
+    int bufsz           = 1024;
+    char buf[bufsz];
+    char *ret;
+
+    ret = fgets (buf, bufsz+1, instream);
+    if (ret == 0) {
+	return M_NONE;
+    }
+    else  {
+	return Some (vp, AllocString (vp, buf));
+    }
+}
+
+Value_t M_StringTokenizeWS (Value_t str)
+{
+    VProc_t            *vp = VProcSelf ();
+    SequenceHdr_t	*strS = (SequenceHdr_t *)ValueToPtr(str);
+    char                buf[1024];
+    Value_t            l = M_NIL;
+    char                *strData = (char*)strS->data;
+    char                tok = ' ';
+
+    /* TODO */
+    return M_NIL;
 }

@@ -49,6 +49,11 @@ in
     ../misc/logging.pml
 end
 
+ann "cpp" "../include/prim.def"
+in
+  text-io.pml
+end
+
 command-line.pml
 
 ../extras/extras.mlb
