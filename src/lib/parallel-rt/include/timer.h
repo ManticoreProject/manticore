@@ -11,9 +11,10 @@
 #ifndef _TIMER_H_
 #define _TIMER_H_
 
-#define MS_PER_SECOND	1000
-#define US_PER_SECOND	(1000 * MS_PER_SECOND)
-#define NS_PER_SECOND	(1000 * US_PER_SECOND)
+#define US_PER_NANOSECOND     1000
+#define MS_PER_SECOND  	      1000
+#define US_PER_SECOND	      (1000 * MS_PER_SECOND)
+#define NS_PER_SECOND	      (1000 * US_PER_SECOND)
 
 /* used to mark a stoped timer */
 #define TIMER_STOPPED	0
@@ -24,6 +25,7 @@
 #elif defined(HAVE_CLOCK_GETTIME)
 #  include <time.h>
 #else
+#  include <time.h>
 #  include <sys/time.h>
 #endif
 
@@ -45,7 +47,7 @@ STATIC_INLINE uint64_t TIMER_Now ()
 #else
     struct timeval t;
     gettimeofday (&t, 0);
-    return (NS_PER_SECOND * (uint64_t)t.tv_sec) + (US_PER_SECOND * (uint64_t)t.tv_usec);
+    return (NS_PER_SECOND * (uint64_t)t.tv_sec) + (US_PER_NANOSECOND * (uint64_t)t.tv_usec);
 #endif
 }
 

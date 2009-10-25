@@ -14,6 +14,7 @@ structure String =
       typedef ml_string = PT.ml_string;
 
       extern void *M_StringConcatList (void *) __attribute__((pure,alloc));
+      extern void *M_StringTokenize (void *, void *) __attribute__((pure,alloc));
   
       define inline @data (s : ml_string / exh : PT.exh) : any =
 	  let res : any = #0(s)
@@ -36,10 +37,20 @@ structure String =
 	    return (res)
       ;
 
+      define inline @tokenize (arg : [ml_string, ml_string] / exh : exh) : (* string *) List.list =
+	  let ls : List.list = ccall M_StringTokenize (#0(arg), #1(arg))
+	  return (ls)
+	;
+
     )
 
     val concat : string list -> string = _prim(@string-concat-list)
     val size : string -> int = _prim(@size)
+    local
+	val tok : string * string -> string list = _prim(@tokenize)
+    in
+    fun tokenize sep str = List.rev (tok (str, sep))
+    end
 
     fun concatWith s ss = let
 	  fun lp xs = (case xs
