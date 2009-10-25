@@ -49,7 +49,7 @@ structure BuildExecutable : sig
 	  val logging = Controls.get BasicControl.logging
 	  val debug = Controls.get BasicControl.debug
 	  val (cFlags, libName) = (case (gcStats, logging, debug)
-		 of (true, false, false) => ("", "mcrt-stats")
+		 of (true, false, false) => (cFlags, "mcrt-stats")
 		  | (_, false, false) => (cFlags, "mcrt")
 		  | (_, true, false) => (cFlags, "mcrt-log")
 		  | (_, false, true) => ("-g "^cFlags, "mcrt-debug")
