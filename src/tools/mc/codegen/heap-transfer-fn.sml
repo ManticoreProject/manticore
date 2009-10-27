@@ -382,7 +382,7 @@ functor HeapTransferFn (
 		   @ callseq
 		   @ restores 
 		   :: restoreAP
-		   @ [setInManticore(vpReg, Spec.falseRep)]
+		   @ [setInManticore(vpReg, Spec.trueRep)]
 	fun convResult (T.GPR e, v) = MTy.EXP (szOfVar v, e)
 	  | convResult (T.FPR e, v) = MTy.FEXP (szOfVar v, e)
 	  | convResult _ = raise Fail "convResult"
