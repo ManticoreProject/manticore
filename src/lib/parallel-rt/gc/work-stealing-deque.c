@@ -157,7 +157,7 @@ static int MoveLeft (int i, int sz)
 	return i - 1;
 }
 
-#define ROOT_SET_OPTIMIZATION 0
+// IMPORTANT: the root-set optimization is invalid for flat-heap and should be disabled
 #ifdef ROOT_SET_OPTIMIZATION
 
 /* The root-set-partitioning optimization partitions the root set into the subset
@@ -176,6 +176,7 @@ static int MoveLeft (int i, int sz)
  */
 Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 {
+    assert(0);
     for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
 	for (DequeList_t *deques = wgList->deques; deques != NULL; deques = deques->next) {
 	    Deque_t *deque = deques->deque;
@@ -259,8 +260,9 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 	    for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
 		int j = MoveLeft (i, deque->maxSz); 
 		// i points one element to right of the element we want to scan
-		if (deque->elts[j] != M_NIL)
+		if (deque->elts[j] != M_NIL) {
 		    *rootPtr++ = &(deque->elts[j]);
+		}
 	    }	    
 	}
     }

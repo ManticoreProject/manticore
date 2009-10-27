@@ -44,7 +44,7 @@ void MinorGC (VProc_t *vp)
        * holds the GC root.
        */
 	int nWorkStealingRoots = M_NumDequeRoots (vp);
-	Value_t *roots[16 + nWorkStealingRoots], **rp;
+	Value_t *roots[10 + nWorkStealingRoots], **rp;
 	rp = roots;
 	*rp++ = &(vp->currentFLS);
 	*rp++ = &(vp->actionStk);

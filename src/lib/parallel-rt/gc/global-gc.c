@@ -301,7 +301,8 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     LogGlobalGCVPStart (vp);
 
   /* collect roots that were pruned away from the minor collector's root set */
-    M_AddDequeEltsToGlobalRoots(vp, roots);
+// IMPORTANT: the root-set optimization is invalid for flat-heap and should be disabled
+    //    M_AddDequeEltsToGlobalRoots(vp, roots);
 
   /* scan the vproc's roots */
     for (int i = 0;  roots[i] != 0;  i++) {
