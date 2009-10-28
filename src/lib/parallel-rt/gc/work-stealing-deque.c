@@ -61,6 +61,28 @@ static DequeList_t *ConsDeque (Deque_t *deque, DequeList_t *deques)
     return new;
 }
 
+/**
+ * Returns the floor form of binary logarithm for a 32 bit integer.
+ * -1 is returned if n is 0.
+ */
+static uint32_t FloorLg (uint32_t n) {
+    uint32_t pos = 0;
+    if (n >= 1<<16) { n >>= 16; pos += 16; }
+    if (n >= 1<< 8) { n >>=  8; pos +=  8; }
+    if (n >= 1<< 4) { n >>=  4; pos +=  4; }
+    if (n >= 1<< 2) { n >>=  2; pos +=  2; }
+    if (n >= 1<< 1) {           pos +=  1; }
+    return ((n == 0) ? (-1) : pos);
+}
+
+/*! \brief compute ceiling(log_2(v))
+ */
+static uint32_t CeilingLg (uint32_t v) 
+{
+    uint32_t lg = FloorLg(v);
+    return lg + (v - (1<<lg) > 0);
+}
+
 /* \brief allocate a deque on the given vproc to by used by the given group
  * \param self the host vproc
  * \param workGroupId the work group allocating the deque
@@ -69,7 +91,23 @@ static DequeList_t *ConsDeque (Deque_t *deque, DequeList_t *deques)
  */
 Value_t M_DequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size)
 {
-    Deque_t *deque = (Deque_t*)malloc (sizeof(Deque_t) + sizeof(Value_t) * (size - 1));
+    uint32_t dequeSzB = sizeof(Deque_t) + sizeof(Value_t) * ((uint32_t)size - 1);
+  /* since each processor frequently reads and writes to its deque, we want to prevent false sharing 
+   * between deque memory by aligning each deque's memory chunk.
+   */
+#if defined(HAVE_POSIX_MEMALIGN)
+    Deque_t *deque = 0;
+    uint32_t dequeAlignSzB = 1 << CeilingLg (dequeSzB);  // next power of two greater than the deque size
+    posix_memalign ((void **)&deque, dequeAlignSzB, dequeSzB);
+#elif defined(HAVE_MEMALIGN)
+    uint32_t dequeAlignSzB = 1 << CeilingLg (dequeSzB);  // next power of two greater than the deque size
+    Deque_t *deque = (Deque_t*) memalign (dequeAlignSzB, dequeSzB);
+#elif defined(HAVE_VALLOC)
+    Deque_t *deque = (Deque_t*) valloc (dequeSzB);
+#else
+    Deque_t *deque = (Deque_t*) malloc (dequeSzB);
+#endif
+
     deque->new = 0;
     deque->old = 0;
     deque->maxSz = size;
