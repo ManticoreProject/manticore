@@ -291,13 +291,15 @@ static void ParseGCStatsOptions (Options_t *opts)
 	if (strstr(report, "all") != 0) DetailStatsFlg = true;
     }
 
-    const char *outFileOpt = GetStringEqOpt (opts, "-gcstatsfile", "summary");
+    const char *outFileOpt = 0; //GetStringEqOpt (opts, "-gcstatsfile", "summary");
 
-    StatsOutFile = stdout;
+    StatsOutFile = stderr;
+    /*
     if (outFileOpt != 0) {
 	if ((StatsOutFile = fopen (outFileOpt, "w")) == 0)
 	    StatsOutFile = stdout;
     }
+    */
 
 }
 
