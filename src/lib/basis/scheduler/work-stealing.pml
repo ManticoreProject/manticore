@@ -12,7 +12,7 @@
 #define STEAL_TWO_THREADS           1
 #define STEAL_HALF_DEQUE            2
 
-#define STEAL_POLICY                STEAL_ONE_THREAD
+#define STEAL_POLICY                STEAL_HALF_DEQUE
 
 structure WorkStealing (* :
   sig
