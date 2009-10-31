@@ -12,7 +12,7 @@
 #define STEAL_TWO_THREADS           1
 #define STEAL_HALF_DEQUE            2
 
-#define STEAL_POLICY                STEAL_HALF_DEQUE
+#define STEAL_POLICY                STEAL_ONE_THREAD
 
 structure WorkStealing (* :
   sig
@@ -273,7 +273,9 @@ structure WorkStealing (* :
 				end
 		             let terminated : bool = apply isTerminated ()
                              do case terminated
-				 of true => let _ : unit = SchedulerAction.@stop() return ()
+				 of true => 
+				    do Logging.@log-WSTerminate (self, wgid)
+				    let _ : unit = SchedulerAction.@stop() return ()
 				  | false => return ()
                                 end
                              do apply setActive (true)              
