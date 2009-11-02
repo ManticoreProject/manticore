@@ -329,15 +329,19 @@ int main (int argc, const char **argv)
     fprintf (out, "numSteals=\n");
     fprintf (out, "[");    
     for (int i = 0; i < Hdr->nVProcs; i++) {
-	fprintf (out, " %d,", VProcNumSteals[i]);
-	if (i == Hdr->nVProcs - 1)
+	fprintf (out, " %d", VProcNumSteals[i]);
+	if (i < Hdr->nVProcs - 1)
+	    fprintf (out, ",");	    
+	else
 	    fprintf (out, "],\n");
     }
     fprintf (out, "numFailedStealAttempts=\n");
     fprintf (out, "[");    
     for (int i = 0; i < Hdr->nVProcs; i++) {
-	fprintf (out, " %d,", VProcNumFailedStealAttempts[i]);
-	if (i == Hdr->nVProcs - 1)
+	fprintf (out, " %d", VProcNumFailedStealAttempts[i]);
+	if (i < Hdr->nVProcs - 1)
+	    fprintf (out, ",");
+	else
 	    fprintf (out, "],\n");
     }
     fprintf (out, "vprocState=\n");
