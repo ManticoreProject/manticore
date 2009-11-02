@@ -109,14 +109,11 @@ int main (int argc, const char **argv)
     uint64_t AvgTimeStealing[Hdr->nVProcs];
     uint64_t MaxTimeStealing[Hdr->nVProcs];
     {
-	bool AttemptingToSteal[Hdr->nVProcs];
-	                   // true, if the vproc is waiting for a steal attempt to complete
 	uint64_t VProcTimestamp[Hdr->nVProcs];          // timestamp of immediately preceding, relevant event 
 	uint64_t TotalTimeStealing[Hdr->nVProcs];       // total time spent stealing so far
 	uint64_t NumStealAttempts[Hdr->nVProcs];
 
 	for (int i = 0; i < Hdr->nVProcs; i++) {
-	    AttemptingToSteal[i] = false;
 	    AvgTimeStealing[i] = 0ul;
 	    MaxTimeStealing[i] = 0ul;
 	    VProcTimestamp[i] = 0ul;
@@ -129,15 +126,12 @@ int main (int argc, const char **argv)
 	    int evtId = evt->desc->Id();
 	    switch (evtId) {
 	    case WSThiefSendEvt:
-		{
-		    AttemptingToSteal[evt->vpId] = true;
-		    VProcTimestamp[evt->vpId] = evt->timestamp;
-		}
+		VProcTimestamp[evt->vpId] = evt->timestamp;
 		break;
 	    case WSThiefSuccessfulEvt:
 	    case WSThiefUnsuccessfulEvt:
 		{
-		    if (VProcTimestamp[evt->vpId] == 0) {
+		    if (VProcTimestamp[evt->vpId] == 0ul) {
 			printf ("bug: steal event preceding a send event...\n");
 			continue;
 		    }
@@ -146,6 +140,7 @@ int main (int argc, const char **argv)
 		    MaxTimeStealing[evt->vpId] = max(MaxTimeStealing[evt->vpId], timeStealing);
 		    NumStealAttempts[evt->vpId]++;
 		}
+		break;
 	    }
 	}
 
@@ -193,9 +188,12 @@ int main (int argc, const char **argv)
 		break;
 	    case WSExecuteEvt:
 		{
-		    assert (VProcTimestamp[evt->vpId] != 0);   // no other event should precede WSInitEvt
-		    if (VProcIdle[evt->vpId]) {
-			VProcIdle[evt->vpId] = false;
+		    VProcIdle[evt->vpId] = false;
+		    if (VProcTimestamp[evt->vpId] == 0ul) {
+			// we fudge a bit here to deal with clock skew
+			VProcTimestamp[evt->vpId] = evt->timestamp;
+		    } 
+		    else if (VProcIdle[evt->vpId]) {
 			VProcTimeIdle[evt->vpId] += evt->timestamp - VProcTimestamp[evt->vpId];
 			VProcTimestamp[evt->vpId] = evt->timestamp;
 		    } 
@@ -207,9 +205,12 @@ int main (int argc, const char **argv)
 	    case WSPreemptedEvt:
 	    case WSThiefSendEvt:
 		{
-		    assert (VProcTimestamp[evt->vpId] != 0);   // no other event should precede WSInitEvt
-		    if (!VProcIdle[evt->vpId]) {
-			VProcIdle[evt->vpId] = true;
+		    VProcIdle[evt->vpId] = true;
+		    if (VProcTimestamp[evt->vpId] == 0ul) {
+			// we fudge a bit here to deal with clock skew
+			VProcTimestamp[evt->vpId] = evt->timestamp;
+		    }
+		    else if (!VProcIdle[evt->vpId]) {
 			VProcTimeBusy[evt->vpId] += evt->timestamp - VProcTimestamp[evt->vpId];
 			VProcTimestamp[evt->vpId] = evt->timestamp;
 		    } 
@@ -267,36 +268,39 @@ int main (int argc, const char **argv)
 		break;
 	    case WSExecuteEvt:
 		{
-		    assert (VProcTimestamp[evt->vpId] != 0);   // no other event should precede WSInitEvt
-		    if (VProcSleeping[evt->vpId]) {
-			VProcSleeping[evt->vpId] = false;
+		    if (VProcTimestamp[evt->vpId] == 0ul) {
+			// fudge a bit here to deal with clock skew
+		    }
+		    else if (VProcSleeping[evt->vpId]) {
 			VProcTimeSleeping[evt->vpId] += evt->timestamp - VProcTimestamp[evt->vpId];
 		    } 
 		    else {
 			// already busy
-		}
+		    }
+		    VProcSleeping[evt->vpId] = false;
 		}
 		break;
 	    case WSPreemptedEvt:
 	    case WSThiefSendEvt:
-	    {
-		assert (VProcTimestamp[evt->vpId] != 0);   // no other event should precede WSInitEvt
-		if (VProcSleeping[evt->vpId]) {
-		    VProcSleeping[evt->vpId] = true;
-		    VProcTimeSleeping[evt->vpId] += evt->timestamp - VProcTimestamp[evt->vpId];
-		} 
-		else {
-		    // already idle
+		{
+		    if (VProcTimestamp[evt->vpId] == 0ul) {
+			// fudge a bit here to deal with clock skew
+		    }
+		    else if (VProcSleeping[evt->vpId]) {
+			VProcTimeSleeping[evt->vpId] += evt->timestamp - VProcTimestamp[evt->vpId];
+		    } 
+		    else {
+			// already idle
+		    }
+		    VProcSleeping[evt->vpId] = false;
 		}
-	    }
-	    break;
-	case WSSleepEvt:
-	    {
-		assert (VProcTimestamp[evt->vpId] != 0);   // no other event should precede WSInitEvt
-		VProcTimestamp[evt->vpId] = evt->timestamp;
-		VProcSleeping[evt->vpId] = true;
-	    }
-	    break;
+		break;
+	    case WSSleepEvt:
+		{
+		    VProcTimestamp[evt->vpId] = evt->timestamp;
+		    VProcSleeping[evt->vpId] = true;
+		}
+		break;
 	    }
 	}
 
