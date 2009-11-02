@@ -94,15 +94,24 @@ int main (int argc, const char **argv)
     LoadLogFile (logFileDesc, logFile);
 
   /** count the overall number of steals and failed steal attempts **/
-    int NumSteals = 0;
-    int NumFailedStealAttempts = 0;
+    int VProcNumSteals[Hdr->nVProcs];
+    int VProcNumFailedStealAttempts[Hdr->nVProcs];
 
-    for (int i = 0; i < NumEvents; i++) {
-	Event *evt = &(Events[i]);
-	if (evt->desc->Id() == WSThiefSuccessfulEvt)
-	    NumSteals++;
-	else if (evt->desc->Id() == WSThiefUnsuccessfulEvt)
-	    NumFailedStealAttempts++;
+    {
+	for (int i = 0; i < Hdr->nVProcs; i++) {
+	    VProcNumSteals[i] = 0;
+	    VProcNumFailedStealAttempts[i] = 0;
+	}
+
+	for (int i = 0; i < NumEvents; i++) {
+	    Event *evt = &(Events[i]);
+	    if (evt->desc->Id() == WSThiefSuccessfulEvt) {
+		VProcNumSteals[evt->vpId]++;
+	    }
+	    else if (evt->desc->Id() == WSThiefUnsuccessfulEvt) {
+		VProcNumFailedStealAttempts[evt->vpId]++;
+	    }
+	}
     }
 
   /** measure the average and max time spent stealing (per vproc) **/
@@ -317,8 +326,20 @@ int main (int argc, const char **argv)
     fprintf (out, "{\n");
     fprintf (out, "numVProcs=%d,\n", Hdr->nVProcs);
     fprintf (out, "clock=\"%s\",\n", Hdr->clockName);
-    fprintf (out, "numSteals=%d,\n", NumSteals);
-    fprintf (out, "numFailedStealAttempts=%d,\n", NumFailedStealAttempts);
+    fprintf (out, "numSteals=\n");
+    fprintf (out, "[");    
+    for (int i = 0; i < Hdr->nVProcs; i++) {
+	fprintf (out, " %d,", VProcNumSteals[i]);
+	if (i == Hdr->nVProcs - 1)
+	    fprintf (out, "],\n");
+    }
+    fprintf (out, "numFailedStealAttempts=\n");
+    fprintf (out, "[");    
+    for (int i = 0; i < Hdr->nVProcs; i++) {
+	fprintf (out, " %d,", VProcNumFailedStealAttempts[i]);
+	if (i == Hdr->nVProcs - 1)
+	    fprintf (out, "],\n");
+    }
     fprintf (out, "vprocState=\n");
     fprintf (out, "[\n");    
     for (int i = 0; i < Hdr->nVProcs; i++) {
