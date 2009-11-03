@@ -80,7 +80,7 @@ struct struct_vproc {
                                 //!< the head of the landing pad (stack)
     Addr_t	limitPtr __attribute__((aligned(64)));
                                 //!< heap-limit pointer. this field plays the
-                                //!< additional role of recording asynchronous events,
+                                //!< additional role of signaling asynchronous events,
                                 //!< which is the reason why the field is shared.
     bool	globalGCPending __attribute__((aligned(64)));
                                 //!< true when this vproc has been signaled that
