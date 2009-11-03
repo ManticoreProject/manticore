@@ -49,7 +49,7 @@ structure WorkStealingDeque (* :
 
     (* the list of returned threads is ordered from oldest to youngest *)
       define @to-list-from-atomic (self : vproc, deque : D.deque) : (* ImplicitThread.thread *) List.list;
-    (* the list of threads is inserting in order from oldest to youngest *)
+    (* the list of threads is inserted at the new end of the deque *)
       define @add-list-from-atomic (self : vproc, deque : D.deque, thds : List.list) : ();
 
     )
@@ -340,7 +340,7 @@ structure WorkStealingDeque (* :
 	  apply lp ()
 	;
 
-    (* the list of threads is inserting in order from oldest to youngest *)
+    (* the list of threads is inserted at the new end of the deque *)
       define @add-list-from-atomic (self : vproc, deque : deque, thds : List.list) : () =
           fun add (thd : ImplicitThread.thread / _ : exh) : () = @push-new-end-from-atomic (self, deque, thd)
           cont exh (_ : exn) = return ()

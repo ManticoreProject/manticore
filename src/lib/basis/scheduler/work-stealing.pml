@@ -8,6 +8,12 @@
 
 #define DEFAULT_DEQUE_SZ            128
 
+#define STEAL_ONE_THREAD            0
+#define STEAL_TWO_THREADS           1
+#define STEAL_HALF_DEQUE            2
+
+#define STEAL_POLICY                STEAL_ONE_THREAD
+
 structure WorkStealing (* :
   sig
 
@@ -42,6 +48,7 @@ structure WorkStealing (* :
 	    return ()
 	  ;
 
+(*
 	define @mug-from-atomic (self : vproc, workGroupId : UID.uid) : (* ImplicitThread.thread *) List.list =
 	  (* a deque is muggable when it is neither claimed nor empty *)
 	    fun isMuggable (deque : [D.deque] / exh : exh) : bool =
@@ -64,34 +71,67 @@ structure WorkStealing (* :
             return (threads)
 	  ;
 
-      (* returns a thread taken from the "old" end of one of the deques local to the given vproc, if such a
-       * thread exists *)
-	define @steal-thread-from-atomic (self : vproc, workGroupId : UID.uid) : (* ImplicitThread.thread *) Option.option =
-          (* here we determine whether a given deque can be a target for a steal. our criteria is that the deque
-	   * contains at least two ready threads. we exclude deques with only one thread, as this thread was
-	   * being executed by the worker local to the current vproc.
-	   *)
-	    fun canSteal (deque : [D.deque] / exh : exh) : bool =
+*)
+
+      (* steal several threads. the list of returned threads is in order from oldest to youngest. the maximum
+       * number of threads stolen is determined by the MAX_NUM_TO_STEAL parameter.
+       *
+       * PRECONDITION: this function is applied while executing on the victim vproc with signals masked
+       *)
+	define @steal-threads-from-atomic (
+                                  victimVP : vproc,                         (* victim vproc *)
+				  workGroupId : UID.uid,                    (* work group *)
+				  policy : int                              (* policy to determine the number of threads to steal, which
+									     * can be one of the following:
+									     *     STEAL_ONE_THREAD
+									     *     STEAL_TWO_THREADS
+									     *     STEAL_HALF_DEQUE
+									     *) 
+                              ) : (* ImplicitThread.thread *) List.list =
+
+          (** find the candidate deques **)
+	    fun dequeSzGtOne (deque : [D.deque] / exh : exh) : bool =
 		let size : int = D.@size (#0(deque))
-                if I32Gt(size, 1) then
-		   return (true)
-		else
-		    return (false)
-	    let localDeques : List.list = D.@local-deques-from-atomic (self, workGroupId)
-            cont exh (_ : exn) = return (Option.NONE)
-	    let victimDeques : List.list = PrimList.@filter (canSteal, localDeques / exh)
-	    let thd : Option.option = case victimDeques
-				       of List.nil =>
-					  return (Option.NONE)
-					| List.CONS (deque : [D.deque], _ : List.list) =>
-					  D.@pop-old-end-from-atomic (self, #0(deque))
-				      end
-	    do D.@release-deques-from-atomic (self, localDeques)
-	    return (thd)
+                if I32Gt(size, 1) then return (true) else return (false)
+	    let localDeques : List.list = D.@local-deques-from-atomic (victimVP, workGroupId)
+            cont exh (_ : exn) = return (List.nil)
+          (* deques containing at least one element *)
+	    let candidateDeques : List.list = PrimList.@filter (dequeSzGtOne, localDeques / exh)
+
+	    let stolenThds : List.list = 
+		      case candidateDeques
+		       of List.nil =>
+			  return (List.nil)
+			| List.CONS (deque : [D.deque], _ : List.list) =>
+			  let deque : D.deque = #0(deque)
+			  fun take (nLeft : int, stolen : List.list) : List.list =
+			      if I32Lte (nLeft, 0) then
+				  PrimList.@rev (stolen / exh)
+			      else
+				  let thdOpt : Option.option = D.@pop-old-end-from-atomic (victimVP, deque)
+				  case thdOpt
+				   of NONE =>
+				      PrimList.@rev (stolen / exh)
+				    | SOME (thd : ImplicitThread.thread) =>
+				      apply take (I32Sub (nLeft, 1), List.CONS (thd, stolen))
+				  end
+			  if I32Eq (policy, STEAL_ONE_THREAD) then
+			      apply take (1, List.nil)
+			  else if I32Eq (policy, STEAL_TWO_THREADS) then
+			      apply take (2, List.nil)
+			  else if I32Eq (policy, STEAL_HALF_DEQUE) then
+			      let n : int = D.@size (deque)
+			      apply take (I32Div (n, 2), List.nil)
+                          else
+			      throw exh (Match)
+		      end
+
+	    do D.@release-deques-from-atomic (victimVP, localDeques)
+	    return (stolenThds)
 	  ;
 
       (* send a thief from thiefVP to steal from victimVP. the result list is the list of stolen threads. *)
-	define @thief-from-atomic (thiefVP : vproc, victimVP : vproc, workGroupId : UID.uid, wid : long)
+	define @thief-from-atomic (thiefVP : vproc, victimVP : vproc, workGroupId : UID.uid, wid : long, policy : int)
 								      : (* ImplicitThread.thread *) List.list =
 	    do assert (NotEqual (thiefVP, victimVP))
             let tid : long = Logging.@log-WSThiefSend (thiefVP, wid)
@@ -106,14 +146,16 @@ structure WorkStealing (* :
 	      let self : vproc = SchedulerAction.@atomic-begin ()
               do Logging.@log-WSThiefBegin (self, tid, wid)
 	      do assert (Equal (self, victimVP))
-	      let stolenThread : Option.option = @steal-thread-from-atomic (self, workGroupId)
-	      do case stolenThread
-		  of Option.NONE => (* unsuccessful steal attempt *)
+              let stolenThds : List.list = @steal-threads-from-atomic (self, workGroupId, policy)
+              do case stolenThds
+		  of List.nil =>
+		     (* failed steal attempt *)
 		     let x : Option.option = promote (Option.SOME(List.nil))
 		     do #0(ch) := x
 		     return ()
-		   | Option.SOME (thd : ImplicitThread.thread) => (* successfully stole thd *)
-		     let x : Option.option = promote (Option.SOME(List.CONS (thd, nil)))
+		   | List.CONS (_ : ImplicitThread.thread, _ : List.list) => 
+		     (* successfully stole multiple threads *)
+		     let x : Option.option = promote (Option.SOME(stolenThds))
 		     do #0(ch) := x
 		     return ()
 		 end
@@ -145,7 +187,7 @@ structure WorkStealing (* :
 			    setActive : fun (bool / ->),
   		            assignedDeques : Arr.array,
 		            idle : (* bool *) Arr.array,
-                            pickVictim : fun (vproc / -> (* [vproc] *) Option.option)
+                            pickVictimVProc : fun (vproc / -> (* [vproc] *) Option.option)
 			  / exh : exh)                           : cont (vproc, ImplicitThread.worker) =
 	    cont impossible () = 
 	      do assert_fail()
@@ -175,7 +217,7 @@ structure WorkStealing (* :
 		      throw schedulerLoop (self, deque, PT.STOP)
 		  (* try to find work for the given vproc. the result is a list of stolen work. *)
 		    fun findRemoteWork (self : vproc) : List.list =
-			let victimVP : Option.option = apply pickVictim (self)
+			let victimVP : Option.option = apply pickVictimVProc (self)
 			case victimVP
 			 of Option.NONE =>
 			    (* no victims currently available *)
@@ -188,7 +230,7 @@ structure WorkStealing (* :
 			     of true =>
 				return (List.nil)
 			      | false =>
-				@thief-from-atomic (self, victimVP, workGroupId, wid)
+				@thief-from-atomic (self, victimVP, workGroupId, wid, STEAL_POLICY)
 			    end
 			end
 		   let waitFn : fun (/ -> bool) = SpinWait.@mk-spin-wait-fun (20)
@@ -231,7 +273,9 @@ structure WorkStealing (* :
 				end
 		             let terminated : bool = apply isTerminated ()
                              do case terminated
-				 of true => let _ : unit = SchedulerAction.@stop() return ()
+				 of true => 
+				    do Logging.@log-WSTerminate (self, wgid)
+				    let _ : unit = SchedulerAction.@stop() return ()
 				  | false => return ()
                                 end
                              do apply setActive (true)              
@@ -342,7 +386,7 @@ structure WorkStealing (* :
 			return ()
                 end
 	    fun isTerminated () : bool = return (#0(terminated))
-	    fun pickVictim (self : vproc) : (* [vproc] *) Option.option =
+	    fun pickVictimVProc (self : vproc) : (* [vproc] *) Option.option =
 		if I32Lte (nVProcs, 1) then
 		    return (Option.NONE)
 		else
@@ -350,7 +394,7 @@ structure WorkStealing (* :
 		    let victimVP : vproc = VProc.@vproc-by-id (victimVPId)
 		    if Equal (victimVP, self) then 
 			(* never steal from the host vproc *)
-			apply pickVictim (self)
+			apply pickVictimVProc (self)
 		    else
 			return (Option.SOME (alloc (victimVP)))
 	    let nVProcs : int = VProc.@num-vprocs ()
@@ -360,7 +404,7 @@ structure WorkStealing (* :
             let wgid : long = Logging.@log-WSInit (self)
             do SchedulerAction.@atomic-end (self)
 	    let initWorker : cont (vproc, ImplicitThread.worker) = 
-			     @new-worker (uid, wgid, isTerminated, setActive, assignedDeques, idle, pickVictim / exh)
+			     @new-worker (uid, wgid, isTerminated, setActive, assignedDeques, idle, pickVictimVProc / exh)
 	    fun spawnFn (thd : ImplicitThread.thread / exh : exh) : unit =
 		do @spawn-thread (thd / exh)
 		return (UNIT)
