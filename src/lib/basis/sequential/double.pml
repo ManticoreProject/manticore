@@ -18,6 +18,7 @@ structure Double =
 	extern double M_Sin (double) __attribute__((pure));
 	extern double M_Tan (double) __attribute__((pure));
 	extern void *M_DoubleToString (double) __attribute__((alloc,pure));
+	extern void *M_DoubleFromString (void*) __attribute__((alloc,pure));
     )
 
   (* HLOps that wrap C functions *)
@@ -46,6 +47,10 @@ structure Double =
 	    let res : ml_double = alloc(I32ToF64 (#0(f)))
 	      return (res)
 	;
+      define inline @from-string (str : ml_string / exh : exh) : (* ml_double *) Option.option =
+	  let r : Option.option = ccall M_DoubleFromString (str)
+	  return (r)
+	;
       define inline @abs (f : ml_double / exh : exh) : ml_double =
 	let res : ml_double = alloc(F64Abs(#0(f)))
           return (res)
@@ -60,6 +65,7 @@ structure Double =
     val sqrt : double -> double = _prim (@double-sqrt)
     val pow : (double * double) -> double = _prim (@double-pow)
     val toString : double -> string = _prim(@to-string)
+    val fromString : string -> double Option.option = _prim(@from-string)
     val fromInt : int -> double = _prim(@from-int)
     val abs : double -> double = _prim (@abs)
 

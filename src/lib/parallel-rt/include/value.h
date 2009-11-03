@@ -86,6 +86,13 @@ STATIC_INLINE Value_t GlobalSome (VProc_t *vp, Value_t a)
 #define RAW_FIELD	0
 #define PTR(p)		PTR_FIELD, (Value_t)(p)
 #define INT(i)		RAW_FIELD, (Value_t)((Word_t)(i))
+#define DOUBLE(d)	RAW_FIELD, (Value_t)((d).w)
+
+/* use to coerce doubles to Word_t's as is done in DOUBLE(d) */
+typedef union {
+    Word_t w;
+    double d;
+} RawDouble_t;
 
 /* print a value to stdout */
 extern void SayValue (Value_t v);
