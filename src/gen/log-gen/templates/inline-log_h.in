@@ -13,7 +13,6 @@
 
 #ifdef ENABLE_LOGGING
 #include "log.h"
-#include "atomic-ops.h"
 #include "vproc.h"
 #if defined(HAVE_MACH_ABSOLUTE_TIME)
 #  include <mach/mach_time.h>
@@ -33,7 +32,7 @@ STATIC_INLINE LogEvent_t *NextLogEvent (VProc_t *vp)
 
     do {
 	buf = vp->log;
-	int index = FetchAndInc(&(buf->next));
+	int index = buf->next++;
 	if (index < LOGBUF_SZ) {
 	    return &(buf->log[index]);
 	    break;
@@ -69,7 +68,7 @@ STATIC_INLINE void LogTimestamp (LogTS_t *ts)
  */
 STATIC_INLINE uint64_t NewEventId (VProc_t *vp)
 {
-    return (uint64_t)FetchAndAdd64((int64_t *)&(vp->eventId), 1);
+    return vp->eventId++;
 }
 
 

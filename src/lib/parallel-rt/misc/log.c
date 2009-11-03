@@ -22,7 +22,6 @@
 #include "inline-log.h"
 #include "os-threads.h"
 #include "vproc.h"
-#include "atomic-ops.h"
 
 static int	LogFD = -1;
 
@@ -107,7 +106,9 @@ void InitLog (VProc_t *vp)
  */
 void SwapLogBuffers (VProc_t *vp, LogBuffer_t *curBuf)
 {
-    LogBuffer_t	*nextBuf;
+    if (curBuf->vpId != vp->id) {
+	Error ("[%2d] Bogus vproc ID = %d\n", vp->id, curBuf->vpId);
+    }
 
 #ifdef HAVE_AIO_RETURN
   /* wait for any pending pending I/O operations */
@@ -124,40 +125,33 @@ void SwapLogBuffers (VProc_t *vp, LogBuffer_t *curBuf)
     }
 #endif
 
-    nextBuf = vp->prevLog;
+  // set the current log buffer to be nextBuf
+    vp->log = vp->prevLog;
+    vp->prevLog = curBuf;
 
-/* FIXME: in the software-polling version, we don't need the CAS, since there
- * is no preemption.
- */
-
-  // atomically set the current log buffer to be nextBuf; if this operation
-  // fails, then we must have been preempted and the signal handler did the swap.
-    if (CompareAndSwapPtr(&(vp->log), curBuf, nextBuf) == curBuf) {
-	vp->prevLog = curBuf;
 #ifdef HAVE_AIO_RETURN
-      // schedule a write of the buffer to the log file
-	bzero (vp->logCB, sizeof(struct aiocb));
-	vp->logCB->aio_fildes = LogFD;
-	vp->logCB->aio_buf = curBuf;
-	vp->logCB->aio_nbytes = LOGBLOCK_SZB;
-	if (aio_write(vp->logCB) < 0) {
-	    Error("Failure writing log data; errno = %d\n", errno);
-	    vp->logCB->aio_buf = 0;  // no pending write
-	}
-#else
-      // write the buffer to a file
-	ssize_t nb;
-	do {
-	    nb = write (LogFD, curBuf, LOGBLOCK_SZB);
-	    if ((nb < 0) && (errno != EINTR)) {
-		Error("Failure writing log data; errno = %d\n", errno);
-		break;
-	    }
-	} while (nb < 0);
-#endif
-      // reset curBuf's next pointer for its next use
-	curBuf->next = 0;
+  // schedule a write of the buffer to the log file
+    bzero (vp->logCB, sizeof(struct aiocb));
+    vp->logCB->aio_fildes = LogFD;
+    vp->logCB->aio_buf = curBuf;
+    vp->logCB->aio_nbytes = LOGBLOCK_SZB;
+    if (aio_write(vp->logCB) < 0) {
+	Error("Failure writing log data; errno = %d\n", errno);
+	vp->logCB->aio_buf = 0;  // no pending write
     }
+#else
+  // write the buffer to a file
+    ssize_t nb;
+    do {
+	nb = write (LogFD, curBuf, LOGBLOCK_SZB);
+	if ((nb < 0) && (errno != EINTR)) {
+	    Error("Failure writing log data; errno = %d\n", errno);
+	    break;
+	}
+    } while (nb < 0);
+#endif
+  // reset curBuf's next pointer for its next use
+    curBuf->next = 0;
 
 }
 
