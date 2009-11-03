@@ -25,7 +25,7 @@ structure AMD64Regs : MANTICORE_REGS = struct
     val apReg = C.rsi
     val limReg = C.r11
     val vprocPtrReg = C.r10
-    val dedicatedRegs = [argReg, closReg, retReg, exhReg, spReg, apReg, valOf fpReg, limReg, vprocPtrReg]
+    val dedicatedRegs = [retReg, spReg, apReg, valOf fpReg, limReg, vprocPtrReg]
     val dedicatedFRegs = []
   
     val allRegs = C.Regs CellsBasis.GP {from=0, to=15, step=1}
