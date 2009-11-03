@@ -61,7 +61,7 @@ void InitLogFile (const char *name, int nvps, int ncpus)
     hdr->resolution	= 1;
 #elif HAVE_CLOCK_GETTIME
     hdr->tsKind		= LOGTS_TIMESPEC;
-    strncpy(hdr->clockName, "clock_gettime(CLOCK_REALTIME)", 23);
+    strncpy(hdr->clockName, "clock_gettime(CLOCK_REALTIME)", sizeof(hdr->clockName)-1);
     struct timespec res;
     clock_getres(CLOCK_REALTIME, &res);
     hdr->resolution	= res.tv_nsec;
