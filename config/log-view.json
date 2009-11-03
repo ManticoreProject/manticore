@@ -181,6 +181,7 @@
   	    "colors" : ["#00ff00", "#0000ff", "#c0c000", "#ff0000"],
 	    "transitions" : [
 		["WSWorkerInit", "Inactive"],
+		["WSTerminate", "Inactive"],
 		["WSExecute", "Busy"],
 		["WSPreempted", "Inactive"],
 		["WSThiefSend", "Thief"],

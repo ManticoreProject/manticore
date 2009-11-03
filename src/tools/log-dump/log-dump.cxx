@@ -247,4 +247,3 @@ static void Usage (int sts)
     fprintf (stderr, "usage: log-dump [-o outfile] [-log logfile]\n");
     exit (sts);
 }
-
