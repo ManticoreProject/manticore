@@ -23,6 +23,12 @@ in
   rand.pml
 end
 ../misc/debug.mlb
+result.pml
+ann "cpp" "../include/prim.def,../include/assert.def"
+in
+  prim-list.pml
+  prim-bool.pml
+end
 ann "cpp" "../include/prim.def,../include/assert.def"
 in
   vector.pml
@@ -30,12 +36,6 @@ in
   float-array.pml
   int-array.pml
   word64-array.pml
-end
-result.pml
-ann "cpp" "../include/prim.def,../include/assert.def"
-in
-  prim-list.pml
-  prim-bool.pml
 end
 time.pml
 prim-io.pml

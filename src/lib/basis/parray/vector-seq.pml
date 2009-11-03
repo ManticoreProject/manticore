@@ -5,6 +5,9 @@
  *
  *)
 
+(* true, if large vectors (having length of max leaf size) should be allocated in the global heap *)
+#define LARGE_VECTORS_IN_GLOBAL_HEAP       1
+
 structure VectorSeq =
   struct
 
@@ -12,9 +15,37 @@ structure VectorSeq =
 
     type 'a seq = 'a V.vector
 
+#if LARGE_VECTORS_IN_GLOBAL_HEAP
+    fun fromList s = let
+      val v = V.fromList s
+      in
+       (* once a vector has reached the max leaf size, we assume that vector
+	* will eventually be shared with remote processors, which is why we
+	* promote the vector here.
+	*)
+         if V.length v < MaxLeafSize.sz then
+	     v
+	 else
+	     V.promote v
+      end
+
+    fun fromListRev s = let
+      val v = V.fromListRev s
+      in
+       (* once a vector has reached the max leaf size, we assume that vector
+	* will eventually be shared with remote processors, which is why we
+	* promote the vector here.
+	*)
+         if V.length v < MaxLeafSize.sz then
+	     v
+	 else
+	     V.promote v
+      end
+#else
     val fromList = V.fromList
 
     val fromListRev = V.fromListRev
+#endif
 
     val empty = fromList nil
 
@@ -105,7 +136,6 @@ structure VectorSeq =
     fun filter (pred, s) =
       if null s then empty
       else let
-	val len = length s
 	fun lp (i, acc) = 
 	  if i < 0 then
 	    fromList acc
@@ -116,7 +146,7 @@ structure VectorSeq =
 	      else lp (i-1, acc) 
 	    end
 	in
-	  lp (len-1, nil)
+	  lp (length s-1, nil)
 	end
 
     fun zip (s1, s2) = let

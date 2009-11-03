@@ -84,12 +84,12 @@ Value_t AllocVector (VProc_t *vp, Value_t values)
 
 /*! \brief allocate a vector seeded with some initial values, which are provided in reverse order.
  *  \param vp the host vproc
- *  \param values the values used to initialize the vector
  *  \param len the size of the vector
+ *  \param values the values used to initialize the vector
  *  \return the allocated and initialized vector
  *  The vector type is defined in basis/sequential/vector.pml.
  */
-Value_t AllocVectorRev (VProc_t *vp, Value_t values, int len)
+Value_t AllocVectorRev (VProc_t *vp, int len, Value_t values)
 {
     Word_t	*obj = (Word_t *)(vp->allocPtr);    
     int         i    = 0;
@@ -244,6 +244,37 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
 
     vp->globNextW += WORD_SZB * (nElems+1);
     return PtrToValue(obj);
+}
+
+/*! \brief allocate a vector seeded with some initial values.
+ *  \param vp the host vproc
+ *  \param values the values used to initialize the vector
+ *  \return the allocated and initialized vector
+ *  The vector type is defined in basis/sequential/vector.pml.
+ *  Precondition: the car of each cons cell from the values list points to the global heap
+ */
+Value_t GlobalAllocVector (VProc_t *vp, int nElems, Value_t values)
+{
+  /* the array must fit into a global chunk */
+    assert (HEAP_CHUNK_SZB > WORD_SZB*(nElems+1) && nElems >= 0);
+
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
+	AllocToSpaceChunk(vp);
+    }
+
+    Word_t *obj = (Word_t*)(vp->globNextW);
+    obj[-1] = VEC_HDR(nElems);
+    int i = 0;
+    while (values != M_NIL) {
+	ListCons_t *valueList = (ListCons_t*)ValueToPtr(values);
+	obj[i++] = (Word_t)valueList->hd;
+	values = valueList->tl;
+    }
+    assert (i == nElems);
+
+    vp->globNextW += WORD_SZB * (nElems+1);
+    
+    return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(nElems));
 }
 
 /*! \brief allocate an array in the global heap
