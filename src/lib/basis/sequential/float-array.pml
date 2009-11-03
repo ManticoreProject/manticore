@@ -18,7 +18,7 @@ structure FloatArray =
 
       typedef array = PT.array;
 
-      extern void* GlobalAllocFloatArray (void*, int, float) __attribute__((pure));
+      extern void *GlobalAllocFloatArray (void*, int, float) __attribute__((alloc,pure));
 
     (* allocate and initialize an array *)
       define inline @empty-array (x : unit / exh : exh) : array =

@@ -10,7 +10,7 @@ structure Print =
     structure PT = PrimTypes
 
     _primcode(
-      extern void M_Print(void*);
+      extern void M_Print (void*);
       define inline @print (s : ml_string / exh : exh) : unit =
 	  let data : any = String.@data(s / exh)
 	  do ccall M_Print (data)

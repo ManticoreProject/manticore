@@ -60,10 +60,10 @@ structure WorkStealingDeque (* :
 
     _primcode (
 
-      extern void* GetNthVProc (int);
-      extern void* M_DequeAlloc (void*, long, int);
-      extern void* M_LocalDeques (void*, long) __attribute__((alloc));
-      extern void M_AssertDequeAddr (void*, int, void*);
+      extern void *GetNthVProc (int) __attribute__((pure));
+      extern void *M_DequeAlloc (void *, long, int);
+      extern void *M_LocalDeques (void *, long) __attribute__((alloc));
+      extern void M_AssertDequeAddr (void *, int, void *);
 
     (* Deque representation:
      *

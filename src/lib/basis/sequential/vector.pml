@@ -12,8 +12,8 @@ structure Vector =
 
       typedef vector = [ (* array data *) ![any], (* number of elements *) int ];
 
-      extern void* AllocVector (void*, void*) __attribute__((alloc));
-      extern void* AllocVectorRev (void*, void*, int) __attribute__((alloc));
+      extern void* AllocVector (void*, void*) __attribute__((alloc,pure));
+      extern void* AllocVectorRev (void*, void*, int) __attribute__((alloc,pure));
 
       define (* inline *) @from-list (values : List.list / exh : exh) : vector =
 	  let vec : vector = ccall AllocVector (host_vproc, values)

@@ -16,8 +16,8 @@ structure Time =
       typedef time = long;
       typedef ml_time = [time];
 
-      extern long M_GetTime();
-      extern double M_GetCPUTime();
+      extern long M_GetTime() __attribute__((pure));
+      extern double M_GetCPUTime() __attribute__((pure));
 
     (* get the current time *)
       define inline @now () : time =

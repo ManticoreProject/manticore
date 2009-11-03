@@ -20,7 +20,7 @@ structure Word64Array =
       typedef word64 = Word64.word;
       typedef ml_word64 = Word64.ml_word;
 
-      extern void* GlobalAllocWord64Array (void*, int, long);
+      extern void* GlobalAllocWord64Array (void*, int, long) __attribute__((alloc,pure));
 
     (* allocate and initialize an array *)
       define inline @empty-array (x : unit / exh : exh) : array =
