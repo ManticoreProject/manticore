@@ -425,12 +425,14 @@ void ReportGCStats ()
 	    else if (SMLStatsFlg) {
 	      // standard-ml record format
 		fprintf (outF,
-		    "GCS{processor=%d, \n\
+		    "GCST{processor=%d, \n\
+                      time=%f, \n\
                       minor=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n\
                       major=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n\
                       promotion={n_promotions=%d, prom_bytes=%lld:Int64.int, mean_prom_time_sec=%f}, \n\
                       global=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}} ::\n",
 		    i,
+		    TIMER_GetTime (&(vp->timer)),
 		    vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCopied, TIMER_GetTime (&(vp->minorStats.timer)),
 		    vp->nMajorGCs, vp->majorStats.nBytesAlloc, vp->majorStats.nBytesCopied, TIMER_GetTime (&(vp->majorStats.timer)),
 		    vp->nPromotes, vp->nBytesPromoted, TIMER_GetTime (&(vp->promoteTimer)),
@@ -475,12 +477,14 @@ void ReportGCStats ()
       // report the summary stats in standard-ml record format
 	double timeScale = 1.0 / (double)NumVProcs;
 	fprintf (outF,
-		 "GCS{processor=%d, \n\
+		 "GCST{processor=%d, \n\
+                   time=%f, \n\
                    minor=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n \
                    major=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n \
                    promotion={n_promotions=%d, prom_bytes=%lld:Int64.int, mean_prom_time_sec=%f}, \n \
                    global=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}} :: nil\n",
 		 0,
+		 maxTime,
 		 nMinorGCs, totMinor.nBytesAlloc, totMinor.nBytesCopied, timeScale * totMinor.time,
 		 nMajorGCs, totMajor.nBytesAlloc, totMajor.nBytesCopied, timeScale * totMajor.time,
 		 nPromotes, nBytesPromoted, timeScale * totPromoteTime,
