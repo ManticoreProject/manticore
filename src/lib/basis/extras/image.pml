@@ -11,7 +11,7 @@ structure Image =
   struct
 
     _primcode (
-	extern void *M_NewImage (int, int);
+	extern void *M_NewImage (int, int) __attribute__((pure));
 	extern void M_FreeImage (void *);
 	extern void M_OutputImage (void *, void *);
 	extern void M_UpdateImage3f (void *, int, int, float, float, float);

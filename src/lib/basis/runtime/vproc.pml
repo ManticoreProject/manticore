@@ -66,10 +66,10 @@ structure VProc (* :
     _primcode (
 
     (* hooks into the C runtime system (parallel-rt/vproc/vproc.c) *)
-      extern void* GetNthVProc (int);
-      extern int GetNumVProcs ();
+      extern void* GetNthVProc (int) __attribute__((pure));
+      extern int GetNumVProcs () __attribute__((pure));
       extern void *SleepCont (void *) __attribute__((alloc));
-      extern void *ListVProcs (void *) __attribute__((alloc));
+      extern void *ListVProcs (void *) __attribute__((pure,alloc));
       extern void VProcWake (void *);
       extern void VProcExit (void *);
 

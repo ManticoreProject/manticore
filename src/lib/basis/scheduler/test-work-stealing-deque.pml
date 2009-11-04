@@ -16,8 +16,8 @@ define @check-elt (x : Option.option, y : any) : () =
     end
   ;
 
-extern int M_NumDequeRoots (void*);
-extern void* M_AddDequeEltsToRoots (void*, void*);
+extern int M_NumDequeRoots (void *) __attribute__((pure));
+extern void *M_AddDequeEltsToRoots (void*, void*);
 
 define @check-roots (self : vproc, deque : D.deque / exh : exh) : () =
     let nRoots : int = ccall M_NumDequeRoots (deque)
