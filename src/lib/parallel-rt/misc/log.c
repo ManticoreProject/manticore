@@ -100,10 +100,6 @@ void InitLog (VProc_t *vp)
  */
 void SwapLogBuffers (VProc_t *vp, LogBuffer_t *curBuf)
 {
-    if (curBuf->vpId != vp->id) {
-	Error ("[%2d] Bogus vproc ID = %d\n", vp->id, curBuf->vpId);
-    }
-
   // set the current log buffer to be the prevLog buffer
     vp->log = vp->prevLog;
     vp->prevLog = curBuf;
