@@ -154,7 +154,8 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
 	exit (1);
     }
     if (Hdr->hdrSzB != sizeof(LogFileHeader_t)) {
-	fprintf(stderr, "bogus header size %d (expected %d)\n", Hdr->hdrSzB, sizeof(LogFileHeader_t));
+	fprintf(stderr, "bogus header size %d (expected %d)\n",
+	    Hdr->hdrSzB, (int)sizeof(LogFileHeader_t));
 	exit (1);
     }
     if (Hdr->majorVersion != LOG_VERSION_MAJOR) {
@@ -183,15 +184,31 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
 	exit (1);
     }
 
+  // count the number of buffers per vproc
+    int NumBufs[Hdr->nVProcs];
+    for (int i = 0;  i < Hdr->nVProcs; i++)
+	NumBufs[i] = 0;
+
     int MaxNumEvents = NEventsPerBuf*numBufs;
     Events = new Event[MaxNumEvents];
     NumEvents = 0;
-    uint64_t startTime = GetTimestamp (&(Hdr->startTime));
 
   /* read in the events */
     for (int i = 0;  i < numBufs;  i++) {
 	fread (buf, LogBufSzB, 1, f);
 	LogBuffer_t *log = (LogBuffer_t *)buf;
+      // check for valid vproc ID
+	if ((log->vpId < 0) || (Hdr->nVProcs <= log->vpId)) {
+	    fprintf (stderr, "Invalid vproc ID %d\n", log->vpId);
+	    exit (1);
+	}
+      // check sequence number
+	if (log->seqNum != NumBufs[log->vpId]) {
+	    fprintf (stderr,
+		"Vproc %d has missing/out-of-order buffers; expected %d but found %d\n",
+		log->vpId, NumBufs[log->vpId], log->seqNum);
+	}
+	NumBufs[log->vpId] = log->seqNum+1;
 	if (log->next > NEventsPerBuf)
 	    log->next = NEventsPerBuf;
 	for (int j = 0;  j < log->next;  j++) {
@@ -199,7 +216,7 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
 	    LogEvent_t *lp = &(log->log[j]);
 	    Event *ep = &(Events[NumEvents++]);
 	  /* extract event and data fields */
-	    ep->timestamp = GetTimestamp(&(lp->timestamp)) - startTime;
+	    ep->timestamp = GetTimestamp(&(lp->timestamp));
 	    ep->vpId = log->vpId;
 	    ep->desc = logFileDesc->FindEventById (lp->event);
 /* FIXME: skip data for now */
@@ -208,6 +225,17 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
 
   /* sort the events by timestamp */
     qsort (Events, NumEvents, sizeof(Event), CompareEvent);
+
+  /* Adjust the timestamps to be relative to the start of the run */
+    uint64_t startTime = GetTimestamp (&(Hdr->startTime));
+    if (Events[0].timestamp < startTime) {
+	fprintf (stdout, "** Warning: first event occurs %lld ns. before start\n",
+	    startTime - Events[0].timestamp);
+	startTime = Events[0].timestamp;
+    }
+    for (int i = 0;  i < NumEvents;  i++) {
+	Events[i].timestamp -= startTime;
+    }
 
     fclose (f);
     delete buf;
@@ -236,4 +264,3 @@ static void Usage (int sts)
     fprintf (stderr, "usage: log-dump [-o outfile] [-log logfile]\n");
     exit (sts);
 }
-
