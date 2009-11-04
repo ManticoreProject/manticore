@@ -5,8 +5,7 @@
  *
  *)
 
-(* true, if large vectors (having length of max leaf size) should be allocated in the global heap *)
-#define LARGE_VECTORS_IN_GLOBAL_HEAP       1
+(* define LARGE_VECTORS_IN_GLOBAL_HEAP if large vectors (having length of max leaf size) should be allocated in the global heap *)
 
 structure VectorSeq =
   struct
@@ -16,6 +15,16 @@ structure VectorSeq =
     type 'a seq = 'a V.vector
 
 #if LARGE_VECTORS_IN_GLOBAL_HEAP
+    local
+	_primcode (
+	  define @promote-vec (vec : V.vector / exh : exh) : V.vector =
+	      let vec : V.vector = promote (vec)
+	      return (vec)
+	    ;
+	)
+	val promoteVec : 'a V.vector -> 'a V.vector = _prim (@promote-vec)
+    in
+
     fun fromList s = let
       val v = V.fromList s
       in
@@ -26,7 +35,7 @@ structure VectorSeq =
          if V.length v < MaxLeafSize.sz then
 	     v
 	 else
-	     V.promote v
+	     promoteVec v
       end
 
     fun fromListRev s = let
@@ -39,8 +48,9 @@ structure VectorSeq =
          if V.length v < MaxLeafSize.sz then
 	     v
 	 else
-	     V.promote v
+	     promoteVec v
       end
+    end (* local *)
 #else
     val fromList = V.fromList
 

@@ -15,21 +15,21 @@ structure Vector =
       extern void* AllocVector (void*, void*) __attribute__((alloc,pure));
       extern void* AllocVectorRev (void*, void*, int) __attribute__((alloc,pure));
 
-      define (* inline *) @from-list (values : List.list / exh : exh) : vector =
+      define inline @from-list (values : List.list / exh : exh) : vector =
 	  let vec : vector = ccall AllocVector (host_vproc, values)
 	  return (vec)
 	;
 
-      define (* inline *) @from-list-rev (arg : [List.list, ml_int] / exh : exh) : vector =
+      define inline @from-list-rev (arg : [List.list, ml_int] / exh : exh) : vector =
 	  let vec : vector = ccall AllocVector (host_vproc, #0(arg), #1(arg))
 	  return (vec)
 	;
 
-      define (* inline *) @length (vec : vector / exh : exh) : ml_int =
+      define inline @length (vec : vector / exh : exh) : ml_int =
 	  return (alloc(#1(vec)))
 	;
 
-      define (* inline *) @sub (arg : [vector, ml_int] / exh : exh) : any =
+      define inline @sub (arg : [vector, ml_int] / exh : exh) : any =
           let vec : vector = #0(arg)
           let i : int = #0(#1(arg))
 	  do assert(I32Gte(i,0))
