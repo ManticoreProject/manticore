@@ -197,7 +197,6 @@ int main (int argc, const char **argv)
 		break;
 	    case WSExecuteEvt:
 		{
-		    VProcIdle[evt->vpId] = false;
 		    if (VProcTimestamp[evt->vpId] == 0ul) {
 			// we fudge a bit here to deal with clock skew
 			VProcTimestamp[evt->vpId] = evt->timestamp;
@@ -209,12 +208,12 @@ int main (int argc, const char **argv)
 		    else {
 			// already busy
 		    }
+		    VProcIdle[evt->vpId] = false;
 		}
 		break;
 	    case WSPreemptedEvt:
 	    case WSThiefSendEvt:
 		{
-		    VProcIdle[evt->vpId] = true;
 		    if (VProcTimestamp[evt->vpId] == 0ul) {
 			// we fudge a bit here to deal with clock skew
 			VProcTimestamp[evt->vpId] = evt->timestamp;
@@ -226,7 +225,7 @@ int main (int argc, const char **argv)
 		    else {
 			// already idle
 		    }
-		    
+		    VProcIdle[evt->vpId] = true;		    
 		}
 		break;
 	    }
