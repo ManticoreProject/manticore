@@ -16,13 +16,9 @@
 #ifdef HAVE_MACH_ABSOLUTE_TIME
 #  include <mach/mach_time.h>
 #endif
-#ifdef HAVE_AIO_RETURN
-#  include <aio.h>
-#endif
 #include "inline-log.h"
 #include "os-threads.h"
 #include "vproc.h"
-#include "atomic-ops.h"
 
 static int	LogFD = -1;
 
@@ -88,15 +84,12 @@ void InitLog (VProc_t *vp)
     vp->log = NEW(LogBuffer_t);
     vp->log->vpId = vp->id;
     vp->log->next = 0;
+    vp->log->seqNum = 0;
     vp->prevLog = NEW(LogBuffer_t);
     vp->prevLog->vpId = vp->id;
     vp->prevLog->next = 0;
+    vp->prevLog->seqNum = 1;
     vp->eventId = ((uint64_t)vp->id & 0xff) << 56;  // high 8 bits have vproc ID
-#ifdef HAVE_AIO_RETURN
-  // allocate the AIO control buffer
-    vp->logCB = NEW(struct aiocb);
-    vp->logCB->aio_buf = 0;  // when the buffer is non-zero, we know that there is a pending write
-#endif
 }
 
 
@@ -107,57 +100,23 @@ void InitLog (VProc_t *vp)
  */
 void SwapLogBuffers (VProc_t *vp, LogBuffer_t *curBuf)
 {
-    LogBuffer_t	*nextBuf;
+  // set the current log buffer to be the prevLog buffer
+    vp->log = vp->prevLog;
+    vp->prevLog = curBuf;
+    vp->log->seqNum = curBuf->seqNum+1;
 
-#ifdef HAVE_AIO_RETURN
-  /* wait for any pending pending I/O operations */
-    if (vp->logCB->aio_buf != 0) {
-	const struct aiocb *const list[1] = { vp->logCB->aio_buf };
-	int sts;
-	do {
-	    sts = aio_suspend (list, 1, 0);
-	    if ((sts != 0) && (errno != EINTR)) {
-		Error("Failure writing log data; errno = %d\n", errno);
-		break;
-	    }
-	} while (sts != 0);
-    }
-#endif
-
-    nextBuf = vp->prevLog;
-
-/* FIXME: in the software-polling version, we don't need the CAS, since there
- * is no preemption.
- */
-
-  // atomically set the current log buffer to be nextBuf; if this operation
-  // fails, then we must have been preempted and the signal handler did the swap.
-    if (CompareAndSwapPtr(&(vp->log), curBuf, nextBuf) == curBuf) {
-	vp->prevLog = curBuf;
-#ifdef HAVE_AIO_RETURN
-      // schedule a write of the buffer to the log file
-	bzero (vp->logCB, sizeof(struct aiocb));
-	vp->logCB->aio_fildes = LogFD;
-	vp->logCB->aio_buf = curBuf;
-	vp->logCB->aio_nbytes = LOGBLOCK_SZB;
-	if (aio_write(vp->logCB) < 0) {
+  // write the buffer to a file
+    ssize_t nb;
+    do {
+	nb = write (LogFD, curBuf, LOGBLOCK_SZB);
+	if ((nb < 0) && (errno != EINTR)) {
 	    Error("Failure writing log data; errno = %d\n", errno);
-	    vp->logCB->aio_buf = 0;  // no pending write
+	    break;
 	}
-#else
-      // write the buffer to a file
-	ssize_t nb;
-	do {
-	    nb = write (LogFD, curBuf, LOGBLOCK_SZB);
-	    if ((nb < 0) && (errno != EINTR)) {
-		Error("Failure writing log data; errno = %d\n", errno);
-		break;
-	    }
-	} while (nb < 0);
-#endif
-      // reset curBuf's next pointer for its next use
-	curBuf->next = 0;
-    }
+    } while (nb < 0);
+
+  // reset curBuf's next pointer for its next use
+    curBuf->next = 0;
 
 }
 
@@ -167,24 +126,6 @@ void FinishLog ()
 {
     if (LogFD < 0)
 	return;
-
-#ifdef HAVE_AIO_RETURN
-  /* first wait for any pending pending I/O operations */
-    for (int i = 0;  i < NumVProcs;  i++) {
-	VProc_t *vp = VProcs[i];
-	if (vp->logCB->aio_buf != 0) {
-	    const struct aiocb *const list[1] = { vp->logCB->aio_buf };
-	    int sts;
-	    do {
-		sts = aio_suspend (list, 1, 0);
-		if ((sts != 0) && (errno != EINTR)) {
-		    Error("Failure writing log data; errno = %d\n", errno);
-		    break;
-		}
-	    } while (sts != 0);
-	}
-    }
-#endif
 
   /* flush out any remaining vproc buffers. */
     for (int i = 0;  i < NumVProcs;  i++) {

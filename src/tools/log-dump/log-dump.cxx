@@ -184,6 +184,11 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
 	exit (1);
     }
 
+  // count the number of buffers per vproc
+    int NumBufs[Hdr->nVProcs];
+    for (int i = 0;  i < Hdr->nVProcs; i++)
+	NumBufs[i] = 0;
+
     int MaxNumEvents = NEventsPerBuf*numBufs;
     Events = new Event[MaxNumEvents];
     NumEvents = 0;
@@ -192,6 +197,18 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
     for (int i = 0;  i < numBufs;  i++) {
 	fread (buf, LogBufSzB, 1, f);
 	LogBuffer_t *log = (LogBuffer_t *)buf;
+      // check for valid vproc ID
+	if ((log->vpId < 0) || (Hdr->nVProcs <= log->vpId)) {
+	    fprintf (stderr, "Invalid vproc ID %d\n", log->vpId);
+	    exit (1);
+	}
+      // check sequence number
+	if (log->seqNum != NumBufs[log->vpId]) {
+	    fprintf (stderr,
+		"Vproc %d has missing/out-of-order buffers; expected %d but found %d\n",
+		log->vpId, NumBufs[log->vpId], log->seqNum);
+	}
+	NumBufs[log->vpId] = log->seqNum+1;
 	if (log->next > NEventsPerBuf)
 	    log->next = NEventsPerBuf;
 	for (int j = 0;  j < log->next;  j++) {
