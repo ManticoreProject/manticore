@@ -60,6 +60,8 @@ static void ParseGCStatsOptions (Options_t *opts);
 static bool	ReportStatsFlg = false;	// true for report enabled
 static bool	DetailStatsFlg = false;	// true for detailed report (per-vproc)
 static bool	CSVStatsFlg = false;	// true for CSV-format report
+static bool	SMLStatsFlg = false;	// true for SML-format report
+static FILE     *StatsOutFile = 0;      // stats output file
 #endif
 
 /* HeapInit:
@@ -288,8 +290,11 @@ static void ParseGCStatsOptions (Options_t *opts)
     if (report != 0) {
 	ReportStatsFlg = true;
 	if (strstr(report, "csv") != 0) CSVStatsFlg = true;
+	if (strstr(report, "sml") != 0) SMLStatsFlg = true;
 	if (strstr(report, "all") != 0) DetailStatsFlg = true;
     }
+
+    StatsOutFile = stderr;
 
 }
 
@@ -347,7 +352,7 @@ void ReportGCStats ()
     if (! ReportStatsFlg)
 	return;
 
-    FILE *outF = stdout;
+    FILE *outF = StatsOutFile;
 
   // compute summary information
     double maxTime = 0.0;
@@ -385,6 +390,8 @@ void ReportGCStats ()
   // print the header
     if (CSVStatsFlg) {
     }
+    else if (SMLStatsFlg) {
+    }
     else {
 	fprintf(outF, "         Time                    Minor GCs                          Major GCs                      Promotions                    Global GCs\n");
 	fprintf(outF, "     total    gc      num   alloc     copied      time    num   alloc      copied     time     num    bytes   time    num   alloc     copied      time\n");
@@ -408,6 +415,22 @@ void ReportGCStats ()
 		    vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCopied, 0.0,
 		    /* vp->nMajorGCs, vp->majorStats.nBytesAlloc, vp->majorStats.nBytesCopied,*/ 0, 0LL, 0LL, 0.0,
 		    /* vp->nPromotes, vp->nBytesPromoted, */ 0, 0LL, 0.0,
+		    NumGlobalGCs, vp->globalStats.nBytesAlloc, vp->globalStats.nBytesCopied, TIMER_GetTime (&(vp->globalStats.timer)));
+	    }
+	    else if (SMLStatsFlg) {
+	      // standard-ml record format
+		fprintf (outF,
+		    "GCST{processor=%d, \n\
+                      time=%f, \n\
+                      minor=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n\
+                      major=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n\
+                      promotion={n_promotions=%d, prom_bytes=%lld:Int64.int, mean_prom_time_sec=%f}, \n\
+                      global=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}} ::\n",
+		    i,
+		    TIMER_GetTime (&(vp->timer)),
+		    vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCopied, TIMER_GetTime (&(vp->minorStats.timer)),
+			 /*vp->nMajorGCs*/ 0, /*vp->majorStats.nBytesAlloc*/ 0ul, /*vp->majorStats.nBytesCopied*/ 0ul, /*TIMER_GetTime (&(vp->majorStats.timer))*/ 0.0,
+			 /*vp->nPromotes*/ 0, /*vp->nBytesPromoted*/ 0ul, /*TIMER_GetTime (&(vp->promoteTimer))*/ 0.0,
 		    NumGlobalGCs, vp->globalStats.nBytesAlloc, vp->globalStats.nBytesCopied, TIMER_GetTime (&(vp->globalStats.timer)));
 	    }
 	    else {
@@ -440,11 +463,32 @@ void ReportGCStats ()
 		fprintf (outF, "\n");
 	    }
 	}
+
+	if (SMLStatsFlg) {
+	    fprintf (outF, "nil\n");
+	}
+
+    } else if (SMLStatsFlg) {
+      // report the summary stats in standard-ml record format
+	double timeScale = 1.0 / (double)NumVProcs;
+	fprintf (outF,
+		 "GCST{processor=%d, \n\
+                   time=%f, \n\
+                   minor=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n \
+                   major=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n \
+                   promotion={n_promotions=%d, prom_bytes=%lld:Int64.int, mean_prom_time_sec=%f}, \n \
+                   global=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}} :: nil\n",
+		 0,
+		 maxTime,
+		 nMinorGCs, totMinor.nBytesAlloc, totMinor.nBytesCopied, /*timeScale * totMinor.time*/ 0.0,
+		 /*nMajorGCs*/ 0, /*totMajor.nBytesAlloc*/ 0ul, /*totMajor.nBytesCopied*/ 0ul, /*timeScale * totMajor.time*/ 0.0,
+		 /*nPromotes*/ 0, /*nBytesPromoted*/ 0ul, /*timeScale * totPromoteTime*/ 0.0,
+		 NumGlobalGCs, totGlobal.nBytesAlloc, totGlobal.nBytesCopied, timeScale * totGlobal.time);
     }
 
   // report the summary stats
     double timeScale = 1.0 / (double)NumVProcs;
-    if (! CSVStatsFlg) { /* we only report summary stats for the formatted version */
+    if ((! CSVStatsFlg) && (! SMLStatsFlg) ) { /* we only report summary stats for the formatted version */
 	fprintf (outF, "TOT");
       // time
 	PrintTime (outF, maxTime);
@@ -472,6 +516,10 @@ void ReportGCStats ()
 	PrintPct (outF, totGlobal.nBytesCopied, totGlobal.nBytesAlloc);
 	PrintTime (outF, timeScale * totGlobal.time);
 	fprintf (outF, "\n");
+    }
+
+    if (outF != stderr) {
+	fclose (outF);
     }
 
 }
