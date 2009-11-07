@@ -93,6 +93,27 @@ int main (int argc, const char **argv)
 
     LoadLogFile (logFileDesc, logFile);
 
+    /** check for bogus log data **/
+    bool foundInitFirst = false;
+
+    for (int i = 0; i < NumEvents; i++) {
+	if (foundInitFirst)
+	    break;
+	Event *evt = &(Events[i]);
+	int evtId = evt->desc->Id();
+	switch (evtId) {
+	case WSInitEvt:
+	    foundInitFirst = true;
+	    break;
+	case WSThiefSendEvt:
+	case WSThiefSuccessfulEvt:
+	case WSThiefUnsuccessfulEvt:
+	case WSExecuteEvt:
+	    printf ("Bogus log file: WSInitEvt was preceded by another WS* event.");
+	    exit (1);                 // WSInitEvt must precede all other work stealing events
+	}	
+    }
+
   /** count the overall number of steals and failed steal attempts **/
     int VProcNumSteals[Hdr->nVProcs];
     int VProcNumFailedStealAttempts[Hdr->nVProcs];
