@@ -155,5 +155,10 @@ void InitConfiguration (Options_t *opts)
     if (access (cfgFile, R_OK) == 0) {
 	ParseConfigFile (cfgFile);
     }
+    else {
+	fprintf(stderr,
+	    "Cannot find configuration file \"%s\"\n", cfgFile);
+	exit (1);
+    }
 
 }
