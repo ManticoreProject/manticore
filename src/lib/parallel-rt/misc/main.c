@@ -17,6 +17,7 @@
 #include "os-threads.h"
 #include "asm-offsets.h" /* for RUNTIME_MAGIC */
 #include "inline-log.h"
+#include "perf.h"
 
 static void PingLoop ();
 static void Ping (int n);
@@ -61,6 +62,9 @@ int main (int argc, const char **argv)
     DiscoverTopology ();
     HeapInit (opts);
     VProcInit ((bool)SequentialFlag, opts);
+#if defined(ENABLE_PERF_COUNTERS) && defined(TARGET_LINUX)
+    ParsePerfOptions (opts);
+#endif
 
     PingLoop();
 

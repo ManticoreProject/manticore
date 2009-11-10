@@ -103,7 +103,10 @@ struct struct_vproc {
 #ifndef ENABLE_LOGGING	      /* GC counters for logging info */
 
 #endif
-
+#ifdef ENABLE_PERF_COUNTERS
+    int		missFD;		//!< L2/3 write miss perf counter
+    int		refFD;		//!< L2/3 write perf counter
+#endif
 };
 
 typedef enum {

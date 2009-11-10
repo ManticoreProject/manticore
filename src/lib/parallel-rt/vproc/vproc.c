@@ -23,6 +23,7 @@
 #include "value.h"
 #include "inline-log.h"
 #include "time.h"
+#include "perf.h"
 
 typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
@@ -274,6 +275,10 @@ void *NewVProc (void *arg)
     InitLog (vproc);
 #endif
 
+#if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)
+    InitPerfCounters (vproc);
+#endif 
+
     TIMER_Init (&(vproc->timer));
 
 #ifndef NO_GC_STATS
@@ -352,6 +357,10 @@ void VProcExit (VProc_t *vp)
 #ifdef ENABLE_LOGGING
 	FinishLog ();
 #endif
+
+#if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)
+    ReportPerfCounters ();
+#endif 
 
 #ifndef NO_GC_STATS
 	ReportGCStats ();

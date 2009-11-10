@@ -15,18 +15,21 @@ ifeq (,$(findstring stats,$(BUILD_OPTIONS)))
   ENABLE_GC_STATS=false
 else
   ENABLE_GC_STATS=true
+  ENABLE_PERF_COUNTERS=true
 endif
 ifeq (,$(findstring logging,$(BUILD_OPTIONS)))
   ENABLE_LOGGING=false
 else
   ENABLE_LOGGING=true
   ENABLE_GC_STATS=true
+  ENABLE_PERF_COUNTERS=true
 endif
 ifeq (,$(findstring debug,$(BUILD_OPTIONS)))
   ENABLE_DEBUG=false
 else
   ENABLE_DEBUG=true
   ENABLE_GC_STATS=true
+  ENABLE_PERF_COUNTERS=true
 endif
 
 #
@@ -77,6 +80,11 @@ ifeq ($(ENABLE_DEBUG),true)
 else
   CPPFLAGS += -DNDEBUG
   CFLAGS += -O2
+endif
+
+ifeq ($(ENABLE_PERF_COUNTERS),true)
+  CPPFLAGS += -DENABLE_PERF_COUNTERS
+  MISC_SRCS += perf.c
 endif
 
 ifeq ($(ENABLE_GC_STATS),false)
