@@ -135,6 +135,16 @@ static void ParseConfigFile (const char *fname)
 
 }
 
+static ConfigParam_t *FindConfigParam (const char *key)
+{
+    for (int i = 0;  i < NumConfigParams;  i++) {
+	if (strcmp(key, ConfigParams[i].key) == 0)
+	    return &(ConfigParams[i]);
+    }
+
+    return 0;
+}
+
 void InitConfiguration (Options_t *opts)
 {
     NumConfigParams = 0;
