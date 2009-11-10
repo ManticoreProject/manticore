@@ -267,10 +267,10 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	Addr_t baseLimit = ((Addr_t)BASE_GLOBAL_HEAP_SZB < ToSpaceSz)
 	    ? ToSpaceSz
 	    : BASE_GLOBAL_HEAP_SZB;
-	ToSpaceLimit = baseLimit + (Addr_t)(NumVProcs * PER_VPROC_HEAP_SZB);
+	ToSpaceLimit = baseLimit + (Addr_t)NumVProcs * (Addr_t)PER_VPROC_HEAP_SZB;
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_GLOBAL)
-	    SayDebug("[%2d] ToSpaceLimit = %ld\n",
+	    SayDebug("[%2d] ToSpaceLimit = %ldMb\n",
 		self->id, (unsigned long)(ToSpaceLimit >> 20));
 #endif
     }
