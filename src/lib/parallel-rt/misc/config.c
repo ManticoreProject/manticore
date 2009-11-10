@@ -20,6 +20,8 @@
 #include "manticore-rt.h"
 #include "options.h"
 
+#define DEFAULT_CONFIG_FILE	".pmlrc"
+
 typedef struct {
     const char	*key;		//!< the key
     const char	*value;		//!< the value; may be null
@@ -151,14 +153,18 @@ void InitConfiguration (Options_t *opts)
     ConfigParamsSz = 16;
     ConfigParams = NEWVEC(ConfigParam_t, 16);
 
-    const char *cfgFile = GetStringOpt (opts, "-config", ".pmlrc");
-    if (access (cfgFile, R_OK) == 0) {
-	ParseConfigFile (cfgFile);
-    }
-    else {
-	fprintf(stderr,
-	    "Cannot find configuration file \"%s\"\n", cfgFile);
-	exit (1);
+    const char *cfgFile = GetStringOpt (opts, "-config", 0);
+    if ((cfgFile == 0) && (access (DEFAULT_CONFIG_FILE, R_OK) == 0))
+	cfgFile = DEFAULT_CONFIG_FILE;
+
+    if (cfgFile != 0) {
+	if (access (cfgFile, R_OK) == 0)
+	    ParseConfigFile (cfgFile);
+	else {
+	    fprintf(stderr,
+		"Cannot open configuration file \"%s\"\n", cfgFile);
+	    exit (1);
+	}
     }
 
 }
