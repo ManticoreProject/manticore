@@ -41,6 +41,8 @@ int main (int argc, const char **argv)
 {
     Options_t *opts = InitOptions (argc, argv);
 
+    InitConfiguration (opts);
+
     MutexInit (&PrintLock);
 
 #ifndef NDEBUG
