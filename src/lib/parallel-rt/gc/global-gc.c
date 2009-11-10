@@ -264,13 +264,14 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    GlobalGCInProgress = false;
 	MutexUnlock (&HeapLock);
       // recalculate the FromSpaceLimit
-	if (BASE_GLOBAL_HEAP_SZB < ToSpaceSz)
-	    ToSpaceLimit = ToSpaceSz + (NumVProcs * PER_VPROC_HEAP_SZB);
-	else
-	    ToSpaceLimit = BASE_GLOBAL_HEAP_SZB + (NumVProcs * PER_VPROC_HEAP_SZB);
+	Addr_t baseLimit = ((Addr_t)BASE_GLOBAL_HEAP_SZB < ToSpaceSz)
+	    ? ToSpaceSz
+	    : BASE_GLOBAL_HEAP_SZB;
+	ToSpaceLimit = baseLimit + (Addr_t)(NumVProcs * PER_VPROC_HEAP_SZB);
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_GLOBAL)
-	    SayDebug("[%2d] ToSpaceLimit = %ld\n", self->id, ToSpaceLimit >> 20);
+	    SayDebug("[%2d] ToSpaceLimit = %ld\n",
+		self->id, (unsigned long)(ToSpaceLimit >> 20));
 #endif
     }
 
