@@ -190,10 +190,11 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
       // here the leader waits for the followers and the followers wait for the
       // leader to say "go"
 	if (leaderVProc) {
-	  /* reset the size of to-space */
-	    ToSpaceSz = 0;
+	  /* wait for the other vprocs to start global GC */
 	    while (NReadyForGC < NumVProcs)
 		CondWait(&LeaderWait, &GCLock);
+	  /* reset the size of to-space */
+	    ToSpaceSz = 0;
 	  /* all followers are ready to do GC, so initialize the barriers
 	   * and then wake them up.
 	   */
@@ -264,13 +265,14 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    GlobalGCInProgress = false;
 	MutexUnlock (&HeapLock);
       // recalculate the FromSpaceLimit
-	if (BASE_GLOBAL_HEAP_SZB < ToSpaceSz)
-	    ToSpaceLimit = ToSpaceSz + (NumVProcs * PER_VPROC_HEAP_SZB);
-	else
-	    ToSpaceLimit = BASE_GLOBAL_HEAP_SZB + (NumVProcs * PER_VPROC_HEAP_SZB);
+	Addr_t baseLimit = ((Addr_t)BASE_GLOBAL_HEAP_SZB < ToSpaceSz)
+	    ? ToSpaceSz
+	    : BASE_GLOBAL_HEAP_SZB;
+	ToSpaceLimit = baseLimit + (Addr_t)NumVProcs * (Addr_t)PER_VPROC_HEAP_SZB;
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_GLOBAL)
-	    SayDebug("[%2d] ToSpaceLimit = %ld\n", self->id, ToSpaceLimit >> 20);
+	    SayDebug("[%2d] ToSpaceLimit = %ldMb\n",
+		self->id, (unsigned long)(ToSpaceLimit >> 20));
 #endif
     }
 
