@@ -189,10 +189,11 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
       // here the leader waits for the followers and the followers wait for the
       // leader to say "go"
 	if (leaderVProc) {
-	  /* reset the size of to-space */
-	    ToSpaceSz = 0;
+	  /* wait for the other vprocs to start global GC */
 	    while (NReadyForGC < NumVProcs)
 		CondWait(&LeaderWait, &GCLock);
+	  /* reset the size of to-space */
+	    ToSpaceSz = 0;
 	  /* all followers are ready to do GC, so initialize the barriers
 	   * and then wake them up.
 	   */
