@@ -97,9 +97,9 @@ void HeapInit (Options_t *opts)
 
   /* global-heap sizing parameters */
     BaseHeapSzB = GetSizeConfig ("BASE_GLOBAL_HEAP_SZB", ONE_MEG, BASE_GLOBAL_HEAP_SZB);
-    PerVprocHeapSzb = GetSizeConfig ("PER_VPROC_HEAP_SZB", ONE_MEG, BASE_GLOBAL_HEAP_SZB);
+    PerVprocHeapSzb = GetSizeConfig ("PER_VPROC_HEAP_SZB", ONE_MEG, PER_VPROC_HEAP_SZB);
     HeapScaleNum = GetIntConfig ("GLOBAL_TOSPACE_SCALE_NUMERATOR", 5);
-    HeapScaleDenom = GetIntConfig ("GLOBAL_TOSPACE_SCALE_NUMERATOR", 4);
+    HeapScaleDenom = GetIntConfig ("GLOBAL_TOSPACE_SCALE_DENOMINATOR", 4);
     if (HeapScaleNum < HeapScaleDenom) {
 	Die ("base global tospace scale %d/%d <= 1\n",
 	    (int)HeapScaleNum, (int)HeapScaleDenom);
