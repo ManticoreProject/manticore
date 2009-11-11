@@ -86,7 +86,7 @@ Addr_t		MaxLiveData = 0;	// the high-water mark for live data (recorded
  */
 void HeapInit (Options_t *opts)
 {
-    MaxNurserySzB = GetSizeConfig ("NURSERY_SZB", ONE_K, VP_HEAP_SZB/2);
+    MaxNurserySzB = GetSizeConfig ("MAX_NURSERY_SZB", ONE_K, VP_HEAP_SZB/2);
     MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, MaxNurserySzB);
     if (MaxNurserySzB < MIN_NURSERY_SZB)
 	MaxNurserySzB = MIN_NURSERY_SZB;
