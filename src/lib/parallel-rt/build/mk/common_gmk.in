@@ -59,6 +59,7 @@ VPROC_SRCS =	vproc.c
 MISC_SRCS =	main.c \
 		apply.c \
 		basis.c \
+		config.c \
 		options.c \
 		image.c
 
