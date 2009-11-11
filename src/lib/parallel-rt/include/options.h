@@ -22,4 +22,15 @@ extern Addr_t GetSizeOpt (Options_t *opts, const char *opt, Addr_t dfltScale, Ad
 extern int NumOptions ();
 extern const char **Options ();
 
+/***** Configuration-file support *****/
+
+extern void InitConfiguration (Options_t *opts);
+
+extern int GetIntConfig (const char *key, int dflt);
+extern Addr_t GetSizeConfig (const char *key, Addr_t dfltScale, Addr_t dflt);
+
+
+/***** Utility functions *****/
+extern int64_t GetSizeValue (const char *s, Addr_t dfltScale);
+
 #endif /* !_OPTIONS_H_ */
