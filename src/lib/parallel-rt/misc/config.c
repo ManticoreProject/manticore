@@ -168,3 +168,50 @@ void InitConfiguration (Options_t *opts)
     }
 
 }
+
+/* !\brief get an integer-valued configuration parameter.
+ *  \param key the name of the parameter
+ *  \param dflt the default value of the parameter
+ *  \return the value associated with \arg key, or the default value
+ */
+int GetIntConfig (const char *key, int dflt)
+{
+    ConfigParam_t *cfgParam = FindConfigParam (key);
+    if (cfgParam == 0)
+	return dflt;
+    else if (cfgParam->value == 0) {
+	Error("missing value for %s\n", key);
+	return dflt;
+    }
+    else {
+	char *cp = 0;
+	int n = (int)strtol (cfgParam->value, &cp, 0);
+	if (cp == key)
+	    return n;
+	else {
+	    Error("expected integer value for %s\n", key);
+	    return dflt;
+	}
+    }
+}
+
+Addr_t GetSizeConfig (const char *key, Addr_t dfltScale, Addr_t dflt)
+{
+    ConfigParam_t *cfgParam = FindConfigParam (key);
+    if (cfgParam == 0)
+	return dflt;
+    else if (cfgParam->value == 0) {
+	Error("missing value for %s\n", key);
+	return dflt;
+    }
+    else {
+	int64_t sz = GetSizeValue (cfgParam->value, dfltScale);
+	if (sz < 0) {
+	    Error("bogus size for %s\n", key);
+	    return dflt;
+	}
+	return ((Addr_t)sz) * dfltScale;
+    }
+
+    return dflt;
+}

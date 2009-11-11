@@ -86,13 +86,24 @@ Addr_t		MaxLiveData = 0;	// the high-water mark for live data (recorded
  */
 void HeapInit (Options_t *opts)
 {
-    MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, VP_HEAP_SZB/2);
+    MaxNurserySzB = GetSizeConfig ("NURSERY_SZB", ONE_K, VP_HEAP_SZB/2);
+    MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, MaxNurserySzB);
     if (MaxNurserySzB < MIN_NURSERY_SZB)
 	MaxNurserySzB = MIN_NURSERY_SZB;
 
-    MajorGCThreshold = VP_HEAP_SZB / 10;
+    MajorGCThreshold = GetSizeConfig ("MAJOR_GC_THRESHOLD", ONE_K, VP_HEAP_SZB / 10);
     if (MajorGCThreshold < MIN_NURSERY_SZB)
 	MajorGCThreshold = MIN_NURSERY_SZB;
+
+  /* global-heap sizing parameters */
+    BaseHeapSzB = GetSizeConfig ("BASE_GLOBAL_HEAP_SZB", ONE_MEG, BASE_GLOBAL_HEAP_SZB);
+    PerVprocHeapSzb = GetSizeConfig ("PER_VPROC_HEAP_SZB", ONE_MEG, BASE_GLOBAL_HEAP_SZB);
+    HeapScaleNum = GetIntConfig ("GLOBAL_TOSPACE_SCALE_NUMERATOR", 5);
+    HeapScaleDenom = GetIntConfig ("GLOBAL_TOSPACE_SCALE_NUMERATOR", 4);
+    if (HeapScaleNum < HeapScaleDenom) {
+	Die ("base global tospace scale %d/%d <= 1\n",
+	    (int)HeapScaleNum, (int)HeapScaleDenom);
+    }
 
 #ifndef NO_GC_STATS
     ParseGCStatsOptions (opts);
@@ -105,8 +116,12 @@ void HeapInit (Options_t *opts)
     debug = GetStringOpt (opts, "-heapcheck", DebugFlg ? HEAP_DEBUG_DEFAULT : "none");
     HeapCheck = ParseGCLevel (debug);
 
-    if (GCDebug > GC_DEBUG_NONE)
-	SayDebug("HeapInit: max nursery = %d, threshold = %d\n", (int)MaxNurserySzB, (int)MajorGCThreshold);
+    if (GCDebug > GC_DEBUG_NONE) {
+	SayDebug("HeapInit: MaxNurserySzB = %d, MajorGCThreshold = %d\n", (int)MaxNurserySzB, (int)MajorGCThreshold);
+	SayDebug("          BaseHeapSzB = %lld\n", (long long)BaseHeapSzB);
+	SayDebug("          PerVprocHeapSzb = %lld\n", (long long)PerVprocHeapSzb);
+	SayDebug("          Tospace scale = %d/%d\n", (int)HeapScaleNum, (int)HeapScaleDenom);
+    }
 #endif
 
   /* initialize the BIBOP */
@@ -126,7 +141,7 @@ void HeapInit (Options_t *opts)
     GlobalVM = 0;
     FreeVM = 0;
     ToSpaceSz = 0;
-    ToSpaceLimit = BASE_GLOBAL_HEAP_SZB; // we don't know the number of vprocs yet!
+    ToSpaceLimit = BaseHeapSzB; // we don't know the number of vprocs yet!
     TotalVM = 0;
     FromSpaceChunks = (MemChunk_t *)0;
     FreeChunks = NEWVEC(MemChunk_t *, NumHWNodes);

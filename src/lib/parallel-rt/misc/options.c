@@ -165,17 +165,16 @@ Addr_t GetSizeOpt (Options_t *opts, const char *opt, Addr_t dfltScale, Addr_t df
     for (int i = 0;  i < opts->argc;  i++) {
 	if (strcmp(opt, opts->argv[i]) == 0) {
 	    if (++i < opts->argc) {
-		char *endp;
-		long arg = strtol (opts->argv[i], &endp, 10);
+		int64_t sz = GetSizeValue (opts->argv[i], dfltScale);
 		CompressOpts (opts, i-1, 2);
-		if (arg < 0) {
-		    Error("%s: size should be positive\n", opts->cmd);
+		if (sz < 0) {
+		    Error("%s: bogus size argument for `%s' option\n",
+			opts->cmd, opt);
 		    return dflt;
 		}
-		if (*endp == 'k') dfltScale = ONE_K;
-		else if (*endp == 'm') dfltScale = ONE_MEG;
-		return arg * dfltScale;
-	    } else {
+		return ((Addr_t)sz) * dfltScale;
+	    }
+	    else {
 		CompressOpts (opts, i-1, 1);
 		Error("%s: missing argument for `%s' option\n", opts->cmd, opt);
 		opts->errors = true;
@@ -187,4 +186,20 @@ Addr_t GetSizeOpt (Options_t *opts, const char *opt, Addr_t dfltScale, Addr_t df
     return dflt;
 }
 
+/*! \brief get a size value from the string; the suffixes "k", "m", and "g" are
+ *         supported
+ */
+int64_t GetSizeValue (const char *s, Addr_t dfltScale)
+{
+    char *endp;
+    long arg = strtol (s, &endp, 10);
+    if ((arg < 0) || (endp == s))
+	return -1;  /* error */
+
+    if ((*endp == 'k') || (*endp == 'K')) dfltScale = ONE_K;
+    else if ((*endp == 'm') || (*endp == 'M')) dfltScale = ONE_MEG;
+    else if ((*endp == 'g') || (*endp == 'G')) dfltScale = ONE_K*ONE_MEG;
+
+    return arg * dfltScale;
+}
 
