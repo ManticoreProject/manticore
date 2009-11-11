@@ -35,6 +35,20 @@ MemChunk_t	**FreeChunks;	/* lists of free chunks, one per node */
 uint32_t	NumGlobalGCs = 0;
 
 
+/* Heap sizing parameters.  The normal to-space size is computed as
+ *
+ *	BaseHeapSzB + NumVProcs * PerVprocHeapSzb
+ *
+ * but if the amount of live data after a global GC is greater than BaseHeapSzB,
+ * then we use
+ *
+ *	(HeapScaleNum * ToSpaceSz) / HeapScaleDenom + NumVProcs * PerVprocHeapSzb
+ */
+Addr_t		HeapScaleNum = 5;
+Addr_t		HeapScaleDenom = 4;
+Addr_t		BaseHeapSzB = BASE_GLOBAL_HEAP_SZB;
+Addr_t		PerVprocHeapSzb = PER_VPROC_HEAP_SZB;
+
 /* The BIBOP maps addresses to the memory chunks containing the address.
  * It is used by the global collector and access to it is protected by
  * the HeapLock.
@@ -70,14 +84,25 @@ static FILE     *StatsOutFile = 0;      // stats output file
 void HeapInit (Options_t *opts)
 {
 #ifndef FLAT_HEAP
-    MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, VP_HEAP_SZB/2);
+    MaxNurserySzB = GetSizeConfig ("MAX_NURSERY_SZB", ONE_K, VP_HEAP_SZB/2);
+    MaxNurserySzB = GetSizeOpt (opts, "-nursery", ONE_K, MaxNurserySzB);
     if (MaxNurserySzB < MIN_NURSERY_SZB)
 	MaxNurserySzB = MIN_NURSERY_SZB;
 
-    MajorGCThreshold = VP_HEAP_SZB / 10;
+    MajorGCThreshold = GetSizeConfig ("MAJOR_GC_THRESHOLD", ONE_K, VP_HEAP_SZB / 10);
     if (MajorGCThreshold < MIN_NURSERY_SZB)
 	MajorGCThreshold = MIN_NURSERY_SZB;
 #endif
+
+  /* global-heap sizing parameters */
+    BaseHeapSzB = GetSizeConfig ("BASE_GLOBAL_HEAP_SZB", ONE_MEG, BASE_GLOBAL_HEAP_SZB);
+    PerVprocHeapSzb = GetSizeConfig ("PER_VPROC_HEAP_SZB", ONE_MEG, PER_VPROC_HEAP_SZB);
+    HeapScaleNum = GetIntConfig ("GLOBAL_TOSPACE_SCALE_NUMERATOR", 5);
+    HeapScaleDenom = GetIntConfig ("GLOBAL_TOSPACE_SCALE_DENOMINATOR", 4);
+    if (HeapScaleNum < HeapScaleDenom) {
+	Die ("base global tospace scale %d/%d <= 1\n",
+	    (int)HeapScaleNum, (int)HeapScaleDenom);
+    }
 
 #ifndef NO_GC_STATS
     ParseGCStatsOptions (opts);
@@ -90,8 +115,11 @@ void HeapInit (Options_t *opts)
     debug = GetStringOpt (opts, "-heapcheck", DebugFlg ? HEAP_DEBUG_DEFAULT : "none");
     HeapCheck = ParseGCLevel (debug);
 
-    if (GCDebug > GC_DEBUG_NONE)
-	SayDebug("HeapInit: max nursery = %d, threshold = %d\n", (int)MaxNurserySzB, (int)MajorGCThreshold);
+    if (GCDebug > GC_DEBUG_NONE) {
+	SayDebug("HeapInit: BaseHeapSzB = %lld\n", (long long)BaseHeapSzB);
+	SayDebug("          PerVprocHeapSzb = %lld\n", (long long)PerVprocHeapSzb);
+	SayDebug("          Tospace scale = %d/%d\n", (int)HeapScaleNum, (int)HeapScaleDenom);
+    }
 #endif
 
   /* initialize the BIBOP */
@@ -111,7 +139,7 @@ void HeapInit (Options_t *opts)
     GlobalVM = 0;
     FreeVM = 0;
     ToSpaceSz = 0;
-    ToSpaceLimit = BASE_GLOBAL_HEAP_SZB; // we don't know the number of vprocs yet!
+    ToSpaceLimit = BaseHeapSzB; // we don't know the number of vprocs yet!
     TotalVM = 0;
     FromSpaceChunks = (MemChunk_t *)0;
     FreeChunks = NEWVEC(MemChunk_t *, NumHWNodes);
@@ -294,7 +322,15 @@ static void ParseGCStatsOptions (Options_t *opts)
 	if (strstr(report, "all") != 0) DetailStatsFlg = true;
     }
 
+    const char *outFileOpt = GetStringEqOpt (opts, "-gcstatsfile", "summary");
+
     StatsOutFile = stderr;
+    /*
+    if (outFileOpt != 0) {
+	if ((StatsOutFile = fopen (outFileOpt, "w")) == 0)
+	    StatsOutFile = stderr;
+    }
+    */
 
 }
 
@@ -521,7 +557,6 @@ void ReportGCStats ()
     if (outF != stderr) {
 	fclose (outF);
     }
-
 }
 
 #endif
