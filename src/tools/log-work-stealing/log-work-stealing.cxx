@@ -119,6 +119,7 @@ int main (int argc, const char **argv)
     int VProcNumFailedStealAttempts[Hdr->nVProcs];
 
     {
+	bool IsTerminated = false;
 	for (int i = 0; i < Hdr->nVProcs; i++) {
 	    VProcNumSteals[i] = 0;
 	    VProcNumFailedStealAttempts[i] = 0;
@@ -131,6 +132,8 @@ int main (int argc, const char **argv)
 	    }
 	    else if (evt->desc->Id() == WSThiefUnsuccessfulEvt) {
 		VProcNumFailedStealAttempts[evt->vpId]++;
+	    } else if (evt->desc->Id() == WSTerminateEvt) {
+		break;
 	    }
 	}
     }
@@ -139,6 +142,7 @@ int main (int argc, const char **argv)
     uint64_t AvgTimeStealing[Hdr->nVProcs];
     uint64_t MaxTimeStealing[Hdr->nVProcs];
     {
+	bool IsTerminated = false;
 	uint64_t VProcTimestamp[Hdr->nVProcs];          // timestamp of immediately preceding, relevant event 
 	uint64_t TotalTimeStealing[Hdr->nVProcs];       // total time spent stealing so far
 	uint64_t NumStealAttempts[Hdr->nVProcs];
@@ -152,9 +156,15 @@ int main (int argc, const char **argv)
 	}
 
 	for (int i = 0; i < NumEvents; i++) {
+	    if (IsTerminated)
+		break;
+
 	    Event *evt = &(Events[i]);
 	    int evtId = evt->desc->Id();
 	    switch (evtId) {
+	    case WSTerminateEvt:
+		IsTerminated = true;
+		break;
 	    case WSThiefSendEvt:
 		VProcTimestamp[evt->vpId] = evt->timestamp;
 		break;
@@ -184,9 +194,11 @@ int main (int argc, const char **argv)
     uint64_t VProcTimeBusy[Hdr->nVProcs];
     uint64_t VProcTimeIdle[Hdr->nVProcs];
     {
+	bool     IsTerminated = false;            // true, if the computation has finished
 	bool     VProcIdle[Hdr->nVProcs];         // true, if the vproc is currently idle
 	bool     VProcTerminated[Hdr->nVProcs];   // true, if the vproc terminated cleanly
 	uint64_t VProcTimestamp[Hdr->nVProcs];    // timestamp of immediately preceding event
+	uint32_t LastEvent = 0;             // index of the last event to be measured during the execution of work stealing
 	
 	for (int i = 0; i < Hdr->nVProcs; i++) {
 	    VProcIdle[i] = true;
@@ -197,6 +209,10 @@ int main (int argc, const char **argv)
 	}
 	
 	for (int i = 0; i < NumEvents; i++) {
+	    LastEvent = i;
+	    if (IsTerminated)
+		break;
+
 	    Event *evt = &(Events[i]);
 	    int evtId = evt->desc->Id();
 	    switch (evtId) {
@@ -253,7 +269,8 @@ int main (int argc, const char **argv)
 	}
 
       /* account for any remaining time in case the vproc did not shut down explicitly */
-	Event *lastEvt = &(Events[NumEvents-1]);
+	Event *lastEvt = &(Events[LastEvent]);
+	/*
 	for (int i = 0; i < Hdr->nVProcs; i++) {
 	    if (!VProcTerminated[i]) {
 		if (VProcIdle[i])
@@ -262,11 +279,13 @@ int main (int argc, const char **argv)
 		    VProcTimeBusy[i] += lastEvt->timestamp - VProcTimestamp[i];
 	    }
 	}
+	*/
     }
 
   /** measure the time spent sleeping **/
     uint64_t VProcTimeSleeping[Hdr->nVProcs];
     {
+	bool     IsTerminated = false;
 	bool     VProcSleeping[Hdr->nVProcs];           // true, if the vproc
 	bool     VProcTerminated[Hdr->nVProcs];         // true, if the vproc terminated cleanly
 	uint64_t VProcTimestamp[Hdr->nVProcs];          // timestamp of immediately preceding, relevant event 
@@ -279,6 +298,9 @@ int main (int argc, const char **argv)
 	}
 
 	for (int i = 0; i < NumEvents; i++) {
+	    if (IsTerminated)
+		break;
+
 	    Event *evt = &(Events[i]);
 	    int evtId = evt->desc->Id();
 	    switch (evtId) {
@@ -292,6 +314,7 @@ int main (int argc, const char **argv)
 		{
 		    if (VProcSleeping[evt->vpId])
 			VProcTimeSleeping[evt->vpId] += evt->timestamp - VProcTimestamp[evt->vpId];
+		    IsTerminated = true;
 		    VProcTerminated[evt->vpId] = true;
 		}
 		break;
