@@ -35,6 +35,20 @@ MemChunk_t	**FreeChunks;	/* lists of free chunks, one per node */
 uint32_t	NumGlobalGCs = 0;
 
 
+/* Heap sizing parameters.  The normal to-space size is computed as
+ *
+ *	BaseHeapSzB + NumVProcs * PerVprocHeapSzb
+ *
+ * but if the amount of live data after a global GC is greater than BaseHeapSzB,
+ * then we use
+ *
+ *	(HeapScaleNum * ToSpaceSz) / HeapScaleDenom + NumVProcs * PerVprocHeapSzb
+ */
+Addr_t		HeapScaleNum = 5;
+Addr_t		HeapScaleDenom = 4;
+Addr_t		BaseHeapSzB = BASE_GLOBAL_HEAP_SZB;
+Addr_t		PerVprocHeapSzb = PER_VPROC_HEAP_SZB;
+
 /* The BIBOP maps addresses to the memory chunks containing the address.
  * It is used by the global collector and access to it is protected by
  * the HeapLock.
@@ -62,6 +76,9 @@ static bool	DetailStatsFlg = false;	// true for detailed report (per-vproc)
 static bool	CSVStatsFlg = false;	// true for CSV-format report
 static bool	SMLStatsFlg = false;	// true for SML-format report
 static FILE     *StatsOutFile = 0;      // stats output file
+
+Addr_t		MaxLiveData = 0;	// the high-water mark for live data (recorded
+					// at global GCs)
 #endif
 
 /* HeapInit:

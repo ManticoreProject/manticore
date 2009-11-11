@@ -263,10 +263,9 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 /* NOTE: at some point we may want to release memory back to the OS */
 	    GlobalGCInProgress = false;
 	MutexUnlock (&HeapLock);
-      // recalculate the FromSpaceLimit
-	Addr_t baseLimit = ((Addr_t)BASE_GLOBAL_HEAP_SZB < ToSpaceSz)
-	    ? ToSpaceSz
-	    : BASE_GLOBAL_HEAP_SZB;
+      // recalculate the ToSpaceLimit
+	Addr_t baseLimit = (HeapScaleNum * ToSpaceSz) / HeapScaleDenom;
+	baseLimit = (baseLimit < ToSpaceSz) ? ToSpaceSz : baseLimit;
 	ToSpaceLimit = baseLimit + (Addr_t)NumVProcs * (Addr_t)PER_VPROC_HEAP_SZB;
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_GLOBAL)

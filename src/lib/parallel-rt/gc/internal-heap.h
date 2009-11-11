@@ -40,26 +40,31 @@ struct struct_chunk {
 
 /********** Global heap **********/
 
-/* global-heap-size constants */
+/* default global-heap-size constants */
 #ifndef NDEBUG
 #  define BASE_GLOBAL_HEAP_SZB	HEAP_CHUNK_SZB
 #  define PER_VPROC_HEAP_SZB	HEAP_CHUNK_SZB
 #else
-#  define BASE_GLOBAL_HEAP_SZB	(512 * ONE_MEG)
-#  define PER_VPROC_HEAP_SZB	(256 * ONE_MEG)
+#  define BASE_GLOBAL_HEAP_SZB	(ONE_K * ONE_MEG)
+#  define PER_VPROC_HEAP_SZB	(32 * ONE_MEG)
 #endif
 
-extern Mutex_t		HeapLock;	/* lock for protecting heap data structures */
-extern Addr_t		GlobalVM;	/* amount of memory allocated to Global heap */
-					/*  (includingfree chunks). */
-extern Addr_t		FreeVM;		/* amount of free memory in free list */
-extern Addr_t		ToSpaceSz;	/* amount of memory being used for to-space */
-extern Addr_t		ToSpaceLimit;	/* if ToSpaceSz exceeds this value, then do a */
-					/* global GC */
-extern Addr_t		TotalVM;	/* total memory used by heap (including vproc */
-					/* local heaps) */
-extern MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
-extern MemChunk_t	**FreeChunks;	/* list of free chunks, one per node */
+extern Mutex_t		HeapLock;	/*!< lock for protecting heap data structures */
+extern Addr_t		GlobalVM;	/*!< amount of memory allocated to Global heap
+					 *  (including free chunks). */
+extern Addr_t		FreeVM;		/*!< amount of free memory in free list */
+extern Addr_t		ToSpaceSz;	/*!< amount of memory being used for to-space */
+extern Addr_t		ToSpaceLimit;	/*!< if ToSpaceSz exceeds this value, then do a
+					 * global GC */
+extern Addr_t		TotalVM;	/*!< total memory used by heap (including vproc
+					 * local heaps) */
+extern MemChunk_t	*FromSpaceChunks; /*!< list of chunks is from-space */
+extern MemChunk_t	**FreeChunks;	/*!< list of free chunks, one per node */
+
+extern Addr_t		HeapScaleNum;
+extern Addr_t		HeapScaleDenom;
+extern Addr_t		BaseHeapSzB;
+extern Addr_t		PerVprocHeapSzb;
 
 extern void UpdateBIBOP (MemChunk_t *chunk);
 
