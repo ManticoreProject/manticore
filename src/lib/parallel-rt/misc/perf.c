@@ -68,14 +68,14 @@ void InitPerfCounters (VProc_t *vp)
     attr.sample_type = PERF_SAMPLE_IP | PERF_SAMPLE_TID;
     attr.freq = 0;
     
-    attr.type = PERF_TYPE_HW_CACHE;
-    attr.config = PERF_COUNT_HW_CACHE_LL | PERF_COUNT_HW_CACHE_OP_READ<<8 | PERF_COUNT_HW_CACHE_RESULT_ACCESS<<16;
+    attr.type = PERF_TYPE_RAW;
+    attr.config = 0xF74E0;
     attr.inherit = 0;
     attr.size = sizeof(struct perf_counter_attr);
 
     vp->refFD = perf_counter_open (&attr, 0, cpu, -1, 0);
 
-    attr.config = PERF_COUNT_HW_CACHE_LL | PERF_COUNT_HW_CACHE_OP_READ<<8 | PERF_COUNT_HW_CACHE_RESULT_MISS<<16;
+    attr.config = 0xF74E1;
     vp->missFD  = perf_counter_open (&attr, 0, cpu, vp->refFD, 0);
 }
 
