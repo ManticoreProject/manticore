@@ -6,7 +6,7 @@
  * The Work Stealing scheduler.
  *)
 
-#define DEFAULT_DEQUE_SZ            128
+#define DEFAULT_DEQUE_SZ            64
 
 #define STEAL_ONE_THREAD            0
 #define STEAL_TWO_THREADS           1
