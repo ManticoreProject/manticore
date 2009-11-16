@@ -15,18 +15,12 @@ ifeq (,$(findstring stats,$(BUILD_OPTIONS)))
   ENABLE_GC_STATS=false
 else
   ENABLE_GC_STATS=true
-  ifeq (@TARGET_OS@,TARGET_LINUX)
-    ENABLE_PERF_COUNTERS=true
-  endif
 endif
 ifeq (,$(findstring logging,$(BUILD_OPTIONS)))
   ENABLE_LOGGING=false
 else
   ENABLE_LOGGING=true
   ENABLE_GC_STATS=true
-  ifeq (@TARGET_OS@,TARGET_LINUX)
-    ENABLE_PERF_COUNTERS=true
-  endif
 endif
 ifeq (,$(findstring debug,$(BUILD_OPTIONS)))
   ENABLE_DEBUG=false

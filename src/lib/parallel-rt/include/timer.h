@@ -70,9 +70,7 @@ STATIC_INLINE void TIMER_Stop (Timer_t *t)
 {
     assert (t->startTime != TIMER_STOPPED);
     t->totalTime += TIMER_Now() - t->startTime;
-#ifndef NDEBUG
     t->startTime = TIMER_STOPPED;
-#endif
 }
 
 /*! \brief return the recorded time in seconds */
