@@ -17,4 +17,6 @@ extern void ParsePerfOptions (Options_t *opts);
 extern void InitPerfCounters (VProc_t *vp);
 extern void ReportPerfCounters ();
 
+extern void PERF_StartGC(PerfCntrs_t *p);
+extern void PERF_StopGC(PerfCntrs_t *p);
 #endif /* !_PERF_H_ */

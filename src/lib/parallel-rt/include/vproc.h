@@ -21,6 +21,16 @@ typedef struct {	    //!< counters for a GC
 } GCCntrs_t;
 #endif
 
+#ifdef ENABLE_PERF_COUNTERS
+typedef struct {	    //!< a perf counter
+    uint64_t	nonGC;	//!< nonGC perf counter value
+    uint64_t	GC;	    //!< perf counter value during gc
+    uint64_t    last;   //!< previous value of the counter at last state change
+    bool        inGC;   //!< true if we're currently recording GC-specific data
+    int         fd;     //!< file descriptor associated with perf counter
+} PerfCntrs_t;
+#endif
+
 /* WARNING:
  * Changing the vproc struct might require modifying ../config/vproc-offsets-ins.c.
  */
@@ -104,8 +114,8 @@ struct struct_vproc {
 
 #endif
 #ifdef ENABLE_PERF_COUNTERS
-    int		missFD;		//!< L2/3 write miss perf counter
-    int		refFD;		//!< L2/3 write perf counter
+    PerfCntrs_t		misses;		//!< L3 read miss perf counter
+    PerfCntrs_t		reads;		//!< L3 read perf counter
 #endif
 };
 

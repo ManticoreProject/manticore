@@ -18,6 +18,7 @@
 #include "gc-inline.h"
 #include "inline-log.h"
 #include "bibop.h"
+#include "perf.h"
 
 extern Addr_t	MajorGCThreshold;	/* when the size of the nursery goes below */
 					/* this limit it is time to do a GC. */
@@ -60,6 +61,11 @@ void MinorGC (VProc_t *vp)
 
 #ifndef NO_GC_STATS
     TIMER_Start(&(vp->minorStats.timer));
+#endif
+
+#ifdef ENABLE_PERF_COUNTERS
+    PERF_StartGC(&vp->misses);
+    PERF_StartGC(&vp->reads);
 #endif
 
     assert (vp->heapBase <= (Addr_t)nextScan);
@@ -155,6 +161,10 @@ void MinorGC (VProc_t *vp)
     vp->minorStats.nBytesAlloc += vp->allocPtr - vp->nurseryBase - WORD_SZB;
     vp->minorStats.nBytesCopied += (Addr_t)nextScan - vp->oldTop;
     TIMER_Stop(&(vp->minorStats.timer));
+#endif
+#ifdef ENABLE_PERF_COUNTERS
+    PERF_StopGC(&vp->misses);
+    PERF_StopGC(&vp->reads);
 #endif
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MINOR) {

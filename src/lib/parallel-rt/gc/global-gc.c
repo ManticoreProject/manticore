@@ -17,6 +17,7 @@
 #include "atomic-ops.h"
 #include "bibop.h"
 #include "inline-log.h"
+#include "perf.h"
 
 static Mutex_t		GCLock;		// Lock that protects the following variables:
 static Cond_t		LeaderWait;	// The leader waits on this for the followers
@@ -118,6 +119,10 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
 #ifndef NO_GC_STATS
     TIMER_Start(&(self->globalStats.timer));
+#endif
+#ifdef ENABLE_PERF_COUNTERS
+    PERF_StartGC(&self->misses);
+    PERF_StartGC(&self->reads);
 #endif
 
     self->globalGCPending = false;
@@ -281,6 +286,10 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 
 #ifndef NO_GC_STATS
     TIMER_Stop(&(self->globalStats.timer));
+#endif
+#ifdef ENABLE_PERF_COUNTERS
+    PERF_StopGC(&self->misses);
+    PERF_StopGC(&self->reads);
 #endif
 
 #ifndef NDEBUG

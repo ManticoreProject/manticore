@@ -7,6 +7,7 @@
 
 #include "manticore-rt.h"
 #include "options.h"
+#include "vproc.h"
 #include "perf.h"
 
 #include <sys/syscall.h>
@@ -26,8 +27,6 @@
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
-
-#include "vproc.h"
 
 static bool	ReportStatsFlg = false;	// true for report enabled
 static bool	CSVStatsFlg = false;	// true for CSV-format report
@@ -55,6 +54,32 @@ void ParsePerfOptions (Options_t *opts)
     }
 }
 
+void initCounter(PerfCntrs_t *p)
+{
+    p->nonGC = 0;
+    p->GC = 0;
+    p->last = 0;
+    p->inGC = false;
+    p->fd = -1;
+}
+
+// Forces a state transition, which updates the counter value
+// members a final time.
+void stopCounter(PerfCntrs_t *p)
+{
+    if (p->inGC)
+    {
+        PERF_StopGC(p);
+    }
+    else
+    {
+        PERF_StartGC(p);
+    }
+
+    close (p->fd);
+    p->fd = -1;
+}
+
 /* InitPerfCounters:
  *
  * Initialize the perf counters for the given vproc.
@@ -73,10 +98,12 @@ void InitPerfCounters (VProc_t *vp)
     attr.inherit = 0;
     attr.size = sizeof(struct perf_counter_attr);
 
-    vp->refFD = perf_counter_open (&attr, 0, cpu, -1, 0);
+    initCounter (&vp->reads);
+    vp->reads.fd = perf_counter_open (&attr, 0, cpu, -1, 0);
 
     attr.config = 0xF74E1;
-    vp->missFD  = perf_counter_open (&attr, 0, cpu, vp->refFD, 0);
+    initCounter (&vp->misses);
+    vp->misses.fd  = perf_counter_open (&attr, 0, cpu, vp->reads.fd, 0);
 }
 
 void ReportPerfCounters () {
@@ -85,18 +112,19 @@ void ReportPerfCounters () {
 
     FILE *StatsOutFile = stderr;
 
+    for (int i = 0;  i < NumVProcs;  i++) {
+        VProc_t *vp = VProcs[i];
+        stopCounter (&vp->reads);
+        stopCounter (&vp->misses);
+    }
+    
     if (CSVStatsFlg) {
         if ((StatsOutFile = fopen ("perf.csv", "w")) == 0)
             StatsOutFile = stderr;
 
         for (int i = 0;  i < NumVProcs;  i++) {
             VProc_t *vp = VProcs[i];
-            unsigned long long count1, count2;
-            
-            read(vp->missFD, &count1, sizeof(count1));
-            read(vp->refFD, &count2, sizeof(count2));
-            
-            fprintf(StatsOutFile, "%d, %d, %d\n", i, count1, count2);
+            fprintf(StatsOutFile, "%d, %d, %d, %d, %d\n", i, vp->misses.nonGC, vp->misses.GC, vp->reads.nonGC, vp->reads.GC);
         }
 
         fclose (StatsOutFile);
@@ -107,16 +135,13 @@ void ReportPerfCounters () {
 
         for (int i = 0;  i < NumVProcs;  i++) {
             VProc_t *vp = VProcs[i];
-            unsigned long long count1, count2;
-            
-            read(vp->missFD, &count1, sizeof(count1));
-            read(vp->refFD, &count2, sizeof(count2));
             
             fprintf (StatsOutFile,
                      "PST{processor=%d, \n\
-                      miss=%d, \n               \
-                      references=%d} ::\n",
-                     i, count1, count2);
+                      nonGCmiss=%d, GCmiss=%d,\n               \
+                      nonGCreferences=%d, GCreferences=%d} ::\n",
+                     i, vp->misses.nonGC, vp->misses.GC,
+                     vp->reads.nonGC, vp->reads.GC);
         }
 
         fprintf (StatsOutFile, "nil\n");
@@ -126,13 +151,36 @@ void ReportPerfCounters () {
     else {
         for (int i = 0;  i < NumVProcs;  i++) {
             VProc_t *vp = VProcs[i];
-            unsigned long long count1, count2;
             
-            read(vp->missFD, &count1, sizeof(count1));
-            read(vp->refFD, &count2, sizeof(count2));
-            
-            fprintf(stderr, "vproc %d, %d misses, %d reads\n", i, count1, count2);
+            fprintf(stderr, "vproc %d, %d nonGC misses, %d GC misses, %d nonGC reads, %d GC reads\n",
+                    i, vp->misses.nonGC, vp->misses.GC, vp->reads.nonGC, vp->reads.GC);
         }
     }
 
+}
+
+void PERF_StartGC(PerfCntrs_t *p)
+{
+    assert(!p->inGC);
+
+    unsigned long long count;
+    read(p->fd, &count, sizeof(count));
+
+    p->nonGC += (count - p->last);
+    p->last = count;
+
+    p->inGC = true;
+}
+
+void PERF_StopGC(PerfCntrs_t *p)
+{
+    assert(p->inGC);
+
+    unsigned long long count;
+    read(p->fd, &count, sizeof(count));
+
+    p->GC += (count - p->last);
+    p->last = count;
+    
+    p->inGC = false;
 }
