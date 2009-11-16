@@ -208,6 +208,7 @@ functor MainFn (
 	  \    -log             build an executable with logging enabled\n\
 	  \    -gcStats         build an executable with GC statistics enabled\n\
 	  \    -debug           build an executable with debugging enabled\n\
+	  \    -perf            build an executable with hw perf counters enabled\n\
 	  \    -sequential      compile a sequential-mode program\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
@@ -295,6 +296,7 @@ functor MainFn (
 		| "-log" => set BasicControl.logging
 		| "-gcstats" => set BasicControl.gcStats
 		| "-debug" => set BasicControl.debug
+		| "-perf" => set BasicControl.perf
 		| _ => badopt ()
 	      (* end case *))
 	  end

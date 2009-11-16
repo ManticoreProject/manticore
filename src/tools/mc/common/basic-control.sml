@@ -35,6 +35,9 @@ structure BasicControl :  sig
   (* enable logging mode *)
     val logging : bool Controls.control
 
+  (* enable hw perf counters mode *)
+    val perf : bool Controls.control
+
   (* maximum leaf size in ropes *)  
     val maxLeafSize : int Controls.control 
 
@@ -178,6 +181,15 @@ structure BasicControl :  sig
 	    default = false
 	  }
 
+  (* enable hw perf counter mode *)
+    val perf : bool Controls.control = Controls.genControl {
+	    name = "perf",
+	    pri = [0, 1, 4],
+	    obscurity = 0,
+	    help = "enable hardware performance counter tracking",
+	    default = false
+	  }
+
     val () = (
 	  ControlRegistry.register topRegistry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.int verbose,
@@ -197,6 +209,10 @@ structure BasicControl :  sig
 	    };
 	  ControlRegistry.register topRegistry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool logging,
+	      envName = NONE
+	    };
+	  ControlRegistry.register topRegistry {
+	      ctl = Controls.stringControl ControlUtil.Cvt.bool perf,
 	      envName = NONE
 	    };
           ControlRegistry.register topRegistry {

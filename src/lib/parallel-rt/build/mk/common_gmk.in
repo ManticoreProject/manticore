@@ -27,9 +27,11 @@ ifeq (,$(findstring debug,$(BUILD_OPTIONS)))
 else
   ENABLE_DEBUG=true
   ENABLE_GC_STATS=true
-  ifeq (@TARGET_OS@,TARGET_LINUX)
-    ENABLE_PERF_COUNTERS=true
-  endif
+endif
+ifeq (,$(findstring perf,$(BUILD_OPTIONS)))
+else
+  ENABLE_GC_STATS=true
+  ENABLE_PERF_COUNTERS=true
 endif
 
 #

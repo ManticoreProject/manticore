@@ -48,12 +48,14 @@ structure BuildExecutable : sig
 	  val gcStats = Controls.get BasicControl.gcStats
 	  val logging = Controls.get BasicControl.logging
 	  val debug = Controls.get BasicControl.debug
-	  val (cFlags, libName) = (case (gcStats, logging, debug)
-		 of (true, false, false) => (cFlags, "mcrt-stats")
-		  | (_, false, false) => (cFlags, "mcrt")
-		  | (_, true, false) => (cFlags, "mcrt-log")
-		  | (_, false, true) => ("-g "^cFlags, "mcrt-debug")
-		  | (_, true, true) => ("-g "^cFlags, "mcrt-log-debug")
+	  val perf = Controls.get BasicControl.perf
+	  val (cFlags, libName) = (case (gcStats, logging, debug, perf)
+		 of (true, false, false, false) => (cFlags, "mcrt-stats")
+		  | (_, false, false, false) => (cFlags, "mcrt")
+		  | (_, true, false, false) => (cFlags, "mcrt-log")
+		  | (_, false, true, false) => ("-g "^cFlags, "mcrt-debug")
+		  | (_, true, true, false) => ("-g "^cFlags, "mcrt-log-debug")
+		  | (_, _, _, true) => (cFlags, "mcrt-perf")
 		(* end case *))
 	  in
 	    cat [ccCmd, cFlags, asmFile, ldFlags libName]
