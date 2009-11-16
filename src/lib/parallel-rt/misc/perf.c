@@ -9,6 +9,7 @@
 #include "options.h"
 #include "vproc.h"
 #include "perf.h"
+#include "topology.h"
 
 #include <sys/syscall.h>
 #include <sys/types.h>
@@ -89,19 +90,23 @@ void InitPerfCounters (VProc_t *vp)
     struct perf_counter_attr attr;
     int cpu = -1;
 
+    int core = (vp->location >> LOC_THREAD_BITS) & ((1 << LOC_CORE_BITS) - 1);
+    int mask = 1<<(core+16);
+
     memset (&attr, 0, sizeof(attr));
     attr.sample_type = PERF_SAMPLE_IP | PERF_SAMPLE_TID;
     attr.freq = 0;
     
     attr.type = PERF_TYPE_RAW;
-    attr.config = 0xF74E0;
+    attr.config = mask | 0x74E0;
+    //fprintf (stderr, "Core %d = %x mask, %x config\n", core, mask, attr.config);
     attr.inherit = 0;
     attr.size = sizeof(struct perf_counter_attr);
 
     initCounter (&vp->reads);
     vp->reads.fd = perf_counter_open (&attr, 0, cpu, -1, 0);
 
-    attr.config = 0xF74E1;
+    attr.config = mask | 0x74E1;
     initCounter (&vp->misses);
     vp->misses.fd  = perf_counter_open (&attr, 0, cpu, vp->reads.fd, 0);
 }
