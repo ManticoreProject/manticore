@@ -82,7 +82,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
 #ifndef NO_GC_STATS
     vp->nMajorGCs++;
-    vp->majorStats.nBytesAlloc += top - heapBase;
+    vp->majorStats.nBytesCollected += top - heapBase;
     TIMER_Start(&(vp->majorStats.timer));
 #endif
 
@@ -187,6 +187,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	nBytesCopied += (tp - base);
     }
     vp->majorStats.nBytesCopied += nBytesCopied + youngSzB;
+    vp->globalStats.nBytesAlloc += nBytesCopied;
     TIMER_Stop(&(vp->majorStats.timer));
 #ifdef ENABLE_PERF_COUNTERS
     PERF_StopGC(&vp->misses);

@@ -28,7 +28,8 @@ static volatile bool	AllReadyForGC;	// true when all vprocs are ready to start G
 static Barrier_t        GCBarrier1;	// for synchronizing on completion of copying phase
 static Barrier_t	GCBarrier2;	// for synchronizing on completion of GC
 
-#ifndef NO_GC_STATS
+#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
+/* summary statistics for global GC */
 static uint64_t		FromSpaceSzb __attribute__((aligned(64)));
 static uint64_t		NBytesCopied __attribute__((aligned(64)));
 #endif
@@ -144,7 +145,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	        SayDebug("[%2d] Initiating global GC %d (%d processors)\n",
 		    self->id, NumGlobalGCs, NumVProcs);
 #endif
-#ifndef NO_GC_STATS
+#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
 	    FromSpaceSzb = 0;
 	    NBytesCopied = 0;
 #endif
@@ -174,7 +175,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    uint32_t used = (p == self->globToSpTl)
 		? (self->globNextW - WORD_SZB) - p->baseAddr
 		: p->usedTop - p->baseAddr;
-	    self->globalStats.nBytesAlloc += used;
+	    self->globalStats.nBytesCollected += used;
 #if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
 	    FetchAndAdd64 (&FromSpaceSzb, (int64_t)used);
 #endif

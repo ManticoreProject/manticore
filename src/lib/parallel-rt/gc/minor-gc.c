@@ -159,7 +159,9 @@ void MinorGC (VProc_t *vp)
 #ifndef NO_GC_STATS
     vp->nMinorGCs++;
     vp->minorStats.nBytesAlloc += vp->allocPtr - vp->nurseryBase - WORD_SZB;
+    vp->minorStats.nBytesCollected = vp->minorStats.nBytesAlloc;
     vp->minorStats.nBytesCopied += (Addr_t)nextScan - vp->oldTop;
+    vp->majorStats.nBytesAlloc += (Addr_t)nextScan - vp->oldTop;
     TIMER_Stop(&(vp->minorStats.timer));
 #endif
 #ifdef ENABLE_PERF_COUNTERS

@@ -1,7 +1,10 @@
 /* alloc.c
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
+ * Routines for allocating heap objects; both in the nursery and in the
+ * global heap.
  */
 
 #include "manticore-rt.h"
@@ -12,7 +15,7 @@
 #include "gc-inline.h"
 #include "gc.h"
 
-/*! \brief allocate a tuple of uniform values.
+/*! \brief allocate a tuple of uniform values in the nursery
  *  \param vp the host vproc
  *  \param nElems the number of tuple elements.
  */
@@ -30,10 +33,11 @@ Value_t AllocUniform (VProc_t *vp, int nElems, ...)
     va_end(ap);
 
     vp->allocPtr += WORD_SZB * (nElems+1);
+
     return PtrToValue(obj);
 }
 
-/*! \brief allocate a non-uniform tuple of values.
+/*! \brief allocate a non-uniform tuple of values in the nursery.
  *  \param vp the host vproc
  *  \param nElems the number of tuple elements.
  */
@@ -58,9 +62,9 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     return PtrToValue(obj);
 }
 
-/*! \brief allocate a vector seeded with some initial values.
+/*! \brief allocate a vector seeded with some initial values in the nursery.
  *  \param vp the host vproc
- *  \param values the values used to initialize the vector
+ *  \param values the list of values used to initialize the vector
  *  \return the allocated and initialized vector
  *  The vector type is defined in basis/sequential/vector.pml.
  */
@@ -82,7 +86,8 @@ Value_t AllocVector (VProc_t *vp, Value_t values)
     return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(i));
 }
 
-/*! \brief allocate a vector seeded with some initial values, which are provided in reverse order.
+/*! \brief allocate a vector seeded with some initial values, which
+ *         are provided in reverse order.
  *  \param vp the host vproc
  *  \param values the values used to initialize the vector
  *  \param len the size of the vector
@@ -109,7 +114,7 @@ Value_t AllocVectorRev (VProc_t *vp, Value_t values, int len)
     return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(i));
 }
 
-/*! \brief allocate a wrapped word value.
+/*! \brief allocate a wrapped word value in the nursery.
  */
 Value_t WrapWord (VProc_t *vp, Word_t i)
 {
@@ -121,7 +126,7 @@ Value_t WrapWord (VProc_t *vp, Word_t i)
     return PtrToValue(obj);
 }
 
-/*! \brief allocate an ML string from a C string.
+/*! \brief allocate an ML string from a C string in the nursery.
  */
 Value_t AllocString (VProc_t *vp, const char *s)
 {
@@ -145,7 +150,10 @@ Value_t AllocString (VProc_t *vp, const char *s)
 
 }
 
-/*! \brief allocate raw-data object that can hold the given number of bytes
+/*! \brief allocate raw-data object  in the nursery
+ *  \param vp the host vproc
+ *  \param len the number of bytes to allocate
+ *  \return the allocated heap object
  */
 Value_t AllocRaw (VProc_t *vp, uint32_t len)
 {
@@ -156,24 +164,6 @@ Value_t AllocRaw (VProc_t *vp, uint32_t len)
 
     return PtrToValue(obj);
 
-}
-
-/* FIXME: this function does not belong here! */
-void SayValue (Value_t v)
-{
-    if (ValueIsBoxed(v) && (v != 0)) {
-	Value_t *obj = (Value_t *)ValueToPtr(v);
-	Word_t hdr = ((Word_t *)obj)[-1];
-	int n = GetLength(hdr);
-	Say("[");
-	for (int i = 0;  i < n; i++) {
-	    if (i != 0) Say(", ");
-	    Say("%p", ValueToPtr(obj[i]));
-	}
-	Say ("]");
-    }
-    else
-	Say("%ld", ValueToWord(v));
 }
 
 /*! \brief allocate a tuple of uniform values on the global heap.
@@ -206,6 +196,11 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
     }
 
     vp->globNextW += WORD_SZB * (nElems+1);
+
+#ifndef NO_GC_STATS
+    vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+#endif
+
     return PtrToValue(obj);
 }
 
@@ -243,6 +238,11 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
     }
 
     vp->globNextW += WORD_SZB * (nElems+1);
+
+#ifndef NO_GC_STATS
+    vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+#endif
+
     return PtrToValue(obj);
 }
 
@@ -268,6 +268,11 @@ Value_t GlobalAllocArray (VProc_t *vp, int nElems, Value_t elt)
     }
 
     vp->globNextW += WORD_SZB * (nElems+1);
+
+#ifndef NO_GC_STATS
+    vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+#endif
+
     return PtrToValue(obj);
 }
 
@@ -295,6 +300,11 @@ Value_t GlobalAllocFloatArray (VProc_t *vp, int nElems, float elt)
     }
 
     vp->globNextW += WORD_SZB * (nWords+1);
+
+#ifndef NO_GC_STATS
+    vp->globalStats.nBytesAlloc += WORD_SZB * (nWords+1);
+#endif
+
     return PtrToValue(obj);
 }
 
@@ -322,6 +332,11 @@ Value_t GlobalAllocIntArray (VProc_t *vp, int nElems, int32_t elt)
     }
 
     vp->globNextW += WORD_SZB * (nWords+1);
+
+#ifndef NO_GC_STATS
+    vp->globalStats.nBytesAlloc += WORD_SZB * (nWords+1);
+#endif
+
     return PtrToValue(obj);
 }
 
@@ -349,5 +364,28 @@ Value_t GlobalAllocWord64Array (VProc_t *vp, int nElems, uint64_t elt)
     }
 
     vp->globNextW += WORD_SZB * (nWords+1);
+
+#ifndef NO_GC_STATS
+    vp->globalStats.nBytesAlloc += WORD_SZB * (nWords+1);
+#endif
+
     return PtrToValue(obj);
+}
+
+/* FIXME: this function does not belong here! */
+void SayValue (Value_t v)
+{
+    if (ValueIsBoxed(v) && (v != 0)) {
+	Value_t *obj = (Value_t *)ValueToPtr(v);
+	Word_t hdr = ((Word_t *)obj)[-1];
+	int n = GetLength(hdr);
+	Say("[");
+	for (int i = 0;  i < n; i++) {
+	    if (i != 0) Say(", ");
+	    Say("%p", ValueToPtr(obj[i]));
+	}
+	Say ("]");
+    }
+    else
+	Say("%ld", ValueToWord(v));
 }
