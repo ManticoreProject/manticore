@@ -25,10 +25,9 @@
 #elif defined(HAVE_CLOCK_GETTIME)
 #  include <time.h>
 #else
+#  include <time.h>
 #  include <sys/time.h>
 #endif
-#include <time.h>
-#include <sys/time.h>
 
 /*! \brief a timer */
 typedef struct {
@@ -55,7 +54,9 @@ STATIC_INLINE uint64_t TIMER_Now ()
 /*! \brief initialize a timer */
 STATIC_INLINE void TIMER_Init (Timer_t *t)
 {
+#ifndef NDEBUG
     t->startTime = TIMER_STOPPED;
+#endif
     t->totalTime = 0;
 }
 

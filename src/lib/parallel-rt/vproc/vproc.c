@@ -269,12 +269,15 @@ void *NewVProc (void *arg)
     vproc->nMinorGCs = 0;
     vproc->nMajorGCs = 0;
     vproc->minorStats.nBytesAlloc = 0;
+    vproc->minorStats.nBytesCollected = 0;
     vproc->minorStats.nBytesCopied = 0;
     TIMER_Init (&(vproc->minorStats.timer));
     vproc->majorStats.nBytesAlloc = 0;
+    vproc->majorStats.nBytesCollected = 0;
     vproc->majorStats.nBytesCopied = 0;
     TIMER_Init (&(vproc->majorStats.timer));
     vproc->globalStats.nBytesAlloc = 0;
+    vproc->globalStats.nBytesCollected = 0;
     vproc->globalStats.nBytesCopied = 0;
     TIMER_Init (&(vproc->globalStats.timer));
     vproc->nBytesPromoted = 0;
