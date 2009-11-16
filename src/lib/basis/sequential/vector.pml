@@ -13,15 +13,15 @@ structure Vector =
       typedef vector = [ (* array data *) ![any], (* number of elements *) int ];
 
       extern void* AllocVector (void*, void*) __attribute__((alloc));
-      extern void* AllocVectorRev (void*, void*, int) __attribute__((alloc));
+      extern void* AllocVectorRev (void*, int, void*) __attribute__((alloc));
 
-      define (* inline *) @from-list (values : List.list / exh : exh) : vector =
+      define inline @from-list (values : List.list / exh : exh) : vector =
 	  let vec : vector = ccall AllocVector (host_vproc, values)
 	  return (vec)
 	;
 
-      define (* inline *) @from-list-rev (arg : [List.list, ml_int] / exh : exh) : vector =
-	  let vec : vector = ccall AllocVector (host_vproc, #0(arg), #1(arg))
+      define inline @from-list-rev (arg : [List.list, ml_int] / exh : exh) : vector =
+	  let vec : vector = ccall AllocVectorRev (host_vproc, unwrap(#1(arg)), #0(arg))
 	  return (vec)
 	;
 
