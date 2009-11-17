@@ -211,6 +211,11 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
     }
 
     vp->globNextW += WORD_SZB * (nElems+1);
+
+#ifndef NO_GC_STATS
+        vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+#endif
+
     return PtrToValue(obj);
 }
 
@@ -248,6 +253,11 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
     }
 
     vp->globNextW += WORD_SZB * (nElems+1);
+
+#ifndef NO_GC_STATS
+        vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+#endif
+
     return PtrToValue(obj);
 }
 
@@ -273,6 +283,10 @@ Value_t GlobalAllocArray (VProc_t *vp, int nElems, Value_t elt)
     }
 
     vp->globNextW += WORD_SZB * (nElems+1);
+#ifndef NO_GC_STATS
+        vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+#endif
+
     return PtrToValue(obj);
 }
 
@@ -300,6 +314,11 @@ Value_t GlobalAllocFloatArray (VProc_t *vp, int nElems, float elt)
     }
 
     vp->globNextW += WORD_SZB * (nWords+1);
+
+#ifndef NO_GC_STATS
+        vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+#endif
+
     return PtrToValue(obj);
 }
 
@@ -327,6 +346,11 @@ Value_t GlobalAllocIntArray (VProc_t *vp, int nElems, int32_t elt)
     }
 
     vp->globNextW += WORD_SZB * (nWords+1);
+
+#ifndef NO_GC_STATS
+        vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+#endif
+
     return PtrToValue(obj);
 }
 
@@ -354,5 +378,10 @@ Value_t GlobalAllocWord64Array (VProc_t *vp, int nElems, uint64_t elt)
     }
 
     vp->globNextW += WORD_SZB * (nWords+1);
+
+#ifndef NO_GC_STATS
+        vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+#endif
+
     return PtrToValue(obj);
 }

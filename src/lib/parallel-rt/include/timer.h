@@ -54,7 +54,9 @@ STATIC_INLINE uint64_t TIMER_Now ()
 /*! \brief initialize a timer */
 STATIC_INLINE void TIMER_Init (Timer_t *t)
 {
+#ifndef NDEBUG
     t->startTime = TIMER_STOPPED;
+#endif
     t->totalTime = 0;
 }
 

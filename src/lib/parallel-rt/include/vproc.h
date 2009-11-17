@@ -15,8 +15,15 @@
 #ifndef NO_GC_STATS
 typedef struct {	    //!< counters for a GC
     uint64_t	nBytesAlloc;	//!< number of bytes allocated in the region being
-				//!  collected
-    uint64_t	nBytesCopied;	//!< number of live bytes copied in the GC
+				//!  collected; this region is defined as follows:
+				//!    - minorGC --- nursery part of local heap
+				//!    - majorGC --- old part of local heap
+				//!    - globalGC --- global heap
+    uint64_t	nBytesCollected;//!< the number of byte (either allocated or
+				//!  copied by a previous GC) in the region
+				//!  being collected.
+    uint64_t	nBytesCopied;	//!< number of live bytes copied by the GC from
+				//!  the region being collected.
     Timer_t	timer;		//!< used to track time spent in GC
 } GCCntrs_t;
 #endif

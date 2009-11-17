@@ -377,6 +377,7 @@ STATIC_INLINE void PrintTime (FILE *f, double t)
 
 typedef struct {
     uint64_t	nBytesAlloc;
+    uint64_t	nBytesCollected;
     uint64_t	nBytesCopied;
     double	time;
 } GCSummary_t;
@@ -395,9 +396,9 @@ void ReportGCStats ()
 //    uint32_t nPromotes = 0;
     uint32_t nMinorGCs = 0;
     uint32_t nMajorGCs = 0;
-    GCSummary_t totMinor = { 0, 0, 0.0 };
+    GCSummary_t totMinor = { 0, 0, 0, 0.0 };
 //    GCSummary_t totMajor = { 0, 0, 0.0 };
-    GCSummary_t totGlobal = { 0, 0, 0.0 };
+    GCSummary_t totGlobal = { 0, 0, 0, 0.0 };
 //    uint64_t nBytesPromoted = 0;
 //    double totPromoteTime = 0.0;
     for (int i = 0;  i < NumVProcs;  i++) {
@@ -411,13 +412,15 @@ void ReportGCStats ()
 	nMinorGCs += vp->nMinorGCs;
 	nMajorGCs += vp->nMajorGCs;
 	totMinor.nBytesAlloc += vp->minorStats.nBytesAlloc;
-	totMinor.nBytesCopied += vp->minorStats.nBytesCopied;
+	totMinor.nBytesCollected += vp->minorStats.nBytesCollected;
+
 //	totMinor.time += TIMER_GetTime (&(vp->minorStats.timer));
 //	totMajor.nBytesAlloc += vp->majorStats.nBytesAlloc;
 //	totMajor.nBytesCopied += vp->majorStats.nBytesCopied;
 //	totMajor.time += TIMER_GetTime (&(vp->majorStats.timer));
 	totGlobal.nBytesAlloc += vp->globalStats.nBytesAlloc;
 	totGlobal.nBytesCopied += vp->globalStats.nBytesCopied;
+	totGlobal.nBytesCollected += vp->globalStats.nBytesCollected;
 	totGlobal.time += TIMER_GetTime (&(vp->globalStats.timer));
 //	nBytesPromoted += vp->nBytesPromoted;
 //	totPromoteTime += TIMER_GetTime (&(vp->promoteTimer));
@@ -455,19 +458,21 @@ void ReportGCStats ()
 	    }
 	    else if (SMLStatsFlg) {
 	      // standard-ml record format
-		fprintf (outF,
-		    "GCST{processor=%d, \n\
-                      time=%f, \n\
-                      minor=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n\
-                      major=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n\
-                      promotion={n_promotions=%d, prom_bytes=%lld:Int64.int, mean_prom_time_sec=%f}, \n\
-                      global=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}} ::\n",
-		    i,
-		    TIMER_GetTime (&(vp->timer)),
-		    vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCopied, TIMER_GetTime (&(vp->minorStats.timer)),
-			 /*vp->nMajorGCs*/ 0, /*vp->majorStats.nBytesAlloc*/ 0ul, /*vp->majorStats.nBytesCopied*/ 0ul, /*TIMER_GetTime (&(vp->majorStats.timer))*/ 0.0,
-			 /*vp->nPromotes*/ 0, /*vp->nBytesPromoted*/ 0ul, /*TIMER_GetTime (&(vp->promoteTimer))*/ 0.0,
-		    NumGlobalGCs, vp->globalStats.nBytesAlloc, vp->globalStats.nBytesCopied, TIMER_GetTime (&(vp->globalStats.timer)));
+	    fprintf (outF,
+		"GCST{\n"
+		"    processor=%d,\n"
+		"    time=%f,\n"
+		"    minor=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f},\n"
+		"    major=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f},\n"
+		"    promotion={num=%d, bytes=%lld, time=%f}, \n"
+		"    global=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f}\n"
+		"  } ::\n",
+		i,
+		TIMER_GetTime (&(vp->timer)),
+		vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCollected, vp->minorStats.nBytesCopied, TIMER_GetTime (&(vp->minorStats.timer)),
+		     /*vp->nMajorGCs*/ 0, /*vp->majorStats.nBytesAlloc*/ 0ul, 0ul, /*vp->majorStats.nBytesCopied*/ 0ul, /*TIMER_GetTime (&(vp->majorStats.timer))*/ 0.0,
+		     /*vp->nPromotes*/ 0, /*vp->nBytesPromoted*/ 0ul, /*TIMER_GetTime (&(vp->promoteTimer))*/ 0.0,
+		NumGlobalGCs, vp->globalStats.nBytesAlloc, vp->globalStats.nBytesCollected, vp->globalStats.nBytesCopied, TIMER_GetTime (&(vp->globalStats.timer)));
 	    }
 	    else {
 		fprintf (outF, "p%02d", i);
@@ -506,20 +511,23 @@ void ReportGCStats ()
 
     } else if (SMLStatsFlg) {
       // report the summary stats in standard-ml record format
+	VProc_t *vp = VProcs[0];
 	double timeScale = 1.0 / (double)NumVProcs;
-	fprintf (outF,
-		 "GCST{processor=%d, \n\
-                   time=%f, \n\
-                   minor=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n \
-                   major=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}, \n \
-                   promotion={n_promotions=%d, prom_bytes=%lld:Int64.int, mean_prom_time_sec=%f}, \n \
-                   global=GC{n_collections=%d, alloc_bytes=%lld:Int64.int, copied_bytes=%lld:Int64.int, time_coll_sec=%f}} :: nil\n",
-		 0,
-		 maxTime,
-		 nMinorGCs, totMinor.nBytesAlloc, totMinor.nBytesCopied, /*timeScale * totMinor.time*/ 0.0,
-		 /*nMajorGCs*/ 0, /*totMajor.nBytesAlloc*/ 0ul, /*totMajor.nBytesCopied*/ 0ul, /*timeScale * totMajor.time*/ 0.0,
-		 /*nPromotes*/ 0, /*nBytesPromoted*/ 0ul, /*timeScale * totPromoteTime*/ 0.0,
-		 NumGlobalGCs, totGlobal.nBytesAlloc, totGlobal.nBytesCopied, timeScale * totGlobal.time);
+	    fprintf (outF,
+		"GCST{\n"
+		"    processor=%d,\n"
+		"    time=%f,\n"
+		"    minor=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f},\n"
+		"    major=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f},\n"
+		"    promotion={num=%d, bytes=%lld, time=%f}, \n"
+		"    global=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f}\n"
+		"  } :: nil\n",
+		0,
+		TIMER_GetTime (&(vp->timer)),
+		vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCollected, vp->minorStats.nBytesCopied, TIMER_GetTime (&(vp->minorStats.timer)),
+		     /*nMajorGCs*/ 0, /*totMajor.nBytesAlloc*/ 0ul, 0ul, /*totMajor.nBytesCopied*/ 0ul, /*timeScale * totMajor.time*/ 0.0,
+		     /*nPromotes*/ 0, /*nBytesPromoted*/ 0ul, /*timeScale * totPromoteTime*/ 0.0,
+		NumGlobalGCs, vp->globalStats.nBytesAlloc, vp->globalStats.nBytesCollected, vp->globalStats.nBytesCopied, TIMER_GetTime (&(vp->globalStats.timer)));
     }
 
   // report the summary stats
