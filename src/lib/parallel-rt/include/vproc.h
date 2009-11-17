@@ -35,6 +35,7 @@ typedef struct {	    //!< a perf counter
     uint64_t    last;   //!< previous value of the counter at last state change
     bool        inGC;   //!< true if we're currently recording GC-specific data
     int         fd;     //!< file descriptor associated with perf counter
+    bool        enabled;//!< true if perf counters are enabled for this vproc
 } PerfCntrs_t;
 #endif
 

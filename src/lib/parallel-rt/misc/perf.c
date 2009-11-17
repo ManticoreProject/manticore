@@ -68,6 +68,9 @@ void initCounter(PerfCntrs_t *p)
 // members a final time.
 void stopCounter(PerfCntrs_t *p)
 {
+    if (!p->enabled)
+        return;
+
     if (p->inGC)
     {
         PERF_StopGC(p);
@@ -90,15 +93,23 @@ void InitPerfCounters (VProc_t *vp)
     struct perf_counter_attr attr;
     int cpu = -1;
 
-    int core = (vp->location >> LOC_THREAD_BITS) & ((1 << LOC_CORE_BITS) - 1);
-    int mask = 1<<(core+16);
+    if (vp->location == Location(LocationNode(vp->location), 0, 0)) {
+        vp->reads.enabled = true;
+        vp->misses.enabled = true;
+    } else {
+        vp->reads.enabled = false;
+        vp->misses.enabled = false;
+        return;
+    }        
 
+    int core = (vp->location >> LOC_THREAD_BITS) & ((1 << LOC_CORE_BITS) - 1);
+    
     memset (&attr, 0, sizeof(attr));
     attr.sample_type = PERF_SAMPLE_IP | PERF_SAMPLE_TID;
     attr.freq = 0;
     
     attr.type = PERF_TYPE_RAW;
-    attr.config = mask | 0x74E0;
+    attr.config = 0xF74E0;
     //fprintf (stderr, "Core %d = %x mask, %x config\n", core, mask, attr.config);
     attr.inherit = 0;
     attr.size = sizeof(struct perf_counter_attr);
@@ -106,7 +117,7 @@ void InitPerfCounters (VProc_t *vp)
     initCounter (&vp->reads);
     vp->reads.fd = perf_counter_open (&attr, 0, cpu, -1, 0);
 
-    attr.config = mask | 0x74E1;
+    attr.config = 0xF74E1;
     initCounter (&vp->misses);
     vp->misses.fd  = perf_counter_open (&attr, 0, cpu, vp->reads.fd, 0);
 }
@@ -129,7 +140,8 @@ void ReportPerfCounters () {
 
         for (int i = 0;  i < NumVProcs;  i++) {
             VProc_t *vp = VProcs[i];
-            fprintf(StatsOutFile, "%d, %d, %d, %d, %d\n", i, vp->misses.nonGC, vp->misses.GC, vp->reads.nonGC, vp->reads.GC);
+            if (vp->misses.enabled)
+                fprintf(StatsOutFile, "%d, %d, %d, %d, %d\n", i, vp->misses.nonGC, vp->misses.GC, vp->reads.nonGC, vp->reads.GC);
         }
 
         fclose (StatsOutFile);
@@ -141,12 +153,13 @@ void ReportPerfCounters () {
         for (int i = 0;  i < NumVProcs;  i++) {
             VProc_t *vp = VProcs[i];
             
-            fprintf (StatsOutFile,
-                     "PST{processor=%d, \n\
-                      nonGCmiss=%d, GCmiss=%d,\n               \
+            if (vp->misses.enabled)
+                fprintf (StatsOutFile,
+                         "PST{processor=%d, \n\
+                      nonGCmiss=%d, GCmiss=%d,\n                    \
                       nonGCreferences=%d, GCreferences=%d} ::\n",
-                     i, vp->misses.nonGC, vp->misses.GC,
-                     vp->reads.nonGC, vp->reads.GC);
+                         i, vp->misses.nonGC, vp->misses.GC,
+                         vp->reads.nonGC, vp->reads.GC);
         }
 
         fprintf (StatsOutFile, "nil\n");
@@ -157,8 +170,9 @@ void ReportPerfCounters () {
         for (int i = 0;  i < NumVProcs;  i++) {
             VProc_t *vp = VProcs[i];
             
-            fprintf(stderr, "vproc %d, %d nonGC misses, %d GC misses, %d nonGC reads, %d GC reads\n",
-                    i, vp->misses.nonGC, vp->misses.GC, vp->reads.nonGC, vp->reads.GC);
+            if (vp->misses.enabled)
+                fprintf(stderr, "vproc %d, %d nonGC misses, %d GC misses, %d nonGC reads, %d GC reads\n",
+                        i, vp->misses.nonGC, vp->misses.GC, vp->reads.nonGC, vp->reads.GC);
         }
     }
 
@@ -166,6 +180,9 @@ void ReportPerfCounters () {
 
 void PERF_StartGC(PerfCntrs_t *p)
 {
+    if (!p->enabled)
+        return;
+
     assert(!p->inGC);
 
     unsigned long long count;
@@ -179,6 +196,9 @@ void PERF_StartGC(PerfCntrs_t *p)
 
 void PERF_StopGC(PerfCntrs_t *p)
 {
+    if (!p->enabled)
+        return;
+
     assert(p->inGC);
 
     unsigned long long count;

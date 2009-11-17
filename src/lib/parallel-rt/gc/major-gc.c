@@ -22,7 +22,6 @@
 #ifndef NDEBUG
 #include "bibop.h"
 #endif
-#include "perf.h"
 
 static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
@@ -84,11 +83,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     vp->nMajorGCs++;
     vp->majorStats.nBytesCollected += top - heapBase;
     TIMER_Start(&(vp->majorStats.timer));
-#endif
-
-#ifdef ENABLE_PERF_COUNTERS
-    PERF_StartGC(&vp->misses);
-    PERF_StartGC(&vp->reads);
 #endif
 
     assert (heapBase <= vp->oldTop);
@@ -189,10 +183,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     vp->majorStats.nBytesCopied += nBytesCopied + youngSzB;
     vp->globalStats.nBytesAlloc += nBytesCopied;
     TIMER_Stop(&(vp->majorStats.timer));
-#ifdef ENABLE_PERF_COUNTERS
-    PERF_StopGC(&vp->misses);
-    PERF_StopGC(&vp->reads);
-#endif
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MAJOR) {
 	SayDebug("[%2d] Major GC finished: %d/%lld old bytes copied\n",
@@ -232,10 +222,6 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
     TIMER_Start(&(vp->promoteTimer));
 #endif
 
-#ifdef ENABLE_PERF_COUNTERS
-    PERF_StartGC(&vp->misses);
-    PERF_StartGC(&vp->reads);
-#endif
     assert ((vp->globNextW % WORD_SZB) == 0);
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_ALL)
@@ -294,10 +280,6 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 
 #ifndef NO_GC_STATS
     TIMER_Stop (&(vp->promoteTimer));
-#endif
-#ifdef ENABLE_PERF_COUNTERS
-    PERF_StopGC(&vp->misses);
-    PERF_StopGC(&vp->reads);
 #endif
 
     return root;
