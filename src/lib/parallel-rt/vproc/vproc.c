@@ -24,6 +24,7 @@
 #include "scheduler.h"
 #include "inline-log.h"
 #include "time.h"
+#include "perf.h"
 #include "work-stealing-deque.h"
 
 typedef struct {	    /* data passed to NewVProc */
@@ -263,6 +264,9 @@ void *NewVProc (void *arg)
 #endif
 
     TIMER_Init (&(vproc->timer));
+#if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)
+    InitPerfCounters (vproc);
+#endif 
 
 #ifndef NO_GC_STATS
     vproc->nPromotes = 0;
@@ -336,6 +340,10 @@ void VProcExit (VProc_t *vp)
 #ifdef ENABLE_LOGGING
 	FinishLog ();
 #endif
+
+#if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)
+    ReportPerfCounters ();
+#endif 
 
 #ifndef NO_GC_STATS
 	ReportGCStats ();
