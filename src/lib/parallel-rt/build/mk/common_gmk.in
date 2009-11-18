@@ -28,6 +28,11 @@ else
   ENABLE_DEBUG=true
   ENABLE_GC_STATS=true
 endif
+ifeq (,$(findstring perf,$(BUILD_OPTIONS)))
+else
+  ENABLE_GC_STATS=true
+  ENABLE_PERF_COUNTERS=true
+endif
 
 #
 # tools and flags
@@ -77,6 +82,11 @@ ifeq ($(ENABLE_DEBUG),true)
 else
   CPPFLAGS += -DNDEBUG
   CFLAGS += -O2
+endif
+
+ifeq ($(ENABLE_PERF_COUNTERS),true)
+  CPPFLAGS += -DENABLE_PERF_COUNTERS
+  MISC_SRCS += perf.c
 endif
 
 ifeq ($(ENABLE_GC_STATS),false)
