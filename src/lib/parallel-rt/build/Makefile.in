@@ -33,7 +33,7 @@ SHELL =		@SHELL@
 
 #### End of system configuration section. ####
 
-SUBDIRS = mcrt mcrt-stats mcrt-log mcrt-debug mcrt-log-debug mcrt-perf
+SUBDIRS = mcrt*
 
 build:
 	for dir in $(SUBDIRS) ; do \

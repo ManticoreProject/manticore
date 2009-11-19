@@ -507,7 +507,9 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-log, [logging])
     MK_BUILD_DIR(mcrt-log-debug, [logging debug])
     MK_BUILD_DIR(mcrt-stats, [stats])
+if test $OS != darwin; then
     MK_BUILD_DIR(mcrt-perf, [perf])
+fi
 fi
 
 AC_OUTPUT
