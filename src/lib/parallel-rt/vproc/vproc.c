@@ -24,6 +24,7 @@
 #include "scheduler.h"
 #include "inline-log.h"
 #include "time.h"
+#include "perf.h"
 #include "work-stealing-deque.h"
 
 typedef struct {	    /* data passed to NewVProc */
@@ -263,18 +264,24 @@ void *NewVProc (void *arg)
 #endif
 
     TIMER_Init (&(vproc->timer));
+#if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)
+    InitPerfCounters (vproc);
+#endif 
 
 #ifndef NO_GC_STATS
     vproc->nPromotes = 0;
     vproc->nMinorGCs = 0;
     vproc->nMajorGCs = 0;
     vproc->minorStats.nBytesAlloc = 0;
+    vproc->minorStats.nBytesCollected = 0;
     vproc->minorStats.nBytesCopied = 0;
     TIMER_Init (&(vproc->minorStats.timer));
     vproc->majorStats.nBytesAlloc = 0;
+    vproc->majorStats.nBytesCollected = 0;
     vproc->majorStats.nBytesCopied = 0;
     TIMER_Init (&(vproc->majorStats.timer));
     vproc->globalStats.nBytesAlloc = 0;
+    vproc->globalStats.nBytesCollected = 0;
     vproc->globalStats.nBytesCopied = 0;
     TIMER_Init (&(vproc->globalStats.timer));
     vproc->nBytesPromoted = 0;
@@ -333,6 +340,10 @@ void VProcExit (VProc_t *vp)
 #ifdef ENABLE_LOGGING
 	FinishLog ();
 #endif
+
+#if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)
+    ReportPerfCounters ();
+#endif 
 
 #ifndef NO_GC_STATS
 	ReportGCStats ();
