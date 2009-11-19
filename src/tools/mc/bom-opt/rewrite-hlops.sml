@@ -399,6 +399,7 @@ end = struct
     (* rewrite'() - Rewrite the given BOM module, using HLOp rewrites in the
        library path. *)
     fun rewrite' (module as B.MODULE{name, externs, hlops, rewrites, body}) = let
+        val debug = Controls.get BOMOptControls.debug
         (* __________________________________________________ *)
         (* XXX Not sure rewrites need to worry about this stuff
         inherrited from the HLOp expander (unless we add C function
@@ -423,6 +424,10 @@ end = struct
         val rw_env =
             foldl Rewrites.addRWToGrammar (Rewrites.newGrammar()) rewrites
 
+        val _ = if debug then
+                    print ((Rewrites.grammarToString rw_env) ^ "\n")
+                else ()
+
         val hlrwGrammarHash = Rewrites.getGrammarHash rw_env
 
         val rwMap =
@@ -443,13 +448,6 @@ end = struct
              | SOME [] => emptyRWState (* Should not happen. *)
              | SOME candidateProds => let
                    val ntStrings = crossRWStates(rwRHSKey, rwRHSRest)
-(*
-                   val _ =
-                       print ((String.concatWith "\n"
-                               (List.map (fn alist => String.concatWith " "
-                                          (List.map Rewrites.eltToString (rwRHSKey :: rwRHSRest)))
-                                         ntStrings)) ^ "\n")
-*)
                    fun prodMatchesNtString prod = let
                        fun prodMatchesNtString' (ntString, acc) =
                            acc orelse Rewrites.matchRHS(prod, ntString)
@@ -462,7 +460,15 @@ end = struct
                    val rwState = foldl applyProdToRWState emptyRWState
                                        matchingProds
                in
-                   print ((rwStateToString rwState) ^ "\n"); 
+                   if debug then
+                       print (String.concat [
+                              "(", (String.concatWith "; "
+                                    (List.map
+                                     (fn alist => String.concatWith " "
+                                      (List.map Rewrites.eltToString alist))
+                                     ntStrings)),
+                              ") -> ", rwStateToString rwState, "\n"])
+                   else ();
                    rwState
                end
             (* end case *))
@@ -473,8 +479,8 @@ end = struct
            associated to a variable by matchBindingExp(). *)
         fun matchExp (B.E_Pt(ppt, t)) = (case t
             of B.E_HLOp(hlop, vars, _) => let
-                   val rwState = mkRWState(Rewrites.Elt_HLOp hlop, List.map getVarRWState
-                                                              vars)
+                   val rwState = mkRWState(Rewrites.Elt_HLOp hlop,
+                                           List.map getVarRWState vars)
                in
                    setPPRWState(ppt, rwState); rwState
                end
@@ -570,7 +576,6 @@ end = struct
                    val ntWtPairOpt = getRWStateMaxPair(ppRWState, rwMap)
                in case ntWtPairOpt
                    of SOME (nt, _) => let
-                          val debug = Controls.get BOMOptControls.debug
                           val prod = Rewrites.EltMap.lookup(rwMap, nt)
                           val (Rewrites.HLRWProduction {rw_opt, ...}) = prod
                           val (rw as Rewrites.Rewrite {label = rw_label,
@@ -615,8 +620,7 @@ end = struct
         val (changed, body') = rewriteLambda body
 
     in
-        (* DEBUG: print (Rewrites.grammarToString hlrwGrammar); *)
-	if changed
+        if changed
 	then SOME(B.mkModule(name, getExterns(), hlops, [], body'))
 	else NONE
     end

@@ -34,7 +34,7 @@ structure Rewrites = struct
       | eltToString (Elt_Prim p) = BOM.Var.toString p
       | eltToString Elt_Alloc = "alloc"
       | eltToString Elt_Wildcard = "*"
-      | eltToString (Elt_Nonterminal nt) = "nonterminal<" ^ Stamp.toString nt ^ ">"
+      | eltToString (Elt_Nonterminal nt) = "nt" ^ Stamp.toString nt
 
     fun compareElt (Elt_HLOp h1, Elt_HLOp h2) = HLOp.compare (h1, h2)
       | compareElt (Elt_Prim p1, Elt_Prim p2) = BOM.Var.compare (p1, p2)
@@ -71,11 +71,6 @@ structure Rewrites = struct
        Currently just cons' the passed prod to the grammar's list. *)
     fun addProductionToGrammar (prod, grammar as HLRWGrammar prod_list) =
         HLRWGrammar (prod :: prod_list)
-
-    (* getNewNonterminal() - Another abstraction for getting a new
-       nonterminal name w.r.t. the given grammar. *)
-    fun getNewNonterminal (grammar as HLRWGrammar prod_list) =
-	Elt_Nonterminal (Stamp.new ())
 
     (* matchRHS() - Match a production against a list of nonterminals. *)
     fun matchRHS (HLRWProduction {rhs, ...}, rhs') = let
@@ -129,8 +124,9 @@ structure Rewrites = struct
             (case matchProduction (rhs, grammar)
               of SOME prod_name => (prod_name, grammar)
                | NONE => let
-                     val prod_name = getNewNonterminal grammar
-                     val prod = HLRWProduction { name = Stamp.new (),
+                     val prod_id = Stamp.new ()
+                     val prod_name = Elt_Nonterminal prod_id
+                     val prod = HLRWProduction { name = prod_id,
                                                  rhs = rhs,
                                                  rw_opt = rw_opt }
                  in
