@@ -243,6 +243,7 @@ structure BasicControl :  sig
 	} = let
 	  fun trace pre = let
 		val msg = Controls.get verboseCtl >= verbose
+                val inclusiveStart = Time.now()
 		in
 		  if msg 
 		    then (push (); say (concat [passName, " starting"]))
@@ -256,7 +257,12 @@ structure BasicControl :  sig
 *)
 		  (pass pre) before
 		    (if msg 
-		      then (say (concat [passName, " finished"]); pop ())
+		      then (let
+                                val inclusive = Time.-(Time.now(), inclusiveStart)
+                            in
+                                say (concat [passName, " finished in: ", (Time.toString inclusive), "s (inclusive)"]);
+                                pop ()
+                            end)
 		      else ())
 		end
 	  in
