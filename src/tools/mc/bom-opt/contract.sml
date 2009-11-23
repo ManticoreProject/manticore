@@ -651,7 +651,7 @@ if (prevSum <> sum) then (
   else ();
 *DEBUG*)
                   if (prevSum <> sum)
-                    then loop (body, sum)
+                    then loop (LetFloat.denestLambda(body, true), sum)
                     else body
                 end
           val body = LetFloat.denestLambda(body, true)
