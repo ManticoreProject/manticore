@@ -1,17 +1,13 @@
-\documentclass[nocopyrightspace,preprint]{../common/sigplanconf}
+\documentclass[11pt]{article}
 
 \usepackage{amscd}
 \usepackage{amsmath}
 \usepackage[pdftex]{graphicx}
 \usepackage{ifthen}
 \usepackage{url}
-\usepackage{appendix}
-\usepackage{algorithmic}
-\usepackage{algorithm}
-\usepackage{lscape}
 
 \usepackage{../common/code}
-\input{defs}
+\input{../common/common-defs}
 
 \title{Manticore Implementation Note \\ Clone Translation for Parallel Tuples}
 \author{The Manticore Group}
@@ -26,9 +22,11 @@ The idea of clone translation originates from work on the Cilk-5 language.
 In this document, we describe an adaptation of clone translation that we use for
 our \emph{parallel tuple} construct.
 In \secref{sec:clone-translation}, we describe the general technique used by 
-Cilk and our compiler.
+our compiler.
 In \secref{sec:avoiding-code-blowup}, we propose solutions to two code-blowup 
 problems of the clone translation.
+Although our presentation of the clone translation is not new, the code-blowup
+problems and our solutions to them are new.
 
 \section{Clone translation for parallel tuples}
 \label{sec:clone-translation}
@@ -56,6 +54,20 @@ role in overall performance.
 We show an example of our clone translation for the parallel tree-add function.
 The original function, which uses parallel tuples, is given in \figref{fig:tree-prod-ptup},
 and its clone translation is given in \figref{fig:tree-prod-clone}.
+
+\subsection{Lazy promotion}
+We use the technique of lazy promotion to avoid promoting data in the common case,
+(\eg{} the fast clone) and instead to delay promoting data until the rare
+case (\eg{} the slow clone).
+We do not handle lazy promotion explicitly in the translations shown in this document,
+but below we describe, through an example, our changes to support lazy promotion
+in our translations.
+
+For example, in \figref{fig:tree-prod-clone}, this data allocated for the parallel tuple 
+consists of just the ref cells \texttt{resume}, \texttt{xL} and \texttt{xR}.
+In lazy promotion, we promote each ref cell at each of its \emph{use} sites (\eg{}, wherever
+the ref cell is read from or written to).
+Notice that only the slow clone ever needs to do any promotions.
 
 \begin{figure}
   \input{code/tr-prod-ptup}
