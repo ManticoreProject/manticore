@@ -1,0 +1,157 @@
+\documentclass[nocopyrightspace,preprint]{../common/sigplanconf}
+
+\usepackage{amscd}
+\usepackage{amsmath}
+\usepackage[pdftex]{graphicx}
+\usepackage{ifthen}
+\usepackage{url}
+\usepackage{appendix}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{lscape}
+
+\usepackage{../common/code}
+\input{defs}
+
+\title{Manticore Implementation Note \\ Clone Translation for Parallel Tuples}
+\author{The Manticore Group}
+\date{Draft of \today}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+The idea of clone translation originates from work on the Cilk-5 language.
+
+In this document, we describe an adaptation of clone translation that we use for
+our \emph{parallel tuple} construct.
+In \secref{sec:clone-translation}, we describe the general technique used by 
+Cilk and our compiler.
+In \secref{sec:avoiding-code-blowup}, we propose solutions to two code-blowup 
+problems of the clone translation.
+
+\section{Clone translation for parallel tuples}
+\label{sec:clone-translation}
+
+Our clone translation, shown in \figref{fig:ptup-clone} is as follows.  We translate each parallel
+tuple into a pair of clones, called the \emph{fast clone} and the
+\emph{slow clone}.  The fast clone is specialized for the common case when
+the worker evaluates its own portion of the computation.  The fast
+clone evaluates the computation sequentially, until either all
+subcomputations have been evaluated or one or more subcomputations
+have been stolen.  In the common case where none of the
+subcomputations are stolen, the fast clone only incurs a small
+overhead for enqueuing subcomputations and for checking for steals.
+
+The slow clone is the same as the fast clone, except that the slow
+clone supports parallel evaluation.  Because the slow clone evaluates
+in parallel with the rest of the computation, some form of synchronization
+is necessary, so clearly the slow clone is not as efficient as the fast 
+clone.  But once the slow clone executes, all of its subcomputations execute 
+as fast clones. This fact, coupled with the bound on the number of steals, 
+gives us high confidence that the number of slow clones executed in the course of
+a computation is insignificant, and therefore they do not play a
+role in overall performance.
+
+We show an example of our clone translation for the parallel tree-add function.
+The original function, which uses parallel tuples, is given in \figref{fig:tree-prod-ptup},
+and its clone translation is given in \figref{fig:tree-prod-clone}.
+
+\begin{figure}
+  \input{code/tr-prod-ptup}
+  \caption{Tree product using parallel tuples.}
+  \label{fig:tree-prod-ptup}
+\end{figure}
+
+\begin{figure}
+  \input{code/tr-prod-ptup-clone}
+  \caption{Tree product after the clone translation.}
+  \label{fig:tree-prod-clone}
+\end{figure}
+
+\begin{figure}
+\begin{center}
+\begin{code}\cdmath{}
+\LDB{} \kw{(|} e\(\sb{1}\), \ldots{}, e\(\sb{n}\) \kw{|)} \RDB{}
+\end{code}%
+$\Longrightarrow$ \\
+\begin{code}\cdmath{}
+\kw{callcc}(\kw{fn} k \kw{=>}
+  \kw{let} \kw{val} nDone \kw{=} \kw{ref} 1
+      \kw{val} (x\(\sb{1}\), \ldots{}, x\(\sb{n}\)) \kw{=} (\kw{ref} NONE, \ldots{}, \kw{ref} NONE)
+      \kw{fun} join i \kw{=} 
+          \kw{if} atomicFetchAndAdd (nDone, i) \kw{=} $n$ - i + 1 
+          \kw{then} \kw{throw} k(valOf (\kw{!}x\(\sb{1}\)), \ldots{}, valOf (\kw{!}x\(\sb{n}\)))
+          \kw{else} steal()
+      \kw{fun} waitOn x\(\sb{i}\) \kw{=} \kw{if} (\kw{!}x\(\sb{i}\)) \kw{=} NONE \kw{then} waitOn x\(\sb{i}\) \kw{else} ()
+      \kw{fun} f\(\sb{n}\) () \kw{=} \LDB{} e\(\sb{n}\) \RDB{}                        
+      \kw{val} w\(\sb{n}\) \kw{=} pushNew (\kw{fn} () \kw{=>} (
+                 x\(\sb{n}\) \kw{:=} SOME (f\(\sb{n}\)() 
+                    \kw{handle} e \kw{=>} (waitOn x\(\sb{n-1}\); \ldots{} waitOn x\(\sb{1}\); 
+                                 \kw{raise} e))); 
+                 join 1))
+           \ldots{} 
+      \kw{fun} f\(\sb{2}\) () \kw{=} \LDB{} e\(\sb{2}\) \RDB{} \kw{handle} e \kw{=>} (cancel w\(\sb{3}\); \ldots{} cancel w\(\sb{n}\);
+                                     \kw{raise} e)
+      \kw{val} w\(\sb{2}\) \kw{=} pushNew (\kw{fn} () \kw{=>} (
+                 x\(\sb{2}\) \kw{:=} SOME (f\(\sb{2}\)() \kw{handle} e \kw{=>} (waitOn x\(\sb{1}\); 
+                                               \kw{raise} e)); 
+                 join 1)) 
+      \kw{val} v\(\sb{1}\) \kw{=} \LDB{} e\(\sb{1}\) \RDB{} 
+               \kw{handle} e \kw{=>} (cancel w\(\sb{2}\); \ldots{} cancel w\(\sb{n}\); \kw{raise} e)
+  \kw{in}
+      \kw{if} popNew() \kw{<>} NONE \kw{then}
+          \ldots{}
+          \kw{let} \kw{val} v\(\sb{n-1}\) \kw{=} f\(\sb{n-1}\)()
+          \kw{in}
+            \kw{if} popNew() \kw{<>} NONE \kw{then}
+                (v\(\sb{1}\), \ldots{}, f\(\sb{n}\)())
+            \kw{else}
+                (x\(\sb{1}\) \kw{:=} SOME v\(\sb{1}\); \ldots{} x\(\sb{n-1}\) \kw{:=} SOME v\(\sb{n-1}\); 
+                 join($n$ - 1))
+          \kw{end}
+          \ldots{}
+      \kw{else}
+          (x\(\sb{1}\) \kw{:=} SOME v\(\sb{1}\); join 1)
+  \kw{end})
+\end{code}
+\end{center}
+ \caption{The full clone translation for parallel tuples.}
+ \label{fig:ptup-clone}
+\end{figure}%
+
+\section{Avoiding code blowup}
+\label{sec:avoiding-code-blowup}
+The translation for parallel tuples avoids code blowup in two ways:
+\begin{enumerate}
+\item We lift each expression (except the first one) into its own function,
+which can be safely shared by the fast and slow clone.
+\item For large parallel tuples, \eg{}, those having more than 4 elements, we 
+break the construction into two phases, one that builds an
+intermediate nested tuple in parallel and one that builds a flattened
+copy of this nested tuple. We limit the size of each nested tuple 
+to a small constant. This strategy prevents a quadratic blowup introduced
+by cascading memory writes performed during each transition 
+from the fast clone to the slow clone (\eg{}, in our \cd{trProd} example above
+one such update is the update to \cd{xL}). In general, such a
+transition occurs just after evaluating 
+the $i^{th}$ element of the tuple, and the code generated for the transition
+must perform $i$ memory writes to record the elements of the tuple computed so 
+far. Since there are as many of these transitions as there are elements in the
+tuple, the number of memory writes is quadratic in the size of the parallel 
+tuple given as input to the flat clone translation.
+\end{enumerate}
+
+The translation can be extended to deliver exceptions in left-to-right order
+as prescribed by our sequential semantics. The interesting case
+occurs when an exception is raised while evaluating the slow clone 
+corresponding to the $i^{th}$ element of the tuple. Since elements in
+positions to the left of $i$ might also raise exceptions, we must wait
+to raise $i$'s exception until each of these other elements have finished
+evaluating. By not doing so, we would allow multiple exceptions to be
+raised out of order, which is clearly incorrect behavior. For efficiency, 
+we cancel the tasks corresponding to elements to the right of $i$, including
+those that have themselves raised exceptions and are waiting for
+$i$ to complete.
+
+\end{document}
