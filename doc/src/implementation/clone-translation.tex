@@ -23,6 +23,8 @@ In this document, we describe an adaptation of clone translation that we use for
 our \emph{parallel tuple} construct.
 In \secref{sec:clone-translation}, we describe the general technique used by 
 our compiler.
+In \secref{sec:exceptions}, we describe our extension to the clone translation
+to support exceptions.
 In \secref{sec:avoiding-code-blowup}, we propose solutions to two code-blowup 
 problems of the clone translation.
 Although our presentation of the clone translation is not new, the code-blowup
@@ -56,9 +58,9 @@ The original function, which uses parallel tuples, is given in \figref{fig:tree-
 and its clone translation is given in \figref{fig:tree-prod-clone}.
 
 \subsection{Lazy promotion}
-We use the technique of lazy promotion to avoid promoting data in the common case,
-(\eg{} the fast clone) and instead to delay promoting data until the rare
-case (\eg{} the slow clone).
+We use the technique of lazy promotion to avoid promoting all data used by the common case
+(\eg{} the fast clone) by delaying promotion until the rare case (\eg{} the slow clone)
+where promotion becomes necessary.
 We do not handle lazy promotion explicitly in the translations shown in this document,
 but below we describe, through an example, our changes to support lazy promotion
 in our translations.
@@ -132,6 +134,20 @@ $\Longrightarrow$ \\
  \label{fig:ptup-clone}
 \end{figure}%
 
+\section{Supporting exceptions}
+\label{sec:exceptions}
+The translation can be extended to deliver exceptions in left-to-right order
+as prescribed by our sequential semantics. The interesting case
+occurs when an exception is raised while evaluating the slow clone 
+corresponding to the $i^{th}$ element of the tuple. Since elements in
+positions to the left of $i$ might also raise exceptions, we must wait
+to raise $i$'s exception until each of these other elements have finished
+evaluating. By not doing so, we would allow multiple exceptions to be
+raised out of order, which is clearly incorrect behavior. For efficiency, 
+we cancel the tasks corresponding to elements to the right of $i$, including
+those that have themselves raised exceptions and are waiting for
+$i$ to complete.
+
 \section{Avoiding code blowup}
 \label{sec:avoiding-code-blowup}
 The translation for parallel tuples avoids code blowup in two ways:
@@ -153,17 +169,5 @@ far. Since there are as many of these transitions as there are elements in the
 tuple, the number of memory writes is quadratic in the size of the parallel 
 tuple given as input to the flat clone translation.
 \end{enumerate}
-
-The translation can be extended to deliver exceptions in left-to-right order
-as prescribed by our sequential semantics. The interesting case
-occurs when an exception is raised while evaluating the slow clone 
-corresponding to the $i^{th}$ element of the tuple. Since elements in
-positions to the left of $i$ might also raise exceptions, we must wait
-to raise $i$'s exception until each of these other elements have finished
-evaluating. By not doing so, we would allow multiple exceptions to be
-raised out of order, which is clearly incorrect behavior. For efficiency, 
-we cancel the tasks corresponding to elements to the right of $i$, including
-those that have themselves raised exceptions and are waiting for
-$i$ to complete.
 
 \end{document}
