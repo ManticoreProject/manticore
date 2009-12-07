@@ -208,7 +208,7 @@ functor MainFn (
 	  \    -log             build an executable with logging enabled\n\
 	  \    -gcStats         build an executable with GC statistics enabled\n\
 	  \    -debug           build an executable with debugging enabled\n\
-          \    -perf            build an executable with hw perf counters enabled\n\
+	  \    -perf            build an executable with hw perf counters enabled\n\
 	  \    -sequential      compile a sequential-mode program\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
