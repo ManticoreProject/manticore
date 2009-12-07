@@ -1,17 +1,5 @@
 (* cheating...these names are supposed to be bound already... *)
 
-fun sumP_float a = let
-  fun add (x, y) = x + y
-  in
-    Ropes.reduceP (add, 0.0, a)
-  end
-
-val sumP = sumP_float
-
-fun sub (v, i) = Ropes.sub (v, i) (* supposed to be infix ! *)
-
-fun lenP a = Ropes.length a
-
 (* real stuff *)
 
 val itos = Int.toString
@@ -23,13 +11,11 @@ type sparse_vector = (int * float) parray
 type sparse_matrix = sparse_vector parray
 *)
 
-fun dotp (sv, v) = let
-  val thing1 = () (* {?mapP?} mapP (fn (i, x) => x * (v!i)) sv *)
-  val thing2 = [| x * sub (v, i) | (i,x) in sv |]
-  val it = thing2
-  in
-    sumP it
-  end
+fun plus (x, y) = x + y
+
+fun sumP (id, xs) = reduceP (plus, id, xs)
+
+fun dotp (sv, v) = sumP (0.0, [| x * (v!i) | (i,x) in sv |])
 
 val sv0 = [| (0, 1.1), (5, 1.2) |]
 val sv1 = [| (1, 1.3) |]
