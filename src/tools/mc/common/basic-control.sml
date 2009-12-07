@@ -181,16 +181,16 @@ structure BasicControl :  sig
 	    default = false
 	  }
 
-  (* enable hw perf counter mode *)
+ (* enable hw perf counter mode *)
     val perf : bool Controls.control = Controls.genControl {
-            name = "perf",
-            pri = [0, 1, 4],
-            obscurity = 0,
-            help = "enable hardware performance counter tracking",
-            default = false
-          }
+	    name = "perf",
+	    pri = [0, 1, 4],
+	    obscurity = 0,
+	    help = "enable hardware performance counter tracking",
+	    default = false
+	  }
 
-    val () = (
+   val () = (
 	  ControlRegistry.register topRegistry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.int verbose,
 	      envName = NONE
@@ -209,6 +209,10 @@ structure BasicControl :  sig
 	    };
 	  ControlRegistry.register topRegistry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool logging,
+	      envName = NONE
+	    };
+	  ControlRegistry.register topRegistry {
+	      ctl = Controls.stringControl ControlUtil.Cvt.bool perf,
 	      envName = NONE
 	    };
           ControlRegistry.register topRegistry {
@@ -243,6 +247,7 @@ structure BasicControl :  sig
 	} = let
 	  fun trace pre = let
 		val msg = Controls.get verboseCtl >= verbose
+                val inclusiveStart = Time.now()
 		in
 		  if msg 
 		    then (push (); say (concat [passName, " starting"]))
@@ -256,7 +261,12 @@ structure BasicControl :  sig
 *)
 		  (pass pre) before
 		    (if msg 
-		      then (say (concat [passName, " finished"]); pop ())
+		      then (let
+                                val inclusive = Time.-(Time.now(), inclusiveStart)
+                            in
+                                say (concat [passName, " finished in: ", (Time.toString inclusive), "s (inclusive)"]);
+                                pop ()
+                            end)
 		      else ())
 		end
 	  in

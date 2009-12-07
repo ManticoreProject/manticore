@@ -24,6 +24,7 @@ structure ArityRaising : sig
 
   (***** controls ******)
     val enableArityRaising = ref true
+    val argumentOnly = ref false
     val flatteningDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
@@ -43,6 +44,13 @@ structure ArityRaising : sig
                   pri = [0, 1],
                   obscurity = 0,
                   help = "debug arity raising (argument flattening)"
+                  },
+              Controls.control {
+                  ctl = argumentOnly,
+                  name = "argument-only",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "use argument-only arity raising"
                   }
             ]
 
@@ -500,24 +508,29 @@ structure ArityRaising : sig
                             setParent (x, f) ;
 			    case ParamMap.find(vmap, VAR y)
 			     of NONE => doExp(vmap, pmap, e, unsafeParams)
-			      | SOME p => let
-				  val q = SEL(i, p)
-				  val vmap' = ParamMap.insert(vmap, VAR x, q)
-				(* decrement p's count *)
-				  val cnt = lookupPath(pmap, p)
-				  val _ = addToRef (cnt, ~1)
-				(* either add q to the path map or update its count *)
-				  val (vmap, pmap) = (case PMap.find(pmap, q)
-					 of NONE => (
-                                            if isUnsafe (unsafeParams, p)
-                                            then (addToRef (cnt, 1) ; (vmap, pmap))
-                                            else (vmap', PMap.insert(pmap, q, ref(CV.useCount x))))
-					  | SOME cnt => (addToRef(cnt, CV.useCount x);
-                                                         (vmap', pmap))
+			      | SOME p => (
+                                case (!argumentOnly, (length (#2(pathToList p))) > 0)
+                                 of (true, true) => doExp(vmap, pmap, e, unsafeParams)
+                                  | (_, _) => (
+                                    let
+				        val q = SEL(i, p)
+				        val vmap' = ParamMap.insert(vmap, VAR x, q)
+				        (* decrement p's count *)
+				        val cnt = lookupPath(pmap, p)
+				        val _ = addToRef (cnt, ~1)
+				        (* either add q to the path map or update its count *)
+				        val (vmap, pmap) = (
+                                            case PMap.find(pmap, q)
+					     of NONE => (
+                                                if isUnsafe (unsafeParams, p)
+                                                then (addToRef (cnt, 1) ; (vmap, pmap))
+                                                else (vmap', PMap.insert(pmap, q, ref(CV.useCount x))))
+					      | SOME cnt => (addToRef(cnt, CV.useCount x);
+                                                             (vmap', pmap))
 					(* end case *))
-				  in
-				    doExp (vmap, pmap, e, unsafeParams)
-				  end)
+				    in
+				        doExp (vmap, pmap, e, unsafeParams)
+				    end)))
 			| (C.Let(_, _, e)) => doExp (vmap, pmap, e, unsafeParams)
 			| (C.Fun(fbs, e)) => (
 			    analyseLambdas fbs;

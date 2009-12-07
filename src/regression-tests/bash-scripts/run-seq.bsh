@@ -28,7 +28,7 @@ do
      if [ -e "$fname.ok" ] ; then
        echo -n "checking $g/$f ..."
        echo "checking $g/$f" >> $LOG
-       $PMLC $PMLCFLAGS $f 2>> $LOG
+       $PMLC $PMLCFLAGS $f 2>> $LOG 1>> $LOG
        if [ "$?" -eq "0" ] ; then
 	 ./a.out > $fname.test
 	 diffs=$(diff $fname.test $fname.ok)

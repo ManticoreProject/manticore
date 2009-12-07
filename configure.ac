@@ -95,7 +95,7 @@ esac
 MANTICORE_VERSION=$PACKAGE_VERSION
 BUILD_DATE=`date +%Y-%m-%d`
 
-dnl BUILD_VERSION and RElEASE_DATE are defined in config/aclocal.m4
+dnl BUILD_VERSION and RELEASE_DATE are defined in config/aclocal.m4
 dnl by the following macro:
 MANTICORE_SET_VERSION
 
@@ -214,9 +214,9 @@ dnl check that we have a compatible version of SML/NJ
 dnl
 CHECK_SMLNJ([AC_MSG_ERROR([unable to find SML/NJ installation; check your PATH or set SMLNJ_CMD])])
 if test $SMLNJ_MAJOR_VERSION -lt 110 \
-  -o $SMLNJ_MINOR_VERSION -lt 65
+  -o $SMLNJ_MINOR_VERSION -lt 71
 then
-  AC_MSG_ERROR([installation requires SML/NJ version 110.65+])
+  AC_MSG_ERROR([installation requires SML/NJ version 110.71+])
 fi
 AC_SUBST(SMLNJ_VERSION)
 
@@ -445,11 +445,6 @@ AC_CONFIG_FILES(\
 dnl ***** Makefiles *****
   Makefile
   src/Makefile
-  src/benchmarks/programs/cml-merge/Makefile
-  src/benchmarks/programs/cml-parallelpp/Makefile
-  src/benchmarks/programs/cml-pingpong/Makefile
-  src/benchmarks/programs/cml-primes/Makefile
-  src/benchmarks/programs/cml-spawn/Makefile
   src/gen/log-gen/Makefile
   src/lib/parallel-rt/build/Makefile
   src/lib/parallel-rt/build/config/Makefile
@@ -513,7 +508,9 @@ if test $CROSS_COMPILING = 0 ; then
     MK_BUILD_DIR(mcrt-log, [logging])
     MK_BUILD_DIR(mcrt-log-debug, [logging debug])
     MK_BUILD_DIR(mcrt-stats, [stats])
+if test $OS != darwin; then
     MK_BUILD_DIR(mcrt-perf, [perf])
+fi
 fi
 
 AC_OUTPUT
