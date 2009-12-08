@@ -11,8 +11,6 @@
 
 #define STATIC_INLINE static //static inline
 
-
-
 STATIC_INLINE struct Group *Detail_Type(Detail d)
 {
     return d->type;

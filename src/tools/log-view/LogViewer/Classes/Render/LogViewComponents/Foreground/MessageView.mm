@@ -14,7 +14,7 @@
 #import "LogDoc.h"
 #import "log-desc.hxx"
 #import "GroupFilter.h"
-
+#import "Utils.h"
 
 
 /// The font of the text used to represent times
@@ -63,6 +63,8 @@ uint64_t myExp(uint64_t a, uint n)
 
     r = Detail_Dependent_Dst_Event(dep_dst);
 
+    DependentGroup *g = static_cast<DependentGroup*>(Detail_Type(d));
+
     int32_t src_vpId = Detail_Dependent_src_VpId(d);
     int32_t dst_vpId = Detail_Dependent_Dst_VpId(dep_dst);
 
@@ -80,9 +82,9 @@ uint64_t myExp(uint64_t a, uint n)
 //
     Message *message = [[Message alloc] initArrowFromPoint:p1
 				       toPoint:p2
+					  color:[Utils colorFromFormatString:g->Color()]
 					 sender:s
 				      receiver:r];
-    Group *g = Detail_Type(d);
     NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
     message.description = [NSString stringWithString:S];
 

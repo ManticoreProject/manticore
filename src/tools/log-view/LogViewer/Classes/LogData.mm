@@ -291,14 +291,13 @@ double cur_interval_height = 0.0;
     }
     // }}}
 
-    char *mapped_file; // mmap the file
+  // mmap the file
     // {{{
     int fileDes = open (cFileName, O_RDONLY);
     if (fileDes < 0) [Exceptions raise:@"could not open the given file"];
 
-    mapped_file = (char *) (mmap (NULL, fileSize, PROT_READ, MAP_PRIVATE, fileDes, 0));
-    if ((int) mapped_file == -1)
-    {
+    char *MappedFile = (char *) (mmap (NULL, fileSize, PROT_READ, MAP_PRIVATE, fileDes, 0));
+    if ((int) MappedFile == -1) {
 	perror("Mmap failure");
 	[Exceptions raise:@"could not mmap the given file"];
     }
@@ -307,8 +306,7 @@ double cur_interval_height = 0.0;
     ///////////////////// Recompute LogBufSzB if necessary ///////////////////////
     // {{{
     header = (LogFileHeader_t *) [Utils calloc:1 size:sizeof(LogFileHeader_t)];
-    memcpy(header, mapped_file, sizeof(LogFileHeader_t));
-
+    memcpy(header, MappedFile, sizeof(LogFileHeader_t));
 
     // check the header
     if (header->magic != LOG_MAGIC) [Exceptions raise:@"bogus magic number"];
@@ -322,7 +320,7 @@ double cur_interval_height = 0.0;
     }
     // }}}
 
-    LogBuffer_t *buffersStart = (LogBuffer_t *) (mapped_file + LogBufSzB);
+    LogBuffer_t *buffersStart = (LogBuffer_t *) (MappedFile + LogBufSzB);
 
     // -1 is to compensate for the fact that the header of the block takes up exactly one
     // LogEvent_t of data at the beggining of the block
@@ -370,16 +368,16 @@ double cur_interval_height = 0.0;
        prostconditions:
 	    0. all events have been processed (see LOOP INVARIANTS below)
     */
-    for (int i = 0;  i < numBufs;  i++)
-    {
-        LogBuffer_t *log = (LogBuffer_t *) (buffersStart + i);
+    for (int i = 0;  i < numBufs;  i++) {
+        LogBuffer_t *log = &(buffersStart[i]);
         assert (log->vpId < header->nVProcs);
         assert (log->next < MaxNumEvents);
 
 	// there are --by definition of the log file format-- J events in each LogBuffer t
 	// where J is the minimum of log->next and NEventsPerBuf
-	for (int j = 0; j < min(log->next, NEventsPerBuf); ++j, ++cur_event)
-	/*  LOOP INVARIANTS:
+	int numEventsInBuf = min(log->next, NEventsPerBuf);
+	for (int j = 0;  j < numEventsInBuf;  ++j, ++cur_event) {
+	  /*  LOOP INVARIANTS:
 		0. the first cur_event events in the log file (and no more) have been "processed"
 		1. cur event is the first index in events which does not contain an event
 		2. all events in the first i LogBuffer_ts in the log file (and no more) have been processed
@@ -393,7 +391,6 @@ double cur_interval_height = 0.0;
 		9. n_dependent_src and n_dependent_dsts are the number of source and destination details which can be drawn for the
 			events which have been processed
 	*/
-	{
 	    events_per_vproc[log->vpId]++;
 	    copy_event(&events[cur_event], &log->log[j], header);
 
@@ -453,8 +450,7 @@ double cur_interval_height = 0.0;
     // create an array for each vproc to hold its details
     // {{{
     struct TaggedDetail_struct *vproc_details[header->nVProcs];
-    for (int i = 0; i < header->nVProcs; ++i)
-    {
+    for (int i = 0; i < header->nVProcs; ++i) {
 	// vproc_details[i] must be large enough to hold all details
 	// (including initial state details, not including dependents) which must be drawn for vproc i
 	vproc_details[i] = (TaggedDetail_struct *)
@@ -467,8 +463,7 @@ double cur_interval_height = 0.0;
 	    // and s lasts from the begginning of time to the end of time.
 	{
 	    StateMap *stateMap = vproc_maps[i].stateMap;
-	    for (Box *stateGroupBox in allStates)
-	    {
+	    for (Box *stateGroupBox in allStates) {
 		StateGroup *g = (StateGroup *) ( [stateGroupBox unbox] );
 
 		uint64_t j = detail_size_current(&detail_size_info_per_vproc[i]);
@@ -501,15 +496,15 @@ double cur_interval_height = 0.0;
     /**************************************************  PASS #2 **************************************************/ // {{{
     /* ************************************************  Read in the single VProc details,
 							and read in the dependent details filling in the source ******************************/
-    int event_idx = 0;
-    for (int i = 0; i < numBufs; ++i)
-    {
+    int evtIndex = 0;
+    for (int i = 0; i < numBufs; ++i) {
         LogBuffer_t *log = (LogBuffer_t *) (buffersStart + i);
 
-	for (int j = 0; j < min(log->next, NEventsPerBuf); ++j, ++event_idx)
-	/* LOOP INVARIANTS:
+	int numEventsInBuf = min(log->next, NEventsPerBuf);
+	for (int j = 0; j < numEventsInBuf; ++j, ++evtIndex) {
+	  /* LOOP INVARIANTS:
 		0. the first event_idv events in the log file (and no more) have been "processed"
-		1. event_idx is the index of the first event in events which has not been processed
+		1. evtIndex is the index of the first event in events which has not been processed
 		2. all events in the first i LogBuffer_ts in the log file (and no more) have been processed
 		3. the first j events in the ith LogBuffer_t in the log file (and no more) have been processed
 		4. for each vproc v, detail_size_info_per_vproc[v]'s current value c is the number of details that have
@@ -536,26 +531,22 @@ double cur_interval_height = 0.0;
 		    D's array of destinations will NOT be filled in
 		    all other fields of D should be properly initialized
 		10. dependentSizeMap(k) is the number of destinations associated with the dependent detail with identifier k
-	*/
-	{
+	  */
 	    LogEvent_t *e = &log->log[j];
-	    // event_idx and e will remain synchronized so that
-	    // events[event_idx] will correspond to e
-	    event *evt = &events[event_idx];
+	    // evtIndex and e will remain synchronized so that
+	    // events[evtIndex] will correspond to e
+	    event *evt = &events[evtIndex];
 	    assert(event_value_equal(&evt->value, e));
 
 	    uint64_t ts = evt->timestamp;
 	    // workaround for duplicate block problem
-	    int do_break = false;
-	    if (j == 0)
-	    {
-		for (NSNumber *n in first_event_times)
-		{
-		    if (n.unsignedLongLongValue == ts)
-		    {
+	    bool do_break = false;
+	    if (j == 0) {
+		for (NSNumber *n in first_event_times) {
+		    if (n.unsignedLongLongValue == ts) {
 			NSLog(@"**************** LogData.mm: DUPLICATE BLOCK DETECTED IN LOGFILE");
 			exit(-1);
-			--event_idx;
+			--evtIndex;
 			do_break = true;
 		    }
 		}
@@ -581,8 +572,7 @@ double cur_interval_height = 0.0;
 
 		/////////////////////////////// STATES /////////////////////////////
 		// {{{
-	    for (int k = 0; k < n_state_groups; ++k)
-	    {
+	    for (int k = 0; k < n_state_groups; ++k) {
 		StateGroup *g = stateGroups->at(k);
 		struct State_Detail *mostRecentStateDetail =
 		    [stateMap getDetailForStateGroup:g];
@@ -629,8 +619,7 @@ double cur_interval_height = 0.0;
 	    } // }}}
 		/////////////////////////////// INTERVALS //////////////////////////
 		// {{{
-	    for (int k = 0; k < n_interval_groups; ++k)
-	    {
+	    for (int k = 0; k < n_interval_groups; ++k) {
 		IntervalGroup *g = intervalGroups->at(k);
 
 		if (eventDesc == g->Start())
@@ -665,8 +654,7 @@ double cur_interval_height = 0.0;
 		    [intervalMap addDetail:next_intervalDetail
 			  forIntervalGroup:g];
 		}
-		else
-		{
+		else {
 		    assert (eventDesc == g->End());
 		    struct Interval_Detail *mostRecentIntervalDetail =
 			[intervalMap getDetailForIntervalGroup:g];
@@ -687,13 +675,11 @@ double cur_interval_height = 0.0;
 	    } // }}}
 		/////////////////////////////// DEPENDENTS /////////////////////////////
 		// {{{
-	    for (int k = 0; k < n_dependent_groups; ++k)
-	    {
+	    for (int k = 0; k < n_dependent_groups; ++k) {
 	       DependentGroup *g = dependentGroups->at(k);
 	       uint64_t ident = GetDependentId(evt, eventDesc);
 
-	       if (eventDesc == g->Src())
-	       {
+	       if (eventDesc == g->Src()) {
 		    struct TaggedDetail_struct *d = &dependent_sources[cur_dependent_src++];
 		    d->type = g;
 		    d->eventDesc = eventDesc;
@@ -708,8 +694,7 @@ double cur_interval_height = 0.0;
 		    d->data.dependent.src = evt;
 		    [dependentMap addDetail:d forIdentifier:ident];
 	       }
-	       else
-	       {
+	       else {
 		    assert ( eventDesc == g->Dst());
 		    struct Dependent_Dst *dd = &dependent_dsts[cur_dependent_dst++];
 		    dd->vpId = log->vpId;
@@ -725,8 +710,7 @@ double cur_interval_height = 0.0;
     // after this loop, each dependent source d should have a detail D in dependent_sources where
     // D->n_dsts == D->dsts_array_size, and all D's dependent dsts
     // should be filled in.  d should contain all information relevant to d
-    for (int i = 0; i < cur_dependent_dst; ++i)
-    {
+    for (int i = 0; i < cur_dependent_dst; ++i) {
 	struct Dependent_Dst *dst = &dependent_dsts[i];
 	EventDesc *eventDesc = logDesc->FindEventById(dst->value->value.event);
 
