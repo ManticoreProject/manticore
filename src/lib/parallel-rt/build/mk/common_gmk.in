@@ -56,15 +56,16 @@ GC_SRCS = 	minor-gc.c \
 		global-gc.c \
 		heap.c \
 		unix-memory.c \
-		alloc.c
+		alloc.c \
+		work-stealing-deque.c
 
 VPROC_SRCS =	vproc.c
 
 MISC_SRCS =	main.c \
 		apply.c \
 		basis.c \
-		config.c \
 		options.c \
+		topology.c \
 		image.c
 
 CPU_SRCS =	cpuid.c \
