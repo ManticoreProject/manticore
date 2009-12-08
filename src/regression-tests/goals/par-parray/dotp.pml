@@ -3,20 +3,20 @@
 fun sumP_float a = let
   fun add (x, y) = x + y
   in
-    Ropes.reduceP (add, 0.0, a)
+    PArray.reduce (add, 0.0, a)
   end
 
 fun sumP_int a = let
   fun add (x, y) = x+y
   in
-    Ropes.reduceP (add, 0, a)
+    PArray.reduce (add, 0, a)
   end
 
 val sumP = sumP_int
 
-val sub = Ropes.sub
+val sub = PArray.sub
 
-fun lenP a = Ropes.length a
+fun lenP a = PArray.length a
 
 (* real stuff *)
 

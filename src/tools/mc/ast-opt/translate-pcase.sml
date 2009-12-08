@@ -68,10 +68,10 @@ structure TranslatePCase (* : sig
       BasisEnv.getTyConFromBasis ["Result", "result"])
 
     val memoCancel : AST.var Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getVarFromBasis ["EagerFuture", "cancel"])
+      BasisEnv.getVarFromBasis ["MultilispFuture", "cancel"])
 
     val memoPoll : AST.var Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getVarFromBasis ["EagerFuture", "poll"])
+      BasisEnv.getVarFromBasis ["MultilispFuture", "poll"])
 
   in
       

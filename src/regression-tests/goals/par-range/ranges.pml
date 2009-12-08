@@ -3,14 +3,14 @@
 fun sumP_int a = let
   fun add (x, y) = x + y
   in
-    Ropes.reduceP (add, 0, a)
+    PArray.reduce (add, 0, a)
   end
 
 val sumP = sumP_int
 
-val sub = Ropes.sub
+val sub = PArray.sub
 
-val lenP = Ropes.length
+val lenP = PArray.length
 
 (* real stuff *)
 

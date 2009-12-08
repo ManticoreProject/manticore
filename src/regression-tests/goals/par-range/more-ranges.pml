@@ -1,5 +1,5 @@
-val sub = Ropes.sub
-val lenP = Ropes.length
+val sub =PArray.sub
+val lenP =PArray.length
 
 val itos = Int.toString
 
