@@ -243,7 +243,7 @@ structure CheckCFG : sig
 			case V.typeOf y
 			 of Ty.T_Tuple(true, tys) => 
 			      if (i < List.length tys)
-			      andalso TyU.equal (V.typeOf z, List.nth (tys, i))
+			      andalso TyU.validCast (V.typeOf z, List.nth (tys, i))
 				then ()
 				else err ()
 			  | ty => err ()

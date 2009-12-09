@@ -255,7 +255,7 @@ structure CheckCPS : sig
                       chkVar(env, y, "Update");
                       case CV.typeOf x
                        of CTy.T_Tuple(true, tys) => 
-			    if (i < List.length tys) andalso CTU.equal(CV.typeOf y, List.nth (tys, i))
+			    if (i < List.length tys) andalso CTU.soundMatch(CV.typeOf y, List.nth (tys, i))
 			      then ()
 			      else error["type mismatch in Update: ",
 				     "#", Int.toString i, "(", v2s x, ") := ", v2s y,
@@ -286,9 +286,11 @@ structure CheckCPS : sig
 			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
 		  | ([ty], C.Promote x) => (
                       chkVar(env, x, "Promote");
-		      if (CTU.equal(ty, CV.typeOf x))
+		      if (CTU.soundMatch(CV.typeOf x, ty))
 			then ()
-			else error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s x, "\n"])
+			else (error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s x, "\n"];
+			      cerror ["  lhs type ", t2s ty, "\n"];
+			      cerror ["  found    ", t2s (CV.typeOf x), "\n"]))
 		  | ([], C.Prim p) => (
                       chkVars(env, PrimUtil.varsOf p, PrimUtil.nameOf p))
 		  | ([ty], C.Prim p) => (
