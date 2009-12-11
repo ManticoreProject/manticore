@@ -58,3 +58,6 @@ done
 
 )
 echo -n "Report available at: $REPORT"
+
+! grep fail $LOG
+exit $?
