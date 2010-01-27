@@ -58,7 +58,6 @@ structure CFGTyUtil : sig
       | kindOf (CTy.T_StdFun _) = CTy.K_BOXED
       | kindOf (CTy.T_StdCont _) = CTy.K_BOXED
       | kindOf (CTy.T_KnownFunc _) = CTy.K_TYPE
-      | kindOf (CTy.T_Block _) = CTy.K_TYPE
 
   (* compare types for equality *)
     fun equal (ty1, ty2) = (case (ty1, ty2)
@@ -82,9 +81,6 @@ structure CFGTyUtil : sig
             | (CTy.T_KnownFunc{clos = clos1, args = args1}, 
                CTy.T_KnownFunc{clos = clos2, args = args2}) => 
                   equal (clos1, clos2) andalso equalList (args1, args2)
-            | (CTy.T_Block{args = args1}, 
-               CTy.T_Block{args = args2}) => 
-                  equalList (args1, args2)
             | _ => false
 	  (* end case *))
     and equalList (tys1, tys2) = ListPair.allEq equal (tys1, tys2)
@@ -141,10 +137,6 @@ structure CFGTyUtil : sig
               (* Note contravariance for arguments! *)
                   (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
                   ListPair.allEq match (args2, args1)
-            | (CTy.T_Block{args = args1}, 
-               CTy.T_Block{args = args2}) => 
-              (* Note contravariance for arguments! *)
-                  ListPair.allEq match (args2, args1)
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 
@@ -182,7 +174,6 @@ structure CFGTyUtil : sig
 	      | CTy.T_KnownFunc{clos, args} => concat[
                     "kfun(", toString clos, "/", args2s args, ")"
                   ]
-	      | CTy.T_Block{args} => concat("block(" :: tys2l(args, [")"]))
 	    (* end case *)
 	  end
 

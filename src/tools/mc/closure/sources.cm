@@ -25,5 +25,4 @@ is
   closure.sml
   closure-controls.sml
   free-vars.sml
-  flat-closure.sml
   flat-closure-with-cfa.sml

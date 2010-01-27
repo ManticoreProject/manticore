@@ -62,27 +62,34 @@ structure PrintCFG : sig
 		  pr "(\n    ";
 		  prl params
 		end
-	  fun prFunc (CFG.FUNC{lab, entry, body, exit}) = let
+	  fun prFunc (CFG.FUNC{lab, entry, start as CFG.BLK{args, exit, body=startbody, ...}, body}) = let
 		val (kind, params) = (case (CFG.Label.kindOf lab, entry)
-		       of (CFG.LK_Local{export=SOME name, ...}, 
-                           CFG.StdFunc{clos, args, ret, exh}) =>
+		       of (CFG.LK_Func{export=SOME name, ...}, 
+                           CFG.StdFunc{clos, ret, exh}) =>
 			    ("export stdfun ", clos :: args @ [ret, exh])
-			| (CFG.LK_Local _, CFG.StdFunc{clos, args, ret, exh}) =>
+			| (CFG.LK_Func _, CFG.StdFunc{clos, ret, exh}) =>
 			    ("stdfun ", clos :: args @ [ret, exh])
-			| (CFG.LK_Local _, CFG.StdCont{clos, args}) => 
+			| (CFG.LK_Func _, CFG.StdCont{clos}) => 
                             ("cont ", clos::args)
-			| (CFG.LK_Local _, CFG.KnownFunc{clos,args}) => 
+			| (CFG.LK_Func _, CFG.KnownFunc{clos}) => 
                             ("kfun ", clos::args)
-			| (CFG.LK_Local _, CFG.Block{args}) => ("block ", args)
+			| (CFG.LK_Block _, _) => ("block ", args)
 			| _ => raise Fail "bogus function"
 		      (* end case *))
 		in
 		  indent 1;
 		  pr kind;
 		  prl [labelBindToString lab, " "]; prParams params; pr "\n";
-		  List.app (prExp 2) body;
-		  prXfer (2, exit)
+		  List.app (prExp 2) startbody;
+		  prXfer (2, exit);
+                  List.app prBlock body
 		end
+          and prBlock (b as CFG.BLK{lab,args,exit,body}) = (
+              indent 1;
+              pr "block ";
+              prl [labelBindToString lab, " "]; prParams args; pr "\n";
+              List.app (prExp 2) body;
+              prXfer (2, exit))
 	  and prExp i e = (
 		indent i;
 		case CFG.lhsOfExp e

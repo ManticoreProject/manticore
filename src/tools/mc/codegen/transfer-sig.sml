@@ -55,6 +55,9 @@ signature TRANSFER = sig
 		   stms
 
   (* entry to a labelled function *)
-    val genFuncEntry :VarDef.var_def_tbl -> (CFG.label * CFG.convention) -> stms
+    val genFuncEntry :VarDef.var_def_tbl -> (CFG.label * CFG.convention * CFG.block) -> stms
+
+  (* entry to a labelled function *)
+    val genBlockEntry :VarDef.var_def_tbl -> (CFG.label * CFG.block) -> stms
 
   end (* TRANSFER *)

@@ -338,7 +338,7 @@ if MChkTy.check stm
 	    val entryFunc as M.FUNC{lab=entryLab, ...} :: _ = code
 	    val clusters = GenClusters.clusters code
 		     
-	  fun genFunc (M.FUNC{lab, entry, body, exit}) = let
+	  fun genFunc (M.FUNC{lab, entry, start as M.BLK{body=startBody, exit,...}, body}) = let
 		fun emitLabel () = let
 		      val label = BE.LabelCode.getName lab
 		      in
@@ -348,24 +348,34 @@ if MChkTy.check stm
 			   else ();
 		      (* output the label *)
 			case M.Label.kindOf lab
-			 of M.LK_Local{export=SOME s, ...} => ( 
+			 of M.LK_Func{export=SOME s, ...} => ( 
 			      pseudoOp (P.global (Label.global s));			     
 			      entryLabel (Label.global s);
 			      defineLabel label)
-			  | M.LK_Local {func=CFG.FUNC{entry, ...}, ...} => (case entry
-			       of M.Block{args} => (
-				  (* CFG.Blocks are only called within their own cluster *)
-				    comment (concat[
-					"block ", M.Label.toString lab, " (",
-					String.concatWith "," (List.map M.Var.toString args), ")"
-				      ]);
-				    defineLabel label)
-			       | _ => entryLabel label
-			      (* end case *))
+			  | M.LK_Func {func=CFG.FUNC{entry, ...}, ...} => entryLabel label
 			  | _ => raise Fail "emitLabel"
 			(* end case *)
 		      end (* emitLabel *)		  
-		val stms = BE.Transfer.genFuncEntry varDefTbl (lab, entry)
+		val stms = BE.Transfer.genFuncEntry varDefTbl (lab, entry, start)
+                val bodyStms = List.map (fn (b as M.BLK{lab, body,...}) => BE.Transfer.genBlockEntry varDefTbl (lab, b)) body
+                fun emitBlock (b as M.BLK{lab, body, exit,...}, stms) = let
+		      val funcAnRef = getAnnotations ()
+		      val frame = BE.SpillLoc.getFuncFrame lab
+		      val regs = BE.LabelCode.getParamRegs lab
+		      in	
+			if (Controls.get annotateInstrs)
+			  then (
+			    List.app ((fn s => comment ("param: "^s)) o MTy.treeToString o MTy.regToTree) regs;
+			    comment ("CFG block: "^CFG.Label.toString lab))
+			  else ();
+		       (* flush out any stale loads from other functions*)
+			 BE.VarDef.flushLoads varDefTbl;
+			 funcAnRef := (#create BE.SpillLoc.frameAn) frame :: (!funcAnRef);
+                         entryLabel (BE.LabelCode.getName lab);
+			 emitStms stms;
+			 List.app (genExp frame) body;
+			 genTransfer exit
+                      end
 	      (* finish a function by emitting the function body *)
 		fun finish () = let
 		      val funcAnRef = getAnnotations ()
@@ -382,8 +392,9 @@ if MChkTy.check stm
 			 funcAnRef := (#create BE.SpillLoc.frameAn) frame :: (!funcAnRef);
 			 emitLabel ();
 			 emitStms stms;
-			 List.app (genExp frame) body;
-			 genTransfer exit
+			 List.app (genExp frame) startBody;
+			 genTransfer exit;
+                         ListPair.app emitBlock (body, bodyStms)
 		      end (* finish *)
 		in
 		  finish

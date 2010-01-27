@@ -82,9 +82,9 @@ structure CheckCFG : sig
 		      cerror ["  found    ", tl2s argTys, "\n"])
 	        end
 	(* construct a set of the bound labels in the module *)
-	  val lEnv = List.foldl
-		(fn (f as CFG.FUNC{lab, ...}, lset) => LSet.add(lset, lab))
-		  LSet.empty code
+          fun addLabels (f as CFG.FUNC{lab, start, body, ...}, lset) =
+              List.foldl (fn (b as CFG.BLK{lab, ...}, lset) => LSet.add(lset, lab)) (LSet.add(lset, lab)) (start::body)
+	  val lEnv = List.foldl addLabels LSet.empty code
 	(* Check that a variable is bound *)
           fun addVar (env, x) = VSet.add(env, x)
           fun addVars (env, xs) = VSet.addList(env, xs)
@@ -105,14 +105,16 @@ structure CheckCFG : sig
                  of (CFG.LK_None, _) => error["no kind label ", l2s l, " in ", cxt, "\n"]
                   | (CFG.LK_Extern _, false) => ()
                   | (CFG.LK_Extern _, true) => error["extern local label ", l2s l, " in ", cxt, "\n"]
-                  | (CFG.LK_Local _, true) => ()
-                  | (CFG.LK_Local _, false) => error["unbound label ", l2s l, " in ", cxt, "\n"]
+                  | (CFG.LK_Func _, true) => ()
+                  | (CFG.LK_Func _, false) => error["unbound label ", l2s l, " in ", cxt, "\n"]
+                  | (CFG.LK_Block _, true) => ()
+                  | (CFG.LK_Block _, false) => error["unbound block label ", l2s l, " in ", cxt, "\n"]
                 (* end case *))
 	(* check the entry against the declared type of the label;  The declared type is 
          * allowed to be more specific.
          *)
-          fun chkEntry (lab, entry) = (case (entry, L.typeOf lab) 
-                 of (CFG.StdFunc {clos, args, ret, exh},
+          fun chkEntry (lab, entry, args) = (case (entry, L.typeOf lab) 
+                 of (CFG.StdFunc {clos, ret, exh},
                      Ty.T_StdFun {clos = closTy, args = argTys, ret = retTy, exh = exhTy}) => (
                       checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " clos"],
                                     [closTy], typesOf [clos]);
@@ -123,34 +125,29 @@ structure CheckCFG : sig
                       checkArgTypes(TyU.equal, concat["StdFun ", l2s lab, " exh"],
                                     [exhTy], typesOf [exh]);
                       addVars(VSet.empty, clos::ret::exh::args))
-                  | (CFG.StdCont {clos, args},
+                  | (CFG.StdCont {clos},
                      Ty.T_StdCont {clos = closTy, args = argTys}) => (
                       checkArgTypes(TyU.equal, concat["StdCont ", l2s lab, " clos"],
                                     [closTy], typesOf [clos]);
                       checkArgTypes(TyU.equal, concat["StdCont ", l2s lab, " args"],
                                     argTys, typesOf args);
                       addVars(VSet.empty, clos::args))
-                  | (CFG.KnownFunc {clos, args}, 
+                  | (CFG.KnownFunc {clos}, 
                      Ty.T_KnownFunc {clos = closTy, args = argTys}) => (
                       checkArgTypes(TyU.equal, concat["KnownFunc ", l2s lab, " clos"],
                                     [closTy], typesOf [clos]);
                       checkArgTypes(TyU.equal, concat["KnownFunc ", l2s lab, " args"],
                                     argTys, typesOf args);
                       addVars(VSet.empty, clos::args))
-                  | (CFG.Block {args}, Ty.T_Block {args = argTys}) => (
-                      checkArgTypes(TyU.equal, concat["Block ", l2s lab, " args"],
-                                    argTys, typesOf args);
-                      addVars(VSet.empty, args))
                   | (conv, ty) => (
                       error["entry of ", l2s lab, " is ", 
                             (case conv 
                               of CFG.StdFunc _ => "stdfunc"
                                | CFG.StdCont _ => "stdcont"
                                | CFG.KnownFunc _ => "known"
-                               | CFG.Block _ => "block"
                              (* end case *)), 
                             " (expected ", TyU.toString ty, ")\n"];
-                      addVars(VSet.empty, CFG.paramsOfConv conv))
+                      addVars(VSet.empty, CFG.paramsOfConv (conv, args)))
                 (* end case *))
           fun chkExp (env, exp) = (case exp 
                  of CFG.E_Var (xs, ys) => (
@@ -207,9 +204,10 @@ structure CheckCFG : sig
 			case L.kindOf l
 			 of CFG.LK_None => error["no kind label ", l2s l, " in Label\n"]
 			  | CFG.LK_Extern _ => ()
-			  | CFG.LK_Local _ => if TyU.match (V.typeOf x, L.typeOf l)
+			  | CFG.LK_Func _ => if TyU.match (V.typeOf x, L.typeOf l)
 			      then ()
 			      else err ()
+                          | CFG.LK_Block _ => ()
 			(* end case *);
 			addVar (env, x)
                       end
@@ -498,10 +496,17 @@ structure CheckCFG : sig
 			  | ty => error[cxt, " is not a block\n"]
 			(* end case *)
 		      end
-          fun chkFunc (CFG.FUNC {lab, entry, body, exit}) = let
-                val env = chkEntry (lab, entry)
+          fun chkBlock (block as CFG.BLK{lab, args, body, exit}, env) = let
+                val env = addVars(env, args)
 		val env = List.foldl (fn (exp,env) => chkExp (env, exp)) env body
                 val _ = chkExit (env, exit)
+                in
+                   ()
+                end
+          fun chkFunc (CFG.FUNC {lab, entry, start as CFG.BLK {args,...}, body}) = let
+                val env = chkEntry (lab, entry, args)
+                val _ = chkBlock (start, env)
+                val _ = List.app (fn b => chkBlock (b, env)) body
                 in
                    ()
                 end

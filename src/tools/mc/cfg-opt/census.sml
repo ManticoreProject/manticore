@@ -34,10 +34,9 @@ structure Census : sig
     fun decLab lab = C.Label.addToCount(lab, ~1)
 
   (* update the census counts for the variables bound in an entry convention *)
-    fun doEntry (C.StdFunc{clos, args, ret, exh}) = (clr clos; clr' args; clr ret; clr exh)
-      | doEntry (C.StdCont{clos, args}) = (clr clos; clr' args)
-      | doEntry (C.KnownFunc{clos, args}) = (clr clos; clr' args)
-      | doEntry (C.Block{args}) = clr' args
+    fun doEntry (C.StdFunc{clos, ret, exh}) = (clr clos; clr ret; clr exh)
+      | doEntry (C.StdCont{clos}) = (clr clos)
+      | doEntry (C.KnownFunc{clos}) = (clr clos)
 
   (* update the census counts for the variables in an expression *)
     fun doExp (C.E_Var(xs, ys)) = (clr' xs; inc' ys)
@@ -75,18 +74,28 @@ structure Census : sig
       | doExit (C.AllocCCall{lhs, f, args, ret}) = (List.app inc lhs; inc f; inc' args; doJump ret)
 
   (* initialize the census count of a function's label *)
-    fun initFun (C.FUNC{lab, ...}) = (
+    fun initFun (C.FUNC{lab, start, body, ...}) = let
+        fun initBlk (block as CFG.BLK{args,...}) = clr' args
+    in
+        initBlk start;
+        List.app initBlk body;
 	  clrLab lab;
 	  case C.Label.kindOf lab
-	   of C.LK_Local{export = SOME _, ...} => incLab lab
+	   of C.LK_Func{export = SOME _, ...} => incLab lab
 	    | _ => ()
-	  (* end case *))
+	  (* end case *)
+    end
 
   (* update the census counts for the variables in a function (basic block) *)
-    fun doFun (C.FUNC{entry, body, exit, ...}) = (
+    fun doFun (C.FUNC{entry, start, body , ...}) = let
+        fun doBlk (block as CFG.BLK{body,args,exit,...}) = (
+            List.app doExp body;
+	    doExit exit)
+    in
 	  doEntry entry;
-	  List.app doExp body;
-	  doExit exit)
+          doBlk start;
+          List.app doBlk body
+    end
 
     fun census (C.MODULE{externs, code, ...}) =  let
 	  fun clrCFun cf = clrLab(CFunctions.varOf cf)

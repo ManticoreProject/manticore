@@ -137,10 +137,11 @@ structure CFACFG : sig
    * restrict the traversal to binding instances.
    *)
     fun clearInfo (CFG.MODULE{code, ...}) = let
-          fun doFunct (CFG.FUNC{lab, entry, body, ...}) = (
+          fun doFunct (CFG.FUNC{lab, entry, start as CFG.BLK{body=sBody,args,...}, body, ...}) = (
                 clrSites lab;
-                List.app clrValue (CFG.paramsOfConv entry);
-                List.app doExp body)
+                List.app clrValue (CFG.paramsOfConv (entry, args));
+                List.app doExp sBody;
+                List.app (fn (b as CFG.BLK{lab, body,...}) => (clrSites lab; List.app doExp body)) body)
           and doExp exp = List.app clrValue (CFG.lhsOfExp exp)
           in
             List.app doFunct code
@@ -200,10 +201,11 @@ structure CFACFG : sig
           fun doLab lab = if not(isEscaping lab)
                 then (
                   setSites (lab, Unknown);
-                  case CFGUtil.funcOfLabel lab
-                   of SOME(CFG.FUNC{entry, ...}) => 
-                        List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv entry)
-                    | _ => ()
+                  case CFG.Label.kindOf lab
+	           of CFG.LK_Func{func as CFG.FUNC{entry, start as CFG.BLK{args, ...}, ...}, ...} =>
+                      List.app (fn x => addInfo(x, TOP)) (CFG.paramsOfConv (entry, args))
+                    | CFG.LK_Block (block as CFG.BLK{args,...}) => List.app (fn x => addInfo(x, TOP)) args
+	            | _ => ()
                   (* end case *))
                 else ()
           in
@@ -286,10 +288,11 @@ structure CFACFG : sig
                 print(concat["valueOf(", CFG.Var.toString x, ") = ",
                              valueToString (valueOf x), "\n"])
           fun printExp e = List.app printValueOf (CFG.lhsOfExp e)
-          and printFunc (CFG.FUNC{lab, entry, body, ...}) = (
+          and printFunc (CFG.FUNC{lab, entry, start as CFG.BLK{body=sBody,args,...}, body, ...}) = (
                 printCallSitesOf lab;
-                List.app printValueOf (CFG.paramsOfConv entry);
-                List.app printExp body)
+                List.app printValueOf (CFG.paramsOfConv (entry, args));
+                List.app printExp sBody;
+                List.app (fn (b as CFG.BLK{body,...}) => List.app printExp body) body)
           in
             List.app printFunc code
           end
@@ -301,7 +304,7 @@ structure CFACFG : sig
    * should have been set to Unknown.
    *)
     fun computeCallSites code = let
-          fun compute (CFG.FUNC{lab=srcLab, exit, ...}) = let
+          fun computeBlock (CFG.BLK{lab=srcLab, exit, ...}) = let
                 fun add dstLab = (case getSites dstLab
                        of Unknown => ()
                         | Known s => setSites(dstLab, Known(LSet.add(s, srcLab)))
@@ -325,6 +328,9 @@ structure CFACFG : sig
                     | CFG.AllocCCall{ret, ...} => addJump ret
                   (* end case *)
                 end
+          fun compute (CFG.FUNC{start, body, ...}) = (
+              computeBlock start;
+              List.app computeBlock body)              
           in
             List.app compute code
           end
@@ -408,32 +414,48 @@ structure CFACFG : sig
                       (* end case *))
                 and doJump (lab, args) =
                       doLabel (lab,
-                               ("Jump(" ^ (CFG.Label.toString lab) ^ ")", 
-                                fn CFG.Block _ => true | _ => false),
+                               ("Jump(" ^ (CFG.Label.toString lab) ^ ")", (fn _ => false)),
                                args)
-                and doLabel (lab, chk, args) = (case CFGUtil.funcOfLabel lab
-                       of SOME func => doFunc (func, chk, args)
+                and doLabel (lab, chk, args) = (case CFG.Label.kindOf lab
+                       of CFG.LK_Func{func, ...} => doFunc (func, chk, args)
+                        | CFG.LK_Block block => doBlock (block, (#1 chk), args)
                         | _ => raise Fail "xfer to unknown label"
                       (* end case *))
-                and doFunc (f as CFG.FUNC{lab, entry, body, exit}, chk, args) = let
+                and doBlock (start as CFG.BLK{lab, args=params, ...}, dbg, args) = let
+                      fun debugMsg () = print (concat[
+                              "typeError: doBlock(", CFG.Label.toString lab, 
+                              ", ", dbg, 
+                              ", [",
+                              String.concatWith "," (List.map CFG.Var.toString args),
+                              "]); params = ",
+                              String.concatWith "," (List.map CFG.Var.toString params),
+                              "\n"
+                            ])
+                      in
+                        if List.length args = List.length params
+                        then ListPair.appEq addInfo' (params, args)
+                        else if !debugFlg then debugMsg () else ()
+                      end
+                and doFunc (f as CFG.FUNC{lab, entry, start as CFG.BLK{body,args=params, ...}, ...}, chk, args) = let
                       fun debugMsg () = print (concat[
                               "typeError: doFunc(", CFG.Label.toString lab, 
                               ", ", #1 chk, 
                               ", [",
                               String.concatWith "," (List.map CFG.Var.toString args),
                               "]); CFG.paramsOfConv(entry) = ",
-                              String.concatWith "," (List.map CFG.Var.toString (CFG.paramsOfConv entry)),
+                              String.concatWith "," (List.map CFG.Var.toString (CFG.paramsOfConv (entry, params))),
                               "\n"
                             ])
                       in
                       if (#2 chk) entry
-                         andalso List.length args = List.length (CFG.paramsOfConv entry)
-                         then ListPair.appEq addInfo' (CFG.paramsOfConv entry, args)
+                         andalso List.length args = List.length (CFG.paramsOfConv (entry,params))
+                         then ListPair.appEq addInfo' (CFG.paramsOfConv (entry,params), args)
                       else if !debugFlg then debugMsg () else ()
                       end
-                fun doTopFunc (f as CFG.FUNC{lab, entry, body, exit}) = (
-                      List.app doExp body;
-                      doXfer exit)
+                fun doTopFunc (f as CFG.FUNC{lab, entry, start as CFG.BLK{body=stBody,exit,...}, body}) = (
+                      List.app doExp stBody;
+                      doXfer exit;
+                      List.app (fn (blk as CFG.BLK{body, exit, ...}) => (List.app doExp body; doXfer exit)) body)
                 in
                   changed := false;
                   List.app doTopFunc code;
@@ -443,7 +465,7 @@ structure CFACFG : sig
           in
           (* initialize the arguments to the module entry to top *)
             case code
-             of CFG.FUNC{lab, entry=CFG.StdFunc{clos, args, ret, exh}, ...} :: _ => (
+             of CFG.FUNC{lab, entry=CFG.StdFunc{clos, ret, exh}, start as CFG.BLK{args,...}, ...} :: _ => (
                   setSites (lab, Unknown);
                   setValue (clos, TOP); List.app (fn x => setValue (x, TOP)) args;
                   setValue (ret, TOP); setValue (exh, TOP))

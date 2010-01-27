@@ -638,18 +638,18 @@ functor HeapTransferFn (
 	assignStms)
 
  (* generate the entry code for a function *)
-  fun genFuncEntry varDefTbl (lab, conv as M.StdFunc{clos, args as [arg], ret, exh}) = let
-      val args = [clos, arg, ret, exh]
+  fun genFuncEntry varDefTbl (lab, conv as M.StdFunc{clos, ret, exh}, blk as M.BLK{args as [arg],...}) = let
+      val params = [clos, arg, ret, exh]
       (* make reqs for the parameters *)
-      val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
+      val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) params
       (* determine the destinations of parameters (all should be in gprs) *)
       val paramLocs = CallingConventions.stdApply paramReqs
-      val params = List.map natLocToExpr paramLocs
-      val {stms, regs} = Copy.fresh (treesToRegs params)
+      val params' = List.map natLocToExpr paramLocs
+      val {stms, regs} = Copy.fresh (treesToRegs params')
       in
-          setEntry varDefTbl (lab, regs, args, stms)
+          setEntry varDefTbl (lab, regs, params, stms)
       end
-    | genFuncEntry varDefTbl (lab, conv as M.StdCont {clos, args as [arg]}) = let
+    | genFuncEntry varDefTbl (lab, conv as M.StdCont {clos}, blk as M.BLK{args as [arg],...}) = let
       val args = [clos, arg]
       val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       (* determine the destinations of parameters (all should be in gprs) *)
@@ -659,7 +659,7 @@ functor HeapTransferFn (
       in
           setEntry varDefTbl (lab, regs, args, stms)
       end
-    | genFuncEntry varDefTbl (lab, conv as M.KnownFunc {clos, args}) = let
+    | genFuncEntry varDefTbl (lab, conv as M.KnownFunc {clos}, blk as M.BLK{args,...}) = let
       val args = clos :: args
       val paramReqs = List.map (tyToReq o Var.typeOf) args
       (* finalize locations for the parameters *)
@@ -669,7 +669,8 @@ functor HeapTransferFn (
       in
 	  setEntry varDefTbl (lab, regs, args, stms)
       end
-    | genFuncEntry varDefTbl (lab, conv as M.Block {args}) = 
+
+  fun genBlockEntry varDefTbl (lab, blk as M.BLK{args,...}) = 
       setEntry varDefTbl (lab, List.map varToFreshReg args, args, [])
 
 end (* HeapTransferFn *)

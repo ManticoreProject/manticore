@@ -1,6 +1,6 @@
 (* cfg.sml
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * The "control-flow graph" representation; essentially a 1st-order
@@ -19,10 +19,17 @@ structure CFG =
       = HCK_Local		(* local heap-limit check *)
       | HCK_Global		(* global heap-limit check *)
 
-  (* extended basic block *)
+  (* functions and continuations *)
     datatype func = FUNC of {
 	lab : label,		(* label of function *)
 	entry : convention,	(* calling convention, includes parameters *)
+	start : block,		(* special start block *)
+	body : block list	(* body of function is straight-line sequence of bindings *)
+      }
+
+    and block = BLK of {
+        lab : label,            (* label of block *)
+	args : var list,	(* argument list *)
 	body : exp list,	(* body of function is straight-line sequence of bindings *)
 	exit : transfer		(* control transfer out of function *)
       }
@@ -31,26 +38,18 @@ structure CFG =
       = StdFunc of {		(* a function that may be called from unknown sites; it uses *)
 				(* the standard function-calling convention. *)
 	    clos : var,		  (* closure parameter *)
-	    args : var list,	  (* argument parameters *)
 	    ret : var,		  (* return-continuation parameter *)
 	    exh : var		  (* exception-handler-continuation parameter *)
 	  }
       | StdCont of {		(* a continuation that may be thrown to from unknown sites; *)
 				(* it uses the standard continuation-calling convention *)
-	    clos : var,		  (* closure parameter *)
-	    args : var list	  (* argument parameters *)
+	    clos : var		  (* closure parameter *)
 	  }
       | KnownFunc of {		(* a function/continuation for which we know all of its call sites *)
 				(* and only known functions are called from those sites (Serrano's *)
 				(* "T" property).  It uses a specialized calling convention. *)
-	    clos : var,		  (* closure parameter *)
-	    args : var list	  (* argument parameters *)
+	    clos : var		  (* closure parameter *)
           }
-      | Block of {		(* a function/continuation for which we know all of its call sites *)
-				(* and it is the only function called at those sites (Serrano's *)
-				(* "X" property) *)
-	   args : var list	  (* parameters *)
-         }
 
     and exp
       = E_Var of var list * var list            (* parallel assignment *)
@@ -91,17 +90,18 @@ structure CFG =
 	  }
 
     and var_kind
-      = VK_None
-      | VK_Let of exp
-      | VK_Param of func
+      = VK_None			(* for initialization purposes *)
+      | VK_Let of exp		(* let-bound variable *)
+      | VK_Param of label	(* function/block parameter *)
 
     and label_kind
       = LK_None			(* for initialization purposes *)
       | LK_Extern of string	(* external label; e.g., a C function *)
-      | LK_Local of {		(* local to module *)
+      | LK_Func of {		(* local to module *)
 	    func : func,	    (* the function that this label names *)
 	    export : string option  (* optional export name. *)
 	  }
+      | LK_Block of block	(* labels a block in a function *)
 
     withtype var = (var_kind, ty) VarRep.var_rep
 	 and label = (label_kind, ty) VarRep.var_rep
@@ -118,8 +118,9 @@ structure CFG =
 
     fun labelKindToString (LK_None) = "None"
       | labelKindToString (LK_Extern s) = "Extern " ^ s
-      | labelKindToString (LK_Local{export = NONE, ...}) = "Local"
-      | labelKindToString (LK_Local{export = SOME s, ...}) = "Export " ^ s
+      | labelKindToString (LK_Func{export = NONE, ...}) = "Func"
+      | labelKindToString (LK_Func{export = SOME s, ...}) = "ExportFunc " ^ s
+      | labelKindToString (LK_Block _) = "Block"
 
     structure Label = VarFn (
       struct
@@ -162,12 +163,6 @@ structure CFG =
       | lhsOfExp (E_VPStore _) = []
       | lhsOfExp (E_VPAddr(x, _, _)) = [x]
 
-  (* project out the parameters of a convention *)
-    fun paramsOfConv (StdFunc{clos, args, ret, exh}) = clos :: args @ [ret, exh]
-      | paramsOfConv (StdCont{clos, args}) = clos::args
-      | paramsOfConv (KnownFunc{clos, args}) = clos::args
-      | paramsOfConv (Block{args}) = args
-
   (* smart constructors that set the kind field of the lhs variables *)
     fun mkExp e = (
 	  List.app (fn x => Var.setKind(x, VK_Let e)) (lhsOfExp e);
@@ -192,15 +187,35 @@ structure CFG =
     fun mkVPStore arg = mkExp(E_VPStore arg)
     fun mkVPAddr arg = mkExp(E_VPAddr arg)
 
-    fun mkFunc (l, conv, body, exit, export) = let
-	    val func = FUNC{lab = l, entry = conv, body = body, exit = exit}
-	    in
-	      Label.setKind (l, LK_Local{func = func, export = export});
-	      List.app (fn x => Var.setKind(x, VK_Param func)) (paramsOfConv conv);
-	      func
-	    end
-    fun mkLocalFunc (l, conv, body, exit) = mkFunc (l, conv, body, exit, NONE)
-    fun mkExportFunc (l, conv, body, exit, name) = mkFunc (l, conv, body, exit, SOME name)
+    fun mkBlock (l, args, body, exit) = let
+	  val blk = BLK{lab = l, args = args, body = body, exit = exit}
+	  in
+	    List.app (fn x => Var.setKind(x, VK_Param l)) args;
+	    blk
+	  end
+
+  (* project out the parameters of a convention *)
+    fun paramsOfConv (StdFunc{clos, ret, exh}, params) = clos :: params @ [ret, exh]
+      | paramsOfConv (StdCont{clos}, params) = clos::params
+      | paramsOfConv (KnownFunc{clos}, params) = clos::params
+
+    fun mkBlock (lab, args, body, exit) = let
+        val block = BLK{lab=lab, args=args, body=body, exit=exit}
+    in
+        Label.setKind (lab, LK_Block block);
+        block
+    end
+
+    fun mkFunc (l, conv, start as BLK{args,...}, body, export) = let
+	  val func = FUNC{lab = l, entry = conv, start = start, body = body}
+	  val params = paramsOfConv (conv, args)
+	  in
+	    Label.setKind (l, LK_Func{func = func, export = export});
+	    List.app (fn x => Var.setKind(x, VK_Param l)) params;
+	    func
+	  end
+    fun mkLocalFunc (l, conv, start, body) = mkFunc (l, conv, start, body, NONE)
+    fun mkExportFunc (l, conv, start, body, name) = mkFunc (l, conv, start, body, SOME name)
 
     fun mkCFun arg = (
 	  Label.setKind (#var arg, LK_Extern(#name arg));

@@ -8,8 +8,8 @@
 
 structure CFGUtil : sig
 
-  (* return the function that a label is bound to, or NONE if it is external *)
-    val funcOfLabel : CFG.label -> CFG.func option
+  (* return the block that a label is bound to, or NONE if it is external *)
+    val blockOfLabel : CFG.label -> CFG.block option
 
   (* project out the lhs variables of an expression *)
     val lhsOfExp : CFG.exp -> CFG.var list
@@ -31,10 +31,10 @@ structure CFGUtil : sig
     val labelsOfXfer : CFG.transfer -> CFG.label list
 
   (* project out the parameters of a convention *)
-    val paramsOfConv : CFG.convention -> CFG.var list
+    val paramsOfConv : (CFG.convention * CFG.var list) -> CFG.var list
 
    (* rewrite a function with a new body and exit *)
-    val rewriteFunc : (CFG.func * CFG.exp list * CFG.transfer) -> CFG.func
+    val rewriteFunc : (CFG.func * CFG.block * CFG.block list * CFG.transfer) -> CFG.func
 
     type substitution = CFG.var CFG.Var.Map.map
 
@@ -45,15 +45,17 @@ structure CFGUtil : sig
     val substTransfer : substitution -> CFG.transfer -> CFG.transfer
 
   end = struct
+    structure M = CFG
 
     datatype func = datatype CFG.func
     datatype exp = datatype CFG.exp
     datatype convention = datatype CFG.convention
     datatype transfer = datatype CFG.transfer
 
-  (* return the function that a label is bound to, or NONE if it is external *)
-    fun funcOfLabel lab = (case CFG.Label.kindOf lab
-	   of CFG.LK_Local{func, ...} => SOME func
+  (* return the block that a label is bound to, or NONE if it is external *)
+    fun blockOfLabel lab = (case CFG.Label.kindOf lab
+	   of CFG.LK_Func{func as CFG.FUNC{start,...}, ...} => SOME start
+            | CFG.LK_Block block => SOME block
 	    | _ => NONE
 	  (* end case *))
 
@@ -119,15 +121,15 @@ structure CFGUtil : sig
     val paramsOfConv = CFG.paramsOfConv
 
    (* rewrite a function with a new body and exit *)
-    fun rewriteFunc (FUNC{lab, entry, ...}, body, exit) = let
-	  val func = FUNC{lab = lab, entry = entry, body = body, exit = exit}
+    fun rewriteFunc (FUNC{lab, entry, ...}, start as M.BLK{args,...}, body, exit) = let
+	  val func = FUNC{lab = lab, entry = entry, start = start, body = body}
 	  val lk = (case CFG.Label.kindOf lab
-		  of CFG.LK_Local{export, ...} => CFG.LK_Local{func=func, export=export}
+		  of CFG.LK_Func{export, ...} => CFG.LK_Func{func=func, export=export}
 		   | lk => lk
 		(* end case *))
 	  in
 	    CFG.Label.setKind (lab, lk);
-	    List.app (fn x => CFG.Var.setKind(x, CFG.VK_Param func)) (paramsOfConv entry);
+	    List.app (fn x => CFG.Var.setKind(x, CFG.VK_Param lab)) (paramsOfConv (entry, args));
 	    func
 	  end
 

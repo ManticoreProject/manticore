@@ -53,27 +53,27 @@ structure Contract : sig
     fun applySubst' (env, []) = []
       | applySubst' (env, x::xs) = applySubst(env, x) :: applySubst'(env, xs)
 
-  (* return the function that the label is bound to.  This function should
+  (* return the block that the label is bound to.  This function should
    * only be called on locally defined labels (e.g., the target of gotos)!
    *)
-    fun lookupFunc lab = (case C.Label.kindOf lab
-	   of C.LK_Local{func, ...} => func
-	    | _ => raise Fail(concat["lookupFunc(", C.Label.toString lab, ")"])
+    fun lookupBlock lab = (case C.Label.kindOf lab
+           of C.LK_Block block => block
+	    | _ => raise Fail(concat["lookupBlock(", C.Label.toString lab, ")"])
 	  (* end case *))
 
-  (* return true if a label is locally defined and not exported *)
+  (* return true if a label is a locally defined block *)
     fun isLocalLabel lab = (case C.Label.kindOf lab
-	   of C.LK_Local{export=NONE, ...} => true
+	   of C.LK_Block _ => true
 	    | _ => false
 	  (* end case *))
 
     fun contractExit (env, xfer) = let
 	(* contract a jump: rename its arguments and do jump-chain elimination *)
 	  fun contractJump (lab, args) = let
-		fun chainElim (lab, args) = (case lookupFunc lab
-		       of C.FUNC{
-			    body=[], entry=C.Block{args=params}, exit=C.Goto(labOut, argsOut), ...
-			  } => let
+		fun chainElim (lab, args) = (case lookupBlock lab
+		       of C.BLK{
+                            body=[], args=params, exit=C.Goto(labOut, argsOut), ...
+                          } => let
 			  (* To ensure that the order of the arguments is correct, we need to
 			   * set up a mapping from params to args and apply it to argsOut.  For
 			   * example, if the args are "(x, y, z)", the params are "(a, b, c)",
@@ -261,14 +261,14 @@ structure Contract : sig
 	  end
 
   (* delete a function, which includes decrementing the use counts of any labels *)
-    fun deleteFunc (C.FUNC{body, exit, ...}) = let
+    fun deleteFunc (C.FUNC{start, body, ...}) = let
 	  fun deleteExp (C.E_Label(_, lab)) = Census.decLab lab
 	    | deleteExp _ = ()
-	  fun deleteJump (lab, _) = Census.decLab lab
-	  in
-	    ST.tick cntUnusedBlock;
-	    List.app deleteExp body;
-	    case exit
+          and deleteBlock (C.BLK{body, exit, ...}) = (
+              ST.tick cntUnusedBlock;
+              List.app deleteExp body;
+              deleteExit exit)
+          and deleteExit (exit) = (case exit
 	     of C.StdApply _ => ()
 	      | C.StdThrow _ => ()
 	      | C.Apply _ => ()
@@ -279,18 +279,30 @@ structure Contract : sig
 		  Option.app deleteJump dflt)
 	      | C.HeapCheck{hck, szb, nogc} => deleteJump nogc
 	      | C.AllocCCall{lhs, f, args, ret} => deleteJump ret
-	    (* end case *)
+	    (* end case *))
+	  and deleteJump (lab, _) = Census.decLab lab
+	  in
+            deleteBlock start;
+            List.app deleteBlock body
 	  end
 
   (* contract a function *)
-    fun contractFunc (func as C.FUNC{lab, entry, body, exit}) =
+    fun contractFunc (func as C.FUNC{lab, entry, start, body}) = let
+        fun contractBlock (block as C.BLK{lab, args, body, exit}) = let
+            val (body,exit) = contractExps (VMap.empty, body, exit)
+        in
+            C.BLK{lab=lab, args=args, body=body, exit=exit}
+        end
+    in
 	  if (isLocalLabel lab) andalso (CL.useCount lab = 0)
 	    then (deleteFunc func; NONE)
 	    else let
-	      val (body, exit) = contractExps(VMap.empty, body, exit)
+              val start = contractBlock start
+              val body = List.map contractBlock body
 	      in
-		SOME(C.FUNC{lab=lab, entry=entry, body=body, exit=exit})
+		SOME(C.FUNC{lab=lab, entry=entry, start=start, body=body})
 	      end
+    end
 
     fun transform (C.MODULE{name, externs, code}) = let
 	(* iterate contraction until we reach a fixed point *)

@@ -275,31 +275,30 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
             in
                loop (args, useGPRArgs, useFPRArgs, [])
             end
-         fun transConvention (c : CFG.convention) : (CFG.convention * CFG.exp list) =
-            (List.app updVarType (CFG.paramsOfConv c);
+         fun transConvention (c : CFG.convention, args) : (CFG.convention * CFG.exp list * CFG.var list) =
+            (List.app updVarType (CFG.paramsOfConv (c, args));
              case c of
-                CFG.StdFunc {clos, args, ret, exh} =>
+                CFG.StdFunc {clos, ret, exh} =>
                    let
                       val (arg, binds) = transFormalStdArgs args
                    in
-                      (CFG.StdFunc {clos = clos, args = [arg], ret = ret, exh = exh}, 
-                       binds)
+                      (CFG.StdFunc {clos = clos, ret = ret, exh = exh}, 
+                       binds, [arg])
                    end
-              | CFG.StdCont {clos, args} =>
+              | CFG.StdCont {clos} =>
                    let
                       val (arg, binds) = transFormalStdArgs args
                    in
-                      (CFG.StdCont {clos = clos, args = [arg]}, 
-                       binds)
+                      (CFG.StdCont {clos = clos}, 
+                       binds, [arg])
                    end
-              | CFG.KnownFunc {clos, args} =>
+              | CFG.KnownFunc {clos} =>
                    let
                       val (args, binds) = transFormalKFncArgs args
                    in
-                      (CFG.KnownFunc {clos = clos, args = args}, 
-                       binds)
-                   end
-              | _ => (c, []))
+                      (CFG.KnownFunc {clos = clos}, 
+                       binds, args)
+                   end)
          fun transExp (exp : CFG.exp) : CFG.exp =
             (List.app updVarType (CFG.lhsOfExp exp);
              case exp of
@@ -395,38 +394,50 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                loop (args, useGPRArgs, useFPRArgs, [])
             end
          fun transTransfer (t : CFG.transfer) : (CFG.exp list * CFG.transfer) =
-            case t of
+             case t of
                CFG.StdApply {f, clos, args, ret, exh} => 
-                  let
-                     val (binds, arg) = transActualStdArgs args
-                  in
+                   let
+                      val (binds, arg) = transActualStdArgs args
+                   in
                      (binds, CFG.StdApply {f = f, clos = clos, args = [arg], 
                                            ret = ret, exh = exh})
-                  end
+                   end
              | CFG.StdThrow {k, clos, args} => 
-                  let
-                     val (binds, arg) = transActualStdArgs args
-                  in
+                   let
+                      val (binds, arg) = transActualStdArgs args
+                   in
                      (binds, CFG.StdThrow {k = k, clos = clos, args = [arg]})
-                  end
+                   end
              | CFG.Apply {f, clos, args} =>
-                  let
-                     val (binds, args) = transActualKFncArgs args
-                  in
+                   let
+                      val (binds, args) = transActualKFncArgs args
+                   in
                      (binds, CFG.Apply {f = f, clos = clos, args = args})
-                  end
+                   end
              | _ => ([], t)
-          fun transFunc (CFG.FUNC {lab, entry, body, exit} : CFG.func) : CFG.func = let
+
+          fun transBlock (CFG.BLK{lab=lab, body, exit, args}, entryBinds, args') = let
+              val () = updLabelType lab
+              val _ = List.app updVarType args
+              val body = List.map transExp body
+              val (exitBinds, exit) = transTransfer (exit)
+              val args'' = if null args' then args else args'
+              val block = CFG.mkBlock(lab, args'', entryBinds @ body @ exitBinds, exit)
+              in
+                  block
+              end
+
+          fun transFunc (CFG.FUNC {lab, entry, start as CFG.BLK{args=args, ...}, body} : CFG.func) : CFG.func = let
                 val () = updLabelType lab
-                val (entry, entryBinds) = transConvention entry
-                val body = List.map transExp body
-                val (exitBinds, exit) = transTransfer exit
+                val (entry, entryBinds, args') = transConvention (entry,args)
                 val export = (case CFG.Label.kindOf lab
-                       of CFG.LK_Local{export, ...} => export
+                       of CFG.LK_Func{export, ...} => export
                         | _ => raise Fail "bogus label kind"
                       (* end case *))
+                val start = transBlock (start, entryBinds, args')
+                val body = List.map (fn b => transBlock (b, [], [])) body 
                 in
-                   CFG.mkFunc (lab, entry, entryBinds @ body @ exitBinds, exit, export)
+                   CFG.mkFunc (lab, entry, start, body, export)
                 end
           val module = CFG.mkModule (name, externs, List.map transFunc code)
           in

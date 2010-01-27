@@ -22,7 +22,7 @@ end = struct
 
   type cluster = CFG.func list
 
-  fun addEdges (M.FUNC {lab, exit, ...}, edgeMap) = let
+  fun addEdges (M.FUNC {lab, start as M.BLK{exit,...}, body, ...}, edgeMap) = let
       (* add an undirected edge: lab <-> l *)
       fun addEdge (l, edgeMap) = (case (LM.find (edgeMap, lab), LM.find (edgeMap, l))
 	  of (SOME labLs, SOME lLs) => let
@@ -32,7 +32,9 @@ end = struct
 	     end
 	   | _ => raise Fail "addEdge")
       (* get the jump labels of a transfer *)
-      val labs = CFGUtil.labelsOfXfer exit
+      val exits = [exit]
+      val exits = List.foldl (fn (M.BLK{exit,...}, ls) => exit::ls) exits body
+      val labs = List.foldl (fn (exit, labs) => (CFGUtil.labelsOfXfer exit) @ labs) [] exits
       in
 	  List.foldl addEdge edgeMap labs
       end
@@ -46,11 +48,15 @@ end = struct
    * the CCS manually or with Union Find, and probably won't make a difference.
    *)
   fun clusters code = let
-      fun insLab (func as M.FUNC {lab, ...}, (edgeMap, labMap)) =
-	  (LM.insert (edgeMap, lab, LS.empty), LM.insert (labMap, lab, func))
+      fun doFunc (func as M.FUNC {start, body, ...}, (edgeMap, labMap)) = let
+          fun insLab (block as M.BLK {lab, ...}, (edgeMap, labMap)) =
+	      (LM.insert (edgeMap, lab, LS.empty), LM.insert (labMap, lab, func))
+      in
+          insLab (start, List.foldl insLab (edgeMap, labMap) body)
+      end
       (* initialize the edgeMap with empty edges, and map each function label
        * back to its function in the labMap *)
-      val (edgeMap, labMap) = List.foldl insLab (LM.empty, LM.empty) code
+      val (edgeMap, labMap) = List.foldl doFunc (LM.empty, LM.empty) code
       fun getFunc l = Option.valOf (LM.find (labMap, l))
       (* build the graph of jump edges *)
       val edgeMap = List.foldl addEdges edgeMap code
@@ -58,8 +64,9 @@ end = struct
       val sccs = SCC.topOrder' {roots=LM.listKeys labMap, follow=follow}
       fun toCluster (SCC.SIMPLE l) = [getFunc l]
 	| toCluster (SCC.RECURSIVE ls) = List.map getFunc ls
+      val clustersWithDups = List.map toCluster sccs
+      fun uniqueify funs = LM.listItems (List.foldl (fn (f as CFG.FUNC{lab,...},lm) => LM.insert (lm, lab, f)) LM.empty funs)
       in
-	  List.map toCluster sccs
+          List.map uniqueify clustersWithDups
       end
-
 end

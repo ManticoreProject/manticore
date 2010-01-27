@@ -33,26 +33,28 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
   (* construct the flow graph for a module *)
     fun makeGraph code = let
 	(* return the outgoing targets of a function *)
-	  fun toNode (CFG.FUNC{lab, exit, ...}) = (case CFA.labelsOf exit
+	  fun nodeFromBlock (CFG.BLK{lab, exit, ...}) = (case CFA.labelsOf exit
                  of NONE => (lab, [])
                   | SOME ls => (lab, CFG.Label.Set.listItems ls)
                 (* end case *))
-          val toNode = fn f =>
+          val nodeFromBlock= fn b =>
              if Controls.get CFGOptControls.debug
                 then let
-                        val nd as (src, out) = toNode f
+                        val nd as (src, out) = nodeFromBlock b
                         val src = CFG.Label.toString src
                         val out = String.concatWith "," (List.map CFG.Label.toString out)
                      in
                         print(concat["  ", src, " -> [", out, "]\n"]);
                         nd
                      end
-             else toNode f
+             else nodeFromBlock b
+          fun toNode (CFG.FUNC{start,body,...}) =
+              List.foldr (fn (b,rr) => (nodeFromBlock b)::rr) [] (start::body)
 	  in
             if Controls.get CFGOptControls.debug
                then print "makeGraph\n"
             else ();
-	    List.map toNode code
+	    List.foldr (fn (node,rr) => (toNode node)@rr) [] code
 	  end
 
   (* label annotations *)
@@ -76,25 +78,26 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 	  val fbSet = FB.feedback graph
         (* add allocation checks as needed to a function *)
 	  fun addAllocChecks hcKind = let
-		val (checkLabel, getAlloc, setAlloc, peekAlloc, expAlloc) = (case hcKind
-		       of CFG.HCK_Local => ("check", getAlloc, setAlloc, peekAlloc, expAlloc) 
-			| CFG.HCK_Global => ("checkGlobal", gGetAlloc, gSetAlloc, gPeekAlloc, gExpAlloc)
-		      (* end case *))
+                val checkLabel = "Check"
 	      (* compute the allocation performed by a function and annotate
 	       * its label with it.
 	       *)
-		fun funcAlloc (CFG.FUNC{lab, body, exit, ...}) = (case peekAlloc lab
+		fun funcAlloc (CFG.FUNC{lab, start, body, ...}) =
+                    List.app (ignore o blockAlloc) (start::body)
+                and blockAlloc (CFG.BLK{lab, body, exit,...}) = (case peekAlloc lab
 		       of NONE => let
 			  (* transitive allocation by a called function/continuation.  If we know the
 			   * call sites, then take the maximum of the functions that are not in the
 			   * feedback set.  Note that by ignoring members of the feedback set, we are
 			   * safe from infinite loops.
+                           * We can also ignore any escaping function because they will be annotated with
+                           * their own allocation checks.
 			   *)
 			    val alloc = let
-				  fun f (lab, sz) = if FB.Set.member(fbSet, lab)
+				  fun f (lab, sz) = if FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab
 					then 0w0
 					else let
-					  val sz' = funcAlloc (valOf(CFGUtil.funcOfLabel lab))
+					  val sz' = blockAlloc (valOf(CFGUtil.blockOfLabel lab))
 					  in
 					    Word.max(sz', sz)
 					  end
@@ -104,7 +107,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 				      | SOME labs => CFG.Label.Set.foldl f 0w0 labs
 				    (* end case *)
 				  end
-			  (* add in any data allocated in this function *)
+			  (* add in any data allocated in this block *)
 			    val alloc = List.foldl (fn (e, sz) => sz + expAlloc e) alloc body
 			    in
 			      setAlloc (lab, alloc); alloc
@@ -112,75 +115,79 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 			| SOME alloc => alloc
 		      (* end case *))
 	      (* annotate each block with the amount of allocation it does *)
-		val _ = List.app (ignore o funcAlloc) code
+		val _ = List.app funcAlloc code
 	      (* add allocation checks as needed *)
-		fun rewrite (f as CFG.FUNC{lab, entry, body, exit}, fs) = 
-		      if FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab
-		    (* now we always insert local allocation checks, but only insert global 
-		     * allocation checks when the amount of data allocated is > 0
-		     *)
-			then if hcKind = CFG.HCK_Local orelse (getAlloc lab > 0w0)  
-			  then let
-			    val (freeVars, entry') = (case entry (* rename parameters *)
-				   of CFG.StdFunc{clos, args, ret, exh} => let
-				      val clos' = CFG.Var.copy clos
-				      val args' = List.map CFG.Var.copy args
-				      val ret' = CFG.Var.copy ret
-				      val exh' = CFG.Var.copy exh
-				      in (
-					clos' :: args' @ [ret', exh'],
-					CFG.StdFunc{clos=clos', args=args', ret=ret', exh=exh'}
-				      ) end
-				    | CFG.StdCont{clos, args} => let
-				      val clos' = CFG.Var.copy clos
-				      val args' = List.map CFG.Var.copy args
-				      in
-					(clos' :: args', CFG.StdCont{clos=clos', args=args'})
-				      end
-				    | CFG.KnownFunc{clos, args} => let
-				      val clos' = CFG.Var.copy clos
-				      val args' = List.map CFG.Var.copy args
-				      in
-					(clos' :: args', CFG.KnownFunc{clos=clos', args=args'})
-				      end
-				    | CFG.Block{args} => let
-				      val args' = List.map CFG.Var.copy args
-				      in
-					(args', CFG.Block {args=args'})
-				      end
-				  (* end case *))
-			    val lab' = CFG.Label.new(
-				  checkLabel,
-				  CFGTy.T_Block{args = List.map CFG.Var.typeOf freeVars})
-			    val export = (case CFG.Label.kindOf lab
-				   of CFG.LK_Local{export, ...} => export
+		fun rewrite (f as CFG.FUNC{lab, entry, start as CFG.BLK{args, body, exit, ...}, body=bodyBlocks}, fs) = let
+                    fun needsCheck lab = (FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab)
+                                         (* andalso (getAlloc lab > 0w0) *)
+		    val (freeVars, args', orig, entry') = (case entry (* rename parameters *)
+				               of CFG.StdFunc{clos, ret, exh} => let
+				                      val clos' = CFG.Var.copy clos
+				                      val args' = List.map CFG.Var.copy args
+				                      val ret' = CFG.Var.copy ret
+				                      val exh' = CFG.Var.copy exh
+				                  in (
+					              clos' :: args' @ [ret', exh'],
+                                                      args',
+                                                      clos :: args @ [ret, exh],
+					              CFG.StdFunc{clos=clos', ret=ret', exh=exh'}
+				                      ) end
+				                | CFG.StdCont{clos} => let
+				                      val clos' = CFG.Var.copy clos
+				                      val args' = List.map CFG.Var.copy args
+				                  in
+					              (clos' :: args', args', clos :: args, CFG.StdCont{clos=clos'})
+				                  end
+				                | CFG.KnownFunc{clos} => let
+				                      val clos' = CFG.Var.copy clos
+				                      val args' = List.map CFG.Var.copy args
+				                  in
+					              (clos' :: args', args', clos :: args, CFG.KnownFunc{clos=clos'})
+				                  end
+				             (* end case *))
+                    fun convertBlock (block as CFG.BLK{body, args, exit, lab}, freeVars, renamedArgs, allArgs) = let
+		        val lab' = CFG.Label.new(
+                                   CFG.Label.nameOf lab ^ checkLabel,
+			           CFGTy.T_Block{args = List.map CFG.Var.typeOf freeVars})
+                        val heapBodyBlock = CFG.mkBlock(lab, renamedArgs,
+                                                        [], CFG.HeapCheck{
+				                            hck = hcKind,
+				                            szb = getAlloc lab,
+				                            nogc = (lab', freeVars)
+				                       })
+                        val newBlock = CFG.mkBlock(lab', allArgs, body, exit)
+                    in
+                        (heapBodyBlock, [newBlock])
+                    end
+		    val export = (case CFG.Label.kindOf lab
+				   of CFG.LK_Func{export, ...} => export
 				    | _ => raise Fail "bogus label kind"
-				  (* end case *))
-			    val f' = CFG.mkFunc(lab, entry', [], CFG.HeapCheck{
-				     hck = hcKind,
-				     szb = getAlloc lab,
-				     nogc = (lab', freeVars)
-				  }, export)
-			    val f'' = CFG.mkLocalFunc(
-				  lab', 
-				  CFG.Block{args = CFG.paramsOfConv entry}, 
-				  body, 
-				  exit)
-			    in
-			      f' :: f'' :: fs
-			    end
-			  else f::fs          
-			else f::fs          
+				 (* end case *))
+                    val ((start, other), entry) = if needsCheck lab
+                                         then (convertBlock (start, freeVars, args', orig), entry')
+                                         else ((start, []), entry)
+                    val body = List.foldl (fn (b as CFG.BLK{lab, args, ...}, rr) =>
+                                              if needsCheck lab
+                                              then let
+				                      val args' = List.map CFG.Var.copy args
+                                                      val (a,b) = convertBlock (b, args', args', args)
+                                                  in
+                                                      a::(b@rr)
+                                                  end
+                                              else b::rr) other bodyBlocks
+                    val f' = CFG.mkFunc(lab, entry, start, body, export)
 		in 
-		  rewrite
+		    f' :: fs
 		end
-	  val code = List.foldr (addAllocChecks CFG.HCK_Local) [] code
-	  val code = List.foldr (addAllocChecks CFG.HCK_Global) [] code
-	  val module = CFG.mkModule(name, externs, code)
-	  in
-	  (* recompute the census counts *)
-	    Census.census module;
-	    module
+	  in 
+	      rewrite
 	  end
+	  val code = List.foldr (addAllocChecks CFG.HCK_Local) [] code
+	  val module = CFG.mkModule(name, externs, code)
+    in
+	(* recompute the census counts *)
+	Census.census module;
+	module
+    end
 
   end
