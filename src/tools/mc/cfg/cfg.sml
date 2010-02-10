@@ -131,6 +131,14 @@ structure CFG =
 	val tyToString = CFGTyUtil.toString
       end)
 
+    local
+        val {getFn : label -> label, setFn, ...} =
+            Label.newProp (fn l => raise Fail(concat["unset parent label of(", Label.toString l, ")"]))
+    in
+        val setParent = setFn
+        val getParent = getFn
+    end
+
     fun varKindToString VK_None = "None"
       | varKindToString (VK_Let _) = "Let"
       | varKindToString (VK_Param _) = "Param"
@@ -206,12 +214,16 @@ structure CFG =
         block
     end
 
-    fun mkFunc (l, conv, start as BLK{args,...}, body, export) = let
+    fun mkFunc (l, conv, start as BLK{lab, args,...}, body, export) = let
 	  val func = FUNC{lab = l, entry = conv, start = start, body = body}
 	  val params = paramsOfConv (conv, args)
+          fun assignParent lab = setParent (lab, l)
 	  in
 	    Label.setKind (l, LK_Func{func = func, export = export});
 	    List.app (fn x => Var.setKind(x, VK_Param l)) params;
+            assignParent l;
+            assignParent lab;
+            List.app (fn (blk as BLK{lab,...}) => assignParent lab) body;
 	    func
 	  end
     fun mkLocalFunc (l, conv, start, body) = mkFunc (l, conv, start, body, NONE)

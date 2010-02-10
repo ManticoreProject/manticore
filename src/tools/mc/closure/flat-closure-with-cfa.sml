@@ -161,10 +161,10 @@ structure FlatClosureWithCFA : sig
                   setFn (f, lab);
                   assignExp body
                 end
-          and assignKB (CPS.FB{f, body, ...}) = (* JOIN if ClassifyConts.isJoinCont f
+          and assignKB (CPS.FB{f, body, ...}) = if ClassifyConts.isJoinCont f
 		then (* this continuation will map to a block, so no label now *)
 		  assignExp body
-		else *) let
+		else let
 		  val fTy = CPS.Var.typeOf f
 		  val fVal = CFA.valueOf f
 		  val lab = CFG.Label.new(CPS.Var.nameOf f, cvtStdContTyAux(fTy, fVal))
@@ -496,9 +496,11 @@ structure FlatClosureWithCFA : sig
                                 cvt (env, args, e, binds @ stms)
                               end
                           | CPS.Cont(fb, e) => let
-                              val (binds, env) = cvtCont(env, fb)
+                              val (binds, env, joinBlocks) = cvtCont(env, fb)
+                              val (start, body) = cvt (env, args, e, binds @ stms)
+                              val body = joinBlocks@body
                               in
-                                cvt (env, args, e, binds @ stms)
+                                (start, body)
                               end
                           | CPS.If(cond, e1, e2) => let
 			      val (mkC, args') = CondUtil.explode cond
@@ -706,49 +708,48 @@ structure FlatClosureWithCFA : sig
           end
         (* convert a bound continuation *)
           and cvtCont (env, CPS.FB{f=k, params, body, ...}) =
-(* JOIN             if ClassifyConts.isJoinCont k *)
-(* 		then let *)
-(* 		(* f is a join continuation, so we will translate it to a *)
-(* 		 * block.  We have to extend its parameters with the locally *)
-(* 		 * bound free variables. *)
-(* 		 *) *)
-(* 		  val needsEP = ref false *)
-(* 		  fun f (x, (bEnv, params)) = (case findVar(env, x) *)
-(* 			 of Local _ => let *)
-(* 			      val (bEnv', x') = newLocal(bEnv, x) *)
-(* 			      in *)
-(* 				(bEnv', x' :: params) *)
-(* 			      end *)
-(* 			  | Global i => ( *)
-(* 			      needsEP := true;  *)
-(* 			      (insertVar(bEnv, x, Global i), params)) *)
-(* 			  | EnclFun => ( *)
-(* 			      needsEP := true; *)
-(* 			      (insertVar(bEnv, x, EnclFun), params)) *)
-(* 			  | EnclCont => ( *)
-(* 			      needsEP := true; *)
-(* 			      (insertVar(bEnv, x, EnclCont), params)) *)
-(* 			  | JoinCont => (bEnv, params) *)
-(* 			  | Extern _ => raise Fail "unexpected extern in free-var list" *)
-(* 			(* end case *)) *)
-(* 		  val paramEP = CFG.Var.copy (envPtrOf env) *)
-(* 		  val (bodyEnv, params) = newLocals (newEnv paramEP, params) *)
-(* 		  val (bodyEnv, params) = *)
-(* 			CPS.Var.Set.foldr f (bodyEnv, params) (FreeVars.envOfFun k) *)
-(* 		  val bodyEnv = insertVar (bodyEnv, k, JoinCont)  (* to support recursive conts *) *)
-(* 	       (* if there are any free globals in e, then we include *)
-(* 		* the environment pointer as an argument. *)
-(* 		*) *)
-(* 		  val params = if !needsEP then paramEP :: params else params *)
-(* 		  val lab = CFG.Label.new( *)
-(* 			CPS.Var.nameOf k, *)
-(* 			CFGTy.T_Block{args = List.map CFG.Var.typeOf params}) *)
-(* 		  val _ = setLabel (k, lab) *)
-(* 		  in *)
-(* 		    cvtExp (bodyEnv, lab, CFG.Block{args = params}, body); *)
-(* 		    ([], insertVar (env, k, JoinCont)) *)
-(* 		  end *)
-(* 		else *) let
+             if ClassifyConts.isJoinCont k
+		then let
+		(* f is a join continuation, so we will translate it to a *
+ 		 * block.  We have to extend its parameters with the locally *
+ 		 * bound free variables. *
+ 		 *)
+		  val needsEP = ref false
+		  fun f (x, (bEnv, params)) = (case findVar(env, x)
+			 of Local _ => let
+			      val (bEnv', x') = newLocal(bEnv, x)
+			      in
+				(bEnv', x' :: params)
+			      end
+			  | Global i => (
+			      needsEP := true;
+			      (insertVar(bEnv, x, Global i), params))
+			  | EnclFun => (
+			      needsEP := true;
+			      (insertVar(bEnv, x, EnclFun), params))
+			  | EnclCont => (
+			      needsEP := true;
+			      (insertVar(bEnv, x, EnclCont), params))
+			  | JoinCont => (bEnv, params)
+			  | Extern _ => raise Fail "unexpected extern in free-var list"
+			(* end case *))
+		  val paramEP = CFG.Var.copy (envPtrOf env)
+		  val (bodyEnv, params) = newLocals (newEnv paramEP, params)
+		  val (bodyEnv, params) =
+			CPS.Var.Set.foldr f (bodyEnv, params) (FreeVars.envOfFun k)
+		  val bodyEnv = insertVar (bodyEnv, k, JoinCont)  (* to support recursive conts *)
+	       (* if there are any free globals in e, then we include *
+                * the environment pointer as an argument. *)
+		  val params = if !needsEP then paramEP :: params else params
+		  val lab = CFG.Label.new(
+			CPS.Var.nameOf k,
+			CFGTy.T_Block{args = List.map CFG.Var.typeOf params})
+		  val _ = setLabel (k, lab) 
+                  val (start, body) = cvtExp (bodyEnv, params, lab, body)
+		  in
+		    ([], insertVar (env, k, JoinCont), start::body)
+		  end
+		else let
 		  val (mkContTy, mkEntry, mkEntryTy) =
 			if CFA.isEscaping k
 			  then (CFGTyUtil.stdContTy, CFG.StdCont, CFGTy.T_StdCont)
@@ -774,7 +775,7 @@ structure FlatClosureWithCFA : sig
                   val (start, body) = cvtExp (contEnv, params', lab, body)
 		  in
                     finishFunc (lab, conv, start, body);
-		    (binds, env')
+		    (binds, env', [])
 		  end
         (* convert an apply *)
           and cvtApply (env, f, args, rets) = (case CFA.valueOf f
@@ -887,9 +888,9 @@ structure FlatClosureWithCFA : sig
                   (binds @ retBinds @ argBinds, xfer)
                 end
         (* convert a throw *)
-          and cvtThrow (env, k, args) = (* JOIN if ClassifyConts.isJoinCont k
+          and cvtThrow (env, k, args) = if ClassifyConts.isJoinCont k
 		then cvtJoinThrow (env, k, args)
-		else *) (case CFA.valueOf k 
+		else (case CFA.valueOf k 
 		   of CFA.TOP => cvtStdThrow (env, k, NONE, args)
 		    | CFA.BOT => cvtStdThrow (env, k, NONE, args)
 		    | CFA.LAMBDAS gs => let

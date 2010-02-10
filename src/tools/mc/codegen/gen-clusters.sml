@@ -35,8 +35,9 @@ end = struct
       val exits = [exit]
       val exits = List.foldl (fn (M.BLK{exit,...}, ls) => exit::ls) exits body
       val labs = List.foldl (fn (exit, labs) => (CFGUtil.labelsOfXfer exit) @ labs) [] exits
+      val funs = List.map CFG.getParent labs
       in
-	  List.foldl addEdge edgeMap labs
+	  List.foldl addEdge edgeMap funs
       end
 
   (* clusters takes a list of functions, and returns the clusters of those
@@ -48,15 +49,11 @@ end = struct
    * the CCS manually or with Union Find, and probably won't make a difference.
    *)
   fun clusters code = let
-      fun doFunc (func as M.FUNC {start, body, ...}, (edgeMap, labMap)) = let
-          fun insLab (block as M.BLK {lab, ...}, (edgeMap, labMap)) =
-	      (LM.insert (edgeMap, lab, LS.empty), LM.insert (labMap, lab, func))
-      in
-          insLab (start, List.foldl insLab (edgeMap, labMap) body)
-      end
+      fun insLab (func as M.FUNC {lab, ...}, (edgeMap, labMap)) =
+	  (LM.insert (edgeMap, lab, LS.empty), LM.insert (labMap, lab, func))
       (* initialize the edgeMap with empty edges, and map each function label
        * back to its function in the labMap *)
-      val (edgeMap, labMap) = List.foldl doFunc (LM.empty, LM.empty) code
+      val (edgeMap, labMap) = List.foldl insLab (LM.empty, LM.empty) code
       fun getFunc l = Option.valOf (LM.find (labMap, l))
       (* build the graph of jump edges *)
       val edgeMap = List.foldl addEdges edgeMap code
@@ -64,9 +61,7 @@ end = struct
       val sccs = SCC.topOrder' {roots=LM.listKeys labMap, follow=follow}
       fun toCluster (SCC.SIMPLE l) = [getFunc l]
 	| toCluster (SCC.RECURSIVE ls) = List.map getFunc ls
-      val clustersWithDups = List.map toCluster sccs
-      fun uniqueify funs = LM.listItems (List.foldl (fn (f as CFG.FUNC{lab,...},lm) => LM.insert (lm, lab, f)) LM.empty funs)
       in
-          List.map uniqueify clustersWithDups
+          List.map toCluster sccs
       end
 end

@@ -39,7 +39,7 @@ structure ClassifyConts : sig
     structure ST = Stats
 
   (* controls *)
-    val enableFlg = ref false (* JOIN: true *)
+    val enableFlg = ref true
 
     val () = List.app (fn ctl => ControlRegistry.register ClosureControls.registry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
