@@ -65,6 +65,7 @@ structure CheckBOM : sig
 	  fun lp x = (case BV.kindOf x
 		 of B.VK_Let(B.E_Pt(_, B.E_Ret[y])) => lp y
 		  | B.VK_RHS(B.E_Cast(_, y)) => lp y
+		  | B.VK_RHS(B.E_Select(i,y)) => lp y
 		  | k => k
 		(* end case *))
 	  in
@@ -81,6 +82,7 @@ structure CheckBOM : sig
 	      then (case resolveBinding x
 		 of B.VK_RHS(B.E_Promote _) => true
 		  | B.VK_RHS(B.E_Const _) => true
+		  | B.VK_RHS(B_E_HostVProc) => true
 		  | _ => false
 		(* end case *))
 	      else true
