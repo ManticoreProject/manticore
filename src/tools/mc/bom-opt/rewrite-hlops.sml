@@ -92,7 +92,7 @@ end = struct
     type rwstate = IntInf.int Rewrites.EltMap.map
 
     val emptyRWState = Rewrites.EltMap.empty : rwstate
-
+                                               
     val baseWeight = IntInf.fromInt 0
 
     val isEmptyRWState : rwstate -> bool = Rewrites.EltMap.isEmpty
@@ -121,6 +121,18 @@ end = struct
        nonterminal). *)
     fun getRWStateKeys state = Rewrites.Elt_Wildcard :: (Rewrites.EltMap.listKeys state)
 
+    (* rwStateToString() - Convert the given rewrite state into a string. *)
+    fun rwStateToString rwState = let
+        val keys = getRWStateKeys rwState
+        fun pairToStr key =
+            String.concat [Rewrites.eltToString key, " : ",
+                           IntInf.toString (getRWStateWeight(key, rwState))]
+        val keysAndWeights =
+            String.concatWith ", " (List.map pairToStr keys)
+    in
+        String.concat ["{ ", keysAndWeights, " }"]
+    end (* rwStateToString() *)
+
     (* getRWStateMaxPair() - Get the nonterminal weight pair that is maximal
        for the given state, and is also in the given nonterminal map. *)
     fun getRWStateMaxPair (state, ntMap) = let
@@ -133,6 +145,13 @@ end = struct
                    (* end case *))
             else p2opt
     in
+        (* +DEBUG
+        if Controls.get BOMOptControls.debug then
+            print (String.concat [
+                   "getRWStateMaxPair(): ", rwStateToString state, " ",
+                   Rewrites.rwEltMapToString(ntMap, fn _ => "???"), "\n"])
+        else ();
+         -DEBUG *)
         foldl cmpPair NONE (Rewrites.EltMap.listItemsi state)
     end (* getRWStateMaxPair *)
 
@@ -177,18 +196,6 @@ end = struct
     in
         applyProdToRWState
     end (* mkApplyProdToRWState() *)
-
-    (* rwStateToString() - Convert the given rewrite state into a string. *)
-    fun rwStateToString rwState = let
-        val keys = getRWStateKeys rwState
-        fun pairToStr key =
-            String.concat [Rewrites.eltToString key, " : ",
-                           IntInf.toString (getRWStateWeight(key, rwState))]
-        val keysAndWeights =
-            String.concatWith ", " (List.map pairToStr keys)
-    in
-        String.concat ["{ ", keysAndWeights, " }"]
-    end (* rwStateToString() *)
 
     (* FIXME: Will need to move these into an environment... *)
     val allocElt = Rewrites.Elt_Alloc
@@ -425,14 +432,25 @@ end = struct
             foldl Rewrites.addRWToGrammar (Rewrites.newGrammar()) rewrites
 
         val _ = if debug then
-                    print ((Rewrites.grammarToString rw_env) ^ "\n")
+                    print("rw_env = {{" ^ (Rewrites.grammarToString rw_env) ^
+                          "}}\n")
                 else ()
 
         val hlrwGrammarHash = Rewrites.getGrammarHash rw_env
 
-        val rwMap =
-            Rewrites.EltMap.filter Rewrites.productionHasRW
-                           (Rewrites.getGrammarProductionMap rw_env)
+        val fullRWMap = Rewrites.getGrammarProductionMap rw_env
+
+        val _ = if debug then
+                    print("fullRWMap = " ^
+                          (Rewrites.productionMapToString fullRWMap) ^ "\n")
+                else ()
+
+        val rwMap = Rewrites.EltMap.filter Rewrites.productionHasRW fullRWMap
+
+        val _ = if debug then 
+                    print("rwMap = " ^ (Rewrites.productionMapToString rwMap) ^
+                          "\n")
+                else ()
 
         (* XXX - Couldn't find easy way to get something like "oporelse" *)
         val myor = fn (a, b) => a orelse b
@@ -482,6 +500,11 @@ end = struct
                    val rwState = mkRWState(Rewrites.Elt_HLOp hlop,
                                            List.map getVarRWState vars)
                in
+                   if debug andalso (not (isEmptyRWState rwState)) then
+                       print (String.concat ["Setting rewrite state of ",
+                                             ProgPt.toString ppt, " to ",
+                                             rwStateToString rwState, ".\n"])
+                   else ();
                    setPPRWState(ppt, rwState); rwState
                end
              | _ => emptyRWState
@@ -573,7 +596,18 @@ end = struct
                end
              | (t as B.E_HLOp(hlOp, args, exns)) => let
                    val ppRWState = getPPRWState ppt
+                   val _ = if debug andalso (not (isEmptyRWState ppRWState))
+                           then print (String.concat [
+                               "Referenced nonempty rewrite state of ",
+                               ProgPt.toString ppt, " as ",
+                               rwStateToString ppRWState, "\n"])
+                           else ()
                    val ntWtPairOpt = getRWStateMaxPair(ppRWState, rwMap)
+                   val _ = if debug andalso (not (isEmptyRWState ppRWState))
+                           then if (not(isSome ntWtPairOpt))
+                                then print "NO MAX BENEFIT NT DETECTED.\n\n"
+                                else print "\n"
+                           else ()
                in case ntWtPairOpt
                    of SOME (nt, _) => let
                           val prod = Rewrites.EltMap.lookup(rwMap, nt)

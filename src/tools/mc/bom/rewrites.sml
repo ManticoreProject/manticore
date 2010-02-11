@@ -46,7 +46,8 @@ structure Rewrites = struct
       | compareElt (Elt_Wildcard, Elt_Wildcard) = EQUAL
       | compareElt (Elt_Wildcard, _) = LESS
       | compareElt (_, Elt_Wildcard) = GREATER
-      | compareElt (Elt_Nonterminal _, Elt_Nonterminal _) = EQUAL
+      | compareElt (Elt_Nonterminal prod1, Elt_Nonterminal prod2) =
+        Stamp.compare (prod1, prod2)
       | compareElt (Elt_Nonterminal _, _) = LESS
       | compareElt (_, Elt_Nonterminal _) = GREATER
 
@@ -58,6 +59,17 @@ structure Rewrites = struct
 	val compare = compareElt
       end
     structure EltMap = RedBlackMapFn (EltKey)
+
+    (* rwEltMapToString() - Utility function to convert the given
+       EltMap.map to a string. *)
+    fun rwEltMapToString (the_map, rangeElemToString) = let
+        fun pairToString (rw_elt, range_elem) =
+            String.concat [eltToString rw_elt, " : ",
+                           rangeElemToString range_elem]
+        val pairStrings = map pairToString (EltMap.listItemsi the_map)
+    in
+        String.concat ["{", String.concatWith ", " pairStrings, "}"]
+    end (* rwMapToString() *)
 
     datatype grammar = HLRWGrammar of production list
 
@@ -181,15 +193,6 @@ structure Rewrites = struct
         foldl prodHashFolder EltMap.empty prods
     end (* getGrammarHash() *)
 
-    (* getGrammarProductionMap() - Create a map from nonterminals in
-       the grammar to their (supposedly sole) production. *)
-    fun getGrammarProductionMap (HLRWGrammar prods) = let
-        fun prodMapFolder (prod as HLRWProduction {name, ...}, m) =
-            EltMap.insert(m, Elt_Nonterminal name, prod)
-    in
-        foldl prodMapFolder EltMap.empty prods
-    end (* getGrammarProductionMap() *)
-
     (* getProductionWeight() - Calculate the weight of the given
        production (not counting benefit of children), which will either
        be zero, or based on the rewrite weight. *)
@@ -212,6 +215,9 @@ structure Rewrites = struct
         String.concat ["nt", Stamp.toString name, " := ", rhss, rwOptToString rw_opt]
     end (* productionToString *)
 
+    fun productionMapToString prod_map =
+        rwEltMapToString(prod_map, productionToString)
+
     (* grammarToString() - Create a string representation of a full RW grammar
        (as newline delimited productions). *)
     fun grammarToString (HLRWGrammar nil) = "Empty rewrite grammar.\n"
@@ -221,6 +227,23 @@ structure Rewrites = struct
     in
         String.concat prodStrs
     end (* grammarToString *)
+
+    (* getGrammarProductionMap() - Create a map from nonterminals in
+       the grammar to their (supposedly sole) production. *)
+    fun getGrammarProductionMap (HLRWGrammar prods) = let
+        fun prodMapFolder (prod as HLRWProduction {name, ...}, m) =
+            EltMap.insert(m, Elt_Nonterminal name, prod)
+            (* +DEBUG
+            let val _ = print ("Previous is " ^ (productionMapToString m) ^ 
+                               "\nAdding " ^ (productionToString prod) ^ "\n")
+                val rv = 
+                val _ = print ("Result is " ^ (productionMapToString rv) ^
+                               "\n\n")
+            in rv end
+             -DEBUG *)
+    in
+        foldl prodMapFolder EltMap.empty prods
+    end (* getGrammarProductionMap() *)
 
     (* patternToString() - Utility function to make a string from a
        parse tree pattern. *)
