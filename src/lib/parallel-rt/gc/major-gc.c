@@ -263,8 +263,9 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
     else if (isPtr(root)) {
       /* check for a bogus pointer */
 	MemChunk_t *cq = AddrToChunk(ValueToAddr(root));
-	if (cq->sts == TO_SP_CHUNK)
-	    return root;
+	if (cq->sts == TO_SP_CHUNK) {
+        /* fall through, returning root later */
+    }
 /* 
 	else if ((cq->sts == FROM_SP_CHUNK) && (! GlobalGCInProgress))
 	    Die("PromoteObj: unexpected from-space pointer %p\n", ValueToPtr(root));
