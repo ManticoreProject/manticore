@@ -74,6 +74,10 @@ structure CheckBOM : sig
 
   (* check for assignments of unpromoted values; return true if okay and false
    * otherwise.
+   * The following two cases report true because they are currently uncheckable:
+   * - VK_Param. We do not do data flow, so we do not know if the arguments were promoted
+   * - VK_Let(E_Apply). We do not do data flow, so we do not know if the return values
+   * of the called function(s) are guaranteed to have been promoted
    *)
     fun checkAssign (ty, x) = let
 	  val k = BTU.kindOf ty
@@ -83,6 +87,8 @@ structure CheckBOM : sig
 		 of B.VK_RHS(B.E_Promote _) => true
 		  | B.VK_RHS(B.E_Const _) => true
 		  | B.VK_RHS(B_E_HostVProc) => true
+                  | B.VK_Param => true
+                  | B.VK_Let(B.E_Pt(_, B.E_Apply _)) => true
 		  | _ => false
 		(* end case *))
 	      else true
