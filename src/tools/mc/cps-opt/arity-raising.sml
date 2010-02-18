@@ -26,6 +26,7 @@ structure ArityRaising : sig
     val enableArityRaising = ref true
     val argumentOnly = ref false
     val flatteningDebug = ref false
+    val multiPass = ref true
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
@@ -51,6 +52,13 @@ structure ArityRaising : sig
                   pri = [0, 1],
                   obscurity = 0,
                   help = "use argument-only arity raising"
+                  },
+              Controls.control {
+                  ctl = multiPass,
+                  name = "multipass",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "use multipass signature changes"
                   }
             ]
 
@@ -71,6 +79,7 @@ structure ArityRaising : sig
     val cntUnusedParam          = ST.newCounter "cps-arity:unused-param"
     val cntUnusedArg            = ST.newCounter "cps-arity:unused-arg"
     val cntCleanupPasses        = ST.newCounter "cps-arity:cleanup-passes"
+    val cntSignaturePasses      = ST.newCounter "cps-arity:signature-passes"
 
   (***** Analysis *****)
 
@@ -589,7 +598,7 @@ structure ArityRaising : sig
 	       *)
 		in
 		  ST.tick cntCandidateFun;
-		  setInfo (f, vmap, pmap, params, rets, computeSig pmap, NONE, NONE);
+		  setInfo (f, vmap, pmap, params, rets, [(0,[])], NONE, NONE);
 		  candidates := f :: !candidates
 		end (* analyseCandidate *)
 	(* walk an expression looking for candidates *)
@@ -626,16 +635,21 @@ structure ArityRaising : sig
    * To ensure compatible representations, we pass over all of the functions, pulling out
    * type associated with each parameter and ensuring it works.
    *)
+    fun computeFunSig (f) = let
+        val {pmap,...} = getInfo f
+    in
+        computeSig pmap
+    end
     fun sigOfFuns [] = raise Fail "no functions"
-      | sigOfFuns [f] = #sign(getInfo f)
+      | sigOfFuns [f] = computeFunSig f
       | sigOfFuns (l as f::r) = let
             val canMeet = List.foldl (fn (g, b) => if (b) then (isCandidate g) else b) true l
         in
             if (canMeet) then let
                     fun meetSigs (g, sign) =
-                        sigMeet(#sign(getInfo g), CV.typeOf g, sign)
+                        sigMeet(computeFunSig g, CV.typeOf g, sign)
                     val proposed = List.foldl meetSigs
-                                              (#sign(getInfo f)) r
+                                              (computeFunSig f) r
                     val final = List.foldl meetSigs proposed l
                     fun getTypes (f) = let
                         val {params, vmap, ...} = getInfo f
@@ -658,6 +672,7 @@ structure ArityRaising : sig
                 [(0, [])]
         end
 
+    val signaturesChanged = ref false
     fun computeValidSignatures (candidateSet) = let
         val candidateList = VSet.listItems candidateSet
         val _ = if !flatteningDebug
@@ -667,6 +682,17 @@ structure ArityRaising : sig
                                    "\n"])
                 else ()
         val sharedSig = sigOfFuns candidateList
+        val changed = List.exists (fn (v) => if isCandidate v
+                                             then let
+                                                     val {sign as origSign, ...} = getInfo v
+                                                 in
+                                                     not(length origSign = length sharedSig) orelse
+                                                     not(ListPair.all (fn (s1,s2) => compareRevPath(s1, s2)=PathEq) (origSign, sharedSig))
+                                                 end
+                                             else false) candidateList
+        val _ = if changed
+                then (signaturesChanged := true)
+                else ()
         fun setNewSignature (candidate) =
             if isCandidate candidate
             then let
@@ -681,6 +707,67 @@ structure ArityRaising : sig
                 end
             else ()
     in
+        if changed
+        then let
+                fun collectSites (cand, sites) = let
+                    fun maybeAddSite (site as SITE{ppt,...}, sites) =
+                        if List.exists (fn (_, SITE{ppt=ppt',...}) => ProgPt.same(ppt',ppt)) sites
+                        then sites
+                        else (cand,site)::sites
+                in
+                    List.foldr maybeAddSite sites (getSites cand)
+                end
+                val sites = List.foldr collectSites [] candidateList
+                fun updateCallSite (cand, site as SITE{enclFn=SOME(enclFn), args,...}) = let
+                    val {sign=callSign,...} = getInfo cand
+		    val {vmap, pmap, params, rets, sign, newParams, newRets} = getInfo enclFn
+                    fun decrementUsage (i : int, sels : int list) = let
+                        val arg = List.nth (args, i)
+                    in
+                        case ParamMap.find(vmap, VAR arg)
+                         of NONE => ()
+                          | SOME p => let
+                                val (p',l') = pathToList p
+                                val q = listToPath (p', l'@sels)
+                            in
+                                case PMap.find (pmap, q)
+                                 of NONE => ()
+                                  | SOME(cnt) => (addToRef (cnt, ~1))
+                            end
+                    end
+                    val _ = List.app decrementUsage callSign
+                    fun addUsage ((i, sels), pmap) = let
+                        val arg = List.nth (args, i)
+                    in
+                        case ParamMap.find(vmap, VAR arg)
+                         of NONE => pmap
+                          | SOME p => let
+                                val (p',l') = pathToList p
+                                val q = listToPath (p', l'@sels)
+                                fun addPathRef (p) =
+                                    (case PMap.find (pmap,p)
+                                      of SOME cnt => (addToRef(cnt, 1); pmap)
+                                       | NONE => (case p
+                                                   of (SEL(i, q)) => (addPathRef q)
+                                                    (* Next case guaranteed to terminate because
+                                                     * we always add all parameters to the pmap
+                                                     *)
+                                                    | x => (addPathRef x)))
+                            in
+                                addPathRef q
+                            end
+                    end
+                    val pmap = List.foldr addUsage pmap sharedSig
+                in
+                    setInfo (enclFn, vmap, pmap, params, rets, sign, newParams, newRets)
+                end
+                  | updateCallSite (_) = ()
+            in
+                List.app updateCallSite (List.filter (fn (_, SITE{enclFn,...}) => case enclFn
+                                                                                   of NONE => false
+                                                                                    | SOME(f) => isCandidate f) sites)
+            end
+        else ();
         List.app setNewSignature candidateList
     end
 
@@ -740,8 +827,15 @@ structure ArityRaising : sig
               newSet::remainder
           end
           val sharedSiteCandidates = List.foldr candidateUnion [] sites
-          val _ = List.app computeValidSignatures sharedSiteCandidates
+          fun computeSignatures () = (
+              signaturesChanged := false;
+              ST.tick cntSignaturePasses;
+              List.app computeValidSignatures sharedSiteCandidates;
+              if !signaturesChanged andalso !multiPass
+              then computeSignatures ()
+              else ())
     in
+        computeSignatures();
         candidates
     end
 
@@ -1076,7 +1170,7 @@ structure ArityRaising : sig
                                                CV.toString f, " orig: ",
                                                CPSTyUtil.toString (CV.typeOf f)])
                             else ()
-		    val {vmap, pmap, params, rets, sign,
+		    val {vmap, pmap, params, rets, sign, 
                          newParams=SOME(newParams), newRets=SOME(newRets)} = getInfo f
                     (* Need to transform the originals as well because they're used for the
                      * type coercions later in the flattened applications.
@@ -1299,7 +1393,7 @@ structure ArityRaising : sig
                        newParams=SOME(fParams), ...} = getInfo f
                   val CPSTy.T_Fun(callParamTypes, retTypes) = CV.typeOf g
 		  fun genCall (sign, params, newArgs, progress, args') =
-                        if null sign
+                        if null sign orelse null params
 			  then (case retArgs
 			     of SOME(retArgs) => let
                                     val filteredRetArgs = ListPair.foldr
@@ -1425,8 +1519,11 @@ structure ArityRaising : sig
           and shouldSkipUseless (v) = if getUseful v
 		then false
 		else (ST.tick (cntUselessElim); true)
-          and findInSign (n, s::sign, path, params) =
-              if samePath(path, listToPath s) then SOME(List.nth (params, n)) else findInSign(n+1,sign, path, params)
+          and findInSign (_, _, _, []) = NONE
+            | findInSign (n, s::sign, path, params) = 
+              if samePath(path, listToPath s)
+              then SOME(List.nth (params, n))
+              else findInSign(n+1,sign, path, params)
             | findInSign (n, [], _, _) = NONE
           (* look up path in defining function of selectee *)
           and peekAlias (i, y) = (
@@ -1435,10 +1532,10 @@ structure ArityRaising : sig
                   if not(isCandidate encl)
                   then NONE
                   else let
-                          val {vmap,sign, newParams=SOME(newParams), ...} = getInfo encl
+                          val {vmap, sign, newParams=SOME(newParams), ...} = getInfo encl
                       in
                           case ParamMap.find (vmap, VAR (y))
-                           of SOME(path) => findInSign(0, sign, SEL (i, path), newParams)
+                           of SOME(path) => (findInSign(0, sign, SEL (i, path), newParams))
                             | NONE => NONE
                       end)
                 | NONE => NONE
@@ -1447,10 +1544,10 @@ structure ArityRaising : sig
               if not(isCandidate encl)
               then NONE
               else let
-                      val {vmap,sign, newParams=SOME(newParams), ...} = getInfo encl
+                      val {vmap, sign, newParams=SOME(newParams), ...} = getInfo encl
                   in
                       case ParamMap.find (vmap, VAR (v))
-                       of SOME(path) => findInSign(0, sign, path, newParams)
+                       of SOME(path) => (findInSign(0, sign, path, newParams))
                         | NONE => peekAlias (i, y)
                           
                   end
