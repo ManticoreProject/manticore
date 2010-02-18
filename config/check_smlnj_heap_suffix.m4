@@ -44,6 +44,7 @@ AC_DEFUN(CHECK_SMLNJ_HEAP_SUFFIX, [
     sparc:solaris2*)	SMLNJ_ARCH=sparc;	SMLNJ_OPSYS=sunos;;
     sparc:solaris3*)	SMLNJ_ARCH=sparc;	SMLNJ_OPSYS=solaris;;
     x86_64:linux*)	SMLNJ_ARCH=x86;		SMLNJ_OPSYS=linux;;
+    x86_64:darwin*)	SMLNJ_ARCH=x86;		SMLNJ_OPSYS=darwin;;
     *) $1 ;;
   esac
   if test z$SMLNJ_ARCH != z -a z$SMLNJ_OPSYS != z ; then
