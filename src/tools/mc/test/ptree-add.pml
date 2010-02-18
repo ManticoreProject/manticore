@@ -9,4 +9,4 @@ fun treeAdd t = (case t
         | ND(t1, t2) => add (| treeAdd t1, treeAdd t2 |)
       (* end case *));
 
-print (Int.toString(treeAdd (mkTree (readint()))) ^ "\n")
+val _ = print (Int.toString(treeAdd (mkTree 18)) ^ "\n")
