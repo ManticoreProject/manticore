@@ -112,7 +112,7 @@ structure EtaExpand : sig
 	    if (appCnt > 0) andalso (useCnt > appCnt)
 	      then let
 		val f' = CV.copy f
-                val _ = if !expandFlg
+                val _ = if !etaDebug
                         then print (concat ["Expanding: ", CV.toString f, " NewBody: ", CV.toString f', "\n"])
                         else ()
 		val params' = List.map CV.copy params
