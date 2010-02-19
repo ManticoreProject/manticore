@@ -28,7 +28,8 @@ structure EtaExpand : sig
 
 
   (***** controls ******)
-    val expandFlg = ref false
+    val expandFlg = ref true
+    val etaDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
@@ -40,6 +41,13 @@ structure EtaExpand : sig
                   pri = [0, 1],
                   obscurity = 0,
                   help = "enable eta-expansion"
+                },
+              Controls.control {
+                  ctl = expandFlg,
+                  name = "eta-expand-debug",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "debug eta-expansion"
                 }
             ]
 
@@ -75,9 +83,16 @@ structure EtaExpand : sig
 		  C.mkFun(fbs, doExp(env, e))
 		end
 (* FIXME: we should generalize the representation to allow mutually recursive continuations! *)
-	    | C.Cont(C.FB{f, params, rets, body}, e) =>
-		C.mkCont(
-		  C.FB{f=f, params=params, rets=rets, body=doExp(env, body)}, doExp(env, e))
+	    | C.Cont(fb, e) => let
+                  val (env, fbs) = doFB (env, fb)
+              in
+                  case fbs
+                   of [fb] => C.mkCont (fb, doExp (env, e))
+                    | stub::newBody::[] => C.mkCont (newBody,
+                                                     C.mkCont (stub,
+                                                               doExp (env, e)))
+                    | _ => raise Fail "Unexpected return from doFB"
+              end
 	    | C.If(x, e1, e2) => C.mkIf(x, doExp(env, e1), doExp(env, e2))
 	    | C.Switch(x, cases, dflt) => C.mkSwitch(
 		x,
@@ -97,6 +112,9 @@ structure EtaExpand : sig
 	    if (appCnt > 0) andalso (useCnt > appCnt)
 	      then let
 		val f' = CV.copy f
+                val _ = if !expandFlg
+                        then print (concat ["Expanding: ", CV.toString f, " NewBody: ", CV.toString f', "\n"])
+                        else ()
 		val params' = List.map CV.copy params
 		val rets' = List.map CV.copy rets
 		val env = VMap.insert(env, f, f')
@@ -113,7 +131,10 @@ structure EtaExpand : sig
 		(* adjust census counts *)
 		  CV.setCount (f', appCnt+1);
 		  CV.appCntRef f' := appCnt+1;
+		  CV.appCntRef f := 0;
 		  CV.setCount (f, useCnt - appCnt);
+                  List.app (fn (v) => CV.setCount (v, 1)) params';
+                  List.app (fn (v) => CV.setCount (v, 1)) rets';
 		(* update stats *)
 		  ST.tick cntExpand;
 		  ST.bump (cntRename, CV.appCntOf f);
