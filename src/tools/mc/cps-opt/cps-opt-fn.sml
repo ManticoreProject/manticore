@@ -49,9 +49,11 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 	  val _ = census module
 	  val _ = CheckCPS.check ("convert", module)
 	  val module = contract module
-	  val module = eta module
           val _ = cfa module
-          val module = copy module
+          val module = copy module 
+	  val module = eta module
+          val _ = CFACPS.clearInfo module 
+          val _ = cfa module
 	  val module = arity module
 	  val module = contract module
           val _ = CFACPS.clearInfo module

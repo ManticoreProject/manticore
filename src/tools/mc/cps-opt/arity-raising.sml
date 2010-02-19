@@ -1059,7 +1059,7 @@ structure ArityRaising : sig
          * to any. The type being different is an indicator that it's not actually
          * used in the calling function, but is just passed along.
          *)
-        fun transformParam(retVar) = let
+        fun transformParam(param) = let
             fun getParamFunType (l) = let
                 val lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
                 val _ = if !flatteningDebug
@@ -1079,7 +1079,7 @@ structure ArityRaising : sig
                 end
             in
                 if List.length lambdas = 0
-                then CV.typeOf retVar
+                then CV.typeOf param
                 else let
                         val l::lambdas = lambdas
                     in
@@ -1099,23 +1099,23 @@ structure ArityRaising : sig
             end
               | buildType (ty, _) = ty
         in
-            case CFACPS.valueOf retVar
+            case CFACPS.valueOf param
              of CFACPS.LAMBDAS(l) => let
                     val newType = getParamFunType l
                 in
-                    if CPSTyUtil.equal (CV.typeOf retVar, newType)
+                    if CPSTyUtil.equal (CV.typeOf param, newType)
                     then ()
                     else (changed := true;
-                          CV.setType (retVar, newType))
+                          CV.setType (param, newType))
                 end
 
               | CFACPS.TUPLE(values) => let
-                    val newType = buildType (CV.typeOf retVar, values)
+                    val newType = buildType (CV.typeOf param, values)
                 in
-                    if CPSTyUtil.equal (CV.typeOf retVar, newType)
+                    if CPSTyUtil.equal (CV.typeOf param, newType)
                     then ()
                     else (changed := true;
-                          CV.setType (retVar, newType))
+                          CV.setType (param, newType))
                 end
               | _ => ()
         end
