@@ -107,7 +107,7 @@
     | markPPat (sp, tr) = mark PT.MarkPPat (sp, tr)
   val markTyDecl = mark PT.MarkTyDecl
 
-(* construct a left-associative type application *)
+(* construct a left-associative type application where the argument is a single type *)
   fun mkTyApp (arg, []) = arg
     | mkTyApp (arg, (span, id)::r) =
 	mkTyApp (markTy(span, PT.NamedTy([arg], id)), r)
@@ -220,21 +220,25 @@ TupleType
 	;
 
 TyApp
-	: QualifiedId (QualifiedId => (FULL_SPAN, QualifiedId))*
-		=> (mkTyApp (markTy(FULL_SPAN, PT.NamedTy([], QualifiedId)), SR))
-	| TYVAR (QualifiedId => (FULL_SPAN, QualifiedId))*
-		=> (mkTyApp (markTy(TYVAR_SPAN, PT.VarTy TYVAR), SR))
-	| "(" Type optTypes			=> (markTy (FULL_SPAN, optTypes Type))
+	: AtomicType (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
+		=> (mkTyApp (AtomicType, SR))
+	| "(" Type optTypes
+(* FIXME: we should really propagate the left extent of the span *)
+		=> (markTy (FULL_SPAN, optTypes Type))
 	;
 
 optTypes
-	: ")" QualifiedId?
-		=> (case QualifiedId
-		     of SOME id => (fn ty => PT.NamedTy([ty], id))
-		      | _ => (fn ty => ty)
-		    (* end case *))
-	| ( "," Type)+ ")" QualifiedId
-		=> (fn ty => PT.NamedTy(ty::SR, QualifiedId))
+	: ")" (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
+		=> (fn ty => mkTyApp (ty, SR))
+	| ( "," Type)+ ")" QualifiedId (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
+		=> (fn ty => mkTyApp(markTy(FULL_SPAN, PT.NamedTy(ty::SR1, QualifiedId)), SR2))
+	;
+
+AtomicType
+	: TYVAR
+		=> (markTy(FULL_SPAN, PT.VarTy TYVAR))
+	| QualifiedId
+		=> (markTy(FULL_SPAN, PT.NamedTy([], QualifiedId)))
 	;
 
 ConsDecl
