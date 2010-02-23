@@ -19,6 +19,8 @@ structure WorkStealing (* :
 
     val workGroup : unit -> ImplicitThread.work_group
 
+    val isLocalDequeEmpty : unit -> bool
+
   end *) = struct
 
     local
@@ -428,11 +430,18 @@ structure WorkStealing (* :
 	    return (group)
 	  ;
 
+	  define inline @is-local-deque-empty (_ : unit / exh : exh) : bool =
+	    let deque : D.deque = @get-assigned-deque-from-atomic (host_vproc / exh)
+	    D.@is-empty (deque)
+	  ;
+
       )
 
     in
 
     val workGroup : unit -> ImplicitThread.work_group = _prim (@work-group)
+
+    val isLocalDequeEmpty : unit -> bool = _prim (@is-local-deque-empty)
 
     end
 
