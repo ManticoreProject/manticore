@@ -49,4 +49,14 @@ structure Vector =
     val length : 'a vector -> int = _prim (@length)
     val sub : 'a vector * int -> 'a = _prim (@sub)
 
+    fun app f v =
+	let
+	    val len = length v
+	    fun lp i =
+		if i < len then (f (sub (v, i)); lp (i + 1))
+		else ()
+	in
+	    lp 0
+	end
+
   end
