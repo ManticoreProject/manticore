@@ -183,6 +183,27 @@ void M_Print (const char *s)
 #endif
 }
 
+/* M_StringSame
+ * returns 1 when the two Manticore strings are the same length and contain the same
+ * characters and 0 otherwise
+ */
+int M_StringSame (Value_t a, Value_t b)
+{
+    SequenceHdr_t	*s1 = (SequenceHdr_t *)ValueToPtr(a);
+    SequenceHdr_t	*s2 = (SequenceHdr_t *)ValueToPtr(b);
+    int same = 1;
+
+    if (s1->len != s2->len) { return 0; }
+    else {
+	char *str1 = (char *)ValueToPtr(s1->data);
+	char *str2 = (char *)ValueToPtr(s2->data);
+	for (int i = 0; i < s1->len; i++)
+	    if (str1[i] != str2[i])
+		return 0;
+    }
+    return same;
+}
+
 /* M_StringConcat2:
  */
 Value_t M_StringConcat2 (Value_t a, Value_t b)
