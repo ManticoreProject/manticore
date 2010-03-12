@@ -159,7 +159,7 @@ int main (int argc, const char **argv)
 	    case RopeRebalanceEndEvt:
 		uint64_t timeRebalancing = evt->timestamp - VProcTimestamp[evt->vpId];
 		TotalTimeRebalancing[evt->vpId] += timeRebalancing;
-		NumRebalances[i]++;
+		NumRebalances[evt->vpId]++;
 		break;
 	    }
 	}
