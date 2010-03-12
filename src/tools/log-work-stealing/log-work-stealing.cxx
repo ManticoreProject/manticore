@@ -138,6 +138,33 @@ int main (int argc, const char **argv)
 	}
     }
 
+    uint64_t TotalTimeRebalancing[Hdr->nVProcs];
+    int NumRebalances[Hdr->nVProcs];
+    {
+	uint64_t VProcTimestamp[Hdr->nVProcs];          // timestamp of immediately preceding, relevant event 
+	
+	for (int i = 0; i < Hdr->nVProcs; i++) {
+	    VProcTimestamp[i] = 0ul;
+	    NumRebalances[i] = 0;
+	    TotalTimeRebalancing[i] = 0ul;
+	}
+
+	for (int i = 0; i < NumEvents; i++) {
+	    Event *evt = &(Events[i]);
+	    int evtId = evt->desc->Id();
+	    switch (evtId) {
+	    case RopeRebalanceBeginEvt:
+		VProcTimestamp[evt->vpId] = evt->timestamp;
+		break;
+	    case RopeRebalanceEndEvt:
+		uint64_t timeRebalancing = evt->timestamp - VProcTimestamp[evt->vpId];
+		TotalTimeRebalancing[evt->vpId] += timeRebalancing;
+		NumRebalances[i]++;
+		break;
+	    }
+	}
+    }
+
   /** measure the average and max time spent stealing (per vproc) **/
     uint64_t AvgTimeStealing[Hdr->nVProcs];
     uint64_t MaxTimeStealing[Hdr->nVProcs];
@@ -398,6 +425,11 @@ int main (int argc, const char **argv)
 	fprintf (out, " ,");
 	fprintf (out, " timeSleeping=");
 	PrintTimestamp (out, VProcTimeSleeping[i]);
+	fprintf (out, " ,");
+	fprintf (out, " timeRebalancing=");
+	PrintTimestamp (out, TotalTimeRebalancing[i]);
+	fprintf (out, " ,");
+	fprintf (out, " numRebalances=%d", NumRebalances[i]);
 	if (i < Hdr->nVProcs - 1)
 	    fprintf (out, " },\n");
 	else
