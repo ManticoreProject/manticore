@@ -34,6 +34,7 @@ struct Event {
     uint64_t		timestamp;	// time stamp
     int32_t		vpId;		// vproc ID
     EventDesc		*desc;		// description of the event
+    uint32_t            arg;
 /*    uint32_t		data[5];	// upto 20 bytes of extra data */
 };
 
@@ -140,6 +141,7 @@ int main (int argc, const char **argv)
 
     uint64_t TotalTimeRebalancing[Hdr->nVProcs];
     int NumRebalances[Hdr->nVProcs];
+    int NumEltsRebalanced[Hdr->nVProcs];
     {
 	uint64_t VProcTimestamp[Hdr->nVProcs];          // timestamp of immediately preceding, relevant event 
 	
@@ -147,6 +149,7 @@ int main (int argc, const char **argv)
 	    VProcTimestamp[i] = 0ul;
 	    NumRebalances[i] = 0;
 	    TotalTimeRebalancing[i] = 0ul;
+	    NumEltsRebalanced[i] = 0;
 	}
 
 	for (int i = 0; i < NumEvents; i++) {
@@ -154,8 +157,12 @@ int main (int argc, const char **argv)
 	    int evtId = evt->desc->Id();
 	    switch (evtId) {
 	    case RopeRebalanceBeginEvt:
-		VProcTimestamp[evt->vpId] = evt->timestamp;
-		break;
+		{
+		    const ArgDesc *arg = evt->desc->Args();
+		    NumEltsRebalanced[evt->vpId] += arg->loc;
+		    VProcTimestamp[evt->vpId] = evt->timestamp;
+		    break;
+		}
 	    case RopeRebalanceEndEvt:
 		uint64_t timeRebalancing = evt->timestamp - VProcTimestamp[evt->vpId];
 		TotalTimeRebalancing[evt->vpId] += timeRebalancing;
@@ -428,6 +435,8 @@ int main (int argc, const char **argv)
 	fprintf (out, " ,");
 	fprintf (out, " timeRebalancing=");
 	PrintTimestamp (out, TotalTimeRebalancing[i]);
+	fprintf (out, " ,");
+	fprintf (out, " numEltsRebalanced=%d", NumEltsRebalanced[i]);
 	fprintf (out, " ,");
 	fprintf (out, " numRebalances=%d", NumRebalances[i]);
 	if (i < Hdr->nVProcs - 1)
