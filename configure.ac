@@ -41,6 +41,7 @@ esac
 case $target_os in
   linux|linux-gnu) TARGET_OS=TARGET_LINUX; OS=linux; LDFLAGS="$LDFLAGS -lm" ;;
   darwin*) TARGET_OS=TARGET_DARWIN; OS=darwin ;;
+  cygwin) TARGET_OS=TARGET_CYGWIN; OS=cygwin ;;
   *) AC_MSG_ERROR([target os ${target_os} is not supported]) ;;
 esac
 
