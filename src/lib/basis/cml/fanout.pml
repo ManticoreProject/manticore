@@ -80,14 +80,17 @@ structure FanOutChan (*: sig
       (***** Channel operations *****)
 
         define inline @new-send-item (vp : vproc, fls : FLS.fls, k : cont(any), msg : any) : queue_item =
-            let itemval : item_val = SEND (vp, fls, k, msg)
+	    let sendval : send_val = alloc(vp, fls, k, msg)
+	    let sendval : send_val = promote(sendval)
+            let itemval : item_val = SEND(sendval) 
             let item : queue_item = alloc(itemval, Q_NIL)
             let item : queue_item = promote(item)
               return (item)
 	  ;     
 
         define inline @new-recv-item (vp : vproc, fls : FLS.fls, k : cont(any)) : queue_item = 
-            let itemval : item_val = RECV (vp, fls, k)
+	    let recvval : recv_val = alloc(vp, fls, k)
+            let itemval : item_val = RECV (recvval)
             let item : queue_item = alloc(itemval, Q_NIL)
             let item : queue_item = promote(item)
               return (item)
@@ -148,7 +151,8 @@ structure FanOutChan (*: sig
 					apply tryLp () 
                             end
                        else 
-                         do CAS(&QUEUE_TL(ch), tlpt, tl_nextpt)
+		         let tlnextpt : ![item_val, any] = tl_nextpt
+                         let _ : any = CAS(&QUEUE_TL(ch), tlpt, tlnextpt)
                            apply tryLp () 
             (* in *) 
               apply tryLp ()
@@ -179,7 +183,7 @@ structure FanOutChan (*: sig
 		        let hd_next_val : item_val = SELECT(ITEM_VALUE, hdnextpt) 
                         case hd_next_val 
                          of RECV (recvval : recv_val) => 
-                              do UPDATE(QUEUE_HD, ch, hd_nextpt) 
+                              do UPDATE(QUEUE_HD, ch, hdnextpt) 
                               if Equal(self, SELECT(ITEM_VPROC, recvval))
                                 then
                                   cont sendK (_ : unit) = return (UNIT)
