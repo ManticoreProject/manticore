@@ -27,34 +27,33 @@ structure FanOutChan (*: sig
 
       (* the representation of a CML thread suspended on a channel *)
 
-	typedef send_item = ![
-	    any,			(* 0: link field *)
-	    vproc,			(* 1: vproc affinity *)
-	    FLS.fls,			(* 2: FLS of thread *)
-	    cont(unit),			(* 3: thread's continuation *)
-	    any                         (* 4: message *)
+	typedef send_val = [
+	    vproc,			(* 0: vproc affinity *)
+	    FLS.fls,			(* 1: FLS of thread *)
+	    cont(unit),			(* 2: thread's continuation *)
+	    any                         (* 3: message *)
 	  ];
 
-        typedef recv_item = ![
-	    any,                         (* 0: link field *)
-            vproc,                       (* 1: vproc affinity *)
-            FLS.fls,                     (* 2: FLS of thread *)
-            cont(any)                    (* 3: thread's continuation *)
+        typedef recv_val = [
+            vproc,                       (* 0: vproc affinity *)
+            FLS.fls,                     (* 1: FLS of thread *)
+            cont(any)                    (* 2: thread's continuation *)
           ];
 
-        typedef dummy_item = ![
-            any                        (* 0: link field *)
-          ];  
   )
         
-	type send_item = _prim(send_item)
-	type recv_item = _prim(recv_item)
-	type dummy_item = _prim(dummy_item)
+	type send_val = _prim(send_val)
+	type recv_val = _prim(recv_val)
 
-        datatype queue_item = SEND of send_item | RECV of recv_item | DUMMY of dummy_item
+
+        datatype item_val = SEND of send_val | RECV of recv_val | DUMMY
 
     _primcode (
 
+        typedef queue_item = ![
+            item_val,                    (* item value *) 
+            any                          (* link field *)
+          ]; 
 
 	typedef chan_rep = ![	    (* all fields are mutable *)
 	    queue_item,	            (* head item *)
@@ -65,24 +64,38 @@ structure FanOutChan (*: sig
 #	define QUEUE_HD	0
 #	define QUEUE_TL	1
 
-	(* offsets in queue items *)
-#	define ITEM_LINK	0
-#	define ITEM_VPROC	1
-#	define ITEM_FLS	        2
-#	define ITEM_CONT	3
-#       define ITEM_MSG         4
+        (* offsets in queue items *)
+#       define ITEM_VALUE       0
+#       define ITEM_LINK        1
+
+	(* offsets in item valu *)
+#	define ITEM_VPROC	0
+#	define ITEM_FLS	        1
+#	define ITEM_CONT	2
+#       define ITEM_MSG         3
 
 #	define Q_NIL	enum(0) : any
 
 
       (***** Channel operations *****)
-	
+
+        define inline @new-send-item (vp : vproc, fls : FLS.fls, k : cont(any), msg : any) : queue_item =
+            let itemval : item_val = SEND (vp, fls, k, msg)
+            let item : queue_item = alloc(itemval, Q_NIL)
+            let item : queue_item = promote(item)
+              return (item)
+	  ;     
+
+        define inline @new-recv-item (vp : vproc, fls : FLS.fls, k : cont(any)) : queue_item = 
+            let itemval : item_val = RECV (vp, fls, k)
+            let item : queue_item = alloc(itemval, Q_NIL)
+            let item : queue_item = promote(item)
+              return (item)
+	  ;
+
 	define inline @chan-new (arg : unit / exh : exh) : chan_rep =
-            let dummy_next : any = alloc (Q_NIL)
-            let dummy_next : any = promote (dummy_next)
-	    let dummy : dummy_item = alloc(dummy_next)
-	    let dummy : dummy_item = promote(dummy)
-            let dummyitem : queue_item = DUMMY(dummy)
+	    let dummyitem : queue_item = alloc(DUMMY, Q_NIL)
+	    let dummyitem : queue_item = promote(dummyitem)
 	    let ch : chan_rep = alloc(dummyitem, dummyitem)
 	    let ch : chan_rep = promote (ch)
 	    return (ch)
@@ -92,146 +105,99 @@ structure FanOutChan (*: sig
 
 	define @chan-recv (ch : chan_rep / exh : exh) : any =
 	    let self : vproc = SchedulerAction.@atomic-begin ()
-          (* a loop *)
             fun tryLp () : any = 							
-	          let hd : queue_item = SELECT(QUEUE_HD, ch) 
-                  let tl : queue_item = SELECT(QUEUE_TL, ch)
-                  (* in *) 
-                    case tl
-                     of DUMMY (dummy : dummy_item) =>  
-		          let tl_nextpt : any = SELECT(ITEM_LINK, dummy)
-                          (* in *)
-                            if Equal(tl_nextpt, Q_NIL)
-	         	      then
-                 		cont recvK (x : any) = return (x)
-			        (* in *)
-			          let fls : FLS.fls = FLS.@get-in-atomic(self)
-                                  let item : recv_item = alloc (Q_NIL, fls, self, recvK)
-				  let item : recv_item = promote (item)
-				  let recvitem : queue_item = RECV(item)
-                                  if Equal(CAS(&0(tl_nextpt), Q_NIL, recvitem), Q_NIL) 
-                                    then
-                                      SchedulerAction.@stop-from-atomic(self)
-                                    else 
-				      apply tryLp ()
-                              else
-			        let tl_next : queue_item = DEREF (tl_nextpt)
-                                do CAS(&1(ch), tl, tl_next)
-                                apply tryLp ()
-                      | SEND(senditem : send_item) => 
-                          let tl_nextpt : any = SELECT(ITEM_LINK, senditem)
-                          (* in *)
-                            if Equal(tl_nextpt, Q_NIL)
-                              then
-                                if Equal(hd, tl)
-			          then
-                 		    cont recvK (x : any) = return (x)
-			            (* in *)
-			              let fls : FLS.fls = FLS.@get-in-atomic(self)
-                                      let item : recv_item = alloc (Q_NIL, fls, self, recvK)
-		                      let item : recv_item = promote (item)
-				      let newitem : queue_item = RECV(item)
-                                      if Equal(CAS(&0(tl_nextpt), Q_NIL, newitem), Q_NIL)
-                                        then
-                                          SchedulerAction.@stop-from-atomic(self)
-                                        else apply tryLp ()
-                                  else
-                                    if Equal(CAS(&QUEUE_HD(ch), hd, tl), hd) 
-                                      then                                     
-                                        do Threads.@enqueue-ready-in-atomic (
-                                            self, SELECT(ITEM_VPROC, senditem),
-                                            SELECT(ITEM_FLS, senditem),
-                                            SELECT(ITEM_CONT, senditem))
-                                        do SchedulerAction.@atomic-end (self)
-                                          return (SELECT(ITEM_MSG, senditem))
-                                      else 
-				        apply tryLp () 
-                              else
-			        let tl_next : queue_item = DEREF (tl_nextpt)
-                                do CAS(&QUEUE_TL(ch), tl, tl_next)
-                                apply tryLp ()
-                      | RECV(recvitem : recv_item) =>
-                          let tl_nextpt : any = SELECT(ITEM_LINK, recvitem)
-                          (* in *)
-                            if Equal(tl_nextpt, Q_NIL)
-                              then
-                 		cont recvK (x : any) = return (x)
-			        (* in *)
-			          let fls : FLS.fls = FLS.@get-in-atomic(self)
-                                  let item : recv_item = alloc (Q_NIL, fls, self, recvK)
-				  let item : recv_item = promote (item)
-				  let newitem : queue_item = RECV(item)
-                                  if Equal(CAS(&0(tl_nextpt), Q_NIL, newitem), Q_NIL) 
-                                    then
-                                      SchedulerAction.@stop-from-atomic(self)
-                                    else 
-				      apply tryLp ()                                
-                              else
-			        let tl_next : queue_item = DEREF (tl_nextpt)
-                                do CAS(&QUEUE_TL(ch), tl, tl_next)
-                                apply tryLp ()
-                      end      
-      (* in *)
+	          let hdpt : queue_item = SELECT(QUEUE_HD, ch) 
+                  let tlpt : queue_item = SELECT(QUEUE_TL, ch)
+                  let tl_nextpt : any = SELECT(ITEM_LINK, tlpt)
+                  if Equal(tl_nextpt, Q_NIL)
+                       then
+                         let tlval : item_val = SELECT(ITEM_VALUE, tlpt)
+                           case tlval
+                            of SEND(sendval : send_val) =>  
+                                 if Equal(hdpt, tlpt)
+                                   then
+                                     cont recvK (x : any) = return (x)
+                                     (* in *)
+                                       let fls : FLS.fls = FLS.@get-in-atomic(self)
+                                       let item : queue_item = @new-recv-item(self, fls, recvK)
+                                       if Equal(CAS(&ITEM_LINK(tlpt), Q_NIL, item), Q_NIL)
+                                         then 
+					   SchedulerAction.@stop-from-atomic(self)
+                                         else
+                                           apply tryLp ()
+                                   else
+                                     if Equal(CAS(&QUEUE_HD(ch), hdpt, tlpt), hdpt)
+                                       then 
+					 do Threads.@enqueue-ready-in-atomic (
+                                                self, SELECT(ITEM_VPROC, sendval),
+						SELECT(ITEM_FLS, sendval),
+						SELECT(ITEM_CONT, sendval))
+		                         do SchedulerAction.@atomic-end (self)
+                                           return (SELECT(ITEM_MSG, sendval))
+                                       else
+					 apply tryLp () 
+                              | _ => 
+                                  cont recvK (x : any) = return (x)
+                                  (* in *)
+                                    let fls : FLS.fls = FLS.@get-in-atomic(self)
+                                    let item : queue_item = @new-recv-item(self, fls, recvK) 
+                                    if Equal(CAS(&ITEM_LINK(tlpt), Q_NIL, item), Q_NIL)
+                                      then 
+					SchedulerAction.@stop-from-atomic(self)
+				      else
+					apply tryLp () 
+                            end
+                       else 
+                         do CAS(&QUEUE_TL(ch), tlpt, tl_nextpt)
+                           apply tryLp () 
+            (* in *) 
               apply tryLp ()
-          ; 
+            ;
+
  
         define @chan-send (arg : [chan_rep, any] / exh : exh) : unit =
             let ch : chan_rep = #0(arg)
             let msg : any = #1(arg)
             let self : vproc = SchedulerAction.@atomic-begin ()
             fun tryLp () : unit = 
-                  let hd : queue_item = SELECT(QUEUE_HD, ch)
-                  let tl : queue_item = SELECT(QUEUE_TL, ch)
-                  fun getNext (qitem : queue_item) : any = 
-                        case qitem
-                         of DUMMY (dummy : dummy_item) =>
-                              let hd_nextpt : any = SELECT(ITEM_LINK, dummy)
-                                return (hd_nextpt)
-                          | SEND (senditem : send_item) =>
-                              let hd_nextpt : any = SELECT(ITEM_LINK, senditem)
-                                return (hd_nextpt)
-                          | RECV (recvitem : recv_item) =>  
-                              let hd_nextpt : any = SELECT(ITEM_LINK, recvitem)
-                                return (hd_nextpt)                   
-                        end
-                  let hd_nextpt : any = apply getNext (hd)
-                  (* in *) 
+                  let hdpt : queue_item = SELECT(QUEUE_HD, ch)
+                  let tlpt : queue_item = SELECT(QUEUE_TL, ch)
+                  let hd_nextpt : any = SELECT(ITEM_LINK, hdpt)
                     if Equal(hd_nextpt, Q_NIL)
                       then 
                         cont sendK (_ : unit) = return (UNIT)
                         (* in *)
                           let fls : FLS.fls = FLS.@get-in-atomic(self)
-                          let item : send_item = alloc (Q_NIL, fls, self, sendK, msg)
-                          let item : send_item = promote (item)
-                          let senditem : queue_item = SEND(item)
-                          if Equal(CAS(&0(hd_nextpt), Q_NIL, senditem), Q_NIL)
+                          let item : queue_item = @new-send-item(self, fls, sendK, msg)
+                          if Equal(CAS(&ITEM_LINK(hdpt), Q_NIL, item), Q_NIL)
                             then 
                               SchedulerAction.@stop-from-atomic(self)
                             else 
 			      apply tryLp ()
-                      else 
-		        let hd_next : queue_item = DEREF (hd_nextpt) 
-                        case hd_next 
-                         of RECV (recvitem : recv_item) => 
-                              do UPDATE(QUEUE_HD, ch, hd_next) 
-                              if Equal(self, SELECT(ITEM_VPROC, recvitem))
+                      else  
+		        let hdnextpt : ![item_val, any] = hd_nextpt
+		        let hd_next_val : item_val = SELECT(ITEM_VALUE, hdnextpt) 
+                        case hd_next_val 
+                         of RECV (recvval : recv_val) => 
+                              do UPDATE(QUEUE_HD, ch, hd_nextpt) 
+                              if Equal(self, SELECT(ITEM_VPROC, recvval))
                                 then
                                   cont sendK (_ : unit) = return (UNIT)
                                   (* in *)
                                     let fls : FLS.fls = FLS.@get-in-atomic(self)
                                     do VProcQueue.@enqueue-from-atomic (self, fls, sendK)
-                                    do FLS.@set-in-atomic(self, SELECT(ITEM_FLS, recvitem))
+                                    do FLS.@set-in-atomic(self, SELECT(ITEM_FLS, recvval))
 				    do SchedulerAction.@atomic-end (self)
-                                    let k : cont(any) = SELECT(ITEM_CONT, recvitem)
+                                    let k : cont(any) = SELECT(ITEM_CONT, recvval)
                                     (* in *)
                                       throw k (msg) 
                                 else 
                                   do SchedulerAction.@atomic-end (self)
-                                  let k : cont(any) = SELECT(ITEM_CONT, recvitem)
+                                  let k : cont(any) = SELECT(ITEM_CONT, recvval)
                                   cont recvk (_ : unit) = throw k (msg)
                                   (* in *)
                                     do VProcQueue.@enqueue-on-vproc (
-                                           SELECT(ITEM_VPROC, recvitem), SELECT(ITEM_FLS, recvitem),
+                                           SELECT(ITEM_VPROC, recvval), SELECT(ITEM_FLS, recvval),
 				           recvk)
                                     return (UNIT) 
                           | _ => 
