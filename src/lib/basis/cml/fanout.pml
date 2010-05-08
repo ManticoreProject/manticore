@@ -8,7 +8,6 @@
  * This is a specialized implementation for fan-out channels
  *)
 
-#include "spin-lock.def"
 
 structure FanOutChan (*: sig
 
@@ -27,14 +26,14 @@ structure FanOutChan (*: sig
 
       (* the representation of a CML thread suspended on a channel *)
 
-	typedef send_val = [
+	typedef send_val = ![
 	    vproc,			(* 0: vproc affinity *)
 	    FLS.fls,			(* 1: FLS of thread *)
 	    cont(unit),			(* 2: thread's continuation *)
 	    any                         (* 3: message *)
 	  ];
 
-        typedef recv_val = [
+        typedef recv_val = ![
             vproc,                       (* 0: vproc affinity *)
             FLS.fls,                     (* 1: FLS of thread *)
             cont(any)                    (* 2: thread's continuation *)
@@ -82,7 +81,7 @@ structure FanOutChan (*: sig
         define inline @new-send-item (vp : vproc, fls : FLS.fls, k : cont(any), msg : any) : queue_item =
 	    let sendval : send_val = alloc(vp, fls, k, msg)
 	    let sendval : send_val = promote(sendval)
-            let itemval : item_val = SEND(sendval) 
+            let itemval : item_val = SEND (sendval)
             let item : queue_item = alloc(itemval, Q_NIL)
             let item : queue_item = promote(item)
               return (item)
@@ -90,6 +89,7 @@ structure FanOutChan (*: sig
 
         define inline @new-recv-item (vp : vproc, fls : FLS.fls, k : cont(any)) : queue_item = 
 	    let recvval : recv_val = alloc(vp, fls, k)
+	    let recvval : recv_val = promote(recvval)
             let itemval : item_val = RECV (recvval)
             let item : queue_item = alloc(itemval, Q_NIL)
             let item : queue_item = promote(item)
@@ -151,8 +151,8 @@ structure FanOutChan (*: sig
 					apply tryLp () 
                             end
                        else 
-		         let tlnextpt : ![item_val, any] = tl_nextpt
-                         let _ : any = CAS(&QUEUE_TL(ch), tlpt, tlnextpt)
+		         let tlnextpt : ![item_val, any] =tl_nextpt
+                         let _ : any = CAS(&QUEUE_TL(ch), tlpt, tl_nextpt)
                            apply tryLp () 
             (* in *) 
               apply tryLp ()
