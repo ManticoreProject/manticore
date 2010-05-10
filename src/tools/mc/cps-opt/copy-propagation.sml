@@ -13,6 +13,15 @@
  * variable bound to a value A from being replaced with a call to the known function
  * in an environment where the variable is bound to a value B.
  *
+ * This pass also performs a hoisting of function definitions as high as they can
+ * safely go. This transformation is performed in order to open up more copy-prop
+ * opportunities, as we have a lot of code of the form:
+ * let fun f k = k 1
+ *     and fun k1 x = x
+ * in f k1 end
+ * Even though k is known to be k1, since k1 is not in scope, it can't be propagated
+ * without hoisting.
+ *
  * TODOs:
  * Split analysis from transformation. !pass is a horrible hack
  *)
