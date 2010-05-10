@@ -16,9 +16,9 @@
  * This pass also performs a hoisting of function definitions as high as they can
  * safely go. This transformation is performed in order to open up more copy-prop
  * opportunities, as we have a lot of code of the form:
- * let fun f k = k 1
- *     and fun k1 x = x
- * in f k1 end
+ * fun f k = k 1
+ *   cont k1 x = x
+ *   f k1
  * Even though k is known to be k1, since k1 is not in scope, it can't be propagated
  * without hoisting.
  *
