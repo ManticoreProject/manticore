@@ -39,20 +39,6 @@ structure OneOneChan (*: sig
             cont(any)                    (* 2: thread's continuation *)
           ];
 
-  )
-        
-	type send_val = _prim(send_val)
-	type recv_val = _prim(recv_val)
-
-
-        datatype item_val = SEND of send_val | RECV of recv_val 
-
-    _primcode (
-
-        typedef item_rep = ![
-	    item_val
-          ];
-
 	typedef chan_rep = ![	    (* all fields are mutable *)
 	    any	           	    (* link to item *)
 	  ];
@@ -68,22 +54,16 @@ structure OneOneChan (*: sig
 
       (***** Channel operations *****)
 
-        define inline @new-send-item (vp : vproc, fls : FLS.fls, k : cont(any), msg : any) : item_rep =
+        define inline @new-send-item (vp : vproc, fls : FLS.fls, k : cont(any), msg : any) : send_val =
 	    let sendval : send_val = alloc(vp, fls, k, msg)
-	    let sendval : send_val = promote(sendval)
-            let itemval : item_val = SEND (sendval)
-            let item : item_rep = alloc(itemval)
-            let item : item_rep = promote(item)
-              return (item)
+            let sendval : send_val = promote(sendval)	   
+              return (sendval)
 	  ;     
 
-        define inline @new-recv-item (vp : vproc, fls : FLS.fls, k : cont(any)) : item_rep = 
+        define inline @new-recv-item (vp : vproc, fls : FLS.fls, k : cont(any)) : recv_val = 
 	    let recvval : recv_val = alloc(vp, fls, k)
 	    let recvval : recv_val = promote(recvval)
-            let itemval : item_val = RECV (recvval)
-            let item : item_rep = alloc(itemval)
-            let item : item_rep = promote(item)
-              return (item)
+              return (recvval)
 	  ;
 
 	define inline @chan-new (arg : unit / exh : exh) : chan_rep =
@@ -99,82 +79,68 @@ structure OneOneChan (*: sig
 	    let self : vproc = SchedulerAction.@atomic-begin ()
 	    let chanpt : any = DEREF(ch)
 	    cont sendK (_ : unit) = return (UNIT)
-            fun commit (itemref : item_rep ) : unit = 
-                  let item : item_val = DEREF(itemref)                                                                                                       
-                  case item                                                                                                                      
-                   of RECV (recvval : recv_val) =>                                                                                                                               
-                        do UPDATE(0, ch, Q_NIL)                                                                                                                             
-                        if Equal(self, SELECT(ITEM_VPROC, recvval))                                                                                                             
-                         then                                                                                                                                                      
-                           let fls : FLS.fls = FLS.@get-in-atomic(self)                                                                                                            
-                           do VProcQueue.@enqueue-from-atomic(self, fls, sendK)                                                                                                    
-                           do FLS.@set-in-atomic(self, SELECT(ITEM_FLS, recvval))                                                                                                  
-                           do SchedulerAction.@atomic-end(self)                                                                                                                    
-                           let k : cont(any) = SELECT(ITEM_CONT, recvval)                                                                                                          
-                           (* in *)                                                                                                                                               
-                             throw k (msg)                                                                                                                                        
-                        else                                                                                                                                                      
-                          do SchedulerAction.@atomic-end (self)                                                                                                                   
-                          let k : cont(any) = SELECT(ITEM_CONT, recvval)                                                                                                          
-                          cont recvk (_ : unit) = throw k (msg)                                                                                                                   
-                          (* in *)                                                                                                                                                
-                            do VProcQueue.@enqueue-on-vproc (                                                                                                                     
-                                   SELECT(ITEM_VPROC, recvval),                                                                                                                   
-                                   SELECT(ITEM_FLS, recvval),                                                                                                                     
-                                   recvk)                                                                                                                                         
-                           return (UNIT)                                                                                                                                          
-                  | _ =>                                                                                                                                                          
-                      let e : exn = Fail(@"Unexpected waiting processes in channel queue")                                                                                        
-                      throw exh (e)                                                          
-                end	          
+            fun commit (recvval : recv_val ) : unit = 
+                  do UPDATE(0, ch, Q_NIL)                                                                                                                             
+                  if Equal(self, SELECT(ITEM_VPROC, recvval))                                                                                                             
+                    then                                                                                                                                                      
+                      let fls : FLS.fls = FLS.@get-in-atomic(self)                                                                                                            
+                      do VProcQueue.@enqueue-from-atomic(self, fls, sendK)                                                                                                    
+                      do FLS.@set-in-atomic(self, SELECT(ITEM_FLS, recvval))                                                                                                  
+                      do SchedulerAction.@atomic-end(self)                                                                                                                    
+                      let k : cont(any) = SELECT(ITEM_CONT, recvval)                                                                                                          
+                      (* in *)                                                                                                                                               
+                        throw k (msg)                                                                                                                                        
+                    else                                                                                                                                                      
+                      do SchedulerAction.@atomic-end (self)                                                                                                                   
+                      let k : cont(any) = SELECT(ITEM_CONT, recvval)                                                                                                          
+                      cont recvk (_ : unit) = throw k (msg)                                                                                                                   
+                      (* in *)                                                                                                                                                
+                        do VProcQueue.@enqueue-on-vproc (                                                                                                                     
+                               SELECT(ITEM_VPROC, recvval),                                                                                                                   
+                               SELECT(ITEM_FLS, recvval),                                                                                                                     
+                               recvk)                                                                                                                                         
+                        return (UNIT)                                                                                                                                          
 	    if Equal(chanpt, Q_NIL)
 	      then
 	        let fls : FLS.fls = FLS.@get-in-atomic(self)
-	        let item : item_rep = @new-send-item(self, fls, sendK, msg)
-	        let itempt : any = CAS(&0(ch), Q_NIL, item)
-	        if Equal(itempt, Q_NIL)
+	        let item : send_val = @new-send-item(self, fls, sendK, msg)
+	        let chanpt : any = CAS(&0(ch), Q_NIL, item)
+	        if Equal(chanpt, Q_NIL)
 	          then
 		    SchedulerAction.@stop-from-atomic(self)
 		  else
-		    let itemref : item_rep = itempt 
+		    let itemref : recv_val = (recv_val)chanpt 
 		    apply commit (itemref) 
 	      else
-	        let itemref : item_rep = chanpt
+	        let itemref : recv_val = (recv_val)chanpt
 	        apply commit (itemref) 
             ;
  
         define @chan-recv (ch : chan_rep / exh : exh) : any =
             let self : vproc = SchedulerAction.@atomic-begin ()
 	    let chanpt : any = DEREF(ch)
-	    fun commit (itemref : item_rep) : any = 
-	          let item : item_val = DEREF(itemref)
-		  case item
-		   of SEND (sendval : send_val) =>
-		        do UPDATE(0, ch, Q_NIL)
-                        do Threads.@enqueue-ready-in-atomic (
-			       self, SELECT(ITEM_VPROC, sendval),
+	    fun commit (sendval : send_val) : any = 
+		  do UPDATE(0, ch, Q_NIL)
+                  do Threads.@enqueue-ready-in-atomic (
+		         self, SELECT(ITEM_VPROC, sendval),
 			       SELECT(ITEM_FLS, sendval),
 			       SELECT(ITEM_CONT, sendval))
-			do SchedulerAction.@atomic-end(self)
-			  return (SELECT(ITEM_MSG, sendval))
-		    | _ =>
-		        let e : exn = Fail(@"Unexpected waiting processes in channel queue")
-			throw exh (e)
-	          end		
+		  do SchedulerAction.@atomic-end(self)
+		  return (SELECT(ITEM_MSG, sendval))
 	    if Equal(chanpt, Q_NIL) 
 	      then
 	        cont recvK (x: any ) = return (x)
                   let fls : FLS.fls = FLS.@get-in-atomic(self)
-                  let item : item_rep = @new-recv-item(self, fls, recvK)
-	          let itempt : any = CAS(&0(ch), Q_NIL, item)
-	          if Equal(itempt, Q_NIL)
+                  let item : recv_val = @new-recv-item(self, fls, recvK)
+	          let chanpt : any = CAS(&0(ch), Q_NIL, item)
+	          if Equal(chanpt, Q_NIL)
 	           then
                      SchedulerAction.@stop-from-atomic(self)
                    else  
-		     let itemref : item_rep = itempt 
+		     let itemref : send_val = chanpt 
 		     apply commit (itemref) 
 	      else	     
-	        let itemref : item_rep = chanpt
+	        let itemref : send_val = chanpt
 	        apply commit (itemref)  
           ;
 
