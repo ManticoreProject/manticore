@@ -91,7 +91,7 @@ structure CopyPropagation : sig
 
     fun fixup (translations) = let
         (* Find the common parent of the two *)
-        fun fixOne (callee, caller, first) =
+        fun fixOne (callee, caller) =
             if CV.compare (callee, caller) = EQUAL
             then caller
             else let
@@ -99,18 +99,12 @@ structure CopyPropagation : sig
                     val (callerParent, callerLevel) = getParent caller
                 in
                     case Int.compare (calleeLevel, callerLevel)
-                     of EQUAL => ( (* If the original caller/callee
-                                    * have the same parent, then try to just
-                                    * shuffle ahead instead of up. *)
-                        if CV.compare (calleeParent, callerParent) = EQUAL
-                           andalso first
-                        then caller
-                        else fixOne (calleeParent, callerParent, false))
-                      | GREATER => fixOne (calleeParent, caller, false)
-                      | LESS => fixOne (callee, callerParent, false)
+                     of EQUAL => let val (p,_) = getParent calleeParent in p end
+                      | GREATER => fixOne (calleeParent, caller)
+                      | LESS => fixOne (callee, callerParent)
                 end
     in
-        VMap.mapi (fn (a,b) => fixOne (a,b,true))  translations
+        VMap.mapi (fn (a,b) => fixOne (a,b))  translations
     end
 
 
@@ -250,6 +244,7 @@ structure CopyPropagation : sig
             else let
                     fun wrapWithNewPreds' (l'::rest, wrapper, env, map, continue) = let
                         val C.FB{f=f',...} = l'
+                        (* Extract all of the functions that are supposed to be moved before this one *)
                         val preds = List.map (fn (k,v) => getFB k)
                                              (VMap.listItemsi
                                                   (VMap.filter
@@ -354,13 +349,13 @@ structure CopyPropagation : sig
                     val (switches, map') = List.foldr (fn ((tag, e), (rr, map)) => let
                                                               val (body, _, map') = copyPropagateExp (e, env, map, parent)
                                                           in ((tag, body)::rr, map') end) ([], map) cases
-                    val (default, _, map') = (case body
+                    val (default, _, map''') = (case body
                                                of SOME(x) => let
-                                                      val (e, v, map') = copyPropagateExp (x, env, map, parent)
-                                                  in (SOME(e), v, map') end
-                                                | NONE => (NONE, VSet.empty, map))
+                                                      val (e, v, map'') = copyPropagateExp (x, env, map', parent)
+                                                  in (SOME(e), v, map'') end
+                                                | NONE => (NONE, VSet.empty, map'))
                 in
-                    (C.mkSwitch(v, switches, default), env, map')
+                    (C.mkSwitch(v, switches, default), env, map''')
                 end
               | C.Apply (f, args, retArgs) => (
                 case findCopy (f, env, parent)
