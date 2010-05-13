@@ -108,7 +108,7 @@ structure FanOutChan (*: sig
                        then
                          let valtype : int = SELECT(ITEM_TYPE, tlpt)
                            case valtype
-                            of 1 =>  
+                            of SEND_T =>  
                                  if Equal(hdpt, tlpt)
                                    then
                                      cont recvK (x : any) = return (x)
@@ -174,7 +174,7 @@ structure FanOutChan (*: sig
 		        let hdnextpt : base_val = hd_nextpt
 		        let hd_next_ty : int = SELECT(ITEM_TYPE, hdnextpt) 
                         case hd_next_ty 
-                         of 2  => 
+                         of RECV_T  => 
 			      let recvval : recv_val = (recv_val)hdnextpt 
                               do UPDATE(QUEUE_HD, ch, (any)hdnextpt) 
                               if Equal(self, SELECT(ITEM_VPROC, recvval))
