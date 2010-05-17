@@ -1235,15 +1235,25 @@ structure ArityRaising : sig
                                             *)
             let
                 val rhsType = CV.typeOf var
-                fun cleanup (CTy.T_Tuple (b, dstTys), CTy.T_Tuple (b', srcTys)) =
-                    CTy.T_Tuple (b, ListPair.map cleanup (dstTys, srcTys))
+                fun cleanup (CTy.T_Tuple (b, dstTys), CTy.T_Tuple (b', srcTys)) = let
+                    val dstLen = List.length dstTys
+                    val srcLen = List.length srcTys
+                    val (dst', src') = (
+                        case Int.compare (dstLen, srcLen)
+                         of LESS => (dstTys @ (List.tabulate (srcLen-dstLen, (fn (x) => CTy.T_Any))), srcTys)
+                          | EQUAL => (dstTys, srcTys)
+                          | GREATER => (dstTys, srcTys @ (List.tabulate (dstLen-srcLen, (fn (x) => CTy.T_Any)))))
+                in
+                    CTy.T_Tuple (b, ListPair.mapEq cleanup (dst', src'))
+                end
                   | cleanup (dst as CTy.T_Fun(_, _), src as CTy.T_Fun (_, _)) =
                     if CPSTyUtil.soundMatch (dst, src)
                     then dst
                     else src
                   | cleanup (dst, _) = dst
+                val result = cleanup (typ, rhsType) 
             in
-                SOME (cleanup (typ, rhsType))
+                SOME (result)
             end
           | typeOfRHS(C.Const (_, typ)) = SOME(typ)
           | typeOfRHS(C.Select (i, v)) = (
