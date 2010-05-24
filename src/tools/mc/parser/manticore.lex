@@ -127,8 +127,8 @@ fun fromHexString s = let
 
 <INITIAL,PRIMCODE> "["	=> (T.LB);
 <INITIAL,PRIMCODE> "]"	=> (T.RB);
-<INITIAL,PRIMCODE> "{"	=> (T.LBRKT);
-<INITIAL,PRIMCODE> "}"	=> (T.RBRKT);
+<INITIAL,PRIMCODE> "{"	=> (T.LCB);
+<INITIAL,PRIMCODE> "}"	=> (T.RCB);
 <INITIAL,PRIMCODE> "->"	=> (T.ARROW);
 <INITIAL,PRIMCODE> "=>"	=> (T.DARROW);
 <INITIAL,PRIMCODE> "==>" => (T.DDARROW);

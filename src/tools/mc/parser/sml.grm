@@ -45,8 +45,8 @@
     | RP		(")")
     | LB		("[")
     | RB		("]")
-    | LBRKT             ("{")
-    | RBRKT             ("}")
+    | LCB		("{")
+    | RCB		("}")
     | LPB		("(|")
     | RPB		("|)")
     | LBB		("[|")
@@ -222,26 +222,26 @@ TupleType
 	;
 
 TyApp
-        : AtomicType (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
-               => (mkTyApp (AtomicType, SR))
-        | "(" Type optTypes
- (* FIXME: we should really propagate the left extent of the span *)
-               => (markTy (FULL_SPAN, optTypes Type))
+	: AtomicType (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
+		=> (mkTyApp (AtomicType, SR))
+	| "(" Type optTypes
+(* FIXME: we should really propagate the left extent of the span *)
+		=> (markTy (FULL_SPAN, optTypes Type))
 	;
 
 optTypes
-        : ")" (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
-               => (fn ty => mkTyApp (ty, SR))
-        | ( "," Type)+ ")" QualifiedId (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
-               => (fn ty => mkTyApp(markTy(FULL_SPAN, PT.NamedTy(ty::SR1, QualifiedId)), SR2))
+	: ")" (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
+		=> (fn ty => mkTyApp (ty, SR))
+	| ( "," Type)+ ")" QualifiedId (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
+		=> (fn ty => mkTyApp(markTy(FULL_SPAN, PT.NamedTy(ty::SR1, QualifiedId)), SR2))
 	;
 
 AtomicType
-       : TYVAR
-               => (markTy(FULL_SPAN, PT.VarTy TYVAR))
-       | QualifiedId
-               => (markTy(FULL_SPAN, PT.NamedTy([], QualifiedId)))
-       ;
+	: TYVAR
+		=> (markTy(FULL_SPAN, PT.VarTy TYVAR))
+	| QualifiedId
+		=> (markTy(FULL_SPAN, PT.NamedTy([], QualifiedId)))
+	;
 
 ConsDecl
 	: Name ("of" Type)?
