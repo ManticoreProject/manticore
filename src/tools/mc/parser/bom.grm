@@ -61,8 +61,8 @@
 (*	| RP		(")")			*)
 (*	| LB		("[")			*)
 (*	| RB		("]")			*)
-(*      | LBRKT         ("{")                   *)
-(*      | RBRKT         ("}")                   *)
+(*      | LCB		("{")                   *)
+(*      | RCB		("}")                   *)
 	| HASH		("#")
 (*	| STAR		("*")			*)
 (*	| COMMA		(",")			*)
@@ -437,9 +437,9 @@ PatternArgs
         ;
 
 Benefit
-        : LBRKT POSINT RBRKT
+        : "{" POSINT "}"
                 => ( POSINT )
-        | LBRKT RBRKT
+        | "{" "}"
                 => ( zero )
         | (* Empty *)
                 => ( zero )
