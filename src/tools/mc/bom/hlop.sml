@@ -24,28 +24,36 @@ structure HLOp =
 	name : Atom.atom,
 	id : Stamp.stamp,
 	sign : hlop_sig,
-	returns : bool			(* true, if the operation returns *)
-(* FIXME: need effects *)
+	returns : bool,			(* true, if the operation returns *)
+        pure : bool,                    (* is the HLOp guaranteed to be pure? *)
+        constr : bool                   (* does the HLOp create an object worthy of tracking (CML channel) *)
       }
 
-    fun toString (HLOp{name, id, ...}) = concat["@", Atom.toString name, "#", Stamp.toString id]
+    fun toString (HLOp{name, id, pure, constr, ...}) = concat["@", Atom.toString name, "#", Stamp.toString id, if constr then "C" else "", if pure then "P" else ""]
     fun name (HLOp{name, ...}) = name
     fun hash (HLOp{id, ...}) = Stamp.hash id
     fun same (HLOp{id=a, ...}, HLOp{id=b, ...}) = Stamp.same(a, b)
     fun compare (HLOp{id=a, ...}, HLOp{id=b, ...}) = Stamp.compare(a, b)
 
-    fun isPure _ = false (* FIXME *)
+    fun isPure (HLOp{pure, ...}) = pure
+    fun isConstr (HLOp{constr, ...}) = constr
 
     datatype attributes = NORETURN
+                        | PURE
+                        | CONSTR
 
   (* new : Atom.atom * hlop_sig * attributes list -> hlop *)
     fun new (name, sign, attrs) = let
 	  val id = Stamp.new()
 	  val returns = ref true
+          val pure = ref false
+          val constr = ref false
 	  fun doAttr NORETURN = returns := false
+            | doAttr PURE = pure := true
+            | doAttr CONSTR = constr := true
 	  in
 	    List.app doAttr attrs;
-	    HLOp{name = name, id = id, sign = sign, returns = !returns}
+	    HLOp{name = name, id = id, sign = sign, returns = !returns, pure = !pure, constr = !constr}
 	  end
 
     local
@@ -72,17 +80,21 @@ structure HLOp =
 	  end    
 
   (* toDebugString : hlop -> string *)
-    fun toDebugString (HLOp{name, id, sign, returns}) = let
+    fun toDebugString (HLOp{name, id, sign, returns, pure, constr}) = let
 	  val n = Atom.toString name
 	  val i = Stamp.toString id
 	  val s = sigToString sign
 	  val r = if returns then "true" else "false"
+          val p = if pure then "true" else "false"
+          val c = if constr then "true" else "false"
 	  in
 	    String.concat[
 		"(* begin HLOp ----\n", 
 		n, "<", i, ">:\n",
 		s,
 		"returns: ", r, "\n",
+		"pure: ", p, "\n",
+		"constr: ", c, "\n",
 		"end HLOp ----- *)\n"
 	      ]
 	  end

@@ -42,6 +42,11 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	    registry = BOMOptControls.registry
 	  }
 
+    fun analyze {passName, pass} = BasicControl.mkTracePassSimple {
+            passName = passName,
+            pass = pass
+          }
+
     val expand = mkModuleOptPass ("expand", ExpandHLOps.expand)
 
     val contract = transform {
@@ -114,6 +119,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val caseSimplify = transform {passName = "case-simplify", pass = CaseSimplify.transform}
     val rewriteAll = transform {passName = "rewrite-all", pass = rewriteAll}
     val expandAll = transform {passName = "expand-all", pass = expandAll}
+    val cfa = analyze {passName = "cfa", pass = CFABOM.analyze}
 
     fun optimize module = let
 	  val _ = Census.census module
@@ -121,6 +127,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = contract module
 	  val module = inline false module  
 	  val module = contract module
+          val _ = cfa module
           val module = rewriteAll module
 	  val module = expandAll module
 	(* FIXME: rerun the census to get the counts for HLOp code right. *)

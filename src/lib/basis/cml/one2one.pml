@@ -66,7 +66,7 @@ structure OneOneChan (*: sig
               return (recvval)
 	  ;
 
-	define inline @chan-new (arg : unit / exh : exh) : chan_rep =
+	define inline constr @chan-new (arg : unit / exh : exh) : chan_rep =
 	    let ch : chan_rep = alloc(Q_NIL)
 	    let ch : chan_rep = promote (ch)
 	    return (ch)

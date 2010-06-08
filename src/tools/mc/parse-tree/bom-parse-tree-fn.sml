@@ -43,9 +43,9 @@
       = D_Mark of defn mark
       | D_Extern of c_id CFunctions.c_fun          (* foreign function prototype *)
       | D_TypeDef of ty_def * ty                   (* type definition *)
-      | D_Define of (bool * hlop_bind * var_pat list * var_pat list * ty list option * exp option)
+      | D_Define of (opt_attr list * hlop_bind * var_pat list * var_pat list * ty list option * exp option)
 		                                   (* HLOp *)
-      | D_ImportML of (bool * hlop_bind * pml_var) (* form to import an ML function *)
+      | D_ImportML of (opt_attr list * hlop_bind * pml_var) (* form to import an ML function *)
       | D_Rewrite of { label  : Atom.atom,         (* hlop rewrite rule *)
                        lhs    : rw_pattern,
                        rhs    : rw_pattern,
@@ -113,6 +113,11 @@
       = P_VPMark of var_pat mark
       | P_Wild of ty option
       | P_Var of (var_bind * ty)
+
+    and opt_attr
+      = A_Constr
+      | A_Inline
+      | A_Pure
 
   (* rewrite pattern *)
     and rw_pattern = 

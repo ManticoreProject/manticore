@@ -13,7 +13,7 @@ define @enqueue (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) : ();
 define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
 define inline @fiber (f : fiber_fun / exh : exh) : fiber;
 
-define inline @spawn (f : fiber_fun / exh : exh) : fgs =
+define inline constr @spawn (f : fiber_fun / exh : exh) : fgs =
   let fiber : fiber = @fiber (f / exh)
   let vp : vproc = host_vproc
   let fgs : fgs = @new-fgs (FALSE, NONE / exh)

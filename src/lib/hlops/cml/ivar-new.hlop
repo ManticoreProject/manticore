@@ -8,7 +8,7 @@
 
 #include "ivar.def"
 
-define inline @ivar-new (_ : unit / exh : exh) : ivar = 
+define inline constr @ivar-new (_ : unit / exh : exh) : ivar = 
     let x : ivar = alloc (NIL, enum(0):any, 0)
     let x : ivar = promote(x)
     return (x)

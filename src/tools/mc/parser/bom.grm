@@ -21,6 +21,7 @@
 (*	| KW_case	("case")		*)
 	| KW_ccall	("ccall")
 	| KW_cont	("cont")
+        | KW_constr     ("constr")
 (*	| KW_datatype	("datatype")		*)
 	| KW_define	("define")
 	| KW_do		("do")   
@@ -155,17 +156,17 @@ Definition
 	| "typedef" Name "=" BOMType ";"
 		=> (markBOMDefn(KW_typedef_SPAN, BPT.D_TypeDef(Name, BOMType)))
 (*
-	| "define" optInline HLOpId FunParams ReturnTy ("=" BOMExp)? ";"
+	| "define" optAttrs HLOpId FunParams ReturnTy ("=" BOMExp)? ";"
 		=> (markBOMDefn(FULL_SPAN, let val (p1, p2) = FunParams in
-		      BPT.D_Define(optInline, HLOpId, p1, p2, ReturnTy, SR)
+		      BPT.D_Define(optAttrs, HLOpId, p1, p2, ReturnTy, SR)
 		    end))
         | "define" HLOpId "=" QualifiedId ";"
 		=> (markBOMDefn(FULL_SPAN, 
 		      BPT.D_ImportPML(HLOpId, QualifiedId)
 		    ))
 *)
-	| "define" optInline HLOpId HLOpDef ";"
-		=> (markBOMDefn(FULL_SPAN, HLOpDef(optInline, HLOpId)))
+	| "define" optAttrs HLOpId HLOpDef ";"
+		=> (markBOMDefn(FULL_SPAN, HLOpDef(optAttrs, HLOpId)))
         | LabelOpt Pattern "==>" Pattern Benefit ";"               (* rewrite rule *)
                 => ( markBOMDefn(FULL_SPAN, 
 				 BPT.D_Rewrite {label = LabelOpt,
@@ -176,13 +177,13 @@ Definition
 
 HLOpDef
 	: FunParams ReturnTy ("=" BOMExp)?
-		=> (fn (optInline, id) => let
+		=> (fn (optAttrs, id) => let
 			val (p1, p2) = FunParams
 			in
-			  BPT.D_Define(optInline, id, p1, p2, ReturnTy, SR)
+			  BPT.D_Define(optAttrs, id, p1, p2, ReturnTy, SR)
 			end)
 	| "=" QualifiedId
-		=> (fn (optInline, id) => BPT.D_ImportML(optInline, id, QualifiedId))
+		=> (fn (optAttrs, id) => BPT.D_ImportML(optAttrs, id, QualifiedId))
 	;
 
 CRetTy
@@ -213,9 +214,15 @@ ReturnTy
 	| ":" "(" TypeList ")"	=> (SOME TypeList)
 	;
 
-optInline
-	: (* empty *)	=> (false)
-	| "inline"	=> (true)
+optAttrs
+	: optAttr* => (optAttr)
+	;
+
+
+optAttr
+	: "inline"	=> (BPT.A_Inline)
+	| "pure"	=> (BPT.A_Pure)
+	| "constr"	=> (print "*"; BPT.A_Constr)
 	;
 
 FunParams

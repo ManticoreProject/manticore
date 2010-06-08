@@ -721,12 +721,16 @@ structure TranslatePrim : sig
 	        end
          (* end case *))
       | insDef importEnv (BPT.D_TypeDef(id, ty)) = E.insertBOMTyDef(id, cvtTy ty)
-      | insDef importEnv (BPT.D_Define(_, name, params, exh, retTy, _)) = let
+      | insDef importEnv (BPT.D_Define(optAttrs, name, params, exh, retTy, _)) = let
 	(* create a high-level operator *)
 	    val (retTy, attrs) = (case retTy
 				   of NONE => ([], [HLOp.NORETURN])
 				    | SOME tys => (cvtTys tys, [])
-				 (* end case *))		      
+				 (* end case *))
+            fun doAttrs BPT.A_Pure = SOME(HLOp.PURE)
+              | doAttrs BPT.A_Constr = SOME(HLOp.CONSTR)
+              | doAttrs BPT.A_Inline = NONE
+            val attrs = attrs @ (List.mapPartial doAttrs optAttrs)
 	    val paramTys = List.map (HLOp.PARAM o tyOfPat) params
 	    val exhTys = List.map tyOfPat exh
 	    val hlop = HLOp.new (
@@ -736,12 +740,16 @@ structure TranslatePrim : sig
 	    in 
 	        E.insertBOMHLOp(name, hlop)
 	    end
-      | insDef importEnv (BPT.D_ImportML(inline, hlopId, pmlId)) = let
+      | insDef importEnv (BPT.D_ImportML(optAttrs, hlopId, pmlId)) = let
 	  val fTy as BTy.T_Fun([paramTy], [exhTy], [retTy]) = BV.typeOf(lookupPMLId pmlId)
+          fun doAttrs BPT.A_Pure = SOME(HLOp.PURE)
+            | doAttrs BPT.A_Constr = SOME(HLOp.CONSTR)
+            | doAttrs BPT.A_Inline = NONE
+          val attrs = (List.mapPartial doAttrs optAttrs)
 	  val hlop = HLOp.new (
 		Atom.atom (PTVar.nameOf hlopId),
 		{params=[HLOp.PARAM paramTy], exh=[exhTy], results=[retTy]},
-		[])
+		attrs)
 	  in
 	    E.insertBOMHLOp(hlopId, hlop)
 	  end
@@ -752,7 +760,7 @@ structure TranslatePrim : sig
     fun cvtDefs (loc, importEnv, [], hlops, rewrites) = (List.rev hlops, List.rev rewrites)
       | cvtDefs (loc, importEnv, def::defs, hlops, rewrites) = (case def
 	   of BPT.D_Mark {span, tree} => cvtDefs (span, importEnv, tree::defs, hlops, rewrites)
-	    | BPT.D_Define(inline, hlopId, params, exh, retTy, SOME e) => let
+	    | BPT.D_Define(optAttrs, hlopId, params, exh, retTy, SOME e) => let
 		val _ = (case PTVar.getErrorStream hlopId
 		       of NONE => ()
 			| SOME strm => errStrm := strm
@@ -775,7 +783,7 @@ structure TranslatePrim : sig
 		val hlop' = {
 			name = hlop,
 			path = BindingEnv.getHLOpPath hlopId,
-			inline = inline,
+			inline = List.exists (fn x=>x=BPT.A_Inline) optAttrs,
 			def = lambda,
 			externs = VTbl.listItemsi cfuns
 		      } 
@@ -783,7 +791,7 @@ structure TranslatePrim : sig
 		in
 		  cvtDefs (loc, importEnv, defs, hlop' :: hlops, rewrites)
 		end
-	    | BPT.D_ImportML(inline, hlopId, pmlId) => let
+	    | BPT.D_ImportML(optAttrs, hlopId, pmlId) => let
 		val hlop = Option.valOf(E.findBOMHLOp hlopId)
 		val bomVar = lookupPMLId pmlId
 		val fTy as BTy.T_Fun([paramTy], [exhTy], [retTy]) = BV.typeOf bomVar
@@ -794,7 +802,7 @@ structure TranslatePrim : sig
 		val hlop' = {
 			name = hlop,
 			path = BindingEnv.getHLOpPath hlopId,
-			inline = inline,
+			inline = List.exists (fn x=>x=BPT.A_Inline) optAttrs,
 			def = BOM.mkLambda{f=f, params=[param], exh=[exh], body=body},
 			externs = []
 		      } 

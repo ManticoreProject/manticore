@@ -89,7 +89,7 @@ structure FanOutChan (*: sig
               return (recvval)
 	  ;
 
-	define inline @chan-new (arg : unit / exh : exh) : chan_rep =
+	define inline constr @chan-new (arg : unit / exh : exh) : chan_rep =
 	    let dummyitem : base_val = alloc(DUMMY_T, Q_NIL)
 	    let ch : chan_rep = alloc((any)dummyitem, (any)dummyitem)
 	    let ch : chan_rep = promote (ch)

@@ -65,6 +65,7 @@ structure Keywords : sig
 	    ("case",		T.KW_case),
 	    ("ccall",		T.KW_ccall),
 	    ("cont",		T.KW_cont),
+            ("constr",          T.KW_constr),
 	    ("datatype",	T.KW_datatype),
 	    ("define",		T.KW_define),
 	    ("do",		T.KW_do),

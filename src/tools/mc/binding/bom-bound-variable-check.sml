@@ -388,7 +388,7 @@ structure BOMBoundVariableCheck :> sig
 	           in
 		      (PT2.D_Mark {tree=tree, span=span}, env)
 	           end
-	     | PT1.D_Define (inline, v, params, exns, returnTys, exp) => let
+	     | PT1.D_Define (optAttrs, v, params, exns, returnTys, exp) => let
 		   val returnTys' = (case returnTys
 				      of NONE => NONE 
 				       | SOME returnTys => SOME (chkTys loc (returnTys, env))
@@ -400,21 +400,29 @@ structure BOMBoundVariableCheck :> sig
 				 | SOME exp => SOME (chkExp loc (exp, env'))
 			      (* end case *))
 		   val v' = freshVar v
+                   fun convert PT1.A_Inline = PT2.A_Inline
+                     | convert PT1.A_Pure = PT2.A_Pure
+                     | convert PT1.A_Constr = PT2.A_Constr
+                   val optAttrs' = List.map convert optAttrs
 		   val env = BEnv.insertBOMHLOp(env, v, v')
 	           in
 		       Var.setErrorStream(v', SOME (ErrorStream.getErrStrm()));
-		       (PT2.D_Define(inline, v', params', exns', returnTys', exp'), env)
+		       (PT2.D_Define(optAttrs', v', params', exns', returnTys', exp'), env)
 		   end
-	     | PT1.D_ImportML(inline, hlopId, pmlId) => let
+	     | PT1.D_ImportML(optAttrs, hlopId, pmlId) => let
 		   val pmlId' = (
 		       case findValQid(loc, env, pmlId)
 			of BEnv.Con v => v
 			 | BEnv.Var v => v
 		       (* end case *))
 		   val hlopId' = freshVar hlopId
+                   fun convert PT1.A_Inline = PT2.A_Inline
+                     | convert PT1.A_Pure = PT2.A_Pure
+                     | convert PT1.A_Constr = PT2.A_Constr
+                   val optAttrs' = List.map convert optAttrs
 		   val env = BEnv.insertBOMHLOp(env, hlopId, hlopId')			     
 		   in
-		      (PT2.D_ImportML(inline, hlopId', pmlId'), env)
+		      (PT2.D_ImportML(optAttrs', hlopId', pmlId'), env)
 		   end
 	     | PT1.D_Extern (CFunctions.CFun{var, name, retTy, argTys, varArg, attrs}) => let
 		   val var' = (case BEnv.findCFun var
