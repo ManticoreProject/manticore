@@ -5,10 +5,6 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * TODO
- * - When a result is added to a function, that result needs to be added to the results
- * for the closure of variables sharing a binding with that function
- *
  *)
 
 structure CFABOM : sig
@@ -628,7 +624,7 @@ structure CFABOM : sig
 			| (BOM.E_Case (_, cases, dflt)) => (* TODO: merge doExp results *)
 			    (List.app ((fn x=>ignore(doExp(f,x))) o #2) cases; Option.app (fn x=>ignore(doExp(f,x))) dflt; [TOP])
 			| (BOM.E_Apply (f, args, conts)) => (doApply (f, args, conts); [getResult f])
-			| (BOM.E_Throw (f, args)) => (doThrow (f, args); [getResult f])
+			| (BOM.E_Throw (f, args)) => (doThrow (f, args); [BOT])
                         | BOM.E_Ret xs => (
                           let
                               val rets = List.map getValue xs
