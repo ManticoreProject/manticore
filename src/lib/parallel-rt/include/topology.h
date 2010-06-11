@@ -2,7 +2,15 @@
  *
  * \author John Reppy
  *
- * An abstract interface to the 
+ * An abstract interface to the hardware topology of the host machine.  We
+ * define three levels of hardware parallelism:
+ *
+ *	nodes (aka packages) are the individual sockets in the system.  In a
+ *	  NUMA system, RAM is associated with a particular node.
+ *
+ *	cores are the individual CPUs in a multi-core chip.
+ *
+ *	threads are hardware contexts (e.g., as provided by SMT) in a core.
  */
 
 /*
