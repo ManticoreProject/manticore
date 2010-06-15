@@ -352,10 +352,7 @@ structure CFABOM : sig
            of TUPLE vs => let
                 fun sel (0, v::_) = v
                   | sel (j, v::r) = sel(j-1, r)
-                  | sel (_, []) = raise Fail(concat[
-                        "type error: select(", Int.toString i, ", ", BV.toString y,
-                        "); getValue(", BV.toString y, ") = ", valueToString (TUPLE vs)
-                      ])
+                  | sel (_, []) = TOP
                 in
                   sel (i, vs)
                 end
@@ -372,11 +369,7 @@ structure CFABOM : sig
            of TUPLE vs => let
                 fun upd (0, v::r, ac) = TUPLE ((rev ac) @ (z::r))
                   | upd (i, v::r, ac) = upd(i-1, r, v::ac)
-                  | upd (_, [], ac) = raise Fail(concat[
-                        "type error: update(", Int.toString i, ", ", BV.toString y,
-                        ", ", valueToString z,
-                        "); getValue(", BV.toString y, ") = ", valueToString (TUPLE vs)
-                      ])
+                  | upd (_, [], ac) = TOP
                 in
                   upd (i, vs, [])
                 end
