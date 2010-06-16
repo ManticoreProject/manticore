@@ -178,7 +178,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 		: p->usedTop - p->baseAddr;
 	    self->globalStats.nBytesCollected += used;
 #if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
-	    FetchAndAdd64 (&FromSpaceSzb, (int64_t)used);
+	    FetchAndAddU64 (&FromSpaceSzb, (uint64_t)used);
 #endif
 #endif /* !NO_GC_STATS */
 	}
@@ -240,7 +240,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	self->globalStats.nBytesCopied += used;
 #if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
       // include in total for this GC
-	FetchAndAdd64 (&NBytesCopied, (int64_t)used);
+	FetchAndAddU64 (&NBytesCopied, (uint64_t)used);
 #endif
     }
 #endif /* !NO_GC_STATS */
