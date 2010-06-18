@@ -43,7 +43,7 @@ structure Binding =
 	  end
 
     fun bindsOfFunct (PT.MarkFunct {tree, ...}) = bindsOfFunct tree
-      | bindsOfFunct (PT.Funct (v, _, _, _)) = v
+      | bindsOfFunct (PT.Funct clauses) = List.map (fn (v, _, _, _) => v) clauses
 
   (* get the bound variables of a value declaration *)
     fun bindsOfValDecl (vd, env) = (
@@ -52,7 +52,7 @@ structure Binding =
 	    | ( PT.ValVDecl (p, _) |
 		PT.PValVDecl  (p, _) |
 		PT.PrimVDecl (p, _) ) => varsOfPat(p, env)
-	    | PT.FunVDecl funs => List.map bindsOfFunct funs
+	    | PT.FunVDecl funs => concatMap bindsOfFunct funs
           (* end case *))
 
     fun bindsOfPrimCode defn = (

@@ -63,22 +63,38 @@ structure ChkExp :> sig
     fun chkFunBinds (loc, depth, fbs) = let
 	  val depth' = depth+1
 	(* create variable bindings for the functions *)
+          fun bindClause ((f, _, _, _), (fs, names)) = 
+                if PPT.Var.Set.member(names, f)
+                then (fs, names)
+                else let
+                  val f' = Var.new(PPT.Var.nameOf f,
+                          AST.FunTy(
+                             AST.MetaTy(MetaVar.new depth'),
+                             AST.MetaTy(MetaVar.new depth')))
+                  in
+                     ((f, f')::fs, PPT.Var.Set.add(names, f))
+                  end
 	  fun bindFun (fb, (fs, names)) = (case fb
 		 of PT.MarkFunct{span, tree} => bindFun (tree, (fs, names))
-		  | PT.Funct(f, _, _, _) => let
-		      val f' = Var.new(PPT.Var.nameOf f,
-			      AST.FunTy(
-				 AST.MetaTy(MetaVar.new depth'),
-				 AST.MetaTy(MetaVar.new depth')))
-		      in
-			if PPT.Var.Set.member(names, f)
-			  then (
-			    error(loc, [
-				  "duplicate name ", PPT.Var.nameOf f,
-				  "in function binding"
-				 ]);
-			    ((f, f')::fs, names))
-			  else ((f, f')::fs, PPT.Var.Set.add(names, f))
+                  | PT.Funct clauses => let
+                      val (cfs, cnames) = List.foldr bindClause ([], PPT.Var.Set.empty) clauses
+                      val dnames = PPT.Var.Set.intersection (names, cnames)
+                      in
+                        if PPT.Var.Set.numItems cnames > 1
+                          then error(loc, [
+                                     "different names ",
+                                     String.concatWith "," (List.map PPT.Var.nameOf (PPT.Var.Set.listItems cnames)),
+                                     " in function binding"
+                                     ])
+                          else ();
+                        if not (PPT.Var.Set.isEmpty dnames)
+                          then error(loc, [
+                                     "duplicate name(s) ",
+                                     String.concatWith "," (List.map PPT.Var.nameOf (PPT.Var.Set.listItems dnames)),
+                                     " in function binding"
+                                     ])
+                          else ();
+                        (cfs @ fs, PPT.Var.Set.union (cnames, names))
 		      end
 		(* end case *))
 	  val (fs, _) = List.foldr bindFun ([], PPT.Var.Set.empty) fbs
@@ -87,80 +103,86 @@ structure ChkExp :> sig
 	 *)
 	  val _ = List.app (fn (f, f') => Env.bindVal(f, Env.Var f')) fs
 	(* typecheck the functions *)
+          fun chkClause (nargs', argTys', bodyTy', funTy') (f, pats, bodyTyAscrip, body) = let
+                val SOME(Env.Var f') = Env.getValBind f
+                val AST.TyScheme(_, funTy) = Var.typeOf f'
+                val npats = List.length pats
+                val pats = if npats < nargs'
+                               then (
+                                 error(loc, [
+                                       "function defined with different numbers of arguments"
+                                       ]);
+                                 pats @ (List.tabulate (nargs' - npats, fn _ => PT.WildPat)))
+                               else pats
+                val (pats, argTys) = chkPats' (loc, depth', pats)
+                val (body, bodyTy) = chkExp (loc, depth', body)
+                in
+                  if not(U.unify(funTy, funTy'))
+                    then error(loc, ["type mismatch in function ", PPT.Var.nameOf f])
+                    else ();
+                  ListPair.app (fn (argTy, argTy') =>
+                                  if not(U.unify(argTy, argTy'))
+                                    then error(loc, [
+                                               "function defined with argument of different types"
+                                          ])
+                                     else ())
+                               (argTys, argTys');
+                  case bodyTyAscrip
+                   of NONE => ()
+                    | SOME bodyTyAscrip => let
+                        val bodyTyAscrip = #2(ChkTy.checkTy (loc, [], bodyTyAscrip))
+                        in
+                          if not(U.unify(bodyTy, bodyTyAscrip))
+                            then error(loc, [
+                                       "body type does not match the ascribed type of function ",
+                                       PPT.Var.nameOf f
+                                       ])
+                            else ()
+                         end
+                  (* end case *);
+                  if not(U.unify(bodyTy, bodyTy'))
+                    then error(loc, [
+                               "function defined with result of different types"
+                               ])
+                    else ();
+                  (pats, body)
+                end
 	  fun chkFun loc (fb, fbs) = (case fb
 		 of PT.MarkFunct{span, tree} => chkFun span (tree, fbs)
-		  | PT.Funct(f, params, bodyTyAscrip, body) => let
-		      val SOME(Env.Var f') = Env.getValBind f
-		    (* check the parameter patterns of the function binding *)
-		      fun chkPats' ([], _, params', paramTys) = (List.rev params', List.rev paramTys)
-			| chkPats' (param :: params, depth, params', paramTys) = let
-			    val (param', paramTy) = chkPat(loc, depth, param)
-			    in
-			      chkPats'(params, depth+1, param' :: params', paramTy :: paramTys)
-			    end
-		      val (params, paramTys) = chkPats'(params, depth', [], [])
-		    (* check the function binding. in the process, we need to convert each function binding
-		     * to have a single parameter. the following example shows our technique.
-		     *
-		     *   fun f x y = x + y
-		     *  ==>
-		     *   fun f x = let
-		     *        fun fTmp y = x + y
-		     *        in
-		     *            fTmp
-		     *        end
-		     * 
-		     * we use a CPS trick to check the types of the intermediate functions. the chkTyK continuation
-		     * takes the type of the function body and unifies it with the type of the function binding.
-		     *)
-		      fun chk ([], _, _, _, _) = raise Fail "compiler bug"
-			| chk ([param], [paramTy], chkTyK, f', depth) = let
-			    val AST.TyScheme(_, funTy) = Var.typeOf f'
-			    val (body', bodyTy) = chkExp (loc, depth, body)
-			    val funTy' = AST.FunTy(paramTy, bodyTy)
-			    in
-				chkTyK funTy';
-				if not(U.unify(funTy, funTy'))
-				  then error(loc, ["type mismatch in function ", PPT.Var.nameOf f])
-				  else ();
-				case bodyTyAscrip
-				 of NONE => ()
-				  | SOME bodyTyAscrip => let
-				      val bodyTyAscrip = #2(ChkTy.checkTy (loc, [], bodyTyAscrip))
-				      in
-					if not(U.unify(bodyTy, bodyTyAscrip))
-					  then error(loc, [
-					      "body type does not match the ascribed type of function ",
-					      PPT.Var.nameOf f
-					    ])
-					  else ()
-				      end
-				(* end case *);
-				ASTUtil.mkFunWithPat(f', param, body')
-			    end
-			| chk (param :: params, paramTy :: paramTys, chkTyK, f', depth) = let
-			    val AST.TyScheme(_, funTy) = Var.typeOf f'
-			    fun chkTyK' bodyTy = let
-				  val funTy' = AST.FunTy(paramTy, bodyTy)
-				  in
-				    chkTyK funTy';
-				    if not(U.unify(funTy, funTy'))
-				      then error(loc, ["type mismatch in function ", PPT.Var.nameOf f])
-				      else ()
-				  end
-			    val fTmp = Var.new(PPT.Var.nameOf f^"Tmp",
-					      AST.FunTy(
-						  AST.MetaTy(MetaVar.new depth),
-						  AST.MetaTy(MetaVar.new depth)))
-			    val bodyLambda as AST.FB(f'', _, _) = chk(params, paramTys, chkTyK', fTmp, depth+1)
-			    val (tys, _) = TypeUtil.instantiate(depth, Var.typeOf f'')
-			    val body = AST.LetExp(AST.FunBind [bodyLambda], ASTUtil.mkVarExp(f'', tys))
-			    in
-				ASTUtil.mkFunWithPat(f', param, body)
-			    end
-		      in
-		        chk(params, paramTys, fn x => (), f', depth') :: fbs
-		      end
+                  | PT.Funct clauses => let
+		      val SOME(Env.Var f') = Env.getValBind (#1 (hd clauses))
+                      val nargs = List.foldl (fn ((_, pats, _, _), nargs) => Int.max (List.length pats, nargs)) 0 clauses
+                      val argTys = List.tabulate (nargs, fn _ => AST.MetaTy(MetaVar.new depth'))
+                      val bodyTy = AST.MetaTy(MetaVar.new depth')
+                      val funTy = List.foldr AST.FunTy bodyTy argTys
+                      val clauses = List.map (chkClause (nargs,argTys,bodyTy,funTy)) clauses
+                      fun makeExp ([],vars) = let
+                            val vars = List.rev vars
+                            in
+                              (AST.CaseExp
+                               (ASTUtil.mkTupleExp (List.map (fn var => ASTUtil.mkVarExp (var, [])) vars),
+                                List.map (fn (pats, body) => AST.PatMatch (ASTUtil.mkTuplePat pats, body)) clauses,
+                                bodyTy),
+                               bodyTy)
+                            end
+                        | makeExp (argTy::argTys, vars) = let
+                            val var = Var.new ("param", argTy)
+                            val (body,bodyTy) = makeExp (argTys, var::vars)
+                            in
+                              (AST.FunExp (var, body, bodyTy),
+                               AST.FunTy (argTy, bodyTy))
+                            end
+                      fun makeLambda [] = raise Fail "compiler bug"
+                        | makeLambda (argTy::argTys) = let
+                            val var = Var.new ("param", argTy)
+                            val (body,bodyTy) = makeExp (argTys, [var])
+                            in
+                              AST.FB (f', var, body)
+                            end
+                      val fb = makeLambda argTys
+                      in
+                        fb :: fbs
+                      end
 		(* end case *))
 	  val fbs' = List.foldr (chkFun loc) [] fbs
 	(* close over the types of the functions and build an environment
@@ -548,7 +570,7 @@ structure ChkExp :> sig
 		end
 	    | PT.FnExp (pat, e) => let
 		val v = PPT.Var.new("anon", ())
-		val [l as AST.FB (f, _, _)] = chkFunBinds(loc, depth, [PT.Funct (v, [pat], NONE, e)])
+		val [l as AST.FB (f, _, _)] = chkFunBinds(loc, depth, [PT.Funct [(v, [pat], NONE, e)]])
 		val (argTys, ty) = TU.instantiate (depth, Var.typeOf f)
 		in
 		  (AST.LetExp(AST.FunBind [l], AST.VarExp(f, argTys)), ty)
@@ -723,13 +745,19 @@ structure ChkExp :> sig
 		end
 	  (* end case *))
 
-    and chkPats (loc, depth, pats : PT.pat list) = let
-	  fun chk (pat, (ps, tys)) = let
+    and chkPats' (loc, depth, pats : PT.pat list) = let
+          fun chk (pat, (ps, tys)) = let
 		val (pat', ty) = chkPat (loc, depth, pat)
 		in
 		  (pat'::ps, ty::tys)
 		end
 	  val (pats', tys) = List.foldr chk ([], []) pats
+          in
+             (pats', tys)
+          end
+
+    and chkPats (loc, depth, pats : PT.pat list) = let
+	  val (pats', tys) = chkPats' (loc, depth, pats)
 	  in
 	    case tys
 	     of [ty] => (pats', ty)
