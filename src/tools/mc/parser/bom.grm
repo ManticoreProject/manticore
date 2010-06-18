@@ -222,7 +222,7 @@ optAttrs
 optAttr
 	: "inline"	=> (BPT.A_Inline)
 	| "pure"	=> (BPT.A_Pure)
-	| "constr"	=> (print "*"; BPT.A_Constr)
+	| "constr"	=> (BPT.A_Constr)
 	;
 
 FunParams
