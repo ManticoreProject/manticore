@@ -421,12 +421,16 @@ structure BoundVariableCheck :> sig
 		in
 		  PT2.ConstraintExp(exp, ty)
 		end
-	    | PT1.FnExp (pats, exp) => let
-	        val (pats, env) = chkPat loc (pats, env)
-		val exp = chkExp loc (exp, env)
-	        in
-		  PT2.FnExp (pats, exp)
-	        end
+            | PT1.FnExp clauses => let
+                fun chkClause (pat, exp) = let
+                      val (pat, env) = chkPat loc (pat, env)
+                      val exp = chkExp loc (exp, env)
+                      in
+                         (pat, exp)
+                      end
+                in
+                  PT2.FnExp (List.map chkClause clauses)
+                end
 	    | PT1.SpawnExp exp => let
 		val exp = chkExp loc (exp, env)
 	        in

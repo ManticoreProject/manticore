@@ -113,7 +113,7 @@ structure UsedVars =
 	    | PT.IdExp v => var v
 	    | PT.SeqExp exps => usedOfExps exps
 	    | PT.ConstraintExp (exp, ty) => union[usedOfExp exp, usedOfTy ty]
-	    | PT.FnExp(pat, exp) => union[usedOfPat pat, usedOfExp exp]
+	    | PT.FnExp matches => usedOfList (fn (pat, exp) => union[usedOfPat pat, usedOfExp exp]) matches
            (* end case *))
 
     and usedOfExps exps = usedOfList usedOfExp exps

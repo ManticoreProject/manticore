@@ -149,7 +149,7 @@ functor PMLParseTreeFn (
       | SeqExp of exp list		(* sequence of two or more expressions *)
       | IdExp of var_use		(* either variable or nullary constant *)
       | ConstraintExp of exp * ty	(* type constraint *)
-      | FnExp of (pat * exp)       (* anonymous function *)
+      | FnExp of (pat * exp) list	(* anonymous function *)
 
   (* pattern matching rules *)
     and match
