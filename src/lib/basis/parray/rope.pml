@@ -465,6 +465,26 @@ structure Rope (* : ROPE *) = struct
 	  then empty
 	  else tabFromToP (0, n, f) (* n.b.: tabFromToP is exclusive of its upper bound *)
 
+  (* forP : int * (int -> unit) -> unit *)
+    fun forP (n, f) = let
+      fun fromTo (lo, hi) (* inclusive of lo, exclusive of hi *) = 
+        if (lo >= hi) then ()
+	else if (hi-lo) <= maxLeafSize then let
+          fun lp i =
+            if i < lo then ()
+	    else (f i; lp (i-1))
+          in
+            lp (hi-1)
+          end
+        else let
+          val m = (hi + lo) div 2
+          in
+            ((| fromTo (lo, m), fromTo (m, hi) |); ())
+          end
+      in
+        if n <= 0 then () else fromTo (0, n)
+      end
+
   (* nEltsInRange : int * int * int -> int *)
     fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
 	  if step = 0 then failwith "cannot have step 0 in a range"
