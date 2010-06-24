@@ -220,7 +220,7 @@
     }
 
 
-    // Not it is time to replace the old messageView with a new message View
+    // Now it is time to replace the old messageView with a new message View
     MessageView *newMessageView = [[MessageView alloc] initWithFrame:splitViewBounds
 							      logDoc:logDoc
 							  dependents:logData.dependentDetails];

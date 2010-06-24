@@ -23,11 +23,11 @@ inline char *CopyString (const char *s)
 
 EventDesc::EventDesc ()
 {
-    this->_name		= "NoEvent";
+    this->_name		= CopyString("NoEvent");
     this->_id		= 0;
     this->_nArgs	= 0;
     this->_args		= 0;
-    this->_desc		= "not an event";
+    this->_desc		= CopyString("not an event");
 }
 
 EventDesc::EventDesc (

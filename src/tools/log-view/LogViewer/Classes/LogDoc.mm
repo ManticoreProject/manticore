@@ -193,8 +193,8 @@ static LogFileDesc *LFDCache = 0;
 - (struct LogInterval *)initialLogInterval:(LogData *)logDataVal
 {
     struct LogInterval *i = (LogInterval *) malloc(sizeof(struct LogInterval));
-    i->x = logDataVal.firstTime;
-    i->width = logDataVal.lastTime - i->x;
+    i->x = 0;
+    i->width = logDataVal.lastTime - logDataVal.firstTime;
     return i;
 }
 

@@ -551,6 +551,7 @@ double cur_interval_height = 0.0;
 		    }
 		}
 	    }
+	    evt->timestamp -= firstTime;
 	    if (do_break) break;
 	    NSNumber *n = [NSNumber numberWithUnsignedLongLong:ts];
 	    [first_event_times addObject:n];

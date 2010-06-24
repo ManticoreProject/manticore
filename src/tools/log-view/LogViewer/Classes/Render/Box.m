@@ -16,7 +16,7 @@
     return b;
 }
 
-- (void)setValue:(void *)valueVal
+- (void)setValue:(id)valueVal
 {
     value = valueVal;
 }
