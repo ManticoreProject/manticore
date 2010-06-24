@@ -425,6 +425,7 @@ structure TranslatePCase (* : sig
       ListPair.foldrEq bind (A.LetExp (knot, applyGo)) (fVs, es)
     end
 
+(* Construct an "otherwise => raise Match" branch of the given type. *)
   fun otherwiseRaiseMatch (t: A.ty) : A.pmatch = let
     val exnMatch = A.ConstExp (A.DConst (Basis.exnMatch, []))
     in
