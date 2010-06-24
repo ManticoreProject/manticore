@@ -435,6 +435,8 @@ structure TranslatePCase (* : sig
   fun otherwise (pms: A.pmatch list, ty: A.ty) : A.pmatch list = let
   (* count the number of otherwise branches *)
     val n = List.foldl (fn (A.Otherwise _, tot) => tot+1 | (_, tot) => tot) 0 pms
+  (* FIXME raise this error the right way (via Err) *)
+    val _ = if n>1 then raise Fail("too many otherwise branches in pcase") (* parser bug? *) else ()
     in
       if n = 0 then pms @ [otherwiseRaiseMatch ty] else pms
     end
@@ -461,6 +463,7 @@ structure TranslatePCase (* : sig
 
 (* --- some tests follow --- *)
 
+(*
   structure T = TestUtils
 
   val zero = T.int 0
@@ -503,7 +506,7 @@ structure TranslatePCase (* : sig
     | test 2 = mkTest c2
 (*  | test 3 = mkTest c3 *)
     | test _ = print "No such test.\n"
-
+*)
 
 end
     
