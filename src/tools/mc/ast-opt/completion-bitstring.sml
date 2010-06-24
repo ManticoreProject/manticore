@@ -46,52 +46,48 @@ end = struct
 
   type t = bit list
 
-  fun bitEq (b1:bit, b2:bit) = (b1=b2)
+  fun bitEq (b1: bit, b2: bit) : bool = (b1=b2)
 
-  fun eq (c1, c2) = 
-    if (List.length c1) <> (List.length c2) then
-      raise Fail "UnequalLengths"
-    else 
-      ListPair.all bitEq (c1, c2)
+  fun eq (c1: t, c2: t) : bool = let
+    fun lp (b::bs, c::cs) = bitEq (b, c) andalso lp (bs, cs)
+      | lp (_::_, []) = raise Fail "unequal lengths"
+      | lp ([], _::_) = raise Fail "unequal lengths"
+      | lp ([], []) = true
+    in
+      lp (c1, c2) (* note: ListPair.allEq returns false on unequal lengths *)
+    end
       
-  val length = List.length
+  val length : t -> int = List.length
 
-  fun toString cb = concat (map (fn Zero => "0" | One => "1") cb)
+  val toString : t -> string = String.concat o (List.map (fn Zero => "0" | One => "1"))
 
 (* c1 < c2 if everywhere c1 is 1, c2 is 1. *)
 (* If one thinks of c1 and c2 as bit-vector sets, this is the subset relationship. *)
-  fun sub (c1, c2) = let
-    fun s ([], []) = true
-      | s (One::t1, One::t2) = s (t1, t2)
-      | s (Zero::t1, _::t2) = s (t1, t2)
-      | s (One::t1, Zero::t2) = false
-      | s _ = let
-          val c1s = toString c1
-	  val c2s = toString c2
-	  val msg = "bug: comparing unequal length bitstrings " ^ c1s ^ ", " ^ c2s 
-          in
-            raise Fail msg
-            (* unequal length lists should be screened out below *)
-	  end
+  fun sub (c1: t, c2: t) : bool = let
+    fun s ([],       [])       = true
+      | s (One::t1,  Zero::t2) = false
+      | s (One::t1,  One::t2)  = s (t1, t2)
+      | s (Zero::t1, _::t2)    = s (t1, t2)
+      | s (_::_,     [])       = raise Fail "unequal lengths"
+      | s ([],       _::_)     = raise Fail "unequal lengths"
     in
-      if (length c1) <> (length c2) then
-        raise Fail "UnequalLengths"
-      else s (c1, c2)
+      s (c1, c2)
     end		   
 
-  fun compare (c1, c2) = 
+(* lexicographic order comparison *)
+  fun compare (c1: t, c2: t) : order = 
     if (length c1) <> (length c2) then
       raise Fail "Unequal Lengths"
     else 
       String.compare (toString c1, toString c2)
 
 (* Given a list of ppats, return a bitstring with 0s for the ?s and 1s elsewhere. *)
-  fun fromPPats ps = map (fn AST.NDWildPat _ => Zero | _ => One) ps
+  val fromPPats : AST.ppat list -> t = List.map (fn AST.NDWildPat _ => Zero | _ => One)
 
 (* allOnes produces a bitstring consisting of all ones of given length. *)
-  fun allOnes n = List.tabulate (n, fn _ => One) 
+  fun allOnes (n: int) : t = List.tabulate (n, fn _ => One) 
 
 (* toggle all the 0s and 1s *)
-  val invert = List.map (fn One => Zero | Zero => One)
+  val invert : t -> t = List.map (fn One => Zero | Zero => One)
 
 end

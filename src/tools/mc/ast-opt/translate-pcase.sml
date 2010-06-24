@@ -11,12 +11,6 @@
 
 (* TODO Test exceptions. *)
 
-(* TODO The compiler should check to make sure Otherwise is last. Currently, it does so in this module. *)
-
-(* TODO Somewhere the compiler should check for multiple Otherwises in pcases. *)
-
-(* TODO Somewhere the compiler should append an "Otherwise => raise ..." to any pcase without one. *)
-
 (* TODO For 'a computations, should we make an 'a result future, rather than an 'a future? *)
 
 structure TranslatePCase (* : sig
@@ -393,20 +387,20 @@ structure TranslatePCase (* : sig
 (* mkStateMachine : AST.exp list * matchmap * AST.ty -> AST.exp *)
 (* A function to build a batch of functions implementing a state machine *)
 (* Given a map of completion bitstrings, produce lists of matches. *)
-  fun mkStateMachine (es : AST.exp list,
-		      m : matchmap,
-		      pcaseResultTy : AST.ty) : AST.exp = let
+  fun mkStateMachine (es: A.exp list,
+		      m: matchmap,
+		      pcaseResTy: AST.ty) : AST.exp = let
     val expTys = List.map TypeOf.exp es
     val kmss = CBM.listItemsi m
-    val goV = Var.new ("go", A.FunTy (Basis.unitTy, pcaseResultTy))
-    val applyGo = A.ApplyExp (A.VarExp (goV, []), A.TupleExp [], pcaseResultTy)
+    val goV = Var.new ("go", A.FunTy (Basis.unitTy, pcaseResTy))
+    val applyGo = A.ApplyExp (A.VarExp (goV, []), A.TupleExp [], pcaseResTy)
     val default = A.WildPat (A.TupleTy (map (mkOptTy o mkResultTy) expTys))
     val defaultMatch = A.PatMatch (default, applyGo)
     val u = Var.new ("u", Basis.unitTy)
     val fVs = futureVars es
     fun mkGo matches = let
       val pollTuple = A.TupleExp (map mkPoll fVs)
-      val body = A.CaseExp (pollTuple, matches @ [defaultMatch], pcaseResultTy)
+      val body = A.CaseExp (pollTuple, matches @ [defaultMatch], pcaseResTy)
       val arg = Var.new ("u", Basis.unitTy) 
       in
 	A.FB (goV, arg, body)
@@ -415,12 +409,12 @@ structure TranslatePCase (* : sig
     fun b ([], matches, lams, fnames) = mkGo matches :: lams
       | b ((cb,ms)::t, matches, lams, fnames) = let
           val name = "state" ^ CB.toString cb
-	  val ty = A.FunTy (mkTy expTys cb, pcaseResultTy)
+	  val ty = A.FunTy (mkTy expTys cb, pcaseResTy)
 	  val nameV = Var.new (name, ty)
-	  val (m, vs) = mkMatch (pcaseResultTy, expTys, cb, nameV)
-(* FIXME What about the order of the matches? Gotta get that right. *)
+	  val (m, vs) = mkMatch (pcaseResTy, expTys, cb, nameV)
+(* FIXME What about the order of the matches? *)
 	  val ms' = if isAllOnes cb then ms else (ms @ [defaultMatch])
-	  val f = mkLam (pcaseResultTy, nameV, vs, cb, ms', fVs)
+	  val f = mkLam (pcaseResTy, nameV, vs, cb, ms', fVs)
           in
 	    b (t, m::matches, f::lams, name::fnames)
           end
@@ -431,30 +425,46 @@ structure TranslatePCase (* : sig
       ListPair.foldrEq bind (A.LetExp (knot, applyGo)) (fVs, es)
     end
 
+  fun otherwiseRaiseMatch (t: A.ty) : A.pmatch = let
+    val exnMatch = A.ConstExp (A.DConst (Basis.exnMatch, []))
+    in
+      A.Otherwise (A.RaiseExp (exnMatch, t)) 
+    end
+
+(* The function "otherwise" appends "otherwise => raise Match" if no Otherwise is present. *)
+  fun otherwise (pms: A.pmatch list, ty: A.ty) : A.pmatch list = let
+  (* count the number of otherwise branches *)
+    val n = List.foldl (fn (A.Otherwise _, tot) => tot+1 | (_, tot) => tot) 0 pms
+    in
+      if n = 0 then pms @ [otherwiseRaiseMatch ty] else pms
+    end
+
 (* A pcase looks like this:
  * PCaseExp of (exp list * pmatch list * ty) (ty is result type ) 
- *)   
-  fun tr trExp (es, pms, pcaseResultTy) = let
-    (* buildMap : A.pmatch list -> A.matchmap *)
-    (* build map : collect bitstrings, then merge branches in *)
-      fun buildMap pms = let
-        val nExps = List.length es
-        val expTys = map TypeOf.exp es
-        val cbs = map (cbOf nExps) pms
-        in
-	  List.foldl (merge nExps (AST.TupleTy expTys)) (initMap cbs) pms
-        end
+ *)   	   
+  fun tr (trExp: A.exp -> A.exp)
+         (es: A.exp list, pms: A.pmatch list, pcaseResTy: A.ty) : A.exp = let
+    val pms' = otherwise (pms, pcaseResTy)
+  (* buildMap : A.pmatch list -> A.matchmap *)
+  (* build map : collect bitstrings, then merge branches in *)
+    fun buildMap pms = let
+      val nExps  = List.length es
+      val expTys = map TypeOf.exp es
+      val cbs    = map (cbOf nExps) pms
       in
-	mkStateMachine (es, buildMap pms, pcaseResultTy)
+        List.foldl (merge nExps (AST.TupleTy expTys)) (initMap cbs) pms
       end
+    val m = buildMap pms'
+    in
+      mkStateMachine (es, m, pcaseResTy)
+    end
 
-  (* --- some tests follow --- *)
+(* --- some tests follow --- *)
 
-(*
   structure T = TestUtils
 
   val zero = T.int 0
-  val one = T.int 1
+  val one  = T.int 1
 
   fun t (A.PCaseExp (es, pms, ty)) = tr (fn e => e) (es, pms, ty)
     | t _ = raise Fail "expecting a pcase"
@@ -494,7 +504,6 @@ structure TranslatePCase (* : sig
 (*  | test 3 = mkTest c3 *)
     | test _ = print "No such test.\n"
 
-*)
 
 end
     

@@ -153,7 +153,7 @@ structure PrintAST : sig
 	  openVBox (abs 1);
 	    ln ();
 	    case pms
-	     of m::ms => (ppm " of" m; app (ppm "  |") ms)
+	     of m::ms => (ppm "of" m; app (ppm " |") ms)
 	      | nil => raise Fail "pcase without any branches"
 	    (* end case *);
             closeBox ();
@@ -300,7 +300,9 @@ structure PrintAST : sig
           closeBox ())
       | ppm s (A.Otherwise e) = (
           openVBox (rel 0);
-            pr "| otherwise =>";
+            pr s;
+	    sp ();
+            pr "otherwise =>";
             sp ();
             exp e;
             ln ();
