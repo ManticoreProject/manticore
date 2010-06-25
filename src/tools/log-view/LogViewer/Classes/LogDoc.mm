@@ -301,6 +301,7 @@ static LogFileDesc *LFDCache = 0;
 	}
 	outlineView.dataSource = outlineViewDataSource;
 	outlineView.delegate = outlineViewDataSource;
+	[outlineView expandItem:nil expandChildren:YES];
 		
 	[self flush];
 	

@@ -43,23 +43,35 @@
 	if (index != 0)
 	{
 	    [Exceptions
-	       raise:@"OutlineVieDataSource: nil has one child, asked for a child of index != 0"];
+	       raise:@"OutlineViewDataSource: nil has one child, asked for a child of index != 0"];
 	}
 	else // index == 0
 	{
 	   // NSLog(@"returning root");
-	    Box *b = [Box box:(void *)root];
+	    EventGroupBox *b = [EventGroupBox box:(void *)root withType:GROUP];
 	    [boxes addObject:b];
 	    return b;
 	}
     }
-    Group *g = (Group *)[((Box *)item) unbox];
-    if (g->Kind() != EVENT_GROUP)
+    if ([((EventGroupBox *) item) type] == STATE)
 	[Exceptions raise:@"OutlineViewDataSource: asked for the child of a leaf node"];
-    EventGroup *G = (EventGroup *)g;
-    Box *b = [Box box:(void *)(G->Kid(index))];
+
+    Group *g = (Group *)[((EventGroupBox *) item) unbox];
+    EventGroupBox *b;
+    switch (g->Kind())
+    {
+	case EVENT_GROUP:
+	    b = [EventGroupBox box:(void *)((EventGroup *)g)->Kid(index) withType:GROUP];
+	    break;
+	case STATE_GROUP:
+	    b = [EventGroupBox box:(void *)([NSNumber numberWithInt:index]) withType:STATE];
+	    break;
+	default:
+	    [Exceptions raise:@"OutlineViewDataSource: asked for the child of a leaf node"];
+
+    }
     [boxes addObject:b];
-    return (Box *)b;
+    return b;
 }
 
 - (BOOL)outlineView:(NSOutlineView *)outlineView
@@ -67,16 +79,19 @@
 {
     if (item == nil)
     {
-	[Exceptions raise:@"OutlineVieDataSource: asked if nil was expandable"];
+	[Exceptions raise:@"OutlineViewDataSource: asked if nil was expandable"];
     }
-    Group *g = (Group *)[((Box *)item) unbox];
-    if (g->Kind() == EVENT_GROUP)
-    {
-	return YES;
-    }
-    else
-    {
+    
+    if ([((EventGroupBox *) item) type] == STATE)
 	return NO;
+    Group *g = (Group *)[((EventGroupBox *) item) unbox];
+
+    switch (g->Kind()) {
+	case EVENT_GROUP:
+	case STATE_GROUP:
+	    return YES;
+	default:
+	    return NO;
     }
 }
 
@@ -84,29 +99,44 @@
   numberOfChildrenOfItem:(id)item
 {
     if (item == nil) return 1;
-    Group *g = (Group *)[((Box *)item) unbox];
-    if (g->Kind() != EVENT_GROUP)
+    
+    if ([((EventGroupBox *) item) type] == STATE)
     {
-	[Exceptions raise:@"OutlineVieDataSource was asked for the number of children of a leaf node"];
+	[Exceptions raise:@"OutlineViewDataSource was asked for the number of children of a leaf node"];
 	return -1;
     }
-    else
+
+    Group *g = (Group *)[((EventGroupBox *) item) unbox];
+    switch (g->Kind())
     {
-	EventGroup *G = (EventGroup *)g;
-	//NSLog(@"returning that group %s has %d kids", G->Desc(), G->NumKids());
-	return G->NumKids();
+	case EVENT_GROUP:
+	    return ((EventGroup *)g)->NumKids();
+	case STATE_GROUP:
+	    return ((StateGroup *)g)->NumStates();
+	default:
+	    [Exceptions raise:@"OutlineViewDataSource was asked for the number of children of a leaf node"];
+	    return -1;
     }
 }
 
-	     -(id)outlineView:(NSOutlineView *)outlineView
-    objectValueForTableColumn:(NSTableColumn *)tableColumn
-		       byItem:(id)item
+	    -(id)outlineView:(NSOutlineView *)outlineView
+   objectValueForTableColumn:(NSTableColumn *)tableColumn
+		      byItem:(id)item
 {
     if (item == nil)
 	[Exceptions raise:@"nil has no valueForTableColumn"];
     NSNumber *ident = tableColumn.identifier;
-    Box *b = (Box *)item;
-    // NSLog(@"Box is %@", b);
+    EventGroupBox *b = (EventGroupBox *)item;
+    
+    if ([b type] == STATE)
+    {
+	/* Item represents the state of a StateGroup. */
+	NSNumber *n = (NSNumber *)([b unbox]);
+	StateGroup *parent = (StateGroup *)([(EventGroupBox *)[outlineView parentForItem:item] unbox]);
+	return [NSString stringWithCString:parent->StateName([n intValue])
+				  encoding:NSASCIIStringEncoding];
+    }
+    
     Group *g = (Group *)[b unbox];
     if (ident)
     {
@@ -146,35 +176,68 @@
      forTableColumn:(NSTableColumn *)tableColumn
 	       item:(id)item
 {
-    [cell setDrawsBackground:NO];
-    if (item == nil)
-	return;
-    Group *g = (Group *)[((Box *)item) unbox];
 
+    
     NSNumber *ident = tableColumn.identifier;
-    if (ident && ident.intValue == 0)
+    if (item == nil || !ident)
+	return;
+    
+    /* by default, don't draw the background - this allows us to short-circuit
+     * return any time without worrying about setting the cell's state correctly.
+     */
+    [cell setDrawsBackground:NO];
+    
+    EventGroupBox *b = (EventGroupBox *)item;
+    if (ident.intValue == 0)
     {
 	/* Get the proper color for the group, and change the given cell's
 	   background color to match it. */
-	NSColor *bkgndColor;
 	const char *colorName;
-	switch (g->Kind())
-	{
-	    case INTERVAL_GROUP:
-		colorName = ((IntervalGroup *) g)->Color();
+
+	NSNumber *n;
+	StateGroup *parent;
+	
+	switch ([b type]) {
+	    case STATE:
+		n = (NSNumber *)([((Box *) item) unbox]);
+		parent = (StateGroup *)([(EventGroupBox *)[outlineView parentForItem:item] unbox]);
+		colorName = parent->StateColor([n intValue]);
 		break;
-	    case DEPENDENT_GROUP:
-		colorName = ((DependentGroup *) g)->Color();
+	    case GROUP:
+		Group *g = (Group *)[b unbox];
+		switch (g->Kind())
+		{
+		    case INTERVAL_GROUP:
+			colorName = ((IntervalGroup *) g)->Color();
+			break;
+		    case DEPENDENT_GROUP:
+			colorName = ((DependentGroup *) g)->Color();
+			break;
+		    case STATE_GROUP: 
+		    case EVENT_GROUP:
+		    default:
+			return;
+		}
 		break;
-	    case STATE_GROUP: 
-		colorName = ((StateGroup *) g)->StateColor(0);
-	    case EVENT_GROUP:
-	    default:
-		return;
+
 	}
-	bkgndColor = [Utils colorFromFormatString:colorName];
+	NSColor *bkgndColor = [Utils colorFromFormatString:colorName];
 	[cell setBackgroundColor:bkgndColor];
 	[cell setDrawsBackground:YES];
+    }
+    else if (ident.intValue == 1)
+    {
+	if ([b type] == STATE)
+	{
+	    /* Don't display the checkbox. */
+	    [cell setTransparent:YES];
+	    [cell setEnabled:NO];
+	}
+	else {
+	    [cell setTransparent:NO];
+	    [cell setEnabled:YES];
+	}
+
     }
 
 }
@@ -329,7 +392,10 @@ These 3 properties uniquely determine the behavior of the tree when clicking on 
 	[Exceptions raise:@"Table column lacks an identifier"];
     if (ident.intValue != 1)
 	[Exceptions raise:@"Can't edit a table column whose identifier is not 1"];
-    Group *g = (Group *)([((Box *)item) unbox]);
+    EventGroupBox *b = (EventGroupBox *)item;
+    if ([b type] == STATE)
+	return;
+    Group *g = (Group *)([item unbox]);
     NSNumber *n = (NSNumber *)object;
 
     // Can't allow users to set the button to mixed

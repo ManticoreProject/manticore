@@ -51,6 +51,8 @@
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
+		D2648BCF11D538AB00342F30 /* log-events.json in Resources */ = {isa = PBXBuildFile; fileRef = D2648BCD11D538AB00342F30 /* log-events.json */; };
+		D2648BD011D538AB00342F30 /* log-view.json in Resources */ = {isa = PBXBuildFile; fileRef = D2648BCE11D538AB00342F30 /* log-view.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -78,8 +80,8 @@
 		52AE52CA1028D6AA007AED7A /* LogDoc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogDoc.mm; sourceTree = "<group>"; };
 		52AE52CB1028D6AA007AED7A /* LogView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogView.h; sourceTree = "<group>"; };
 		52AE52CC1028D6AA007AED7A /* LogView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogView.mm; sourceTree = "<group>"; };
-		52AE52CE1028D6AA007AED7A /* Box.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Box.h; sourceTree = "<group>"; };
-		52AE52CF1028D6AA007AED7A /* Box.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Box.m; sourceTree = "<group>"; };
+		52AE52CE1028D6AA007AED7A /* Box.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Box.h; path = ../Render/Box.h; sourceTree = "<group>"; };
+		52AE52CF1028D6AA007AED7A /* Box.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = Box.m; path = ../Render/Box.m; sourceTree = "<group>"; };
 		52AE52D01028D6AA007AED7A /* GroupFilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GroupFilter.h; sourceTree = "<group>"; };
 		52AE52D11028D6AB007AED7A /* GroupFilter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GroupFilter.m; sourceTree = "<group>"; };
 		52AE52D41028D6AB007AED7A /* CustomSplitView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CustomSplitView.h; sourceTree = "<group>"; };
@@ -144,6 +146,8 @@
 		52E4D72A1035DA1B003396BE /* DetailEnumerator.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DetailEnumerator.mm; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* LogViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LogViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2648BCD11D538AB00342F30 /* log-events.json */ = {isa = PBXFileReference; explicitFileType = sourcecode.javascript; fileEncoding = 4; name = "log-events.json"; path = "../../../../../../config/log-events.json"; sourceTree = "<group>"; };
+		D2648BCE11D538AB00342F30 /* log-view.json */ = {isa = PBXFileReference; explicitFileType = sourcecode.javascript; fileEncoding = 4; name = "log-view.json"; path = "../../../../../../config/log-view.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -292,8 +296,6 @@
 		52AE52CD1028D6AA007AED7A /* Render */ = {
 			isa = PBXGroup;
 			children = (
-				52AE52CE1028D6AA007AED7A /* Box.h */,
-				52AE52CF1028D6AA007AED7A /* Box.m */,
 				52AE52D01028D6AA007AED7A /* GroupFilter.h */,
 				52AE52D11028D6AB007AED7A /* GroupFilter.m */,
 				52AE52DD1028D6AB007AED7A /* OutlineViewDataSource.h */,
@@ -380,6 +382,8 @@
 		52AE52F71028D6AB007AED7A /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				52AE52CE1028D6AA007AED7A /* Box.h */,
+				52AE52CF1028D6AA007AED7A /* Box.m */,
 				52AE52F81028D6AB007AED7A /* Exceptions.h */,
 				52AE52F91028D6AB007AED7A /* Exceptions.m */,
 				52AE52FA1028D6AB007AED7A /* Utils.h */,
@@ -391,6 +395,8 @@
 		52AE53291028D8A9007AED7A /* Static */ = {
 			isa = PBXGroup;
 			children = (
+				D2648BCD11D538AB00342F30 /* log-events.json */,
+				D2648BCE11D538AB00342F30 /* log-view.json */,
 				52AE53501028DA8F007AED7A /* load-log-desc.cxx */,
 				52AE53371028D97C007AED7A /* log-desc.cxx */,
 				52AE53381028D97C007AED7A /* log-desc.hxx */,
@@ -507,6 +513,8 @@
 				52AE5DA6102C9F67007AED7A /* EventInfo.xib in Resources */,
 				52AE5E26102CAA3A007AED7A /* DetailInfo.xib in Resources */,
 				52CAAC05105192C40003196F /* README in Resources */,
+				D2648BCF11D538AB00342F30 /* log-events.json in Resources */,
+				D2648BD011D538AB00342F30 /* log-view.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

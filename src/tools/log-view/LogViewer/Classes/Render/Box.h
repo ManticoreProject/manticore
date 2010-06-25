@@ -22,3 +22,18 @@
 - (void *)unbox;
 
 @end
+
+enum EventGroupBoxT {
+    GROUP,
+    STATE
+};
+
+@interface EventGroupBox : Box {
+    enum EventGroupBoxT type;
+}
+
++ (EventGroupBox *)box:(void *)valueVal withType:(enum EventGroupBoxT)type;
+@property enum EventGroupBoxT type;
+
+
+@end
