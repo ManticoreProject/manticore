@@ -10,7 +10,7 @@
 #import "Exceptions.h"
 #import "Box.h"
 #import "LogDoc.h"
-
+#import "Utils.h"
 
 /// The state a checkbox should be in before a user has clicked on it
 #define DEFAULT_ENABLED_STATE ( [NSNumber numberWithInt:1] )
@@ -133,6 +133,52 @@
     [Exceptions raise:@"OutlineViewDataSource: Table Column's identifier was nil"];
     return [NSNumber numberWithInt:-1];
 }
+
+
+/* Delegate method - called when the outlineView is about to display the given
+   cell. Our job is to color the background of the given cell to match the color
+   that we will draw the cell's event type as.
+   
+   This makes the filtering OutlineView into a color legend as well.
+ */
+- (void)outlineView:(NSOutlineView *)outlineView
+    willDisplayCell:(id)cell
+     forTableColumn:(NSTableColumn *)tableColumn
+	       item:(id)item
+{
+    [cell setDrawsBackground:NO];
+    if (item == nil)
+	return;
+    Group *g = (Group *)[((Box *)item) unbox];
+
+    NSNumber *ident = tableColumn.identifier;
+    if (ident && ident.intValue == 0)
+    {
+	/* Get the proper color for the group, and change the given cell's
+	   background color to match it. */
+	NSColor *bkgndColor;
+	const char *colorName;
+	switch (g->Kind())
+	{
+	    case INTERVAL_GROUP:
+		colorName = ((IntervalGroup *) g)->Color();
+		break;
+	    case DEPENDENT_GROUP:
+		colorName = ((DependentGroup *) g)->Color();
+		break;
+	    case STATE_GROUP: 
+		colorName = ((StateGroup *) g)->StateColor(0);
+	    case EVENT_GROUP:
+	    default:
+		return;
+	}
+	bkgndColor = [Utils colorFromFormatString:colorName];
+	[cell setBackgroundColor:bkgndColor];
+	[cell setDrawsBackground:YES];
+    }
+
+}
+
 
 
 #pragma mark Heirarchical Enabled State Management

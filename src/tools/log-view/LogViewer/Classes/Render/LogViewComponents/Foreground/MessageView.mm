@@ -81,10 +81,10 @@ uint64_t myExp(uint64_t a, uint n)
 	//    p1.x, p2.y);
 //
     Message *message = [[Message alloc] initArrowFromPoint:p1
-				       toPoint:p2
-					  color:[Utils colorFromFormatString:g->Color()]
-					 sender:s
-				      receiver:r];
+						   toPoint:p2
+						     color:[Utils colorFromFormatString:g->Color()]
+						    sender:s
+						  receiver:r];
     NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
     message.description = [NSString stringWithString:S];
 

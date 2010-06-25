@@ -300,6 +300,7 @@ static LogFileDesc *LFDCache = 0;
 	    [Exceptions raise:@"Did not have an initialized outlineViewDataSource while enabled"];
 	}
 	outlineView.dataSource = outlineViewDataSource;
+	outlineView.delegate = outlineViewDataSource;
 		
 	[self flush];
 	
@@ -518,7 +519,7 @@ uint64_t g_counter = 0;
     NSPrintOperation *op = [NSPrintOperation
 			    printOperationWithView:scrollView
 			    printInfo:[self printInfo]];
-    op.showPanels = showPanels;
+    op.showsPrintPanel = showPanels;
 
     [self runModalPrintOperation:op
 			delegate:nil

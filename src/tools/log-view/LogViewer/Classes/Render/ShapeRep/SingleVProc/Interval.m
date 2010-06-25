@@ -40,10 +40,10 @@
 
 #pragma mark Initializations
 
-- (Interval *)initWithRect:(NSRect)r
-		     color:(NSColor *)c
-		     start:(event *)s
-		       end:(event *)f;
+- (id)initWithRect:(NSRect)r
+	     color:(NSColor *)c
+	     start:(event *)s
+	       end:(event *)f;
 {
     if (![super init])
 	return nil;

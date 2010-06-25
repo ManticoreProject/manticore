@@ -46,9 +46,9 @@
 @synthesize description;
 
 
-- (EventInfoController *)initWithNibName:(NSString *)n
-				    bundle:(NSBundle *)b
-				   logDesc:(LogFileDesc *)logDescVal
+- (id)initWithNibName:(NSString *)n
+	       bundle:(NSBundle *)b
+	      logDesc:(LogFileDesc *)logDescVal
 {
 
     if (![super initWithNibName:n bundle:b]) return nil;

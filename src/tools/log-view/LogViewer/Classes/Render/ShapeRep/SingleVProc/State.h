@@ -26,10 +26,10 @@
  \param c color of the rectangle
  \return the initialized object
  */
-- (State *)initWithRect:(NSRect)r
-		  color:(NSColor *)c
-		  start:(event *)startVal
-		    end:(event *)endVal;
+- (id)initWithRect:(NSRect)r
+	     color:(NSColor *)c
+	     start:(event *)startVal
+	       end:(event *)endVal;
 
 
 // Print yourself using NSLog

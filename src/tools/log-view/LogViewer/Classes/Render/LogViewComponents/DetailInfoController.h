@@ -30,9 +30,9 @@ struct LogFileDesc;
     NSString *name;
 }
 
-- (DetailInfoController *)initWithNibName:(NSString *)s
-				   bundle:(NSBundle *)b
-				  logDesc:(struct LogFileDesc *)logDescVal;
+- (id)initWithNibName:(NSString *)s
+	       bundle:(NSBundle *)b
+	      logDesc:(struct LogFileDesc *)logDescVal;
 
 
 /// s has an associated detail d.

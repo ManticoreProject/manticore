@@ -38,9 +38,9 @@ struct EventDesc;
 }
 
 /// Initialize
-- (EventInfoController *)initWithNibName:(NSString *)n
-				    bundle:(NSBundle *)b
-				   logDesc:(struct LogFileDesc *)logDescVal;
+- (id)initWithNibName:(NSString *)n
+	       bundle:(NSBundle *)b
+	      logDesc:(struct LogFileDesc *)logDescVal;
 
 
 @property (readonly) EventInfoView *eiv;
@@ -51,6 +51,6 @@ struct EventDesc;
 @property (readwrite, assign) event *value;
 @property (readwrite, assign) NSString *name;
 @property (readwrite, assign) NSString *description;
-@property (readwrite, assign) NSArray *args;
+@property (readwrite, assign) NSMutableArray *args;
 
 @end

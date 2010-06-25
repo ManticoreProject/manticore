@@ -23,10 +23,10 @@
 @property (readonly) event *end;
 
 /// Testing function.  Implementation prints a warning.
-- (Interval *)initWithRect:(NSRect)r
-		     color:(NSColor *)c
-		     start:(event *)s
-		       end:(event *)f;
+- (id)initWithRect:(NSRect)r
+	     color:(NSColor *)c
+	     start:(event *)s
+	       end:(event *)f;
 
 
 

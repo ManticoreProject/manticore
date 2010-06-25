@@ -46,9 +46,9 @@
 
 #pragma mark Initialization
 
-- (DetailInfoController *)initWithNibName:(NSString *)s
-				   bundle:(NSBundle *)b
-				  logDesc:(struct LogFileDesc *)logDescVal
+- (id)initWithNibName:(NSString *)s
+	       bundle:(NSBundle *)b
+	      logDesc:(struct LogFileDesc *)logDescVal
 {
     if (![super initWithNibName:s bundle:b]) return nil;
 

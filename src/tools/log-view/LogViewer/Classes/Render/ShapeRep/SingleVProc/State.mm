@@ -22,10 +22,10 @@
 
 #pragma mark Initializations
 
-- (State *)initWithRect:(NSRect)r
-		  color:(NSColor *)c
-		  start:(event *)startVal
-		    end:(event *)endVal;
+- (id)initWithRect:(NSRect)r
+	     color:(NSColor *)c
+	     start:(event *)startVal
+	       end:(event *)endVal;
 {
 	if (![super init])
 		return nil;
