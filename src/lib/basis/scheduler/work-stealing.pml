@@ -64,7 +64,7 @@ structure WorkStealing (* :
 	    let threads : List.list = case muggable
 				       of List.nil => 					  
 					  return (List.nil)
-					| List.CONS (deque : [D.deque], _ : List.list) => 
+					| CONS (deque : [D.deque], _ : List.list) => 
 					  D.@to-list-from-atomic (self, #0(deque))
 	                              end
             do D.@release-deques-from-atomic (self, localDeques)
@@ -102,7 +102,7 @@ structure WorkStealing (* :
 		      case candidateDeques
 		       of List.nil =>
 			  return (List.nil)
-			| List.CONS (deque : [D.deque], _ : List.list) =>
+			| CONS (deque : [D.deque], _ : List.list) =>
 			  let deque : D.deque = #0(deque)
 			  fun take (nLeft : int, stolen : List.list) : List.list =
 			      if I32Lte (nLeft, 0) then
@@ -113,7 +113,7 @@ structure WorkStealing (* :
 				   of NONE =>
 				      PrimList.@rev (stolen / exh)
 				    | SOME (thd : ImplicitThread.thread) =>
-				      apply take (I32Sub (nLeft, 1), List.CONS (thd, stolen))
+				      apply take (I32Sub (nLeft, 1), CONS (thd, stolen))
 				  end
 			  if I32Eq (policy, STEAL_ONE_THREAD) then
 			      apply take (1, List.nil)
@@ -153,7 +153,7 @@ structure WorkStealing (* :
 		     let x : Option.option = promote (Option.SOME(List.nil))
 		     do #0(ch) := x
 		     return ()
-		   | List.CONS (_ : ImplicitThread.thread, _ : List.list) => 
+		   | CONS (_ : ImplicitThread.thread, _ : List.list) => 
 		     (* successfully stole multiple threads *)
 		     let x : Option.option = promote (Option.SOME(stolenThds))
 		     do #0(ch) := x
@@ -247,7 +247,7 @@ structure WorkStealing (* :
 			    (* there was no local work available on the other workers *)
 			     return ()
 			   | Option.SOME (thd : ImplicitThread.thread) =>
-			     throw foundWork (self, List.CONS(thd, List.nil))
+			     throw foundWork (self, CONS(thd, List.nil))
 			 end
 		     let stolenThds : List.list = apply findRemoteWork (self)
 		     case stolenThds
@@ -282,7 +282,7 @@ structure WorkStealing (* :
 			     throw findRemoteWorkLp (0)
 			 else
 			     throw findRemoteWorkLp (I32Add(nTries, 1))
-		       | List.CONS (thd : ImplicitThread.thread, thds : List.list) =>
+		       | CONS (thd : ImplicitThread.thread, thds : List.list) =>
 		       (* successful steal *)
 			 throw foundWork (self, stolenThds)
 		     end

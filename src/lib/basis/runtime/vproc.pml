@@ -116,10 +116,10 @@ structure VProc (* :
 	  fun lp (vps : List.list, others : List.list) : List.list =
 	      case vps
 	       of nil => return(others)
-		| List.CONS(vp : [vproc], vps : List.list) =>
+		| CONS(vp : [vproc], vps : List.list) =>
 		    if Equal(#0(vp), self)
 		      then apply lp(vps, others)
-		      else apply lp(vps, List.CONS(vp, others))
+		      else apply lp(vps, CONS(vp, others))
 	      end
 	  let vps : List.list = ccall ListVProcs(self)
 	  apply lp(vps, nil)
@@ -130,7 +130,7 @@ structure VProc (* :
 	  fun lp (vps : List.list) : () =
 	      case vps
 	       of nil => return()
-		| List.CONS(vp : [vproc], vps : List.list) =>
+		| CONS(vp : [vproc], vps : List.list) =>
 		  do apply f(#0(vp) / exh)
 		  apply lp(vps)
 	      end

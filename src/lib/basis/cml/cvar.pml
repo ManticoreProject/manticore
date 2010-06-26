@@ -62,7 +62,7 @@ structure CVar (*: sig
 	    fun signalWaiting (l : list) : unit =
 		  case l
 		   of nil => return (UNIT)
-		    | List.CONS(hd : waiter, tl : List.list) =>
+		    | CONS(hd : waiter, tl : List.list) =>
 			let flg : PEvt.event_state = #0(hd)
 (* NOTE: this code doesn't work; probably because of a bug in the handling of BCAS in the
  * code generator.

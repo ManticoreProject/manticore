@@ -139,7 +139,7 @@ structure FLS :
 
         let k : [int] = alloc(DICT_BUILTIN_TOPOLOGY)
         let elt : [[int], any] = alloc(k, List.nil)
-        let dict : List.list = List.CONS(elt, Topologies.EMPTY)
+        let dict : List.list = CONS(elt, Topologies.EMPTY)
 
 	let ret : [int, List.list] = alloc(I32Add(DICT_BUILTIN_TOPOLOGY, 1), dict)
 	return(ret)
@@ -265,7 +265,7 @@ structure FLS :
 	let wCounter : [int] = alloc(counter)
 	let dict : List.list = @get-dict(UNIT / exh)
         let elt : [[int], any] = alloc(wCounter, x)
-	let _ : unit = @set-dict(List.CONS(elt, dict) / exh)
+	let _ : unit = @set-dict(CONS(elt, dict) / exh)
 	return(wCounter)
       ;
 
