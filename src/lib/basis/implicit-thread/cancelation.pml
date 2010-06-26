@@ -62,7 +62,7 @@ structure Cancelation (* : sig
 
     (* add c to the parent's list of children *)
       define @add-child (c : cancelable, parent : cancelable / exh : exh) : cancelable =
-	  let children : L.list = L.CONS(c, SELECT(CHILDREN_OFF, parent))
+	  let children : L.list = CONS(c, SELECT(CHILDREN_OFF, parent))
 	  let c : cancelable = alloc(SELECT(CANCELED_OFF, c), 
 				     SELECT(INACTIVE_OFF, c), 
 				     children, 
@@ -199,7 +199,7 @@ structure Cancelation (* : sig
 		      let cs2 : L.list = PrimList.@rev(cs2 / exh)
 		      apply cancelAndWait(self, cs2, nil)
 		  end
-		| L.CONS(c : cancelable, cs1 : L.list) =>		
+		| CONS(c : cancelable, cs1 : L.list) =>		
 		  let canceled : ![bool] = @get-canceled-flag(c)
 		  let inactive : ![vproc] = @get-inactive-flag(c)
 		  let isCanceled : bool = CAS(&0(canceled), false, true)
@@ -216,17 +216,17 @@ structure Cancelation (* : sig
 		       of true =>
 			  do Pause()
 			  let self : vproc = SchedulerAction.@yield-in-atomic(self)
-			  apply cancelAndWait(self, cs1, L.CONS(c, cs2))
+			  apply cancelAndWait(self, cs1, CONS(c, cs2))
 			| false =>
 			  let dummyK : PT.fiber = vpload(VP_DUMMYK, self)
 	                  let fls : FLS.fls = FLS.@get()
 			  do VProc.@send-from-atomic(self, #0(inactive), fls, dummyK)
-			  apply cancelAndWait(self, cs1, L.CONS(c, cs2))
+			  apply cancelAndWait(self, cs1, CONS(c, cs2))
                       end
 		       
 	      end
 	  let self : vproc = SchedulerAction.@atomic-begin()
-	  do apply cancelAndWait(self, L.CONS(c, L.nil), L.nil)
+	  do apply cancelAndWait(self, CONS(c, L.nil), L.nil)
 	  do SchedulerAction.@atomic-end(self)
 	  return()
 	;

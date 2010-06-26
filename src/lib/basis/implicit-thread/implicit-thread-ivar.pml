@@ -69,7 +69,7 @@ structure ImplicitThreadIVar (* :
 	      let thd : ImplicitThread.thread = ImplicitThread.@capture(k / exh)
 	      fun loop () : () = 
 		  let blocks : List.list = SELECT(BLOCKED_LIST_OFF, ivar)
-		  let newBlocks : List.list = List.CONS(thd, blocks)
+		  let newBlocks : List.list = CONS(thd, blocks)
 		  let newBlocks : List.list = promote(newBlocks)
 		  let blocked : any = CAS(&BLOCKED_LIST_OFF(ivar), blocks, newBlocks)
 		  if Equal(blocked, blocks) then
