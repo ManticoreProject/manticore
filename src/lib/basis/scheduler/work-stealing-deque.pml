@@ -335,7 +335,7 @@ structure WorkStealingDeque (* :
 		  return (List.nil)
 		| Option.SOME (thd : ImplicitThread.thread) =>
 		  let rest : List.list = apply lp ()
-		  return (List.CONS (thd, rest))
+		  return (CONS (thd, rest))
 	      end
 	  apply lp ()
 	;

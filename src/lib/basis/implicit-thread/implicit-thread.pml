@@ -201,7 +201,7 @@ structure ImplicitThread (* :
 	  define (* inline *) @push-work-group (group : work_group / exh : exh) : () =
               do @seed-ite (/ exh)
 	      let ite : FLS.ite = FLS.@get-ite ( / exh)
-	      let newStk : List.list = List.CONS(group, SELECT(ITE_STACK_OFF, ite))
+	      let newStk : List.list = CONS(group, SELECT(ITE_STACK_OFF, ite))
 	      do FLS.@set-ite (alloc (newStk, SELECT(ITE_CANCELABLE_OFF, ite)) / exh)
 	      return ()
 	    ;
@@ -213,7 +213,7 @@ structure ImplicitThread (* :
 	      case stk
 	       of List.nil => 
 		  return (Option.NONE)
-		| List.CONS(x : any, stk : List.list) => 
+		| CONS(x : any, stk : List.list) => 
 		  do FLS.@set-ite (alloc(stk, SELECT(ITE_CANCELABLE_OFF, ite)) / exh)
 		  return (Option.SOME(x))
 	      end
@@ -283,7 +283,7 @@ structure ImplicitThread (* :
 	   of List.nil => 
 	      let e : exn = Fail(@"ImplicitThread.@current-work-group: empty work-group stack")
 	      throw exh (e)
-	    | List.CONS(group : work_group, stk : List.list) =>
+	    | CONS(group : work_group, stk : List.list) =>
 	      return (group)
 	  end
 	;

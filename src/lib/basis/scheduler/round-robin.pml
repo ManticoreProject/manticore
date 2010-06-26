@@ -29,7 +29,7 @@ structure RoundRobin =
 
 	    fun addToSleepingList (fls : FLS.fls, fiber : PT.fiber, sleepDurationNs : long) : () =
 		let timeToWake : ml_long = alloc(I64Add (#0(currTime), sleepDurationNs))
-                let newSleeping : List.list = promote (List.CONS (alloc (fls, fiber, timeToWake), #0(sleeping)))
+                let newSleeping : List.list = promote (CONS (alloc (fls, fiber, timeToWake), #0(sleeping)))
 		do #0(sleeping) := newSleeping
 		return ()
 
@@ -51,7 +51,7 @@ structure RoundRobin =
 		do #0(sleeping) := newSleeping
 		case #0(res)
 		 of List.nil => return (false)
-		  | List.CONS (_ : any, r : List.list) => return (true)
+		  | CONS (_ : any, r : List.list) => return (true)
                 end
 
 	  (* 

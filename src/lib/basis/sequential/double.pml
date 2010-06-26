@@ -58,6 +58,8 @@ structure Double =
 
     )
 
+    type double = double
+
   (* SML interface *)
     val cos : double -> double = _prim (@double-cos)
     val sin : double -> double = _prim (@double-sin)
