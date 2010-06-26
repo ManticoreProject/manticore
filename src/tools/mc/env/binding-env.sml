@@ -57,10 +57,18 @@ structure BindingEnv : sig
     val insertMod     : env * Atom.atom * (mod_bind * env) -> env
     val insertSig     : env * Atom.atom * (sig_id * env) -> env
 
+    val lookupSig : env * Atom.atom -> (sig_id * env) option
+
+  (* takes the binding environment of a particular module and an identifier and tries to find the binding *)
+  (* of the identifier *)
     val findTy  : env * Atom.atom -> type_bind option
     val findVal : env * Atom.atom -> val_bind option
     val findMod : env * Atom.atom -> (mod_bind * env) option
-    val findSig : env * Atom.atom -> (sig_id * env) option
+
+  (* takes the current binding environment and an identifier and tries to find the binding of the identifier *)
+    val lookupVal : env * Atom.atom -> val_bind option
+    val lookupTy  : env * Atom.atom -> type_bind option
+    val lookupMod : env * Atom.atom -> (mod_bind * env) option
 
   (* inline BOM environment *)
     val insertBOMVar  : env * Atom.atom * bom_var -> env
@@ -224,10 +232,14 @@ structure BindingEnv : sig
 	    | SOME v => SOME v
 	  (* end case *))	      
 
-    fun findTy (env, tv) = findInEnv (env, #tyEnv, tv)
-    fun findVal (env, v) = findInEnv (env, #varEnv, v)
-    fun findMod (env, v) = findInEnv (env, #modEnv, v)
-    fun findSig (env, v) = findInEnv (env, #sigEnv, v)
+    fun findVal (Env {varEnv, ...}, x) = Map.find (varEnv, x)
+    fun findTy (Env {tyEnv, ...}, x) = Map.find (tyEnv, x)
+    fun findMod (Env {modEnv, ...}, x) = Map.find (modEnv, x)
+    fun lookupSig (env, v) = findInEnv (env, #sigEnv, v)
+
+    fun lookupVal (env, v) = findInEnv (env, #varEnv, v)
+    fun lookupTy (env, tv) = findInEnv (env, #tyEnv, tv)
+    fun lookupMod (env, v) = findInEnv (env, #modEnv, v)
 
     fun findBOMVar (Env{bomEnv=BOMEnv {varEnv, ...}, outerEnv, ...}, x) = (case Map.find(varEnv, x)
 	   of NONE => (
@@ -311,7 +323,7 @@ structure BindingEnv : sig
 	    Map.foldli match [] cEnv
 	  end
 
-    fun matchValsByName (cEnv as Env{varEnv, ...}, mEnv) = matchByName findVal (varEnv, mEnv)
+    fun matchValsByName (cEnv as Env{varEnv, ...}, mEnv) = matchByName lookupVal (varEnv, mEnv)
     fun matchTysByName (cEnv as Env{tyEnv, ...}, mEnv) = matchByName findTy (tyEnv, mEnv)
     fun matchModsByName (cEnv as Env{modEnv, ...}, mEnv) = matchByName findMod (modEnv, mEnv)
 
