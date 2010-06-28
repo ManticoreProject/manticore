@@ -36,7 +36,7 @@ structure BasisEnv : sig
 
     fun getModule path = let
 	  fun get (bEnv, [x]) = SOME(bEnv, Atom.atom x)
-	    | get (bEnv, x::r) = (case BEnv.findMod(bEnv, Atom.atom x)
+	    | get (bEnv, x::r) = (case BEnv.lookupMod(bEnv, Atom.atom x)
 		 of SOME(_, bEnv) => get (bEnv, r)
 		  | NONE => NONE
 		(* end case *))

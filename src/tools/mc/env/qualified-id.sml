@@ -60,10 +60,10 @@ structure QualifiedId : sig
       | checkModPath (env, {tree=(path, x), span}) = let
         fun find (_, []) = ERROR
 	  (* we have reached the last qualified name in the path *)
-	  | find (env, [id]) = (case BindingEnv.findMod (env, id)
+	  | find (env, [id]) = (case BindingEnv.lookupMod (env, id)
             of NONE => ERROR
 	     | SOME (_, env) => QUAL (env, x))
-	  | find (env, id :: path) = (case BindingEnv.findMod (env, id)
+	  | find (env, id :: path) = (case BindingEnv.lookupMod (env, id)
             of NONE => ERROR
 	     | SOME (_, env) => find (env, path))
 	in
@@ -77,12 +77,34 @@ structure QualifiedId : sig
 	      | ERROR => NONE
             (* end case *))
 
-    val findTy = findQid BindingEnv.findTy
-    val findVal = findQid BindingEnv.findVal
-    val findMod = findQid (Option.map #1 o BindingEnv.findMod)
-    val findModEnv = findQid (Option.map #2 o BindingEnv.findMod)
     val findBOMVar = findQid BindingEnv.findBOMVar
     val findBOMTy = findQid BindingEnv.findBOMTy
     val findBOMHLOp = findQid BindingEnv.findBOMHLOp
+
+    fun findVal (env, path) =
+	(case checkModPath (env, path)
+	  of UNQUAL x => BindingEnv.lookupVal (env, x)
+	   | QUAL (env', x) => BindingEnv.findVal (env', x)
+	   | ERROR => NONE
+	(* end case *))
+
+    fun findTy (env, path) =
+	(case checkModPath (env, path)
+	  of UNQUAL x => BindingEnv.lookupTy (env, x)
+	   | QUAL (env', x) => BindingEnv.findTy (env', x)
+	   | ERROR => NONE
+	(* end case *))
+
+    local
+	fun findMod' (env, path) =
+	    (case checkModPath (env, path)
+	      of UNQUAL x => BindingEnv.lookupMod (env, x)
+	       | QUAL (env', x) => BindingEnv.lookupMod (env', x)
+	       | ERROR => NONE
+	    (* end case *))
+    in
+    fun findMod (env, path) = Option.map #1 (findMod' (env, path))
+    fun findModEnv (env, path) = Option.map #2 (findMod' (env, path))
+    end
 
   end
