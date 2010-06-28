@@ -58,7 +58,7 @@ structure WorkStealing (* :
 	    let threads : List.list = case muggable
 				       of List.nil => 					  
 					  return (List.nil)
-					| List.CONS (deque : [D.deque], _ : List.list) => 
+					| CONS (deque : [D.deque], _ : List.list) => 
 					  D.@to-list-from-atomic (self, #0(deque))
 	                              end
             do D.@release-deques-from-atomic (self, localDeques)
@@ -112,7 +112,7 @@ return (List.nil)
 		       (* try to mug another deque that is local to this vproc *)
 			 let muggedThreads : List.list = @mug-from-atomic (self, workGroupId)
 			 case muggedThreads
-			  of List.CONS (_ : ImplicitThread.thread, _ : List.list) =>
+			  of CONS (_ : ImplicitThread.thread, _ : List.list) =>
 			    (* mugging was successful *)
 			    return (muggedThreads)
 			  | List.nil =>
@@ -136,7 +136,7 @@ return (List.nil)
 				     of Option.NONE => 
 					return (List.nil)
 				      | Option.SOME (thd : ImplicitThread.thread) =>
-					return (List.CONS(thd, List.nil))
+					return (CONS(thd, List.nil))
 				    end
 				end
 			    end		    
@@ -155,7 +155,7 @@ return (List.nil)
 			    (* there was no local work available on the other workers *)
 			     return ()
 			   | Option.SOME (thd : ImplicitThread.thread) =>
-			     throw foundWork (self, List.CONS(thd, List.nil))
+			     throw foundWork (self, CONS(thd, List.nil))
 			 end
 		     let stolenThds : List.list = apply findRemoteWork (self)
 		     case stolenThds
@@ -180,7 +180,7 @@ return (List.nil)
 			     throw findRemoteWorkLp (0)
 			 else
 			     throw findRemoteWorkLp (I32Add(nTries, 1))
-		       | List.CONS (thd : ImplicitThread.thread, thds : List.list) =>
+		       | CONS (thd : ImplicitThread.thread, thds : List.list) =>
 		       (* successful steal *)
 			 throw foundWork (self, stolenThds)
 		     end

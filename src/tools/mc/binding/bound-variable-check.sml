@@ -22,31 +22,62 @@ structure BoundVariableCheck :> sig
 
     val atos = Atom.toString
     fun qidToString path = QualifiedId.toString (Atom.toString, path)
-
     val error = ErrorStream.error
-
-  (* attempt to find the binding site of a qualified identifier, reporting an error if none exists *)
-    fun findQid (find, kind, dummy) (loc, env, qId) = (case find(env, qId)
-           of NONE => (
-		error(loc, ["unbound ", kind, " ", qidToString qId]);
-		dummy)
-	    | SOME x => x
-	  (* end case *))
-
     val dummyVar = Var.new("dummyVar", ())
     val dummyTy = Var.new("dummyTy", ())
     val dummyMod = Var.new("dummyMod", ())
 
-    val findTyQid = findQid (QualifiedId.findTy, "type", BEnv.TypeExp dummyTy)
-    fun findDataTyQid (loc, env, qId) = (case findTyQid (loc, env, qId)
-            of BEnv.DataTyc id => SOME id
-	     | _ => NONE
-            (* end case *))
-    val findTyQid = BEnv.tyId o findTyQid
+  (* takes a location, environment, and qualified id, and returns the corresponding stamp-based variable. *)
+  (* if there is no such variable, an error is recorded, and the result is a dummy variable. *)
+    fun findValQid (loc, env, qId) =
+	(case QualifiedId.findVal (env, qId)
+	  of NONE => (
+	     error (loc, ["unbound variable: ", qidToString qId]);
+	     BEnv.Var dummyVar)
+	   | SOME v => v
+	(* end case *))
 
-    val findValQid = findQid (QualifiedId.findVal, "variable", BEnv.Var dummyVar)
-    val findModQid = findQid (QualifiedId.findMod, "module", dummyMod)
-    val findModEnv = findQid (QualifiedId.findModEnv, "module", BEnv.empty (Atom.atom ""))
+    local
+	(* takes a location, environment, and qualified id, and returns the corresponding stamp-based type identifier. *)
+	(* if there is no such type identifier, an error is recorded, and the result is a dummy type identifier. *)
+	fun findTyQid' (loc, env, qId) =
+	    (case QualifiedId.findTy (env, qId)
+	      of NONE => (
+		 error (loc, ["unbound type: ", qidToString qId]);
+		 BEnv.TypeExp dummyTy)
+	       | SOME v => v
+	    (* end case *))
+    in
+
+    val findTyQid = BEnv.tyId o findTyQid'
+
+    fun findDataTyQid (loc, env, qId) = 
+	(case findTyQid' (loc, env, qId)
+	  of BEnv.DataTyc id => SOME id
+	   | _ => NONE
+	(* end case *))
+
+    end
+
+  (* takes a location, environment, and qualified id, and returns the corresponding stamp-based module identifier. *)
+  (* if there is no such module identifier, an error is recorded, and the result is a dummy module identifier. *)
+    fun findModQid (loc, env, qId) =
+	(case QualifiedId.findMod (env, qId)
+	  of NONE => (
+	     error (loc, ["unbound module: ", qidToString qId]);
+	     dummyMod)
+	   | SOME v => v
+	(* end case *))
+
+  (* takes a location, environment, and qualified id, and returns the corresponding stamp-based module environment. *)
+  (* if there is no such module environment, an error is recorded, and the result is a dummy module environment. *)
+    fun findModEnv (loc, env, qId) =
+	(case QualifiedId.findModEnv (env, qId)
+	  of NONE => (
+	     error (loc, ["unbound module: ", qidToString qId]);
+	     BEnv.empty (Atom.atom ""))
+	   | SOME v => v
+	(* end case *))
 
     fun freshVar v = Var.new(Atom.toString v, ())
 
@@ -227,7 +258,7 @@ structure BoundVariableCheck :> sig
                           fun chk loc (f, pats, ty, exp) = let
                                   val (pat, env') = chkPats loc (pats, env)
 			          val exp = chkExp loc (exp, env')
-			          val BEnv.Var f' = Option.valOf(BEnv.findVal(env, f))
+			          val BEnv.Var f' = Option.valOf(BEnv.lookupVal(env, f))
 			          val ty = (
 			                case ty
 				         of NONE => NONE
@@ -362,7 +393,7 @@ structure BoundVariableCheck :> sig
 	    | PT1.BinaryExp(exp1, id, exp2) => let
 		val exp1 = chkExp loc (exp1, env)
 		val exp2 = chkExp loc (exp2, env)
-		val id' = (case BEnv.findVal (env, id)
+		val id' = (case BEnv.lookupVal (env, id)
 		       of SOME(BEnv.Var id') => id'
 			| SOME(BEnv.Con id') => id'
 			| NONE => raise Fail(concat["unknown operator \"", Atom.toString id, "\""])
@@ -483,7 +514,7 @@ structure BoundVariableCheck :> sig
 		  val env = List.foldl ins env decls
 		  (* check the bodies of datatypes *)
 		  fun f ((tvs, id, conDecls), (decls, env)) = let
-		      val SOME (BEnv.DataTyc dataTy) = BEnv.findTy(env, id)
+		      val SOME (BEnv.DataTyc dataTy) = BEnv.lookupTy(env, id)
 		      val (conDecls, env) = chkConDecls dataTy loc (conDecls, env)
 		      in
 		         ((tvs, dataTy, conDecls) :: decls, env)
@@ -596,7 +627,7 @@ structure BoundVariableCheck :> sig
 	    | PT1.NameSig (id, tyDecls) => let
 		  val (tyDecls, env) = chkTyDecls loc (tyDecls, env)
                   in
-		     case BEnv.findSig(env, id)
+		     case BEnv.lookupSig(env, id)
                       of NONE => (error(loc, ["unbound signature ", Atom.toString id]);
 				  (PT2.NameSig(Var.new("dummy", ()), tyDecls), env))
 		       | SOME (id', sigEnv) => (PT2.NameSig(id', tyDecls), sigEnv)
