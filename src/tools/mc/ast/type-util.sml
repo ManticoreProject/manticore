@@ -115,7 +115,8 @@ structure TypeUtil : sig
 		    before info := Ty.INSTANCE ty)
 		else (
 		  info := Ty.UNIV(~1);
-		  fmt {long=false} ty before info := Ty.INSTANCE ty)
+		  fmt {long=false} ty 
+                    before info := Ty.INSTANCE ty)
 	  (* end case *))
 
     val toString = fmt {long=false}
