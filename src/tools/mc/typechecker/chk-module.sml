@@ -40,7 +40,7 @@ structure ChkModule :> sig
 
   (* returns the variables bound to functions *)
     fun boundVarsOfFunct (PT.MarkFunct {tree, ...}, bvs) = boundVarsOfFunct(tree, bvs)
-      | boundVarsOfFunct (PT.Funct(f, _, _, _), bvs) = f :: bvs
+      | boundVarsOfFunct (PT.Funct clauses, bvs) = List.foldl (fn ((f, _, _, _), bvs) => f :: bvs) bvs clauses
 
   (* returns the variables bound in a value declaration *)
     fun boundVarsOfValDcl (vd, bvs) = (case vd

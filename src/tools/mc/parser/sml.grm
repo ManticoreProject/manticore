@@ -262,9 +262,15 @@ ValueDeclRHS
 	;
 
 FunDef
-	: Name (AtomicPat)+ (":" Type)? "=" Exp
-(* FIXME: the parser fails when there is a type ascription for the type of the function body *)
-		=> (mark PT.MarkFunct (FULL_SPAN, PT.Funct(Name, SR1, SR2, Exp)))
+        : FunDefClauses
+                => (mark PT.MarkFunct (FULL_SPAN, PT.Funct FunDefClauses))
+        ;
+
+FunDefClauses
+        : %try Name (AtomicPat)+ (":" Type)? "=" ClosedExp "|" FunDefClauses
+		=> ((Name, SR1, SR2, ClosedExp) :: FunDefClauses)
+	| %try Name (AtomicPat)+ (":" Type)? "=" Exp
+		=> ((Name, SR1, SR2, Exp) :: nil)
 	;
 
 Exp
@@ -283,9 +289,16 @@ Exp
 		=> (markExp (FULL_SPAN, PT.CaseExp(Exp, MatchRules)))
         | "pcase" Exp ("&" Exp)* "of" PMatchRules
                 => (markExp (FULL_SPAN, PT.PCaseExp(Exp :: SR, PMatchRules)))
-        | "fn" AtomicPat "=>" Exp
-                => (markExp (FULL_SPAN, PT.FnExp(AtomicPat, Exp)))
+        | "fn" FnExpClauses
+                => (markExp (FULL_SPAN, PT.FnExp FnExpClauses))
 	;
+
+FnExpClauses
+        : %try AtomicPat "=>" ClosedExp "|" FnExpClauses
+                => ((AtomicPat, ClosedExp) :: FnExpClauses)
+        | %try AtomicPat "=>" Exp
+                => ((AtomicPat, Exp) :: nil)
+        ;
 
 ClosedExp
 	: ChoiceExp

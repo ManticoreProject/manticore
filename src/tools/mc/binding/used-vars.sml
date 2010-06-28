@@ -60,10 +60,10 @@ structure UsedVars =
 	    | PT.ValVDecl (pat, exp) => union[usedOfPat pat, usedOfExp exp]
 	    | PT.PValVDecl (pat, exp) => union[usedOfPat pat, usedOfExp exp]
 	    | PT.FunVDecl functs => let
-		  fun funct (PT.MarkFunct {span, tree}) = 
-		      funct tree
-		    | funct (PT.Funct (f, pats, ty, exp)) = 
-		      union[var f, usedOfPats pats, usedOfExp exp, (case ty of NONE => empty | SOME ty => usedOfTy ty)]
+                  fun clause (f, pats, ty, exp) =
+                      union[var f, usedOfPats pats, usedOfExp exp, (case ty of NONE => empty | SOME ty => usedOfTy ty)]
+		  fun funct (PT.MarkFunct {span, tree}) = funct tree
+		    | funct (PT.Funct clauses) = usedOfList clause clauses
 	          in
 		     usedOfList funct functs
 		  end
@@ -113,7 +113,7 @@ structure UsedVars =
 	    | PT.IdExp v => var v
 	    | PT.SeqExp exps => usedOfExps exps
 	    | PT.ConstraintExp (exp, ty) => union[usedOfExp exp, usedOfTy ty]
-	    | PT.FnExp(pat, exp) => union[usedOfPat pat, usedOfExp exp]
+	    | PT.FnExp matches => usedOfList (fn (pat, exp) => union[usedOfPat pat, usedOfExp exp]) matches
            (* end case *))
 
     and usedOfExps exps = usedOfList usedOfExp exps

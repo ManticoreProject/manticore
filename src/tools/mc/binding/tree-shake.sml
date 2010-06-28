@@ -24,7 +24,7 @@ structure TreeShake =
           (* end case *))
 
     fun bindsOfFunct (PT.MarkFunct {tree, ...}) = bindsOfFunct tree
-      | bindsOfFunct (PT.Funct (v, _, _, _)) = v
+      | bindsOfFunct (PT.Funct clauses) = List.map (fn (f, _, _, _) => f) clauses
 
   (* get the bound variables of a value declaration *)
     fun bindsOfValDecl vd = (
@@ -33,7 +33,7 @@ structure TreeShake =
 	    | ( PT.ValVDecl (p, _) |
 		PT.PValVDecl  (p, _) |
 		PT.PrimVDecl (p, _) ) => varsOfPat p
-	    | PT.FunVDecl funs => List.map bindsOfFunct funs
+	    | PT.FunVDecl funs => List.concat (List.map bindsOfFunct funs)
           (* end case *))
 
     fun bindsOfPrimCode defn = (
@@ -199,7 +199,7 @@ structure TreeShake =
     fun shakeCode code = List.filter shakeDefn code	  
 
     fun isFunDead (PT.MarkFunct {tree, span}) = isFunDead tree
-      | isFunDead (PT.Funct (f, _, _, _)) = isDead f
+      | isFunDead (PT.Funct clauses) = List.all (fn (f, _, _, _) => isDead f) clauses
 
     fun shakeFunct (funct as PT.MarkFunct {tree, span}) = 
 	  shakeFunct tree
