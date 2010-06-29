@@ -95,7 +95,7 @@ structure TranslatePCase (* : sig
   (* pollV : unit -> A.var *)
     fun pollV () = Memo.get memoPoll
 
-  (* mkResPat : AST.pat -> AST.pat *)
+  (* mkResPat : A.pat -> A.pat *)
   (* Given a pattern (p : t), produce the pattern (RES(p) : t result). *)
     fun mkResPat pat = let
       val conRES = resultRES ()
@@ -126,7 +126,7 @@ structure TranslatePCase (* : sig
 
 (* futureVars : A.exp list -> A.var list *)
   fun futureVars es = let
-    fun go ([], _, acc) = rev acc
+    fun go ([], _, acc) = List.rev acc
       | go (e::es, n, acc) = let
 	  val ty = TypeOf.exp e
 	  val name = "f" ^ Int.toString n
@@ -146,28 +146,35 @@ structure TranslatePCase (* : sig
       | xform (AST.HandlePat (p, ty)) = mkExnPat (p, ty)
       | xform (AST.Pat p) = mkResPat p
     in
-      AST.TuplePat (map xform ps)
+      AST.TuplePat (List.map xform ps)
     end
 
 (* initMap : cbits list -> matchmap *)
+(* Constructs a map whose keys are the distinct bitstrings in cbs, *)
+(*   and all of whose values are the empty list. *)
+(* (Those lists will later have matches consed onto them.) *)
   fun initMap (cbs : cbits list) : matchmap = let
     fun go ([], m) = m
       | go (c::cs, m) = 
-	if CBM.inDomain (m, c) then 
-	  go (cs, m)
-	else 
-	  go (cs, CBM.insert (m, c, []))
+	  if CBM.inDomain (m, c) then 
+	    go (cs, m)
+	  else 
+	    go (cs, CBM.insert (m, c, []))
     in
       go (cbs, CBM.empty)
     end
 
 (* cbOf : int -> A.pmatch -> cbits *)
+(* Constructs a completion bits string from a pmatch: *)
+(* - zeros for all ?s, ones for all others, or     *)
+(* - all ones in the case of an otherwise branch.  *)  
+(* Ths int argument says how many ones when an it's an otherwise. *)
   fun cbOf _ (A.PMatch (pps, _)) = CB.fromPPats pps
     | cbOf n (A.Otherwise _) = CB.allOnes n
 
-(* mergeOne : given a map, a key (a cbits), and a pmatch,
- * merge the corresponding match into that map. *)
-  fun mergeOne (t : AST.ty) (m : matchmap, cb : cbits, pm : AST.pmatch) 
+(* mergeOne : given a map, a key (a cbits), and a pmatch, *)
+(* construct a match and insert it into the map. *)
+  fun mergeOne (t : A.ty) (m : matchmap, cb : cbits, pm : A.pmatch) 
       : matchmap = let
     val match = 
      (case pm
@@ -181,6 +188,7 @@ structure TranslatePCase (* : sig
     end
 
 (* merge : int -> AST.ty -> A.pmatch * matchmap -> matchmap *)
+(* Merge the given pmatch into all appropriate slots in the map. *)
   fun merge (n : int) (t : A.ty) (pm : A.pmatch, m : matchmap) 
       : matchmap = let
     val cb = cbOf n pm
@@ -200,26 +208,27 @@ structure TranslatePCase (* : sig
 (* and cb is 101 then this function yields *)
 (* the type (int result * string result) *)
   fun mkTy ts cb = let
-    fun go ([], [], tys) = AST.TupleTy (rev tys)
-      | go (CB.Zero :: r1, _ :: r2, tys) = go (r1, r2, tys)
-      | go (CB.One  :: r1, t :: r2, tys) = go (r1, r2, mkResultTy t :: tys)
+    fun go ([], [], tys) = AST.TupleTy (List.rev tys)
+      | go (CB.Zero ::r1, _::r2, tys) = go (r1, r2, tys)
+      | go (CB.One  ::r1, t::r2, tys) = go (r1, r2, mkResultTy(t)::tys)
       | go _ = raise Fail
           "length of completion bitstring doesn't match # of exps in pcase"
     in
       go (cb, ts, [])
     end 
 
-(* mkMatch: Given a completion bitstring and a function name,   *)
-(* construct a match with the right SOMEs, NONEs etc.  *)
-(* ex: mkMatch(1001, state1001) yields                          *)
-(*       | (SOME(t1), NONE, NONE, SOME(t2)) => state1001(t1,t2) *)
-(* mkMatch : cbits * A.var -> A.match * (A.var list)            *)
+(* mkMatch : A.ty * A.ty list * cbits * A.var -> A.match * (A.var list) *)
+(* mkMatch: construct a match with the right SOMEs, NONEs etc.  *)
+(* ex: mkMatch (-, -, 1001, state1001) yields                  *)
+(*       | (SOME t1, NONE, NONE, SOME t2) => state1001 (t1,t2) *)
   fun mkMatch (pcaseResultTy, eTys, cb, fV) = let
+(*     val mkOptResTy = mkOptTy o mkResultTy *)
+    fun varToExp v = A.VarExp (v, [])
     fun m ([], [], _, optPats, argVs) = let
           val tupPat = A.TuplePat (List.rev optPats)
 	  val argVs' = List.rev argVs
           val fcall = A.ApplyExp (A.VarExp (fV, []), 
-				  A.TupleExp (map (fn v => A.VarExp (v, [])) argVs'),
+				  A.TupleExp (List.map varToExp argVs'),
 				  pcaseResultTy)
           in
 	    (A.PatMatch (tupPat, fcall), argVs')
@@ -332,9 +341,9 @@ structure TranslatePCase (* : sig
       loop (cb, xs, [])
     end
 
-(* seqPrepend : A.exp list -> A.exp -> A.exp    *)
-(* Prepend all given expressions es onto e.     *)
-(* ex: seqPrepend [e1,e2] e0 --> (e1; (e2; e0)) *)
+(* seqPrepend : A.exp list -> A.exp -> A.exp       *)
+(* Prepend all given expressions es onto e with ;. *)
+(* ex: seqPrepend [e1,e2] e0 --> (e1; (e2; e0))    *)
   fun seqPrepend es e = List.foldr A.SeqExp e es
 
 (* narrowMatch : cbits * A.var list * A.ty -> A.match -> A.match *)
