@@ -1,3 +1,6 @@
+(* NOTE: *)
+(* The way pcase is compiled, it causes a redundant match downstream. *)
+
 (* translate-pcase.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
