@@ -24,6 +24,11 @@ signature ALLOC =
 	    args : MTy.mlrisc_tree list
 	  } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 
+  (* generate code to allocate a polymorphic vector in the local heap *)
+  (* argument is a pointer to a linked list l of length n *)
+  (* vector v is initialized s.t. v[i] := l[i] for 0 <= i < n *)
+    val genAllocPolyVec : MTy.T.reg -> {ptr : MTy.T.reg, stms : MTy.T.stm list}
+
   (* allocate a list of types in the global heap, and initialize them *)
   (* generate code to allocate a tuple object in the global heap *)
     val genGlobalAlloc : {

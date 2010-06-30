@@ -76,7 +76,7 @@ functor Alloc64Fn (
     fun setBit (w, i, ty) = if (isHeapPointer ty) then W.orb (w, W.<< (0w1, i)) else w
 
     fun initObj offAp ((ty, mltree), {i, stms, totalSize, ptrMask}) = let
-	  val store = MTy.store (offAp totalSize, mltree, ManticoreRegion.memory)
+	  val store = MTy.store (offAp (wordLit totalSize), mltree, ManticoreRegion.memory)
 	  val ptrMask' = setBit (ptrMask, Word.fromInt i, ty)
 	  val totalSize' = Types.alignedTySzB ty + totalSize
 	  in
@@ -112,10 +112,55 @@ functor Alloc64Fn (
 	    (totalSize, hdrWord, stms)
 	  end (* allocRawObj *)
 
+    fun offAp i = T.ADD(MTy.wordTy, T.REG(MTy.wordTy, Regs.apReg), i)
+
+  (* generate code to allocate a polymorphic vector in the local heap *)
+  (* argument is a pointer to a linked list l of length n *)
+  (* vector v is initialized s.t. v[i] := l[i] for 0 <= i < n *)
+    fun genAllocPolyVec lsPtr =
+	let
+	    val i = Cells.newReg ()
+	    val ptr = Cells.newReg ()
+	    val lpLab = Label.label "lpLab" ()
+	    val exitLab = Label.label "exitLab" ()
+	    val nilLs = wordLit 1
+	    val wordSzBExp = wordLit 8
+	in
+	    {stms=
+	     (* initialize the vector *)
+	     T.MV (MTy.wordTy, i, wordLit 0) ::
+	     T.DEFINE lpLab ::
+	     T.BCC (T.CMP (MTy.wordTy, T.EQ, T.REG (MTy.wordTy, lsPtr), nilLs), exitLab) ::
+	     MTy.store (offAp (T.MULU (MTy.wordTy, wordSzBExp, T.REG (MTy.wordTy, i))), 
+			MTy.EXP (MTy.wordTy, T.LOAD (MTy.wordTy, T.REG (MTy.wordTy, lsPtr), 
+						     ManticoreRegion.memory)),
+		       ManticoreRegion.memory) ::
+	     T.MV (MTy.wordTy, lsPtr, T.LOAD (MTy.wordTy, 
+					  T.ADD (MTy.wordTy, wordSzBExp, 
+						 T.REG (MTy.wordTy, lsPtr)), 
+					  ManticoreRegion.memory)) ::
+	     T.JMP (T.LABEL lpLab, [lpLab]) ::
+	     T.DEFINE exitLab ::
+	     (* store the header word *)
+	     MTy.store (offAp (wordLit (~wordSzB)), 
+			MTy.EXP (MTy.wordTy, T.ADD (MTy.wordTy, 
+				    wordLit 4, 
+				    T.SLL (MTy.wordTy, T.REG (MTy.wordTy, i), wordLit 3))), 
+			ManticoreRegion.memory) ::
+	     (* record the pointer to the new vector *)
+	     T.MV (MTy.wordTy, ptr, T.REG(MTy.wordTy, Regs.apReg)) ::
+	     (* increment the allocation pointer *)
+	     T.MV (MTy.wordTy, 
+		   Regs.apReg, 
+		   offAp (T.MULU (MTy.wordTy, wordSzBExp, T.ADD (MTy.wordTy, T.REG (MTy.wordTy, i), wordLit 1)))) ::
+	     nil,
+	     ptr=ptr}
+	end
+
   (* determine the representation of an allocation and generate the appropriate
    * allocation code.
    *)
-    fun alloc offAp args = let
+    fun alloc (offAp : T.rexp -> T.rexp) args = let
 	  fun lp (hasPtr, hasRaw, (x, _)::xs) = if isHeapPointer x
 		  then lp(true, hasRaw, xs)
 		else if CFGTyUtil.hasUniformRep x 
@@ -134,17 +179,16 @@ functor Alloc64Fn (
 (* FIXME: this only happens because the closure-conversion doesn't deal with empty closures correctly *)
 	  { ptr=MTy.EXP (MTy.wordTy, wordLit 1), stms=[] }
       | genAlloc {isMut, tys, args} = let
-	  val args = ListPair.zipEq (tys, args)
-	  fun offAp i = T.ADD(MTy.wordTy, T.REG(MTy.wordTy, Regs.apReg), wordLit i)
+	  val args = ListPair.zipEq (tys, args)	  
 	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
-	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) :: stms
+	  val stms = MTy.store (offAp (wordLit (~wordSzB)), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) :: stms
 	(* ptrReg points to the first data word of the object *)
 	  val ptrReg = Cells.newReg ()
 	(* copy the original allocation pointer into ptrReg *)
 	  val ptrMv = T.MV (MTy.wordTy, ptrReg, T.REG(MTy.wordTy, Regs.apReg))
 	(* bump up the allocation pointer *)
-	  val bumpAp = T.MV (MTy.wordTy, Regs.apReg, offAp (totalSize+wordSzB))
+	  val bumpAp = T.MV (MTy.wordTy, Regs.apReg, offAp (wordLit (totalSize+wordSzB)))
 	  in
 	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=stms @ [ptrMv, bumpAp] }
 	  end (* genAlloc *)
@@ -165,10 +209,10 @@ functor Alloc64Fn (
 		in
 		  (r, T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, gap), gap)
 		end
-	  fun offAp i = T.ADD (MTy.wordTy, globalAp, wordLit i)
+	  fun offAp i = T.ADD (MTy.wordTy, globalAp, i)
 	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
-	  val stms = MTy.store (offAp (~wordSzB), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) 
+	  val stms = MTy.store (offAp (wordLit (~wordSzB)), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) 
 		:: stms
 	(* bump up the allocation pointer *)
 	  val bumpAp = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.globNextW, vpReg, 
