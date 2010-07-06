@@ -94,5 +94,11 @@ CGFloat pointToLineSegmentDistance(NSPoint p, NSPoint start, NSPoint end)
     return ret;
 }
 
++ (NSString *)rectString:(NSRect)rect
+{
+    return [[NSString alloc] initWithFormat:@"<%f, %f>, <%f, %f>",
+					    rect.origin.x, rect.origin.y,
+					    rect.size.width, rect.size.height];
+}
 
 @end

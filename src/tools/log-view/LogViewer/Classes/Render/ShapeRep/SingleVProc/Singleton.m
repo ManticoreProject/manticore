@@ -12,6 +12,7 @@
 @implementation Singleton
 
 @synthesize eventVal;
+@synthesize place;
 
 #pragma mark Initializations
 

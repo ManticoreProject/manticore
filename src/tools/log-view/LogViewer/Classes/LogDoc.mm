@@ -10,6 +10,7 @@
 
 #import "LogDoc.h"
 #import "LogData.h"
+#import "ViewController.h"
 #import "default-log-paths.h"
 #import "Exceptions.h"
 #import "LogView.h"
@@ -157,6 +158,7 @@ static LogFileDesc *LFDCache = 0;
 @synthesize outlineViewDataSource;
 @synthesize logInterval;
 @synthesize enabled;
+@synthesize viewController;
 
 
 #pragma mark Initializations
@@ -227,6 +229,7 @@ static LogFileDesc *LFDCache = 0;
     outlineViewDataSource = [[OutlineViewDataSource alloc]
 			     initWithLogDesc:self.logDesc
 			     logDoc:self];
+    
    // NSLog(@"LogDoc: setting enabled = true");
     enabled = true;
 
@@ -240,6 +243,7 @@ static LogFileDesc *LFDCache = 0;
 
     if (!logView) [Exceptions raise:@"LogDoc was not properly initialized with a logView"];
     if (!outlineView) [Exceptions raise:@"LogDoc was not properly initialized with a outlineView"];
+    
 
 #pragma mark tableColumns Initialization
     NSArray *columns = outlineView.tableColumns;
@@ -291,6 +295,9 @@ static LogFileDesc *LFDCache = 0;
 	    detailInfoView.needsDisplay = true;
 	    detailInfoView.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
 	}
+
+
+	
 	
 	
 	if (!outlineViewDataSource)
@@ -311,6 +318,7 @@ static LogFileDesc *LFDCache = 0;
 	
 	//NSLog(@"LogDoc is opening a drawer %@", drawer);
 	[drawer open];
+
     }
 }
 
@@ -366,7 +374,7 @@ static LogFileDesc *LFDCache = 0;
 /// Take a point in the logData to the corresponding point in the logView
 - (CGFloat)image:(uint64_t)p
 {
-    NSRect shapeBounds = self.logView.splitView.shapeBounds;
+    NSRect shapeBounds = self.logView.splitView.bounds;
     double scale = shapeBounds.size.width / (logInterval->width);
     return shapeBounds.origin.x + scale * (p - logInterval->x);
 }
@@ -374,7 +382,7 @@ static LogFileDesc *LFDCache = 0;
 /// Take a point in the logView to the corresponding point in the logData
 - (uint64_t)preImage:(CGFloat)p
 {
-    NSRect shapeBounds = logView.splitView.shapeBounds;
+    NSRect shapeBounds = logView.splitView.bounds;
     double scale = logInterval->width / shapeBounds.size.width;
     return logInterval->x + scale * (p - shapeBounds.origin.x);
 }

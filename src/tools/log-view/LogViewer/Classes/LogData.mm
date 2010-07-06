@@ -545,9 +545,9 @@ double cur_interval_height = 0.0;
 		for (NSNumber *n in first_event_times) {
 		    if (n.unsignedLongLongValue == ts) {
 			NSLog(@"**************** LogData.mm: DUPLICATE BLOCK DETECTED IN LOGFILE");
-			exit(-1);
-			--evtIndex;
-			do_break = true;
+			//exit(-1);
+			//--evtIndex;
+			//do_break = true;
 		    }
 		}
 	    }

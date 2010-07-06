@@ -19,14 +19,15 @@
     NSMutableArray *timeValues; // NSString *s that must be printed in accordance with tick lines
     NSMutableDictionary *timeValueAttributes;
 
-    LogDoc *logDoc;
+    IBOutlet LogDoc *logDoc;
 
     NSMutableArray *dependents;
 }
 
-- (MessageView *)initWithFrame:(NSRect)frame
-			logDoc:(LogDoc *)logDocVal
-		    dependents:(NSArray *)dependentsVal;
+- (MessageView *)initWithFrame:(NSRect)frame;
+
+
+- (void)updateDependents:(NSArray *)dependentsVal;
 
 
 - (BOOL)bandReceivedEvent:(NSEvent *)e;

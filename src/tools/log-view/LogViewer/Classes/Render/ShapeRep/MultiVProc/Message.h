@@ -22,7 +22,8 @@
 }
 
 @property (readonly) event *sender;
-@property (readonly) event * receiver;
+@property (readonly) event *receiver;
+@property (readonly) NSBezierPath *path;
 
 
 ///Initialize

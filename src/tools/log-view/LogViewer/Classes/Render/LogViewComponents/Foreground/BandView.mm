@@ -100,24 +100,35 @@
    // [NSBezierPath fillRect:self.bounds];
 
     int a = 0;
+    int q = 0;
     for (State *e in states)
     {
+	if (! NSIntersectsRect(rect, e.rect))
+	{
+	    q++;
+	    continue;
+	}
 	[e drawShape];
 	++a;
     }
    // NSLog(@"Drew %d state changes", a);
+    //NSLog(@"Skipped %d state draws", q);
 
     int b = 0;
     for (Interval *e in intervals)
     {
+	if (! NSIntersectsRect(rect, e.rect))
+	    continue;
 	[e drawShape];
 	++b;
     }
   //  NSLog(@"Drew %d intervals", b);
 
     int c = 0;
-    for (EventShape *e in singletons)
+    for (Singleton *e in singletons)
     {
+	if (! NSPointInRect(e.place, rect))
+	    continue;
 	[e drawShape];
 	++c;
     }
@@ -346,6 +357,8 @@ int color_int = 0;
 
 - (void)mouseDown:(NSEvent *)e
 {
+    [super mouseDown:e];
+
     // If the user is holding down either the shift or the control key
     // Then we interpret the event as follows:
     // The user does not want the DetailInfoView to display information about the detail
@@ -403,36 +416,6 @@ int color_int = 0;
 	    return;
 	}
     }
-
-    //[self.superview mouseDown:e];
 }
 
 @end
-    /*
-     - (CGFloat)intervalHeightForIntervalOfHeight:(CGFloat)h
-     {
-     CGFloat height = self.bounds.size.height;
-     cur_interval_height += h + INTERVAL_PADDING;
-     if (cur_interval_height >= height - (h + INTERVAL_PADDING))
-     {
-     cur_interval_height -= height - 2 * (h + INTERVAL_PADDING);
-     }
-     return cur_interval_height;
-     }
-     */
-    /*
-     /// XXX Warning: this method sets the first color to be used when displaying states
-     /// If you set it to the color for the start state of a vproc and have the BandView
-     /// display from somewhere in the middle of the log, then the color may be inaccurate.
-     - (void)setStateStartColor:(NSColor *)c
-     { color is
-     NSRect bounds = [self bounds];
-     lastState = [[State alloc]
-     initWithRect:NSMakeRect(bounds.origin.x,
-     bounds.origin.y,
-     0,
-     bounds.size.height)
-     color:c
-     start:nil];
-     }
-     */

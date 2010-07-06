@@ -13,7 +13,7 @@
 #define TIME_VALUE_FONT_SIZE ( 12 )
 #define TIME_VALUE_COLOR ( [NSColor blackColor] )
 #define TIME_HEIGHT ( 13 )
-#define TICKS_PER_NUMBER ( 5 )
+#define TICKS_PER_NUMBER ( 2 )
 
 // Calculation of units to use at different scales
 
@@ -21,7 +21,7 @@
 #define NANO ( 10 )
 #define NANO_ROUNDING ( 1 )
 
-#define MICRO ( 10000000 )
+#define MICRO ( 100000000 )
 #define MICRO_ROUNDING ( 1000 )
 
 #define MILLI ( 10000000000 )
@@ -75,7 +75,7 @@
 {
     if (t < NANO)
     {
-	 rounding = NANO_ROUNDING;
+	rounding = NANO_ROUNDING;
     }
     else if (t < MICRO)
     {
@@ -89,6 +89,14 @@
     {
 	rounding =  SEC_ROUNDING;
     }
+}
+
+- (uint64_t)rounding
+{
+    if (rounding == 0)
+	[self determineDroppedLeftRightDigitsForTime:logDoc.logInterval->width
+					      inArea:0];
+    return rounding;
 }
 
 - (IBAction)drewTicks:(LogView *)sender
@@ -176,6 +184,7 @@
 
 - (void)drawRect:(NSRect)rect
 {
+    return;
     if (!self.enabled) return;
     //[[NSColor grayColor] set];
     //[NSBezierPath fillRect:self.bounds];

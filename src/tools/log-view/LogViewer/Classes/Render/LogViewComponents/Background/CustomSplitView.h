@@ -11,7 +11,7 @@
 #define Y_PADDING ( 3 )
 #define X_PADDING ( 25 )
 
-#define DIVIDER_THICKNESS ( 25 )
+#define DIVIDER_THICKNESS ( 5 )
 
 /// Customized subclass of NSSplitView
 /** CustomSplitView is a subclass of NSView that provides
@@ -26,7 +26,7 @@
 @property (readonly, assign) NSRect shapeBounds;
 
 /// Override to change divider thickness
-- (CGFloat)dividerThickness;
 
+- (CGFloat) dividerThickness;
 
 @end

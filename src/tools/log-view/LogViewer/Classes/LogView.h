@@ -36,6 +36,10 @@
     IBOutlet CustomSplitView *splitView; ///< The background view, and the view that contains the BandViews
     IBOutlet MessageView *messageView; ///< The foreground view, and the view that displays dependent events
     IBOutlet NSScrollView *scrollView; ///< The scroll view containing this LogView
+    IBOutlet NSTextField *timeUnderMouse; ///< The text field displaying the time under the mouse
+    
+    NSTrackingArea *trackingArea; ///< Tracking area for picking up MouseMoved events'
+    NSPoint mouseLoc; ///< Where was the mouse last time we got a mouseMoved?
 
     NSMutableArray *bands;
     CGFloat band_height;
@@ -57,7 +61,9 @@
 @property (readonly) NSArray *ticks;
 @property (readonly) CustomSplitView *splitView;
 @property (readwrite, assign) NSScrollView *scrollView;
+@property (readonly) MessageView *messageView;
 @property (readwrite, assign) CGFloat timeTick;
+@property (readonly) NSPoint mouseLoc;
 
 /// Main shape creation function
 /**

@@ -6,8 +6,7 @@
 
 #import <Cocoa/Cocoa.h>
 struct TaggedDetail_struct;
-//#import "LogView.h"
-//#import "LogData.h"
+
 @class LogView;
 @class LogData;
 @class OutlineViewDataSource;
@@ -17,6 +16,7 @@ struct TaggedDetail_struct;
 @class GroupFilter;
 @class Summary;
 @class SummaryView;
+@class ViewController;
 struct LogFileDesc;
 
 /// Represents an interval of time in the log file
@@ -45,6 +45,8 @@ enum ZoomLevel {
 
     IBOutlet NSOutlineView *outlineView; ///< The view which allows the user to filter events.
     IBOutlet OutlineViewDataSource *outlineViewDataSource; ///< The model object for outlineView
+    
+    IBOutlet ViewController *viewController; ///<Controller for assorted view tasks
 
     DetailInfoController *detailInfoController; ///< A helper controller object to manage a DetailInfoView
     IBOutlet NSView *detailInfoTarget; ///< A dummy view to act as a placeholder in InterfaceBuilder
@@ -85,6 +87,7 @@ enum ZoomLevel {
 @property (readonly) struct LogFileDesc *logDesc;
 @property (readonly) BOOL enabled;
 @property (readonly) GroupFilter *filter;
+@property (readonly) ViewController *viewController;
 
 /// Cause logView to render the data in LogData
 - (void)flush;

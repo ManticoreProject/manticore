@@ -31,5 +31,6 @@ BOOL between(CGFloat a, CGFloat b, CGFloat c);
 + (NSColor *)colorFromFormatString:(const char *)s;
 + (void *)calloc:(size_t)a size:(size_t)b;
 + (void *)realloc:(void *)a size:(size_t)b;
++ (NSString *)rectString:(NSRect)rect;
 
 @end

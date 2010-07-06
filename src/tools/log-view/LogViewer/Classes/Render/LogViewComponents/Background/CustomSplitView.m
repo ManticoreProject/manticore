@@ -6,14 +6,16 @@
  */
 
 #import "CustomSplitView.h"
+#import "ViewController.h"
+#import "Utils.h"
 
 
 @implementation CustomSplitView
-
+/* 
 - (BOOL)isOpaque
 {
     return NO;
-}
+} */
 
 
 /// Return the bounds of this CustomSplitView,
@@ -32,27 +34,50 @@
 - (id)initWithFrame:(NSRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        // Initialization code here.
+	// Initialization code here.
+
     }
     return self;
 }
 
-- (void)drawRect:(NSRect)rect {
-    // NSLog(@"CustomSplitView is drawing a rectangle");
+
+- (void) drawRect:(NSRect)dirtyRect
+{    
+    /* This is a bit of a hack. We're violating Cocoa's
+       drawing convention by not calling [view needsDisplay] instead of
+       [view drawRect] directly).
+     
+       Without this line (and you can try it, just comment it out), what happens
+       is that the NSSplitView's transparent divider rectangles become polluted
+       with old colors, because for whatever reason Cocoa refuses to tell LogView
+       to redraw itself in the coordinates given by the dividing rectangles when
+       LogView is not visible directly above or below the SplitView on the y-axis.
+     
+       This is obviously a problem because the divider rectangles are transparent,
+       and thus need their background to redraw when they redraw.
+     
+       I tested this exact scenario in a fresh project by creating a background
+       view that draws itself red always, an NSSplitView on top of that with
+       two subviews that always draw themselves blue. In that situation,
+       I didn't observe the broken behavior: Even when the background view was
+       only visible by looking "through" the transparent divider rectangles,
+       Cocoa correctly told the background view to redraw the area behind the
+       rectangles.
+     
+       Unable to reproduce this bug in a fresh project, and having attempted to
+       debug this problem for 2 days without luck, I concede by forcing the
+       background to redraw.
+     
+       - Jordan Lewis
+    */
+    [[self superview] drawRect:dirtyRect];
 }
 
-- (void)mouseDown:(NSEvent *)e
-{
-    [self.superview mouseDown:e];
-}
 
-
-
-#pragma mark Divider Thickness
-/// Customize this SplitView by changing the distance between adjacent bands
-- (CGFloat)dividerThickness
+- (CGFloat) dividerThickness
 {
     return DIVIDER_THICKNESS;
 }
+
 
 @end

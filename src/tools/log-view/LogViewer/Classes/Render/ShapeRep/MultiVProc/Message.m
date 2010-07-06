@@ -35,6 +35,7 @@ static NSBezierPath *arrowHead; //!< arrowhead
 
 @synthesize sender;
 @synthesize receiver;
+@synthesize path;
 
 #pragma mark Initializations
 

@@ -28,10 +28,14 @@
 
 @property (readonly) NSArray *ticks;
 @property (readwrite, assign) BOOL enabled;
+@property (readonly) uint64_t rounding;
 
 /// Call this method to indicate that LogView has just drawn its ticks,
 /// and would like times drawn above them. TimeDisplay will then draw those times
 - (IBAction)drewTicks:(LogView *)sender;
+
+- (NSString *)stringFromTime:(uint64_t)t edge:(BOOL)e;
+
 
 
 @end

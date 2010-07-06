@@ -53,6 +53,7 @@
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
 		D2648BCF11D538AB00342F30 /* log-events.json in Resources */ = {isa = PBXBuildFile; fileRef = D2648BCD11D538AB00342F30 /* log-events.json */; };
 		D2648BD011D538AB00342F30 /* log-view.json in Resources */ = {isa = PBXBuildFile; fileRef = D2648BCE11D538AB00342F30 /* log-view.json */; };
+		D287775A11DBE4CA0096F74A /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = D287775911DBE4CA0096F74A /* ViewController.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -68,12 +69,12 @@
 		52007216104327620075E884 /* LogDataUtils.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = LogDataUtils.c; sourceTree = "<group>"; };
 		52A6E9C010309B0D00D803AD /* EventInfoView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventInfoView.h; sourceTree = "<group>"; };
 		52A6E9C110309B0D00D803AD /* EventInfoView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EventInfoView.m; sourceTree = "<group>"; };
-		52AE52BD1028D6AA007AED7A /* Detail.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Detail.h; sourceTree = "<group>"; };
-		52AE52BE1028D6AA007AED7A /* DetailAccess.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailAccess.h; sourceTree = "<group>"; };
-		52AE52C31028D6AA007AED7A /* VProc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VProc.h; sourceTree = "<group>"; };
-		52AE52C41028D6AA007AED7A /* VProc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = VProc.mm; sourceTree = "<group>"; };
-		52AE52C51028D6AA007AED7A /* VProcMaps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VProcMaps.h; sourceTree = "<group>"; };
-		52AE52C61028D6AA007AED7A /* VProcMaps.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = VProcMaps.mm; sourceTree = "<group>"; };
+		52AE52BD1028D6AA007AED7A /* Detail.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Detail.h; path = Representations/Detail.h; sourceTree = "<group>"; };
+		52AE52BE1028D6AA007AED7A /* DetailAccess.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DetailAccess.h; path = Representations/DetailAccess.h; sourceTree = "<group>"; };
+		52AE52C31028D6AA007AED7A /* VProc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = VProc.h; path = Representations/VProc.h; sourceTree = "<group>"; };
+		52AE52C41028D6AA007AED7A /* VProc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = VProc.mm; path = Representations/VProc.mm; sourceTree = "<group>"; };
+		52AE52C51028D6AA007AED7A /* VProcMaps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = VProcMaps.h; path = Representations/VProcMaps.h; sourceTree = "<group>"; };
+		52AE52C61028D6AA007AED7A /* VProcMaps.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = VProcMaps.mm; path = Representations/VProcMaps.mm; sourceTree = "<group>"; };
 		52AE52C71028D6AA007AED7A /* LogData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogData.h; sourceTree = "<group>"; };
 		52AE52C81028D6AA007AED7A /* LogData.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogData.mm; sourceTree = "<group>"; };
 		52AE52C91028D6AA007AED7A /* LogDoc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogDoc.h; sourceTree = "<group>"; };
@@ -148,6 +149,8 @@
 		8D1107320486CEB800E47090 /* LogViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LogViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2648BCD11D538AB00342F30 /* log-events.json */ = {isa = PBXFileReference; explicitFileType = sourcecode.javascript; fileEncoding = 4; name = "log-events.json"; path = "../../../../../../config/log-events.json"; sourceTree = "<group>"; };
 		D2648BCE11D538AB00342F30 /* log-view.json */ = {isa = PBXFileReference; explicitFileType = sourcecode.javascript; fileEncoding = 4; name = "log-view.json"; path = "../../../../../../config/log-view.json"; sourceTree = "<group>"; };
+		D287775811DBE4CA0096F74A /* ViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
+		D287775911DBE4CA0096F74A /* ViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -275,14 +278,6 @@
 		52AE52BA1028D6AA007AED7A /* Dynamic */ = {
 			isa = PBXGroup;
 			children = (
-				52AE52BC1028D6AA007AED7A /* Representations */,
-			);
-			path = Dynamic;
-			sourceTree = "<group>";
-		};
-		52AE52BC1028D6AA007AED7A /* Representations */ = {
-			isa = PBXGroup;
-			children = (
 				52AE52BD1028D6AA007AED7A /* Detail.h */,
 				52AE52BE1028D6AA007AED7A /* DetailAccess.h */,
 				52AE52C31028D6AA007AED7A /* VProc.h */,
@@ -290,7 +285,7 @@
 				52AE52C51028D6AA007AED7A /* VProcMaps.h */,
 				52AE52C61028D6AA007AED7A /* VProcMaps.mm */,
 			);
-			path = Representations;
+			path = Dynamic;
 			sourceTree = "<group>";
 		};
 		52AE52CD1028D6AA007AED7A /* Render */ = {
@@ -300,6 +295,8 @@
 				52AE52D11028D6AB007AED7A /* GroupFilter.m */,
 				52AE52DD1028D6AB007AED7A /* OutlineViewDataSource.h */,
 				52AE52DE1028D6AB007AED7A /* OutlineViewDataSource.mm */,
+				D287775811DBE4CA0096F74A /* ViewController.h */,
+				D287775911DBE4CA0096F74A /* ViewController.m */,
 				52AE52D21028D6AB007AED7A /* LogViewComponents */,
 				52AE52DF1028D6AB007AED7A /* ShapeRep */,
 			);
@@ -330,9 +327,9 @@
 			children = (
 				52AE52D71028D6AB007AED7A /* BandView.h */,
 				52AE52D81028D6AB007AED7A /* BandView.mm */,
-				52AE54461029DAFB007AED7A /* TimeDisplay.h */,
 				52AE52D91028D6AB007AED7A /* MessageView.h */,
 				52AE52DA1028D6AB007AED7A /* MessageView.mm */,
+				52AE54461029DAFB007AED7A /* TimeDisplay.h */,
 				52AE54471029DAFB007AED7A /* TimeDisplay.m */,
 			);
 			path = Foreground;
@@ -562,6 +559,7 @@
 				52E4D72B1035DA1B003396BE /* DetailEnumerator.mm in Sources */,
 				52CC76041039BF69006A0DCD /* SummaryView.mm in Sources */,
 				52007217104327620075E884 /* LogDataUtils.c in Sources */,
+				D287775A11DBE4CA0096F74A /* ViewController.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
