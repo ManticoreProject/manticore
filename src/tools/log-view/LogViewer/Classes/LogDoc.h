@@ -10,7 +10,6 @@ struct TaggedDetail_struct;
 @class LogView;
 @class LogData;
 @class OutlineViewDataSource;
-@class TimeDisplay;
 @class DetailInfoController;
 @class EventShape;
 @class GroupFilter;
@@ -59,7 +58,6 @@ enum ZoomLevel {
     /// Property to be manipulated in InterfaceBuilder
     /// bound to the height of the horizontal scrollbar of scrollView
     float horizontalPosition;
-    IBOutlet TimeDisplay *timeDisplay; ///< View to print times on top of logView
 
     BOOL enabled; ///< Whether or not self is ready to display data, used in initializations
 
@@ -68,14 +66,12 @@ enum ZoomLevel {
     IBOutlet NSPanel *infoPanel; ///< Panel to contain the DetailInfoView
 
     Summary *summary; ///< Model object to hold summary data about the log file
-    SummaryView *summaryView; ///< View object to draw data held in summary
-    IBOutlet NSView *summaryViewTarget; ///< A dummy view to act as a placeholder in InterfaceBuilder
+    IBOutlet SummaryView *summaryView; ///< View object to draw data held in summary
 }
 
 
 - (struct LogFileDesc *)logDesc;
 
-@property (readonly) TimeDisplay *timeDisplay;
 @property (readwrite, assign) float horizontalPosition;
 @property (readonly) NSString *filename;
 @property (readwrite) double zoomFactor;

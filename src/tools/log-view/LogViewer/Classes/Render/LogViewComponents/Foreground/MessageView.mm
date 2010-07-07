@@ -135,7 +135,7 @@ uint64_t myExp(uint64_t a, uint n)
 - (void)drawRect:(NSRect)rect {
 
     //[logDoc.logView needsDisplay];
-    NSLog(@"MessageView going to draw %@", [Utils rectString:rect]);
+    //NSLog(@"MessageView going to draw %@", [Utils rectString:rect]);
 
     NSRect bounds = [self bounds];
     int a = 0;

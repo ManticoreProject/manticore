@@ -80,6 +80,7 @@
 	    if (![logDoc isInInterval:details[i]])
 	    {
 		// Pass.  Only read in details which are in the interval
+		continue;
 	    }
 	    else
 	    {

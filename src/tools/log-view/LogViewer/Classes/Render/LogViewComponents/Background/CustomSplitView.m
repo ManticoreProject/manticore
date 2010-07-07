@@ -68,8 +68,8 @@
        debug this problem for 2 days without luck, I concede by forcing the
        background to redraw.
      
-       - Jordan Lewis
-    */
+       - Jordan
+     */
     [[self superview] drawRect:dirtyRect];
 }
 

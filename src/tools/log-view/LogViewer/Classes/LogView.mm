@@ -12,7 +12,6 @@
 #import "CustomSplitView.h"
 #import "LogDoc.h"
 #import "LogData.h"
-#import "TimeDisplay.h"
 #import "ViewController.h"
 
 
@@ -39,6 +38,16 @@
 /// Width of big tick lines
 #define BIG_TICK_LINE_WIDTH ( 2 )
 
+// Calculation of units to use at different scales
+// If logInterval->width is less than NANO, times are in nanoseconds
+#define NANO ( 10 )
+#define NANO_ROUNDING ( 1LLU )
+#define MICRO ( 100000000LLU )
+#define MICRO_ROUNDING ( 1000LLU )
+#define MILLI ( 10000000000LLU )
+#define MILLI_ROUNDING ( 1000000LLU )
+#define SEC_ROUNDING ( 1000000000LLU )
+
 @implementation LogView
 
 - (BOOL)isOpaque
@@ -60,13 +69,14 @@
 {
     self = [super initWithFrame:frame];
     if (self) {
-	// Change our width from that defined in Interface Builder to the actual
-	// width that we want. This width is the width of the background of the
-	// document view of the scrollview that we're embedded in. So the
-	// scrollview's width will still be that of the window - what we're
-	// changing is the width of the view that it scrolls.
+	/* Change our width from that defined in Interface Builder to the actual
+	 * width that we want. This width is the width of the background of the
+	 * document view of the scrollview that we're embedded in. So the
+	 * scrollview's width will still be that of the window - what we're
+	 * changing is the width of the view that it scrolls. */
+	
 	NSRect f = [self frame];
-	f.size.width = DEFAULT_LOG_VIEW_WIDTH;
+	//f.size.width = DEFAULT_LOG_VIEW_WIDTH;
 	[self setFrame:f];
 	
 	bands = [[NSMutableArray alloc] init];
@@ -86,14 +96,12 @@
 }
 
 
-- (void)drawRect:(NSRect)rect
+- (void)drawRect:(NSRect)dirtyRect
 {
     // check if logDoc and self are in their enabled states
     if (!logDoc.enabled) return;
     
-    if (!self.enabled) [logDoc flush];
-
-    NSLog(@"LogView going to draw %@", [Utils rectString:rect]);
+    //if (!self.enabled) [logDoc flush];
 
     NSRect bounds = [self bounds];
 
@@ -105,13 +113,13 @@
     NSPoint s, f, test;
     s.y = bounds.origin.y;
     f.y = bounds.origin.y + bounds.size.height;
-    test.y = rect.origin.y;
+    test.y = dirtyRect.origin.y;
 
     int a = 0;
     for (NSNumber *x in ticks)
     {
 	s.x = f.x = test.x = x.floatValue + .5;
-	if (!NSPointInRect(test, rect))
+	if (!NSPointInRect(test, dirtyRect))
 	{
 	    a++;
 	    continue;
@@ -125,7 +133,6 @@
     [TICK_LINE_COLOR set];
     [line stroke];
 
-    //NSLog(@"number of ticks %d", ticks.count);
     [logDoc drewTicks:self];
 }
 
@@ -149,7 +156,45 @@
     [verticalLine stroke];
 }
 
+- (uint64_t)rounding
+{
+    if (rounding == 0)
+    {
+	uint64_t t = [logDoc logInterval]->width;
+	if (t < NANO)
+	    rounding = NANO_ROUNDING;
+	else if (t < MICRO)
+	    rounding = MICRO_ROUNDING;
+	else if (t < MILLI)
+	    rounding = MILLI_ROUNDING;
+	else // ticks are to be displayed as seconds
+	    rounding = SEC_ROUNDING;
+    }
 
+    return rounding;
+}
+
+- (NSString *)timeSuffix
+{
+    NSString *ret;
+    switch ([self rounding])
+    {
+	case NANO_ROUNDING:  ret = @"ns"; break;
+	case MICRO_ROUNDING: ret = @"\u03BCs";  break;
+	case MILLI_ROUNDING: ret = @"ms"; break;
+	case SEC_ROUNDING:   ret = @"sec"; break;
+	default: [Exceptions raise:@"Disallowed rounding time"];
+    }
+    return ret;
+}
+
+- (NSString *)stringFromTime:(uint64_t)t
+{
+    uint64_t r = t / [self rounding];
+    NSString *ret = [[NSString alloc] initWithFormat:@"%qu ", r];
+    ret = [ret stringByAppendingString:[self timeSuffix]];
+    return ret;
+}
 
 - (void)displayInterval:(struct LogInterval *)logInterval
 	    atZoomLevel:(enum ZoomLevel)zoomLevel
@@ -177,18 +222,9 @@
     self.bounds = bounds;
 
 
-    // The old subviews no longer have valid shapes on them
+    // The old subviews no longer have valid shapes on them, so we update them
+    // with the proper new values.
 
-    // Here we replace the old splitView with a fresh one
-    // We deal with the message view later
-
-    
-    NSLog(@"About to remove bandviews from superview");
-    for (NSView *view in bands)
-    {
-	[view removeFromSuperview];
-    }
-    NSLog(@"Removed bandviews from superview");
     
     NSRect splitViewBounds = bounds;
     splitViewBounds.origin.y += DIVIDER_THICKNESS;
@@ -207,7 +243,13 @@
 	x += timeTick;
     }
     
- 
+    // Have to split this operation up, as objective-C's iterator construct
+    // cannot handle mutation of its target.
+    
+    for (NSView *view in bands)
+    {
+	[view removeFromSuperview];
+    }
     [bands removeAllObjects];
     
     int v = 0;
@@ -224,11 +266,10 @@
 			       logDoc:logDoc
 			       vProc:vp
 			       filter:filter];
-	//NSLog(@"logView is adding band %@ to array %@", band, bands);
 	[bands addObject:band];
 	[splitView addSubview:band];
 	band.target = target;
-	 ++v;
+	v++;
     }
 
     
@@ -241,8 +282,8 @@
 	band.messageView = messageView;
     }
     
-    // Set up RulerView
     
+    // Set up RulerView
     NSArray *upArray, *downArray;
     double scale = shapeBounds.size.width / (logDoc.logInterval->width);
     
@@ -250,7 +291,7 @@
     downArray = [NSArray arrayWithObjects:[NSNumber numberWithFloat:0.5], [NSNumber numberWithFloat:0.2], nil];
     [NSRulerView registerUnitWithName:@"milliseconds"
 			 abbreviation:@"ms"
-	 unitToPointsConversionFactor:scale * [logDoc.timeDisplay rounding]
+	 unitToPointsConversionFactor:scale * [self rounding]
 			  stepUpCycle:upArray
 			stepDownCycle:downArray];
     
@@ -275,7 +316,11 @@
 
 - (void)mouseMoved:(NSEvent *)e
 {
-    /* Update view with mouse cursor line. */
+    /* Update view with mouse cursor line. The messageView actually does the
+     * drawing, since it's the topmost view, but since we're handling the mouse
+     * updates, it's our responsibility to tell the messageView that it's 
+     * dirty where the line should be and where it used to be so it knows to
+     * redraw. */
     NSPoint newMouseLoc = [self convertPoint:e.locationInWindow fromView:nil];
     
     // First clear the old line's location
@@ -283,21 +328,18 @@
     invalid.origin.x = mouseLoc.x - 1;
     invalid.size.width = 3;
     [self setNeedsDisplayInRect:invalid];
-    [splitView setNeedsDisplayInRect:invalid];
     
     
     // Then redisplay the new line's location
     mouseLoc = newMouseLoc;
 
     uint64_t time = [logDoc preImage:mouseLoc.x];
-    NSString *timeStr = [[logDoc timeDisplay] stringFromTime:time edge:YES];
+    
+    NSString *timeStr = [self stringFromTime:time];
     [timeUnderMouse setStringValue:timeStr];
     invalid.origin.x = mouseLoc.x - 1;
+
     [self setNeedsDisplayInRect:invalid];
-    [splitView setNeedsDisplayInRect:invalid];
-    [messageView setNeedsDisplayInRect:invalid];
-
-
 }
 
 

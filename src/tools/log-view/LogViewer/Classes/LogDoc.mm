@@ -16,7 +16,6 @@
 #import "LogView.h"
 #import "OutlineViewDataSource.h"
 #import "log-desc.hxx"
-#import "TimeDisplay.h"
 #import "DetailAccess.h"
 #import "DetailInfoController.h"
 #import "DetailInfoView.h"
@@ -25,6 +24,7 @@
 #import "Summary.h"
 #import "SummaryView.h"
 #import "Box.h"
+#import "Pie.h"
 
 /* keep a cache of the log-file description structure.  Note that this
  * code will have to be changed if we ever want to support multiple
@@ -48,6 +48,19 @@ static LogFileDesc *LFDCache = 0;
 
 @implementation LogDoc
 
+
+#pragma mark Synthesis
+@synthesize zoomFactor;
+@synthesize logView;
+@synthesize logData;
+@synthesize outlineView;
+@synthesize outlineViewDataSource;
+@synthesize logInterval;
+@synthesize enabled;
+@synthesize viewController;
+
+
+
 - (GroupFilter *)filter
 {
     return outlineViewDataSource;
@@ -60,7 +73,7 @@ static LogFileDesc *LFDCache = 0;
 
 - (IBAction)drewTicks:(LogView *)sender
 {
-    [timeDisplay drewTicks:sender];
+    //[timeDisplay drewTicks:sender];
 }
 
 /// Cause logView to display logData according to currently set parameters
@@ -94,31 +107,48 @@ static LogFileDesc *LFDCache = 0;
     // to an average of all vprocs
     double viewWidth = scrollView.bounds.size.width;
     double scale = logInterval->width / viewWidth;
-    summary = [Summary coarseSummaryFromLogData:logData
-				       forState:resourceState
-				       forVProc:0
-				       withSize:scale *     summary_view_column_width
-				       andStart:logInterval->x
-				      andNumber:viewWidth / summary_view_column_width];
-    assert (summaryViewTarget != nil);
-    NSRect frame = summaryViewTarget.bounds;
+    
+    Summary *tmpSummary;
+    for (int i = 0; i < [logData nVProcs]; i++)
+    {
+	tmpSummary = [Summary coarseSummaryFromLogData:logData
+					      forState:resourceState
+					      forVProc:i
+					      withSize:scale *     summary_view_column_width
+					      andStart:logInterval->x
+					     andNumber:viewWidth / summary_view_column_width];
+	if (i == 0)
+	{
+	    summary = tmpSummary;
+	}
+	else
+	{
+	    int nPies = [[tmpSummary pies] count];
+	    assert(nPies == [[summary pies] count]);
+	    Pie *curPie;
+	    for (int j = 0; j < nPies; j++)
+	    {
+		curPie = [[summary pies] objectAtIndex:j];
+		// it's OK to just add these pies together, since they're all
+		// already guaranteed to be stochastic.
+		[curPie increaseBy:[[tmpSummary pies] objectAtIndex:j]];
+	    }
+	}
+    }
+    for (int i = 0; i < [[summary pies] count]; i++)
+    {
+	[[[summary pies] objectAtIndex:i] divideBy:[logData nVProcs]];
+	[[[summary pies] objectAtIndex:i] assertStochastic];
+    }
+    [summaryView setSummary:summary];
+    [summaryView setWidth:summary_view_column_width];
+    
+    NSRect frame = summaryView.bounds;
     frame.size.width = viewWidth;
 
+   // [summaryView setFrame:frame];
 
 
-    SummaryView *oldSummaryView = summaryView;
-    summaryView = [[SummaryView alloc] initWithFrame:frame
-					  andSummary:summary
-					 columnWidth:summary_view_column_width];
-
-    if (summaryViewTarget.subviews.count == 0)
-    {
-	[summaryViewTarget addSubview:summaryView];
-    }
-    else
-    {
-	[summaryViewTarget replaceSubview:oldSummaryView with:summaryView];
-    }
 
     summaryView.needsDisplay = true;
 
@@ -141,25 +171,12 @@ static LogFileDesc *LFDCache = 0;
 {
   //  NSLog(@"LogDoc is setting the horizontal position to %f", n);
     horizontalPosition = n;
-    timeDisplay.needsDisplay = true;
 }
 - (float)horizontalPosition
 {
  //   NSLog(@"LogDoc is returning the horizontal position");
     return horizontalPosition;
 }
-
-#pragma mark Synthesis
-@synthesize timeDisplay;
-@synthesize zoomFactor;
-@synthesize logView;
-@synthesize logData;
-@synthesize outlineView;
-@synthesize outlineViewDataSource;
-@synthesize logInterval;
-@synthesize enabled;
-@synthesize viewController;
-
 
 #pragma mark Initializations
 + (void)initialize

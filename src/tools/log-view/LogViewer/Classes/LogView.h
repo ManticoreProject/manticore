@@ -51,6 +51,8 @@
     BOOL enabled;
 
     NSMutableArray *ticks; ///< Array of NSNumbers of times at which to draw tick marks
+    
+    uint64_t rounding; ///< rounding number for displaying time values
 
 }
 
@@ -64,6 +66,7 @@
 @property (readonly) MessageView *messageView;
 @property (readwrite, assign) CGFloat timeTick;
 @property (readonly) NSPoint mouseLoc;
+@property (readonly) uint64_t rounding;
 
 /// Main shape creation function
 /**

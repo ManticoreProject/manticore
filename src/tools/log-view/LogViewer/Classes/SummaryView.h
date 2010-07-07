@@ -19,11 +19,8 @@
 }
 
 
-
-/// Initialize
-- (SummaryView *)initWithFrame:(NSRect)frame
-		    andSummary:(Summary *)summary
-		   columnWidth:(CGFloat)widthVal;
+@property Summary *summary;
+@property CGFloat width;
 
 @end
 

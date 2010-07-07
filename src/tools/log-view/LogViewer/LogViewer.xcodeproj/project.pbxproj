@@ -32,7 +32,6 @@
 		52AE53341028D942007AED7A /* JSON_parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53311028D942007AED7A /* JSON_parser.c */; };
 		52AE53391028D97C007AED7A /* log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53371028D97C007AED7A /* log-desc.cxx */; };
 		52AE53511028DA8F007AED7A /* load-log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53501028DA8F007AED7A /* load-log-desc.cxx */; };
-		52AE54481029DAFB007AED7A /* TimeDisplay.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE54471029DAFB007AED7A /* TimeDisplay.m */; };
 		52AE5DA6102C9F67007AED7A /* EventInfo.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52AE5DA5102C9F67007AED7A /* EventInfo.xib */; };
 		52AE5DAA102C9FB5007AED7A /* EventInfoController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5DA9102C9FB5007AED7A /* EventInfoController.mm */; };
 		52AE5DB1102CA3ED007AED7A /* EventArg.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5DB0102CA3ED007AED7A /* EventArg.mm */; };
@@ -46,7 +45,6 @@
 		52E4D60610346120003396BE /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D60510346120003396BE /* Utils.m */; };
 		52E4D6DC1034BD28003396BE /* Summary.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D6DB1034BD28003396BE /* Summary.mm */; };
 		52E4D6DF1034BD35003396BE /* Pie.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D6DE1034BD35003396BE /* Pie.mm */; };
-		52E4D6E21034BD40003396BE /* PieSlice.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D6E11034BD40003396BE /* PieSlice.m */; };
 		52E4D72B1035DA1B003396BE /* DetailEnumerator.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D72A1035DA1B003396BE /* DetailEnumerator.mm */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
@@ -118,8 +116,6 @@
 		52AE53371028D97C007AED7A /* log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "log-desc.cxx"; path = "../../log-common/log-desc.cxx"; sourceTree = SOURCE_ROOT; };
 		52AE53381028D97C007AED7A /* log-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = "log-desc.hxx"; path = "../../log-common/log-desc.hxx"; sourceTree = SOURCE_ROOT; };
 		52AE53501028DA8F007AED7A /* load-log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "load-log-desc.cxx"; path = "../../log-common/load-log-desc.cxx"; sourceTree = SOURCE_ROOT; };
-		52AE54461029DAFB007AED7A /* TimeDisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TimeDisplay.h; path = ../TimeDisplay.h; sourceTree = "<group>"; };
-		52AE54471029DAFB007AED7A /* TimeDisplay.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = TimeDisplay.m; path = ../TimeDisplay.m; sourceTree = "<group>"; };
 		52AE5DA5102C9F67007AED7A /* EventInfo.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = EventInfo.xib; sourceTree = "<group>"; };
 		52AE5DA8102C9FB5007AED7A /* EventInfoController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventInfoController.h; sourceTree = "<group>"; };
 		52AE5DA9102C9FB5007AED7A /* EventInfoController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventInfoController.mm; sourceTree = "<group>"; };
@@ -141,8 +137,6 @@
 		52E4D6DB1034BD28003396BE /* Summary.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = Summary.mm; sourceTree = "<group>"; };
 		52E4D6DD1034BD35003396BE /* Pie.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Pie.h; sourceTree = "<group>"; };
 		52E4D6DE1034BD35003396BE /* Pie.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = Pie.mm; sourceTree = "<group>"; };
-		52E4D6E01034BD40003396BE /* PieSlice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PieSlice.h; sourceTree = "<group>"; };
-		52E4D6E11034BD40003396BE /* PieSlice.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PieSlice.m; sourceTree = "<group>"; };
 		52E4D7291035DA1B003396BE /* DetailEnumerator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailEnumerator.h; sourceTree = "<group>"; };
 		52E4D72A1035DA1B003396BE /* DetailEnumerator.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DetailEnumerator.mm; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -329,8 +323,6 @@
 				52AE52D81028D6AB007AED7A /* BandView.mm */,
 				52AE52D91028D6AB007AED7A /* MessageView.h */,
 				52AE52DA1028D6AB007AED7A /* MessageView.mm */,
-				52AE54461029DAFB007AED7A /* TimeDisplay.h */,
-				52AE54471029DAFB007AED7A /* TimeDisplay.m */,
 			);
 			path = Foreground;
 			sourceTree = "<group>";
@@ -450,8 +442,6 @@
 				52E4D6DB1034BD28003396BE /* Summary.mm */,
 				52E4D6DD1034BD35003396BE /* Pie.h */,
 				52E4D6DE1034BD35003396BE /* Pie.mm */,
-				52E4D6E01034BD40003396BE /* PieSlice.h */,
-				52E4D6E11034BD40003396BE /* PieSlice.m */,
 				52E4D7291035DA1B003396BE /* DetailEnumerator.h */,
 				52E4D72A1035DA1B003396BE /* DetailEnumerator.mm */,
 			);
@@ -545,7 +535,6 @@
 				52AE53341028D942007AED7A /* JSON_parser.c in Sources */,
 				52AE53391028D97C007AED7A /* log-desc.cxx in Sources */,
 				52AE53511028DA8F007AED7A /* load-log-desc.cxx in Sources */,
-				52AE54481029DAFB007AED7A /* TimeDisplay.m in Sources */,
 				52AE5DAA102C9FB5007AED7A /* EventInfoController.mm in Sources */,
 				52AE5DB1102CA3ED007AED7A /* EventArg.mm in Sources */,
 				52AE5E24102CAA21007AED7A /* DetailInfoController.mm in Sources */,
@@ -555,7 +544,6 @@
 				52E4D60610346120003396BE /* Utils.m in Sources */,
 				52E4D6DC1034BD28003396BE /* Summary.mm in Sources */,
 				52E4D6DF1034BD35003396BE /* Pie.mm in Sources */,
-				52E4D6E21034BD40003396BE /* PieSlice.m in Sources */,
 				52E4D72B1035DA1B003396BE /* DetailEnumerator.mm in Sources */,
 				52CC76041039BF69006A0DCD /* SummaryView.mm in Sources */,
 				52007217104327620075E884 /* LogDataUtils.c in Sources */,

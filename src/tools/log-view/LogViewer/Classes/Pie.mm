@@ -6,70 +6,70 @@
 
 #import "Pie.h"
 #import "log-desc.hxx"
-#import "PieSlice.h"
+#import "Utils.h"
 
 
 @implementation Pie
 
 @synthesize consumers;
+@synthesize nConsumers;
 
 - (Pie *)init
 {
-    if (![super init]) return nil;
-    consumers = [[NSMutableArray alloc] init];
+    consumers = NULL;
+    nConsumers = 0;
     return self;
 }
 
+- (Pie *)initWithCapacity:(NSUInteger)numItems
+{
+    consumers = (PieSlice_t *) [Utils calloc:numItems size:sizeof(PieSlice_t)];
+    nConsumers = numItems;
+    return self;
+}
 
 + (Pie *)emptyForStateGroup:(StateGroup *)g
 {
-    Pie *ret = [[Pie alloc] init];
-
+    Pie *ret = [[Pie alloc] initWithCapacity:g->NumStates()];
 
     for (int i = 0; i < g->NumStates(); ++i)
     {
-	PieSlice *ps = [[PieSlice alloc] initWithFraction:0.0
-					      andConsumer:[NSNumber numberWithInt:i]];
-	[ret.consumers addObject:ps];
+	ret->consumers[i].fraction = 0.0;
+	ret->consumers[i].consumer = i;
     }
 
     return ret;
 }
+
 - (void)increaseBy:(Pie *)pie
 {
-    assert ( consumers.count == pie.consumers.count );
-    for (int i = 0; i < consumers.count; ++i)
+    assert ( nConsumers == pie.nConsumers );
+    for (int i = 0; i < nConsumers; ++i)
     {
-	PieSlice *ps = [consumers objectAtIndex:i];
-	PieSlice *other_ps = [pie.consumers objectAtIndex:i];
-	[ps increaseBy:other_ps];
+	consumers[i].fraction += pie->consumers[i].fraction;
     }
 }
 - (void)decreaseBy:(Pie *)pie
 {
-    assert ( consumers.count == pie.consumers.count );
-    for (int i = 0; i < consumers.count; ++i)
+    assert ( nConsumers == pie.nConsumers );
+    for (int i = 0; i < nConsumers; ++i)
     {
-	PieSlice *ps = [consumers objectAtIndex:i];
-	PieSlice *other_ps = [pie.consumers objectAtIndex:i];
-	[ps decreaseBy:other_ps];
+	consumers[i].fraction += pie->consumers[i].fraction;
     }
 }
 - (void)divideBy:(uint64_t)t
 {
     assert ( t != 0 );
-    for (int i = 0; i < consumers.count; ++i)
+    for (int i = 0; i < nConsumers; ++i)
     {
-	PieSlice *ps = [consumers objectAtIndex:i];
-	[ps divideBy:t];
+	consumers[i].fraction /= t;
     }
 }
 - (void)multiplyBy:(uint64_t)t
 {
-    for (int i = 0; i < consumers.count; ++i)
+    for (int i = 0; i < nConsumers; ++i)
     {
-	PieSlice *ps = [consumers objectAtIndex:i];
-	[ps multiplyBy:t];
+	consumers[i].fraction *= t;
     }
 }
 
@@ -83,28 +83,26 @@
 - (void)assertStochastic
 {
     double res = 0.0;
-    for (PieSlice *ps in consumers)
+    for (int i = 0; i < nConsumers; i++)
     {
-	res += ps.fraction;
+	res += consumers[i].fraction;
     }
     assert ( abs (1 - res) < STOCHASTIC_ERROR );
 }
 
 
 
-- (void)incrementConsumer:(NSNumber *)n byAmount:(uint64_t)a
+- (void)incrementConsumer:(int)i byAmount:(uint64_t)a
 {
-    assert (n != NULL);
-    PieSlice *ps = [consumers objectAtIndex:n.intValue];
-    ps.fraction = ps.fraction + a;
+    consumers[i].fraction += a;
 }
 
 - (Pie *)copy
 {
-    Pie *res = [[Pie alloc] init];
-    for (PieSlice *ps in consumers)
+    Pie *res = [[Pie alloc] initWithCapacity:nConsumers];
+    for (int i = 0; i < nConsumers; i++)
     {
-	[res.consumers addObject:[ps copy]];
+	res->consumers[i] = consumers[i];
     }
     return res;
 }

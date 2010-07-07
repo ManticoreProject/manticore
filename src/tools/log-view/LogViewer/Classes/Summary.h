@@ -42,7 +42,7 @@ struct StateGroup;
 
     /// The pies,
     /// each representing how the resource was used in an interval of length size.
-    /// Pies is sorted
+    /// Pies is sorted chronologically
     NSMutableArray *pies;
 
     /// (start, start + size) is the interval of time in the log file which self represents

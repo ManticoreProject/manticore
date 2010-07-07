@@ -6,7 +6,6 @@
 
 #import "SummaryView.h"
 #import "Pie.h"
-#import "PieSlice.h"
 #import "Summary.h"
 #import "Exceptions.h"
 #import "log-desc.hxx"
@@ -15,39 +14,17 @@
 
 @implementation SummaryView
 
-- (id)initWithFrame:(NSRect)frame
-{
-    [Exceptions raise:@"SummaryView: bad initializer"];
-    return self;
-}
+@synthesize summary;
+@synthesize width;
 
-
-- (SummaryView *)initWithFrame:(NSRect)frame
-		    andSummary:(Summary *)summaryVal
-		   columnWidth:(CGFloat)widthVal
-{
-    if (![super initWithFrame:frame]) return nil;
-
-
-    summary = summaryVal;
-    width = widthVal;
-
-
-    assert ( self.bounds.size.width >= summary.pies.count * width);
-
-
-    return self;
-}
 
 
 /// Configuration algorithm for determining the color to use to represent a given consumer.
 /// Currently uses color information loaded into the group hierarchy from the log-view.json file.
-- (NSColor *)colorForConsumer:(NSObject *)consumer
+- (NSColor *)colorForConsumer:(int)consumer;
 {
-    NSNumber *n = (NSNumber *)consumer;
-    int i = n.intValue;
     StateGroup *g = summary.resource;
-    const char *s = g->StateColor(i);
+    const char *s = g->StateColor(consumer);
     NSColor *c = [Utils colorFromFormatString:s];
     return c;
 }
@@ -81,7 +58,7 @@
     [NSBezierPath fillRect:bounds];
 
 
-    assert ( bounds.size.width >= summary.pies.count * width );
+    //assert ( bounds.size.width >= summary.pies.count * width );
 
     NSArray *pies = summary.pies;
  //   NSLog(@"pies is %@: \n and summary is %@", pies, summary);
@@ -90,10 +67,10 @@
     {
 	CGFloat cur_x = bounds.origin.x + i * width;
 	Pie *pie = [pies objectAtIndex:i];
-	NSArray *consumers = pie.consumers;
+	PieSlice_t *consumers = pie.consumers;
 
 	CGFloat cur_y = bounds.origin.y;
-	for (int j = 0; j < consumers.count; ++j)
+	for (int j = 0; j < pie.nConsumers; ++j)
 	{
 	    // The below is commented out because it is to stringent a requirement,
 	    // cur_y might be a tiny bit to big,
@@ -101,11 +78,12 @@
 	    //	    be much larger than bounds.origin.y + bounds.size.height
 	    // assert (cur_y < bounds.origin.y + bounds.size.height);
 
-	    PieSlice *pieSlice = [consumers objectAtIndex:j];
-	    CGFloat cur_height = bounds.size.height * pieSlice.fraction;
+	    PieSlice_t *slice = consumers + j;
+	    
+	    CGFloat cur_height = bounds.size.height * slice->fraction;
 
 	    NSRect r = NSMakeRect(cur_x, cur_y, width, cur_height);
-	    NSColor *c = [self colorForConsumer:pieSlice.consumer];
+	    NSColor *c = [self colorForConsumer:slice->consumer];
 	    [self fillRect:r withColor:c];
 
 	    cur_y += cur_height;
