@@ -132,7 +132,6 @@
     [line stroke];
 
     [logDoc drewTicks:self];
-    [NSBezierPath fillRect:bounds];
 }
 
 /// Draw a bigTick

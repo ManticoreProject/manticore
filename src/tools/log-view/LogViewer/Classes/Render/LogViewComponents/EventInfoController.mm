@@ -138,7 +138,7 @@
     {
 	[self setValueNotNull:e];
     }
-    self = e ? [NSString stringWithCString:eventDesc->Description() encoding:NSASCIIStringEncoding] : NO_NAME ;
+    self.name = e ? [NSString stringWithCString:eventDesc->Description() encoding:NSASCIIStringEncoding] : NO_NAME ;
     [table reloadData];
  //   NSLog(@"table is %@", table);
     self.view.needsDisplay = YES;
