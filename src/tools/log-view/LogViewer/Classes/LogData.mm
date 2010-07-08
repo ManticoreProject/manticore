@@ -259,8 +259,9 @@ double cur_interval_height = 0.0;
     {
 	vProcs = [[NSMutableArray alloc] init];
 
+#ifdef GO_WAY_SLOW_TO_CHECK_FOR_DUPLICATE_BLOCK_PROBLEM
     	first_event_times = [[NSMutableArray alloc] init];
-
+#endif
     	dependentMap = [[DependentMap alloc] init];
 
     	// NSLog(@"LogData.mm: About to compute allStates");
@@ -538,6 +539,7 @@ double cur_interval_height = 0.0;
 	    event *evt = &events[evtIndex];
 	    assert(event_value_equal(&evt->value, e));
 
+#ifdef GO_WAY_SLOW_TO_CHECK_FOR_DUPLICATE_BLOCK_PROBLEM
 	    uint64_t ts = evt->timestamp;
 	    // workaround for duplicate block problem
 	    bool do_break = false;
@@ -545,16 +547,18 @@ double cur_interval_height = 0.0;
 		for (NSNumber *n in first_event_times) {
 		    if (n.unsignedLongLongValue == ts) {
 			NSLog(@"**************** LogData.mm: DUPLICATE BLOCK DETECTED IN LOGFILE");
-			//exit(-1);
-			//--evtIndex;
-			//do_break = true;
+			exit(-1);
+			--evtIndex;
+			do_break = true;
 		    }
 		}
 	    }
-	    evt->timestamp -= firstTime;
-	    if (do_break) break;
 	    NSNumber *n = [NSNumber numberWithUnsignedLongLong:ts];
 	    [first_event_times addObject:n];
+#endif
+	    
+	    evt->timestamp -= firstTime;
+
 
 	    struct VProc_Maps *maps = &vproc_maps[log->vpId];
 	    EventDesc *eventDesc = logDesc->FindEventById(e->event);

@@ -101,8 +101,6 @@
     // check if logDoc and self are in their enabled states
     if (!logDoc.enabled) return;
     
-    //if (!self.enabled) [logDoc flush];
-
     NSRect bounds = [self bounds];
 
     // Draw Background
@@ -126,7 +124,7 @@
 	}
 	[line moveToPoint:s];
 	[line lineToPoint:f];
-    }	
+    }
 
     //NSLog(@"Skipped %d tick lines", a);
     // Draw tick lines
@@ -134,6 +132,7 @@
     [line stroke];
 
     [logDoc drewTicks:self];
+    [NSBezierPath fillRect:bounds];
 }
 
 /// Draw a bigTick
@@ -340,6 +339,19 @@
     invalid.origin.x = mouseLoc.x - 1;
 
     [self setNeedsDisplayInRect:invalid];
+}
+
+- (void)updateTrackingAreas
+{
+    /* This method is called when our visibleRect changes, on behalf of the
+     * tracking areas that we own. We are expected to update our tracking areas
+     * with our new bounds. */
+    [self removeTrackingArea:trackingArea];
+    trackingArea = [[NSTrackingArea alloc] initWithRect:[self bounds]
+						options:(NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited| NSTrackingActiveAlways)
+						  owner:self
+					       userInfo:nil];
+    [self addTrackingArea:trackingArea];
 }
 
 

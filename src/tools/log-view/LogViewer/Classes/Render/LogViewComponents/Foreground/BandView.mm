@@ -107,7 +107,7 @@
 	if (! NSIntersectsRect(rect, e.rect))
 	{
 	    q++;
-	    continue;
+	    //continue;
 	}
 	[e drawShape];
 	++a;
@@ -118,8 +118,8 @@
     int b = 0;
     for (Interval *e in intervals)
     {
-	if (! NSIntersectsRect(rect, e.rect))
-	    continue;
+	//if (! NSIntersectsRect(rect, e.rect))
+	   // continue;
 	[e drawShape];
 	++b;
     }
@@ -128,8 +128,8 @@
     int c = 0;
     for (Singleton *e in singletons)
     {
-	if (! NSPointInRect(e.place, rect))
-	    continue;
+	//if (! NSPointInRect(e.place, rect))
+	  //  continue;
 	[e drawShape];
 	++c;
     }
@@ -197,8 +197,7 @@
 		       initWithPoint:NSMakePoint(s, self.singletonHeight)
 		       color:c
 			   event:Detail_Simple_value(d)];
-    NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
-    singleton.description = [NSString stringWithString:S];
+    singleton.description = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
 
     [singletons addObject:singleton];
 }
@@ -261,8 +260,7 @@ int color_int = 0;
 					 start:start
 					   end:end];
 
-    NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
-    state.description = [NSString stringWithString:S];
+    state.description = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
     [states addObject:state];
 }
 
@@ -323,8 +321,7 @@ int color_int = 0;
 						  start:start
 						    end:end];
 
-    NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
-    interval.description = [NSString stringWithString:S];
+    interval.description = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
 
     [intervals addObject:interval];
 

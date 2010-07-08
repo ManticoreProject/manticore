@@ -26,10 +26,8 @@
     
     self.description = [NSString stringWithCString:argDesc.desc
 					  encoding:NSASCIIStringEncoding];
-    self.description = [NSString stringWithString:description];
     self.name = [NSString stringWithCString:argDesc.name
 				   encoding:NSASCIIStringEncoding];
-    self.name = [NSString stringWithString:name];
     switch (argDesc.ty)
     {
 	case ADDR:

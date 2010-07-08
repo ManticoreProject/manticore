@@ -15,8 +15,6 @@
 NSString *asciiToNSString(const char *s)
 {
     NSString *ret = [NSString stringWithCString:s encoding:NSASCIIStringEncoding];
-    [ret retain];
-    ret = [NSString stringWithString:ret];
     return ret;
 }
 

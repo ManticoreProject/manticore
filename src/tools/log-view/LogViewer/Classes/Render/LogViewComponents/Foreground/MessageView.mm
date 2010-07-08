@@ -85,8 +85,7 @@ uint64_t myExp(uint64_t a, uint n)
 						     color:[Utils colorFromFormatString:g->Color()]
 						    sender:s
 						  receiver:r];
-    NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
-    message.description = [NSString stringWithString:S];
+    message.description = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
 
     return message;
 }
@@ -191,29 +190,3 @@ uint64_t myExp(uint64_t a, uint n)
 
 
 @end
-
-
-// OLD CODE
-
-/*
-/// Store the given time as needing display
-- (void)displayTime:(uint64_t)t atPosition:(CGFloat)f
-{
-   // NSLog(@"messageview is adding a time to display, position %f, time %qu", f, t);
-    NSString *stringRep = [NSString stringWithFormat:@"%qu", (t / TIME_VALUE_ROUNDING) % myExp(10, TIME_VALUE_NUM_DIGITS)];
-    NSNumber *n = [NSNumber numberWithFloat:f];
-    [times addObject:n];
-    [timeValues addObject:stringRep];
-}
-
-
-/// draw a time.  It should have already been stored as needing display by @selector(displayTime:atPosition:)
-- (void)drawTimeValue:(NSString *)s atTime:(CGFloat)f
-{
-    NSRect bounds = self.visibleRect;
-    NSPoint p = NSMakePoint
-	(f, bounds.origin.y + bounds.size.height - TIME_VALUE_PADDING);
-    [s drawAtPoint:p withAttributes:timeValueAttributes];
-}
-*/
-

@@ -92,7 +92,6 @@
 
     self.description = [NSString stringWithCString:eventDesc->Description()
 					  encoding:NSASCIIStringEncoding];
-    self.description = [NSString stringWithString:description];
 
     // Initialize args
     args = [[NSMutableArray alloc] init];
@@ -139,8 +138,7 @@
     {
 	[self setValueNotNull:e];
     }
-    NSString *S = e ? [NSString stringWithCString:eventDesc->Description() encoding:NSASCIIStringEncoding] : NO_NAME ;
-    self.name = [NSString stringWithString:S];
+    self = e ? [NSString stringWithCString:eventDesc->Description() encoding:NSASCIIStringEncoding] : NO_NAME ;
     [table reloadData];
  //   NSLog(@"table is %@", table);
     self.view.needsDisplay = YES;

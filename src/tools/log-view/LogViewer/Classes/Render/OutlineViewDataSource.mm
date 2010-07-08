@@ -417,21 +417,15 @@ These 3 properties uniquely determine the behavior of the tree when clicking on 
 /// Returns the state of the checkbox corresponding to a group g
 - (NSNumber *)enabled:(struct Group *)g
 {
-    const char *s = g->Desc();
-   // NSLog(@"%@ looking up enabled state for group %s in map %@", self, s, map);
-    NSString *S = [NSString stringWithCString:s encoding:NSASCIIStringEncoding];
-    NSString *R = [[NSString alloc] initWithString:S];
-    // NSLog(@"map = %@", map);
-    NSNumber *ret = [map objectForKey:R];
+    NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
+    NSNumber *ret = [map objectForKey:S];
 
-    //if (ret) NSLog(@"looked up %@ to find %@ in enabled map", S, ret);
     if (ret == nil)
     {
 	return DEFAULT_ENABLED_STATE;
     }
     else
     {
-	//NSLog(@"Returning enabled state %@", ret);
 	return ret;
     }
 }
