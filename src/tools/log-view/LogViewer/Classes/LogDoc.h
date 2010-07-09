@@ -48,7 +48,6 @@ enum ZoomLevel {
     IBOutlet ViewController *viewController; ///<Controller for assorted view tasks
 
     DetailInfoController *detailInfoController; ///< A helper controller object to manage a DetailInfoView
-    IBOutlet NSView *detailInfoTarget; ///< A dummy view to act as a placeholder in InterfaceBuilder
 
     IBOutlet NSDrawer *drawer; ///< The drawer in which to place outlineView
 

@@ -276,46 +276,13 @@ static LogFileDesc *LFDCache = 0;
 
     if (self.enabled)
     {
-	if (!detailInfoTarget)
-	{
-	    [Exceptions raise:@"LogDoc: did not have an initiailized detailInfoTarget"];
-	}
-	LogFileDesc *lfd = self.logDesc;
-
 
 	// Because some of the UI is created programmatically and some of the UI is created
 	// in interface builder, it is necessary to do a small dance here to get things into the right places
-	{
-	    // Load the nib into memory and get its controller
-	    detailInfoController = [[DetailInfoController alloc] initWithNibName:DETAIL_INFO_NIB_NAME
-	    							      bundle:(NSBundle *)nil
-								      logDesc:lfd];
-
-	    // Get the detailInfoView, but do not display it yet
-	    DetailInfoView *detailInfoView = detailInfoController.div;
-
-	    // detailInfoTarget is a placeholder view. it is used as follows
-	    // detailInfoTarget is created in interface builder as a custom view with nothing in it
-	    // the only important properties of detailInfoTarget are
-		    // 0. it is a view
-		    // 1. its frame is the frame we would like to use for the detailInfoView
-	    // as such, we now get rid of detailInfoTarget, and use its frame to initialize detailInfoView
-	    // so that detailInfoView takes up the same space tha detailInfoTarget used to take up
-	    NSRect newFrame = detailInfoTarget.frame;
-	    //NSLog(@"newFrame is %f %f %f %f'",
-	    //      newFrame.origin.x, newFrame.origin.y,
-	    //      newFrame.size.width, newFrame.size.height);
-
-	    [detailInfoView setFrame:newFrame];
-	    [detailInfoTarget.superview addSubview:detailInfoView];
-	    //NSLog(@"added view %@ to logView %@ in that frame", detailInfoView, logView);
-	    detailInfoView.needsDisplay = true;
-	    detailInfoView.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
-	}
-
-
 	
-	
+	detailInfoController = [[DetailInfoController alloc] initWithLogDesc:[self logDesc]];
+	//[detailInfoController showWindow:self];
+
 	
 	if (!outlineViewDataSource)
 	{
@@ -533,6 +500,7 @@ uint64_t g_counter = 0;
 
 - (void)displayDetail:(EventShape *)d
 {
+    [detailInfoController showWindow:self];
     [detailInfoController displayDetail:d];
 }
 

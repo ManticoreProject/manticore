@@ -4,7 +4,6 @@
  *
  */
 
-#import <Cocoa/Cocoa.h>
 #import "EventInfoController.h"
 #import "ShapeRep.h"
 @class DetailInfoView;
@@ -12,28 +11,27 @@ struct LogFileDesc;
 
 
 /// Controller object for DetailInfoView
-@interface DetailInfoController : NSViewController {
+@interface DetailInfoController : NSWindowController {
     /// Use this eic for displaying start, source and singleton events
     EventInfoController *eventInfoControllerLeft;
     /// Use this eic for displaying end and destination events
     EventInfoController *eventInfoControllerRight;
-
-    /// The view object that self uses to display details
-    IBOutlet DetailInfoView *div;
+    
+    /* These views are instantiated in Interface Builder, and are placeholders
+     * for the EventInfoViews we will be putting in their place. It is necessary
+     * to do this juggling only because EventInfoViews have their own nibs and
+     * NSViewControllers. */
+    IBOutlet NSView *viewTargetLeft;
+    IBOutlet NSView *viewTargetRight;
 
     struct LogFileDesc *logDesc;
-
-    IBOutlet NSView *leftTarget; ///< Dummy view used in InterfaceBuilder
-    IBOutlet NSView *rightTarget; ///< Dummy view used in InterfaceBuilder
 
     /// String to describe the event currently being displayed in the DetailInfoView
     NSString *name;
 }
 
-- (id)initWithNibName:(NSString *)s
-	       bundle:(NSBundle *)b
-	      logDesc:(struct LogFileDesc *)logDescVal;
 
+- (id)initWithLogDesc:(struct LogFileDesc *) logDescVal;
 
 /// s has an associated detail d.
 /// d is a model object
@@ -41,7 +39,6 @@ struct LogFileDesc;
 - (void)displayDetail:(EventShape *)s;
 
 
-@property (readonly) DetailInfoView *div;
 @property (readwrite, assign) NSString *name;
 
 

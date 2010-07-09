@@ -4,7 +4,6 @@
  *
  */
 
-#import <Cocoa/Cocoa.h>
 #import "EventArg.h"
 #import "Detail.h"
 #import "EventInfoView.h"
@@ -15,8 +14,6 @@ struct EventDesc;
  *  Causes an EventInfoView to display infomation about a single event
  */
 @interface EventInfoController : NSViewController {
-    IBOutlet EventInfoView *eiv; ///< The view
-
     struct LogFileDesc *logDesc;
 
     /// This table will hold the arguments to the event being displayed
@@ -42,8 +39,6 @@ struct EventDesc;
 	       bundle:(NSBundle *)b
 	      logDesc:(struct LogFileDesc *)logDescVal;
 
-
-@property (readonly) EventInfoView *eiv;
 
 @property (readwrite, assign) NSString *time;
 

@@ -4,8 +4,6 @@
  *
  */
 
-#import <Cocoa/Cocoa.h>
-
 /// Box and unbox pointers
 /// Terrible to use, this class allows c++ objects to be treated
 /// sort of like NSObjects.  Be warned however, the garbage collector

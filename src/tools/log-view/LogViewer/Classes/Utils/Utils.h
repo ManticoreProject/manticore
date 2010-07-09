@@ -3,7 +3,6 @@
  \date 7/7/09
  */
 
-#import <Cocoa/Cocoa.h>
 
 /// Returns the euclidean distance between its arguments
 CGFloat euclideanDistance(NSPoint a, NSPoint b);

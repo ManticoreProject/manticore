@@ -13,10 +13,10 @@
 #import "log-desc.hxx"
 #import "event-desc.hxx"
 
+@class LogDoc;
 
 @implementation DetailInfoController
 
-@synthesize div;
 @synthesize name;
 
 #pragma mark Definitions
@@ -46,47 +46,29 @@
 
 #pragma mark Initialization
 
-- (id)initWithNibName:(NSString *)s
-	       bundle:(NSBundle *)b
-	      logDesc:(struct LogFileDesc *)logDescVal
+- (id)initWithLogDesc:(struct LogFileDesc *)logDescVal
 {
-    if (![super initWithNibName:s bundle:b]) return nil;
-
-    self.name = @"";
+    if (![super initWithWindowNibName:@"DetailInfo"])
+	return nil;
     logDesc = logDescVal;
-
+ 
+    [(NSPanel *)[self window] setBecomesKeyOnlyIfNeeded:YES];
+    
     eventInfoControllerLeft = [[EventInfoController alloc] initWithNibName:INFO_CONTROLLER_NIB_NAME
-								    bundle:nil
-								   logDesc:logDescVal];
-    eventInfoControllerRight = [[EventInfoController alloc] initWithNibName:INFO_CONTROLLER_NIB_NAME
-								     bundle:nil
-								    logDesc:logDescVal];
+				      bundle:nil logDesc:logDesc];
+    eventInfoControllerRight =[[EventInfoController alloc] initWithNibName:INFO_CONTROLLER_NIB_NAME
+				       bundle:nil logDesc:logDesc];
+    [[[self window] contentView] replaceSubview:viewTargetLeft with:[eventInfoControllerLeft view]];
+    [[[self window] contentView] replaceSubview:viewTargetRight with:[eventInfoControllerRight view]];
 
-    EventInfoView *lview = (EventInfoView *) (eventInfoControllerLeft.eiv);
-    EventInfoView *rview = (EventInfoView *) (eventInfoControllerRight.eiv);
-
-
-    self.view.needsDisplay = true;
-   // NSLog(@"DetailInfoController: initializing! leftTarget = %@ rightTarget = %@ view = %@",
-	    // leftTarget, rightTarget, self.view);
-
-    // Use the dummy target views to determine where to put the newly loaded eventInfoViews
-    // see LogDoc.mm:windowControllerDidLoadNib: for a more detailed explanation
-
-    [lview setFrame:leftTarget.frame];
-    [rview setFrame:rightTarget.frame];
-
-  //  assert (splitView != NULL);
-    [div replaceSubview:leftTarget with:lview];
-    [div replaceSubview:rightTarget with:rview];
-
-  //  NSLog(@"DetailInfoController: left eiv = %@ and table = %@ right eiv = %@ and table = %@",
-//	  lview, lview.table, rview, rview.table);
+    [[eventInfoControllerLeft view] setFrame:[viewTargetLeft frame]];
+    [[eventInfoControllerRight view] setFrame:[viewTargetRight frame]];
 
 
-
+     
     return self;
 }
+
 
 #pragma mark Drawing
 
@@ -124,7 +106,7 @@
     Message *message;
 
     self.name = s.description;
-
+    
     switch (s.kind)
     {
 	case SIMPLE_SHAPE:
