@@ -40,6 +40,9 @@
     
     NSTrackingArea *trackingArea; ///< Tracking area for picking up MouseMoved events'
     NSPoint mouseLoc; ///< Where was the mouse last time we got a mouseMoved?
+    
+    EventShape *selectedEvent; ///< The last event that the user selected
+    BandView *selectedBand; ///< The band that the above event lives on, or NULL
 
     NSMutableArray *bands;
     CGFloat band_height;
@@ -67,6 +70,7 @@
 @property (readwrite, assign) CGFloat timeTick;
 @property (readonly) NSPoint mouseLoc;
 @property (readonly) uint64_t rounding;
+@property (readonly) EventShape *selectedEvent;
 
 /// Main shape creation function
 /**
@@ -87,6 +91,9 @@
 	    atZoomLevel:(enum ZoomLevel)zoomLevel
 	    fromLogData:(LogData *)logData
 	     filteredBy:(GroupFilter *)filter;
+
+///< Call when we've determined that the user has selected a new event.
+- (void)didSelectEvent:(EventShape *)event fromBand:(BandView *)band;
 
 - (void)bigTickAt:(CGFloat)t;
 

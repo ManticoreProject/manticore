@@ -125,6 +125,12 @@
     
 }
 
+- (NSRect)bounds
+{
+    return rect;
+}
+
+
 - (shapeTag)kind
 {
     return INTERVAL_SHAPE;

@@ -32,6 +32,9 @@ typedef enum {
 /// Draw the shape
 - (void)drawShape;
 
+/// Return the rectangular bounding box of the shape.
+- (NSRect)bounds;
+
 /// Determine if a point lies within the area this shape is drawn on
 - (BOOL)containsPoint:(NSPoint)p;
 
@@ -39,5 +42,6 @@ typedef enum {
 - (shapeTag)kind;
 
 @property (readwrite, assign) NSString *description;
+@property (readwrite, copy) NSColor *color;
 
 @end

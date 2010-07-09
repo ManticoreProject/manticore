@@ -13,6 +13,7 @@
 #import "DetailAccess.h"
 #import "VProc.h"
 #import "LogDoc.h"
+#import "LogView.h"
 #import "GroupFilter.h"
 #import "MessageView.h"
 
@@ -66,9 +67,7 @@
     if (self) {
 	vProc = vp;
 	logDoc = logDocVal;
-	singletons = [[NSMutableArray alloc] init];
-	states = [[NSMutableArray alloc] init];
-	intervals = [[NSMutableArray alloc] init];
+	shapes = [[NSMutableArray alloc] init];
 	
 	NSRect bounds = self.shapeBounds;
 	cur_singleton_height = bounds.size.height / 2;
@@ -100,45 +99,28 @@
    // [[NSColor blueColor] set];
    // [NSBezierPath fillRect:self.bounds];
 
-    int a = 0;
     int q = 0;
-    for (State *e in states)
+    EventShape *selected = [[logDoc logView] selectedEvent];
+    NSColor *oldColor;
+    for (EventShape *e in shapes)
     {
-	if (! NSIntersectsRect(rect, e.rect))
+	if (! NSIntersectsRect(rect, [e bounds]))
 	{
 	    q++;
-	    //continue;
+	    continue;
+	}
+	if (e == selected)
+	{
+	    oldColor = e.color;
+	    e.color = [NSColor whiteColor];
 	}
 	[e drawShape];
-	++a;
+	if (e == selected)
+	    e.color = oldColor;
     }
-   // NSLog(@"Drew %d state changes", a);
-    //NSLog(@"Skipped %d state draws", q);
+    //NSLog(@"Skipped %d shape draws", q);
 
-    int b = 0;
-    for (Interval *e in intervals)
-    {
-	//if (! NSIntersectsRect(rect, e.rect))
-	   // continue;
-	[e drawShape];
-	++b;
-    }
-  //  NSLog(@"Drew %d intervals", b);
-
-    int c = 0;
-    for (Singleton *e in singletons)
-    {
-	//if (! NSPointInRect(e.place, rect))
-	  //  continue;
-	[e drawShape];
-	++c;
-    }
-   // NSLog(@"Drew %d singletons", c);
-
-   // NSLog(@"BandView drew %d shapes", a + b + c);
 }
-
-
 
 
 #pragma mark Simples
@@ -199,7 +181,7 @@
 			   event:Detail_Simple_value(d)];
     singleton.description = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
 
-    [singletons addObject:singleton];
+    [shapes addObject:singleton];
 }
 
 
@@ -261,7 +243,7 @@ int color_int = 0;
 					   end:end];
 
     state.description = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
-    [states addObject:state];
+    [shapes addObject:state];
 }
 
 #pragma mark Intervals
@@ -284,17 +266,6 @@ int color_int = 0;
 {
     assert (Detail_Type(d)->Kind() == INTERVAL_GROUP );
     return fmod (Detail_Interval_height(d), ( self.bounds.size.height - h - INTERVAL_PADDING ));
-
-/* CURRENTLY UNUSED
-
-     CGFloat height = self.bounds.size.height;
-     cur_interval_height += h + INTERVAL_PADDING;
-     if (cur_interval_height >= height - (h + INTERVAL_PADDING))
-     {
-	cur_interval_height -= height - 2 * (h + INTERVAL_PADDING);
-     }
-     return cur_interval_height;
-     */
 }
 
 - (void)addInterval:(IntervalGroup *)g forDetail:(Detail)d
@@ -323,7 +294,7 @@ int color_int = 0;
 
     interval.description = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
 
-    [intervals addObject:interval];
+    [shapes addObject:interval];
 
 }
 
@@ -381,36 +352,14 @@ int color_int = 0;
     //	    If all dependent details are to far away from the click, then
     //	    the user was trying to click on some nearby state, interval, or simple event
 
-    NSLog(@"Bandview is sending a messageView %@ the mouse event %@", messageView, e);
     if ([messageView bandReceivedEvent:e]) return;
-    NSLog(@"Mouse was clicked on band for VProc %d", vProc.vpId);
     NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
-    for (State *a in states)
+    for (EventShape *a in shapes)
     {
 	if ([a containsPoint:p])
 	{
+	    [[logDoc logView] didSelectEvent:a fromBand:self];
 	    [logDoc displayDetail:a];
-	    [a nslog];
-	    NSLog(@"State clicked");
-	    return;
-	}
-    }
-    for (Interval *a in intervals)
-    {
-	if ([a containsPoint:p])
-	{
-	    [logDoc displayDetail:a];
-    	    NSLog(@"Interval clicked");
-	    return;
-	}
-    }
-
-    for (Singleton *a in singletons)
-    {
-	if ([a containsPoint:p])
-	{
-    	    [logDoc displayDetail:a];
-	    NSLog(@"Singleton clicked");	    
 	    return;
 	}
     }

@@ -14,11 +14,18 @@
 @implementation EventShape
 
 @synthesize description;
+@synthesize color;
 
 - (void)drawShape
 {
 	[Exceptions raise:@"EventShape: instances of eventShape must override drawShape"];
     return;
+}
+
+- (NSRect)bounds
+{
+    [Exceptions raise:@"EventShape: instances of eventShape must override bounds"];
+    return NSZeroRect;
 }
 
 - (BOOL)containsPoint:(NSPoint)p;

@@ -64,6 +64,7 @@
 @synthesize splitView;
 @synthesize messageView;
 @synthesize mouseLoc;
+@synthesize selectedEvent;
 
 - (id)initWithFrame:(NSRect)frame
 {
@@ -351,6 +352,19 @@
 						  owner:self
 					       userInfo:nil];
     [self addTrackingArea:trackingArea];
+}
+
+- (void)didSelectEvent:(EventShape *)event fromBand:(BandView *)band
+{
+    if (band != NULL)
+	[band setNeedsDisplayInRect:[event bounds]];
+    if (selectedBand != NULL)
+	[selectedBand setNeedsDisplayInRect:[selectedEvent bounds]];
+    
+    [self setNeedsDisplayInRect:[event bounds]];
+    [self setNeedsDisplayInRect:[selectedEvent bounds]];
+    selectedEvent = event;
+    selectedBand = band;
 }
 
 

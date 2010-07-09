@@ -63,6 +63,11 @@
 	return [path containsPoint:p];
 }
 
+- (NSRect)bounds
+{
+    return [path bounds];
+}
+
 - (shapeTag)kind
 {
     return SIMPLE_SHAPE;

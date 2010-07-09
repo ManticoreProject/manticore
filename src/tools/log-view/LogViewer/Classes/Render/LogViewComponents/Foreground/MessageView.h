@@ -7,6 +7,8 @@
 #import <Cocoa/Cocoa.h>
 #import "LogDoc.h"
 
+@class Message;
+
 
 /// Draws message arrows and other foreground events
 /** The MessageView will be placed on top of the BandViews in a LogView.

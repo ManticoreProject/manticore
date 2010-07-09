@@ -44,21 +44,19 @@
 
 - (void)drawShape
 {
-	[color set];
-	[NSBezierPath fillRect:rect];
+    [color set];
+    [NSBezierPath fillRect:rect];
 }
 
 
 - (BOOL)containsPoint:(NSPoint)p
 {
-	return
-		(
-		p.x >= rect.origin.x &&
-		p.x <= rect.origin.x + rect.size.width &&
-		p.y >= rect.origin.y &&
-		p.y <= rect.origin.y + rect.size.height
-		);
-		
+    return NSPointInRect(p, rect);
+}
+
+- (NSRect)bounds
+{
+    return rect;
 }
 
 - (shapeTag)kind

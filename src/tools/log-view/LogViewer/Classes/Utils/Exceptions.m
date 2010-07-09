@@ -13,7 +13,7 @@
 
 + (void)raise:(NSString *)s
 {
-    NSLog(@" ****** Uncaught Exception %s", s);
+    NSLog(@" ****** Uncaught Exception %@", s);
     int n = 0;
     NSLog(@"%d", n);
     return;

@@ -30,14 +30,6 @@
 #define TIME_VALUE_PADDING ( 14 )
 
 
-/// Exponentiation function
-uint64_t myExp(uint64_t a, uint n)
-{
-    uint64_t ret = 1;
-    while (n--) ret *=a;
-    return ret;
-}
-
 @implementation MessageView
 
 /// Determine how high a vproc should be based on its identifier
@@ -138,6 +130,8 @@ uint64_t myExp(uint64_t a, uint n)
 
     NSRect bounds = [self bounds];
     int a = 0;
+    NSColor *oldColor;
+    EventShape *selectedEvent = [[logDoc logView] selectedEvent];
     for (Message *m in dependents)
     {
 	if (! NSIntersectsRect(rect, [[m path] bounds]))
@@ -145,7 +139,18 @@ uint64_t myExp(uint64_t a, uint n)
 	    a++;
 	    continue;
 	}
+
+	if (m == selectedEvent)
+	{
+	    oldColor = m.color;
+	    m.color = [NSColor whiteColor];
+	}
+
 	[m drawShape];
+	
+	if (m == selectedEvent)
+	    m.color = oldColor;
+	
     }
     //NSLog(@"Skipped drawing %d messages", a);
     
@@ -168,7 +173,6 @@ uint64_t myExp(uint64_t a, uint n)
 /// Return: whether or not this click clicked on a message
 - (BOOL)bandReceivedEvent:(NSEvent *)e
 {
-    NSLog(@"MessageView is checking if a message was clicked on");
     for (Message *m in dependents)
     {
 	NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
@@ -176,7 +180,7 @@ uint64_t myExp(uint64_t a, uint n)
 	if ([m containsPoint:p])
 	{
 	    [logDoc displayDetail:m];
-	    NSLog(@"MessageView found a clicked message");
+	    [[logDoc logView] didSelectEvent:m fromBand:NULL];
 	    return YES;
 	}
     }

@@ -141,11 +141,14 @@ static NSBezierPath *arrowHead; //!< arrowhead
 #pragma mark EventShape Methods
 - (BOOL)containsPoint:(NSPoint)p
 {
-	CGFloat d = pointToLineSegmentDistance(p, start, end);
-	return ((d <= CLICK_RANGE)
-	    && between(p.x, start.x, end.x)
-	    && between(p.y, start.y, end.y));
+    return [path containsPoint:p];
 }
+
+- (NSRect)bounds
+{
+    return [path bounds];
+}
+
 
 - (shapeTag)kind
 {
@@ -161,10 +164,4 @@ static NSBezierPath *arrowHead; //!< arrowhead
 
 
 @end
-
-
-
-
-
-
 

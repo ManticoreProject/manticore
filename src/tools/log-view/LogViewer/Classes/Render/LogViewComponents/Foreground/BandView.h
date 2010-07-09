@@ -36,10 +36,7 @@ struct IntervalGroup;
     /// The corresponding vproc that this BandView represents
     VProc *vProc;
 
-
-    NSMutableArray *states;
-    NSMutableArray *intervals;
-    NSMutableArray *singletons;
+    NSMutableArray *shapes;
 
     id target;
 
