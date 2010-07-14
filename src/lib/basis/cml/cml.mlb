@@ -13,5 +13,8 @@ ann "cpp" "../include/prim.def,../include/runtime-offsets.def" in
 (*
   event.pml
 *)
+  fanout.pml
+  fanin.pml
+  one2one.pml
 end
 
