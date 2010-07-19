@@ -6,7 +6,7 @@
  * The Work Stealing scheduler.
  *)
 
-#define DEFAULT_DEQUE_SZ            128
+#define DEFAULT_DEQUE_SZ            64
 
 #define STEAL_ONE_THREAD            0
 #define STEAL_TWO_THREADS           1
@@ -18,6 +18,8 @@ structure WorkStealing (* :
   sig
 
     val workGroup : unit -> ImplicitThread.work_group
+
+    val isLocalDequeEmpty : unit -> bool
 
   end *) = struct
 
@@ -428,11 +430,18 @@ structure WorkStealing (* :
 	    return (group)
 	  ;
 
+	  define inline @is-local-deque-empty (_ : unit / exh : exh) : bool =
+	    let deque : D.deque = @get-assigned-deque-from-atomic (host_vproc / exh)
+	    D.@is-empty (deque)
+	  ;
+
       )
 
     in
 
     val workGroup : unit -> ImplicitThread.work_group = _prim (@work-group)
+
+    val isLocalDequeEmpty : unit -> bool = _prim (@is-local-deque-empty)
 
     end
 
