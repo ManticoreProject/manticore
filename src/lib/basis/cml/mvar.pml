@@ -93,10 +93,11 @@ structure MVar (*: sig
 	    SPIN_LOCK(mv, MV_LOCK)
 	      case SELECT(MV_STATE, mv)
 	       of true =>
+	            let mval : any = SELECT(MV_VALUE, mv)
 	            do UPDATE(MV_STATE, mv, false)
 		    SPIN_UNLOCK(mv, MV_LOCK)
 		    do SchedulerAction.@atomic-end(self)
-		    return (SELECT(MV_VALUE, mv))
+		    return (mval)
 	        | false  => 
 	            cont takeK (x : any) = return (x)
 		    (* in *)
@@ -114,7 +115,7 @@ structure MVar (*: sig
 
     type 'a mvar = _prim (mvar)
 
-    val new	: unit -> 'a mvar = _prim(@mNew)
+    val new	: 'a -> 'a mvar = _prim(@mNew)
     val put	: 'a mvar * 'a -> unit = _prim(@mPut)
     val take	: 'a mvar -> 'a = _prim(@mTake)
   end
