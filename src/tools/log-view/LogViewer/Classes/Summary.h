@@ -6,7 +6,7 @@
  *
  */
 
-#import <Cocoa/Cocoa.h>
+#import "LogDoc.h"
 @class LogData;
 struct StateGroup;
 
@@ -45,8 +45,9 @@ struct StateGroup;
     /// Pies is sorted chronologically
     NSMutableArray *pies;
 
-    /// (start, start + size) is the interval of time in the log file which self represents
-    uint64_t size, start;
+    uint64_t size;
+    // the logInterval over which we summarize
+    struct LogInterval logInterval;
 
 }
 
@@ -55,7 +56,7 @@ struct StateGroup;
 			     forState:(StateGroup *)state
 			     forVProc:(int32_t)vp
 			     withSize:(uint64_t)s
-			     andStart:(uint64_t)st
+			  andInterval:(struct LogInterval)interval
 			    andNumber:(uint64_t)n;
 
 
@@ -65,14 +66,14 @@ struct StateGroup;
 @property (readonly) struct StateGroup *resource;
 
 @property (readonly) uint64_t size;
-@property (readonly) uint64_t start;
+@property (readonly) struct LogInterval logInterval;
 
 /// For internal use
 + (Summary *)fineSummaryFromLogData:(LogData *)logData
 			   forState:(StateGroup *)state
 			   forVProc:(int32_t)vp
 			   withSize:(uint64_t)size
-			   andStart:(uint64_t)st
+			andInterval:(struct LogInterval)interval
 			  andNumber:(uint64_t)n;
 
 @end

@@ -30,12 +30,12 @@
 
 @synthesize resource;
 @synthesize size;
-@synthesize start;
+@synthesize logInterval;
 
 #pragma mark Initializations
 
 - (Summary *)initWithSize:(uint64_t)s
-		 andStart:(uint64_t)st
+	      andInterval:(struct LogInterval)interval
 		andNumber:(int)num
 	      andResource:(StateGroup *)res
 {
@@ -43,7 +43,7 @@
 
     resource = res;
     size = s;
-    start = st;
+    logInterval = interval;
     pies = [NSMutableArray arrayWithCapacity:num];
 
     return self;
@@ -61,7 +61,7 @@
 {
 
     Summary *ret = [[Summary alloc] initWithSize:size
-					andStart:start
+				     andInterval:logInterval
 				       andNumber:(pies.count / block)
 				     andResource:resource];
     NSMutableArray *arr = ret.pies;
@@ -90,7 +90,7 @@
 - (Summary *)coarseBoxcar:(int)window group:(StateGroup *)g
 {
     Summary *ret = [[Summary alloc] initWithSize:size
-					andStart:start
+				     andInterval:logInterval
 				       andNumber:pies.count - window + 1
 				     andResource:resource];
     NSMutableArray *arr = ret.pies;
@@ -135,7 +135,7 @@
     assert ( 0 < weight && weight < 1 );
 
     Summary *ret = [[Summary alloc] initWithSize:size
-					andStart:start
+				     andInterval:logInterval
 				       andNumber:pies.count
 				     andResource:resource];
     NSMutableArray *arr = ret.pies;
@@ -167,7 +167,7 @@
 				     forState:(StateGroup *)state
 				     forVProc:(int32_t)vp
 				     withSize:(uint64_t)s
-				     andStart:(uint64_t)st
+				  andInterval:(struct LogInterval)interval
 				    andNumber:(uint64_t)n
 {
     double weight = DEFAULT_EXP_DECAY_WEIGHT;
@@ -176,7 +176,7 @@
 					  forState:state
 					  forVProc:vp
 					  withSize:size
-    					  andStart:st
+				       andInterval:interval
     					 andNumber:n];
     ret = [ret coarseExpDecay:weight];
     return ret;
@@ -186,7 +186,7 @@
 				   forState:(StateGroup *)state
 				   forVProc:(int32_t)vp
 				   withSize:(uint64_t)s
-				   andStart:(uint64_t)st
+				andInterval:(struct LogInterval)interval
 				  andNumber:(uint64_t)n
 {
     int window = DEFAULT_BOXCAR_WINDOW;
@@ -196,7 +196,7 @@
 					   forState:state
 					   forVProc:vp
 					   withSize:size
-    					   andStart:st
+					andInterval:interval
     					  andNumber:fine_n];
     ret = [ret coarseBoxcar:window group:state];
     return ret;
@@ -205,7 +205,7 @@
 				      forState:(StateGroup *)state
 				      forVProc:(int32_t)vp
 				      withSize:(uint64_t)s
-				      andStart:(uint64_t)st
+				   andInterval:(struct LogInterval)interval
 				     andNumber:(uint64_t)n
 {
     int block = DEFAULT_PARTITION_BLOCK;
@@ -215,7 +215,7 @@
 					  forState:state
 					  forVProc:vp
 					  withSize:size
-    					  andStart:st
+				       andInterval:interval
     					 andNumber:t];
 
 
@@ -233,14 +233,14 @@
 			     forState:(StateGroup *)state
 			     forVProc:(int32_t)vp
 			     withSize:(uint64_t)s
-			     andStart:(uint64_t)st
+			  andInterval:(struct LogInterval)interval
 			    andNumber:(uint64_t)n
 {
     Summary *sum = [Summary coarseSummaryFromLogDataPartition:logData
 						     forState:state
 						     forVProc:vp
 						     withSize:s
-						     andStart:st
+						  andInterval:interval
 						    andNumber:n];
     return sum;
 }
@@ -297,7 +297,7 @@ int state_detail_end_after(Detail d, uint64_t t)
 			   forState:(StateGroup *)state
 			   forVProc:(int32_t)vp
 			   withSize:(uint64_t)size
-			   andStart:(uint64_t)st
+			andInterval:(struct LogInterval)interval
 			  andNumber:(uint64_t)n
 {
     VProc *vProc = [logData.vProcs objectAtIndex:vp];
@@ -313,16 +313,15 @@ int state_detail_end_after(Detail d, uint64_t t)
 
 
     // Initialize t, p, pie, pies, d to have the invariants listed below
-    t = st;
-    p = st;
+    t = p = interval.x;
     pie = [Pie emptyForStateGroup:state];
     
     assert (pie.nConsumers != 0);
 
     Summary *ret = [[Summary alloc] initWithSize:size
-					andStart:st
-				        andNumber:n
-					andResource:state];
+				     andInterval:interval
+				       andNumber:n
+				     andResource:state];
     pies = ret.pies;
     assert ( pies.count == 0);
 
@@ -340,7 +339,8 @@ int state_detail_end_after(Detail d, uint64_t t)
 	    ++d;
 	    continue;
 	}
-	if ( state_detail_start_before_eq(details[d], st) && state_detail_end_after(details[d], st))
+	if (state_detail_start_before_eq(details[d], interval.x) &&
+	    state_detail_end_after(details[d], interval.x))
 	{
 	    // d is now the correct index
 	    break;

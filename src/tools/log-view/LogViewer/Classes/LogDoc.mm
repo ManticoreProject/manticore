@@ -83,6 +83,13 @@ static LogFileDesc *LFDCache = 0;
 		 atZoomLevel:[self zoomLevelForInterval:logInterval]
 		 fromLogData:self.logData
 		  filteredBy:self.filter];
+    
+    [summaryView setHilightInterval:logInterval];
+    if (summaryView.summary)
+    {
+	[summaryView setNeedsDisplay:YES];
+	return;
+    }
 
     StateGroup *resourceState;
     {
@@ -103,11 +110,10 @@ static LogFileDesc *LFDCache = 0;
 #pragma mark Display Summary View
 
     CGFloat summary_view_column_width = DEFAULT_SUMMARY_VIEW_COLUMN_WIDTH;
-    // FIXME only looks at the first vproc, really this initialization should set summary
-    // to an average of all vprocs
     double viewWidth = scrollView.bounds.size.width;
     double scale = logInterval->width / viewWidth;
     
+    /* Construct a summary by averaging the summaries for all VProcs. */
     Summary *tmpSummary;
     for (int i = 0; i < [logData nVProcs]; i++)
     {
@@ -115,7 +121,7 @@ static LogFileDesc *LFDCache = 0;
 					      forState:resourceState
 					      forVProc:i
 					      withSize:scale *     summary_view_column_width
-					      andStart:logInterval->x
+					   andInterval:*logInterval
 					     andNumber:viewWidth / summary_view_column_width];
 	if (i == 0)
 	{
@@ -383,7 +389,7 @@ static LogFileDesc *LFDCache = 0;
    // NSLog(@"pivot = %qu", pivot);
     self.printLogInterval;
     logInterval->x = pivot - scale * (pivot - logInterval->x);
-    logInterval->width = logInterval->width * scale;
+    logInterval->width = logInterval->width * scale;	
     [self flush];
 }
 - (void)zoomBy:(double)scale
@@ -500,7 +506,6 @@ uint64_t g_counter = 0;
 
 - (void)displayDetail:(EventShape *)d
 {
-    [detailInfoController showWindow:self];
     [detailInfoController displayDetail:d];
 }
 
@@ -522,6 +527,10 @@ uint64_t g_counter = 0;
 }
 
 
+- (IBAction)showDetailWindow:(id)sender
+{
+    [detailInfoController showWindow:self];
+}
 
 
 @end

@@ -354,15 +354,44 @@ int color_int = 0;
 
     if ([messageView bandReceivedEvent:e]) return;
     NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
+    
+    EventShape *first = NULL;
+    EventShape *newSelection = NULL;
+    BOOL foundOldSelection = NO;
     for (EventShape *a in shapes)
     {
 	if ([a containsPoint:p])
 	{
-	    [[logDoc logView] didSelectEvent:a fromBand:self];
-	    [logDoc displayDetail:a];
-	    return;
+	    /* We want clicking repeatedly on an area to cycle through all of
+	       the events that could be stacked on top of each other.
+	     */
+	    if (first == NULL)
+		first = a;
+
+	    if (foundOldSelection)
+	    {
+		newSelection = a;
+		break;
+	    }
+	    
+	    if (a == logDoc.logView.selectedEvent)
+		foundOldSelection = YES;
 	}
     }
+    /* At this point, there are three distinct possible circumstances:
+       1. we never found the old selection. Use the first event; the user has
+	  clicked on a new area of the screen.
+       2. we found the old selection, but newSelection is still NULL. we have
+          reached the last event under the cursor, so cycle back to first.
+       3. we found neither a first nor a newSelection. This means there weren't
+	  any events under the cursor.
+     */
+
+    if (!foundOldSelection || newSelection == NULL)
+	newSelection = first;
+
+    [[logDoc logView] didSelectEvent:newSelection fromBand:self];
+    [logDoc displayDetail:newSelection];
 }
 
 @end

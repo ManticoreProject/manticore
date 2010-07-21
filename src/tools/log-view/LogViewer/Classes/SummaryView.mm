@@ -16,6 +16,7 @@
 
 @synthesize summary;
 @synthesize width;
+@synthesize hilightInterval;
 
 
 
@@ -89,6 +90,14 @@
 	    cur_y += cur_height;
 
 	}
+    }
+    if (hilightInterval && hilightInterval->width != summary.logInterval.width)
+    {
+	NSRect hilightRect = [self bounds];
+	hilightRect.origin.x = (self.bounds.size.width / [summary logInterval].width) * hilightInterval->x;
+	hilightRect.size.width = (self.bounds.size.width / [summary logInterval].width) * hilightInterval->width;
+	[[[NSColor blueColor] colorWithAlphaComponent:0.6] set];
+	[NSBezierPath fillRect:hilightRect];
     }
 }
 

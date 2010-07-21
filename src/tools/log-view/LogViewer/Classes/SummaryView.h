@@ -4,7 +4,7 @@
  *
  */
 
-#import <Cocoa/Cocoa.h>
+#import "LogDoc.h"
 @class Summary;
 
 /// Defines the default amount of horizontal screen space to be used to draw each pie
@@ -16,11 +16,14 @@
     Summary *summary;
     /// Actualy amount of horizontal screen space to be used to draw each pie
     CGFloat width;
+    
+    struct LogInterval *hilightInterval;
 }
 
 
 @property Summary *summary;
 @property CGFloat width;
+@property struct LogInterval *hilightInterval;
 
 @end
 

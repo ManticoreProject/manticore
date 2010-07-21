@@ -119,5 +119,6 @@ enum ZoomLevel {
 
 /// Have the DetailInfoView display d
 - (void)displayDetail:(EventShape *)d;
+- (IBAction)showDetailWindow:(id)sender;
 
 @end
