@@ -56,9 +56,10 @@ functor Alloc64Fn (
   (* select the ith element off of a 'base' address *)
     fun select {lhsTy : CFG.ty, mty : CFG.ty, i : int, base : T.rexp} = let
           val (offset, lhsTyI) = (case mty
-            of ( CFG.T_Tuple (_, tys) |
-		 CFG.T_OpenTuple tys  ) => (tupleOffset {tys=tys, i=i}, List.nth(tys, i))
-	     | _ => raise Fail ("cannot offset from type "^CFGTyUtil.toString mty))
+		 of CFG.T_Tuple(_, tys) => (tupleOffset {tys=tys, i=i}, List.nth(tys, i))
+		  | CFG.T_OpenTuple tys => (tupleOffset {tys=tys, i=i}, List.nth(tys, i))
+		  | _ => raise Fail ("cannot offset from type " ^ CFGTyUtil.toString mty)
+		(* end case *))
 	  val addr = T.ADD(MTy.wordTy, base, wordLit offset)
 	  val ty = Types.szOf lhsTy
 	  in 
@@ -85,7 +86,8 @@ functor Alloc64Fn (
 
     fun allocMixedObj offAp args = let
 	  val {i=nWords, stms, totalSize, ptrMask} = 
-		List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=0w0} args
+		List.foldl (initObj offAp)
+		  {i=0, stms=[], totalSize=0, ptrMask=0w0} args
 	(* create the mixed-object header word *)
 	  val hdrWord = W.toLargeInt (
 		  W.orb (W.orb (W.<< (ptrMask, 0w7), 
@@ -117,17 +119,15 @@ functor Alloc64Fn (
   (* generate code to allocate a polymorphic vector in the local heap *)
   (* argument is a pointer to a linked list l of length n *)
   (* vector v is initialized s.t. v[i] := l[i] for 0 <= i < n *)
-    fun genAllocPolyVec lsPtr =
-	let
-	    val i = Cells.newReg ()
-	    val ptr = Cells.newReg ()
-	    val lpLab = Label.label "lpLab" ()
-	    val exitLab = Label.label "exitLab" ()
-	    val nilLs = wordLit 1
-	    val wordSzBExp = wordLit 8
-	in
-	    {stms=
-	     (* initialize the vector *)
+    fun genAllocPolyVec lsPtr = let
+	  val i = Cells.newReg ()
+	  val ptr = Cells.newReg ()
+	  val lpLab = Label.label "lpLab" ()
+	  val exitLab = Label.label "exitLab" ()
+	  val nilLs = wordLit 1
+	  val wordSzBExp = wordLit 8
+	  in {stms =
+	  (* initialize the vector *)
 	     T.MV (MTy.wordTy, i, wordLit 0) ::
 	     T.DEFINE lpLab ::
 	     T.BCC (T.CMP (MTy.wordTy, T.EQ, T.REG (MTy.wordTy, lsPtr), nilLs), exitLab) ::

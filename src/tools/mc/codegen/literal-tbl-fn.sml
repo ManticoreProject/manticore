@@ -6,7 +6,8 @@
  * Hash tables that map literals to labels.
  *)
 
-signature LITERAL_TABLE = sig
+signature LITERAL_TABLE =
+  sig
     
     type lit                 (* representation of the literal *)
     type lit_tbl             (* hash table mapping literals to labels *)
@@ -15,41 +16,40 @@ signature LITERAL_TABLE = sig
     val addLit : (lit_tbl * lit) -> Label.label
     val appi : ((lit * Label.label) -> unit) -> lit_tbl -> unit    
 
-end (* LITERAL_TABLE *)
+  end (* LITERAL_TABLE *)
 
 functor LiteralTblFn (
-	A : 
-	sig
-	    type lit
-	    val labelPrefix : string
-	    val hash : lit -> word
-	    val same : (lit * lit) -> bool
-	end
-) : LITERAL_TABLE = struct
+    A : sig
+	type lit
+	val labelPrefix : string
+	val hash : lit -> word
+	val same : (lit * lit) -> bool
+      end
+  ) : LITERAL_TABLE = struct
 
-  structure Tbl = HashTableFn (struct
-			         type hash_key = A.lit
-				 val hashVal = A.hash
-				 val sameKey = A.same
-			       end)
-  type lit = A.lit
-  type lit_tbl = Label.label Tbl.hash_table
+    structure Tbl = HashTableFn (struct
+	type hash_key = A.lit
+	val hashVal = A.hash
+	val sameKey = A.same
+      end)
 
-  val newLabel = Label.label A.labelPrefix
+    type lit = A.lit
+    type lit_tbl = Label.label Tbl.hash_table
 
-  fun new () = Tbl.mkTable (32, Fail "LiteralTable")
+    val newLabel = Label.label A.labelPrefix
 
-  fun addLit (tbl, lit) = 
-      (case Tbl.find tbl lit
-	of NONE => let
-	       val lab = newLabel()
-	   in
-	       Tbl.insert tbl (lit, lab);
-	       lab
-	   end
-	 | (SOME lab) => lab
-      (* end case *))
+    fun new () = Tbl.mkTable (32, Fail "LiteralTable")
 
-  val appi = Tbl.appi
+  fun addLit (tbl, lit) = (case Tbl.find tbl lit
+	 of NONE => let
+	      val lab = newLabel()
+	      in
+		Tbl.insert tbl (lit, lab);
+		lab
+	    end
+	  | (SOME lab) => lab
+	(* end case *))
 
-end (* LiteralTblFn *)
+    val appi = Tbl.appi
+
+  end (* LiteralTblFn *)
