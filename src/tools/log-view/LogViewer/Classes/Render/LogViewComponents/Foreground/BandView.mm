@@ -74,11 +74,13 @@
 	cur_interval_height = bounds.size.height / 2;
 
 	Detail *details = vp.details;
+	int skipped = 0;
 	for (int i = 0; i < vp.numDetails; ++i)
 	{
 	    if (![logDoc isInInterval:details[i]])
 	    {
 		// Pass.  Only read in details which are in the interval
+		skipped++;
 		continue;
 	    }
 	    else
@@ -89,6 +91,7 @@
 		    [self addDetail:details[i]];
 	    }
 	}
+	NSLog(@"BandView for vProc %d skipped adding %d events", vp.vpId, skipped);
     }
     return self;
 }
@@ -96,8 +99,8 @@
 #pragma mark Drawing
 - (void)drawRect:(NSRect)rect {
 
-   // [[NSColor blueColor] set];
-   // [NSBezierPath fillRect:self.bounds];
+    [[NSColor purpleColor] set];
+    [NSBezierPath fillRect:self.bounds];
 
     int q = 0;
     EventShape *selected = [[logDoc logView] selectedEvent];
@@ -107,7 +110,7 @@
 	if (! NSIntersectsRect(rect, [e bounds]))
 	{
 	    q++;
-	    continue;
+	    //continue;
 	}
 	if (e == selected)
 	{
@@ -118,7 +121,7 @@
 	if (e == selected)
 	    e.color = oldColor;
     }
-    //NSLog(@"Skipped %d shape draws", q);
+    //NSLog(@"BandView for vProc %d skipped drawing %d shapes", [vProc vpId], q);
 
 }
 
@@ -333,15 +336,14 @@ int color_int = 0;
     // The user does not want the DetailInfoView to display information about the detail
     // he clicked on.  Instead the user is trying to zoom in/out if he pressed shift/control
     // respectively.
+    NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
     if (e.modifierFlags & NSShiftKeyMask)
     {
-	NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
 	[logDoc zoomInAboutPivot:[logDoc preImage:p.x]];
 	return;
     }
     else if (e.modifierFlags & NSControlKeyMask)
     {
-	NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
 	[logDoc zoomOutAboutPivot:[logDoc preImage:p.x]];
 	return;
     }
@@ -353,7 +355,6 @@ int color_int = 0;
     //	    the user was trying to click on some nearby state, interval, or simple event
 
     if ([messageView bandReceivedEvent:e]) return;
-    NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
     
     EventShape *first = NULL;
     EventShape *newSelection = NULL;

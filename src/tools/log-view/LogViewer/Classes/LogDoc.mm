@@ -148,6 +148,7 @@ static LogFileDesc *LFDCache = 0;
     }
     [summaryView setSummary:summary];
     [summaryView setWidth:summary_view_column_width];
+    [summaryView setLogDoc:self];
     
     NSRect frame = summaryView.bounds;
     frame.size.width = viewWidth;
@@ -466,7 +467,8 @@ uint64_t g_counter = 0;
 	case INTERVAL_GROUP:
 	    c = Detail_Interval_start(d);
 	    b = Detail_Interval_end(d);
-	    if (c == NULL || b == NULL) return true;
+	    assert(c != NULL);
+	    if (b == NULL) return true;
 	    if ((Event_Time(*c) > lst) || (Event_Time(*b) < fst))
 		return false;
 	    else
@@ -475,14 +477,22 @@ uint64_t g_counter = 0;
 	case STATE_GROUP:
 	    c = Detail_State_start(d);
 	    b = Detail_State_end(d);
-	    if (c == NULL && b == NULL) return true;
-	    if (c == NULL) { // && b != NULL
-		return Event_Time(*b) >= fst;
+	    if (c == NULL && b == NULL) 
+	    {
+		NSLog(@"State group spans entire interval. including.");
+		return true;
 	    }
-	    if (b == NULL) {// && c != NULL
-		BOOL ret = Event_Time(*c) <= lst;
-		if (ret) NSLog(@"Found a stategroup in interval, whose start is not in the interval");
-		return ret;
+	    if (c == NULL) {
+		NSLog(@"State group begins before start of interval. Time %qx, first is %qx", b->timestamp, fst);
+		/*FIXME: below conditional is commented out, because it seems
+		  to break things. try zooming in with it commented in - you'll
+		  notice that there is empty space on the left side of the main
+		  display, because this conditional is returning false when it
+		  shouldn't be. */
+		return true;//Event_Time(*b) >= fst;
+	    }
+	    if (b == NULL) {
+		return Event_Time(*c) <= lst;
 	    }
 	    if ((Event_Time(*c) > lst) || (Event_Time(*b) < fst))
 		return false;

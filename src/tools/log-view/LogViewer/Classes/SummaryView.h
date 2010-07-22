@@ -12,15 +12,20 @@
 
 /// A view object to display the data associated with a summary
 @interface SummaryView : NSView {
+    LogDoc *logDoc;
     /// Associated Summary from which the data will come
     Summary *summary;
     /// Actualy amount of horizontal screen space to be used to draw each pie
     CGFloat width;
+
+    BOOL dragging;
+    NSPoint dragStarted;
+    NSPoint dragContinued;
     
     struct LogInterval *hilightInterval;
 }
 
-
+@property LogDoc *logDoc;
 @property Summary *summary;
 @property CGFloat width;
 @property struct LogInterval *hilightInterval;

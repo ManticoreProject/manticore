@@ -14,6 +14,7 @@
 
 @implementation SummaryView
 
+@synthesize logDoc;
 @synthesize summary;
 @synthesize width;
 @synthesize hilightInterval;
@@ -28,6 +29,14 @@
     const char *s = g->StateColor(consumer);
     NSColor *c = [Utils colorFromFormatString:s];
     return c;
+}
+
+- (NSRect)hilightRect
+{
+    NSRect hilightRect = [self bounds];
+    hilightRect.origin.x = (self.bounds.size.width / [summary logInterval].width) * hilightInterval->x;
+    hilightRect.size.width = (self.bounds.size.width / [summary logInterval].width) * hilightInterval->width;
+    return hilightRect;
 }
 
 /// Draw a single horizontal slice of the summary view
@@ -93,11 +102,59 @@
     }
     if (hilightInterval && hilightInterval->width != summary.logInterval.width)
     {
-	NSRect hilightRect = [self bounds];
-	hilightRect.origin.x = (self.bounds.size.width / [summary logInterval].width) * hilightInterval->x;
-	hilightRect.size.width = (self.bounds.size.width / [summary logInterval].width) * hilightInterval->width;
 	[[[NSColor blueColor] colorWithAlphaComponent:0.6] set];
-	[NSBezierPath fillRect:hilightRect];
+	[NSBezierPath fillRect:[self hilightRect]];
+    }
+}
+
+- (void)mouseDown:(NSEvent *)e
+{
+    [super mouseDown:e];
+    NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
+    
+    if (NSPointInRect(p, [self hilightRect]))
+    {
+	dragging = YES;
+	dragStarted = dragContinued = p;
+    }
+    else {
+	dragging = NO;
+    }
+
+
+}
+
+- (void)mouseDragged:(NSEvent *)e
+{    
+    NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
+    
+    if (dragging)
+    {
+	int diff = p.x - dragContinued.x;
+	dragContinued = p;
+	struct LogInterval *logInterval = [[self logDoc] logInterval];
+	logInterval->x += ([summary logInterval].width / self.bounds.size.width) * diff;
+	if (logInterval->x < 0)
+	    logInterval->x = 0;
+	
+	[[self logDoc] flush];
+	
+    }
+    
+
+}
+
+- (void)mouseUp:(NSEvent *)e
+{
+    return;
+    NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
+    
+    if (dragging && p.x != dragStarted.x)
+    {
+	int diff = p.x - dragStarted.x;
+	struct LogInterval *interval = [[self logDoc] logInterval];
+	interval->x += ([summary logInterval].width / self.bounds.size.width) * diff;
+	[[self logDoc] flush];
     }
 }
 
