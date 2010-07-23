@@ -77,6 +77,7 @@
 	int skipped = 0;
 	for (int i = 0; i < vp.numDetails; ++i)
 	{
+
 	    if (![logDoc isInInterval:details[i]])
 	    {
 		// Pass.  Only read in details which are in the interval
@@ -107,11 +108,13 @@
     NSColor *oldColor;
     for (EventShape *e in shapes)
     {
+
 	if (! NSIntersectsRect(rect, [e bounds]))
 	{
 	    q++;
-	    //continue;
+	    continue;
 	}
+	
 	if (e == selected)
 	{
 	    oldColor = e.color;
@@ -234,10 +237,29 @@ int color_int = 0;
     r.size.height = bounds.size.height;
     event *start = Detail_State_start(d);
     event *end = Detail_State_end(d);
+    
+
    //NSLog(@"BandView: state start %#x and end %#x", start, end);
 
-    r.origin.x = [logDoc image:start ? Event_Time(*start) : logDoc.logInterval->x];
-    r.size.width = [logDoc image:(end ? Event_Time(*end) : logDoc.logInterval->x + logDoc.logInterval->width)] - r.origin.x;
+    uint64_t time;
+    r.origin.x = 0;
+    if (start)
+    {
+	time = Event_Time(*start);
+	if (time >= logDoc.logInterval->x)
+	    r.origin.x = [logDoc image:time];
+    }
+    r.size.width = [logDoc image:logDoc.logInterval->x + logDoc.logInterval->width];
+    
+    if (end)
+    {
+	time = Event_Time(*end);
+	if (time <= logDoc.logInterval->x + logDoc.logInterval->width)
+	    r.size.width = [logDoc image:time];
+    }
+
+
+
 
     if (r.size.width <= TINY_WIDTH) ;//return;
     State *state = [[State alloc] initWithRect:r
