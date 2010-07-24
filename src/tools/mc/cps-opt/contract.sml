@@ -138,43 +138,49 @@ structure Contract : sig
 		ST.tick cntVarRename;
 		dec' rhs;
 		doExp (rename'(env, lhs, rhs), selEnv, e))
-	    | C.Let([y], C.Select(i, x), e) => if unused y
-		then (
-		  ST.tick cntUnusedStmt;
-		  substDec (env, x);
-		  doExp (env, selEnv, e))
-		else let
-		  val x = subst(env, x)
-		  in
-		    case bindingOf x
-		     of C.VK_Let(C.Alloc(CTy.T_Tuple(false, _), xs)) => let
-			  val z = List.nth(xs, i)
-			  val (env, casts) = extendWithCasts {env = env, fromVars = [z], toVars = [y]}
-			  in
-			    ST.tick cntSelectConst;
-			    dec x; inc z;
-			    C.mkLets (casts, doExp (env, selEnv, e))
-			  end
-		      | _ => let
-                          val (env, selEnv, elim) = (case VMap.find (selEnv, x)
-                              of SOME l => (case List.find (fn (i',_) => i'=i) l
-                                             of SOME (entry as (_, y')) => (
-                                                ST.tick cntSelectRename;
-                                                (rename (env, y, y'), selEnv, true))
-                                              | NONE => (env,
+	    | C.Let([y], C.Select(i, x), e) => (
+              case CV.typeOf x
+               of CTy.T_Tuple (true, _) => 
+                  C.mkLet([y], C.Select(i,x), doExp (env, selEnv, e))
+                | _ => (
+                  if unused y
+		  then (
+		      ST.tick cntUnusedStmt;
+		      substDec (env, x);
+		      doExp (env, selEnv, e))
+		  else let
+		          val x = subst(env, x)
+		      in
+		          case bindingOf x
+		           of C.VK_Let(C.Alloc(CTy.T_Tuple(false, _), xs)) => let
+			          val z = List.nth(xs, i)
+			          val (env, casts) = extendWithCasts {env = env, fromVars = [z], toVars = [y]}
+			      in
+			          ST.tick cntSelectConst;
+			          dec x; inc z;
+			          C.mkLets (casts, doExp (env, selEnv, e))
+			      end
+		            | _ => let
+                                  val (env, selEnv, elim) = (
+                                      case VMap.find (selEnv, x)
+                                       of SOME l => (case List.find (fn (i',_) => i'=i) l
+                                                      of SOME (entry as (_, y')) => (
+                                                         ST.tick cntSelectRename;
+                                                         (rename (env, y, y'), selEnv, true))
+                                                       | NONE => (env,
                                                          VMap.insert (selEnv, x, (i,y)::l), false))
-                               | NONE => (env, VMap.insert (selEnv, x, [(i,y)]), false))
-			  val e = doExp (env, selEnv, e)
-			  in
-			    if elim orelse unused y
-			      then (
-				ST.tick cntUnusedStmt;
-                                dec x;
-				e)
-			      else C.mkLet([y], C.Select(i, x), e)
-			  end
-		    (* end case *)
-		  end
+                                        | NONE => (env, VMap.insert (selEnv, x, [(i,y)]), false))
+			          val e = doExp (env, selEnv, e)
+			      in
+			          if elim orelse unused y
+			          then (
+				      ST.tick cntUnusedStmt;
+                                      dec x;
+				      e)
+			          else C.mkLet([y], C.Select(i, x), e)
+			      end
+		      (* end case *)
+		  end))
 	    | C.Let([], C.Update(i, x, z), e) =>
 		C.mkLet([], C.Update(i, subst(env, x), subst(env, z)),
 		  doExp(env, selEnv, e))
