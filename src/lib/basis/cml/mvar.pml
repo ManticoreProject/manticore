@@ -53,19 +53,22 @@ structure MVar (*: sig
       (* put operation on M-variable *)
 	define @mPut (arg :[mvar, any] / exh : exh) : unit = 
 	    let mv : mvar = #0(arg)
-	    let mval : any = #1(arg) 
+	    let mval : any = (any)#1(arg) 
 	    let self : vproc = SchedulerAction.@atomic-begin () 
 	    SPIN_LOCK(mv, MV_LOCK) 
 	      case SELECT(MV_STATE, mv)
 	       of true =>  
+	            PRINT_MSG ("reached the true branch by put \n")
 	            SPIN_UNLOCK(mv, MV_LOCK)
 		    do SchedulerAction.@atomic-end(self)
 	            let e: exn = Fail(@"Put on full M-variable")
 		    throw exh (e)
 	        | false =>   
+		    PRINT_MSG ("reached the false branch by put \n")
 	            case SELECT(MV_WAITING, mv)
 		     of nil => 
 		          do UPDATE(MV_STATE, mv, true)
+			  PRINT_MSG ("set the state to true by put\n")
                           do UPDATE(MV_VALUE, mv, mval)
                           SPIN_UNLOCK(mv, MV_LOCK)
 			  do SchedulerAction.@atomic-end(self)
@@ -93,12 +96,15 @@ structure MVar (*: sig
 	    SPIN_LOCK(mv, MV_LOCK)
 	      case SELECT(MV_STATE, mv)
 	       of true =>
+	            PRINT_MSG ("reached the true branch by take\n")
 	            let mval : any = SELECT(MV_VALUE, mv)
 	            do UPDATE(MV_STATE, mv, false)
+		    PRINT_MSG ("set the state to false by take\n")
 		    SPIN_UNLOCK(mv, MV_LOCK)
 		    do SchedulerAction.@atomic-end(self)
 		    return (mval)
 	        | false  => 
+		    PRINT_MSG ("reached the false branch by take\n") 
 	            cont takeK (x : any) = return (x)
 		    (* in *)
 		      let fls : FLS.fls = FLS.@get-in-atomic(self)
