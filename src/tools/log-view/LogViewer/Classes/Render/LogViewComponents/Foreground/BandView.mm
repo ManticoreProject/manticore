@@ -259,8 +259,6 @@ int color_int = 0;
     }
 
 
-
-
     if (r.size.width <= TINY_WIDTH) ;//return;
     State *state = [[State alloc] initWithRect:r
 					 color:c
@@ -304,8 +302,19 @@ int color_int = 0;
     }
     NSColor *c = [self colorForInterval:d withGroup:g];
     NSRect r;
-    r.origin.x = [logDoc image:Event_Time(*start)];
-    r.size.width = [logDoc image:Event_Time(*end)] - r.origin.x;
+    uint64_t time;
+    
+    time = Event_Time(*start);
+    r.origin.x = 0;
+    if (time >= logDoc.logInterval->x)
+	r.origin.x = [logDoc image:time];
+    
+    time = Event_Time(*end);
+    r.size.width = [logDoc image:logDoc.logInterval->x + logDoc.logInterval->width];
+    if (time <= logDoc.logInterval->x + logDoc.logInterval->width)
+	r.size.width = [logDoc image:time];
+
+    
     if (r.size.width <= TINY_WIDTH) return;
     r.size.height = DEFAULT_INTERVAL_HEIGHT;
     r.origin.y = [self intervalHeightForIntervalOfHeight:r.size.height forDetail:(Detail)d];

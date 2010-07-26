@@ -59,12 +59,54 @@
 
     int32_t src_vpId = Detail_Dependent_src_VpId(d);
     int32_t dst_vpId = Detail_Dependent_Dst_VpId(dep_dst);
+    
+    uint64_t startT = Event_Time(*s);
+    uint64_t endT   = Event_Time(*r);
+    uint64_t span = endT - startT;
+    
+    if (startT > logDoc.logInterval->x + logDoc.logInterval->width ||
+	endT   < logDoc.logInterval->x)
+	return nil;
+    
+    if (startT >= logDoc.logInterval->x)
+    {
+	p1.x = [logDoc image:startT];
+	p1.y = [self heightForVp:src_vpId];
+    }
+    else
+    {
+	/* The start of the event is farther left than we can display. We must
+	   recalculate the y coordinate of the left start point. */
+	uint64_t diff = logDoc.logInterval->x - startT;
+	double ratio = (double)diff / span;
+	p1.x = 0;
+	p1.y = [self heightForVp:src_vpId];
+	if (p1.y > [self heightForVp:dst_vpId])
+	    p1.y -= (p1.y - [self heightForVp:dst_vpId]) * ratio;
+	else
+	    p1.y += ([self heightForVp:dst_vpId] - p1.y) * ratio;
 
-    p1.x = [logDoc image:Event_Time(*s)];
-    p1.y = [self heightForVp:src_vpId];
+    }
 
-    p2.x = [logDoc image:Event_Time(*r)];
-    p2.y = [self heightForVp:dst_vpId];
+    if (endT <= logDoc.logInterval->x + logDoc.logInterval->width)
+    {
+	p2.x = [logDoc image:endT];
+	p2.y = [self heightForVp:dst_vpId];
+    }
+    else
+    {
+	uint64_t diff = endT - (logDoc.logInterval->x + logDoc.logInterval->width);
+	double ratio = (double)diff / span;
+	p2.x = [logDoc image:logDoc.logInterval->x + logDoc.logInterval->width];
+	p2.y = [self heightForVp:dst_vpId];
+	if (p2.y > [self heightForVp:src_vpId])
+	    p2.y -= (p2.y - [self heightForVp:src_vpId]) * ratio;
+	else
+	    p2.y += ([self heightForVp:src_vpId] - p2.y) * ratio;
+
+    }
+    
+
 
  //   NSLog(@" message %x from vp %d to vp %d from %f, %f to %f, %f",
 	//    d,
