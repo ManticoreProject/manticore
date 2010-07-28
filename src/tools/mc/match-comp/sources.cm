@@ -10,6 +10,7 @@ Library
 
   structure MatchCompile
   structure MatchCheck
+  structure TestMatchCheck
 
 is
 
@@ -30,3 +31,4 @@ is
   match-to-dfa.sml
   match-util.sml
   match-check.sml
+  test-match-check.sml
