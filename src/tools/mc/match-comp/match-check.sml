@@ -42,7 +42,9 @@
  *   I have not implemented those adaptations here.
  *)
 
-(* TODO: Errors should not all be raise Fail. *)
+(* FIXME Bogus locations for errors 
+ *   (this issue exists elsewhere too e.g. match-compile)... 
+ *)
 
 structure MatchCheck (* : sig
 
@@ -52,15 +54,45 @@ structure MatchCheck (* : sig
 
   end *) = struct
 
+  val patToString : AST.pat -> string = let
+    fun tos (AST.ConPat (c, ts, p)) =
+          (case p
+	     of AST.TuplePat _ => DataCon.nameOf c ^ tos p
+	      | _ => DataCon.nameOf c ^ "(" ^ tos p ^ ")")
+      | tos (AST.TuplePat ps) = 
+          String.concat ["(", String.concatWith "," (List.map tos ps), ")"]
+      | tos (AST.VarPat x) = Var.nameOf x
+      | tos (AST.WildPat _) = "_"
+      | tos (AST.ConstPat (AST.DConst (c, _))) = DataCon.nameOf c
+      | tos (AST.ConstPat (AST.LConst (lit, ty))) = Literal.toString lit
+    in
+      tos
+    end
+
+  type err_stream = MatchErrors.err_stream
+
 (* Bugs are things that *really* shouldn't happen, in the sense they will only
- * occur if the code itself is flawed or some other part of the compiler (i.e.
+ * occur if the code here is flawed or some other part of the compiler (e.g.
  * the typechecker) isn't doing its job.
  *)
   fun bug msg = raise Fail msg
 
-  fun errRedundant msg  = raise Fail "todo"
-  fun warnInexMatch msg = raise Fail "todo"
-  fun warnInexBind msg  = raise Fail "todo"
+  val bogusLocation = (0,0) (* FIXME *)
+
+  fun errRedundant errStrm msg = 
+    (TextIO.print (msg ^ "\n");
+     MatchErrors.errRedundantMatch (errStrm, bogusLocation))
+
+  fun warnInexMatch errStrm msg = 
+    (TextIO.print (msg ^ "\n");
+     MatchErrors.warnNonexhaustiveMatch (errStrm, bogusLocation))
+
+  fun warnInexBind errStrm p = let
+    val pStr = patToString p
+    in
+      TextIO.print ("inexhaustive binding: pattern " ^ pStr ^ "\n");
+      MatchErrors.warnNonexhaustiveBind (errStrm, bogusLocation)
+    end
 
   structure DConSet = RedBlackSetFn (struct
 				       type ord_key = AST.dcon
@@ -364,7 +396,7 @@ structure MatchCheck (* : sig
 		 | AST.VarPat _ => bug "sL: unexpected VarPat in pattern matrix"
 		 | _ => lp (pss, acc)
 	       (* end case *))
-	  | lp ([]::_, _) = raise Fail "?"
+	  | lp ([]::_, _) = bug "sL: malformed pattern matrix"
         in
 	  lp (p, [])
 	end
@@ -381,24 +413,24 @@ structure MatchCheck (* : sig
 	    of AST.TuplePat rs => 
                  if List.length rs = arity 
 		 then lp (pss, (rs@ps)::acc)
-		 else raise Fail "BUG: tuple arity"
+		 else bug "sT: tuple arity"
 	     | AST.WildPat (Types.TupleTy ts) => let
                  val wilds = List.map AST.WildPat ts
                  in
 		   lp (pss, (wilds@ps)::acc)
 	         end
 	     | AST.WildPat t => 
-                 raise Fail "unexpected WildPat with non-tuple type"
+                 bug "sT: unexpected WildPat with non-tuple type"
 	     | AST.VarPat _ =>
-                 raise Fail "unexpected VarPat in pattern matrix"
+                 bug "sT: unexpected VarPat in pattern matrix"
 	     | AST.ConPat _ =>
                  (* ConPats shouldn't be in the same column as tuples *)
-                 raise Fail "unexpected ConPat in pattern matrix"
+                 bug "sT: unexpected ConPat in pattern matrix"
 	     | AST.ConstPat _ =>
                  (* ConstPats shouldn't be in the same column as tuples *)
-                 raise Fail "unexpected ConstPat in pattern matrix"
+                 bug "sT: unexpected ConstPat in pattern matrix"
 	   (* end case *))
-      | lp ([]::_, _) = raise Fail "?"
+      | lp ([]::_, _) = bug "sT: malformed pattern matrix"
     in
       lp (p, [])
     end
@@ -413,9 +445,9 @@ structure MatchCheck (* : sig
           (* TuplePats are treated as ConPats *)
           lp (t, acc)
       | lp ((AST.VarPat(_)::_)::_, _) = 
-          raise Fail "unexpected VarPat in pattern matrix"
+          bug "d: unexpected VarPat in pattern matrix"
       | lp ((AST.ConstPat(_)::_)::t, acc) = lp (t, acc)
-      | lp ([]::_, _) = raise Fail "?"
+      | lp ([]::_, _) = bug "d: malformed pattern matrix"
     in
       lp (p, [])
     end
@@ -435,18 +467,18 @@ structure MatchCheck (* : sig
               val msg = "pat matrix width = " ^ Int.toString width ^
 			", vector width = " ^ Int.toString vlen
               in
-                raise Fail ("unequal widths: " ^ msg)
+                bug ("u: unequal widths: " ^ msg)
               end
           end
         val (q, qs) =
           (case v 
 	    of h::t => (h, t)
-	     | nil => raise Fail "broken invariant")
+	     | nil => bug "u: broken invariant")
         in
 	  case q
 	   of AST.ConPat (c, ts, r) => u (s (c, p), r::qs)
 	    | AST.ConstPat k => u (sK (k, p), qs)
-	    | AST.VarPat x => raise Fail "unexpected VarPat in pattern matrix"
+	    | AST.VarPat x => bug "u: unexpected VarPat in pattern matrix"
 	    | AST.WildPat ty => wild (p, qs)
 	    | AST.TuplePat rs => let
                 val arity = List.length rs 
@@ -516,32 +548,32 @@ structure MatchCheck (* : sig
   val redundant    = not o irredundant
 
 (* checkMatchList checks that the match list is both exhaustive and irredundant. *)
-  fun checkMatchList (ms: AST.match list) : unit = let
+  fun checkMatchList (err: err_stream, ms: AST.match list) : unit = let
     val p = mkPatMat ms
     in
-      if inexhaustive p then raise Fail "inexhaustive"
-      else if redundant p then raise Fail "redundant"
+      if inexhaustive p then warnInexMatch err "inexhaustive match"
+      else if redundant p then errRedundant err "redundant match"
       else ()
     end
 
 (* checkHandleMatches checks that the match list in a handle is not redundant. *)
 (* It does not check for exhaustiveness. *)
-  fun checkHandleMatches (ms: AST.match list) : unit = let
+  fun checkHandleMatches (err: err_stream, ms: AST.match list) : unit = let
     val p = mkPatMat ms
     in
-      if redundant p then raise Fail "redundant"
+      if redundant p then errRedundant err "redundant match"
       else ()
     end
 
 (* checkExp checks all match lists recursively in an expression. *)
-  val checkExp : AST.exp -> unit = let
+  fun checkExp (err: err_stream, e: AST.exp) : unit = let
     fun exp (AST.LetExp (b, e)) = (binding b; exp e)
       | exp (AST.IfExp (e1, e2, e3, _)) = (exp e1; exp e2; exp e3)
-      | exp (AST.CaseExp (e, ms, _)) = (exp e; checkMatchList ms)
+      | exp (AST.CaseExp (e, ms, _)) = (exp e; checkMatchList (err, ms))
       | exp (AST.PCaseExp (es, ms, _)) = List.app exp es
           (* note: pcase matches are not checked, other than that *)
           (* they are typechecked elsewhere *)
-      | exp (AST.HandleExp (e, ms, _)) = (exp e; checkHandleMatches ms)
+      | exp (AST.HandleExp (e, ms, _)) = (exp e; checkHandleMatches (err, ms))
           (* note: handle patterns are checked for redundancy only *)
       | exp (AST.RaiseExp (e, _)) = exp e
       | exp (AST.FunExp (_, e, _)) = exp e
@@ -566,10 +598,10 @@ structure MatchCheck (* : sig
     | binding (AST.FunBind fs) = lambdas fs
     | binding (AST.PrimVBind _) = ()
     | binding (AST.PrimCodeBind _) = ()
-  and pat p = if irrefutable p then () else raise Fail "refutable pat in binding"
+  and pat p = if irrefutable p then () else warnInexBind err p
   and lambdas fs = List.app (fn AST.FB (_, _, e) => exp e) fs
   in
-    exp
+    exp e
   end
 
 end

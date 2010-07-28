@@ -2,16 +2,7 @@ structure TestMatchCheck = struct
 
 (* pretty printers *)
 
-  fun pat (AST.ConPat (c, ts, p)) =
-        (case p
-	  of AST.TuplePat _ => DataCon.nameOf c ^ pat p
-	   | _ => DataCon.nameOf c ^ "(" ^ pat p ^ ")")
-    | pat (AST.TuplePat ps) = 
-        String.concat ["(", String.concatWith "," (List.map pat ps), ")"]
-    | pat (AST.VarPat x) = Var.nameOf x
-    | pat (AST.WildPat _) = "_"
-    | pat (AST.ConstPat (AST.DConst (c, _))) = DataCon.nameOf c
-    | pat (AST.ConstPat (AST.LConst (lit, ty))) = Literal.toString lit
+  val pat = MatchCheck.patToString
 
   fun patmat (p: AST.pat list list) : string = let
     fun lp ([], acc) = String.concatWith "\n" (List.rev acc)
@@ -76,7 +67,7 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
     val _ = println (patmat p)
     in
       (println "Testing...";
-       MatchCheck.checkExp e;
+       MatchCheck.checkExp (Error.mkErrStream "/var/tmp/bogus-file", e);
        println "success!")
     end
 
