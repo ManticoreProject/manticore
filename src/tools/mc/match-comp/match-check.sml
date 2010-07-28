@@ -361,7 +361,7 @@ structure MatchCheck (* : sig
 		     then lp (pss, ps::acc)
 		     else lp (pss, acc)
 		 | AST.WildPat _ => lp (pss, ps::acc)
-		 | AST.VarPat _ => raise Fail "unexpected VarPat in pattern matrix"
+		 | AST.VarPat _ => bug "sL: unexpected VarPat in pattern matrix"
 		 | _ => lp (pss, acc)
 	       (* end case *))
 	  | lp ([]::_, _) = raise Fail "?"
