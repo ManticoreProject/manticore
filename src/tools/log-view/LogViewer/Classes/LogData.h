@@ -53,9 +53,11 @@ struct LogFileDesc;
 - (LogData *)initWithFilename:(NSString *)filename
 	       andLogFileDesc:(struct LogFileDesc *)logDesc;
 
-- (uint64_t)start;
-- (uint64_t)firstTime;
-- (uint64_t)lastTime;
+
+@property (readonly) uint64_t start;
+@property (readonly) uint64_t firstTime;
+@property (readonly) uint64_t lastTime;
+
 
 @property (readonly) NSArray *allStates;
 @property (readonly) NSArray *dependentDetails;

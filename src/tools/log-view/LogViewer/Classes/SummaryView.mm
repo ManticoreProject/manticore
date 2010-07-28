@@ -130,13 +130,22 @@
     
     if (dragging)
     {
-	int diff = p.x - dragContinued.x;
+	CGFloat diff = p.x - dragContinued.x;
 	dragContinued = p;
 	struct LogInterval *logInterval = [[self logDoc] logInterval];
-	logInterval->x += ([summary logInterval].width / self.bounds.size.width) * diff;
-	if (logInterval->x < 0)
-	    logInterval->x = 0;
+	struct LogInterval *maxLogInterval = [[self logDoc] maxLogInterval];
 	
+	int moveBy = ([summary logInterval].width / self.bounds.size.width) * diff;
+	
+	/* Don't allow the user to drag past either end of the screen. */
+	if (moveBy < 0 && abs(moveBy) > logInterval->x)
+	    logInterval->x = 0;
+	else if (moveBy > 0 && moveBy + logInterval->x + logInterval->width > maxLogInterval->width)
+	    logInterval->x = maxLogInterval->width - logInterval->width;
+	else
+	    logInterval->x += moveBy;
+
+		
 	[[self logDoc] flush];
 	
     }
@@ -147,15 +156,24 @@
 - (void)mouseUp:(NSEvent *)e
 {
     return;
+    
+    /*
     NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
     
     if (dragging && p.x != dragStarted.x)
     {
-	int diff = p.x - dragStarted.x;
-	struct LogInterval *interval = [[self logDoc] logInterval];
-	interval->x += ([summary logInterval].width / self.bounds.size.width) * diff;
+	CGFloat diff = p.x - dragStarted.x;
+	struct LogInterval *logInterval = [[self logDoc] logInterval];
+	struct LogInterval *maxLogInterval = [[self logDoc] maxLogInterval];
+
+	logInterval->x += ([summary logInterval].width / self.bounds.size.width) * diff;
+	if (logInterval->x <= 0)
+	    logInterval->x = 1;
+	if (logInterval->x + logInterval->width > maxLogInterval->x + maxLogInterval->width)
+	    logInterval->x = maxLogInterval->x + maxLogInterval->width - logInterval->width;
 	[[self logDoc] flush];
     }
+     */
 }
 
 @end

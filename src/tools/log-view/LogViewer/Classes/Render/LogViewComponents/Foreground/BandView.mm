@@ -92,7 +92,7 @@
 		    [self addDetail:details[i]];
 	    }
 	}
-	NSLog(@"BandView for vProc %d skipped adding %d events", vp.vpId, skipped);
+	//NSLog(@"BandView for vProc %d skipped adding %d events", vp.vpId, skipped);
     }
     return self;
 }

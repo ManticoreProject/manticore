@@ -788,19 +788,11 @@ double cur_interval_height = 0.0;
 
 @synthesize filename;
 @synthesize vProcs;
+@synthesize start;
+@synthesize firstTime;
+@synthesize lastTime;
 
-- (uint64_t)start
-{
-    return start;
-}
-- (uint64_t)firstTime
-{
-    return firstTime;
-}
-- (uint64_t)lastTime
-{
-    return lastTime;
-}
+
 
 
 #pragma mark fields of header

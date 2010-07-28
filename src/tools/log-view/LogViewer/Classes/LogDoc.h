@@ -53,6 +53,8 @@ enum ZoomLevel {
 
     /// The time interval of the log file which will be displayed
     struct LogInterval *logInterval;
+    /// The total time interval of the log file
+    struct LogInterval *maxLogInterval;
 
     /// Property to be manipulated in InterfaceBuilder
     /// bound to the height of the horizontal scrollbar of scrollView
@@ -79,6 +81,7 @@ enum ZoomLevel {
 @property (readonly) NSOutlineView *outlineView;
 @property (readonly) OutlineViewDataSource *outlineViewDataSource;
 @property (readwrite, assign) struct LogInterval *logInterval;
+@property (readonly) struct LogInterval *maxLogInterval;
 @property (readonly) struct LogFileDesc *logDesc;
 @property (readonly) BOOL enabled;
 @property (readonly) GroupFilter *filter;

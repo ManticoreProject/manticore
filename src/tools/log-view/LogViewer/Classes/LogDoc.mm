@@ -56,6 +56,7 @@ static LogFileDesc *LFDCache = 0;
 @synthesize outlineView;
 @synthesize outlineViewDataSource;
 @synthesize logInterval;
+@synthesize maxLogInterval;
 @synthesize enabled;
 @synthesize viewController;
 
@@ -248,6 +249,8 @@ static LogFileDesc *LFDCache = 0;
 				 andLogFileDesc:self.logDesc];
     // Initialize logInterval according to the initialLogInterval configuration function
     self.logInterval = [self initialLogInterval:logData];
+    maxLogInterval = (LogInterval *) malloc(sizeof(struct LogInterval));
+    *maxLogInterval = *self.logInterval;
 
 
     outlineViewDataSource = [[OutlineViewDataSource alloc]
@@ -389,8 +392,18 @@ static LogFileDesc *LFDCache = 0;
 {
    // NSLog(@"pivot = %qu", pivot);
     self.printLogInterval;
-    logInterval->x = pivot - scale * (pivot - logInterval->x);
-    logInterval->width = logInterval->width * scale;	
+    
+    if (pivot < scale * (pivot - logInterval->x))
+	logInterval->x = 0;
+    else
+	logInterval->x = pivot - scale * (pivot - logInterval->x);
+    
+    logInterval->width = logInterval->width * scale;
+
+    if (logInterval->x + logInterval->width > maxLogInterval->x + maxLogInterval->width)
+    {
+	logInterval->width = maxLogInterval->x + maxLogInterval->width - logInterval->x;
+    }
     [self flush];
 }
 - (void)zoomBy:(double)scale
@@ -483,13 +496,13 @@ uint64_t g_counter = 0;
 		return true;
 	    }
 	    if (c == NULL) {
-		NSLog(@"State group begins before start of interval. Time %qx, first is %qx", b->timestamp, fst);
+		//NSLog(@"State group begins before start of interval. Time %qx, first is %qx", b->timestamp, fst);
 		/*FIXME: below conditional is commented out, because it seems
 		  to break things. try zooming in with it commented in - you'll
 		  notice that there is empty space on the left side of the main
 		  display, because this conditional is returning false when it
 		  shouldn't be. */
-		return true;//Event_Time(*b) >= fst;
+		return Event_Time(*b) >= fst;
 	    }
 	    if (b == NULL) {
 		return Event_Time(*c) <= lst;
