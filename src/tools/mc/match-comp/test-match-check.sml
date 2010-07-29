@@ -1,19 +1,16 @@
+(* test-match-check,sml
+ *
+ * COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu/)
+ * All rights reserved.
+ *
+ *)
+
 structure TestMatchCheck = struct
 
 (* pretty printers *)
 
   val pat = MatchCheck.patToString
-
-  fun patmat (p: AST.pat list list) : string = let
-    fun lp ([], acc) = String.concatWith "\n" (List.rev acc)
-      | lp (ps::pss, acc) = let
-          val s = String.concatWith "\t" (List.map pat ps)
-          in
-	    lp (pss, (s ^ "\t=> ...")::acc)
-	  end
-    in
-      lp (p, [])
-    end
+  val patmat = MatchCheck.patmatToString
 
 (* constants and utilities for testing *)
 
@@ -40,7 +37,7 @@ structure TestMatchCheck = struct
 
 fun pairTy (t, u) = Types.TupleTy [t, u]
 
-(* a made-up datatypes for testing purpose *)
+(* made-up datatypes for testing purposes *)
 
 (* datatype tester = A of int | B of bool * int | C *)
   val testerCon = TyCon.newDataTyc (Atom.atom "tester", [])
@@ -66,15 +63,16 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
     val p = MatchCheck.mkPatMat (matchesOf e)
     val _ = println (patmat p)
     in
-      (println "Testing...";
+       println "\nTesting...";
        MatchCheck.checkExp (Error.mkErrStream "/var/tmp/bogus-file", e);
-       println "success!")
+       println "done."
     end
 
   fun testExp expectingSuccess e = 
-    (if expectingSuccess then println "***** expecting SUCCESS:"
-     else println "***** expecting FAILURE:";
-     testExp' e)
+    (TextIO.print "***** expecting ";
+     println (if expectingSuccess then "SUCCESS:" else "FAILURE:");
+     testExp' e;
+     println "")
 
   fun test 0 = let
         val e = mkCase [AST.WildPat Basis.boolTy]
@@ -104,7 +102,7 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
     | test 5 = let
         val e = mkCase [AST.ConstPat tru, AST.ConstPat fls]
         in
-          testExp false e
+          testExp true e
         end
     | test 6 = let
         val e = mkCase [AST.TuplePat [AST.ConstPat tru, AST.ConstPat tru],
@@ -156,6 +154,7 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
 	  testExp true e
         end
     | test 14 = let
+(* FIXME *)
         val e =
           mkCase [AST.ConstPat (AST.DConst (testerC, [])),
 		  AST.ConPat (testerA, [], AST.WildPat Basis.intTy),
@@ -277,6 +276,6 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
 	  testExp true e
         end
 (* so far it has passed (i.e., behaved as expected) all my tests... *)
-    | test n = raise Fail ("no such test: " ^ Int.toString n)
+    | test n = println ("***** no such test: " ^ Int.toString n)
 
 end

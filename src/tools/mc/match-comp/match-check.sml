@@ -42,8 +42,11 @@
  *   I have not implemented those adaptations here.
  *)
 
-(* FIXME Bogus locations for errors 
- *   (this issue exists elsewhere too e.g. match-compile)... 
+(* TODO (maybe): HandlePats are currently not supported.
+ *)
+
+(* FIXME Bogus locations for errors (this issue exists elsewhere too, e.g.,
+ *   match-compile).
  *)
 
 structure MatchCheck (* : sig
@@ -54,6 +57,15 @@ structure MatchCheck (* : sig
 
   end *) = struct
 
+(* bug : string -> 'a (raises an exn)
+ * Bugs are things that *really* shouldn't happen, in the sense they will only
+ * occur if the code here is flawed or some other part of the compiler (e.g.
+ * the typechecker) isn't doing its job.
+ *)
+  fun bug msg = raise Fail ("BUG. " ^ msg)
+
+(* pretty printers *)
+
   val patToString : AST.pat -> string = let
     fun tos (AST.ConPat (c, ts, p)) =
           (case p
@@ -62,20 +74,28 @@ structure MatchCheck (* : sig
       | tos (AST.TuplePat ps) = 
           String.concat ["(", String.concatWith "," (List.map tos ps), ")"]
       | tos (AST.VarPat x) = Var.nameOf x
-      | tos (AST.WildPat _) = "_"
+      | tos (AST.WildPat ty) = "(_:" ^ TypeUtil.toString ty ^ ")"
       | tos (AST.ConstPat (AST.DConst (c, _))) = DataCon.nameOf c
       | tos (AST.ConstPat (AST.LConst (lit, ty))) = Literal.toString lit
     in
       tos
     end
 
-  type err_stream = MatchErrors.err_stream
+  fun patmatToString (p: AST.pat list list) : string = let
+    fun tos ([], acc) = String.concatWith "\n" (List.rev acc)
+      | tos (ps::pss, acc) = let
+          val s = String.concatWith "\t" (List.map patToString ps)
+          in
+	    tos (pss, (s ^ "\t=> ...")::acc)
+	  end
+    in
+      tos (p, [])
+    end
 
-(* Bugs are things that *really* shouldn't happen, in the sense they will only
- * occur if the code here is flawed or some other part of the compiler (e.g.
- * the typechecker) isn't doing its job.
- *)
-  fun bug msg = raise Fail msg
+  fun println s = (TextIO.print s; TextIO.print "\n")
+
+(* error handling *)
+  type err_stream = MatchErrors.err_stream
 
   val bogusLocation = (0,0) (* FIXME *)
 
@@ -98,15 +118,16 @@ structure MatchCheck (* : sig
 				       type ord_key = AST.dcon
 				       val compare  = DataCon.compare
 				     end)
-  fun dconSetFromList cs = DConSet.addList (DConSet.empty, cs)
 
   structure LitSet = RedBlackSetFn (struct
 				      type ord_key = Literal.literal
 				      val compare  = Literal.compare
 				    end)
-  fun litSetFromList lits = LitSet.addList (LitSet.empty, lits)
 
   type typed_lit_set = Types.ty * LitSet.set
+
+  fun dconSetFromList cs  = DConSet.addList (DConSet.empty, cs)
+  fun litSetFromList lits = LitSet.addList (LitSet.empty, lits)
 
   val unitLitSet = litSetFromList [Literal.unitLit]
   val boolLitSet = litSetFromList [Literal.trueLit, Literal.falseLit]
@@ -183,65 +204,46 @@ structure MatchCheck (* : sig
     | elimVarPat (p as AST.ConstPat _) = p
 
 (* mkPatMat is a smart constructor for pattern matrices. *)
-(* A patmat is built from a match list as follows. *)
-(* If you select the patterns only out of a match list, you will have *)
-(* A) a list of conpats with vars, wilds, and dconsts, *)
-(* B) a list of tuples of some fixed arity n with vars and wilds, or *)
-(* C) a list of consts, vars, and wilds. *)
-(* In cases A and C, the patmat is of width 1, the list of *)
-(*   singleton lists of patterns. *)
-(* In case B, *)
-(* - all tuple patterns are split into their n subpatterns, and   *)
-(* - all vars and wilds generate n wilds of the appropriate types. *)
-  fun mkPatMat (ms: AST.match list) : patmat = let
-    val ps = List.map (elimVarPat o patOf) ms
-    in
-      case ms 
-       of [] => bug "empty match list"
-	| _ => if List.exists isTuplePat ps 
-	       then tups ps
-	       else List.map (fn p => [p]) ps
-    end
-(* tups takes two passes over the given pattern list: *)
-(* the first pass gets the tuple type of all the patterns, and verifies *)
-(*   that the tuple type is shared among all patterns *)
-(*   (which is probably not strictly necessary) *)
-(* and the second pass builds the corresponding pattern matrix as *)
-(*   described in the previous comment (case B). *)
-  and tups (ps: AST.pat list) : patmat = let
-    fun getTypes ([], SOME (Types.TupleTy ts)) = ts
-      | getTypes ([], SOME _) = bug "expected tuple ty"
-      | getTypes ([], NONE) = bug "no type found"
-      | getTypes ((p as AST.TuplePat _)::t, NONE) = 
-          getTypes (t, SOME (TypeOf.pat p))
-      | getTypes ((p as AST.TuplePat _)::t, SOME ty) = 
-          if TypeUtil.same (TypeOf.pat p, ty)
-          then getTypes (t, SOME ty)
-	  else bug "tups (TuplePat): ill-typed match list"
-      | getTypes ((p as AST.WildPat ty)::t, NONE) = 
-          getTypes (t, SOME ty)
-      | getTypes ((p as AST.WildPat ty')::t, SOME ty) = 
-          if TypeUtil.same (ty', ty)
-	  then getTypes (t, SOME ty)
-	  else bug "tups (WildPat): ill-typed match list"
-      | getTypes ((p as AST.VarPat _)::t, _) =
-	  (* VarPats should have been replaced by WildcardPats *)
-          bug "tups: unexpected VarPat"
-      | getTypes (AST.ConPat _::_, _)   = 
-          (* ConPats should not occur in the same match list as TuplePats *)
-          bug "tups: unexpected ConPat"
-      | getTypes (AST.ConstPat _::_, _) = 
-          (* ConstPats should not occur in the same match list as TuplePats *)
-          bug "tups: unexpected ConstPat"
-    val wilds = List.map AST.WildPat (getTypes (ps, NONE))
+(* All variables are replaced with appropriately-typed wildcards, and *)
+(*   a singleton list is made of each pattern. *)
+  fun mkPatMat (ms: AST.match list) : patmat =
+    (case ms 
+       of [] => bug "mkPatMat: empty match list"
+	| _  => List.map (fn m => [elimVarPat (patOf m)]) ms)
+
+(* mkPatMatP builds a patmat from pmatches.
+ * The implementation is by reduction to a previous problem: it merges all 
+ *   pattern lists into tuples and calls mkPatMat on that.
+ *)
+  fun mkPatMatP (ms: AST.pmatch list) : patmat = let
+    fun getTupleTy ([], optTys) =
+          (case optTys
+	     of SOME ts => Types.TupleTy ts
+	      | NONE => bug "mkPatMatP: no types found?")
+      | getTupleTy (AST.PMatch (ps, _)::ms, optTys) = let
+          val ts' = List.map TypeOf.ppat ps
+          in
+            case optTys
+              of SOME ts =>
+	           if ListPair.all TypeUtil.same (ts, ts') 
+		   then getTupleTy (ms, SOME ts)
+		   else bug "mkPatMatP: ill-typed pmatches in parallel case"
+	       | NONE => getTupleTy (ms, SOME ts')
+	  end
+      | getTupleTy (AST.Otherwise(_)::ms, optTys) = getTupleTy (ms, optTys) 
+    fun elim (AST.NDWildPat ty) = AST.WildPat ty
+      | elim (h as AST.HandlePat _) = 
+          (* TODO: consider adding a HandlePat variant for patmats *)
+          (* I think handles would count nothing towards redundancy or *)    
+          (* inexhaustiveness checks. *)
+          raise Fail "mkPatMatP: HandlePat not supported"
+      | elim (AST.Pat p) = elimVarPat p
+    val wild = AST.WildPat (getTupleTy (ms, NONE))
     fun trx ([], acc) = List.rev acc
-      | trx (AST.TuplePat(ps)::t, acc) = trx (t, ps::acc)
-      | trx (AST.WildPat(_)::t, acc)   = trx (t, wilds::acc)
-      | trx (AST.VarPat(_)::t, acc) = bug "trx: unexpected VarPat"
-      | trx (AST.ConPat(_)::_, _)   = bug "trx: unexpected ConPat"
-      | trx (AST.ConstPat(_)::_, _) = bug "trx: unexpected ConstPat"
+      | trx (AST.PMatch (ps, e)::t, acc) = trx (t, [AST.TuplePat (List.map elim ps)]::acc)
+      | trx (AST.Otherwise(_)::t, acc) = trx (t, [wild]::acc)
     in
-      trx (ps, [])
+      trx (ms, [])
     end
 
 (* dim returns the dimensions of a pattern matrix. *)
@@ -349,7 +351,7 @@ structure MatchCheck (* : sig
           lp (pss, acc)
       | lp ((AST.VarPat(_)::ps)::pss, acc) = 
           bug "s (VarPat): unexpected VarPat in pattern matrix"
-      | lp (((w as AST.WildPat _)::ps)::pss, acc) = lp (pss, (w::ps)::acc)
+      | lp (((w as AST.WildPat _)::ps)::pss, acc) = lp (pss, (conWilds(c)@ps)::acc)
       | lp ((AST.ConstPat(k)::ps)::pss, acc) = 
           (case k
 	    of AST.DConst (c', ts) => if DataCon.same (c, c') 
@@ -455,9 +457,24 @@ structure MatchCheck (* : sig
 (* u tests whether pattern vector v is useful with respect to patmat p. *)
 (*  invariant: width of p equals width of v (checked) *)
   fun u (p: patmat, v: patlist) : bool = let
+(* (\* +debug *\) *)
+(*     val _ = println "-----" *)
+(*     val _ = println "u:" *)
+(*     val _ = println "p is" *)
+(*     val _ = println (patmatToString p) *)
+(*     val _ = println "v is" *)
+(*     val _ = println (patmatToString [v]) *)
+(*     val _ = println "v's type(s):" *)
+(*     val _ = println (String.concatWith ";" (List.map (TypeUtil.toString o TypeOf.pat) v)) *)
+(*     val _ = println "" *)
+(* (\* -debug *\) *)
     val {width, length} = dim p
+(* (\* +debug *\) *)
+(*     val _ = println ("width = " ^ Int.toString width ^  *)
+(* 		     ", length = " ^ Int.toString length) *)
+(* (\* -debug *\) *)
     in
-      if (width = 0) then (length = 0) (* note length cannot be negative *)
+      if (width = 0) then (length = 0)
       else let
         val chk = let
 	  val vlen = List.length v 
@@ -479,7 +496,24 @@ structure MatchCheck (* : sig
 	   of AST.ConPat (c, ts, r) => u (s (c, p), r::qs)
 	    | AST.ConstPat k => u (sK (k, p), qs)
 	    | AST.VarPat x => bug "u: unexpected VarPat in pattern matrix"
-	    | AST.WildPat ty => wild (p, qs)
+	    | AST.WildPat ty => 
+                (case ty
+		   of Types.TupleTy [] (* unit *) => wild (p, qs)
+		    | Types.TupleTy ts => let
+(*                       (\* +debug *\) *)
+(*    	                val _ = println ("found (_ : " ^ TypeUtil.toString ty ^ ")") *)
+(* 			val _ = println "p is" *)
+(* 			val _ = println (patmatToString p) *)
+(* 			val _ = println "v is" *)
+(* 			val _ = println (patmatToString [v]) *)
+(* 	              (\* -debug *\) *)
+                      (* break apart the first column of the patmat *)
+                        val p' = breakTups p
+			val ws = List.map AST.WildPat ts
+                        in
+                          u (p', ws @ qs)
+		        end
+		    | _ => wild (p, qs))
 	    | AST.TuplePat rs => let
                 val arity = List.length rs 
                 in 
@@ -495,26 +529,51 @@ structure MatchCheck (* : sig
       val (ty, sigma) = firstColLits p
       in
         if completeLits (ty, sigma) then let
+          val _ = () (* println ("lits of type " ^ TypeUtil.toString ty ^ " in first col, complete set") *)
           val ls = LitSet.listItems sigma
           fun u' l = u (sL (l, ty, p), qs)
           in
             List.exists u' ls
 	  end
-        else
-          u (d p, qs)
+        else let
+          val _ = () (* println ("lits of type " ^ TypeUtil.toString ty ^ " in first col, incomplete set") *)
+          in
+            u (d p, qs)
+          end
       end
     else let
+      val _ = () (* println "no lits in first col" *)
       val sigma = firstColCons p
       in
         if completeCons sigma then let
+          val _ = () (* println "all constructors found in first col" *)
           val cs = DConSet.listItems sigma
           fun u' c = u (s (c, p), conWilds(c) @ qs)
           in
             List.exists u' cs
           end        
-        else
-          u (d p, qs)
+        else let
+          val _ = () (* println "not all constructors found in first col" *)
+          in
+            u (d p, qs)
+	  end
       end
+  and breakTups (p: patmat) : patmat = let
+    fun lp ([], acc) = List.rev acc
+      | lp ((AST.TuplePat(ps)::qs)::pss, acc) = lp (pss, (ps@qs)::acc)
+      | lp ((AST.WildPat(ty)::qs)::pss, acc) = 
+          (case ty
+	     of Types.TupleTy ts => lp (pss, ((List.map AST.WildPat ts)@qs)::acc)
+	      | _ => bug ("breakTups: wild pat with non-tuple type: " ^
+			  TypeUtil.toString ty)
+	    (* end case *))
+      | lp ((AST.ConPat _::_)::_, _) = bug "breakTups: unexpected ConPat"
+      | lp ((AST.VarPat(_)::_)::_, _) = bug "breakTups: unexpected VarPat"
+      | lp ((AST.ConstPat(_)::_)::_, _) = bug "breakTups: unexpected ConstPat"
+      | lp ([]::_, _) = bug "breakTups: malformed pattern matrix"
+    in
+      lp (p, [])
+    end
 
 (* exhaustive *)
   fun exhaustive (p: patmat) : bool =
@@ -524,7 +583,7 @@ structure MatchCheck (* : sig
             val ts = List.map TypeOf.pat ps
             val ws = List.map AST.WildPat ts
             in
-              (* the patlist of all wildcards should not be useful wrt p *)
+              (* the patlist of all wildcards should not be "useful" wrt p *)
 	      not (u (p, ws))
 	    end
       (* end case *))
@@ -547,14 +606,21 @@ structure MatchCheck (* : sig
   val inexhaustive = not o exhaustive
   val redundant    = not o irredundant
 
+(* checkPatMat *)
+  fun checkPatMat (err: err_stream) (p: patmat) : unit = 
+    if inexhaustive p then warnInexMatch err "inexhaustive match"
+    else if redundant p then errRedundant err "redundant match"
+    else ()
+
 (* checkMatchList checks that the match list is both exhaustive and irredundant. *)
-  fun checkMatchList (err: err_stream, ms: AST.match list) : unit = let
-    val p = mkPatMat ms
-    in
-      if inexhaustive p then warnInexMatch err "inexhaustive match"
-      else if redundant p then errRedundant err "redundant match"
-      else ()
-    end
+(* Redundancy yields a warning; inexhaustiveness is an error. *)
+  fun checkMatchList (err: err_stream, ms: AST.match list) : unit =
+    (checkPatMat err) (mkPatMat ms)
+
+(* checkPMatchList checks that the pmatch list is both exhaustive and irredundant. *)
+(* Redundancy yields a warning; inexhaustiveness is an error. *)
+  fun checkPMatchList (err: err_stream, ms: AST.pmatch list) : unit =
+    (checkPatMat err) (mkPatMatP ms)
 
 (* checkHandleMatches checks that the match list in a handle is not redundant. *)
 (* It does not check for exhaustiveness. *)
@@ -570,9 +636,7 @@ structure MatchCheck (* : sig
     fun exp (AST.LetExp (b, e)) = (binding b; exp e)
       | exp (AST.IfExp (e1, e2, e3, _)) = (exp e1; exp e2; exp e3)
       | exp (AST.CaseExp (e, ms, _)) = (exp e; checkMatchList (err, ms))
-      | exp (AST.PCaseExp (es, ms, _)) = List.app exp es
-          (* note: pcase matches are not checked, other than that *)
-          (* they are typechecked elsewhere *)
+      | exp (AST.PCaseExp (es, ms, _)) = (List.app exp es; checkPMatchList (err, ms))
       | exp (AST.HandleExp (e, ms, _)) = (exp e; checkHandleMatches (err, ms))
           (* note: handle patterns are checked for redundancy only *)
       | exp (AST.RaiseExp (e, _)) = exp e
