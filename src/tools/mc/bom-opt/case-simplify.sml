@@ -227,7 +227,7 @@ structure CaseSimplify : sig
 	  val x' = BV.new(BV.nameOf x, ty)
 	  in
 (*DEBUG
-print(concat["retype(_, ", BV.toString x, ", ", BTy.toString ty, ") = ", BV.toString x', "\n"]);
+print(concat["retype(_, ", BV.toString x, ", ", BTU.toString ty, ") = ", BV.toString x', "\n"]);
 DEBUG*)
 	    (BU.extend(s, x, x'), x')
 	  end
@@ -490,7 +490,7 @@ DEBUG*)
 		  (B.P_Const(Lit.Enum w, ty), xformE(s, tys, e))
 		end
 	    | enumCase _ = raise Fail "expected nullary constructor"
-	  in
+         in
 	    case classifyCaseRules (BV.typeOf x, rules, dflt)
 	     of EnumCase{rules, ...} => B.mkCase(argument, List.map enumCase rules, dflt)
 	      | ConsCase{rules, ...} => consCase (rules, dflt)
@@ -517,13 +517,21 @@ DEBUG*)
 			    (SOME joinFB, SOME(B.mkThrow(join, [])))
 			  end			  
 			else (NONE, dflt)
+                  fun maxEnumVal ((dc as BTy.DCon{rep=BTy.Enum w, ...},_)::rules) = Word.max (w, maxEnumVal rules)
+                    | maxEnumVal (_) = 0w0
+		  val enumTy = BTy.T_Enum(maxEnumVal (#rules(enums)))
+		  val enm = BV.new("enm", enumTy)
 		  val enumsCase = (case enums
 			 of {rules=[], hasDflt=true} => valOf dflt
 			  | {rules=[], hasDflt=false} =>
 			      raise Fail("badly-formed sub-case of " ^ BV.toString x)
-			  | {rules, hasDflt=true} => B.mkCase(argument, List.map enumCase rules, dflt)
+			  | {rules, hasDflt=true} =>
+		            B.mkStmt([enm], B.E_Cast(enumTy, argument),
+                                  B.mkCase(enm, List.map enumCase rules, dflt))
 			  | {rules=[(_, e)], hasDflt=false} => xformE(s, tys, e)
-			  | {rules, hasDflt=false} => B.mkCase(argument, List.map enumCase rules, NONE)
+			  | {rules, hasDflt=false} =>
+                            B.mkStmt([enm], B.E_Cast(enumTy, argument),
+                                  B.mkCase(enm, List.map enumCase rules, NONE))
 			(* end case *))
 		  val consCase = (case cons
 			 of {rules=[], hasDflt=true} => valOf dflt 
