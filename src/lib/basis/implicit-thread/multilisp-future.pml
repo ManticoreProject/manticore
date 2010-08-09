@@ -47,7 +47,7 @@ structure MultilispFuture (* : FUTURE *) =
 
       define @future-with-cancelation (f : fun(unit / exh -> any) / exh : exh) : future =
 	  let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@empty-ivar (/ exh)
-	  let c : Cancelation.cancelable = Cancelation.@new (/ exh)
+	  let c : Cancelation.cancelable = Cancelation.@new (UNIT / exh)
 	  let fut : future = alloc(ivar, Option.SOME(c))
 	(* fiber that represents the context of the future *)
 	  cont k (x : unit) = return (fut)
@@ -105,7 +105,7 @@ structure MultilispFuture (* : FUTURE *) =
 	      (* QUESTION: is this an error? *)
 	      return (UNIT)
 	    | Option.SOME(c : Cancelation.cancelable) =>
-	      do Cancelation.@cancel (c / exh)
+	      let _ : unit = Cancelation.@cancel (c / exh)
 	      return (UNIT)
 	  end
 	;

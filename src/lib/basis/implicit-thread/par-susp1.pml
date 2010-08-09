@@ -51,7 +51,7 @@ structure ParSusp1 : PAR_SUSP =
 	  let cOpt : Option.option =
 		     case isCancelable
 		      of true =>
-			 let c : Cancelation.cancelable = Cancelation.@new(/ exh)
+			 let c : Cancelation.cancelable = Cancelation.@new(UNIT / exh)
 			 return(Option.SOME(c))
 		       | false =>
 			 return(Option.NONE)
@@ -143,7 +143,7 @@ structure ParSusp1 : PAR_SUSP =
 	      (* QUESTION: is this an error? *)
 	      return(UNIT)
 	    | Option.SOME(c : Cancelation.cancelable) =>
-	      do Cancelation.@cancel(c / exh)
+	      let _ : unit = Cancelation.@cancel(c / exh)
 	      return(UNIT)
 	  end
 	;

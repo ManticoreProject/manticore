@@ -97,6 +97,8 @@ structure ImplicitThread (* :
 
     )
 
+    val dispatch : unit -> 'a
+
   end *) = struct
 
 (* offsets into tuples *)
@@ -379,10 +381,15 @@ structure ImplicitThread (* :
 	  return (UNIT)
 	;
 
+      define @dispatch (u : unit / exh : exh) : any =
+	  SchedulerAction.@stop ()
+	;
+
     )
 
     val runOnWorkGroup : work_group * (unit -> 'a) -> 'a = _prim (@run-on-work-group-w)
     val defaultWorkGroupBegin : work_group -> unit = _prim (@default-work-group-begin)
+    val dispatch : unit -> 'a = _prim (@dispatch)
 
     end (* local *)
 
