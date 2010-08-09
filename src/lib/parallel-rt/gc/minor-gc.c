@@ -19,6 +19,7 @@
 #include "inline-log.h"
 #include "work-stealing-deque.h"
 #include "bibop.h"
+#include "gc-scan.h"
 
 extern Addr_t	MajorGCThreshold;	/* when the size of the nursery goes below */
 					/* this limit it is time to do a GC. */
@@ -26,27 +27,6 @@ extern Addr_t	MajorGCThreshold;	/* when the size of the nursery goes below */
 #ifndef NDEBUG
 static void CheckMinorGC (VProc_t *self, Value_t **roots);
 #endif
-
-/* Copy an object to the old region */
-STATIC_INLINE Value_t ForwardObj (Value_t v, Word_t **nextW)
-{
-    Word_t	*p = (Word_t *)ValueToPtr(v);
-    Word_t	hdr = p[-1];
-    if (isForwardPtr(hdr))
-	return PtrToValue(GetForwardPtr(hdr));
-    else {
-	int len = GetLength(hdr);
-	Word_t *newObj = *nextW;
-	newObj[-1] = hdr;
-	for (int i = 0;  i < len;  i++) {
-	    newObj[i] = p[i];
-	}
-	*nextW = newObj+len+1;
-	p[-1] = MakeForwardPtr(hdr, newObj);
-	return PtrToValue(newObj);
-    }
-
-}
 
 /* MinorGC:
  */
@@ -62,6 +42,8 @@ void MinorGC (VProc_t *vp)
 #ifndef NO_GC_STATS
     TIMER_Start(&(vp->minorStats.timer));
 #endif
+	
+	
 
     assert (vp->heapBase <= (Addr_t)nextScan);
     assert ((Addr_t)nextScan < vp->nurseryBase);
@@ -103,52 +85,41 @@ void MinorGC (VProc_t *vp)
 	Value_t p = *roots[i];
 	if (isPtr(p)) {
 	    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
-		*roots[i] = ForwardObj(p, &nextW);
+		*roots[i] = ForwardObjMinor(p, &nextW);
 	    }
 	}
     }
 
   /* scan to space */
     while (nextScan < nextW-1) {
-	assert ((Addr_t)(nextW-1) <= vp->nurseryBase);
-	Word_t hdr = *nextScan++;	// get object header
-	if (isMixedHdr(hdr)) {
-	  // a record
-	    Word_t tagBits = GetMixedBits(hdr);
-	    assert ((uint64_t)tagBits < (1l << (uint64_t)GetMixedSizeW(hdr)));
-	    Value_t *scanP = (Value_t *)nextScan;
-	    while (tagBits != 0) {
-		if (tagBits & 0x1) {
-		    Value_t v = *scanP;
-		    if (isPtr(v)) {
-			if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
-			    *scanP = ForwardObj(v, &nextW);
+		assert ((Addr_t)(nextW-1) <= vp->nurseryBase);
+		Word_t hdr = *nextScan++;	// get object header
+		
+		if (isVectorHdr(hdr)) {
+			//Word_t *nextScan = ptr;
+			int len = GetLength(hdr);
+			for (int i = 0;  i < len;  i++, nextScan++) {
+				Value_t *scanP = (Value_t *)nextScan;
+				Value_t v = *scanP;
+				if (isPtr(v)) {
+					if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
+						*scanP = ForwardObjMinor(v, &nextW);
+					}
+				}
 			}
-		    }
+			
+			
+		}else if (isRawHdr(hdr)) {
+			assert (isRawHdr(hdr));
+			nextScan += GetLength(hdr);
+		}else {
+
+			table[getID(hdr)].minorGCscanfunction(nextScan,&nextW, allocSzB,nurseryBase);
+
+			nextScan += GetLength(hdr);
 		}
-		tagBits >>= 1;
-		scanP++;
+
 	    }
-	    nextScan += GetMixedSizeW(hdr);
-	}
-	else if (isVectorHdr(hdr)) {
-	  // an array of pointers
-	    int len = GetVectorLen(hdr);
-	    for (int i = 0;  i < len;  i++, nextScan++) {
-		Value_t v = *(Value_t *)nextScan;
-		if (isPtr(v)) {
-		    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
-			*nextScan = (Word_t)ForwardObj(v, &nextW);
-		    }
-		}
-	    }
-	}
-	else {
-	  // we can just skip raw objects
-	    assert (isRawHdr(hdr));
-	    nextScan += GetRawSizeW(hdr);
-	}
-    }
 
     assert ((Addr_t)nextScan >= vp->heapBase);
     Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - vp->heapBase);

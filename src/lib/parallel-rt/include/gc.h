@@ -10,6 +10,7 @@
 #define _GC_H_
 
 #include "manticore-rt.h"
+#include <stdlib.h>
 
 extern void MinorGC (VProc_t *vp);
 extern void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top);

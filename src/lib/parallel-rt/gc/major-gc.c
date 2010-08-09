@@ -22,44 +22,14 @@
 #ifndef NDEBUG
 #include "bibop.h"
 #endif
+#include "gc-scan.h"
+#include <stdio.h>
 
 static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
 #ifndef NDEBUG
 void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
 #endif
-
-
-/*! \brief Forward an object into the global-heap chunk reserved for the given vp.
- *  \param vp the vproc
- *  \param v  the heap object that is to be forwarded
- *  \return the forwarded value
- */
-STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
-{
-    Word_t	*p = ((Word_t *)ValueToPtr(v));
-    Word_t	hdr = p[-1];
-    if (isForwardPtr(hdr))
-	return PtrToValue(GetForwardPtr(hdr));
-    else {
-      /* forward object to global heap. */
-	Word_t *nextW = (Word_t *)vp->globNextW;
-	int len = GetLength(hdr);
-	if (nextW+len >= (Word_t *)(vp->globLimit)) {
-	    AllocToSpaceChunk (vp);
-	    nextW = (Word_t *)vp->globNextW;
-	}
-	Word_t *newObj = nextW;
-	newObj[-1] = hdr;
-	for (int i = 0;  i < len;  i++) {
-	    newObj[i] = p[i];
-	}
-	vp->globNextW = (Addr_t)(newObj+len+1);
-	p[-1] = MakeForwardPtr(hdr, newObj);
-	return PtrToValue(newObj);
-    }
-
-}
 
 /*! \brief Perform a major collection on a vproc's local heap.
  *  \param vp the vproc that is performing the collection.
@@ -79,6 +49,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
     LogMajorGCStart (vp, (uint32_t)(top - vp->oldTop), (uint32_t)oldSzB);
 
+	
+	
 #ifndef NO_GC_STATS
     vp->nMajorGCs++;
     vp->majorStats.nBytesCollected += top - heapBase;
@@ -98,7 +70,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	Value_t p = *roots[i];
 	if (isPtr(p)) {
 	    if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
-		*roots[i] = ForwardObj(vp, p);
+		*roots[i] = ForwardObjMajor(vp, p);
 	    }
 	    else if (inVPHeap(heapBase, ValueToAddr(p))) {
 	      // p points to another object in the "young" region,
@@ -115,53 +87,37 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
    */
     Word_t *nextScan = (Word_t *)(vp->oldTop);
     while (nextScan < (Word_t *)top) {
-	Word_t hdr = *nextScan++;
-	if (isMixedHdr(hdr)) {
-	  // a record
-	    Word_t tagBits = GetMixedBits(hdr);
-	    Word_t *scanP = nextScan;
-	    while (tagBits != 0) {
-		if (tagBits & 0x1) {
-		    Value_t p = *(Value_t *)scanP;
-		    if (isPtr(p)) {
-			if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
-			    *scanP = (Word_t)ForwardObj(vp, p);
+		
+		Word_t hdr = *nextScan++;	// get object header
+		
+		if (isVectorHdr(hdr)) {
+			//Word_t *nextScan = ptr;
+			int len = GetLength(hdr);
+			for (int i = 0;  i < len;  i++, nextScan++) {
+				Value_t *scanP = (Value_t *)nextScan;
+				Value_t v = *scanP;
+				if (isPtr(v)) {
+					if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {
+						*scanP =ForwardObjMajor(vp, v);
+					}
+					else if (inVPHeap(heapBase, (Addr_t)v)) {
+						// p points to another object in the "young" region,
+						// so adjust it.
+						*scanP = ((Addr_t)v - oldSzB);
+					}
+				}
 			}
-			else if (inVPHeap(heapBase, ValueToAddr(p))) {
-			  // p points to another object in the "young" region,
-			  // so adjust it.
-			    *scanP = (Word_t)AddrToValue(ValueToAddr(p) - oldSzB);
-			}
-		    }
+			
+			
+		}else if (isRawHdr(hdr)) {
+			assert (isRawHdr(hdr));
+			nextScan += GetLength(hdr);
+		}else {
+			
+			table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
+			
+			nextScan += GetLength(hdr);
 		}
-		tagBits >>= 1;
-		scanP++;
-	    }
-	    nextScan += GetMixedSizeW(hdr);
-	}
-	else if (isVectorHdr(hdr)) {
-	  // an array of pointers
-	    int len = GetVectorLen(hdr);
-	    for (int i = 0;  i < len;  i++, nextScan++) {
-		Value_t v = *(Value_t*)nextScan;
-		if (isPtr(v)) {
-		    if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {
-			*nextScan = (Word_t)ForwardObj(vp, v);
-		    }
-		    else if (inVPHeap(heapBase, (Addr_t)v)) {
-		      // p points to another object in the "young" region,
-		      // so adjust it.
-			*nextScan = (Word_t)((Addr_t)v - oldSzB);
-		    }
-		}
-	    }
-	}
-	else {
-	  // we can just skip raw objects; note that promoted objects
-	  // are not possible here.
-	    assert(isRawHdr(hdr));
-	    nextScan += GetRawSizeW(hdr);
-	}
     }
 
   /* scan to-space objects */
@@ -239,7 +195,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	assert (scanPtr < (Word_t *)(scanChunk->baseAddr + scanChunk->szB));
 
       /* promote the root to the global heap */
-	root = ForwardObj (vp, root);
+	root = ForwardObjMajor (vp, root);
 
       /* promote any reachable values */
 	ScanGlobalToSpace (vp, heapBase, scanChunk, scanPtr);
@@ -303,38 +259,32 @@ static void ScanGlobalToSpace (
 
     do {
 	while (scanPtr < scanTop) {
-	    Word_t hdr = *scanPtr++;	// get object header
-	    if (isMixedHdr(hdr)) {
-	      // a record
-		Word_t tagBits = GetMixedBits(hdr);
-		Word_t *scanP = scanPtr;
-		while (tagBits != 0) {
-		    if (tagBits & 0x1) {
-			Value_t p = *(Value_t *)scanP;
-			if (isPtr(p) && inVPHeap(heapBase, ValueToAddr(p))) {
-			    *scanP = (Word_t)ForwardObj(vp, p);
+		
+		Word_t hdr = *scanPtr++;	// get object header
+		
+		if (isVectorHdr(hdr)) {
+			//Word_t *nextScan = ptr;
+			int len = GetLength(hdr);
+			for (int i = 0;  i < len;  i++, scanPtr++) {
+				Value_t *scanP = (Value_t *)scanPtr;
+				Value_t v = *scanP;
+				if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {
+					*scanP = ForwardObjMajor(vp, v);
+				}
 			}
-		    }
-		    tagBits >>= 1;
-		    scanP++;
+			
+			
+		}else if (isRawHdr(hdr)) {
+			assert (isRawHdr(hdr));
+			scanPtr += GetLength(hdr);
+		}else {
+			
+			table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
+			
+			scanPtr += GetLength(hdr);
 		}
-		scanPtr += GetMixedSizeW(hdr);
-	    }
-	    else if (isVectorHdr(hdr)) {
-	      // an array of pointers
-		int len = GetVectorLen(hdr);
-		for (int i = 0;  i < len;  i++, scanPtr++) {
-		    Value_t v = (Value_t)*scanPtr;
-		    if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {
-			*scanPtr = (Word_t)ForwardObj(vp, v);
-		    }
-		}
-	    }
-	    else {
-		assert (isRawHdr(hdr));
-	      // we can just skip raw objects
-		scanPtr += GetRawSizeW(hdr);
-	    }
+			
+
 	}
 
       /* recompute the scan top, switching chunks if necessary */

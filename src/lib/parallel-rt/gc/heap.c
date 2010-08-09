@@ -297,7 +297,7 @@ static GCDebugLevel_t ParseGCLevel (const char *debug)
 {
 
     if (strcmp(debug, "none") == 0) return GC_DEBUG_NONE;
-    else if (strcmp(debug, "minor") == 0) return GC_DEBUG_MINOR;
+	else if (strcmp(debug, "minor") == 0) return GC_DEBUG_MINOR;
     else if (strcmp(debug, "major") == 0) return GC_DEBUG_MAJOR;
     else if (strcmp(debug, "global") == 0) return GC_DEBUG_GLOBAL;
     else if (strcmp(debug, "all") == 0) return GC_DEBUG_ALL;

@@ -23,7 +23,7 @@ functor Alloc64Fn (
     structure Ty = CFGTy
     structure W = Word64
     structure Cells = MLTreeComp.I.C
-
+    
     val wordSzB = IntInf.toInt Spec.ABI.wordSzB
     val wordAlignB = IntInf.toInt Spec.ABI.wordAlignB
 
@@ -74,11 +74,11 @@ functor Alloc64Fn (
       | isHeapPointer (CFG.T_OpenTuple _) = true
       | isHeapPointer _ = false
 
-    fun setBit (w, i, ty) = if (isHeapPointer ty) then W.orb (w, W.<< (0w1, i)) else w
+    fun setBit (w, ty) = if (isHeapPointer ty) then (concat["1",w]) else (concat["0",w])
 
     fun initObj offAp ((ty, mltree), {i, stms, totalSize, ptrMask}) = let
 	  val store = MTy.store (offAp (wordLit totalSize), mltree, ManticoreRegion.memory)
-	  val ptrMask' = setBit (ptrMask, Word.fromInt i, ty)
+	  val ptrMask' = setBit (ptrMask, ty)
 	  val totalSize' = Types.alignedTySzB ty + totalSize
 	  in
 	    {i=i+1, stms=store :: stms, totalSize=totalSize', ptrMask=ptrMask'}
@@ -86,12 +86,12 @@ functor Alloc64Fn (
 
     fun allocMixedObj offAp args = let
 	  val {i=nWords, stms, totalSize, ptrMask} = 
-		List.foldl (initObj offAp)
-		  {i=0, stms=[], totalSize=0, ptrMask=0w0} args
+		List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=""} args
 	(* create the mixed-object header word *)
-	  val hdrWord = W.toLargeInt (
-		  W.orb (W.orb (W.<< (ptrMask, 0w7), 
-				W.<< (W.fromInt nWords, 0w1)), 0w1) )
+      val id = HeaderTableStruct.HeaderTable.addHdr (HeaderTableStruct.header,ptrMask)
+      val hdrWord = W.toLargeInt (
+		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+		  W.<< (W.fromInt id, 0w1)), 0w1) )
 	  in	  
 	    if ((IntInf.fromInt totalSize) > Spec.ABI.maxObjectSzB)
 	      then raise Fail "object size too large"
@@ -100,16 +100,22 @@ functor Alloc64Fn (
 
     fun allocVectorObj offAp args = let
 	  val {i=nWords, stms, totalSize, ...} =
-	        List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=0w0} args
-	  val hdrWord = W.toLargeInt(W.+ (W.<< (W.fromInt nWords, 0w3), 0w4))
+	        List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=""} args
+	  val id = 1
+	  val hdrWord = W.toLargeInt (
+		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+		  W.<< (W.fromInt id, 0w1)), 0w1) )
 	  in
 	    (totalSize, hdrWord, stms)
 	  end
 
     fun allocRawObj offAp args = let
 	  val {i=nWords, stms, totalSize, ...} =
-	        List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=0w0} args
-	  val hdrWord = W.toLargeInt (W.+ (W.<< (W.fromInt nWords, 0w3), 0w2))
+	        List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=""} args
+	  val id = 0
+	  val hdrWord = W.toLargeInt (
+		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+		  W.<< (W.fromInt id, 0w1)), 0w1) )
 	  in
 	    (totalSize, hdrWord, stms)
 	  end (* allocRawObj *)

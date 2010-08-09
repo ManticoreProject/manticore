@@ -206,7 +206,7 @@ functor MainFn (
           \    -h<level>        help listing with obscurity limit\n\
           \    -version         show version\n\
 	  \    -log             build an executable with logging enabled\n\
-	  \    -gcStats         build an executable with GC statistics enabled\n\
+	  \    -gcstats         build an executable with GC statistics enabled\n\
 	  \    -debug           build an executable with debugging enabled\n\
 	  \    -perf            build an executable with hw perf counters enabled\n\
 	  \    -sequential      compile a sequential-mode program\n\

@@ -48,4 +48,5 @@ is
   main-fn.sml
   target-spec-fn.sml
   version-fn.sml
+  header-tbl-print.sml
 

@@ -12,6 +12,10 @@ Library
 
   structure AsmStream
   structure Label
+  
+  structure HeaderHash
+  structure HeaderTableStruct
+  
 
   functor AMD64GenFn
 is

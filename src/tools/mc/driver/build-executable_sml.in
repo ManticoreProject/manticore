@@ -18,6 +18,8 @@ structure BuildExecutable : sig
 	  } -> OS.Process.status
 
   end = struct
+  
+    structure PrintTbl = PrintTable
 
     val cat = String.concatWith " "
 
@@ -57,8 +59,14 @@ structure BuildExecutable : sig
 		  | (_, true, true, false) => ("-g "^cFlags, "mcrt-log-debug")
 		  | (_, _, _, true) => (cFlags, "mcrt-perf")
 		(* end case *))
+	  val filename = OS.FileSys.tmpName()
+      val filenamec = concat[filename,".c"]
+      val filenameo = concat[filename,".o"]  
+	  val gccfilename = concat ["gcc -g -O2 -D_GNU_SOURCE -pedantic -m64 -D_THREAD_SAFE -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -DTARGET_DARWIN -DTARGET_X86_64 -o ",filenameo," -std=c99 -c ",filenamec]
+	  val _ = PrintTbl.print filenamec
+	  val _ = OS.Process.system gccfilename
 	  in
-	    cat [ccCmd, cFlags, asmFile, ldFlags libName]
+	    cat [ccCmd, cFlags, asmFile,filenameo, ldFlags libName]
 	  end
 
     fun build {verbose, asmFile, outFile} = if isCrossCompiler

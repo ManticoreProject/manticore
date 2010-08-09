@@ -18,6 +18,7 @@
 #include "bibop.h"
 #include "inline-log.h"
 #include "work-stealing-deque.h"
+#include "gc-scan.h"
 
 static Mutex_t		GCLock;		// Lock that protects the following variables:
 static Cond_t		LeaderWait;	// The leader waits on this for the followers
@@ -45,58 +46,6 @@ static void ScanGlobalToSpace (VProc_t *vp);
 void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
 #endif
 
-/*! \brief Return true if a value is a from-space pointer.
- *
- * Note that this function relies on the fact that unmapped addresses are
- * mapped to the "UnmappedChunk" by the BIBOP.
- */
-STATIC_INLINE bool isFromSpacePtr (Value_t p)
-{
-    return (isPtr(p) && (AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK));
-
-}
-
-/* Forward an object into the global-heap chunk reserved for the current VP */
-STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
-{
-    Word_t	*p = ((Word_t *)ValueToPtr(v));
-    Word_t	oldHdr = p[-1];
-    if (isForwardPtr(oldHdr)) {
-	Value_t v = PtrToValue(GetForwardPtr(oldHdr));
-	assert (isPtr(v) && (AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK));
-	return v;
-    }
-    else {
-      // we need to atomically update the header to a forward pointer, so frst
-      // we allocate space for the object and then we try to install the forward
-      // pointer.
-	Word_t *nextW = (Word_t *)vp->globNextW;
-	int len = GetLength(oldHdr);
-	if (nextW+len >= (Word_t *)(vp->globLimit)) {
-	    AllocToSpaceChunk (vp);
-	    nextW = (Word_t *)vp->globNextW;
-	}
-     // try to install the forward pointer
-	Word_t fwdPtr = MakeForwardPtr(oldHdr, nextW);
-	Word_t hdr = CompareAndSwapWord(p-1, oldHdr, fwdPtr);
-	if (oldHdr == hdr) {
-	    Word_t *newObj = nextW;
-	    newObj[-1] = hdr;
-	    for (int i = 0;  i < len;  i++) {
-		newObj[i] = p[i];
-	    }
-	    vp->globNextW = (Addr_t)(newObj+len+1);
-	    return PtrToValue(newObj);
-	}
-	else {
-	  // some other vproc forwarded the object, so return the forwarded
-	  // object.
-	    assert (isForwardPtr(hdr));
-	    return PtrToValue(GetForwardPtr(hdr));
-	}
-    }
-
-}
 
 /* \brief initialize the data structures that support global GC
  */
@@ -319,7 +268,7 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
 	if (isFromSpacePtr(p)) {
-	    *roots[i] = ForwardObj(vp, p);
+	    *roots[i] = ForwardObjGlobal(vp, p);
 	}
     }
 
@@ -346,38 +295,32 @@ static void ScanVProcHeap (VProc_t *vp)
     Word_t *scanPtr = (Word_t *)vp->heapBase;
 
     while (scanPtr < top) {
-	Word_t hdr = *scanPtr++;  // get object header
-	if (isMixedHdr(hdr)) {
-	  // a record
-	    Word_t tagBits = GetMixedBits(hdr);
-	    Word_t *scanP = scanPtr;
-	    while (tagBits != 0) {
-		if (tagBits & 0x1) {
-		    Value_t p = *(Value_t *)scanP;
-		    if (isFromSpacePtr(p)) {
-			*scanP = (Word_t)ForwardObj(vp, p);
-		    }
+		
+		Word_t hdr = *scanPtr++;	// get object header
+		
+		if (isVectorHdr(hdr)) {
+			//Word_t *nextScan = ptr;
+			int len = GetLength(hdr);
+			for (int i = 0;  i < len;  i++, scanPtr++) {
+				Value_t *scanP = (Value_t *)scanPtr;
+				Value_t v = *scanP;
+				if (isFromSpacePtr(v)) {
+					*scanP = ForwardObjGlobal(vp, v);
+				}
+			}
+			
+			
+		}else if (isRawHdr(hdr)) {
+			assert (isRawHdr(hdr));
+			scanPtr += GetLength(hdr);
+		}else {
+			
+			table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
+			
+			scanPtr += GetLength(hdr);
 		}
-		tagBits >>= 1;
-		scanP++;
-	    }
-	    scanPtr += GetMixedSizeW(hdr);
-	}
-	else if (isVectorHdr(hdr)) {
-	  // an array of pointers
-	    int len = GetVectorLen(hdr);
-	    for (int i = 0;  i < len;  i++, scanPtr++) {
-		Value_t v = (Value_t)*scanPtr;
-		if (isFromSpacePtr(v)) {
-		    *scanPtr = (Word_t)ForwardObj(vp, v);
-		}
-	    }
-	}
-	else {
-	    assert (isRawHdr(hdr));
-	  // we can just skip raw objects
-	    scanPtr += GetRawSizeW(hdr);
-	}
+		
+
     }
     assert (scanPtr == top);
 
@@ -391,41 +334,34 @@ static void ScanGlobalToSpace (VProc_t *vp)
     MemChunk_t	*scanChunk = vp->globToSpHd;
     Word_t	*scanPtr = (Word_t *)(scanChunk->baseAddr);
     Word_t	*scanTop = UsedTopOfChunk(vp, scanChunk);
-
+	
     do {
 	while (scanPtr < scanTop) {
-	    Word_t hdr = *scanPtr++;  // get object header
-	    if (isMixedHdr(hdr)) {
-	      // a record
-		Word_t tagBits = GetMixedBits(hdr);
-		Word_t *scanP = scanPtr;
-		while (tagBits != 0) {
-		    if (tagBits & 0x1) {
-			Value_t p = *(Value_t *)scanP;
-			if (isFromSpacePtr(p)) {
-			    *scanP = (Word_t)ForwardObj(vp, p);
+		
+		Word_t hdr = *scanPtr++;	// get object header
+		
+		if (isVectorHdr(hdr)) {
+			//Word_t *nextScan = ptr;
+			int len = GetLength(hdr);
+			for (int i = 0;  i < len;  i++, scanPtr++) {
+				Value_t *scanP = (Value_t *)scanPtr;
+				Value_t v = *scanP;
+				if (isFromSpacePtr(v)) {
+					*scanP = ForwardObjGlobal(vp, v);
+				}
 			}
-		    }
-		    tagBits >>= 1;
-		    scanP++;
+			
+			
+		}else if (isRawHdr(hdr)) {
+			assert (isRawHdr(hdr));
+			scanPtr += GetLength(hdr);
+		}else {
+			
+			table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
+			
+			scanPtr += GetLength(hdr);
 		}
-		scanPtr += GetMixedSizeW(hdr);
-	    }
-	    else if (isVectorHdr(hdr)) {
-	      // an array of pointers
-		int len = GetVectorLen(hdr);
-		for (int i = 0;  i < len;  i++, scanPtr++) {
-		    Value_t v = (Value_t)*scanPtr;
-		    if (isFromSpacePtr(v)) {
-		        *scanPtr = (Word_t)ForwardObj(vp, v);
-		    }
-		}
-	    }
-	    else {
-		assert (isRawHdr(hdr));
-	      // we can just skip raw objects
-		scanPtr += GetRawSizeW(hdr);
-	    }
+			
 	}
 
       /* recompute the scan top, switching chunks if necessary */
