@@ -164,8 +164,15 @@ structure Cancelation (* : sig
 	  return(alloc(canceled, inactive, nil, gChildren, parent))
 	;
 
+(*
+      define @spawn (c: cancelable, susp: fun(unit/exh -> unit) / exh: exh) : unit =
+
+        return(UNIT)
+        ;
+*)
+
     (* create a cancelable *)
-      define @new ( / exh : exh) : cancelable =
+      define @new (u: unit / exh : exh) : cancelable =
 	  let parent : O.option = @get-current( / exh)
 	  let c : cancelable = @alloc(parent / exh)
 	  let parent : O.option =
@@ -188,7 +195,7 @@ structure Cancelation (* : sig
     (* cancel the fiber associated with c. this operation blocks the calling fiber
      * until the target fiber and all of its children have terminated.
      *)
-      define @cancel (c : cancelable / exh : exh) : () =        
+      define @cancel (c : cancelable / exh : exh) : unit =        
 	  fun cancelAndWait (self : vproc, cs1 : L.list, cs2 : L.list) : () =
 	      case cs1
 	       of nil => 
@@ -228,9 +235,15 @@ structure Cancelation (* : sig
 	  let self : vproc = SchedulerAction.@atomic-begin()
 	  do apply cancelAndWait(self, CONS(c, L.nil), L.nil)
 	  do SchedulerAction.@atomic-end(self)
-	  return()
+	  return(UNIT)
 	;
 
     )
 
+    type cancelable = _prim(cancelable)
+    val new    : unit -> cancelable = _prim(@new)
+    val cancel : cancelable -> unit = _prim(@cancel)
+ (* val spawn : cancelable * (unit -> unit) -> unit *)
+
   end
+
