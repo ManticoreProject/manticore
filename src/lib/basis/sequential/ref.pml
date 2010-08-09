@@ -23,7 +23,9 @@ structure Ref =
         ;
 
     (* destructive update of the cell *)
-      define inline @set (r: ref, x: any / exh: exh) : unit =
+      define inline @set (args : [ref, any] / exh: exh) : unit =
+        let r : ref = #0(args)
+        let x : any = #1(args)
         let x' : any = promote(x)
         do #0(r) := x'
         return(UNIT)
