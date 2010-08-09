@@ -44,7 +44,7 @@
 - (void)increaseBy:(Pie *)pie
 {
     assert ( nConsumers == pie.nConsumers );
-    for (int i = 0; i < nConsumers; ++i)
+    for (unsigned int i = 0; i < nConsumers; ++i)
     {
 	consumers[i].fraction += pie->consumers[i].fraction;
     }
@@ -52,7 +52,7 @@
 - (void)decreaseBy:(Pie *)pie
 {
     assert ( nConsumers == pie.nConsumers );
-    for (int i = 0; i < nConsumers; ++i)
+    for (unsigned int i = 0; i < nConsumers; ++i)
     {
 	consumers[i].fraction += pie->consumers[i].fraction;
     }
@@ -60,14 +60,14 @@
 - (void)divideBy:(uint64_t)t
 {
     assert ( t != 0 );
-    for (int i = 0; i < nConsumers; ++i)
+    for (unsigned int i = 0; i < nConsumers; ++i)
     {
 	consumers[i].fraction /= t;
     }
 }
 - (void)multiplyBy:(uint64_t)t
 {
-    for (int i = 0; i < nConsumers; ++i)
+    for (unsigned int i = 0; i < nConsumers; ++i)
     {
 	consumers[i].fraction *= t;
     }
@@ -83,7 +83,7 @@
 - (void)assertStochastic
 {
     double res = 0.0;
-    for (int i = 0; i < nConsumers; i++)
+    for (unsigned int i = 0; i < nConsumers; i++)
     {
 	res += consumers[i].fraction;
     }
@@ -100,7 +100,7 @@
 - (Pie *)copy
 {
     Pie *res = [[Pie alloc] initWithCapacity:nConsumers];
-    for (int i = 0; i < nConsumers; i++)
+    for (unsigned int i = 0; i < nConsumers; i++)
     {
 	res->consumers[i] = consumers[i];
     }

@@ -93,7 +93,7 @@ NSString *asciiToNSString(const char *s)
     NSEnumerator *objects = [table objectEnumerator];
 
     Box *b;
-    while (b = [objects nextObject])
+    while ((b = [objects nextObject]))
     {
 	[ret addObject:b];
     }

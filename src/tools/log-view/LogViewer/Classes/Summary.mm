@@ -87,7 +87,7 @@
 
 /// Boxcar average of size window
 /// The new summary's size is the old summary's size - window + 1
-- (Summary *)coarseBoxcar:(int)window group:(StateGroup *)g
+- (Summary *)coarseBoxcar:(unsigned int)window group:(StateGroup *)g
 {
     Summary *ret = [[Summary alloc] initWithSize:size
 				     andInterval:logInterval
@@ -103,7 +103,7 @@
 
     // Initialize the first element of arr
     Pie *tot = [Pie emptyForStateGroup:g];
-    for (int i = 0; i < window; ++i)
+    for (unsigned int i = 0; i < window; ++i)
     {
 	Pie *pie = [pies objectAtIndex:i];
 	[tot increaseBy:pie];
@@ -113,7 +113,7 @@
     [arr addObject:tot];
 
     // Initialize the rest of arr
-    for (int i = 0; i < pies.count - window; ++i)
+    for (unsigned int i = 0; i < pies.count - window; ++i)
     {
 	[tot multiplyBy:window];  //< Undo the division of tot from before
 
@@ -144,7 +144,7 @@
     Pie *tot = [[pies objectAtIndex:0] copy];
     [arr addObject:tot];
 
-    for (int i = 1; i < pies.count; ++i)
+    for (unsigned int i = 1; i < pies.count; ++i)
     {
 	Pie *pie = [[pies objectAtIndex:i] copy];
 	[tot multiplyBy:weight];
@@ -246,7 +246,7 @@
 }
 
 
-STATIC_INLINE void pieInc(Pie *pie, uint64_t amt, uint64_t d, Detail *details)
+static inline void pieInc(Pie *pie, uint64_t amt, uint64_t d, Detail *details)
 {
     // NSLog(@"Incrementing pie %@ by amount %qu", pie, amt);
     int consumer = Detail_State_state(details[d]);

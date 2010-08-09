@@ -23,9 +23,6 @@
 #include <sys/mman.h>
 
 
-#define STATIC_INLINE static inline
-
-
 ////////////// UTILS ///////////////////// {{{
 #pragma mark Utils
 
@@ -151,19 +148,10 @@ static inline uint64_t GetTimestamp (LogTS_t *ts, LogFileHeader_t *Hdr)
 }
 
 /// Copy an event from from to to
-STATIC_INLINE void copy_event(event *to, LogEvent_t *from, LogFileHeader_t *header)
+static inline void copy_event(event *to, LogEvent_t *from, LogFileHeader_t *header)
 {
     to->timestamp = GetTimestamp(&from->timestamp, header);
     memcpy(&to->value, from, sizeof(LogEvent_t));
-}
-
-
-/// Return the size of a std::vector<'a> which is a std::vector<'a> or 0,
-/// representing the empty vector.
-STATIC_INLINE int vector_size(std::vector<DependentGroup *> *dependentGroups)
-{
-    if (dependentGroups == 0) return 0;
-    else return dependentGroups->size();
 }
 
 /// Find the identifier for this dependent event
@@ -192,32 +180,32 @@ uint64_t GetDependentId(event *e, EventDesc *eventDesc)
 	return -1;
 }
 
-/////////////////////// END UTILS //////////////////////// }}}
-
 
 /**
-    This class will be used to create the allStates array.
-    Create a StateInitialzationVisitor and pass it to
-    LogFileDesc::{pre,post}orderWalk to create an NSMutablearray of
-    all the states that exist in the given LogFileDesc.
-*/
-class StateInitialzationVisitor : public LogDescVisitor {
+ This class will be used to create the allStates array.
+ Create a StateInitializationVisitor and pass it to
+ LogFileDesc::{pre,post}orderWalk to create an NSMutablearray of
+ all the states that exist in the given LogFileDesc.
+ */
+class StateInitializationVisitor : public LogDescVisitor {
 public:
-    StateInitialzationVisitor() { this->_states = [[NSMutableArray alloc] init]; }
+    StateInitializationVisitor() { this->_states = [[NSMutableArray alloc] init]; }
     void VisitGroup (EventGroup *) { }
     void VisitStateGroup (StateGroup *grp) {
 	[this->_states addObject:[Box box:grp]];
     }
     void VisitIntervalGroup (IntervalGroup *grp) { }
     void VisitDependentGroup (DependentGroup *grp) { }
-
+    
     NSMutableArray *States () { return this->_states; }
-
+    
 private:
     NSMutableArray *_states;
 };
 
 
+
+/////////////////////// END UTILS //////////////////////// }}}
 
 
 @implementation LogData
@@ -259,6 +247,11 @@ double cur_interval_height = 0.0;
     {
 	vProcs = [[NSMutableArray alloc] init];
 
+	
+	/* Define this macro if you want to perform some checks to see if there are
+	 * duplicate blocks in the log file caused by a bug in the Manticore logger.
+	 * This bug seems to have been fixed, and the checks are very slow, but
+	 * the code is useful to have around. */
 #ifdef GO_WAY_SLOW_TO_CHECK_FOR_DUPLICATE_BLOCK_PROBLEM
     	first_event_times = [[NSMutableArray alloc] init];
 #endif
@@ -268,7 +261,7 @@ double cur_interval_height = 0.0;
 
     	// Compute allStates {{{
     	{
-    	    StateInitialzationVisitor *v = new StateInitialzationVisitor();
+    	    StateInitializationVisitor *v = new StateInitializationVisitor();
     	    logDesc->PreOrderWalk(v);
     	    allStates = v->States();
     	    delete v;
@@ -313,7 +306,7 @@ double cur_interval_height = 0.0;
     if (header->magic != LOG_MAGIC) [Exceptions raise:@"bogus magic number"];
     if (header->hdrSzB != sizeof(LogFileHeader_t)) [Exceptions raise:@"bad header size"];
     if (header->majorVersion != LOG_VERSION_MAJOR) ; // Don't worry about versions yet
-    if (header->bufSzB != LogBufSzB)
+    if (header->bufSzB != (uint32_t) LogBufSzB)
     {
         // recompute block size
         NSLog(@"using block size %d instead of %d", header->bufSzB, LogBufSzB);
@@ -341,11 +334,9 @@ double cur_interval_height = 0.0;
     int n_dependent_sources = 0;
     int n_dependent_dsts = 0;
 
-    uint64_t events_per_vproc[header->nVProcs];
-    for (int i = 0; i < header->nVProcs; ++i) events_per_vproc[i] = 0;
+    uint64_t *events_per_vproc = (uint64_t *) calloc(header->nVProcs, sizeof(uint64_t));
 
-    struct Detail_Size_Info detail_size_info_per_vproc[header->nVProcs];
-    for (int i = 0; i < header->nVProcs; ++i) init_detail_size_info(&detail_size_info_per_vproc[i]);
+    struct Detail_Size_Info *detail_size_info_per_vproc = (struct Detail_Size_Info *) calloc(header->nVProcs, sizeof(struct Detail_Size_Info));
 
     DependentSizeMap *dependentSizeMap = [[DependentSizeMap alloc] init];
 
@@ -408,15 +399,16 @@ double cur_interval_height = 0.0;
 
 	    std::vector<StateGroup *> *stateGroups = logDesc->StateGroups(eventDesc);
 	    std::vector<IntervalGroup *> *intervalGroups = logDesc->IntervalGroups(eventDesc);
+	    std::vector<DependentGroup *> *dependentGroups = logDesc->DependentGroups(eventDesc);
 	    int n_state_groups = (stateGroups == NULL) ? 0 : stateGroups->size();
 	    int n_interval_groups = (intervalGroups == NULL) ? 0 : intervalGroups->size();
+	    int n_dependent_groups = (dependentGroups == NULL) ? 0 : dependentGroups->size();
 
 	    // OPTIMIZE: the details_size is being incremented by too much here
 	    // there is not a new detail per event per group it is in, but
 	    // there is a new detail per pair of (event,group) pairs which define a detail
 	    detail_size_add(&detail_size_info_per_vproc[log->vpId], n_state_groups, n_interval_groups);
-	    std::vector<DependentGroup *> *dependentGroups = logDesc->DependentGroups(eventDesc);
-	    int n_dependent_groups = vector_size(dependentGroups);
+
 
 	    for (int k = 0; k < n_dependent_groups; ++k)
 	    {
@@ -441,17 +433,17 @@ double cur_interval_height = 0.0;
 
     // assign to each vproc a state and interval map
     struct VProc_Maps vproc_maps[header->nVProcs];
-    for (int i = 0; i < header->nVProcs; ++i) init_vproc_maps(&vproc_maps[i]);
+    for (unsigned int i = 0; i < header->nVProcs; ++i) init_vproc_maps(&vproc_maps[i]);
 
     // create an array for each vproc to use as an index into the events belonging to it
     event **vproc_events[header->nVProcs];
-    for (int i = 0; i < header->nVProcs; ++i) vproc_events[i] = (event **)
+    for (unsigned int i = 0; i < header->nVProcs; ++i) vproc_events[i] = (event **)
 	([Utils calloc:events_per_vproc[i] size:sizeof(event *)]);
 
     // create an array for each vproc to hold its details
     // {{{
     struct TaggedDetail_struct *vproc_details[header->nVProcs];
-    for (int i = 0; i < header->nVProcs; ++i) {
+    for (unsigned int i = 0; i < header->nVProcs; ++i) {
 	// vproc_details[i] must be large enough to hold all details
 	// (including initial state details, not including dependents) which must be drawn for vproc i
 	vproc_details[i] = (TaggedDetail_struct *)
@@ -613,7 +605,7 @@ double cur_interval_height = 0.0;
 		//NSLog(@"VProc.mm: found state event at time %qu", evt->timestamp);
 		if (evt->timestamp == 0)
 		{
-		    NSLog(@" ************** 0 timestampped event %x", evt);
+		    NSLog(@" ************** 0 timestamped event %x", evt);
 		}
 		// }}}
 
@@ -715,7 +707,7 @@ double cur_interval_height = 0.0;
     // after this loop, each dependent source d should have a detail D in dependent_sources where
     // D->n_dsts == D->dsts_array_size, and all D's dependent dsts
     // should be filled in.  d should contain all information relevant to d
-    for (int i = 0; i < cur_dependent_dst; ++i) {
+    for (unsigned int i = 0; i < cur_dependent_dst; ++i) {
 	struct Dependent_Dst *dst = &dependent_dsts[i];
 	EventDesc *eventDesc = logDesc->FindEventById(dst->value->value.event);
 
@@ -726,7 +718,7 @@ double cur_interval_height = 0.0;
     // }}}
     // Sanity check // {{{
     {
-	for (int i = 0; i < cur_dependent_src; ++i)
+	for (unsigned int i = 0; i < cur_dependent_src; ++i)
 	{
 	    struct TaggedDetail_struct *src = &dependent_sources[i];
 	    if (src->data.dependent.n_dsts != src->data.dependent.dsts_array_size)
@@ -742,14 +734,14 @@ double cur_interval_height = 0.0;
     // }}}
     /*********************************************** CLEANUP Store all recently gathered data in the array of VProcs and in dependentDetails *********/ // {{{
     {
-	for (int i = 0; i < header->nVProcs; ++i)
+	for (unsigned int i = 0; i < header->nVProcs; ++i)
 	{
 	    uint64_t numDetails = detail_size_current(&detail_size_info_per_vproc[i]);
 	    // create an index for vproc i which indexes into its array of details
 	    Detail *details_index = (Detail *)
 		([Utils calloc:numDetails
 			  size:sizeof(Detail)]);
-	    for (int j = 0; j < numDetails; ++j)
+	    for (unsigned int j = 0; j < numDetails; ++j)
 	    {
 		details_index[j] = &vproc_details[i][j];
 	    }
@@ -854,192 +846,6 @@ double cur_interval_height = 0.0;
 {
     return @"<<< LogFile object: ... >>>";
 }
-
-
-
-
-#pragma mark Testing
-- (IBAction)test:(id)sender
-{
-
-}
-
-
-/* OLD CODE SECTION
-
-- (LogData *)initWithFilename:(NSString *)filenameVal
-	       andLogFileDesc:(struct LogFileDesc *)logDesc
-{
-    if (![super init]) return nil;
-    filename = filenameVal;
-
-    firstTime = -1;
-    lastTime = 0;
-
-    dependentMap = [[DependentMap alloc] init];
-
-    StateInitialzationVisitor *v = new StateInitialzationVisitor();
-    logDesc->PreOrderWalk(v);
-
-    allStates = v->States();
-
-    delete v;
-
-    int LogBufSzB = LOGBLOCK_SZB;
-
-    NSFileHandle *f = [NSFileHandle fileHandleForReadingAtPath:filename];
-    if (!f) [Exceptions raise:@"LogFile: file access error"];
-
-    // read the header
-    NSData *fileHeader = [f readDataOfLength:LOGBLOCK_SZB];
-    // Protect this header, it could be garbage collected when fileHeader is.
-    header = (LogFileHeader_t *) malloc(fileHeader.length);
-    memcpy(header, fileHeader.bytes, fileHeader.length);
-
-    // NSLog(@"starttime for file is at %qu", GetTimestamp(&header->startTime, header));
-
-    // check the header
-    if (header->magic != LOG_MAGIC) [Exceptions raise:@"bogus magic number"];
-    if (header->hdrSzB != sizeof(LogFileHeader_t)) [Exceptions raise:@"bad header size"];
-    if (header->majorVersion != LOG_VERSION_MAJOR) ; // Don't worry about versions yet
-    if (header->bufSzB != LogBufSzB)
-    {
-        // recompute block size
-        NSLog(@"using block size %d instead of %d", header->bufSzB, LogBufSzB);
-        LogBufSzB = header->bufSzB;
-        // reset input file pointer
-        [f seekToFileOffset:LogBufSzB];
-    }
-
-    // get the file size
-    off_t fileSize;
-    {
-        struct stat st;
-        if (stat([filename cStringUsingEncoding:NSASCIIStringEncoding], &st) < 0)
-    	[Exceptions raise:@"LogFile: could not stat the given file"];
-        fileSize = st.st_size;
-    }
-
-    // -1 is to compensate for the fact that the header of the block takes up exactly one
-    // LogEvent_t of data at the beggining of the block
-    int NEventsPerBuf = (LogBufSzB / sizeof(LogEvent_t)) - 1;
-    int numBufs = (fileSize / LogBufSzB) - 1;
-    if (numBufs <= 0) [Exceptions raise:@"LogFile: There are no buffers in the logfile"];
-
-    // Maximum number of events in the entire log file
-    int MaxNumEvents = NEventsPerBuf * numBufs;
-
-    VProc *vProcs_c_array[header->nVProcs];  // To be converted into an NSMutableArray later
-    for (int i = 0; i < header->nVProcs; ++i)
-	vProcs_c_array[i] = NULL;
-
-    // read in the blocks
-    for (int i = 0;  i < numBufs;  i++)
-    {
-        LogBuffer_t *log = (LogBuffer_t *) [[f readDataOfLength:LogBufSzB] bytes];
-        assert (log->vpId < header->nVProcs);
-
-	
-        assert (log->next < MaxNumEvents);
-
-        if (vProcs_c_array[log->vpId] == NULL)
-        {
-	    // Create a new VProc to put int the c_array
-	    vProcs_c_array[log->vpId] = [[VProc alloc]
-		initWithLog:log
-		andLogDesc:logDesc
-		    header:header
-		 numEvents:NEventsPerBuf
-		 allStates:allStates
-	      dependentMap:dependentMap];
-        }
-        else
-	{
-    	   // This vProc exists, simply add the block
-	    assert( vProcs_c_array[log->vpId].events != 0 );
-	   [vProcs_c_array[log->vpId] readBlock:log numEvents:NEventsPerBuf];
-        }
-    }
-
-
-    // Check that vProcs_c_array is fully initialized
-    for (int i = 0; i < header->nVProcs; ++i)
-    {
-        if (vProcs_c_array[i] == NULL)
-    	[Exceptions raise:@"Did not find enough vProcs in the log file"];
-    }
-
-    BOOL foundFirstAndLastTimes = NO;
-    vProcs = [[NSMutableArray alloc] initWithCapacity:header->nVProcs];
-    for (int i = 0; i < header->nVProcs; ++i)
-    {
-	VProc *vp = vProcs_c_array[i];
-	[vProcs addObject:vp];
-	if (vp.numEvents !=0)
-	{
-	    if (vp.start <= firstTime) firstTime = vp.start;
-	    if (vp.end >= lastTime) lastTime = vp.end;
-	    foundFirstAndLastTimes = YES;
-	}
-    }
-    if (!foundFirstAndLastTimes)
-	[Exceptions raise:
-	 @"Could not calculate first and last times based on log. There were no events."];
-
-    return self;
-}
-*/
-
-/*
-- (NSString *)description
-{
-    NSMutableString *ret = [NSMutableString stringWithFormat:
-	@"<<< LogFile object: version (%d,%d,%d), CPUs: %d, nVProcs: %d, bufSize %d, headerSize %d\n \tvProcs:\n", self.majorVersion, self.minorVersion, self.patchVersion,
-	  self.nCPUs, self.nVProcs, self.bufSzB, self.hdrSzB];
-    NSLog(ret);
-    for (VProc *vp in vProcs)
-    {
-	[ret appendString:@"\t\t"];
-	[ret appendString:[vp description]];
-    }
-    [ret appendString:@" >>>\n"];
-    return ret;
- }
-     */
-
-
-/*
-#pragma mark Filtering
-
-BOOL containsEventDescAndIsDisabled(ObjCGroup *g, EventDesc *eventDesc)
-{
-    if (g.cppGroup->containsEvent(eventDesc) && (g.enabled.intValue == 0))
-	return YES;
-    else
-    {
-	if (g.kind != EVENT_GROUP)
-	    return NO; free
-	else
-	{
-	    InternalGroup *G = (InternalGroup *)g;
-	    for (int i = 0; i < G.numKids; ++i)
-	    {
-		if (containsEventDescAndIsDisabled([G kid:i], eventDesc))
-		    return YES;
-	    }
-	    return NO;
-	}
-    }
-}
-*/
-
-/*
-+ (NSArray *)readableTypes
-{
-    return [NSArray arrayWithObjects:@"mlg", nil];
-}
- */
-
 
 @end
 

@@ -116,7 +116,7 @@ static LogFileDesc *LFDCache = 0;
     
     /* Construct a summary by averaging the summaries for all VProcs. */
     Summary *tmpSummary;
-    for (int i = 0; i < [logData nVProcs]; i++)
+    for (unsigned int i = 0; i < [logData nVProcs]; i++)
     {
 	tmpSummary = [Summary coarseSummaryFromLogData:logData
 					      forState:resourceState
@@ -130,10 +130,10 @@ static LogFileDesc *LFDCache = 0;
 	}
 	else
 	{
-	    int nPies = [[tmpSummary pies] count];
+	    unsigned int nPies = [[tmpSummary pies] count];
 	    assert(nPies == [[summary pies] count]);
 	    Pie *curPie;
-	    for (int j = 0; j < nPies; j++)
+	    for (unsigned int j = 0; j < nPies; j++)
 	    {
 		curPie = [[summary pies] objectAtIndex:j];
 		// it's OK to just add these pies together, since they're all
@@ -142,7 +142,7 @@ static LogFileDesc *LFDCache = 0;
 	    }
 	}
     }
-    for (int i = 0; i < [[summary pies] count]; i++)
+    for (unsigned int i = 0; i < [[summary pies] count]; i++)
     {
 	[[[summary pies] objectAtIndex:i] divideBy:[logData nVProcs]];
 	[[[summary pies] objectAtIndex:i] assertStochastic];
@@ -340,7 +340,7 @@ static LogFileDesc *LFDCache = 0;
 #pragma mark Zooming
 
 /// The largest number of nanoseconds that can be displayed at deep zoom, given in uint64_t
-#define MAX_DEEP_ZOOM_WIDTH ( -1 )
+#define MAX_DEEP_ZOOM_WIDTH ( ULLONG_MAX )
 /// The largest number of nanoseconds that can be displayed at medium zoom
 #define MAX_MEDIUM_ZOOM_WIDTH ( 10000000 )
 - (enum ZoomLevel)zoomLevelForInterval:(struct LogInterval *)logIntervalVal
@@ -390,8 +390,8 @@ static LogFileDesc *LFDCache = 0;
 
 - (void)zoomBy:(double)scale aboutPivot:(uint64_t)pivot
 {
-   // NSLog(@"pivot = %qu", pivot);
-    self.printLogInterval;
+    /* Change the logInterval to reflect the zoom. Make sure we don't go past
+     * the left or right edge of the data. */
     
     if (pivot < scale * (pivot - logInterval->x))
 	logInterval->x = 0;

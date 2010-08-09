@@ -45,8 +45,8 @@ CGFloat pointToLineSegmentDistance(NSPoint p, NSPoint start, NSPoint end)
 {
     if (s == NULL)
     {
-	NSLog(@"***** BandView.mm: a color in log-view.json was uninitialized.\n\
-	      \t\tReturning a default color instead");
+	//NSLog(@"***** BandView.mm: a color in log-view.json was uninitialized.\n\
+	//      \t\tReturning a default color instead");
 	return DEFAULT_COLOR;
     }
     

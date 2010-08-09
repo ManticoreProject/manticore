@@ -22,6 +22,8 @@
     NSPoint dragStarted;
     NSPoint dragContinued;
     
+    NSTrackingArea *trackingArea;
+    
     struct LogInterval *hilightInterval;
 }
 
@@ -29,6 +31,9 @@
 @property Summary *summary;
 @property CGFloat width;
 @property struct LogInterval *hilightInterval;
+
+- (NSRect)hilightRect;
+
 
 @end
 

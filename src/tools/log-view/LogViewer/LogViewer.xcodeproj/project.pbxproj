@@ -12,7 +12,6 @@
 		52A6E9C210309B0D00D803AD /* EventInfoView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52A6E9C110309B0D00D803AD /* EventInfoView.m */; };
 		52AE52FE1028D6AB007AED7A /* VProc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C41028D6AA007AED7A /* VProc.mm */; };
 		52AE52FF1028D6AB007AED7A /* VProcMaps.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C61028D6AA007AED7A /* VProcMaps.mm */; };
-		52AE53001028D6AB007AED7A /* LogData.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C81028D6AA007AED7A /* LogData.mm */; };
 		52AE53011028D6AB007AED7A /* LogDoc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52CA1028D6AA007AED7A /* LogDoc.mm */; };
 		52AE53021028D6AB007AED7A /* LogView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52CC1028D6AA007AED7A /* LogView.mm */; };
 		52AE53031028D6AB007AED7A /* Box.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52CF1028D6AA007AED7A /* Box.m */; };
@@ -52,6 +51,7 @@
 		D2648BCF11D538AB00342F30 /* log-events.json in Resources */ = {isa = PBXBuildFile; fileRef = D2648BCD11D538AB00342F30 /* log-events.json */; };
 		D2648BD011D538AB00342F30 /* log-view.json in Resources */ = {isa = PBXBuildFile; fileRef = D2648BCE11D538AB00342F30 /* log-view.json */; };
 		D287775A11DBE4CA0096F74A /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = D287775911DBE4CA0096F74A /* ViewController.m */; };
+		D2C9079A121082DA00D354F5 /* LogData.mm in Sources */ = {isa = PBXBuildFile; fileRef = D2C90799121082DA00D354F5 /* LogData.mm */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,7 +74,6 @@
 		52AE52C51028D6AA007AED7A /* VProcMaps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = VProcMaps.h; path = Representations/VProcMaps.h; sourceTree = "<group>"; };
 		52AE52C61028D6AA007AED7A /* VProcMaps.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = VProcMaps.mm; path = Representations/VProcMaps.mm; sourceTree = "<group>"; };
 		52AE52C71028D6AA007AED7A /* LogData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogData.h; sourceTree = "<group>"; };
-		52AE52C81028D6AA007AED7A /* LogData.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogData.mm; sourceTree = "<group>"; };
 		52AE52C91028D6AA007AED7A /* LogDoc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogDoc.h; sourceTree = "<group>"; };
 		52AE52CA1028D6AA007AED7A /* LogDoc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogDoc.mm; sourceTree = "<group>"; };
 		52AE52CB1028D6AA007AED7A /* LogView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogView.h; sourceTree = "<group>"; };
@@ -145,6 +144,7 @@
 		D2648BCE11D538AB00342F30 /* log-view.json */ = {isa = PBXFileReference; explicitFileType = sourcecode.javascript; fileEncoding = 4; name = "log-view.json"; path = "../../../../../../config/log-view.json"; sourceTree = "<group>"; };
 		D287775811DBE4CA0096F74A /* ViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
 		D287775911DBE4CA0096F74A /* ViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
+		D2C90799121082DA00D354F5 /* LogData.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogData.mm; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -233,7 +233,7 @@
 			isa = PBXGroup;
 			children = (
 				52AE52C71028D6AA007AED7A /* LogData.h */,
-				52AE52C81028D6AA007AED7A /* LogData.mm */,
+				D2C90799121082DA00D354F5 /* LogData.mm */,
 				52007215104327620075E884 /* LogDataUtils.h */,
 				52007216104327620075E884 /* LogDataUtils.c */,
 			);
@@ -515,7 +515,6 @@
 				8D11072D0486CEB800E47090 /* main.m in Sources */,
 				52AE52FE1028D6AB007AED7A /* VProc.mm in Sources */,
 				52AE52FF1028D6AB007AED7A /* VProcMaps.mm in Sources */,
-				52AE53001028D6AB007AED7A /* LogData.mm in Sources */,
 				52AE53011028D6AB007AED7A /* LogDoc.mm in Sources */,
 				52AE53021028D6AB007AED7A /* LogView.mm in Sources */,
 				52AE53031028D6AB007AED7A /* Box.m in Sources */,
@@ -548,6 +547,7 @@
 				52CC76041039BF69006A0DCD /* SummaryView.mm in Sources */,
 				52007217104327620075E884 /* LogDataUtils.c in Sources */,
 				D287775A11DBE4CA0096F74A /* ViewController.m in Sources */,
+				D2C9079A121082DA00D354F5 /* LogData.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -610,13 +610,28 @@
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_ENABLE_OBJC_GC = required;
-				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_NO_COMMON_BLOCKS = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_UNROLL_LOOPS = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_EFFECTIVE_CPLUSPLUS_VIOLATIONS = NO;
+				GCC_WARN_HIDDEN_VIRTUAL_FUNCTIONS = NO;
+				GCC_WARN_MISSING_PARENTHESES = YES;
+				GCC_WARN_PEDANTIC = NO;
+				GCC_WARN_SHADOW = YES;
+				GCC_WARN_SIGN_COMPARE = NO;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_LABEL = NO;
+				GCC_WARN_UNUSED_PARAMETER = NO;
+				GCC_WARN_UNUSED_VALUE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PREBINDING = NO;
 				SDKROOT = macosx10.5;
+				WARNING_CFLAGS = "-Wno-long-long";
 			};
 			name = Debug;
 		};
@@ -625,10 +640,15 @@
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_ENABLE_OBJC_GC = required;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_INHIBIT_ALL_WARNINGS = NO;
+				GCC_WARN_UNUSED_FUNCTION = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				ONLY_ACTIVE_ARCH = NO;
 				PREBINDING = NO;
 				SDKROOT = macosx10.5;
 			};

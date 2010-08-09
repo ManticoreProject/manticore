@@ -75,7 +75,7 @@
 
 	Detail *details = vp.details;
 	int skipped = 0;
-	for (int i = 0; i < vp.numDetails; ++i)
+	for (unsigned int i = 0; i < vp.numDetails; ++i)
 	{
 
 	    if (![logDoc isInInterval:details[i]])

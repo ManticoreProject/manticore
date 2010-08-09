@@ -20,7 +20,7 @@
 
 - (Singleton *)initWithPoint:(NSPoint)p
 		       color:(NSColor *)c
-		       event:(event *)eventValVal;
+		       event:(event *)eventValVal
 {
 	if (![super init])
 		return nil;

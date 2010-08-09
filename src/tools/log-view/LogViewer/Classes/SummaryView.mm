@@ -19,6 +19,32 @@
 @synthesize width;
 @synthesize hilightInterval;
 
+- (id)initWithFrame:(NSRect)frameRect
+{
+    self = [super initWithFrame:frameRect];
+    if (self) {
+
+	trackingArea = [[NSTrackingArea alloc] initWithRect:frameRect
+						    options:NSTrackingMouseMoved | NSTrackingActiveInActiveApp
+						      owner:self
+						   userInfo:nil];
+	[self addTrackingArea:trackingArea];
+    }
+    
+    return self;
+}
+
+- (void)setHilightInterval:(struct LogInterval *)newHilightInterval
+{
+    
+    hilightInterval = newHilightInterval;
+    [self removeTrackingArea:trackingArea];
+    trackingArea = [[NSTrackingArea alloc] initWithRect:[self hilightRect]
+						options:NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited | NSTrackingActiveInActiveApp
+						  owner:self
+					       userInfo:nil];
+    [self addTrackingArea:trackingArea];
+}
 
 
 /// Configuration algorithm for determining the color to use to represent a given consumer.
@@ -34,8 +60,8 @@
 - (NSRect)hilightRect
 {
     NSRect hilightRect = [self bounds];
-    hilightRect.origin.x = (self.bounds.size.width / [summary logInterval].width) * hilightInterval->x;
-    hilightRect.size.width = (self.bounds.size.width / [summary logInterval].width) * hilightInterval->width;
+    hilightRect.origin.x = round((self.bounds.size.width / [summary logInterval].width) * hilightInterval->x);
+    hilightRect.size.width = round((self.bounds.size.width / [summary logInterval].width) * hilightInterval->width);
     return hilightRect;
 }
 
@@ -73,14 +99,14 @@
     NSArray *pies = summary.pies;
  //   NSLog(@"pies is %@: \n and summary is %@", pies, summary);
    // NSLog(@"drawing %d pies each of width %f", pies.count, width);
-    for (int i = 0; i < pies.count; ++i)
+    for (unsigned int i = 0; i < pies.count; ++i)
     {
 	CGFloat cur_x = bounds.origin.x + i * width;
 	Pie *pie = [pies objectAtIndex:i];
 	PieSlice_t *consumers = pie.consumers;
 
 	CGFloat cur_y = bounds.origin.y;
-	for (int j = 0; j < pie.nConsumers; ++j)
+	for (unsigned int j = 0; j < pie.nConsumers; ++j)
 	{
 	    // The below is commented out because it is to stringent a requirement,
 	    // cur_y might be a tiny bit to big,
@@ -107,6 +133,42 @@
     }
 }
 
+- (void)mouseMoved:(NSEvent *)e
+{
+    [super mouseMoved:e];
+    NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
+    NSRect hilightRect = [self hilightRect];
+
+    if (NSPointInRect(p, hilightRect))
+    {
+	if (p.x == hilightRect.origin.x ||
+	    p.x == hilightRect.origin.x + self.hilightRect.size.width)
+	{
+	    [[NSCursor resizeLeftRightCursor] set];
+	}
+	else
+	{
+	    [[NSCursor openHandCursor] set];
+	}
+    }
+    else
+    {
+	[[NSCursor arrowCursor] set];
+    }
+}
+
+- (void)mouseExited:(NSEvent *)e
+{
+    [super mouseExited:e];
+    [[NSCursor arrowCursor] set];
+}
+
+- (void)mouseEntered:(NSEvent *)e
+{
+    [super mouseEntered:e];
+    [[NSCursor resizeLeftRightCursor] set];
+}
+
 - (void)mouseDown:(NSEvent *)e
 {
     [super mouseDown:e];
@@ -116,20 +178,22 @@
     {
 	dragging = YES;
 	dragStarted = dragContinued = p;
+	[[NSCursor closedHandCursor] set];
     }
     else {
 	dragging = NO;
     }
-
-
 }
 
 - (void)mouseDragged:(NSEvent *)e
 {    
+    [super mouseDragged:e];
     NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
     
     if (dragging)
     {
+	[[NSCursor closedHandCursor] set];
+
 	CGFloat diff = p.x - dragContinued.x;
 	dragContinued = p;
 	struct LogInterval *logInterval = [[self logDoc] logInterval];
@@ -155,6 +219,7 @@
 
 - (void)mouseUp:(NSEvent *)e
 {
+    [super mouseUp:e];
     return;
     
     /*

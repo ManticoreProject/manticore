@@ -28,7 +28,7 @@
     return NSZeroRect;
 }
 
-- (BOOL)containsPoint:(NSPoint)p;
+- (BOOL)containsPoint:(NSPoint)p
 {
 	[Exceptions raise:@"EventShape: instances of eventShape must override containsPoint"];
     return YES;
