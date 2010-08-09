@@ -6,6 +6,8 @@
  * Ref cells are needed by the pcase code generator.
  *)
 
+#include <prim.def>
+
 structure Ref =
   struct
 
