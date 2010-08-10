@@ -14,7 +14,7 @@
 #include "bibop.h"
 #include "internal-heap.h"
 
-static bool isGlobalHeapPtr (Value_t v)
+bool isGlobalHeapPtr (Value_t v)
 {
   assert(isPtr(v));
   assert(AddrToChunk(ValueToAddr(v)) != 0);
@@ -33,57 +33,17 @@ void LocalHeapConsistencyCheck (VProc_t *vp, Word_t *beginHeap, Word_t *endHeap)
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
 
     while (nextScan < endHeap-1) {
-	Word_t hdr = *nextScan;	// get object header
-	if (isMixedHdr(hdr)) {
-	  // a record
-	    Word_t tagBits = GetMixedBits(hdr);
-	    assert ((uint64_t)tagBits < (1l << (uint64_t)GetMixedSizeW(hdr)));
-	    Value_t *scanP = (Value_t *)nextScan;
-	    while (tagBits != 0) {
-		if (tagBits & 0x1) {
-		    Value_t v = *scanP;
-		    if (isPtr(v)) {
-			if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) { // pointer into the nursery
-			  // only young to old pointers allowed in the nursery
-			    assert(ValueToAddr(v) < (Addr_t)nextScan);
-			}
-			else { // in the global heap
-			  assert(isGlobalHeapPtr(v));
-			}
-		    }
+		Word_t hdr = *nextScan;	// get object header
+		Word_t *scanptr = nextScan;
+		if (isForwardPtr(hdr)) {
+			// object in an older generation
 		}
-		tagBits >>= 1;
-		scanP++;
-	    }
-	    nextScan += GetMixedSizeW(hdr);
-	}
-	else if (isVectorHdr(hdr)) {
-	  // an array of pointers
-	    int len = GetVectorLen(hdr);
-	    for (int i = 0;  i < len;  i++, nextScan++) {
-		Value_t v = *(Value_t *)nextScan;
-		if (isPtr(v)) {
-		    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {  // pointer into the nursery
-		      // only young to old pointers allowed in the nursery
-			assert(ValueToAddr(v) < (Addr_t)nextScan);
-		    }
-		    else {
-		      // object in an older generation
-		      assert(isGlobalHeapPtr(v));
-		    }
-		}
-	    }
-	    nextScan += len;
-	}
-	else if (isForwardPtr(hdr)) {
-	  // object in an older generation
-	}
-	else {
+		else {
 	  // we can just skip raw objects
-	    assert (isRawHdr(hdr));
-	    nextScan += GetRawSizeW(hdr);
+	    tableDebug[getID(hdr)].gc_debug(scanptr,nurseryBase,allocSzB);
+		}
+		nextScan += GetLength(hdr);
 	}
-    }
 
 }
 

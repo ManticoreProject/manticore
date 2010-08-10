@@ -27,6 +27,8 @@
 #include "perf.h"
 #include "work-stealing-deque.h"
 
+
+
 typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
     Location_t	loc;		/* the location for the VProc */
@@ -74,7 +76,7 @@ void VProcInit (bool isSequential, Options_t *opts)
 					// around.
 
     NumIdleVProcs = 0;
-
+	
   /* get command-line options */
     if (isSequential) {
 	NumVProcs = 1;
@@ -348,7 +350,7 @@ void VProcExit (VProc_t *vp)
 #ifndef NO_GC_STATS
 	ReportGCStats ();
 #endif
-
+		
 	exit (0);
     }
     else {

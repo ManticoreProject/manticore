@@ -48,7 +48,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val implCalls = transform {passName = "implement-calls", pass = ImplementCalls.transform}
     val allocChecks = transform {passName = "alloc-checks", pass = AddAllocChecks.transform}
     val allocCCalls = transform {passName = "alloc-c-calls", pass = AllocCCalls.transform}
-
+    
     fun optimize module = let
 	  val _ = census module
 	  val _ = CheckCFG.check ("closure", module)
@@ -74,5 +74,5 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	    pass = optimize,
 	    registry = CFGOptControls.registry
 	  }
-
+      
   end

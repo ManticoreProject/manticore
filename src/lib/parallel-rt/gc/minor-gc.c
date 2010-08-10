@@ -164,7 +164,7 @@ bzero(nextScan, avail); /* clear unused part of local heap */
 }
 
 #ifndef NDEBUG
-static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
+void CheckLocalPtrMinor (VProc_t *self, void *addr, const char *where)
 {
     Value_t v = *(Value_t *)addr;
     if (isPtr(v)) {
@@ -172,20 +172,20 @@ static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
 	if (cq->sts == TO_SP_CHUNK)
 	    return;
 	else if (cq->sts == FROM_SP_CHUNK)
-	    SayDebug("CheckLocalPtr: unexpected from-space pointer %p at %p in %s\n",
+	    SayDebug("CheckLocalPtrMinor: unexpected from-space pointer %p at %p in %s\n",
 		ValueToPtr(v), addr, where);
 	else if (IS_VPROC_CHUNK(cq->sts)) {
 	    if (cq->sts != VPROC_CHUNK(self->id)) {
-		SayDebug("CheckLocalPtr: unexpected remote pointer %p at %p in %s\n",
+		SayDebug("CheckLocalPtrMinor: unexpected remote pointer %p at %p in %s\n",
 		    ValueToPtr(v), addr, where);
 	    }
 	    else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {
-		SayDebug("CheckLocalPtr: local pointer %p at %p in %s is out of bounds\n",
+		SayDebug("CheckLocalPtrMinor: local pointer %p at %p in %s is out of bounds\n",
 		    ValueToPtr(v), addr, where);
 	    }
 	}
 	else if (cq->sts == FREE_CHUNK) {
-	    SayDebug("CheckLocalPtr: unexpected free-space pointer %p at %p in %s\n",
+	    SayDebug("CheckLocalPtrMinor: unexpected free-space pointer %p at %p in %s\n",
 		ValueToPtr(v), addr, where);
 	}
     }
@@ -200,7 +200,7 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
     for (int i = 0;  roots[i] != 0;  i++) {
 	sprintf(buf, "root[%d]", i);
 	Value_t v = *roots[i];
-	CheckLocalPtr (self, roots[i], buf);
+	CheckLocalPtrMinor (self, roots[i], buf);
     }
 
   // check the local heap
@@ -208,103 +208,22 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 	Word_t *top = (Word_t *)(self->oldTop);
 	Word_t *p = (Word_t *)self->heapBase;
 	while (p < top) {
+		
 	    Word_t hdr = *p++;
-	    if (isMixedHdr(hdr)) {
-	      // a record
-		Word_t tagBits = GetMixedBits(hdr);
-		Word_t *scanP = p;
-		while (tagBits != 0) {
-		    if (tagBits & 0x1) {
-			CheckLocalPtr (self, scanP, "local mixed object");
-		    }
-		    else {
-		      /* check for possible pointers in non-pointer fields */
-			Value_t v = *(Value_t *)scanP;
-			if (isHeapPtr(v)) {
-			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			    switch (cq->sts) {
-			      case FREE_CHUNK:
-				SayDebug(" ** possible free-space pointer %p in mixed object %p+%d\n",
-				    (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case TO_SP_CHUNK:
-				SayDebug(" ** possible to-space pointer %p in mixed object %p+%d\n",
-				    (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case FROM_SP_CHUNK:
-				SayDebug(" ** possible from-space pointer %p in mixed object %p+%d\n",
-				    (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case UNMAPPED_CHUNK:
-				break;
-			      default:
-				if (IS_VPROC_CHUNK(cq->sts)) {
-				  /* the vproc pointer is pretty common, so filter it out */
-				    if ((Addr_t)v & ~VP_HEAP_MASK != (Addr_t)v)
-					SayDebug(" ** possible local pointer %p in mixed object %p+%d\n",
-					    (void *)v, (void *)p, (int)(scanP-p));
-				}
-				else {
-				    SayDebug(" ** strange pointer %p in mixed object %p+%d\n",
-					(void *)v, (void *)p, (int)(scanP-p));
-				}
-				break;
-			    }
-			}
-		    }
-		    tagBits >>= 1;
-		    scanP++;
-		}
-		p += GetMixedSizeW(hdr);
-	    }
-	    else if (isVectorHdr(hdr)) {
-	      // an array of pointers
-		int len = GetVectorLen(hdr);
-		for (int i = 0;  i < len;  i++, p++) {
-		    sprintf(buf, "local vector[%d/%d]", i, len);
-		    CheckLocalPtr (self, p, buf);
-		}
-	    }
-	    else if (isForwardPtr(hdr)) {
+	    Word_t *scanptr = p;
+		
+	    if (isForwardPtr(hdr)) {
 	      // forward pointer
-		Word_t *forwardPtr = GetForwardPtr(hdr);
-		CheckLocalPtr(self, forwardPtr, "forward pointer");
-		Word_t hdr = forwardPtr[-1];
-		if (isMixedHdr(hdr)) {
-		    p += GetMixedSizeW(hdr);
-		}
-		else if (isVectorHdr(hdr)) {
-		    p += GetVectorLen(hdr);
-		}
-		else {
-		    assert (isRawHdr(hdr));
-		    p += GetRawSizeW(hdr);
-		}
+			Word_t *forwardPtr = GetForwardPtr(hdr);
+			CheckLocalPtrMinor(self, forwardPtr, "forward pointer");
+			Word_t hdr = forwardPtr[-1];
+			
+			p += GetLength(hdr);
 	    }
 	    else {
-		assert (isRawHdr(hdr));
-		int len = GetRawSizeW(hdr);
-	      // look for raw values that might be pointers
-		for (int i = 0; i < len; i++) {
-		    Value_t v = (Value_t)p[i];
-		    if (isPtr(v)) {
-		        if (isHeapPtr(v)) {
-			  MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			  if (cq->sts != TO_SP_CHUNK) {
-			     if (cq->sts == FROM_SP_CHUNK)
-			       SayDebug("** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
-					ValueToPtr(v), (void *)p, i, len);
-			     else if (IS_VPROC_CHUNK(cq->sts))
-			       SayDebug("** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
-					ValueToPtr(v), (void *)p, i, len);
-			     else if (cq->sts == FREE_CHUNK)
-			       SayDebug("** suspicious looking free pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
-					ValueToPtr(v), (void *)p, i, len);
-			  }
-			} 
-		    }
-		}
-		p += len;
+			
+			tableDebug[getID(hdr)].minorGCdebug(self,scanptr);
+			p += GetLength(hdr);
 	    }
 	}
     }
@@ -317,114 +236,12 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 	Word_t *top = UsedTopOfChunk(self, cp);
 	while (p < top) {
 	    Word_t hdr = *p++;
-	    if (isMixedHdr(hdr)) {
-	      // a record
-		Word_t tagBits = GetMixedBits(hdr);
-		Word_t *scanP = p;
-		while (tagBits != 0) {
-		    if (tagBits & 0x1) {
-			Value_t v = *(Value_t *)scanP;
-			if (isPtr(v)) {
-			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			    if (cq->sts != TO_SP_CHUNK) {
-				if (cq->sts == FROM_SP_CHUNK)
-				    SayDebug("** unexpected from-space pointer %p at %p in mixed object\n",
-					ValueToPtr(v), (void *)p);
-				else if (IS_VPROC_CHUNK(cq->sts))
-				    SayDebug("** unexpected local pointer %p at %p in mixed object\n",
-					ValueToPtr(v), (void *)p);
-				else if (cq->sts == FREE_CHUNK)
-				    SayDebug("** unexpected free pointer %p at %p in mixed object\n",
-					ValueToPtr(v), (void *)p);
-			    }
-			}
-		    }
-		    else {
-		      /* check for possible pointers in non-pointer fields */
-			Value_t v = *(Value_t *)scanP;
-			if (isHeapPtr(v)) {
-			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			    switch (cq->sts) {
-			      case FREE_CHUNK:
-				SayDebug(" ** possible free-space pointer %p in mixed object %p+%d\n",
-				    (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case TO_SP_CHUNK:
-				SayDebug(" ** possible to-space pointer %p in mixed object %p+%d\n",
-				    (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case FROM_SP_CHUNK:
-				SayDebug(" ** possible from-space pointer %p in mixed object %p+%d\n",
-				    (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case UNMAPPED_CHUNK:
-				break;
-			      default:
-				if (IS_VPROC_CHUNK(cq->sts)) {
-				  /* the vproc pointer is pretty common, so filter it out */
-				    if ((Addr_t)v & ~VP_HEAP_MASK != (Addr_t)v)
-					SayDebug(" ** possible local pointer %p in mixed object %p+%d\n",
-					    (void *)v, (void *)p, (int)(scanP-p));
-				}
-				else {
-				    SayDebug(" ** strange pointer %p in mixed object %p+%d\n",
-					(void *)v, (void *)p, (int)(scanP-p));
-				}
-				break;
-			    }
-			}
-		    }
-		    tagBits >>= 1;
-		    scanP++;
-		}
-		p += GetMixedSizeW(hdr);
-	    }
-	    else if (isVectorHdr(hdr)) {
-	      // an array of pointers
-		int len = GetVectorLen(hdr);
-		for (int i = 0;  i < len;  i++, p++) {
-		    Value_t v = (Value_t)*p;
-		    if (isPtr(v)) {
-			MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			if (cq->sts != TO_SP_CHUNK) {
-			    if (cq->sts == FROM_SP_CHUNK)
-				SayDebug("** unexpected from-space pointer %p at %p in vector\n",
-				    ValueToPtr(v), (void *)p);
-			    else if (IS_VPROC_CHUNK(cq->sts))
-				SayDebug("** unexpected local pointer %p at %p in vector\n",
-				    ValueToPtr(v), (void *)p);
-			    else if (cq->sts == FREE_CHUNK)
-				SayDebug("** unexpected free pointer %p at %p in vector\n",
-				    ValueToPtr(v), (void *)p);
-			}
-		    }
-		}
-	    }
-	    else {
-		assert (isRawHdr(hdr));
-		int len = GetRawSizeW(hdr);
-	      // look for raw values that might be pointers
-		for (int i = 0; i < len; i++) {
-		    Value_t v = (Value_t)p[i];
-		    if (isPtr(v)) {
-		        if (isHeapPtr(v)) {
-			  MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			  if (cq->sts != TO_SP_CHUNK) {
-			     if (cq->sts == FROM_SP_CHUNK)
-			       SayDebug("** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d\n",
-					ValueToPtr(v), (void *)p, i, len);
-			     else if (IS_VPROC_CHUNK(cq->sts))
-			       SayDebug("** suspicious looking local pointer %p at %p[%d] in raw object of length %d\n",
-					ValueToPtr(v), (void *)p, i, len);
-			     else if (cq->sts == FREE_CHUNK)
-			       SayDebug("** suspicious looking free pointer %p at %p[%d] in raw object of length %d\n",
-					ValueToPtr(v), (void *)p, i, len);
-			  }
-			} 
-		    }
-		}
-		p += len;
-	    }
+	    Word_t *scanptr = p;
+		
+		tableDebug[getID(hdr)].minorGCdebugGlobal(self,scanptr);
+		
+		p += GetLength(hdr);
+	   
 	}
 	cp = cp->next;
     }
