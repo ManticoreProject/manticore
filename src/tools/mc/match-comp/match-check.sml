@@ -64,7 +64,24 @@ structure MatchCheck (* : sig
  *)
   fun bug msg = raise Fail ("BUG. " ^ msg)
 
+  fun println s = (TextIO.print s; TextIO.print "\n")
+
+(* types *)
+
+  type patlist = AST.pat list
+
+(* A patmat (pattern matrix) is a regular (non-jagged) matrix of patterns. *) 
+(* Invariant 1: regularity -- all rows have the same width. *)
+(* Invariant 2: no variables -- wildcards in their place.   *)
+(* The invariants must be maintained by smart constructors, etc. *)
+  type patmat = AST.pat list list 
+
 (* pretty printers *)
+
+  val lower: string -> string = implode o List.map Char.toLower o explode    
+
+  val isBool: Types.ty -> bool = (fn t => TypeUtil.same (Basis.boolTy, t))
+  val isUnit: Types.ty -> bool = (fn t => TypeUtil.same (Basis.unitTy, t))
 
   val patToString : AST.pat -> string = let
     fun tos (AST.ConPat (c, ts, p)) =
@@ -74,25 +91,32 @@ structure MatchCheck (* : sig
       | tos (AST.TuplePat ps) = 
           String.concat ["(", String.concatWith "," (List.map tos ps), ")"]
       | tos (AST.VarPat x) = Var.nameOf x
-      | tos (AST.WildPat ty) = "(_:" ^ TypeUtil.toString ty ^ ")"
+      | tos (AST.WildPat ty) = "_" (* "(_:" ^ TypeUtil.toString ty ^ ")" *)
       | tos (AST.ConstPat (AST.DConst (c, _))) = DataCon.nameOf c
-      | tos (AST.ConstPat (AST.LConst (lit, ty))) = Literal.toString lit
+      | tos (p as AST.ConstPat (AST.LConst (lit, ty))) = let
+            val s = Literal.toString lit
+            in
+              if isBool ty then lower s 
+	      else if isUnit ty then "()"
+	      else s
+            end
     in
       tos
     end
 
-  fun patmatToString (p: AST.pat list list) : string = let
+  fun patlistToString (ps: patlist) : string = 
+    String.concatWith "\t" (List.map patToString ps)
+
+  fun patmatToString (p: patmat) : string = let
     fun tos ([], acc) = String.concatWith "\n" (List.rev acc)
       | tos (ps::pss, acc) = let
-          val s = String.concatWith "\t" (List.map patToString ps)
+          val s = patlistToString ps
           in
 	    tos (pss, (s ^ "\t=> ...")::acc)
 	  end
     in
       tos (p, [])
     end
-
-  fun println s = (TextIO.print s; TextIO.print "\n")
 
 (* error handling *)
   type err_stream = MatchErrors.err_stream
@@ -129,6 +153,7 @@ structure MatchCheck (* : sig
   fun dconSetFromList cs  = DConSet.addList (DConSet.empty, cs)
   fun litSetFromList lits = LitSet.addList (LitSet.empty, lits)
 
+(* common constants *)
   val unitLitSet = litSetFromList [Literal.unitLit]
   val boolLitSet = litSetFromList [Literal.trueLit, Literal.falseLit]
 
@@ -150,9 +175,123 @@ structure MatchCheck (* : sig
         (* end case *))
       (* end fn *))
 
+(* consOwner *)
+  fun consOwner (Types.DCon {owner, ...}) = owner
+
+(* dconSetOwner *)
+  fun dconSetOwner (s: DConSet.set) : Types.tycon =
+    (case DConSet.listItems s
+       of [] => bug "dconSetOwner: empty argument"
+	| c::_ => consOwner c)
+
+(* return the set of all unrepresented constructors for given datatype *)
+  fun unrepresentedCons (s: DConSet.set) : DConSet.set = let
+    val owner = dconSetOwner s
+    val s' = DConSet.difference (allCons owner, s)
+    in
+      s'
+    end
+
+  datatype 'a num_dict 
+    = NumDict of {min : 'a, 
+		  max : 'a, 
+		  zero: 'a,
+		  add1: 'a -> 'a, 
+		  sub1: 'a -> 'a,
+		  cmp : 'a * 'a -> order}
+
+  fun numDict (min, max, zero, add1, sub1, cmp) = 
+    NumDict {min=min, max=max, zero=zero, add1=add1, sub1=sub1, cmp=cmp}
+
+(* missingIntegral *)
+  fun missingIntegral (NumDict {zero, ...}) [] = SOME zero
+    | missingIntegral (NumDict {min, max, add1, sub1, cmp, zero}) (ns as m::_) =
+        (case cmp (m, min)
+	   of LESS => SOME (sub1 m)
+	    | _ => let
+                fun lp [n] =
+                      (case cmp (n, max)
+			 of LESS => SOME (add1 n)
+			  | equal => NONE (* unlikely, but accounted for *))
+		  | lp (m::n::ns) = 
+                      (case cmp (add1 m, n)
+                         of EQUAL => lp (n::ns)
+			  | less => SOME (add1 m))
+		  | lp [] = bug "missingIntegral: unreachable"
+                in
+                  lp ns
+                end)
+
+(* missingInt *)
+(* pre: argument list is sorted ascending *)
+(* Given a list of sorted (asc) integers, return one of the integers that *)
+(*   does not appear. *)
+(* missingInt will probably return 1 less than the current min. *)
+  val missingInt : int list -> int option = let
+    val min = valOf Int.minInt
+    val max = valOf Int.maxInt
+    fun add1 (n: int) = n+1
+    fun sub1 (n: int) = n-1
+    val cmp = Int.compare
+    val z = (0: int)
+    in
+      missingIntegral (numDict (min, max, z, add1, sub1, cmp))
+    end
+
+(* nextInt : LitSet.set -> Literal.literal option *)
+(* pre: set contains only int literals *)
+(* This implementation uses that fact that "listItems" returns a *)
+(*   sorted (ascending) list. *)
+(* If the given set is empty, nextInt returns minInt. *)
+(* Usually returns SOME(min-1). *)
+  fun nextInt (s: LitSet.set) : Literal.literal option = let
+    fun int (Literal.Int n) = IntInf.toInt n
+      | int _ = raise Fail "precondition not met"
+    val fromInt = Literal.Int o IntInf.fromInt
+    val ns = List.map int (LitSet.listItems s)
+    in
+      Option.map fromInt (missingInt ns)
+    end
+
+(* missingString *)
+  fun missingString (s: LitSet.set) : Literal.literal option = let
+    val lim = 12
+    fun lp (i, t) =
+      if i >= lim then NONE
+      else if LitSet.member (s, (Literal.String t)) then lp (i+1, t^"-")
+      else SOME (Literal.String t)
+    in
+      lp (0, "-")
+    end     
+
+(* unrepresentedLit *)
+(* pre: given literal set is incomplete *)
+  fun unrepresentedLit (ty: Types.ty, s: LitSet.set) : AST.pat option =
+    if TypeUtil.same (Basis.boolTy, ty) then
+      (if LitSet.member (s, Literal.trueLit) then 
+         SOME (AST.ConstPat (AST.LConst (Literal.falseLit, Basis.boolTy)))
+       else 
+         SOME (AST.ConstPat (AST.LConst (Literal.trueLit, Basis.boolTy))))
+    else if TypeUtil.same (Basis.intTy, ty) then
+      case nextInt s
+        of NONE => SOME (AST.WildPat ty)
+	 | SOME n => SOME (AST.ConstPat (AST.LConst (n, ty)))
+    else if TypeUtil.same (Basis.stringTy, ty) then
+      case missingString s
+        of SOME t => SOME (AST.ConstPat (AST.LConst (t, ty)))
+	 | NONE => SOME (AST.WildPat ty)
+    else SOME (AST.WildPat ty)
+
 (* a test to check if constructor c is the only one in its datatype *)
   fun soleConstructor (c: AST.dcon) : bool = 
     (nConsOf (DataCon.ownerOf c) = 1)
+
+(* mkConPat will construct a ConPat with an appropriately-typed wildcard *)
+(*   as its subpattern. *)
+  fun mkConPat (c as Types.DCon {argTy, ...}, ts) = 
+    (case argTy 
+       of NONE => AST.ConstPat (AST.DConst (c, ts))
+	| SOME ty => AST.ConPat (c, ts, AST.WildPat ty))
 
 (* a pattern is irrefutable if *)
 (* - it is a constructor pattern K(p) where *)
@@ -176,20 +315,12 @@ structure MatchCheck (* : sig
        
 (* irrefutability for parallel patterns *)
   fun irrefutableP (AST.NDWildPat _) = true
-    | irrefutableP (AST.HandlePat _) = false (* HandlePats are refutable. *)
+    | irrefutableP (AST.HandlePat _) = false (* HandlePats are always refutable. *)
     | irrefutableP (AST.Pat p) = irrefutable p
 
 (* select the pattern out of a match *)
   fun patOf (AST.PatMatch (p, _)) = p
     | patOf (AST.CondMatch (p, _, _)) = p
-
-  type patlist = AST.pat list
-
-(* A patmat (pattern matrix) is a regular (non-jagged) matrix of patterns. *) 
-(* Invariant 1: regularity -- all rows have the same width. *)
-(* Invariant 2: no variables -- wildcards in their place.   *)
-(* The invariants must be maintained by smart constructors, etc. *)
-  type patmat = AST.pat list list 
 
   fun isTuplePat (AST.TuplePat _) = true
     | isTuplePat _ = false
@@ -292,6 +423,16 @@ structure MatchCheck (* : sig
       LitSet.equal (boolLitSet, s)
     else false
 
+(* firstColContainsCons is a predicate to test whether the first column *)
+(*   of a pattern matrix contains constructors. *)
+  val firstColContainsCons : patmat -> bool = let
+    fun pred (AST.ConstPat (AST.DConst _)::_) = true
+      | pred (AST.ConPat(_)::_) = true
+      | pred _ = false
+    in
+      List.exists pred
+    end
+
 (* firstColContainsLits is a predicate to test whether the first column *)
 (*   of a pattern matrix contains literals. *)
   val firstColContainsLits : patmat -> bool = let
@@ -300,6 +441,27 @@ structure MatchCheck (* : sig
     in
       List.exists pred
     end
+
+(* firstColContainsTuples *)
+  val firstColContainsTuples : patmat -> bool = let
+    fun pred (p::_) = isTuplePat p
+      | pred _ = false
+    in
+      List.exists pred
+    end
+
+(* firstColTy : patmat -> Types.ty *)
+  fun firstColTy ((p::ps)::pss) = TypeOf.pat p
+    | firstColTy p = (println "badness"; 
+		      println (patmatToString p); 
+		      bug "firstColTy: malformed pattern matrix")
+
+(* firstColTupleTy *)
+  fun firstColTupleTy (p: patmat) : bool =
+    (case firstColTy p
+       of Types.TupleTy [] => false (* that's unit *)
+	| Types.TupleTy ts => true
+	| _ => false)
 
 (* firstColLits builds a set of all literals appearing in *)
 (*   the first (leftmost) column of a pattern matrix. *)
@@ -365,7 +527,7 @@ structure MatchCheck (* : sig
     end
 
 (* sK is a version of s to compute the "specialized matrix" from a constant. *)
-(* Constants are considered nullary constructors. *)
+(* Constants are treated as nullary constructors. *)
   fun sK (AST.DConst (c, ts), p: patmat) : patmat = let
         fun lp ([], acc) = List.rev acc
 	  | lp ((q::ps)::pss, acc) = 
@@ -416,11 +578,13 @@ structure MatchCheck (* : sig
                  if List.length rs = arity 
 		 then lp (pss, (rs@ps)::acc)
 		 else bug "sT: tuple arity"
-	     | AST.WildPat (Types.TupleTy ts) => let
-                 val wilds = List.map AST.WildPat ts
-                 in
-		   lp (pss, (wilds@ps)::acc)
-	         end
+	     | AST.WildPat (Types.TupleTy ts) =>
+                 if List.length ts = arity then let
+                   val wilds = List.map AST.WildPat ts
+                   in
+		     lp (pss, (wilds@ps)::acc)
+	           end
+                 else bug "sT: wild tuple arity"
 	     | AST.WildPat t => 
                  bug "sT: unexpected WildPat with non-tuple type"
 	     | AST.VarPat _ =>
@@ -456,8 +620,8 @@ structure MatchCheck (* : sig
 
 (* u tests whether pattern vector v is useful with respect to patmat p. *)
 (*  invariant: width of p equals width of v (checked) *)
-  fun u (p: patmat, v: patlist) : bool = let
-(* (\* +debug *\) *)
+ fun u (p: patmat, v: patlist) : bool = let
+(* (* +debug *) *)
 (*     val _ = println "-----" *)
 (*     val _ = println "u:" *)
 (*     val _ = println "p is" *)
@@ -467,12 +631,12 @@ structure MatchCheck (* : sig
 (*     val _ = println "v's type(s):" *)
 (*     val _ = println (String.concatWith ";" (List.map (TypeUtil.toString o TypeOf.pat) v)) *)
 (*     val _ = println "" *)
-(* (\* -debug *\) *)
+(* (* -debug *) *)
     val {width, length} = dim p
-(* (\* +debug *\) *)
+(* (* +debug *) *)
 (*     val _ = println ("width = " ^ Int.toString width ^  *)
 (* 		     ", length = " ^ Int.toString length) *)
-(* (\* -debug *\) *)
+(* (* -debug *) *)
     in
       if (width = 0) then (length = 0)
       else let
@@ -500,13 +664,13 @@ structure MatchCheck (* : sig
                 (case ty
 		   of Types.TupleTy [] (* unit *) => wild (p, qs)
 		    | Types.TupleTy ts => let
-(*                       (\* +debug *\) *)
+(*                       (* +debug *) *)
 (*    	                val _ = println ("found (_ : " ^ TypeUtil.toString ty ^ ")") *)
 (* 			val _ = println "p is" *)
 (* 			val _ = println (patmatToString p) *)
 (* 			val _ = println "v is" *)
 (* 			val _ = println (patmatToString [v]) *)
-(* 	              (\* -debug *\) *)
+(* 	                 (* -debug *) *)
                       (* break apart the first column of the patmat *)
                         val p' = breakTups p
 			val ws = List.map AST.WildPat ts
@@ -575,19 +739,120 @@ structure MatchCheck (* : sig
       lp (p, [])
     end
 
-(* exhaustive *)
-  fun exhaustive (p: patmat) : bool =
-    (case p
-       of [] => false
-	| ps::pss => let
-            val ts = List.map TypeOf.pat ps
-            val ws = List.map AST.WildPat ts
+
+(* algorithm I *)
+  fun i (p: patmat, n: int) : patlist option =
+    if n = 0 then let
+      val {width, length} = dim p
+      in
+        if length > 0 then NONE else SOME []
+      end
+    else if firstColTupleTy p then let
+    (* The wf first column can only contain tuples and vars/wildcards. *)
+    (* It contains a "complete signature of constructors" by the assumption *)
+    (*   that a tuple is part of an implicit datatype with a sole constructor. *)
+      val ts = case firstColTy p
+		of Types.TupleTy ts => ts
+		 | _ => bug "i: expected TupleTy"
+      val arity = List.length ts
+      in
+        case i (sT (arity, p), arity+n-1)
+          of SOME ps => SOME [AST.TuplePat ps]
+	   | NONE => NONE
+      end
+    else if firstColContainsLits p then let
+      val (ty, sigma) = firstColLits p
+      in
+        if completeLits (ty, sigma) then let
+          fun lp [] = NONE
+	    | lp (l::ls) =
+                case i (sL (l, ty, p), n-1)
+                  of SOME v => SOME (AST.ConstPat(AST.LConst(l,ty))::v)
+		   | NONE => lp ls
+          in
+            lp (LitSet.listItems sigma)
+          end
+	else 
+          case i (d p, n-1)
+            of NONE => NONE
+	     | SOME v => 
+                 (case unrepresentedLit (ty, sigma)
+		    of SOME p => SOME (p::v)
+		     | NONE => raise Fail "algorithm I lit")
+      end
+    else (* first col is cons + vars + wilds *)
+      if firstColContainsCons p then let
+        val sigma = firstColCons p
+        val ts = (case firstColTy p
+		    of Types.ConTy (ts, _) => ts
+		     | _ => bug "i: unreachable")
+        in
+          if completeCons sigma then let
+            fun lp [] = NONE
+	      | lp (c::cs) = let
+                  val cArity = (case DataCon.argTypeOf c
+				  of SOME _ => 1
+				   | NONE => 0) 				     
+                  in
+                    case i (s (c, p), cArity + n - 1)
+		      of NONE => lp cs
+		       | SOME (p::ps) => SOME (AST.ConPat (c, ts, p)::ps)
+		       | SOME [] => bug "i: illegal conpat arg"
+	  	  end
             in
-              (* the patlist of all wildcards should not be "useful" wrt p *)
-	      not (u (p, ws))
+              lp (DConSet.listItems sigma)
+	    end
+	  else (* incomplete set *)
+            (case i (d p, n-1)
+               of NONE => NONE
+		| SOME v => let
+                    val c = case DConSet.listItems (unrepresentedCons sigma)
+                              of [] => bug "i: sigma is incomplete"
+			       | c::_ => c
+	 	    val c' = mkConPat (c, ts)
+                    in
+		      SOME (c'::v)
+		    end
+		 (* end case *))
+	end
+      else let
+      (* just vars and wilds in the first col, which are exhaustive *) 
+        val ty = firstColTy p 
+(*
+	val _ = println "vars and wilds only"
+	val _ = println ("calling with n = " ^ Int.toString (n-1))
+*)
+        in
+          case i (d p, n-1)
+            of NONE => NONE
+	     | SOME v => SOME (AST.WildPat(ty)::v)
+       end
+
+(* exhaustive *)
+  fun exhaustive (p: patmat) : patlist option = let
+    val {width, length} = dim p
+    in
+      i (p, width)
+    end
+
+(* redundant *)
+(* Returns either NONE, meaning irredundant, or *)
+(* SOME ps, a witness to the redundancy. *)
+  fun redundant (p: patmat) : patlist option =
+    (case p
+       of [] => NONE
+	| [v] => NONE
+	| v::vs => let
+            fun lp ([], _) = NONE
+	      | lp (ps::pss, m) = 
+                  if u (m, ps) then lp (pss, m@[ps])
+		  else SOME ps
+            in
+	      lp (vs, [v])
 	    end
       (* end case *))
 
+(*
 (* irredundant *)
 (* Checks that each row of p is useful with respect to its predecessors. *)
 (* TODO Rewrite for efficiency (currently it's quadratic). *)
@@ -602,15 +867,27 @@ structure MatchCheck (* : sig
             lp (vs, [v]) 
 	  end
     (* end case *))
-
-  val inexhaustive = not o exhaustive
-  val redundant    = not o irredundant
+*)
 
 (* checkPatMat *)
-  fun checkPatMat (err: err_stream) (p: patmat) : unit = 
-    if inexhaustive p then warnInexMatch err "inexhaustive match"
-    else if redundant p then errRedundant err "redundant match"
-    else ()
+  fun checkPatMat (err: err_stream) (p: patmat) : unit = let
+    fun witnessToString ps = String.concatWith "|" (List.map patToString ps)
+    in
+      case exhaustive p
+        of SOME witness => let
+           val msg = "cannot match, for example, " ^ witnessToString witness
+           in
+	     warnInexMatch err ("inexhaustive match: " ^ msg)
+	   end
+	 | NONE =>
+             (case redundant p
+	        of SOME witness => let
+                     val msg = witnessToString witness
+                     in
+		       errRedundant err ("redundant match: " ^ msg)
+		     end
+		 | NONE => ())
+    end
 
 (* checkMatchList checks that the match list is both exhaustive and irredundant. *)
 (* Redundancy yields a warning; inexhaustiveness is an error. *)
@@ -619,16 +896,21 @@ structure MatchCheck (* : sig
 
 (* checkPMatchList checks that the pmatch list is both exhaustive and irredundant. *)
 (* Redundancy yields a warning; inexhaustiveness is an error. *)
-  fun checkPMatchList (err: err_stream, ms: AST.pmatch list) : unit =
-    (checkPatMat err) (mkPatMatP ms)
+  fun checkPMatchList (err: err_stream, ms: AST.pmatch list) : unit = 
+    (checkPatMat err) (mkPatMatP ms) 
 
 (* checkHandleMatches checks that the match list in a handle is not redundant. *)
 (* It does not check for exhaustiveness. *)
   fun checkHandleMatches (err: err_stream, ms: AST.match list) : unit = let
     val p = mkPatMat ms
     in
-      if redundant p then errRedundant err "redundant match"
-      else ()
+      case redundant p 
+        of SOME ps => let
+             val msg = String.concatWith "," (List.map patToString ps)
+             in
+               errRedundant err ("redundant match: " ^ msg)
+             end
+	 | NONE => ()       
     end
 
 (* checkExp checks all match lists recursively in an expression. *)

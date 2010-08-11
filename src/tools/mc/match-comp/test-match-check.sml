@@ -59,7 +59,7 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
 
   fun println s = (TextIO.print s; TextIO.print "\n")
 
-  fun testExp' (e: AST.exp) : unit = let
+  fun testExpU' (e: AST.exp) : unit = let
     val p = MatchCheck.mkPatMat (matchesOf e)
     val _ = println (patmat p)
     in
@@ -68,11 +68,29 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
        println "done."
     end
 
-  fun testExp expectingSuccess e = 
+  fun testExpU expectingSuccess e = 
     (TextIO.print "***** expecting ";
      println (if expectingSuccess then "SUCCESS:" else "FAILURE:");
-     testExp' e;
+     testExpU' e;
      println "")
+
+  fun testExpI' (e: AST.exp) : unit = let
+    val p = MatchCheck.mkPatMat (matchesOf e)
+    val _ = println (patmat p)
+    fun pstos ps = String.concatWith "," (List.map MatchCheck.patToString ps)
+    in
+       println "\nTesting...";
+       MatchCheck.checkExp (Error.mkErrStream "/var/tmp/bogus-file", e);
+       println "Done."
+    end
+
+  fun testExpI expectingSuccess e = 
+    (TextIO.print "***** expecting ";
+     println (if expectingSuccess then "SUCCESS:" else "FAILURE:");
+     testExpI' e;
+     println "")
+
+  val testExp = testExpI
 
   fun test 0 = let
         val e = mkCase [AST.WildPat Basis.boolTy]
@@ -154,7 +172,6 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
 	  testExp true e
         end
     | test 14 = let
-(* FIXME *)
         val e =
           mkCase [AST.ConstPat (AST.DConst (testerC, [])),
 		  AST.ConPat (testerA, [], AST.WildPat Basis.intTy),
@@ -275,7 +292,53 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
         in
 	  testExp true e
         end
-(* so far it has passed (i.e., behaved as expected) all my tests... *)
-    | test n = println ("***** no such test: " ^ Int.toString n)
+    | test 26 = let
+	val wb = AST.WildPat Basis.boolTy
+        val e = mkCase [AST.TuplePat [wb, AST.TuplePat [wb, wb]]]
+        in
+          testExp true e
+        end
+    | test 27 = let
+        val wb = AST.WildPat Basis.boolTy
+        val e = mkCase [AST.TuplePat [wb, AST.TuplePat [wb, AST.ConstPat tru]]]
+        in
+	  testExp false e
+        end
+    | test 28 = let
+        val tup = AST.TuplePat
+        val wb = AST.WildPat Basis.boolTy
+	val e = mkCase [tup [wb, tup [wb, AST.ConstPat tru]],
+			tup [AST.ConstPat tru, tup [wb, wb]]]
+        in
+	  testExp false e
+        end
+    | test 29 = let
+        val tup = AST.TuplePat
+        val wb = AST.WildPat Basis.boolTy
+	val e = mkCase [tup [wb, tup [wb, AST.ConstPat tru]],
+			tup [AST.ConstPat tru, tup [wb, wb]],
+			tup [AST.ConstPat fls, tup [wb, AST.ConstPat fls]]]
+        in
+	  testExp true e
+        end
+    | test 30 = let
+        val e = mkCase [AST.ConstPat (AST.LConst (Literal.String "foo", Basis.stringTy))]
+        in
+          testExp false e
+        end
+    | test 31 = let
+        val e = mkCase [AST.ConstPat (AST.LConst (Literal.String "foo", Basis.stringTy)),
+			AST.WildPat Basis.stringTy]
+        in
+          testExp true e
+        end
+    | test n = raise Fail ("***** no such test: " ^ Int.toString n)
+
+  fun testAll () = let
+    fun lp k = (test k; lp (k+1))
+	        handle Fail msg => println (msg ^ "\nHalting.")
+    in
+      lp 0
+    end
 
 end

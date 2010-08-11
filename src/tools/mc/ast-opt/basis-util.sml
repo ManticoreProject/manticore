@@ -42,7 +42,11 @@ structure BasisUtil : sig
   val arrayUpdate : unit -> AST.var
   val arrayTy     : AST.ty -> AST.ty
 
-(* cancellables ... *)
+(* cancellables *)
+  val cancelNew    : unit -> AST.var
+  val cancelCancel : unit -> AST.var
+  val cancelSpawn  : unit -> AST.var
+  val cancelTy     : unit -> AST.ty
 
 end = struct
 
@@ -116,6 +120,15 @@ end = struct
   fun arrayUpdate () = M.get mArrayUpdate
   val arrayTy        = applyTyc arrayTyc
 
-(* cancellables ... *)
+(* cancellables *)
+  val mCancelTyc    = tyc ["Cancelation", "cancelable"]
+  val mCancelNew    = var ["Cancelation", "new"]
+  val mCancelCancel = var ["Cancelation", "cancel"]
+  val mCancelSpawn  = var ["Cancelation", "spawn"]
+
+  fun cancelNew ()    = M.get mCancelNew
+  fun cancelCancel () = M.get mCancelCancel
+  fun cancelSpawn ()  = M.get mCancelSpawn
+  val cancelTy ()     = A.ConTy (mCancelTyc (), [])
 
 end

@@ -36,6 +36,13 @@ structure ASTUtil : sig
     val trueExp    : AST.exp
     val falseExp   : AST.exp
 
+  (* unit *)
+    val unitConst : AST.const
+    val unitExp   : AST.exp
+
+  (* operations on boolean expressions *)
+    val boolEq     : AST.exp * AST.exp -> bool
+
   (* create an expression that applies a function *)
     val mkApplyExp : (AST.exp * AST.exp list) -> AST.exp
 
@@ -113,7 +120,7 @@ structure ASTUtil : sig
 	    List.foldr cons' nil' exps
 	  end
 
-    fun mkArray (exps, ty) = raise Fail "todo: ASTUtil.mkArray"
+    fun mkArray (es, ty) = raise Fail "todo: ASTUtil.mkArray"
 
     fun mkIntConst n = A.LConst (Literal.Int (IntInf.fromInt n), Basis.intTy)
     fun mkInt n = A.ConstExp (mkIntConst n)
@@ -122,6 +129,19 @@ structure ASTUtil : sig
     val falseConst = A.LConst (Literal.falseLit, Basis.boolTy)
     val trueExp    = A.ConstExp trueConst
     val falseExp   = A.ConstExp falseConst
+
+    val unitConst = A.LConst (Literal.unitLit, Basis.unitTy)
+    val unitExp   = A.ConstExp unitConst
+
+    fun boolEq (A.ConstExp k1, A.ConstExp k2) =
+          (case (k1, k2)
+	     of (A.LConst (lit1, ty1), A.LConst (lit2, ty2)) =>
+                  if isBool ty1 andalso isBool ty2 
+		  then Literal.same (lit1, lit2)
+		  else false
+	      | _ => false)
+      | boolEq _ = false
+    and isBool ty = TypeUtil.same (ty, Basis.boolTy)
 
     fun mkApplyExp (e, es) = 
 	A.ApplyExp (e, mkTupleExp(es), TypeUtil.rangeType(TypeOf.exp(e)))

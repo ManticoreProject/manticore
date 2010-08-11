@@ -4,65 +4,47 @@
  * All rights reserved.
  *)
 
- (* : sig
-
-    type subst
-
-    val id        : subst
-    val singleton : AST.var * AST.var -> subst 
-    val add       : subst -> AST.var * AST.var -> subst 
-    val pat       : subst -> AST.pat -> AST.pat
-    val touchExp  : subst -> AST.exp -> AST.exp
-    
-    val subst1    : AST.var * AST.var * AST.exp -> AST.exp 
-
-  end *)
-
 structure VarSubst = 
   struct
   
     structure A = AST
     structure T = Types
-(*    structure F = Futures*)
+    structure M = Var.Map
     
-  (* fail : string -> 'a *)
-    fun fail msg = raise Fail msg
-
-  (* todo : string -> 'a *)
-    fun todo thing = fail ("todo: " ^ thing)
-			 
-    structure VarMap = Var.Map
-
-    type subst = Var.var VarMap.map
+    type subst = Var.var M.map
 
   (* id : subst *)
-    val id : subst = VarMap.empty
+    val id: subst = M.empty
 
-    fun add ((k, v), s) = VarMap.insert (s, k, v)
+  (* add : (A.var * A.var) * A.subst -> A.subst *)
+  (* Suitable for folding. *)
+    fun add ((k: A.var, v: A.var), s: subst) : subst = 
+      M.insert (s, k, v)
 
-    fun idSubst v = add((v, v), id)
+  (* idSubst : A.var -> subst *)
+    fun idSubst (v: A.var) : subst = add((v, v), id)
 
-    fun substVar s v = (case VarMap.find (s, v)
-		       of NONE => v
-			| SOME x => x)
+  (* Construct the singleton substitution [x -> y] *)
+  (*   i.e. "replace x with y" *)
+    fun singleton (x: A.var, y: A.var) : subst = add ((x, y), id)
 
-(*
-  (* pat : subst -> A.pat -> A.pat *)
-    fun pat s p =
-	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)
-	      (*                                       ^^           *)
-	      (* FIXME: I may need to futurize some of these types. *)
-	      | f (A.TuplePat ps) = A.TuplePat (List.map f ps)
-	      | f (v as A.VarPat x) = A.VarPat (var s x)		    
-	      | f (A.WildPat t) = A.WildPat t
-	      | f (k as A.ConstPat _) = k
-	in
-	    f p
-	end
-*)
-  (* expWalk : (A.var * A.ty list -> A.exp) -> subst -> A.exp -> A.exp *)
-    fun expWalk f s = let
-      fun exp (A.LetExp (b, e)) = A.LetExp (binding s b, exp e)
+  (* substVar : subst -> A.var -> A.var *)
+  (* Substitute a var for a var. Suitable for use in e.g. patterns. *)
+    fun substVar (s: subst) (x: A.var) : A.var = 
+      (case M.find (s, x)
+	 of NONE => x
+	  | SOME y => y
+        (* end case *))
+
+  (* expWalk : (A.var * A.ty list -> A.exp) -> subst -> A.exp 
+	       -> {exp: A.exp -> A.exp, binding: A.binding -> A.binding}
+   * Given a function that builds an exp from the args of a VarExp 
+   *   and a substitution, construct two substitution functions, 
+   *   one for exps and one for bindings. 
+   *)
+    fun expWalk (f: A.var * (A.ty list) -> A.exp) (s: subst)
+	: {exp: A.exp -> A.exp, binding: A.binding -> A.binding} = let
+      fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
 	| exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
 	| exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
 	| exp (A.PCaseExp (es, pms, t)) = A.PCaseExp (map exp es, map pmatch pms, t)
@@ -86,7 +68,20 @@ structure VarSubst =
 	| exp (k as A.ConstExp _) = k
 	| exp (v as A.VarExp (x, ts)) = f (x, ts)
 	| exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
-	| exp (ov as A.OverloadExp _) = ov
+	| exp (ov as A.OverloadExp r) = (* FIXME is this right? *)
+            (case !r
+	       of A.Unknown (ty, xs) => let
+                    val xs' = List.map (substVar s) xs
+                    in
+		      A.OverloadExp (ref (A.Unknown (ty, xs')))
+		    end
+		| A.Instance x => let
+                    val x' = substVar s x
+                    in
+                      A.OverloadExp (ref (A.Instance x'))
+		    end
+	      (* end case *))
+	| exp (A.ExpansionOptsExp (os, e)) = A.ExpansionOptsExp (os, exp e)
       and match (A.PatMatch (p, e)) = A.PatMatch (pat p, exp e)
 	| match (A.CondMatch (p, cond, e)) = A.CondMatch (pat p, exp cond, exp e)
       and pmatch (A.PMatch (pps, e)) = A.PMatch (map ppat pps, exp e)
@@ -99,76 +94,46 @@ structure VarSubst =
 	| pat (v as A.VarPat x) = A.VarPat (substVar s x)		    
 	| pat (A.WildPat t) = A.WildPat t
 	| pat (k as A.ConstPat _) = k
-      and binding s (A.ValBind (p, e)) = A.ValBind (pat p, exp e)
-	| binding s (A.PValBind (p, e)) = A.PValBind (pat p, exp e)
-	| binding s (A.FunBind ls) = A.FunBind (List.map (lambda s) ls)
-      and lambda s (A.FB (f, x, e)) = A.FB(substVar s f, x, exp e)
-
+      and binding (A.ValBind (p, e)) = A.ValBind (pat p, exp e)
+	| binding (A.PValBind (p, e)) = A.PValBind (pat p, exp e)
+	| binding (A.FunBind ls) = A.FunBind (List.map lambda ls)
+	| binding (primV as A.PrimVBind _) = primV
+	| binding (code as A.PrimCodeBind _) = code 
+      and lambda (A.FB (f, x, e)) = A.FB (substVar s f, x, exp e)
       in
         {exp=exp, binding=binding}
       end
 
-(*
-  (* exp : subst -> A.exp -> A.exp *)
-  (* Given a subst like [x -> y] and an expression (x + 2), *)
-  (*   produces (y + 2). *)
-    and exp s =
-	let fun f (x, ts) = (case VarMap.find (s, x)
-			      of NONE => A.VarExp (x, ts)
-			       | SOME x' => A.VarExp (x', ts))
-	in
-	    expWalk f s
-	end
-*)
-
-(*    and module s m =
-	(case m
-	  of A.M_Body (info, tds) => A.M_Body (info, topDecs s tds)
-	   | m => m
-	(* end case *))
-
-    and topDecs s ds = List.rev (List.foldl (fn (td, tds) => topDec s td :: tds) [] ds)
-
-    and topDec s d =
-	(case d
-	  of A.TD_Module (info, mr, mt, m) => A.TD_Module(info, mr, mt, module s m)
-	   | A.TD_DCon dc => A.TD_DCon dc
-	   | A.TD_Binding b => A.TD_Binding (binding s b)
-	(* end case *))
-*)
-
-  (* perform the substitution e[x -> e2] *)
-    fun substForExp s e2 = let
-        fun f (x, ts) = (case VarMap.find (s, x)
-			      of NONE => A.VarExp (x, ts)
-			       | SOME x' => e2)
-	val {exp, binding} = expWalk f s
-        in
-	   exp
-        end
-
-  (* touchExp : subst -> A.exp * A.exp -> A.exp *)
-  (* Given a subst like [x -> xf] and an expression (x + 2), *)
-  (*   produces ((touch xf) + 2). *)
-  (* n.b. Type-preserving when x : 'a and xf : 'a future. *)
-(*    fun touchExp s =
-	let fun f (x, ts) = (case VarMap.find (s, x)
-				  of NONE => A.VarExp (x, ts)
-				   | SOME x' => F.mkTouch (A.VarExp (x', ts)))
-	in
-	    expWalk f s
-	end
-*)
-
-    (* substitute "this" for "that" in "e" *)
-    fun subst1 (this, that, e) = let
-      val s = add ((this, that), id)
-      fun var (x, ts) = (case VarMap.find (s, x)
-			  of NONE => A.VarExp (x, ts)
-			   | SOME x' => A.VarExp (x', ts))
-      val {exp, binding} = expWalk var s
+  (* applySubst : subst -> A.exp -> A.exp *)
+  (* Substitute variables for variables. *)
+    fun applySubst (s: subst) : A.exp -> A.exp = let
+      fun f (x, ts) =
+        (case M.find (s, x)
+	   of NONE   => A.VarExp (x, ts)
+	    | SOME y => A.VarExp (y, ts)
+	  (* end case *))
+      val {exp, ...} = expWalk f s
       in
-        exp e        
+        exp
+      end
+
+  (* One-shot variable-variable substitution. *)
+  (* substitute "this" for "that" in "e" *)
+    fun subst1 (this: A.var, that: A.var, e: A.exp) : A.exp = 
+      applySubst (singleton (this, that)) e
+
+  (* perform the substitution e [x -> e2] *)
+  (* Substitute the same expression for all variables in the subst. *)
+  (* FIXME An odd function. Is this used anywhere? *)
+    fun substForExp s e2 = let
+      fun f (x, ts) = 
+        (case M.find (s, x)
+	   of NONE => A.VarExp (x, ts)
+	    | SOME _ => e2
+	  (* end case *))
+      val {exp, ...} = expWalk f s
+      in
+        exp
       end
 
   end
