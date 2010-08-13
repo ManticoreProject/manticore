@@ -17,8 +17,13 @@ structure VarSubst =
     val id: subst = M.empty
 
   (* add : (A.var * A.var) * A.subst -> A.subst *)
-  (* Suitable for folding. *)
+  (* Suitable for folding (List.foldx). *)
     fun add ((k: A.var, v: A.var), s: subst) : subst = 
+      M.insert (s, k, v)
+
+  (* add': A.var * A.var * A.subst -> A.subst *)
+  (* Suitable for "pair" folding (ListPair.foldx). *)
+    fun add' (k: A.var, v: A.var, s: subst) : subst =
       M.insert (s, k, v)
 
   (* idSubst : A.var -> subst *)
