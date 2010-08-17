@@ -6,9 +6,11 @@
  * NOTE: In the paper, the trans, state and act functions (blocks 5-7)
  *   are mutually recursive. They don't need to be. If the acts come first,
  *   then the states, then the transes, it works out.
+ *   As such the order of the translated components is "jumbled" here.
  *)
 
 (* NOTE: This is a work in progress, and not yet "live". - ams *)
+(* There are some holes remaining, each marked FIXME. *)
 
 structure JFPTranslatePCase (* : sig
 
@@ -82,6 +84,70 @@ structure JFPTranslatePCase (* : sig
     in
       lp (ms, [])
     end
+
+(* bitstringToString *)
+(* ex: bitstringToString [true, false, true] --> "101" *)
+  fun bitstringToString (bs: bistring) : string = 
+    String.implode (List.map (fn b => if b then #"1" else #"0") bs)
+
+(* bitstringCompare : bitstring -> order *)
+  fun bitstringCompare (bs1: bitstring, bs2: bitstring) : order = let
+    val len1 = List.length bs1
+    val len2 = List.length bs2
+    in 
+      if len1 < len2 then LESS
+      else if len1 > len2 then GREATER
+      else (* len1 = len2 *) 
+        String.compare (bitstringToString bs1, bitstringToString bs2)
+    end
+
+  structure BistringSet = RedBlackSetFn (struct
+					   type ord_key = bitstring
+					   val compare  = bitstringCompare
+					 end)
+
+(* bistringSetFromList *)
+  fun bitstringSetFromList (bss: bistring list) : BitstringSet.set =
+    List.foldl BitstringSet.add' BitstringSet.empty bss
+
+(* bitstringToAST *)
+(* Makes an AST expression out of an SML bitstring. *)
+  local
+    val new  = U.bitvecNew ()
+    val set1 = U.bitvecSet1 ()
+    val bvTy = U.bitvecTy ()
+    fun seqList es =
+      (case es
+ 	 of [] => raise Fail "undefined"
+	  | [e] => e
+	  | h::t => A.SeqExp (h, seqList t))
+  in
+    fun bitstringToAST (bs : bitstring) : A.exp = let
+      val len = List.length bs
+    (* BitVec.new constructs a bit string of length len, all zeros. *)
+      val a = A.ApplyExp (A.VarExp (new, []),
+			  ASTUtil.mkInt len,
+			  bvTy)
+      in
+        if len <= 0 then a
+        else let
+          val aV = Var.new ("a", bvTy) 
+	  fun set i = A.ApplyExp (A.VarExp (set1, []),
+				  A.TupleExp [A.VarExp (aV, []),
+					      ASTUtil.mkInt i],
+				  B.unitTy)
+	  fun lp (_, [], acc) = 
+                A.LetExp (A.ValBind (A.VarPat aV, a),
+		  	  seqList acc)
+	    | lp (i, b::bs, acc) = let
+                val acc' = if b then set(i)::acc else acc
+                in
+                  lp (i+1, bs, acc')
+                end
+          in
+            lp (0, bs, [A.VarExp (aV, [])])
+          end	         
+  end (* local *)
 
 (* bitstringEq *)
   val bitstringEq : (bitstring * bitstring) -> bool = let
@@ -182,21 +248,29 @@ structure JFPTranslatePCase (* : sig
     end
 
 (* rules *)
-  fun rules (s: bitstring, c: pcase') : pcase' = let
+  fun rules (s: bitstring, c: pcase') : (int * ppat list) list = let
     val PCase' (es, ms, bss, t) = c
     fun pred bs = bitstringEq (bs, bitwiseAnd (bs, s))
-    fun lp ([], [], accMs, accBss) = 
-	  PCase' (es, List.rev accMs, List.rev accBss, t)
-      | lp (m::ms, bs::bss, accMs, accBss) = 
-          if pred bs then lp (ms, bss, m::ms, bs::accBss)
-	  else lp (ms, bss, accMs, accBss)
-      | lp _ = raise Fail "bug: ms and bss should be same length" 
+    fun lp (j, [], [], acc) = List.rev acc
+      | lp (j, m::ms, bs::bss, acc) =
+          if not (pred bs) then lp (j+1, ms, bs, acc)
+	  else let
+            val ps = 
+              (case m
+		 of A.PMatch (ps, ) => ps
+		  | A.Otherwise _ => 
+                      List.map (fn e => A.Pat (A.WildPat (TypeOf.exp e))) es
+	        (* end case *))
+            in
+              lp (j+1, ms, bs, (j,ps)::acc)
+            end
+      | lp _ = raise Fail "inconsistent lengths (of ms and bss)"
     in
-      lp (ms, bss, [], [])
+      lp (1, ms, bss, []) (* j is 1-based (see Fig. 17) *)
     end
 
 (* avail *)
-(* What it returns is actually an int set, but it's inefficient to build it as such. *)
+(* What it returns is actually an int set, unsafely implemented as a list. *)
   fun avail (s: bitstring) : int list = let
     fun lp ([], _, acc) = List.rev acc
       | lp (b::bs, k, acc) = lp (bs, k+1, if b then k::acc else acc)
@@ -245,7 +319,7 @@ structure JFPTranslatePCase (* : sig
  *   val state = MVar.new S_0
  * S_0 is an array of falses. We need to know its length.
  *)
-  fun initState (k: int, b: A.exp) : A.exp * A.var = let
+  fun initState (k: int) : A.bind * A.var = let
     val args = [ASTUtil.mkInt k, ASTUtil.falseExp]
     val newArr = A.VarExp (BasisUtil.arrayArray (), [Basis.boolTy])
     val s_0 = ASTUtil.mkApplyExp (newArr, args)
@@ -258,7 +332,7 @@ structure JFPTranslatePCase (* : sig
     val new = A.VarExp (U.mvarNew (), [Basis.boolTy])
     val rhs = ASTUtil.mkApplyExp (new, [init])
     in
-      (A.LetExp (A.ValBind (x, rhs), e), x)
+      (A.ValBind (x, rhs), x)
     end
 
 (* (3)
@@ -272,24 +346,23 @@ structure JFPTranslatePCase (* : sig
  *       end,
  *      [r1, r2])
  *)
-  fun mkRefs (ts: A.ty list, b: A.exp) : A.exp * (A.var list) = let
-    fun lp ([]: A.ty list, k: int, acc: A.exp, rs: A.var list) = 
-          (acc, rs)
-      | lp (t::ts, k, acc, rs) = let
-          val (acc', r) = mkRef (k, t, acc)
+  fun mkRefs (ts: A.ty list) : A.bind list * A.var list = let
+    fun lp ([], j, accBs, accRs) = (accBs, accRs)
+      | lp (t::ts, k, accBs, accRs) = let
+          val (b, r) = mkRef (k, t, acc)
           in
-	    lp (ts, k-1, acc', r::rs)
+	    lp (ts, k-1, b::accBs, r::accRs)
 	  end
     in
-      lp (List.rev ts, List.length ts, b, [])
+      lp (List.rev ts, List.length ts, [], [])
     end
-  and mkRef (k: int, ty: A.ty, b: A.exp) : A.exp * A.var = let
+  and mkRef (k: int, ty: A.ty) : A.bind * A.var = let
     val r = Var.new ("r" ^ Int.toString k, U.refTy (U.optTy ty))
-    val e = A.LetExp (A.ValBind (A.VarPat r, refNONE ty), b) 
+    val b = A.ValBind (A.VarPat r, refNONE ty)
     in
-      (e, r)
+      (b, r)
     end
-  and refNONE ty = let
+  and refNONE (ty: A.ty) : A.exp = let
     val ref  = A.VarExp (U.refNew (), [U.optTy ty])
     val none = A.DConst (U.optNONE (), [ty])
     in
@@ -297,27 +370,30 @@ structure JFPTranslatePCase (* : sig
     end
 
 (* (4) *)
-  fun mkCancels (k: int, b: A.exp) : A.exp * (A.var list) = let
+  local
     val cancelTy = U.cancelTy ()
     val cancelNew = A.VarExp (U.cancelNew (), [])
     val new = ASTUtil.mkApplyExp (cancelNew, ASTUtil.unitExp)
-    fun lp (k, acc, cs) = 
-      if k < 1 then (acc, cs)
-      else let
-        val c = Var.new ("c" ^ Int.toString k, cancelTy)
-	val acc' = A.LetExp (A.ValBind (A.VarPat c, new), acc)
-        in
-          lp (k-1, acc', c::cs)
-        end
-    in
-      lp (k, b, [])
-    end
+  in
+    fun mkCancels (k: int) : A.bind list  * A.var list = let
+      fun lp (k, accBs, accCs) = 
+        if k < 1 then (accBs, accCs)
+        else let
+          val c = Var.new ("c" ^ Int.toString k, cancelTy)
+	  val b = A.ValBind (A.VarPat c, new)
+          in
+            lp (k-1, b::accBs, c::accCs)
+          end
+      in
+        lp (k, [], [])
+      end
+  end (* local *)
 
 (* (5) *)
   local
-    val bitvecTy = raise Fail "todo" (* basis *)
-    val bSet1F = raise Fail "todo" (* basis *)
-    val orB = raise Fail "todo" (* basis *)
+    val bitvecTy = U.bitvecTy ()
+    val bitvecEq = U.bitvecEq ()
+    val bSet1F = U.bitvecSet1F ()
     val refSetV = U.refSet ()
     val optSOME = U.optSOME ()
     fun varExp x = A.VarExp (x, [])
@@ -342,24 +418,36 @@ structure JFPTranslatePCase (* : sig
 			     A.ApplyExp (varExp bSet1F, 
 					 A.TupleExp [varExp st, ASTUtil.mkInt k],
 					 bitvecTy))
+      fun mkTest bs = A.ApplyExp (A.VarExp (bitvecEq, []),
+				  A.TupleExp [A.VarExp (stV', []),
+					      bitstringToAST bs],
+				  B.boolTy)
+      fun mkApp stFun = A.ApplyExp (A.VarExp (stFun, []),
+				    A.LConst (Literal.unitLit, B.unitTy),
+				    ty)
     (* this loop makes a big nested if statetement *)
     (* the "default" is raise Match *)
-    (* FIXME only do this for states in Next_k *)
-      fun lp ([]) = A.RaiseExp (A.ConstExp (A.DConst (B.exnMatch, [])), ty)
-	| lp ((bs,stFun)::t) = let
-          (* FIXME only do this if bs is in Next_k *)
-            val test = raise Fail "st' = bs"
-	    val app = A.ApplyExp (varExp stFun, Literal.unitLit, ty)
-            in
-              A.IfExp (test, app, lp t, ty)
-	    end
-      val cond = lp stFuns
-      val body = A.LetExp (bind,
-			   A.SeqExp (setR,
-				     A.LetExp (bind',
-					       cond)))
-      val trans_k = Var.new ("trans_" ^ Int.toString k,
-			     T.FunTy (argTy, ty))
+      fun lp (ss, memNext_k) = let
+        fun lp' [] = A.RaiseExp (A.ConstExp (A.DConst (B.exnMatch, [])), ty)
+	  | lp' ((bs,stFun)::t) = 
+              if memNext_k bs 
+	      then A.IfExp (mkTest bs, mkApp stFun, lp' t, ty)	        
+	      else lp' t
+        in
+          lp' ss
+        end
+      val cond =
+        (case stFuns
+           of [] => lp ([], 0)
+	    | (bs,_)::_ => let
+                 val next_k = nextSet (k, List.length bs)
+		 fun memNext_k bs = List.exists (fn cs => bitstringEq (bs, cs)) next_k
+                 in
+                   lp (stFuns, memNext_k)
+	         end
+	  (* end case *))
+      val body = A.LetExp (bind, A.SeqExp (setR, A.LetExp (bind', cond)))
+      val trans_k = Var.new ("trans_" ^ Int.toString k, T.FunTy (argTy, ty))
       in
         A.FB (trans_k, v, body)
       end
@@ -367,24 +455,97 @@ structure JFPTranslatePCase (* : sig
   fun allTrans (mState: A.var, 
 		ers: (A.exp * A.var) list,
 		stFuns: (bitstring * A.var list)) 
-      : A.lambda list = let
+      : A.lambda list * A.var list = let
     fun lp (_, [], acc) = List.rev acc
       | lp (k, (e,r)::t, acc) = let
           val trans_k = mkTrans (k, TypeOf.exp e, mState, r, stFuns)
           in
             lp (k+1, t, trans_k::acc)
 	  end
+    val lams = lp (1, ers, [])
     in
-      lp (1, ers, [])
+      (lams, List.map (fn (A.FB(f,_,_)) => f) lams)
     end
+
+(* (6) *)
+  local
+    fun varType x = TypeOf.monoTy (Var.typeOf x)
+    val refTyc = U.refTyc ()
+    fun typeOfRefVar (r: A.var) : A.ty =
+      (case TypeOf.monoTy (Var.typeOf x)
+         of ty as A.ConTy ([t], c) =>
+              if TyCon.same (c, refTyc)
+	      then t
+	      else raise Fail ("expected ref type, got " ^ TypeUtil.toString ty)
+	  | ty => raise Fail ("expected ref type, got " ^ TypeUtil.toString ty)
+        (* end case *))
+    fun bang (r: A.var) : A.exp = let
+      val t = typeOfRefVar r
+      in
+	A,ApplyExp (A.VarExp (U.refGet (), [t]), A.VarExp (r, []), t)
+      end			     
+    fun bigBang (rs: A.var list) : A.exp =
+      (case rs
+	 of [] => A.ConstExp (A.LConst (Literal.unitConst, Basis.unitTy))
+	  | _  => A.TupleExp (List.map bang rs)
+        (* end case *))            
+    fun pats (ps: A.ppat list) : A.pat = let
+      fun pat (A.NDWildPat ty) = A.WildPat ty
+	| pat (A.HandlePat _) = raise Fail "not supported: HandlePat"
+	| pat (A.Pat p) = p
+      in
+        A.TuplePat (List.map pat ps)
+      end
+  in 
+    fun mkState (s_i: bitstring, rs: A.var list, acts, A.var list, resume: A.var, c: pcase') 
+      : A.lambda = let
+      val (PCase' (_, _, _, ty)) = c
+      fun rsLp ([], [], acc) = bigBang (List.rev acc)
+	| rsLp (r::rs, true::bs, acc) = lp (rs, bs, r::acc)
+	| rsLp (r::rs, false::bs, acc) = lp (rs, bs, acc)
+	| rsLp _ = raise Fail "rs and bs must be the same length"
+      fun lp ([], acc) = let
+            val x = A.ApplyExp (A.VarExp (resume, []), bitstringToAST s_i, ty)
+            in 
+              List.rev (x::acc)
+            end
+	| lp ((j,ps)::t, acc) = let
+            val xs = Var.Set.listItems (boundVars ps)
+	    val arg = 
+              A.TupleExp (List.map (fn x => A.VarExp (x, raise Fail "what goes here?")) xs) (* FIXME *)
+	    val act_j = List.nth (acts, j-1) (* j is 1-based (see Fig. 17), nth is 0-based *)
+	    val app = A.ApplyExp (A.VarExp (act_j, []), arg, ty)
+            val m = A.PatMatch (pats ps, app)
+            in
+              lp (t, m::acc)
+	    end
+      val e = rsLp (rs, s_i, [])
+      val ms = lp (rules (s_i, c), [])
+      val fnName = "state_" ^ bitstringToString s_i
+      val body = A.CaseExp (e, ms, ty)
+      in
+        A.FB (Var.new (fnName, T.FunTy (B.unitTy, ty)),
+	      Var.new ("u", B.unitTy),
+	      body)
+      end
+  (* mkStates : pcase' * A.var list * A.var list * A.var -> A.lambda list * A.var list *)
+    fun mkStates (c as PCase' (es, ms, bss, ty), rs: A.var list, acts: A.var list, resume: A.var) 
+      : bitstring list * A.lambda list * A.var list = let
+      val ss = BitstringSet.listItems (bitstringSetFromList bss)
+      fun mk s_i = mkState (s_i, rs, acts, resume, c)
+      val lams = List.map mk ss
+      in
+        (ss, lams, List.map (fn (A.FB(f,_,_)) => f) lams)
+      end
+  end (* local *)
 
 (* (7) *)
 (* FIXME make this *recursive* (see +++ below) *)
   fun mkActs (env: VarSubst.subst) 
 	     (pc: pcase', returnV: A.var, reraiseV: A.var, cs: A.var list) 
-      : A.lambda list = let
-    val varType x = TypeOf.monoTy (Var.typeOf x)
-    val (PCase' (es, ms, bs, ty)) = pc
+      : A.lambda list * A.var list = let
+    fun varType x = TypeOf.monoTy (Var.typeOf x)
+    val (PCase' (es, ms, bss, ty)) = pc
     val len = List.length ms
     fun newUnitV () = Var.new ("u", Basis.unitTy)
     fun newExV () = Var.new ("ex", Basis.exnTy)
@@ -439,27 +600,50 @@ structure JFPTranslatePCase (* : sig
           in
 	    lp (j+1, [], lam::acc)
           end
+    val lams = lp (1, ms, [])
     in
-      lp (0, ms, [])
+      (lams, List.map (fn (A.FB (f, _, _)) => f) lams)
     end
 
 (* (8) *)
-  fun mkReraise (reraise: A.var, exnReturn: A.var, cs: A.var list, ty: A.ty) = let
-    val x = Var.new ("x", Basis.exnTy)
+  fun mkReraise (exnReturnV: A.var, cs: A.var list, ty: A.ty) : A.lambda * A.var = let
+    val reraiseV = Var.new ("reraise", T.FunTy (B.exnTy, ty))
+    val x = Var.new ("x", B.exnTy)
     val etys = [TyVar.new (Atom.atom "'e")]
     val exnReturnX = 
       A.ApplyExp (A.VarExp (exnReturn, etys), A.VarExp (x, []), ty)
     val body = 
-      List.foldr (fn (c,b) => A.SeqExp (cancel c, b)) exnReturnX (List.rev cs) 
+      List.foldr (fn (c,b) => A.SeqExp (cancel c, b)) exnReturnX cs 
     in
-      A.FB (reraise, x, body)
+      (A.FB (reraise, x, body), reraise)
     end
+
+(* mkActExn : A.var * A.var * A.ty -> A.lambda * A.var *)
+  local
+    val bitvecTy = U.bitvecTy ()
+    val mvarTake = U.mvarTake ()
+  in
+    fun mkActExn (stV: A.var, reraiseV: A.var, resTy: A.ty) : A.lambda * A.var = let
+      val actExnV = Var.new ("actExn", T.FunTy (B.exnTy, resTy))
+      val exV = Var.new ("ex", B.exnTy)
+      val take = A.ApplyExp (A.VarExp (mvarTake, [bitvecTy]),
+			     A.VarExp (stV, []),
+			     bitvecTy)
+      val rer = A.ApplyExp (A.VarExp (reraiseV, []),
+			    A.VarExp (exV, []),
+			    resTy)
+      val lam = A.FB (actExnV, exV, A.SeqExp (take, rer)
+      in
+        (lam, actExnV)
+      end
+  end
 
 (* (9) *)
 (* cs = list of cancel vars  *)
 (* ts = list of trans_k vars *)
 (* es = list of expressions  *)
-  fun mkSpawns (cs: A.var list, ts: A.var list, es: A.exp list, actExnV: A.var) =
+  fun mkBody (cs: A.var list, ts: A.var list, es: A.exp list, actExnV: A.var) 
+      : A.exp = let
     fun lp ([], [], [], b) = b
       | lp (c::cs, t::ts, e::es, b) = let
           val exV = Var.new ("ex", Basis.exnTy)
@@ -480,52 +664,62 @@ structure JFPTranslatePCase (* : sig
     end
   and thunk e = AST.FunExp (Var.new ("u", Basis.unitTy), e, TypeOf.exp e)
 
-(* --- some tests follow --- *)
-
-(*
-  structure T = TestUtils
-
-  val zero = T.int 0
-  val one  = T.int 1
-
-  fun t (A.PCaseExp (es, pms, ty)) = tr (fn e => e) (es, pms, ty)
-    | t _ = raise Fail "expecting a pcase"
-
-  val c0 = A.PCaseExp ([zero],
-		       [A.Otherwise one],
-		       Basis.intTy)
-
-  val c1 = A.PCaseExp ([zero, zero],
-		       [A.PMatch ([T.intPPat 1, A.NDWildPat Basis.intTy], zero),
- 		        A.Otherwise one],
-		       Basis.intTy)
-
-  val c2 = let
-    val n = Var.new ("n", Basis.intTy)
-    val m = Var.new ("m", Basis.intTy)
-    in
-      A.PCaseExp ([A.VarExp (n, []), A.VarExp (m, [])],
-		  [A.PMatch ([T.intPPat 1, A.NDWildPat Basis.intTy], zero),
-		   A.PMatch ([A.NDWildPat Basis.intTy, T.intPPat 2], zero),
-		   A.Otherwise one],
-		  Basis.intTy)
-    end
-
-(*  link time error:
-  val c3 = A.PCaseExp ([zero],
-		       [A.Otherwise (t c0)],
-		       Basis.intTy)
-*)
-  fun mkTest pcase = (PrintAST.printExpNoTypes pcase;
-		      PrintAST.printComment "-->";
-		      PrintAST.printExpNoTypes (t pcase))
-
-  fun test 0 = mkTest c0
-    | test 1 = mkTest c1
-    | test 2 = mkTest c2
-(*  | test 3 = mkTest c3 *)
-    | test _ = print "No such test.\n"
-*)
+(* all together now *)
+  local
+    val bitvecTy = U.bitvecTy ()
+    val dispatchV     = (* FIXME *) raise Fail "?"
+    val dispatchResTy = (* FIXME *) raise Fail "?"
+    val dispatchCall = A.ApplyExp (dispatchV,
+		                   A.ConstExp (A.LConst (Literal.unitLit, B.unitTy)),
+			           dispatchResTy)
+    fun mvarPut (x: A.var, v: A.exp) : A.exp = raise Fail "todo"
+  in
+    fun translate (env: VarSubst.subst) (c as A.PCase (es, ms, ty)) : A.exp = let
+      val c' = mkBitstrings c
+      val len = List.length es
+      val pcaseWrapperV     = (* FIXME *) raise Fail "?"
+      val pcaseWrapperArgTy = (* FIXME *) raise Fail "?"
+      val pcaseWrapperResTy = (* FIXME *) raise Fail "?"
+      val returnV = Var.new ("return", (* FIXME *) raise Fail "type?")
+      val exnReturnV = Var.new ("exnReturn", (* FIXME *) raise Fail "type?")
+      val (stateBind, stateV) = initState len (* (2) *)
+      val resumeV = Var.new ("resume", T.FunTy (B.unitTy, dispatchReturnTy))
+      val stV = Var.new ("st", bitvecTy)
+      val resumeBody = A.SeqExp (mvarPut (stateV, A.VarExp (stV, [])),
+				 dispatchCall)
+      val resumeLam = A.FB (resumeV, stV, resumeBody)
+      val (refBinds, refVs) = mkRefs (List.map (U.refTy o U.optTy o TypeOf.exp) es) (* (3) *)
+      val (cBinds, cVs) = mkCancels len (* (4) *)
+      val (reraiseLam, reraiseV) = mkReraise (exnReturnV, cVs, ty)    (* (8) *)
+      val (actLams, actVs) = mkActs env (c', returnV, reraiseV, cVs)  (* (7) *)
+      val (stateBits, stateLams, stateVs) = mkStates (c', refVs, actVs, resumeV) (* (6) *)
+      val (transLams, transVs) = let
+        val ers = ListPair.zipEq (es, refVs)
+        val stFuns = ListPair.zipEq (stateBits, stateVs)
+        in
+          allTrans (stateV, ers, stFuns)
+        end
+      val (actExnLam, actExnV) = mkActExn (stV, reraiseV, ty)
+      val spawnAndDispatch = mkBody (cVs, transVs, es, actExnV) (* (9) *)
+      val bigFunArgV = Var.new ("arg", (* FIXME -- type of (return, exnReturn) *) raise Fail "?")
+      val deconstructArg = A.ValBind (A.TuplePat [A.VarPat returnV, A.VarPar exnReturnV],
+				      A.VarExp (bigFunArgV, []))
+      val bigFunBody = 
+        A.LetExp (deconstructArg,
+        A.LetExp (stateBind,
+        A.LetExp (A.FunBind [resumeLam],
+        A.LetExp (A.FunBind actLams,
+        A.LetExp (A.FunBind stateLams,
+        A.LetExp (A.FunBind transLams,
+        A.LetExp (A.FunBind [reraiseLam],
+        A.LetExp (A.FunBind [actExnLam],
+          spawnAndDispatch))))))))
+      val bigFunBody' = List.foldr A.LetExp bigFunBody (refBinds@cBinds)
+      in
+        A.ApplyExp (A.VarExp (pcaseWrapperV, []),
+		    A.FunExp (bigFunArgV, bigFunBody', pcaseWrapperArgTy),
+                    pcaseWrapperResTy)
+      end
 
 end
     

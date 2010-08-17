@@ -48,6 +48,10 @@ structure BasisUtil : sig
   val cancelSpawn  : unit -> AST.var
   val cancelTy     : unit -> AST.ty
 
+(* bitvecs *)
+  val bitvecEq : unit -> AST.var
+  val bitvecTy : AST.ty
+
 end = struct
 
   structure A = AST
@@ -70,7 +74,7 @@ end = struct
   fun optTyc ()  = M.get mOptTyc
   fun optSOME () = M.get mSOME
   fun optNONE () = M.get mNONE
-  val optTy = applyTyc optTyc
+  val optTy      = applyTyc optTyc
 
 (* ref cells *)
   val mRefTyc = tyc ["Ref", "ref"]
@@ -129,6 +133,23 @@ end = struct
   fun cancelNew ()    = M.get mCancelNew
   fun cancelCancel () = M.get mCancelCancel
   fun cancelSpawn ()  = M.get mCancelSpawn
-  val cancelTy ()     = A.ConTy (mCancelTyc (), [])
+  val cancelTy ()     = A.ConTy (M.get mCancelTyc, [])
+
+(* bitvecs *)
+  val mBitvecTyc   = tyc ["BitVec", "bitvec"]
+  val mBitvecNew   = var ["BitVec", "new"]
+  val mBitvecSet0  = var ["BitVec", "set0"]
+  val mBitvecSet1  = var ["BitVec", "set1"]
+  val mBitvecSet0F = var ["BitVec", "set0F"]
+  val mBitvecSet1F = var ["BitVec", "set1F"]
+  val mBitvecEq    = var ["BitVec", "eq"]
+
+  fun bitvecNew ()   = M.get mBitvecNew
+  fun bitvecSet0 ()  = M.got mBitvecSet0
+  fun bitvecSet1 ()  = M.got mBitvecSet1
+  fun bitvecSet0F () = M.got mBitvecSet0F
+  fun bitvecSet1F () = M.got mBitvecSet1F
+  fun bitvecEq ()    = M.get 
+  val bitvecTy ()    = A.ConTy (M.get mBitvecTyc, [])
 
 end
