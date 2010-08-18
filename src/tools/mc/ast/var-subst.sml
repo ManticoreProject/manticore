@@ -127,14 +127,14 @@ structure VarSubst =
     fun subst1 (this: A.var, that: A.var, e: A.exp) : A.exp = 
       applySubst (singleton (this, that)) e
 
-  (* perform the substitution e [x -> e2] *)
+  (* perform the substitution e' [x -> e] *)
   (* Substitute the same expression for all variables in the subst. *)
   (* FIXME An odd function. Is this used anywhere? *)
-    fun substForExp s e2 = let
+    fun substForExp s e = let
       fun f (x, ts) = 
         (case M.find (s, x)
-	   of NONE => A.VarExp (x, ts)
-	    | SOME _ => e2
+	   of SOME _ => e
+	    | NONE   => A.VarExp (x, ts)
 	  (* end case *))
       val {exp, ...} = expWalk f s
       in
