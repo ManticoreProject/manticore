@@ -92,19 +92,27 @@ structure JFPTranslatePCase (* : sig
 
 (* bitstringCompare : bitstring -> order *)
   fun bitstringCompare (bs1: bitstring, bs2: bitstring) : order = let
-    val len1 = List.length bs1
-    val len2 = List.length bs2
-    in 
-      if len1 < len2 then LESS
-      else if len1 > len2 then GREATER
-      else (* len1 = len2 *) 
-        String.compare (bitstringToString bs1, bitstringToString bs2)
-    end
+    fun lp ([], []) = EQUAL
+      | lp ([], _::_) = LESS
+      | lp (_::_, []) = GREATER
+      | lp (b1::t1, b2::t2) =
+          if b1 = b2 then lp (t1, t2)
+          else if b1 then GREATER
+	  else LESS
+    in
+      lp (bs1, bs2)
+    end       
 
-  structure BistringSet = RedBlackSetFn (struct
-					   type ord_key = bitstring
-					   val compare  = bitstringCompare
-					 end)
+(* bitstring sets *)
+  structure BistringSet = 
+    RedBlackSetFn (struct
+		     type ord_key = bitstring
+		     val compare  = bitstringCompare
+		   end)
+
+(* bitstringEq : bitstring * bitstring -> bool *)
+  fun bitstringEq (bs1: bitstring, bs2: bitstring) : bool = 
+    (bitstringCompare (bs1, bs2) = EQUAL)
 
 (* bistringSetFromList *)
   fun bitstringSetFromList (bss: bistring list) : BitstringSet.set =
@@ -148,15 +156,6 @@ structure JFPTranslatePCase (* : sig
             lp (0, bs, [A.VarExp (aV, [])])
           end	         
   end (* local *)
-
-(* bitstringEq *)
-  val bitstringEq : (bitstring * bitstring) -> bool = let
-    fun eq ([], []) = true
-      | eq (b::bs, c::cs) = ASTUtil.boolEq (b, c) andalso eq (bs, cs)
-      | eq _ = false
-    in
-      eq
-    end
 
 (* bitwiseAnd: bitwise and of two bitstrings. *)
 (* pre: bitstring arguments are the same length. *)
