@@ -9,33 +9,33 @@
 structure BasisUtil : sig
   
 (* options *)
-  val optTyc  : unit -> AST.tycon
+  val optTyc  : unit -> Types.tycon
   val optSOME : unit -> AST.dcon
   val optNONE : unit -> AST.dcon
   val optTy   : AST.ty -> AST.ty
 
 (* ref cells *)
-  val refTyc : unit -> AST.tycon
+  val refTyc : unit -> Types.tycon
   val refNew : unit -> AST.var
   val refSet : unit -> AST.var
   val refGet : unit -> AST.var
   val refTy  : AST.ty -> AST.ty
 
 (* results *)
-  val resTyc : unit -> AST.tycon
+  val resTyc : unit -> Types.tycon
   val resRES : unit -> AST.dcon
   val resEXN : unit -> AST.dcon
   val resTy  : AST.ty -> AST.ty
 
 (* mvars *)
-  val mvarTyc  : unit -> AST.dcon
+  val mvarTyc  : unit -> Types.tycon
   val mvarNew  : unit -> AST.var
   val mvarPut  : unit -> AST.var
   val mvarTake : unit -> AST.var
   val mvarTy   : AST.ty -> AST.ty    
 
 (* arrays *)
-  val arrayTyc    : unit -> AST.tycon
+  val arrayTyc    : unit -> Types.tycon
   val arrayArray  : unit -> AST.var
   val arrayLength : unit -> AST.var
   val arraySub    : unit -> AST.var
@@ -49,8 +49,13 @@ structure BasisUtil : sig
   val cancelTy     : unit -> AST.ty
 
 (* bitvecs *)
-  val bitvecEq : unit -> AST.var
-  val bitvecTy : AST.ty
+  val bitvecNew   : unit -> AST.var
+  val bitvecSet0  : unit -> AST.var
+  val bitvecSet1  : unit -> AST.var
+  val bitvecSet0F : unit -> AST.var
+  val bitvecSet1F : unit -> AST.var
+  val bitvecEq    : unit -> AST.var
+  val bitvecTy    : unit -> AST.ty
 
 end = struct
 
@@ -63,7 +68,7 @@ end = struct
   fun tyc path  = M.new (fn _ => BasisEnv.getTyConFromBasis path)
   fun var path  = M.new (fn _ => BasisEnv.getVarFromBasis path)
 
-(* applyTyc : (unit -> AST.tycon) -> (AST.ty -> AST.ty) *)
+(* applyTyc : (unit -> Types.tycon) -> (AST.ty -> AST.ty) *)
   fun applyTyc tycThunk = (fn ty => A.ConTy ([ty], tycThunk ()))
 
 (* options *)
@@ -93,10 +98,10 @@ end = struct
   val mRES    = dcon ["Result", "RES"]
   val mEXN    = dcon ["Result", "EXN"]
 
-  fun resTyc ()    = M.get mResTyc
-  fun resultRES () = M.get mRES
-  fun resultEXN () = M.get mEXN
-  val resTy        = applyTyc resTyc
+  fun resTyc () = M.get mResTyc
+  fun resRES () = M.get mRES
+  fun resEXN () = M.get mEXN
+  val resTy     = applyTyc resTyc
 					   
 (* mvars *)
   val mMVarTyc  = tyc ["MVar", "mvar"]
@@ -107,7 +112,7 @@ end = struct
   fun mvarTyc ()  = M.get mMVarTyc 
   fun mvarNew ()  = M.get mMVarNew
   fun mvarPut ()  = M.get mMVarPut
-  fun mvarTake () = M,get mVarTake
+  fun mvarTake () = M.get mMVarTake
   val mvarTy      = applyTyc mvarTyc
 
 (* arrays *)
@@ -130,10 +135,11 @@ end = struct
   val mCancelCancel = var ["Cancelation", "cancel"]
   val mCancelSpawn  = var ["Cancelation", "spawn"]
 
+  fun cancelTyc ()    = M.get mCancelTyc
   fun cancelNew ()    = M.get mCancelNew
   fun cancelCancel () = M.get mCancelCancel
   fun cancelSpawn ()  = M.get mCancelSpawn
-  val cancelTy ()     = A.ConTy (M.get mCancelTyc, [])
+  fun cancelTy ()     = A.ConTy ([], cancelTyc ())
 
 (* bitvecs *)
   val mBitvecTyc   = tyc ["BitVec", "bitvec"]
@@ -145,11 +151,11 @@ end = struct
   val mBitvecEq    = var ["BitVec", "eq"]
 
   fun bitvecNew ()   = M.get mBitvecNew
-  fun bitvecSet0 ()  = M.got mBitvecSet0
-  fun bitvecSet1 ()  = M.got mBitvecSet1
-  fun bitvecSet0F () = M.got mBitvecSet0F
-  fun bitvecSet1F () = M.got mBitvecSet1F
-  fun bitvecEq ()    = M.get 
-  val bitvecTy ()    = A.ConTy (M.get mBitvecTyc, [])
+  fun bitvecSet0 ()  = M.get mBitvecSet0
+  fun bitvecSet1 ()  = M.get mBitvecSet1
+  fun bitvecSet0F () = M.get mBitvecSet0F
+  fun bitvecSet1F () = M.get mBitvecSet1F
+  fun bitvecEq ()    = M.get mBitvecEq 
+  fun bitvecTy ()    = A.ConTy ([], M.get mBitvecTyc)
 
 end
