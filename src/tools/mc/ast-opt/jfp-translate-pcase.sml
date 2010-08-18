@@ -46,6 +46,8 @@ structure JFPTranslatePCase (* : sig
       AST.ConPat (conEXN, [ty], pat)
     end
 
+(* cancel : A.var -> A.exp *)
+(* spawn  : A.var * A.exp -> A.exp *)
   local
     val cCancel (* Cancel.cancel *) = U.cancelCancel ()
     val cSpawn  (* Cancel.spawn  *) = U.cancelSpawn ()
@@ -59,14 +61,20 @@ structure JFPTranslatePCase (* : sig
       end
   end (* local *)
 
-  (* bitstrings *)
-
+(* dispatch-related stuff FIXME *)
+  val dispatchV         = (* FIXME *) raise Fail "?"
+  val dispatchResTy     = (* FIXME *) raise Fail "?"
+  val dispatchCall = A.ApplyExp (dispatchV,
+		                 A.ConstExp (A.LConst (Literal.unitLit, B.unitTy)),
+			         dispatchResTy)
+(* bitstrings *)
   type bitstring = bool list
 
   datatype pcase' 
     = PCase' of A.exp list * A.pmatch list * bitstring list * A.ty
 
-  fun mkBitstrings (AST.PCaseExp (es, ms, resTy)) : pcase' = let
+(* mkBitstrings : A.exp list * A.pmatch list * A.ty -> pcase' *)
+  fun mkBitstrings (es: A.exp list, ms: A.pmatch list, resTy: A.ty) : pcase' = let
     val len = List.length es
     fun bit (AST.NDWildPat _) = true
       | bit (AST.Pat _) = false
@@ -539,9 +547,7 @@ structure JFPTranslatePCase (* : sig
   end (* local *)
 
 (* (7) *)
-(* FIXME make this *recursive* (see +++ below) *)
-  fun mkActs (env: VarSubst.subst) 
-	     (pc: pcase', returnV: A.var, reraiseV: A.var, cs: A.var list) 
+  fun mkActs (pc: pcase', returnV: A.var, reraiseV: A.var, cs: A.var list) 
       : A.lambda list * A.var list = let
     fun varType x = TypeOf.monoTy (Var.typeOf x)
     val (PCase' (es, ms, bss, ty)) = pc
@@ -553,8 +559,6 @@ structure JFPTranslatePCase (* : sig
 			  AST.VarExp (exV, []))
     fun mkHandle (e, exV, rer) = A.HandleExp (e, [A.PatMatch (A.VarPat exV, rer)], ty)
     fun mkLam (actV, arg, cs, e) = let
-  (* +++ this might be the right place to make this recursive... *)
-  (* specifically, to transform pcases within e, recursively *)
       val exV = newExV ()
       val rer = mkReraise exV
       val h = mkHandle (e, exV, rer)
@@ -569,8 +573,7 @@ structure JFPTranslatePCase (* : sig
 	     of [] => let
                   val act_j = Var.new ("act" ^ Int.toString j, 
 				       T.FunTy (B.unitTy, ty))
-		  val e' = VarSubst.applySubst env e
-		  val lam = mkLam (act_j, u, [], e')
+		  val lam = mkLam (act_j, u, [], e)
 		  in
 		    lp (j+1, [], lam::acc)
 		  end
@@ -580,15 +583,15 @@ structure JFPTranslatePCase (* : sig
           val ps' = restrict (ps, b)
           val xs = Var.Set.listItems (boundVars ps')
           val ys = List.map (fn v => Var.new (Var.nameOf v, varType v)) xs
-	  val env' = ListPair.foldl VarSubst.add' env (xs, ys)
+	  val env = ListPair.foldl VarSubst.add' VarSubst.id (xs, ys)
           val (argTy, e') = 
             (case List.map varType xs
 	       of [] => (B.unitTy, e)
-		| [t] => (t, VarSubst.applySubst env' e)
+		| [t] => (t, VarSubst.applySubst env e)
 		| ts => let
                     val bind = A.ValBind (A.TuplePat (List.map A.VarPat ys),
 					  A.VarExp (arg, []))
-                    val e' = A.LetExp (bind, VarSubst.applySubst env' e)
+                    val e' = A.LetExp (bind, VarSubst.applySubst env e)
 		    in
                       (T.TupleTy ts, e')
                     end
@@ -666,59 +669,117 @@ structure JFPTranslatePCase (* : sig
 (* all together now *)
   local
     val bitvecTy = U.bitvecTy ()
-    val dispatchV     = (* FIXME *) raise Fail "?"
-    val dispatchResTy = (* FIXME *) raise Fail "?"
-    val dispatchCall = A.ApplyExp (dispatchV,
-		                   A.ConstExp (A.LConst (Literal.unitLit, B.unitTy)),
-			           dispatchResTy)
-    fun mvarPut (x: A.var, v: A.exp) : A.exp = raise Fail "todo"
-  in
-    fun translate (env: VarSubst.subst) (c as A.PCase (es, ms, ty)) : A.exp = let
-      val c' = mkBitstrings c
-      val len = List.length es
-      val pcaseWrapperV     = (* FIXME *) raise Fail "?"
-      val pcaseWrapperArgTy = (* FIXME *) raise Fail "?"
-      val pcaseWrapperResTy = (* FIXME *) raise Fail "?"
-      val returnV = Var.new ("return", (* FIXME *) raise Fail "type?")
-      val exnReturnV = Var.new ("exnReturn", (* FIXME *) raise Fail "type?")
-      val (stateBind, stateV) = initState len (* (2) *)
-      val resumeV = Var.new ("resume", T.FunTy (B.unitTy, dispatchReturnTy))
-      val stV = Var.new ("st", bitvecTy)
-      val resumeBody = A.SeqExp (mvarPut (stateV, A.VarExp (stV, [])),
-				 dispatchCall)
-      val resumeLam = A.FB (resumeV, stV, resumeBody)
-      val (refBinds, refVs) = mkRefs (List.map (U.refTy o U.optTy o TypeOf.exp) es) (* (3) *)
-      val (cBinds, cVs) = mkCancels len (* (4) *)
-      val (reraiseLam, reraiseV) = mkReraise (exnReturnV, cVs, ty)    (* (8) *)
-      val (actLams, actVs) = mkActs env (c', returnV, reraiseV, cVs)  (* (7) *)
-      val (stateBits, stateLams, stateVs) = mkStates (c', refVs, actVs, resumeV) (* (6) *)
-      val (transLams, transVs) = let
-        val ers = ListPair.zipEq (es, refVs)
-        val stFuns = ListPair.zipEq (stateBits, stateVs)
-        in
-          allTrans (stateV, ers, stFuns)
-        end
-      val (actExnLam, actExnV) = mkActExn (stV, reraiseV, ty)
-      val spawnAndDispatch = mkBody (cVs, transVs, es, actExnV) (* (9) *)
-      val bigFunArgV = Var.new ("arg", (* FIXME -- type of (return, exnReturn) *) raise Fail "?")
-      val deconstructArg = A.ValBind (A.TuplePat [A.VarPat returnV, A.VarPar exnReturnV],
-				      A.VarExp (bigFunArgV, []))
-      val bigFunBody = 
-        A.LetExp (deconstructArg,
-        A.LetExp (stateBind,
-        A.LetExp (A.FunBind [resumeLam],
-        A.LetExp (A.FunBind actLams,
-        A.LetExp (A.FunBind stateLams,
-        A.LetExp (A.FunBind transLams,
-        A.LetExp (A.FunBind [reraiseLam],
-        A.LetExp (A.FunBind [actExnLam],
-          spawnAndDispatch))))))))
-      val bigFunBody' = List.foldr A.LetExp bigFunBody (refBinds@cBinds)
+    val pcaseWrapperV     = (* FIXME *) raise Fail "?"
+    val pcaseWrapperArgTy = (* FIXME *) raise Fail "?"
+    val pcaseWrapperResTy = (* FIXME *) raise Fail "?"
+    val returnTy          = (* FIXME *) raise Fail "?"
+    val exnReturnTy       = (* FIXME *) raise Fail "?"
+    val mPut = U.mvarPut ()
+    fun mvarPut (x: A.var, v: A.exp) : A.exp = let
+      val t = TypeOf.exp v
       in
-        A.ApplyExp (A.VarExp (pcaseWrapperV, []),
-		    A.FunExp (bigFunArgV, bigFunBody', pcaseWrapperArgTy),
-                    pcaseWrapperResTy)
+        A.ApplyExp (A.VarExp (x, [t]), v, U.mvarTy t)
       end
+  in
+    fun translate (e: A.exp) : A.exp = 
+      fun pcase (es: A.exp list, ms: A.pmatch list, ty: A.ty) 
+	  : A.exp = let
+        val c' = mkBitstrings (es, ms, ty)
+	val len = List.length es
+	val returnV = Var.new ("return", returnTy)
+	val exnReturnV = Var.new ("exnReturn", exnReturnTy)
+	val (stateBind, stateV) = initState len (* (2) *)
+	val resumeV = Var.new ("resume", T.FunTy (B.unitTy, dispatchReturnTy))
+	val stV = Var.new ("st", bitvecTy)
+	val resumeBody = A.SeqExp (mvarPut (stateV, A.VarExp (stV, [])), dispatchCall)
+	val resumeLam = A.FB (resumeV, stV, resumeBody)
+	val (refBinds, refVs) = mkRefs (List.map (U.refTy o U.optTy o TypeOf.exp) es) (* (3) *)
+	val (cBinds, cVs) = mkCancels len (* (4) *)
+	val (reraiseLam, reraiseV) = mkReraise (exnReturnV, cVs, ty)    (* (8) *)
+	val (actLams, actVs) = mkActs (c', returnV, reraiseV, cVs)  (* (7) *)
+	val (stateBits, stateLams, stateVs) = mkStates (c', refVs, actVs, resumeV) (* (6) *)
+	val (transLams, transVs) = let
+          val ers = ListPair.zipEq (es, refVs)
+          val stFuns = ListPair.zipEq (stateBits, stateVs)
+          in
+            allTrans (stateV, ers, stFuns)
+          end
+	val (actExnLam, actExnV) = mkActExn (stV, reraiseV, ty)
+	val spawnAndDispatch = mkBody (cVs, transVs, es, actExnV) (* (9) *)
+	val funArgV = Var.new ("arg", T.TupleTy [returnTy, enxReturnTy])
+	val deconstructArg = A.ValBind (A.TuplePat [A.VarPat returnV, A.VarPar exnReturnV],
+					A.VarExp (bigFunArgV, []))
+	val funBody = 
+          A.LetExp (deconstructArg,
+          A.LetExp (stateBind,
+          A.LetExp (A.FunBind [resumeLam],
+          A.LetExp (A.FunBind actLams,
+          A.LetExp (A.FunBind stateLams,
+          A.LetExp (A.FunBind transLams,
+          A.LetExp (A.FunBind [reraiseLam],
+          A.LetExp (A.FunBind [actExnLam],
+            spawnAndDispatch))))))))
+        val funBody' = List.foldr A.LetExp bigFunBody (refBinds@cBinds)
+        in
+          A.ApplyExp (A.VarExp (pcaseWrapperV, []),
+		      A.FunExp (bigFunArgV, funBody', pcaseWrapperArgTy),
+                      pcaseWrapperResTy)
+        end
+      and exp e =
+        (case e
+           of A.LetExp (b, e) => A.LetExp (binding e, exp e)
+	    | A.IfExp (e1, e2, e3, t) => 
+                A.IfExp (exp e1, exp e2, exp e3, t)
+	    | A.CaseExp (e, ms, t) => 
+	        A.CaseExp (exp e, List.map match ms, t)
+	    | A.PCaseExp (es, ms, t) =>
+                pcase (List.map exp es, List.map match ms, t)
+	    | A.HandleExp (e, ms, t) => 
+	        A.HandleExp (exp e, List.map match ms, t)
+	    | A.RaiseExp (e, t) => A.RaiseExp (exp e, t)
+	    | A.FunExp (x, e, t) => A.FunExp (x, exp e, t)
+	    | A.ApplyExp (e1, e2, t) => A.ApplyExp (exp e1, exp e2, t)
+	    | oper as A.VarArityOpExp _ => oper
+	    | A.TupleExp es => A.TupleExp (List.map exp es)
+	    | A.RangeExp (e1, e2, optE, t) =>
+                A.RangeExp (exp e1, exp e2, Option.map exp optE, t)
+	    | A.PTupleExp es => A.PTupleExp (List.map exp es)
+	    | A.PArrayExp (es, t) => A.PArrayExp (List.map exp es, t)
+	    | A.PCompExp (e, pes, optE) => 
+                A.PCompExp (exp e,
+			    List.map (fn (p,e) => (p, exp e)) pes, 
+			    Option.map exp optE)
+	    | A.PChoiceExp (es, t) => A.PChoiceExp (List.map exp es, t)
+	    | A.SpawnExp e => A.SpawnExp (exp e)
+	    | k as A.ConstExp _ => k
+	    | x as A.VarExp _ => x
+	    | A.SeqExp (e1, e2) => A.SeqExp (exp e1, exp e2)
+	    | ov as A.OverloadExp _ => ov
+	    | A.ExpansionOptsExp (opts, e) => A.ExpansionOptsExp (opts, exp e)
+	  (* end case *))
+      and binding b = 
+        (case b
+           of A.ValBind (p, e) => A.ValBind (p, exp e)
+	    | A.PValBind (p, e) => A.PValBind (p, exp e)
+	    | A.FunBind lams => A.FunBind (List.map lambda lams)
+	    | p as A.PrimVBind _ => p
+	    | p as A.PrimCodeBind _ => p
+	  (* end case *))
+      and match m = 
+        (case m
+	   of A.PatMatch (p, e) => A.PatMatch (p, exp e)
+	    | A.CondMatch (p, e1, e2) => A.CondMatch (p, exp e1, exp e2)
+	  (* end case *))
+      and pmatch m = 
+        (case m
+           of A.PMatch (ps, e) => A.PMatch (ps, exp e)
+	    | A.Otherwise e => A.Otherwise (exp e)
+	  (* end case *))
+      and lambda (A.FB (f, x, e)) = A.FB (f, x, exp e)
+    in
+      exp e
+    end
+  end (* local *)
 
 end
     
