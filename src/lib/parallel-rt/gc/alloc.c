@@ -18,9 +18,6 @@
 
 #include <stdio.h>
 
-//Statistics
-double uniform,nonuniform,vector,vectorref,wrapword,string,raw,globaluniform,globalnonuniform,globalvector,globalarray,globalintarray,globalfloatarray,globalword64array;
-
 /*! \brief allocate a tuple of uniform values in the nursery
  *  \param vp the host vproc
  *  \param nElems the number of tuple elements.

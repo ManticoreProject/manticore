@@ -46,31 +46,18 @@
 #define FWDPTR_TAG	0
 #define FWDPTR_TAG_MASK	7
 
-/* Tags for mixed objects */
-#define MIXED_TAG_BITS	1
-#define MIXED_TAG	1
-#define MIXED_TAG_MASK	1
-#define MIXED_LEN_ID	15
+/* Tags for Table objects */
+#define TABLE_TAG_BITS	1
+#define TABLE_TAG	1
+#define TABLE_LEN_ID	15
 
-#define MIXED_HDR(id, len)	\
-	(((len) << (MIXED_LEN_ID+MIXED_TAG_BITS)) | \
-	((id)<< MIXED_TAG_BITS) | \
-	MIXED_TAG)
+//Mixed object
+#define MIXED_HDR(id, len) (((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((id)<< TABLE_TAG_BITS) | TABLE_TAG)
 
-/* Tags for vectors of pointers and tagged ints */
-#define VEC_TAG_BITS	1
-#define VEC_TAG		1
-#define VEC_TAG_MASK	1
-#define VEC_LEN_ID	15
+//Vector object
+#define VEC_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((1) << TABLE_TAG_BITS) | TABLE_TAG)
 
-#define VEC_HDR(len)	(((len) << (VEC_TAG_BITS+VEC_LEN_ID)) | ((1) << VEC_TAG_BITS) | VEC_TAG)
-
-/* Tags for raw data */
-#define RAW_TAG_BITS	1
-#define RAW_TAG		1
-#define RAW_TAG_MASK	1
-#define RAW_LEN_ID	15
-
-#define RAW_HDR(len)	(((len) << (RAW_TAG_BITS+RAW_LEN_ID)) | ((0) << RAW_TAG_BITS) | RAW_TAG)
+//Raw object
+#define RAW_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((0) << TABLE_TAG_BITS) | TABLE_TAG)
 
 #endif /* !_HEADER_BITS_H_ */

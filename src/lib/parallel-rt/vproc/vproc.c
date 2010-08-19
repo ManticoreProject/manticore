@@ -27,8 +27,6 @@
 #include "perf.h"
 #include "work-stealing-deque.h"
 
-
-
 typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
     Location_t	loc;		/* the location for the VProc */
