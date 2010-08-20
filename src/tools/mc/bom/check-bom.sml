@@ -27,6 +27,8 @@ structure CheckBOM : sig
     val t2s = BTU.toString
     fun tl2s ts = concat["(", String.concatWith "," (map t2s ts), ")"]
 
+    val debug = false
+
   (* for checking census counts *)
     structure ChkVC = CheckVarCountsFn (
       struct
@@ -64,7 +66,10 @@ structure CheckBOM : sig
     fun resolveBinding x = let
           fun munchStmts (B.E_Pt (_, B.E_Stmt (_, _, e))) = munchStmts e
             | munchStmts (e) = e
-	  fun lp x = (case BV.kindOf x
+	  fun lp x = (if debug
+                      then print (concat["resolve: ", v2s x, " kind: ", vkToString (BV.kindOf x), "\n"])
+                      else ();
+                      case BV.kindOf x
 		 of k as B.VK_Let(e) => let
                         val inner = munchStmts e
                     in

@@ -47,6 +47,22 @@ structure BuildExecutable : sig
 	    cat (libDirs @ ("@LDFLAGS@" ++ rtLib ++ "@LIBS@" ++ "-lpthread" ++ []))
 	  end
 
+    fun systemWithTiming (cmd, mustPrint) = let
+        val verbose = mustPrint orelse (Controls.get BasicControl.verbose > 0)
+        val inclusiveStart = Time.now()
+        val _ = (if verbose
+	         then TextIO.print(cmd ^ "\n")
+	         else ())
+        val result = OS.Process.system cmd;
+    in
+        if verbose
+        then TextIO.print(concat ["Compile finished in: ",
+                                  (Time.toString (Time.- (Time.now(), inclusiveStart))),
+                                  "\n"])
+        else ();
+        result
+    end
+
     fun cmd asmFile = let
 	  val gcStats = Controls.get BasicControl.gcStats
 	  val logging = Controls.get BasicControl.logging
@@ -65,7 +81,7 @@ structure BuildExecutable : sig
       val filenameo = concat[filename,".o"]  
 	  val gccfilename = concat ["gcc -g -O2 -D_GNU_SOURCE -pedantic -m64 -D_THREAD_SAFE -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -DTARGET_DARWIN -DTARGET_X86_64 -o ",filenameo," -std=c99 -c ",filenamec]
 	  val _ = PrintTbl.print filenamec
-	  val _ = OS.Process.system gccfilename
+	  val _ = systemWithTiming (gccfilename, false)
 	  
 	  fun tableFiles () =( if (debug) 
       then (
@@ -75,7 +91,7 @@ structure BuildExecutable : sig
 		  val filenamedebugo = concat[filenamedebug,".o"]  
 		  val gccfilenamedebug = concat ["gcc -g -O2 -D_GNU_SOURCE -pedantic -m64 -D_THREAD_SAFE -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -DTARGET_DARWIN -DTARGET_X86_64 -o ",filenamedebugo," -std=c99 -c ",filenamedebugc]
 		  val _ = PrintTblDbg.print filenamedebugc
-		  val _ = OS.Process.system gccfilenamedebug
+		  val _ = systemWithTiming (gccfilenamedebug, false)
 	  in
           concat[filenameo," ",filenamedebugo]
       end
@@ -96,10 +112,7 @@ structure BuildExecutable : sig
 	  else let
 	    val cmd' = cat[cmd asmFile, " -o ", outFile]
 	    in
-	      if verbose
-		then TextIO.print(cmd' ^ "\n")
-		else ();
-	      OS.Process.system cmd'
+	      systemWithTiming (cmd', verbose)
 	    end
 
   end

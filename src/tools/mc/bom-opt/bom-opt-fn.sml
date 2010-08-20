@@ -10,6 +10,11 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
   end = struct
 
+    fun checkBOM (passName, module, alwaysCheck) = 
+        if alwaysCheck orelse !BOMOptControls.checkAll
+        then CheckBOM.check (passName, module)
+        else true
+
   (* a wrapper for BOM optimization passes.  The wrapper includes an invariant check. *)
     fun transform {passName, pass} = let
 	  val xform = BasicControl.mkKeepPassSimple {
@@ -21,7 +26,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 		}
 	  fun xform' module = let
 		val module = xform module
-		val _ = CheckBOM.check (passName, module)
+		val _ = checkBOM (passName, module, false)
 		in
 		  module
 		end
@@ -66,12 +71,12 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
     fun expandAll module = (case expand module
 	   of SOME module => let
-		val _ = CheckBOM.check ("expand-all:expand", module)
+		val _ = checkBOM ("expand-all:expand", module, false)
 	      (* NOTE: we don't remove externs here because references may
 	       * be hiding inside unexpanded HLOps.
 	       *)
 		val module = expandAllContract module
-		val _ = CheckBOM.check ("expand-all:contract", module)
+		val _ = checkBOM ("expand-all:contract", module, false)
 		in
 		  expandAll module
 		end
@@ -81,12 +86,12 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 (* FIXME: rewriting and expansion should be interleaved!!! *)
     fun rewriteAll module = (case rewrite module
 	   of SOME module => let
-(*		val _ = CheckBOM.check ("rewrite-all:rewrite", module)*)
+(*		val _ = checkBOM ("rewrite-all:rewrite", module, false)*)
 	      (* NOTE: we don't remove externs here because references may be hiding inside
 	       * unexpanded HLOps.
 	       *)
 (*		val module = rewriteAllContract module
-		val _ = CheckBOM.check ("rewrite-all:contract", module)
+		val _ = checkBOM ("rewrite-all:contract", module, false)
 *)
 		in
 		  rewriteAll module
@@ -105,7 +110,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 		}
 	  fun xform' module = let
 		val module = xform module
-		val _ = CheckBOM.check ("inline", module)
+		val _ = checkBOM ("inline", module, false)
 		in
 		  module
 		end
@@ -123,7 +128,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 
     fun optimize module = let
 	  val _ = Census.census module
-          val _ = CheckBOM.check ("translate", module)
+          val _ = checkBOM ("translate", module, true)
 	  val module = contract module
 	  val module = inline false module  
 	  val module = contract module
@@ -143,6 +148,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = contract module
 	  val module = caseSimplify module
 	  val module = contract module
+          val _ = checkBOM ("finalPostContract", module, true)
 	  in
 	    module
 	  end

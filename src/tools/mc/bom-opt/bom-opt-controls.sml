@@ -15,6 +15,8 @@ structure BOMOptControls =
 	    help = "controls for BOM optimization phases"
 	  }
 
+    val checkAll : bool ref = ref false
+                   
     val () = List.app (fn ctl => ControlRegistry.register registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
               envName = NONE
@@ -32,6 +34,13 @@ structure BOMOptControls =
                   pri = [0, 1],
                   obscurity = 0,
                   help = "print results of cfa"
+                },
+              Controls.control {
+                  ctl = checkAll,
+                  name = "check-all",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "check IR between each BOM optimization"
                 }
             ]
   end
