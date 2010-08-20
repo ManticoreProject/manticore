@@ -62,8 +62,16 @@ structure CheckBOM : sig
 
   (* get the binding of a variable, chasing through casts and renamings *)
     fun resolveBinding x = let
+          fun munchStmts (B.E_Pt (_, B.E_Stmt (_, _, e))) = munchStmts e
+            | munchStmts (e) = e
 	  fun lp x = (case BV.kindOf x
-		 of B.VK_Let(B.E_Pt(_, B.E_Ret[y])) => lp y
+		 of k as B.VK_Let(e) => let
+                        val inner = munchStmts e
+                    in
+                        case inner
+                         of B.E_Pt (_, B.E_Ret [x]) => lp x
+                          | _ => k
+                    end
 		  | B.VK_RHS(B.E_Cast(_, y)) => lp y
 		  | B.VK_RHS(B.E_Select(i,y)) => lp y
 		  | k => k
@@ -74,10 +82,15 @@ structure CheckBOM : sig
 
   (* check for assignments of unpromoted values; return true if okay and false
    * otherwise.
-   * The following two cases report true because they are currently uncheckable:
+   * The following cases report true because they are currently uncheckable:
    * - VK_Param. We do not do data flow, so we do not know if the arguments were promoted
    * - VK_Let(E_Apply). We do not do data flow, so we do not know if the return values
    * of the called function(s) are guaranteed to have been promoted
+   * - VK_Let(E_HLOp). We do not provide annotations on HLOPs as to whether their data is
+   * promoted or not. HLOPs encountered will be expanded into full BOM later and can be
+   * checked for promotion at that time.
+   * - VK_None. Default var kind, and commonly comes up for language constructs like
+   * pattern-bound variables in case statements where we don't have an appropriate VK.
    *)
     fun checkAssign (ty, x) = let
 	  val k = BTU.kindOf ty
@@ -88,7 +101,9 @@ structure CheckBOM : sig
 		  | B.VK_RHS(B.E_Const _) => true
 		  | B.VK_RHS(B_E_HostVProc) => true
                   | B.VK_Param => true
-                  | B.VK_Let(B.E_Pt(_, B.E_Apply _)) => true
+                  | B.VK_Let(B.E_Pt (_, B.E_Apply _)) => true
+                  | B.VK_Let(B.E_Pt (_, B.E_HLOp _)) => true
+                  | B.VK_None => true
 		  | _ => false
 		(* end case *))
 	      else true
