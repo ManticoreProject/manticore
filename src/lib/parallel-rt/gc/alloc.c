@@ -18,6 +18,28 @@
 
 #include <stdio.h>
 
+
+//predefined table entries, important for AllocUniform and GlobalAllocUniform
+int predefined = 3;
+
+Value_t AllocProxy (VProc_t *vp,int nElems, ...)
+{
+    Word_t	*obj = (Word_t *)(vp->allocPtr);
+    va_list	ap;
+	
+    va_start(ap, nElems);
+    obj[-1] = PXY_HDR(nElems);
+    for (int i = 0;  i < nElems;  i++) {
+		Value_t arg = va_arg(ap, Value_t);
+		obj[i] = (Word_t)arg;
+    }
+    va_end(ap);
+	
+    vp->allocPtr += WORD_SZB * (nElems+1);
+	
+    return PtrToValue(obj);
+}
+
 /*! \brief allocate a tuple of uniform values in the nursery
  *  \param vp the host vproc
  *  \param nElems the number of tuple elements.
@@ -61,9 +83,9 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     va_end(ap);
 	
 	
-	if (bits == 0) obj[-1] = MIXED_HDR(2, nElems);
-	else if (bits == 1) obj[-1] = MIXED_HDR(3, nElems);
-	else if (bits == 10) obj[-1] = MIXED_HDR(4, nElems);
+	if (bits == 0) obj[-1] = MIXED_HDR(predefined, nElems);
+	else if (bits == 1) obj[-1] = MIXED_HDR(predefined+1, nElems);
+	else if (bits == 10) obj[-1] = MIXED_HDR(predefined+2, nElems);
 	else { printf("Error AllocNonUniform\n"); exit(5);}
 
     vp->allocPtr += WORD_SZB * (nElems+1);
@@ -244,9 +266,9 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
     Word_t *obj = (Word_t *)(vp->globNextW);
 /* FIXME: what if there isn't enough space!!! */
     
-	if (bits == 0) obj[-1] = MIXED_HDR(2, nElems);
-	else if (bits == 1) obj[-1] = MIXED_HDR(3, nElems);
-	else if (bits == 10) obj[-1] = MIXED_HDR(4, nElems);
+	if (bits == 0) obj[-1] = MIXED_HDR(predefined, nElems);
+	else if (bits == 1) obj[-1] = MIXED_HDR(predefined+1, nElems);
+	else if (bits == 10) obj[-1] = MIXED_HDR(predefined+2, nElems);
 	else { printf("Error AllocNonUniform\n"); exit(5);}
 	
 	

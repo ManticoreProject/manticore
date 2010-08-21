@@ -287,6 +287,11 @@ void *NewVProc (void *arg)
     vproc->nBytesPromoted = 0;
     TIMER_Init (&(vproc->promoteTimer));
 #endif
+	
+	//Proxy table
+	vproc->proxyTableentries=0;
+	vproc->maxProxy=32;
+	vproc->proxyTable=(Value_t *)malloc(sizeof(Value_t) * vproc->maxProxy);
 
   /* store a pointer to the VProc info as thread-specific data */
     pthread_setspecific (VProcInfoKey, vproc);

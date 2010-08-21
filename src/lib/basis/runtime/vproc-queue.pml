@@ -56,7 +56,12 @@ structure VProcQueue (* :
 #include "vproc-queue.def"
 
     _primcode (
-
+	
+	 (* hooks into the C runtime system *)
+     extern int createProxy (void *,void *) __attribute__((pure));
+	 extern void isProxy (void *, int);
+	 extern void M_PrintInt (int);
+	
     (**** Predicates ****)
 
     (* returns true if the local queue is empty *)
@@ -138,6 +143,11 @@ structure VProcQueue (* :
 
     (* enqueue on the local queue. NOTE: signals must be masked *)
       define inline @enqueue-from-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
+	 
+	  do ccall M_PrintInt(#0(fls))
+	  let id : int = ccall createProxy(vp,fiber)
+	  do ccall isProxy(vp,id)
+	  
 	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
 	  let qitem : queue_item = alloc(fls, fiber, tl)
 	  do vpstore (VP_RDYQ_TL, vp, qitem)

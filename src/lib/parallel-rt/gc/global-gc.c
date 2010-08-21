@@ -315,6 +315,7 @@ static void ScanVProcHeap (VProc_t *vp)
 			scanPtr += GetLength(hdr);
 		}else {
 			
+			if (getID(hdr) == 2) printf("Proxyscan\n");
 			table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
 			
 			scanPtr += GetLength(hdr);
@@ -356,7 +357,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 			assert (isRawHdr(hdr));
 			scanPtr += GetLength(hdr);
 		}else {
-			
+			if (getID(hdr) == 2) printf("Proxyscan\n");
 			table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
 			
 			scanPtr += GetLength(hdr);

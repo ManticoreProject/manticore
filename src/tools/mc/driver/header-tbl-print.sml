@@ -9,6 +9,9 @@
 structure PrintTable = 
 struct
     
+    (* number of predefined table entries, important for the table length!! *)
+    val predefined = 3
+    
     (* Headerfiles *)
     fun header (MyoutStrm) = (  
         TextIO.output (MyoutStrm, "#include <stdint.h>\n");
@@ -43,6 +46,18 @@ struct
         TextIO.output (MyoutStrm, "   }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
+        
+        TextIO.output (MyoutStrm, "void minorGCscanPROXYpointer (Word_t* ptr, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n");
+        TextIO.output (MyoutStrm, "\n" );
+        TextIO.output (MyoutStrm, "  Value_t *scanP = (Value_t *)ptr;\n");
+        TextIO.output (MyoutStrm, "  Value_t v = *scanP;\n");
+        TextIO.output (MyoutStrm,concat["    v = *(scanP+",Int.toString 1,");\n"]);
+        TextIO.output (MyoutStrm,"   if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {\n");
+        TextIO.output (MyoutStrm,concat["     *(scanP+",Int.toString 1,") = ForwardObjMinor(v, nextW);\n"]);
+        TextIO.output (MyoutStrm,"  }\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm, "  }\n");
+        
         ()
         )
 
@@ -115,6 +130,21 @@ struct
         TextIO.output (MyoutStrm, "   }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
+        
+        TextIO.output (MyoutStrm, "void majorGCscanPROXYpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
+        TextIO.output (MyoutStrm, "\n" );
+        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
+        TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm,concat["    v = *(Value_t *)(scanP+",Int.toString 1,");\n"]);
+        TextIO.output (MyoutStrm,"   if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {\n");
+        TextIO.output (MyoutStrm,concat["     *(scanP+",Int.toString 1,") = (Word_t)ForwardObjMajor(vp, v);\n"]);
+        TextIO.output (MyoutStrm,"  }\n");
+        TextIO.output (MyoutStrm,"  else if (inVPHeap(heapBase, ValueToAddr(v))) {\n");
+        TextIO.output (MyoutStrm,concat["      *(scanP+",Int.toString 1,") = (Word_t)AddrToValue(ValueToAddr(v) - oldSzB);\n"]);
+        TextIO.output (MyoutStrm,"   }\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm, "  }\n");
         ()
         )
 
@@ -185,6 +215,18 @@ struct
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
+        
+        TextIO.output (MyoutStrm, "void ScanGlobalToSpacePROXYfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {\n");
+        TextIO.output (MyoutStrm, "\n" );
+        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
+        TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm,concat["    v = *(Value_t *)(scanP+",Int.toString 1,");\n"]);
+        TextIO.output (MyoutStrm,"   if (inVPHeap(heapBase, ValueToAddr(v))) {\n");
+        TextIO.output (MyoutStrm,concat["     *(scanP+",Int.toString 1,") = (Word_t)ForwardObjMajor(vp, v);\n"]);
+        TextIO.output (MyoutStrm,"  }\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm, "  }\n");
         ()
         )
 
@@ -251,6 +293,18 @@ struct
         TextIO.output (MyoutStrm, "   }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
+        
+        TextIO.output (MyoutStrm, "void globalGCscanPROXYpointer (Word_t* ptr, VProc_t *vp) {\n");
+        TextIO.output (MyoutStrm, "\n" );
+        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
+        TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm,concat["    v = *(Value_t *)(scanP+",Int.toString 1,");\n"]);
+        TextIO.output (MyoutStrm,"   if (isFromSpacePtr(v)) {\n");
+        TextIO.output (MyoutStrm,concat["     *(scanP+",Int.toString 1,") = (Word_t)ForwardObjGlobal(vp, v);\n"]);
+        TextIO.output (MyoutStrm,"  }\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm, "  }\n");
         ()
         )
 
@@ -309,10 +363,11 @@ struct
             )
             
         in
-        TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString (length+2),"] = { {minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction},\n"]);
-        TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction}\n");
+        TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString (length+predefined),"] = { {minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction},\n"]);
+        TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction},\n");
+        TextIO.output (MyoutStrm, "{minorGCscanPROXYpointer,majorGCscanPROXYpointer,globalGCscanPROXYpointer,ScanGlobalToSpacePROXYfunction}\n");
         
-        printtable (length+2,2);
+        printtable (length+predefined,predefined);
         
         TextIO.output (MyoutStrm," };\n"); 
         TextIO.output (MyoutStrm,"\n");

@@ -21,6 +21,10 @@
 #include "bibop.h"
 #include "gc-scan.h"
 
+#include "../vproc/proxy.h"
+
+int t=0;
+
 extern Addr_t	MajorGCThreshold;	/* when the size of the nursery goes below */
 					/* this limit it is time to do a GC. */
 
@@ -113,7 +117,8 @@ void MinorGC (VProc_t *vp)
 			assert (isRawHdr(hdr));
 			nextScan += GetLength(hdr);
 		}else {
-
+			
+			if (getID(hdr) == 2) printf("Proxyscan\n");
 			table[getID(hdr)].minorGCscanfunction(nextScan,&nextW, allocSzB,nurseryBase);
 
 			nextScan += GetLength(hdr);
@@ -160,7 +165,23 @@ bzero(nextScan, avail); /* clear unused part of local heap */
 
   /* reset the allocation pointer */
     SetAllocPtr (vp);
-
+	/*
+	if (t==0) {
+	for (int i = 0;i<10;i++) {
+	
+	int id = createProxy(vp);
+	isProxy(vp,id);
+	}
+		//t=1;
+	}else {
+		for (int i = 0;i<10;i++) {
+			deleteProxy(vp,i);
+		}
+		
+		t=0;
+	}
+	 */
+		
 }
 
 #ifndef NDEBUG

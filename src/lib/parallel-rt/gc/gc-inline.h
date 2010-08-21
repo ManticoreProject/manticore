@@ -57,7 +57,7 @@ STATIC_INLINE bool isHeapPtr (Value_t v)
 
 STATIC_INLINE bool isMixedHdr (Word_t hdr)
 {
-  /* NOTE: this code relies on the fact that the tag is one bit == 1 */
+   //NOTE: this code relies on the fact that the tag is one bit == 1 
     return ( (getID(hdr) != 0) && (getID(hdr) != 1) );
 }
 
@@ -71,30 +71,10 @@ STATIC_INLINE bool isRawHdr (Word_t hdr)
     return (getID(hdr) == 0);
 }
 
-STATIC_INLINE int GetMixedSizeW (Word_t hdr)
-{
-    return (hdr >> 16);
-}
-/*
-STATIC_INLINE Word_t GetMixedBits (Word_t hdr)
-{
-     return (tagstable[getID(hdr)]);
-}
-*/
 /* Return the length field of a header */
 STATIC_INLINE int GetLength (Word_t hdr)
 {
    return (hdr >> 16);
-}
-
-STATIC_INLINE int GetVectorLen (Word_t hdr)
-{
-    return (GetLength(hdr));
-}
-
-STATIC_INLINE int GetRawSizeW (Word_t hdr)
-{
-    return (GetLength(hdr));
 }
 
 /* return true if the given address is within the given address range */

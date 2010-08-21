@@ -19,6 +19,7 @@ structure Array64 =
       typedef array = PT.array;
 
       extern void *M_NewArray (void *, int, void *) __attribute__((alloc,pure));
+	  extern void M_PrintInt (int);
 
     (* allocate and initialize an array *)
       define inline @empty-array (x : unit / exh : exh) : array =
@@ -45,6 +46,8 @@ structure Array64 =
       define inline @update (arr : array, i : int, x : any / exh : exh) : () =
 	  do assert(I32Gte(i,0))
 	  let len : int = @length(arr / exh)
+	  do ccall M_PrintInt(i)
+	  do ccall M_PrintInt(len)
 	  do assert(I32Lt(i,len))
 	  let data : any = SELECT(DATA_OFF, arr)
 	 (* since the array is in the global heap, x must also be in the global heap *)

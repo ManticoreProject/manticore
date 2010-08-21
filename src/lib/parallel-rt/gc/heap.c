@@ -295,7 +295,8 @@ void UpdateBIBOP (MemChunk_t *chunk)
 #ifndef NDEBUG
 static GCDebugLevel_t ParseGCLevel (const char *debug)
 {
-
+	return GC_DEBUG_ALL;
+	
     if (strcmp(debug, "none") == 0) return GC_DEBUG_NONE;
 	else if (strcmp(debug, "minor") == 0) return GC_DEBUG_MINOR;
     else if (strcmp(debug, "major") == 0) return GC_DEBUG_MAJOR;

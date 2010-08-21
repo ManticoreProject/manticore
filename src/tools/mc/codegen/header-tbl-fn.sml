@@ -42,7 +42,8 @@ functor HeaderTblFn (
   type hdr = A.hdr
   type hdr_tbl = int Tbl.hash_table
   
-  val counter = ref 2
+  (* number of predefind objects *)
+  val counter = ref 3
   
   (* counter for the ids *)
   fun newid () = let 
