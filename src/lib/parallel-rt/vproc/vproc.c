@@ -290,8 +290,8 @@ void *NewVProc (void *arg)
 	
 	//Proxy table
 	vproc->proxyTableentries=0;
-	vproc->maxProxy=32;
-	vproc->proxyTable=(Value_t *)malloc(sizeof(Value_t) * vproc->maxProxy);
+	vproc->maxProxy=512;
+	vproc->proxyTable=(ProxyTblEntry_t *)malloc(sizeof(ProxyTblEntry_t) * vproc->maxProxy);
 
   /* store a pointer to the VProc info as thread-specific data */
     pthread_setspecific (VProcInfoKey, vproc);

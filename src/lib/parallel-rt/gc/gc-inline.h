@@ -71,6 +71,11 @@ STATIC_INLINE bool isRawHdr (Word_t hdr)
     return (getID(hdr) == 0);
 }
 
+STATIC_INLINE bool isProxyHdr (Word_t hdr)
+{
+	return (getID(hdr) == 2);
+}
+
 /* Return the length field of a header */
 STATIC_INLINE int GetLength (Word_t hdr)
 {

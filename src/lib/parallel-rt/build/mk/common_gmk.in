@@ -59,7 +59,8 @@ GC_SRCS = 	minor-gc.c \
 		alloc.c \
 		work-stealing-deque.c
 
-VPROC_SRCS =	vproc.c
+VPROC_SRCS =	vproc.c \
+		proxy.c
 
 MISC_SRCS =	main.c \
 		apply.c \

@@ -91,8 +91,10 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 		Word_t hdr = *nextScan++;	// get object header
 		
 		if (isVectorHdr(hdr)) {
+			//Word_t *nextScan = ptr;
 			int len = GetLength(hdr);
 			for (int i = 0;  i < len;  i++, nextScan++) {
+				//Value_t *scanP = (Value_t *)nextScan;
 				Value_t v = *(Value_t *)nextScan;
 				if (isPtr(v)) {
 					if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {
@@ -112,11 +114,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 			nextScan += GetLength(hdr);
 		}else {
 			
-			//if (getID(hdr) == 2) 
-			printf("Scan id = %llu\n",getID(hdr));
-			table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
+			nextScan = table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
 			
-			nextScan += GetLength(hdr);
 		}
     }
 
@@ -279,8 +278,6 @@ static void ScanGlobalToSpace (
 			scanPtr += GetLength(hdr);
 		}else {
 			
-			if (getID(hdr) == 2) printf("Proxyscan\n");
-			printf("Scan id = %d\n",getID(hdr));
 			table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
 			
 			scanPtr += GetLength(hdr);

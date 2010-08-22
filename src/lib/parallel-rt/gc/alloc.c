@@ -24,18 +24,34 @@ int predefined = 3;
 
 Value_t AllocProxy (VProc_t *vp,int nElems, ...)
 {
-    Word_t	*obj = (Word_t *)(vp->allocPtr);
+    Value_t	elems[nElems];
     va_list	ap;
 	
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
+		AllocToSpaceChunk(vp);
+    }
+	
+    assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
+	
+    /* first we must ensure that the elements are in the global heap */
     va_start(ap, nElems);
-    obj[-1] = PXY_HDR(nElems);
     for (int i = 0;  i < nElems;  i++) {
-		Value_t arg = va_arg(ap, Value_t);
-		obj[i] = (Word_t)arg;
+	elems[i] = va_arg(ap, Value_t);
     }
     va_end(ap);
 	
-    vp->allocPtr += WORD_SZB * (nElems+1);
+    Word_t *obj = (Word_t *)(vp->globNextW);
+    /* FIXME: what if there isn't enough space!!! */
+    obj[-1] = PXY_HDR(nElems);
+    for (int i = 0;  i < nElems;  i++) {
+	obj[i] = (Word_t)elems[i];
+    }
+	
+    vp->globNextW += WORD_SZB * (nElems+1);
+	
+#ifndef NO_GC_STATS
+    vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+#endif	
 	
     return PtrToValue(obj);
 }
