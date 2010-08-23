@@ -22,6 +22,7 @@ is
   ../prim/sources.cm
   ../bom/sources.cm
   ../env/sources.cm
+  ../dfa/sources.cm
 
   bom-opt-controls.sml
   bom-opt-fn.sml
