@@ -64,6 +64,14 @@ structure CFABOM : sig
     structure VSet = BV.Set
     structure ST = Stats
 
+    structure Tbl = HashTableFn (
+      struct
+        type hash_key = HLOp.hlop
+        val hashVal = HLOp.hash
+        val sameKey = HLOp.same
+      end)
+
+
     datatype callers
       = Unknown                 (* possible unknown call callers *)
       | Known of VSet.set       (* only called from known locations; the labels are the *)
@@ -181,6 +189,16 @@ structure CFABOM : sig
                            | _ => raise Fail (concat["Invalid variable: ", BV.toString x, " typed: ", BOM.varKindToString (BV.kindOf x), "\n"])
                          ))
 
+  (* property to track the estimated values sent on channels *)
+  local
+  val {getFn=getValue, setFn=setValue, peekFn=peekValue, ...} = 
+        ProgPt.newProp (fn _ => BOT)
+  in
+  val getValueOnCh = (fn H(ppt, _) => getValue ppt)
+  val setValueOnCh = (fn (H(ppt, _), v) => setValue (ppt, v))
+  val peekValueOnCh = (fn H(ppt, _) => peekValue ppt)
+  end
+
   (* return true if the given lambda variable escapes *)
     fun isEscaping f = (case callersOf f of Unknown => true | _ => false)
 
@@ -233,7 +251,21 @@ structure CFABOM : sig
               else ()
           end)
           | NONE => setValue (x, v))
-
+  (* update the approximate value sent on a abstract channel by some delta 
+   * and record if it changed
+   *) 
+    and addChInfo (absCh, BOT) = ()
+      | addChInfo (absCh, v) = (case peekValueOnCh absCh
+           of SOME oldV => (let
+                val oldV = getValueOnCh absCh
+                val newV = joinValues(oldV, v)
+                in
+                  if changedValue(newV, oldV)
+                    then (changed := true; setValueOnCh(absCh, newV))
+                    else ()
+                end)
+            | NONE => setValueOnCh(absCh, v)
+          (*end of case *))          
   (* update the approximate result associated with a variable by some delta and
    * record if it changed.
    *)
@@ -551,6 +583,57 @@ structure CFABOM : sig
             doLambda body
           end
 
+
+    fun analyzeNewCh (info as (ppt, hlop), xs) = [HLOPC[H(info)]]
+
+    fun analyzeSend (info as (ppt, hlop), xs) = (case xs
+	   of c::v::[] => (case getValue c
+                 of TOP => (escapingValue (getValue v); [TOP])
+                  | BOT => [TOP]
+                  | HLOPC absChs => let
+                      val newVal = getValue v
+                      fun updateValOnCh ch = addChInfo(ch, newVal)
+                      in
+                        List.app updateValOnCh absChs;
+                        [TOP]
+                      end  
+                 | _ => raise Fail "Send on non-channel variable\n"
+               (*end case*))
+            | _ => raise Fail "Error: mismatched send hlop pattern\n"
+          (* end case *))
+          
+    fun analyzeRecv (info as (ppt, hlop), xs) = (case xs
+           of c::[] => (case getValue c
+                 of TOP => [TOP]
+                  | BOT => [BOT]
+                  | HLOPC absChs => let
+                      fun doCh (absCh, value) = let 
+                            val newVal = getValueOnCh absCh
+                            in
+                              joinValues(value, newVal)
+                            end
+                      in
+                        [List.foldl doCh BOT absChs]
+                      end
+                  | _ => raise Fail "Recv on non-channel variable\n"
+                (* end case *))
+             | _ => raise Fail "Error: mismatched recv hlop pattern\n"  
+           (* end case *))
+
+    fun initTbl () = let
+          val tbl = Tbl.mkTable (256, Fail "HLOp table")
+          fun ins (path, f)= Tbl.insert tbl (TranslateEnv.findBOMHLOpByPath path, f)
+          in
+            List.app ins [
+                (["PrimChan", "chan-new"], analyzeNewCh),
+                (["PrimChan", "chan-send"], analyzeSend),
+                (["PrimChan", "chan-recv"], analyzeRecv)
+              ];
+            Tbl.find tbl
+          end
+
+    val findAnalFn = initTbl()
+
     fun analyze (BOM.MODULE{body, ...}) = let
           fun onePass () = let
                 val _ = ST.tick cntPasses
@@ -625,11 +708,10 @@ structure CFABOM : sig
                               List.app (fn x => addResult (f, x)) rets;
                               rets
                           end)
-                        | (BOM.E_HLOp (h as HLOp.HLOp{constr,...}, _, _)) => (
-                          if constr
-                          then ([HLOPC([H(ppt, h)])])
-                          else [TOP])
-		      (* end case *))
+                        | (BOM.E_HLOp (h as HLOp.HLOp{constr,...}, xs, ks)) => (case findAnalFn h
+                              of NONE => [TOP]
+                               | SOME f => f((ppt, h), xs)
+		           (* end case *)))
                 and doRhs ([x], BOM.E_Cast (ty, y)) = eqInfo' (x, y)
                   | doRhs ([x], BOM.E_Const _) = addInfo (x, TOP)
                   | doRhs ([x], BOM.E_Select (i, y)) = (addInfo (x, select (i, y)); addInfo (y, update(i, y, getValue x)))
