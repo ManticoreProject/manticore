@@ -79,7 +79,7 @@ structure BuildExecutable : sig
 	  val filename = OS.FileSys.tmpName()
       val filenamec = concat[filename,".c"]
       val filenameo = concat[filename,".o"]  
-	  val gccfilename = concat ["gcc -g -O2 -D_GNU_SOURCE -pedantic -m64 -D_THREAD_SAFE -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -DTARGET_DARWIN -DTARGET_X86_64 -o ",filenameo," -std=c99 -c ",filenamec]
+	  val gccfilename = concat ["gcc @CFLAGS@ @LIBS@ @CFLAG_M64@ -lpthread -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o ",filenameo," -std=c99 -c ",filenamec]
 	  val _ = PrintTbl.print filenamec
 	  val _ = systemWithTiming (gccfilename, false)
 	  
@@ -89,7 +89,7 @@ structure BuildExecutable : sig
 		  val filenamedebug = OS.FileSys.tmpName()
 		  val filenamedebugc = concat[filenamedebug,".c"]
 		  val filenamedebugo = concat[filenamedebug,".o"]  
-		  val gccfilenamedebug = concat ["gcc -g -O2 -D_GNU_SOURCE -pedantic -m64 -D_THREAD_SAFE -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -DTARGET_DARWIN -DTARGET_X86_64 -o ",filenamedebugo," -std=c99 -c ",filenamedebugc]
+		  val gccfilenamedebug = concat ["gcc @CFLAGS@ @LIBS@ @CFLAG_M64@ -lpthread -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o ",filenamedebugo," -std=c99 -c ",filenamedebugc]
 		  val _ = PrintTblDbg.print filenamedebugc
 		  val _ = systemWithTiming (gccfilenamedebug, false)
 	  in

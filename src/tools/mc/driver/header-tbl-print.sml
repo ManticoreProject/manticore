@@ -9,6 +9,9 @@
 structure PrintTable = 
 struct
     
+    (* number of predefined table entries, important for the table length!! *)
+    val predefined = 3
+    
     (* Headerfiles *)
     fun header (MyoutStrm) = (  
         TextIO.output (MyoutStrm, "#include <stdint.h>\n");
@@ -23,13 +26,14 @@ struct
     
     (*Minor GC Functions *)
     fun minorpre (MyoutStrm) = (
-        TextIO.output (MyoutStrm, "void minorGCscanRAWpointer (Word_t* ptr, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n");
+        TextIO.output (MyoutStrm, "Word_t * minorGCscanRAWpointer (Word_t* ptr, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n");
         TextIO.output (MyoutStrm, "\n" );
         TextIO.output (MyoutStrm, "assert (isRawHdr(ptr[-1]));\n");
+		TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "  }\n");
         
-        TextIO.output (MyoutStrm, "void minorGCscanVECTORpointer (Word_t* ptr, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n");
+        TextIO.output (MyoutStrm, "Word_t * minorGCscanVECTORpointer (Word_t* ptr, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "Word_t *nextScan = ptr;\n");
         TextIO.output (MyoutStrm, "  int len = GetLength(ptr[-1]);\n" );
@@ -41,9 +45,16 @@ struct
         TextIO.output (MyoutStrm, "      }\n");
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "   }\n");
+		TextIO.output (MyoutStrm, "return (ptr+len);\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
-        ()
+		
+		TextIO.output (MyoutStrm, "Word_t * minorGCscanPROXYpointer (Word_t* ptr, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n");
+		TextIO.output (MyoutStrm, "//assert (isProxyHdr(ptr[-1]));\n");
+		TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
+        TextIO.output (MyoutStrm, "  }\n");
+		
+		()
         )
 
 
@@ -52,7 +63,8 @@ struct
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
-                    
+                
+				val size = String.size a
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -67,14 +79,15 @@ struct
                         lp(strlen-1,bites,pos+1)
                     )
                 in
-                TextIO.output (MyoutStrm, concat["void minorGCscan",Int.toString b,"pointer (Word_t* ptr, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n"]);
+                TextIO.output (MyoutStrm, concat["Word_t * minorGCscan",Int.toString b,"pointer (Word_t* ptr, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n"]);
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Value_t *scanP = (Value_t *)ptr;\n");
                 TextIO.output (MyoutStrm, "  Value_t v = *scanP;\n");
                 TextIO.output (MyoutStrm, "\n");
                 
-                lp(String.size a,a,0);
+                lp(size,a,0);
                 
+				TextIO.output (MyoutStrm, concat["return (ptr+",Int.toString size,");\n"]);
                 TextIO.output (MyoutStrm, "}\n");
                 TextIO.output (MyoutStrm, "\n"); 
                 
@@ -90,13 +103,14 @@ struct
     
     (*Major GC Functions *)
     fun majorpre (MyoutStrm) = (
-        TextIO.output (MyoutStrm, "void majorGCscanRAWpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
+        TextIO.output (MyoutStrm, "Word_t * majorGCscanRAWpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
         TextIO.output (MyoutStrm, "\n" );
         TextIO.output (MyoutStrm, "assert (isRawHdr(ptr[-1]));\n");
+		TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "  }\n");
         
-        TextIO.output (MyoutStrm, "void majorGCscanVECTORpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
+        TextIO.output (MyoutStrm, "Word_t * majorGCscanVECTORpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "Word_t *nextScan = ptr;\n");
         TextIO.output (MyoutStrm, "  int len = GetLength(ptr[-1]);\n" );
@@ -113,8 +127,14 @@ struct
         TextIO.output (MyoutStrm, "       }\n");
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "   }\n");
+		TextIO.output (MyoutStrm, "return (ptr+len);\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
+		
+		TextIO.output (MyoutStrm, "Word_t * majorGCscanPROXYpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
+        TextIO.output (MyoutStrm, "//assert (isProxyHdr(ptr[-1]));\n");
+		TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
+        TextIO.output (MyoutStrm, "  }\n");
         ()
         )
 
@@ -125,6 +145,7 @@ struct
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
                     
+				val size = String.size a	
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -143,14 +164,15 @@ struct
                         lp(strlen-1,bites,pos+1)
                     )
                 in
-                TextIO.output (MyoutStrm, concat["void majorGCscan",Int.toString b,"pointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n"]);
+                TextIO.output (MyoutStrm, concat["Word_t * majorGCscan",Int.toString b,"pointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n"]);
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
                 TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
                 TextIO.output (MyoutStrm, "\n");
                 
-                lp(String.size a,a,0);
+                lp(size,a,0);
                 
+				TextIO.output (MyoutStrm, concat["return (ptr+",Int.toString size,");\n"]);
                 TextIO.output (MyoutStrm, "}\n");
                 TextIO.output (MyoutStrm, "\n"); 
                 
@@ -167,13 +189,14 @@ struct
         
     (*Globaltospace GC Functions *)
     fun globaltospacepre (MyoutStrm) = (
-        TextIO.output (MyoutStrm, "void ScanGlobalToSpaceRAWfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {\n");
+        TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpaceRAWfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {\n");
         TextIO.output (MyoutStrm, "\n" );
         TextIO.output (MyoutStrm, "assert (isRawHdr(ptr[-1]));\n");
         TextIO.output (MyoutStrm, "\n");
+		TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
         TextIO.output (MyoutStrm, "  }\n");
         
-        TextIO.output (MyoutStrm, "void ScanGlobalToSpaceVECTORfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase) {\n");
+        TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpaceVECTORfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "Word_t *nextScan = ptr;\n");
         TextIO.output (MyoutStrm, "  int len = GetLength(ptr[-1]);\n" );
@@ -183,8 +206,14 @@ struct
         TextIO.output (MyoutStrm, "          *nextScan = (Word_t)ForwardObjMajor(vp, v);\n");
         TextIO.output (MyoutStrm, "      }\n");
         TextIO.output (MyoutStrm, "    }\n");
+		TextIO.output (MyoutStrm, "return (ptr+len);\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
+		
+		TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpacePROXYfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {\n");
+        TextIO.output (MyoutStrm, "//assert (isProxyHdr(ptr[-1]));\n");
+		TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
+        TextIO.output (MyoutStrm, "  }\n");
         ()
         )
 
@@ -195,6 +224,7 @@ struct
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
                     
+				val size = String.size a	
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -210,14 +240,15 @@ struct
                         lp(strlen-1,bites,pos+1)
                     )
                 in
-                TextIO.output (MyoutStrm, concat["void ScanGlobalToSpace",Int.toString b,"function (Word_t* ptr, VProc_t *vp, Addr_t heapBase) {\n"]);
+                TextIO.output (MyoutStrm, concat["Word_t * ScanGlobalToSpace",Int.toString b,"function (Word_t* ptr, VProc_t *vp, Addr_t heapBase) {\n"]);
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
                 TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
                 TextIO.output (MyoutStrm, "\n");
                 
-                lp(String.size a,a,0);
+                lp(size,a,0);
                 
+				TextIO.output (MyoutStrm, concat["return (ptr+",Int.toString size,");\n"]);
                 TextIO.output (MyoutStrm, "}\n");
                 TextIO.output (MyoutStrm, "\n"); 
                 
@@ -233,13 +264,14 @@ struct
     
     (*Global GC Functions *)
     fun globalpre (MyoutStrm) = (
-        TextIO.output (MyoutStrm, "void globalGCscanRAWpointer (Word_t* ptr, VProc_t *vp) {\n");
+        TextIO.output (MyoutStrm, "Word_t * globalGCscanRAWpointer (Word_t* ptr, VProc_t *vp) {\n");
         TextIO.output (MyoutStrm, "\n" );
         TextIO.output (MyoutStrm, "assert (isRawHdr(ptr[-1]));\n");
         TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm, "  }\n");
+		TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
+        TextIO.output (MyoutStrm, "}\n");
         
-        TextIO.output (MyoutStrm, "void globalGCscanVECTORpointer (Word_t* ptr, VProc_t *vp) {\n");
+        TextIO.output (MyoutStrm, "Word_t * globalGCscanVECTORpointer (Word_t* ptr, VProc_t *vp) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "Word_t *nextScan = ptr;\n");
         TextIO.output (MyoutStrm, "  int len = GetLength(ptr[-1]);\n" );
@@ -249,8 +281,14 @@ struct
         TextIO.output (MyoutStrm, "          *nextScan = (Word_t)ForwardObjGlobal(vp, v);\n");
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "   }\n");
+		TextIO.output (MyoutStrm, "return (ptr+len);\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
+		
+		TextIO.output (MyoutStrm, "Word_t * globalGCscanPROXYpointer (Word_t* ptr, VProc_t *vp) {\n");
+        TextIO.output (MyoutStrm, "//assert (isProxyHdr(ptr[-1]));\n");
+		TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
+        TextIO.output (MyoutStrm, "  }\n");
         ()
         )
 
@@ -261,6 +299,7 @@ struct
         fun printmystring [] = ()
             | printmystring ((a,b)::t) = (let
                     
+				val size = String.size a	
                 fun lp(0,bites,pos) = ()
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
@@ -275,14 +314,15 @@ struct
                         lp(strlen-1,bites,pos+1)
                     )
                 in
-                TextIO.output (MyoutStrm, concat["void globalGCscan",Int.toString b,"pointer (Word_t* ptr, VProc_t *vp) {\n"]);
+                TextIO.output (MyoutStrm, concat["Word_t * globalGCscan",Int.toString b,"pointer (Word_t* ptr, VProc_t *vp) {\n"]);
                 TextIO.output (MyoutStrm, "  \n");
                 TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
                 TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
                 TextIO.output (MyoutStrm, "\n");
                 
-                lp(String.size a,a,0);
+                lp(size,a,0);
                 
+				TextIO.output (MyoutStrm, concat["return (ptr+",Int.toString size,");\n"]);
                 TextIO.output (MyoutStrm, "}\n");
                 TextIO.output (MyoutStrm, "\n"); 
                 
@@ -309,10 +349,11 @@ struct
             )
             
         in
-        TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString (length+2),"] = { {minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction},\n"]);
-        TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction}\n");
+        TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString (length+predefined),"] = { {minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction},\n"]);
+        TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction},\n");
+		TextIO.output (MyoutStrm, "{minorGCscanPROXYpointer,majorGCscanPROXYpointer,globalGCscanPROXYpointer,ScanGlobalToSpacePROXYfunction}\n");
         
-        printtable (length+2,2);
+        printtable (length+predefined,predefined);
         
         TextIO.output (MyoutStrm," };\n"); 
         TextIO.output (MyoutStrm,"\n");

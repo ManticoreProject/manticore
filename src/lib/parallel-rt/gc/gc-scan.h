@@ -5,10 +5,10 @@
 
 //new table structure
 typedef struct{
-	void (*minorGCscanfunction) (Word_t *,  Word_t**, Addr_t,Addr_t);
-	void (*majorGCscanfunction) (Word_t *,  VProc_t *, Addr_t,Addr_t);
-	void (*globalGCscanfunction) (Word_t *,  VProc_t *);
-	void (*ScanGlobalToSpacefunction) (Word_t *,  VProc_t *,Addr_t);
+	Word_t * (*minorGCscanfunction) (Word_t *,  Word_t**, Addr_t,Addr_t);
+	Word_t * (*majorGCscanfunction) (Word_t *,  VProc_t *, Addr_t,Addr_t);
+	Word_t * (*globalGCscanfunction) (Word_t *,  VProc_t *);
+	Word_t * (*ScanGlobalToSpacefunction) (Word_t *,  VProc_t *,Addr_t);
 } tableentry;
 
 //table array to match the tagbits with the entries
