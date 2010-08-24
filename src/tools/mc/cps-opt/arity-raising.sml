@@ -1686,7 +1686,7 @@ structure ArityRaising : sig
               | C.Let ([], rhs, e) => C.mkLet ([], rhs, cleanupExp e)
               | C.Let (vars, C.Var(rhsV), e) => let
                     fun checkOne (v, r) =
-                        if CV.useCount v > 0
+                        if CV.useCount v = 0
                         then (ST.tick cntUnusedStmt; true)
                         else (Census.decUseCnt r; false)
                     val paired = ListPair.zip (vars, rhsV)
