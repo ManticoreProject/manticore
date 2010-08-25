@@ -25,6 +25,38 @@
 #include "gc-scan.h"
 #include <stdio.h>
 
+//ForwardObject of MajorGC
+/*! \brief Forward an object into the global-heap chunk reserved for the given vp.
+ *  \param vp the vproc
+ *  \param v  the heap object that is to be forwarded
+ *  \return the forwarded value
+ */
+Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
+{
+	Word_t	*p = ((Word_t *)ValueToPtr(v));
+	Word_t	hdr = p[-1];
+	if (isForwardPtr(hdr))
+		return PtrToValue(GetForwardPtr(hdr));
+	else {
+		/* forward object to global heap. */
+		Word_t *nextW = (Word_t *)vp->globNextW;
+		int len = GetLength(hdr);
+		if (nextW+len >= (Word_t *)(vp->globLimit)) {
+			AllocToSpaceChunk (vp);
+			nextW = (Word_t *)vp->globNextW;
+		}
+		Word_t *newObj = nextW;
+		newObj[-1] = hdr;
+		for (int i = 0;  i < len;  i++) {
+			newObj[i] = p[i];
+		}
+		vp->globNextW = (Addr_t)(newObj+len+1);
+		p[-1] = MakeForwardPtr(hdr, newObj);
+		return PtrToValue(newObj);
+	}
+	
+}
+
 static void ScanGlobalToSpace (
 	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
 #ifndef NDEBUG
@@ -90,23 +122,21 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 		
 		Word_t hdr = *nextScan++;	// get object header
 		
-		if (isVectorHdr(hdr)) {
-			//Word_t *nextScan = ptr;
-			int len = GetLength(hdr);
-			for (int i = 0;  i < len;  i++, nextScan++) {
-				//Value_t *scanP = (Value_t *)nextScan;
-				Value_t v = *(Value_t *)nextScan;
-				if (isPtr(v)) {
-					if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {
-						*nextScan =(Word_t)ForwardObjMajor(vp, v);
-					}
-					else if (inVPHeap(heapBase, (Addr_t)v)) {
-						// p points to another object in the "young" region,
-						// so adjust it.
-						*nextScan = (Word_t)((Addr_t)v - oldSzB);
-					}
-				}
-			}
+	    if (isVectorHdr(hdr)) {
+		    int len = GetLength(hdr);
+		    for (int i = 0;  i < len;  i++, nextScan++) {
+			    Value_t v = *(Value_t *)nextScan;
+			    if (isPtr(v)) {
+				    if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {
+					    *nextScan =(Word_t)ForwardObjMajor(vp, v);
+				    }
+				    else if (inVPHeap(heapBase, (Addr_t)v)) {
+					    // p points to another object in the "young" region,
+					    // so adjust it.
+					    *nextScan = (Word_t)((Addr_t)v - oldSzB);
+				    }
+			    }
+		    }
 			
 			
 		}else if (isRawHdr(hdr)) {

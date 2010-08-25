@@ -46,6 +46,47 @@ static void ScanGlobalToSpace (VProc_t *vp);
 void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
 #endif
 
+/* Forward an object into the global-heap chunk reserved for the current VP */
+Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
+{
+	Word_t	*p = ((Word_t *)ValueToPtr(v));
+	Word_t	oldHdr = p[-1];
+	if (isForwardPtr(oldHdr)) {
+		Value_t v = PtrToValue(GetForwardPtr(oldHdr));
+		assert (isPtr(v) && (AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK));
+		return v;
+	}
+	else {
+		// we need to atomically update the header to a forward pointer, so frst
+		// we allocate space for the object and then we try to install the forward
+		// pointer.
+		Word_t *nextW = (Word_t *)vp->globNextW;
+		int len = GetLength(oldHdr);
+		if (nextW+len >= (Word_t *)(vp->globLimit)) {
+			AllocToSpaceChunk (vp);
+			nextW = (Word_t *)vp->globNextW;
+		}
+		// try to install the forward pointer
+		Word_t fwdPtr = MakeForwardPtr(oldHdr, nextW);
+		Word_t hdr = CompareAndSwapWord(p-1, oldHdr, fwdPtr);
+		if (oldHdr == hdr) {
+			Word_t *newObj = nextW;
+			newObj[-1] = hdr;
+			for (int i = 0;  i < len;  i++) {
+				newObj[i] = p[i];
+			}
+			vp->globNextW = (Addr_t)(newObj+len+1);
+			return PtrToValue(newObj);
+		}
+		else {
+			// some other vproc forwarded the object, so return the forwarded
+			// object.
+			assert (isForwardPtr(hdr));
+			return PtrToValue(GetForwardPtr(hdr));
+		}
+	}
+	
+}
 
 /* \brief initialize the data structures that support global GC
  */

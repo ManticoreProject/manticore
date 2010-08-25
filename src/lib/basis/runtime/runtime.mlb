@@ -9,6 +9,7 @@
   ../sequential/sequential.mlb
   ../misc/debug.mlb
   ../topologies/topologies.mlb
+  proxy.pml
 
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in

@@ -24,6 +24,30 @@
 extern Addr_t	MajorGCThreshold;	/* when the size of the nursery goes below */
 					/* this limit it is time to do a GC. */
 
+//ForwardObject of MinorGC
+/* Copy an object to the old region */
+Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
+{
+	Word_t	*p = (Word_t *)ValueToPtr(v);
+	Word_t	hdr = p[-1];
+	
+	if (isForwardPtr(hdr))
+		return PtrToValue(GetForwardPtr(hdr));
+	else {
+		int len = GetLength(hdr);
+		Word_t *newObj = *nextW;
+		newObj[-1] = hdr;
+		for (int i = 0;  i < len;  i++) {
+			newObj[i] = p[i];
+		}
+		*nextW = newObj+len+1;
+		
+		p[-1] = MakeForwardPtr(hdr, newObj);
+		return PtrToValue(newObj);
+	}
+	
+}
+
 #ifndef NDEBUG
 static void CheckMinorGC (VProc_t *self, Value_t **roots);
 #endif
@@ -115,7 +139,6 @@ void MinorGC (VProc_t *vp)
 		}else {
 
 			nextScan = table[getID(hdr)].minorGCscanfunction(nextScan,&nextW, allocSzB,nurseryBase);
-
 		}
 
 	    }
