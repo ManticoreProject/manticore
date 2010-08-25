@@ -137,8 +137,9 @@ void MinorGC (VProc_t *vp)
 			assert (isRawHdr(hdr));
 			nextScan += GetLength(hdr);
 		}else {
-
+			//printf("MinorGC id = %d, length = %d, scan = %p\n",getID(hdr),GetLength(hdr),(void *)nextScan);
 			nextScan = table[getID(hdr)].minorGCscanfunction(nextScan,&nextW, allocSzB,nurseryBase);
+			//printf("scan after = %p\n",(void *)nextScan);
 		}
 
 	    }

@@ -8,6 +8,9 @@
 
 structure PrintTableDebug = 
 struct
+
+     (* number of predefined table entries, important for the table length!! *)
+    val predefined = 3
     
     (* Headerfiles *)
     fun header (MyoutStrm) = (  
@@ -91,7 +94,7 @@ struct
         TextIO.output (MyoutStrm, "void minorGCVECTORdebug (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "    char buf[32];\n");
-        TextIO.output (MyoutStrm, "    int len = GetVectorLen(ptr[-1]);\n");
+        TextIO.output (MyoutStrm, "    int len = GetLength(ptr[-1]);\n");
         TextIO.output (MyoutStrm, "    for (int i = 0;  i < len;  i++, ptr++) {\n");
         TextIO.output (MyoutStrm, "        sprintf(buf, \"local vector[%d/%d]\", i, len);\n");
         TextIO.output (MyoutStrm, "        CheckLocalPtrMinor (self, ptr, buf);\n");
@@ -123,6 +126,19 @@ struct
         TextIO.output (MyoutStrm, "             }\n");
         TextIO.output (MyoutStrm, "         }\n");
         TextIO.output (MyoutStrm, "    }\n");
+        TextIO.output (MyoutStrm, "}\n");
+        TextIO.output (MyoutStrm, "\n");
+        
+        TextIO.output (MyoutStrm, "void minorGCPROXYdebug (VProc_t *self, Word_t *ptr) {\n");
+        TextIO.output (MyoutStrm, "  \n");
+        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"    CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
         ()
@@ -220,7 +236,7 @@ struct
         
         TextIO.output (MyoutStrm, "void minorGCVECTORdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm, "    int len = GetVectorLen(ptr[-1]);\n");
+        TextIO.output (MyoutStrm, "    int len = GetLength(ptr[-1]);\n");
         TextIO.output (MyoutStrm, "    // an array of pointers\n");
         TextIO.output (MyoutStrm, "    for (int i = 0;  i < len;  i++, ptr++) {\n");
         TextIO.output (MyoutStrm, "          Value_t v = (Value_t)*ptr;\n");
@@ -240,7 +256,18 @@ struct
         TextIO.output (MyoutStrm, "         }\n");
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "}\n");
-    
+        
+        TextIO.output (MyoutStrm, "void minorGCPROXYdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm, "}\n");
     ()
     )
     
@@ -317,13 +344,24 @@ struct
         
         TextIO.output (MyoutStrm, "void globalGCVECTORdebug (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm, "     int len = GetVectorLen(ptr[-1]);\n");
+        TextIO.output (MyoutStrm, "     int len = GetLength(ptr[-1]);\n");
         TextIO.output (MyoutStrm, "     for (int i = 0;  i < len;  i++, ptr++) {\n");
         TextIO.output (MyoutStrm, "          CheckLocalPtrGlobal (self, ptr, \"local vector\");\n");
         TextIO.output (MyoutStrm, "     }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
         
+        TextIO.output (MyoutStrm, "void globalGCPROXYdebug (VProc_t *self, Word_t *ptr) {\n");
+        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm,"possiblePointer(self,ptr,scanP,0);\n");
+        TextIO.output (MyoutStrm,"scanP++;\n");
+        TextIO.output (MyoutStrm,"CheckLocalPtrGlobal (self, scanP, \"local mixed object\");\n");
+        TextIO.output (MyoutStrm,"scanP++;\n");
+        TextIO.output (MyoutStrm,"possiblePointer(self,ptr,scanP,0);\n");
+        TextIO.output (MyoutStrm,"scanP++;\n");
+        TextIO.output (MyoutStrm, "}\n");
+        TextIO.output (MyoutStrm, "\n");
         ()
     )
     
@@ -399,7 +437,7 @@ struct
         
         TextIO.output (MyoutStrm, "void globalGCVECTORdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm, "    int len = GetVectorLen(ptr[-1]);\n");
+        TextIO.output (MyoutStrm, "    int len = GetLength(ptr[-1]);\n");
         TextIO.output (MyoutStrm, "    for (int i = 0;  i < len;  i++, ptr++) {\n");
         TextIO.output (MyoutStrm, "        Value_t v = (Value_t)*ptr;\n");
         TextIO.output (MyoutStrm, "        if (isPtr(v)) {\n");
@@ -434,6 +472,18 @@ struct
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
         
+        TextIO.output (MyoutStrm, "void globalGCPROXYdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,0);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,0);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm, "}\n");
+        TextIO.output (MyoutStrm, "\n");
         ()
     )
     
@@ -519,7 +569,12 @@ struct
         TextIO.output (MyoutStrm, "    assert (isRawHdr(nextScan[-1]));\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
-          
+        
+        TextIO.output (MyoutStrm, "void gc_debugPROXY (Word_t * nextScan, Addr_t nurseryBase, Addr_t allocSzB) {\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm,concat["    gc_debug((nextScan+",Int.toString 1,"), nurseryBase, allocSzB);\n"]);
+        TextIO.output (MyoutStrm, "}\n");
+        TextIO.output (MyoutStrm, "\n");   
         ()
         )
         
@@ -573,10 +628,11 @@ struct
             )
             
         in
-        TextIO.output (MyoutStrm, concat["tableentryDebug tableDebug[",Int.toString (length+2),"] = { {minorGCRAWdebug,minorGCRAWdebugGlobal,globalGCRAWdebug,globalGCRAWdebugGlobal,gc_debugRAW},\n"]);
-        TextIO.output (MyoutStrm, "{minorGCVECTORdebug,minorGCVECTORdebugGlobal,globalGCVECTORdebug,globalGCVECTORdebugGlobal,gc_debugVECTOR}\n");
+        TextIO.output (MyoutStrm, concat["tableentryDebug tableDebug[",Int.toString (length+predefined),"] = { {minorGCRAWdebug,minorGCRAWdebugGlobal,globalGCRAWdebug,globalGCRAWdebugGlobal,gc_debugRAW},\n"]);
+        TextIO.output (MyoutStrm, "{minorGCVECTORdebug,minorGCVECTORdebugGlobal,globalGCVECTORdebug,globalGCVECTORdebugGlobal,gc_debugVECTOR},\n");
+        TextIO.output (MyoutStrm, "{minorGCPROXYdebug,minorGCPROXYdebugGlobal,globalGCPROXYdebug,globalGCPROXYdebugGlobal,gc_debugPROXY}\n");
         
-        printtable (length+2,2);
+        printtable (length+predefined,predefined);
         
         TextIO.output (MyoutStrm," };\n"); 
         TextIO.output (MyoutStrm,"\n");
