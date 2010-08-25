@@ -1348,7 +1348,7 @@ structure ArityRaising : sig
                 | CTy.T_CFun (_) => cast ()
                 | CTy.T_VProc => cast()
           end
-	  fun flattenApplyThrow (ppt, g, args, retArgs) = let
+	  fun flattenApplyThrow (ppt, encl, g, args, retArgs) = let
               val lambdas = cfaGetLambdas g
               fun matchTypes (paramType::paramTypes, arg::orig, accum, final) =
                   let
@@ -1442,6 +1442,7 @@ structure ArityRaising : sig
 				              (* end case *))
 				              val newVar = CV.new ("letFlat", newType)
 				              val rhs = C.Select (hd path, varBase)
+                                              val _ = addVarToMap (encl, newVar, hd path, varBase)
 				          in
 				              if length path = 1
 					      then C.mkLet ([newVar], rhs,
@@ -1535,6 +1536,20 @@ structure ArityRaising : sig
               then SOME(List.nth (params, n))
               else findInSign(n+1,sign, path, params)
             | findInSign (n, [], _, _) = NONE
+          and addVarToMap (candidate, newVar, sel, baseVar) =
+            if isCandidate candidate
+            then let
+                    val {vmap, pmap, params, rets, sign, newParams, newRets} = getInfo candidate
+                in
+                    case ParamMap.find (vmap, VAR (baseVar))
+                     of SOME(path) => (
+                        setInfo (candidate, ParamMap.insert (vmap, VAR newVar, SEL(sel, path)),
+                                 PMap.insert (pmap, SEL(sel, path), ref 0),
+                                 params, rets, sign, newParams, newRets);
+                        setParent (newVar, candidate))
+                      | NONE => ()
+                end
+            else ()
           (* look up path in defining function of selectee *)
           and peekAlias (i, y) = (
               case getParent y
@@ -1610,8 +1625,8 @@ structure ArityRaising : sig
 		      C.mkSwitch(x,
 			         List.map (fn (tag,exp) => (tag,walkExp (encl, newParams, exp))) cases,
 			         Option.map (fn (f) => walkExp (encl, newParams, f)) dflt)
-		  | (C.Apply(g, args, rets)) => flattenApplyThrow (ppt, g, args, SOME(rets))
-		  | (C.Throw(k, args)) => flattenApplyThrow (ppt, k, args, NONE)
+		  | (C.Apply(g, args, rets)) => flattenApplyThrow (ppt, encl, g, args, SOME(rets))
+		  | (C.Throw(k, args)) => flattenApplyThrow (ppt, encl, k, args, NONE)
 		(* end case *))
 
         (* Returns flattened version of candidate functions *)
@@ -1686,7 +1701,7 @@ structure ArityRaising : sig
               | C.Let ([], rhs, e) => C.mkLet ([], rhs, cleanupExp e)
               | C.Let (vars, C.Var(rhsV), e) => let
                     fun checkOne (v, r) =
-                        if CV.useCount v > 0
+                        if CV.useCount v = 0
                         then (ST.tick cntUnusedStmt; true)
                         else (Census.decUseCnt r; false)
                     val paired = ListPair.zip (vars, rhsV)

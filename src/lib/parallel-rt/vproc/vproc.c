@@ -292,6 +292,8 @@ void *NewVProc (void *arg)
 	vproc->proxyTableentries=0;
 	vproc->maxProxy=512;
 	vproc->proxyTable=(ProxyTblEntry_t *)malloc(sizeof(ProxyTblEntry_t) * vproc->maxProxy);
+	
+	createList(vproc);
 
   /* store a pointer to the VProc info as thread-specific data */
     pthread_setspecific (VProcInfoKey, vproc);
