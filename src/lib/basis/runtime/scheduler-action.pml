@@ -39,6 +39,7 @@ structure SchedulerAction (* :
 			                         (* returns the new host vproc *)
       define inline @sleep-from-atomic (vp : vproc, t : long) : ();
       define inline @sleep (t : long) : ();
+      define inline @sleepExport (t : [long]) : unit;
 
     (* create a fiber *)
       define inline @fiber (f : PT.fiber_fun / exh : exh) : PT.fiber;
@@ -168,6 +169,13 @@ structure SchedulerAction (* :
 	  return ()
 	;
 
+      define inline @sleepExport (t : [long] / _ : exh) : unit =
+          let t1 : long = #0(t)
+	  cont k (x : unit) = return (UNIT)
+	  do @forward (PT.SLEEP(k, t1))
+	  return (UNIT)
+	;
+
     (* unmask signals; if there is a signal pending, then yield to the scheduler. *)
       define inline @atomic-end (vp : vproc) : () =
 	  let pending : bool = vpload (SIG_PENDING, vp)
@@ -202,5 +210,7 @@ structure SchedulerAction (* :
 	;
 
     )
+
+    val sleep : long -> unit = _prim (@sleepExport)
 
   end
