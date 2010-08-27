@@ -143,7 +143,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 			assert (isRawHdr(hdr));
 			nextScan += GetLength(hdr);
 		}else {
-			
+			//printf("Pointer = %p\n",(void*)(nextScan));
 			nextScan = table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
 			
 		}

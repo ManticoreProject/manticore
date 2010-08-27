@@ -363,6 +363,9 @@ static void ScanVProcHeap (VProc_t *vp)
 
     }
     assert (scanPtr == top);
+	
+    //reset the proxy table since all continuation elements got promoted
+    createList(vp);
 
 } /* end of ScanVProcHeap */
 

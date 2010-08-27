@@ -52,7 +52,6 @@ structure VProcQueue (* :
 
     structure PT = PrimTypes
     structure O = Option
-    structure Pxy = Proxy
 
 #include "vproc-queue.def"
 	
@@ -63,13 +62,6 @@ structure VProcQueue (* :
 	  int,		(* vp id *)
 	  int		(*ID in Table*)
       ];
-	
-	
-	 (* hooks into the C runtime system *)
-     extern void * createProxy (void *,void *) __attribute__((pure));
-     extern void isCont (void *);
-	 extern void isProxy (void *, int);
-	 extern void M_PrintInt (int);
 	
     (**** Predicates ****)
 
@@ -134,19 +126,11 @@ structure VProcQueue (* :
 	  let hd : queue_item = vpload (VP_RDYQ_HD, vp)	  
           if NotEqual(hd, Q_EMPTY) then
 	    (* got a thread from the primary list *)
-	    
-	     let myFiber : PT.fiber = SELECT(FIBER_OFF, hd)
-	     do ccall isCont(myFiber)
-	      
 	      do vpstore (VP_RDYQ_HD, vp, SELECT(LINK_OFF, hd))
 	      return (O.SOME (hd))
 	  else
 	      let tl : queue_item = vpload (VP_RDYQ_TL, vp)
 	      if NotEqual(tl, Q_EMPTY) then
-	      
-		let myFiber : PT.fiber = SELECT(FIBER_OFF, tl)
-		do ccall isCont(myFiber)
-	      
 		(* got a thread from the secondary list *)
 		  do vpstore (VP_RDYQ_TL, vp, Q_EMPTY)
 		  let qitem : queue_item = @queue-reverse (SELECT(FLS_OFF, tl), 
@@ -161,7 +145,7 @@ structure VProcQueue (* :
     (* enqueue on the local queue. NOTE: signals must be masked *)
       define inline @enqueue-from-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
       
-	  let testobj : PT.fiber = Pxy.@createProxy(vp,fiber)
+	  let testobj : PT.fiber = Proxy.@createProxy(vp,fiber)
 	  
 	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
 	  let qitem : queue_item = alloc(fls,testobj, tl)

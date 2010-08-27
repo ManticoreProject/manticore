@@ -113,6 +113,36 @@ void MinorGC (VProc_t *vp)
 	    }
 	}
     }
+	
+	for (int i=0; i < vp->maxProxy-1;i++) {
+		if ((long long int)(vp->proxyTable[i].proxyObj) > 1000) {
+			/* printf("Entry %d is pointer\n",i);
+			Word_t	* nextScan = (Word_t *)(vp->proxyTable[i].localObj);
+			Word_t hdr = * (nextScan - 1);
+			printf("Table Pointer = %p, hdr = %llu, hdrid = %d, lenght = %d\n",(void*)(nextScan),(long long int)(hdr),getID(hdr),GetLength(hdr));
+			//nextScan = table[getID(hdr)].minorGCscanfunction(nextScan,&nextW, allocSzB,nurseryBase);
+			*/
+			vp->proxyTable[i].localObj = PromoteObj(vp,vp->proxyTable[i].localObj);
+			
+			Word_t * scanP = (Word_t *)(vp->proxyTable[i].proxyObj);
+			
+			Value_t cont = vp->proxyTable[i].proxyObj;
+			
+			int id = (long long int) (*(scanP+1));
+			
+			//printf("id = %d\n",id);
+			
+			*(scanP+1) = (Word_t)vp->proxyTable[i].localObj;
+			
+			deleteProxy(vp,id);
+			
+			/*
+			Word_t	* nextScan2 = (Word_t *)(vp->proxyTable[i].localObj);
+			Word_t hdr2 = * (nextScan2 - 1);
+			printf("Table Pointer = %p, hdr = %llu, hdrid = %d, lenght = %d\n",(void*)(nextScan2),(long long int)(hdr2),getID(hdr2),GetLength(hdr2));
+			*/
+		}
+	}
 
   /* scan to space */
     while (nextScan < nextW-1) {
@@ -137,7 +167,7 @@ void MinorGC (VProc_t *vp)
 			assert (isRawHdr(hdr));
 			nextScan += GetLength(hdr);
 		}else {
-
+			//printf("Pointer = %p, hdr = %llu, hdrid = %d, lenght = %d\n",(void*)(nextScan),(long long int)(hdr),getID(hdr),GetLength(hdr));
 			nextScan = table[getID(hdr)].minorGCscanfunction(nextScan,&nextW, allocSzB,nurseryBase);
 		}
 
