@@ -31,6 +31,9 @@ structure Proxy (* :
       
     (* Get the fiber out of the proxy table *)
      define inline @getProxyFiber (myProxy : proxy) : PT.fiber; 
+     
+     define @thief-from-atomic-proxy (thiefVP : vproc, victimVP : vproc, workGroupId : UID.uid, wid : long, policy : int, fiber : PT.fiber)
+								      : PT.fiber;
     
     )
 
@@ -80,6 +83,44 @@ structure Proxy (* :
 	else 
 	return(false)
       ;
+      
+       (* send a thief from thiefVP to steal from victimVP. the result is a continuation stored in the proxy table *)
+	define @thief-from-atomic-proxy (thiefVP : vproc, myProxy : proxy) : PT.fiber =
+	    let victimVP : vproc = #0(myProxy)
+	    do assert (NotEqual (thiefVP, victimVP))
+	    
+	  (* communication channel used to pass the result of the steal from the victim vproc back to the
+	   * thief. the channel is initially nil, but once the steal attempt completes the channel is
+	   * seeded with the continuation.
+	   *)
+	    let ch : ![Option.option] = alloc (Option.NONE)
+	    let ch : ![Option.option] = promote (ch)
+	  (* the thief fiber executes on the victim vproc *)
+	    cont thief (_ : unit) =
+	      do ccall M_PrintInt(15)
+	      let myFiber : PT.fiber = @getProxyFiber(myProxy)		
+	      (* successfully stole multiple threads *)
+	      let x : Option.option = promote (Option.SOME(myFiber))
+	      do #0(ch) := x
+	      SchedulerAction.@stop ()
+	      
+	  (* send the thief fiber to the victim vproc *)
+	    let fls : FLS.fls = FLS.@get()
+	    do VProc.@send-from-atomic (thiefVP, victimVP, fls, thief)
+	    
+	    fun wait () : PT.fiber =
+		case #0(ch)
+		 of Option.NONE =>
+		    do Pause()
+		    let _ : vproc = SchedulerAction.@yield-in-atomic (thiefVP)
+		    apply wait ()
+		 | Option.SOME (myFiber : PT.fiber) =>
+		    return (myFiber)
+		end
+	  (* wait for the thief to report its findings *)
+	    apply wait ()
+	  ;
+      
 	
     (* create a Proxy *)
       define inline @createProxy (self : vproc, fiber : PT.fiber) : cont() =
@@ -109,12 +150,13 @@ structure Proxy (* :
 	        else
 		    (* if not we have to send a thieve *)
 	            (* do ccall M_PrintInt(8) *)
-		    let myFiber : PT.fiber = @getProxyFiber(myProxy)
+		    (* let myFiber : PT.fiber = @getProxyFiber(myProxy) *)
+		    let myFiber : PT.fiber = @thief-from-atomic-proxy (host_vproc,myProxy)
 		    throw myFiber(x)
 	    return(Proxy)	
 	else
 	    (*if no free entries return the original fiber *)
-	    do ccall M_PrintInt(10)
+	    (* do ccall M_PrintInt(10) *)
 	    return (fiber)
       ;
       

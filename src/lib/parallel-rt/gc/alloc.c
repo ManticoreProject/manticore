@@ -290,10 +290,10 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
 	
 	bits[strlen(bits)]='\0';
 	//compare strings are reversed due to strcat(dst,src)
-	if (strcmp(bits,"0") == 0) obj[-1] = MIXED_HDR(predefined, nElems);
+	if (strcmp(bits,"0101") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
+	else if (strcmp(bits,"0") == 0) obj[-1] = MIXED_HDR(predefined, nElems);
 	else if (strcmp(bits,"10") == 0) obj[-1] = MIXED_HDR(predefined+1, nElems);
 	else if (strcmp(bits,"1") == 0) obj[-1] = MIXED_HDR(predefined+2, nElems);
-	else if (strcmp(bits,"0101") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
 	else { printf("Error GlobalAllocNonUniform\n"); exit(5);}	
 	
 	for (int i = 0;  i < nElems;  i++) {

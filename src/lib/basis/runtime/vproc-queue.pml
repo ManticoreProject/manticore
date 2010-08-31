@@ -144,9 +144,7 @@ structure VProcQueue (* :
 
     (* enqueue on the local queue. NOTE: signals must be masked *)
       define inline @enqueue-from-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
-      
-	  let testobj : PT.fiber = Proxy.@createProxy(vp,fiber)
-	  
+          let testobj : PT.fiber = Proxy.@createProxy(vp,fiber)
 	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
 	  let qitem : queue_item = alloc(fls,testobj, tl)
 	  do vpstore (VP_RDYQ_TL, vp, qitem)

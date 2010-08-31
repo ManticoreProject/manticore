@@ -131,6 +131,7 @@ STATIC_INLINE bool isFromSpacePtr (Value_t p)
 	
 }
 
+extern Value_t PromoteObj (VProc_t *vp, Value_t root);
 extern Value_t ForwardObjMinor (Value_t v, Word_t **nextW);
 extern Value_t ForwardObjMajor (VProc_t *vp, Value_t v);
 extern Value_t ForwardObjGlobal (VProc_t *vp, Value_t v);

@@ -419,7 +419,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 	    scanTop = (Word_t *)(scanChunk->usedTop);
 
     } while (scanPtr < scanTop);
-
+	
 }
 
 #ifndef NDEBUG

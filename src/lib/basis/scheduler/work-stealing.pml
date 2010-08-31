@@ -131,6 +131,7 @@ structure WorkStealing (* :
 	    do D.@release-deques-from-atomic (victimVP, localDeques)
 	    return (stolenThds)
 	  ;
+	  
 
       (* send a thief from thiefVP to steal from victimVP. the result list is the list of stolen threads. *)
 	define @thief-from-atomic (thiefVP : vproc, victimVP : vproc, workGroupId : UID.uid, wid : long, policy : int)

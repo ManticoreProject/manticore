@@ -27,37 +27,27 @@ int isFree (VProc_t *vp) {
 void createList (VProc_t *vp) {
 	//set List of empty entries
 	for (int i = 0; i < vp->maxProxy-1;i++) {
-		vp->proxyTable[i].proxyObj=(Value_t)(i+1);
-		//printf("%d = %llu\n",i,(long long int) (vp->proxyTable[i].proxyObj));
+		vp->proxyTable[i].proxyObj=(Value_t)(long long int)(i+1);
 	}
 	vp->proxyTable[vp->maxProxy-1].proxyObj = (Value_t)(1000);
 	vp->proxyTableentries = 0;
-	//printf("last = %d, pointer = %d\n",(int) (vp->proxyTable[vp->maxProxy-1].proxyObj),vp->proxyTableentries);
 }
 
 Value_t createProxy (VProc_t *vp, Value_t fls) {
     
-    //printf("Create proxy\n");
-    
     int next = vp->proxyTableentries;
+	
     vp->proxyTableentries = (long long int)(vp->proxyTable[next].proxyObj);
     
     vp->proxyTable[next].proxyObj = AllocProxy(vp,2,vp,next);
     vp->proxyTable[next].localObj = fls;
 
-	Word_t * test = ValueToPtr(vp->proxyTable[next].proxyObj);
-    /*
-	printf("Proxy created, vpid = %d, id = %d, ptr = %p, localobj = %p, valueoflocal = %llu\n",
-	    vp->id, next, (void *)vp->proxyTable[next].proxyObj,(void *)vp->proxyTable[next].localObj,(long long int)vp->proxyTable[next].localObj);
-     */
     return (vp->proxyTable[next].proxyObj);
 
 }
 
 
 void isProxy (VProc_t *vp, int id) {
-    
-    //printf("Check proxy %d\n",id);
     
     if ((id > -1) && (id < 512)){
 	Word_t *p = ValueToPtr(vp->proxyTable[id].proxyObj);
@@ -68,38 +58,32 @@ void isProxy (VProc_t *vp, int id) {
     }
 }
 
-void isCont (Value_t fls) {
+void promoteCont (VProc_t *vp, int id) {
 	
-	printf("Check cont\n");
+	vp->proxyTable[id].localObj = PromoteObj(vp,vp->proxyTable[id].localObj);
 	
-	Word_t * test = (Word_t *) fls;
+	Word_t * scanP = (Word_t *)(vp->proxyTable[id].proxyObj);
 	
-	int id = getID(test[-1]);
+	*(scanP+1) = (Word_t)vp->proxyTable[id].localObj;
 	
-	printf("ID = %d, hdr = %d\n",id,GetLength(test[-1]));
+	deleteProxy(vp,id);
 }
 
 
 void deleteProxy (VProc_t *vp, int id) {
-    
-   // printf("Delete proxy id = %d\n",id);
+
 	//list empty?
 	if (vp->proxyTableentries != 1000) {
-		vp->proxyTable[id].proxyObj = (Value_t) (vp->proxyTableentries);
+		vp->proxyTable[id].proxyObj = (Value_t)(long long int)(vp->proxyTableentries);
 	} else {
 		vp->proxyTable[id].proxyObj = (Value_t) (1000);
 	}
 	vp->proxyTableentries = id;
-	
 }
 
 
 Value_t returnCont (VProc_t *vp,int id) {
-    /*
-    Value_t entr = vp->proxyTable[id].localObj;
-	printf("Pos cont %d = %p, value = %llu\n",id,(void *)entr,(long long int)entr);
-	return entr;
-     */
+
 	return (vp->proxyTable[id].localObj);
 }
 

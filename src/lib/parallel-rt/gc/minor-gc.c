@@ -31,8 +31,9 @@ Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
 	Word_t	*p = (Word_t *)ValueToPtr(v);
 	Word_t	hdr = p[-1];
 	
-	if (isForwardPtr(hdr))
+	if (isForwardPtr(hdr)) {
 		return PtrToValue(GetForwardPtr(hdr));
+	}
 	else {
 		int len = GetLength(hdr);
 		Word_t *newObj = *nextW;
@@ -83,7 +84,7 @@ void MinorGC (VProc_t *vp)
    * holds the GC root.
    */
     int nWorkStealingRoots = M_NumDequeRoots (vp);
-    Value_t *roots[16 + nWorkStealingRoots], **rp;
+    Value_t *roots[16 + vp->maxProxy + nWorkStealingRoots], **rp;
     rp = roots;
     *rp++ = &(vp->currentFLS);
     *rp++ = &(vp->actionStk);
@@ -95,6 +96,14 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->rdyQTl);
     *rp++ = &(vp->landingPad);
     *rp++ = &(vp->stdEnvPtr);
+	
+	for (int i=0; i < vp->maxProxy;i++) {
+		if ((long long int)(vp->proxyTable[i].proxyObj) > 1000) {
+			*rp++=&(vp->proxyTable[i].localObj);
+		}
+	}
+	
+	
     rp = M_AddDequeEltsToLocalRoots(vp, rp);
     *rp++ = 0;
 
@@ -114,39 +123,10 @@ void MinorGC (VProc_t *vp)
 	}
     }
 	
-	for (int i=0; i < vp->maxProxy-1;i++) {
-		if ((long long int)(vp->proxyTable[i].proxyObj) > 1000) {
-			/* printf("Entry %d is pointer\n",i);
-			Word_t	* nextScan = (Word_t *)(vp->proxyTable[i].localObj);
-			Word_t hdr = * (nextScan - 1);
-			printf("Table Pointer = %p, hdr = %llu, hdrid = %d, lenght = %d\n",(void*)(nextScan),(long long int)(hdr),getID(hdr),GetLength(hdr));
-			//nextScan = table[getID(hdr)].minorGCscanfunction(nextScan,&nextW, allocSzB,nurseryBase);
-			*/
-			vp->proxyTable[i].localObj = PromoteObj(vp,vp->proxyTable[i].localObj);
-			
-			Word_t * scanP = (Word_t *)(vp->proxyTable[i].proxyObj);
-			
-			Value_t cont = vp->proxyTable[i].proxyObj;
-			
-			int id = (long long int) (*(scanP+1));
-			
-			//printf("id = %d\n",id);
-			
-			*(scanP+1) = (Word_t)vp->proxyTable[i].localObj;
-			
-			deleteProxy(vp,id);
-			
-			/*
-			Word_t	* nextScan2 = (Word_t *)(vp->proxyTable[i].localObj);
-			Word_t hdr2 = * (nextScan2 - 1);
-			printf("Table Pointer = %p, hdr = %llu, hdrid = %d, lenght = %d\n",(void*)(nextScan2),(long long int)(hdr2),getID(hdr2),GetLength(hdr2));
-			*/
-		}
-	}
-
   /* scan to space */
     while (nextScan < nextW-1) {
 		assert ((Addr_t)(nextW-1) <= vp->nurseryBase);
+		
 		Word_t hdr = *nextScan++;	// get object header
 		
 		if (isVectorHdr(hdr)) {

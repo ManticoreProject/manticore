@@ -299,17 +299,18 @@ struct
 	    TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
 		TextIO.output (MyoutStrm, "    v = *(Value_t *)(scanP+0);\n");
 		TextIO.output (MyoutStrm, "   if (isFromSpacePtr(v)) {\n");
+		TextIO.output (MyoutStrm, "   printf(\"scan 0 proxy \\n\");\n");
 		TextIO.output (MyoutStrm, "     *(scanP+0) = (Word_t)ForwardObjGlobal(vp, v);\n");
 		TextIO.output (MyoutStrm, "  } \n");
-		
 		TextIO.output (MyoutStrm,"    v = *(Value_t *)(scanP+1);\n");
-		TextIO.output (MyoutStrm,"   if ((isFromSpacePtr(v)) && (((long long int)(*(scanP+1)))>vp->maxProxy)) {\n");
-		TextIO.output (MyoutStrm,"     *(scanP+1) = (Word_t)ForwardObjGlobal(vp, v);\n");
-		TextIO.output (MyoutStrm,"   } else { \n");
-		TextIO.output (MyoutStrm,"     *(scanP+1) = (Word_t)(vp->proxyTable[(long long int)(*(scanP+1))].localObj);\n");
-		TextIO.output (MyoutStrm,"     *(scanP+1) = (Word_t)ForwardObjGlobal(vp, v);\n");
-		TextIO.output (MyoutStrm,"   }\n");
-		
+		TextIO.output (MyoutStrm, "   if ((long long int)*(scanP+1) < vp->maxProxy) { \n");
+		TextIO.output (MyoutStrm, "        *(scanP+1) = (Word_t)PromoteObj(vp,vp->proxyTable[(long long int)*(scanP+1)].localObj);\n");
+		TextIO.output (MyoutStrm, "        v = *(Value_t *)(scanP+1);\n");
+		TextIO.output (MyoutStrm, "   } \n");
+		TextIO.output (MyoutStrm, "   if (isFromSpacePtr(v)) {\n");
+		TextIO.output (MyoutStrm, "      printf(\"scan 1 proxy \\n\");\n");
+		TextIO.output (MyoutStrm, "     *(scanP+1) = (Word_t)ForwardObjGlobal(vp, v);\n");
+		TextIO.output (MyoutStrm, "  } \n");
 		TextIO.output (MyoutStrm, "return (ptr+2);\n");
         TextIO.output (MyoutStrm, "  }\n");
         ()
