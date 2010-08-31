@@ -72,7 +72,7 @@ structure Proxy (* :
       (* is the Fiber associated with the proxy already promoted *)
       define inline @promotedProxy (myProxy : proxy) : bool =
 	let max : int = @maxEntry()
-	if I32Gt(#1(myProxy),max) then return(true)
+	if I64Gt(#1(myProxy),max) then return(true)
 	else return(false)
       ;
       
