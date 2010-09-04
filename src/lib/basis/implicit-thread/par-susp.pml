@@ -3,13 +3,13 @@
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Parallel suspensions.
+ * Parallel suspensions (see par-susp-sig.pml for specificaiton)
  *)
 
 structure ParSusp (* : PAR_SUSP*) =
   struct
 
-#define STOLEN_OFF     0
+#define TAKEN_OFF      0
 #define IVAR_OFF       1
 #define THUNK_OFF      2
 #define CANCELABLE_OFF 3
@@ -17,13 +17,13 @@ structure ParSusp (* : PAR_SUSP*) =
     _primcode(
 
       typedef suspension = ![
-		 bool,                                (* true iff the suspension has been stolen *)
-		 ImplicitThreadIVar.ivar,             (* state *)
-		 fun(unit / exh -> any),              (* thunk *)
+		 bool,                                (* true, if the suspension is either evaluating 
+						       * or has already evaluated *)
+		 ImplicitThreadIVar.ivar,             (* iVar *)
+		 fun(unit / exh -> any),              (* thunk to evaluate *)
 		 Option.option                        (* cancelable *)
       ];
 
-    (* create a suspension. the second argument is a flag to determine whether the suspension is cancelable. *)
       define @delay (f : fun(unit / exh -> any), isCancelable : bool / exh : exh) : suspension =
 	  let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@empty-ivar (/ exh)
 	  let cOpt : Option.option =
@@ -43,28 +43,20 @@ structure ParSusp (* : PAR_SUSP*) =
 	  @delay (#0(arg), #1(arg) / exh)
 	;
 
-      define @eval (susp : suspension / exh : exh) : any =
-	  let f : fun(unit / exh -> any) = SELECT(THUNK_OFF, susp)
-	  do UPDATE(THUNK_OFF, susp, (fun(unit / exh -> any)) $0)    (* prevent a space leak *)
-	  let x : any = apply f (UNIT / exh)
-	  return (x)
-	;
-
-    (* evaluate the suspension and seed the ivar with the result *)
       define @steal (susp : suspension / exh : exh) : () =
-	  let stolen : bool = CAS(ADDR_OF(STOLEN_OFF, susp), false, true)
-	  case stolen
+	  let taken : bool = CAS(ADDR_OF(TAKEN_OFF, susp), false, true)
+	  case taken
 	   of true =>
 	      return ()
 	    | false =>
-	      let x : any = @eval (susp / exh)
-	      let nilThk : fun(unit / exh -> any) = (fun(unit / exh -> any))$0
-	      do UPDATE(THUNK_OFF, susp, nilThk)                  (* prevent a space leak *)
+	      let f : fun(unit / exh -> any) = SELECT(THUNK_OFF, susp)
+            (* prevent a space leak by overwriting the thunk pointer *)
+	      do UPDATE(THUNK_OFF, susp, (fun(unit / exh -> any)) $0)
+   	      let x : any = apply f (UNIT / exh)
 	      ImplicitThreadIVar.@put (SELECT(IVAR_OFF, susp), x / exh)
           end
 	;
 
-    (* place the suspension on the ready queue *)
       define @run (susp : suspension / exh : exh) : unit =
 	  cont k (x : unit) =
 	    do @steal (susp / exh)
@@ -82,17 +74,14 @@ structure ParSusp (* : PAR_SUSP*) =
 	  return (UNIT)
 	;
 
-    (* synchronize on completion of the suspension *)
       define @force (susp : suspension / exh : exh) : any =
 	  do @steal (susp / exh)
 	  ImplicitThreadIVar.@get (SELECT(IVAR_OFF, susp) / exh)
 	;
 
-    (* cancel the suspension *)
       define @cancel (susp : suspension / exh : exh) : unit =
 	  case SELECT(CANCELABLE_OFF, susp)
 	   of Option.NONE =>
-	      (* QUESTION: should this be considered an error? *)
 	      return (UNIT)
 	    | Option.SOME(c : Cancelation.cancelable) =>
 	      let _ : unit = Cancelation.@cancel (c / exh)
