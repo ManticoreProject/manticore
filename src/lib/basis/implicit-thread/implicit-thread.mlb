@@ -38,3 +38,9 @@
   in
     multilisp-future.pml
   end
+
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    parallel-suspensions.pml
+    test-suspensions.pml
+  end
