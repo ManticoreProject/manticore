@@ -16,13 +16,15 @@ signature PARALLEL_SUSPENSIONS =
 
     val new : (unit -> 'a) -> 'a susp
     val force : 'a susp -> 'a
-    val spawn : 'a susp -> unit
+    val spawnTask : 'a susp -> unit
     val cancel : 'a susp -> unit
 
   end
 
 structure ParallelSuspensions (* : PARALLEL_SUSPENSIONS *) =
   struct
+
+#include "../include/debug.def"
 
 #define BLACK_HOLE       $0
 
@@ -43,33 +45,31 @@ structure ParallelSuspensions (* : PARALLEL_SUSPENSIONS *) =
 
       define @new (t : thunk / exh : exh) : susp =
 	  let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@empty-ivar (/ exh)
-	  let c : Cancelation.cancelable = Cancelation.@new (/ exh)
+	  let c : Cancelation.cancelable = Cancelation.@new (UNIT / exh)
 	  let susp : susp = alloc (ivar, t, c)
 	  let susp : susp = promote (susp)
 	  return (susp)
 	;
 
       define @access-eval-update (susp : susp / exh : exh) : () =
+          cont exit () = return ()
           fun lp () : () =
 	      let t : thunk = SELECT(THUNK_OFF, susp)
-	      let isBH : bool = Equal(t, BLACK_HOLE)
-              case isBH
-	       of true => return()
-		| false =>
-		  let tC : thunk = CAS(ADDR_OF(THUNK_OFF, susp), t, BLACK_HOLE)
-		  let retry : bool = NotEqual(t, tC)
-		  case retry
-		   of true => apply lp ()
-		    | false =>
+	      if Equal(t, BLACK_HOLE) then
+		  throw exit ()
+	      else
+		  let tC : thunk = CAS(ADDR_OF(THUNK_OFF, susp), t, (thunk)BLACK_HOLE)
+		  if NotEqual(t, tC) then
+		      PRINT_MSG("loop")
+		      apply lp ()
+		  else
    	              let x : any = apply t (UNIT / exh)
 	              ImplicitThreadIVar.@put (SELECT(RESULT_OFF, susp), x / exh)
-                  end
-              end
           apply lp ()
 	;
 
 
-      define @spawn (susp : susp / exh : exh) : unit =
+      define @spawn-task (susp : susp / exh : exh) : unit =
 	  cont k (x : unit) =
 	    do @access-eval-update (susp / exh)
 	    SchedulerAction.@stop ()
@@ -92,9 +92,9 @@ structure ParallelSuspensions (* : PARALLEL_SUSPENSIONS *) =
 
     type 'a susp = _prim (susp)
 
-    val new : ((unit -> 'a) * bool) -> 'a susp = _prim(@new)
+    val new : (unit -> 'a) -> 'a susp = _prim(@new)
     val force : 'a susp -> 'a = _prim(@force)
-    val spawn : 'a susp -> unit = _prim(@spawn)
+    val spawnTask : 'a susp -> unit = _prim(@spawn-task)
     val cancel : 'a susp -> unit = _prim(@cancel)
 
   end

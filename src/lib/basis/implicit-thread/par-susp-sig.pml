@@ -6,11 +6,11 @@
  * Parallel suspensions
  * 
  * A suspension is a value which represents a computation that may or
- * may not have evauated value. Below is a substrate for "parallel
+ * may not have evauated. Below is a substrate for "parallel
  * suspensions", which are suspensions that are allows to evaluate
  * across multiple processors. This substrate consists of a suspension
  * type and a few operations for controling the evaluation of
- * suspensions. 
+ * suspensions.
  *
  *)
 
