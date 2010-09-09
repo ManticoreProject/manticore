@@ -363,9 +363,6 @@ static void ScanVProcHeap (VProc_t *vp)
 
     }
     assert (scanPtr == top);
-	
-    //reset the proxy table since all continuation elements got promoted
-    createList(vp);
 
 } /* end of ScanVProcHeap */
 
@@ -419,7 +416,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 	    scanTop = (Word_t *)(scanChunk->usedTop);
 
     } while (scanPtr < scanTop);
-	
+
 }
 
 #ifndef NDEBUG

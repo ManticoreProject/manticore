@@ -26,13 +26,6 @@
  *  | -- 48 bits -- | -- 15 bits -- | -- 1 bit -- |
  *  |	  length    |       1       |      1      |
  *  ---------------------------------------------- 
- *
- *  Proxy object: pointer values
- *
- *  --------------------------------------------------------- 
- *  | -- 48 bits -- | -- 15 bits -- | -- 1 bit -- |
- *  |     length    |       2       |      1      |
- *  ---------------------------------------------------------  
  * 
  * We also have a header format for forwarding pointers.
  *
@@ -53,7 +46,6 @@
 #define FWDPTR_TAG	0
 #define FWDPTR_TAG_MASK	7
 
-
 /* Tags for Table objects */
 #define TABLE_TAG_BITS	1
 #define TABLE_TAG	1
@@ -67,8 +59,5 @@
 
 //Raw object
 #define RAW_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((0) << TABLE_TAG_BITS) | TABLE_TAG)
-
-//Proxy object
-#define PXY_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((2) << TABLE_TAG_BITS) | TABLE_TAG)
 
 #endif /* !_HEADER_BITS_H_ */

@@ -18,43 +18,8 @@
 
 #include <stdio.h>
 
-
 //predefined table entries, important for AllocUniform and GlobalAllocUniform
 int predefined = 3;
-
-Value_t AllocProxy (VProc_t *vp,int nElems, ...)
-{
-    Value_t	elems[nElems];
-    va_list	ap;
-	
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
-		AllocToSpaceChunk(vp);
-    }
-	
-    assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
-	
-    /* first we must ensure that the elements are in the global heap */
-    va_start(ap, nElems);
-    for (int i = 0;  i < nElems;  i++) {
-	elems[i] = va_arg(ap, Value_t);
-    }
-    va_end(ap);
-	
-    Word_t *obj = (Word_t *)(vp->globNextW);
-    /* FIXME: what if there isn't enough space!!! */
-    obj[-1] = PXY_HDR(nElems);
-    for (int i = 0;  i < nElems;  i++) {
-	obj[i] = (Word_t)elems[i];
-    }
-	
-    vp->globNextW += WORD_SZB * (nElems+1);
-	
-#ifndef NO_GC_STATS
-    vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
-#endif	
-	
-    return PtrToValue(obj);
-}
 
 /*! \brief allocate a tuple of uniform values in the nursery
  *  \param vp the host vproc
@@ -84,33 +49,33 @@ Value_t AllocUniform (VProc_t *vp, int nElems, ...)
  */
 Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
 {
-	Word_t	*obj = (Word_t *)(vp->allocPtr);
-	char	bits[5];
-	va_list	ap;
+    Word_t	*obj = (Word_t *)(vp->allocPtr);
+    char	bits[5];
+    va_list	ap;
 	
-	bits[0]='\0';
+    bits[0]='\0';
 	
-	va_start(ap, nElems);
-	for (int i = 0;  i < nElems;  i++) {
-		int tag = va_arg(ap, int);
-		assert ((tag == RAW_FIELD) || (tag == PTR_FIELD));
-		if (tag == 0) strcat(bits,"0");
-		else strcat(bits,"1");
-		Value_t arg = va_arg(ap, Value_t);
-		obj[i] = (Word_t)arg;
-	}
-	va_end(ap);
+    va_start(ap, nElems);
+    for (int i = 0;  i < nElems;  i++) {
+	int tag = va_arg(ap, int);
+	assert ((tag == RAW_FIELD) || (tag == PTR_FIELD));
+	if (tag == 0) strcat(bits,"0");
+	else strcat(bits,"1");
+	Value_t arg = va_arg(ap, Value_t);
+	obj[i] = (Word_t)arg;
+    }
+    va_end(ap);
 	
-	bits[strlen(bits)]='\0';
-	//compare strings are reversed due to strcat(dst,src)
-	if (strcmp(bits,"0") == 0) obj[-1] = MIXED_HDR(predefined, nElems);
-	else if (strcmp(bits,"10") == 0) obj[-1] = MIXED_HDR(predefined+1, nElems);
-	else if (strcmp(bits,"1") == 0) obj[-1] = MIXED_HDR(predefined+2, nElems);
-	else if (strcmp(bits,"0101") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
-	else { printf("Error AllocNonUniform\n"); exit(5);}
-	
-	vp->allocPtr += WORD_SZB * (nElems+1);
-	return PtrToValue(obj);
+    bits[strlen(bits)]='\0';
+    //compare strings are reversed due to strcat(dst,src)
+    if (strcmp(bits,"0") == 0) obj[-1] = MIXED_HDR(predefined, nElems);
+    else if (strcmp(bits,"10") == 0) obj[-1] = MIXED_HDR(predefined+1, nElems);
+    else if (strcmp(bits,"1") == 0) obj[-1] = MIXED_HDR(predefined+2, nElems);
+    else if (strcmp(bits,"0101") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
+    else { printf("Error AllocNonUniform\n"); exit(5);}
+
+    vp->allocPtr += WORD_SZB * (nElems+1);
+    return PtrToValue(obj);
 }
 
 /*! \brief allocate a vector seeded with some initial values in the nursery.
@@ -262,51 +227,51 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
  */
 Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
 {
-	Value_t	elems[nElems];
-	char	bits[5];
-	va_list	ap;
+    Value_t	elems[nElems];
+    char	bits[5];
+    va_list	ap;
+
+    bits[0]='\0';
+
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
+	AllocToSpaceChunk(vp);
+    }
+
+    assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
+
+  /* first we must ensure that the elements are in the global heap */
+    va_start(ap, nElems);
+    for (int i = 0;  i < nElems;  i++) {
+	int tag = va_arg(ap, int);
+	assert ((tag == RAW_FIELD) || (tag == PTR_FIELD));
+	if (tag == 0) strcat(bits,"0");
+	else strcat(bits,"1");
+	elems[i] = va_arg(ap, Value_t);
+    }
+    va_end(ap);
+
+    Word_t *obj = (Word_t *)(vp->globNextW);
+/* FIXME: what if there isn't enough space!!! */
+    
+   bits[strlen(bits)]='\0';
+   //compare strings are reversed due to strcat(dst,src)
+   if (strcmp(bits,"0") == 0) obj[-1] = MIXED_HDR(predefined, nElems);
+   else if (strcmp(bits,"10") == 0) obj[-1] = MIXED_HDR(predefined+1, nElems);
+   else if (strcmp(bits,"1") == 0) obj[-1] = MIXED_HDR(predefined+2, nElems);
+   else if (strcmp(bits,"0101") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
+   else { printf("Error GlobalAllocNonUniform\n"); exit(5);}	
 	
-	bits[0]='\0';
-	
-	if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
-		AllocToSpaceChunk(vp);
-	}
-	
-	assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
-	
-	/* first we must ensure that the elements are in the global heap */
-	va_start(ap, nElems);
-	for (int i = 0;  i < nElems;  i++) {
-		int tag = va_arg(ap, int);
-		assert ((tag == RAW_FIELD) || (tag == PTR_FIELD));
-		if (tag == 0) strcat(bits,"0");
-		else strcat(bits,"1");
-		elems[i] = va_arg(ap, Value_t);
-	}
-	va_end(ap);
-	
-	Word_t *obj = (Word_t *)(vp->globNextW);
-	/* FIXME: what if there isn't enough space!!! */
-	
-	bits[strlen(bits)]='\0';
-	//compare strings are reversed due to strcat(dst,src)
-	if (strcmp(bits,"0101") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
-	else if (strcmp(bits,"0") == 0) obj[-1] = MIXED_HDR(predefined, nElems);
-	else if (strcmp(bits,"10") == 0) obj[-1] = MIXED_HDR(predefined+1, nElems);
-	else if (strcmp(bits,"1") == 0) obj[-1] = MIXED_HDR(predefined+2, nElems);
-	else { printf("Error GlobalAllocNonUniform\n"); exit(5);}	
-	
-	for (int i = 0;  i < nElems;  i++) {
-		obj[i] = (Word_t)elems[i];
-	}
-	
-	vp->globNextW += WORD_SZB * (nElems+1);
-	
+    for (int i = 0;  i < nElems;  i++) {
+	obj[i] = (Word_t)elems[i];
+    }
+
+    vp->globNextW += WORD_SZB * (nElems+1);
+
 #ifndef NO_GC_STATS
-	vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+    vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
 #endif
-	
-	return PtrToValue(obj);
+
+    return PtrToValue(obj);
 }
 
 /*! \brief allocate a vector seeded with some initial values.
