@@ -1,0 +1,18 @@
+(* event-always.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * The primitive implementation of the always combinator.
+ *)
+
+#include "events.def"
+
+define inline @event-always (x : any / _ : exh) : evt =
+    fun pollFn (_ : unit / _ : exh) : bool = return (TRUE)
+    fun doFn (k : cont(any) / _ : exh) : unit = throw k(x)
+    fun blockFn (_ : dirty_flag, _ : cont(any) / exh : exh) : unit =
+	  throw exh (UNIT)
+    (* in *)
+      return BEVT(pollFn, doFn, blockFn)
+;

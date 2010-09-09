@@ -1,0 +1,113 @@
+(* cancelable-fiber.hlop
+ * 
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Takes a fiber and a cleanup function and returns a cancelable fiber and a
+ * cell for cancelling the fiber.
+ *)
+
+#include "types.def"
+#include "tags.def"
+#include "debugging.def"
+#include "fgs.def"
+#include "logging.def"
+#include "fiber-cancellation.def"
+#include "scheduling-ops.def"
+#include "assert.def"
+
+define @cancelable-fiber (cancelCell : cancel_cell, k : fiber, cleanupFn : fun ( / -> ) / exh : exh) : fiber =
+
+  fun initCnt (_ : unit / exh : exh) : any =
+      let c : ![int] = alloc (0)
+      let c : ![int] = promote(c)
+      return(c)
+  let fgs : fgs = @get-fgs(host_vproc / exh)
+ let cnt : any = @assoc-list-lookup(tag(cancelCnt), initCnt, fgs / exh)
+ let cnt : ![int] = (![int])cnt
+
+  (* wait for the cancelables to terminate *)
+fun waitForAll(ccs1 : list, ccs2 : list) : () =
+    cont exit () = return()
+    do if Equal(ccs1, NIL)
+         then if Equal (ccs2, NIL)
+           then throw exit()
+           else return()
+        else return()
+    case ccs1
+     of NIL => apply waitForAll(ccs2, NIL)
+      | CONS(c : cancel_cell, cs : list) =>
+	if Equal(SELECT(IS_FINISHED_OFF, cancelCell), TRUE)
+	   then apply waitForAll(cs, ccs2)
+           else apply waitForAll(cs, CONS(c, ccs2))
+    end
+
+
+  fun cancelChildren (children : list / exh : exh) : () =
+      case children
+       of NIL => return()
+	| CONS(c : cancel_cell, children : list) =>
+	  let _ : unit = @cancel-fiber(c / exh)
+          do apply cancelChildren(children / exh)
+          apply waitForAll(children, NIL) 
+      end
+
+  cont terminate () =
+       let fgs : fgs = @get-fgs (host_vproc / exh)
+      (* pop the cancel frame *)
+       let _ : any = @assoc-list-modify(tag(cancelCell), SELECT(PARENT_OFF, cancelCell), fgs / exh)
+      (* avoid a space leak *)
+       do UPDATE(CHILDREN_OFF, cancelCell, NIL)
+       (* notify that we're finished evaluating *)
+       do UPDATE(IS_FINISHED_OFF, cancelCell, TRUE)
+       @forward(host_vproc, STOP / exh)
+
+  cont dispatch (wrapper : sigact, k : fiber) =       
+       let isFinished : bool = SELECT(IS_FINISHED_OFF, cancelCell)
+       (* record that the fiber has started evaluating *)
+       let blah : bool  = CAS(&3(cancelCell), TRUE, FALSE)
+(*       do UPDATE(IS_FINISHED_OFF, cancelCell, FALSE)*)
+
+       if SELECT(CANCELED_OFF, cancelCell)
+          then (* cancel the fiber *)
+               
+               (* count the number of in-flight cancelations *)               
+                let i : int = I32FetchAndAdd(&0(cnt), 1)
+       
+                do apply cancelChildren(SELECT(CHILDREN_OFF, cancelCell) / exh)                
+                do apply cleanupFn()
+                throw terminate()
+          else (* keep running *)
+               let fgs : fgs = @get-fgs (host_vproc / exh)
+
+(* 
+              do if SELECT(CANCELED_OFF, cancelCell)
+                 then do ccall M_Print("canceled while executing\n")
+                      return () 
+                  else return () 
+*)
+               (* push the cancel frame *)
+               let _ : any = @assoc-list-modify(tag(cancelCell), SOME(cancelCell), fgs/ exh)
+               @run(host_vproc, wrapper, fgs, k / exh)
+
+ (* scheduler action polls for cancelation *)
+  cont wrapper (s : signal) =
+       if Equal(s, STOP)
+	  then throw terminate()
+       else        
+            do UPDATE(IS_FINISHED_OFF, cancelCell, TRUE)
+            let _ : unit = @atomic-yield(host_vproc / exh)
+            do UPDATE(IS_FINISHED_OFF, cancelCell, FALSE)
+
+            let k : fiber = (fiber)s             
+            throw dispatch(wrapper, k)
+
+  cont kWrapper (_ : unit) =
+       do vpstore(ATOMIC, host_vproc, TRUE)
+       let fgs : fgs = @get-fgs (host_vproc / exh)
+       let _ : any = @assoc-list-add(tag(cancelCell), SOME(cancelCell), fgs / exh)
+       throw dispatch(wrapper, k)
+
+  let kWrapper : fiber = (fiber)kWrapper  
+  return(kWrapper)
+;

@@ -1,0 +1,22 @@
+(* assoc-list-find.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Find the value of a tag in the association list.  
+ *)
+
+#include "fgs.def"
+
+define @assoc-list-find (atag : assoc_tag, alist : assoc_list / exh : exh) : option =
+  (* find the tag in the association list *)
+   fun alistFind (alist : assoc_list / exh : exh) : option =
+       case alist
+	of ANIL => return(NONE)
+	 | ACONS (atag' : assoc_tag, elt : any, alist : assoc_list) => 
+	   if Equal (atag, atag')
+	       then return (SOME(elt))
+	       else apply alistFind (alist / exh)
+       end
+  apply alistFind(alist / exh)
+;

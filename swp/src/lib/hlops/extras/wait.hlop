@@ -1,0 +1,30 @@
+(* wait.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Make the current thread wait for secs seconds or until the done flag
+ * becomes true.
+ *)
+
+#include "types.def"
+#include "runtime-offsets.def"
+#include "debugging.def"
+#include "assert.def"
+
+define @wait (secs : double, done : ![bool] / exh : exh) : () =
+  let t0 : [double] = @gettimeofday (UNIT /exh)
+  let t0 : double = unwrap(t0)
+  let tFinish : double = F64Add(secs, t0)
+  fun loop (/ exh : exh) : () =
+      let t : [double] = @gettimeofday (UNIT /exh)
+      let t : double = unwrap(t)      
+      let done : bool = SELECT(0,done)
+      if F64Gt(t, tFinish)
+         then return ()
+      else if done
+         then return ()
+      else let _ : unit = @yield (host_vproc / exh)
+           apply loop (/ exh)
+  apply loop (/ exh)
+;

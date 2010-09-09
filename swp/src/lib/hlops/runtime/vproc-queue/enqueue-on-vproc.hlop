@@ -1,0 +1,17 @@
+(* enqueue-on-vproc.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ * 
+ * Enqueue a thread on a remote vproc.
+ *)
+
+#include "vproc-queue.def"
+
+extern void EnqueueOnVProc (void *, void *, void *, void *) __attribute__((alloc));
+
+define inline @enqueue-on-vproc (dst : vproc, fgs : fgs, k : fiber / exh : exh) : () =
+  let k : fiber = promote (k)
+  do ccall EnqueueOnVProc(host_vproc, dst, fgs, k)
+  return ()
+;

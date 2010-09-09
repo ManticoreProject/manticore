@@ -1,0 +1,62 @@
+\documentclass[11pt]{article}
+
+\input{../common/common-defs}
+\usepackage{graphicx}
+\usepackage{../common/code}
+
+\title{MLB}
+\author{The Manticore Group}
+\date{Draft of \today}
+
+\begin{document}
+\maketitle
+
+Our implementation of MLB follows the guidelines in the official definition~\cite{mlton-mlb}. This document describes additional features that we have developed for Manticore.
+
+\section{C preprocessor support}
+We have added C preprocessor support to our implementation of MLB. The way to access this feature is through the "annotation" mechanism. The syntax is as follows,
+\begin{centercode}
+  ann "cpp" "\emph{def1}, ..., \emph{defn}"
+  in
+    ...
+  end
+\end{centercode}
+
+where each \texttt{\emph{def}} can be a file, directory, or a predefined variable (prefixed by \texttt{-D}).
+
+\subsection{Example}
+Suppose we wish to preprocess foo.pml using the header files bar1.def and bar2.def and the directory baz. Our MLB would be as follows.
+\begin{centercode}
+  ann "cpp" "bar1.def,bar2.def,baz,-DFOO=bar"
+  in
+    foo.pml
+  end
+\end{centercode}
+
+\section{Expansion options}
+This annotation allows the programmer supply compiler options at the granularity of compilation units. Using this mechanism, we can overload syntax to have one of several expansions, or adjust expansion parameters. The syntax is as follows,
+\begin{centercode}
+  ann "expansion-opt" "\emph{opt1}" ... "\emph{optn}"
+  in
+    ...
+  end
+\end{centercode}
+where each \texttt{\emph{opt}} is a compiler option. Currently we support the options below.
+\begin{centercode}
+  pval.work-stealing, pval.gang-scheduling, pval.cancelable, parr.leaf-size(\emph{n})
+\end{centercode}
+
+\subsection{Example}
+We can compile the parallel fib function with the work-stealing scheduler as follows.
+\begin{centercode}
+  ann "expansion-opt" "pval.work-stealing"
+  in
+    parallel-fib.pml
+  end
+\end{centercode}
+Alternatively, we could use the gang scheduler by substituting with \texttt{"pval.gang-scheduler"}.
+
+\bibliographystyle{alpha}
+\bibliography{../common/manticore}
+
+\end{document}

@@ -1,0 +1,20 @@
+(* x86_64-darwin.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+
+  structure Main
+
+is
+
+  $/basis.cm
+
+  ../codegen/sources.cm
+  ../common/sources.cm
+  sources.cm
+
+  runtime-constants.sml
+  x86_64-darwin.sml

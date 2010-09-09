@@ -1,0 +1,1 @@
+print(dtos(readdouble())^"\n")

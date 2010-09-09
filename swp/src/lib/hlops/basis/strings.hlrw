@@ -1,0 +1,38 @@
+(* strings.hlrw
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * String related high level rewrites.
+ *)
+
+#include "types.def"
+
+string_concat2_left : @string-concat2(alloc(@string-concat2(alloc(x, y)), z))
+                      ==>
+                      @string-concat-list([x, y, z])
+                      { 1 };
+
+string_concat2_right : @string-concat2(alloc(x, @string-concat2(alloc(y, z))))
+                       ==>
+                       @string-concat-list([x, y, z])
+                       { 1 };
+
+string_concat_list_left : @string-concat2(alloc(x, @string-concat-list(y)))
+                          ==>
+                          @string-concat-list(CONS(x, y))
+                          { 1 };
+
+(* XXX: Should be able to statically do this append.  Thinking about
+adding more syntactic sugar.
+
+What you'd really want is another rewrite that does this:
+
+@list-append(alloc(CONS(...,(... x as NIL...)), y)) ==> CONS(..., (... y ...))
+
+*)
+
+string_concat_list_right : @string-concat2(alloc(@string-concat-list(x), y))
+                           ==>
+                           @string-concat-list(@list-append(alloc(x, [y])))
+                           { 1 };

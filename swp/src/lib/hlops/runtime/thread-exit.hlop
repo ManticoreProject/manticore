@@ -1,0 +1,15 @@
+(* thread-exit.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Exit the current thread.
+ *)
+
+#include "types.def"
+
+define inline @forward (vp : vproc, sig : signal / exh : exh) noreturn;
+
+define inline @thread-exit ( / exh : exh) noreturn = 
+  @forward (host_vproc, STOP / exh)
+;

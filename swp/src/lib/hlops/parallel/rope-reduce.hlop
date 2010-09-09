@@ -1,0 +1,53 @@
+(* rope-reduce.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * For reducing the elements of a rope over its leaves in parallel, with a given associative operator.
+ * Currently uses foldl at the lists at the leaves.
+ *)
+
+#include "types.def"
+#include "futures.def"
+#include "ropes.def"
+
+(* use_rw ropes; *)
+
+define @rope-reduce (args : [(* f *) fun ([any, any] / exh -> any),
+                            (* z *) any,
+                            (* r *) rope] / exh : exh) : any =
+
+    let f : fun ([any, any] / exh -> any) = #0(args)
+    let z : any  = #1(args)
+    let r : rope = #2(args)
+
+    fun reduce (r : rope / ) : any = 
+      case r
+        of LEAF(len:int, data:list) =>
+             let tup : [fun ([any, any] / exh -> any), any, list] = alloc (f, z, data)
+             let x : any = @list-foldl (tup / exh)
+             return (x)
+         | CAT(len:int, depth:int, r1:rope, r2:rope) =>
+             fun th (u : unit / exh : exh) : rope =
+               let result : rope = apply reduce (r2)
+               return (result)
+             let fut : future = @future1-spawn (th / exh)
+             let newR1 : any = apply reduce (r1)
+             let newR2 : any = @future1-touch (fut / exh)
+             let tup : [any, any] = alloc (newR2, newR1)
+                               (* note: the application to newR2, newR1 yields *)
+                               (* "less surprise" given the fact that we use *)
+                               (* foldl at the leaves *)
+                               (* FIXME: define a family of reduction operators *)
+                               (* providing different orders of reduction *)
+             let res : any = apply f (tup / exh)
+             return (res)
+      end (* case *)
+      (* end definition of red *)
+
+    let answer : any = apply reduce (r)
+    return (answer)
+    (* end definition of reduce *)
+;
+  
+        

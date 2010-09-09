@@ -1,0 +1,102 @@
+(* tabD.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * To build an 'a rope out of tabulation of the given (int -> 'a) function.
+ * A lower limit, an upper limit, and a step size are all given.
+ *)
+
+#include "types.def"
+#include "futures.def"
+#include "ropes.def"
+#include "debugging.def"
+
+extern void M_Print (void*);
+
+(* use_rw ropes; *)
+
+define @tabD (args : [(* f *) fun (ml_int / exh -> any),
+                      (* ml_leafSize *) ml_int,
+                      (* ml_lo *) ml_int, 
+                      (* ml_hi *) ml_int,
+                      (* ml_step *) ml_int] / exh : exh) : rope =
+
+  print_debug ("=============>>> called tabD\n\000")
+
+  let f : fun (ml_int / exh -> any) = #0(args)
+  let ml_leafSize : ml_int = #1(args)
+  let ml_lo : ml_int = #2(args)
+  let ml_hi : ml_int = #3(args)
+  let ml_step : ml_int = #4(args)
+
+  let leafSize : int = unwrap(ml_leafSize)
+  let lo : int       = unwrap(ml_lo)
+  let hi : int       = unwrap(ml_hi)
+  let step : int     = unwrap(ml_step)
+
+  let leafOffset : int = I32Mul (step, leafSize)
+
+  fun mkLeaf (lo : int / ) : rope = 
+    let upperLimCand : int = 
+      let c0 : int = I32Add (lo, leafOffset)
+      let c1 : int = I32Sub (c0, 1)
+      return (c1)
+    let upperLim : int = @int-min (upperLimCand, hi / exh)
+    let ml_lo : ml_int = alloc (lo)
+    let ml_upperLim : ml_int = alloc (upperLim)
+    let tup : [fun (ml_int / exh -> any), ml_int, ml_int, ml_int] = 
+          alloc (f, ml_lo, ml_upperLim, ml_step)
+    let data : list = @list-tab (tup / exh)
+    let len : int = 
+      let t1 : int = I32Sub (upperLim, lo)
+      let t2 : int = I32Div (t1, step)
+      let t3 : int = I32Add (t2, 1)
+      return (t3)
+    return (LEAF (len, data))
+
+  (* returns a *backwards* list of leaf futures *)
+  fun build (lo : int, leafFutures : list / ) : list = 
+    if I32Gt (lo, hi)
+      then
+        return (leafFutures)
+      else
+        fun th (u : unit / exh : exh) : rope =
+          let thunkRes : rope = apply mkLeaf (lo)
+          return (thunkRes)
+        let fut : future = @future1-spawn (th / exh)
+        let newLo : int = 
+          let a : int = I32Add (lo, leafOffset)
+          return (a)
+        let newAcc : list = CONS (fut, leafFutures)
+        let buildRes : list = apply build (newLo, newAcc)
+        return (buildRes)
+
+  (* Note: The futures come into this function *backwards*. 
+   * Thus the accumulator need not be reversed before returning. 
+   * Returns a list of leaves, in left to right order,
+   * ready to be made into a balanced rope. *)
+  fun touchAll (futures : list / ) : list = 
+    fun touch (fut : future / ) : any =
+      let t : any = @future1-touch (fut / exh)
+      return (t)
+    fun ta (frs : list, acc : list / ) : list =
+      case frs
+        of NIL => return (acc)
+         | CONS(f : future, fs : list) => 
+             let t : rope = apply touch (f)
+             let newAcc : list = CONS (t, acc)
+             let taRes : list = apply ta (fs, newAcc)
+             return (taRes)
+       end
+    let res : list = apply ta (futures, NIL)
+    return (res)          
+
+  let leaves : list = 
+    let futs : list = apply build (lo, NIL)
+    let ls : list = apply touchAll (futs)
+    return (ls)
+
+  let finalRes : rope = @rope-from-leaves (leaves / exh)
+  return (finalRes)  
+;

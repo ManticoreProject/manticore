@@ -1,0 +1,36 @@
+(* manticore.grm
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+%name Manticore;
+
+%tokens
+      : KW__prim	("_prim")
+      | KW__primcode	("_primcode")
+      ;
+
+%import "sml.grm";
+%import "bom.grm";
+
+%start Program;
+
+Decl
+        : "_primcode" "(" BOMDecls ")"
+		=> (PT.PrimCodeDecl BOMDecls)
+	;
+
+TyDeclRHS
+	: "_prim" "(" BOMType ")"
+		=> (fn (params, name) => PT.PrimTyDecl(params, name, BOMType))
+	;
+
+ValueDeclRHS
+	: "_prim" "(" "fun" BOMLambda ")"
+		=> (fn pat => PT.PrimVDecl(pat, BPT.LambdaPrimVal BOMLambda))
+	| "_prim" "(" QualifiedId ")"
+		=> (fn pat => PT.PrimVDecl(pat, BPT.VarPrimVal QualifiedId))
+	| "_prim" "(" HLOpQId ")"
+		=> (fn pat => PT.PrimVDecl(pat, BPT.HLOpPrimVal HLOpQId))
+	;

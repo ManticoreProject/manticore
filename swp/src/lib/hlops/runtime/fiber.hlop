@@ -1,0 +1,21 @@
+(* fiber.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Take a function and return a fiber. 
+ *)
+
+#include "types.def"
+
+define inline @fiber (f : fiber_fun / exh : exh) : fiber =
+  cont fiberK (x : unit) = 
+    let x : unit =
+    (* in case of an exception, just terminate the fiber *)
+      cont exh (exn : exn) = return (UNIT)
+      (* in *)
+	apply f (UNIT / exh)
+    (* in *)
+      @thread-exit (/ exh)
+  return (fiberK)
+;

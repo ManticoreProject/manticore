@@ -1,0 +1,33 @@
+(* list-map.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Built-in list map function.
+ *)
+
+#include "types.def"
+#include "debugging.def"
+
+define @list-filter (arg : [fun (any / exh -> bool), list] / exh : exh) : list =
+
+  let pred : fun (any / exh -> bool) = #0(arg)
+  let xs : list = #1(arg)
+
+  fun filter (xs : list, acc : list / ) : list =
+    case xs
+      of NIL =>
+           let cca : list = @list-rev (acc / exh)
+           return (cca)
+       | CONS (hd:any, tl:list) =>
+           let b : bool = apply pred (hd / exh)
+           if b then
+             let newAcc : list = CONS (hd, acc)
+             apply filter (tl, newAcc)
+           else
+             apply filter (tl, acc)
+    end (* case *)
+  (* end fun filter *)
+
+   apply filter (xs, NIL)
+;

@@ -1,0 +1,22 @@
+(* list-rev.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * List reverse function.
+ *)
+
+#include "types.def"
+
+define @list-rev (xs : list / exh : exh) : list =
+  fun build (m : list, acc : list / exh : exh) : list =
+    case m
+      of NIL => return (acc)
+       | CONS (hd:any, tl:list) =>
+           let newAcc : list = CONS (hd, acc)
+           let res : list = apply build (tl, newAcc / exh)
+           return (res)
+    end
+  let r : list = apply build (xs, NIL / exh)
+  return (r)
+;

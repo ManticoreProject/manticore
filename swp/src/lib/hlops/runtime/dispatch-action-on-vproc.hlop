@@ -1,0 +1,23 @@
+(* dispatch-action-on-vproc.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Run a scheduler action on another VProc.
+ *)
+
+define inline @schedule-fiber (act : sigact, f : fiber_fun / exh : exh) : fiber;
+define inline @enqueue-on-vproc (dst : vproc, tid : tid, k : fiber / exh : exh) : ();
+define inline @thread-exit ( / exh : exh) noreturn;
+define @new-fgs (pinned : bool, parent : option / exh : exh) : fgs;
+
+define @dispatch-action-on-vproc (act : sigact, dst : vproc / exh : exh) : () =
+   fun initSched (_ : unit / exh : exh) noreturn = 
+   (* we must mask signals to avoid a race *)
+      do vpstore(ATOMIC, vp, TRUE)
+      @thread-exit (/ exh)
+   let k : fiber = @schedule-fiber (act, initSched / exh : exh)
+   let tgs : tgs = @new-fgs (TRUE, NONE / exh)
+   do @enqueue-on-vproc (dst, enum(0), k / exh)
+   return ()
+;

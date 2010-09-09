@@ -1,0 +1,25 @@
+(* assert.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * C-style assert.
+ *)
+
+#ifndef _ASSERT_DEF_
+#define _ASSERT_DEF_
+
+extern void M_AssertFail (void*, void*, int);
+
+#ifdef NDEBUG
+#  define assert(check)	return()
+#else
+#  define assert(check)							\
+	if check							\
+	  then return ()						\
+	  else do ccall M_AssertFail (#check, __FILE__, __LINE__)	\
+	    return () \
+
+#endif
+
+#endif /*! _ASSERT_DEF_ */

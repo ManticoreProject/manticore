@@ -1,0 +1,112 @@
+(* work-stealing-startup.hlop
+ * 
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Work stealing for language threads.
+ *)
+
+#include "types.def"
+
+define inline @fiber (f : fiber_fun / exh : exh) : fiber;
+define inline @run (vp : vproc, act : sigact, tid : tid, fiber : fiber / exh : exh) noreturn;
+define @dispatch-action (act : sigact, dst : vproc / exh : exh) : ();
+
+extern void *ListVProcs (void *) __attribute__((alloc));
+(* atomic queues *)
+extern void* M_NewWorkQueue(void*) __attribute__((alloc));
+extern void* M_WorkDequeue(void*,void*) __attribute__((alloc));
+extern void M_WorkEnqueue(void*,void*,void*) __attribute__((alloc));
+(* debugging *)
+extern void M_PrintDebug (void*);
+
+typedef work_queue = any;
+
+define @work-stealing-startup ( / exh : exh) : () =
+
+   (* given the list of all queues, return the work-stealing scheduler action *)
+   fun newWsSwitch (queue : work_queue, queues : list / exh : exh) : sigact =
+       cont wsSwitch (s : signal) = 
+          let self : vproc = host_vproc
+				 
+          cont steal (queues' : list) = 
+             case queues'
+	      of NIL => (* FIXME: wait for a signal here *)
+                        throw steal (queues)
+               | CONS (queue : work_queue, queues' : list) =>
+		 let w : option = ccall M_WorkDequeue (self, queue)
+		 case w
+		  of NONE => throw steal (queues')
+		   | SOME (k : fiber) => @run (self, wsSwitch, enum(0), k / exh)
+		 end
+              end
+
+          cont findWork () = 
+             let w : option = ccall M_WorkDequeue (host_vproc, queue)
+             case w
+	      of NONE => throw steal (queues)
+	       | SOME (k : fiber) => 
+		 if Equal (s, STOP)
+                    then throw findWork ()
+	            else (* got (PREEMPT k) signal *)
+			let k : fiber = (fiber)s
+	                do ccall M_WorkEnqueue (self, queue, k)
+                        throw findWork ()
+            end
+          throw findWork ()
+      return (wsSwitch)
+
+   (* take a list of vprocs and return a list of new queues of the same length *)
+   fun mkQueues (vps : list, queues : list / exh : exh) : list =
+       case vps
+          of NIL => return (queues)
+	   | CONS (vp : vproc, vps : list) => 
+	     let q : work_queue = @new-work-queue (UNIT / exh)
+             let queues : list = CONS (q, queues)
+             apply mkQueues (vps, queues / exh)
+       end
+
+   fun hd (ls : list / exh : exh) : work_queue = case ls 
+       of NIL => throw exh (NIL)
+	| CONS (x : work_queue, xs : list) => return (x)
+       end
+   fun tl (ls : list / exh : exh) : list = case ls 
+       of NIL => throw exh (NIL)
+	| CONS (x : work_queue, xs : list) => return (xs)
+       end
+
+   (* provision all vprocs in the system *)
+   let vps : list = ccall ListVProcs (host_vproc)
+  (* allocate a queue for each vproc *)
+   let queues : list = apply mkQueues (vps, NIL / exh)
+   let queue0 : work_queue = apply hd (queues / exh)
+
+   cont startup (_ : unit) =
+      do ccall M_PrintDebug ("initializing work stealing\n")
+
+      (* init a scheduler on each vproc *)
+      fun initOnVProcs (vps : list, queues : list / exh : exh) : () =
+         case vps
+          of NIL => return ()
+           | CONS (vp : vproc, vps : list) => 
+             let queue : work_queue = apply hd (queues / exh)
+             let queues : list = apply tl (queues / exh)
+             let wsSwitch : sigact = apply newWsSwitch (queue, queues / exh)
+	     if Equal (vp, host_vproc)
+	        then apply initOnVProcs (vps, queues / exh)
+	        else do @dispatch-action (wsSwitch, vp / exh)
+                     apply initOnVProcs (vps, queues / exh)
+         end
+
+     do apply initOnVProcs (vps, queues / exh)
+     return ()
+
+   fun spawn (f : fiber_fun / exh : exh) : unit =
+      (* wake up a vproc here *) 
+      let k : fiber = @fiber (f / exh)
+      do ccall M_WorkEnqueue (host_vproc, queue0, k)
+      return (UNIT)     
+
+   let wsSwitch0 : sigact = apply newWsSwitch (queue0, queues / exh)
+   @run (host_vproc, wsSwitch0, enum(0), startup / exh)
+;

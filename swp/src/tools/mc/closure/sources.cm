@@ -1,0 +1,28 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+
+  structure Closure
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+  $/controls-lib.cm
+
+  ../common/sources.cm
+  ../prim/sources.cm
+  ../cps/sources.cm
+  ../cps-opt/sources.cm
+  ../cfg/sources.cm
+
+  classify-conts.sml
+  closure.sml
+  closure-controls.sml
+  free-vars.sml
+  flat-closure-with-cfa.sml

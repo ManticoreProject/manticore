@@ -1,0 +1,137 @@
+# common.gmk
+#
+# COPYRIGHT (c) 2007 Manticore project. (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# Common definitions shared by all of the runtime-system makefiles.
+#
+# @configure_input@
+#
+
+#
+# determine the buid options
+#
+ifeq (,$(findstring stats,$(BUILD_OPTIONS)))
+  ENABLE_GC_STATS=false
+else
+  ENABLE_GC_STATS=true
+endif
+ifeq (,$(findstring logging,$(BUILD_OPTIONS)))
+  ENABLE_LOGGING=false
+else
+  ENABLE_LOGGING=true
+  ENABLE_GC_STATS=true
+endif
+ifeq (,$(findstring debug,$(BUILD_OPTIONS)))
+  ENABLE_DEBUG=false
+else
+  ENABLE_DEBUG=true
+  ENABLE_GC_STATS=true
+endif
+ifeq (,$(findstring perf,$(BUILD_OPTIONS)))
+else
+  ENABLE_GC_STATS=true
+  ENABLE_PERF_COUNTERS=true
+endif
+
+#
+# tools and flags
+#
+CC =		@CC@
+CFLAGS =	@CFLAGS@ @CFLAG_M64@ @PTHREAD_CFLAGS@
+LDFLAGS =
+INCLUDES =	-I. -I../../include -I../../../../include
+CPPFLAGS =	@CPPFLAGS@ $(INCLUDES) -D@TARGET_OS@ -D@TARGET_CPU@
+AR =		ar
+ARFLAGS =	rcv
+RANLIB =	ranlib
+
+#
+# View path
+#
+VPATH =		../../include:../../gc:../../vproc:../../misc:../../cpu:../../machine:../../config
+
+GC_SRCS = 	minor-gc.c \
+		major-gc.c \
+		global-gc.c \
+		heap.c \
+		unix-memory.c \
+		alloc.c \
+		work-stealing-deque.c
+
+VPROC_SRCS =	vproc.c
+
+MISC_SRCS =	main.c \
+		apply.c \
+		basis.c \
+		config.c \
+		options.c \
+		image.c \
+                image-sock.c
+
+CPU_SRCS =	cpuid.c \
+		topology.c
+
+ifeq ($(ENABLE_LOGGING),true)
+  CPPFLAGS += -DENABLE_LOGGING
+  MISC_SRCS += log.c
+endif
+
+ifeq ($(ENABLE_DEBUG),true)
+  CPPFLAGS += -DNO_INLINE
+  CFLAGS += -g3
+  GC_SRCS += gc-debug.c
+else
+  CPPFLAGS += -DNDEBUG
+  CFLAGS += -O2
+endif
+
+ifeq ($(ENABLE_PERF_COUNTERS),true)
+  CPPFLAGS += -DENABLE_PERF_COUNTERS
+  MISC_SRCS += perf.c
+endif
+
+ifeq ($(ENABLE_GC_STATS),false)
+  CPPFLAGS += -DNO_GC_STATS
+endif
+
+C_SRCS		= $(GC_SRCS) $(VPROC_SRCS) $(MISC_SRCS) $(CPU_SRCS)
+C_OBJS		= $(patsubst %.c,%.o,$(C_SRCS))
+
+ASM_SRCS	= asm-glue.S asm-scheduler.S
+ASM_OBJS	= $(patsubst %.S,%.o,$(ASM_SRCS))
+
+OBJS		= $(C_OBJS) $(ASM_OBJS)
+
+$(TARGET):	$(OBJS)
+	$(AR) $(ARFLAGS) $(TARGET) $(OBJS)
+	$(RANLIB) $(TARGET)
+
+main.o:		asm-offsets.h
+
+$(ASM_OBJS): %.o : %.S asm-offsets.h
+	$(CC) -c $(CFLAGS) -DNOT_C_SOURCE $(CPPFLAGS) -o $@ $<
+
+asm-offsets.h:		gen-asm-offsets
+	./gen-asm-offsets > asm-offsets.h
+
+gen-asm-offsets:	gen-asm-offsets.c manticore-rt.h vproc.h request-codes.h vproc-offsets-ins.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-asm-offsets $< ../../config/crc.c
+
+gen-basis-offsets:	gen-basis-offsets.c manticore-rt.h vproc.h vproc-offsets-ins.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-basis-offsets $< ../../config/crc.c
+
+gen-runtime-constants:	gen-runtime-constants.c manticore-rt.h vproc.h vproc-offsets-ins.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-runtime-constants $< ../../config/crc.c
+
+gen-log-events:		  gen-log-events.c
+			  $(CC) $(CPPFLAGS) $(CFLAGS) -o gen-log-events $< 
+
+
+#################### Cleanup ####################
+
+CLEAN_FILES = 		$(OBJS) $(TARGET)
+CLEAN_FILES += 		gen-asm-offsets gen-runtime-constants gen-log-events asm-offsets.h
+CLEAN_FILES += 		*.dSYM
+
+include @MANTICORE_MKDIR@/clean-rules.gmk

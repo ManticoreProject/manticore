@@ -1,0 +1,17 @@
+(* throw-to.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Throw a value to another thread.
+ *)
+
+#include "runtime-offsets.def"
+#include "types.def"
+#include "fgs.def"
+
+define inline @throw-to (vp : vproc, fgs : fgs, recv : cont(any), v : any / exh : exh) noreturn =
+  do vpstore (ATOMIC, vp, FALSE)
+  let _ : fgs =  @set-fgs (vp, fgs / exh)
+  throw recv (v)
+;

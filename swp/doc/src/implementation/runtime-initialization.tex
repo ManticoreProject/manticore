@@ -1,0 +1,76 @@
+\documentclass[11pt]{article}
+
+\input{../common/common-defs}
+\usepackage{graphicx}
+\usepackage{../common/code}
+
+\title{Manticore Implementation Note \\ Runtime initialization}
+\author{The Manticore Group}
+\date{Draft of \today}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+This note describes the initialization protocol of our runtime system. \figref{fig:runtime-initialization} 
+gives an overview of our initialization process. The first three steps occur in the C runtime. For each VProc
+we allocate memory, initialize state, and finally spawn a PThread. The first VProc then 
+executes some Manticore code to bootstrap the schedulers. Other VProcs start in an idle state. When the
+boostrapping finishes, the first VProc wakes the other VProcs and the main computation begins. 
+
+\begin{figure}[t]
+  \includegraphics[scale=0.45]{pictures/runtime-initialization.pdf}
+  \label{fig:runtime-initialization}
+\end{figure}
+
+The rest of this note describes some subtle aspects of the initialization protocol.
+
+\section{Three types of Pthreads}
+During initialization, our C runtime creates three types of Pthreads.
+\begin{enumerate}
+  \item The \textbf{``ping'' thread} simulates timer interrupts by sendings periodic signals to VProcs.
+  \item The \textbf{lead VProc} begins executing PML code.
+  \item The \textbf{subordinate VProcs} immediately go idle (there are $p-1$ of these Pthreads).
+\end{enumerate}
+
+\section{The trampoline}
+\label{sec:trampoline}
+The trampoline is a per-VProc mechanism that lets the C runtime pass signals to the scheduler stack. The 
+trampoline is a continuation that consumes either a nil value or a fiber. 
+\begin{centercode}
+val trampoline : fiber option cont
+\end{centercode}
+A nil value indicates that the VProc has awoken from an idle state; a fiber indicates that a 
+preemption has occured.
+Our bootstrapping code must initialize the trampoline before any scheduling code can run. The
+\texttt{SchedulerUtils} module contains our initialization code.
+
+\section{The scheduler-action stack}
+\label{sec:action-stack}
+During bootstrapping, we seed each VProc with a separate instance of the top-level scheduler. This code
+is part of the \texttt{SchedulerUtils} module.
+
+\section{Bootstrapping the top-level scheduler}
+The final step of initialization is bootstrapping the top-level scheduler. This process sets the trampoline
+(\secref{sec:trampoline}), initializes the scheduler-action stacks (\secref{sec:action-stack}), and then
+wakes up the idle VProcs.
+At this point, the user's computation can start executing.
+
+This code is part of the \texttt{SchedulerUtils} module.
+
+\section{Idle VProcs}
+\begin{itemize}
+  \item Each subordinate VProc begins in an idle state.
+  \item VProcs go idle by invoking the \texttt{VProc.@wait} operation.
+  \item There are two ways to wake an idle VProc:
+    \begin{enumerate}
+      \item Send the VProc a messenger thread.
+      \item Enqueue a thread on the VProc.
+    \end{enumerate}
+  \item After waking up, we must unload the landing pad. If we fail to do so, scheduling code will almost
+    certainly find that the VProc queue is empty, and therefore will switch back to an idle state. This
+    situation can cause the computation to diverge.
+\end{itemize}
+
+\end{document}
+

@@ -1,0 +1,36 @@
+(* ltc-ivar-put.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Put function for ivars with specialized scheduling for lazy task creation.
+ *)
+
+#include "ltc.def"
+#include "ivar.def"
+#include "vproc-queue.def"
+#include "debugging.def"
+#include "assert.def"
+
+define inline @ltc-ivar-put (arg : [ivar, any] / exh : exh) : unit = 
+  let x : any = #1(arg)
+  let x : any = (any)x
+
+  let fgs : fgs = @get-fgs (host_vproc / exh)
+ (* ltc scheduler should have initialized by now *)
+  fun init (_ : unit / exh : exh) : any =
+      do assert(FALSE)
+      @thread-exit(/exh)
+ (* obtain the spawn function *)
+  let ltqFn : ltq_fun  = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
+  let ltq : the_deque = apply ltqFn (/exh)
+  let blockedThreads : list = @ivar-put-no-sched(arg / exh)
+  fun push (elt : any / exh : exh) : unit =
+      let k' : cont(any) = #1((ivar_blocked_thread)elt)
+      cont k (_ : unit) = throw k'(x)
+      let k : fiber = (fiber)k
+      do @the-push-tl(ltq, k / exh)
+      return(UNIT)
+  let arg : [fun (any / exh -> unit), list] = alloc(push, blockedThreads)
+  @list-app(arg / exh)
+;

@@ -1,0 +1,481 @@
+(* sml.grm
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * This is the SML part of the Manticore grammar.
+ *)
+
+%tokens
+    : KW_and		("and")
+    | KW_andalso	("andalso")
+    | KW_by		("by")
+    | KW_case		("case")
+    | KW_datatype	("datatype")
+    | KW_div		("div")
+    | KW_else		("else")
+    | KW_end		("end")
+    | KW_exception	("exception")
+    | KW_fn             ("fn")
+    | KW_fun		("fun")
+    | KW_handle		("handle")
+    | KW_if		("if")
+    | KW_in		("in")
+    | KW_let		("let")
+    | KW_local		("local")
+    | KW_mod		("mod")
+    | KW_of		("of")
+    | KW_orelse		("orelse")
+    | KW_otherwise      ("otherwise")
+    | KW_pcase          ("pcase")
+    | KW_pval		("pval")
+    | KW_dval		("dval")
+    | KW_raise		("raise")
+    | KW_spawn		("spawn")
+    | KW_then		("then")
+    | KW_to		("to")
+    | KW_type		("type")
+    | KW_val		("val")
+    | KW_where		("where")
+    | KW_struct         ("struct")
+    | KW_structure      ("structure")
+    | KW_sig            ("sig")
+    | KW_signature      ("signature")
+    | LP		("(")
+    | RP		(")")
+    | LB		("[")
+    | RB		("]")
+    | LCB		("{")
+    | RCB		("}")
+    | LPB		("(|")
+    | RPB		("|)")
+    | LBB		("[|")
+    | RBB		("|]")
+    | LTEQ		("<=")
+    | LT		("<")
+    | NEQ		("<>")
+    | GTEQ		(">=")
+    | GT		(">")
+    | DCOLON		("::")
+    | AT		("@")
+    | CONCAT		("^")
+    | PSUB              ("!")
+    | PLUS		("+")
+    | MINUS		("-")
+    | TIMES		("*")
+    | SLASH		("/")
+    | EQ		("=")
+    | TILDE		("~")
+    | COMMA		(",")
+    | SEMI		(";")
+    | BAR		("|")
+    | COLON		(":")
+    | SEAL		(":>")
+    | ARROW		("->")
+    | DARROW		("=>")
+    | WILD		("_")
+    | NDWILD            ("?")
+    | PCHOICE		("|?|")
+    | AMP               ("&")
+    | DOT               (".")
+    | TYVAR of Atom.atom
+    | ID of Atom.atom
+    | QID of (Atom.atom list) * Atom.atom
+    | POSINT of IntInf.int		(* positive integer *)
+    | NEGINT of IntInf.int		(* negative integer *)
+    | FLOAT of FloatLit.float
+    | STRING of string
+    ;
+
+%defs (
+  structure PT = ProgramParseTree.PML1
+  structure Op = BasisNames
+
+(* apply a mark constructor to a span and a tree *)
+  fun mark cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
+
+(* specialize mark functions for common node types *)
+  val markDecl = mark PT.MarkDecl
+  fun markTy (_, e as PT.MarkTy _) = e
+    | markTy (sp, tr) = mark PT.MarkTy (sp, tr)
+  fun markExp (_, e as PT.MarkExp _) = e
+    | markExp (sp, tr) = mark PT.MarkExp (sp, tr)
+  val markMatch = mark PT.MarkMatch
+  val markPMatch = mark PT.MarkPMatch
+  val markPBind = mark PT.MarkPBind
+  fun markPat (_, p as PT.MarkPat _) = p
+    | markPat (sp, tr) = mark PT.MarkPat (sp, tr)
+  fun markPPat (_, p as PT.MarkPPat _) = p
+    | markPPat (sp, tr) = mark PT.MarkPPat (sp, tr)
+  val markTyDecl = mark PT.MarkTyDecl
+
+(* construct a left-associative type application where the argument is a single type *)
+  fun mkTyApp (arg, []) = arg
+    | mkTyApp (arg, (span, id)::r) =
+	mkTyApp (markTy(span, PT.NamedTy([arg], id)), r)
+
+(* construct conditional expressions for a list of expressions *)
+  fun mkCondExp con = let
+	fun mk (e, []) = e
+	  | mk (e, e'::r) = mk (con(e', e), r)
+	in
+	  mk
+	end
+
+(* build an application for an infix binary operator *)
+  fun mkBinApp (e1, rator, e2) = PT.BinaryExp(e1, rator, e2)
+
+(* construct application expressions for left-associative binary operators *)
+  fun mkLBinExp (e, []) = e
+    | mkLBinExp (e, (id, e')::r) = mkLBinExp (mkBinApp(e, id, e'), r)
+
+(* construct application expressions for right-associative binary operators *)
+  fun mkRBinExp (e, []) = e
+    | mkRBinExp (e, [(id, e')]) = mkBinApp(e, id, e')
+    | mkRBinExp (e, (id, e')::r) = mkBinApp(e, id, mkRBinExp(e', r))
+
+(* turn a list of expressions into a tree of applications; remember that
+ * application associates to the left.
+ *)
+  fun mkApply (e, []) = e
+    | mkApply (e, e'::r) = mkApply (PT.ApplyExp(e, e'), r)
+
+(* construct application patterns for right-associative binary operators *)
+  fun mkRBinPat (e, []) = e
+    | mkRBinPat (e, [(sp, id, e')]) = mark PT.MarkPat (sp, PT.BinaryPat(e, id, e'))
+    | mkRBinPat (e, (sp, id, e')::r) = mark PT.MarkPat (sp, PT.BinaryPat(e, id, mkRBinPat(e', r)))
+);
+
+Program
+	: Decl (";"? Decl)*
+		=> ({span=FULL_SPAN, tree=Decl::SR})
+	;
+
+Module
+        : "struct" (Decl ";"?)* "end" => (mark PT.MarkMod (FULL_SPAN, PT.DeclsMod SR))
+        | QualifiedId => (mark PT.MarkMod (FULL_SPAN, PT.NamedMod QualifiedId))
+        ; 
+
+Signature
+        : "sig" (Spec ";"?)* "end" => (mark PT.MarkSig (FULL_SPAN, PT.ExpSig SR))
+        | Name => (mark PT.MarkSig (FULL_SPAN, PT.NameSig(Name, [])))
+        ;
+
+Spec
+        : TyDecl => (mark PT.MarkSpec (FULL_SPAN, PT.TypeSpec TyDecl))
+        | "val" TyParams Name ":" Type
+		=> (mark PT.MarkSpec (FULL_SPAN, PT.ValSpec(Name, TyParams, Type)))
+        ;
+
+TyDecl
+        : "type" TyParams Name ("=" TyDeclRHS)?
+		=> (case SR
+		     of SOME Rhs => markTyDecl (KW_type_SPAN, Rhs(TyParams, Name))
+		      | NONE => markTyDecl (KW_type_SPAN, PT.AbsTyDecl(TyParams, Name)))
+	| "datatype" DataTyDecl ("and" DataTyDecl)*
+		=> (markTyDecl (KW_datatype_SPAN, PT.DataTyDecl (DataTyDecl :: SR)))
+        | "datatype" Name "=" "datatype" QualifiedId
+                => (markTyDecl (FULL_SPAN, PT.DataTyReplDecl (Name, QualifiedId)))
+        ;
+
+DataTyDecl
+        : TyParams Name "=" ConsDecl ("|" ConsDecl)*
+	        => (TyParams, Name, ConsDecl :: SR)
+        ;
+
+TyDeclRHS
+	:	Type	=> (fn (params, name) => PT.TypeTyDecl(params, name, Type))
+	;
+
+Decl
+	: TyDecl => (markDecl (FULL_SPAN, PT.TyDecl TyDecl))
+	| "exception" Name ("of" Type)?
+		=> (markDecl (FULL_SPAN, PT.ExnDecl(Name, SR)))
+	| ValueDecl
+		=> (markDecl (ValueDecl_SPAN, PT.ValueDecl ValueDecl))
+	| "local" (Decl ";"? => (Decl))+ "in" (Decl ";"? => (Decl))+ "end"
+		=> (markDecl (FULL_SPAN, PT.LocalDecl(SR1, SR2)))
+        | "structure" Name "=" Module
+		=> (markDecl (FULL_SPAN, PT.ModuleDecl(Name, NONE, Module)))
+        | "structure" Name ":" Signature "=" Module
+		=> (markDecl (FULL_SPAN, PT.ModuleDecl(Name, SOME Signature, Module)))
+        | "signature" Name "=" Signature
+		=> (markDecl (FULL_SPAN, PT.SignDecl(Name, Signature)))
+	;
+
+TyParams
+	: (* empty *)			=> ([])
+	| TYVAR				=> ([TYVAR])
+	| "(" TYVAR ("," TYVAR)* ")"	=> (TYVAR :: SR)
+	;
+
+Type
+	: TupleType ( "->" Type )?
+		=> (case SR of SOME ty => markTy(FULL_SPAN, PT.FunTy(TupleType, ty)) | _ => TupleType)
+	;
+
+TupleType
+	: TyApp ( "*" TyApp )*
+		=> (if null SR
+		    then TyApp
+		    else markTy (FULL_SPAN, PT.TupleTy (TyApp :: SR)))
+	;
+
+TyApp
+	: AtomicType (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
+		=> (mkTyApp (AtomicType, SR))
+	| "(" Type optTypes
+(* FIXME: we should really propagate the left extent of the span *)
+		=> (markTy (FULL_SPAN, optTypes Type))
+	;
+
+optTypes
+	: ")" (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
+		=> (fn ty => mkTyApp (ty, SR))
+	| ( "," Type)+ ")" QualifiedId (QualifiedId => (QualifiedId_SPAN, QualifiedId))*
+		=> (fn ty => mkTyApp(markTy(FULL_SPAN, PT.NamedTy(ty::SR1, QualifiedId)), SR2))
+	;
+
+AtomicType
+	: TYVAR
+		=> (markTy(FULL_SPAN, PT.VarTy TYVAR))
+	| QualifiedId
+		=> (markTy(FULL_SPAN, PT.NamedTy([], QualifiedId)))
+	;
+
+ConsDecl
+	: Name ("of" Type)?
+		=> (mark PT.MarkConDecl (FULL_SPAN, PT.ConDecl(Name, SR)))
+	;
+
+ValueDecl
+	: "val" Pat "=" ValueDeclRHS
+		=> (mark PT.MarkVDecl (FULL_SPAN, ValueDeclRHS Pat))
+	| "pval" Pat "=" Exp
+		=> (mark PT.MarkVDecl (FULL_SPAN, PT.PValVDecl(Pat, Exp)))
+	| "fun" FunDef ("and" FunDef)*
+		=> (mark PT.MarkVDecl (KW_fun_SPAN, PT.FunVDecl(FunDef :: SR)))
+	;
+
+ValueDeclRHS
+	: Exp		=> (fn pat => PT.ValVDecl(pat, Exp))
+	;
+
+FunDef
+        : FunDefClauses
+                => (mark PT.MarkFunct (FULL_SPAN, PT.Funct FunDefClauses))
+        ;
+
+FunDefClauses
+        : %try Name (AtomicPat)+ (":" Type)? "=" ClosedExp "|" FunDefClauses
+		=> ((Name, SR1, SR2, ClosedExp) :: FunDefClauses)
+	| %try Name (AtomicPat)+ (":" Type)? "=" Exp
+		=> ((Name, SR1, SR2, Exp) :: nil)
+	;
+
+Exp
+	: ChoiceExp ("handle" MatchRules)?
+		=> (case SR
+		     of NONE => ChoiceExp
+		      | SOME mr => markExp (FULL_SPAN, PT.HandleExp(ChoiceExp, mr))
+		    (* end case *))
+	| "if" Exp "then" Exp "else" Exp
+		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, Exp3)))
+	| "raise" Exp
+		=> (markExp (FULL_SPAN, PT.RaiseExp(Exp)))
+	| "spawn" Exp
+		=> (markExp (FULL_SPAN, PT.SpawnExp(Exp)))
+	| "case" Exp "of" MatchRules
+		=> (markExp (FULL_SPAN, PT.CaseExp(Exp, MatchRules)))
+        | "pcase" Exp ("&" Exp)* "of" PMatchRules
+                => (markExp (FULL_SPAN, PT.PCaseExp(Exp :: SR, PMatchRules)))
+        | "fn" FnExpClauses
+                => (markExp (FULL_SPAN, PT.FnExp FnExpClauses))
+	;
+
+FnExpClauses
+        : %try AtomicPat "=>" ClosedExp "|" FnExpClauses
+                => ((AtomicPat, ClosedExp) :: FnExpClauses)
+        | %try AtomicPat "=>" Exp
+                => ((AtomicPat, Exp) :: nil)
+        ;
+
+ClosedExp
+	: ChoiceExp
+		=> (ChoiceExp)
+	| "if" Exp "then" Exp "else" ClosedExp
+		=> (markExp (FULL_SPAN, PT.IfExp(Exp1, Exp2, ClosedExp)))
+	| "spawn" ClosedExp
+		=> (markExp (FULL_SPAN, PT.SpawnExp ClosedExp))
+	;
+
+MatchRules
+	: %try Pat "=>" ClosedExp "|" MatchRules
+		=> (markMatch (Pat_SPAN, PT.Match(Pat, ClosedExp)) :: MatchRules)
+	| %try Pat "=>" Exp
+		=> ([markMatch (FULL_SPAN, PT.Match(Pat, Exp))])
+	;
+
+PMatchRules
+        : %try PPat ("&" PPat)* "=>" ClosedExp "|" PMatchRules
+                => (markPMatch (PPat_SPAN, PT.PMatch(PPat :: SR, ClosedExp)) :: PMatchRules)
+        | %try "otherwise" "=>" Exp
+                => ([markPMatch (FULL_SPAN, PT.Otherwise Exp)])
+        ;
+
+ChoiceExp
+	: OrelseExp ("|?|" OrelseExp)*
+		=> (case SR
+		     of [] => OrelseExp
+		      | _ => markExp(FULL_SPAN, PT.PChoiceExp(OrelseExp::SR))
+		    (* end case *))
+	;
+
+OrelseExp
+	: AndalsoExp ("orelse" AndalsoExp)*
+		=> (markExp (FULL_SPAN, mkCondExp PT.OrElseExp (AndalsoExp, SR)))
+	;
+
+AndalsoExp
+	: ConstraintExp ("andalso" ConstraintExp)*
+		=> (markExp (FULL_SPAN, mkCondExp PT.AndAlsoExp (ConstraintExp, SR)))
+	;
+
+ConstraintExp
+	: RExp (":" Type)?
+		=> (case SR
+		     of SOME ty => markExp (FULL_SPAN, PT.ConstraintExp(RExp, ty))
+		      | NONE => RExp
+		    (* end case *))
+	;
+
+RExp
+	: LExp (RelOp LExp)*
+		=> (markExp (FULL_SPAN, mkLBinExp(LExp, SR)))
+	;
+
+RelOp
+	: "<" => (Op.lt) | "<=" => (Op.lte)
+	| "=" => (Op.eq) | "<>" => (Op.neq)
+	| ">" => (Op.gt) | ">=" => (Op.gte)
+	;
+LExp
+	: PSubExp (( "::" => (Op.listCons) | "@" => (Op.append) ) PSubExp)*
+		=> (markExp (FULL_SPAN, mkRBinExp(PSubExp, SR)))
+	;
+
+PSubExp
+        : AExp (("!" => (Op.psub)) AExp)*
+                => (markExp (FULL_SPAN, mkLBinExp(AExp, SR)))
+        ;
+
+AExp
+	: MExp (AddOp MExp)*
+		=> (markExp (FULL_SPAN, mkLBinExp(MExp, SR)))
+	;
+
+AddOp
+	: "+"	=> (Op.plus)
+	| "-"	=> (Op.minus)
+	| "^"	=> (Op.concat)
+	;
+
+MExp
+	: ApplyExp (( "*" => (Op.times) | "div" => (Op.div) | "mod" => (Op.mod) | "/" => (Op.fdiv)) ApplyExp)*
+		=> (markExp (FULL_SPAN, mkLBinExp(ApplyExp, SR)))
+	;
+
+ApplyExp
+	: AtomicExp AtomicExp*	=> (markExp (FULL_SPAN, mkApply(AtomicExp1, AtomicExp2)))
+	| "~" AtomicExp		=> (markExp (FULL_SPAN, PT.ApplyExp(PT.IdExp {span=FULL_SPAN, tree=([], Op.uMinus)}, AtomicExp)))
+	;
+
+AtomicExp
+	: QualifiedId		=> (markExp (FULL_SPAN, PT.IdExp QualifiedId))
+	| Int			=> (markExp (FULL_SPAN, PT.ConstExp(PT.IntLit Int)))
+	| FLOAT			=> (markExp (FULL_SPAN, PT.ConstExp(PT.FltLit FLOAT)))
+	| STRING		=> (markExp (FULL_SPAN, PT.ConstExp(PT.StrLit STRING)))
+	| "(" ")"		=> (markExp (FULL_SPAN, PT.TupleExp[]))
+	| "(" Exp optExps ")"	=> (markExp (FULL_SPAN, optExps Exp))
+	| "[" "]"		=> (markExp (FULL_SPAN, PT.ListExp[]))
+	| "[" Exp optCommaExps "]"
+				=> (markExp (FULL_SPAN, PT.ListExp(optCommaExps Exp)))
+	| "(|" Exp optCommaExps "|)"
+				=> (markExp (FULL_SPAN, PT.PTupleExp(optCommaExps Exp)))
+	| "[|" "|]"		=> (markExp (FULL_SPAN, PT.PArrayExp[]))
+	| "[|" Exp PArrayBody "|]"
+				=> (markExp (FULL_SPAN, PArrayBody Exp))
+	| "let" (ValueDecl ";"? => (ValueDecl))+ "in" Exp (";" Exp)* "end"
+		=> (markExp (FULL_SPAN, PT.LetExp(SR1, if null SR2 then Exp else PT.SeqExp(Exp::SR2))))
+	;
+
+PArrayBody
+	: optCommaExps		=> (fn e => markExp (FULL_SPAN, PT.PArrayExp(optCommaExps e)))
+	| "to" Exp ("by" Exp)?	=> (fn e => markExp (FULL_SPAN, PT.RangeExp(e, Exp, SR)))
+	| "|" PBind ("," PBind)* ("where" Exp)?
+				=> (fn e => markExp (FULL_SPAN, PT.PCompExp (e, PBind :: SR1, SR2)))
+	;
+
+optExps
+	: (* empty *)		=> (fn e => e)
+	| ("," Exp)+		=> (fn e => PT.TupleExp(e :: SR))
+	| (";" Exp)+		=> (fn e => PT.SeqExp(e :: SR))
+	;
+
+optCommaExps
+	: (* empty *)		=> (fn e => [e])
+	| ("," Exp)+		=> (fn e => (e :: SR))
+	;
+
+PBind
+	: Pat "in" Exp		=> (markPBind (FULL_SPAN, PT.PBind (Pat, Exp)))
+	;
+
+PPat
+        : "?" => (markPPat (FULL_SPAN, PT.NDWildPat))
+	| "handle" Pat => (markPPat (FULL_SPAN, PT.HandlePat Pat))
+	| Pat => (markPPat (FULL_SPAN, PT.Pat Pat))
+        ;
+
+Pat
+	: InfixPat (":" Type)?	=> (case SR
+				     of NONE => InfixPat
+				      | SOME ty => markPat (FULL_SPAN, PT.ConstraintPat(InfixPat, ty))
+				    (* end case *))
+	;
+
+InfixPat
+	: ApplyPat ("::" ApplyPat => (FULL_SPAN, {span=FULL_SPAN, tree=([], Op.listCons)}, ApplyPat))*
+		=> (markPat (FULL_SPAN, mkRBinPat (ApplyPat, SR)))
+	;
+
+ApplyPat
+	: AtomicPat		=> (AtomicPat)
+	| QualifiedId AtomicPat	=> (markPat (FULL_SPAN, PT.ConPat(QualifiedId, AtomicPat)))
+	;
+
+AtomicPat
+	: "(" (Pat ("," Pat)*)? ")"
+		=> (case SR
+		     of NONE => markPat (FULL_SPAN, PT.TuplePat[])
+		      | SOME(p, []) => p
+		      | SOME(p, ps) => markPat (FULL_SPAN, PT.TuplePat(p::ps))
+		    (* end case *))
+	| QualifiedId		=> (markPat (FULL_SPAN, PT.IdPat QualifiedId))
+	| "_"			=> (markPat (FULL_SPAN, PT.WildPat))
+	| Int			=> (markPat (FULL_SPAN, PT.ConstPat(PT.IntLit Int)))
+	| FLOAT			=> (markPat (FULL_SPAN, PT.ConstPat(PT.FltLit FLOAT)))
+	| STRING		=> (markPat (FULL_SPAN, PT.ConstPat(PT.StrLit STRING)))
+	;
+
+Int	: POSINT	=> (POSINT)
+	| NEGINT	=> (NEGINT)
+	;
+
+Name	: ID		=> (ID)
+	;
+
+QualifiedId
+	: QID		=> ({span=FULL_SPAN, tree=QID})
+	| ID		=> ({span=FULL_SPAN, tree=([], ID)})
+        ;

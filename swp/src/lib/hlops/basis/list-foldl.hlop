@@ -1,0 +1,29 @@
+(* list-foldl.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Built-in list foldl function.
+ *)
+
+#include "types.def"
+
+define @list-foldl (arg : [fun ([any, any] / exh -> any), any, list] / exh : exh) : any =
+
+  let f : fun ([any, any] / exh -> any) = #0(arg)
+  let z : any = #1(arg)
+  let xs : list = #2(arg)
+
+  fun foldl (acc : any, xs : list / exh : exh) : any =
+    case xs
+      of NIL => return (acc)
+       | CONS(x:any, tl:list) =>
+           let tup : [any, any] = alloc (x, acc)
+           let newAcc : any = apply f (tup / exh)
+           let res : any = apply foldl (newAcc, tl / exh)
+           return (res)
+     end
+
+   let theAnswer : any = apply foldl (z, xs / exh)
+   return (theAnswer)
+;

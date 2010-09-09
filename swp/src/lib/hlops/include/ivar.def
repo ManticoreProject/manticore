@@ -1,0 +1,33 @@
+(* ivar.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Synchronous memory.
+ *)
+
+#ifndef _IVAR_DEF_
+#define _IVAR_DEF_
+
+#include "types.def"
+#include "fgs.def"
+
+(* list of blocked threads, value, spin lock*)
+typedef ivar = ![list, any, int];
+typedef ivar_blocked_thread = [fgs, cont(any)];
+
+#define IVAR_BLOCKED_LIST           0
+#define IVAR_VALUE                  1
+#define IVAR_SPIN_LOCK              2
+
+#define IVAR_BLOCKED_THREAD_FGS     0
+#define IVAR_BLOCKED_THREAD_CONT    1
+
+#define IVAR_EMPTY_VAL              enum(0)
+
+define inline @ivar-new (_ : unit / exh : exh) : ivar;
+define inline @ivar-put (arg : [ivar, any] / exh : exh) : unit;
+define inline @ivar-get (arg : ivar / exh : exh) : any;
+define inline @ivar-put-no-sched (arg : [ivar, any] / exh : exh) : list;
+
+#endif /*!  _IVAR_DEF_ */

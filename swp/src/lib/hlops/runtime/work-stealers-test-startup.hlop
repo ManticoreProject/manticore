@@ -1,0 +1,37 @@
+(*
+ * Run me by saying
+ *    mc -Cdebug=true -Cscheduler=work-stealers-test triv.pml
+ *) 
+
+#include "locked-queue.def"
+#include "testing.def"
+#include "vproc-queue.def"
+#include "runtime-offsets.def"
+
+define @test-steal( / exh : exh) : bool =
+  cont k () = return(TRUE)
+
+  let host : vproc = host_vproc
+
+  fun loop () : () = 
+      let vp : vproc = host_vproc
+      if Equal(vp, host)
+         then apply loop()
+         else return()
+
+  fun f (_ : unit / exh : exh) : unit = 
+      do apply loop()
+      throw k()
+
+  let _ : fgs = @spawn(f / exh)
+
+  do apply loop()
+
+  return(FALSE)
+;
+
+define @work-stealers-test-startup ( / exh : exh) : () =
+  do @work-stealers-startup (/ exh)
+  do_concurrent_test(test-steal, 10.0:double)
+  return ()
+;

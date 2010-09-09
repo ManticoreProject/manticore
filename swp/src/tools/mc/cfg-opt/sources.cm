@@ -1,0 +1,34 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Sources file for the CFG optimization phases.
+ *)
+
+Library
+
+  functor CFGOptFn
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+  $/controls-lib.cm
+  $/pp-lib.cm
+
+  ../common/sources.cm
+  ../prim/sources.cm
+  ../cfg/sources.cm
+
+  add-alloc-checks-fn.sml
+  census.sml
+  cfa-cfg.sml
+  cfg-opt-controls.sml
+  cfg-opt-fn.sml
+  contract.sml
+  feedback-fn.sml
+  implement-calls-fn.sml
+  specialize-calls.sml
+  alloc-c-calls-fn.sml

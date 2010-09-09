@@ -1,0 +1,26 @@
+(* vproc-queue.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * HLops for vproc queues.
+ *)
+
+#ifndef _VPROC_QUEUE_DEF_
+#define _VPROC_QUEUE_DEF_
+
+#include "runtime-offsets.def"
+#include "types.def"
+#include "fgs.def"
+
+define inline @dequeue (vp : vproc / exh : exh) : rdyq_item;
+define inline @dequeue-with-pred (vp : vproc, pred : fun (fgs / exh -> bool) / exh : exh) : option;
+
+define inline @enqueue-on-vproc (dst : vproc, fgs : fgs, k : fiber / exh : exh) : ();
+define inline @atomic-enqueue (fgs : fgs, fiber : fiber / exh : exh) : ();
+
+define @is-queue-empty (/ exh : exh) : bool;
+define @is-queue-gt-one (/ exh : exh) : bool;
+define @queue-length (pred : fun (fgs / exh -> bool) / exh : exh) : int;
+
+#endif /* !_VPROC_QUEUE_DEF_ */

@@ -1,0 +1,42 @@
+(* ltc-wait-for-all.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * If there are p lazy task creation workers, wait for p-1 of them to go into
+ * thief mode.
+ *)
+
+#include "ltc.def"
+#include "fgs.def"
+#include "types.def"
+#include "runtime-offsets.def"
+#include "debugging.def"
+#include "assert.def"
+#include "array.def"
+
+extern int M_GetNumVProcs ();
+
+define inline @ltc-wait-for-all(_ : unit / exh : exh) : unit =
+  let fgs : fgs = @get-fgs(host_vproc / exh)
+  let nFinishedOpt : option = @assoc-list-query(tag(allStealing), fgs /exh)
+  let nFinished : ![int] = VAL_OF(nFinishedOpt, ![int], exh)
+  let n : int = ccall M_GetNumVProcs ()
+  fun wait () : () =
+      if I32Gte(SELECT(0, nFinished), I32Sub(n, 1))
+         then return()
+         else (*do ccall M_PrintInt(SELECT(0, nFinished))*)
+              apply wait()
+  do apply wait ()
+ 
+  fun initCnt (_ : unit / exh : exh) : any =
+      let c : ![int] = alloc (0)
+      let c : ![int] = promote(c)
+      return(c)
+  let fgs : fgs = @get-fgs(host_vproc / exh)
+ let cnt : any = @assoc-list-lookup(tag(cancelCnt), initCnt, fgs / exh)
+ let cnt : ![int] = (![int])cnt
+
+do ccall M_PrintInt(SELECT(0, cnt))
+  return(UNIT)
+;

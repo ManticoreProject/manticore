@@ -1,0 +1,32 @@
+(* simple-cat.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Builds a rope out of two. 
+ * Checks if either rope is empty, in which case it does no concatenation.
+ *)
+
+#include "types.def"
+#include "ropes.def"
+
+extern void M_Print (void * );
+
+define @simple-cat (r1 : rope, r2 : rope / exh : exh) : rope =
+
+  let n1 : int = @rope-length-int (r1 / exh)
+  let n2 : int = @rope-length-int (r2 / exh)
+
+  if I32Eq (n1, 0) then 
+    return (r2)
+  else if I32Eq (n2, 0) then
+    return (r1)
+  else
+    let n  : int  = I32Add (n1, n2)
+    let d1 : int  = @rope-depth (r1 / exh)
+    let d2 : int  = @rope-depth (r2 / exh)
+    let d  : int  = @int-max (d1, d2 / exh)
+    let c  : rope = CAT (n, d, r1, r2)
+    return (c)
+;
+

@@ -1,0 +1,14 @@
+#ifndef _PRIM_DEF_
+#define _PRIM_DEF_
+
+#define M_NIL   enum(0):any
+#define UNIT	enum(0):PrimTypes.unit
+
+#define HASH_SYM	#
+#define SELECT(i,x)	HASH_SYM i(x)
+#define DEREF(x)	SELECT(0,x)
+#define UPDATE(i,x,y)	HASH_SYM i(x) := y
+#define AMP             &
+#define ADDR_OF(i,x)    AMP i(x)
+
+#endif /*! _PRIM_DEF_ */

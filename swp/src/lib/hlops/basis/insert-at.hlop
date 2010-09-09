@@ -1,0 +1,41 @@
+(* insert-at.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Consumes an any, a list, and an integer.
+ * Returns a list with the given any inserted at the given position.
+ * ex: insert-at(a,[b,c],0) --> [a,b,c]
+ * ex: insert-at(a,[b,c],1) --> [b,a,c]
+ * ex: insert-at(a,[b,c],2) --> [b,c,a]
+ * ex: insert-at(a,[b,c],3) --> raises an exception
+ *)
+
+#include "types.def"
+#include "ropes.def"
+
+extern void M_Print (void *);
+
+define @insert-at (elt : any, data : list, pos : int / exh : exh) : list =
+
+  fun ins (xs : list, p : int / ) : list =
+    if I32Eq(p, 0) then
+      return (CONS (elt, xs))
+    else if I32Gt(p, 0) then
+      case xs
+        of NIL => (* list too short *)
+             let msg : ml_string = @"Subscript"
+             @fail (msg / exh)
+         | CONS (hd : any, tl : list) =>
+             let q : int = I32Sub (p, 1)
+             let newTl : list = apply ins (tl, q)
+             return (CONS (hd, newTl))
+      end (* case *)
+    else
+      (* negative position *)
+      let msg : ml_string = @"Subscript"
+      @fail (msg / exh)
+  (* end fun ins *)
+
+  apply ins (data, pos)
+;

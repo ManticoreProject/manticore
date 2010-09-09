@@ -1,0 +1,67 @@
+(* mvar-get.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * get function for m-variable.
+ *)
+
+#include "types.def"
+
+define @enqueue (vp : vproc, tid : tid, fiber : fiber) : ();
+
+define inline @mvar-relay-msg (mvar : !(list, any, int), x : any) : unit =     
+    let mvar : !(list, any,int) = #0(arg)
+    let x : any = #1(arg)
+    let readL : list = #0(mvar)
+    let dummyTid : tid = enum(0)
+    case readL
+     of NIL => return (UNIT)
+      | CONS(hd : any, tl : list) =>
+	  let fiber : fiber = #1(((int,cont(any)))hd)
+          do #0(mvar) := tl
+	  do @enqueue(host_vproc, dummyTid, fiber)
+	  return (UNIT)
+    end
+
+define inline @mvar-get (mvar : !(list, any, int, int)) : any =
+          let dummyTid : tid = enum(0)
+          let readList : list = #0(mvar)
+          let value : any = #1(mvar)
+          let readFlag : int = #2(mvar)
+	  let takeFlag : int = #3(mvar)
+          do #2(mvar) := I32Add(readFlag, 1)
+	  if (takeFlag = 1 :int)
+	    then cont k (x : any) =  
+	           do @mvar-relay-msg (mvar, x)
+	           return (x)
+              let item : (enum(0), cont(any)) = alloc (dummyTid, k)
+              fun loop () : unit = 
+                 let tmp : list = #0(mvar)
+                 let newlist : list = CONS(item, tmp)
+                 let flag : bool = CAS(&0(mvar), tmp, newlist)
+                 if (flag = FALSE) 
+                   then apply loop ()
+                   else return (enum(0)) 
+              do apply loop ()
+              do #2(mvar) := I32Sub(readFlag, 1)
+              @thread-exit(/exh)
+	    else	             
+              case value
+               of enum(0) =>
+                    cont k (x : any) = return (x)
+                    let item : (enum(0), cont(any)) = alloc (dummyTid, k)
+                    fun loop () : unit = 
+                       let tmp : list = #0(mvar)
+                       let newlist : list = CONS(item, tmp)
+                       let flag : bool = CAS(&0(mvar), tmp, newlist)
+                       if (flag = FALSE) 
+                         then apply loop ()
+                         else return (enum(0)) 
+                    do apply loop ()
+                    do #2(mvar) := I32Sub(readFlag, 1)
+                    @thread-exit(/exh)
+                | x : any =>
+                    do #2(mvar) := I32Sub(readFlag, 1)
+                    return (x)                       
+              end

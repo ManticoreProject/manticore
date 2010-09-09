@@ -1,0 +1,18 @@
+(* rope-depth.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * A depth operator for ropes.
+ *)
+
+#include "types.def"
+#include "ropes.def"
+
+define @rope-depth (r : rope / exh : exh) : int =
+  case r
+    of LEAF(n:int, _:list) => return (0)
+     | CAT (n:int, d:int, _:rope, _:rope) => return (d)
+  end
+;
+

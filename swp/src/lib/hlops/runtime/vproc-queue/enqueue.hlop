@@ -1,0 +1,20 @@
+(* enqueue.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Enqueue a thread in the host-vprocs ready queue.  This function
+ * assumes that signals are masked.  Use @atomic-enqueue when signals
+ * are not masked.
+ *)
+
+#include "runtime-offsets.def"
+#include "types.def"
+#include "fgs.def"
+
+define inline @enqueue (vp : vproc, fgs : fgs, fiber : fiber / exh : exh) : () =
+   let tl : rdyq_item = vpload (VP_RDYQ_TL, vp)
+   let qitem : rdyq_item = QITEM (fgs, fiber, tl)
+   do vpstore (VP_RDYQ_TL, vp, qitem)
+   return () 
+;

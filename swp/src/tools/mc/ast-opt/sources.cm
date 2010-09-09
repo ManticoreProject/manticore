@@ -1,0 +1,61 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Sources file for the AST optimization phases.
+ *)
+
+Library
+
+  structure ASTOpt
+  structure CompletionBitstring
+  structure DerivedForms
+  structure FlatParTup
+  structure FreshVar
+  structure PValToFuture
+  structure Hash
+  structure Nester
+  structure PrintAST  
+  structure PrintTypes
+  structure Rope
+  structure TestUtils	
+  structure TranslatePCase
+  structure TranslatePComp
+  structure TranslatePtup
+  structure TranslateRange
+  structure TypeOf	
+  structure Unpar
+  structure Future1
+  structure ParrLitToRope
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/controls-lib.cm
+
+  ../common/sources.cm
+  ../ast/sources.cm
+  ../env/sources.cm
+
+  ast-opt.sml
+  ast-opt-controls.sml
+  completion-bitstring.sml
+  derived-forms.sml
+  flat-par-tup.sml
+  fresh-var.sml
+  pval-to-future.sml
+  elaborate.sml
+  hash.sml
+  nester.sml
+  rope.sml
+  test-utils.sml
+  translate-pcase.sml
+  translate-pcomp.sml
+  translate-ptup.sml
+  translate-range.sml
+  unpar.sml
+  future1.sml
+  parr-lit-to-rope.sml
+  lookup-infix-ops.sml

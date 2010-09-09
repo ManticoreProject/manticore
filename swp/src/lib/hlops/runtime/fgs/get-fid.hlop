@@ -1,0 +1,26 @@
+(* get-fid.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Get the fiber id number.
+ *)
+
+#include "fgs.def"
+#include "tags.def"
+
+define @assoc-list-lookup (atag : assoc_tag, init : fun(unit / exh -> any), fgs : fgs / exh : exh) : any;
+
+extern int FreshFiberId ();
+
+define @get-fid (vp : vproc / exh : exh) : fid =
+  let fgs : fgs = @get-fgs (vp / exh)
+  fun init (_ : unit / exh : exh) : any =
+      let idNum : int = ccall FreshFiberId ()
+      let id : [int] = wrap (idNum)
+      return (id)
+  let fidW : any = @assoc-list-lookup (TAG_FID, init, fgs / exh)
+  let fidW : [fid] = ([fid])fidW
+  let fid : fid = SELECT(0,fidW)
+  return (fid)
+;

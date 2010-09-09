@@ -1,0 +1,21 @@
+(* array-update.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Update an array.
+ *)
+
+#include "array.def"
+#include "assert.def"
+
+define @array-update (arg : [array, ml_int, any] / exh : exh) : unit =
+  let arr : array = SELECT(0, arg)
+  let wi : ml_int = SELECT(1, arg)
+  let i : int = unwrap(wi)
+  let x : any = SELECT(2, arg)
+
+  do @array-update-ub(arr, i, x / exh)
+
+  return(UNIT)
+;

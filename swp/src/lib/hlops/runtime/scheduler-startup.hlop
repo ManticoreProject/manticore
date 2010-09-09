@@ -1,0 +1,92 @@
+(* scheduler-startup.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Install an initial scheduler action on the vprocs in a system.
+ *)
+
+#include "runtime-offsets.def"
+#include "types.def"
+#include "debugging.def"
+#include "fgs.def"
+#include "scheduling-ops.def"
+
+(* Scheduler startup takes a scheduler action and installs it on all vprocs in the
+ * system.  There are two cases for dispatching this action:
+ *   1. We run one action on the current vproc.
+ *   2. For the other vprocs we dispatch a dummy fiber that installs the
+ *      action.
+ * Since dispatching involves the vproc queues and since we do not enforce ordering 
+ * on vproc queue operations, the vprocs synchronize on the syncPoint barrier.
+ *)
+
+define @scheduler-startup (mkAct : fun (vproc / exh -> sigact), fgs : fgs, vps : list / exh : exh) : () =
+   (* initialize the scheduler pointer for the vprocs *)
+    do @scheduler-hook (vps / exh)
+ 
+    let syncPoint : ![int] = alloc(0)
+   (* since vprocs share it, promote syncPoint *)
+    let syncPoint : ![int] = promote(syncPoint)
+
+    let self : vproc = host_vproc
+
+   (* length of a list *)
+    fun length (ls : list, i : int) : int =
+	  case ls
+	   of NIL => return (i)
+	    | CONS (_ : any, rest : list) => apply length (rest, I32Add(i,1))
+	  end
+
+    let nVProcs : int = apply length (vps, 0)
+   (* only count other vprocs *)
+    let nVProcs : int = I32Sub (nVProcs, 1)
+
+   (* wait for all vprocs to have started the init function *)
+   fun spinWait (_ : unit / exh : exh) : () = 
+	let i : int = #0(syncPoint)     
+	if I32Eq (i, nVProcs) then	  
+	  return ()
+	else
+	  apply spinWait (UNIT / exh)
+	  
+   (* activate the scheduler *)
+    fun init (_ : unit / exh : exh) : unit =	  
+          do vpstore (ATOMIC, host_vproc, TRUE)
+         (* dummy fiber synchronizes on the barrier and then exits immediately to activate the scheduler *)
+	  cont dummyK (_ : unit) = 
+               do vpstore (ATOMIC, host_vproc, TRUE)
+               print_debug("initializing scheduler")
+               let x : int = I32FetchAndAdd (syncPoint, 1)
+               do apply spinWait (UNIT / exh)
+               @thread-exit ( / exh)
+        (* make the scheduler instance for the host vproc *)
+         let act : sigact = apply mkAct (host_vproc / exh)
+	  (* in *)
+	    @run (host_vproc, act, fgs, dummyK / exh)
+
+   (* spawn the init function on all of the other vprocs *)
+    fun spawnOnAll (vps : list / exh : exh) : () =
+	  case vps
+	   of NIL => return ()
+	    | CONS (vp:vproc, rest:list) =>
+		if Equal(vp, self) then
+		  apply spawnOnAll (rest / exh)
+		else
+		  do @spawn-on (init, fgs, vp / exh)
+		  (* in *)
+		    apply spawnOnAll (rest / exh)
+	  end
+
+    cont startup (_ : unit) =
+	  do vpstore(ATOMIC, self, TRUE)
+	(* install the scheduler on remote vprocs *)
+	  do apply spawnOnAll (vps / exh)
+	  (* in *)
+	  apply spinWait (UNIT / exh)
+
+  (* make the scheduler instance for the host vproc *)
+   let act : sigact = apply mkAct (host_vproc / exh)
+    (* in *)
+      @run (self, act, fgs, startup / exh)
+;

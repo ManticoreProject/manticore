@@ -1,0 +1,64 @@
+(* rope-sub.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * A subscript operator for ropes (which were parrays in the surface program).
+ *)
+
+#include "types.def"
+#include "ropes.def"
+
+define @rope-sub-ml_int (rn : [rope, ml_int] / exh : exh) : ml_int =
+  let x : any = @rope-sub (rn / exh)
+  let n : ml_int = (ml_int)x
+  return (n)
+;
+
+(*
+  fun getFromList (xs : list, n : int / exh : exh) : ml_int =
+    case xs
+      of NIL => let EmptyList : exn = (exn)$0 (* FIXME *)
+                throw exh (EmptyList)
+       | CONS (x:ml_int, xs:list) =>
+           let isZero : bool = I32Eq (n, 0)
+           if isZero
+             then return (x)
+             else 
+               let newN : int = I32Sub (n, 1)
+               let res1 : ml_int = apply getFromList (xs, newN / exh)
+               return (res1)
+    end
+  fun getFromRope (r : rope, n : int / exh : exh) : ml_int =
+    case r
+      of LEAF (len:ml_int, data:list) =>
+           let len : int = #0(len)
+           let foundIt : bool = I32Lt (n, len)
+           if foundIt
+             then 
+               let res2 : ml_int = apply getFromList (data, n / exh)
+               return (res2)
+             else (* FIXME *)
+               let WrongLeaf : exn = (exn)$0
+               throw exh (WrongLeaf)
+       | CAT (len:ml_int, depth:ml_int, r1:rope, r2:rope) =>
+          let leftLen : int =
+            let t : ml_int = @rope-length (r1 / exh)
+            return (#0(t))
+          let onTheLeft : bool = I32Lt (n, leftLen)
+            if onTheLeft
+              then
+                let res3 : ml_int = apply getFromRope (r1, n / exh)
+                return (res3)
+              else
+                let newN : int = I32Sub (n, leftLen)
+                let res4 : ml_int = apply getFromRope (r2, newN / exh)
+                return (res4)
+      end
+  let r : rope = #0(rn)
+  let mln : ml_int = #1(rn)
+  let n : int = #0(mln)
+  let res5 : ml_int = apply getFromRope (r, n / exh)
+  return (res5)
+;
+*)

@@ -1,0 +1,49 @@
+(* default-scheduler-startup.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * The default scheduler action that does not support load balancing for threads.
+ *)
+
+#include "logging.def"
+#include "debugging.def"
+#include "vproc-queue.def"
+#include "fgs.def"
+#include "scheduling-ops.def"
+#include "assert.def"
+
+extern void *ListVProcs (void *) __attribute__((alloc));
+
+define @default-scheduler-startup ( / exh : exh) : () = 
+  cont switch (s : signal) =
+    let vp : vproc = host_vproc
+    let atomic : bool = vpload(ATOMIC, vp)
+    do assert(atomic)
+
+    cont dispatch () =
+      let qitem : rdyq_item = @dequeue (vp / exh)
+      let item : [fgs, fiber, rdyq_item] = ([fgs, fiber, rdyq_item]) qitem
+      let fgs : fgs = #0 (item)
+      let fiber : fiber = #1 (item)
+      @run (vp, switch, fgs, fiber / exh)
+
+    if Equal (s, STOP)
+      then throw dispatch ()
+      else do LOG_EVENT0(RTPreemptionEvt)
+           let k : fiber = (fiber)s
+           let fgs : fgs = @get-fgs (vp / exh)
+           do @enqueue (vp, fgs, k / exh)
+(*print_msg("preempt")*)
+           throw dispatch () 
+
+  fun mkSwitch (_ : vproc / exh : exh) : sigact = return (switch)
+
+ (* get handles for all vprocs *)
+  let vps : list = ccall ListVProcs(host_vproc)
+ (* fiber-group storage for the top-level scheduler *)
+  let fgs : fgs = @new-fgs (TRUE, NONE / exh)
+ (* install the scheduler on all vprocs *)
+  do @scheduler-startup (mkSwitch, fgs, vps / exh)
+  return ()
+;

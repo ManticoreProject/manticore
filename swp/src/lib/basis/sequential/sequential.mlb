@@ -1,0 +1,64 @@
+(* sequential.mlb
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+prim-types.pml
+order.pml
+option.pml
+int.pml
+long.pml
+word64.pml
+float.pml
+double.pml
+list.pml
+string.pml
+ann "cpp" "../include/prim.def,../include/assert.def"
+in
+  print.pml
+end
+ann "cpp" "../include/prim.def,../include/assert.def"
+in
+  rand.pml
+end
+../misc/debug.mlb
+result.pml
+ann "cpp" "../include/prim.def,../include/assert.def"
+in
+  prim-list.pml
+  prim-bool.pml
+end
+ann "cpp" "../include/prim.def,../include/assert.def"
+in
+  vector.pml
+  array.pml
+  float-array.pml
+  int-array.pml
+  word64-array.pml
+end
+time.pml
+prim-io.pml
+list-pair.pml
+left-priorityq.pml
+
+(* prevasive definitions *)
+pervasives.pml
+ann "cpp" "../include/prim.def"
+in
+    ../misc/logging.pml
+end
+
+ann "cpp" "../include/prim.def"
+in
+  text-io.pml
+end
+
+command-line.pml
+
+ann "cpp" "../include/prim.def"
+in
+  ref.pml
+end
+
+../extras/extras.mlb

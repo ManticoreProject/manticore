@@ -1,0 +1,20 @@
+(* promote-only.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Promote the argument.  For experimentation only!
+ *)
+
+#include "ltc.def"
+#include "types.def"
+#include "fgs.def"
+#include "runtime-offsets.def"
+#include "debugging.def"
+
+extern void* PromoteObj(void*, void*);
+
+define @promote-only(f : fiber_fun / exh : exh) : unit =
+  let x : any = ccall PromoteObj(host_vproc, f)
+  return(UNIT)
+;
