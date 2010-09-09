@@ -1,7 +1,0 @@
-true
-true
-false
-false
-false
-true
-(expected T T F F F T)

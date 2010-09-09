@@ -1,1 +1,0 @@
-print(dtos(readdouble())^"\n")

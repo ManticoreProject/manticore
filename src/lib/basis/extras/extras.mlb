@@ -1,5 +1,0 @@
-  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
-  in
-    image.pml
-    image-sock.pml
-  end
