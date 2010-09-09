@@ -11,6 +11,7 @@
 #include "manticore-rt.h"
 #include "os-threads.h"
 #include "timer.h"
+#include "../gc/proxy.h"
 
 #ifndef NO_GC_STATS
 typedef struct {	    //!< counters for a GC
@@ -62,6 +63,10 @@ struct struct_vproc {
     Value_t	stdCont;	//!< holds value of standard return-cont. reg.
     Value_t	stdExnCont;	//!< holds value of standard exception-cont. reg.
     Addr_t	allocPtr;	//!< allocation pointer
+			     /* Proxy Table variables */
+    int proxyTableentries;
+    int maxProxy;
+    ProxyTblEntry_t * proxyTable;
 			      /* logging support */
 /* NOTE: these volatile annotations are not required for the SWP branch */
     volatile uint64_t

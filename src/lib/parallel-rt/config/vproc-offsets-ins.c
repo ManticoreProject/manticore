@@ -44,3 +44,8 @@
     VP_OFFSET(vp, VPROC_ID, id, true);
     VP_OFFSET(vp, VP_LANDING_PAD, landingPad, false);
     VP_OFFSET(vp, LIMIT_PTR, limitPtr, true);
+    
+    VP_OFFSET(vp, PROXYTABLEENTRIES, proxyTableentries, true);
+    VP_OFFSET(vp, MAXPROXY, maxProxy, true);
+    VP_OFFSET(vp, PROXYTABLE, proxyTable, true);
+

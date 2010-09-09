@@ -92,7 +92,8 @@ structure PrimChan (*: sig
 
       (* enqueue an item on a channel's recv queue *)
 	define inline @chan-enqueue-recv (ch : chan_rep, flg : PEvt.event_state, vp : vproc, fls : FLS.fls, k : cont(any)) : () =
-	    let item : recvq_item = alloc (flg, vp, fls, k, Q_NIL)
+	    let proxyObj : PT.fiber = Proxy.@createProxy(vp,k)
+	    let item : recvq_item = alloc (flg, vp, fls, proxyObj, Q_NIL)
 	    let item : recvq_item = promote (item)
 	    let tl : recvq_item = SELECT(CH_RECVQ_TL, ch)
 	    if Equal(tl, Q_NIL)
@@ -108,7 +109,8 @@ structure PrimChan (*: sig
 
       (* enqueue an item on a channel's send queue *)
 	define inline @chan-enqueue-send (ch : chan_rep, flg : PEvt.event_state, msg : any, vp : vproc, fls : FLS.fls, k : cont(any)) : () =
-	    let item : sendq_item = alloc (flg, msg, vp, fls, k, Q_NIL)
+	    let proxyObj : PT.fiber = Proxy.@createProxy(vp,k)
+	    let item : sendq_item = alloc (flg, msg, vp, fls, proxyObj, Q_NIL)
 	    let item : sendq_item = promote (item)
 	    let tl : sendq_item = SELECT(CH_SENDQ_TL, ch)
 	    if Equal(tl, Q_NIL)

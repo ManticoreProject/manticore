@@ -71,6 +71,12 @@ STATIC_INLINE bool isRawHdr (Word_t hdr)
     return (getID(hdr) == 0);
 }
 
+STATIC_INLINE bool isProxyHdr (Word_t hdr)
+{
+	return (getID(hdr) == 2);
+}
+
+
 STATIC_INLINE int GetMixedSizeW (Word_t hdr)
 {
     return (hdr >> 16);
@@ -125,6 +131,7 @@ STATIC_INLINE bool isFromSpacePtr (Value_t p)
 	
 }
 
+extern Value_t PromoteObj (VProc_t *vp, Value_t root);
 extern Value_t ForwardObjMinor (Value_t v, Word_t **nextW);
 extern Value_t ForwardObjMajor (VProc_t *vp, Value_t v);
 extern Value_t ForwardObjGlobal (VProc_t *vp, Value_t v);
