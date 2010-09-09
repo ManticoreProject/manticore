@@ -126,7 +126,6 @@ structure Proxy (* :
 	    let ch : ![Option.option] = promote (ch)
 	  (* the thief fiber executes on the victim vproc *)
 	    cont thief (_ : unit) =
-	      do ccall M_PrintInt(15)
 	      let myFiber : PT.fiber = @getProxyFiber(myProxy)		
 	      (* successfully stole multiple threads *)
 	      let x : Option.option = promote (Option.SOME(myFiber))
