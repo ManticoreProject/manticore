@@ -82,7 +82,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     LogMajorGCStart (vp, (uint32_t)(top - vp->oldTop), (uint32_t)oldSzB);
 
 	
-	
 #ifndef NO_GC_STATS
     vp->nMajorGCs++;
     vp->majorStats.nBytesCollected += top - heapBase;
@@ -96,7 +95,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     if (GCDebug >= GC_DEBUG_MAJOR)
 	SayDebug("[%2d] Major GC starting\n", vp->id);
 #endif
-
+	
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
@@ -143,7 +142,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 			assert (isRawHdr(hdr));
 			nextScan += GetLength(hdr);
 		}else {
-			
 			nextScan = table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
 			
 		}
@@ -308,9 +306,7 @@ static void ScanGlobalToSpace (
 			scanPtr += GetLength(hdr);
 		}else {
 			
-			table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
-			
-			scanPtr += GetLength(hdr);
+			scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
 		}
 			
 
