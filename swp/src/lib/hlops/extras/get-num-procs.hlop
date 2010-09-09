@@ -1,0 +1,15 @@
+(* get-num-procs.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "types.def"
+
+extern int M_GetNumProcs ();
+
+define inline @get-num-procs (_ : unit / exh : exh) : ml_int =
+  let n : int = ccall M_GetNumProcs ()
+  let wn : ml_int = wrap(n)
+    return (wn)
+;

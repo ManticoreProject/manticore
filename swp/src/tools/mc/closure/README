@@ -1,0 +1,8 @@
+This directory contains the code for translating the higher-order CPS representation
+into a first-order representation.  We use Shao-Appel "safe-for-space" closure conversion
+algorithm.
+
+	"Efficient and Safe-for-Space Closure Conversion
+	Zhong Shao and Andrew W. Appel
+	TOPLAS, V 22, Nr. 1, January 2000, pp 129-161.
+

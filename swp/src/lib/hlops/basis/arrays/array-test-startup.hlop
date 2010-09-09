@@ -1,0 +1,64 @@
+(*
+ * Run me by saying
+ *    mc -Cdebug=true -Cscheduler=array-test triv.pml
+ *) 
+
+#include "array.def"
+#include "testing.def"
+#include "vproc-queue.def"
+#include "runtime-offsets.def"
+#include "scheduling-ops.def"
+
+define @test-length(/exh:exh) : bool =
+  let len : int = 999
+  let wlen : [int] = wrap (len)
+  let arg : [ml_int, any] = alloc(wlen, wlen)
+  let arr : array = @array(arg / exh)
+  return(I32Eq(len,ArrayLength(arr)))
+;
+
+define @test-sub(/ exh: exh) : bool =
+  let i : int = 10234
+  let wi : ml_int = wrap (i)
+  let wlen : [int] = wrap (10)
+  let arg : [ml_int, any] = alloc(wlen, wi)
+  let arr : array = @array(arg / exh)
+
+  let ix : ml_int = wrap(0)
+  let arg : [array, ml_int] = alloc(arr, ix)
+  let wi : any = @array-sub (arg / exh)
+  let wi : ml_int = (ml_int) wi
+
+  return(I32Eq(unwrap(wi), i))
+;
+
+define @test-update(/ exh: exh) : bool =
+  let i : int = 9999
+  let wi : ml_int = wrap (i)
+
+  let init : int = 10234
+  let winit : ml_int = wrap (i)
+
+  let wlen : [int] = wrap (10)
+  let arg : [ml_int, any] = alloc(wlen, winit)
+
+  let arr : array = @array(arg / exh)
+
+  let wix : ml_int = wrap(4)
+
+  let arg : [array, ml_int, any] = alloc(arr, wix, wi)
+  let _ : bool = @array-update(arg / exh)
+
+  let arg : [array, ml_int] = alloc(arr, wix)
+  let wi : any = @array-sub(arg / exh)
+  let wi : ml_int = (ml_int)wi
+
+  return(I32Eq(unwrap(wi), i))
+;
+
+define @array-test-startup ( /exh : exh) : () =
+  do_test(test-length)
+  do_test(test-sub)
+  do_test(test-update)
+  return()
+;

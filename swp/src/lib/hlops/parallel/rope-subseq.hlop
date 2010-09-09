@@ -1,0 +1,68 @@
+(* rope-split.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Returns a subsequence of a rope.
+ *)
+
+#include "types.def"
+#include "futures.def"
+#include "ropes.def"
+#include "debugging.def"
+
+(* use_rw ropes; *)
+
+define @rope-subseq (arg : [rope, ml_int, ml_int] / exh : exh) : rope =
+  let r : rope = SELECT(0, arg) 
+  let lo : int = unwrap(SELECT(1, arg))
+  let hi : int = unwrap(SELECT(2, arg))
+
+  let emp : rope = LEAF(0,NIL)
+
+  fun andalso (b1 : bool, b2 : bool / exh : exh) : bool =
+      if b1
+	 then if b2
+		 then return(TRUE)
+	         else return(FALSE)
+         else return(FALSE)
+
+  fun split (r : rope, lo : int, hi : int / exh : exh) : rope =
+      case r
+       of LEAF (len : int, data : list) =>
+          let len : int = I32Sub(hi,lo)
+          let len : int = MAX(len,0)
+	  let data : list = @list-sublist(data, lo, len/ exh)
+          let lf : rope = LEAF(len, data)
+          return(lf)
+	| CAT(len:int, depth:int, r1:rope, r2:rope) =>
+	  let l1 : int = @rope-length-int(r1 / exh)
+          
+          let r1 : rope = 
+		   let b : bool = apply andalso(I32Lte(lo,0), I32Lte(l1, hi) / exh)
+		   if b
+		      then return(r1)
+		   else if I32Lte(l1, lo)
+                      then return(emp)
+                   else let hi : int = MIN(hi, l1)
+                        apply split(r1, lo, hi / exh)
+
+          let r2 : rope =
+                   let b : bool = apply andalso(I32Lte(lo,l1), I32Lte(len, hi) / exh)
+                   if b
+		      then return(r2)
+                   else if I32Gt(l1, hi)
+                      then return(emp)
+                   else let lo : int = I32Sub(lo, l1)
+                        let lo : int = MAX(lo,0)
+                        let hi : int = I32Sub(hi, l1)
+                        let hi : int = MAX(hi,0)					     
+                        apply split(r2, lo, hi / exh)
+
+          let r : rope = @simple-cat (r1, r2 / exh)
+          return(r)
+       end
+
+  let r : rope = apply split (r, lo, hi / exh)
+  return(r)
+;

@@ -1,0 +1,134 @@
+(*
+ * Run me by saying
+ *    mc -Cdebug=true -Cscheduler=barrier-test triv.pml
+ *) 
+
+#include "barrier-call.def"
+#include "testing.def"
+#include "vproc-queue.def"
+#include "runtime-offsets.def"
+#include "scheduling-ops.def"
+
+extern void *ListVProcs (void *) __attribute__((alloc));
+
+define @test-reentrant(/exh : exh) : bool =
+  let vprocs : list = ccall ListVProcs (host_vproc)
+  
+  fun hd (ls : list) : vproc =
+      case ls
+       of NIL => apply hd(vprocs)
+	| CONS(vp : [vproc], ls : list) => return(SELECT(0,vp))
+      end
+  fun rot (ls : list) : list =
+      case ls
+       of NIL => apply rot(vprocs)
+	| CONS(vp : vproc, ls : list) => return(ls)
+      end
+
+  let n : int = 10000
+  cont k (args : list) = 
+       @thread-exit(/exh)
+  let bc : barrier_call = @barrier-call-new(k / exh)
+
+  fun add (i : int) : () =
+      if I32Eq(i,0)
+	 then return()
+	 else ADD_CALLER(bc)              
+	      apply add (I32Sub(i,1))
+
+  fun f (_ : unit / exh : exh) : unit =
+      do @barrier-call(bc, NIL / exh)
+      return(UNIT)
+
+  fun spawn (i : int, vps : list) : () =
+      if I32Eq(i,0)
+         then return()
+         else let k : fiber = @fiber(f / exh)
+              let nextVP : vproc = apply hd(vps)
+              let vps : list = apply rot(vps)
+              let fgs : fgs = @get-fgs(host_vproc / exh)
+
+              do @enqueue-on-vproc(nextVP, fgs, k / exh)
+              apply spawn(I32Sub(i, 1), vps)
+
+  do apply add(n)
+  do apply spawn(I32Sub(n,1), vprocs)
+  do @barrier-call(bc, NIL / exh)
+
+  cont k (args : list) = return(TRUE)
+  let k : cont(list) = promote(k)
+
+  do UPDATE(CONT_OFF, bc, k)
+(*  do apply spawn(n, vprocs)*)
+
+  let _ : any = @exit(UNIT / exh)
+  return(FALSE)
+;
+
+define @test-call2(/exh : exh) : bool =
+  let vprocs : list = ccall ListVProcs (host_vproc)
+
+  fun hd (ls : list) : vproc =
+      case ls
+       of NIL => apply hd(vprocs)
+	| CONS(vp : vproc, ls : list) => return(vp)
+      end
+  fun rot (ls : list) : list =
+      case ls
+       of NIL => apply rot(vprocs)
+	| CONS(vp : vproc, ls : list) => return(ls)
+      end
+
+  let n : int = 10000
+  cont k (args : list) = 
+       return(TRUE)
+  let bc : barrier_call = @barrier-call-new(k / exh)
+
+  fun add (i : int) : () =
+      if I32Eq(i,0)
+	 then return()
+	 else ADD_CALLER(bc)              
+	      apply add (I32Sub(i,1))
+
+  fun f (_ : unit / exh : exh) : unit =
+      do @barrier-call(bc, NIL / exh)
+      return(UNIT)
+
+  fun spawn (i : int, vps : list) : () =
+      if I32Eq(i,0)
+         then return()
+         else let k : fiber = @fiber(f / exh)
+              let nextVP : vproc = apply hd(vps)
+              let vps : list = apply rot(vps)
+              let fgs : fgs = @get-fgs(host_vproc / exh)
+              do @enqueue-on-vproc(nextVP, fgs, k / exh)
+              apply spawn(I32Sub(i, 1), vps)
+
+  do apply add(n)
+  do apply spawn(n, vprocs)
+
+  let _ : any = @exit(UNIT / exh)
+  return(FALSE)
+;
+
+define @test-call1(/ exh: exh) : bool =
+
+  cont k (args : list) = 
+       return(TRUE)
+
+  let bc : barrier_call = @barrier-call-new(k / exh)
+  ADD_CALLER(bc)
+  ADD_CALLER(bc)
+  
+  do @barrier-call(bc, NIL / exh)
+  do @barrier-call(bc, NIL / exh)
+  return(FALSE)
+;
+
+define @barrier-call-test-startup ( /exh : exh) : () =
+  do @work-stealers-startup (/ exh)
+  do_concurrent_test(test-call1, 5.0:double)
+  do_concurrent_test(test-call2, 10.0:double)
+  do_concurrent_test(test-reentrant, 10.0:double)
+  return()
+;

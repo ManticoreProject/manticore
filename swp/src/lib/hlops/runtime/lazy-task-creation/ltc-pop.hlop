@@ -1,0 +1,33 @@
+(* ltc-pop.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Pop an element from the lazy task queue.
+ *)
+
+#include "ltc.def"
+#include "types.def"
+#include "runtime-offsets.def"
+#include "debugging.def"
+#include "assert.def"
+#include "fgs.def"
+
+define inline @ltc-pop(arg : unit / exh : exh) : bool =
+ (* initialize the ltc scheduler and return its spawn function *)
+  fun init (_ : unit / exh : exh) : any =
+     (* scheduler should always be instantiated by now *)
+      do assert(FALSE)
+      @thread-exit(/exh)
+  let fgs : fgs = @get-fgs (host_vproc / exh)
+ (* obtain the spawn function *)
+  let ltqFn : ltq_fun = @assoc-list-lookup (TAG_LTC, init, fgs / exh)
+  let ltq : the_deque = apply ltqFn (/exh)
+
+  let kOpt : option = @the-pop-tl(ltq / exh)
+  let isNonEmpty : bool = case kOpt
+			     of NONE => return (FALSE)
+			      | SOME(k : fiber) => return(TRUE)
+                            end
+  return(isNonEmpty)
+;

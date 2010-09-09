@@ -1,0 +1,142 @@
+(* job-scheduler.hlop
+ * 
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ *)
+
+#include "job-scheduler.def"
+#include "tags.def"
+#include "debugging.def"
+#include "fgs.def"
+#include "logging.def"
+#include "scheduling-ops.def"
+
+extern void *ListVProcs (void *) __attribute__((alloc));
+
+define inline @vproc-id(vp : vproc/ exh: exh) : int =
+  let vpId : int = vpload(VPROC_ID, vp)
+  return(vpId)
+;
+
+define @job-scheduler ( / exh : exh) : job_scheduler =
+
+  (*FIXME*)
+  cont dummy (x : list) = @thread-exit(/exh)
+  let bc : barrier_call = @barrier-call-new(dummy / exh)
+
+  fun mkVPMp (vps : list, vpMp : list / exh : exh) : list =
+      case vps
+       of NIL => return(vpMp)
+	| CONS(vp : vproc, vps : list) => 
+          let vp :![option, vproc] = alloc(NONE, vp)
+	  apply mkVPMp(vps, CONS(vp, vpMp) / exh)
+      end
+
+  let vps : list = ccall ListVProcs(host_vproc)
+ (* job-vproc assignments *)
+  let vpMp : (* (vproc * job) *) list = apply mkVPMp(vps, NIL / exh)
+  let vpMp : list = promote(vpMp)
+  (* find an vproc in the vproc map that has no associate job *)
+  fun allocAvailVP (job : job_id / exh : exh) : option =
+      fun doit (vpMp : list / exh : exh) : option =
+	  case vpMp
+	   of NIL => return(NONE)
+	    | CONS(vpe : ![option, vproc], vpMp : list) =>
+              let jidopt : option = SELECT(0, vpe)
+	      case jidopt
+	       of NONE => 
+                  (* adding a vproc means another client of the barrier call *)
+ 	          ADD_CALLER(bc)
+                  let job : ml_int = wrap(job)
+		  do UPDATE(0, vpe, SOME(job))
+		  return(SOME(SELECT(1, vpe)))
+		| SOME (_ : any) => 
+		  apply doit(vpMp / exh)
+              end
+          end
+      apply doit(vpMp / exh)
+
+  (* returns the vprocs assigned to a job *)
+  fun jobAllotment (jid : job_id, vpMp : list, vps : list / exh : exh) : list =
+      case vpMp
+       of NIL => return(vps)
+	| CONS(vpe : [option, vproc], vpMp : list) =>
+          let jopt : option = SELECT(0, vpe)
+	  case jopt
+	   of NONE => 
+	      apply jobAllotment(jid, vpMp, vps / exh)
+	    | SOME (id : [job_id]) => 
+	      if I32Eq(jid, unwrap(id))
+		 then let vp : [vproc] = alloc(SELECT(1, vpe))
+                      apply jobAllotment(jid, vpMp, CONS(vp, vps) / exh)
+	         else apply jobAllotment(jid, vpMp, vps / exh)
+          end
+      end
+
+  cont scheduler (desireReqs : list) =
+print_msg("")
+      fun resumeSched (desireReqs : list / exh : exh) : () =
+	  case desireReqs
+	   of NIL => return()
+	    | CONS(desireReq : desire_req, desireReqs : list) =>
+	     (* do something simple for now...keep assigning new vprocs to the jobs each time 
+	      * until there are none left.
+	      *)
+	      let d : int = SELECT(JS_DESIRE_OFF, desireReq)
+	      let jid : int = SELECT(JS_JID_OFF, desireReq)
+	      let allotment : list = apply jobAllotment(jid, vpMp, NIL / exh)
+	      let newVP : option = apply allocAvailVP (jid / exh)
+(*	      let newAllotment : list = case newVP
+					 of NONE => return(allotment)
+					  | SOME(vp : vproc) =>
+					    let vp : [vproc] = alloc(vp)
+					    return(CONS(vp, allotment))
+					end *)
+ (*FIXME: just return the new allotment for now *)
+	      let newAllotment : list = case newVP
+					 of NONE => return(allotment)
+					  | SOME(vp : vproc) =>
+					    let vp : [vproc] = alloc(vp)
+					    return(CONS(vp, NIL))
+					end 
+
+              (* resume the job with the new allotment *)
+	      let resumeK : cont(list) = SELECT(JS_RESUMEK_OFF, desireReq)
+	      cont resume (_ : unit) = throw resumeK(newAllotment)
+              let resume : fiber = (fiber)resume
+	      do @enqueue-on-vproc(SELECT(JS_VP_OFF, desireReq), 
+				   SELECT(JS_FGS_OFF, desireReq),
+				   resume / exh)
+
+	      apply resumeSched(desireReqs / exh)
+	  end
+
+     do apply resumeSched(desireReqs / exh)
+     @thread-exit(/exh)
+
+  (*FIXME*)
+  let scheduler : cont(list) = promote(scheduler)
+  do UPDATE(CONT_OFF, bc, scheduler)
+
+  let jid : ![int] = alloc(0)
+  let jid : ![int] = promote(jid)
+  fun addJob () : option =
+      let id : int = I32FetchAndAdd(&0(jid), 1)
+      let vp : option = apply allocAvailVP(id / exh)
+      case vp
+       of NONE => return(NONE)
+	| SOME(vp : vproc) =>
+	  let ret : [job_id, vproc] = alloc(id, vp)
+          return(SOME(ret))
+      end
+
+  (* lets jobs upcall into the job scheduler *)
+  cont upcall (desireReq : desire_req) = 
+       do @barrier-call(bc, desireReq / exh)
+       @thread-exit(/exh)
+      
+  let js : job_scheduler = alloc(upcall, addJob)
+  let js : job_scheduler = promote(js)
+  return(js)
+;

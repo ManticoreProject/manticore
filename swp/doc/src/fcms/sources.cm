@@ -1,0 +1,12 @@
+Group
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  lazy-future-sig.sml
+  fcms-sig.sml
+  fcms-fn.sml
+
+  pipeline.sml
+  fcms-ex.sml

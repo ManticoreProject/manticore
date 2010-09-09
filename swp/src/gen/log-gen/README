@@ -1,0 +1,11 @@
+The log-gen tool generates the event-logging infrastructure from
+a description in the log-events.json file.  The generated code
+includes
+
+	include/log-events.h
+	lib/basis/include/log-events.def
+	lib/basis/misc/logging.pml
+	lib/runtime/include/inline-log.h
+
+The log-events.json file includes a description of the specification-
+file format.

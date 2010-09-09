@@ -1,0 +1,30 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Primitive operations.
+ *)
+
+Library
+
+  structure CondUtil
+  structure Prim
+  structure PrimUtil
+  functor MakePrimFn
+  functor PrimTyFn
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+  $/pp-lib.cm
+
+  ../common/sources.cm
+
+  cond-util.sml
+  make-prim-fn.sml
+  prim.sml
+  prim-ty-fn.sml
+  prim-util.sml

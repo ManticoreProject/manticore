@@ -1,0 +1,46 @@
+(* rope-sum.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * To sum the elements of a rope "leafwise parallel."
+ *)
+
+#include "types.def"
+#include "futures.def"
+#include "ropes.def"
+
+define @rope-sum (r : rope / exh : exh) : ml_int =
+
+  fun sumS (ns : list, acc : int / ) : int =
+    case ns
+      of NIL => return (acc)
+       | CONS (mln : [int], ns : list) =>
+           let n : int = unwrap(mln)
+           let newAcc : int = I32Add (n, acc)
+           let res : int = apply sumS (ns, newAcc)
+           return (res)            
+    end
+  (* end fun sumS *)
+
+  fun sumP (r : rope / ) : int = 
+    case r
+      of LEAF (n:int, data:list) => apply sumS (data, 0)
+       | CAT (n:int, d:int, r1:rope, r2:rope) =>
+           fun th (u : unit / exh: exh) : [int] = 
+             let s : int = apply sumP (r2)
+             let w : [int] = wrap(s)  
+             return (w)
+           let f2 : future = @future1-spawn (th / exh)
+           let s1 : int = apply sumP (r1)
+           let t2 : [int] = @future1-touch (f2 / exh)
+           let s2 : int = unwrap(t2)
+           let sum : int = I32Add (s1, s2)
+           return (sum)
+    end
+  (* end fun sumP *)
+
+  let s : int = apply sumP (r)
+  let w : [int] = wrap(s)
+  return (w)
+;

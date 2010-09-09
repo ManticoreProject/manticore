@@ -1,0 +1,44 @@
+(* mvar-take.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * take function for m-variable.
+ *)
+
+#include "types.def"
+
+define inline @mvar-take(mvar : !(list, any, int, int)) : any =
+           (* set #3(mvar) to 1 : takeflag *) 
+           do #3(mvar) : = 1
+           let readList : list = #0(mvar)
+	   let value : any = #1(mvar)
+	   let readFlag : int = #2(mvar)
+	   do #2(mvar) := I32Add(readFlag, 1)
+	   case value
+	    of enum(0) =>
+	         cont k (x : any) = 
+		   do #1(mvar) := enum(0)
+		   do #3(mvar) := 0
+		   return (x)
+		 let item : (enum(0), cont(any)) = alloc(dummyTid, k)
+		 fun loop () : unit = 
+                   let tmp : list = #0(mvar)
+                   let newlist : list = CONS(item, tmp)
+                   let flag : bool = CAS(&0(mvar), tmp, newlist)
+                   if (flag = FALSE) 
+                     then apply loop ()
+                     else return (enum(0)) 
+                 do apply loop ()
+		 do #2(mvar) := I32Sub(readFlag, 1)
+		 @thread-exit(/exh)
+            | x : any =>
+	        do #2(mvar) := I32Sub(readFlag, 1)
+                fun spin (; exh : cont(any)) : unit =
+                      if (#2(mvar) = 0:int)
+			then return (enum(0))
+			else apply spin (; exh)
+                do apply spin (; exh)		       
+                do #1(mvar) := enum(0)
+		do #3(mvar) := 0
+		return (x) 

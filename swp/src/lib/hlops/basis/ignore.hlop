@@ -1,0 +1,12 @@
+(* ignore.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Builtin ignore function.
+ *)
+
+#include "types.def"
+
+define inline @ignore (arg : any / exh : exh) : unit = return (UNIT);
+

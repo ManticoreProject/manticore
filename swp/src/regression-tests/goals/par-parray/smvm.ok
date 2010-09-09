@@ -1,0 +1,4 @@
+Testing dotp: expecting 2.3 => 2.300000
+Testing dotp: expecting 1000.0 => 1000.000000
+smvm0 => [|2.300000,1.300000|]
+Done.

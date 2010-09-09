@@ -1,0 +1,30 @@
+(* list-map.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Built-in list map function.
+ *)
+
+#include "types.def"
+#include "debugging.def"
+
+define @list-map (arg : [fun (any / exh -> any), list] / exh : exh) : list =
+
+  let f  : fun (any / exh -> any) = #0(arg)
+  let xs : list = #1(arg)
+
+  fun mapf (xs : list, acc : list / exh : exh) : list =
+    case xs
+      of NIL => 
+           let cca : list = @list-rev (acc / exh)
+           return (cca)
+       | CONS(x:any, tl:list) =>
+           let fx : any = apply f (x / exh)
+           let newAcc : list = CONS (fx, acc)
+           let res : list = apply mapf (tl, newAcc / exh)
+           return (res)
+     end
+
+   apply mapf (xs, NIL / exh)
+;

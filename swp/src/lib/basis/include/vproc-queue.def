@@ -1,0 +1,27 @@
+(* vproc-queue.pml
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Offsets and definitions for vproc queues.
+ *)
+
+#ifndef _VPROC_QUEUE_DEF_
+#define _VPROC_QUEUE_DEF_
+
+#define Q_EMPTY (queue_item)enum(0)
+#define FLS_OFF          0
+#define FIBER_OFF        1
+#define LINK_OFF         2
+#define MESSENGER_FLS    (FLS.fls)enum(1)
+
+    _primcode(
+      typedef queue_item = [
+	  FLS.fls,		(* suspended fiber's local storage *)
+	  PT.fiber,		(* suspended fiber *)
+	  any			(* link to next stack element *)
+	];
+    (* an empty queue item is represented by Q_EMPTY *)
+    )
+
+#endif /*! _VPROC_QUEUE_DEF_ */

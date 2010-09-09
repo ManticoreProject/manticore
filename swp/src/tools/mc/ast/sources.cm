@@ -1,0 +1,58 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2008 John Reppy (http://www.cs.uchicago.edu/~jhr)
+ * All rights reserved.
+ *
+ * Manticore frontend.
+ *)
+
+Library
+
+  structure AST
+  structure ASTUtil
+  structure Basis
+  structure DataCon
+  structure Exn
+  structure MetaVar
+  structure PrintAST
+  structure PrintTypes
+  structure TyCon
+  structure TypeClass
+  structure Types
+  structure TypeUtil
+  structure TypeOf
+  structure TyVar
+  structure Var
+  structure VarRep
+  structure SubstVar
+  structure SubstTy
+  structure VarSubst
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/pp-lib.cm
+  $/controls-lib.cm
+
+  ../common/sources.cm
+  ../parse-tree/sources.cm
+
+  ast.sml
+  ast-util.sml
+  basis.sml
+  data-con.sml
+  exn.sml
+  meta-var.sml
+  print-ast.sml
+  print-types.sml
+  ty-con.sml
+  ty-var.sml
+  types.sml
+  type-class.sml
+  type-of.sml
+  type-util.sml
+  var.sml
+  var-subst.sml
+  subst-var.sml
+  subst-ty.sml

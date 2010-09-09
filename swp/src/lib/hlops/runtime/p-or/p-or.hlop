@@ -1,0 +1,87 @@
+(* p-or.hlop
+ * 
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Work sharing for one-toucher futures.
+ *)
+
+#include "types.def"
+#include "ltc.def"
+#include "p-or.def"
+#include "tags.def"
+#include "debugging.def"
+#include "fgs.def"
+#include "logging.def"
+#include "scheduling-ops.def"
+#include "fiber-cancellation.def"
+#include "assert.def"
+
+define @p-or (f1 : por_fun, f2 : por_fun / exh : exh) : option =
+
+  cont retK (x : option) = return(x)
+
+  let cell : ![por_state] = alloc(POR_EMPTY)
+  let cell : ![por_state] = promote(cell)
+
+  fun markFull () : () =
+      cont exit () = return()
+      let v1 : por_state = CAS(&0(cell), POR_EMPTY, POR_FULL)
+      do if Equal(v1, POR_EMPTY)
+            then throw exit ()
+            else return()
+      let v1 : por_state = CAS(&0(cell), POR_DONE, POR_FULL)
+      do if Equal(v1, POR_DONE)
+            then throw exit ()
+            else return()
+      @thread-exit(/exh)
+
+  fun markEmpty () : () =
+      let v1 : por_state = CAS(&0(cell), POR_EMPTY, POR_DONE)
+      do if Equal(v1, POR_EMPTY)
+            then @thread-exit(/exh)
+            else return()
+      if Equal(SELECT(0, cell), POR_FULL)
+         then @thread-exit(/exh)
+         else return()
+
+ (* return by stopping -- necessary cleaning up cancelation wrapper *)
+  cont returnK (x : option) =
+       fun f (_ : unit / exh : exh) : unit =
+	   throw retK(x)
+       let _ : unit = @ltc-push(f / exh)
+       @thread-exit(/exh)
+
+  fun handlerK (sibling : cancel_cell, f : por_fun / exh : exh) : fiber =
+      cont k (_ : unit) = 
+           let x : option = apply f(UNIT / exh)
+           case x
+	    of NONE => 
+	       do apply markEmpty()
+	       throw returnK(NONE)
+	     | SOME(v : any) =>
+	       do apply markFull()
+               let _ : unit = @cancel-fiber(sibling / exh)
+               throw returnK(x)
+            end
+      let k : fiber = (fiber)k
+      return(k)
+
+  fun cleanupFun () : () = 
+(*do ccall M_PrintPtr("cancel", retK)*)
+(*      print_msg("cleanup")*)
+      return ()
+
+  let c1 : cancel_cell = @cancel-cell(/exh)
+  let c2 : cancel_cell = @cancel-cell(/exh)
+ 
+  let k2 : fiber = apply handlerK(c1, f2 / exh)
+  let k2 : fiber = @cancelable-fiber(c2, k2, cleanupFun / exh)
+  let _ : unit = @ltc-push-fiber(k2 / exh)
+
+  let k1 : fiber = apply handlerK(c2, f1 / exh)
+  let k1 : fiber = @cancelable-fiber(c1, k1, cleanupFun / exh)
+
+  throw k1(UNIT)
+
+;

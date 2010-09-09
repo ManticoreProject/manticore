@@ -1,0 +1,29 @@
+(* fiber-cancellation.hlop
+ * 
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Support for cancelling fibers.
+ *)
+
+#ifndef _FIBER_CANCELLATION_DEF_
+#define _FIBER_CANCELLATION_DEF_
+
+#include "types.def"
+#include "fgs.def"
+
+(* the isfinished flag is TRUE either when a fiber has yet to run or when it has run and then terminated *)
+                    (* [canceled, children, parent, isfinished] *)
+typedef cancel_cell = ![bool,     list,     option, bool];
+
+#define CANCELED_OFF       0
+#define CHILDREN_OFF       1
+#define PARENT_OFF         2
+#define IS_FINISHED_OFF    3
+
+define inline @cancel-cell (/ exh : exh) : cancel_cell;
+define @cancelable-fiber (cancelCell : cancel_cell, k : fiber, cleanupFn : fun ( / -> ) / exh : exh) : fiber;
+define inline @cancel-fiber (cancelCell : cancel_cell / exh : exh) : unit;
+
+#endif /*! _FIBER_CANCELLATION_DEF_ */
+

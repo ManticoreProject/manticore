@@ -1,0 +1,21 @@
+(* array-sub-ub.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Subscript an array (using HLop-friendly calling conventions).
+ *)
+
+#include "array.def"
+#include "assert.def"
+
+define inline @array-sub-ub (arr : array, i : int / exh : exh) : any =
+  let len : int = ArrayLength(arr)
+  do assert(I32Gte(i,0))
+  do assert(I32Lt(i,len))
+
+  let x : any = ArraySub(arr, i)
+  return(x)
+;
+
+

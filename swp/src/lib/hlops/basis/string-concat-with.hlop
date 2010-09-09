@@ -1,0 +1,38 @@
+(* string-concat-with.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Concatenation of strings with given intermediate string.
+ * ex: string-concat-with (" andalso ", [Crosby, Stills, Nash]) 
+ *                         --> "Crosby andalso Stills andalso Nash"
+ *)
+
+#include "types.def"
+
+extern void M_Print (void *);
+
+define @string-concat-list (arg : list / _ : exh) : ml_string;
+
+define @string-concat-with (arg : [ml_string, list] / exh : exh) : ml_string =
+  
+  let sep : ml_string = #0(arg)
+  let strings : list  = #1(arg)
+
+  fun build (ss : list, acc : list / ) : list =
+    case ss
+      of NIL => @list-rev (acc / exh)
+       | CONS (h1:ml_string, t1:list) =>
+           let newAcc1 : list = CONS (h1, acc)
+           case t1
+             of NIL => @list-rev (newAcc1 / exh)
+              | CONS (_:ml_string, _:list) =>
+                  let newAcc2 : list = CONS (sep, newAcc1)
+                  apply build (t1, newAcc2)
+           end (* case *)
+     end (* case *)
+   (* end fun build *)
+
+  let newList : list = apply build (strings, NIL)
+  @string-concat-list (newList / exh)
+;

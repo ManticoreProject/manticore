@@ -1,0 +1,39 @@
+(* wait.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Test a function for deadlock.
+ *)
+
+#include "vproc-queue.def"
+#include "fgs.def"
+
+define @test-deadlock (f : fun (unit / exh -> bool), waitSecs : double, exhDeadlock : exh, exhIncorrectAns : exh / exh : exh) : () =
+  (* flag for no deadlock *)
+  let done : ![bool] = alloc (FALSE)
+  let done : ![bool] = promote(done)
+ (* flag for the correct answer *)
+  let ans  : ![bool] = alloc (FALSE)
+  let ans  : ![bool] = promote(ans)
+
+  fun doit (_ : unit / exh : exh) : unit =
+      let b : bool = apply f (UNIT / exh)
+      do UPDATE(0, done, TRUE)
+      do UPDATE(0, ans, b)
+      return (UNIT)
+ (* spawn a thread for the function we want to test *)
+  let k : fiber = @fiber (doit / exh)
+  let fgs : fgs = @get-fgs(host_vproc / exh)
+  do @enqueue-on-vproc(host_vproc, fgs, k / exh)
+
+ (* wait a while before checking for deadlock *)
+  do @wait (waitSecs, done / exh)
+  let done : bool = SELECT(0, done)
+  let ans : bool = SELECT(0, ans)
+  if Equal(done,FALSE)
+     then throw exhDeadlock (UNIT)
+  else if Equal(ans,FALSE)
+          then throw exhIncorrectAns (UNIT)
+  else return ()
+;

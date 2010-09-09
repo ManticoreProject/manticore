@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+
+ABSPATH="$(cd "${0%/*}" 2>/dev/null; echo "$PWD"/"${0##*/}")"
+DIR=`dirname "$ABSPATH"`/..
+PMLC="sml @SMLcmdname=pmlc @SMLload=$DIR/../../src/tools/mc/pmlc"
+PMLCFLAGS="-sequential"
+DATE=$( date +"%F-%H-%M-%S" )
+REPORT_FILE=report-$DATE
+REPORT="$DIR/reports/$REPORT_FILE"
+LOG="$DIR/LOG"
+
+# allow core dumps
+ulimit -c unlimited
+
+( cd $DIR/goals;
+
+rm -rf $LOG
+
+for g in basics seq-* 
+do
+( cd $g;
+   for f in *.pml *.mlb
+   do
+     fname=${f%.*}
+     if [ -e "$fname.ok" ] ; then
+       echo -n "checking $g/$f ..."
+       echo "checking $g/$f" >> $LOG
+       $PMLC $PMLCFLAGS $f 2>> $LOG 1>> $LOG
+       if [ "$?" -eq "0" ] ; then
+	 ./a.out > $fname.test
+	 diffs=$(diff $fname.test $fname.ok)
+	 status=$(diff $fname.test $fname.ok | wc -l)
+	 if [ $status -eq "0" ] ; then
+	   echo "***** Check succeeded for goal $g in file $f." >> $REPORT
+	   echo "ok" >> $LOG
+	   echo "ok"
+	 else
+	   echo "***** Check failed for goal $g in file $f." >> $REPORT
+	   diff $fname.test $fname.ok >> $REPORT
+	   echo "fail" >> $LOG
+	   echo "fail"
+	 fi
+       else
+	 echo "***** Compile failed for goal $g in file $f." >> $REPORT
+	 echo "fail" >> $LOG
+	 echo "fail"
+       fi
+       rm -f a.out $fname.s $fname.test
+     fi
+   done
+)
+done
+
+)
+
+echo "Report available at: $REPORT"
+
+! grep fail $LOG
+exit $?

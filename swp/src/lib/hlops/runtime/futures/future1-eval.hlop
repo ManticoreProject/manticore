@@ -1,0 +1,31 @@
+(* future1-eval.hlop
+ * 
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Evaluate a future.
+ *)
+
+#include "types.def"
+#include "futures.def"
+#include "debugging.def"
+
+define inline @future1-eval (fut : future / exh : exh) : any =
+  let f : thunk = SELECT(FUTURE1_THUNK_OFF, fut)
+(*  let fgs : fgs = SELECT(FUTURE1_FGS_OFF, fut) *)
+
+ (* clear the thunk pointer to avoid a space leak *)
+  do UPDATE(FUTURE1_THUNK_OFF, fut, (thunk) $0)
+
+(*  let parentFGS : fgs = @get-fgs(host_vproc / exh) *)
+ (* set the future's fiber-group storage*)
+(*  let _ : unit = @set-fgs(host_vproc, fgs / exh)*)
+
+  let resultLocal : any = apply f (UNIT / exh)
+
+ (* restore the parent's fiber-group storage *)
+(*  let _ : unit = @set-fgs(host_vproc, parentFGS / exh)*)
+
+  let result : any = promote (resultLocal)
+  return(result)
+;

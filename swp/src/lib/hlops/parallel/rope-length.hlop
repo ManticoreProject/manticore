@@ -1,0 +1,23 @@
+(* rope-length.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * A length operator for ropes (which were parrays in the surface program).
+ *)
+
+#include "types.def"
+#include "ropes.def"
+#include "debugging.def"
+
+define @rope-length (r : rope / exh : exh) : ml_int =
+  case r
+    of LEAF(n:int, _:list) => 
+         let w : ml_int = wrap(n)
+         return (w)
+     | CAT (n:int, d:int, _:rope, _:rope) => 
+         let w : ml_int = wrap(n)
+         return (w)
+  end (* case *)
+;
+

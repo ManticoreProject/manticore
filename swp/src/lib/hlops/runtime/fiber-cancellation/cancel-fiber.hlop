@@ -1,0 +1,57 @@
+(* cancel-fiber.hlop
+ * 
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Cancel a fiber.
+ *)
+
+#include "types.def"
+#include "tags.def"
+#include "debugging.def"
+#include "fgs.def"
+#include "logging.def"
+#include "fiber-cancellation.def"
+
+define inline @cancel-fiber (cancelCell : cancel_cell / exh : exh) : unit =
+
+      fun wait(cancelCell : cancel_cell) :() =
+	  if Equal(SELECT(IS_FINISHED_OFF, cancelCell), TRUE)
+	     then return()
+             else apply wait (cancelCell)
+
+  (* wait for the cancelables to terminate *)
+  fun waitForAll(ccs1 : list, ccs2 : list) : () =
+      cont exit () = return()
+      do if Equal(ccs1, NIL)
+           then if Equal (ccs2, NIL)
+             then throw exit()
+             else return()
+          else return()
+      case ccs1
+       of NIL => apply waitForAll(ccs2, NIL)
+	| CONS(c : cancel_cell, cs : list) =>
+	  if Equal(SELECT(IS_FINISHED_OFF, cancelCell), TRUE)
+	    then apply waitForAll(cs, ccs2)
+            else apply waitForAll(cs, CONS(c, ccs2))
+      end
+
+  fun cancel (cancelCell : cancel_cell / exh : exh) : () =
+      fun cancelChildren (children : list / exh : exh) : () =
+          case children
+	   of NIL => return()
+	    | CONS(c : cancel_cell, children : list) =>
+	      do apply cancel(c / exh)
+              apply cancelChildren(children / exh)
+          end
+      do UPDATE(CANCELED_OFF, cancelCell, TRUE)
+      let children : list = SELECT(CHILDREN_OFF, cancelCell)
+      do apply cancelChildren (children / exh)      
+  apply waitForAll(children, NIL)
+
+  (* cancel and wait *)
+  do apply cancel(cancelCell / exh)
+  do apply wait(cancelCell)   
+
+  return(UNIT)
+;

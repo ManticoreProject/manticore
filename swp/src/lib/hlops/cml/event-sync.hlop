@@ -1,0 +1,75 @@
+(* event-sync.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * The primitive implementation of the sync operation.
+ *)
+
+#include "events.def"
+
+define @get-fgs (vp : vproc / exh : exh) : fgs;
+
+define @event-sync (ev : evt / exh : exh) : any =
+
+  (* optimistically poll the base events *)
+    fun poll (ev : evt, enabled : list / exh : exh) : list =
+	  case ev
+	   of BEVT_PAT(pollFn, doFn, blockFn) =>
+		let isEnb : bool = apply pollFn(UNIT / exh)
+		(* in *)
+		  if isEnb
+		    then return(CONS(doFn, enabled))
+		    else return(enabled)
+	    | CHOOSE_PAT(ev1, ev2) =>
+		let enabled1 : list = apply poll(ev1, enabled / exh)
+		(* in *)
+		  apply poll(ev2, enabled1 / exh)
+	  end
+
+  (* record the calling thread's continuation in the event waiting queues *)
+    fun blockThd (_ : unit / exh : exh) : any =
+	  let fgs : fgs = @get-fgs(host_vproc / exh)
+	  cont resumeK (x : any) = return (x)
+	  (* in *)
+	    let flg : dirty_flag = alloc(INIT_EVT)
+	    let blockArg : [dirty_flag, fgs, cont(any)] = alloc(flg, fgs, resumeK)
+	    let blockArg : [dirty_flag, fgs, cont(any)] = promote (blockArg)
+	    fun block (ev : evt / exh : exh) : unit =
+		  case ev
+		   of BEVT_PAT(pollFn, doFn, blockFn) =>
+			apply blockFn(blockArg / exh)
+		    | CHOOSE_PAT(ev1, ev2) =>
+			let (_ : unit) = apply block (ev1 / exh)
+			apply block (ev2 / exh)
+		  end
+	    let (_ : unit) = apply block (ev / exh)
+	  (* if we get here, then we are ready to let other threads synchronize
+	   * on this event.
+	   *)
+	    do #0(flg) := WAITING_EVT
+	    (* in *)
+	      @thread-exit(/exh)
+
+  (* attempt to complete an enabled communication *)
+    fun doEvt (enabled : list / exh : exh) : any =
+	  cont syncK (x : any) = return (x)
+	  (* in *)
+	    fun doit (l : list / exh : exh) : any =
+		  case l
+		   of CONS(doFn : evt_do_fn, r : list) =>
+			let (_ : unit) = apply doFn (syncK / exh)
+		      (* if we get here, that means that the attempt failed, so try the next one *)
+			apply doit (r / exh)
+		    | NIL => apply blockThd (UNIT / exh)
+		  end
+	    (* in *)
+	      apply doit (enabled / exh)
+
+    let enabled : list = apply poll (ev, NIL / exh)
+    (* in *)
+      case enabled
+       of NIL => apply blockThd (UNIT / exh)
+	| _ => apply doEvt (enabled / exh)
+      end
+;

@@ -1,0 +1,73 @@
+(* types.def
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Common type definitions.
+ *)
+
+#ifndef _TYPES_DEF_
+#define _TYPES_DEF_
+
+typedef unit = enum(0);
+#define UNIT	enum(0):unit
+
+typedef bool = enum(1);		(* 0 = false, 1 = true *)
+#define FALSE	enum(0):bool
+#define TRUE	enum(1):bool
+
+typedef exn = any;
+typedef exh = cont(exn);
+(*
+typedef fiber = cont(unit);
+typedef sigact = cont(signal);
+
+typedef spin_lock = ![bool];
+
+typedef assoc_tag = any;
+*)
+
+typedef ml_int = [int];
+typedef ml_long = [long];
+typedef ml_float = [float];
+typedef ml_double = [double];
+
+#define INT(n)		wrap(n : int)
+#define LONG(n)		wrap(n : long)
+#define FLOAT(f)	wrap(f : float)
+#define DOUBLE(f)	wrap(f : double)
+
+typedef string_data = any;
+typedef ml_string = [string_data, int];
+
+(* constants for builtin datatypes *)
+#define STOP	enum(0):signal
+#define NIL	enum(0):list
+#define NONE	enum(0):option
+(*
+#define ANIL    enum(0):assoc_list
+#define QEMPTY	enum(0):rdyq_item
+
+typedef fiber_fun = fun (unit / exh -> unit);
+typedef spawn_fun = fun (fiber_fun / exh -> unit);
+*)
+
+(* macros for accessing and updating fields.  These work around problems
+ * with the CPP and the "#" symbol.
+ *)
+#define HASH_SYM	#
+#define SELECT(i,x)	HASH_SYM i(x)
+#define UPDATE(i,x,y)	HASH_SYM i(x) := y
+
+#define VAL_OF(opt, ty, exh)     case opt                                                  \
+				   of NONE =>                                              \
+                                      do assert(FALSE)                                     \
+                                      return(enum(0))                                      \
+				    | SOME (x : ty) => return(x)                           \
+                                  end                                                      \
+
+#define MAX(x,y)    if I32Gt(x,y) then return(x) else return(y)
+#define MIN(x,y)    if I32Lt(x,y) then return(x) else return(y)
+
+#endif /* !_TYPES_DEF_ */
+

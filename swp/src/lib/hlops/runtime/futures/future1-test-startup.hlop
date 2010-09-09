@@ -1,0 +1,176 @@
+(*
+ * Run me by saying
+ *    mc -Cdebug=true -Cscheduler=future1-test triv.pml
+ *) 
+
+#include "futures.def"
+#include "testing.def"
+#include "vproc-queue.def"
+#include "runtime-offsets.def"
+#include "scheduling-ops.def"
+
+define @fib (n : int / exh : exh) : int =
+  fun fib (n : int / ) : int =
+      if I32Lte(n,1)
+         then return(n)
+         else let p : int = apply fib(I32Sub(n,1) /)
+              let q : int = apply fib(I32Sub(n,2) /)
+              return(I32Add(p,q))
+  apply fib (n /)
+;
+
+define @ffib (n : int / exh : exh) : int =
+  fun fib (n : int / ) : int =
+      if I32Lte(n,1)
+         then return(n)
+         else fun f (_ : unit / exh : exh) : any = 
+                  let p : int = apply fib(I32Sub(n,1) /)
+                  let pw : [int] = wrap(p)
+                  return(pw)
+              let fut : future = @future1-spawn(f / exh)
+              let q : int = apply fib(I32Sub(n,2) /)
+              let pw : any = @future1-touch(fut /exh)
+              let p : int = unwrap(([int])pw)
+              return(I32Add(p,q))
+  apply fib (n /)
+;
+
+define @wait-for-empty-q( / exh : exh) : () =
+  fun die (_ : unit /exh : exh) : unit =
+      do assert(FALSE)
+      return(UNIT)
+  let fgs: fgs = @get-fgs(host_vproc/exh)
+  let futuresQ : locked_queue = @assoc-list-lookup (TAG_SPAWN_FUTURE1, die, fgs / exh)
+  fun waitForEmpty () : () =
+      if Equal(SELECT(2, futuresQ), enum(0))
+        then return()
+        else apply waitForEmpty()
+  apply waitForEmpty ()  
+;
+
+define @test-cancel-nested ( / exh : exh) : bool =
+  let n : int = 40
+
+  let done : ![bool] = alloc(FALSE)
+  let done : ![bool] = promote(done)
+
+  fun f (_ : unit / exh : exh) : any =
+      let p : int = @ffib(n / exh)
+      do UPDATE(0, done, TRUE)
+      return(NIL)
+  let fut : future = @future1-spawn(f / exh)
+  let ans1 : int = @fib(15 / exh)  
+  let _ : unit = @future1-cancel(fut / exh)
+
+  do @wait-for-empty-q (/exh)
+  return(BNot(SELECT(0, done)))
+;
+
+define @test-cancel3 (/exh : exh) : bool =
+  let sv : ![bool] = alloc(TRUE)
+  let sv : ![bool] = promote(sv)
+
+  fun loopForever () : () = 
+      do UPDATE(0, sv, FALSE)
+      apply loopForever ()
+  fun f (_ : unit / exh : exh) : any =      
+      do apply loopForever ()
+      return(NIL)
+  fun f2 (_ : unit / exh : exh) : any =
+      let fut : future = @future1-spawn(f / exh)
+      let _ : any = @future1-touch(fut/ exh)
+      return(NIL)
+
+  fun f3 (_ : unit / exh : exh) : any =
+      let p : int = @fib(34 / exh)
+      return(NIL)
+
+  let fut : future = @future1-spawn(f2 / exh)
+  let fut3 : future = @future1-spawn(f3 / exh)
+  let fut4 : future = @future1-spawn(f3 / exh)
+
+  let _ : unit = @future1-cancel(fut / exh)
+  let _ : unit = @yield(host_vproc / exh)
+  let ans1 : any = @future1-touch(fut3 / exh)
+  let ans1 : any = @future1-touch(fut4 / exh)
+  do UPDATE(0, sv, TRUE)
+
+  return(SELECT(0, sv))
+;
+
+define @test-cancel2 (/exh : exh) : bool =
+  fun loopForever() : () = apply loopForever ()
+  fun f (_ : unit / exh : exh) : any =
+      do apply loopForever ()
+      return(NIL)
+
+  let fut : future = @future1-spawn(f / exh)
+  let _ : unit = @future1-cancel(fut / exh)
+  do @wait-for-empty-q(/exh)    
+
+  return(TRUE)
+;
+
+define @test-cancel ( / exh : exh) : bool =
+  let n : int = 31
+  let done : ![bool] = alloc(FALSE)
+  let done : ![bool] = promote(done)
+
+  let flg : ![bool] = alloc(FALSE)
+  let flg : ![bool] = promote(flg)
+
+  fun f (_ : unit / exh : exh) : [int] =
+      let x : int = @fib(n / exh)
+      let wx : [int] = wrap(x)
+      do UPDATE(0, done, TRUE)
+      return(wx)
+
+  let fut : future = @future1-spawn(f / exh)  
+ (* wait for fut to start evaluating *)
+  let ans1 : int = @fib(10 / exh)
+ (* cancel fut *)
+  let _ : unit = @future1-cancel(fut / exh)
+ (* wait for fut to terminate *)
+  let ans1 : int = @fib(n / exh)
+ (* make sure that fut did not finish *)
+  let doneFlg : bool = SELECT(0, done)
+  return(BNot(doneFlg))
+;
+
+define @test2 (/ exh : exh) : bool =
+  let n : int = 15
+  let p : int = @fib(n / exh)
+  let q : int = @ffib(n / exh)
+  return(I32Eq(p,q))
+;
+
+define @test1 (/ exh : exh) : bool =
+  let n : int = 31
+  fun f (_ : unit / exh : exh) : [int] =
+      let x : int = @fib(n / exh)
+      let wx : [int] = wrap(x)
+      return(wx)
+
+  let fut : future = @future1-spawn(f / exh)  
+  let ans1 : int = @fib(n / exh)
+  let ans2 : any = @future1-touch(fut / exh)
+  let ans2 : [int] = ([int])ans2
+  return(I32Eq(ans1, unwrap(ans2)))
+;
+
+define @future1-test-startup ( /exh : exh) : () =
+  do @default-scheduler-startup (/exh)
+
+(*  do_concurrent_test(test1, 5.0:double)
+  do_concurrent_test(test2, 5.0:double)
+  do_concurrent_test(test-cancel, 5.0:double)
+
+  do_concurrent_test(test-cancel2, 5.0:double)
+*)
+  do_concurrent_test(test-cancel3, 5.0:double)
+(*
+  do_concurrent_test(test-cancel-nested, 20.0:double)
+*)
+
+  return ()
+;

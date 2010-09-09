@@ -1,0 +1,23 @@
+(* yield.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Preempt the current fiber.
+ *)
+
+#include "types.def"
+#include "scheduling-ops.def"
+#include "runtime-offsets.def"
+#include "assert.def"
+#include "debugging.def"
+
+define @yield (vp : vproc / exh : exh) : unit = 
+  do vpstore(ATOMIC, vp, TRUE)
+do assert (Equal(vp, host_vproc))
+   cont k (_ : unit) = return (UNIT)
+  (* FIXME: this coercion should be unnecessary *)
+   let k : any = (any)k
+   let k : signal = (signal)k
+   @forward (vp, k / exh)
+;

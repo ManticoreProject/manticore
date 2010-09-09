@@ -1,0 +1,17 @@
+(* double-pow.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "types.def"
+
+extern double pow (double, double) __attribute__((pure));
+
+define @double-pow (arg : [ml_double, ml_double] / exh : exh) : ml_double =
+    let x : [double] = #0(arg)
+    let y : [double] = #1(arg)
+    let res : double = ccall pow (unwrap (x), unwrap (y))
+    let res : ml_double = wrap(res)
+      return (res)
+;

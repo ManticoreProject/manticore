@@ -1,0 +1,17 @@
+(* image-output.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "types.def"
+
+extern void M_OutputImage (void *, void *);
+
+define @string-data (s : ml_string) : any;
+
+define inline @image-output (arg : [any, ml_string] / exh : exh) : unit =
+  let file : any = @string-data(#1(arg))
+  let () = ccall M_OutputImage (#0(arg), file)
+    return (UNIT)
+;

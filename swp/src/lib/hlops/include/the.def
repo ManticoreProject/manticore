@@ -1,0 +1,33 @@
+(* the.def
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Definitions for a concurrent deque implementation that follows the THE protocol used in Cilk-5.
+ *)
+
+#ifndef _THE_DEF_
+#define _THE_DEF_
+
+#include "types.def"
+#include "array.def"
+
+#define THE_T_OFF                      0
+#define THE_H_OFF                      1
+#define THE_E_OFF                      2
+#define THE_ARR_OFF                    3
+#define THE_LOCK_OFF                   4
+typedef the_deque = ![int, int, int, array, bool];
+
+#define THE_DEQUE_LEN                  2048
+
+define @the-pop-tl(deq : the_deque / exh : exh) : option;
+define @the-push-tl(deq : the_deque, elt : any / exh : exh) : ();
+define @the-pop-hd(deq : the_deque / exh : exh) : option;
+define @the-new( / exh : exh) : the_deque;
+
+(* spin lock *)
+#include "../runtime/synch/spin-lock-fn.hlop"
+define_spin_lock(the, the_deque, THE_LOCK_OFF)
+
+#endif /* !_THE_DEF_ */

@@ -1,0 +1,16 @@
+(* string-concat-list.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * HLOp for a concatenation operator over a list of strings.
+ *)
+
+#include "types.def"
+
+extern void *M_StringConcatList (void *) __attribute__((pure,alloc));
+
+define inline @string-concat-list (arg : list / _ : exh) : ml_string =
+    let res : ml_string = ccall M_StringConcatList (arg)
+      return (res)
+;

@@ -1,0 +1,18 @@
+(* chan-enqueue-send.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Enqueue an item on the sender queue of a channel.  This function
+ * assumes that the channel is locked.
+ *)
+
+#include "events.def"
+
+define inline @chan-enqueue-send (ch : chan, msg : any, tid : tid, k : cont(unit) / _ : exh) : () =
+    let item : sendq_item = alloc (msg, tid, k)
+    let cons : list = CONS(item, CH_GET_SENDQ_TL(ch))
+    let l : list = promote (cons)
+    do CH_SET_SENDQ_TL(ch, l)
+      return ()
+;

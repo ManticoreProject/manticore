@@ -1,0 +1,22 @@
+(* event-claim.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Attempt to claim an event by setting its dirty flag to SYNCHED_EVT.
+ *)
+
+#include "events.def"
+
+define inline @event-claim (flg : dirty_flag / exh : exh) : bool =
+    fun spin (_ : unit / exh : exh) : bool =
+	  let sts : event_state = CAS(&0(flg), WAITING_EVT, SYNCHED_EVT)
+	  (* in *)
+	    case sts
+	     of INIT_EVT => apply spin (UNIT / exh)
+	      | WAITING_EVT => return (TRUE)
+	      | SYNCHED_EVT => return (FALSE)
+	    end
+    (* in *)
+      apply spin (UNIT / exh)
+;

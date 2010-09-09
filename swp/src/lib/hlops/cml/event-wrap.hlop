@@ -1,0 +1,39 @@
+(* event-wrap.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * The primitive implementation of the wrap combinator.
+ *)
+
+#include "events.def"
+
+define @event-wrap (ev : evt, f : fun(any / exh -> any) / exh : exh) : evt =
+    fun wrapf (ev : evt / exh : exh) : evt =
+	  case ev
+	   of CHOOSE_PAT(ev1, ev2) =>
+		let ev1' : evt = apply wrapf (ev / exh)
+		let ev2' : evt = apply wrapf (ev / exh)
+		(* in *)
+		  return (CHOOSE(ev1', ev2'))
+	    | BEVT_PAT(pollFn, doFn, blockFn) =>
+		fun doFn' (k : cont(any) / exh : exh) : unit =
+		      cont k' (x : any) =
+			  let y : any = apply f (x / exh)
+			  (* in *)
+			    throw k' (y)
+		      (* in *)
+			apply doFn (k' / exh)
+		fun blockFn' (flg : dirty_flag, tid : tid, k : cont(any) / exh : exh) : unit =
+		      cont k' (x : any) =
+			  let y : any = apply f (x / exh)
+			  (* in *)
+			    throw k' (y)
+		      (* in *)
+			apply blockFn (flg, tid, k' / exh)
+		(* in *)
+		  return (BEVT(pollFn, doFn', blockFn'))
+	  end
+    (* in *)
+      apply wrapf (ev / exh)
+;

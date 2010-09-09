@@ -1,0 +1,14 @@
+(* image-new.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+#include "types.def"
+
+extern void *M_NewImage (int, int);
+
+define inline @image-new (arg : [ml_int, ml_int] / exh : exh) : any =
+  let img : any = ccall M_NewImage (unwrap(#0(arg)), unwrap(#1(arg)))
+    return (img)
+;

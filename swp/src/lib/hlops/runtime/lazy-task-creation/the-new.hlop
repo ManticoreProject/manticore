@@ -1,0 +1,18 @@
+(* the-new.hlop
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Create a THE deque.
+ *)
+
+#include "the.def"
+
+define @the-new( / exh : exh) : the_deque =
+  let arrayLen : ml_int = alloc(THE_DEQUE_LEN)
+  let arg : [ml_int, any] = alloc(arrayLen, enum(0))
+  let arr : array = @array(arg/ exh)
+  let deq : the_deque = alloc(0, 0, 0, arr, FALSE)
+  let deq : the_deque = promote(deq)
+  return(deq)
+;

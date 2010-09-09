@@ -1,0 +1,14 @@
+(* string-lit.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * HLOp wrapper for string literals.
+ *)
+
+#include "types.def"
+
+define inline @string-lit (s : string_data, len : int) : ml_string =
+    let res : ml_string = alloc (s, len)
+      return (res)
+;

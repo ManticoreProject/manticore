@@ -1,0 +1,85 @@
+/* inline-log.h
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Inline operations for recording log entries.
+ *
+ * WARNING: this file is generated; do not edit!!!
+ */
+
+#ifndef _INLINE_LOG_H_
+#define _INLINE_LOG_H_
+
+#ifdef ENABLE_LOGGING
+#include "log.h"
+#include "vproc.h"
+#if defined(HAVE_MACH_ABSOLUTE_TIME)
+#  include <mach/mach_time.h>
+#elif defined(HAVE_CLOCK_GETTIME)
+#  include <time.h>
+#else
+#  include <sys/time.h>
+#endif
+
+/*! \brief get the pointer to the next log entry for the vproc
+ *  \param vp the host vproc
+ *  \return the address of the next log entry.
+ */
+STATIC_INLINE LogEvent_t *NextLogEvent (VProc_t *vp)
+{
+    LogBuffer_t *buf;
+
+    do {
+	buf = vp->log;
+	int index = buf->next++;
+	if (index < LOGBUF_SZ) {
+	    return &(buf->log[index]);
+	    break;
+	}
+	SwapLogBuffers (vp, buf);
+    } while (true);
+
+}
+
+/*! \brief set a timestamp field
+ *  \param ts the address of the timestamp field
+ */
+STATIC_INLINE void LogTimestamp (LogTS_t *ts)
+{
+#if defined(HAVE_MACH_ABSOLUTE_TIME)
+    ts->ts_mach = mach_absolute_time();
+#elif defined(HAVE_CLOCK_GETTIME)
+    struct timespec t;
+    clock_gettime (CLOCK_REALTIME, &t);
+    ts->ts_val.sec = t.tv_sec;
+    ts->ts_val.frac = t.tv_nsec;
+#else
+    struct timeval t;
+    gettimeofday (&t, 0);
+    ts->ts_val.sec = t.tv_sec;
+    ts->ts_val.frac = t.tv_usec;
+#endif
+}
+
+/*! \brief generate a unique event ID
+ *  \param vp the host vproc
+ *  \return the new ID.
+ */
+STATIC_INLINE uint64_t NewEventId (VProc_t *vp)
+{
+    return vp->eventId++;
+}
+
+
+@GENERIC-LOG-FUNCTIONS@
+
+@LOG-FUNCTIONS@
+
+#else /* !ENABLE_LOGGING */
+
+@DUMMY-LOG-FUNCTIONS@
+
+#endif
+#endif /* !_INLINE_LOG_H_ */
+

@@ -1,0 +1,23 @@
+(* spawn-on.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Spawn a thread on a remote vproc.
+ *)
+
+#include "types.def"
+#include "vproc-queue.def"
+#include "fgs.def"
+
+define @dispatch (vp : vproc / exh : exh) noreturn;
+
+define inline @spawn-on (f : fun (unit / exh -> unit), fgs : fgs, dst : vproc / exh : exh) : () =
+  cont fiber (x : unit) =
+    cont exh (exn : exn) = @dispatch (host_vproc / exh)
+    let (_ : unit) = apply f (UNIT / exh)
+    @dispatch (host_vproc / exh)
+  let vp : vproc = host_vproc
+  do @enqueue-on-vproc (dst, fgs, fiber / exh)
+  return ()
+;

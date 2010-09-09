@@ -1,0 +1,19 @@
+(* print.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * HLOp wrapper for printing
+ *)
+
+#include "types.def"
+
+define @string-data (s : ml_string) : any;
+
+extern void M_Print (void *);
+
+define inline @print (s : ml_string / exh : exh) : unit =
+    let data : any = @string-data(s)
+    do ccall M_Print (data)
+      return (UNIT)
+;

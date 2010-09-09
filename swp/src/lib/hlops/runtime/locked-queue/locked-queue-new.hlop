@@ -1,0 +1,15 @@
+(* locked-queue-new.hlop
+ *
+ * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Allocate an empty locked queue.
+ *)
+
+#include "locked-queue.def"
+
+define @locked-queue-new ( / exh : exh) : locked_queue =
+  let lockedQ : locked_queue = alloc (FALSE, IN_PLACE_QUEUE_EMPTY, IN_PLACE_QUEUE_EMPTY, IN_PLACE_QUEUE_EMPTY, IN_PLACE_QUEUE_EMPTY)
+  let lockedQ : locked_queue = promote (lockedQ)
+  return (lockedQ)
+;
