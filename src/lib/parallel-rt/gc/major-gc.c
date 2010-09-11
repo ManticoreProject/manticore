@@ -111,6 +111,13 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	}
     }
 
+    for (int i=0; i < vp->maxProxy;i++) {
+         if ((long long int)(vp->proxyTable[i].proxyObj) > 1000) {
+                  Word_t * scanP = (Word_t *)(vp->proxyTable[i].proxyObj);
+		  *(scanP+1) = (Word_t)vp->proxyTable[i].localObj;
+	}
+   }
+
   /* we also treat the data between vproc->oldTop and top as roots, since
    * it is known to be both young and live.  While scanning it, we also
    * do pointer translation on the internal pointers in preparation for

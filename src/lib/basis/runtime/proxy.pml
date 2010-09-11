@@ -59,7 +59,7 @@ structure Proxy (* :
 	(* get address of the proxy table *)
 	let myAddr : addr(any) = vpload(PROXYTABLE,#0(myProxy))
 	let pos : int = AdrLoadI32((addr(int))&1(myProxy))
-	do AdrStoreI32((addr(int))AdrAddI32(myAddr,TABLE_POS(pos)),beginning)
+	do AdrStoreI64((addr(long))AdrAddI32(myAddr,TABLE_POS(pos)),I32ToI64(beginning))
         do vpstore (PROXYTABLEENTRIES,#0(myProxy),pos)
 	return() 
      ;
@@ -79,12 +79,6 @@ structure Proxy (* :
 	return(myProxy) 
      ;
      
-          
-     define inline @maxEntry () : int = 
-	 let maxProxy : int = vpload (MAXPROXY,host_vproc)
-	 return(maxProxy)
-     ;
-     
      define inline @isFree () : bool = 
 	 let id : int = vpload (PROXYTABLEENTRIES,host_vproc)
 	 if I32Eq(id,1000) then return(false)
@@ -100,8 +94,9 @@ structure Proxy (* :
      
       (* is the Fiber associated with the proxy already promoted *)
       define inline @promotedProxy (myProxy : proxy) : bool =
-	let max : int = @maxEntry()
-	if I64Gt(#1(myProxy),max) then return(true)
+	let max : int = vpload (MAXPROXY,host_vproc)
+	let pos : long = AdrLoadI64((addr(long))&1(myProxy))
+	if I64Gte(pos,I32ToI64(max)) then return(true)
 	else return(false)
       ;
       
