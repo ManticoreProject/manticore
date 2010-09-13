@@ -302,10 +302,6 @@ struct
 		TextIO.output (MyoutStrm, "     *(scanP+0) = (Word_t)ForwardObjGlobal(vp, v);\n");
 		TextIO.output (MyoutStrm, "  } \n");
 		TextIO.output (MyoutStrm,"    v = *(Value_t *)(scanP+1);\n");
-		TextIO.output (MyoutStrm, "   if ((long long int)*(scanP+1) < vp->maxProxy) { \n");
-		TextIO.output (MyoutStrm, "        *(scanP+1) = (Word_t)PromoteObj(vp,vp->proxyTable[(long long int)*(scanP+1)].localObj);\n");
-		TextIO.output (MyoutStrm, "        v = *(Value_t *)(scanP+1);\n");
-		TextIO.output (MyoutStrm, "   } \n");
 		TextIO.output (MyoutStrm, "   if (isFromSpacePtr(v)) {\n");
 		TextIO.output (MyoutStrm, "     *(scanP+1) = (Word_t)ForwardObjGlobal(vp, v);\n");
 		TextIO.output (MyoutStrm, "  } \n");

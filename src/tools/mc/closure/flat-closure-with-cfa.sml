@@ -432,10 +432,11 @@ structure FlatClosureWithCFA : sig
         (* convert an expression to a CFG FUNC; note that this function will convert
          * any nested functions first.
          *)
-          fun cvtExp (env, params, lab, e) = let
+          fun cvtExp (env, params, cpsLab, lab, e) = let
                 val () = if Controls.get ClosureControls.debug
 		      then (print(concat[
-			  "********************\ncvtExp: lab = ", CFG.Label.toString lab, "\n"
+			  "********************\ncvtExp: lab = ", CFG.Label.toString lab, "(",
+                          CPS.Var.toString cpsLab, ")\n"
 			]);
 			prEnv env)
 		      else ()
@@ -445,8 +446,8 @@ structure FlatClosureWithCFA : sig
                  * list of blocks corresponding to what the true and false branches of the conditional
                  * were converted into.
                  *)
-                fun cvt (env, args, CPS.Exp(_, e), stms) : CFG.block * CFG.block list = let
-                     fun cvtBranch (lab, e) = let
+                fun cvt (env, args, CPS.Exp(_, e), stms, encl) : CFG.block * CFG.block list = let
+                     fun cvtBranch (lab, e, encl) = let
                             val needsEP = ref false
                             val argEP = envPtrOf env
                             val paramEP = CFG.Var.copy argEP
@@ -477,27 +478,27 @@ structure FlatClosureWithCFA : sig
                             val (args, params) = if !needsEP
                                   then (argEP :: args, paramEP :: params)
                                   else (args, params)
-                            val lab = CFG.Label.new(
+                            val lab' = CFG.Label.new(
                                   lab,
                                   CFGTy.T_Block{args = List.map CFG.Var.typeOf params})
                             in
-                              (cvtExp (branchEnv, params, lab, e), args)
+                              (cvtExp (branchEnv, params, encl, lab', e), args)
                             end
                       in
                         case e
                          of CPS.Let(lhs, rhs, e) => let
                               val (binds, env') = cvtRHS(env, lhs, rhs)
                               in
-                                cvt (env', args, e, binds @ stms)
+                                cvt (env', args, e, binds @ stms, encl)
                               end
                           | CPS.Fun(fbs, e) => let
                               val (binds, env) = cvtFunc(env, fbs)
                               in
-                                cvt (env, args, e, binds @ stms)
+                                cvt (env, args, e, binds @ stms, encl)
                               end
                           | CPS.Cont(fb, e) => let
                               val (binds, env, joinBlocks) = cvtCont(env, fb)
-                              val (start, body) = cvt (env, args, e, binds @ stms)
+                              val (start, body) = cvt (env, args, e, binds @ stms, encl)
                               val body = joinBlocks@body
                               in
                                 (start, body)
@@ -505,8 +506,8 @@ structure FlatClosureWithCFA : sig
                           | CPS.If(cond, e1, e2) => let
 			      val (mkC, args') = CondUtil.explode cond
 			      val (binds, args') = lookupVars (env, args')
-                              val ((tb as CFG.BLK{lab=tlab,...}, r), targs) = cvtBranch ("then", e1)
-                              val ((fb as CFG.BLK{lab=flab,...}, rr), fargs) = cvtBranch ("else", e2)
+                              val ((tb as CFG.BLK{lab=tlab,...}, r), targs) = cvtBranch ("then", e1, encl)
+                              val ((fb as CFG.BLK{lab=flab,...}, rr), fargs) = cvtBranch ("else", e2, encl)
 			      in
                                 (CFG.mkBlock(lab, params, rev (binds@stms),
                                      CFG.If(mkC args', (tlab,targs), (flab,fargs))),
@@ -514,13 +515,13 @@ structure FlatClosureWithCFA : sig
                               end
                           | CPS.Switch(x, cases, dflt) => let
                               val (binds, x) = lookupVar(env, x)
-                              val cs = List.map (fn (i, c) => (i, cvtBranch ("case", c))) cases
+                              val cs = List.map (fn (i, c) => (i, cvtBranch ("case", c, encl))) cases
                               val cJumps = List.map (fn (i, ((cb as CFG.BLK{lab=clab,...}, _), cargs)) =>
                                                         (i, (clab,cargs))) cs
                               val rr = List.foldr (fn ((_, ((b, bs), _)), rs) => b::bs@rs) [] cs
                               val d = case dflt
                                        of NONE => NONE
-                                        | SOME e => SOME (cvtBranch ("default", e))
+                                        | SOME e => SOME (cvtBranch ("default", e, encl))
                               val (dJump, rr) = case d
                                                  of NONE => (NONE, rr)
                                                   | SOME ((db as CFG.BLK{lab=dlab,...}, rs), dargs) =>
@@ -544,7 +545,7 @@ structure FlatClosureWithCFA : sig
                         (* end case *)
                       end
                 in
-                  cvt (env, [], e, [])
+                  cvt (env, [], e, [], cpsLab)
                 end
         (* convert a CPS RHS to a list of CFG expressions, plus a new environment *)
           and cvtRHS (env, lhs, rhs) = (case (newLocals(env, lhs), rhs)
@@ -688,7 +689,7 @@ structure FlatClosureWithCFA : sig
                       val binds = CFG.mkAlloc(f', CFG.Var.typeOf f', [ep, labVar])
 			    :: bindLab :: binds
                       (* convert the function itself *)
-                      val (start, body) = cvtExp (fbEnv, params, lab, body)
+                      val (start, body) = cvtExp (fbEnv, params, f, lab, body)
                       in
                         finishFunc (lab, conv, start, body);
                         (binds, env')
@@ -745,7 +746,7 @@ structure FlatClosureWithCFA : sig
 			CPS.Var.nameOf k,
 			CFGTy.T_Block{args = List.map CFG.Var.typeOf params})
 		  val _ = setLabel (k, lab) 
-                  val (start, body) = cvtExp (bodyEnv, params, lab, body)
+                  val (start, body) = cvtExp (bodyEnv, params, k, lab, body)
 		  in
 		    ([], insertVar (env, k, JoinCont), start::body)
 		  end
@@ -772,7 +773,7 @@ structure FlatClosureWithCFA : sig
 		  val closTy = CFGTy.T_Tuple(false, List.map CFG.Var.typeOf clos)
 		  val (env', k') = newLocalVar (env, k, closTy)
 		  val binds = CFG.mkAlloc(k', closTy, clos) :: bindLab :: binds
-                  val (start, body) = cvtExp (contEnv, params', lab, body)
+                  val (start, body) = cvtExp (contEnv, params', k, lab, body)
 		  in
                     finishFunc (lab, conv, start, body);
 		    (binds, env', [])
@@ -969,7 +970,7 @@ structure FlatClosureWithCFA : sig
                 val lab = labelOf f
                 val () = CFG.Label.setType (lab, convTy)
                 in
-                  (lab, conv, cvtExp (env, params, lab, body))
+                  (lab, conv, cvtExp (env, params, f, lab, body))
                 end
           in
             CFA.analyze m;

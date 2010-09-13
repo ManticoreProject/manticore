@@ -81,7 +81,8 @@ structure Proxy (* :
      
      define inline @isFree () : bool = 
 	 let id : int = vpload (PROXYTABLEENTRIES,host_vproc)
-	 if I32Eq(id,1000) then return(false)
+	 let max : int = vpload (MAXPROXY,host_vproc)
+	 if I32Eq(id,max) then return(false)
 	 else return(true)
      ;
 	

@@ -21,10 +21,9 @@
 
 void createList (VProc_t *vp) {
 	//set List of empty entries
-	for (int i = 0; i < vp->maxProxy-1;i++) {
+	for (int i = 0; i < vp->maxProxy;i++) {
 		vp->proxyTable[i].proxyObj=(Value_t)(long long int)(i+1);
 	}
-	vp->proxyTable[vp->maxProxy-1].proxyObj = (Value_t)(1000);
 	vp->proxyTableentries = 0;
 }
 
