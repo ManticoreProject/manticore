@@ -131,12 +131,7 @@ struct
         
         TextIO.output (MyoutStrm, "void minorGCPROXYdebug (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "  \n");
-        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
-        TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm,"   /* CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
-        TextIO.output (MyoutStrm,"    scanP++;\n");
-		TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
-        TextIO.output (MyoutStrm,"    scanP++; */\n");
+        TextIO.output (MyoutStrm, "  printf(\"Error This is MinorGC Debug proxyscan, should never be called!\");\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
         ()
@@ -257,12 +252,7 @@ struct
         
         TextIO.output (MyoutStrm, "void minorGCPROXYdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
-        TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm,"   /* CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
-        TextIO.output (MyoutStrm,"    scanP++;\n");
-		TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
-        TextIO.output (MyoutStrm,"    scanP++; */\n");
+        TextIO.output (MyoutStrm, "  printf(\"Error This is MinorGlobal proxydebugscan, should never be called!\");\n");
         TextIO.output (MyoutStrm, "}\n");
     ()
     )
@@ -350,10 +340,10 @@ struct
         TextIO.output (MyoutStrm, "void globalGCPROXYdebug (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
         TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm,"  /*  CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
+        TextIO.output (MyoutStrm,"    CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
         TextIO.output (MyoutStrm,"    scanP++;\n");
-		TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
-        TextIO.output (MyoutStrm,"    scanP++; */\n");
+		TextIO.output (MyoutStrm,"    CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
         ()
@@ -470,10 +460,10 @@ struct
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
         TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm,"   /* CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
+        TextIO.output (MyoutStrm,"    CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
         TextIO.output (MyoutStrm,"    scanP++;\n");
-		TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
-        TextIO.output (MyoutStrm,"    scanP++; */\n");
+		TextIO.output (MyoutStrm,"    CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
         ()
@@ -565,6 +555,7 @@ struct
         TextIO.output (MyoutStrm, "void gc_debugPROXY (Word_t * nextScan, Addr_t nurseryBase, Addr_t allocSzB) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm,concat["    gc_debug((nextScan+",Int.toString 0,"), nurseryBase, allocSzB);\n"]);
+		TextIO.output (MyoutStrm,concat["    gc_debug((nextScan+",Int.toString 1,"), nurseryBase, allocSzB);\n"]);
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");   
         ()
