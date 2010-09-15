@@ -45,8 +45,11 @@
 (* TODO (maybe): HandlePats are currently not supported.
  *)
 
-(* FIXME Bogus locations for errors (this issue exists elsewhere too, e.g.,
- *   match-compile).
+(* TODO: Consider keeping variables around in patmats for better error messages.
+ *)
+
+(* FIXME (not a local problem): bogus locations for errors 
+ *   (exists elsewhere too, e.g., match-compile).
  *)
 
 structure MatchCheck (* : sig
@@ -62,7 +65,7 @@ structure MatchCheck (* : sig
  * occur if the code here is flawed or some other part of the compiler (e.g.
  * the typechecker) isn't doing its job.
  *)
-  fun bug whence msg = raise Fail ("BUG (" ^ whence ^"). " ^ msg)
+  fun bug whence msg = raise Fail ("bug in " ^ whence ^": " ^ msg)
 
 (* println *)
   fun println s = (TextIO.print s; TextIO.print "\n")
@@ -270,6 +273,7 @@ structure MatchCheck (* : sig
 
 (* unrepresentedLit *)
 (* pre: given literal set is incomplete *)
+(* TODO ints and strings might not be necessary...consider eliminating them. *)
   fun unrepresentedLit (ty: Types.ty, s: LitSet.set) : AST.pat option =
     if TypeUtil.same (Basis.boolTy, ty) then
       (if LitSet.member (s, Literal.trueLit) then 
@@ -454,16 +458,15 @@ structure MatchCheck (* : sig
 
 (* firstColTy : patmat -> Types.ty *)
   fun firstColTy ((p::ps)::pss) = TypeOf.pat p
-    | firstColTy p = (println "badness"; 
-		      println (patmatToString p); 
-		      bug "firstColTy" "malformed pattern matrix")
+    | firstColTy p = (bug "firstColTy" ("malformed pattern matrix\n" ^ patmatToString p))
 
 (* firstColTupleTy *)
   fun firstColTupleTy (p: patmat) : bool =
     (case firstColTy p
-       of Types.TupleTy [] => false (* that's unit *)
-	| Types.TupleTy ts => true
-	| _ => false)
+      of Types.TupleTy [] => false (* that's unit *)
+       | Types.TupleTy ts => true
+       | _ => false
+     (* end case *))
 
 (* firstColLits builds a set of all literals appearing in *)
 (*   the first (leftmost) column of a pattern matrix. *)
@@ -686,18 +689,15 @@ structure MatchCheck (* : sig
           end
       end
     else let
-      (* val _ = println "no lits in first col" *)
       val sigma = firstColCons p
       in
         if completeCons sigma then let
-          (* val _ = println "all constructors found in first col" *)
           val cs = DConSet.listItems sigma
           fun u' c = u (s (c, p), conWilds(c) @ qs)
           in
             List.exists u' cs
           end        
         else let
-          (* val _ = println "not all constructors found in first col" *)
           in
             u (d p, qs)
 	  end
@@ -718,6 +718,11 @@ structure MatchCheck (* : sig
     in
       lp (p, [])
     end
+
+(* restFirstRow : patmat -> patlist *)
+  fun restFirstRow ((p::ps)::pss) = ps
+    | restFirstRow ([]::_) = bug "restFirstRow" "first row empty"
+    | restFirstRow [] = bug "restFirstRow" "empty pattern matrix"
 
 (* algorithm I *)
 (* Checks for inexhaustiveness. *)
@@ -744,7 +749,11 @@ structure MatchCheck (* : sig
       val arity = List.length ts
       in
         case i (sT (arity, p), arity+n-1)
-         of SOME ps => SOME [AST.TuplePat ps]
+         of SOME ps => let
+              val tup = AST.TuplePat (List.take (ps, arity))
+              in
+                SOME (tup::List.drop (ps, arity))
+              end
 	  | NONE => NONE
       end
     else if firstColContainsLits p then let
@@ -753,19 +762,32 @@ structure MatchCheck (* : sig
         if completeLits (ty, sigma) then let
           fun lp [] = NONE
 	    | lp (l::ls) =
-                case i (sL (l, ty, p), n-1)
+                (case i (sL (l, ty, p), n-1)
                   of SOME v => SOME (AST.ConstPat(AST.LConst(l,ty))::v)
 		   | NONE => lp ls
+		 (* end case *))
           in
             lp (LitSet.listItems sigma)
           end
 	else 
-          case i (d p, n-1)
-            of NONE => NONE
-	     | SOME v => 
-                 (case unrepresentedLit (ty, sigma)
-		    of SOME p => SOME (p::v)
-		     | NONE => raise Fail "algorithm I lit")
+          (case d p
+            of [] => let
+                 val v = restFirstRow p
+                 in
+                   case unrepresentedLit (ty, sigma)
+                    of SOME k => SOME (k::v)
+		     | NONE => bug "i" "there should be an unrepresented literal"
+	         end
+             | p' =>
+                 (case i (p', n-1) 
+		   of NONE => NONE
+		    | SOME v => 
+                        (case unrepresentedLit (ty, sigma)
+			  of SOME p => SOME (p::v)
+			   | NONE => bug "i" "there should be an unrepresented literal"
+		         (* end case *))
+		  (* end case *))
+	   (* end case *))
       end
     else 
       (* If we reach this point, the first column contains a mix of *)
@@ -783,10 +805,10 @@ structure MatchCheck (* : sig
 				  of SOME _ => 1
 				   | NONE => 0) 				     
                   in
-                    case i (s (c, p), cArity + n - 1)
+                    (case i (s (c, p), cArity + n - 1)
 		      of NONE => lp cs
 		       | SOME (p::ps) => SOME (AST.ConPat (c, ts, p)::ps)
-		       | SOME [] => bug "i" "illegal conpat arg"
+		       | SOME [] => bug "i" "illegal conpat arg")
 	  	  end
             in
               lp (DConSet.listItems sigma)
@@ -808,9 +830,10 @@ structure MatchCheck (* : sig
         (* Here there are no constructor pats in the first column -- just vars and wilds. *)
         val ty = firstColTy p 
         in
-          case i (d p, n-1)
-           of NONE => NONE
-	    | SOME v => SOME (AST.WildPat(ty)::v)
+          (case i (d p, n-1)
+            of NONE => NONE
+	     | SOME v => SOME (AST.WildPat(ty)::v)
+	   (* end case *))
        end
 
 (* inexhaustive : patmat -> patlist option *)
