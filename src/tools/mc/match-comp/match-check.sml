@@ -919,9 +919,9 @@ structure MatchCheck (* : sig
 (* bodyOf : AST.lambda -> AST.exp *)
   val bodyOf : AST.lambda -> AST.exp = (fn AST.FB (_, _, b) => b)
 
-(* checkExp checks all match lists recursively in an expression. *)
+(* checkExpInternal checks all match lists recursively in an expression. *)
 (* That is, it checks all cases, pcases, and handles within given expression. *)
-  fun checkExp (err: err_stream, e: AST.exp) : unit = let
+  fun checkExpInternal (err: err_stream, e: AST.exp) : unit = let
     fun exp (AST.LetExp (b, e)) = (binding b; exp e)
       | exp (AST.IfExp (e1, e2, e3, _)) = (exp e1; exp e2; exp e3)
       | exp (AST.CaseExp (e, ms, _)) = (exp e; checkMatchList (err, ms))
@@ -956,5 +956,11 @@ structure MatchCheck (* : sig
   in
     exp e
   end
+
+(* checkExp : err_stream * AST.exp -> unit *)
+  fun checkExp (err: err_stream, e: AST.exp) : unit =
+    if Controls.get MatchControls.matchCheck 
+    then checkExpInternal (err, e) 
+    else ()
 
 end

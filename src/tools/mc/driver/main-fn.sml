@@ -161,6 +161,7 @@ functor MainFn (
           val ast = mlbToAST (errStrm, bEnv0, mEnv0, srcFile)
           val _ = checkForErrors errStrm
           val ast = ASTOpt.optimize(glueAST(ast0, ast))
+	  val _ = MatchCheck.checkExp (errStrm, ast)
 	  val ast = MatchCompile.compile (errStrm, ast)
           val _ = checkForErrors errStrm
 	(* create the initial translation environment *)

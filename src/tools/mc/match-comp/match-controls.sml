@@ -23,8 +23,21 @@ structure MatchControls =
 	    default = false
 	  }
 
+    val matchCheck = Controls.genControl {
+	    name = "check",
+	    pri = [5, 0],
+	    obscurity = 1,
+	    help = "check pattern match groups in a separate pass (Maranget, JFP 2007)",
+	    default = false
+	  }
+
     val _ = ControlRegistry.register registry {
 	    ctl = Controls.stringControl ControlUtil.Cvt.bool keepAST,
+	    envName = NONE
+	  }
+
+    val _ = ControlRegistry.register registry {
+	    ctl = Controls.stringControl ControlUtil.Cvt.bool matchCheck,
 	    envName = NONE
 	  }
 

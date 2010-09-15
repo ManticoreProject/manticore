@@ -64,7 +64,7 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
     val _ = println (patmat p)
     in
        println "\nTesting...";
-       MatchCheck.checkExp (Error.mkErrStream "/var/tmp/bogus-file", e);
+       MatchCheck.checkExpInternal (Error.mkErrStream "/var/tmp/bogus-file", e);
        println "done."
     end
 
@@ -80,7 +80,7 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
     fun pstos ps = String.concatWith "," (List.map MatchCheck.patToString ps)
     in
        println "\nTesting...";
-       MatchCheck.checkExp (Error.mkErrStream "/var/tmp/bogus-file", e);
+       MatchCheck.checkExpInternal (Error.mkErrStream "/var/tmp/bogus-file", e);
        println "Done."
     end
 
@@ -341,6 +341,11 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
 			tup [tup [pt, pt], tup [pf, pt]]]
         in
           testExp false e
+        end
+    | test 33 = let
+        val e = mkCase [AST.TuplePat [AST.ConstPat tru, AST.ConstPat tru]]
+        in
+	  testExp false e
         end
     | test n = raise Fail ("***** no such test: " ^ Int.toString n)
 

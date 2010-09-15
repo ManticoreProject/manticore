@@ -511,11 +511,11 @@ structure JFPTranslatePCase = struct
 	  | _  => A.TupleExp (List.map bang rs)
         (* end case *))            
     fun pats (ps: A.ppat list) : A.pat = let
-      fun pat (A.NDWildPat ty) = A.WildPat ty
-	| pat (A.HandlePat _) = raise Fail "not supported: HandlePat"
-	| pat (A.Pat p) = p
+      fun ppat (A.NDWildPat ty) = A.WildPat ty
+	| ppat (A.HandlePat _) = raise Fail "not supported: HandlePat"
+	| ppat (A.Pat p) = p
       in
-        A.TuplePat (List.map pat ps)
+        A.TuplePat (List.map ppat ps)
       end
   in 
     fun mkState (s_i: bitstring, rs: A.var list, acts: A.var list, resume: A.var, c: pcase') 
@@ -538,8 +538,7 @@ structure JFPTranslatePCase = struct
 	| lp ([], []) = raise Fail "no rules at all? shouldn't happen."
 	| lp ((j,ps)::t, acc) = let
             val xs = Var.Set.listItems (boundVarsP ps)
-	    val arg = (* FIXME - type list for VarExp *)
-              A.TupleExp (List.map (fn x => A.VarExp (x, raise Fail "what goes here?")) xs) 
+	    val arg = A.TupleExp (List.map (fn x => A.VarExp (x, [])) xs) 
 	    val act_j = List.nth (acts, j-1) (* j is 1-based (see Fig. 17), nth is 0-based *)
 	    val app = A.ApplyExp (A.VarExp (act_j, []), arg, ty)
             val m = A.PatMatch (pats ps, app)
