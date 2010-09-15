@@ -11,7 +11,6 @@
 #include "manticore-rt.h"
 #include "os-threads.h"
 #include "timer.h"
-#include "../gc/proxy.h"
 
 #ifndef NO_GC_STATS
 typedef struct {	    //!< counters for a GC
@@ -39,6 +38,12 @@ typedef struct {    //!< a perf counter
     bool        enabled;//!< true if perf counters are enabled for this vproc
 } PerfCntrs_t;
 #endif
+
+//Proxy Table
+typedef struct {
+	Value_t	proxyObj;	// proxy object in the global heap
+	Value_t	localObj;	// local-heap object that the proxy represents.
+} ProxyTblEntry_t;
 
 /* WARNING:
  * Changing the vproc struct might require modifying ../config/vproc-offsets-ins.c.

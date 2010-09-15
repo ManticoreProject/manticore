@@ -355,17 +355,12 @@ static void ScanVProcHeap (VProc_t *vp)
 			assert (isRawHdr(hdr));
 			scanPtr += GetLength(hdr);
 		}else {
-			
 			scanPtr = table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
-
 		}
 		
 
     }
     assert (scanPtr == top);
-	
-    //reset the proxy table since all continuation elements got promoted
-    createList(vp);
 
 } /* end of ScanVProcHeap */
 
@@ -399,9 +394,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
 			assert (isRawHdr(hdr));
 			scanPtr += GetLength(hdr);
 		}else {
-			
 			scanPtr = table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
-		
 		}
 			
 	}

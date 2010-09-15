@@ -55,12 +55,26 @@ structure Proxy (* :
      ;
      
      define inline @deleteProxy (myProxy : proxy) : () =
-	let beginning : int = vpload (PROXYTABLEENTRIES,#0(myProxy))
+	let nextfree : int = vpload (PROXYTABLEENTRIES,#0(myProxy))
+	let last : int = I32Sub(nextfree,1)
 	(* get address of the proxy table *)
 	let myAddr : addr(any) = vpload(PROXYTABLE,#0(myProxy))
+	(* position of the proxy in the table *)
 	let pos : int = AdrLoadI32((addr(int))&1(myProxy))
-	do AdrStoreI64((addr(long))AdrAddI32(myAddr,TABLE_POS(pos)),I32ToI64(beginning))
-        do vpstore (PROXYTABLEENTRIES,#0(myProxy),pos)
+	(* if the proxy isn't the last element *)
+	if I32NEq(last,pos) then
+	(* move last entry to the empty entry and free it *)
+	let lastProxy : proxy = AdrLoad(AdrAddI32(myAddr,TABLE_POS(last)))
+	let lastFiber : PT.fiber = AdrLoad(AdrAddI32(myAddr,I32Add(TABLE_POS(last),TABLE_ENTRY_OFFB)))
+	(* change position in last proxy *)
+	do AdrStoreI64((addr(long))&1(lastProxy),I32ToI64(pos))
+	(* save in the new table position *)
+	do AdrStore(AdrAddI32(myAddr,TABLE_POS(pos)),lastProxy)
+	do AdrStore(AdrAddI32(myAddr,I32Add(TABLE_POS(pos),TABLE_ENTRY_OFFB)),lastFiber)
+        do vpstore (PROXYTABLEENTRIES,#0(myProxy),last)
+	return() 
+	else
+	do vpstore (PROXYTABLEENTRIES,#0(myProxy),last)
 	return() 
      ;
      
@@ -69,13 +83,13 @@ structure Proxy (* :
 	let myAddr : addr(any) = vpload(PROXYTABLE,host_vproc)
 	(* get next free entry in the proxy table *)
 	let pos : int = vpload (PROXYTABLEENTRIES,host_vproc)
-	(* move free pointer to next object *)
-	let nextid : int = AdrLoadI32((addr(int))AdrAddI32(myAddr,TABLE_POS(pos)))
-	do vpstore (PROXYTABLEENTRIES,host_vproc,nextid)
 	let myProxy : proxy = ccall AllocProxy (host_vproc, 2, host_vproc, pos)
 	(* store the proxy and continuation at the offside position *)
 	do AdrStore(AdrAddI32(myAddr,TABLE_POS(pos)),myProxy)
 	do AdrStore(AdrAddI32(myAddr,I32Add(TABLE_POS(pos),TABLE_ENTRY_OFFB)),myFiber)
+	(* move free pointer to next object *)
+	let nextid : int = I32Add(pos,1)
+	do vpstore (PROXYTABLEENTRIES,host_vproc,nextid)
 	return(myProxy) 
      ;
      

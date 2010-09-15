@@ -84,7 +84,7 @@ void MinorGC (VProc_t *vp)
    * holds the GC root.
    */
     int nWorkStealingRoots = M_NumDequeRoots (vp);
-    Value_t *roots[16 + vp->maxProxy + nWorkStealingRoots], **rp;
+    Value_t *roots[16 + nWorkStealingRoots], **rp;
     rp = roots;
     *rp++ = &(vp->currentFLS);
     *rp++ = &(vp->actionStk);
@@ -96,14 +96,6 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->rdyQTl);
     *rp++ = &(vp->landingPad);
     *rp++ = &(vp->stdEnvPtr);
-	
-	for (int i=0; i < vp->maxProxy;i++) {
-		if ((long long int)(vp->proxyTable[i].proxyObj) > 1000) {
-			*rp++=&(vp->proxyTable[i].localObj);
-		}
-	}
-	
-	
     rp = M_AddDequeEltsToLocalRoots(vp, rp);
     *rp++ = 0;
 
@@ -121,6 +113,14 @@ void MinorGC (VProc_t *vp)
 		*roots[i] = ForwardObjMinor(p, &nextW);
 	    }
 	}
+    }
+	
+   /* process the proxy table */
+    for (int i=0; i < vp->proxyTableentries;i++) {
+		Value_t p = vp->proxyTable[i].localObj;
+		if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
+			vp->proxyTable[i].localObj = ForwardObjMinor(p, &nextW);
+		}
     }
 	
   /* scan to space */
