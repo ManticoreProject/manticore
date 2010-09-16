@@ -35,11 +35,11 @@
  *   are equivalent.
  *
  * There are no or patterns in PML, so no or patterns here either.
- *
- * TODO: Beginning in section 5 of Maranget, there is a description of how to 
- *   adapt the algorithm here so it not only checks for redundancy and 
- *   inexhaustiveness, but also produces witnesses to its findings.
- *   I have not implemented those adaptations here.
+ *)
+
+(* FIXME
+ * Unit patterns are often represented as empty TuplePats.
+ * Make sure I can handle this everywhere.
  *)
 
 (* TODO (maybe): HandlePats are currently not supported.
@@ -137,7 +137,7 @@ structure MatchCheck (* : sig
   fun warnInexBind errStrm p = let
     val pStr = patToString p
     in
-      TextIO.print ("inexhaustive binding: pattern " ^ pStr ^ "\n");
+      TextIO.print ("^ inexhaustive binding: pattern " ^ pStr ^ "\n");
       MatchErrors.warnNonexhaustiveBind (errStrm, bogusLocation)
     end
 
@@ -288,6 +288,9 @@ structure MatchCheck (* : sig
       case missingString s
         of SOME t => SOME (AST.ConstPat (AST.LConst (t, ty)))
 	 | NONE => SOME (AST.WildPat ty)
+    else if TypeUtil.same (Basis.unitTy, ty) then
+      if LitSet.numItems s = 0 then SOME (AST.TuplePat [])
+      else NONE
     else SOME (AST.WildPat ty)
 
 (* a test to check if constructor c is the only one in its datatype *)
@@ -419,12 +422,19 @@ structure MatchCheck (* : sig
       lp (p, DConSet.empty)
     end
 
+(*
+fun litsToString (s: LitSet.set) : string = 
+  ("{" ^ 
+   String.concatWith "," (List.map Literal.toString (LitSet.listItems s)) ^
+   "}") 
+*)
+
 (* completeLits tests, for unit and bool types, whether the literal set *)
 (*   is complete. *)
 (* All other literal sets are judged incomplete. *)
   fun completeLits ((ty, s): typed_lit_set) : bool = 
     if TypeUtil.same (Basis.unitTy, ty) then
-      LitSet.equal (unitLitSet, s)
+      (LitSet.equal (unitLitSet, s))
     else if TypeUtil.same (Basis.boolTy, ty) then
       LitSet.equal (boolLitSet, s)
     else false
@@ -443,6 +453,7 @@ structure MatchCheck (* : sig
 (*   of a pattern matrix contains literals. *)
   val firstColContainsLits : patmat -> bool = let
     fun pred (AST.ConstPat (AST.LConst _)::_) = true
+      | pred ((AST.TuplePat [])::_) = true
       | pred _ = false
     in
       List.exists pred
@@ -479,6 +490,13 @@ structure MatchCheck (* : sig
                  (case optTy
 		    of NONE => lp (pss, SOME ty, LitSet.add (acc, lit))
 		     | SOME _ => lp (pss, optTy, LitSet.add (acc, lit)))
+	     | AST.TuplePat [] =>
+	         (case optTy
+		    of NONE => lp (pss, SOME Basis.unitTy, LitSet.add (acc, Literal.unitLit))
+		     | SOME ty' =>
+                         if TypeUtil.same (ty', Basis.unitTy)
+			 then lp (pss, optTy, LitSet.add (acc, Literal.unitLit))
+			 else bug "firstColLits" "empty tuple pattern not of type unit")
 	     | _ => lp (pss, optTy, acc))
       | lp ([]::_, _, _) = bug "firstColLits" "malformed pattern matrix"
     in
@@ -562,6 +580,10 @@ structure MatchCheck (* : sig
                      if TypeUtil.same (t, t') andalso Literal.same (l, l')
 		     then lp (pss, ps::acc)
 		     else lp (pss, acc)
+		 | AST.TuplePat [] =>
+                     if TypeUtil.same (t, Basis.unitTy)
+		     then lp (pss, ps::acc)
+		     else bug "sL" "there's only one unit literal"
 		 | AST.WildPat _ => lp (pss, ps::acc)
 		 | AST.VarPat _ => bug "sL" "unexpected VarPat in pattern matrix"
 		 | _ => lp (pss, acc)
@@ -789,7 +811,7 @@ structure MatchCheck (* : sig
 		  (* end case *))
 	   (* end case *))
       end
-    else 
+    else
       (* If we reach this point, the first column contains a mix of *)
       (*   constructor patterns, var patterns and wildcards. *)
       if firstColContainsCons p then let
@@ -878,16 +900,17 @@ structure MatchCheck (* : sig
 	of SOME witness => let
              val msg = tos witness
              in
-               errRedundant err ("redundant match: " ^ msg)
+               errRedundant err ("^ redundant match: " ^ msg)
              end
 	 | NONE => ()
        (* end case *))
     in
       case inexhaustive p
        of SOME witness => let
-            val msg = "cannot match, for example, " ^ tos witness
+            val msg = "^ pattern matrix\n" ^ patmatToString p ^ "\nis inexhaustive:\n" ^
+		      "cannot match, for example, " ^ tos witness ^ "\n"
             in
-	      warnInexMatch err ("inexhaustive match: " ^ msg)
+	      warnInexMatch err msg
 	    end
 	| NONE => redund p
     end
@@ -895,7 +918,10 @@ structure MatchCheck (* : sig
 (* checkMatchList checks that the match list is both exhaustive and irredundant. *)
 (* Redundancy yields a warning; inexhaustiveness is an error. *)
   fun checkMatchList (err: err_stream, ms: AST.match list) : unit =
-    (checkPatMat err) (mkPatMat ms)
+    (case ms
+       of [] => bug "checkMatchList" "empty match list"
+	| _ => (checkPatMat err) (mkPatMat ms)
+      (* end case *))
 
 (* checkPMatchList checks that the pmatch list is both exhaustive and irredundant. *)
 (* Redundancy yields a warning; inexhaustiveness is an error. *)
@@ -911,7 +937,7 @@ structure MatchCheck (* : sig
         of SOME ps => let
              val msg = String.concatWith "," (List.map patToString ps)
              in
-               errRedundant err ("redundant match: " ^ msg)
+               errRedundant err ("^ redundant match: " ^ msg)
              end
 	 | NONE => ()       
     end
@@ -924,7 +950,7 @@ structure MatchCheck (* : sig
   fun checkExpInternal (err: err_stream, e: AST.exp) : unit = let
     fun exp (AST.LetExp (b, e)) = (binding b; exp e)
       | exp (AST.IfExp (e1, e2, e3, _)) = (exp e1; exp e2; exp e3)
-      | exp (AST.CaseExp (e, ms, _)) = (exp e; checkMatchList (err, ms))
+      | exp (c as AST.CaseExp (e, ms, _)) = (exp e; checkMatchList (err, ms))
       | exp (AST.PCaseExp (es, ms, _)) = (List.app exp es; checkPMatchList (err, ms))
       | exp (AST.HandleExp (e, ms, _)) = (exp e; checkHandleMatches (err, ms))
           (* note: handle match lists are checked for redundancy only *)

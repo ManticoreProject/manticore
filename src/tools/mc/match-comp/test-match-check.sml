@@ -347,6 +347,16 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
         in
 	  testExp false e
         end
+    | test 34 = let
+        val e = mkCase [AST.ConstPat u]
+        in
+	  testExp true e
+        end
+    | test 35 = let
+        val e = mkCase [AST.TuplePat []]
+        in
+          testExp true e
+        end
     | test n = raise Fail ("***** no such test: " ^ Int.toString n)
 
   fun testAll () = let
