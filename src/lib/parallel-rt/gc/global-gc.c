@@ -312,7 +312,15 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 	    *roots[i] = ForwardObjGlobal(vp, p);
 	}
     }
-
+	
+    /* process the proxy table */
+    for (int i=0; i < vp->proxyTableentries;i++) {
+	Value_t p = vp->proxyTable[i].proxyObj;
+	if (isFromSpacePtr(p)) {
+		vp->proxyTable[i].proxyObj = ForwardObjGlobal(vp, p);
+	}
+    }	
+	
     ScanVProcHeap (vp);
 
   /* scan to-space chunks */
