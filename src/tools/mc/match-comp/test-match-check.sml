@@ -64,7 +64,7 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
     val _ = println (patmat p)
     in
        println "\nTesting...";
-       MatchCheck.checkExp (Error.mkErrStream "/var/tmp/bogus-file", e);
+       MatchCheck.checkExpInternal (Error.mkErrStream "/var/tmp/bogus-file", e);
        println "done."
     end
 
@@ -80,7 +80,7 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
     fun pstos ps = String.concatWith "," (List.map MatchCheck.patToString ps)
     in
        println "\nTesting...";
-       MatchCheck.checkExp (Error.mkErrStream "/var/tmp/bogus-file", e);
+       MatchCheck.checkExpInternal (Error.mkErrStream "/var/tmp/bogus-file", e);
        println "Done."
     end
 
@@ -329,6 +329,31 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
     | test 31 = let
         val e = mkCase [AST.ConstPat (AST.LConst (Literal.String "foo", Basis.stringTy)),
 			AST.WildPat Basis.stringTy]
+        in
+          testExp true e
+        end
+    | test 32 = let
+        val tup = AST.TuplePat
+        val pt = AST.ConstPat tru
+	val pf = AST.ConstPat fls
+        val e = mkCase [tup [tup [pt, pt], tup [pt, pt]],
+			tup [tup [pt, pt], tup [pt, pf]],
+			tup [tup [pt, pt], tup [pf, pt]]]
+        in
+          testExp false e
+        end
+    | test 33 = let
+        val e = mkCase [AST.TuplePat [AST.ConstPat tru, AST.ConstPat tru]]
+        in
+	  testExp false e
+        end
+    | test 34 = let
+        val e = mkCase [AST.ConstPat u]
+        in
+	  testExp true e
+        end
+    | test 35 = let
+        val e = mkCase [AST.TuplePat []]
         in
           testExp true e
         end

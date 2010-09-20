@@ -14,28 +14,24 @@
 
 structure JFPTranslatePCase = struct
 
-  fun curry f = (fn x => fn y => f (x, y))
-  fun uncurry f = (fn (x, y) => f x y)
-  fun copies n k = List.tabulate (n, fn _ => k)
+(* utilities *)
+  val const   = (fn k => (fn _ => k))
+  val curry   = (fn f => (fn x => fn y => f (x, y)))
+  val uncurry = (fn f => (fn (x, y) => f x y))
+  val copies  = (fn n => (fn k => List.tabulate (n, const k)))
 
+(* module nicknames *)
   structure A = AST
   structure B = Basis
   structure R = Rope
   structure T = Types
   structure U = BasisUtil
 
-(* FIXME fill these in... *)
-  val dispatchV : A.var        = (* FIXME *) raise Fail "?"
-  val dispatchResTy : A.ty     = (* FIXME *) raise Fail "?"
-  val pcaseWrapperV : A.var    = (* FIXME *) raise Fail "?"
-  val pcaseWrapperArgTy : A.ty = (* FIXME *) raise Fail "?"
-  val pcaseWrapperResTy : A.ty = (* FIXME *) raise Fail "?"
-  val returnTy : A.ty          = (* FIXME *) raise Fail "?"
-  val exnReturnTy : A.ty       = (* FIXME *) raise Fail "?"
+(* freshAlpha : unit -> T.ty *)
+  fun freshAlpha () = T.VarTy (TyVar.new (Atom.atom "'a"))
 
-(* AST code to call dispatch. Appears in several places below. *)
-  val dispatchCall : A.exp = 
-    A.ApplyExp (A.VarExp (dispatchV, []), ASTUtil.unitExp, dispatchResTy)
+(* thunk : A.exp -> A.exp *)
+  fun thunk e = A.FunExp (Var.new ("u", Basis.unitTy), e, TypeOf.exp e)
 
 (* mkResPat : A.pat -> A.pat *)
 (* Given a pattern (p : t), produce the pattern (RES(p) : t result). *)
@@ -54,14 +50,14 @@ structure JFPTranslatePCase = struct
       AST.ConPat (conEXN, [ty], pat)
     end
 
-(* cancel : A.var -> A.exp *)
-(* spawn  : A.var * A.exp -> A.exp *)
   local
     val cCancel (* Cancel.cancel *) = U.cancelCancel ()
     val cSpawn  (* Cancel.spawn  *) = U.cancelSpawn ()
     fun v2e (v: A.var) : A.exp = A.VarExp (v, [])
   in
+  (* cancel : A.var -> A.exp *)
     fun cancel (c: A.var) : A.exp = A.ApplyExp (v2e cCancel, v2e c, B.unitTy)
+  (* spawn  : A.var * A.exp -> A.exp *)    
     fun spawn (c: A.var, f: A.exp) : A.exp = let
       val args = A.TupleExp [A.VarExp (c, []), f]
       in
@@ -70,8 +66,14 @@ structure JFPTranslatePCase = struct
   end (* local *)
 
 (* bitstrings *)
+(* bistrings are represented as lists of bools as long as possible; if they *)
+(*   are needed in generated code, they can be manifest as AST bitstrings via *)
+(*   the function bitstringToAST (below) *)
   type bitstring = bool list
 
+(* a pcase' wraps the components of a pcase, plus
+ * each pmatch is tagged with the corres. bitstring 
+ *)
   datatype pcase' 
     = PCase' of A.exp list * A.pmatch list * bitstring list * A.ty
 
@@ -96,11 +98,13 @@ structure JFPTranslatePCase = struct
     end
 
 (* bitstringToString *)
+(* compact 0 and 1 string representation of bitstrings *)
 (* ex: bitstringToString [true, false, true] --> "101" *)
   fun bitstringToString (bs: bitstring) : string = 
     String.implode (List.map (fn b => if b then #"1" else #"0") bs)
 
 (* bitstringCompare : bitstring -> order *)
+(* used to build red-black set implementation (see below) *)
   fun bitstringCompare (bs1: bitstring, bs2: bitstring) : order = let
     fun lp ([], []) = EQUAL
       | lp ([], _::_) = LESS
@@ -113,16 +117,16 @@ structure JFPTranslatePCase = struct
       lp (bs1, bs2)
     end       
 
+(* bitstringEq : bitstring * bitstring -> bool *)
+  fun bitstringEq (bs1: bitstring, bs2: bitstring) : bool = 
+    (bitstringCompare (bs1, bs2) = EQUAL)
+
 (* bitstring sets *)
   structure BitstringSet = 
     RedBlackSetFn (struct
 		     type ord_key = bitstring
 		     val compare  = bitstringCompare
 		   end)
-
-(* bitstringEq : bitstring * bitstring -> bool *)
-  fun bitstringEq (bs1: bitstring, bs2: bitstring) : bool = 
-    (bitstringCompare (bs1, bs2) = EQUAL)
 
 (* bitstringSetFromList *)
   fun bitstringSetFromList (bss: bitstring list) : BitstringSet.set =
@@ -178,6 +182,7 @@ structure JFPTranslatePCase = struct
     end
 
 (* next: set the kth bit to 1 *)
+(* pre: i nonnegative *)
   fun next (k: int, bs: bitstring) : bitstring = let
     fun lp (i, b::bs) = 
           if i > 0 then b::lp(i-1,bs)
@@ -185,7 +190,8 @@ structure JFPTranslatePCase = struct
 	  else raise Fail ("not enough bits (" ^ Int.toString i ^ ")")
       | lp (_, []) = raise Fail "not enough bits (empty)"
     in
-      lp (k, bs)
+      if k < 0 then raise Fail "next: negative int argument"
+      else lp (k, bs)
     end
 
 (* nextSet *)
@@ -235,12 +241,20 @@ structure JFPTranslatePCase = struct
   end (* local *)
 
 (* restrict: restrict the given list of ppats by given bitstring *)
-(* pre: length of both arguments is the same *)
-(* ex: restrict([p1,p2,?,p4],1011) = (SOME p1, _, SOME p4) *)
-  fun restrict (ps: AST.ppat list, bs: bitstring) : AST.ppat list = let
+(* pre: both arguments are the same length *)
+(* ex: restrict([p1,p2,?,p4],1011) = [SOME p1, _, SOME p4] *)
+  fun restrict (ps: AST.ppat list, bs: bitstring) : AST.pat list = let
+    val optSOME = U.optSOME ()
     fun lp ([], [], acc) = List.rev acc
       | lp (p::ps, false::bs, acc) = lp (ps, bs, acc)
-      | lp (p::ps, true::bs, acc) = lp (ps, bs, p::acc)
+      | lp (p::ps, true::bs, acc) = let
+          val q = (case p 
+		    of A.NDWildPat ty => A.WildPat (U.optTy ty)
+		     | A.HandlePat _ => raise Fail "HandlePat not supported"
+		     | A.Pat r => A.ConPat (optSOME, [TypeOf.pat r], r))
+          in
+            lp (ps, bs, q::acc)
+	  end
       | lp _ = raise Fail "restrict: ps and bs different lengths"
     in
       lp (ps, bs, [])
@@ -277,19 +291,23 @@ structure JFPTranslatePCase = struct
       lp (s, 0, [])
     end
 
-(* boundVars *)
-  fun boundVars (ps: AST.ppat list) : Var.Set.set = let
+  fun boundVars (ps: A.pat list) : Var.Set.set = let
     fun pat (AST.ConPat (_, _, p)) = pat p
       | pat (AST.TuplePat ps) = List.concat (List.map pat ps)
       | pat (AST.VarPat x) = [x]
       | pat (AST.WildPat _) = []
       | pat (AST.ConstPat _) = []
-    fun ppat (AST.NDWildPat _) = []
-      | ppat (AST.HandlePat _) = raise Fail "HandlePat not supported"
-      | ppat (AST.Pat p) = pat p
     fun addList' (x, s) = Var.Set.addList (s, x)
     in
-      List.foldl addList' Var.Set.empty (List.map ppat ps)
+      List.foldl addList' Var.Set.empty (List.map pat ps)
+    end
+
+  fun boundVarsP (ps: AST.ppat list) : Var.Set.set = let
+    fun ppat (AST.NDWildPat _) = Var.Set.empty
+      | ppat (AST.HandlePat _) = raise Fail "HandlePat not supported"
+      | ppat (AST.Pat p) = boundVars [p]
+    in
+      List.foldl Var.Set.union Var.Set.empty (List.map ppat ps)
     end
 
 (* don'tCare *)
@@ -493,11 +511,11 @@ structure JFPTranslatePCase = struct
 	  | _  => A.TupleExp (List.map bang rs)
         (* end case *))            
     fun pats (ps: A.ppat list) : A.pat = let
-      fun pat (A.NDWildPat ty) = A.WildPat ty
-	| pat (A.HandlePat _) = raise Fail "not supported: HandlePat"
-	| pat (A.Pat p) = p
+      fun ppat (A.NDWildPat ty) = A.WildPat ty
+	| ppat (A.HandlePat _) = raise Fail "not supported: HandlePat"
+	| ppat (A.Pat p) = p
       in
-        A.TuplePat (List.map pat ps)
+        A.TuplePat (List.map ppat ps)
       end
   in 
     fun mkState (s_i: bitstring, rs: A.var list, acts: A.var list, resume: A.var, c: pcase') 
@@ -519,9 +537,8 @@ structure JFPTranslatePCase = struct
             end
 	| lp ([], []) = raise Fail "no rules at all? shouldn't happen."
 	| lp ((j,ps)::t, acc) = let
-            val xs = Var.Set.listItems (boundVars ps)
-	    val arg = (* FIXME - type list for VarExp *)
-              A.TupleExp (List.map (fn x => A.VarExp (x, raise Fail "what goes here?")) xs) 
+            val xs = Var.Set.listItems (boundVarsP ps)
+	    val arg = A.TupleExp (List.map (fn x => A.VarExp (x, [])) xs) 
 	    val act_j = List.nth (acts, j-1) (* j is 1-based (see Fig. 17), nth is 0-based *)
 	    val app = A.ApplyExp (A.VarExp (act_j, []), arg, ty)
             val m = A.PatMatch (pats ps, app)
@@ -644,24 +661,23 @@ structure JFPTranslatePCase = struct
       end
   end
 
-  fun thunk e = AST.FunExp (Var.new ("u", Basis.unitTy), e, TypeOf.exp e)
-
 (* (9) *)
 (* cs = list of cancel vars  *)
 (* ts = list of trans_k vars *)
 (* es = list of expressions  *)
-  fun mkBody (cs: A.var list, ts: A.var list, es: A.exp list, actExnV: A.var) 
+  fun mkBody (cs: A.var list, ts: A.var list, es: A.exp list, 
+	      resTy: T.ty, dispatchCall: A.exp, actExnV: A.var) 
       : A.exp = let
     fun lp ([], [], [], b) = b
       | lp (c::cs, t::ts, e::es, b) = let
+          val eTy = TypeOf.exp e
           val exV = Var.new ("ex", Basis.exnTy)
           val m = AST.PatMatch (AST.VarPat exV,
 				AST.ApplyExp (AST.VarExp (actExnV, []),
 					      AST.VarExp (exV, []),
-					      TypeOf.exp e))
+					      eTy))
           val h = AST.HandleExp (e, [m], TypeOf.exp e)
-(* FIXME *)
-          val f = thunk (AST.ApplyExp (AST.VarExp (t, []), h, raise Fail "ty?"))
+          val f = thunk (AST.ApplyExp (AST.VarExp (t, []), h, resTy))
           val s = spawn (c, f)
           in
             A.SeqExp (s, lp (cs, ts, es, b))
@@ -681,6 +697,14 @@ structure JFPTranslatePCase = struct
         A.ApplyExp (A.VarExp (x, [t]), v, U.mvarTy t)
       end
     fun pcase (es: A.exp list, ms: A.pmatch list, ty: A.ty) : A.exp = let
+      val dispatchResTy = freshAlpha ()
+      val returnTy = T.FunTy (ty, freshAlpha ())
+      val exnReturnTy = T.FunTy (Basis.exnTy, T.VarTy (TyVar.new (Atom.atom "'a")))
+      val pcaseWrapperArgTy = T.FunTy (T.TupleTy [returnTy, exnReturnTy], freshAlpha ())
+      val pcaseWrapperResTy = ty
+      val dispatchV = (* FIXME *) raise Fail "?"
+      val pcaseWrapperV = (* FIXME *) raise Fail "?"
+      val dispatchCall = A.ApplyExp (A.VarExp (dispatchV, []), ASTUtil.unitExp, dispatchResTy)
       val c' = mkBitstrings (es, ms, ty)
       val len = List.length es
       val returnV = Var.new ("return", returnTy)
@@ -702,7 +726,7 @@ structure JFPTranslatePCase = struct
           allTrans (stateV, ers, stFuns, ty)
         end
       val (actExnLam, actExnV) = mkActExn (stV, reraiseV, ty)
-      val spawnAndDispatch = mkBody (cVs, transVs, es, actExnV) (* (9) *)
+      val spawnAndDispatch = mkBody (cVs, transVs, es, ty, dispatchCall, actExnV) (* (9) *)
       val funArgV = Var.new ("arg", T.TupleTy [returnTy, exnReturnTy])
       val deconstructArg = A.ValBind (A.TuplePat [A.VarPat returnV, A.VarPat exnReturnV],
 				      A.VarExp (funArgV, []))

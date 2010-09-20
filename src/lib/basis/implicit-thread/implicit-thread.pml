@@ -159,7 +159,7 @@ structure ImplicitThread (* :
 	  let ite : FLS.ite = FLS.@get-ite ( / exh)
           let stk : List.list = SELECT(ITE_STACK_OFF, ite)
 	  let ite' : FLS.ite = FLS.@ite (stk, Option.SOME(c) / exh)
-	  let k : PT.fiber = Cancelation.@wrap (c, k / exh)
+	  let k : PT.fiber = Cancelation.@wrap-fiber (c, k / exh)
 	  return (alloc (k, ite'))
 	;
 
@@ -171,7 +171,7 @@ structure ImplicitThread (* :
 			      of Option.NONE => 
 				 return (k)
 			       | Option.SOME(c : Cancelation.cancelable) => 
-				 let k : PT.fiber = Cancelation.@wrap (c, k / exh)
+				 let k : PT.fiber = Cancelation.@wrap-fiber (c, k / exh)
 				 return (k)
 			     end
 	  return (alloc (k, ite))
