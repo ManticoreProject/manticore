@@ -130,6 +130,7 @@ structure ASTUtil : sig
     val trueExp    = A.ConstExp trueConst
     val falseExp   = A.ConstExp falseConst
 
+(* FIXME: Should this be the empty tuple instead? *)
     val unitConst = A.LConst (Literal.unitLit, Basis.unitTy)
     val unitExp   = A.ConstExp unitConst
 
