@@ -55,7 +55,8 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
 					     SOME (pairTy (Basis.intTy, intStackTy)))
 
   fun matchesOf (AST.CaseExp (_, ms, _)) = ms
-    | matchesOf _ = raise Fail "todo"
+    | matchesOf (AST.LetExp (AST.FunBind [AST.FB (_, _, b)], _)) = matchesOf b
+    | matchesOf _ = raise Fail "todo: matchesOf, a hacked-together convenience function in the test framework"
 
   fun println s = (TextIO.print s; TextIO.print "\n")
 
@@ -356,6 +357,28 @@ fun pairTy (t, u) = Types.TupleTy [t, u]
         val e = mkCase [AST.TuplePat []]
         in
           testExp true e
+        end
+    | test 36 = let
+        (* simulating the regression test dt-bug.pml, which match check doesn't catch *)
+	val intPair = pairTy (Basis.intTy, Basis.intTy)
+        val sphereCon = TyCon.newDataTyc (Atom.atom "sphere", [])
+        val sphereTy = Types.ConTy ([], sphereCon)
+	val sSphere = DataCon.new sphereCon (Atom.atom "Sphere", 
+					     SOME intPair)
+	val sPt1 = DataCon.new sphereCon (Atom.atom "Pt1", 
+					  SOME Basis.intTy)
+	val sTheVoid = DataCon.new sphereCon (Atom.atom "TheVoid",
+					      NONE)
+        val f = Var.new ("f", Types.FunTy (sphereTy, Basis.intTy))
+	val x = Var.new ("s", sphereTy)
+	val p = AST.ConPat (sSphere, [], AST.WildPat intPair)
+        val b = AST.CaseExp (AST.VarExp (x, []),
+			     [AST.PatMatch (p, ASTUtil.mkInt 0)],
+			     Basis.intTy)
+	val fbind = AST.FunBind [AST.FB (f, x, b)]
+	val e = AST.LetExp (fbind, ASTUtil.mkInt 0)				     
+        in
+          testExp false e
         end
     | test n = raise Fail ("***** no such test: " ^ Int.toString n)
 
