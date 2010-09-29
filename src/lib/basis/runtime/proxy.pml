@@ -83,7 +83,7 @@ structure Proxy (* :
 	let myAddr : addr(any) = vpload(PROXYTABLE,host_vproc)
 	(* get next free entry in the proxy table *)
 	let pos : int = vpload (PROXYTABLEENTRIES,host_vproc)
-	let myProxy : proxy = ccall AllocProxy (host_vproc, 2, host_vproc, pos)
+	let myProxy : proxy = alloc_special (host_vproc, pos)
 	(* store the proxy and continuation at the offside position *)
 	do AdrStore(AdrAddI32(myAddr,TABLE_POS(pos)),myProxy)
 	do AdrStore(AdrAddI32(myAddr,I32Add(TABLE_POS(pos),TABLE_ENTRY_OFFB)),myFiber)
