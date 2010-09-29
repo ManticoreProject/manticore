@@ -362,6 +362,7 @@ structure CFACFG : sig
                   | doExp (CFG.E_Update(i, y, z)) = (escape z; addInfo(y, update(i, y, getValue z)))
                   | doExp (CFG.E_AddrOf(x, i, y)) = (addInfo(x, TOP); addInfo(y, update(i, y, TOP)))
                   | doExp (CFG.E_Alloc(x, _, xs)) = addInfo(x, TUPLE(List.map getValue xs))
+                  | doExp (CFG.E_AllocSpecial(x, _, xs)) = addInfo(x, TUPLE(List.map getValue xs))
                   | doExp (CFG.E_GAlloc(x, _, xs)) = addInfo(x, TUPLE(List.map getValue xs))
                   | doExp (CFG.E_Promote(x, y)) = addInfo(x, getValue y)
                   | doExp (CFG.E_Prim0 prim) =

@@ -130,6 +130,11 @@ structure PrintBOM : sig
 		in
 		  pr(concat["alloc ", mut, "("]); prList' varUseToString ys; pr ")"
 		end
+	    | prRHS (B.E_AllocSpecial(ty, ys)) = let
+		val mut = (case ty of BOMTy.T_Tuple(true, _) => "!" | _ => "")
+		in
+		  pr(concat["alloc_special ", mut, "("]); prList' varUseToString ys; pr ")"
+		end
 	    | prRHS (B.E_Promote y) = (pr "promote "; pr (varUseToString y))
 	    | prRHS (B.E_Prim p) = pr (PrimUtil.fmt varUseToString p)
 	    | prRHS (B.E_DCon(dc, args)) = (

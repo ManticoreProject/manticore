@@ -71,6 +71,7 @@ structure CFGUtil : sig
       | rhsOfExp (E_Update(_, y, z)) = [y, z]
       | rhsOfExp (E_AddrOf(_, _, y)) = [y]
       | rhsOfExp (E_Alloc(_, _, args)) = args
+      | rhsOfExp (E_AllocSpecial(_, _, args)) = args
       | rhsOfExp (E_GAlloc(_, _, args)) = args
       | rhsOfExp (E_Promote(_, y)) = [y]
       | rhsOfExp (E_Prim0 p) = PrimUtil.varsOf p
@@ -152,6 +153,7 @@ structure CFGUtil : sig
 	      | E_Update(i, v1, v2) => CFG.mkUpdate (i, substVar v1, substVar v2)
 	      | E_AddrOf(lhs, i, rhs) => CFG.mkAddrOf (lhs, i, substVar rhs)
 	      | E_Alloc(lhs, ty, rhs) => CFG.mkAlloc (lhs, ty, List.map substVar rhs)
+	      | E_AllocSpecial(lhs, ty, rhs) => CFG.mkAllocSpecial (lhs, ty, List.map substVar rhs)
 	      | E_GAlloc(lhs, ty, rhs) => CFG.mkGAlloc (lhs, ty, List.map substVar rhs)
 	      | E_Promote(lhs, rhs) => CFG.mkPromote (lhs, substVar rhs)
 	      | E_Prim0 prim => CFG.mkPrim0 (PrimUtil.map substVar prim)

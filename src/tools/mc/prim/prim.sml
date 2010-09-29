@@ -1,4 +1,4 @@
-	(* prim.sml
+(* prim.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -97,9 +97,6 @@ structure Prim =
       | FenceRead			(* memory fence for reads *)
       | FenceWrite			(* memory fence for writes *)
       | FenceRW				(* memory fence for both reads and writes *)
-	  (* alloc function for new data types *)
-	  | AllocSpecial of 'var * 'var
-
 
   (* primitive conditional tests *)
     datatype 'var cond
@@ -141,5 +138,5 @@ structure Prim =
       | BCAS of 'var * 'var * 'var	(* compare and swap; returns bool *)
       | I32isSet of 'var		(* 32-bit test (for short-circuiting I32TAS) *)
       | I32TAS of 'var			(* 32-bit test and set *)
-	
+
   end

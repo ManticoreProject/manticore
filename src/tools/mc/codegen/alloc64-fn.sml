@@ -121,19 +121,19 @@ functor Alloc64Fn (
 	  end (* allocRawObj *)
 	  
 	  (* alloc function for the special object with fixed header/table entry *)
-	  fun allocSpecialObj tag offAp args = let
-	  val {i=nWords, stms, totalSize, ptrMask} = 
-		List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=""} args
+    fun allocSpecialObj tag offAp args = let
+	val {i=nWords, stms, totalSize, ptrMask} = 
+	    List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=""} args
 	(* create the mixed-object header word *)
-      val id = tag
-      val hdrWord = W.toLargeInt (
-		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
-		  W.<< (W.fromInt id, 0w1)), 0w1) )
-	  in	  
-	    if ((IntInf.fromInt totalSize) > Spec.ABI.maxObjectSzB)
-	      then raise Fail "object size too large"
-	      else (totalSize, hdrWord, stms)
-	  end (* allocSpecialObj *)
+        val id = tag
+        val hdrWord = W.toLargeInt (
+		      W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+		                    W.<< (W.fromInt id, 0w1)), 0w1) )
+    in	  
+	if ((IntInf.fromInt totalSize) > Spec.ABI.maxObjectSzB)
+	then raise Fail "object size too large"
+	else (totalSize, hdrWord, stms)
+    end (* allocSpecialObj *)
 	  
 	  
 	  
@@ -247,6 +247,9 @@ functor Alloc64Fn (
 	  in
 	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: stms @ [bumpAp] }
 	  end
+
+    fun genGlobalAllocSpecial {tys=[], ...} = raise Fail "AllocSpecial[]"
+      | genGlobalAllocSpecial {tag, tys, args} = raise Fail "TODO: AllocSpecial"
 
 (* FIXME: this value should come from the runtime constants *)
     val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)

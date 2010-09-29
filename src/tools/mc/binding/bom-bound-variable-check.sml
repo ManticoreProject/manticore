@@ -263,6 +263,7 @@ structure BOMBoundVariableCheck :> sig
 		end
 	    | PT1.SE_Var v => PT2.SE_Var (findBOMVarQid (loc, env, v))
 	    | PT1.SE_Alloc sexps => PT2.SE_Alloc (chkSexps loc (sexps, env))
+	    | PT1.SE_AllocSpecial sexps => PT2.SE_AllocSpecial (chkSexps loc (sexps, env))
 	    | PT1.SE_Unwrap sexp => PT2.SE_Unwrap (chkSexp loc (sexp, env))
 	    | PT1.SE_Wrap sexp => PT2.SE_Wrap (chkSexp loc (sexp, env))
 	    | PT1.SE_Select (i, sexp) => let

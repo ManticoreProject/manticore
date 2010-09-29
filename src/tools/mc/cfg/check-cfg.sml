@@ -299,6 +299,7 @@ structure CheckCFG : sig
 			    ]
 		      (* end case *);
 		      addVar (env, x))
+                  | CFG.E_AllocSpecial(x, ty, ys) => (addVar (env, x))
                   | CFG.E_GAlloc(x, ty, ys) => (
 		      chkVars (env, ys, "GAlloc");
 		      case ty

@@ -91,6 +91,7 @@
       = SE_Mark of simple_exp mark
       | SE_Var of var_use
       | SE_Alloc of simple_exp list
+      | SE_AllocSpecial of simple_exp list
       | SE_Wrap of simple_exp				(* wrap raw value *)
       | SE_Select of (int * simple_exp)			(* select i'th field (zero-based) *)
       | SE_Unwrap of simple_exp				(* unwrap value *)
@@ -152,6 +153,7 @@
 	   of SE_Mark _ => "SE_Mark"
 	    | SE_Var _ => "SE_Var"
 	    | SE_Alloc _ => "SE_Alloc"
+	    | SE_AllocSpecial _ => "SE_AllocSpecial"
 	    | SE_Wrap _ => "SE_Wrap"
 	    | SE_Select _ => "SE_Select"
 	    | SE_Unwrap _ => "SE_Unwrap"

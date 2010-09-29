@@ -166,6 +166,7 @@ structure CopyPropagation : sig
           | isClosedRHS (C.Update (_, v1, v2), env) = checkMembership (env, v1) andalso checkMembership (env, v2)
           | isClosedRHS (C.AddrOf (_, v), env) = checkMembership (env, v)
           | isClosedRHS (C.Alloc (_, vars), env) = checkList (env, vars)
+          | isClosedRHS (C.AllocSpecial (_, vars), env) = checkList (env, vars)
           | isClosedRHS (C.Promote (v), env) = checkMembership (env, v)
           | isClosedRHS (C.Prim (prim), env) = checkList (env, PrimUtil.varsOf prim)
           | isClosedRHS (C.CCall (v, vars), env) = checkMembership (env, v) andalso checkList (env, vars)

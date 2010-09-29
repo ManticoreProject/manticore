@@ -83,6 +83,7 @@ structure BOMUsedVars : sig
 	   of PT.SE_Mark{tree, span} => usedOfSexp tree
 	    | PT.SE_Var v => var v
 	    | PT.SE_Alloc sexps => usedOfSexps sexps
+	    | PT.SE_AllocSpecial sexps => usedOfSexps sexps
 	    | PT.SE_Unwrap sexp => usedOfSexp sexp
 	    | PT.SE_Wrap sexp => usedOfSexp sexp
 	    | PT.SE_Select(i, sexp) => usedOfSexp sexp

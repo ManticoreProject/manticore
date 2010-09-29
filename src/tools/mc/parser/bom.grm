@@ -13,6 +13,7 @@
 %tokens
 	: KW_addr	("addr")
 	| KW_alloc	("alloc")
+        | KW_alloc_special ("alloc_special")
 (*	| KW_and	("and")			*)
 	| KW_any	("any")
 	| KW_apply	("apply")
@@ -319,6 +320,7 @@ RHS
 
 NonSelectExp
 	: "alloc" "(" Args ")"		=> (markBOMSE(FULL_SPAN, BPT.SE_Alloc Args))
+	| "alloc_special" "(" Args ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_AllocSpecial Args))
 	| "wrap" "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_Wrap SimpleExp))
 	| "&" POSINT "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_AddrOf(Int.fromLarge POSINT, SimpleExp)))
 	| "unwrap" "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_Unwrap SimpleExp))

@@ -582,6 +582,12 @@ structure FlatClosureWithCFA : sig
 (* FIXME: should the argument be TOP here? *)
                         ([CFG.mkAlloc(x, cvtTy(ty, CFA.TOP), ys)] @ binds, env)
                       end
+                  | ((env, [x]), CPS.AllocSpecial(ty, ys)) => let
+                      val (binds, ys) = lookupVars (env, ys)
+                      in
+(* FIXME: should the argument be TOP here? *)
+                        ([CFG.mkAllocSpecial(x, cvtTy(ty, CFA.TOP), ys)] @ binds, env)
+                      end
                   | ((env, [x]), CPS.Promote y) => let
                       val (binds, y) = lookupVar (env, y)
                       in

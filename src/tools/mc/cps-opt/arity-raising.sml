@@ -990,6 +990,7 @@ structure ArityRaising : sig
 		| C.Update (_, v, x) => (markUseful v; markUseful x)
 		| C.AddrOf (_, v) => markUseful v
 		| C.Alloc (_, vars) => List.app markUseful vars
+		| C.AllocSpecial (_, vars) => List.app markUseful vars
 		| C.Promote (v) => markUseful v
 		| C.Prim p => PrimUtil.app markUseful p
 		| C.CCall (f, args) => (markUseful f ; List.app markUseful args)
@@ -1289,6 +1290,7 @@ structure ArityRaising : sig
                 SOME (CPSTy.T_Tuple(b, ListPair.map chooseType (tys, vars)))
             end
           | typeOfRHS(C.Alloc (_, vars)) = raise Fail "encountered an alloc that didn't originally have a tuple type."
+          | typeOfRHS(C.AllocSpecial _) = NONE
           | typeOfRHS(C.Promote (v)) = SOME (CV.typeOf v)
           | typeOfRHS(C.Prim (prim)) = NONE (* do I need to do this one? *)
           | typeOfRHS(C.CCall (cfun, _)) = NONE
@@ -1685,6 +1687,7 @@ structure ArityRaising : sig
 	      | C.Update (_, v, x) => (Census.decUseCnt v; Census.decUseCnt x)
 	      | C.AddrOf (_, v) => Census.decUseCnt v
 	      | C.Alloc (_, vars) => List.app Census.decUseCnt vars
+	      | C.AllocSpecial (_, vars) => List.app Census.decUseCnt vars
 	      | C.Promote (v) => Census.decUseCnt v
 	      | C.Prim p => PrimUtil.app Census.decUseCnt p
 	      | C.CCall (f, args) => (Census.decUseCnt f ; List.app Census.decUseCnt args)

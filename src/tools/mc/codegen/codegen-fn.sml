@@ -286,6 +286,17 @@ if MChkTy.check stm
 			emitStms stms;
 			bindExp ([lhs], [ptr], ["alloc ", v2s lhs, " = ", String.concat (List.map v2s vs)])
 		      end
+		  | gen (M.E_AllocSpecial(lhs, Ty.T_Tuple(isMut, tys), vs)) = let 
+		      val {ptr, stms} = BE.Alloc.genGlobalAllocSpecial {
+                              tag = 0, (* TODO *)
+			      tys = tys,
+                              args = List.map getDefOf vs
+			    }
+		      in 
+			emitStms (annotateStms (
+			  stms, String.concat("alloc_special " :: v2s lhs :: " = " :: List.map v2s vs)));
+			bindExp ([lhs], [ptr], [])
+		      end
 		  | gen (M.E_GAlloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let 
 		      val {ptr, stms} = BE.Alloc.genGlobalAlloc {
 			      isMut = isMut,

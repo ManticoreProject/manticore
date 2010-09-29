@@ -175,12 +175,6 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      BE.VarDef.flushLoads varDefTbl
 		      @ stms
 		    end
-		(*
-		* | P.AllocSpecial(tag, args) => BE.Alloc.genGlobalAllocSpecial {
-		*	      tag = tag,
-		*	      args = args
-		*	    }
-		*)
 		| _ => raise Fail(concat[
 		       "genPrim0(", PrimUtil.fmt CFG.Var.toString p, ")"
 		     ])

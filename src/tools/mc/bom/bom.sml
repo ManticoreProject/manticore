@@ -35,7 +35,8 @@ structure BOM =
       | E_Select of (int * var)
       | E_Update of (int * var * var)		(* update i'th field (zero-based) *)
       | E_AddrOf of (int * var)			(* return address of i'th field (zero-based) *)
-      | E_Alloc of (ty * var list)		(* allocation in local heap *)
+      | E_Alloc of (ty * var list)       	(* allocation in local heap *)
+      | E_AllocSpecial of (ty * var list)      	(* special object allocation in local heap *)
       | E_Promote of var			(* promotion of object to global heap *)
       | E_Prim of prim
       | E_DCon of (data_con * var list)		(* data constructor; the argument list is empty for *)

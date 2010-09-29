@@ -149,6 +149,9 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		        val lab' = CFG.Label.new(
                                    CFG.Label.nameOf lab ^ checkLabel,
 			           CFGTy.T_Block{args = List.map CFG.Var.typeOf freeVars})
+                        val _ = if Controls.get CFGOptControls.debug
+                                then print (concat ["Check block: ", CFG.Label.toString lab', " from: ", CFG.Label.toString lab, "\n"])
+                                else ()
                         val heapBodyBlock = CFG.mkBlock(lab, renamedArgs,
                                                         [], CFG.HeapCheck{
 				                            hck = hcKind,

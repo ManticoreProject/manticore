@@ -30,6 +30,7 @@ structure CPSUtil : sig
 	    | C.Update(i, x, y) => (f x; f y)
 	    | C.AddrOf(i, x) => f x
 	    | C.Alloc(_, xs) => List.app f xs
+	    | C.AllocSpecial(_, xs) => List.app f xs
 	    | C.Promote x => f x
 	    | C.Prim p => PrimUtil.app f p
 	    | C.CCall(cf, xs) => (f cf; List.app f xs)
@@ -47,6 +48,7 @@ structure CPSUtil : sig
 	    | C.Update(i, x, y) => C.Update(i, f x, f y)
 	    | C.AddrOf(i, x) => C.AddrOf(i, f x)
 	    | C.Alloc(ty, xs) => C.Alloc(ty, List.map f xs)
+	    | C.AllocSpecial(ty, xs) => C.AllocSpecial(ty, List.map f xs)
 	    | C.Promote x => C.Promote(f x)
 	    | C.Prim p => C.Prim(PrimUtil.map f p)
 	    | C.CCall(cf, xs) => C.CCall(f cf, List.map f xs)
@@ -64,6 +66,7 @@ structure CPSUtil : sig
 	    | C.Update(i, x, y) => [x, y]
 	    | C.AddrOf(i, x) => [x]
 	    | C.Alloc(_, xs) => xs
+	    | C.AllocSpecial(_, xs) => xs
 	    | C.Promote x => [x]
 	    | C.Prim p => PrimUtil.varsOf p
 	    | C.CCall(cf, xs) => cf::xs
@@ -80,6 +83,7 @@ structure CPSUtil : sig
       | rhsToString (C.Update(i, x, y)) = concat["Update(", Int.toString i, ", ", v2s x,  ", ", v2s y, ")"]
       | rhsToString (C.AddrOf(i, x)) = concat["AddrOf(", Int.toString i, ", ", v2s x, ")"]
       | rhsToString (C.Alloc(ty, xs)) = concat["Alloc(", CPSTyUtil.toString ty, ", ", vl2s xs, ")"]
+      | rhsToString (C.AllocSpecial(ty, xs)) = concat["AllocSpecial(", CPSTyUtil.toString ty, ", ", vl2s xs, ")"]
       | rhsToString (C.Promote x) = concat["Promote(", v2s x, ")"]
       | rhsToString (C.Prim p) = p2s p
       | rhsToString (C.CCall(cf, xs)) = concat["CCall(", v2s cf, ", [", vl2s xs, "])"]
