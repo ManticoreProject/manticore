@@ -425,6 +425,13 @@ structure CheckBOM : sig
                         else (error  ["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
 			      cerror ["  expected ", t2s allocTy, "\n"];
 			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
+		  | ([ty], B.E_AllocSpecial(allocTy, xs)) => (
+                      chkVars(xs, "AllocSpecial");
+                      if BTU.match (allocTy, ty)
+			then ()
+			else (error  ["type mismatch in: ", vl2s lhs, " = AllocSpecial ", vl2s xs, "\n"];
+			      cerror ["  lhs type ", t2s ty, "\n"];
+			      cerror ["  rhs type ", t2s allocTy, "\n"]))
 		  | ([ty], B.E_Promote y) => (
 		      chkVar (y, "Promote");
 		      if BTU.equal(ty, BV.typeOf y) then ()

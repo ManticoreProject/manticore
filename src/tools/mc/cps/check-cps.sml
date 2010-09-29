@@ -285,14 +285,7 @@ structure CheckCPS : sig
 			      cerror ["  lhs type ", t2s ty, "\n"];
 			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
 		  | ([ty], C.AllocSpecial(ty', xs)) => (
-                      chkVars(env, xs, "AllocSpecial");
-(* FIXME: check ty' too *)
-                      if (CTU.match(CTy.T_Tuple(true, typesOf xs), ty))
-                        orelse (CTU.match(CTy.T_Tuple(false, typesOf xs), ty))
-                        then ()
-                        else (error  ["type mismatch in AllocSpecial: ", vl2s lhs, " = ", vl2s xs, "\n"];
-			      cerror ["  lhs type ", t2s ty, "\n"];
-			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
+                      chkVars(env, xs, "AllocSpecial"))
 		  | ([ty], C.Promote x) => (
                       chkVar(env, x, "Promote");
 		      if (CTU.soundMatch(CV.typeOf x, ty))
