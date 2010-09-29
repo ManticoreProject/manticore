@@ -38,7 +38,6 @@ signature ALLOC =
 	  } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 	  
     val genGlobalAllocSpecial : {
-            tag : int,
 	    tys : CFG.ty list,
 	    args : MTy.mlrisc_tree list
           } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}

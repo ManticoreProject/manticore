@@ -249,7 +249,7 @@ functor Alloc64Fn (
 	  end
 
     fun genGlobalAllocSpecial {tys=[], ...} = raise Fail "AllocSpecial[]"
-      | genGlobalAllocSpecial {tag, tys, args} = raise Fail "TODO: AllocSpecial"
+      | genGlobalAllocSpecial {tys, args} = raise Fail "TODO: AllocSpecial"
 
 (* FIXME: this value should come from the runtime constants *)
     val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)

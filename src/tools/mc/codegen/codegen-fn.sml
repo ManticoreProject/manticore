@@ -288,7 +288,6 @@ if MChkTy.check stm
 		      end
 		  | gen (M.E_AllocSpecial(lhs, Ty.T_Tuple(_, tys), vs)) = let
 		      val {ptr, stms} = BE.Alloc.genGlobalAllocSpecial {
-                              tag = 0, (* TODO *)
 			      tys = tys,
                               args = List.map getDefOf vs
 			    }
