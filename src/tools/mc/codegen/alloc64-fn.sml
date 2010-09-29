@@ -119,6 +119,27 @@ functor Alloc64Fn (
 	  in
 	    (totalSize, hdrWord, stms)
 	  end (* allocRawObj *)
+	  
+	  (* alloc function for the special object with fixed header/table entry *)
+	  fun allocSpecialObj tag offAp args = let
+	  val {i=nWords, stms, totalSize, ptrMask} = 
+		List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=""} args
+	(* create the mixed-object header word *)
+      val id = tag
+      val hdrWord = W.toLargeInt (
+		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+		  W.<< (W.fromInt id, 0w1)), 0w1) )
+	  in	  
+	    if ((IntInf.fromInt totalSize) > Spec.ABI.maxObjectSzB)
+	      then raise Fail "object size too large"
+	      else (totalSize, hdrWord, stms)
+	  end (* allocSpecialObj *)
+	  
+	  
+	  
+
+	  
+	  
 
     fun offAp i = T.ADD(MTy.wordTy, T.REG(MTy.wordTy, Regs.apReg), i)
 

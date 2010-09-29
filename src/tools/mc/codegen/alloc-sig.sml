@@ -36,6 +36,9 @@ signature ALLOC =
 	    tys : CFG.ty list,
 	    args : MTy.mlrisc_tree list
 	  } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
+	  
+	  (* val genGlobalAllocSpecial : {tag : int, args : (CFGTy.ty * MTy.mlrisc_tree) list} -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
+	*)
 
   (* heap limit check.  evaluates to true when the heap contains sufficient
    * space for the given size.
