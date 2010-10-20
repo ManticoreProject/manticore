@@ -13,6 +13,10 @@
  * variable bound to a value A from being replaced with a call to the known function
  * in an environment where the variable is bound to a value B.
  *
+ * DISABLED (larsberg): The hoisting feature does not properly handle some cases 
+ * where nested functions both get hoisted to different levels. This whole process 
+ * needs to be rethought.
+ * 
  * This pass also performs a hoisting of function definitions as high as they can
  * safely go. This transformation is performed in order to open up more copy-prop
  * opportunities, as we have a lot of code of the form:
@@ -250,7 +254,7 @@ structure CopyPropagation : sig
                                                   (VMap.filter
                                                        (fn a => (CV.compare (a,f')=EQUAL)) map))
                         fun wrapFun ((p as C.FB{f,...})::preds, wrapper, env, map) =
-                            if isClosed (p, env) andalso not(VSet.member (env, f))
+                            if false (* isClosed (p, env) andalso not(VSet.member (env, f))*)
                             then let
                                     val (l as C.FB{rets,...}, env, map) = copyPropagateLambda (p, env, map)
                                     val _ = if !propagationDebug
