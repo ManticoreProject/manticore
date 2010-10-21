@@ -49,9 +49,12 @@ STATIC_INLINE Addr_t SetLimitPtr (VProc_t *vp, Addr_t newLimitPtr)
 }
 
 /* return true of the given address is within the given vproc heap */
+/* TODO: the check for heapBase is because there's a heapBase sneaking
+   into a data type. We need to find out what and why, then remove
+   this extra check. */
 STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
 {
-    return (heapBase == (p & ~VP_HEAP_MASK));
+    return ((heapBase == (p & ~VP_HEAP_MASK)) && !(heapBase==p));
 }
 
 
