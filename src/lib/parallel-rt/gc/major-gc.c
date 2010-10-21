@@ -307,10 +307,7 @@ static void ScanGlobalToSpace (
 			assert (isRawHdr(hdr));
 			scanPtr += GetLength(hdr);
 		}else {
-			
-			table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
-			
-			scanPtr += GetLength(hdr);
+			scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
 		}
 			
 
