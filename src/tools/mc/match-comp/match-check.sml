@@ -42,8 +42,8 @@
 (* FIXME: Keep variables around in patmats for better error messages.
  *)
 
-(* FIXME: Some bugs pertaining to MetaTy types.
- * See regression-tests/goals/basics/quickhull.pml for an example.
+(* FIXME: There are some bugs pertaining to MetaTy types, which I hadn't accounted for.
+ * Try compiling regression-tests/goals/basics/quickhull.pml for an example.
  *)
 
 (* FIXME
@@ -51,10 +51,11 @@
  * Make sure I can handle this everywhere.
  *)
 
-(* TODO (maybe): HandlePats are currently not supported.
+(* FIXME Display infix constructors in infix in patterns.
  *)
 
-
+(* TODO (maybe): HandlePats are currently not supported.
+ *)
 
 (* FIXME (not a local problem): bogus locations for errors 
  *   (exists elsewhere too, e.g., match-compile).
