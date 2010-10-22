@@ -277,6 +277,7 @@ if MChkTy.check stm
 			bindExp ([lhs], [MTy.EXP(MTy.wordTy, addr)], ["addrof(", v2s v, "[", Int.toString i, "])"])
 		      end
 		  | gen (M.E_Alloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let
+                      val _ = if Controls.get CodegenControls.debug then print (concat["Alloc: ", v2s lhs]) else ()
 		      val {ptr, stms} = BE.Alloc.genAlloc {
 			      isMut = isMut,
 			      tys = tys,
@@ -287,6 +288,7 @@ if MChkTy.check stm
 			bindExp ([lhs], [ptr], ["alloc ", v2s lhs, " = ", String.concat (List.map v2s vs)])
 		      end
 		  | gen (M.E_GAlloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let 
+                      val _ = if Controls.get CodegenControls.debug then print (concat["GAlloc: ", v2s lhs]) else ()
 		      val {ptr, stms} = BE.Alloc.genGlobalAlloc {
 			      isMut = isMut,
 			      tys = tys,

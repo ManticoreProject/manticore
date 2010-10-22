@@ -434,6 +434,7 @@ functor HeapTransferFn (
      (* types, values, and temporary registers for the roots (order matters) *)
       val (rootTys, rootArgs, rootTemps) = loop (roots, [], [], [])
      (* allocate the roots *)
+      val _ = if Controls.get CodegenControls.debug then print ("Roots alloc: ") else ()
       val {ptr=rootPtr, stms=initRoots} = Alloc.genAlloc {
 	      isMut = false,
 	      tys = rootTys,

@@ -92,6 +92,7 @@ functor Alloc64Fn (
       val hdrWord = W.toLargeInt (
 		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
 		  W.<< (W.fromInt id, 0w1)), 0w1) )
+      val _ = if Controls.get CodegenControls.debug then print (concat[" mixed hdr: ", Int.toString id, "\n"]) else ()
 	  in	  
 	    if ((IntInf.fromInt totalSize) > Spec.ABI.maxObjectSzB)
 	      then raise Fail "object size too large"
@@ -105,6 +106,7 @@ functor Alloc64Fn (
 	  val hdrWord = W.toLargeInt (
 		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
 		  W.<< (W.fromInt id, 0w1)), 0w1) )
+          val _ = if Controls.get CodegenControls.debug then print (" vector\n") else ()
 	  in
 	    (totalSize, hdrWord, stms)
 	  end
@@ -116,6 +118,7 @@ functor Alloc64Fn (
 	  val hdrWord = W.toLargeInt (
 		  W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
 		  W.<< (W.fromInt id, 0w1)), 0w1) )
+          val _ = if Controls.get CodegenControls.debug then print (" raw\n") else ()
 	  in
 	    (totalSize, hdrWord, stms)
 	  end (* allocRawObj *)
