@@ -449,7 +449,9 @@ DEBUG*)
 				  ],
 				  B.mkIf(Prim.Equal(tag', tmp), sel(ys, 1), dflt))
 			      end
-			  | NONE => sel(ys, 1)
+			  | NONE => B.mkStmt(
+			      [argument'], B.E_Cast(BV.typeOf argument', argument),
+                              sel(ys, 1))
 			(* end case *))
 		    | B.ExnRep => raise Fail "exception constructor"
 		  (* end case *)
