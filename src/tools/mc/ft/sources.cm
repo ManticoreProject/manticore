@@ -9,6 +9,8 @@
 Library
 
   structure FTTypes
+  structure FTTypeUtil
+  structure TranslateTypesFT
 
 is
 
@@ -22,3 +24,4 @@ is
 
   ft-types.sml
   ft-type-util.sml
+  translate-types-ft.sml

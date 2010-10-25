@@ -20,7 +20,7 @@ structure FTTypeUtil = struct
 (* notArray : T.repr_ty -> bool *)
   fun notArray r =
     (case r
-       of T.R_ConTy _ => (* maybe *) raise Fail "todo"
+       of T.R_ConTy _ => (* TODO *) raise Fail "todo"
 	| _ => true)
 
 (* isLf : T.nt_ty -> bool *)
@@ -30,14 +30,15 @@ structure FTTypeUtil = struct
 (* see Definition 5.1 in supporting docs *)
   fun isFlat r =
     (case r
-       of T.R_ConTy ([], _) => true
-	| T.R_ConTy _ => raise Fail "todo" (* ? *)
+       of T.R_ConTy ([], _) => true (* nullary constructors are flat *)
+	| T.R_ConTy _ => raise Fail "todo" (* TODO *)
 	| T.R_FunTy (r1, r2) => isFlat r1 andalso isFlat r2
 	| T.R_TupleTy rs => List.all isFlat rs
 	| T.R_FlatArrayTy (r, n) =>
             isFlat r andalso
 	    notTuple r andalso
 	    notArray r andalso
-	    ifLf n)
+	    isLf n)
             
 end
+
