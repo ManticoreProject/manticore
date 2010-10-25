@@ -54,7 +54,7 @@ STATIC_INLINE Addr_t SetLimitPtr (VProc_t *vp, Addr_t newLimitPtr)
    this extra check. */
 STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
 {
-    return ((heapBase == (p & ~VP_HEAP_MASK)) && !(heapBase==p));
+    return (heapBase == (p & ~VP_HEAP_MASK));
 }
 
 

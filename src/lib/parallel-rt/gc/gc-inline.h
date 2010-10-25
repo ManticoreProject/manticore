@@ -100,7 +100,7 @@ STATIC_INLINE int GetRawSizeW (Word_t hdr)
 /* return true if the given address is within the given address range */
 STATIC_INLINE bool inAddrRange (Addr_t base, Addr_t szB, Addr_t p)
 {
-    return ((p - base) < szB);
+    return ((p - base) <= szB);
 }
 
 /*! \brief return the top of the used space in a memory chunk.
