@@ -43,7 +43,7 @@ structure EtaExpand : sig
                   help = "enable eta-expansion"
                 },
               Controls.control {
-                  ctl = expandFlg,
+                  ctl = etaDebug,
                   name = "eta-expand-debug",
                   pri = [0, 1],
                   obscurity = 0,
@@ -82,17 +82,19 @@ structure EtaExpand : sig
 		in
 		  C.mkFun(fbs, doExp(env, e))
 		end
-(* FIXME: we should generalize the representation to allow mutually recursive continuations! *)
-	    | C.Cont(fb, e) => let
-                  val (env, fbs) = doFB (env, fb)
-              in
-                  case fbs
-                   of [fb] => C.mkCont (fb, doExp (env, e))
-                    | stub::newBody::[] => C.mkCont (newBody,
-                                                     C.mkCont (stub,
-                                                               doExp (env, e)))
-                    | _ => raise Fail "Unexpected return from doFB"
-              end
+	    | C.Cont(fb, e) => (
+              if isRecursive fb
+              then C.mkCont (fb, doExp (env, e))
+              else let
+                      val (env, fbs) = doFB (env, fb)
+                  in
+                      case fbs
+                       of [fb] => C.mkCont (fb, doExp (env, e))
+                        | stub::newBody::[] => C.mkCont (newBody,
+                                                         C.mkCont (stub,
+                                                                   doExp (env, e)))
+                        | _ => raise Fail "Unexpected return from doFB"
+                  end)
 	    | C.If(x, e1, e2) => C.mkIf(x, doExp(env, e1), doExp(env, e2))
 	    | C.Switch(x, cases, dflt) => C.mkSwitch(
 		x,
@@ -101,7 +103,32 @@ structure EtaExpand : sig
 	    | C.Apply(f, args, rets) => C.mkApply(subst(env, f), args, rets)
 	    | C.Throw(k, args) => C.mkThrow(subst(env, k), args)
 	  (* end case *))
-
+    (* Since we do not have mutually recursive continuations, we cannot eta-expand any
+     * continuation that contains a recursive escaping usage of itself.
+     *)
+    and isRecursive (C.FB{f, params, rets, body}) = let
+        fun isSame v = CV.same (f, v)
+        fun scanExp (C.Exp (_, t)) = (
+            case t
+             of C.Let (_, rhs, exp) => List.exists isSame
+                                                  (CPSUtil.varsOfRHS rhs) orelse scanExp exp
+              | C.Fun (fbs, exp) => List.exists scanFB fbs orelse scanExp exp
+              | C.Cont (fb, exp) => scanFB fb orelse scanExp exp
+              | C.If (cond, exp1, exp2) => List.exists isSame (CondUtil.varsOf cond) orelse
+                                          scanExp exp1 orelse scanExp exp2
+              | C.Switch (_, cases, default) => (
+                List.exists (fn (_, e) => scanExp e) cases orelse
+                case default
+                 of NONE => false
+                  | SOME e => scanExp e)
+        (* Ignore apply/throw target because those are non-escaping uses *)
+              | C.Apply (_, args, rets) => List.exists isSame args orelse List.exists isSame rets
+              | C.Throw (_, args) => List.exists isSame args
+        (* end case *))
+        and scanFB (C.FB {body,...}) = scanExp body
+    in
+        scanExp body
+    end 
   (* we expand functions that have known application sites and more use-sites than
    * applications.
    *)
