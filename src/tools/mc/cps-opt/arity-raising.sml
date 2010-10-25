@@ -1271,7 +1271,20 @@ structure ArityRaising : sig
                                           CPSTyUtil.toString ty])
             (* end case *))
           | typeOfRHS(C.Update (_, _, _)) = NONE
-          | typeOfRHS(C.AddrOf (i, v)) = NONE
+          | typeOfRHS(C.AddrOf (i, v)) = (
+            (* Select is often used as a pseudo-cast, so only "change" the type if we've 
+             * come across a slot that is a function type, which we might have updated.
+             *)
+            case CV.typeOf v
+             of CTy.T_Tuple (_, tys) => (
+                case List.nth (tys, i)
+                 of newTy as CTy.T_Fun (_, _) => SOME (CTy.T_Addr(newTy))
+                  | _ => NONE
+                (* end case *))
+              | ty => raise Fail (concat [CV.toString v,
+                                          " was not of tuple type, was: ",
+                                          CPSTyUtil.toString ty])
+            (* end case *))
           | typeOfRHS(C.Alloc (CPSTy.T_Tuple(b, tys), vars)) = let
                 (*
                  * Types of items stored into an alloc are frequently wrong relative to
