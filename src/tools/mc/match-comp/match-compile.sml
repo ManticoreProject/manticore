@@ -420,10 +420,7 @@ structure MatchCompile : sig
 	  in
 	  (* check for nonexhaustive binding *)
 	    if (DFA.errorCount dfa <> 0)
-	      then (print "nonexhaustive binding warning: ";
-		    print (String.concatWith "," (List.map Var.nameOf bvs));
-		    print "\n";
-		    Err.warnNonexhaustiveBind(Env.errStrm env, loc))
+	      then Err.warnNonexhaustiveBind(Env.errStrm env, loc, (String.concatWith "," (List.map Var.nameOf bvs)))
 	      else ();
 	  (* return the rewritten binding and the extended environment *)
 	    (binds, env')

@@ -172,7 +172,7 @@ structure MatchCheck (* : sig
     val pStr = patToString p
     in
       TextIO.print ("^ inexhaustive binding: pattern " ^ pStr ^ "\n");
-      MatchErrors.warnNonexhaustiveBind (errStrm, bogusLocation)
+      MatchErrors.warnNonexhaustiveBind (errStrm, bogusLocation, pStr)
     end
 
   structure DConSet = RedBlackSetFn (struct
