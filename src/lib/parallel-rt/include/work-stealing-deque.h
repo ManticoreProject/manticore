@@ -29,13 +29,29 @@ typedef struct Deque_s Deque_t;
  *     gc state */
 void M_InitWorkGroupList ();
 
-/* \brief allocate a deque on the given vproc to by used by the given group
+/* \brief allocate the primary deque on the given vproc to by used by the given group
  * \param self the host vproc
  * \param workGroupId the work group allocating the deque
  * \param size the max number of elements in the deque
  * \return a pointer to the freshly allocated deque
  */
-Value_t M_DequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size);
+Value_t M_PrimaryDequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size);
+
+/* \brief allocate a secondary deque on the given vproc to by used by the given group
+ * \param self the host vproc
+ * \param workGroupId the work group allocating the deque
+ * \param size the max number of elements in the deque
+ * \return a pointer to the freshly allocated deque
+ */
+Value_t M_SecondaryDequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size);
+
+/* \brief allocate a resume deque on the given vproc to by used by the given group
+ * \param self the host vproc
+ * \param workGroupId the work group allocating the deque
+ * \param size the max number of elements in the deque
+ * \return a pointer to the freshly allocated deque
+ */
+Value_t M_ResumeDequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size);
 
 /* \brief number of roots needed for deques on the given vproc 
  * \param self the host vproc
@@ -56,11 +72,25 @@ Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr);
  */
 void M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr);
 
-/* \brief returns a list of all deques on the host vproc corresponding to the given work group
+/* \brief returns a pointer to the primary deque of the host vproc corresponding to the given work group
  * \param self the host vproc
  * \param the work group id
- * \return pointer to a linked list of the deques
+ * \return pointer to the primary deque
  */
-Value_t M_LocalDeques (VProc_t *self, uint64_t workGroupId);
+Value_t M_PrimaryDeque (VProc_t *self, uint64_t workGroupId);
+
+/* \brief returns a pointer to the secondary deque of the host vproc corresponding to the given work group
+ * \param self the host vproc
+ * \param the work group id
+ * \return pointer to the secondary deque
+ */
+Value_t M_SecondaryDeque (VProc_t *self, uint64_t workGroupId);
+
+/* \brief returns a list of all nonempty resume deques on the host vproc corresponding to the given work group
+ * \param self the host vproc
+ * \param the work group id
+ * \return pointer to a linked list of all nonempty resume deques
+ */
+Value_t M_ResumeDeques (VProc_t *self, uint64_t workGroupId);
 
 #endif /*! _WORK_STEALING_DEQUE_H_ */

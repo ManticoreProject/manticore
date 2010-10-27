@@ -25,7 +25,9 @@ structure WorkStealingDeque (* :
     (* the second argument is the number of elements. the new deque is automatically claimed for the
      * calling process.
      *)
-      define inline @new-from-atomic (self : vproc, workGroupId : ImplicitThread.work_group_id, size : int) : deque;
+      define inline @new-primary-deque-from-atomic (self : vproc, workerId : UID.uid, size : int) : deque;
+      define inline @new-secondary-deque-from-atomic (self : vproc, workerId : UID.uid, size : int) : deque;
+      define inline @new-resume-deque-from-atomic (self : vproc, workerId : UID.uid, size : int) : deque;
 
       define inline @is-full-from-atomic (self : vproc, deque : deque) : bool;
       define inline @is-empty-from-atomic (self : vproc, deque : deque) : bool;
@@ -37,9 +39,17 @@ structure WorkStealingDeque (* :
       define inline @pop-new-end-from-atomic (self : vproc, deque : deque) : Option.option;
       define inline @pop-old-end-from-atomic (self : vproc, deque : deque) : Option.option;
 
-    (* returns the deques associated with the given vproc and the work group id. all the deques in this list are 
+    (* returns the primary deque associated with the given vproc and the work group id. all the deques in this list are 
      * automatically claimed for the caller. *)
-      define @local-deques-from-atomic (self : vproc, workGroupId : ImplicitThread.work_group_id) : (* [deque] *) List.list;
+      define @primary-deque-from-atomic (self : vproc, workGroupId : ImplicitThread.work_group_id) : Option.option;
+
+    (* returns the secondary deque associated with the given vproc and the work group id. all the deques in this list are 
+     * automatically claimed for the caller. *)
+      define @secondary-deque-from-atomic (self : vproc, workGroupId : ImplicitThread.work_group_id) : Option.option;
+
+    (* returns all nonempty resume deques associated with the given vproc and the work group id. all the deques in this list are 
+     * automatically claimed for the caller. *)
+      define @resume-deques-from-atomic (self : vproc, workGroupId : ImplicitThread.work_group_id) : (* [deque] *) List.list;
 
       define inline @release-from-atomic (self : vproc, deque : deque) : ();
       define @release-deques-from-atomic (self : vproc, deques : List.list) : ();
@@ -61,8 +71,12 @@ structure WorkStealingDeque (* :
     _primcode (
 
       extern void *GetNthVProc (int) __attribute__((pure));
-      extern void *M_DequeAlloc (void *, long, int);
-      extern void *M_LocalDeques (void *, long) __attribute__((alloc));
+      extern void *M_PrimaryDequeAlloc (void *, long, int);
+      extern void *M_SecondaryDequeAlloc (void *, long, int);
+      extern void *M_ResumeDequeAlloc (void *, long, int);
+      extern void *M_PrimaryDeque (void *, long);
+      extern void *M_SecondaryDeque (void *, long);
+      extern void *M_ResumeDeques (void *, long) __attribute__((alloc));
       extern void M_AssertDequeAddr (void *, int, void *);
 
     (* Deque representation:
@@ -210,8 +224,18 @@ structure WorkStealingDeque (* :
 	      return (false)
 	;
 
-      define inline @new-from-atomic (self : vproc, workerId : UID.uid, size : int) : deque =
-	  let deque : deque = ccall M_DequeAlloc (self, workerId, size)
+      define inline @new-primary-deque-from-atomic (self : vproc, workerId : UID.uid, size : int) : deque =
+	  let deque : deque = ccall M_PrimaryDequeAlloc (self, workerId, size)
+          return (deque)
+	;
+
+      define inline @new-secondary-deque-from-atomic (self : vproc, workerId : UID.uid, size : int) : deque =
+	  let deque : deque = ccall M_SecondaryDequeAlloc (self, workerId, size)
+          return (deque)
+	;
+
+      define inline @new-resume-deque-from-atomic (self : vproc, workerId : UID.uid, size : int) : deque =
+	  let deque : deque = ccall M_ResumeDequeAlloc (self, workerId, size)
           return (deque)
 	;
 
@@ -285,11 +309,31 @@ structure WorkStealingDeque (* :
 	  end
 	;
 
-    (* returns the deques associated with the given vproc and the work group id. all the deques in this list are 
+    (* returns the primary deque associated with the given vproc and the work group id. all the deques in this list are 
      * automatically claimed for the caller. *)
-      define @local-deques-from-atomic (self : vproc, workGroupId : UID.uid) : (* [deque] *) List.list =
-          let localDeques : List.list = ccall M_LocalDeques (self, workGroupId)
-          return (localDeques)
+      define @primary-deque-from-atomic (self : vproc, workGroupId : UID.uid) : Option.option =
+          let deque : any = ccall M_PrimaryDeque (self, workGroupId)
+          if Equal (deque, M_NIL) then
+	      return (Option.NONE)
+	  else
+              return (Option.SOME ((deque)deque))
+        ;
+
+    (* returns the secondary deque associated with the given vproc and the work group id. all the deques in this list are 
+     * automatically claimed for the caller. *)
+      define @secondary-deque-from-atomic (self : vproc, workGroupId : UID.uid) : Option.option =
+          let deque : any = ccall M_SecondaryDeque (self, workGroupId)
+          if Equal (deque, M_NIL) then
+	      return (Option.NONE)
+	  else
+              return (Option.SOME ((deque)deque))
+        ;
+
+    (* returns all nonempty resume deques associated with the given vproc and the work group id. all the deques in this list are 
+     * automatically claimed for the caller. *)
+      define @resume-deques-from-atomic (self : vproc, workGroupId : UID.uid) : (* [deque] *) List.list =
+          let deques : List.list = ccall M_ResumeDeques (self, workGroupId)
+          return (deques)
         ;
 
       define inline @release-from-atomic (self : vproc, deque : deque) : () =
@@ -308,7 +352,7 @@ structure WorkStealingDeque (* :
       define @double-size-from-atomic (self : vproc, workGroupId : UID.uid, deque : deque) : deque =
           do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deque), 0))
 	  let size : int = @size (deque)
-	  let newDeque : deque = @new-from-atomic (self, workGroupId, I32Mul (LOAD_DEQUE_MAX_SIZE(deque), 2))
+	  let newDeque : deque = @new-primary-deque-from-atomic (self, workGroupId, I32Mul (LOAD_DEQUE_MAX_SIZE(deque), 2))
         (* maintain the original order of the deque by popping from the old end of the original deque
 	 * and pushing on the new end of the fresh deque
 	 *)
