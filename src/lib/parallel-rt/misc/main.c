@@ -36,10 +36,47 @@ static Mutex_t	PrintLock;		/* lock for output routines */
 extern int32_t mantMagic;
 extern int32_t SequentialFlag;
 
+const char *usage =
+"usage: %s [options]\n\
+\n\
+options:\n\
+  -d           Enable debugging output\n\
+  -q n         Default time quantum (in milliseconds)\n\
+  -perf typ    Generate a performance log of the specified type\n\
+  -config file Use an alternative runtime-system configuration file\n\
+  -p n         Use n vprocs\n\
+  -dense       Allocate vprocs on the same package first\n\
+  -log f       Write log events, optionally to file f\n\
+  -h           Print this information\n\
+  -?           Print this information\n\
+\n\
+typ:\n\
+  summary      Textual summary of perf data, printed to STDOUT\n\
+  csv          Comma-separated value performance log\n\
+  sml          A Standard-ML representation of the performance data\n\
+\n\
+size:\n\
+  nK           n KB\n\
+  nM           n MB\n\
+  nG           n GB\n\
+\n\
+file:  Path to a file of \"name = value\" pairs:\n\
+  GLOBAL_TOSPACE_SCALE_NUMERATOR=n\n\
+  GLOBAL_TOSPACE_SCALE_DENOMINATOR=n\n\
+  MAX_NURSERY_SZB=size\n\
+  MAJOR_GC_THRESHOLD=size\n\
+  BASE_GLOBAL_HEAP_SZB=size\n\
+  PER_VPROC_HEAP_SZB=size\n\  
+";
 
 int main (int argc, const char **argv)
 {
     Options_t *opts = InitOptions (argc, argv);
+
+    if (GetFlagOpt (opts, "-h") || GetFlagOpt (opts, "-?")) {
+        Say (usage, argv[0]);
+        return 0;
+    }
 
     MutexInit (&PrintLock);
 
