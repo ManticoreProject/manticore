@@ -73,6 +73,9 @@ void VProcInit (bool isSequential, Options_t *opts)
 					// Otherwise, we spread the load
 					// around.
 
+    // Will point to a static non-null value if locations were specified.
+    int *procs = NULL;
+    
     NumIdleVProcs = 0;
 	
   /* get command-line options */
@@ -81,6 +84,7 @@ void VProcInit (bool isSequential, Options_t *opts)
     }
     else {
 	NumVProcs = ((NumHWThreads == 0) ? DFLT_NUM_VPROCS : NumHWThreads);
+    NumVProcs = GetVprocsOpt (opts, NumVProcs, &procs);
 	NumVProcs = GetIntOpt (opts, "-p", NumVProcs);
 	if ((NumHWThreads > 0) && (NumVProcs > NumHWThreads))
 	    Warning ("%d processors requested on a %d processor machine\n",
@@ -133,6 +137,14 @@ void VProcInit (bool isSequential, Options_t *opts)
     if (denseLayout) {
 	for (int i = 0;  i < NumVProcs;  i++)
 	    initData[i].loc = Locations[i];
+    }
+    else if (procs != NULL) {
+        for (int i = 0;  i < NumVProcs;  i++) {
+            int thread = i % NumHWThreads;
+            int package = i / (NumHWThreads*NumHWCores);
+            int core = (i % (NumHWThreads*NumHWCores)) / NumHWCores;
+            initData[i].loc = Location(package, core, thread);
+        }
     }
     else if (NumVProcs <= NumHWNodes) {
       /* at most one vproc per node */

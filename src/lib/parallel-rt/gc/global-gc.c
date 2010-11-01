@@ -465,14 +465,16 @@ void CheckGlobalAddr (VProc_t *self, void *addr, char *where)
 		       self->id, ValueToPtr(v), where);
 	  }
 	}
+    else if (isLimitPtr(v, cq))
+        return;
 	else if (IS_VPROC_CHUNK(cq->sts)) {
 	    if (inAddrRange(ValueToAddr(v) & ~VP_HEAP_MASK, sizeof(VProc_t), ValueToAddr(v))) {
 	      /* IMPORTANT: we make an exception for objects stored in the vproc structure */
 	        return;
 	    }
 	    else if (cq->sts != VPROC_CHUNK(self->id)) {
-		SayDebug("[%2d] CheckGlobalAddr: bogus remote pointer %p in %s\n",
-			 self->id, ValueToPtr(v), where);
+               SayDebug("[%2d] CheckGlobalAddr: bogus remote pointer %p in %s\n",
+                        self->id, ValueToPtr(v), where);
 	    } 
 	    else if (cq->sts == VPROC_CHUNK(self->id)) {
 		   SayDebug("[%2d] CheckGlobalAddr: bogus local pointer %p in %s\n",

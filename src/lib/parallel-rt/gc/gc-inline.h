@@ -54,6 +54,10 @@ STATIC_INLINE bool isHeapPtr (Value_t v)
     return ((((Word_t)v & 0x3) == 0) && ((Addr_t)v < (1l << ADDR_BITS)));
 }
 
+STATIC_INLINE bool isLimitPtr (Value_t v, MemChunk_t *cp)
+{
+    return ((Word_t)v == (cp->baseAddr+VP_HEAP_SZB - ALLOC_BUF_SZB));
+}
 
 STATIC_INLINE bool isMixedHdr (Word_t hdr)
 {

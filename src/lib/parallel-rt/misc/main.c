@@ -40,25 +40,30 @@ const char *usage =
 "usage: %s [options]\n\
 \n\
 options:\n\
-  -d           Enable debugging output\n\
-  -q n         Default time quantum (in milliseconds)\n\
-  -perf typ    Generate a performance log of the specified type\n\
-  -config file Use an alternative runtime-system configuration file\n\
-  -p n         Use n vprocs\n\
-  -dense       Allocate vprocs on the same package first\n\
-  -log f       Write log events, optionally to file f\n\
-  -h           Print this information\n\
-  -?           Print this information\n\
+  -d             Enable debugging output\n\
+  -q n           Default time quantum (in milliseconds)\n\
+  -perf typ      Generate a performance log of the specified type\n\
+  -gcstats typ   Generate garbage collection statics in specified type\n\
+  -gcstatsfile f Write gcstats output to a non-default file name\n\
+  -config file   Use an alternative runtime-system configuration file\n\
+  -p n[,procs]   Use n vprocs, with optional processor layout\n\
+  -dense         Allocate vprocs on the same package first\n\
+  -log [f]       Write log events, optionally to file f\n\
+  -nursery size  Set GC nursery size (debug build only)\n\
+  -gcdebug       Enable GC debugging output (debug build only)\n\
+  -heapcheck     Turn on additional heap property checking\n\
+  -h             Print this information\n\
+  -?             Print this information\n\
 \n\
 typ:\n\
-  summary      Textual summary of perf data, printed to STDOUT\n\
-  csv          Comma-separated value performance log\n\
-  sml          A Standard-ML representation of the performance data\n\
+  summary        Textual summary of perf data, printed to STDOUT\n\
+  csv            Comma-separated value performance log\n\
+  sml            A Standard-ML representation of the performance data\n\
 \n\
 size:\n\
-  nK           n KB\n\
-  nM           n MB\n\
-  nG           n GB\n\
+  nK             n KB\n\
+  nM             n MB\n\
+  nG             n GB\n\
 \n\
 file:  Path to a file of \"name = value\" pairs:\n\
   GLOBAL_TOSPACE_SCALE_NUMERATOR=n\n\
@@ -67,6 +72,19 @@ file:  Path to a file of \"name = value\" pairs:\n\
   MAJOR_GC_THRESHOLD=size\n\
   BASE_GLOBAL_HEAP_SZB=size\n\
   PER_VPROC_HEAP_SZB=size\n\  
+\n\
+procs:\n\
+  Comma-separated list of numbers corresponding to procesors for\n\
+  each vproc to run on. Numbers can be -1 for unassigned or\n\
+  between 0 and (nProcs-1). SMT threads are the fastest axis, then\n\
+  cores, then packages.\n\
+  Example: -p 4,0,3,5,-1\n\
+  Runs the program with four vprocs. Assuming a dual dual-core machine\n\
+  with SMT enabled, the vprocs are assigned as followed:\n\
+  vproc 0: thread 0, core 0, package 0\n\
+  vproc 1: thread 1, core 1, package 0\n\
+  vproc 2: thread 1, core 0, package 1\n\
+  vproc 3: unpinned\n\
 ";
 
 int main (int argc, const char **argv)
