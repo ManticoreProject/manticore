@@ -134,17 +134,16 @@ void VProcInit (bool isSequential, Options_t *opts)
     }
 
   /* assign locations */
-    if (denseLayout) {
-	for (int i = 0;  i < NumVProcs;  i++)
-	    initData[i].loc = Locations[i];
-    }
-    else if (procs != NULL) {
+    if (procs != NULL) {
         for (int i = 0;  i < NumVProcs;  i++) {
-            int thread = i % NumHWThreads;
-            int package = i / (NumHWThreads*NumHWCores);
-            int core = (i % (NumHWThreads*NumHWCores)) / NumHWCores;
+            int thread = procs[i] % NumHWThreads;
+            int package = procs[i] / (NumHWThreads*NumHWCores);
+            int core = (procs[i] % (NumHWThreads*NumHWCores)) / NumHWCores;
             initData[i].loc = Location(package, core, thread);
         }
+    } else if (denseLayout) {
+	for (int i = 0;  i < NumVProcs;  i++)
+	    initData[i].loc = Locations[i];
     }
     else if (NumVProcs <= NumHWNodes) {
       /* at most one vproc per node */
