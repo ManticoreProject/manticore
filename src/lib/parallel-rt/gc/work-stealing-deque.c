@@ -207,10 +207,13 @@ int M_NumDequeRoots (VProc_t *self)
     int numRoots = 0;
     Prune (self);
     for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
-	numRoots += DequeNumElts (wgList->primaryDeque);
-	numRoots += DequeNumElts (wgList->secondaryDeque);
+	if (wgList->primaryDeque != M_NIL)
+	    numRoots += DequeNumElts (wgList->primaryDeque);
+	if (wgList->secondaryDeque != M_NIL)
+	    numRoots += DequeNumElts (wgList->secondaryDeque);
 	for (DequeList_t *deques = wgList->resumeDeques; deques != NULL; deques = deques->next)
-	    numRoots += DequeNumElts (deques->deque);
+	    if (deques->deque != M_NIL)
+		numRoots += DequeNumElts (deques->deque);
     }
     return numRoots;
 }
