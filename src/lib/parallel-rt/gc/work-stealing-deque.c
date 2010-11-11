@@ -336,10 +336,13 @@ static Value_t **AddDequeElts (Deque_t *deque, Value_t **rootPtr)
 Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 {
     for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
-	rootPtr = AddDequeElts (wgList->primaryDeque, rootPtr);
-	rootPtr = AddDequeElts (wgList->secondaryDeque, rootPtr);
+	if (wgList->primaryDeque != M_NIL)
+	    rootPtr = AddDequeElts (wgList->primaryDeque, rootPtr);
+	if (wgList->secondaryDeque != M_NIL)
+	    rootPtr = AddDequeElts (wgList->secondaryDeque, rootPtr);
 	for (DequeList_t *deques = wgList->resumeDeques; deques != NULL; deques = deques->next)
-	    rootPtr = AddDequeElts (deques->deque, rootPtr);
+	    if (deques->deque)
+		rootPtr = AddDequeElts (deques->deque, rootPtr);
     }
     return rootPtr;
 }
