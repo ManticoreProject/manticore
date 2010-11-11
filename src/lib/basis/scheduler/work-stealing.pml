@@ -398,7 +398,7 @@ structure WorkStealing (* :
 		do SchedulerAction.@atomic-end (self)
 		return ()
 	    end
-	    let self : vproc = SchedulerAction.@atomic-begin ()
+	let self : vproc = SchedulerAction.@atomic-begin ()
 	apply lp (self)
       ;
 
