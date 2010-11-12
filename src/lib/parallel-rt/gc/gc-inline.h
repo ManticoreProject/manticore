@@ -20,7 +20,7 @@
 /*! \for new header structure */
 STATIC_INLINE int getID (Word_t hdr)
 {
-    return ((hdr >> 1) & 0x3FFF);
+    return ((hdr >> TABLE_TAG_BITS) & 0x7FFF);
 }
 
 /*! \brief is a header tagged as a forward pointer? */
@@ -46,12 +46,18 @@ STATIC_INLINE bool isPtr (Value_t v)
     return (((Word_t)v & 0x3) == 0);
 }
 
+/*! \brief return true if the value is not a pointer */
+STATIC_INLINE bool isNoPtr(Word_t hdr) 
+{
+	return (hdr & 0x1 == TABLE_TAG);
+}
+
 /*! \brief return true if the value is a pointer and is in the range covered
  * by the BIBOP.
  */
 STATIC_INLINE bool isHeapPtr (Value_t v)
 {
-    return ((((Word_t)v & 0x3) == 0) && ((Addr_t)v < (1l << ADDR_BITS)));
+    return ((isPtr(v)) && ((Addr_t)v < (1l << ADDR_BITS)));
 }
 
 STATIC_INLINE bool isLimitPtr (Value_t v, MemChunk_t *cp)
@@ -62,43 +68,23 @@ STATIC_INLINE bool isLimitPtr (Value_t v, MemChunk_t *cp)
 STATIC_INLINE bool isMixedHdr (Word_t hdr)
 {
   /* NOTE: this code relies on the fact that the tag is one bit == 1 */
-    return ( (getID(hdr) != 0) && (getID(hdr) != 1) );
+    return ((getID(hdr) > VEC_TAG_BITS)  && (isNoPtr(hdr)));
 }
 
 STATIC_INLINE bool isVectorHdr (Word_t hdr)
 {
-    return (getID(hdr) == 1);
+    return ((getID(hdr) == VEC_TAG_BITS) && (isNoPtr(hdr)));
 }
 
 STATIC_INLINE bool isRawHdr (Word_t hdr)
 {
-    return (getID(hdr) == 0);
+    return ((getID(hdr) == RAW_TAG_BITS)  && (isNoPtr(hdr)));
 }
 
-STATIC_INLINE int GetMixedSizeW (Word_t hdr)
-{
-    return (hdr >> 16);
-}
-/*
-STATIC_INLINE Word_t GetMixedBits (Word_t hdr)
-{
-     return (tagstable[getID(hdr)]);
-}
-*/
 /* Return the length field of a header */
 STATIC_INLINE int GetLength (Word_t hdr)
 {
-   return (hdr >> 16);
-}
-
-STATIC_INLINE int GetVectorLen (Word_t hdr)
-{
-    return (GetLength(hdr));
-}
-
-STATIC_INLINE int GetRawSizeW (Word_t hdr)
-{
-    return (GetLength(hdr));
+   return (hdr >> (TABLE_LEN_ID+TABLE_TAG_BITS));
 }
 
 /* return true if the given address is within the given address range */

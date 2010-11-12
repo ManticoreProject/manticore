@@ -51,13 +51,16 @@
 #define TABLE_TAG	1
 #define TABLE_LEN_ID	15
 
+#define VEC_TAG_BITS 1
+#define RAW_TAG_BITS 0
+
 //Mixed object
 #define MIXED_HDR(id, len) (((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((id)<< TABLE_TAG_BITS) | TABLE_TAG)
 
 //Vector object
-#define VEC_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((1) << TABLE_TAG_BITS) | TABLE_TAG)
+#define VEC_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((VEC_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
 
 //Raw object
-#define RAW_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((0) << TABLE_TAG_BITS) | TABLE_TAG)
+#define RAW_HDR(len)	(((len) << (TABLE_LEN_ID+TABLE_TAG_BITS)) | ((RAW_TAG_BITS) << TABLE_TAG_BITS) | TABLE_TAG)
 
 #endif /* !_HEADER_BITS_H_ */
