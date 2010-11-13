@@ -676,5 +676,5 @@ VProc_t* GetNthVProc (int n)
  */
 Value_t SleepCont (VProc_t *self)
 {
-    return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
+    return WrapWord(self, &ASM_VProcSleep);
 }
