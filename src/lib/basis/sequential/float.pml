@@ -46,6 +46,10 @@ structure Float =
 	    let res : PT.ml_float = alloc(I32ToF32 (#0(f)))
 	      return (res)
 	;
+	define inline @from-long (f : PT.ml_long / exh : PT.exh) : PT.ml_float =
+	    let res : PT.ml_float = alloc(I64ToF32 (#0(f)))
+	      return (res)
+	;
 
     )
 
@@ -57,6 +61,7 @@ structure Float =
     val pow : (float * float) -> float = _prim (@float-pow)
     val toString : float -> string = _prim(@to-string)
     val fromInt : int -> float = _prim(@from-int)
+    val fromLong : long -> float = _prim(@from-long)
 
     fun max (x, y) = if x > y then x else y
     fun min (x, y) = if x < y then x else y
