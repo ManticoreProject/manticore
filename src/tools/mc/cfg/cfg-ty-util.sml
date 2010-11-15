@@ -54,7 +54,7 @@ structure CFGTyUtil : sig
       | kindOf (CTy.T_OpenTuple _) = CTy.K_BOXED
       | kindOf (CTy.T_Addr _) = CTy.K_TYPE
       | kindOf (CTy.T_CFun _) = CTy.K_UNIFORM
-      | kindOf CTy.T_VProc = CTy.K_ANY
+      | kindOf CTy.T_VProc = CTy.K_RAW
       | kindOf (CTy.T_StdFun _) = CTy.K_RAW
       | kindOf (CTy.T_StdCont _) = CTy.K_RAW
       | kindOf (CTy.T_KnownFunc _) = CTy.K_TYPE
