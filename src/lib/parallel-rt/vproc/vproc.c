@@ -51,6 +51,7 @@ int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
 bool                    ShutdownFlg = false;
+int                     *NumVProcsPerNode;
 
 extern int ASM_VProcSleep;
 
@@ -133,6 +134,11 @@ void VProcInit (bool isSequential, Options_t *opts)
 	initData[i].initArg = M_UNIT;
     }
 
+    NumVProcsPerNode = NEWVEC(int, NumHWNodes);
+    for (int i = 0; i < NumHWNodes; i++) {
+        NumVProcsPerNode[i] = 0;        
+    }
+
   /* assign locations */
     if (procs != NULL) {
         for (int i = 0;  i < NumVProcs;  i++) {
@@ -177,6 +183,11 @@ void VProcInit (bool isSequential, Options_t *opts)
 	    }
 	}
     }
+
+    for (int i = 0;  i < NumVProcs;  i++) {
+        NumVProcsPerNode[LocationNode(initData[i].loc)]++;
+    }
+
 
   /* create vprocs */
     for (int i = 0;  i < NumVProcs;  i++) {

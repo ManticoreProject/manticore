@@ -99,7 +99,7 @@ STATIC_INLINE bool inAddrRange (Addr_t base, Addr_t szB, Addr_t p)
  */
 STATIC_INLINE Word_t *UsedTopOfChunk (VProc_t *vp, MemChunk_t *cp)
 {
-    if (vp->globToSpTl == cp)
+    if (vp->globAllocChunk == cp)
       /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
        * data word of the next object (not the header word)!
        */
