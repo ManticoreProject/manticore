@@ -79,7 +79,7 @@ endif
 
 ifeq ($(ENABLE_DEBUG),true)
   CPPFLAGS += -DNO_INLINE
-  CFLAGS += -g3
+  CFLAGS += -g3 -O0
   GC_SRCS += gc-debug.c
 else
   CPPFLAGS += -DNDEBUG
