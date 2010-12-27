@@ -90,6 +90,9 @@ void VProcInit (bool isSequential, Options_t *opts)
 	if ((NumHWThreads > 0) && (NumVProcs > NumHWThreads))
 	    Warning ("%d processors requested on a %d processor machine\n",
 		NumVProcs, NumHWThreads);
+    if (MAX_NUM_VPROCS < NumVProcs)
+        Die ("Runtime is only configured to support %d VProcs, but %d were requested.\n",
+             MAX_NUM_VPROCS, NumVProcs);
     }
 
 #ifdef TARGET_DARWIN
