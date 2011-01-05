@@ -71,6 +71,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 
   (* the amount of storage allocated by an expression *)
     fun gExpAlloc (CFG.E_GAlloc(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
+      | gExpAlloc (CFG.E_AllocSpecial(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
       | gExpAlloc _ = 0w0
 
     fun transform (CFG.MODULE{name, externs, code}) = let

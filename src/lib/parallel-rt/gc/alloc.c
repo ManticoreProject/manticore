@@ -29,7 +29,10 @@ Value_t AllocProxy (VProc_t *vp,int nElems, ...)
 	
     if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
 		AllocToSpaceChunk(vp);
+	    printf("AllocProxy need more space\n");
     }
+	
+	printf("Global alloc before = %llu\n",(long long int)vp->globNextW);
 	
     assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
 	
@@ -48,6 +51,8 @@ Value_t AllocProxy (VProc_t *vp,int nElems, ...)
     }
 	
     vp->globNextW += WORD_SZB * (nElems+1);
+	
+	printf("Global alloc after = %llu\n",(long long int)vp->globNextW);
 	
 #ifndef NO_GC_STATS
     vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
