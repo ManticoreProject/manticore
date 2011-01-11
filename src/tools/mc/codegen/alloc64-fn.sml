@@ -128,7 +128,8 @@ functor Alloc64Fn (
   (* generate code to allocate a polymorphic vector in the local heap *)
   (* argument is a pointer to a linked list l of length n *)
   (* vector v is initialized s.t. v[i] := l[i] for 0 <= i < n *)
-    fun genAllocPolyVec lsPtr = let
+    fun genAllocPolyVec lsExp = let
+	  val lsPtr = Cells.newReg ()
 	  val i = Cells.newReg ()
 	  val ptr = Cells.newReg ()
 	  val lpLab = Label.label "lpLab" ()
@@ -137,6 +138,7 @@ functor Alloc64Fn (
 	  val wordSzBExp = wordLit 8
 	  in {stms =
 	  (* initialize the vector *)
+	     T.MV (MTy.wordTy, lsPtr, lsExp) ::
 	     T.MV (MTy.wordTy, i, wordLit 0) ::
 	     T.DEFINE lpLab ::
 	     T.BCC (T.CMP (MTy.wordTy, T.EQ, T.REG (MTy.wordTy, lsPtr), nilLs), exitLab) ::
@@ -256,6 +258,50 @@ functor Alloc64Fn (
 		       else T.CMP (MTy.wordTy, T.Basis.LE, 
 				   T.SUB (MTy.wordTy, limitPtr, T.REG (MTy.wordTy, Regs.apReg)),
 				   T.LI (Word.toLargeInt szB))
+	}
+      end
+
+  (* This expression evaluates to true when the heap has enough space for szB
+   * bytes.  There are 4kbytes of heap slop presubtracted from the limit pointer
+   * So, most allocations need only perform the following check.
+   * 
+   * if (limitPtr - apReg <= 0)
+   *    then continue;
+   *    else doGC ();
+   *)
+  fun genAllocNCheck n = let
+      val vpReg = Cells.newReg()
+      val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+      val limitPtr = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.limitPtr, T.REG(MTy.wordTy, vpReg))
+      in
+        {
+	 stms=[T.MV(MTy.wordTy, vpReg, hostVP)],
+	 allocCheck=
+	 T.CMP (MTy.wordTy, T.Basis.LE, 
+		T.SUB (MTy.wordTy, limitPtr, T.REG (MTy.wordTy, Regs.apReg)),
+		T.MULU (64, wordLit 8, T.ADD (64, wordLit 4, T.ZX (64, 32, n))))
+	}
+      end
+
+  (* This expression evaluates to true when the heap has enough space for szB
+   * bytes.  There are 4kbytes of heap slop presubtracted from the limit pointer
+   * So, most allocations need only perform the following check.
+   * 
+   * if (limitPtr - apReg <= 0)
+   *    then continue;
+   *    else doGC ();
+   *)
+  fun genAllocNCheck n = let
+      val vpReg = Cells.newReg()
+      val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+      val limitPtr = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.limitPtr, T.REG(MTy.wordTy, vpReg))
+      in
+        {
+	 stms=[T.MV(MTy.wordTy, vpReg, hostVP)],
+	 allocCheck=
+	 T.CMP (MTy.wordTy, T.Basis.LE, 
+		T.SUB (MTy.wordTy, limitPtr, T.REG (MTy.wordTy, Regs.apReg)),
+		T.MULU (64, wordLit 8, T.ADD (64, wordLit 4, T.ZX (64, 32, n))))
 	}
       end
 

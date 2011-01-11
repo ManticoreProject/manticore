@@ -312,6 +312,12 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 			  @ stms
 			  @ gprBind (anyTy, v, r)
 			end
+		    | P.AllocPolyVec (n, xs) => let
+                        val {stms, result} = BE.Transfer.genAllocPolyVec varDefTbl {lhs=v, arg=xs}
+                        in
+			    stms
+                          @ gprBind (anyTy, v, result)
+                        end
 		    | _ => raise Fail(concat[
 			  "genPrim(", CFG.Var.toString v, ", ",
 			  PrimUtil.fmt CFG.Var.toString p, ")"

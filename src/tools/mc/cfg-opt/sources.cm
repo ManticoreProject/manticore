@@ -32,3 +32,4 @@ is
   implement-calls-fn.sml
   specialize-calls.sml
   alloc-c-calls-fn.sml
+  add-alloc-vec-checks-fn.sml

@@ -128,6 +128,7 @@ functor PrimTyFn (Ty : sig
 	    | P.FenceRead => Ty.noTy
 	    | P.FenceWrite => Ty.noTy
 	    | P.FenceRW => Ty.noTy
+	    | P.AllocPolyVec _ => Ty.anyTy
 	  (* end case *))
 
   (* the signature of a primop *)
@@ -215,6 +216,7 @@ functor PrimTyFn (Ty : sig
 	    | P.FenceRead => ([], Ty.noTy)
 	    | P.FenceWrite => ([], Ty.noTy)
 	    | P.FenceRW => ([], Ty.noTy)
+	    | P.AllocPolyVec _ => ([i32Ty, anyTy], Ty.anyTy)
 	  (* end case *))
 
     fun condArgTys c = (case c

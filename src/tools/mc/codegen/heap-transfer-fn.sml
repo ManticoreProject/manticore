@@ -418,6 +418,16 @@ functor HeapTransferFn (
 	     retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_PTR], 
 	     cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl arg], saveAllocationPointer=true}
 
+
+  fun genAllocPolyVec varDefTbl {lhs, arg} = 
+      (case ccall {lhs=[lhs], 
+		   name=T.LABEL RuntimeLabels.allocVector,
+		   retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_PTR], 
+		   cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl arg], saveAllocationPointer=true}
+	of {stms, result=[MTy.EXP (_, e)]} => {stms=stms, result=e}
+	 | _ => raise Fail "error"
+      (* end case *))
+
   (* Take the CFG variables for the GC roots and return MLRISC code that initializes and restores
    * the roots and also return the root pointer, register temps for the roots, and values for the roots
    *)
@@ -434,7 +444,6 @@ functor HeapTransferFn (
      (* types, values, and temporary registers for the roots (order matters) *)
       val (rootTys, rootArgs, rootTemps) = loop (roots, [], [], [])
      (* allocate the roots *)
-      val _ = if Controls.get CodegenControls.debug then print ("Roots alloc: ") else ()
       val {ptr=rootPtr, stms=initRoots} = Alloc.genAlloc {
 	      isMut = false,
 	      tys = rootTys,
@@ -523,7 +532,7 @@ functor HeapTransferFn (
    * must do this step for the reason mentioned earlier: the heap might still have insufficient space
    * because of preemption.
    *)
-  fun genHeapCheck varDefTbl {hck=CFG.HCK_Local, szb, nogc=(noGCLab, roots)} = let
+  fun genHeapCheck varDefTbl {hck=CFG.HCK_Local, checkStms, allocCheck, nogc=(noGCLab, roots)} = let
       val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs } = 
 	      processGCRoots varDefTbl (roots, regTree Regs.closReg)
 								      
@@ -548,8 +557,6 @@ functor HeapTransferFn (
 
      (* jump to the heap limit check *)
       val retStms = genJump (T.LABEL gcTestLab, [gcTestLab], rootTemps, restoredRoots)
-
-      val {stms=checkStms, allocCheck} = Alloc.genAllocCheck szb
 
       val stms = List.concat [
                  (* force the root set into registers *)
@@ -576,7 +583,9 @@ functor HeapTransferFn (
     *  noGCRoots (roots)
     *
     *)
-    | genHeapCheck varDefTbl {hck=CFG.HCK_Global, szb, nogc} = let
+    | genHeapCheck varDefTbl {hck=CFG.HCK_Global, checkStms, allocCheck, nogc} = raise Fail "todo"
+(*
+let
       val getChunkLab = newLabel "getChunk"
       val {stms=getGlobalChunkStms, ...} = 
 	  ccall {lhs=[], name=T.LABEL RuntimeLabels.getGlobalChunk,
@@ -599,6 +608,7 @@ functor HeapTransferFn (
       in
 	  {stms=chkStms @ getChunkStms, return=NONE}
       end (* genHeapCheck *)
+*)
 
   (* bind a parameter *)
   fun bindParam (param, k) = (case (param, k)

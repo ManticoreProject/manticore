@@ -200,7 +200,8 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("Pause",	mk0 (P.Pause,						uTy)),
 		("FenceRead",	mk0 (P.FenceRead,					uTy)),
 		("FenceWrite",	mk0 (P.FenceWrite,					uTy)),
-		("FenceRW",	mk0 (P.FenceRW,						uTy))
+		("FenceRW",	mk0 (P.FenceRW,						uTy)),
+		("AllocPolyVec", mk Prim2 (P.AllocPolyVec,      (i32, aTy),             aTy))
 	      ];
 	    AtomTable.find tbl
 	  end

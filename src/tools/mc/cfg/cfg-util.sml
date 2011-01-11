@@ -95,6 +95,7 @@ structure CFGUtil : sig
 	    x :: (List.foldl f (case dflt of SOME(_, args) => args | _ => []) cases)
 	  end
       | varsOfXfer (HeapCheck{nogc=(_, args), ...}) = args
+      | varsOfXfer (HeapCheckN{nogc=(_, args), ...}) = args
       | varsOfXfer (AllocCCall{lhs, args, ret=(_, rArgs), ...}) = lhs @ args @ rArgs
 
    (* project the lhs variables of a control transfer *)
@@ -115,6 +116,7 @@ structure CFGUtil : sig
 	    List.foldl f (case dflt of SOME(lab, _) => [lab] | _ => []) cases
 	  end
       | labelsOfXfer (HeapCheck{nogc=(lab, _), ...}) = [lab]
+      | labelsOfXfer (HeapCheckN{nogc=(lab, _), ...}) = [lab]
       | labelsOfXfer (AllocCCall{ret=(lab, _), ...}) = [lab]
 
   (* project out the parameters of a convention *)
@@ -179,6 +181,7 @@ structure CFGUtil : sig
 	      | Switch(x, cases, dflt) =>
 		  Switch(sv x, List.map (fn (c, j) => (c, sj j)) cases, Option.map sj dflt)
 	      | HeapCheck{hck, szb, nogc} => HeapCheck{hck=hck, szb=szb, nogc=sj nogc}
+	      | HeapCheckN{hck, n, nogc} => HeapCheckN{hck=hck, n=sv n, nogc=sj nogc}
 	      | AllocCCall{lhs, f, args, ret} =>
 		  AllocCCall{lhs=lhs, f=sv f, args=List.map sv args, ret=sj ret}
 	     (* end case *)

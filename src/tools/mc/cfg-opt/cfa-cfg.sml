@@ -325,6 +325,7 @@ structure CFACFG : sig
                         List.app (addJump o #2) cases;
                         Option.app addJump dflt)
                     | CFG.HeapCheck{nogc, ...} => addJump nogc
+                    | CFG.HeapCheckN{nogc, n, ...} => addJump nogc
                     | CFG.AllocCCall{ret, ...} => addJump ret
                   (* end case *)
                 end
@@ -399,6 +400,7 @@ structure CFACFG : sig
                       List.app (doJump o #2) cases;
                       Option.app doJump dflt)
                   | doXfer (CFG.HeapCheck{nogc, ...}) = doJump nogc
+                  | doXfer (CFG.HeapCheckN{nogc, ...}) = doJump nogc
                   | doXfer (CFG.AllocCCall{ret, args, ...}) = (
                       List.app escape args;
                       doJump ret)

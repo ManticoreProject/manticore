@@ -97,6 +97,9 @@ structure Prim =
       | FenceRead			(* memory fence for reads *)
       | FenceWrite			(* memory fence for writes *)
       | FenceRW				(* memory fence for both reads and writes *)
+    (* allocation primitives *)
+      | AllocPolyVec of 'var * 'var     (* AllocPolyVec (n, xs): allocate in the local heap a vector 
+					 * v of length n s.t. v[i] := l[i] for 0 <= i < n *)
 
   (* primitive conditional tests *)
     datatype 'var cond

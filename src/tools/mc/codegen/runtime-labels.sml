@@ -26,6 +26,7 @@ structure RuntimeLabels =
     val promote = global "PromoteObj"
   (* runtime code to get a new global-heap chunk *)
     val getGlobalChunk = global "GetChunkForVProc"
+    val allocVector = global "AllocVector"
     end (* local *)
 
   end (* RuntimeLabels *)

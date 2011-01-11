@@ -222,10 +222,33 @@ if MChkTy.check stm
 		in		  
 		  List.app emitExit(List.rev(exits))
 		end
-	    | genTransfer (M.HeapCheck hc) = let
-		val {stms, return} = BE.Transfer.genHeapCheck varDefTbl hc
+	    | genTransfer (M.HeapCheck {hck, szb, nogc}) = let
+		val {stms=checkStms, allocCheck} = BE.Alloc.genAllocCheck szb
+		val {stms, return} = BE.Transfer.genHeapCheck varDefTbl 
+				      {hck=hck, nogc=nogc, checkStms=checkStms, allocCheck=allocCheck}
 		in 
 		(* emit code for the heap-limit check and the transfer into the GC *) 
+		  emitStms stms;
+		  case return
+		   of SOME(retLbl, retStms, liveOut) => (
+		      (* emit code for the return function *)
+			emit (T.LIVE liveOut);
+			entryLabel retLbl;
+			emitStms retStms)
+		    | NONE => ()
+		  (* end case *)
+		end
+	    | genTransfer (M.HeapCheckN {hck, n, nogc}) = let
+		  val vpReg = Cells.newReg()
+		  val MTy.EXP(_, hostVP) = BE.VProcOps.genHostVP
+		  val nLoc = BE.VProcOps.genVPLoad' (32, Spec.ABI.eventId, hostVP)
+		val {stms=checkStms, allocCheck} = BE.Alloc.genAllocNCheck nLoc
+		val {stms, return} = BE.Transfer.genHeapCheck varDefTbl 
+				      {hck=hck, nogc=nogc, checkStms=checkStms, allocCheck=allocCheck}
+		in 
+		(* emit code for the heap-limit check and the transfer into the GC *) 
+		  emitStms [T.MV(MTy.wordTy, vpReg, hostVP)];
+		  emitStms [BE.VProcOps.genVPStore' (32, Spec.ABI.eventId, hostVP, defOf n)];
 		  emitStms stms;
 		  case return
 		   of SOME(retLbl, retStms, liveOut) => (
@@ -277,7 +300,6 @@ if MChkTy.check stm
 			bindExp ([lhs], [MTy.EXP(MTy.wordTy, addr)], ["addrof(", v2s v, "[", Int.toString i, "])"])
 		      end
 		  | gen (M.E_Alloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let
-                      val _ = if Controls.get CodegenControls.debug then print (concat["Alloc: ", v2s lhs]) else ()
 		      val {ptr, stms} = BE.Alloc.genAlloc {
 			      isMut = isMut,
 			      tys = tys,
@@ -288,7 +310,6 @@ if MChkTy.check stm
 			bindExp ([lhs], [ptr], ["alloc ", v2s lhs, " = ", String.concat (List.map v2s vs)])
 		      end
 		  | gen (M.E_GAlloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let 
-                      val _ = if Controls.get CodegenControls.debug then print (concat["GAlloc: ", v2s lhs]) else ()
 		      val {ptr, stms} = BE.Alloc.genGlobalAlloc {
 			      isMut = isMut,
 			      tys = tys,
