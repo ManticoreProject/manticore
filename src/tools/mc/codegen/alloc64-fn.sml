@@ -185,6 +185,42 @@ functor Alloc64Fn (
 	    (totSz, hdr, List.rev stms)
 	  end
 
+
+    (* FIXME: this value should come from the runtime constants *)
+    val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
+
+    (*
+     * Crash if the alloc ptr >= (limit ptr + heapSlopSzB).
+     *)
+  fun genDebugAllocCrash () = let
+      val crashLab = Label.label "crashLab" ()
+      val passLab = Label.label "passLab" ()
+      val vpReg = Cells.newReg()
+      val boomReg = Cells.newReg()
+      val slopReg = Cells.newReg()
+      val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+      val limitPtr = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.limitPtr, T.REG(MTy.wordTy, vpReg))
+  in
+      if Controls.get BasicControl.debug
+      then
+          [T.MV(MTy.wordTy, vpReg, hostVP),
+           T.BCC(T.CMP (MTy.wordTy, T.Basis.EQ, 
+		        limitPtr,
+		        T.LI 0), passLab),
+           T.MV(MTy.wordTy, slopReg, wordLit (Word.toInt heapSlopSzB)),
+	   T.BCC(T.CMP (MTy.wordTy, T.Basis.GE, 
+		        T.SUB (MTy.wordTy, T.ADD(MTy.wordTy, limitPtr, T.REG(MTy.wordTy, slopReg)),
+                               T.REG (MTy.wordTy, Regs.apReg)),
+		        T.LI 0), passLab),
+	   T.DEFINE crashLab,
+           T.MV(MTy.wordTy, boomReg, wordLit 0),
+           T.STORE (MTy.wordTy, T.REG(MTy.wordTy, boomReg), wordLit 0, ManticoreRegion.memory), 
+	   T.DEFINE passLab
+          ]
+      else []
+  end
+
+
   (* allocate arguments in the local heap *)
     fun genAlloc {tys=[], ...} = (* an empty allocation generates a nil pointer *)
 (* FIXME: this only happens because the closure-conversion doesn't deal with empty closures correctly *)
@@ -200,8 +236,9 @@ functor Alloc64Fn (
 	  val ptrMv = T.MV (MTy.wordTy, ptrReg, T.REG(MTy.wordTy, Regs.apReg))
 	(* bump up the allocation pointer *)
 	  val bumpAp = T.MV (MTy.wordTy, Regs.apReg, offAp (wordLit (totalSize+wordSzB)))
+          val valAp = genDebugAllocCrash ()
 	  in
-	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=stms @ [ptrMv, bumpAp] }
+	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=stms @ [ptrMv, bumpAp] @ valAp}
 	  end (* genAlloc *)
 
   (* allocate arguments in the global heap *)
@@ -232,9 +269,6 @@ functor Alloc64Fn (
 	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: stms @ [bumpAp] }
 	  end
 
-(* FIXME: this value should come from the runtime constants *)
-    val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
-
   (* This expression evaluates to true when the heap has enough space for szB
    * bytes.  There are 4kbytes of heap slop presubtracted from the limit pointer
    * So, most allocations need only perform the following check.
@@ -258,28 +292,6 @@ functor Alloc64Fn (
 		       else T.CMP (MTy.wordTy, T.Basis.LE, 
 				   T.SUB (MTy.wordTy, limitPtr, T.REG (MTy.wordTy, Regs.apReg)),
 				   T.LI (Word.toLargeInt szB))
-	}
-      end
-
-  (* This expression evaluates to true when the heap has enough space for szB
-   * bytes.  There are 4kbytes of heap slop presubtracted from the limit pointer
-   * So, most allocations need only perform the following check.
-   * 
-   * if (limitPtr - apReg <= 0)
-   *    then continue;
-   *    else doGC ();
-   *)
-  fun genAllocNCheck n = let
-      val vpReg = Cells.newReg()
-      val MTy.EXP(_, hostVP) = VProcOps.genHostVP
-      val limitPtr = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.limitPtr, T.REG(MTy.wordTy, vpReg))
-      in
-        {
-	 stms=[T.MV(MTy.wordTy, vpReg, hostVP)],
-	 allocCheck=
-	 T.CMP (MTy.wordTy, T.Basis.LE, 
-		T.SUB (MTy.wordTy, limitPtr, T.REG (MTy.wordTy, Regs.apReg)),
-		T.MULU (64, wordLit 8, T.ADD (64, wordLit 4, T.ZX (64, 32, n))))
 	}
       end
 
