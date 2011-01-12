@@ -26,6 +26,7 @@ typedef enum {
 #define IS_VPROC_CHUNK(sts)	(((sts)&0xF) == VPROC_CHUNK_TAG)
 
 struct struct_chunk {
+    void *  allocBase;  /*!< base address (unaligned!) of original allocation */
     Addr_t	baseAddr;	/*!< chunk base address */
     Addr_t	szB;		/*!< chunk size in bytes */
     Addr_t	usedTop;	/*!< [baseAddr..usedTop) is the part of the

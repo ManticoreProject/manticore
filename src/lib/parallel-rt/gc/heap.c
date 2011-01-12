@@ -190,11 +190,13 @@ void AllocToSpaceChunk (VProc_t *vp)
 	if (NodeHeaps[node].freeChunks == (MemChunk_t *)0) {
 	  /* no free chunks on this node, so allocate storage from OS */
 	    int nPages = HEAP_CHUNK_SZB >> PAGE_BITS;
-	    memObj = AllocMemory(&nPages, BIBOP_PAGE_SZB, nPages);
+        void *allocBase;
+	    memObj = AllocMemory(&nPages, BIBOP_PAGE_SZB, nPages, &allocBase);
 	    chunk = NEW(MemChunk_t);
 	    if ((memObj == (void *)0) || (chunk == (MemChunk_t *)0)) {
 		Die ("unable to allocate memory for global heap\n");
 	    }
+        chunk->allocBase = allocBase;
 	    chunk->baseAddr = (Addr_t)memObj;
 	    chunk->szB = nPages * BIBOP_PAGE_SZB;
 	    chunk->where = node;
@@ -247,8 +249,9 @@ Addr_t AllocVProcMemory (int id, Location_t loc)
     assert (VP_HEAP_SZB >= BIBOP_PAGE_SZB);
 
     int nPages = VP_HEAP_SZB / BIBOP_PAGE_SZB;
+    void *allocBase;
     MutexLock (&HeapLock);
-	Addr_t vpHeap = (Addr_t) AllocMemory (&nPages, BIBOP_PAGE_SZB, nPages);
+	Addr_t vpHeap = (Addr_t) AllocMemory (&nPages, BIBOP_PAGE_SZB, nPages, &allocBase);
 	if (vpHeap == 0) {
 	    MutexUnlock (&HeapLock);
 	    return 0;
@@ -259,6 +262,7 @@ Addr_t AllocVProcMemory (int id, Location_t loc)
 	    MutexUnlock (&HeapLock);
 	    return 0;
 	}
+    chunk->allocBase = allocBase;
 	chunk->baseAddr = vpHeap;
 	chunk->szB = VP_HEAP_SZB;
 	chunk->sts = VPROC_CHUNK(id);

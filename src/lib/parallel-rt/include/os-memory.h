@@ -23,7 +23,7 @@
  * This function allocates a memory object that is at least minNumBlocks*blkSzB
  * bytes in size.  The actual size of the object is returned in nBlocks.
  */
-extern void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks);
+extern void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks, void **unalignedBase);
 
 /*! \brief free a memory object allocated by AllocMemory.
  *
