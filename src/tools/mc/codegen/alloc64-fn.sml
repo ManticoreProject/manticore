@@ -191,6 +191,8 @@ functor Alloc64Fn (
 
     (*
      * Crash if the alloc ptr >= (limit ptr + heapSlopSzB).
+     * FIXME: MLRISC sometimes reorders the zero check after the subtraction, causing
+     * a false-positive during signaling.
      *)
   fun genDebugAllocCrash () = let
       val crashLab = Label.label "crashLab" ()
@@ -236,9 +238,8 @@ functor Alloc64Fn (
 	  val ptrMv = T.MV (MTy.wordTy, ptrReg, T.REG(MTy.wordTy, Regs.apReg))
 	(* bump up the allocation pointer *)
 	  val bumpAp = T.MV (MTy.wordTy, Regs.apReg, offAp (wordLit (totalSize+wordSzB)))
-          val valAp = genDebugAllocCrash ()
 	  in
-	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=stms @ [ptrMv, bumpAp] @ valAp}
+	    { ptr=MTy.GPR (MTy.wordTy, ptrReg), stms=stms @ [ptrMv, bumpAp] }
 	  end (* genAlloc *)
 
   (* allocate arguments in the global heap *)
