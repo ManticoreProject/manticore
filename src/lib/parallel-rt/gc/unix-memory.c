@@ -87,34 +87,6 @@ void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks, void **unalignedB
     return base;
 } /* end of AllocMemory */
 
-#ifdef NOTDEF
-  /* free the test block */
-    unmap = memObj;
-    UnmapMemory (memObj, szb);
-
-  /* Try again with the aligned fixed address. */
-    n--;
-    szb = n * blkSzB;
-    memObj = MapMemory(base, szb);
-    if (memObj == MAP_FAILED) {
-	*nBlocks = 0;
-	return 0;
-    }
-    else if (((Addr_t)memObj & (blkSzB-1)) != 0) {
-        UnmapMemory (memObj, szb);
-	*nBlocks = 0;
-	return 0;
-    }
-    else {
-	TotalVM += szb;
-	*nBlocks = n;
-#ifndef NDEBUG
-    SayDebug("AllocMemory returning: %p-%p, orig: %p, base: %p, unmapped: %p\n", memObj, memObj+szb, orig, base, unmap);
-#endif
-	return memObj;
-    }
-#endif
-
 /* FreeMemory:
  *
  * free a memory object allocated by AllocMemory (its size is 
