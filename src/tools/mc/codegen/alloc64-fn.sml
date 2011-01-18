@@ -254,9 +254,6 @@ functor Alloc64Fn (
 
 
 
-
-
-
  (* This expression checks that there are at least szB bytes available in the
    * global heap.
    *
@@ -280,13 +277,6 @@ functor Alloc64Fn (
 	   T.SUB (MTy.wordTy, globalLP, globalAP),
 	  		       T.LI (Word.toLargeInt szB))}
 	end
-
-
-    fun size ((ty, _), {totalSize}) = let
-	  val totalSize' = Types.alignedTySzB ty + totalSize
-	  in
-	    {totalSize=totalSize'}
-	  end (* size *)
 
 
     fun genGlobalAllocSpecial {tys=[], ...} = raise Fail "AllocSpecial[]"

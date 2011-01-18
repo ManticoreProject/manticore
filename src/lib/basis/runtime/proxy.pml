@@ -88,18 +88,21 @@ structure Proxy (* :
 	(* get next free entry in the proxy table *)
 	let pos : int = vpload (PROXYTABLEENTRIES,host_vproc)
 	
+	(*
 	let globalbef : long = vpload(GLOB_NEXT_W,host_vproc)
 	do ccall M_PrintLong(globalbef)
+	*)
+	
+	(* do ccall globalCheck(host_vproc) *)
 	
 	(* let myProxy : proxy = ccall AllocProxy (host_vproc,2,host_vproc, pos) *)
 	let myProxy : proxy = alloc_special (host_vproc, pos)
 	
-	(* do ccall globalCheck(host_vproc) *)
-	
+	(*
 	let globalaft : long = vpload(GLOB_NEXT_W,host_vproc)
 	do ccall M_PrintLong(globalaft)
 	
-	(*
+	
 	* let test : long = AdrLoadI64((addr(long))AdrSubI32(&1(myProxy),32))
 	* let vptest : vproc = AdrLoad((addr(any))&0(myProxy))
 	*)
@@ -112,17 +115,17 @@ structure Proxy (* :
 	* do ccall M_PrintInt(#1(myProxy))
 	*)
 	
-	do ccall M_PrintInt(4)
+	(* do ccall M_PrintInt(4) *)
 	
 	(* store the proxy and continuation at the offside position *)
 	do AdrStore(AdrAddI32(myAddr,TABLE_POS(pos)),myProxy)
 	do AdrStore(AdrAddI32(myAddr,I32Add(TABLE_POS(pos),TABLE_ENTRY_OFFB)),myFiber)
 	
-	do ccall M_PrintInt(5)
+	(* do ccall M_PrintInt(5) *)
 	
 	do ccall isProxy (#0(myProxy),#1(myProxy))
 	
-	do ccall M_PrintInt(6)
+	(* do ccall M_PrintInt(6) *)
 	
 	(* move free pointer to next object *)
 	let nextid : int = I32Add(pos,1)
