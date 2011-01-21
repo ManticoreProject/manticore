@@ -11,6 +11,7 @@ Library
   structure InterfaceTypes
   structure NestingTreeTypes
   structure RepresentationTypes
+  structure FTTypes
   structure FTTypeUtil
   structure TranslateTypesFT
 
@@ -27,5 +28,6 @@ is
   interface-types.sml
   nesting-tree-types.sml
   representation-types.sml
+  ft-types.sml
   ft-type-util.sml
   translate-types-ft.sml

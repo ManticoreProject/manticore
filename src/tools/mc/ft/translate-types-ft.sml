@@ -60,6 +60,9 @@ structure TranslateTypesFT = struct
     end
 
   and dcon (T.DCon {id, name, owner, argTy}) =
-    I.DCon {id=id, name=name, owner=tycon owner, argTy=Option.map ty argTy}
+    I.DCon {id=id, 
+	    name=name, 
+	    owner=tycon owner, 
+	    argTy=Option.map ty argTy}
 
 end

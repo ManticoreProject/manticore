@@ -14,11 +14,11 @@ structure NestingTreeTypes = struct
     = Lf
     | Nd of ty
 
-  fun toString Lf = "Lf"
-    | toString (Nd t) = "Nd(" ^ toString t ^ ")"
-
   fun same (Lf, Lf) = true
     | same (Nd t, Nd u) = same (t, u)
     | same _ = false
+
+  fun toString Lf = "Lf"
+    | toString (Nd t) = "Nd(" ^ toString t ^ ")"
 
 end
