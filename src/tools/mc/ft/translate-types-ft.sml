@@ -34,15 +34,12 @@ structure TranslateTypesFT = struct
 	| T.FunTy (t, u) => I.FunTy (ty t, ty u)
 	| T.TupleTy ts => I.TupleTy (List.map ty ts))
 
-  and tycon (T.Tyc {stamp, name, arity, params, props, def}) = 
-    (case params
-       of [] => let
-            val def' = copyDef def
-            in
-              I.Tyc {stamp=stamp, name=name, arity=arity, 
-		       params=[], props=props, def=def'}
-            end
-	| _ => raise Fail "FIXME what to do with params?")
+  and tycon (c as T.Tyc {stamp, name, arity, params, props, def}) = let
+        val def' = copyDef def
+        in
+          I.Tyc {stamp=stamp, name=name, arity=arity, 
+		 params=params, props=props, def=def'}
+        end
 
   and copyDef (T.AbsTyc) = I.AbsTyc
     | copyDef (T.DataTyc {nCons, cons}) = let
@@ -64,5 +61,13 @@ structure TranslateTypesFT = struct
 	    name=name, 
 	    owner=tycon owner, 
 	    argTy=Option.map ty argTy}
+
+  fun translate (t : T.ty) : I.ty = let
+    val p = (fn s => (print s; print "\n"))
+    val _ = p ("t: " ^ TypeUtil.toString t)
+    val _ = p ("prune t: " ^ TypeUtil.toString (TypeUtil.prune t))
+    in
+      ty (TypeUtil.prune t)
+    end
 
 end

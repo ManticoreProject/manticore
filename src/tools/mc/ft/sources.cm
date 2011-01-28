@@ -14,6 +14,8 @@ Library
   structure FTTypes
   structure FTTypeUtil
   structure TranslateTypesFT
+  structure FlattenTypes
+  structure TestFlattenTypes
 
 is
 
@@ -31,3 +33,5 @@ is
   ft-types.sml
   ft-type-util.sml
   translate-types-ft.sml
+  flatten-types.sml
+  test-flatten-types.sml

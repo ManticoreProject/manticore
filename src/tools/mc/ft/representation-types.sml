@@ -7,6 +7,7 @@
  * Supporting documents in 
  * /path/to/manti-papers/papers/notes/amsft
  *)
+
 structure RepresentationTypes = struct
 
   structure NTy = NestingTreeTypes
@@ -22,7 +23,7 @@ structure RepresentationTypes = struct
         stamp : Stamp.stamp,
 	name : Atom.atom,
 	arity : int,
-	params : ty list, (* NOTE no tyvars *)
+	params : Types.tyvar list, (* NOTE the only place tyvars occur *)
 	props : PropList.holder,
 	def : tycon_def
       }
@@ -70,7 +71,7 @@ structure RepresentationTypes = struct
     and tuple [] = "()"
       | tuple ts = "(" ^ (String.concatWith "," o List.map ty) ts ^ ")"
     and tycon (Tyc {stamp, name, arity, params, props, def}) =
-          Atom.toString name ^ "<" ^ Stamp.toString stamp ^ ">"
+          Atom.toString name ^ Stamp.toString stamp
     and dcon (DCon {id, name, owner, argTy}) =
          (case argTy
 	    of NONE => Atom.toString name
