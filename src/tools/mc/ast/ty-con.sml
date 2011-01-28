@@ -19,6 +19,9 @@ structure TyCon : sig
   (* return the name of a type constructor *)
     val nameOf : Types.tycon -> Atom.atom
 
+  (* return the stamp of a type constructor *)
+    val stampOf : Types.tycon -> Stamp.stamp
+
   (* return a string representation *)
     val toString : Types.tycon -> string
 
