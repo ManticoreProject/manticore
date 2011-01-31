@@ -49,6 +49,10 @@ signature TRANSFER = sig
  	{lhs: CFG.var, arg: CFG.var} -> 
 		     {stms : stms, result : MTy.T.rexp}
 
+    val genAllocLongArray : VarDef.var_def_tbl -> 
+ 	{lhs: CFG.var, n : CFG.var} -> 
+		     {stms : stms, result : MTy.T.rexp}
+
   (* apply a C function f to args.  the result goes in lhs. *)
     val genCCall : VarDef.var_def_tbl ->
 	{lhs: CFG.var list, f : CFG.var, args: CFG.var list} -> 

@@ -35,6 +35,8 @@ in
   array.pml
   float-array.pml
   int-array.pml
+  unsafe-long-array.pml
+  long-array.pml
   word64-array.pml
 end
 time.pml

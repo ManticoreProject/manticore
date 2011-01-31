@@ -318,6 +318,12 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 			    stms
                           @ gprBind (anyTy, v, result)
                         end
+		    | P.AllocLongArray n => let
+			val {stms, result} = BE.Transfer.genAllocLongArray varDefTbl {lhs=v, n=n}
+                        in
+			    stms
+			  @ gprBind (anyTy, v, result)
+                        end
 		    | _ => raise Fail(concat[
 			  "genPrim(", CFG.Var.toString v, ", ",
 			  PrimUtil.fmt CFG.Var.toString p, ")"

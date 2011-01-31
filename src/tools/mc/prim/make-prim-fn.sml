@@ -201,7 +201,8 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("FenceRead",	mk0 (P.FenceRead,					uTy)),
 		("FenceWrite",	mk0 (P.FenceWrite,					uTy)),
 		("FenceRW",	mk0 (P.FenceRW,						uTy)),
-		("AllocPolyVec", mk Prim2 (P.AllocPolyVec,      (i32, aTy),             aTy))
+		("AllocPolyVec", mk Prim2 (P.AllocPolyVec,      (i32, aTy),             aTy)),
+		("AllocLongArray", mk Prim1 (P.AllocLongArray,      i32,                    aTy))
 	      ];
 	    AtomTable.find tbl
 	  end

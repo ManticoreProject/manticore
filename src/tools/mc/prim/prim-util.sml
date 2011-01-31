@@ -99,6 +99,7 @@ structure PrimUtil : sig
       | nameOf P.FenceWrite = "FenceWrite"
       | nameOf P.FenceRW = "FenceRW"
       | nameOf (P.AllocPolyVec _) = "AllocPolyVec"
+      | nameOf (P.AllocLongArray _) = "AllocLongArray"
 
   (* return the list of variables referenced in a primitive operation *)
     fun varsOf (P.I32Add(a, b)) = [a, b]
@@ -179,6 +180,7 @@ structure PrimUtil : sig
       | varsOf P.FenceWrite = []
       | varsOf P.FenceRW = []
       | varsOf (P.AllocPolyVec (a, b)) = [a, b]
+      | varsOf (P.AllocLongArray a) = [a]
 
     fun fmt v2s p = (case varsOf p
 	   of [] => nameOf p ^ "()"
@@ -275,6 +277,7 @@ structure PrimUtil : sig
       | explode P.FenceWrite = (p0 P.FenceWrite, [])
       | explode P.FenceRW = (p0 P.FenceRW, [])
       | explode (P.AllocPolyVec (a, b)) = (p2 P.AllocPolyVec, [a, b])
+      | explode (P.AllocLongArray a) = (p1 P.AllocLongArray, [a])
     end (* local *)
 
     fun map f p = let val (mk, args) = explode p in mk(List.map f args) end

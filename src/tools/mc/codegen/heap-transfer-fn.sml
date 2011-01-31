@@ -428,6 +428,15 @@ functor HeapTransferFn (
 	 | _ => raise Fail "error"
       (* end case *))
 
+  fun genAllocLongArray varDefTbl {lhs, n} = 
+      (case ccall {lhs=[lhs], 
+		   name=T.LABEL RuntimeLabels.allocLongArray,
+		   retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_signed CTy.I_int], 
+		   cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl n], saveAllocationPointer=true}
+	of {stms, result=[MTy.EXP (_, e)]} => {stms=stms, result=e}
+	 | _ => raise Fail "error"
+      (* end case *))
+
   (* Take the CFG variables for the GC roots and return MLRISC code that initializes and restores
    * the roots and also return the root pointer, register temps for the roots, and values for the roots
    *)

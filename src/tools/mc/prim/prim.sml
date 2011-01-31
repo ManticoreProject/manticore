@@ -100,6 +100,7 @@ structure Prim =
     (* allocation primitives *)
       | AllocPolyVec of 'var * 'var     (* AllocPolyVec (n, xs): allocate in the local heap a vector 
 					 * v of length n s.t. v[i] := l[i] for 0 <= i < n *)
+      | AllocLongArray of 'var          (* allocates a vector of longs in the local heap *)
 
   (* primitive conditional tests *)
     datatype 'var cond
