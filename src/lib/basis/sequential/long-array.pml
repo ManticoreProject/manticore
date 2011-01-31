@@ -15,20 +15,6 @@ _primcode (
   define inline @length (a : array / exh : exh) : ml_int =
     return(alloc(#1(a)))
   ;
-  define @modify (arg : [fun (ml_long / exh -> ml_long), array] / exh : exh) : unit =
-    cont mlp (i : int, n : int, data : any, f : fun (ml_long / exh -> ml_long), exh : exh) =
-      if I32Lt (i, n) then
-	return(UNIT)
-      else
-	let y : long = ArrLoadI64 (data, i)
-	let x : ml_long = apply f (alloc(y) / exh)
-	do ArrStoreI64 (data, i, #0(x))
-	throw mlp (I32Add (i, 1), n, data, f, exh)
-    let a : array = #1(arg)
-    let data : any = #0(a)
-    let n : int = #1(a)
-    throw mlp (0, n, data, #0(arg), exh)
-  ;
 )
 
 type array = U.array
@@ -55,16 +41,6 @@ fun array (n, init) =
 
 val length : array -> int = _prim (@length)
 
-(*
-FIXME! this is the version that we would like to use, but 
-we do not at the moment because of poor performance. the
-issue seems to be that closure conversion does bad things
-to the modify function. in particular, it places
-values like the array offset and the value to store in
-the array into the environment pointer that we pass
-along to the block generated for the "then" arm of the
-if statement. -- mike
-
 fun modify f a = let
   val n = length a
   fun m i =
@@ -75,9 +51,6 @@ fun modify f a = let
   in
     m 0
   end
-*)
-val modify' : (long -> long) * array -> unit  = _prim(U.@modify)
 
-fun modify f a = modify' (f, a)
 
 end
