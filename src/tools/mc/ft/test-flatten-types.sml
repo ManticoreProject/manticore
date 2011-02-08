@@ -8,6 +8,7 @@
 structure TestFlattenTypes = struct
 
   structure T = Types
+  structure B = Basis
   structure I = InterfaceTypes
   structure N = NestingTreeTypes
   structure R = RepresentationTypes
@@ -16,22 +17,35 @@ structure TestFlattenTypes = struct
   
   val println = (fn s => (print s; print "\n"))
 
-  fun test0 () = let
-    val t = Basis.intTy
+  fun mkTest t = (fn () => let
     val t' = TranslateTypesFT.ty t
+    val f = FlattenTypes.flatten t'
     in
-      (I.toString t', 
-       R.toString (FlattenTypes.flatten t'))
-    end
+      (println ("t:  " ^ TypeUtil.toString t);
+       println ("t': " ^ I.toString t');
+       println ("f:  " ^ R.toString f);
+       println ("result is flat: " ^ Bool.toString (U.isFlat f)))
+    end)
 
-  fun test1 () = let
-    val t = T.ConTy ([Basis.intTy], Basis.parrayTyc)
-    val _ = println ("t: " ^ TypeUtil.toString t)
-    val t' = TranslateTypesFT.translate t
-    val _ = println ("t': " ^ I.toString t')
-    in
-      (I.toString t', 
-       R.toString (FlattenTypes.flatten t'))
-    end
+  val test0 = mkTest B.intTy
+
+  infixr **
+  fun t1 ** t2 = T.TupleTy [t1, t2]
+
+  val intParr = B.parrayTy B.intTy
+
+  val test1 = mkTest intParr
+
+  val test2 = mkTest (B.parrayTy intParr)
+
+  val test3 = mkTest (B.intTy ** B.intTy)
+
+  val test4 = mkTest (B.parrayTy (B.intTy ** B.intTy))
+
+  val test5 = mkTest (B.parrayTy ((B.parrayTy B.intTy) ** B.intTy))
+
+  val test6 = mkTest (B.parrayTy ((B.parrayTy B.intTy) ** (B.parrayTy B.intTy)))
+
+  val test7 = mkTest (B.parrayTy B.intTy ** (B.parrayTy B.intTy ** B.parrayTy B.intTy))
 
 end

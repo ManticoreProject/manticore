@@ -63,7 +63,8 @@ structure RepresentationTypes = struct
     fun ty (ConTy (ts, c)) =
          (case ts
 	    of [] => tycon c
-	     | _  => tycon c ^ tuple ts)
+	     | [t] => ty t ^ " " ^ tycon c
+	     | _  => tuple ts ^ " " ^ tycon c)
       | ty (FunTy (t, u)) = ty t ^ " -> " ^ ty u
       | ty (TupleTy ts) = tuple ts
       | ty (FlatArrayTy (t, n)) = 

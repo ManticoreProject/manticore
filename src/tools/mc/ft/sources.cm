@@ -12,6 +12,7 @@ Library
   structure NestingTreeTypes
   structure RepresentationTypes
   structure FTTypes
+  structure FLAST
   structure FTTypeUtil
   structure TranslateTypesFT
   structure FlattenTypes
@@ -24,6 +25,7 @@ is
   $/controls-lib.cm
 
   ../common/sources.cm
+  ../parse-tree/sources.cm
   ../ast/sources.cm
   ../env/sources.cm
 
@@ -31,6 +33,7 @@ is
   nesting-tree-types.sml
   representation-types.sml
   ft-types.sml
+  flast.sml
   ft-type-util.sml
   translate-types-ft.sml
   flatten-types.sml
