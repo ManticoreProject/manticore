@@ -72,7 +72,7 @@ structure SubstVar =
     and lambda s (A.FB (f, x, e)) = A.FB(s f, s x, exp s e)
 		  
     and pmatch s (A.PMatch (ps, e)) = A.PMatch (List.map (ppat s) ps, exp s e)
-      | pmatch s (A.Otherwise e) = A.Otherwise (exp s e)
+      | pmatch s (A.Otherwise (ts, e)) = A.Otherwise (ts, exp s e)
 
     and ppat s (w as A.NDWildPat _) = w
       | ppat s (A.HandlePat (p, t)) = A.HandlePat (pat s p, t)
