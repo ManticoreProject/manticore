@@ -15,6 +15,7 @@ Library
   structure FLAST
   structure FTTypeUtil
   structure TranslateTypesFT
+  structure TranslateTermsFT
   structure FlattenTypes
   structure TestFlattenTypes
 
@@ -36,5 +37,6 @@ is
   flast.sml
   ft-type-util.sml
   translate-types-ft.sml
+  translate-terms-ft.sml
   flatten-types.sml
   test-flatten-types.sml
