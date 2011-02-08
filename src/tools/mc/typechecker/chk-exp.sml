@@ -301,8 +301,31 @@ structure ChkExp :> sig
 		val resTy = AST.MetaTy(MetaVar.new depth)
 		val pms' = let
                   fun chk m = chkPMatch(loc, depth, tys, resTy, m)
+		  fun lp ([], acc, _) = List.rev acc
+		    | lp ([PT.Otherwise e], acc, SOME argTys) = let
+                        val (e', resTy') = chkExp (loc, depth, e)
+		        in
+                          if not (U.unify (resTy, resTy'))
+			    then error (loc, ["type mismatch in pcase"])
+			    else ();
+			  List.rev (AST.Otherwise (argTys, e')::acc)
+                        end
+		    | lp ([PT.Otherwise e], acc, NONE) =
+                        raise Fail "pcase contains only an Otherwise"
+		    | lp (PT.Otherwise(e)::t, _, _) =
+                        raise Fail "Otherwise not last in pcase"
+		    | lp (h::t, acc, SOME ts) = lp (t, chk(h)::acc, SOME ts)
+		    | lp (h::t, acc, NONE) = 
+                       (case chk(h)
+                          of m' as AST.PMatch(ps', _) => let
+                               val ts = List.map TypeOf.ppat ps'
+                               in
+                                 lp (t, m'::acc, SOME ts)
+                               end
+			   | _ => raise Fail "expected AST.PMatch"
+		         (* end case *))
                   in
-                    List.map chk pms
+                    lp (pms, [], NONE)
                   end
                 in
                   (AST.PCaseExp(es', pms', resTy), resTy)
@@ -593,16 +616,21 @@ structure ChkExp :> sig
 		end
 	  (* end case *))
 
+    and chkPPats (loc, depth) = let
+          fun chk ([], ps', argTys) = (List.rev ps', List.rev argTys)
+	    | chk (p::ps, ps', argTys) = let
+	        val (p', t') = chkPPat(loc, depth, p)
+                in
+		  chk (ps, p'::ps', t'::argTys)
+	        end
+          in
+	    chk
+          end
+
     and chkPMatch (loc, depth, argTys, resTy, pmatch) = (case pmatch
           of PT.MarkPMatch{span, tree} => chkPMatch(span, depth, argTys, resTy, tree)
 	   | PT.PMatch (ps, e) => let
-	       fun chkPPats ([], ps', argTys) = (List.rev ps', List.rev argTys)
-		 | chkPPats (p::ps, ps', argTys) = let
-                     val (p', t') = chkPPat(loc, depth, p)
-                     in
-                       chkPPats(ps, p'::ps', t'::argTys)
-		     end
-               val (ps', argTys') = chkPPats(ps, [], [])
+               val (ps', argTys') = chkPPats (loc,depth) (ps, [], [])
                val (e', resTy') = chkExp(loc, depth, e)
                fun u (argTy, argTy') = if not(U.unify(argTy, argTy'))
                                          then error(loc, ["type mismatch in pcase pattern"])
@@ -614,14 +642,8 @@ structure ChkExp :> sig
                    else ();
                  AST.PMatch (ps', e')
                end
-	   | PT.Otherwise e => let
-               val (e', resTy') = chkExp(loc, depth, e)
-               in
-                 if not(U.unify(resTy, resTy'))
-                   then error(loc, ["type mismatch in pcase"])
-                   else ();
-                 AST.Otherwise e'
-               end
+	   | PT.Otherwise e => raise Fail "should be unreachable"
+               (* Otherwise nodes should be handled under the PT.PCaseExp above *)
          (* end case *))
 
     and chkPBinds (loc, depth, pbs) : (AST.pat * AST.exp) list = 
