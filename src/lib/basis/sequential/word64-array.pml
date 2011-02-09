@@ -20,18 +20,18 @@ structure Word64Array =
       typedef word64 = Word64.word;
       typedef ml_word64 = Word64.ml_word;
 
-      extern void* GlobalAllocWord64Array (void*, int, long);
+      extern void* GlobalAllocRaw64Array (void*, int, long);
 
     (* allocate and initialize an array *)
       define inline @empty-array (x : unit / exh : exh) : array =
-        let data : any = ccall GlobalAllocWord64Array (host_vproc, 0, 0)
+        let data : any = ccall GlobalAllocRaw64Array (host_vproc, 0, 0)
         let arr : array = alloc (data, 0)
         return(arr)
       ;
  
     (* allocate and initialize an array *)
       define inline @array (n : int, elt : ml_word64 / exh : exh) : array =
-        let data : any = ccall GlobalAllocWord64Array (host_vproc, n, #0(elt))
+        let data : any = ccall GlobalAllocRaw64Array (host_vproc, n, #0(elt))
         let arr : array = alloc (data, n)
         return(arr)
       ;
