@@ -6,15 +6,9 @@
  * Effects for the type-and-effect analysis.
  *)
 
-structure Effects (* : sig
-  
-  type effects
-  val toString : effects -> string
-  -- need to decide which operations to provide --  
+structure Effects = struct
 
-end *) = struct
-
-  structure Effect =
+  structure Effect = struct
     
     datatype t
       = Exn
@@ -27,7 +21,7 @@ end *) = struct
 	| toInt Write = 2
     in
     (* compare : t * t -> order *)
-    (* uses alphabetical order wlog *)
+    (* wlog uses alphabetical order *)
       fun compare (e1, e2) = Int.compare (toInt e1, toInt e2)
     end (* local *)
  
@@ -39,7 +33,10 @@ end *) = struct
 
   end
 
-  structure EffectSet = RedBlackSetFn(Effect)
+  structure EffectSet = RedBlackSetFn(struct
+				        type ord_key = Effect.t
+					val compare = Effect.compare
+				      end)
     
   type effect = Effect.t
   type effects = EffectSet.set
@@ -47,13 +44,25 @@ end *) = struct
   val bottom : effects = EffectSet.empty
   val top : effects = List.foldl EffectSet.add' bottom Effect.all
 
-  (* do we need "meet" and "join"? *)
-
   val member : effects * effect -> bool = EffectSet.member
   val union : effects * effects -> effects = EffectSet.union
   val isEmpty : effects -> bool = EffectSet.isEmpty
 
-  val toString : effects -> toString = (fn fs => let
+(* curried member functions *)
+  val cmem  : effects -> effect -> bool = (fn s => fn x => member (s, x))
+  val cmem' : effect -> effects -> bool = (fn x => fn s => member (s, x))
+
+  val isBottom : effects -> bool = isEmpty
+
+  val isTop : effects -> bool = fn s => List.all (cmem s) Effect.all
+    
+  val mightRaise : effects -> bool = cmem' Effect.Exn
+
+  val mightRead : effects -> bool = cmem' Effect.Read
+
+  val mightWrite : effects -> bool = cmem' Effect.Write
+
+  val toString : effects -> string = (fn fs => let
     val es = EffectSet.listItems fs
     val ss = List.map Effect.toString es
     in

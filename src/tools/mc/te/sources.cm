@@ -1,0 +1,24 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Sources file for type and effect analysis.
+ *)
+
+Library
+
+  structure Effects
+  structure TETypes
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/controls-lib.cm
+
+  ../common/sources.cm
+  ../ast/sources.cm
+
+  effects.sml
+  te-types.sml
