@@ -73,7 +73,7 @@ structure Unpar : sig
                   in
                     A.PatMatch (A.TuplePat ps', exp e)
                   end
-	      | pm (A.Otherwise e) = let
+	      | pm (A.Otherwise (ts, e)) = let
 		  val ws = List.map (A.WildPat o TypeOf.exp) es
                   in
 	            A.PatMatch (A.TuplePat ws, exp e)
@@ -101,7 +101,7 @@ structure Unpar : sig
     (* This pmatch function leaves the pmatches as such;    *)
     (*  inside the pcase function they are translated away. *)
       and pmatch (A.PMatch (ps, e)) = A.PMatch (ps, exp e)
-	| pmatch (A.Otherwise e) = A.Otherwise (exp e) 
+	| pmatch (A.Otherwise (ts, e)) = A.Otherwise (ts, exp e) 
       in
 	exp
       end

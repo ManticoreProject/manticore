@@ -1003,7 +1003,7 @@ fun litsToString (s: LitSet.set) : string =
 (* pmatchesExps : AST.match list -> AST.exp list *)
   val pmatchesExps : AST.pmatch list -> AST.exp list = let
     fun exps (AST.PMatch (_, e), ms) = e::ms
-      | exps (AST.Otherwise e, ms) = e::ms
+      | exps (AST.Otherwise (_, e), ms) = e::ms
     in 
       List.foldr exps []
     end

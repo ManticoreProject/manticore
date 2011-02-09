@@ -165,7 +165,7 @@ structure Future1 : sig
 	      and match (A.PatMatch (_, e)) = exp e
 		| match (A.CondMatch (_, e1, e2)) = exp e1 orelse exp e2
 	      and pmatch (A.PMatch (_, e)) = exp e
-		| pmatch (A.Otherwise e) = exp e
+		| pmatch (A.Otherwise (ts, e)) = exp e
 	  in
 	      exp e
 	  end
