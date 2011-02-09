@@ -13,8 +13,9 @@
 
 #include "manticore-rt.h"
 #ifdef HAVE_LIBNUMA
-#  include "numa.h"
+#include <numa.h>
 #endif
+
 #if defined (TARGET_DARWIN)
 #  include <sys/sysctl.h>
 #endif
@@ -57,7 +58,8 @@ void DiscoverTopology ()
     }
 
 #ifdef HAVE_LIBNUMA
-    if (numa_available() >= 0) {
+    if (numa_available() == -1) {
+        Die ("NUMA is not available on this machine");
     }
 #endif
 
@@ -81,7 +83,12 @@ static void *InitWithLocation (void *arg)
     void *arg2 = locArg->arg;
     ThreadInitFn_t f = locArg->init;
 
-#ifdef HAVE_SCHED_SETAFFINITY
+#ifdef HAVE_NUMA
+    int node = LocationNode(locArg->loc);
+    if (numa_run_on_node (node) == -1) {
+        Warning("unable to set affinity to virtual processor %d, node %d\n", LogicalId(locArg->loc), node);
+    }
+#elif HAVE_SCHED_SETAFFINITY
     cpu_set_t	cpus;
     CPU_ZERO(&cpus);
     CPU_SET(LogicalId(locArg->loc), &cpus);
@@ -141,11 +148,18 @@ static bool GetNumCPUs ()
 	}
 	fclose (cpuinfo);
 
+#ifdef HAVE_LIBNUMA
+    NumHWThreads = NumHWCores = maxProcId + 1;
+    NumHWNodes  = numa_max_node()+1;
+    NumThdsPerCore = 1;
+    NumCoresPerNode = NumHWThreads / NumHWNodes;
+#else
 	NumHWNodes = maxNodeId + 1;
 	NumHWCores = NumHWNodes * nCores;
 	NumHWThreads = maxProcId + 1;
 	NumCoresPerNode = nCores;
 	NumThdsPerCore = NumHWThreads / NumHWCores;
+#endif
 
 	return true;
     }

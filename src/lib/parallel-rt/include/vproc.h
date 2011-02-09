@@ -130,6 +130,7 @@ typedef void (*VProcFn_t) (VProc_t *vp, void *arg);
 /* the array of vprocs */
 extern int		NumVProcs;
 extern int		*NumVProcsPerNode;
+extern int		*MinVProcPerNode;
 extern VProc_t		*VProcs[MAX_NUM_VPROCS];
 extern bool		ShutdownFlg;
 

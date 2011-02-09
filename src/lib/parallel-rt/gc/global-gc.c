@@ -393,7 +393,6 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 
   /* scan to-space chunks */
     ScanGlobalToSpace (vp);
-
     LogGlobalGCVPDone (vp, 0/*FIXME*/);
 
 #ifndef NDEBUG
@@ -452,6 +451,9 @@ MemChunk_t *GetNextScanChunk(VProc_t *vp, int node) {
 
     MutexLock(&NodeHeaps[node].lock);
     while (true) {
+#ifdef SINGLE_THREAD_PER_PACKAGE
+        if (LogicalId(vp->location) == MinVProcPerNode[node]) {
+#endif
         if (NodeHeaps[node].unscannedTo != NULL) {
             chunk = NodeHeaps[node].unscannedTo;
             NodeHeaps[node].unscannedTo = chunk->next;
@@ -465,6 +467,9 @@ MemChunk_t *GetNextScanChunk(VProc_t *vp, int node) {
 #endif
             return chunk;
         }
+#ifdef SINGLE_THREAD_PER_PACKAGE
+        }
+#endif
 
         if (vp->globAllocChunk->scanProgress < (vp->globNextW - WORD_SZB)) {
             MutexUnlock(&NodeHeaps[node].lock);

@@ -52,6 +52,7 @@ int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
 bool                    ShutdownFlg = false;
 int                     *NumVProcsPerNode;
+int                     *MinVProcPerNode;
 
 extern int ASM_VProcSleep;
 
@@ -105,8 +106,8 @@ void VProcInit (bool isSequential, Options_t *opts)
 #endif
 
 #ifndef NDEBUG
-    SayDebug("%d/%d hardware threads allocated to vprocs (%s)\n",
-	NumVProcs, NumHWThreads,
+    SayDebug("%d/%d hardware threads on %d nodes allocated to vprocs (%s)\n",
+    NumVProcs, NumHWThreads, NumHWNodes,
 	denseLayout ? "dense layout" : "non-dense layout");
 #endif
 
@@ -138,8 +139,10 @@ void VProcInit (bool isSequential, Options_t *opts)
     }
 
     NumVProcsPerNode = NEWVEC(int, NumHWNodes);
+    MinVProcPerNode = NEWVEC(int, NumHWNodes);
     for (int i = 0; i < NumHWNodes; i++) {
         NumVProcsPerNode[i] = 0;        
+        MinVProcPerNode[i] = MAX_NUM_VPROCS;        
     }
 
   /* assign locations */
@@ -188,7 +191,11 @@ void VProcInit (bool isSequential, Options_t *opts)
     }
 
     for (int i = 0;  i < NumVProcs;  i++) {
-        NumVProcsPerNode[LocationNode(initData[i].loc)]++;
+        int node = LocationNode(initData[i].loc);
+        NumVProcsPerNode[node]++;
+        if (MinVProcPerNode[node] > i) {
+            MinVProcPerNode[node] = i;
+        }
     }
 
 
