@@ -1,0 +1,63 @@
+(* effects.sml
+ *
+ * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Effects for the type-and-effect analysis.
+ *)
+
+structure Effects (* : sig
+  
+  type effects
+  val toString : effects -> string
+  -- need to decide which operations to provide --  
+
+end *) = struct
+
+  structure Effect =
+    
+    datatype t
+      = Exn
+      | Read
+      | Write
+
+    local 
+      fun toInt Exn = 0
+	| toInt Read = 1
+	| toInt Write = 2
+    in
+    (* compare : t * t -> order *)
+    (* uses alphabetical order wlog *)
+      fun compare (e1, e2) = Int.compare (toInt e1, toInt e2)
+    end (* local *)
+ 
+    fun toString Exn = "Exn"
+      | toString Read = "Read"
+      | toString Write = "Write"
+   
+    val all = [Exn, Read, Write]
+
+  end
+
+  structure EffectSet = RedBlackSetFn(Effect)
+    
+  type effect = Effect.t
+  type effects = EffectSet.set
+
+  val bottom : effects = EffectSet.empty
+  val top : effects = List.foldl EffectSet.add' bottom Effect.all
+
+  (* do we need "meet" and "join"? *)
+
+  val member : effects * effect -> bool = EffectSet.member
+  val union : effects * effects -> effects = EffectSet.union
+  val isEmpty : effects -> bool = EffectSet.isEmpty
+
+  val toString : effects -> toString = (fn fs => let
+    val es = EffectSet.listItems fs
+    val ss = List.map Effect.toString es
+    in
+      "{" ^ String.concatWith "," ss ^ "}"
+    end)
+
+end
