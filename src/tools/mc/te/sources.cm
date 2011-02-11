@@ -8,6 +8,7 @@
 
 Library
 
+  structure EAST
   structure Effects
   structure TETypes
 
@@ -18,7 +19,9 @@ is
   $/controls-lib.cm
 
   ../common/sources.cm
+  ../parse-tree/sources.cm
   ../ast/sources.cm
 
+  east.sml
   effects.sml
   te-types.sml
