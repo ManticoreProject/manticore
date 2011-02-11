@@ -15,7 +15,8 @@ structure FTTypeUtil = struct
   structure R = RepresentationTypes
 
 (* isGround : I.ty -> bool *)
-  fun isGround (I.ConTy ([], c)) = true
+  fun isGround (I.VarTy _) = false
+    | isGround (I.ConTy ([], c)) = true
     | isGround (I.ConTy (ts, _)) = false
     | isGround (I.FunTy _) = false
     | isGround (I.TupleTy _) = false
@@ -67,13 +68,15 @@ structure FTTypeUtil = struct
   fun isFlat r =
     (case r
        of R.ConTy ([], _) => true (* nullary constructors are flat *)
-	| R.ConTy (ts, c) => raise Fail "todo" (* is int option flat? *)
+	| R.ConTy (ts, c) => raise Fail "todo: account for non-nullary constructors" 
+            (* is int option flat? we don't flatten datatypes yet. *)
 	| R.FunTy (r1, r2) => isFlat r1 andalso isFlat r2
 	| R.TupleTy rs => List.all isFlat rs
 	| R.FlatArrayTy (r, n) =>
             isFlat r andalso
 	    notTuple r andalso
-	    notArray r)
+	    notArray r
+	| R.VarTy a => raise Fail "todo: account for tyvar")
             
 end
 

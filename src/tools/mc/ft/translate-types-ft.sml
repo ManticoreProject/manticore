@@ -25,16 +25,16 @@ structure TranslateTypesFT = struct
 
   fun ty_scheme _ = unsupported "ty_scheme" "type schemes"
 
-  fun ty t = 
+  fun ty (t : T.ty) : I.ty = 
     (case t
        of T.ErrorTy => unsupported "ty" "ErrorTy"
 	| T.MetaTy _ => unsupported "ty" "MetaTy"
-	| T.VarTy _ => unsupported "ty" "VarTy" (* for now *)
+	| T.VarTy a => I.VarTy a
 	| T.ConTy (ts, c) => I.ConTy (List.map ty ts, tycon c)
 	| T.FunTy (t, u) => I.FunTy (ty t, ty u)
 	| T.TupleTy ts => I.TupleTy (List.map ty ts))
 
-  and tycon (c as T.Tyc {stamp, name, arity, params, props, def}) = let
+  and tycon (c as T.Tyc {stamp, name, arity, params, props, def}) : I.tycon = let
         val def' = copyDef def
         in
           I.Tyc {stamp=stamp, name=name, arity=arity, 
@@ -62,12 +62,12 @@ structure TranslateTypesFT = struct
 	    owner=tycon owner, 
 	    argTy=Option.map ty argTy}
 
-  fun translate (t : T.ty) : I.ty = let
+  fun translate (t : T.ty) : FTTypes.ty = let
     val p = (fn s => (print s; print "\n"))
     val _ = p ("t: " ^ TypeUtil.toString t)
     val _ = p ("prune t: " ^ TypeUtil.toString (TypeUtil.prune t))
     in
-      ty (TypeUtil.prune t)
+      FTTypes.I (ty (TypeUtil.prune t))
     end
 
 end

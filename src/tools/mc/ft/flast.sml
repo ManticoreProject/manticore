@@ -9,7 +9,7 @@
 structure FLAST =
   struct
 
-    datatype ty_scheme = unit (* not used yet *) 
+    datatype ty_scheme = TyScheme of Types.tyvar list * FTTypes.ty
     datatype ty = datatype FTTypes.ty
     datatype tyvar = datatype Types.tyvar
     datatype dcon = datatype Types.dcon
@@ -117,19 +117,8 @@ structure FLAST =
       = Unknown of (ty * var list)
       | Instance of var
 
-    and var_kind
-      = VK_None
-      | VK_Pat			(* bound in a pattern *)
-      | VK_Fun			(* bound to a function *)
-      | VK_Prim			(* builtin function or operator *)
-
-    withtype var = (var_kind, ty_scheme ref) VarRep.var_rep
+    withtype var = (AST.var_kind, ty_scheme ref) VarRep.var_rep
 
     type comp_unit = top_dec list
-
-    fun varKindToString VK_None = "None"
-      | varKindToString VK_Pat = "Pat"
-      | varKindToString VK_Fun = "Fun"
-      | varKindToString VK_Prim = "Prim"
 
   end

@@ -13,7 +13,8 @@ structure RepresentationTypes = struct
   structure NTy = NestingTreeTypes
 
   datatype ty
-    = ConTy of (ty list * tycon)
+    = VarTy of Types.tyvar
+    | ConTy of (ty list * tycon)
     | FunTy of ty * ty
     | TupleTy of ty list
     | FlatArrayTy of ty * NTy.ty
@@ -52,6 +53,8 @@ structure RepresentationTypes = struct
           ListPair.allEq ty (ts1, ts2)
       | ty (FlatArrayTy (t1, n1), FlatArrayTy (t2, n2)) =
           ty (t1, t2) andalso NTy.same (n1, n2)
+      | ty (VarTy a, VarTy b) =
+          TyVar.same (a, b)
       | ty _ = false
     and tycon (Tyc {stamp=s1,...}, Tyc {stamp=s2,...}) = 
           Stamp.same (s1, s2)
@@ -69,6 +72,7 @@ structure RepresentationTypes = struct
       | ty (TupleTy ts) = tuple ts
       | ty (FlatArrayTy (t, n)) = 
           "{" ^ ty t ^ " ; " ^ NTy.toString n ^ "}"
+      | ty (VarTy a) = TypeUtil.tyvarToString a
     and tuple [] = "()"
       | tuple ts = "(" ^ (String.concatWith "," o List.map ty) ts ^ ")"
     and tycon (Tyc {stamp, name, arity, params, props, def}) =

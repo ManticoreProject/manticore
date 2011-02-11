@@ -16,11 +16,14 @@
 
 structure InterfaceTypes = struct
 
-  datatype ty
-    = ConTy   of ty list * tycon
+  datatype ty_scheme = TyScheme of Types.tyvar list * ty
+
+  and ty
+    = VarTy of Types.tyvar
+    | ConTy   of ty list * tycon
     | FunTy   of ty * ty
     | TupleTy of ty list
-    (* TySchemes, TyVars omitted for the time being *)
+    (* no ErrorTy, no MetaTy -- those shouldn't be present at translation time *)
 
   and tycon 
     = Tyc of {
@@ -54,6 +57,8 @@ structure InterfaceTypes = struct
           ty (t1, t2) andalso ty (u1, u2)
       | ty (TupleTy ts1, TupleTy ts2) =
           ListPair.allEq ty (ts1, ts2)
+      | ty (VarTy a, VarTy b) = 
+	  TyVar.same (a, b)
       | ty _ = false
     and tycon (Tyc {stamp=s1,...}, Tyc {stamp=s2,...}) = 
           Stamp.same (s1, s2)
@@ -69,6 +74,7 @@ structure InterfaceTypes = struct
 	     | _  => tuple ts ^ " " ^ tycon c)
       | ty (FunTy (t, u)) = ty t ^ " -> " ^ ty u
       | ty (TupleTy ts) = tuple ts
+      | ty (VarTy a) = TypeUtil.tyvarToString a
     and tuple [] = "()"
       | tuple ts = "(" ^ (String.concatWith "," o List.map ty) ts ^ ")"
     and tycon (Tyc {stamp, name, arity, params, props, def}) =

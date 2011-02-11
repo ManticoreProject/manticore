@@ -61,7 +61,8 @@ structure FlattenTypes = struct
 		| _ => raise Fail "todo")
 	   else raise Fail "todo"
        | I.FunTy (t, u) => R.FunTy (flatten t, flatten u)
-       | I.TupleTy ts => R.TupleTy (List.map flatten ts))
+       | I.TupleTy ts => R.TupleTy (List.map flatten ts)
+       | I.VarTy a => raise Fail "todo: account for tyvar in flattening")
 (* flattenN is the N operator from Fig. 5 *)
   and flattenN (R.FlatArrayTy (r, n)) = R.FlatArrayTy (r, N.Nd n)
     | flattenN (R.TupleTy rs) = R.TupleTy (List.map flattenN rs)
