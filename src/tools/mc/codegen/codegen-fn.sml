@@ -285,15 +285,27 @@ if MChkTy.check stm
 		      in
 			bindExp ([lhs], [rhs], ["let ", v2s lhs, " = ", v2s v, "[", i2s i, "]"])
 		      end
-		  | gen (M.E_Update(i, lhs, rhs)) = let
-		      val szI = BE.Types.szOfIx (Var.typeOf lhs, i)
-		      val wordSzB = IntInf.toInt Spec.ABI.wordSzB
-		      val offset = T.LI (T.I.fromInt (MTy.wordTy, wordSzB * i))
-		      in
-			flushLoads ();
-			emit(annotate(T.STORE (szI, T.ADD(MTy.wordTy, defOf lhs, offset), defOf rhs, ManticoreRegion.memory),
-			     v2s lhs^" := "^v2s rhs))
-		      end
+		  | gen (M.E_Update(i, lhs, rhs)) = 
+		    (case Var.typeOf rhs
+		      of CFGTy.T_Raw RawTypes.T_Float => let
+			  val wordSzB = IntInf.toInt Spec.ABI.wordSzB
+			  val offset = T.LI (T.I.fromInt (MTy.wordTy, wordSzB * i))
+			  in
+			     flushLoads ();
+			     emit(annotate(T.FSTORE (32, T.ADD(MTy.wordTy, defOf lhs, offset), fdefOf rhs, ManticoreRegion.memory),
+				 v2s lhs^" := "^v2s rhs))
+			  end
+		       | CFGTy.T_Raw RawTypes.T_Double => 
+			  raise Fail "todo"
+		       | _ => let
+			  val szI = BE.Types.szOfIx (Var.typeOf lhs, i)
+			  val wordSzB = IntInf.toInt Spec.ABI.wordSzB
+			  val offset = T.LI (T.I.fromInt (MTy.wordTy, wordSzB * i))
+			  in
+			    flushLoads ();
+			    emit(annotate(T.STORE (szI, T.ADD(MTy.wordTy, defOf lhs, offset), defOf rhs, ManticoreRegion.memory),
+				 v2s lhs^" := "^v2s rhs))
+			  end)
 		  | gen (M.E_AddrOf(lhs, i, v)) = let
 		      val addr = BE.Alloc.tupleAddrOf {mty=Var.typeOf v, i=i, base=defOf v}
 		      in
