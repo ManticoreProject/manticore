@@ -28,7 +28,7 @@ structure Long =
       ;
 
       define inline @to-int (n : ml_long / exh : exh) : ml_int =
-	  return(alloc(I64ToI32(#0(n))))
+	  return(wrap(I64ToI32(unwrap(n))))
 	;
 
     )
