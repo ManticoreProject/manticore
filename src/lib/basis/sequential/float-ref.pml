@@ -21,7 +21,7 @@ structure FloatRef =
 
       define inline @set (args : [ref, ml_float] / exh: exh) : unit =
         let r : ref = #0(args)
-        let x : float = #0(#1(args))
+        let x : float = unwrap(#1(args))
         do #0(r) := x
         return(UNIT)
         ;
