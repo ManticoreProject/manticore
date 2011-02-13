@@ -249,6 +249,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		  (* conversions *)
 		    | P.I32ToI64X x => gprBind (i64Ty, v, T.SX(i64Ty, i32Ty, defOf x))
 		    | P.I32ToI64 x => gprBind (i64Ty, v, T.ZX(i64Ty, i32Ty, defOf x))
+		    | P.I64ToI32 x => gprBind (i32Ty, v, defOf x)
 		    | P.I32ToF32 x => fbind (f32Ty, v, T.CVTI2F(f32Ty, i32Ty, defOf x))
 		    | P.I32ToF64 x => fbind (f64Ty, v, T.CVTI2F(f64Ty, i32Ty, defOf x))
 		    | P.I64ToF32 x => fbind (f32Ty, v, T.CVTI2F(f32Ty, i64Ty, defOf x))

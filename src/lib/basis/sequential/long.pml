@@ -27,9 +27,14 @@ structure Long =
 	    return (res)
       ;
 
+      define inline @to-int (n : ml_long / exh : exh) : ml_int =
+	  return(alloc(I64ToI32(#0(n))))
+	;
+
     )
 
     val toString : long -> string = _prim(@to-string)
     val fromString : string -> long Option.option = _prim(@from-string)
+    val toInt : long -> int = _prim(@to-int)
 
   end

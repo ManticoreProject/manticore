@@ -46,6 +46,7 @@ structure Prim =
     (* conversions *)
       | I32ToI64X of 'var		(* int -> long conversion with sign extension *)
       | I32ToI64 of 'var		(* unsigned int -> long conversion *)
+      | I64ToI32 of 'var                (* int -> long conversion *)
       | I32ToF32 of 'var		(* int -> float conversion *)
       | I32ToF64 of 'var		(* int -> double conversion *)
       | I64ToF32 of 'var		(* long -> float conversion *)

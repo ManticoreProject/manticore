@@ -54,6 +54,7 @@ structure PrimUtil : sig
       | nameOf (P.F64Abs _) = "F64Abs"
       | nameOf (P.I32ToI64X _) = "I32ToI64X"
       | nameOf (P.I32ToI64 _) = "I32ToI64"
+      | nameOf (P.I64ToI32 _) = "I64ToI32"
       | nameOf (P.I32ToF32 _) = "I32ToF32"
       | nameOf (P.I32ToF64 _) = "I32ToF64"
       | nameOf (P.I64ToF32 _) = "I64ToF32"
@@ -135,6 +136,7 @@ structure PrimUtil : sig
       | varsOf (P.F64Abs a) = [a]
       | varsOf (P.I32ToI64X a) = [a]
       | varsOf (P.I32ToI64 a) = [a]
+      | varsOf (P.I64ToI32 a) = [a]
       | varsOf (P.I32ToF32 a) = [a]
       | varsOf (P.I32ToF64 a) = [a]
       | varsOf (P.I64ToF32 a) = [a]
@@ -232,6 +234,7 @@ structure PrimUtil : sig
       | explode (P.F64Abs a) = (p1 P.F64Abs, [a])
       | explode (P.I32ToI64X a) = (p1 P.I32ToI64X, [a])
       | explode (P.I32ToI64 a) = (p1 P.I32ToI64, [a])
+      | explode (P.I64ToI32 a) = (p1 P.I64ToI32, [a])
       | explode (P.I32ToF32 a) = (p1 P.I32ToF32, [a])
       | explode (P.I32ToF64 a) = (p1 P.I32ToF64, [a])
       | explode (P.I64ToF32 a) = (p1 P.I64ToF32, [a])
