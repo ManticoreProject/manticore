@@ -14,24 +14,20 @@ structure FloatRef =
 
       typedef ref = ![float];
 
-    (* allocate and initialize a ref cell *)
-      define inline @new (x: ml_float / exh: exh) : ref =
+      define inline @new (x : ml_float / exh: exh) : ref =
         let cell : ref = alloc(#0(x))
         return(cell)
         ;
 
-    (* destructive update of the cell *)
       define inline @set (args : [ref, ml_float] / exh: exh) : unit =
         let r : ref = #0(args)
-        let x : any = #0(#1(args))
+        let x : float = #0(#1(args))
         do #0(r) := x
         return(UNIT)
         ;
 
-    (* read the value out of the cell *)
       define inline @get (r: ref / exh: exh) : ml_float = 
-        let x : float = #0(r)
-        return(alloc(x))
+        return(wrap(#0(r)))
         ;
     )
 
