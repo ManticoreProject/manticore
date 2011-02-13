@@ -1,0 +1,44 @@
+(* float-ref.pml
+ *
+ * COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ *)
+
+#include <prim.def>
+
+structure FloatRef =
+  struct
+
+    _primcode (
+
+      typedef ref = ![float];
+
+    (* allocate and initialize a ref cell *)
+      define inline @new (x: ml_float / exh: exh) : ref =
+        let cell : ref = alloc(#0(x))
+        return(cell)
+        ;
+
+    (* destructive update of the cell *)
+      define inline @set (args : [ref, ml_float] / exh: exh) : unit =
+        let r : ref = #0(args)
+        let x : any = #0(#1(args))
+        do #0(r) := x
+        return(UNIT)
+        ;
+
+    (* read the value out of the cell *)
+      define inline @get (r: ref / exh: exh) : ml_float = 
+        let x : float = #0(r)
+        return(alloc(x))
+        ;
+    )
+
+    type ref = _prim(ref)
+
+    val new : float -> ref        = _prim(@new)
+    val set : ref * float -> unit = _prim(@set)
+    val get : ref -> float        = _prim(@get)
+
+  end
