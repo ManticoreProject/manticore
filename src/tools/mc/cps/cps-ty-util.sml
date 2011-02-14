@@ -50,7 +50,7 @@ structure CPSTyUtil : sig
       | kindOf (CTy.T_Addr _) = CTy.K_TYPE
       | kindOf (CTy.T_Fun _) = CTy.K_BOXED
       | kindOf (CTy.T_CFun _) = CTy.K_UNIFORM
-      | kindOf CTy.T_VProc = CTy.K_UNIFORM
+      | kindOf CTy.T_VProc = CTy.K_RAW
 
   (* compare types for equality *)
     fun equal (ty1, ty2) = (case (ty1, ty2)

@@ -34,7 +34,7 @@ structure Cancelation (* : sig
     _primcode (
 
 (* QUESTION: is it safe to store a state value in the inactive flag? *)
-#define INACTIVE        $0
+#define INACTIVE        nullVP
 
 #define CANCELED_OFF    0
 #define INACTIVE_OFF    1

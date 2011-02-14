@@ -322,6 +322,7 @@ structure CheckBOM : sig
 			| (Literal.Enum _, BTy.T_TyCon _) => ()
 (* NOTE: the following shouldn't be necessary, but case-simplify doesn't put in enum types! *)
 			| (Literal.Enum _, BTy.T_Any) => ()
+                        | (Literal.Enum _, BTy.T_VProc) => ()
 			| (Literal.StateVal w, _) => () (* what is the type of StateVals? *)
 			| (Literal.Tag s, _) => () (* what is the type of Tags? *)
 			| (Literal.Int _, BTy.T_Raw BTy.T_Byte) => ()

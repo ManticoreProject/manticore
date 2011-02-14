@@ -439,8 +439,9 @@ structure PrimChan (*: sig
 							SELECT(SENDQ_FLS, item),
 							SELECT(SENDQ_CONT, item))
 						    do SchedulerAction.@atomic-end (self)
+                                                    let wrapped : ![vproc] = alloc(#2(item))
 						    (* in *)
-						      throw recvK (#2(item))
+						      throw recvK (wrapped)
 						| PEvt.CLAIMED =>
 						  (* the owner is attempting to sync, so roll back
 						   * and check the matching event again.

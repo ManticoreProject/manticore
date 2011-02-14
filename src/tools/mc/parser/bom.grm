@@ -40,6 +40,7 @@
 	| KW_long	("long")
 	| KW_module	("module")
 	| KW_noreturn	("noreturn")
+	| KW_nullVP	("nullVP")
 (*	| KW_of		("of")			*)
 	| KW_promote	("promote")
 	| KW_pure	("pure")
@@ -378,6 +379,8 @@ Literal
                  => (Literal.Tag (Atom.toString Name), BPT.T_Any)
 	| "$" POSINT
 		=> (Literal.StateVal(Word.fromLargeInt POSINT), BPT.T_Any)
+        | "nullVP"
+            => (Literal.StateVal(Word.fromLargeInt 0), BPT.T_VProc)
 	| Int (":" IntTy)?
 		=> (case SR
 		   of NONE => (Literal.Int Int, dfltIntTy)
