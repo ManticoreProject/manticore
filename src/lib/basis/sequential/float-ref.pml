@@ -27,7 +27,7 @@ structure FloatRef =
         ;
 
       define inline @get (r: ref / exh: exh) : ml_float = 
-        return(wrap(#0(r)))
+        return(alloc(#0(r)))
         ;
     )
 

@@ -63,8 +63,8 @@ structure Float =
     val fromInt : int -> float = _prim(@from-int)
     val fromLong : long -> float = _prim(@from-long)
 
-    fun max (x, y) = if x > y then x else y
-    fun min (x, y) = if x < y then x else y
+    fun max (x:float, y) = if x > y then x else y
+    fun min (x:float, y) = if x < y then x else y
 
     fun compare (x : float, y) = 
 	if x < y then LESS 

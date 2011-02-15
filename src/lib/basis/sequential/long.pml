@@ -37,4 +37,7 @@ structure Long =
     val fromString : string -> long Option.option = _prim(@from-string)
     val toInt : long -> int = _prim(@to-int)
 
+    fun min (x:long, y) = if x < y then x else y
+    fun max (x:long, y) = if x > y then x else y
+
   end
