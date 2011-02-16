@@ -11,7 +11,7 @@ Library
   structure EAST
   structure Effects
   structure TETypes
-
+  structure TETypeOf
 is
 
   $/basis.cm
@@ -25,3 +25,4 @@ is
   east.sml
   effects.sml
   te-types.sml
+  te-type-of.sml
