@@ -8,10 +8,8 @@
  * /path/to/manti-papers/papers/notes/amsft
  *)
 
-(* The technical point here is that the notes/amsft paper
- * contains no account of type constructors (apart from perhaps
- * nullaries, in its non-specific reference to ground types).
- * So one needs to decide what to do with types like int option.
+(* TODO Is it necessary to have a separate interface types module?
+ * I might just be able to use AST types. -ams
  *)
 
 structure InterfaceTypes = struct

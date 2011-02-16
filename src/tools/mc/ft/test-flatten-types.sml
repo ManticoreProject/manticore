@@ -9,7 +9,6 @@ structure TestFlattenTypes = struct
 
   structure T = Types
   structure B = Basis
-  structure I = InterfaceTypes
   structure N = NestingTreeTypes
   structure R = RepresentationTypes
   structure F = FTTypes
@@ -18,13 +17,11 @@ structure TestFlattenTypes = struct
   val println = (fn s => (print s; print "\n"))
 
   fun mkTest t = (fn () => let
-    val t' = TranslateTypesFT.ty t
-    val f = FlattenTypes.flatten t'
+    val r = FlattenTypes.flatten t
     in
       (println ("t:  " ^ TypeUtil.toString t);
-       println ("t': " ^ I.toString t');
-       println ("f:  " ^ R.toString f);
-       println ("result is flat: " ^ Bool.toString (U.isFlat f)))
+       println ("r:  " ^ R.toString r);
+       println ("result is flat: " ^ Bool.toString (U.isFlat r)))
     end)
 
   val test0 = mkTest B.intTy

@@ -16,19 +16,20 @@
 
 structure FTTypes = struct
 
-  structure ITy = InterfaceTypes
-  structure RTy = RepresentationTypes
+  structure T = Types
+  structure R = RepresentationTypes
+  structure U = TypeUtil
 
   datatype ty
-    = I  of ITy.ty
-    | IR of ITy.ty * RTy.ty
+    = T  of T.ty
+    | IR of T.ty * R.ty
 
-  fun same (I t1, I t2) = ITy.same (t1, t2)
-    | same (IR (t1, r1), IR (t2, r2)) = 
-        ITy.same (t1, t2) andalso RTy.same (r1, r2)
+  fun same (T t1, T t2) = U.same (t1, t2)
+    | same (IR (i1, r1), IR (i2, r2)) = 
+        U.same (i1, i2) andalso R.same (r1, r2)
     | same _ = false
 
-  fun toString (I t) = ITy.toString t
-    | toString (IR (t, r)) = "<" ^ ITy.toString t ^ " / " ^ RTy.toString r ^ ">"
+  fun toString (T t) = U.toString t
+    | toString (IR (i, r)) = "<" ^ U.toString i ^ " / " ^ R.toString r ^ ">"
 
 end

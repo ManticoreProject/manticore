@@ -10,48 +10,65 @@
 
 structure FTTypeUtil = struct
 
-  structure I = InterfaceTypes
-  structure N = NestingTreeTypes
+  structure F = FLAST
+  structure A = Types (* AST types *)
+  structure T = FTTypes
   structure R = RepresentationTypes
+  structure N = NestingTreeTypes
 
-(* isGround : I.ty -> bool *)
-  fun isGround (I.VarTy _) = false
-    | isGround (I.ConTy ([], c)) = true
-    | isGround (I.ConTy (ts, _)) = false
-    | isGround (I.FunTy _) = false
-    | isGround (I.TupleTy _) = false
+(* isGround : A.ty -> bool *)
+(* FIXME too permissive? *)
+  fun isGround (A.ConTy ([], c)) = true
+    | isGround _ = false
 
-(* I to R conversions *)
-  fun tycI2R (I.Tyc {stamp, name, arity, params, props, def}) =
-        R.Tyc {stamp=stamp, name=name, arity=arity, 
-	       params=params, props=props, def=tycon_defI2R def}
-  and tycon_defI2R (I.AbsTyc) = R.AbsTyc
-    | tycon_defI2R (I.DataTyc {nCons, cons}) = 
-        R.DataTyc {nCons = ref(!nCons), cons=ref(List.map dconI2R (!cons))}
-  and dconI2R (I.DCon {id, name, owner, argTy}) =
-   (case argTy
-      of SOME t => raise Fail "todo: argTy not NONE"
-       | NONE => R.DCon {id=id, name=name, owner=tycI2R owner, argTy=NONE})
+(* AST to R conversions *)
+  fun tycon_AtoR (A.Tyc {stamp, name, arity, params, props, def}) =
+   (case def
+      of A.AbsTyc => R.Tyc {stamp=stamp, name=name, arity=arity, 
+			      params=params, props=props, def=R.AbsTyc}
+       | A.DataTyc {nCons, cons} => let
+	   val newDef = R.DataTyc {nCons=ref(!nCons), cons=ref []}
+	   val newTyc = R.Tyc {stamp=stamp, name=name, arity=arity, 
+			       params=params, props=props, def=newDef}
+	   fun lp ([], acc) = List.rev acc
+	     | lp (c::cs, acc) = let
+	         val A.DCon {id, name, owner, argTy} = c
+		 val c' = R.DCon {id=id, name=name, owner=newTyc,
+				  argTy=Option.map ty_AtoR argTy}
+	         in
+		   lp (cs, c'::acc)
+	         end
+	   val cons' = lp (!cons, [])
+	   val _ = setCons (newDef, cons')
+           in
+	     R.Tyc {stamp=stamp, name=name, arity=arity, 
+		    params=params, props=props, def=newDef}
+	   end)
+  and setCons (R.DataTyc {cons, ...}, c) = (cons := c)
+    | setCons (R.AbsTyc, _) = raise Fail "setCons (unreachable, supposedly)"
+  and ty_AtoR (A.ErrorTy) = raise Fail "ty_AtoR: ErrorTy"
+    | ty_AtoR (A.MetaTy _) = raise Fail "ty_AtoR: MetaTy"
+    | ty_AtoR (A.VarTy a) = R.VarTy a
+    | ty_AtoR (A.ConTy (ts, c)) = R.ConTy (List.map ty_AtoR ts, tycon_AtoR c)
+    | ty_AtoR (A.FunTy (t, u)) = R.FunTy (ty_AtoR t, ty_AtoR u)
+    | ty_AtoR (A.TupleTy ts) = R.TupleTy (List.map ty_AtoR ts)
 
 (* ground : I.ty -> R.ty *)
 (* convert a I ground type to an R ground type *)
-  fun ground (I.ConTy ([], c)) = R.ConTy ([], tycI2R c)
-    | ground t = raise Fail ("not a ground type: " ^ I.toString t)
+  fun ground (A.ConTy ([], c)) = R.ConTy ([], tycon_AtoR c)
+    | ground t = raise Fail ("not a ground type: " ^ TypeUtil.toString t)
 
 (* notTuple : R.ty -> bool *)
   fun notTuple (R.TupleTy []) = true (* this is unit, which doesn't count *)
     | notTuple (R.TupleTy rs) = false
     | notTuple _ = true
 
-(* isArrayTycon : R.tycon -> bool *)
   local
     val parrayStamp = TyCon.stampOf (Basis.parrayTyc)
     fun eq s = Stamp.same (parrayStamp, s)
   in
-    fun isParrTycI (c as I.Tyc {stamp, ...}) = eq stamp
     fun isParrTycR (c as R.Tyc {stamp, ...}) = eq stamp
-    val parrTycI = TranslateTypesFT.tycon Basis.parrayTyc
-    val parrTycR = tycI2R parrTycI
+    val parrTycR = tycon_AtoR Basis.parrayTyc
   end
 
 (* notArray : R.ty -> bool *)
@@ -59,6 +76,7 @@ structure FTTypeUtil = struct
     (case r
        of R.ConTy (ts, c) => not (isParrTycR c)
 	| _ => true)
+
 
 (* isLf : N.ty -> bool *)
   val isLf = (fn N.Lf => true | _ => false)
@@ -77,6 +95,26 @@ structure FTTypeUtil = struct
 	    notTuple r andalso
 	    notArray r
 	| R.VarTy a => raise Fail "todo: account for tyvar")
-            
+
+(* schemeToString : F.ty_scheme -> string *)
+  fun schemeToString (s : F.ty_scheme) : string =
+   (case s
+      of F.TyScheme ([], t) => T.toString t
+       | F.TyScheme (vs, t) => let
+           val ss = List.map TypeUtil.tyvarToString vs
+	   val ss' = String.concatWith "," ss
+	   val t' = T.toString t
+           in
+	     String.concat ["[", ss', "]", t']
+	   end
+     (* end case *))
+
+(* rangeType : F.ty -> F.ty *)
+(*  fun rangeType (T.FunTy (_, r)) = r
+    | rangeType _ = raise Fail "rangeType"
+  *)          
+
+  fun rangeType _ = raise Fail "rangeType todo"
+
 end
 

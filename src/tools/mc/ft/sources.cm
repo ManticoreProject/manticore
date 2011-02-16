@@ -8,21 +8,26 @@
 
 Library
 
-  structure InterfaceTypes
   structure NestingTreeTypes
   structure RepresentationTypes
   structure FTTypes
+  structure FTVar
   structure FLAST
+  structure FLASTUtil
   structure FTTypeUtil
-  structure TranslateTypesFT
   structure TranslateTermsFT
   structure FlattenTypes
   structure TestFlattenTypes
+  structure TestTranslateTerms
+  structure PrintFTTypes
+  structure PrintFLAST
+  structure FTSynthOps
 
 is
 
   $/basis.cm
   $/smlnj-lib.cm
+  $/pp-lib.cm
   $/controls-lib.cm
 
   ../common/sources.cm
@@ -30,13 +35,17 @@ is
   ../ast/sources.cm
   ../env/sources.cm
 
-  interface-types.sml
   nesting-tree-types.sml
   representation-types.sml
   ft-types.sml
+  ft-var.sml
   flast.sml
+  flast-util.sml
   ft-type-util.sml
-  translate-types-ft.sml
   translate-terms-ft.sml
   flatten-types.sml
   test-flatten-types.sml
+  test-translate-terms.sml
+  print-ft-types.sml
+  print-flast.sml
+  ft-synth-ops.sml

@@ -14,7 +14,7 @@ structure TranslateTermsFT = struct
   structure F = FLAST
   structure T = FTTypes
 
-  val trTy = TranslateTypesFT.translate
+  val trTy = F.T
 
   val trTyScheme : A.ty_scheme -> F.ty_scheme = 
    (fn (A.TyScheme (vs, t)) => F.TyScheme (vs, trTy t))
@@ -32,13 +32,14 @@ structure TranslateTermsFT = struct
 		  props = props}
       end)
 
+(* pointwise function composition *)
   infixr oo
   fun f oo g = (fn (x, y) => (f x, g y))
 
 (* NOTE: the translation is agnostic to whether or not PTuples, PCases, etc.
  * are still around; it just translates them.
  *)
-  val trExp : A.exp -> F.exp = let
+  fun trExp (e : A.exp) : F.exp = let
     fun exp (A.LetExp (b, e)) = F.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = F.IfExp (exp e1, exp e2, exp e3, trTy t)
       | exp (A.CaseExp (e, ms, t)) = F.CaseExp (exp e, List.map match ms, trTy t)
@@ -53,7 +54,7 @@ structure TranslateTermsFT = struct
       | exp (A.RangeExp (e1, e2, optE, t)) = 
           F.RangeExp (exp e1, exp e2, Option.map exp optE, trTy t)
       | exp (A.PTupleExp es) = F.PTupleExp (List.map exp es)
-      | exp (A.PArrayExp (es, t)) = F.PArrayExp (List.map exp es, trTy t)
+      | exp (A.PArrayExp (es, t)) = trPArray (es, t) (* t is element type *)
       | exp (A.PCompExp (e, pes, optE)) = 
           F.PCompExp (exp e, List.map (pat oo exp) pes, Option.map exp optE)
       | exp (A.PChoiceExp (es, t)) = F.PChoiceExp (List.map exp es, trTy t)
@@ -87,7 +88,14 @@ structure TranslateTermsFT = struct
       | ov (A.Instance x) = F.Instance (trVar x)
     and vop A.MapP = F.MapP
     in
-      exp
+      exp e
+    end
+
+  and trPArray (es, eltTy) = let
+    val r = FlattenTypes.flatten (Basis.parrayTy eltTy)
+    val fl = FTSynthOps.flatten r
+    in
+      FLASTUtil.mkApplyExp (fl, List.map trExp es)
     end
 
 end
