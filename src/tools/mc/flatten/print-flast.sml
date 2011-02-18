@@ -197,7 +197,7 @@ structure PrintFLAST : sig
             pr "_";
             pr (Int.toString n);
           closeBox ())
-      | exp (F.TupleExp es) =
+      | exp (F.TupleExp (es, _)) =
 	  (openVBox (rel 0);
 	   pr "(";
 	   appwith (fn () => pr ",") exp es;
@@ -227,6 +227,14 @@ structure PrintFLAST : sig
 	   appwith (fn () => pr ",") exp es;
 	   pr " |]";
 	   closeBox ())
+      | exp (F.FArrayExp (es, n, t)) = 
+          (openVBox (rel 0);
+	   pr "{[";
+	   appwith (fn () => pr ",") exp es;
+	   pr "];";
+	   ntree n;
+	   pr "}";
+	   closeBox())
       | exp (F.PCompExp (e, pes, oe)) = 
 	  (openVBox (rel 0);
 	   pr "[| ";
@@ -260,6 +268,18 @@ structure PrintFLAST : sig
       | exp (F.ExpansionOptsExp (_, e)) = exp e
 
     and var_arity_op (F.MapP) = pr "mapP"
+
+    and ntree (F.Lf (e1, e2)) = (
+          openVBox (rel 0);
+	  pr "Lf(";
+	  exp e1;
+	  pr ",";
+	  exp e2;
+	  pr ")")
+      | ntree (F.Nd ns) = (
+	  pr "Nd(";
+	  appwith (fn () => ",") ntree ns;
+	  pr ")")
 
   (* pe : string -> F.match -> unit *)
     and pe s (F.PatMatch(p, e)) = (

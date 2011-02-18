@@ -6,8 +6,13 @@
  * Translate AST types into FT interface types.
  * Note: this is not flattening of types, which takes place in another module.
  * This is just a straightforward translation.
- * 
- * Types for the flattening transformation.
+ *
+ * As the type is not flattened here, the translation translates the input 
+ * into a representation type, and pairs the "copied" result with the original.
+ * EX: int parr parr ---> < int parr parr / int parr parr >
+ *   (even though after flattening the type will be
+ *      < int parr parr / { int ; nd lf } >)
+ *
  * Supporting documents in 
  * /path/to/manti-papers/papers/notes/amsft
  *)
@@ -15,7 +20,7 @@
 structure TranslateTypesFT = struct
 
   structure T = Types
-  structure I = InterfaceTypes
+  structure F = FTTypes
 
   fun unsupported func descrip = let
     val msg = concat ["TranslateTypesFT: in ", func, " ", descrip, " unsupported."]
@@ -25,28 +30,29 @@ structure TranslateTypesFT = struct
 
   fun ty_scheme _ = unsupported "ty_scheme" "type schemes"
 
-  fun ty (t : T.ty) : I.ty = 
+  fun repr (t : T.ty) : F.repr_ty = 
     (case t
        of T.ErrorTy => unsupported "ty" "ErrorTy"
 	| T.MetaTy _ => unsupported "ty" "MetaTy"
-	| T.VarTy a => I.VarTy a
-	| T.ConTy (ts, c) => I.ConTy (List.map ty ts, tycon c)
-	| T.FunTy (t, u) => I.FunTy (ty t, ty u)
-	| T.TupleTy ts => I.TupleTy (List.map ty ts))
+	| T.VarTy a => F.VarTy a
+	| T.ConTy (ts, c) => F.ConTy (List.map repr ts, tycon c)
+	| T.FunTy (dom, rng) => F.FunTy (repr dom, repr rng)
+	| T.TupleTy ts => F.TupleTy (List.map repr ts)
+      (* end case *))
 
-  and tycon (c as T.Tyc {stamp, name, arity, params, props, def}) : I.tycon = 
+  and tycon (c as T.Tyc {stamp, name, arity, params, props, def}) : F.tycon = 
        (case def
-	  of T.AbsTyc => I.Tyc {stamp=stamp, name=name, arity=arity, 
-				params=params, props=props, def=I.AbsTyc}
+	  of T.AbsTyc => F.Tyc {stamp=stamp, name=name, arity=arity, 
+				params=params, props=props, def=F.AbsTyc}
 	   | T.DataTyc {nCons, cons} => let
-               val dt = I.DataTyc {nCons=ref(!nCons), cons=ref []}
-	       val c' = I.Tyc {stamp=stamp, name=name, arity=arity, 
+               val dt = F.DataTyc {nCons=ref(!nCons), cons=ref []}
+	       val c' = F.Tyc {stamp=stamp, name=name, arity=arity, 
 			       params=params, props=props, def=dt}
 	       fun lp ([], acc) = List.rev acc
 		 | lp (c::cs, acc) = let
 		     val T.DCon {id, name, owner, argTy} = c
-		     val ic = I.DCon {id=id, name=name, owner=c', 
-				      argTy=Option.map ty argTy}
+		     val ic = F.DCon {id=id, name=name, owner=c', 
+				      argTy=Option.map repr argTy}
 		     in
 		       lp (cs, ic::acc)
 		     end
@@ -57,17 +63,17 @@ structure TranslateTypesFT = struct
 	       end
          (* end case *))
 
-  and setCons (I.DataTyc {cons, ...}, ds) = (cons := ds)
-    | setCons (I.AbsTyc, _) = raise Fail "this should be unreachable"
+  and setCons (F.DataTyc {cons, ...}, ds) = (cons := ds)
+    | setCons (F.AbsTyc, _) = raise Fail "this should be unreachable"
 
-  fun translate (t : T.ty) : FTTypes.ty = let
-    val p = (fn s => (print s; print "\n"))
-(*
-    val _ = p ("t: " ^ TypeUtil.toString t)
-    val _ = p ("prune t: " ^ TypeUtil.toString (TypeUtil.prune t))
-*)
+  fun ty (t : T.ty) : F.ty = F.IR (t, repr t)
+
+  fun trTy (t : T.ty) : F.ty = let
+    val t' = TypeUtil.prune t
     in
-      FTTypes.I (ty (TypeUtil.prune t))
+      ty t'
     end
+
+  val trTycon = tycon
 
 end

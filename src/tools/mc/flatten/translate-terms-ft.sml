@@ -14,7 +14,7 @@ structure TranslateTermsFT = struct
   structure F = FLAST
   structure T = FTTypes
 
-  val trTy = F.T
+  fun trTy t = TranslateTypesFT.trTy t
 
   val trTyScheme : A.ty_scheme -> F.ty_scheme = 
    (fn (A.TyScheme (vs, t)) => F.TyScheme (vs, trTy t))
@@ -50,7 +50,11 @@ structure TranslateTermsFT = struct
       | exp (A.FunExp (x, e, t)) = F.FunExp (trVar x, exp e, trTy t)
       | exp (A.ApplyExp (e1, e2, t)) = F.ApplyExp (exp e1, exp e2, trTy t)
       | exp (A.VarArityOpExp (oper, n, t)) = F.VarArityOpExp (vop oper, n, trTy t)
-      | exp (A.TupleExp es) = F.TupleExp (List.map exp es)
+      | exp (A.TupleExp es) = let
+          val intfTy  = Types.TupleTy (List.map TypeOf.exp es)
+	  in
+	    F.TupleExp (List.map exp es, intfTy)
+	  end
       | exp (A.RangeExp (e1, e2, optE, t)) = 
           F.RangeExp (exp e1, exp e2, Option.map exp optE, trTy t)
       | exp (A.PTupleExp es) = F.PTupleExp (List.map exp es)
@@ -91,11 +95,14 @@ structure TranslateTermsFT = struct
       exp e
     end
 
-  and trPArray (es, eltTy) = let
+  and trPArray (es, eltTy) = (*
+let
     val r = FlattenTypes.flatten (Basis.parrayTy eltTy)
     val fl = FTSynthOps.flatten r
     in
-      FLASTUtil.mkApplyExp (fl, List.map trExp es)
+*)
+      raise Fail "todo"
+        (* FLASTUtil.mkApplyExp (fl, List.map trExp es) 
     end
-
+*)
 end

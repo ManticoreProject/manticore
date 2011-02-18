@@ -9,12 +9,12 @@
 Library
 
   structure NestingTreeTypes
-  structure RepresentationTypes
   structure FTTypes
   structure FTVar
   structure FLAST
   structure FLASTUtil
   structure FTTypeUtil
+  structure TranslateTypesFT
   structure TranslateTermsFT
   structure FlattenTypes
   structure TestFlattenTypes
@@ -36,12 +36,12 @@ is
   ../env/sources.cm
 
   nesting-tree-types.sml
-  representation-types.sml
   ft-types.sml
   ft-var.sml
   flast.sml
   flast-util.sml
   ft-type-util.sml
+  translate-types-ft.sml
   translate-terms-ft.sml
   flatten-types.sml
   test-flatten-types.sml

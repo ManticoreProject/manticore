@@ -17,7 +17,6 @@ structure PrintFTTypes : sig
 end  = struct
   
   structure T = FTTypes
-  structure R = RepresentationTypes
   structure S = TextIOPP
 
   val str = S.openOut {dst = TextIO.stdErr, wid = 80}

@@ -8,14 +8,16 @@
 
 structure FLASTUtil : sig
 
+(*
 (* create a tuple expression, with singleton tuples mapping to their element expression *)
   val mkTupleExp : FLAST.exp list-> FLAST.exp
 
 (* create an expression that applies a function *)
   val mkApplyExp : (FLAST.exp * FLAST.exp list) -> FLAST.exp
-
+*)
 end = struct
 
+(*
   structure F = FLAST
   structure B = Basis
   structure U = FTTypeUtil
@@ -29,5 +31,5 @@ end = struct
 *)
   fun mkApplyExp (e : F.exp, es : F.exp list) : F.exp =
     raise Fail "todo"
-
+*)
 end

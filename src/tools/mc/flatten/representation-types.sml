@@ -17,7 +17,11 @@ structure RepresentationTypes = struct
     | ConTy of (ty list * tycon)
     | FunTy of ty * ty
     | TupleTy of ty list
-    | FlatArrayTy of ty * NTy.ty
+    | FlatArrayTy of ty * NTy.ty (* ty is element type *)
+
+(* FIXME : the flat array ty element type needs to be an <i/r> type ... 
+ * ... it looks like I have to move this datatype into the ft-types 
+ * module because of the recursive dependency ... think about this!!! *)
 
   and tycon 
     = Tyc of {

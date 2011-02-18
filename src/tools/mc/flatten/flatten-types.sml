@@ -10,68 +10,73 @@
 
 structure FlattenTypes = struct
 
-  structure T = Types (* AST types *)
+  structure F = FTTypes (* flattening trx types *)
   structure N = NestingTreeTypes
-  structure R = RepresentationTypes
   structure F = FTTypes
   structure U = FTTypeUtil
-  
-(* isParrTyc : T.tycon -> bool *)
-  fun isParrTyc c = TyCon.same (c, Basis.parrayTyc)
+   
+(* isParrTyc : F.tycon -> bool *)
+  fun isParrTyc c = U.isParrTycR c				 
 
-(* isParr : T.ty -> bool *)
-  fun isParr (T.ConTy (_, c)) = isParrTyc c
+(* isParr : F.ty -> bool *)
+  fun isParr (F.ConTy (_, c)) = isParrTyc c
     | isParr _ = false
 
-(* isParrG : T.ty -> bool *)
+(* isParrG : F.ty -> bool *)
 (* tests whether argument is an array of a ground type *)
-  fun isParrG (T.ConTy ([t], c)) = 
+  fun isParrG (F.ConTy ([t], c)) = 
         isParrTyc c andalso U.isGround t
     | isParrG _ = false
 
-(* flatten : T.ty -> R.ty *)
-  fun flatten (t : T.ty) : R.ty =
-   (case t
-      of T.ConTy (ts, c) =>
-	   if U.isGround t then 
-	     U.ground t
-	   else if isParrG t then let
-             val g = 
-              (case t 
-		 of T.ConTy ([u], _) => u
-		  | _ => raise Fail "bug - should be unreachable")
-	     in
-               R.FlatArrayTy (U.ground g, N.Lf)
-             end
-	   else if isParrTyc c then
-            (case ts
-               of [T.FunTy (td, tr)] =>
-		    R.FlatArrayTy (R.FunTy (flatten td, flatten tr), N.Lf)
-		| [T.TupleTy ys] => let
-		    fun parr t = Basis.parrayTy t
-                    val ys' = List.map (flatten o parr) ys
-                    in
-		      R.TupleTy ys'
-		    end
-		| [T.ConTy (ts', c')] =>
-                    if isParrTyc c' then let
-                      val rho = flatten (T.ConTy (ts', c'))
+(* flatten : F.ty -> F.ty *)
+  fun flatten (t as F.IR (i, r)) : F.ty = let
+    fun repr r = 
+      if U.isGround r then r
+      else
+       (case r
+         of F.ConTy (ts, c) =>
+	      if isParrG r then let
+                val g = (case r of F.ConTy ([g], _) => g
+				 | _ => raise Fail "g")
+		in
+                  F.FlatArrayTy (g, N.Lf)
+		end
+	      else if isParrTyc c then
+               (case ts
+		  of [F.FunTy (td, tr)] => let
+                       val td' = repr td
+		       val tr' = repr tr
+		       in
+		        F.FlatArrayTy (F.FunTy (td', tr'), N.Lf)
+		      end
+		  | [F.TupleTy ys] => let
+                      val ys' = List.map (repr o U.parrayTy) ys
                       in
-                        operN rho
-	              end
-		    else 
-                      raise Fail "todo"
-		| _ => raise Fail "todo")
-	   else raise Fail "todo"
-       | T.FunTy (t, u) => R.FunTy (flatten t, flatten u)
-       | T.TupleTy ts => R.TupleTy (List.map flatten ts)
-       | T.VarTy a => R.VarTy a
-       | T.ErrorTy => raise Fail "ErrorTy"
-       | T.MetaTy _ => raise Fail "MetaTy"
+		        F.TupleTy ys'
+		      end
+		  | [ct as F.ConTy (ts', c')] =>
+                      if isParrTyc c' then operN ct
+		      else raise Fail "todo"
+		  | _ => raise Fail "todo"
+	        (* end case *))
+	     else 
+               raise Fail "todo"
+	  | F.FunTy (t, u) => F.FunTy (repr t, repr u)
+	  | F.TupleTy ts => F.TupleTy (List.map repr ts)
+	  | F.VarTy a => F.VarTy a
+	  | F.FlatArrayTy _ => 
+              raise Fail "bug: this translation should not have to flatten FlatArrayTy"
      (* end case *))
+    in
+      F.IR (i, repr r)
+    end
+
 (* operN is the N operator from Fig. 5 *)
-  and operN (R.FlatArrayTy (r, n)) = R.FlatArrayTy (r, N.Nd n)
-    | operN (R.TupleTy rs) = R.TupleTy (List.map operN rs)
-    | operN t = raise Fail ("bug: trying to apply N to " ^ R.toString t)
+  and operN (r : F.repr_ty) : F.repr_ty =
+   (case r 
+      of F.FlatArrayTy (t, n) => F.FlatArrayTy (t, N.Nd n)
+       | F.TupleTy rs => F.TupleTy (List.map operN rs)
+       | _ => raise Fail "operN"
+     (* end case *))
 
 end
