@@ -18,7 +18,7 @@ structure FTTypeUtil = struct
   val trTy = TranslateTypesFT.trTy
   val trTycon = TranslateTypesFT.trTycon 
 
-(* isGround : A.ty -> bool *)
+(* isGround : F.repr_ty -> bool *)
 (* FIXME too permissive *)
   fun isGround (T.ConTy ([], c)) = true
     | isGround _ = false
@@ -87,12 +87,26 @@ structure FTTypeUtil = struct
 	   end
      (* end case *))
 
-(* rangeType : F.ty -> F.ty *)
-(*  fun rangeType (T.FunTy (_, r)) = r
-    | rangeType _ = raise Fail "rangeType"
-  *)          
+(* domainOf : F.repr_ty -> F.repr_ty *)
+  fun domainOf (T.FunTy (d, _)) = d
+    | domainOf _ = raise Fail "domainOf"
 
-  fun rangeType _ = raise Fail "rangeType todo"
+(* rangeOf : F.repr_ty -> F.repr_ty *)
+  fun rangeOf (T.FunTy (_, r)) = r
+    | rangeOf _ = raise Fail "rangeOf"
+
+(* unzipF : F.repr_ty list -> F.repr_ty list * F.repr_ty list *)
+(* unzip function types into domains and ranges *)
+(* raises and exception if a non-function type is found *)
+  fun unzipF ts = let
+    fun lp ([], doms, rngs) = (doms, rngs)
+      | lp (h::t, doms, rngs) = 
+         (case h of
+	      T.FunTy (d, r) => lp (t, d::doms, r::rngs)
+	    | _ => raise Fail "unzipF")
+    in
+      lp (List.rev ts, [], [])
+    end
 
 end
 

@@ -49,22 +49,22 @@ structure FTTypes = struct
   datatype ty
     = IR of T.ty * repr_ty
 
+  fun reprSame (ConTy (ts1, c1), ConTy (ts2, c2)) = 
+        ListPair.allEq reprSame (ts1, ts2) andalso tycon (c1, c2)
+    | reprSame (FunTy (t1, u1), FunTy (t2, u2)) =
+        reprSame (t1, t2) andalso reprSame (u1, u2)
+    | reprSame (TupleTy ts1, TupleTy ts2) =
+        ListPair.allEq reprSame (ts1, ts2)
+    | reprSame (FlatArrayTy (t1, n1), FlatArrayTy (t2, n2)) =
+        reprSame (t1, t2) andalso N.same (n1, n2)
+    | reprSame (VarTy a, VarTy b) =
+        TyVar.same (a, b)
+    | reprSame _ = false
+  and tycon (Tyc {stamp=s1,...}, Tyc {stamp=s2,...}) = Stamp.same (s1, s2)
+
   fun same (t1 : ty, t2 : ty) : bool = let
-    fun repr (ConTy (ts1, c1), ConTy (ts2, c2)) = 
-          ListPair.allEq repr (ts1, ts2) andalso tycon (c1, c2)
-      | repr (FunTy (t1, u1), FunTy (t2, u2)) =
-          repr (t1, t2) andalso repr (u1, u2)
-      | repr (TupleTy ts1, TupleTy ts2) =
-          ListPair.allEq repr (ts1, ts2)
-      | repr (FlatArrayTy (t1, n1), FlatArrayTy (t2, n2)) =
-          repr (t1, t2) andalso N.same (n1, n2)
-      | repr (VarTy a, VarTy b) =
-          TyVar.same (a, b)
-      | repr _ = false
-    and tycon (Tyc {stamp=s1,...}, Tyc {stamp=s2,...}) = 
-      Stamp.same (s1, s2)
     fun ty (IR (t1, r1), IR (t2, r2)) = 
-      U.same (t1, t2) andalso repr (r1, r2)
+      U.same (t1, t2) andalso reprSame (r1, r2)
     in
       ty (t1, t2)
     end
