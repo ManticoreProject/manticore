@@ -365,10 +365,10 @@ structure PValToFuture =
                                  in
 				   A.PMatch (ps, e')
 			         end
-			     | A.Otherwise e => let
+			     | A.Otherwise (ts, e) => let
                                  val e' = VSet.foldl cancel e cancelUs
                                  in
-				   A.Otherwise e'
+				   A.Otherwise (ts, e')
 			         end)
 		val mAcc = m' :: matchAcc
 		val sAcc = VSet.union (setAcc, currLive)
@@ -401,10 +401,10 @@ structure PValToFuture =
           in
             (A.PMatch (ps, e'), pLive')
           end
-      | pmatch (A.Otherwise e, pLive) = let
+      | pmatch (A.Otherwise (ts, e), pLive) = let
 	  val (e', pLive') = trExp (e, pLive)
           in
-            (A.Otherwise e', pLive')
+            (A.Otherwise (ts, e'), pLive')
           end
 
     fun tr exp = (

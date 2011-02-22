@@ -157,6 +157,7 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("F64Abs",	mk Prim1 (P.F64Abs,		f64,			f64)),
                 ("I32ToI64X",   mk Prim1 (P.I32ToI64X,  	i32,            	i64)),
                 ("I32ToI64",    mk Prim1 (P.I32ToI64,   	i32,            	i64)),
+                ("I64ToI32",    mk Prim1 (P.I64ToI32,   	i64,            	i32)),
                 ("I32ToF32",    mk Prim1 (P.I32ToF32,   	i32,            	f32)),
                 ("I32ToF64",    mk Prim1 (P.I32ToF64,   	i32,            	f64)),
                 ("I64ToF32",    mk Prim1 (P.I64ToF32,   	i64,            	f32)),
@@ -200,7 +201,9 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("Pause",	mk0 (P.Pause,						uTy)),
 		("FenceRead",	mk0 (P.FenceRead,					uTy)),
 		("FenceWrite",	mk0 (P.FenceWrite,					uTy)),
-		("FenceRW",	mk0 (P.FenceRW,						uTy))
+		("FenceRW",	mk0 (P.FenceRW,						uTy)),
+		("AllocPolyVec", mk Prim2 (P.AllocPolyVec,      (i32, aTy),             aTy)),
+		("AllocLongArray", mk Prim1 (P.AllocLongArray,      i32,                    aTy))
 	      ];
 	    AtomTable.find tbl
 	  end

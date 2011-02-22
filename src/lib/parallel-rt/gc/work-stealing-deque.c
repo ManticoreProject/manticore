@@ -22,8 +22,10 @@ struct DequeList_s {
 typedef struct DequeList_s DequeList_t;
 
 struct WorkGroupList_s {
-    uint64_t                 workGroupId;
-    DequeList_t              *deques;
+    uint64_t                  workGroupId;
+    Deque_t                   *primaryDeque;
+    Deque_t                   *secondaryDeque;
+    DequeList_t               *resumeDeques;
     struct WorkGroupList_s   *next;
 };
 typedef struct WorkGroupList_s WorkGroupList_t;
@@ -47,7 +49,9 @@ static WorkGroupList_t *FindWorkGroup (VProc_t *self, uint64_t workGroupId)
     // found no entry for the given work group, so create such an entry and return it
     WorkGroupList_t *new = NEW(WorkGroupList_t);
     new->workGroupId = workGroupId;
-    new->deques = NULL;
+    new->primaryDeque = M_NIL;
+    new->secondaryDeque = M_NIL;
+    new->resumeDeques = NULL;
     new->next = PerVProcLists[self->id];
     PerVProcLists[self->id] = new;
     return new;
@@ -83,13 +87,7 @@ static uint32_t CeilingLg (uint32_t v)
     return lg + (v - (1<<lg) > 0);
 }
 
-/* \brief allocate a deque on the given vproc to by used by the given group
- * \param self the host vproc
- * \param workGroupId the work group allocating the deque
- * \param size the max number of elements in the deque
- * \return a pointer to the freshly allocated deque
- */
-Value_t M_DequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size)
+static Deque_t *DequeAlloc (VProc_t *self, int32_t size)
 {
     uint32_t dequeSzB = sizeof(Deque_t) + sizeof(Value_t) * ((uint32_t)size - 1);
   /* since each processor frequently reads and writes to its deque, we want to prevent false sharing 
@@ -115,8 +113,48 @@ Value_t M_DequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size)
     for (int i = 0; i < size; i++)
 	deque->elts[i] = M_NIL;
     // add the deque to the list of deques owned by the work group
+    return deque;
+}
+
+/* \brief allocate a primary deque on the given vproc to by used by the given group
+ * \param self the host vproc
+ * \param workGroupId the work group allocating the deque
+ * \param size the max number of elements in the deque
+ * \return a pointer to the freshly allocated deque
+ */
+Value_t M_PrimaryDequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size)
+{
+    Deque_t *deque = DequeAlloc (self, size);
     WorkGroupList_t *workGroup = FindWorkGroup (self, workGroupId);
-    workGroup->deques = ConsDeque (deque, workGroup->deques);
+    workGroup->primaryDeque = deque;
+    return (PtrToValue (deque));
+}
+
+/* \brief allocate a secondary deque on the given vproc to by used by the given group
+ * \param self the host vproc
+ * \param workGroupId the work group allocating the deque
+ * \param size the max number of elements in the deque
+ * \return a pointer to the freshly allocated deque
+ */
+Value_t M_SecondaryDequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size)
+{
+    Deque_t *deque = DequeAlloc (self, size);
+    WorkGroupList_t *workGroup = FindWorkGroup (self, workGroupId);
+    workGroup->secondaryDeque = deque;
+    return (PtrToValue (deque));
+}
+
+/* \brief allocate a resume deque on the given vproc to by used by the given group
+ * \param self the host vproc
+ * \param workGroupId the work group allocating the deque
+ * \param size the max number of elements in the deque
+ * \return a pointer to the freshly allocated deque
+ */
+Value_t M_ResumeDequeAlloc (VProc_t *self, uint64_t workGroupId, int32_t size)
+{
+    Deque_t *deque = DequeAlloc (self, size);
+    WorkGroupList_t *workGroup = FindWorkGroup (self, workGroupId);
+    workGroup->resumeDeques = ConsDeque (deque, workGroup->resumeDeques);
     return (PtrToValue (deque));
 }
 
@@ -132,20 +170,21 @@ static int DequeNumElts (Deque_t *deque)
 
 static DequeList_t *PruneDequeList (DequeList_t *deques)
 {
-    DequeList_t *old = deques;
     DequeList_t *new = NULL;
-    DequeList_t *next;
-    for (; old != NULL; old = next) {
-	next = old->next;
-	if (DequeNumElts (old->deque) == 0 && old->deque->nClaimed == 0) {
-	    FREE(old->deque);
-	    FREE(old);
-	}
-	else {
-	    old->next = new;
-	    new = old;
-	}    
+    
+    for (DequeList_t *next = deques; next != NULL; next = next->next) {
+	if (DequeNumElts (next->deque) == 0 && next->deque->nClaimed == 0)
+	    FREE(next->deque);
+	else
+	    new = ConsDeque (next->deque, new);
     }
+
+    for (DequeList_t *next = deques; next != NULL; ) {
+	DequeList_t *tmp = next;
+	next = next->next;
+	FREE(tmp);
+    }
+
     return new;
 }
 
@@ -154,21 +193,9 @@ static DequeList_t *PruneDequeList (DequeList_t *deques)
  */
 static void Prune (VProc_t *self)
 {
-    WorkGroupList_t *old = PerVProcLists[self->id];
-    WorkGroupList_t *new = NULL;
-    WorkGroupList_t *next;
-    for (; old != NULL; old = next) {
-	next = old->next;
-	old->deques = PruneDequeList (old->deques);
-	if (old->deques == NULL) {
-	    FREE(old);
-	}
-	else {
-	    old->next = new;
-	    new = old;
-	}    
-    }
-    PerVProcLists[self->id] = new;
+    WorkGroupList_t *wgList = PerVProcLists[self->id];
+    for (; wgList != NULL; wgList = wgList->next)
+	wgList->resumeDeques = PruneDequeList (wgList->resumeDeques);
 }
 
 /* \brief number of roots needed for deques on the given vproc 
@@ -178,10 +205,16 @@ static void Prune (VProc_t *self)
 int M_NumDequeRoots (VProc_t *self)
 {
     int numRoots = 0;
-    //  Prune (self);
-    for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next)
-	for (DequeList_t *deques = wgList->deques; deques != NULL; deques = deques->next)
-	    numRoots += DequeNumElts (deques->deque);
+    Prune (self);
+    for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
+	if (wgList->primaryDeque != M_NIL)
+	    numRoots += DequeNumElts (wgList->primaryDeque);
+	if (wgList->secondaryDeque != M_NIL)
+	    numRoots += DequeNumElts (wgList->secondaryDeque);
+	for (DequeList_t *deques = wgList->resumeDeques; deques != NULL; deques = deques->next)
+	    if (deques->deque != M_NIL)
+		numRoots += DequeNumElts (deques->deque);
+    }
     return numRoots;
 }
 
@@ -283,6 +316,18 @@ void M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rp)
 #else /* no root-set optimization: instead we just add the entire deque to each local 
        * collection */
 
+static Value_t **AddDequeElts (Deque_t *deque, Value_t **rootPtr)
+{
+    // iterate through the deque in the direction going from the new to the old end
+    for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
+	int j = MoveLeft (i, deque->maxSz); 
+	// i points one element to right of the element we want to scan
+	if (deque->elts[j] != M_NIL)
+	    *rootPtr++ = &(deque->elts[j]);
+    }
+    return rootPtr;
+}
+
 /* \brief add the deque elements to the root set to be used by a minor collection
  * \param self the host vproc
  * \param rootPtr pointer to the root set
@@ -291,16 +336,13 @@ void M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rp)
 Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 {
     for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
-	for (DequeList_t *deques = wgList->deques; deques != NULL; deques = deques->next) {
-	    Deque_t *deque = deques->deque;
-	    // iterate through the deque in the direction going from the new to the old end
-	    for (int i = deque->new; i != deque->old; i = MoveLeft (i, deque->maxSz)) {
-		int j = MoveLeft (i, deque->maxSz); 
-		// i points one element to right of the element we want to scan
-		if (deque->elts[j] != M_NIL)
-		    *rootPtr++ = &(deque->elts[j]);
-	    }	    
-	}
+	if (wgList->primaryDeque != M_NIL)
+	    rootPtr = AddDequeElts (wgList->primaryDeque, rootPtr);
+	if (wgList->secondaryDeque != M_NIL)
+	    rootPtr = AddDequeElts (wgList->secondaryDeque, rootPtr);
+	for (DequeList_t *deques = wgList->resumeDeques; deques != NULL; deques = deques->next)
+	    if (deques->deque)
+		rootPtr = AddDequeElts (deques->deque, rootPtr);
     }
     return rootPtr;
 }
@@ -316,18 +358,40 @@ void M_AddDequeEltsToGlobalRoots (VProc_t *self, Value_t **rootPtr)
 
 #endif /*! ROOT_SET_OPTIMIZATION */
 
-/* \brief returns a list of all deques on the host vproc corresponding to the given work group
+/* \brief returns a pointer to the primary deque of the host vproc corresponding to the given work group
  * \param self the host vproc
  * \param the work group id
- * \return pointer to a linked list of the deques
+ * \return pointer to the primary deque
  */
-Value_t M_LocalDeques (VProc_t *self, uint64_t workGroupId)
+Value_t M_PrimaryDeque (VProc_t *self, uint64_t workGroupId)
+{
+    return PtrToValue(FindWorkGroup (self, workGroupId)->primaryDeque);
+}
+
+/* \brief returns a pointer to the secondary deque of the host vproc corresponding to the given work group
+ * \param self the host vproc
+ * \param the work group id
+ * \return pointer to the secondary deque
+ */
+Value_t M_SecondaryDeque (VProc_t *self, uint64_t workGroupId)
+{
+    return PtrToValue(FindWorkGroup (self, workGroupId)->secondaryDeque);
+}
+
+/* \brief returns a list of all nonempty resume deques on the host vproc corresponding to the given work group
+ * \param self the host vproc
+ * \param the work group id
+ * \return pointer to a linked list of all nonempty resume deques
+ */
+Value_t M_ResumeDeques (VProc_t *self, uint64_t workGroupId)
 {
     Value_t l = M_NIL;
-    for (DequeList_t *deques = FindWorkGroup (self, workGroupId)->deques; deques != NULL; deques = deques->next) {
-	deques->deque->nClaimed++;    // claim the deque for the calling process
-	Value_t deque = AllocUniform (self, 1, PtrToValue(deques->deque));
-	l = Cons (self, deque, l);    
+    for (DequeList_t *deques = FindWorkGroup (self, workGroupId)->resumeDeques; deques != NULL; deques = deques->next) {
+	if (DequeNumElts (deques->deque) > 0) {
+	    deques->deque->nClaimed++;    // claim the deque for the calling process
+	    Value_t deque = AllocUniform (self, 1, PtrToValue(deques->deque));
+	    l = Cons (self, deque, l);
+	}
     }
     return l;
 }

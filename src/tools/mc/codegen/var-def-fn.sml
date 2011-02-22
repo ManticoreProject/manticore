@@ -49,7 +49,7 @@ functor VarDefFn (
 	of MTy.EXP (_, e) => e
 	 | MTy.GPR (ty, r) => T.REG (ty, r)
 	 | MTy.CEXP ce => cexpToExp ce
-	 | _ => raise Fail "defOf"
+	 | _ => raise Fail ("defOf: " ^ CFG.Var.toString v)
       (* esac *))
 
   fun fdefOf vdt v =       

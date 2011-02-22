@@ -164,6 +164,16 @@ structure PrintCFG : sig
 		        indent (i+1); pr "then GC()\n";
 		        indent (i+1); prJump("else", nogc))
                       end
+		  | CFG.HeapCheckN{hck, n, nogc} => let 
+                      val check = (case hck
+                          of CFG.HCK_Local => "check"
+                           | CFG.HCK_Global => "checkGlobal"
+                          (* end case *))
+                      in (
+		        pr check; pr " (avail-mem < n)\n";
+		        indent (i+1); pr "then GC()\n";
+		        indent (i+1); prJump("else", nogc))
+                      end
 		  | CFG.AllocCCall {lhs, f, args, ret=(l,rArgs)} => (
 		      prl ["ccall-alloc "];
                       prList varUseToString lhs;

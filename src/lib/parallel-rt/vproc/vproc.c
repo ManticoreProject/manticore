@@ -51,6 +51,8 @@ int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
 bool                    ShutdownFlg = false;
+int                     *NumVProcsPerNode;
+int                     *MinVProcPerNode;
 
 extern int ASM_VProcSleep;
 
@@ -73,6 +75,9 @@ void VProcInit (bool isSequential, Options_t *opts)
 					// Otherwise, we spread the load
 					// around.
 
+    // Will point to a static non-null value if locations were specified.
+    int *procs = NULL;
+    
     NumIdleVProcs = 0;
 	
   /* get command-line options */
@@ -81,10 +86,14 @@ void VProcInit (bool isSequential, Options_t *opts)
     }
     else {
 	NumVProcs = ((NumHWThreads == 0) ? DFLT_NUM_VPROCS : NumHWThreads);
+    NumVProcs = GetVprocsOpt (opts, NumVProcs, &procs);
 	NumVProcs = GetIntOpt (opts, "-p", NumVProcs);
 	if ((NumHWThreads > 0) && (NumVProcs > NumHWThreads))
 	    Warning ("%d processors requested on a %d processor machine\n",
 		NumVProcs, NumHWThreads);
+    if (MAX_NUM_VPROCS < NumVProcs)
+        Die ("Runtime is only configured to support %d VProcs, but %d were requested.\n",
+             MAX_NUM_VPROCS, NumVProcs);
     }
 
 #ifdef TARGET_DARWIN
@@ -97,8 +106,8 @@ void VProcInit (bool isSequential, Options_t *opts)
 #endif
 
 #ifndef NDEBUG
-    SayDebug("%d/%d hardware threads allocated to vprocs (%s)\n",
-	NumVProcs, NumHWThreads,
+    SayDebug("%d/%d hardware threads on %d nodes allocated to vprocs (%s)\n",
+    NumVProcs, NumHWThreads, NumHWNodes,
 	denseLayout ? "dense layout" : "non-dense layout");
 #endif
 
@@ -129,8 +138,22 @@ void VProcInit (bool isSequential, Options_t *opts)
 	initData[i].initArg = M_UNIT;
     }
 
+    NumVProcsPerNode = NEWVEC(int, NumHWNodes);
+    MinVProcPerNode = NEWVEC(int, NumHWNodes);
+    for (int i = 0; i < NumHWNodes; i++) {
+        NumVProcsPerNode[i] = 0;        
+        MinVProcPerNode[i] = MAX_NUM_VPROCS;        
+    }
+
   /* assign locations */
-    if (denseLayout) {
+    if (procs != NULL) {
+        for (int i = 0;  i < NumVProcs;  i++) {
+            int thread = procs[i] % NumHWThreads;
+            int package = procs[i] / (NumHWThreads*NumHWCores);
+            int core = (procs[i] % (NumHWThreads*NumHWCores)) / NumHWCores;
+            initData[i].loc = Location(package, core, thread);
+        }
+    } else if (denseLayout) {
 	for (int i = 0;  i < NumVProcs;  i++)
 	    initData[i].loc = Locations[i];
     }
@@ -166,6 +189,15 @@ void VProcInit (bool isSequential, Options_t *opts)
 	    }
 	}
     }
+
+    for (int i = 0;  i < NumVProcs;  i++) {
+        int node = LocationNode(initData[i].loc);
+        NumVProcsPerNode[node]++;
+        if (MinVProcPerNode[node] > i) {
+            MinVProcPerNode[node] = i;
+        }
+    }
+
 
   /* create vprocs */
     for (int i = 0;  i < NumVProcs;  i++) {
@@ -670,5 +702,5 @@ VProc_t* GetNthVProc (int n)
  */
 Value_t SleepCont (VProc_t *self)
 {
-    return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
+    return WrapWord(self, &ASM_VProcSleep);
 }

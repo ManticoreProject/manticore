@@ -35,6 +35,8 @@ in
   array.pml
   float-array.pml
   int-array.pml
+  unsafe-long-array.pml
+  long-array.pml
   word64-array.pml
 end
 time.pml
@@ -59,6 +61,7 @@ command-line.pml
 ann "cpp" "../include/prim.def"
 in
   ref.pml
+  float-ref.pml
 end
 
 ../extras/extras.mlb

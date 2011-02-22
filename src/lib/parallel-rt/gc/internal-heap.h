@@ -26,6 +26,7 @@ typedef enum {
 #define IS_VPROC_CHUNK(sts)	(((sts)&0xF) == VPROC_CHUNK_TAG)
 
 struct struct_chunk {
+    void *  allocBase;  /*!< base address (unaligned!) of original allocation */
     Addr_t	baseAddr;	/*!< chunk base address */
     Addr_t	szB;		/*!< chunk size in bytes */
     Addr_t	usedTop;	/*!< [baseAddr..usedTop) is the part of the
@@ -36,7 +37,21 @@ struct struct_chunk {
     int		where;		/*!< the node of the vproc that allocated
 				 *   this chunk.
 				 */
+    Addr_t      scanProgress;  /*!< used only for the current alloc chunk
+                     to track if it has been partially scanned */
 };
+
+typedef struct {
+    Mutex_t lock;      //! lock to protect per-node data
+    Cond_t   scanWait;    //! used to wait for a chunk to scan
+    volatile int numWaiting;   //! number of vprocs waiting for a chunk to scan
+    volatile bool completed;       //! no chunks remain
+    MemChunk_t *scannedTo;   //! Chunks that have been scanned during global GC
+    MemChunk_t *unscannedTo; //! Allocated chunks not yet scanned
+    MemChunk_t *fromSpace;   //! Prior to-space chunks that will become free at
+      //! the end of global GC
+    MemChunk_t *freeChunks;  //!< free chunks allocated on this node
+} NodeHeap_t;
 
 /********** Global heap **********/
 
@@ -58,8 +73,7 @@ extern Addr_t		ToSpaceLimit;	/*!< if ToSpaceSz exceeds this value, then do a
 					 * global GC */
 extern Addr_t		TotalVM;	/*!< total memory used by heap (including vproc
 					 * local heaps) */
-extern MemChunk_t	*FromSpaceChunks; /*!< list of chunks is from-space */
-extern MemChunk_t	**FreeChunks;	/*!< list of free chunks, one per node */
+extern NodeHeap_t   *NodeHeaps; /*!< list of per-node heap information */
 
 extern Addr_t		HeapScaleNum;
 extern Addr_t		HeapScaleDenom;
@@ -73,6 +87,7 @@ extern void FreeChunk (MemChunk_t *);
 /* GC routines */
 extern void InitGlobalGC ();
 extern void StartGlobalGC (VProc_t *self, Value_t **roots);
+extern MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal);
 
 /* GC debugging support */
 #ifndef NDEBUG

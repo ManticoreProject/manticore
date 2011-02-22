@@ -16,7 +16,8 @@ signature PARALLEL_SUSPENSIONS =
 
     val new : (unit -> 'a) -> 'a susp
     val force : 'a susp -> 'a
-    val spawnTask : 'a susp -> unit
+    val spawnTask : 'a susp -> ImplicitThread.thread
+    val removeTask : ImplicitThread.thread -> unit
     val cancel : 'a susp -> unit
 
   end
@@ -68,15 +69,19 @@ structure ParallelSuspensions (* : PARALLEL_SUSPENSIONS *) =
           apply lp ()
 	;
 
-
-      define @spawn-task (susp : susp / exh : exh) : unit =
+      define @spawn-task (susp : susp / exh : exh) : ImplicitThread.thread =
 	  cont k (x : unit) =
 	    do @access-eval-update (susp / exh)
 	    SchedulerAction.@stop ()
           let c : Cancelation.cancelable = SELECT(CANCELABLE_OFF, susp)
 	  let thd : ImplicitThread.thread = ImplicitThread.@new-cancelable-thread (k, c / exh)
 	  do ImplicitThread.@spawn-thread (thd / exh)
-	  return (UNIT)
+	  return (thd)
+	;
+
+      define @remove-task (thd : ImplicitThread.thread / exh : exh) : unit =
+	  let _ : Option.option = ImplicitThread.@remove-thread (thd / exh)
+          return (UNIT)
 	;
 
       define @force (susp : susp / exh : exh) : any =
@@ -94,7 +99,8 @@ structure ParallelSuspensions (* : PARALLEL_SUSPENSIONS *) =
 
     val new : (unit -> 'a) -> 'a susp = _prim(@new)
     val force : 'a susp -> 'a = _prim(@force)
-    val spawnTask : 'a susp -> unit = _prim(@spawn-task)
+    val spawnTask : 'a susp -> ImplicitThread.thread = _prim(@spawn-task)
+    val removeTask : ImplicitThread.thread -> unit = _prim(@remove-task)
     val cancel : 'a susp -> unit = _prim(@cancel)
 
   end

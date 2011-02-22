@@ -52,9 +52,9 @@ STATIC_INLINE void UnmapMemory (void *base, size_t szb)
  * pointer to the memory is returned and nBlocks is set to the number
  * of allocated blocks.
  */
-void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks)
+void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks, void **unalignedBase)
 {
-    void	*memObj, *base;
+    void	*memObj, *base, *orig, *unmap;
     size_t	szb;
 
   /* first, we try to allocate a chunk that is one block bigger than
@@ -77,31 +77,14 @@ void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks)
 	}
     } while (memObj == MAP_FAILED);
 
+    orig = memObj;
   /* now compute the lowest aligned address in the allocated block. */
     base = (void *)(((Addr_t)memObj & ~(blkSzB-1)) + blkSzB);
 
-  /* free the test block */
-    UnmapMemory (memObj, szb);
+    assert (base+(*nBlocks*blkSzB) <= memObj+szb);
 
-  /* Try again with the aligned fixed address. */
-    n--;
-    szb = n * blkSzB;
-    memObj = MapMemory(base, szb);
-    if (memObj == MAP_FAILED) {
-	*nBlocks = 0;
-	return 0;
-    }
-    else if (((Addr_t)memObj & (blkSzB-1)) != 0) {
-        UnmapMemory (memObj, szb);
-	*nBlocks = 0;
-	return 0;
-    }
-    else {
-	TotalVM += szb;
-	*nBlocks = n;
-	return memObj;
-    }
-
+    *unalignedBase = memObj;
+    return base;
 } /* end of AllocMemory */
 
 /* FreeMemory:

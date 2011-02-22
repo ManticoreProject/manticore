@@ -3,6 +3,8 @@
  * COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu/)
  * All rights reserved.
  *
+ * Compile with -Cmatch.check=true to use.
+ *
  * Original implementation of this module by Adam Shaw.
  *
  * This module provides two things:
@@ -37,15 +39,26 @@
  * There are no or patterns in PML, so no or patterns here either.
  *)
 
+(* FIXME: Keep variables around in patmats for better error messages.
+ *)
+
+(* FIXME: There are some bugs pertaining to MetaTy types, which I hadn't accounted for.
+ * Try compiling regression-tests/goals/basics/quickhull.pml for an example.
+ *)
+
 (* FIXME
  * Unit patterns are often represented as empty TuplePats.
  * Make sure I can handle this everywhere.
  *)
 
+(* FIXME Display infix constructors in infix in patterns.
+ *)
+
 (* TODO (maybe): HandlePats are currently not supported.
  *)
 
-(* TODO: Consider keeping variables around in patmats for better error messages.
+(* FIXME (not a local problem): bogus locations for errors 
+ *   (exists elsewhere too, e.g., match-compile).
  *)
 
 (* FIXME (not a local problem): bogus locations for errors 
@@ -59,6 +72,31 @@ structure MatchCheck (* : sig
     val checkExp     : AST.exp -> unit
 
   end *) = struct
+
+(* +debug *)
+  fun class (Types.Int) = "Int"
+    | class (Types.Float) = "Float"
+    | class (Types.Num) = "Num"
+    | class (Types.Order) = "Order"
+    | class (Types.Eq) = "Eq"
+  fun meta (Types.MVar {stamp, info}) = let
+    val s = Stamp.toString stamp
+    val i =
+      (case !info
+        of Types.UNIV(n) => "UNIV(" ^ Int.toString n ^ ")"
+	 | Types.CLASS(c) => "CLASS(" ^ class c ^ ")"
+	 | Types.INSTANCE(t) => "INSTANCE(" ^ tyString' t ^ ")")
+    in
+      "{stamp=" ^ s ^ ",info=" ^ i ^ "}"
+    end
+  and tyString' (Types.ErrorTy) = "ErrorTy"
+    | tyString' (Types.MetaTy m) = "MetaTy " ^ meta m
+    | tyString' (Types.VarTy _) = "VarTy _"
+    | tyString' (Types.ConTy (ts, c)) = "ConTy [" ^ (String.concatWith "," (List.map tyString' ts) ^ 
+						     "], " ^ TyCon.toString c ^ ")")
+    | tyString' (Types.FunTy (t,u)) = "Fun(" ^ tyString' t ^ "," ^ tyString' u ^ ")"
+    | tyString' (Types.TupleTy ts) = "TupleTy [" ^ (String.concatWith "," (List.map tyString' ts) ^ "]")
+(* -debug *)
 
 (* bug : string -> string -> 'a (raises an exn)
  * Bugs are things that *really* shouldn't happen, in the sense they will only
@@ -83,8 +121,8 @@ structure MatchCheck (* : sig
 
   val lower: string -> string = implode o List.map Char.toLower o explode    
 
-  val isBool: Types.ty -> bool = (fn t => TypeUtil.same (Basis.boolTy, t))
-  val isUnit: Types.ty -> bool = (fn t => TypeUtil.same (Basis.unitTy, t))
+  val isBool: AST.ty -> bool = (fn t => TypeUtil.same (Basis.boolTy, t))
+  val isUnit: AST.ty -> bool = (fn t => TypeUtil.same (Basis.unitTy, t))
 
   val patToString : AST.pat -> string = let
     fun tos (AST.ConPat (c, ts, p)) =
@@ -138,7 +176,7 @@ structure MatchCheck (* : sig
     val pStr = patToString p
     in
       TextIO.print ("^ inexhaustive binding: pattern " ^ pStr ^ "\n");
-      MatchErrors.warnNonexhaustiveBind (errStrm, bogusLocation)
+      MatchErrors.warnNonexhaustiveBind (errStrm, bogusLocation, pStr)
     end
 
   structure DConSet = RedBlackSetFn (struct
@@ -151,7 +189,7 @@ structure MatchCheck (* : sig
 				      val compare  = Literal.compare
 				    end)
 
-  type typed_lit_set = Types.ty * LitSet.set
+  type typed_lit_set = AST.ty * LitSet.set
 
   fun dconSetFromList cs  = DConSet.addList (DConSet.empty, cs)
   fun litSetFromList lits = LitSet.addList (LitSet.empty, lits)
@@ -179,7 +217,7 @@ structure MatchCheck (* : sig
       (* end fn *))
 
 (* consOwner *)
-  fun consOwner (Types.DCon {owner, ...}) = owner
+  fun consOwner (AST.DCon {owner, ...}) = owner
 
 (* dconSetOwner *)
   fun dconSetOwner (s: DConSet.set) : Types.tycon =
@@ -274,7 +312,7 @@ structure MatchCheck (* : sig
 (* unrepresentedLit *)
 (* pre: given literal set is incomplete *)
 (* TODO ints and strings might not be necessary...consider eliminating them. *)
-  fun unrepresentedLit (ty: Types.ty, s: LitSet.set) : AST.pat option =
+  fun unrepresentedLit (ty: AST.ty, s: LitSet.set) : AST.pat option =
     if TypeUtil.same (Basis.boolTy, ty) then
       (if LitSet.member (s, Literal.trueLit) then 
          SOME (AST.ConstPat (AST.LConst (Literal.falseLit, Basis.boolTy)))
@@ -299,7 +337,7 @@ structure MatchCheck (* : sig
 
 (* mkConPat will construct a ConPat with an appropriately-typed wildcard *)
 (*   as its subpattern. *)
-  fun mkConPat (c as Types.DCon {argTy, ...}, ts) = 
+  fun mkConPat (c as AST.DCon {argTy, ...}, ts) = 
     (case argTy 
        of NONE => AST.ConstPat (AST.DConst (c, ts))
 	| SOME ty => AST.ConPat (c, ts, AST.WildPat ty))
@@ -357,7 +395,7 @@ structure MatchCheck (* : sig
   fun mkPatMatP (ms: AST.pmatch list) : patmat = let
     fun getTupleTy ([], optTys) =
           (case optTys
-	     of SOME ts => Types.TupleTy ts
+	     of SOME ts => AST.TupleTy ts
 	      | NONE => bug "mkPatMatP" "no types found?")
       | getTupleTy (AST.PMatch (ps, _)::ms, optTys) = let
           val ts' = List.map TypeOf.ppat ps
@@ -467,15 +505,15 @@ fun litsToString (s: LitSet.set) : string =
       List.exists pred
     end
 
-(* firstColTy : patmat -> Types.ty *)
+(* firstColTy : patmat -> AST.ty *)
   fun firstColTy ((p::ps)::pss) = TypeOf.pat p
     | firstColTy p = (bug "firstColTy" ("malformed pattern matrix\n" ^ patmatToString p))
 
 (* firstColTupleTy *)
   fun firstColTupleTy (p: patmat) : bool =
     (case firstColTy p
-      of Types.TupleTy [] => false (* that's unit *)
-       | Types.TupleTy ts => true
+      of AST.TupleTy [] => false (* that's unit *)
+       | AST.TupleTy ts => true
        | _ => false
      (* end case *))
 
@@ -515,7 +553,7 @@ fun litsToString (s: LitSet.set) : string =
 (*     a WildPat of the constructor's argument type *)
 (* Returning a list instead of an option enables use of @ with the result later. *)
   val conWilds : AST.dcon -> AST.pat list = 
-    (fn Types.DCon {argTy, ...} =>
+    (fn AST.DCon {argTy, ...} =>
       (case argTy
 	 of NONE => []
 	  | SOME t => [AST.WildPat t]
@@ -598,7 +636,9 @@ fun litsToString (s: LitSet.set) : string =
 (*   sole constructors of their type. *)
 (* The arity of all tuples in the first column of p is checked for consistency *)
 (*   (though it should never vary). *)
-  fun sT (arity: int, p: patmat) : patmat = let
+  fun sT (ts: AST.ty list, p: patmat) : patmat = let
+    val arity = List.length ts
+    val wilds = List.map AST.WildPat ts
     fun lp ([], acc) = List.rev acc
       | lp ((q::ps)::pss, acc) = 
           (case q
@@ -606,15 +646,13 @@ fun litsToString (s: LitSet.set) : string =
                  if List.length rs = arity 
 		 then lp (pss, (rs@ps)::acc)
 		 else bug "sT" "tuple arity"
-	     | AST.WildPat (Types.TupleTy ts) =>
-                 if List.length ts = arity then let
-                   val wilds = List.map AST.WildPat ts
-                   in
-		     lp (pss, (wilds@ps)::acc)
-	           end
+	     | AST.WildPat (AST.TupleTy ts) =>
+                 if List.length ts = arity then
+                   lp (pss, (wilds@ps)::acc)
                  else bug "sT" "wild tuple arity"
+	     | AST.WildPat (AST.MetaTy _) => lp (pss, (wilds@ps)::acc)
 	     | AST.WildPat t => 
-                 bug "sT" "unexpected WildPat with non-tuple type"
+                 bug "sT" ("unexpected WildPat with non-tuple type (type is " ^ tyString' t ^ ")")
 	     | AST.VarPat _ =>
                  bug "sT" "unexpected VarPat in pattern matrix"
 	     | AST.ConPat _ =>
@@ -675,8 +713,8 @@ fun litsToString (s: LitSet.set) : string =
 	    | AST.VarPat x => bug "u" "unexpected VarPat in pattern matrix"
 	    | AST.WildPat ty => 
                 (case ty
-		   of Types.TupleTy [] (* unit *) => wild (p, qs)
-		    | Types.TupleTy ts => let
+		   of AST.TupleTy [] (* unit *) => wild (p, qs)
+		    | AST.TupleTy ts => let
                         val p' = breakTups p
 			val ws = List.map AST.WildPat ts
                         in
@@ -684,9 +722,9 @@ fun litsToString (s: LitSet.set) : string =
 		        end
 		    | _ => wild (p, qs))
 	    | AST.TuplePat rs => let
-                val arity = List.length rs 
+		val ts = List.map TypeOf.pat rs
                 in 
-		  u (sT (arity, p), rs@qs)
+		  u (sT (ts, p), rs@qs)
                 end
 	end
     end
@@ -729,9 +767,17 @@ fun litsToString (s: LitSet.set) : string =
       | lp ((AST.TuplePat(ps)::qs)::pss, acc) = lp (pss, (ps@qs)::acc)
       | lp ((AST.WildPat(ty)::qs)::pss, acc) = 
           (case ty
-	     of Types.TupleTy ts => lp (pss, ((List.map AST.WildPat ts)@qs)::acc)
-	      | _ => bug "breakTups" ("wild pat with non-tuple type: " ^
-				      TypeUtil.toString ty)
+	     of AST.TupleTy ts => lp (pss, ((List.map AST.WildPat ts)@qs)::acc)
+	      | AST.MetaTy (Types.MVar {stamp, info}) =>
+                  (case !info
+		    of Types.INSTANCE (AST.TupleTy ts) => 
+                         lp (pss, ((List.map AST.WildPat ts)@qs)::acc)
+	             | _ => bug "breakTups" 
+				("can't handle this meta ty: " ^ tyString' ty)
+                   (* end case *))
+	      | ty => bug "breakTups" ("wild pat with non-tuple type: " ^
+					  TypeUtil.toString ty ^ " <<" ^
+					  tyString' ty ^ ">>")
 	    (* end case *))
       | lp ((AST.ConPat _::_)::_, _) = bug "breakTups" "unexpected ConPat"
       | lp ((AST.VarPat(_)::_)::_, _) = bug "breakTups" "unexpected VarPat"
@@ -766,11 +812,11 @@ fun litsToString (s: LitSet.set) : string =
     (* First col automatically contains a "complete signature of constructors" by the assumption *)
     (*   that a tuple is a member of an implicit datatype with exactly one constructor. *)
       val ts = case firstColTy p
-		of Types.TupleTy ts => ts
+		of AST.TupleTy ts => ts
 		 | _ => bug "i" "expected TupleTy"
       val arity = List.length ts
       in
-        case i (sT (arity, p), arity+n-1)
+        case i (sT (ts, p), arity+n-1)
          of SOME ps => let
               val tup = AST.TuplePat (List.take (ps, arity))
               in
@@ -817,8 +863,13 @@ fun litsToString (s: LitSet.set) : string =
       if firstColContainsCons p then let
         val sigma = firstColCons p
         val ts = (case firstColTy p
-		    of Types.ConTy (ts, _) => ts
-		     | _ => bug "i" "unreachable")
+		    of AST.ConTy (ts, _) => ts
+		     | AST.MetaTy _ => []
+		     | t => bug "i" ("p:\n" ^ patmatToString p ^
+				     "\nunreachable (type is " ^ 
+				     TypeUtil.toString t ^ ")\n" ^
+				     "that is, " ^ tyString' t)
+		   (* end case *))
         in
           if completeCons sigma then let
             fun lp [] = NONE
@@ -945,15 +996,40 @@ fun litsToString (s: LitSet.set) : string =
 (* bodyOf : AST.lambda -> AST.exp *)
   val bodyOf : AST.lambda -> AST.exp = (fn AST.FB (_, _, b) => b)
 
+(* matchesExps : AST.match list -> AST.exp list *)
+  val matchesExps : AST.match list -> AST.exp list = let
+    fun exps (AST.PatMatch (_, e), ms) = e::ms
+      | exps (AST.CondMatch (_, e, f), ms) = e::f::ms    
+    in 
+      List.foldr exps []
+    end
+
+(* pmatchesExps : AST.match list -> AST.exp list *)
+  val pmatchesExps : AST.pmatch list -> AST.exp list = let
+    fun exps (AST.PMatch (_, e), ms) = e::ms
+      | exps (AST.Otherwise (_, e), ms) = e::ms
+    in 
+      List.foldr exps []
+    end
+
 (* checkExpInternal checks all match lists recursively in an expression. *)
 (* That is, it checks all cases, pcases, and handles within given expression. *)
   fun checkExpInternal (err: err_stream, e: AST.exp) : unit = let
-    fun exp (AST.LetExp (b, e)) = (binding b; exp e)
-      | exp (AST.IfExp (e1, e2, e3, _)) = (exp e1; exp e2; exp e3)
-      | exp (c as AST.CaseExp (e, ms, _)) = (exp e; checkMatchList (err, ms))
-      | exp (AST.PCaseExp (es, ms, _)) = (List.app exp es; checkPMatchList (err, ms))
-      | exp (AST.HandleExp (e, ms, _)) = (exp e; checkHandleMatches (err, ms))
+    fun exp (c as AST.CaseExp (e, ms, _)) = 
+          (exp e; 
+	   checkMatchList (err, ms);
+	   List.app exp (matchesExps ms))
+      | exp (AST.PCaseExp (es, ms, _)) = 
+	  (List.app exp es; 
+	   checkPMatchList (err, ms);
+	   List.app exp (pmatchesExps ms))
+      | exp (AST.HandleExp (e, ms, _)) = 
           (* note: handle match lists are checked for redundancy only *)
+          (exp e; 
+	   checkHandleMatches (err, ms);
+	   List.app exp (matchesExps ms))
+      | exp (AST.LetExp (b, e)) = (binding b; exp e)
+      | exp (AST.IfExp (e1, e2, e3, _)) = (exp e1; exp e2; exp e3)
       | exp (AST.RaiseExp (e, _)) = exp e
       | exp (AST.FunExp (_, e, _)) = exp e
       | exp (AST.ApplyExp (e1, e2, _)) = (exp e1; exp e2)

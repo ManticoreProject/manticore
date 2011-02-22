@@ -46,6 +46,7 @@ structure Prim =
     (* conversions *)
       | I32ToI64X of 'var		(* int -> long conversion with sign extension *)
       | I32ToI64 of 'var		(* unsigned int -> long conversion *)
+      | I64ToI32 of 'var                (* int -> long conversion *)
       | I32ToF32 of 'var		(* int -> float conversion *)
       | I32ToF64 of 'var		(* int -> double conversion *)
       | I64ToF32 of 'var		(* long -> float conversion *)
@@ -97,6 +98,10 @@ structure Prim =
       | FenceRead			(* memory fence for reads *)
       | FenceWrite			(* memory fence for writes *)
       | FenceRW				(* memory fence for both reads and writes *)
+    (* allocation primitives *)
+      | AllocPolyVec of 'var * 'var     (* AllocPolyVec (n, xs): allocate in the local heap a vector 
+					 * v of length n s.t. v[i] := l[i] for 0 <= i < n *)
+      | AllocLongArray of 'var          (* allocates a vector of longs in the local heap *)
 
   (* primitive conditional tests *)
     datatype 'var cond

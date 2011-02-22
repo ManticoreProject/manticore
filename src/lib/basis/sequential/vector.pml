@@ -16,8 +16,16 @@ structure Vector =
       extern void* AllocVectorRev (void*, int, void*) __attribute__((alloc,pure));
 
       define inline @from-list (values : List.list / exh : exh) : vector =
-	  let vec : vector = ccall AllocVector (host_vproc, values)
-	  return (vec)
+	  let n : int = PrimList.@length (values / exh)
+          let v : vector = AllocPolyVec (n, values)
+	  return (v)
+	;
+
+      define @from-list-n (arg : [ml_int, list] / exh : exh) : vector = 
+	  let n : int = #0(#0(arg))
+          let values : list = #1(arg)
+          let v : vector = AllocPolyVec (n, values)
+	  return (v)
 	;
 
       define inline @from-list-rev (arg : [List.list, ml_int] / exh : exh) : vector =
@@ -44,6 +52,7 @@ structure Vector =
     type 'a vector = _prim (vector)
 
     val fromList : 'a list -> 'a vector = _prim (@from-list)
+    val fromListN : int * 'a list -> 'a vector = _prim (@from-list-n)
   (* same as fromList, but expects that the list is in reverse order *)
     val fromListRev : 'a list * int -> 'a vector = _prim (@from-list-rev)
     val length : 'a vector -> int = _prim (@length)

@@ -298,7 +298,7 @@ structure PrintAST : sig
             exp e;
             ln ();
           closeBox ())
-      | ppm s (A.Otherwise e) = (
+      | ppm s (A.Otherwise (ts, e)) = (
           openVBox (rel 0);
             pr s;
 	    sp ();

@@ -72,7 +72,7 @@ structure BOMTyUtil : sig
       | kindOf (BTy.T_Fun _) = BTy.K_BOXED
       | kindOf (BTy.T_Cont _) = BTy.K_BOXED
       | kindOf (BTy.T_CFun _) = BTy.K_UNIFORM
-      | kindOf BTy.T_VProc = BTy.K_UNIFORM
+      | kindOf BTy.T_VProc = BTy.K_RAW
       | kindOf (BTy.T_TyCon(BTy.DataTyc{name, kind, ...})) = !kind
       | kindOf (BTy.T_TyCon(BTy.AbsTyc _)) = BTy.K_UNIFORM
 

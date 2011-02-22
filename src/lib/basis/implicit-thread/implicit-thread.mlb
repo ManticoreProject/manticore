@@ -35,3 +35,8 @@
   in
     parallel-suspensions.pml
   end
+
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    pcase.pml
+  end

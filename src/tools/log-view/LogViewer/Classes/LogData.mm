@@ -291,7 +291,7 @@ double cur_interval_height = 0.0;
     if (fileDes < 0) [Exceptions raise:@"could not open the given file"];
 
     char *MappedFile = (char *) (mmap (NULL, fileSize, PROT_READ, MAP_PRIVATE, fileDes, 0));
-    if ((int) MappedFile == -1) {
+    if (MappedFile == (char *)-1) {
 	perror("Mmap failure");
 	[Exceptions raise:@"could not mmap the given file"];
     }

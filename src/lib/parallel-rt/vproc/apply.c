@@ -48,16 +48,14 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   /* allocate the return and exception continuation objects
    * in the VProc's heap.
    */
-    Value_t retCont = AllocUniform(vp, 1, PtrToValue(&ASM_Return));
-    Value_t exnCont = AllocUniform(vp, 1, PtrToValue(&ASM_UncaughtExn));
+    Value_t retCont = WrapWord(vp, &ASM_Return);
+    Value_t exnCont = WrapWord(vp, &ASM_UncaughtExn);
 
     while (1) {
 #ifndef NDEBUG
-      /*
 	if (DebugFlg)
 	    SayDebug("[%2d] ASM_Apply(%p, %p, %p, %p, %p, %p)\n",
 		vp->id, vp, codeP, arg, envP, retCont, exnCont);
-      */
 #endif
 	if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
 	  /* schedule a continuation that will cleanly shut down the runtime */
@@ -97,9 +95,9 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	  /* is there a pending signal that we can deliver? */
 	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
 		Value_t resumeK = AllocUniform (vp, 3,
-					       PtrToValue(&ASM_Resume),
-					       vp->stdCont,
-					       vp->stdEnvPtr);
+                                                PtrToValue(&ASM_Resume),
+                                                vp->stdCont,
+                                                vp->stdEnvPtr);
 	      /* pass the signal to scheduling code in the BOM runtime */
 		envP = vp->schedCont;
 		codeP = ValueToAddr(ValueToCont(envP)->cp);

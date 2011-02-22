@@ -88,12 +88,8 @@ struct struct_vproc {
     Addr_t	nurseryBase;	//!< Base address of current nursery area
     Addr_t	oldTop;		//!< Old objects live in the space from the
 				//! heap base to the oldTop.
-    MemChunk_t	*globToSpHd;	//!< pointer to the head of the list of global-heap
-				//! to-space memory chunks allocated by this vproc.
-    MemChunk_t	*globToSpTl;	//!< pointer to the tail of the list of global-heap
-				//! to-space memory chunks allocated by this vproc.
-				//! This chunk is the current allocation chunk for
-				//! the vproc.
+    MemChunk_t	*globAllocChunk;	//!< This chunk is the current vproc's
+                //! global allocation chunk
     Addr_t	globNextW;	//!< pointer to next word to allocate in
 				//! global heap
     Addr_t	globLimit;	//!< limit pointer for to-space chunk
@@ -143,6 +139,8 @@ typedef void (*VProcFn_t) (VProc_t *vp, void *arg);
 
 /* the array of vprocs */
 extern int		NumVProcs;
+extern int		*NumVProcsPerNode;
+extern int		*MinVProcPerNode;
 extern VProc_t		*VProcs[MAX_NUM_VPROCS];
 extern bool		ShutdownFlg;
 

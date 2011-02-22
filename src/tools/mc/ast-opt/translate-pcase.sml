@@ -181,7 +181,7 @@ structure TranslatePCase (* : sig
       : matchmap = let
     val match = 
      (case pm
-        of A.Otherwise e => A.PatMatch (A.WildPat (mkResultTy t), e)
+        of A.Otherwise (ts, e) => A.PatMatch (A.WildPat (mkResultTy t), e)
 	 | A.PMatch (ps, e) => A.PatMatch (xformPPats ps, e))
     val (m', ms) = CBM.remove (m, cb)
     val belongsLast = (case pm of A.Otherwise _ => true | _ => false)
@@ -440,8 +440,10 @@ structure TranslatePCase (* : sig
 (* Construct an "otherwise => raise Match" branch of the given type. *)
   fun otherwiseRaiseMatch (t: A.ty) : A.pmatch = let
     val exnMatch = A.ConstExp (A.DConst (Basis.exnMatch, []))
+    val _ = raise Fail "FIXME"
+    val ts = raise Fail "FIXME"
     in
-      A.Otherwise (A.RaiseExp (exnMatch, t)) 
+      A.Otherwise (ts, A.RaiseExp (exnMatch, t)) 
     end
 
 (* The function "otherwise" appends "otherwise => raise Match" if no Otherwise is present. *)

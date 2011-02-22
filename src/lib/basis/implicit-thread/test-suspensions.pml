@@ -2,6 +2,8 @@
 structure Main =
   struct
 
+structure P = ParallelSuspensions
+
     val dfltN = 22
 
 fun fib (i : int) = (case i
@@ -20,10 +22,12 @@ fun pfib (i : int) = (case i
        of 0 => (0 : int)
 	| 1 => (1 : int)
 	| n => let
-	      val susp = ParallelSuspensions.new (fn () => pfib(i-1))
-	      val () = ParallelSuspensions.spawnTask susp
+	      val susp = P.new (fn () => pfib(i-2))
+	      val task = P.spawnTask susp
+	      val v = pfib (i-1)
+	      val _ = P.removeTask task
 	      in
-	        pfib(i-2) + ParallelSuspensions.force susp
+	        v + P.force susp
 	      end
       (* end case *))
 	
@@ -36,7 +40,7 @@ fun pfib (i : int) = (case i
 
 	    val ws = WorkStealing.workGroup ()
 	    val () = Print.printLn "Testing Parallel Suspensions"
-	    val x = ImplicitThread.runOnWorkGroup(ws, fn () => (doit pfib n 1; ()))
+	    val x = ImplicitThread.runOnWorkGroup(ws, fn () => (pfib n; ()))
 	in
 	    Print.printLn "done"
 	end

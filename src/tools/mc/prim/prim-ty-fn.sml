@@ -83,6 +83,7 @@ functor PrimTyFn (Ty : sig
 	    | P.F64Abs _ => f64Ty
 	    | P.I32ToI64X _ => i64Ty
 	    | P.I32ToI64 _ => i64Ty
+	    | P.I64ToI32 _ => i32Ty
 	    | P.I32ToF32 _ => f32Ty
 	    | P.I32ToF64 _ => f64Ty
 	    | P.I64ToF32 _ => f32Ty
@@ -128,6 +129,8 @@ functor PrimTyFn (Ty : sig
 	    | P.FenceRead => Ty.noTy
 	    | P.FenceWrite => Ty.noTy
 	    | P.FenceRW => Ty.noTy
+	    | P.AllocPolyVec _ => Ty.anyTy
+	    | P.AllocLongArray _ => Ty.anyTy
 	  (* end case *))
 
   (* the signature of a primop *)
@@ -165,6 +168,7 @@ functor PrimTyFn (Ty : sig
 	    | P.F64Abs _ => ([f64Ty], f64Ty)
 	    | P.I32ToI64X _ => ([i32Ty], i64Ty)
 	    | P.I32ToI64 _ => ([i32Ty], i64Ty)
+	    | P.I64ToI32 _ => ([i64Ty], i32Ty)
 	    | P.I32ToF32 _ => ([i32Ty], f32Ty)
 	    | P.I32ToF64 _ => ([i32Ty], f64Ty)
 	    | P.I64ToF32 _ => ([i64Ty], f32Ty)
@@ -215,6 +219,8 @@ functor PrimTyFn (Ty : sig
 	    | P.FenceRead => ([], Ty.noTy)
 	    | P.FenceWrite => ([], Ty.noTy)
 	    | P.FenceRW => ([], Ty.noTy)
+	    | P.AllocPolyVec _ => ([i32Ty, anyTy], Ty.anyTy)
+	    | P.AllocLongArray _ => ([i32Ty], Ty.anyTy)
 	  (* end case *))
 
     fun condArgTys c = (case c

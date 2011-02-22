@@ -143,6 +143,21 @@ Value_t AllocVector (VProc_t *vp, Value_t values)
     return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(i));
 }
 
+/*! \brief allocate an array of 64-bit raw values
+ *  \param vp the host vproc
+ *  \param n the length of the array
+ *  \return pointer to the new array
+ */
+Value_t AllocRaw64Array (VProc_t *vp, int n)
+{
+    Word_t *obj = (Word_t *)(vp->allocPtr);    
+
+    obj[-1] = RAW_HDR(n);
+    vp->allocPtr += 8 * (n+1);
+
+    return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(n));
+}
+
 /*! \brief allocate a vector seeded with some initial values, which
  *         are provided in reverse order.
  *  \param vp the host vproc
@@ -440,13 +455,13 @@ Value_t GlobalAllocIntArray (VProc_t *vp, int nElems, int32_t elt)
     return PtrToValue(obj);
 }
 
-/*! \brief allocate an array of word64s in the global heap
+/*! \brief allocate an array of 64-bit raw values in the global heap
  *  \param vp the host vproc
  *  \param nElems the number of elements in the array
  *  \param elt the initial value for the array elements
  *  \return pointer to the beginning of the array
  */
-Value_t GlobalAllocWord64Array (VProc_t *vp, int nElems, uint64_t elt)
+Value_t GlobalAllocRaw64Array (VProc_t *vp, int nElems, uint64_t elt)
 {
     int nWords = BYTES_TO_WORDS(nElems * sizeof(uint64_t));
   /* the array must fit into a global chunk */

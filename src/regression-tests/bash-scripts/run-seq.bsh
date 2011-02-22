@@ -7,7 +7,7 @@
 ABSPATH="$(cd "${0%/*}" 2>/dev/null; echo "$PWD"/"${0##*/}")"
 DIR=`dirname "$ABSPATH"`/..
 PMLC="sml @SMLcmdname=pmlc @SMLload=$DIR/../../src/tools/mc/pmlc"
-PMLCFLAGS="-sequential"
+PMLCFLAGS="-sequential -Cmatch.check=true"
 DATE=$( date +"%F-%H-%M-%S" )
 REPORT_FILE=report-$DATE
 REPORT="$DIR/reports/$REPORT_FILE"

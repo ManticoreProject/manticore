@@ -18,6 +18,8 @@ structure ImplicitThread (* :
    *)
     type work_group
 
+    type thread
+
   (* Scoping rules and the work group stack
    *
    * We use a dynamic scoping discipline for work groups. At any instant, exactly one work group is in scope, which
@@ -56,7 +58,7 @@ structure ImplicitThread (* :
       define @new-work-group (workGroupId : Word64.word,
 			      spawnFn : fun (thread / exh -> unit),
 			      resumeFn : fun (thread / exh -> unit),
-			      removeFn : fun (thread / exh -> unit),
+			      removeFn : fun (thread / exh -> Option.option),
 			      schedulerState : scheduler_state,
 			      terminated : ![bool]
 			    / exh : exh) : work_group;
@@ -80,11 +82,7 @@ structure ImplicitThread (* :
      * given thread as if it is the continuation of an existing thread, e.g., the thread is the
      * resumption of a blocked thread. *)
       define inline @resume-thread (thd : thread / exh : exh) : ();
-    (* remove the given thread from the ready queue, supposing the thread is already on the ready queue. if 
-     * the return value is true, then the thread was both on the ready queue and successfully removed by
-     * the operation. otherwise, the return value must be false. note that this prescribed behavior provides
-     * some latitude to the scheduler, which may, for example, choose to always return false. *)
-      define inline @remove-thread (thd : thread / exh : exh) : bool;
+      define inline @remove-thread (thd : thread / exh : exh) : Option.option;
       define @terminated-flag () : ![bool];
     (* terminate the work group (the workers in the group cease to execute new work) *)
       define @terminate-work-group (workGroup : work_group) : ();
@@ -133,7 +131,7 @@ structure ImplicitThread (* :
 		   Word64.word,                   (* unique id *)
 		   fun (thread / exh -> unit),    (* spawn function *)
 		   fun (thread / exh -> unit),    (* resume function *)
-		   fun (thread / exh -> bool),    (* thread removal function *)
+		   fun (thread / exh -> Option.option),    (* thread removal function *)
 		   scheduler_state,               (* scheduler-specific state provided by the scheduler *)
 		   Arr.array,                     (* the ith entry is true, if the work group is suspended
 						   * on the ith vproc *)
@@ -143,6 +141,8 @@ structure ImplicitThread (* :
       )
 
     type work_group = _prim (work_group)
+
+    type thread = _prim(thread)
 
   (** Implicit thread creation **)
 
@@ -239,7 +239,7 @@ structure ImplicitThread (* :
 	define @new-work-group (workGroupId : Word64.word,
 				spawnFn : fun(thread / exh -> unit),
 				resumeFn : fun(thread / exh -> unit),
-				removeFn : fun(thread / exh -> bool),
+				removeFn : fun(thread / exh -> Option.option),
 				schedulerState : scheduler_state,
 				terminated : ![bool]
 			      / exh : exh) : work_group =
@@ -322,15 +322,21 @@ structure ImplicitThread (* :
 	  return ()
         ;
 
-    (* remove the given thread from the ready queue, supposing the thread is already on the ready queue. if 
-     * the return value is true, then the thread was both on the ready queue and successfully removed by
-     * the operation. otherwise, the return value must be false. note that this prescribed behavior provides
-     * some latitude to the scheduler, which may, for example, choose to always return false. *)
-      define inline @remove-thread (thd : thread / exh : exh) : bool =
+      define inline @remove-thread (thd : thread / exh : exh) : Option.option =
 	  let group : work_group = @current-work-group (UNIT / exh)
-	  let removeFn : fun(thread / exh -> bool) = SELECT(WORK_GROUP_REMOVE_FUN_OFF, group)
+	  let removeFn : fun(thread / exh -> Option.option) = SELECT(WORK_GROUP_REMOVE_FUN_OFF, group)
 	  apply removeFn (thd / exh)
 	;
+
+      define inline @remove-thread-b (thd : thread / exh : exh) : bool =
+          let t : Option.option = @remove-thread (thd / exh)
+          case t
+	   of Option.NONE =>
+	      return (false)
+	    | Option.SOME (_ : thread) =>
+	      return (true)
+          end
+        ;
 
       define @terminated-flag () : ![bool] =
 	  let terminated : ![bool] = alloc (false)

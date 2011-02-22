@@ -108,7 +108,7 @@ structure TranslatePTup  : sig
   (* scheduling operations *)
     fun spawnThread (k, exh) = B.mkHLOp (E.findBOMHLOpByPath ["ImplicitThread", "spawn-thread"], [k], [exh])
     fun removeThread (thread, exh) = 
-	B.mkHLOp (E.findBOMHLOpByPath ["ImplicitThread", "remove-thread"], [thread], [exh])
+	B.mkHLOp (E.findBOMHLOpByPath ["ImplicitThread", "remove-thread-b"], [thread], [exh])
     local
 	    fun mkRaiseExn (env, exh) = 
 		let

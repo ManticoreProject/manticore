@@ -13,6 +13,7 @@ extern Options_t *InitOptions (int argc, const char **argv);
 
 extern bool GetFlagOpt (Options_t *opts, const char *flg);
 extern int GetIntOpt (Options_t *opts, const char *opt, int dflt);
+extern int GetVprocsOpt (Options_t *opts, int dflt, int **procs);
 extern const char *GetStringOpt (Options_t *opts, const char *opt, const char *dflt);
 extern const char *GetStringEqOpt (Options_t *opts, const char *opt, const char *dflt);
 

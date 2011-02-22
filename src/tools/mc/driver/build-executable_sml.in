@@ -72,8 +72,8 @@ structure BuildExecutable : sig
 		 of (true, false, false, false) => (cFlags, "mcrt-stats")
 		  | (_, false, false, false) => (cFlags, "mcrt")
 		  | (_, true, false, false) => (cFlags, "mcrt-log")
-		  | (_, false, true, false) => ("-g "^cFlags, "mcrt-debug")
-		  | (_, true, true, false) => ("-g "^cFlags, "mcrt-log-debug")
+		  | (_, false, true, false) => ("-g "^cFlags^" -O0", "mcrt-debug")
+		  | (_, true, true, false) => ("-g "^cFlags^" -O0", "mcrt-log-debug")
 		  | (_, _, _, true) => (cFlags, "mcrt-perf")
 		(* end case *))
 	  val filename = OS.FileSys.tmpName()
@@ -89,7 +89,7 @@ structure BuildExecutable : sig
 		  val filenamedebug = OS.FileSys.tmpName()
 		  val filenamedebugc = concat[filenamedebug,".c"]
 		  val filenamedebugo = concat[filenamedebug,".o"]  
-		  val gccfilenamedebug = concat ["gcc @CFLAGS@ @LIBS@ @CFLAG_M64@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o ",filenamedebugo," -std=c99 -c ",filenamedebugc]
+		  val gccfilenamedebug = concat ["gcc @CFLAGS@ -O0 @LIBS@ @CFLAG_M64@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o ",filenamedebugo," -std=c99 -c ",filenamedebugc]
 		  val _ = PrintTblDbg.print filenamedebugc
 		  val _ = systemWithTiming (gccfilenamedebug, false)
 	  in

@@ -130,6 +130,7 @@ structure ASTUtil : sig
     val trueExp    = A.ConstExp trueConst
     val falseExp   = A.ConstExp falseConst
 
+(* FIXME: Should this be the empty tuple instead? *)
     val unitConst = A.LConst (Literal.unitLit, Basis.unitTy)
     val unitExp   = A.ConstExp unitConst
 
@@ -204,7 +205,7 @@ structure ASTUtil : sig
 	      | binding (A.PValBind (p, e)) = A.PValBind (copyPat s p, exp e)
 	      | binding _ = raise Fail "todo"
 	    and pmatch (A.PMatch (ps, e)) = A.PMatch (map ppat ps, exp e)
-	      | pmatch (A.Otherwise e) = A.Otherwise (exp e)
+	      | pmatch (A.Otherwise (ts, e)) = A.Otherwise (ts, exp e)
 	    and ppat (w as A.NDWildPat _) = w
 	      | ppat (A.HandlePat (p, t)) = A.HandlePat (copyPat s p, t)
 	      | ppat (A.Pat p) = A.Pat (copyPat s p)

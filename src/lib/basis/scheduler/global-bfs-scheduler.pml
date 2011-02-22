@@ -73,7 +73,7 @@ structure GlobalBFSScheduler (* :
 	    do LockedQueue.@enqueue-from-atomic (readyQ, thd)
             do SchedulerAction.@atomic-end (vp)
 	    return (UNIT)
-        fun removeFn (thd : ImplicitThread.thread / exh : exh) : bool = return (false)
+        fun removeFn (thd : ImplicitThread.thread / exh : exh) : Option.option = return (Option.NONE)
 	let group : ImplicitThread.work_group = 
 		ImplicitThread.@new-work-group (uid,
 						spawnFn,

@@ -31,14 +31,19 @@ structure MultilispFuture (* : FUTURE *) =
 	    do ImplicitThreadIVar.@put (ivar, Result.EXN(exn) / exh)
 	    SchedulerAction.@stop()
 	  let v : any = apply f (UNIT / exh')
-	  let wasNotMigrated : bool = ImplicitThread.@remove-thread (thd / exh)
-	  case wasNotMigrated
-	   of true =>
-	      (* fast clone *)
-	      let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar (Result.RES(v) / exh)
-	      let fut : future = alloc (ivar, Option.NONE)
-	      return (fut)
-	    | false =>
+	  let t : Option.option = ImplicitThread.@remove-thread (thd / exh)
+	  case t
+	   of Option.SOME (thd2 : ImplicitThread.thread) =>
+	      if Equal (thd, thd2) then
+		  (* fast clone *)
+		  let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar (Result.RES(v) / exh)
+		  let fut : future = alloc (ivar, Option.NONE)
+		  return (fut)
+	      else
+		  (* slow clone *)
+		  do ImplicitThreadIVar.@put (ivar, Result.RES(v) / exh)
+	          SchedulerAction.@stop ()
+	    | Option.NONE =>
 	      (* slow clone *)
 	      do ImplicitThreadIVar.@put (ivar, Result.RES(v) / exh)
 	      SchedulerAction.@stop ()
@@ -59,14 +64,20 @@ structure MultilispFuture (* : FUTURE *) =
 	      do ImplicitThreadIVar.@put (ivar, Result.EXN(exn) / exh)
 	      SchedulerAction.@stop ()
 	    let v : any = apply f (UNIT / exh')
-	    let wasNotMigrated : bool = ImplicitThread.@remove-thread (thd / exh)
-	    case wasNotMigrated
-	     of true =>
-		(* fast clone *)
-		let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar (v / exh)
-		let fut : future = alloc (ivar, Option.NONE)
-		return (fut)
-	      | false =>
+	    let t : Option.option = ImplicitThread.@remove-thread (thd / exh)
+	    case t
+	     of Option.SOME (thd2 : ImplicitThread.thread) =>
+		if Equal (thd, thd2) then
+		    (* fast clone *)
+		    let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar (v / exh)
+		    let fut : future = alloc (ivar, Option.NONE)
+		    return (fut)
+		else
+		    (* slow clone *)
+		    do ImplicitThreadIVar.@put (ivar, Result.RES(v) / exh)
+		    let _ : unit = SchedulerAction.@stop ()
+		    return (fut)
+	      | Option.NONE =>
 		(* slow clone *)
 		do ImplicitThreadIVar.@put (ivar, Result.RES(v) / exh)
 		let _ : unit = SchedulerAction.@stop ()

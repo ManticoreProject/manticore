@@ -259,9 +259,8 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 	}
     }
 
-  // check the global heap "to space"
-    MemChunk_t	*cp = self->globToSpHd;
-    while (cp != (MemChunk_t *)0) {
+  // check the global heap allocation space
+    MemChunk_t	*cp = self->globAllocChunk;
 	assert (cp->sts = TO_SP_CHUNK);
 	Word_t *p = (Word_t *)(cp->baseAddr);
 	Word_t *top = UsedTopOfChunk(self, cp);
@@ -270,12 +269,7 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 	    Word_t *scanptr = p;
 		
 		tableDebug[getID(hdr)].minorGCdebugGlobal(self,scanptr);
-		
 		p += GetLength(hdr);
-	   
 	}
-	cp = cp->next;
-    }
-
 }
 #endif /* NDEBUG */

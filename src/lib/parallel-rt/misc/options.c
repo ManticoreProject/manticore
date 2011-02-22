@@ -107,6 +107,55 @@ int GetIntOpt (Options_t *opts, const char *opt, int dflt)
     return dflt;
 }
 
+/* GetVprocsOpt:
+ */
+int ProcLocations[MAX_NUM_VPROCS];
+int GetVprocsOpt (Options_t *opts, int dflt, int **procs)
+{
+    *procs = NULL;
+    for (int i = 0;  i < opts->argc;  i++) {
+        if (strcmp("-p", opts->argv[i]) == 0) {
+            if (++i < opts->argc) {
+                char *input, *tok;
+                int j = 0;
+
+                input = (char*)opts->argv[i];
+                tok = strsep(&input, ",");
+                long arg = strtol (tok, 0, 10);
+
+                while (((tok = strsep(&input, ",")) != NULL) && (j < MAX_NUM_VPROCS)) {
+                    ProcLocations[j] = strtol (tok, 0, 10);
+                    j++;
+                }
+                
+                // Unspecified vprocs get unpinned
+                for (int k = j; k < MAX_NUM_VPROCS; k++) {
+                    ProcLocations[k] = -1;
+                }
+
+                if (j > 0) {
+                    if (j != arg) {
+                        Error("Requested %d processors, but only provided %d placement argument(s).\n", arg, j);
+                    } else {
+                        *procs = ProcLocations;
+                    }
+                }
+
+                CompressOpts (opts, i-1, 2);
+                return arg;
+            }
+            else {
+                CompressOpts (opts, i-1, 1);
+                Error("%s: missing argument for `-p' option\n", opts->cmd);
+                opts->errors = true;
+                return dflt;
+            }
+        }
+    }
+
+    return dflt;
+}
+
 /* GetStringOpt:
  */
 const char *GetStringOpt (Options_t *opts, const char *opt, const char *dflt)

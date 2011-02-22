@@ -36,6 +36,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 
     structure AddAllocChecks = AddAllocChecksFn (Target)
     structure AllocCCalls = AllocCCallsFn (Target)
+    structure AddAllocVecChecks = AddAllocVecChecksFn (Target)
     structure ImplementCalls = ImplementCallsFn (Target)
 
   (* wrap analysis passes *)
@@ -48,7 +49,8 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val implCalls = transform {passName = "implement-calls", pass = ImplementCalls.transform}
     val allocChecks = transform {passName = "alloc-checks", pass = AddAllocChecks.transform}
     val allocCCalls = transform {passName = "alloc-c-calls", pass = AllocCCalls.transform}
-    
+    val allocVecChecks = transform {passName = "alloc-vec-checks", pass = AddAllocVecChecks.transform}
+
     fun optimize module = let
 	  val _ = census module
 	  val _ = CheckCFG.check ("closure", module)
@@ -62,7 +64,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  val _ = cfa module
 	  val module = allocChecks module
           val _ = cfaClear module
-(*          val module = allocCCalls module *)
+          val module = allocVecChecks module 
 	  in
 	    module
 	  end
@@ -74,5 +76,5 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	    pass = optimize,
 	    registry = CFGOptControls.registry
 	  }
-      
+
   end

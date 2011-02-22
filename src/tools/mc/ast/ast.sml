@@ -93,7 +93,7 @@ structure AST =
 
     and pmatch
       = PMatch of ppat list * exp
-      | Otherwise of exp (* FIXME : This should have a type carried along with it, like WildPat *)
+      | Otherwise of ty list * exp (* ty list is the list of ppat types in the rest of the pmatch *)
 
     and pat
       = ConPat of dcon * ty list * pat	(* data-constructor application *)

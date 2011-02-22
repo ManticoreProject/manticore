@@ -85,6 +85,7 @@ structure Keywords : sig
 	    ("long",		T.KW_long),
 	    ("module",		T.KW_module),
 	    ("noreturn",	T.KW_noreturn),
+	    ("nullVP",	        T.KW_nullVP),
 	    ("of",		T.KW_of),
 	    ("promote",		T.KW_promote),
 	    ("pure",		T.KW_pure),

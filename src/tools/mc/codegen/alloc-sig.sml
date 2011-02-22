@@ -27,7 +27,7 @@ signature ALLOC =
   (* generate code to allocate a polymorphic vector in the local heap *)
   (* argument is a pointer to a linked list l of length n *)
   (* vector v is initialized s.t. v[i] := l[i] for 0 <= i < n *)
-    val genAllocPolyVec : MTy.T.reg -> {ptr : MTy.T.reg, stms : MTy.T.stm list}
+    val genAllocPolyVec : MTy.T.rexp -> {ptr : MTy.T.reg, stms : MTy.T.stm list}
 
   (* allocate a list of types in the global heap, and initialize them *)
   (* generate code to allocate a tuple object in the global heap *)
@@ -46,6 +46,11 @@ signature ALLOC =
    * space for the given size.
    *)
     val genAllocCheck : word -> {stms : MTy.T.stm list, allocCheck : MTy.T.ccexp}
+
+  (* heap limit check.  evaluates to true when the heap contains sufficient
+   * space for the given size.
+   *)
+    val genAllocNCheck : MTy.T.rexp -> {stms : MTy.T.stm list, allocCheck : MTy.T.ccexp}
 
   (* global heap limit check.  evaluates to true when the global heap contains sufficient
    * space for the given size.

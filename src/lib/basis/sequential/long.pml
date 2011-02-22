@@ -27,9 +27,17 @@ structure Long =
 	    return (res)
       ;
 
+      define inline @to-int (n : ml_long / exh : exh) : ml_int =
+	  return(wrap(I64ToI32(unwrap(n))))
+	;
+
     )
 
     val toString : long -> string = _prim(@to-string)
     val fromString : string -> long Option.option = _prim(@from-string)
+    val toInt : long -> int = _prim(@to-int)
+
+    fun min (x:long, y) = if x < y then x else y
+    fun max (x:long, y) = if x > y then x else y
 
   end
