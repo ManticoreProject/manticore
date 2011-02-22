@@ -24,20 +24,22 @@ val maxLen = 16777215
 val update = U.update
 val sub = U.sub
 
-fun array (n, init) = 
+fun tabulate (n, f) = 
   if n < 0 orelse n > maxLen then
     raise Fail "Size"
   else let
     val a = U.create n
-    fun fill i =
+    fun lp i =
       if i < n then
-	(update (a, i, init); fill (i + 1))
+	(U.update (a, i, f i); lp (i + 1))
       else
 	()
     in
-      fill 0;
+      lp 0;
       a
     end
+
+fun array (n, init) = tabulate (n, fn _ => init)
 
 val length : array -> int = _prim (@length)
 

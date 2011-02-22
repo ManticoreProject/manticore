@@ -23,6 +23,7 @@ structure UID (* :
 
   end *) = struct
 
+    structure U = UnsafeLongArray
     structure A = LongArray
 
     _primcode (
@@ -44,10 +45,12 @@ structure UID (* :
 	  define @new (cntArr : A.array / exh : exh) : Word64.ml_word =
 	      let self : vproc = SchedulerAction.@atomic-begin ()
 	      let id : int = VProc.@vproc-id (self)
-	      let cnt : Word64.ml_word = A.@sub (cntArr, id / exh)
-	      let cntNewU : Word64.ml_word = alloc (I64Add (unwrap (cnt), 1:long))
-	      do A.@update (cntArr, id, cntNewU / exh)
-	      return (cntNewU)
+              let idw : ml_int = wrap(id)
+	      let cntw : Word64.ml_word = U.@sub (alloc(cntArr, idw) / exh)
+              let cnt : Word64.word = unwrap(cntw)
+	      let ncnt : Word64.ml_word = alloc (I64Add (cnt, 1:long))
+	      let _ : unit = U.@update (alloc(cntArr, idw, ncnt) / exh)
+	      return (ncnt)
 	    ;
 
 	)
