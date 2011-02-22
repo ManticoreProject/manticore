@@ -45,6 +45,7 @@ structure CopyPropagation : sig
     structure CTy = CPSTy
     structure CFA = CFACPS
     structure ST = Stats
+    structure Census = CPSCensus
 
   (***** controls ******)
     val enableCopyPropagation = ref true

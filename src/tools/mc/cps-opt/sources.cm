@@ -9,6 +9,7 @@
 Library
 
   functor CPSOptFn
+  structure CPSCensus
 
 is
 

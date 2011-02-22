@@ -20,6 +20,9 @@ structure FreeVars : sig
    *)
     val freeVarsOfExp : CPS.exp -> CPS.Var.Set.set
 
+  (* clear the computed free variable information *)
+    val clear : CPS.module -> unit
+
   end = struct
 
     structure PPt = ProgPt
@@ -36,8 +39,8 @@ structure FreeVars : sig
 	  print "}")
 (* -DEBUG*)
 
-    val {getFn = getFV, setFn = setFV, ...} = V.newProp (fn _ => VSet.empty)
-    val {getFn = getFVOfPt, setFn = setFVOfPt, ...} = PPt.newProp (fn _ => VSet.empty)
+    val {getFn = getFV, setFn = setFV, clrFn=clearFV,  ...} = V.newProp (fn _ => VSet.empty)
+    val {getFn = getFVOfPt, setFn = setFVOfPt, clrFn = clearFVOfPt, ...} = PPt.newProp (fn _ => VSet.empty)
 
   (* is a variable externally bound? *)
     fun isExtern x = (case V.kindOf x
@@ -170,5 +173,41 @@ structure FreeVars : sig
 	  end
 
     fun freeVarsOfExp (CPS.Exp(ppt, _)) = getFVOfPt ppt
+
+    fun clear (CPS.MODULE{name, externs, body, ...}) = let
+        fun clearFB(CPS.FB{f, params, rets, body}) = (
+            clearExp body;
+            clearFV f;
+            List.app clearFV params;
+            List.app clearFV rets)
+        and clearExp(CPS.Exp(ppt, t)) = (
+            clearFVOfPt ppt;
+            case t
+	     of (CPS.Let(lhs, rhs, e)) => (
+		List.app clearFV lhs;
+		CPSUtil.appRHS clearFV rhs;
+		clearExp e)
+	      | (CPS.Fun(fbs, e)) => (
+		List.app clearFB fbs;
+		clearExp e)
+	      | (CPS.Cont(fb, e)) => (
+		clearFB fb;
+		clearExp e)
+	      | (CPS.If(cond, e1, e2)) => (CondUtil.app clearFV cond; clearExp e1; clearExp e2)
+	      | (CPS.Switch(x, cases, dflt)) => (
+		clearFV x;
+		List.app (fn (_, e) => clearExp e) cases;
+		Option.app clearExp dflt)
+	      | (CPS.Apply(f, args, rets)) => (
+		clearFV f;
+		List.app clearFV args;
+		List.app clearFV rets)
+	      | (CPS.Throw(k, args)) => (
+		clearFV k;
+		List.app clearFV args)
+	(* end case *))
+    in
+        clearFB body
+    end
 
   end

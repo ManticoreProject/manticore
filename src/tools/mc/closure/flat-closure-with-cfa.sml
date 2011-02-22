@@ -973,8 +973,6 @@ structure FlatClosureWithCFA : sig
                   (lab, conv, cvtExp (env, params, f, lab, body))
                 end
           in
-            CFA.analyze m;
-            FV.analyze m;
             assignLabels body;
             let
                 val (lab, conv, (start, body)) = cvtModLambda body

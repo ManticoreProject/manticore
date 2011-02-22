@@ -25,6 +25,7 @@ structure EtaExpand : sig
     structure CV = C.Var
     structure VMap = CV.Map
     structure ST = Stats
+    structure Census = CPSCensus
 
 
   (***** controls ******)

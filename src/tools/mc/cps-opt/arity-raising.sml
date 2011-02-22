@@ -21,6 +21,7 @@ structure ArityRaising : sig
     structure CTy = CPSTy
     structure CFA = CFACPS
     structure ST = Stats
+    structure Census = CPSCensus
 
   (***** controls ******)
     val enableArityRaising = ref true

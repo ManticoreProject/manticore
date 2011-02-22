@@ -17,6 +17,7 @@ structure Contract : sig
     structure CV = C.Var
     structure VMap = CV.Map
     structure ST = Stats
+    structure Census = CPSCensus
 
   (********** Counters for statistics **********)
     val cntUnusedStmt           = ST.newCounter "cps-contract:unused-stmt"

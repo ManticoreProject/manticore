@@ -36,7 +36,7 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
           }
 
   (* wrap analysis passes *)
-    val census = analyze {passName = "census", pass = Census.census}
+    val census = analyze {passName = "census", pass = CPSCensus.census}
     val cfa = analyze {passName = "cfa", pass = CFACPS.analyze}
 
   (* wrap transformation passes with keep controls *)
