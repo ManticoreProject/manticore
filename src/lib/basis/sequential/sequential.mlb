@@ -29,15 +29,27 @@ in
   prim-list.pml
   prim-bool.pml
 end
+ann "cpp" ""
+in
+  ref.pml
+  float-ref.pml
+  int-ref.pml
+end
+ann "cpp" "" 
+in
+  unsafe-long-array.pml
+  unsafe-int-array.pml
+  unsafe-float-array.pml
+  unsafe-double-array.pml
+end
 ann "cpp" "../include/prim.def,../include/assert.def"
 in
   vector.pml
   array.pml
   float-array.pml
   int-array.pml
-  unsafe-long-array.pml
   long-array.pml
-  word64-array.pml
+  double-array.pml
 end
 time.pml
 prim-io.pml
@@ -57,11 +69,5 @@ in
 end
 
 command-line.pml
-
-ann "cpp" "../include/prim.def"
-in
-  ref.pml
-  float-ref.pml
-end
 
 ../extras/extras.mlb

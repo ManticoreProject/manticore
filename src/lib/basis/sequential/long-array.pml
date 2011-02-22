@@ -19,7 +19,7 @@ _primcode (
 
 type array = U.array
 
-val maxLen = 16777215  (* FIXME: what is the right value to use for Manticore? *)
+val maxLen = 16777215  
 
 val update = U.update
 val sub = U.sub

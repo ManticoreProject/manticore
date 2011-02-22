@@ -428,9 +428,36 @@ functor HeapTransferFn (
 	 | _ => raise Fail "error"
       (* end case *))
 
+  fun genAllocIntArray varDefTbl {lhs, n} = 
+      (case ccall {lhs=[lhs], 
+		   name=T.LABEL RuntimeLabels.allocIntArray,
+		   retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_signed CTy.I_int], 
+		   cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl n], saveAllocationPointer=true}
+	of {stms, result=[MTy.EXP (_, e)]} => {stms=stms, result=e}
+	 | _ => raise Fail "error"
+      (* end case *))
+
   fun genAllocLongArray varDefTbl {lhs, n} = 
       (case ccall {lhs=[lhs], 
 		   name=T.LABEL RuntimeLabels.allocLongArray,
+		   retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_signed CTy.I_int], 
+		   cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl n], saveAllocationPointer=true}
+	of {stms, result=[MTy.EXP (_, e)]} => {stms=stms, result=e}
+	 | _ => raise Fail "error"
+      (* end case *))
+
+  fun genAllocFloatArray varDefTbl {lhs, n} = 
+      (case ccall {lhs=[lhs], 
+		   name=T.LABEL RuntimeLabels.allocFloatArray,
+		   retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_signed CTy.I_int], 
+		   cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl n], saveAllocationPointer=true}
+	of {stms, result=[MTy.EXP (_, e)]} => {stms=stms, result=e}
+	 | _ => raise Fail "error"
+      (* end case *))
+
+  fun genAllocDoubleArray varDefTbl {lhs, n} = 
+      (case ccall {lhs=[lhs], 
+		   name=T.LABEL RuntimeLabels.allocDoubleArray,
 		   retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_signed CTy.I_int], 
 		   cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl n], saveAllocationPointer=true}
 	of {stms, result=[MTy.EXP (_, e)]} => {stms=stms, result=e}

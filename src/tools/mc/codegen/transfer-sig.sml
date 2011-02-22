@@ -49,7 +49,19 @@ signature TRANSFER = sig
  	{lhs: CFG.var, arg: CFG.var} -> 
 		     {stms : stms, result : MTy.T.rexp}
 
+    val genAllocIntArray : VarDef.var_def_tbl -> 
+ 	{lhs: CFG.var, n : CFG.var} -> 
+		     {stms : stms, result : MTy.T.rexp}
+
     val genAllocLongArray : VarDef.var_def_tbl -> 
+ 	{lhs: CFG.var, n : CFG.var} -> 
+		     {stms : stms, result : MTy.T.rexp}
+
+    val genAllocFloatArray : VarDef.var_def_tbl -> 
+ 	{lhs: CFG.var, n : CFG.var} -> 
+		     {stms : stms, result : MTy.T.rexp}
+
+    val genAllocDoubleArray : VarDef.var_def_tbl -> 
  	{lhs: CFG.var, n : CFG.var} -> 
 		     {stms : stms, result : MTy.T.rexp}
 

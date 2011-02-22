@@ -27,7 +27,10 @@ structure RuntimeLabels =
   (* runtime code to get a new global-heap chunk *)
     val getGlobalChunk = global "GetChunkForVProc"
     val allocVector = global "AllocVector"
-    val allocLongArray = global "AllocRaw64Array"
+    val allocIntArray = global "AllocIntArray"
+    val allocLongArray = global "AllocLongArray"
+    val allocFloatArray = global "AllocFloatArray"
+    val allocDoubleArray = global "AllocDoubleArray"
     end (* local *)
 
   end (* RuntimeLabels *)

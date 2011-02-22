@@ -78,6 +78,46 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     return PtrToValue(obj);
 }
 
+/*! \brief allocate in the local heap an array of raw values
+ *  \param vp the host vproc
+ *  \param nElems the length of the array
+ *  \param size in bytes of the raw values
+ *  \return pointer to the new array
+ */
+Value_t AllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
+{
+    Word_t *obj = (Word_t *)(vp->allocPtr);    
+    obj[-1] = RAW_HDR(nElems);
+    vp->allocPtr += WORD_SZB + szBOfElt * nElems;
+    return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(nElems));
+}
+
+/*! \brief allocate in the global heap an array of raw values
+ *  \param vp the host vproc
+ *  \param nElems the number of elements in the array
+ *  \param size in bytes of the raw values
+ *  \return pointer to the beginning of the array
+ */
+Value_t GlobalAllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
+{
+    int nArrayBytes = nElems * szBOfElt; 
+                      /* number of bytes consumed by the array */
+    int nObjBytes = WORD_SZB + nArrayBytes;
+                      /* number of bytes consumed by the array heap object */
+    Word_t *obj;
+    assert(nElems >= 0);
+    assert(nArrayBytes < HEAP_CHUNK_SZB); /* the array has to fit inside a heap chunk */
+    if (vp->globNextW + nObjBytes >= vp->globLimit)
+	AllocToSpaceChunk(vp);
+    obj = (Word_t*)(vp->globNextW);
+    obj[-1] = RAW_HDR(BYTES_TO_WORDS(nArrayBytes));
+    vp->globNextW += nObjBytes;
+#ifndef NO_GC_STATS
+    vp->globalStats.nBytesAlloc += WORD_SZB + nArrayBytes;
+#endif
+    return PtrToValue(obj);
+}
+
 /*! \brief allocate a vector seeded with some initial values in the nursery.
  *  \param vp the host vproc
  *  \param values the list of values used to initialize the vector
@@ -101,21 +141,6 @@ Value_t AllocVector (VProc_t *vp, Value_t values)
     vp->allocPtr += WORD_SZB * (i+1);
 
     return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(i));
-}
-
-/*! \brief allocate an array of 64-bit raw values
- *  \param vp the host vproc
- *  \param n the length of the array
- *  \return pointer to the new array
- */
-Value_t AllocRaw64Array (VProc_t *vp, int n)
-{
-    Word_t *obj = (Word_t *)(vp->allocPtr);    
-
-    obj[-1] = RAW_HDR(n);
-    vp->allocPtr += 8 * (n+1);
-
-    return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(n));
 }
 
 /*! \brief allocate a vector seeded with some initial values, which
@@ -351,100 +376,133 @@ Value_t GlobalAllocArray (VProc_t *vp, int nElems, Value_t elt)
     return PtrToValue(obj);
 }
 
-/*! \brief allocate an array of floats in the global heap
+/*! \brief allocate in the local heap an array of ints
  *  \param vp the host vproc
- *  \param nElems the number of elements in the array
- *  \param elt the initial value for the array elements
- *  \return pointer to the beginning of the array
+ *  \param n the length of the array
+ *  \return pointer to the new array
  */
-Value_t GlobalAllocFloatArray (VProc_t *vp, int nElems, float elt)
+Value_t AllocIntArray (VProc_t *vp, int n)
 {
-    int nWords = BYTES_TO_WORDS(nElems * sizeof(float));
-  /* the array must fit into a global chunk */
-    assert(HEAP_CHUNK_SZB > WORD_SZB*(nWords+1) && nElems >= 0);
-
-    if (vp->globNextW + WORD_SZB * (nWords+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
-    }
-
-    Word_t *obj = (Word_t*)(vp->globNextW);
-    obj[-1] = RAW_HDR(nWords);
-    float *arr = (float*)obj;
-    for (int i = 0;  i < nElems;  i++) {
-	arr[i] = elt;
-    }
-
-    vp->globNextW += WORD_SZB * (nWords+1);
-
-#ifndef NO_GC_STATS
-    vp->globalStats.nBytesAlloc += WORD_SZB * (nWords+1);
-#endif
-
-    return PtrToValue(obj);
+    return AllocRawArray (vp, n, sizeof(int32_t));
 }
 
 /*! \brief allocate an array of ints in the global heap
  *  \param vp the host vproc
  *  \param nElems the number of elements in the array
- *  \param elt the initial value for the array elements
  *  \return pointer to the beginning of the array
  */
-Value_t GlobalAllocIntArray (VProc_t *vp, int nElems, int32_t elt)
+Value_t GlobalAllocIntArray (VProc_t *vp, int nElems)
 {
-    int nWords = BYTES_TO_WORDS(nElems * sizeof(int32_t));
-  /* the array must fit into a global chunk */
-    assert(HEAP_CHUNK_SZB > WORD_SZB*(nWords+1) && nElems >= 0);
-
-    if (vp->globNextW + WORD_SZB * (nWords+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
-    }
-
-    Word_t *obj = (Word_t*)(vp->globNextW);
-    obj[-1] = RAW_HDR(nWords);
-    int *arr = (int*)obj;
-    for (int i = 0;  i < nElems;  i++) {
-	arr[i] = elt;
-    }
-
-    vp->globNextW += WORD_SZB * (nWords+1);
-
-#ifndef NO_GC_STATS
-    vp->globalStats.nBytesAlloc += WORD_SZB * (nWords+1);
-#endif
-
-    return PtrToValue(obj);
+  return GlobalAllocRawArray (vp, nElems, sizeof(int32_t));
 }
 
-/*! \brief allocate an array of 64-bit raw values in the global heap
+/*! \brief allocate a big array of ints
  *  \param vp the host vproc
  *  \param nElems the number of elements in the array
- *  \param elt the initial value for the array elements
  *  \return pointer to the beginning of the array
  */
-Value_t GlobalAllocRaw64Array (VProc_t *vp, int nElems, uint64_t elt)
+Value_t AllocBigIntArray (VProc_t *vp, int nElems)
 {
-    int nWords = BYTES_TO_WORDS(nElems * sizeof(uint64_t));
-  /* the array must fit into a global chunk */
-    assert(HEAP_CHUNK_SZB > WORD_SZB*(nWords+1));
+  // TODO 
+  assert(0);
+  return 0;
+}
 
-    if (vp->globNextW + WORD_SZB * (nWords+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
-    }
+/*! \brief allocate in the local heap an array of longs
+ *  \param vp the host vproc
+ *  \param n the length of the array
+ *  \return pointer to the new array
+ */
+Value_t AllocLongArray (VProc_t *vp, int n)
+{
+    return AllocRawArray (vp, n, sizeof(int64_t));
+}
 
-    Word_t *obj = (Word_t*)(vp->globNextW);
-    obj[-1] = RAW_HDR(nWords);
-    uint64_t *arr = (uint64_t*)obj;
-    for (int i = 0;  i < nElems;  i++) {
-	arr[i] = elt;
-    }
+/*! \brief allocate an array of longs in the global heap
+ *  \param vp the host vproc
+ *  \param nElems the number of elements in the array
+ *  \return pointer to the beginning of the array
+ */
+Value_t GlobalAllocLongArray (VProc_t *vp, int nElems)
+{
+  return GlobalAllocRawArray (vp, nElems, sizeof(int64_t));
+}
 
-    vp->globNextW += WORD_SZB * (nWords+1);
+/*! \brief allocate a big array of longs 
+ *  \param vp the host vproc
+ *  \param nElems the number of elements in the array
+ *  \return pointer to the beginning of the array
+ */
+Value_t AllocBigLongArray (VProc_t *vp, int nElems)
+{
+  // TODO 
+  assert(0);
+  return 0;
+}
 
-#ifndef NO_GC_STATS
-    vp->globalStats.nBytesAlloc += WORD_SZB * (nWords+1);
-#endif
 
-    return PtrToValue(obj);
+/*! \brief allocate in the local heap an array of floats
+ *  \param vp the host vproc
+ *  \param n the length of the array
+ *  \return pointer to the new array
+ */
+Value_t AllocFloatArray (VProc_t *vp, int n)
+{
+    return AllocRawArray (vp, n, sizeof(float));
+}
+
+/*! \brief allocate an array of floats in the global heap
+ *  \param vp the host vproc
+ *  \param nElems the number of elements in the array
+ *  \return pointer to the beginning of the array
+ */
+Value_t GlobalAllocFloatArray (VProc_t *vp, int nElems)
+{
+  return GlobalAllocRawArray (vp, nElems, sizeof(float));
+}
+
+/*! \brief allocate a big array of floats
+ *  \param vp the host vproc
+ *  \param nElems the number of elements in the array
+ *  \return pointer to the beginning of the array
+ */
+Value_t AllocBigFloatArray (VProc_t *vp, int nElems)
+{
+  // TODO 
+  assert(0);
+  return 0;
+}
+
+/*! \brief allocate in the local heap an array of doubles
+ *  \param vp the host vproc
+ *  \param n the length of the array
+ *  \return pointer to the new array
+ */
+Value_t AllocDoubleArray (VProc_t *vp, int n)
+{
+    return AllocRawArray (vp, n, sizeof(double));
+}
+
+/*! \brief allocate an array of doubles in the global heap
+ *  \param vp the host vproc
+ *  \param nElems the number of elements in the array
+ *  \return pointer to the beginning of the array
+ */
+Value_t GlobalAllocDoubleArray (VProc_t *vp, int nElems)
+{
+  return GlobalAllocRawArray (vp, nElems, sizeof(double));
+}
+
+/*! \brief allocate a big array of doubles
+ *  \param vp the host vproc
+ *  \param nElems the number of elements in the array
+ *  \return pointer to the beginning of the array
+ */
+Value_t AllocBigDoubleArray (VProc_t *vp, int nElems)
+{
+  // TODO 
+  assert(0);
+  return 0;
 }
 
 /* FIXME: this function does not belong here! */

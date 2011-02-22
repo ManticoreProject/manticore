@@ -23,7 +23,7 @@ structure UID (* :
 
   end *) = struct
 
-    structure A = Word64Array
+    structure A = LongArray
 
     _primcode (
       typedef uid = Word64.word;

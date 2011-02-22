@@ -319,8 +319,26 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 			    stms
                           @ gprBind (anyTy, v, result)
                         end
+		    | P.AllocIntArray n => let
+			val {stms, result} = BE.Transfer.genAllocIntArray varDefTbl {lhs=v, n=n}
+                        in
+			    stms
+			  @ gprBind (anyTy, v, result)
+                        end
 		    | P.AllocLongArray n => let
 			val {stms, result} = BE.Transfer.genAllocLongArray varDefTbl {lhs=v, n=n}
+                        in
+			    stms
+			  @ gprBind (anyTy, v, result)
+                        end
+		    | P.AllocFloatArray n => let
+			val {stms, result} = BE.Transfer.genAllocFloatArray varDefTbl {lhs=v, n=n}
+                        in
+			    stms
+			  @ gprBind (anyTy, v, result)
+                        end
+		    | P.AllocDoubleArray n => let
+			val {stms, result} = BE.Transfer.genAllocDoubleArray varDefTbl {lhs=v, n=n}
                         in
 			    stms
 			  @ gprBind (anyTy, v, result)

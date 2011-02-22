@@ -10,11 +10,13 @@ structure FloatArraySeq = struct
 
   type seq = A.array
 
-  val empty = let
-    fun doNotDo _ = raise Fail "instantiating a zero-length array" 
-    in
-      A.tabulate (0, doNotDo)
-    end
+  fun failwith s = (Print.printLn s; raise Fail s)
+
+  fun tabulate (_, f : int -> float) = failwith "tabulate"
+  fun sum (a : A.array) : float = failwith "sum"
+  fun prefixPlusScan (f : float, a : A.array) : A.array = failwith "prefix"
+
+  val empty = A.array (0, 0.0)
 
   fun singleton s = A.array (1, s)
 
@@ -33,21 +35,21 @@ structure FloatArraySeq = struct
       else
 	sub (y, i-xn)
     in
-      A.tabulate (xn+yn, elt)      
+      tabulate (xn+yn, elt)      
     end
 
   fun take (s, n) = let
     val len = length s
     in
       if n >= len then s
-      else A.tabulate (n, fn i => sub (s, i))
+      else tabulate (n, fn i => sub (s, i))
     end
 
   fun drop (s, n) = let
     val len = length s
     in
       if n >= len then empty
-      else A.tabulate (len-n, fn i => sub (s, i+n))
+      else tabulate (len-n, fn i => sub (s, i+n))
     end
 
   fun splitAt (s, i) = (take (s, i+1), drop (s, i+1))
@@ -191,7 +193,7 @@ structure FloatArraySeq = struct
         lp (len-1, nil)
       end
 
-  val tabulate = A.tabulate
+  val tabulate = tabulate
 
 (*
   fun zip (s1, s2) = let
@@ -291,9 +293,9 @@ structure FloatArraySeq = struct
     end
 
 (* prefixPlusScan : float * seq -> seq *)
-  val prefixPlusScan = A.prefixPlusScan
+  val prefixPlusScan = prefixPlusScan
 
 (* sum : seq -> float *)
-  val sum = A.sum
+  val sum = sum
 
 end

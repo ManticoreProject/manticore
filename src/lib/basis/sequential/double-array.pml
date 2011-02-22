@@ -1,14 +1,14 @@
-(* int-array.pml
+(* double-array.pml
  *
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Monomorphic arrays of ints.
+ * Monomorphic arrays of doubles.
  *)
 
-structure IntArray = struct
+structure DoubleArray = struct
 
-structure U = UnsafeIntArray
+structure U = UnsafeDoubleArray
 
 _primcode (
   typedef array = U.array;
@@ -24,7 +24,7 @@ val maxLen = 16777215
 val update = U.update
 val sub = U.sub
 
-fun array (n, init) = 
+fun array (n, init : double) = 
   if n < 0 orelse n > maxLen then
     raise Fail "Size"
   else let
@@ -51,6 +51,5 @@ fun modify f a = let
   in
     m 0
   end
-
 
 end
