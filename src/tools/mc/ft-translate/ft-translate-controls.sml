@@ -6,20 +6,20 @@
  * AST to BOM translation controls.
  *)
 
-structure TranslateControls =
+structure FTTranslateControls =
   struct
 
     val (registry, debug) = BasicControl.newRegistryWithDebug {
-	    name = "translate",
+	    name = "ft-translate",
 	    pri = 4,
 	    help = "AST to BOM translation-phase controls"
 	  }
 
     val keepEnv = Controls.genControl {
-	    name = "keep-env",
+	    name = "ft-keep-env",
 	    pri = [5, 0],
 	    obscurity = 1,
-	    help = "keep the translation envronment",
+	    help = "keep the ft translation envronment",
 	    default = false
 	  }
 

@@ -40,11 +40,13 @@ structure FTTranslateTypes : sig
 
   (* a property to track the mapping from AST type constructors to BOM kinds *)
     local
-      val {getFn, setFn, ...} = TyCon.newProp (fn _ => BTy.K_UNIFORM)
+      fun propsOf (Ty.Tyc {props, ...}) = props
+      fun newProp mkProp = PropList.newProp (propsOf, mkProp)
+      val {getFn, setFn, ...} = newProp (fn _ => BTy.K_UNIFORM)
     in
-    val getTycKind = getFn
-    val setTycKind = setFn
-    end
+      val getTycKind = getFn
+      val setTycKind = setFn
+    end (* local *)
 
     fun insertConst (env, dc, dc') = E.insertCon (env, dc, E.Const dc')
     fun insertDCon (env, dc, repTr, dc') = E.insertCon (env, dc, E.DCon(dc', repTr))
@@ -52,13 +54,14 @@ structure FTTranslateTypes : sig
   (* return the BOM kind of the argument of an AST data constructor; this code
    * looks at the top-level structure of the type to determine the kind.
    *)
-    fun bomKindOfArgTy dc = (case DataCon.argTypeOf dc
-	   of SOME(Ty.FunTy _) => BTy.K_BOXED
-	    | SOME(Ty.TupleTy[]) => BTy.K_UNBOXED
-	    | SOME(Ty.TupleTy _) => BTy.K_BOXED
-	    | SOME(Ty.ConTy(_, tyc)) => getTycKind tyc
-	    | _ => BTy.K_UNIFORM
-	  (* end case *))
+    fun bomKindOfArgTy (Ty.DCon {argTy, ...}) =
+     (case argTy of
+          SOME(Ty.FunTy _) => BTy.K_BOXED
+	| SOME(Ty.TupleTy[]) => BTy.K_UNBOXED
+	| SOME(Ty.TupleTy _) => BTy.K_BOXED
+	| SOME(Ty.ConTy(_, tyc)) => getTycKind tyc
+	| _ => BTy.K_UNIFORM
+     (* end case *))
 
     fun tr (env, ty) = let
 	  fun tr' ty = (case FTTypeUtil.prune ty

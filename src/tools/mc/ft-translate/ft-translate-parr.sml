@@ -4,15 +4,15 @@
  * All rights reserved.
  *)
 
-structure TranslateParr  : sig
+structure FTTranslateParr  : sig
 
-  (* An AST to BOM translation of parrays to ropes. *)
-    val tr : TranslateEnv.env * (TranslateEnv.env * AST.exp * (BOM.Var.var -> BOM.exp) -> BOM.exp)
+  (* A FLAST to BOM translation of parrays to ropes. *)
+    val tr : FTTranslateEnv.env * (FTTranslateEnv.env * AST.exp * (BOM.Var.var -> BOM.exp) -> BOM.exp)
              -> AST.exp list * AST.ty -> BOM.exp
 
   end  = struct
 
-    structure A   = AST
+    structure F   = FLAST
     structure AB  = Basis
     structure R   = Rope
     structure B   = BOM
@@ -105,7 +105,7 @@ structure TranslateParr  : sig
   (* A smart constructor (i.e., with balancing) for ropes. *)
     fun smartCat (r1, r2) = raise Fail "todo: smartCat"
   
-  (* ropeFromExps : A.exp list -> A.exp rope *)
+  (* ropeFromExps : F.exp list -> F.exp rope *)
   (* Consumes a list of expressions and produces an ideally-balanced *)
   (* rope from them. *)
     fun ropeFromExps es =
@@ -148,7 +148,7 @@ structure TranslateParr  : sig
 	val rawIntTy = BTy.T_Raw BTy.T_Int
 	val mkArray = ASTUtil.mkArray
     in
-  (* ropeBOM : env * (env * A.exp * (BV.var -> B.exp)) -> _ rope * A.ty -> B.exp *)
+  (* ropeBOM : env * (env * F.exp * (BV.var -> B.exp)) -> _ rope * F.ty -> B.exp *)
     fun ropeBOM (env, trExpToV) (r, t) =
 	let val ropeTy = ropeTy(env, t)
 	    val TranslateEnv.DCon(ropeLeaf, _) = TranslateTypes.trDataCon(env, R.ropeLeaf())

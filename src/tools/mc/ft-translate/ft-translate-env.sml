@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-structure TranslateEnv : sig
+structure FTTranslateEnv : sig
 
     type env
 
@@ -14,7 +14,7 @@ structure TranslateEnv : sig
     datatype con_bind
       = Const of BOMTy.data_con		(* nullary data constructors *)
       | ExnConst of BOMTy.data_con	(* nullary exception constructors *)
-      | DCon of (BOMTy.data_con * FlattenRep.rep_tree)
+      | DCon of (BOMTy.data_con * FTFlattenRep.rep_tree)
       | Lit of BOM.const		(* nullary constructor with literal rep (e.g., false) *)
 
   (* variable bindings *)
@@ -94,7 +94,7 @@ structure TranslateEnv : sig
     datatype con_bind
       = Const of BOMTy.data_con		(* nullary data constructors *)
       | ExnConst of BOMTy.data_con	(* nullary exception constructors *)
-      | DCon of (BOMTy.data_con * FlattenRep.rep_tree)
+      | DCon of (BOMTy.data_con * FTFlattenRep.rep_tree)
       | Lit of BOM.const		(* nullary constructor with literal rep (e.g., false) *)
 
     datatype var_bind
@@ -306,7 +306,7 @@ structure TranslateEnv : sig
 		      (* end case *))
 		in
 		  prl [
-		      "    ", DataCon.nameOf dc, " of ", FlattenRep.fmt {long=true} repTr,
+		      "    ", DataCon.nameOf dc, " of ", FTFlattenRep.fmt {long=true} repTr,
 		      "  :->  ",
 		      name, " of ", String.concat argTy, "; ", rep, "\n"
 		    ]

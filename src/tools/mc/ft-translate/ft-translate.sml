@@ -1,22 +1,22 @@
-(* translate.sml
+(* ft-translate.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *)
 
-structure Translate : sig
+structure FTTranslate : sig
 
-    val translate : (TranslateEnv.env * AST.exp) -> BOM.module
+    val translate : (FTTranslateEnv.env * FLF.exp) -> BOM.module
 
   end = struct
 
-    structure A = AST
+    structure F = FLAST
     structure V = Var
     structure B = BOM
     structure BV = B.Var
     structure BTy = BOMTy
     structure Lit = Literal
-    structure E = TranslateEnv
+    structure E = FTTranslateEnv
 
     structure LambdaSet = RedBlackSetFn (
       struct
@@ -38,7 +38,7 @@ structure Translate : sig
 
     val ropeMapSet = ref(LambdaSet.empty)
 
-    val trTy = TranslateTypes.tr
+    val trTy = FTTranslateTypes.tr
 
     val rawIntTy = BTy.T_Raw BTy.T_Int
     fun rawInt(n) = B.E_Const(Literal.Int(IntInf.fromInt n), rawIntTy)
@@ -47,8 +47,8 @@ structure Translate : sig
    * NOTE: we should probably have a pass that does this before
    * AST optimization.
    *)
-    fun prune (AST.OverloadExp(ref(AST.Instance x))) = AST.VarExp(x, [])
-      | prune (AST.OverloadExp _) = raise Fail "unresolved overloading"
+    fun prune (F.OverloadExp(ref(F.Instance x))) = F.VarExp(x, [])
+      | prune (F.OverloadExp _) = raise Fail "unresolved overloading"
       | prune e = e
 
   (* translate a binding occurrence of an AST variable to a BOM variable *)
@@ -112,12 +112,12 @@ structure Translate : sig
 		val (fb as B.FB{f, ...}) = (case BOMTyCon.dconArgTy dc'
 		       of [ty] => let
 			  (* constructor with a single argument *)
-			    val [srcTy] = FlattenRep.srcTys repTr
+			    val [srcTy] = FTFlattenRep.srcTys repTr
 			    val srcArg = BV.new("arg", srcTy)
 			    val res = BV.new("data", dataTy)
 			    val f = BV.new(BOMTyCon.dconName dc',
 				    BTy.T_Fun([srcTy], [BTy.exhTy], [dataTy]))
-			    val (binds', [dstArg]) = FlattenRep.flatten (repTr, [srcArg]) 
+			    val (binds', [dstArg]) = FTFlattenRep.flatten (repTr, [srcArg]) 
 			    val body = B.mkStmts(
 				    binds' @ [([res], B.E_DCon(dc', [dstArg]))],
 				    B.mkRet[res])
@@ -128,7 +128,7 @@ structure Translate : sig
 			  (* constructor with multiple arguments (or zero arguments); the
 			   * lambda will take a tuple and deconstruct it to build the data value.
 			   *)
-			    val srcTys = FlattenRep.srcTys repTr
+			    val srcTys = FTFlattenRep.srcTys repTr
 			    val argTy = BTy.tupleTy srcTys
 			    val arg = BV.new("arg", argTy)
 			    val (srcArgs, binds) = let
@@ -142,7 +142,7 @@ structure Translate : sig
 				  in
 				    (List.rev xs, List.rev binds)
 				  end
-			    val (binds', dstArgs) = FlattenRep.flatten (repTr, srcArgs)
+			    val (binds', dstArgs) = FTFlattenRep.flatten (repTr, srcArgs)
 			    val res = BV.new("data", dataTy)
 			    val f = BV.new(BOMTyCon.dconName dc',
 				    BTy.T_Fun([argTy], [BTy.exhTy], [dataTy]))
@@ -166,7 +166,7 @@ structure Translate : sig
 	  (* end case *))
 
     fun trExp (env, exp) : bom_code = (case prune exp
-	   of AST.LetExp (AST.PValBind (AST.VarPat x, e1), e2) =>
+	   of F.LetExp (F.PValBind (F.VarPat x, e1), e2) =>
 	        if ExpansionOpts.isEnabled(ExpansionOpts.PVAL[ExpansionOpts.CILK5_WORK_STEALING])
 		then EXP(TranslatePValCilk5.tr{env=env,
 					       trVar=trVar,
@@ -178,22 +178,22 @@ structure Translate : sig
 			)
 		else raise Fail "no suitable translation for pval"
 
-	    | AST.LetExp(b, e) =>
+	    | F.LetExp(b, e) =>
 		EXP(trBind (env, b, fn env' => trExpToExp(env', e)))
-	    | AST.IfExp(e1, e2, e3, ty) =>
+	    | F.IfExp(e1, e2, e3, ty) =>
 		EXP(trExpToV (env, e1, fn x =>
 		  BOMUtil.mkBoolCase(x, trExpToExp(env, e2), trExpToExp(env, e3))))
-	    | AST.CaseExp(e, rules, ty) =>
+	    | F.CaseExp(e, rules, ty) =>
 		EXP(trExpToV (env, e, fn x => trCase(env, x, rules)))
-	    | AST.PCaseExp _ => raise Fail "PCaseExp" (* FIXME *)
-	    | AST.HandleExp(e, mc, ty) => let
+	    | F.PCaseExp _ => raise Fail "PCaseExp" (* FIXME *)
+	    | F.HandleExp(e, mc, ty) => let
 		val (exn, body) = (case mc
-		       of [AST.PatMatch(AST.VarPat exn, e')] => let
+		       of [F.PatMatch(F.VarPat exn, e')] => let
 			    val (exn', env') = trVar (env, exn)
 			    in
 			      (exn', trExpToExp(env', e'))
 			    end
-			| [AST.PatMatch(AST.WildPat _, e')] => let
+			| [F.PatMatch(F.WildPat _, e')] => let
 			    val exn' = BV.new ("exn", BTy.exnTy)
 			    in
 			      (exn', trExpToExp(env, e'))
@@ -205,9 +205,9 @@ structure Translate : sig
 		in
 		  EXP(B.mkCont(handler, trExpToExp(env', e)))
 		end
-	    | AST.RaiseExp(e, ty) =>
+	    | F.RaiseExp(e, ty) =>
 		EXP(trExpToV (env, e, fn exn => B.mkThrow(E.handlerOf env, [exn])))
-	    | AST.FunExp(x, body, ty) => let
+	    | F.FunExp(x, body, ty) => let
 		val ty' = trTy(env, ty)
 		val (x', env) = trVar(env, x)
 		val f = BV.new("anon", BTy.T_Fun([BV.typeOf x'], [BTy.exhTy], [ty']))
@@ -216,24 +216,25 @@ structure Translate : sig
 		in
 		  EXP(B.mkFun([fb], B.mkRet[f]))
 		end
-	    | AST.ApplyExp(e1, e2, ty) => 
+	    | F.ApplyExp(e1, e2, ty) => 
 	        EXP(trExpToV (env, e1, fn f =>
 		  trExpToV (env, e2, fn arg =>
 		    B.mkApply(f, [arg], [E.handlerOf env]))))
-	    | AST.VarArityOpExp (oper, i, ty) => trVarArityOp(env, oper, i)
-	    | AST.TupleExp[] => let
+	    | F.VarArityOpExp (oper, i, ty) => raise Fail "unsupported" 
+                (* FIXME I'm pretty sure we can get rid of the VarArityOpExp form. *)
+	    | F.TupleExp[] => let
 		val t = BV.new("_unit", BTy.unitTy)
 		in
 		  BIND([t], B.E_Const(Lit.unitLit, BTy.unitTy))
 		end
-	    | AST.TupleExp es =>
+	    | F.TupleExp es =>
 		EXP(trExpsToVs (env, es, fn xs => let
 		  val ty = BTy.T_Tuple(false, List.map BV.typeOf xs)
 		  val t = BV.new("_tpl", ty)
 		  in
 		    B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t])
 		  end))
-	    | AST.RangeExp (lo, hi, optStep, ty) => raise Fail "FIXME (range construction)"
+	    | F.RangeExp (lo, hi, optStep, ty) => raise Fail "FIXME (range construction)"
 (*let
                 (* FIXME This assumes int ranges for the time being. *)
                 val step = Option.getOpt (optStep, ASTUtil.mkInt(1))
@@ -255,15 +256,15 @@ structure Translate : sig
 			       [E.handlerOf env])))))))))
                 end
 *)
-	    | AST.PTupleExp exps => let
+	    | F.PTupleExp exps => let
 		val exps' = List.map (fn e => trExpToExp (env, e)) exps
 	        in 
 		  EXP(TranslatePTup.tr{supportsExceptions=false, env=env, es=exps'})
 	        end
-	    | AST.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
-	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
-	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
-	    | AST.SpawnExp e => let
+	    | F.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
+	    | F.PCompExp _ => raise Fail "unexpected PCompExp"
+	    | F.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
+	    | F.SpawnExp e => let
 		val (exh, env') = E.newHandler env
 		val e' = trExpToExp(env', e)
 		val param = BV.new("unused", BTy.unitTy)
@@ -274,8 +275,8 @@ structure Translate : sig
 		  EXP(B.mkFun([B.FB{f=thd, params=[param], exh=[exh], body=e'}],
 		    B.mkHLOp(spawnOp, [thd], [E.handlerOf env])))
 		end
-	    | AST.ConstExp(AST.DConst(dc, tys)) => trDConExp (env, dc)
-	    | AST.ConstExp(AST.LConst(lit as Literal.String s, _)) => let
+	    | F.ConstExp(F.DConst(dc, tys)) => trDConExp (env, dc)
+	    | F.ConstExp(F.LConst(lit as Literal.String s, _)) => let
 		val t1 = BV.new("_data", BTy.T_Any)
 		val t2 = BV.new("_len", TranslateTypes.stringLenBOMTy())
 		val t3 = BV.new("_slit", TranslateTypes.stringBOMTy())
@@ -286,7 +287,7 @@ structure Translate : sig
 		      ([t3], BOM.E_Alloc(TranslateTypes.stringBOMTy(), [t1, t2]))
 		    ], BOM.mkRet[t3]))
 		end
-	    | AST.ConstExp(AST.LConst(lit, ty)) => (case trTy(env, ty)
+	    | F.ConstExp(F.LConst(lit, ty)) => (case trTy(env, ty)
 		 of ty' as BTy.T_Tuple(false, [rty as BTy.T_Raw _]) => let
 		      val t1 = BV.new("_lit", rty)
 		      val t2 = BV.new("_wlit", ty')
@@ -302,10 +303,10 @@ structure Translate : sig
 			BIND([t], B.E_Const(lit, ty'))
 		      end
 		(* end case *))
-	    | AST.VarExp(x, tys) => EXP(trVtoV(env, x, tys, fn x' => B.mkRet[x']))
-	    | AST.SeqExp _ => let
+	    | F.VarExp(x, tys) => EXP(trVtoV(env, x, tys, fn x' => B.mkRet[x']))
+	    | F.SeqExp _ => let
 	      (* note: the typechecker puts sequences in right-recursive form *)
-		fun tr (AST.SeqExp(e1, e2)) = (
+		fun tr (F.SeqExp(e1, e2)) = (
 		      case trExp(env, e1)
 		       of BIND(lhs, rhs) => B.mkStmt(lhs, rhs, tr e2)                                                          
 			| EXP e1' => B.mkLet([BV.new("unused", BTy.T_Any)], e1', tr e2)
@@ -314,24 +315,15 @@ structure Translate : sig
 		in
 		  EXP(tr exp)
 		end
-	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
-	    | AST.ExpansionOptsExp (opts, e) => 
+	    | F.OverloadExp _ => raise Fail "unresolved overloading"
+	    | F.ExpansionOptsExp (opts, e) => 
 	        ExpansionOpts.withExpansionOpts(fn () => EXP(trExpToExp(env, e)), opts)
 	  (* end case *))
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))
 
-    and trVarArityOp (env, oper, n) = (case oper
-           of AST.MapP => let
-		val mapn as B.FB{f, ...} = RopeMapMaker.gen n
-		in
-		  ropeMapSet := LambdaSet.add (!ropeMapSet, mapn);
-		  EXP(B.mkRet [f])
-		end
-	  (* end case *))
-
     and trBind (env, bind, k : TranslateEnv.env -> B.exp) = (case bind
-	   of AST.ValBind(AST.TuplePat pats, exp) => let
+	   of F.ValBind(F.TuplePat pats, exp) => let
 		val (env', xs) = trVarPats (env, pats)
 		fun sel (t, i, x::xs, p::ps) =
 		      mkStmt([x], B.E_Select(i, t), sel(t, i+1, xs, ps))
@@ -347,7 +339,7 @@ structure Translate : sig
 			end
 		  (* end case *)
 		end
-	    | AST.ValBind(AST.VarPat x, exp) => (case trExp(env, exp)
+	    | F.ValBind(F.VarPat x, exp) => (case trExp(env, exp)
 		   of BIND([x'], rhs) =>
 			mkStmt([x'], rhs, k(E.insertVar(env, x, x')))
 		    | EXP e => let
@@ -356,7 +348,7 @@ structure Translate : sig
 			  mkLet([x'], e, k env')
 			end
 		(* end case *))
-	    | AST.ValBind(AST.WildPat ty, exp) => (case trExp(env, exp)
+	    | F.ValBind(F.WildPat ty, exp) => (case trExp(env, exp)
 		   of BIND([x'], rhs) =>
 			mkStmt([x'], rhs, k env)
 		    | EXP e => let
@@ -365,10 +357,10 @@ structure Translate : sig
 			  mkLet([x'], e, k env)
 			end
 		(* end case *))
-	    | AST.ValBind _ => raise Fail "unexpected complex pattern"
-	    | AST.PValBind _ => raise Fail "impossible"
-	    | AST.FunBind fbs => let
-		fun bindFun (AST.FB(f, x, e), (env, fs)) = let
+	    | F.ValBind _ => raise Fail "unexpected complex pattern"
+	    | F.PValBind _ => raise Fail "impossible"
+	    | F.FunBind fbs => let
+		fun bindFun (F.FB(f, x, e), (env, fs)) = let
 		      val (f', env) = trVar(env, f)
 		      in
 			(env, (f', x, e) :: fs)
@@ -384,12 +376,12 @@ structure Translate : sig
 		in
 		  B.mkFun(List.map trFun fs, k env)
 		end
-	    | AST.PrimVBind (x, rhs) => (
+	    | F.PrimVBind (x, rhs) => (
 	        case TranslatePrim.cvtRhs (env, x, Var.typeOf x, rhs)
 		 of SOME (env', x', e) => mkLet([x'], e, k env')
 		  | NONE => k env
 		(* end case *))
-	    | AST.PrimCodeBind code => let
+	    | F.PrimCodeBind code => let
 		val (lambdas, rewrites) = TranslatePrim.cvtCode (env, code)
 		fun mk [] = k env
 		  | mk (fb::fbs) = B.mkFun([fb], mk fbs)
@@ -422,26 +414,26 @@ structure Translate : sig
 		 * some glue to agree with the arity of the BOM constructor.
 		 *)
 		  case (pat, BOMTyCon.dconArgTy dc')
-		   of (AST.TuplePat pats, _) => let
+		   of (F.TuplePat pats, _) => let
 			val (env', srcArgs) = trVarPats (env, pats)
-			val (dstArgs, binds) = FlattenRep.unflatten(repTr, srcArgs)
+			val (dstArgs, binds) = FTFlattenRep.unflatten(repTr, srcArgs)
 			in
 			  finish (env', dstArgs, binds)
 			end
-		    | (AST.VarPat x, [_]) => let
+		    | (F.VarPat x, [_]) => let
 			val (x', env') = trVar(env, x)
-			val (dstArgs, binds) = FlattenRep.unflatten(repTr, [x'])
+			val (dstArgs, binds) = FTFlattenRep.unflatten(repTr, [x'])
 			in
 			  finish (env', dstArgs, binds)
 			end
-		    | (AST.VarPat x, tys) => let
+		    | (F.VarPat x, tys) => let
 			val (x', env') = trVar(env, x)
-			val (srcArgs, alloc) = mkTuple (x', FlattenRep.srcTys repTr)
-			val (dstArgs, binds) = FlattenRep.unflatten(repTr, srcArgs)
+			val (srcArgs, alloc) = mkTuple (x', FTFlattenRep.srcTys repTr)
+			val (dstArgs, binds) = FTFlattenRep.unflatten(repTr, srcArgs)
 			in
 			  finish (env', dstArgs, binds@[alloc])
 			end
-		    | (AST.WildPat _, tys) => finish (env, mkArgs tys, [])
+		    | (F.WildPat _, tys) => finish (env, mkArgs tys, [])
 		    | _ => raise Fail "expected simple pattern"
 		  (* end case *)
 		end
@@ -452,39 +444,39 @@ structure Translate : sig
 		 of BTy.T_Tuple(false, [ty as BTy.T_Raw _]) => ty
 		  | ty => ty
 		(* end case *))
-	  fun trRules ([AST.PatMatch(pat, exp)], cases) = (case pat (* last rule *)
-		 of AST.ConPat(dc, tyArgs, pat) =>
+	  fun trRules ([F.PatMatch(pat, exp)], cases) = (case pat (* last rule *)
+		 of F.ConPat(dc, tyArgs, pat) =>
 		      (trConPat (dc, tyArgs, pat, exp) :: cases, NONE)
-		  | AST.TuplePat[] =>
+		  | F.TuplePat[] =>
 		      ((B.P_Const B.unitConst, trExpToExp (env, exp))::cases, NONE)
-		  | AST.TuplePat ps => let
+		  | F.TuplePat ps => let
 		      val (env, xs) = trVarPats (env, ps)
 		      fun bind (_, []) = trExpToExp (env, exp)
 			| bind (i, x::xs) = B.mkStmt([x], B.E_Select(i, arg), bind(i+1, xs))
 		      in
 			(cases, SOME(bind(0, xs)))
 		      end
-		  | AST.VarPat x =>(* default case: map x to the argument *)
+		  | F.VarPat x =>(* default case: map x to the argument *)
 		      (cases, SOME(trExpToExp(E.insertVar(env, x, arg), exp)))
-		  | AST.WildPat ty => (* default case *)
+		  | F.WildPat ty => (* default case *)
 		      (cases, SOME(trExpToExp(env, exp)))
-		  | AST.ConstPat(AST.DConst(dc, tyArgs)) =>
+		  | F.ConstPat(F.DConst(dc, tyArgs)) =>
 		      (trDConst (dc, exp)::cases, NONE)
-		  | AST.ConstPat(AST.LConst(lit, ty)) =>
+		  | F.ConstPat(F.LConst(lit, ty)) =>
 		      ((B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))::cases, NONE)
 		(* end case *))
-	    | trRules (AST.PatMatch(pat, exp)::rules, cases) = let
+	    | trRules (F.PatMatch(pat, exp)::rules, cases) = let
 		val rule' = (case pat
-		       of AST.ConPat(dc, tyArgs, p) => trConPat (dc, tyArgs, p, exp)
-			| AST.ConstPat(AST.DConst(dc, tyArgs)) => trDConst (dc, exp)
-			| AST.ConstPat(AST.LConst(lit, ty)) =>
+		       of F.ConPat(dc, tyArgs, p) => trConPat (dc, tyArgs, p, exp)
+			| F.ConstPat(F.DConst(dc, tyArgs)) => trDConst (dc, exp)
+			| F.ConstPat(F.LConst(lit, ty)) =>
 			    (B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))
 			| _ => raise Fail "exhaustive pattern in case"
 		      (* end case *))
 		in
 		  trRules (rules, rule'::cases)
 		end
-	    | trRules (AST.CondMatch _ :: _, _) = raise Fail "unexpected CondMatch"
+	    | trRules (F.CondMatch _ :: _, _) = raise Fail "unexpected CondMatch"
 	  fun mkCase (arg, (cases, dflt)) = B.mkCase(arg, List.rev cases, dflt)
 	  in
 	    case BV.typeOf arg
@@ -500,12 +492,12 @@ structure Translate : sig
 
     and trVarPats (env, pats) = let
 	  fun tr ([], env, xs) = (env, List.rev xs)
-	    | tr (AST.VarPat x :: pats, env, xs) = let
+	    | tr (F.VarPat x :: pats, env, xs) = let
 		val (x', env') = trVar(env, x)
 		in
 		  tr (pats, env', x'::xs)
 		end
-	    | tr (AST.WildPat ty :: pats, env, xs) = let
+	    | tr (F.WildPat ty :: pats, env, xs) = let
 		val x' = BV.new("_wild_", trTy(env, ty))
 		in
 		  tr (pats, env, x'::xs)
@@ -519,7 +511,7 @@ structure Translate : sig
    *
    *	let t = exp in cxt[t]
    *)
-    and trExpToV (env, AST.VarExp(x, tys), cxt : B.var -> B.exp) =
+    and trExpToV (env, F.VarExp(x, tys), cxt : B.var -> B.exp) =
 	  trVtoV (env, x, tys, cxt)
       | trExpToV (env, exp, cxt : B.var -> B.exp) = (case trExp(env, exp)
 	   of BIND([x], rhs) => mkStmt([x], rhs, cxt x)
@@ -536,7 +528,7 @@ structure Translate : sig
 	    | E.Lambda mkLambda => let
                 val sigma = Var.typeOf x (* actually a type scheme *)
 		val rangeTy = (case TypeUtil.prune(TypeUtil.apply(sigma, tys))
-		       of A.FunTy (_, r) => r
+		       of F.FunTy (_, r) => r
 			| _ => raise Fail (Var.nameOf x^": expected function type is "^TypeUtil.toString(TypeUtil.apply(sigma, tys)))
 		      (* end case *))
 		val rangeTy' = trTy (env, rangeTy)
@@ -607,7 +599,7 @@ structure Translate : sig
 	  end
 
     val translate = BasicControl.mkKeepPass {
-	    preOutput = fn (outS, (_, ast)) => PrintAST.outputExp(outS, ast),
+	    preOutput = fn (outS, (_, ast)) => PrintFLAST.outputExp(outS, ast),
 	    preExt = "ast",
 	    postOutput = PrintBOM.output,
 	    postExt = "bom",

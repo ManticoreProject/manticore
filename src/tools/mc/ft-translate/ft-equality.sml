@@ -1,4 +1,4 @@
-(* equality.sml
+(* ft-equality.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -6,9 +6,9 @@
  * Synthesize equality operations based on type.
  *)
 
-structure Equality : sig
+structure FTEquality : sig
 
-    val mkEqual : (TranslateEnv.env * AST.var * AST.ty) -> BOM.lambda
+    val mkEqual : (FTTranslateEnv.env * AST.var * AST.ty) -> BOM.lambda
 
   end = struct
 

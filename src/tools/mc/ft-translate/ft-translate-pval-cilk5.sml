@@ -1,4 +1,4 @@
-(* translate-pval-cilk5.sml
+(* ft-translate-pval-cilk5.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -25,16 +25,16 @@
  * A scheduling framework for general-purpose parallel languages.
  *)
 
-structure TranslatePValCilk5  : sig
+structure FTTranslatePValCilk5  : sig
 
-  (* An AST to BOM translation of parrays to ropes. *)
+  (* A FLAST to BOM translation of parrays to ropes. *)
     val tr : {
-	  env : TranslateEnv.env,
-	  trVar : (TranslateEnv.env * AST.var) -> (BOM.Var.var * TranslateEnv.env),
-	  trExp : TranslateEnv.env * AST.exp * (BOM.Var.var -> BOM.exp) -> BOM.exp,
-	  x : AST.var,
-	  e1 : AST.exp,
-	  e2 : AST.exp
+	  env : FTTranslateEnv.env,
+	  trVar : (FTTranslateEnv.env * FLAST.var) -> (BOM.Var.var * FTTranslateEnv.env),
+	  trExp : FTTranslateEnv.env * FLAST.exp * (BOM.Var.var -> BOM.exp) -> BOM.exp,
+	  x : FLAST.var,
+	  e1 : FLAST.exp,
+	  e2 : FLAST.exp
 	} -> BOM.exp
 
   end  = struct
@@ -44,7 +44,7 @@ structure TranslatePValCilk5  : sig
     structure BU  = BOMUtil
     structure BTy = BOMTy
     structure BV = BOM.Var
-    structure E = TranslateEnv
+    structure E = FLTranslateEnv
 
     fun unitVar () = BV.new("_unit", BTy.unitTy)
 

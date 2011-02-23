@@ -6,7 +6,7 @@
  * Support for dealing with the flattened representation of data-constructor arguments.
  *)
 
-structure FlattenRep : sig
+structure FTFlattenRep : sig
 
     datatype rep_tree
       = ATOM of BOM.ty

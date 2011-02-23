@@ -1,4 +1,4 @@
-(* translate-prim.sml
+(* ft-translate-prim.sml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -6,26 +6,26 @@
  * Translation of inline BOM code.
  *)
 
-structure TranslatePrim : sig
+structure FTTranslatePrim : sig
 
   (* convert a right-hand side inline BOM declaration to an expression *)
-    val cvtRhs : (TranslateEnv.env * 
-		  Var.var * 
+    val cvtRhs : (FTTranslateEnv.env * 
+		  FTVar.var * 
 		  Types.ty_scheme * 
 		  ProgramParseTree.PML2.BOMParseTree.prim_val_rhs) 
-		 -> (TranslateEnv.env * BOM.Var.var * BOM.exp) option
+		 -> (FTTranslateEnv.env * BOM.Var.var * BOM.exp) option
 
   (* convert BOM definitions. this process occurs silently, by adding
    * definitions to environments and caches.
    *)
-    val cvtCode : (TranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.code) 
+    val cvtCode : (FTTranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.code) 
 		    -> (BOM.lambda list * Rewrites.rewrite list)
 
   end = struct
 
     structure BPT = ProgramParseTree.PML2.BOMParseTree
     structure PTVar = ProgramParseTree.Var
-    structure E = TranslateEnv
+    structure E = FTTranslateEnv
     structure P = Prim
     structure BTy = BOMTy
     structure BV = BOM.Var

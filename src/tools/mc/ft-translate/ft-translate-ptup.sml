@@ -1,4 +1,4 @@
-(* translate-ptup.sml
+(* ft-translate-ptup.sml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -11,7 +11,7 @@
  *
  *)
 
-structure TranslatePTup  : sig
+structure FTTranslatePTup  : sig
 
   (* precondition: length es > 1 *)
     val tr : {
@@ -27,7 +27,7 @@ structure TranslatePTup  : sig
     structure BU  = BOMUtil
     structure BTy = BOMTy
     structure BV = BOM.Var
-    structure E = TranslateEnv
+    structure E = FTTranslateEnv
     structure Lit = Literal
 
     (* returns true if the given expression might involve some non-trivial computation, e.g., a computation
