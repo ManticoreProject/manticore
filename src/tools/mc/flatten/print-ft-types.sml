@@ -6,13 +6,13 @@
 
 structure PrintFTTypes : sig
 
-    val outputTyScheme : TextIO.outstream * FLAST.ty_scheme -> unit
-    val printTyScheme  : FLAST.ty_scheme -> unit
+  val outputTyScheme : TextIO.outstream * FLAST.ty_scheme -> unit
+  val printTyScheme  : FLAST.ty_scheme -> unit
 
-    val outputTy : TextIO.outstream * FTTypes.ty -> unit
-    val printTy  : FTTypes.ty -> unit
-
-    val toString : FTTypes.ty -> string
+  val outputTy : TextIO.outstream * FTTypes.ty -> unit
+  val printTy  : FTTypes.ty -> unit
+			       
+  val toString : FTTypes.ty -> string
 
 end  = struct
   
