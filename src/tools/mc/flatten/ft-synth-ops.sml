@@ -32,7 +32,7 @@ structure FTSynthOps = struct
  * CrossCompose represents what I believe is called "pointwise" composition:
  *   fn (f, g) => (fn (x, y) => (f x, g, y))
  * Note Compose is sensitive to the types of the arguments given to it: 
- *   the domain of its 2nd arg must match the range of the first.
+ *   the range of its second arg must match the domain of the first.
  * CrossCompose, by contrast, produces a meaningful result unconditionally.
  *)
 
