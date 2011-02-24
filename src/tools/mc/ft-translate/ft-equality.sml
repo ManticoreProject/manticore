@@ -69,7 +69,7 @@ structure FTEquality : sig
 
     fun mkEqual (env, eq, ty) = let
 	  val isEq = Var.same(Basis.eq, eq)
-	  val ty' = TranslateTypes.tr (env, ty)
+	  val ty' = FTTranslateTypes.tr (env, ty)
 	  val arg1 = BV.new("a", ty')
 	  val arg2 = BV.new("b", ty')
 	  val argTy = BTy.T_Tuple(false, [ty', ty'])

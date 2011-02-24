@@ -1,4 +1,4 @@
-(* translate-env.sml
+(* ft-translate-env.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -27,16 +27,16 @@ structure FTTranslateEnv : sig
       | Var of BOM.var
       | EqOp			(* either "=" or "<>" *)
 
-    val insertTyc	: (env * Types.tycon * BOMTy.ty) -> unit
-    val insertCon	: (env * Types.dcon * con_bind) -> unit
-    val insertFun	: (env * AST.var * (BOMTy.ty -> BOM.lambda)) -> env
-    val insertVar	: (env * AST.var * BOM.var) -> env
+    val insertTyc	: (env * FTReprTypes.tycon * BOMTy.ty) -> unit
+    val insertCon	: (env * FTReprTypes.dcon * con_bind) -> unit
+    val insertFun	: (env * FLAST.var * (BOMTy.ty -> BOM.lambda)) -> env
+    val insertVar	: (env * FLAST.var * BOM.var) -> env
     val newHandler	: env -> (BOM.var * env)
 
-    val findTyc		: (env * Types.tycon) -> BOMTy.ty option
-    val findDCon	: (env * Types.dcon) -> con_bind option
-    val lookupVar	: (env * AST.var) -> var_bind
-    val lookupVarArity  : (env * AST.var) -> var_bind
+    val findTyc		: (env * FTReprTypes.tycon) -> BOMTy.ty option
+    val findDCon	: (env * FTReprTypes.dcon) -> con_bind option
+    val lookupVar	: (env * FLAST.var) -> var_bind
+    val lookupVarArity  : (env * FLAST.var) -> var_bind
     val handlerOf	: env -> BOM.var
 
     type var = ProgramParseTree.PML2.BOMParseTree.var_use
@@ -49,8 +49,8 @@ structure FTTranslateEnv : sig
   (* support for inline BOM code *)
     datatype bty_def
       = BTY_NONE
-      | BTY_TYS of AST.ty_scheme
-      | BTY_TYC of Types.tycon
+      | BTY_TYS of FLAST.ty_scheme
+      | BTY_TYC of FTReprTypes.tycon
       | BTY_TY of BOMTy.ty
 
     type hlop_def = {
@@ -86,9 +86,9 @@ structure FTTranslateEnv : sig
 
   end = struct
 
-    structure TTbl = TyCon.Tbl
-    structure DTbl = DataCon.Tbl
-    structure VMap = Var.Map
+    structure TTbl = FTTyCon.Tbl
+    structure DTbl = FTDataCon.Tbl
+    structure VMap = FTVar.Map
     structure ATbl = AtomTable
 
     datatype con_bind
@@ -107,15 +107,17 @@ structure FTTranslateEnv : sig
     datatype env = E of {
 	tycEnv : BOM.ty TTbl.hash_table,
 	dconEnv : con_bind DTbl.hash_table,
-	varEnv : var_bind VMap.map,	(* map from AST variables to BOM variables *)
+	varEnv : var_bind VMap.map,	(* map from FLAST variables to BOM variables *)
 	importEnv : import_env,         (* an environment to keep track of any imports required by the module *)
 	exh : BOM.var			(* current exception handler *)
       }
 
     fun mkEnv () = let
+          val eq = FTVar.newPoly (Var.nameOf Basis.eq, FTTranslateTypes.tr (Var.typeOf Basis.eq))
+	  val neq = raise Fail "todo"
 	  val vEnv = List.foldl VMap.insert' VMap.empty [
-		  (Basis.eq,	EqOp),
-		  (Basis.neq,	EqOp)
+		  (eq,	EqOp),
+		  (neq,	EqOp)
 		]
 	  in
 	    E{
@@ -303,6 +305,7 @@ structure FTTranslateEnv : sig
 			| BOMTy.Tuple => "<tuple>"
 			| BOMTy.TaggedTuple tag => concat["<tagged-tuple(", w2s tag, ")>"]
 			| BOMTy.ExnRep => "<exn>"
+			| BOMTy.Enum w => concat["<enum(", w2s w, ")>"]
 		      (* end case *))
 		in
 		  prl [

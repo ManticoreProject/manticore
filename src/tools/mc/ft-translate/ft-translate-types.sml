@@ -4,6 +4,13 @@
  * All rights reserved.
  *)
 
+structure FTTranslateTypes = struct
+
+  fun tr (t : AST.ty) : FTReprTypes.ty = raise Fail "todo"
+
+end
+
+(*
 structure FTTranslateTypes : sig
 
     val tr : FTTranslateEnv.env * AST.ty -> BOM.ty
@@ -24,12 +31,13 @@ structure FTTranslateTypes : sig
 
   end = struct
 
-    structure Ty = FTTypes
+    structure Ty = FTReprTypes
     structure BTy = BOMTy
     structure BTyc = BOMTyCon
     structure E = FTTranslateEnv
     structure BPT = ProgramParseTree.PML2.BOMParseTree
     structure PTVar = ProgramParseTree.Var
+    structure FR = FTFlattenRep
 
     fun appi f = let
 	  fun appf (_, []) = ()
@@ -115,7 +123,7 @@ structure FTTranslateTypes : sig
 		val newDataCon = BTyc.newDataCon dataTyc
 		fun mkNullaryDC (i, dc) = let
 		      val dc' = newDataCon (DataCon.nameOf dc, BTy.Enum(Word.fromInt i), [])
-		      val trRep = FlattenRep.ATOM(BTy.T_Enum(Word.fromInt(nConsts - 1)))
+		      val trRep = FR.ATOM(BTy.T_Enum(Word.fromInt(nConsts - 1)))
 		      in
 			insertConst (env, dc, dc')
 		      end
@@ -148,7 +156,7 @@ structure FTTranslateTypes : sig
 			  | _ => let (* need to use singleton tuple to represent data constructor *)
 			      val argTy = tr (env, valOf(DataCon.argTypeOf dc))
 			      in
-				mkDC (dc, BTy.Tuple, FlattenRep.ATOM argTy, [argTy])
+				mkDC (dc, BTy.Tuple, FR.ATOM argTy, [argTy])
 			      end
 			(* end case *);
 			setRep (BTy.T_Any, BTy.K_UNIFORM))
@@ -182,9 +190,9 @@ structure FTTranslateTypes : sig
    * components, we flatten the representation.
    *)
     and trArgTy (env, dc) = let
-	  val rep = FlattenRep.flattenRep (tr (env, valOf (DataCon.argTypeOf dc)))
+	  val rep = FR.flattenRep (tr (env, valOf (DataCon.argTypeOf dc)))
 	  in
-	    (rep, FlattenRep.dstTys rep)
+	    (rep, FR.dstTys rep)
 	  end
 
   (* convert parse-tree types to BOM types *)
@@ -233,7 +241,7 @@ structure FTTranslateTypes : sig
 (* NOTE: we may want to use a flat representation for exn values! *)
 			  val ty' = tr (env, ty)
 			  val dc' = BTyc.newExnCon (DataCon.nameOf dc, [ty'])
-			  val repTr = FlattenRep.TUPLE([ty'], [FlattenRep.ATOM ty'])
+			  val repTr = FR.TUPLE([ty'], [FR.ATOM ty'])
 			  val result = E.DCon(dc', repTr)
 			  in
 			    E.insertCon (env, dc, result);
@@ -269,3 +277,4 @@ structure FTTranslateTypes : sig
     end (* local *)
 
   end
+*)
