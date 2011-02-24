@@ -1,4 +1,3 @@
-This is where I'm going to start building the flattening of parrays as
-set forth in my docs in notes/amsft.
+This directory contains tools to convert AST terms to FLAST terms.
 
-- Adam
+If flattening is turned on, it flattens the FLAST terms as well.
