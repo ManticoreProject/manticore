@@ -56,7 +56,6 @@ structure EtaExpand : sig
   (********** Counters for statistics **********)
 
     val cntExpand	= ST.newCounter "eta:expand"
-    val cntRename	= ST.newCounter "eta:rename"
 
 
   (***** var to var substitution ******)
@@ -156,16 +155,8 @@ structure EtaExpand : sig
 			C.FB{f=f', params=params, rets=rets, body=doExp(env, body)}
 		      ]
 		in
-		(* adjust census counts *)
-		  CV.setCount (f', appCnt+1);
-		  CV.appCntRef f' := appCnt+1;
-		  CV.appCntRef f := 0;
-		  CV.setCount (f, useCnt - appCnt);
-                  List.app (fn (v) => CV.setCount (v, 1)) params';
-                  List.app (fn (v) => CV.setCount (v, 1)) rets';
 		(* update stats *)
 		  ST.tick cntExpand;
-		  ST.bump (cntRename, CV.appCntOf f);
 		  (env, fbs)
 		end
 	      else (env, [C.FB{f=f, params=params, rets=rets, body=doExp(env, body)}])
@@ -175,8 +166,10 @@ structure EtaExpand : sig
 	  if !expandFlg
 	    then let
 	      val (_, [body]) = doFB (VMap.empty, body)
+              val m' = C.MODULE{name=name, externs=externs, body=C.mkLambda body}
+              val _ = Census.census m'
 	      in
-		C.MODULE{name=name, externs=externs, body=C.mkLambda body}
+                  m'
 	      end
 	    else m
 
