@@ -90,6 +90,10 @@ structure FTTranslateEnv : sig
     structure DTbl = FTDataCon.Tbl
     structure VMap = FTVar.Map
     structure ATbl = AtomTable
+    structure MEnv = FTModuleEnv
+
+    structure BN = BasisNames
+    structure RTy = FTReprTypes
 
     datatype con_bind
       = Const of BOMTy.data_con		(* nullary data constructors *)
@@ -112,22 +116,34 @@ structure FTTranslateEnv : sig
 	exh : BOM.var			(* current exception handler *)
       }
 
-    fun mkEnv () = let
-          val eq = FTVar.newPoly (Var.nameOf Basis.eq, FTTranslateTypes.tr (Var.typeOf Basis.eq))
-	  val neq = raise Fail "todo"
-	  val vEnv = List.foldl VMap.insert' VMap.empty [
-		  (eq,	EqOp),
-		  (neq,	EqOp)
-		]
-	  in
-	    E{
-		tycEnv = TTbl.mkTable (32, Fail "tyc table"),
-		dconEnv = DTbl.mkTable (64, Fail "dcon table"),
-		varEnv = vEnv,
-		importEnv = ATbl.mkTable (32, Fail "importEnv"),
-		exh = BOM.Var.new ("*bogus*", BOMTy.exhTy)
-	      }
-	  end
+    local
+(* FIXME build a general translation mechanism *)
+      val boolTyc = FTTyCon.newDataTyc (BN.bool, [])
+      val boolFalse = FTDataCon.new boolTyc (BN.boolFalse, NONE) (* must define false first!!! *)
+      val boolTrue = FTDataCon.new boolTyc (BN.boolTrue, NONE) (* must define true second!!! *)
+      val boolTy = RTy.ConTy ([], boolTyc)
+      fun eqTyScheme () = let
+        val tv = TyVar.newClass (Atom.atom "'a", Types.Eq)
+	val tv' = RTy.VarTy tv
+        in
+	  RTy.TyScheme ([tv], RTy.FunTy (RTy.TupleTy [tv', tv'], boolTy))
+        end
+      val eq = FTVar.newPoly (Atom.toString BN.eq, eqTyScheme ())
+      val neq = FTVar.newPoly (Atom.toString BN.neq, eqTyScheme ())
+    in
+      fun mkEnv () = let
+        val vEnv = List.foldl VMap.insert' VMap.empty [
+		     (eq,  EqOp),
+		     (neq, EqOp)
+		   ]
+        in
+	  E {tycEnv = TTbl.mkTable (32, Fail "tyc table"),
+	     dconEnv = DTbl.mkTable (64, Fail "dcon table"),
+	     varEnv = vEnv,
+	     importEnv = ATbl.mkTable (32, Fail "importEnv"),
+	     exh = BOM.Var.new ("*bogus*", BOMTy.exhTy)}
+        end
+    end (* local *)
 
     fun insertTyc (E{tycEnv, ...}, tyc, bty) = TTbl.insert tycEnv (tyc, bty)
 
@@ -160,12 +176,12 @@ structure FTTranslateEnv : sig
 
     fun lookupVar (E{varEnv, ...}, x) = (case VMap.find(varEnv, x)
 	   of SOME x' => x'
-	    | NONE => raise Fail(concat["lookupVar(_, ", Var.toString x, ")"])
+	    | NONE => raise Fail(concat["lookupVar(_, ", FTVar.toString x, ")"])
 	  (* end case *))
 
     fun lookupVarArity (E{varEnv, ...}, x) = (case VMap.find(varEnv, x)
            of SOME x' => x'
-            | NONE => raise Fail(concat["lookupVarArity(_, ", Var.toString x, ")"])
+            | NONE => raise Fail(concat["lookupVarArity(_, ", FTVar.toString x, ")"])
           (* end case *))
 
   (* handlerOf : env -> B.var *)
@@ -178,8 +194,8 @@ structure FTTranslateEnv : sig
     type c_id = ProgramParseTree.PML2.BOMParseTree.c_id
     datatype bty_def
       = BTY_NONE
-      | BTY_TYS of AST.ty_scheme
-      | BTY_TYC of Types.tycon
+      | BTY_TYS of FLAST.ty_scheme
+      | BTY_TYC of RTy.tycon
       | BTY_TY of BOMTy.ty
     type hlop_def = {
 	name : BOM.hlop,			(* the HLOp's identifier *)
@@ -228,10 +244,10 @@ structure FTTranslateEnv : sig
 	    ProgramParseTree.Var.newProp(fn _ => NONE)
       (* imported PML variables *)
 	val {
-	   getFn=getPMLVar : AST.var -> BOM.var option,
-	   setFn=setPMLVar : (AST.var * BOM.var option) -> unit, ...
+	   getFn=getPMLVar : FLAST.var -> BOM.var option,
+	   setFn=setPMLVar : (FLAST.var * BOM.var option) -> unit, ...
 	} =
-	    Var.newProp(fn _ => NONE)
+	    FTVar.newProp(fn _ => NONE)
     in
     fun insertBOMTyDef (name, ty) = setTy(name, SOME ty)
     fun insertBOMVar (name, x) = setVar(name, SOME x)
@@ -245,10 +261,10 @@ structure FTTranslateEnv : sig
     val findBOMTyDef = getTy
     fun findBOMTy v = (
 	(* the BOM type might have been bound in several places *)
-	   case (getTy v, ModuleEnv.getTyDef v)
+	   case (getTy v, MEnv.getTyDef v)
 	    of (SOME ty, _) => BTY_TY ty			(* inline BOM *)
-	     | (_, SOME (ModuleEnv.TyDef tys)) => BTY_TYS tys	(* PML type definition *)
-	     | (_, SOME (ModuleEnv.TyCon tyc)) => BTY_TYC tyc	(* PML type constructor *)
+	     | (_, SOME (MEnv.TyDef tys)) => BTY_TYS tys	(* PML type definition *)
+	     | (_, SOME (MEnv.TyCon tyc)) => BTY_TYC tyc	(* PML type constructor *)
 	     | (NONE, NONE) => BTY_NONE				(* unbound *)
 	     | _ => raise Fail "compiler bug"
            (* end case *))
@@ -258,8 +274,8 @@ structure FTTranslateEnv : sig
     val findBOMCFun = getCFun
   (* Importing PML variables is a two-step process: PML parse-tree variable -> AST variable -> BOM variable.
    *)
-    fun findBOMPMLVar v = (case ModuleEnv.getValBind v
-            of SOME (ModuleEnv.Var astVar) => getPMLVar astVar
+    fun findBOMPMLVar v = (case MEnv.getValBind v
+            of SOME (MEnv.Var astVar) => getPMLVar astVar
 	     | _ => NONE
             (* end case *))
 
@@ -284,14 +300,14 @@ structure FTTranslateEnv : sig
 	  fun pr x = TextIO.output(outStrm, x)
 	  fun prl xs = pr(String.concat xs)
 	  fun prTyc (tyc, ty) = prl [
-		  "    ", TyCon.toString tyc, "  :->  ", BOMTyUtil.toString ty,
+		  "    ", FTTyCon.toString tyc, "  :->  ", BOMTyUtil.toString ty,
 		  " :: ", BOMTyUtil.kindToString(BOMTyUtil.kindOf ty), "\n"
 		]
 	  fun prDcon (dc, Const(BOMTy.DCon{name, ...})) = prl [
-		  "    ", DataCon.nameOf dc, "  :->  ", name, "\n"
+		  "    ", FTDataCon.nameOf dc, "  :->  ", name, "\n"
 		]
 	    | prDcon (dc, ExnConst(BOMTy.DCon{name, ...})) = prl [
-		  "    ", DataCon.nameOf dc, "  :->  ", name, "; <exn>\n"
+		  "    ", FTDataCon.nameOf dc, "  :->  ", name, "; <exn>\n"
 		]
 	    | prDcon (dc, DCon(BOMTy.DCon{name, rep, argTy, ...}, repTr)) = let
 		val argTy = (case argTy
@@ -309,7 +325,7 @@ structure FTTranslateEnv : sig
 		      (* end case *))
 		in
 		  prl [
-		      "    ", DataCon.nameOf dc, " of ", FTFlattenRep.fmt {long=true} repTr,
+		      "    ", FTDataCon.nameOf dc, " of ", FTFlattenRep.fmt {long=true} repTr,
 		      "  :->  ",
 		      name, " of ", String.concat argTy, "; ", rep, "\n"
 		    ]
@@ -324,7 +340,7 @@ structure FTTranslateEnv : sig
 		      (* end case *))
 		in
 		  prl [
-		      "    ", Var.toString x, " : ", TypeUtil.schemeToString(Var.typeOf x),
+		      "    ", FTVar.toString x, " : ", FTTypeUtil.schemeToString(FTVar.typeOf x),
 		      "  :->  ", bind, "\n"
 		    ]
 		end

@@ -43,8 +43,8 @@ structure FTTranslatePValCilk5  : sig
     structure BTy = BOMTy
     structure BU  = BOMUtil
     structure BTy = BOMTy
-    structure BV = BOM.Var
-    structure E = FLTranslateEnv
+    structure BV  = BOM.Var
+    structure E   = FTTranslateEnv
 
     fun unitVar () = BV.new("_unit", BTy.unitTy)
 
@@ -69,7 +69,7 @@ structure FTTranslatePValCilk5  : sig
 
     fun mkRaiseExn (env, exh) = let
 	  val matchExnDCon = (
-	        case E.findDCon(env, Basis.exnMatch)
+	        case E.findDCon(env, raise Fail "FIXME" (*Basis.exnMatch*))
 		 of SOME(E.ExnConst matchExnDCon) => matchExnDCon
 		  | _ => raise Fail "compiler bug: missing match exception"
  	        (* end case *))
@@ -86,15 +86,15 @@ structure FTTranslatePValCilk5  : sig
 
     fun tr {env, trExp, trVar, x, e1, e2} = let
 	  val exh = E.handlerOf env
-	  val ty1 = TranslateTypes.tr(env, TypeOf.exp e1)
-	  val ty2 = TranslateTypes.tr(env, TypeOf.exp e2)
+	  val ty1 = FTTranslateTypes.tr(env, raise Fail "FIXME" (*FTTypeOf.exp e1*))
+	  val ty2 = FTTranslateTypes.tr(env, raise Fail "FIXME" (*FTTypeOf.exp e2*))
 	  val ivar = BV.new("ivar", findBOMTy["ImplicitThreadIVar", "ivar"])
 	  val (x', env) = trVar(env, x)
-	  val selFnAST = Var.new("selFn", AST.FunTy(Basis.unitTy, TypeOf.exp e1))
+	  val selFnAST = FTVar.new("selFn", AST.FunTy(Basis.unitTy, TypeOf.exp e1))
 	  val (selFn, env) = trVar(env, selFnAST)
         (* e2' = e2[x -> selFn()] *)
 	  val e2' = VarSubst.substForExp (VarSubst.idSubst x) 
-					 (ASTUtil.mkApplyExp(AST.VarExp(selFnAST, []), [AST.TupleExp[]]))
+					 (FLASTUtil.mkApplyExp(FLAST.VarExp(selFnAST, []), [FLAST.TupleExp[]]))
 					 e2
 	  val bodyFn = BV.new("bodyFn", BTy.T_Fun([BV.typeOf selFn], [BTy.exhTy], [ty2]))
 	  val (bodyExh, _) = E.newHandler env

@@ -16,7 +16,7 @@ structure FTTranslatePTup  : sig
   (* precondition: length es > 1 *)
     val tr : {
 	  supportsExceptions : bool,
-	  env : TranslateEnv.env,
+	  env : FTTranslateEnv.env,
 	  es : BOM.exp list
 	} -> BOM.exp
 
@@ -113,7 +113,7 @@ structure FTTranslatePTup  : sig
 	    fun mkRaiseExn (env, exh) = 
 		let
 		    val matchExnDCon = 
-			(case E.findDCon(env, Basis.exnMatch)
+			(case E.findDCon(env, raise Fail "FIXME" (*Basis.exnMatch*))
 			  of SOME(E.ExnConst matchExnDCon) => matchExnDCon
 			   | _ => raise Fail "compiler bug: missing match exception"
  			(* end case *))

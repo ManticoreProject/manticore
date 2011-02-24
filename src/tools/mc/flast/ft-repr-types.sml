@@ -46,6 +46,8 @@ structure FTReprTypes = struct
 	argTy : ty option
       }
 
+  datatype ty_scheme = TyScheme of Types.tyvar list * ty
+
   fun same (ConTy (ts1, c1), ConTy (ts2, c2)) = 
         ListPair.allEq same (ts1, ts2) andalso tycon (c1, c2)
     | same (FunTy (t1, u1), FunTy (t2, u2)) =

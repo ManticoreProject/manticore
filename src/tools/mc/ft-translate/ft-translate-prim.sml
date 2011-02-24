@@ -11,7 +11,7 @@ structure FTTranslatePrim : sig
   (* convert a right-hand side inline BOM declaration to an expression *)
     val cvtRhs : (FTTranslateEnv.env * 
 		  FTVar.var * 
-		  Types.ty_scheme * 
+		  FTTypes.ty_scheme * 
 		  ProgramParseTree.PML2.BOMParseTree.prim_val_rhs) 
 		 -> (FTTranslateEnv.env * BOM.Var.var * BOM.exp) option
 
@@ -31,6 +31,7 @@ structure FTTranslatePrim : sig
     structure BV = BOM.Var
     structure ATbl = AtomTable
     structure VTbl = BV.Tbl
+    structure ME = FTModuleEnv
 
   (* table mapping primop names to prim_info *)
     structure MkPrim = MakePrimFn (
@@ -73,7 +74,7 @@ structure FTTranslatePrim : sig
 
   (* globally accessible translation environment *)
     local
-    val translateEnv : TranslateEnv.env option ref = ref NONE
+    val translateEnv : FTTranslateEnv.env option ref = ref NONE
     in
 
       fun getTranslateEnv () = (
@@ -94,13 +95,13 @@ structure FTTranslatePrim : sig
 	  end)
 
     end
-    fun cvtTy ty = TranslateTypes.cvtPrimTy (getTranslateEnv(), ty)
-    fun cvtTys ty = TranslateTypes.cvtPrimTys (getTranslateEnv(), ty)
+    fun cvtTy ty = FTTranslateTypes.cvtPrimTy (getTranslateEnv(), ty)
+    fun cvtTys ty = FTTranslateTypes.cvtPrimTys (getTranslateEnv(), ty)
 
   (* find a data constructor that is defined in PML code *)
-    fun findCon con = (case ModuleEnv.getValBind con
-	   of SOME (ModuleEnv.Con dcon) =>
-	        SOME(TranslateTypes.trDataCon(getTranslateEnv(), dcon))
+    fun findCon con = (case ME.getValBind con
+	   of SOME (ME.Con dcon) =>
+	        SOME(FTTranslateTypes.trDataCon(getTranslateEnv(), dcon))
 	    | _ => NONE
           (* end case *))
 
@@ -137,8 +138,8 @@ structure FTTranslatePrim : sig
 
     fun lookupVarOrDCon v = (case E.findBOMVar v
 	   of SOME v => Var v (* parameter-bound variable *)
-	    | NONE => (case ModuleEnv.getValBind v
-		 of SOME(ModuleEnv.Con c) => Con(TranslateTypes.trDataCon(getTranslateEnv(), c))
+	    | NONE => (case ME.getValBind v
+		 of SOME(ME.Con c) => Con(FTTranslateTypes.trDataCon(getTranslateEnv(), c))
 		  | NONE => raise Fail(String.concat ["unknown BOM variable ", PTVar.nameOf v])
 		(* end case *))
 	  (* end case *))
@@ -302,13 +303,13 @@ structure FTTranslatePrim : sig
 			    | BPT.SE_Const(lit, ty) => BOM.mkStmt(lhs', BOM.E_Const(lit, cvtTy ty), body')
 			    | BPT.SE_MLString s => let
 				val t1 = BV.new("_data", BTy.T_Any)
-				val t2 = BV.new("_len", TranslateTypes.stringLenBOMTy())
-				val t3 = BV.new("_slit", TranslateTypes.stringBOMTy())
+				val t2 = BV.new("_len", FTTranslateTypes.stringLenBOMTy())
+				val t3 = BV.new("_slit", FTTranslateTypes.stringBOMTy())
 				in
 				  BOM.mkStmts([
 				      ([t1], BOM.E_Const(Literal.String s, BTy.T_Any)),
-				      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), TranslateTypes.stringLenBOMTy())),
-				      ([t3], BOM.E_Alloc(TranslateTypes.stringBOMTy(), [t1, t2]))
+				      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), FTTranslateTypes.stringLenBOMTy())),
+				      ([t3], BOM.E_Alloc(FTTranslateTypes.stringBOMTy(), [t1, t2]))
 				    ],
 				  BOM.mkLet(lhs', BOM.mkRet[t3], body'))
 				end
@@ -467,13 +468,13 @@ structure FTTranslatePrim : sig
 		  end
 	      | BPT.SE_MLString s => let
 		  val t1 = BV.new("_data", BTy.T_Any)
-		  val t2 = BV.new("_len", TranslateTypes.stringLenBOMTy())
-		  val t3 = BV.new("_slit", TranslateTypes.stringBOMTy())
+		  val t2 = BV.new("_len", FTTranslateTypes.stringLenBOMTy())
+		  val t3 = BV.new("_slit", FTTranslateTypes.stringBOMTy())
 		  in
 		    BOM.mkStmts([
 			([t1], BOM.E_Const(Literal.String s, BTy.T_Any)),
-			([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), TranslateTypes.stringLenBOMTy())),
-			([t3], BOM.E_Alloc(TranslateTypes.stringBOMTy(), [t1, t2]))
+			([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), FTTranslateTypes.stringLenBOMTy())),
+			([t3], BOM.E_Alloc(FTTranslateTypes.stringBOMTy(), [t1, t2]))
 		      ],
 		    k t3)
 		  end
@@ -563,7 +564,7 @@ structure FTTranslatePrim : sig
 	  if (BOMTyUtil.equal(pmlTy, bomTy))
 	    then ()
 	    else raise Fail (String.concatWith "\n" [
-		 "incorrect BOM type for "^Var.nameOf x^": ",
+		 "incorrect BOM type for "^FTVar.nameOf x^": ",
 		 "BOM type = "^BOMTyUtil.toString bomTy,
 		 "PML type = "^BOMTyUtil.toString pmlTy
 		])
@@ -613,7 +614,7 @@ structure FTTranslatePrim : sig
       val length : array -> int = _lift_prim(@length-w)
    *)
     fun liftPrim (name, pmlTy, params, exh, bomParamTys, bomExnTys, bomRetTy) = let
-	  val pmlFunTy as BOMTy.T_Fun(pmlParamTys, pmlExnTys, [pmlRetTy]) = TranslateTypes.tr(getTranslateEnv(), pmlTy)
+	  val pmlFunTy as BOMTy.T_Fun(pmlParamTys, pmlExnTys, [pmlRetTy]) = FTTranslateTypes.tr(getTranslateEnv(), pmlTy)
 	  val params' = List.map BV.copy params
 	  val exh' = List.map BV.copy exh
 	  val wrapper = BV.new(BV.nameOf name^"-wrapper", pmlFunTy)
@@ -628,9 +629,9 @@ structure FTTranslatePrim : sig
     end  (* local *)
   
     fun cvtRhs (env, x, pmlTy, rhs) = withTranslateEnv env (fn () => let
-	  val x' = BOM.Var.new(Var.nameOf x, TranslateTypes.trScheme(env, pmlTy))
+	  val x' = BOM.Var.new (FTVar.nameOf x, FTTranslateTypes.trScheme(env, pmlTy))
 	  (* check that the RHS matches the constraining type *)
-	  val pmlTy = TranslateTypes.trScheme(env, pmlTy)
+	  val pmlTy = FTTranslateTypes.trScheme(env, pmlTy)
           in
 	    case rhs
 	     of BPT.VarPrimVal v => let
@@ -657,7 +658,7 @@ structure FTTranslatePrim : sig
 			  chkConstraintTy (x, BOM.Var.typeOf f, pmlTy);
 			  SOME (E.insertFun(env, x, mkFB), x', etaExpand(name, def))
 			end
-		    | NONE => raise Fail ("TranslatePrim.cvtRhs: compiler bug, missing hlop "^Var.toString x)
+		    | NONE => raise Fail ("TranslatePrim.cvtRhs: compiler bug, missing hlop "^FTVar.toString x)
 		  (* end case *))
 	    (* end case *)
           end)
@@ -692,10 +693,10 @@ structure FTTranslatePrim : sig
 
   (* resolve a PML identifier to its BOM binding occurrence *)
     fun lookupPMLId pmlId = (
-	  case ModuleEnv.getValBind pmlId
-	   of SOME(ModuleEnv.Var pmlVar) => (
-	      case TranslateEnv.lookupVar(getTranslateEnv(), pmlVar)
-	       of TranslateEnv.Var bomVar => bomVar
+	  case ME.getValBind pmlId
+	   of SOME(ME.Var pmlVar) => (
+	      case FTTranslateEnv.lookupVar(getTranslateEnv(), pmlVar)
+	       of FTTranslateEnv.Var bomVar => bomVar
 		| _ => raise Fail "compiler bug: cannot find pmlId in translate environment"
 	      (* end case *))
 	    | _ => raise Fail "compiler bug: cannot find pmlId in module environment"

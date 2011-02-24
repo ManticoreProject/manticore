@@ -15,6 +15,12 @@ structure FTTypeUtil = struct
   structure R = FTReprTypes
   structure N = NestingTreeTypes
 		
+  fun toString (FTTypes.IR (i, r)) : string =
+    String.concat ["<", TypeUtil.toString i, " / ", R.toString r, ">"]
+
+  and schemeToString (R.TyScheme _) : string = 
+    raise Fail "todo: copy from TypeUtil"
+
 (* apply a type variable to type substitution to a type *)
   fun applySubst (subst : R.ty TyVar.Map.map, ty0 : R.ty) : R.ty = let
     fun inst ty = 
@@ -44,8 +50,8 @@ structure FTTypeUtil = struct
 (* instantiate a type scheme to a specific list of types.  We assume that
  * the types have the correct kinds for the corresponding type variables.
  *)
-  fun apply (F.TyScheme ([], ty), []) = ty
-    | apply (sigma as F.TyScheme (tvs, ty), tys) = let
+  fun apply (R.TyScheme ([], ty), []) = ty
+    | apply (sigma as R.TyScheme (tvs, ty), tys) = let
         fun ins (tv, ty, s) = TyVar.Map.insert (s, tv, ty)
         in
 	  applySubst (ListPair.foldlEq ins TyVar.Map.empty (tvs, tys), ty)
@@ -53,7 +59,17 @@ structure FTTypeUtil = struct
 handle ex => (print(concat["apply(", schemeToString(F.TyScheme(tvs, ty)), ", [",
 String.concatWith "," (List.map R.toString tys), "])\n"]); raise ex)
 
-  and schemeToString _ = raise Fail "todo: copy from TypeUtil"
+  fun same (t1 : FTTypes.ty, t2 : FTTypes.ty) : bool = let
+    fun ty (FTTypes.IR (t1, r1), FTTypes.IR (t2, r2)) = 
+      TypeUtil.same (t1, t2) andalso R.same (r1, r2)
+    in
+      ty (t1, t2)
+    end
+
+  fun interfaceTy (FTTypes.IR (i, _)) = i
+  fun reprTy (FTTypes.IR (_, r)) = r
+
+
 
 (* (\* *)
 (*   val trTy = TranslateTypesFT.trTy *)

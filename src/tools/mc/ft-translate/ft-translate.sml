@@ -6,12 +6,13 @@
 
 structure FTTranslate : sig
 
-    val translate : (FTTranslateEnv.env * FLF.exp) -> BOM.module
+    val translate : (FTTranslateEnv.env * FLAST.exp) -> BOM.module
 
   end = struct
 
     structure F = FLAST
-    structure V = Var
+    structure RTy = FTReprTypes
+    structure V = FTVar
     structure B = BOM
     structure BV = B.Var
     structure BTy = BOMTy
@@ -53,7 +54,7 @@ structure FTTranslate : sig
 
   (* translate a binding occurrence of an AST variable to a BOM variable *)
     fun trVar (env, x) = let
-	  val x' = BV.new(V.nameOf x, TranslateTypes.trScheme(env, V.typeOf x))
+	  val x' = BV.new(V.nameOf x, FTTranslateTypes.trScheme(env, V.typeOf x))
 	  in
 	    (x', E.insertVar(env, x, x'))
 	  end
@@ -95,14 +96,14 @@ structure FTTranslate : sig
       | toExp (EXP e) = e
 
   (* translate datatype constructors and constants in expressions *)
-    fun trDConExp (env, dc) : bom_code = (case TranslateTypes.trDataCon(env, dc)
+    fun trDConExp (env, dc) : bom_code = (case FTTranslateTypes.trDataCon(env, dc)
 	   of E.Const dc' => let
-		val t = BV.new("con_" ^ DataCon.nameOf dc, BOMTyCon.dconResTy dc')
+		val t = BV.new("con_" ^ FTDataCon.nameOf dc, BOMTyCon.dconResTy dc')
 		in
 		  BIND([t], B.E_DCon(dc', []))
 		end
 	    | E.ExnConst dc' => let
-		val t = BV.new("exn_" ^ DataCon.nameOf dc, BTy.exnTy)
+		val t = BV.new("exn_" ^ FTDataCon.nameOf dc, BTy.exnTy)
 		in
 		  BIND([t], B.E_DCon(dc', []))
 		end
@@ -159,7 +160,7 @@ structure FTTranslate : sig
 		  EXP(B.mkFun([fb], B.mkRet[f]))
 		end
 	    | E.Lit lit => let
-		val t = BV.new("lit_" ^ DataCon.nameOf dc, #2 lit)
+		val t = BV.new("lit_" ^ FTDataCon.nameOf dc, #2 lit)
 		in
 		  BIND([t], B.E_Const lit)
 		end
@@ -168,12 +169,12 @@ structure FTTranslate : sig
     fun trExp (env, exp) : bom_code = (case prune exp
 	   of F.LetExp (F.PValBind (F.VarPat x, e1), e2) =>
 	        if ExpansionOpts.isEnabled(ExpansionOpts.PVAL[ExpansionOpts.CILK5_WORK_STEALING])
-		then EXP(TranslatePValCilk5.tr{env=env,
-					       trVar=trVar,
-					       trExp=trExpToV,
-					       x=x,
-					       e1=e1,
-					       e2=e2
+		then EXP(FTTranslatePValCilk5.tr{env=env,
+						 trVar=trVar,
+						 trExp=trExpToV,
+						 x=x,
+						 e1=e1,
+						 e2=e2
 					       }
 			)
 		else raise Fail "no suitable translation for pval"
@@ -259,7 +260,7 @@ structure FTTranslate : sig
 	    | F.PTupleExp exps => let
 		val exps' = List.map (fn e => trExpToExp (env, e)) exps
 	        in 
-		  EXP(TranslatePTup.tr{supportsExceptions=false, env=env, es=exps'})
+		  EXP(FTTranslatePTup.tr{supportsExceptions=false, env=env, es=exps'})
 	        end
 	    | F.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
 	    | F.PCompExp _ => raise Fail "unexpected PCompExp"
@@ -278,13 +279,13 @@ structure FTTranslate : sig
 	    | F.ConstExp(F.DConst(dc, tys)) => trDConExp (env, dc)
 	    | F.ConstExp(F.LConst(lit as Literal.String s, _)) => let
 		val t1 = BV.new("_data", BTy.T_Any)
-		val t2 = BV.new("_len", TranslateTypes.stringLenBOMTy())
-		val t3 = BV.new("_slit", TranslateTypes.stringBOMTy())
+		val t2 = BV.new("_len", FTTranslateTypes.stringLenBOMTy())
+		val t3 = BV.new("_slit", FTTranslateTypes.stringBOMTy())
 		in
 		  EXP(BOM.mkStmts([
 		      ([t1], BOM.E_Const(Literal.String s, BTy.T_Any)),
-		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), TranslateTypes.stringLenBOMTy())),
-		      ([t3], BOM.E_Alloc(TranslateTypes.stringBOMTy(), [t1, t2]))
+		      ([t2], BOM.E_Const(Literal.Int(IntInf.fromInt(size s)), FTTranslateTypes.stringLenBOMTy())),
+		      ([t3], BOM.E_Alloc(FTTranslateTypes.stringBOMTy(), [t1, t2]))
 		    ], BOM.mkRet[t3]))
 		end
 	    | F.ConstExp(F.LConst(lit, ty)) => (case trTy(env, ty)
@@ -322,7 +323,7 @@ structure FTTranslate : sig
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))
 
-    and trBind (env, bind, k : TranslateEnv.env -> B.exp) = (case bind
+    and trBind (env, bind, k : E.env -> B.exp) = (case bind
 	   of F.ValBind(F.TuplePat pats, exp) => let
 		val (env', xs) = trVarPats (env, pats)
 		fun sel (t, i, x::xs, p::ps) =
@@ -377,12 +378,12 @@ structure FTTranslate : sig
 		  B.mkFun(List.map trFun fs, k env)
 		end
 	    | F.PrimVBind (x, rhs) => (
-	        case TranslatePrim.cvtRhs (env, x, Var.typeOf x, rhs)
+	        case FTTranslatePrim.cvtRhs (env, x, Var.typeOf x, rhs)
 		 of SOME (env', x', e) => mkLet([x'], e, k env')
 		  | NONE => k env
 		(* end case *))
 	    | F.PrimCodeBind code => let
-		val (lambdas, rewrites) = TranslatePrim.cvtCode (env, code)
+		val (lambdas, rewrites) = FTTranslatePrim.cvtCode (env, code)
 		fun mk [] = k env
 		  | mk (fb::fbs) = B.mkFun([fb], mk fbs)
 		in
@@ -394,13 +395,13 @@ structure FTTranslate : sig
   (* translation of the body of a case expression. *) 
     and trCase (env, arg, rules) = let
 	(* translation of nullary constructors *)
-	  fun trDConst (dc, exp) = (case TranslateTypes.trDataCon(env, dc)
+	  fun trDConst (dc, exp) = (case FTTranslateTypes.trDataCon(env, dc)
 		 of E.Const dc' => (B.P_DCon(dc', []), trExpToExp(env, exp))
 		  | E.Lit lit => (B.P_Const lit, trExpToExp(env, exp))
 		(* end case *))
 	(* translation of a constructor applied to a pattern *)
 	  fun trConPat (dc, tyArgs, pat, exp) = let
-		val E.DCon(dc', repTr) = TranslateTypes.trDataCon(env, dc)
+		val E.DCon(dc', repTr) = FTTranslateTypes.trDataCon(env, dc)
 		fun mkArgs tys = List.map (fn ty => BV.new("_t", ty)) tys
 		fun mkTuple (x, tys) = let
 		      val args = mkArgs tys
@@ -527,9 +528,10 @@ structure FTTranslate : sig
 	   of E.Var x' => cxt x' (* pass x' directly to the context *)
 	    | E.Lambda mkLambda => let
                 val sigma = Var.typeOf x (* actually a type scheme *)
-		val rangeTy = (case TypeUtil.prune(TypeUtil.apply(sigma, tys))
-		       of F.FunTy (_, r) => r
-			| _ => raise Fail (Var.nameOf x^": expected function type is "^TypeUtil.toString(TypeUtil.apply(sigma, tys)))
+		val rangeTy = (case FTTypeUtil.apply (sigma, tys)						 
+		       of RTy.FunTy (_, r) => r
+			| _ => raise Fail (V.nameOf x^": expected function type is "^
+					   FTTypeUtil.toString(FTTypeUtil.apply(sigma, tys)))
 		      (* end case *))
 		val rangeTy' = trTy (env, rangeTy)
 		val fb as B.FB{f, ...} = mkLambda rangeTy'
@@ -540,7 +542,7 @@ structure FTTranslate : sig
 		   in B.mkFun([lambda], cxt f) end *)
 	    | E.EqOp => let
 		val [ty] = tys
-		val lambda as B.FB{f, ...} = Equality.mkEqual(env, x, ty)
+		val lambda as B.FB{f, ...} = FTEquality.mkEqual(env, x, ty)
 		in
 		  B.mkFun([lambda], cxt f)
 		end

@@ -8,7 +8,7 @@
 
 structure FTEquality : sig
 
-    val mkEqual : (FTTranslateEnv.env * AST.var * AST.ty) -> BOM.lambda
+    val mkEqual : (FTTranslateEnv.env * FLAST.var * FTReprTypes.ty) -> BOM.lambda
 
   end = struct
 
@@ -68,7 +68,7 @@ structure FTEquality : sig
 	  end
 
     fun mkEqual (env, eq, ty) = let
-	  val isEq = Var.same(Basis.eq, eq)
+	  val isEq = raise Fail "FIXME" (* FTVar.same (Basis.eq, eq) *)
 	  val ty' = FTTranslateTypes.tr (env, ty)
 	  val arg1 = BV.new("a", ty')
 	  val arg2 = BV.new("b", ty')
