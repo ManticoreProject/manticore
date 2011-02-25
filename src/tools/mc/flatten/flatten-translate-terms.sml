@@ -1,4 +1,4 @@
-(* flatten-terms.sml
+(* flatten-translate-terms.sml
  *
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -8,29 +8,30 @@
  * docs in /path/to/manti-papers/papers/notes/amsft/
  *)
 
-structure TranslateTermsFT = struct
+structure FlattenTranslateTerms = struct
 
-  structure A = AST
   structure F = FLAST
-  structure T = FTTypes
 
-  fun trTy t = TranslateTypesFT.trTy t
+  structure ATy = Types
+  structure FTy = FTTypes
 
-  val trTyScheme : A.ty_scheme -> F.ty_scheme = 
-   (fn (A.TyScheme (vs, t)) => F.TyScheme (vs, trTy t))
+  structure FE   = FlattenEnv
+  structure FTTy = FlattenTranslateTypes
 
-  val trVar : A.var -> F.var = 
-   (fn (VarRep.V {name, id, kind, useCnt, ty, props}) => let
-      val tschRef = !ty
-      val tsch = !tschRef
-      in
-        VarRep.V {name = name,
-		  id = id,
-		  kind = ref (!kind),
-		  useCnt = ref (!useCnt),
-		  ty = ref (ref (trTyScheme tsch)),
-		  props = props}
-      end)
+  type env = FE.env
+
+  val trTy = FTTy.trTy
+  val trDCon = FTTy.trDCon
+  
+  val trScheme : env * ATy.ty_scheme -> F.ty_scheme = FTTy.trScheme
+
+  fun trVar (env : FE.env, x : AST.var) : F.var * FE.env = let
+    val fx = FTVar.newPoly (Var.nameOf x,
+			    trScheme (env, Var.typeOf x))
+(* newPoly takes ty_schemes, so I'm using it. -ams *)
+    in
+      (fx, FE.insertVar (env, x, fx))
+    end
 
 (* pointwise function composition *)
   infixr oo
@@ -39,70 +40,212 @@ structure TranslateTermsFT = struct
 (* NOTE: the translation is agnostic to whether or not PTuples, PCases, etc.
  * are still around; it just translates them.
  *)
-  fun trExp (e : A.exp) : F.exp = let
-    fun exp (A.LetExp (b, e)) = F.LetExp (binding b, exp e)
-      | exp (A.IfExp (e1, e2, e3, t)) = F.IfExp (exp e1, exp e2, exp e3, trTy t)
-      | exp (A.CaseExp (e, ms, t)) = F.CaseExp (exp e, List.map match ms, trTy t)
-      | exp (A.PCaseExp (es, ms, t)) = 
-          F.PCaseExp (List.map exp es, List.map pmatch ms, trTy t)
-      | exp (A.HandleExp (e, ms, t)) = F.HandleExp (exp e, List.map match ms, trTy t)
-      | exp (A.RaiseExp (e, t)) = F.RaiseExp (exp e, trTy t)
-      | exp (A.FunExp (x, e, t)) = F.FunExp (trVar x, exp e, trTy t)
-      | exp (A.ApplyExp (e1, e2, t)) = F.ApplyExp (exp e1, exp e2, trTy t)
-      | exp (A.VarArityOpExp (oper, n, t)) = F.VarArityOpExp (vop oper, n, trTy t)
-      | exp (A.TupleExp es) = let
-          val intfTy  = Types.TupleTy (List.map TypeOf.exp es)
-	  in
-	    F.TupleExp (List.map exp es, intfTy)
-	  end
-      | exp (A.RangeExp (e1, e2, optE, t)) = 
-          F.RangeExp (exp e1, exp e2, Option.map exp optE, trTy t)
-      | exp (A.PTupleExp es) = F.PTupleExp (List.map exp es)
-      | exp (A.PArrayExp (es, t)) = trPArray (es, t) (* t is element type *)
-      | exp (A.PCompExp (e, pes, optE)) = 
-          F.PCompExp (exp e, List.map (pat oo exp) pes, Option.map exp optE)
-      | exp (A.PChoiceExp (es, t)) = F.PChoiceExp (List.map exp es, trTy t)
-      | exp (A.SpawnExp e) = F.SpawnExp (exp e)
-      | exp (A.ConstExp k) = F.ConstExp (const k)
-      | exp (A.VarExp (x, ts)) = F.VarExp (trVar x, List.map trTy ts)
-      | exp (A.SeqExp (e1, e2)) = F.SeqExp (exp e1, exp e2)
-      | exp (A.OverloadExp vr) = F.OverloadExp (ref (ov (!vr)))
-      | exp (A.ExpansionOptsExp (os, e)) = F.ExpansionOptsExp (os, exp e)
-    and binding (A.ValBind (p, e)) = F.ValBind (pat p, exp e)
-      | binding (A.PValBind (p, e)) = F.PValBind (pat p, exp e)
-      | binding (A.FunBind fs) = F.FunBind (List.map lambda fs)
-      | binding (A.PrimVBind (x, r)) = F.PrimVBind (trVar x, r)
-      | binding (A.PrimCodeBind c) = F.PrimCodeBind c
-    and pat (A.ConPat (c, ts, p)) = F.ConPat (c, List.map trTy ts, pat p)
-      | pat (A.TuplePat ps) = F.TuplePat (List.map pat ps)
-      | pat (A.VarPat x) = F.VarPat (trVar x)
-      | pat (A.WildPat t) = F.WildPat (trTy t)
-      | pat (A.ConstPat k) = F.ConstPat (const k)
-    and ppat (A.NDWildPat t) = F.NDWildPat (trTy t)
-      | ppat (A.HandlePat (p, t)) = F.HandlePat (pat p, trTy t)
-      | ppat (A.Pat p) = F.Pat (pat p)
-    and lambda (A.FB (f, x, e)) = F.FB (trVar f, trVar x, exp e)
-    and const (A.DConst (c, ts)) = F.DConst (c, List.map trTy ts)
-      | const (A.LConst (k, t)) = F.LConst (k, trTy t)
-    and match (A.PatMatch (p, e)) = F.PatMatch (pat p, exp e)
-      | match (A.CondMatch (p, e1, e2)) = F.CondMatch (pat p, exp e1, exp e2)
-    and pmatch (A.PMatch (ps, e)) = F.PMatch (List.map ppat ps, exp e)
-      | pmatch (A.Otherwise (ts, e)) = F.Otherwise (List.map trTy ts, exp e)
-    and ov (A.Unknown (t, xs)) = F.Unknown (trTy t, List.map trVar xs)
-      | ov (A.Instance x) = F.Instance (trVar x)
-    and vop A.MapP = F.MapP
+  fun trExp (env : env, e : AST.exp) : F.exp = let
+    fun ty t = trTy (env, t)
+    fun exp (AST.LetExp (b, e)) = let
+          val (b', env') = trBind (env, b)
+	  val e' = trExp (env', e)
+          in
+	    F.LetExp (b', e')
+          end 
+      | exp (AST.IfExp (e1, e2, e3, t)) = 
+          F.IfExp (exp e1, exp e2, exp e3, ty t)
+      | exp (AST.CaseExp (e, ms, t)) = 
+          F.CaseExp (exp e, List.map (trMatch env) ms, ty t)
+      | exp _ = raise Fail "todo"
+(*       | exp (AST.PCaseExp (es, ms, t)) =  *)
+(*           F.PCaseExp (List.map exp es, List.map pmatch ms, trTy t) *)
+(*       | exp (AST.HandleExp (e, ms, t)) = F.HandleExp (exp e, List.map match ms, trTy t) *)
+(*       | exp (AST.RaiseExp (e, t)) = F.RaiseExp (exp e, trTy t) *)
+(*       | exp (AST.FunExp (x, e, t)) = F.FunExp (trVar x, exp e, trTy t) *)
+(*       | exp (AST.ApplyExp (e1, e2, t)) = F.ApplyExp (exp e1, exp e2, trTy t) *)
+(*       | exp (AST.VarArityOpExp (oper, n, t)) = F.VarArityOpExp (vop oper, n, trTy t) *)
+(*       | exp (AST.TupleExp es) = let *)
+(*           val intfTy  = Types.TupleTy (List.map TypeOf.exp es) *)
+(* 	  in *)
+(* 	    F.TupleExp (List.map exp es, intfTy) *)
+(* 	  end *)
+(*       | exp (AST.RangeExp (e1, e2, optE, t)) =  *)
+(*           F.RangeExp (exp e1, exp e2, Option.map exp optE, trTy t) *)
+(*       | exp (AST.PTupleExp es) = F.PTupleExp (List.map exp es) *)
+(*       | exp (AST.PArrayExp (es, t)) = trPArray (es, t) (\* t is element type *\) *)
+(*       | exp (AST.PCompExp (e, pes, optE)) =  *)
+(*           F.PCompExp (exp e, List.map (pat oo exp) pes, Option.map exp optE) *)
+(*       | exp (AST.PChoiceExp (es, t)) = F.PChoiceExp (List.map exp es, trTy t) *)
+(*       | exp (AST.SpawnExp e) = F.SpawnExp (exp e) *)
+(*       | exp (AST.ConstExp k) = F.ConstExp (const k) *)
+(*       | exp (AST.VarExp (x, ts)) = F.VarExp (trVar x, List.map trTy ts) *)
+(*       | exp (AST.SeqExp (e1, e2)) = F.SeqExp (exp e1, exp e2) *)
+(*       | exp (AST.OverloadExp vr) = F.OverloadExp (ref (ov (!vr))) *)
+(*       | exp (AST.ExpansionOptsExp (os, e)) = F.ExpansionOptsExp (os, exp e) *)
     in
       exp e
     end
 
-  and trPArray (es, eltTy) = (*
-let
-    val r = FlattenTypes.flatten (Basis.parrayTy eltTy)
-    val fl = FTSynthOps.flatten r
-    in
-*)
-      raise Fail "todo"
-        (* FLASTUtil.mkApplyExp (fl, List.map trExp es) 
-    end
-*)
+  and trBind (env : env, b : AST.binding) : F.binding * env = let
+        fun bind b =
+             (case b
+	       of AST.ValBind (p, e) => let
+		    val (p', env') = trPat (env, p)
+                    val e' = trExp (env, e)
+		    in
+		      (F.ValBind (p', e'), env')
+		    end
+		| AST.PValBind (p, e) => raise Fail "todo"
+		| AST.FunBind lams => let
+                    val (lams', env') = trLams (env, lams)
+                    in
+		      (F.FunBind lams', env')
+		    end
+		| AST.PrimVBind (x, rhs) => raise Fail "todo"
+		| AST.PrimCodeBind c => (F.PrimCodeBind c, env)
+	      (* end case *))
+        in
+          bind b
+        end
+
+  and trPat (env : env, p : AST.pat) : F.pat * env = 
+       (case p
+	  of AST.ConPat (c, ts, p) => let
+               val c' = valOf (FE.findDCon (env, c))
+	       val ts' = List.map (fn t => trTy (env, t)) ts
+	       val (p', env') = trPat (env, p)
+               in
+	         (F.ConPat (c', ts', p'), env')
+	       end
+	   | AST.TuplePat [] => (F.TuplePat [], env)
+	   | AST.TuplePat ps => let
+               fun lp ([], env', acc) = (F.TuplePat (rev acc), env')
+		 | lp (q::qs, env, acc) = let
+		   (* we are counting on the fact that all vars are distinct *)
+		   (* - that's why it's OK to "roll" the environment along... *)
+		     val (q', env') = trPat (env, q)
+                     in
+		       lp (qs, env', q'::acc)
+		     end
+               in
+		 lp (ps, env, [])
+	       end
+	   | AST.VarPat x => let
+               val (fx, env') = trVar (env, x)
+               in
+		 (F.VarPat fx, env')
+	       end
+	   | AST.WildPat t => (F.WildPat (trTy (env, t)), env)
+	   | AST.ConstPat c => let
+               val c' = trConst (env, c)
+	       in
+	         (F.ConstPat c', env)
+	       end
+         (* end case *))
+
+  and trMatch (env : env) (m : AST.match) = 
+       (case m
+	  of AST.PatMatch (p, e) => let
+               val (p', env') = trPat (env, p)
+	       val e' = trExp (env', e)
+	       in
+		 F.PatMatch (p', e')
+	       end
+	   | AST.CondMatch (p, e1, e2) => let
+               val (p', env') = trPat (env, p)
+	       val e1' = trExp (env', e1)
+	       val e2' = trExp (env', e2)
+	       in
+		 F.CondMatch (p', e1', e2')
+	       end
+         (* end case *))
+
+  and trPMatch (env : env) (m : AST.pmatch) = 
+       (case m
+	  of AST.PMatch (ps, e) => let
+               val (ps', env') = trPPats (env, ps)
+	       val e' = trExp (env', e)
+	       in
+                 F.PMatch (ps', e')
+	       end
+	   | AST.Otherwise (ts, e) => let
+               val ts' = List.map (fn t => trTy (env, t)) ts
+	       in
+		 F.Otherwise (ts', trExp (env, e))
+	       end
+         (* end case *))
+
+  and trPPat (env : env, p: AST.ppat) : F.ppat * env =
+       (case p
+	  of AST.NDWildPat t => (F.NDWildPat (trTy (env, t)), env)
+	   | AST.HandlePat (p, t) => let
+               val (p', env') = trPat (env, p)
+               val t' = trTy (env, t)
+	       in
+		 (F.HandlePat (p', t'), env')
+	       end
+	   | AST.Pat p => let
+               val (p', env') = trPat (env, p)
+	       in
+		 (F.Pat p', env')
+	       end
+         (* end case *))
+
+  and trPPats (env : env, ps : AST.ppat list) : F.ppat list * env = let
+        fun lp ([], env', acc) = (rev acc, env')
+	  | lp (p::ps, env, acc) = let
+              val (p', env') = trPPat (env, p)
+              (* relying on the fact that vars are distinct in this list of ppats *)
+              in
+		lp (ps, env', p'::acc) 
+	      end
+        in
+          lp (ps, env, [])
+        end
+
+  and trLams (env : env, lams : AST.lambda list) : F.lambda list * env = let
+        fun bindLp ([], env, fs) = (env, rev fs)
+	  | bindLp (AST.FB(f,x,b)::t, env, fs) = let
+              val (f', env') = trVar (env, f)
+              in
+                bindLp (t, env', (f',x,b)::fs)
+	      end
+	val (env', fs) = bindLp (lams, env, [])
+	fun trFun (f', x, b) = let
+              val (x', env'') = trVar (env', x)
+	      val b' = trExp (env'', b)
+              in
+	        F.FB (f', x', b')
+	      end
+	val lams' = List.map trFun fs
+        in
+          (lams', env')
+        end
+
+(* (\* FIXME this is a mutually recursive knot, so this might not suffice... *)
+(*  * too linear... *\) *)
+(* (\* Looking at translate.sml, it seems there is one pass over the knot *)
+(*  * to bind all the names, then another pass to translate all the FBs... *)
+(*  *\) *)
+(* 		    fun lp ([], env', acc) = (F.FunBind (rev acc), env')		      | lp (lam::t, env, acc) = let *)
+(* 			  val (lam', env') = trLam (env, lam) *)
+(* 			  in *)
+(* 			    lp (t, env', lam'::acc) *)
+(* 		          end *)
+(* 		    in *)
+(* 		      lp (lams, env, []) *)
+(* 	            end *)
+
+  and trConst _ = raise Fail "todo"
+
+  and trPArray (es, eltTy) = raise Fail "todo" (* FIXME *)
+
+
+(* (\* *)
+(* let *)
+(*     val r = FlattenTypes.flatten (Basis.parrayTy eltTy) *)
+(*     val fl = FTSynthOps.flatten r *)
+(*     in *)
+(* *\) *)
+(*       raise Fail "todo" *)
+(*         (\* FLASTUtil.mkApplyExp (fl, List.map trExp es)  *)
+(*     end *)
+(* *\) *)
+
 end

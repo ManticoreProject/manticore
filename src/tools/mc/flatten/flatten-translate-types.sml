@@ -1,26 +1,28 @@
-(* translate-types-ft.sml
+(* flatten-translate-types.sml
  *
  * COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Translate AST types into FT interface types.
- * Note: this is not flattening of types, which takes place in another module.
- * This is just a straightforward translation.
+ * Translate AST types into FT types. "ID" translation.
+ * 
+ * NOTE: The names of these type transformations in this phase are confusing.
  *
- * As the type is not flattened here, the translation translates the input 
- * into a representation type, and pairs the "copied" result with the original.
- * EX: int parr parr ---> < int parr parr / int parr parr >
- *   (even though after flattening the type will be
- *      < int parr parr / { int ; nd lf } >)
+ * FlattenTranslateTypes and FlattenTypes are different, as follows:
  *
- * Supporting documents in 
- * /path/to/manti-papers/papers/notes/amsft
+ * - FlattenTranslateTypes is the straight translation of AST types into their
+ *     equivalents in FTTypes, but the types are left basically in their 
+ *     original form.
+ *
+ * - FlattenTypes is the actual flattening of types, where, say, a nested
+ *     array type is transformed into its corresponding flat array type.
+ *
  *)
 
-structure TranslateTypesFT = struct
+structure FlattenTranslateTypes = struct
 
-  structure T = Types
-  structure F = FTTypes
+  structure ATy = Types (* AST types *)
+  structure FTy = FTTypes
+  structure FE  = FlattenEnv
 
   fun unsupported func descrip = let
     val msg = concat ["TranslateTypesFT: in ", func, " ", descrip, " unsupported."]
@@ -28,52 +30,87 @@ structure TranslateTypesFT = struct
       raise Fail msg
     end 
 
-  fun ty_scheme _ = unsupported "ty_scheme" "type schemes"
+ fun copyTyc (newDef, c as ATy.Tyc {stamp, name, arity, params, props, def}) =
+        FTy.Tyc {stamp = stamp,
+		 name = name,
+		 arity = arity,
+		 params = params,
+		 props = props (* does this need deep copying? FIXME *),
+		 def = newDef,
+		 interface = c}
 
-  fun repr (t : T.ty) : F.repr_ty = 
-    (case t
-       of T.ErrorTy => unsupported "ty" "ErrorTy"
-	| T.MetaTy _ => unsupported "ty" "MetaTy"
-	| T.VarTy a => F.VarTy a
-	| T.ConTy (ts, c) => F.ConTy (List.map repr ts, tycon c)
-	| T.FunTy (dom, rng) => F.FunTy (repr dom, repr rng)
-	| T.TupleTy ts => F.TupleTy (List.map repr ts)
-      (* end case *))
+  fun setCons (FTy.DataTyc {cons, ...}, ds) = (cons := ds)
+    | setCons (FTy.AbsTyc, _) = raise Fail "setCons: unexpected AbsTyc"
 
-  and tycon (c as T.Tyc {stamp, name, arity, params, props, def}) : F.tycon = 
-       (case def
-	  of T.AbsTyc => F.Tyc {stamp=stamp, name=name, arity=arity, 
-				params=params, props=props, def=F.AbsTyc}
-	   | T.DataTyc {nCons, cons} => let
-               val dt = F.DataTyc {nCons=ref(!nCons), cons=ref []}
-	       val c' = F.Tyc {stamp=stamp, name=name, arity=arity, 
-			       params=params, props=props, def=dt}
-	       fun lp ([], acc) = List.rev acc
-		 | lp (c::cs, acc) = let
-		     val T.DCon {id, name, owner, argTy} = c
-		     val ic = F.DCon {id=id, name=name, owner=c', 
-				      argTy=Option.map repr argTy}
-		     in
-		       lp (cs, ic::acc)
-		     end
-	       val cons' = lp (!cons, [])
-	       val _ = setCons (dt, cons') (* backpatch new def *)
-               in
-		 c'
-	       end
-         (* end case *))
-
-  and setCons (F.DataTyc {cons, ...}, ds) = (cons := ds)
-    | setCons (F.AbsTyc, _) = raise Fail "this should be unreachable"
-
-  fun ty (t : T.ty) : F.ty = F.IR (t, repr t)
-
-  fun trTy (t : T.ty) : F.ty = let
-    val t' = TypeUtil.prune t
+  fun trTy (env : FE.env, t : ATy.ty) : FTy.ty = let
+    fun unsup msg = unsupported "trTy" msg
+    fun ty (ATy.ErrorTy) = unsup "ErrorTy"
+      | ty (ATy.MetaTy _) = unsup "MetaTy" 
+          (* FIXME I need to support MetaTy *)
+          (* I don't understand why, but it's supported in translate *)
+          (* (AST -> BOM) so it *must* be supported here too. -ams *)
+      | ty (ATy.VarTy a) = FTy.VarTy a
+      | ty (ATy.ConTy (ts, c)) = let
+	  val ts' = List.map ty ts
+          val c' = trTycon (env, c)
+          in
+	    FTy.ConTy (ts', c')
+	  end
+      | ty (ATy.FunTy (t, u)) = FTy.FunTy (ty t, ty u)
+      | ty (t as ATy.TupleTy ts) = 
+          (* note: we record the interface ty at tuple translation *)
+          FTy.TupleTy (t, List.map ty ts)
     in
-      ty t'
+      ty t
     end
 
-  val trTycon = tycon
+    and trTycon (env, c as ATy.Tyc {stamp, name, arity, params, props, def}) = 
+         (case FE.findTyc (env, c)
+	    of SOME fc => fc
+	     | NONE =>
+                (case def
+		   of ATy.AbsTyc => copyTyc (FTy.AbsTyc, c)
+		    | ATy.DataTyc {nCons, cons} => let
+		        val def' = 
+			  FTy.DataTyc {nCons = ref(!nCons),
+				       cons = ref nil (* to be backpatched later...*)}
+			val c' = copyTyc (def', c)
+			val ds = !cons
+		        val ds' = List.map (trDCon (env, c')) ds
+	                in
+			  setCons (def', ds');
+			  FE.insertTyc (env, c, c');
+			  c'
+	                end
+		     (* end case *))
+	   (* end case *))
+
+    and trDCon (env : FE.env, ownerTyc : FTy.tycon) 
+	       (d as ATy.DCon {id, name, owner, argTy}) =
+         (case FE.findDCon (env, d)
+	    of SOME d' => d'
+	     | NONE => let
+                 val d' = FTy.DCon {id = id,
+				    name = name,
+				    owner = ownerTyc,
+				    argTy = NONE, (* to be backpatched (type might be recursive)... *)
+				    interface = d}
+		 val _ = FE.insertCon (env, d, d')
+		 val ty' = Option.map (fn t => trTy (env, t)) argTy
+		 val d'' = setArgTy (d', ty')
+	         in
+		   d''
+	         end
+	   (* end case *))
+
+    and setArgTy (d: FTy.dcon, optT : FTy.ty option) = let
+          val (FTy.DCon {id, name, owner, argTy, interface}) = d
+          in
+	    FTy.DCon {id=id, name=name, owner=owner, interface=interface,
+		      argTy=optT}
+          end
+
+  fun trScheme (env : FE.env, ATy.TyScheme (vs, t)) : FTy.ty_scheme = 
+    FTy.TyScheme (vs, trTy (env, t))
 
 end
