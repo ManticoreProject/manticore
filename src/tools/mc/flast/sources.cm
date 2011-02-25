@@ -11,9 +11,9 @@ Library
   structure FLAST
   structure NestingTreeTypes
   structure FTTypes
-  structure FTReprTypes
   structure FTTyCon
   structure FTDataCon
+  structure FTTypeOf
   structure FTTypeUtil
   structure FTVar
   structure FLASTUtil
@@ -35,10 +35,10 @@ is
   flast.sml
   nesting-tree-types.sml
   ft-types.sml
-  ft-repr-types.sml
   ft-ty-con.sml
   ft-data-con.sml
   ft-type-util.sml
+  ft-type-of.sml
   ft-var.sml  
   flast-util.sml
   print-ft-types.sml

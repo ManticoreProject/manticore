@@ -8,52 +8,55 @@
 
 structure FTDataCon : sig
 
+(*
   (* create a new data constructor and add it to the list of constructors in its parent. *)
-    val new : FTReprTypes.tycon -> (Atom.atom * FTReprTypes.ty option) -> FTReprTypes.dcon
+    val new : FTTypes.tycon -> (Atom.atom * FTTypes.ty option) -> FTTypes.dcon
+*)
 
   (* return true if two data constructors are the same *)
-    val same : FTReprTypes.dcon * FTReprTypes.dcon -> bool
+    val same : FTTypes.dcon * FTTypes.dcon -> bool
 
   (* compare two data constructors *)
-    val compare : FTReprTypes.dcon * FTReprTypes.dcon -> order
+    val compare : FTTypes.dcon * FTTypes.dcon -> order
 
   (* return the name of the data constructor *)
-    val nameOf : FTReprTypes.dcon -> string
+    val nameOf : FTTypes.dcon -> string
 
   (* return the ID of the data constructor *)
-    val idOf : FTReprTypes.dcon -> int
+    val idOf : FTTypes.dcon -> int
 
   (* return the type of the data constructor; for data constants, this type
    * will be a ConTy, while for data constructors it will be a FunTy.
    *)
-    val typeOf : FTReprTypes.dcon -> FLAST.ty_scheme
+    val typeOf : FTTypes.dcon -> FLAST.ty_scheme
 
   (* return the argument type of the data constructor (if any) *)
-    val argTypeOf : FTReprTypes.dcon -> FTReprTypes.ty option
+    val argTypeOf : FTTypes.dcon -> FTTypes.ty option
 
   (* return the instantiated type/argument type of the data constructor *)
-    val typeOf' : FTReprTypes.dcon * FTReprTypes.ty list -> FTReprTypes.ty
-    val argTypeOf' : FTReprTypes.dcon * FTReprTypes.ty list -> FTReprTypes.ty option
-    val resultTypeOf' : FTReprTypes.dcon * FTReprTypes.ty list -> FTReprTypes.ty
+    val typeOf' : FTTypes.dcon * FTTypes.ty list -> FTTypes.ty
+    val argTypeOf' : FTTypes.dcon * FTTypes.ty list -> FTTypes.ty option
+    val resultTypeOf' : FTTypes.dcon * FTTypes.ty list -> FTTypes.ty
 
   (* return the datatype type constructor that owns this data constructor *)
-    val ownerOf : FTReprTypes.dcon -> FTReprTypes.tycon
+    val ownerOf : FTTypes.dcon -> FTTypes.tycon
 
   (* return true if the data constructor is nullary *)
-    val isNullary : FTReprTypes.dcon -> bool
+    val isNullary : FTTypes.dcon -> bool
 
-    val toString : FTReprTypes.dcon -> string
+    val toString : FTTypes.dcon -> string
 
   (* hash tables keyed by data constructors *)
-    structure Tbl : MONO_HASH_TABLE where type Key.hash_key = FTReprTypes.dcon
+    structure Tbl : MONO_HASH_TABLE where type Key.hash_key = FTTypes.dcon
 
    end = struct
 
-    structure R = FTReprTypes
+    structure T = FTTypes
 
-    datatype dcon = datatype R.dcon
+    datatype dcon = datatype T.dcon
 
-    fun new (tyc as R.Tyc {def=R.DataTyc{nCons, cons}, ...}) = let
+(*
+    fun new (tyc as T.Tyc {def=T.DataTyc{nCons, cons}, ...}) = let
 	  fun add (name, argTy) = let
 		val id = !nCons
 		val dcon = DCon{id = id, name = name, owner = tyc, argTy = argTy}
@@ -66,11 +69,12 @@ structure FTDataCon : sig
 	    add
 	  end
       | new _ = raise Fail "AbsTyc"
+*)
 
     fun same (DCon{owner=o1, id=a, ...}, DCon{owner=o2, id=b, ...}) =
 	  (a = b) andalso FTTyCon.same(o1, o2)
 
-    fun hash (DCon{owner=R.Tyc{stamp, ...}, id, ...}) =
+    fun hash (DCon{owner=T.Tyc{stamp, ...}, id, ...}) =
 	  (0w7 * Stamp.hash stamp) + Word.fromInt id
 
     fun compare (DCon{owner=o1, id=a, ...}, DCon{owner=o2, id=b, ...}) = (
@@ -85,37 +89,39 @@ structure FTDataCon : sig
 
     fun ownerOf (DCon{owner, ...}) = owner
 
-    fun typeOf (DCon{owner as R.Tyc{params, ...}, argTy, ...}) = let
-	  val ty = R.ConTy(List.map R.VarTy params, owner)
+    fun typeOf (DCon{owner as T.Tyc{params, ...}, argTy, ...}) = let
+	  val ty = T.ConTy (List.map T.VarTy params, owner)
 	  in
 	    case argTy
 	     of NONE => FLAST.TyScheme(params, ty)
-	      | SOME ty' => FLAST.TyScheme(params, R.FunTy(ty', ty))
+	      | SOME ty' => FLAST.TyScheme(params, T.FunTy(ty', ty))
 	    (* end case *)
 	  end
 
     fun typeOf' (dc, args) = FTTypeUtil.apply (typeOf dc, args)
 
-    fun resultTypeOf' (DCon{owner as R.Tyc{params, ...}, ...}, args) = let
-	  val ty = R.ConTy (List.map R.VarTy params, owner)
+    fun resultTypeOf' (DCon{owner as T.Tyc{params, ...}, ...}, args) = let
+	  val ty = T.ConTy (List.map T.VarTy params, owner)
 	  in
 	    FTTypeUtil.apply (FLAST.TyScheme(params, ty), args)
 	  end
 
-    fun argTypeOf' (DCon {owner as R.Tyc {params, ...}, argTy, ...}, args) = (
+    fun argTypeOf' (DCon {owner as T.Tyc {params, ...}, argTy, ...}, args) = (
 	  case argTy
 	   of NONE => NONE
 	    | SOME ty => SOME (FTTypeUtil.apply (FLAST.TyScheme(params, ty), args))
 	  (* end case *))
+
+    fun interfaceDCon (DCon {interface=i, ...}) = i
 
     fun idOf (DCon{id, ...}) = id
 
     fun isNullary (DCon{argTy = NONE, ...}) = true
       | isNullary _ = false
 
-    fun toString (DCon {id, name, owner, argTy}) = 
+    fun toString (DCon {id, name, owner, argTy, interface}) = 
       String.concat [Atom.toString name, 
-		     "(", Option.getOpt (Option.map R.toString argTy, ""), ")",
+		     "(", Option.getOpt (Option.map T.toString argTy, ""), ")",
 		     "[", Int.toString id, "]",
 		     ":", FTTyCon.toString owner]
 

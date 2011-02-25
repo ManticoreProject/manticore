@@ -10,55 +10,57 @@
 
 structure FTTyCon : sig
 
+(*
   (* create a new abstract type constructor *)
-    val newAbsTyc : (Atom.atom * int * bool) -> FTReprTypes.tycon
+    val newAbsTyc : (Atom.atom * int * bool) -> FTTypes.tycon
 
   (* create a new datatype tyc; it will have an empty constructor list *)
-    val newDataTyc : (Atom.atom * FLAST.tyvar list) -> FTReprTypes.tycon
+    val newDataTyc : (Atom.atom * FLAST.tyvar list) -> FTTypes.tycon
+*)
 
   (* return the name of a type constructor *)
-    val nameOf : FTReprTypes.tycon -> Atom.atom
+    val nameOf : FTTypes.tycon -> Atom.atom
 
   (* return the stamp of a type constructor *)
-    val stampOf : FTReprTypes.tycon -> Stamp.stamp
+    val stampOf : FTTypes.tycon -> Stamp.stamp
 
   (* return a string representation *)
-    val toString : FTReprTypes.tycon -> string
+    val toString : FTTypes.tycon -> string
 
   (* return true if two type constructors are the same *)
-    val same : FTReprTypes.tycon * FTReprTypes.tycon -> bool
+    val same : FTTypes.tycon * FTTypes.tycon -> bool
 
   (* compare two type constructors *)
-    val compare : FTReprTypes.tycon * FTReprTypes.tycon -> order
+    val compare : FTTypes.tycon * FTTypes.tycon -> order
 
   (* return the arity of a type constructor *)
-    val arityOf : FTReprTypes.tycon -> int
+    val arityOf : FTTypes.tycon -> int
 
   (* dictionaries keyed by type constructors *)
-    structure Map : ORD_MAP where type Key.ord_key = FTReprTypes.tycon
+    structure Map : ORD_MAP where type Key.ord_key = FTTypes.tycon
 
   (* hash tables keyed by type constructors *)
-    structure Tbl : MONO_HASH_TABLE where type Key.hash_key = FTReprTypes.tycon
+    structure Tbl : MONO_HASH_TABLE where type Key.hash_key = FTTypes.tycon
 
   (* per-type properties *)
-    val newProp : (FTReprTypes.tycon -> 'a) -> {
-	    clrFn : FTReprTypes.tycon -> unit,
-	    getFn : FTReprTypes.tycon -> 'a,
-	    peekFn : FTReprTypes.tycon -> 'a option,
-	    setFn : (FTReprTypes.tycon * 'a) -> unit
+    val newProp : (FTTypes.tycon -> 'a) -> {
+	    clrFn : FTTypes.tycon -> unit,
+	    getFn : FTTypes.tycon -> 'a,
+	    peekFn : FTTypes.tycon -> 'a option,
+	    setFn : (FTTypes.tycon * 'a) -> unit
 	  }
     val newFlag : unit -> {
-	    getFn : FTReprTypes.tycon -> bool,
-	    setFn : FTReprTypes.tycon * bool -> unit
+	    getFn : FTTypes.tycon -> bool,
+	    setFn : FTTypes.tycon * bool -> unit
 	  }
 
   (* equality type property *)
-    val isEqTyc : FTReprTypes.tycon -> bool
-    val markEqTyc : FTReprTypes.tycon -> unit
+    val isEqTyc : FTTypes.tycon -> bool
+    val markEqTyc : FTTypes.tycon -> unit
 
   end = struct
 
-    datatype tycon = datatype FTReprTypes.tycon
+    datatype tycon = datatype FTTypes.tycon
 
   (* per-type properties *)
     fun propsOf (Tyc{props, ...}) = props
@@ -76,7 +78,8 @@ structure FTTyCon : sig
     fun markEqTyc tyc = setFn(tyc, true)
     end
 
-    fun newTyc (name, arity, params, def) = Tyc{
+(*
+    fun newTyc (name, arity, params, def) = Tyc {
 	    name = name,
 	    stamp = Stamp.new(),
 	    arity = arity,
@@ -84,23 +87,28 @@ structure FTTyCon : sig
 	    props = PropList.newHolder(),
 	    def = def
 	  }
+*)
 
+(*
   (* create a new abstract type constructor *)
     local
       val params = Vector.fromList(List.map Atom.atom ["'a", "'b", "'c", "'d", "'e"])
     in
     fun newAbsTyc (name, arity, eq) = let
 	  fun mkParam i = TyVar.new(Vector.sub(params, i))
-	  val tyc = newTyc (name, arity, List.tabulate(arity, mkParam), FTReprTypes.AbsTyc)
+	  val tyc = newTyc (name, arity, List.tabulate(arity, mkParam), FTTypes.AbsTyc)
 	  in
 	    if eq then markEqTyc tyc else ();
 	    tyc
 	  end
     end
+*)
 
+(*
   (* create a new datatype tyc; it will have an empty constructor list *)
     fun newDataTyc (name, params) = 
-	  newTyc (name, List.length params, params, FTReprTypes.DataTyc{nCons = ref 0, cons = ref[]})
+	  newTyc (name, List.length params, params, FTTypes.DataTyc{nCons = ref 0, cons = ref[]})
+*)
 
   (* return the name of a type constructor *)
     fun nameOf (Tyc{name, ...}) = name

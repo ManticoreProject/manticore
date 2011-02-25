@@ -11,28 +11,26 @@
 structure FTTypeUtil = struct
 
   structure F = FLAST
-  structure T = Types (* AST types *)
-  structure R = FTReprTypes
+  structure T = FTTypes
   structure N = NestingTreeTypes
 		
-  fun toString (FTTypes.IR (i, r)) : string =
-    String.concat ["<", TypeUtil.toString i, " / ", R.toString r, ">"]
+  val toString : T.ty -> string = T.toString
 
-  and schemeToString (R.TyScheme _) : string = 
+  fun schemeToString (T.TyScheme (vs, t)) : string = 
     raise Fail "todo: copy from TypeUtil"
 
 (* apply a type variable to type substitution to a type *)
-  fun applySubst (subst : R.ty TyVar.Map.map, ty0 : R.ty) : R.ty = let
+  fun applySubst (subst : T.ty TyVar.Map.map, ty0 : T.ty) : T.ty = let
     fun inst ty = 
      (case ty of 
-          R.VarTy tv => (case TyVar.Map.find (subst, tv)
+          T.VarTy tv => (case TyVar.Map.find (subst, tv)
 			   of NONE => ty
 			    | SOME ty => ty
 			  (* end case *))
-	| R.ConTy (args, tyc) => R.ConTy (List.map inst args, tyc)
-	| R.FunTy (ty1, ty2) => R.FunTy (inst ty1, inst ty2)
-	| R.TupleTy tys => R.TupleTy (List.map inst tys)
-	| R.FlatArrayTy (t, n) => R.FlatArrayTy (inst t, n)
+	| T.ConTy (args, tyc) => T.ConTy (List.map inst args, tyc)
+	| T.FunTy (ty1, ty2) => T.FunTy (inst ty1, inst ty2)
+	| T.TupleTy (i, tys) => T.TupleTy (i, List.map inst tys)
+	| T.FlatArrayTy (t, n) => T.FlatArrayTy (inst t, n)
       (* end case *))
     in
       inst ty0
@@ -41,7 +39,7 @@ structure FTTypeUtil = struct
 (* apply a type-variable-to-type substitution to a type.  The substitution
  * is represented as a list of type variable/type pairs.
  *)
-  fun substitute (ty : R.ty, s : (T.tyvar * R.ty) list) : R.ty = 
+  fun substitute (ty : T.ty, s : (AST.tyvar * T.ty) list) : T.ty = 
    (case s of
 	[] => ty
       | _ => applySubst (List.foldl TyVar.Map.insert' TyVar.Map.empty s, ty)
@@ -50,26 +48,43 @@ structure FTTypeUtil = struct
 (* instantiate a type scheme to a specific list of types.  We assume that
  * the types have the correct kinds for the corresponding type variables.
  *)
-  fun apply (R.TyScheme ([], ty), []) = ty
-    | apply (sigma as R.TyScheme (tvs, ty), tys) = let
+  fun apply (T.TyScheme ([], ty), []) = ty
+    | apply (sigma as T.TyScheme (tvs, ty), tys) = let
         fun ins (tv, ty, s) = TyVar.Map.insert (s, tv, ty)
         in
 	  applySubst (ListPair.foldlEq ins TyVar.Map.empty (tvs, tys), ty)
         end
 handle ex => (print(concat["apply(", schemeToString(F.TyScheme(tvs, ty)), ", [",
-String.concatWith "," (List.map R.toString tys), "])\n"]); raise ex)
+String.concatWith "," (List.map T.toString tys), "])\n"]); raise ex)
 
-  fun same (t1 : FTTypes.ty, t2 : FTTypes.ty) : bool = let
-    fun ty (FTTypes.IR (t1, r1), FTTypes.IR (t2, r2)) = 
-      TypeUtil.same (t1, t2) andalso R.same (r1, r2)
-    in
-      ty (t1, t2)
-    end
+  val same : T.ty * T.ty -> bool = T.same
 
-  fun interfaceTy (FTTypes.IR (i, _)) = i
-  fun reprTy (FTTypes.IR (_, r)) = r
+  fun parrayTy (r : T.ty) : T.ty = raise Fail "todo"
 
-
+  fun interfaceTy (t : T.ty) : AST.ty = 
+   (case t 
+      of T.VarTy a => AST.VarTy a
+       | T.ConTy (ts, c) => let
+           val T.Tyc {interface=i, ...} = c
+           in
+             AST.ConTy (List.map interfaceTy ts, i)
+	   end
+       | T.FunTy (t, u) => AST.FunTy (interfaceTy t, interfaceTy u)
+       | T.TupleTy (i, _) => i
+       | T.FlatArrayTy (t, n) => farr (t, n)
+     (* end case *))
+(* we compute the interface ty of a flat array "backwards" 
+ * from its representation ty. Note: if the flat array is inside
+ * a tuple, its interface type will never be calculated, since 
+ * tuple interface types do not consult the types of their 
+ * components. *)
+  and farr (t : T.ty, n : N.ty) : AST.ty = let
+     val i = interfaceTy t  
+     fun lp (N.Lf, acc) = Basis.parrayTy acc
+       | lp (N.Nd n, acc) = lp (n, Basis.parrayTy acc)
+     in
+       lp (n, i)
+     end
 
 (* (\* *)
 (*   val trTy = TranslateTypesFT.trTy *)

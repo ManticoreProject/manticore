@@ -8,12 +8,10 @@
 
 structure FLAST = struct
 
-  structure R = FTReprTypes
-
   datatype ty_scheme = datatype FTTypes.ty_scheme
   datatype ty = datatype FTTypes.ty
   datatype tyvar = datatype Types.tyvar
-  datatype dcon = datatype Types.dcon
+  datatype dcon = datatype FTTypes.dcon
 
   type interface_ty = Types.ty
 

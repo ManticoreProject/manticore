@@ -409,9 +409,9 @@ structure PrintFLAST : sig
       | const (F.LConst (lit, t)) = pr (Literal.toString lit)
 
   (* dcon : Types.dcon -> unit *)
-    and dcon (dc as Types.DCon{name, owner, ...}) = let
+    and dcon (dc as FTTypes.DCon{name, owner, ...}) = let
       val s = if !showTypes 
-	      then Atom.toString name ^ ":" ^ TyCon.toString owner
+	      then Atom.toString name ^ ":" ^ FTTyCon.toString owner
 	      else Atom.toString name
       in
         pr s

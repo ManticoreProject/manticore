@@ -30,49 +30,67 @@ end = struct
 (* exp : F.exp -> F.ty *)
   fun exp (F.LetExp (_, e)) = exp e
     | exp (F.IfExp (_, _, _, t)) = t
-    | exp (F.FunExp (param, _, t)) = T.FunTy (V.monoTypeOf param, t)
+    | exp (F.FunExp (param, _, r)) =
+        T.FunTy (V.monoTypeOf param, r)
     | exp (F.CaseExp (_, _, t)) = t
     | exp (F.PCaseExp (_, _, t)) = t
     | exp (F.HandleExp (_, _, t)) = t
     | exp (F.RaiseExp (_, t)) = t
     | exp (F.ApplyExp (_, _, t)) = t
-    | exp (F.VarArityOpExp (_, _, t)) = t
-    | exp (F.TupleExp (es, intfTy)) = let
-        val rs = List.map (T.reprTy o exp) es
+    | exp (F.VarArityOpExp (_, _, t)) = raise Fail "unsupported"
+    | exp (F.TupleExp (es, intfTy)) = T.TupleTy (intfTy, List.map exp es)
+    | exp (F.RangeExp (_, _, _, t)) = U.parrayTy t 
+    | exp (F.PTupleExp es) = let
+        val ts = List.map exp es
+        val is = List.map U.interfaceTy ts
         in
-	  T.IR (intfTy, R.TupleTy rs)
+          T.TupleTy (AST.TupleTy is, ts)
         end
-    | exp (F.RangeExp (_, _, _, t)) = B.parrayTy t
-    | exp (F.PTupleExp es) = T.TupleTy(List.map exp es)
-    | exp (F.PArrayExp (_, t)) = B.parrayTy t
-    | exp (F.FArrayExp (_, n, t)) = let
-        val nt = ntree t
-(*	val ft = R.FlatArrayTy ( FIXME *)
+    | exp (F.PArrayExp (_, t)) = U.parrayTy t
+    | exp (f as F.FArrayExp (_, n, t)) = let
+        val nt = ntree n
         in
-	  raise Fail "todo"
-        end
-    | exp (F.PCompExp (e, _, _)) = B.parrayTy(exp e)
+          T.FlatArrayTy (U.parrayTy t, nt)
+	end	  
+    | exp (F.PCompExp (e, _, _)) = U.parrayTy (exp e)
     | exp (F.PChoiceExp (_, t)) = t
-    | exp (F.SpawnExp _) = B.threadIdTy
+    | exp (F.SpawnExp _) = raise Fail "FIXME" (* B.threadIdTy *)
     | exp (F.ConstExp c) = const c
     | exp (F.VarExp (x, argTys)) = 
-        (U.apply (Var.typeOf x, argTys) 
+        (U.apply (V.typeOf x, argTys) 
 	 handle ex => (print(concat["typeOf(", V.toString x, ")\n"]); raise ex))
     | exp (F.SeqExp (_, e)) = exp e
     | exp (F.OverloadExp (ref (F.Instance x))) =
       (* NOTE: all overload instances are monomorphic *)
-        monoTy (Var.typeOf x)
+        monoTy (FTVar.typeOf x)
     | exp (F.OverloadExp _) = raise Fail "unresolved overloading"
     | exp (F.ExpansionOptsExp (opts, e)) = exp e
 					   
   and ntree (F.Lf _) = N.Lf
-    | ntree (F.Nd n) = N.Nd (ntree n)
+    | ntree (F.Nd []) = raise Fail "ntree"
+    | ntree (F.Nd (n::ns)) = let
+      (* find the max-depth subtree *)
+        fun lp ([], acc) = acc
+	  | lp (h::t, acc) = let
+              val curr = ntree h
+              in
+		if N.deeper (curr, acc) then lp (t, curr)
+		else lp (t, acc)
+	      end
+        in
+	  lp (ns, ntree n)
+        end
 
-  and const (F.DConst (dc, argTys)) = DataCon.typeOf' (dc, argTys)
+  and const (F.DConst (dc, argTys)) = FTDataCon.typeOf' (dc, argTys)
     | const (F.LConst (_, t)) = t
 				
-  and pat (F.ConPat (dc, argTys, _)) = DataCon.resultTypeOf' (dc, argTys)
-    | pat (F.TuplePat ps) = T.TupleTy (List.map pat ps)
+  and pat (F.ConPat (dc, argTys, _)) = FTDataCon.resultTypeOf' (dc, argTys)
+    | pat (F.TuplePat ps) = let
+        val ts = List.map pat ps
+	val is = List.map U.interfaceTy ts
+        in
+          T.TupleTy (AST.TupleTy is, ts)
+        end
     | pat (F.VarPat x) = monoTy (V.typeOf x)
     | pat (F.WildPat t) = t
     | pat (F.ConstPat c) = const c
