@@ -27,14 +27,14 @@ structure FTTranslateEnv : sig
       | Var of BOM.var
       | EqOp			(* either "=" or "<>" *)
 
-    val insertTyc	: (env * FTReprTypes.tycon * BOMTy.ty) -> unit
-    val insertCon	: (env * FTReprTypes.dcon * con_bind) -> unit
+    val insertTyc	: (env * FTTypes.tycon * BOMTy.ty) -> unit
+    val insertCon	: (env * FTTypes.dcon * con_bind) -> unit
     val insertFun	: (env * FLAST.var * (BOMTy.ty -> BOM.lambda)) -> env
     val insertVar	: (env * FLAST.var * BOM.var) -> env
     val newHandler	: env -> (BOM.var * env)
 
-    val findTyc		: (env * FTReprTypes.tycon) -> BOMTy.ty option
-    val findDCon	: (env * FTReprTypes.dcon) -> con_bind option
+    val findTyc		: (env * FTTypes.tycon) -> BOMTy.ty option
+    val findDCon	: (env * FTTypes.dcon) -> con_bind option
     val lookupVar	: (env * FLAST.var) -> var_bind
     val lookupVarArity  : (env * FLAST.var) -> var_bind
     val handlerOf	: env -> BOM.var
@@ -50,7 +50,7 @@ structure FTTranslateEnv : sig
     datatype bty_def
       = BTY_NONE
       | BTY_TYS of FLAST.ty_scheme
-      | BTY_TYC of FTReprTypes.tycon
+      | BTY_TYC of FTTypes.tycon
       | BTY_TY of BOMTy.ty
 
     type hlop_def = {
@@ -93,7 +93,7 @@ structure FTTranslateEnv : sig
     structure MEnv = FTModuleEnv
 
     structure BN = BasisNames
-    structure RTy = FTReprTypes
+    structure T  = FTTypes
 
     datatype con_bind
       = Const of BOMTy.data_con		(* nullary data constructors *)
@@ -121,12 +121,14 @@ structure FTTranslateEnv : sig
       val boolTyc = FTTyCon.newDataTyc (BN.bool, [])
       val boolFalse = FTDataCon.new boolTyc (BN.boolFalse, NONE) (* must define false first!!! *)
       val boolTrue = FTDataCon.new boolTyc (BN.boolTrue, NONE) (* must define true second!!! *)
-      val boolTy = RTy.ConTy ([], boolTyc)
+      val boolTy = T.ConTy ([], boolTyc)
       fun eqTyScheme () = let
         val tv = TyVar.newClass (Atom.atom "'a", Types.Eq)
-	val tv' = RTy.VarTy tv
+	val tv' = T.VarTy tv
+	val at = AST.TupleTy [AST.VarTy tv, AST.VarTy tv]
+	val tt = T.TupleTy (at, [tv', tv'])
         in
-	  RTy.TyScheme ([tv], RTy.FunTy (RTy.TupleTy [tv', tv'], boolTy))
+	  T.TyScheme ([tv], T.FunTy (tt, boolTy))
         end
       val eq = FTVar.newPoly (Atom.toString BN.eq, eqTyScheme ())
       val neq = FTVar.newPoly (Atom.toString BN.neq, eqTyScheme ())
@@ -195,7 +197,7 @@ structure FTTranslateEnv : sig
     datatype bty_def
       = BTY_NONE
       | BTY_TYS of FLAST.ty_scheme
-      | BTY_TYC of RTy.tycon
+      | BTY_TYC of T.tycon
       | BTY_TY of BOMTy.ty
     type hlop_def = {
 	name : BOM.hlop,			(* the HLOp's identifier *)
