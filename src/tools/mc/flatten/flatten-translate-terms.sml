@@ -33,10 +33,6 @@ structure FlattenTranslateTerms = struct
       (fx, FE.insertVar (env, x, fx))
     end
 
-(* pointwise function composition *)
-  infixr oo
-  fun f oo g = (fn (x, y) => (f x, g y))
-
 (* NOTE: the translation is agnostic to whether or not PTuples, PCases, etc.
  * are still around; it just translates them.
  *)
@@ -52,35 +48,53 @@ structure FlattenTranslateTerms = struct
           F.IfExp (exp e1, exp e2, exp e3, ty t)
       | exp (AST.CaseExp (e, ms, t)) = 
           F.CaseExp (exp e, List.map (trMatch env) ms, ty t)
-      | exp _ = raise Fail "todo"
-(*       | exp (AST.PCaseExp (es, ms, t)) =  *)
-(*           F.PCaseExp (List.map exp es, List.map pmatch ms, trTy t) *)
-(*       | exp (AST.HandleExp (e, ms, t)) = F.HandleExp (exp e, List.map match ms, trTy t) *)
-(*       | exp (AST.RaiseExp (e, t)) = F.RaiseExp (exp e, trTy t) *)
-(*       | exp (AST.FunExp (x, e, t)) = F.FunExp (trVar x, exp e, trTy t) *)
-(*       | exp (AST.ApplyExp (e1, e2, t)) = F.ApplyExp (exp e1, exp e2, trTy t) *)
-(*       | exp (AST.VarArityOpExp (oper, n, t)) = F.VarArityOpExp (vop oper, n, trTy t) *)
-(*       | exp (AST.TupleExp es) = let *)
-(*           val intfTy  = Types.TupleTy (List.map TypeOf.exp es) *)
-(* 	  in *)
-(* 	    F.TupleExp (List.map exp es, intfTy) *)
-(* 	  end *)
-(*       | exp (AST.RangeExp (e1, e2, optE, t)) =  *)
-(*           F.RangeExp (exp e1, exp e2, Option.map exp optE, trTy t) *)
-(*       | exp (AST.PTupleExp es) = F.PTupleExp (List.map exp es) *)
-(*       | exp (AST.PArrayExp (es, t)) = trPArray (es, t) (\* t is element type *\) *)
-(*       | exp (AST.PCompExp (e, pes, optE)) =  *)
-(*           F.PCompExp (exp e, List.map (pat oo exp) pes, Option.map exp optE) *)
-(*       | exp (AST.PChoiceExp (es, t)) = F.PChoiceExp (List.map exp es, trTy t) *)
-(*       | exp (AST.SpawnExp e) = F.SpawnExp (exp e) *)
-(*       | exp (AST.ConstExp k) = F.ConstExp (const k) *)
-(*       | exp (AST.VarExp (x, ts)) = F.VarExp (trVar x, List.map trTy ts) *)
-(*       | exp (AST.SeqExp (e1, e2)) = F.SeqExp (exp e1, exp e2) *)
-(*       | exp (AST.OverloadExp vr) = F.OverloadExp (ref (ov (!vr))) *)
-(*       | exp (AST.ExpansionOptsExp (os, e)) = F.ExpansionOptsExp (os, exp e) *)
+      | exp (AST.PCaseExp (es, ms, t)) = 
+          F.PCaseExp (List.map exp es, List.map (trPMatch env) ms, ty t) 
+      | exp (AST.HandleExp (e, ms, t)) = 
+          F.HandleExp (exp e, List.map (trMatch env) ms, ty t) 
+      | exp (AST.RaiseExp (e, t)) = F.RaiseExp (exp e, ty t)
+      | exp (AST.FunExp (x, e, t)) = let
+          val (x', env') = trVar (env, x)
+          val e' = trExp (env', e)
+          in
+	    F.FunExp (x', e', ty t)
+	  end
+      | exp (AST.ApplyExp (e1, e2, t)) =
+	  F.ApplyExp (exp e1, exp e2, ty t) 
+      | exp (AST.VarArityOpExp (oper, n, t)) = raise Fail "unsupported"
+      | exp (tup as AST.TupleExp es) = let
+          val astTy = TypeOf.exp tup
+	  in
+	    F.TupleExp (List.map exp es, astTy)
+	  end
+      | exp (AST.RangeExp (e1, e2, optE, t)) = 
+          F.RangeExp (exp e1, exp e2, Option.map exp optE, ty t) 
+      | exp (AST.PTupleExp es) = F.PTupleExp (List.map exp es) 
+      | exp (AST.PArrayExp (es, t)) = F.PArrayExp (List.map exp es, ty t)
+      | exp (AST.PCompExp (e, pes, optE)) = pcomp (e, pes, optE) 
+      | exp (AST.PChoiceExp (es, t)) = F.PChoiceExp (List.map exp es, ty t)
+      | exp (AST.SpawnExp e) = F.SpawnExp (exp e)
+      | exp (AST.ConstExp k) = F.ConstExp (trConst (env, k))
+      | exp (AST.VarExp (x, ts)) = let
+          val (x', _) = trVar (env, x)
+          in
+            F.VarExp (x', List.map ty ts)
+	  end
+      | exp (AST.SeqExp (e1, e2)) = F.SeqExp (exp e1, exp e2)
+      | exp (AST.OverloadExp vref) = 
+          (case !vref
+	    of AST.Unknown (t, vs) => raise Fail "todo"
+	     | AST.Instance x => let
+                 val (x', env') = trVar (env, x)
+                 in
+		   F.OverloadExp (ref (F.Instance x'))
+		 end)
+      | exp (AST.ExpansionOptsExp (os, e)) = F.ExpansionOptsExp (os, exp e)
+    and pcomp (e, pes, optE) = raise Fail "todo"
     in
       exp e
     end
+
 
   and trBind (env : env, b : AST.binding) : F.binding * env = let
         fun bind b =
@@ -91,13 +105,22 @@ structure FlattenTranslateTerms = struct
 		    in
 		      (F.ValBind (p', e'), env')
 		    end
-		| AST.PValBind (p, e) => raise Fail "todo"
+		| AST.PValBind (p, e) => let
+		    val e' = trExp (env, e)
+		    val (p', env') = trPat (env, p)
+		    in
+		      (F.PValBind (p', e'), env')
+		    end
 		| AST.FunBind lams => let
                     val (lams', env') = trLams (env, lams)
                     in
 		      (F.FunBind lams', env')
 		    end
-		| AST.PrimVBind (x, rhs) => raise Fail "todo"
+		| AST.PrimVBind (x, rhs) => let
+		    val (fx, env') = trVar (env, x) 
+                    in
+		      (F.PrimVBind (fx, rhs), env')
+		    end		        
 		| AST.PrimCodeBind c => (F.PrimCodeBind c, env)
 	      (* end case *))
         in
@@ -156,7 +179,7 @@ structure FlattenTranslateTerms = struct
 	       end
          (* end case *))
 
-  and trPMatch (env : env) (m : AST.pmatch) = 
+  and trPMatch (env : env) (m : AST.pmatch) : F.pmatch = 
        (case m
 	  of AST.PMatch (ps, e) => let
                val (ps', env') = trPPats (env, ps)
@@ -218,34 +241,15 @@ structure FlattenTranslateTerms = struct
           (lams', env')
         end
 
-(* (\* FIXME this is a mutually recursive knot, so this might not suffice... *)
-(*  * too linear... *\) *)
-(* (\* Looking at translate.sml, it seems there is one pass over the knot *)
-(*  * to bind all the names, then another pass to translate all the FBs... *)
-(*  *\) *)
-(* 		    fun lp ([], env', acc) = (F.FunBind (rev acc), env')		      | lp (lam::t, env, acc) = let *)
-(* 			  val (lam', env') = trLam (env, lam) *)
-(* 			  in *)
-(* 			    lp (t, env', lam'::acc) *)
-(* 		          end *)
-(* 		    in *)
-(* 		      lp (lams, env, []) *)
-(* 	            end *)
-
-  and trConst _ = raise Fail "todo"
-
-  and trPArray (es, eltTy) = raise Fail "todo" (* FIXME *)
-
-
-(* (\* *)
-(* let *)
-(*     val r = FlattenTypes.flatten (Basis.parrayTy eltTy) *)
-(*     val fl = FTSynthOps.flatten r *)
-(*     in *)
-(* *\) *)
-(*       raise Fail "todo" *)
-(*         (\* FLASTUtil.mkApplyExp (fl, List.map trExp es)  *)
-(*     end *)
-(* *\) *)
+  and trConst (env : env, c : AST.const) : F.const = 
+       (case c
+	  of AST.DConst (c, ts) => let
+               val c' = valOf (FE.findDCon (env, c))
+	       val ts' = List.map (fn t => trTy (env, t)) ts
+               in
+		 F.DConst (c', ts')
+	       end
+	   | AST.LConst (lit, t) => F.LConst (lit, trTy (env, t))
+         (* end case *))          
 
 end
