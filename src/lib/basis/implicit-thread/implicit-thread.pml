@@ -115,7 +115,7 @@ structure ImplicitThread (* :
 #define THREAD_ITE_OFF     1
 
       structure PT = PrimTypes
-      structure Arr = Array64
+      structure Arr = Array
 
       _primcode (
 

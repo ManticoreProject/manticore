@@ -60,7 +60,7 @@ structure Cilk5Deque (* :
 #include "../include/spin-lock.def"
 
     structure O = Option
-    structure Arr = Array64
+    structure Arr = Array
 
     _primcode(
 

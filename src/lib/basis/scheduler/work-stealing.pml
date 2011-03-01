@@ -24,7 +24,7 @@ structure WorkStealing (* :
 
   local
 
-    structure Arr = Array64
+    structure Arr = Array
     structure D = WorkStealingDeque
     structure PT = PrimTypes
 

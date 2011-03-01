@@ -360,7 +360,7 @@ Value_t GlobalAllocPolyArray (VProc_t *vp, int nElems, Value_t init)
     Word_t *obj = (Word_t*)(vp->globNextW);
     obj[-1] = VEC_HDR(nElems);
     for (int i = 0;  i < nElems; i++)
-	obj[i] = ValueToWord(init);
+	obj[i] = (Word_t)init;
     vp->globNextW += WORD_SZB * (nElems+1);
 #ifndef NO_GC_STATS
     vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);

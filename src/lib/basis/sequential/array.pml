@@ -25,8 +25,8 @@ val update = U.update
 val sub = U.sub
 
 fun tabulate (n, f) = 
-  if n < 0 orelse n > maxLen then
-    (Print.printLn "hi"; raise Fail "Size")
+  if n <= 0 orelse n > maxLen then
+    raise Fail "Size"
   else let
     val a = U.create (n, f 0)
     fun lp i =
@@ -52,6 +52,17 @@ fun modify f a = let
       ()
   in
     m 0
+  end
+
+fun app f a = let
+  val len = length a
+  fun app i = 
+    if i < len then 
+      (f (sub (a, i)); app (i + 1)) 
+    else 
+      ()
+  in
+    app 0
   end
 
 end

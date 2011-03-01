@@ -116,11 +116,11 @@ end = struct
   val mvarTy      = applyTyc mvarTyc
 
 (* arrays *)
-  val mArrayTyc    = tyc ["Array64", "array"]
-  val mArrayArray  = var ["Array64", "array"]
-  val mArrayLength = var ["Array64", "length"]
-  val mArraySub    = var ["Array64", "sub"]
-  val mArrayUpdate = var ["Array64", "update"]
+  val mArrayTyc    = tyc ["Array", "array"]
+  val mArrayArray  = var ["Array", "array"]
+  val mArrayLength = var ["Array", "length"]
+  val mArraySub    = var ["Array", "sub"]
+  val mArrayUpdate = var ["Array", "update"]
 
   fun arrayTyc ()    = M.get mArrayTyc
   fun arrayArray ()  = M.get mArrayArray

@@ -20,7 +20,7 @@ structure RopeOps =
     structure F = Future1
     structure PT = PrimTypes
     structure L = List
-    structure A = Array64
+    structure A = Array
 
     datatype 'a rope =
 	     LEAF of (int * 'a A.array)

@@ -1,7 +1,8 @@
 structure A = Array
 
 val n = 1048575 div 8
-val a = A.array (n, 0:long)
+val a = UnsafeArray.create (n, 0:long)
+val _ = Print.printLn (Long.toString (A.sub (a, 0)))
 fun lpz i = 
   if i < 0 then ()
   else (A.update(a, i, 2); lpz (i - 1))

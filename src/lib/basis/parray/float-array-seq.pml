@@ -117,7 +117,7 @@ structure FloatArraySeq = struct
         lp 1 (* we already did 0 *)
       end
 
-(* mapPoly : (float -> 'a) * seq -> 'a Array64.seq *)
+(* mapPoly : (float -> 'a) * seq -> 'a Array.seq *)
   fun mapPoly (f, s) =
     if null s then (raise Fail "can't!")
     else let

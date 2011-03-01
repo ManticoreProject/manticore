@@ -117,17 +117,17 @@ structure IntArraySeq = struct
       end
 
 (*
-(* mapPoly : (int -> 'a) * seq -> 'a Array64.seq *)
+(* mapPoly : (int -> 'a) * seq -> 'a Array.seq *)
   fun mapPoly (f, s) =
     if null s then (raise Fail "can't!")
     else let
       val len = length s
       val init = f (sub (s, 0))
-      val b = Array64.array (len, init)
+      val b = Array.array (len, init)
       fun lp i =
         if i >= len then b
         else let
-          val _ = Array64.update (b, i, f (A.sub (s, i)))
+          val _ = Array.update (b, i, f (A.sub (s, i)))
           in
             lp (i+1)
           end

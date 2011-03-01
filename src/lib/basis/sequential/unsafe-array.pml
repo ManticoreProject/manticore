@@ -14,22 +14,24 @@ structure UnsafeArray = struct
 
 _primcode (
   typedef array = PrimTypes.array;
-  extern void* AllocBigPolyArray (void*, int, void*) __attribute__((alloc,pure));
+  extern void* AllocBigPolyArray (void*, int, void*) __attribute__((alloc));
   define inline @create (arg : [ml_int, any] / exh : exh) : array =
     let n : int = #0(#0(arg))
     if I32Lt (n, MAX_ARRAY_SZ) then
-      let data : any = ccall AllocBigPolyArray (host_vproc, n, #1(arg))
+      let init : any = (any)#1(arg)
+      let init : any = promote(init)
+      let data : any = ccall AllocBigPolyArray (host_vproc, n, init)
       let a : array = alloc (data, n)
       return(a)
     else
-do ccall M_Print("hello\n")
       throw exh (Fail (@"UnsafeArray: requested array size too big"))
   ;
   define inline @sub (arg : [array, ml_int] / exh : exh) : any =
     let a : array = #0(arg)
     let data : any = #0(a)
     let ix : int = #0(#1(arg))
-    return(ArrLoad (data, ix))
+    let d : any = ArrLoad (data, ix)
+    return(d)
   ;
   define inline @update (arg : [array, ml_int, any] / exh : exh) : unit =
     let a : array = #0(arg)
