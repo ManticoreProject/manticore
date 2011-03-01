@@ -24,7 +24,7 @@ structure WorkStealing (* :
 
   local
 
-    structure Arr = Array
+    structure Arr = UnsafeArray
     structure D = WorkStealingDeque
     structure PT = PrimTypes
 
@@ -441,8 +441,8 @@ structure WorkStealing (* :
 		    return ()
 	    end
 	fun isTerminated () : bool = return (#0(terminated))
-	let deques : Arr.array = Arr.@array (nVProcs, enum(0):any / exh)
-	let idleFlags : Arr.array = Arr.@array (nVProcs, false / exh)
+	let deques : Arr.array = Arr.@create (nVProcs, enum(0):any / exh)
+	let idleFlags : Arr.array = Arr.@create (nVProcs, false / exh)
 	let self : vproc = SchedulerAction.@atomic-begin ()
 	let logWGID : long = Logging.@log-WSInit (self)
 	do SchedulerAction.@atomic-end (self)
