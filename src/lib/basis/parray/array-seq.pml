@@ -7,11 +7,11 @@
 
 structure ArraySeq = struct
 
-  structure A = Array64
+  structure A = Array
 
   type 'a seq = 'a A.array
 
-  val empty = 
+  fun empty () =
     A.tabulate (0, fn _ => raise Fail "instantiating a 0-length array")
 
   fun singleton s = A.array (1, s)
@@ -44,14 +44,14 @@ structure ArraySeq = struct
   fun drop (s, n) = let
     val len = length s
     in
-      if n >= len then empty
+      if n >= len then empty ()
       else A.tabulate (len-n, fn i => sub (s, i+n))
     end
 
   fun splitAt (s, i) = (take (s, i+1), drop (s, i+1))
 
   fun fromList xs = 
-    if List.null xs then empty
+    if List.null xs then (empty ())
     else let
       val len = List.length xs
       val x = List.hd xs
@@ -79,7 +79,7 @@ structure ArraySeq = struct
     end
 
   fun rev s = 
-    if null s then empty
+    if null s then (empty ())
     else let
       val len = length s
       val x = sub (s, 0)
@@ -96,7 +96,7 @@ structure ArraySeq = struct
       end
 
   fun map (f, s) = 
-    if null s then empty
+    if null s then (empty ())
     else let
       val len = length s
       val init = f (sub (s, 0))
@@ -154,7 +154,7 @@ structure ArraySeq = struct
   fun cut (s, n) = (take (s, n), drop (s, n))
 
   fun filter (pred, s) =
-    if null s then empty
+    if null s then (empty ())
     else let
       val len = length s
       fun lp (i, acc) = 
@@ -176,7 +176,7 @@ structure ArraySeq = struct
     fun min (m, n) = if m < n then m else n
     val len = min (length s1, length s2)
     in
-      if len = 0 then empty 
+      if len = 0 then (empty ()) 
       else let
         val init = (sub(s1,0), sub(s2,0))
 	val b = A.array (len, init)
@@ -194,7 +194,7 @@ structure ArraySeq = struct
     end
 
   fun unzip s = 
-    if null s then (empty, empty)
+    if null s then ((empty ()), (empty ()))
     else let
       val len = length s
       val (x, y) = sub (s, 0)

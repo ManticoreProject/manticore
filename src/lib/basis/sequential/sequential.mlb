@@ -37,6 +37,7 @@ in
 end
 ann "cpp" "" 
 in
+  unsafe-array.pml
   unsafe-long-array.pml
   unsafe-int-array.pml
   unsafe-float-array.pml

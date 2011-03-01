@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Monomorphic arrays of ints.
+ * Arrays of unboxed ints.
  *)
 
 structure IntArray = struct

@@ -9,23 +9,17 @@
 #include <prim.def>
 
 #define MAX_LOCAL_ARRAY_SZ      I32Div(MAX_LOCAL_ARRAY_SZB, 8:int)
-#define MAX_GLOBAL_ARRAY_SZ     I32Div(MAX_GLOBAL_ARRAY_SZB, 8:int)
 #define MAX_ARRAY_SZ            I32Div(MAX_ARRAY_SZB, 8:int)
 
 structure UnsafeLongArray = struct
 
 _primcode (
-  extern void* GlobalAllocLongArray (void*, int);
-  extern void* AllocBigLongArray (void*, int);
+  extern void* AllocBigLongArray (void*, int) __attribute__((alloc,pure));
   typedef array = PrimTypes.array;
   define inline @create (a : ml_int / exh : exh) : array =
     let n : int = #0(a)
     if I32Lt (n, MAX_LOCAL_ARRAY_SZ) then
       let a : array = AllocLongArray (n)
-      return(a)
-    else if I32Lt (n, MAX_GLOBAL_ARRAY_SZ) then
-      let data : any = ccall GlobalAllocLongArray (host_vproc, n)
-      let a : array = alloc (data, n)
       return(a)
     else if I32Lt (n, MAX_ARRAY_SZ) then
       let data : any = ccall AllocBigLongArray (host_vproc, n)

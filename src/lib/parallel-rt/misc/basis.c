@@ -451,7 +451,8 @@ void M_SeedRand ()
  */
 Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
 {
-    return GlobalAllocArray (vp, nElems, elt);
+  Say("M_NewArray: fail\n");
+  return 0;
 }
 
 float M_Powf (float x, float y)

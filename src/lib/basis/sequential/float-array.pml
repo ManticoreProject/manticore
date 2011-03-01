@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Monomorphic arrays of floats.
+ * Arrays of unboxed floats.
  *)
 
 structure FloatArray = struct

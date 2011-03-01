@@ -12,7 +12,6 @@
 #define ADDR_OF(i,x)    AMP i(x)
 
 #define MAX_LOCAL_ARRAY_SZB     65536:int
-#define MAX_GLOBAL_ARRAY_SZB    I32Mul(4:int, 1048576:int)
-#define MAX_ARRAY_SZB           I32Sub(I32LSh(1:int, 31:int), 1:int)
+#define MAX_ARRAY_SZB           1073741823
 
 #endif /*! _PRIM_DEF_ */
