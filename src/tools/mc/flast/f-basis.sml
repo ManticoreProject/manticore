@@ -6,6 +6,10 @@
  * Basis library for FLAST representation.
  *)
 
+(* FIXME all elements here need to be included in the flatten env
+ * before translation
+ *)
+
 structure FBasis : sig
 
 (* type constructors *)

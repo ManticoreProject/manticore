@@ -18,6 +18,7 @@ Library
   structure FTTypeUtil
   structure FTVar
   structure FLASTUtil
+  structure FlattenEnv
   structure PrintFTTypes
   structure PrintFLAST
 
@@ -43,5 +44,6 @@ is
   ft-type-of.sml
   ft-var.sml  
   flast-util.sml
+  flatten-env.sml
   print-ft-types.sml
   print-flast.sml

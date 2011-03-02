@@ -13,6 +13,8 @@ structure FTTypeUtil = struct
   structure F = FLAST
   structure T = FTTypes
   structure N = NestingTreeTypes
+
+  structure FEnv = FlattenEnv
 		
   val toString : T.ty -> string = T.toString
 
