@@ -13,6 +13,7 @@ Library
   structure FTTypes
   structure FTTyCon
   structure FTDataCon
+  structure FBasis
   structure FTTypeOf
   structure FTTypeUtil
   structure FTVar
@@ -37,6 +38,7 @@ is
   ft-types.sml
   ft-ty-con.sml
   ft-data-con.sml
+  f-basis.sml
   ft-type-util.sml
   ft-type-of.sml
   ft-var.sml  

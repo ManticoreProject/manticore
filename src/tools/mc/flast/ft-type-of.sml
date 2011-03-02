@@ -20,6 +20,8 @@ end = struct
   structure N = NestingTreeTypes
   structure U = FTTypeUtil
   structure V = FTVar
+
+  structure FB = FBasis
 		 
   fun monoTy _ = raise Fail "todo: monoTy"
 (*
@@ -39,22 +41,22 @@ end = struct
     | exp (F.ApplyExp (_, _, t)) = t
     | exp (F.VarArityOpExp (_, _, t)) = raise Fail "unsupported"
     | exp (F.TupleExp (es, intfTy)) = T.TupleTy (intfTy, List.map exp es)
-    | exp (F.RangeExp (_, _, _, t)) = U.parrayTy t 
+    | exp (F.RangeExp (_, _, _, t)) = FB.parrayTy t 
     | exp (F.PTupleExp es) = let
         val ts = List.map exp es
         val is = List.map U.interfaceTy ts
         in
           T.TupleTy (AST.TupleTy is, ts)
         end
-    | exp (F.PArrayExp (_, t)) = U.parrayTy t
+    | exp (F.PArrayExp (_, t)) = FB.parrayTy t
     | exp (f as F.FArrayExp (_, n, t)) = let
         val nt = ntree n
         in
-          T.FlatArrayTy (U.parrayTy t, nt)
+          T.FlatArrayTy (FB.parrayTy t, nt)
 	end	  
-    | exp (F.PCompExp (e, _, _)) = U.parrayTy (exp e)
+    | exp (F.PCompExp (e, _, _)) = FB.parrayTy (exp e)
     | exp (F.PChoiceExp (_, t)) = t
-    | exp (F.SpawnExp _) = raise Fail "FIXME" (* B.threadIdTy *)
+    | exp (F.SpawnExp _) = FB.threadIdTy
     | exp (F.ConstExp c) = const c
     | exp (F.VarExp (x, argTys)) = 
         (U.apply (V.typeOf x, argTys) 

@@ -1,4 +1,4 @@
-(* ft-ty-con.sml
+(* ft-ty-con.sml 
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -10,13 +10,11 @@
 
 structure FTTyCon : sig
 
-(*
   (* create a new abstract type constructor *)
-    val newAbsTyc : (Atom.atom * int * bool) -> FTTypes.tycon
+    val newAbsTyc : (Atom.atom * int * bool * Types.tycon) -> FTTypes.tycon
 
   (* create a new datatype tyc; it will have an empty constructor list *)
-    val newDataTyc : (Atom.atom * FLAST.tyvar list) -> FTTypes.tycon
-*)
+    val newDataTyc : (Atom.atom * FLAST.tyvar list * Types.tycon) -> FTTypes.tycon
 
   (* return the name of a type constructor *)
     val nameOf : FTTypes.tycon -> Atom.atom
@@ -78,37 +76,38 @@ structure FTTyCon : sig
     fun markEqTyc tyc = setFn(tyc, true)
     end
 
-(*
-    fun newTyc (name, arity, params, def) = Tyc {
+    fun newTyc (name, arity, params, def, interface) = Tyc {
 	    name = name,
 	    stamp = Stamp.new(),
 	    arity = arity,
 	    params = params,
 	    props = PropList.newHolder(),
-	    def = def
+	    def = def,
+	    interface = interface
 	  }
-*)
 
-(*
   (* create a new abstract type constructor *)
     local
       val params = Vector.fromList(List.map Atom.atom ["'a", "'b", "'c", "'d", "'e"])
     in
-    fun newAbsTyc (name, arity, eq) = let
-	  fun mkParam i = TyVar.new(Vector.sub(params, i))
-	  val tyc = newTyc (name, arity, List.tabulate(arity, mkParam), FTTypes.AbsTyc)
-	  in
-	    if eq then markEqTyc tyc else ();
-	    tyc
-	  end
-    end
-*)
+      fun newAbsTyc (name, arity, eq, interface) = let
+        fun mkParam i = TyVar.new(Vector.sub(params, i))
+        val params = List.tabulate (arity, mkParam)
+	val a = FTTypes.AbsTyc
+	val tyc = newTyc (name, arity, params, a, interface)
+        in
+	  if eq then markEqTyc tyc else ();
+	  tyc
+	end
+    end (* local *)
 
-(*
   (* create a new datatype tyc; it will have an empty constructor list *)
-    fun newDataTyc (name, params) = 
-	  newTyc (name, List.length params, params, FTTypes.DataTyc{nCons = ref 0, cons = ref[]})
-*)
+    fun newDataTyc (name, params, interface) = let
+      val pLen = List.length params
+      val d = FTTypes.DataTyc {nCons = ref 0, cons = ref []}
+      in
+        newTyc (name, pLen, params, d, interface)
+      end
 
   (* return the name of a type constructor *)
     fun nameOf (Tyc{name, ...}) = name
