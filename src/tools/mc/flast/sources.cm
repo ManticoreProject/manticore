@@ -19,6 +19,7 @@ Library
   structure FTVar
   structure FLASTUtil
   structure FlattenEnv
+  structure PrimFlattenEnv
   structure PrintFTTypes
   structure PrintFLAST
 
@@ -45,5 +46,6 @@ is
   ft-var.sml  
   flast-util.sml
   flatten-env.sml
+  prim-flatten-env.sml
   print-ft-types.sml
   print-flast.sml

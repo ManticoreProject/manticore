@@ -39,6 +39,11 @@ structure FTDataCon : sig
   (* return the datatype type constructor that owns this data constructor *)
     val ownerOf : FTTypes.dcon -> FTTypes.tycon
 
+  (* return the interface dcon corresponding to the argument dcon *)
+  (* that is, go backwards to the AST dcon *)
+  (* ex: interfaceOf FBasis.boolFalse --> Basis.boolFalse *)
+    val interfaceOf : FTTypes.dcon -> Types.dcon
+
   (* return true if the data constructor is nullary *)
     val isNullary : FTTypes.dcon -> bool
 
@@ -85,6 +90,8 @@ structure FTDataCon : sig
     fun argTypeOf (DCon{argTy, ...}) = argTy
 
     fun ownerOf (DCon{owner, ...}) = owner
+
+    fun interfaceOf (DCon {interface, ...}) = interface
 
     fun typeOf (DCon{owner as T.Tyc{params, ...}, argTy, ...}) = let
 	  val ty = T.ConTy (List.map T.VarTy params, owner)

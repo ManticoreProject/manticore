@@ -22,6 +22,11 @@ structure FTTyCon : sig
   (* return the stamp of a type constructor *)
     val stampOf : FTTypes.tycon -> Stamp.stamp
 
+  (* return the interface tycon correspoding to the current tycon *)
+  (* go backward to the AST representation, in other words *)
+  (* ex: interfaceOf FBasis.boolTyc --> Basis.boolTyc *)
+    val interfaceOf : FTTypes.tycon -> Types.tycon
+
   (* return a string representation *)
     val toString : FTTypes.tycon -> string
 
@@ -116,6 +121,8 @@ structure FTTyCon : sig
     fun toString (Tyc{name, stamp, ...}) = Atom.toString name
 
     fun stampOf (Tyc{stamp, ...}) = stamp
+
+    fun interfaceOf (Tyc {interface, ...}) = interface
 
   (* return true if two type constructors are the same *)
     fun same (tyc1, tyc2) = Stamp.same(stampOf tyc1, stampOf tyc2)
