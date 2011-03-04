@@ -11,7 +11,7 @@ structure FTTranslate : sig
   end = struct
 
     structure F = FLAST
-    structure RTy = FTReprTypes
+    structure FTy = FTTypes
     structure V = FTVar
     structure B = BOM
     structure BV = B.Var
@@ -223,12 +223,12 @@ structure FTTranslate : sig
 		    B.mkApply(f, [arg], [E.handlerOf env]))))
 	    | F.VarArityOpExp (oper, i, ty) => raise Fail "unsupported" 
                 (* FIXME I'm pretty sure we can get rid of the VarArityOpExp form. *)
-	    | F.TupleExp[] => let
+	    | F.TupleExp ([], _) => let
 		val t = BV.new("_unit", BTy.unitTy)
 		in
 		  BIND([t], B.E_Const(Lit.unitLit, BTy.unitTy))
 		end
-	    | F.TupleExp es =>
+	    | F.TupleExp (es, _) =>
 		EXP(trExpsToVs (env, es, fn xs => let
 		  val ty = BTy.T_Tuple(false, List.map BV.typeOf xs)
 		  val t = BV.new("_tpl", ty)
@@ -263,6 +263,7 @@ structure FTTranslate : sig
 		  EXP(FTTranslatePTup.tr{supportsExceptions=false, env=env, es=exps'})
 	        end
 	    | F.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
+	    | F.FArrayExp _ => raise Fail "todo"
 	    | F.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | F.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
 	    | F.SpawnExp e => let
@@ -378,7 +379,7 @@ structure FTTranslate : sig
 		  B.mkFun(List.map trFun fs, k env)
 		end
 	    | F.PrimVBind (x, rhs) => (
-	        case FTTranslatePrim.cvtRhs (env, x, Var.typeOf x, rhs)
+	        case FTTranslatePrim.cvtRhs (env, x, FTVar.typeOf x, rhs)
 		 of SOME (env', x', e) => mkLet([x'], e, k env')
 		  | NONE => k env
 		(* end case *))
@@ -517,7 +518,7 @@ structure FTTranslate : sig
       | trExpToV (env, exp, cxt : B.var -> B.exp) = (case trExp(env, exp)
 	   of BIND([x], rhs) => mkStmt([x], rhs, cxt x)
 	    | EXP e => let
-		val t = BV.new ("_t", trTy(env, TypeOf.exp exp))
+		val t = BV.new ("_t", trTy(env, FTTypeOf.exp exp))
 		in
 		  mkLet([t], e, cxt t)
 		end
@@ -527,9 +528,9 @@ structure FTTranslate : sig
 	  case E.lookupVar(env, x)
 	   of E.Var x' => cxt x' (* pass x' directly to the context *)
 	    | E.Lambda mkLambda => let
-                val sigma = Var.typeOf x (* actually a type scheme *)
+                val sigma = FTVar.typeOf x (* actually a type scheme *)
 		val rangeTy = (case FTTypeUtil.apply (sigma, tys)						 
-		       of RTy.FunTy (_, r) => r
+		       of FTy.FunTy (_, r) => r
 			| _ => raise Fail (V.nameOf x^": expected function type is "^
 					   FTTypeUtil.toString(FTTypeUtil.apply(sigma, tys)))
 		      (* end case *))
@@ -573,7 +574,7 @@ structure FTTranslate : sig
 		      B.mkFun(fbs, body'))
 		(* end case *))
 	  val mainFun = B.FB{
-		  f = BV.new("main", BTy.T_Fun([argTy], [BTy.exhTy], [trTy(env, TypeOf.exp body)])),
+		  f = BV.new("main", BTy.T_Fun([argTy], [BTy.exhTy], [trTy(env, FTTypeOf.exp body)])),
 		  params = [arg],
 		  exh = [exh],
 		  body = body''
@@ -583,7 +584,7 @@ structure FTTranslate : sig
 	  val rewrites = listRewrites()
 	  val module = B.mkModule(Atom.atom "Main", imports, hlops, rewrites, mainFun)
 	  in
-	    if (Controls.get TranslateControls.keepEnv)
+	    if (Controls.get FTTranslateControls.keepEnv)
 	      then let
 		val outName = (case Controls.get BasicControl.keepPassBaseName
 		       of NONE => "translate.env"
@@ -607,7 +608,7 @@ structure FTTranslate : sig
 	    postExt = "bom",
 	    passName = "translate",
 	    pass = translate,
-	    registry = TranslateControls.registry
+	    registry = FTTranslateControls.registry
 	  }
 
   end

@@ -17,6 +17,7 @@ Library
   structure FTTypeOf
   structure FTTypeUtil
   structure FTVar
+  structure FTVarSubst
   structure FLASTUtil
   structure FlattenEnv
   structure PrimFlattenEnv
@@ -44,6 +45,7 @@ is
   ft-type-util.sml
   ft-type-of.sml
   ft-var.sml  
+  ft-var-subst.sml
   flast-util.sml
   flatten-env.sml
   prim-flatten-env.sml

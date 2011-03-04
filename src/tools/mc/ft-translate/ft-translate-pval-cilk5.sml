@@ -44,6 +44,7 @@ structure FTTranslatePValCilk5  : sig
     structure BU  = BOMUtil
     structure BTy = BOMTy
     structure BV  = BOM.Var
+    structure FTy = FTTypes
     structure E   = FTTranslateEnv
 
     fun unitVar () = BV.new("_unit", BTy.unitTy)
@@ -90,11 +91,12 @@ structure FTTranslatePValCilk5  : sig
 	  val ty2 = FTTranslateTypes.tr(env, raise Fail "FIXME" (*FTTypeOf.exp e2*))
 	  val ivar = BV.new("ivar", findBOMTy["ImplicitThreadIVar", "ivar"])
 	  val (x', env) = trVar(env, x)
-	  val selFnAST = FTVar.new("selFn", AST.FunTy(Basis.unitTy, TypeOf.exp e1))
+	  val selFnAST = FTVar.new("selFn", FTy.FunTy (FBasis.unitTy, FTTypeOf.exp e1))
 	  val (selFn, env) = trVar(env, selFnAST)
         (* e2' = e2[x -> selFn()] *)
-	  val e2' = VarSubst.substForExp (VarSubst.idSubst x) 
-					 (FLASTUtil.mkApplyExp(FLAST.VarExp(selFnAST, []), [FLAST.TupleExp[]]))
+	  val e2' = FTVarSubst.substForExp (FTVarSubst.idSubst x) 
+					 (FLASTUtil.mkApplyExp(FLAST.VarExp(selFnAST, []), 
+							       [FLASTUtil.unitExp]))
 					 e2
 	  val bodyFn = BV.new("bodyFn", BTy.T_Fun([BV.typeOf selFn], [BTy.exhTy], [ty2]))
 	  val (bodyExh, _) = E.newHandler env

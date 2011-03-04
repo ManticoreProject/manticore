@@ -67,8 +67,6 @@ String.concatWith "," (List.map T.toString tys), "])\n"]); raise ex)
 
   val same : T.ty * T.ty -> bool = T.same
 
-  fun parrayTy (r : T.ty) : T.ty = raise Fail "todo"
-
   fun interfaceTy (t : T.ty) : AST.ty = 
    (case t 
       of T.VarTy a => AST.VarTy a
@@ -93,6 +91,14 @@ String.concatWith "," (List.map T.toString tys), "])\n"]); raise ex)
      in
        lp (n, i)
      end
+
+(* domainOf : F.repr_ty -> F.repr_ty *)
+  fun domainOf (T.FunTy (d, _)) = d
+    | domainOf _ = raise Fail "domainOf"
+
+(* rangeOf : F.repr_ty -> F.repr_ty *)
+  fun rangeOf (T.FunTy (_, r)) = r
+    | rangeOf _ = raise Fail "rangeOf"
 
 (* (\* *)
 (*   val trTy = TranslateTypesFT.trTy *)
@@ -173,14 +179,6 @@ String.concatWith "," (List.map T.toString tys), "])\n"]); raise ex)
 (* 	     String.concat ["[", ss', "]", t'] *)
 (* 	   end *)
 (*      (\* end case *\)) *)
-
-(* (\* domainOf : F.repr_ty -> F.repr_ty *\) *)
-(*   fun domainOf (T.FunTy (d, _)) = d *)
-(*     | domainOf _ = raise Fail "domainOf" *)
-
-(* (\* rangeOf : F.repr_ty -> F.repr_ty *\) *)
-(*   fun rangeOf (T.FunTy (_, r)) = r *)
-(*     | rangeOf _ = raise Fail "rangeOf" *)
 
 (* (\* unzipF : F.repr_ty list -> F.repr_ty list * F.repr_ty list *\) *)
 (* (\* unzip function types into domains and ranges *\) *)

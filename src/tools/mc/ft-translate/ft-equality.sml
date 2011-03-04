@@ -8,7 +8,7 @@
 
 structure FTEquality : sig
 
-    val mkEqual : (FTTranslateEnv.env * FLAST.var * FTReprTypes.ty) -> BOM.lambda
+    val mkEqual : (FTTranslateEnv.env * FLAST.var * FTTypes.ty) -> BOM.lambda
 
   end = struct
 

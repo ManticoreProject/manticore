@@ -7,8 +7,8 @@
 structure FTTranslateParr  : sig
 
   (* A FLAST to BOM translation of parrays to ropes. *)
-    val tr : FTTranslateEnv.env * (FTTranslateEnv.env * AST.exp * (BOM.Var.var -> BOM.exp) -> BOM.exp)
-             -> AST.exp list * AST.ty -> BOM.exp
+    val tr : FTTranslateEnv.env * (FTTranslateEnv.env * FLAST.exp * (BOM.Var.var -> BOM.exp) -> BOM.exp)
+             -> FLAST.exp list * FLAST.ty -> BOM.exp
 
   end  = struct
 
@@ -147,12 +147,12 @@ structure FTTranslateParr  : sig
 	fun ropeTy (env, ty) = TranslateTypes.tr(env, R.ropeTy ty)
 	val rawIntTy = BTy.T_Raw BTy.T_Int
 	val mkArray = ASTUtil.mkArray
-    in
+    in 
   (* ropeBOM : env * (env * F.exp * (BV.var -> B.exp)) -> _ rope * F.ty -> B.exp *)
     fun ropeBOM (env, trExpToV) (r, t) =
-	let val ropeTy = ropeTy(env, t)
-	    val TranslateEnv.DCon(ropeLeaf, _) = TranslateTypes.trDataCon(env, R.ropeLeaf())
-	    val TranslateEnv.DCon(ropeCat, _) = TranslateTypes.trDataCon(env, R.ropeCat())
+	let val ropeTy = ropeTy(env, t) 
+	    val FTTranslateEnv.DCon(ropeLeaf, _) = FTTranslateTypes.trDataCon(env, R.ropeLeaf())
+	    val FTTranslateEnv.DCon(ropeCat, _) = FTTranslateTypes.trDataCon(env, R.ropeCat())
 	    val nV = B.Var.new ("n", rawIntTy)
 	    val rV = B.Var.new ("r", ropeTy)
 	in case r

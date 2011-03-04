@@ -118,17 +118,13 @@ structure FTTranslateEnv : sig
 
     local
 (* FIXME build a general translation mechanism *)
-      val boolTyc = FTTyCon.newDataTyc (BN.bool, [])
-      val boolFalse = FTDataCon.new boolTyc (BN.boolFalse, NONE) (* must define false first!!! *)
-      val boolTrue = FTDataCon.new boolTyc (BN.boolTrue, NONE) (* must define true second!!! *)
-      val boolTy = T.ConTy ([], boolTyc)
       fun eqTyScheme () = let
         val tv = TyVar.newClass (Atom.atom "'a", Types.Eq)
 	val tv' = T.VarTy tv
 	val at = AST.TupleTy [AST.VarTy tv, AST.VarTy tv]
 	val tt = T.TupleTy (at, [tv', tv'])
         in
-	  T.TyScheme ([tv], T.FunTy (tt, boolTy))
+	  T.TyScheme ([tv], T.FunTy (tt, FBasis.boolTy))
         end
       val eq = FTVar.newPoly (Atom.toString BN.eq, eqTyScheme ())
       val neq = FTVar.newPoly (Atom.toString BN.neq, eqTyScheme ())

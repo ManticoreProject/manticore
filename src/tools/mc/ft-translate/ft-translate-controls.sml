@@ -12,7 +12,7 @@ structure FTTranslateControls =
     val (registry, debug) = BasicControl.newRegistryWithDebug {
 	    name = "ft-translate",
 	    pri = 4,
-	    help = "AST to BOM translation-phase controls"
+	    help = "AST to FLAST, FLAST to BOM translation-phase controls"
 	  }
 
     val keepEnv = Controls.genControl {

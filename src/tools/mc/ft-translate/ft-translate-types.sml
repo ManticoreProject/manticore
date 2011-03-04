@@ -6,17 +6,17 @@
 
 structure FTTranslateTypes : sig
 
-  val tr : FTTranslateEnv.env * FTReprTypes.ty -> BOM.ty
-  val trScheme : FTTranslateEnv.env * FTReprTypes.ty_scheme -> BOM.ty
+  val tr : FTTranslateEnv.env * FTTypes.ty -> BOM.ty
+  val trScheme : FTTranslateEnv.env * FTTypes.ty_scheme -> BOM.ty
 
-  val trDataCon : FTTranslateEnv.env * FTReprTypes.dcon -> FTTranslateEnv.con_bind
+  val trDataCon : FTTranslateEnv.env * FTTypes.dcon -> FTTranslateEnv.con_bind
 
 (* convert parse-tree types to BOM types *)
   val cvtPrimTy : FTTranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.ty -> BOM.ty
   val cvtPrimTys : FTTranslateEnv.env * ProgramParseTree.PML2.BOMParseTree.ty list -> BOM.ty list
 
 (* record the BOM kind of the representation of an AST type constructor *)
-  val setTycKind : FTReprTypes.tycon * BOMTy.kind -> unit
+  val setTycKind : FTTypes.tycon * BOMTy.kind -> unit
 
 (* cached lookup of primitive BOM types from the basis *)
   val stringLenBOMTy : unit -> BOM.ty
@@ -25,8 +25,8 @@ structure FTTranslateTypes : sig
 end = struct
 
     structure E     = FTTranslateEnv
-    structure RTy   = FTReprTypes
-    structure Ty    = Types (* AST types *)
+    structure ATy   = Types (* AST types *)
+    structure FTy   = FTTypes
     structure BTy   = BOMTy
     structure BTyc  = BOMTyCon
     structure BPT   = ProgramParseTree.PML2.BOMParseTree
@@ -43,7 +43,7 @@ end = struct
 
   (* a property to track the mapping from AST type constructors to BOM kinds *)
     local
-      fun propsOf (RTy.Tyc {props, ...}) = props
+      fun propsOf (FTy.Tyc {props, ...}) = props
       fun newProp mkProp = PropList.newProp (propsOf, mkProp)
       val {getFn, setFn, ...} = newProp (fn _ => BTy.K_UNIFORM)
     in
@@ -57,24 +57,24 @@ end = struct
   (* return the BOM kind of the argument of an AST data constructor; this code
    * looks at the top-level structure of the type to determine the kind.
    *)
-    fun bomKindOfArgTy (RTy.DCon {argTy, ...}) =
+    fun bomKindOfArgTy (FTy.DCon {argTy, ...}) =
      (case argTy of
-          SOME(RTy.FunTy _) => BTy.K_BOXED
-	| SOME(RTy.TupleTy[]) => BTy.K_UNBOXED
-	| SOME(RTy.TupleTy _) => BTy.K_BOXED
-	| SOME(RTy.ConTy(_, tyc)) => getTycKind tyc
+          SOME(FTy.FunTy _) => BTy.K_BOXED
+	| SOME(FTy.TupleTy(_,[])) => BTy.K_UNBOXED (* unit type *)
+	| SOME(FTy.TupleTy _) => BTy.K_BOXED
+	| SOME(FTy.ConTy(_, tyc)) => getTycKind tyc
 	| _ => BTy.K_UNIFORM
      (* end case *))
 
     fun tr (env, ty) = let
 	  fun tr' ty = (case ty
-		 of RTy.VarTy _ => BTy.T_Any
-		  | RTy.ConTy(tyArgs, tyc) => (
+		 of FTy.VarTy _ => BTy.T_Any
+		  | FTy.ConTy(tyArgs, tyc) => (
 		      case FTTranslateEnv.findTyc (env, tyc)
 		       of SOME ty => ty
 			| NONE => 
 			  (case tyc
-			    of RTy.Tyc{def=RTy.AbsTyc, ...} => 
+			    of FTy.Tyc{def=FTy.AbsTyc, ...} => 
 			       (* look for the concrete type of the constructor *)
 			       (case ME.getRealizationOfTyc tyc
 				  of SOME (ME.TyCon tyc) => trTyc(env, tyc)
@@ -86,26 +86,26 @@ end = struct
 			     | _ => trTyc (env, tyc)
 			  (* end case *))
 		      (* end case *))
-		  | RTy.FunTy(ty1, ty2) => BTy.T_Fun([tr' ty1], [BTy.exhTy], [tr' ty2])
-		  | RTy.TupleTy [] => BTy.unitTy
-		  | RTy.TupleTy tys => BTy.T_Tuple(false, List.map tr' tys)
-		  | RTy.FlatArrayTy _ => raise Fail "todo"
+		  | FTy.FunTy(ty1, ty2) => BTy.T_Fun([tr' ty1], [BTy.exhTy], [tr' ty2])
+		  | FTy.TupleTy (_, []) => BTy.unitTy
+		  | FTy.TupleTy (_, tys) => BTy.T_Tuple(false, List.map tr' tys)
+		  | FTy.FlatArrayTy _ => raise Fail "todo"
 		(* end case *))
 	  in
 	    tr' ty
 	  end
 
-    and trScheme (env, RTy.TyScheme(_, ty)) = tr (env, ty)
+    and trScheme (env, FTy.TyScheme(_, ty)) = tr (env, ty)
 
-    and trTyc (env, tyc as RTy.Tyc {name, def, ...}) = (case def
-	   of RTy.AbsTyc => raise Fail ("unknown abstract type " ^ Atom.toString name)
-	    | RTy.DataTyc{cons, ...} => let
+    and trTyc (env, tyc as FTy.Tyc {name, def, ...}) = (case def
+	   of FTy.AbsTyc => raise Fail ("unknown abstract type " ^ Atom.toString name)
+	    | FTy.DataTyc{cons, ...} => let
 	      (* insert a placeholder representation for tyc to avoid infinite loops *)
 		val _ = E.insertTyc (env, tyc, BTy.T_Any)
 	      (* partition constructors into constants and constructor function lists *)
 		val (consts, conFuns) =
 		      List.partition
-			(fn (dc as RTy.DCon{argTy=NONE, ...}) => true | _ => false)
+			(fn (dc as FTy.DCon{argTy=NONE, ...}) => true | _ => false)
 			  (! cons)
 	      (* create the datatype constructor *)
 		val nConsts = List.length consts
@@ -208,7 +208,7 @@ end = struct
 		      of E.BTY_NONE => raise Fail("unbound BOM type constructor " ^ PTVar.toString tyc)
 		       | E.BTY_TY ty => ty
 		       | E.BTY_TYS tys => trScheme(env, tys)
-		       | E.BTY_TYC tyc => tr(env, RTy.ConTy([], tyc))
+		       | E.BTY_TYC tyc => tr(env, FTy.ConTy([], tyc))
 	             (* end case *))
 	         (* end case *))
           in

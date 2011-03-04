@@ -10,10 +10,6 @@ Library
   structure FTTranslateEnv
   structure FTTranslateTypes
 
-(* can comment these out... *)
-  structure FTEquality
-  structure FTModuleEnv
-
 is
 
   $/basis.cm
@@ -27,26 +23,17 @@ is
   ../flast/sources.cm
   ../env/sources.cm
   ../bom/sources.cm
-(*  ../hlop/sources.cm *)
   ../typechecker/sources.cm
   ../parse-tree/sources.cm
-
-(* FIXME: we shouldn't depend on stuff from another transform phase! *)
-(*  ../ast-opt/sources.cm *)
 
   ft-equality.sml
   ft-flatten-rep.sml
   ft-translate.sml
-(*
   ft-translate-controls.sml
-*)
   ft-module-env.sml
   ft-translate-env.sml
-(*
   ft-translate-parr.sml
-*)
   ft-translate-pval-cilk5.sml
   ft-translate-ptup.sml
   ft-translate-types.sml
   ft-translate-prim.sml
-

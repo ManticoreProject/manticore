@@ -8,28 +8,33 @@
 
 structure FLASTUtil : sig
 
-(*
+  val unitExp : FLAST.exp
+
 (* create a tuple expression, with singleton tuples mapping to their element expression *)
   val mkTupleExp : FLAST.exp list-> FLAST.exp
 
 (* create an expression that applies a function *)
   val mkApplyExp : (FLAST.exp * FLAST.exp list) -> FLAST.exp
-*)
+
 end = struct
 
-(*
   structure F = FLAST
-  structure B = Basis
   structure U = FTTypeUtil
 
-  fun mkTupleExp [e] = e
-    | mkTupleExp es = F.TupleExp es
+  val unitExp = F.TupleExp ([], Basis.unitTy)
 
-(* FIXME write TypeOf...
-  fun mkApplyExp (e : F.exp, es : F.exp list) : F.exp = 
-        F.ApplyExp (e, mkTupleExp(es), (U.rangeType o FTTypeOf.exp) e)
-*)
-  fun mkApplyExp (e : F.exp, es : F.exp list) : F.exp =
-    raise Fail "todo"
-*)
+  fun mkTupleExp [e] = e
+    | mkTupleExp es = let
+        val ts = List.map (U.interfaceTy o FTTypeOf.exp) es
+        val interfaceTy = Types.TupleTy ts
+        in
+          F.TupleExp (es, interfaceTy)
+        end
+
+  fun mkApplyExp (e : F.exp, es : F.exp list) : F.exp = let
+    val t = FTTypeOf.exp e
+    in
+      F.ApplyExp (e, mkTupleExp es, U.rangeOf t)
+    end
+
 end
