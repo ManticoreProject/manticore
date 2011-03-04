@@ -21,14 +21,13 @@ structure FlattenTranslateTerms = struct
   type env = FE.env
 
   val trTy = FTTy.trTy
-  val trDCon = FTTy.trDCon
   
   val trScheme : env * ATy.ty_scheme -> F.ty_scheme = FTTy.trScheme
 
   fun trVar (env : FE.env, x : AST.var) : F.var * FE.env = let
     val fx = FTVar.newPoly (Var.nameOf x,
 			    trScheme (env, Var.typeOf x))
-(* newPoly takes ty_schemes, so I'm using it. -ams *)
+             (* newPoly takes ty_schemes, so I'm using it. -ams *)
     in
       (fx, FE.insertVar (env, x, fx))
     end
@@ -75,11 +74,7 @@ structure FlattenTranslateTerms = struct
       | exp (AST.PChoiceExp (es, t)) = F.PChoiceExp (List.map exp es, ty t)
       | exp (AST.SpawnExp e) = F.SpawnExp (exp e)
       | exp (AST.ConstExp k) = F.ConstExp (trConst (env, k))
-      | exp (AST.VarExp (x, ts)) = let
-          val (x', _) = trVar (env, x)
-          in
-            F.VarExp (x', List.map ty ts)
-	  end
+      | exp (AST.VarExp (x, ts)) = trBoundVar (env, x, ts)
       | exp (AST.SeqExp (e1, e2)) = F.SeqExp (exp e1, exp e2)
       | exp (AST.OverloadExp vref) = 
           (case !vref
@@ -90,11 +85,25 @@ structure FlattenTranslateTerms = struct
 		   F.OverloadExp (ref (F.Instance x'))
 		 end)
       | exp (AST.ExpansionOptsExp (os, e)) = F.ExpansionOptsExp (os, exp e)
-    and pcomp (e, pes, optE) = raise Fail "todo"
+    and pcomp (e, pes, optE) = let
+          fun pe (p, e) = let
+            val (p', _) = trPat (env, p)
+	    val e' = exp e
+            in
+	      (p', e')
+	    end
+          in
+	    F.PCompExp (exp e, List.map pe pes, Option.map exp optE)
+          end
     in
       exp e
     end
 
+  and trBoundVar (env : env, x : AST.var, ts : Types.ty list) : F.exp = 
+       (case FE.lookupVar (env, x)
+          of FE.Var x' => F.VarExp (x', List.map (fn t => trTy (env, t)) ts)
+	   | FE.EqOp => raise Fail "todo" (* FIXME *)
+         (* end case *))
 
   and trBind (env : env, b : AST.binding) : F.binding * env = let
         fun bind b =
@@ -130,7 +139,13 @@ structure FlattenTranslateTerms = struct
   and trPat (env : env, p : AST.pat) : F.pat * env = 
        (case p
 	  of AST.ConPat (c, ts, p) => let
-               val c' = valOf (FE.findDCon (env, c))
+               val c' = 
+                (case FE.findDCon (env, c)
+		   of SOME thing => thing
+		    | NONE => raise Fail ("couldn't find translated dcon " ^ 
+					  DataCon.toString c ^ 
+					  " in env")
+		  (* end case *))
 	       val ts' = List.map (fn t => trTy (env, t)) ts
 	       val (p', env') = trPat (env, p)
                in
@@ -244,7 +259,13 @@ structure FlattenTranslateTerms = struct
   and trConst (env : env, c : AST.const) : F.const = 
        (case c
 	  of AST.DConst (c, ts) => let
-               val c' = valOf (FE.findDCon (env, c))
+               val c' = 
+	        (case FE.findDCon (env, c)
+		   of SOME thing => thing
+		    | NONE => raise Fail ("couldn't find translated dcon " ^
+					  DataCon.toString c ^
+					  " in env")
+		  (* end case *))
 	       val ts' = List.map (fn t => trTy (env, t)) ts
                in
 		 F.DConst (c', ts')

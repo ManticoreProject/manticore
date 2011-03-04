@@ -31,7 +31,8 @@ structure FlattenTranslateTypes = struct
     end 
 
  fun copyTyc (newDef, c as ATy.Tyc {stamp, name, arity, params, props, def}) =
-        FTy.Tyc {stamp = stamp,
+        FTy.Tyc {stamp = stamp, (* FIXME should I give this a fresh stamp? 
+				 * I think I can safely borrow it since it's a different type. *)
 		 name = name,
 		 arity = arity,
 		 params = params,
