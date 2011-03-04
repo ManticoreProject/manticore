@@ -8,10 +8,8 @@
 
 structure FTDataCon : sig
 
-(*
   (* create a new data constructor and add it to the list of constructors in its parent. *)
-    val new : FTTypes.tycon -> (Atom.atom * FTTypes.ty option) -> FTTypes.dcon
-*)
+    val new : FTTypes.tycon -> (Atom.atom * FTTypes.ty option * Types.dcon) -> FTTypes.dcon
 
   (* return true if two data constructors are the same *)
     val same : FTTypes.dcon * FTTypes.dcon -> bool
@@ -55,11 +53,11 @@ structure FTDataCon : sig
 
     datatype dcon = datatype T.dcon
 
-(*
     fun new (tyc as T.Tyc {def=T.DataTyc{nCons, cons}, ...}) = let
-	  fun add (name, argTy) = let
+	  fun add (name, argTy, interface) = let
 		val id = !nCons
-		val dcon = DCon{id = id, name = name, owner = tyc, argTy = argTy}
+		val dcon = DCon{id = id, name = name, owner = tyc, argTy = argTy, 
+				interface = interface}
 		in
 		  nCons := id + 1;
 		  cons := !cons @ [dcon];
@@ -69,7 +67,6 @@ structure FTDataCon : sig
 	    add
 	  end
       | new _ = raise Fail "AbsTyc"
-*)
 
     fun same (DCon{owner=o1, id=a, ...}, DCon{owner=o2, id=b, ...}) =
 	  (a = b) andalso FTTyCon.same(o1, o2)

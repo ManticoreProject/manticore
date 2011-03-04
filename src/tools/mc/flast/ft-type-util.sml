@@ -18,8 +18,14 @@ structure FTTypeUtil = struct
 		
   val toString : T.ty -> string = T.toString
 
-  fun schemeToString (T.TyScheme (vs, t)) : string = 
-    raise Fail "todo: copy from TypeUtil"
+  fun tyvarToString (Types.TVar{name, stamp, ...}) = Atom.toString name
+
+  fun fmtScheme {long} (T.TyScheme ([], ty)) = toString ty
+    | fmtScheme {long} (T.TyScheme (tvs, ty)) = concat[
+        "[", String.concatWith "," (List.map tyvarToString tvs), "]", toString ty
+      ]  
+
+  val schemeToString : T.ty_scheme -> string = fmtScheme {long=false}
 
 (* apply a type variable to type substitution to a type *)
   fun applySubst (subst : T.ty TyVar.Map.map, ty0 : T.ty) : T.ty = let

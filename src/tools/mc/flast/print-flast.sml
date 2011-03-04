@@ -160,6 +160,7 @@ structure PrintFLAST : sig
           pr "(* end pcase *))";
 	  closeBox ())
       | exp (F.HandleExp(e, matches, ty)) = (
+          pr "(";
 	  openHOVBox (rel 2);
 	    openHBox ();
 	      pr "(";
@@ -401,7 +402,9 @@ structure PrintFLAST : sig
 	   pr ")";
 	   closeBox ())
       | pat (F.VarPat v) = var v
-      | pat (F.WildPat ty) = pr "_"
+      | pat (F.WildPat ty) = 
+          pr (if !showTypes then ("(_:" ^ FTTypeUtil.toString ty ^ ")")
+	      else "_")
       | pat (F.ConstPat c) = const c
 
   (* const : F.const -> unit *)
@@ -427,7 +430,7 @@ structure PrintFLAST : sig
 	      then FTVar.toString v 
 	      else FTVar.nameOf v
       val t = FTTypeUtil.schemeToString (FTVar.typeOf v) 
-      val s = if !showTypes then x ^ " : " ^ t else x
+      val s = if !showTypes then "(" ^ x ^ ":" ^ t ^ ")" else x
       in
 	pr s
       end
