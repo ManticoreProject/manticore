@@ -1,0 +1,26 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+
+  structure FlattenTranslateTypes
+  structure FlattenTranslateTerms
+  structure TestTranslateTerms
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+  $/controls-lib.cm
+
+  ../common/sources.cm
+  ../ast/sources.cm
+  ../flast/sources.cm
+
+  flatten-translate-types.sml
+  flatten-translate-terms.sml
+  test-translate-terms.sml
