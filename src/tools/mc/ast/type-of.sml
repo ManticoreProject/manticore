@@ -48,6 +48,11 @@ structure TypeOf : sig
 	  monoTy (Var.typeOf x)
       | exp (AST.OverloadExp _) = raise Fail "unresolved overloading"
       | exp (AST.ExpansionOptsExp (opts, e)) = exp e
+      | exp (AST.FTupleExp es) = Ty.TupleTy (List.map exp es)
+      | exp (AST.FArrayExp (_, n, ty)) = Ty.FArrayTy (ty, ntree n) 
+
+    and ntree (AST.Lf _) = Ty.LfTy
+      | ntree (AST.Nd ns) = (Ty.NdTy o TU.maxNTree o List.map ntree) ns
 
     and const (AST.DConst(dc, argTys)) = DataCon.typeOf'(dc, argTys)
       | const (AST.LConst(_, ty)) = ty

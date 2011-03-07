@@ -17,8 +17,13 @@ structure Types =
       | VarTy of tyvar
       | ConTy of (ty list * tycon)
       | FunTy of ty * ty
-      | TupleTy of ty list
+      | TupleTy of ty list      
+      | FArrayTy of ty * nt_ty
 
+    and nt_ty (* nesting trees *)
+      = LfTy 
+      | NdTy of nt_ty
+	
     and meta = MVar of {
 	    stamp : Stamp.stamp,	(* unique stamp *)
 	    info : meta_info ref

@@ -66,6 +66,10 @@ structure TypeUtil : sig
 
     val rangeType : Types.ty -> Types.ty
 
+  (* nesting tree utils *)
+    val deeperNTree : Types.nt_ty * Types.nt_ty -> bool
+    val maxNTree : Types.nt_ty list -> Types.nt_ty
+
   end = struct
 
     structure MV = MetaVar
@@ -97,6 +101,12 @@ structure TypeUtil : sig
 		  | toS' ty = toS ty
 		in
 		  concat["(", String.concatWith " * " (List.map toS' tys), ")"]
+		end
+	    | toS (Ty.FArrayTy (t, n)) = let
+                fun ntree Ty.LfTy = "lf"
+		  | ntree (Ty.NdTy n) = "nd(" ^ ntree n ^ ")"
+	        in
+		  concat["{", toS t, ";", ntree n, "}"]
 		end
 	  in
 	    toS
@@ -151,6 +161,7 @@ structure TypeUtil : sig
 		  | Ty.ConTy(args, tyc) => Ty.ConTy(List.map inst args, tyc)
 		  | Ty.FunTy(ty1, ty2) => Ty.FunTy(inst ty1, inst ty2)
 		  | Ty.TupleTy tys => Ty.TupleTy(List.map inst tys)
+		  | Ty.FArrayTy(ty, n) => Ty.FArrayTy(inst ty, n)
 		(* end case *))
 	  in
 	    inst ty0
@@ -249,6 +260,11 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 		      in
 			(env, Ty.TupleTy tys)
 		      end
+		  | Ty.FArrayTy (ty, n) => let
+                      val (env, ty) = genVars (ty, env)
+                      in
+			(env, Ty.FArrayTy (ty, n))
+		      end
 		(* end case *))
 	  and genVarsForTys (tys, env) = let
 		fun f (ty, (env, tys)) = let
@@ -280,8 +296,13 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 		same(ty11, ty21) andalso same(ty21, ty22)
 	    | (Ty.TupleTy tys1, Ty.TupleTy tys2) =>
 		ListPair.allEq same (tys1, tys2)
+	    | (Ty.FArrayTy (t1, n1), Ty.FArrayTy (t2, n2)) =>
+                same(t1,t2) andalso sameNTree(n1,n2)
 	    | _ => false
 	  (* end case *))
+    and sameNTree (Ty.LfTy, Ty.LfTy) = true
+      | sameNTree (Ty.NdTy n1, Ty.NdTy n2) = sameNTree (n1, n2)
+      | sameNTree _ = false
 
 (* QUESTION: do we really need both this function and TypeClass.isEqualityType? *)
   (* return true if the type supports equality *)
@@ -292,6 +313,7 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 	    | Ty.ConTy(_, tyc) => TyCon.isEqTyc tyc
 	    | Ty.FunTy _ => false
 	    | Ty.TupleTy tys => List.all eqType tys
+	    | Ty.FArrayTy(ty, n) => eqType ty
 	  (* end case *))
 
   (* convert various things to strings *)
@@ -325,6 +347,7 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 	      | Ty.FunTy(ty1, ty2) => Ty.FunTy(oTy ty1, oTy ty2)
 	      | Ty.TupleTy tys => Ty.TupleTy (List.map oTy tys)
 	      | Ty.ErrorTy => Ty.ErrorTy
+	      | Ty.FArrayTy (ty, n) => Ty.FArrayTy (oTy ty, n)
   	    (* end case *))
 	and oMeta (Ty.MVar{stamp, info}) = (case !info
 	     of Ty.INSTANCE ty => info := Ty.INSTANCE (oTy ty)
@@ -352,7 +375,25 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
           in
 	    openTy(0, ty)
           end
-	  
+
+  (* deeperNTree : ntree * ntree -> bool *)
+  (* compare two nesting trees by depth *)
+    fun deeperNTree (n1, n2) = let
+      fun dep (Ty.LfTy) = 0
+	| dep (Ty.NdTy n) = 1 + dep n
+      in
+        dep n1 > dep n2
+      end
+
+  (* maxNTree : ntree list -> ntree *)
+  (* return deepest ntree in the bunch *)
+  (* raise Fail on empty list arg *)
+    fun maxNTree [] = raise Fail "empty"
+      | maxNTree (n::ns) = let
+          fun deeper (n1, n2) = if deeperNTree (n1, n2) then n1 else n2
+          in
+            List.foldl deeper n ns
+          end
     
   end
 

@@ -208,6 +208,10 @@ structure ASTUtil : sig
 	      | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
 	      | exp (ov as A.OverloadExp _) = ov
 	      | exp (A.ExpansionOptsExp(opts, e)) = A.ExpansionOptsExp(opts, exp e)
+	      | exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
+	      | exp (A.FArrayExp (es, n, t)) = A.FArrayExp (List.map exp es, ntree n, t)
+	    and ntree (A.Lf (e1, e2)) = A.Lf (exp e1, exp e2)
+	      | ntree (A.Nd ns) = A.Nd (List.map ntree ns)
 	    and match (A.PatMatch (p, e)) = A.PatMatch (copyPat s p, exp e)
 	      | match (A.CondMatch (p, cond, e)) = A.CondMatch (copyPat s p, exp cond, exp e)
 	    and binding (A.ValBind (p, e)) = A.ValBind (copyPat s p, exp e)
