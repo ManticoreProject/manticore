@@ -1,3 +1,0 @@
-This directory contains tools to convert AST terms to FLAST terms.
-
-If flattening is turned on, it flattens the FLAST terms as well.
