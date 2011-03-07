@@ -29,6 +29,13 @@ structure FloatRef =
       define inline @get (r: ref / exh: exh) : ml_float = 
         return(alloc(#0(r)))
         ;
+
+      define inline @same (args : [ref, ref] / exh: exh) : bool =
+        if Equal (#0(args), #1(args)) then
+	  return(true)
+	else
+	  return(false)
+        ;
     )
 
     type ref = _prim(ref)
@@ -36,5 +43,7 @@ structure FloatRef =
     val new : float -> ref        = _prim(@new)
     val set : ref * float -> unit = _prim(@set)
     val get : ref -> float        = _prim(@get)
+
+    val same : ref * ref -> bool = _prim(@same)
 
   end
