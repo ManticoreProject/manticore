@@ -57,6 +57,7 @@ structure TranslateTypes : sig
 	    | SOME(Ty.TupleTy[]) => BTy.K_UNBOXED
 	    | SOME(Ty.TupleTy _) => BTy.K_BOXED
 	    | SOME(Ty.ConTy(_, tyc)) => getTycKind tyc
+	    | SOME(Ty.FArrayTy _) => raise Fail "TODO"
 	    | _ => BTy.K_UNIFORM
 	  (* end case *))
 
@@ -86,6 +87,7 @@ structure TranslateTypes : sig
 		  | Ty.FunTy(ty1, ty2) => BTy.T_Fun([tr' ty1], [BTy.exhTy], [tr' ty2])
 		  | Ty.TupleTy [] => BTy.unitTy
 		  | Ty.TupleTy tys => BTy.T_Tuple(false, List.map tr' tys)
+		  | Ty.FArrayTy (ty, n) => raise Fail "TODO"
 		(* end case *))
 	  in
 	    tr' ty

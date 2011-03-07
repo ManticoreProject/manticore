@@ -67,6 +67,10 @@ structure Unpar : sig
 	| exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
 	| exp (A.OverloadExp ovr) = A.OverloadExp ovr
 	| exp (A.ExpansionOptsExp(opts, e)) = A.ExpansionOptsExp(opts, exp e)
+	| exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
+	| exp (A.FArrayExp (es, n, t)) = A.FArrayExp (List.map exp es, ntree n, t)
+      and ntree (A.Lf (e1, e2)) = A.Lf (exp e1, exp e2)
+	| ntree (A.Nd ns) = A.Nd (List.map ntree ns)
       and pcase (es, ms, ty) = let
             fun pm (A.PMatch (ps, e)) = let
 	          val ps' = List.map ppat ps

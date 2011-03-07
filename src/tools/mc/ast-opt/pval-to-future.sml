@@ -6,6 +6,8 @@
  * This module rewrites parallel bindings in terms of futures, touches and cancels.
  *)
 
+(* Is this module used anywhere? -ams *)
+
 structure PValToFuture =
   struct
 
@@ -158,6 +160,8 @@ structure PValToFuture =
 	      in 
 		  (A.ExpansionOptsExp (opts, e'), pLive')
 	      end
+	    | A.FTupleExp es => raise Fail "TODO"
+	    | A.FArrayExp _ => raise Fail "TODO"
         (* end case *))
 
     (* trExps: A.exp list * VSet.set -> A.exp list * VSet.set *)

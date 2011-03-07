@@ -118,6 +118,7 @@ structure Overload : sig
 	  | set_def_ty (Ty.ConTy(tys, _)) = List.app set_def_ty tys
 	  | set_def_ty (Ty.FunTy(ty1, ty2)) = (set_def_ty ty1; set_def_ty ty2)
 	  | set_def_ty (Ty.TupleTy tys) = List.app set_def_ty tys
+	  | set_def_ty (Ty.FArrayTy (ty, n)) = raise Fail "set_def_ty" (* f arrays should not have been introduced yet *)
 
 	fun set_var_defaults () = let
 	      fun set_def ov = (case !ov

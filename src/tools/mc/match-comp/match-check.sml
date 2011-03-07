@@ -92,6 +92,7 @@ structure MatchCheck (* : sig
 						     "], " ^ TyCon.toString c ^ ")")
     | tyString' (Types.FunTy (t,u)) = "Fun(" ^ tyString' t ^ "," ^ tyString' u ^ ")"
     | tyString' (Types.TupleTy ts) = "TupleTy [" ^ (String.concatWith "," (List.map tyString' ts) ^ "]")
+    | tyString' (Types.FArrayTy (t, n)) = "FArrayTy (details omitted)"
 (* -debug *)
 
 (* bug : string -> string -> 'a (raises an exn)
@@ -1044,6 +1045,8 @@ fun litsToString (s: LitSet.set) : string =
       | exp (AST.SeqExp (e1, e2)) = (exp e1; exp e2)
       | exp (AST.OverloadExp _) = ()
       | exp (AST.ExpansionOptsExp (_, e)) = exp e
+      | exp (AST.FTupleExp es) = List.app exp es
+      | exp (AST.FArrayExp (es, _, _)) = List.app exp es
   and binding (AST.ValBind (p, e)) = (pat p; exp e)
     | binding (AST.PValBind (p, e)) = (pat p; exp e)
     | binding (AST.FunBind fs) = lambdas fs

@@ -25,7 +25,6 @@ structure Elaborate : sig
 
   (* trTy : ty -> ty *)
   (* For now, this function just translates the parray type to the rope type. *)
-  (* It could serve arbitrary other purposes easily enough. *)
     fun trTy t = let
       fun ty (e as T.ErrorTy) = e
 	| ty (T.MetaTy m) = T.MetaTy (meta m)
@@ -33,6 +32,7 @@ structure Elaborate : sig
 	| ty (T.ConTy (ts, c)) = T.ConTy (map ty ts, tycon c)
 	| ty (T.FunTy (t0, t1)) = T.FunTy (ty t0, ty t1)
 	| ty (T.TupleTy ts) = T.TupleTy (map ty ts)
+	| ty (T.FArrayTy (t, n)) = raise Fail "TODO"
       and meta (m as T.MVar {stamp, info}) = (info := meta_info (!info); m)
       and meta_info (T.INSTANCE t) = T.INSTANCE (ty t)
 	| meta_info i = i
@@ -86,6 +86,12 @@ structure Elaborate : sig
       | trExp (A.SeqExp (e1, e2)) = A.SeqExp (trExp e1, trExp e2)
       | trExp (ov as A.OverloadExp xRef) = (xRef := trOverloadVar (!xRef); ov)
       | trExp (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, trExp e)
+      | trExp (A.FTupleExp es) = A.FTupleExp (List.map trExp es)
+      | trExp (A.FArrayExp (es, n, ty)) = 
+          A.FArrayExp (List.map trExp es, trNTree n, trTy ty)
+
+    and trNTree (A.Lf (e1, e2)) = A.Lf (trExp e1, trExp e2)
+      | trNTree (A.Nd ns) = A.Nd (List.map trNTree ns)
 
 (*    withtype var = (var_kind, ty_scheme ref) VarRep.var_rep *)
 

@@ -33,6 +33,8 @@ structure Unify : sig
 		  | (Ty.ConTy(args, _)) => List.exists occurs args
 		  | (Ty.FunTy(ty1, ty2)) => occurs ty1 orelse occurs ty2
 		  | (Ty.TupleTy tys) => List.exists occurs tys
+		  | (Ty.FArrayTy (t,n)) => raise Fail "occursIn" 
+                      (* f arrays shouldn't exist until after typechecking *)
 		(* end case *))
 	  in
 	    occurs ty
@@ -60,6 +62,8 @@ structure Unify : sig
 		  | adjust (Ty.ConTy(args, _)) = List.app adjust args
 		  | adjust (Ty.FunTy(ty1, ty2)) = (adjust ty1; adjust ty2)
 		  | adjust (Ty.TupleTy tys) = List.app adjust tys
+		  | adjust (Ty.FArrayTy _) = raise Fail "adjustDepth"
+                      (* f arrays shouldn't exist until after typechecking *)
 		in
 		  adjust ty
 		end
