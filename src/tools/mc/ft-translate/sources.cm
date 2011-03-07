@@ -9,6 +9,8 @@ Library
   structure FTTranslate
   structure FTTranslateEnv
   structure FTTranslateTypes
+  structure FTModuleEnv
+  structure FTTranslateControls
 
 is
 

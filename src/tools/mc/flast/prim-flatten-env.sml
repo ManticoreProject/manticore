@@ -4,6 +4,7 @@
  * All rights reserved.
  *)
 
+(* FIXME should FlattenEnv be a FTModule env? what's the difference? *)
 (* TODO primitive opers. right now, this is just tycs, tys, dcons *)
 
 structure PrimFlattenEnv : sig
