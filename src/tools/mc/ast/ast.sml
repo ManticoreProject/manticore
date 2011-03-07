@@ -73,7 +73,13 @@ structure AST =
       | VarExp of (var * ty list)
       | SeqExp of (exp * exp)
       | OverloadExp of overload_var ref
-      | ExpansionOptsExp of (ExpansionOpts.opt list * exp)         (* compiler options for expanding expressions *)
+      | ExpansionOptsExp of (ExpansionOpts.opt list * exp) (* compiler options for expanding expressions *)
+      | FTupleExp of exp list              (* for tuples introduced by the flattening trans. *)
+      | FArrayExp of exp list * ntree * ty (* ty is element type *)
+
+    and ntree
+      = Lf of exp * exp
+      | Nd of ntree list
 
     and binding
       = ValBind of pat * exp

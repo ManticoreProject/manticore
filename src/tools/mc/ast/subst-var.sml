@@ -45,9 +45,16 @@ structure SubstVar =
 	    | exp (A.SeqExp (e1, e2)) = A.SeqExp (exp e1, exp e2)
 	    | exp (ov as A.OverloadExp _) = ov
 	    | exp (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, exp e)
+	    | exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
+	    | exp (A.FArrayExp (es, n, t)) = A.FArrayExp (List.map exp es, ntree s n, t)
           in
 	     exp e
           end
+
+    and ntree s n = (case n
+          of A.Lf (e1, e2) => A.Lf (exp s e1, exp s e2)
+	   | A.Nd ns => A.Nd (List.map (ntree s) ns)
+          (* end case *))
 
     and pat s p = (case p
           of A.ConPat(dcon, tys, p) => A.ConPat(dcon, tys, pat s p)

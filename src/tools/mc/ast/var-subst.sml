@@ -87,6 +87,10 @@ structure VarSubst =
 		    end
 	      (* end case *))
 	| exp (A.ExpansionOptsExp (os, e)) = A.ExpansionOptsExp (os, exp e)
+	| exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
+	| exp (A.FArrayExp (es, n, t)) = A.FArrayExp (List.map exp es, ntree n, t)
+      and ntree (A.Lf (e1, e2)) = A.Lf (exp e1, exp e2)
+	| ntree (A.Nd ns) = A.Nd (List.map ntree ns)
       and match (A.PatMatch (p, e)) = A.PatMatch (pat p, exp e)
 	| match (A.CondMatch (p, cond, e)) = A.CondMatch (pat p, exp cond, exp e)
       and pmatch (A.PMatch (pps, e)) = A.PMatch (map ppat pps, exp e)

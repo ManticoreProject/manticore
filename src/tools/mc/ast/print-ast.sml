@@ -259,6 +259,35 @@ structure PrintAST : sig
 	  pr ")")
       | exp (A.OverloadExp ovr) = overload_var (!ovr)
       | exp (A.ExpansionOptsExp (_, e)) = exp e
+      | exp (A.FTupleExp es) = 
+	  (openVBox (rel 0);
+	     pr "(`"; (* delimiter for FTuples *)
+	     appwith (fn () => pr ",") exp es;
+	     pr "`)";
+	   closeBox ())
+      | exp (A.FArrayExp (es, n, t)) = 
+          (openVBox (rel 0);
+	     pr "{";
+	     appwith (fn () => pr ",") exp es;
+	     pr ";";
+	     ntree n;
+	     pr "}";
+	   closeBox ())
+
+    and ntree (A.Lf (e1, e2)) = 
+         (openHBox ();
+	    pr "Lf(";
+	    exp e1;
+	    pr ",";
+	    exp e2;
+	    pr ")";
+	  closeBox ())
+      | ntree (A.Nd ns) = 
+         (openHBox ();
+	    pr "Nd[";
+	    appwith (fn () => ",") ntree ns;
+	    pr "]";
+          closeBox ())
 
     and var_arity_op (A.MapP) = pr "mapP"
 
