@@ -225,34 +225,35 @@ structure ArityRaising : sig
           val defaultArgPath = (0,[])
           val CPSTy.T_Fun(params, _) = sig1Type
           (* We only check against the signature being merged into. This
-           * is because we'll ue the result of our signature creation process
+           * is because we'll use the result of our signature creation process
            * and feed it through sigMeet a second time to make sure it's compatible
            * with all of the predecessors.
            *)
-          fun isSafeToSelect (i, l) = i < List.length params
-                                      andalso isSafeSelection (l, List.nth (params, i))
-          and isSafeSelection (i::l, CTy.T_Tuple (_, tys)) =
-              i < List.length tys
-              andalso isSafeSelection (l, List.nth (tys, i))
-            | isSafeSelection (i::l, _) = false
-            | isSafeSelection (_, _) = true
+
+          fun safeSelection (i, l) = if i >= List.length params
+                                     then defaultArgPath
+                                     else (i, safeSelectionHelper (l, List.nth (params, i)))
+          and safeSelectionHelper (x::xs, CTy.T_Tuple (_, tys)) =
+              if (x < List.length tys)
+              then x::(safeSelectionHelper (xs, List.nth (tys, x)))
+              else []
+            | safeSelectionHelper (_, _) = []
+              
 	  fun f (p::ps, q::qs, mergedSig) = (case compareRevPath(p, q)
-		 of PathLess => f(ps, q::qs, p::mergedSig)
+		 of PathLess => f(ps, q::qs, (safeSelection p)::mergedSig)
 		  | PathPrefix => f (ps, removeDerivedPaths (p, qs), p::mergedSig)
 		  | PathEq => f (ps, qs, p::mergedSig)
 		  | PathGreater => if isPrefix (q, p)
 		      then f (removeDerivedPaths (q, ps), qs, q::mergedSig)
-		      else f (p::ps, qs, q::mergedSig)
+		      else f (p::ps, qs, (safeSelection q)::mergedSig)
 		(* end case *))
             | f ([], [], mergedSig) = mergedSig
 	    | f (ps, [], mergedSig) = if compareRevPath (defaultArgPath, hd ps) = PathEq
                                       then (hd ps)::mergedSig
                                       else List.revAppend(ps, mergedSig)
-	    | f ([], qs, mergedSig) = if compareRevPath (defaultArgPath, hd qs) = PathEq
-                                      then (hd qs)::mergedSig
-                                      else (if List.all isSafeToSelect qs
-                                            then List.revAppend(qs, mergedSig)
-                                            else [defaultArgPath])
+	    | f ([], q::qs, mergedSig) = if compareRevPath (defaultArgPath, q) = PathEq
+                                      then q::mergedSig
+                                      else f([], qs, (safeSelection q)::mergedSig)
 	  in
 	    List.rev (f (sig1, sig2, []))
 	  end
@@ -323,7 +324,8 @@ structure ArityRaising : sig
                             val baseParam = List.nth (origParams, i)
                             fun findSubtype (i::l, CTy.T_Tuple (_, tys)) =
                                 findSubtype (l, List.nth (tys, i))
-                              | findSubtype (i::l, _) = raise Fail ("Signature contains invalid path")
+                              | findSubtype (i::l, ty) = raise Fail (concat["Signature contains invalid path selecting from type ",
+                                                                            CPSTyUtil.toString ty])
                               | findSubtype (_, ty) = ty
                             val paramType = findSubtype (l, CV.typeOf baseParam)
                         in
@@ -660,7 +662,7 @@ structure ArityRaising : sig
                     end
                     fun compatibleTypings ([], []) = true
                       | compatibleTypings (ty1::tys1, ty2::tys2) =
-                        CPSTyUtil.equal (ty1, ty2) andalso compatibleTypings (tys1, tys2)
+                        CPSTyUtil.match (ty1, ty2) andalso compatibleTypings (tys1, tys2)
                       | compatibleTypings (_, _) = raise Fail "Type lists of different lengths."
                     fun checkAll (ty1, ty2::tys2) = compatibleTypings (ty1, ty2) andalso checkAll (ty2, tys2)
                       | checkAll (ty1, []) = true
