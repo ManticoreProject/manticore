@@ -29,12 +29,12 @@ fun update (a, i, x) =
   if isIxInBounds (a, i) then
     U.update (a, i, x)
   else
-    Debug.failwith "FloatArray.update: index out of bounds"
+    Debug.failwith ("FloatArray.update: index "^Int.toString i ^"out of bounds")
 fun sub (a, i) =
   if isIxInBounds (a, i) then
     U.sub (a, i)
   else
-    Debug.failwith "FloatArray.sub: index out of bounds"
+    Debug.failwith ("FloatArray.sub: index "^Int.toString i ^"out of bounds")
 
 fun tabulate (n, f) = 
   if n < 0 orelse n > maxLen then
