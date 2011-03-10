@@ -18,10 +18,13 @@ structure FlattenEnv : sig
   val insertTyc  : env * Types.tycon * Types.tycon -> unit
   val insertDCon : env * Types.dcon * Types.dcon -> unit
   val insertVar  : env * AST.var * AST.var -> env
+  val insertFlOp : env * FlattenOp.fl_op -> env (* FIXME imperative interface *)
 
   val findTyc   : env * Types.tycon -> Types.tycon option
   val findDCon  : env * Types.dcon -> Types.dcon option
   val lookupVar : env * AST.var -> AST.var
+
+  val flOpSet   : env -> FlattenOp.Set.set
 
 end = struct
 
@@ -30,42 +33,67 @@ end = struct
   structure B = Basis
   structure U = TypeUtil
 
+  structure TTbl = TyCon.Tbl
+  structure DTbl = DataCon.Tbl
+  structure VMap = Var.Map
+  structure FSet = FlattenOp.Set
+
   datatype env = Env of {
-      tycEnv  : T.tycon TyCon.Tbl.hash_table,
-      dconEnv : T.dcon DataCon.Tbl.hash_table,
-      varEnv  : AST.var Var.Map.map
+      tycEnv  : T.tycon TTbl.hash_table,
+      dconEnv : T.dcon DTbl.hash_table,
+      varEnv  : A.var VMap.map,
+      flOps   : FSet.set
     }
 
+(* selectors *)
+  fun tycEnvOf  (Env {tycEnv, ...})  = tycEnv
+  fun dconEnvOf (Env {dconEnv, ...}) = dconEnv
+  fun varEnvOf  (Env {varEnv, ...})  = varEnv
+  fun flOpsOf   (Env {flOps, ...})   = flOps
+
+(* functional updaters *)
+  fun withVarEnv v (Env {tycEnv, dconEnv, varEnv, flOps}) =
+    Env {tycEnv=tycEnv, dconEnv=dconEnv, varEnv=v, flOps=flOps}
+
+  fun withFlOps f (Env {tycEnv, dconEnv, varEnv, flOps}) =
+    Env {tycEnv=tycEnv, dconEnv=dconEnv, varEnv=varEnv, flOps=f}
+
+(* fresh env maker *)
   fun mkEnv () = let
     val t = TyCon.Tbl.mkTable (32, Fail "tycon table")
     val d = DataCon.Tbl.mkTable (32, Fail "dcon table")
     val v = Var.Map.empty
+    val f = FlattenOp.Set.empty
     in
-      Env {tycEnv = t, dconEnv = d, varEnv = v}
+      Env {tycEnv = t, dconEnv = d, varEnv = v, flOps = f}
     end
 
-  fun insertTyc (Env {tycEnv, ...}, tyc, tyc') = 
-    TyCon.Tbl.insert tycEnv (tyc, tyc')
+  fun insertTyc (Env {tycEnv, ...}, tyc, tyc') = TTbl.insert tycEnv (tyc, tyc')
   
-  fun insertDCon (Env {dconEnv, ...}, con, con') = 
-    DataCon.Tbl.insert dconEnv (con, con')
+  fun insertDCon (Env {dconEnv, ...}, con, con') = DTbl.insert dconEnv (con, con')
 
-  fun insertVar (Env {dconEnv, tycEnv, varEnv}, x, y) = let
-    val varEnv' = Var.Map.insert (varEnv, x, y)
+  fun insertVar (e : env, x : A.var, y : A.var) : env = let
+    val varEnv' = VMap.insert (varEnvOf e, x, y)
     in
-      Env {dconEnv=dconEnv, tycEnv=tycEnv, varEnv=varEnv'}
+      withVarEnv varEnv' e
     end
 
-  fun findTyc (Env {tycEnv, ...}, tyc) = 
-    TyCon.Tbl.find tycEnv tyc
+  fun insertFlOp (e : env, oper : FlattenOp.fl_op) : env = let
+    val flOps' = FSet.add (flOpsOf e, oper)
+    in
+      withFlOps flOps' e
+    end
 
-  fun findDCon (Env {dconEnv, ...}, con) = 
-    DataCon.Tbl.find dconEnv con
+  fun findTyc (Env {tycEnv, ...}, tyc) = TTbl.find tycEnv tyc
+
+  fun findDCon (Env {dconEnv, ...}, con) = DTbl.find dconEnv con
 
   fun lookupVar (Env {varEnv, ...}, x) = 
-   (case Var.Map.find (varEnv, x)
+   (case VMap.find (varEnv, x)
      of SOME y => y
       | NONE => raise Fail ("lookupVar: " ^ Var.toString x ^ ")")
     (* end case *))
+
+  fun flOpSet (Env {flOps, ...}) = flOps
 
 end

@@ -83,7 +83,16 @@ end = struct
 	    A.RangeExp (e1', e2', optE', t')
 	  end
       | ex (A.PTupleExp es) = A.PTupleExp (List.map ex es)
-      | ex (A.PArrayExp (es, t)) = raise Fail "todo"
+      | ex (A.PArrayExp (es, t)) = let
+          val r = ty t
+	  val lf = A.Lf (ASTUtil.mkInt 0, ASTUtil.mkInt (List.length es))
+	  val f = A.FArrayExp (List.map ex es, lf, r)
+(* FIXME check that r is in fact the element type *)
+(* FIXME insert into the FlOp set *)
+          val r' = raise Fail "todo"
+          in
+	    A.ApplyExp (A.FSynthOp r, f, r')
+	  end
       | ex (A.PCompExp (e, pes, optE)) = raise Fail "todo"
       | ex (A.PChoiceExp (es, t)) = A.PChoiceExp (List.map ex es, ty t)
       | ex (A.SpawnExp e) = A.SpawnExp (ex e)
