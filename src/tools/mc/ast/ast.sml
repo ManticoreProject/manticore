@@ -20,6 +20,15 @@ structure AST =
 
     type sig_name = Stamp.stamp
 
+  (* type-indexed flattening operators *)
+    datatype fl_op
+      = ID of ty
+      | Cat of ty
+      | Unzip of ty
+      | Map of fl_op * ty
+      | Compose of fl_op * fl_op
+      | CrossCompose of fl_op list
+
     datatype module_exp
       = MEXP_BODY of top_dec list
       | MEXP_NAME of module_ref
@@ -77,7 +86,7 @@ structure AST =
 (* following terms are introduced by the flattening transformation *)
       | FTupleExp of exp list              (* for tuples introduced by the flattening trans. *)
       | FArrayExp of exp list * ntree * ty (* ty is element type *)
-      | FOper of FlattenOps.oper           (* for opers introduced by the flattening trans. *)
+      | FlOp of fl_op                      (* opers introduced by the flattening trans. *)
 
     and ntree
       = Lf of exp * exp
