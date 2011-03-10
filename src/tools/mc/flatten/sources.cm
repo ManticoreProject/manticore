@@ -1,0 +1,28 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+
+  structure FlattenTypes
+  structure FlattenEnv
+  structure TestFlattenTypes
+  structure FlattenTerms
+  structure FlattenOps
+
+is
+
+  $/basis.cm
+
+  $/smlnj-lib.cm
+  $/controls-lib.cm
+
+  ../ast/sources.cm
+
+  flatten-types.sml
+  flatten-env.sml
+  test-flatten-types.sml
+  flatten-terms.sml
+  flatten-ops.sml
