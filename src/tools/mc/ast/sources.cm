@@ -27,6 +27,7 @@ Library
   structure SubstVar
   structure SubstTy
   structure VarSubst
+  structure FlattenOps
 
 is
 
@@ -56,3 +57,4 @@ is
   var-subst.sml
   subst-var.sml
   subst-ty.sml
+  flatten-ops.sml

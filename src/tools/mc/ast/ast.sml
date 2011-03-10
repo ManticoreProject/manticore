@@ -74,8 +74,10 @@ structure AST =
       | SeqExp of (exp * exp)
       | OverloadExp of overload_var ref
       | ExpansionOptsExp of (ExpansionOpts.opt list * exp) (* compiler options for expanding expressions *)
+(* following terms are introduced by the flattening transformation *)
       | FTupleExp of exp list              (* for tuples introduced by the flattening trans. *)
       | FArrayExp of exp list * ntree * ty (* ty is element type *)
+      | FOper of FlattenOps.oper           (* for opers introduced by the flattening trans. *)
 
     and ntree
       = Lf of exp * exp
