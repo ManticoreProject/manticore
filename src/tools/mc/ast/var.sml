@@ -47,6 +47,15 @@ structure Var =
 	    ty := TypeUtil.closeTy(depth, ty')
 	  end
 
+  (* interface types for variables post flattening transformation *)
+    local
+      val {getFn : var -> Types.ty_scheme option, setFn, ...} = 
+        V.newProp (fn _ => NONE)
+    in
+      fun setInterfaceTy (x, t) = setFn (x, SOME t)
+      fun getInterfaceTy x = getFn x    	  
+    end
+
   (* TODO: add setTypeOf *)
 
     end (* local *)

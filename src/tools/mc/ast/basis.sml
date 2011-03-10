@@ -27,6 +27,9 @@ structure Basis : sig
     val eventTyc	: Types.tycon
     val threadIdTyc	: Types.tycon
 
+  (* list of all primitive tycons, for convenience *)
+    val primTycs : Types.tycon list 
+
   (* basis types *)
     val unitTy		: Types.ty
     val boolTy		: Types.ty
@@ -162,6 +165,11 @@ structure Basis : sig
     val mvarTyc = TyCon.newAbsTyc (N.mvar, 1, true)
     val eventTyc = TyCon.newAbsTyc (N.event, 1, false)
     val threadIdTyc = TyCon.newAbsTyc (N.thread_id, 0, true)
+
+    val primTycs = [boolTyc, exnTyc, intTyc, longTyc, integerTyc, 
+		    floatTyc, doubleTyc, charTyc, runeTyc, stringTyc, 
+		    listTyc, parrayTyc, chanTyc, ivarTyc, mvarTyc,
+		    eventTyc, threadIdTyc]
 
   (* predefined types *)
     val unitTy = AST.TupleTy[]

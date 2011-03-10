@@ -49,8 +49,16 @@ structure TypeUtil : sig
    *)
     val same : (Types.ty * Types.ty) -> bool
 
+  (* compare : useful for building ORD_x collections of types *)
+    val compare : Types.ty * Types.ty -> order
+
   (* return true if the type supports equality *)
     val eqType : Types.ty -> bool
+
+  (* properties of tycons *)
+    val isAbsTyc  : Types.tycon -> bool
+    val isDataTyc : Types.tycon -> bool
+    val isNullary : Types.tycon -> bool
 
   (* convert various things to strings *)
     val tyvarToString : Types.tyvar -> string
@@ -316,6 +324,16 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 	    | Ty.FArrayTy(ty, n) => eqType ty
 	  (* end case *))
 
+  (* test if a tycon is abstract *)
+    fun isAbsTyc (Ty.Tyc {def=Ty.AbsTyc, ...}) = true
+      | isAbsTyc _ = false
+
+  (* test if a tycon is a data tycon (not abstract) *)
+    val isDataTyc = not o isAbsTyc 
+
+  (* test if a tycon is nullary *)
+    fun isNullary (Ty.Tyc {arity, ...}) = (arity = 0)
+
   (* convert various things to strings *)
   (* smart constructors *)
     fun tupleTy [ty] = ty
@@ -378,7 +396,7 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 
   (* deeperNTree : ntree * ntree -> bool *)
   (* compare two nesting trees by depth *)
-    fun deeperNTree (n1, n2) = let
+    fun deeperNTree (n1, n2) : bool = let
       fun dep (Ty.LfTy) = 0
 	| dep (Ty.NdTy n) = 1 + dep n
       in
@@ -394,6 +412,67 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
           in
             List.foldl deeper n ns
           end
-    
+
+  (* compare : ty * ty -> order *)
+  (* The ground terms in types are meta types, tyvars, tycons and nt_tys. *)
+  (* The first three of these have unique stamps. *)
+  (* The latter has a natural mapping onto the natural numbers. *)
+  (* All these can be used as a basis for comparison. *)
+  (* Last but not least, an arbitrary order is chosen for the variants of ty. *)
+  (* The rest follows. *)
+    fun compare (t1 : Ty.ty, t2 : Ty.ty) : order = let
+      fun consIndex t = (case t
+        of Ty.ErrorTy    => 0
+	 | Ty.MetaTy _   => 1
+	 | Ty.VarTy _    => 2
+	 | Ty.ConTy _    => 3
+	 | Ty.FunTy _    => 4
+	 | Ty.TupleTy _  => 5
+	 | Ty.FArrayTy _ => 6
+        (* end case *))
+      fun ntreeInt (Ty.LfTy) = 0
+	| ntreeInt (Ty.NdTy n) = 1 + ntreeInt n
+      fun meta (Ty.MVar {stamp=s1, ...}, Ty.MVar {stamp=s2, ...}) = 
+        Stamp.compare (s1, s2)
+      fun cmp (t1, t2) = let
+        val i1 = consIndex t1
+	val i2 = consIndex t2
+        in
+          if i1 <> i2 then 
+	    Int.compare (i1, i2)  
+          else (* the two constructors are the same *) case (t1, t2)
+            of (Ty.ErrorTy, _) => EQUAL
+	     | (Ty.MetaTy m1, Ty.MetaTy m2) => meta (m1, m2)
+	     | (Ty.VarTy a, Ty.VarTy b) => TyVar.compare (a, b)
+	     | (Ty.ConTy (ts1, c1), Ty.ConTy (ts2, c2)) => 
+	        (case TyCon.compare (c1, c2)
+		  of EQUAL => tys (ts1, ts2)
+		   | neq => neq)
+	     | (Ty.FunTy (d1, r1), Ty.FunTy (d2, r2)) => 
+                (case cmp (d1, d2)
+		  of EQUAL => cmp (r1, r2)
+		   | neq => neq)
+	     | (Ty.TupleTy ts1, Ty.TupleTy ts2) => tys (ts1, ts2)
+	     | (Ty.FArrayTy (t1, n1), Ty.FArrayTy (t2, n2)) => 
+                (case cmp (t1, t2)
+		  of EQUAL => Int.compare (ntreeInt n1, ntreeInt n2)
+		   | neq => neq)
+	     | _ => raise Fail "BUG!" (* shouldn't happen *)
+        end
+      and tys (ts1, ts2) = let
+        fun lp ([], []) = EQUAL
+	  | lp ([], t::_) = LESS
+	  | lp (t::_, []) = GREATER
+          | lp (t1::ts1, t2::ts2) = (case cmp (t1, t2)
+              of EQUAL => lp (ts1, ts2)
+	       | neq => neq
+	      (* end case *))
+        in
+	  lp (ts1, ts2)
+        end
+      in
+	cmp (t1, t2)
+      end
+            
   end
 
