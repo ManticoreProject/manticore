@@ -10,7 +10,6 @@ Library
   structure FlattenEnv
   structure TestFlattenTypes
   structure FlattenTerms
-  structure FlattenOps
 
 is
 
@@ -25,4 +24,4 @@ is
   flatten-env.sml
   test-flatten-types.sml
   flatten-terms.sml
-  flatten-ops.sml
+
