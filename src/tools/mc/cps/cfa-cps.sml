@@ -207,6 +207,18 @@ structure CFACPS : sig
               else ()
           end
 
+  (* when the code has already computed a joined value and needs to propagate it
+   * to e.g. all of the function params/rets in a LAMBDAS, there is no need to re-do the
+   * joinValues
+   *)
+    and setInfo (x, v) = let
+          val oldV = getValue x
+          in
+            if changedValue(v, oldV)
+              then (changed := true; setValue(x, v))
+              else ()
+          end
+
   (* if a value escapes (e.g., is passed to an escaping function), we need to mark any
    * labels that it contains as escaping too.
   *)
@@ -252,9 +264,10 @@ structure CFACPS : sig
                 in
                   TUPLE(join(vs1, vs2))
                 end
-            | kJoin (k, v1 as LAMBDAS fs1, v2 as LAMBDAS fs2) = 
+            | kJoin (k, v1 as LAMBDAS fs1, v2 as LAMBDAS fs2) =
                 if VSet.isEmpty fs1 then v2
                 else if VSet.isEmpty fs2 then v1
+                else if VSet.equal (fs1,fs2) then v1
                 else let
               (* join params and rets of joined lambdas *)
                 fun getParamsRets f = (case CV.kindOf f
@@ -266,22 +279,27 @@ structure CFACPS : sig
                             ])
                      (* end case *))
                 val SOME f1 = VSet.find (fn _ => true) fs1
-                val (params1, rets1) = getParamsRets f1
                 val SOME f2 = VSet.find (fn _ => true) fs2
-                val (params2, rets2) = getParamsRets f2
-                val params' = ListPair.mapEq (fn (x1,x2) => kJoin(k-1, getValue x1, getValue x2)) 
-                                             (params1, params2)
-                val rets' = ListPair.mapEq (fn (x1,x2) => kJoin(k-1, getValue x1, getValue x2)) 
-                                           (rets1, rets2)
+                val _ = if !debugFlg then print (concat["[", CV.toString f1, ", ", CV.toString f2, "]\n"]) else ()
               (* join isEscaping of joined lambdas *)
                 val isEscaping = isEscaping f1 orelse isEscaping f2
                 val fs = VSet.union (fs1, fs2)
+                fun addParamsRets (f, (p',r')) = let
+                    val (params,rets) = getParamsRets f
+                in
+                    (ListPair.map (fn (x,r) => kJoin (k-1, x, getValue r)) (p', params),
+                     ListPair.map (fn (x,r) => kJoin (k-1, x, getValue r)) (r', rets))
+                end
+                val (params,rets) = getParamsRets f1
+                val (params,rets) = (List.map getValue params, List.map getValue rets)
+
+                val (params', rets') = VSet.foldr (fn (f, (p',r')) => addParamsRets (f, (p',r'))) (params,rets) fs
                 val () = VSet.app (fn f => let
                                    val (params, rets) = getParamsRets f
                                    in
                                      if isEscaping then setCallers(f, Unknown) else ();
-                                     ListPair.app addInfo (params, params');
-                                     ListPair.app addInfo (rets, rets')
+                                     ListPair.app setInfo (params, params');
+                                     ListPair.app setInfo (rets, rets')
                                    end)
                                   fs
                 in
@@ -490,6 +508,7 @@ structure CFACPS : sig
                       then (fn (x, v) => let
                         val prevV = getValue x
                         in
+                          print (concat["startAddInfo(", CV.toString x, ")\n"]);
                           addInfo (x, v);
                           if changedValue(getValue x, prevV) 
                             then print(concat[
