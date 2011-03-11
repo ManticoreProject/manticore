@@ -85,13 +85,23 @@ end = struct
       | ex (A.PTupleExp es) = A.PTupleExp (List.map ex es)
       | ex (A.PArrayExp (es, t)) = let
           val r = ty t
+	  val es' = List.map ex es
+        (* check that r is in fact the flattened element type *)
+          val _ = (case es'
+            of [] => ()
+	     | e'::_ => let
+                 val t' = TypeOf.exp e'
+                 in
+                   if TypeUtil.same (r,t') then () 
+		   else raise Fail "flattening parray type mismatch"
+	         end) 
 	  val lf = A.Lf (ASTUtil.mkInt 0, ASTUtil.mkInt (List.length es))
-	  val f = A.FArrayExp (List.map ex es, lf, r)
-(* FIXME check that r is in fact the element type *)
-(* FIXME insert into the FlOp set *)
-          val r' = raise Fail "todo"
+	  val f = A.FArrayExp (es', lf, r)
+	  val oper = FlattenOp.construct r
+        (* record the insertion of this operator in env *)
+	  val () = FEnv.insertFlOp (env, oper)
           in
-	    A.ApplyExp (A.FSynthOp r, f, r')
+	    ASTUtil.mkApplyExp (A.FlOp oper, [f])
 	  end
       | ex (A.PCompExp (e, pes, optE)) = raise Fail "todo"
       | ex (A.PChoiceExp (es, t)) = A.PChoiceExp (List.map ex es, ty t)
@@ -108,6 +118,7 @@ end = struct
       | ex (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, ex e)
       | ex (A.FTupleExp es) = raise Fail "exp: FTupleExp"
       | ex (A.FArrayExp (es, n, t)) = raise Fail "exp: FArrayExp"
+      | ex (oper as A.FlOp _) = oper
     in
       ex e
     end

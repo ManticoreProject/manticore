@@ -31,7 +31,6 @@ structure PrintAST : sig
 (*
     fun debug s = print s
 *)
-
     fun openHBox () = (debug "(openHBox\n"; S.openHBox (!str))
     fun openVBox i = (debug "(openVBox\n"; S.openVBox (!str) i)
     fun openHVBox i = (debug "(openHVBox\n"; S.openHVBox (!str) i)
@@ -273,6 +272,12 @@ structure PrintAST : sig
 	     ntree n;
 	     pr "}";
 	   closeBox ())
+      | exp (A.FlOp oper) =
+          (openVBox (rel 0);
+             pr "FlOp[";
+	     pr (FlattenOp.toString oper);
+	     pr "]";
+	   closeBox ())	    
 
     and ntree (A.Lf (e1, e2)) = 
          (openHBox ();

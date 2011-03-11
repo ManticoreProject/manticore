@@ -18,7 +18,7 @@ structure FlattenEnv : sig
   val insertTyc  : env * Types.tycon * Types.tycon -> unit
   val insertDCon : env * Types.dcon * Types.dcon -> unit
   val insertVar  : env * AST.var * AST.var -> env
-  val insertFlOp : env * FlattenOp.fl_op -> env (* FIXME imperative interface *)
+  val insertFlOp : env * AST.fl_op -> unit
 
   val findTyc   : env * Types.tycon -> Types.tycon option
   val findDCon  : env * Types.dcon -> Types.dcon option
@@ -42,28 +42,27 @@ end = struct
       tycEnv  : T.tycon TTbl.hash_table,
       dconEnv : T.dcon DTbl.hash_table,
       varEnv  : A.var VMap.map,
-      flOps   : FSet.set
+      flOps   : FSet.set ref
     }
 
 (* selectors *)
   fun tycEnvOf  (Env {tycEnv, ...})  = tycEnv
   fun dconEnvOf (Env {dconEnv, ...}) = dconEnv
   fun varEnvOf  (Env {varEnv, ...})  = varEnv
-  fun flOpsOf   (Env {flOps, ...})   = flOps
+  fun flOpsOf   (Env {flOps, ...})   = !flOps
 
-(* functional updaters *)
+(* functional update of varEnv *)
   fun withVarEnv v (Env {tycEnv, dconEnv, varEnv, flOps}) =
     Env {tycEnv=tycEnv, dconEnv=dconEnv, varEnv=v, flOps=flOps}
 
-  fun withFlOps f (Env {tycEnv, dconEnv, varEnv, flOps}) =
-    Env {tycEnv=tycEnv, dconEnv=dconEnv, varEnv=varEnv, flOps=f}
+  fun setFlOps f (Env {flOps, ...}) = (flOps := f)
 
 (* fresh env maker *)
   fun mkEnv () = let
     val t = TyCon.Tbl.mkTable (32, Fail "tycon table")
     val d = DataCon.Tbl.mkTable (32, Fail "dcon table")
     val v = Var.Map.empty
-    val f = FlattenOp.Set.empty
+    val f = ref (FlattenOp.Set.empty)
     in
       Env {tycEnv = t, dconEnv = d, varEnv = v, flOps = f}
     end
@@ -78,10 +77,10 @@ end = struct
       withVarEnv varEnv' e
     end
 
-  fun insertFlOp (e : env, oper : FlattenOp.fl_op) : env = let
+  fun insertFlOp (e : env, oper : AST.fl_op) : unit = let
     val flOps' = FSet.add (flOpsOf e, oper)
     in
-      withFlOps flOps' e
+      setFlOps flOps' e
     end
 
   fun findTyc (Env {tycEnv, ...}, tyc) = TTbl.find tycEnv tyc
@@ -94,6 +93,6 @@ end = struct
       | NONE => raise Fail ("lookupVar: " ^ Var.toString x ^ ")")
     (* end case *))
 
-  fun flOpSet (Env {flOps, ...}) = flOps
+  fun flOpSet (Env {flOps, ...}) = !flOps
 
 end

@@ -74,10 +74,10 @@ structure AST =
       | SeqExp of (exp * exp)
       | OverloadExp of overload_var ref
       | ExpansionOptsExp of (ExpansionOpts.opt list * exp) (* compiler options for expanding expressions *)
-(* following terms are introduced by the flattening transformation *)
+(* the following terms are introduced by the flattening transformation *)
       | FTupleExp of exp list              (* for tuples introduced by the flattening trans. *)
       | FArrayExp of exp list * ntree * ty (* ty is element type *)
-      | FSynthOp of ty                     (* opers introduced by the flattening trans. *)
+      | FlOp of fl_op                      (* opers introduced by the flattening trans. *)
 
     and ntree
       = Lf of exp * exp
@@ -128,6 +128,14 @@ structure AST =
       | VK_Pat			(* bound in a pattern *)
       | VK_Fun			(* bound to a function *)
       | VK_Prim			(* builtin function or operator *)
+
+  (* type-indexed flattening operators *)
+    and fl_op
+      = ID of ty (* FIXME this need not be a function type (overspecified) *)
+      | Unzip of ty (* FIXME this can be domain type only *)
+      | CatMap of fl_op (* FIXME consider splitting this back up into cat and map *)
+      | Compose of fl_op * fl_op
+      | CrossCompose of fl_op list
 
     withtype var = (var_kind, ty_scheme ref) VarRep.var_rep
 

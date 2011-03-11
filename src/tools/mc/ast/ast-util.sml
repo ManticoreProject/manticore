@@ -210,6 +210,7 @@ structure ASTUtil : sig
 	      | exp (A.ExpansionOptsExp(opts, e)) = A.ExpansionOptsExp(opts, exp e)
 	      | exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
 	      | exp (A.FArrayExp (es, n, t)) = A.FArrayExp (List.map exp es, ntree n, t)
+	      | exp (A.FlOp oper) = A.FlOp oper
 	    and ntree (A.Lf (e1, e2)) = A.Lf (exp e1, exp e2)
 	      | ntree (A.Nd ns) = A.Nd (List.map ntree ns)
 	    and match (A.PatMatch (p, e)) = A.PatMatch (copyPat s p, exp e)

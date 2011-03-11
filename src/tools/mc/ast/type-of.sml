@@ -50,6 +50,7 @@ structure TypeOf : sig
       | exp (AST.ExpansionOptsExp (opts, e)) = exp e
       | exp (AST.FTupleExp es) = Ty.TupleTy (List.map exp es)
       | exp (AST.FArrayExp (_, n, ty)) = Ty.FArrayTy (ty, ntree n) 
+      | exp (AST.FlOp oper) = FlattenOp.typeOf oper (* fl_op oper *)
 
     and ntree (AST.Lf _) = Ty.LfTy
       | ntree (AST.Nd ns) = (Ty.NdTy o TU.maxNTree o List.map ntree) ns
@@ -66,5 +67,7 @@ structure TypeOf : sig
     and ppat (AST.NDWildPat ty) = ty
       | ppat (AST.HandlePat (_, ty)) = ty
       | ppat (AST.Pat p) = pat p
+
+
 
   end
