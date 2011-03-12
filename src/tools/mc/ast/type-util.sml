@@ -72,7 +72,8 @@ structure TypeUtil : sig
     val tupleTy : Types.ty list -> Types.ty
     val funTy : Types.ty list * Types.ty list -> Types.ty
 
-    val rangeType : Types.ty -> Types.ty
+    val domainType : Types.ty -> Types.ty
+    val rangeType  : Types.ty -> Types.ty
 
   (* nesting tree utils *)
     val deeperNTree : Types.nt_ty * Types.nt_ty -> bool
@@ -340,6 +341,9 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
       | tupleTy tys = Types.TupleTy tys
 
     fun funTy (dom, rng) = Types.FunTy(tupleTy dom, tupleTy rng)
+
+    fun domainType (Types.FunTy (dom, _)) = dom
+      | domainType _ = raise Fail "domainType"
 
     fun rangeType (Types.FunTy (_, rng)) = rng
       | rangeType _ = raise Fail "rangeType"

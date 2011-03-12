@@ -128,12 +128,13 @@ structure AST =
       | VK_Pat			(* bound in a pattern *)
       | VK_Fun			(* bound to a function *)
       | VK_Prim			(* builtin function or operator *)
-
+ 
   (* type-indexed flattening operators *)
     and fl_op
-      = ID of ty (* FIXME this need not be a function type (overspecified) *)
-      | Unzip of ty (* FIXME this can be domain type only *)
-      | CatMap of fl_op (* FIXME consider splitting this back up into cat and map *)
+      = ID of ty                   (* ty is dom/rng type *)
+      | Unzip of ty                (* ty is dom type *)
+      | Cat of ty                  (* ty is dom type *)
+      | Map of fl_op * Types.nt_ty (* nt_ty gives depth, not knowable from the oper alone *)
       | Compose of fl_op * fl_op
       | CrossCompose of fl_op list
 

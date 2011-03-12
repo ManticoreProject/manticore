@@ -319,6 +319,7 @@ structure Translate : sig
 	        ExpansionOpts.withExpansionOpts(fn () => EXP(trExpToExp(env, e)), opts)
 	    | AST.FTupleExp es=> raise Fail "TODO"
 	    | AST.FArrayExp (es, n, t) => raise Fail "TODO"
+	    | AST.FlOp oper => raise Fail "TODO"
 	  (* end case *))
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))

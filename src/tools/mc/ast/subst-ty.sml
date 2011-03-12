@@ -45,6 +45,7 @@ structure SubstTy =
 	    | exp (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, exp e)
 	    | exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
 	    | exp (A.FArrayExp (es, n, t)) = A.FArrayExp (List.map exp es, ntree s n, substTy (s, t))
+	    | exp (A.FlOp oper) = A.FlOp (fl_op s oper)
           in
 	     exp e
           end
@@ -59,7 +60,10 @@ structure SubstTy =
 	   | A.VarPat v => A.VarPat (substForVar(s, v))
 	   | A.WildPat t => A.WildPat (substTy(s, t))
 	   | A.ConstPat c => A.ConstPat (const s c)
-	   | A.ConPat (dc, tys, p) => A.ConPat (substDCon (s, dc), List.map (fn ty => substTy(s, ty)) tys, pat s p)
+	   | A.ConPat (dc, tys, p) => 
+               A.ConPat (substDCon (s, dc), 
+			 List.map (fn ty => substTy(s, ty)) tys, 
+			 pat s p)
           (* end case *))
 
     and const s (A.DConst (dc, tys)) = A.DConst(substDCon(s, dc), List.map (fn ty => substTy(s, ty)) tys)
@@ -92,5 +96,14 @@ structure SubstTy =
       | topDec s (A.TD_Binding b) = A.TD_Binding (binding s b)
 
     and topDecs s tds = List.map (topDec s) tds
+
+    and fl_op s oper = (case oper
+      of A.ID t => A.ID (substTy (s, t))
+       | A.Unzip t => A.Unzip (substTy (s, t))
+       | A.Cat t => A.Cat (substTy (s, t))
+       | A.Map (o1, n) => A.Map (fl_op s o1, n)
+       | A.Compose (o1, o2) => A.Compose (fl_op s o1, fl_op s o2)
+       | A.CrossCompose os => A.CrossCompose (List.map (fl_op s) os)
+      (* end case *))
 
   end (* SubstTy *)

@@ -89,6 +89,7 @@ structure Elaborate : sig
       | trExp (A.FTupleExp es) = A.FTupleExp (List.map trExp es)
       | trExp (A.FArrayExp (es, n, ty)) = 
           A.FArrayExp (List.map trExp es, trNTree n, trTy ty)
+      | trExp (A.FlOp oper) = raise Fail "FlOp"
 
     and trNTree (A.Lf (e1, e2)) = A.Lf (trExp e1, trExp e2)
       | trNTree (A.Nd ns) = A.Nd (List.map trNTree ns)

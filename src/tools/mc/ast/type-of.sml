@@ -68,6 +68,4 @@ structure TypeOf : sig
       | ppat (AST.HandlePat (_, ty)) = ty
       | ppat (AST.Pat p) = pat p
 
-
-
   end

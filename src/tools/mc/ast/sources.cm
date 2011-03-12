@@ -28,6 +28,8 @@ Library
   structure SubstTy
   structure VarSubst
   structure FlattenOp
+  structure FlattenOpGen
+  structure TestFlattenOpGen
 
 is
 
@@ -58,3 +60,5 @@ is
   subst-var.sml
   subst-ty.sml
   flatten-op.sml
+  flatten-op-gen.sml  
+  test-flatten-op-gen.sml

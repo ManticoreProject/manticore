@@ -47,6 +47,7 @@ structure SubstVar =
 	    | exp (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, exp e)
 	    | exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
 	    | exp (A.FArrayExp (es, n, t)) = A.FArrayExp (List.map exp es, ntree s n, t)
+	    | exp (oper as A.FlOp _) = oper
           in
 	     exp e
           end

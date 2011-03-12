@@ -26,6 +26,9 @@ end = struct
   structure T = Types
   structure U = TypeUtil
 
+  fun ntreeNat (T.LfTy) = 0
+    | ntreeNat (T.NdTy n) = 1 + ntreeNat n
+
 (* toString *)
   local
     fun sub conStr ty = conStr ^ "_<" ^ U.toString ty ^ ">"
@@ -33,45 +36,14 @@ end = struct
     fun toString (oper : A.fl_op) : string = (case oper
       of A.ID t => sub "A.ID" t
        | A.Unzip t => sub "A.Unzip" t
-       | A.CatMap oper => "A.CatMap(" ^ toString oper ^ ")"
+       | A.Cat t => sub "A.Cat" t
+       | A.Map (oper, n) => "A.Map(" ^ toString oper ^ ")_" 
+			    ^ Int.toString (ntreeNat n)
        | A.Compose (o1, o2) =>
            "(" ^ toString o1 ^ " o " ^ toString o2 ^ ")"
        | A.CrossCompose os => 
            "(" ^ String.concatWith " x " (List.map toString os) ^ ")"
       (* end case *))
-  end (* local *)
-
-  local
-    fun fArray ty = T.FArrayTy (ty, T.LfTy)
-    fun isGroundTy ty = 
-     (case ty
-       of T.ConTy ([], c) => 
-            List.exists (fn c' => TyCon.same (c',c)) Basis.primTycs
-	| _ => false)
-  in
-    fun construct (r : T.ty) : A.fl_op = let
-      val f = (case r
-        of T.FunTy (r1, r2) => A.ID (T.FunTy (fArray r, fArray r))
-	 | T.TupleTy [] => (* unit *) A.ID (T.FunTy (fArray r, fArray r))
-	 | T.TupleTy ts => let
-	     val unzipDom = fArray r
-	     val unzipRng = T.TupleTy (List.map fArray ts)
-             val unzip = A.Unzip (T.FunTy (unzipDom, unzipRng))
-             in
-	       A.Compose (A.CrossCompose (List.map construct ts), unzip)
-	     end
-	 | T.FArrayTy (t', n) => A.CatMap (construct t')
-	 | T.ConTy (ts, c) => 
-	     if isGroundTy r then 
-               A.ID (T.FunTy (fArray r, fArray r))
-	     else 
-	       raise Fail "todo"
-	 | T.VarTy a => raise Fail "todo"
-	 | _ => raise Fail ("construct: " ^ U.toString r)
-	(* end case *))
-    in
-      f
-    end
   end (* local *)
 
 (* typeOf *)
@@ -90,13 +62,27 @@ end = struct
   (* fl_op : A.fl_op -> T.ty *)
   (* type reconstruction for opers *)
     fun typeOf (q : A.fl_op) : T.ty = (case q 
-      of A.ID t => t
-       | A.Unzip t => t
-       | A.CatMap q' => (case typeOf q'
-           of T.FunTy (T.FArrayTy (r, n), T.FArrayTy (r', n')) =>
-              T.FunTy (T.FArrayTy (T.FArrayTy (r, n), T.LfTy),
-			T.FArrayTy (r', T.NdTy n))
-	    | t => raise Fail ("typeOf: " ^ U.toString t))
+      of A.ID domTy => T.FunTy (domTy, domTy)
+       | A.Unzip domTy => let
+           val (ts, n) = (case domTy 
+             of T.FArrayTy (T.TupleTy ts, n) => (ts, n)
+	      | _ => raise Fail "typeOf: unzip domain")
+	   val rngTy = T.TupleTy (List.map (fn ty => T.FArrayTy (ty, n)) ts)
+           in
+	     T.FunTy (domTy, rngTy)
+	   end
+       | A.Cat domTy => (case domTy
+           of T.FArrayTy (T.FArrayTy (r, n), T.LfTy) => let
+                val rngTy = T.FArrayTy (r, T.NdTy n)
+                in
+		  T.FunTy (domTy, rngTy)
+	        end 
+	    | _ => raise Fail ("typeOf, Cat: " ^ U.toString domTy)
+           (* end case *))
+       | A.Map (oper, n) => (case typeOf oper
+           of T.FunTy (r, r') => T.FunTy (T.FArrayTy (r, n), T.FArrayTy (r', n))
+	    | _ => raise Fail ("typeOf, Map: " ^ toString oper)
+           (* end case *))
        | A.Compose (q1, q2) => let
 	   val t1 = typeOf q1
 	   val t2 = typeOf q2
@@ -115,11 +101,50 @@ end = struct
       (* end case *))
   end (* local *)
 
+(* construct *)
+  local
+    fun fArray ty = T.FArrayTy (ty, T.LfTy)
+    fun isGroundTy ty = 
+     (case ty
+       of T.ConTy ([], c) => 
+            List.exists (fn c' => TyCon.same (c',c)) Basis.primTycs
+	| _ => false)
+  in
+    fun construct (r : T.ty) : A.fl_op = let
+      val f = (case r
+        of T.FunTy (r1, r2) => A.ID (fArray r)
+	 | T.TupleTy [] => (* unit *) A.ID (fArray r)
+	 | T.TupleTy ts => let
+             val unzip = A.Unzip (fArray r)
+             in
+	       A.Compose (A.CrossCompose (List.map construct ts), unzip)
+	     end
+	 | T.FArrayTy (t', n) => let
+             val oper' = construct t'
+             val domTy = U.domainType (typeOf oper')
+             in
+               A.Compose (A.Cat domTy, A.Map (oper', n))
+             end
+	 | T.ConTy (ts, c) => 
+	     if isGroundTy r then 
+               A.ID (T.FunTy (fArray r, fArray r))
+	     else 
+	       raise Fail "todo"
+	 | T.VarTy a => raise Fail "todo"
+	 | _ => raise Fail ("construct: " ^ U.toString r)
+	(* end case *))
+    in
+      f
+    end
+  end (* local *)
+
 (* same : A.fl_op * A.fl_op -> bool *)
   fun same (o1 : A.fl_op, o2 : A.fl_op) : bool = (case (o1, o2)
     of (A.ID t1, A.ID t2) => U.same (t1, t2)
      | (A.Unzip t1, A.Unzip t2) => U.same (t1, t2)
-     | (A.CatMap o1, A.CatMap o2) => same (o1, o2)
+     | (A.Cat t1, A.Cat t2) => U.same (t1, t2)
+     | (A.Map (o1, n1), A.Map (o2, n2)) =>
+         same (o1, o2) andalso (ntreeNat n1 = ntreeNat n2)
      | (A.Compose (op11, op12), A.Compose (op21, op22)) =>
          same (op11, op21) andalso same (op12, op22)
      | (A.CrossCompose os1, A.CrossCompose os2) =>
@@ -132,9 +157,10 @@ end = struct
     fun consIndex (c : A.fl_op) : int = (case c
       of A.ID _           => 0
        | A.Unzip _        => 1
-       | A.CatMap _       => 2
-       | A.Compose _      => 3
-       | A.CrossCompose _ => 4
+       | A.Cat _          => 2
+       | A.Map _          => 3
+       | A.Compose _      => 4
+       | A.CrossCompose _ => 5
       (* end case *))
   (* listCmp builds a lexicographic-style ordering on lists of elements *)
   (*   given a compare function for individual elements*)
@@ -163,7 +189,11 @@ end = struct
 	  else case (o1, o2)
             of (A.ID t1, A.ID t2) => U.compare (t1, t2)
 	     | (A.Unzip t1, A.Unzip t2) => U.compare (t1, t2)
-	     | (A.CatMap o1, A.CatMap o2) => cmp (o1, o2)
+	     | (A.Cat t1, A.Cat t2) => U.compare (t1, t2)
+	     | (A.Map (o1, n1), A.Map (o2, n2)) =>
+                (case cmp (o1, o2)
+		  of EQUAL => Int.compare (ntreeNat n1, ntreeNat n2)
+		   | neq => neq)
 	     | (A.Compose pair1, A.Compose pair2) =>
                  (pairCmp cmp) (pair1, pair2)
 	     | (A.CrossCompose os1, A.CrossCompose os2) => 

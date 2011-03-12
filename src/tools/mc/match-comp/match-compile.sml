@@ -377,8 +377,10 @@ structure MatchCompile : sig
 	      | AST.OverloadExp(ref(AST.Instance x)) => AST.VarExp(x, [])
 	      | AST.OverloadExp _ => raise Fail "unresolved overloading"
 	      | AST.ExpansionOptsExp (opts, e) => AST.ExpansionOptsExp(opts, rewrite' e)
-	      | AST.FTupleExp _ => raise Fail "rewrite"
-	      | AST.FArrayExp _ => raise Fail "rewrite"
+            (* the following should not yet have been introduced *)
+	      | AST.FTupleExp _ => raise Fail "unexpected FTuple"
+	      | AST.FArrayExp _ => raise Fail "unexpected FArray"
+	      | AST.FlOp oper => raise Fail "unexpected FlOp"
 	    (* end case *)
 	  end
 
