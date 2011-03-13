@@ -93,7 +93,13 @@ end = struct
                  val t' = TypeOf.exp e'
                  in
                    if TypeUtil.same (r,t') then () 
-		   else raise Fail "flattening parray type mismatch"
+		   else 
+		    (print "flattening parray type mismatch\n";
+		     print "e' = ";
+		     PrintAST.printExp e';
+		     print ("r = " ^ U.toString r ^ "\n");
+		     print ("t' = " ^ U.toString t' ^ "\n");
+		     raise Fail "flattening parray type mismatch")
 	         end) 
 	  val lf = A.Lf (ASTUtil.mkInt 0, ASTUtil.mkInt (List.length es))
 	  val f = A.FArrayExp (es', lf, r)

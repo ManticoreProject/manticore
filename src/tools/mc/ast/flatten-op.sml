@@ -91,7 +91,10 @@ end = struct
 	     if (U.same (domOf t1, rngOf t2)) then
                T.FunTy (domOf t2, rngOf t1)
              else
-               raise Fail "typeOf: compose mismatch"
+               (print "typeOf: compose mismatch\n";
+		print ("t1 = " ^ U.toString t1 ^ "\n");
+		print ("t2 = " ^ U.toString t2 ^ "\n");
+		raise Fail "typeOf: compose mismatch")
            end
        | A.CrossCompose qs => let
 	   val (ds, rs) = unzip (List.map typeOf qs)
@@ -121,13 +124,14 @@ end = struct
 	     end
 	 | T.FArrayTy (t', n) => let
              val oper' = construct t'
-             val domTy = U.domainType (typeOf oper')
+	     val map = A.Map (oper', n)
+             val domTy = U.domainType (typeOf map)
              in
-               A.Compose (A.Cat domTy, A.Map (oper', n))
+               A.Compose (A.Cat domTy, map)
              end
 	 | T.ConTy (ts, c) => 
 	     if isGroundTy r then 
-               A.ID (T.FunTy (fArray r, fArray r))
+               A.ID (fArray r)
 	     else 
 	       raise Fail "todo"
 	 | T.VarTy a => raise Fail "todo"

@@ -18,12 +18,13 @@ end = struct
 
   fun flOp (oper : AST.fl_op) : AST.fl_op = let
     val changed = ref false
-    val chg oper = (changed := true; oper)
+    fun chg oper = (changed := true; oper)
     fun f (id as A.ID _) = id
       | f (un as A.Unzip _) = un
       | f (cm as A.Cat _) = cm
-      | f (mp as A.Map (A.ID t, n)) = 
-          chg (A.ID (A.FArray (t, n)))
+      | f (mp as A.Map (oper, n)) = (case oper
+          of A.ID t => chg (A.ID (A.FArrayTy (t, n)))
+	   | _ => mp)
       | f (A.Compose (o1, o2)) = 
          (case (flOp o1, flOp o2)
 	   of (A.ID _, o2') => chg o2'

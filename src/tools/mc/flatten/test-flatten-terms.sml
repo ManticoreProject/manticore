@@ -14,7 +14,8 @@ structure TestFlattenTerms = struct
   
   val env = FlattenEnv.mkEnv ()
 
-  val println = (fn s => (print s; print "\n"))
+  val ln = (fn () => print "\n")
+  val println = (fn s => (print s; ln ()))
 
   val intTy = B.intTy
   val unitTy = B.unitTy
@@ -25,11 +26,16 @@ structure TestFlattenTerms = struct
     in
       println ("************ original term:");
       PrintAST.printExp e;
+      ln ();
+      println ("  : " ^ U.toString (TypeOf.exp e));
       println ("************ flattened term:");
       PrintAST.printExp f;
+      ln ();
+      println ("  : " ^ U.toString (TypeOf.exp f));
       println ("************ fused term:");
       PrintAST.printExp g;
-      println ""
+      ln ();
+      println ("  : " ^ U.toString (TypeOf.exp g))
     end)
 
   val test0 = mkTest (A.TupleExp [])
@@ -53,6 +59,14 @@ structure TestFlattenTerms = struct
   val test4 = let
     val tup = A.TupleExp [ASTUtil.mkInt 0, ASTUtil.mkInt 1]
     val ps = A.PArrayExp ([tup], T.TupleTy [intTy, intTy])
+    in
+      mkTest ps
+    end
+
+  val test5 = let
+    val tup = A.TupleExp [ASTUtil.mkInt 0, ASTUtil.mkInt 1]
+    val tup' = A.TupleExp [tup, ASTUtil.mkInt 2]
+    val ps = A.PArrayExp ([tup'], TypeOf.exp tup')
     in
       mkTest ps
     end
