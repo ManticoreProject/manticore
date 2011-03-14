@@ -1066,27 +1066,34 @@ structure ArityRaising : sig
             fun getParamFunType (l) = let
                 val lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
                 val _ = if !flatteningDebug
-                        then print (concat["Merging signatures for fn types: ", concat(List.map (fn x => ((CPSTyUtil.toString x)^" ")) lambdas), "\n"])
+                        then print (concat["Merging signatures for fn types: ", String.concatWith "," (List.map (fn x => ((CPSTyUtil.toString x)^" ")) lambdas), " from variables: ", String.concatWith "," (List.map CPS.Var.toString (CPS.Var.Set.listItems l)), "\n"])
                         else ()
-                fun mergeSignatures (base, new) = let
-                    val CPSTy.T_Fun(baseParams, baseRets) = base
-                    val CPSTy.T_Fun(newParams, newRets) = new
-                    fun bestMatch (t1, t2) =
-                        if CPSTyUtil.equal (t1, t2)
-                        then t1
-                        else CPSTy.T_Any
-                    val args' = ListPair.map bestMatch (baseParams, newParams)
-                    val rets' = ListPair.map bestMatch (baseRets, newRets)
-                in
-                    CPSTy.T_Fun (args', rets')
-                end
+                (* If they are equal, or if one of the types is ANY, we are fine.
+                 * Any arises in two cases: 1) polymorphic types 2) unused parameters that are put 
+                 * in to keep a uniform calling convention.
+                 *)
+                fun safeMergable ([],[]) = true
+                  | safeMergable (_,[]) = false
+                  | safeMergable ([],_) = false
+                  | safeMergable (x::xs, y::ys) = CPSTyUtil.validCast (x,y) andalso safeMergable (xs,ys)
+                fun safeMergeTypes (CPSTy.T_Fun (p1,r1), CPSTy.T_Fun (p2,r2)) =
+                    if safeMergable(p1,p2) andalso safeMergable(r1,r2)
+                    then CPSTy.T_Fun(ListPair.map safeMergeTypes (p1,p2),
+                                     ListPair.map safeMergeTypes (r1,r2))
+                    else CPSTy.T_Any
+                  | safeMergeTypes (CPSTy.T_Tuple (b, t1), CPSTy.T_Tuple(b2,t2)) =
+                    CPSTy.T_Tuple(b, ListPair.map safeMergeTypes (t1,t2))
+                  | safeMergeTypes (x,y) =
+                    if CPSTyUtil.equal (x,y)
+                    then x
+                    else CPSTy.T_Any
             in
                 if List.length lambdas = 0
                 then CV.typeOf param
                 else let
                         val l::lambdas = lambdas
                     in
-                        foldr mergeSignatures l lambdas
+                        foldr safeMergeTypes l lambdas
                     end
             end
             fun buildType (CPSTy.T_Tuple (heap, tys), cpsValues) = let
@@ -1294,15 +1301,12 @@ structure ArityRaising : sig
                  * how they're going to be used (i.e. a :enum(0) in for a ![any, any]).
                  * Only update function types.
                  *)
-                fun chooseType (ty, v) = let
-                    val vTy = CV.typeOf v
-                in
-                    case vTy
-                     of CTy.T_Fun(_, _) => vTy
-                      | _ => ty
-                end
+                fun chooseType (ty, vTy as CTy.T_Fun(_, _)) = vTy
+                  | chooseType (ty as CTy.T_Tuple(_,tys), vTy as CTy.T_Tuple(b,vTys)) =
+                    CTy.T_Tuple(b, ListPair.map chooseType (tys, vTys))
+                  | chooseType (ty, _) = ty
             in
-                SOME (CPSTy.T_Tuple(b, ListPair.map chooseType (tys, vars)))
+                SOME (CPSTy.T_Tuple(b, ListPair.map chooseType (tys, (List.map CV.typeOf vars))))
             end
           | typeOfRHS(C.Alloc (_, vars)) = raise Fail "encountered an alloc that didn't originally have a tuple type."
           | typeOfRHS(C.Promote (v)) = SOME (CV.typeOf v)
@@ -1319,14 +1323,12 @@ structure ArityRaising : sig
               (* Even if we got a new type back, if the existing one is equal or more
                * specific, stick with the old one.
                *)
-              of SOME(ty) => if not(CPSTyUtil.soundMatch (CV.typeOf v, ty))
-                             then (if !flatteningDebug
-                                   then print (concat["Changing ", CV.toString v,
-                                                      " from: ", CPSTyUtil.toString (CV.typeOf v),
-                                                      " to: ", CPSTyUtil.toString ty, "\n"])
-                                   else ();
-                                   CV.setType (v, ty))
-                             else ()
+              of SOME(ty) => (if !flatteningDebug
+                              then print (concat["Changing ", CV.toString v,
+                                                 " from: ", CPSTyUtil.toString (CV.typeOf v),
+                                                 " to: ", CPSTyUtil.toString ty, "\n"])
+                              else ();
+                              CV.setType (v, ty))
                | NONE => ()
              (* end case *))
            | _ => ()
