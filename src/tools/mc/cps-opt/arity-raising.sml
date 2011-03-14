@@ -1043,6 +1043,26 @@ structure ArityRaising : sig
             CPS.Var.Set.listItems l
           | _ => []
         
+    (* If they are equal, or if one of the types is ANY, we are fine.
+     * Any arises in two cases: 1) polymorphic types 2) unused parameters that are put 
+     * in to keep a uniform calling convention.
+     *)
+    fun safeMergable ([],[]) = true
+      | safeMergable (_,[]) = false
+      | safeMergable ([],_) = false
+      | safeMergable (x::xs, y::ys) = CPSTyUtil.validCast (x,y) andalso safeMergable (xs,ys)
+    fun safeMergeTypes (CPSTy.T_Fun (p1,r1), CPSTy.T_Fun (p2,r2)) =
+        if safeMergable(p1,p2) andalso safeMergable(r1,r2)
+        then CPSTy.T_Fun(ListPair.map safeMergeTypes (p1,p2),
+                         ListPair.map safeMergeTypes (r1,r2))
+        else CPSTy.T_Any
+      | safeMergeTypes (CPSTy.T_Tuple (b, t1), CPSTy.T_Tuple(b2,t2)) =
+        CPSTy.T_Tuple(b, ListPair.map safeMergeTypes (t1,t2))
+      | safeMergeTypes (x,y) =
+        if CPSTyUtil.equal (x,y)
+        then x
+        else CPSTy.T_Any
+
     (*
      * Before performing the actual flattening, go through and figure out the new signatures.
      * Note that some of the return continuations may be flattening candidates, so we need
@@ -1068,25 +1088,6 @@ structure ArityRaising : sig
                 val _ = if !flatteningDebug
                         then print (concat["Merging signatures for fn types: ", String.concatWith "," (List.map (fn x => ((CPSTyUtil.toString x)^" ")) lambdas), " from variables: ", String.concatWith "," (List.map CPS.Var.toString (CPS.Var.Set.listItems l)), "\n"])
                         else ()
-                (* If they are equal, or if one of the types is ANY, we are fine.
-                 * Any arises in two cases: 1) polymorphic types 2) unused parameters that are put 
-                 * in to keep a uniform calling convention.
-                 *)
-                fun safeMergable ([],[]) = true
-                  | safeMergable (_,[]) = false
-                  | safeMergable ([],_) = false
-                  | safeMergable (x::xs, y::ys) = CPSTyUtil.validCast (x,y) andalso safeMergable (xs,ys)
-                fun safeMergeTypes (CPSTy.T_Fun (p1,r1), CPSTy.T_Fun (p2,r2)) =
-                    if safeMergable(p1,p2) andalso safeMergable(r1,r2)
-                    then CPSTy.T_Fun(ListPair.map safeMergeTypes (p1,p2),
-                                     ListPair.map safeMergeTypes (r1,r2))
-                    else CPSTy.T_Any
-                  | safeMergeTypes (CPSTy.T_Tuple (b, t1), CPSTy.T_Tuple(b2,t2)) =
-                    CPSTy.T_Tuple(b, ListPair.map safeMergeTypes (t1,t2))
-                  | safeMergeTypes (x,y) =
-                    if CPSTyUtil.equal (x,y)
-                    then x
-                    else CPSTy.T_Any
             in
                 if List.length lambdas = 0
                 then CV.typeOf param
@@ -1375,18 +1376,21 @@ structure ArityRaising : sig
                       if CPSTyUtil.soundMatch (argType, paramType)
                       then matchTypes (paramTypes, orig, arg::accum, final)
                       else let
-                              val typed = CV.new ("coerced", paramType)
+                              val newParamType = safeMergeTypes (argType, paramType)
+                              val typed = CV.new ("coerced", newParamType)
                               val _ = if !flatteningDebug
                                       then print (concat["Coercing from: ",
                                                          CPSTyUtil.toString argType,
                                                          " to: ",
                                                          CPSTyUtil.toString paramType,
+                                                         " final (safe): ",
+                                                         CPSTyUtil.toString newParamType,
                                                          " for argument: ",
                                                          CV.toString arg, "\n"])
                                       else ()
                               val _ = if getUseful arg then setUseful typed else ()
                           in
-                              C.mkLet ([typed], C.Cast(paramType, arg),
+                              C.mkLet ([typed], C.Cast(newParamType, arg),
                                        matchTypes (paramTypes, orig, typed::accum, final))
                           end
                   end
