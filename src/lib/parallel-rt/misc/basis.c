@@ -545,6 +545,24 @@ Value_t M_TextIOInputLine (void *instream)
     }
 }
 
+void *M_TextIOOpenOut (Value_t filename)
+{
+    SequenceHdr_t	*filenameS = (SequenceHdr_t *)ValueToPtr(filename);
+
+    return fopen ((char*)(filenameS->data), "w");
+}
+
+void M_TextIOCloseOut (void *outstream)
+{
+    fclose (outstream);
+}
+
+void M_TextIOOutputLine (void *ws, void *outstream)
+{
+    SequenceHdr_t	*str = (SequenceHdr_t *)ValueToPtr(ws);
+    fputs((char*)(str->data), outstream);
+}
+
 Value_t M_StringTokenize (Value_t str, Value_t sep)
 {
     VProc_t             *vp = VProcSelf ();

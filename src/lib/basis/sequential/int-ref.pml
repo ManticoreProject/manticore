@@ -21,13 +21,13 @@ structure IntRef =
 
       define inline @set (args : [ref, ml_int] / exh: exh) : unit =
         let r : ref = #0(args)
-        let x : int = unwrap(#1(args))
+        let x : int = #0(#1(args))
         do #0(r) := x
         return(UNIT)
         ;
 
       define inline @get (r: ref / exh: exh) : ml_int = 
-        return(wrap(#0(r)))
+        return(alloc(#0(r)))
         ;
     )
 

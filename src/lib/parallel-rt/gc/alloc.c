@@ -375,6 +375,7 @@ Value_t GlobalAllocPolyArray (VProc_t *vp, int nElems, Value_t init)
  */
 Value_t AllocBigPolyArray (VProc_t *vp, int nElems, Value_t init)
 {
+
   if ((nElems+1) * WORD_SZB < HEAP_CHUNK_SZB)
     return GlobalAllocPolyArray (vp, nElems, init);
   else {
@@ -401,13 +402,13 @@ Value_t AllocIntArray (VProc_t *vp, int n)
  */
 Value_t AllocBigIntArray (VProc_t *vp, int nElems)
 {
+  /*
     if (nElems * sizeof(int32_t) + WORD_SZB < HEAP_CHUNK_SZB)
 	return GlobalAllocRawArray (vp, nElems, sizeof(int32_t));
-    else {
-	// TODO 
-	assert(0);
-	return 0;
-    }
+	else */
+	/* FIXME: this array will never get collected */
+	/* TODO: extend the GC to support large arrays of raw values */
+	return (valloc (nElems * sizeof(int)));
 }
 
 /*! \brief allocate in the local heap an array of longs
@@ -427,13 +428,13 @@ Value_t AllocLongArray (VProc_t *vp, int n)
  */
 Value_t AllocBigLongArray (VProc_t *vp, int nElems)
 {
+  /*
     if (nElems * sizeof(int64_t) + WORD_SZB < HEAP_CHUNK_SZB)
 	return GlobalAllocRawArray (vp, nElems, sizeof(int64_t));
-    else {
-	// TODO 
-	assert(0);
-	return 0;
-    }
+	else  */
+	/* FIXME: this array will never get collected */
+	/* TODO: extend the GC to support large arrays of raw values */
+	return (valloc (nElems * sizeof(int)));
 }
 
 /*! \brief allocate in the local heap an array of floats
@@ -453,13 +454,13 @@ Value_t AllocFloatArray (VProc_t *vp, int n)
  */
 Value_t AllocBigFloatArray (VProc_t *vp, int nElems)
 {
-    if (nElems * sizeof(float) + WORD_SZB < HEAP_CHUNK_SZB)
+  /*    if (nElems * sizeof(float) + WORD_SZB < HEAP_CHUNK_SZB)
 	return GlobalAllocRawArray (vp, nElems, sizeof(float));
-    else {
-	// TODO 
-	assert(0);
-	return 0;
-    }
+    else
+  */
+	/* FIXME: this array will never get collected */
+	/* TODO: extend the GC to support large arrays of raw values */
+	return (valloc (nElems * sizeof(float)));
 }
 
 /*! \brief allocate in the local heap an array of doubles
@@ -479,13 +480,13 @@ Value_t AllocDoubleArray (VProc_t *vp, int n)
  */
 Value_t AllocBigDoubleArray (VProc_t *vp, int nElems)
 {
+  /*
     if (nElems * sizeof(double) + WORD_SZB < HEAP_CHUNK_SZB)
 	GlobalAllocRawArray (vp, nElems, sizeof(double));
-    else {
-	// TODO 
-	assert(0);
-	return 0;
-    }
+	else  */
+	/* FIXME: this array will never get collected */
+	/* TODO: extend the GC to support large arrays of raw values */
+	return (valloc (nElems * sizeof(double)));
 }
 
 /* FIXME: this function does not belong here! */

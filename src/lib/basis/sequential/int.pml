@@ -17,6 +17,7 @@ structure Int =
       extern void *M_IntToString (int) __attribute__((alloc,pure));
       extern void *M_IntFromString (void *) __attribute__((alloc,pure));
       extern int M_CeilingLg (int) __attribute__((pure));
+      extern int M_FloorLg (int) __attribute__((pure));
 
       define inline @to-string (n : ml_int / exh : exh) : ml_string =
 	  let res : ml_string = ccall M_IntToString (unwrap(n))
@@ -33,6 +34,11 @@ structure Int =
 	return (alloc(res))
       ;
 
+      define inline @floor-lg(n : ml_int / exh : exh) : ml_int =
+	let res : int = ccall M_FloorLg(unwrap(n))
+	return (alloc(res))
+      ;
+
     )
 
     val toString : int -> string = _prim(@to-string)
@@ -40,6 +46,7 @@ structure Int =
 
 (* FIXME: why is this function here? It is not part of the INT API *)
     val ceilingLg : int -> int = _prim(@ceiling-lg)
+    val floorLg : int -> int = _prim(@floor-lg)
 
   (* abs : int -> int *)
     fun abs n = if n < 0 then ~n else n

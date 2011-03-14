@@ -225,34 +225,35 @@ structure ArityRaising : sig
           val defaultArgPath = (0,[])
           val CPSTy.T_Fun(params, _) = sig1Type
           (* We only check against the signature being merged into. This
-           * is because we'll ue the result of our signature creation process
+           * is because we'll use the result of our signature creation process
            * and feed it through sigMeet a second time to make sure it's compatible
            * with all of the predecessors.
            *)
-          fun isSafeToSelect (i, l) = i < List.length params
-                                      andalso isSafeSelection (l, List.nth (params, i))
-          and isSafeSelection (i::l, CTy.T_Tuple (_, tys)) =
-              i < List.length tys
-              andalso isSafeSelection (l, List.nth (tys, i))
-            | isSafeSelection (i::l, _) = false
-            | isSafeSelection (_, _) = true
+
+          fun safeSelection (i, l) = if i >= List.length params
+                                     then defaultArgPath
+                                     else (i, safeSelectionHelper (l, List.nth (params, i)))
+          and safeSelectionHelper (x::xs, CTy.T_Tuple (_, tys)) =
+              if (x < List.length tys)
+              then x::(safeSelectionHelper (xs, List.nth (tys, x)))
+              else []
+            | safeSelectionHelper (_, _) = []
+              
 	  fun f (p::ps, q::qs, mergedSig) = (case compareRevPath(p, q)
-		 of PathLess => f(ps, q::qs, p::mergedSig)
+		 of PathLess => f(ps, q::qs, (safeSelection p)::mergedSig)
 		  | PathPrefix => f (ps, removeDerivedPaths (p, qs), p::mergedSig)
 		  | PathEq => f (ps, qs, p::mergedSig)
 		  | PathGreater => if isPrefix (q, p)
 		      then f (removeDerivedPaths (q, ps), qs, q::mergedSig)
-		      else f (p::ps, qs, q::mergedSig)
+		      else f (p::ps, qs, (safeSelection q)::mergedSig)
 		(* end case *))
             | f ([], [], mergedSig) = mergedSig
 	    | f (ps, [], mergedSig) = if compareRevPath (defaultArgPath, hd ps) = PathEq
                                       then (hd ps)::mergedSig
                                       else List.revAppend(ps, mergedSig)
-	    | f ([], qs, mergedSig) = if compareRevPath (defaultArgPath, hd qs) = PathEq
-                                      then (hd qs)::mergedSig
-                                      else (if List.all isSafeToSelect qs
-                                            then List.revAppend(qs, mergedSig)
-                                            else [defaultArgPath])
+	    | f ([], q::qs, mergedSig) = if compareRevPath (defaultArgPath, q) = PathEq
+                                      then q::mergedSig
+                                      else f([], qs, (safeSelection q)::mergedSig)
 	  in
 	    List.rev (f (sig1, sig2, []))
 	  end
@@ -323,7 +324,8 @@ structure ArityRaising : sig
                             val baseParam = List.nth (origParams, i)
                             fun findSubtype (i::l, CTy.T_Tuple (_, tys)) =
                                 findSubtype (l, List.nth (tys, i))
-                              | findSubtype (i::l, _) = raise Fail ("Signature contains invalid path")
+                              | findSubtype (i::l, ty) = raise Fail (concat["Signature contains invalid path selecting from type ",
+                                                                            CPSTyUtil.toString ty])
                               | findSubtype (_, ty) = ty
                             val paramType = findSubtype (l, CV.typeOf baseParam)
                         in
@@ -660,7 +662,7 @@ structure ArityRaising : sig
                     end
                     fun compatibleTypings ([], []) = true
                       | compatibleTypings (ty1::tys1, ty2::tys2) =
-                        CPSTyUtil.equal (ty1, ty2) andalso compatibleTypings (tys1, tys2)
+                        CPSTyUtil.match (ty1, ty2) andalso compatibleTypings (tys1, tys2)
                       | compatibleTypings (_, _) = raise Fail "Type lists of different lengths."
                     fun checkAll (ty1, ty2::tys2) = compatibleTypings (ty1, ty2) andalso checkAll (ty2, tys2)
                       | checkAll (ty1, []) = true
@@ -1041,6 +1043,26 @@ structure ArityRaising : sig
             CPS.Var.Set.listItems l
           | _ => []
         
+    (* If they are equal, or if one of the types is ANY, we are fine.
+     * Any arises in two cases: 1) polymorphic types 2) unused parameters that are put 
+     * in to keep a uniform calling convention.
+     *)
+    fun safeMergable ([],[]) = true
+      | safeMergable (_,[]) = false
+      | safeMergable ([],_) = false
+      | safeMergable (x::xs, y::ys) = CPSTyUtil.validCast (x,y) andalso safeMergable (xs,ys)
+    fun safeMergeTypes (CPSTy.T_Fun (p1,r1), CPSTy.T_Fun (p2,r2)) =
+        if safeMergable(p1,p2) andalso safeMergable(r1,r2)
+        then CPSTy.T_Fun(ListPair.map safeMergeTypes (p1,p2),
+                         ListPair.map safeMergeTypes (r1,r2))
+        else CPSTy.T_Any
+      | safeMergeTypes (CPSTy.T_Tuple (b, t1), CPSTy.T_Tuple(b2,t2)) =
+        CPSTy.T_Tuple(b, ListPair.map safeMergeTypes (t1,t2))
+      | safeMergeTypes (x,y) =
+        if CPSTyUtil.equal (x,y)
+        then x
+        else CPSTy.T_Any
+
     (*
      * Before performing the actual flattening, go through and figure out the new signatures.
      * Note that some of the return continuations may be flattening candidates, so we need
@@ -1064,27 +1086,15 @@ structure ArityRaising : sig
             fun getParamFunType (l) = let
                 val lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
                 val _ = if !flatteningDebug
-                        then print (concat["Merging signatures for fn types: ", concat(List.map (fn x => ((CPSTyUtil.toString x)^" ")) lambdas), "\n"])
+                        then print (concat["Merging signatures for fn types: ", String.concatWith "," (List.map (fn x => ((CPSTyUtil.toString x)^" ")) lambdas), " from variables: ", String.concatWith "," (List.map CPS.Var.toString (CPS.Var.Set.listItems l)), "\n"])
                         else ()
-                fun mergeSignatures (base, new) = let
-                    val CPSTy.T_Fun(baseParams, baseRets) = base
-                    val CPSTy.T_Fun(newParams, newRets) = new
-                    fun bestMatch (t1, t2) =
-                        if CPSTyUtil.equal (t1, t2)
-                        then t1
-                        else CPSTy.T_Any
-                    val args' = ListPair.map bestMatch (baseParams, newParams)
-                    val rets' = ListPair.map bestMatch (baseRets, newRets)
-                in
-                    CPSTy.T_Fun (args', rets')
-                end
             in
                 if List.length lambdas = 0
                 then CV.typeOf param
                 else let
                         val l::lambdas = lambdas
                     in
-                        foldr mergeSignatures l lambdas
+                        foldr safeMergeTypes l lambdas
                     end
             end
             fun buildType (CPSTy.T_Tuple (heap, tys), cpsValues) = let
@@ -1292,15 +1302,12 @@ structure ArityRaising : sig
                  * how they're going to be used (i.e. a :enum(0) in for a ![any, any]).
                  * Only update function types.
                  *)
-                fun chooseType (ty, v) = let
-                    val vTy = CV.typeOf v
-                in
-                    case vTy
-                     of CTy.T_Fun(_, _) => vTy
-                      | _ => ty
-                end
+                fun chooseType (ty, vTy as CTy.T_Fun(_, _)) = vTy
+                  | chooseType (ty as CTy.T_Tuple(_,tys), vTy as CTy.T_Tuple(b,vTys)) =
+                    CTy.T_Tuple(b, ListPair.map chooseType (tys, vTys))
+                  | chooseType (ty, _) = ty
             in
-                SOME (CPSTy.T_Tuple(b, ListPair.map chooseType (tys, vars)))
+                SOME (CPSTy.T_Tuple(b, ListPair.map chooseType (tys, (List.map CV.typeOf vars))))
             end
           | typeOfRHS(C.Alloc (_, vars)) = raise Fail "encountered an alloc that didn't originally have a tuple type."
           | typeOfRHS(C.Promote (v)) = SOME (CV.typeOf v)
@@ -1317,14 +1324,12 @@ structure ArityRaising : sig
               (* Even if we got a new type back, if the existing one is equal or more
                * specific, stick with the old one.
                *)
-              of SOME(ty) => if not(CPSTyUtil.soundMatch (CV.typeOf v, ty))
-                             then (if !flatteningDebug
-                                   then print (concat["Changing ", CV.toString v,
-                                                      " from: ", CPSTyUtil.toString (CV.typeOf v),
-                                                      " to: ", CPSTyUtil.toString ty, "\n"])
-                                   else ();
-                                   CV.setType (v, ty))
-                             else ()
+              of SOME(ty) => (if !flatteningDebug
+                              then print (concat["Changing ", CV.toString v,
+                                                 " from: ", CPSTyUtil.toString (CV.typeOf v),
+                                                 " to: ", CPSTyUtil.toString ty, "\n"])
+                              else ();
+                              CV.setType (v, ty))
                | NONE => ()
              (* end case *))
            | _ => ()
@@ -1371,18 +1376,21 @@ structure ArityRaising : sig
                       if CPSTyUtil.soundMatch (argType, paramType)
                       then matchTypes (paramTypes, orig, arg::accum, final)
                       else let
-                              val typed = CV.new ("coerced", paramType)
+                              val newParamType = safeMergeTypes (argType, paramType)
+                              val typed = CV.new ("coerced", newParamType)
                               val _ = if !flatteningDebug
                                       then print (concat["Coercing from: ",
                                                          CPSTyUtil.toString argType,
                                                          " to: ",
                                                          CPSTyUtil.toString paramType,
+                                                         " final (safe): ",
+                                                         CPSTyUtil.toString newParamType,
                                                          " for argument: ",
                                                          CV.toString arg, "\n"])
                                       else ()
                               val _ = if getUseful arg then setUseful typed else ()
                           in
-                              C.mkLet ([typed], C.Cast(paramType, arg),
+                              C.mkLet ([typed], C.Cast(newParamType, arg),
                                        matchTypes (paramTypes, orig, typed::accum, final))
                           end
                   end

@@ -53,6 +53,8 @@ structure Float =
 
     )
 
+    type float = float
+
   (* SML interface *)
     val cos : float -> float = _prim (@float-cos)
     val sin : float -> float = _prim (@float-sin)

@@ -314,7 +314,7 @@ structure WorkStealing (* :
 	throw lp (0)
       ;
 
-#define DEFAULT_DEQUE_SZ            64
+#define DEFAULT_DEQUE_SZ            64000
 
   (* @create-worker (workGroupID, logWGID, isTerminated, setActive, deques, idleFlags) *)
   (* Creates a work stealing work group; we spawn one instance (worker) per processor. *)
