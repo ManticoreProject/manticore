@@ -443,7 +443,7 @@ structure WorkStealing (* :
 	    let isFull : bool = D.@is-full (deque)
 	    case isFull
 	     of true =>  (* the deque is full: let the scheduler loop choose the next action *)
-		PRINT_MSG ("WorkStealing: full deque")
+		do ccall M_Print ("WorkStealing: full deque\n")
 		throw exh (Fail(@"WorkStealing.@spawn-task: full deque"))
 	      | false =>
 		do D.@push-new-end-from-atomic (self, deque, t)
