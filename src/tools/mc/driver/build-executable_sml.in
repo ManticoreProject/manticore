@@ -79,7 +79,7 @@ structure BuildExecutable : sig
 	  val filename = OS.FileSys.tmpName()
       val filenamec = concat[filename,".c"]
       val filenameo = concat[filename,".o"]  
-	  val gccfilename = concat ["gcc @CFLAGS@ @LIBS@ @CFLAG_M64@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o ",filenameo," -std=c99 -c ",filenamec]
+	  val gccfilename = concat ["gcc @CFLAGS@ -O1 -fregmove @LIBS@ @CFLAG_M64@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o ",filenameo," -std=c99 -c ",filenamec]
 	  val _ = PrintTbl.print filenamec
 	  val _ = systemWithTiming (gccfilename, false)
 	  
