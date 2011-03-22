@@ -9,7 +9,7 @@
 
 structure FlattenTerms : sig
 
-  val exp : FlattenEnv.env -> AST.exp -> AST.exp
+  val flatten : AST.exp -> FlattenEnv.env * AST.exp
 
 end = struct
 
@@ -40,8 +40,7 @@ end = struct
       | ex (A.CaseExp (e, ms, t)) = let
           val e' = ex e
 	  val ms' = List.map (match env) ms
-	  val t' = ty t (* FIXME what if the terms in the case aren't flattenable? *)
-	                (* PrimCode for example? *)
+	  val t' = ty t
           in
 	    A.CaseExp (e', ms', t')
 	  end
@@ -116,8 +115,9 @@ end = struct
       | ex (A.VarExp (x, ts)) = let
           val x' = FEnv.lookupVar (env, x)
 	  val ts' = List.map ty ts
+          val v' = A.VarExp (x', ts')
           in
-	    A.VarExp (x', ts')
+	    v'
 	  end
       | ex (A.SeqExp (e1, e2)) = A.SeqExp (ex @@ (e1, e2))
       | ex (A.OverloadExp xr) = raise Fail "todo"
@@ -148,7 +148,14 @@ end = struct
           in
             (env', A.FunBind lams')
           end
-      | A.PrimVBind (x, rhs) => (env, b)
+      | A.PrimVBind (x, rhs) => let
+          (* since we can't flatten the rhs, register x as mapping to itself, *)
+          (*   leaving its type unchanged *)
+          val env' = FEnv.insertVar (env, x, x)
+	  val _ = Var.setInterfaceTy (x, Var.typeOf x);
+          in
+	    (env', b)
+	  end
       | A.PrimCodeBind c => (env, b)
     (* end case *))
 
@@ -252,7 +259,7 @@ end = struct
       | A.TuplePat ps => let
 	  fun lp ([], acc, env') = (env', List.rev acc)
 	    | lp (p::ps, acc, env') = let
-                val (env'', p') = pat env p
+                val (env'', p') = pat env' p
                 in
 		  lp (ps, p'::acc, env'')
 	        end
@@ -270,12 +277,13 @@ end = struct
     (* end case *))
 
   and var (env : env) (x : A.var) : env * A.var = let
+(*    val _ = print ("$$$$$$$$$$$$$$$$ flattening " ^ Var.toString x ^ "\n") *)
     val tySch = Var.typeOf x
     val tySch' = FlattenTypes.flattenTyScheme env tySch
     val x' = Var.newPoly (Var.nameOf x ^ "_", tySch')
     val env' = FEnv.insertVar (env, x, x')
     val () = (* record interface type on new var *)
-	Var.setInterfaceTy (x, tySch);
+	Var.setInterfaceTy (x', tySch);
     in
       (env', x')
     end
@@ -292,5 +300,12 @@ end = struct
 	  end
       | A.LConst (l, t) => A.LConst (l, t) (* a literal's type shouldn't require flattening *)
     (* end case *))
+
+  fun flatten (e : A.exp) : env * A.exp = let
+    val env = FlattenEnv.mkEnv ()
+    val e' = exp env e
+    in
+      (env, e')
+    end
 
 end

@@ -10,7 +10,7 @@
  *              datatype a' = A' of {int;lf} * {int;lf}
  *)
 
-structure FlattenEnv : sig
+structure FlattenEnv (* : sig
 
   type env
   val  mkEnv : unit -> env
@@ -22,11 +22,12 @@ structure FlattenEnv : sig
 
   val findTyc   : env * Types.tycon -> Types.tycon option
   val findDCon  : env * Types.dcon -> Types.dcon option
+  val findVar   : env * AST.var -> AST.var option
   val lookupVar : env * AST.var -> AST.var
 
   val flOpSet   : env -> FlattenOp.Set.set
 
-end = struct
+end *) = struct
 
   structure A = AST
   structure T = Types 
@@ -55,14 +56,16 @@ end = struct
   fun withVarEnv v (Env {tycEnv, dconEnv, varEnv, flOps}) =
     Env {tycEnv=tycEnv, dconEnv=dconEnv, varEnv=v, flOps=flOps}
 
+(* imperative update of flOps *)
   fun setFlOps f (Env {flOps, ...}) = (flOps := f)
 
 (* fresh env maker *)
   fun mkEnv () = let
     val t = TyCon.Tbl.mkTable (32, Fail "tycon table")
     val d = DataCon.Tbl.mkTable (32, Fail "dcon table")
-    val v = Var.Map.empty
+    val v = List.foldl Var.Map.insert' Var.Map.empty [(Basis.eq, Basis.eq), (Basis.neq, Basis.neq)]
     val f = ref (FlattenOp.Set.empty)
+    val v' = Var.Map.insert' 
     in
       Env {tycEnv = t, dconEnv = d, varEnv = v, flOps = f}
     end
@@ -87,11 +90,26 @@ end = struct
 
   fun findDCon (Env {dconEnv, ...}, con) = DTbl.find dconEnv con
 
+(* +debug *)
+  fun printVarEnv e = let
+    fun pr (x, y) = TextIO.print (String.concat [Var.toString x,
+						 " --> ",
+						 Var.toString y,
+						 "\n"])
+    in
+      List.app pr (VMap.listItemsi e)
+    end
+
+  fun PVE (Env {varEnv, ...}) = printVarEnv varEnv
+(* -debug *)
+
   fun lookupVar (Env {varEnv, ...}, x) = 
    (case VMap.find (varEnv, x)
      of SOME y => y
       | NONE => raise Fail ("lookupVar: " ^ Var.toString x ^ ")")
     (* end case *))
+
+  fun findVar (Env {varEnv, ...}, x) = VMap.find (varEnv, x)
 
   fun flOpSet (Env {flOps, ...}) = !flOps
 

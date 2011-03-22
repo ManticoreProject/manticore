@@ -33,7 +33,15 @@ end = struct
 
   fun flattenTy (env : FEnv.env) (t : T.ty) : T.ty = let
     fun ty T.ErrorTy = T.ErrorTy
-      | ty (T.MetaTy m) = raise Fail "TODO"
+      | ty (meta as T.MetaTy m) = (case m
+          of T.MVar {info=info as ref(T.INSTANCE t), ...} => let
+               val t' = flattenTy env t
+               in
+                 info := T.INSTANCE t';
+		 meta
+	       end
+	   | _ => meta
+	  (* end case *))
       | ty (T.VarTy a) = T.VarTy a
       | ty (T.FunTy (t1, t2)) = T.FunTy (ty t1, ty t2)
       | ty (T.TupleTy ts) = T.TupleTy (List.map ty ts)
@@ -61,6 +69,14 @@ end = struct
 			    (if isPArrayTyc c' 
 			     then operN (ty t) 
 			     else raise Fail ("todo: parray of " ^ TyCon.toString c'))
+			 | T.VarTy a => (* FIXME not sure this works*) 
+			                (* raise Fail ("tyvar: parray of " ^ U.toString t) *)
+                             T.FArrayTy (T.VarTy a, T.LfTy)
+			 | T.MetaTy m => let (* FIXME does this work? *)
+                             val m' = ty t
+                             in
+			       T.FArrayTy (m', T.LfTy)
+			     end
 			 | _ => raise Fail ("?: parray of " ^ U.toString t)
 		       (* end case *))
 	     | ts => raise Fail "conTy: parray tyc has too many type args"    
