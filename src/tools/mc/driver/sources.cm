@@ -35,6 +35,7 @@ is
   ../convert/sources.cm
   ../cps-opt/sources.cm
   ../cps/sources.cm
+  ../flatten/sources.cm
   ../match-comp/sources.cm
   ../mlb/sources.cm
   ../env/sources.cm

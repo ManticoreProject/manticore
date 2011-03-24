@@ -40,8 +40,10 @@ structure TypeOf : sig
       | exp (AST.SpawnExp _) = B.threadIdTy
       | exp (AST.ConstExp c) = const c
       | exp (AST.VarExp(x, argTys)) = 
-          (TU.apply(Var.typeOf x, argTys) 
-	   handle ex => (print(concat["typeOf(", Var.toString x, ")\n"]); raise ex))
+          (TU.apply (Var.typeOf x, argTys) 
+	   handle ex => (print(concat["typeOf(", Var.toString x, ")\n"]); 
+			 print "\n";
+			 raise ex))
       | exp (AST.SeqExp(_, e)) = exp e
       | exp (AST.OverloadExp(ref(AST.Instance x))) =
 	(* NOTE: all overload instances are monomorphic *)

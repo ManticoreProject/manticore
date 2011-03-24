@@ -29,7 +29,7 @@ end = struct
   fun f  @@ (a, b) = (f a, f b)
 
   fun exp (env : env) (e : A.exp) : A.exp = let
-    val ty = FlattenTypes.flattenTy env
+    val ty = FlattenTypes.flattenTy env o U.prune
     fun ex (A.LetExp (b, e)) = let
           val (env', b') = binding env b
           val e' = exp env' e
@@ -113,11 +113,10 @@ end = struct
       | ex (A.SpawnExp e) = A.SpawnExp (ex e)
       | ex (A.ConstExp c) = A.ConstExp (const env c)
       | ex (A.VarExp (x, ts)) = let
-          val x' = FEnv.lookupVar (env, x)
-	  val ts' = List.map ty ts
-          val v' = A.VarExp (x', ts')
-          in
-	    v'
+          val ts' = List.map ty ts
+          in case FEnv.findVar (env, x)
+            of NONE   => A.VarExp (x, ts')
+	     | SOME y => A.VarExp (y, ts')
 	  end
       | ex (A.SeqExp (e1, e2)) = A.SeqExp (ex @@ (e1, e2))
       | ex (A.OverloadExp xr) = raise Fail "todo"
@@ -276,16 +275,28 @@ end = struct
       | A.ConstPat c => (env, A.ConstPat (const env c))
     (* end case *))
 
+(* this function deals with vars at their binding sites *)
   and var (env : env) (x : A.var) : env * A.var = let
-(*    val _ = print ("$$$$$$$$$$$$$$$$ flattening " ^ Var.toString x ^ "\n") *)
     val tySch = Var.typeOf x
-    val tySch' = FlattenTypes.flattenTyScheme env tySch
-    val x' = Var.newPoly (Var.nameOf x ^ "_", tySch')
-    val env' = FEnv.insertVar (env, x, x')
-    val () = (* record interface type on new var *)
-	Var.setInterfaceTy (x', tySch);
-    in
-      (env', x')
+    val needsFl = FlattenTypes.mustFlattenTyScheme (env, tySch)
+    (* val _ = if Var.nameOf x = "PINEAPPLE" then *)
+    (*           (print "inspecting PINEAPPLE\n"; *)
+    (* 	       print ("its type scheme is " ^ U.schemeToString tySch ^ "\n"); *)
+    (* 	       print ("does it need to be flattened? "); *)
+    (* 	       print (Bool.toString (needsFl) ^ "\n")) *)
+    (* 	    else () *)
+    in 
+      if needsFl then let
+        val tySch' = FlattenTypes.flattenTyScheme env tySch
+        val x' = Var.newPoly (Var.nameOf x ^ "_", tySch')
+        val env' = FEnv.insertVar (env, x, x')
+        val () = (* record interface type on new var *)
+	  Var.setInterfaceTy (x', tySch);
+        in
+	  (env', x')
+	end
+      else 
+        (env, x)
     end
 
   and const (env : env) (c : A.const) : A.const = 
@@ -293,8 +304,9 @@ end = struct
      of A.DConst (dcon, ts) => let
           val ts' = List.map (FlattenTypes.flattenTy env) ts
 	  val dcon' = (case FEnv.findDCon (env, dcon)
-			of SOME dcon' => dcon'
-			 | NONE => dcon)
+	    of SOME dcon' => dcon'
+	     | NONE => dcon
+            (* end case *))
 	  in 
 	    A.DConst (dcon', ts')
 	  end

@@ -7,12 +7,12 @@
  *
  *)
 
-structure FlattenTypes : sig
+structure FlattenTypes (* : sig
 
   val flattenTy       : FlattenEnv.env -> Types.ty -> Types.ty
   val flattenTyScheme : FlattenEnv.env -> Types.ty_scheme -> Types.ty_scheme
 
-end = struct
+end *) = struct
 
   structure T = Types 
   structure B = Basis
@@ -30,6 +30,51 @@ end = struct
     | isGround _ = false
 
   fun isPArrayTyc c = TyCon.same (B.parrayTyc, c)
+
+(* mustFlattenTyc : env * tyc -> bool *)
+(* side effect: all decisions about flattening are recorded in the env *)
+  fun mustFlattenTyc (env, tyc) : bool = let
+    fun mark bool = FEnv.markFlattenTyc (env, tyc, bool)
+    fun decide bool = (mark bool; bool)
+    in (case FEnv.findMustFlatten (env, tyc)
+      of SOME decision => decision
+       | NONE => let
+           val (T.Tyc {def, ...}) = tyc
+           in (case def 
+             of T.AbsTyc => decide false
+	      | T.DataTyc {cons, ...} => let
+                  val cs = !cons
+		  fun dcon (T.DCon {argTy, ...}) = (case argTy
+	            of NONE => false
+		     | SOME t => (mark false; mustFlattenTy (env, t))
+                    (* end case *))
+                  in
+		    decide (List.exists dcon cs)
+	          end	
+	      (* end case *))
+	     end
+       (* end case *))
+    end      
+
+(* ty : env * ty -> bool *)
+(* side effect: decisions about flattening are marked in env *)
+  and mustFlattenTy (env, t) = let
+    fun ty t = (case t
+      of T.ErrorTy => false
+       | T.MetaTy (T.MVar {info, ...}) => (case !info
+           of T.INSTANCE t => ty t
+	    | _ => false
+           (* end case *))
+       | T.VarTy _ => false
+       | T.ConTy (ts, c) => 
+           isPArrayTyc c orelse mustFlattenTyc (env, c) orelse List.exists ty ts
+       | T.FunTy (t1, t2) => ty t1 orelse ty t2
+       | T.TupleTy ts => List.exists ty ts
+       | T.FArrayTy _ => raise Fail "mustFlatten: shouldn't happen"
+      (* end case *))
+    in
+      ty t
+    end
 
   fun flattenTy (env : FEnv.env) (t : T.ty) : T.ty = let
     fun ty T.ErrorTy = T.ErrorTy
@@ -68,7 +113,11 @@ end = struct
 			 | T.ConTy (ts', c') =>
 			    (if isPArrayTyc c' 
 			     then operN (ty t) 
-			     else raise Fail ("todo: parray of " ^ TyCon.toString c'))
+			     else let
+		               val t' = flattenTy env t
+                               in
+                                 T.FArrayTy (t, T.LfTy)
+                               end)
 			 | T.VarTy a => (* FIXME not sure this works*) 
 			                (* raise Fail ("tyvar: parray of " ^ U.toString t) *)
                              T.FArrayTy (T.VarTy a, T.LfTy)
@@ -83,7 +132,7 @@ end = struct
 	   (* end case *))
 	  else (* not a parray *) (case FEnv.findTyc (env, c)
             of NONE => 
-                 if U.isDataTyc c then let (* FIXME what if no dcons have args? *)
+                 if mustFlattenTyc (env, c) then let
                    val c' = newFlatTyc env c
                    in
 		     T.ConTy (List.map ty ts, c')
@@ -102,16 +151,18 @@ end = struct
     in
       ty t
     end
-(* FIXME should nullary tycs map to themselves? *)
-(* side effect: the new tyc is inserted into the env *)
+
+(* newFlatTyc : env -> tyc -> tyc *)
+(* side effect: new tyc is inserted into the env *)
+(* side effect: new dcons of that tyc are inserted into the env *)
   and newFlatTyc (env : FEnv.env) (tyc : T.tycon) : T.tycon = let
 	val _ = assert "data tyc" (U.isDataTyc tyc)
         fun underscore a = Atom.atom (Atom.toString a ^ "_")
         val (T.Tyc {name, params, def, ...}) = tyc
-        val cons = 
-         (case def
-	   of T.DataTyc {cons, ...} => !cons
-	    | _ => raise Fail "newFlatTyc")
+        val cons = (case def
+	  of T.DataTyc {cons, ...} => !cons
+	   | _ => raise Fail "newFlatTyc"
+          (* end case *))
 	val name' = underscore name     
         val tyc' = TyCon.newDataTyc (name', params) (* FIXME OK to reuse params? *)
         fun dcon d = let
@@ -129,6 +180,10 @@ end = struct
           List.app dcon cons; (* insert new dcons into env *)
 	  tyc'
         end
+
+(* mustFlattenTyScheme : env * ty_scheme -> bool *)
+(* side effect: all decisions about flattening are recorded in the env *)
+  fun mustFlattenTyScheme (env, T.TyScheme (_, t)) = mustFlattenTy (env, t)
 
   fun flattenTyScheme (env : FEnv.env) (T.TyScheme (vs, t)) = 
     T.TyScheme (vs, flattenTy env t)

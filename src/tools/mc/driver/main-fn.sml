@@ -95,8 +95,6 @@ functor MainFn (
 	      TreeShake.shakeProgram p2s)
 	  else p2s
 
-    fun getPArrImpl () = BasisEnv.getTyConFromBasis ["Rope", "rope"]
-
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, bEnv, mEnv, file) = let
         (* load the MLB file *)
@@ -164,6 +162,13 @@ functor MainFn (
 	  val _ = MatchCheck.checkExp (errStrm, ast)
 	  val ast = MatchCompile.compile (errStrm, ast)
           val _ = checkForErrors errStrm
+        (* flatten! *)
+	  val _ = print "********** ABOUT TO FLATTEN THIS:\n"
+	  val _ = PrintAST.printExp ast
+          val (fEnv, ast) = FlattenTerms.flatten ast
+          val ast = RealizeFArray.realize ast
+	  val _ = print "********** FLATTENING DONE:\n"
+	  val _ = PrintAST.printExp ast
 	(* create the initial translation environment *)
           val bom = Translate.translate (IB.primTranslationEnv, ast)
           val cfg = bomToCFG bom
@@ -175,12 +180,13 @@ functor MainFn (
     fun doFile file = BackTrace.monitor (fn () => let
 	  val verbose = (Controls.get BasicControl.verbose > 0)
 	  val {base, ext} = OS.Path.splitBaseExt file
+	  val sFile = OS.Path.joinBaseExt{base = base, ext = SOME "s"}
 	  in
             case Controls.get BasicControl.keepPassBaseName
 	     of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
 	      | SOME _ => ()
 	    (* end case *);
-	    mlbC (verbose, Error.mkErrStream file, file, OS.Path.joinBaseExt{base = base, ext = SOME "s"})
+	    mlbC (verbose, Error.mkErrStream file, file, sFile)
 	  end)
 
     fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)

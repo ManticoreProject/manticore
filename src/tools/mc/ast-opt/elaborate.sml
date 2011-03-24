@@ -69,12 +69,15 @@ structure Elaborate : sig
 	      | NONE => A.TupleExp (map trExp es)
 	    (* end case *))
 *)
-      | trExp (A.PArrayExp (es, t)) = let
+      | trExp (A.PArrayExp (es, t)) = A.PArrayExp (map trExp es, trTy t)
+(*
+let
           val a = ParrLitToRope.tr (map trExp es, trTy t)
                   (* rewrites with parallel tuples *)
           in
 	    trExp a
           end
+*)
       | trExp (A.PCompExp (e, pes, oe)) = trPComp (e, pes, oe)
       | trExp (A.PChoiceExp (es, t)) = A.PChoiceExp (map trExp es, trTy t)
       | trExp (A.SpawnExp e) = A.SpawnExp (trExp e)

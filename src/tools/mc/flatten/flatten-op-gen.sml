@@ -300,6 +300,7 @@ end *) = struct
         A.FB (f, x, b)
       end
     fun mkCat domTy = (case domTy
+(* FIXME I believe I may not be handling nested arrays of tuples correctly. *)
       of T.ConTy ([T.ConTy ([t], _)], _) (* t farr farr *) => let
            val {fArrTyc, fArrFlatten, ...} = basisItems ()
 	   val rngTy = T.ConTy ([t], fArrTyc)

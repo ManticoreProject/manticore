@@ -123,17 +123,17 @@ structure TypeUtil : sig
 
     and fmtMeta {long} (Ty.MVar{stamp, info}) = (case !info
 	   of Ty.UNIV d => if long
-		then concat["$", Stamp.toString stamp, "@", Int.toString d]
-		else "$" ^ Stamp.toString stamp
-	    | Ty.CLASS cls => concat["$", Stamp.toString stamp, "::", TypeClass.toString cls]
+		then concat["UNIV$", Stamp.toString stamp, "@", Int.toString d]
+		else "UNIV$" ^ Stamp.toString stamp
+	    | Ty.CLASS cls => concat["CLASS$", Stamp.toString stamp, "::", TypeClass.toString cls]
 	    | Ty.INSTANCE ty => if long
 		then (
 		  info := Ty.UNIV(~1);
-		  concat["($", Stamp.toString stamp, " == ", fmt {long=true} ty, ")"]
+		  concat["(INSTANCE$", Stamp.toString stamp, " == ", fmt {long=true} ty, ")"]
 		    before info := Ty.INSTANCE ty)
 		else (
 		  info := Ty.UNIV(~1);
-		  fmt {long=false} ty 
+		  "INSTANCE." ^ (fmt {long=false} ty)
                     before info := Ty.INSTANCE ty)
 	  (* end case *))
 
@@ -219,8 +219,16 @@ structure TypeUtil : sig
 	  in
 	    applySubst (ListPair.foldlEq ins TVMap.empty (tvs, tys), ty)
 	  end
-handle ex => (print(concat["apply(", schemeToString(Ty.TyScheme(tvs, ty)), ", [",
-String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
+handle ex => let
+  fun prcat ss = (print (concat ss); print "\n")
+  val sch' = schemeToString (Ty.TyScheme (tvs, ty))
+  val tys' = "[" ^ String.concatWith "," (List.map toString tys) ^ "]"
+  in
+    prcat ["length tvs: ", Int.toString (List.length tvs)];
+    prcat ["length tys: ", Int.toString (List.length tys)];
+    prcat ["apply(", sch', ", " , tys', ")"];
+    raise ex
+  end
 
   (* close a type w.r.t. to a set of non-generic variables (i.e., those
    * variables whose depth is less than or equal to the given depth).

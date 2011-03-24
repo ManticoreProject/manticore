@@ -50,7 +50,8 @@ structure BasisEnv : sig
 	    (* end case *)
 	  end
 
-    fun notFound path = raise Fail ("Unable to locate " ^ pathToString path)
+    fun notFound thing path = 
+      raise Fail ("Unable to locate " ^ thing ^ " " ^ pathToString path)
 
     fun wrongThing path expected got = let
 	  val msg = String.concat(
@@ -69,11 +70,11 @@ structure BasisEnv : sig
 	   of SOME(bEnv, x) => (case BEnv.findVal(bEnv, x)
 		 of SOME(BEnv.Var v | BEnv.Con v) => (case ModuleEnv.getValBind v
 		       of SOME vb => vb
-			| NONE => notFound path
+			| NONE => notFound "val" path
 		      (* end case *))
-		  | NONE => notFound path
+		  | NONE => notFound "val" path
 		(* end case *))
-	    | _ => notFound path
+	    | _ => notFound "val" path
 	  (* end case *))
 
   (* use a path (or qualified name) to look up a type *)
@@ -81,38 +82,38 @@ structure BasisEnv : sig
 	   of SOME(bEnv, x) => (case BEnv.findTy(bEnv, x)
 		 of SOME ty =>  (case ModuleEnv.getTyDef(BEnv.tyId ty)
 		       of SOME tyd => tyd
-			| NONE => notFound path
+			| NONE => notFound "ty" path
 		      (* end case *))
-		  | NONE => notFound path
+		  | NONE => notFound "ty" path
 		(* end case *))
-	    | _ => notFound path
+	    | _ => notFound "ty" path
 	  (* end case *))
 
   (* use a path (or qualified name) to look up a C function *)
     fun getCFunFromBasis path = (case getModule path
 	   of SOME(_, x) => (case BEnv.findCFun x
 		 of SOME v => v
-		  | NONE => notFound path
+		  | NONE => notFound "cfun" path
 		(* end case *))
-	    | _ => notFound path
+	    | _ => notFound "cfun" path
 	  (* end case *))
 
   (* use a path (or qualified name) to look up a BOM type *)
     fun getBOMTyFromBasis path = (case getModule path
 	   of SOME(bEnv, x) => (case BEnv.findBOMTy(bEnv, x)
 		 of SOME v => v
-		  | NONE => notFound path
+		  | NONE => notFound "bomTy" path
 		(* end case *))
-	    | _ => notFound path
+	    | _ => notFound "bomTy" path
 	  (* end case *))
 
   (* use a path (or qualified name) to look up a HLOp *)
     fun getHLOpFromBasis path = (case getModule path
            of SOME(bEnv, x) => (case BEnv.findBOMHLOp(bEnv, x)
                  of SOME v => v
-		  | NONE => notFound path
+		  | NONE => notFound "hlop" path
                  (* end case *))
-	    | _ => notFound path
+	    | _ => notFound "hlop" path
           (* end case *))
 
   (* look up a variable *)

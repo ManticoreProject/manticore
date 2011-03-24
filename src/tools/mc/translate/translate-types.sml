@@ -49,6 +49,35 @@ structure TranslateTypes : sig
     fun insertConst (env, dc, dc') = E.insertCon (env, dc, E.Const dc')
     fun insertDCon (env, dc, repTr, dc') = E.insertCon (env, dc, E.DCon(dc', repTr))
 
+    (* local *)
+    (*   val ropeTyc = ref NONE *)
+    (*   val ntTyc   = ref NONE *)
+    (*   fun tyc ss  = BasisEnv.getTyConFromBasis ss *)
+    (* in *)
+    (*   fun ropeTy t = let *)
+    (*     val tyc = (case !ropeTyc *)
+    (*       of SOME c => c *)
+    (* 	   | NONE => let *)
+    (*            val c = tyc ["Rope", "rope"] *)
+    (*            in *)
+    (* 		 ropeTyc := SOME c; *)
+    (* 		 c *)
+    (* 	       end *)
+    (*       (\* end case *\)) *)
+    (*     in *)
+    (* 	  Ty.ConTy ([t], tyc) *)
+    (*     end *)
+    (*   fun ntTy () = (case !ntTyc *)
+    (*     of SOME c => Ty.ConTy ([], c) *)
+    (* 	 | NONE => let *)
+    (*          val c = tyc ["FArray", "nesting_tree"] *)
+    (*          in *)
+    (*            ntTyc := SOME c; *)
+    (* 	       Ty.ConTy ([], c) *)
+    (*          end *)
+    (*     (\* end case *\)) *)
+    (* end *)
+
   (* return the BOM kind of the argument of an AST data constructor; this code
    * looks at the top-level structure of the type to determine the kind.
    *)
@@ -57,7 +86,7 @@ structure TranslateTypes : sig
 	    | SOME(Ty.TupleTy[]) => BTy.K_UNBOXED
 	    | SOME(Ty.TupleTy _) => BTy.K_BOXED
 	    | SOME(Ty.ConTy(_, tyc)) => getTycKind tyc
-	    | SOME(Ty.FArrayTy _) => raise Fail "TODO"
+	    | SOME(Ty.FArrayTy _) => (* translated to a pair *) BTy.K_BOXED
 	    | _ => BTy.K_UNIFORM
 	  (* end case *))
 
@@ -87,8 +116,13 @@ structure TranslateTypes : sig
 		  | Ty.FunTy(ty1, ty2) => BTy.T_Fun([tr' ty1], [BTy.exhTy], [tr' ty2])
 		  | Ty.TupleTy [] => BTy.unitTy
 		  | Ty.TupleTy tys => BTy.T_Tuple(false, List.map tr' tys)
-		  | Ty.FArrayTy (ty, n) => raise Fail "TODO"
-		(* end case *))
+		  | f as Ty.FArrayTy (t, n) => let
+		      val s = TypeUtil.toString f
+		      val msg = "unexpected farray: " ^ s
+                      in
+			raise Fail msg
+		      end
+                 (* end case *))
 	  in
 	    tr' ty
 	  end

@@ -23,7 +23,10 @@ structure FlattenEnv (* : sig
   val findTyc   : env * Types.tycon -> Types.tycon option
   val findDCon  : env * Types.dcon -> Types.dcon option
   val findVar   : env * AST.var -> AST.var option
-  val lookupVar : env * AST.var -> AST.var
+
+  val lookupTyc  : env * Types.tycon -> Types.tycon
+  val lookupDCon : env * Types.dcon -> Types.dcon
+  val lookupVar  : env * AST.var -> AST.var
 
   val flOpSet   : env -> FlattenOp.Set.set
 
@@ -40,35 +43,49 @@ end *) = struct
   structure FSet = FlattenOp.Set
 
   datatype env = Env of {
-      tycEnv  : T.tycon TTbl.hash_table,
-      dconEnv : T.dcon DTbl.hash_table,
-      varEnv  : A.var VMap.map,
-      flOps   : FSet.set ref
+      mustFlatten : bool TTbl.hash_table,
+      tycEnv      : T.tycon TTbl.hash_table,
+      dconEnv     : T.dcon DTbl.hash_table,
+      varEnv      : A.var VMap.map,
+      flOps       : FSet.set ref
     }
 
 (* selectors *)
+  fun mustFlattenOf (Env {mustFlatten, ...}) = mustFlatten
   fun tycEnvOf  (Env {tycEnv, ...})  = tycEnv
   fun dconEnvOf (Env {dconEnv, ...}) = dconEnv
   fun varEnvOf  (Env {varEnv, ...})  = varEnv
   fun flOpsOf   (Env {flOps, ...})   = !flOps
 
 (* functional update of varEnv *)
-  fun withVarEnv v (Env {tycEnv, dconEnv, varEnv, flOps}) =
-    Env {tycEnv=tycEnv, dconEnv=dconEnv, varEnv=v, flOps=flOps}
+  fun withVarEnv v (Env {tycEnv, dconEnv, varEnv, flOps, mustFlatten}) =
+    Env {tycEnv=tycEnv, dconEnv=dconEnv, varEnv=v, flOps=flOps, mustFlatten=mustFlatten}
 
 (* imperative update of flOps *)
   fun setFlOps f (Env {flOps, ...}) = (flOps := f)
 
 (* fresh env maker *)
   fun mkEnv () = let
-    val t = TyCon.Tbl.mkTable (32, Fail "tycon table")
-    val d = DataCon.Tbl.mkTable (32, Fail "dcon table")
-    val v = List.foldl Var.Map.insert' Var.Map.empty [(Basis.eq, Basis.eq), (Basis.neq, Basis.neq)]
-    val f = ref (FlattenOp.Set.empty)
-    val v' = Var.Map.insert' 
+    val t = TTbl.mkTable (32, Fail "tycon table")
+    val d = DTbl.mkTable (32, Fail "dcon table")
+    val v = List.foldl VMap.insert' VMap.empty [(B.eq, B.eq), (B.neq, B.neq)]
+    val f = ref (FSet.empty)
+    val m = TTbl.mkTable (32, Fail "must flatten table")
     in
-      Env {tycEnv = t, dconEnv = d, varEnv = v, flOps = f}
+      Env {tycEnv = t, dconEnv = d, varEnv = v, flOps = f, mustFlatten = m}
     end
+
+
+  fun markFlattenTyc (Env {mustFlatten, ...}, tyc, bool) = 
+    TTbl.insert mustFlatten (tyc, bool)
+   (* (case TTbl.find mustFlatten tyc *)
+   (*   of SOME decision => raise Fail ("in markFlattenTyc: " ^  *)
+   (* 				     TyCon.toString tyc ^  *)
+   (* 				     " is already marked '" ^ *)
+   (* 				     Bool.toString decision ^  *)
+   (* 				     "' for flattening") *)
+   (*    | NONE => TTbl.insert mustFlatten (tyc, bool) *)
+   (*   (\* end case *\)) *)
 
   fun insertTyc (Env {tycEnv, ...}, tyc, tyc') = TTbl.insert tycEnv (tyc, tyc')
   
@@ -86,9 +103,31 @@ end *) = struct
       setFlOps flOps' e
     end
 
+  fun findMustFlatten (Env {mustFlatten, ...}, tyc) = TTbl.find mustFlatten tyc
+
   fun findTyc (Env {tycEnv, ...}, tyc) = TTbl.find tycEnv tyc
 
   fun findDCon (Env {dconEnv, ...}, con) = DTbl.find dconEnv con
+
+  fun lookupTyc (Env {tycEnv, ...}, tyc) = (case TTbl.find tycEnv tyc
+    of NONE => raise Fail ("lookupTyc " ^ TyCon.toString tyc)
+     | SOME c => c
+    (* end case *))
+
+  fun lookupDCon (Env {dconEnv, ...}, dcon) = (case DTbl.find dconEnv dcon
+    of NONE => raise Fail ("lookupDCon " ^ DataCon.toString dcon)
+     | SOME d => d
+    (* end case *))
+
+  fun lookupVar (Env {varEnv, ...}, x) = 
+   (case VMap.find (varEnv, x)
+     of SOME y => y
+      | NONE => raise Fail ("lookupVar: " ^ Var.toString x ^ ")")
+    (* end case *))
+
+  fun findVar (Env {varEnv, ...}, x) = VMap.find (varEnv, x)
+
+  fun flOpSet (Env {flOps, ...}) = !flOps
 
 (* +debug *)
   fun printVarEnv e = let
@@ -103,14 +142,5 @@ end *) = struct
   fun PVE (Env {varEnv, ...}) = printVarEnv varEnv
 (* -debug *)
 
-  fun lookupVar (Env {varEnv, ...}, x) = 
-   (case VMap.find (varEnv, x)
-     of SOME y => y
-      | NONE => raise Fail ("lookupVar: " ^ Var.toString x ^ ")")
-    (* end case *))
-
-  fun findVar (Env {varEnv, ...}, x) = VMap.find (varEnv, x)
-
-  fun flOpSet (Env {flOps, ...}) = !flOps
 
 end

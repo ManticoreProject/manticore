@@ -18,6 +18,8 @@ structure ParrLitToRope : sig
    *)
     val tr : AST.exp list * Types.ty -> AST.exp
 
+    val mkRope : AST.exp list * Types.ty -> AST.exp
+
   end = struct
 
     structure U = ASTUtil
@@ -36,7 +38,7 @@ structure ParrLitToRope : sig
        (case BEnv.getValFromBasis ["Rope", "fromList"]
           of MEnv.Var x => x
 	   | _ => raise Fail "expected a ModuleEnv.val_bind Var variant"
-       (* end case *))
+          (* end case *))
       in
 	mkApply (AST.VarExp (ropeFromList, [ty]), [listExp])
       end
@@ -66,7 +68,7 @@ structure ParrLitToRope : sig
       | tr ([e], ty) = let
           val sing = BEnv.getVarFromBasis ["Rope", "singleton"]
           in
-	    AST.ApplyExp (AST.VarExp (sing, [ty]), e, Basis.parrayTy ty)
+	    ASTUtil.mkApplyExp (AST.VarExp (sing, [ty]), [e])
           end
       | tr (es, ty) = let
           val xs = newVars ty es
@@ -76,6 +78,9 @@ structure ParrLitToRope : sig
 	  in
             U.mkLetExp ([bind], mkRopeFromList (ty, xsList))
 	  end
+
+  (* mkRope : exp list * ty -> exp *)
+    fun mkRope (es, t) = tr (es, t)
 
 (*
 (* HORRIBLE HACK for testing the rope-of-tuples translation *)

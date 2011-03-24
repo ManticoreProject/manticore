@@ -71,4 +71,10 @@ structure TestFlattenTerms = struct
       mkTest ps
     end
 
+  val test6 = let
+    val list = ASTUtil.mkList (List.tabulate (5, ASTUtil.mkInt), intTy)
+    in
+      fn () => FlattenTypes.mustFlattenTy (FlattenEnv.mkEnv(), TypeOf.exp list)
+    end
+
 end
