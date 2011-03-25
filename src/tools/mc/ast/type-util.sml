@@ -129,11 +129,11 @@ structure TypeUtil : sig
 	    | Ty.INSTANCE ty => if long
 		then (
 		  info := Ty.UNIV(~1);
-		  concat["(INSTANCE$", Stamp.toString stamp, " == ", fmt {long=true} ty, ")"]
+		  concat["($", Stamp.toString stamp, " == ", fmt {long=true} ty, ")"]
 		    before info := Ty.INSTANCE ty)
 		else (
 		  info := Ty.UNIV(~1);
-		  "INSTANCE." ^ (fmt {long=false} ty)
+		  "I." ^ (fmt {long=false} ty)
                     before info := Ty.INSTANCE ty)
 	  (* end case *))
 
