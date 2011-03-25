@@ -21,7 +21,7 @@ structure TestFlattenTerms = struct
   val unitTy = B.unitTy
 
   fun mkTest e = (fn () => let
-    val (_, f) = FlattenTerms.flatten e
+    val f = FlattenTerms.flatten e
     val g = FlattenOpFusion.fuseExp f
     in
       println ("************ original term:");

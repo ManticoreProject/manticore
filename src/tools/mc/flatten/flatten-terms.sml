@@ -9,7 +9,7 @@
 
 structure FlattenTerms : sig
 
-  val flatten : AST.exp -> FlattenEnv.env * AST.exp
+  val flatten : AST.exp -> AST.exp
 
 end = struct
 
@@ -313,11 +313,11 @@ end = struct
       | A.LConst (l, t) => A.LConst (l, t) (* a literal's type shouldn't require flattening *)
     (* end case *))
 
-  fun flatten (e : A.exp) : env * A.exp = let
+  fun flatten (e : A.exp) : A.exp = let
     val env = FlattenEnv.mkEnv ()
     val e' = exp env e
     in
-      (env, e')
+      e'
     end
 
 end

@@ -163,12 +163,8 @@ functor MainFn (
 	  val ast = MatchCompile.compile (errStrm, ast)
           val _ = checkForErrors errStrm
         (* flatten! *)
-	  val _ = print "********** ABOUT TO FLATTEN THIS:\n"
-	  val _ = PrintAST.printExp ast
           val (fEnv, ast) = FlattenTerms.flatten ast
           val ast = RealizeFArray.realize ast
-	  val _ = print "********** FLATTENING DONE:\n"
-	  val _ = PrintAST.printExp ast
 	(* create the initial translation environment *)
           val bom = Translate.translate (IB.primTranslationEnv, ast)
           val cfg = bomToCFG bom
