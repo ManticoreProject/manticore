@@ -20,8 +20,8 @@ structure PArray = struct
     type 'a parray = 'a parray
 
     local
-      val toRope : 'a parray -> 'a Rope.rope = _prim(@to-rope)
-      val fromRope : 'a Rope.rope -> 'a parray = _prim(@from-rope)
+      val toRope : 'a parray -> 'a Rope.rope = raise Fail "disabled"  (* _prim(@to-rope) *)
+      val fromRope : 'a Rope.rope -> 'a parray = raise Fail "diabled" (* _prim(@from-rope) *)
     in
 
   (* FIXME too tightly coupled *)
