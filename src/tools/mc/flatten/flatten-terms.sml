@@ -28,8 +28,16 @@ end = struct
   infixr @@ (* infix pair map operator *)
   fun f  @@ (a, b) = (f a, f b)
 
+(* fpTy : env -> ty -> ty *)
+(* flatten and prune type *)
+  fun fpTy env = FlattenTypes.flattenTy env o U.prune
+
+(* fpTySch : env -> ty_scheme -> ty_scheme *)
+(* flatten and prune type scheme *)
+  fun fpTySch env = (fn T.TyScheme (vs, t) => T.TyScheme (vs, fpTy env t))
+
   fun exp (env : env) (e : A.exp) : A.exp = let
-    val ty = FlattenTypes.flattenTy env o U.prune
+    val ty = fpTy env
     fun ex (A.LetExp (b, e)) = let
           val (env', b') = binding env b
           val e' = exp env' e
@@ -119,7 +127,7 @@ end = struct
 	     | SOME y => A.VarExp (y, ts')
 	  end
       | ex (A.SeqExp (e1, e2)) = A.SeqExp (ex @@ (e1, e2))
-      | ex (A.OverloadExp xr) = raise Fail "todo"
+      | ex (A.OverloadExp xr) = raise Fail "unresolved overloading"
       | ex (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, ex e)
       | ex (A.FTupleExp es) = raise Fail "exp: FTupleExp"
       | ex (A.FArrayExp (es, n, t)) = raise Fail "exp: FArrayExp"
@@ -183,7 +191,7 @@ end = struct
 	    A.PMatch (ps', e')
 	  end
       | A.Otherwise (ts, e) => let
-          val ts' = List.map (FlattenTypes.flattenTy env) ts
+          val ts' = List.map (fpTy env) ts
 	  val e' = exp env e
           in
 	    A.Otherwise (ts', e')
@@ -192,10 +200,10 @@ end = struct
 
   and ppats (env : env) (ps : A.ppat list) : env * A.ppat list = let
     fun ppat env =
-     (fn A.NDWildPat t => (env, A.NDWildPat (FlattenTypes.flattenTy env t))
+     (fn A.NDWildPat t => (env, A.NDWildPat (fpTy env t))
        | A.HandlePat (p, t) => let
            val (env', p') = pat env p
-	   val t' = FlattenTypes.flattenTy env t
+	   val t' = fpTy env t
 	   in
 	     (env', A.HandlePat (p', t'))
 	   end
@@ -249,7 +257,7 @@ end = struct
 			                (* therefore if it's not in the env it _should_ mean *)
 			                (* there's nothing about it to flatten...*)
 	                                (* -- maybe "unflattenable" dcons should just map to themselves *)
-          val ts' = List.map (FlattenTypes.flattenTy env) ts
+          val ts' = List.map (fpTy env) ts
           val (env', p') = pat env p
           in
 	    (env', A.ConPat (dcon', ts', p'))
@@ -271,7 +279,7 @@ end = struct
           in
 	    (env', A.VarPat x')
 	  end
-      | A.WildPat t => (env, A.WildPat (FlattenTypes.flattenTy env t))
+      | A.WildPat t => (env, A.WildPat (fpTy env t))
       | A.ConstPat c => (env, A.ConstPat (const env c))
     (* end case *))
 
@@ -279,15 +287,9 @@ end = struct
   and var (env : env) (x : A.var) : env * A.var = let
     val tySch = Var.typeOf x
     val needsFl = FlattenTypes.mustFlattenTyScheme (env, tySch)
-    (* val _ = if Var.nameOf x = "PINEAPPLE" then *)
-    (*           (print "inspecting PINEAPPLE\n"; *)
-    (* 	       print ("its type scheme is " ^ U.schemeToString tySch ^ "\n"); *)
-    (* 	       print ("does it need to be flattened? "); *)
-    (* 	       print (Bool.toString (needsFl) ^ "\n")) *)
-    (* 	    else () *)
     in 
       if needsFl then let
-        val tySch' = FlattenTypes.flattenTyScheme env tySch
+        val tySch' = fpTySch env tySch
         val x' = Var.newPoly (Var.nameOf x ^ "_", tySch')
         val env' = FEnv.insertVar (env, x, x')
         val () = (* record interface type on new var *)
@@ -302,7 +304,7 @@ end = struct
   and const (env : env) (c : A.const) : A.const = 
    (case c
      of A.DConst (dcon, ts) => let
-          val ts' = List.map (FlattenTypes.flattenTy env) ts
+          val ts' = List.map (fpTy env) ts
 	  val dcon' = (case FEnv.findDCon (env, dcon)
 	    of SOME dcon' => dcon'
 	     | NONE => dcon

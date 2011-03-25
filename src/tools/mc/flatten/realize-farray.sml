@@ -230,8 +230,10 @@ end = struct
       | const (lit as A.LConst _) = lit
     and var x = (* binding sites *) let
       val tySch as T.TyScheme (_, t) = Var.typeOf x
-      val _ = print ("inspecting " ^ Var.nameOf x ^ ": " ^ TypeUtil.schemeToString tySch ^
-		     "\n  includesFarr=" ^ Bool.toString (includesFArr t) ^ "\n")
+(* (\* +debug *\) *)
+(*       val _ = print ("inspecting " ^ Var.nameOf x ^ ": " ^ TypeUtil.schemeToString tySch ^ *)
+(* 		     "\n  includesFarr=" ^ Bool.toString (includesFArr t) ^ "\n") *)
+(* (\* -debug *\) *)
       in 
         if includesFArr t then let
           val tySch' = realizeScheme tySch
