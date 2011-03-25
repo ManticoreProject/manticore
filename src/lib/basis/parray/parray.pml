@@ -41,7 +41,7 @@ structure PArray = struct
   (* called "replicateP" in DPH impl *)
     fun repP (n, x) = fromRope(Rope.tabP (n, fn _ => x))
 
-  end (* local *)
+    end (* local *)
 
   (* toString : ('a -> string ) -> string -> 'a parray -> string *)
   (* FIXME: should we exploit the fact that we're dealing with a rope? *)

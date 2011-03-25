@@ -15,7 +15,11 @@
 
 (* Parallel Arrays *)
 
-  parray.pml
+(*  parray.pml *)
+
+(* Flat Arrays *)
+
+  farray.pml
 
 (* Scans *)
 
