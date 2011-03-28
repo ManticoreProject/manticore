@@ -21,16 +21,15 @@ structure PrintAST : sig
     structure T = Types
     structure S = TextIOPP
 
-    val str = ref (S.openOut {dst = TextIO.stdErr, wid = 85})
+    val str = ref (S.openOut {dst = TextIO.stdErr, wid = 40})
 
     val showTypes = ref true
     val showStamps = ref true
 
   (* for debugging boxes *)
     fun debug _ = ()
-(*
-    fun debug s = print s
-*)
+ (* fun debug s = print s *)
+
     fun openHBox () = (debug "(openHBox\n"; S.openHBox (!str))
     fun openVBox i = (debug "(openVBox\n"; S.openVBox (!str) i)
     fun openHVBox i = (debug "(openHVBox\n"; S.openHVBox (!str) i)
@@ -77,6 +76,9 @@ structure PrintAST : sig
 	    aw xs
 	  end
 
+    val bomRHSToString = ProgramParseTree.PML2.BOMParseTree.prim_val_rhsToString
+    val codeToString = ProgramParseTree.PML2.BOMParseTree.codeToString
+
   (* is an expression syntactically atomic? *)
     fun atomicExp (A.TupleExp _) = true
       | atomicExp (A.RangeExp _) = true
@@ -106,12 +108,13 @@ structure PrintAST : sig
 	    | prBinds e = e
 	  val body = (
 		pr "let";
-		openVBox (abs 2);
-		prBinds e before closeBox())
+		openHOVBox (rel 2);
+		prBinds e before 
+		closeBox())
 	  in
 	    ln ();
 	    pr "in";
-	    openVBox (abs 2);
+	    openHOVBox (rel 2);
 	      ln ();
 	      exp body;
 	    closeBox ();
@@ -122,13 +125,13 @@ structure PrintAST : sig
 	   pr "if (";
 	   exp ec;
 	   pr ") then";
-	   openVBox (abs 2);
+	   openHOVBox (abs 2);
 	   ln ();
 	   exp et;
 	   closeBox ();
 	   ln ();
 	   pr "else";
-	   openVBox (abs 2);
+	   openHOVBox (abs 2);
 	   ln ();
 	   exp ef;
 	   closeBox ())
@@ -136,20 +139,23 @@ structure PrintAST : sig
 	  pr "(case (";
 	  exp e;
 	  pr ")";
-	  openVBox (abs 1);
-	    ln ();
+          ln ();
+	  openHOVBox (rel 2);
 	    case pes
-	     of m::ms => (sp (); pe "of" m;  
+	     of m::ms => (openHOVBox (rel 0);
+			    pe "of" m;  
+			  closeBox ();
 			  app (pe " |") ms)
 	      | nil => raise Fail "case without any branches"
 	    (* end case *);	       
 	  closeBox ();
+          ln ();
 	  pr "(* end case *))")
       | exp (A.PCaseExp (es, pms, t)) = (
-	  openVBox (abs 2);
+	  openHOVBox (abs 2);
 	  pr "(pcase ";
 	  appwith (fn () => pr " & ") exp es;
-	  openVBox (abs 1);
+	  openHOVBox (abs 1);
 	    ln ();
 	    case pms
 	     of m::ms => (ppm "of" m; app (ppm " |") ms)
@@ -167,7 +173,7 @@ structure PrintAST : sig
 	      pr ")";
 	    closeBox ();
 	    sp ();
-	    openVBox (abs 2);
+	    openHOVBox (abs 2);
 	      case matches
 	       of m::ms => (pe " handle" m;  app (pe "  |") ms)
 		| nil => raise Fail "handle without any branches"
@@ -198,13 +204,13 @@ structure PrintAST : sig
             pr (Int.toString n);
           closeBox ())
       | exp (A.TupleExp es) =
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	   pr "(";
 	   appwith (fn () => pr ",") exp es;
 	   pr ")";
 	   closeBox ())
       | exp (A.RangeExp (e1, e2, oe3, t)) =
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	   pr "[| ";
 	   exp e1;
 	   pr " to ";
@@ -216,19 +222,19 @@ structure PrintAST : sig
 	   pr " |]";
 	   closeBox ())
       | exp (A.PTupleExp es) =
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	   pr "(|";
 	   appwith (fn () => pr ",") exp es;
 	   pr "|)";
 	   closeBox ())
       | exp (A.PArrayExp (es, t)) =
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	   pr "[| ";
 	   appwith (fn () => pr ",") exp es;
 	   pr " |]";
 	   closeBox ())
       | exp (A.PCompExp (e, pes, oe)) = 
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	   pr "[| ";
 	   exp e;
 	   pr " | ";
@@ -240,7 +246,7 @@ structure PrintAST : sig
 	   pr " |]";
 	   closeBox ())
       | exp (A.PChoiceExp (es, t)) = 
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	   appwith (fn () => pr " |?| ") exp es;
 	   closeBox ())
       | exp (A.SpawnExp e) = (
@@ -259,13 +265,13 @@ structure PrintAST : sig
       | exp (A.OverloadExp ovr) = overload_var (!ovr)
       | exp (A.ExpansionOptsExp (_, e)) = exp e
       | exp (A.FTupleExp es) = 
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	     pr "(`"; (* delimiter for FTuples *)
 	     appwith (fn () => pr ",") exp es;
 	     pr "`)";
 	   closeBox ())
       | exp (A.FArrayExp (es, n, t)) = 
-          (openVBox (rel 0);
+          (openHOVBox (rel 0);
 	     pr "{";
 	     appwith (fn () => pr ",") exp es;
 	     pr ";";
@@ -273,14 +279,14 @@ structure PrintAST : sig
 	     pr "}";
 	   closeBox ())
       | exp (A.FlOp oper) =
-          (openVBox (rel 0);
+          (openHOVBox (rel 0);
              pr "FlOp[";
 	     pr (FlattenOp.toString oper);
 	     pr "]";
 	   closeBox ())	    
 
     and ntree (A.Lf (e1, e2)) = 
-         (openHBox ();
+         (openHOVBox (rel 0);
 	    pr "Lf(";
 	    exp e1;
 	    pr ",";
@@ -288,7 +294,7 @@ structure PrintAST : sig
 	    pr ")";
 	  closeBox ())
       | ntree (A.Nd ns) = 
-         (openHBox ();
+         (openHOVBox (rel 0);
 	    pr "Nd[";
 	    appwith (fn () => ",") ntree ns;
 	    pr "]";
@@ -298,20 +304,20 @@ structure PrintAST : sig
 
   (* pe : string -> A.match -> unit *)
     and pe s (A.PatMatch(p, e)) = (
-	  openVBox (rel 0);
+	  ln ();
+          openHOVBox (rel 0);
 	    pr s;
 	    sp ();
 	    pat p;
 	    sp ();
 	    pr "=>";
-	    sp ();
-            openVBox (rel 2);
+            sp ();
+	    openHOVBox (rel 2);
 	      exp e;
 	    closeBox();
-	    ln ();
 	  closeBox ())
       | pe s (A.CondMatch(p, cond, e)) = (
-	  openHBox ();
+	  openHOVBox (rel 0);
 	    pr s;
 	    sp();
 	    pat p;
@@ -324,7 +330,7 @@ structure PrintAST : sig
 
   (* ppm : string -> A.pmatch -> unit *)
     and ppm s (A.PMatch (pps, e)) = (
-          openVBox (rel 0);
+          openHOVBox (rel 0);
             pr s;
 	    sp ();
             appwith (fn () => pr " & ") ppat pps;
@@ -334,7 +340,7 @@ structure PrintAST : sig
             ln ();
           closeBox ())
       | ppm s (A.Otherwise (ts, e)) = (
-          openVBox (rel 0);
+          openHOVBox (rel 0);
             pr s;
 	    sp ();
             pr "otherwise =>";
@@ -352,7 +358,7 @@ structure PrintAST : sig
 
   (* pbind : A.pat * A.exp -> unit *)
     and pbind (p, e) =
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	   pat p;
 	   pr " in ";
 	   exp e;
@@ -360,14 +366,14 @@ structure PrintAST : sig
 
   (* binding : A.binding -> unit *)
     and binding (A.ValBind (p, e)) =
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	   pr "val ";
 	   pat p;
 	   pr " = ";
 	   exp e;
 	   closeBox ())
       | binding (A.PValBind (p, e)) =
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	   pr "pval ";
 	   pat p;
 	   pr " = ";
@@ -377,19 +383,31 @@ structure PrintAST : sig
 	  (case lams
 	     of [] => ()
 	      | (d::ds) =>
-		  (openVBox (rel 0);
+		  (openHOVBox (rel 0);
 		   lambda "fun" d;
 		   app (lambda "and") ds;
 		   closeBox ()))
-      | binding (A.PrimVBind(x, _)) = (
-	  openHBox ();
-	    pr "val"; sp(); var x; sp(); pr "="; sp(); pr"_prim(...)";
-	  closeBox())
-      | binding (A.PrimCodeBind _) = pr "_primcode(...)"
+      | binding (A.PrimVBind(x, bom)) = let
+          val bomStr = bomRHSToString bom 
+          in
+	    openHBox ();
+	      pr "val"; sp(); var x; sp(); pr "="; sp(); pr"_prim("; pr bomStr; pr ")";
+	    closeBox()
+          end
+      | binding (A.PrimCodeBind c) = (
+          openHOVBox (rel 0);
+            pr "_primcode(";
+	    ln ();
+	    openHOVBox (rel 0);
+              pr (codeToString c);
+	    closeBox ();
+	    ln ();
+	    pr ")";
+	  closeBox ())
 
   (* lambda : string -> A.lambda -> unit *)
     and lambda kw (A.FB (f, x, b)) =
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	   pr kw;
 	   pr " ";
 	   var f;
@@ -403,14 +421,14 @@ structure PrintAST : sig
 	   
   (* pat : A.pat -> unit *)
     and pat (A.ConPat (c, ts, p)) = (
-	  openVBox (rel 0);
+	  openHOVBox (rel 0);
 	  dcon c;
 	  pr "(";
 	  pat p;
 	  pr ")";
 	  closeBox ())
       | pat (A.TuplePat ps) =
-	  (openVBox (rel 0);
+	  (openHOVBox (rel 0);
 	   pr "(";
 	   appwith (fn () => pr ",") pat ps;
 	   pr ")";
@@ -464,7 +482,7 @@ structure PrintAST : sig
 
   (* module : A.module -> unit *)
 (*    fun module (A.Module{exns, body}) = (
-	  openVBox (abs 0);
+	  openHOVBox (abs 0);
 	    List.app ppExn exns;
 	    openHBox ();
 	      exp body;

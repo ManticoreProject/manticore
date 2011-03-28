@@ -18,6 +18,13 @@
     type hlop_use
     type hlop_bind
     type c_id
+    val ty_defToString    : ty_def -> string
+    val ty_conToString    : ty_con -> string
+    val var_useToString   : var_use -> string
+    val var_bindToString  : var_bind -> string
+    val hlop_bindToString : hlop_bind -> string
+    val hlop_useToString  : hlop_use -> string
+    val c_idToString      : c_id -> string
   ) = struct
    
     datatype raw_ty = datatype RawTypes.raw_ty
@@ -137,7 +144,62 @@
       | HLOpPrimVal of hlop_use
       | LambdaPrimVal of lambda
 
-  (* debugging support *)
+  (* string makers *)
+
+    fun tyToString t = let
+      fun par s t = s ^ "(" ^ t ^ ")"
+      val catw = String.concatWith
+      val cm = catw ","
+      val sp = catw " "
+      fun lp (T_Mark {tree, ...}) = lp tree
+	| lp T_Any = "ANY"
+	| lp (T_Enum w) = par "enum" (Word.toString w)
+	| lp (T_Raw r) = par "raw" (RawTypes.toString r)
+	| lp (T_Tuple (b, ts)) = par "" (if b then "!" else "" ^ (cm o map lp) ts)
+	| lp (T_Addr t) = par "addr" (lp t)
+	| lp (T_Fun (ts1, ts2, ts3)) = 
+            par "fun" (catw ";" (map (sp o map lp) [ts1, ts2, ts3]))
+        | lp (T_Cont ts) = par "cont" (sp (map lp ts))
+	| lp (T_CFun proto) = par "cfun" (CFunctions.protoToString proto)
+	| lp (T_VProc) = "vproc"
+	| lp (T_TyCon c) = ty_conToString c
+      in
+	lp t
+      end
+
+    fun var_patToString p = let
+      fun s (P_VPMark {tree=p', ...}) = s p'
+	| s (P_Wild optTy) = "_"
+	| s (P_Var (x, t)) = var_bindToString x
+      in
+        s p 
+      end
+
+    (* withtype lambda = (var_bind * var_pat list * var_pat list * ty list * exp) *)
+
+    fun prim_val_rhsToString v = (case v
+      of VarPrimVal x => var_useToString x
+       | HLOpPrimVal h => hlop_useToString h
+       | LambdaPrimVal (f, xs, ys, ts, e) => let
+	   val catw = String.concatWith
+           val fS = var_bindToString f
+	   val xsS = catw "," (map var_patToString xs)
+	   val ysS = catw "," (map var_patToString ys)
+	   val tsS = catw "," (map tyToString ts)
+           in
+	     concat ["Lambda(", fS, ",", xsS, ",", ysS, ",", tsS, ",_)"]
+	   end
+      (* end case *))
+
+    fun defnToString d = (case d
+      of D_Mark {tree=d', ...} => defnToString d'
+       | D_Extern f => "D_Extern(" ^ CFunctions.nameOf f ^ "...)"
+       | D_TypeDef (td, t) => "D_TypeDef(" ^ ty_defToString td ^ "...)"
+       | D_Define (attrs, h, ps1, ps2, optTys, optE) => "D_Define(" ^ hlop_bindToString h ^ "...)"
+       | D_ImportML (attrs, h, x) => "D_ImportML(" ^ hlop_bindToString h ^ "...)"
+       | D_Rewrite {label, lhs, rhs, weight} => "D_Rewrite(...)"
+      (* end case *))
+
     fun rhsToString rhs = (case rhs
 	   of RHS_Mark _ => "RHS_Mark"
 	    | RHS_Exp _ => "RHS_Exp"
@@ -164,5 +226,7 @@
 	    | SE_VPLoad _ => "SE_VPLoad"
 	    | SE_VPAddr _ => "SE_VPAddr"
 	  (* end case *))
+
+    fun codeToString ds = String.concatWith "\n" ("" :: List.map defnToString ds)
 
   end

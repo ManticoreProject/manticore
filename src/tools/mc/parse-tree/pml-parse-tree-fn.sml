@@ -24,6 +24,11 @@ functor PMLParseTreeFn (
 
     type sig_id		(* signature identifiers *)
 
+    val ty_bindToString  : ty_bind -> string
+    val ty_useToString   : ty_use -> string
+    val var_bindToString : var_bind -> string
+    val var_useToString  : var_use -> string
+
   ) = struct
 
   (* a term marked with a source-map span *)
@@ -52,6 +57,13 @@ functor PMLParseTreeFn (
 	type hlop_bind = var_bind
 	type hlop_use = var_use
 	type c_id = var_bind      (* treat C functions as regular identifiers *)
+	val ty_defToString = ty_bindToString
+	val ty_conToString = ty_useToString
+	val var_bindToString = var_bindToString
+	val var_useToString = var_useToString
+	val hlop_bindToString = var_bindToString
+	val hlop_useToString = var_useToString
+	val c_idToString = var_bindToString
       )
 
    (* signature expressions *)

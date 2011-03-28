@@ -165,6 +165,7 @@ functor MainFn (
         (* flatten! *)
           val ast = FlattenTerms.flatten ast
           val ast = RealizeFArray.realize ast
+	  val _ = PrintAST.printExpNoTypesNoStamps ast
 	(* create the initial translation environment *)
           val bom = Translate.translate (IB.primTranslationEnv, ast)
           val cfg = bomToCFG bom
