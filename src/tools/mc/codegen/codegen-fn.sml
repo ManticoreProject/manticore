@@ -223,7 +223,9 @@ if MChkTy.check stm
 		  List.app emitExit(List.rev(exits))
 		end
 	    | genTransfer (M.HeapCheck {hck, szb, nogc}) = let
-		val {stms=checkStms, allocCheck} = BE.Alloc.genAllocCheck szb
+		val {stms=checkStms, allocCheck} = (case hck
+                                                     of CFG.HCK_Local => BE.Alloc.genAllocCheck szb
+                                                      | CFG.HCK_Global => BE.Alloc.genGlobalAllocCheck szb)
 		val {stms, return} = BE.Transfer.genHeapCheck varDefTbl 
 				      {hck=hck, nogc=nogc, checkStms=checkStms, allocCheck=allocCheck}
 		in 

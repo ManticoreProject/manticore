@@ -592,9 +592,7 @@ functor HeapTransferFn (
     *  noGCRoots (roots)
     *
     *)
-    | genHeapCheck varDefTbl {hck=CFG.HCK_Global, checkStms, allocCheck, nogc} = raise Fail "todo"
-(*
-let
+    | genHeapCheck varDefTbl {hck=CFG.HCK_Global, checkStms, allocCheck, nogc} = let
       val getChunkLab = newLabel "getChunk"
       val {stms=getGlobalChunkStms, ...} = 
 	  ccall {lhs=[], name=T.LABEL RuntimeLabels.getGlobalChunk,
@@ -607,17 +605,15 @@ let
 			 getGlobalChunkStms,
 			 continueStms
 	  ]
-      val {stms=allocCheckStms, allocCheck} = Alloc.genGlobalAllocCheck szb
      (* Check that there is sufficient space in the global heap. *)
       val chkStms = List.concat [
-		    allocCheckStms,
+		    checkStms,
 		    [T.BCC (allocCheck, getChunkLab)],
 		    continueStms
           ]
       in
 	  {stms=chkStms @ getChunkStms, return=NONE}
       end (* genHeapCheck *)
-*)
 
   (* bind a parameter *)
   fun bindParam (param, k) = (case (param, k)

@@ -79,7 +79,11 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 	  val fbSet = FB.feedback graph
         (* add allocation checks as needed to a function *)
 	  fun addAllocChecks hcKind = let
-                val checkLabel = "Check"
+              val (checkLabel, expAlloc, clrAlloc, getAlloc, peekAlloc, setAlloc) = (
+                  case hcKind
+                   of CFG.HCK_Local => ("Check", expAlloc, clrAlloc, getAlloc, peekAlloc, setAlloc)
+                    | CFG.HCK_Global => ("GCheck", gExpAlloc, gClrAlloc, gGetAlloc, gPeekAlloc, gSetAlloc))
+                             
 	      (* compute the allocation performed by a function and annotate
 	       * its label with it.
 	       *)
@@ -187,6 +191,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 	      rewrite
 	  end
 	  val code = List.foldr (addAllocChecks CFG.HCK_Local) [] code
+	  val code = List.foldr (addAllocChecks CFG.HCK_Global) [] code
 	  val module = CFG.mkModule(name, externs, code)
     in
 	(* recompute the census counts *)
