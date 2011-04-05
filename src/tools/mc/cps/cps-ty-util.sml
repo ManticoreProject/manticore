@@ -25,6 +25,11 @@ structure CPSTyUtil : sig
   (* convert a C type into a CPS type with the same representation *)
     val ctypeToCPS : CFunctions.c_type -> CPSTy.ty list
 
+  (* return the kind of a type *)
+    val kindOf : CPSTy.ty -> CPSTy.kind
+
+  (* isKind k1 k2 --- returns true if k2 is a subkind of k1 *)
+    val isKind : CPSTy.kind -> CPSTy.kind -> bool
   end = struct
 
     structure CTy = CPSTy
@@ -37,7 +42,6 @@ structure CPSTyUtil : sig
 	    | CTy.K_TYPE => "TYPE"
 	  (* end case *))
 
-  (* isKind k1 k2 --- returns true if k2 is a subkind of k1 *)
     fun isKind CTy.K_TYPE _ = true
       | isKind CTy.K_UNIFORM CTy.K_BOXED = true
       | isKind CTy.K_UNIFORM CTy.K_UNBOXED = true
