@@ -160,23 +160,24 @@ end*) = struct
              in
 	       A.Compose (A.CrossCompose (List.map construct ts), unzip)
 	     end
-	 | T.FArrayTy (t', n) => let
-             val oper' = construct t'
-	     val map = A.Map (oper', n)
-             val cat = A.Cat (TU.rangeType (typeOf map))
-	     val _ = print ("`````````` generating Cat with domain type " ^
-			    TU.toString (TU.rangeType (typeOf map)) ^ 
-			    "\n")
-	     val res = A.Compose (cat, map)
-	     val _ = chkCompose res
-             in
-               res
-             end
+	 | T.FArrayTy (t', n) => A.Cat (fArray r)
+(* let *)
+(*              val oper' = construct t' *)
+(* 	     val map = A.Map (oper', n) *)
+(*              val cat = A.Cat (TU.rangeType (typeOf map)) *)
+(* 	     val _ = print ("`````````` generating Cat with domain type " ^ *)
+(* 			    TU.toString (TU.rangeType (typeOf map)) ^  *)
+(* 			    "\n") *)
+(* 	     val res = A.Compose (cat, map) *)
+(* 	     val _ = chkCompose res *)
+(*              in *)
+(*                res *)
+(*              end *)
 	 | T.ConTy (ts, c) => 
 	     if isGroundTy r then 
                A.ID (fArray r)
 	     else 
-	       raise Fail "todo"
+	       raise Fail ("todo: parrays of datatypes (" ^ TU.toString r ^ ")")
 	 | T.VarTy a => raise Fail "todo"
 	 | _ => raise Fail ("construct: " ^ TU.toString r)
 	(* end case *))

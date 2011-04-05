@@ -169,6 +169,7 @@ structure TypeUtil : sig
               info := Ty.INSTANCE ty';
 	      ty'
 	    end
+	| p (m as Ty.MetaTy _) = m
 	| p (tv as Ty.VarTy _) = tv
 	| p (Ty.ConTy (ts, c)) = Ty.ConTy (List.map p ts, c)
 	| p (Ty.FunTy (t1, t2)) = Ty.FunTy (p t1, p t2)

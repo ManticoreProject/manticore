@@ -86,6 +86,11 @@ end = struct
 	    A.RangeExp (e1', e2', optE', t')
 	  end
       | ex (A.PTupleExp es) = A.PTupleExp (List.map ex es)
+      | ex (A.PArrayExp ([], t)) = let
+          val lf = A.Lf (AU.mkInt 0, AU.mkInt 1)
+          in
+	    A.FArrayExp ([], lf, ty t)
+	  end
       | ex (A.PArrayExp (es, t)) = let
 	  val r = ty t
 	  val _ = print "\ntraversing parray\n"          
@@ -110,9 +115,10 @@ end = struct
 	  val lf = A.Lf (AU.mkInt 0, AU.mkInt (List.length es))
 	  val f = A.FArrayExp (es', lf, r)
 	  val r' = TU.deepPrune r
-	  val _ = print ("``````` constructing flattening operator for {" ^ TU.toString r' ^ ",_}\n")
+	  val _ = print ("``````` constructing flattening operator for {" ^ TU.toString r' ^ ",lf}\n")
 	  val oper = FlattenOp.construct r'
-	  val _ = print ("``````` done constructing flattening op for {" ^ TU.toString r' ^ ",_}\n")
+	  val _ = print ("`````````````` made " ^ FlattenOp.toString oper ^ "\n")
+	  val _ = print ("``````` done constructing flattening op for {" ^ TU.toString r' ^ ",lf}\n")
         (* record the insertion of this operator in env *)
 	  val () = FEnv.insertFlOp (env, oper)
         (* check the types before we construct the application *)

@@ -337,6 +337,7 @@ end *) = struct
       in
         A.FB (f, x, b)
       end
+
     fun mkCat domTy = (case domTy
 (* FIXME I believe I may not be handling nested arrays of tuples correctly. *)
 (* FIXME This is broken. Try int farr farr farr. FIX!!! *)
