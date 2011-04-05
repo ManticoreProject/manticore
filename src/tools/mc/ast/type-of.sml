@@ -41,9 +41,15 @@ structure TypeOf : sig
       | exp (AST.ConstExp c) = const c
       | exp (AST.VarExp(x, argTys)) = 
           (TU.apply (Var.typeOf x, argTys) 
-	   handle ex => (print(concat["typeOf(", Var.toString x, ")\n"]); 
-			 print "\n";
-			 raise ex))
+	   handle ex => let
+             val ts = concat ["[", 
+			      String.concatWith "," (List.map TU.toString argTys), 
+			      "]"]
+             val msg = concat ["exn in typeOf(", Var.toString x, ",", ts, ")\n"]
+             in
+               print msg;
+	       raise ex
+             end)
       | exp (AST.SeqExp(_, e)) = exp e
       | exp (AST.OverloadExp(ref(AST.Instance x))) =
 	(* NOTE: all overload instances are monomorphic *)
@@ -52,7 +58,8 @@ structure TypeOf : sig
       | exp (AST.ExpansionOptsExp (opts, e)) = exp e
       | exp (AST.FTupleExp es) = Ty.TupleTy (List.map exp es)
       | exp (AST.FArrayExp (_, n, ty)) = Ty.FArrayTy (ty, ntree n) 
-      | exp (AST.FlOp oper) = FlattenOp.typeOf oper (* fl_op oper *)
+      | exp (AST.FlOp oper) = FlattenOp.typeOf oper
+      | exp (AST.PArrayOp oper) = PArrayOp.typeOf oper 
 
     and ntree (AST.Lf _) = Ty.LfTy
       | ntree (AST.Nd ns) = (Ty.NdTy o TU.maxNTree o List.map ntree) ns

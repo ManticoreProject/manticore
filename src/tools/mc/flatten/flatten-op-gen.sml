@@ -39,6 +39,19 @@ end *) = struct
 (* We consult the env on the way in order to avoid generating code more than once per oper. *)
   type env = A.lambda FMap.map 
 
+(* +debug *)
+  fun ln () = TextIO.print "\n"
+  fun println s = (TextIO.print s; ln ())
+
+  val printFlops : env -> unit = (fn e => let
+    val flops = map #1 (FMap.listItemsi e)
+    val tos = FlattenOp.toString
+    val s = String.concatWith "," (map tos flops)
+    in
+      println ("{" ^ s ^ "}")
+    end)
+(* -debug *)
+
 (* basisItems : unit -> {fArrTyc, fArrCon, ntreeTyc, ropeTyc, ropeMap} *)
 (* Trying to bind these at the top level causes a link-time failure,   *)
 (*   so we provide a memoized, thunkified collection of them.          *)
@@ -53,7 +66,7 @@ end *) = struct
 	   val nt = BasisEnv.getTyConFromBasis ["FArray", "nesting_tree"]
 	   val ff = BasisEnv.getVarFromBasis ["FArray", "flatten"]
 	   val rt = BasisEnv.getTyConFromBasis ["Rope", "rope"]
-	   val rm = BasisEnv.getVarFromBasis   ["Rope", "map"]
+	   val rm = BasisEnv.getVarFromBasis   ["Rope", "mapP"]
            val record = {fArrTyc=ft, fArrCon=fc, fArrFlatten=ff,
 			 ntreeTyc=nt, ropeTyc=rt, ropeMap=rm}
            in
@@ -149,26 +162,38 @@ end *) = struct
       in
         A.FB (f, arg, body)
       end
+
+  (* mk : ty list -> lambda *)
+  (* Make an unzip function for the given list of types. *)
     fun mk (ts : T.ty list) : A.lambda = let
+
     (* n.b. we've already checked that ts is of length 2 or greater *)
     (* we'll need some tycons, dcons and vars from the basis *)
     (* n.b. trying to bind these at the top level causes a link-time failure *)
       val {fArrTyc, fArrCon, fArrFlatten, ntreeTyc, ropeTyc, ropeMap} = basisItems ()
+
     (* calculate the domain and range types for the function to be generated *)
       val domTy = T.ConTy ([T.TupleTy ts], fArrTyc)
       val rngTy = T.TupleTy (List.map (fn t => T.ConTy ([t], fArrTyc)) ts)
+
     (* create variables for function name and its argument *)
       val name  = freshName ()
       val unzip = Var.new (name, T.FunTy (domTy, rngTy))
       val arg   = Var.new ("arg", domTy)
-    (* build a constructor pattern against which to match the argument *)
-      val data    = Var.new ("data", T.ConTy ([T.TupleTy ts], ropeTyc))
-      val shape   = Var.new ("shape", T.ConTy ([], ntreeTyc))
+
+    (* build patterns against which to match the argument *)
+    (* note: each must be a *simple* pattern, since match compilation is already done *)
+      val dataTy   = T.ConTy ([T.TupleTy ts], ropeTyc)
+      val shapeTy  = T.ConTy ([], ntreeTyc)
+      val data     = Var.new ("data", dataTy)
+      val shape    = Var.new ("shape", shapeTy)
       val fArrPat = A.ConPat (fArrCon, 
 			      [T.TupleTy ts], 
 			      A.TuplePat [A.VarPat data, A.VarPat shape])
+
     (* generate typed selectors for each tuple component *)
       val hashes = List.tabulate (List.length ts, fn i => (mkHash (ts, i), i))
+
     (* mkMapHash : lambda -> exp *)
     (* function to consume a hash function and produce the expression
      *   FArray (Rope.map (hash, data), shape) 
@@ -178,18 +203,27 @@ end *) = struct
         val m = AU.mkApplyExp (A.VarExp (ropeMap, 
 					 [T.TupleTy ts, t]),
 			      [A.VarExp (h, []), 
-			       A.VarExp (data, [T.TupleTy ts])])
+			       A.VarExp (data, [])])
         in
 	  AU.mkApplyExp (A.ConstExp (A.DConst (fArrCon, [t])), 
 			 [m, A.VarExp (shape, [])])
         end
-      val binds = A.ValBind (fArrPat, A.VarExp (arg, [T.TupleTy ts])) ::
-		  (List.map (fn (h,_) => A.FunBind [h]) hashes)
+      val binds = List.map (fn (h,_) => A.FunBind [h]) hashes
       val ptup = A.PTupleExp (List.map mkMapHash hashes)
-      val body = AU.mkLetExp (binds, ptup)
+      val body = A.CaseExp (A.VarExp (arg, [T.TupleTy ts]),
+			    [A.PatMatch (fArrPat, AU.mkLetExp (binds, ptup))],
+			    rngTy)
       in
+      (* all together now... *)
         A.FB (unzip, arg, body)
       end
+
+      fun isFArrayTyc c = let
+        val {fArrTyc, ...} = basisItems ()
+        in
+	  TyCon.same (fArrTyc, c)
+        end
+
   in
 (* +debug
     fun hashtest () = let
@@ -201,9 +235,11 @@ end *) = struct
       end
  * -debug *)
   (* mkUnzip : ty -> lambda *)
-  (* pre: ty is a tuple type of length at least two *)
+  (* pre: ty is an farray of tuples of length at least two *)
     fun mkUnzip (ty : T.ty) : A.lambda = (case ty
-      of T.TupleTy (ts as _::_::_) => mk ts
+      of T.ConTy ([T.TupleTy (ts as _::_::_)], c) =>  
+           if isFArrayTyc c then mk ts
+	   else raise Fail "mkUnzip: expecting farray"
        | _ => raise Fail ("mkUnzip: " ^ TU.toString ty)
       (* end case *))
   end
@@ -229,6 +265,7 @@ end *) = struct
       in
 	incr(); name
       end
+    fun nameOfLam (A.FB (f, _, _)) = Var.toString f
     fun typeOfLam (A.FB (f, _, _)) = Var.monoTypeOf f
   in
     fun resetOpNamer () = reset ()
@@ -251,6 +288,7 @@ end *) = struct
       val data = Var.new ("data", T.ConTy ([fDomTy], ropeTyc))
       val shape = Var.new ("shape", T.ConTy ([], ntreeTyc))
       val tpat = A.TuplePat [A.VarPat data, A.VarPat shape]
+(* FIXME complex pattern binding -- change to case *)
       val pat = A.ConPat (fArrCon, [domTy], tpat)
       val bind = A.ValBind (pat, A.VarExp (arg, []))
       val ropeMap = AU.mkApplyExp (A.VarExp (ropeMap, [fDomTy, fRngTy]),
@@ -265,8 +303,8 @@ end *) = struct
     fun mkCompose (lam1, lam2) = let
       val A.FB (g, _, _) = lam1
       val A.FB (h, _, _) = lam2
-      val domTy = TU.domainType (typeOfLam lam1)
-      val rngTy = TU.rangeType (typeOfLam lam2)
+      val domTy = TU.domainType (typeOfLam lam2)
+      val rngTy = TU.rangeType (typeOfLam lam1)
       val f = Var.new (freshName (), T.FunTy (domTy, rngTy))
       val x = Var.new ("x", domTy)
       val b = ASTUtil.mkApplyExp (A.VarExp (g, []),
@@ -301,6 +339,7 @@ end *) = struct
       end
     fun mkCat domTy = (case domTy
 (* FIXME I believe I may not be handling nested arrays of tuples correctly. *)
+(* FIXME This is broken. Try int farr farr farr. FIX!!! *)
       of T.ConTy ([T.ConTy ([t], _)], _) (* t farr farr *) => let
            val {fArrTyc, fArrFlatten, ...} = basisItems ()
 	   val rngTy = T.ConTy ([t], fArrTyc)
@@ -312,6 +351,7 @@ end *) = struct
 	   end
        | _ => raise Fail ("mkCat : " ^ TU.toString domTy)
       (* end case *))
+
     fun mkOp env (oper : A.fl_op) : env * A.lambda =
      (case FMap.find (env, oper)
        of SOME lam => (env, lam)
@@ -323,7 +363,12 @@ end *) = struct
 		   (env', lam)
 	         end           
 	     | A.Unzip ty => let
-                 (* this type must be a tuple type *)
+(* +debug *)
+		 (* val _ = println "&&&&&&&&&&&&&&&&" *)
+		 (* val _ = println "making another unzip" *)
+		 (* val _ = printFlops env *)
+(* -debug *)
+                 (* this type must be an array of tuple type *)
                  val lam = mkUnzip ty
 		 val env' = FMap.insert (env, oper, lam)
                  in
@@ -372,15 +417,15 @@ end *) = struct
 	     
   fun gen (s : FSet.set) : (A.fl_op * A.lambda) list = let
     val env0 : env = FMap.empty
-    fun lp ([], _, lams) = List.rev lams (* reverse not necessary, but clearer in simple tests *)
-      | lp (h::t, env, lams) = let
+    fun lp ([], env) = FMap.listItemsi env
+      | lp (h::t, env) = let
           val (env', lam) = mkOp env h
           in
-	    lp (t, env', (h, lam)::lams)
+	    lp (t, env')
 	  end
     in
       resetOpNamer () (* reset int seed for function naming (not strictly necessary) *);
-      lp (FSet.listItems s, env0, [])
+      lp (FSet.listItems s, env0)
     end
 
 end

@@ -15,6 +15,8 @@ structure TypeUtil : sig
    *)
     val prune : Types.ty -> Types.ty
 
+    val deepPrune : Types.ty -> Types.ty
+
   (* apply a type variable to type substitution to a type.  The substitution
    * is represented as a list of type variable/type pairs.
    *)
@@ -129,7 +131,7 @@ structure TypeUtil : sig
 	    | Ty.INSTANCE ty => if long
 		then (
 		  info := Ty.UNIV(~1);
-		  concat["($", Stamp.toString stamp, " == ", fmt {long=true} ty, ")"]
+		  concat["(", Stamp.toString stamp, " == ", fmt {long=true} ty, ")"]
 		    before info := Ty.INSTANCE ty)
 		else (
 		  info := Ty.UNIV(~1);
@@ -158,6 +160,24 @@ structure TypeUtil : sig
 	  end
       | prune ty = ty
 
+  (* prune all the way through *)
+    fun deepPrune (t : Ty.ty) : Ty.ty = let
+      fun p (Ty.ErrorTy) = Ty.ErrorTy
+	| p (Ty.MetaTy (Ty.MVar {info as ref (Ty.INSTANCE ty), ...})) = let
+            val ty' = p ty
+            in
+              info := Ty.INSTANCE ty';
+	      ty'
+	    end
+	| p (tv as Ty.VarTy _) = tv
+	| p (Ty.ConTy (ts, c)) = Ty.ConTy (List.map p ts, c)
+	| p (Ty.FunTy (t1, t2)) = Ty.FunTy (p t1, p t2)
+	| p (Ty.TupleTy ts) = Ty.TupleTy (List.map p ts)
+	| p (Ty.FArrayTy (t, n)) = Ty.FArrayTy (p t, n)
+      in
+	p t
+      end
+      
   (* apply a type variable to type substitution to a type *)
     fun applySubst (subst, ty0) = let
 	  fun inst ty = (case prune ty
@@ -224,6 +244,7 @@ handle ex => let
   val sch' = schemeToString (Ty.TyScheme (tvs, ty))
   val tys' = "[" ^ String.concatWith "," (List.map toString tys) ^ "]"
   in
+    prcat ["exception in TypeUtil.apply"];
     prcat ["length tvs: ", Int.toString (List.length tvs)];
     prcat ["length tys: ", Int.toString (List.length tys)];
     prcat ["apply(", sch', ", " , tys', ")"];
@@ -444,7 +465,7 @@ handle ex => let
         (* end case *))
       fun ntreeInt (Ty.LfTy) = 0
 	| ntreeInt (Ty.NdTy n) = 1 + ntreeInt n
-      fun meta (Ty.MVar {stamp=s1, ...}, Ty.MVar {stamp=s2, ...}) = 
+      fun meta (Ty.MVar {stamp=s1, ...}, Ty.MVar {stamp=s2, ...}) =
         Stamp.compare (s1, s2)
       fun cmp (t1, t2) = let
         val i1 = consIndex t1

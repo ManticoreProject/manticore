@@ -54,6 +54,9 @@ structure ASTUtil : sig
   (* create a sequence of expressions *)
     val mkSeqExp : (AST.exp list * AST.exp) -> AST.exp
 
+  (* make a FunExp which is the composition of two functional expressions *)
+    val mkCompose : AST.exp * AST.exp -> AST.exp
+
   (* create an if expression *)
     val mkIfExp : (AST.exp * AST.exp * AST.exp) -> AST.exp
 
@@ -162,6 +165,22 @@ structure ASTUtil : sig
     fun mkIfExp (e1, e2, e3) = A.IfExp(e1, e2, e3, TypeOf.exp(e2))
 
     fun mkVarExp (v, tys) = A.VarExp (v, tys)
+
+  (* make a FunExp which is the composition of two functional expressions *)
+  (* ... and check types along the way *)
+    fun mkCompose (f, g) = (case (TypeOf.exp f, TypeOf.exp g)
+      of (A.FunTy (fDom, fRng), A.FunTy (gDom, gRng)) =>
+	   if TypeUtil.same (fDom, gRng) then let
+             val arg = Var.new ("arg", gDom)
+             fun v x = A.VarExp (x, [])
+	     val body = mkApplyExp (f, [mkApplyExp (g, [v arg])])
+             in
+               A.FunExp (arg, body, fRng)
+	     end
+	   else
+	     raise Fail "mkCompose: f's domain <> g's range"
+       | _ => raise Fail "mkCompose"
+      (* end case *))
 
     fun copyPat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)

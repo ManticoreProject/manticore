@@ -9,7 +9,7 @@
  * /path/to/manti-papers/papers/notes/amsft
  *)
 
-structure FlattenOp : sig
+structure FlattenOp (*: sig
 
   val construct : Types.ty -> AST.fl_op
   val typeOf    : AST.fl_op -> Types.ty
@@ -20,18 +20,19 @@ structure FlattenOp : sig
   structure Map : ORD_MAP where type Key.ord_key = AST.fl_op
   structure Set : ORD_SET where type Key.ord_key = AST.fl_op
 
-end = struct
+end*) = struct
 
   structure A = AST
   structure T = Types
-  structure U = TypeUtil
+
+  structure TU = TypeUtil
 
   fun ntreeNat (T.LfTy) = 0
     | ntreeNat (T.NdTy n) = 1 + ntreeNat n
 
 (* toString *)
   local
-    fun sub conStr ty = conStr ^ "_<" ^ U.toString ty ^ ">"
+    fun sub conStr ty = conStr ^ "_<" ^ TU.toString ty ^ ">"
   in
     fun toString (oper : A.fl_op) : string = (case oper
       of A.ID t => sub "A.ID" t
@@ -45,6 +46,16 @@ end = struct
            "(" ^ String.concatWith " x " (List.map toString os) ^ ")"
       (* end case *))
   end (* local *)
+
+  fun toShortString oper = (case oper
+    of A.ID _ => "id"
+     | A.Unzip (T.TupleTy ts) => "unzip" ^ Int.toString (List.length ts)
+     | A.Unzip _ => raise Fail "toShortString"
+     | A.Cat _ => "cat"
+     | A.Map (oper', _) => "map" ^ " " ^ toShortString oper'
+     | A.Compose (o1, o2) => toShortString o1 ^ " o " ^ toShortString o2
+     | A.CrossCompose os => String.concatWith " x " (List.map toShortString os)
+    (* end case *))
 
 (* typeOf *)
   local
@@ -77,7 +88,7 @@ end = struct
                 in
 		  T.FunTy (domTy, rngTy)
 	        end 
-	    | _ => raise Fail ("typeOf, Cat: " ^ U.toString domTy)
+	    | _ => raise Fail ("typeOf, Cat: " ^ TU.toString domTy)
            (* end case *))
        | A.Map (oper, n) => (case typeOf oper
            of T.FunTy (r, r') => T.FunTy (T.FArrayTy (r, n), T.FArrayTy (r', n))
@@ -88,12 +99,13 @@ end = struct
 	   val t2 = typeOf q2
 	   in
 	   (* check here... *)
-	     if (U.same (domOf t1, rngOf t2)) then
+	     if (TU.same (domOf t1, rngOf t2)) then
                T.FunTy (domOf t2, rngOf t1)
              else
                (print "typeOf: compose mismatch\n";
-		print ("t1 = " ^ U.toString t1 ^ "\n");
-		print ("t2 = " ^ U.toString t2 ^ "\n");
+		print "(domain of t1 is supposed to match range of t2)\n";
+		print ("t1 = " ^ TU.toString t1 ^ "\n");
+		print ("t2 = " ^ TU.toString t2 ^ "\n");
 		raise Fail "typeOf: compose mismatch")
            end
        | A.CrossCompose qs => let
@@ -104,6 +116,30 @@ end = struct
       (* end case *))
   end (* local *)
 
+(* same : A.fl_op * A.fl_op -> bool *)
+  fun same (o1 : A.fl_op, o2 : A.fl_op) : bool = (case (o1, o2)
+    of (A.ID t1, A.ID t2) => TU.same (t1, t2)
+     | (A.Unzip t1, A.Unzip t2) => TU.same (t1, t2)
+     | (A.Cat t1, A.Cat t2) => TU.same (t1, t2)
+     | (A.Map (o1, n1), A.Map (o2, n2)) =>
+         same (o1, o2) andalso (ntreeNat n1 = ntreeNat n2)
+     | (A.Compose (op11, op12), A.Compose (op21, op22)) =>
+         same (op11, op21) andalso same (op12, op22)
+     | (A.CrossCompose os1, A.CrossCompose os2) =>
+         ListPair.allEq same (os1, os2)
+     | _ => false)
+
+  fun chkCompose (A.Compose (o1, o2)) = (case (typeOf o1, typeOf o2)
+        of (t1 as T.FunTy (d1, r1), t2 as T.FunTy (d2, r2)) =>
+           if TU.same (r2, d1) then () else
+            (print "compose mismatch in FlattenOp construction:\n";
+	     print "o1 o o2 where o1's type is ";
+	     print (TU.toString t1 ^ "\n");
+	     print ("and o2's type is " ^ TU.toString t2 ^ "\n"))
+	 | _ => raise Fail "broken compose"
+	(* end case *))
+    | chkCompose _ = raise Fail "bad call"
+
 (* construct *)
   local
     fun fArray ty = T.FArrayTy (ty, T.LfTy)
@@ -113,7 +149,9 @@ end = struct
             List.exists (fn c' => TyCon.same (c',c)) Basis.primTycs
 	| _ => false)
   in
+(* NOTE: you construct based on *element types* *)
     fun construct (r : T.ty) : A.fl_op = let
+      val r = TU.prune r
       val f = (case r
         of T.FunTy (r1, r2) => A.ID (fArray r)
 	 | T.TupleTy [] => (* unit *) A.ID (fArray r)
@@ -125,9 +163,14 @@ end = struct
 	 | T.FArrayTy (t', n) => let
              val oper' = construct t'
 	     val map = A.Map (oper', n)
-             val domTy = U.domainType (typeOf map)
+             val cat = A.Cat (TU.rangeType (typeOf map))
+	     val _ = print ("`````````` generating Cat with domain type " ^
+			    TU.toString (TU.rangeType (typeOf map)) ^ 
+			    "\n")
+	     val res = A.Compose (cat, map)
+	     val _ = chkCompose res
              in
-               A.Compose (A.Cat domTy, map)
+               res
              end
 	 | T.ConTy (ts, c) => 
 	     if isGroundTy r then 
@@ -135,25 +178,21 @@ end = struct
 	     else 
 	       raise Fail "todo"
 	 | T.VarTy a => raise Fail "todo"
-	 | _ => raise Fail ("construct: " ^ U.toString r)
+	 | _ => raise Fail ("construct: " ^ TU.toString r)
 	(* end case *))
     in
       f
     end
   end (* local *)
 
-(* same : A.fl_op * A.fl_op -> bool *)
-  fun same (o1 : A.fl_op, o2 : A.fl_op) : bool = (case (o1, o2)
-    of (A.ID t1, A.ID t2) => U.same (t1, t2)
-     | (A.Unzip t1, A.Unzip t2) => U.same (t1, t2)
-     | (A.Cat t1, A.Cat t2) => U.same (t1, t2)
-     | (A.Map (o1, n1), A.Map (o2, n2)) =>
-         same (o1, o2) andalso (ntreeNat n1 = ntreeNat n2)
-     | (A.Compose (op11, op12), A.Compose (op21, op22)) =>
-         same (op11, op21) andalso same (op12, op22)
-     | (A.CrossCompose os1, A.CrossCompose os2) =>
-         ListPair.allEq same (os1, os2)
-     | _ => false)
+fun TEST () = let
+  val int = Basis.intTy
+  val lf = T.LfTy
+  val t = T.FArrayTy (T.FArrayTy (int, lf), lf)
+(*   val t = T.FArrayTy (T.FArrayTy (T.FArrayTy (int, lf), lf), lf) *)
+  in
+    toShortString (construct t)
+  end
 
 (* compare : oper * oper -> order *)
 (* for use in ORD_KEY-based collections *)
@@ -191,9 +230,9 @@ end = struct
         in
           if i1 <> i2 then Int.compare (i1, i2)
 	  else case (o1, o2)
-            of (A.ID t1, A.ID t2) => U.compare (t1, t2)
-	     | (A.Unzip t1, A.Unzip t2) => U.compare (t1, t2)
-	     | (A.Cat t1, A.Cat t2) => U.compare (t1, t2)
+            of (A.ID t1, A.ID t2) => TU.compare (t1, t2)
+	     | (A.Unzip t1, A.Unzip t2) => TU.compare (t1, t2)
+	     | (A.Cat t1, A.Cat t2) => TU.compare (t1, t2)
 	     | (A.Map (o1, n1), A.Map (o2, n2)) =>
                 (case cmp (o1, o2)
 		  of EQUAL => Int.compare (ntreeNat n1, ntreeNat n2)

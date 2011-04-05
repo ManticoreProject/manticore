@@ -28,6 +28,7 @@ Library
   structure SubstTy
   structure VarSubst
   structure FlattenOp
+  structure PArrayOp
 
 is
 
@@ -58,3 +59,4 @@ is
   subst-var.sml
   subst-ty.sml
   flatten-op.sml
+  parray-op.sml

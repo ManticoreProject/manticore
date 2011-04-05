@@ -17,13 +17,17 @@ end = struct
   structure A = AST
   structure T = Types 
   structure B = Basis
-  structure U = ASTUtil
+
+  structure AU = ASTUtil
 
   structure BEnv = BasisEnv
   structure MEnv = ModuleEnv
 
   structure FSet = FlattenOp.Set
   structure FMap = FlattenOp.Map
+
+  fun ln () = TextIO.print "\n"
+  fun println s = (TextIO.print s; ln ())
 
   fun assert (msg : string) (fact : bool) : unit = 
     if not fact then raise Fail ("assertion failure: " ^ msg) else ()
@@ -51,11 +55,11 @@ end = struct
       val {ntreeTyc, farrCon, lfCon, ndCon, ...} = basisItems ()
       val ntreeTy = A.ConTy ([], ntreeTyc)
       in case n
-        of A.Lf (loExp, hiExp) => U.mkApplyExp (const lfCon, [loExp, hiExp])
+        of A.Lf (loExp, hiExp) => AU.mkApplyExp (const lfCon, [loExp, hiExp])
 	 | A.Nd ts => let
 	     val ts' = List.map mkTree ts
              in
-	       U.mkApplyExp (const ndCon, [U.mkList (ts', ntreeTy)])
+	       AU.mkApplyExp (const ndCon, [AU.mkList (ts', ntreeTy)])
 	     end
       end
     fun mkFArray (es, n, t) = let
@@ -64,7 +68,7 @@ end = struct
       val shape = mkTree n
       val farrConConst = A.ConstExp (A.DConst (farrCon, [t]))
       in
-        U.mkApplyExp (farrConConst, [data, shape])
+        AU.mkApplyExp (farrConConst, [data, shape])
       end
   end (* local *)
 
@@ -126,8 +130,8 @@ end = struct
           (* note: the constructor c should have already been replaced 
 	   * with its flat constructor by now *)
       | ty (T.FunTy (t1, t2)) = T.FunTy (ty t1, ty t2)
-      | ty (T.TupleTy ts) = T.TupleTy ts
-      | ty (T.FArrayTy (t, n)) = T.ConTy ([t], farrTyc ())
+      | ty (T.TupleTy ts) = T.TupleTy (List.map ty ts)
+      | ty (T.FArrayTy (t, n)) = T.ConTy ([ty t], farrTyc ())
           (* we lose the shape tree type here *)
     in
       ty t
@@ -146,12 +150,17 @@ end = struct
     in
       rt oper
     end
+ 
+  fun realizeTypesInParrOper (oper : A.parray_op) : A.parray_op = (case oper
+    of A.PA_Length ty => A.PA_Length (realizeTy ty)
+    (* end case *))
 
   datatype var_bind 
     = Self
     | Other of A.var
 
-(* pass1: realize farrays, change farray types, and collect all flOps in a set *)
+(* pass1: realize farrays, change farray types, including parray opers's types,
+ * and collect all flOps in a set *)
   fun pass1 (env : env) (e : A.exp) : A.exp = let
     val vars : var_bind Var.Tbl.hash_table = let
       (* note: vars are all uniquely stamped, so one doesn't need to worry about scope *)
@@ -201,13 +210,18 @@ end = struct
       | exp (x as A.OverloadExp _) = raise Fail "pass1: overloading unresolved"
       | exp (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, exp e)
       | exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
-      | exp (A.FArrayExp (es, n, t)) = mkFArray (es, n, ty t)
+      | exp (A.FArrayExp (es, n, t)) = mkFArray (List.map exp es, n, ty t)
       | exp (A.FlOp oper) = let
           val oper' = realizeTypesInOper oper
           val _ = insOper (env, oper')
           in
 	    A.FlOp oper'
 	  end
+      | exp (A.PArrayOp oper) = let
+          val oper' = realizeTypesInParrOper oper
+          in
+            A.PArrayOp oper'
+          end
     and binding (A.ValBind (p, e)) = A.ValBind (pat p, exp e)
       | binding (A.PValBind (p, e)) = A.PValBind (pat p, exp e)
       | binding (A.FunBind lams) = A.FunBind (List.map lambda lams)
@@ -248,22 +262,86 @@ end = struct
       exp e
     end
 
+(* +debug *)
+
+fun expressionForm (x : A.exp) : string = let
+  fun e (A.LetExp _) = "LetExp"
+    | e (A.IfExp _) = "IfExp"
+    | e (A.CaseExp _) = "CaseExp"
+    | e (A.PCaseExp _) = "PCaseExp"
+    | e (A.HandleExp _) = "HandleExp"
+    | e (A.RaiseExp _) = "RaiseExp"
+    | e (A.FunExp _) = "FunExp"
+    | e (A.ApplyExp _) = "ApplyExp"
+    | e (A.VarArityOpExp _) = "VarArityOpExp"
+    | e (A.TupleExp _) = "TupleExp"
+    | e (A.RangeExp _) = "RangeExp"
+    | e (A.PTupleExp _) = "PTupleExp"
+    | e (A.PArrayExp _) = "PArrayExp"
+    | e (A.PCompExp _) = "PCompExp"
+    | e (A.PChoiceExp _) = "PChoiceExp"
+    | e (A.SpawnExp _) = "SpawnExp"
+    | e (A.ConstExp _) = "ConstExp"
+    | e (A.VarExp _) = "VarExp"
+    | e (A.SeqExp _) = "SeqExp"
+    | e (A.OverloadExp _) = "OverloadExp"
+    | e (A.ExpansionOptsExp _) = "ExpansionOptsExp"
+    | e (A.FTupleExp _) = "FTupleExp"
+    | e (A.FArrayExp _) = "FArrayExp"
+    | e (A.FlOp _) = "FlOp"
+  in
+    e x
+  end
+
+fun look (e : A.exp) : unit = let
+  fun ln () = print "\n"
+  fun pr s = (print s; ln ())
+  fun exp (A.LetExp (b, e)) = (pr ("let " ^ binding b ^ " in"); exp e)
+    | exp (A.ExpansionOptsExp (opts, e)) = (pr "expansion"; exp e)
+    | exp (A.TupleExp []) = pr "()"
+    | exp (A.TupleExp es) = (pr "tuple("; app exp es; pr ")")
+    | exp e = pr (expressionForm e) 
+  and binding (A.ValBind (p, e)) = pat p ^ " = ..."
+    | binding (A.PValBind (p, e)) = pat p ^ " = ..."
+    | binding (A.FunBind lams) = String.concatWith "\n" (map lam lams)
+    | binding (A.PrimVBind (x, _)) = var x ^ " = _prim(...)"
+    | binding (A.PrimCodeBind c) = "_primcode(...)"
+  and var x = Var.toString x
+  and pat (A.ConPat (c, _, p)) = DataCon.toString c ^ "(" ^ pat p ^ ")"
+    | pat (A.TuplePat ps) = "(" ^ String.concatWith "," (map pat ps) ^ ")"
+    | pat (A.VarPat x) = var x
+    | pat (A.WildPat _) = "_"
+    | pat (A.ConstPat c) = "<const>"
+  and lam (A.FB (f, x, b)) = "fun " ^ var f ^ "(" ^ var x ^ ") = ..."
+  in
+    pr "^^^^^ running LOOK"; exp e; raise Fail "HALT"
+  end
+
+(* -debug *)
+
 (* mkOps : env -> A.lambda list *)
-(* Generate all operators' code, insert oper/code pairs into the env, 
- *   and prepend their definitions to the given exp. *)
-  fun mkOps (env : env) (e : A.exp) : A.exp = let
+(* Generate all operators' code and insert oper/code pairs into the env. *)
+  fun mkOps (env : env) (e : A.exp) : (A.fl_op * A.lambda) list = let
     val (E {operSet, operCode}) = env
     val s = !operSet
     val ols = FlattenOpGen.gen s
     val _ = List.app (fn (oper,lam) => insLam (env, oper, lam)) ols
-    val (opers, lams) = ListPair.unzip ols
-    val e' = ASTUtil.mkLetExp ([A.FunBind lams], e)
+(* +debug *)
+    val _ = println "***** RAN mkOps *****"
+    val _ = List.app (fn (oper, lam as A.FB (f, x, b)) =>
+      (print (FlattenOp.toString oper);
+       print " --> ";
+       print (Var.toString f ^ " ...");
+       ln ())) 
+		     ols
+(* -debug *)
     in
-      e'
+      ols
     end
 
 (* pass2 : env -> A.exp -> A.exp *)
 (* Replace all fl_ops with VarExps corresponding to their function names. *)
+(* Insert code for each parray_op. *)
   fun pass2 (env : env) (e : A.exp) : A.exp = let
     fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, t)
@@ -293,12 +371,22 @@ end = struct
       | exp (x as A.OverloadExp _) = x
       | exp (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, exp e)
       | exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
-      | exp (A.FArrayExp (es, n, t)) = raise Fail "these should have been expanded away by now"
+      | exp (A.FArrayExp (es, n, t)) = 
+          raise Fail "FArrayExp: these should have been expanded away by now"
       | exp (A.FlOp oper) = let 
           val A.FB (f, x, b) = lookupLam (env, oper)
           in
 	    A.VarExp (f, []) (* FIXME type list might not be empty here *)
           end
+      | exp (pop as A.PArrayOp oper) = let
+          val e = PArrayOpGen.gen oper 
+	  val _ = print (concat ["+++++ for this: ", PArrayOp.toString oper, "\n",
+				 "      generated this: "])
+	  val _ = PrintAST.printExp e
+	  val _ = print "\n"
+          in
+	    e
+	  end
     and binding (A.ValBind (p, e)) = A.ValBind (p, exp e)
       | binding (A.PValBind (p, e)) = A.PValBind (p, exp e)
       | binding (A.FunBind lams) = A.FunBind (List.map lambda lams)
@@ -313,12 +401,75 @@ end = struct
       exp e
     end
 
+(* insertLams : A.lambda list -> A.exp -> A.exp *)
+  fun insertLams (lams : A.lambda list) (e : A.exp) : A.exp = let
+    fun isOneOfTheLams f = 
+      List.exists (fn (A.FB (g, _, _)) => (Var.same (g, f))) lams
+    fun lamsOccurIn b = let
+      fun binding (A.ValBind (_, e)) = exp e
+	| binding (A.PValBind (_, e)) = exp e
+	| binding (A.FunBind lams') = List.exists lambda lams'
+	| binding (A.PrimVBind _) = false
+	| binding (A.PrimCodeBind _) = false
+      and exp (A.LetExp (b, e)) = binding b orelse exp e
+	| exp (A.IfExp (e1, e2, e3, _)) = List.exists exp [e1, e2, e3]
+	| exp (A.CaseExp (e, ms, _)) = exp e orelse List.exists match ms
+	| exp (A.PCaseExp (es, ms, _)) = List.exists exp es orelse List.exists pmatch ms
+	| exp (A.HandleExp (e, ms, _)) = exp e orelse List.exists match ms
+	| exp (A.RaiseExp (e, _)) = exp e
+	| exp (A.FunExp (_, e, _)) = exp e
+	| exp (A.ApplyExp (e1, e2, _)) = exp e1 orelse exp e2
+	| exp (A.VarArityOpExp _) = false
+	| exp (A.TupleExp es) = List.exists exp es
+	| exp (A.RangeExp (e1, e2, optE, _)) = exp e1 orelse exp e2 orelse oexp optE
+	| exp (A.PTupleExp es) = List.exists exp es
+	| exp (A.PArrayExp (es, _)) = raise Fail "unexpected parray"
+	| exp (A.PCompExp (e, pes, optE)) = 
+            exp e orelse List.exists (exp o #2) pes orelse oexp optE
+	| exp (A.PChoiceExp (es, _)) = List.exists exp es
+	| exp (A.SpawnExp e) = exp e
+	| exp (A.ConstExp _) = false
+	| exp (A.VarExp (x, _)) = isOneOfTheLams x
+	| exp (A.SeqExp (e1, e2)) = exp e1 orelse exp e2
+	| exp (A.OverloadExp _) = raise Fail "unresolved overloading"
+	| exp (A.ExpansionOptsExp (_, e)) = exp e
+	| exp (A.FTupleExp _) = raise Fail "unexpected FTupleExp"
+	| exp (A.FArrayExp _) = raise Fail "unexpected FArrayExp" 
+	| exp (A.FlOp _) = raise Fail "unexpected FlOp"
+      and oexp NONE = false
+	| oexp (SOME e) = exp e
+      and match (A.PatMatch (_, e)) = exp e
+	| match (A.CondMatch (_, e1, e2)) = exp e1 orelse exp e2
+      and pmatch (A.PMatch (_, e)) = exp e
+	| pmatch (A.Otherwise (_, e)) = exp e
+      and lambda (A.FB (_, _, b)) = exp b
+      in
+	binding b
+      end
+    fun topLevelExp (lexp as A.LetExp (b, e)) = 
+	  if lamsOccurIn b then 
+	    AU.mkLetExp ([A.FunBind lams], lexp)
+	  else
+            A.LetExp (b, topLevelExp e)
+      | topLevelExp (A.ExpansionOptsExp (opts, e)) = 
+	  A.ExpansionOptsExp (opts, topLevelExp e)
+      | topLevelExp (theEnd as A.TupleExp []) = theEnd
+      | topLevelExp e = raise Fail ("unexpected " ^ expressionForm e)
+    in
+      topLevelExp e
+    end
+					   
 (* realize : A.exp -> A.exp *)
   fun realize (e0 : A.exp) : A.exp = let
     val env = initEnv ()
     val e1 = pass1 env e0
-    val e2 = mkOps env e1
-    val e3 = pass2 env e2
+    val ols = mkOps env e1
+    val e2 = pass2 env e1
+    val e3 = let
+      val (ops, lams) = ListPair.unzip ols
+      in
+	insertLams lams e2
+      end
     in
       e3
     end

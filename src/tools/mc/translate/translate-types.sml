@@ -160,7 +160,8 @@ structure TranslateTypes : sig
 			insertDCon (env, dc, repTr, dc')
 		      end
 		fun mkDC' (dc, rep, (repTr, tys)) = mkDC (dc, rep, repTr, tys)
-		fun mkTaggedDC (i, dc) = mkDC' (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy(env, dc))
+		fun mkTaggedDC (i, dc) = 
+		 mkDC' (dc, BTy.TaggedTuple(Word.fromInt i), trArgTy(env, dc))
 		in
 		  case (nConsts, conFuns)
 		   of (_, []) => setRep (BTy.T_Enum(Word.fromInt nConsts - 0w1), BTy.K_UNBOXED)

@@ -93,6 +93,7 @@ end = struct
       | exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
       | exp (A.FArrayExp (es, n, t)) = A.FArrayExp (List.map exp es, ntree n, t)
       | exp (A.FlOp oper) = A.FlOp (fuseOp oper)
+      | exp (pop as A.PArrayOp _) = pop
     and ntree (A.Lf (e1, e2)) = A.Lf (exp e1, exp e2)
       | ntree (A.Nd ns) = A.Nd (List.map ntree ns)
     and match (A.PatMatch (p, e)) = A.PatMatch (pat p, exp e)

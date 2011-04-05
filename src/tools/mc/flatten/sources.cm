@@ -6,37 +6,50 @@
 
 Library
 
+  structure Flatten
+
+(*  structure FlattenControls *)
+
   structure FlattenEnv
   structure FlattenTypes
   structure FlattenTerms
   structure FlattenOpGen
   structure FlattenOpFusion
   structure RealizeFArray
+  structure PArrayOpGen
 
+  
   structure TestFlattenTypes
+(*
   structure TestFlattenTerms
   structure TestFlattenOpGen
   structure TestRealizeFArray
+  *)
 
 is
 
   $/basis.cm
-
   $/smlnj-lib.cm
   $/controls-lib.cm
 
+  ../common/sources.cm
   ../ast/sources.cm
   ../ast-opt/sources.cm
   ../env/sources.cm
 
+  flatten.sml
+  flatten-controls.sml
   flatten-env.sml
   flatten-types.sml
   flatten-terms.sml
   flatten-op-gen.sml  
   flatten-op-fusion.sml
   realize-farray.sml
+  parray-op-gen.sml
 
   test-flatten-types.sml
+  (*
   test-flatten-terms.sml
   test-flatten-op-gen.sml
   test-realize-farray.sml
+  *)

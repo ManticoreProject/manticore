@@ -16,7 +16,9 @@ end = struct
   structure A = AST
   structure T = Types 
   structure B = Basis
-  structure U = TypeUtil
+
+  structure AU = ASTUtil
+  structure TU = TypeUtil
 
   structure FEnv = FlattenEnv
 
@@ -30,12 +32,13 @@ end = struct
 
 (* fpTy : env -> ty -> ty *)
 (* flatten and prune type *)
-  fun fpTy env = FlattenTypes.flattenTy env o U.prune
+  fun fpTy env = FlattenTypes.flattenTy env o TU.prune
 
 (* fpTySch : env -> ty_scheme -> ty_scheme *)
 (* flatten and prune type scheme *)
   fun fpTySch env = (fn T.TyScheme (vs, t) => T.TyScheme (vs, fpTy env t))
 
+(* exp : env -> exp -> exp *)
   fun exp (env : env) (e : A.exp) : A.exp = let
     val ty = fpTy env
     fun ex (A.LetExp (b, e)) = let
@@ -51,13 +54,6 @@ end = struct
 	  val t' = ty t
           in
 	    A.CaseExp (e', ms', t')
-	  end
-      | ex (A.PCaseExp (es, ms, t)) = let
-          val es' = List.map ex es
-	  val ms' = List.map (pmatch env) ms
-	  val t' = ty t
-          in
-	    A.PCaseExp (es', ms', t')
 	  end
       | ex (A.HandleExp (e, ms, t)) = let
           val e' = ex e
@@ -91,7 +87,10 @@ end = struct
 	  end
       | ex (A.PTupleExp es) = A.PTupleExp (List.map ex es)
       | ex (A.PArrayExp (es, t)) = let
-          val r = ty t
+	  val r = ty t
+	  val _ = print "\ntraversing parray\n"          
+	  val _ = print ("```````````` t is " ^ TU.toString t ^ "\n")
+	  val _ = print ("```````````` r is " ^ TU.toString r ^ "\n")
 	  val es' = List.map ex es
         (* check that r is in fact the flattened element type *)
           val _ = (case es'
@@ -104,34 +103,82 @@ end = struct
 		    (print "flattening parray type mismatch\n";
 		     print "e' = ";
 		     PrintAST.printExp e';
-		     print ("r = " ^ U.toString r ^ "\n");
-		     print ("t' = " ^ U.toString t' ^ "\n");
+		     print ("r = " ^ TU.toString r ^ "\n");
+		     print ("t' = " ^ TU.toString t' ^ "\n");
 		     raise Fail "flattening parray type mismatch")
 	         end) 
-	  val lf = A.Lf (ASTUtil.mkInt 0, ASTUtil.mkInt (List.length es))
+	  val lf = A.Lf (AU.mkInt 0, AU.mkInt (List.length es))
 	  val f = A.FArrayExp (es', lf, r)
-	  val oper = FlattenOp.construct r
+	  val r' = TU.deepPrune r
+	  val _ = print ("``````` constructing flattening operator for {" ^ TU.toString r' ^ ",_}\n")
+	  val oper = FlattenOp.construct r'
+	  val _ = print ("``````` done constructing flattening op for {" ^ TU.toString r' ^ ",_}\n")
         (* record the insertion of this operator in env *)
 	  val () = FEnv.insertFlOp (env, oper)
+        (* check the types before we construct the application *)
+	  val () = let
+            val opTy = FlattenOp.typeOf oper
+	    val argTy = TU.deepPrune (TypeOf.exp f)
+            in case TU.deepPrune opTy
+              of T.FunTy (domTy, rngTy) => 
+                   if TU.same (domTy, argTy) then ()
+		   else let
+	             val _ = print "type mismatch inserting flattener:\n"
+                     val _ = print ("operator " ^ FlattenOp.toString oper ^ "\n")
+		     val _ = print ("oper's domTy " ^ TU.toString domTy ^ "\n")
+		     val _ = print ("argTy " ^ TU.toString argTy ^ "\n")
+                     in
+	               raise Fail "type mismatch in application"
+		     end
+	       | _ => raise Fail "not a fn"
+	    end
           in
-	    ASTUtil.mkApplyExp (A.FlOp oper, [f])
+	    AU.mkApplyExp (A.FlOp oper, [f])
 	  end
       | ex (A.PCompExp (e, pes, optE)) = raise Fail "todo"
       | ex (A.PChoiceExp (es, t)) = A.PChoiceExp (List.map ex es, ty t)
       | ex (A.SpawnExp e) = A.SpawnExp (ex e)
       | ex (A.ConstExp c) = A.ConstExp (const env c)
-      | ex (A.VarExp (x, ts)) = let
-          val ts' = List.map ty ts
-          in case FEnv.findVar (env, x)
-            of NONE   => A.VarExp (x, ts')
-	     | SOME y => A.VarExp (y, ts')
-	  end
+      | ex (ve as A.VarExp (x, ts)) = 
+        (* replace parr prims with parr ops *)
+         (case FEnv.findParrPrim (env, x)
+	   of SOME replacement => (case replacement
+             of NONE => ve
+	      | SOME pop => let
+                  val t = (ty o TU.domainType o TypeOf.exp) ve
+(* +debug *)
+		  val _ = print ("!!!!! TYPE OF " ^ Var.toString x ^ " " ^ 
+				 TU.toString (TypeOf.exp ve) ^ "\n")
+		  val _ = print ("!!!!! FLAT TYPE OF " ^ Var.toString x ^ " " ^ 
+				 TU.toString t ^ "\n")
+(* -debug *)
+                  in
+		    A.PArrayOp (pop t)
+		  end
+             (* end case *))
+	    | NONE => let
+                val ts' = List.map ty ts
+		val _ = () (* print ("+++++ inspecting " ^ Var.toString x ^ "\n") *)
+                in case FEnv.findVar (env, x)
+		  of NONE => let
+                       val _ = () (* print ("found nothing\n") *)
+		       in 
+			 A.VarExp (x, ts')
+		       end
+		   | SOME y => let
+		       val _ = () (* print ("found " ^ Var.toString y ^ "\n") *)
+		       in
+			 A.VarExp (y, ts')
+		       end
+	        end
+	   (* end case *))
       | ex (A.SeqExp (e1, e2)) = A.SeqExp (ex @@ (e1, e2))
       | ex (A.OverloadExp xr) = raise Fail "unresolved overloading"
       | ex (A.ExpansionOptsExp (opts, e)) = A.ExpansionOptsExp (opts, ex e)
       | ex (A.FTupleExp es) = raise Fail "exp: FTupleExp"
       | ex (A.FArrayExp (es, n, t)) = raise Fail "exp: FArrayExp"
       | ex (oper as A.FlOp _) = oper
+      | ex (A.PArrayOp _) = raise Fail "unexpected PArrayOp"
     in
       ex e
     end
@@ -224,27 +271,36 @@ end = struct
     end
 
   and lambdas (env : env) (lams : A.lambda list) : env * A.lambda list = let
+    fun parrPrim (A.FB (f, x, b)) = FEnv.isParrPrim (env, f)
+    fun go ls = let
     (* we proceed in two passes -- first, translate all the fn names, *)
     (*   then translate all the function args and bodies *)
     (* first pass: bindLp translates and collects all the function names *)
-    fun bindLp ([], env, fs) = (env, rev fs)
-      | bindLp (A.FB(f,x,b)::t, env, fs) = let
-          val (env', f') = var env f
-          in
-            bindLp (t, env', (f',x,b)::fs)
-	  end
-    val (env', fs) = bindLp (lams, env, [])
+      fun bindLp ([], env, fs) = (env, rev fs)
+	| bindLp (A.FB(f,x,b)::t, env, fs) = let
+            val (env', f') = var env f
+            in
+              bindLp (t, env', (f',x,b)::fs)
+	    end
+      val (env', fs) = bindLp (lams, env, [])
     (* second pass operator: trFun translates a function's arg and body *)
-    fun trFun (f', x, b) : A.lambda = let
-      val (env'', x') = var env' x
-      val b' = exp env'' b
-      in
-	A.FB (f', x', b')
-      end
+      fun trFun (f', x, b) : A.lambda = let
+        val (env'', x') = var env' x
+	val b' = exp env'' b
+        in
+	  A.FB (f', x', b')
+	end
     (* second pass *)
-    val lams' : A.lambda list = List.map trFun fs
+      val lams' : A.lambda list = List.map trFun fs
+      in
+        (env':env, lams':A.lambda list)
+      end
     in
-      (env':env, lams':A.lambda list)
+      case lams 
+       of [lam] => if parrPrim lam then (env, [lam]) else go lams
+	| _ => if List.exists parrPrim lams then
+                 raise Fail "unexpected mutually recursive parr prims"
+	       else go lams
     end
 
   and pat (env : env) (p : A.pat) : env * A.pat =
@@ -293,7 +349,9 @@ end = struct
         val x' = Var.newPoly (Var.nameOf x ^ "_", tySch')
         val env' = FEnv.insertVar (env, x, x')
         val () = (* record interface type on new var *)
-	  Var.setInterfaceTy (x', tySch);
+	  Var.setInterfaceTy (x', tySch)
+	val _ = print ("flatten-terms: new var " ^ Var.nameOf x' ^ " with new type " ^
+		       TypeUtil.schemeToString tySch' ^ "\n")
         in
 	  (env', x')
 	end

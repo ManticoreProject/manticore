@@ -241,7 +241,13 @@ structure TranslateEnv : sig
         )
     fun insertPMLVar (av, bv) = setPMLVar (av, SOME bv)  (* imported PML variables *)
     val findBOMTyDef = getTy
-    fun findBOMTy v = (
+    fun findBOMTy (v : ty_def) : bty_def = (
+(* +debug *)	
+            (* let val s = ProgramParseTree.Var.toString v *)
+	    (* in *)
+	    (*   print ("findBOMTy " ^ s ^ "\n") *)
+	    (* end; *)
+(* -debug *)
 	(* the BOM type might have been bound in several places *)
 	   case (getTy v, ModuleEnv.getTyDef v)
 	    of (SOME ty, _) => BTY_TY ty			(* inline BOM *)

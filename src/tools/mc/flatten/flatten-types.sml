@@ -39,6 +39,7 @@ end *) = struct
     in (case FEnv.findMustFlatten (env, tyc)
       of SOME decision => decision
        | NONE => let
+           val _ = () (* print ("~~~~~ inspecting " ^ TyCon.toString tyc ^ "\n") *)
            val (T.Tyc {def, ...}) = tyc
            in (case def 
              of T.AbsTyc => decide false
@@ -99,7 +100,7 @@ end *) = struct
             of [] => raise Fail "conTy: parray tyc has no type args"
 	     | [t] => if isGround t then 
 		        T.FArrayTy (t, T.LfTy)
-		      else (case t
+		      else (case TypeUtil.prune t
 		        of T.FunTy (dom, rng) => let
 			     val t' = T.FunTy (ty dom, ty rng)
 			     in
@@ -118,15 +119,15 @@ end *) = struct
 			     else let
 		               val t' = flattenTy env t
                                in
-                                 T.FArrayTy (t, T.LfTy)
+                                 T.FArrayTy (t', T.LfTy)
                                end)
 			 | T.VarTy a => (* FIXME not sure this works*) 
 			                (* raise Fail ("tyvar: parray of " ^ U.toString t) *)
                              T.FArrayTy (T.VarTy a, T.LfTy)
-			 | T.MetaTy m => let (* FIXME does this work? *)
-                             val m' = ty t
-                             in
-			       T.FArrayTy (m', T.LfTy)
+			 | m as T.MetaTy _ => let
+			     val msg = "unresolved overloading: " ^ TypeUtil.toString m 
+			     in
+			       raise Fail msg
 			     end
 			 | _ => raise Fail ("?: parray of " ^ U.toString t)
 		       (* end case *))
@@ -145,7 +146,7 @@ end *) = struct
            (* end case *))
 	 (* end if *))
     and operN t =
-         (case t
+         (case TypeUtil.prune t
 	   of T.FArrayTy (t, n) => T.FArrayTy (t, T.NdTy n)
 	    | T.TupleTy ts => T.TupleTy (List.map operN ts)
 	    | _ => raise Fail ("operN: " ^ U.toString t)
@@ -178,6 +179,7 @@ end *) = struct
             FEnv.insertDCon (env, d, d')
 	  end
         in
+          print ("%%%%% flattening " ^ Atom.toString name ^ " to " ^ Atom.toString name' ^ "\n");
           FEnv.insertTyc (env, tyc, tyc'); (* insert new tyc into env *)
           List.app dcon cons; (* insert new dcons into env *)
 	  tyc'

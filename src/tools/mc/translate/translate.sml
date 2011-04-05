@@ -53,6 +53,8 @@ structure Translate : sig
 
   (* translate a binding occurrence of an AST variable to a BOM variable *)
     fun trVar (env, x) = let
+	  (* val _  = print ("trVar: " ^ Var.toString x ^ ":" ^ *)
+	  (* 		  TypeUtil.schemeToString (Var.typeOf x) ^ "\n") *)
 	  val x' = BV.new(V.nameOf x, TranslateTypes.trScheme(env, V.typeOf x))
 	  in
 	    (x', E.insertVar(env, x, x'))
@@ -71,7 +73,16 @@ structure Translate : sig
 		  end
 	    end
 	| mkCasts ([], []) = ([], [])
-	| mkCasts _ = raise Fail "rhs/lhs arity mismatch"
+	| mkCasts (xs as _::_, []) = let
+            val msg = "leftover vars " ^ String.concatWith "," (List.map BV.toString xs)
+            in
+              raise Fail ("rhs/lhs arity mismatch: " ^ msg)
+	    end
+	| mkCasts ([], ts as _::_) = let
+            val msg = "leftover tys " ^ String.concatWith "," (List.map BOMTyUtil.toString ts)
+            in
+	      raise Fail ("rhs/lhs arity mismatch: " ^ msg)
+	    end
     in
     fun mkStmt (lhs, rhs, e) = let
 	  val (xs, casts) = mkCasts (lhs, BOMUtil.typeOfRHS rhs)
@@ -368,7 +379,15 @@ structure Translate : sig
 			  mkLet([x'], e, k env)
 			end
 		(* end case *))
-	    | AST.ValBind _ => raise Fail "unexpected complex pattern"
+	    | AST.ValBind _ => let
+                (* +debug *)
+                val e = AST.LetExp (bind, AST.TupleExp [])
+		val _ = print "^^^^^ unexpected complex pattern ^^^^^\n"
+		val _ = PrintAST.printExpNoTypesNoStamps e
+                (* -debug *)
+                in
+                  raise Fail "unexpected complex pattern"
+	        end
 	    | AST.PValBind _ => raise Fail "impossible"
 	    | AST.FunBind fbs => let
 		fun bindFun (AST.FB(f, x, e), (env, fs)) = let
@@ -522,16 +541,16 @@ structure Translate : sig
    *
    *	let t = exp in cxt[t]
    *)
-    and trExpToV (env, AST.VarExp(x, tys), cxt : B.var -> B.exp) =
+    and trExpToV (env, ve as AST.VarExp(x, tys), cxt : B.var -> B.exp) =
 	  trVtoV (env, x, tys, cxt)
       | trExpToV (env, exp, cxt : B.var -> B.exp) = (case trExp(env, exp)
-	   of BIND([x], rhs) => mkStmt([x], rhs, cxt x)
-	    | EXP e => let
-		val t = BV.new ("_t", trTy(env, TypeOf.exp exp))
-		in
-		  mkLet([t], e, cxt t)
-		end
-	  (* end case *))
+	  of BIND([x], rhs) => mkStmt([x], rhs, cxt x)
+	   | EXP e => let
+               val t = BV.new ("_t", trTy(env, TypeOf.exp exp))
+	       in
+		 mkLet([t], e, cxt t)
+	       end
+          (* end case *))
 
     and trVtoV (env, x, tys, cxt : B.var -> B.exp) = (
 	  case E.lookupVar(env, x)

@@ -1,5 +1,5 @@
 (* ty-con.sml
- *
+ame *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
@@ -106,7 +106,7 @@ structure TyCon : sig
     fun nameOf (Tyc{name, ...}) = name
 
 (* FIXME: should include type parameters! *)
-    fun toString (Tyc{name, stamp, ...}) = Atom.toString name
+    fun toString (Tyc{name, stamp, ...}) = (Atom.toString name) ^ (Stamp.toString stamp)
 
     fun stampOf (Tyc{stamp, ...}) = stamp
 

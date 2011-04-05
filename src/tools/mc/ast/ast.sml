@@ -73,9 +73,12 @@ structure AST =
       | VarExp of (var * ty list)
       | SeqExp of (exp * exp)
       | OverloadExp of overload_var ref
-      | ExpansionOptsExp of (ExpansionOpts.opt list * exp) (* compiler options for expanding expressions *)
+      | ExpansionOptsExp of (ExpansionOpts.opt list * exp) (* compiler options for expanding exps *)
+(* operations on parrays are handled specially during the flattening transformation *)
+      | PArrayOp of parray_op
 (* the following terms are introduced by the flattening transformation *)
       | FTupleExp of exp list              (* for tuples introduced by the flattening trans. *)
+                                           (* FIXME not sure this ever occurs at compile time... *)
       | FArrayExp of exp list * ntree * ty (* ty is element type *)
       | FlOp of fl_op                      (* opers introduced by the flattening trans. *)
 
@@ -127,8 +130,13 @@ structure AST =
       = VK_None
       | VK_Pat			(* bound in a pattern *)
       | VK_Fun			(* bound to a function *)
-      | VK_Prim			(* builtin function or operator *)
+      | VK_Prim			(* built-in function or operator *)
  
+  (* type-indexed parray operators *)
+    and parray_op
+      = PA_Length of ty (* ty is dom type *)
+(* coming soon: sub, map, filter, reduce, ... *)
+
   (* type-indexed flattening operators *)
     and fl_op
       = ID of ty                   (* ty is dom/rng type *)

@@ -10,9 +10,10 @@ structure PrintAST : sig
     val outputExp       : TextIO.outstream * AST.exp -> unit
     val print           : AST.comp_unit -> unit
     val printExp        : AST.exp -> unit
-    val printExpNoTypes : AST.exp -> unit
     val printComment    : string -> unit
 
+    val printExpNoTypes         : AST.exp -> unit
+    val printExpNoStamps        : AST.exp -> unit
     val printExpNoTypesNoStamps : AST.exp -> unit
 
   end = struct
@@ -284,6 +285,12 @@ structure PrintAST : sig
 	     pr (FlattenOp.toString oper);
 	     pr "]";
 	   closeBox ())	    
+      | exp (A.PArrayOp oper) =
+          (openHOVBox (rel 0);
+             pr "PArrayOp[";
+	     pr (PArrayOp.toString oper);
+	     pr "]";
+	   closeBox ())	    
 
     and ntree (A.Lf (e1, e2)) = 
          (openHOVBox (rel 0);
@@ -521,6 +528,11 @@ structure PrintAST : sig
     fun printExpNoTypes e = (showTypes := false;
 			     printExp e;
 			     showTypes := true)
+
+  (* printExpNoStamps : A.exp -> unit *)
+    fun printExpNoStamps e = (showStamps := false;
+			     printExp e;
+			     showStamps := true)
 
   (* printComment : string -> unit *)       
   (* for debugging purposes *)

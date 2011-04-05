@@ -44,6 +44,7 @@ end *) = struct
 
   datatype env = Env of {
       mustFlatten : bool TTbl.hash_table,
+      parrPrims   : (T.ty -> A.parray_op) option VMap.map,
       tycEnv      : T.tycon TTbl.hash_table,
       dconEnv     : T.dcon DTbl.hash_table,
       varEnv      : A.var VMap.map,
@@ -52,17 +53,32 @@ end *) = struct
 
 (* selectors *)
   fun mustFlattenOf (Env {mustFlatten, ...}) = mustFlatten
+  fun parrPrimsOf (Env {parrPrims, ...}) = parrPrims
   fun tycEnvOf  (Env {tycEnv, ...})  = tycEnv
   fun dconEnvOf (Env {dconEnv, ...}) = dconEnv
   fun varEnvOf  (Env {varEnv, ...})  = varEnv
   fun flOpsOf   (Env {flOps, ...})   = !flOps
 
 (* functional update of varEnv *)
-  fun withVarEnv v (Env {tycEnv, dconEnv, varEnv, flOps, mustFlatten}) =
-    Env {tycEnv=tycEnv, dconEnv=dconEnv, varEnv=v, flOps=flOps, mustFlatten=mustFlatten}
+  fun withVarEnv v (Env {tycEnv, dconEnv, varEnv, flOps, mustFlatten, parrPrims}) =
+    Env {tycEnv=tycEnv, dconEnv=dconEnv, varEnv=v, 
+	 flOps=flOps, mustFlatten=mustFlatten, parrPrims=parrPrims}
 
 (* imperative update of flOps *)
   fun setFlOps f (Env {flOps, ...}) = (flOps := f)
+
+(* collectParrPrims : unit -> ... VMap.map *)
+(* - collect the "primitive" operators out of the parray basis module. *)
+(* These primitives require special handling in the flattening transformation. *)  
+  fun collectParrPrims () = let
+    fun getVar name = BasisEnv.getVarFromBasis ["PArray", name]
+    val ps = [("toRope", NONE),
+	      ("fromRope", NONE),
+	      ("length", SOME A.PA_Length)]
+    val ps' = List.map (fn (n, oper) => (getVar n, oper)) ps
+    in
+      List.foldl VMap.insert' VMap.empty ps'
+    end
 
 (* fresh env maker *)
   fun mkEnv () = let
@@ -71,21 +87,25 @@ end *) = struct
     val v = List.foldl VMap.insert' VMap.empty [(B.eq, B.eq), (B.neq, B.neq)]
     val f = ref (FSet.empty)
     val m = TTbl.mkTable (32, Fail "must flatten table")
+    val p = collectParrPrims ()
     in
-      Env {tycEnv = t, dconEnv = d, varEnv = v, flOps = f, mustFlatten = m}
+      Env {tycEnv = t, dconEnv = d, varEnv = v, flOps = f, mustFlatten = m, parrPrims = p}
     end
 
+(* spoof env for testing *)
+    val spoofEnv =  let
+      val t = TTbl.mkTable (32, Fail "tycon table")
+      val d = DTbl.mkTable (32, Fail "dcon table")
+      val v = List.foldl VMap.insert' VMap.empty [(B.eq, B.eq), (B.neq, B.neq)]
+      val f = ref (FSet.empty)
+      val m = TTbl.mkTable (32, Fail "must flatten table")
+      val p = VMap.empty
+      in
+        Env {tycEnv = t, dconEnv = d, varEnv = v, flOps = f, mustFlatten = m, parrPrims = p}
+      end
 
   fun markFlattenTyc (Env {mustFlatten, ...}, tyc, bool) = 
     TTbl.insert mustFlatten (tyc, bool)
-   (* (case TTbl.find mustFlatten tyc *)
-   (*   of SOME decision => raise Fail ("in markFlattenTyc: " ^  *)
-   (* 				     TyCon.toString tyc ^  *)
-   (* 				     " is already marked '" ^ *)
-   (* 				     Bool.toString decision ^  *)
-   (* 				     "' for flattening") *)
-   (*    | NONE => TTbl.insert mustFlatten (tyc, bool) *)
-   (*   (\* end case *\)) *)
 
   fun insertTyc (Env {tycEnv, ...}, tyc, tyc') = TTbl.insert tycEnv (tyc, tyc')
   
@@ -108,6 +128,10 @@ end *) = struct
   fun findTyc (Env {tycEnv, ...}, tyc) = TTbl.find tycEnv tyc
 
   fun findDCon (Env {dconEnv, ...}, con) = DTbl.find dconEnv con
+
+  fun findParrPrim (Env {parrPrims, ...}, x) = VMap.find (parrPrims, x)
+
+  fun isParrPrim (Env {parrPrims, ...}, x) = isSome (VMap.find (parrPrims, x))
 
   fun lookupTyc (Env {tycEnv, ...}, tyc) = (case TTbl.find tycEnv tyc
     of NONE => raise Fail ("lookupTyc " ^ TyCon.toString tyc)
@@ -140,6 +164,7 @@ end *) = struct
     end
 
   fun PVE (Env {varEnv, ...}) = printVarEnv varEnv
+   
 (* -debug *)
 
 

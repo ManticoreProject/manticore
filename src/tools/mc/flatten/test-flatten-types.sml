@@ -11,7 +11,7 @@ structure TestFlattenTypes = struct
   structure B = Basis
   structure U = TypeUtil
   
-  val env = FlattenEnv.mkEnv ()
+  val env = FlattenEnv.spoofEnv (* FlattenEnv.mkEnv () *)
 
   val println = (fn s => (print s; print "\n"))
 
@@ -67,6 +67,8 @@ structure TestFlattenTypes = struct
   val test8 = mkTest (B.parrayTy (unitTy --> unitTy))
 
   val test9 = mkTest (B.parrayTy (unitTy --> (B.parrayTy unitTy)))
+
+  val test10 = mkTest (B.parrayTy (B.intTy ** B.intTy))
 
 (* so far, so good *)
 
@@ -145,5 +147,13 @@ structure TestFlattenTypes = struct
     (case FlattenEnv.findDCon (env, dconA)
       of SOME c => print (DataCon.toString c ^ "\n")
        | NONE => print "NONE\n")
+
+(* *** *)
+  fun t000 () = let 
+    val t = T.FArrayTy (T.FArrayTy (Basis.intTy, T.LfTy), T.LfTy)
+    val oper = FlattenOp.construct t
+    in
+      print (FlattenOp.toString oper ^ "\n")
+    end
 
 end
