@@ -166,7 +166,7 @@ end*) = struct
 (* 	     val map = A.Map (oper', n) *)
 (*              val cat = A.Cat (TU.rangeType (typeOf map)) *)
 (* 	     val _ = print ("`````````` generating Cat with domain type " ^ *)
-(* 			    TU.toString (TU.rangeType (typeOf map)) ^  *)
+(* 			    TU.toString (TU.rangeType (typeOf map)) ^ *)
 (* 			    "\n") *)
 (* 	     val res = A.Compose (cat, map) *)
 (* 	     val _ = chkCompose res *)
@@ -185,15 +185,6 @@ end*) = struct
       f
     end
   end (* local *)
-
-fun TEST () = let
-  val int = Basis.intTy
-  val lf = T.LfTy
-  val t = T.FArrayTy (T.FArrayTy (int, lf), lf)
-(*   val t = T.FArrayTy (T.FArrayTy (T.FArrayTy (int, lf), lf), lf) *)
-  in
-    toShortString (construct t)
-  end
 
 (* compare : oper * oper -> order *)
 (* for use in ORD_KEY-based collections *)
