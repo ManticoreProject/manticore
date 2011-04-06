@@ -1,5 +1,5 @@
-Compile with cps.flatten=true, breaks after flattening.
-
 Compile with cps.flatten=false, doesn't break.
 
+Compile with cps.flatten=true, breaks after flattening.
 
+Precooked shell commands for compilation in "good.sh" and "bad.sh".
