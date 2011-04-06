@@ -151,10 +151,15 @@ end = struct
       rt oper
     end
  
-  fun realizeTypesInParrOper (oper : A.parray_op) : A.parray_op = (case oper
-    of A.PA_Length ty => A.PA_Length (realizeTy ty)
-     | A.PA_Sub {interfaceTy=i, reprTy=r} => A.PA_Sub {interfaceTy=i, reprTy=realizeTy r}
-    (* end case *))
+  val realizeTypesInParrOper : A.parray_op -> A.parray_op = let
+    fun ps (A.PSub_Nested t) = A.PSub_Nested (realizeTy t)
+      | ps (A.PSub_Flat t) = A.PSub_Flat (realizeTy t)
+      | ps (A.PSub_Tuple os) = A.PSub_Tuple (List.map ps os)
+    fun pop (A.PA_Length t) = A.PA_Length (realizeTy t)
+      | pop (A.PA_Sub s) = A.PA_Sub (ps s)
+    in
+      pop
+    end
 
   datatype var_bind 
     = Self

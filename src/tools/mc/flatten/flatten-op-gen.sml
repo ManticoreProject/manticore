@@ -112,7 +112,7 @@ end *) = struct
 
 (* unzip maker
  * Given a tuple type, this code generates a parallel unzip function as follows:
- * int * bool * char --> 
+ * (for example) int * bool * char --> 
  * fun unzip(arg) = let
  *   val FArray(data,shape) = arg
  *   fun hash1(arg) = let val(x,_,_) = arg in x end

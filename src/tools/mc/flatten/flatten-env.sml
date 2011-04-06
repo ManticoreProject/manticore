@@ -45,7 +45,7 @@ end *) = struct
 
   datatype env = Env of {
       mustFlatten : bool TTbl.hash_table,
-      parrPrims   : (T.ty * T.ty -> A.parray_op) option VMap.map,
+      parrPrims   : (T.ty -> A.parray_op) option VMap.map,
       tycEnv      : T.tycon TTbl.hash_table,
       dconEnv     : T.dcon DTbl.hash_table,
       varEnv      : A.var VMap.map,
@@ -73,12 +73,10 @@ end *) = struct
 (* These primitives require special handling in the flattening transformation. *)  
   fun collectParrPrims () = let
     fun getVar name = BasisEnv.getVarFromBasis ["PArray", name]
-    fun mkLength (iTy, rTy) = A.PA_Length rTy
-    fun mkSub (iTy, rTy) = A.PA_Sub {interfaceTy=iTy, reprTy=rTy}
     val ps = [("toRope", NONE),
 	      ("fromRope", NONE),
-	      ("length", SOME mkLength),
-              ("sub", SOME mkSub)]
+	      ("length", SOME PArrayOp.constructLength),
+              ("sub", SOME PArrayOp.constructSub)]
     val ps' = List.map (fn (n, oper) => (getVar n, oper)) ps
     in
       List.foldl VMap.insert' VMap.empty ps'

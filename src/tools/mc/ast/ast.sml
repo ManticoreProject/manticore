@@ -20,6 +20,27 @@ structure AST =
 
     type sig_name = Stamp.stamp
 
+  (* type-indexed flattening operators *)
+  (* WARNING: These cannot be moved to the FlattenOp module. It induces recursive dependencies. *)
+    datatype fl_op
+      = ID of ty                   (* ty is dom/rng type *)
+      | Unzip of ty                (* ty is dom type *)
+      | Cat of ty                  (* ty is dom type *)
+      | Map of fl_op * Types.nt_ty (* nt_ty gives depth, not knowable from the oper alone *)
+      | Compose of fl_op * fl_op
+      | CrossCompose of fl_op list
+
+  (* type-indexed parray operators *)
+  (* WARNING: These cannot be moved to the PArrayOp module. It induces recursive dependencies. *)
+    datatype parray_op
+      = PA_Length of ty   (* the dom type *)
+      | PA_Sub of psub_op
+    and psub_op
+      = PSub_Nested of ty (* type of the parr in the arg *)
+      | PSub_Flat of ty   (* type of the parr in the arg *)
+      | PSub_Tuple of psub_op list
+(* coming soon: map, filter, reduce, ... *)
+
     datatype module_exp
       = MEXP_BODY of top_dec list
       | MEXP_NAME of module_ref
@@ -132,21 +153,6 @@ structure AST =
       | VK_Fun			(* bound to a function *)
       | VK_Prim			(* built-in function or operator *)
  
-  (* type-indexed parray operators *)
-    and parray_op
-      = PA_Length of ty    (* the dom type *)
-      | PA_Sub of {interfaceTy: ty, reprTy: ty} (* type of the array in the arg *)
-(* coming soon: map, filter, reduce, ... *)
-
-  (* type-indexed flattening operators *)
-    and fl_op
-      = ID of ty                   (* ty is dom/rng type *)
-      | Unzip of ty                (* ty is dom type *)
-      | Cat of ty                  (* ty is dom type *)
-      | Map of fl_op * Types.nt_ty (* nt_ty gives depth, not knowable from the oper alone *)
-      | Compose of fl_op * fl_op
-      | CrossCompose of fl_op list
-
     withtype var = (var_kind, ty_scheme ref) VarRep.var_rep
 
     type comp_unit = top_dec list

@@ -153,10 +153,9 @@ end = struct
 	   of SOME optMkOp => (case optMkOp
              of NONE => ve
 	      | SOME mkOp => let
-                  val intfTy = (TU.domainType o TypeOf.exp) ve
-		  val reprTy = ty intfTy
+                  val t = (ty o TU.domainType o TypeOf.exp) ve
                   in
-		    A.PArrayOp (mkOp (intfTy, reprTy))
+		    A.PArrayOp (mkOp t)
 		  end
              (* end case *))
 	    | NONE => let

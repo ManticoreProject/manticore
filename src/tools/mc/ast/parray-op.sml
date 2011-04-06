@@ -17,54 +17,101 @@ structure PArrayOp = struct
 
   structure TU = TypeUtil
 
-  fun isFArrayTyc c = raise Fail "todo"
+  val commas = String.concatWith ","
 
-  fun toString (A.PA_Length ty) = "PA_Length_<" ^ TU.toString ty ^ ">"
-    | toString (A.PA_Sub {interfaceTy=i, reprTy=r}) = 
-        "PA_Sub_{" ^ TU.toString i ^ "/" ^ TU.toString r ^ "}"
+  val toString : A.parray_op -> string = let
+    fun ps (A.PSub_Nested t) = "PSub_Nested_{" ^ TU.toString t ^ "}"
+      | ps (A.PSub_Flat t) = "PSub_Flat_{" ^ TU.toString t ^ "}"
+      | ps (A.PSub_Tuple os) = concat ["PSub_Tuple[",
+				       commas (List.map ps os),
+				       "]"]
+    fun pop (A.PA_Length t) = "PSub_Length_{" ^ TU.toString t ^ "}"
+      | pop (A.PA_Sub s) = ps s
+    in
+      pop      
+    end
 
-  fun typeOf (A.PA_Length ty) = T.FunTy (ty, B.intTy)
-    | typeOf (A.PA_Sub {interfaceTy=ty, ...}) = (case ty 
-        of T.FArrayTy (eltTy, _) => T.FunTy (T.TupleTy [ty, B.intTy], eltTy)
-	 | _ => raise Fail ("PArrayOp.typeOf unexpected sub type " ^
-			    TU.toString ty)
-       (* end case *))
+  val typeOf : A.parray_op -> T.ty = let
+    fun mk d r = T.FunTy (T.TupleTy [d, B.intTy], r)
+    fun ps (A.PSub_Nested t) = (case t
+          of T.FArrayTy (t', T.NdTy n) => mk t (T.FArrayTy (t', n))
+	   | _ => raise Fail ("ps " ^ TU.toString t)
+          (* end case *))
+      | ps (A.PSub_Flat t) = (case t
+          of T.FArrayTy (t', T.LfTy) => mk t t'
+	   | _ => raise Fail ("ps " ^ TU.toString t)
+          (* end case *))
+      | ps (A.PSub_Tuple os) = let
+          val ts = List.map ps os
+	  val ds = List.map TU.domainType ts
+	  fun fst (T.TupleTy [t1, t2]) = t1
+	    | fst _ = raise Fail "compiler bug"
+	  val fs = List.map fst ds
+	  val rs = List.map TU.rangeType ts
+          in
+	    mk (T.TupleTy fs) (T.TupleTy rs)
+	  end
+    fun pop (A.PA_Length t) = T.FunTy (t, B.intTy)
+      | pop (A.PA_Sub s) = ps s
+    in
+      pop
+    end				 
 
-  fun same (A.PA_Length t1, A.PA_Length t2) = TU.same (t1, t2)
-    | same (A.PA_Sub ts1, A.PA_Sub ts2) = let
-        val {interfaceTy=i1, reprTy=r1} = ts1
-	val {interfaceTy=i2, reprTy=r2} = ts2
-        in
-	  TU.same (i1, i2) andalso TU.same (r1, r2)
-        end
-    | same _ = false
+  val same : A.parray_op * A.parray_op -> bool = let
+    fun ps (A.PSub_Nested t1, A.PSub_Nested t2) = TU.same (t1, t2)
+      | ps (A.PSub_Flat t1, A.PSub_Flat t2) = TU.same (t1, t2)
+      | ps (A.PSub_Tuple ts1, A.PSub_Tuple ts2) = 
+          ListPair.allEq ps (ts1, ts2)
+      | ps _ = false
+    fun pop (A.PA_Length t1, A.PA_Length t2) = TU.same (t1, t2)
+      | pop (A.PA_Sub s1, A.PA_Sub s2) = ps (s1, s2)
+      | pop _ = false
+    in
+      pop
+    end
 
-(* compare : oper * oper -> order *)
+(* compare : parray_op * parray_op -> order *)
 (* for use in ORD_KEY-based collections *)
   local
-    fun consIndex (c : A.parray_op) : int = (case c
-      of A.PA_Length _ => 0
-       | A.PA_Sub _    => 1
-      (* end case *))
+    fun consIndexPS (A.PSub_Nested _) = 0
+      | consIndexPS (A.PSub_Flat _) = 1
+      | consIndexPS (A.PSub_Tuple _) = 2
+    fun consIndex (A.PA_Length _) = 0
+      | consIndex (A.PA_Sub _) = 1
   in
-    fun compare (o1 : A.parray_op, o2 : A.parray_op) : order = let
-      fun cmp (o1, o2) = let
+    val compare : A.parray_op * A.parray_op -> order = let
+      fun ps (o1, o2) = let
+        val (i1, i2) = (consIndexPS o1, consIndexPS o2)
+        in
+          if (i1 <> i2) then Int.compare (i1, i2)
+	  else case (o1, o2)
+            of (A.PSub_Nested t1, A.PSub_Nested t2) => TU.compare (t1, t2)
+	     | (A.PSub_Flat t1, A.PSub_Flat t2) => TU.compare (t1, t2)
+	     | (A.PSub_Tuple os1, A.PSub_Tuple os2) => pss (os1, os2)
+	     | _ => raise Fail "compiler bug"
+         end
+      and pss (os1, os2) = let
+        fun lp ([], []) = EQUAL
+	  | lp (_::_, []) = GREATER
+	  | lp ([], _::_) = LESS
+	  | lp (q::qs, r::rs) = (case ps (q, r)
+              of EQUAL => lp (qs, rs)
+	       | neq => neq
+              (* end case *))               
+        in 
+	  lp (os1, os2)
+        end
+      fun pop (o1, o2) = let
         val (i1, i2) = (consIndex o1, consIndex o2)
         in
-          if i1 <> i2 then Int.compare (i1, i2)
+          if (i1 <> i2) then Int.compare (i1, i2)
 	  else case (o1, o2)
             of (A.PA_Length t1, A.PA_Length t2) => TU.compare (t1, t2)
-	     | (A.PA_Sub t1, A.PA_Sub t2) => let
-                 val {interfaceTy=i1, reprTy=r1} = t1
-		 val {interfaceTy=i2, reprTy=r2} = t2
-                 in case TU.compare (i1, i2)
-                   of EQUAL => TU.compare (r1, r2)
-		    | neq => neq
-	         end
+	     | (A.PA_Sub s1, A.PA_Sub s2) => ps (s1, s2)
 	     | _ => raise Fail "compiler bug"
         end
       in
-        cmp (o1, o2)
+        pop
       end
   end (* local *)
 
@@ -76,5 +123,25 @@ structure PArrayOp = struct
   structure Map = RedBlackMapFn(OperKey)
 
   structure Set = RedBlackSetFn(OperKey)
+
+(* constructLength : ty -> parray_op *)
+  fun constructLength t = A.PA_Length t
+
+(* constructSub : ty -> parray_op *)
+  val constructSub : T.ty -> A.parray_op = let
+    fun mkPS (T.TupleTy ts) = A.PSub_Tuple (List.map mkPS ts)
+      | mkPS (t as T.FArrayTy (_, s)) = (case s
+          of T.LfTy => A.PSub_Flat t
+	   | T.NdTy _ => A.PSub_Nested t
+          (* end case *))
+      | mkPS t = raise Fail ("unexpected type " ^ TU.toString t)
+    fun mk (t as T.TupleTy [t', i]) =
+          if TU.same (B.intTy, i) 
+	    then A.PA_Sub (mkPS t')
+	    else raise Fail ("unexpected type " ^ TU.toString t)
+      | mk t = raise Fail ("unexpected type " ^ TU.toString t)
+    in
+      mk
+    end
 
 end

@@ -167,6 +167,7 @@ functor MainFn (
           val _ = PrintAST.printExpNoTypesNoStamps ast
           val ast = Flatten.flatten ast
 	  val _ = print "****** AFTER FLATTENING ******\n"
+	  (* val _ = PrintAST.printExp ast *)
 	  (* val _ = PrintAST.printExpNoStamps ast *)
 	  val _ = PrintAST.printExpNoTypesNoStamps ast
 	(* create the initial translation environment *)
