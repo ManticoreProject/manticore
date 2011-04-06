@@ -60,11 +60,11 @@ structure FArray = struct
   (* dataOf : 'a f_array -> 'a rope *)
     fun dataOf (FArray (r, _)) = r
 
-  (* concatList : 'a f_array rope -> 'a f_array *)
+  (* concatRope : 'a f_array rope -> 'a f_array *)
     fun concatRope fs = let
       val len = Rope.length fs
       fun lp (curr, i, data, ts) =
-        if i >= len then
+        if curr >= len then
           FArray (data, Nd (List.rev ts))
 	else let
           val FArray (d, t) = Rope.sub (fs, curr)
@@ -81,5 +81,24 @@ structure FArray = struct
 
   (* flatten : 'a f_array f_array -> 'a f_array *)
     fun flatten f = concatRope (dataOf f)
+
+  (* length : 'a f_array -> int *)
+    fun length (FArray (_, t)) = (case t
+      of Lf (lo, hi) => hi-lo
+       | Nd ts => List.length ts
+      (* end case *))
+
+  (* flatSub : 'a f_array * int -> 'a *)
+    fun flatSub (FArray (data, shape), i) = (case shape
+      of Lf (lo, hi) => Rope.sub (data, lo+i)
+       | Nd ts => raise Fail "flatSub"
+      (* end case *))
+
+  (* nestedSub : 'a f_array * int -> 'a f_array *)
+  (* the f_array returned is one level less deep than the arg *)
+    fun nestedSub (FArray (data, shape), i) = (case shape
+      of Nd ts => FArray (data, List.nth (ts, i))
+       | Lf _ => raise Fail "nestedSub"
+      (* end case *))
 
 end

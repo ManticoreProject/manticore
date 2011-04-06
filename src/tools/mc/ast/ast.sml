@@ -134,8 +134,9 @@ structure AST =
  
   (* type-indexed parray operators *)
     and parray_op
-      = PA_Length of ty (* ty is dom type *)
-(* coming soon: sub, map, filter, reduce, ... *)
+      = PA_Length of ty    (* the dom type *)
+      | PA_Sub of {interfaceTy: ty, reprTy: ty} (* type of the array in the arg *)
+(* coming soon: map, filter, reduce, ... *)
 
   (* type-indexed flattening operators *)
     and fl_op

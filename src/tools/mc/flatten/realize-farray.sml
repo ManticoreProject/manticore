@@ -153,6 +153,7 @@ end = struct
  
   fun realizeTypesInParrOper (oper : A.parray_op) : A.parray_op = (case oper
     of A.PA_Length ty => A.PA_Length (realizeTy ty)
+     | A.PA_Sub {interfaceTy=i, reprTy=r} => A.PA_Sub {interfaceTy=i, reprTy=realizeTy r}
     (* end case *))
 
   datatype var_bind 

@@ -9,7 +9,6 @@
 #include <prim.def>
 
 #define MAX_LOCAL_ARRAY_SZ      I32Div(MAX_LOCAL_ARRAY_SZB, 8:int)
-#define MAX_ARRAY_SZ            I32Div(MAX_ARRAY_SZB, 8:int)
 
 structure UnsafeLongArray = struct
 
@@ -21,12 +20,10 @@ _primcode (
     if I32Lt (n, MAX_LOCAL_ARRAY_SZ) then
       let a : array = AllocLongArray (n)
       return(a)
-    else if I32Lt (n, MAX_ARRAY_SZ) then
+    else
       let data : any = ccall AllocBigLongArray (host_vproc, n)
       let a : array = alloc (data, n)
       return(a)
-    else
-      throw exh (Fail (@"UnsafeLongArray: requested array size too big"))
   ;
   define inline @sub (arg : [array, ml_int] / exh : exh) : ml_long =
     let a : array = #0(arg)

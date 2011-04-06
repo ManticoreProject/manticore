@@ -73,6 +73,8 @@ structure VProc (* :
       extern void VProcWake (void *);
       extern void VProcExit (void *);
 
+      typedef ml_vproc = [vproc];
+
     (* returns the total number of vprocs *)
       define inline @num-vprocs () : int =
 	  let n : int = ccall GetNumVProcs()
@@ -244,6 +246,25 @@ structure VProc (* :
 
     )
 
+    type vproc = _prim(ml_vproc)
+
     val numVProcs : unit -> int = _prim (@num-vprocs-w)
+
+    local
+      _primcode (
+	define inline @id (vp : ml_vproc / _ : exh) : ml_int =
+	    let n : int = @vproc-id (#0(vp))
+	    let m : ml_int = alloc(n)
+	    return (m)
+	  ;
+	define inline @host (_ : unit / _ : exh) : [vproc] =
+	    let vp : ml_vproc = alloc(host_vproc)
+	    return (vp)
+	  ;
+      )
+    in
+    val id : vproc -> int = _prim(@id)
+    val host : unit -> vproc = _prim(@host)
+    end
 
   end

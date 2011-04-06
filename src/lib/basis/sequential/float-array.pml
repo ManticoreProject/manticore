@@ -19,8 +19,6 @@ _primcode (
 
 type array = U.array
 
-val maxLen = 16777215  
-
 val length : array -> int = _prim (@length)
 
 fun isIxInBounds (a, i) = i >= 0 andalso i < length a
@@ -37,7 +35,7 @@ fun sub (a, i) =
     Debug.failwith ("FloatArray.sub: index "^Int.toString i ^"out of bounds")
 
 fun tabulate (n, f) = 
-  if n < 0 orelse n > maxLen then
+  if n < 0 then
     raise Fail "Size"
   else let
     val a = U.create n

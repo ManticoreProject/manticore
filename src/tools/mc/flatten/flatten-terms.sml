@@ -92,11 +92,12 @@ end = struct
 	    A.FArrayExp ([], lf, ty t)
 	  end
       | ex (A.PArrayExp (es, t)) = let
+	  val es' = List.map ex es
 	  val r = ty t
+(* +debug *)
 	  val _ = print "\ntraversing parray\n"          
 	  val _ = print ("```````````` t is " ^ TU.toString t ^ "\n")
 	  val _ = print ("```````````` r is " ^ TU.toString r ^ "\n")
-	  val es' = List.map ex es
         (* check that r is in fact the flattened element type *)
           val _ = (case es'
             of [] => ()
@@ -112,6 +113,7 @@ end = struct
 		     print ("t' = " ^ TU.toString t' ^ "\n");
 		     raise Fail "flattening parray type mismatch")
 	         end) 
+(* -debug *)
 	  val lf = A.Lf (AU.mkInt 0, AU.mkInt (List.length es))
 	  val f = A.FArrayExp (es', lf, r)
 	  val r' = TU.deepPrune r
@@ -148,18 +150,13 @@ end = struct
       | ex (ve as A.VarExp (x, ts)) = 
         (* replace parr prims with parr ops *)
          (case FEnv.findParrPrim (env, x)
-	   of SOME replacement => (case replacement
+	   of SOME optMkOp => (case optMkOp
              of NONE => ve
-	      | SOME pop => let
-                  val t = (ty o TU.domainType o TypeOf.exp) ve
-(* +debug *)
-		  val _ = print ("!!!!! TYPE OF " ^ Var.toString x ^ " " ^ 
-				 TU.toString (TypeOf.exp ve) ^ "\n")
-		  val _ = print ("!!!!! FLAT TYPE OF " ^ Var.toString x ^ " " ^ 
-				 TU.toString t ^ "\n")
-(* -debug *)
+	      | SOME mkOp => let
+                  val intfTy = (TU.domainType o TypeOf.exp) ve
+		  val reprTy = ty intfTy
                   in
-		    A.PArrayOp (pop t)
+		    A.PArrayOp (mkOp (intfTy, reprTy))
 		  end
              (* end case *))
 	    | NONE => let

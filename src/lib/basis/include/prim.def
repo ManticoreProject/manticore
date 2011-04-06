@@ -12,6 +12,5 @@
 #define ADDR_OF(i,x)    AMP i(x)
 
 #define MAX_LOCAL_ARRAY_SZB     65536:int
-#define MAX_ARRAY_SZB           1073741823
 
 #endif /*! _PRIM_DEF_ */

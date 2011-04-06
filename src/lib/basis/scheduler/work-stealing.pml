@@ -22,6 +22,53 @@ structure WorkStealing (* :
 
   end *) = struct
 
+  val logNumSteals = 
+    List.exists (fn s => String.same (s, "-ws-log-num-steals")) 
+		(CommandLine.arguments ())
+
+  local
+      val numStealsPerVProc = IntArray.array (VProc.numVProcs (), 0)
+      val numFailedStealsPerVProc = IntArray.array (VProc.numVProcs (), 0)
+      fun getNumSteals () = let
+	val n = IntArray.length numStealsPerVProc
+	fun sum i = 
+	    if i < n then
+		IntArray.sub (numStealsPerVProc, i) + sum (i + 1)
+	    else
+		0
+	in
+	  sum 0
+	end
+      fun getNumFailedSteals () = let
+	val n = IntArray.length numFailedStealsPerVProc
+	fun sum i = 
+	    if i < n then
+		IntArray.sub (numFailedStealsPerVProc, i) + sum (i + 1)
+	    else
+		0
+	in
+	  sum 0
+	end
+      fun incNumSteals () = let
+	val id = VProc.id (VProc.host ())
+	val n = IntArray.sub (numStealsPerVProc, id)
+	in
+	  IntArray.update (numStealsPerVProc, id, n + 1)
+	end
+      fun incNumFailedSteals () = let
+	val id = VProc.id (VProc.host ())
+	val n = IntArray.sub (numFailedStealsPerVProc, id)
+	in
+	  IntArray.update (numFailedStealsPerVProc, id, n + 1)
+	end
+  in
+  val (getNumSteals, getNumFailedSteals, incNumSteals, incNumFailedSteals) =
+      if logNumSteals then 
+	  (getNumSteals, getNumFailedSteals, incNumSteals, incNumFailedSteals)
+      else
+	  (fn _ => 0, fn _ => 0, fn _ => (), fn _ => ())
+  end
+
   local
 
     structure Arr = UnsafeArray
@@ -31,6 +78,9 @@ structure WorkStealing (* :
     _primcode (
 
     typedef task = ImplicitThread.thread;
+
+    define @inc-num-steals = incNumSteals;
+    define @inc-num-failed-steals = incNumFailedSteals;
 
   (* @get-my-deque-from-atomic (self / exh) *)
   (* Returns the deque assigned to the calling processor. *)
@@ -169,7 +219,7 @@ structure WorkStealing (* :
 	return (List.nil)
       ;
 
-  (* @thief-from-atomic (self, victim, logWGID, logWID) *)
+  (* @thief-from-atomic (self, victim, logWGID, logWID / exh) *)
   (* Tries to steal tasks from the given victim vproc. Returns the list of *)
   (* stolen tasks (list is nil if steal failed). *)
   (* The thief executes on the victim vproc; the given thief vproc repeatedly *)
@@ -179,7 +229,7 @@ structure WorkStealing (* :
 		  self : vproc, 
 		  victim : vproc, 
 		  workGroupID : UID.uid, 
-		  logWID : long) 
+		  logWID : long / exh : exh) 
 	    : (* task *) List.list =
 	do assert (NotEqual (self, victim))
         let logTID : long = Logging.@log-WSThiefSend (self, logWID)
@@ -213,8 +263,10 @@ structure WorkStealing (* :
 	      | Option.SOME (tasks : List.list) =>
 		do case tasks
 		    of List.nil => 
+		       let _ : unit = @inc-num-failed-steals (UNIT / exh)
 		       Logging.@log-WSThiefUnsuccessful (self, logTID, logWID)
 		     | _ => 
+		       let _ : unit = @inc-num-steals (UNIT / exh)
 		       Logging.@log-WSThiefSuccessful (self, logTID, logWID)
 		   end
 		return (tasks)
@@ -247,7 +299,7 @@ structure WorkStealing (* :
 	     of true =>
 		return (List.nil)    (* skip idle victim *)
 	      | false =>
-		@thief-from-atomic (self, victim, workGroupID, logWID)
+		@thief-from-atomic (self, victim, workGroupID, logWID / exh)
 	    end
       ;
 
@@ -391,7 +443,7 @@ structure WorkStealing (* :
 	    let isFull : bool = D.@is-full (deque)
 	    case isFull
 	     of true =>  (* the deque is full: let the scheduler loop choose the next action *)
-		PRINT_MSG ("WorkStealing: full deque")
+		do ccall M_Print ("WorkStealing: full deque\n")
 		throw exh (Fail(@"WorkStealing.@spawn-task: full deque"))
 	      | false =>
 		do D.@push-new-end-from-atomic (self, deque, t)

@@ -364,6 +364,11 @@ structure FlatClosureWithCFA : sig
             lookup (List.rev xs, [], [])
           end
 
+    fun isPtr var = case (CPSTyUtil.kindOf (CPS.Var.typeOf var))
+                     of CPSTy.K_UNIFORM => true
+                      | CPSTy.K_BOXED => true
+                      | _ => false
+                             
   (* given a set of free CPS variables that define the environment of a function, create the
    * argument variables and bindings to build the closure and the parameter variables and
    * environment for the function's body.
@@ -374,8 +379,11 @@ structure FlatClosureWithCFA : sig
                 in
                   (i+1, b@binds, VMap.insert(clos, x, Global i), x'::xs)
                 end
+          val (fvPtr, fvRaw) = CPS.Var.Set.partition isPtr fv
+          val (i, binds, clos, cfgArgs) =
+                CPS.Var.Set.foldl mkArgs (0, [], externEnv, []) fvPtr
           val (_, binds, clos, cfgArgs) =
-                CPS.Var.Set.foldl mkArgs (0, [], externEnv, []) fv
+                CPS.Var.Set.foldl mkArgs (i, binds, clos, cfgArgs) fvRaw
           val cfgArgs = List.rev cfgArgs
 	  val epTy = envPtrType (List.map CFG.Var.typeOf cfgArgs)
           val ep = newEP epTy
@@ -403,8 +411,11 @@ structure FlatClosureWithCFA : sig
 	  val env = ListPair.foldl
 		(fn (x, x', env) => VMap.insert(env, x, Local x'))
 		  externEnv (params, params')
+          val (fvPtr, fvRaw) = CPS.Var.Set.partition isPtr fv
+          val (i, binds, clos, cfgArgs) =
+                CPS.Var.Set.foldl mkArgs (1, [], env, []) fvPtr
           val (_, binds, clos, cfgArgs) =
-                CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
+                CPS.Var.Set.foldl mkArgs (i, binds, clos, cfgArgs) fvRaw
           val cfgArgs = List.rev cfgArgs
 	  val epTy = envPtrType (mkContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
                 :: List.map CFG.Var.typeOf cfgArgs)
