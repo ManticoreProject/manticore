@@ -126,7 +126,7 @@ structure VectorSeq =
       val len2 = length s2
       in
         if (len1 = len2) then
-          tabulate (len1, fn i => f (sub (s1, i), sub (s2, i))
+          tabulate (len1, fn i => f (sub (s1, i), sub (s2, i)))
 	else
           raise Fail "map2Eq"
       end

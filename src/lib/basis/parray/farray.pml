@@ -18,7 +18,7 @@ structure FArray = struct
   (* sameNT : nesting_tree * nesting_tree -> bool *)
     fun sameNT (t1, t2) = (case (t1, t2)
       of (Lf (lo1, hi1), Lf (lo2, hi2)) => (lo1 = lo2) andalso (hi1 = hi2)
-       | (Nd ts1, Nd ts2) => ListPair.allEq sameNt (ts1, ts2)
+       | (Nd ts1, Nd ts2) => ListPair.allEq sameNT (ts1, ts2)
        | _ => false
       (* end case *))
 
@@ -128,7 +128,7 @@ structure FArray = struct
   (*   an appropriate flattener should be applied to it *)
   (*   (the compiler will insert one) *)
     fun flatMap f (FArray (data, shape)) = let
-      val data' = Rope.map (f, data)
+      val data' = Rope.mapP (f, data)
       in
         FArray (data', shape)
       end

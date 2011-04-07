@@ -94,14 +94,10 @@ structure PArrayOp = struct
       | ps (A.PSub_Tuple ts1, A.PSub_Tuple ts2) = 
           ListPair.allEq ps (ts1, ts2)
       | ps _ = false
-    fun pm (A.PMap_Nested t1, A.PMap_Nested t2) = TU.same (t1, t2)
-      | pm (A.PMap_Flat t1, A.PMap_Flat t2) = TU.same (t1, t2)
-      | pm (A.PMap_Tuple t1, A.PMap_Tuple t2) = TU.same (t1, t2)
-      | pm _ = false
     fun pop (A.PA_Length t1, A.PA_Length t2) = TU.same (t1, t2)
       | pop (A.PA_Sub s1, A.PA_Sub s2) = ps (s1, s2)
       | pop (A.PA_Tab t1, A.PA_Tab t2) = TU.same (t1, t2)
-      | pop (A.PA_Map m1, A.PA_Map m2) = pm (m1, m2)
+      | pop (A.PA_Map t1, A.PA_Map t2) = TU.same (t1, t2)
       | pop _ = false
     in
       pop
@@ -110,16 +106,18 @@ structure PArrayOp = struct
 (* compare : parray_op * parray_op -> order *)
 (* for use in ORD_KEY-based collections *)
   local
+
     fun consIndexPS (A.PSub_Nested _) = 0
-      | consIndexPS (A.PSub_Flat _) = 1
-      | consIndexPS (A.PSub_Tuple _) = 2
-    fun consIndexPM (A.PMap_Nested _) = 0
-      | consIndexPM (A.PMap_Flat _) = 1
-      | consIndexPM (A.PMap_Tuple _) = 2
+      | consIndexPS (A.PSub_Flat _)   = 1
+      | consIndexPS (A.PSub_Tuple _)  = 2
+
     fun consIndex (A.PA_Length _) = 0
-      | consIndex (A.PA_Sub _) = 1
-      | consIndex (A.PA_Tab _) = 2
+      | consIndex (A.PA_Sub _)    = 1
+      | consIndex (A.PA_Tab _)    = 2
+      | consIndex (A.PA_Map _)    = 3
+
   in
+
     val compare : A.parray_op * A.parray_op -> order = let
       fun ps (o1, o2) = let
         val (i1, i2) = (consIndexPS o1, consIndexPS o2)
@@ -142,16 +140,7 @@ structure PArrayOp = struct
         in 
 	  lp (os1, os2)
         end
-      fun pm (o1, o2) = let
-        val (i1, i2) = (consIndexPM o1, consIndexPM o2)
-        in
-          if (i1 <> i2) then Int.compare (i1, i2)
-	  else case (o1, o2)
-            of (A.PMap_Nested t1, A.PMap_Nested t2) => TU.compare (t1, t2)
-	     | (A.PMap_Flat t1, A.PMap_Flat t2) => TU.compare (t1, t2)
-	     | (A.PMap_Tuple t1, A.PMap_Tuple t2) => TU.compare (t1, t2)
-	     | _ => raise Fail "compiler bug"
-         end
+
       fun pop (o1, o2) = let
         val (i1, i2) = (consIndex o1, consIndex o2)
         in
@@ -160,11 +149,13 @@ structure PArrayOp = struct
             of (A.PA_Length t1, A.PA_Length t2) => TU.compare (t1, t2)
 	     | (A.PA_Sub s1, A.PA_Sub s2) => ps (s1, s2)
 	     | (A.PA_Tab t1, A.PA_Tab t2) => TU.compare (t1, t2)
+	     | (A.PA_Map t1, A.PA_Tab t2) => TU.compare (t1, t2)
 	     | _ => raise Fail "compiler bug"
         end
       in
         pop
       end
+
   end (* local *)
 
   structure OperKey : ORD_KEY = struct
@@ -209,6 +200,8 @@ structure PArrayOp = struct
               (* end case *))
 	    val tab = A.PArrayOp (A.PA_Tab domTy)
 	    val arg = Var.new ("arg", domTy)
+          (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
+	  (*   b/c referring to ASTUtil induces cyclic deps *)
 	    val body = A.ApplyExp (A.FlOp fl, 
 				   A.ApplyExp (tab, A.VarExp (arg, []), eltsTy),
 				   rngTy)
@@ -218,6 +211,38 @@ structure PArrayOp = struct
 	  else
             raise Fail ("unexpected ty (ints expected) " ^ TU.toString domTy)
       | mk t = raise Fail ("unexpected ty " ^ TU.toString t)
+    in
+      mk
+    end
+
+(* constructMap : ty -> exp *)
+  val constructMap : T.ty -> A.exp = let
+    fun mk (T.FunTy (ft as T.FunTy (domTy, rngTy), _)) =
+          if isGroundTy domTy then let
+            val fl = FlattenOp.construct rngTy
+	    val flRngTy = (case FlattenOp.typeOf fl
+              of T.FunTy (_, r) => r
+	       | t => raise Fail ("unexpected ty " ^ TU.toString t)
+              (* end case *))
+	    fun a t = T.FArrayTy (t, T.LfTy)
+	    val f = Var.new ("f", ft)
+	    val arr = Var.new ("arr", a domTy)
+	    val mapOp = A.PArrayOp (A.PA_Map ft)
+          (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
+	  (*   b/c referring to ASTUtil induces cyclic deps *)
+	  (* here I am building the following term: *)
+          (*   fn f => fn arr => fl (map f arr) *)
+	    val innerApp0 = A.ApplyExp (mapOp, A.VarExp (f, []), A.FunTy (a domTy, a rngTy))
+	    val innerApp1 = A.ApplyExp (innerApp0, A.VarExp (arr, []), a rngTy)
+	    val innerApp2 = A.ApplyExp (A.FlOp fl, innerApp1, flRngTy)
+	    val innerFn = A.FunExp (arr, innerApp2, flRngTy)
+	    val outerFn = A.FunExp (f, innerFn, T.FunTy (a domTy, flRngTy))
+            in
+              outerFn
+	    end
+          else
+            raise Fail ("todo " ^ TU.toString ft)
+      | mk t = raise Fail ("unexpected ty " ^ TU.toString t) 
     in
       mk
     end
