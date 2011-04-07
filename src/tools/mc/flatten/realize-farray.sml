@@ -157,6 +157,7 @@ end = struct
       | ps (A.PSub_Tuple os) = A.PSub_Tuple (List.map ps os)
     fun pop (A.PA_Length t) = A.PA_Length (realizeTy t)
       | pop (A.PA_Sub s) = A.PA_Sub (ps s)
+      | pop (A.PA_Tab t) = A.PA_Tab (realizeTy t)
     in
       pop
     end

@@ -25,8 +25,9 @@ structure PArrayOp = struct
       | ps (A.PSub_Tuple os) = concat ["PSub_Tuple[",
 				       commas (List.map ps os),
 				       "]"]
-    fun pop (A.PA_Length t) = "PSub_Length_{" ^ TU.toString t ^ "}"
-      | pop (A.PA_Sub s) = ps s
+    fun pop (A.PA_Length t) = "PA_Length_{" ^ TU.toString t ^ "}"
+      | pop (A.PA_Sub s) = "PA_Sub{" ^ ps s ^ "}"
+      | pop (A.PA_Tab t) = "PA_Tab_{" ^ TU.toString t ^ "}"
     in
       pop      
     end
@@ -53,6 +54,12 @@ structure PArrayOp = struct
 	  end
     fun pop (A.PA_Length t) = T.FunTy (t, B.intTy)
       | pop (A.PA_Sub s) = ps s
+      | pop (A.PA_Tab t) = let
+          val domTy = T.TupleTy [B.intTy, T.FunTy (B.intTy, t)]
+	  val rngTy = T.FArrayTy (t, T.LfTy)
+          in
+	    T.FunTy (domTy, rngTy)
+	  end	  
     in
       pop
     end				 
@@ -65,6 +72,7 @@ structure PArrayOp = struct
       | ps _ = false
     fun pop (A.PA_Length t1, A.PA_Length t2) = TU.same (t1, t2)
       | pop (A.PA_Sub s1, A.PA_Sub s2) = ps (s1, s2)
+      | pop (A.PA_Tab t1, A.PA_Tab t2) = TU.same (t1, t2)
       | pop _ = false
     in
       pop
@@ -78,6 +86,7 @@ structure PArrayOp = struct
       | consIndexPS (A.PSub_Tuple _) = 2
     fun consIndex (A.PA_Length _) = 0
       | consIndex (A.PA_Sub _) = 1
+      | consIndex (A.PA_Tab _) = 2
   in
     val compare : A.parray_op * A.parray_op -> order = let
       fun ps (o1, o2) = let
@@ -108,6 +117,7 @@ structure PArrayOp = struct
 	  else case (o1, o2)
             of (A.PA_Length t1, A.PA_Length t2) => TU.compare (t1, t2)
 	     | (A.PA_Sub s1, A.PA_Sub s2) => ps (s1, s2)
+	     | (A.PA_Tab t1, A.PA_Tab t2) => TU.compare (t1, t2)
 	     | _ => raise Fail "compiler bug"
         end
       in
@@ -124,11 +134,11 @@ structure PArrayOp = struct
 
   structure Set = RedBlackSetFn(OperKey)
 
-(* constructLength : ty -> parray_op *)
-  fun constructLength t = A.PA_Length t
+(* constructLength : ty -> exp *)
+  fun constructLength t = A.PArrayOp (A.PA_Length t)
 
-(* constructSub : ty -> parray_op *)
-  val constructSub : T.ty -> A.parray_op = let
+(* constructSub : ty -> exp *)
+  val constructSub : T.ty -> A.exp = let
     fun mkPS (T.TupleTy ts) = A.PSub_Tuple (List.map mkPS ts)
       | mkPS (t as T.FArrayTy (_, s)) = (case s
           of T.LfTy => A.PSub_Flat t
@@ -140,6 +150,32 @@ structure PArrayOp = struct
 	    then A.PA_Sub (mkPS t')
 	    else raise Fail ("unexpected type " ^ TU.toString t)
       | mk t = raise Fail ("unexpected type " ^ TU.toString t)
+    in
+      A.PArrayOp o mk
+    end
+
+(* constructTab : ty -> exp *)
+  val constructTab : T.ty -> A.exp = let
+    fun int t = TU.same (t, B.intTy)
+    fun mk (domTy as T.TupleTy [i1, T.FunTy (i2, eltTy)]) =
+          if int i1 andalso int i2 then let
+            val eltsTy = T.FArrayTy (eltTy, T.LfTy)
+            val fl = FlattenOp.construct eltTy
+	    val rngTy = (case FlattenOp.typeOf fl
+              of T.FunTy (_, r) => r
+	       | _ => raise Fail "compiler bug"
+              (* end case *))
+	    val tab = A.PArrayOp (A.PA_Tab domTy)
+	    val arg = Var.new ("arg", domTy)
+	    val body = A.ApplyExp (A.FlOp fl, 
+				   A.ApplyExp (tab, A.VarExp (arg, []), eltsTy),
+				   rngTy)
+            in
+              A.FunExp (arg, body, rngTy)
+	    end
+	  else
+            raise Fail ("unexpected ty (ints expected) " ^ TU.toString domTy)
+      | mk t = raise Fail ("unexpected ty " ^ TU.toString t)
     in
       mk
     end

@@ -19,16 +19,17 @@ structure PArray = struct
 
     type 'a parray = 'a parray
 
+(*   (\* FIXME too tightly coupled with Rope *\) *)
+
 (* FIXME had to expose these to enable special treatment of them in the flatt. trns. *)
     (* local *)
       val toRope : 'a parray -> 'a Rope.rope = _prim(@to-rope)
       val fromRope : 'a Rope.rope -> 'a parray = _prim(@from-rope)
     (* in *)
 
-(*   (\* FIXME too tightly coupled *\) *)
-
     fun sub (pa, i) = Rope.sub(toRope pa, i)
     fun length pa = Rope.length(toRope pa)
+    fun tab (n, f) = fromRope(Rope.tabP(n, f))
 
 (*     fun reduce (rator, init, pa) = Rope.reduceP (rator, init, toRope pa) *)
 (*     fun filter (pred, pa) = fromRope(Rope.filterP (pred, toRope pa)) *)

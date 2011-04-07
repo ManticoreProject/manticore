@@ -155,7 +155,7 @@ end = struct
 	      | SOME mkOp => let
                   val t = (ty o TU.domainType o TypeOf.exp) ve
                   in
-		    A.PArrayOp (mkOp t)
+		    mkOp t			 
 		  end
              (* end case *))
 	    | NONE => let

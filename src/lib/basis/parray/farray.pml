@@ -57,6 +57,9 @@ structure FArray = struct
     datatype 'a f_array 
       = FArray of 'a Rope.rope * nesting_tree
   
+  (* empty : 'a f_array *)
+    val empty = FArray (Rope.empty, Lf (0, 1))
+
   (* dataOf : 'a f_array -> 'a rope *)
     fun dataOf (FArray (r, _)) = r
 
@@ -100,5 +103,16 @@ structure FArray = struct
       of Nd ts => FArray (data, List.nth (ts, i))
        | Lf _ => raise Fail "nestedSub"
       (* end case *))
+
+  (* tab : int * (int -> 'a) -> 'a f_array *)
+    fun tab (n, f) =
+      if n <= 0 then 
+        empty
+      else let
+        val data = Rope.tabP (n, f)
+	val shape = Lf (0, n)
+        in
+          FArray (data, shape)
+	end
 
 end

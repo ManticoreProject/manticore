@@ -45,7 +45,7 @@ end *) = struct
 
   datatype env = Env of {
       mustFlatten : bool TTbl.hash_table,
-      parrPrims   : (T.ty -> A.parray_op) option VMap.map,
+      parrPrims   : (T.ty -> A.exp) option VMap.map,
       tycEnv      : T.tycon TTbl.hash_table,
       dconEnv     : T.dcon DTbl.hash_table,
       varEnv      : A.var VMap.map,
@@ -76,7 +76,8 @@ end *) = struct
     val ps = [("toRope", NONE),
 	      ("fromRope", NONE),
 	      ("length", SOME PArrayOp.constructLength),
-              ("sub", SOME PArrayOp.constructSub)]
+              ("sub", SOME PArrayOp.constructSub),
+	      ("tab", SOME PArrayOp.constructTab)]
     val ps' = List.map (fn (n, oper) => (getVar n, oper)) ps
     in
       List.foldl VMap.insert' VMap.empty ps'
