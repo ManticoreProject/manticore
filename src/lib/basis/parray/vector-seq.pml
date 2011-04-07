@@ -121,6 +121,16 @@ structure VectorSeq =
 	tabulate (minlen, fn i => f (sub (s1, i), sub (s2, i)))
       end
 
+    fun map2Eq (f, s1, s2) = let
+      val len1 = length s1
+      val len2 = length s2
+      in
+        if (len1 = len2) then
+          tabulate (len1, fn i => f (sub (s1, i), sub (s2, i))
+	else
+          raise Fail "map2Eq"
+      end
+
     fun foldr (f, z, s) = let
       val len = length s
       fun lp (i, acc) = 

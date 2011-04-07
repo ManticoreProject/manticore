@@ -15,6 +15,13 @@ structure FArray = struct
       = Lf of int * int (* lower bound inclusive, upper bound exclusive *)
       | Nd of nesting_tree list
 
+  (* sameNT : nesting_tree * nesting_tree -> bool *)
+    fun sameNT (t1, t2) = (case (t1, t2)
+      of (Lf (lo1, hi1), Lf (lo2, hi2)) => (lo1 = lo2) andalso (hi1 = hi2)
+       | (Nd ts1, Nd ts2) => ListPair.allEq sameNt (ts1, ts2)
+       | _ => false
+      (* end case *))
+
   (* maxIdx : nesting_tree -> int*)
     fun maxIdx nt = (case nt
       of Lf (_, i) => i
@@ -87,7 +94,7 @@ structure FArray = struct
 
   (* length : 'a f_array -> int *)
     fun length (FArray (_, t)) = (case t
-      of Lf (lo, hi) => hi-lo
+      of Lf (lo, hi) => hi-lo (* note: hi is excl upper bound, lo is incl lower bound *)
        | Nd ts => List.length ts
       (* end case *))
 
@@ -114,5 +121,22 @@ structure FArray = struct
         in
           FArray (data, shape)
 	end
+
+  (* flatMap : ('a -> 'b) -> 'a f_array -> 'b f_array *)
+  (* pre: 'a is a ground type (int, float, etc.) *)
+  (* post: the output will not necessarily be flat; *)
+  (*   an appropriate flattener should be applied to it *)
+  (*   (the compiler will insert one) *)
+    fun flatMap f (FArray (data, shape)) = let
+      val data' = Rope.map (f, data)
+      in
+        FArray (data', shape)
+      end
+
+  (* nestedMap : ('a -> 'b) -> 'a f_array -> 'b f_array *)
+    fun nestedMap f (FArray (data, shape)) = raise Fail "todo"
+
+  (* TODO *)
+  (* reduce : ('a * 'a -> 'a) -> 'a -> 'a f_array -> 'a *) 
 
 end

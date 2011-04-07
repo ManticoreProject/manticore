@@ -52,7 +52,7 @@ structure RopePair (* : ROPE_PAIR *) = struct
       fun lp ropes = 
        (case ropes
 	  of (R.LEAF s1, R.LEAF s2) => 
-               R.mkLeaf (S.map2 (f, s1, s2))
+               R.mkLeaf (S.map2Eq (f, s1, s2))
 	   | (R.CAT (d1, len1, r1L, r1R), R.CAT (d2, len2, r2L, r2R)) =>
                R.CAT (| d1, len1, lp (r1L, r2L), lp (r1R, r2R) |)
 	   | _ => failwith "BUG" (* this shouldn't have been called *)

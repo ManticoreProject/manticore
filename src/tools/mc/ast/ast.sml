@@ -36,6 +36,7 @@ structure AST =
       = PA_Length of ty   (* the dom type *)
       | PA_Sub of psub_op
       | PA_Tab of ty      (* the type of the elements to be created by the tabulation *)
+      | PA_Map of ty      (* type the function to be mapped *)
     and psub_op
       = PSub_Nested of ty (* type of the parr in the arg *)
       | PSub_Flat of ty   (* type of the parr in the arg *)

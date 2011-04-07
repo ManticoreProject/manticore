@@ -19,6 +19,13 @@ structure PArrayOp = struct
 
   val commas = String.concatWith ","
 
+  local
+    fun isg c = List.exists (fn g => TyCon.same (c,g)) B.primTycs
+  in
+    fun isGroundTy (T.ConTy ([], c)) = isg c
+      | isGroundTy _ = false
+  end (* local *)
+
   val toString : A.parray_op -> string = let
     fun ps (A.PSub_Nested t) = "PSub_Nested_{" ^ TU.toString t ^ "}"
       | ps (A.PSub_Flat t) = "PSub_Flat_{" ^ TU.toString t ^ "}"
@@ -28,6 +35,7 @@ structure PArrayOp = struct
     fun pop (A.PA_Length t) = "PA_Length_{" ^ TU.toString t ^ "}"
       | pop (A.PA_Sub s) = "PA_Sub{" ^ ps s ^ "}"
       | pop (A.PA_Tab t) = "PA_Tab_{" ^ TU.toString t ^ "}"
+      | pop (A.PA_Map t) = "PA_Map_{" ^ TU.toString t ^ "}"
     in
       pop      
     end
@@ -60,6 +68,22 @@ structure PArrayOp = struct
           in
 	    T.FunTy (domTy, rngTy)
 	  end	  
+      | pop (A.PA_Map t) = (case t
+          of T.FunTy (domTy, rngTy) => (case domTy
+               of T.TupleTy ts => raise Fail "todo"
+		| T.ConTy (ts, c) => 
+                    if isGroundTy domTy then let
+                      fun f t = T.FArrayTy (t, T.LfTy)
+                      in
+                        T.FunTy (T.FunTy (domTy, rngTy),
+				 T.FunTy (f domTy, f rngTy))
+		      end
+		    else
+		      raise Fail ("todo " ^ TU.toString t)
+		| _ => raise Fail ("todo " ^ TU.toString t)
+               (* end case *))
+	   | _ => raise Fail ("unexpected ty " ^ TU.toString t)
+          (* end case *))	
     in
       pop
     end				 
@@ -70,9 +94,14 @@ structure PArrayOp = struct
       | ps (A.PSub_Tuple ts1, A.PSub_Tuple ts2) = 
           ListPair.allEq ps (ts1, ts2)
       | ps _ = false
+    fun pm (A.PMap_Nested t1, A.PMap_Nested t2) = TU.same (t1, t2)
+      | pm (A.PMap_Flat t1, A.PMap_Flat t2) = TU.same (t1, t2)
+      | pm (A.PMap_Tuple t1, A.PMap_Tuple t2) = TU.same (t1, t2)
+      | pm _ = false
     fun pop (A.PA_Length t1, A.PA_Length t2) = TU.same (t1, t2)
       | pop (A.PA_Sub s1, A.PA_Sub s2) = ps (s1, s2)
       | pop (A.PA_Tab t1, A.PA_Tab t2) = TU.same (t1, t2)
+      | pop (A.PA_Map m1, A.PA_Map m2) = pm (m1, m2)
       | pop _ = false
     in
       pop
@@ -84,6 +113,9 @@ structure PArrayOp = struct
     fun consIndexPS (A.PSub_Nested _) = 0
       | consIndexPS (A.PSub_Flat _) = 1
       | consIndexPS (A.PSub_Tuple _) = 2
+    fun consIndexPM (A.PMap_Nested _) = 0
+      | consIndexPM (A.PMap_Flat _) = 1
+      | consIndexPM (A.PMap_Tuple _) = 2
     fun consIndex (A.PA_Length _) = 0
       | consIndex (A.PA_Sub _) = 1
       | consIndex (A.PA_Tab _) = 2
@@ -110,6 +142,16 @@ structure PArrayOp = struct
         in 
 	  lp (os1, os2)
         end
+      fun pm (o1, o2) = let
+        val (i1, i2) = (consIndexPM o1, consIndexPM o2)
+        in
+          if (i1 <> i2) then Int.compare (i1, i2)
+	  else case (o1, o2)
+            of (A.PMap_Nested t1, A.PMap_Nested t2) => TU.compare (t1, t2)
+	     | (A.PMap_Flat t1, A.PMap_Flat t2) => TU.compare (t1, t2)
+	     | (A.PMap_Tuple t1, A.PMap_Tuple t2) => TU.compare (t1, t2)
+	     | _ => raise Fail "compiler bug"
+         end
       fun pop (o1, o2) = let
         val (i1, i2) = (consIndex o1, consIndex o2)
         in
