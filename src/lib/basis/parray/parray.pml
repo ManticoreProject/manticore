@@ -30,7 +30,7 @@ structure PArray = struct
     fun sub (pa, i) = Rope.sub(toRope pa, i)
     fun length pa = Rope.length(toRope pa)
     fun tab (n, f) = fromRope(Rope.tabP(n, f))
-    fun map (f, pa) = fromRope(Rope.mapP (f, toRope pa))
+    fun map f pa = fromRope(Rope.mapP (f, toRope pa))
 
 (*     fun reduce (rator, init, pa) = Rope.reduceP (rator, init, toRope pa) *)
 (*     fun filter (pred, pa) = fromRope(Rope.filterP (pred, toRope pa)) *)

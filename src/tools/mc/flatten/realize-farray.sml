@@ -158,6 +158,7 @@ end = struct
     fun pop (A.PA_Length t) = A.PA_Length (realizeTy t)
       | pop (A.PA_Sub s) = A.PA_Sub (ps s)
       | pop (A.PA_Tab t) = A.PA_Tab (realizeTy t)
+      | pop (A.PA_Map t) = A.PA_Map (realizeTy t)
     in
       pop
     end

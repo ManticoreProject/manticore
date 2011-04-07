@@ -217,7 +217,7 @@ structure PArrayOp = struct
 
 (* constructMap : ty -> exp *)
   val constructMap : T.ty -> A.exp = let
-    fun mk (T.FunTy (ft as T.FunTy (domTy, rngTy), _)) =
+    fun mk (ft as T.FunTy (domTy, rngTy)) =
           if isGroundTy domTy then let
             val fl = FlattenOp.construct rngTy
 	    val flRngTy = (case FlattenOp.typeOf fl
@@ -244,7 +244,7 @@ structure PArrayOp = struct
             raise Fail ("todo " ^ TU.toString ft)
       | mk t = raise Fail ("unexpected ty " ^ TU.toString t) 
     in
-      mk
+      mk o TU.deepPrune
     end
 
 end

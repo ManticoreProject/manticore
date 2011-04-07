@@ -45,6 +45,14 @@ structure PArrayOpGen = struct
   val nestedSub = memoVar ["FArray", "nestedSub"]
   val flen      = memoVar ["FArray", "length"]
   val ftab      = memoVar ["FArray", "tab"]
+  val flatMap   = memoVar ["FArray", "flatMap"]
+
+  local
+    fun isg c = List.exists (fn g => TyCon.same (c,g)) B.primTycs
+  in
+    fun isGroundTy (T.ConTy ([], c)) = isg c
+      | isGroundTy _ = false
+  end (* local *)
 
   fun isFArrayTyc c = TyCon.same (c, farrayTyc ())
 
@@ -129,10 +137,18 @@ structure PArrayOpGen = struct
 
   fun genTab t = A.VarExp (ftab (), [t])
           
+  fun genMap (t as T.FunTy (alpha, beta)) = 
+        if isGroundTy alpha then
+          A.VarExp (flatMap (), [alpha, beta])
+	else
+          raise Fail ("todo: " ^ TU.toString t)
+    | genMap t = raise Fail ("unexpected ty " ^ TU.toString t)
+
   fun gen (pop : A.parray_op) : A.exp = (case pop
     of A.PA_Length ty => genLength ty
      | A.PA_Sub s => genSub s		     
      | A.PA_Tab t => genTab t
+     | A.PA_Map t => genMap t
     (* end case *))
 
 end
