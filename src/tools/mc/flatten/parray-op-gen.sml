@@ -46,6 +46,7 @@ structure PArrayOpGen = struct
   val flen      = memoVar ["FArray", "length"]
   val ftab      = memoVar ["FArray", "tab"]
   val flatMap   = memoVar ["FArray", "flatMap"]
+  val flatMap2  = memoVar ["FArrayPair", "flatMapEq"]
 
   local
     fun isg c = List.exists (fn g => TyCon.same (c,g)) B.primTycs
@@ -140,8 +141,13 @@ structure PArrayOpGen = struct
   fun genMap (t as T.FunTy (alpha, beta)) = 
         if isGroundTy alpha then
           A.VarExp (flatMap (), [alpha, beta])
-	else
-          raise Fail ("todo: " ^ TU.toString t)
+	else (case alpha
+          of tup as T.TupleTy [t1, t2] =>
+               if isGroundTy t1 andalso isGroundTy t2 then
+	         A.VarExp (flatMap2 (), [alpha, beta])
+	       else raise Fail ("todo: " ^ TU.toString tup)
+	   | _ => raise Fail ("todo: " ^ TU.toString t)
+          (* end case *))
     | genMap t = raise Fail ("unexpected ty " ^ TU.toString t)
 
   fun gen (pop : A.parray_op) : A.exp = (case pop

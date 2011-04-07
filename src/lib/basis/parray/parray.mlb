@@ -20,6 +20,7 @@
 (* Flat Arrays *)
 
   farray.pml
+  farray-pair.pml
 
 (* Scans *)
 
