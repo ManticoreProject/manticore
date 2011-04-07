@@ -217,31 +217,28 @@ structure PArrayOp = struct
 
 (* constructMap : ty -> exp *)
   val constructMap : T.ty -> A.exp = let
-    fun mk (ft as T.FunTy (domTy, rngTy)) =
-          if isGroundTy domTy then let
-            val fl = FlattenOp.construct rngTy
-	    val flRngTy = (case FlattenOp.typeOf fl
-              of T.FunTy (_, r) => r
-	       | t => raise Fail ("unexpected ty " ^ TU.toString t)
-              (* end case *))
-	    fun a t = T.FArrayTy (t, T.LfTy)
-	    val f = Var.new ("f", ft)
-	    val arr = Var.new ("arr", a domTy)
-	    val mapOp = A.PArrayOp (A.PA_Map ft)
-          (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
-	  (*   b/c referring to ASTUtil induces cyclic deps *)
-	  (* here I am building the following term: *)
-          (*   fn f => fn arr => fl (map f arr) *)
-	    val innerApp0 = A.ApplyExp (mapOp, A.VarExp (f, []), A.FunTy (a domTy, a rngTy))
-	    val innerApp1 = A.ApplyExp (innerApp0, A.VarExp (arr, []), a rngTy)
-	    val innerApp2 = A.ApplyExp (A.FlOp fl, innerApp1, flRngTy)
-	    val innerFn = A.FunExp (arr, innerApp2, flRngTy)
-	    val outerFn = A.FunExp (f, innerFn, T.FunTy (a domTy, flRngTy))
-            in
-              outerFn
-	    end
-          else
-            raise Fail ("todo " ^ TU.toString ft)
+    fun mk (ft as T.FunTy (domTy, rngTy)) = let
+          val fl = FlattenOp.construct rngTy
+	  val flRngTy = (case FlattenOp.typeOf fl
+            of T.FunTy (_, r) => r
+	     | t => raise Fail ("unexpected ty " ^ TU.toString t)
+            (* end case *))
+	  fun a t = T.FArrayTy (t, T.LfTy)
+	  val f = Var.new ("f", ft)
+	  val arr = Var.new ("arr", a domTy)
+	  val mapOp = A.PArrayOp (A.PA_Map ft)
+        (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
+	(*   b/c referring to ASTUtil induces cyclic deps *)
+	(* here I am building the following term: *)
+        (*   fn f => fn arr => fl (map f arr) *)
+	  val innerApp0 = A.ApplyExp (mapOp, A.VarExp (f, []), A.FunTy (a domTy, a rngTy))
+	  val innerApp1 = A.ApplyExp (innerApp0, A.VarExp (arr, []), a rngTy)
+	  val innerApp2 = A.ApplyExp (A.FlOp fl, innerApp1, flRngTy)
+	  val innerFn = A.FunExp (arr, innerApp2, flRngTy)
+	  val outerFn = A.FunExp (f, innerFn, T.FunTy (a domTy, flRngTy))
+          in
+            outerFn
+          end
       | mk t = raise Fail ("unexpected ty " ^ TU.toString t) 
     in
       mk o TU.deepPrune
