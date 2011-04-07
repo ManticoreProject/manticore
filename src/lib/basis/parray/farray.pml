@@ -22,21 +22,30 @@ structure FArray = struct
        | _ => false
       (* end case *))
 
-  (* maxIdx : nesting_tree -> int*)
+  (* minIdx : nesting_tree -> int *)
+    fun minIdx nt = (case nt 
+      of Lf (i, _) => i
+       | Nd ts => minIdx (List.hd ts)
+      (* end case *))
+
+  (* maxIdx : nesting_tree -> int *)
     fun maxIdx nt = (case nt
       of Lf (_, i) => i
        | Nd ts => let
-           fun lp ts = 
-            (case ts
-              of t::nil => maxIdx t
-	       | _::tl  => lp tl
-	       | nil => raise Fail "maxIdx"
-              (* end case *))
+           fun lp ts = (case ts
+             of t::nil => maxIdx t
+	      | _::tl  => lp tl
+	      | nil => raise Fail "maxIdx"
+             (* end case *))
 	   in
 	     lp ts
 	   end
      (* end case *))
 
+  (* span : nesting_tree -> int * int *)
+  (* returns lower bound incl, upper bound excl *)
+    fun span t = (minIdx t, maxIdx t)
+                
   (* incrBy : int -> nesting_tree -> nesting_tree *)
     fun incrBy i = let
       fun incr nt = (case nt
@@ -136,7 +145,40 @@ structure FArray = struct
   (* nestedMap : ('a -> 'b) -> 'a f_array -> 'b f_array *)
     fun nestedMap f (FArray (data, shape)) = raise Fail "todo"
 
-  (* TODO *)
-  (* reduce : ('a * 'a -> 'a) -> 'a -> 'a f_array -> 'a *) 
+  (* clean : 'a f_array -> 'a f_array *)
+    fun clean (FArray (data, shape)) = (case shape
+      of Lf (lo, hi) =>
+           if lo = 0 andalso hi = Rope.length data then 
+             FArray (data, shape)
+	   else let
+             (* FIXME this is a slow implementation *)
+             val data' = Rope.fromSeq (Rope.partialSeq (data, lo, hi))
+             in
+               FArray (data', Lf (0, hi-lo))
+             end
+       | Nd ts => let
+           val (lo, hi) = span shape
+           (* FIXME this is a slow implementation *)
+	   val data' = Rope.fromSeq (Rope.partialSeq (data, lo, hi))
+           in
+             if lo = 0 then
+               FArray (data', shape)
+	     else if lo > 0 then
+	       FArray (data', incrBy (~lo) shape)
+	     else
+	       raise Fail "clean: this should never happen"
+	   end
+      (* end case *))
+
+  (* groundReduce : ('a * 'a -> 'a) -> 'a -> 'a f_array -> 'a *) 
+    fun groundReduce (assocOp : 'a * 'a -> 'a) (zero : 'a) (FArray (data, shape)) = 
+     (case shape
+        of Lf (lo, hi) => let 
+             val FArray (data', shape') = clean (FArray (data, shape))
+             in 
+               Rope.reduceP (assocOp, zero, data')
+	     end
+	 | Nd _ => raise Fail "groundReduce: flat array of ground types expected"
+        (* end case *))
 
 end

@@ -159,6 +159,7 @@ end = struct
       | pop (A.PA_Sub s) = A.PA_Sub (ps s)
       | pop (A.PA_Tab t) = A.PA_Tab (realizeTy t)
       | pop (A.PA_Map t) = A.PA_Map (realizeTy t)
+      | pop (A.PA_Reduce t) = A.PA_Reduce(realizeTy t)
     in
       pop
     end

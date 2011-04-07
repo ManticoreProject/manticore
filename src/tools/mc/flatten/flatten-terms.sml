@@ -155,7 +155,7 @@ end = struct
 	      | SOME mkOp => let
                   val t = (ty o TU.domainType o TypeOf.exp) ve
                   in
-		    mkOp t			 
+		    mkOp (TU.deepPrune t)
 		  end
              (* end case *))
 	    | NONE => let

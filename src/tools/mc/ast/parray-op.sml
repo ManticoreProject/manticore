@@ -19,6 +19,9 @@ structure PArrayOp = struct
 
   val commas = String.concatWith ","
 
+  infixr -->
+  fun domTy --> rngTy = T.FunTy (domTy, rngTy)
+
   local
     fun isg c = List.exists (fn g => TyCon.same (c,g)) B.primTycs
   in
@@ -26,19 +29,25 @@ structure PArrayOp = struct
       | isGroundTy _ = false
   end (* local *)
 
-  val toString : A.parray_op -> string = let
-    fun ps (A.PSub_Nested t) = "PSub_Nested_{" ^ TU.toString t ^ "}"
-      | ps (A.PSub_Flat t) = "PSub_Flat_{" ^ TU.toString t ^ "}"
-      | ps (A.PSub_Tuple os) = concat ["PSub_Tuple[",
-				       commas (List.map ps os),
-				       "]"]
-    fun pop (A.PA_Length t) = "PA_Length_{" ^ TU.toString t ^ "}"
-      | pop (A.PA_Sub s) = "PA_Sub{" ^ ps s ^ "}"
-      | pop (A.PA_Tab t) = "PA_Tab_{" ^ TU.toString t ^ "}"
-      | pop (A.PA_Map t) = "PA_Map_{" ^ TU.toString t ^ "}"
-    in
-      pop      
-    end
+  local
+    fun tos s t = String.concat [s, "_{", TU.toString t, "}"]
+  in
+    val toString : A.parray_op -> string = let
+      fun ps (A.PSub_Nested t) = tos "PSub_Nested" t
+	| ps (A.PSub_Flat t) = tos "PSub_Flat" t
+	| ps (A.PSub_Tuple os) = 
+	    String.concat ["PSub_Tuple[",
+			   commas (List.map ps os),
+			   "]"]
+      fun pop (A.PA_Length t) = tos "PA_Length" t
+	| pop (A.PA_Sub s) = "PA_Sub_{" ^ ps s ^ "}"
+	| pop (A.PA_Tab t) = tos "PA_Tab" t
+	| pop (A.PA_Map t) = tos "PA_Map" t
+	| pop (A.PA_Reduce t) = tos "PA_Reduce" t				  
+      in
+        pop      
+      end
+  end (* local *)
 
   val typeOf : A.parray_op -> T.ty = let
     fun mk d r = T.FunTy (T.TupleTy [d, B.intTy], r)
@@ -84,6 +93,14 @@ structure PArrayOp = struct
                (* end case *))
 	   | _ => raise Fail ("unexpected ty " ^ TU.toString t)
           (* end case *))	
+      | pop (A.PA_Reduce t) =
+          if isGroundTy t then let
+            val ta = T.FArrayTy (t, T.LfTy)
+            in
+              (t --> t) --> (t --> (ta --> t))
+            end
+          else
+	    raise Fail ("todo: reductions on " ^ TU.toString t)
     in
       pop
     end				 
@@ -98,6 +115,7 @@ structure PArrayOp = struct
       | pop (A.PA_Sub s1, A.PA_Sub s2) = ps (s1, s2)
       | pop (A.PA_Tab t1, A.PA_Tab t2) = TU.same (t1, t2)
       | pop (A.PA_Map t1, A.PA_Map t2) = TU.same (t1, t2)
+      | pop (A.PA_Reduce t1, A.PA_Reduce t2) = TU.same (t1, t2)
       | pop _ = false
     in
       pop
@@ -115,7 +133,7 @@ structure PArrayOp = struct
       | consIndex (A.PA_Sub _)    = 1
       | consIndex (A.PA_Tab _)    = 2
       | consIndex (A.PA_Map _)    = 3
-
+      | consIndex (A.PA_Reduce _) = 4
   in
 
     val compare : A.parray_op * A.parray_op -> order = let
@@ -150,6 +168,7 @@ structure PArrayOp = struct
 	     | (A.PA_Sub s1, A.PA_Sub s2) => ps (s1, s2)
 	     | (A.PA_Tab t1, A.PA_Tab t2) => TU.compare (t1, t2)
 	     | (A.PA_Map t1, A.PA_Tab t2) => TU.compare (t1, t2)
+	     | (A.PA_Reduce t1, A.PA_Reduce t2) => TU.compare (t1, t2)
 	     | _ => raise Fail "compiler bug"
         end
       in
@@ -241,7 +260,23 @@ structure PArrayOp = struct
           end
       | mk t = raise Fail ("unexpected ty " ^ TU.toString t) 
     in
-      mk o TU.deepPrune
+      mk
+    end
+
+(* constructReduce : ty -> exp *)
+  val constructReduce : T.ty -> A.exp = let
+    fun mk (operTy as T.FunTy (T.TupleTy [t1, t2], t3)) =
+          if TU.same (t1, t2) andalso TU.same (t2, t3) then
+           (if isGroundTy t1 then
+              A.PArrayOp (A.PA_Reduce t1)
+	    else
+              raise Fail ("todo: reduce for type " ^ TU.toString t1))
+	  else
+            raise Fail ("cannot be an associative operator with type " ^ 
+			TU.toString operTy)
+      | mk t = raise Fail ("unexpected type " ^ TU.toString t)
+    in
+      mk
     end
 
 end
