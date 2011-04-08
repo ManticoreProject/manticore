@@ -70,6 +70,7 @@ structure Unpar : sig
 	| exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
 	| exp (A.FArrayExp (es, n, t)) = A.FArrayExp (List.map exp es, ntree n, t)
 	| exp (A.FlOp oper) = A.FlOp oper
+	| exp (A.PArrayOp oper) = raise Fail "PArrayOp"
       and ntree (A.Lf (e1, e2)) = A.Lf (exp e1, exp e2)
 	| ntree (A.Nd ns) = A.Nd (List.map ntree ns)
       and pcase (es, ms, ty) = let

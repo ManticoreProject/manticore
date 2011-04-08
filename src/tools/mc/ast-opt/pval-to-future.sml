@@ -163,6 +163,7 @@ structure PValToFuture =
 	    | A.FTupleExp es => raise Fail "TODO"
 	    | A.FArrayExp _ => raise Fail "TODO"
 	    | A.FlOp _ => raise Fail "todo"
+	    | A.PArrayOp _ => raise Fail "todo"
         (* end case *))
 
     (* trExps: A.exp list * VSet.set -> A.exp list * VSet.set *)

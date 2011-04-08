@@ -157,6 +157,7 @@ structure Future1 : sig
 		| exp (A.FTupleExp es) = List.exists exp es
 		| exp (A.FArrayExp (es, n, _)) = List.exists exp es orelse ntree n
 		| exp (A.FlOp oper) = false
+		| exp (A.PArrayOp oper) = false
 	      and ntree (A.Lf (e1, e2)) = exp e1 orelse exp e2
 		| ntree (A.Nd ns) = List.exists ntree ns
 	      and optExp NONE = false

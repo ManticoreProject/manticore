@@ -298,6 +298,7 @@ fun expressionForm (x : A.exp) : string = let
     | e (A.FTupleExp _) = "FTupleExp"
     | e (A.FArrayExp _) = "FArrayExp"
     | e (A.FlOp _) = "FlOp"
+    | e (A.PArrayOp _) = "PArrayOp"
   in
     e x
   end
@@ -445,6 +446,7 @@ fun look (e : A.exp) : unit = let
 	| exp (A.FTupleExp _) = raise Fail "unexpected FTupleExp"
 	| exp (A.FArrayExp _) = raise Fail "unexpected FArrayExp" 
 	| exp (A.FlOp _) = raise Fail "unexpected FlOp"
+	| exp (A.PArrayOp _) = raise Fail "unexpected PArrayOp"
       and oexp NONE = false
 	| oexp (SOME e) = exp e
       and match (A.PatMatch (_, e)) = exp e

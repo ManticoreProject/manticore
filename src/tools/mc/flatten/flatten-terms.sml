@@ -55,6 +55,13 @@ end = struct
           in
 	    A.CaseExp (e', ms', t')
 	  end
+      | ex (A.PCaseExp (es, ms, t)) = let
+          val es' = List.map ex es
+	  val ms' = List.map (pmatch env) ms
+	  val t' = ty t
+          in
+	    A.PCaseExp (es', ms', t')
+	  end
       | ex (A.HandleExp (e, ms, t)) = let
           val e' = ex e
 	  val ms' = List.map (match env) ms

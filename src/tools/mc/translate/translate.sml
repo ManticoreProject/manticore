@@ -329,8 +329,9 @@ structure Translate : sig
 	    | AST.ExpansionOptsExp (opts, e) => 
 	        ExpansionOpts.withExpansionOpts(fn () => EXP(trExpToExp(env, e)), opts)
 	    | AST.FTupleExp es=> raise Fail "TODO"
-	    | AST.FArrayExp (es, n, t) => raise Fail "TODO"
-	    | AST.FlOp oper => raise Fail "TODO"
+	    | AST.FArrayExp (es, n, t) => raise Fail "abstract farray should have been compiled away by now"
+	    | AST.FlOp oper => raise Fail "abstract flatten op should have been compiled away by now"
+	    | AST.PArrayOp oper => raise Fail "abstract parray op should have been compiled away by now"
 	  (* end case *))
 
     and trExpToExp (env, exp) = toExp(trExp(env, exp))

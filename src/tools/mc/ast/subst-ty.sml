@@ -46,6 +46,7 @@ structure SubstTy =
 	    | exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
 	    | exp (A.FArrayExp (es, n, t)) = A.FArrayExp (List.map exp es, ntree s n, substTy (s, t))
 	    | exp (A.FlOp oper) = A.FlOp (fl_op s oper)
+	    | exp (A.PArrayOp oper) = A.PArrayOp (pop s oper)
           in
 	     exp e
           end
@@ -105,5 +106,18 @@ structure SubstTy =
        | A.Compose (o1, o2) => A.Compose (fl_op s o1, fl_op s o2)
        | A.CrossCompose os => A.CrossCompose (List.map (fl_op s) os)
       (* end case *))
+
+    and pop s oper = let
+      fun ps (A.PSub_Nested t) = A.PSub_Nested (substTy (s, t))
+	| ps (A.PSub_Flat t) = A.PSub_Flat (substTy (s, t))
+	| ps (A.PSub_Tuple ss) = A.PSub_Tuple (List.map ps ss)
+      fun p (A.PA_Length t) = A.PA_Length (substTy (s, t))
+	| p (A.PA_Sub s) = A.PA_Sub (ps s)
+	| p (A.PA_Tab t) = A.PA_Tab (substTy (s, t))
+	| p (A.PA_Map t) = A.PA_Map (substTy (s, t))
+	| p (A.PA_Reduce t) = A.PA_Reduce (substTy (s, t))
+      in
+        p oper
+      end
 
   end (* SubstTy *)

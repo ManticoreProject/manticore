@@ -1048,6 +1048,7 @@ fun litsToString (s: LitSet.set) : string =
       | exp (AST.FTupleExp es) = List.app exp es
       | exp (AST.FArrayExp (es, _, _)) = List.app exp es
       | exp (AST.FlOp oper) = ()
+      | exp (AST.PArrayOp oper) = ()
   and binding (AST.ValBind (p, e)) = (pat p; exp e)
     | binding (AST.PValBind (p, e)) = (pat p; exp e)
     | binding (AST.FunBind fs) = lambdas fs

@@ -381,6 +381,7 @@ structure MatchCompile : sig
 	      | AST.FTupleExp _ => raise Fail "unexpected FTuple"
 	      | AST.FArrayExp _ => raise Fail "unexpected FArray"
 	      | AST.FlOp oper => raise Fail "unexpected FlOp"
+	      | AST.PArrayOp oper => raise Fail "unexpected PArrayOp"
 	    (* end case *)
 	  end
 
