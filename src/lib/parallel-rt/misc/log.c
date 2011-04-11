@@ -131,7 +131,7 @@ void FinishLog ()
     for (int i = 0;  i < NumVProcs;  i++) {
 	VProc_t *vp = VProcs[i];
 	if (vp->log->next != 0) {
-	    write (LogFD, vp->log, LOGBLOCK_SZB);
+	    int ignored = write (LogFD, (const void*)vp->log, LOGBLOCK_SZB);
 	    vp->log->next = 0;
 	}
     }

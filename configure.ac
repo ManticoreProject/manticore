@@ -121,6 +121,7 @@ dnl
 dnl extra CFLAGS
 dnl
 CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic"
+CXXFLAGS="$CXXFLAGS -D_GNU_SOURCE -std=gnu++0x -D__STDC_FORMAT_MACROS -pedantic"
 
 dnl
 dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for

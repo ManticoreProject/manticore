@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include <math.h>
 #include <ctype.h>
+#include <inttypes.h>
 #include "vproc.h"
 #include "topology.h"
 #include "value.h"
@@ -86,7 +87,7 @@ Value_t M_IntFromString (SequenceHdr_t *s)
 Value_t M_LongToString (int64_t n)
 {
     char buf[32];
-    snprintf(buf, sizeof(buf), "%lld", n);
+    snprintf(buf, sizeof(buf), "%" PRIi64, n);
     return AllocString (VProcSelf(), buf);
 }
 
@@ -108,10 +109,10 @@ Value_t M_LongFromString (SequenceHdr_t *s)
     if (len > 0) {
 	int64_t n;
 	if (isHex (str, len)) {
-	    if (sscanf(str, "%llx", (uint64_t *)&n) != 1)
+	    if (sscanf(str, "%" PRIu64, (uint64_t *)&n) != 1)
 		return M_NONE;
 	}
-	else if (sscanf(str, "%lld", &n) != 1)
+	else if (sscanf(str, "%" PRIi64, &n) != 1)
 	    return M_NONE;
 	VProc_t *vp = VProcSelf();
 	return Some(vp, WrapWord(vp, (Word_t)n));
@@ -126,7 +127,7 @@ Value_t M_LongFromString (SequenceHdr_t *s)
 Value_t M_Word64ToString (uint64_t n)
 {
     char buf[32];
-    snprintf(buf, sizeof(buf), "%llu", n);
+    snprintf(buf, sizeof(buf), "%" PRIu64, n);
     return AllocString (VProcSelf(), buf);
 }
 
@@ -383,7 +384,7 @@ void M_PrintPtr (const char *name, void *ptr)
  */
 void M_PrintLong (int64_t n)
 {
-    Say("%lld", n);
+    Say("%"PRIi64, n);
 }
 
 /* M_PrintInt:
@@ -401,21 +402,21 @@ void M_PrintFloat (float f)
 int M_ReadInt ()
 {
     int i;
-    scanf ("%d\n", &i);
+    int ignored = scanf ("%d\n", &i);
     return i;
 }
 
 float M_ReadFloat ()
 {
     float i;
-    scanf ("%f", &i);
+    int ignored = scanf ("%f", &i);
     return (float)i;
 }
 
 double M_ReadDouble ()
 {
     double i;
-    scanf ("%lf", &i);
+    int ignored = scanf ("%lf", &i);
     return i;
 }
 

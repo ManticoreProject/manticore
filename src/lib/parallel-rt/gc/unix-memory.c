@@ -81,7 +81,7 @@ void *AllocMemory (int *nBlocks, int blkSzB, int minNumBlocks, void **unalignedB
   /* now compute the lowest aligned address in the allocated block. */
     base = (void *)(((Addr_t)memObj & ~(blkSzB-1)) + blkSzB);
 
-    assert (base+(*nBlocks*blkSzB) <= memObj+szb);
+    assert (((uint64_t)base)+(*nBlocks*blkSzB) <= ((uint64_t)memObj)+szb);
 
     *unalignedBase = memObj;
     return base;
