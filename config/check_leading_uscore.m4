@@ -17,7 +17,7 @@ dnl
   else
     AC_MSG_CHECKING([for leading underscore in global names])
     AC_LANG_PUSH(C)
-    AC_LANG_CONFTEST([[void aBcDeF () { }]])
+    AC_LANG_CONFTEST([AC_LANG_SOURCE([[void aBcDeF () { }]])])
     $CC -c conftest.c
     AC_LANG_POP()
     if test -r conftest.o ; then
