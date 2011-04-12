@@ -24,6 +24,7 @@
 #endif
 #include "gc-scan.h"
 #include <stdio.h>
+#include <inttypes.h>
 
 //ForwardObject of MajorGC
 /*! \brief Forward an object into the global-heap chunk reserved for the given vp.
@@ -206,7 +207,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     TIMER_Stop(&(vp->majorStats.timer));
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MAJOR) {
-	SayDebug("[%2d] Major GC finished: %d/%lld old bytes copied\n",
+	SayDebug("[%2d] Major GC finished: %d/%" PRIu64 " old bytes copied\n",
 	    vp->id, nBytesCopied, (uint64_t)oldSzB);
     }
 #endif /* !NDEBUG */
@@ -281,7 +282,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
     
 #ifndef NDEBUG
 	if (GCDebug >= GC_DEBUG_ALL)
-	    SayDebug("[%2d]  ==> %p; %lld bytes\n", vp->id, (void *)root, nBytesCopied);
+	    SayDebug("[%2d]  ==> %p; %"PRIu64" bytes\n", vp->id, (void *)root, nBytesCopied);
 #endif
     }
 #ifndef NDEBUG

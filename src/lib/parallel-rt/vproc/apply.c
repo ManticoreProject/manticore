@@ -48,14 +48,14 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   /* allocate the return and exception continuation objects
    * in the VProc's heap.
    */
-    Value_t retCont = WrapWord(vp, &ASM_Return);
-    Value_t exnCont = WrapWord(vp, &ASM_UncaughtExn);
+    Value_t retCont = WrapWord(vp, (Word_t)&ASM_Return);
+    Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
 
     while (1) {
 #ifndef NDEBUG
 	if (DebugFlg)
 	    SayDebug("[%2d] ASM_Apply(%p, %p, %p, %p, %p, %p)\n",
-		vp->id, vp, codeP, arg, envP, retCont, exnCont);
+                 vp->id, (void*)vp, (void*)codeP, (void*)arg, (void*)envP, (void*)retCont, (void*)exnCont);
 #endif
 	if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
 	  /* schedule a continuation that will cleanly shut down the runtime */

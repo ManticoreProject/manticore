@@ -135,7 +135,7 @@ int GetVprocsOpt (Options_t *opts, int dflt, int **procs)
 
                 if (j > 0) {
                     if (j != arg) {
-                        Error("Requested %d processors, but only provided %d placement argument(s).\n", arg, j);
+                        Error("Requested %ld processors, but only provided %d placement argument(s).\n", arg, j);
                     } else {
                         *procs = ProcLocations;
                     }

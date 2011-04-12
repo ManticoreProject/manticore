@@ -8,10 +8,12 @@
 #include <stdio.h>
 #include <signal.h>
 #include <time.h>
+#include <sys/time.h>
 #if defined (TARGET_DARWIN)
 #  include <sys/sysctl.h>
 #endif
 #include <errno.h>
+#include <inttypes.h>
 #include "os-memory.h"
 #include "os-threads.h"
 #include "atomic-ops.h"
@@ -248,7 +250,7 @@ void *NewVProc (void *arg)
    */
 #if defined(HAVE_POSIX_MEMALIGN)
     VProc_t *vproc = 0;
-    posix_memalign ((void **)&vproc, 64, sizeof(VProc_t));
+    int ignored = posix_memalign ((void **)&vproc, 64, sizeof(VProc_t));
 #elif defined(HAVE_MEMALIGN)
     VProc_t *vproc = (VProc_t *) memalign (64, sizeof(VProc_t));
 #elif defined(HAVE_VALLOC)
@@ -548,7 +550,7 @@ Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
 
 #ifndef NDEBUG
     if (DebugFlg)
-        SayDebug ("[%2d] VProcNanosleep for %llu seconds and %llu nanoseconds\n", 
+        SayDebug ("[%2d] VProcNanosleep for %" PRIu64 " seconds and %" PRIu64 " nanoseconds\n", 
 	    vp->id, (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec);
 #endif
 
@@ -697,5 +699,5 @@ VProc_t* GetNthVProc (int n)
  */
 Value_t SleepCont (VProc_t *self)
 {
-    return WrapWord(self, &ASM_VProcSleep);
+    return WrapWord(self, (Word_t)&ASM_VProcSleep);
 }

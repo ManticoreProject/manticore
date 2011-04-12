@@ -49,8 +49,8 @@ static WorkGroupList_t *FindWorkGroup (VProc_t *self, uint64_t workGroupId)
     // found no entry for the given work group, so create such an entry and return it
     WorkGroupList_t *new = NEW(WorkGroupList_t);
     new->workGroupId = workGroupId;
-    new->primaryDeque = M_NIL;
-    new->secondaryDeque = M_NIL;
+    new->primaryDeque = (Deque_t*)M_NIL;
+    new->secondaryDeque = (Deque_t*)M_NIL;
     new->resumeDeques = NULL;
     new->next = PerVProcLists[self->id];
     PerVProcLists[self->id] = new;
@@ -96,7 +96,7 @@ static Deque_t *DequeAlloc (VProc_t *self, int32_t size)
 #if defined(HAVE_POSIX_MEMALIGN)
     Deque_t *deque = 0;
     uint32_t dequeAlignSzB = 1 << CeilingLg (dequeSzB);  // next power of two greater than the deque size
-    posix_memalign ((void **)&deque, dequeAlignSzB, dequeSzB);
+    int ignored = posix_memalign ((void **)&deque, dequeAlignSzB, dequeSzB);
 #elif defined(HAVE_MEMALIGN)
     uint32_t dequeAlignSzB = 1 << CeilingLg (dequeSzB);  // next power of two greater than the deque size
     Deque_t *deque = (Deque_t*) memalign (dequeAlignSzB, dequeSzB);
@@ -207,12 +207,12 @@ int M_NumDequeRoots (VProc_t *self)
     int numRoots = 0;
     Prune (self);
     for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
-	if (wgList->primaryDeque != M_NIL)
+	if (wgList->primaryDeque != (Deque_t*)M_NIL)
 	    numRoots += DequeNumElts (wgList->primaryDeque);
-	if (wgList->secondaryDeque != M_NIL)
+	if (wgList->secondaryDeque != (Deque_t*)M_NIL)
 	    numRoots += DequeNumElts (wgList->secondaryDeque);
 	for (DequeList_t *deques = wgList->resumeDeques; deques != NULL; deques = deques->next)
-	    if (deques->deque != M_NIL)
+	    if (deques->deque != (Deque_t*)M_NIL)
 		numRoots += DequeNumElts (deques->deque);
     }
     return numRoots;
@@ -336,9 +336,9 @@ static Value_t **AddDequeElts (Deque_t *deque, Value_t **rootPtr)
 Value_t **M_AddDequeEltsToLocalRoots (VProc_t *self, Value_t **rootPtr)
 {
     for (WorkGroupList_t *wgList = PerVProcLists[self->id]; wgList != NULL; wgList = wgList->next) {
-	if (wgList->primaryDeque != M_NIL)
+	if (wgList->primaryDeque != (Deque_t*)M_NIL)
 	    rootPtr = AddDequeElts (wgList->primaryDeque, rootPtr);
-	if (wgList->secondaryDeque != M_NIL)
+	if (wgList->secondaryDeque != (Deque_t*)M_NIL)
 	    rootPtr = AddDequeElts (wgList->secondaryDeque, rootPtr);
 	for (DequeList_t *deques = wgList->resumeDeques; deques != NULL; deques = deques->next)
 	    if (deques->deque)
