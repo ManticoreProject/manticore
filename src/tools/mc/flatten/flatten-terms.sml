@@ -9,7 +9,7 @@
 
 structure FlattenTerms : sig
 
-  val flatten : AST.exp -> AST.exp
+  val flatten : AST.exp -> AST.exp * TyCon.Set.set
 
 end = struct
 
@@ -382,11 +382,20 @@ end = struct
       | A.LConst (l, t) => A.LConst (l, t) (* a literal's type shouldn't require flattening *)
     (* end case *))
 
-  fun flatten (e : A.exp) : A.exp = let
-    val env = FlattenEnv.mkEnv ()
+  fun flatten (e : A.exp) : A.exp * TyCon.Set.set = let
+    val env = FEnv.mkEnv ()
     val e' = exp env e
     in
-      e'
+      (e', flattenedTycs env)
+    end
+  and flattenedTycs (env : FEnv.env) : TyCon.Set.set = let
+    val tt = FEnv.mustFlattenOf env
+    val tbs = TyCon.Tbl.listItemsi tt
+    val tbs' = List.filter (fn (tyc, mustFlatten) => mustFlatten) tbs
+    val tycs = List.map #1 tbs'
+    val tycs' = List.map (fn c => FEnv.lookupTyc (env, c)) tycs
+    in
+      List.foldl TyCon.Set.add' TyCon.Set.empty tycs'
     end
 
 end

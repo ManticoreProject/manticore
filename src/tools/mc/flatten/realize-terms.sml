@@ -1,4 +1,4 @@
-(* realize-farray.sml
+(* realize-terms.sml
  *
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -8,15 +8,17 @@
  * where FArray is in path/to/src/lib/basis/parray/farray.pml.
  *)
 
-structure RealizeFArray : sig
+structure RealizeTerms : sig
 
-  val realize : AST.exp -> AST.exp
+  val realize : AST.exp * TyCon.Set.set -> AST.exp
 
 end = struct
 
   structure A = AST
   structure T = Types 
   structure B = Basis
+
+  structure RTy = RealizeTypes
 
   structure AU = ASTUtil
 
@@ -26,56 +28,44 @@ end = struct
   structure FSet = FlattenOp.Set
   structure FMap = FlattenOp.Map
 
+  val basisItems = BasisItems.basisItems
+
   fun ln () = TextIO.print "\n"
   fun println s = (TextIO.print s; ln ())
 
   fun assert (msg : string) (fact : bool) : unit = 
     if not fact then raise Fail ("assertion failure: " ^ msg) else ()
 
-  local
-    val cell = ref NONE
-    fun basisItems () = (case !cell
-      of NONE => let
-	   val ft = BEnv.getTyConFromBasis ["FArray", "f_array"]
-           val nt = BEnv.getTyConFromBasis ["FArray", "nesting_tree"]
-	   val fc = BEnv.getDConFromBasis ["FArray", "FArray"]
-	   val lf = BEnv.getDConFromBasis ["FArray", "Lf"]
-	   val nd = BEnv.getDConFromBasis ["FArray", "Nd"]
-	   val record = {farrTyc=ft, ntreeTyc=nt, farrCon=fc, lfCon=lf, ndCon=nd}
-           val _ = (cell := SOME record)
-           in
-             record
-	   end
-       | SOME r => r
-      (* end case *))
+  fun mkTree (n : A.ntree) : A.exp = let
+    val {nestingTreeTyc, lfCon, ndCon, ...} = basisItems ()
     fun const c = A.ConstExp (A.DConst (c, []))
-  in
-    fun farrTyc () = #farrTyc (basisItems ())
-    fun mkTree (n : A.ntree) : A.exp = let
-      val {ntreeTyc, farrCon, lfCon, ndCon, ...} = basisItems ()
-      val ntreeTy = A.ConTy ([], ntreeTyc)
-      in case n
-        of A.Lf (loExp, hiExp) => AU.mkApplyExp (const lfCon, [loExp, hiExp])
-	 | A.Nd ts => let
-	     val ts' = List.map mkTree ts
-             in
-	       AU.mkApplyExp (const ndCon, [AU.mkList (ts', ntreeTy)])
-	     end
-      end
-    fun mkFArray (es, n, t) = let
-      val {farrCon, ...} = basisItems ()
-      val data = ParrLitToRope.mkRope (es, t)
-      val shape = mkTree n
-      val farrConConst = A.ConstExp (A.DConst (farrCon, [t]))
-      in
-        AU.mkApplyExp (farrConConst, [data, shape])
-      end
-  end (* local *)
+    val ntreeTy = A.ConTy ([], nestingTreeTyc)
+    in case n
+      of A.Lf (loExp, hiExp) => AU.mkApplyExp (const lfCon, [loExp, hiExp])
+       | A.Nd ts => let
+           val ts' = List.map mkTree ts
+           in
+	     AU.mkApplyExp (const ndCon, [AU.mkList (ts', ntreeTy)])
+	   end
+    end  
 
-  datatype env = E of {operSet  : FSet.set ref, 
-		       operCode : A.lambda FMap.map ref}
+  fun mkFArray (es, n, t) = let
+    val farrayCon = BasisItems.farrayCon ()
+    val data = ParrLitToRope.mkRope (es, t)
+    val shape = mkTree n
+    val farrConConst = A.ConstExp (A.DConst (farrayCon, [t]))
+    in
+      AU.mkApplyExp (farrConConst, [data, shape])
+    end
 
-  fun initEnv () = E {operSet = ref FSet.empty, operCode = ref FMap.empty}
+  datatype env = E of {operSet       : FSet.set ref, 
+		       operCode      : A.lambda FMap.map ref,
+		       flattenedTycs : TyCon.Set.set}
+
+  fun initEnv (tycs : TyCon.Set.set) = 
+    E {operSet = ref FSet.empty, 
+       operCode = ref FMap.empty,
+       flattenedTycs = tycs}
 
   fun insOper (E {operSet, ...}, oper) = let
     val s  = !operSet
@@ -98,94 +88,9 @@ end = struct
        | SOME lam => lam
     end
 
-  fun includesFArr (t : T.ty) : bool = let
-    fun ty (T.ErrorTy) = false
-      | ty (T.MetaTy (T.MVar {info, ...})) = (case !info
-          of T.INSTANCE t' => ty t'
-	   | _ => false
-          (* end case *))
-      | ty (T.VarTy a) = false
-      | ty (T.ConTy (ts, c)) = List.exists ty ts
-      | ty (T.FunTy (t1, t2)) = ty t1 orelse ty t2
-      | ty (T.TupleTy ts) = List.exists ty ts
-      | ty (T.FArrayTy _) = true
-    in
-      ty t
-    end
+  fun isFlattenedTyc (E {flattenedTycs=s, ...}, c) = TyCon.Set.member (s, c)
 
-(* findTyc : tycon -> tycon option *)
-  local
-    structure M = TyCon.Map
-    val refM = ref M.empty
-    fun map (c, c') = let
-      val m' = M.insert (!refM, c, SOME c')
-      in
-	refM := m';
-	c'
-      end
-    fun realizeTyc c = (case M.find (!refM, c)
-      of SOME c' => c'
-       | NONE => let
-           val c' = raise Fail "todo"
-           in
-	     map (c, c')
-	   end
-      (* end case *))
-    and realizeTy (t : T.ty) : T.ty = let
-      fun ty (T.ErrorTy) = T.ErrorTy
-	| ty (m as T.MetaTy (T.MVar {info, ...})) = (case !info
-            of T.INSTANCE t' => let
-                 val t'' = ty t'
-                 in
-                   info := T.INSTANCE t'';
-	           m
-	         end
-	     | _ => m
-            (* end case *))
-	| ty (T.VarTy a) = T.VarTy a
-	| ty (T.ConTy (ts, c)) = T.ConTy (List.map ty ts, c)
-	(* FIXME *)
-        (* note: the constructor c should have already been replaced 
-	 * with its flat constructor by now *)
-	| ty (T.FunTy (t1, t2)) = T.FunTy (ty t1, ty t2)
-	| ty (T.TupleTy ts) = T.TupleTy (List.map ty ts)
-	| ty (T.FArrayTy (t, n)) = T.ConTy ([ty t], farrTyc ())
-    (* we lose the shape tree type here *)
-      in
-        ty t
-      end
-  in
-    val realizeTyc = realizeTyc
-    val realizeDCon = realizeDCon
-    val realizeTy = realizeTy
-  end (* local *)
-
-  fun realizeScheme (T.TyScheme (xs, t)) = T.TyScheme (xs, realizeTy t)
-
-  fun realizeTypesInOper (oper : A.fl_op) : A.fl_op = let
-    val ty = realizeTy
-    fun rt (A.ID t) = A.ID (ty t)
-      | rt (A.Unzip t) = A.Unzip (ty t)
-      | rt (A.Cat t) = A.Cat (ty t)
-      | rt (A.Map (op1, n)) = A.Map (rt op1, n)
-      | rt (A.Compose (op1, op2)) = A.Compose (rt op1, rt op2)
-      | rt (A.CrossCompose ops) = A.CrossCompose (List.map rt ops)
-    in
-      rt oper
-    end
- 
-  val realizeTypesInParrOper : A.parray_op -> A.parray_op = let
-    fun ps (A.PSub_Nested t) = A.PSub_Nested (realizeTy t)
-      | ps (A.PSub_Flat t) = A.PSub_Flat (realizeTy t)
-      | ps (A.PSub_Tuple os) = A.PSub_Tuple (List.map ps os)
-    fun pop (A.PA_Length t) = A.PA_Length (realizeTy t)
-      | pop (A.PA_Sub s) = A.PA_Sub (ps s)
-      | pop (A.PA_Tab t) = A.PA_Tab (realizeTy t)
-      | pop (A.PA_Map t) = A.PA_Map (realizeTy t)
-      | pop (A.PA_Reduce t) = A.PA_Reduce(realizeTy t)
-    in
-      pop
-    end
+  fun flattenedTycs (E {flattenedTycs=s, ...}) = s
 
   datatype var_bind 
     = Self
@@ -201,7 +106,13 @@ end = struct
       in
 	tbl
       end
+    val ftycs = flattenedTycs env
+    val mustRealize = RTy.mustRealize ftycs
+    val {realizeTy, realizeTyc, realizeDCon, realizeScheme, realizeFlOp, realizePop} =
+      RTy.mkFunctions ftycs
     val ty = realizeTy
+    fun flattenedTyc c = TyCon.Set.member (ftycs, c)
+    fun flattenedDCon d = TyCon.Set.member (ftycs, DataCon.ownerOf d)
     fun exp (A.LetExp (b, e)) = A.LetExp (binding b, exp e)
       | exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, ty t)
       | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, List.map match ms, ty t)
@@ -244,13 +155,13 @@ end = struct
       | exp (A.FTupleExp es) = A.FTupleExp (List.map exp es)
       | exp (A.FArrayExp (es, n, t)) = mkFArray (List.map exp es, n, ty t)
       | exp (A.FlOp oper) = let
-          val oper' = realizeTypesInOper oper
+          val oper' = realizeFlOp oper			  
           val _ = insOper (env, oper')
           in
 	    A.FlOp oper'
 	  end
       | exp (A.PArrayOp oper) = let
-          val oper' = realizeTypesInParrOper oper
+          val oper' = realizePop oper
           in
             A.PArrayOp oper'
           end
@@ -264,7 +175,11 @@ end = struct
     and pmatch (A.PMatch (ps, e)) = A.PMatch (List.map ppat ps, exp e)
       | pmatch (A.Otherwise (ts, e)) = A.Otherwise (List.map ty ts, exp e)
     and lambda (A.FB (f, x, b)) = A.FB (var f, var x, exp b)
-    and pat (A.ConPat (c, ts, p)) = A.ConPat (c, List.map ty ts, pat p)
+    and pat (A.ConPat (c, ts, p)) = let
+          val c' = if flattenedDCon c then realizeDCon c else c
+          in
+            A.ConPat (c', List.map ty ts, pat p)
+          end
       | pat (A.TuplePat ps) = A.TuplePat (List.map pat ps)
       | pat (A.VarPat x) = A.VarPat (var x)
       | pat (A.WildPat t) = A.WildPat (ty t)
@@ -272,21 +187,19 @@ end = struct
     and ppat (A.NDWildPat t) = A.NDWildPat (ty t)
       | ppat (A.HandlePat (p, t)) = A.HandlePat (pat p, ty t)
       | ppat (A.Pat p) = A.Pat (pat p)
-    and const (A.DConst (c, ts)) = 
-(* FIXME this change is broken *)
-	  A.DConst (c, List.map ty ts)
+    and const (A.DConst (d, ts)) = let
+          val ts' = List.map ty ts
+	  val d' = if flattenedDCon d then realizeDCon d else d
+          in
+            A.DConst (d', ts')
+          end
       | const (lit as A.LConst _) = lit
     and var x = (* binding sites *) let
       val tySch as T.TyScheme (_, t) = Var.typeOf x
-(* (\* +debug *\) *)
-(*       val _ = print ("inspecting " ^ Var.nameOf x ^ ": " ^ TypeUtil.schemeToString tySch ^ *)
-(* 		     "\n  includesFarr=" ^ Bool.toString (includesFArr t) ^ "\n") *)
-(*       val _  = if String.isPrefix "PINEAPPLE" (Var.nameOf x) then raise Fail "HALT" else () *)
-(* (\* -debug *\) *)
       in 
-        if includesFArr t then let
+        if mustRealize t then let
           val tySch' = realizeScheme tySch
-	  val x' = Var.newPoly (Var.nameOf x ^ "~", tySch')
+	  val x' = Var.newPoly (Var.nameOf x ^ "_", tySch')
           in
             Var.Tbl.insert vars (x, Other x');
 	    x'
@@ -297,68 +210,10 @@ end = struct
       exp e
     end
 
-(* +debug *)
-
-fun expressionForm (x : A.exp) : string = let
-  fun e (A.LetExp _) = "LetExp"
-    | e (A.IfExp _) = "IfExp"
-    | e (A.CaseExp _) = "CaseExp"
-    | e (A.PCaseExp _) = "PCaseExp"
-    | e (A.HandleExp _) = "HandleExp"
-    | e (A.RaiseExp _) = "RaiseExp"
-    | e (A.FunExp _) = "FunExp"
-    | e (A.ApplyExp _) = "ApplyExp"
-    | e (A.VarArityOpExp _) = "VarArityOpExp"
-    | e (A.TupleExp _) = "TupleExp"
-    | e (A.RangeExp _) = "RangeExp"
-    | e (A.PTupleExp _) = "PTupleExp"
-    | e (A.PArrayExp _) = "PArrayExp"
-    | e (A.PCompExp _) = "PCompExp"
-    | e (A.PChoiceExp _) = "PChoiceExp"
-    | e (A.SpawnExp _) = "SpawnExp"
-    | e (A.ConstExp _) = "ConstExp"
-    | e (A.VarExp _) = "VarExp"
-    | e (A.SeqExp _) = "SeqExp"
-    | e (A.OverloadExp _) = "OverloadExp"
-    | e (A.ExpansionOptsExp _) = "ExpansionOptsExp"
-    | e (A.FTupleExp _) = "FTupleExp"
-    | e (A.FArrayExp _) = "FArrayExp"
-    | e (A.FlOp _) = "FlOp"
-    | e (A.PArrayOp _) = "PArrayOp"
-  in
-    e x
-  end
-
-fun look (e : A.exp) : unit = let
-  fun ln () = print "\n"
-  fun pr s = (print s; ln ())
-  fun exp (A.LetExp (b, e)) = (pr ("let " ^ binding b ^ " in"); exp e)
-    | exp (A.ExpansionOptsExp (opts, e)) = (pr "expansion"; exp e)
-    | exp (A.TupleExp []) = pr "()"
-    | exp (A.TupleExp es) = (pr "tuple("; app exp es; pr ")")
-    | exp e = pr (expressionForm e) 
-  and binding (A.ValBind (p, e)) = pat p ^ " = ..."
-    | binding (A.PValBind (p, e)) = pat p ^ " = ..."
-    | binding (A.FunBind lams) = String.concatWith "\n" (map lam lams)
-    | binding (A.PrimVBind (x, _)) = var x ^ " = _prim(...)"
-    | binding (A.PrimCodeBind c) = "_primcode(...)"
-  and var x = Var.toString x
-  and pat (A.ConPat (c, _, p)) = DataCon.toString c ^ "(" ^ pat p ^ ")"
-    | pat (A.TuplePat ps) = "(" ^ String.concatWith "," (map pat ps) ^ ")"
-    | pat (A.VarPat x) = var x
-    | pat (A.WildPat _) = "_"
-    | pat (A.ConstPat c) = "<const>"
-  and lam (A.FB (f, x, b)) = "fun " ^ var f ^ "(" ^ var x ^ ") = ..."
-  in
-    pr "^^^^^ running LOOK"; exp e; raise Fail "HALT"
-  end
-
-(* -debug *)
-
 (* mkOps : env -> A.lambda list *)
 (* Generate all operators' code and insert oper/code pairs into the env. *)
   fun mkOps (env : env) (e : A.exp) : (A.fl_op * A.lambda) list = let
-    val (E {operSet, operCode}) = env
+    val (E {operSet, operCode, ...}) = env
     val s = !operSet
     val ols = FlattenOpGen.gen s
     val _ = List.app (fn (oper,lam) => insLam (env, oper, lam)) ols
@@ -491,14 +346,14 @@ fun look (e : A.exp) : unit = let
       | topLevelExp (A.ExpansionOptsExp (opts, e)) = 
 	  A.ExpansionOptsExp (opts, topLevelExp e)
       | topLevelExp (theEnd as A.TupleExp []) = theEnd
-      | topLevelExp e = raise Fail ("unexpected " ^ expressionForm e)
+      | topLevelExp e = raise Fail ("unexpected " ^ FlattenUtils.expressionForm e)
     in
       topLevelExp e
     end
 					   
 (* realize : A.exp -> A.exp *)
-  fun realize (e0 : A.exp) : A.exp = let
-    val env = initEnv ()
+  fun realize (e0 : A.exp, flatTycs : TyCon.Set.set) : A.exp = let
+    val env = initEnv flatTycs
     val e1 = pass1 env e0
     val ols = mkOps env e1
     val e2 = pass2 env e1

@@ -169,8 +169,6 @@ end *) = struct
     end
 
   fun PVE (Env {varEnv, ...}) = printVarEnv varEnv
-   
 (* -debug *)
-
 
 end

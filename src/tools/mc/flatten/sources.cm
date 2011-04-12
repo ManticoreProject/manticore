@@ -15,9 +15,12 @@ Library
   structure FlattenTerms
   structure FlattenOpGen
   structure FlattenOpFusion
-  structure RealizeFArray
+  structure BasisItems
+  structure RealizeTerms
+  structure RealizeTypes
   structure PArrayOpGen
 
+  structure FlattenUtils
   
   structure TestFlattenTypes
 (*
@@ -44,9 +47,12 @@ is
   flatten-terms.sml
   flatten-op-gen.sml  
   flatten-op-fusion.sml
-  realize-farray.sml
+  basis-items.sml
+  realize-terms.sml
+  realize-types.sml
   parray-op-gen.sml
-
+  flatten-utils.sml	
+  
   test-flatten-types.sml
   (*
   test-flatten-terms.sml

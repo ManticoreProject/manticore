@@ -18,10 +18,10 @@ end = struct
 
   fun flatten (e0 : AST.exp) : AST.exp = 
     if !activeFlg then let
-      val _ = print "!@!@!@!@!@!@!@!@! FLATTENING TRANSFORMATION\n"
-      val e1 = FlattenTerms.flatten e0
+      val _ = print "-- BEGINNING FLATTENING TRANSFORMATION\n"
+      val (e1, flatTycs) = FlattenTerms.flatten e0
       val e2 = FlattenOpFusion.fuseExp e1
-      val e3 = RealizeFArray.realize e2
+      val e3 = RealizeTerms.realize (e2, flatTycs)
       in
         e3
       end
