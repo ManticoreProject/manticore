@@ -34,6 +34,9 @@ structure TyCon : sig
   (* return the arity of a type constructor *)
     val arityOf : Types.tycon -> int
 
+  (* sets of type constructors *)
+    structure Set : ORD_SET where type Key.ord_key = Types.tycon
+
   (* dictionaries keyed by type constructors *)
     structure Map : ORD_MAP where type Key.ord_key = Types.tycon
 
@@ -119,6 +122,9 @@ structure TyCon : sig
   (* return the arity of a type constructor *)
     fun arityOf (Tyc{arity, ...}) = arity
 
+    structure Set = RedBlackSetFn (
+      type ord_key = tycon
+      val compare = compare)
 
     structure Map = BinaryMapFn (
       type ord_key = tycon
