@@ -44,7 +44,7 @@ structure PArrayOp = struct
 	| pop (A.PA_Tab t) = tos "PA_Tab" t
 	| pop (A.PA_Map t) = tos "PA_Map" t
 	| pop (A.PA_Reduce t) = tos "PA_Reduce" t				  
-	| pop (A.PA_Range t) = to "PA_Range" t
+	| pop (A.PA_Range t) = tos "PA_Range" t
       in
         pop      
       end
@@ -290,10 +290,15 @@ structure PArrayOp = struct
     end
 
 (* constructRange : ty -> exp *)
-  val constructRange : T.ty -> exp = (fn t =>
-    if TU.same (t, B.intTy) then 
-      A.PA_Range t
-    else
-      raise Fail ("unexpected type " ^ TU.toString t))
+  val constructRange : T.ty -> A.exp = let
+    fun mk (t as T.TupleTy (ts as [t1, t2, t3])) = 
+          if List.all (fn t => TU.same (t, B.intTy)) ts then
+            A.PArrayOp (A.PA_Range B.intTy)
+	  else            
+            raise Fail ("unexpected type " ^ TU.toString t)
+      | mk t = raise Fail ("unexpected type " ^ TU.toString t)
+    in
+      mk
+    end
 
 end

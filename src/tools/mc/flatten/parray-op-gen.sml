@@ -48,6 +48,7 @@ structure PArrayOpGen = struct
   val flatMap      = memoVar ["FArray", "flatMap"]
   val flatMap2     = memoVar ["FArrayPair", "flatMapEq"]
   val groundReduce = memoVar ["FArray", "groundReduce"]
+  val intRange     = memoVar ["FArray", "intRange"]
 
   local
     fun isg c = List.exists (fn g => TyCon.same (c,g)) B.primTycs

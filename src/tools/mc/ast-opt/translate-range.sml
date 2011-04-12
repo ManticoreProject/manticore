@@ -21,9 +21,9 @@ structure TranslateRange : sig
 
     local
       fun get v = BasisEnv.getVarFromBasis ["PArray", v]
-      val m1 = Memo.new (fn _ => get "rangeP")
+      val m1 = Memo.new (fn _ => get "range")
     in
-      fun rangeP () = Memo.get m1
+      fun range () = Memo.get m1
     end
 
   (* tr : A.exp * A.exp * A.exp option * A.ty -> A.exp *)
@@ -35,7 +35,7 @@ structure TranslateRange : sig
 	 | NONE => AU.mkInt 1
         (* end case *))
       in
-        AU.mkApplyExp (A.VarExp (rangeP (), []), [fromExp, toExp, stepExp])
+        AU.mkApplyExp (A.VarExp (range (), []), [fromExp, toExp, stepExp])
       end
 
   end

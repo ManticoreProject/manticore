@@ -141,6 +141,7 @@ end *) = struct
       | pop (A.PA_Tab t) = A.PA_Tab (ty t)
       | pop (A.PA_Map t) = A.PA_Map (ty t)
       | pop (A.PA_Reduce t) = A.PA_Reduce (ty t)
+      | pop (A.PA_Range t) = A.PA_Range (ty t)
     in
       pop
     end
