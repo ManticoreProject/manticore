@@ -494,6 +494,7 @@ structure Rope (* : ROPE *) = struct
 	  else (Int.abs (from - to_) div Int.abs step) + 1
 
   (* rangeP : int * int * int -> int rope *)
+  (* note: both from and to are inclusive bounds *)
     fun rangeP (from, to_, step) = (* "to" is syntax in pml *)
      (if from = to_ then singleton from
       else let
