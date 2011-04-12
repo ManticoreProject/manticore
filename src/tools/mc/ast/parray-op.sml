@@ -44,6 +44,7 @@ structure PArrayOp = struct
 	| pop (A.PA_Tab t) = tos "PA_Tab" t
 	| pop (A.PA_Map t) = tos "PA_Map" t
 	| pop (A.PA_Reduce t) = tos "PA_Reduce" t				  
+	| pop (A.PA_Range t) = to "PA_Range" t
       in
         pop      
       end
@@ -101,6 +102,12 @@ structure PArrayOp = struct
             end
           else
 	    raise Fail ("todo: reductions on " ^ TU.toString t)
+      | pop (A.PA_Range t) = let
+          val _ = if TU.same (t, B.intTy) then () 
+		  else raise Fail ("not int: " ^ TU.toString t)
+          in
+	    (T.TupleTy [B.intTy, B.intTy, B.intTy]) --> (B.parrayTy B.intTy)
+	  end
     in
       pop
     end				 
@@ -116,6 +123,7 @@ structure PArrayOp = struct
       | pop (A.PA_Tab t1, A.PA_Tab t2) = TU.same (t1, t2)
       | pop (A.PA_Map t1, A.PA_Map t2) = TU.same (t1, t2)
       | pop (A.PA_Reduce t1, A.PA_Reduce t2) = TU.same (t1, t2)
+      | pop (A.PA_Range t1, A.PA_Range t2) = TU.same (t1, t2)
       | pop _ = false
     in
       pop
@@ -134,6 +142,7 @@ structure PArrayOp = struct
       | consIndex (A.PA_Tab _)    = 2
       | consIndex (A.PA_Map _)    = 3
       | consIndex (A.PA_Reduce _) = 4
+      | consIndex (A.PA_Range _)  = 5
   in
 
     val compare : A.parray_op * A.parray_op -> order = let
@@ -169,6 +178,7 @@ structure PArrayOp = struct
 	     | (A.PA_Tab t1, A.PA_Tab t2) => TU.compare (t1, t2)
 	     | (A.PA_Map t1, A.PA_Tab t2) => TU.compare (t1, t2)
 	     | (A.PA_Reduce t1, A.PA_Reduce t2) => TU.compare (t1, t2)
+	     | (A.PA_Range t1, A.PA_Range t2) => TU.compare (t1, t2)
 	     | _ => raise Fail "compiler bug"
         end
       in
@@ -278,5 +288,12 @@ structure PArrayOp = struct
     in
       mk
     end
+
+(* constructRange : ty -> exp *)
+  val constructRange : T.ty -> exp = (fn t =>
+    if TU.same (t, B.intTy) then 
+      A.PA_Range t
+    else
+      raise Fail ("unexpected type " ^ TU.toString t))
 
 end

@@ -17,6 +17,7 @@ structure TranslateRange : sig
     structure T = Types
 
     structure AU = ASTUtil
+    structure TU = TypeUtil
 
     local
       fun get v = BasisEnv.getVarFromBasis ["PArray", v]
@@ -28,6 +29,7 @@ structure TranslateRange : sig
   (* tr : A.exp * A.exp * A.exp option * A.ty -> A.exp *)
   (* FIXME right now this only works at type int; it's designed otherwise *)
     fun tr (fromExp, toExp, optStepExp, ty) = let
+      val _ = if TU.same (ty, B.intTy) then () else raise Fail "not int"
       val stepExp = (case optStepExp
         of SOME e => e
 	 | NONE => AU.mkInt 1

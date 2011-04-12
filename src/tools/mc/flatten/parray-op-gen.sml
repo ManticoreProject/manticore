@@ -27,9 +27,9 @@ structure PArrayOpGen = struct
     end
 
   fun memo get path = let
-    val cubby = ref NONE
-    fun remember x = (cubby := SOME x; x)
-    fun read () = (case !cubby
+    val cell = ref NONE
+    fun remember x = (cell := SOME x; x)
+    fun read () = (case !cell
       of SOME x => x
        | NONE => remember (get path)
       (* end case *))
@@ -157,12 +157,19 @@ structure PArrayOpGen = struct
     else
       raise Fail ("todo: reduce for type " ^ TU.toString t)
 
+  fun genRange t =
+    if TU.same (t, B.intTy) then
+      A.VarExp (intRange (), [])
+    else
+      raise Fail ("unexpected type " ^ TU.toString t)
+
   fun gen (pop : A.parray_op) : A.exp = (case pop
     of A.PA_Length ty => genLength ty
      | A.PA_Sub s => genSub s		     
      | A.PA_Tab t => genTab t
      | A.PA_Map t => genMap t
      | A.PA_Reduce t => genReduce t
+     | A.PA_Range t => genRange t
     (* end case *))
 
 end

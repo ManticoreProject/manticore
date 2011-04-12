@@ -38,6 +38,7 @@ structure AST =
       | PA_Tab of ty      (* the type of the elements to be created by the tabulation *)
       | PA_Map of ty      (* type of the function to be mapped *)
       | PA_Reduce of ty   (* type 'a in the associative operator ('a * 'a -> 'a) *)
+      | PA_Range of ty    (* type is element type (currently always int) *)
     and psub_op
       = PSub_Nested of ty (* type of the parr in the arg *)
       | PSub_Flat of ty   (* type of the parr in the arg *)

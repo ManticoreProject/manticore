@@ -79,7 +79,8 @@ end *) = struct
               ("sub", SOME PArrayOp.constructSub),
 	      ("tab", SOME PArrayOp.constructTab),
 	      ("map", SOME PArrayOp.constructMap),
-	      ("reduce", SOME PArrayOp.constructReduce)]
+	      ("reduce", SOME PArrayOp.constructReduce),
+	      ("range", SOME PArrayOp.constructRange)]
     val ps' = List.map (fn (n, oper) => (getVar n, oper)) ps
     in
       List.foldl VMap.insert' VMap.empty ps'

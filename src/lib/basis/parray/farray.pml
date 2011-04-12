@@ -181,4 +181,12 @@ structure FArray = struct
 	 | Nd _ => raise Fail "groundReduce: flat array of ground types expected"
         (* end case *))
 
+  (* intRange : int * int * int -> int f_array *)
+    fun intRange (from, to_, step) = let
+      val data = Rope.rangeP (from, to_, step)
+      val shape = Lf (0, Rope.length data)
+      in
+	FArray (data, shape)
+      end     
+
 end
