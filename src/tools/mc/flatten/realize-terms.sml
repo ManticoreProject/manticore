@@ -199,7 +199,7 @@ end = struct
       in 
         if mustRealize t then let
           val tySch' = realizeScheme tySch
-	  val x' = Var.newPoly (Var.nameOf x ^ "_", tySch')
+	  val x' = Var.newPoly (Var.nameOf x ^ "_r", tySch')
           in
             Var.Tbl.insert vars (x, Other x');
 	    x'

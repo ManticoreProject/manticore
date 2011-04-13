@@ -16,14 +16,19 @@ end = struct
 
   val activeFlg = ref true
 
+  val verboseOutput = not true
+
+  val prAST = if verboseOutput then PrintAST.printExp 
+	      else PrintAST.printExpNoTypesNoStamps
+
   fun flatten (e0 : AST.exp) : AST.exp = 
     if !activeFlg then let
-      val _ = PrintAST.printExpNoTypesNoStamps e0
+      val _ = prAST e0
       val (e1, flatTycs) = FlattenTerms.flatten e0
       val e2 = FlattenOpFusion.fuseExp e1
       val e3 = RealizeTerms.realize (e2, flatTycs)
       val _ = print "********* flattened program:\n"
-      val _ = PrintAST.printExp e2
+      val _ = prAST e3
       in
         e3
       end

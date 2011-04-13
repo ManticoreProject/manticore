@@ -3,7 +3,7 @@
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  * 
- * This module rewrites ranges in terms of calls to Rope.rangeP.
+ * This module rewrites ranges in terms of calls to PArray.range.
  *)
 
 structure TranslateRange : sig

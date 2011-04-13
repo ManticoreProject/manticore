@@ -51,6 +51,9 @@ structure ASTUtil : sig
   (* create an expression that applies a function *)
     val mkApplyExp : (AST.exp * AST.exp list) -> AST.exp
 
+  (* create an expression that applies a curried function *)
+    val mkCurriedApplyExp : (AST.exp * AST.exp list) -> AST.exp
+
   (* create a sequence of expressions *)
     val mkSeqExp : (AST.exp list * AST.exp) -> AST.exp
 
@@ -158,6 +161,12 @@ structure ASTUtil : sig
 
     fun mkApplyExp (e, es) = 
 	A.ApplyExp (e, mkTupleExp(es), TypeUtil.rangeType(TypeOf.exp(e)))
+
+    fun mkCurriedApplyExp (e, es) = (case es
+      of arg::[]   => mkApplyExp (e, [arg])
+       | arg::args => mkCurriedApplyExp (mkApplyExp (e, [arg]), args)
+       | [] => raise Fail "mkCurriedApplyExp"
+      (* end case *))
 
     fun mkSeqExp (es, e) = 
 	List.foldr (fn (e, seqExp) => A.SeqExp (e, seqExp)) e es
