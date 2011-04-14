@@ -197,19 +197,6 @@ end*) = struct
        | A.Compose _      => 4
        | A.CrossCompose _ => 5
       (* end case *))
-  (* listCmp builds a lexicographic-style ordering on lists of elements *)
-  (*   given a compare function for individual elements*)
-    fun listCmp (cmp : 'a * 'a -> order) : 'a list * 'a list -> order = let
-      fun lp ([], []) = EQUAL
-	| lp (_::_, []) = GREATER
-	| lp ([], _::_) = LESS
-	| lp (x::xs, y::ys) = 
-           (case cmp (x, y)
-	     of EQUAL => lp (xs, ys)
-	      | neq => neq)
-      in
-	lp
-      end
   (* pairCmp *)
     fun pairCmp (cmp : 'a * 'a -> order) : ('a * 'a) * ('a * 'a) -> order =
      (fn ((p1,p2), (q1,q2)) => (case cmp (p1, q1)
@@ -232,7 +219,7 @@ end*) = struct
 	     | (A.Compose pair1, A.Compose pair2) =>
                  (pairCmp cmp) (pair1, pair2)
 	     | (A.CrossCompose os1, A.CrossCompose os2) => 
-                 (listCmp cmp) (os1, os2)
+                 List.collate cmp (os1, os2)
 	     | _ => raise Fail "BUG!" (* shouldn't happen ever *)
         end
       in

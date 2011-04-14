@@ -153,20 +153,9 @@ structure PArrayOp = struct
 	  else case (o1, o2)
             of (A.PSub_Nested t1, A.PSub_Nested t2) => TU.compare (t1, t2)
 	     | (A.PSub_Flat t1, A.PSub_Flat t2) => TU.compare (t1, t2)
-	     | (A.PSub_Tuple os1, A.PSub_Tuple os2) => pss (os1, os2)
+	     | (A.PSub_Tuple os1, A.PSub_Tuple os2) => List.collate ps (os1, os2)
 	     | _ => raise Fail "compiler bug"
          end
-      and pss (os1, os2) = let
-        fun lp ([], []) = EQUAL
-	  | lp (_::_, []) = GREATER
-	  | lp ([], _::_) = LESS
-	  | lp (q::qs, r::rs) = (case ps (q, r)
-              of EQUAL => lp (qs, rs)
-	       | neq => neq
-              (* end case *))               
-        in 
-	  lp (os1, os2)
-        end
 
       fun pop (o1, o2) = let
         val (i1, i2) = (consIndex o1, consIndex o2)

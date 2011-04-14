@@ -475,34 +475,23 @@ handle ex => let
           if i1 <> i2 then 
 	    Int.compare (i1, i2)  
           else (* the two constructors are the same *) case (t1, t2)
-            of (Ty.ErrorTy, _) => EQUAL
+            of (Ty.ErrorTy, Ty.ErrorTy) => EQUAL
 	     | (Ty.MetaTy m1, Ty.MetaTy m2) => meta (m1, m2)
 	     | (Ty.VarTy a, Ty.VarTy b) => TyVar.compare (a, b)
 	     | (Ty.ConTy (ts1, c1), Ty.ConTy (ts2, c2)) => 
 	        (case TyCon.compare (c1, c2)
-		  of EQUAL => tys (ts1, ts2)
+		  of EQUAL => List.collate cmp (ts1, ts2)
 		   | neq => neq)
 	     | (Ty.FunTy (d1, r1), Ty.FunTy (d2, r2)) => 
                 (case cmp (d1, d2)
 		  of EQUAL => cmp (r1, r2)
 		   | neq => neq)
-	     | (Ty.TupleTy ts1, Ty.TupleTy ts2) => tys (ts1, ts2)
+	     | (Ty.TupleTy ts1, Ty.TupleTy ts2) => List.collate cmp (ts1, ts2)
 	     | (Ty.FArrayTy (t1, n1), Ty.FArrayTy (t2, n2)) => 
                 (case cmp (t1, t2)
 		  of EQUAL => Int.compare (ntreeInt n1, ntreeInt n2)
 		   | neq => neq)
 	     | _ => raise Fail "BUG!" (* shouldn't happen *)
-        end
-      and tys (ts1, ts2) = let
-        fun lp ([], []) = EQUAL
-	  | lp ([], t::_) = LESS
-	  | lp (t::_, []) = GREATER
-          | lp (t1::ts1, t2::ts2) = (case cmp (t1, t2)
-              of EQUAL => lp (ts1, ts2)
-	       | neq => neq
-	      (* end case *))
-        in
-	  lp (ts1, ts2)
         end
       in
 	cmp (t1, t2)
