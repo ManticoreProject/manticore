@@ -32,6 +32,10 @@ structure ASTUtil : sig
     val mkIntPat   : int -> AST.pat
     val mkInt      : int -> AST.exp
 
+  (* build expressions for e+n and e+1 *)
+    val addInt : AST.exp * int -> AST.exp
+    val add1   : AST.exp -> AST.exp
+
   (* boolean constants *)
     val trueConst  : AST.const
     val falseConst : AST.const
@@ -70,6 +74,8 @@ structure ASTUtil : sig
 
     structure A = AST
     structure B = Basis
+
+    structure TU = TypeUtil
 
     fun mkTupleExp [e] = e
       | mkTupleExp es = AST.TupleExp es
@@ -162,6 +168,17 @@ structure ASTUtil : sig
     fun mkIfExp (e1, e2, e3) = A.IfExp(e1, e2, e3, TypeOf.exp(e2))
 
     fun mkVarExp (v, tys) = A.VarExp (v, tys)
+
+    fun addInt (e : A.exp, n : int) : A.exp = let
+      val t = TypeOf.exp e
+      in
+        if TU.same (t, B.intTy) then
+          mkApplyExp (A.VarExp (B.int_plus, []), [e, mkInt n])
+        else
+          raise Fail ("unexpected ty " ^ TU.toString t)
+      end
+
+    fun add1 (e : A.exp) : A.exp = addInt (e, 1)
 
     fun copyPat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)

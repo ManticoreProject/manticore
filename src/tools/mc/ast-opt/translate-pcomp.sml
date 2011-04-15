@@ -14,9 +14,11 @@ structure TranslatePComp : sig
 end  = struct
 
   local
-    val m_tabP = Memo.new (fn _ => BasisEnv.getVarFromBasis ["Rope", "tabFromToP"])
+    val getVar = BasisEnv.getVarFromBasis
+    fun ropeVar x = getVar ("Rope"::[x])
   in
-    fun tabP () = Memo.get m_tabP
+    val tabFromToP = Memo.new' (fn _ => ropeVar "tabFromToP")
+    val tabFromToStepP = Memo.new' (fn _ => ropeVar "tabFromToStepP")
   end (* local *)
 
   structure A = AST
@@ -28,12 +30,11 @@ end  = struct
   fun tr trExp (e, pes, oe) = 
    (case (pes, oe)
      of ([], _) => raise Fail "a parallel comprehension with no pbinds at all"
+     | ([(p1, e1 as A.RangeExp (loExp, hiExp, optStepExp, t))], NONE) => let
       (* optimization of common case: [| f(n) | n in [| 1 to 100 |] |] *)
       (* becomes Rope.tabFromToP (1, 101, f) *)
       (* (as opposed to a mapP over a constructed range) *) 
-     | ([(p1, e1 as A.RangeExp (loExp, hiExp, NONE, t))], NONE) => let
-(* FIXME include cases where step is not NONE; same for predicate *)
-	  val _ = if TU.same(t,B.intTy) then () 
+	  val _ = if TU.same(t,B.intTy) then ()
 		  else raise Fail ("unexpected type " ^ TU.toString t)
           val eTy = TypeOf.exp e
 	  val pTy = TypeOf.pat p1
@@ -41,12 +42,22 @@ end  = struct
 	  val e' = trExp e
 	  val c = A.CaseExp (A.VarExp (x, []), [A.PatMatch (p1, e')], eTy)
 	  val f = A.FunExp (x, c, eTy)
-          (* NOTE: tabFromToP is exclusive in its upper bound, whereas ranges *)
-          (*   are inclusive. Therefore we pass hiExp+1 to tabFromToP. *)
-	  val hiExpPlusOne = AU.mkApplyExp (A.VarExp (B.int_plus, []),
-					    [hiExp, AU.mkInt 1])
+          val (tab, args) = (case optStepExp 
+            of NONE => let
+                 val t = A.VarExp (tabFromToP (), [eTy])              
+		 val a = [loExp, hiExp, f]
+                 in 
+		   (t, a) 
+	         end
+	     | SOME stepExp => let
+                 val t = A.VarExp (tabFromToStepP (), [eTy])
+		 val a = [loExp, hiExp, stepExp, f]
+                 in
+		   (t, a)
+	         end      
+	    (* end case *))
           in
-	     AU.mkApplyExp (A.VarExp (tabP (), [eTy]), [loExp, hiExpPlusOne, f])
+	     AU.mkApplyExp (tab, args)
 	  end
       | ([(p1, e1)], optPred) => let (* the one pbind, no predicate case *)
           val t  = TypeOf.exp e
