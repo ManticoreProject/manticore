@@ -121,6 +121,15 @@ structure VectorSeq =
 	tabulate (minlen, fn i => f (sub (s1, i), sub (s2, i)))
       end
 
+    fun app (f, s) = let
+      val len = length s
+      fun lp i = 
+        if (i >= len) then ()
+        else (f(sub(s,i)); lp(i+1))
+      in
+        lp 0
+      end
+
     fun foldr (f, z, s) = let
       val len = length s
       fun lp (i, acc) = 
