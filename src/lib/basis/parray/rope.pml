@@ -443,27 +443,45 @@ structure Rope (* : ROPE *) = struct
     fun fromSeq s = fromList (S.toList s)
 
   (* tabFromToP : int * int * (int -> 'a) -> 'a rope *)
-  (* pre: hi >= lo *)
-  (* lo inclusive, hi exclusive *)
-    fun tabFromToP (lo, hi, f) = 
-     (if lo > hi then
-       (failwith "todo: downward tabulate")
-      else if (hi - lo) <= maxLeafSize then let
-        fun f' n = f (n + lo)
-        in
-          mkLeaf (S.tabulate (hi-lo, f'))
-        end
+  (* lo inclusive, hi inclusive *)
+    fun tabFromToP (lo, hi, f) =
+      if (lo > hi) then
+        empty
       else let
-        val m = (hi + lo) div 2
+        val nElts = hi - lo + 1
         in
-	  concatWithoutBalancing (| tabFromToP (lo, m, f),
-				    tabFromToP (m, hi, f) |)
-        end)
+          if nElts <= maxLeafSize then
+            mkLeaf (S.tabulate (nElts, fn i => f (lo + i)))
+          else let
+            val m = (hi + lo) div 2
+            in
+              concatWithoutBalancing (| tabFromToP (lo, m, f),
+				        tabFromToP (m+1, hi, f) |)
+            end
+        end
 
   (* tabP : int * (int -> 'a) -> 'a rope *)
-    fun tabP (n, f) = if n <= 0
-	  then empty
-	  else tabFromToP (0, n, f) (* n.b.: tabFromToP is exclusive of its upper bound *)
+    fun tabP (n, f) = 
+      if n <= 0 then 
+        empty
+      else 
+        tabFromToP (0, n-1, f)
+
+  (* tabFromToStepP : int * int * int * (int -> 'a) -> 'a rope *)
+  (* lo inclusive, hi inclusive *)
+    fun tabFromToStepP (from, to_, step, f) = (case Int.compare (step, 0)
+      of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around raiseExp -ams *)
+       | LESS (* negative step *) =>
+           if (to_ > from) then
+             empty
+       	   else
+             tabFromToP (0, (from-to_) div (~step), fn i => f (from + (step*i)))
+       | GREATER (* positive step *) =>
+       	   if (from > to_) then
+       	     empty
+       	   else
+             tabFromToP (0, (to_-from) div step, fn i => f (from + (step*i)))
+      (* end case *))
 
   (* forP : int * (int -> unit) -> unit *)
     fun forP (n, f) = let
@@ -484,6 +502,12 @@ structure Rope (* : ROPE *) = struct
       in
         if n <= 0 then () else fromTo (0, n)
       end
+
+  (* app : ('a -> unit) * 'a rope -> () *)
+    fun app (f, r) = (case r
+      of LEAF s => S.app (f, s)
+       | CAT (_, _, rL, rR) => (app (f, rL); app (f, rR))
+      (* end case *))
 
   (* nEltsInRange : int * int * int -> int *)
     fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
