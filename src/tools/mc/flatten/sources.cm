@@ -7,7 +7,6 @@
 Library
 
   structure Flatten
-  structure FlattenControls 
   structure FlattenEnv
   structure FlattenTypes
   structure FlattenTerms
@@ -39,7 +38,6 @@ is
   ../env/sources.cm
 
   flatten.sml
-  flatten-controls.sml
   flatten-env.sml
   flatten-types.sml
   flatten-terms.sml

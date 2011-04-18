@@ -70,7 +70,7 @@ structure Elaborate : sig
 	    (* end case *))
 *)
       | trExp (A.PArrayExp (es, t)) =
-          if !FlatteningFlags.flatteningOn then
+          if !FlattenControls.onFlg then
             A.PArrayExp (map trExp es, trTy t)
           else let
             val a = ParrLitToRope.tr (map trExp es, trTy t)               
