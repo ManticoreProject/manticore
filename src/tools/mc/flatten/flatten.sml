@@ -10,11 +10,9 @@ structure Flatten : sig
 
   val flatten : AST.exp -> AST.exp
 
-  val activeFlg : bool ref
-
 end = struct
 
-  val activeFlg = ref true
+(* *** FLATTENING *** *)
 
   val verboseOutput = false
 
@@ -22,7 +20,7 @@ end = struct
 	      else PrintAST.printExpNoTypesNoStamps
 
   fun flatten (e0 : AST.exp) : AST.exp = 
-    if !activeFlg then let
+    if !FlatteningFlags.flatteningOn then let
       val _ = prAST e0
       val (e1, flatTycs) = FlattenTerms.flatten e0
       val e2 = FlattenOpFusion.fuseExp e1

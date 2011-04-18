@@ -34,13 +34,13 @@ structure PArray = struct
     fun reduce assocOp init pa = fromRope(Rope.reduceP (assocOp, init, toRope pa))
     fun range (from, to_, step) = fromRope(Rope.rangeP (from, to_, step))
 
-  (* (\* tabFromTo: lower and upper bounds are both inclusive *\) *)
-  (*   fun tabFromTo (from, to_, f) = let *)
-  (*     val nElts = to_ - from + 1 *)
-  (*     fun g i = f (i + from) *)
-  (*     in *)
-  (*       tab (nElts, g) *)
-  (*     end *)
+  (* tabFromTo: lower and upper bounds are both inclusive *)
+    fun tabFromTo (from, to_, f) = let
+      val nElts = to_ - from + 1
+      fun g i = f (i + from)
+      in
+        tab (nElts, g)
+      end
 
   (* fun tabFromToStep (from, to_, step, f) = raise Fail "todo" *)
 

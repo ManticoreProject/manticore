@@ -7,9 +7,7 @@
 Library
 
   structure Flatten
-
-(*  structure FlattenControls *)
-
+  structure FlattenControls 
   structure FlattenEnv
   structure FlattenTypes
   structure FlattenTerms

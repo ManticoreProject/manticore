@@ -307,4 +307,8 @@ functor MainFn (
 
     fun main (_, args) = processArgs args
  
+    val workaround = FlattenControls.registry 
+      (* cm needs to know to compile FlattenControls,        *)
+      (* so I'm creating an artificial dependency here - ams *)
+
   end

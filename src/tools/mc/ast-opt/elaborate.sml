@@ -62,22 +62,21 @@ structure Elaborate : sig
 	  in
 	    trRange (e1', e2', oe3', t')
 	  end
-      | trExp (ptup as A.PTupleExp es) =  A.PTupleExp (map trExp es) 
+      | trExp (ptup as A.PTupleExp es) = A.PTupleExp (map trExp es) 
 (* 
 	  (case trPTup es
 	     of SOME e => e
 	      | NONE => A.TupleExp (map trExp es)
 	    (* end case *))
 *)
-      | trExp (A.PArrayExp (es, t)) = A.PArrayExp (map trExp es, trTy t)
-(*
-let
-          val a = ParrLitToRope.tr (map trExp es, trTy t)
-                  (* rewrites with parallel tuples *)
-          in
-	    trExp a
-          end
-*)
+      | trExp (A.PArrayExp (es, t)) =
+          if !FlatteningFlags.flatteningOn then
+            A.PArrayExp (map trExp es, trTy t)
+          else let
+            val a = ParrLitToRope.tr (map trExp es, trTy t)               
+            in
+	      trExp a
+            end
       | trExp (A.PCompExp (e, pes, oe)) = trPComp (e, pes, oe)
       | trExp (A.PChoiceExp (es, t)) = A.PChoiceExp (map trExp es, trTy t)
       | trExp (A.SpawnExp e) = A.SpawnExp (trExp e)
