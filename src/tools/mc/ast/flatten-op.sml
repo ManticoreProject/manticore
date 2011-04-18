@@ -149,7 +149,7 @@ end*) = struct
             List.exists (fn c' => TyCon.same (c',c)) Basis.primTycs
 	| _ => false)
   in
-(* NOTE: you construct based on *element types* *)
+(* NOTE: the arg to construct is the element type *)
     fun construct (r : T.ty) : A.fl_op = let
       val r = TU.prune r
       val f = (case r

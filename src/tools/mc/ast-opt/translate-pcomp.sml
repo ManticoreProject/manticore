@@ -16,16 +16,49 @@ structure TranslatePComp : sig
     structure A = AST
     structure B = Basis
     structure AU = ASTUtil
+    structure TU = TypeUtil
 
     local
-      val m = Memo.new (fn _ => BasisEnv.getVarFromBasis ["PArray", "map"])
+      val getVar = BasisEnv.getVarFromBasis
+      fun parrVar x = getVar ("PArray"::[x])
     in
-      fun parrayMap () = Memo.get m
+      val parrayMap = Memo.new' (fn _ => parrVar "map")
+      val tabFromTo = Memo.new' (fn _ => parrVar "tabFromTo")
+      val tabFromToStep = Memo.new' (fn _ => parrVar "tabFromToStep")
     end
 
     fun tr trExp (e, pes, oe) = 
      (case (pes, oe)
         of ([], _) => raise Fail "a parallel comprehension with no pbinds at all"
+	 | ([(p1, e1 as A.RangeExp (loExp, hiExp, optStepExp, t))], NONE) => let
+           (* optimization of a common case: [| f(n) | n in [| 1 to 100 |] |] *)
+           (* becomes PArray.tabFromTo (1, 101, f) *)
+           (* (as opposed to a PArray.map over a constructed range) *)
+	     val _ = if TU.same(t,B.intTy) then ()
+	 	     else raise Fail ("unexpected type " ^ TU.toString t)
+             val eTy = TypeOf.exp e
+	     val pTy = TypeOf.pat p1
+	     val x = Var.new ("x", pTy)
+	     val e' = trExp e
+	     val c = A.CaseExp (A.VarExp (x, []), [A.PatMatch (p1, e')], eTy)
+	     val f = A.FunExp (x, c, eTy)
+             val (tab, args) = (case optStepExp
+               of NONE => let
+                    val t = A.VarExp (tabFromTo (), [eTy])
+	 	    val a = [loExp, hiExp, f]
+                    in
+	 	      (t, a)
+	            end
+	 	| SOME stepExp => let
+                    val t = A.VarExp (tabFromToStep (), [eTy])
+	 	    val a = [loExp, hiExp, stepExp, f]
+                    in
+	 	      (t, a)
+	            end
+	      (* end case *))
+             in
+	       AU.mkApplyExp (tab, args)
+	     end
 	 | ([(p1, e1)], optPred) => let (* the one pbind, no predicate case *)
                val t  = TypeOf.exp e
 	       val t1 = TypeOf.pat p1

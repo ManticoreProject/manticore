@@ -24,6 +24,8 @@ end = struct
 
   type env = FEnv.env
 
+  fun println s = (print s; print "\n")
+
   fun assert (msg : string) (fact : bool) : unit = 
     if not fact then raise Fail ("assertion failure: " ^ msg) else ()
 

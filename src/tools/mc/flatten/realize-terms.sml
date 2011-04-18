@@ -160,11 +160,7 @@ end = struct
           in
 	    A.FlOp oper'
 	  end
-      | exp (A.PArrayOp oper) = let
-          val oper' = realizePop oper
-          in
-            A.PArrayOp oper'
-          end
+      | exp (A.PArrayOp oper) = A.PArrayOp (realizePop oper)
     and binding (A.ValBind (p, e)) = A.ValBind (pat p, exp e)
       | binding (A.PValBind (p, e)) = A.PValBind (pat p, exp e)
       | binding (A.FunBind lams) = A.FunBind (List.map lambda lams)

@@ -206,32 +206,37 @@ structure PArrayOp = struct
     end
 
 (* constructTab : ty -> exp *)
-  val constructTab : T.ty -> A.exp = let
+  local
     fun int t = TU.same (t, B.intTy)
-    fun mk (domTy as T.TupleTy [i1, T.FunTy (i2, eltTy)]) =
-          if int i1 andalso int i2 then let
-            val eltsTy = T.FArrayTy (eltTy, T.LfTy)
+    fun isUniv (T.MetaTy (T.MVar {info = ref(T.UNIV _), ...})) = true
+      | isUniv _ = false
+  in
+    val constructTab : T.ty -> A.exp = let
+      fun mk (domTy as T.TupleTy [i1, T.FunTy (i2, eltTy)]) =
+        if int i1 andalso int i2 then 
+          if isUniv eltTy then
+            A.PArrayOp (A.PA_Tab eltTy)
+	  else let
+            val eltsTy = T.FArrayTy (eltTy, T.LfTy)          
             val fl = FlattenOp.construct eltTy
-	    val rngTy = (case FlattenOp.typeOf fl
-              of T.FunTy (_, r) => r
-	       | _ => raise Fail "compiler bug"
-              (* end case *))
-	    val tab = A.PArrayOp (A.PA_Tab domTy)
-	    val arg = Var.new ("arg", domTy)
+    	    val rngTy = TU.rangeType (FlattenOp.typeOf fl)
+    	    val tab = A.PArrayOp (A.PA_Tab eltTy)
+    	    val arg = Var.new ("arg", domTy)
           (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
-	  (*   b/c referring to ASTUtil induces cyclic deps *)
-	    val body = A.ApplyExp (A.FlOp fl, 
-				   A.ApplyExp (tab, A.VarExp (arg, []), eltsTy),
-				   rngTy)
+    	  (*   b/c referring to ASTUtil induces cyclic deps *)
+    	    val body = A.ApplyExp (A.FlOp fl,
+    				   A.ApplyExp (tab, A.VarExp (arg, []), eltsTy),
+    				   rngTy)
             in
               A.FunExp (arg, body, rngTy)
-	    end
-	  else
-            raise Fail ("unexpected ty (ints expected) " ^ TU.toString domTy)
+    	    end
+    	else
+          raise Fail ("unexpected ty (ints expected) " ^ TU.toString domTy)
       | mk t = raise Fail ("unexpected ty " ^ TU.toString t)
     in
       mk
     end
+  end (* local *)
 
 (* constructMap : ty -> exp *)
   val constructMap : T.ty -> A.exp = let

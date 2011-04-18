@@ -16,7 +16,7 @@ end = struct
 
   val activeFlg = ref true
 
-  val verboseOutput = not true
+  val verboseOutput = false
 
   val prAST = if verboseOutput then PrintAST.printExp 
 	      else PrintAST.printExpNoTypesNoStamps

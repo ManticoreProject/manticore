@@ -13,8 +13,10 @@ structure Memo :> sig
 
   val new : (unit -> 'a) -> 'a memo
   val get : 'a memo -> 'a
-
   val computedYet : 'a memo -> bool
+
+(* better interface, upon reflection *)
+  val new' : (unit -> 'a) -> (unit -> 'a) 
 
 end = struct
 
@@ -44,5 +46,17 @@ end = struct
    (case !m
       of ToDo _ => false
        | Did _  => true)
+
+(* new' : (unit -> 'a) -> (unit -> 'a) *)
+  fun new' (f : unit -> 'a) : unit -> 'a = let
+    val cell = ref NONE
+    val remember = fn x => (cell := SOME x; x)
+    fun get () = (case !cell
+      of SOME x => x
+       | NONE => remember (f ())
+      (* end case *))
+    in
+      get
+    end
 
 end

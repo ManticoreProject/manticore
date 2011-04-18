@@ -21,7 +21,7 @@ structure PArray = struct
 
 (*   (\* FIXME too tightly coupled with Rope *\) *)
 
-(* FIXME had to expose these to enable special treatment of them in the flatt. trns. *)
+(* FIXME had to expose toRope and fromRope to enable special treatment of them in the flatt. trns. *)
     (* local *)
       val toRope : 'a parray -> 'a Rope.rope = _prim(@to-rope)
       val fromRope : 'a Rope.rope -> 'a parray = _prim(@from-rope)
@@ -31,8 +31,18 @@ structure PArray = struct
     fun length pa = Rope.length(toRope pa)
     fun tab (n, f) = fromRope(Rope.tabP(n, f))
     fun map f pa = fromRope(Rope.mapP (f, toRope pa))
-    fun reduce assocOp init pa = Rope.reduceP (assocOp, init, toRope pa)
-    fun range (from, to_, step) = Rope.rangeP (from, to_, step)
+    fun reduce assocOp init pa = fromRope(Rope.reduceP (assocOp, init, toRope pa))
+    fun range (from, to_, step) = fromRope(Rope.rangeP (from, to_, step))
+
+  (* (\* tabFromTo: lower and upper bounds are both inclusive *\) *)
+  (*   fun tabFromTo (from, to_, f) = let *)
+  (*     val nElts = to_ - from + 1 *)
+  (*     fun g i = f (i + from) *)
+  (*     in *)
+  (*       tab (nElts, g) *)
+  (*     end *)
+
+  (* fun tabFromToStep (from, to_, step, f) = raise Fail "todo" *)
 
 (*     fun filter (pred, pa) = fromRope(Rope.filterP (pred, toRope pa)) *)
 (*     fun rev pa = fromRope(Rope.revP(toRope pa)) *)

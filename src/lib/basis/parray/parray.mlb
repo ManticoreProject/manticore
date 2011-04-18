@@ -13,14 +13,14 @@
 
   rope.mlb
 
-(* Parallel Arrays *)
-
-  parray.pml
-
 (* Flat Arrays *)
 
   farray.pml
   farray-pair.pml
+
+(* Parallel Arrays *)
+
+  parray.pml
 
 (* Scans *)
 
