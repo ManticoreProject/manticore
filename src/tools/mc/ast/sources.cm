@@ -29,7 +29,7 @@ Library
   structure VarSubst
   structure FlattenOp
   structure PArrayOp
-  structure FlatteningFlags
+  structure FlattenControls
 
 is
 
@@ -61,4 +61,4 @@ is
   subst-ty.sml
   flatten-op.sml
   parray-op.sml
-  flattening-flags.sml
+  flatten-controls.sml
