@@ -213,15 +213,15 @@ end = struct
     val s = !operSet
     val ols = FlattenOpGen.gen s
     val _ = List.app (fn (oper,lam) => insLam (env, oper, lam)) ols
-(* +debug *)
-    val _ = println "***** RAN mkOps *****"
-    val _ = List.app (fn (oper, lam as A.FB (f, x, b)) =>
-      (print (FlattenOp.toString oper);
-       print " --> ";
-       print (Var.toString f ^ " ...");
-       ln ())) 
-		     ols
-(* -debug *)
+(* (\* +debug *\) *)
+(*     val _ = println "***** RAN mkOps *****" *)
+(*     val _ = List.app (fn (oper, lam as A.FB (f, x, b)) => *)
+(*       (print (FlattenOp.toString oper); *)
+(*        print " --> "; *)
+(*        print (Var.toString f ^ " ..."); *)
+(*        ln ()))  *)
+(* 		     ols *)
+(* (\* -debug *\) *)
     in
       ols
     end
@@ -267,10 +267,10 @@ end = struct
           end
       | exp (pop as A.PArrayOp oper) = let
           val e = PArrayOpGen.gen oper 
-	  val _ = print (concat ["+++++ for this: ", PArrayOp.toString oper, "\n",
-				 "      generated this: "])
-	  val _ = PrintAST.printExp e
-	  val _ = print "\n"
+	  (* val _ = print (concat ["+++++ for this: ", PArrayOp.toString oper, "\n", *)
+	  (* 			 "      generated this: "]) *)
+	  (* val _ = PrintAST.printExp e *)
+	  (* val _ = print "\n" *)
           in
 	    e
 	  end

@@ -34,6 +34,6 @@ structure FlattenControls = struct
     help = "turn on the flattening transformation"
   }
   
-  val () = List.app reg [onCtl]
+  val _ = List.app reg [onCtl]
 
 end

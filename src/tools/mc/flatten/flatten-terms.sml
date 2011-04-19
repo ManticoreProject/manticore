@@ -104,9 +104,9 @@ end = struct
 	  val es' = List.map ex es
 	  val r = ty t
 (* +debug *)
-	  val _ = print "\ntraversing parray\n"          
-	  val _ = print ("```````````` t is " ^ TU.toString t ^ "\n")
-	  val _ = print ("```````````` r is " ^ TU.toString r ^ "\n")
+	  (* val _ = print "\ntraversing parray\n"           *)
+	  (* val _ = print ("```````````` t is " ^ TU.toString t ^ "\n") *)
+	  (* val _ = print ("```````````` r is " ^ TU.toString r ^ "\n") *)
         (* check that r is in fact the flattened element type *)
           val _ = (case es'
             of [] => ()
@@ -126,10 +126,10 @@ end = struct
 	  val lf = A.Lf (AU.mkInt 0, AU.mkInt (List.length es))
 	  val f = A.FArrayExp (es', lf, r)
 	  val r' = TU.deepPrune r
-	  val _ = print ("``````` constructing flattening operator for {" ^ TU.toString r' ^ ",lf}\n")
+	  (* val _ = print ("`` constructing flattening operator for {" ^ TU.toString r' ^ ",lf}\n") *)
 	  val oper = FlattenOp.construct r'
-	  val _ = print ("`````````````` made " ^ FlattenOp.toString oper ^ "\n")
-	  val _ = print ("``````` done constructing flattening op for {" ^ TU.toString r' ^ ",lf}\n")
+	  (* val _ = print ("````````` made " ^ FlattenOp.toString oper ^ "\n") *)
+	  (* val _ = print ("`` done constructing flattening op for {" ^ TU.toString r' ^ ",lf}\n") *)
         (* record the insertion of this operator in env *)
 	  val () = FEnv.insertFlOp (env, oper)
         (* check the types before we construct the application *)
@@ -361,8 +361,8 @@ end = struct
         val env' = FEnv.insertVar (env, x, x')
         val () = (* record interface type on new var *)
 	  Var.setInterfaceTy (x', tySch)
-	val _ = print ("flatten-terms: new var " ^ Var.nameOf x' ^ " with new type " ^
-		       TypeUtil.schemeToString tySch' ^ "\n")
+	(* val _ = print ("flatten-terms: new var " ^ Var.nameOf x' ^ " with new type " ^ *)
+	(* 	       TypeUtil.schemeToString tySch' ^ "\n") *)
         in
 	  (env', x')
 	end

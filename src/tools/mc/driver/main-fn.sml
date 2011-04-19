@@ -162,10 +162,8 @@ functor MainFn (
 	  val _ = MatchCheck.checkExp (errStrm, ast)
 	  val ast = MatchCompile.compile (errStrm, ast)
           val _ = checkForErrors errStrm
-        (* flatten! *)
-	  val _ = prHdr "ABOUT TO FLATTEN"
+        (* flatten! (can be turned off with control; see FlattenControls) *)
           val ast = Flatten.flatten ast
-	  val _ = prHdr "DONE FLATTENING"
 	(* create the initial translation environment *)
           val bom = Translate.translate (IB.primTranslationEnv, ast)
           val cfg = bomToCFG bom

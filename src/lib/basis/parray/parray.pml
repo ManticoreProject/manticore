@@ -31,7 +31,7 @@ structure PArray = struct
     fun length pa = Rope.length(toRope pa)
     fun tabFromToStep (a, b, step, f) = fromRope(Rope.tabFromToStepP(a, b, step, f))
     fun map f pa = fromRope(Rope.mapP (f, toRope pa))
-    fun reduce assocOp init pa = fromRope(Rope.reduceP (assocOp, init, toRope pa))
+    fun reduce assocOp init pa = Rope.reduceP (assocOp, init, toRope pa)
     fun range (from, to_, step) = fromRope(Rope.rangeP (from, to_, step))
 
 (*     fun filter (pred, pa) = fromRope(Rope.filterP (pred, toRope pa)) *)
