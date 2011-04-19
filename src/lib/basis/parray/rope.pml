@@ -470,7 +470,7 @@ structure Rope (* : ROPE *) = struct
   (* tabFromToStepP : int * int * int * (int -> 'a) -> 'a rope *)
   (* lo inclusive, hi inclusive *)
     fun tabFromToStepP (from, to_, step, f) = (case Int.compare (step, 0)
-      of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around raiseExp -ams *)
+      of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around this raise. -ams *)
        | LESS (* negative step *) =>
            if (to_ > from) then
              empty

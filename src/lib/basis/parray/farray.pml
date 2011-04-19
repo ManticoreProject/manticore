@@ -131,6 +131,14 @@ structure FArray = struct
           FArray (data, shape)
 	end
 
+  (* tabFromToStep : int * int * int * (int -> 'a) -> 'a f_array *)
+    fun tabFromToStep (from, to_, step, f) = let
+      val data = Rope.tabFromToStepP (from, to_, step, f)
+      val shape = Lf (0, Rope.length data)
+      in
+	FArray (data, shape)
+      end
+
   (* flatMap : ('a -> 'b) -> 'a f_array -> 'b f_array *)
   (* pre: 'a is a ground type (int, float, etc.) *)
   (* post: the output will not necessarily be flat; *)

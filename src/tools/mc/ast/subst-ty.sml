@@ -113,9 +113,10 @@ structure SubstTy =
 	| ps (A.PSub_Tuple ss) = A.PSub_Tuple (List.map ps ss)
       fun p (A.PA_Length t) = A.PA_Length (substTy (s, t))
 	| p (A.PA_Sub s) = A.PA_Sub (ps s)
-	| p (A.PA_Tab t) = A.PA_Tab (substTy (s, t))
+	| p (A.PA_TabFromToStep t) = A.PA_TabFromToStep (substTy (s, t))
 	| p (A.PA_Map t) = A.PA_Map (substTy (s, t))
 	| p (A.PA_Reduce t) = A.PA_Reduce (substTy (s, t))
+	| p (A.PA_Range t) = A.PA_Range (substTy (s, t))
       in
         p oper
       end

@@ -33,15 +33,15 @@ structure AST =
   (* type-indexed parray operators *)
   (* WARNING: These cannot be moved to the PArrayOp module. It induces recursive dependencies. *)
     datatype parray_op
-      = PA_Length of ty   (* the dom type *)
+      = PA_Length of ty        (* the dom type *)
       | PA_Sub of psub_op
-      | PA_Tab of ty      (* the type of the elements to be created by the tabulation *)
-      | PA_Map of ty      (* type of the function to be mapped *)
-      | PA_Reduce of ty   (* type 'a in the associative operator ('a * 'a -> 'a) *)
-      | PA_Range of ty    (* type is element type (currently always int) *)
+      | PA_TabFromToStep of ty (* the type of the elements to be created by the tabulation *)
+      | PA_Map of ty           (* type of the function to be mapped *)
+      | PA_Reduce of ty        (* type 'a in the associative operator ('a * 'a -> 'a) *)
+      | PA_Range of ty         (* type is element type (currently only int supported) *)
     and psub_op
-      = PSub_Nested of ty (* type of the parr in the arg *)
-      | PSub_Flat of ty   (* type of the parr in the arg *)
+      = PSub_Nested of ty      (* type of the parr in the arg *)
+      | PSub_Flat of ty        (* type of the parr in the arg *)
       | PSub_Tuple of psub_op list
 (* coming soon: map, filter, reduce, ... *)
 

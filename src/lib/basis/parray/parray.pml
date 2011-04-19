@@ -29,20 +29,10 @@ structure PArray = struct
 
     fun sub (pa, i) = Rope.sub(toRope pa, i)
     fun length pa = Rope.length(toRope pa)
-    fun tab (n, f) = fromRope(Rope.tabP(n, f))
+    fun tabFromToStep (a, b, step, f) = fromRope(Rope.tabFromToStepP(a, b, step, f))
     fun map f pa = fromRope(Rope.mapP (f, toRope pa))
     fun reduce assocOp init pa = fromRope(Rope.reduceP (assocOp, init, toRope pa))
     fun range (from, to_, step) = fromRope(Rope.rangeP (from, to_, step))
-
-  (* tabFromTo: lower and upper bounds are both inclusive *)
-    fun tabFromTo (from, to_, f) = let
-      val nElts = to_ - from + 1
-      fun g i = f (i + from)
-      in
-        tab (nElts, g)
-      end
-
-  (* fun tabFromToStep (from, to_, step, f) = raise Fail "todo" *)
 
 (*     fun filter (pred, pa) = fromRope(Rope.filterP (pred, toRope pa)) *)
 (*     fun rev pa = fromRope(Rope.revP(toRope pa)) *)
@@ -58,24 +48,45 @@ structure PArray = struct
 
     (* end (\* local *\) *)
 
-(*   (\* toString : ('a -> string ) -> string -> 'a parray -> string *\) *)
-(*   (\* FIXME: should we exploit the fact that we're dealing with a rope? *\) *)
-(*     fun toString eltToString sep parr = let *)
-(* 	  val n = length parr *)
-(* 	  fun lp (m, acc) = if (m >= n) *)
-(* 		then List.rev ("|]" :: acc) *)
-(* 		else let *)
-(* 		  val s = eltToString (sub (parr, m)) *)
-(* 		  in *)
-(* 		    if (m = (n-1)) then *)
-(* 		      List.rev ("|]" :: s :: acc) *)
-(* 		    else *)
-(* 		      lp (m+1, sep :: s :: acc) *)
-(* 		  end *)
-(* 	  val init = "[|" :: nil *)
-(* 	  in *)
-(* 	    String.concat (lp (0, init)) *)
-(* 	  end *)
+(* Unfortunately one cannot write polymorphic parray functions at present. *)
+(* Therefore I am providing some common useful monomorphic functions that really *)
+(* should be polymorphic. *)
+
+  fun tos_int parr = let
+    fun tos i = Int.toString(parr!i)
+    fun lp (i, acc) =
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::","::acc)
+    val n = length parr
+    in
+      if (n<0) then (raise Fail "bug")
+      else if (n=0) then "[||]"
+      else let
+        val init = [tos(n-1),"|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
+  fun tos_float parr = let
+    fun tos i = Float.toString(parr!i)
+    fun lp (i, acc) =
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::","::acc)
+    val n = length parr
+    in
+      if (n<0) then (raise Fail "bug")
+      else if (n=0) then "[||]"
+      else let
+        val init = [tos(n-1),"|]"]
+        in
+          lp (n-2, init)
+        end
+    end
 
 end
 

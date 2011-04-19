@@ -44,8 +44,8 @@ structure TranslatePComp : sig
 	     val f = A.FunExp (x, c, eTy)
              val (tab, args) = (case optStepExp
                of NONE => let
-                    val t = A.VarExp (tabFromTo (), [eTy])
-	 	    val a = [loExp, hiExp, f]
+                    val t = A.VarExp (tabFromToStep (), [eTy])
+	 	    val a = [loExp, hiExp, AU.mkInt 1, f]
                     in
 	 	      (t, a)
 	            end

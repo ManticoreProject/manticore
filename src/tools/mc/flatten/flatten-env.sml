@@ -77,7 +77,7 @@ end *) = struct
 	      ("fromRope", NONE),
 	      ("length", SOME PArrayOp.constructLength),
               ("sub", SOME PArrayOp.constructSub),
-	      ("tab", SOME PArrayOp.constructTab),
+	      ("tabFromToStep", SOME PArrayOp.constructTab),
 	      ("map", SOME PArrayOp.constructMap),
 	      ("reduce", SOME PArrayOp.constructReduce),
 	      ("range", SOME PArrayOp.constructRange)]

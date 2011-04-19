@@ -160,7 +160,7 @@ end = struct
         (* replace parr prims with parr ops *)
          (case FEnv.findParrPrim (env, x)
 	   of SOME optMkOp => (case optMkOp
-             of NONE => ve
+             of NONE => A.VarExp (x, List.map ty ts)
 	      | SOME mkOp => let
                   val t = (ty o TU.domainType o TypeOf.exp) ve
                   in

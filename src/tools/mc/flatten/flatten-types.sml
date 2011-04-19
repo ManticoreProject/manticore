@@ -16,7 +16,8 @@ end *) = struct
 
   structure T = Types 
   structure B = Basis
-  structure U = TypeUtil
+
+  structure TU = TypeUtil
 
   structure FEnv = FlattenEnv
 
@@ -122,14 +123,22 @@ end *) = struct
                                  T.FArrayTy (t', T.LfTy)
                                end)
 			 | T.VarTy a => (* FIXME not sure this works*) 
-			                (* raise Fail ("tyvar: parray of " ^ U.toString t) *)
+			                (* raise Fail ("tyvar: parray of " ^ TU.toString t) *)
                              T.FArrayTy (T.VarTy a, T.LfTy)
-			 | m as T.MetaTy _ => let
-			     val msg = "unresolved overloading: " ^ TypeUtil.toString m 
+			 | mty as T.MetaTy m => let
+			     val msg = "unresolved overloading: " ^ TU.toString mty
 			     in
 			       raise Fail msg
 			     end
-			 | _ => raise Fail ("?: parray of " ^ U.toString t)
+ (* (case m  *)
+ (* 			     of T.MVar {info=ref(T.UNIV n), ...} => mty *)
+ (* 			      | _ => let *)
+ (* 			          val msg = "unresolved overloading: " ^ TU.toString mty *)
+ (* 				  in *)
+ (* 				    raise Fail msg *)
+ (* 				  end *)
+ (* 			     (\* end case *\)) *)
+			 | _ => raise Fail ("?: parray of " ^ TU.toString t)
 		       (* end case *))
 	     | ts => raise Fail "conTy: parray tyc has too many type args"    
 	   (* end case *))
@@ -149,7 +158,7 @@ end *) = struct
          (case TypeUtil.prune t
 	   of T.FArrayTy (t, n) => T.FArrayTy (t, T.NdTy n)
 	    | T.TupleTy ts => T.TupleTy (List.map operN ts)
-	    | _ => raise Fail ("operN: " ^ U.toString t)
+	    | _ => raise Fail ("operN: " ^ TU.toString t)
 	  (* end case *)) 
     in
       ty t
@@ -159,7 +168,7 @@ end *) = struct
 (* side effect: new tyc is inserted into the env *)
 (* side effect: new dcons of that tyc are inserted into the env *)
   and newFlatTyc (env : FEnv.env) (tyc : T.tycon) : T.tycon = let
-	val _ = assert "data tyc" (U.isDataTyc tyc)
+	val _ = assert "data tyc" (TU.isDataTyc tyc)
         fun underscore a = Atom.atom (Atom.toString a ^ "_")
         val (T.Tyc {name, params, def, ...}) = tyc
         val cons = (case def
