@@ -14,7 +14,7 @@ end = struct
 
 (* *** FLATTENING *** *)
 
-  fun flatten' (e0 : AST.exp) : AST.exp = 
+  fun fltExp (e0 : AST.exp) : AST.exp = 
     if not (!FlattenControls.onFlg) then e0
     else let
       val (e1, flatTycs) = FlattenTerms.flatten e0
@@ -28,7 +28,7 @@ end = struct
     output = PrintAST.outputExp,
     ext = "ast",
     passName = "ft",
-    pass = flatten',
+    pass = fltExp,
     registry = FlattenControls.registry
   }
 
