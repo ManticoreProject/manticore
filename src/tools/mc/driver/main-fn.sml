@@ -162,7 +162,7 @@ functor MainFn (
 	  val _ = MatchCheck.checkExp (errStrm, ast)
 	  val ast = MatchCompile.compile (errStrm, ast)
           val _ = checkForErrors errStrm
-        (* flatten! (can be turned off with control; see FlattenControls) *)
+        (* apply flattening transformation (can be turned off with control; see FlattenControls) *)
           val ast = Flatten.flatten ast
 	(* create the initial translation environment *)
           val bom = Translate.translate (IB.primTranslationEnv, ast)

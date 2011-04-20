@@ -19,6 +19,7 @@
   end
   float-array-seq.pml
   int-array-seq.pml
+  vector-pair.pml
 
   rope.pml 
   rope2.pml

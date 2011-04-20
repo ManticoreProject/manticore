@@ -44,11 +44,13 @@ structure PArrayOpGen = struct
   val flatSub      = memoVar ["FArray", "flatSub"]
   val nestedSub    = memoVar ["FArray", "nestedSub"]
   val flen         = memoVar ["FArray", "length"]
-  val ftab         = memoVar ["FArray", "tabFromToStep"]
+  val ftab         = memoVar ["FArray", "tab"]
+  val ftabFTS      = memoVar ["FArray", "tabFromToStep"]
   val flatMap      = memoVar ["FArray", "flatMap"]
   val flatMap2     = memoVar ["FArrayPair", "flatMapEq"]
   val groundReduce = memoVar ["FArray", "groundReduce"]
   val intRange     = memoVar ["FArray", "intRange"]
+  val fapp         = memoVar ["FArray", "app"]
 
   local
     fun isg c = List.exists (fn g => TyCon.same (c,g)) B.primTycs
@@ -139,6 +141,8 @@ structure PArrayOpGen = struct
     end
 
   fun genTab t = A.VarExp (ftab (), [t])
+
+  fun genTabFTS t = A.VarExp (ftabFTS (), [t])
           
   fun genMap (t as T.FunTy (alpha, beta)) = 
         if isGroundTy alpha then
@@ -147,8 +151,8 @@ structure PArrayOpGen = struct
           of tup as T.TupleTy [t1, t2] =>
                if isGroundTy t1 andalso isGroundTy t2 then
 	         A.VarExp (flatMap2 (), [alpha, beta])
-	       else raise Fail ("todo: " ^ TU.toString tup)
-	   | _ => raise Fail ("todo: " ^ TU.toString t)
+	       else raise Fail ("genMap(loc1) todo: " ^ TU.toString tup)
+	   | _ => raise Fail ("genMap(loc2) todo: " ^ TU.toString t)
           (* end case *))
     | genMap t = raise Fail ("unexpected ty " ^ TU.toString t)
 
@@ -164,13 +168,21 @@ structure PArrayOpGen = struct
     else
       raise Fail ("unexpected type " ^ TU.toString t)
 
+  fun genApp t = 
+    if isGroundTy t then
+      A.VarExp (fapp (), [t])
+    else
+      raise Fail ("todo: app for type " ^ TU.toString t)
+
   fun gen (pop : A.parray_op) : A.exp = (case pop
     of A.PA_Length ty => genLength ty
-     | A.PA_Sub s => genSub s		     
-     | A.PA_TabFromToStep t => genTab t
+     | A.PA_Sub s => genSub s	
+     | A.PA_Tab t => genTab t	     
+     | A.PA_TabFromToStep t => genTabFTS t
      | A.PA_Map t => genMap t
      | A.PA_Reduce t => genReduce t
      | A.PA_Range t => genRange t
+     | A.PA_App t => genApp t
     (* end case *))
 
 end

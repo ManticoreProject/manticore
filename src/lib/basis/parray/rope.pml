@@ -503,7 +503,7 @@ structure Rope (* : ROPE *) = struct
         if n <= 0 then () else fromTo (0, n)
       end
 
-  (* app : ('a -> unit) * 'a rope -> () *)
+  (* app : ('a -> unit) * 'a rope -> unit *)
     fun app (f, r) = (case r
       of LEAF s => S.app (f, s)
        | CAT (_, _, rL, rR) => (app (f, rL); app (f, rR))

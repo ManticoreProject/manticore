@@ -76,6 +76,7 @@ structure ASTUtil : sig
 
     structure A = AST
     structure B = Basis
+    structure T = Types
 
     fun mkTupleExp [e] = e
       | mkTupleExp es = AST.TupleExp es
@@ -261,4 +262,5 @@ structure ASTUtil : sig
 	in
 	    copyExpWalk s e
 	end
+
   end

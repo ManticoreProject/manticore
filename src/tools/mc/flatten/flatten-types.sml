@@ -115,8 +115,8 @@ end *) = struct
 			       T.TupleTy ts'
 		             end
 			 | T.ConTy (ts', c') =>
-			    (if isPArrayTyc c' 
-			     then operN (ty t) 
+			    (if isPArrayTyc c' then 
+                               operN (ty t) 
 			     else let
 		               val t' = flattenTy env t
                                in
@@ -130,14 +130,6 @@ end *) = struct
 			     in
 			       raise Fail msg
 			     end
- (* (case m  *)
- (* 			     of T.MVar {info=ref(T.UNIV n), ...} => mty *)
- (* 			      | _ => let *)
- (* 			          val msg = "unresolved overloading: " ^ TU.toString mty *)
- (* 				  in *)
- (* 				    raise Fail msg *)
- (* 				  end *)
- (* 			     (\* end case *\)) *)
 			 | _ => raise Fail ("?: parray of " ^ TU.toString t)
 		       (* end case *))
 	     | ts => raise Fail "conTy: parray tyc has too many type args"    

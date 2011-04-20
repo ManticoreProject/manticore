@@ -197,4 +197,15 @@ structure FArray = struct
 	FArray (data, shape)
       end     
 
+  (* flatApp : ('a -> unit) -> 'a f_array -> unit *)
+    fun flatApp f (FArray (data, shape)) = (case shape
+      of Lf (lo, hi) =>
+           (* remember, farrays might carry ballast *)
+           if lo = 0 andalso hi = Rope.length data then 
+             Rope.app (f, data)
+	   else
+             Rope.app (f, Rope.fromSeq (Rope.partialSeq (data, lo, hi)))
+       | Nd _ => raise Fail "flatApp"
+      (* end case *))
+
 end

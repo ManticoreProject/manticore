@@ -163,14 +163,21 @@ end = struct
       | exp (A.PArrayOp oper) = A.PArrayOp (realizePop oper)
     and binding (A.ValBind (p, e)) = A.ValBind (pat p, exp e)
       | binding (A.PValBind (p, e)) = A.PValBind (pat p, exp e)
-      | binding (A.FunBind lams) = A.FunBind (List.map lambda lams)
       | binding (p as A.PrimVBind (x, _)) = (Var.Tbl.insert vars (x, Self); p)
       | binding (c as A.PrimCodeBind _) = c
+      | binding (A.FunBind lams) = let
+          fun lp1 (A.FB(f,x,b)::t, acc) = lp1 (t, (var f, var x, b)::acc)
+	    | lp1 ([], acc) = acc (* these are reversed, but they get reversed again in lp2 *)
+          val stuff = lp1 (lams, [])
+          fun lp2 ((f',x',b)::t, acc) = lp2 (t, A.FB (f', x', exp b)::acc)
+	    | lp2 ([], acc) = A.FunBind acc
+          in
+            lp2 (stuff, [])
+	  end
     and match (A.PatMatch (p, e)) = A.PatMatch (pat p, exp e)
       | match (A.CondMatch (p, e1, e2)) = A.CondMatch (pat p, exp e1, exp e2)
     and pmatch (A.PMatch (ps, e)) = A.PMatch (List.map ppat ps, exp e)
       | pmatch (A.Otherwise (ts, e)) = A.Otherwise (List.map ty ts, exp e)
-    and lambda (A.FB (f, x, b)) = A.FB (var f, var x, exp b)
     and pat (A.ConPat (c, ts, p)) = let
           val c' = if flattenedDCon c then realizeDCon c else c
           in

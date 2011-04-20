@@ -41,10 +41,12 @@ structure PArrayOp = struct
 			   "]"]
       fun pop (A.PA_Length t) = tos "PA_Length" t
 	| pop (A.PA_Sub s) = "PA_Sub_{" ^ ps s ^ "}"
+	| pop (A.PA_Tab t) = tos "PA_Tab" t
 	| pop (A.PA_TabFromToStep t) = tos "PA_TabFromToStep" t
 	| pop (A.PA_Map t) = tos "PA_Map" t
 	| pop (A.PA_Reduce t) = tos "PA_Reduce" t				  
 	| pop (A.PA_Range t) = tos "PA_Range" t
+	| pop (A.PA_App t) = tos "PA_App" t
       in
         pop      
       end
@@ -72,9 +74,15 @@ structure PArrayOp = struct
 	  end
     fun pop (A.PA_Length t) = (t --> B.intTy)
       | pop (A.PA_Sub s) = ps s
+      | pop (A.PA_Tab eltTy) = let
+	  val domTy = T.TupleTy [B.intTy, B.intTy --> eltTy]
+	  val rngTy = T.FArrayTy (eltTy, T.LfTy)
+          in
+	    domTy --> rngTy
+	  end
       | pop (A.PA_TabFromToStep eltTy) = let
-          val intTy = B.intTy
-          val domTy = T.TupleTy [intTy, intTy, intTy, intTy --> eltTy]
+          val i = B.intTy
+          val domTy = T.TupleTy [i, i, i, i --> eltTy]
 	  val rngTy = T.FArrayTy (eltTy, T.LfTy)
           in
 	    domTy --> rngTy
@@ -108,26 +116,15 @@ structure PArrayOp = struct
           in
 	    (T.TupleTy [B.intTy, B.intTy, B.intTy]) --> (B.parrayTy B.intTy)
 	  end
+      | pop (A.PA_App eltTy) = let
+          val domTy = eltTy --> B.unitTy
+	  val rngTy = T.FArrayTy (eltTy, T.LfTy) --> B.unitTy
+          in
+	    domTy --> rngTy
+	  end
     in
       pop
     end				 
-
-  val same : A.parray_op * A.parray_op -> bool = let
-    fun ps (A.PSub_Nested t1, A.PSub_Nested t2) = TU.same (t1, t2)
-      | ps (A.PSub_Flat t1, A.PSub_Flat t2) = TU.same (t1, t2)
-      | ps (A.PSub_Tuple ts1, A.PSub_Tuple ts2) = 
-          ListPair.allEq ps (ts1, ts2)
-      | ps _ = false
-    fun pop (A.PA_Length t1, A.PA_Length t2) = TU.same (t1, t2)
-      | pop (A.PA_Sub s1, A.PA_Sub s2) = ps (s1, s2)
-      | pop (A.PA_TabFromToStep t1, A.PA_TabFromToStep t2) = TU.same (t1, t2)
-      | pop (A.PA_Map t1, A.PA_Map t2) = TU.same (t1, t2)
-      | pop (A.PA_Reduce t1, A.PA_Reduce t2) = TU.same (t1, t2)
-      | pop (A.PA_Range t1, A.PA_Range t2) = TU.same (t1, t2)
-      | pop _ = false
-    in
-      pop
-    end
 
 (* compare : parray_op * parray_op -> order *)
 (* for use in ORD_KEY-based collections *)
@@ -139,10 +136,12 @@ structure PArrayOp = struct
 
     fun consIndex (A.PA_Length _)        = 0
       | consIndex (A.PA_Sub _)           = 1
-      | consIndex (A.PA_TabFromToStep _) = 2
-      | consIndex (A.PA_Map _)           = 3
-      | consIndex (A.PA_Reduce _)        = 4
-      | consIndex (A.PA_Range _)         = 5
+      | consIndex (A.PA_Tab _)           = 2
+      | consIndex (A.PA_TabFromToStep _) = 3
+      | consIndex (A.PA_Map _)           = 4
+      | consIndex (A.PA_Reduce _)        = 5
+      | consIndex (A.PA_Range _)         = 6
+      | consIndex (A.PA_App _)           = 7
   in
 
     val compare : A.parray_op * A.parray_op -> order = let
@@ -164,10 +163,12 @@ structure PArrayOp = struct
 	  else case (o1, o2)
             of (A.PA_Length t1, A.PA_Length t2) => TU.compare (t1, t2)
 	     | (A.PA_Sub s1, A.PA_Sub s2) => ps (s1, s2)
+	     | (A.PA_Tab t1, A.PA_Tab t2) => TU.compare (t1, t2)
 	     | (A.PA_TabFromToStep t1, A.PA_TabFromToStep t2) => TU.compare (t1, t2)
 	     | (A.PA_Map t1, A.PA_Map t2) => TU.compare (t1, t2)
 	     | (A.PA_Reduce t1, A.PA_Reduce t2) => TU.compare (t1, t2)
 	     | (A.PA_Range t1, A.PA_Range t2) => TU.compare (t1, t2)
+	     | (A.PA_App t1, A.PA_App t2) => TU.compare (t1, t2)
 	     | _ => raise Fail "compiler bug"
         end
       in
@@ -175,6 +176,8 @@ structure PArrayOp = struct
       end
 
   end (* local *)
+
+  val same : A.parray_op * A.parray_op -> bool = (fn ops => compare ops = EQUAL)
 
   structure OperKey : ORD_KEY = struct
     type ord_key = A.parray_op
@@ -210,6 +213,34 @@ structure PArrayOp = struct
     val isInt = (fn t => TU.same (t, B.intTy))
   in
     val constructTab : T.ty -> A.exp = let
+      fun mk (domTy as T.TupleTy [i1, T.FunTy (i2, eltTy)]) =
+            if isInt i1 andalso isInt i2 then let
+              val eltsTy = T.FArrayTy (eltTy, T.LfTy)          
+              val fl = FlattenOp.construct eltTy
+    	      val rngTy = TU.rangeType (FlattenOp.typeOf fl)
+    	      val tab = A.PArrayOp (A.PA_TabFromToStep eltTy)
+    	      val arg = Var.new ("arg", domTy)
+              (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
+    	      (*   b/c referring to ASTUtil induces cyclic deps *)
+    	      val body = A.ApplyExp (A.FlOp fl,
+    				     A.ApplyExp (tab, A.VarExp (arg, []), eltsTy),
+    				     rngTy)
+              in
+                A.FunExp (arg, body, rngTy)
+              end
+    	    else
+              raise Fail ("unexpected ty (ints expected) " ^ TU.toString domTy)
+	| mk t = raise Fail ("unexpected ty " ^ TU.toString t)
+    in
+      mk
+    end
+  end (* local *)
+
+(* constructTabFTS : ty -> exp *)
+  local
+    val isInt = (fn t => TU.same (t, B.intTy))
+  in
+    val constructTabFTS : T.ty -> A.exp = let
       fun mk (domTy as T.TupleTy [i1, i2, i3, T.FunTy (i4, eltTy)]) =
             if List.all isInt [i1, i2, i3, i4] then let		
               val eltsTy = T.FArrayTy (eltTy, T.LfTy)          
@@ -290,4 +321,16 @@ structure PArrayOp = struct
       mk
     end
 
+(* constructApp : ty -> exp *)
+  val constructApp : T.ty -> A.exp = let 
+    fun mk (t as T.FunTy (eltTy, uTy)) =
+          if not (TU.same (B.unitTy, uTy)) then 
+            raise Fail ("unexpected type " ^ TU.toString t)
+          else
+            A.PArrayOp (A.PA_App eltTy)
+      | mk t = raise Fail ("unexpected type " ^ TU.toString t)
+    in
+      mk
+    end
+        
 end
