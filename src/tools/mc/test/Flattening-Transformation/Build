@@ -1,0 +1,3 @@
+#!/bin/sh
+../pmlc $1 2>&1 | tee LOOK-AT-THIS
+

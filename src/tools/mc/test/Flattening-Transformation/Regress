@@ -1,0 +1,20 @@
+#!/bin/sh
+
+for PML_PROGRAM in *.pml ; do
+  echo "compiling $PML_PROGRAM"
+  EXEC=${PML_PROGRAM%%.pml}
+  #CMD="../pmlc -o $EXEC $PML_PROGRAM 2>&1 | tee $EXEC-noise"
+  CMD="../pmlc -o $EXEC $PML_PROGRAM"
+  echo $CMD
+  $CMD
+  echo "running $PML_PROGRAM"
+  ./$EXEC
+  echo "finished with $PML_PROGRAM"
+  rm $EXEC
+  echo ""
+done
+
+echo ""
+echo "altogether done."
+
+
