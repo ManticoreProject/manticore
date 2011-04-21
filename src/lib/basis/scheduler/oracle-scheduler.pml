@@ -50,10 +50,11 @@ structure CED (* :> sig
     val diff = c - g
     in
       if Float.abs diff > g * minChange then let
-	val diff' = if Float.abs diff > g * maxChange then 
-			Float.fromInt (Float.sign diff) * g * maxChange
-		    else
-			diff
+	val diff' = 
+	      if Float.abs diff > g * maxChange then 
+		Float.fromInt (Float.sign diff) * g * maxChange
+	      else
+		diff
 	val incr = alpha * diff'
 	in
 	  FloatRef.set (glob, g + incr)
@@ -94,7 +95,7 @@ structure OracleScheduler (* : sig
 
   val kappa = 1.0
 
-  val minWorkForTimerRes = 0.0000001  (* 1 microsecond *)
+  val minWorkForTimerRes = 0.000001  (* 1 microsecond *)
 
   fun measuredRun (r, m, k) = let
     val t1 = CycleCounter.getTicks ()
@@ -109,7 +110,7 @@ structure OracleScheduler (* : sig
   fun oracle ((r, f_cst, f_seq, f_orc), v) = let
     val m = f_cst v
     val est = CED.estimate (r, m)
-    val b = est > kappa orelse est < minWorkForTimerRes
+    val b = est > kappa
     fun k_seq () = f_seq v
     fun k'_seq () = measuredRun (r, m, k_seq)
     fun k_orc () = f_orc v
