@@ -29,7 +29,7 @@ structure Vector =
 	;
 
       define inline @from-list-rev (arg : [List.list, ml_int] / exh : exh) : vector =
-	  let vec : vector = ccall AllocVectorRev (host_vproc,  unwrap(#1(arg)), #0(arg))
+	  let vec : vector = ccall AllocVectorRev (host_vproc,  #0(#1(arg)), #0(arg))
 	  return (vec)
 	;
 

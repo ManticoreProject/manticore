@@ -97,4 +97,19 @@ functor AMD64AtomicOpsFn (
    *)
     fun genFenceRW () = [T.EXT IX.MFENCE]
 
+    fun genTimeStampCounter () = let
+      val r = Cells.newReg ()
+      val r' = T.REG(64, r)
+      val c32 = T.LI (T.I.fromInt (64, 32))
+      val stms = [
+          (* ensures that all operations before the rtdsc finish executing *)
+	    T.EXT IX.LFENCE,
+	    T.EXT IX.RDTSC,
+	    T.MV (64, r, T.ORB (64, T.REG(64, Cells.rax), 
+				    T.SLL(64, T.REG(64, Cells.rdx), c32)))
+          ]
+      in
+	(r', stms)
+      end
+
   end

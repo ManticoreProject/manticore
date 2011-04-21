@@ -47,6 +47,10 @@ structure Double =
 	    let res : ml_double = alloc(I32ToF64 (#0(f)))
 	      return (res)
 	;
+	define inline @from-long (f : ml_long / exh : exh) : ml_double =
+	    let res : ml_double = alloc(I64ToF64 (#0(f)))
+	      return (res)
+	;
       define inline @from-string (str : ml_string / exh : exh) : (* ml_double *) Option.option =
 	  let r : Option.option = ccall M_DoubleFromString (str)
 	  return (r)
@@ -69,6 +73,7 @@ structure Double =
     val toString : double -> string = _prim(@to-string)
     val fromString : string -> double Option.option = _prim(@from-string)
     val fromInt : int -> double = _prim(@from-int)
+    val fromLong : long -> double = _prim(@from-long)
     val abs : double -> double = _prim (@abs)
 
     fun max (x : double, y) = if x > y then x else y

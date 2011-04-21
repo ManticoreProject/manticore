@@ -73,4 +73,7 @@ structure Float =
 	else if x > y then GREATER
 	else EQUAL
 
+    fun abs x = if x < 0.0 then ~1.0 * x else x
+    fun sign x = if x < 0.0 then ~1 else 1
+
   end

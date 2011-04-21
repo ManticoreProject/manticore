@@ -313,6 +313,13 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 			  @ stms
 			  @ gprBind (anyTy, v, r)
 			end
+		    | P.TimeStampCounter => let
+			val (r, stms) = BE.AtomicOps.genTimeStampCounter ()
+		        in
+			  BE.VarDef.flushLoads varDefTbl
+			  @ stms
+			  @ gprBind (i64Ty, v, r)
+			end
 		    | P.AllocPolyVec (n, xs) => let
                         val {stms, result} = BE.Transfer.genAllocPolyVec varDefTbl {lhs=v, arg=xs}
                         in

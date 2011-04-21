@@ -23,3 +23,11 @@
     work-stealing-deque.pml
     work-stealing.pml
   end
+
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    unsafe-cache-aligned-int-array.pml
+    unsafe-cache-aligned-float-array.pml
+  end
+  cycle-counter.pml
+  oracle-scheduler.pml

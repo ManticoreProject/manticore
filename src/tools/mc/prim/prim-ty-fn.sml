@@ -134,6 +134,7 @@ functor PrimTyFn (Ty : sig
 	    | P.AllocLongArray _ => Ty.anyTy
 	    | P.AllocFloatArray _ => Ty.anyTy
 	    | P.AllocDoubleArray _ => Ty.anyTy
+	    | P.TimeStampCounter => i64Ty
 	  (* end case *))
 
   (* the signature of a primop *)
@@ -227,6 +228,7 @@ functor PrimTyFn (Ty : sig
 	    | P.AllocLongArray _ => ([i32Ty], Ty.anyTy)
 	    | P.AllocFloatArray _ => ([i32Ty], Ty.anyTy)
 	    | P.AllocDoubleArray _ => ([i32Ty], Ty.anyTy)
+	    | P.TimeStampCounter => ([], i64Ty)
 	  (* end case *))
 
     fun condArgTys c = (case c

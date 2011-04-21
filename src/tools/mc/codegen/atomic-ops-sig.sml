@@ -51,4 +51,7 @@ signature ATOMIC_OPS =
   (* sequentializing operation for all load-from-memory and write-to-memory instructions prior to this instruction *)
     val genFenceRW : unit -> MTy.T.stm list
 
+  (* operation that returns the number of processor ticks counted by the TSC register *)
+    val genTimeStampCounter : unit -> (MTy.T.rexp * MTy.T.stm list)
+
   end

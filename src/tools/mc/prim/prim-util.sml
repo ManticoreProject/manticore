@@ -104,6 +104,7 @@ structure PrimUtil : sig
       | nameOf (P.AllocLongArray _) = "AllocLongArray"
       | nameOf (P.AllocFloatArray _) = "AllocFloatArray"
       | nameOf (P.AllocDoubleArray _) = "AllocDoubleArray"
+      | nameOf P.TimeStampCounter = "TimeStampCounter"
 
   (* return the list of variables referenced in a primitive operation *)
     fun varsOf (P.I32Add(a, b)) = [a, b]
@@ -189,6 +190,7 @@ structure PrimUtil : sig
       | varsOf (P.AllocLongArray a) = [a]
       | varsOf (P.AllocFloatArray a) = [a]
       | varsOf (P.AllocDoubleArray a) = [a]
+      | varsOf P.TimeStampCounter = []
 
     fun fmt v2s p = (case varsOf p
 	   of [] => nameOf p ^ "()"
@@ -290,6 +292,7 @@ structure PrimUtil : sig
       | explode (P.AllocLongArray a) = (p1 P.AllocLongArray, [a])
       | explode (P.AllocFloatArray a) = (p1 P.AllocFloatArray, [a])
       | explode (P.AllocDoubleArray a) = (p1 P.AllocDoubleArray, [a])
+      | explode P.TimeStampCounter = (p0 P.TimeStampCounter, [])
     end (* local *)
 
     fun map f p = let val (mk, args) = explode p in mk(List.map f args) end
@@ -316,6 +319,7 @@ structure PrimUtil : sig
       | isPure P.FenceRead = false
       | isPure P.FenceWrite = false
       | isPure P.FenceRW = false
+      | isPure P.TimeStampCounter = false
       | isPure _ = true
 
   end
