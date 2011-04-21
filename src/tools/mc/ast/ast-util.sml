@@ -32,6 +32,8 @@ structure ASTUtil : sig
     val mkIntPat   : int -> AST.pat
     val mkInt      : int -> AST.exp
 
+    val plusOne    : AST.exp -> AST.exp
+
   (* boolean constants *)
     val trueConst  : AST.const
     val falseConst : AST.const
@@ -134,6 +136,8 @@ structure ASTUtil : sig
 
     fun mkArray (es, ty) = raise Fail "todo: ASTUtil.mkArray"
 
+    val unit = A.TupleExp []
+
     fun mkIntLit n = Literal.Int (IntInf.fromInt n)
     fun mkIntConst n = A.LConst (mkIntLit n, Basis.intTy)
     fun mkIntPat n = A.ConstPat (mkIntConst n)
@@ -191,6 +195,8 @@ structure ASTUtil : sig
 	     raise Fail "mkCompose: f's domain <> g's range"
        | _ => raise Fail "mkCompose"
       (* end case *))
+
+    fun plusOne n = mkApplyExp (A.VarExp (B.int_plus, []), [n, mkInt 1])
 
     fun copyPat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)

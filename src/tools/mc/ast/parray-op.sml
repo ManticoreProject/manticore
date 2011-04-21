@@ -17,6 +17,8 @@ structure PArrayOp = struct
 
   structure TU = TypeUtil
 
+(* structure AU = ASTUtil -- can't include ASTUtil, cyclic deps *)
+
   val commas = String.concatWith ","
 
   infixr -->
@@ -200,9 +202,10 @@ structure PArrayOp = struct
           (* end case *))
       | mkPS t = raise Fail ("unexpected type " ^ TU.toString t)
     fun mk (t as T.TupleTy [t', i]) =
-          if TU.same (B.intTy, i) 
-	    then A.PA_Sub (mkPS t')
-	    else raise Fail ("unexpected type " ^ TU.toString t)
+          if TU.same (B.intTy, i) then 
+            A.PA_Sub (mkPS t')
+	  else 
+	    raise Fail ("unexpected type " ^ TU.toString t)
       | mk t = raise Fail ("unexpected type " ^ TU.toString t)
     in
       A.PArrayOp o mk
@@ -321,14 +324,74 @@ structure PArrayOp = struct
       mk
     end
 
+    fun mkIntLit n = Literal.Int (IntInf.fromInt n)
+    fun mkIntConst n = A.LConst (mkIntLit n, Basis.intTy)
+    fun mkIntPat n = A.ConstPat (mkIntConst n)
+    fun mkInt n = A.ConstExp (mkIntConst n)
+
+    fun plusOne n = A.ApplyExp (A.VarExp (B.int_plus, []),
+				A.TupleExp [n, mkInt 1],
+				B.intTy)
+
+    fun mkApply resTy = let
+      fun app (e, []) = raise Fail "mkApply.app"
+	| app (e, [x]) = A.ApplyExp (e, x, resTy)
+	| app (e, xs) = A.ApplyExp (e, A.TupleExp xs, resTy)
+      in
+	app
+      end
+			
+    val intApp = mkApply B.intTy
+    val boolApp = mkApply B.boolTy
+    val unitApp = mkApply B.unitTy
+
 (* constructApp : ty -> exp *)
   val constructApp : T.ty -> A.exp = let 
     fun mk (t as T.FunTy (eltTy, uTy)) =
           if not (TU.same (B.unitTy, uTy)) then 
             raise Fail ("unexpected type " ^ TU.toString t)
-          else
-            A.PArrayOp (A.PA_App eltTy)
-      | mk t = raise Fail ("unexpected type " ^ TU.toString t)
+          else (* generate custom app function *) let
+            val lenExp = constructLength eltTy
+	    val subExp = constructSub eltTy
+	    fun fa t = T.FArrayTy (t, T.LfTy)
+	    fun v x = A.VarExp (x, [])
+	    val app = Var.new ("app", (eltTy --> B.unitTy) --> (fa eltTy --> B.unitTy))
+	    val f = Var.new ("f", eltTy --> B.unitTy)
+	    val f' = Var.new ("f'", fa eltTy --> B.unitTy)
+	    val arr = Var.new ("arr", fa eltTy)
+	    val n = Var.new ("n", B.intTy)
+	    val lp = Var.new ("lp", B.intTy --> B.unitTy)
+	    val i = Var.new ("i", B.intTy)
+	    val subi = mkApply eltTy (subExp, [v arr, v i])
+	    val seq = A.SeqExp (unitApp (v f, [subi]), intApp (v lp, [plusOne (v i)]))
+	    val lpTest = boolApp (v B.int_gte, [v i, v n])
+            val lpBody = A.IfExp (lpTest, A.TupleExp [], seq, B.unitTy)		
+	    val lpLam = A.FB (lp, i, lpBody)
+	    val lpBind = A.FunBind [lpLam]
+	    val nBind = A.ValBind (A.VarPat n, intApp (lenExp, [v arr]))
+	    val f'Body = A.LetExp (nBind, A.LetExp (lpBind, unitApp (v lp, [mkInt 0])))
+	    val f'Lam = A.FB (f', arr, f'Body)
+	    val appBody = A.LetExp (A.FunBind [f'Lam], v f')
+	    val appLam = A.FB (app, f, appBody)
+	    in
+              A.LetExp (A.FunBind [appLam], v app)
+	    end
+(* fun app f = let
+     fun f' arr = let
+       val n = len' arr
+       fun lp i = 
+         if (i >= n) then
+           ()
+	 else 
+           (f (sub' (arr, i)); lp (i+1))
+       in
+	 lp 0
+       end
+     in
+       f'
+     end
+*)
+      | mk t = raise Fail ("constructApp: unexpected type " ^ TU.toString t)
     in
       mk
     end
