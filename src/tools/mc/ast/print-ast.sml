@@ -6,8 +6,10 @@
 
 structure PrintAST : sig
 
-    val output          : TextIO.outstream * AST.comp_unit -> unit
-    val outputExp       : TextIO.outstream * AST.exp -> unit
+    val output           : TextIO.outstream * AST.comp_unit -> unit
+    val outputExp        : TextIO.outstream * AST.exp -> unit
+    val outputExpNoTypes : TextIO.outstream * AST.exp -> unit
+
     val print           : AST.comp_unit -> unit
     val printExp        : AST.exp -> unit
     val printComment    : string -> unit
@@ -521,6 +523,16 @@ structure PrintAST : sig
 				 
     fun print c = (compUnit c; ln (); flush ())
 
+  (* outputExpNoTypes : TextIO.outstream * A.exp -> unit *)
+    fun outputExpNoTypes (outS : TextIO.outstream, e : A.exp) : unit = let
+      val store = !showTypes
+      fun restoreShowTypes () = (showTypes := store)
+      in
+        showTypes := false;
+	outputExp (outS, e);
+	restoreShowTypes ()
+      end
+
   (* printExp : A.exp -> unit *)
     fun printExp e = (exp e; ln (); flush ())
 
@@ -531,8 +543,8 @@ structure PrintAST : sig
 
   (* printExpNoStamps : A.exp -> unit *)
     fun printExpNoStamps e = (showStamps := false;
-			     printExp e;
-			     showStamps := true)
+			      printExp e;
+			      showStamps := true)
 
   (* printComment : string -> unit *)       
   (* for debugging purposes *)

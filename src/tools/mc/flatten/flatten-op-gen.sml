@@ -35,6 +35,20 @@ end *) = struct
       m (0, xs, [])
     end
 
+(* some codegen helpers *)
+
+  infix @@
+  fun f @@ args = AU.mkApplyExp (f, args)
+
+  infix -->
+  fun d --> r = T.FunTy (d, r)
+
+  infix <--
+  fun p <-- e = A.ValBind (p, e)
+
+  infix **
+  fun f ** xs = List.map f xs
+
 (* We record the lambdas we generate as we go in an (oper->lam) map, defined as an env. *)
 (* We consult the env on the way in order to avoid generating code more than once per oper. *)
   type env = A.lambda FMap.map 
@@ -300,37 +314,31 @@ end *) = struct
       in 
         A.FB (f, arg, body)
       end
-    fun mkCompose (lam1, lam2) = let
-      val A.FB (g, _, _) = lam1
-      val A.FB (h, _, _) = lam2
+    fun composeLams (lam1 as A.FB (f, _, _), lam2 as A.FB (g, _, _)) = let
+      fun v x   = A.VarExp (x, [])
       val domTy = TU.domainType (typeOfLam lam2)
       val rngTy = TU.rangeType (typeOfLam lam1)
-      val f = Var.new (freshName (), T.FunTy (domTy, rngTy))
-      val x = Var.new ("x", domTy)
-      val b = ASTUtil.mkApplyExp (A.VarExp (g, []),
-				  [ASTUtil.mkApplyExp (A.VarExp (h, []),
-						       [A.VarExp (x, [])])])
+      val name  = Var.nameOf f ^ "_o_" ^ Var.nameOf g
+      val f_o_g = Var.new (name, domTy --> rngTy)
+      val arg   = Var.new ("arg", domTy)
       in
-	A.FB (f, x, b)
+	A.FB (f_o_g, arg, v f @@ [v g @@ [v arg]])
       end
     fun mkApps (x, ts, lams) = let
+      fun v x = A.VarExp (x, [])
       val xs = mapi (fn (t,i) => Var.new ("x_" ^ Int.toString i, t)) ts
-      fun mkApp (lam, x) = let
-        val A.FB (f, _, _) = lam
-        in
-	  ASTUtil.mkApplyExp (A.VarExp (f, []), 
-			      [A.VarExp (x, [])])
-        end
-      val apps = A.TupleExp (ListPair.mapEq mkApp (lams, xs))
-      val tupPat = A.TuplePat (List.map A.VarPat xs)
+      fun mkApp (A.FB (f, _, _), x) = v f @@ [v x]
+      val apps = AU.mkTupleExp (ListPair.mapEq mkApp (lams, xs))
+      val tupPat = AU.mkTuplePat (A.VarPat ** xs)
       in
-        A.LetExp (A.ValBind (tupPat, A.VarExp (x, [])), apps)
+        AU.mkLetExp ([tupPat <-- v x], apps)
       end      
     fun mkCrossCompose lams = let
-      val ts = List.map typeOfLam lams
-      val doms = List.map TU.domainType ts
+      val ts = typeOfLam ** lams
+      val doms = TU.domainType ** ts
+      val rngs = TU.rangeType ** ts
       val domTy = T.TupleTy doms
-      val rngTy = T.TupleTy (List.map TU.rangeType ts)
+      val rngTy = T.TupleTy rngs
       val f = Var.new (freshName (), T.FunTy (domTy, rngTy))
       val x = Var.new ("x", domTy)
       val b = mkApps (x, doms, lams)
@@ -394,13 +402,13 @@ end *) = struct
 	     | A.Compose (o1, o2) => let
 		 val (env', lam1) = mkOp env o1
 		 val (env'', lam2) = mkOp env' o2
-		 val lam = mkCompose (lam1, lam2)
+		 val lam = composeLams (lam1, lam2)
 		 val env''' = FMap.insert (env'', oper, lam)
                  in
 		   (env''', lam)
 	         end
 	     | A.CrossCompose os => let
-                 fun lp ([], env', lams) = (env', lams)
+                 fun lp ([], env', lams) = (env', List.rev lams)
 		   | lp (h::t, env, lams) = let
                        val (env', lam) = mkOp env h
                        in

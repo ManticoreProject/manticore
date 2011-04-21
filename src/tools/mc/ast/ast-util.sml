@@ -9,13 +9,13 @@
 structure ASTUtil : sig
 
   (* create a tuple expression, with singleton tuples mapping to their element expression *)
-    val mkTupleExp : AST.exp list-> AST.exp
+    val mkTupleExp : AST.exp list -> AST.exp
 
   (* create a series of let expressions from a list of bindings and a body *)
     val mkLetExp : AST.binding list * AST.exp -> AST.exp
 
   (* create a tuple pattern, with singleton tuples mapping to their element pattern *)
-    val mkTuplePat : AST.pat list-> AST.pat
+    val mkTuplePat : AST.pat list -> AST.pat
 
   (* create a function given the function's name, a list of parameter variables, and its body *)
     val mkFunWithParams : AST.var * AST.var list * AST.exp -> AST.lambda
