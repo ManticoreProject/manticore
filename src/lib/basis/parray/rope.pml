@@ -8,7 +8,9 @@
 
 structure Rope (* : ROPE *) = struct
 
-    structure S = VectorSeq (* ArraySeq *) (* ListSeq *)
+(*  structure S = ArraySeq *)
+    structure S = VectorSeq
+(*  structure S = ListSeq *)
 
     datatype option = datatype Option.option
 

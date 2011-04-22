@@ -15,9 +15,9 @@ structure FlattenControls = struct
   val onFlg = ref true
 
   val (registry, debug) = BasicControl.newRegistryWithDebug {
-    name = "flattening-transformation",
+    name = "ftrx",
     pri = 3,
-    help = "controls for flattening transformation"
+    help = "controls for the flattening transformation"
   }
 
   fun reg ctl = let

@@ -69,6 +69,21 @@ structure ArraySeq = struct
       lp (xs, 0)
     end
 
+  fun fromListRev xs = 
+    if List.null xs then (empty ())
+    else let
+      val len = List.length xs
+      val x = List.hd xs
+      val a = A.array (len, x)
+      fun lp (xs, i) = (case xs
+        of nil => a
+	 | h::t => (A.update (a, i, h);
+		    lp (t, i-1))
+        (* end case *))
+      in
+        lp (xs, len-1)
+      end
+
   fun toList s = let
     val len = length s
     fun lp (i, acc) = 
@@ -94,6 +109,14 @@ structure ArraySeq = struct
       in
         lp (0, len-1)
       end
+
+  fun app (f, s) = let
+    val n = length s
+    fun lp i = if (i>=n) then () 
+	       else (f (sub(s,i)); lp (i+1))
+    in
+      lp 0
+    end
 
   fun map (f, s) = 
     if null s then (empty ())
@@ -130,6 +153,20 @@ structure ArraySeq = struct
       in
         lp 1 (* already did 0 *)
       end
+
+  fun map2Eq (f, s1, s2) = let
+    val n1 = length s1
+    val n2 = length s2
+    in
+      if (n1 <> n2) then (raise Fail "map2Eq")
+      else let
+        fun lp i =
+          if (i >= n1) then ()
+	  else (f (sub(s1,i), sub(s2,i)); lp (i+1))
+        in
+	  lp 0
+	end
+    end
 
   fun foldr (f, z, s) = let
     val len = length s
