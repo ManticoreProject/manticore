@@ -348,24 +348,30 @@ structure PArrayOp = struct
   val unitApp = mkApply B.unitTy
 
 (* constructApp : ty -> exp *)
-(* At the moment, the supported types are ground types and tuples of supported types. *)
+(* At the moment, the supported types are ground types, parrays of ground types, *)
+(*   and tuples of supported types. *)
 (* I don't yet do datatypes. The problem is I need to do some type flattening here *)
 (*   and I'm not ready to flatten datatypes here in ast/. It's doable, but I'm leaving it *)
 (*   to the future for now. *)
   local
     val supportedTy : T.ty -> bool = let
       fun s t = 
-        isGroundTy t orelse (case t
-			      of T.TupleTy ts => List.all s ts
-			       | _ => false
-			      (* end case *))
+        if isGroundTy t then 
+          true
+	else (case t
+	  of T.FArrayTy (t', _) => isGroundTy t'
+	   | T.TupleTy ts => List.all s ts
+	   | _ => false
+	  (* end case *))
       in
 	s
       end
   (* a function to "lift" supported types to parrays in a particular way -- *)
   (* - ground types are lifted to flat arrays of those types *)
+  (* - arrays of ground types are lifted one level of depth *)
   (* - tuples of supported types are lifted to tuples of lifted types *)
   (* ex: int --> FArray (inf, Lf)                              *)
+  (* ex: FArray (int, Lf) --> FArray (int, Nd Lf)              *)
   (* ex: (int * int) --> (FArray (int, Lf) * FArray (int, Lf)) *)
   (*   (as opposed to FArray (int * int, Lf))                  *)
     val lift : T.ty -> T.ty = let
@@ -373,7 +379,8 @@ structure PArrayOp = struct
         if isGroundTy t then
           T.FArrayTy (t, T.LfTy)
 	else (case t
-          of T.TupleTy ts => T.TupleTy (List.map l ts)
+          of T.FArrayTy (t', n) => T.FArrayTy (t', T.NdTy n)
+	   | T.TupleTy ts => T.TupleTy (List.map l ts)
 	   | _ => raise Fail ("lift: unexpected type " ^ TU.toString t)
           (* end case *))
       in
@@ -392,6 +399,7 @@ structure PArrayOp = struct
       in app end 
     for some monomorphic type t and specialized PArray.length and !.
   *)
+  (* TODO don't generate this --every-- time it's needed... *)
     val constructApp : T.ty -> A.exp = let 
       fun mk (t as T.FunTy (eltTy, uTy)) =
             if not (TU.same (B.unitTy, uTy)) then 
@@ -399,8 +407,7 @@ structure PArrayOp = struct
             else if not (supportedTy eltTy) then
               raise Fail ("constructApp: unsupported type " ^ TU.toString t)
 	    else (* generate custom app function *) let
-val _ = print ("GGGGG generating custom app for elt ty " ^ TU.toString eltTy ^ "\n")
-  (* FIXME: I think fa t is not right -- I think it needs to be the flattened version of that type. *)
+(* val _ = print ("GGGGG generating custom app for elt ty " ^ TU.toString eltTy ^ "\n") *)
 	      fun v x = A.VarExp (x, [])
 	      val eltTy' = lift eltTy
               val lenExp = constructLength eltTy'
