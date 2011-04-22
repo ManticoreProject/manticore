@@ -20,8 +20,7 @@ rm -rf $LOG
 
 ( cd $DIR/goals;
 
-# par-* elided because of broken par-pcase
-for g in par-cml par-float-ropes par-int-ropes par-parray par-por par-ptup par-pval par-range
+for g in par-*
 do
 ( cd $g;
    for f in *.pml
