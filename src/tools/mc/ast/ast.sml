@@ -42,6 +42,9 @@ structure AST =
       | PA_Range of ty         (* type is element type (currently only int supported) *)
       | PA_App of ty           (* type is the element type *)
     and psub_op
+(* TODO...I think a better repr for these might be the FArray types, with shape. *)
+(* Then we can defer the nested vs. flat question till later. *)
+(* Maybe even the tuple...hmm. *)
       = PSub_Nested of ty      (* type of the parr in the arg *)
       | PSub_Flat of ty        (* type of the parr in the arg *)
       | PSub_Tuple of psub_op list

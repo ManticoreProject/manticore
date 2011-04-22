@@ -163,8 +163,17 @@ end = struct
              of NONE => A.VarExp (x, List.map ty ts)
 	      | SOME mkOp => let
                   val t = (ty o TU.domainType o TypeOf.exp) ve
+(* +debug *)
+		  val _ = if Var.nameOf x = "sub" then
+		  	      print ("found sub and it's applied to type " ^
+		  		     TU.toString (TU.deepPrune t) ^ "\n")
+		  	  else ()
+		  	      (* print ("found " ^ Var.nameOf x ^ " and it's applied to type " ^ *)
+		  	      (* 	     TU.toString (TU.deepPrune t) ^ "\n") *)
+(* -debug *)
+		  val oper = mkOp (TU.deepPrune t)
                   in
-		    mkOp (TU.deepPrune t)
+		    oper
 		  end
              (* end case *))
 	    | NONE => let
