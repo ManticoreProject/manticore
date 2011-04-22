@@ -52,7 +52,7 @@ structure PArray = struct
 
 (* Unfortunately one cannot write polymorphic parray functions at present. *)
 (* Therefore I am providing some common useful monomorphic functions that really *)
-(* should be polymorphic. *)
+(* should be instances of a single polymorphic one. *)
 
   fun tos_int parr = let
     fun tos i = Int.toString(parr!i)
@@ -74,6 +74,29 @@ structure PArray = struct
 
   fun tos_float parr = let
     fun tos i = Float.toString(parr!i)
+    fun lp (i, acc) =
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::","::acc)
+    val n = length parr
+    in
+      if (n<0) then (raise Fail "bug")
+      else if (n=0) then "[||]"
+      else let
+        val init = [tos(n-1),"|]"]
+        in
+          lp (n-2, init)
+        end
+    end  
+
+  fun tos_intPair parr = let
+    val itos = Int.toString
+    fun tos i = let
+      val (m,n) = parr!i 
+      in
+        "(" ^ itos m ^ "," ^ itos n ^ ")"
+      end
     fun lp (i, acc) =
       if (i<0) then
         String.concat ("[|"::acc)
