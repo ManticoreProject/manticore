@@ -13,6 +13,7 @@
 
   list-seq.pml
   array-seq.pml
+  array-seq-pair.pml
   ann "cpp" ""
   in
     vector-seq.pml

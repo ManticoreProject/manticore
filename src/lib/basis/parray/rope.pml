@@ -12,6 +12,8 @@ structure Rope (* : ROPE *) = struct
 (*  structure S = VectorSeq *)
 (*  structure S = ListSeq *)
 
+    structure SPr = ArraySeqPair
+
     datatype option = datatype Option.option
 
     type 'a seq = 'a S.seq
@@ -441,6 +443,9 @@ structure Rope (* : ROPE *) = struct
         (chkLength r; r)      
       end
 
+  (* fromArray : 'a array -> 'a rope *)
+  
+
   (* fromSeq : 'a seq -> 'a rope *)
     fun fromSeq s = fromList (S.toList s)
 
@@ -463,27 +468,26 @@ structure Rope (* : ROPE *) = struct
         end
 
   (* tabP : int * (int -> 'a) -> 'a rope *)
-    fun tabP (n, f) = 
-      if n <= 0 then 
-        empty
-      else 
-        tabFromToP (0, n-1, f)
+    fun tabP (n, f) = tabFromToP (0, n-1, f)
 
   (* tabFromToStepP : int * int * int * (int -> 'a) -> 'a rope *)
   (* lo inclusive, hi inclusive *)
-    fun tabFromToStepP (from, to_, step, f) = (case Int.compare (step, 0)
-      of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around this raise. -ams *)
-       | LESS (* negative step *) =>
-           if (to_ > from) then
-             empty
-       	   else
-             tabFromToP (0, (from-to_) div (~step), fn i => f (from + (step*i)))
-       | GREATER (* positive step *) =>
-       	   if (from > to_) then
-       	     empty
-       	   else
-             tabFromToP (0, (to_-from) div step, fn i => f (from + (step*i)))
-      (* end case *))
+    fun tabFromToStepP (from, to_, step, f) = let
+      fun f' i = f (from + (step * i))
+      in (case Int.compare (step, 0)
+        of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around this raise. -ams *)
+	 | LESS (* negative step *) =>
+             if (to_ > from) then
+               empty
+       	     else
+               tabFromToP (0, (from-to_) div (~step), f')
+	 | GREATER (* positive step *) =>
+       	     if (from > to_) then
+       	       empty
+       	     else
+               tabFromToP (0, (to_-from) div step, f')
+	(* end case *))
+      end
 
   (* forP : int * (int -> unit) -> unit *)
     fun forP (n, f) = let

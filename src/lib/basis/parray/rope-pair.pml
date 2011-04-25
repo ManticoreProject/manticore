@@ -9,6 +9,7 @@
 structure RopePair (* : ROPE_PAIR *) = struct
 
     structure S = Rope.S
+    structure P = Rope.SPr
     structure R = Rope
 
     datatype option = datatype Option.option
@@ -125,4 +126,55 @@ structure RopePair (* : ROPE_PAIR *) = struct
 	     end
        (* end case *))
 
-  end
+    val cwb = R.concatWithoutBalancing
+
+  (* tabFromToP : int * int * (int -> 'a * 'b) -> 'a rope * 'b rope *)
+  (* lo incl, hi incl *)
+    fun tabFromToP (lo, hi, f) =
+      if (lo > hi) then
+        (R.empty, R.empty)
+      else let
+        fun f1 i = let val (x,_) = f(i) in x end
+	fun f2 i = let val (_,x) = f(i) in x end
+        fun lp (lo, hi) = let
+          val nElts = hi-lo+1
+	  in
+            if nElts <= R.maxLeafSize then let
+              val (sA, sB) = P.tabulate (nElts, fn i => f (lo+i))
+              in
+                (R.mkLeaf sA, R.mkLeaf sB)
+              end
+	    else let
+              val m = (hi + lo) div 2
+	      val ((r1L, r2L), (r1R, r2R)) = (| lp (lo, m), lp (m+1, hi) |)
+              in
+                (cwb (r1L, r1R), cwb (r2L, r2R))
+	      end
+	  end
+        in
+          lp (lo, hi)
+	end
+
+  (* tabP : int * (int -> 'a * 'b) -> 'a rope * 'b rope *)
+    fun tabP (n, f) = tabFromToP (0, n-1, f)
+
+  (* tabFromToStepP : int * int * int * (int -> 'a * 'b) -> 'a rope * 'b rope *)
+  (* lo incl, hi incl *)
+    fun tabFromToStepP (from, to_, step, f) = let
+      fun f' i = f (from + (step * i))
+      in (case Int.compare (step, 0)
+        of EQUAL => (raise Fail "0 step")
+	 | LESS (* negative step *) =>
+             if (to_ > from) then 
+	       (R.empty, R.empty)
+	     else
+	       tabFromToP (0, (from-to_) div (~step), f')
+	 | GREATER (* positive step *) =>
+             if (from > to_) then
+               (R.empty, R.empty)
+	     else
+               tabFromToP (0, (to_-from) div step, f')
+        (* end case *))
+      end
+
+end

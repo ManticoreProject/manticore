@@ -26,4 +26,21 @@ structure FArrayPair = struct
         F.FArray (data', shape1)
       end
 
+(* tabulate : int * (int -> ('a * 'b)) -> 'a f_array * 'b f_array *)
+  fun tabulate (n, f) = let
+    val (data1, data2) = RopePair.tabP (n, f)
+    val shape = F.Lf (0, n)
+    in
+      (F.FArray (data1, shape), F.FArray (data2, shape))
+    end
+
+(* tabFromToStep : int * int * int * (int -> 'a * b) -> 'a f_array * 'b f_array *)
+(* lo incl, hi incl *)
+  fun tabFromToStep (from, to_, step, f) = let
+    val (data1, data2) = RopePair.tabFromToStepP (from, to_, step, f)
+    val shape = F.Lf (0, Rope.length data1)
+    in
+      (F.FArray (data1, shape), F.FArray (data2, shape))
+    end
+
 end
