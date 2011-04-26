@@ -26,6 +26,8 @@ structure ParrLitToRope : sig
     structure MEnv = ModuleEnv
     structure BEnv = BasisEnv
 
+    val itos = Int.toString
+
     val getVar = BEnv.getVarFromBasis
     val rVar = fn v => getVar ("Rope"::[v])
 
@@ -40,35 +42,35 @@ structure ParrLitToRope : sig
 
   (* mkRopeFromList : ty * exp -> exp *)
   (* Make a rope expression from an expression which is a list in the surface language. *)
-    fun mkRopeFromList (ty, listExp) =
-      U.mkApplyExp (AST.VarExp (ropeFromList (), [ty]), [listExp])
-      
-  (* newVars : ty -> exp list -> var list *)
-  (* Given [e0, e1, ..., en], generate [x0, x1, ..., xn]. *)
-  (* We are in a special case where we know all the types are the same. *)
-    fun newVars ty es = let
-      fun lp ([], _, xs) = List.rev xs
-        | lp (e::es, i, xs) = let
-            val x = Var.new ("x" ^ Int.toString i, ty) 
-            in
-              lp (es, i+1, x::xs)
-            end
+    fun mkRopeFromList (t, listExp) = let
+      val rfl = AST.VarExp (ropeFromList (), [t])
       in
-	lp (es, 0, [])
+        U.mkApplyExp (rfl, [listExp])
       end
 
+  (* newVars : int * ty -> var list *)
+  (* Generate [x0, x1, ..., xn], all of type t. *)
+    fun newVars (n, t) = List.tabulate (n, fn i => Var.new ("x" ^ itos i, t))
+      
   (* tr : exp list * ty -> exp *)
   (* Given a list of expressions, which were in a parallel array, and their type, *)
   (* build a rope out of them. *)
     fun tr ([], ty) = AST.VarExp (ropeEmpty (), [ty])
       | tr ([e], ty) = U.mkApplyExp (AST.VarExp (ropeSingleton (), [ty]), [e])
       | tr (es, ty) = let
-          val xs = newVars ty es
-	  val tupPat = AST.TuplePat (List.map AST.VarPat xs)
-	  val bind = AST.ValBind (tupPat, AST.PTupleExp es)
-	  val xsList = U.mkList (List.map mkVarExp xs, ty)
-	  in
-            U.mkLetExp ([bind], mkRopeFromList (ty, xsList))
+          val isLit = (fn AST.ConstExp (AST.LConst _) => true
+			| _ => false)
+          in
+            if List.all isLit es then (* don't build a ptuple *)
+              mkRopeFromList (ty, U.mkList (es, ty))
+	    else let
+              val xs = newVars (List.length es, ty)
+	      val tupPat = AST.TuplePat (List.map AST.VarPat xs)
+	      val bind = AST.ValBind (tupPat, AST.PTupleExp es)
+	      val xsList = U.mkList (List.map mkVarExp xs, ty)
+	      in
+                U.mkLetExp ([bind], mkRopeFromList (ty, xsList))
+	      end
 	  end
 
   (* mkRope : exp list * ty -> exp *)
