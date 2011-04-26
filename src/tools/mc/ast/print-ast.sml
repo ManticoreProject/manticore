@@ -390,7 +390,9 @@ structure PrintAST : sig
 
   (* const : A.const -> unit *)
     and const (A.DConst (c, ts)) = dcon c
-      | const (A.LConst (lit, t)) = pr (Literal.toString lit)
+      | const (A.LConst (lit, ty)) = (
+	  pr "("; pr (Literal.toString lit);
+	  pr ":"; pr (TypeUtil.toString ty); pr ")")
 
   (* dcon : T.dcon -> unit *)
     and dcon (dc as T.DCon{name, owner, ...}) = let
