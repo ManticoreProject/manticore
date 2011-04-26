@@ -9,17 +9,18 @@
 
 structure BasisItems : sig
 
-  val farrayTyc      : unit -> Types.tycon
-  val nestingTreeTyc : unit -> Types.tycon
-  val farrayCon      : unit -> Types.dcon
-  val lfCon          : unit -> Types.dcon
-  val ndCon          : unit -> Types.dcon
+  val farrayTyc    : unit -> Types.tycon
+  val shapeTreeTyc : unit -> Types.tycon
+  val farrayCon    : unit -> Types.dcon
+  val lfCon        : unit -> Types.dcon
+  val ndCon        : unit -> Types.dcon
+  val intFArrayTyc : unit -> Types.tycon
 
-  val basisItems : unit -> {farrayTyc      : Types.tycon,
-			    nestingTreeTyc : Types.tycon,
-			    farrayCon      : Types.dcon,
-			    lfCon          : Types.dcon,
-			    ndCon          : Types.dcon}
+  val basisItems : unit -> {farrayTyc    : Types.tycon,
+			    shapeTreeTyc : Types.tycon,
+			    farrayCon    : Types.dcon,
+			    lfCon        : Types.dcon,
+			    ndCon        : Types.dcon}
   
 end = struct
 
@@ -37,17 +38,18 @@ end = struct
   val tyc = memo BasisEnv.getTyConFromBasis
   val dcon = memo BasisEnv.getDConFromBasis
 
-  val farrayTyc      = tyc ["FArray", "f_array"]
-  val nestingTreeTyc = tyc ["FArray", "nesting_tree"]
-
-  val farrayCon      = dcon ["FArray", "FArray"]
-  val lfCon          = dcon ["FArray", "Lf"]
-  val ndCon          = dcon ["FArray", "Nd"]
+  val farrayTyc    = tyc  ["FArray", "f_array"]
+  val shapeTreeTyc = tyc  ["ShapeTree", "shape_tree"]
+  val farrayCon    = dcon ["FArray", "FArray"]
+  val lfCon        = dcon ["ShapeTree", "Lf"]
+  val ndCon        = dcon ["ShapeTree", "Nd"]
 
   fun basisItems _ = {farrayTyc = farrayTyc (),
-		      nestingTreeTyc = nestingTreeTyc (),
+		      shapeTreeTyc = shapeTreeTyc (),
 		      farrayCon = farrayCon (),
 		      lfCon = lfCon (),
 		      ndCon = ndCon ()}
+
+  val intFArrayTyc = tyc ["IntFArray", "int_farray"]
 
 end

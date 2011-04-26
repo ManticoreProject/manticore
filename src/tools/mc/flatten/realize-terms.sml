@@ -4,7 +4,7 @@
  * All rights reserved.
  *
  * Convert abstract farrays to their AST realizations as
- *   FArray (data:tau rope, shape:nesting_tree)
+ *   FArray (data:t rope, shape:shape_tree)
  * where FArray is in path/to/src/lib/basis/parray/farray.pml.
  *)
 
@@ -37,9 +37,9 @@ end = struct
     if not fact then raise Fail ("assertion failure: " ^ msg) else ()
 
   fun mkTree (n : A.ntree) : A.exp = let
-    val {nestingTreeTyc, lfCon, ndCon, ...} = basisItems ()
+    val {shapeTreeTyc, lfCon, ndCon, ...} = basisItems ()
     fun const c = A.ConstExp (A.DConst (c, []))
-    val ntreeTy = A.ConTy ([], nestingTreeTyc)
+    val ntreeTy = A.ConTy ([], shapeTreeTyc)
     in case n
       of A.Lf (loExp, hiExp) => AU.mkApplyExp (const lfCon, [loExp, hiExp])
        | A.Nd ts => let

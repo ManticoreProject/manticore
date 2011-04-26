@@ -161,13 +161,13 @@ end *) = struct
 (* side effect: new dcons of that tyc are inserted into the env *)
   and newFlatTyc (env : FEnv.env) (tyc : T.tycon) : T.tycon = let
 	val _ = assert "data tyc" (TU.isDataTyc tyc)
-        fun underscore a = Atom.atom (Atom.toString a ^ "_")
+        fun ^^ (a, s) = Atom.atom (Atom.toString a ^ s)
         val (T.Tyc {name, params, def, ...}) = tyc
         val cons = (case def
 	  of T.DataTyc {cons, ...} => !cons
 	   | _ => raise Fail "newFlatTyc"
           (* end case *))
-	val name' = underscore name     
+	val name' = ^^ (name, "_")
         val tyc' = TyCon.newDataTyc (name', params) (* FIXME OK to reuse params? *)
         fun dcon d = let
           val name = DataCon.nameOf d
@@ -179,8 +179,9 @@ end *) = struct
           in
             FEnv.insertDCon (env, d, d')
 	  end
+	(* val _ = print ("%%%%% flattening " ^ Atom.toString name ^ 
+                          " to " ^ Atom.toString name' ^ "\n"); *)
         in
-          print ("%%%%% flattening " ^ Atom.toString name ^ " to " ^ Atom.toString name' ^ "\n");
           FEnv.insertTyc (env, tyc, tyc'); (* insert new tyc into env *)
           List.app dcon cons; (* insert new dcons into env *)
 	  tyc'

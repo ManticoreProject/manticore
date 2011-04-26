@@ -55,6 +55,7 @@ end *) = struct
     end
 
   fun mkFunctions (flatTycs : TyCon.Set.set) = let
+    val isLf = fn T.LfTy => true | _ => false
     fun flatTyc c = TyCon.Set.member (flatTycs, c)
     fun ty (T.ErrorTy) = T.ErrorTy
       | ty (m as T.MetaTy (T.MVar {info, ...})) = (case !info
@@ -75,8 +76,11 @@ end *) = struct
           end
       | ty (T.FunTy (t1, t2)) = T.FunTy (ty t1, ty t2)
       | ty (T.TupleTy ts) = T.TupleTy (List.map ty ts)
-      | ty (T.FArrayTy (t, n)) = T.ConTy ([ty t], BasisItems.farrayTyc ())
-          (* note: we lose the shape tree type here *)
+      | ty (T.FArrayTy (t, n)) = (* note: we lose the shape tree information here *)
+          if TU.same (B.intTy, t) andalso isLf n then
+            T.ConTy ([], BasisItems.intFArrayTyc ())
+	  else
+            T.ConTy ([ty t], BasisItems.farrayTyc ())            
   and tyc c = (case findTyc c
     of SOME c' => c'
      | NONE => newTyc c
@@ -133,9 +137,10 @@ end *) = struct
       rt
     end
   val pop = let
+    fun $f xs = List.map f xs
     fun ps (A.PSub_Nested t) = A.PSub_Nested (ty t)
       | ps (A.PSub_Flat t) = A.PSub_Flat (ty t)
-      | ps (A.PSub_Tuple os) = A.PSub_Tuple (List.map ps os)
+      | ps (A.PSub_Tuple os) = A.PSub_Tuple ($ps os)
     fun pop (A.PA_Length t) = A.PA_Length (ty t)
       | pop (A.PA_Sub s) = A.PA_Sub (ps s)
       | pop (A.PA_Tab t) = A.PA_Tab (ty t)
@@ -144,6 +149,7 @@ end *) = struct
       | pop (A.PA_Reduce t) = A.PA_Reduce (ty t)
       | pop (A.PA_Range t) = A.PA_Range (ty t)
       | pop (A.PA_App t) = A.PA_App (ty t)
+      | pop (A.PA_TabTupleFTS ts) = A.PA_TabTupleFTS ($ty ts)
     in
       pop
     end

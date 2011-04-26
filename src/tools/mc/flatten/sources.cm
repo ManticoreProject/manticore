@@ -13,6 +13,7 @@ Library
   structure FlattenOpGen
   structure FlattenOpFusion
   structure BasisItems
+  structure DelayedBasis
   structure RealizeTerms
   structure RealizeTypes
   structure PArrayOpGen
@@ -44,6 +45,7 @@ is
   flatten-op-gen.sml  
   flatten-op-fusion.sml
   basis-items.sml
+  delayed-basis.sml
   realize-terms.sml
   realize-types.sml
   parray-op-gen.sml

@@ -71,16 +71,19 @@ end *) = struct
 (*   so we provide a memoized, thunkified collection of them.          *)
   local
     val cell = ref NONE
+    val getVar = BasisEnv.getVarFromBasis
+    val getTyc = BasisEnv.getTyConFromBasis
+    val getDCon = BasisEnv.getDConFromBasis
   in
     fun basisItems () = (case !cell
       of SOME record => record 
        | NONE => let
-	   val ft = BasisEnv.getTyConFromBasis ["FArray", "f_array"]
-	   val fc = BasisEnv.getDConFromBasis  ["FArray", "FArray"]
-	   val nt = BasisEnv.getTyConFromBasis ["FArray", "nesting_tree"]
-	   val ff = BasisEnv.getVarFromBasis ["FArray", "flatten"]
-	   val rt = BasisEnv.getTyConFromBasis ["Rope", "rope"]
-	   val rm = BasisEnv.getVarFromBasis   ["Rope", "mapP"]
+	   val ft = getTyc ["FArray", "f_array"]
+	   val fc = getDCon  ["FArray", "FArray"]
+	   val nt = getTyc ["ShapeTree", "shape_tree"]
+	   val ff = getVar ["FArray", "flatten"]
+	   val rt = getTyc ["Rope", "rope"]
+	   val rm = getVar ["Rope", "mapP"]
            val record = {fArrTyc=ft, fArrCon=fc, fArrFlatten=ff,
 			 ntreeTyc=nt, ropeTyc=rt, ropeMap=rm}
            in
@@ -88,6 +91,7 @@ end *) = struct
 	     record
            end
        (* end case *))
+    val intfTyc = Memo.new' (fn _ => getTyc ["IntFArray", "int_farray"])
   end (* local *)
 
 (* +debug *)
@@ -186,9 +190,16 @@ end *) = struct
     (* n.b. trying to bind these at the top level causes a link-time failure *)
       val {fArrTyc, fArrCon, fArrFlatten, ntreeTyc, ropeTyc, ropeMap} = basisItems ()
 
+    (* choose a monorphic farray representation if possible *)
+      fun monomorphicFArray (t : T.ty) : T.ty = 
+        if TU.same (B.intTy, t) then
+	  T.ConTy ([], intfTyc ())
+	else
+	  T.ConTy ([t], fArrTyc)
+
     (* calculate the domain and range types for the function to be generated *)
       val domTy = T.ConTy ([T.TupleTy ts], fArrTyc)
-      val rngTy = T.TupleTy (List.map (fn t => T.ConTy ([t], fArrTyc)) ts)
+      val rngTy = T.TupleTy (List.map monomorphicFArray ts)
 
     (* create variables for function name and its argument *)
       val name  = freshName ()
@@ -214,13 +225,24 @@ end *) = struct
      * where data and shape are the vars bound in the pattern match *)
       fun mkMapHash (hash as A.FB (h, _, _), i) = let 
         val t = List.nth (ts, i)
-        val m = AU.mkApplyExp (A.VarExp (ropeMap, 
-					 [T.TupleTy ts, t]),
-			      [A.VarExp (h, []), 
-			       A.VarExp (data, [])])
+	val mapExp = if TU.same (t, B.intTy) 
+		     then let
+	               val m = BasisEnv.getVarFromBasis ["Rope", "mapP_int"]
+                       in
+		         A.VarExp (m, [T.TupleTy ts])
+		       end
+		     else 
+		       A.VarExp (ropeMap, [T.TupleTy ts, t])
+	val dcon = if TU.same (t, B.intTy)
+		   then let
+                     val c = BasisEnv.getDConFromBasis ["IntFArray", "FArray"]
+                     in
+	               A.DConst (c, [])
+		     end
+		   else A.DConst (fArrCon, [t])
+        val m = AU.mkApplyExp (mapExp, [A.VarExp (h, []), A.VarExp (data, [])])
         in
-	  AU.mkApplyExp (A.ConstExp (A.DConst (fArrCon, [t])), 
-			 [m, A.VarExp (shape, [])])
+	  AU.mkApplyExp (A.ConstExp dcon, [m, A.VarExp (shape, [])])
         end
       val binds = List.map (fn (h,_) => A.FunBind [h]) hashes
       val ptup = A.PTupleExp (List.map mkMapHash hashes)

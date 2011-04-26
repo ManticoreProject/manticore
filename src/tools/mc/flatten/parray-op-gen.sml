@@ -16,8 +16,14 @@ structure PArrayOpGen = struct
   structure T = Types
   structure P = PArrayOp
 
+  structure D  = DelayedBasis
+  structure DC = D.TyCon
+  structure DD = D.DataCon
+  structure DV = D.Var
+
   structure AU = ASTUtil
   structure TU = TypeUtil
+  structure FU = FlattenUtil
 
   fun mapi f xs = let
     fun m (_, [], acc) = List.rev acc
@@ -26,40 +32,7 @@ structure PArrayOpGen = struct
       m (0, xs, [])
     end
 
-  fun memo get path = let
-    val cell = ref NONE
-    fun remember x = (cell := SOME x; x)
-    fun read () = (case !cell
-      of SOME x => x
-       | NONE => remember (get path)
-      (* end case *))
-    in
-      read
-    end
-
-  val memoTyc = memo BasisEnv.getTyConFromBasis
-  val memoVar = memo BasisEnv.getVarFromBasis
-
-  val farrayTyc    = memoTyc ["FArray", "f_array"]
-  val flatSub      = memoVar ["FArray", "flatSub"]
-  val nestedSub    = memoVar ["FArray", "nestedSub"]
-  val flen         = memoVar ["FArray", "length"]
-  val ftab         = memoVar ["FArray", "tab"]
-  val ftabFTS      = memoVar ["FArray", "tabFromToStep"]
-  val flatMap      = memoVar ["FArray", "flatMap"]
-  val flatMap2     = memoVar ["FArrayPair", "flatMapEq"]
-  val groundReduce = memoVar ["FArray", "groundReduce"]
-  val intRange     = memoVar ["FArray", "intRange"]
-  val fapp         = memoVar ["FArray", "app"]
-
-  local
-    fun isg c = List.exists (fn g => TyCon.same (c,g)) B.primTycs
-  in
-    fun isGroundTy (T.ConTy ([], c)) = isg c
-      | isGroundTy _ = false
-  end (* local *)
-
-  fun isFArrayTyc c = TyCon.same (c, farrayTyc ())
+  fun isFArrayTyc (c : T.tycon) : bool = TyCon.same (c, DC.farray ())
 
   fun mkHash1 tys = (case tys
     of [] => raise Fail "mkHash1: nil"
@@ -87,9 +60,14 @@ structure PArrayOpGen = struct
            in
              c
            end 
+       | T.ConTy ([], c) =>
+           if TyCon.same (c, DC.intFArray ()) then
+             A.VarExp (DV.intLen (), [])
+           else
+             raise Fail ("genLength: unexpected type " ^ TU.toString ty')
        | T.ConTy (ts, c) => 
            if isFArrayTyc c then
-             A.VarExp (flen (), ts)
+             A.VarExp (DV.flen (), ts)
 	   else
 	     raise Fail ("gen: unexpected type (not farray) " ^ TU.toString ty')
        | _ => raise Fail ("gen: unexpected type " ^ TU.toString ty')
@@ -99,15 +77,21 @@ structure PArrayOpGen = struct
     fun g (A.PSub_Nested t) = (case t 
           of T.ConTy ([t'], c) =>
                if isFArrayTyc c
-	         then A.VarExp (nestedSub(), [t'])
+	         then A.VarExp (DV.nestedSub (), [t'])
 	         else raise Fail ("unexpected ConTy " ^ TU.toString t)
 	   | _ => raise Fail ("unexpected ty " ^ TU.toString t)
 	  (* end case *))
       | g (A.PSub_Flat t) = (case t 
           of T.ConTy ([t'], c) =>
-               if isFArrayTyc c
-	         then A.VarExp (flatSub(), [t'])
-	         else raise Fail ("unexpected ConTy " ^ TU.toString t)
+               if isFArrayTyc c then 
+	         A.VarExp (DV.flatSub (), [t'])
+	       else 
+		 raise Fail ("unexpected ConTy " ^ TU.toString t)
+	   | T.ConTy ([], c) =>
+               if TyCon.same (c, DC.intFArray ()) then
+		   A.VarExp (DV.intFlatSub (), [])
+	       else
+	         raise Fail ("unexpected ty " ^ TU.toString t)
 	   | _ => raise Fail ("unexpected ty " ^ TU.toString t)
 	  (* end case *))
       | g (A.PSub_Tuple ss) = let
@@ -140,37 +124,55 @@ structure PArrayOpGen = struct
       g s
     end
 
-  fun genTab t = A.VarExp (ftab (), [t])
+  fun genTab (t : T.ty) : A.exp =
+    if TU.same (t, B.intTy) then
+      A.VarExp (DV.intTab (), [])
+    else
+      A.VarExp (DV.ftab (), [t])
 
-  fun genTabFTS t = A.VarExp (ftabFTS (), [t])
+  fun genTabFTS (t : T.ty) : A.exp = 
+    if TU.same (t, B.intTy) then
+      A.VarExp (DV.intTabFTS (), [])
+    else
+      A.VarExp (DV.ftabFTS (), [t])
+
+  fun genTabTupleFTS ts = (case ts
+    of [t1, t2] => A.VarExp (DV.fptab (), ts)
+     | _ => raise Fail ("todo: " ^ TU.toString (T.TupleTy ts))
+    (* end case *))
           
   fun genMap (t as T.FunTy (alpha, beta)) = 
         if isGroundTy alpha then
-          A.VarExp (flatMap (), [alpha, beta])
+          A.VarExp (DV.fmap (), [alpha, beta])
 	else (case alpha
           of tup as T.TupleTy [t1, t2] =>
                if isGroundTy t1 andalso isGroundTy t2 then
-	         A.VarExp (flatMap2 (), [alpha, beta])
+	         if List.all (fn t => (TU.same (B.intTy, t))) [t1, t2, beta] then
+                   A.VarExp (DV.ipMapEq_int (), [])
+		 else 
+		   A.VarExp (DV.fpmap (), [alpha, beta])
 	       else raise Fail ("genMap(loc1) todo: " ^ TU.toString tup)
 	   | _ => raise Fail ("genMap(loc2) todo: " ^ TU.toString t)
           (* end case *))
     | genMap t = raise Fail ("unexpected ty " ^ TU.toString t)
 
-  fun genReduce t =
-    if isGroundTy t then
-      A.VarExp (groundReduce (), [t])
+  fun genReduce (t : T.ty) : A.exp =
+    if TU.same (B.intTy, t) then
+      A.VarExp (DV.ifReduce (), [])
+    else if isGroundTy t then
+      A.VarExp (DV.greduce (), [t])
     else
       raise Fail ("todo: reduce for type " ^ TU.toString t)
 
   fun genRange t =
     if TU.same (t, B.intTy) then
-      A.VarExp (intRange (), [])
+      A.VarExp (DV.intRange (), [])
     else
       raise Fail ("unexpected type " ^ TU.toString t)
 
   fun genApp t = 
     if isGroundTy t then
-      A.VarExp (fapp (), [t])
+      A.VarExp (DV.fapp (), [t])
     else
       raise Fail ("todo: app for type " ^ TU.toString t)
 
@@ -179,6 +181,7 @@ structure PArrayOpGen = struct
      | A.PA_Sub s => genSub s	
      | A.PA_Tab t => genTab t	     
      | A.PA_TabFromToStep t => genTabFTS t
+     | A.PA_TabTupleFTS ts => genTabTupleFTS ts
      | A.PA_Map t => genMap t
      | A.PA_Reduce t => genReduce t
      | A.PA_Range t => genRange t

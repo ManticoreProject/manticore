@@ -1,14 +1,35 @@
-(* flatten-utils.sml
+(* flatten-util.sml
  *
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  *)
 
-structure FlattenUtils = struct
+structure FlattenUtil = struct
 
   structure A = AST
+  structure B = Basis
   structure T = Types
+
+  structure AU = ASTUtil
+  structure TU = TypeUtil
+
+  structure D  = DelayedBasis
+  structure DC = D.TyCon
+  structure DD = D.DataCon
+  structure DV = D.Var
+
+(* currying operator *)
+  fun `f x y = f (x, y)
+
+  local
+    fun isg c = List.exists (`TyCon.same c) B.primTycs
+  in
+    fun isGroundTy (T.ConTy ([], c)) = isg c
+      | isGroundTy _ = false
+  end (* local *)
+
+
 
 (* debugging utilities *)
   fun expressionForm (x : A.exp) : string = let
