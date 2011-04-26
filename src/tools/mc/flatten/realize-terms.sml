@@ -21,6 +21,7 @@ end = struct
   structure RTy = RealizeTypes
 
   structure AU = ASTUtil
+  structure FU = FlattenUtil
 
   structure BEnv = BasisEnv
   structure MEnv = ModuleEnv
@@ -349,7 +350,7 @@ end = struct
       | topLevelExp (A.ExpansionOptsExp (opts, e)) = 
 	  A.ExpansionOptsExp (opts, topLevelExp e)
       | topLevelExp (theEnd as A.TupleExp []) = theEnd
-      | topLevelExp e = raise Fail ("unexpected " ^ FlattenUtils.expressionForm e)
+      | topLevelExp e = raise Fail ("unexpected " ^ FU.expressionForm e)
     in
       topLevelExp e
     end

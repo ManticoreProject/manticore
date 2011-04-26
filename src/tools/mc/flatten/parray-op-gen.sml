@@ -31,9 +31,7 @@ structure PArrayOpGen = struct
     in
       m (0, xs, [])
     end
-
-  fun isFArrayTyc (c : T.tycon) : bool = TyCon.same (c, DC.farray ())
-
+		
   fun mkHash1 tys = (case tys
     of [] => raise Fail "mkHash1: nil"
      | t::ts => let
@@ -66,7 +64,7 @@ structure PArrayOpGen = struct
            else
              raise Fail ("genLength: unexpected type " ^ TU.toString ty')
        | T.ConTy (ts, c) => 
-           if isFArrayTyc c then
+           if FU.isFArrayTyc c then
              A.VarExp (DV.flen (), ts)
 	   else
 	     raise Fail ("gen: unexpected type (not farray) " ^ TU.toString ty')
@@ -76,14 +74,14 @@ structure PArrayOpGen = struct
   fun genSub s = let
     fun g (A.PSub_Nested t) = (case t 
           of T.ConTy ([t'], c) =>
-               if isFArrayTyc c
+               if FU.isFArrayTyc c
 	         then A.VarExp (DV.nestedSub (), [t'])
 	         else raise Fail ("unexpected ConTy " ^ TU.toString t)
 	   | _ => raise Fail ("unexpected ty " ^ TU.toString t)
 	  (* end case *))
       | g (A.PSub_Flat t) = (case t 
           of T.ConTy ([t'], c) =>
-               if isFArrayTyc c then 
+               if FU.isFArrayTyc c then 
 	         A.VarExp (DV.flatSub (), [t'])
 	       else 
 		 raise Fail ("unexpected ConTy " ^ TU.toString t)
@@ -142,11 +140,11 @@ structure PArrayOpGen = struct
     (* end case *))
           
   fun genMap (t as T.FunTy (alpha, beta)) = 
-        if isGroundTy alpha then
+        if FU.isGroundTy alpha then
           A.VarExp (DV.fmap (), [alpha, beta])
 	else (case alpha
           of tup as T.TupleTy [t1, t2] =>
-               if isGroundTy t1 andalso isGroundTy t2 then
+               if FU.isGroundTy t1 andalso FU.isGroundTy t2 then
 	         if List.all (fn t => (TU.same (B.intTy, t))) [t1, t2, beta] then
                    A.VarExp (DV.ipMapEq_int (), [])
 		 else 
@@ -159,7 +157,7 @@ structure PArrayOpGen = struct
   fun genReduce (t : T.ty) : A.exp =
     if TU.same (B.intTy, t) then
       A.VarExp (DV.ifReduce (), [])
-    else if isGroundTy t then
+    else if FU.isGroundTy t then
       A.VarExp (DV.greduce (), [t])
     else
       raise Fail ("todo: reduce for type " ^ TU.toString t)
@@ -171,7 +169,7 @@ structure PArrayOpGen = struct
       raise Fail ("unexpected type " ^ TU.toString t)
 
   fun genApp t = 
-    if isGroundTy t then
+    if FU.isGroundTy t then
       A.VarExp (DV.fapp (), [t])
     else
       raise Fail ("todo: app for type " ^ TU.toString t)

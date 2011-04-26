@@ -22,6 +22,7 @@ structure FlattenUtil = struct
 (* currying operator *)
   fun `f x y = f (x, y)
 
+(* isGroundTy : T.ty -> bool *)
   local
     fun isg c = List.exists (`TyCon.same c) B.primTycs
   in
@@ -29,7 +30,9 @@ structure FlattenUtil = struct
       | isGroundTy _ = false
   end (* local *)
 
-
+(* isFArrayTyc : T.tycon -> bool *)
+(*  val isFArrayTyc : T.tycon -> bool = `TyCon.same (DC.farray ()) *)
+  fun isFArrayTyc c = TyCon.same (c, DC.farray ())
 
 (* debugging utilities *)
   fun expressionForm (x : A.exp) : string = let

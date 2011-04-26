@@ -17,11 +17,10 @@ Library
   structure RealizeTerms
   structure RealizeTypes
   structure PArrayOpGen
-
-  structure FlattenUtils
+  structure FlattenUtil
   
+  (*
   structure TestFlattenTypes
-(*
   structure TestFlattenTerms
   structure TestFlattenOpGen
   structure TestRealizeFArray
@@ -49,10 +48,10 @@ is
   realize-terms.sml
   realize-types.sml
   parray-op-gen.sml
-  flatten-utils.sml	
+  flatten-util.sml	
   
-  test-flatten-types.sml
   (*
+  test-flatten-types.sml
   test-flatten-terms.sml
   test-flatten-op-gen.sml
   test-realize-farray.sml

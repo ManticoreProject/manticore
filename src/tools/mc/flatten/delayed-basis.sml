@@ -12,7 +12,7 @@ structure DelayedBasis = struct
   type 'a thunk = unit -> 'a
 
 (* syntactically easy thunkification *)
-  fun d f x = fn () => f x
+  fun delay f x = fn () => f x
 
 (* memo : 'a thunk -> 'a thunk *)
 (* Creates a memoized ref cell containing the result, which is computed  *)
@@ -33,7 +33,7 @@ structure DelayedBasis = struct
 
 (* tycons *)
   structure TyCon = struct
-    fun mk c = memo (d getTyc c)
+    fun mk c = memo (delay getTyc c)
     val farray    = mk (farray "f_array")
     val shapeTree = mk (shapeTree "shape_tree")
     val intFArray = mk (intFArray "int_farray")
@@ -41,7 +41,7 @@ structure DelayedBasis = struct
 
 (* dcons *)
   structure DataCon = struct
-    fun mk c = memo (d getDCon c)
+    fun mk c = memo (delay getDCon c)
     val farray = mk (farray "FArray")
     val lf     = mk (shapeTree "Lf")
     val nd     = mk (shapeTree "Nd")
@@ -49,7 +49,7 @@ structure DelayedBasis = struct
 
 (* vars *)
   structure Var = struct
-    fun mk v = memo (d getVar v)
+    fun mk v = memo (delay getVar v)
     val flatSub     = mk (farray "flatSub")
     val nestedSub   = mk (farray "nestedSub")
     val flen        = mk (farray "length")
