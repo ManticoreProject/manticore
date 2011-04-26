@@ -20,12 +20,14 @@
   end
   float-array-seq.pml
   int-array-seq.pml
+  int-array-seq-pair.pml
   vector-pair.pml
 
+  int-rope.pml
   rope.pml 
   rope2.pml
   rope-pair.pml
+  int-rope-pair.pml
   float-rope.pml
-  int-rope.pml
 
 (*  test-rope.pml *)

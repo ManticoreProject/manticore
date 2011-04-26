@@ -656,6 +656,21 @@ structure Rope (* : ROPE *) = struct
         m rope
       end          
     
+  (* mapP_int : ('a -> int) * 'a rope -> IntRope.int_rope *)
+  (* post : the output has the same shape as the input *)
+    fun mapP_int (f, rope) = let
+      fun m r = (case r
+        of LEAF s => let 
+             val s' = S.map (f, s)
+             in
+               IntRope.leafFromSeq s'
+             end
+	 | CAT (dpt, len, r1, r2) => IntRope.CAT (| dpt, len, m r1, m r2 |)
+        (* end case *))
+      in
+	m rope
+      end
+
   (* reduceP : ('a * 'a -> 'a) * 'a * 'a rope -> 'a *)
   (* Reduce with an associative operator. *)
   (* e.g., sumP r == reduceP (+, 0, r) *)

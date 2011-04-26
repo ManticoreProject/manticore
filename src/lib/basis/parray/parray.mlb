@@ -15,8 +15,11 @@
 
 (* Flat Arrays *)
 
+  shape-tree.pml
   farray.pml
   farray-pair.pml
+  int-farray.pml
+  int-farray-pair.pml
 
 (* Parallel Arrays *)
 

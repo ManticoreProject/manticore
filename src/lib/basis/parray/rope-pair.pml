@@ -177,4 +177,17 @@ structure RopePair (* : ROPE_PAIR *) = struct
         (* end case *))
       end
 
+  (* (\* reduceP : (('a * 'b) * ('a * 'b) -> ('a * 'b)) * ('a * 'b) * ('a rope * 'b rope) -> 'a * 'b *\) *)
+  (* (\* Reduce with an associative operator. *\) *)
+  (*   fun reduceP (assocOp, unit, (ropeA, ropeB)) = let *)
+  (*     fun red (rA, rB) = (case (rA, rB) *)
+  (*       of (R.LEAF sA, R.LEAF sB) => P.reduce (assocOp, unit, (sA, sB)) *)
+  (* 	 | (R.CAT (_, _, rA1, rA2), R.CAT (_, _, rB1, rB2)) =>  *)
+  (*            assocOp (| red (rA1, rB1), red (rA2, rB2) |) *)
+  (* 	 | _ => raise Fail "reduceP" *)
+  (* 	(\* end case *\)) *)
+  (*     in *)
+  (*       red (ropeA, ropeB) *)
+  (*     end *)
+
 end

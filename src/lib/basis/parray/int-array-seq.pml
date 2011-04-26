@@ -12,7 +12,10 @@ structure IntArraySeq = struct
 
   fun failwith s = (Print.printLn s; raise Fail s)
 
-  fun tabulate _ = failwith "tabulate"
+  fun tabulate (n, f) = raise Fail "todo: polymorphic tabulate"
+
+  fun tabulate_int (n, f : int -> int) = A.tabulate (n, f)				   
+
   fun sum _ = failwith "sum"
   fun prefixPlusScan _ = failwith "prefix"
 
@@ -24,6 +27,8 @@ structure IntArraySeq = struct
   val length = A.length
 
   fun sub (s, n) = A.sub (s, n)
+
+  fun array (n, init) = A.array (n, init)
 
   fun concat (x, y) = let
     val xn = length x
@@ -116,25 +121,8 @@ structure IntArraySeq = struct
         lp 1 (* we already did 0 *)
       end
 
-(*
-(* mapPoly : (int -> 'a) * seq -> 'a Array.seq *)
-  fun mapPoly (f, s) =
-    if null s then (raise Fail "can't!")
-    else let
-      val len = length s
-      val init = f (sub (s, 0))
-      val b = Array.array (len, init)
-      fun lp i =
-        if i >= len then b
-        else let
-          val _ = Array.update (b, i, f (A.sub (s, i)))
-          in
-            lp (i+1)
-          end
-      in
-        lp 1 (* we already did 0 *)
-      end
-*)
+(* mapPoly : (int -> 'a) * seq -> 'a ArraySeq.seq *)
+  fun mapPoly (f, s) = ArraySeq.tabulate (length s, fn i => f (sub (s, i)))
 
   fun map2 (f, s1, s2) = 
     if null s1 then s1
@@ -243,7 +231,7 @@ structure IntArraySeq = struct
   val update = A.update
 
 (* short-circuits on finding false *)
-  fun any pred s = let
+  fun all pred s = let
     val len = length s
     fun lp i =
       if i >= len then true
@@ -298,5 +286,15 @@ structure IntArraySeq = struct
 
 (* sum : seq -> int *)
   val sum = sum
+
+  fun app (f, s) = let
+    val n = length s
+    fun f' i = f (sub (s, i))
+    fun lp i = 
+      if (i >= n) then ()
+      else (f' i; lp (i+1))
+    in
+      lp 0
+    end
 
 end

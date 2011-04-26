@@ -23,13 +23,16 @@ end = struct
   structure AU = ASTUtil
   structure FU = FlattenUtil
 
+  structure D  = DelayedBasis
+  structure DC = D.TyCon
+  structure DD = D.DataCon
+  structure DV = D.Var
+
   structure BEnv = BasisEnv
   structure MEnv = ModuleEnv
 
   structure FSet = FlattenOp.Set
   structure FMap = FlattenOp.Map
-
-  val basisItems = BasisItems.basisItems
 
   fun ln () = TextIO.print "\n"
   fun println s = (TextIO.print s; ln ())
@@ -38,26 +41,36 @@ end = struct
     if not fact then raise Fail ("assertion failure: " ^ msg) else ()
 
   fun mkTree (n : A.ntree) : A.exp = let
-    val {shapeTreeTyc, lfCon, ndCon, ...} = basisItems ()
     fun const c = A.ConstExp (A.DConst (c, []))
-    val ntreeTy = A.ConTy ([], shapeTreeTyc)
+    val ntreeTy = A.ConTy ([], DC.shapeTree ())
     in case n
-      of A.Lf (loExp, hiExp) => AU.mkApplyExp (const lfCon, [loExp, hiExp])
+      of A.Lf (loExp, hiExp) => 
+           AU.mkApplyExp (const (DD.lf ()), [loExp, hiExp])
        | A.Nd ts => let
            val ts' = List.map mkTree ts
            in
-	     AU.mkApplyExp (const ndCon, [AU.mkList (ts', ntreeTy)])
+	     AU.mkApplyExp (const (DD.nd ()), [AU.mkList (ts', ntreeTy)])
 	   end
     end  
 
-  fun mkFArray (es, n, t) = let
-    val farrayCon = BasisItems.farrayCon ()
-    val data = ParrLitToRope.mkRope (es, t)
-    val shape = mkTree n
-    val farrConConst = A.ConstExp (A.DConst (farrayCon, [t]))
+  fun mkIntFArray (es : A.exp list) : A.exp = let
+    val ns = AU.mkList (es, B.intTy)
+    val fromList = DV.ifFromList ()
     in
-      AU.mkApplyExp (farrConConst, [data, shape])
+      AU.mkApplyExp (A.VarExp (fromList, []), [ns])		 
     end
+
+  fun mkFArray (es, n, t) =
+    if FU.isInt t andalso FU.isLf n then
+(* FIXME doesn't run in parallel!!! *)
+      mkIntFArray es
+    else let
+      val shape = mkTree n 
+      val data = ParrLitToRope.mkRope (es, t)
+      val con = A.ConstExp (A.DConst (DD.farray (), [t]))
+      in
+        AU.mkApplyExp (con, [data, shape])
+      end
 
   datatype env = E of {operSet       : FSet.set ref, 
 		       operCode      : A.lambda FMap.map ref,

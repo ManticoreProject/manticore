@@ -18,13 +18,20 @@ structure ParrLitToRope : sig
    *)
     val tr : AST.exp list * Types.ty -> AST.exp
 
-    val mkRope : AST.exp list * Types.ty -> AST.exp
+    val mkRope    : AST.exp list * Types.ty -> AST.exp
 
   end = struct
 
     structure U = ASTUtil
     structure MEnv = ModuleEnv
     structure BEnv = BasisEnv
+
+    val getVar = BEnv.getVarFromBasis
+    val rVar = fn v => getVar ("Rope"::[v])
+
+    val ropeFromList  = Memo.new' (fn () => rVar "fromList")
+    val ropeEmpty     = Memo.new' (fn () => rVar "empty")
+    val ropeSingleton = Memo.new' (fn () => rVar "singleton")
 
     fun newVar e = Var.new ("x", TypeOf.exp e)
     fun mkPValBind (x, e) = AST.PValBind (AST.VarPat x, e)
@@ -33,16 +40,9 @@ structure ParrLitToRope : sig
 
   (* mkRopeFromList : ty * exp -> exp *)
   (* Make a rope expression from an expression which is a list in the surface language. *)
-    fun mkRopeFromList (ty, listExp) = let
-      val ropeFromList = 
-       (case BEnv.getValFromBasis ["Rope", "fromList"]
-          of MEnv.Var x => x
-	   | _ => raise Fail "expected a ModuleEnv.val_bind Var variant"
-          (* end case *))
-      in
-	mkApply (AST.VarExp (ropeFromList, [ty]), [listExp])
-      end
-
+    fun mkRopeFromList (ty, listExp) =
+      U.mkApplyExp (AST.VarExp (ropeFromList (), [ty]), [listExp])
+      
   (* newVars : ty -> exp list -> var list *)
   (* Given [e0, e1, ..., en], generate [x0, x1, ..., xn]. *)
   (* We are in a special case where we know all the types are the same. *)
@@ -60,16 +60,8 @@ structure ParrLitToRope : sig
   (* tr : exp list * ty -> exp *)
   (* Given a list of expressions, which were in a parallel array, and their type, *)
   (* build a rope out of them. *)
-    fun tr ([], ty) = let
-          val e = BEnv.getVarFromBasis ["Rope", "empty"]
-          in
-            AST.VarExp (e, [ty])
-          end
-      | tr ([e], ty) = let
-          val sing = BEnv.getVarFromBasis ["Rope", "singleton"]
-          in
-	    ASTUtil.mkApplyExp (AST.VarExp (sing, [ty]), [e])
-          end
+    fun tr ([], ty) = AST.VarExp (ropeEmpty (), [ty])
+      | tr ([e], ty) = U.mkApplyExp (AST.VarExp (ropeSingleton (), [ty]), [e])
       | tr (es, ty) = let
           val xs = newVars ty es
 	  val tupPat = AST.TuplePat (List.map AST.VarPat xs)
@@ -83,7 +75,7 @@ structure ParrLitToRope : sig
     fun mkRope (es, t) = tr (es, t)
 
 (*
-(* HORRIBLE HACK for testing the rope-of-tuples translation *)
+(* HACK for testing the rope-of-tuples translation *)
     fun trans (es, ty) = let
       val rope = tr (es, ty)
       val rope' = RopeOfTuples.transform rope

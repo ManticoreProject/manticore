@@ -9,6 +9,7 @@
 structure IntRope = struct
 
     structure S = IntArraySeq
+    structure SPr = IntArraySeqPair
 
     datatype option = datatype Option.option
 
@@ -18,7 +19,7 @@ structure IntRope = struct
 
   (* failwith : string -> 'a *)
   (* using this for the moment so we can observe the exception message at runtime *)
-    fun failwith msg = (Print.printLn msg; (raise Fail msg))
+    fun failwith msg = (Print.printLn ("FAIL: " ^ msg); raise Fail msg)
 
   (* ***** ROPES ***** *)
 
@@ -88,11 +89,10 @@ structure IntRope = struct
     fun singleton x = LEAF (1, S.singleton x)
 
   (* length : int_rope -> int *)
-    fun length r = 
-     (case r
-        of LEAF (len, s) => len
-	 | CAT(_, len, r1, r2) => len
-        (* end case *))
+    fun length r = (case r
+      of LEAF (len, s) => len
+       | CAT(_, len, r1, r2) => len
+      (* end case *))
 
   (* isEmpty : int_rope -> bool *)
     fun isEmpty r = (length r = 0)
@@ -111,15 +111,14 @@ structure IntRope = struct
 
   (* subInBounds : int_rope * int -> int *)
   (* pre: inBounds (r, i) *)
-    fun subInBounds (r, i) = 
-     (case r
-        of LEAF (_, s) => S.sub (s, i)
-	 | CAT (depth, len, r1, r2) =>
-	     if i < length r1 then 
-               subInBounds(r1, i)
-	     else 
-               subInBounds(r2, i - length r1)
-        (* end case *))
+    fun subInBounds (r, i) = (case r
+      of LEAF (_, s) => S.sub (s, i)
+       | CAT (depth, len, r1, r2) =>
+	   if i < length r1 then 
+             subInBounds(r1, i)
+	   else 
+             subInBounds(r2, i - length r1)
+      (* end case *))
 
   (* sub : int_rope * int -> int *)
   (* subscript; returns r[i] *)
@@ -315,6 +314,16 @@ structure IntRope = struct
 
   (* ***** ROPE CONSTRUCTION ***** *)
 
+  (* mkLeaf : seq -> int_rope *)
+    fun mkLeaf s = let
+      val n = S.length s
+      in
+        if (n > maxLeafSize) then
+          raise Fail "mkLeaf"
+	else
+          LEAF (n, s)
+      end
+
   (* concatWithBalancing : int_rope * int_rope -> int_rope *)
   (* concatenates two ropes (with balancing) *)
     fun concatWithBalancing (r1, r2) = balanceIfNecessary (concatWithoutBalancing(r1, r2))
@@ -404,27 +413,26 @@ structure IntRope = struct
        (* end case *))
 
   (* leafFromList : int list -> int_rope *)
-    fun leafFromList (xs : 'a list) = let
+    fun leafFromList (xs : int list) = let
       val n = List.length xs
       in
         if n <= maxLeafSize then
           LEAF (n, S.fromList xs)
         else
-          failwith "too big"
+          failwith "IntRope.leafFromList: too many elements"
       end
 
-  (* fromList : int list -> intt_rope *)
+  (* fromList : int list -> int_rope *)
   (* Given a list, construct a balanced rope. *)
   (* The leaves will be packed to the left.  *)
     fun fromList xs = let
       val ldata = chop (xs, maxLeafSize)
       val leaves = List.map leafFromList ldata
-      fun build ls = 
-       (case ls
-          of nil => empty
-           | l::nil => l
-           | _ => build (catPairs ls)
-         (* end case *))
+      fun build ls = (case ls
+        of nil => empty
+         | l::nil => l
+         | _ => build (catPairs ls)
+        (* end case *))
       in
         build leaves      
       end
@@ -435,28 +443,59 @@ structure IntRope = struct
 
   (* tabFromToP : int * int * (int -> int) -> int_rope *)
   (* pre: hi >= lo *)
-  (* lo inclusive, hi exclusive *)
+  (* lo inclusive, hi inclusive *)
     fun tabFromToP (lo, hi, f) = 
-     (if lo > hi then
-       (failwith "downward tabulate")
-      else if (hi - lo) <= maxLeafSize then let
-        fun f' n = f (n + lo)
-        in
-          LEAF (hi-lo, S.tabulate (hi-lo, f'))
-        end
+      if lo > hi then
+        empty
       else let
-        val m = (hi + lo) div 2
+        val nElts = hi-lo+1
         in
-	  concatWithoutBalancing (| tabFromToP (lo, m, f),
-				    tabFromToP (m, hi, f) |)
-        end)
+          if nElts <= maxLeafSize then let
+            fun f' n = f (n + lo)
+            in
+              LEAF (nElts, S.tabulate_int (nElts, f'))
+            end
+	  else let
+            val m = (hi + lo) div 2
+            in
+	      concatWithoutBalancing (| tabFromToP (lo, m, f),
+	 			        tabFromToP (m+1, hi, f) |)
+            end
+	end
 
   (* tabP : int * (int -> int) -> int_rope *)
-    fun tabP (n, f) = 
-     (if n <= 0 then
-        empty
-      else
-        tabFromToP (0, n, f) (* n.b.: tabFromToP is exclusive of its upper bound *))
+    fun tabP (n, f) = tabFromToP (0, n-1, f)
+
+  (* tabFromToStepP : int * int * int * (int -> int) -> int_rope *)
+  (* lo inclusive, hi inclusive *)
+    fun tabFromToStepP (from, to_, step, f) = let
+      fun f' i = f (from + (step * i))
+      in (case Int.compare (step, 0)
+        of EQUAL => (raise Fail "0 step")
+	 | LESS (* negative step *) =>
+             if (to_ > from) then
+               empty
+       	     else
+               tabFromToP (0, (from-to_) div (~step), f')
+	 | GREATER (* positive step *) =>
+       	     if (from > to_) then
+       	       empty
+       	     else
+               tabFromToP (0, (to_-from) div step, f')
+	(* end case *))
+      end
+
+  (* leafFromSeq : int ArraySeq.seq -> seq *)
+    fun leafFromSeq s = let
+      val a = ArraySeq.toArray s
+      val n = Array.length a
+(* FIXME rewrite to ropeFromSeq *)
+      val a' = IntArray.tabulate (n, fn i => Array.sub (a, i))
+      in
+        if (n > maxLeafSize) 
+	then (raise Fail "leafFromSeq")
+        else LEAF (n, a')
+      end
 
 (* ***** ROPE DECONSTRUCTION ***** *)
 
@@ -576,19 +615,20 @@ structure IntRope = struct
       in
         m rope
       end          
-(*
-  (* mapPolyP : (int -> 'a) * int_rope -> 'a rope *)
-  (* post : the output has the same shape as the input *)
-    fun mapPolyP (f, rope) = let
-      fun m r =
-       (case r
-          of LEAF (len, s) => Rope.LEAF (S.mapPoly (f, s))
-	   | CAT (dpt, len, r1, r2) => Rope.CAT (| dpt, len, m r1, m r2 |)
-         (* end case *))
-      in
-        m rope
-      end          
-*)
+
+(* recursive deps... *)
+  (* (\* mapPolyP : (int -> 'a) * int_rope -> 'a rope *\) *)
+  (* (\* post : the output has the same shape as the input *\) *)
+  (*   fun mapPolyP (f, rope) = let *)
+  (*     fun m r = *)
+  (*      (case r *)
+  (*         of LEAF (len, s) => Rope.LEAF (S.mapPoly (f, s)) *)
+  (* 	   | CAT (dpt, len, r1, r2) => Rope.CAT (| dpt, len, m r1, m r2 |) *)
+  (*        (\* end case *\)) *)
+  (*     in *)
+  (*       m rope *)
+  (*     end           *)
+
   (* sumP : int_rope -> int *)
     fun sumP rope = let
       fun add (x:int, y:int) = x+y
@@ -631,6 +671,14 @@ structure IntRope = struct
           (* end case *))
       in
         balanceIfNecessary (f rope)
+      end
+
+  (* app : (int -> unit) * int_rope -> unit *)
+    fun app (f, rope) = let
+      fun appF (LEAF (_, s)) = S.app (f, s)
+	| appF (CAT (_, _, r1, r2)) = (appF r1; appF r2)
+      in
+        appF rope
       end
 
   end

@@ -32,7 +32,9 @@ structure ASTUtil : sig
     val mkIntPat   : int -> AST.pat
     val mkInt      : int -> AST.exp
 
+  (* generate code to add ints to one another *)
     val plusOne    : AST.exp -> AST.exp
+    val plus       : AST.exp -> AST.exp -> AST.exp
 
   (* boolean constants *)
     val trueConst  : AST.const
@@ -125,15 +127,6 @@ structure ASTUtil : sig
 	    AST.FB(f, param, AST.CaseExp(AST.VarExp(param, []), [AST.PatMatch(pat, e)], resTy))
 	  end
 
-    fun mkList ([], ty) = A.ConstExp (A.DConst (B.listNil, [ty]))
-      | mkList (exps, ty) = let
-          val ::! = A.ConstExp (A.DConst (B.listCons, [ty]))
-	  fun cons' (x, xs) = A.ApplyExp (::!, A.TupleExp [x, xs], B.listTy ty)
-	  val nil' = mkList ([], ty)
-	  in
-	    List.foldr cons' nil' exps
-	  end
-
     fun mkArray (es, ty) = raise Fail "todo: ASTUtil.mkArray"
 
     val unit = A.TupleExp []
@@ -180,6 +173,15 @@ structure ASTUtil : sig
 
     fun mkVarExp (v, tys) = A.VarExp (v, tys)
 
+    fun mkList ([], t) = A.ConstExp (A.DConst (B.listNil, [t]))
+      | mkList (exps, t) = let
+          val ::: = A.ConstExp (A.DConst (B.listCons, [t]))
+	  fun cons' (x, xs) = mkApplyExp (:::, [x, xs])
+	  val nil' = mkList ([], t)
+	  in
+	    List.foldr cons' nil' exps
+	  end
+
   (* make a FunExp which is the composition of two functional expressions *)
   (* ... and check types along the way *)
     fun mkCompose (f, g) = (case (TypeOf.exp f, TypeOf.exp g)
@@ -196,7 +198,12 @@ structure ASTUtil : sig
        | _ => raise Fail "mkCompose"
       (* end case *))
 
-    fun plusOne n = mkApplyExp (A.VarExp (B.int_plus, []), [n, mkInt 1])
+    local
+      val mkPlus = fn args => mkApplyExp (A.VarExp (B.int_plus, []), args)
+    in
+      fun plusOne n = mkPlus [n, mkInt 1]
+      fun plus n m = mkPlus [n, m]
+    end (* local *)
 
     fun copyPat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)

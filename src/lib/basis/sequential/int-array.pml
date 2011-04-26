@@ -28,6 +28,7 @@ fun update (a, i, x) =
     U.update (a, i, x)
   else
     Debug.failwith "IntArray.update: index out of bounds"
+
 fun sub (a, i) =
   if isIxInBounds (a, i) then
     U.sub (a, i)

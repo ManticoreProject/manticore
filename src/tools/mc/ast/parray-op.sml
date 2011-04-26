@@ -24,28 +24,33 @@ structure PArrayOp = struct
   infixr -->
   fun domTy --> rngTy = T.FunTy (domTy, rngTy)
 
+  fun `f x = (fn y => f (x, y))
+
   local
-    fun isg c = List.exists (fn g => TyCon.same (c,g)) B.primTycs
+    fun groundCon c = List.exists (`TyCon.same c) B.primTycs
   in
-    fun isGroundTy (T.ConTy ([], c)) = isg c
+    fun isGroundTy (T.ConTy ([], c)) = groundCon c
       | isGroundTy (unitTy as T.TupleTy []) = true
       | isGroundTy _ = false
   end (* local *)
 
   local
     fun tos s t = String.concat [s, "_{", TU.toString t, "}"]
+    fun $f xs = List.map f xs
   in
     val toString : A.parray_op -> string = let
       fun ps (A.PSub_Nested t) = tos "PSub_Nested" t
 	| ps (A.PSub_Flat t) = tos "PSub_Flat" t
 	| ps (A.PSub_Tuple os) = 
 	    String.concat ["PSub_Tuple[",
-			   commas (List.map ps os),
+			   commas ($ps os),
 			   "]"]
       fun pop (A.PA_Length t) = tos "PA_Length" t
 	| pop (A.PA_Sub s) = "PA_Sub_{" ^ ps s ^ "}"
 	| pop (A.PA_Tab t) = tos "PA_Tab" t
 	| pop (A.PA_TabFromToStep t) = tos "PA_TabFromToStep" t
+	| pop (A.PA_TabTupleFTS ts) = 
+            "PA_TabTupleFTS_{" ^ commas ($TU.toString ts) ^ "}"
 	| pop (A.PA_Map t) = tos "PA_Map" t
 	| pop (A.PA_Reduce t) = tos "PA_Reduce" t				  
 	| pop (A.PA_Range t) = tos "PA_Range" t
@@ -87,6 +92,14 @@ structure PArrayOp = struct
           val i = B.intTy
           val domTy = T.TupleTy [i, i, i, i --> eltTy]
 	  val rngTy = T.FArrayTy (eltTy, T.LfTy)
+          in
+	    domTy --> rngTy
+	  end
+      | pop (A.PA_TabTupleFTS ts) = let
+          val i = B.intTy
+	  val eltTy = T.TupleTy ts
+	  val domTy = T.TupleTy [i, i, i, i --> eltTy]
+	  val rngTy = T.TupleTy (List.map (fn t => T.FArrayTy (t, T.LfTy)) ts)
           in
 	    domTy --> rngTy
 	  end
@@ -145,9 +158,13 @@ structure PArrayOp = struct
       | consIndex (A.PA_Reduce _)        = 5
       | consIndex (A.PA_Range _)         = 6
       | consIndex (A.PA_App _)           = 7
+      | consIndex (A.PA_TabTupleFTS _)   = 8
   in
 
     val compare : A.parray_op * A.parray_op -> order = let
+
+      fun $ cmp (xs, ys) = List.collate cmp (xs, ys)
+
       fun ps (o1, o2) = let
         val (i1, i2) = (consIndexPS o1, consIndexPS o2)
         in
@@ -155,7 +172,7 @@ structure PArrayOp = struct
 	  else case (o1, o2)
             of (A.PSub_Nested t1, A.PSub_Nested t2) => TU.compare (t1, t2)
 	     | (A.PSub_Flat t1, A.PSub_Flat t2) => TU.compare (t1, t2)
-	     | (A.PSub_Tuple os1, A.PSub_Tuple os2) => List.collate ps (os1, os2)
+	     | (A.PSub_Tuple os1, A.PSub_Tuple os2) => $ps (os1, os2)
 	     | _ => raise Fail "compiler bug"
          end
 
@@ -168,6 +185,7 @@ structure PArrayOp = struct
 	     | (A.PA_Sub s1, A.PA_Sub s2) => ps (s1, s2)
 	     | (A.PA_Tab t1, A.PA_Tab t2) => TU.compare (t1, t2)
 	     | (A.PA_TabFromToStep t1, A.PA_TabFromToStep t2) => TU.compare (t1, t2)
+	     | (A.PA_TabTupleFTS ts1, A.PA_TabTupleFTS ts2) => $TU.compare (ts1, ts2)
 	     | (A.PA_Map t1, A.PA_Map t2) => TU.compare (t1, t2)
 	     | (A.PA_Reduce t1, A.PA_Reduce t2) => TU.compare (t1, t2)
 	     | (A.PA_Range t1, A.PA_Range t2) => TU.compare (t1, t2)
@@ -215,25 +233,32 @@ structure PArrayOp = struct
 (* constructTab : ty -> exp *)
   local
     val isInt = (fn t => TU.same (t, B.intTy))
+    fun groundPairWitness (T.TupleTy [t1, t2]) = 
+          if isGroundTy t1 andalso isGroundTy t2 then SOME (t1, t2) else NONE
+      | groundPairWitness _ = NONE
+    fun groundPair (g1, g2) = raise Fail "todo"
   in
     val constructTab : T.ty -> A.exp = let
       fun mk (domTy as T.TupleTy [i1, T.FunTy (i2, eltTy)]) =
-            if isInt i1 andalso isInt i2 then let
-              val eltsTy = T.FArrayTy (eltTy, T.LfTy)          
-              val fl = FlattenOp.construct eltTy
-    	      val rngTy = TU.rangeType (FlattenOp.typeOf fl)
-    	      val tab = A.PArrayOp (A.PA_TabFromToStep eltTy)
-    	      val arg = Var.new ("arg", domTy)
-              (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
-    	      (*   b/c referring to ASTUtil induces cyclic deps *)
-    	      val body = A.ApplyExp (A.FlOp fl,
-    				     A.ApplyExp (tab, A.VarExp (arg, []), eltsTy),
-    				     rngTy)
-              in
-                A.FunExp (arg, body, rngTy)
-              end
-    	    else
+            if not (isInt i1) orelse not (isInt i2) then
               raise Fail ("unexpected ty (ints expected) " ^ TU.toString domTy)
+	    else (case groundPairWitness eltTy
+              of SOME (g1, g2) => groundPair (g1, g2)
+	       | NONE => let 
+                   val eltsTy = T.FArrayTy (eltTy, T.LfTy)          
+		   val fl = FlattenOp.construct eltTy
+    		   val rngTy = TU.rangeType (FlattenOp.typeOf fl)
+    		   val tab = A.PArrayOp (A.PA_Tab eltTy)
+    		   val arg = Var.new ("arg", domTy)
+		   (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
+    		   (*   b/c referring to ASTUtil induces cyclic deps *)
+    		   val body = A.ApplyExp (A.FlOp fl,
+    					  A.ApplyExp (tab, A.VarExp (arg, []), eltsTy),
+    					  rngTy)
+                   in
+                     A.FunExp (arg, body, rngTy)
+                   end
+              (* end case *))
 	| mk t = raise Fail ("unexpected ty " ^ TU.toString t)
     in
       mk
@@ -243,25 +268,32 @@ structure PArrayOp = struct
 (* constructTabFTS : ty -> exp *)
   local
     val isInt = (fn t => TU.same (t, B.intTy))
+    fun groundPairWitness (T.TupleTy [t1, t2]) = 
+          if isGroundTy t1 andalso isGroundTy t2 then SOME (t1, t2) else NONE
+      | groundPairWitness _ = NONE
+    fun groundPair (g1, g2) = A.PArrayOp (A.PA_TabTupleFTS [g1, g2])
   in
     val constructTabFTS : T.ty -> A.exp = let
       fun mk (domTy as T.TupleTy [i1, i2, i3, T.FunTy (i4, eltTy)]) =
-            if List.all isInt [i1, i2, i3, i4] then let		
-              val eltsTy = T.FArrayTy (eltTy, T.LfTy)          
-              val fl = FlattenOp.construct eltTy
-    	      val rngTy = TU.rangeType (FlattenOp.typeOf fl)
-    	      val tab = A.PArrayOp (A.PA_TabFromToStep eltTy)
-    	      val arg = Var.new ("arg", domTy)
-              (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
-    	      (*   b/c referring to ASTUtil induces cyclic deps *)
-    	      val body = A.ApplyExp (A.FlOp fl,
-    				     A.ApplyExp (tab, A.VarExp (arg, []), eltsTy),
-    				     rngTy)
-              in
-                A.FunExp (arg, body, rngTy)
-              end
-    	    else
+            if not (List.all isInt [i1, i2, i3, i4]) then
               raise Fail ("unexpected ty (ints expected) " ^ TU.toString domTy)
+	    else (case groundPairWitness eltTy
+              of SOME (g1, g2) => groundPair (g1, g2)
+	       | NONE => let 
+                   val eltsTy = T.FArrayTy (eltTy, T.LfTy)          
+		   val fl = FlattenOp.construct eltTy
+    		   val rngTy = TU.rangeType (FlattenOp.typeOf fl)
+    		   val tab = A.PArrayOp (A.PA_TabFromToStep eltTy)
+    		   val arg = Var.new ("arg", domTy)
+		   (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
+    		   (*   b/c referring to ASTUtil induces cyclic deps *)
+    		   val body = A.ApplyExp (A.FlOp fl,
+    					  A.ApplyExp (tab, A.VarExp (arg, []), eltsTy),
+    					  rngTy)
+                   in
+		     A.FunExp (arg, body, rngTy)
+                   end
+              (* end case *))
 	| mk t = raise Fail ("unexpected ty " ^ TU.toString t)
     in
       mk

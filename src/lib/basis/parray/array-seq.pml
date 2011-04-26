@@ -263,4 +263,9 @@ structure ArraySeq = struct
          end
     (* end case *))
 
+  fun toArray s = (case s
+    of Empty => (raise Fail "toArray")
+     | NonEmpty a => a
+    (* end case *)) 
+
 end

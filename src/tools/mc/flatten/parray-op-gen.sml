@@ -25,6 +25,8 @@ structure PArrayOpGen = struct
   structure TU = TypeUtil
   structure FU = FlattenUtil
 
+  fun println s = (print s; print "\n")
+
   fun mapi f xs = let
     fun m (_, [], acc) = List.rev acc
       | m (i, x::xs, acc) = m (i+1, xs, f(x,i)::acc)
@@ -59,8 +61,11 @@ structure PArrayOpGen = struct
              c
            end 
        | T.ConTy ([], c) =>
-           if TyCon.same (c, DC.intFArray ()) then
-             A.VarExp (DV.intLen (), [])
+           if TyCon.same (c, DC.intFArray ()) then let
+             val _ = () (* println ("inserting intLength") *)
+             in
+               A.VarExp (DV.intLen (), [])
+	     end
            else
              raise Fail ("genLength: unexpected type " ^ TU.toString ty')
        | T.ConTy (ts, c) => 
@@ -86,8 +91,11 @@ structure PArrayOpGen = struct
 	       else 
 		 raise Fail ("unexpected ConTy " ^ TU.toString t)
 	   | T.ConTy ([], c) =>
-               if TyCon.same (c, DC.intFArray ()) then
+               if TyCon.same (c, DC.intFArray ()) then let
+                 val _ = () (* println ("inserting intFlatSub") *)
+                 in
 		   A.VarExp (DV.intFlatSub (), [])
+		 end
 	       else
 	         raise Fail ("unexpected ty " ^ TU.toString t)
 	   | _ => raise Fail ("unexpected ty " ^ TU.toString t)
@@ -123,8 +131,11 @@ structure PArrayOpGen = struct
     end
 
   fun genTab (t : T.ty) : A.exp =
-    if TU.same (t, B.intTy) then
-      A.VarExp (DV.intTab (), [])
+    if TU.same (t, B.intTy) then let
+      val _ = () (* println ("inserting intTab") *)
+      in      
+        A.VarExp (DV.intTab (), [])
+      end
     else
       A.VarExp (DV.ftab (), [t])
 

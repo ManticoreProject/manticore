@@ -20,10 +20,10 @@ structure TranslatePComp : sig
 
     local
       val getVar = BasisEnv.getVarFromBasis
-      fun parrVar x = getVar ("PArray"::[x])
+      fun pvar x = getVar ("PArray"::[x])
     in
-      val parrayMap = Memo.new' (fn _ => parrVar "map")
-      val tabFromToStep = Memo.new' (fn _ => parrVar "tabFromToStep")
+      val parrayMap = Memo.new' (fn _ => pvar "map")
+      val tabFTS = Memo.new' (fn _ => pvar "tabFromToStep")
     end
 
     fun tr trExp (e, pes, oe) = 
@@ -33,30 +33,20 @@ structure TranslatePComp : sig
            (* optimization of a common case: [| f(n) | n in [| 1 to 100 |] |] *)
            (* becomes PArray.tabFromToStep (1, 101, 1, f) *)
            (* (as opposed to a PArray.map over a constructed range) *)
-	     val _ = if TU.same(t,B.intTy) then ()
+	     val _ = if TU.same (t, B.intTy) then ()
 	 	     else raise Fail ("unexpected type " ^ TU.toString t)
              val eTy = TypeOf.exp e
-	     val pTy = TypeOf.pat p1
+	     val pTy = TypeOf.pat p1 (* should be same as t *)
+	     val _ = if TU.same (t, pTy) then ()
+		     else raise Fail ("unexpected type " ^ TU.toString pTy)
 	     val x = Var.new ("x", pTy)
 	     val e' = trExp e
 	     val c = A.CaseExp (A.VarExp (x, []), [A.PatMatch (p1, e')], eTy)
 	     val f = A.FunExp (x, c, eTy)
-             val (tab, args) = (case optStepExp
-               of NONE => let
-                    val t = A.VarExp (tabFromToStep (), [eTy])
-	 	    val a = [loExp, hiExp, AU.mkInt 1, f]
-                    in
-	 	      (t, a)
-	            end
-	 	| SOME stepExp => let
-                    val t = A.VarExp (tabFromToStep (), [eTy])
-	 	    val a = [loExp, hiExp, stepExp, f]
-                    in
-	 	      (t, a)
-	            end
-	      (* end case *))
-             in
-	       AU.mkApplyExp (tab, args)
+	     val stepExp = Option.getOpt (optStepExp, AU.mkInt 1)
+	     in
+	       AU.mkApplyExp (A.VarExp (tabFTS (), [eTy]),
+			      [loExp, hiExp, stepExp, f])
 	     end
 	 | ([(p1, e1)], optPred) => let (* the one pbind, no predicate case *)
                val eltTy = TypeOf.exp e

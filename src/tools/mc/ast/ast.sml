@@ -33,14 +33,15 @@ structure AST =
   (* type-indexed parray operators *)
   (* WARNING: These cannot be moved to the PArrayOp module. It induces recursive dependencies. *)
     datatype parray_op
-      = PA_Length of ty        (* the dom type *)
+      = PA_Length of ty            (* the dom type *)
       | PA_Sub of psub_op
-      | PA_Tab of ty           (* the type of the elements to be created by the tabulation *)
-      | PA_TabFromToStep of ty (* the type of the elements to be created by the tabulation *)
-      | PA_Map of ty           (* type of the function to be mapped *)
-      | PA_Reduce of ty        (* type 'a in the associative operator ('a * 'a -> 'a) *)
-      | PA_Range of ty         (* type is element type (currently only int supported) *)
-      | PA_App of ty           (* type is the element type *)
+      | PA_Tab of ty               (* the type of the elements to be created by the tabulation *)
+      | PA_TabFromToStep of ty     (* the type of the elements to be created by the tabulation *)
+      | PA_TabTupleFTS of ty list  (* element types (implicitly part of tuple) *)
+      | PA_Map of ty               (* type of the function to be mapped *)
+      | PA_Reduce of ty            (* type 'a in the associative operator ('a * 'a -> 'a) *)
+      | PA_Range of ty             (* type is element type (currently only int supported) *)
+      | PA_App of ty               (* type is the element type *)
     and psub_op
 (* TODO...I think a better repr for these might be the FArray types, with shape. *)
 (* Then we can defer the nested vs. flat question till later. *)

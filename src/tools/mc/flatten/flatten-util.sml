@@ -34,6 +34,14 @@ structure FlattenUtil = struct
 (*  val isFArrayTyc : T.tycon -> bool = `TyCon.same (DC.farray ()) *)
   fun isFArrayTyc c = TyCon.same (c, DC.farray ())
 
+(* isInt : T.ty -> bool *)
+  val isInt = `TU.same B.intTy
+
+(* isLf : A.ntree -> bool *)
+  val isLf = (fn A.Lf _ => true | _ => false)
+
+(* ***** debugging misc ***** *)
+
 (* debugging utilities *)
   fun expressionForm (x : A.exp) : string = let
     fun e (A.LetExp _) = "LetExp"

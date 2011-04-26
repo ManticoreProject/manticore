@@ -1,3 +1,4 @@
 #!/bin/sh
-rm -f *.s *.ast *noise a.out LOOK-AT-THIS
+rm -f *.s *.ast *noise a.out LOOK-AT-THIS LOOK broken-BOM
+
 

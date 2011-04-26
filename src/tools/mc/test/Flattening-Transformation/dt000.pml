@@ -5,8 +5,9 @@ datatype dt
   | Parr of int parray
 
 fun f (Int n) = n
-  | f (Parr ns) = if PArray.length(ns) = 0 then 1 else (ns ! 0)
+  | f (Parr ns) = if (PArray.length ns = 0) then 1 else (ns ! 0)
 
+(* val arr = [| n | n in [| 7 to 9 |] |]*)
 val arr = [| 7, 8, 9 |]
 
 val _ = Print.printLn ("expecting 2: " ^ Int.toString (f (Int 2)))
