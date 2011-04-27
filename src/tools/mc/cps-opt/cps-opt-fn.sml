@@ -44,6 +44,7 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
     val eta = transform {passName = "eta-expand", pass = EtaExpand.transform}
     val arity = transform {passName = "flatten", pass = ArityRaising.transform}
     val copy = transform {passName = "copy-propagation", pass = CopyPropagation.transform}
+    val cse = transform {passName = "cse", pass = CommonSubexpressionElimination.transform}
 
     fun optimize module = let
 	  val _ = census module
@@ -57,6 +58,8 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 	  val module = arity module
 	  val module = contract module
           val _ = CFACPS.clearInfo module
+          val module = cse module
+          val module = contract module
 	  in
 	    module
 	  end
