@@ -29,7 +29,7 @@ structure Vector =
 	;
 
       define inline @from-list-rev (arg : [List.list, ml_int] / exh : exh) : vector =
-	  let vec : vector = ccall AllocVectorRev (host_vproc,  unwrap(#1(arg)), #0(arg))
+	  let vec : vector = ccall AllocVectorRev (host_vproc,  #0(#1(arg)), #0(arg))
 	  return (vec)
 	;
 
@@ -67,5 +67,24 @@ structure Vector =
 	in
 	    lp 0
 	end
+
+    fun tabulate (n, f) = fromList (List.tabulate (n, f))
+
+    fun foldl f init vec = let
+	val len = length vec
+	fun fold (i, a) =
+	    if i >= len then a else fold (i + 1, f (sub (vec, i), a))
+    in
+	fold (0, init)
+    end
+
+    fun foldr f init vec = let
+	fun fold (i, a) =
+	    if i < 0 then a else fold (i - 1, f (sub (vec, i), a))
+    in
+	fold (length vec - 1, init)
+    end
+
+    fun map (f, s) = tabulate (length s, fn i => f (sub (s, i)))
 
   end
