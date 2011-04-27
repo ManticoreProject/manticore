@@ -178,7 +178,6 @@ functor PMLParseTreeFn (
     and ppat (* parallel patterns, for use in pcase *)
       = MarkPPat of ppat mark
       | NDWildPat (* non-deterministic wildcard *)
-      | HandlePat of pat
       | Pat of pat
 
   (* literal values *)

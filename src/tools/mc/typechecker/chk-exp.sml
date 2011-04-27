@@ -196,7 +196,7 @@ structure ChkExp :> sig
 	    fbs'
 	  end
 
-  (* close the types of all variables occuring in a pattern.
+  (* close the types of all variables bound in a pattern.
    * QUESTION: because match wants mono-types for pattern variables, we must close them to mono
    * types here. is this necessary?
    *)
@@ -213,6 +213,7 @@ structure ChkExp :> sig
 	    | PT.ValVDecl(pat, e) => let
 		val depth' = depth+1
 		val (pat', lhsTy) = chkPat(loc, depth', pat)
+(* FIXME: openTy is bogus *)
 		val lhsTy = TU.openTy(depth', lhsTy)
 		val (e', rhsTy) = chkExp (loc, depth', e)
 		in
@@ -223,6 +224,7 @@ structure ChkExp :> sig
                         \  rhs: ", TypeUtil.toString rhsTy, ".\n"
 		      ])
 		    else ();
+(* FIXME: shouldn't generalize when the rhs is not a value! *)
 		  generalizePat (depth, pat');
 		  AST.ValBind(pat', e')
 		end
@@ -583,7 +585,8 @@ structure ChkExp :> sig
 		(* end case *))
 	    | PT.ConstraintExp(e, ty) => let
 		val (_, constraintTy) = ChkTy.checkTy (loc, [], ty)
-		val constraintTy = TU.openTy(depth, constraintTy) 
+(* FIXME: openTy is bogus *)
+		val constraintTy = TU.openTy(depth, constraintTy)
 		val (e', ty') = chkExp (loc, depth, e)
 		in
 		   if not(U.unify(ty', constraintTy))
@@ -686,7 +689,6 @@ structure ChkExp :> sig
                in
                  (AST.NDWildPat ty, ty)
 	       end
-	   | PT.HandlePat p => raise Fail "todo: chkPPat HandlePat" (* FIXME *)
 	   | PT.Pat p => let
                val (p', ty') = chkPat (loc, depth, p)
                in
@@ -757,6 +759,7 @@ structure ChkExp :> sig
 		(* end case *))
 	    | PT.ConstraintPat(p, ty) => let
 		val (_, constraintTy) = ChkTy.checkTy (loc, [], ty)
+(* FIXME: openTy is bogus *)
 		val constraintTy = TU.openTy(depth, constraintTy)
 		val (p', ty') = chkPat (loc, depth, p)
 		in

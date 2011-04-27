@@ -104,6 +104,7 @@ structure AST =
 
     and ppat
       = NDWildPat of ty
+(* FIXME: we don't use this syntax anymore, so this constructor can be eliminated *)
       | HandlePat of pat * ty (* handle pats, like wild pats, need to be typed *)
       | Pat of pat 
 

@@ -50,7 +50,6 @@ structure UsedVars =
            of PT.MarkPPat {span, tree} => usedOfPPat tree
 	    | PT.NDWildPat => empty
 	    | PT.Pat p => usedOfPat p 
-	    | PT.HandlePat p => usedOfPat p 
            (* end case *))
 
     and usedOfPPats pats = usedOfList usedOfPPat pats
