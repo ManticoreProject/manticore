@@ -587,17 +587,17 @@ structure JFPTranslatePCase = struct
         A.FB (actV, arg, b')
       end      
     fun lp (_, [], _, acc) = List.rev acc
-      | lp (j, A.Otherwise(e)::ms, bs::bss, acc) =
-          (case ms 
-	     of [] => let
-                  val act_j = Var.new ("act" ^ Int.toString j, 
-				       T.FunTy (B.unitTy, ty))
-		  val lam = mkLam (act_j, Var.new ("u", B.unitTy), [], e)
-		  in
-		    lp (j+1, [], bss, lam::acc)
-		  end
-	      | _ => raise Fail "otherwise is not last"
-	    (* end case *))
+      | lp (j, A.Otherwise(e)::ms, bs::bss, acc) = raise Fail "FIXME" (* otherwise has changed *)
+          (* (case ms  *)
+	  (*    of [] => let *)
+          (*         val act_j = Var.new ("act" ^ Int.toString j,  *)
+	  (* 			       T.FunTy (B.unitTy, ty)) *)
+	  (* 	  val lam = mkLam (act_j, Var.new ("u", B.unitTy), [], e) *)
+	  (* 	  in *)
+	  (* 	    lp (j+1, [], bss, lam::acc) *)
+	  (* 	  end *)
+	  (*     | _ => raise Fail "otherwise is not last" *)
+	  (*   (\* end case *\)) *)
       | lp (j, A.PMatch (ps, e)::ms, bs::bss, acc) = let
           val ps' = restrict (ps, bs)
           val xs = Var.Set.listItems (boundVars ps')
@@ -794,7 +794,7 @@ structure JFPTranslatePCase = struct
     and pmatch m = 
       (case m
          of A.PMatch (ps, e) => A.PMatch (ps, exp e)
-	  | A.Otherwise e => A.Otherwise (exp e)
+	  | A.Otherwise (ts, e) => A.Otherwise (ts, exp e)
         (* end case *))
     and lambda (A.FB (f, x, e)) = A.FB (f, x, exp e)
     in
