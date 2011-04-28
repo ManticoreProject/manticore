@@ -259,7 +259,7 @@ functor MainFn (
 
     fun processArgs args = (case args
            of arg :: args =>
-		if String.size arg > 0 andalso String.sub (arg, 0) = #"-"
+		if String.isPrefix "-" arg
 		  then processOption (arg, args)
 		  else processFile (arg, args)
             | _ => usage ()
