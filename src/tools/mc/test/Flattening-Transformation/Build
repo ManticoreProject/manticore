@@ -1,3 +1,9 @@
 #!/bin/sh
-../pmlc -Cftrx.on=true -Cftrx.keep-ft=true $1 2>&1 | tee LOOK-AT-THIS
+
+FLAGS="-Cftrx.on=true -Cftrx.keep-ft=true"
+
+SRC_FILE=$1
+ERR_FILE=ERRORS_${SRC_FILE%%.pml}
+
+../pmlc $FLAGS $SRC_FILE 2>&1 | tee $ERR_FILE
 

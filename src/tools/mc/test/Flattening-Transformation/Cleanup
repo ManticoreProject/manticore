@@ -1,5 +1,6 @@
 #!/bin/sh
-rm -f *.s *.ast *noise a.out LOOK-AT-THIS LOOK broken-* *ppm
+rm -f *.s *.ast *noise a.out LOOK-AT-THIS LOOK broken-* *ppm ERRORS*
+
 
 
 
