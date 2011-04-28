@@ -466,17 +466,8 @@ structure Rope (* : ROPE *) = struct
         end
 
   (* tabP : int * (int -> 'a) -> 'a rope *)
-<<<<<<< .working
     fun tabP (n, f) = tabFromToP (0, n-1, f)
-=======
-    fun tabP (n, f) = 
-      if n <= 0 then 
-        empty
-      else 
-        tabFromToP (0, n-1, f)
->>>>>>> .merge-right.r4916
 
-<<<<<<< .working
   (* tabFromToStepP : int * int * int * (int -> 'a) -> 'a rope *)
   (* lo inclusive, hi inclusive *)
     fun tabFromToStepP (from, to_, step, f) = let
@@ -496,24 +487,6 @@ structure Rope (* : ROPE *) = struct
 	(* end case *))
       end
 
-=======
-  (* tabFromToStepP : int * int * int * (int -> 'a) -> 'a rope *)
-  (* lo inclusive, hi inclusive *)
-    fun tabFromToStepP (from, to_, step, f) = (case Int.compare (step, 0)
-      of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around raiseExp -ams *)
-       | LESS (* negative step *) =>
-           if (to_ > from) then
-             empty
-       	   else
-             tabFromToP (0, (from-to_) div (~step), fn i => f (from + (step*i)))
-       | GREATER (* positive step *) =>
-       	   if (from > to_) then
-       	     empty
-       	   else
-             tabFromToP (0, (to_-from) div step, fn i => f (from + (step*i)))
-      (* end case *))
-
->>>>>>> .merge-right.r4916
   (* forP : int * (int -> unit) -> unit *)
     fun forP (n, f) = let
       fun fromTo (lo, hi) (* inclusive of lo, exclusive of hi *) = 
@@ -534,21 +507,12 @@ structure Rope (* : ROPE *) = struct
         if n <= 0 then () else fromTo (0, n)
       end
 
-<<<<<<< .working
   (* app : ('a -> unit) * 'a rope -> unit *)
     fun app (f, r) = (case r
       of LEAF s => S.app (f, s)
        | CAT (_, _, rL, rR) => (app (f, rL); app (f, rR))
       (* end case *))
 
-=======
-  (* app : ('a -> unit) * 'a rope -> () *)
-    fun app (f, r) = (case r
-      of LEAF s => S.app (f, s)
-       | CAT (_, _, rL, rR) => (app (f, rL); app (f, rR))
-      (* end case *))
-
->>>>>>> .merge-right.r4916
   (* nEltsInRange : int * int * int -> int *)
     fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
 	  if step = 0 then fail "nEltsInRange" "cannot have step 0 in a range"
