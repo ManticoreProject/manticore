@@ -32,10 +32,17 @@ structure ASTUtil : sig
     val mkIntPat   : int -> AST.pat
     val mkInt      : int -> AST.exp
 
+<<<<<<< .working
   (* generate code to add ints to one another *)
     val plusOne    : AST.exp -> AST.exp
     val plus       : AST.exp -> AST.exp -> AST.exp
 
+=======
+  (* build expressions for e+n and e+1 *)
+    val addInt : AST.exp * int -> AST.exp
+    val add1   : AST.exp -> AST.exp
+
+>>>>>>> .merge-right.r4916
   (* boolean constants *)
     val trueConst  : AST.const
     val falseConst : AST.const
@@ -81,6 +88,8 @@ structure ASTUtil : sig
     structure A = AST
     structure B = Basis
     structure T = Types
+
+    structure TU = TypeUtil
 
     fun mkTupleExp [e] = e
       | mkTupleExp es = AST.TupleExp es
@@ -173,6 +182,7 @@ structure ASTUtil : sig
 
     fun mkVarExp (v, tys) = A.VarExp (v, tys)
 
+<<<<<<< .working
     fun mkList ([], t) = A.ConstExp (A.DConst (B.listNil, [t]))
       | mkList (exps, t) = let
           val ::: = A.ConstExp (A.DConst (B.listCons, [t]))
@@ -205,6 +215,19 @@ structure ASTUtil : sig
       fun plus n m = mkPlus [n, m]
     end (* local *)
 
+=======
+    fun addInt (e : A.exp, n : int) : A.exp = let
+      val t = TypeOf.exp e
+      in
+        if TU.same (t, B.intTy) then
+          mkApplyExp (A.VarExp (B.int_plus, []), [e, mkInt n])
+        else
+          raise Fail ("unexpected ty " ^ TU.toString t)
+      end
+
+    fun add1 (e : A.exp) : A.exp = addInt (e, 1)
+
+>>>>>>> .merge-right.r4916
     fun copyPat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)
 	      | f (A.TuplePat ps) = A.TuplePat (map f ps)
