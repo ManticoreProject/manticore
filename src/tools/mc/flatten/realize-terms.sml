@@ -62,7 +62,8 @@ end = struct
 
   fun mkFArray (es, n, t) =
     if FU.isInt t andalso FU.isLf n then
-(* FIXME doesn't run in parallel!!! *)
+(* FIXME doesn't run in parallel! *)
+(* easy fix -- see translate-pcomp for model *)
       mkIntFArray es
     else let
       val shape = mkTree n 

@@ -9,6 +9,8 @@
 
 structure DelayedBasis = struct
 
+  structure T = Types
+
   structure BE = BasisEnv
 
   type 'a thunk = unit -> 'a
@@ -25,12 +27,15 @@ structure DelayedBasis = struct
   val getDCon = BE.getDConFromBasis
  
 (* path makers *)
-  fun module m x = m :: [x]
-  val farray = module "FArray"
-  val farrayPair = module "FArrayPair"
-  val shapeTree = module "ShapeTree"
-  val intFArray = module "IntFArray"
+
+  fun module m = fn x => m :: [x]
+
+  val farray        = module "FArray"
+  val farrayPair    = module "FArrayPair"
+  val shapeTree     = module "ShapeTree"
+  val intFArray     = module "IntFArray"
   val intFArrayPair = module "IntFArrayPair"
+  val farrayUtil    = module "FArrayUtil"
 
 (* tycons *)
   structure TyCon = struct
@@ -57,8 +62,13 @@ structure DelayedBasis = struct
     val flen        = mk (farray "length")
     val ftab        = mk (farray "tab")
     val ftabFTS     = mk (farray "tabFromToStep")
-    val fptab       = mk (farrayPair "tab")
+    val fptab       = mk (farrayPair "tabulate")
+    val fptabFTS    = mk (farrayPair "tabFromToStep")
+    val ifpTab      = mk (intFArrayPair "tabulate")
+    val ifpTabFTS   = mk (intFArrayPair "tabFromToStep")
+    val fflatten    = mk (farray "flatten")
     val fmap        = mk (farray "flatMap")
+    val ifmap       = mk (intFArray "flatMap")
     val fpmap       = mk (farrayPair "flatMapEq")
     val ipMapEq_int = mk (intFArrayPair "flatMapEq_int")
     val greduce     = mk (farray "groundReduce")
@@ -70,6 +80,12 @@ structure DelayedBasis = struct
     val intTabFTS   = mk (intFArray "tabFromToStep")
     val intFlatSub  = mk (intFArray "flatSub")
     val ifFromList  = mk (intFArray "fromList")
+    val flattenIFF  = mk (farrayUtil "flatten_IF_F")
+  end
+
+  structure Ty = struct
+    fun farray t = T.ConTy ([t], TyCon.farray ())
+    val int_farray = fn () => T.ConTy ([], TyCon.intFArray ())
   end
 
 end

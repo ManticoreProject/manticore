@@ -22,9 +22,19 @@ end *) = struct
 
   structure AU = ASTUtil
   structure TU = TypeUtil
+  structure FU = FlattenUtil
+
+  structure D  = DelayedBasis
+  structure DC = D.TyCon
+  structure DD = D.DataCon
+  structure DV = D.Var
+  structure DT = D.Ty
 
   structure FMap = F.Map
   structure FSet = F.Set
+
+(* println : string -> unit *)
+  fun println s = (print s; print "\n")
 
 (* mapi : (('a * int) -> 'b) -> 'a list -> 'b list *)
 (* Map a function that consumes the index of the current item too. *)
@@ -190,20 +200,31 @@ end *) = struct
     (* n.b. trying to bind these at the top level causes a link-time failure *)
       val {fArrTyc, fArrCon, fArrFlatten, ntreeTyc, ropeTyc, ropeMap} = basisItems ()
 
-    (* choose a monorphic farray representation if possible *)
-      fun monomorphicFArray (t : T.ty) : T.ty = 
-        if TU.same (B.intTy, t) then
-	  T.ConTy ([], intfTyc ())
+    (* choose a monomorphic farray representation if possible *)
+      fun monomorphize (t : T.ty) : T.ty = (case t
+        of T.ConTy ([t'], c) =>
+             if FU.isInt t' andalso FU.isFArrayTyc c then
+               DT.int_farray ()
+	     else t
+	 | _ => t
+        (* end case *))
+
+      fun mkFArray (t : T.ty) : T.ty = 
+        if FU.isInt t then
+	  DT.int_farray ()
 	else
-	  T.ConTy ([t], fArrTyc)
+	  DT.farray t
 
     (* calculate the domain and range types for the function to be generated *)
-      val domTy = T.ConTy ([T.TupleTy ts], fArrTyc)
-      val rngTy = T.TupleTy (List.map monomorphicFArray ts)
+      val domTy = T.ConTy ([T.TupleTy (List.map monomorphize ts)], fArrTyc)
+      val rngTy = T.TupleTy (List.map mkFArray ts)
 
     (* create variables for function name and its argument *)
       val name  = freshName ()
-      val unzip = Var.new (name, T.FunTy (domTy, rngTy))
+      val unzip = Var.new (name, domTy --> rngTy)
+
+val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy --> rngTy)])
+
       val arg   = Var.new ("arg", domTy)
 
     (* build patterns against which to match the argument *)
@@ -254,12 +275,6 @@ end *) = struct
         A.FB (unzip, arg, body)
       end
 
-      fun isFArrayTyc c = let
-        val {fArrTyc, ...} = basisItems ()
-        in
-	  TyCon.same (fArrTyc, c)
-        end
-
   in
 (* +debug
     fun hashtest () = let
@@ -274,8 +289,10 @@ end *) = struct
   (* pre: ty is an farray of tuples of length at least two *)
     fun mkUnzip (ty : T.ty) : A.lambda = (case ty
       of T.ConTy ([T.TupleTy (ts as _::_::_)], c) =>  
-           if isFArrayTyc c then mk ts
-	   else raise Fail "mkUnzip: expecting farray"
+           if FU.isFArrayTyc c then 
+             mk ts
+	   else 
+             raise Fail "mkUnzip: expecting farray"
        | _ => raise Fail ("mkUnzip: " ^ TU.toString ty)
       (* end case *))
   end
@@ -343,6 +360,9 @@ end *) = struct
       val name  = Var.nameOf f ^ "_o_" ^ Var.nameOf g
       val f_o_g = Var.new (name, domTy --> rngTy)
       val arg   = Var.new ("arg", domTy)
+
+val _ = println (concat ["building ", name, ":", TU.toString (domTy --> rngTy)])
+
       in
 	A.FB (f_o_g, arg, v f @@ [v g @@ [v arg]])
       end
@@ -368,18 +388,33 @@ end *) = struct
         A.FB (f, x, b)
       end
 
-    fun mkCat domTy = (case domTy
 (* FIXME I believe I may not be handling nested arrays of tuples correctly. *)
-(* FIXME This is broken. Try int farr farr farr. FIX!!! *)
+(* FIXME This is broken -- not working for int farr farr farr. *)
+    fun mkCat domTy = (case domTy
       of T.ConTy ([T.ConTy ([t], _)], _) (* t farr farr *) => let
-           val {fArrTyc, fArrFlatten, ...} = basisItems ()
-	   val rngTy = T.ConTy ([t], fArrTyc)
-	   val f = Var.new (freshName (), T.FunTy (domTy, rngTy))
+	   fun tvar x = A.VarExp (x, [t])
+           val rngTy = T.ConTy ([t], DC.farray ())
+	   val f = Var.new (freshName (), domTy --> rngTy)
 	   val x = Var.new ("x", domTy)
-	   val b = AU.mkApplyExp (A.VarExp (fArrFlatten, [t]), [A.VarExp (x, [t])])
+	   val b = AU.mkApplyExp (tvar (DV.fflatten ()), [tvar x])
            in
 	     A.FB (f, x, b)
 	   end
+       |  T.ConTy ([t], c) (* looking for int_farray farray *) =>
+            if TU.same (t, DT.int_farray ()) andalso FU.isFArrayTyc c then let
+              (* TODO I'm committed to returning an FB, but that's not necessary in this case. *)
+              (* I end up constructing a pointless eta-expansion of the function in question. *)
+	      (* How hard is this to fix? -ams *)
+              val rngTy = DT.int_farray ()
+	      fun ve x = A.VarExp (x, [])
+	      val f = Var.new (freshName (), domTy --> rngTy)
+	      val x = Var.new ("x", domTy)
+	      val b = AU.mkApplyExp (ve (DV.flattenIFF ()), [ve x])
+              in
+                A.FB (f, x, b)
+               end
+	    else
+	      raise Fail ("mkCat : " ^ TU.toString domTy)
        | _ => raise Fail ("mkCat : " ^ TU.toString domTy)
       (* end case *))
 

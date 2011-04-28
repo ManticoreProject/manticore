@@ -140,23 +140,30 @@ structure PArrayOpGen = struct
       A.VarExp (DV.ftab (), [t])
 
   fun genTabFTS (t : T.ty) : A.exp = 
-    if TU.same (t, B.intTy) then
+    if FU.isInt t then
       A.VarExp (DV.intTabFTS (), [])
     else
       A.VarExp (DV.ftabFTS (), [t])
 
   fun genTabTupleFTS ts = (case ts
-    of [t1, t2] => A.VarExp (DV.fptab (), ts)
+    of [t1, t2] => 
+         if FU.isInt t1 andalso FU.isInt t2 then
+           A.VarExp (DV.ifpTabFTS (), [])
+(* FIXME What is only one of the types is an int? *)
+	 else
+           A.VarExp (DV.fptabFTS (), ts)
      | _ => raise Fail ("todo: " ^ TU.toString (T.TupleTy ts))
     (* end case *))
           
   fun genMap (t as T.FunTy (alpha, beta)) = 
-        if FU.isGroundTy alpha then
+        if FU.isInt alpha andalso FU.isInt beta then
+          A.VarExp (DV.ifmap (), [])
+        else if FU.isGroundTy alpha then
           A.VarExp (DV.fmap (), [alpha, beta])
 	else (case alpha
           of tup as T.TupleTy [t1, t2] =>
                if FU.isGroundTy t1 andalso FU.isGroundTy t2 then
-	         if List.all (fn t => (TU.same (B.intTy, t))) [t1, t2, beta] then
+	         if List.all FU.isInt [t1, t2, beta] then
                    A.VarExp (DV.ipMapEq_int (), [])
 		 else 
 		   A.VarExp (DV.fpmap (), [alpha, beta])
