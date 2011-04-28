@@ -8,6 +8,8 @@
 
 structure FArray = struct
 
+  val fail = Fail.fail "FArray"
+
   structure S = ShapeTree
   structure R = Rope
 
@@ -52,14 +54,14 @@ structure FArray = struct
   (* flatSub : 'a f_array * int -> 'a *)
     fun flatSub (FArray (data, shape), i) = (case shape
       of S.Lf (lo, hi) => R.sub (data, lo+i)
-       | S.Nd ts => raise Fail "flatSub"
+       | S.Nd ts => fail "flatSub" "Nd"
       (* end case *))
 
   (* nestedSub : 'a f_array * int -> 'a f_array *)
   (* the f_array returned is one level less deep than the arg *)
     fun nestedSub (FArray (data, shape), i) = (case shape
       of S.Nd ts => FArray (data, List.nth (ts, i))
-       | S.Lf _ => raise Fail "nestedSub"
+       | S.Lf _ => fail "nestedSub" "Lf"
       (* end case *))
 
   (* tab : int * (int -> 'a) -> 'a f_array *)
@@ -93,7 +95,7 @@ structure FArray = struct
       end
 
   (* nestedMap : ('a -> 'b) -> 'a f_array -> 'b f_array *)
-    fun nestedMap f (FArray (data, shape)) = raise Fail "todo"
+    fun nestedMap f (FArray (data, shape)) = fail "nestedMap" "todo"
 
   (* clean : 'a f_array -> 'a f_array *)
     fun clean (FArray (data, shape)) = (case shape
@@ -116,7 +118,7 @@ structure FArray = struct
 	     else if lo > 0 then
 	       FArray (data', S.incrBy (~lo) shape)
 	     else
-	       raise Fail "clean: this should never happen"
+	       fail "clean" "this should never happen"
 	   end
       (* end case *))
 
@@ -128,7 +130,7 @@ structure FArray = struct
              in 
                R.reduceP (assocOp, zero, data')
 	     end
-	 | S.Nd _ => raise Fail "groundReduce: flat array of ground types expected"
+	 | S.Nd _ => fail "groundReduce" "flat array of ground types expected"
         (* end case *))
 
   (* intRange : int * int * int -> int f_array *)
@@ -147,7 +149,7 @@ structure FArray = struct
              R.app (f, data)
 	   else
              R.app (f, R.fromSeq (R.partialSeq (data, lo, hi)))
-       | S.Nd _ => raise Fail "flatApp"
+       | S.Nd _ => fail "flatApp" "Nd"
       (* end case *))
 
 end

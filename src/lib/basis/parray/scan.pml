@@ -20,6 +20,8 @@
 
 structure Scan = struct
 
+    val fail = Fail.fail "Scan"
+
     structure S = Rope.S
     structure R = Rope
 
@@ -41,10 +43,6 @@ structure Scan = struct
 		 'a seq)  (* data *)
 
   (* ***** UTILITIES ***** *)
-
-  (* failwith : string -> 'a *)
-  (* using this for the moment so we can observe the exception message at runtime *)
-    fun failwith msg = (Print.printLn msg; (raise Fail msg))
 
   (* datumOf : 'a scan_rope -> 'a *)
   (* Select the accumulator out of a scan_rope node. *)

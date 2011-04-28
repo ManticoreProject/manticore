@@ -8,6 +8,8 @@
 
 structure FloatRope = struct
 
+    val fail = Fail.fail "FloatRope"
+
     structure S = FloatArraySeq
 
     datatype option = datatype Option.option
@@ -15,10 +17,6 @@ structure FloatRope = struct
     type seq = S.seq
 
   (* ***** UTILITIES ***** *)
-
-  (* failwith : string -> 'a *)
-  (* using this for the moment so we can observe the exception message at runtime *)
-    fun failwith msg = (Print.printLn msg; (raise Fail msg))
 
   (* ***** ROPES ***** *)
 
@@ -126,7 +124,7 @@ structure FloatRope = struct
     fun sub (r, i) = 
       if inBounds (r, i) 
       then subInBounds(r, i)
-      else failwith "subscript out of bounds"
+      else fail "sub" "subscript out of bounds"
 
   (* ***** BALANCING ***** *)
 
@@ -281,12 +279,12 @@ structure FloatRope = struct
     fun insert (r, balancer) = 
      (case balancer
         of nil => (* this case should never be reached *)
-	          (failwith "BUG: empty balancer")
+	     fail "insert" "BUG: empty balancer"
 	 | (lb, ub, NONE) :: nil =>
              if length r >= lb andalso length r < ub then
                (lb, ub, SOME r)::nil
 	     else 
-               (failwith "BUG: typing to fit a rope of incompatible size")
+               fail "insert" "BUG: typing to fit a rope of incompatible size"
 	 | (lb, ub, NONE) :: t => 
 	     if length r >= lb andalso length r < ub then 
                (lb, ub, SOME r) :: t
@@ -413,7 +411,7 @@ structure FloatRope = struct
         if n <= maxLeafSize then
           LEAF (n, S.fromList xs)
         else
-          failwith "too big"
+          fail "leafFromList" "too many elements"
       end
 
   (* fromList : float list -> float_rope *)
@@ -441,7 +439,7 @@ structure FloatRope = struct
   (* lo inclusive, hi exclusive *)
     fun tabFromToP (lo, hi, f) = 
      (if lo > hi then
-       (failwith "downward tabulate")
+        empty
       else if (hi - lo) <= maxLeafSize then let
         fun f' n = f (n + lo)
         in
@@ -500,7 +498,7 @@ structure FloatRope = struct
     fun splitAt (r, i) =
       if inBounds(r, i)
       then splitAtWithBalancing(r, i)
-      else failwith "subscript out of bounds for splitAt"
+      else fail "splitAt" "subscript out of bounds"
 
   (* cut the rope r into r[0, ..., n-1] and r[n, ..., length r - 1] *)
     fun cut (r, n) =
@@ -531,7 +529,7 @@ structure FloatRope = struct
      (case r
         of LEAF (len, s) => 
             (if lo >= len orelse hi > len then
-               failwith "err"
+               fail "partialSeq" "out of bounds"		    
 	     else
 	       S.take (S.drop (s, lo), hi-lo))
 	 | CAT (_, len, rL, rR) => let

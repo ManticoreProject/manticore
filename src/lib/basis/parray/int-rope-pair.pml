@@ -1,65 +1,61 @@
-(* rope-pair.pml  
+(* int-rope-pair.pml  
  *
- * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Analgous to ListPair.
+ * Analogous to ListPair.
  *)
 
-structure RopePair (* : ROPE_PAIR *) = struct
+structure IntRopePair = struct
 
-    val fail = Fail.fail "RopePair"
+  val fail = Fail.fail "IntRopePair"
 
-    structure S = Rope.S
-    structure P = Rope.SPr
-    structure R = Rope
+  structure R = IntRope
+  structure S = R.S
+  structure P = R.SPr
+    
+  type seq = S.seq
 
-    datatype option = datatype Option.option
+(* fastMapP_int : (int * int -> int) -> int_rope * int_rope -> int_rope *)
+(* pre : both ropes have exactly the same structure *)
+  fun fastMapP_int f (r1, r2) = let
+    fun mapF ropes = (case ropes
+      of (R.LEAF (n1, s1), R.LEAF (n2, s2)) => 
+           R.mkLeaf (P.mapEq_int (f, s1, s2))
+       | (R.CAT (d1, len1, r1L, r1R), R.CAT (d2, len2, r2L, r2R)) =>
+           R.CAT (| d1, len1, mapF (r1L, r2L), mapF (r1R, r2R) |)
+       | _ => fail "fastMapP_int" "bug"
+      (* end case *))
+    in
+      mapF (r1, r2)
+    end
 
-    type 'a seq = 'a S.seq
+(* mapEq_intPair *)
+  fun mapEq_intPair (f : int * int -> int * int) (r1, r2) = let
+    fun mapF ropes = (case ropes
+      of (R.LEAF (n1, s1), R.LEAF (n2, s2)) => let
+           val (s1', s2') = P.mapEq_intPair (f, s1, s2)
+           in
+	     (R.mkLeaf s1', R.mkLeaf s2')
+	   end
+       | (R.CAT (d1, len1, r1L, r1R), R.CAT (d2, len2, r2L, r2R)) => let
+           val ((r1L', r2L'), (r1R', r2R')) = 
+             (| mapF (r1L, r2L), mapF (r1R, r2R) |)
+           in
+             (R.CAT (d1, len1, r1L', r1R'),
+	      R.CAT (d2, len2, r2L', r2R'))
+	   end
+       | _ => fail "mapEq_intPair" "bug"
+      (* end case *))
+    in
+      mapF (r1, r2)
+    end
+           
+  fun tabFromToStepP (from, to_, step, f) = fail "tabFromToStepP" "todo"
 
-  (* ***** UTILITIES ***** *)
+  fun tabP (n, f) = fail "tabP" "todo"
 
 (*
-  (* sameStructureP : 'a rope * 'b rope -> bool *)
-    fun sameStructureP (r1, r2) = 
-     (if R.length r1 <> R.length r2 then
-        false
-      else let (* same length *)
-        fun lp (r1, r2) =
-         (case (r1, r2)
-            of (R.LEAF (len1, _), R.LEAF (len2, _)) => (len1 = len2)
-	     | (R.CAT (_, _, r1L, r1R), R.CAT (_, _, r2L, r2R)) =>
-	         (pcase lp (r1L, r2L) & lp (r1R, r2R)
-                     of false & ? => false
-		      | ? & false => false
-		      | true & true => true
-		      | otherwise => fail "sameStructureP" "bug"
-		    (* end pcase *))
-
-	     | _ => false
-	   (* end case *))
-	in
-	  lp (r1, r2)
-	end
-     (* end if *))
-*)
-     
-  (* fastMapP : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
-  (* pre : both ropes have exactly the same structure *)
-    fun fastMapP (f, r1, r2) = let
-      fun lp ropes = 
-       (case ropes
-	  of (R.LEAF s1, R.LEAF s2) => 
-               R.mkLeaf (S.map2Eq (f, s1, s2))
-	   | (R.CAT (d1, len1, r1L, r1R), R.CAT (d2, len2, r2L, r2R)) =>
-               R.CAT (| d1, len1, lp (r1L, r2L), lp (r1R, r2R) |)
-	   | _ => fail "fastMapP" "shapes"
-         (* end case *))
-      in
-	lp (r1, r2)
-      end
-
   (* mapP' : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
   (* pre : the first rope's length is <= that of the second *)
   (* traversal follows the structure of the shorter rope *)
@@ -174,7 +170,7 @@ structure RopePair (* : ROPE_PAIR *) = struct
                tabFromToP (0, (to_-from) div step, f')
         (* end case *))
       end
-
+*)
   (* (\* reduceP : (('a * 'b) * ('a * 'b) -> ('a * 'b)) * ('a * 'b) * ('a rope * 'b rope) -> 'a * 'b *\) *)
   (* (\* Reduce with an associative operator. *\) *)
   (*   fun reduceP (assocOp, unit, (ropeA, ropeB)) = let *)
@@ -182,7 +178,7 @@ structure RopePair (* : ROPE_PAIR *) = struct
   (*       of (R.LEAF sA, R.LEAF sB) => P.reduce (assocOp, unit, (sA, sB)) *)
   (* 	 | (R.CAT (_, _, rA1, rA2), R.CAT (_, _, rB1, rB2)) =>  *)
   (*            assocOp (| red (rA1, rB1), red (rA2, rB2) |) *)
-  (* 	 | _ => raise Fail "reduceP" *)
+  (* 	 | _ => fail "reduceP" "shapes"*)
   (* 	(\* end case *\)) *)
   (*     in *)
   (*       red (ropeA, ropeB) *)

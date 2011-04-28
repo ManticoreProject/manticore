@@ -19,6 +19,8 @@
 
 structure IntScan = struct
 
+    val fail = Fail.fail "IntScan"
+
     structure S = IntArraySeq
     structure R = IntRope
 
@@ -40,10 +42,6 @@ structure IntScan = struct
 		 seq)       (* data *)
 
   (* ***** UTILITIES ***** *)
-
-  (* failwith : string -> 'a *)
-  (* using this for the moment so we can observe the exception message at runtime *)
-    fun failwith msg = (Print.printLn msg; (raise Fail msg))
 
   (* datumOf : scan_rope -> int *)
   (* Select the accumulator out of a scan_rope node. *)

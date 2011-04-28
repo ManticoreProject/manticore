@@ -6,18 +6,19 @@
 
 structure IntArraySeq = struct
 
+  val fail = Fail.fail "IntArraySeq"
+
   structure A = IntArray
 
   type seq = A.array
 
-  fun failwith s = (Print.printLn s; raise Fail s)
+  val pr = Print.printLn
 
-  fun tabulate (n, f) = raise Fail "todo: polymorphic tabulate"
+  fun prefixPlusScan _ = fail "prefixPlusScan" "todo"
+
+  fun tabulate (n, f) = fail "tabulate" "todo: polymorphism"
 
   fun tabulate_int (n, f : int -> int) = A.tabulate (n, f)				   
-
-  fun sum _ = failwith "sum"
-  fun prefixPlusScan _ = failwith "prefix"
 
   val empty = A.array (0, 0)
   fun singleton s = A.array (1, s)
@@ -27,6 +28,14 @@ structure IntArraySeq = struct
   val length = A.length
 
   fun sub (s, n) = A.sub (s, n)
+
+  fun sum s = let
+    val n = length s
+    fun lp (i, t) = 
+      if (i>=n) then t else lp (i+1, t+sub(s,i))
+    in
+      lp (0, 0)
+    end
 
   fun array (n, init) = A.array (n, init)
 
@@ -39,21 +48,21 @@ structure IntArraySeq = struct
       else
 	sub (y, i-xn)
     in
-      tabulate (xn+yn, elt)      
+      tabulate_int (xn+yn, elt)      
     end
 
   fun take (s, n) = let
     val len = length s
     in
       if n >= len then s
-      else tabulate (n, fn i => sub (s, i))
+      else tabulate_int (n, fn i => sub (s, i))
     end
 
   fun drop (s, n) = let
     val len = length s
     in
       if n >= len then empty
-      else tabulate (len-n, fn i => sub (s, i+n))
+      else tabulate_int (len-n, fn i => sub (s, i+n))
     end
 
   fun splitAt (s, i) = (take (s, i+1), drop (s, i+1))
@@ -182,8 +191,6 @@ structure IntArraySeq = struct
         lp (len-1, nil)
       end
 
-  val tabulate = tabulate
-
 (*
   fun zip (s1, s2) = let
     fun min (m, n) = if m < n then m else n
@@ -276,7 +283,8 @@ structure IntArraySeq = struct
              in
 	       copyAll (ss, ns, start+n)
              end
-	 | _ => (raise Fail "something went wrong"))
+	 | _ => fail "concatList.copyAll" "something went wrong"
+        (* end case *))
     in
       copyAll (ss, lens, 0)
     end

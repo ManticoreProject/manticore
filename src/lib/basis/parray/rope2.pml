@@ -11,6 +11,8 @@
 
 structure Rope2 = struct
 
+  val fail = Fail.fail "Rope2"
+
   structure R = Rope
 
   structure S = Rope.S (* VectorSeq *) (* ArraySeq *) (* ListSeq *)
@@ -20,10 +22,6 @@ structure Rope2 = struct
   type 'a seq = 'a S.seq
 
 (* ***** UTILITIES ***** *)
-
-(* failwith : string -> 'a *)
-(* using this for the moment so we can observe the exception message at runtime *)
-  fun failwith msg = (Print.printLn msg; (raise Fail msg))
 
 (* ***** ROPES ***** *)
 
@@ -93,7 +91,7 @@ structure Rope2 = struct
   fun sub (r, i) = 
     if inBounds (r, i) 
     then subInBounds(r, i)
-    else failwith "subscript out of bounds"
+    else fail "sub" "subscript out of bounds"
 
 (* mapP : ('a * 'b -> 'c) -> ('a, 'b) rope2 -> 'c rope *)
 (* post : the output has the same shape as the input *)

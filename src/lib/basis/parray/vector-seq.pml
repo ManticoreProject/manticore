@@ -10,6 +10,8 @@
 structure VectorSeq =
   struct
 
+    val fail = Fail.fail "VectorSeq"
+
     structure V = Vector
 
     type 'a seq = 'a V.vector
@@ -128,7 +130,7 @@ structure VectorSeq =
         if (len1 = len2) then
           tabulate (len1, fn i => f (sub (s1, i), sub (s2, i)))
 	else
-          raise Fail "map2Eq"
+          fail "map2Eq" "lengths"
       end
 
     fun app (f, s) = let

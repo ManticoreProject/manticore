@@ -7,6 +7,8 @@
 
 structure ArraySeq = struct
 
+  val fail = Fail.fail "ArraySeq"
+
   structure A = Array
 
   datatype 'a seq 
@@ -30,7 +32,7 @@ structure ArraySeq = struct
     (* end case *))
 
   fun sub (s, n) = (case s
-    of Empty => (raise Fail "sub")
+    of Empty => fail "sub" "Empty"
      | NonEmpty a => A.sub (a, n)
     (* end case *))
 
@@ -151,14 +153,15 @@ structure ArraySeq = struct
          val n1 = A.length a1
 	 val n2 = A.length a2
          in
-           if (n1 <> n2) then (raise Fail "map2Eq")
+           if (n1 <> n2) then 
+             fail "map2Eq" "unequal lengths (1)"
 	   else let
              fun f' i = f (A.sub (a1,i), A.sub (a2, i))
              in
                NonEmpty (A.tabulate (n1, f'))
 	     end
          end
-     | _ => raise Fail "map2Eq"
+     | _ => fail "map2Eq" "unequal lengths (2)"
     (* end case *))
 
   fun foldr (f, z, s) = (case s
@@ -233,7 +236,7 @@ structure ArraySeq = struct
     (* end case *))
 
   fun update (s, i, x) = (case s
-    of Empty => (raise Fail "update")
+    of Empty => fail "update" "Empty"
      | NonEmpty a => (A.update (a, i, x); s)
     (* end case *))
 
@@ -264,7 +267,7 @@ structure ArraySeq = struct
     (* end case *))
 
   fun toArray s = (case s
-    of Empty => (raise Fail "toArray")
+    of Empty => fail "toArray" "Empty"
      | NonEmpty a => a
     (* end case *)) 
 

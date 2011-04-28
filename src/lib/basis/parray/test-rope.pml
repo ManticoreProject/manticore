@@ -1,5 +1,13 @@
+(* test-rope.pml
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ *)
+
 structure TestRope = struct
 
+    val fail = Fail.fail "TestRope"
 
     structure S = ListSeq
     structure R = Rope
@@ -35,8 +43,7 @@ structure TestRope = struct
   fun doubleSpineRope (lo, hi) = 
     R.concatWithoutBalancing (invert(spineRope(lo, hi div 2)), spineRope(hi div 2 + 1, hi))
 
-  fun check c = if not c then raise Fail "" else ()
-
+  fun check c = if not c then fail "check" "failed check" else ()
 
   fun testBal mkRope n = let
     val r = mkRope (0, n-1)

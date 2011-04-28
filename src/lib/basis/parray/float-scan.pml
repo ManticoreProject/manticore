@@ -19,6 +19,8 @@
 
 structure FloatScan = struct
 
+    val fail = Fail.fail "FloatScan"
+
     structure S = FloatArraySeq
     structure R = FloatRope
 
@@ -40,10 +42,6 @@ structure FloatScan = struct
 		 seq)  (* data *)
 
   (* ***** UTILITIES ***** *)
-
-  (* failwith : string -> 'a *)
-  (* using this for the moment so we can observe the exception message at runtime *)
-    fun failwith msg = (Print.printLn msg; (raise Fail msg))
 
   (* datumOf : scan_rope -> 'a *)
   (* Select the accumulator out of a scan_rope node. *)

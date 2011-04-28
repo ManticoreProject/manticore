@@ -7,6 +7,8 @@
 
 structure VectorPair = struct
 
+  val fail = Fail.fail "VectorPair"
+
   structure VS = VectorSeq
 
   fun tabulate (n, f) = VS.unzip (VS.tabulate (n, f))
@@ -26,7 +28,7 @@ structure VectorPair = struct
       if (n1 = n2) then
         VS.tabulate (n1, fn i => f (VS.sub (v1, i), VS.sub (v2, i)))
       else
-        (raise Fail "mapEq")
+          fail "mapEq" "length"
     end
 
 end

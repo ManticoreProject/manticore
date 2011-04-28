@@ -8,6 +8,8 @@
 
 structure FArrayPair = struct
 
+  val fail = Fail.fail "FArrayPair"
+
   structure S = ShapeTree
   structure F = FArray
   structure R = Rope
@@ -21,7 +23,7 @@ structure FArrayPair = struct
 (*   (the compiler will insert one) *)
   fun flatMapEq f (F.FArray (data1, shape1), F.FArray (data2, shape2)) = 
     if not (S.same (shape1, shape2)) then
-      raise Fail "flatMapEq"
+      fail "flatMapEq" "shapes"
     else let
       val data' = RopePair.fastMapP (f, data1, data2)
       in
@@ -41,7 +43,7 @@ structure FArrayPair = struct
   fun tabFromToStep (from, to_, step, f) = let
     val (data1, data2) = RopePair.tabFromToStepP (from, to_, step, f)
     val len = R.length data1
-    val _ = if (len = R.length (data2)) then () else (raise Fail "len")
+    val _ = if (len = R.length (data2)) then () else fail "tabFromToStep" "len"
     val shape = S.Lf (0, len)
     in
       (F.FArray (data1, shape), F.FArray (data2, shape))
@@ -51,7 +53,7 @@ structure FArrayPair = struct
 (*     fun groundReduce (assocOp : 'a * 'a -> 'a)  *)
 (* 		     (zero : 'a)  *)
 (* 		     (F.FArray (dataA, shapeA), F.FArray (dataB, shapeB)) = let *)
-(*       val _ = if S.same (shapeA, shapeB) then () else (raise Fail "FArrayPair.groundReduce")  *)
+(*       val _ = if S.same (shapeA, shapeB) then () else fail "groundReduce" "shapes"  *)
 (*       in (case shapeA *)
 (*         of S.Lf (lo, hi) => let  *)
 (*              val F.FArray (dataA', shapeA') = F.clean (F.FArray (dataA, shapeA)) *)
@@ -59,7 +61,7 @@ structure FArrayPair = struct
 (*              in  *)
 (*                RopePair.reduceP (assocOp, zero, (dataA', dataB')) *)
 (* 	     end *)
-(* 	 | S.Nd _ => raise Fail "groundReduce: flat array of ground types expected" *)
+(* 	 | S.Nd _ => fail "groundReduce" "flat array of ground types expected" *)
 (*         (\* end case *\)) *)
 (*       end *)
 

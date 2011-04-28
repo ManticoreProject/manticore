@@ -8,6 +8,7 @@
 
   ../sequential/sequential.mlb
   ../misc/debug.mlb
+  ../extras/fail.pml  
 
 (* Ropes *)
 
@@ -20,6 +21,7 @@
   farray-pair.pml
   int-farray.pml
   int-farray-pair.pml
+  farray-util.pml
 
 (* Parallel Arrays *)
 

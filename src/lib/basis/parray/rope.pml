@@ -8,6 +8,8 @@
 
 structure Rope (* : ROPE *) = struct
 
+    val fail = Fail.fail "Rope"
+
     structure S = ArraySeq
 (*  structure S = VectorSeq *)
 (*  structure S = ListSeq *)
@@ -19,10 +21,6 @@ structure Rope (* : ROPE *) = struct
     type 'a seq = 'a S.seq
 
   (* ***** UTILITIES ***** *)
-
-  (* failwith : string -> 'a *)
-  (* using this for the moment so we can observe the exception message at runtime *)
-    fun failwith msg = (Print.printLn msg; (raise Fail msg))
 
   (* ***** ROPES ***** *)
 
@@ -44,7 +42,7 @@ structure Rope (* : ROPE *) = struct
   (* mkLeaf : 'a S.seq -> 'a rope *)
   (* pre: S.length s < maxLeafSize *)
     fun mkLeaf s = if S.length s > maxLeafSize
-		    then failwith "Ropes.mkLeaf: invalid leaf size"
+		    then fail "mkLeaf" "too many elements"
 		    else LEAF s
 
   (* toString : ('a -> string) -> 'a rope -> string *)
@@ -118,11 +116,11 @@ structure Rope (* : ROPE *) = struct
           of LEAF s => 
 	       if S.length s = computeLength r 
 	       then () 
-	       else failwith "inconsistent length at leaf"
+	       else fail "chkLength" "inconsistent length at leaf"
 	   | CAT (_, len, r1, r2) =>
 	       if len = computeLength r
 	       then (chkLength r1; chkLength r2)
-	       else failwith "inconsisten length at cat")
+	       else fail "chkLength" "inconsistent length at cat")
 
   (* depth : 'a rope -> int *)
   (* The depth of a leaf is 0. *)
@@ -154,7 +152,7 @@ structure Rope (* : ROPE *) = struct
     fun sub (r, i) = 
       if inBounds (r, i) 
       then subInBounds(r, i)
-      else failwith "subscript out of bounds"
+      else fail "sub" "subscript out of bounds"
 
   (* ***** BALANCING ***** *)
 
@@ -305,12 +303,12 @@ structure Rope (* : ROPE *) = struct
     fun insert (r, balancer) = 
      (case balancer
         of nil => (* this case should never be reached *)
-	          (failwith "BUG: empty balancer")
+	     fail "insert" "BUG: empty balancer"
 	 | (lb, ub, NONE) :: nil =>
              if length r >= lb andalso length r < ub then
                (lb, ub, SOME r)::nil
 	     else 
-               (failwith "BUG: typing to fit a rope of incompatible size")
+               fail "insert" "BUG: typing to fit a rope of incompatible size"
 	 | (lb, ub, NONE) :: t => 
 	     if length r >= lb andalso length r < ub then 
                (lb, ub, SOME r) :: t
@@ -423,7 +421,7 @@ structure Rope (* : ROPE *) = struct
         if n <= maxLeafSize then
           mkLeaf (S.fromList xs)
         else
-          failwith "Rope.leafFromList: list too big"
+          fail "leafFromList" "list too big"
       end
 
   (* fromList : 'a list -> 'a rope *)
@@ -475,7 +473,7 @@ structure Rope (* : ROPE *) = struct
     fun tabFromToStepP (from, to_, step, f) = let
       fun f' i = f (from + (step * i))
       in (case Int.compare (step, 0)
-        of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around this raise. -ams *)
+        of EQUAL => fail "tabFromToStepP" "0 step"
 	 | LESS (* negative step *) =>
              if (to_ > from) then
                empty
@@ -517,7 +515,7 @@ structure Rope (* : ROPE *) = struct
 
   (* nEltsInRange : int * int * int -> int *)
     fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
-	  if step = 0 then failwith "cannot have step 0 in a range"
+	  if step = 0 then fail "nEltsInRange" "cannot have step 0 in a range"
 	  else if from = to_ then 1
 	  else if (from > to_ andalso step > 0) then 0
 	  else if (from < to_ andalso step < 0) then 0
@@ -577,7 +575,7 @@ structure Rope (* : ROPE *) = struct
     fun splitAt (r, i) =
 	  if inBounds(r, i)
 	    then splitAtWithBalancing(r, i)
-	    else failwith "subscript out of bounds for splitAt"
+	    else fail "splitAt" "subscript out of bounds"
 
   (* cut the rope r into r[0, ..., n-1] and r[n, ..., length r - 1] *)
     fun cut (r, n) =
@@ -607,7 +605,7 @@ structure Rope (* : ROPE *) = struct
      (case r
         of LEAF s => 
             (if lo >= S.length s orelse hi > S.length s then
-               failwith "err"
+               fail "partialSeq" "subscripts"
 	     else
 	       S.take (S.drop (s, lo), hi-lo))
 	 | CAT (_, len, rL, rR) => let

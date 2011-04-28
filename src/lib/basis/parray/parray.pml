@@ -8,6 +8,8 @@
 
 structure PArray = struct
 
+    val fail = Fail.fail "PArray"
+
     _primcode (
     	define inline @to-rope (x : parray / _ : exh) : Rope.rope =
     	    return ((Rope.rope)x)
@@ -63,7 +65,8 @@ structure PArray = struct
         lp (i-1, tos(i)::","::acc)
     val n = length parr
     in
-      if (n<0) then (raise Fail "bug")
+      if (n<0) then
+        fail "tos_int" "BUG: negative length"
       else if (n=0) then "[||]"
       else let
         val init = [tos(n-1),"|]"]
@@ -81,7 +84,8 @@ structure PArray = struct
         lp (i-1, tos(i)::","::acc)
     val n = length parr
     in
-      if (n<0) then (raise Fail "bug")
+      if (n<0) then
+        fail "tos_float" "BUG: negative length"
       else if (n=0) then "[||]"
       else let
         val init = [tos(n-1),"|]"]
@@ -104,7 +108,8 @@ structure PArray = struct
         lp (i-1, tos(i)::","::acc)
     val n = length parr
     in
-      if (n<0) then (raise Fail "bug")
+      if (n<0) then
+        fail "tos_intPair" "BUG: negative length"
       else if (n=0) then "[||]"
       else let
         val init = [tos(n-1),"|]"]
@@ -122,7 +127,8 @@ structure PArray = struct
         lp (i-1, tos(i)::","::acc)
     val n = length parr
     in
-      if (n<0) then (raise Fail "bug")
+      if (n<0) then
+        fail "tos_intParr" "BUG: negative length"
       else if (n=0) then "[||]"
       else let
         val init = [tos(n-1),"|]"]

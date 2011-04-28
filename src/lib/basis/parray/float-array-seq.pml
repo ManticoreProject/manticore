@@ -6,15 +6,17 @@
 
 structure FloatArraySeq = struct
 
+  val fail = Fail.fail "FloatArraySeq"
+
   structure A = FloatArray
 
   type seq = A.array
 
-  fun failwith s = (Print.printLn s; raise Fail s)
+  fun tabulate (_, f : int -> float) = fail "tabulate" "todo"
 
-  fun tabulate (_, f : int -> float) = failwith "tabulate"
-  fun sum (a : A.array) : float = failwith "sum"
-  fun prefixPlusScan (f : float, a : A.array) : A.array = failwith "prefix"
+  fun sum (a : A.array) : float = fail "sum" "todo"
+
+  fun prefixPlusScan (f : float, a : A.array) : A.array = fail "prefixPlusScan" "todo"
 
   val empty = A.array (0, 0.0)
 
@@ -119,7 +121,8 @@ structure FloatArraySeq = struct
 
 (* mapPoly : (float -> 'a) * seq -> 'a Array.seq *)
   fun mapPoly (f, s) =
-    if null s then (raise Fail "can't!")
+    if null s then 
+      fail "mapPoly" "null s"
     else let
       val len = length s
       val init = f (sub (s, 0))
@@ -287,7 +290,8 @@ structure FloatArraySeq = struct
              in
 	       copyAll (ss, ns, start+n)
              end
-	 | _ => (raise Fail "something went wrong"))
+	 | _ => fail "concatList.copyAll" "bug"
+        (* end case *))
     in
       copyAll (ss, lens, 0)
     end

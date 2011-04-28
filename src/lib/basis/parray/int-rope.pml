@@ -17,9 +17,9 @@ structure IntRope = struct
 
   (* ***** UTILITIES ***** *)
 
-  (* failwith : string -> 'a *)
+  (* fail : string -> string -> 'a *)
   (* using this for the moment so we can observe the exception message at runtime *)
-    fun failwith msg = (Print.printLn ("FAIL: " ^ msg); raise Fail msg)
+    val fail = Fail.fail "IntRope"
 
   (* ***** ROPES ***** *)
 
@@ -125,7 +125,7 @@ structure IntRope = struct
     fun sub (r, i) = 
       if inBounds (r, i) 
       then subInBounds(r, i)
-      else failwith "subscript out of bounds"
+      else fail "sub" "subscript out of bounds"
 
   (* ***** BALANCING ***** *)
 
@@ -214,14 +214,12 @@ structure IntRope = struct
   (*     packed into the rightmost leaf of the left, it is *)
   (* - symm. case to previous *)
     fun concatWithoutBalancing (r1, r2) =
-     (if isEmpty r1 then 
-        r2
-      else if isEmpty r2 then
-	r1
+     (if isEmpty r1 then r2 
+      else if isEmpty r2 then r1
       else (case (r1, r2)
         of (LEAF (len1, s1), LEAF (len2, s2)) =>
-	     if (len1 + len2) <= maxLeafSize
-	     then LEAF (len1 + len2, S.concat (s1, s2))
+	     if (len1 + len2) <= maxLeafSize then
+               LEAF (len1 + len2, S.concat (s1, s2))
 	     else let
 	       val df  = maxLeafSize - S.length s1
 	       val s1' = S.concat (s1, S.take (s2, df))
@@ -280,12 +278,12 @@ structure IntRope = struct
     fun insert (r, balancer) = 
      (case balancer
         of nil => (* this case should never be reached *)
-	          (failwith "BUG: empty balancer")
+	     fail "insert" "empty balancer"
 	 | (lb, ub, NONE) :: nil =>
              if length r >= lb andalso length r < ub then
                (lb, ub, SOME r)::nil
 	     else 
-               (failwith "BUG: typing to fit a rope of incompatible size")
+               fail "insert" "BUG: typing to fit a rope of incompatible size"
 	 | (lb, ub, NONE) :: t => 
 	     if length r >= lb andalso length r < ub then 
                (lb, ub, SOME r) :: t
@@ -319,7 +317,7 @@ structure IntRope = struct
       val n = S.length s
       in
         if (n > maxLeafSize) then
-          raise Fail "mkLeaf"
+          fail "mkLeaf" "too many elements"
 	else
           LEAF (n, s)
       end
@@ -419,7 +417,7 @@ structure IntRope = struct
         if n <= maxLeafSize then
           LEAF (n, S.fromList xs)
         else
-          failwith "IntRope.leafFromList: too many elements"
+          fail "leafFromList" "too many elements"
       end
 
   (* fromList : int list -> int_rope *)
@@ -471,7 +469,7 @@ structure IntRope = struct
     fun tabFromToStepP (from, to_, step, f) = let
       fun f' i = f (from + (step * i))
       in (case Int.compare (step, 0)
-        of EQUAL => (raise Fail "0 step")
+        of EQUAL => fail "tabFromToStepP" "0 step"
 	 | LESS (* negative step *) =>
              if (to_ > from) then
                empty
@@ -493,7 +491,7 @@ structure IntRope = struct
       val a' = IntArray.tabulate (n, fn i => Array.sub (a, i))
       in
         if (n > maxLeafSize) 
-	then (raise Fail "leafFromSeq")
+	then fail "leafFromSeq" "too many elements"
         else LEAF (n, a')
       end
 
@@ -536,7 +534,7 @@ structure IntRope = struct
     fun splitAt (r, i) =
       if inBounds(r, i)
       then splitAtWithBalancing(r, i)
-      else failwith "subscript out of bounds for splitAt"
+      else fail "splitAt" "subscript out of bounds"
 
   (* cut the rope r into r[0, ..., n-1] and r[n, ..., length r - 1] *)
     fun cut (r, n) =
@@ -567,7 +565,7 @@ structure IntRope = struct
      (case r
         of LEAF (len, s) => 
             (if lo >= len orelse hi > len then
-               failwith "err"
+               fail "partialSeq" "subscript out of bounds"
 	     else
 	       S.take (S.drop (s, lo), hi-lo))
 	 | CAT (_, len, rL, rR) => let
