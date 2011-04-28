@@ -8,22 +8,18 @@
 
 structure IntFArrayPair = struct
 
+  val fail = Fail.fail "IntFArrayPair"
+
   structure S = ShapeTree
   structure F = IntFArray
   structure R = IntRope
-
-  fun fail loc info = let
-    val msg = "Fail in IntFArrayPair." ^ loc ^ ": " ^ info
-    in
-      (Print.printLn msg; raise Fail msg)
-    end
 
 (* flatMapEq_int : ((int * int) -> int) -> int_farray * int_farray -> int_farray *)
 (* pre: the input ropes have the exact same shape *)
 (*   (stronger condition than same length) *)
   fun flatMapEq_int f (F.FArray (data1, shape1), F.FArray (data2, shape2)) = 
     if not (S.same (shape1, shape2)) then
-      raise fail "flatMapEq_int" "shapes differ"
+      fail "flatMapEq_int" "shapes differ"
     else let
       val data' = IntRopePair.fastMapP_int f (data1, data2)
       in
@@ -64,7 +60,7 @@ structure IntFArrayPair = struct
 (*     fun groundReduce (assocOp : 'a * 'a -> 'a)  *)
 (* 		     (zero : 'a)  *)
 (* 		     (F.FArray (dataA, shapeA), F.FArray (dataB, shapeB)) = let *)
-(*       val _ = if S.same (shapeA, shapeB) then () else (raise Fail "FArrayPair.groundReduce")  *)
+(*       val _ = if S.same (shapeA, shapeB) then () else fail "groundReduce" "shapes"  *)
 (*       in (case shapeA *)
 (*         of S.Lf (lo, hi) => let  *)
 (*              val F.FArray (dataA', shapeA') = F.clean (F.FArray (dataA, shapeA)) *)
@@ -72,7 +68,7 @@ structure IntFArrayPair = struct
 (*              in  *)
 (*                RopePair.reduceP (assocOp, zero, (dataA', dataB')) *)
 (* 	     end *)
-(* 	 | S.Nd _ => raise Fail "groundReduce: flat array of ground types expected" *)
+(* 	 | S.Nd _ => fail "groundReduce" "flat array of ground types expected" *)
 (*         (\* end case *\)) *)
 (*       end *)
 
