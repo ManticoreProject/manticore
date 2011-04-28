@@ -1,4 +1,5 @@
-fun pr (a, b) = Print.printLn ("(" ^ Int.toString a ^ "," ^ Int.toString b ^ ")")
+val itos = Int.toString
+fun pr (a, b) = Print.printLn ("(" ^ itos a ^ "," ^ itos b ^ ")")
 
 fun swap (a, b) = (b, a)
 val arr = [| (1, 2) |]
