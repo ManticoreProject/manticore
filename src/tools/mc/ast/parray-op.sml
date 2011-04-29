@@ -331,7 +331,10 @@ structure PArrayOp = struct
 
 (* constructReduce : ty -> exp *)
   val constructReduce : T.ty -> A.exp = let
-    fun isGroundPair (T.TupleTy [t1, t2]) = isGroundTy t1 andalso isGroundTy t2
+    fun isGroundPair t = (case t
+      of T.TupleTy [t1, t2] => isGroundTy t1 andalso isGroundTy t2
+       | _ => false
+      (* end case *))
     fun mk (operTy as T.FunTy (T.TupleTy [t1, t2], t3)) =
           if TU.same (t1, t2) andalso TU.same (t2, t3) then
             (if isGroundTy t1 orelse isGroundPair t1 then
