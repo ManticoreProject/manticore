@@ -38,7 +38,7 @@ structure Proxy (* :
      (* linked queue elements *)
       typedef proxy = ![
 	  vproc,	(* vproc *)
-	  any		(*ID in Table or pointer to promoted continuation*)
+	  any		(* ID in Table or pointer to promoted continuation *)
       ];
       
       
@@ -53,7 +53,10 @@ structure Proxy (* :
       define inline @getFiberFromTable (myProxy : proxy) : PT.fiber =
         (* get address of the proxy table *)
 	let myAddr : addr(any) = vpload(PROXYTABLE,host_vproc)
-	let pos : int = AdrLoadI32((addr(int))&1(myProxy))
+(* this does not typecheck!
+	let pos : int = (int)#1(myProxy)
+*)
+	let pos : int = I64ToI32(AdrLoadI64((addr(long))&1(myProxy)))
 	let myFiber : PT.fiber = AdrLoad(AdrAddI32(myAddr,I32Add(TABLE_POS(pos),TABLE_ENTRY_OFFB)))
 	return(myFiber) 
      ;
@@ -125,14 +128,6 @@ structure Proxy (* :
 	else return(false)
       ;
       
-      (* check if the vproc is the same then the creator of the proxy *)
-      define inline @vprocProxy (self : vproc, myProxy : proxy) : bool =
-	if Equal(#0(myProxy),self) then
-	return(true)
-	else 
-	return(false)
-      ;
-      
        (* send a thief from thiefVP to steal from victimVP. the result is a continuation stored in the proxy table *)
 	define @thief-from-atomic-proxy (thiefVP : vproc, myProxy : proxy) : PT.fiber =
 	    let victimVP : vproc = #0(myProxy)
@@ -183,14 +178,14 @@ structure Proxy (* :
 		let myFiber : PT.fiber = #1(myProxy)
 		throw myFiber(x)
 	    else
-		(* check if the vproc is the same than the creator *)
-	        let sameVproc : bool = @vprocProxy(host_vproc,myProxy) 
-	        if Equal(sameVproc,true) then 
+		(* check if the vproc is the same as the creator *)
+		let proxyVProc : vproc = #0(myProxy)
+	        if Equal(#0(myProxy),host_vproc) then 
 		    (* if yes then get the fiber out of the local proxy table *)
 		    let myFiber : PT.fiber = @getProxyFiber(myProxy)
 		    throw myFiber(x)
 	        else
-		    (* if not we have to send a thieve *)
+		    (* if not we have to send a thief *)
 		    let myFiber : PT.fiber = @thief-from-atomic-proxy (host_vproc,myProxy)
 		    throw myFiber(x)
 	    return(Proxy)	

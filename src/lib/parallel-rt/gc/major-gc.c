@@ -38,21 +38,21 @@ Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
 	if (isForwardPtr(hdr))
 		return PtrToValue(GetForwardPtr(hdr));
 	else {
-		/* forward object to global heap. */
-		Word_t *nextW = (Word_t *)vp->globNextW;
-		int len = GetLength(hdr);
-		if (nextW+len >= (Word_t *)(vp->globLimit)) {
-			AllocToSpaceChunk (vp);
-			nextW = (Word_t *)vp->globNextW;
-		}
-		Word_t *newObj = nextW;
-		newObj[-1] = hdr;
-		for (int i = 0;  i < len;  i++) {
-			newObj[i] = p[i];
-		}
-		vp->globNextW = (Addr_t)(newObj+len+1);
-		p[-1] = MakeForwardPtr(hdr, newObj);
-		return PtrToValue(newObj);
+	    /* forward object to global heap. */
+	    Word_t *nextW = (Word_t *)vp->globNextW;
+	    int len = GetLength(hdr);
+	    if (nextW+len >= (Word_t *)(vp->globLimit)) {
+		AllocToSpaceChunk (vp);
+		nextW = (Word_t *)vp->globNextW;
+	    }
+	    Word_t *newObj = nextW;
+	    newObj[-1] = hdr;
+	    for (int i = 0;  i < len;  i++) {
+		newObj[i] = p[i];
+	    }
+	    vp->globNextW = (Addr_t)(newObj+len+1);
+	    p[-1] = MakeForwardPtr(hdr, newObj);
+	    return PtrToValue(newObj);
 	}
 	
 }
@@ -117,7 +117,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
     LogMajorGCStart (vp, (uint32_t)(top - vp->oldTop), (uint32_t)oldSzB);
 
-	
 #ifndef NO_GC_STATS
     vp->nMajorGCs++;
     vp->majorStats.nBytesCollected += top - heapBase;
@@ -151,25 +150,25 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     for (int i=0; i < vp->proxyTableentries;i++) {
 	Value_t p = vp->proxyTable[i].localObj;
 	if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
-		vp->proxyTable[i].localObj = ForwardObjMajor(vp, p);
-		Word_t * scanP = (Word_t *)(vp->proxyTable[i].proxyObj);
-		*(scanP+1) = (Word_t)vp->proxyTable[i].localObj;
-		}
+	  // p points to an old object
+	    p = ForwardObjMajor(vp, p);
+	    Word_t *proxyObj = (Word_t *)(vp->proxyTable[i].proxyObj);
+	    proxyObj[1] = (Word_t)p;
+	}
 	else if (inVPHeap(heapBase, ValueToAddr(p))) {
-		// p points to another object in the "young" region,
-		// so adjust it.
-		vp->proxyTable[i].localObj = AddrToValue(ValueToAddr(p) - oldSzB);
-		//rearrange the element so it is at the beginning of the table
-		vp->proxyTable[beg].proxyObj = vp->proxyTable[i].proxyObj;
-		vp->proxyTable[beg].localObj = vp->proxyTable[i].localObj;
-		Word_t * scanP = (Word_t *)(vp->proxyTable[beg].proxyObj);
-		*(scanP+1) = (Word_t)(beg);
-		beg++;
+	  // p points to another object in the "young" region, so adjust it.
+	    p = AddrToValue(ValueToAddr(p) - oldSzB);
+	  // rearrange the element so it is at the beginning of the table
+	    Word_t *proxyObj = (Word_t *)(vp->proxyTable[i].proxyObj);
+	    proxyObj[1] = (Word_t)beg;
+	    vp->proxyTable[beg].proxyObj = PtrToValue(proxyObj);
+	    vp->proxyTable[beg].localObj = p;
+	    beg++;
 	}
     }
 
-   //reset the proxy table
-   vp->proxyTableentries=beg;
+  //reset the proxy table
+   vp->proxyTableentries = beg;
 
   /* we also treat the data between vproc->oldTop and top as roots, since
    * it is known to be both young and live.  While scanning it, we also
@@ -179,31 +178,31 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     Word_t *nextScan = (Word_t *)(vp->oldTop);
     while (nextScan < (Word_t *)top) {
 		
-		Word_t hdr = *nextScan++;	// get object header
+	Word_t hdr = *nextScan++;	// get object header
 		
-	    if (isVectorHdr(hdr)) {
-		    int len = GetLength(hdr);
-		    for (int i = 0;  i < len;  i++, nextScan++) {
-			    Value_t v = *(Value_t *)nextScan;
-			    if (isPtr(v)) {
-				    if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {
-					    *nextScan =(Word_t)ForwardObjMajor(vp, v);
-				    }
-				    else if (inVPHeap(heapBase, (Addr_t)v)) {
-					    // p points to another object in the "young" region,
-					    // so adjust it.
-					    *nextScan = (Word_t)((Addr_t)v - oldSzB);
-				    }
-			    }
+	if (isVectorHdr(hdr)) {
+	    int len = GetLength(hdr);
+	    for (int i = 0;  i < len;  i++, nextScan++) {
+		Value_t v = *(Value_t *)nextScan;
+		if (isPtr(v)) {
+		    if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {
+			*nextScan =(Word_t)ForwardObjMajor(vp, v);
 		    }
-			
-			
-		}else if (isRawHdr(hdr)) {
-			assert (isRawHdr(hdr));
-			nextScan += GetLength(hdr);
-		}else {
-			nextScan = table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
+		    else if (inVPHeap(heapBase, (Addr_t)v)) {
+			// p points to another object in the "young" region,
+			// so adjust it.
+			*nextScan = (Word_t)((Addr_t)v - oldSzB);
+		    }
 		}
+	    }   
+	}
+	else if (isRawHdr(hdr)) {
+	    assert (isRawHdr(hdr));
+	    nextScan += GetLength(hdr);
+	}
+	else {
+	    nextScan = table[getID(hdr)].majorGCscanfunction(nextScan, vp, oldSzB, heapBase);
+	}
     }
 
   /* scan to-space objects */

@@ -116,11 +116,11 @@ void MinorGC (VProc_t *vp)
     }
 	
    /* process the proxy table */
-    for (int i=0; i < vp->proxyTableentries;i++) {
-		Value_t p = vp->proxyTable[i].localObj;
-		if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
-			vp->proxyTable[i].localObj = ForwardObjMinor(p, &nextW);
-		}
+    for (int i=0; i < vp->proxyTableentries; i++) {
+	Value_t p = vp->proxyTable[i].localObj;
+	if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
+	    vp->proxyTable[i].localObj = ForwardObjMinor(p, &nextW);
+	}
     }
 	
   /* scan to space */

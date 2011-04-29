@@ -390,9 +390,8 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     /* process the proxy table */
     for (int i=0; i < vp->proxyTableentries;i++) {
 	Value_t p = vp->proxyTable[i].proxyObj;
-	if (isFromSpacePtr(p)) {
-		vp->proxyTable[i].proxyObj = ForwardObjGlobal(vp, p);
-	}
+	assert (isFromSpacePtr(p));
+	vp->proxyTable[i].proxyObj = ForwardObjGlobal(vp, p);
     }	
 	
     ScanVProcHeap (vp);
@@ -420,26 +419,28 @@ static void ScanVProcHeap (VProc_t *vp)
 
     while (scanPtr < top) {
 		
-		Word_t hdr = *scanPtr++;	// get object header
-		
-		if (isVectorHdr(hdr)) {
-			//Word_t *nextScan = ptr;
-			int len = GetLength(hdr);
-			for (int i = 0;  i < len;  i++, scanPtr++) {
-				Value_t *scanP = (Value_t *)scanPtr;
-				Value_t v = *scanP;
-				if (isFromSpacePtr(v)) {
-                                    *scanP = ForwardObjGlobal(vp, v);
-				}
+	Word_t hdr = *scanPtr++;	// get object header
+	
+	if (isVectorHdr(hdr)) {
+		//Word_t *nextScan = ptr;
+		int len = GetLength(hdr);
+		for (int i = 0;  i < len;  i++, scanPtr++) {
+			Value_t *scanP = (Value_t *)scanPtr;
+			Value_t v = *scanP;
+			if (isFromSpacePtr(v)) {
+			    *scanP = ForwardObjGlobal(vp, v);
 			}
-			
-			
-		}else if (isRawHdr(hdr)) {
-			assert (isRawHdr(hdr));
-			scanPtr += GetLength(hdr);
-		}else {
-			scanPtr = table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
 		}
+		
+		
+	}
+	else if (isRawHdr(hdr)) {
+		assert (isRawHdr(hdr));
+		scanPtr += GetLength(hdr);
+	}
+	else {
+		scanPtr = table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
+	}
 		
 
     }
@@ -701,6 +702,14 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 	CheckLocalPtrGlobal (self, roots[i], buf);
     }
 
+  // check the proxy table
+    for (int i = 0;  i < self->proxyTableentries;  i++) {
+	CheckLocalPtrGlobal (
+	    self, ValueToPtr(self->proxyTable[i].localObj), "proxy-table local pointer");
+	CheckGlobalPtr (
+	    self, ValueToPtr(self->proxyTable[i].proxyObj), "proxy-table global pointer");
+    }
+
   // check the local heap
     {
 	Word_t *top = (Word_t *)(self->oldTop);
@@ -709,7 +718,6 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 	    Word_t hdr = *p++;
 	    Word_t *scanptr = p;
 		tableDebug[getID(hdr)].globalGCdebug(self,scanptr);
-		
 		p += GetLength(hdr);
 	}
     }
