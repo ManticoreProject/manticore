@@ -10,6 +10,8 @@ val side : double = 2.5;
 val sz : int = 1024;
 val maxCount : int = 255;
 
+val itod = Double.fromInt
+
 val delta : double = side / (itod (sz-1));
 
 fun pixel (i, j) = let

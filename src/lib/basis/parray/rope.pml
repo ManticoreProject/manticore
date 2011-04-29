@@ -41,9 +41,15 @@ structure Rope (* : ROPE *) = struct
 
   (* mkLeaf : 'a S.seq -> 'a rope *)
   (* pre: S.length s < maxLeafSize *)
-    fun mkLeaf s = if S.length s > maxLeafSize
-		    then fail "mkLeaf" "too many elements"
-		    else LEAF s
+    fun mkLeaf s = 
+      if (S.length s) > maxLeafSize then let
+        val msg = "too many elts: " ^ Int.toString (S.length s) ^ 
+		  " (max is " ^ Int.toString maxLeafSize ^ ")"
+        in
+          fail "mkLeaf" msg
+        end
+      else 
+        LEAF s
 
   (* toString : ('a -> string) -> 'a rope -> string *)
     fun toString show r = let
@@ -673,13 +679,22 @@ structure Rope (* : ROPE *) = struct
   (* Reduce with an associative operator. *)
   (* e.g., sumP r == reduceP (+, 0, r) *)
     fun reduceP (assocOp, unit, rope) = let
-	  fun red r = (case r
-		 of LEAF s => S.reduce (assocOp, unit, s)
-		  | CAT(_, _, r1, r2) => assocOp (| red r1, red r2 |)
-		(* end case *))
-	  in
-	    red rope
-	  end
+val _ = Print.printLn "reduceP"
+      fun red r = (case r
+        of LEAF s => let
+             val _ = () (* Print.print "at LEAF " *)
+             in
+	       S.reduce (assocOp, unit, s)
+	     end
+	 | CAT(_, _, r1, r2) => let
+             val _ = () (* Print.print "at CAT " *)
+	     in
+	       assocOp (| red r1, red r2 |)
+	     end
+        (* end case *))
+      in
+	red rope
+      end
 
   (* filterP : ('a -> bool) * 'a rope -> 'a rope *)
   (* post: the output is balanced *)

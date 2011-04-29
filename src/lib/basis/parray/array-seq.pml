@@ -188,7 +188,11 @@ structure ArraySeq = struct
          end
     (* end case *))
 
-  fun reduce (oper, unit, s) = foldl (oper, unit, s)
+  fun reduce (oper, unit, s) = let
+val _ = ()
+    in
+      foldl (oper, unit, s)
+    end
 
   fun cut (s, n) = (take (s, n), drop (s, n))
 
