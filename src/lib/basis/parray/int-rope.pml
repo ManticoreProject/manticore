@@ -436,7 +436,6 @@ structure IntRope = struct
       end
 
   (* fromSeq : seq -> int_rope *)
-  (* FIXME bad implementation *)
     fun fromSeq s = fromList (S.toList s)
 
   (* tabFromToP : int * int * (int -> int) -> int_rope *)

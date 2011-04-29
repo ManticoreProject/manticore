@@ -50,10 +50,66 @@ structure IntRopePair = struct
     in
       mapF (r1, r2)
     end
-           
-  fun tabFromToStepP (from, to_, step, f) = fail "tabFromToStepP" "todo"
 
-  fun tabP (n, f) = fail "tabP" "todo"
+(* tabFromToP : *)
+(* from and to_ both inclusive. *)
+(* If from > to_, a pair of empties is returned. *)
+  val cwb = R.concatWithoutBalancing
+  fun tabFromToP (from, to_, f) =
+    if (from > to_) then
+      (R.empty, R.empty)
+    else let
+      val nElts = to_-from+1
+      in
+        if (nElts <= R.maxLeafSize) then let
+          fun f' n = f (n+from)
+          val (s1, s2) = P.tabulate (nElts, f')
+          in
+            (R.LEAF (nElts, s1), R.LEAF (nElts, s2))
+          end
+        else let
+          val m = (from+to_) div 2
+          val ((r1L,r2L),(r1R,r2R)) = (| tabFromToP (from, m, f),
+				         tabFromToP (m+1, to_, f) |)
+          in
+            (cwb (r1L, r1R), cwb (r2L, r2R))
+          end
+      end
+
+  fun tabP (n, f) = tabFromToP (0, n-1, f)
+
+(* tabFromToStepP : int * int * int * (int -> int * int) -> int_rope * int_rope *)
+(* lo incl, hi incl *)
+  fun tabFromToStepP (from, to_, step, f) = let
+    fun f' i = f (from + (step * i))
+    in (case Int.compare (step, 0)
+      of EQUAL => fail "tabFromToStepP" "0 step"
+       | LESS (* negative step *) =>
+           if (to_ > from) then 
+	     (R.empty, R.empty)
+	   else
+	     tabFromToP (0, (from-to_) div (~step), f')
+       | GREATER (* positive step *) =>
+           if (from > to_) then
+             (R.empty, R.empty)
+	   else
+             tabFromToP (0, (to_-from) div step, f')
+      (* end case *))
+    end
+
+(* let ip = int * int in *)
+(* reduceP : (ip * ip -> ip) * ip * (int_rope * int_rope) -> ip * ip *)
+(* Reduce with an associative operator. *)
+  fun reduceP (assocOp, unit, (ropeA, ropeB)) = let
+    fun red (rA, rB) = (case (rA, rB)
+      of (R.LEAF (_, sA), R.LEAF (_, sB)) => P.reduce (assocOp, unit, (sA, sB))
+       | (R.CAT (_, _, rA1, rA2), R.CAT (_, _, rB1, rB2)) =>
+           assocOp (| red (rA1, rB1), red (rA2, rB2) |)
+       | _ => fail "reduceP" "shapes"
+      (* end case *))
+    in
+      red (ropeA, ropeB)
+    end
 
 (*
   (* mapP' : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
@@ -120,68 +176,6 @@ structure IntRopePair = struct
 	     end
        (* end case *))
 
-    val cwb = R.concatWithoutBalancing
-
-  (* tabFromToP : int * int * (int -> 'a * 'b) -> 'a rope * 'b rope *)
-  (* lo incl, hi incl *)
-    fun tabFromToP (lo, hi, f) =
-      if (lo > hi) then
-        (R.empty, R.empty)
-      else let
-        fun f1 i = let val (x,_) = f(i) in x end
-	fun f2 i = let val (_,x) = f(i) in x end
-        fun lp (lo, hi) = let
-          val nElts = hi-lo+1
-	  in
-            if nElts <= R.maxLeafSize then let
-              val (sA, sB) = P.tabulate (nElts, fn i => f (lo+i))
-              in
-                (R.mkLeaf sA, R.mkLeaf sB)
-              end
-	    else let
-              val m = (hi + lo) div 2
-	      val ((r1L, r2L), (r1R, r2R)) = (| lp (lo, m), lp (m+1, hi) |)
-              in
-                (cwb (r1L, r1R), cwb (r2L, r2R))
-	      end
-	  end
-        in
-          lp (lo, hi)
-	end
-
-  (* tabP : int * (int -> 'a * 'b) -> 'a rope * 'b rope *)
-    fun tabP (n, f) = tabFromToP (0, n-1, f)
-
-  (* tabFromToStepP : int * int * int * (int -> 'a * 'b) -> 'a rope * 'b rope *)
-  (* lo incl, hi incl *)
-    fun tabFromToStepP (from, to_, step, f) = let
-      fun f' i = f (from + (step * i))
-      in (case Int.compare (step, 0)
-        of EQUAL => fail "tabFromToStepP" "0 step"
-	 | LESS (* negative step *) =>
-             if (to_ > from) then 
-	       (R.empty, R.empty)
-	     else
-	       tabFromToP (0, (from-to_) div (~step), f')
-	 | GREATER (* positive step *) =>
-             if (from > to_) then
-               (R.empty, R.empty)
-	     else
-               tabFromToP (0, (to_-from) div step, f')
-        (* end case *))
-      end
 *)
-  (* (\* reduceP : (('a * 'b) * ('a * 'b) -> ('a * 'b)) * ('a * 'b) * ('a rope * 'b rope) -> 'a * 'b *\) *)
-  (* (\* Reduce with an associative operator. *\) *)
-  (*   fun reduceP (assocOp, unit, (ropeA, ropeB)) = let *)
-  (*     fun red (rA, rB) = (case (rA, rB) *)
-  (*       of (R.LEAF sA, R.LEAF sB) => P.reduce (assocOp, unit, (sA, sB)) *)
-  (* 	 | (R.CAT (_, _, rA1, rA2), R.CAT (_, _, rB1, rB2)) =>  *)
-  (*            assocOp (| red (rA1, rB1), red (rA2, rB2) |) *)
-  (* 	 | _ => fail "reduceP" "shapes"*)
-  (* 	(\* end case *\)) *)
-  (*     in *)
-  (*       red (ropeA, ropeB) *)
-  (*     end *)
 
 end

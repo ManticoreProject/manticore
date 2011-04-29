@@ -12,7 +12,7 @@ structure IntArraySeqPair = struct
 
   val fail = Fail.fail "IntArraySeqPair"
 
-  fun tabulate (n, f) = 
+  fun tabulate (n, f : int -> int * int) = 
     if (n=0) then (S.empty, S.empty)
     else let
       val (a0, b0) = f(0)
@@ -46,6 +46,19 @@ structure IntArraySeqPair = struct
     fun f' i = f (S.sub (s1, i), S.sub (s2, i))
     in
       tabulate (n1, f')
+    end
+
+  fun reduce (assocOp, zero, (s1, s2)) = let
+    val n = S.length s1
+    val _ = if (n = S.length s2) then () else fail "reduce" "len"
+    fun elt i = (S.sub (s1, i), S.sub (s2, i))
+    fun lp (i, acc) = 
+      if (i >= n) then
+        acc
+      else 
+        lp (i+1, assocOp (acc, elt i))
+    in
+      lp (0, zero)
     end
 
 end

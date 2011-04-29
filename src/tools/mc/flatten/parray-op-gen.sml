@@ -172,13 +172,20 @@ structure PArrayOpGen = struct
           (* end case *))
     | genMap t = raise Fail ("unexpected ty " ^ TU.toString t)
 
-  fun genReduce (t : T.ty) : A.exp =
-    if TU.same (B.intTy, t) then
-      A.VarExp (DV.ifReduce (), [])
-    else if FU.isGroundTy t then
-      A.VarExp (DV.greduce (), [t])
-    else
-      raise Fail ("todo: reduce for type " ^ TU.toString t)
+  local
+    fun isIntPair (T.TupleTy [t1, t2]) = FU.isInt t1 andalso FU.isInt t2
+      | isIntPair _ = false
+  in
+    fun genReduce (t : T.ty) : A.exp =
+      if FU.isInt t then
+        A.VarExp (DV.ifReduce (), [])
+      else if isIntPair t then
+	A.VarExp (DV.ipReduce (), [])
+      else if FU.isGroundTy t then
+        A.VarExp (DV.greduce (), [t])
+      else 
+        raise Fail ("todo: reduce for type " ^ TU.toString t)
+  end
 
   fun genRange t =
     if FU.isInt t then

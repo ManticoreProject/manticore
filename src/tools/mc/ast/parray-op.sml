@@ -331,12 +331,13 @@ structure PArrayOp = struct
 
 (* constructReduce : ty -> exp *)
   val constructReduce : T.ty -> A.exp = let
+    fun isGroundPair (T.TupleTy [t1, t2]) = isGroundTy t1 andalso isGroundTy t2
     fun mk (operTy as T.FunTy (T.TupleTy [t1, t2], t3)) =
           if TU.same (t1, t2) andalso TU.same (t2, t3) then
-           (if isGroundTy t1 then
-              A.PArrayOp (A.PA_Reduce t1)
-	    else
-              raise Fail ("todo: reduce for type " ^ TU.toString t1))
+            (if isGroundTy t1 orelse isGroundPair t1 then
+               A.PArrayOp (A.PA_Reduce t1)
+	     else
+               raise Fail ("todo: reduce for type " ^ TU.toString t1))
 	  else
             raise Fail ("cannot be an associative operator with type " ^ 
 			TU.toString operTy)

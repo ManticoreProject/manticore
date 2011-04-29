@@ -73,6 +73,7 @@ structure DelayedBasis = struct
     val ipMapEq_int = mk (intFArrayPair "flatMapEq_int")
     val greduce     = mk (farray "groundReduce")
     val ifReduce    = mk (intFArray "reduce")
+    val ipReduce    = mk (intFArrayPair "flatReduce")
     val intRange    = mk (intFArray "intRange")
     val fapp        = mk (farray "app")
     val intLen      = mk (intFArray "length")

@@ -56,20 +56,17 @@ structure IntFArrayPair = struct
       (F.FArray (data1, shape), F.FArray (data2, shape))
     end
 
-(* (\* groundReduce : (('a * 'b) * ('a * 'b) -> ('a * 'b)) -> 'a * 'b -> 'a f_array * 'b f_array -> 'a * 'b *\)  *)
-(*     fun groundReduce (assocOp : 'a * 'a -> 'a)  *)
-(* 		     (zero : 'a)  *)
-(* 		     (F.FArray (dataA, shapeA), F.FArray (dataB, shapeB)) = let *)
-(*       val _ = if S.same (shapeA, shapeB) then () else fail "groundReduce" "shapes"  *)
-(*       in (case shapeA *)
-(*         of S.Lf (lo, hi) => let  *)
-(*              val F.FArray (dataA', shapeA') = F.clean (F.FArray (dataA, shapeA)) *)
-(* 	     val F.FArray (dataB', shapeB') = F.clean (F.FArray (dataB, shapeB)) *)
-(*              in  *)
-(*                RopePair.reduceP (assocOp, zero, (dataA', dataB')) *)
-(* 	     end *)
-(* 	 | S.Nd _ => fail "groundReduce" "flat array of ground types expected" *)
-(*         (\* end case *\)) *)
-(*       end *)
+(* let ip stand for int * int: *)
+(* flatReduce : (ip * ip -> ip) -> ip -> (int_farray * int_farray) -> ip * ip *)
+(* pre: the arg arrays are both flat (not nested) *)
+  fun flatReduce assocOp zero (arr1, arr2) = (case (F.clean arr1, F.clean arr2)
+    of (F.FArray (data1, shape1), F.FArray (data2, shape2)) => let
+         val _ = if S.same (shape1, shape2) then () else fail "reduce" "shapes"
+         in (case shape1
+           of S.Lf (lo, hi) => IntRopePair.reduceP (assocOp, zero, (data1, data2))
+	    | S.Nd _ => fail "reduce" "nd"
+           (* end case *))
+         end
+    (* end case *))
 
 end

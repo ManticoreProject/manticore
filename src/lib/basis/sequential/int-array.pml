@@ -36,8 +36,11 @@ fun sub (a, i) =
     Debug.failwith "IntArray.sub: index out of bounds"
 
 fun tabulate (n, f) = 
-  if n < 0 then
-    raise Fail "Size"
+  if n < 0 then let
+    val msg = "IntArray.tabulate: size " ^ Int.toString n
+    in 
+      Debug.failwith msg
+    end
   else let
     val a = U.create n
     fun lp i =
