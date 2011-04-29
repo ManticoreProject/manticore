@@ -365,7 +365,7 @@ structure MLB : sig
 
   (* load a PML or root MLB file *)
     fun load file = let
-        (* before loading basis, check that file exists and is either .mlb or .pml *)
+        (* first, check that file exists and is either .mlb or .pml *)
 	  val _	= chkExists file	  
 	  val e = chkExt file
 	  val basis = loadBasisLib emptyEnv
