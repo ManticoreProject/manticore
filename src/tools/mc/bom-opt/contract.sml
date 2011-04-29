@@ -285,31 +285,41 @@ structure Contract : sig
                     ST.tick cntLetElim;
                     C.deleteWithRenaming (env, rhs);
                     doExp (env, e, kid))
-                  else (case doExp(env, rhs, kid+1)
-                     of B.E_Pt(_, B.E_Ret ys) => let
-                        (* let lhs = ys in e ==> e[ys/lhs] *)
-                          val (env',casts) = extendWithCasts {env = env, fromVars = ys, toVars = lhs}
-                          in
-                            ST.tick cntLetRename;
-                            B.mkStmts (casts, doExp (env', e, kid))
-                          end
-                      | B.E_Pt(_, B.E_Let(xs, e1, e2)) => (
-                        (* let lhs = (let xs = e1 in e2) in e ==> let xs = e1 let lhs = e2 in e *)
-                          ST.tick cntLetFloat;
-                          setBindings (lhs, B.VK_Let e2);
-                          B.mkLet(xs, e1, B.mkLet(lhs, e2, doExp (env, e, kid))))
-                      | B.E_Pt(_, B.E_Stmt(xs, rhs, e2)) => (
-                          ST.tick cntLetFloat;
-                          setBindings (lhs, B.VK_Let e2);
-                          B.mkStmt(xs, rhs, B.mkLet(lhs, e2, doExp (env, e, kid))))
-                      | B.E_Pt(_, B.E_Fun(fbs, e2)) => (
-                          ST.tick cntLetFloat;
-                          setBindings (lhs, B.VK_Let e2);
-                          B.mkFun(fbs, B.mkLet(lhs, e2, doExp (env, e, kid))))
-                      | rhs => (
-                          setBindings (lhs, B.VK_Let rhs);
-                          B.mkLet(lhs, rhs, doExp(env, e, kid)))
-                    (* end case *))
+                  else let
+                          val e' = doExp(env, rhs, kid+1)
+                      in
+                          if (List.all unused lhs andalso pureExp rhs)
+                          then (
+                              ST.tick cntLetElim;
+                              C.deleteWithRenaming (env, rhs);
+                              e')
+                          else (
+                              case e'
+                               of B.E_Pt(_, B.E_Ret ys) => let
+                                      (* let lhs = ys in e ==> e[ys/lhs] *)
+                                      val (env',casts) = extendWithCasts {env = env, fromVars = ys, toVars = lhs}
+                                  in
+                                      ST.tick cntLetRename;
+                                      B.mkStmts (casts, doExp (env', e, kid))
+                                  end
+                                | B.E_Pt(_, B.E_Let(xs, e1, e2)) => (
+                                  (* let lhs = (let xs = e1 in e2) in e ==> let xs = e1 let lhs = e2 in e *)
+                                  ST.tick cntLetFloat;
+                                  setBindings (lhs, B.VK_Let e2);
+                                  B.mkLet(xs, e1, B.mkLet(lhs, e2, doExp (env, e, kid))))
+                                | B.E_Pt(_, B.E_Stmt(xs, rhs, e2)) => (
+                                  ST.tick cntLetFloat;
+                                  setBindings (lhs, B.VK_Let e2);
+                                  B.mkStmt(xs, rhs, B.mkLet(lhs, e2, doExp (env, e, kid))))
+                                | B.E_Pt(_, B.E_Fun(fbs, e2)) => (
+                                  ST.tick cntLetFloat;
+                                  setBindings (lhs, B.VK_Let e2);
+                                  B.mkFun(fbs, B.mkLet(lhs, e2, doExp (env, e, kid))))
+                                | rhs => (
+                                  setBindings (lhs, B.VK_Let rhs);
+                                  B.mkLet(lhs, rhs, doExp(env, e, kid)))
+                              (* end case *))
+                      end
             | B.E_Stmt([x], rhs, e) => let
                 val rhs = U.substRHS(env, rhs)
                 val _ = setBinding(x, B.VK_RHS rhs)
@@ -638,24 +648,33 @@ structure Contract : sig
 
     fun contract (flags : flags) (module as B.MODULE{name, externs, hlops, rewrites, body}) = let
           fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
-          fun loop (body, prevSum) = let
+          fun loop (body, prevSum, prevFloats) = let
                 val _ = ST.tick cntIters
                 val body = doFunBody (U.empty, body, 0)
                 val sum = ticks()
+                fun needsFloat() = let
+                    val letFloats = ST.count cntLetFloat
+                    val netFloats = letFloats-prevFloats
+                    val netTicks = (sum-prevSum)
+                in
+                    ((Real.fromInt(netFloats))/Real.fromInt(netTicks) > 0.8)
+                end
                 in
 (*DEBUG*
 print(concat["contract: ", Int.toString(sum - prevSum), " ticks\n"]);
-if (prevSum <> sum) then (
+if ((sum-prevSum < 4) andalso (sum-prevSum > 0)) then (
     print "******************** after one iteration of contract ********************\n";
-    PrintBOM.print(B.MODULE{name=name, externs=externs, body=body}))
+    PrintBOM.print(B.MODULE{name=name, externs=externs, hlops=hlops, body=body, rewrites=rewrites}))
   else ();
 *DEBUG*)
                   if (prevSum <> sum)
-                    then loop (body, sum)
+                    then (if needsFloat()
+                          then loop (LetFloat.denestLambda(body, true), sum, ST.count cntLetFloat)
+                          else loop (body, sum, ST.count cntLetFloat))
                     else body
                 end
           val body = LetFloat.denestLambda(body, true)
-          val body = loop (body, ticks())
+          val body = loop (body, ticks(), ST.count cntLetFloat)
         (* remove unused externs *)
           fun removeUnusedExtern cf = if unused(CFunctions.varOf cf)
                 then (

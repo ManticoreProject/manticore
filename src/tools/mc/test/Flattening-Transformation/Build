@@ -1,9 +1,8 @@
 #!/bin/sh
 
-FLAGS="-Cftrx.on=true -Cftrx.keep-ft=true"
+FLAGS="-Cftrx.on=true -Cftrx.keep-ft=true -Ccps.flatten=false"
 
 SRC_FILE=$1
-ERR_FILE=ERRORS_${SRC_FILE%%.pml}
+ERR_FILE=Errors_${SRC_FILE%%.pml}
 
 ../pmlc $FLAGS $SRC_FILE 2>&1 | tee $ERR_FILE
-

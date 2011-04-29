@@ -1,12 +1,14 @@
 #!/bin/sh
 
+PML_FLAGS="-Cftrx.keep-ft=true -Cftrx.on=true -Ccps.flatten=false"
+
 for PML_PROGRAM in *.pml ; do
   echo "compiling $PML_PROGRAM"
-  EXEC=${PML_PROGRAM%%.pml}
-  #CMD="../pmlc -o $EXEC $PML_PROGRAM 2>&1 | tee $EXEC-noise"
-  CMD="../pmlc -o $EXEC $PML_PROGRAM"
-  echo $CMD
-  $CMD
+  # EXEC=${PML_PROGRAM%%.pml}
+  EXEC=a.out
+  # CMD="../pmlc $PML_FLAGS -o $EXEC $PML_PROGRAM 2>&1 | tee ErrorTranscript_$EXEC"
+  CMD="./Build $PML_PROGRAM"
+  echo $CMD && $CMD
   echo "running $PML_PROGRAM"
   ./$EXEC
   echo "finished with $PML_PROGRAM"
@@ -14,7 +16,6 @@ for PML_PROGRAM in *.pml ; do
   echo ""
 done
 
-echo ""
-echo "altogether done."
+echo "Altogether done. Run ./Cleanup to remove temporary files."
 
 

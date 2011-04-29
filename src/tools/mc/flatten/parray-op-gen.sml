@@ -181,7 +181,7 @@ structure PArrayOpGen = struct
       raise Fail ("todo: reduce for type " ^ TU.toString t)
 
   fun genRange t =
-    if TU.same (t, B.intTy) then
+    if FU.isInt t then
       A.VarExp (DV.intRange (), [])
     else
       raise Fail ("unexpected type " ^ TU.toString t)
