@@ -2,7 +2,7 @@
 
 PML_FLAGS="-Cftrx.keep-ft=true -Cftrx.on=true -Ccps.flatten=false"
 
-for PML_PROGRAM in *.pml ; do
+for PML_PROGRAM in p*.pml ; do
   echo "compiling $PML_PROGRAM"
   # EXEC=${PML_PROGRAM%%.pml}
   EXEC=a.out
