@@ -35,6 +35,7 @@ structure PArray = struct
     fun concat (pa1, pa2) = fromRope(Rope.concat(toRope pa1, toRope pa2))
     fun tabulateWithPred (n, f) = fromRope(Rope.tabP(n, f))
     fun forP (n, f) = Rope.forP(n,f)
+    fun app (f, pa) = Rope.app (f, toRope pa)
 
   (* repP : int * 'a -> 'a parray *)
   (* called "dist" in NESL and Keller *)
