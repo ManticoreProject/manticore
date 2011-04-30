@@ -88,9 +88,16 @@ functor MainFn (
 	  end
 
   (* dead function elimination on the parse tree *)
+    fun printTrees ([]) = ()
+      | printTrees ({tree,span}::rest) = (
+        PrintPT.print tree;
+        printTrees rest)
     fun treeShake p2s =
 	  if Controls.get BasicControl.treeShake
 	     then (
+              if Controls.get BasicControl.treeShakeDebug
+              then printTrees p2s
+              else ();
 	      TreeShake.setDeadFuns (allDecls p2s);
 	      TreeShake.shakeProgram p2s)
 	  else p2s

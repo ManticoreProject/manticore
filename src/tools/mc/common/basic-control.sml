@@ -44,6 +44,9 @@ structure BasicControl :  sig
   (* perform dead function elimination on the parse tree *)
     val treeShake : bool Controls.control
 
+  (* perform dead function elimination on the parse tree *)
+    val treeShakeDebug : bool Controls.control
+
   (* wrap a 'pre -> 'post pass with a tracing diagnostic, controled by the 
    * "verbose" control.
    *)
@@ -136,6 +139,14 @@ structure BasicControl :  sig
             default = false
           }
 
+    val treeShakeDebug : bool Controls.control = Controls.genControl {
+            name = "tree-shake-debug",
+            pri = [0, 0], 
+            obscurity = 0,
+            help = "debug tree-shake",
+            default = false
+          }
+
   (* sequential mode *)
     val sequential : bool Controls.control = Controls.genControl {
 	    name = "sequential",
@@ -221,6 +232,10 @@ structure BasicControl :  sig
             };
           ControlRegistry.register topRegistry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool treeShake,
+              envName = NONE
+            };
+          ControlRegistry.register topRegistry {
+              ctl = Controls.stringControl ControlUtil.Cvt.bool treeShakeDebug,
               envName = NONE
             };
           ControlRegistry.register topRegistry {

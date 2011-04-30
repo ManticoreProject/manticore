@@ -16,6 +16,7 @@ structure TreeShake =
 	   of PT.MarkPat {tree, ...} => varsOfPat tree
 	    | PT.BinaryPat (p1, v, p2) => v :: varsOfPat p1 @ varsOfPat p2
 	    | PT.ConPat (v, p) => v :: varsOfPat p
+	    | PT.TuplePat [] => [wildVar]
 	    | PT.TuplePat ps => concatMap varsOfPat ps
 	    | PT.ConstraintPat (p, t) => varsOfPat p
 	    | PT.IdPat v => [v]
@@ -40,6 +41,7 @@ structure TreeShake =
 	  case defn
 	   of BPT.D_Mark {tree, ...} => bindsOfPrimCode tree
 	    | BPT.D_Define (_, f, _, _, _, _) => [f]
+	    | BPT.D_ImportML (_, hlopid, _) => [hlopid]
 	    | _ => []
           (* end case *))
 
@@ -113,6 +115,7 @@ structure TreeShake =
 	  case defn
 	   of BPT.D_Mark {tree, ...} => setEdgesOfDefn tree
 	    | BPT.D_Define (_, v, _, _, _, _) => setEdges(v, Var.Set.listItems (BOMUsedVars.usedOfDefn defn))
+	    | BPT.D_ImportML (_, hlopid, pmlv) => setEdges(hlopid, [pmlv])
 	    | _ => ()
           (* end case *))
 
@@ -158,8 +161,11 @@ structure TreeShake =
 		   then bindsOfValDecl vd
 		else []
 	    | PT.LocalDecl (ds1, ds2) => rootsOfDecls ds1 @ rootsOfDecls ds2
-	    | _ => []
+            | PT.PrimCodeDecl (code) => concatMap rootsOfPrimCode code
+            | _ => []
           (* end case *))
+
+    and rootsOfPrimCode defn = bindsOfPrimCode defn
 
     and rootsOfDecls decls = concatMap rootsOfDecl decls
 
