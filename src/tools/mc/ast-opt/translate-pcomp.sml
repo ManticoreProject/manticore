@@ -17,8 +17,8 @@ end  = struct
     val getVar = BasisEnv.getVarFromBasis
     fun ropeVar x = getVar ("Rope"::[x])
   in
-    val tabFromToP = Memo.new' (fn _ => ropeVar "tabFromToP")
-    val tabFromToStepP = Memo.new' (fn _ => ropeVar "tabFromToStepP")
+    val tabFromToP = Memo.new (fn _ => ropeVar "tabFromToP")
+    val tabFromToStepP = Memo.new (fn _ => ropeVar "tabFromToStepP")
   end (* local *)
 
   structure A = AST
