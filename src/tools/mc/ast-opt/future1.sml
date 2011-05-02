@@ -25,31 +25,14 @@ structure Future1 : sig
     structure T = Types
 
     local 
-
       val futureModuleName = "MultilispFuture"
-
       fun getTyc id = BasisEnv.getTyConFromBasis [futureModuleName, id]
       fun getVar id = BasisEnv.getVarFromBasis [futureModuleName, id]
-
-      val memoFutureTyc : Types.tycon Memo.memo = Memo.new (fn _ =>
-        getTyc "future")
-
-      val memoFuture : AST.var Memo.memo = Memo.new (fn _ =>
-        getVar "future")
-  
-      val memoTouch1 : AST.var Memo.memo = Memo.new (fn _ =>
-        getVar "touch")
-
-      val memoCancel1 : AST.var Memo.memo = Memo.new (fn _ =>
-        getVar "cancel")
-
     in
-
-      fun futureTyc () = Memo.get memoFutureTyc
-      fun future1   () = Memo.get memoFuture
-      fun touch1    () = Memo.get memoTouch1
-      fun cancel1   () = Memo.get memoCancel1
-
+      val futureTyc = Memo.new (fn _ => getTyc "future")
+      val future1   = Memo.new (fn _ => getVar "future")
+      val touch1    = Memo.new (fn _ => getVar "touch")
+      val cancel1   = Memo.new (fn _ => getVar "cancel")
     end (* local *)
   
     fun futureTy t = T.ConTy ([t], futureTyc())

@@ -33,9 +33,9 @@ structure ParrLitToRope : sig
     val getVar = BEnv.getVarFromBasis
     val rVar = fn v => getVar ("Rope"::[v])
 
-    val ropeFromList  = Memo.new' (fn () => rVar "fromList")
-    val ropeEmpty     = Memo.new' (fn () => rVar "empty")
-    val ropeSingleton = Memo.new' (fn () => rVar "singleton")
+    val ropeFromList  = Memo.new (fn () => rVar "fromList")
+    val ropeEmpty     = Memo.new (fn () => rVar "empty")
+    val ropeSingleton = Memo.new (fn () => rVar "singleton")
 
     fun newVar e = Var.new ("x", TypeOf.exp e)
     fun mkPValBind (x, e) = AST.PValBind (AST.VarPat x, e)

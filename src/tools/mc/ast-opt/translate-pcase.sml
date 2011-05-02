@@ -45,58 +45,36 @@ structure TranslatePCase (* : sig
   (* I'm doing all this memo stuff to work around that. - ams *)
 
   local
-
-    val memoSOME : AST.dcon Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getDConFromBasis ["Option", "SOME"])
-
-    val memoNONE : AST.dcon Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getDConFromBasis ["Option", "NONE"])
-
-    val memoRES : AST.dcon Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getDConFromBasis ["Result", "RES"])
-
-    val memoEXN : AST.dcon Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getDConFromBasis ["Result", "EXN"])
-				 
-    val memoOption : Types.tycon Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getTyConFromBasis ["Option", "option"])
-
-    val memoResult : Types.tycon Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getTyConFromBasis ["Result", "result"])
-
-    val memoCancel : AST.var Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getVarFromBasis ["MultilispFuture", "cancel"])
-
-    val memoPoll : AST.var Memo.memo = Memo.new (fn _ =>
-      BasisEnv.getVarFromBasis ["MultilispFuture", "poll"])
-
+    val getDCon = BasisEnv.getDConFromBasis
+    val getTyc  = BasisEnv.getTyConFromBasis
+    val getVar  = BasisEnv.getVarFromBasis
   in
       
   (* optSOME : unit -> A.dcon *)
   (* memoized SOME dcon from the basis *)
-    fun optSOME () = Memo.get memoSOME
+    val optSOME = Memo.new (fn _ => getDCon ["Option", "SOME"])
 	    
   (* optNONE : unit -> A.dcon *)
   (* memoized NONE dcon from the basis *)
-    fun optNONE () = Memo.get memoNONE
+    val optNONE = Memo.new (fn _ => getDCon ["Option", "NONE"])
 
   (* resultRES : unit -> A.dcon *)
-    fun resultRES () = Memo.get memoRES
+    val resultRES = Memo.new (fn _ => getDCon ["Result", "RES"])
 
   (* resultEXN : unit -> A.dcon *)
-    fun resultEXN () = Memo.get memoEXN
+    val resultEXN = Memo.new (fn _ => getDCon ["Result", "EXN"])
 
   (* optionTyc : unit -> AST.tycon *)
-    fun optionTyc () = Memo.get memoOption
+    val optionTyc = Memo.new (fn _ => getTyc ["Option", "option"])
 
   (* resultTyc : unit -> AST.tycon *)
-    fun resultTyc () = Memo.get memoResult
+    val resultTyc = Memo.new (fn _ => getTyc ["Result", "result"])
 
   (* cancelV : unit -> A.var *)
-    fun cancelV () = Memo.get memoCancel
+    val cancelV = Memo.new (fn _ => getVar ["MultilispFuture", "cancel"])
 
   (* pollV : unit -> A.var *)
-    fun pollV () = Memo.get memoPoll
+    val pollV = Memo.new (fn _ => getVar ["MultilispFuture", "poll"])
 
   (* mkResPat : A.pat -> A.pat *)
   (* Given a pattern (p : t), produce the pattern (RES(p) : t result). *)
