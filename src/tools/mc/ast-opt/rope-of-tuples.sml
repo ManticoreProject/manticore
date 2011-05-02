@@ -70,24 +70,24 @@ end = struct
     val unzipResTy = A.TupleTy (List.map seqTy ts) (* ...tuple of sequences *)
     val unzipNV = Var.new (fname, A.FunTy (unzipArgTy, unzipResTy))
     val unzipArgV = Var.new ("s", unzipArgTy)
-    val lpArgTy = A.TupleTy (listTy tupTy :: List.map listTy ts)
-    val lpResTy = A.TupleTy (List.map listTy ts)
+    val lpArgTy = A.TupleTy (B.listTy tupTy :: List.map B.listTy ts)
+    val lpResTy = A.TupleTy (List.map B.listTy ts)
     val lpArgV = Var.new ("arg", lpArgTy)
     val lpV = Var.new ("lp", A.FunTy (lpArgTy, lpResTy))
-    val accVs = mapi (fn (t,i) => Var.new ("acc"^Int.toString i, listTy t)) ts
+    val accVs = mapi (fn (t,i) => Var.new ("acc"^Int.toString i, B.listTy t)) ts
     val nilBranch = A.PatMatch 
-     (A.ConstPat (A.DConst (listNil (), [tupTy])),
+     (A.ConstPat (A.DConst (B.listNil, [tupTy])),
       A.TupleExp (List.map (fn v => A.VarExp (v, [])) accVs))
     val tupV = Var.new ("tup", tupTy)
-    val tupsV = Var.new ("tups", listTy tupTy)
+    val tupsV = Var.new ("tups", B.listTy tupTy)
     fun mkCons (h, t) = let
       val ty = TypeOf.exp (A.VarExp (h, []))
       in
-        A.ApplyExp (A.ConstExp (A.DConst (listCONS (), [ty])),
+        A.ApplyExp (A.ConstExp (A.DConst (B.listCons, [ty])),
 		    A.TupleExp [A.VarExp (h, []), A.VarExp (t, [])],
-		    listTy ty)
+		    B.listTy ty)
       end
-    val consBranchPat = A.ConPat (listCONS (), 
+    val consBranchPat = A.ConPat (B.listCons, 
 				  [tupTy], 
 				  A.TuplePat [A.VarPat tupV, A.VarPat tupsV])
     val consBranchBody = let
@@ -106,14 +106,14 @@ end = struct
 			    [nilBranch, consBranch],
 			    lpResTy)
     val lpLam = A.FB (lpV, lpArgV, lpBody)
-    val lV = Var.new ("l", listTy tupTy)
-    fun mkNil t = A.ConstExp (A.DConst (listNil (), [t]))
+    val lV = Var.new ("l", B.listTy tupTy)
+    fun mkNil t = A.ConstExp (A.DConst (B.listNil, [t]))
     val applySeqToList = A.ApplyExp (A.VarExp (seqToList, [tupTy]),
 				     A.VarExp (unzipArgV, []),
-				     listTy (A.TupleTy ts))
+				     B.listTy (A.TupleTy ts))
     val applyRev = A.ApplyExp (A.VarExp (listRev, [tupTy]), 
 			       A.VarExp (lV, []), 
-			       listTy tupTy)
+			       B.listTy tupTy)
     val applyLp = A.ApplyExp (A.VarExp (lpV, []),
 			      A.TupleExp (applyRev :: List.map mkNil ts),
 			      lpResTy)
@@ -135,8 +135,8 @@ end = struct
     val n = List.length ts
     val fname = "unzipRope" ^ Int.toString n
     val tupTy = A.TupleTy ts
-    val unzipArgTy = ropeTy tupTy (* rope of tuples... *)
-    val unzipResTy = A.TupleTy (List.map ropeTy ts) (* ...tuple of ropes *)
+    val unzipArgTy = DTy.rope tupTy (* rope of tuples... *)
+    val unzipResTy = A.TupleTy (List.map DTy.rope ts) (* ...tuple of ropes *)
     val unzipV = Var.new (fname, A.FunTy (unzipArgTy, unzipResTy))
     val unzipArgV = Var.new ("r", unzipArgTy)
     val lpV = Var.new ("lp", A.FunTy (unzipArgTy, unzipResTy))
@@ -151,7 +151,7 @@ end = struct
       in
         A.ApplyExp (A.ConstExp (A.DConst (DD.ropeLEAF (), [ty])), 
 		    A.TupleExp [A.VarExp (lenVL, []), e],
-		    ropeTy ty)
+		    DTy.rope ty)
       end
     val leafBody = let
       val vs = mapi (fn (t,i) => Var.new ("xs" ^ Int.toString i, t)) ts
@@ -166,8 +166,8 @@ end = struct
     val leafBranch = A.PatMatch (leafPat, leafBody)
     val dV = Var.new ("d", Basis.intTy)
     val lenVC = Var.new ("len", Basis.intTy)
-    val rLV = Var.new ("rL", ropeTy tupTy)
-    val rRV = Var.new ("rR", ropeTy tupTy)
+    val rLV = Var.new ("rL", DTy.rope tupTy)
+    val rRV = Var.new ("rR", DTy.rope tupTy)
     val catPat = A.ConPat (DD.ropeCAT (), 
 			   [tupTy],
 			   A.TuplePat (List.map A.VarPat [dV, lenVC, rLV, rRV]))
@@ -176,7 +176,7 @@ end = struct
       in
         A.ApplyExp (A.ConstExp (A.DConst (DD.ropeCAT (), [ty])),
 		    A.TupleExp [mkVE dV, mkVE lenVC, e1, e2],
-		    ropeTy ty)
+		    DTy.rope ty)
       end
     val catBody = let
       val vsL = mapi (fn (t,i) => Var.new ("xsL_"^Int.toString i, t)) ts
@@ -213,7 +213,7 @@ end = struct
     val (seqUnzipN as A.FB (unzipSeq, _, _)) = mkSeqUnzipN ts
     val (ropeUnzipN as A.FB (unzipRope, _, _)) = mkRopeUnzipN unzipSeq ts
     val funs = A.FunBind [seqUnzipN, ropeUnzipN]
-    val resTy = A.TupleTy (List.map ropeTy ts)
+    val resTy = A.TupleTy (List.map DTy.rope ts)
     val apply = A.ApplyExp (A.VarExp (unzipSeq, []), rope, resTy)
     in
       A.LetExp (funs, apply)
