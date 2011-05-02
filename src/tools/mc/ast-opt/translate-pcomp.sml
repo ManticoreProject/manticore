@@ -17,14 +17,7 @@ structure TranslatePComp : sig
     structure B = Basis
     structure AU = ASTUtil
     structure TU = TypeUtil
-
-    local
-      val getVar = BasisEnv.getVarFromBasis
-      fun pvar x = getVar ("PArray"::[x])
-    in
-      val parrayMap = Memo.new (fn _ => pvar "map")
-      val tabFTS = Memo.new (fn _ => pvar "tabFromToStep")
-    end
+    structure DV = DelayedBasis.Var
 
     fun tr trExp (e, pes, oe) = 
      (case (pes, oe)
@@ -45,7 +38,7 @@ structure TranslatePComp : sig
 	     val f = A.FunExp (x, c, eTy)
 	     val stepExp = Option.getOpt (optStepExp, AU.mkInt 1)
 	     in
-	       AU.mkApplyExp (A.VarExp (tabFTS (), [eTy]),
+	       AU.mkApplyExp (A.VarExp (DV.parrayTabFTS (), [eTy]),
 			      [loExp, hiExp, stepExp, f])
 	     end
 	 | ([(p1, e1)], optPred) => let (* the one pbind, no predicate case *)
@@ -58,7 +51,7 @@ structure TranslatePComp : sig
 				   eltTy)
 	       val f = A.FunExp (x1, c1, eltTy)
 	       val e1' = trExp e1
-	       val mapP = A.VarExp (parrayMap (), [eltTy, patTy]) 
+	       val mapP = A.VarExp (DV.parrayMap (), [eltTy, patTy]) 
 (* NOTE: these type args seem backwards to me, but I've tested this. - ams*)
 	       fun map arr = AU.mkCurriedApplyExp (mapP, [f, arr])
                in

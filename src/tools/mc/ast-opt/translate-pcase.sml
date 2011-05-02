@@ -30,6 +30,8 @@ structure TranslatePCase (* : sig
   structure F = Future1
   structure R = Rope
 
+  structure D = DelayedBasis
+
   structure CB = CompletionBitstring
   type cbits = CB.t
 
@@ -41,69 +43,22 @@ structure TranslatePCase (* : sig
 
   type matchmap = (A.match list) CBM.map (* maps of cbits to matches (case arms) *)
 
-  (* NOTE: making the Val, Exn dcons etc. at link time causes a link time error. *)
-  (* I'm doing all this memo stuff to work around that. - ams *)
+(* mkResPat : A.pat -> A.pat *)
+(* Given a pattern (p : t), produce the pattern (RES(p) : t result). *)
+  fun mkResPat pat = let
+    val conRES = D.DataCon.resultRES ()
+    val ty = TypeOf.pat pat
+    in
+      AST.ConPat (conRES, [ty], pat)
+    end
 
-  local
-    val getDCon = BasisEnv.getDConFromBasis
-    val getTyc  = BasisEnv.getTyConFromBasis
-    val getVar  = BasisEnv.getVarFromBasis
-  in
-      
-  (* optSOME : unit -> A.dcon *)
-  (* memoized SOME dcon from the basis *)
-    val optSOME = Memo.new (fn _ => getDCon ["Option", "SOME"])
-	    
-  (* optNONE : unit -> A.dcon *)
-  (* memoized NONE dcon from the basis *)
-    val optNONE = Memo.new (fn _ => getDCon ["Option", "NONE"])
-
-  (* resultRES : unit -> A.dcon *)
-    val resultRES = Memo.new (fn _ => getDCon ["Result", "RES"])
-
-  (* resultEXN : unit -> A.dcon *)
-    val resultEXN = Memo.new (fn _ => getDCon ["Result", "EXN"])
-
-  (* optionTyc : unit -> AST.tycon *)
-    val optionTyc = Memo.new (fn _ => getTyc ["Option", "option"])
-
-  (* resultTyc : unit -> AST.tycon *)
-    val resultTyc = Memo.new (fn _ => getTyc ["Result", "result"])
-
-  (* cancelV : unit -> A.var *)
-    val cancelV = Memo.new (fn _ => getVar ["MultilispFuture", "cancel"])
-
-  (* pollV : unit -> A.var *)
-    val pollV = Memo.new (fn _ => getVar ["MultilispFuture", "poll"])
-
-  (* mkResPat : A.pat -> A.pat *)
-  (* Given a pattern (p : t), produce the pattern (RES(p) : t result). *)
-    fun mkResPat pat = let
-      val conRES = resultRES ()
-      val ty = TypeOf.pat pat
-      in
-        AST.ConPat (conRES, [ty], pat)
-      end
-
-  (* mkExnPat : (AST.pat * AST.ty) -> AST.pat *)
-  (* Given a pattern p and type t, produce the pattern (Exn p : t result). *)  
-    fun mkExnPat (pat, ty) = let
-      val conEXN = resultEXN ()
-      in
-        AST.ConPat (conEXN, [ty], pat)
-      end
-
-  (* mkOptTy : AST.ty -> AST.ty *)
-  (* Given type t, make type (t option). *)
-    fun mkOptTy ty = AST.ConTy ([ty], optionTyc ())
-
-  (* mkFutureTy : AST.ty -> AST.ty *)
-    fun mkFutureTy ty = AST.ConTy ([ty], F.futureTyc ())
-
-  (* mkResultTy : AST.ty -> AST.ty *)
-    fun mkResultTy ty = AST.ConTy ([ty], resultTyc ())
-
-  end (* local *)
+(* mkExnPat : (AST.pat * AST.ty) -> AST.pat *)
+(* Given a pattern p and type t, produce the pattern (Exn p : t result). *)  
+  fun mkExnPat (pat, ty) = let
+    val conEXN = D.DataCon.resultEXN ()
+    in
+      AST.ConPat (conEXN, [ty], pat)
+    end
 
 (* futureVars : A.exp list -> A.var list *)
   fun futureVars es = let
@@ -111,7 +66,7 @@ structure TranslatePCase (* : sig
       | go (e::es, n, acc) = let
 	  val ty = TypeOf.exp e
 	  val name = "f" ^ Int.toString n
-          val fV = Var.new (name, mkFutureTy ty)
+          val fV = Var.new (name, D.Ty.future ty)
 	  in
 	    go (es, n+1, fV::acc)
   	  end
@@ -123,7 +78,7 @@ structure TranslatePCase (* : sig
 (* A function to transform ppat lists to tuple pats for use in case exps. *)
 (* ex: ? & 1 & (x, y) --> (_, Val 1, Val (x, y)) *)
   fun xformPPats ps = let
-    fun xform (AST.NDWildPat ty) = AST.WildPat (mkResultTy ty)
+    fun xform (AST.NDWildPat ty) = AST.WildPat (D.Ty.result ty)
       | xform (AST.HandlePat (p, ty)) = mkExnPat (p, ty)
       | xform (AST.Pat p) = mkResPat p
     in
@@ -159,7 +114,7 @@ structure TranslatePCase (* : sig
       : matchmap = let
     val match = 
      (case pm
-        of A.Otherwise (ts, e) => A.PatMatch (A.WildPat (mkResultTy t), e)
+        of A.Otherwise (ts, e) => A.PatMatch (A.WildPat (D.Ty.result t), e)
 	 | A.PMatch (ps, e) => A.PatMatch (xformPPats ps, e))
     val (m', ms) = CBM.remove (m, cb)
     val belongsLast = (case pm of A.Otherwise _ => true | _ => false)
@@ -191,7 +146,7 @@ structure TranslatePCase (* : sig
   fun mkTy ts cb = let
     fun go ([], [], tys) = AST.TupleTy (List.rev tys)
       | go (CB.Zero ::r1, _::r2, tys) = go (r1, r2, tys)
-      | go (CB.One  ::r1, t::r2, tys) = go (r1, r2, mkResultTy(t)::tys)
+      | go (CB.One  ::r1, t::r2, tys) = go (r1, r2, D.Ty.result(t)::tys)
       | go _ = raise Fail
           "length of completion bitstring doesn't match # of exps in pcase"
     in
@@ -215,14 +170,14 @@ structure TranslatePCase (* : sig
 	    (A.PatMatch (tupPat, fcall), argVs')
           end
       | m (CB.Zero::bs, t::ts, n, optPats, argVs) = let
-          val p = A.ConstPat (A.DConst (optNONE (), [mkResultTy t]))
+          val p = A.ConstPat (A.DConst (D.DataCon.optNONE (), [D.Ty.result t]))
           in
             m (bs, ts, n, p::optPats, argVs)
           end
       | m (CB.One::bs, t::ts, n, optPats, argVs) = let
           val varName = "t" ^ Int.toString n
-	  val argV = Var.new ("t" ^ Int.toString n, mkResultTy t)
-	  val p = A.ConPat (optSOME (), [mkResultTy t], A.VarPat argV) 
+	  val argV = Var.new ("t" ^ Int.toString n, D.Ty.result t)
+	  val p = A.ConPat (D.DataCon.optSOME (), [D.Ty.result t], A.VarPat argV) 
           in
 	    m (bs, ts, n+1, p::optPats, argV::argVs)
           end
@@ -244,7 +199,7 @@ structure TranslatePCase (* : sig
 	      else raise Fail "not a future")
 	  | _ => raise Fail "not a future")
     in
-      A.ApplyExp (A.VarExp (cancelV (), [inst]),
+      A.ApplyExp (A.VarExp (D.Var.cancel1 (), [inst]),
 		  A.VarExp (futV, []),
 		  A.TupleTy [])
     end
@@ -263,9 +218,9 @@ structure TranslatePCase (* : sig
 	     else raise Fail "not a future")
 	 | _ => raise Fail "unexpected non-future type")
     in
-      A.ApplyExp (A.VarExp (pollV (), [inst]),
+      A.ApplyExp (A.VarExp (D.Var.poll (), [inst]),
 		  A.VarExp (futV, []), (* FIXME Should this be the empty list? *)
-		  mkOptTy (mkResultTy inst))
+		  D.Ty.option (D.Ty.result inst))
     end
 
 (* patOf : A.match -> A.pat *) 
@@ -384,7 +339,7 @@ structure TranslatePCase (* : sig
     val kmss = CBM.listItemsi m
     val goV = Var.new ("go", A.FunTy (Basis.unitTy, pcaseResTy))
     val applyGo = A.ApplyExp (A.VarExp (goV, []), A.TupleExp [], pcaseResTy)
-    val default = A.WildPat (A.TupleTy (map (mkOptTy o mkResultTy) expTys))
+    val default = A.WildPat (A.TupleTy (map (D.Ty.option o D.Ty.result) expTys))
     val defaultMatch = A.PatMatch (default, applyGo)
     val u = Var.new ("u", Basis.unitTy)
     val fVs = futureVars es
