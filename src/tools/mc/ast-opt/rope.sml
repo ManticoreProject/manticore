@@ -6,41 +6,18 @@
 
 structure Rope : sig
 
-    val maxLeafSize  : unit -> int
-    val ropeTyc      : unit -> Types.tycon
-    val ropeTy       : Types.ty -> Types.ty
-    val ropeLeaf     : unit -> AST.dcon
-    val ropeCat      : unit -> AST.dcon
+  val maxLeafSize  : unit -> int
+  val ropeTyc      : unit -> Types.tycon
+  val ropeTy       : Types.ty -> Types.ty
+  val ropeLeaf     : unit -> AST.dcon
+  val ropeCat      : unit -> AST.dcon
 
-  end = struct
+end = struct
 
-    structure A = AST
-    structure B = Basis
-    structure T = Types
+  fun maxLeafSize () = Controls.get BasicControl.maxLeafSize
+  val ropeTyc = DelayedBasis.TyCon.rope
+  val ropeTy = DelayedBasis.Ty.rope
+  val ropeLeaf = DelayedBasis.DataCon.ropeLEAF
+  val ropeCat = DelayedBasis.DataCon.ropeCAT 
 
-    exception VariableArityType
-
-    fun maxLeafSize () = Controls.get BasicControl.maxLeafSize
-
-    fun ropeTyc () = (
-	  case BasisEnv.getTyFromBasis ["RopeOps", "rope"]
-	   of ModuleEnv.TyCon tyc => tyc
-	    | _ => raise Fail "wrong kind for rope tyc"
-  	   (* end case *))
-
-    (* ropeTy : Types.ty -> Types.ty *)
-    fun ropeTy ty = AST.ConTy ([ty], ropeTyc())
-
-    fun ropeLeaf () = (
-	  case BasisEnv.getValFromBasis ["RopeOps", "LEAF"]
-	   of ModuleEnv.Con dcon => dcon
-	    | _ => raise Fail "wrong kind for LEAF"
-          (* end case *))
-
-    fun ropeCat () = (
-	  case BasisEnv.getValFromBasis ["RopeOps", "CAT"]
-	   of ModuleEnv.Con dcon => dcon
-	    | _ => raise Fail "wrong kind for CAT"
-          (* end case *))
-
-  end (* structure Rope *)
+end (* structure Rope *)

@@ -13,6 +13,7 @@ Library
   structure BasisEnv
   structure HLOpEnv
   structure QualifiedId
+  structure DelayedBasis
 
 is
 
@@ -29,5 +30,4 @@ is
   qualified-id.sml
   hlop-env.sml
   module-env.sml
-
-
+  delayed-basis.sml

@@ -13,16 +13,9 @@ structure TranslatePComp : sig
 
 end  = struct
 
-  local
-    val getVar = BasisEnv.getVarFromBasis
-    fun ropeVar x = getVar ("Rope"::[x])
-  in
-    val tabFromToP = Memo.new (fn _ => ropeVar "tabFromToP")
-    val tabFromToStepP = Memo.new (fn _ => ropeVar "tabFromToStepP")
-  end (* local *)
-
   structure A = AST
   structure B = Basis
+  structure D = DelayedBasis
 
   structure AU = ASTUtil
   structure TU = TypeUtil
@@ -44,13 +37,13 @@ end  = struct
 	  val f = A.FunExp (x, c, eTy)
           val (tab, args) = (case optStepExp 
             of NONE => let
-                 val t = A.VarExp (tabFromToP (), [eTy])              
+                 val t = A.VarExp (D.Var.ropeTabFT (), [eTy])              
 		 val a = [loExp, hiExp, f]
                  in 
 		   (t, a) 
 	         end
 	     | SOME stepExp => let
-                 val t = A.VarExp (tabFromToStepP (), [eTy])
+                 val t = A.VarExp (D.Var.ropeTabFTS (), [eTy])
 		 val a = [loExp, hiExp, stepExp, f]
                  in
 		   (t, a)

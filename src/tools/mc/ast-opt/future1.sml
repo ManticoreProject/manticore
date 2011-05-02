@@ -24,19 +24,12 @@ structure Future1 : sig
     structure A = AST
     structure T = Types
 
-    local 
-      val fmName = "MultilispFuture"
-      val futureModule = fn id => [fmName, id]
-      val getTyc = BasisEnv.getTyConFromBasis o futureModule
-      val getVar = BasisEnv.getVarFromBasis o futureModule
-    in
-      val futureTyc = Memo.new (fn _ => getTyc "future")
-      val future1   = Memo.new (fn _ => getVar "future")
-      val touch1    = Memo.new (fn _ => getVar "touch")
-      val cancel1   = Memo.new (fn _ => getVar "cancel")
-    end (* local *)
-  
-    fun futureTy t = T.ConTy ([t], futureTyc())
+    structure DT = DelayedBasis.TyCon
+    structure DV = DelayedBasis.Var
+    structure DTy = DelayedBasis.Ty
+
+    val futureTyc = DT.future
+    val futureTy  = DTy.future
 
     (* mkThunk : A.exp -> A.exp *)
     (* Consumes e; produces (fn u => e) (for fresh u : unit). *)
@@ -103,13 +96,13 @@ structure Future1 : sig
 
     (* Precondition: The argument must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
-    val mkTouch = mkTch touch1
+    val mkTouch = mkTch DV.touch1
 
     (* Precondition: The argument e1 must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
-    val mkCancel = mkCan cancel1
+    val mkCancel = mkCan DV.cancel1
 
-    val mkFuture = mkFut future1
+    val mkFuture = mkFut DV.future1
 
     (* isFutureCand : A.exp -> bool *)
     (* Determines whether a particular expression should be made a future or not. *)

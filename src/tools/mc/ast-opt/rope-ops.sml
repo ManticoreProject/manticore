@@ -8,22 +8,19 @@
 
 structure RopeOps : sig
 
-    val tr : AST.var -> AST.var
+  val tr : AST.var -> AST.var
 
-  end = struct
+end = struct
 
-    fun ropeOp opname = 
-     (case BasisEnv.getValFromBasis ["Rope", opname]
-        of ModuleEnv.Var oper => oper
-	 | _ => raise Fail ("rope operator " ^ opname ^ " not found in basis")
-        (* end case *))
+  structure B = Basis
+  structure DV = DelayedBasis.Var
 
-    fun tr x = let
-      fun xeq y = Var.same (x, y)
-      in
-        if      xeq Basis.parray_sub then ropeOp "sub"
-	else if xeq Basis.parray_len then ropeOp "length"
-	else x
-      end
+  fun tr x = 
+    if Var.same (x, B.parray_sub) then
+      DV.ropeSub ()
+    else if Var.same (x, B.parray_len) then 
+      DV.ropeLength ()
+    else 
+      x
 
-  end
+end

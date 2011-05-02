@@ -25,7 +25,12 @@ structure JFPTranslatePCase = struct
   structure B = Basis
   structure R = Rope
   structure T = Types
-  structure U = BasisUtil
+
+  structure DB = DelayedBasis
+  structure DT = DB.TyCon
+  structure DD = DB.DataCon
+  structure DV = DB.Var
+  structure DTy = DB.Ty
 
 (* freshAlpha : unit -> T.ty *)
   fun freshAlpha () = T.VarTy (TyVar.new (Atom.atom "'a"))
@@ -36,7 +41,7 @@ structure JFPTranslatePCase = struct
 (* mkResPat : A.pat -> A.pat *)
 (* Given a pattern (p : t), produce the pattern (RES(p) : t result). *)
   fun mkResPat pat = let
-    val conRES = U.resRES ()
+    val conRES = DD.resultRes ()
     val ty = TypeOf.pat pat
     in
       AST.ConPat (conRES, [ty], pat)
@@ -45,14 +50,14 @@ structure JFPTranslatePCase = struct
 (* mkExnPat : (AST.pat * AST.ty) -> AST.pat *)
 (* Given a pattern p and type t, produce the pattern (EXN(p) : t result). *)  
   fun mkExnPat (pat, ty) = let
-    val conEXN = U.resEXN ()
+    val conEXN = DD.resultEXN ()
     in
       AST.ConPat (conEXN, [ty], pat)
     end
 
   local
-    val cCancel (* Cancel.cancel *) = U.cancelCancel ()
-    val cSpawn  (* Cancel.spawn  *) = U.cancelSpawn ()
+    val cCancel (* Cancel.cancel *) = DV.cancelCancel ()
+    val cSpawn  (* Cancel.spawn  *) = DV.cancelSpawn ()
     fun v2e (v: A.var) : A.exp = A.VarExp (v, [])
   in
   (* cancel : A.var -> A.exp *)
@@ -135,9 +140,9 @@ structure JFPTranslatePCase = struct
 (* bitstringToAST *)
 (* Makes an AST expression out of an SML bitstring. *)
   local
-    val new  = U.bitvecNew ()
-    val set1 = U.bitvecSet1 ()
-    val bvTy = U.bitvecTy ()
+    val new  = DV.bitvecNew ()
+    val set1 = DV.bitvecSet1 ()
+    val bvTy = DTy.bitvec ()
     fun seqList es =
       (case es
  	 of [] => raise Fail "undefined"
@@ -244,12 +249,12 @@ structure JFPTranslatePCase = struct
 (* pre: both arguments are the same length *)
 (* ex: restrict([p1,p2,?,p4],1011) = [SOME p1, _, SOME p4] *)
   fun restrict (ps: AST.ppat list, bs: bitstring) : AST.pat list = let
-    val optSOME = U.optSOME ()
+    val optSOME = DV.optSOME ()
     fun lp ([], [], acc) = List.rev acc
       | lp (p::ps, false::bs, acc) = lp (ps, bs, acc)
       | lp (p::ps, true::bs, acc) = let
           val q = (case p 
-		    of A.NDWildPat ty => A.WildPat (U.optTy ty)
+		    of A.NDWildPat ty => A.WildPat (DTy.option ty)
 		     | A.HandlePat _ => raise Fail "HandlePat not supported"
 		     | A.Pat r => A.ConPat (optSOME, [TypeOf.pat r], r))
           in
@@ -345,9 +350,9 @@ structure JFPTranslatePCase = struct
       mvarNew ("state", s_0)
     end
   and mvarNew (name: string, init: A.exp) : A.binding * A.var = let
-    val ty = U.mvarTy (TypeOf.exp init)
+    val ty = DTy.mvar (TypeOf.exp init)
     val x = Var.new (name, ty)
-    val new = A.VarExp (U.mvarNew (), [Basis.boolTy])
+    val new = A.VarExp (DV.mvarNew (), [Basis.boolTy])
     val rhs = ASTUtil.mkApplyExp (new, [init])
     in
       (A.ValBind (A.VarPat x, rhs), x)
@@ -375,22 +380,22 @@ structure JFPTranslatePCase = struct
       lp (List.rev ts, List.length ts, [], [])
     end
   and mkRef (k: int, ty: A.ty) : A.binding * A.var = let
-    val r = Var.new ("r" ^ Int.toString k, U.refTy (U.optTy ty))
+    val r = Var.new ("r" ^ Int.toString k, DTy.ref (DTy.option ty))
     val b = A.ValBind (A.VarPat r, refNONE ty)
     in
       (b, r)
     end
   and refNONE (ty: A.ty) : A.exp = let
-    val refNew = A.VarExp (U.refNew (), [U.optTy ty])
-    val none = A.ConstExp (A.DConst (U.optNONE (), [ty]))
+    val refNew = A.VarExp (DV.refNew (), [DTy.option ty])
+    val none = A.ConstExp (A.DConst (DD.optNONE (), [ty]))
     in
       ASTUtil.mkApplyExp (refNew, [none])
     end
 
 (* (4) *)
   local
-    val cancelTy = U.cancelTy ()
-    val cancelNew = A.VarExp (U.cancelNew (), [])
+    val cancelTy = DTy.cancel ()
+    val cancelNew = A.VarExp (DV.cancelNew (), [])
     val new = ASTUtil.mkApplyExp (cancelNew, [ASTUtil.unitExp])
   in
     fun mkCancels (k: int) : A.binding list  * A.var list = let
@@ -409,12 +414,12 @@ structure JFPTranslatePCase = struct
 
 (* (5) *)
   local
-    val bitvecTy = U.bitvecTy ()
-    val bitvecEq = U.bitvecEq ()
-    val bSet1F = U.bitvecSet1F ()
-    val refSetV = U.refSet ()
-    val optSOME = U.optSOME ()
-    val mTake = U.mvarTake ()
+    val bitvecTy = DTy.bitvec ()
+    val bitvecEq = DV.bitvecEq ()
+    val bSet1F = DV.bitvecSet1F ()
+    val refSetV = DV.refSet ()
+    val optSOME = DD.optSOME ()
+    val mTake = DV.mvarTake ()
     fun varExp x = A.VarExp (x, [])
   in
     fun mkTrans (k: int, argTy: A.ty, mState: A.var, r_k: A.var, 
@@ -428,7 +433,7 @@ structure JFPTranslatePCase = struct
 					bitvecTy))
       val someV = A.ApplyExp (A.ConstExp (A.DConst (optSOME, [argTy])),
 			      varExp v,
-			      U.optTy argTy)
+			      DTy.option argTy)
       val setR = ASTUtil.mkApplyExp (A.VarExp (refSetV, [argTy]),
 				     [varExp r_k, someV])
       val stV' = Var.new ("st'", bitvecTy)					 
@@ -491,7 +496,7 @@ structure JFPTranslatePCase = struct
 (* (6) *)
   local
     fun varType x = TypeUtil.toMonoTy (Var.typeOf x)
-    val refTyc = U.refTyc ()
+    val refTyc = DT.ref ()
     fun typeOfRefVar (r: A.var) : A.ty =
       (case TypeUtil.toMonoTy (Var.typeOf r)
          of ty as A.ConTy ([t], c) =>
@@ -503,7 +508,7 @@ structure JFPTranslatePCase = struct
     fun bang (r: A.var) : A.exp = let
       val t = typeOfRefVar r
       in
-	A.ApplyExp (A.VarExp (U.refGet (), [t]), A.VarExp (r, []), t)
+	A.ApplyExp (A.VarExp (DV.refGet (), [t]), A.VarExp (r, []), t)
       end			     
     fun bigBang (rs: A.var list) : A.exp =
       (case rs
@@ -643,8 +648,8 @@ structure JFPTranslatePCase = struct
 
 (* mkActExn : A.var * A.var * A.ty -> A.lambda * A.var *)
   local
-    val bitvecTy = U.bitvecTy ()
-    val mvarTake = U.mvarTake ()
+    val bitvecTy = DTy.bitvec ()
+    val mvarTake = DV.mvarTake ()
   in
     fun mkActExn (stV: A.var, reraiseV: A.var, resTy: A.ty) : A.lambda * A.var = let
       val actExnV = Var.new ("actExn", T.FunTy (B.exnTy, resTy))
@@ -689,12 +694,12 @@ structure JFPTranslatePCase = struct
 
 (* all together now *)
   local
-    val bitvecTy = U.bitvecTy ()
-    val mPut = U.mvarPut ()
+    val bitvecTy = DTy.bitvec ()
+    val mPut = DV.mvarPut ()
     fun mvarPut (x: A.var, v: A.exp) : A.exp = let
       val t = TypeOf.exp v
       in
-        A.ApplyExp (A.VarExp (x, [t]), v, U.mvarTy t)
+        A.ApplyExp (A.VarExp (x, [t]), v, DTy.mvar t)
       end
     fun pcase (es: A.exp list, ms: A.pmatch list, ty: A.ty) : A.exp = let
       val dispatchResTy = freshAlpha ()
@@ -714,7 +719,7 @@ structure JFPTranslatePCase = struct
       val stV = Var.new ("st", bitvecTy)
       val resumeBody = A.SeqExp (mvarPut (stateV, A.VarExp (stV, [])), dispatchCall)
       val resumeLam = A.FB (resumeV, stV, resumeBody)
-      val (refBinds, refVs) = mkRefs (List.map (U.refTy o U.optTy o TypeOf.exp) es) (* (3) *)
+      val (refBinds, refVs) = mkRefs (List.map (DTy.ref o DTy.option o TypeOf.exp) es) (* (3) *)
       val (cBinds, cVs) = mkCancels len (* (4) *)
       val (reraiseLam, reraiseV) = mkReraise (exnReturnV, cVs, ty)    (* (8) *)
       val (actLams, actVs) = mkActs (c', returnV, reraiseV, cVs)  (* (7) *)
