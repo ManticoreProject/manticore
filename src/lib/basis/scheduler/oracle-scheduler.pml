@@ -8,9 +8,9 @@
 
 structure CED (* :> sig
     type ced
-    val initialize : unit -> ced
-    val estimate   : ced * int -> float
-    val measured   : ced * int * float -> unit
+    val initialize   : string -> ced
+    val estimate     : ced * int -> float
+    val measured     : ced * int * float * float -> unit
   end *) = struct
 
   structure CAI = UnsafeCacheAlignedIntArray
@@ -30,7 +30,7 @@ structure CED (* :> sig
 
   type ced = (FloatRef.ref * info Array.array)
 
-  fun initialize () = let
+  fun initialize name = let
     val glob = FloatRef.new defaultConstant
     val loc = Array.tabulate (nbVProcs, fn _ => let
                      val start = CAI.create 1
@@ -45,7 +45,7 @@ structure CED (* :> sig
 
   fun estimate ((glob, _), m) = Float.fromInt m * FloatRef.get glob
 
-  fun report (glob, c) = let
+  fun post (glob, c) = let
     val g = FloatRef.get glob
     val diff = c - g
     in
@@ -63,7 +63,7 @@ structure CED (* :> sig
 	()
     end
 
-  fun measured ((glob, loc), m, t) = let
+  fun measured ((glob, loc), m, t, est) = let
     val p = vprocID ()
     val (startA, nbA, sumA) = Array.sub (loc, p)
     val start = CAI.sub (startA, 0) = 1
@@ -74,9 +74,10 @@ structure CED (* :> sig
     val sum' = sum + (t / Float.fromInt m)
     val c = sum' / Float.fromInt nb'
     in
-      if start' then report (glob, c)
+      if start' then 
+	post (glob, c)
       else if nb' = nbGrouped then (
-	report (glob, c);
+	post (glob, c);
 	CAI.update (startA, 0, 0);
 	CAI.update (nbA, 0, 0);
 	CAF.update (sumA, 0, 0.0))
@@ -93,17 +94,72 @@ structure OracleScheduler (* : sig
     val oracle : ('a, 'b) quad * 'a -> 'b
   end *) = struct
 
+  structure CAI = UnsafeCacheAlignedIntArray
+  structure CAF = UnsafeCacheAlignedFloatArray
+
+  val reportPredictionError = ParseCommandLine.exists "-oracle-report-prediction-error"
+  val predictionErrorNB = 
+    ParseCommandLine.parse1 "-oracle-nb-prediction-errors" Int.fromString 500
+
+  val nbVProcs = VProc.numVProcs ()
+  fun vprocID () = VProc.id (VProc.host ())
+
+  (* Prediction error *)
+  (* This memory records the current global average error across every oracle *)
+  (* prediction. *)
+
+  type prediction_error_info = (CAI.array * CAF.array)
+
+  type prediction_error = prediction_error_info Array.array
+
+  val predictionError = 
+    Array.tabulate (nbVProcs, fn _ => (CAI.create 1, CAF.create predictionErrorNB))
+
+  fun recordPredictionError (perr, m, t) = let
+    val p = vprocID ()
+    val (nbA, errA) = Array.sub (perr, p)
+    val nb = CAI.sub (nbA, 0)
+    val nb' = nb + 1
+    in
+      if nb < predictionErrorNB then (
+       CAI.update (nbA, 0, nb');
+       CAF.update (errA, nb, m / t))
+      else
+	()
+    end
+
+  fun doReportPredictionError perr = let
+    fun proc (_, (nbA, errA)) = let
+      val nb = CAI.sub (nbA, 0)
+      fun go i =
+        if i < nb then (
+	  Print.print (Float.toString (CAF.sub (errA, i))^" ");
+	  go (i + 1))
+	else
+	  ()
+      in
+	go 0
+      end
+    in
+      Array.appi proc perr;
+      ()
+    end
+
   val kappa = 1.0
 
   val minWorkForTimerRes = 0.000001  (* 1 microsecond *)
 
-  fun measuredRun (r, m, k) = let
+  fun measuredRun (r, m, est, k) = let
     val t1 = CycleCounter.getTicks ()
     val v = k ()
     val t2 = CycleCounter.getTicks ()
     val elapsed = Float.fromLong (CycleCounter.elapsed (t1, t2))
     in
-      CED.measured (r, m, elapsed);
+      if reportPredictionError then
+	recordPredictionError (predictionError, est, elapsed)
+      else 
+	();
+      CED.measured (r, m, elapsed, est);
       v
     end
 
@@ -112,7 +168,7 @@ structure OracleScheduler (* : sig
     val est = CED.estimate (r, m)
     val b = est > kappa
     fun k_seq () = f_seq v
-    fun k'_seq () = measuredRun (r, m, k_seq)
+    fun k'_seq () = measuredRun (r, m, est, k_seq)
     fun k_orc () = f_orc v
     val k = if b then k_orc else k'_seq
     in

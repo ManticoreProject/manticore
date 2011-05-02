@@ -19,9 +19,11 @@ structure UnsafeCacheAlignedIntArray (* :>
     val create  : int -> array
     val sub     : array * int -> int
     val update  : array * int * int -> unit
+    fun length  : array -> int
   end *) = struct
     type array = UnsafeIntArray.array
     fun create n = UnsafeIntArray.create (2*CACHE_LINE_SZ + n)
     fun sub (a, i) = UnsafeIntArray.sub (a, i + CACHE_LINE_SZ)
     fun update (a, i, x) = UnsafeIntArray.update (a, i + CACHE_LINE_SZ, x)
+    fun length a = IntArray.length a - (2*CACHE_LINE_SZ)
 end

@@ -75,4 +75,15 @@ fun app f a = let
     app 0
   end
 
+fun appi f a = let
+  val len = length a
+  fun app i = 
+    if i < len then 
+      (f (i, sub (a, i)); app (i + 1)) 
+    else 
+      ()
+  in
+    app 0
+  end
+
 end

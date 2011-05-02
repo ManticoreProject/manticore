@@ -19,9 +19,11 @@ structure UnsafeCacheAlignedFloatArray (* :>
     val create  : float -> array
     val sub     : array * float -> float
     val update  : array * float * float -> unit
+    fun length  : array -> int
   end *) = struct
     type array = UnsafeFloatArray.array
     fun create n = UnsafeFloatArray.create (2*CACHE_LINE_SZ + n)
     fun sub (a, i) = UnsafeFloatArray.sub (a, i + CACHE_LINE_SZ)
     fun update (a, i, x) = UnsafeFloatArray.update (a, i + CACHE_LINE_SZ, x)
+    fun length a = FloatArray.length a - (2*CACHE_LINE_SZ)
 end

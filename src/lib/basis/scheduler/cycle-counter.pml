@@ -35,6 +35,6 @@ structure CycleCounter (* :> sig
     type ticks = Word64.word
 
     val getTicks : unit -> ticks = _prim (@get-ticks)
-    fun elapsed (t1:Word64.word, t2) = t2 - t1
+    fun elapsed (t1:Word64.word, t2) = Word64.sub (t2, t1)
 
 end
