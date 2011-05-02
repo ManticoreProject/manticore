@@ -101,7 +101,7 @@ end *) = struct
 	     record
            end
        (* end case *))
-    val intfTyc = Memo.new' (fn _ => getTyc ["IntFArray", "int_farray"])
+    val intfTyc = Memo.new (fn _ => getTyc ["IntFArray", "int_farray"])
   end (* local *)
 
 (* +debug *)

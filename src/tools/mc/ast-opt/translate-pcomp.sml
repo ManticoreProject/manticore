@@ -22,8 +22,8 @@ structure TranslatePComp : sig
       val getVar = BasisEnv.getVarFromBasis
       fun pvar x = getVar ("PArray"::[x])
     in
-      val parrayMap = Memo.new' (fn _ => pvar "map")
-      val tabFTS = Memo.new' (fn _ => pvar "tabFromToStep")
+      val parrayMap = Memo.new (fn _ => pvar "map")
+      val tabFTS = Memo.new (fn _ => pvar "tabFromToStep")
     end
 
     fun tr trExp (e, pes, oe) = 

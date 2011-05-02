@@ -13,14 +13,14 @@ structure DelayedBasis = struct
 
   structure BE = BasisEnv
 
-  type 'a thunk = unit -> 'a
+  type 'a thunk = 'a Memo.thunk
 
   fun delay f x = fn () => f x
 
 (* memo : 'a thunk -> 'a thunk *)
 (* Creates a memoized ref cell containing the result, which is computed  *)
 (*   on demand the first time, and retrieved from the cell subsequently. *)
-  val memo : 'a thunk -> 'a thunk = Memo.new'
+  val memo : 'a thunk -> 'a thunk = Memo.new
 
   val getVar  = BE.getVarFromBasis
   val getTyc  = BE.getTyConFromBasis

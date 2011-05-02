@@ -21,9 +21,8 @@ structure TranslateRange : sig
 
     local
       fun get v = BasisEnv.getVarFromBasis ["PArray", v]
-      val m1 = Memo.new (fn _ => get "range")
     in
-      fun range () = Memo.get m1
+      val range = Memo.new (fn _ => get "range")
     end
 
   (* tr : A.exp * A.exp * A.exp option * A.ty -> A.exp *)
