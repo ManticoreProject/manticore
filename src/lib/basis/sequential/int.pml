@@ -20,7 +20,7 @@ structure Int =
       extern int M_FloorLg (int) __attribute__((pure));
 
       define inline @to-string (n : ml_int / exh : exh) : ml_string =
-	  let res : ml_string = ccall M_IntToString (unwrap(n))
+	  let res : ml_string = ccall M_IntToString (#0(n))
 	    return (res)
       ;
 
@@ -30,12 +30,12 @@ structure Int =
       ;
 
       define inline @ceiling-lg(n : ml_int / exh : exh) : ml_int =
-	let res : int = ccall M_CeilingLg(unwrap(n))
+	let res : int = ccall M_CeilingLg(#0(n))
 	return (alloc(res))
       ;
 
       define inline @floor-lg(n : ml_int / exh : exh) : ml_int =
-	let res : int = ccall M_FloorLg(unwrap(n))
+	let res : int = ccall M_FloorLg(#0(n))
 	return (alloc(res))
       ;
 

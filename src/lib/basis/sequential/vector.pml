@@ -85,6 +85,6 @@ structure Vector =
 	fold (length vec - 1, init)
     end
 
-    fun map (f, s) = tabulate (length s, fn i => f (sub (s, i)))
+    fun map f s = tabulate (length s, fn i => f (sub (s, i)))
 
   end
