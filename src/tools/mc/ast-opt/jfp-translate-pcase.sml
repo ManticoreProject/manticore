@@ -344,7 +344,7 @@ structure JFPTranslatePCase = struct
  *)
   fun initState (k: int) : A.binding * A.var = let
     val args = [ASTUtil.mkInt k, ASTUtil.falseExp]
-    val newArr = A.VarExp (BasisUtil.arrayArray (), [Basis.boolTy])
+    val newArr = A.VarExp (DV.arrayArray (), [Basis.boolTy])
     val s_0 = ASTUtil.mkApplyExp (newArr, args)
     in
       mvarNew ("state", s_0)
