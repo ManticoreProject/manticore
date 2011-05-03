@@ -15,7 +15,13 @@ structure RopeOfTuples : sig
 end = struct
 
   structure A = AST
+  structure B = Basis
   structure T = Types
+
+  structure D   = DelayedBasis
+  structure DD  = D.DataCon
+  structure DV  = D.Var  
+  structure DTy = D.Ty
 
 (* mapi : ('a * int -> 'b) -> 'a list -> 'b list *)
   fun mapi f xs = let
@@ -25,66 +31,8 @@ end = struct
       m (xs, 0, [])
     end
 
-  local
-
-    val getTyc = BasisEnv.getTyConFromBasis
-
-    val getDCon = BasisEnv.getDConFromBasis
-
-    val memoListTyc : T.tycon Memo.memo = Memo.new (fn _ =>
-      getTyc ["List", "list"])
-
-    val memoRopeTyc : T.tycon Memo.memo = Memo.new (fn _ =>
-      getTyc ["Rope", "rope"])
-
-    val memoSeqTyc : T.tycon Memo.memo = Memo.new (fn _ =>
-      getTyc ["ListSeq", "seq"])
-
-    val memoListNil : A.dcon Memo.memo = Memo.new (fn _ =>
-      getDCon ["List", "nil"])
-
-    val memoListCONS : A.dcon Memo.memo = Memo.new (fn _ =>
-      getDCon ["List", "CONS"])
-
-    val memoRopeLEAF : A.dcon Memo.memo = Memo.new (fn _ =>
-      getDCon ["Rope", "LEAF"])
-
-    val memoRopeCAT : A.dcon Memo.memo = Memo.new (fn _ =>
-      getDCon ["Rope", "CAT"])
-
-  in
-
-  (* listTyc : unit -> T.tycon *)
-    fun listTyc () = Memo.get memoListTyc
-
-  (* seqTyc : unit -> T.tycon *)
-    fun seqTyc () = Memo.get memoSeqTyc
-
-  (* ropeTyc : unit -> T.tycon *)
-    fun ropeTyc () = Memo.get memoRopeTyc
-
-  (* listNil : unit -> A.dcon *)
-    fun listNil () = Memo.get memoListNil
-
-  (* listCONS : unit -> A.dcon *)
-    fun listCONS () = Memo.get memoListCONS
-
-  (* ropeLEAF : unit -> A.dcon *)
-    fun ropeLEAF () = Memo.get memoRopeLEAF
-
-  (* ropeCAT : unit -> A.dcon *)
-    fun ropeCAT () = Memo.get memoRopeCAT
-
-  end
-
-(* listTy : A.ty -> A.ty *)
-  fun listTy (t : A.ty) : A.ty = A.ConTy ([t], listTyc ())
-
 (* seqTy : A.ty -> A.ty *)
-  fun seqTy (t : A.ty) : A.ty = A.ConTy ([t], seqTyc ())
-
-(* ropeTy : A.ty -> A.ty *)
-  fun ropeTy (t : A.ty) : A.ty = A.ConTy ([t], ropeTyc ())
+  fun seqTy (t : A.ty) : A.ty = A.ConTy ([t], D.TyCon.list_seq ())
 
 (* typesInRopeTupleType : A.exp -> A.type list *)
 (* For a rope whose elements are of type (t1 * t2 * ... * tn), *)
@@ -92,12 +40,11 @@ end = struct
 (* As a side-effect, this function raises Fail if the arg "rope" is *)
 (* neither a rope nor a rope of tuples. *)
   fun typesInRopeTupleType rope = let
-    val ropeTyCon = BasisEnv.getTyConFromBasis ["Rope", "rope"]
     val rTy = TypeOf.exp rope
     val typesInTuple = 
      (case rTy
         of T.ConTy (ts, c) =>
-            (if TyCon.same (c, ropeTyCon) then
+            (if TyCon.same (c, D.TyCon.rope ()) then
               (case ts
 		 of [A.TupleTy ts] => ts
 		  | _ => raise Fail "expected a rope of a tuple")
@@ -113,9 +60,9 @@ end = struct
 (* N is the arity of the tuples in the sequence. *)
 (* ex: unzip3 [(1,true,"x")] --> ([1], [true], ["x"]) *)
   fun mkSeqUnzipN ts = let
-    val seqToList = BasisEnv.getVarFromBasis ["ListSeq", "toList"]
-    val seqFromList = BasisEnv.getVarFromBasis ["ListSeq", "fromList"]
-    val listRev = BasisEnv.getVarFromBasis ["List", "rev"] 
+    val seqToList = DV.lseqToList ()
+    val seqFromList = DV.lseqFromList ()
+    val listRev = DV.listRev ()
     val n = List.length ts
     val fname = "unzipSeq" ^ Int.toString n
     val tupTy = A.TupleTy ts
@@ -123,24 +70,24 @@ end = struct
     val unzipResTy = A.TupleTy (List.map seqTy ts) (* ...tuple of sequences *)
     val unzipNV = Var.new (fname, A.FunTy (unzipArgTy, unzipResTy))
     val unzipArgV = Var.new ("s", unzipArgTy)
-    val lpArgTy = A.TupleTy (listTy tupTy :: List.map listTy ts)
-    val lpResTy = A.TupleTy (List.map listTy ts)
+    val lpArgTy = A.TupleTy (B.listTy tupTy :: List.map B.listTy ts)
+    val lpResTy = A.TupleTy (List.map B.listTy ts)
     val lpArgV = Var.new ("arg", lpArgTy)
     val lpV = Var.new ("lp", A.FunTy (lpArgTy, lpResTy))
-    val accVs = mapi (fn (t,i) => Var.new ("acc"^Int.toString i, listTy t)) ts
+    val accVs = mapi (fn (t,i) => Var.new ("acc"^Int.toString i, B.listTy t)) ts
     val nilBranch = A.PatMatch 
-     (A.ConstPat (A.DConst (listNil (), [tupTy])),
+     (A.ConstPat (A.DConst (B.listNil, [tupTy])),
       A.TupleExp (List.map (fn v => A.VarExp (v, [])) accVs))
     val tupV = Var.new ("tup", tupTy)
-    val tupsV = Var.new ("tups", listTy tupTy)
+    val tupsV = Var.new ("tups", B.listTy tupTy)
     fun mkCons (h, t) = let
       val ty = TypeOf.exp (A.VarExp (h, []))
       in
-        A.ApplyExp (A.ConstExp (A.DConst (listCONS (), [ty])),
+        A.ApplyExp (A.ConstExp (A.DConst (B.listCons, [ty])),
 		    A.TupleExp [A.VarExp (h, []), A.VarExp (t, [])],
-		    listTy ty)
+		    B.listTy ty)
       end
-    val consBranchPat = A.ConPat (listCONS (), 
+    val consBranchPat = A.ConPat (B.listCons, 
 				  [tupTy], 
 				  A.TuplePat [A.VarPat tupV, A.VarPat tupsV])
     val consBranchBody = let
@@ -159,14 +106,14 @@ end = struct
 			    [nilBranch, consBranch],
 			    lpResTy)
     val lpLam = A.FB (lpV, lpArgV, lpBody)
-    val lV = Var.new ("l", listTy tupTy)
-    fun mkNil t = A.ConstExp (A.DConst (listNil (), [t]))
+    val lV = Var.new ("l", B.listTy tupTy)
+    fun mkNil t = A.ConstExp (A.DConst (B.listNil, [t]))
     val applySeqToList = A.ApplyExp (A.VarExp (seqToList, [tupTy]),
 				     A.VarExp (unzipArgV, []),
-				     listTy (A.TupleTy ts))
+				     B.listTy (A.TupleTy ts))
     val applyRev = A.ApplyExp (A.VarExp (listRev, [tupTy]), 
 			       A.VarExp (lV, []), 
-			       listTy tupTy)
+			       B.listTy tupTy)
     val applyLp = A.ApplyExp (A.VarExp (lpV, []),
 			      A.TupleExp (applyRev :: List.map mkNil ts),
 			      lpResTy)
@@ -188,23 +135,23 @@ end = struct
     val n = List.length ts
     val fname = "unzipRope" ^ Int.toString n
     val tupTy = A.TupleTy ts
-    val unzipArgTy = ropeTy tupTy (* rope of tuples... *)
-    val unzipResTy = A.TupleTy (List.map ropeTy ts) (* ...tuple of ropes *)
+    val unzipArgTy = DTy.rope tupTy (* rope of tuples... *)
+    val unzipResTy = A.TupleTy (List.map DTy.rope ts) (* ...tuple of ropes *)
     val unzipV = Var.new (fname, A.FunTy (unzipArgTy, unzipResTy))
     val unzipArgV = Var.new ("r", unzipArgTy)
     val lpV = Var.new ("lp", A.FunTy (unzipArgTy, unzipResTy))
     val lpArgV = Var.new ("r", unzipArgTy)
     val lenVL = Var.new ("len", Basis.intTy)
     val dataV = Var.new ("data", seqTy tupTy)
-    val leafPat = A.ConPat (ropeLEAF (), 
+    val leafPat = A.ConPat (DD.ropeLEAF (), 
 			    [tupTy],
 			    A.TuplePat [A.VarPat lenVL, A.VarPat dataV])
     fun mkLEAF e = let
       val ty = TypeOf.exp e
       in
-        A.ApplyExp (A.ConstExp (A.DConst (ropeLEAF (), [ty])), 
+        A.ApplyExp (A.ConstExp (A.DConst (DD.ropeLEAF (), [ty])), 
 		    A.TupleExp [A.VarExp (lenVL, []), e],
-		    ropeTy ty)
+		    DTy.rope ty)
       end
     val leafBody = let
       val vs = mapi (fn (t,i) => Var.new ("xs" ^ Int.toString i, t)) ts
@@ -219,17 +166,17 @@ end = struct
     val leafBranch = A.PatMatch (leafPat, leafBody)
     val dV = Var.new ("d", Basis.intTy)
     val lenVC = Var.new ("len", Basis.intTy)
-    val rLV = Var.new ("rL", ropeTy tupTy)
-    val rRV = Var.new ("rR", ropeTy tupTy)
-    val catPat = A.ConPat (ropeCAT (), 
+    val rLV = Var.new ("rL", DTy.rope tupTy)
+    val rRV = Var.new ("rR", DTy.rope tupTy)
+    val catPat = A.ConPat (DD.ropeCAT (), 
 			   [tupTy],
 			   A.TuplePat (List.map A.VarPat [dV, lenVC, rLV, rRV]))
     fun mkCAT (e1, e2) = let
       val ty = TypeOf.exp e1 (* should be the same as e2 *)
       in
-        A.ApplyExp (A.ConstExp (A.DConst (ropeCAT (), [ty])),
+        A.ApplyExp (A.ConstExp (A.DConst (DD.ropeCAT (), [ty])),
 		    A.TupleExp [mkVE dV, mkVE lenVC, e1, e2],
-		    ropeTy ty)
+		    DTy.rope ty)
       end
     val catBody = let
       val vsL = mapi (fn (t,i) => Var.new ("xsL_"^Int.toString i, t)) ts
@@ -266,7 +213,7 @@ end = struct
     val (seqUnzipN as A.FB (unzipSeq, _, _)) = mkSeqUnzipN ts
     val (ropeUnzipN as A.FB (unzipRope, _, _)) = mkRopeUnzipN unzipSeq ts
     val funs = A.FunBind [seqUnzipN, ropeUnzipN]
-    val resTy = A.TupleTy (List.map ropeTy ts)
+    val resTy = A.TupleTy (List.map DTy.rope ts)
     val apply = A.ApplyExp (A.VarExp (unzipSeq, []), rope, resTy)
     in
       A.LetExp (funs, apply)

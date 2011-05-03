@@ -17,6 +17,7 @@ structure TranslatePComp : sig
     structure B = Basis
     structure AU = ASTUtil
     structure TU = TypeUtil
+
     structure DV = DelayedBasis.Var
 
     fun tr trExp (e, pes, oe) = 

@@ -24,18 +24,10 @@ structure ParrLitToRope : sig
 
     structure A = AST
     structure U = ASTUtil
-
+    structure DV = DelayedBasis.Var
     structure MEnv = ModuleEnv
-    structure BEnv = BasisEnv
 
     val itos = Int.toString
-
-    val getVar = BEnv.getVarFromBasis
-    val rVar = fn v => getVar ("Rope"::[v])
-
-    val ropeFromList  = Memo.new (fn () => rVar "fromList")
-    val ropeEmpty     = Memo.new (fn () => rVar "empty")
-    val ropeSingleton = Memo.new (fn () => rVar "singleton")
 
     fun newVar e = Var.new ("x", TypeOf.exp e)
     fun mkPValBind (x, e) = AST.PValBind (AST.VarPat x, e)
@@ -45,7 +37,7 @@ structure ParrLitToRope : sig
   (* mkRopeFromList : ty * exp -> exp *)
   (* Make a rope expression from an expression which is a list in the surface language. *)
     fun mkRopeFromList (t, listExp) = let
-      val rfl = AST.VarExp (ropeFromList (), [t])
+      val rfl = AST.VarExp (DV.ropeFromList (), [t])
       in
         U.mkApplyExp (rfl, [listExp])
       end
@@ -115,8 +107,8 @@ structure ParrLitToRope : sig
   (* tr : exp list * ty -> exp *)
   (* Given a list of expressions, which were in a parallel array, and their type, *)
   (* build a rope out of them. *)
-    fun tr ([], ty) = AST.VarExp (ropeEmpty (), [ty])
-      | tr ([e], ty) = U.mkApplyExp (AST.VarExp (ropeSingleton (), [ty]), [e])
+    fun tr ([], ty) = AST.VarExp (DV.ropeEmpty (), [ty])
+      | tr ([e], ty) = U.mkApplyExp (AST.VarExp (DV.ropeSingleton (), [ty]), [e])
       | tr (es, ty) = let
           val isLit = (fn AST.ConstExp (AST.LConst _) => true
 			| _ => false)

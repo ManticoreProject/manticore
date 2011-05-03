@@ -42,19 +42,19 @@ structure DelayedBasis = struct
 
 (* tycons *)
   structure TyCon = struct
-    val option    = memoTyc ["Option", "option"]
-    val refTyc    = memoTyc ["Ref", "ref"] (* "ref" is syntax in sml, so we call this refTyc *)
-    val result    = memoTyc ["Result", "result"]
-    val mvar      = memoTyc ["MVar", "mvar"]
-    val array     = memoTyc ["Array", "array"]
-    val cancel    = memoTyc ["Cancelation", "cancelable"]
-    val bitvec    = memoTyc ["BitVec", "bitvec"]
-    val future    = memoTyc ["MultilispFuture", "future"]
-    val rope      = memoTyc ["Rope", "rope"]
-    val list_seq  = memoTyc ["ListSeq", "seq"]
-    val farray    = memoTyc ["FArray", "f_array"]
-    val shapeTree = memoTyc ["ShapeTree", "shape_tree"]
-    val intFArray = memoTyc ["IntFArray", "int_farray"]
+    val option     = memoTyc ["Option", "option"]
+    val refTyc     = memoTyc ["Ref", "ref"] (* "ref" is syntax in sml, so we call this refTyc *)
+    val result     = memoTyc ["Result", "result"]
+    val mvar       = memoTyc ["MVar", "mvar"]
+    val array      = memoTyc ["Array", "array"]
+    val cancel     = memoTyc ["Cancelation", "cancelable"]
+    val bitvec     = memoTyc ["BitVec", "bitvec"]
+    val future     = memoTyc ["MultilispFuture", "future"]
+    val rope       = memoTyc ["Rope", "rope"]
+    val list_seq   = memoTyc ["ListSeq", "seq"]
+    val farray     = memoTyc ["FArray", "f_array"]
+    val shape_tree = memoTyc ["ShapeTree", "shape_tree"]
+    val int_farray = memoTyc ["IntFArray", "int_farray"]
   end
 
 (* dcons *)
@@ -73,30 +73,38 @@ structure DelayedBasis = struct
 
 (* vars *)
   structure Var = struct
+
     val listRev       = memoVar ["List", "rev"]
+
     val refNew        = memoVar ["Ref", "new"]
     val refGet        = memoVar ["Ref", "get"]
     val refSet        = memoVar ["Ref", "set"]
+
     val mvarNew       = memoVar ["MVar", "new"]
     val mvarPut       = memoVar ["MVar", "put"]
     val mvarTake      = memoVar ["MVar", "take"]
+
     val arrayArray    = memoVar ["Array", "array"]
     val arrayLength   = memoVar ["Array", "length"]
     val arraySub      = memoVar ["Array", "sub"]
     val arrayUpdate   = memoVar ["Array", "update"]
+
     val cancelNew     = memoVar ["Cancelation", "new"]
     val cancelCancel  = memoVar ["Cancelation", "cancel"]
     val cancelSpawn   = memoVar ["Cancelation", "cancel"]
+
     val bitvecNew     = memoVar ["BitVec", "new"]
     val bitvecSet0    = memoVar ["BitVec", "set0"]
     val bitvecSet1    = memoVar ["BitVec", "set1"]
     val bitvecSet0F   = memoVar ["BitVec", "set0F"]
     val bitvecSet1F   = memoVar ["BitVec", "set1F"]
     val bitvecEq      = memoVar ["BitVec", "eq"]
+
     val future1       = memoVar ["MultilispFuture", "future"]
     val touch1        = memoVar ["MultilispFuture", "touch"]
     val cancel1       = memoVar ["MultilispFuture", "cancel"]
     val poll          = memoVar ["MultilispFuture", "poll"]
+
     val ropeEmpty     = memoVar ["Rope", "empty"]
     val ropeSingleton = memoVar ["Rope", "singleton"]
     val ropeFromList  = memoVar ["Rope", "fromList"]
@@ -106,34 +114,46 @@ structure DelayedBasis = struct
     val ropeLength    = memoVar ["Rope", "length"]
     val ropeRange     = memoVar ["Rope", "rangeP"]
     val ropeRangeNS   = memoVar ["Rope", "rangePNoStep"]
+    val ropeMapP      = memoVar ["Rope", "mapP"]
+
     val lseqToList    = memoVar ["ListSeq", "toList"]
     val lseqFromList  = memoVar ["ListSeq", "fromList"]
+
+    val parrayMap     = memoVar ["Parray", "map"]
     val parraySub     = memoVar ["PArray", "sub"]
+    val parrayTabFTS  = memoVar ["PArray", "tabFromToStep"]
+    val parrayRange   = memoVar ["PArray", "range"]
+
     val flatSub       = memoVar ["FArray", "flatSub"]
     val nestedSub     = memoVar ["FArray", "nestedSub"]
     val flen          = memoVar ["FArray", "length"]
     val ftab          = memoVar ["FArray", "tab"]
     val ftabFTS       = memoVar ["FArray", "tabFromToStep"]
-    val fptab         = memoVar ["FArrayPair", "tabulate"]
-    val fptabFTS      = memoVar ["FArrayPair", "tabFromToStep"]
-    val ifpTab        = memoVar ["IntFArrayPair", "tabulate"]
-    val ifpTabFTS     = memoVar ["IntFArrayPair", "tabFromToStep"]
     val fflatten      = memoVar ["FArray", "flatten"]
     val fmap          = memoVar ["FArray", "flatMap"]
-    val ifmap         = memoVar ["IntFArray", "flatMap"]
-    val fpmap         = memoVar ["FArrayPair", "flatMapEq"]
-    val ipMapEq_int   = memoVar ["IntFArrayPair", "flatMapEq_int"]
     val greduce       = memoVar ["FArray", "groundReduce"]
-    val ifReduce      = memoVar ["IntFArray", "reduce"]
-    val ipReduce      = memoVar ["IntFArrayPair", "flatReduce"]
-    val intRange      = memoVar ["IntFArray", "intRange"]
     val fapp          = memoVar ["FArray", "app"]
+
+    val fptab         = memoVar ["FArrayPair", "tabulate"]
+    val fptabFTS      = memoVar ["FArrayPair", "tabFromToStep"]
+    val fpmap         = memoVar ["FArrayPair", "flatMapEq"]
+
+    val ifReduce      = memoVar ["IntFArray", "reduce"]
+    val intRange      = memoVar ["IntFArray", "intRange"]
     val intLen        = memoVar ["IntFArray", "length"]
     val intTab        = memoVar ["IntFArray", "tab"]
     val intTabFTS     = memoVar ["IntFArray", "tabFromToStep"]
     val intFlatSub    = memoVar ["IntFArray", "flatSub"]
     val ifFromList    = memoVar ["IntFArray", "fromList"]
+    val ifmap         = memoVar ["IntFArray", "flatMap"]
+
+    val ifpTab        = memoVar ["IntFArrayPair", "tabulate"]
+    val ifpTabFTS     = memoVar ["IntFArrayPair", "tabFromToStep"]
+    val ipMapEq_int   = memoVar ["IntFArrayPair", "flatMapEq_int"]
+    val ipReduce      = memoVar ["IntFArrayPair", "flatReduce"]
+
     val flattenIFF    = memoVar ["FArrayUtil", "flatten_IF_F"]
+
   end
 
   structure Ty = struct
@@ -141,7 +161,7 @@ structure DelayedBasis = struct
       fun con0 tyc = T.ConTy ([], tyc)
       fun con1 (t, tyc) = T.ConTy ([t], tyc)
     in
-    fun int_farray () = con0 (TyCon.intFArray ())
+    fun int_farray () = con0 (TyCon.int_farray ())
     fun farray t = con1 (t, TyCon.farray ())
     fun option t = con1 (t, TyCon.option ())
     fun ref t = con1 (t, TyCon.refTyc ())
@@ -152,6 +172,7 @@ structure DelayedBasis = struct
     fun bitvec () = con0 (TyCon.bitvec ())
     fun future t = con1 (t, TyCon.future ())
     fun rope t = con1 (t, TyCon.rope ())
+    fun shape_tree () = con0 (TyCon.shape_tree ())
     end (* local *)
   end
 

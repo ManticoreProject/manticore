@@ -28,7 +28,6 @@ end = struct
   structure DD = D.DataCon
   structure DV = D.Var
 
-  structure BEnv = BasisEnv
   structure MEnv = ModuleEnv
 
   structure FSet = FlattenOp.Set
@@ -42,7 +41,7 @@ end = struct
 
   fun mkTree (n : A.ntree) : A.exp = let
     fun const c = A.ConstExp (A.DConst (c, []))
-    val ntreeTy = A.ConTy ([], DC.shapeTree ())
+    val ntreeTy = A.ConTy ([], DC.shape_tree ())
     in case n
       of A.Lf (loExp, hiExp) => 
            AU.mkApplyExp (const (DD.lf ()), [loExp, hiExp])

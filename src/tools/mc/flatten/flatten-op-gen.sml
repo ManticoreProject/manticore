@@ -25,10 +25,10 @@ end *) = struct
   structure FU = FlattenUtil
 
   structure D  = DelayedBasis
-  structure DC = D.TyCon
+  structure DT = D.TyCon
   structure DD = D.DataCon
   structure DV = D.Var
-  structure DT = D.Ty
+  structure DTy = D.Ty
 
   structure FMap = F.Map
   structure FSet = F.Set
@@ -74,68 +74,6 @@ end *) = struct
     in
       println ("{" ^ s ^ "}")
     end)
-(* -debug *)
-
-(* basisItems : unit -> {fArrTyc, fArrCon, ntreeTyc, ropeTyc, ropeMap} *)
-(* Trying to bind these at the top level causes a link-time failure,   *)
-(*   so we provide a memoized, thunkified collection of them.          *)
-  local
-    val cell = ref NONE
-    val getVar = BasisEnv.getVarFromBasis
-    val getTyc = BasisEnv.getTyConFromBasis
-    val getDCon = BasisEnv.getDConFromBasis
-  in
-    fun basisItems () = (case !cell
-      of SOME record => record 
-       | NONE => let
-	   val ft = getTyc ["FArray", "f_array"]
-	   val fc = getDCon  ["FArray", "FArray"]
-	   val nt = getTyc ["ShapeTree", "shape_tree"]
-	   val ff = getVar ["FArray", "flatten"]
-	   val rt = getTyc ["Rope", "rope"]
-	   val rm = getVar ["Rope", "mapP"]
-           val record = {fArrTyc=ft, fArrCon=fc, fArrFlatten=ff,
-			 ntreeTyc=nt, ropeTyc=rt, ropeMap=rm}
-           in
-             cell := SOME record;
-	     record
-           end
-       (* end case *))
-    val intfTyc = Memo.new (fn _ => getTyc ["IntFArray", "int_farray"])
-  end (* local *)
-
-(* +debug *)
-  local
-    val ar = TyVar.new (Atom.atom "'a")
-    val rt = TyCon.newDataTyc (Atom.atom "rope", [ar])
-    val nt = TyCon.newDataTyc (Atom.atom "nesting_tree", [])
-    val a  = TyVar.new (Atom.atom "'a")
-    val ft = TyCon.newDataTyc (Atom.atom "f_array", [a])
-    val fc = DataCon.new ft (Atom.atom "FArray", 
-			     SOME (T.TupleTy [T.ConTy ([T.VarTy a], rt),
-					      T.ConTy ([], nt)]))
-    val rm = let
-      val br = TyVar.new (Atom.atom "'b")
-      val dom = T.TupleTy [T.FunTy (T.VarTy ar, T.VarTy br),
-			   T.ConTy ([T.VarTy ar], rt)]
-      val rng = T.ConTy ([T.VarTy br], rt)
-      val sch = T.TyScheme ([ar, br], T.FunTy (dom, rng))
-      in 
-        Var.newPoly ("Rope_map", sch)
-      end
-    val ff = let
-      val a = TyVar.new (Atom.atom "'a")
-      val dom = T.ConTy ([T.ConTy ([T.VarTy a], ft)], ft)
-      val rng = T.ConTy ([T.VarTy a], ft)
-      val sch = T.TyScheme ([a], T.FunTy (dom, rng))
-      in
-	Var.newPoly ("FArray_flatten", sch)
-      end
-  in
-    fun spoofBasisItems () = 
-      {fArrTyc=ft, fArrCon=fc, fArrFlatten=ff,
-       ntreeTyc=nt, ropeTyc=rt, ropeMap=rm}
-  end (* local *)      
 (* -debug *)
 
 (* unzip maker
@@ -196,27 +134,24 @@ end *) = struct
     fun mk (ts : T.ty list) : A.lambda = let
 
     (* n.b. we've already checked that ts is of length 2 or greater *)
-    (* we'll need some tycons, dcons and vars from the basis *)
-    (* n.b. trying to bind these at the top level causes a link-time failure *)
-      val {fArrTyc, fArrCon, fArrFlatten, ntreeTyc, ropeTyc, ropeMap} = basisItems ()
 
     (* choose a monomorphic farray representation if possible *)
       fun monomorphize (t : T.ty) : T.ty = (case t
         of T.ConTy ([t'], c) =>
              if FU.isInt t' andalso FU.isFArrayTyc c then
-               DT.int_farray ()
+               DTy.int_farray ()
 	     else t
 	 | _ => t
         (* end case *))
 
       fun mkFArray (t : T.ty) : T.ty = 
         if FU.isInt t then
-	  DT.int_farray ()
+	  DTy.int_farray ()
 	else
-	  DT.farray t
+	  DTy.farray t
 
     (* calculate the domain and range types for the function to be generated *)
-      val domTy = T.ConTy ([T.TupleTy (List.map monomorphize ts)], fArrTyc)
+      val domTy = T.ConTy ([T.TupleTy (List.map monomorphize ts)], DT.farray ())
       val rngTy = T.TupleTy (List.map mkFArray ts)
 
     (* create variables for function name and its argument *)
@@ -229,11 +164,11 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
 
     (* build patterns against which to match the argument *)
     (* note: each must be a *simple* pattern, since match compilation is already done *)
-      val dataTy   = T.ConTy ([T.TupleTy ts], ropeTyc)
-      val shapeTy  = T.ConTy ([], ntreeTyc)
+      val dataTy   = DTy.rope (T.TupleTy ts)
+      val shapeTy  = DTy.shape_tree ()
       val data     = Var.new ("data", dataTy)
       val shape    = Var.new ("shape", shapeTy)
-      val fArrPat = A.ConPat (fArrCon, 
+      val fArrPat = A.ConPat (DD.farray (), 
 			      [T.TupleTy ts], 
 			      A.TuplePat [A.VarPat data, A.VarPat shape])
 
@@ -253,14 +188,14 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
 		         A.VarExp (m, [T.TupleTy ts])
 		       end
 		     else 
-		       A.VarExp (ropeMap, [T.TupleTy ts, t])
+		       A.VarExp (DV.ropeMapP (), [T.TupleTy ts, t])
 	val dcon = if TU.same (t, B.intTy)
 		   then let
                      val c = BasisEnv.getDConFromBasis ["IntFArray", "FArray"]
                      in
 	               A.DConst (c, [])
 		     end
-		   else A.DConst (fArrCon, [t])
+		   else A.DConst (DD.farray (), [t])
         val m = AU.mkApplyExp (mapExp, [A.VarExp (h, []), A.VarExp (data, [])])
         in
 	  AU.mkApplyExp (A.ConstExp dcon, [m, A.VarExp (shape, [])])
@@ -330,24 +265,23 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
 	A.FB (f, x, b)
       end
     fun mkMap (f : A.var) : A.lambda = let 
-      val {fArrTyc, fArrCon, fArrFlatten, ntreeTyc, ropeTyc, ropeMap} = basisItems ()
       val (fDomTy, fRngTy) = (case Var.monoTypeOf f
         of T.FunTy (d, r) => (d, r)
 	 | t => raise Fail ("mkMap: " ^ TU.toString t))
-      val domTy = T.ConTy ([fDomTy], fArrTyc)
-      val rngTy = T.ConTy ([fRngTy], fArrTyc)
+      val domTy = DTy.farray fDomTy
+      val rngTy = DTy.farray fRngTy
       val f = Var.new (freshName (), T.FunTy (domTy, rngTy))
       val arg = Var.new ("arg", domTy)
-      val data = Var.new ("data", T.ConTy ([fDomTy], ropeTyc))
-      val shape = Var.new ("shape", T.ConTy ([], ntreeTyc))
+      val data = Var.new ("data", DTy.rope fDomTy)
+      val shape = Var.new ("shape", DTy.shape_tree ())
       val tpat = A.TuplePat [A.VarPat data, A.VarPat shape]
 (* FIXME complex pattern binding -- change to case *)
-      val pat = A.ConPat (fArrCon, [domTy], tpat)
+      val pat = A.ConPat (DD.farray (), [domTy], tpat)
       val bind = A.ValBind (pat, A.VarExp (arg, []))
-      val ropeMap = AU.mkApplyExp (A.VarExp (ropeMap, [fDomTy, fRngTy]),
+      val ropeMap = AU.mkApplyExp (A.VarExp (DV.ropeMapP (), [fDomTy, fRngTy]),
 				   [A.VarExp (f, []), A.VarExp (data, [])])
 (* FIXME question: does the data VarExp need a type in its type list? *)
-      val con = AU.mkApplyExp (A.ConstExp (A.DConst (fArrCon, [fDomTy])),
+      val con = AU.mkApplyExp (A.ConstExp (A.DConst (DD.farray (), [fDomTy])),
 			       [ropeMap, A.VarExp (shape, [])])
       val body = AU.mkLetExp ([bind], con)
       in 
@@ -393,7 +327,7 @@ val _ = println (concat ["building ", name, ":", TU.toString (domTy --> rngTy)])
     fun mkCat domTy = (case domTy
       of T.ConTy ([T.ConTy ([t], _)], _) (* t farr farr *) => let
 	   fun tvar x = A.VarExp (x, [t])
-           val rngTy = T.ConTy ([t], DC.farray ())
+           val rngTy = DTy.farray t
 	   val f = Var.new (freshName (), domTy --> rngTy)
 	   val x = Var.new ("x", domTy)
 	   val b = AU.mkApplyExp (tvar (DV.fflatten ()), [tvar x])
@@ -401,11 +335,11 @@ val _ = println (concat ["building ", name, ":", TU.toString (domTy --> rngTy)])
 	     A.FB (f, x, b)
 	   end
        |  T.ConTy ([t], c) (* looking for int_farray farray *) =>
-            if TU.same (t, DT.int_farray ()) andalso FU.isFArrayTyc c then let
+            if TU.same (t, DTy.int_farray ()) andalso FU.isFArrayTyc c then let
               (* TODO I'm committed to returning an FB, but that's not necessary in this case. *)
               (* I end up constructing a pointless eta-expansion of the function in question. *)
 	      (* How hard is this to fix? -ams *)
-              val rngTy = DT.int_farray ()
+              val rngTy = DTy.int_farray ()
 	      fun ve x = A.VarExp (x, [])
 	      val f = Var.new (freshName (), domTy --> rngTy)
 	      val x = Var.new ("x", domTy)

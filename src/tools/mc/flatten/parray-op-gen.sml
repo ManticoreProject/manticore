@@ -61,7 +61,7 @@ structure PArrayOpGen = struct
              c
            end 
        | T.ConTy ([], c) =>
-           if TyCon.same (c, DC.intFArray ()) then let
+           if TyCon.same (c, DC.int_farray ()) then let
              val _ = () (* println ("inserting intLength") *)
              in
                A.VarExp (DV.intLen (), [])
@@ -91,7 +91,7 @@ structure PArrayOpGen = struct
 	       else 
 		 raise Fail ("unexpected ConTy " ^ TU.toString t)
 	   | T.ConTy ([], c) =>
-               if TyCon.same (c, DC.intFArray ()) then let
+               if TyCon.same (c, DC.int_farray ()) then let
                  val _ = () (* println ("inserting intFlatSub") *)
                  in
 		   A.VarExp (DV.intFlatSub (), [])

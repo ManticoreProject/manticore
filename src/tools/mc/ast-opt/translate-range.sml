@@ -15,18 +15,12 @@ structure TranslateRange : sig
     structure A = AST
     structure B = Basis
     structure T = Types
-
+    structure DV = DelayedBasis.Var
     structure AU = ASTUtil
     structure TU = TypeUtil
 
-    local
-      fun get v = BasisEnv.getVarFromBasis ["PArray", v]
-    in
-      val range = Memo.new (fn _ => get "range")
-    end
-
   (* tr : A.exp * A.exp * A.exp option * A.ty -> A.exp *)
-  (* FIXME right now this only works at type int; it's designed otherwise *)
+  (* TODO right now this only works at type int; it's designed otherwise *)
     fun tr (fromExp, toExp, optStepExp, ty) = let
       val _ = if TU.same (ty, B.intTy) then () else raise Fail "not int"
       val stepExp = (case optStepExp
@@ -34,7 +28,8 @@ structure TranslateRange : sig
 	 | NONE => AU.mkInt 1
         (* end case *))
       in
-        AU.mkApplyExp (A.VarExp (range (), []), [fromExp, toExp, stepExp])
+        AU.mkApplyExp (A.VarExp (DV.parrayRange (), []), 
+		       [fromExp, toExp, stepExp])
       end
 
   end
