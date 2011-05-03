@@ -23,16 +23,14 @@ structure TranslatePComp : sig
     fun tr trExp (e, pes, oe) = 
      (case (pes, oe)
         of ([], _) => raise Fail "a parallel comprehension with no pbinds at all"
-	 | ([(p1, e1 as A.RangeExp (loExp, hiExp, optStepExp, t))], NONE) => let
+	 | ([(p1, e1 as A.RangeExp (loExp, hiExp, optStepExp, rngEltTy))], NONE) => let
            (* optimization of a common case: [| f(n) | n in [| 1 to 100 |] |] *)
            (* becomes PArray.tabFromToStep (1, 101, 1, f) *)
            (* (as opposed to a PArray.map over a constructed range) *)
-	     val _ = if TU.same (t, B.intTy) then ()
-	 	     else raise Fail ("unexpected type " ^ TU.toString t)
+	     val _ = if TU.same (rngEltTy, B.intTy) then ()
+	 	     else raise Fail ("unexpected type " ^ TU.toString rngEltTy)
              val eTy = TypeOf.exp e
 	     val pTy = TypeOf.pat p1 (* should be same as t *)
-	     val _ = if TU.same (t, pTy) then ()
-		     else raise Fail ("unexpected type " ^ TU.toString pTy)
 	     val x = Var.new ("x", pTy)
 	     val e' = trExp e
 	     val c = A.CaseExp (A.VarExp (x, []), [A.PatMatch (p1, e')], eTy)
@@ -53,7 +51,7 @@ structure TranslatePComp : sig
 	       val f = A.FunExp (x1, c1, eltTy)
 	       val e1' = trExp e1
 	       val mapP = A.VarExp (DV.parrayMap (), [eltTy, patTy]) 
-(* NOTE: these type args seem backwards to me, but I've tested this. - ams*)
+               (* NOTE: these type args seem backwards to me, but I've tested this. - ams*)
 	       fun map arr = AU.mkCurriedApplyExp (mapP, [f, arr])
                in
                  case optPred

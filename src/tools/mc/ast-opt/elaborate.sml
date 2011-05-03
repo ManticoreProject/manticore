@@ -135,6 +135,9 @@ structure Elaborate : sig
     and trRange arg = TranslateRange.tr arg
 
   (* elaborate : A.exp -> A.exp *)
-    fun elaborate body = trExp body
-
+    fun elaborate body = let
+      val irng = InlineRanges.inlineRanges
+      in
+        (trExp o irng) body
+      end
   end

@@ -29,6 +29,7 @@ Library
   structure Future1
   structure ParrLitToRope
   structure JFPTranslatePCase
+  structure InlineRanges
 
 is
 
@@ -61,3 +62,4 @@ is
   parr-lit-to-rope.sml
   lookup-infix-ops.sml
   jfp-translate-pcase.sml
+  inline-ranges.sml
