@@ -119,7 +119,7 @@ structure DelayedBasis = struct
     val lseqToList    = memoVar ["ListSeq", "toList"]
     val lseqFromList  = memoVar ["ListSeq", "fromList"]
 
-    val parrayMap     = memoVar ["Parray", "map"]
+    val parrayMap     = memoVar ["PArray", "map"]
     val parraySub     = memoVar ["PArray", "sub"]
     val parrayTabFTS  = memoVar ["PArray", "tabFromToStep"]
     val parrayRange   = memoVar ["PArray", "range"]
@@ -153,6 +153,7 @@ structure DelayedBasis = struct
     val ipReduce      = memoVar ["IntFArrayPair", "flatReduce"]
 
     val flattenIFF    = memoVar ["FArrayUtil", "flatten_IF_F"]
+    val mapIFPoly     = memoVar ["FArrayUtil", "map_IF_poly"]
 
   end
 

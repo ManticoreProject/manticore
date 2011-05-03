@@ -156,8 +156,20 @@ structure PArrayOpGen = struct
     (* end case *))
           
   fun genMap (t as T.FunTy (alpha, beta)) = 
+(* +debug *)
+(print ("genMap called with " ^ TU.toString t ^ "\n");
+(* -debug *)
         if FU.isInt alpha andalso FU.isInt beta then
           A.VarExp (DV.ifmap (), [])
+	else if FU.isInt alpha then let
+          val e = A.VarExp (DV.mapIFPoly (), [beta])
+(* +debug *)
+val _ = print ("genMap made mapIFPoly at type " ^ TU.toString t ^ "\n")
+val _ = print ("-- its type is " ^ TU.toString (TypeOf.exp e) ^ "\n")
+(* -debug *)
+          in
+            e
+          end
         else if FU.isGroundTy alpha then
           A.VarExp (DV.fmap (), [alpha, beta])
 	else (case alpha
@@ -170,6 +182,7 @@ structure PArrayOpGen = struct
 	       else raise Fail ("genMap(loc1) todo: " ^ TU.toString tup)
 	   | _ => raise Fail ("genMap(loc2) todo: " ^ TU.toString t)
           (* end case *))
+)
     | genMap t = raise Fail ("unexpected ty " ^ TU.toString t)
 
   local

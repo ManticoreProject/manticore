@@ -1,17 +1,9 @@
+val itos = Int.toString
+fun for rng (f : int -> unit) = PArray.app f rng
+
 val arr = [| x+1 | x in [| 1, 2, 3, 4 |] |]
 
-fun go () = let
-  fun lp i = 
-    if i=4 then () else let
-      val n = arr ! i
-      in
-       (Print.printLn ("expecting " ^ Int.toString (i+2) ^ ": " ^ Int.toString n);
-        lp (i+1))
-      end
-  in
-    lp 0
-  end
-
-val _ = go ()
+fun pr i = Print.printLn ("expecting " ^ itos(i+2) ^ ": " ^ itos(arr!i))
+val _ = for [| 0 to 3 |] pr
 
 val _ = Print.printLn "done."

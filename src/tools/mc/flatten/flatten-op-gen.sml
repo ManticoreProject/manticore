@@ -324,7 +324,13 @@ val _ = println (concat ["building ", name, ":", TU.toString (domTy --> rngTy)])
 
 (* FIXME I believe I may not be handling nested arrays of tuples correctly. *)
 (* FIXME This is broken -- not working for int farr farr farr. *)
-    fun mkCat domTy = (case domTy
+    fun mkCat domTy = 
+          (
+(* +debug *)
+           print "mkCat called with domTy=";
+	   print (TU.toString domTy);
+	   print "\n";
+(* -debug *) case domTy
       of T.ConTy ([T.ConTy ([t], _)], _) (* t farr farr *) => let
 	   fun tvar x = A.VarExp (x, [t])
            val rngTy = DTy.farray t
@@ -337,8 +343,11 @@ val _ = println (concat ["building ", name, ":", TU.toString (domTy --> rngTy)])
        |  T.ConTy ([t], c) (* looking for int_farray farray *) =>
             if TU.same (t, DTy.int_farray ()) andalso FU.isFArrayTyc c then let
               (* TODO I'm committed to returning an FB, but that's not necessary in this case. *)
-              (* I end up constructing a pointless eta-expansion of the function in question. *)
+              (* I end up constructing an eta-expansion of the function in question. *)
 	      (* How hard is this to fix? -ams *)
+(* +debug *)
+val _ = print ("found int_farray farray\n")
+(* -debug *)  
               val rngTy = DTy.int_farray ()
 	      fun ve x = A.VarExp (x, [])
 	      val f = Var.new (freshName (), domTy --> rngTy)

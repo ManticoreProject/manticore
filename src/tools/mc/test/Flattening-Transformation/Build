@@ -1,6 +1,6 @@
 #!/bin/sh
 
-FLAGS="-Cftrx.on=true -Cftrx.keep-ft=true -Ccps.flatten=false"
+FLAGS="-Cftrx.on=true -Cftrx.keep-ft=true" # -Ccps.flatten=false"
 
 SRC_FILE=$1
 ERR_FILE=Errors_${SRC_FILE%%.pml}

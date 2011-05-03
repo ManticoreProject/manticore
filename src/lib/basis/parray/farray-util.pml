@@ -54,5 +54,19 @@ structure FArrayUtil = struct
            (* end case *))
       (* end case *))
   end (* local *)
-		   
+
+(* map_IF_poly : (int -> 'b) -> int_farray -> 'b farray *)
+  fun map_IF_poly f ns = (case IF.clean ns
+    of IF.FArray (data, shape) => (case shape
+         of S.Lf (lo, hi) => let
+              fun lp (i, acc) = 
+                if (i<0) then FArray.fromList (List.rev acc)
+		else lp (i-1, f(IntRope.sub(data,i))::acc)
+                in
+                  lp (hi-1, [])
+                end
+	  | S.Nd _ => fail "map_IF_poly" "not a flat int_farray"
+         (* end case *))
+    (* end case *))
+	  		   
 end

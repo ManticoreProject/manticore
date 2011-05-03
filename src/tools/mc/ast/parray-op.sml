@@ -300,30 +300,42 @@ structure PArrayOp = struct
     end
   end (* local *)
 
+  fun isIntTy t = TU.same (B.intTy, t)
+  fun isIntParrayTy t = TU.same (t, B.parrayTy B.intTy)
+
 (* constructMap : ty -> exp *)
   val constructMap : T.ty -> A.exp = let
-    fun mk (ft as T.FunTy (domTy, rngTy)) = let
-          val fl = FlattenOp.construct rngTy
-	  val flRngTy = (case FlattenOp.typeOf fl
-            of T.FunTy (_, r) => r
-	     | t => raise Fail ("unexpected ty " ^ TU.toString t)
-            (* end case *))
-	  fun a t = T.FArrayTy (t, T.LfTy)
-	  val f = Var.new ("f", ft)
-	  val arr = Var.new ("arr", a domTy)
-	  val mapOp = A.PArrayOp (A.PA_Map ft)
-        (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
-	(*   b/c referring to ASTUtil induces cyclic deps *)
-	(* here I am building the following term: *)
-        (*   fn f => fn arr => fl (map f arr) *)
-	  val innerApp0 = A.ApplyExp (mapOp, A.VarExp (f, []), A.FunTy (a domTy, a rngTy))
-	  val innerApp1 = A.ApplyExp (innerApp0, A.VarExp (arr, []), a rngTy)
-	  val innerApp2 = A.ApplyExp (A.FlOp fl, innerApp1, flRngTy)
-	  val innerFn = A.FunExp (arr, innerApp2, flRngTy)
-	  val outerFn = A.FunExp (f, innerFn, T.FunTy (a domTy, flRngTy))
-          in
-            outerFn
-          end
+(* FIXME: not working properly for [| [| 1 to 10 |] | r in v |] (where v = [| 1 to 10 |]) *)
+    fun mk (ft as T.FunTy (domTy, rngTy)) = 
+          if isIntTy domTy andalso isIntParrayTy rngTy andalso false (* !!!! *) then let
+            in
+              raise Fail "todo: int -> int parray"
+            end
+	  else let
+            val pr = fn ss => (print (String.concat ss); print "\n")
+            val _ = pr ["called constructMap on ", TU.toString ft]
+            val fl = FlattenOp.construct rngTy
+	    val _ = pr ["fl is ", FlattenOp.toString fl]
+	    val flRngTy = (case FlattenOp.typeOf fl
+              of T.FunTy (_, r) => r
+	       | t => raise Fail ("unexpected ty " ^ TU.toString t)
+              (* end case *))
+	    fun a t = T.FArrayTy (t, T.LfTy)
+	    val f = Var.new ("f", ft)
+	    val arr = Var.new ("arr", a domTy)
+	    val mapOp = A.PArrayOp (A.PA_Map ft)
+          (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
+	  (*   b/c referring to ASTUtil induces cyclic deps *)
+	  (* here I am building the following term: *)
+          (*   fn f => fn arr => fl (map f arr) *)
+	    val innerApp0 = A.ApplyExp (mapOp, A.VarExp (f, []), A.FunTy (a domTy, a rngTy))
+	    val innerApp1 = A.ApplyExp (innerApp0, A.VarExp (arr, []), a rngTy)
+	    val innerApp2 = A.ApplyExp (A.FlOp fl, innerApp1, flRngTy)
+	    val innerFn = A.FunExp (arr, innerApp2, flRngTy)
+	    val outerFn = A.FunExp (f, innerFn, T.FunTy (a domTy, flRngTy))
+            in
+              outerFn
+            end
       | mk t = raise Fail ("unexpected ty " ^ TU.toString t) 
     in
       mk

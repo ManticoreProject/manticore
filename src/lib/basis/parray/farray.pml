@@ -97,6 +97,17 @@ structure FArray = struct
   (* nestedMap : ('a -> 'b) -> 'a f_array -> 'b f_array *)
     fun nestedMap f (FArray (data, shape)) = fail "nestedMap" "todo"
 
+  (* fromList : 'a list -> 'a f_array *)
+    fun fromList xs = (case xs
+      of nil => empty
+       | _ => let
+           val data = R.fromList xs
+	   val shape = S.Lf (0, R.length data)
+           in
+             FArray (data, shape)
+           end
+      (* end case *))
+
   (* clean : 'a f_array -> 'a f_array *)
     fun clean (FArray (data, shape)) = (case shape
       of S.Lf (lo, hi) =>

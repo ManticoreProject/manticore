@@ -1,18 +1,11 @@
+val itos = Int.toString
+fun for rng (f : int -> unit) = PArray.app f rng
+
 val arr = [| x+1 | x in [| 1 to 20 |] |]
 
-fun go () = let
-  val n = PArray.length arr
-  fun lp i = 
-    if i=n then () else let
-      val n = arr ! i
-      in
-       (Print.printLn ("expecting " ^ Int.toString (i+2) ^ ": " ^ Int.toString n);
-        lp (i+1))
-      end
-  in
-    lp 0
-  end
-
 val _ = Print.printLn "starting...should see 2 through 21..."
-val _ = go ()
+
+fun pr i = Print.printLn ("expecting " ^ itos(i+2) ^ ": " ^ itos(arr!i))
+val _ = for [| 0 to 19 |] pr
+
 val _ = Print.printLn "done."

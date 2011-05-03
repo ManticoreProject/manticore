@@ -18,6 +18,7 @@ structure FlattenUtil = struct
   structure DC = D.TyCon
   structure DD = D.DataCon
   structure DV = D.Var
+  structure DTy = D.Ty
 
 (* currying operator *)
   fun `f x y = f (x, y)
@@ -36,6 +37,9 @@ structure FlattenUtil = struct
 
 (* isInt : T.ty -> bool *)
   val isInt = `TU.same B.intTy
+
+(* isInt_farray : T.ty -> bool *)
+  fun isInt_farray t = TU.same (t, DTy.int_farray ())
 
 (* isLf : A.ntree -> bool *)
   val isLf = (fn A.Lf _ => true | _ => false)

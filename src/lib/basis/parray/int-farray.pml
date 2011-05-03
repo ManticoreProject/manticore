@@ -102,7 +102,7 @@ structure IntFArray = struct
       FArray (data', shape)
     end
 
-(* nestedMap : ('a -> 'b) -> int_farray -> 'b f_array *)
+(* nestedMap : (int -> 'b) -> int_farray -> 'b f_array *)
   fun nestedMap f (FArray (data, shape)) = fail "nestedMap" "todo"
 
 (* clean : int_farray -> int_farray *)
