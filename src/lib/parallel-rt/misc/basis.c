@@ -140,6 +140,32 @@ Value_t M_FloatToString (float f)
     return AllocString (VProcSelf(), buf);
 }
 
+/* M_FloatFromString:
+ */
+Value_t M_FloatFromString (Value_t str)
+{
+    VProc_t             *vp = VProcSelf ();
+    SequenceHdr_t	*strS = (SequenceHdr_t *)ValueToPtr(str);
+    if (strS->len < 1) {
+	return M_NONE;
+    }
+    else {
+	char *strData = (char*)strS->data;
+	if (strData[0] == '~')
+	    strData[0] = '-';
+	float f;
+	int ret = sscanf (strData, "%f", &f);
+	RawFloat_t rf;
+	rf.f = f;
+	if (ret > 0) {
+	    return Some (vp, AllocNonUniform(vp, 1, FLOAT(rf)));
+	}
+	else {
+	    return M_NONE;
+	}
+    }
+}
+
 /* M_DoubleToString:
  */
 Value_t M_DoubleToString (double f)

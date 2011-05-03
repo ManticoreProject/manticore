@@ -97,6 +97,7 @@ structure OracleScheduler (* : sig
   structure CAI = UnsafeCacheAlignedIntArray
   structure CAF = UnsafeCacheAlignedFloatArray
 
+  val kappa = ParseCommandLine.parse1 "-kappa" Float.fromString 0.000001
   val reportPredictionError = ParseCommandLine.exists "-oracle-report-prediction-error"
   val predictionErrorNB = 
     ParseCommandLine.parse1 "-oracle-nb-prediction-errors" Int.fromString 500
@@ -142,12 +143,8 @@ structure OracleScheduler (* : sig
       end
     in
       Array.appi proc perr;
-      ()
+      Print.print "\n"
     end
-
-  val kappa = 1.0
-
-  val minWorkForTimerRes = 0.000001  (* 1 microsecond *)
 
   fun measuredRun (r, m, est, k) = let
     val t1 = CycleCounter.getTicks ()
