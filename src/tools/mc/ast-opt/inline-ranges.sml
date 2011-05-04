@@ -3,14 +3,9 @@
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Inline simple ranges.
+ * Inline ranges.
  *
- * A simple range is either
- * - a RangeExp whose subexpressions are variables or consts, or
- * - a tuple of simple ranges
  *)
-
-(* TODO: Make this inline *all* ranges by binding range endpoints to names first. *)
 
 structure InlineRanges : sig
 
@@ -21,25 +16,33 @@ end = struct
   structure A = AST
   structure B = Basis
   structure T = Types
+  structure AU = ASTUtil
 
   structure VM = Var.Map
 
   type env = A.exp VM.map
   fun extend (env, x, e) = VM.insert (env, x, e)
 
-  local
-    fun simple e = (case e
-      of A.ConstExp _ => true
-       | A.VarExp _ => true
-       | _ => false
-      (* end case *))
-  in
-    fun simpleRanges (A.RangeExp (e1, e2, optE, _)) =
-          simple e1 andalso simple e2 andalso
-	  (case optE of NONE => true | SOME e3 => simple e3)
-      | simpleRanges (A.TupleExp es) = List.all simpleRanges es
-      | simpleRanges _ = false
-  end (* local *)
+  fun todo () = raise Fail "todo"
+
+  fun println s = (print s; print "\n")
+
+  fun printEnv env = let
+    fun tos env = let
+      val xrs = VM.listItemsi env
+      fun s (x, r) = Var.nameOf x ^ "-->" ^ "rng"
+      in
+        String.concatWith "," (List.map s xrs)
+      end
+    in
+      println (tos env)
+    end
+
+  fun constOrVar e = (case e
+    of A.ConstExp _ => true
+     | A.VarExp _ => true
+     | _ => false
+    (* end case *))
 
   val changed = ref false
   fun resetChanged () = changed := false
@@ -48,11 +51,7 @@ end = struct
   val go : env -> A.exp -> A.exp = let
     val $ = List.map
     fun exp env e = (case e
-      of A.LetExp (b, e) => let
-           val (b', env') = binding (env, b)
-           in
-	     A.LetExp (b', exp env' e)
-           end
+      of A.LetExp (b, e) => letExp (env, b, e)
        | A.IfExp (e1, e2, e3, t) => 
            A.IfExp (exp env e1, exp env e2, exp env e3, t)
        | A.CaseExp (e, ms, t) => A.CaseExp (exp env e, $(match env) ms, t)
@@ -78,7 +77,7 @@ end = struct
        | ve as A.VarExp (x, ts) => (case VM.find (env, x)
            of SOME range => noteChange range
 	    | NONE => ve
-           (* end case *))
+	   (* end case *))
        | A.SeqExp (e1, e2) => A.SeqExp (exp env e1, exp env e2)
        | ov as A.OverloadExp _ => ov
        | A.ExpansionOptsExp (opts, e) => A.ExpansionOptsExp (opts, exp env e)
@@ -86,21 +85,6 @@ end = struct
        | A.FTupleExp es => A.FTupleExp ($(exp env) es)
        | A.FArrayExp (es, s, t) => A.FArrayExp ($(exp env) es, ntree env s, t)
        | f as A.FlOp _ => f
-      (* end case *))
-    and binding (env, b) = (case b
-      of A.ValBind (p, e) => valBind (env, A.ValBind, p, e)
-       | A.PValBind (p, e) => valBind (env, A.PValBind, p, e)
-       | A.PrimVBind _ => (b, env)
-       | A.PrimCodeBind _ => (b, env)
-       | A.FunBind lams => (A.FunBind ($(lambda env) lams), env)
-      (* end case *))
-    and valBind (env, k, p, e) = (case p
-      of A.VarPat x =>
-           if simpleRanges e then
-             (k (p, e), extend (env, x, e))
-	   else
-	     (k (p, exp env e), env)
-       | _ => (k (p, exp env e), env)
       (* end case *))
     and ntree env n = (case n
       of A.Lf (e1, e2) => A.Lf (exp env e1, exp env e2)
@@ -115,11 +99,61 @@ end = struct
       of A.PMatch (ps, e) => A.PMatch (ps, exp env e)
        | A.Otherwise (ts, e) => A.Otherwise (ts, exp env e)
       (* end case *))   
+    and letExp (env, b, e) = (case b
+      of A.PrimVBind _ => A.LetExp (b, exp env e)
+       | A.PrimCodeBind _ => A.LetExp (b, exp env e)
+       | A.FunBind lams => A.LetExp (A.FunBind ($(lambda env) lams), exp env e)
+       | A.ValBind (p, rng as A.RangeExp (e1, e2, o3, t)) =>
+           rangeBind (env, b, e, A.ValBind, p, e1, e2, o3, t)
+       | A.ValBind (p, notRng) (* binding is not to a RangeExp *) =>
+           A.LetExp (A.ValBind (p, exp env notRng), exp env e)
+       | A.PValBind (p, rng as A.RangeExp (e1, e2, o3, t)) => 
+           rangeBind (env, b, e, A.PValBind, p, e1, e2, o3, t)
+       | A.PValBind (p, notRng) (* binding is not to a RangeExp *) =>
+           A.LetExp (A.PValBind (p, exp env notRng), exp env e)
+      (* end case *))
+    and rangeBind (env, b, e, bindForm, p, e1, e2, o3, t) = let
+      fun maybeBind (oldBinds, expBindCand, varName, k) = 
+            if constOrVar expBindCand then
+              (* don't introduce a new var for a const or var *)
+              (oldBinds, k expBindCand)
+	    else let
+              val var = Var.new (varName, t)
+	      val bind = bindForm (A.VarPat var, expBindCand)
+	      val exp = A.VarExp (var, [])
+              in
+                (bind::oldBinds, k exp)
+              end
+      in (case p
+        of A.VarPat x => let
+             fun name suff = Var.nameOf x ^ suff
+             val (binds3, o3') = (case o3 
+	       of NONE => ([], NONE)
+		| SOME e3 => maybeBind ([], e3, name "Step", SOME)
+               (* end case *))
+	     val (binds2, e2') = maybeBind (binds3, e2, name "Hi", fn e => e)
+	     val (binds1, e1') = maybeBind (binds2, e1, name "Lo", fn e => e)
+             val rng' = A.RangeExp (e1', e2', o3', t)
+	     val binds = binds1 @ [A.ValBind (A.VarPat x, rng')]
+	     val env' = extend (env, x, rng')
+             in
+               AU.mkLetExp (binds, exp env' e)
+             end
+	 | _ => (* _very_ unlikely not be a VarPat, but we'll soldier forth *)
+             A.LetExp (b, exp env e)
+        (* end case *))
+      end
     in
       exp
     end
 
   val inlineRangesInternal : A.exp -> A.exp = let
+  (* TODO: The env really should persist between runs of lp.
+   * As it stands every binding 
+   *   val x = <rngExp>
+   * is put back into the env every time around.
+   * Using a Var.Tbl instead of a Var.Map might be the easiest way to make this change.
+   *)
     fun lp e = let
       val _ = resetChanged ()
       val e' = go VM.empty e
