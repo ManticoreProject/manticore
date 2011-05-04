@@ -23,13 +23,13 @@ structure TranslateRange : sig
   (* TODO right now this only works at type int; it's designed otherwise *)
     fun tr (fromExp, toExp, optStepExp, ty) = let
       val _ = if TU.same (ty, B.intTy) then () else raise Fail "not int"
+      val mkRng = A.VarExp (DV.parrayRange (), [])
       val stepExp = (case optStepExp
         of SOME e => e
 	 | NONE => AU.mkInt 1
         (* end case *))
       in
-        AU.mkApplyExp (A.VarExp (DV.parrayRange (), []), 
-		       [fromExp, toExp, stepExp])
+        AU.mkApplyExp (mkRng, [fromExp, toExp, stepExp])
       end
 
   end

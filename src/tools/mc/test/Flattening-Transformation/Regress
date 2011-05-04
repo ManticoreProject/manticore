@@ -1,8 +1,8 @@
 #!/bin/sh
 
-PML_FLAGS="-Cftrx.keep-ft=true -Cftrx.on=true -Ccps.flatten=false"
+PML_FLAGS="-Cftrx.keep-ft=true -Cftrx.on=true -Ccps.flatten=false -Cast.keep-inline-ranges=true"
 
-for PML_PROGRAM in *.pml ; do
+for PML_PROGRAM in inline*.pml ; do
   echo "compiling $PML_PROGRAM"
   # EXEC=${PML_PROGRAM%%.pml}
   EXEC=a.out

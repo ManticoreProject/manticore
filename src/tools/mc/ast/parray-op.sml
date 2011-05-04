@@ -365,7 +365,7 @@ structure PArrayOp = struct
   val constructRange : T.ty -> A.exp = let
     fun mk (t as T.TupleTy (ts as [t1, t2, t3])) = 
           if List.all (fn t => TU.same (t, B.intTy)) ts then
-	   A.PArrayOp (A.PA_Range B.intTy)
+	    A.PArrayOp (A.PA_Range B.intTy)
 	  else            
             raise Fail ("unexpected type " ^ TU.toString t)
       | mk t = raise Fail ("unexpected type " ^ TU.toString t)
