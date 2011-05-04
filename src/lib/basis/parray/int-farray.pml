@@ -142,7 +142,7 @@ structure IntFArray = struct
 
 (* intRange : int * int * int -> int_farray *)
   fun intRange (from, to_, step) = let
-    val data = R.tabFromToP (from, to_, fn n => n)
+    val data = R.rangeP (from, to_, step)
     val len = R.length data
     in
       if (len = 0) then
