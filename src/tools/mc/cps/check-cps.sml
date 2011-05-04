@@ -185,8 +185,8 @@ structure CheckCPS : sig
 		       of CTy.T_Fun(argTys, retTys) => (
 			    chkVars (env, args, "Apply args");
 			    chkVars (env, rets, "Apply rets");
-			    checkArgTypes (CTU.match, concat["Apply ", v2s f, " args"], argTys, typesOf args);
-			    checkArgTypes (CTU.match, concat["Apply ", v2s f, " rets"], retTys, typesOf rets))
+			    checkArgTypes (CTU.match, concat["Apply ", v2s f, " args", vl2s args], argTys, typesOf args);
+			    checkArgTypes (CTU.match, concat["Apply ", v2s f, " rets", vl2s rets], retTys, typesOf rets))
 			| ty => error[v2s f, ":", CTU.toString ty, " is not a function\n"]
 		      (* end case *))
 		  | C.Throw(k, args) => (
