@@ -62,16 +62,14 @@ end  = struct
 			      t)
 	  val f = A.FunExp (x1, c1, t)
 	  val e1' = trExp e1
-	  val mapPV = BasisEnv.getVarFromBasis ["Rope", "mapP"]
-	  val mapP = A.VarExp (mapPV, [t1, t])
+	  val mapP = A.VarExp (D.Var.ropeMapP (), [t1, t])
 	  val resTy = Basis.parrayTy t
 	  fun map arr = AU.mkApplyExp (mapP, [f, arr])
           in case optPred
             of NONE => map e1'
 	     | SOME pred => let
                  val pred' = trExp pred
-                 val filterPV = BasisEnv.getVarFromBasis ["Rope", "filterP"]
-		 val filterP = A.VarExp (filterPV, [t])
+		 val filterP = A.VarExp (D.Var.ropeFilterP (), [t])
 		 val tmpV = Var.new ("tmp", t1)
 		 val cs = A.CaseExp (A.VarExp (tmpV, []),
 				     [A.PatMatch (p1, pred')],
@@ -98,8 +96,7 @@ end  = struct
 			      [A.PatMatch (pairPat, e')],
 			      t)
 	  val f = A.FunExp (pairV, ca, t)
-	  val mapP2V = BasisEnv.getVarFromBasis ["RopePair", "mapP"]
-	  val mapP2 = A.VarExp (mapP2V, [t1, t2, t])
+	  val mapP2 = A.VarExp (D.Var.ropePairMapP (), [t1, t2, t])
 	  in
             A.ApplyExp (mapP2, A.TupleExp [f, e1', e2'], Basis.parrayTy t)
 	  end

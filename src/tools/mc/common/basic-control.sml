@@ -136,7 +136,7 @@ structure BasicControl :  sig
             pri = [0, 0], 
             obscurity = 0,
             help = "dead function elimination on the parse tree (dead functions do not get type checked)",
-            default = false
+            default = true
           }
 
     val treeShakeDebug : bool Controls.control = Controls.genControl {
