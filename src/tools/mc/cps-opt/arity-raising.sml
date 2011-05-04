@@ -1447,9 +1447,11 @@ structure ArityRaising : sig
                                 in
                                     matchTypes (callParamTypes, rev newArgs, [],
                                                 fn finalArgs =>
-                                                   translateArgs (filteredRetArgs, [],
-                                                     fn finalRets =>
-                                                        C.Exp(ppt, C.Apply(g, finalArgs, finalRets))))
+                                                   matchTypes (retTypes, filteredRetArgs, [],
+                                                            fn newRets =>
+                                                               translateArgs (newRets, [],
+                                                                           fn finalRets =>
+                                                                              C.Exp(ppt, C.Apply(g, finalArgs, finalRets)))))
                                 end
 			      | NONE => matchTypes (callParamTypes, rev newArgs, [], 
                                                     fn finalArgs => C.Exp(ppt, C.Throw(g, finalArgs)))
