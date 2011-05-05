@@ -172,6 +172,7 @@ structure DelayedBasis = struct
     val ipReduce      = memoVar ["IntFArrayPair", "flatReduce"]
 
     val flattenIFF    = memoVar ["FArrayUtil", "flatten_IF_F"]
+    val mapIFPoly     = memoVar ["FArrayUtil", "map_IF_poly"]
 
   end
 
