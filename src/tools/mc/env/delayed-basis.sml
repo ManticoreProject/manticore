@@ -26,23 +26,23 @@ structure DelayedBasis = struct
     val tyConsListRef = ref ([] : path list)
     val dConsListRef  = ref ([] : path list)
     val varsListRef   = ref ([] : path list)
-    val hlopsListRef   = ref ([] : path list)
+    val hlopsListRef  = ref ([] : path list)
    (* record the paths to components in the delayed basis *)
     fun regTyc p  = tyConsListRef := (p :: (!tyConsListRef))
     fun regDCon p = dConsListRef  := (p :: (!dConsListRef))
     fun regVar p  = varsListRef   := (p :: (!varsListRef))
-    fun regHLOp p  = hlopsListRef   := (p :: (!hlopsListRef))
+    fun regHLOp p = hlopsListRef  := (p :: (!hlopsListRef))
   in
   (* use these to create thunks for delayed basis items *)
     fun memoTyc p  = (regTyc p; Memo.new (delay getTyc p))
     fun memoDCon p = (regDCon p; Memo.new (delay getDCon p)) 
     fun memoVar p  = (regVar p; Memo.new (delay getVar p))
-    fun memoHLOp p  = (regHLOp p; Memo.new (delay getHLOp p))
+    fun memoHLOp p = (regHLOp p; Memo.new (delay getHLOp p))
   (* lists of all paths in the delayed basis *)
     fun allTyCons ()   = !tyConsListRef
     fun allDataCons () = !dConsListRef
     fun allVars ()     = !varsListRef
-    fun allHLOps ()     = !hlopsListRef
+    fun allHLOps ()    = !hlopsListRef
   end
 
 (* tycons *)
@@ -177,21 +177,21 @@ structure DelayedBasis = struct
 
   structure Ty = struct
     local
-      fun con0 tyc = T.ConTy ([], tyc)
-      fun con1 (t, tyc) = T.ConTy ([t], tyc)
+      fun con0 tyc = T.ConTy ([], tyc ())
+      fun con1 (t, tyc) = T.ConTy ([t], tyc ())
     in
-    fun int_farray () = con0 (TyCon.int_farray ())
-    fun farray t = con1 (t, TyCon.farray ())
-    fun option t = con1 (t, TyCon.option ())
-    fun ref t = con1 (t, TyCon.refTyc ())
-    fun result t = con1 (t, TyCon.result ())
-    fun mvar t = con1 (t, TyCon.mvar ())
-    fun array t = con1 (t, TyCon.array ())
-    fun cancel () = con0 (TyCon.cancel ())
-    fun bitvec () = con0 (TyCon.bitvec ())
-    fun future t = con1 (t, TyCon.future ())
-    fun rope t = con1 (t, TyCon.rope ())
-    fun shape_tree () = con0 (TyCon.shape_tree ())
+    fun int_farray () = con0 TyCon.int_farray
+    fun farray t = con1 (t, TyCon.farray)
+    fun option t = con1 (t, TyCon.option)
+    fun ref t = con1 (t, TyCon.refTyc)
+    fun result t = con1 (t, TyCon.result)
+    fun mvar t = con1 (t, TyCon.mvar)
+    fun array t = con1 (t, TyCon.array)
+    fun cancel () = con0 TyCon.cancel
+    fun bitvec () = con0 TyCon.bitvec
+    fun future t = con1 (t, TyCon.future)
+    fun rope t = con1 (t, TyCon.rope)
+    fun shape_tree () = con0 TyCon.shape_tree
     end (* local *)
   end
 
