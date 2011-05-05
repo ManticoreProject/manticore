@@ -679,7 +679,6 @@ structure Rope (* : ROPE *) = struct
   (* Reduce with an associative operator. *)
   (* e.g., sumP r == reduceP (+, 0, r) *)
     fun reduceP (assocOp, unit, rope) = let
-val _ = Print.printLn "reduceP"
       fun red r = (case r
         of LEAF s => let
              val _ = () (* Print.print "at LEAF " *)
