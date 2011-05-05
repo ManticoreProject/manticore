@@ -4,7 +4,7 @@
 val sz = 64
 val img = Image.new (sz, sz)
 (* val field = [| [| (i,j) | j in [| 0 to sz-1 |] |] | i in [| 0 to sz-1 |] |] *)
-val field = PArray.tab (sz, fn i => PArray.tab (sz, (fn j => (i, j))))
+val field = PArray.tab (sz, fn (i:int) => PArray.tab (sz, (fn (j:int) => (i, j))))
 
 val _ = Print.printLn (PArray.tos_intPair (field!0))
 
