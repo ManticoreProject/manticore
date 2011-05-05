@@ -21,23 +21,28 @@ structure DelayedBasis = struct
     val getVar  = BE.getVarFromBasis
     val getTyc  = BE.getTyConFromBasis
     val getDCon = BE.getDConFromBasis
+    val getHLOp = BE.getHLOpFromBasis
    (* lists of all components in the delayed basis *)
     val tyConsListRef = ref ([] : path list)
     val dConsListRef  = ref ([] : path list)
     val varsListRef   = ref ([] : path list)
+    val hlopsListRef  = ref ([] : path list)
    (* record the paths to components in the delayed basis *)
     fun regTyc p  = tyConsListRef := (p :: (!tyConsListRef))
     fun regDCon p = dConsListRef  := (p :: (!dConsListRef))
     fun regVar p  = varsListRef   := (p :: (!varsListRef))
+    fun regHLOp p = hlopsListRef  := (p :: (!hlopsListRef))
   in
   (* use these to create thunks for delayed basis items *)
     fun memoTyc p  = (regTyc p; Memo.new (delay getTyc p))
     fun memoDCon p = (regDCon p; Memo.new (delay getDCon p)) 
     fun memoVar p  = (regVar p; Memo.new (delay getVar p))
+    fun memoHLOp p = (regHLOp p; Memo.new (delay getHLOp p))
   (* lists of all paths in the delayed basis *)
     fun allTyCons ()   = !tyConsListRef
     fun allDataCons () = !dConsListRef
     fun allVars ()     = !varsListRef
+    fun allHLOps ()    = !hlopsListRef
   end
 
 (* tycons *)
@@ -69,6 +74,17 @@ structure DelayedBasis = struct
     val intFArray = memoDCon ["IntFArray", "FArray"]
     val lf        = memoDCon ["ShapeTree", "Lf"]
     val nd        = memoDCon ["ShapeTree", "Nd"]
+  end
+
+(* hlops *)
+  structure HLOp = struct
+    val cancelationCancel          = memoHLOp ["Cancelation", "cancel"]
+    val cancelationNew             = memoHLOp ["Cancelation", "new"]
+    val implicitThreadNewThread    = memoHLOp ["ImplicitThread", "new-thread"]
+    val implicitThreadRemoveThread = memoHLOp ["ImplicitThread", "remove-thread-b"]
+    val implicitThreadSpawnThread  = memoHLOp ["ImplicitThread", "spawn-thread"]
+    val schedulerActionStop        = memoHLOp ["SchedulerAction", "stop"]
+    val threadsLocalSpawn          = memoHLOp ["Threads", "local-spawn"]
   end
 
 (* vars *)
@@ -107,6 +123,7 @@ structure DelayedBasis = struct
 
     val ropeEmpty     = memoVar ["Rope", "empty"]
     val ropeSingleton = memoVar ["Rope", "singleton"]
+    val ropeFilterP   = memoVar ["Rope", "filterP"]
     val ropeFromList  = memoVar ["Rope", "fromList"]
     val ropeTabFT     = memoVar ["Rope", "tabFromToP"]
     val ropeTabFTS    = memoVar ["Rope", "tabFromToStepP"]
@@ -115,6 +132,8 @@ structure DelayedBasis = struct
     val ropeRange     = memoVar ["Rope", "rangeP"]
     val ropeRangeNS   = memoVar ["Rope", "rangePNoStep"]
     val ropeMapP      = memoVar ["Rope", "mapP"]
+
+    val ropePairMapP  = memoVar ["RopePair", "mapP"]
 
     val lseqToList    = memoVar ["ListSeq", "toList"]
     val lseqFromList  = memoVar ["ListSeq", "fromList"]
@@ -144,6 +163,7 @@ structure DelayedBasis = struct
     val intTab        = memoVar ["IntFArray", "tab"]
     val intTabFTS     = memoVar ["IntFArray", "tabFromToStep"]
     val intFlatSub    = memoVar ["IntFArray", "flatSub"]
+    val intNestedSub  = memoVar ["IntFArray", "nestedSub"]
     val ifFromList    = memoVar ["IntFArray", "fromList"]
     val ifmap         = memoVar ["IntFArray", "flatMap"]
 
@@ -159,21 +179,21 @@ structure DelayedBasis = struct
 
   structure Ty = struct
     local
-      fun con0 tyc = T.ConTy ([], tyc)
-      fun con1 (t, tyc) = T.ConTy ([t], tyc)
+      fun con0 tyc = T.ConTy ([], tyc ())
+      fun con1 (t, tyc) = T.ConTy ([t], tyc ())
     in
-    fun int_farray () = con0 (TyCon.int_farray ())
-    fun farray t = con1 (t, TyCon.farray ())
-    fun option t = con1 (t, TyCon.option ())
-    fun ref t = con1 (t, TyCon.refTyc ())
-    fun result t = con1 (t, TyCon.result ())
-    fun mvar t = con1 (t, TyCon.mvar ())
-    fun array t = con1 (t, TyCon.array ())
-    fun cancel () = con0 (TyCon.cancel ())
-    fun bitvec () = con0 (TyCon.bitvec ())
-    fun future t = con1 (t, TyCon.future ())
-    fun rope t = con1 (t, TyCon.rope ())
-    fun shape_tree () = con0 (TyCon.shape_tree ())
+    fun int_farray () = con0 TyCon.int_farray
+    fun farray t = con1 (t, TyCon.farray)
+    fun option t = con1 (t, TyCon.option)
+    fun ref t = con1 (t, TyCon.refTyc)
+    fun result t = con1 (t, TyCon.result)
+    fun mvar t = con1 (t, TyCon.mvar)
+    fun array t = con1 (t, TyCon.array)
+    fun cancel () = con0 TyCon.cancel
+    fun bitvec () = con0 TyCon.bitvec
+    fun future t = con1 (t, TyCon.future)
+    fun rope t = con1 (t, TyCon.rope)
+    fun shape_tree () = con0 TyCon.shape_tree
     end (* local *)
   end
 

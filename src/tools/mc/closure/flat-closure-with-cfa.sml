@@ -66,7 +66,17 @@ structure FlatClosureWithCFA : sig
           in
              if CFA.isEscaping f
                 then cvtStdFunTyAuxStd ty
-             else cvtStdFunTyAuxKwn (ty, (params, rets))
+             else (cvtStdFunTyAuxKwn (ty, (params, rets))
+		   handle Fail s => let 
+                     val msg = String.concatWith "\n" [
+		       "cvtStdFunTyAux:",
+		       "f is " ^ CPS.Var.toString f,
+		       "\n"
+                     ]
+                     in
+	               print msg;
+		       raise Fail ("cvtStdFunTyAux." ^ s)
+	             end)
           end
       | cvtStdFunTyAux (ty, v) = raise Fail(concat[
           "bogus function type ", CPSTyUtil.toString ty, " : ", CFA.valueToString v])
@@ -90,7 +100,17 @@ structure FlatClosureWithCFA : sig
           "bogus function type ", CPSTyUtil.toString ty])
     and cvtStdFunTyAuxKwn (CPSTy.T_Fun(argTys, retTys), (args, rets)) = let
           fun cvtTy' (ty, x) = cvtTy (ty, CFA.valueOf x)
-          fun cvtStdContTy' (ty, x) = cvtStdContTy (ty, CFA.valueOf x)
+          fun cvtStdContTy' (ty, x) = (cvtStdContTy (ty, CFA.valueOf x))
+				      handle Fail (s as "cvtStdContTy:UnequalLengths") => let
+                                        val msg = String.concatWith "\n" [
+				          "cvtStdFunTyAuxKwn.cvtStdContTy':",
+					  "x is " ^ CPS.Var.toString x,
+					  "\n"
+				        ]
+                                        in
+                                          print msg;
+				          raise Fail ("cvtStdFunTyAuxKwn:" ^ s)
+					end
           in
             CFGTy.T_KnownFunc{
               clos = CFGTy.T_Any,
@@ -102,7 +122,18 @@ structure FlatClosureWithCFA : sig
           "bogus function type ", CPSTyUtil.toString ty])
 
   (* convert a continuation type to a standard-continuation type, guided by CFA values *)
-    and cvtStdContTy (ty, v) = CFG.T_OpenTuple[cvtStdContTyAux (ty, v)]
+    and cvtStdContTy (ty, v) = (CFG.T_OpenTuple[cvtStdContTyAux (ty, v)])
+			       handle UnequalLengths => let
+			         val msg = String.concatWith "\n" [
+			           "UnequalLengths in cvtStdContTy:",
+				   "ty is " ^ CPSTyUtil.toString ty ^ ", ",
+				   "v is " ^ CFA.valueToString v,
+				   "\n"
+			         ]							  
+                                 in
+			           print msg;
+				   raise Fail "cvtStdContTy:UnequalLengths"
+				 end			        
     and cvtStdContTyAux (ty, CFA.TOP) = cvtStdContTyAuxStd ty
       | cvtStdContTyAux (ty, CFA.BOT) = cvtStdContTyAuxStd ty
       | cvtStdContTyAux (ty, CFA.LAMBDAS fs) = let

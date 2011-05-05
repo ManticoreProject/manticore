@@ -48,7 +48,7 @@ structure PArrayOp = struct
       fun pop (A.PA_Length t) = tos "PA_Length" t
 	| pop (A.PA_Sub s) = "PA_Sub_{" ^ ps s ^ "}"
 	| pop (A.PA_Tab t) = tos "PA_Tab" t
-	| pop (A.PA_TabFromToStep t) = tos "PA_TabFromToStep" t
+	| pop (A.PA_TabFTS t) = tos "PA_TabFTS" t
 	| pop (A.PA_TabTupleFTS ts) = 
             "PA_TabTupleFTS_{" ^ commas ($TU.toString ts) ^ "}"
 	| pop (A.PA_Map t) = tos "PA_Map" t
@@ -88,7 +88,7 @@ structure PArrayOp = struct
           in
 	    domTy --> rngTy
 	  end
-      | pop (A.PA_TabFromToStep eltTy) = let
+      | pop (A.PA_TabFTS eltTy) = let
           val i = B.intTy
           val domTy = T.TupleTy [i, i, i, i --> eltTy]
 	  val rngTy = T.FArrayTy (eltTy, T.LfTy)
@@ -153,7 +153,7 @@ structure PArrayOp = struct
     fun consIndex (A.PA_Length _)        = 0
       | consIndex (A.PA_Sub _)           = 1
       | consIndex (A.PA_Tab _)           = 2
-      | consIndex (A.PA_TabFromToStep _) = 3
+      | consIndex (A.PA_TabFTS _)        = 3
       | consIndex (A.PA_Map _)           = 4
       | consIndex (A.PA_Reduce _)        = 5
       | consIndex (A.PA_Range _)         = 6
@@ -184,7 +184,7 @@ structure PArrayOp = struct
             of (A.PA_Length t1, A.PA_Length t2) => TU.compare (t1, t2)
 	     | (A.PA_Sub s1, A.PA_Sub s2) => ps (s1, s2)
 	     | (A.PA_Tab t1, A.PA_Tab t2) => TU.compare (t1, t2)
-	     | (A.PA_TabFromToStep t1, A.PA_TabFromToStep t2) => TU.compare (t1, t2)
+	     | (A.PA_TabFTS t1, A.PA_TabFTS t2) => TU.compare (t1, t2)
 	     | (A.PA_TabTupleFTS ts1, A.PA_TabTupleFTS ts2) => $TU.compare (ts1, ts2)
 	     | (A.PA_Map t1, A.PA_Map t2) => TU.compare (t1, t2)
 	     | (A.PA_Reduce t1, A.PA_Reduce t2) => TU.compare (t1, t2)
@@ -236,7 +236,7 @@ structure PArrayOp = struct
     fun groundPairWitness (T.TupleTy [t1, t2]) = 
           if isGroundTy t1 andalso isGroundTy t2 then SOME (t1, t2) else NONE
       | groundPairWitness _ = NONE
-    fun groundPair (g1, g2) = raise Fail "todo"
+    fun groundPair (g1, g2) = A.PArrayOp (A.PA_Tab (T.TupleTy [g1, g2]))
   in
     val constructTab : T.ty -> A.exp = let
       fun mk (domTy as T.TupleTy [i1, T.FunTy (i2, eltTy)]) =
@@ -283,7 +283,7 @@ structure PArrayOp = struct
                    val eltsTy = T.FArrayTy (eltTy, T.LfTy)          
 		   val fl = FlattenOp.construct eltTy
     		   val rngTy = TU.rangeType (FlattenOp.typeOf fl)
-    		   val tab = A.PArrayOp (A.PA_TabFromToStep eltTy)
+    		   val tab = A.PArrayOp (A.PA_TabFTS eltTy)
     		   val arg = Var.new ("arg", domTy)
 		   (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
     		   (*   b/c referring to ASTUtil induces cyclic deps *)

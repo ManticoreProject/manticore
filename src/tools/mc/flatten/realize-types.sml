@@ -77,10 +77,10 @@ end *) = struct
       | ty (T.FunTy (t1, t2)) = T.FunTy (ty t1, ty t2)
       | ty (T.TupleTy ts) = T.TupleTy (List.map ty ts)
       | ty (T.FArrayTy (t, n)) = (* note: we lose the shape tree information here *)
-          if TU.same (B.intTy, t) andalso isLf n then
+          if TU.same (B.intTy, t) then (* andalso isLf n then *)
             T.ConTy ([], BasisItems.intFArrayTyc ())
 	  else
-            T.ConTy ([ty t], BasisItems.farrayTyc ())            
+	    T.ConTy ([ty t], BasisItems.farrayTyc ())            
   and tyc c = (case findTyc c
     of SOME c' => c'
      | NONE => newTyc c
@@ -144,7 +144,7 @@ end *) = struct
     fun pop (A.PA_Length t) = A.PA_Length (ty t)
       | pop (A.PA_Sub s) = A.PA_Sub (ps s)
       | pop (A.PA_Tab t) = A.PA_Tab (ty t)
-      | pop (A.PA_TabFromToStep t) = A.PA_TabFromToStep (ty t)
+      | pop (A.PA_TabFTS t) = A.PA_TabFTS (ty t)
       | pop (A.PA_Map t) = A.PA_Map (ty t)
       | pop (A.PA_Reduce t) = A.PA_Reduce (ty t)
       | pop (A.PA_Range t) = A.PA_Range (ty t)

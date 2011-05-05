@@ -136,8 +136,13 @@ structure Elaborate : sig
 
   (* elaborate : A.exp -> A.exp *)
     fun elaborate body = let
-      val irng = InlineRanges.inlineRanges
+      val transform = 
+        if !ASTOptControls.inlineRangesFlag then
+          trExp o InlineRanges.inlineRanges
+        else
+          trExp
       in
-        (trExp o irng) body
+        transform body
       end
+ 
   end

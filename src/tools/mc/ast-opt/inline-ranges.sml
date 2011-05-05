@@ -3,23 +3,61 @@
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Inline ranges.
+ * Inline range expressions.
+ * 
+ * Range inlining can be turned on and off with -Cast.inline-ranges-on=<bool> 
+ *
+ * Range inlining is a "keep pass" controlled by -Cast.keep-inline-ranges=<bool>
+ *
+ * By default range inlining is on and keeping is off.                           
+ *
+ * Searches for variables bound to range expressions, and, having found them,
+ *   inlines their range expressions at uses.
+ * 
+ * This is done at this early point in compilation since we want ranges inlined
+ *   into parallel comprehensions early for fusion from maps to tabs.
+ * 
+ * The transformation is roughly as follows:
+ *   
+ *   val x = [| 1+1 to 100*100 by 3*3 |]
+ *   val y = [| f n | n in x |]
+ * ===>
+ *   val xLo = 1+1
+ *   val xHi = 100*100
+ *   val xStep = 3*3
+ *   val x = [| xLo to xHi by xStep |]
+ *   val y = [| f n | n in [| xLo to xHi by xStep |] |]
+ *
+ * It is to be expected that x will likely be removed by a later optimization 
+ *   as an unused variable.
+ *
+ * Some qualifications: 
+ *
+ * - variables such as xLo, xHi and xStep in the example are not created if
+ *   they would be bound to constants or variables
+ *
+ * - variables in tuples one level deep are found and subject to the optimization;
+ *   deeper than that, they aren't. In what follows, r0's range will be inlined at
+ *   its uses, while r1's won't.
+ *
+ *     val (r0, x) = ([|1 to 100|], false)
+ *     val ((r1, y), z) = (([|1 to 1000|], false), 0)
+ *
+ *   Certainly this can be done, but it currently isn't.
+ *
+ * - variables inside constructor patterns such as
+ *
+ *     val SOME(r) = SOME([|a to b|])
+ *
+ *   are also not found.
+ *
+ * More work is required to make this more complete, but in its current state 
+ *   this pass catches ranges in many common usage patterns.
+ *
+ *  - Adam Shaw, May 2011
  *)
 
-(* TODO: I catch ranges bound in tuples: *)
-(*   val (x, y) = (rangeExp, foo) *)
-(*   val z = x (* --> rangeExp *) *)
-(* But I don't catch ranges bound in nested tuples. *)
-(* Not critical, but noted. *)
-
-(* TODO: I think I could also catch these for inlining... *)
-(*   val x = (e1; e2; ...; rangeExp) *)
-(*   val y = x (* --> rangeExp *) *)
-(* Doesn't seem critical. *)
-
 structure InlineRanges : sig
-
-(* Range inlining is a "keep pass" controlled by -Cast.keep-inline-ranges=<bool> *)
 
   val inlineRanges : AST.exp -> AST.exp
 
@@ -51,7 +89,7 @@ end = struct
 	   | SOME e3 => " by " ^ tos e3
           (* end case *))
         in
-          String.concat ["[| ", tos e1, " to ", tos e2, step, " |]"]
+          String.concat ["[|", tos e1, " to ", tos e2, step, "|]"]
         end
     | range_tos _ = raise Fail "not a range"
   fun printEnv env = let
@@ -59,10 +97,10 @@ end = struct
       val xrs = VT.listItemsi env
       fun s (x, r) = Var.nameOf x ^ "-->" ^ range_tos r
       in
-        String.concatWith "," (List.map s xrs)
+        String.concatWith ";" (List.map s xrs)
       end
     in
-      println (tos env)
+      println ("{" ^ tos env ^ "}")
     end
 (* -debug *)
 
@@ -210,10 +248,12 @@ end = struct
         (* end case *))
       end
     fun iterateTillFixed i e = let
+(* (\* +debug *\) *)
+(*       val _ = println ("InlineRanges: iteration " ^ Int.toString i) *)
+(*       val _ = printEnv env *)
+(* (\* -debug *\) *)
       val _ = resetChanged ()
-      val _ = println ("InlineRanges: iteration " ^ Int.toString i)
       val e' = exp e
-      val _ = printEnv env
       in
         if !changed then iterateTillFixed (i+1) e' else e'
       end
@@ -230,3 +270,15 @@ end = struct
   }
 
 end
+
+(* TODO: I catch ranges bound in tuples: *)
+(*   val (x, y) = (rangeExp, foo) *)
+(*   val z = x (* --> rangeExp *) *)
+(* But I don't catch ranges bound in nested tuples. *)
+(* Not critical, but noted. *)
+
+(* TODO: I think I could also catch these for inlining... *)
+(*   val x = (e1; e2; ...; rangeExp) *)
+(*   val y = x (* --> rangeExp *) *)
+(* Doesn't seem critical. *)
+
