@@ -3,7 +3,7 @@
 FLAGS="-Cftrx.on=true\
        -Cftrx.keep-ft=true\
        -Ccps.flatten=true\
-       -Cast.inline-ranges-on=true\
+       -Cast.inline-ranges=true\
        -Cast.keep-inline-ranges=true"
 
 SRC_FILE=$1

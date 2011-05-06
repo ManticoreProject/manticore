@@ -28,7 +28,7 @@ structure ASTOptControls = struct
   
   val inlineRangesCtl = C.control {
     ctl = inlineRangesFlag,
-    name = "inline-ranges-on",
+    name = "inline-ranges",
     pri = [0, 1],
     obscurity = 0,
     help = "turn on/off inlining of range expressions"

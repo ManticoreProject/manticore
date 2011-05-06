@@ -92,9 +92,11 @@ end *) = struct
       | ty (T.VarTy a) = T.VarTy a
       | ty (T.FunTy (t1, t2)) = T.FunTy (ty t1, ty t2)
       | ty (T.TupleTy ts) = T.TupleTy (List.map ty ts)
-      | ty (f as T.FArrayTy (t, n)) = 
-          (print ("***** asked to flatten " ^ TypeUtil.toString f ^ "\n");
-	   raise Fail "TODO" (* not sure this circ should arise *))
+      | ty (f as T.FArrayTy (t, n)) = let
+          val msg = "Asked to flatten type " ^ TypeUtil.toString f ^ "; should this happen?"
+          in
+	    raise Fail msg
+	  end         
       | ty (T.ConTy (ts, c)) = conTy (ts, c)
     and conTy (ts, c) = 
 	 (if isPArrayTyc c then (case ts 
