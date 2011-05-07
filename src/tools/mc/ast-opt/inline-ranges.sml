@@ -140,7 +140,7 @@ end = struct
     val find = find env
     val $ = List.map
     fun exp e = (case e
-      of A.LetExp (b, e) => letExp (b, e)
+      of A.LetExp (b, e) => AU.mkLetExp (binding b, exp e)
        | A.IfExp (e1, e2, e3, t) =>
            A.IfExp (exp e1, exp e2, exp e3, t)
        | A.CaseExp (e, ms, t) => A.CaseExp (exp e, $match ms, t)
@@ -186,12 +186,12 @@ end = struct
       of A.PMatch (ps, e) => A.PMatch (ps, exp e)
        | A.Otherwise (ts, e) => A.Otherwise (ts, exp e)
       (* end case *))
-    and letExp (b, e) = (case b
-      of A.ValBind (p, rhs) => AU.mkLetExp (valBind (A.ValBind, p, exp rhs), exp e)
-       | A.PValBind (p, rhs) => AU.mkLetExp (valBind (A.PValBind, p, exp rhs), exp e)
-       | A.FunBind lams => A.LetExp (A.FunBind ($lambda lams), exp e)
-       | A.PrimVBind _ => A.LetExp (b, exp e)
-       | A.PrimCodeBind _ => A.LetExp (b, exp e)
+    and binding b = (case b
+      of A.ValBind (p, rhs) => valBind (A.ValBind, p, exp rhs)
+       | A.PValBind (p, rhs) => valBind (A.PValBind, p, exp rhs)
+       | A.FunBind lams => [A.FunBind ($lambda lams)]
+       | A.PrimVBind _ => [b] 
+       | A.PrimCodeBind _ => [b]
       (* end case *))
     and valBind (bindForm, p, e) : A.binding list = let
       fun pat (p, rhs) : (A.binding list * A.exp) option = (case p
