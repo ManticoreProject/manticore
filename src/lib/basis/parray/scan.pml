@@ -101,7 +101,7 @@ structure Scan = struct
     fun upsweep seed t = let
       fun lp r = 
        (case r 
-	  of (R.LEAF s) => Leaf (seqsum seed s, S.length s, s)
+	  of (R.LEAF (n, s)) => Leaf (seqsum seed s, S.length s, s)
 	   | (R.CAT (d, len, rL, rR)) => let
                val (uL, uR) = (| lp rL, lp rR |)
                in 
@@ -125,7 +125,7 @@ structure Scan = struct
 	   | (Leaf (_, len, s)) => let
                val (scanned, _) = seqscan c s
                in
-                 R.LEAF scanned
+                 R.mkLeaf scanned
                end)
       in
         lp (seed, t)
@@ -189,7 +189,7 @@ structure Scan = struct
     fun upsweep_float (seed:float) t = let
       fun lp r = 
        (case r 
-	  of (R.LEAF s) => Leaf (seqsum_float seed s, S.length s, s)
+	  of (R.LEAF (n, s)) => Leaf (seqsum_float seed s, S.length s, s)
 	   | (R.CAT (d, len, rL, rR)) => let
                val (uL, uR) = (| lp rL, lp rR |)
                in 
@@ -213,7 +213,7 @@ structure Scan = struct
 	   | (Leaf (_, len, s)) => let
                val (scanned, _) = seqscan_float c s
                in
-                 R.LEAF scanned
+                 R.mkLeaf scanned
                end)
       in
         lp (seed, t)

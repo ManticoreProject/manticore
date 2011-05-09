@@ -57,14 +57,15 @@ structure DoubleFArray = struct
 (* flatSub : double_farray * int -> double *)
   fun flatSub (FArray (data, shape), i) = (case shape
     of S.Lf (lo, hi) => let
-	 val _ = ()
+	 val item = R.sub (data, lo+i)
          (* val _ = Print.printLn ("flatSub called.") *)
 	 (* val _ = Print.printLn ("Lf " ^ Int.toString lo ^ "/" ^ Int.toString hi) *)
 	 (* val _ = Print.printLn ("i is " ^ Int.toString i) *)
 	 (* val _ = Print.printLn ("the length of data is " ^ Int.toString (R.length data)) *)
          (* val _ = Print.printLn (R.toString data) *)
          in
-           R.sub (data, lo+i)
+	   (* Print.printLn ("DoubleFArray.flatSub: item is " ^ Double.toString item); *)
+	   item
          end
      | S.Nd ts => fail "flatSub" "Nd"
     (* end case *))

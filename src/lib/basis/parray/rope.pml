@@ -6,7 +6,7 @@
  * A implementation of ropes in Manticore.
  *)
 
-structure Rope (* : ROPE *) = struct
+structure Rope = struct
 
     val fail = Fail.fail "Rope"
 
@@ -31,25 +31,29 @@ structure Rope (* : ROPE *) = struct
 		int *     (* length *)
 		'a rope * (* left subtree *)
 		'a rope   (* right subtree *))
-      | LEAF of 'a seq    (* sequence *)
+      | LEAF of (int *    (* length *)
+                 'a seq)  (* sequence *)
 
   (* maxLeafSize : int *)
     val maxLeafSize = MaxLeafSize.sz
 
   (* empty : 'a rope *)
-    val empty = LEAF S.empty
+    val empty = LEAF (0, S.empty)
 
   (* mkLeaf : 'a S.seq -> 'a rope *)
   (* pre: S.length s < maxLeafSize *)
-    fun mkLeaf s = 
-      if (S.length s) > maxLeafSize then let
-        val msg = "too many elts: " ^ Int.toString (S.length s) ^ 
-		  " (max is " ^ Int.toString maxLeafSize ^ ")"
-        in
-          fail "mkLeaf" msg
-        end
-      else 
-        LEAF s
+    fun mkLeaf s = let
+      val n = S.length s
+      in 
+        if (n > maxLeafSize) then let
+          val msg = "too many elts: " ^ Int.toString n ^ 
+		    " (max is " ^ Int.toString maxLeafSize ^ ")"
+          in
+            fail "mkLeaf" msg
+          end
+        else 
+          LEAF (n, s)
+      end
 
   (* toString : ('a -> string) -> 'a rope -> string *)
     fun toString show r = let
@@ -60,7 +64,7 @@ structure Rope (* : ROPE *) = struct
       val indent = List.map (fn s => indenter ^ s) 
       fun build r =
        (case r
-	 of LEAF xs => let 
+	 of LEAF (_, xs) => let 
               fun b args = 
                (case args
 	         of (nil, acc) => "]" :: acc
@@ -101,26 +105,26 @@ structure Rope (* : ROPE *) = struct
 
   (* isEmpty : 'a rope -> bool *)
     fun isEmpty r = (case r
-	   of LEAF s => S.length s = 0
+	   of LEAF (n, s) => n = 0
 	    | CAT (_, 0, _, _) => true
 	    | _ => false
 	  (* end case *))
 
   (* length : 'a rope -> int *)
     fun length r = (case r
-	   of LEAF s => S.length s
+	   of LEAF (n, s) => n
 	    | CAT(_, len, r1, r2) => len
 	  (* end case *))
 
   (* computeLength : 'a rope -> int *)
     fun computeLength r = (case r
-          of LEAF s => S.length s
+          of LEAF (_, s) => S.length s
 	   | CAT (_, _, r1, r2) => computeLength r1 + computeLength r2)
 
   (* chkLength : 'a rope -> unit *)
     fun chkLength r = (case r
-          of LEAF s => 
-	       if S.length s = computeLength r 
+          of LEAF (n, s) => 
+	       if n = computeLength r 
 	       then () 
 	       else fail "chkLength" "inconsistent length at leaf"
 	   | CAT (_, len, r1, r2) =>
@@ -145,12 +149,12 @@ structure Rope (* : ROPE *) = struct
   (* pre: inBounds (r, i) *)
     fun subInBounds (r, i) = 
      (case r
-        of LEAF s => S.sub(s, i)
+        of LEAF (n, s) => S.sub (s, i)
 	 | CAT (depth, len, r1, r2) =>
 	     if i < length r1 then 
-               subInBounds(r1, i)
+               subInBounds (r1, i)
 	     else 
-               subInBounds(r2, i - length r1)
+               subInBounds (r2, i - length r1)
         (* end case *))
 
   (* sub : 'a rope * int -> 'a *)
@@ -216,7 +220,7 @@ structure Rope (* : ROPE *) = struct
       fun go r =
        (case r
           of CAT (d, len, r1, r2) => CAT (d, len+slen, go r1, r2)
-	   | LEAF s' => mkLeaf (S.concat (s, s'))
+	   | LEAF (n, s') => mkLeaf (S.concat (s, s'))
           (* end case *))
       in
 	go r
@@ -229,7 +233,7 @@ structure Rope (* : ROPE *) = struct
       fun go r =
        (case r
 	  of CAT (d, len, r1, r2) => CAT (d, len+slen, r1, go r2)
-	   | LEAF s' => mkLeaf (S.concat (s', s))
+	   | LEAF (n, s') => mkLeaf (S.concat (s', s))
           (* end case *))
       in
         go r
@@ -252,8 +256,8 @@ structure Rope (* : ROPE *) = struct
       else if isEmpty r2 then
 	r1
       else (case (r1, r2)
-        of (LEAF s1, LEAF s2) =>
-	     if (S.length s1 + S.length s2) <= maxLeafSize
+        of (LEAF (n1, s1), LEAF (n2, s2)) =>
+	     if (n1 + n2) <= maxLeafSize
 	     then mkLeaf (S.concat (s1, s2))
 	     else let
 	       val df  = maxLeafSize - S.length s1
@@ -262,23 +266,23 @@ structure Rope (* : ROPE *) = struct
 	       in
                  CAT (1, S.length s1 + S.length s2, mkLeaf s1', mkLeaf s2')
                end
-	 | (CAT (d, len1, r1, r2), LEAF s2) => let
+	 | (CAT (d, len1, r1, r2), LEAF (len2, s2)) => let
 	     val c = CAT (d, len1, r1, r2)
 	     val rmost = rightmostLeaf r2
-	     val n = length rmost + S.length s2
+	     val n = length rmost + len2
 	     in
 	       if n <= maxLeafSize 
-	       then CAT (d, len1 + S.length s2, r1, attachRight (r2, s2))
-	       else CAT (d+1, len1 + S.length s2, c, mkLeaf s2)
+	       then CAT (d, len1 + len2, r1, attachRight (r2, s2))
+	       else CAT (d+1, len1 + len2, c, mkLeaf s2)
 	     end
-	 | (LEAF s1, CAT (d, len2, r1, r2)) => let
+	 | (LEAF (len1, s1), CAT (d, len2, r1, r2)) => let
 	     val c = CAT (d, len2, r1, r2)
 	     val lmost = leftmostLeaf r1
-	     val n = S.length s1 + length lmost
+	     val n = len1 + length lmost
 	     in
 	       if n <= maxLeafSize
-	       then CAT (d, S.length s1 + len2, attachLeft (s1, r1), r2)
-	       else CAT (d+1, S.length s1 + len2, mkLeaf s1, c)
+	       then CAT (d, len1 + len2, attachLeft (s1, r1), r2)
+	       else CAT (d+1, len1 + len2, mkLeaf s1, c)
 	     end 
 	 | _ => let
              val newDepth = 1 + Int.max (depth r1, depth r2)
@@ -363,7 +367,7 @@ structure Rope (* : ROPE *) = struct
   (* return the fringe of the data at the leaves of a rope as a sequence *)
     fun toSeq r = 
      (case r
-        of LEAF s => s
+        of LEAF (_, s) => s
 	 | CAT(_, _, r1, r2) => S.concat (toSeq r1, toSeq r2)
         (* end case *))
 
@@ -515,7 +519,7 @@ structure Rope (* : ROPE *) = struct
 
   (* app : ('a -> unit) * 'a rope -> unit *)
     fun app (f, r) = (case r
-      of LEAF s => S.app (f, s)
+      of LEAF (_, s) => S.app (f, s)
        | CAT (_, _, rL, rR) => (app (f, rL); app (f, rR))
       (* end case *))
 
@@ -548,7 +552,7 @@ structure Rope (* : ROPE *) = struct
   (* pre: inBounds(r, i) *)
     fun splitAtWithoutBalancing (r, i) = 
      (case r
-        of LEAF s => let
+        of LEAF (_, s) => let
 	     val (s1, s2) = S.splitAt(s, i)
 	     in
 	       (mkLeaf s1, mkLeaf s2)
@@ -593,8 +597,8 @@ structure Rope (* : ROPE *) = struct
   (* If a rope is a CAT, splits it at the root. *)
   (* If a rope is a LEAF, splits it into two leaves of roughly equal size. *)
     fun naturalSplit r = (case r
-	   of LEAF s => let
-		val len' = S.length s div 2
+	   of LEAF (n, s) => let
+		val len' = n div 2
 		val (s1, s2) = S.cut (s, len')
 		in
 		  (mkLeaf s1, mkLeaf s2)
@@ -609,8 +613,8 @@ structure Rope (* : ROPE *) = struct
   (* failure when upper bound is off the rope (i.e., more than len rope + 1) *)
     fun partialSeq (r, lo, hi) =
      (case r
-        of LEAF s => 
-            (if lo >= S.length s orelse hi > S.length s then
+        of LEAF (n, s) => 
+            (if lo >= n orelse hi > n then
                fail "partialSeq" "subscripts"
 	     else
 	       S.take (S.drop (s, lo), hi-lo))
@@ -640,7 +644,7 @@ structure Rope (* : ROPE *) = struct
   (* post : the output is balanced *)
     fun revP r = 
      (case r
-        of LEAF s => mkLeaf (S.rev s)
+        of LEAF (n, s) => mkLeaf (S.rev s)
 	 | CAT (dpt, len, r1, r2) => let
 	     val (r1, r2) = (| revP r1, revP r2 |)
 	     in
@@ -653,34 +657,19 @@ structure Rope (* : ROPE *) = struct
     fun mapP (f, rope) = let
       fun m r =
        (case r
-          of LEAF s => mkLeaf (S.map (f, s))
+          of LEAF (n, s) => mkLeaf (S.map (f, s))
 	   | CAT (dpt, len, r1, r2) => CAT (| dpt, len, m r1, m r2 |)
           (* end case *))
       in
         m rope
       end          
     
-  (* mapP_int : ('a -> int) * 'a rope -> IntRope.int_rope *)
-  (* post : the output has the same shape as the input *)
-    fun mapP_int (f, rope) = let
-      fun m r = (case r
-        of LEAF s => let 
-             val s' = S.map (f, s)
-             in
-               IntRope.leafFromSeq s'
-             end
-	 | CAT (dpt, len, r1, r2) => IntRope.CAT (| dpt, len, m r1, m r2 |)
-        (* end case *))
-      in
-	m rope
-      end
-
   (* reduceP : ('a * 'a -> 'a) * 'a * 'a rope -> 'a *)
   (* Reduce with an associative operator. *)
   (* e.g., sumP r == reduceP (+, 0, r) *)
     fun reduceP (assocOp, unit, rope) = let
       fun red r = (case r
-        of LEAF s => let
+        of LEAF (n, s) => let
              val _ = () (* Print.print "at LEAF " *)
              in
 	       S.reduce (assocOp, unit, s)
@@ -701,7 +690,7 @@ structure Rope (* : ROPE *) = struct
   (*           Then balance the whole thing if needed. *)
     fun filterP (pred, rope) = let
 	  fun f r = (case r
-		 of LEAF s => let
+		 of LEAF (n, s) => let
 		      val s' = S.filter (pred, s)
 		      in
 			mkLeaf s'

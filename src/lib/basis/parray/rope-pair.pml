@@ -50,7 +50,7 @@ structure RopePair (* : ROPE_PAIR *) = struct
     fun fastMapP (f, r1, r2) = let
       fun lp ropes = 
        (case ropes
-	  of (R.LEAF s1, R.LEAF s2) => 
+	  of (R.LEAF (n1, s1), R.LEAF (n2, s2)) => 
                R.mkLeaf (S.map2Eq (f, s1, s2))
 	   | (R.CAT (d1, len1, r1L, r1R), R.CAT (d2, len2, r2L, r2R)) =>
                R.CAT (| d1, len1, lp (r1L, r2L), lp (r1R, r2R) |)
@@ -67,8 +67,8 @@ structure RopePair (* : ROPE_PAIR *) = struct
     fun mapP' (f, ropeS, ropeL) = let
       fun go (n, r) = 
        (case r
-          of R.LEAF sS => let
-               val (lo, hi) = (n, n+S.length sS)
+          of R.LEAF (len, sS) => let
+               val (lo, hi) = (n, len)
 	       val sL = R.partialSeq (ropeL, lo, hi)
 	       val s = S.map2 (f, sS, sL)
                in
@@ -110,7 +110,7 @@ structure RopePair (* : ROPE_PAIR *) = struct
   (* post: output ropes have exactly the shape as the input rope. *)
     fun unzipP rope = 
      (case rope
-        of R.LEAF l => let
+        of R.LEAF (n, l) => let
 	     val (l1, l2) = S.unzip l
 	     in
 	       (R.mkLeaf l1, 

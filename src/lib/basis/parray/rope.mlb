@@ -25,12 +25,12 @@
   double-array-seq.pml
   double-array-seq-pair.pml
 
-  int-rope.pml
   rope.pml 
+  int-rope.pml
   double-rope.pml
-  rope2.pml
+  float-rope.pml
   rope-pair.pml
   int-rope-pair.pml
-  float-rope.pml
+  rope-util.pml
 
 (*  test-rope.pml *)
