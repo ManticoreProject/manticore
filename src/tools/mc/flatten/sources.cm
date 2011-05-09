@@ -12,7 +12,6 @@ Library
   structure FlattenTerms
   structure FlattenOpGen
   structure FlattenOpFusion
-  structure BasisItems
   structure RealizeTerms
   structure RealizeTypes
   structure PArrayOpGen
@@ -42,7 +41,6 @@ is
   flatten-terms.sml
   flatten-op-gen.sml  
   flatten-op-fusion.sml
-  basis-items.sml
   realize-terms.sml
   realize-types.sml
   parray-op-gen.sml

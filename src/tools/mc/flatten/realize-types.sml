@@ -15,6 +15,10 @@ end *) = struct
   structure T = Types 
   structure B = Basis
 
+  structure D = DelayedBasis
+  structure DC = D.TyCon
+  structure DTy = D.Ty
+
   structure AU = ASTUtil
   structure TU = TypeUtil
 
@@ -77,10 +81,12 @@ end *) = struct
       | ty (T.FunTy (t1, t2)) = T.FunTy (ty t1, ty t2)
       | ty (T.TupleTy ts) = T.TupleTy (List.map ty ts)
       | ty (T.FArrayTy (t, n)) = (* note: we lose the shape tree information here *)
-          if TU.same (B.intTy, t) then (* andalso isLf n then *)
-            T.ConTy ([], BasisItems.intFArrayTyc ())
+          if TU.same (B.intTy, t) then
+            DTy.int_farray ()
+	  else if TU.same (B.doubleTy, t) then
+            DTy.dbl_farray ()
 	  else
-	    T.ConTy ([ty t], BasisItems.farrayTyc ())            
+            DTy.farray (ty t)
   and tyc c = (case findTyc c
     of SOME c' => c'
      | NONE => newTyc c

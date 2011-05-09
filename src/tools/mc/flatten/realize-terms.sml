@@ -52,18 +52,22 @@ end = struct
 	   end
     end  
 
-  fun mkIntFArray (es : A.exp list) : A.exp = let
-    val ns = AU.mkList (es, B.intTy)
-    val fromList = DV.ifFromList ()
+  fun monoFArray (t : T.ty, fromList : unit -> A.var) = fn es => let
+(* FIXME doesn't run in parallel! *)
+(* fix -- see translate-pcomp for model *)
+    val ns = AU.mkList (es, t)
     in
-      AU.mkApplyExp (A.VarExp (fromList, []), [ns])		 
+      AU.mkApplyExp (A.VarExp (fromList (), []), [ns])
     end
+
+  val mkIntFArray = monoFArray (B.intTy, DV.ifFromList)
+  val mkDblFArray = monoFArray (B.doubleTy, DV.dfFromList)
 
   fun mkFArray (es, n, t) =
     if FU.isInt t andalso FU.isLf n then
-(* FIXME doesn't run in parallel! *)
-(* easy fix -- see translate-pcomp for model *)
       mkIntFArray es
+    else if FU.isDouble t andalso FU.isLf n then
+      mkDblFArray es
     else let
       val shape = mkTree n 
       val data = ParrLitToRope.mkRope (es, t)

@@ -270,8 +270,8 @@ end = struct
 (* If we can prove it we can remove the iteration. - ams *)
     fun iterateTillFixed i e = let
 (* (\* +debug *\) *)
-      val _ = printEnv env
-      val _ = println ("InlineRanges: iteration " ^ Int.toString i)
+(*       val _ = printEnv env *)
+(*       val _ = println ("InlineRanges: iteration " ^ Int.toString i) *)
 (* (\* -debug *\) *)
       val _ = resetChanged ()
       val e' = exp e

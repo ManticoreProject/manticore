@@ -96,7 +96,7 @@ end = struct
 	  end
       | ex (A.PTupleExp es) = A.PTupleExp (List.map ex es)
       | ex (A.PArrayExp ([], t)) = let
-          val lf = A.Lf (AU.mkInt 0, AU.mkInt 1)
+          val lf = A.Lf (AU.mkInt 0, AU.mkInt 0)
           in
 	    A.FArrayExp ([], lf, ty t)
 	  end

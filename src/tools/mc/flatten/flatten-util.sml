@@ -20,8 +20,9 @@ structure FlattenUtil = struct
   structure DV = D.Var
   structure DTy = D.Ty
 
-(* currying operator *)
+(* currying operators *)
   fun `f x y = f (x, y)
+  fun ``f thunk y = f (thunk (), y)
 
 (* isGroundTy : T.ty -> bool *)
   local
@@ -32,14 +33,19 @@ structure FlattenUtil = struct
   end (* local *)
 
 (* isFArrayTyc : T.tycon -> bool *)
-(*  val isFArrayTyc : T.tycon -> bool = `TyCon.same (DC.farray ()) *)
-  fun isFArrayTyc c = TyCon.same (c, DC.farray ())
+  val isFArrayTyc = ``TyCon.same DC.farray
 
 (* isInt : T.ty -> bool *)
   val isInt = `TU.same B.intTy
 
 (* isInt_farray : T.ty -> bool *)
-  fun isInt_farray t = TU.same (t, DTy.int_farray ())
+  val isInt_farray = ``TU.same DTy.int_farray
+
+(* isDouble : T.ty -> bool *)
+  val isDouble = `TU.same B.doubleTy
+
+(* isDbl_farray : T.ty -> bool *)
+  val isDbl_farray = ``TU.same DTy.dbl_farray
 
 (* isLf : A.ntree -> bool *)
   val isLf = (fn A.Lf _ => true | _ => false)

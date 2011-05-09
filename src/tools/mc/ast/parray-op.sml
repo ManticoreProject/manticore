@@ -305,13 +305,7 @@ structure PArrayOp = struct
 
 (* constructMap : ty -> exp *)
   val constructMap : T.ty -> A.exp = let
-(* FIXME: not working properly for [| [| 1 to 10 |] | r in v |] (where v = [| 1 to 10 |]) *)
-    fun mk (ft as T.FunTy (domTy, rngTy)) = 
-          if isIntTy domTy andalso isIntParrayTy rngTy andalso false (* !!!! *) then let
-            in
-              raise Fail "todo: int -> int parray"
-            end
-	  else let
+    fun mk (ft as T.FunTy (domTy, rngTy)) = let
             val pr = fn ss => (print (String.concat ss); print "\n")
             val _ = pr ["called constructMap on ", TU.toString ft]
             val fl = FlattenOp.construct rngTy
@@ -455,7 +449,7 @@ structure PArrayOp = struct
             else if not (supportedTy eltTy) then
               raise Fail ("constructApp: unsupported type " ^ TU.toString t)
 	    else (* generate custom app function *) let
-(* val _ = print ("GGGGG generating custom app for elt ty " ^ TU.toString eltTy ^ "\n") *)
+             (* val _ = print ("***** generating custom app for elt ty " ^ TU.toString eltTy ^ "\n") *)
 	      fun v x = A.VarExp (x, [])
 	      val eltTy' = lift eltTy
               val lenExp = constructLength eltTy'

@@ -60,6 +60,7 @@ structure DelayedBasis = struct
     val farray     = memoTyc ["FArray", "f_array"]
     val shape_tree = memoTyc ["ShapeTree", "shape_tree"]
     val int_farray = memoTyc ["IntFArray", "int_farray"]
+    val dbl_farray = memoTyc ["DoubleFArray", "double_farray"]
   end
 
 (* dcons *)
@@ -72,6 +73,7 @@ structure DelayedBasis = struct
     val ropeCAT   = memoDCon ["Rope", "CAT"]
     val farray    = memoDCon ["FArray", "FArray"]
     val intFArray = memoDCon ["IntFArray", "FArray"]
+    val dblFArray = memoDCon ["DoubleFArray", "FArray"]
     val lf        = memoDCon ["ShapeTree", "Lf"]
     val nd        = memoDCon ["ShapeTree", "Nd"]
   end
@@ -157,15 +159,24 @@ structure DelayedBasis = struct
     val fptabFTS      = memoVar ["FArrayPair", "tabFromToStep"]
     val fpmap         = memoVar ["FArrayPair", "flatMapEq"]
 
-    val ifReduce      = memoVar ["IntFArray", "reduce"]
+    val intReduce     = memoVar ["IntFArray", "reduce"]
     val intRange      = memoVar ["IntFArray", "intRange"]
     val intLen        = memoVar ["IntFArray", "length"]
     val intTab        = memoVar ["IntFArray", "tab"]
     val intTabFTS     = memoVar ["IntFArray", "tabFromToStep"]
     val intFlatSub    = memoVar ["IntFArray", "flatSub"]
     val intNestedSub  = memoVar ["IntFArray", "nestedSub"]
+    val intMap        = memoVar ["IntFArray", "flatMap"]
     val ifFromList    = memoVar ["IntFArray", "fromList"]
-    val ifmap         = memoVar ["IntFArray", "flatMap"]
+
+    val dblLen        = memoVar ["DoubleFArray", "length"]
+    val dblNestedSub  = memoVar ["DoubleFArray", "nestedSub"]
+    val dblFlatSub    = memoVar ["DoubleFArray", "flatSub"]
+    val dblTab        = memoVar ["DoubleFArray", "tab"]
+    val dblTabFTS     = memoVar ["DoubleFArray", "tabFromToStep"]
+    val dblMap        = memoVar ["DoubleFArray", "flatMap"]
+    val dblReduce     = memoVar ["DoubleFArray", "reduce"]
+    val dfFromList    = memoVar ["DoubleFArray", "fromList"]
 
     val ifpTab        = memoVar ["IntFArrayPair", "tabulate"]
     val ifpTabFTS     = memoVar ["IntFArrayPair", "tabFromToStep"]
@@ -183,6 +194,7 @@ structure DelayedBasis = struct
       fun con1 (t, tyc) = T.ConTy ([t], tyc ())
     in
     fun int_farray () = con0 TyCon.int_farray
+    fun dbl_farray () = con0 TyCon.dbl_farray
     fun farray t = con1 (t, TyCon.farray)
     fun option t = con1 (t, TyCon.option)
     fun ref t = con1 (t, TyCon.refTyc)

@@ -27,6 +27,8 @@ structure PArrayOpGen = struct
 
   fun println s = (print s; print "\n")
 
+  fun both pred (x, y) = pred x andalso pred y
+
   fun mapi f xs = let
     fun m (_, [], acc) = List.rev acc
       | m (i, x::xs, acc) = m (i+1, xs, f(x,i)::acc)
@@ -50,6 +52,9 @@ structure PArrayOpGen = struct
          end
     (* end case *))
 
+  fun monoVarExp v = A.VarExp (v, [])
+  fun monoVarExp' thunk = A.VarExp (thunk (), [])
+
   fun genLength (ty : T.ty) : A.exp = let
     val ty' = TU.prune ty
     in case ty'
@@ -60,26 +65,29 @@ structure PArrayOpGen = struct
            in
              c
            end 
-       | T.ConTy ([], c) =>
-           if TyCon.same (c, DC.int_farray ()) then let
-             val _ = () (* println ("inserting intLength") *)
-             in
-               A.VarExp (DV.intLen (), [])
-	     end
-           else
-             raise Fail ("genLength: unexpected type " ^ TU.toString ty')
-       | T.ConTy (ts, c) => 
-           if FU.isFArrayTyc c then
-             A.VarExp (DV.flen (), ts)
-	   else
-	     raise Fail ("gen: unexpected type (not farray) " ^ TU.toString ty')
+       | T.ConTy (ts, c) => (case ts
+           of [] (* monomorphic *) =>
+                if TyCon.same (c, DC.int_farray ()) then
+                  monoVarExp' DV.intLen
+		else if TyCon.same (c, DC.dbl_farray ()) then
+                  monoVarExp' DV.dblLen
+		else
+                  raise Fail ("genLength: unexpected type " ^ TU.toString ty')
+	    | _ (* t farray *) =>
+                if FU.isFArrayTyc c then
+                  A.VarExp (DV.flen (), ts)
+		else
+	          raise Fail ("gen: unexpected type (not farray) " ^ TU.toString ty')
+           (* end case *))
        | _ => raise Fail ("gen: unexpected type " ^ TU.toString ty')
     end
 
   fun genSub s = let
     fun g (A.PSub_Nested t) = 
             if FU.isInt_farray t then
-              A.VarExp (DV.intNestedSub (), [])
+              monoVarExp' DV.intNestedSub
+	    else if FU.isDbl_farray t then
+              monoVarExp' DV.dblNestedSub
 	    else (case t 
               of T.ConTy ([t'], c) =>
                    if FU.isFArrayTyc c then 
@@ -97,11 +105,10 @@ structure PArrayOpGen = struct
 	       else 
 		 raise Fail ("unexpected ConTy " ^ TU.toString t)
 	   | T.ConTy ([], c) =>
-               if TyCon.same (c, DC.int_farray ()) then let
-                 val _ = () (* println ("inserting intFlatSub") *)
-                 in
-		   A.VarExp (DV.intFlatSub (), [])
-		 end
+               if FU.isInt_farray t then
+	         monoVarExp' DV.intFlatSub
+	       else if FU.isDbl_farray t then
+                 monoVarExp' DV.dblFlatSub
 	       else
 	         raise Fail ("unexpected ty " ^ TU.toString t)
 	   | _ => raise Fail ("unexpected ty " ^ TU.toString t)
@@ -119,15 +126,15 @@ structure PArrayOpGen = struct
  	  fun mkX (t, i) = Var.new ("x_" ^ Int.toString i, t)
 	  val xs = mapi mkX fs
 	  fun mkApp (oper, x) = let
-            val arg = A.TupleExp [A.VarExp (x, []), A.VarExp (i, [])]
+            val arg = A.TupleExp [monoVarExp x, monoVarExp i]
             in
 	      AU.mkApplyExp (oper, [arg])
 	    end
 	  val apps = ListPair.map mkApp (opers, xs)
 	  val bind1 = A.ValBind (A.TuplePat [A.VarPat tup, A.VarPat i],
-				 A.VarExp (arg, []))
+				 monoVarExp arg)
 	  val bind2 = A.ValBind (A.TuplePat (List.map A.VarPat xs),
-				 A.VarExp (tup, []))
+				 monoVarExp tup)
 	  val body = AU.mkLetExp ([bind1, bind2], A.TupleExp apps)
           in
 	    A.FunExp (arg, body, TypeOf.exp body)
@@ -137,11 +144,10 @@ structure PArrayOpGen = struct
     end
 
   fun genTab (t : T.ty) : A.exp =
-    if FU.isInt t then let
-      val _ = () (* println ("inserting intTab") *)
-      in      
-        A.VarExp (DV.intTab (), [])
-      end
+    if FU.isInt t then 
+      monoVarExp' DV.intTab
+    else if FU.isDouble t then
+      monoVarExp' DV.dblTab
     else (case t
       of T.TupleTy [t1, t2] => 
            if FU.isInt t1 andalso FU.isInt t2 then
@@ -153,7 +159,9 @@ structure PArrayOpGen = struct
 
   fun genTabFTS (t : T.ty) : A.exp = 
     if FU.isInt t then
-      A.VarExp (DV.intTabFTS (), [])
+      monoVarExp' DV.intTabFTS
+    else if FU.isDouble t then
+      monoVarExp' DV.dblTabFTS
     else
       A.VarExp (DV.ftabFTS (), [t])
 
@@ -171,8 +179,10 @@ structure PArrayOpGen = struct
 (* +debug *)
 (print ("genMap called with " ^ TU.toString t ^ "\n");
 (* -debug *)
-        if FU.isInt alpha andalso FU.isInt beta then
-          A.VarExp (DV.ifmap (), [])
+        if both FU.isInt (alpha, beta) then
+          monoVarExp' DV.intMap
+	else if both FU.isDouble (alpha, beta) then
+          monoVarExp' DV.dblMap
 	else if FU.isInt alpha then let
           val e = A.VarExp (DV.mapIFPoly (), [beta])
 (* +debug *)
@@ -186,9 +196,9 @@ val _ = print ("-- its type is " ^ TU.toString (TypeOf.exp e) ^ "\n")
           A.VarExp (DV.fmap (), [alpha, beta])
 	else (case alpha
           of tup as T.TupleTy [t1, t2] =>
-               if FU.isGroundTy t1 andalso FU.isGroundTy t2 then
+               if both FU.isGroundTy (t1, t2) then
 	         if List.all FU.isInt [t1, t2, beta] then
-                   A.VarExp (DV.ipMapEq_int (), [])
+                   monoVarExp' DV.ipMapEq_int
 		 else 
 		   A.VarExp (DV.fpmap (), [alpha, beta])
 	       else raise Fail ("genMap(loc1) todo: " ^ TU.toString tup)
@@ -198,14 +208,16 @@ val _ = print ("-- its type is " ^ TU.toString (TypeOf.exp e) ^ "\n")
     | genMap t = raise Fail ("unexpected ty " ^ TU.toString t)
 
   local
-    fun isIntPair (T.TupleTy [t1, t2]) = FU.isInt t1 andalso FU.isInt t2
+    fun isIntPair (T.TupleTy [t1, t2]) = both FU.isInt (t1, t2)
       | isIntPair _ = false
   in
     fun genReduce (t : T.ty) : A.exp =
       if FU.isInt t then
-        A.VarExp (DV.ifReduce (), [])
+        monoVarExp' DV.intReduce
+      else if FU.isDouble t then
+        monoVarExp' DV.dblReduce
       else if isIntPair t then
-	A.VarExp (DV.ipReduce (), [])
+	monoVarExp' DV.ipReduce
       else if FU.isGroundTy t then
         A.VarExp (DV.greduce (), [t])
       else 
@@ -225,7 +237,7 @@ val _ = print ("-- its type is " ^ TU.toString (TypeOf.exp e) ^ "\n")
       raise Fail ("todo: app for type " ^ TU.toString t)
 
   fun gen (pop : A.parray_op) : A.exp = let
-(*    val _ = println ("*** generating " ^ PArrayOp.toString pop)  *)
+(*  val _ = println ("*** generating " ^ PArrayOp.toString pop)  *)
     val g = (case pop
       of A.PA_Length ty => genLength ty
        | A.PA_Sub s => genSub s	
@@ -238,9 +250,7 @@ val _ = print ("-- its type is " ^ TU.toString (TypeOf.exp e) ^ "\n")
        | A.PA_App t => genApp t
       (* end case *))
     in
-(*      PrintAST.printExp g;
-      println "";
-*)
+(*    PrintAST.printExp g; *)
       g
     end
 
