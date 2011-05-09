@@ -12,6 +12,8 @@ structure FlattenTerms : sig
   val flatten : AST.exp -> AST.exp * TyCon.Set.set
 
 end = struct
+  structure DTy = DelayedBasis.Ty
+  structure DD = DelayedBasis.DataCon
 
   structure A = AST
   structure T = Types 
@@ -163,14 +165,6 @@ end = struct
              of NONE => A.VarExp (x, List.map ty ts)
 	      | SOME mkOp => let
                   val t = (ty o TU.domainType o TypeOf.exp) ve
-(* +debug *)
-		  (* val _ = if Var.nameOf x = "tabFromToStep" then *)
-		  (* 	      print ("found tabFromToStep and it's applied to type " ^ *)
-		  (* 		     TU.toString (TU.deepPrune t)) *)
-		  (* 	  else () *)
-		  (* 	      (\* print ("found " ^ Var.nameOf x ^ " and it's applied to type " ^ *\) *)
-		  (* 	      (\* 	     TU.toString (TU.deepPrune t) ^ "\n") *\) *)
-(* -debug *)
 		  val oper = mkOp (TU.deepPrune t)
                   in
 		    oper
@@ -178,11 +172,35 @@ end = struct
              (* end case *))
 	    | NONE => let
                 val ts' = List.map ty ts
-		val _ = () (* print ("+++++ inspecting " ^ Var.toString x ^ "\n") *)
+		(* val _ = print ("+++++ inspecting " ^ Var.toString x ^ "\n") *)
                 in case FEnv.findVar (env, x)
 		  of NONE => let
                        val _ = () (* print ("found nothing\n") *)
 		       in 
+(* +DEBUG *)
+(*
+  fun paris_in_the_spring (FArray(d1,s1), FArray(d2,s2)) = 0
+  ===>
+  fun p' ((d1,s1),(d2,s2)) = 0
+  fun paris_in_the_spring (FArray x1, FArray x2) = p' (x1, x2)
+*)
+if Var.nameOf x = "PARIS_IN_THE_SPRING" then let
+  val domTy = T.TupleTy [DTy.int_farray (), DTy.dbl_farray ()]
+  val rngTy = B.intTy
+  val d1 = Var.new ("data1", DTy.int_rope ())
+  val s1 = Var.new ("shape1", DTy.shape_tree ())
+  val d2 = Var.new ("data2", DTy.dbl_rope ())
+  val s2 = Var.new ("shape2", DTy.shape_tree ())
+  val p1 = A.ConPat (DD.intFArray (), [], A.TuplePat [A.VarPat d1, A.VarPat s1])
+  val p2 = A.ConPat (DD.dblFArray (), [], A.TuplePat [A.VarPat d2, A.VarPat s2])
+  val p = A.TuplePat [p1, p2]
+  val ff = Var.new ("paris_in_the_spring", T.FunTy (domTy, rngTy))
+  val fb as A.FB (f, x, b) = AU.mkFunWithPat (ff, p, AU.mkInt 0)
+  in
+    AU.mkLetExp ([A.FunBind [fb]], A.VarExp (x, ts'))
+  end
+else
+(* -DEBUG *)
 			 A.VarExp (x, ts')
 		       end
 		   | SOME y => let

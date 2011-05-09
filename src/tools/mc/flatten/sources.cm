@@ -16,6 +16,7 @@ Library
   structure RealizeTypes
   structure PArrayOpGen
   structure FlattenUtil
+  structure SynthMap
   
   (*
   structure TestFlattenTypes
@@ -45,6 +46,7 @@ is
   realize-types.sml
   parray-op-gen.sml
   flatten-util.sml	
+  synth-map.sml
   
   (*
   test-flatten-types.sml

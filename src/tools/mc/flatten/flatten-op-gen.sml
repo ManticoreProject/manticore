@@ -140,6 +140,8 @@ end *) = struct
         of T.ConTy ([t'], c) =>
              if FU.isInt t' andalso FU.isFArrayTyc c then
                DTy.int_farray ()
+	     else if FU.isDouble t' andalso FU.isFArrayTyc c then
+               DTy.dbl_farray ()
 	     else t
 	 | _ => t
         (* end case *))
@@ -147,6 +149,8 @@ end *) = struct
       fun mkFArray (t : T.ty) : T.ty = 
         if FU.isInt t then
 	  DTy.int_farray ()
+	else if FU.isDouble t then
+          DTy.dbl_farray ()
 	else
 	  DTy.farray t
 
@@ -181,21 +185,20 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
      * where data and shape are the vars bound in the pattern match *)
       fun mkMapHash (hash as A.FB (h, _, _), i) = let 
         val t = List.nth (ts, i)
-	val mapExp = if TU.same (t, B.intTy) 
-		     then let
-	               val m = BasisEnv.getVarFromBasis ["Rope", "mapP_int"]
-                       in
-		         A.VarExp (m, [T.TupleTy ts])
-		       end
-		     else 
-		       A.VarExp (DV.ropeMapP (), [T.TupleTy ts, t])
-	val dcon = if TU.same (t, B.intTy)
-		   then let
-                     val c = BasisEnv.getDConFromBasis ["IntFArray", "FArray"]
-                     in
-	               A.DConst (c, [])
-		     end
-		   else A.DConst (DD.farray (), [t])
+	val mapExp = 
+          if TU.same (t, B.intTy) then
+            A.VarExp (DV.ropeMapP_int (), [T.TupleTy ts])
+	  else if TU.same (t, B.doubleTy) then 
+            A.VarExp (DV.ropeMapP_dbl (), [T.TupleTy ts])
+	  else 
+	    A.VarExp (DV.ropeMapP (), [T.TupleTy ts, t])
+	val dcon = 
+          if TU.same (t, B.intTy) then 
+            A.DConst (DD.intFArray (), [])
+	  else if TU.same (t, B.doubleTy) then
+            A.DConst (DD.dblFArray (), [])
+	  else
+            A.DConst (DD.farray (), [t])
         val m = AU.mkApplyExp (mapExp, [A.VarExp (h, []), A.VarExp (data, [])])
         in
 	  AU.mkApplyExp (A.ConstExp dcon, [m, A.VarExp (shape, [])])

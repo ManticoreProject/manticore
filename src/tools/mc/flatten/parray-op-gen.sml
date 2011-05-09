@@ -20,10 +20,13 @@ structure PArrayOpGen = struct
   structure DC = D.TyCon
   structure DD = D.DataCon
   structure DV = D.Var
+  structure DTy = D.Ty
 
   structure AU = ASTUtil
   structure TU = TypeUtil
   structure FU = FlattenUtil
+
+  structure M = SynthMap
 
   fun println s = (print s; print "\n")
 
@@ -174,24 +177,14 @@ structure PArrayOpGen = struct
            A.VarExp (DV.fptabFTS (), ts)
      | _ => raise Fail ("todo: " ^ TU.toString (T.TupleTy ts))
     (* end case *))
-          
+
   fun genMap (t as T.FunTy (alpha, beta)) = 
-(* +debug *)
-(print ("genMap called with " ^ TU.toString t ^ "\n");
-(* -debug *)
         if both FU.isInt (alpha, beta) then
           monoVarExp' DV.intMap
 	else if both FU.isDouble (alpha, beta) then
           monoVarExp' DV.dblMap
-	else if FU.isInt alpha then let
-          val e = A.VarExp (DV.mapIFPoly (), [beta])
-(* +debug *)
-val _ = print ("genMap made mapIFPoly at type " ^ TU.toString t ^ "\n")
-val _ = print ("-- its type is " ^ TU.toString (TypeOf.exp e) ^ "\n")
-(* -debug *)
-          in
-            e
-          end
+	else if FU.isInt alpha then
+          A.VarExp (DV.mapIFPoly (), [beta])
         else if FU.isGroundTy alpha then
           A.VarExp (DV.fmap (), [alpha, beta])
 	else (case alpha
@@ -199,12 +192,17 @@ val _ = print ("-- its type is " ^ TU.toString (TypeOf.exp e) ^ "\n")
                if both FU.isGroundTy (t1, t2) then
 	         if List.all FU.isInt [t1, t2, beta] then
                    monoVarExp' DV.ipMapEq_int
-		 else 
-		   A.VarExp (DV.fpmap (), [alpha, beta])
+		 else let
+                   val {seqMap, ropeMap, farrayMap} = SynthMap.synthFArrayMap (t1, t2, beta)
+		   val A.FB (fmap, _, _) = farrayMap
+		   val binds = List.map (fn lam => A.FunBind [lam]) [seqMap, ropeMap, farrayMap]
+                   in
+                     AU.mkLetExp (binds, monoVarExp fmap)
+                   end
+		 (* else A.VarExp (DV.fpmap (), [alpha, beta]) *)
 	       else raise Fail ("genMap(loc1) todo: " ^ TU.toString tup)
 	   | _ => raise Fail ("genMap(loc2) todo: " ^ TU.toString t)
           (* end case *))
-)
     | genMap t = raise Fail ("unexpected ty " ^ TU.toString t)
 
   local
