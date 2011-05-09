@@ -56,11 +56,16 @@ structure DelayedBasis = struct
     val bitvec     = memoTyc ["BitVec", "bitvec"]
     val future     = memoTyc ["MultilispFuture", "future"]
     val rope       = memoTyc ["Rope", "rope"]
-    val list_seq   = memoTyc ["ListSeq", "seq"]
+    val int_rope   = memoTyc ["IntRope", "int_rope"]
+    val dbl_rope   = memoTyc ["DoubleRope", "double_rope"]
     val farray     = memoTyc ["FArray", "f_array"]
     val shape_tree = memoTyc ["ShapeTree", "shape_tree"]
     val int_farray = memoTyc ["IntFArray", "int_farray"]
     val dbl_farray = memoTyc ["DoubleFArray", "double_farray"]
+    val list_seq   = memoTyc ["ListSeq", "seq"]
+    val arr_seq    = memoTyc ["ArraySeq", "seq"]
+    val int_seq    = memoTyc ["IntArraySeq", "seq"]
+    val dbl_seq    = memoTyc ["DoubleArraySeq", "seq"]
   end
 
 (* dcons *)
@@ -71,6 +76,10 @@ structure DelayedBasis = struct
     val resultEXN = memoDCon ["Result", "EXN"]
     val ropeLEAF  = memoDCon ["Rope", "LEAF"]
     val ropeCAT   = memoDCon ["Rope", "CAT"]
+    val intLEAF   = memoDCon ["IntRope", "LEAF"]
+    val intCAT    = memoDCon ["IntRope", "CAT"]
+    val dblLEAF   = memoDCon ["DoubleRope", "LEAF"]
+    val dblCAT    = memoDCon ["DoubleRope", "CAT"]
     val farray    = memoDCon ["FArray", "FArray"]
     val intFArray = memoDCon ["IntFArray", "FArray"]
     val dblFArray = memoDCon ["DoubleFArray", "FArray"]
@@ -134,11 +143,33 @@ structure DelayedBasis = struct
     val ropeRange     = memoVar ["Rope", "rangeP"]
     val ropeRangeNS   = memoVar ["Rope", "rangePNoStep"]
     val ropeMapP      = memoVar ["Rope", "mapP"]
-
+  
     val ropePairMapP  = memoVar ["RopePair", "mapP"]
+
+    val ropeMapP_int  = memoVar ["RopeUtil", "mapP_int"]
+    val ropeMapP_dbl  = memoVar ["RopeUtil", "mapP_double"]
+
+    val irEmpty       = memoVar ["IntRope", "empty"]
+
+    val drEmpty       = memoVar ["DoubleRope", "empty"]
 
     val lseqToList    = memoVar ["ListSeq", "toList"]
     val lseqFromList  = memoVar ["ListSeq", "fromList"]
+
+    val arrSeqSub     = memoVar ["ArraySeq", "sub"]
+    val arrSeqTab     = memoVar ["ArraySeq", "tab"]
+    val arrSeqUpd     = memoVar ["ArraySeq", "update"]
+    val arrSeqEmpty   = memoVar ["ArraySeq", "empty"]
+
+    val iseqSub       = memoVar ["IntArraySeq", "sub"]
+    val iseqTab       = memoVar ["IntArraySeq", "tabulate_int"]
+    val iseqUpd       = memoVar ["IntArraySeq", "update"]
+    val iseqEmpty     = memoVar ["IntArraySeq", "empty"]
+
+    val dseqSub       = memoVar ["DoubleArraySeq", "sub"]
+    val dseqTab       = memoVar ["DoubleArraySeq", "tabulate_double"]
+    val dseqUpd       = memoVar ["DoubleArraySeq", "update"]
+    val dseqEmpty     = memoVar ["DoubleArraySeq", "empty"]
 
     val parrayMap     = memoVar ["PArray", "map"]
     val parraySub     = memoVar ["PArray", "sub"]
@@ -186,6 +217,8 @@ structure DelayedBasis = struct
     val flattenIFF    = memoVar ["FArrayUtil", "flatten_IF_F"]
     val mapIFPoly     = memoVar ["FArrayUtil", "map_IF_poly"]
 
+    val shapeSame     = memoVar ["ShapeTree", "same"]
+
   end
 
   structure Ty = struct
@@ -193,9 +226,12 @@ structure DelayedBasis = struct
       fun con0 tyc = T.ConTy ([], tyc ())
       fun con1 (t, tyc) = T.ConTy ([t], tyc ())
     in
+    fun rope t = con1 (t, TyCon.rope)
+    fun int_rope () = con0 TyCon.int_rope
+    fun dbl_rope () = con0 TyCon.dbl_rope
+    fun farray t = con1 (t, TyCon.farray)
     fun int_farray () = con0 TyCon.int_farray
     fun dbl_farray () = con0 TyCon.dbl_farray
-    fun farray t = con1 (t, TyCon.farray)
     fun option t = con1 (t, TyCon.option)
     fun ref t = con1 (t, TyCon.refTyc)
     fun result t = con1 (t, TyCon.result)
@@ -204,8 +240,10 @@ structure DelayedBasis = struct
     fun cancel () = con0 TyCon.cancel
     fun bitvec () = con0 TyCon.bitvec
     fun future t = con1 (t, TyCon.future)
-    fun rope t = con1 (t, TyCon.rope)
     fun shape_tree () = con0 TyCon.shape_tree
+    fun arr_seq t = con1 (t, TyCon.arr_seq)
+    fun int_seq () = con0 TyCon.int_seq
+    fun dbl_seq () = con0 TyCon.dbl_seq
     end (* local *)
   end
 

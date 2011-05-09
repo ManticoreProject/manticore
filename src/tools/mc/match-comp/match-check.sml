@@ -126,6 +126,7 @@ structure MatchCheck (* : sig
           (case p
 	     of AST.TuplePat _ => DataCon.nameOf c ^ tos p
 	      | _ => DataCon.nameOf c ^ "(" ^ tos p ^ ")")
+      | tos (AST.TuplePat []) = "()"
       | tos (AST.TuplePat ps) = 
           String.concat ["(", String.concatWith "," (List.map tos ps), ")"]
       | tos (AST.VarPat x) = Var.nameOf x

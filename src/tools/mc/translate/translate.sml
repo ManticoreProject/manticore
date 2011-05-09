@@ -502,7 +502,9 @@ structure Translate : sig
 			| AST.ConstPat(AST.DConst(dc, tyArgs)) => trDConst (dc, exp)
 			| AST.ConstPat(AST.LConst(lit, ty)) =>
 			    (B.P_Const(lit, trLitTy ty), trExpToExp (env, exp))
-			| _ => raise Fail "exhaustive pattern in case"
+			| _ => raise Fail ("exhaustive pattern in case (" ^ 
+					   ASTUtil.patToString pat ^ 
+					   ")")
 		      (* end case *))
 		in
 		  trRules (rules, rule'::cases)
@@ -533,7 +535,7 @@ structure Translate : sig
 		in
 		  tr (pats, env, x'::xs)
 		end
-	    | tr _ = raise Fail "expected VarPat"
+	    | tr (p::_, _, _) = raise Fail ("expected VarPat (" ^ ASTUtil.patToString p ^ ")")
 	  in
 	    tr (pats, env, [])
 	  end

@@ -14,6 +14,9 @@ structure ASTUtil : sig
   (* create a series of let expressions from a list of bindings and a body *)
     val mkLetExp : AST.binding list * AST.exp -> AST.exp
 
+  (* create a case expression *)
+    val mkCaseExp : AST.exp * AST.match list -> AST.exp 
+
   (* create a tuple pattern, with singleton tuples mapping to their element pattern *)
     val mkTuplePat : AST.pat list -> AST.pat
 
@@ -36,14 +39,21 @@ structure ASTUtil : sig
     val plusOne    : AST.exp -> AST.exp
     val plus       : AST.exp -> AST.exp -> AST.exp
 
+    val intGTE     : AST.exp * AST.exp -> AST.exp
+    val intLT      : AST.exp * AST.exp -> AST.exp
+
   (* boolean constants *)
     val trueConst  : AST.const
     val falseConst : AST.const
     val trueExp    : AST.exp
     val falseExp   : AST.exp
 
-  (* exception constants *)
+  (* bool utils *)
+    val mkNot : AST.exp -> AST.exp
+
+  (* exceptions *)
     val exnMatchExp : AST.exp
+    val mkFail : string * AST.ty -> AST.exp
 
   (* unit *)
     val unitConst : AST.const
@@ -76,6 +86,9 @@ structure ASTUtil : sig
   (* make an array out of given expressions *)
     val mkArray : AST.exp list * AST.ty -> AST.exp
 
+  (* debugging util *)
+    val patToString : AST.pat -> string
+
   end = struct
 
     structure A = AST
@@ -92,6 +105,10 @@ structure ASTUtil : sig
 
     fun mkLetExp ([], e) = e
       | mkLetExp (bind::r, e) = AST.LetExp (bind, mkLetExp (r, e))
+
+  (* pre: all matches have same type *)
+    fun mkCaseExp (e, ms as m::_) = A.CaseExp (e, ms, TypeOf.match m)
+      | mkCaseExp _ = raise Fail "must provide at least one match"
 
     fun mkFunWithParams (f, [], e) = let
 	  val param = Var.new ("param", Basis.unitTy)
@@ -138,12 +155,16 @@ structure ASTUtil : sig
     fun mkIntPat n = A.ConstPat (mkIntConst n)
     fun mkInt n = A.ConstExp (mkIntConst n)
 
-    val trueConst  = A.LConst (Literal.trueLit, Basis.boolTy)
-    val falseConst = A.LConst (Literal.falseLit, Basis.boolTy)
+    val trueConst  = A.DConst (Basis.boolTrue, [])
+    val falseConst = A.DConst (Basis.boolFalse, [])
     val trueExp    = A.ConstExp trueConst
     val falseExp   = A.ConstExp falseConst
 
-    val exnMatchExp = A.ConstExp (A.DConst (Basis.exnMatch, []))
+    fun mkNot e = 
+      A.CaseExp (e, 
+        [A.PatMatch (A.ConstPat trueConst, falseExp),
+	 A.PatMatch (A.ConstPat falseConst, trueExp)],
+        Basis.boolTy)
 
 (* FIXME: Should this be the empty tuple instead? *)
     val unitConst = A.LConst (Literal.unitLit, Basis.unitTy)
@@ -175,6 +196,15 @@ structure ASTUtil : sig
 
     fun mkVarExp (v, tys) = A.VarExp (v, tys)
 
+    val exnMatchExp = A.ConstExp (A.DConst (Basis.exnMatch, []))
+
+    fun mkFail (s, t) = let
+      val exn = mkApplyExp (A.ConstExp (A.DConst (Basis.exnFail, [])),
+			    [A.ConstExp (A.LConst (Literal.String s, Basis.stringTy))])
+      in
+        A.RaiseExp (exn, t)
+      end
+
     fun mkList ([], t) = A.ConstExp (A.DConst (B.listNil, [t]))
       | mkList (exps, t) = let
           val ::: = A.ConstExp (A.DConst (B.listCons, [t]))
@@ -201,11 +231,42 @@ structure ASTUtil : sig
       (* end case *))
 
     local
-      val mkPlus = fn args => mkApplyExp (A.VarExp (B.int_plus, []), args)
+      fun intBin binop = fn args => mkApplyExp (A.VarExp (binop, []), args) 
+      val mkPlus = intBin B.int_plus
+      val mkGTE  = intBin B.int_gte
+      val mkLT   = intBin B.int_lt
     in
       fun plusOne n = mkPlus [n, mkInt 1]
       fun plus n m = mkPlus [n, m]
+      fun intGTE (n, m) = mkGTE [n, m]
+      fun intLT (n, m) = mkLT [n, m]
     end (* local *)
+
+    val lower: string -> string = implode o List.map Char.toLower o explode    
+
+    val isBool: AST.ty -> bool = (fn t => TypeUtil.same (Basis.boolTy, t))
+    val isUnit: AST.ty -> bool = (fn t => TypeUtil.same (Basis.unitTy, t))
+
+    val patToString : AST.pat -> string = let
+      fun tos (AST.ConPat (c, ts, p)) = (case p
+	    of AST.TuplePat _ => DataCon.nameOf c ^ tos p
+	     | _ => DataCon.nameOf c ^ "(" ^ tos p ^ ")")
+	| tos (AST.TuplePat []) = "()"
+	| tos (AST.TuplePat ps) = 
+            String.concat ["(", String.concatWith "," (List.map tos ps), ")"]
+	| tos (AST.VarPat x) = Var.nameOf x
+	| tos (AST.WildPat ty) = "_" (* "(_:" ^ TypeUtil.toString ty ^ ")" *)
+	| tos (AST.ConstPat (AST.DConst (c, _))) = DataCon.nameOf c
+	| tos (p as AST.ConstPat (AST.LConst (lit, ty))) = let
+            val s = Literal.toString lit
+            in
+              if isBool ty then lower s 
+	      else if isUnit ty then "()"
+	      else s
+            end
+      in
+        tos
+      end
 
     fun copyPat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)

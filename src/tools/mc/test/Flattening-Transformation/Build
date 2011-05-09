@@ -2,7 +2,6 @@
 
 FLAGS="-Cftrx.on=true\
        -Cftrx.keep-ft=true\
-       -Ccps.flatten=false\
        -Cast.inline-ranges=true\
        -Cast.keep-inline-ranges=true"
 

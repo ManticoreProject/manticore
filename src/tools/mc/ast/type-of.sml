@@ -12,6 +12,7 @@ structure TypeOf : sig
     val pat   : AST.pat   -> Types.ty
     val const : AST.const -> Types.ty
     val ppat  : AST.ppat  -> Types.ty
+    val match : AST.match -> Types.ty
 
   end = struct
 
@@ -76,5 +77,8 @@ structure TypeOf : sig
     and ppat (AST.NDWildPat ty) = ty
       | ppat (AST.HandlePat (_, ty)) = ty
       | ppat (AST.Pat p) = pat p
+
+    fun match (AST.PatMatch (_, e)) = exp e
+      | match (AST.CondMatch (_, _, e)) = exp e
 
   end
