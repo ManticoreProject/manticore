@@ -41,8 +41,9 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 
   (* wrap transformation passes with keep controls *)
     val contract = transform {passName = "contract", pass = Contract.transform}
+    val elim = transform {passName = "elim", pass = ElimUncalled.transform}
     val eta = transform {passName = "eta-expand", pass = EtaExpand.transform}
-    val arity = transform {passName = "flatten", pass = ArityRaising.transform}
+    val arity = transform {passName = "arity-raising", pass = ArityRaising.transform}
     val copy = transform {passName = "copy-propagation", pass = CopyPropagation.transform}
     val cse = transform {passName = "cse", pass = CommonSubexpressionElimination.transform}
 
@@ -50,6 +51,9 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 	  val _ = census module
 	  val _ = CheckCPS.check ("convert", module)
 	  val module = contract module
+          val _ = cfa module
+          val module = elim module
+          val _ = CFACPS.clearInfo module 
           val _ = cfa module
           val module = copy module 
 	  val module = eta module

@@ -127,13 +127,13 @@ structure CheckCPS : sig
 		  | C.Fun(fbs, e) => let
 		      val env = List.foldl (addFB C.VK_Fun) env fbs
 		      in
-			List.app (fn fb => chkFB(env, fb)) fbs;
+			List.app (fn fb => chkFB(env, true, fb)) fbs;
 			chkExp(env, e)
 		      end
 		  | C.Cont(fb, e) => let
 		      val env = addFB C.VK_Cont (fb, env)
 		      in
-			chkFB(env, fb); 
+			chkFB(env, false, fb); 
                         chkExp(env, e)
 		      end
 		  | C.If(cond, e1, e2) => (
@@ -335,7 +335,7 @@ structure CheckCPS : sig
 			  ])
 		  | _ => error["bogus rhs for ", vl2s lhs, "\n"]
 		(* end case *))
-	  and chkFB (env, fb as C.FB{f, params, rets, body}) = let
+	  and chkFB (env, chkFun, fb as C.FB{f, params, rets, body}) = let
                 val (argTys, retTys) =
                       case CV.typeOf f
                        of CTy.T_Fun(argTys, retTys) =>
@@ -345,6 +345,10 @@ structure CheckCPS : sig
                                  ([],[]))
                       (* end case *)
                 in
+                  case (CV.kindOf f, chkFun)
+                   of (C.VK_Fun _, false) => error["got function type for continuation FB: ", CV.toString f, "\n"]
+                    | (C.VK_Cont _, true) => error["got continutation type for function  FB: ", CV.toString f, "\n"]
+                    | (_, _) => ();
 		  chkBindings (params, C.VK_Param fb);
 		  checkArgTypes(CTU.equal, concat["Fun ", v2s f, " params"], argTys, typesOf params);
 		  chkBindings (rets, C.VK_Param fb);
@@ -355,7 +359,7 @@ structure CheckCPS : sig
 		(fn (cf, env) => VSet.add(env, CFunctions.varOf cf))
 		  VSet.empty externs
 	  in
-	    chkFB (addFB C.VK_Fun (body, env), body);
+	    chkFB (addFB C.VK_Fun (body, env), true, body);
 	  (* check census counts *)
 	    ChkVC.checkCounts counts;
 	  (* check for errors *)

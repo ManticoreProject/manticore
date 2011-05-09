@@ -45,6 +45,9 @@ structure CFACPS : sig
   (* return true if the given lambda variable escapes *)
     val isEscaping : CPS.var -> bool
 
+  (* return true if the given lambda variable is never called *)
+    val isUncalled : CPS.var -> bool
+
   (* flags to control debugging *)
     val debugFlg : bool ref
     val resultsFlg : bool ref
@@ -162,6 +165,9 @@ structure CFACPS : sig
 
   (* return true if the given lambda variable escapes *)
     fun isEscaping f = (case callersOf f of Unknown => true | _ => false)
+
+  (* return true if the given lambda variable is un *)
+    fun isUncalled f = (case callersOf f of Known(s) => (VSet.numItems s = 0) | _ => false)
 
   (* test if a new approximate value is different from an old value; this
    * code assumes that values change according to the lattice order.

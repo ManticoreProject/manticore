@@ -26,7 +26,7 @@ structure ArityRaising : sig
   (***** controls ******)
     val enableArityRaising = ref true
     val argumentOnly = ref false
-    val flatteningDebug = ref false
+    val arityRaisingDebug = ref false
     val multiPass = ref true
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
@@ -35,17 +35,17 @@ structure ArityRaising : sig
             }) [
               Controls.control {
                   ctl = enableArityRaising,
-                  name = "flatten",
+                  name = "arity-raising",
                   pri = [0, 1],
                   obscurity = 0,
-                  help = "enable arity raising (argument flattening)"
+                  help = "enable arity raising"
                 },
               Controls.control {
-                  ctl = flatteningDebug,
-                  name = "flatten-debug",
+                  ctl = arityRaisingDebug,
+                  name = "arity-raising-debug",
                   pri = [0, 1],
                   obscurity = 0,
-                  help = "debug arity raising (argument flattening)"
+                  help = "debug arity raising"
                   },
               Controls.control {
                   ctl = argumentOnly,
@@ -362,7 +362,7 @@ structure ArityRaising : sig
    *)
     fun markCandidate f = let
 	  fun mark () =
-		if (not(CFA.isEscaping f)) 
+		if (not(CFA.isEscaping f))
                    andalso ((CV.appCntOf f > 0)
 		            orelse (case CFA.equivalentFuns f of [] => false | _ => true))
 		then (case CV.typeOf f
@@ -678,7 +678,7 @@ structure ArityRaising : sig
     val signaturesChanged = ref false
     fun computeValidSignatures (candidateSet) = let
         val candidateList = VSet.listItems candidateSet
-        val _ = if !flatteningDebug
+        val _ = if !arityRaisingDebug
                 then print (concat["Merging signatures for: ",
                                    concat(List.foldr (fn (a, rr) => (CV.toString a)::" "::rr)
                                                      [] candidateList),
@@ -701,7 +701,7 @@ structure ArityRaising : sig
             then let
                     val {vmap, pmap, params, rets, sign, newParams, newRets} = getInfo candidate
                 in
-                    if !flatteningDebug
+                    if !arityRaisingDebug
                     then print (concat[CV.toString candidate, " ORIG: ",
                                        sigToString sign, " NEW: ",
                                        sigToString sharedSig, "\n"])
@@ -787,7 +787,7 @@ structure ArityRaising : sig
     in
     fun isShared f = getFn f
     fun setShared f = (
-        if !flatteningDebug andalso not(isShared f)
+        if !arityRaisingDebug andalso not(isShared f)
         then print (concat[CV.toString f, " is marked with shared call sites.\n"])
         else ();
         setFn (f, true))
@@ -805,7 +805,7 @@ structure ArityRaising : sig
            * (candidateSets - a) union b
            *)
           fun candidateUnion (SITE{callees,...}, candidateSets) = let
-              val _ = if !flatteningDebug
+              val _ = if !arityRaisingDebug
                       then print (concat["Proceesing site with callees: ",
                                          List.foldr (fn (callee, rr) => concat[CV.toString callee,
                                                                                " ", rr]) ""
@@ -893,7 +893,7 @@ structure ArityRaising : sig
 	  fun markUseful f = (
 		if getUseful f then ()
 		else (
-		  if !flatteningDebug
+		  if !arityRaisingDebug
 		    then print (concat[
 			CV.toString f, " is useful in round",
 			Int.toString round, "\n"
@@ -1095,7 +1095,7 @@ structure ArityRaising : sig
         fun transformParam(param) = let
             fun getParamFunType (l) = let
                 val lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
-                val _ = if !flatteningDebug
+                val _ = if !arityRaisingDebug
                         then print (concat["Merging signatures for fn types: ", String.concatWith "," (List.map (fn x => ((CPSTyUtil.toString x)^" ")) lambdas), " from variables: ", String.concatWith "," (List.map CPS.Var.toString (CPS.Var.Set.listItems l)), "\n"])
                         else ()
             in
@@ -1144,7 +1144,7 @@ structure ArityRaising : sig
 	    if not (isCandidate f)
             then walkBody (body, handleLambda)
 	    else let
-                    val _ = if !flatteningDebug
+                    val _ = if !arityRaisingDebug
                             then print (concat["Generating new signature for: ",
                                                CV.toString f, " ORIG: ",
                                                CPSTyUtil.toString (CV.typeOf f)])
@@ -1158,7 +1158,7 @@ structure ArityRaising : sig
                                   then List.filter getUseful rets
                                   else rets
 		    val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
-                    val _ = if !flatteningDebug
+                    val _ = if !arityRaisingDebug
                             then print (concat[" NEW: ", CPSTyUtil.toString (newType), "\n"])
                             else ()
                     val _ = CV.setType (f, newType)
@@ -1170,7 +1170,7 @@ structure ArityRaising : sig
         and handleParams(func as C.FB{f, params, rets, body}) =
 	    if not (isCandidate f)
             then let
-                    val _ = if !flatteningDebug
+                    val _ = if !arityRaisingDebug
                             then print (concat["Flattening non-candidate params ",
                                                CV.toString f, " orig: ",
                                                CPSTyUtil.toString (CV.typeOf f), "\n"])
@@ -1179,14 +1179,14 @@ structure ArityRaising : sig
                     val _ = List.app transformParam rets
 		    val newType = CTy.T_Fun (List.map CV.typeOf params, List.map CV.typeOf rets)
                     val _ = CV.setType (f, newType)
-                    val _ = if !flatteningDebug
+                    val _ = if !arityRaisingDebug
                             then print (concat[" new: ", CPSTyUtil.toString newType, "\n"])
                             else ()
                 in
                     walkBody (body, handleParams)
                 end
             else let
-                    val _ = if !flatteningDebug
+                    val _ = if !arityRaisingDebug
                             then print (concat["Flattening candidate params ",
                                                CV.toString f, " orig: ",
                                                CPSTyUtil.toString (CV.typeOf f)])
@@ -1203,7 +1203,7 @@ structure ArityRaising : sig
 		    val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
                     val _ = CV.setType (f, newType)
 		    val _ = setInfo (f, vmap, pmap, params, rets, sign, SOME(newParams), SOME(newRets))
-                    val _ = if !flatteningDebug
+                    val _ = if !arityRaisingDebug
                             then print (concat[" new: ", CPSTyUtil.toString newType, "\n"])
                             else ()
                 in
@@ -1334,7 +1334,7 @@ structure ArityRaising : sig
               (* Even if we got a new type back, if the existing one is equal or more
                * specific, stick with the old one.
                *)
-              of SOME(ty) => (if !flatteningDebug
+              of SOME(ty) => (if !arityRaisingDebug
                               then print (concat["Changing ", CV.toString v,
                                                  " from: ", CPSTyUtil.toString (CV.typeOf v),
                                                  " to: ", CPSTyUtil.toString ty, "\n"])
@@ -1388,7 +1388,7 @@ structure ArityRaising : sig
                       else let
                               val newParamType = safeMergeTypes (argType, paramType)
                               val typed = CV.new ("coerced", newParamType)
-                              val _ = if !flatteningDebug
+                              val _ = if !arityRaisingDebug
                                       then print (concat["Coercing from: ",
                                                          CPSTyUtil.toString argType,
                                                          " to: ",
@@ -1426,7 +1426,7 @@ structure ArityRaising : sig
                   val f = if isCandidate g
                           then g
                           else List.hd lambdas
-                  val _ = if !flatteningDebug
+                  val _ = if !arityRaisingDebug
                           then print (concat["Flattening call to: ", CV.toString f,
                                              if isCandidate g then " candidate" else " non-candidate",
                                              " through variable: ", CV.toString g, "\n"])
@@ -1511,7 +1511,7 @@ structure ArityRaising : sig
                           then cleanupArgsBeforeCall (sign, params, newArgs, progress, paramTypes, orig, arg::accum)
                           else let
                                   val typed = CV.new ("coerced", paramType)
-                                  val _ = if !flatteningDebug
+                                  val _ = if !arityRaisingDebug
                                           then print (concat["Coercing from: ",
                                                              CPSTyUtil.toString argType,
                                                              " to: ",
@@ -1749,22 +1749,8 @@ structure ArityRaising : sig
               | C.Let (_, _, _) => raise Fail "let-binding had multiple LHS but not a multi-var-bind RHS."
               | C.Fun (lambdas, body) => let
                     val lambdas = List.map cleanupLambda lambdas
-                    fun emitFunsOrConts((l as C.FB{rets,...})::lambdas, accum) =
-                        if List.null rets
-                        then (if List.null accum
-                              then (ST.tick cntFunsToConts;
-                                    C.mkCont (l, emitFunsOrConts (lambdas, [])))
-                              else C.mkFun (rev accum, C.mkCont (l, emitFunsOrConts (lambdas, []))))
-                        else emitFunsOrConts (lambdas, l::accum)
-                      | emitFunsOrConts([], accum) = let
-                            val body = cleanupExp body
-                        in
-                            if List.null accum
-                            then body
-                            else C.mkFun (rev accum, body)
-                        end
                 in
-                    emitFunsOrConts (lambdas, [])
+                    C.mkFun (lambdas, cleanupExp body)
                 end
               | C.Cont (f, body) => C.mkCont (cleanupLambda f, cleanupExp body)
               | C.If (v, e1, e2) => C.mkIf (v, cleanupExp e1, cleanupExp e2)
@@ -1854,7 +1840,7 @@ structure ArityRaising : sig
 	    val _ = Census.census m'
             val m' = cleanupLoop m'
 	    in
-	      if !flatteningDebug
+	      if !arityRaisingDebug
 		then List.app printCandidate candidates
 		else ();
               m'

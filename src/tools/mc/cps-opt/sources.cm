@@ -30,5 +30,6 @@ is
   copy-propagation.sml
   cps-opt-controls.sml
   cps-opt-fn.sml
+  elim-uncalled.sml
   eta-expand.sml
 
