@@ -18,13 +18,16 @@
   in
     vector-seq.pml
   end
+  vector-pair.pml
   float-array-seq.pml
   int-array-seq.pml
   int-array-seq-pair.pml
-  vector-pair.pml
+  double-array-seq.pml
+  double-array-seq-pair.pml
 
   int-rope.pml
   rope.pml 
+  double-rope.pml
   rope2.pml
   rope-pair.pml
   int-rope-pair.pml
