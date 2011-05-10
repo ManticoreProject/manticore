@@ -130,6 +130,15 @@ structure Basis : sig
     val string_lt	: AST.var
     val string_lte	: AST.var
 
+    val intOpers     : AST.var list
+    val longOpers    : AST.var list
+    val integerOpers : AST.var list
+    val floatOpers   : AST.var list
+    val doubleOpers  : AST.var list
+    val charOpers    : AST.var list
+    val runeOpers    : AST.var list
+    val stringOpers  : AST.var list
+
   end = struct
 
     structure N = BasisNames
@@ -277,6 +286,8 @@ structure Basis : sig
     val int_neg =       monoVar(name "neg", intTy --> intTy)
     val int_plus =      monoVar(name "add", intTy ** intTy --> intTy)
     val int_times =     monoVar(name "mul", intTy ** intTy --> intTy)
+    val intOpers = [int_div, int_gt, int_gte, int_lt, int_lte, 
+		    int_minus, int_mod, int_neg, int_plus, int_times]
     end
 
     local
@@ -292,6 +303,8 @@ structure Basis : sig
     val long_neg =      monoVar(name "neg", longTy --> longTy)
     val long_plus =     monoVar(name "add", longTy ** longTy --> longTy)
     val long_times =    monoVar(name "mul", longTy ** longTy --> longTy)
+    val longOpers = [long_div, long_gt, long_gte, long_lt, long_lte,
+		     long_minus, long_mod, long_neg, long_plus, long_times]
     end
 
     local
@@ -307,6 +320,8 @@ structure Basis : sig
     val integer_neg =   monoVar(name "neg", integerTy --> integerTy)
     val integer_plus =  monoVar(name "add", integerTy ** integerTy --> integerTy)
     val integer_times = monoVar(name "mul", integerTy ** integerTy --> integerTy)
+    val integerOpers = [integer_div, integer_gt, integer_gte, integer_lt, integer_lte,
+			integer_minus, integer_mod, integer_neg, integer_plus, integer_times]
     end
 
     local
@@ -321,6 +336,8 @@ structure Basis : sig
     val float_neg =	monoVar(name "neg", floatTy --> floatTy)
     val float_plus =    monoVar(name "add", floatTy ** floatTy --> floatTy)
     val float_times =   monoVar(name "mul", floatTy ** floatTy --> floatTy)
+    val floatOpers = [float_fdiv, float_gt, float_gte, float_lt, float_lte, float_minus,
+		      float_neg, float_plus, float_times]
     end
 
     local
@@ -335,6 +352,8 @@ structure Basis : sig
     val double_neg =    monoVar(name "neg", doubleTy --> doubleTy)
     val double_plus =   monoVar(name "add", doubleTy ** doubleTy --> doubleTy)
     val double_times =  monoVar(name "mul", doubleTy ** doubleTy --> doubleTy)
+    val doubleOpers = [double_fdiv, double_gt, double_gte, double_lt, double_lte,
+		       double_minus, double_neg, double_plus, double_times]
     end
 
     local
@@ -344,6 +363,7 @@ structure Basis : sig
     val char_gte =      monoVar(name "gte", charTy ** charTy --> boolTy)
     val char_lt =       monoVar(name "lt", charTy ** charTy --> boolTy)
     val char_lte =      monoVar(name "lte", charTy ** charTy --> boolTy)
+    val charOpers = [char_gt, char_gte, char_lt, char_lte]
     end
 
     local
@@ -353,6 +373,7 @@ structure Basis : sig
     val rune_gte =      monoVar(name "gte", runeTy ** runeTy --> boolTy)
     val rune_lt =       monoVar(name "lt", runeTy ** runeTy --> boolTy)
     val rune_lte =      monoVar(name "lte", runeTy ** runeTy --> boolTy)
+    val runeOpers = [rune_gt, rune_gte, rune_lt, rune_lte]
     end
 
     local
@@ -362,6 +383,7 @@ structure Basis : sig
     val string_gte =    monoVar(name "gte", stringTy ** stringTy --> boolTy)
     val string_lt =     monoVar(name "lt", stringTy ** stringTy --> boolTy)
     val string_lte =    monoVar(name "lte", stringTy ** stringTy --> boolTy)
+    val stringOpers = [string_gt, string_gte, string_lt, string_lte]
     end
 
     local
