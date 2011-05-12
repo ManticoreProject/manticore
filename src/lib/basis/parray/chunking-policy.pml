@@ -29,6 +29,8 @@ fun cvt args = (case args
 	 (case Int.fromString a2
 	   of SOME PPT => SOME (LTS PPT)
 	    | NONE => NONE)
+       else if ParseCommandLine.stringSame (a1, "SEQ") then
+	 SOME Sequential
        else
 	 NONE
    | a1 :: _ =>
