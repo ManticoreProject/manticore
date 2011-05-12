@@ -67,7 +67,7 @@ fun nccat2 (rp1, rp2) = let
 (* coalescing rope concatenation *)
 fun ccat2 (rp1, rp2) =
   if length rp1 + length rp2 <= LeafSize.getMax () then
-    leaf (toSeq (nccat2 (rp1, rp2)))
+    Leaf (toSeq (nccat2 (rp1, rp2)))
   else
     nccat2 (rp1, rp2)
 
@@ -595,7 +595,17 @@ fun mapETS SST f rp =
 
 fun numUnprocessedMap cur = numUnprocessed length length cur
 fun finishMap cur = finish nccat2 cur
-fun nextMap cur = next leftmostLeaf nccat2 cur
+fun nextMap cur = let
+  fun n (f, c) = (case c
+    of GCTop => 
+	 Done f
+     | GCLeft (c', r) =>
+	 More (leftmostLeaf (r, GCRight (f, c')))
+     | GCRight (l, c') =>
+	 n (nccat2 (l, f), c'))
+  in
+    n cur
+  end
 
 fun mapUntil cond f cur = let
   fun m (s, c) = (case Seq.mapUntil cond f s
@@ -661,13 +671,24 @@ fun reduceETS SST f b rp = let
 fun numUnprocessedRed cur = numUnprocessed (fn _ => 0) length cur
 
 fun reduceUntil PPT cond f b cur = let
+  fun next cur = let
+    fun n (k, c) = (case c
+      of GCTop => 
+	   Done k
+       | GCLeft (c', r) =>
+	   More (leftmostLeaf (r, GCRight (k, c')))
+       | GCRight (l, c') =>
+	   n (f (l, k), c'))
+    in
+      n cur
+    end
   fun red (s, c) = (case Seq.reduceUntil cond f b s
-    of Done p => (case next leftmostLeaf f (p, c)
+    of Done p => (case next (p, c)
          of Done p => Done p
 	  | More (s', c') => red (s', c'))
      | More (p, us) =>
          if numUnprocessedRed (leaf us, c) < 2 then
-	    (case next leftmostLeaf f (Seq.reduce f p us, c)
+	    (case next (Seq.reduce f p us, c)
 	      of Done p' => Done p'
 	       | More (s', c') => red (s', c'))
 	  else
@@ -995,7 +1016,18 @@ fun filterETS SST f rp = let
     filt rp
   end
 
-fun nextFilt cur = next leftmostLeaf ccat2 cur
+fun nextFilt cur = let
+  fun n (f, c) = (case c
+    of GCTop => 
+	 Done f
+     | GCLeft (c', r) =>
+	 More (leftmostLeaf (r, GCRight (f, c')))
+     | GCRight (l, c') =>
+	 n (ccat2 (l, f), c'))
+  in
+    n cur
+  end
+
 fun numUnprocessedFilt cur = numUnprocessed length length cur
 
 fun filterUntil PPT cond f cur = let
