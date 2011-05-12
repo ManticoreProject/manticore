@@ -20,5 +20,3 @@
 (* Scans *)
 
   scan.pml
-  float-scan.pml
-  int-scan.pml
