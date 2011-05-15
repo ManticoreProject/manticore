@@ -119,7 +119,7 @@ structure CommonSubexpressionElimination : sig
 	  if !cseFlg
 	    then let
 	      val body = doFB (VMap.empty, VMap.empty, body)
-              val m' = C.MODULE{name=name, externs=externs, body=C.mkLambda body}
+              val m' = C.MODULE{name=name, externs=externs, body=C.mkLambda (body, false)}
               val _ = Census.census m'
 	      in
                   m'

@@ -46,7 +46,7 @@ structure FlatClosureWithCFA : sig
           CFG.T_Tuple(mut, List.map cvtTyBot tys)
       | cvtTy (CPSTy.T_Addr ty, CFA.TOP) = CFG.T_Addr(cvtTyTop ty)
       | cvtTy (CPSTy.T_Addr ty, CFA.BOT) = CFG.T_Addr(cvtTyBot ty)
-      | cvtTy (ty as CPSTy.T_Fun(_, []), v) = cvtStdContTy (ty, v)
+      | cvtTy (ty as CPSTy.T_Cont _, v) = cvtStdContTy (ty, v)
       | cvtTy (ty as CPSTy.T_Fun _, v) = cvtStdFunTy (ty, v)
       | cvtTy (CPSTy.T_CFun cproto, _) = CFGTy.T_CFun cproto
       | cvtTy (CPSTy.T_VProc, CFA.TOP) = CFGTy.T_VProc
@@ -79,6 +79,10 @@ structure FlatClosureWithCFA : sig
       | cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [retTy])) = CFGTy.T_KnownFunc{
             clos = CFGTy.T_Any,
             args = List.map cvtTyTop argTys @ [cvtStdContTy (retTy, CFA.TOP)]
+          }
+      | cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [])) = CFGTy.T_KnownFunc{
+            clos = CFGTy.T_Any,
+            args = List.map cvtTyTop argTys
           }
       | cvtStdFunTyAuxStd (CPSTy.T_Any) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
@@ -115,13 +119,13 @@ structure FlatClosureWithCFA : sig
           end
       | cvtStdContTyAux (ty, v) = raise Fail(concat[
           "bogus continuation type ", CPSTyUtil.toString ty, " : ", CFA.valueToString v])
-    and cvtStdContTyAuxStd (CPSTy.T_Fun(argTys, [])) =
+    and cvtStdContTyAuxStd (CPSTy.T_Cont(argTys)) =
           CFGTyUtil.stdContTy(CFGTy.T_Any, List.map cvtTyTop argTys)
       | cvtStdContTyAuxStd (CPSTy.T_Any) = 
           CFGTyUtil.stdContTy(CFGTy.T_Any, [CFGTy.T_Any])
       | cvtStdContTyAuxStd ty = raise Fail(concat[
           "bogus continuation type ", CPSTyUtil.toString ty])
-    and cvtStdContTyAuxKwn (CPSTy.T_Fun(argTys, []), args) = let
+    and cvtStdContTyAuxKwn (CPSTy.T_Cont(argTys), args) = let
           fun cvtTy' (ty, x) = cvtTy (ty, CFA.valueOf x)
           in
             CFGTyUtil.kwnContTy(CFGTy.T_Any, ListPair.mapEq cvtTy' (argTys, args))

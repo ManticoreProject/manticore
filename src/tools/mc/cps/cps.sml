@@ -129,12 +129,12 @@ structure CPS =
     fun mkLet (lhs, rhs, exp) = (
 	  List.app (fn x => Var.setKind(x, VK_Let rhs)) lhs;
 	  mkExp(Let(lhs, rhs, exp)))
-    fun mkLambda (lambda as FB{f, params, rets, ...}) = (
-          if List.null rets then Var.setKind(f, VK_Cont lambda) else Var.setKind(f, VK_Fun lambda);
+    fun mkLambda (lambda as FB{f, params, rets, ...}, isCont) = (
+          if isCont then Var.setKind(f, VK_Cont lambda) else Var.setKind(f, VK_Fun lambda);
 	  List.app (fn x => Var.setKind(x, VK_Param lambda)) params;
 	  List.app (fn x => Var.setKind(x, VK_Param lambda)) rets;
 	  lambda)
-    fun mkFun (fbs, e) = mkExp(Fun(List.map mkLambda fbs, e))
+    fun mkFun (fbs, e) = mkExp(Fun(List.map (fn x => mkLambda(x, false)) fbs, e))
     fun mkCont (lambda as FB{f, params, rets=[], ...}, e) = (
 	  Var.setKind(f, VK_Cont lambda);
 	  List.app (fn x => Var.setKind(x, VK_Param lambda)) params;

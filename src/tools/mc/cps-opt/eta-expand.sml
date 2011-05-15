@@ -74,7 +74,7 @@ structure EtaExpand : sig
 	   of C.Let(lhs, rhs, e) => C.mkLet(lhs, rhs, doExp(env, e))
 	    | C.Fun(fbs, e) => let
 		fun doFB' (fb, (env, fbs)) = let
-		      val (env, fbs') = doFB (env, fb)
+		      val (env, fbs') = doFB (env, fb, false)
 		      in
 			(env, fbs' @ fbs)
 		      end
@@ -86,7 +86,7 @@ structure EtaExpand : sig
               if isRecursive fb
               then C.mkCont (fb, doExp (env, e))
               else let
-                      val (env, fbs) = doFB (env, fb)
+                      val (env, fbs) = doFB (env, fb, true)
                   in
                       case fbs
                        of [fb] => C.mkCont (fb, doExp (env, e))
@@ -132,7 +132,7 @@ structure EtaExpand : sig
   (* we expand functions that have known application sites and more use-sites than
    * applications.
    *)
-    and doFB (env, C.FB{f, params, rets, body}) = let
+    and doFB (env, C.FB{f, params, rets, body}, isCont) = let
 	  val appCnt = CV.appCntOf f
 	  val useCnt = CV.useCount f
 	  in
@@ -148,7 +148,7 @@ structure EtaExpand : sig
 		val fbs = [
 			C.FB{
 			    f=f, params=params', rets=rets',
-			    body= if List.null rets'
+			    body= if isCont
 			      then C.mkThrow(f', params')
 			      else C.mkApply(f', params', rets')
 			  },
@@ -165,8 +165,8 @@ structure EtaExpand : sig
     fun transform (m as C.MODULE{name, externs, body}) =
 	  if !expandFlg
 	    then let
-	      val (_, [body]) = doFB (VMap.empty, body)
-              val m' = C.MODULE{name=name, externs=externs, body=C.mkLambda body}
+	      val (_, [body]) = doFB (VMap.empty, body, false)
+              val m' = C.MODULE{name=name, externs=externs, body=C.mkLambda (body, false)}
               val _ = Census.census m'
 	      in
                   m'
