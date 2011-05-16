@@ -23,6 +23,7 @@ structure CED (* :> sig
   fun vprocID () = VProc.id (VProc.host ())
 
   val logSz = (ParseCommandLine.parse1 "-oracle-logging" Int.fromString 0) div nbVProcs
+  val logCst = ParseCommandLine.find "-oracle-logging-constant"
 
   val defaultConstant = 1.0
   val nbGrouped = 20 * nbVProcs
@@ -113,20 +114,27 @@ structure CED (* :> sig
     end
 
   fun addToLog (r, m, act) = let
-    val est = estimate (r, m)
-    val p = vprocID ()
-    val (glob, _, (_, log)) = r
-    val (nbA, estA, actA, cstA) = Array.sub (log, p)
-    val nb = CAI.sub (nbA, 0)
+    val (glob, _, (cstName, log)) = r
+    fun add () = let
+      val est = estimate (r, m)
+      val p = vprocID ()
+      val (nbA, estA, actA, cstA) = Array.sub (log, p)
+      val nb = CAI.sub (nbA, 0)
+      in
+	if nb < logSz then (
+	  CAF.update (estA, nb, est);
+	  CAF.update (actA, nb, act);
+	  CAF.update (cstA, nb, FloatRef.get glob);
+	  CAI.update (nbA,  0,  nb + 1);
+	  ())
+	else
+	  ()
+      end
     in
-      if nb < logSz then (
-	CAF.update (estA, nb, est);
-	CAF.update (actA, nb, act);
-	CAF.update (cstA, nb, FloatRef.get glob);
-	CAI.update (nbA,  0,  nb + 1);
-	())
-      else
-	()
+      case logCst
+	of SOME (cstName'::_) => 
+	     if String.same (cstName, cstName') then add () else  ()
+	 | _ => add ()
     end
 
   fun printCAF (n, a) = let
