@@ -35,11 +35,15 @@ structure ASTUtil : sig
     val mkIntPat   : int -> AST.pat
     val mkInt      : int -> AST.exp
 
-  (* generate code to add ints to one another *)
-    val plusOne    : AST.exp -> AST.exp
+  (* generate code for arithmetic *)
     val plus       : AST.exp -> AST.exp -> AST.exp
+    val plusOne    : AST.exp -> AST.exp
+    val minus      : AST.exp -> AST.exp -> AST.exp
+    val minusOne   : AST.exp -> AST.exp
+    val intDiv     : AST.exp * AST.exp -> AST.exp
 
     val intGTE     : AST.exp * AST.exp -> AST.exp
+    val intGT      : AST.exp * AST.exp -> AST.exp
     val intLT      : AST.exp * AST.exp -> AST.exp
 
   (* boolean constants *)
@@ -233,12 +237,19 @@ structure ASTUtil : sig
     local
       fun intBin binop = fn args => mkApplyExp (A.VarExp (binop, []), args) 
       val mkPlus = intBin B.int_plus
-      val mkGTE  = intBin B.int_gte
-      val mkLT   = intBin B.int_lt
+      val mkMinus = intBin B.int_minus
+      val mkDiv = intBin B.int_div
+      val mkGT = intBin B.int_gt
+      val mkGTE = intBin B.int_gte
+      val mkLT = intBin B.int_lt
     in
       fun plusOne n = mkPlus [n, mkInt 1]
       fun plus n m = mkPlus [n, m]
+      fun minusOne n = mkMinus [n, mkInt 1]
+      fun minus n m = mkMinus [n, m]
+      fun intDiv (n, m) = mkDiv [n, m]
       fun intGTE (n, m) = mkGTE [n, m]
+      fun intGT (n, m) = mkGT [n, m]
       fun intLT (n, m) = mkLT [n, m]
     end (* local *)
 
