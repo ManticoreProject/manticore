@@ -433,8 +433,49 @@ structure DoubleRope = struct
         build leaves      
       end
 
-  (* fromSeq : seq -> double_rope *)
-    fun fromSeq s = fromList (S.toList s)
+  (* subseq *)
+    fun subseq (s, loIncl, hiExcl) = let  
+      val n = S.length s
+      val demanded = hiExcl - loIncl
+      in
+        if (demanded > n) 
+	  then raise Fail "too few elements"
+	else let
+          fun f i = S.sub (s, loIncl+i)
+          in
+            S.tabulate_double (demanded, f)
+	  end
+      end
+
+  (* chopSeq : seq * int -> seq list *)
+    fun chopSeq (s, sz) = let
+      val n = S.length s
+      fun lp (lo, acc) = 
+        if (lo >= n) 
+          then List.rev acc
+	else let
+          val next = lo + sz
+          in
+            if (next >= n)
+              then List.rev (subseq (s, lo, n) :: acc)
+	    else
+              lp (next, subseq (s, lo, next) :: acc)
+	  end
+      in
+	lp (0, [])
+      end
+
+  (* fromSeq : seq -> int_rope *)
+    fun fromSeq s = let
+      val lfData = chopSeq (s, maxLeafSize)
+      val leaves = List.map mkLeaf lfData
+      fun build ls = case ls
+        of nil => empty
+	 | l::nil => l
+	 | _ => build (catPairs ls)
+      in
+        build leaves
+      end
 
   (* tabFromToP : int * int * (int -> double) -> double_rope *)
   (* pre: hi >= lo *)

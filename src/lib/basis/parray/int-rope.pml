@@ -365,17 +365,16 @@ structure IntRope = struct
   (* ex: split ([1,2,3], 2) => ([1,2],[3])  *)
   (* ex: split ([1,2,3], 4) => ([1,2,3],[]) *)
     fun split (xs, n) = let
-      fun loop (n, taken, xs) =
-       (case xs
-          of nil => (List.rev taken, nil)
-         | h::t => if n = 0 then
-                        (List.rev taken, xs)
-            else
-                        loop (n-1, h::taken, t)
-          (* end case *))
+      fun loop (n, taken, xs) = case xs
+        of nil => (List.rev taken, nil)
+         | h::t => 
+             if n = 0 
+	       then (List.rev taken, xs)
+             else
+               loop (n-1, h::taken, t)
       in
-        if n <= 0 then
-          (nil, xs)
+        if n <= 0 
+	  then (nil, xs)
         else
           loop (n, nil, xs)
       end
@@ -398,6 +397,38 @@ structure IntRope = struct
          (* end case *))
       in
         lp (xs, nil)
+      end
+
+  (* subseq *)
+    fun subseq (s, loIncl, hiExcl) = let  
+      val n = S.length s
+      val demanded = hiExcl - loIncl
+      in
+        if (demanded > n) 
+	  then raise Fail "too few elements"
+	else let
+          fun f i = S.sub (s, loIncl+i)
+          in
+            S.tabulate_int (demanded, f)
+	  end
+      end
+      
+  (* chopSeq : seq * int -> seq list *)
+    fun chopSeq (s, sz) = let
+      val n = S.length s
+      fun lp (lo, acc) = 
+        if (lo >= n) 
+          then List.rev acc
+	else let
+          val next = lo + sz
+          in
+            if (next >= n)
+              then List.rev (subseq (s, lo, n) :: acc)
+	    else
+              lp (next, subseq (s, lo, next) :: acc)
+	  end
+      in
+	lp (0, [])
       end
 
   (* catPairs :  int_rope list -> int_rope list *)
@@ -436,7 +467,19 @@ structure IntRope = struct
       end
 
   (* fromSeq : seq -> int_rope *)
-    fun fromSeq s = fromList (S.toList s)
+    fun fromSeq s = let
+      val lfData = chopSeq (s, maxLeafSize)
+      val leaves = List.map mkLeaf lfData
+      fun build ls = case ls
+        of nil => empty
+	 | l::nil => l
+	 | _ => build (catPairs ls)
+      in
+        build leaves
+      end
+
+(* old impl: *)
+(* fun fromSeq s = fromList (S.toList s) *)
 
   (* tabFromToP : int * int * (int -> int) -> int_rope *)
   (* pre: hi >= lo *)
