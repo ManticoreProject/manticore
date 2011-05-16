@@ -21,4 +21,5 @@ end
 
   rope-ty.pml
   rope.pml
+  rope-pair.pml
 (*  test.pml*)

@@ -123,7 +123,7 @@ structure DelayedBasis = struct
 
     val ropeEmpty     = memoVar ["Rope", "empty"]
     val ropeSingleton = memoVar ["Rope", "singleton"]
-    val ropeFilterP   = memoVar ["Rope", "filter"]
+    val ropeFilterP   = memoVar ["Rope", "filterUncurried"]
     val ropeFromList  = memoVar ["Rope", "fromList"]
     val ropeTabFT     = memoVar ["Rope", "tabFromTo"]
     val ropeTabFTS    = memoVar ["Rope", "tabFromToStep"]
@@ -131,7 +131,7 @@ structure DelayedBasis = struct
     val ropeLength    = memoVar ["Rope", "length"]
     val ropeRange     = memoVar ["Rope", "range"]
     val ropeRangeNS   = memoVar ["Rope", "rangeNoStep"]
-    val ropeMapP      = memoVar ["Rope", "map"]
+    val ropeMapP      = memoVar ["Rope", "mapUncurried"]
 
     val ropePairMapP  = memoVar ["RopePair", "map"]
 

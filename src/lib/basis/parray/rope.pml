@@ -645,6 +645,7 @@ fun map f rp = (case ChunkingPolicy.get ()
   of ChunkingPolicy.Sequential => mapSequential f rp
    | ChunkingPolicy.ETS SST => mapETS SST f rp
    | ChunkingPolicy.LTS PPT => mapLTS PPT f rp)
+fun mapUncurried (f, rp) = map f rp
 (*end*)
 
 (*local*)
@@ -1066,6 +1067,7 @@ fun filter' f rp = (case ChunkingPolicy.get ()
    | ChunkingPolicy.ETS SST => filterETS SST f rp
    | ChunkingPolicy.LTS PPT => filterLTS PPT f rp)
 fun filter f rp = balance (filter' f rp)
+fun filterUncurried (f, rp) = balance (filter' f rp)
 (*end*)
 
 fun app f rp = let
@@ -1109,4 +1111,88 @@ fun app f rp = let
 
     val concat = ccat2
 
+  (* tabFromToP : int * int * (int -> 'a) -> 'a rope *)
+  (* lo inclusive, hi inclusive *)
+    fun tabFromTo (lo, hi, f) =
+      if (lo > hi) then
+        empty ()
+      else let
+        val nElts = hi - lo + 1
+        in
+          if nElts <= LeafSize.getMax () then
+            leaf (Seq.tabulate (nElts, fn i => f (lo + i)))
+          else let
+            val m = (hi + lo) div 2
+            in
+              nccat2 (| tabFromTo (lo, m, f),
+		      tabFromTo (m+1, hi, f) |)
+            end
+        end
+
+  (* tabFromToStepP : int * int * int * (int -> 'a) -> 'a rope *)
+  (* lo inclusive, hi inclusive *)
+    fun tabFromToStep (from, to_, step, f) = (case Int.compare (step, 0)
+      of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around raiseExp -ams *)
+       | LESS (* negative step *) =>
+           if (to_ > from) then
+             empty ()
+       	   else
+             tabFromTo (0, (from-to_) div (~step), fn i => f (from + (step*i)))
+       | GREATER (* positive step *) =>
+       	   if (from > to_) then
+       	     empty ()
+       	   else
+             tabFromTo (0, (to_-from) div step, fn i => f (from + (step*i)))
+      (* end case *))
+
+  (* nEltsInRange : int * int * int -> int *)
+    fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
+	  if step = 0 then failwith "cannot have step 0 in a range"
+	  else if from = to_ then 1
+	  else if (from > to_ andalso step > 0) then 0
+	  else if (from < to_ andalso step < 0) then 0
+	  else (Int.abs (from - to_) div Int.abs step) + 1
+
+  (* rangeP : int * int * int -> int rope *)
+    fun range (from, to_, step) = (* "to" is syntax in pml *)
+     (if from = to_ then singleton from
+      else let
+        val sz = nEltsInRange (from, to_, step)
+        fun gen n = step * n + from
+        in
+          tabulate (sz, gen)
+        end)
+
+  (* rangePNoStep : int * int -> int rope *)
+    fun rangeNoStep (from, to_) = (* "to" is syntax in pml *)
+	  range (from, to_, 1)
+                                              
+  (* partialSeq : 'a rope * int * int -> 'a seq *)
+  (* return the sequence of elements from low incl to high excl *)
+  (* zero-based *)
+  (* failure when lower bound is less than 0  *)
+  (* failure when upper bound is off the rope (i.e., more than len rope + 1) *)
+    fun partialSeq (r, lo, hi) =
+     (case r
+        of Leaf s => 
+            (if lo >= Seq.length s orelse hi > Seq.length s then
+               failwith "err"
+	     else
+	       Seq.take (Seq.drop (s, lo), hi-lo))
+	 | Cat (_, len, rL, rR) => let
+             val lenL = length rL
+	     val lenR = length rR
+	     in
+	       if hi <= lenL then (* everything's on the left *)
+		   partialSeq (rL, lo, hi)
+	       else if lo >= lenL then (* everything's on the right *)
+		   partialSeq (rR, lo-lenL, hi-lenL)
+	       else let
+                 val sL = partialSeq (rL, lo, lenL)
+		 val sR = partialSeq (rR, 0, hi-lenL)
+                 in
+		   Seq.cat2 (sL, sR)
+		 end
+	     end
+        (* end case *))
 end

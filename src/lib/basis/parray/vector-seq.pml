@@ -73,6 +73,13 @@ fun tabulateUntil cond ((lo, hi), f) = let
 
 val map = Vector.map
 
+fun map2 (f, s1, s2) = let
+    fun min (m, n) = if m < n then m else n
+    val minlen = min (length s1, length s2)
+in
+    tabulate (minlen, fn i => f (sub (s1, i), sub (s2, i)))
+end
+
 fun mapUntil cond f s = let
   val len = length s
   fun lp (i, acc) = 
@@ -162,6 +169,10 @@ fun filterUntil cond f s = let
       end
 
   val foldl = Vector.foldl
+
+  fun unzip s = 
+      (tabulate (length s, fn i => fst (sub (s, i))),
+       tabulate (length s, fn i => snd (sub (s, i))))
 
   fun update (s, i, x) = tabulate (length s, fn j => if i = j then x
 						     else sub (s, j))
