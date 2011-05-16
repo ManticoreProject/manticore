@@ -157,9 +157,13 @@ structure PArrayOpGen = struct
              then A.VarExp (DV.ifpTab (), [])
 	   else if FU.isGroundTy t1 andalso FU.isGroundTy t2 
 	     then let 
-               val stuff = SynthTab.mkFPair (t1, t2)
+	       val _ = print (concat ["*** GENERATING TAB FOR ", 
+				      TU.toString t1, "*", TU.toString t2, "\n"])
+               val {seqPair, ropePair, farrayPair} = SynthTab.mkFPair (t1, t2)
+	       val A.FB (ftab, _, _) = farrayPair
+	       val binds = List.map (fn lam => A.FunBind [lam]) [seqPair, ropePair, farrayPair]
                in
-	         raise Fail "todo"
+	         AU.mkLetExp (binds, monoVarExp ftab)
 	       end
 	   else
              A.VarExp (DV.ftab (), [t])

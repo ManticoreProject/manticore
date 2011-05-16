@@ -143,6 +143,7 @@ structure DelayedBasis = struct
     val ropeRange     = memoVar ["Rope", "rangeP"]
     val ropeRangeNS   = memoVar ["Rope", "rangePNoStep"]
     val ropeMapP      = memoVar ["Rope", "mapP"]
+    val ropeFromSeq   = memoVar ["Rope", "fromSeq"]
   
     val ropePairMapP  = memoVar ["RopePair", "mapP"]
 
@@ -150,8 +151,10 @@ structure DelayedBasis = struct
     val ropeMapP_dbl  = memoVar ["RopeUtil", "mapP_double"]
 
     val irEmpty       = memoVar ["IntRope", "empty"]
+    val irFromSeq     = memoVar ["IntRope", "fromSeq"]
 
     val drEmpty       = memoVar ["DoubleRope", "empty"]
+    val drFromSeq     = memoVar ["DoubleRope", "fromSeq"]
 
     val lseqToList    = memoVar ["ListSeq", "toList"]
     val lseqFromList  = memoVar ["ListSeq", "fromList"]

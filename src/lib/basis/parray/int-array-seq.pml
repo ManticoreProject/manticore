@@ -21,6 +21,9 @@ structure IntArraySeq = struct
   fun tabulate_int (n, f : int -> int) = A.tabulate (n, f)				   
 
   val empty = A.array (0, 0)
+
+  fun unsafeCreate n = A.unsafeCreate n
+
   fun singleton s = A.array (1, s)
 
   fun null s = (A.length s = 0)
