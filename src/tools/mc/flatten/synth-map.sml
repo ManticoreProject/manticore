@@ -18,8 +18,9 @@ structure SynthMap = struct
   structure DV  = D.Var
   structure DTy = D.Ty
 
-  fun pairPat (x, y) = A.TuplePat [A.VarPat x, A.VarPat y]
-  fun varsPat xs = A.TuplePat (List.map A.VarPat xs)
+  val vpat = A.VarPat
+  fun pairPat (x, y) = A.TuplePat [vpat x, vpat y]
+  fun varsPat xs = A.TuplePat (List.map vpat xs)
 
   fun vexp x = A.VarExp (x, [])
 
@@ -36,7 +37,7 @@ structure SynthMap = struct
   fun f @@< xs = AU.mkApplyExp (vexp f, List.map vexp xs)
 
   infix <-
-  fun x <- e = A.ValBind (A.VarPat x, e)
+  fun x <- e = A.ValBind (vpat x, e)
 
   infix 1 <:
   fun x <: t = Var.new (x, t)
@@ -67,20 +68,9 @@ structure SynthMap = struct
 
 (* 
   fun seqMap (f, len, s1, s2) = let
-     val s1_0 = S1.sub (s1, 0)  
-     val s2_0 = S2.sub (s2, 0)
-     val seq = S3.tabulate (len, f (s1_0, s2_0))
-     fun lp i = 
-       if (i >= len) then
-         seq
-       else let
-         val x = f (S1.sub (s1, i), S2.sub (s2, i))
-         in
-           (S3.update (seq, i, x);
-            lp (i+1))
-         end
+     val f' i = f (S1.sub (s1, i), S2.sub (s2, i))
      in
-       lp 0
+       S3.tabulate (len, f')
      end
 *)
   
@@ -95,29 +85,12 @@ structure SynthMap = struct
     val len    = "len"    <: B.intTy
     val s1     = "s1"     <: seqTy1
     val s2     = "s2"     <: seqTy2
-    val s1_0   = "s1_0"   <: inTy1
-    val s2_0   = "s2_0"   <: inTy2
-    val seq    = "seq"    <: seqTy3
-    val lp     = "lp"     <: B.intTy --> seqTy3
+    val f'     = "f'"     <: B.intTy --> outTy
     val i      = "i"      <: B.intTy
-    val x      = "x"      <: outTy
-    val lpElse = let
-      val arg1 = sub1 @@< [s1, i]
-      val arg2 = sub2 @@< [s2, i]
-      val bind = x <- (f @@ [arg1, arg2])
-      val upd = update3 @@< [seq, i, x]
-      val body = A.SeqExp (upd, lp @@ [AU.plusOne (vexp i)])
-      in
-        AU.mkLetExp ([bind], body)
-      end
-    val lpBody = AU.mkIfExp (AU.intGTE (vexp i, vexp len), vexp seq, lpElse)
-    val lpLam = AU.mkFunWithParams (lp, [i], lpBody)
-    val s1_0Bind = s1_0 <- (sub1 @@ [vexp s1, AU.mkInt 0])
-    val s2_0Bind = s2_0 <- (sub1 @@ [vexp s2, AU.mkInt 0])
-    val applyF = f @@< [s1_0, s2_0]
-    val seqBind = seq <- (tab3 @@ [vexp len, A.FunExp (Var.new ("x", B.intTy), applyF, outTy)])
-    val lpBind = A.FunBind [lpLam]
-    val seqMapBody = AU.mkLetExp ([s1_0Bind, s2_0Bind, seqBind, lpBind], lp @@ [AU.mkInt 0])
+    val f'Body = f @@ [sub1 @@< [s1, i], sub2 @@< [s2, i]]
+    val f'Lam = AU.mkFunWithParams (f', [i], f'Body)
+    val f'Bind = A.FunBind [f'Lam]
+    val seqMapBody = AU.mkLetExp ([f'Bind], tab3 @@< [len, f'])
     val seqMapLam = AU.mkFunWithParams (seqMap, [f, len, s1, s2], seqMapBody)
     in
       seqMapLam
@@ -181,19 +154,23 @@ fun ropeMap f = let
     val lfRHS = AU.mkIfExp (AU.intLT (vexp n1, AU.mkInt 1),
 			    vexp outE,
 			    outLEAF [vexp n1, seqMap @@< [f, n1, s1, s2]])
-    val catRHS = (* FIXME make this parallel *)
-      outCAT [vexp d1, vexp len1, mapF @@< [r1L, r2L], mapF @@< [r1R, r2R]]
+    val catRHS = let (* build and compile a parallel tuple here *)
+      val es = [vexp d1, vexp len1, mapF @@< [r1L, r2L], mapF @@< [r1R, r2R]]
+      in case TranslatePtup.tr (fn e => e) es
+        of SOME e => outCAT [e]
+	 | NONE => raise Fail "ptup translation failed"
+      end
     val mapFBody = AU.mkCaseExp (vexp ropes,
       [A.PatMatch (varsPat [rope1, rope2], AU.mkCaseExp (vexp rope1,
-        [A.PatMatch (A.ConPat (inLeaf1, [], A.VarPat lf1), AU.mkCaseExp (vexp lf1,
+        [A.PatMatch (A.ConPat (inLeaf1, [], vpat lf1), AU.mkCaseExp (vexp lf1,
           [A.PatMatch (varsPat [n1, s1], AU.mkCaseExp (vexp rope2,
-            [A.PatMatch (A.ConPat (inLeaf2, [], A.VarPat lf2), AU.mkCaseExp (vexp lf2,
-              [A.PatMatch (A.TuplePat [A.WildPat B.intTy, A.VarPat s2], 
+            [A.PatMatch (A.ConPat (inLeaf2, [], vpat lf2), AU.mkCaseExp (vexp lf2,
+              [A.PatMatch (A.TuplePat [A.WildPat B.intTy, vpat s2], 
 			   lfRHS)]))]))])),
-	 A.PatMatch (A.ConPat (inCat1, [], A.VarPat cat1), AU.mkCaseExp (vexp cat1,
+	 A.PatMatch (A.ConPat (inCat1, [], vpat cat1), AU.mkCaseExp (vexp cat1,
            [A.PatMatch (varsPat [d1, len1, r1L, r1R], AU.mkCaseExp (vexp rope2,
-             [A.PatMatch (A.ConPat (inCat2, [], A.VarPat cat2), AU.mkCaseExp (vexp cat2,
-               [A.PatMatch (A.TuplePat [A.WildPat B.intTy, A.WildPat B.intTy, A.VarPat r2L, A.VarPat r2R],
+             [A.PatMatch (A.ConPat (inCat2, [], vpat cat2), AU.mkCaseExp (vexp cat2,
+               [A.PatMatch (A.TuplePat [A.WildPat B.intTy, A.WildPat B.intTy, vpat r2L, vpat r2R],
 			    catRHS)]))]))]))]))])
     val mapFLam = AU.mkFunWithParams (mapF, [ropes], mapFBody)
     val ropeMapBody = AU.mkLetExp ([A.FunBind [mapFLam]], vexp mapF)
@@ -258,9 +235,9 @@ fun farrayMap f = let
 							   [vexp r, vexp s1])))
     val mapFBody = AU.mkCaseExp (vexp farrays,
       [A.PatMatch (varsPat [farray1, farray2], AU.mkCaseExp (vexp farray1,
-        [A.PatMatch (A.ConPat (fdcon1, [], A.VarPat f1), AU.mkCaseExp (vexp f1,
+        [A.PatMatch (A.ConPat (fdcon1, [], vpat f1), AU.mkCaseExp (vexp f1,
           [A.PatMatch (varsPat [d1, s1], AU.mkCaseExp (vexp farray2,
-            [A.PatMatch (A.ConPat (fdcon2, [], A.VarPat f2), AU.mkCaseExp (vexp f2,
+            [A.PatMatch (A.ConPat (fdcon2, [], vpat f2), AU.mkCaseExp (vexp f2,
               [A.PatMatch (varsPat [d2, s2], matchRHS)]))]))]))]))])
     val mapFLam = AU.mkFunWithParams (mapF, [farrays], mapFBody)
     val farrayMapBody = AU.mkLetExp ([A.FunBind [mapFLam]], vexp mapF)

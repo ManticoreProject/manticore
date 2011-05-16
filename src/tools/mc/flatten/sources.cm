@@ -17,7 +17,7 @@ Library
   structure PArrayOpGen
   structure FlattenUtil
   structure SynthMap
-  
+  structure SynthTab  
   (*
   structure TestFlattenTypes
   structure TestFlattenTerms
@@ -47,7 +47,7 @@ is
   parray-op-gen.sml
   flatten-util.sml	
   synth-map.sml
-  
+  synth-tab.sml  
   (*
   test-flatten-types.sml
   test-flatten-terms.sml

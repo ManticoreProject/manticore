@@ -453,7 +453,6 @@ structure Rope = struct
 
   (* fromArray : 'a array -> 'a rope *)
   
-
   (* fromSeq : 'a seq -> 'a rope *)
     fun fromSeq s = fromList (S.toList s)
 
@@ -525,11 +524,10 @@ structure Rope = struct
 
   (* nEltsInRange : int * int * int -> int *)
     fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
-	  if step = 0 then fail "nEltsInRange" "cannot have step 0 in a range"
-	  else if from = to_ then 1
-	  else if (from > to_ andalso step > 0) then 0
-	  else if (from < to_ andalso step < 0) then 0
-	  else (Int.abs (from - to_) div Int.abs step) + 1
+      if step = 0 then 
+        fail "nEltsInRange" "cannot have step 0 in a range"
+      else 
+	1 + Int.max (0, (to_ - from) div step)
 
   (* rangeP : int * int * int -> int rope *)
   (* note: both from and to are inclusive bounds *)
@@ -537,6 +535,7 @@ structure Rope = struct
      (if from = to_ then singleton from
       else let
         val sz = nEltsInRange (from, to_, step)
+	val _ = Print.printLn ("sz: " ^ Int.toString sz)
         fun gen n = step * n + from
         in
           tabP (sz, gen)
@@ -544,7 +543,7 @@ structure Rope = struct
 
   (* rangePNoStep : int * int -> int rope *)
     fun rangePNoStep (from, to_) = (* "to" is syntax in pml *)
-	  rangeP (from, to_, 1)
+      rangeP (from, to_, 1)
   
 (* ***** ROPE DECONSTRUCTION ***** *)
 

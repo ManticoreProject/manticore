@@ -55,6 +55,8 @@ fun tabulate (n, f) =
 
 fun array (n, init) = tabulate (n, fn _ => init)
 
+fun unsafeCreate n = U.create n
+
 fun modify f a = let
   val n = length a
   fun m i =

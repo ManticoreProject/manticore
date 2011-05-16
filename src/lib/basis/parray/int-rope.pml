@@ -680,11 +680,10 @@ structure IntRope = struct
 
   (* nEltsInRange : int * int * int -> int *)
     fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
-	  if step = 0 then fail "nEltsInRange" "cannot have step 0 in a range"
-	  else if from = to_ then 1
-	  else if (from > to_ andalso step > 0) then 0
-	  else if (from < to_ andalso step < 0) then 0
-	  else (Int.abs (from - to_) div Int.abs step) + 1
+      if step = 0 then 
+        fail "nEltsInRange" "cannot have step 0 in a range"
+      else 
+	1 + Int.max (0, (to_ - from) div step)
 
   (* rangeP : int * int * int -> int rope *)
   (* note: both from and to are inclusive bounds *)
@@ -696,5 +695,9 @@ structure IntRope = struct
         in
           tabP (sz, gen)
         end)
+
+  (* rangePNoStep : int * int -> int rope *)
+    fun rangePNoStep (from, to_) = (* "to" is syntax in pml *)
+      rangeP (from, to_, 1)
 
   end

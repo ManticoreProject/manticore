@@ -37,6 +37,8 @@ structure Basis : sig
     val intTy		: Types.ty
     val floatTy		: Types.ty
     val doubleTy        : Types.ty
+    val charTy          : Types.ty
+    val runeTy          : Types.ty
     val stringTy	: Types.ty
     val listTy		: Types.ty -> Types.ty
     val parrayTy	: Types.ty -> Types.ty

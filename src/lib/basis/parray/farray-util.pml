@@ -16,6 +16,7 @@ structure FArrayUtil = struct
   structure S  = ShapeTree
   structure F  = FArray
   structure IF = IntFArray
+  structure DF = DoubleFArray
 
   val pr = Print.printLn
 
@@ -41,7 +42,7 @@ structure FArrayUtil = struct
       end	      
   in
     (* flatten_IF_F : int_farray f_array -> int_farray *)
-    fun flatten_IF_F iff = (case (F.clean iff)			   
+    fun flatten_IF_F iff = (case F.clean iff
       of F.FArray (data, shape) => (case shape
            of S.Lf (lo, hi) => let
 	        fun lp (i, acc) = 
@@ -61,12 +62,12 @@ structure FArrayUtil = struct
          of S.Lf (lo, hi) => let
               fun lp (i, acc) = 
                 if (i<0) then FArray.fromList (List.rev acc)
-		else lp (i-1, f(IntRope.sub(data,i))::acc)
+		else lp (i-1, f (IntRope.sub(data,i))::acc)
                 in
                   lp (hi-1, [])
                 end
 	  | S.Nd _ => fail "map_IF_poly" "not a flat int_farray"
          (* end case *))
     (* end case *))
-	  		   
+
 end

@@ -153,8 +153,14 @@ structure PArrayOpGen = struct
       monoVarExp' DV.dblTab
     else (case t
       of T.TupleTy [t1, t2] => 
-           if FU.isInt t1 andalso FU.isInt t2 then
-             A.VarExp (DV.ifpTab (), [])
+           if FU.isInt t1 andalso FU.isInt t2
+             then A.VarExp (DV.ifpTab (), [])
+	   else if FU.isGroundTy t1 andalso FU.isGroundTy t2 
+	     then let 
+               val stuff = SynthTab.mkFPair (t1, t2)
+               in
+	         raise Fail "todo"
+	       end
 	   else
              A.VarExp (DV.ftab (), [t])
        | _ => A.VarExp (DV.ftab (), [t])

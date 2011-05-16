@@ -165,11 +165,13 @@ structure DelayedBasis = struct
     val iseqTab       = memoVar ["IntArraySeq", "tabulate_int"]
     val iseqUpd       = memoVar ["IntArraySeq", "update"]
     val iseqEmpty     = memoVar ["IntArraySeq", "empty"]
+    val iseqCreate    = memoVar ["IntArraySeq", "unsafeCreate"]
 
     val dseqSub       = memoVar ["DoubleArraySeq", "sub"]
     val dseqTab       = memoVar ["DoubleArraySeq", "tabulate_double"]
     val dseqUpd       = memoVar ["DoubleArraySeq", "update"]
     val dseqEmpty     = memoVar ["DoubleArraySeq", "empty"]
+    val dseqCreate    = memoVar ["DoubleArraySeq", "unsafeCreate"]
 
     val parrayMap     = memoVar ["PArray", "map"]
     val parraySub     = memoVar ["PArray", "sub"]

@@ -111,6 +111,7 @@ end = struct
 (* maybe monad *)
   infix >>=
   fun opt >>= k = (case opt of SOME x => k x | NONE => NONE)
+  val return = SOME
 
 (* seqEndingRange : exp -> (exp list * exp * exp * exp * ty) option   *)
 (* If a sequence (including sequence of sequences) has a RangeExp as  *)
@@ -123,7 +124,7 @@ end = struct
       of A.SeqExp (e0, A.RangeExp (e1, e2, o3, t)) =>
            SOME ([e0], e1, e2, o3, t)
        | A.SeqExp (e, s as A.SeqExp _) =>
-           seqEndingRange s >>= (SOME o cons e)
+           seqEndingRange s >>= (return o cons e)
        | _ => NONE
       (* end case *))
   end (* local *)
@@ -208,12 +209,10 @@ end = struct
 		  end
 	      | _ => NONE
 	     (* end case *))
-(* FIXME see inline-ranges-K.pml *)
-(* seems to be a flattening translation problem, not related to inlining. *)
 	 | A.ConPat (_, _, p) => (case rhs
              of A.ApplyExp (dcon as A.ConstExp (A.DConst _), e, _) =>
                   pat (p, e) >>= (fn (bs, e') =>
-                    SOME (bs, AU.mkApplyExp (dcon, [e'])))
+                    return (bs, AU.mkApplyExp (dcon, [e'])))
 	      | _ => NONE
              (* end case *))
 	 | _ (* WildPat or ConstPat *) => NONE
@@ -232,7 +231,7 @@ end = struct
                 (bind::oldBinds, k exp)
               end
 	  in (case find x
-	    of SOME range => NONE (* we've already caught this one (on a previous pass) *)                    
+	    of SOME range => NONE (* we've already caught this one (on a previous pass) *)
   	     | NONE => let  		                  
                  fun name suff = Var.nameOf x ^ suff
 		 val (binds3, o3') = (case o3
@@ -253,11 +252,10 @@ end = struct
 	   | A.SeqExp (e1, e2) =>
                seqEndingRange rhs >>= (fn (es, e1, e2, o3, t) =>
                  rangeBind (e1, e2, o3, t) >>= (fn (bs, rng') =>
-                   SOME (bs, List.foldr A.SeqExp rng' es)))
+                   return (bs, List.foldr A.SeqExp rng' es)))
 	   | A.VarExp (y, ts) => 
                find y >>= (fn rng =>
-                 (extendEnv (x, rng); 
-		  SOME ([], noteChange rng)))
+                 return (extendEnv (x, rng); ([], noteChange rng)))
 	   | _ => NONE
           (* end case *))
         end
@@ -269,10 +267,6 @@ end = struct
 (* NOTE: I'm pretty sure, with recent modifications, that I get everything in one pass. *)
 (* If we can prove it we can remove the iteration. - ams *)
     fun iterateTillFixed i e = let
-(* (\* +debug *\) *)
-(*       val _ = printEnv env *)
-(*       val _ = println ("InlineRanges: iteration " ^ Int.toString i) *)
-(* (\* -debug *\) *)
       val _ = resetChanged ()
       val e' = exp e
       in
