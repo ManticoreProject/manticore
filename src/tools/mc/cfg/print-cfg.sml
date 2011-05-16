@@ -159,7 +159,7 @@ structure PrintCFG : sig
 		        indent (i+1); pr "then GC()\n";
 		        indent (i+1); prJump("else", nogc))
                       end
-		  | CFG.HeapCheckN{hck, n, nogc} => let 
+		  | CFG.HeapCheckN{hck, n, szb, nogc} => let 
                       val check = (case hck
                           of CFG.HCK_Local => "check"
                            | CFG.HCK_Global => "checkGlobal"
