@@ -78,6 +78,22 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     return PtrToValue(obj);
 }
 
+/*! \brief allocate raw-data object  in the nursery
+ *  \param vp the host vproc
+ *  \param len the number of bytes to allocate
+ *  \return the allocated heap object
+ */
+Value_t AllocRaw (VProc_t *vp, uint32_t len)
+{
+    Word_t	*obj = (Word_t *)(vp->allocPtr);
+    int nWords = BYTES_TO_WORDS(len);
+    obj[-1] = RAW_HDR(nWords);
+    vp->allocPtr += WORD_SZB * (nWords+1);
+
+    return PtrToValue(obj);
+
+}
+
 /*! \brief allocate in the local heap an array of raw values
  *  \param vp the host vproc
  *  \param nElems the length of the array
@@ -86,10 +102,8 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
  */
 Value_t AllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
 {
-    Word_t *obj = (Word_t *)(vp->allocPtr);    
-    obj[-1] = RAW_HDR(nElems);
-    vp->allocPtr += WORD_SZB + szBOfElt * nElems;
-    return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(nElems));
+    Value_t data = AllocRaw (vp, nElems * szBOfElt);
+    return AllocNonUniform (vp, 2, PTR(data), INT(nElems));
 }
 
 /*! \brief allocate in the global heap an array of raw values
@@ -204,22 +218,6 @@ Value_t AllocString (VProc_t *vp, const char *s)
     vp->allocPtr += WORD_SZB * 3;
 
     return PtrToValue(hdr);
-
-}
-
-/*! \brief allocate raw-data object  in the nursery
- *  \param vp the host vproc
- *  \param len the number of bytes to allocate
- *  \return the allocated heap object
- */
-Value_t AllocRaw (VProc_t *vp, uint32_t len)
-{
-    Word_t	*obj = (Word_t *)(vp->allocPtr);
-    int nWords = BYTES_TO_WORDS(len);
-    obj[-1] = RAW_HDR(nWords);
-    vp->allocPtr += WORD_SZB * (nWords+1);
-
-    return PtrToValue(obj);
 
 }
 
