@@ -123,7 +123,7 @@ structure DoubleRope = struct
     fun sub (r, i) = 
       if inBounds (r, i) 
       then subInBounds(r, i)
-      else fail "sub" "subscript out of bounds"
+      else fail "sub" ("subscript out of bounds: " ^ Int.toString i)
 
   (* ***** BALANCING ***** *)
 

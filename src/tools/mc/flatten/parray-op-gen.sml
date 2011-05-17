@@ -159,11 +159,12 @@ structure PArrayOpGen = struct
 	     then let 
 	       val _ = print (concat ["*** GENERATING TAB FOR ", 
 				      TU.toString t1, "*", TU.toString t2, "\n"])
-               val {seqPair, ropePair, farrayPair} = SynthTab.mkFPair (t1, t2)
-	       val A.FB (ftab, _, _) = farrayPair
-	       val binds = List.map (fn lam => A.FunBind [lam]) [seqPair, ropePair, farrayPair]
+               val {seqPair, tabFromToP, tabP, fTab} = SynthTab.mkFTab (t1, t2)
+	       val A.FB (f, _, _) = fTab
+	       fun b lam = A.FunBind [lam]
+	       val binds = List.map b [seqPair, tabFromToP, tabP, fTab]
                in
-	         AU.mkLetExp (binds, monoVarExp ftab)
+	         AU.mkLetExp (binds, monoVarExp f)
 	       end
 	   else
              A.VarExp (DV.ftab (), [t])
@@ -182,7 +183,14 @@ structure PArrayOpGen = struct
     of [t1, t2] => 
          if FU.isInt t1 andalso FU.isInt t2 then
            A.VarExp (DV.ifpTabFTS (), [])
-(* FIXME What if only one of the types is an int? *)
+	 else if FU.isGroundTy t1 andalso FU.isGroundTy t2 then let
+           val {seqPair=f1, tabFromToP=f2, tabFromToStepP=f3, fTabFromToStep=f4} =
+             SynthTab.mkFTabFTS (t1, t2)
+	   val A.FB (f, _, _) = f4
+	   val binds = List.map (fn lam => A.FunBind [lam]) [f1, f2, f3, f4]
+	   in
+             AU.mkLetExp (binds, monoVarExp f)
+	   end
 	 else
            A.VarExp (DV.fptabFTS (), ts)
      | _ => raise Fail ("todo: " ^ TU.toString (T.TupleTy ts))

@@ -36,12 +36,15 @@ structure ASTUtil : sig
     val mkInt      : int -> AST.exp
 
   (* generate code for arithmetic *)
+    val zero       : AST.exp (* integer 0 *)
+    val one        : AST.exp (* integer 1 *)
     val plus       : AST.exp -> AST.exp -> AST.exp
     val plusOne    : AST.exp -> AST.exp
     val minus      : AST.exp -> AST.exp -> AST.exp
     val minusOne   : AST.exp -> AST.exp
+    val times      : AST.exp -> AST.exp -> AST.exp
+    val intNeg     : AST.exp -> AST.exp
     val intDiv     : AST.exp * AST.exp -> AST.exp
-
     val intGTE     : AST.exp * AST.exp -> AST.exp
     val intGT      : AST.exp * AST.exp -> AST.exp
     val intLT      : AST.exp * AST.exp -> AST.exp
@@ -234,23 +237,29 @@ structure ASTUtil : sig
        | _ => raise Fail "mkCompose"
       (* end case *))
 
+    val zero = mkInt 0
+    val one = mkInt 1
+
     local
       fun intBin binop = fn args => mkApplyExp (A.VarExp (binop, []), args) 
       val mkPlus = intBin B.int_plus
       val mkMinus = intBin B.int_minus
+      val mkTimes = intBin B.int_times
       val mkDiv = intBin B.int_div
       val mkGT = intBin B.int_gt
       val mkGTE = intBin B.int_gte
       val mkLT = intBin B.int_lt
     in
-      fun plusOne n = mkPlus [n, mkInt 1]
+      fun plusOne n = mkPlus [n, one]
       fun plus n m = mkPlus [n, m]
-      fun minusOne n = mkMinus [n, mkInt 1]
+      fun minusOne n = mkMinus [n, one]
       fun minus n m = mkMinus [n, m]
+      fun times n m = mkTimes [n, m]
       fun intDiv (n, m) = mkDiv [n, m]
       fun intGTE (n, m) = mkGTE [n, m]
       fun intGT (n, m) = mkGT [n, m]
       fun intLT (n, m) = mkLT [n, m]
+      fun intNeg n = mkApplyExp (A.VarExp (B.int_neg, []), [n])
     end (* local *)
 
     val lower: string -> string = implode o List.map Char.toLower o explode    
