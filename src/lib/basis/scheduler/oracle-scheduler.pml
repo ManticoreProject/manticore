@@ -69,7 +69,9 @@ structure CED (* :> sig
       (glob, loc, initializeLog name)
     end
 
-  fun estimate ((glob, _, _), m) = Float.fromInt m * FloatRef.get glob
+  fun workOf m = if m < 1 then 1 else m
+
+  fun estimate ((glob, _, _), m) = Float.fromInt (workOf m) * FloatRef.get glob
 
   fun post (glob, c) = let
     val g = FloatRef.get glob
@@ -97,7 +99,8 @@ structure CED (* :> sig
     val sum = CAF.sub (sumA, 0)
     val start' = start andalso (nb < nbBegin)
     val nb' = nb + 1
-    val sum' = sum + (t / Float.fromInt m)
+    val w = workOf m
+    val sum' = sum + (t / Float.fromInt w)
     val c = sum' / Float.fromInt nb'
     in
       if start' then 
@@ -180,7 +183,7 @@ structure OracleScheduler (* : sig
   val nbVProcs = VProc.numVProcs ()
   fun vprocID () = VProc.id (VProc.host ())
 
-  val kappa = Float.fromInt (ParseCommandLine.parse1 "-oracle-kappa" Int.fromString (20*100))
+  val kappa = Float.fromInt (ParseCommandLine.parse1 "-oracle-kappa" Int.fromString 500000)
 
   fun measuredRun (r, m, k) = let
     val t1 = CycleCounter.getTicks ()
