@@ -1,4 +1,4 @@
-structure Rope = struct
+structure IntRope = struct
 
 val C = 2
 
