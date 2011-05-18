@@ -58,8 +58,8 @@ structure DelayedBasis = struct
     val rope       = memoTyc ["Rope", "rope"]
     val int_rope   = memoTyc ["IntRope", "int_rope"]
     val dbl_rope   = memoTyc ["DoubleRope", "double_rope"]
-    val farray     = memoTyc ["FArray", "f_array"]
-    val shape_tree = memoTyc ["ShapeTree", "shape_tree"]
+    val farray     = memoTyc ["FArray", "farray"]
+    val shape      = memoTyc ["Shape", "shape"]
     val int_farray = memoTyc ["IntFArray", "int_farray"]
     val dbl_farray = memoTyc ["DoubleFArray", "double_farray"]
     val list_seq   = memoTyc ["ListSeq", "seq"]
@@ -83,8 +83,8 @@ structure DelayedBasis = struct
     val farray    = memoDCon ["FArray", "FArray"]
     val intFArray = memoDCon ["IntFArray", "FArray"]
     val dblFArray = memoDCon ["DoubleFArray", "FArray"]
-    val lf        = memoDCon ["ShapeTree", "Lf"]
-    val nd        = memoDCon ["ShapeTree", "Nd"]
+    val lf        = memoDCon ["Shape", "Lf"]
+    val nd        = memoDCon ["Shape", "Nd"]
   end
 
 (* hlops *)
@@ -229,7 +229,7 @@ structure DelayedBasis = struct
     val flattenIFF    = memoVar ["FArrayUtil", "flatten_IF_F"]
     val mapIFPoly     = memoVar ["FArrayUtil", "map_IF_poly"]
 
-    val shapeSame     = memoVar ["ShapeTree", "same"]
+    val shapeSame     = memoVar ["Shape", "same"]
 
   end
 
@@ -252,7 +252,7 @@ structure DelayedBasis = struct
     fun cancel () = con0 TyCon.cancel
     fun bitvec () = con0 TyCon.bitvec
     fun future t = con1 (t, TyCon.future)
-    fun shape_tree () = con0 TyCon.shape_tree
+    fun shape () = con0 TyCon.shape
     fun arr_seq t = con1 (t, TyCon.arr_seq)
     fun int_seq () = con0 TyCon.int_seq
     fun dbl_seq () = con0 TyCon.dbl_seq

@@ -4,7 +4,7 @@
  * All rights reserved.
  *
  * Convert abstract farrays to their AST realizations as
- *   FArray (data:t rope, shape:shape_tree)
+ *   FArray (data:t rope, shape:shape)
  * where FArray is in path/to/src/lib/basis/parray/farray.pml.
  *)
 
@@ -41,7 +41,7 @@ end = struct
 
   fun mkTree (n : A.ntree) : A.exp = let
     fun const c = A.ConstExp (A.DConst (c, []))
-    val ntreeTy = A.ConTy ([], DC.shape_tree ())
+    val ntreeTy = A.ConTy ([], DC.shape ())
     in case n
       of A.Lf (loExp, hiExp) => 
            AU.mkApplyExp (const (DD.lf ()), [loExp, hiExp])

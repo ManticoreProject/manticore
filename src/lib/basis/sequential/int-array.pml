@@ -68,5 +68,43 @@ fun modify f a = let
     m 0
   end
 
+fun foldl f init arr = let
+  val len = length arr
+  fun fold (i, a) =
+    if (i >= len) then a
+    else fold (i+1, f (sub (arr, i), a))
+  in
+    fold (0, init)
+  end
+
+fun foldr f init arr = let
+  val len = length arr
+  fun fold (i, a) = 
+    if (i < 0) then a
+    else fold (i-1, f (sub (arr, i), a))
+  in
+    fold (len-1, init)
+  end
+
+fun map (f: int -> int) arr = tabulate (length arr, fn i => f (sub (arr, i)))
+
+fun app f arr = let
+  val len = length arr
+  fun appf i = 
+    if (i >= len) then ()
+    else (f (sub (arr, i)); appf (i+1))
+  in
+    appf 0
+  end
+
+fun fromList (xs : int list) = let
+  val len = List.length xs
+  val arr = U.create len
+  fun lp (i, ys) = case ys
+    of nil => arr
+     | h::t => (update (arr, i, h); lp (i+1, t))
+  in
+    lp (0, xs)
+  end
 
 end

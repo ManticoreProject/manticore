@@ -169,7 +169,7 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
     (* build patterns against which to match the argument *)
     (* note: each must be a *simple* pattern, since match compilation is already done *)
       val dataTy   = DTy.rope (T.TupleTy ts)
-      val shapeTy  = DTy.shape_tree ()
+      val shapeTy  = DTy.shape ()
       val data     = Var.new ("data", dataTy)
       val shape    = Var.new ("shape", shapeTy)
       val fArrPat = A.ConPat (DD.farray (), 
@@ -276,7 +276,7 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
       val f = Var.new (freshName (), T.FunTy (domTy, rngTy))
       val arg = Var.new ("arg", domTy)
       val data = Var.new ("data", DTy.rope fDomTy)
-      val shape = Var.new ("shape", DTy.shape_tree ())
+      val shape = Var.new ("shape", DTy.shape ())
       val tpat = A.TuplePat [A.VarPat data, A.VarPat shape]
 (* FIXME complex pattern binding -- change to case *)
       val pat = A.ConPat (DD.farray (), [domTy], tpat)
