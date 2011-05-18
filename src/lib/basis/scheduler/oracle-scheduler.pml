@@ -3,17 +3,96 @@
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
+ * Command-line arguments:
  *
+ *   -oracle-kappa <int>          Value for cutoff size kappa (unit is processor cycles)
+ *   -oracle-logging <int>        Enable logging (argument is max number of log entries
+ *                                that each processor can report.
+ *   -oracle-logging-constant <string>
+ *                                Record log entries for the constant named by the 
+ *                                argument.
+ * 
  *)
 
-structure CED (* :> sig
-    type ced
-    val initialize   : string -> ced
-    val estimate     : ced * int -> float
-    val measured     : ced * int * float -> unit
+(* 64-bit unsigned integers for representing the cost of executing some computation *)
+structure CostEstimation (* :> sig
 
-    val addToLog     : ced * int * float -> unit
+    type cost
+
+    exception NegativeCost
+
+  (** Conversions **)
+
+  (* raises exception NegativeCost if argument is negative *)
+    val fromInt    : int -> cost
+  (* raises exception NegativeCost if argument is negative *)
+    val fromLong   : long -> cost
+    val fromWord32 : Word32.word -> cost
+    val fromWord64 : Word64.word -> cost
+  (* return value is > 0 *)
+    val toWord64     : cost -> Word64.word
+
+  (** Complexity operators **)
+
+    val mul        : cost * cost -> cost
+    val lgn        : cost -> cost
+    val lgnlgn     : cost -> cost
+    val nlgn       : cost -> cost
+    val nsq        : cost -> cost
+    val ncube      : cost -> cost
+    val pow2       : cost -> cost
+    val pow3       : cost -> cost
+    val pow4       : cost -> cost
+
+  end *) = struct
+
+  type cost = Word64.word
+
+  fun negativeCost () = raise Fail "NegativeCost"
+(*  fun negativeCost () = raise NegativeCost *)
+
+  fun cvt w = if Word64.same (w, Word64.fromInt 0) then Word64.fromInt 1 else w
+  fun fromInt x = if x < 0 then negativeCost () else cvt (Word64.fromInt x)
+  fun fromLong x = if x < 0 then negativeCost () else cvt (Word64.fromLong x)
+  fun fromWord32 x = raise Fail "todo" (* cvt (Word32.toWord64 x) *)
+  fun fromWord64 x = cvt x
+  fun toWord64 x = x
+
+  val mul = Word64.mul
+  fun lgn n = 
+    if n < toWord64 2 then
+      toWord64 1
+    else if n < toWord64 4294967295 then
+      fromInt (Int.ceilingLg (Word64.toInt n))
+    else
+      raise Fail "CostEstimation.lgn"
+  fun lgnlgn n = lgn (lgn n)
+  fun nlgn n = mul (n, lgn n)
+  fun nsq n = mul (n, n)
+  fun ncube n = mul (n, nsq n)
+
+  val pow2 = nsq
+  val pow3 = ncube
+  fun pow4 n = mul (n, pow3 n)
+
+end
+
+structure CED (* :> sig
+
+  (** Constant estimator data structure **)
+
+    type ced
+
+    val initialize   : string -> ced
+    val estimate     : ced * CostEstimation.cost -> float
+    val measured     : ced * CostEstimation.cost * float -> unit
+
+  (** Logging **)
+
+    val logSz        : int
+    val addToLog     : ced * CostEstimation.cost * float -> unit
     val printLog     : ced -> unit
+
   end *) = struct
 
   structure CAI = UnsafeCacheAlignedIntArray
@@ -69,9 +148,9 @@ structure CED (* :> sig
       (glob, loc, initializeLog name)
     end
 
-  fun workOf m = if m < 1 then 1 else m
+  fun costToFloat m = Float.fromLong (Word64.toLong (CostEstimation.toWord64 m))
 
-  fun estimate ((glob, _, _), m) = Float.fromInt (workOf m) * FloatRef.get glob
+  fun estimate ((glob, _, _), m) = costToFloat m * FloatRef.get glob
 
   fun post (glob, c) = let
     val g = FloatRef.get glob
@@ -99,8 +178,7 @@ structure CED (* :> sig
     val sum = CAF.sub (sumA, 0)
     val start' = start andalso (nb < nbBegin)
     val nb' = nb + 1
-    val w = workOf m
-    val sum' = sum + (t / Float.fromInt w)
+    val sum' = sum + (t / costToFloat m)
     val c = sum' / Float.fromInt nb'
     in
       if start' then 
@@ -173,15 +251,13 @@ structure CED (* :> sig
 end
 
 structure OracleScheduler (* : sig
-    type ('a, 'b) quad = CED.ced * ('a -> int) * ('a -> 'b) * ('a -> 'b)
+
+    val measuredRun : (CED.ced * CostEstimation.cost * (unit -> 'a)) -> 'a
+
+    type ('a, 'b) quad = CED.ced * ('a -> CostEstimation.cost) * ('a -> 'b) * ('a -> 'b)
     val oracle : ('a, 'b) quad * 'a -> 'b
+
   end *) = struct
-
-  structure CAI = UnsafeCacheAlignedIntArray
-  structure CAF = UnsafeCacheAlignedFloatArray
-
-  val nbVProcs = VProc.numVProcs ()
-  fun vprocID () = VProc.id (VProc.host ())
 
   val kappa = Float.fromInt (ParseCommandLine.parse1 "-oracle-kappa" Int.fromString 500000)
 
