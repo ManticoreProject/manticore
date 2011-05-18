@@ -21,6 +21,11 @@ structure ChunkingPolicy = struct
     | ETS of int (* SST *)
     | LTS of int (* PPT *)
 
+  fun toString cp = (case cp
+    of Sequential => "Sequential"
+     | ETS n => "ETS " ^ Int.toString n
+     | LTS n => "LTS " ^ Int.toString n)
+
   local
     val dflt = LTS 1
     fun cvt args = (case args

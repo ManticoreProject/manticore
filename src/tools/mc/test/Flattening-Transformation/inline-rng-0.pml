@@ -1,3 +1,4 @@
+val ln = Print.printLn
 val itos = Int.toString
 
 fun pr x rng = let

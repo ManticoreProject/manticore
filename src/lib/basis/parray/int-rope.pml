@@ -8,26 +8,27 @@
 
 structure IntRope = struct
 
-val C = 2
+  val C = 2
 
-fun failwith s = raise Fail s
-fun subscript () = raise Fail "subscript"
+  val fail = Fail.fail "IntRope"
 
-structure RT = Runtime
-structure S = IntSeq
-structure RTy = RopeTy
+  fun failwith s = raise Fail s
+  fun subscript () = raise Fail "subscript"
 
-datatype progress = datatype Progress.progress
+  structure RT = Runtime 
+  structure S = IntSeq
 
-type seq = S.int_seq
+  datatype progress = datatype Progress.progress
 
-datatype int_rope 
-  = Leaf of seq
-  | Cat of int * int * int_rope * int_rope
+  type seq = S.int_seq
 
-fun length rp = (case rp
-  of Leaf s => S.length s
-   | Cat (l, _, _, _) => l)
+  datatype int_rope 
+    = Leaf of seq
+    | Cat of int * int * int_rope * int_rope
+
+  fun length rp = (case rp
+    of Leaf s => S.length s
+     | Cat (l, _, _, _) => l)
 
 fun depth rp = (case rp
   of Leaf _ => 0
@@ -584,16 +585,23 @@ fun tabulateLTS PPT (n, f) = let
   in
     t ((0, n), GCTop)
   end
+
 in
-fun tabulate (n, f) = 
-  if n < 0 then failwith "Size" else
-  (case ChunkingPolicy.get ()
-    of ChunkingPolicy.Sequential => 
-         tabulateSequential f (0, n)
-     | ChunkingPolicy.ETS SST => 
-         tabulateETS SST (n, f)
-     | ChunkingPolicy.LTS PPT => 
-         tabulateLTS PPT (n, f))
+
+  fun say s e = (Print.printLn s; e)
+
+  fun tabulate (n, f) = 
+    if n < 0 then 
+      failwith "Size" 
+    else let
+      val cp = ChunkingPolicy.get ()
+      (* val _ = Print.printLn ("chunking policy: " ^ ChunkingPolicy.toString cp) *)
+      in case cp
+        of ChunkingPolicy.Sequential => tabulateSequential f (0, n)
+	 | ChunkingPolicy.ETS SST => tabulateETS SST (n, f)
+	 | ChunkingPolicy.LTS PPT => tabulateLTS PPT (n, f)
+      end
+
 end (* local *)
 
 (*local*)
@@ -1168,25 +1176,25 @@ fun app f rp = let
 
   (* nEltsInRange : int * int * int -> int *)
     fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
-	  if step = 0 then failwith "cannot have step 0 in a range"
-	  else if from = to_ then 1
-	  else if (from > to_ andalso step > 0) then 0
-	  else if (from < to_ andalso step < 0) then 0
-	  else (Int.abs (from - to_) div Int.abs step) + 1
+      if step = 0 then 
+        fail "nEltsInRange" "cannot have step 0 in a range"
+      else 
+	1 + Int.max (0, (to_ - from) div step)
 
-  (* range : int * int * int -> int rope *)
+  (* rangeP : int * int * int -> int rope *)
+  (* note: both from and to are inclusive bounds *)
     fun range (from, to_, step) = (* "to" is syntax in pml *)
      (if from = to_ then singleton from
       else let
         val sz = nEltsInRange (from, to_, step)
-        fun gen n = step * n + from
+        fun gen n = from + step * n
         in
           tabulate (sz, gen)
         end)
 
-  (* rangePNoStep : int * int -> int rope *)
+  (* rangeNoStep : int * int -> int rope *)
     fun rangeNoStep (from, to_) = (* "to" is syntax in pml *)
-	  range (from, to_, 1)
+      range (from, to_, 1)
                                               
   (* partialSeq : 'a rope * int * int -> 'a seq *)
   (* return the sequence of elements from low incl to high excl *)

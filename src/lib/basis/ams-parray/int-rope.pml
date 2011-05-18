@@ -734,7 +734,7 @@ structure IntRope = struct
      (if from = to_ then singleton from
       else let
         val sz = nEltsInRange (from, to_, step)
-        fun gen n = step * n + from
+        fun gen n = from + step * n
         in
           tabP (sz, gen)
         end)

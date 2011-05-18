@@ -1,8 +1,12 @@
 #!/bin/sh
 
 PML_FLAGS="-Cftrx.keep-ft=true -Cftrx.on=true -Ccps.flatten=false -Cast.keep-inline-ranges=true"
+CP_FLAG="-chunking-policy ETS 1024"
 
-for PML_PROGRAM in inline*.pml ; do
+echo "NOTE: running tests using the following chunking policy: $CP_FLAG"
+echo ""
+
+for PML_PROGRAM in *.pml ; do
   echo "compiling $PML_PROGRAM"
   # EXEC=${PML_PROGRAM%%.pml}
   EXEC=a.out
@@ -10,7 +14,7 @@ for PML_PROGRAM in inline*.pml ; do
   CMD="./Build $PML_PROGRAM"
   echo $CMD && $CMD
   echo "running $PML_PROGRAM"
-  ./$EXEC
+  ./$EXEC $CP_FLAG
   echo "finished with $PML_PROGRAM"
   rm $EXEC
   echo ""
