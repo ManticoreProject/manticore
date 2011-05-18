@@ -494,32 +494,6 @@ structure MatchCompile : sig
 	(* create a variable expression *)
 (* FIXME: what about type arguments?? *)
 	  fun mkVar x = AST.VarExp(x, [])
-	(* flatten applications of constructors to tuples *)
-	  fun flattenTree tr = let
-		fun flatten tr = (case tr
-		       of CALL _ => tr
-			| CASE(x, cases) => let
-			    fun flattenCase (pat as CON(dc, tys, [ARG_VAR y]), tr as CASE(z, [(TPL args, tr')])) =
-				  if (Var.same(y, z))
-				    then (CON(dc, tys, args), flatten tr')
-				    else (pat, flatten tr)
-			      | flattenCase (pat, tr) = (pat, flatten tr)
-			    in
-			      CASE(x, List.map flattenCase cases)
-			    end
-			| IF(env, e, tr1, tr2) => IF(env, e, flatten tr1, flatten tr2)
-			| ACTION _ => tr
-		      (* end case *))
-		val _ = if debug
-		      then (print "** Decision tree before flattening:\n"; prTree tr)
-		      else ()
-		val tr = flatten tr
-		val _ = if debug
-		      then (print "** Decision tree after flattening:\n"; prTree tr)
-		      else ()
-		in
-		  tr
-		end
 	(* convert a decision tree to TypedAST *)
 	  fun treeToAST (CALL(f, args)) =
 		AST.ApplyExp(mkVar f, ASTUtil.mkTupleExp(List.map mkVar args), resTy)
@@ -547,14 +521,20 @@ structure MatchCompile : sig
 	    | treeToAST (IF(env, cond, t, f)) =
 		AST.IfExp(rewrite(loc, env, cond), treeToAST t, treeToAST f, resTy)
 	    | treeToAST (ACTION(env, e)) = rewrite(loc, env, e)
+	(* print the tree when debugging is turned on *)
+	  fun debugPrintTree tr = (
+		if debug
+		  then (print "** Decision tree:\n"; prTree tr)
+		  else ();
+		tr)
 	  fun treeToFB (f, params, body) =
-		ASTUtil.mkFunWithParams(f, params, treeToAST (flattenTree body))
+		ASTUtil.mkFunWithParams(f, params, treeToAST (debugPrintTree body))
 	  val shared = (case fns
 		 of [] => NONE
 		  | _ => SOME(AST.FunBind(List.map treeToFB fns))
 		(* end case *))
 	  in
-	    { shared = shared, match = treeToAST (flattenTree tree) }
+	    { shared = shared, match = treeToAST (debugPrintTree tree) }
 	  end
 
     fun compile (errStrm, body : AST.exp) = let
