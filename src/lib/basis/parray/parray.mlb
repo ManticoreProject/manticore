@@ -1,0 +1,29 @@
+(* parray.mlb
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Parallel arrays.
+ *)
+
+  ../sequential/sequential.mlb
+  ../misc/debug.mlb
+  ../extras/fail.pml
+
+(* Ropes *)
+
+  rope.mlb
+
+(* Flattened Arrays *)
+
+  shape.pml
+  farray.pml
+  int-farray.pml
+
+(* Parallel Arrays *)
+
+  parray.pml
+
+(* Scans *)
+
+  scan.pml

@@ -1,0 +1,28 @@
+(* rope.mlb
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Ropes.
+ *)
+
+  ../sequential/sequential.mlb
+  ../misc/debug.mlb
+
+  parse-command-line.pml
+  progress.pml
+  chunking-policy.pml
+  leaf-size.pml
+ann "cpp" "" in
+  runtime.pml
+end
+
+  vector-seq.pml
+  int-seq.pml
+
+  rope-ty.pml
+  rope.pml
+  rope-pair.pml
+  int-rope.pml
+
+  (* test.pml *)
