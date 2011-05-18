@@ -8,6 +8,8 @@
 
 structure DoubleRope = struct
 
+  val fail = Fail.fail "DoubleRope"
+
   val C = 2
 
   fun failwith s = (Print.printLn s; raise Fail s)
@@ -401,7 +403,9 @@ fun join decode finish zipCursor (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2)) = let
   val (mn, mls) = (List.last ms, List.take (ms, List.length ms - 1))
   val (mrs, rps2) = (List.take (xs2, n2), List.drop (xs2, n2))
   val m = finish (zipCursor (mn, (mls, mrs, mds)))
-  val rp :: rs = rps1 @ (m::nil) @ rps2
+  val (rp, rs) = (case (rps1 @ (m::nil) @ rps2)
+    of h::t => (h, t)
+     | nil => fail "join" "empty")
   in
     zipCursor (rp, (ls, rs, ds))
   end
@@ -503,7 +507,9 @@ fun tabulateUntil cond (cur, f) = let
            val us = (lo + S.length ps, hi)
 	   in
              if numUnprocessedTab (us, c) < 2 then let
-	       val Done us' = S.tabulateUntil (fn _ => false) (us, f)
+	       val us' = (case S.tabulateUntil (fn _ => false) (us, f)
+                 of Done x => x
+		  | More _ => fail "tabulateUntil" "More")
 	       val ps' = S.cat2 (ps, us')
 	       in
 		 case nextTab (leaf ps', c)
@@ -977,7 +983,9 @@ fun downsweepUntil cond f b acc cur = let
   fun d (s, c, acc) = (case S.scanUntil cond f acc s
     of (acc, More (us, ps)) => 
          if numUnprocessedDownsweep (mcleaf' (b, us), c) < 2 then let
-	    val (acc', Done us') = S.scanUntil (fn _ => false) f acc us
+	    val (acc', us') = (case S.scanUntil (fn _ => false) f acc us
+              of (a', Done u') => (a', u')
+	       | (_, More _) => fail "downsweepUntil" "More")
             in
 	      case nextDownsweep (leaf (S.cat2 (ps, us')), c)
 	       of Done p' => Done p'
