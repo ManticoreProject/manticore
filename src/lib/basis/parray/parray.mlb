@@ -19,6 +19,8 @@
   shape.pml
   farray.pml
   int-farray.pml
+  double-farray.pml
+  farray-util.pml
 
 (* Parallel Arrays *)
 

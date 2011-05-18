@@ -13,35 +13,41 @@
  *)
 
 structure ChunkingPolicy = struct
-datatype chunking_policy
-  = Sequential
-  | ETS of int (* SST *)
-  | LTS of int (* PPT *)
-local
-val dflt = LTS 1
-fun cvt args = (case args
-  of a1 :: a2 :: _ =>
-       if ParseCommandLine.stringSame (a1, "ETS") then
-	 (case Int.fromString a2
-	   of SOME SST => SOME (ETS SST)
-	    | NONE => NONE)
-       else if ParseCommandLine.stringSame (a1, "LTS") then
-	 (case Int.fromString a2
-	   of SOME PPT => SOME (LTS PPT)
-	    | NONE => NONE)
-       else if ParseCommandLine.stringSame (a1, "SEQ") then
-	 SOME Sequential
-       else
-	 NONE
-   | a1 :: _ =>
-       if ParseCommandLine.stringSame (a1, "SEQ") then
-	 SOME Sequential
-       else
-	 (raise Fail "ChunkingPolicy.cvt: invalid argument")
-   | _ => (raise Fail "ChunkingPolicy.cvt: invalid argument"))
-val policyR = Ref.new (ParseCommandLine.parse "-chunking-policy" cvt dflt)
-in
-fun get () = Ref.get policyR
-fun set policy' = Ref.set (policyR, policy')
-end
-end
+
+  val fail = Fail.fail "ChunkingPolicy"
+
+  datatype chunking_policy
+    = Sequential
+    | ETS of int (* SST *)
+    | LTS of int (* PPT *)
+
+  local
+    val dflt = LTS 1
+    fun cvt args = (case args
+      of a1 :: a2 :: _ =>
+           if ParseCommandLine.stringSame (a1, "ETS") then
+	     (case Int.fromString a2
+	       of SOME SST => SOME (ETS SST)
+		| NONE => NONE)
+	   else if ParseCommandLine.stringSame (a1, "LTS") then
+	     (case Int.fromString a2
+	       of SOME PPT => SOME (LTS PPT)
+		| NONE => NONE)
+	   else if ParseCommandLine.stringSame (a1, "SEQ") then
+	     SOME Sequential
+	   else
+	     NONE
+       | a1 :: _ =>
+           if ParseCommandLine.stringSame (a1, "SEQ") then
+	     SOME Sequential
+	   else
+	     fail "cvt" "invalid argument (loc1)"
+       | _ => fail "cvt" "invalid argument (loc2)"
+      (* end case *))
+    val policyR = Ref.new (ParseCommandLine.parse "-chunking-policy" cvt dflt)
+  in
+    fun get () = Ref.get policyR
+    fun set policy' = Ref.set (policyR, policy')
+  end (* local *)
+
+end (* structure *)

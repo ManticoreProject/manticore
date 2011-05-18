@@ -1,21 +1,21 @@
-(* int-farray.pml  
+(* double-farray.pml  
  *
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Monomorphic FArrays of ints.
+ * Monomorphic FArrays of doubles.
  *)
 
-structure IntFArray = struct
+structure DoubleFArray = struct
 
   structure S = Shape
-  structure R = IntRope
+  structure R = DoubleRope
 
   val fail = Fail.fail "IntFArray"
 
   (* ***** FLATTENED ARRAYS ***** *)  
 
-  datatype int_farray = FArray of R.int_rope * S.shape
+  datatype double_farray = FArray of R.double_rope * S.shape
   
 (* empty : 'a f_array *)
   val empty = FArray (R.empty (), S.Lf (0, 0))
@@ -76,8 +76,8 @@ structure IntFArray = struct
      | S.Lf _ => fail "nestedSub" "Lf"
     (* end case *))
 
-(* tab : int * (int -> int) -> int_farray *)
-  fun tab (n, f : int -> int) =
+(* tab : int * (int -> double) -> double_farray *)
+  fun tab (n, f : int -> double) =
     if n <= 0 then 
       empty
     else let
@@ -130,26 +130,15 @@ structure IntFArray = struct
 	 end
     (* end case *))
 
-(* reduce : (int * int -> int) -> int -> int_farray -> int *) 
+(* reduce : (dbl * dbl -> dbl) -> dbl -> dbl_farray -> dbl *) 
   fun reduce assocOp zero (FArray (data, shape)) = (case shape
     of S.Lf (lo, hi) => let 
          val FArray (data', shape') = clean (FArray (data, shape))
          in 
            R.reduce assocOp zero data'
          end
-       | S.Nd _ => fail "reduce" "flat int_farray expected"
+       | S.Nd _ => fail "reduce" "flat double_farray expected"
       (* end case *))
-
-(* intRange : int * int * int -> int_farray *)
-  fun intRange (from, to_, step) = let
-    val data = R.range (from, to_, step)
-    val len = R.length data
-    in
-      if (len = 0) then
-        empty
-      else
-	FArray (data, S.Lf (0, len))
-    end
 
 (* flatApp : (int -> unit) -> int_farray -> unit *)
   fun flatApp f (FArray (data, shape)) = (case shape

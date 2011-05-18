@@ -8,47 +8,47 @@
 
 structure PArray = struct
 
-    _primcode (
-	define inline @to-rope (x : parray / _ : exh) : Rope.rope =
-	    return ((Rope.rope)x)
-	  ;
-	define inline @from-rope (x : Rope.rope / _ : exh) : parray =
-	    return ((parray)x)
-	  ;
-      )
+  val fail = Fail.fail "PArray"
 
-    type 'a parray = 'a parray
+  _primcode (
+    define inline @to-rope (x : parray / _ : exh) : Rope.rope =
+      return ((Rope.rope)x);
+    define inline @from-rope (x : Rope.rope / _ : exh) : parray =
+      return ((parray)x);
+    )
 
-(*    local *)
-      val toRope : 'a parray -> 'a Rope.rope = _prim(@to-rope)
-      val fromRope : 'a Rope.rope -> 'a parray = _prim(@from-rope)
-(*    in *)
+  type 'a parray = 'a parray
 
-  (* FIXME too tightly coupled *)
-    fun sub (pa, i) = Rope.sub (toRope pa, i)
-    fun length pa = Rope.length (toRope pa)
-    fun tab (n, f) = fromRope (Rope.tab (n, f))
-    fun tabFromToStep (a, b, step, f) = fromRope (Rope.tabFromToStep (a, b, step, f))
-    fun map f pa = fromRope (Rope.map f (toRope pa))
-    fun reduce (rator, init, pa) = Rope.reduce rator init (toRope pa)
-    fun range (from, to_, step) = fromRope (Rope.range (from, to_, step))
-    fun app f pa = Rope.app f (toRope pa)
+  (* local *)
 
-(*    fun filter (pred, pa) = fromRope(Rope.filter pred (toRope pa)) *)
-(*    fun rev pa = fromRope(Rope.rev(toRope pa)) *)
-(*    fun fromList l = fromRope(Rope.fromList l) *)
-(*    fun concat (pa1, pa2) = fromRope(Rope.concat(toRope pa1, toRope pa2)) *)
-(*    fun tabulateWithPred (n, f) = fromRope(Rope.tabulate(n, f)) *)
-(*    fun forP (n, f) = Rope.for (n,f) *)
+  (* I would prefer these were local but I had to expose them to the compiler for the FT. *)
+  val toRope : 'a parray -> 'a Rope.rope = _prim(@to-rope)
+  val fromRope : 'a Rope.rope -> 'a parray = _prim(@from-rope)
 
-  (* repP : int * 'a -> 'a parray *)
-  (* called "dist" in NESL and Keller *)
-  (* called "replicateP" in DPH impl *)
-(*    fun repP (n, x) = fromRope(Rope.tabulate (n, fn _ => x)) *)
+  (* in *)
 
-(*  end (* local *) *)
+  (* Rope implementations are the default. *)
+  (* These functions are swapped out when the FT is turned on. *)
+  fun sub (pa, i) = Rope.sub (toRope pa, i)
+  fun length pa = Rope.length (toRope pa)
+  fun tab (n, f) = fromRope (Rope.tab (n, f))
+  fun tabFromToStep (a, b, step, f) = fromRope (Rope.tabFromToStep (a, b, step, f))
+  fun map f pa = fromRope (Rope.map f (toRope pa))
+  fun reduce rator init pa = Rope.reduce rator init (toRope pa)
+  fun range (from, to_, step) = fromRope (Rope.range (from, to_, step))
+  fun app f pa = Rope.app f (toRope pa)
 
-(*
+  (* fun filter (pred, pa) = fromRope(Rope.filter pred (toRope pa)) *)
+  (* fun rev pa = fromRope(Rope.rev(toRope pa)) *)
+  (* fun fromList l = fromRope(Rope.fromList l) *)
+  (* fun concat (pa1, pa2) = fromRope(Rope.concat(toRope pa1, toRope pa2)) *)
+  (* fun tabulateWithPred (n, f) = fromRope(Rope.tabulate(n, f)) *)
+  (* fun forP (n, f) = Rope.for (n,f) *)
+  (* fun repP (n, x) = fromRope(Rope.tabulate (n, fn _ => x)) *)
+
+  (* end (* local *) *)
+
+(* (* I can't write polymorphic toString, unfortunately. Specific implementations below. *)
   (* toString : ('a -> string ) -> string -> 'a parray -> string *)
   (* FIXME: should we exploit the fact that we're dealing with a rope? *)
     fun toString eltToString sep parr = let
@@ -69,22 +69,44 @@ structure PArray = struct
 	  end
 *)
 
+  fun tos_intPair parr = let
+    val itos = Int.toString
+    fun tos i = let
+      val (m,n) = parr!i 
+      in
+        "(" ^ itos m ^ "," ^ itos n ^ ")"
+      end
+    fun lp (i, acc) =
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::","::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        fail "tos_intPair" "BUG: negative length"
+      else if (n=0) then "[||]"
+      else let
+        val init = [tos(n-1),"|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
 end
 
-(*
-(* FIXME: the following definitions should be in a separate
- * file (a la sequential/pervasives.pml)
- *)
-(* below is the subset of the parallel array module that should bound at the top level. *)
-val reduceP = PArray.reduce
-val filterP = PArray.filter
-val subP = PArray.sub
-val revP = PArray.rev
-val lengthP = PArray.length
-val mapP = PArray.map
-val fromListP = PArray.fromList
-val concatP = PArray.concat
-val tabP = PArray.tabulateWithPred
-val forP = PArray.forP
-
-*)
+(* (\* FIXME: the following definitions should be in a separate *)
+(*  * file (a la sequential/pervasives.pml) *)
+(*  *\) *)
+(* (\* Below is the subset of the parallel array module that should bound at the top level. *\) *)
+(* val reduceP = PArray.reduce *)
+(* val filterP = PArray.filter *)
+(* val subP = PArray.sub *)
+(* val revP = PArray.rev *)
+(* val lengthP = PArray.length *)
+(* val mapP = PArray.map *)
+(* val fromListP = PArray.fromList *)
+(* val concatP = PArray.concat *)
+(* val tabP = PArray.tabulateWithPred *)
+(* val forP = PArray.forP *)
+(* *\) *)

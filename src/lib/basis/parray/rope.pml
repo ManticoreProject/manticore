@@ -1,3 +1,11 @@
+(* rope.pml  
+ *
+ * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * LTS ropes.
+ *)
+
 structure Rope = struct
 
 val C = 2
@@ -547,37 +555,39 @@ fun decodeRopeTab (rp, n) = let
     List.rev (d (rp, n))
   end
 
-fun rootU (rp, uc) = (case uc
-  of (nil, nil, nil) => rp
-   | (ls, r :: rs, Left :: ds) => rootU (nccat2 (rp, r), (ls, rs, ds))
-   | (l :: ls, rs, Right :: ds) => rootU (nccat2 (l, rp), (ls, rs, ds))
-   | _ => failwith "rootU")
+  fun rootU (rp, uc) = (case uc
+    of (nil, nil, nil) => rp
+     | (ls, r :: rs, Left :: ds) => rootU (nccat2 (rp, r), (ls, rs, ds))
+     | (l :: ls, rs, Right :: ds) => rootU (nccat2 (l, rp), (ls, rs, ds))
+     | _ => failwith "rootU")
 
-fun tabulateLTS PPT (n, f) = let
-  fun t cur = (case tabulateUntil RT.hungryProcs (cur, f)
-    of Done rp => rp
-     | More cur' => let
-	 val mid = numUnprocessedTab cur' div 2
-	 fun id x = x
-	 val (cur1, cur2, reb) = 
-	       splitAt intervalLength encodeCur cursorAtIxIntv id id (unzipCursor cur') mid
-	 val (rp1, rp2) = RT.par2 (fn () => t cur1, fn () => t cur2)
-	 in
-	   join decodeRopeTab id rootU (rp1, rp2, reb)
-         end)
-  in
-    t ((0, n), GCTop)
-  end
+  fun tabulateLTS PPT (n, f) = let
+    val _ = Print.printLn "tabulateLTS"
+    fun t cur = (case tabulateUntil RT.hungryProcs (cur, f)
+      of Done rp => rp
+       | More cur' => let
+	   val mid = numUnprocessedTab cur' div 2
+	   fun id x = x
+	   val (cur1, cur2, reb) = 
+	     splitAt intervalLength encodeCur cursorAtIxIntv id id (unzipCursor cur') mid
+	   val (rp1, rp2) = RT.par2 (fn () => t cur1, fn () => t cur2)
+	   in
+	     join decodeRopeTab id rootU (rp1, rp2, reb)
+           end)
+    in
+      t ((0, n), GCTop)
+    end
+
 in
-fun tabulate (n, f) = 
-  if n < 0 then failwith "Size" else
-  (case ChunkingPolicy.get ()
-    of ChunkingPolicy.Sequential => 
-         tabulateSequential f (0, n)
-     | ChunkingPolicy.ETS SST => 
-         tabulateETS SST (n, f)
-     | ChunkingPolicy.LTS PPT => 
-         tabulateLTS PPT (n, f))
+
+  fun tabulate (n, f) = 
+    if n < 0 then 
+      failwith "Size" 
+    else case ChunkingPolicy.get ()
+      of ChunkingPolicy.Sequential => tabulateSequential f (0, n)
+       | ChunkingPolicy.ETS SST => tabulateETS SST (n, f)
+       | ChunkingPolicy.LTS PPT => tabulateLTS PPT (n, f)
+
 end (* local *)
 
 (*local*)
@@ -586,6 +596,7 @@ fun mapSequential f rp = (case rp
        leaf (Seq.map f s)
    | Cat(len, d, l, r) => 
        Cat (len, d, mapSequential f l, mapSequential f r))
+
 fun mapETS SST f rp =
   if length rp <= SST then mapSequential f rp
   else let 
@@ -642,12 +653,17 @@ fun mapLTS PPT f rp = let
     if PPT <> 1 then failwith "PPT != 1 currently unsupported" else
     m (start rp)
   end
+
 (*in*)
-fun map f rp = (case ChunkingPolicy.get ()
-  of ChunkingPolicy.Sequential => mapSequential f rp
-   | ChunkingPolicy.ETS SST => mapETS SST f rp
-   | ChunkingPolicy.LTS PPT => mapLTS PPT f rp)
-fun mapUncurried (f, rp) = map f rp
+
+  fun map f rp = (case ChunkingPolicy.get ()
+    of ChunkingPolicy.Sequential => mapSequential f rp
+     | ChunkingPolicy.ETS SST => mapETS SST f rp
+     | ChunkingPolicy.LTS PPT => mapLTS PPT f rp
+    (* end case *))
+
+  fun mapUncurried (f, rp) = map f rp
+
 (*end*)
 
 (*local*)

@@ -19,10 +19,16 @@ end
 
   vector-seq.pml
   int-seq.pml
+  double-seq.pml
+  seq-util.pml
 
   rope-ty.pml
   rope.pml
   rope-pair.pml
   int-rope.pml
+  double-rope.pml
+
+  rope-util.pml
 
   (* test.pml *)
+

@@ -1,20 +1,20 @@
-(* int-seq.pml  
+(* double-seq.pml  
  *
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Monomorphic int sequences.
+ * Monomorphic double sequences.
  *)
 
-structure IntSeq = struct
+structure DoubleSeq = struct
 
-  structure A = IntArray
+  structure A = DoubleArray
 
   fun failwith s = raise Fail s
 
   fun subscript () = raise Fail "subscript"
 
-  type int_seq = A.array
+  type double_seq = A.array
 
   val fromList = A.fromList
 		 
