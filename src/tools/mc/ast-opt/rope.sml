@@ -17,7 +17,7 @@ end = struct
   fun maxLeafSize () = Controls.get BasicControl.maxLeafSize
   val ropeTyc = DelayedBasis.TyCon.rope
   val ropeTy = DelayedBasis.Ty.rope
-  val ropeLeaf = DelayedBasis.DataCon.ropeLEAF
-  val ropeCat = DelayedBasis.DataCon.ropeCAT 
+  val ropeLeaf = DelayedBasis.DataCon.ropeLeaf
+  val ropeCat = DelayedBasis.DataCon.ropeCat 
 
 end (* structure Rope *)

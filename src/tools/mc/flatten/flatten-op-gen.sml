@@ -59,6 +59,10 @@ end *) = struct
   infix **
   fun f ** xs = List.map f xs
 
+  fun vexp x = A.VarExp (x, [])
+
+  fun mkPrintln s = (vexp (DV.println ())) @@ [AU.mkString s]
+
 (* We record the lambdas we generate as we go in an (oper->lam) map, defined as an env. *)
 (* We consult the env on the way in order to avoid generating code more than once per oper. *)
   type env = A.lambda FMap.map 
@@ -125,6 +129,10 @@ end *) = struct
       val (x, p) = lp (0, ts, NONE, [])
       val body = A.LetExp (A.ValBind (p, A.VarExp (arg, [])),
 			   A.VarExp (x, []))
+(* +debug *)
+val msg = mkPrintln ("running " ^ Var.nameOf f)
+val body = A.SeqExp (msg, body) 
+(* -debug *)
       in
         A.FB (f, arg, body)
       end
@@ -161,9 +169,9 @@ end *) = struct
     (* create variables for function name and its argument *)
       val name  = freshName ()
       val unzip = Var.new (name, domTy --> rngTy)
-
+(* +debug *)
 val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy --> rngTy)])
-
+(* -debug *)
       val arg   = Var.new ("arg", domTy)
 
     (* build patterns against which to match the argument *)
@@ -172,9 +180,9 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
       val shapeTy  = DTy.shape ()
       val data     = Var.new ("data", dataTy)
       val shape    = Var.new ("shape", shapeTy)
-      val fArrPat = A.ConPat (DD.farray (), 
-			      [T.TupleTy ts], 
-			      A.TuplePat [A.VarPat data, A.VarPat shape])
+      val fArrPat  = A.ConPat (DD.farray (), 
+			       [T.TupleTy ts], 
+			       A.TuplePat [A.VarPat data, A.VarPat shape])
 
     (* generate typed selectors for each tuple component *)
       val hashes = List.tabulate (List.length ts, fn i => (mkHash (ts, i), i))
@@ -184,33 +192,41 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
      *   FArray (Rope.map (hash, data), shape) 
      * where data and shape are the vars bound in the pattern match *)
       fun mkMapHash (hash as A.FB (h, _, _), i) = let 
+        fun var v = A.VarExp (v, [])
+        fun var1 (v, t) = A.VarExp (v (), [t])
+	fun var2 (v, t1, t2) = A.VarExp (v (), [t1, t2])
+        fun con0 c = A.DConst (c (), [])
+	fun con1 (c, t) = A.DConst (c (), [t])
         val t = List.nth (ts, i)
 	val mapExp = 
           if TU.same (t, B.intTy) then
-            A.VarExp (DV.ropeMapP_int (), [T.TupleTy ts])
+            var1 (DV.ropeMap_int, T.TupleTy ts)
 	  else if TU.same (t, B.doubleTy) then 
-            A.VarExp (DV.ropeMapP_dbl (), [T.TupleTy ts])
+            var1 (DV.ropeMap_dbl, T.TupleTy ts)
 	  else 
-	    A.VarExp (DV.ropeMapP (), [T.TupleTy ts, t])
+	    var2 (DV.ropeMap, T.TupleTy ts, t)
 	val dcon = 
           if TU.same (t, B.intTy) then 
-            A.DConst (DD.intFArray (), [])
-	  else if TU.same (t, B.doubleTy) then
-            A.DConst (DD.dblFArray (), [])
+            con0 DD.intFArray
+	  else if TU.same (t, B.doubleTy) then 
+            con0 DD.dblFArray
 	  else
-            A.DConst (DD.farray (), [t])
-        val m = AU.mkApplyExp (mapExp, [A.VarExp (h, []), A.VarExp (data, [])])
+            con1 (DD.farray, t)
+        val m = AU.mkApplyExp (mapExp, [var h, var data])
         in
-	  AU.mkApplyExp (A.ConstExp dcon, [m, A.VarExp (shape, [])])
+	  AU.mkApplyExp (A.ConstExp dcon, [m, var shape])
         end
+
       val binds = List.map (fn (h,_) => A.FunBind [h]) hashes
-      val ptup = A.PTupleExp (List.map mkMapHash hashes)
-      val body = A.CaseExp (A.VarExp (arg, [T.TupleTy ts]),
-			    [A.PatMatch (fArrPat, AU.mkLetExp (binds, ptup))],
-			    rngTy)
+(*      val ptup = A.PTupleExp (List.map mkMapHash hashes) *)
+      val ptup' = valOf (TranslatePtup.tr (fn e => e) (map mkMapHash hashes))
+      val msg = mkPrintln ("running " ^ Var.nameOf unzip)
+      val body = A.SeqExp (msg,
+        AU.mkCaseExp (A.VarExp (arg, [T.TupleTy ts]),
+		      [A.PatMatch (fArrPat, AU.mkLetExp (binds, ptup'))]))
       in
       (* all together now... *)
-        A.FB (unzip, arg, body)
+	AU.mkFunWithParams (unzip, [arg], body)
       end
 
   in
@@ -281,7 +297,7 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
 (* FIXME complex pattern binding -- change to case *)
       val pat = A.ConPat (DD.farray (), [domTy], tpat)
       val bind = A.ValBind (pat, A.VarExp (arg, []))
-      val ropeMap = AU.mkApplyExp (A.VarExp (DV.ropeMapP (), [fDomTy, fRngTy]),
+      val ropeMap = AU.mkApplyExp (A.VarExp (DV.ropeMap (), [fDomTy, fRngTy]),
 				   [A.VarExp (f, []), A.VarExp (data, [])])
 (* FIXME question: does the data VarExp need a type in its type list? *)
       val con = AU.mkApplyExp (A.ConstExp (A.DConst (DD.farray (), [fDomTy])),
@@ -297,11 +313,13 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
       val name  = Var.nameOf f ^ "_o_" ^ Var.nameOf g
       val f_o_g = Var.new (name, domTy --> rngTy)
       val arg   = Var.new ("arg", domTy)
-
+(* debugging and meta-debugging *)
 val _ = println (concat ["building ", name, ":", TU.toString (domTy --> rngTy)])
-
+val msg = mkPrintln ("running " ^ Var.nameOf f_o_g)
+val body = A.SeqExp (msg, v f @@ [v g @@ [v arg]])
+(* end debugging *)
       in
-	A.FB (f_o_g, arg, v f @@ [v g @@ [v arg]])
+	AU.mkFunWithParams (f_o_g, [arg], body)
       end
     fun mkApps (x, ts, lams) = let
       fun v x = A.VarExp (x, [])

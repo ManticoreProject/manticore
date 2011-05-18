@@ -1,10 +1,25 @@
+fun loc i = Print.printLn ("loc " ^ Int.toString i)
+
 (* I want to see if simple image processing makes it through the FT *)
 (* (ramping up to ray tracing) *)
 
 val sz = 64
 val img = Image.new (sz, sz)
+
+val _ = loc 0
+
+(* val row = [| j | j in [| 0 to sz-1 |] |] *)
+(* val row = PArray.tab (sz, fn (i:int) => i) *)
+(* fun row (i:int, sz:int) = PArray.tab (sz, fn (j:int) => (i, j)) *)
+
+val _ = loc 1
+
 (* val field = [| [| (i,j) | j in [| 0 to sz-1 |] |] | i in [| 0 to sz-1 |] |] *)
+
 val field = PArray.tab (sz, fn (i:int) => PArray.tab (sz, (fn (j:int) => (i, j))))
+
+
+val _ = loc 2
 
 val _ = Print.printLn (PArray.tos_intPair (field!0))
 

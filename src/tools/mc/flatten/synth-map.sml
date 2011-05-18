@@ -24,10 +24,10 @@ structure SynthMap = struct
 
   fun vexp x = A.VarExp (x, [])
 
-  infix 9 **
+  infix 5 **
   fun t1 ** t2 = T.TupleTy [t1, t2]
 
-  infixr 8 -->
+  infixr 4 -->
   fun t1 --> t2 = T.FunTy (t1, t2)
 
   infix @@
@@ -42,6 +42,13 @@ structure SynthMap = struct
   infix 1 <:
   fun x <: t = Var.new (x, t)
 
+  fun tupBind (xs, tupExp, exp) = let
+    val tup = "tup" <: TypeOf.exp tupExp
+    in
+      AU.mkLetExp ([tup <- tupExp],
+        AU.mkCaseExp (vexp tup, [A.PatMatch (varsPat xs, exp)]))
+    end
+
   fun seq t = 
     if FU.isInt t then
       (DTy.int_seq (), DV.iseqSub (), DV.iseqTab (), DV.iseqUpd (), DV.iseqEmpty ())
@@ -50,13 +57,21 @@ structure SynthMap = struct
     else
       (DTy.arr_seq t, DV.arrSeqSub (), DV.arrSeqTab (), DV.arrSeqUpd (), DV.arrSeqEmpty ())
 
-  fun rope t =
-    if FU.isInt t then
-      (DD.intLEAF (), DD.intCAT (), DV.irEmpty (), DTy.int_rope ())
-    else if FU.isDouble t then
-      (DD.dblLEAF (), DD.dblCAT (), DV.drEmpty (), DTy.dbl_rope ())
-    else
-      (DD.ropeLEAF (), DD.ropeCAT (), DV.ropeEmpty (), DTy.rope t)
+  fun ropeTy t = 
+    if FU.isInt t then DTy.int_rope ()
+    else if FU.isDouble t then DTy.dbl_rope ()
+    else DTy.rope t
+
+  fun rope t = let
+    val ty = ropeTy t
+    in
+      if FU.isInt t then
+        (DD.intLeaf (), DD.intCat (), DV.irLength (), DV.irEmpty (), ty)
+      else if FU.isDouble t then
+        (DD.dblLeaf (), DD.dblCat (), DV.drLength (), DV.drEmpty (), ty)
+      else
+        (DD.ropeLeaf (), DD.ropeCat (), DV.ropeLength (), DV.ropeEmpty (), ty)
+    end
 
   fun farray t =
     if FU.isInt t then
@@ -72,8 +87,7 @@ structure SynthMap = struct
      in
        S3.tabulate (len, f')
      end
-*)
-  
+*)  
   fun synthSeqPairMap (inTy1, inTy2, outTy) = let
     val (seqTy1, sub1, tab1, update1, empty1) = seq inTy1
     val (seqTy2, sub2, tab2, update2, empty2) = seq inTy2
@@ -97,33 +111,29 @@ structure SynthMap = struct
     end
 
 (* NOTE: I need to introduce simple patterns only, as I am downstream of match-compile.
-fun ropeMap f = let
-  fun mapF ropes = (case ropes
-    of (rope1, rope2) => (case rope1
-         of R1.LEAF lf1 => (case lf1
-           of (n1, s1) => (case rope2
-             of R2.LEAF lf2 => (case lf2
-               of (_, s2) =>
-                 if (n1 < 1) then
-                   R3.empty
-                 else
-                   R3.mkLeaf (s_map_int_dbl (f, n1, s1, s2)))))
-	  | R1.CAT cat1 => (case cat1
-              of (d1, len1, r1L, r1R) => (case rope2
-                of R2.CAT cat2 => (case cat2
-                  of (_, _, r2L, r2R) =>
-                    R3.CAT (| d1, len1, mapF (r1L, r2L), mapF (r1R, r2R) |))))
-         (* end case *))
-    (* end case *))
-  in
-    mapF
-  end
+  fun ropeMap f = let
+    fun mapF (rope1, rope2) = (case rope1
+      of R1.LEAF s1 => (case rope2
+           of R2.LEAF s2 => let 
+                val n = R1.length rope1
+                in 
+                  if (n < 1) then R3.empty ()
+                  else R3.mkLeaf (s_map_int_dbl (f, n, s1, s2))
+	        end)
+       | R1.CAT cat1 => (case cat1
+           of (d1, len1, r1L, r1R) => (case rope2
+	        of R2.CAT cat2 => (case cat2
+	             of (_, _, r2L, r2R) =>
+	                  R3.CAT (| d1, len1, mapF (r1L, r2L), mapF (r1R, r2R) |))))
+      (* end case *))
+    in
+      mapF
+    end
 *)
-
   fun synthRopePairMap (inTy1, inTy2, outTy) = let
-    val (inLeaf1, inCat1, inE1, inRope1) = rope inTy1
-    val (inLeaf2, inCat2, inE2, inRope2) = rope inTy2
-    val (outLeaf, outCat, outE, outRope) = rope outTy
+    val (inLeaf1, inCat1, inLen1, inE1, inRope1) = rope inTy1
+    val (inLeaf2, inCat2, inLen2, inE2, inRope2) = rope inTy2
+    val (outLeaf, outCat, outLen, outE, outRope) = rope outTy
     val (seqTy1, sub1, tab1, update1, empty1) = seq inTy1
     val (seqTy2, sub2, tab2, update2, empty2) = seq inTy2
     val (seqTy3, sub3, tab3, update3, empty3) = seq outTy
@@ -133,14 +143,11 @@ fun ropeMap f = let
     val ropeMap = "ropeMap" <: domTy --> rngTy
     val f =       "f"       <: domTy
     val mapF =    "mapF"    <: rngTy
-    val ropes =   "ropes"   <: inRope1 ** inRope2
     val rope1 =   "rope1"   <: inRope1
     val rope2 =   "rope2"   <: inRope2
-    val lf1 =     "lf1"     <: B.intTy ** seqTy1
-    val lf2 =     "lf2"     <: B.intTy ** seqTy2
     val cat1 =    "cat1"    <: T.TupleTy [B.intTy, B.intTy, inRope1, inRope1]
     val cat2 =    "cat2"    <: T.TupleTy [B.intTy, B.intTy, inRope2, inRope2]
-    val n1 =      "n1"      <: B.intTy
+    val n =       "n"       <: B.intTy
     val s1 =      "s1"      <: seqTy1
     val s2 =      "s2"      <: seqTy2
     val d1 =      "d1"      <: B.intTy
@@ -151,28 +158,27 @@ fun ropeMap f = let
     val r2R =     "r2R"     <: inRope2
     fun outLEAF es = AU.mkApplyExp (A.ConstExp (A.DConst (outLeaf, [])), es)
     fun outCAT es =  AU.mkApplyExp (A.ConstExp (A.DConst (outCat, [])), es)
-    val lfRHS = AU.mkIfExp (AU.intLT (vexp n1, AU.mkInt 1),
-			    vexp outE,
-			    outLEAF [vexp n1, seqMap @@< [f, n1, s1, s2]])
+    val lfRHS = 
+      AU.mkLetExp ([n <- (inLen1 @@< [rope1])],
+        AU.mkIfExp (AU.intLT (vexp n, AU.mkInt 1),
+		    AU.mkForce (vexp outE),
+		    outLEAF [seqMap @@< [f, n, s1, s2]]))
     val catRHS = let (* build and compile a parallel tuple here *)
       val es = [vexp d1, vexp len1, mapF @@< [r1L, r2L], mapF @@< [r1R, r2R]]
       in case TranslatePtup.tr (fn e => e) es
         of SOME e => outCAT [e]
 	 | NONE => raise Fail "ptup translation failed"
       end
-    val mapFBody = AU.mkCaseExp (vexp ropes,
-      [A.PatMatch (varsPat [rope1, rope2], AU.mkCaseExp (vexp rope1,
-        [A.PatMatch (A.ConPat (inLeaf1, [], vpat lf1), AU.mkCaseExp (vexp lf1,
-          [A.PatMatch (varsPat [n1, s1], AU.mkCaseExp (vexp rope2,
-            [A.PatMatch (A.ConPat (inLeaf2, [], vpat lf2), AU.mkCaseExp (vexp lf2,
-              [A.PatMatch (A.TuplePat [A.WildPat B.intTy, vpat s2], 
-			   lfRHS)]))]))])),
-	 A.PatMatch (A.ConPat (inCat1, [], vpat cat1), AU.mkCaseExp (vexp cat1,
-           [A.PatMatch (varsPat [d1, len1, r1L, r1R], AU.mkCaseExp (vexp rope2,
-             [A.PatMatch (A.ConPat (inCat2, [], vpat cat2), AU.mkCaseExp (vexp cat2,
-               [A.PatMatch (A.TuplePat [A.WildPat B.intTy, A.WildPat B.intTy, vpat r2L, vpat r2R],
-			    catRHS)]))]))]))]))])
-    val mapFLam = AU.mkFunWithParams (mapF, [ropes], mapFBody)
+    val mapFBody = AU.mkCaseExp (vexp rope1,
+      [A.PatMatch (A.ConPat (inLeaf1, [], vpat s1), AU.mkCaseExp (vexp rope2,
+        [A.PatMatch (A.ConPat (inLeaf2, [], vpat s2), 
+          lfRHS)])),
+       A.PatMatch (A.ConPat (inCat1, [], vpat cat1), AU.mkCaseExp (vexp cat1,
+         [A.PatMatch (varsPat [d1, len1, r1L, r1R], AU.mkCaseExp (vexp rope2,
+           [A.PatMatch (A.ConPat (inCat2, [], vpat cat2), AU.mkCaseExp (vexp cat2,
+             [A.PatMatch (A.TuplePat [A.WildPat B.intTy, A.WildPat B.intTy, vpat r2L, vpat r2R],
+	       catRHS)]))]))]))])
+    val mapFLam = AU.mkFunWithParams (mapF, [rope1, rope2], mapFBody)
     val ropeMapBody = AU.mkLetExp ([A.FunBind [mapFLam]], vexp mapF)
     val ropeMapLam = AU.mkFunWithParams (ropeMap, [f], ropeMapBody) 
     in
@@ -199,12 +205,11 @@ fun farrayMap f = let
     mapF
   end
 *)
-
   fun synthFArrayMap (inTy1, inTy2, outTy) = let
     val _ = case outTy of T.TupleTy _ => raise Fail "todo: TupleTy" | _ => ()
-    val (_, _, _, inRope1) = rope inTy1
-    val (_, _, _, inRope2) = rope inTy2
-    val (_, _, _, outRope) = rope outTy
+    val inRope1 = ropeTy inTy1
+    val inRope2 = ropeTy inTy2
+    val outRope = ropeTy outTy
     val (fdcon1, fTy1) = farray inTy1
     val (fdcon2, fTy2) = farray inTy2
     val (fdcon3, fTy3) = farray outTy

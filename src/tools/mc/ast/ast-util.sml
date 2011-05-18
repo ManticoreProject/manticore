@@ -58,12 +58,14 @@ structure ASTUtil : sig
   (* bool utils *)
     val mkNot : AST.exp -> AST.exp
 
+  (* strings *)
+    val mkString : string -> AST.exp 
+
   (* exceptions *)
     val exnMatchExp : AST.exp
     val mkFail : string * AST.ty -> AST.exp
 
   (* unit *)
-    val unitConst : AST.const
     val unitExp   : AST.exp
 
   (* operations on boolean expressions *)
@@ -80,6 +82,9 @@ structure ASTUtil : sig
 
   (* make a FunExp which is the composition of two functional expressions *)
     val mkCompose : AST.exp * AST.exp -> AST.exp
+
+  (* return the application of given expression to unit *)
+    val mkForce : AST.exp -> AST.exp
 
   (* create an if expression *)
     val mkIfExp : (AST.exp * AST.exp * AST.exp) -> AST.exp
@@ -173,9 +178,7 @@ structure ASTUtil : sig
 	 A.PatMatch (A.ConstPat falseConst, trueExp)],
         Basis.boolTy)
 
-(* FIXME: Should this be the empty tuple instead? *)
-    val unitConst = A.LConst (Literal.unitLit, Basis.unitTy)
-    val unitExp   = A.ConstExp unitConst
+    val unitExp = A.TupleExp []
 
     fun boolEq (A.ConstExp k1, A.ConstExp k2) =
           (case (k1, k2)
@@ -205,9 +208,10 @@ structure ASTUtil : sig
 
     val exnMatchExp = A.ConstExp (A.DConst (Basis.exnMatch, []))
 
+    fun mkString s = A.ConstExp (A.LConst (Literal.String s, Basis.stringTy))
+
     fun mkFail (s, t) = let
-      val exn = mkApplyExp (A.ConstExp (A.DConst (Basis.exnFail, [])),
-			    [A.ConstExp (A.LConst (Literal.String s, Basis.stringTy))])
+      val exn = mkApplyExp (A.ConstExp (A.DConst (Basis.exnFail, [])), [mkString s])
       in
         A.RaiseExp (exn, t)
       end
@@ -236,6 +240,8 @@ structure ASTUtil : sig
 	     raise Fail "mkCompose: f's domain <> g's range"
        | _ => raise Fail "mkCompose"
       (* end case *))
+
+    fun mkForce thunk = mkApplyExp (thunk, [A.TupleExp []])
 
     val zero = mkInt 0
     val one = mkInt 1

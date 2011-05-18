@@ -64,8 +64,8 @@ structure DelayedBasis = struct
     val dbl_farray = memoTyc ["DoubleFArray", "double_farray"]
     val list_seq   = memoTyc ["ListSeq", "seq"]
     val arr_seq    = memoTyc ["ArraySeq", "seq"]
-    val int_seq    = memoTyc ["IntArraySeq", "seq"]
-    val dbl_seq    = memoTyc ["DoubleArraySeq", "seq"]
+    val int_seq    = memoTyc ["IntSeq", "int_seq"]
+    val dbl_seq    = memoTyc ["DoubleSeq", "double_seq"]
   end
 
 (* dcons *)
@@ -74,12 +74,12 @@ structure DelayedBasis = struct
     val optNONE   = memoDCon ["Option", "NONE"]
     val resultRES = memoDCon ["Result", "RES"]
     val resultEXN = memoDCon ["Result", "EXN"]
-    val ropeLEAF  = memoDCon ["Rope", "LEAF"]
-    val ropeCAT   = memoDCon ["Rope", "CAT"]
-    val intLEAF   = memoDCon ["IntRope", "LEAF"]
-    val intCAT    = memoDCon ["IntRope", "CAT"]
-    val dblLEAF   = memoDCon ["DoubleRope", "LEAF"]
-    val dblCAT    = memoDCon ["DoubleRope", "CAT"]
+    val ropeLeaf  = memoDCon ["Rope", "Leaf"]
+    val ropeCat   = memoDCon ["Rope", "Cat"]
+    val intLeaf   = memoDCon ["IntRope", "Leaf"]
+    val intCat    = memoDCon ["IntRope", "Cat"]
+    val dblLeaf   = memoDCon ["DoubleRope", "Leaf"]
+    val dblCat    = memoDCon ["DoubleRope", "Cat"]
     val farray    = memoDCon ["FArray", "FArray"]
     val intFArray = memoDCon ["IntFArray", "FArray"]
     val dblFArray = memoDCon ["DoubleFArray", "FArray"]
@@ -132,6 +132,8 @@ structure DelayedBasis = struct
     val cancel1       = memoVar ["MultilispFuture", "cancel"]
     val poll          = memoVar ["MultilispFuture", "poll"]
 
+    val maxLeafSize   = memoVar ["LeafSize", "getMax"]
+
     val ropeEmpty     = memoVar ["Rope", "empty"]
     val ropeSingleton = memoVar ["Rope", "singleton"]
     val ropeFilterP   = memoVar ["Rope", "filterP"]
@@ -142,25 +144,24 @@ structure DelayedBasis = struct
     val ropeLength    = memoVar ["Rope", "length"]
     val ropeRange     = memoVar ["Rope", "rangeP"]
     val ropeRangeNS   = memoVar ["Rope", "rangePNoStep"]
-    val ropeMapP      = memoVar ["Rope", "mapP"]
+    val ropeMap       = memoVar ["Rope", "mapUncurried"]
     val ropeFromSeq   = memoVar ["Rope", "fromSeq"]
-    val ropeCwB       = memoVar ["Rope", "concatWithoutBalancing"]
-    val maxLeafSize   = memoVar ["Rope", "maxLeafSize"]
-
+    val ropeConcat    = memoVar ["Rope", "concat"]
+    
     val ropePairMapP  = memoVar ["RopePair", "mapP"]
 
-    val ropeMapP_int  = memoVar ["RopeUtil", "mapP_int"]
-    val ropeMapP_dbl  = memoVar ["RopeUtil", "mapP_double"]
+    val ropeMap_int   = memoVar ["RopeUtil", "map_int"]
+    val ropeMap_dbl   = memoVar ["RopeUtil", "map_double"]
 
     val irEmpty       = memoVar ["IntRope", "empty"]
     val irLength      = memoVar ["IntRope", "length"]
     val irFromSeq     = memoVar ["IntRope", "fromSeq"]
-    val irCwB         = memoVar ["IntRope", "concatWithoutBalancing"]
+    val irConcat      = memoVar ["IntRope", "concat"]
 
     val drEmpty       = memoVar ["DoubleRope", "empty"]
     val drLength      = memoVar ["DoubleRope", "length"]
     val drFromSeq     = memoVar ["DoubleRope", "fromSeq"]
-    val drCwB         = memoVar ["DoubleRope", "concatWithoutBalancing"]
+    val drConcat      = memoVar ["DoubleRope", "concat"]
 
     val lseqToList    = memoVar ["ListSeq", "toList"]
     val lseqFromList  = memoVar ["ListSeq", "fromList"]
@@ -170,17 +171,17 @@ structure DelayedBasis = struct
     val arrSeqUpd     = memoVar ["ArraySeq", "update"]
     val arrSeqEmpty   = memoVar ["ArraySeq", "empty"]
 
-    val iseqSub       = memoVar ["IntArraySeq", "sub"]
-    val iseqTab       = memoVar ["IntArraySeq", "tabulate_int"]
-    val iseqUpd       = memoVar ["IntArraySeq", "update"]
-    val iseqEmpty     = memoVar ["IntArraySeq", "empty"]
-    val iseqCreate    = memoVar ["IntArraySeq", "unsafeCreate"]
+    val iseqSub       = memoVar ["IntSeq", "sub"]
+    val iseqTab       = memoVar ["IntSeq", "tabulate"]
+    val iseqUpd       = memoVar ["IntSeq", "update"]
+    val iseqEmpty     = memoVar ["IntSeq", "empty"]
+    val iseqCreate    = memoVar ["IntSeq", "unsafeCreate"]
 
-    val dseqSub       = memoVar ["DoubleArraySeq", "sub"]
-    val dseqTab       = memoVar ["DoubleArraySeq", "tabulate_double"]
-    val dseqUpd       = memoVar ["DoubleArraySeq", "update"]
-    val dseqEmpty     = memoVar ["DoubleArraySeq", "empty"]
-    val dseqCreate    = memoVar ["DoubleArraySeq", "unsafeCreate"]
+    val dseqSub       = memoVar ["DoubleSeq", "sub"]
+    val dseqTab       = memoVar ["DoubleSeq", "tabulate"]
+    val dseqUpd       = memoVar ["DoubleSeq", "update"]
+    val dseqEmpty     = memoVar ["DoubleSeq", "empty"]
+    val dseqCreate    = memoVar ["DoubleSeq", "unsafeCreate"]
 
     val parrayMap     = memoVar ["PArray", "map"]
     val parraySub     = memoVar ["PArray", "sub"]
@@ -230,6 +231,8 @@ structure DelayedBasis = struct
     val mapIFPoly     = memoVar ["FArrayUtil", "map_IF_poly"]
 
     val shapeSame     = memoVar ["Shape", "same"]
+
+    val println       = memoVar ["Print", "printLn"]
 
   end
 

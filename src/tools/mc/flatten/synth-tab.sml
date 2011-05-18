@@ -77,11 +77,11 @@ structure SynthTab = struct
     val ty = ropeTy t
     in 
       if FU.isInt t 
-        then (DD.intLEAF (), DV.irLength (), DV.irCwB (), DV.irEmpty (), ty)
+        then (DD.intLeaf (), DV.irLength (), DV.irConcat (), DV.irEmpty (), ty)
       else if FU.isDouble t 
-        then (DD.dblLEAF (), DV.drLength (), DV.drCwB (), DV.drEmpty (), ty)
+        then (DD.dblLeaf (), DV.drLength (), DV.drConcat (), DV.drEmpty (), ty)
       else
-        (DD.ropeLEAF (), DV.ropeLength (), DV.ropeCwB (), DV.ropeEmpty (), ty)
+        (DD.ropeLeaf (), DV.ropeLength (), DV.ropeConcat (), DV.ropeEmpty (), ty)
     end
 
   fun farray t =
@@ -158,9 +158,9 @@ fun tabSPair (lo, hi, f) = let
 fun rcat (rsL, rsR) = (case rsL
   of (r1L, r2L) => (case rsR
     of (r1R, r2R) => 
-      (R1.cwb (r1L, r1R), R2.cwb (r2L, r2R))))
+      (R1.concat (r1L, r1R), R2.concat (r2L, r2R))))
 *)
-  fun mkRCat (ropeTy1, ropeTy2, cwb1, cwb2) = let
+  fun mkRCat (ropeTy1, ropeTy2, cat1, cat2) = let
     val domTy = (ropeTy1 ** ropeTy2) ** (ropeTy1 ** ropeTy2)
     val rngTy = ropeTy1 ** ropeTy2
     val rcat = "rcat" <: domTy --> rngTy
@@ -170,7 +170,7 @@ fun rcat (rsL, rsR) = (case rsL
     val r2L = "r2L" <: ropeTy2
     val r1R = "r1R" <: ropeTy1
     val r2R = "r2R" <: ropeTy2
-    val result = AU.mkTupleExp [cwb1 @@< [r1L, r1R], cwb2 @@< [r2L, r2R]]
+    val result = AU.mkTupleExp [cat1 @@< [r1L, r1R], cat2 @@< [r2L, r2R]]
     val body = AU.mkCaseExp (vexp rsL, 
       [A.PatMatch (varsPat [r1L, r2L], AU.mkCaseExp (vexp rsR,
         [A.PatMatch (varsPat [r1R, r2R], result)]))])
@@ -178,35 +178,19 @@ fun rcat (rsL, rsR) = (case rsL
     in
       lam
     end
-(*
-fun rleaves (n, s1, s2) = (R1.LEAF (n, s1), R2.LEAF (n, s2))
-*)
-  fun mkRLeaves (seqTy1, seqTy2, ropeTy1, ropeTy2, r1Lf, r2Lf) = let
-    val domTy = T.TupleTy [B.intTy, seqTy1, seqTy2]
-    val rngTy = ropeTy1 ** ropeTy2
-    val rleaves = "rleaves" <: domTy --> rngTy
-    val n = "n" <: B.intTy
-    val s1 = "s1" <: seqTy1
-    val s2 = "s2" <: seqTy2
-    val body = AU.mkTupleExp [r1Lf @@- [n, s1], r2Lf @@- [n, s2]]
-    val lam = AU.mkFunWithParams (rleaves, [n, s1, s2], body)
-    in
-      lam
-    end
 
 (*
 fun tabFromToP (lo, hi, f) = let
   fun rcat ... (* see above *)
-  fun rleaves ... (* see above *) 
   in
-    if (lo > hi) then (R1.empty, R2.empty)
+    if (lo > hi) then (R1.empty (), R2.empty ())
     else let
       val nElts = hi-lo+1
       in
-        if (R1.maxLeafSize > nElts) then let
+        if (LeafSize.getMax () > nElts) then let
           val (s1, s2) = seqPair (lo, hi, f)
           in
-            rleaves (nElts, s1, s2)
+            (R1.Leaf s1, R2.Leaf s2)
 	  end
         else let
           val m = (hi + lo) div 2
@@ -222,13 +206,11 @@ fun tabFromToP (lo, hi, f) = let
   fun mkTabFromToP (outTy1, outTy2) = let
     val seqTy1 = seqTy outTy1
     val seqTy2 = seqTy outTy2
-    val (lf1, len1, cwb1, empty1, ropeTy1) = rope outTy1
-    val (lf2, len2, cwb2, empty2, ropeTy2) = rope outTy2
+    val (lf1, len1, cat1, empty1, ropeTy1) = rope outTy1
+    val (lf2, len2, cat2, empty2, ropeTy2) = rope outTy2
     val seqPairLam as A.FB (seqPair, _, _) = mkSPair (outTy1, outTy2)
     val rcatLam as A.FB (rcat, _, _) = 
-      mkRCat (ropeTy1, ropeTy2, cwb1, cwb2)
-    val rleavesLam as A.FB (rleaves, _, _) = 
-      mkRLeaves (seqTy1, seqTy2, ropeTy1, ropeTy2, lf1, lf2)
+      mkRCat (ropeTy1, ropeTy2, cat1, cat2)
     val domTy = T.TupleTy [B.intTy, B.intTy, B.intTy --> outTy1 ** outTy2]
     val rngTy = ropeTy1 ** ropeTy2
     val tabFromToP = "tabFromToP" <: domTy --> rngTy
@@ -241,12 +223,13 @@ fun tabFromToP (lo, hi, f) = let
     val m = "m" <: B.intTy
     val rsL = "rsL" <: ropeTy1 ** ropeTy2 
     val rsR = "rsR" <: ropeTy1 ** ropeTy2
+    val getMax = AU.mkForce (vexp (DV.maxLeafSize ()))
     val if1Test = AU.intGT (vexp lo, vexp hi)
-    val if1Then = AU.mkTupleExp [vexp empty1, vexp empty2]
-    val if2Test = AU.intGT (vexp (DV.maxLeafSize()), vexp nElts)
+    val if1Then = AU.mkTupleExp (map (AU.mkForce o vexp) [empty1, empty2])
+    val if2Test = AU.intGT (getMax, vexp nElts)
     val if2Then = tupBind ([s1, s2], 
-			   seqPair @@< [lo, hi, f], 
-			   rleaves @@< [nElts, s1, s2])
+			   seqPair @@< [lo, hi, f],
+			   AU.mkTupleExp [lf1 @@- [s1], lf2 @@- [s2]])
     val if2Else = let
       val m' = "m'" <: B.intTy
       val bind1 = m <- AU.intDiv (AU.plus (vexp hi) (vexp lo), AU.mkInt 2)
@@ -260,8 +243,7 @@ fun tabFromToP (lo, hi, f) = let
     val bindNElts = nElts <- AU.plusOne (AU.minus (vexp hi) (vexp lo))
     val if1Else = AU.mkLetExp ([nElts <- AU.plusOne (AU.minus (vexp hi) (vexp lo))], 
       AU.mkIfExp (if2Test, if2Then, if2Else))
-    val body = AU.mkLetExp ([A.FunBind [rcatLam], A.FunBind [rleavesLam]],
-      AU.mkIfExp (if1Test, if1Then, if1Else))
+    val body = AU.mkLetExp ([A.FunBind [rcatLam]], AU.mkIfExp (if1Test, if1Then, if1Else))
     val ropePairLam = AU.mkFunWithParams (tabFromToP, [lo, hi, f], body)
     in
       {seqPair = seqPairLam,
@@ -295,12 +277,12 @@ fun tabFromToP (lo, hi, f) = let
     in
       if (step < 0)
         then (if (to_ > from) 
-	        then (R1.empty, R2.empty)
+	        then (R1.empty (), R2.empty ())
               else
                 tabFromToP (0, (from-to_) div (~step), f'))
       else if (step > 0)
         then (if (from > to_)
-	        then (R1.empty, R2.empty)
+	        then (R1.empty (), R2.empty ())
 	      else
                 tabFromToP (0, (to_ - from) div step, f'))
       else raise Fail "0 step"
@@ -327,7 +309,7 @@ fun tabFromToP (lo, hi, f) = let
         f @@ [arg]
       end
     val f'Lam = AU.mkFunWithParams (f', [i], f'Body)
-    val emptyPair = AU.mkTupleExp (List.map vexp [empty1, empty2])
+    val emptyPair = AU.mkTupleExp (List.map (AU.mkForce o vexp) [empty1, empty2])
     val test1 = AU.intLT (vexp step, AU.zero)
     val test2 = AU.intGT (vexp to_, vexp from)
     val test3 = AU.intGT (vexp step, AU.zero)

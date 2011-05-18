@@ -153,19 +153,16 @@ structure PArrayOpGen = struct
       monoVarExp' DV.dblTab
     else (case t
       of T.TupleTy [t1, t2] => 
-           if FU.isInt t1 andalso FU.isInt t2
-             then A.VarExp (DV.ifpTab (), [])
-	   else if FU.isGroundTy t1 andalso FU.isGroundTy t2 
-	     then let 
-	       val _ = print (concat ["*** GENERATING TAB FOR ", 
-				      TU.toString t1, "*", TU.toString t2, "\n"])
-               val {seqPair, tabFromToP, tabP, fTab} = SynthTab.mkFTab (t1, t2)
-	       val A.FB (f, _, _) = fTab
-	       fun b lam = A.FunBind [lam]
-	       val binds = List.map b [seqPair, tabFromToP, tabP, fTab]
-               in
-	         AU.mkLetExp (binds, monoVarExp f)
-	       end
+           if FU.isGroundTy t1 andalso FU.isGroundTy t2 then let 
+	     val _ = print (concat ["*** GENERATING TAB FOR ", 
+				    TU.toString t1, "*", TU.toString t2, "\n"])
+             val {seqPair, tabFromToP, tabP, fTab} = SynthTab.mkFTab (t1, t2)
+	     val A.FB (f, _, _) = fTab
+	     fun b lam = A.FunBind [lam]
+	     val binds = List.map b [seqPair, tabFromToP, tabP, fTab]
+             in
+	       AU.mkLetExp (binds, monoVarExp f)
+	     end
 	   else
              A.VarExp (DV.ftab (), [t])
        | _ => A.VarExp (DV.ftab (), [t])
@@ -181,9 +178,7 @@ structure PArrayOpGen = struct
 
   fun genTabTupleFTS ts = (case ts
     of [t1, t2] => 
-         if FU.isInt t1 andalso FU.isInt t2 then
-           A.VarExp (DV.ifpTabFTS (), [])
-	 else if FU.isGroundTy t1 andalso FU.isGroundTy t2 then let
+         if FU.isGroundTy t1 andalso FU.isGroundTy t2 then let
            val {seqPair=f1, tabFromToP=f2, tabFromToStepP=f3, fTabFromToStep=f4} =
              SynthTab.mkFTabFTS (t1, t2)
 	   val A.FB (f, _, _) = f4
