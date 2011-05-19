@@ -25,7 +25,7 @@ end = struct
       end
 
   val flatten = BasicControl.mkKeepPassSimple {
-    output = PrintAST.outputExp,
+    output = PrintAST.outputExpNoTypes,
     ext = "ast",
     passName = "ft",
     pass = fltExp,
