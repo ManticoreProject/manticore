@@ -584,6 +584,12 @@ void M_TextIOCloseOut (void *outstream)
     fclose (outstream);
 }
 
+void M_TextIOOutput (void *outstream, void *ws)
+{
+    SequenceHdr_t	*str = (SequenceHdr_t *)ValueToPtr(ws);
+    fprintf(outstream, "%s", (char*)(str->data));
+}
+
 void M_TextIOOutputLine (void *ws, void *outstream)
 {
     SequenceHdr_t	*str = (SequenceHdr_t *)ValueToPtr(ws);

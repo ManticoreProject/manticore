@@ -11,6 +11,8 @@
  *   -oracle-logging-constant <string>
  *                                Record log entries for the constant named by the 
  *                                argument.
+ *   -oracle-log-file <string>    Dump log to file whose path is given by the argument
+ *                                string.
  * 
  *)
 
@@ -79,7 +81,7 @@ end
 
 structure CED (* :> sig
 
-  (** Constant estimator data structure **)
+  (** Constant Estimator Data structure **)
 
     type ced
 
@@ -91,7 +93,7 @@ structure CED (* :> sig
 
     val logSz        : int
     val addToLog     : ced * CostEstimation.cost * float -> unit
-    val printLog     : ced -> unit
+    val outputLog     : ced -> unit
 
   end *) = struct
 
@@ -103,6 +105,7 @@ structure CED (* :> sig
 
   val logSz = (ParseCommandLine.parse1 "-oracle-logging" Int.fromString 0) div nbVProcs
   val logCst = ParseCommandLine.find "-oracle-logging-constant"
+  val logFilePath = ParseCommandLine.parse1 "-oracle-log-file" (fn x => SOME x) ""
 
   val defaultConstant = 1.0
   val nbGrouped = 20 * nbVProcs
@@ -112,13 +115,14 @@ structure CED (* :> sig
   val maxChangeFactor = 1.0
 
   (** Logging **)
-  (* The local log consists of the following parts: *)
+  (* Each processor maintains its own log buffer, which contains the following: *)
   (*   - The memory cell nbA records the number of elements contained in the local *)
   (*     log. After this number exceeds lgSz, we stop adding elements. *)
+  (*   - The array wrkA records the amount of work executed during the measurement. *)
   (*   - The array estA records the task-execution times estimated by the oracle. *)
   (*   - The array actA records the actual task execution times. *)
   (*   - The array cstA records the current constant associated with the CED data structure *)
-  type log_local = (CAI.array * CAF.array * CAF.array * CAF.array)
+  type log_local = (CAI.array * CAF.array * CAF.array * CAF.array * CAF.array)
   (* The log consists of an array of local logs. We maintain one local log for each vproc. *)
   type log = string * log_local Array.array
 
@@ -127,9 +131,9 @@ structure CED (* :> sig
   type ced = (FloatRef.ref * ced_local Array.array * log)
 
   fun initializeLog name = let
-    fun f _ = (CAI.create 1, CAF.create logSz, CAF.create logSz, CAF.create logSz)
+    fun init _ = (CAI.create 1, CAF.create logSz, CAF.create logSz, CAF.create logSz, CAF.create logSz)
     in
-      (name, Array.tabulate (nbVProcs, f))
+      (name, Array.tabulate (nbVProcs, init))
     end
 
   fun initialize name = let
@@ -199,10 +203,11 @@ structure CED (* :> sig
     fun add () = let
       val est = estimate (r, m)
       val p = vprocID ()
-      val (nbA, estA, actA, cstA) = Array.sub (log, p)
+      val (nbA, wrkA, estA, actA, cstA) = Array.sub (log, p)
       val nb = CAI.sub (nbA, 0)
       in
 	if nb < logSz then (
+          CAF.update (wrkA, nb, costToFloat m);
 	  CAF.update (estA, nb, est);
 	  CAF.update (actA, nb, act);
 	  CAF.update (cstA, nb, FloatRef.get glob);
@@ -218,10 +223,10 @@ structure CED (* :> sig
 	 | _ => add ()
     end
 
-  fun printCAF (n, a) = let
+  fun outputCAF print (n, a) = let
     fun go i =
       if i < n then (
-	Print.print (Float.toString (CAF.sub (a, i))^" ");
+	print (Float.toString (CAF.sub (a, i))^" ");
 	go (i + 1))
       else
 	()
@@ -229,22 +234,33 @@ structure CED (* :> sig
       go 0
     end
 
-  fun printLog r = let
+  fun outputLog r = let
+    val (print, close) = 
+	if logFilePath = "" then 
+	    (print, fn () => ())
+	else let
+	  val out = TextIO.openOut logFilePath
+	  in
+            (fn s => TextIO.output (out, s), fn () => TextIO.closeOut out)
+	  end
     val (_, _, (name, log)) = r
-    val nbAs = Array.map (fn (nbA, _, _, _) => nbA) log
+    val nbAs = Array.map (fn (nbA, _, _, _, _) => nbA) log
     fun pr (p, a) = (
-      Print.print (Int.toString p^"\n");
-      printCAF (CAI.sub (Array.sub (nbAs, p), 0), a);
-      Print.print "\n";
+      print (Int.toString p^"\n");
+      outputCAF print (CAI.sub (Array.sub (nbAs, p), 0), a);
+      print "\n";
       ())
-    val estAs = Array.map (fn (_, estA, _, _) => estA) log
-    val actAs = Array.map (fn (_, _, actA, _) => actA) log
-    val cstAs = Array.map (fn (_, _, _, cstA) => cstA) log
+    val wrkAs = Array.map (fn (_, wrkA, _, _, _) => wrkA) log
+    val estAs = Array.map (fn (_, _, estA, _, _) => estA) log
+    val actAs = Array.map (fn (_, _, _, actA, _) => actA) log
+    val cstAs = Array.map (fn (_, _, _, _, cstA) => cstA) log
     in
-      Print.print (name^"\n");
+      print (name^"\n");
+      Array.appi pr wrkAs;
       Array.appi pr estAs;
       Array.appi pr actAs;
       Array.appi pr cstAs;
+      close ();
       ()
     end
 
