@@ -6,15 +6,15 @@
 
 structure Stopwatch = struct
 
-  (* timeToEval : (unit -> 'a) -> 'a * Time.time *)
+  (* time : (unit -> 'a) -> 'a * Time.time *)
   (* Pass in a suspended computation; get back the result and the time it took. *)
   (* Note: time is represented as a long. The unit is microseconds. *)
-    fun timeToEval thunk = let
-	   val b = Time.now ()
-	   val x = thunk ()
-	   val e = Time.now ()
-	   in
-	      (x, e-b)
-	   end
+    fun time thunk = let
+      val b = Time.now ()
+      val x = thunk ()
+      val e = Time.now ()
+      in
+        (x, e-b)
+      end
 
 end
