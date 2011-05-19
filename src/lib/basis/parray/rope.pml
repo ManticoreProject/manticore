@@ -737,10 +737,12 @@ fun reduceLTS PPT f b rp = let
     red rp
   end
 (*in*)
-fun reduce f b rp = (case ChunkingPolicy.get ()
-  of ChunkingPolicy.Sequential => reduceSequential f b rp
-   | ChunkingPolicy.ETS SST => reduceETS SST f b rp
-   | ChunkingPolicy.LTS PPT => reduceLTS PPT f b rp)
+
+  fun reduce f b rp = (case ChunkingPolicy.get ()
+    of ChunkingPolicy.Sequential => reduceSequential f b rp
+     | ChunkingPolicy.ETS SST => reduceETS SST f b rp
+     | ChunkingPolicy.LTS PPT => reduceLTS PPT f b rp)
+
 (*end*) (* local *)
 
 (*local*)
