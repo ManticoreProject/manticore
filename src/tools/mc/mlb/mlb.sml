@@ -355,6 +355,14 @@ structure MLB : sig
   (* chkExists will raise SysErr if file isn't there *)
     val chkExists = ignore o OS.FileSys.isLink
 
+    fun chkExists filename = (OS.FileSys.isLink filename; true)
+      handle OS.SysErr ("No such file or directory", _) => let
+               val msg = String.concat ["Error: the file \"", filename, "\" does not exist."]
+               in
+                 raise Fail msg
+               end	       
+           | e => raise e
+
     fun chkExt file = (case OS.Path.splitBaseExt file
       of {base, ext} => (case ext
         of SOME "mlb" => MLB
