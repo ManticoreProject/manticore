@@ -728,7 +728,6 @@ fun reduceSequential f b rp =
     end
 
   fun reduceLTS PPT f b rp = let
-    val _ = Print.printLn "DoubleRope.reduceLTS"
     val itos = Int.toString
     fun red rp = (case reduceUntil PPT RT.hungryProcs f b (rp, GCTop)
       of Done v => v
