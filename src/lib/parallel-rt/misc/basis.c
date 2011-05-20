@@ -140,6 +140,32 @@ Value_t M_FloatToString (float f)
     return AllocString (VProcSelf(), buf);
 }
 
+/* M_FloatFromString:
+ */
+Value_t M_FloatFromString (Value_t str)
+{
+    VProc_t             *vp = VProcSelf ();
+    SequenceHdr_t	*strS = (SequenceHdr_t *)ValueToPtr(str);
+    if (strS->len < 1) {
+	return M_NONE;
+    }
+    else {
+	char *strData = (char*)strS->data;
+	if (strData[0] == '~')
+	    strData[0] = '-';
+	float f;
+	int ret = sscanf (strData, "%f", &f);
+	RawFloat_t rf;
+	rf.f = f;
+	if (ret > 0) {
+	    return Some (vp, AllocNonUniform(vp, 1, FLOAT(rf)));
+	}
+	else {
+	    return M_NONE;
+	}
+    }
+}
+
 /* M_DoubleToString:
  */
 Value_t M_DoubleToString (double f)
@@ -556,6 +582,12 @@ void *M_TextIOOpenOut (Value_t filename)
 void M_TextIOCloseOut (void *outstream)
 {
     fclose (outstream);
+}
+
+void M_TextIOOutput (void *outstream, void *ws)
+{
+    SequenceHdr_t	*str = (SequenceHdr_t *)ValueToPtr(ws);
+    fprintf(outstream, "%s", (char*)(str->data));
 }
 
 void M_TextIOOutputLine (void *ws, void *outstream)

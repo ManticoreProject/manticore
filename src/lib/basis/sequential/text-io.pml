@@ -9,7 +9,8 @@ structure TextIO =
 
       extern void* M_TextIOOpenOut (void*);
       extern void M_TextIOCloseOut (void*);
-      extern void* M_TextIOOutputLine (void*, void*) __attribute__((alloc));
+      extern void M_TextIOOutput (void*, void*);
+      extern void M_TextIOOutputLine (void*, void*);
 
       typedef instream = ml_long;
 
@@ -40,6 +41,11 @@ structure TextIO =
 	  return (UNIT)
 	;
 
+      define @output (arg: [outstream, ml_string] / exh : exh) : unit =
+	  do ccall M_TextIOOutput (#0(#0(arg)), #1(arg))
+	  return (UNIT)
+	;
+
       define @output-line ( arg: [ml_string, outstream] / exh : exh) : unit =
 	  do ccall M_TextIOOutputLine (#0(arg), #0(#1(arg)))
 	  return (UNIT)
@@ -57,6 +63,7 @@ structure TextIO =
 
     val openOut : string -> outstream = _prim (@open-out)
     val closeOut : outstream -> unit = _prim (@close-out)
+    val output : outstream * string -> unit = _prim (@output)
     val outputLine : string * outstream -> unit = _prim (@output-line)
 
   end

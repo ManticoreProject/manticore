@@ -48,6 +48,8 @@ structure Int =
     val ceilingLg : int -> int = _prim(@ceiling-lg)
     val floorLg : int -> int = _prim(@floor-lg)
 
+    val maxInt = Option.SOME 1073741823
+
   (* abs : int -> int *)
     fun abs n = if n < 0 then ~n else n
 

@@ -64,6 +64,8 @@ fun modify f a = let
     m 0
   end
 
+fun map f a = tabulate (length a, fn i => f (U.sub (a, i)))
+
 fun app f a = let
   val len = length a
   fun app i = 
@@ -74,5 +76,25 @@ fun app f a = let
   in
     app 0
   end
+
+fun appi f a = let
+  val len = length a
+  fun app i = 
+    if i < len then 
+      (f (i, sub (a, i)); app (i + 1)) 
+    else 
+      ()
+  in
+    app 0
+  end
+
+fun foldl f z s = let
+  val len = length s
+  fun lp (i, acc) =
+    if i >= len then acc
+    else lp (i+1, f (sub(s,i), acc))
+  in
+    lp (0, z)
+  end       
 
 end
