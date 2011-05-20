@@ -687,19 +687,21 @@ fun reduceSequential f b rp =
      | Cat(_, _, l, r) => 
          f (reduceSequential f b l, reduceSequential f b r))
 
-fun reduceETS SST f b rp = let
-  fun red rp =
-    if length rp <= SST then 
-      reduceSequential f b rp
-    else let
-      val (l, r) = splitAtIx2 (rp, length rp div 2 - 1)
-      in
-        f (RT.par2 (fn () => red l, fn () => red r))
-      end
-  in
-    red rp
-  end
+  fun reduceETS SST f b rp = let
+    fun red rp =
+      if length rp <= SST then 
+        reduceSequential f b rp
+      else let
+        val (l, r) = splitAtIx2 (rp, length rp div 2 - 1)
+        in
+          f (RT.par2 (fn () => red l, fn () => red r))
+        end
+    in
+      red rp
+    end
+
   fun numUnprocessedRed cur = numUnprocessed (fn _ => 0) length cur
+
   fun reduceUntil PPT cond f b cur = let
     fun next cur = let
       fun n (k, c) = (case c
@@ -709,21 +711,21 @@ fun reduceETS SST f b rp = let
     in
       n cur
     end
-  fun red (s, c) = (case S.reduceUntil cond f b s
-    of Done p => (case next (p, c)
-         of Done p => Done p
-	  | More (s', c') => red (s', c'))
-     | More (p, us) =>
-         if numUnprocessedRed (leaf us, c) < 2 then
-	    (case next (S.reduce f p us, c)
-	      of Done p' => Done p'
-	       | More (s', c') => red (s', c'))
-	  else
-            More (leaf us, GCRight (p, c)))
-  val (s, c) = leftmostLeaf cur
-  in
-    red (s, c)
-  end
+    fun red (s, c) = (case S.reduceUntil cond f b s
+      of Done p => (case next (p, c)
+           of Done p => Done p
+	    | More (s', c') => red (s', c'))
+       | More (p, us) =>
+           if numUnprocessedRed (leaf us, c) < 2 then
+	     (case next (S.reduce f p us, c)
+	       of Done p' => Done p'
+		| More (s', c') => red (s', c'))
+	   else
+             More (leaf us, GCRight (p, c)))
+    val (s, c) = leftmostLeaf cur
+    in
+      red (s, c)
+    end
 
   fun reduceLTS PPT f b rp = let
     val _ = Print.printLn "DoubleRope.reduceLTS"

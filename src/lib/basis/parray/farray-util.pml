@@ -46,9 +46,8 @@ structure FArrayUtil = struct
       of F.FArray (data, shape) => (case shape
            of S.Lf (lo, hi) => let
 	        fun lp (i, acc) = 
-(Print.printLn ("in flatten_IF_F, lp " ^ Int.toString i);
                   if (i<0) then fromList acc
-	  	  else lp (i-1, Rope.sub(data,i)::acc))
+	  	  else lp (i-1, Rope.sub(data,i)::acc)
                 in
                   lp (hi-1, [])
 	        end

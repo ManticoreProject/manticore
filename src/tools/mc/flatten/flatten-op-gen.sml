@@ -59,6 +59,8 @@ end *) = struct
   infix **
   fun f ** xs = List.map f xs
 
+  val mkPTup : A.exp list -> A.exp = AU.mkPTupleExp
+
   fun vexp x = A.VarExp (x, [])
 
   fun mkPrintln s = (vexp (DV.println ())) @@ [AU.mkString s]
@@ -218,12 +220,11 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
         end
 
       val binds = List.map (fn (h,_) => A.FunBind [h]) hashes
-(*      val ptup = A.PTupleExp (List.map mkMapHash hashes) *)
-      val ptup' = valOf (TranslatePtup.tr (fn e => e) (map mkMapHash hashes))
+      val ptup = mkPTup (map mkMapHash hashes)
       val msg = mkPrintln ("running " ^ Var.nameOf unzip)
       val body = A.SeqExp (msg,
         AU.mkCaseExp (A.VarExp (arg, [T.TupleTy ts]),
-		      [A.PatMatch (fArrPat, AU.mkLetExp (binds, ptup'))]))
+		      [A.PatMatch (fArrPat, AU.mkLetExp (binds, ptup))]))
       in
       (* all together now... *)
 	AU.mkFunWithParams (unzip, [arg], body)

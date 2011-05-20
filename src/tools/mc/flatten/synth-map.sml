@@ -49,6 +49,8 @@ structure SynthMap = struct
         AU.mkCaseExp (vexp tup, [A.PatMatch (varsPat xs, exp)]))
     end
 
+  val ptup = AU.mkPTupleExp
+
   fun seq t = 
     if FU.isInt t then
       (DTy.int_seq (), DV.iseqSub (), DV.iseqTab (), DV.iseqUpd (), DV.iseqEmpty ())
@@ -163,12 +165,7 @@ structure SynthMap = struct
         AU.mkIfExp (AU.intLT (vexp n, AU.mkInt 1),
 		    AU.mkForce (vexp outE),
 		    outLEAF [seqMap @@< [f, n, s1, s2]]))
-    val catRHS = let (* build and compile a parallel tuple here *)
-      val es = [vexp d1, vexp len1, mapF @@< [r1L, r2L], mapF @@< [r1R, r2R]]
-      in case TranslatePtup.tr (fn e => e) es
-        of SOME e => outCAT [e]
-	 | NONE => raise Fail "ptup translation failed"
-      end
+    val catRHS = ptup [vexp d1, vexp len1, mapF @@< [r1L, r2L], mapF @@< [r1R, r2R]]
     val mapFBody = AU.mkCaseExp (vexp rope1,
       [A.PatMatch (A.ConPat (inLeaf1, [], vpat s1), AU.mkCaseExp (vexp rope2,
         [A.PatMatch (A.ConPat (inLeaf2, [], vpat s2), 

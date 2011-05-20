@@ -568,7 +568,6 @@ fun decodeRopeTab (rp, n) = let
      | _ => failwith "rootU")
 
   fun tabulateLTS PPT (n, f) = let
-    val _ = Print.printLn "tabulateLTS"
     fun t cur = (case tabulateUntil RT.hungryProcs (cur, f)
       of Done rp => rp
        | More cur' => let

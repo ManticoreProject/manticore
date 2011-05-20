@@ -48,9 +48,7 @@ structure SynthTab = struct
   infix 1 <:
   fun x <: t = Var.new (x, t)
 
-  fun ptup es = case TranslatePtup.tr (fn e => e) es
-    of SOME e => e
-     | NONE => raise Fail "ptup translation failed"
+  val ptup = AU.mkPTupleExp
 
   fun seqTy t =
     if FU.isInt t then DTy.int_seq ()

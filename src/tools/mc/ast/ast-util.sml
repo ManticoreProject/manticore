@@ -11,6 +11,9 @@ structure ASTUtil : sig
   (* create a tuple expression, with singleton tuples mapping to their element expression *)
     val mkTupleExp : AST.exp list -> AST.exp
 
+  (* create a parallel tuple, with singleton tuples mapping to their element expression *)
+    val mkPTupleExp : AST.exp list -> AST.exp
+
   (* create a series of let expressions from a list of bindings and a body *)
     val mkLetExp : AST.binding list * AST.exp -> AST.exp
 
@@ -114,6 +117,9 @@ structure ASTUtil : sig
 
     fun mkTuplePat [p] = p
       | mkTuplePat ps = AST.TuplePat ps
+
+    fun mkPTupleExp [e] = e
+      | mkPTupleExp es = AST.PTupleExp es
 
     fun mkLetExp ([], e) = e
       | mkLetExp (bind::r, e) = AST.LetExp (bind, mkLetExp (r, e))
