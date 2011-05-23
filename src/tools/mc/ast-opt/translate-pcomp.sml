@@ -35,7 +35,7 @@ structure TranslatePComp : sig
 		     val body = AU.mkCaseExp (A.VarExp (ij, []), [m])
 		     val f_ij = A.FunExp (ij, body, TypeOf.exp e')
 		     in
-		       SOME (collect (f_ij, r2, r1))
+		       collect (f_ij, r2, r1)
 		     end
 		 | _ => NONE)
 	    | _ => NONE)
@@ -46,7 +46,7 @@ structure TranslatePComp : sig
       val iStep = Option.getOpt (iStepOpt, AU.one)
       val jStep = Option.getOpt (jStepOpt, AU.one)
       in
-        (iFrom, iTo, iStep, jFrom, jTo, jStep, f_ij)
+        SOME (iFrom, iTo, iStep, jFrom, jTo, jStep, f_ij)
       end
 
   (* tr : (exp -> exp) -> exp * (pat * exp) list * exp option -> exp *)

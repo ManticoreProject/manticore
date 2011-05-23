@@ -48,6 +48,7 @@ structure ASTUtil : sig
     val times      : AST.exp -> AST.exp -> AST.exp
     val intNeg     : AST.exp -> AST.exp
     val intDiv     : AST.exp * AST.exp -> AST.exp
+    val intMod     : AST.exp * AST.exp -> AST.exp
     val intGTE     : AST.exp * AST.exp -> AST.exp
     val intGT      : AST.exp * AST.exp -> AST.exp
     val intLT      : AST.exp * AST.exp -> AST.exp
@@ -259,6 +260,7 @@ structure ASTUtil : sig
       val mkMinus = intBin B.int_minus
       val mkTimes = intBin B.int_times
       val mkDiv = intBin B.int_div
+      val mkMod = intBin B.int_mod
       val mkGT = intBin B.int_gt
       val mkGTE = intBin B.int_gte
       val mkLT = intBin B.int_lt
@@ -269,6 +271,7 @@ structure ASTUtil : sig
       fun minus n m = mkMinus [n, m]
       fun times n m = mkTimes [n, m]
       fun intDiv (n, m) = mkDiv [n, m]
+      fun intMod (n, m) = mkMod [n, m]
       fun intGTE (n, m) = mkGTE [n, m]
       fun intGT (n, m) = mkGT [n, m]
       fun intLT (n, m) = mkLT [n, m]

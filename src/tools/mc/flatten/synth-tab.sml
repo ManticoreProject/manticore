@@ -83,13 +83,13 @@ structure SynthTab = struct
     val ty = ropeTy t
     in 
       if FU.isInt t then 
-        (DD.intLeaf (), DV.irFromSeq (), DV.irLength (), 
+        (DD.intLeaf (), DV.irTab (), DV.irLength (), 
 	 DV.irConcat (), DV.irEmpty (), ty)
       else if FU.isDouble t then
-        (DD.dblLeaf (), DV.drFromSeq (), DV.drLength (), 
+        (DD.dblLeaf (), DV.drTab (), DV.drLength (), 
 	 DV.drConcat (), DV.drEmpty (), ty)
       else
-        (DD.ropeLeaf (), DV.ropeFromSeq (), DV.ropeLength (), 
+        (DD.ropeLeaf (), DV.ropeTab (), DV.ropeLength (), 
 	 DV.ropeConcat (), DV.ropeEmpty (), ty)
     end
 
@@ -228,8 +228,8 @@ fun tabFromToP (lo, hi, f) = let
   fun mkTabFromToP (outTy1, outTy2) = let
     val seqTy1 = seqTy outTy1
     val seqTy2 = seqTy outTy2
-    val (lf1, fromseq1, len1, cat1, empty1, ropeTy1) = rope outTy1
-    val (lf2, fromseq2, len2, cat2, empty2, ropeTy2) = rope outTy2
+    val (lf1, rtab1, len1, cat1, empty1, ropeTy1) = rope outTy1
+    val (lf2, rtab2, len2, cat2, empty2, ropeTy2) = rope outTy2
     val seqPairLam as A.FB (seqPair, _, _) = mkSPair (outTy1, outTy2)
     val rcatLam as A.FB (rcat, _, _) = 
       mkRCat (ropeTy1, ropeTy2, cat1, cat2)
@@ -450,6 +450,117 @@ fun tabFromToP (lo, hi, f) = let
 
 (*
   fun tab2D = (iFrom, iTo, iStep, jFrom, jTo, jStep, f) = let
+    val width = Range.nElts (iFrom, iTo, iStep)
+    val height = Range.nElts (jFrom, jTo, jStep)
+    fun f' k = let
+      val i = iFrom + (k div width) * iStep
+      val j = jFrom + (k mod width) * jStep
+      in
+        f (i, j)
+      end
+    val rope = Rope.tabulate (width * height, f')
+    fun lf n = Lf (n * width, (n + 1) * width)
+    if
+      if (width<0) then raise Fail "width<0"
+      else if (height<0) then raise Fail "height<0"
+      else FArray (rope, Nd (List.tabulate (height, lf)))
+    end
+*)
+
+(* Note: The generated function will consume a function of some type *)
+(*   int * int -> tau *)
+(* The argument "resultTy" here is the name given that tau. *)
+(* It's the only one you need to build everything else. *)
+  fun mkTab2D resultTy = let
+    val _ = case resultTy of T.TupleTy _ => raise Fail "tupleTy" | _ => ()
+    (* gather basis items *)
+    val (_, rtab, _, _, _, ropeTy) = rope resultTy
+    val (fdcon, farrayTy) = farray resultTy
+    val (shapeLf, shapeNd, shapeTy) = shape ()
+    val nElts = DV.rngNElts ()
+    (* calculate types *)
+    val fTy = B.intTy ** B.intTy --> resultTy
+    val domTy = T.TupleTy [B.intTy, B.intTy, B.intTy, B.intTy, B.intTy, B.intTy, fTy]
+    val rngTy = farrayTy
+    (* make the variables *)
+    val tab2D = "tab2D" <: domTy --> rngTy
+    val iFrom = "iFrom" <: B.intTy
+    val iTo = "iTo" <: B.intTy
+    val iStep = "iStep" <: B.intTy
+    val jFrom = "jFrom" <: B.intTy
+    val jTo = "jTo" <: B.intTy
+    val jStep = "jStep" <: B.intTy
+    val f = "f" <: fTy
+    val width = "width" <: B.intTy
+    val height = "height" <: B.intTy
+    val rope = "rope" <: ropeTy
+    (* generate function f' *)
+    val f' = "f'" <: B.intTy --> resultTy
+    val k = "k" <: B.intTy
+    val i = "i" <: B.intTy
+    val j = "j" <: B.intTy
+    val f'Body = let
+      val iBind = i <- AU.plus (vexp iFrom) 
+		               (AU.times (vexp iStep) 
+					 (AU.intDiv (vexp k, vexp width)))
+      val jBind = j <- AU.plus (vexp jFrom) 
+		               (AU.times (vexp jStep) 
+					 (AU.intMod (vexp k, vexp width)))
+      in
+        AU.mkLetExp ([iBind, jBind], f @@< [i, j])
+      end 
+    val f'Lam = AU.mkFunWithParams (f', [k], f'Body)
+    (* generate function lf *)
+    val lf = "lf" <: B.intTy --> shapeTy
+    val n = "n" <: B.intTy
+    val lfBody = let
+      val nw = AU.times (vexp n) (vexp width)
+      val nw' = AU.times (AU.plusOne (vexp n)) (vexp width)
+      in
+        AU.mkApplyExp (dcon shapeLf, [nw, nw'])
+      end
+    val lfLam = AU.mkFunWithParams (lf, [n], lfBody)
+    (* generate everything else *)
+    val widthBind = width <- nElts @@< [iFrom, iTo, iStep]
+    val heightBind = height <- nElts @@< [jFrom, jTo, jStep]
+    val widthTest = AU.intLT (vexp width, AU.zero)
+    val widthFail = AU.mkFail ("width<0", rngTy)
+    val heightTest = AU.intLT (vexp height, AU.zero)
+    val heightFail = AU.mkFail ("height<0", rngTy)
+    val ropeBind = let
+      val n = AU.times (vexp width) (vexp height)
+      in
+        rope <- (rtab @@ [n, vexp f'])
+      end
+    val result = let
+      val listTab = A.VarExp (DV.listTab (), [shapeTy])
+      val app = AU.mkApplyExp (listTab, [vexp height, vexp lf])
+      val nd = AU.mkApplyExp (dcon shapeNd, [app])
+      in
+        AU.mkApplyExp (dcon fdcon, [vexp rope, nd])
+      end
+    val tab2DBody = let
+      fun fb lam = A.FunBind [lam]
+      val binds = [widthBind, heightBind, fb f'Lam, ropeBind, fb lfLam]
+      in
+        AU.mkLetExp (binds, widthTest ? (widthFail, 
+          heightTest ? (heightFail, result)))
+      end	       
+    val tab2DLam = let
+      val params = [iFrom, iTo, iStep, jFrom, jTo, jStep, f]
+      in
+        AU.mkFunWithParams (tab2D, params, tab2DBody)
+      end
+    in
+      tab2DLam
+    end
+
+end
+
+(* old, but working, implementation
+
+(*
+  fun tab2D = (iFrom, iTo, iStep, jFrom, jTo, jStep, f) = let
     fun f' (i, j) = f (iFrom + i * iStep, jFrom + j * jStep)
     val width = Range.nElts (iFrom, iTo, iStep)
     val height = Range.nElts (jFrom, jTo, jStep)
@@ -580,5 +691,4 @@ fun tabFromToP (lo, hi, f) = let
       tab2DLam
     end
 
-end
-
+*)
