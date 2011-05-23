@@ -20,8 +20,21 @@ structure TranslatePComp : sig
 
     structure DV = DelayedBasis.Var
 
+  (* tab2DMatch *)
+  (* This function identifies pcomps of the form *)
+  (* [| [| f(i,j) | j in rng1 |] | i in rng2 |]  *)
+  (* which will be compiled specially.           *)
+    fun tab2DMatch (e, pes, oe) = (case e
+      of A.PCompExp (f_ij, [(A.VarPat j, A.RangeExp _)], NONE) => (case pes
+           of [(A.VarPat i, A.RangeExp _)] => (case oe
+	        of NONE => true)
+	    | _ => false)
+       | _ => false)
+
     fun tr trExp (e, pes, oe) = 
-     (case (pes, oe)
+      if tab2DMatch (e, pes, oe) then
+        raise Fail "todo: 2D"
+      else (case (pes, oe)
         of ([], _) => raise Fail "a parallel comprehension with no pbinds at all"
 	 | ([(p1, e1 as A.RangeExp (loExp, hiExp, optStepExp, rngEltTy))], NONE) => let
            (* optimization of a common case: [| f(n) | n in [| 1 to 100 |] |] *)
@@ -123,5 +136,4 @@ structure TranslatePComp : sig
 	   | (pes, SOME pred) => raise Fail "todo: pcomp with predicate on multiple pbinds"
           (* end case *))
       
-
 end

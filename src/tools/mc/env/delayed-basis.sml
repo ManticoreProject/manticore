@@ -102,6 +102,7 @@ structure DelayedBasis = struct
   structure Var = struct
 
     val listRev       = memoVar ["List", "rev"]
+    val listTab       = memoVar ["List", "tabulate"]
 
     val refNew        = memoVar ["Ref", "new"]
     val refGet        = memoVar ["Ref", "get"]
@@ -133,6 +134,8 @@ structure DelayedBasis = struct
     val poll          = memoVar ["MultilispFuture", "poll"]
 
     val maxLeafSize   = memoVar ["LeafSize", "getMax"]
+
+    val rngNElts      = memoVar ["Range", "nElts"]
 
     val ropeEmpty     = memoVar ["Rope", "empty"]
     val ropeSingleton = memoVar ["Rope", "singleton"]

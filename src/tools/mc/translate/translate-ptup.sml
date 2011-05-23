@@ -536,7 +536,6 @@ structure TranslatePTup  : sig
 	    raise Fail "compiler bug in TranslatePTup: the size of the input ptuple must be > 1"
 	else
 	    let
-val _ = print ("***** bom/translate-ptup!\n")
 		val n = List.length es
 		fun tr' es = if supportsExceptions then
 				 trWithExh (env, es)

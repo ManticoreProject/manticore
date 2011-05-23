@@ -217,7 +217,8 @@ structure ASTUtil : sig
     fun mkString s = A.ConstExp (A.LConst (Literal.String s, Basis.stringTy))
 
     fun mkFail (s, t) = let
-      val exn = mkApplyExp (A.ConstExp (A.DConst (Basis.exnFail, [])), [mkString s])
+      val failConst = A.ConstExp (A.DConst (Basis.exnFail, []))
+      val exn = mkApplyExp (failConst, [mkString s])
       in
         A.RaiseExp (exn, t)
       end

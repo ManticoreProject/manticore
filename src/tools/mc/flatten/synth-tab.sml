@@ -7,6 +7,7 @@
 structure SynthTab = struct
 
 (* tabs of pairs *)
+(* 2D tabs *)
 
   structure A = AST
   structure T = Types
@@ -19,6 +20,9 @@ structure SynthTab = struct
   structure DD  = D.DataCon
   structure DV  = D.Var
   structure DTy = D.Ty
+
+  fun todo () = raise Fail "todo"
+  fun assert msg test = if test then () else raise Fail msg
 
   val vpat = A.VarPat
   fun pairPat (x, y) = A.TuplePat [vpat x, vpat y]
@@ -48,6 +52,9 @@ structure SynthTab = struct
   infix 1 <:
   fun x <: t = Var.new (x, t)
 
+  infix 1 ?
+  fun test ? (tru, fls) = AU.mkIfExp (test, tru, fls)
+
   val ptup = AU.mkPTupleExp
 
   fun seqTy t =
@@ -74,21 +81,37 @@ structure SynthTab = struct
   fun rope t = let
     val ty = ropeTy t
     in 
-      if FU.isInt t 
-        then (DD.intLeaf (), DV.irLength (), DV.irConcat (), DV.irEmpty (), ty)
-      else if FU.isDouble t 
-        then (DD.dblLeaf (), DV.drLength (), DV.drConcat (), DV.drEmpty (), ty)
+      if FU.isInt t then 
+        (DD.intLeaf (), DV.irFromSeq (), DV.irLength (), 
+	 DV.irConcat (), DV.irEmpty (), ty)
+      else if FU.isDouble t then
+        (DD.dblLeaf (), DV.drFromSeq (), DV.drLength (), 
+	 DV.drConcat (), DV.drEmpty (), ty)
       else
-        (DD.ropeLeaf (), DV.ropeLength (), DV.ropeConcat (), DV.ropeEmpty (), ty)
+        (DD.ropeLeaf (), DV.ropeFromSeq (), DV.ropeLength (), 
+	 DV.ropeConcat (), DV.ropeEmpty (), ty)
     end
 
-  fun farray t =
+  fun farrayTy t =
     if FU.isInt t then
-      (DD.intFArray (), DTy.int_farray ())
+      DTy.int_farray ()
     else if FU.isDouble t then
-      (DD.dblFArray (), DTy.dbl_farray ())
+      DTy.dbl_farray ()
     else
-      (DD.farray (), DTy.farray t)
+      DTy.farray t
+
+  fun farray t = let
+    val ty = farrayTy t
+    in
+      if FU.isInt t then
+        (DD.intFArray (), ty)
+      else if FU.isDouble t then
+        (DD.dblFArray (), ty)
+      else
+        (DD.farray (), ty)
+    end
+
+  fun shape () = (DD.lf (), DD.nd (), DTy.shape ())
 
   fun tupBind (xs, tupExp, exp) = let
     val tup = "tup" <: TypeOf.exp tupExp
@@ -139,7 +162,7 @@ fun tabSPair (lo, hi, f) = let
       AU.mkSeqExp ([update1 @@< [s1, i, a],
 		    update2 @@< [s2, i, b]],
 		   tabF @@ [AU.plusOne (vexp i)]))
-    val tabFBody = AU.mkIfExp (test, thenBranch, elseBranch)
+    val tabFBody = test ? (thenBranch, elseBranch)
     val tabFLam = AU.mkFunWithParams (tabF, [i], tabFBody)
     (* now make tabSPair *)
     val binds = [n <- AU.plusOne (AU.minus (vexp hi) (vexp lo)),
@@ -204,8 +227,8 @@ fun tabFromToP (lo, hi, f) = let
   fun mkTabFromToP (outTy1, outTy2) = let
     val seqTy1 = seqTy outTy1
     val seqTy2 = seqTy outTy2
-    val (lf1, len1, cat1, empty1, ropeTy1) = rope outTy1
-    val (lf2, len2, cat2, empty2, ropeTy2) = rope outTy2
+    val (lf1, fromseq1, len1, cat1, empty1, ropeTy1) = rope outTy1
+    val (lf2, fromseq2, len2, cat2, empty2, ropeTy2) = rope outTy2
     val seqPairLam as A.FB (seqPair, _, _) = mkSPair (outTy1, outTy2)
     val rcatLam as A.FB (rcat, _, _) = 
       mkRCat (ropeTy1, ropeTy2, cat1, cat2)
@@ -240,8 +263,8 @@ fun tabFromToP (lo, hi, f) = let
       end
     val bindNElts = nElts <- AU.plusOne (AU.minus (vexp hi) (vexp lo))
     val if1Else = AU.mkLetExp ([nElts <- AU.plusOne (AU.minus (vexp hi) (vexp lo))], 
-      AU.mkIfExp (if2Test, if2Then, if2Else))
-    val body = AU.mkLetExp ([A.FunBind [rcatLam]], AU.mkIfExp (if1Test, if1Then, if1Else))
+      if2Test ? (if2Then, if2Else))
+    val body = AU.mkLetExp ([A.FunBind [rcatLam]], if1Test ? (if1Then, if1Else))
     val ropePairLam = AU.mkFunWithParams (tabFromToP, [lo, hi, f], body)
     in
       {seqPair = seqPairLam,
@@ -261,7 +284,7 @@ fun tabFromToP (lo, hi, f) = let
     val f = "f" <: B.intTy --> outTy1 ** outTy2
     val {seqPair, tabFromToP} = mkTabFromToP (outTy1, outTy2)
     val A.FB (tFTP, _, _) = tabFromToP
-    val body = tFTP @@ [AU.mkInt 0, AU.minusOne (vexp n), vexp f]
+    val body = tFTP @@ [AU.zero, AU.minusOne (vexp n), vexp f]
     val lam = AU.mkFunWithParams (tabP, [n, f], body)
     in
       {seqPair = seqPair,
@@ -289,8 +312,8 @@ fun tabFromToP (lo, hi, f) = let
   fun mkTabFromToStepP (outTy1, outTy2) = let
     val {seqPair, tabFromToP} = mkTabFromToP (outTy1, outTy2)
     val A.FB (tFTP, _, _) = tabFromToP
-    val (_, _, _, empty1, ropeTy1) = rope outTy1
-    val (_, _, _, empty2, ropeTy2) = rope outTy2
+    val (_, _, _, _, empty1, ropeTy1) = rope outTy1
+    val (_, _, _, _, empty2, ropeTy2) = rope outTy2
     val fTy = B.intTy --> outTy1 ** outTy2
     val domTy = T.TupleTy [B.intTy, B.intTy, B.intTy, fTy]
     val rngTy = ropeTy1 ** ropeTy2
@@ -317,17 +340,15 @@ fun tabFromToP (lo, hi, f) = let
 			     AU.intNeg (vexp step))
       val tapp = tFTP @@ [AU.zero, arith, vexp f']
       in
-        AU.mkIfExp (test2, emptyPair, tapp)
+        test2 ? (emptyPair, tapp)
       end
     val innerIf2 = let
       val arith = AU.intDiv (AU.minus (vexp to_) (vexp from), vexp step)
       val tapp = tFTP @@ [AU.zero, arith, vexp f']
       in
-	AU.mkIfExp (test4, emptyPair, tapp)
+	test4 ? (emptyPair, tapp)
       end
-    val outerIf = AU.mkIfExp (test1, 
-      innerIf1, 
-      AU.mkIfExp (test3, innerIf2, AU.mkFail ("0 step", rngTy)))
+    val outerIf = test1 ? (innerIf1, test3 ? (innerIf2, AU.mkFail ("0 step", rngTy)))
     val body = AU.mkLetExp ([A.FunBind [f'Lam]], outerIf)
     val lam = AU.mkFunWithParams (tabFromToStepP, [from, to_, step, f], body)
     in
@@ -386,8 +407,8 @@ fun tabFromToP (lo, hi, f) = let
     end
  *)
   fun mkFTabFTS (outTy1, outTy2) = let
-    val (_, len1, _, _, ropeTy1) = rope outTy1
-    val (_, _, _, _, ropeTy2) = rope outTy2
+    val (_, _, len1, _, _, ropeTy1) = rope outTy1
+    val (_, _, _, _, _, ropeTy2) = rope outTy2
     val shapeTy = DTy.shape ()
     val shapeLf = DD.lf ()
     val (fdcon1, fty1) = farray outTy1
@@ -418,6 +439,143 @@ fun tabFromToP (lo, hi, f) = let
        tabFromToP = tabFromToP,
        tabFromToStepP = tabFromToStepP,
        fTabFromToStep = lam}
+    end
+
+  (* synthesize monomorphic 2d tabulation *)
+
+(* In the code that follows, it's important that the seq used by the rope has 
+ * fast creation and fast update. Otherwise the benefit will be limited.
+ *)
+
+(*
+  fun tab2D = (iFrom, iTo, iStep, jFrom, jTo, jStep, f) = let
+    fun f' (i, j) = f (iFrom + i * iStep, jFrom + j * jStep)
+    val width = Range.nElts (iFrom, iTo, iStep)
+    val height = Range.nElts (jFrom, jTo, jStep)
+    val seq = Seq.create (width * height)
+    fun fillCols (r, c) = 
+      if (c >= width) then ()
+      else let
+        val index = r * width + c
+        in
+          Seq.update (seq, index, f' (r, c));
+          fillCols (r, c+1)
+        end
+    fun fillRows z = 
+      if (z >= height) then ()
+      else (fillCols (z, 0); fillRows (z+1))
+    val rope = (fillRows 0; Rope.fromSeq seq)
+    fun lf n = Lf (n*width, n*width+width)
+    in
+      if (width<0) then raise Fail "width<0"
+      else if (height<0) then raise Fail "height<0"
+      else FArray (rope, Nd (List.tabulate (height, lf)))
+    end
+*)
+
+(* Note: The generated function will consume a function of some type *)
+(*   int * int -> tau *)
+(* The argument "resultTy" here is the name given that tau. *)
+(* It's the only one you need to build everything else. *)
+  fun mkTab2D resultTy = let
+    val _ = assert "resultTy must be a ground type" (FU.isGroundTy resultTy)
+    (* gather basis items *)
+    val (seqUpd, seqCreate, seqTy) = seq resultTy
+    val (_, ropeFromSeq, _, _, _, ropeTy) = rope resultTy
+    val (fdcon, farrayTy) = farray resultTy
+    val (shapeLf, shapeNd, shapeTy) = shape ()
+    val nElts = DV.rngNElts ()
+    (* calculate types *)
+    val fTy = B.intTy ** B.intTy --> resultTy
+    val domTy = T.TupleTy [B.intTy, B.intTy, B.intTy, B.intTy, B.intTy, B.intTy, fTy]
+    val rngTy = farrayTy
+    (* make the variables *)
+    val tab2D = "tab2D" <: domTy --> rngTy
+    val iFrom = "iFrom" <: B.intTy
+    val iTo = "iTo" <: B.intTy
+    val iStep = "iStep" <: B.intTy
+    val jFrom = "jFrom" <: B.intTy
+    val jTo = "jTo" <: B.intTy
+    val jStep = "jStep" <: B.intTy
+    val f = "f" <: fTy
+    val width = "width" <: B.intTy
+    val height = "height" <: B.intTy
+    val seq = "seq" <: seqTy
+    val rope = "rope" <: ropeTy
+    (* generate function f' *)
+    val f' = "f'" <: fTy
+    val i = "i" <: B.intTy
+    val j = "j" <: B.intTy
+    val f'Body = f @@ [AU.plus (vexp iFrom) (AU.times (vexp i) (vexp iStep)),
+		       AU.plus (vexp jFrom) (AU.times (vexp j) (vexp jStep))]
+    val f'Lam = AU.mkFunWithParams (f', [i, j], f'Body)
+    (* generate function fillCols *)
+    val fillCols = "fillCols" <: B.intTy ** B.intTy --> B.unitTy
+    val r = "r" <: B.intTy
+    val c = "c" <: B.intTy
+    val index = "index" <: B.intTy
+    val cTest = AU.intGTE (vexp c, vexp width)
+    val elseBranchC = let
+      val arith = AU.plus (AU.times (vexp r) (vexp width)) (vexp c)
+      val upd = seqUpd @@ [vexp seq, vexp index, f' @@< [r, c]]
+      val call = fillCols @@ [vexp r, AU.plusOne (vexp c)]
+      in
+        AU.mkLetExp ([index <- arith], AU.mkSeqExp ([upd], call))
+      end
+    val fillColsBody = cTest ? (AU.unitExp, elseBranchC)
+    val fillColsLam = AU.mkFunWithParams (fillCols, [r, c], fillColsBody)
+    (* generate function fillRows *)
+    val fillRows = "fillRows" <: B.intTy --> B.unitTy
+    val z = "z" <: B.intTy    
+    val zTest = AU.intGTE (vexp z, vexp height)
+    val elseBranchR = let
+      val callCols = fillCols @@ [vexp z, AU.zero]
+      val callSelf = fillRows @@ [AU.plusOne (vexp z)]
+      in
+        AU.mkSeqExp ([callCols], callSelf)
+      end
+    val fillRowsBody = zTest ? (AU.unitExp, elseBranchR)
+    val fillRowsLam = AU.mkFunWithParams (fillRows, [z], fillRowsBody)
+    (* generate function lf *)
+    val lf = "lf" <: B.intTy --> shapeTy
+    val n = "n" <: B.intTy
+    val lfBody = let
+      val arith = AU.times (vexp n) (vexp width)
+      in
+        AU.mkApplyExp (dcon shapeLf, [arith, AU.plus arith (vexp width)])
+      end
+    val lfLam = AU.mkFunWithParams (lf, [n], lfBody)
+    (* generate everything else *)
+    val widthBind = width <- nElts @@< [iFrom, iTo, iStep]
+    val heightBind = height <- nElts @@< [jFrom, jTo, jStep]
+    val seqBind = seq <- (seqCreate @@ [AU.times (vexp width) (vexp height)])
+    val ropeBind = rope <- AU.mkSeqExp ([fillRows @@ [AU.zero]], ropeFromSeq @@< [seq])
+    val result = let
+      val listTab = DV.listTab ()
+      val nd = AU.mkApplyExp (dcon shapeNd, [listTab @@< [height, lf]])
+      in
+        AU.mkApplyExp (dcon fdcon, [vexp rope, nd])
+      end
+    val widthTest = AU.intLT (vexp width, AU.zero)
+    val widthFail = AU.mkFail ("width<0", rngTy)
+    val heightTest = AU.intLT (vexp height, AU.zero)
+    val heightFail = AU.mkFail ("height<0", rngTy)
+    val tab2DBody = let
+      fun fb lam = A.FunBind [lam]
+      val binds = [fb f'Lam, widthBind, heightBind, seqBind, 
+		   fb fillColsLam, fb fillRowsLam, ropeBind, fb lfLam]
+      in
+        widthTest ? (widthFail, 
+          heightTest ? (heightFail, 
+            AU.mkLetExp (binds, result)))
+      end	       
+    val tab2DLam = let
+      val params = [iFrom, iTo, iStep, jFrom, jTo, jStep, f]
+      in
+        AU.mkFunWithParams (tab2D, params, tab2DBody)
+      end
+    in
+      tab2DLam
     end
 
 end
