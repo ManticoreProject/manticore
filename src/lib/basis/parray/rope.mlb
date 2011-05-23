@@ -22,6 +22,8 @@ end
   double-seq.pml
   seq-util.pml
 
+  range.pml
+
   rope-ty.pml
   rope.pml
   rope-pair.pml

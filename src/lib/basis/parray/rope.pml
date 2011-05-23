@@ -1175,23 +1175,8 @@ fun app f rp = let
              tabFromTo (0, (to_-from) div step, fn i => f (from + (step*i)))
       (* end case *))
 
-  (* nEltsInRange : int * int * int -> int *)
-    fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
-	  if step = 0 then failwith "cannot have step 0 in a range"
-	  else if from = to_ then 1
-	  else if (from > to_ andalso step > 0) then 0
-	  else if (from < to_ andalso step < 0) then 0
-	  else (Int.abs (from - to_) div Int.abs step) + 1
-
   (* range : int * int * int -> int rope *)
-    fun range (from, to_, step) = (* "to" is syntax in pml *)
-     (if from = to_ then singleton from
-      else let
-        val sz = nEltsInRange (from, to_, step)
-        fun gen n = step * n + from
-        in
-          tabulate (sz, gen)
-        end)
+    val range = Range.mkRange (singleton, tabulate)
 
   (* rangePNoStep : int * int -> int rope *)
     fun rangeNoStep (from, to_) = (* "to" is syntax in pml *)

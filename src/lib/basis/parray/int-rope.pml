@@ -30,49 +30,49 @@ structure IntRope = struct
     of Leaf s => S.length s
      | Cat (l, _, _, _) => l)
 
-fun depth rp = (case rp
-  of Leaf _ => 0
-   | Cat (_, d, _, _) => d)
-
-fun empty () = Leaf (S.empty ())
-
-fun isEmpty rp = length rp = 0
-
-fun singleton x = Leaf (S.singleton x)
-
-fun inBounds (r, i) = (i < length r) andalso (i >= 0)
-
-fun ropeOK rp = let
-  fun length' rp = (case rp
-    of Leaf s => S.length s
-     | Cat (_, _, rp1, rp2) => length' rp1 + length' rp2)
-  fun depth' rp = (case rp
+  fun depth rp = (case rp
     of Leaf _ => 0
-     | Cat (_, _, rp1, rp2) => Int.max (depth' rp1, depth' rp2) + 1)
-  fun check rp = (case rp
-    of Leaf s => true
-     | Cat (_, _, rp1, rp2) => 
-         length rp = length' rp andalso depth rp = depth' rp andalso
-	 check rp1 andalso check rp2)
-  in
-    check rp
-  end
+     | Cat (_, d, _, _) => d)
 
-fun leaf s =
-  if S.length s > LeafSize.getMax () then
-    failwith "bogus leaf size"
-  else 
-    Leaf s
+  fun empty () = Leaf (S.empty ())
 
-fun toList rp = (case rp
-  of Leaf s => S.toList s
-   | Cat(_, _, l, r) => toList l @ toList r)
+  fun isEmpty rp = length rp = 0
 
-fun leaves rp = (case rp
-  of Leaf s => s::nil
-   | Cat (_, _, rp1, rp2) => leaves rp1 @ leaves rp2)
+  fun singleton x = Leaf (S.singleton x)
 
-fun toSeq rp = S.catN (leaves rp)
+  fun inBounds (r, i) = (i < length r) andalso (i >= 0)
+
+  fun ropeOK rp = let
+    fun length' rp = (case rp
+      of Leaf s => S.length s
+       | Cat (_, _, rp1, rp2) => length' rp1 + length' rp2)
+    fun depth' rp = (case rp
+      of Leaf _ => 0
+       | Cat (_, _, rp1, rp2) => Int.max (depth' rp1, depth' rp2) + 1)
+    fun check rp = (case rp
+      of Leaf s => true
+       | Cat (_, _, rp1, rp2) => 
+           length rp = length' rp andalso depth rp = depth' rp andalso
+	   check rp1 andalso check rp2)
+    in
+      check rp
+    end
+
+  fun leaf s =
+    if S.length s > LeafSize.getMax () then
+      failwith "bogus leaf size"
+    else 
+      Leaf s
+
+  fun toList rp = (case rp
+    of Leaf s => S.toList s
+     | Cat(_, _, l, r) => toList l @ toList r)
+
+  fun leaves rp = (case rp
+    of Leaf s => s::nil
+     | Cat (_, _, rp1, rp2) => leaves rp1 @ leaves rp2)
+
+  fun toSeq rp = S.catN (leaves rp)
 
 (* non-coalescing rope concatenation *)
   fun nccat2 (rp1, rp2) = let
@@ -89,69 +89,71 @@ fun toSeq rp = S.catN (leaves rp)
     else
       nccat2 (rp1, rp2)
 
-fun split2 rp =
-  (case rp 
-    of Leaf s => let val (s1, s2) = S.split2 s
-                 in (leaf s1, leaf s2)
-                 end
+  fun split2 rp = (case rp 
+    of Leaf s => let 
+         val (s1, s2) = S.split2 s
+         in 
+	   (leaf s1, leaf s2)
+         end
      | Cat (_, _, l, r) => (l, r))
 
-fun splitN _ = failwith "todo"
+  fun splitN _ = failwith "todo"
 
-fun fromList xs = let
-  val l = List.length xs
-  in
-    if l < LeafSize.getMax () orelse l = 1 then leaf (S.fromList xs)
-    else nccat2 (fromList (List.take (xs, l div 2)),
-                 fromList (List.drop (xs, l div 2)))
-  end
+  fun fromList xs = let
+    val l = List.length xs
+    in
+      if l < LeafSize.getMax () orelse l = 1 then 
+        leaf (S.fromList xs)
+      else  
+        nccat2 (fromList (List.take (xs, l div 2)),
+                fromList (List.drop (xs, l div 2)))
+    end
 
-fun subInBounds (rp, i) = (case rp
-  of Leaf s => S.sub (s, i)
-   | Cat (_, _, r1, r2) =>
-     if i < length r1 then 
-       subInBounds (r1, i)
-     else 
-       subInBounds (r2, i - length r1))
+  fun subInBounds (rp, i) = (case rp
+    of Leaf s => S.sub (s, i)
+     | Cat (_, _, r1, r2) =>
+         if i < length r1 then 
+	   subInBounds (r1, i)
+	 else 
+           subInBounds (r2, i - length r1))
 
-fun sub (rp, i) =
-  if inBounds (rp, i) then
-    subInBounds (rp, i)
-  else
-    subscript ()
+  fun sub (rp, i) =
+    if inBounds (rp, i) then
+      subInBounds (rp, i)
+    else
+      subscript ()
 
-fun seqSplitAtIx2 (s, i) = 
-  (S.take (s, i + 1), S.drop (s, i + 1))
+  fun seqSplitAtIx2 (s, i) = (S.take (s, i + 1), S.drop (s, i + 1))
 
-fun splitAtIx2' (rp, i) = (case rp
-  of Leaf s => let
-       val (s1, s2) = seqSplitAtIx2 (s, i)
-       in
-         (leaf s1, leaf s2)
-       end
-   | Cat (_, _, l, r) =>
-       if i = length l - 1 then
-	 (l, r)
-       else if i < length l then let
-         val (l1, l2) = splitAtIx2' (l, i)
-	 in
-	   (l1, nccat2 (l2, r))
-	 end
-       else let
-         val (r1, r2) = splitAtIx2' (r, i - length l)
+  fun splitAtIx2' (rp, i) = (case rp
+    of Leaf s => let
+         val (s1, s2) = seqSplitAtIx2 (s, i)
          in
-	   (nccat2 (l, r1), r2)
-         end)
-fun splitAtIx2 (rp, i) =
-  if inBounds (rp, i) then
-    splitAtIx2' (rp, i)
-  else
-    subscript ()
+           (leaf s1, leaf s2)
+         end
+     | Cat (_, _, l, r) =>
+         if i = length l - 1 then
+	   (l, r)
+	 else if i < length l then let
+           val (l1, l2) = splitAtIx2' (l, i)
+	   in
+	     (l1, nccat2 (l2, r))
+	   end
+	 else let
+           val (r1, r2) = splitAtIx2' (r, i - length l)
+           in
+	     (nccat2 (l, r1), r2)
+           end)
 
-fun seqLast s = S.sub (s, S.length s - 1)
+  fun splitAtIx2 (rp, i) =
+    if inBounds (rp, i) then
+      splitAtIx2' (rp, i)
+    else
+      subscript ()
 
-fun isBalanced rp =
-  (case rp
+  fun seqLast s = S.sub (s, S.length s - 1)
+
+  fun isBalanced rp = (case rp
     of Leaf _ => true
      | _ => depth rp <= C * Int.ceilingLg (length rp))
 
@@ -1156,7 +1158,7 @@ fun app f rp = let
             val m = (hi + lo) div 2
             in
               nccat2 (| tabFromTo (lo, m, f),
-		      tabFromTo (m+1, hi, f) |)
+		        tabFromTo (m+1, hi, f) |)
             end
         end
 
@@ -1179,27 +1181,12 @@ fun app f rp = let
              tabFromTo (0, (to_-from) div step, fn i => f (from + (step*i)))
       (* end case *))
 
-  (* nEltsInRange : int * int * int -> int *)
-    fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
-      if step = 0 then 
-        fail "nEltsInRange" "cannot have step 0 in a range"
-      else 
-	1 + Int.max (0, (to_ - from) div step)
-
-  (* rangeP : int * int * int -> int rope *)
+  (* rangeP : int * int * int -> int_rope *)
   (* note: both from and to are inclusive bounds *)
-    fun range (from, to_, step) = (* "to" is syntax in pml *)
-     (if from = to_ then singleton from
-      else let
-        val sz = nEltsInRange (from, to_, step)
-        fun gen n = from + step * n
-        in
-          tabulate (sz, gen)
-        end)
+    val range = Range.mkRange (singleton, tabulate)
 
   (* rangeNoStep : int * int -> int rope *)
-    fun rangeNoStep (from, to_) = (* "to" is syntax in pml *)
-      range (from, to_, 1)
+    fun rangeNoStep (from, to_) = range (from, to_, 1)
                                               
   (* partialSeq : 'a rope * int * int -> 'a seq *)
   (* return the sequence of elements from low incl to high excl *)

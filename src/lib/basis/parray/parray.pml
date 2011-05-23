@@ -38,6 +38,10 @@ structure PArray = struct
   fun range (from, to_, step) = fromRope (Rope.range (from, to_, step))
   fun app f pa = Rope.app f (toRope pa)
 
+  fun tab2D (iFrom, iTo, iStep, jFrom, jTo, jStep, f) = 
+    tabFromToStep (iFrom, iTo, iStep, fn i => 
+      tabFromToStep (jFrom, jTo, jStep, fn j => f (i, j)))
+
   (* fun filter (pred, pa) = fromRope(Rope.filter pred (toRope pa)) *)
   (* fun rev pa = fromRope(Rope.rev(toRope pa)) *)
   (* fun fromList l = fromRope(Rope.fromList l) *)
@@ -80,9 +84,30 @@ structure PArray = struct
     in
       if (n<0) then
         fail "tos_int" "BUG: negative length"
-      else if (n=0) then "[||]"
+      else if (n=0) then 
+        "[||]"
       else let
         val init = [tos(n-1),"|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
+  fun tos_intParr (parr : int parray parray) = let
+    fun tos i = tos_int (parr ! i)
+    fun lp (i, acc) = 
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::","::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        fail "tos_intp" "BUG: negative length"
+      else if (n=0) then
+        "[||]"
+      else let
+        val init = [tos(n-1), "|]"]
         in
           lp (n-2, init)
         end
