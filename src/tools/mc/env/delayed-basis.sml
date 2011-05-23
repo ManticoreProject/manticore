@@ -190,6 +190,7 @@ structure DelayedBasis = struct
     val parraySub     = memoVar ["PArray", "sub"]
     val parrayTab     = memoVar ["PArray", "tab"]
     val parrayTabFTS  = memoVar ["PArray", "tabFromToStep"]
+    val parrayTab2D   = memoVar ["PArray", "tab2D"]
     val parrayRange   = memoVar ["PArray", "range"]
 
     val flatSub       = memoVar ["FArray", "flatSub"]

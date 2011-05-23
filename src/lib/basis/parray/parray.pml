@@ -37,7 +37,6 @@ structure PArray = struct
   fun reduce rator init pa = Rope.reduce rator init (toRope pa)
   fun range (from, to_, step) = fromRope (Rope.range (from, to_, step))
   fun app f pa = Rope.app f (toRope pa)
-
   fun tab2D (iFrom, iTo, iStep, jFrom, jTo, jStep, f) = 
     tabFromToStep (iFrom, iTo, iStep, fn i => 
       tabFromToStep (jFrom, jTo, jStep, fn j => f (i, j)))

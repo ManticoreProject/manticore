@@ -121,6 +121,7 @@ structure SubstTy =
 	| p (A.PA_Reduce t) = A.PA_Reduce (substTy (s, t))
 	| p (A.PA_Range t) = A.PA_Range (substTy (s, t))
 	| p (A.PA_App t) = A.PA_App (substTy (s, t))
+	| p (A.PA_Tab2D t) = A.PA_Tab2D (substTy (s, t))
       in
         p oper
       end

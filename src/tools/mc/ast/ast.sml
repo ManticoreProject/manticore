@@ -42,6 +42,7 @@ structure AST =
       | PA_Reduce of ty            (* type 'a in the associative operator ('a * 'a -> 'a) *)
       | PA_Range of ty             (* type is element type (currently only int supported) *)
       | PA_App of ty               (* type is the element type *)
+      | PA_Tab2D of ty             (* the type of the elements to be created by the tabulation *)
     and psub_op
 (* TODO...I think a better repr for these might be the FArray types, with shape. *)
 (* Then we can defer the nested vs. flat question till later. *)

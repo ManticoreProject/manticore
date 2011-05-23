@@ -1217,8 +1217,60 @@ fun app f rp = let
 	     end
         (* end case *))
 
-  (* fromSeq *)
-  (* FIXME slow implementation *)
-    fun fromSeq s = fromList (S.toList s)
+(* build a rope from a sequence *)
+
+  (* catPairs :  int_rope list -> int_rope list *)
+  (* Concatenate every pair of ropes in a list. *)
+  (* ex: catPairs [r0,r1,r2,r3] => [Cat(r0,r1),Cat(r2,r3)] *)
+    fun catPairs rs = 
+     (case rs
+        of nil => nil
+	 | r::nil => rs
+	 | r0::r1::rs => (ccat2 (r0, r1)) :: catPairs rs
+       (* end case *))
+
+  (* subseq *)
+    fun subseq (s, loIncl, hiExcl) = let  
+      val n = S.length s
+      val demanded = hiExcl - loIncl
+      in
+        if (demanded > n) 
+	  then raise Fail "too few elements"
+	else let
+          fun f i = S.sub (s, loIncl+i)
+          in
+            S.tabulate (demanded, f)
+	  end
+      end
+
+  (* chopSeq : seq * int -> seq list *)
+    fun chopSeq (s, sz) = let
+      val n = S.length s
+      fun lp (lo, acc) = 
+        if (lo >= n) 
+          then List.rev acc
+	else let
+          val next = lo + sz
+          in
+            if (next >= n)
+              then List.rev (subseq (s, lo, n) :: acc)
+	    else
+              lp (next, subseq (s, lo, next) :: acc)
+	  end
+      in
+	lp (0, [])
+      end
+
+  (* fromSeq : seq -> int_rope *)
+    fun fromSeq s = let
+      val lfData = chopSeq (s, LeafSize.getMax ())
+      val leaves = List.map leaf lfData
+      fun build ls = case ls
+        of nil => empty ()
+	 | l::nil => l
+	 | _ => build (catPairs ls)
+      in
+        build leaves
+      end
 
 end

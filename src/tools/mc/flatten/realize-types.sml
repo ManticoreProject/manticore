@@ -156,6 +156,7 @@ end *) = struct
       | pop (A.PA_Range t) = A.PA_Range (ty t)
       | pop (A.PA_App t) = A.PA_App (ty t)
       | pop (A.PA_TabTupleFTS ts) = A.PA_TabTupleFTS ($ty ts)
+      | pop (A.PA_Tab2D t) = A.PA_Tab2D (ty t)
     in
       pop
     end

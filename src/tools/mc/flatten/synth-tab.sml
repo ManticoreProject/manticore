@@ -16,6 +16,7 @@ structure SynthTab = struct
 
   structure AU = ASTUtil
   structure FU = FlattenUtil
+  structure TU = TypeUtil
 
   structure DD  = D.DataCon
   structure DV  = D.Var
@@ -60,7 +61,7 @@ structure SynthTab = struct
   fun seqTy t =
     if FU.isInt t then DTy.int_seq ()
     else if FU.isDouble t then DTy.dbl_seq ()
-    else DTy.arr_seq t
+    else (print ("seq for " ^ TU.toString t ^ "\n"); DTy.arr_seq t)
 
   fun seq t = let
     val ty = seqTy t
@@ -478,7 +479,7 @@ fun tabFromToP (lo, hi, f) = let
 (* The argument "resultTy" here is the name given that tau. *)
 (* It's the only one you need to build everything else. *)
   fun mkTab2D resultTy = let
-    val _ = assert "resultTy must be a ground type" (FU.isGroundTy resultTy)
+    val _ = case resultTy of T.TupleTy _ => raise Fail "tupleTy" | _ => ()
     (* gather basis items *)
     val (seqUpd, seqCreate, seqTy) = seq resultTy
     val (_, ropeFromSeq, _, _, _, ropeTy) = rope resultTy
@@ -551,8 +552,9 @@ fun tabFromToP (lo, hi, f) = let
     val seqBind = seq <- (seqCreate @@ [AU.times (vexp width) (vexp height)])
     val ropeBind = rope <- AU.mkSeqExp ([fillRows @@ [AU.zero]], ropeFromSeq @@< [seq])
     val result = let
-      val listTab = DV.listTab ()
-      val nd = AU.mkApplyExp (dcon shapeNd, [listTab @@< [height, lf]])
+      val listTab = A.VarExp (DV.listTab (), [shapeTy])
+      val app = AU.mkApplyExp (listTab, [vexp height, vexp lf])
+      val nd = AU.mkApplyExp (dcon shapeNd, [app])
       in
         AU.mkApplyExp (dcon fdcon, [vexp rope, nd])
       end
@@ -565,9 +567,9 @@ fun tabFromToP (lo, hi, f) = let
       val binds = [fb f'Lam, widthBind, heightBind, seqBind, 
 		   fb fillColsLam, fb fillRowsLam, ropeBind, fb lfLam]
       in
-        widthTest ? (widthFail, 
+        AU.mkLetExp (binds, widthTest ? (widthFail,
           heightTest ? (heightFail, 
-            AU.mkLetExp (binds, result)))
+            result)))
       end	       
     val tab2DLam = let
       val params = [iFrom, iTo, iStep, jFrom, jTo, jStep, f]

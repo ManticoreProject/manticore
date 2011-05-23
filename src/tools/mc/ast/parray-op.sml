@@ -55,6 +55,7 @@ structure PArrayOp = struct
 	| pop (A.PA_Reduce t) = tos "PA_Reduce" t				  
 	| pop (A.PA_Range t) = tos "PA_Range" t
 	| pop (A.PA_App t) = tos "PA_App" t
+	| pop (A.PA_Tab2D t) = tos "PA_Tab2D" t
       in
         pop      
       end
@@ -138,6 +139,14 @@ structure PArrayOp = struct
           in
 	    domTy --> rngTy
 	  end
+      | pop (A.PA_Tab2D eltTy) = let
+	  val i = B.intTy
+	  val fTy = (T.TupleTy [i, i]) --> eltTy
+          val domTy = T.TupleTy [i, i, i, i, i, i, fTy]
+	  val rngTy = T.FArrayTy (eltTy, T.NdTy T.LfTy)
+          in
+	    domTy --> rngTy
+	  end
     in
       pop
     end				 
@@ -145,11 +154,9 @@ structure PArrayOp = struct
 (* compare : parray_op * parray_op -> order *)
 (* for use in ORD_KEY-based collections *)
   local
-
     fun consIndexPS (A.PSub_Nested _) = 0
       | consIndexPS (A.PSub_Flat _)   = 1
       | consIndexPS (A.PSub_Tuple _)  = 2
-
     fun consIndex (A.PA_Length _)        = 0
       | consIndex (A.PA_Sub _)           = 1
       | consIndex (A.PA_Tab _)           = 2
@@ -159,6 +166,7 @@ structure PArrayOp = struct
       | consIndex (A.PA_Range _)         = 6
       | consIndex (A.PA_App _)           = 7
       | consIndex (A.PA_TabTupleFTS _)   = 8
+      | consIndex (A.PA_Tab2D _)         = 9
   in
 
     val compare : A.parray_op * A.parray_op -> order = let
@@ -190,6 +198,7 @@ structure PArrayOp = struct
 	     | (A.PA_Reduce t1, A.PA_Reduce t2) => TU.compare (t1, t2)
 	     | (A.PA_Range t1, A.PA_Range t2) => TU.compare (t1, t2)
 	     | (A.PA_App t1, A.PA_App t2) => TU.compare (t1, t2)
+	     | (A.PA_Tab2D t1, A.PA_Tab2D t2) => TU.compare (t1, t2)
 	     | _ => raise Fail "compiler bug"
         end
       in
@@ -302,6 +311,25 @@ structure PArrayOp = struct
 
   fun isIntTy t = TU.same (B.intTy, t)
   fun isIntParrayTy t = TU.same (t, B.parrayTy B.intTy)
+
+  val constructTab2D : T.ty -> A.exp = let
+    fun mk domTy = (case domTy
+      of T.TupleTy [i1, i2, i3, i4, i5, i6, T.FunTy (T.TupleTy [i7, i8], resTy)] =>
+           if not (List.all isIntTy [i1, i2, i3, i4, i5, i6, i7, i8]) then
+             raise Fail ("unexpected ty (ints expected) " ^ TU.toString domTy)
+	   else (case resTy
+             of T.FArrayTy (eltTy, T.LfTy) => let
+                  val tab = A.PA_Tab2D eltTy
+                  in
+	            A.PArrayOp tab
+		  end
+	      | t => raise Fail ("??:" ^ TU.toString resTy)
+             (* end case *))
+       | t => raise Fail ("unexpected ty " ^ TU.toString t)
+      (* end case *))
+    in
+      mk
+    end
 
 (* constructMap : ty -> exp *)
   val constructMap : T.ty -> A.exp = let
