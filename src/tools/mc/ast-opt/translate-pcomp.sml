@@ -46,8 +46,14 @@ structure TranslatePComp : sig
       val iStep = Option.getOpt (iStepOpt, AU.one)
       val jStep = Option.getOpt (jStepOpt, AU.one)
       in
-        SOME (iFrom, iTo, iStep, jFrom, jTo, jStep, f_ij)
+        if List.all constOrVar [iFrom, iTo, iStep, jFrom, jTo, jStep] then
+          SOME (iFrom, iTo, iStep, jFrom, jTo, jStep, f_ij)
+	else
+	  NONE
       end
+    and constOrVar (A.ConstExp _) = true
+      | constOrVar (A.VarExp _) = true
+      | constOrVar _ = false
 
   (* tr : (exp -> exp) -> exp * (pat * exp) list * exp option -> exp *)
     fun tr trExp (e, pes, oe) = (case tab2DMatch (e, pes, oe)
