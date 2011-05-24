@@ -218,7 +218,8 @@ structure PArrayOpGen = struct
 		 else let
                    val {seqMap, ropeMap, farrayMap} = SynthMap.synthFArrayMap (t1, t2, beta)
 		   val A.FB (fmap, _, _) = farrayMap
-		   val binds = List.map (fn lam => A.FunBind [lam]) [seqMap, ropeMap, farrayMap]
+                   fun fb lam = A.FunBind [lam]	
+	           val binds = List.map fb [seqMap, ropeMap, farrayMap]
                    in
                      AU.mkLetExp (binds, monoVarExp fmap)
                    end

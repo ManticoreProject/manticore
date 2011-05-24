@@ -85,7 +85,7 @@ structure SynthMap = struct
 
 (* 
   fun seqMap (f, len, s1, s2) = let
-     val f' i = f (S1.sub (s1, i), S2.sub (s2, i))
+     fun f' i = f (S1.sub (s1, i), S2.sub (s2, i))
      in
        S3.tabulate (len, f')
      end
@@ -120,7 +120,7 @@ structure SynthMap = struct
                 val n = R1.length rope1
                 in 
                   if (n < 1) then R3.empty ()
-                  else R3.mkLeaf (s_map_int_dbl (f, n, s1, s2))
+                  else R3.mkLeaf (seqMap (f, n, s1, s2))
 	        end)
        | R1.CAT cat1 => (case cat1
            of (d1, len1, r1L, r1R) => (case rope2
@@ -158,6 +158,7 @@ structure SynthMap = struct
     val r1R =     "r1R"     <: inRope1
     val r2L =     "r2L"     <: inRope2
     val r2R =     "r2R"     <: inRope2
+(* FIXME should we be calling R3.leaf instead of using constructor directly? *)
     fun outLEAF es = AU.mkApplyExp (A.ConstExp (A.DConst (outLeaf, [])), es)
     fun outCAT es =  AU.mkApplyExp (A.ConstExp (A.DConst (outCat, [])), es)
     val lfRHS = 
