@@ -98,7 +98,7 @@ structure PArray = struct
       if (i<0) then
         String.concat ("[|"::acc)
       else
-        lp (i-1, tos(i)::","::acc)
+        lp (i-1, tos(i)::",\n"::acc)
     val n = length parr
     in
       if (n<0) then
@@ -106,7 +106,7 @@ structure PArray = struct
       else if (n=0) then
         "[||]"
       else let
-        val init = [tos(n-1), "|]"]
+        val init = [tos(n-1), "\n|]"]
         in
           lp (n-2, init)
         end
