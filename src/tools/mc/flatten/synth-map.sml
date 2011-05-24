@@ -165,7 +165,11 @@ structure SynthMap = struct
         AU.mkIfExp (AU.intLT (vexp n, AU.mkInt 1),
 		    AU.mkForce (vexp outE),
 		    outLEAF [seqMap @@< [f, n, s1, s2]]))
-    val catRHS = ptup [vexp d1, vexp len1, mapF @@< [r1L, r2L], mapF @@< [r1R, r2R]]
+    val catRHS = let
+      val es = ptup [vexp d1, vexp len1, mapF @@< [r1L, r2L], mapF @@< [r1R, r2R]]
+      in
+        AU.mkApplyExp (A.ConstExp (A.DConst (outCat, [])), [es])
+      end
     val mapFBody = AU.mkCaseExp (vexp rope1,
       [A.PatMatch (A.ConPat (inLeaf1, [], vpat s1), AU.mkCaseExp (vexp rope2,
         [A.PatMatch (A.ConPat (inLeaf2, [], vpat s2), 
