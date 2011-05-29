@@ -55,7 +55,7 @@ structure PArrayOp = struct
 	| pop (A.PA_Reduce t) = tos "PA_Reduce" t				  
 	| pop (A.PA_Range t) = tos "PA_Range" t
 	| pop (A.PA_App t) = tos "PA_App" t
-	| pop (A.PA_Tab2D t) = tos "PA_Tab2D" t
+	| pop (A.PA_TabHD (d, t)) = tos ("PA_TabHD_" ^ Int.toString d) t
       in
         pop      
       end
@@ -139,11 +139,19 @@ structure PArrayOp = struct
           in
 	    domTy --> rngTy
 	  end
-      | pop (A.PA_Tab2D eltTy) = let
+      | pop (A.PA_TabHD (dim, eltTy)) = let
+	  fun dup (n, x) = List.tabulate (n, fn _ => x)
+          fun appn (n, f) x = let
+            fun lp (0, acc) = acc
+	      | lp (n, acc) = lp (n-1, f acc)
+            in
+	      if (n<0) then x else lp (n, x)
+	    end
 	  val i = B.intTy
-	  val fTy = (T.TupleTy [i, i]) --> eltTy
-          val domTy = T.TupleTy [i, i, i, i, i, i, fTy]
-	  val rngTy = T.FArrayTy (eltTy, T.NdTy T.LfTy)
+	  val fTy = T.TupleTy (dup (dim, i)) --> eltTy
+          val domTy = T.TupleTy (dup (dim*3, i) @ [fTy])
+	  val shape = appn (dim-1, T.NdTy) T.LfTy
+	  val rngTy = T.FArrayTy (eltTy, shape)
           in
 	    domTy --> rngTy
 	  end
@@ -166,7 +174,7 @@ structure PArrayOp = struct
       | consIndex (A.PA_Range _)         = 6
       | consIndex (A.PA_App _)           = 7
       | consIndex (A.PA_TabTupleFTS _)   = 8
-      | consIndex (A.PA_Tab2D _)         = 9
+      | consIndex (A.PA_TabHD _)         = 9
   in
 
     val compare : A.parray_op * A.parray_op -> order = let
@@ -198,7 +206,9 @@ structure PArrayOp = struct
 	     | (A.PA_Reduce t1, A.PA_Reduce t2) => TU.compare (t1, t2)
 	     | (A.PA_Range t1, A.PA_Range t2) => TU.compare (t1, t2)
 	     | (A.PA_App t1, A.PA_App t2) => TU.compare (t1, t2)
-	     | (A.PA_Tab2D t1, A.PA_Tab2D t2) => TU.compare (t1, t2)
+	     | (A.PA_TabHD (d1, t1), A.PA_TabHD (d2, t2)) => (case Int.compare (d1, d2)
+                 of EQUAL => TU.compare (t1, t2)
+		  | neq => neq)
 	     | _ => raise Fail "compiler bug"
         end
       in
@@ -312,6 +322,7 @@ structure PArrayOp = struct
   fun isIntTy t = TU.same (B.intTy, t)
   fun isIntParrayTy t = TU.same (t, B.parrayTy B.intTy)
 
+(*
   val constructTab2D : T.ty -> A.exp = let
     fun mk domTy = (case domTy
       of T.TupleTy [i1, i2, i3, i4, i5, i6, T.FunTy (T.TupleTy [i7, i8], resTy)] =>
@@ -326,6 +337,40 @@ structure PArrayOp = struct
 	      | t => raise Fail ("??:" ^ TU.toString resTy)
              (* end case *))
        | t => raise Fail ("unexpected ty " ^ TU.toString t)
+      (* end case *))
+    in
+      mk
+    end
+*)
+
+  val constructTabHD : T.ty -> A.exp = let
+    fun mk domTy = (case domTy
+      of T.TupleTy [] => raise Fail "unexpected ty: unit"
+       | T.TupleTy ts => let
+           val (last, butlast) = (case List.rev ts
+             of x::xs => (x, List.rev xs)
+              | [] => raise Fail "impossible")
+	   val _ = if List.all isIntTy butlast then ()
+		   else raise Fail "non-int"
+           in
+	     case last
+	      of T.FunTy (T.TupleTy ts', resTy) => let
+		   val dim = List.length ts'
+                   val _ = if 3 * dim = List.length(butlast) then ()
+			   else let
+		             val msg = "expected " ^ Int.toString (3*dim) ^
+				       " ints, got " ^ TU.toString domTy
+			     in
+		               raise Fail msg
+			     end
+		   fun lp (T.FArrayTy (t, _)) = lp t
+		     | lp t = t
+		   in
+		     A.PArrayOp (A.PA_TabHD (dim, lp resTy))
+		   end
+	       | t => raise Fail ("unexpected ty: " ^ TU.toString t)
+           end
+       | t => raise Fail ("unexpected ty: " ^ TU.toString t)
       (* end case *))
     in
       mk
@@ -477,7 +522,7 @@ structure PArrayOp = struct
             else if not (supportedTy eltTy) then
               raise Fail ("constructApp: unsupported type " ^ TU.toString t)
 	    else (* generate custom app function *) let
-             (* val _ = print ("***** generating custom app for elt ty " ^ TU.toString eltTy ^ "\n") *)
+             (* val _ = print ("*** generating custom app for elt ty " ^ TU.toString eltTy ^ "\n") *)
 	      fun v x = A.VarExp (x, [])
 	      val eltTy' = lift eltTy
               val lenExp = constructLength eltTy'

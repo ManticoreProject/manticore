@@ -1,4 +1,4 @@
-(* synth-tab.sml
+(* synth2-tab.sml
  *
  * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
@@ -24,6 +24,8 @@ structure SynthTab = struct
 
   fun todo () = raise Fail "todo"
   fun assert msg test = if test then () else raise Fail msg
+
+  fun dup (n, x) = List.tabulate (n, fn _ => x)
 
   val vpat = A.VarPat
   fun pairPat (x, y) = A.TuplePat [vpat x, vpat y]
@@ -555,9 +557,79 @@ fun tabFromToP (lo, hi, f) = let
       tab2DLam
     end
 
+(* selectMapMaker : int -> var *)
+  fun selectMapMaker 2 = DV.ixMap2D ()
+    | selectMapMaker 3 = DV.ixMap3D ()
+    | selectMapMaker 4 = DV.ixMap4D ()
+    | selectMapMaker 5 = DV.ixMap5D ()
+    | selectMapMaker n = raise Fail ("selectMapMaker " ^ Int.toString n)
+
+(* 
+  fun tabHD ((t1),...,(td),f) = let
+    val map = PArrayUtil.mapdD ((t1),...,(td))
+    fun f' k = f (map k)
+    val nElts = Range.nElts t1 * ... * Range.nElts td
+    val data = ${MONO}Rope.tabulate (nElts, f')
+    val shape = Shape.regularShape [t1,...td]
+    in
+      ${MONO}FArray (data, shape)
+    end
+*)
+  fun mkTabHD (dim : int, eltTy : T.ty) = let
+    val _ = (case eltTy of T.TupleTy _ => raise Fail "todo: tup ty" | _ => ())
+    val _ = if (dim<2) orelse (dim>5) then 
+              raise Fail ("dim " ^ Int.toString dim ^ " not yet supported for regular pcomps")
+	    else ()
+    (* gather basis items *)
+    val (_, rtab, _, _, _, ropeTy) = rope eltTy
+    val (fdcon, farrayTy) = farray eltTy
+    val (shapeLf, shapeNd, shapeTy) = shape ()
+    val mkMap = selectMapMaker dim
+    val shapeReg = DV.shapeRegular ()
+    val nEltsFn = DV.rngNElts ()
+    (* types *)
+    val tripleTy = T.TupleTy [B.intTy, B.intTy, B.intTy]
+    val fTy = T.TupleTy (dup (dim, B.intTy)) --> eltTy
+    val domTy = T.TupleTy (dup (dim, tripleTy) @ [fTy])
+    val rngTy = farrayTy
+    (* variables *)
+    val tabHD = ("tab" ^ Int.toString dim ^ "D") <: domTy --> rngTy
+val _ = print (concat ["***** building ", Var.nameOf tabHD, "\n"])
+    val ts = List.tabulate (dim, fn i => Var.new ("t" ^ Int.toString (i+1), tripleTy))
+    val f = "f" <: fTy
+    val map = "map" <: B.intTy --> T.TupleTy (dup (dim, B.intTy))
+    val nElts = "nElts" <: B.intTy
+    val data = "data" <: ropeTy
+    val shape = "shape" <: shapeTy
+    (* make the function f' *)
+    val f' = "f'" <: B.intTy --> eltTy
+    val k = "k" <: B.intTy
+    val f'body = f @@ [map @@< [k]]
+    val f'lam = AU.mkFunWithParams (f', [k], f'body)
+    (* make everything else *)
+    val mapBind = map <- (mkMap @@< ts)
+    val nEltsBind = let
+      fun lp [t] = nEltsFn @@< [t]
+	| lp (t::ts) = AU.times (nEltsFn @@< [t]) (lp ts)
+	| lp [] = raise Fail "bug"
+      in
+        nElts <- (lp ts)
+      end
+    val dataBind = data <- rtab @@< [nElts, f']
+    val shapeBind = shape <- shapeReg @@ [AU.mkList (List.map vexp ts, tripleTy)]
+    val farray = fdcon @@- [data, shape]
+    val binds = [mapBind, A.FunBind [f'lam], nEltsBind, dataBind, shapeBind]
+    val tabHDBody = AU.mkLetExp (binds, farray)
+    val tabHDLam = AU.mkFunWithParams (tabHD, ts @ [f], tabHDBody)
+    in
+      tabHDLam
+    end
+
 end
 
-(* old, but working, implementation
+
+
+(* old, but working, implementation of tab2D
 
 (*
   fun tab2D = (iFrom, iTo, iStep, jFrom, jTo, jStep, f) = let

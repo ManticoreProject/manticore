@@ -25,6 +25,7 @@
 (* Parallel Arrays *)
 
   parray.pml
+  parray-util.pml
 
 (* Scans *)
 

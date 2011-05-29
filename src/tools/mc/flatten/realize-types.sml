@@ -143,7 +143,7 @@ end *) = struct
       rt
     end
   val pop = let
-    fun $f xs = List.map f xs
+    val $ = List.map
     fun ps (A.PSub_Nested t) = A.PSub_Nested (ty t)
       | ps (A.PSub_Flat t) = A.PSub_Flat (ty t)
       | ps (A.PSub_Tuple os) = A.PSub_Tuple ($ps os)
@@ -156,7 +156,7 @@ end *) = struct
       | pop (A.PA_Range t) = A.PA_Range (ty t)
       | pop (A.PA_App t) = A.PA_App (ty t)
       | pop (A.PA_TabTupleFTS ts) = A.PA_TabTupleFTS ($ty ts)
-      | pop (A.PA_Tab2D t) = A.PA_Tab2D (ty t)
+      | pop (A.PA_TabHD (d, t)) = A.PA_TabHD (d, ty t)
     in
       pop
     end

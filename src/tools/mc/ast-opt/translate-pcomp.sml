@@ -15,10 +15,13 @@ structure TranslatePComp : sig
 
     structure A = AST
     structure B = Basis
+    structure T = Types
     structure AU = ASTUtil
     structure TU = TypeUtil
 
     structure DV = DelayedBasis.Var
+
+    fun dup (n, x) = List.tabulate (n, fn i => x)
 
   (* tab2DMatch : exp * (pat * exp) list * exp option -> (exp^7) option *)
   (* This function identifies pcomps of the form *)
@@ -33,7 +36,7 @@ structure TranslatePComp : sig
 		     val ij = Var.new ("ij", A.TupleTy [B.intTy, B.intTy])
 		     val m = A.PatMatch (A.TuplePat [A.VarPat i, A.VarPat j], e')
 		     val body = AU.mkCaseExp (A.VarExp (ij, []), [m])
-		     val f_ij = A.FunExp (ij, body, TypeOf.exp e')
+		     val f_ij = AU.mkFunExp (ij, body)
 		     in
 		       collect (f_ij, r2, r1)
 		     end
@@ -46,49 +49,98 @@ structure TranslatePComp : sig
       val iStep = Option.getOpt (iStepOpt, AU.one)
       val jStep = Option.getOpt (jStepOpt, AU.one)
       in
-        if List.all constOrVar [iFrom, iTo, iStep, jFrom, jTo, jStep] then
-          SOME (iFrom, iTo, iStep, jFrom, jTo, jStep, f_ij)
-	else
-	  NONE
+        SOME (iFrom, iTo, iStep, jFrom, jTo, jStep, f_ij)
       end
-    and constOrVar (A.ConstExp _) = true
-      | constOrVar (A.VarExp _) = true
-      | constOrVar _ = false
+
+  (* regularD : exp * (pat * exp) list * exp option -> (exp * exp * exp) list option *)
+  (* This is the generalization of tab2D above. *)
+  (* If a pcomp is a regular tab of the form *)
+  (*   [| ... [| e | i_1 in rng_1 |] ... | i_k in rng_k |]*)
+  (* this function returns the "range triples" of the ranges 1 through k. *)
+  (* A "range triple" is a triple of ints, representing from, to, and step. *)
+  (* Each range must be "rigid" in the sense that its range triple consists *)
+  (*   only of constants and/or variables. *)
+  (* TODO: This only catches ranges -- it's too conservative. *)
+    fun regularD (e, pes, oe) = let
+      fun lp (A.PCompExp (e, [(A.VarPat i, A.RangeExp rng)], NONE), vars) = let
+            val (iFrom, iTo, iStepOpt, ty) = rng
+            val iStep = Option.getOpt (iStepOpt, AU.one)
+            in case lp (e, vars)
+              of NONE => NONE
+	       | SOME (tups, vars, e') => SOME ((iFrom, iTo, iStep)::tups, i::vars, e')
+            end
+	| lp (A.PCompExp _, _) = NONE
+	| lp (innermostExp, vars) = SOME ([], vars, innermostExp)
+      in case lp (A.PCompExp (e, pes, oe), [])
+        of NONE => NONE
+	 | SOME (tups, vars, innermostExp) => (case (tups, vars)
+             of ([(from,to,step)], [i]) => let
+                  val f = AU.mkFunExp (i, innermostExp)
+                  in
+                    SOME (tups, f)
+		  end
+	      | _ => let
+		  val argTy = A.TupleTy (dup (List.length vars, B.intTy))
+                  val arg = Var.new ("arg", argTy)
+		  val m = A.PatMatch (A.TuplePat (List.map A.VarPat vars), innermostExp)
+		  val body = AU.mkCaseExp (A.VarExp (arg, []), [m])
+		  val f = AU.mkFunExp (arg, body)
+		  in
+                    SOME (tups, f)
+                  end
+             (* end case *))
+      end                   
+
+  (* mkRegularTab : (exp * exp * exp) list * exp * ty -> exp *)
+    fun mkRegularTab (triples, f, outTy) = let
+      fun tabExp t = A.VarExp (t (), [outTy])
+      val (tab, args) = (case triples
+        of [] => raise Fail "bug: empty list of triples"
+	 | [(from,to,step)] => let 
+             val tab = tabExp DV.parrayTabFTS
+             in
+               (tab, [from, to, step, f])
+             end
+	 | [(f1,t1,s1),(f2,t2,s2)] => let
+             val tab2D = tabExp DV.parrayTab2D
+             in
+	       (tab2D, [f1,t1,s1,f2,t2,s2,f])
+	     end
+	 | [(f1,t1,s1),(f2,t2,s2),(f3,t3,s3)] => let
+             val tab3D = tabExp DV.parrayTab3D
+             in
+               (tab3D, [f1,t1,s1,f2,t2,s2,f3,t3,s3,f])
+             end
+	 | [(f1,t1,s1),(f2,t2,s2),(f3,t3,s3),(f4,t4,s4)] => let
+             val tab4D = tabExp DV.parrayTab4D
+             in
+               (tab4D, [f1,t1,s1,f2,t2,s2,f3,t3,s3,f4,t4,s4,f])
+             end
+
+	 | [(f1,t1,s1),(f2,t2,s2),(f3,t3,s3),(f4,t4,s4),(f5,t5,s5)] => let
+             val tab5D = tabExp DV.parrayTab5D
+             in
+               (tab5D, [f1,t1,s1,f2,t2,s2,f3,t3,s3,f4,t4,s4,f5,t5,s5,f])
+             end
+	 | _ => raise Fail ("todo: regular tabs of " ^ 
+			    Int.toString (List.length triples) ^ 
+			    "dimensions"))
+      in
+        AU.mkApplyExp (tab, args)
+      end
 
   (* tr : (exp -> exp) -> exp * (pat * exp) list * exp option -> exp *)
-    fun tr trExp (e, pes, oe) = (case tab2DMatch (e, pes, oe)
-      of SOME (iFrom, iTo, iStep, jFrom, jTo, jStep, f) => let
-	   val eTy = TypeOf.exp e
-	   val args = [iFrom, iTo, iStep, jFrom, jTo, jStep, f]
-           in
-	     AU.mkApplyExp (A.VarExp (DV.parrayTab2D (), [eTy]), args)
-	   end
+    fun tr trExp (e, pes, oe) = (case regularD (e, pes, oe)
+      of SOME (triples, f) => mkRegularTab (triples, f, TypeOf.exp e)
        | NONE => (case (pes, oe)
            of ([], _) => raise Fail "a parallel comprehension with no pbinds at all"
-	    | ([(p1, e1 as A.RangeExp (loExp, hiExp, optStepExp, rngEltTy))], NONE) => let
-                (* optimization of a common case: [| f(n) | n in [| 1 to 100 |] |] *)
-	        (* becomes PArray.tabFromToStep (1, 101, 1, f) *)
-		(* (as opposed to a PArray.map over a constructed range) *)
-	        val _ = if TU.same (rngEltTy, B.intTy) then ()
-	 		else raise Fail ("unexpected type " ^ TU.toString rngEltTy)
-		val eTy = TypeOf.exp e
-		val pTy = TypeOf.pat p1 (* should be same as t *)
-		val x = Var.new ("x", pTy)
-		val e' = trExp e
-		val c = A.CaseExp (A.VarExp (x, []), [A.PatMatch (p1, e')], eTy)
-		val f = A.FunExp (x, c, eTy)
-		val stepExp = Option.getOpt (optStepExp, AU.mkInt 1)
-	        in
-	          AU.mkApplyExp (A.VarExp (DV.parrayTabFTS (), [eTy]),
-				 [loExp, hiExp, stepExp, f])
-	        end
 	    | ([(p1, e1)], optPred) => let (* the one pbind, no predicate case *)
                 val eltTy = TypeOf.exp e
 		val patTy = TypeOf.pat p1
 		val x1 = Var.new ("x1", patTy)
 		val e' = trExp e
 		val c1 = AU.mkCaseExp (A.VarExp (x1, []), [A.PatMatch (p1, e')])
-		val f = A.FunExp (x1, c1, eltTy)
+		val f = AU.mkFunExp (x1, c1)
 		val e1' = trExp e1
 		val mapP = A.VarExp (DV.parrayMap (), [eltTy, patTy]) 
                 (* NOTE: these type args seem backwards to me, but I've tested this. - ams*)

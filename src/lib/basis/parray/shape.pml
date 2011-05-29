@@ -61,15 +61,52 @@ structure Shape = struct
     val itos = Int.toString
 
   (* toString : shape -> string *)
-    fun toString t = 
-     (case t
-       of Lf (lo, hi) => 
-	    String.concat ["Lf(", itos lo, ",", itos hi, ")"]
-	| Nd (ts) => let
-            val s = String.concatWith "," (List.map toString ts)
-            in
-              String.concat ["Nd[", s, "]"]
-            end
-       (* end case *))
+    fun toString t = (case t
+      of Lf (lo, hi) => 
+	   String.concat ["Lf(", itos lo, ",", itos hi, ")"]
+       | Nd (ts) => let
+           val s = String.concatWith "," (List.map toString ts)
+           in
+             String.concat ["Nd[", s, "]"]
+           end
+      (* end case *))
+
+  (* buildNode : shape list -> shape *)
+  (* Collects shapes together into a node, adjusting indices as needed. *)
+  (* ex: [Lf(0,1),Lf(0,1)] --> Nd[Lf(0,1),Lf(1,2)] *)
+  (* ex: [Lf(0,2),Lf(0,3),Lf(0,1)] --> Nd[Lf(0,2),Lf(2,5),Lf(5,6)] *)
+  (* ex: [Nd[Lf(0,1)],Nd[Lf(0,1),Lf(1,2)]] --> Nd[Nd[Lf(0,1)],Nd[Lf(1,2),Lf(2,3)]] *)
+  (* It is expected, but not checked, that *)
+  (* - each shape in the list has min index 0, and *)
+  (* - each shape in the list is of the same depth. *)
+    fun buildNode shapes = let
+      fun lp ss = (case ss
+        of (s1::s2::t) => let
+             val s2' = incrBy (maxIdx s1) s2
+             in
+               s1::(lp (s2'::t))
+             end
+         | _ => ss
+        (* end case *))
+      in
+        Nd (lp shapes)
+      end
+
+  (* regularShape : (int * int * int) list -> shape *)
+  (* Computes the shape given triples representing dimensions in a regular array. *)
+    fun regularShape triples = let
+      fun copy (n, x) = List.tabulate (n, fn i => x)
+      fun lp ts = (case ts
+        of nil => fail "regularShape" "empty arg"
+	 | t::nil => Lf (0, Range.nElts t)
+	 | t::ts => let
+             val s = lp ts
+             val n = Range.nElts t
+             in
+	       buildNode (copy (n, s))
+             end)
+      in
+        lp triples
+      end
 
 end

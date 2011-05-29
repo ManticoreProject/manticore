@@ -176,15 +176,25 @@ structure PArrayOpGen = struct
     else
       A.VarExp (DV.ftabFTS (), [t])
 
-  fun genTab2D (t : T.ty) : A.exp = (case t
-    of T.TupleTy _ => raise Fail "todo: 2D tabs for tuple tys"
+  (* fun genTab2D (t : T.ty) : A.exp = (case t *)
+  (*   of T.TupleTy _ => raise Fail "todo: 2D tabs for tuple tys" *)
+  (*    | _ => let *)
+  (*        val tab2DLam = SynthTab.mkTab2D t *)
+  (*        val A.FB (tab2D, _, _) = tab2DLam *)
+  (*        in *)
+  (*          AU.mkLetExp ([A.FunBind [tab2DLam]], A.VarExp (tab2D, [])) *)
+  (*        end *)
+  (*   (\* end case *\))   *)
+
+  fun genTabHD (dim : int, eltTy : T.ty) : A.exp = (case eltTy
+    of T.TupleTy _ => raise Fail "todo: higher D tabs of tuples"
      | _ => let
-         val tab2DLam = SynthTab.mkTab2D t
-         val A.FB (tab2D, _, _) = tab2DLam
+         val tabHDLam = SynthTab.mkTabHD (dim, eltTy)
+         val A.FB (tabHD, _, _) = tabHDLam
          in
-           AU.mkLetExp ([A.FunBind [tab2DLam]], A.VarExp (tab2D, []))
+	   AU.mkLetExp ([A.FunBind [tabHDLam]], A.VarExp (tabHD, []))
          end
-    (* end case *))  
+    (* end case *))
 
   fun genTabTupleFTS ts = (case ts
     of [t1, t2] => 
@@ -270,7 +280,7 @@ structure PArrayOpGen = struct
        | A.PA_Reduce t => genReduce t
        | A.PA_Range t => genRange t
        | A.PA_App t => genApp t
-       | A.PA_Tab2D t => genTab2D t
+       | A.PA_TabHD (d, t) => genTabHD (d, t)
       (* end case *))
     in
 (*    PrintAST.printExp g; *)

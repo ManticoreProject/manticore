@@ -194,7 +194,15 @@ structure DelayedBasis = struct
     val parrayTab     = memoVar ["PArray", "tab"]
     val parrayTabFTS  = memoVar ["PArray", "tabFromToStep"]
     val parrayTab2D   = memoVar ["PArray", "tab2D"]
+    val parrayTab3D   = memoVar ["PArray", "tab3D"]
+    val parrayTab4D   = memoVar ["PArray", "tab4D"]
+    val parrayTab5D   = memoVar ["PArray", "tab5D"]
     val parrayRange   = memoVar ["PArray", "range"]
+
+    val ixMap2D       = memoVar ["PArrayUtil", "indexMap2D"]
+    val ixMap3D       = memoVar ["PArrayUtil", "indexMap3D"]
+    val ixMap4D       = memoVar ["PArrayUtil", "indexMap4D"]
+    val ixMap5D       = memoVar ["PArrayUtil", "indexMap5D"]
 
     val flatSub       = memoVar ["FArray", "flatSub"]
     val nestedSub     = memoVar ["FArray", "nestedSub"]
@@ -238,6 +246,7 @@ structure DelayedBasis = struct
     val mapIFPoly     = memoVar ["FArrayUtil", "map_IF_poly"]
 
     val shapeSame     = memoVar ["Shape", "same"]
+    val shapeRegular  = memoVar ["Shape", "regularShape"]
 
     val println       = memoVar ["Print", "printLn"]
 

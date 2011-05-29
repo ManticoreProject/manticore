@@ -37,9 +37,34 @@ structure PArray = struct
   fun reduce rator init pa = Rope.reduce rator init (toRope pa)
   fun range (from, to_, step) = fromRope (Rope.range (from, to_, step))
   fun app f pa = Rope.app f (toRope pa)
+
+(* These higher-dimension regular tabs (tab2D, etc.) are spelled out since I 
+ * want them to be relatively fast for fair comparisons with flattened versions. 
+ *)
   fun tab2D (iFrom, iTo, iStep, jFrom, jTo, jStep, f) = 
     tabFromToStep (iFrom, iTo, iStep, fn i => 
       tabFromToStep (jFrom, jTo, jStep, fn j => f (i, j)))
+
+  fun tab3D (iF, iT, iS, jF, jT, jS, kF, kT, kS, f) = 
+    tabFromToStep (iF, iT, iS, fn i => 
+      tabFromToStep (jF, jT, jS, fn j =>
+        tabFromToStep (kF, kT, kS, fn k => f (i, j, k))))
+
+  fun tab4D (iF, iT, iS, jF, jT, jS, kF, kT, kS, lF, lT, lS, f) = 
+    tabFromToStep (iF, iT, iS, fn i => 
+      tabFromToStep (jF, jT, jS, fn j =>
+        tabFromToStep (kF, kT, kS, fn k => 
+          tabFromToStep (lF, lT, lS, fn l => f (i, j, k, l)))))
+
+  fun tab5D (iF, iT, iS, jF, jT, jS, kF, kT, kS, lF, lT, lS, mF, mT, mS, f) = 
+    tabFromToStep (iF, iT, iS, fn i => 
+      tabFromToStep (jF, jT, jS, fn j =>
+        tabFromToStep (kF, kT, kS, fn k => 
+          tabFromToStep (lF, lT, lS, fn l => 
+            tabFromToStep (mF, mT, mS, fn m => f (i, j, k, l, m))))))
+
+(* higher dimensional regular tabbing *)
+  fun tabHD (triples, f) = fail "tabHD" "todo"
 
   (* fun filter (pred, pa) = fromRope(Rope.filter pred (toRope pa)) *)
   (* fun rev pa = fromRope(Rope.rev(toRope pa)) *)

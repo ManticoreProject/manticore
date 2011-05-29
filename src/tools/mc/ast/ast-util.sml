@@ -29,6 +29,9 @@ structure ASTUtil : sig
   (* create a function given the function's name, a parameter pattern, and its body *)
     val mkFunWithPat : AST.var * AST.pat * AST.exp -> AST.lambda
 
+  (* make an anonymous function expression *)
+    val mkFunExp : AST.var * AST.exp -> AST.exp
+
   (* create an AST list given a list of expressions and a type *)
     val mkList : AST.exp list * AST.ty -> AST.exp
 
@@ -155,15 +158,17 @@ structure ASTUtil : sig
 	    AST.FB(f, param, e)
 	  end
       | mkFunWithPat (f, pat, e) = let
-	  val (argTy, resTy) =
-	    (case Var.typeOf f
-	      of AST.TyScheme(_, AST.FunTy(a,r)) => (a,r)
-	       | _ => raise Fail "not a function" (* shouldn't happen *)
-	     (* end case *))
+	  val (argTy, resTy) = (case Var.typeOf f
+	    of AST.TyScheme(_, AST.FunTy(a,r)) => (a,r)
+	     | _ => raise Fail "not a function" (* shouldn't happen *)
+	    (* end case *))
 	  val param = Var.new ("param", argTy)
 	  in
 	    AST.FB(f, param, AST.CaseExp(AST.VarExp(param, []), [AST.PatMatch(pat, e)], resTy))
 	  end
+
+  (* make a FunExp from a var and an exp *)
+    fun mkFunExp (x, body) = A.FunExp (x, body, TypeOf.exp body)
 
     fun mkArray (es, ty) = raise Fail "todo: ASTUtil.mkArray"
 
