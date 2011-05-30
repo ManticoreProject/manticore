@@ -12,8 +12,15 @@ fun seqMap (f, len, s1, s2) = let
     S3.tabulate (len, f')
   end
 
+val ln = Print.printLn
+val itos = Int.toString 
+
 fun ropeMap f = let
-  fun mapF (rope1, rope2) = (case rope1
+  fun mapF (rope1, rope2) = let
+val _ = ln ("rope1 length: " ^ itos (R1.length rope1))
+val _ = ln ("rope2 length: " ^ itos (R2.length rope2))
+in
+ (case rope1
     of R1.Leaf s1 => (case rope2
          of R2.Leaf s2 => let
               val n = R1.length rope1
@@ -26,6 +33,7 @@ fun ropeMap f = let
 		   of R2.Cat cat2 => (case cat2
 		        of (_, _, r2L, r2R) =>
 			     R3.Cat (| d1, len1, mapF (r1L, r2L), mapF (r1R, r2R) |)))))
+end
    in
      mapF
    end
@@ -49,7 +57,14 @@ val sz = getArgs (CommandLine.arguments ())
 
 val r1 = R1.tabulate (sz, fn n => n + 20)
 val r2 = R2.tabulate (sz, fn n => n + 19)
-val r3 = ropeMap (fn (a, b) => a-b) (r1, r2)
+val r3 = let
+  val t0 = Time.now ()
+  val x = ropeMap (fn (a, b) => a-b) (r1, r2)
+  val t1 = Time.now ()
+  val _ = Print.printLn (Long.toString (t1-t0))
+  in
+    x
+  end
 
 val _ = Print.printLn ("expecting " ^ Int.toString sz ^ ": " ^ Int.toString (R3.length r3))
 val _ = Print.printLn "done"
