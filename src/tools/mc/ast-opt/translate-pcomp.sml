@@ -94,6 +94,7 @@ structure TranslatePComp : sig
   (* mkRegularTab : (exp * exp * exp) list * exp * ty -> exp *)
     fun mkRegularTab (triples, f, outTy) = let
       fun tabExp t = A.VarExp (t (), [outTy])
+      fun triple (e1, e2, e3) = AU.mkTupleExp [e1, e2, e3]
       val (tab, args) = (case triples
         of [] => raise Fail "bug: empty list of triples"
 	 | [(from,to,step)] => let 
@@ -104,23 +105,37 @@ structure TranslatePComp : sig
 	 | [(f1,t1,s1),(f2,t2,s2)] => let
              val tab2D = tabExp DV.parrayTab2D
              in
-	       (tab2D, [f1,t1,s1,f2,t2,s2,f])
+	       (tab2D, [triple(f1,t1,s1),
+			triple(f2,t2,s2),
+			f])
 	     end
 	 | [(f1,t1,s1),(f2,t2,s2),(f3,t3,s3)] => let
              val tab3D = tabExp DV.parrayTab3D
              in
-               (tab3D, [f1,t1,s1,f2,t2,s2,f3,t3,s3,f])
+               (tab3D, [triple(f1,t1,s1),
+			triple(f2,t2,s2),
+			triple(f3,t3,s3),
+			f])
              end
 	 | [(f1,t1,s1),(f2,t2,s2),(f3,t3,s3),(f4,t4,s4)] => let
              val tab4D = tabExp DV.parrayTab4D
              in
-               (tab4D, [f1,t1,s1,f2,t2,s2,f3,t3,s3,f4,t4,s4,f])
+               (tab4D, [triple(f1,t1,s1),
+			triple(f2,t2,s2),
+			triple(f3,t3,s3),
+			triple(f4,t4,s4),
+			f])
              end
 
 	 | [(f1,t1,s1),(f2,t2,s2),(f3,t3,s3),(f4,t4,s4),(f5,t5,s5)] => let
              val tab5D = tabExp DV.parrayTab5D
              in
-               (tab5D, [f1,t1,s1,f2,t2,s2,f3,t3,s3,f4,t4,s4,f5,t5,s5,f])
+               (tab5D, [triple(f1,t1,s1),
+			triple(f2,t2,s2),
+			triple(f3,t3,s3),
+			triple(f4,t4,s4),
+			triple(f5,t5,s5),
+			f])
              end
 	 | _ => raise Fail ("todo: regular tabs of " ^ 
 			    Int.toString (List.length triples) ^ 

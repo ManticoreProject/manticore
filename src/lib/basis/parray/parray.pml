@@ -41,22 +41,22 @@ structure PArray = struct
 (* These higher-dimension regular tabs (tab2D, etc.) are spelled out since I 
  * want them to be relatively fast for fair comparisons with flattened versions. 
  *)
-  fun tab2D (iFrom, iTo, iStep, jFrom, jTo, jStep, f) = 
+  fun tab2D ((iFrom, iTo, iStep), (jFrom, jTo, jStep), f) = 
     tabFromToStep (iFrom, iTo, iStep, fn i => 
       tabFromToStep (jFrom, jTo, jStep, fn j => f (i, j)))
 
-  fun tab3D (iF, iT, iS, jF, jT, jS, kF, kT, kS, f) = 
+  fun tab3D ((iF, iT, iS), (jF, jT, jS), (kF, kT, kS), f) = 
     tabFromToStep (iF, iT, iS, fn i => 
       tabFromToStep (jF, jT, jS, fn j =>
         tabFromToStep (kF, kT, kS, fn k => f (i, j, k))))
 
-  fun tab4D (iF, iT, iS, jF, jT, jS, kF, kT, kS, lF, lT, lS, f) = 
+  fun tab4D ((iF, iT, iS), (jF, jT, jS), (kF, kT, kS), (lF, lT, lS), f) = 
     tabFromToStep (iF, iT, iS, fn i => 
       tabFromToStep (jF, jT, jS, fn j =>
         tabFromToStep (kF, kT, kS, fn k => 
           tabFromToStep (lF, lT, lS, fn l => f (i, j, k, l)))))
 
-  fun tab5D (iF, iT, iS, jF, jT, jS, kF, kT, kS, lF, lT, lS, mF, mT, mS, f) = 
+  fun tab5D ((iF, iT, iS), (jF, jT, jS), (kF, kT, kS), (lF, lT, lS), (mF, mT, mS), f) = 
     tabFromToStep (iF, iT, iS, fn i => 
       tabFromToStep (jF, jT, jS, fn j =>
         tabFromToStep (kF, kT, kS, fn k => 

@@ -350,16 +350,19 @@ structure PArrayOp = struct
            val (last, butlast) = (case List.rev ts
              of x::xs => (x, List.rev xs)
               | [] => raise Fail "impossible")
-	   val _ = if List.all isIntTy butlast then ()
+	   val tripleTy = T.TupleTy [B.intTy, B.intTy, B.intTy]
+	   fun isIntTriple t = TU.same (t, tripleTy)
+	   val _ = if List.all isIntTriple butlast then ()
 		   else raise Fail "non-int"
            in
 	     case last
 	      of T.FunTy (T.TupleTy ts', resTy) => let
+
 		   val dim = List.length ts'
-                   val _ = if 3 * dim = List.length(butlast) then ()
+                   val _ = if dim = List.length(butlast) then ()
 			   else let
-		             val msg = "expected " ^ Int.toString (3*dim) ^
-				       " ints, got " ^ TU.toString domTy
+		             val msg = "expected " ^ Int.toString dim ^
+				       " int triples, got " ^ TU.toString domTy
 			     in
 		               raise Fail msg
 			     end
