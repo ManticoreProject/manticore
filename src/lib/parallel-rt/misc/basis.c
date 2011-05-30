@@ -496,6 +496,16 @@ double M_Tan (double x)
   return tan(x);
 }
 
+double M_Atan (double x)
+{
+  return atan(x);
+}
+
+int64_t M_Lround (double x)
+{
+  return lround(x);
+}
+
 /*! \brief compute floor(log_2(v)). NOTE: this function relies on little endianness
  */
 int M_FloorLg (int v) 

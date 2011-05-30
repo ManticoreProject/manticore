@@ -17,6 +17,8 @@ structure Double =
 	extern double M_Pow (double, double) __attribute__((pure));
 	extern double M_Sin (double) __attribute__((pure));
 	extern double M_Tan (double) __attribute__((pure));
+	extern double M_Atan (double) __attribute__((pure));
+        extern long M_Lround (double) __attribute__((pure));
 	extern void *M_DoubleToString (double) __attribute__((alloc,pure));
 	extern void *M_DoubleFromString (void*) __attribute__((alloc,pure));
     )
@@ -39,6 +41,12 @@ structure Double =
 	define inline @double-tan (x : ml_double / exh : exh) : ml_double =
 	    let res : double = ccall M_Tan (#0(x))
 	      return (alloc(res));
+	define inline @double-atan (x : ml_double / exh : exh) : ml_double =
+	    let res : double = ccall M_Atan (#0(x))
+	      return (alloc(res));
+        define inline @double-round (x : ml_double / exh : exh) : ml_long =
+            let res : long = ccall M_Lround (#0(x))
+              return (alloc(res));
 	define inline @to-string (f : ml_double / exh : exh) : ml_string =
 	    let res : ml_string = ccall M_DoubleToString (#0(f))
 	      return (res)
@@ -59,11 +67,14 @@ structure Double =
     )
 
     type double = double
+    type long = long
 
   (* SML interface *)
     val cos : double -> double = _prim (@double-cos)
     val sin : double -> double = _prim (@double-sin)
     val tan : double -> double = _prim (@double-tan)
+    val atan : double -> double = _prim (@double-atan)
+    val round : double -> long = _prim (@double-round)
     val sqrt : double -> double = _prim (@double-sqrt)
     val pow : (double * double) -> double = _prim (@double-pow)
     val toString : double -> string = _prim(@to-string)
