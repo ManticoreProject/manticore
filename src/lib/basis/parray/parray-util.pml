@@ -133,6 +133,45 @@ structure PArrayUtil = struct
 	       f9 + (k mod d9) * s9)
     end
 
+(* mkImage : int parray parray -> image *)
+(* assumes input array is a rectangle *)
+(* assumes each int is <empty byte><r byte><g byte><b byte> *)
+    val mkImage : int parray parray -> Image.image = let
+      fun f css = let
+        val w = PArray.length (css ! 0)
+        val h = PArray.length css
+	val (itos, ftos, ln) = (Int.toString, Float.toString, Print.printLn)
+	val _ = ln ("w " ^ itos w ^ " h " ^ itos h)
+        val img = Image.new (w, h)
+        fun lp row =
+          if (row >= h) then ()
+          else let
+            fun lp' col =
+              if (col >= w) then ()
+              else let
+                val colorInt = css!row!col
+                fun cvt d = Float.fromInt ((colorInt div d) mod 256) / 255.0
+                val r = cvt 65536
+                val g = cvt 256
+                val b = cvt 1
+		(* val _ = ln ("row " ^ itos row) *)
+		val _ = ln ("row " ^ itos row ^ " col " ^ itos col ^ " colorInt " ^ itos colorInt ^ 
+			    " r " ^ ftos r ^ " g " ^ ftos g ^ " b " ^ ftos b)
+                in
+                  (Image.update3f (img, row, col, r, g, b);
+                   lp' (col+1))
+                end
+            in
+              (lp' 0; lp (row+1))
+            end
+        in
+          (lp 0;
+           img)
+        end
+      in
+        f
+      end
+
 end
 
 

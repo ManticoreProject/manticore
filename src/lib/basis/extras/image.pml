@@ -46,7 +46,9 @@ structure Image =
 
     type image = _prim (any);
 
+(* new : width * height -> image *)
     val new : (int * int) -> image = _prim(@new)
+
     val free : image -> unit = _prim(@free)
     val output : (string * image) -> unit = _prim(@output)
     val update3f : (image * int * int * float * float * float) -> unit = _prim(@update3f)
