@@ -48,7 +48,7 @@ structure Double =
 	define inline @double-atan2 (arg : [ml_double, ml_double] / exh : exh) : ml_double =
 	    let res : double = ccall M_Atan2 (#0(#0(arg)), #0(#1(arg)))
 	      return (alloc(res));
-        define inline @double-round (x : ml_double / exh : exh) : ml_long =
+        define inline @double-lround (x : ml_double / exh : exh) : ml_long =
             let res : long = ccall M_Lround (#0(x))
               return (alloc(res));
 	define inline @to-string (f : ml_double / exh : exh) : ml_string =
@@ -79,7 +79,7 @@ structure Double =
     val tan : double -> double = _prim (@double-tan)
     val atan : double -> double = _prim (@double-atan)
     val atan2 : double * double -> double = _prim (@double-atan2)
-    val round : double -> long = _prim (@double-round)
+    val round : double -> long = _prim (@double-lround)
     val sqrt : double -> double = _prim (@double-sqrt)
     val pow : (double * double) -> double = _prim (@double-pow)
     val toString : double -> string = _prim(@to-string)
