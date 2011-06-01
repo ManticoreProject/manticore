@@ -61,7 +61,7 @@ structure TranslatePComp : sig
   (* Each range must be "rigid" in the sense that its range triple consists *)
   (*   only of constants and/or variables. *)
   (* TODO: This only catches ranges -- it's too conservative. *)
-    fun regularD (e, pes, oe) = let
+    fun regularD trExp (e, pes, oe) = let
       fun lp (A.PCompExp (e, [(p, A.RangeExp rng)], NONE), vars) = let
             val (iFrom, iTo, iStepOpt, ty) = rng
             val i = (case p
@@ -74,10 +74,10 @@ structure TranslatePComp : sig
             val iStep = Option.getOpt (iStepOpt, AU.one)
             in case lp (e, vars)
               of NONE => NONE
-	       | SOME (tups, vars, e') => SOME ((iFrom, iTo, iStep)::tups, i::vars, e')
+	       | SOME (tups, vars, e') => SOME ((trExp iFrom, trExp iTo, trExp iStep)::tups, i::vars, e')
             end
 	| lp (A.PCompExp _, _) = NONE
-	| lp (innermostExp, vars) = SOME ([], vars, innermostExp)
+	| lp (innermostExp, vars) = SOME ([], vars, trExp innermostExp)
       in case lp (A.PCompExp (e, pes, oe), [])
         of NONE => NONE
 	 | SOME (tups, vars, innermostExp) => (case (tups, vars)
@@ -152,7 +152,7 @@ structure TranslatePComp : sig
       end
 
   (* tr : (exp -> exp) -> exp * (pat * exp) list * exp option -> exp *)
-    fun tr trExp (e, pes, oe) = (case regularD (e, pes, oe)
+    fun tr trExp (e, pes, oe) = (case regularD trExp (e, pes, oe)
       of SOME (triples, f) => mkRegularTab (triples, f, TypeOf.exp e)
        | NONE => (case (pes, oe)
            of ([], _) => raise Fail "a parallel comprehension with no pbinds at all"
@@ -177,10 +177,10 @@ structure TranslatePComp : sig
 		val p2Ty = TypeOf.pat p2
 		val arg = Var.new ("arg", T.TupleTy [p1Ty, p2Ty])
 		val body = AU.mkCaseExp (A.VarExp (arg, []),
-		  [A.PatMatch (A.TuplePat [p1, p2], e)])
+		  [A.PatMatch (A.TuplePat [p1, p2], trExp e)])
 		val f = AU.mkFunExp (arg, body)
 		val map = A.VarExp (DV.parrPairMap (), [p1Ty, p2Ty, eltTy])
-		val args = [f, e1, e2]
+		val args = [f, trExp e1, trExp e2]
 	        in
 	          AU.mkApplyExp (map, args)
 	        end
