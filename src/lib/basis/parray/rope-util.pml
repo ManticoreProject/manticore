@@ -6,6 +6,8 @@
 
 structure RopeUtil = struct
 
+  val fail = Fail.fail "RopeUtil"
+
   structure R = Rope
   structure IR = IntRope
   structure DR = DoubleRope
@@ -41,5 +43,25 @@ val _ = Print.printLn "map_double"
       in
 	m rope
       end
+
+  (* mapDDD : (double * double -> double) * double_rope * double_rope -> double_rope *)
+    fun mapDDD (f : double * double -> double, r1, r2) = 
+      if DR.sameShape (r1, r2) then let
+        fun lp (r1, r2) = (case (r1, r2)
+          of (DR.Leaf s1, DR.Leaf s2) => let
+               val n = DoubleSeq.length s1
+	       fun f' i = f (DoubleSeq.sub (s1, i), DoubleSeq.sub (s2, i))
+	       val s = DoubleSeq.tabulate (n, f')
+               in
+		 DR.leaf s
+	       end
+	   | (DR.Cat (d, l, r1, r2), DR.Cat (_, _, r1', r2')) =>
+	       DR.Cat (| d, l, lp (r1, r1'), lp (r2, r2') |)
+          (* end case *))
+        in
+	  lp (r1, r2)
+	end
+      else 
+        fail "mapDDD" "different shapes"
 
 end

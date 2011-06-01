@@ -62,8 +62,15 @@ structure TranslatePComp : sig
   (*   only of constants and/or variables. *)
   (* TODO: This only catches ranges -- it's too conservative. *)
     fun regularD (e, pes, oe) = let
-      fun lp (A.PCompExp (e, [(A.VarPat i, A.RangeExp rng)], NONE), vars) = let
+      fun lp (A.PCompExp (e, [(p, A.RangeExp rng)], NONE), vars) = let
             val (iFrom, iTo, iStepOpt, ty) = rng
+            val i = (case p
+              of A.VarPat i => i
+	       | A.WildPat _ => Var.new ("dummy", ty)
+	       | A.ConstPat _ => raise Fail "todo: const pat matching range (odd case, but fair)"
+	       | _ => raise Fail ("unexpected pat in pcomp (can it match an int?): " ^ 
+				  AU.patToString p)
+              (* end case *))
             val iStep = Option.getOpt (iStepOpt, AU.one)
             in case lp (e, vars)
               of NONE => NONE
@@ -162,10 +169,22 @@ structure TranslatePComp : sig
 		fun map arr = AU.mkCurriedApplyExp (mapP, [f, arr])
                 in case optPred
 		  of NONE => map e1'
-		   | SOME pred => raise Fail "todo" (* see COMMENT 1 below *) 
+		   | SOME pred => raise Fail "todo(1)" (* see COMMENT 1 below *) 
 		end
-	    | ([(p1, e1), (p2, e2)], NONE) => raise Fail "todo" (* see COMMENT 2 below *)
-	    | (pes, NONE) => raise Fail "todo" (* see COMMENT 3 below *)
+	    | ([(p1, e1), (p2, e2)], NONE) => let
+                val eltTy = TypeOf.exp e
+		val p1Ty = TypeOf.pat p1
+		val p2Ty = TypeOf.pat p2
+		val arg = Var.new ("arg", T.TupleTy [p1Ty, p2Ty])
+		val body = AU.mkCaseExp (A.VarExp (arg, []),
+		  [A.PatMatch (A.TuplePat [p1, p2], e)])
+		val f = AU.mkFunExp (arg, body)
+		val map = A.VarExp (DV.parrPairMap (), [p1Ty, p2Ty, eltTy])
+		val args = [f, e1, e2]
+	        in
+	          AU.mkApplyExp (map, args)
+	        end
+	    | (pes, NONE) => raise Fail "todo(3)" (* see COMMENT 3 below *)
 	    | (pes, SOME pred) => raise Fail "todo: pcomp with predicate on multiple pbinds"
            (* end case *))
       (* end case *))

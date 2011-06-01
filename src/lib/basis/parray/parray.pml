@@ -181,6 +181,46 @@ structure PArray = struct
         end
     end
 
+  fun tos_dbl (parr : double parray) = let
+    fun tos i = Double.toString (parr ! i)
+    fun lp (i, acc) =
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::","::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        fail "tos_int" "BUG: negative length"
+      else if (n=0) then 
+        "[||]"
+      else let
+        val init = [tos(n-1),"|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
+  fun tos_dblParr (parr : double parray parray) = let
+    fun tos i = tos_dbl (parr ! i)
+    fun lp (i, acc) = 
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::",\n"::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        fail "tos_intParr" "BUG: negative length"
+      else if (n=0) then
+        "[||]"
+      else let
+        val init = [tos(n-1), "\n|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
 end
 
 (* (\* FIXME: the following definitions should be in a separate *)

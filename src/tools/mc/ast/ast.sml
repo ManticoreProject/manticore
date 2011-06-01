@@ -39,6 +39,7 @@ structure AST =
       | PA_TabFTS of ty            (* the type of the elements to be created by the tabulation *)
       | PA_TabTupleFTS of ty list  (* element types (implicitly part of tuple) *)
       | PA_Map of ty               (* type of the function to be mapped *)
+      | PA_PairMap of ty           (* type of the function to be mapped *)
       | PA_Reduce of ty            (* type 'a in the associative operator ('a * 'a -> 'a) *)
       | PA_Range of ty             (* type is element type (currently only int supported) *)
       | PA_App of ty               (* type is the element type *)

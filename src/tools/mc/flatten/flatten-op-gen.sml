@@ -378,6 +378,15 @@ val _ = print ("found int_farray farray\n")
               in
                 A.FB (f, x, b)
                end
+            else if TU.same (t, DTy.dbl_farray ()) andalso FU.isFArrayTyc c then let
+              val rngTy = DTy.dbl_farray ()
+	      fun ve x = A.VarExp (x, [])
+	      val f = Var.new (freshName (), domTy --> rngTy)
+	      val x = Var.new ("x", domTy)
+	      val b = AU.mkApplyExp (ve (DV.flattenDFF ()), [ve x])
+              in
+                A.FB (f, x, b)
+               end
 	    else
 	      raise Fail ("mkCat : " ^ TU.toString domTy)
        | _ => raise Fail ("mkCat : " ^ TU.toString domTy)

@@ -8,6 +8,8 @@
 
 structure RopePair (* : ROPE_PAIR *) = struct
 
+    val fail = Fail.fail "RopePair"
+
     structure S = Rope.Seq
     structure R = Rope
 
@@ -46,22 +48,21 @@ structure RopePair (* : ROPE_PAIR *) = struct
      (* end if *))
 *)
      
-  (* fastMapP : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
+  (* fastMapP : ('a * 'b -> 'c) * 'a rope * 'b rope -> 'c rope *)
   (* pre : both ropes have exactly the same structure *)
     fun fastMap (f, r1, r2) = let
-      fun lp ropes = 
-       (case ropes
-	  of (R.Leaf s1, R.Leaf s2) => 
-               R.leaf (Seq.map2 (f, s1, s2))
-	   | (R.Cat (d1, len1, r1L, r1R), R.Cat (d2, len2, r2L, r2R)) =>
-               R.Cat (| d1, len1, lp (r1L, r2L), lp (r1R, r2R) |)
-	   | _ => failwith "BUG" (* this shouldn't have been called *)
-         (* end case *))
+      fun lp ropes = (case ropes
+        of (R.Leaf s1, R.Leaf s2) => 
+             R.leaf (Seq.map2 (f, s1, s2))
+	 | (R.Cat (d1, len1, r1L, r1R), R.Cat (d2, len2, r2L, r2R)) =>
+             R.Cat (| d1, len1, lp (r1L, r2L), lp (r1R, r2R) |)
+	 | _ => fail "fastMapP" "BUG: called on ropes of different shapes"
+        (* end case *))
       in
 	lp (r1, r2)
       end
 
-  (* mapP' : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
+  (* map' : ('a * 'b -> 'g) * 'a rope * 'b rope -> 'g rope *)
   (* pre : the first rope's length is <= that of the second *)
   (* traversal follows the structure of the shorter rope *)
   (* post : the output rope has the same shape as the first rope *)

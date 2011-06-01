@@ -132,6 +132,7 @@ end *) = struct
 			     in
 			       raise Fail msg
 			     end
+			 | T.FArrayTy (t', s) => T.FArrayTy (t', T.NdTy s)
 			 | _ => raise Fail ("?: parray of " ^ TU.toString t)
 		       (* end case *))
 	     | ts => raise Fail "conTy: parray tyc has too many type args"    

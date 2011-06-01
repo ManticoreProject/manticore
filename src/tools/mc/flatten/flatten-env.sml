@@ -87,9 +87,11 @@ end *) = struct
 	      ("tab3D", SOME PArrayOp.constructTabHD),
 	      ("tab4D", SOME PArrayOp.constructTabHD),	      
 	      ("tab5D", SOME PArrayOp.constructTabHD)]
+    val p = (BasisEnv.getVarFromBasis ["PArrayPair", "map"],
+	     SOME PArrayOp.constructPairMap)
     val ps' = List.map (fn (n, oper) => (getVar n, oper)) ps
     in
-      List.foldl VMap.insert' VMap.empty ps'
+      List.foldl VMap.insert' VMap.empty (p::ps')
     end
 
 (* fresh env maker *)

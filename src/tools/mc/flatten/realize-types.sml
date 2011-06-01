@@ -157,6 +157,7 @@ end *) = struct
       | pop (A.PA_App t) = A.PA_App (ty t)
       | pop (A.PA_TabTupleFTS ts) = A.PA_TabTupleFTS ($ty ts)
       | pop (A.PA_TabHD (d, t)) = A.PA_TabHD (d, ty t)
+      | pop (A.PA_PairMap t) = A.PA_PairMap (ty t)
     in
       pop
     end

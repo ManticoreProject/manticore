@@ -56,6 +56,7 @@ structure PArrayOp = struct
 	| pop (A.PA_Range t) = tos "PA_Range" t
 	| pop (A.PA_App t) = tos "PA_App" t
 	| pop (A.PA_TabHD (d, t)) = tos ("PA_TabHD_" ^ Int.toString d) t
+	| pop (A.PA_PairMap t) = tos "PA_PairMap" t
       in
         pop      
       end
@@ -119,6 +120,21 @@ structure PArrayOp = struct
                (* end case *))
 	   | _ => raise Fail ("unexpected ty " ^ TU.toString t)
           (* end case *))	
+      | pop (A.PA_PairMap t) = (case t
+          of T.FunTy (domTy, rngTy) => (case domTy
+               of T.TupleTy [t1, t2] =>
+                    if isGroundTy t1 andalso isGroundTy t2 then let
+                      fun f t = T.FArrayTy (t, T.LfTy)
+                      val domTy' = T.TupleTy [domTy, f t1, f t2]
+	              in
+                        domTy' --> (f rngTy)
+	              end
+		    else
+	              raise Fail ("todo " ^ TU.toString t)
+		| _ => raise Fail ("todo " ^ TU.toString t)
+               (* end case *))
+	   | _ => raise Fail ("unexpected ty " ^ TU.toString t)
+          (* end case *))
       | pop (A.PA_Reduce t) =
           if isGroundTy t then let
             val ta = T.FArrayTy (t, T.LfTy)
@@ -175,6 +191,7 @@ structure PArrayOp = struct
       | consIndex (A.PA_App _)           = 7
       | consIndex (A.PA_TabTupleFTS _)   = 8
       | consIndex (A.PA_TabHD _)         = 9
+      | consIndex (A.PA_PairMap _)       = 10
   in
 
     val compare : A.parray_op * A.parray_op -> order = let
@@ -209,6 +226,7 @@ structure PArrayOp = struct
 	     | (A.PA_TabHD (d1, t1), A.PA_TabHD (d2, t2)) => (case Int.compare (d1, d2)
                  of EQUAL => TU.compare (t1, t2)
 		  | neq => neq)
+	     | (A.PA_PairMap t1, A.PA_PairMap t2) => TU.compare (t1, t2)
 	     | _ => raise Fail "compiler bug"
         end
       in
@@ -382,31 +400,39 @@ structure PArrayOp = struct
 (* constructMap : ty -> exp *)
   val constructMap : T.ty -> A.exp = let
     fun mk (ft as T.FunTy (domTy, rngTy)) = let
-            val pr = fn ss => (print (String.concat ss); print "\n")
-            val _ = pr ["called constructMap on ", TU.toString ft]
-            val fl = FlattenOp.construct rngTy
-	    val _ = pr ["fl is ", FlattenOp.toString fl]
-	    val flRngTy = (case FlattenOp.typeOf fl
-              of T.FunTy (_, r) => r
-	       | t => raise Fail ("unexpected ty " ^ TU.toString t)
-              (* end case *))
-	    fun a t = T.FArrayTy (t, T.LfTy)
-	    val f = Var.new ("f", ft)
-	    val arr = Var.new ("arr", a domTy)
-	    val mapOp = A.PArrayOp (A.PA_Map ft)
+          val pr = fn ss => (print (String.concat ss); print "\n")
+          (* val _ = pr ["called constructMap on ", TU.toString ft] *)
+          val fl = FlattenOp.construct rngTy
+	  (* val _ = pr ["fl is ", FlattenOp.toString fl] *)
+	  val flRngTy = (case FlattenOp.typeOf fl
+            of T.FunTy (_, r) => r
+	     | t => raise Fail ("unexpected ty " ^ TU.toString t)
+            (* end case *))
+	  fun a t = T.FArrayTy (t, T.LfTy)
+	  val f = Var.new ("f", ft)
+	  val arr = Var.new ("arr", a domTy)
+	  val mapOp = A.PArrayOp (A.PA_Map ft)
           (* note: in what follows, I cannot use ASTUtil.mkApplyExp *)
 	  (*   b/c referring to ASTUtil induces cyclic deps *)
 	  (* here I am building the following term: *)
           (*   fn f => fn arr => fl (map f arr) *)
-	    val innerApp0 = A.ApplyExp (mapOp, A.VarExp (f, []), A.FunTy (a domTy, a rngTy))
-	    val innerApp1 = A.ApplyExp (innerApp0, A.VarExp (arr, []), a rngTy)
-	    val innerApp2 = A.ApplyExp (A.FlOp fl, innerApp1, flRngTy)
-	    val innerFn = A.FunExp (arr, innerApp2, flRngTy)
-	    val outerFn = A.FunExp (f, innerFn, T.FunTy (a domTy, flRngTy))
-            in
-              outerFn
-            end
+	  val innerApp0 = A.ApplyExp (mapOp, A.VarExp (f, []), A.FunTy (a domTy, a rngTy))
+	  val innerApp1 = A.ApplyExp (innerApp0, A.VarExp (arr, []), a rngTy)
+	  val innerApp2 = A.ApplyExp (A.FlOp fl, innerApp1, flRngTy)
+	  val innerFn = A.FunExp (arr, innerApp2, flRngTy)
+	  val outerFn = A.FunExp (f, innerFn, T.FunTy (a domTy, flRngTy))
+          in
+            outerFn
+          end
       | mk t = raise Fail ("unexpected ty " ^ TU.toString t) 
+    in
+      mk
+    end
+
+  val constructPairMap : T.ty -> A.exp = let
+    fun mk (T.TupleTy [fTy as T.FunTy (domTy, rngTy), t1, t2]) = 
+          A.PArrayOp (A.PA_PairMap fTy)
+      | mk t = raise Fail ("unexpected ty " ^ TU.toString t)
     in
       mk
     end

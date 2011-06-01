@@ -156,6 +156,7 @@ structure DelayedBasis = struct
 
     val ropeMap_int   = memoVar ["RopeUtil", "map_int"]
     val ropeMap_dbl   = memoVar ["RopeUtil", "map_double"]
+    val ropeMapDDD    = memoVar ["RopeUtil", "mapDDD"]
 
     val irEmpty       = memoVar ["IntRope", "empty"]
     val irLength      = memoVar ["IntRope", "length"]
@@ -198,6 +199,8 @@ structure DelayedBasis = struct
     val parrayTab4D   = memoVar ["PArray", "tab4D"]
     val parrayTab5D   = memoVar ["PArray", "tab5D"]
     val parrayRange   = memoVar ["PArray", "range"]
+
+    val parrPairMap   = memoVar ["PArrayPair", "map"]
 
     val ixMap2D       = memoVar ["PArrayUtil", "indexMap2D"]
     val ixMap3D       = memoVar ["PArrayUtil", "indexMap3D"]
@@ -243,7 +246,9 @@ structure DelayedBasis = struct
     val ipReduce      = memoVar ["IntFArrayPair", "flatReduce"]
 
     val flattenIFF    = memoVar ["FArrayUtil", "flatten_IF_F"]
+    val flattenDFF    = memoVar ["FArrayUtil", "flatten_DF_F"]
     val mapIFPoly     = memoVar ["FArrayUtil", "map_IF_poly"]
+    val fmapDDD       = memoVar ["FArrayUtil", "mapDDD"]
 
     val shapeSame     = memoVar ["Shape", "same"]
     val shapeRegular  = memoVar ["Shape", "regularShape"]

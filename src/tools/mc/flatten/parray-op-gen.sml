@@ -268,6 +268,18 @@ structure PArrayOpGen = struct
     else
       raise Fail ("todo: app for type " ^ TU.toString t)
 
+  fun genPairMap t = (case t
+    of T.FunTy (fDomTy, fRngTy) => (case fDomTy
+         of T.TupleTy [t1, t2] => 
+              if List.all FU.isDouble [t1, t2, fRngTy] then
+                A.VarExp (DV.fmapDDD (), [])
+	      else
+                raise Fail ("todo: " ^ TU.toString t)
+	  | _ => raise Fail ("expected a pair: " ^ TU.toString t)
+         (* end case *))
+     | _ => raise Fail ("expected a function: " ^ TU.toString t)
+    (* end case *))
+
   fun gen (pop : A.parray_op) : A.exp = let
 (*  val _ = println ("*** generating " ^ PArrayOp.toString pop)  *)
     val g = (case pop
@@ -281,6 +293,7 @@ structure PArrayOpGen = struct
        | A.PA_Range t => genRange t
        | A.PA_App t => genApp t
        | A.PA_TabHD (d, t) => genTabHD (d, t)
+       | A.PA_PairMap t => genPairMap t
       (* end case *))
     in
 (*    PrintAST.printExp g; *)
