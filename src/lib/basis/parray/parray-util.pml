@@ -155,8 +155,10 @@ structure PArrayUtil = struct
                 val g = cvt 256
                 val b = cvt 1
 		(* val _ = ln ("row " ^ itos row) *)
+(*
 		val _ = ln ("row " ^ itos row ^ " col " ^ itos col ^ " colorInt " ^ itos colorInt ^ 
 			    " r " ^ ftos r ^ " g " ^ ftos g ^ " b " ^ ftos b)
+*)
                 in
                   (Image.update3f (img, row, col, r, g, b);
                    lp' (col+1))

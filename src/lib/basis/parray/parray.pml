@@ -127,7 +127,27 @@ structure PArray = struct
     val n = length parr
     in
       if (n<0) then
-        fail "tos_intp" "BUG: negative length"
+        fail "tos_intParr" "BUG: negative length"
+      else if (n=0) then
+        "[||]"
+      else let
+        val init = [tos(n-1), "\n|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
+  fun tos_intParrParr (parr : int parray parray parray) = let
+    fun tos i = tos_intParr (parr ! i)
+    fun lp (i, acc) = 
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::",\n"::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        fail "tos_intParrParr" "BUG: negative length"
       else if (n=0) then
         "[||]"
       else let
