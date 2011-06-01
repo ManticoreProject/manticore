@@ -92,6 +92,10 @@ end *) = struct
       | ty (T.VarTy a) = T.VarTy a
       | ty (T.FunTy (t1, t2)) = T.FunTy (ty t1, ty t2)
       | ty (T.TupleTy ts) = T.TupleTy (List.map ty ts)
+      | ty (f as T.FArrayTy (t, T.LfTy)) = (case t
+          of T.FArrayTy _ => raise Fail ("todo: " ^ TU.toString f)
+	   | _ => f
+          (* end case *))
       | ty (f as T.FArrayTy (t, n)) = let
           val msg = "Asked to flatten type " ^ TypeUtil.toString f ^ "; should this happen?"
           in
