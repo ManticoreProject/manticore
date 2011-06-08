@@ -68,6 +68,8 @@ CM_FILES =		ast-opt/sources.cm \
 			prim/sources.cm \
 			translate/sources.cm \
 			typechecker/sources.cm \
+			../../lib/mlton/sources.cm \
+			mlton/sources.cm \
 			$(ROOT_CM)
 
 .PHONY:		build

@@ -1,0 +1,33 @@
+(* Copyright (C) 2004-2005 Henry Cejtin, Matthew Fluet, Suresh
+ *    Jagannathan, and Stephen Weeks.
+ *
+ * MLton is released under a BSD-style license.
+ * See the file MLton-LICENSE for details.
+ *)
+
+ann  
+   "sequenceNonUnit warn"
+   "nonexhaustiveMatch warn" "redundantMatch warn"
+   "warnUnused false" "forceUsed"
+in
+   local
+      $(SML_LIB)/basis/basis.mlb
+      ../basic/sources.mlb
+
+      mono-env.sig
+      basic-env-to-env.fun
+      mono-env.fun
+      finite-function.sig
+      poly-cache.sig
+      poly-cache.fun
+   in
+      signature ENV
+      signature MONO_ENV
+      signature POLY_CACHE
+
+      structure PolyCache
+
+      functor MakeMonoEnv
+      functor MonoEnv
+   end
+end

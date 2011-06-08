@@ -1,0 +1,216 @@
+(* Copyright (C) 2009 Matthew Fluet.
+ * Copyright (C) 1999-2006 Henry Cejtin, Matthew Fluet, Suresh
+ *    Jagannathan, and Stephen Weeks.
+ * Copyright (C) 1997-2000 NEC Research Institute.
+ *
+ * MLton is released under a BSD-style license.
+ * See the file MLton-LICENSE for details.
+ *)
+
+fun reg (left, right) = Region.make {left = left, right = right}
+fun error (reg, msg) = Control.error (reg, Layout.str msg, Layout.empty)
+
+open Ast
+
+type fctbinds = {lhs: Fctid.t, rhs: Fctid.t} list
+type sigbinds = {lhs: Sigid.t, rhs: Sigid.t} list
+type strbinds = {lhs: Strid.t, rhs: Strid.t} list
+
+type basbinds = {name: Basid.t, def: Basexp.t} list
+
+  %%
+%term
+      ID of string | COMMA | SEMICOLON | EOF
+    | AND | BAS | BASIS | END | EQUALOP | FUNCTOR | IN | LET 
+    | LOCAL | OPEN | SIGNATURE | STRUCTURE
+    | ANN | PRIM | FILE of string | STRING of string
+
+%nonterm
+         ann of string * Region.t
+       | annPlus of (string * Region.t) list
+       | annStar of (string * Region.t) list
+       | basbinds of basbinds
+       | basbinds' of Basexp.t * basbinds
+       | basbinds'' of basbinds
+       | basdec of Basdec.t
+       | basdecnode of Basdec.node
+       | basdecs of Basdec.t
+       | basdecsnode of Basdec.node 
+       | basexp of Basexp.t
+       | basexpnode of Basexp.node
+       | basid of Basid.t
+       | basids of Basid.t list
+       | fctbinds of fctbinds
+       | fctbinds' of Fctid.t * fctbinds
+       | fctbinds'' of fctbinds
+       | fctid of Fctid.t
+       | id of Symbol.t * Region.t
+       | mlb of Basdec.t
+       | sigbinds of sigbinds
+       | sigbinds' of Sigid.t * sigbinds
+       | sigbinds'' of sigbinds
+       | sigid of Sigid.t
+       | strbinds of strbinds
+       | strbinds' of Strid.t * strbinds
+       | strbinds'' of strbinds
+       | strid of Strid.t
+
+%verbose
+%pos SourcePos.t
+%eop EOF
+%noshift EOF
+
+%header (functor MLBLrValsFun (structure Token: TOKEN
+                               structure Ast: AST
+                               val lexAndParseProgOrMLB: File.t * Region.t ->
+                                                         Ast.Basdec.node))
+
+%right AND
+
+%name MLB
+
+%keyword AND BAS BASIS END FUNCTOR IN LET LOCAL OPEN SIGNATURE STRUCTURE ANN PRIM
+
+%change -> SEMICOLON | -> IN ID END
+
+%value ID ("bogus")
+
+%%
+
+mlb : basdecs (basdecs)
+
+
+basdecs : basdecsnode (Basdec.makeRegion' 
+                       (basdecsnode, basdecsnodeleft, basdecsnoderight))
+
+basdecsnode :                    (Basdec.Seq [])
+            | SEMICOLON basdecs  (Basdec.Seq [basdecs])
+            | basdec basdecs     (Basdec.Seq [basdec, basdecs])
+
+basdec : basdecnode (Basdec.makeRegion'
+                     (basdecnode, basdecnodeleft, basdecnoderight))
+
+basdecnode
+   : FUNCTOR fctbinds
+     (let 
+         val fctbinds = Vector.fromList fctbinds
+      in 
+         Basdec.Defs (ModIdBind.makeRegion' (ModIdBind.Fct fctbinds, FUNCTORleft, fctbindsright))
+      end)
+   | SIGNATURE sigbinds
+     (let
+         val sigbinds = Vector.fromList sigbinds
+      in
+         Basdec.Defs (ModIdBind.makeRegion' (ModIdBind.Sig sigbinds, SIGNATUREleft, sigbindsright))
+      end)
+   | STRUCTURE strbinds
+     (let
+         val strbinds = Vector.fromList strbinds
+      in
+         Basdec.Defs (ModIdBind.makeRegion' (ModIdBind.Str strbinds, STRUCTUREleft, strbindsright))
+      end)
+   | BASIS basbinds
+     (let
+         val basbinds = Vector.fromList basbinds
+      in
+         Basdec.Basis basbinds
+      end)
+   | LOCAL basdecs IN basdecs END  (Basdec.Local (basdecs1, basdecs2))
+   | OPEN basids  (Basdec.Open (Vector.fromList basids))
+   | FILE
+     (let val reg = reg (FILEleft, FILEright)
+      in lexAndParseProgOrMLB (FILE, reg)
+      end)
+   | STRING
+     (let val reg = reg (STRINGleft, STRINGright)
+      in lexAndParseProgOrMLB (STRING, reg)
+      end)
+   | PRIM (Basdec.Prim)
+   | ANN annPlus IN basdecs END  
+     (let 
+        val extendRight = 
+          let val right = valOf (Region.right (Basdec.region basdecs))
+          in fn reg => Region.extendRight (reg, right)
+          end
+        fun mkAnn' ((ann,reg), basdecs) = Basdec.Ann (ann, reg, basdecs)
+        fun mkAnn ((ann,reg), basdecsnode) : Basdec.node =
+          mkAnn' ((ann,reg), Basdec.makeRegion (basdecsnode, extendRight reg))
+        val (anns,ann) = List.splitLast annPlus
+      in
+        List.fold(anns, mkAnn'(ann, basdecs), mkAnn)
+      end)
+
+
+fctbinds : fctid EQUALOP fctbinds'
+           (let val (def, fctbinds) = fctbinds'
+            in {lhs = fctid, rhs = def}
+               :: fctbinds
+            end)
+         | fctid fctbinds''
+           ({lhs = fctid, rhs = fctid} :: fctbinds'')
+
+fctbinds' : fctid fctbinds''  (fctid, fctbinds'')
+
+fctbinds'' :               ([])
+           | AND fctbinds  (fctbinds)
+
+sigbinds : sigid EQUALOP sigbinds'
+           (let val (def, sigbinds) = sigbinds'
+            in {lhs = sigid, rhs = def}
+               :: sigbinds
+            end)
+         | sigid sigbinds''
+           ({lhs = sigid, rhs = sigid} :: sigbinds'')
+
+sigbinds' : sigid sigbinds''  (sigid, sigbinds'')
+
+sigbinds'' :               ([])
+           | AND sigbinds  (sigbinds)
+
+strbinds : strid EQUALOP strbinds'
+           (let val (def, strbinds) = strbinds'
+            in {lhs = strid, rhs = def}
+               :: strbinds
+            end)
+         | strid strbinds''
+           ({lhs = strid, rhs = strid} :: strbinds'')
+
+strbinds' : strid strbinds''  (strid, strbinds'')
+
+strbinds'' :               ([])
+           | AND strbinds  (strbinds)
+
+basbinds : basid EQUALOP basbinds'
+           (let val (def, basbinds) = basbinds'
+            in {name = basid, def = def}
+               :: basbinds
+            end)
+
+basbinds' : basexp basbinds''  (basexp, basbinds'')
+
+basbinds'' :               ([])
+           | AND basbinds  (basbinds)
+
+
+basexp : basexpnode (Basexp.makeRegion'
+                     (basexpnode, basexpnodeleft, basexpnoderight))
+
+basexpnode : BAS basdecs END           (Basexp.Bas basdecs)
+           | basid                     (Basexp.Var basid)
+           | LET basdecs IN basexp END (Basexp.Let (basdecs, basexp))
+
+basid : id  (Basid.fromSymbol id)
+basids : basid ([basid])
+       | basid basids (basid :: basids)
+fctid : id  (Fctid.fromSymbol id)
+sigid : id  (Sigid.fromSymbol id)
+strid : id  (Strid.fromSymbol id)
+id : ID     (Symbol.fromString ID, reg (IDleft, IDright))
+
+
+ann : STRING  (STRING, reg (STRINGleft, STRINGright))
+
+annPlus : ann annStar (ann::annStar)
+
+annStar :          ([])
+        | annPlus  (annPlus)

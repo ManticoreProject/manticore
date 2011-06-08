@@ -1,0 +1,34 @@
+-- Separate out the frontend
+X Remove everything after SXML
+
+-- Combine frontends
+Push the MLton frontend sources into the src/tools/mc directory
+Create a new combined mlton-main/swp-driver SML file to be the root of the SMLNJ
+image created during the compilation
+Disable everything Manticore before BOM
+
+-- Tie the compilers together
+Convert SXML to BOM
+
+-- Build more stuff
+Bring the mlton/basis-library into lib/basis
+Stub in the C functions required from mlton/runtime/basis
+Build from a single Makefile (w/ just Manticore's runtime)
+
+-- Initial test: basic SML
+Run simple SML programs through the the full compiler
+Maybe get the mlton/regression & mlton/benchmark directories running
+
+-- Later
+Begin integrating Manticore language features into the MLton frontend
+Add Manticore basis functions into the library
+Add Manticore regression tests to the regression library
+
+-- Much later
+Manticore benchmarks
+
+-- Much much later
+mllex directory
+mlnlffigen directory
+mlprof directory
+mlyacc directory

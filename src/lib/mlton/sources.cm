@@ -1,0 +1,192 @@
+(* Copyright (C) 2009 Matthew Fluet.
+ * Copyright (C) 1999-2006 Henry Cejtin, Matthew Fluet, Suresh
+ *    Jagannathan, and Stephen Weeks.
+ * Copyright (C) 1997-2000 NEC Research Institute.
+ *
+ * MLton is released under a BSD-style license.
+ * See the file MLton-LICENSE for details.
+ *)
+
+Library
+
+signature ARRAY
+signature ENV
+signature ERROR
+signature EUCLIDEAN_RING
+signature INTEGER
+signature INT_INF
+signature LIST
+(* signature MONO_CONTAINER *)
+signature MONO_ENV
+signature OPTION
+signature ORDER
+signature ORDERED_RING
+signature POLY_CACHE
+signature PROMISE
+signature REAL
+signature RING
+signature RING_WITH_IDENTITY
+signature SET
+signature STRING
+signature SUM
+signature T
+signature UNIQUE_ID
+signature VECTOR
+
+structure AppendList
+structure Array
+structure Array2
+structure Assert
+structure Base64
+structure BinarySearch
+structure Bool
+structure Buffer
+structure Byte
+structure Char
+(* structure CharArray *)
+(* structure CharBuffer *)
+structure CharVector
+structure ChoicePattern
+structure ClearablePromise
+structure CommandLine
+structure Computation
+structure Console
+structure Counter
+structure Date
+structure Dir
+structure DirectedGraph
+structure DirectedSubGraph
+structure DisjointSet
+structure DotColor
+structure Dot
+structure Engine
+structure Error
+structure Escape
+structure Exn
+structure Export
+structure File
+structure FileDesc
+structure FixedPoint
+structure Function
+structure HashSet
+structure Html
+structure Http
+structure In
+structure InitScript
+structure Int
+(* structure Int32 *)
+structure IntInf
+structure InsertionSort
+structure INetSock
+structure Iterate
+structure Itimer
+structure Justify
+structure LargeInt
+structure LargeWord
+structure Lines
+structure List
+structure Layout
+structure List
+(* structure MergeSortList *)
+(* structure MergeSortVector *)
+structure MLton
+structure Net
+structure Option
+structure OS
+structure Out
+structure Parse
+structure Pervasive
+structure Pid
+structure Pointer
+structure PolyCache
+structure Popt
+structure Port
+structure Position
+structure Posix
+structure Postscript
+structure Power
+structure Process
+structure Promise
+structure Property
+structure PropertyList
+structure Queue
+structure QuickSort
+structure Random
+structure RDB
+structure Reader
+structure Real
+(* structure RealVector *)
+structure Real32
+structure Real64
+structure Ref
+structure Regexp
+structure Relation
+structure ResizableArray
+structure Result
+structure Sexp
+structure Signal
+structure SMLofNJ
+structure Socket
+structure Stream
+structure String
+structure StringCvt
+structure Substring
+structure SysWord
+structure Thread
+structure Time
+structure Timer
+structure Trace
+structure Tree
+structure TwoListQueue
+structure Unimplemented
+structure Unit
+structure Unsafe
+structure Url
+structure Vector
+structure Word
+structure Word8
+(* structure Word8Array *)
+(* structure Word8ArraySlice *)
+(* structure Word8Vector *)
+(* structure Word16 *)
+(* structure Word32 *)
+
+functor AlphaBeta
+(* functor BinaryHeap *)
+functor BitVectorSet
+functor Cache
+functor Control
+functor Env
+functor EuclideanRing
+functor HashedUniqueSet
+functor IntUniqueId
+functor MakeMonoEnv
+functor MonoArray
+functor MonoList
+functor MonoEnv
+functor MonoList
+functor MonoOption
+functor MonoVector
+functor MoveToFrontEnv
+functor OrderedField
+functor OrderedUniqueSet
+functor Pair
+functor PolyEnv
+functor Ring
+functor RingWithIdentity
+(* functor SplayMonoEnv *)
+functor Sum
+functor Tree
+functor UniqueId
+functor UniqueSet
+functor UnorderedSet
+
+is
+
+basic/sources.cm
+set/sources.cm
+env/sources.cm
+
+#if (defined (SMLNJ_VERSION))
+directed-graph/sources.cm
+#endif
