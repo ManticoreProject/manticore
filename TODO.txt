@@ -22,6 +22,7 @@ Maybe get the mlton/regression & mlton/benchmark directories running
 Begin integrating Manticore language features into the MLton frontend
 Add Manticore basis extensions into the library (e.g. Image)
 Add Manticore regression tests to the regression library
+Generate constants from configure
 
 -- Much later
 Manticore benchmarks
