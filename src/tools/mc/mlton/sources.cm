@@ -14,6 +14,7 @@ defunctorize/sources.cm
 elaborate/sources.cm
 front-end/sources.cm
 xml/sources.cm
+mcore-common.cm
 
 lookup-constant.sig
 lookup-constant.fun

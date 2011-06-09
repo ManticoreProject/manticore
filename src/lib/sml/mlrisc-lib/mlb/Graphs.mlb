@@ -1,0 +1,708 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l8 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb $(SML_LIB)/basis/unsafe.mlb
+    end
+  basis l4 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l29 = 
+    bas
+      (* $Lib.cm(=(proxyLib.cm):.)/Lib.cm =??=> *) Lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = ListMergeSort
+   end
+   local
+      open l8
+   in
+      structure gs_1 = Int
+   end
+   local
+      open l8
+   in
+      structure gs_2 = List
+   end
+   local
+      ../graphs/graph.sig
+   in
+      signature gs_3 = GRAPH
+   end
+   local
+      signature GRAPH = gs_3
+      structure List = gs_2
+      ../graphs/graph.sml
+   in
+      structure gs_4 = Graph
+   end
+   local
+      structure Graph = gs_4
+      structure Int = gs_1
+      structure ListMergeSort = gs_0
+      ../graphs/uniongraph.sml
+   in
+      signature gs_5 = UNION_GRAPH_VIEW
+      structure gs_6 = UnionGraphView
+   end
+   local
+      open l29
+   in
+      signature gs_7 = CATNETABLE_LIST
+      structure gs_8 = CatnetableList
+   end
+   local
+      open l8
+   in
+      structure gs_9 = Array
+   end
+   local
+      ../graphs/group.sig
+   in
+      signature gs_10 = ABELIAN_GROUP
+      signature gs_11 = ABELIAN_GROUP_WITH_INF
+   end
+   local
+      signature ABELIAN_GROUP = gs_10
+      signature ABELIAN_GROUP_WITH_INF = gs_11
+      structure Graph = gs_4
+      ../graphs/min-cut.sig
+   in
+      signature gs_12 = MIN_CUT
+   end
+   local
+      open l8
+   in
+      signature gs_13 = ARRAY
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/node-priqueue.sig
+   in
+      signature gs_14 = NODE_PRIORITY_QUEUE
+   end
+   local
+      signature ARRAY = gs_13
+      structure Graph = gs_4
+      signature NODE_PRIORITY_QUEUE = gs_14
+      ../graphs/node-priqueue.sml
+   in
+      functor gs_15 = NodePriorityQueue
+   end
+   local
+      signature ABELIAN_GROUP = gs_10
+      signature ABELIAN_GROUP_WITH_INF = gs_11
+      structure Array = gs_9
+      signature CATNETABLE_LIST = gs_7
+      structure CatnetableList = gs_8
+      structure Graph = gs_4
+      signature MIN_CUT = gs_12
+      functor NodePriorityQueue = gs_15
+      ../graphs/min-cut.sml
+   in
+      functor gs_16 = MinCut
+   end
+   local
+      structure Graph = gs_4
+      structure List = gs_2
+      ../graphs/isograph.sml
+   in
+      signature gs_17 = ISOMORPHIC_GRAPH_VIEW
+      structure gs_18 = IsomorphicGraphView
+   end
+   local
+      structure Graph = gs_4
+      structure Int = gs_1
+      structure List = gs_2
+      ../graphs/seme.sml
+   in
+      signature gs_19 = SINGLE_ENTRY_MULTIPLE_EXIT_VIEW
+      structure gs_20 = SingleEntryMultipleExit
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/graph-comb.sig
+   in
+      signature gs_21 = GRAPH_COMBINATIONS
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/revgraph.sml
+   in
+      signature gs_22 = REVERSED_GRAPH_VIEW
+      structure gs_23 = ReversedGraphView
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/renamegraph.sml
+   in
+      signature gs_24 = RENAMED_GRAPH_VIEW
+      structure gs_25 = RenamedGraphView
+   end
+   local
+      signature GRAPH_COMBINATIONS = gs_21
+      structure Graph = gs_4
+      signature RENAMED_GRAPH_VIEW = gs_24
+      signature REVERSED_GRAPH_VIEW = gs_22
+      structure RenamedGraphView = gs_25
+      structure ReversedGraphView = gs_23
+      signature UNION_GRAPH_VIEW = gs_5
+      structure UnionGraphView = gs_6
+      ../graphs/graph-comb.sml
+   in
+      structure gs_26 = GraphCombinations
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/readonly.sml
+   in
+      signature gs_27 = READONLY_GRAPH_VIEW
+      structure gs_28 = ReadOnlyGraphView
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/graphimpl.sig
+   in
+      signature gs_29 = GRAPH_IMPLEMENTATION
+   end
+   local
+      open l8
+   in
+      structure gs_30 = Word8Array
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/graph-scc.sig
+   in
+      signature gs_31 = GRAPH_STRONGLY_CONNECTED_COMPONENTS
+   end
+   local
+      structure Array = gs_9
+      signature GRAPH_STRONGLY_CONNECTED_COMPONENTS = gs_31
+      structure Graph = gs_4
+      structure Int = gs_1
+      structure Word8Array = gs_30
+      ../graphs/graph-scc.sml
+   in
+      structure gs_32 = GraphSCC
+   end
+   local
+      open l29
+   in
+      structure gs_33 = BitSet
+   end
+   local
+      structure Array = gs_9
+      structure Graph = gs_4
+      ../graphs/graph-dfs.sig
+   in
+      signature gs_34 = GRAPH_DEPTH_FIRST_SEARCH
+   end
+   local
+      structure Array = gs_9
+      structure BitSet = gs_33
+      signature GRAPH_DEPTH_FIRST_SEARCH = gs_34
+      structure Graph = gs_4
+      ../graphs/graph-dfs.sml
+   in
+      structure gs_35 = GraphDFS
+   end
+   local
+      structure Array = gs_9
+      structure Graph = gs_4
+      ../graphs/graph-bfs.sig
+   in
+      signature gs_36 = GRAPH_BREATH_FIRST_SEARCH
+   end
+   local
+      structure Array = gs_9
+      structure BitSet = gs_33
+      signature GRAPH_BREATH_FIRST_SEARCH = gs_36
+      structure Graph = gs_4
+      ../graphs/graph-bfs.sml
+   in
+      structure gs_37 = GraphBFS
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/graph-bcc.sig
+   in
+      signature gs_38 = GRAPH_BICONNECTED_COMPONENTS
+   end
+   local
+      structure Array = gs_9
+      signature GRAPH_BICONNECTED_COMPONENTS = gs_38
+      structure Graph = gs_4
+      ../graphs/graph-bcc.sml
+   in
+      structure gs_39 = GraphBCC
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/graph-topsort.sig
+   in
+      signature gs_40 = GRAPH_TOPOLOGICAL_SORT
+   end
+   local
+      open l8
+   in
+      structure gs_41 = String
+   end
+   local
+      structure Graph = gs_4
+      structure Int = gs_1
+      structure List = gs_2
+      structure String = gs_41
+      ../graphs/printgraph.sml
+   in
+      signature gs_42 = PRINT_GRAPH
+      structure gs_43 = PrintGraph
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/no-exit.sml
+   in
+      signature gs_44 = NO_ENTRY_VIEW
+      signature gs_45 = NO_EXIT_VIEW
+      structure gs_46 = NoEntryView
+      structure gs_47 = NoExitView
+   end
+   local
+      open l29
+   in
+      structure gs_48 = PriorityQueue
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/spanning-tree.sig
+   in
+      signature gs_49 = MIN_COST_SPANNING_TREE
+   end
+   local
+      open l4
+   in
+      structure gs_50 = HashTable
+   end
+   local
+      open l4
+   in
+      structure gs_51 = URef
+   end
+   local
+      open l8
+   in
+      structure gs_52 = Word
+   end
+   local
+      structure Graph = gs_4
+      structure HashTable = gs_50
+      structure URef = gs_51
+      structure Word = gs_52
+      ../graphs/node-partition.sml
+   in
+      signature gs_53 = NODE_PARTITION
+      structure gs_54 = NodePartition
+   end
+   local
+      structure Graph = gs_4
+      signature MIN_COST_SPANNING_TREE = gs_49
+      signature NODE_PARTITION = gs_53
+      structure NodePartition = gs_54
+      structure PriorityQueue = gs_48
+      ../graphs/kruskal.sml
+   in
+      structure gs_55 = Kruskal
+   end
+   local
+      open l29
+   in
+      structure gs_56 = HashArray
+   end
+   local
+      structure Graph = gs_4
+      structure List = gs_2
+      ../graphs/subgraph-p.sml
+   in
+      signature gs_57 = SUBGRAPH_P_VIEW
+      structure gs_58 = Subgraph_P_View
+   end
+   local
+      structure Graph = gs_4
+      structure HashArray = gs_56
+      signature SUBGRAPH_P_VIEW = gs_57
+      structure Subgraph_P_View = gs_58
+      ../graphs/trace-graph.sml
+   in
+      signature gs_59 = TRACE_SUBGRAPH_VIEW
+      structure gs_60 = TraceView
+   end
+   local
+      structure Graph = gs_4
+      structure Int = gs_1
+      structure List = gs_2
+      ../graphs/start-stop.sml
+   in
+      signature gs_61 = START_STOP_VIEW
+      structure gs_62 = StartStopView
+   end
+   local
+      signature GRAPH_IMPLEMENTATION = gs_29
+      structure Graph = gs_4
+      ../graphs/snap-shot.sml
+   in
+      signature gs_63 = GRAPH_SNAPSHOT
+      functor gs_64 = GraphSnapShot
+   end
+   local
+      signature ABELIAN_GROUP = gs_10
+      signature ABELIAN_GROUP_WITH_INF = gs_11
+      structure Graph = gs_4
+      ../graphs/max-flow.sig
+   in
+      signature gs_65 = MAX_FLOW
+   end
+   local
+      signature ABELIAN_GROUP = gs_10
+      signature ABELIAN_GROUP_WITH_INF = gs_11
+      structure Array = gs_9
+      structure Graph = gs_4
+      structure Int = gs_1
+      structure List = gs_2
+      signature MAX_FLOW = gs_65
+      ../graphs/max-flow.sml
+   in
+      functor gs_66 = MaxFlow
+   end
+   local
+      open l8
+   in
+      structure gs_67 = Array2
+   end
+   local
+      signature ABELIAN_GROUP = gs_10
+      signature ABELIAN_GROUP_WITH_INF = gs_11
+      structure Array = gs_9
+      structure Array2 = gs_67
+      structure Graph = gs_4
+      ../graphs/shortest-paths.sig
+   in
+      signature gs_68 = ALL_PAIRS_SHORTEST_PATHS
+      signature gs_69 = SINGLE_SOURCE_SHORTEST_PATHS
+   end
+   local
+      signature ABELIAN_GROUP = gs_10
+      signature ABELIAN_GROUP_WITH_INF = gs_11
+      signature ALL_PAIRS_SHORTEST_PATHS = gs_68
+      structure Array2 = gs_67
+      structure Graph = gs_4
+      signature SINGLE_SOURCE_SHORTEST_PATHS = gs_69
+      ../graphs/floyd-warshall.sml
+   in
+      functor gs_70 = FloydWarshall
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/graph-is-cyclic.sig
+   in
+      signature gs_71 = GRAPH_IS_CYCLIC
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/update-graph-info.sml
+   in
+      signature gs_72 = UPDATE_GRAPH_INFO
+      structure gs_73 = UpdateGraphInfo
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/graph-cycles.sig
+   in
+      signature gs_74 = GRAPH_SIMPLE_CYCLES
+   end
+   local
+      signature ABELIAN_GROUP = gs_10
+      signature ABELIAN_GROUP_WITH_INF = gs_11
+      signature ALL_PAIRS_SHORTEST_PATHS = gs_68
+      structure Array = gs_9
+      structure Graph = gs_4
+      structure Int = gs_1
+      signature SINGLE_SOURCE_SHORTEST_PATHS = gs_69
+      ../graphs/bellman-ford.sml
+   in
+      functor gs_75 = BellmanFord
+   end
+   local
+      signature GRAPH_TOPOLOGICAL_SORT = gs_40
+      structure Graph = gs_4
+      structure Word8Array = gs_30
+      ../graphs/graph-topsort.sml
+   in
+      structure gs_76 = GraphTopsort
+   end
+   local
+      structure Array = gs_9
+      structure Graph = gs_4
+      structure GraphTopsort = gs_76
+      ../graphs/trans-closure.sml
+   in
+      signature gs_77 = TRANSITIVE_CLOSURE
+      structure gs_78 = TransitiveClosure
+   end
+   local
+      open l29
+   in
+      structure gs_79 = DynArray
+   end
+   local
+      structure DynArray = gs_79
+      signature GRAPH_IMPLEMENTATION = gs_29
+      structure Graph = gs_4
+      structure List = gs_2
+      ../graphs/digraph.sml
+   in
+      functor gs_80 = DirectedGraph
+      structure gs_81 = DirectedGraph
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/wrappers.sml
+   in
+      signature gs_82 = GRAPH_WRAPPERS
+      structure gs_83 = GraphWrappers
+   end
+   local
+      structure BitSet = gs_33
+      signature GRAPH_IS_CYCLIC = gs_71
+      structure Graph = gs_4
+      ../graphs/graph-is-cyclic.sml
+   in
+      structure gs_84 = GraphIsCyclic
+   end
+   local
+      open l4
+   in
+      structure gs_85 = IntHashTable
+   end
+   local
+      structure Graph = gs_4
+      structure IntHashTable = gs_85
+      structure List = gs_2
+      ../graphs/subgraph.sml
+   in
+      signature gs_86 = SUBGRAPH_VIEW
+      structure gs_87 = SubgraphView
+   end
+   local
+      structure Graph = gs_4
+      structure Int = gs_1
+      structure ListMergeSort = gs_0
+      ../graphs/ugraph.sml
+   in
+      signature gs_88 = UNDIRECTED_GRAPH_VIEW
+      structure gs_89 = UndirectedGraphView
+   end
+   local
+      structure Graph = gs_4
+      structure HashArray = gs_56
+      structure List = gs_2
+      structure URef = gs_51
+      ../graphs/graph-minor.sml
+   in
+      signature gs_90 = GRAPH_MINOR_VIEW
+      structure gs_91 = GraphMinorView
+   end
+   local
+      signature ARRAY = gs_13
+      signature GRAPH_IMPLEMENTATION = gs_29
+      structure Graph = gs_4
+      structure List = gs_2
+      ../graphs/udgraph.sml
+   in
+      functor gs_92 = UndirectedGraph
+   end
+   local
+      signature GRAPH = gs_3
+      ../graphs/bigraph.sig
+   in
+      signature gs_93 = BIPARTITE_GRAPH
+   end
+   local
+      structure Graph = gs_4
+      structure HashArray = gs_56
+      signature SUBGRAPH_P_VIEW = gs_57
+      structure Subgraph_P_View = gs_58
+      ../graphs/acyclic-graph.sml
+   in
+      signature gs_94 = ACYCLIC_SUBGRAPH_VIEW
+      structure gs_95 = AcyclicSubgraphView
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/singleton.sml
+   in
+      signature gs_96 = SINGLETON_GRAPH_VIEW
+      structure gs_97 = SingletonGraphView
+   end
+   local
+      signature ABELIAN_GROUP = gs_10
+      signature ABELIAN_GROUP_WITH_INF = gs_11
+      signature ALL_PAIRS_SHORTEST_PATHS = gs_68
+      structure Array = gs_9
+      structure Graph = gs_4
+      functor NodePriorityQueue = gs_15
+      signature SINGLE_SOURCE_SHORTEST_PATHS = gs_69
+      ../graphs/dijkstra.sml
+   in
+      functor gs_98 = Dijkstra
+   end
+   local
+      signature ABELIAN_GROUP = gs_10
+      signature ABELIAN_GROUP_WITH_INF = gs_11
+      signature ALL_PAIRS_SHORTEST_PATHS = gs_68
+      structure Array = gs_9
+      structure Array2 = gs_67
+      functor BellmanFord = gs_75
+      functor Dijkstra = gs_98
+      functor DirectedGraph = gs_80
+      structure DirectedGraph = gs_81
+      structure Graph = gs_4
+      structure HashArray = gs_56
+      signature SINGLE_SOURCE_SHORTEST_PATHS = gs_69
+      signature UNION_GRAPH_VIEW = gs_5
+      structure UnionGraphView = gs_6
+      ../graphs/johnson.sml
+   in
+      functor gs_99 = Johnson
+   end
+   local
+      structure Graph = gs_4
+      ../graphs/matching.sig
+   in
+      signature gs_100 = BIPARTITE_MATCHING
+   end
+   local
+      structure Array = gs_9
+      signature GRAPH_SIMPLE_CYCLES = gs_74
+      structure Graph = gs_4
+      structure GraphSCC = gs_32
+      ../graphs/graph-cycles.sml
+   in
+      structure gs_101 = GraphCycles
+   end
+   local
+      structure Array = gs_9
+      signature BIPARTITE_MATCHING = gs_100
+      structure Graph = gs_4
+      structure List = gs_2
+      ../graphs/matching.sml
+   in
+      structure gs_102 = BipartiteMatching
+   end
+   local
+      ../graphs/closed-semi-ring.sig
+   in
+      signature gs_103 = CLOSED_SEMI_RING
+   end
+in
+   signature ABELIAN_GROUP = gs_10
+   signature ABELIAN_GROUP_WITH_INF = gs_11
+   signature ACYCLIC_SUBGRAPH_VIEW = gs_94
+   signature ALL_PAIRS_SHORTEST_PATHS = gs_68
+   structure AcyclicSubgraphView = gs_95
+   signature BIPARTITE_GRAPH = gs_93
+   signature BIPARTITE_MATCHING = gs_100
+   functor BellmanFord = gs_75
+   structure BipartiteMatching = gs_102
+   signature CLOSED_SEMI_RING = gs_103
+   functor Dijkstra = gs_98
+   functor DirectedGraph = gs_80
+   structure DirectedGraph = gs_81
+   functor FloydWarshall = gs_70
+   signature GRAPH = gs_3
+   signature GRAPH_BICONNECTED_COMPONENTS = gs_38
+   signature GRAPH_BREATH_FIRST_SEARCH = gs_36
+   signature GRAPH_COMBINATIONS = gs_21
+   signature GRAPH_DEPTH_FIRST_SEARCH = gs_34
+   signature GRAPH_IMPLEMENTATION = gs_29
+   signature GRAPH_IS_CYCLIC = gs_71
+   signature GRAPH_MINOR_VIEW = gs_90
+   signature GRAPH_SIMPLE_CYCLES = gs_74
+   signature GRAPH_SNAPSHOT = gs_63
+   signature GRAPH_STRONGLY_CONNECTED_COMPONENTS = gs_31
+   signature GRAPH_TOPOLOGICAL_SORT = gs_40
+   signature GRAPH_WRAPPERS = gs_82
+   structure Graph = gs_4
+   structure GraphBCC = gs_39
+   structure GraphBFS = gs_37
+   structure GraphCombinations = gs_26
+   structure GraphCycles = gs_101
+   structure GraphDFS = gs_35
+   structure GraphIsCyclic = gs_84
+   structure GraphMinorView = gs_91
+   structure GraphSCC = gs_32
+   functor GraphSnapShot = gs_64
+   structure GraphTopsort = gs_76
+   structure GraphWrappers = gs_83
+   signature ISOMORPHIC_GRAPH_VIEW = gs_17
+   structure IsomorphicGraphView = gs_18
+   functor Johnson = gs_99
+   structure Kruskal = gs_55
+   signature MAX_FLOW = gs_65
+   signature MIN_COST_SPANNING_TREE = gs_49
+   signature MIN_CUT = gs_12
+   functor MaxFlow = gs_66
+   functor MinCut = gs_16
+   signature NODE_PARTITION = gs_53
+   signature NODE_PRIORITY_QUEUE = gs_14
+   signature NO_ENTRY_VIEW = gs_44
+   signature NO_EXIT_VIEW = gs_45
+   structure NoEntryView = gs_46
+   structure NoExitView = gs_47
+   structure NodePartition = gs_54
+   functor NodePriorityQueue = gs_15
+   signature PRINT_GRAPH = gs_42
+   structure PrintGraph = gs_43
+   signature READONLY_GRAPH_VIEW = gs_27
+   signature RENAMED_GRAPH_VIEW = gs_24
+   signature REVERSED_GRAPH_VIEW = gs_22
+   structure ReadOnlyGraphView = gs_28
+   structure RenamedGraphView = gs_25
+   structure ReversedGraphView = gs_23
+   signature SINGLETON_GRAPH_VIEW = gs_96
+   signature SINGLE_ENTRY_MULTIPLE_EXIT_VIEW = gs_19
+   signature SINGLE_SOURCE_SHORTEST_PATHS = gs_69
+   signature START_STOP_VIEW = gs_61
+   signature SUBGRAPH_P_VIEW = gs_57
+   signature SUBGRAPH_VIEW = gs_86
+   structure SingleEntryMultipleExit = gs_20
+   structure SingletonGraphView = gs_97
+   structure StartStopView = gs_62
+   structure SubgraphView = gs_87
+   structure Subgraph_P_View = gs_58
+   signature TRACE_SUBGRAPH_VIEW = gs_59
+   signature TRANSITIVE_CLOSURE = gs_77
+   structure TraceView = gs_60
+   structure TransitiveClosure = gs_78
+   signature UNDIRECTED_GRAPH_VIEW = gs_88
+   signature UNION_GRAPH_VIEW = gs_5
+   signature UPDATE_GRAPH_INFO = gs_72
+   functor UndirectedGraph = gs_92
+   structure UndirectedGraphView = gs_89
+   structure UnionGraphView = gs_6
+   structure UpdateGraphInfo = gs_73
+end
+end
+
+end

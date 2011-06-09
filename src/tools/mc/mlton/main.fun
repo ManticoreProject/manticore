@@ -1488,6 +1488,33 @@ fun commandLine (args: string list): unit =
          end
    end
 
+   (* Initialize constants required for the compiler to succeed,
+    * even though we do not use any of this backend information. *)
+   fun init () = let
+       val _ = Control.verbosity := Control.Pass
+       val _ = Control.keepSXML := true
+       val Bits64 = Bytes.toBits (Bytes.fromInt 8)
+       val _ = Control.Target.setSizes
+                   {cint = Bytes.toBits (Bytes.fromInt 4),
+                    cpointer = Bits64,
+                    cptrdiff = Bits64,
+                    csize = Bits64,
+                    header = Bits64,
+                    mplimb = Bits64,
+                    objptr = Bits64,
+                    seqIndex = Bits64}
+       val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/sml"]
+       val libMltonDir= concat["LIB_MLTON_DIR ", LoadPaths.srcDir, "/mlton"]
+       fun handlePath (p) = Control.mlbPathVars := !Control.mlbPathVars @
+                              [case parseMlbPathVar p of
+                                   NONE => Error.bug ("strange mlb path var: " ^ p)
+                                 | SOME v => v]
+       val _ = List.foreach ([smlLibPath, libMltonDir], handlePath)
+   in
+       ()
+   end
+
+
 val commandLine = Process.makeCommandLine commandLine
 
 val main = fn (_, args) => commandLine args

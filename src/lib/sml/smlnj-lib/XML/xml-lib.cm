@@ -1,0 +1,15 @@
+(* xml-lib.cm
+ *
+ * COPYRIGHT (c) 2010 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
+
+library
+
+  $/basis.cm
+
+is
+
+  signature XML
+  structure XML
+

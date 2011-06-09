@@ -1,0 +1,298 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l5 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb $(SML_LIB)/basis/unsafe.mlb
+    end
+  basis l46 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l35 = 
+    bas
+      (* $/ml-yacc-lib.cm ====> *) $(SML_LIB)/mlyacc-lib/mlyacc-lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l5
+   in
+      structure gs_0 = General
+   end
+   local
+      open l5
+   in
+      structure gs_1 = String
+   end
+   local
+      open l5
+   in
+      structure gs_2 = List
+   end
+   local
+      open l5
+   in
+      structure gs_3 = Char
+   end
+   local
+      html-sig.sml
+   in
+      signature gs_4 = HTML
+   end
+   local
+      structure Char = gs_3
+      structure General = gs_0
+      signature HTML = gs_4
+      structure List = gs_2
+      structure String = gs_1
+      html.sml
+   in
+      structure gs_5 = HTML
+   end
+   local
+      structure HTML = gs_5
+      make-html.sml
+   in
+      structure gs_6 = MakeHTML
+   end
+   local
+      structure HTML = gs_5
+      html-defaults.sml
+   in
+      structure gs_7 = HTMLDefaults
+   end
+   local
+      html-error-sig.sml
+   in
+      signature gs_8 = HTML_ERROR
+   end
+   local
+      open l35
+   in
+      functor gs_9 = Join
+      functor gs_10 = JoinWithArg
+   end
+   local
+      open l35
+   in
+      structure gs_11 = LrParser
+   end
+   local
+      open l5
+   in
+      structure gs_12 = TextIO
+   end
+   local
+      open l46
+   in
+      structure gs_13 = Format
+   end
+   local
+      structure Format = gs_13
+      structure HTML = gs_5
+      signature HTML_ERROR = gs_8
+      structure List = gs_2
+      check-html-fn.sml
+   in
+      functor gs_14 = CheckHTMLFn
+   end
+   local
+      open l5
+   in
+      structure gs_15 = Unsafe
+   end
+   local
+      open l5
+   in
+      structure gs_16 = CharVectorSlice
+   end
+   local
+      open l5
+   in
+      structure gs_17 = Vector
+   end
+   local
+      open l5
+   in
+      structure gs_18 = Substring
+   end
+   local
+      open l46
+   in
+      functor gs_19 = HashTableFn
+   end
+   local
+      open l46
+   in
+      structure gs_20 = HashString
+   end
+   local
+      html-attr-vals.sml
+   in
+      structure gs_21 = HTMLAttrVals
+   end
+   local
+      structure HTML = gs_5
+      structure HTMLAttrVals = gs_21
+      html-attrs-sig.sml
+   in
+      signature gs_22 = HTML_ATTRS
+   end
+   local
+      open l35
+   in
+      signature gs_23 = ARG_LEXER
+      signature gs_24 = ARG_PARSER
+      signature gs_25 = LEXER
+      signature gs_26 = LR_PARSER
+      signature gs_27 = LR_TABLE
+      signature gs_28 = PARSER
+      signature gs_29 = PARSER_DATA
+      signature gs_30 = STREAM
+      signature gs_31 = TOKEN
+   end
+   local
+      signature ARG_LEXER = gs_23
+      signature ARG_PARSER = gs_24
+      structure HTMLAttrVals = gs_21
+      signature LEXER = gs_25
+      signature LR_PARSER = gs_26
+      signature LR_TABLE = gs_27
+      signature PARSER = gs_28
+      signature PARSER_DATA = gs_29
+      signature STREAM = gs_30
+      signature TOKEN = gs_31
+      html-gram.sig
+   in
+      signature gs_32 = HTML_LRVALS
+      signature gs_33 = HTML_TOKENS
+   end
+   local
+      structure Char = gs_3
+      signature HTML_ATTRS = gs_22
+      signature HTML_ERROR = gs_8
+      signature HTML_LRVALS = gs_32
+      signature HTML_TOKENS = gs_33
+      structure HashString = gs_20
+      functor HashTableFn = gs_19
+      structure List = gs_2
+      structure String = gs_1
+      structure Substring = gs_18
+      html-elements-fn.sml
+   in
+      functor gs_34 = HTMLElementsFn
+   end
+   local
+      structure Char = gs_3
+      structure CharVectorSlice = gs_16
+      functor HTMLElementsFn = gs_34
+      signature HTML_ATTRS = gs_22
+      signature HTML_ERROR = gs_8
+      signature HTML_LRVALS = gs_32
+      signature HTML_TOKENS = gs_33
+      structure List = gs_2
+      structure String = gs_1
+      structure Unsafe = gs_15
+      structure Vector = gs_17
+      html-lex.sml
+   in
+      functor gs_35 = HTMLLexFn
+   end
+   local
+      open l5
+   in
+      structure gs_36 = Array
+   end
+   local
+      signature ARG_LEXER = gs_23
+      signature ARG_PARSER = gs_24
+      structure Array = gs_36
+      structure Char = gs_3
+      structure HTML = gs_5
+      structure HTMLAttrVals = gs_21
+      signature HTML_ATTRS = gs_22
+      signature HTML_LRVALS = gs_32
+      signature HTML_TOKENS = gs_33
+      signature LEXER = gs_25
+      signature LR_PARSER = gs_26
+      signature LR_TABLE = gs_27
+      structure List = gs_2
+      signature PARSER = gs_28
+      signature PARSER_DATA = gs_29
+      signature STREAM = gs_30
+      structure String = gs_1
+      signature TOKEN = gs_31
+      html-gram.sml
+   in
+      functor gs_37 = HTMLLrValsFn
+   end
+   local
+      open l5
+   in
+      structure gs_38 = Int
+   end
+   local
+      structure Array = gs_36
+      structure Char = gs_3
+      structure HTML = gs_5
+      structure HTMLAttrVals = gs_21
+      signature HTML_ATTRS = gs_22
+      signature HTML_ERROR = gs_8
+      structure HashString = gs_20
+      functor HashTableFn = gs_19
+      structure Int = gs_38
+      structure List = gs_2
+      structure String = gs_1
+      html-attrs-fn.sml
+   in
+      functor gs_39 = HTMLAttrsFn
+   end
+   local
+      functor CheckHTMLFn = gs_14
+      structure HTML = gs_5
+      functor HTMLAttrsFn = gs_39
+      functor HTMLLexFn = gs_35
+      functor HTMLLrValsFn = gs_37
+      signature HTML_ERROR = gs_8
+      functor Join = gs_9
+      functor JoinWithArg = gs_10
+      structure LrParser = gs_11
+      structure TextIO = gs_12
+      html-parser-fn.sml
+   in
+      functor gs_40 = HTMLParserFn
+   end
+   local
+      open l46
+   in
+      structure gs_41 = ListFormat
+   end
+   local
+      structure Format = gs_13
+      structure HTML = gs_5
+      structure Int = gs_38
+      structure List = gs_2
+      structure ListFormat = gs_41
+      pr-html.sml
+   in
+      structure gs_42 = PrHTML
+   end
+in
+   signature HTML = gs_4
+   structure HTML = gs_5
+   structure HTMLDefaults = gs_7
+   functor HTMLParserFn = gs_40
+   signature HTML_ERROR = gs_8
+   structure MakeHTML = gs_6
+   structure PrHTML = gs_42
+end
+end
+
+end

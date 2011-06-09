@@ -1,0 +1,61 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l4 = 
+    bas
+      (* $MLRISC.cm(=(proxyLib.cm):.)/MLRISC.cm =??=> *) MLRISC.mlb
+    end
+  basis l14 = 
+    bas
+      (* $Graphs.cm(=(proxyLib.cm):.)/Graphs.cm =??=> *) Graphs.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      signature gs_0 = INSTRUCTIONS
+   end
+   local
+      signature INSTRUCTIONS = gs_0
+      ../instructions/peephole.sig
+   in
+      signature gs_1 = PEEPHOLE
+   end
+   local
+      open l4
+   in
+      signature gs_2 = CFG_OPTIMIZATION
+   end
+   local
+      open l14
+   in
+      structure gs_3 = Graph
+   end
+   local
+      open l4
+   in
+      signature gs_4 = CONTROL_FLOW_GRAPH
+   end
+   local
+      signature CFG_OPTIMIZATION = gs_2
+      signature CONTROL_FLOW_GRAPH = gs_4
+      structure Graph = gs_3
+      signature PEEPHOLE = gs_1
+      ../flowgraph/cfgPeephole.sml
+   in
+      functor gs_5 = CFGPeephole
+   end
+in
+   functor CFGPeephole = gs_5
+   signature PEEPHOLE = gs_1
+end
+end
+
+end

@@ -17,5 +17,5 @@ signature MAIN =
 
       val main: string * string list -> OS.Process.status
       val mainWrapped: unit -> 'a
-      val commandLine: string list -> Process.Status.t
+      val init: unit -> unit
    end

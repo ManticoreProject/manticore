@@ -4,7 +4,7 @@ struct
     structure Main = Main()
 
     (* Initialize MLton constants with default values*)
-    val _ = Main.commandLine []
+    val _ = Main.init ()
                         
     fun makeFileDummy f = fn () =>
         {file = f,

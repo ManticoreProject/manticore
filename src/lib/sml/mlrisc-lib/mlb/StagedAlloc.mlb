@@ -1,0 +1,91 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l11 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb $(SML_LIB)/basis/unsafe.mlb
+    end
+  basis l28 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      ../staged-alloc/conventions/c-loc-kind.sml
+   in
+      structure gs_0 = CLocKind
+   end
+   local
+      ../staged-alloc/allocator/staged-allocation-sig.sml
+   in
+      signature gs_1 = STAGED_ALLOCATION
+   end
+   local
+      open l11
+   in
+      structure gs_2 = List
+   end
+   local
+      open l11
+   in
+      structure gs_3 = Int
+   end
+   local
+      structure CLocKind = gs_0
+      structure Int = gs_3
+      structure List = gs_2
+      signature STAGED_ALLOCATION = gs_1
+      ../staged-alloc/conventions/sparc-c-fn.sml
+   in
+      functor gs_4 = SparcCConventionFn
+   end
+   local
+      structure CLocKind = gs_0
+      structure Int = gs_3
+      structure List = gs_2
+      signature STAGED_ALLOCATION = gs_1
+      ../staged-alloc/conventions/x86-c-fn.sml
+   in
+      functor gs_5 = X86CConventionFn
+   end
+   local
+      structure CLocKind = gs_0
+      structure Int = gs_3
+      structure List = gs_2
+      signature STAGED_ALLOCATION = gs_1
+      ../staged-alloc/conventions/x86-64-c-fn.sml
+   in
+      functor gs_6 = X86_64CConventionFn
+   end
+   local
+      open l28
+   in
+      structure gs_7 = IntBinaryMap
+   end
+   local
+      structure Int = gs_3
+      structure IntBinaryMap = gs_7
+      structure List = gs_2
+      signature STAGED_ALLOCATION = gs_1
+      ../staged-alloc/allocator/staged-allocation-fn.sml
+   in
+      functor gs_8 = StagedAllocationFn
+   end
+in
+   structure CLocKind = gs_0
+   signature STAGED_ALLOCATION = gs_1
+   functor SparcCConventionFn = gs_4
+   functor StagedAllocationFn = gs_8
+   functor X86CConventionFn = gs_5
+   functor X86_64CConventionFn = gs_6
+end
+end
+
+end

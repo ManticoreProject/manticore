@@ -1,0 +1,888 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l4 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb 
+    end
+  basis l24 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l71 = 
+    bas
+      (* $/pp-lib.cm ====> *) $(SML_LIB)/smlnj-lib/PP/pp-lib.mlb
+    end
+  basis l96 = 
+    bas
+      (* $/ml-yacc-lib.cm ====> *) $(SML_LIB)/mlyacc-lib/mlyacc-lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = TextIO
+   end
+   local
+      variants/type-check-control-sig.sml
+   in
+      signature gs_1 = TYPECHECKCONTROL
+   end
+   local
+      variants/parse-control-sig.sml
+   in
+      signature gs_2 = PARSECONTROL
+   end
+   local
+      signature PARSECONTROL = gs_2
+      signature TYPECHECKCONTROL = gs_1
+      variants/config-sig.sml
+   in
+      signature gs_3 = CONFIG
+   end
+   local
+      signature CONFIG = gs_3
+      signature PARSECONTROL = gs_2
+      signature TYPECHECKCONTROL = gs_1
+      structure TextIO = gs_0
+      variants/ansic/config.sml
+   in
+      structure gs_4 = Config
+   end
+   local
+      open l24
+   in
+      functor gs_5 = HashTableFn
+   end
+   local
+      ast/uidtabimp-sig.sml
+   in
+      signature gs_6 = UIDTABIMP
+   end
+   local
+      open l4
+   in
+      structure gs_7 = Word
+   end
+   local
+      structure Word = gs_7
+      ast/uid-sig.sml
+   in
+      signature gs_8 = UID
+   end
+   local
+      functor HashTableFn = gs_5
+      signature UID = gs_8
+      signature UIDTABIMP = gs_6
+      ast/uidtabimp-fn.sml
+   in
+      functor gs_9 = UidtabImpFn
+   end
+   local
+      open l4
+   in
+      structure gs_10 = Int
+   end
+   local
+      structure Int = gs_10
+      signature UID = gs_8
+      structure Word = gs_7
+      ast/uid-fn.sml
+   in
+      functor gs_11 = UidFn
+   end
+   local
+      signature UID = gs_8
+      functor UidFn = gs_11
+      ast/aid.sml
+   in
+      structure gs_12 = Aid
+   end
+   local
+      structure Aid = gs_12
+      functor UidtabImpFn = gs_9
+      ast/aidtab.sml
+   in
+      structure gs_13 = Aidtab
+   end
+   local
+      open l24
+   in
+      structure gs_14 = Format
+   end
+   local
+      open l4
+   in
+      structure gs_15 = String
+   end
+   local
+      parser/util/sourcemap-sig.sml
+   in
+      signature gs_16 = SOURCE_MAP
+   end
+   local
+      structure Config = gs_4
+      structure Format = gs_14
+      structure Int = gs_10
+      signature SOURCE_MAP = gs_16
+      structure String = gs_15
+      parser/util/sourcemap.sml
+   in
+      structure gs_17 = SourceMap
+   end
+   local
+      open l71
+   in
+      functor gs_18 = PPStreamFn
+   end
+   local
+      open l71
+   in
+      structure gs_19 = StringToken
+   end
+   local
+      open l4
+   in
+      structure gs_20 = StringCvt
+   end
+   local
+      open l4
+   in
+      structure gs_21 = List
+   end
+   local
+      structure List = gs_21
+      functor PPStreamFn = gs_18
+      structure String = gs_15
+      structure StringCvt = gs_20
+      structure StringToken = gs_19
+      parser/util/old-pp.sml
+   in
+      signature gs_22 = OLD_PRETTYPRINT
+      structure gs_23 = OldPrettyPrint
+   end
+   local
+      structure Format = gs_14
+      signature OLD_PRETTYPRINT = gs_22
+      structure OldPrettyPrint = gs_23
+      structure SourceMap = gs_17
+      structure TextIO = gs_0
+      parser/util/error-sig.sml
+   in
+      signature gs_24 = ERROR
+   end
+   local
+      signature ERROR = gs_24
+      structure Format = gs_14
+      signature OLD_PRETTYPRINT = gs_22
+      structure OldPrettyPrint = gs_23
+      structure SourceMap = gs_17
+      structure TextIO = gs_0
+      parser/util/error.sml
+   in
+      structure gs_25 = Error
+   end
+   local
+      open l96
+   in
+      functor gs_26 = Join
+      functor gs_27 = JoinWithArg
+   end
+   local
+      open l96
+   in
+      structure gs_28 = LrParser
+   end
+   local
+      open l4
+   in
+      structure gs_29 = LargeInt
+   end
+   local
+      parser/extensions/c/parse-tree-ext.sml
+   in
+      structure gs_30 = ParseTreeExt
+   end
+   local
+      structure LargeInt = gs_29
+      structure ParseTreeExt = gs_30
+      structure SourceMap = gs_17
+      parser/parse-tree-sig.sml
+   in
+      signature gs_31 = PARSETREE
+   end
+   local
+      structure LargeInt = gs_29
+      signature PARSETREE = gs_31
+      structure ParseTreeExt = gs_30
+      structure SourceMap = gs_17
+      parser/parse-tree.sml
+   in
+      structure gs_32 = ParseTree
+   end
+   local
+      structure Error = gs_25
+      structure ParseTree = gs_32
+      parser/parser-sig.sml
+   in
+      signature gs_33 = PARSER
+   end
+   local
+      open l4
+   in
+      structure gs_34 = IO
+   end
+   local
+      open l4
+   in
+      structure gs_35 = TextPrimIO
+   end
+   local
+      open l4
+   in
+      structure gs_36 = IntInf
+   end
+   local
+      open l4
+   in
+      structure gs_37 = CharVector
+   end
+   local
+      open l4
+   in
+      structure gs_38 = Vector
+   end
+   local
+      open l4
+   in
+      structure gs_39 = Real
+   end
+   local
+      open l4
+   in
+      structure gs_40 = Char
+   end
+   local
+      open l24
+   in
+      structure gs_41 = AtomTable
+   end
+   local
+      open l24
+   in
+      structure gs_42 = Atom
+   end
+   local
+      structure Atom = gs_42
+      structure AtomTable = gs_41
+      structure Config = gs_4
+      parser/grammar/tdefs.sml
+   in
+      signature gs_43 = TYPEDEFS
+      structure gs_44 = TypeDefs
+   end
+   local
+      open l96
+   in
+      signature gs_45 = ARG_LEXER
+      signature gs_46 = ARG_PARSER
+      signature gs_47 = LEXER
+      signature gs_48 = LR_PARSER
+      signature gs_49 = LR_TABLE
+      signature gs_50 = PARSER
+      signature gs_51 = PARSER_DATA
+      signature gs_52 = STREAM
+      signature gs_53 = TOKEN
+   end
+   local
+      signature ARG_LEXER = gs_45
+      signature ARG_PARSER = gs_46
+      signature LEXER = gs_47
+      signature LR_PARSER = gs_48
+      signature LR_TABLE = gs_49
+      structure LargeInt = gs_29
+      signature PARSER = gs_50
+      signature PARSER_DATA = gs_51
+      signature STREAM = gs_52
+      signature TOKEN = gs_53
+      parser/grammar/c.grm.sig
+   in
+      signature gs_54 = C_LRVALS
+      signature gs_55 = C_TOKENS
+   end
+   local
+      structure Atom = gs_42
+      structure AtomTable = gs_41
+      signature C_LRVALS = gs_54
+      signature C_TOKENS = gs_55
+      structure Config = gs_4
+      signature TYPEDEFS = gs_43
+      structure TypeDefs = gs_44
+      parser/grammar/tokentable.sml
+   in
+      signature gs_56 = TOKENTABLE
+      functor gs_57 = TokenTable
+   end
+   local
+      signature C_LRVALS = gs_54
+      signature C_TOKENS = gs_55
+      structure Char = gs_40
+      structure CharVector = gs_37
+      structure IO = gs_34
+      structure Int = gs_10
+      structure IntInf = gs_36
+      structure LargeInt = gs_29
+      structure Real = gs_39
+      structure SourceMap = gs_17
+      structure String = gs_15
+      structure StringCvt = gs_20
+      signature TOKENTABLE = gs_56
+      structure TextIO = gs_0
+      structure TextPrimIO = gs_35
+      functor TokenTable = gs_57
+      structure Vector = gs_38
+      parser/grammar/c.lex.sml
+   in
+      functor gs_58 = CLexFun
+   end
+   local
+      open l4
+   in
+      structure gs_59 = Array
+   end
+   local
+      signature ARG_LEXER = gs_45
+      signature ARG_PARSER = gs_46
+      structure Array = gs_59
+      signature C_LRVALS = gs_54
+      signature C_TOKENS = gs_55
+      structure Char = gs_40
+      structure Error = gs_25
+      signature LEXER = gs_47
+      signature LR_PARSER = gs_48
+      signature LR_TABLE = gs_49
+      structure LargeInt = gs_29
+      structure List = gs_21
+      signature PARSER = gs_50
+      signature PARSER_DATA = gs_51
+      structure ParseTree = gs_32
+      signature STREAM = gs_52
+      structure SourceMap = gs_17
+      structure String = gs_15
+      signature TOKEN = gs_53
+      signature TYPEDEFS = gs_43
+      structure TypeDefs = gs_44
+      parser/grammar/c.grm.sml
+   in
+      functor gs_60 = LrValsFun
+   end
+   local
+      functor CLexFun = gs_58
+      structure Error = gs_25
+      functor Join = gs_26
+      functor JoinWithArg = gs_27
+      structure LrParser = gs_28
+      functor LrValsFun = gs_60
+      signature PARSER = gs_33
+      structure SourceMap = gs_17
+      signature TOKENTABLE = gs_56
+      signature TYPEDEFS = gs_43
+      structure TextIO = gs_0
+      functor TokenTable = gs_57
+      structure TypeDefs = gs_44
+      parser/parser.sml
+   in
+      structure gs_61 = Parser
+   end
+   local
+      open l24
+   in
+      structure gs_62 = HashString
+   end
+   local
+      signature UID = gs_8
+      functor UidFn = gs_11
+      ast/tid.sml
+   in
+      structure gs_63 = Tid
+   end
+   local
+      structure Tid = gs_63
+      ast/symbol-sig.sml
+   in
+      signature gs_64 = SYMBOL
+   end
+   local
+      structure HashString = gs_62
+      structure Int = gs_10
+      signature SYMBOL = gs_64
+      structure String = gs_15
+      structure Tid = gs_63
+      structure Word = gs_7
+      ast/symbol.sml
+   in
+      structure gs_65 = Symbol
+   end
+   local
+      signature UID = gs_8
+      functor UidFn = gs_11
+      ast/pid.sml
+   in
+      structure gs_66 = Pid
+   end
+   local
+      ast/extensions/c/ast-ext.sml
+   in
+      structure gs_67 = AstExt
+   end
+   local
+      structure Aid = gs_12
+      structure AstExt = gs_67
+      structure LargeInt = gs_29
+      structure Pid = gs_66
+      structure SourceMap = gs_17
+      structure Symbol = gs_65
+      structure Tid = gs_63
+      ast/ast-sig.sml
+   in
+      signature gs_68 = AST
+   end
+   local
+      signature AST = gs_68
+      structure Aid = gs_12
+      structure AstExt = gs_67
+      structure LargeInt = gs_29
+      structure Pid = gs_66
+      structure SourceMap = gs_17
+      structure Symbol = gs_65
+      structure Tid = gs_63
+      ast/ast.sml
+   in
+      structure gs_69 = Ast
+   end
+   local
+      structure Ast = gs_69
+      structure LargeInt = gs_29
+      structure Pid = gs_66
+      structure SourceMap = gs_17
+      structure Symbol = gs_65
+      structure Tid = gs_63
+      ast/bindings.sml
+   in
+      structure gs_70 = Bindings
+   end
+   local
+      open l24
+   in
+      functor gs_71 = BinaryMapFn
+   end
+   local
+      open l24
+   in
+      signature gs_72 = ORD_MAP
+   end
+   local
+      structure Tid = gs_63
+      functor UidtabImpFn = gs_9
+      ast/tidtab.sml
+   in
+      structure gs_73 = Tidtab
+   end
+   local
+      structure Aidtab = gs_13
+      structure Ast = gs_69
+      structure Bindings = gs_70
+      structure Tidtab = gs_73
+      ast/tables.sml
+   in
+      structure gs_74 = Tables
+   end
+   local
+      structure Aid = gs_12
+      structure Ast = gs_69
+      structure Bindings = gs_70
+      structure Error = gs_25
+      structure LargeInt = gs_29
+      signature ORD_MAP = gs_72
+      structure SourceMap = gs_17
+      structure Symbol = gs_65
+      structure Tables = gs_74
+      structure Tid = gs_63
+      ast/state-sig.sml
+   in
+      signature gs_75 = STATE
+   end
+   local
+      structure Aid = gs_12
+      structure Aidtab = gs_13
+      structure Ast = gs_69
+      functor BinaryMapFn = gs_71
+      structure Bindings = gs_70
+      structure Error = gs_25
+      structure LargeInt = gs_29
+      structure List = gs_21
+      structure Pid = gs_66
+      signature STATE = gs_75
+      structure SourceMap = gs_17
+      structure Symbol = gs_65
+      structure Tables = gs_74
+      structure Tid = gs_63
+      structure Tidtab = gs_73
+      ast/state.sml
+   in
+      structure gs_76 = State
+   end
+   local
+      ast/sizes-sig.sml
+   in
+      signature gs_77 = SIZES
+   end
+   local
+      signature SIZES = gs_77
+      ast/sizes.sml
+   in
+      structure gs_78 = Sizes
+   end
+   local
+      structure Ast = gs_69
+      structure Bindings = gs_70
+      structure Sizes = gs_78
+      structure State = gs_76
+      structure Tables = gs_74
+      structure TextIO = gs_0
+      structure Tidtab = gs_73
+      ast/parse-to-ast-sig.sml
+   in
+      signature gs_79 = PARSE_TO_AST
+   end
+   local
+      open l4
+   in
+      structure gs_80 = ListPair
+   end
+   local
+      open l4
+   in
+      structure gs_81 = Option
+   end
+   local
+      structure Ast = gs_69
+      structure Bindings = gs_70
+      structure Error = gs_25
+      structure ParseTree = gs_32
+      structure Sizes = gs_78
+      structure State = gs_76
+      structure Tables = gs_74
+      structure Tidtab = gs_73
+      ast/build-ast-sig.sml
+   in
+      signature gs_82 = BUILD_AST
+   end
+   local
+      structure Ast = gs_69
+      structure ParseTree = gs_32
+      structure ParseTreeExt = gs_30
+      structure State = gs_76
+      ast/cnv-ext-sig.sml
+   in
+      signature gs_83 = CNVEXT
+   end
+   local
+      structure Ast = gs_69
+      signature CNVEXT = gs_83
+      structure ParseTree = gs_32
+      structure ParseTreeExt = gs_30
+      structure State = gs_76
+      ast/extensions/c/cnv-ext.sml
+   in
+      structure gs_84 = CnvExt
+   end
+   local
+      structure Ast = gs_69
+      structure Bindings = gs_70
+      structure Pid = gs_66
+      structure Symbol = gs_65
+      ast/simplify-assign-ops.sml
+   in
+      structure gs_85 = SimplifyAssignOps
+   end
+   local
+      structure Ast = gs_69
+      structure Bindings = gs_70
+      signature OLD_PRETTYPRINT = gs_22
+      structure OldPrettyPrint = gs_23
+      structure Tables = gs_74
+      structure Tid = gs_63
+      ast/pp/pp-ast-sig.sml
+   in
+      signature gs_86 = PP_AST
+   end
+   local
+      open l4
+   in
+      structure gs_87 = Int32
+   end
+   local
+      structure Ast = gs_69
+      structure Int = gs_10
+      structure Int32 = gs_87
+      structure LargeInt = gs_29
+      signature OLD_PRETTYPRINT = gs_22
+      structure OldPrettyPrint = gs_23
+      structure Pid = gs_66
+      structure Real = gs_39
+      structure String = gs_15
+      structure Symbol = gs_65
+      structure Tables = gs_74
+      structure TextIO = gs_0
+      structure Tid = gs_63
+      structure Tidtab = gs_73
+      ast/pp/pp-lib.sml
+   in
+      structure gs_88 = PPLib
+   end
+   local
+      structure Ast = gs_69
+      structure AstExt = gs_67
+      signature OLD_PRETTYPRINT = gs_22
+      structure OldPrettyPrint = gs_23
+      structure Tables = gs_74
+      ast/pp/pp-ast-ext-sig.sml
+   in
+      signature gs_89 = PPASTEXT
+   end
+   local
+      signature PPASTEXT = gs_89
+      ast/extensions/c/pp-ast-ext-fn.sml
+   in
+      functor gs_90 = PPAstExtFn
+   end
+   local
+      structure Ast = gs_69
+      signature OLD_PRETTYPRINT = gs_22
+      structure OldPrettyPrint = gs_23
+      structure Tables = gs_74
+      ast/pp/pp-ast-adornment-sig.sml
+   in
+      signature gs_91 = PPASTADORNMENT
+   end
+   local
+      structure Ast = gs_69
+      structure Bindings = gs_70
+      structure Int = gs_10
+      structure LargeInt = gs_29
+      structure List = gs_21
+      signature OLD_PRETTYPRINT = gs_22
+      structure OldPrettyPrint = gs_23
+      structure Option = gs_81
+      signature PPASTADORNMENT = gs_91
+      functor PPAstExtFn = gs_90
+      structure PPLib = gs_88
+      signature PP_AST = gs_86
+      structure Pid = gs_66
+      structure SourceMap = gs_17
+      structure Tid = gs_63
+      structure Tidtab = gs_73
+      ast/pp/pp-ast-fn.sml
+   in
+      functor gs_92 = PPAstFn
+   end
+   local
+      structure Ast = gs_69
+      signature PPASTADORNMENT = gs_91
+      functor PPAstFn = gs_92
+      ast/pp/pp-ast.sml
+   in
+      structure gs_93 = PPAst
+   end
+   local
+      structure Ast = gs_69
+      ast/ctype-eq.sml
+   in
+      structure gs_94 = CTypeEq
+   end
+   local
+      structure Ast = gs_69
+      structure Sizes = gs_78
+      structure Tables = gs_74
+      ast/sizeof-sig.sml
+   in
+      signature gs_95 = SIZEOF
+   end
+   local
+      structure Ast = gs_69
+      structure LargeInt = gs_29
+      structure Tables = gs_74
+      ast/type-util-sig.sml
+   in
+      signature gs_96 = TYPE_UTIL
+   end
+   local
+      structure Ast = gs_69
+      structure Bindings = gs_70
+      structure Config = gs_4
+      structure Int = gs_10
+      structure List = gs_21
+      structure PPAst = gs_93
+      structure PPLib = gs_88
+      structure Pid = gs_66
+      structure Symbol = gs_65
+      signature TYPE_UTIL = gs_96
+      structure Tables = gs_74
+      structure Tid = gs_63
+      structure Tidtab = gs_73
+      ast/type-util.sml
+   in
+      structure gs_97 = TypeUtil
+   end
+   local
+      structure Ast = gs_69
+      functor BinaryMapFn = gs_71
+      structure Bindings = gs_70
+      structure Config = gs_4
+      structure Int = gs_10
+      structure LargeInt = gs_29
+      structure List = gs_21
+      structure Pid = gs_66
+      signature SIZEOF = gs_95
+      structure Sizes = gs_78
+      structure Tables = gs_74
+      structure TextIO = gs_0
+      structure Tid = gs_63
+      structure Tidtab = gs_73
+      structure TypeUtil = gs_97
+      ast/sizeof.sml
+   in
+      structure gs_98 = Sizeof
+   end
+   local
+      structure ParseTree = gs_32
+      structure Real = gs_39
+      structure Tid = gs_63
+      ast/anonymous-structs.sml
+   in
+      structure gs_99 = AnonymousStructs
+      structure gs_100 = TyEq
+   end
+   local
+      structure Aid = gs_12
+      structure Ast = gs_69
+      structure Bindings = gs_70
+      structure Tid = gs_63
+      ast/initializer-normalizer-sig.sml
+   in
+      signature gs_101 = INITIALIZER_NORMALIZER
+   end
+   local
+      structure Aid = gs_12
+      structure Ast = gs_69
+      structure Bindings = gs_70
+      signature INITIALIZER_NORMALIZER = gs_101
+      structure LargeInt = gs_29
+      structure SourceMap = gs_17
+      structure String = gs_15
+      structure Tid = gs_63
+      ast/initializer-normalizer.sml
+   in
+      structure gs_102 = InitializerNormalizer
+   end
+   local
+      structure Aid = gs_12
+      structure Aidtab = gs_13
+      structure AnonymousStructs = gs_99
+      structure Ast = gs_69
+      signature BUILD_AST = gs_82
+      functor BinaryMapFn = gs_71
+      structure Bindings = gs_70
+      structure CTypeEq = gs_94
+      structure CnvExt = gs_84
+      structure Config = gs_4
+      structure Error = gs_25
+      structure InitializerNormalizer = gs_102
+      structure Int = gs_10
+      structure LargeInt = gs_29
+      structure List = gs_21
+      structure ListPair = gs_80
+      structure Option = gs_81
+      structure PPAst = gs_93
+      structure PPLib = gs_88
+      structure ParseTree = gs_32
+      structure ParseTreeExt = gs_30
+      structure Pid = gs_66
+      structure SimplifyAssignOps = gs_85
+      structure Sizeof = gs_98
+      structure Sizes = gs_78
+      structure SourceMap = gs_17
+      structure State = gs_76
+      structure String = gs_15
+      structure Symbol = gs_65
+      structure Tables = gs_74
+      structure TextIO = gs_0
+      structure Tid = gs_63
+      structure Tidtab = gs_73
+      structure TyEq = gs_100
+      structure TypeUtil = gs_97
+      structure Word = gs_7
+      ast/build-ast.sml
+   in
+      structure gs_103 = BuildAst
+   end
+   local
+      structure Ast = gs_69
+      structure Bindings = gs_70
+      structure BuildAst = gs_103
+      structure Error = gs_25
+      signature PARSE_TO_AST = gs_79
+      structure PPAst = gs_93
+      structure PPLib = gs_88
+      structure Parser = gs_61
+      structure Sizes = gs_78
+      structure State = gs_76
+      structure Tables = gs_74
+      structure TextIO = gs_0
+      structure Tidtab = gs_73
+      ast/parse-to-ast.sml
+   in
+      structure gs_104 = ParseToAst
+   end
+in
+   signature AST = gs_68
+   structure Aidtab = gs_13
+   structure Ast = gs_69
+   structure Bindings = gs_70
+   signature CONFIG = gs_3
+   structure Config = gs_4
+   signature PARSECONTROL = gs_2
+   signature PARSER = gs_33
+   signature PARSETREE = gs_31
+   signature PARSE_TO_AST = gs_79
+   structure PPAst = gs_93
+   signature PP_AST = gs_86
+   structure ParseToAst = gs_104
+   structure ParseTree = gs_32
+   structure Parser = gs_61
+   structure Pid = gs_66
+   signature SOURCE_MAP = gs_16
+   structure Sizeof = gs_98
+   structure Sizes = gs_78
+   structure SourceMap = gs_17
+   structure State = gs_76
+   structure Symbol = gs_65
+   signature TYPECHECKCONTROL = gs_1
+   structure Tables = gs_74
+   structure Tid = gs_63
+   structure Tidtab = gs_73
+   structure TypeUtil = gs_97
+   signature UID = gs_8
+   signature UIDTABIMP = gs_6
+end
+end
+
+end

@@ -1,0 +1,125 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l8 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb $(SML_LIB)/basis/unsafe.mlb
+    end
+  basis l29 = 
+    bas
+      (* $MLRISC.cm(=(proxyLib.cm):.)/MLRISC.cm =??=> *) MLRISC.mlb
+    end
+  basis l19 = 
+    bas
+      (* $StagedAlloc.cm(=(proxyLib.cm):.)/StagedAlloc.cm =??=> *) StagedAlloc.mlb
+    end
+  basis l4 = 
+    bas
+      (* $CCall.cm(=(proxyLib.cm):.)/CCall.cm =??=> *) CCall.mlb
+    end
+  basis l34 = 
+    bas
+      (* $AMD64.cm(=(proxyLib.cm):.)/AMD64.cm =??=> *) AMD64.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = CType
+   end
+   local
+      open l8
+   in
+      structure gs_1 = Word
+   end
+   local
+      open l8
+   in
+      structure gs_2 = Int
+   end
+   local
+      structure CType = gs_0
+      structure Int = gs_2
+      structure Word = gs_1
+      ../c-call/archs/x86-64-c-sizes.sml
+   in
+      structure gs_3 = CSizes
+   end
+   local
+      open l19
+   in
+      functor gs_4 = X86_64CConventionFn
+   end
+   local
+      open l4
+   in
+      functor gs_5 = CCallGenFn
+   end
+   local
+      open l19
+   in
+      functor gs_6 = StagedAllocationFn
+   end
+   local
+      open l29
+   in
+      structure gs_7 = CellsBasis
+   end
+   local
+      open l34
+   in
+      signature gs_8 = AMD64CELLS
+      structure gs_9 = AMD64Cells
+   end
+   local
+      open l19
+   in
+      structure gs_10 = CLocKind
+   end
+   local
+      open l8
+   in
+      structure gs_11 = String
+   end
+   local
+      open l8
+   in
+      structure gs_12 = List
+   end
+   local
+      open l29
+   in
+      signature gs_13 = MLTREE
+   end
+   local
+      signature AMD64CELLS = gs_8
+      structure AMD64Cells = gs_9
+      functor CCallGenFn = gs_5
+      structure CLocKind = gs_10
+      structure CSizes = gs_3
+      structure CType = gs_0
+      structure CellsBasis = gs_7
+      structure Int = gs_2
+      structure List = gs_12
+      signature MLTREE = gs_13
+      functor StagedAllocationFn = gs_6
+      structure String = gs_11
+      functor X86_64CConventionFn = gs_4
+      ../c-call/archs/x86-64-svid-fn.sml
+   in
+      functor gs_14 = X86_64SVIDFn
+   end
+in
+   structure CSizes = gs_3
+   functor X86_64SVIDFn = gs_14
+end
+end
+
+end

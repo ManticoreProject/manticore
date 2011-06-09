@@ -1,0 +1,60 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l8 = 
+    bas
+      (* $MLRISC.cm(=(proxyLib.cm):.)/MLRISC.cm =??=> *) MLRISC.mlb
+    end
+  basis l4 = 
+    bas
+      (* $Peephole.cm(=(proxyLib.cm):.)/Peephole.cm =??=> *) Peephole.mlb
+    end
+  basis l16 = 
+    bas
+      (* $IA32.cm(=(proxyLib.cm):.)/IA32.cm =??=> *) IA32.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      signature gs_0 = PEEPHOLE
+   end
+   local
+      open l8
+   in
+      structure gs_1 = CellsBasis
+   end
+   local
+      open l8
+   in
+      signature gs_2 = MLTREE_EVAL
+   end
+   local
+      open l16
+   in
+      signature gs_3 = X86INSTR
+      functor gs_4 = X86Instr
+   end
+   local
+      structure CellsBasis = gs_1
+      signature MLTREE_EVAL = gs_2
+      signature PEEPHOLE = gs_0
+      signature X86INSTR = gs_3
+      functor X86Instr = gs_4
+      ../x86/instructions/x86Peephole.sml
+   in
+      functor gs_5 = X86Peephole
+   end
+in
+   functor X86Peephole = gs_5
+end
+end
+
+end

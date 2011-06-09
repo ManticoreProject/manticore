@@ -1,0 +1,1746 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l13 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb $(SML_LIB)/basis/unsafe.mlb
+    end
+  basis l19 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l44 = 
+    bas
+      (* $Control.cm(=(proxyLib.cm):.)/Control.cm =??=> *) Control.mlb
+    end
+  basis l5 = 
+    bas
+      (* $Graphs.cm(=(proxyLib.cm):.)/Graphs.cm =??=> *) Graphs.mlb
+    end
+  basis l9 = 
+    bas
+      (* $Lib.cm(=(proxyLib.cm):.)/Lib.cm =??=> *) Lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l5
+   in
+      structure gs_0 = Graph
+   end
+   local
+      open l9
+   in
+      structure gs_1 = Annotations
+   end
+   local
+      open l13
+   in
+      structure gs_2 = TextIO
+   end
+   local
+      open l19
+   in
+      signature gs_3 = MONO_HASH_TABLE
+   end
+   local
+      open l13
+   in
+      structure gs_4 = Array
+   end
+   local
+      structure Annotations = gs_1
+      structure Array = gs_4
+      signature MONO_HASH_TABLE = gs_3
+      ../instructions/cells-basis.sig
+   in
+      signature gs_5 = CELLS_BASIS
+   end
+   local
+      open l19
+   in
+      functor gs_6 = HashTableFn
+   end
+   local
+      open l13
+   in
+      structure gs_7 = String
+   end
+   local
+      open l13
+   in
+      structure gs_8 = Word
+   end
+   local
+      open l13
+   in
+      structure gs_9 = List
+   end
+   local
+      open l44
+   in
+      signature gs_10 = MLRISC_ERROR_MSG
+      structure gs_11 = MLRiscErrorMsg
+   end
+   local
+      open l13
+   in
+      structure gs_12 = Int
+   end
+   local
+      structure Annotations = gs_1
+      structure Array = gs_4
+      signature CELLS_BASIS = gs_5
+      functor HashTableFn = gs_6
+      structure Int = gs_12
+      structure List = gs_9
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      structure String = gs_7
+      structure Word = gs_8
+      ../instructions/cells-basis.sml
+   in
+      structure gs_13 = CellsBasis
+   end
+   local
+      structure CellsBasis = gs_13
+      ../instructions/cells.sig
+   in
+      signature gs_14 = CELLS
+   end
+   local
+      structure Annotations = gs_1
+      signature CELLS = gs_14
+      signature CELLS_BASIS = gs_5
+      structure CellsBasis = gs_13
+      ../instructions/instructions.sig
+   in
+      signature gs_15 = INSTRUCTIONS
+   end
+   local
+      open l13
+   in
+      structure gs_16 = Word8
+   end
+   local
+      open l13
+   in
+      structure gs_17 = Int32
+   end
+   local
+      open l13
+   in
+      structure gs_18 = IntInf
+   end
+   local
+      open l13
+   in
+      structure gs_19 = Int64
+   end
+   local
+      open l13
+   in
+      structure gs_20 = Word32
+   end
+   local
+      structure Int32 = gs_17
+      structure Int64 = gs_19
+      structure IntInf = gs_18
+      structure Word32 = gs_20
+      ../mltree/machine-int.sig
+   in
+      signature gs_21 = MACHINE_INT
+   end
+   local
+      ../mltree/mltree-extension.sig
+   in
+      signature gs_22 = MLTREE_EXTENSION
+   end
+   local
+      ../mltree/mltree-basis.sig
+   in
+      signature gs_23 = MLTREE_BASIS
+   end
+   local
+      ../instructions/region.sig
+   in
+      signature gs_24 = REGION
+   end
+   local
+      ../instructions/constant.sig
+   in
+      signature gs_25 = CONSTANT
+   end
+   local
+      ../instructions/label-sig.sml
+   in
+      signature gs_26 = LABEL
+   end
+   local
+      signature LABEL = gs_26
+      structure Word = gs_8
+      ../instructions/label.sml
+   in
+      structure gs_27 = Label
+   end
+   local
+      structure Annotations = gs_1
+      signature CONSTANT = gs_25
+      structure CellsBasis = gs_13
+      structure Int32 = gs_17
+      structure Label = gs_27
+      signature MACHINE_INT = gs_21
+      signature MLTREE_BASIS = gs_23
+      signature MLTREE_EXTENSION = gs_22
+      signature REGION = gs_24
+      ../mltree/mltree.sig
+   in
+      signature gs_28 = MLTREE
+   end
+   local
+      open l19
+   in
+      structure gs_29 = Atom
+   end
+   local
+      structure Atom = gs_29
+      structure Label = gs_27
+      ../flowgraph/pseudo-ops-basis-typ.sml
+   in
+      structure gs_30 = PseudoOpsBasisTyp
+   end
+   local
+      structure Label = gs_27
+      signature MLTREE = gs_28
+      structure PseudoOpsBasisTyp = gs_30
+      structure Word8 = gs_16
+      ../flowgraph/pseudo-ops-basis.sig
+   in
+      signature gs_31 = PSEUDO_OPS_BASIS
+   end
+   local
+      signature PSEUDO_OPS_BASIS = gs_31
+      structure Word8 = gs_16
+      ../flowgraph/client-pseudo-ops.sig
+   in
+      signature gs_32 = CLIENT_PSEUDO_OPS
+   end
+   local
+      signature CLIENT_PSEUDO_OPS = gs_32
+      signature MLTREE = gs_28
+      structure PseudoOpsBasisTyp = gs_30
+      structure Word8 = gs_16
+      ../flowgraph/pseudo-ops.sig
+   in
+      signature gs_33 = PSEUDO_OPS
+   end
+   local
+      structure Annotations = gs_1
+      structure Graph = gs_0
+      signature INSTRUCTIONS = gs_15
+      structure Label = gs_27
+      signature PSEUDO_OPS = gs_33
+      structure TextIO = gs_2
+      ../flowgraph/cfg.sig
+   in
+      signature gs_34 = CONTROL_FLOW_GRAPH
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_34
+      ../emit/asmEmit.sig
+   in
+      signature gs_35 = ASSEMBLY_EMITTER
+   end
+   local
+      structure List = gs_9
+      signature MLTREE = gs_28
+      ../mltree/mltree-check-ty.sml
+   in
+      functor gs_36 = MLTreeCheckTy
+   end
+   local
+      open l5
+   in
+      signature gs_37 = GRAPH_IMPLEMENTATION
+   end
+   local
+      structure Array = gs_4
+      signature GRAPH_IMPLEMENTATION = gs_37
+      structure Graph = gs_0
+      ../ir-archive/dominator.sig
+   in
+      signature gs_38 = DOMINATOR_TREE
+   end
+   local
+      structure Array = gs_4
+      signature DOMINATOR_TREE = gs_38
+      signature GRAPH_IMPLEMENTATION = gs_37
+      structure Graph = gs_0
+      ../ir-archive/loop-structure.sig
+   in
+      signature gs_39 = LOOP_STRUCTURE
+   end
+   local
+      open l9
+   in
+      structure gs_40 = BitSet
+   end
+   local
+      open l5
+   in
+      signature gs_41 = REVERSED_GRAPH_VIEW
+      structure gs_42 = ReversedGraphView
+   end
+   local
+      structure Array = gs_4
+      structure BitSet = gs_40
+      signature DOMINATOR_TREE = gs_38
+      signature GRAPH_IMPLEMENTATION = gs_37
+      structure Graph = gs_0
+      structure List = gs_9
+      signature REVERSED_GRAPH_VIEW = gs_41
+      structure ReversedGraphView = gs_42
+      ../ir-archive/dominator.sml
+   in
+      functor gs_43 = DominatorTree
+   end
+   local
+      structure Annotations = gs_1
+      structure Label = gs_27
+      signature PSEUDO_OPS = gs_33
+      ../instructions/stream.sig
+   in
+      signature gs_44 = INSTRUCTION_STREAM
+   end
+   local
+      structure Annotations = gs_1
+      signature INSTRUCTION_STREAM = gs_44
+      structure Label = gs_27
+      signature PSEUDO_OPS = gs_33
+      ../instructions/stream.sml
+   in
+      functor gs_45 = InstructionStream
+   end
+   local
+      signature MLTREE = gs_28
+      ../mltree/mltree-size.sig
+   in
+      signature gs_46 = MLTREE_SIZE
+   end
+   local
+      structure Annotations = gs_1
+      structure CellsBasis = gs_13
+      signature MLTREE = gs_28
+      signature MLTREE_SIZE = gs_46
+      ../mltree/mltree-gen.sig
+   in
+      signature gs_47 = MLTREEGEN
+   end
+   local
+      signature INSTRUCTION_STREAM = gs_44
+      signature MLTREE = gs_28
+      ../mltree/mltree-stream.sig
+   in
+      signature gs_48 = MLTREE_STREAM
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      signature MLTREE = gs_28
+      signature MLTREEGEN = gs_47
+      signature MLTREE_STREAM = gs_48
+      ../mltree/mltreecomp.sig
+   in
+      signature gs_49 = MLTREECOMP
+      signature gs_50 = MLTREE_EXTENSION_COMP
+   end
+   local
+      open l19
+   in
+      structure gs_51 = Format
+   end
+   local
+      structure TextIO = gs_2
+      ../emit/asmStream.sml
+   in
+      signature gs_52 = ASM_STREAM
+      structure gs_53 = AsmStream
+   end
+   local
+      structure Annotations = gs_1
+      signature INSTRUCTIONS = gs_15
+      signature INSTRUCTION_STREAM = gs_44
+      ../emit/instruction-emitter.sig
+   in
+      signature gs_54 = INSTRUCTION_EMITTER
+   end
+   local
+      signature ASM_STREAM = gs_52
+      structure AsmStream = gs_53
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure Format = gs_51
+      structure Graph = gs_0
+      signature INSTRUCTION_EMITTER = gs_54
+      structure Int = gs_12
+      structure List = gs_9
+      structure TextIO = gs_2
+      ../flowgraph/printFlowgraph.sml
+   in
+      signature gs_55 = PRINT_FLOWGRAPH
+      functor gs_56 = PrintFlowgraph
+   end
+   local
+      structure Array = gs_4
+      ../ra/getreg.sig
+   in
+      signature gs_57 = GETREG
+   end
+   local
+      structure Array = gs_4
+      signature GETREG = gs_57
+      ../ra/getreg.sml
+   in
+      functor gs_58 = GetReg
+   end
+   local
+      signature INSTRUCTIONS = gs_15
+      structure Label = gs_27
+      ../backpatch/delaySlotProps.sig
+   in
+      signature gs_59 = DELAY_SLOT_PROPERTIES
+   end
+   local
+      structure List = gs_9
+      ../c-calls/c-types.sml
+   in
+      structure gs_60 = CTypes
+   end
+   local
+      structure CTypes = gs_60
+      signature MLTREE = gs_28
+      ../c-calls/c-calls.sig
+   in
+      signature gs_61 = C_CALLS
+   end
+   local
+      signature C_CALLS = gs_61
+      signature MLTREE = gs_28
+      ../c-calls/unimplemented-c-calls.sml
+   in
+      functor gs_62 = UnimplementedCCallsFn
+   end
+   local
+      open l44
+   in
+      signature gs_63 = MLRISC_CONTROL
+      structure gs_64 = MLRiscControl
+   end
+   local
+      open l19
+   in
+      structure gs_65 = ListMergeSort
+   end
+   local
+      signature CELLS_BASIS = gs_5
+      structure CellsBasis = gs_13
+      ../aliasing/pointsTo.sig
+   in
+      signature gs_66 = POINTS_TO
+   end
+   local
+      structure CellsBasis = gs_13
+      structure Int = gs_12
+      structure ListMergeSort = gs_65
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      signature POINTS_TO = gs_66
+      ../aliasing/pointsTo.sml
+   in
+      structure gs_67 = PointsTo
+   end
+   local
+      open l13
+   in
+      structure gs_68 = Char
+   end
+   local
+      signature MLTREE = gs_28
+      structure PseudoOpsBasisTyp = gs_30
+      structure Word8 = gs_16
+      ../flowgraph/pseudo-ops-endian.sig
+   in
+      signature gs_69 = PSEUDO_OPS_ENDIAN
+   end
+   local
+      structure IntInf = gs_18
+      structure Label = gs_27
+      signature MLTREE = gs_28
+      ../mltree/mltree-eval.sig
+   in
+      signature gs_70 = MLTREE_EVAL
+   end
+   local
+      structure Char = gs_68
+      structure Int = gs_12
+      structure IntInf = gs_18
+      structure Label = gs_27
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      signature MLTREE = gs_28
+      signature MLTREE_EVAL = gs_70
+      signature PSEUDO_OPS_ENDIAN = gs_69
+      structure PseudoOpsBasisTyp = gs_30
+      structure String = gs_7
+      structure Word = gs_8
+      structure Word32 = gs_20
+      structure Word8 = gs_16
+      ../flowgraph/pseudo-ops-big.sml
+   in
+      functor gs_71 = PseudoOpsBig
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_34
+      ../backpatch/bbsched.sig
+   in
+      signature gs_72 = BBSCHED
+   end
+   local
+      structure Annotations = gs_1
+      signature CELLS = gs_14
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      structure Label = gs_27
+      ../instructions/insnProps.sig
+   in
+      signature gs_73 = INSN_PROPERTIES
+   end
+   local
+      signature CELLS = gs_14
+      signature INSTRUCTIONS = gs_15
+      structure Label = gs_27
+      ../backpatch/sdi-jumps.sig
+   in
+      signature gs_74 = SDI_JUMPS
+   end
+   local
+      structure Array = gs_4
+      signature BBSCHED = gs_72
+      signature CONTROL_FLOW_GRAPH = gs_34
+      signature DELAY_SLOT_PROPERTIES = gs_59
+      structure Graph = gs_0
+      signature INSN_PROPERTIES = gs_73
+      signature INSTRUCTION_EMITTER = gs_54
+      structure Label = gs_27
+      structure List = gs_9
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      signature SDI_JUMPS = gs_74
+      ../backpatch/spanDep.sml
+   in
+      functor gs_75 = SpanDependencyResolution
+   end
+   local
+      structure Label = gs_27
+      signature MLTREE = gs_28
+      structure PseudoOpsBasisTyp = gs_30
+      ../flowgraph/as-pseudo-ops.sig
+   in
+      signature gs_76 = AS_PSEUDO_OPS
+   end
+   local
+      signature AS_PSEUDO_OPS = gs_76
+      structure Atom = gs_29
+      structure Format = gs_51
+      structure Int = gs_12
+      structure IntInf = gs_18
+      structure Label = gs_27
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      signature MLTREE = gs_28
+      structure PseudoOpsBasisTyp = gs_30
+      structure String = gs_7
+      ../flowgraph/darwin-pseudo-ops.sml
+   in
+      functor gs_77 = DarwinPseudoOps
+   end
+   local
+      signature CELLS = gs_14
+      structure CellsBasis = gs_13
+      ../ra/ra-flowgraph-part.sig
+   in
+      signature gs_78 = RA_FLOWGRAPH_PARTITIONER
+   end
+   local
+      structure Word8 = gs_16
+      ../emit/code-string.sig
+   in
+      signature gs_79 = CODE_STRING
+   end
+   local
+      open l9
+   in
+      signature gs_80 = PROBABILITY
+      structure gs_81 = Probability
+   end
+   local
+      open l13
+   in
+      structure gs_82 = Real
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_34
+      ../frequencies/compute-execution-freqs.sig
+   in
+      signature gs_83 = COMPUTE_EXECUTION_FREQUENCIES
+   end
+   local
+      structure Annotations = gs_1
+      signature CELLS_BASIS = gs_5
+      structure CellsBasis = gs_13
+      signature PROBABILITY = gs_80
+      structure Probability = gs_81
+      ../instructions/mlriscAnnotations.sig
+   in
+      signature gs_84 = MLRISC_ANNOTATIONS
+   end
+   local
+      structure Annotations = gs_1
+      structure CellsBasis = gs_13
+      structure Int = gs_12
+      signature MLRISC_ANNOTATIONS = gs_84
+      signature PROBABILITY = gs_80
+      structure Probability = gs_81
+      ../instructions/mlriscAnnotations.sml
+   in
+      structure gs_85 = MLRiscAnnotations
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure Graph = gs_0
+      structure List = gs_9
+      signature MLRISC_CONTROL = gs_63
+      structure MLRiscAnnotations = gs_85
+      structure MLRiscControl = gs_64
+      signature PROBABILITY = gs_80
+      structure Probability = gs_81
+      ../frequencies/complete-probs-fn.sml
+   in
+      functor gs_86 = CompleteProbsFn
+   end
+   local
+      structure Array = gs_4
+      signature COMPUTE_EXECUTION_FREQUENCIES = gs_83
+      signature CONTROL_FLOW_GRAPH = gs_34
+      functor CompleteProbsFn = gs_86
+      structure Format = gs_51
+      structure Graph = gs_0
+      structure Int = gs_12
+      structure List = gs_9
+      signature MLRISC_CONTROL = gs_63
+      structure MLRiscControl = gs_64
+      signature PROBABILITY = gs_80
+      structure Probability = gs_81
+      structure Real = gs_82
+      structure TextIO = gs_2
+      ../frequencies/compute-freqs-fn.sml
+   in
+      functor gs_87 = ComputeFreqsFn
+   end
+   local
+      signature MLTREE = gs_28
+      ../mltree/mltree-hash.sig
+   in
+      signature gs_88 = MLTREE_HASH
+   end
+   local
+      ../aliasing/mlriscRegion.sig
+   in
+      signature gs_89 = MLRISC_REGION
+   end
+   local
+      ../instructions/mlriscOptimization.sig
+   in
+      signature gs_90 = MLRISC_OPTIMIZATION
+   end
+   local
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      ../instructions/shuffle.sig
+   in
+      signature gs_91 = SHUFFLE
+   end
+   local
+      signature CELLS_BASIS = gs_5
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      ../ra/arch-spill-instr.sig
+   in
+      signature gs_92 = ARCH_SPILL_INSTR
+   end
+   local
+      signature AS_PSEUDO_OPS = gs_76
+      structure Atom = gs_29
+      structure Format = gs_51
+      structure Int = gs_12
+      structure IntInf = gs_18
+      structure Label = gs_27
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      signature MLTREE = gs_28
+      structure PseudoOpsBasisTyp = gs_30
+      structure String = gs_7
+      ../flowgraph/gasPseudoOps.sml
+   in
+      functor gs_93 = GasPseudoOps
+   end
+   local
+      structure Array = gs_4
+      ../ra/ra-bitmatrix.sig
+   in
+      signature gs_94 = RA_BITMATRIX
+   end
+   local
+      ../ra/ra-priqueue.sig
+   in
+      signature gs_95 = RA_PRIORITY_QUEUE
+   end
+   local
+      open l13
+   in
+      structure gs_96 = Unsafe
+   end
+   local
+      structure Array = gs_4
+      signature RA_BITMATRIX = gs_94
+      structure Unsafe = gs_96
+      structure Word = gs_8
+      ../ra/raBitmatrix.sml
+   in
+      structure gs_97 = RaBitmatrix
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure Graph = gs_0
+      signature INSN_PROPERTIES = gs_73
+      structure Label = gs_27
+      structure List = gs_9
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      structure TextIO = gs_2
+      ../block-placement/jump-chain-elim-fn.sml
+   in
+      functor gs_98 = JumpChainElimFn
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_34
+      ../flowgraph/cfg-optimization.sig
+   in
+      signature gs_99 = CFG_OPTIMIZATION
+   end
+   local
+      signature CFG_OPTIMIZATION = gs_99
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure CellsBasis = gs_13
+      structure Graph = gs_0
+      structure List = gs_9
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      signature SHUFFLE = gs_91
+      ../flowgraph/cfgExpandCopies.sml
+   in
+      functor gs_100 = CFGExpandCopies
+   end
+   local
+      signature INSTRUCTION_STREAM = gs_44
+      signature MLTREE = gs_28
+      signature MLTREE_STREAM = gs_48
+      ../mltree/mltree-stream.sml
+   in
+      functor gs_101 = MLTreeStream
+   end
+   local
+      structure Char = gs_68
+      structure Int = gs_12
+      structure IntInf = gs_18
+      structure Label = gs_27
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      signature MLTREE = gs_28
+      signature MLTREE_EVAL = gs_70
+      signature PSEUDO_OPS_ENDIAN = gs_69
+      structure PseudoOpsBasisTyp = gs_30
+      structure String = gs_7
+      structure Word = gs_8
+      structure Word32 = gs_20
+      structure Word8 = gs_16
+      ../flowgraph/pseudo-ops-little.sml
+   in
+      functor gs_102 = PseudoOpsLittle
+   end
+   local
+      signature MLTREE = gs_28
+      signature MLTREE_SIZE = gs_46
+      ../mltree/mltree-size.sml
+   in
+      functor gs_103 = MLTreeSize
+   end
+   local
+      signature CELLS = gs_14
+      structure CellsBasis = gs_13
+      structure Int = gs_12
+      structure Label = gs_27
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      signature MLTREE = gs_28
+      signature MLTREEGEN = gs_47
+      functor MLTreeSize = gs_103
+      ../mltree/mltree-gen.sml
+   in
+      functor gs_104 = MLTreeGen
+   end
+   local
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      signature MLTREE_BASIS = gs_23
+      ../mltree/mltree-basis.sml
+   in
+      structure gs_105 = MLTreeBasis
+   end
+   local
+      signature CLIENT_PSEUDO_OPS = gs_32
+      signature PSEUDO_OPS = gs_33
+      structure PseudoOpsBasisTyp = gs_30
+      ../flowgraph/pseudo-ops.sml
+   in
+      functor gs_106 = PseudoOps
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_34
+      ../block-placement/block-placement.sig
+   in
+      signature gs_107 = BLOCK_PLACEMENT
+   end
+   local
+      open l19
+   in
+      structure gs_108 = IntHashTable
+   end
+   local
+      structure Array = gs_4
+      signature CELLS_BASIS = gs_5
+      structure IntHashTable = gs_108
+      signature MONO_HASH_TABLE = gs_3
+      signature RA_BITMATRIX = gs_94
+      structure RaBitmatrix = gs_97
+      ../ra/ra-graph.sig
+   in
+      signature gs_109 = RA_GRAPH
+   end
+   local
+      structure Array = gs_4
+      structure CellsBasis = gs_13
+      functor HashTableFn = gs_6
+      structure IntHashTable = gs_108
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      signature RA_GRAPH = gs_109
+      structure RaBitmatrix = gs_97
+      structure Word = gs_8
+      ../ra/ra-graph.sml
+   in
+      structure gs_110 = RAGraph
+   end
+   local
+      structure Annotations = gs_1
+      signature CELLS = gs_14
+      signature CELLS_BASIS = gs_5
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      structure RAGraph = gs_110
+      signature RA_GRAPH = gs_109
+      ../ra/ra-spill.sig
+   in
+      signature gs_111 = RA_SPILL
+   end
+   local
+      signature INSTRUCTIONS = gs_15
+      signature PROBABILITY = gs_80
+      structure Probability = gs_81
+      ../instructions/freqProps.sig
+   in
+      signature gs_112 = FREQUENCY_PROPERTIES
+   end
+   local
+      signature FREQUENCY_PROPERTIES = gs_112
+      signature INSN_PROPERTIES = gs_73
+      structure MLRiscAnnotations = gs_85
+      signature PROBABILITY = gs_80
+      structure Probability = gs_81
+      ../instructions/freqProps.sml
+   in
+      functor gs_113 = FreqProps
+   end
+   local
+      structure Annotations = gs_1
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure Format = gs_51
+      structure Graph = gs_0
+      signature INSN_PROPERTIES = gs_73
+      signature INSTRUCTIONS = gs_15
+      signature INSTRUCTION_STREAM = gs_44
+      structure IntHashTable = gs_108
+      structure Label = gs_27
+      structure List = gs_9
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscAnnotations = gs_85
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      signature PSEUDO_OPS = gs_33
+      structure PseudoOpsBasisTyp = gs_30
+      structure Word = gs_8
+      ../flowgraph/buildFlowgraph.sml
+   in
+      functor gs_114 = BuildFlowgraph
+      signature gs_115 = CONTROL_FLOWGRAPH_GEN
+   end
+   local
+      structure RAGraph = gs_110
+      signature RA_GRAPH = gs_109
+      ../ra/ra-spillheur.sig
+   in
+      signature gs_116 = RA_SPILL_HEURISTICS
+   end
+   local
+      signature MLRISC_CONTROL = gs_63
+      structure MLRiscControl = gs_64
+      ../emit/asm-flags.sml
+   in
+      structure gs_117 = AsmFlags
+   end
+   local
+      structure Annotations = gs_1
+      structure IntInf = gs_18
+      ../gc-safety/gc-type.sig
+   in
+      signature gs_118 = GC_TYPE
+   end
+   local
+      structure Annotations = gs_1
+      signature CELLS = gs_14
+      signature CELLS_BASIS = gs_5
+      structure CellsBasis = gs_13
+      signature GC_TYPE = gs_118
+      ../gc-safety/gc-cells.sig
+   in
+      signature gs_119 = GC_CELLS
+   end
+   local
+      structure Annotations = gs_1
+      signature CELLS = gs_14
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      structure RAGraph = gs_110
+      signature RA_GRAPH = gs_109
+      signature RA_SPILL = gs_111
+      structure TextIO = gs_2
+      ../ra/ra-flowgraph.sig
+   in
+      signature gs_120 = RA_FLOWGRAPH
+   end
+   local
+      structure Array = gs_4
+      signature CELLS = gs_14
+      signature CELLS_BASIS = gs_5
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      structure RAGraph = gs_110
+      signature RA_FLOWGRAPH = gs_120
+      ../ra/ra.sig
+   in
+      signature gs_121 = RA
+   end
+   local
+      open l13
+   in
+      structure gs_122 = Word8Array
+   end
+   local
+      structure RAGraph = gs_110
+      signature RA_BITMATRIX = gs_94
+      signature RA_GRAPH = gs_109
+      signature RA_PRIORITY_QUEUE = gs_95
+      structure TextIO = gs_2
+      ../ra/ra-core.sig
+   in
+      signature gs_123 = RA_CORE
+   end
+   local
+      signature RA_PRIORITY_QUEUE = gs_95
+      ../ra/raPriQueue.sml
+   in
+      functor gs_124 = RaPriQueue
+   end
+   local
+      structure Array = gs_4
+      structure Int = gs_12
+      structure IntHashTable = gs_108
+      structure List = gs_9
+      structure ListMergeSort = gs_65
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      structure RAGraph = gs_110
+      signature RA_CORE = gs_123
+      functor RaPriQueue = gs_124
+      structure Real = gs_82
+      structure TextIO = gs_2
+      structure Unsafe = gs_96
+      structure Word = gs_8
+      structure Word8 = gs_16
+      structure Word8Array = gs_122
+      ../ra/ra-core.sml
+   in
+      structure gs_125 = RACore
+   end
+   local
+      structure Array = gs_4
+      structure CellsBasis = gs_13
+      structure Int = gs_12
+      structure IntHashTable = gs_108
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      signature RA = gs_121
+      structure RACore = gs_125
+      signature RA_FLOWGRAPH = gs_120
+      signature RA_SPILL_HEURISTICS = gs_116
+      structure Real = gs_82
+      structure TextIO = gs_2
+      structure Word = gs_8
+      ../ra/ra.sml
+   in
+      functor gs_126 = RegisterAllocator
+   end
+   local
+      structure CellsBasis = gs_13
+      structure IntHashTable = gs_108
+      structure RACore = gs_125
+      signature RA_FLOWGRAPH = gs_120
+      structure Word = gs_8
+      ../ra/ra-deadCodeE.sml
+   in
+      functor gs_127 = RADeadCodeElim
+   end
+   local
+      open l19
+   in
+      structure gs_128 = URef
+   end
+   local
+      structure Array = gs_4
+      signature DOMINATOR_TREE = gs_38
+      signature GRAPH_IMPLEMENTATION = gs_37
+      structure Graph = gs_0
+      signature LOOP_STRUCTURE = gs_39
+      structure List = gs_9
+      structure URef = gs_128
+      ../ir-archive/loop-structure.sml
+   in
+      functor gs_129 = LoopStructure
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure Graph = gs_0
+      signature INSN_PROPERTIES = gs_73
+      signature INSTRUCTION_EMITTER = gs_54
+      structure Label = gs_27
+      structure List = gs_9
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      signature SDI_JUMPS = gs_74
+      ../backpatch/backpatch.sml
+   in
+      functor gs_130 = BBSched2
+   end
+   local
+      structure Array = gs_4
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure CellsBasis = gs_13
+      structure Graph = gs_0
+      signature INSN_PROPERTIES = gs_73
+      signature INSTRUCTION_EMITTER = gs_54
+      structure Int = gs_12
+      structure IntHashTable = gs_108
+      structure List = gs_9
+      structure ListMergeSort = gs_65
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      structure RACore = gs_125
+      structure RAGraph = gs_110
+      signature RA_FLOWGRAPH = gs_120
+      signature RA_SPILL = gs_111
+      structure TextIO = gs_2
+      structure Unsafe = gs_96
+      structure Word = gs_8
+      ../ra/cluster-ra.sml
+   in
+      functor gs_131 = ClusterRA
+   end
+   local
+      structure RACore = gs_125
+      structure RAGraph = gs_110
+      signature RA_SPILL_HEURISTICS = gs_116
+      ../ra/chaitin-spillheur.sml
+   in
+      structure gs_132 = ChaitinSpillHeur
+   end
+   local
+      open l19
+   in
+      functor gs_133 = LeftPriorityQFn
+   end
+   local
+      signature BLOCK_PLACEMENT = gs_107
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure Graph = gs_0
+      signature INSN_PROPERTIES = gs_73
+      structure Int = gs_12
+      structure IntHashTable = gs_108
+      functor LeftPriorityQFn = gs_133
+      structure List = gs_9
+      signature MLRISC_CONTROL = gs_63
+      structure MLRiscControl = gs_64
+      structure Real = gs_82
+      structure TextIO = gs_2
+      structure URef = gs_128
+      ../block-placement/weighted-block-placement-fn.sml
+   in
+      functor gs_134 = WeightedBlockPlacementFn
+   end
+   local
+      structure Array = gs_4
+      signature BLOCK_PLACEMENT = gs_107
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure Graph = gs_0
+      structure Int = gs_12
+      structure List = gs_9
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      structure TextIO = gs_2
+      ../block-placement/default-block-placement.sml
+   in
+      functor gs_135 = DefaultBlockPlacement
+   end
+   local
+      signature BLOCK_PLACEMENT = gs_107
+      signature CONTROL_FLOW_GRAPH = gs_34
+      functor DefaultBlockPlacement = gs_135
+      structure Graph = gs_0
+      signature INSN_PROPERTIES = gs_73
+      signature MLRISC_CONTROL = gs_63
+      structure MLRiscControl = gs_64
+      functor WeightedBlockPlacementFn = gs_134
+      ../block-placement/block-placement.sml
+   in
+      functor gs_136 = BlockPlacement
+   end
+   local
+      signature CELLS = gs_14
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      signature MLTREE = gs_28
+      ../mltree/mltree-mult.sig
+   in
+      signature gs_137 = MLTREE_MULT_DIV
+   end
+   local
+      structure Array = gs_4
+      signature CELLS_BASIS = gs_5
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      signature MLTREE = gs_28
+      signature MLTREE_MULT_DIV = gs_137
+      structure Word = gs_8
+      ../mltree/mltree-mult.sml
+   in
+      functor gs_138 = MLTreeMult
+   end
+   local
+      structure CellsBasis = gs_13
+      structure Char = gs_68
+      structure Int = gs_12
+      structure Label = gs_27
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      signature MLTREE = gs_28
+      signature MLTREE_HASH = gs_88
+      structure String = gs_7
+      structure Word = gs_8
+      ../mltree/mltree-hash.sml
+   in
+      functor gs_139 = MLTreeHash
+   end
+   local
+      structure CellsBasis = gs_13
+      structure IntInf = gs_18
+      structure Label = gs_27
+      signature MLTREE = gs_28
+      signature MLTREE_EVAL = gs_70
+      ../mltree/mltree-eval.sml
+   in
+      functor gs_140 = MLTreeEval
+   end
+   local
+      structure Annotations = gs_1
+      signature CELLS = gs_14
+      structure CellsBasis = gs_13
+      signature GC_CELLS = gs_119
+      signature GC_TYPE = gs_118
+      ../gc-safety/gc-cells.sml
+   in
+      functor gs_141 = GCCells
+   end
+   local
+      structure Array = gs_4
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure Graph = gs_0
+      signature INSN_PROPERTIES = gs_73
+      structure Int = gs_12
+      structure List = gs_9
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      structure TextIO = gs_2
+      ../block-placement/check-placement-fn.sml
+   in
+      functor gs_142 = CheckPlacementFn
+   end
+   local
+      structure Array = gs_4
+      signature CELLS = gs_14
+      structure CellsBasis = gs_13
+      structure Int = gs_12
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      ../instructions/cells.sml
+   in
+      functor gs_143 = Cells
+   end
+   local
+      signature DELAY_SLOT_PROPERTIES = gs_59
+      signature INSTRUCTIONS = gs_15
+      ../backpatch/noDelaySlots.sml
+   in
+      functor gs_144 = NoDelaySlots
+   end
+   local
+      structure Annotations = gs_1
+      signature CELLS_BASIS = gs_5
+      structure CellsBasis = gs_13
+      structure Label = gs_27
+      structure List = gs_9
+      structure MLRiscAnnotations = gs_85
+      ../emit/asmUtil.sml
+   in
+      signature gs_145 = ASM_FORMAT_UTIL
+      structure gs_146 = AsmFormatUtil
+   end
+   local
+      open l13
+   in
+      structure gs_147 = ListPair
+   end
+   local
+      open l13
+   in
+      structure gs_148 = Option
+   end
+   local
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      structure List = gs_9
+      structure ListPair = gs_147
+      structure Option = gs_148
+      ../instructions/shuffle.sml
+   in
+      functor gs_149 = Shuffle
+   end
+   local
+      open l5
+   in
+      functor gs_150 = DirectedGraph
+      structure gs_151 = DirectedGraph
+   end
+   local
+      structure Annotations = gs_1
+      signature CONTROL_FLOW_GRAPH = gs_34
+      functor DirectedGraph = gs_150
+      structure DirectedGraph = gs_151
+      functor DominatorTree = gs_43
+      structure Graph = gs_0
+      structure List = gs_9
+      functor LoopStructure = gs_129
+      signature MLRISC_CONTROL = gs_63
+      structure MLRiscAnnotations = gs_85
+      structure MLRiscControl = gs_64
+      signature PROBABILITY = gs_80
+      structure Probability = gs_81
+      ../frequencies/estimate-loop-probs-fn.sml
+   in
+      functor gs_152 = EstimateLoopProbsFn
+   end
+   local
+      open l13
+   in
+      structure gs_153 = StringCvt
+   end
+   local
+      structure Array = gs_4
+      structure Int32 = gs_17
+      structure Int64 = gs_19
+      structure IntInf = gs_18
+      signature MACHINE_INT = gs_21
+      structure String = gs_7
+      structure StringCvt = gs_153
+      structure Word = gs_8
+      structure Word32 = gs_20
+      ../mltree/machine-int.sml
+   in
+      structure gs_154 = MachineInt
+   end
+   local
+      structure Array = gs_4
+      structure Int = gs_12
+      structure IntHashTable = gs_108
+      structure List = gs_9
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      structure RACore = gs_125
+      structure RAGraph = gs_110
+      signature RA_FLOWGRAPH = gs_120
+      structure Real = gs_82
+      structure Word = gs_8
+      ../ra/mem-ra.sml
+   in
+      functor gs_155 = MemoryRA
+   end
+   local
+      structure Annotations = gs_1
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      structure RAGraph = gs_110
+      ../ra/ra-spill-types.sml
+   in
+      functor gs_156 = RASpillTypes
+   end
+   local
+      open l13
+   in
+      structure gs_157 = Word8Vector
+   end
+   local
+      signature INSTRUCTIONS = gs_15
+      structure Word8Vector = gs_157
+      ../emit/mc-emit.sig
+   in
+      signature gs_158 = MC_EMIT
+   end
+   local
+      signature CODE_STRING = gs_79
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure Graph = gs_0
+      signature INSN_PROPERTIES = gs_73
+      signature INSTRUCTION_EMITTER = gs_54
+      structure Label = gs_27
+      structure List = gs_9
+      signature MC_EMIT = gs_158
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      signature SDI_JUMPS = gs_74
+      structure Word8 = gs_16
+      structure Word8Vector = gs_157
+      ../backpatch/vlBackPatch.sml
+   in
+      functor gs_159 = BackPatch
+   end
+   local
+      open l9
+   in
+      structure gs_160 = PriorityHeap
+   end
+   local
+      structure IntHashTable = gs_108
+      structure Option = gs_148
+      structure PriorityHeap = gs_160
+      structure RACore = gs_125
+      structure RAGraph = gs_110
+      signature RA_SPILL_HEURISTICS = gs_116
+      structure Real = gs_82
+      ../ra/chow-hennessy-spillheur.sml
+   in
+      structure gs_161 = ChowHennessySpillHeur
+   end
+   local
+      open l9
+   in
+      signature gs_162 = LINE_BREAK
+      structure gs_163 = LineBreak
+   end
+   local
+      open l9
+   in
+      structure gs_164 = StringOutStream
+   end
+   local
+      open l5
+   in
+      signature gs_165 = UPDATE_GRAPH_INFO
+      structure gs_166 = UpdateGraphInfo
+   end
+   local
+      open l13
+   in
+      structure gs_167 = Bool
+   end
+   local
+      signature ASM_STREAM = gs_52
+      structure Annotations = gs_1
+      structure Array = gs_4
+      structure AsmStream = gs_53
+      structure Bool = gs_167
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure CellsBasis = gs_13
+      structure Char = gs_68
+      structure Format = gs_51
+      signature GRAPH_IMPLEMENTATION = gs_37
+      structure Graph = gs_0
+      signature INSN_PROPERTIES = gs_73
+      signature INSTRUCTIONS = gs_15
+      signature INSTRUCTION_EMITTER = gs_54
+      structure Int = gs_12
+      structure IntHashTable = gs_108
+      signature LINE_BREAK = gs_162
+      structure Label = gs_27
+      structure LineBreak = gs_163
+      structure List = gs_9
+      structure ListMergeSort = gs_65
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      structure Real = gs_82
+      structure String = gs_7
+      structure StringOutStream = gs_164
+      structure TextIO = gs_2
+      signature UPDATE_GRAPH_INFO = gs_165
+      structure UpdateGraphInfo = gs_166
+      ../flowgraph/cfg.sml
+   in
+      functor gs_168 = ControlFlowGraph
+   end
+   local
+      structure Annotations = gs_1
+      signature CONSTANT = gs_25
+      structure CellsBasis = gs_13
+      structure Int32 = gs_17
+      structure Label = gs_27
+      signature MLTREE = gs_28
+      signature MLTREE_EXTENSION = gs_22
+      structure MLTreeBasis = gs_105
+      structure MachineInt = gs_154
+      signature REGION = gs_24
+      ../mltree/mltree.sml
+   in
+      functor gs_169 = MLTreeF
+   end
+   local
+      open l13
+   in
+      structure gs_170 = General
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure CellsBasis = gs_13
+      structure General = gs_170
+      structure Graph = gs_0
+      structure Int = gs_12
+      structure IntHashTable = gs_108
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscErrorMsg = gs_11
+      ../ra/liveness.sml
+   in
+      signature gs_171 = LIVENESS
+      functor gs_172 = Liveness
+   end
+   local
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      ../instructions/rewrite.sig
+   in
+      signature gs_173 = REWRITE_INSTRUCTIONS
+   end
+   local
+      signature ARCH_SPILL_INSTR = gs_92
+      structure Annotations = gs_1
+      structure Array = gs_4
+      signature CFG_OPTIMIZATION = gs_99
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure CellsBasis = gs_13
+      functor ClusterRA = gs_131
+      functor GetReg = gs_58
+      signature INSN_PROPERTIES = gs_73
+      signature INSTRUCTIONS = gs_15
+      signature INSTRUCTION_EMITTER = gs_54
+      structure List = gs_9
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      structure RAGraph = gs_110
+      signature RA_SPILL = gs_111
+      signature RA_SPILL_HEURISTICS = gs_116
+      signature REWRITE_INSTRUCTIONS = gs_173
+      functor RegisterAllocator = gs_126
+      structure Word = gs_8
+      ../ra/risc-ra.sml
+   in
+      functor gs_174 = RISC_RA
+   end
+   local
+      signature CFG_OPTIMIZATION = gs_99
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure Graph = gs_0
+      signature INSN_PROPERTIES = gs_73
+      signature MLRISC_CONTROL = gs_63
+      structure MLRiscControl = gs_64
+      signature SDI_JUMPS = gs_74
+      ../flowgraph/cfgCountCopies.sml
+   in
+      functor gs_175 = CFGCountCopies
+   end
+   local
+      signature ASSEMBLY_EMITTER = gs_35
+      structure Annotations = gs_1
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure Graph = gs_0
+      signature INSTRUCTION_EMITTER = gs_54
+      structure List = gs_9
+      structure PseudoOpsBasisTyp = gs_30
+      ../emit/cfgEmit.sml
+   in
+      functor gs_176 = CFGEmit
+   end
+   local
+      structure Array = gs_4
+      signature GETREG = gs_57
+      ../ra/getreg2.sml
+   in
+      functor gs_177 = GetReg2
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_34
+      structure CellsBasis = gs_13
+      signature INSTRUCTIONS = gs_15
+      structure Int32 = gs_17
+      ../omit-frameptr/omit-frame-pointer.sig
+   in
+      signature gs_178 = OMIT_FRAME_POINTER
+   end
+   local
+      signature MLRISC_CONTROL = gs_63
+      structure MLRiscControl = gs_64
+      signature RA = gs_121
+      structure RACore = gs_125
+      signature RA_FLOWGRAPH_PARTITIONER = gs_78
+      ../ra/region-based-ra.sml
+   in
+      functor gs_179 = RegionBasedRA
+   end
+   local
+      signature MLRISC_REGION = gs_89
+      structure String = gs_7
+      ../aliasing/mlriscRegion.sml
+   in
+      structure gs_180 = MLRiscRegion
+   end
+   local
+      structure CellsBasis = gs_13
+      signature INSN_PROPERTIES = gs_73
+      signature INSTRUCTION_EMITTER = gs_54
+      structure Int = gs_12
+      structure IntHashTable = gs_108
+      signature MLRISC_CONTROL = gs_63
+      signature MLRISC_ERROR_MSG = gs_10
+      structure MLRiscControl = gs_64
+      structure MLRiscErrorMsg = gs_11
+      structure RACore = gs_125
+      functor RASpillTypes = gs_156
+      signature RA_SPILL = gs_111
+      structure Word = gs_8
+      ../ra/ra-spill.sml
+   in
+      functor gs_181 = RASpill
+   end
+in
+   signature ARCH_SPILL_INSTR = gs_92
+   signature ASM_FORMAT_UTIL = gs_145
+   signature ASM_STREAM = gs_52
+   signature ASSEMBLY_EMITTER = gs_35
+   signature AS_PSEUDO_OPS = gs_76
+   structure AsmFlags = gs_117
+   structure AsmFormatUtil = gs_146
+   structure AsmStream = gs_53
+   signature BBSCHED = gs_72
+   functor BBSched2 = gs_130
+   signature BLOCK_PLACEMENT = gs_107
+   functor BackPatch = gs_159
+   functor BlockPlacement = gs_136
+   functor BuildFlowgraph = gs_114
+   signature CELLS = gs_14
+   signature CELLS_BASIS = gs_5
+   functor CFGCountCopies = gs_175
+   functor CFGEmit = gs_176
+   functor CFGExpandCopies = gs_100
+   signature CFG_OPTIMIZATION = gs_99
+   signature CLIENT_PSEUDO_OPS = gs_32
+   signature CODE_STRING = gs_79
+   signature COMPUTE_EXECUTION_FREQUENCIES = gs_83
+   signature CONSTANT = gs_25
+   signature CONTROL_FLOWGRAPH_GEN = gs_115
+   signature CONTROL_FLOW_GRAPH = gs_34
+   structure CTypes = gs_60
+   signature C_CALLS = gs_61
+   functor Cells = gs_143
+   structure CellsBasis = gs_13
+   structure ChaitinSpillHeur = gs_132
+   functor CheckPlacementFn = gs_142
+   structure ChowHennessySpillHeur = gs_161
+   functor ClusterRA = gs_131
+   functor CompleteProbsFn = gs_86
+   functor ComputeFreqsFn = gs_87
+   functor ControlFlowGraph = gs_168
+   signature DELAY_SLOT_PROPERTIES = gs_59
+   signature DOMINATOR_TREE = gs_38
+   functor DarwinPseudoOps = gs_77
+   functor DefaultBlockPlacement = gs_135
+   functor DominatorTree = gs_43
+   functor EstimateLoopProbsFn = gs_152
+   signature FREQUENCY_PROPERTIES = gs_112
+   functor FreqProps = gs_113
+   functor GCCells = gs_141
+   signature GC_CELLS = gs_119
+   signature GC_TYPE = gs_118
+   signature GETREG = gs_57
+   functor GasPseudoOps = gs_93
+   functor GetReg = gs_58
+   functor GetReg2 = gs_177
+   signature INSN_PROPERTIES = gs_73
+   signature INSTRUCTIONS = gs_15
+   signature INSTRUCTION_EMITTER = gs_54
+   signature INSTRUCTION_STREAM = gs_44
+   functor InstructionStream = gs_45
+   functor JumpChainElimFn = gs_98
+   signature LABEL = gs_26
+   signature LIVENESS = gs_171
+   signature LOOP_STRUCTURE = gs_39
+   structure Label = gs_27
+   functor Liveness = gs_172
+   functor LoopStructure = gs_129
+   signature MACHINE_INT = gs_21
+   signature MC_EMIT = gs_158
+   signature MLRISC_ANNOTATIONS = gs_84
+   signature MLRISC_OPTIMIZATION = gs_90
+   signature MLRISC_REGION = gs_89
+   structure MLRiscAnnotations = gs_85
+   structure MLRiscRegion = gs_180
+   signature MLTREE = gs_28
+   signature MLTREECOMP = gs_49
+   signature MLTREEGEN = gs_47
+   signature MLTREE_BASIS = gs_23
+   signature MLTREE_EVAL = gs_70
+   signature MLTREE_EXTENSION = gs_22
+   signature MLTREE_EXTENSION_COMP = gs_50
+   signature MLTREE_HASH = gs_88
+   signature MLTREE_MULT_DIV = gs_137
+   signature MLTREE_SIZE = gs_46
+   signature MLTREE_STREAM = gs_48
+   structure MLTreeBasis = gs_105
+   functor MLTreeCheckTy = gs_36
+   functor MLTreeEval = gs_140
+   functor MLTreeF = gs_169
+   functor MLTreeGen = gs_104
+   functor MLTreeHash = gs_139
+   functor MLTreeMult = gs_138
+   functor MLTreeSize = gs_103
+   functor MLTreeStream = gs_101
+   structure MachineInt = gs_154
+   functor MemoryRA = gs_155
+   functor NoDelaySlots = gs_144
+   signature OMIT_FRAME_POINTER = gs_178
+   signature POINTS_TO = gs_66
+   signature PRINT_FLOWGRAPH = gs_55
+   signature PSEUDO_OPS = gs_33
+   signature PSEUDO_OPS_BASIS = gs_31
+   signature PSEUDO_OPS_ENDIAN = gs_69
+   structure PointsTo = gs_67
+   functor PrintFlowgraph = gs_56
+   functor PseudoOps = gs_106
+   structure PseudoOpsBasisTyp = gs_30
+   functor PseudoOpsBig = gs_71
+   functor PseudoOpsLittle = gs_102
+   signature RA = gs_121
+   structure RACore = gs_125
+   functor RADeadCodeElim = gs_127
+   structure RAGraph = gs_110
+   functor RASpill = gs_181
+   functor RASpillTypes = gs_156
+   signature RA_BITMATRIX = gs_94
+   signature RA_CORE = gs_123
+   signature RA_FLOWGRAPH = gs_120
+   signature RA_FLOWGRAPH_PARTITIONER = gs_78
+   signature RA_GRAPH = gs_109
+   signature RA_PRIORITY_QUEUE = gs_95
+   signature RA_SPILL = gs_111
+   signature RA_SPILL_HEURISTICS = gs_116
+   signature REGION = gs_24
+   signature REWRITE_INSTRUCTIONS = gs_173
+   functor RISC_RA = gs_174
+   structure RaBitmatrix = gs_97
+   functor RaPriQueue = gs_124
+   functor RegionBasedRA = gs_179
+   functor RegisterAllocator = gs_126
+   signature SDI_JUMPS = gs_74
+   signature SHUFFLE = gs_91
+   functor Shuffle = gs_149
+   functor SpanDependencyResolution = gs_75
+   functor UnimplementedCCallsFn = gs_62
+   functor WeightedBlockPlacementFn = gs_134
+end
+end
+
+end

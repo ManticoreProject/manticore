@@ -153,11 +153,12 @@ val amBuildingConstants: bool ref = ref false
 val lookupConstant =
    let
       val zero = Const.word (WordX.fromIntInf (0, WordSize.word32))
+      val constantsFile = concat[LoadPaths.srcDir, "/mlton/constants"]
       val f =
          Promise.lazy
          (fn () =>
           if !amBuildingConstants
-             then (fn ({name, default, ...}, t) =>
+             then (fn ({name, default}, t) =>
                    let
                       (* Don't keep constants that already have a default value.
                        * These are defined by _command_line_const and set by
@@ -170,10 +171,10 @@ val lookupConstant =
                    in
                       zero
                    end)
-          else
-             File.withIn
-             (concat [!Control.libTargetDir, "/constants"], fn ins =>
-              LookupConstant.load (ins, !commandLineConstants)))
+          else (*(fn ({name:string, default: string option}, t) => zero)) *)
+              File.withIn
+                  (constantsFile (*concat [!Control.libTargetDir, "/constants"]*), fn ins =>
+              LookupConstant.load (ins, !commandLineConstants))) 
    in
       fn z => f () z
    end

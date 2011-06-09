@@ -1,0 +1,14 @@
+The following changes were made to the ckit Library, in addition to
+deriving the {{{.mlb}}} file from the {{{.cm}}} files:
+ * {{{parser/parse-tree-sig.sml}}} (modified): Rewrote use of (sequential) {{{withtype}}} in signature.
+ * {{{parser/parse-tree.sml}}} (modified): Rewrote use of (sequential) {{{withtype}}}.
+ * {{{parser/grammar/c.lex.sml}}} (modified): Rewrote use of vector literal.
+ * {{{ast/ast-sig.sml}}} (modified): Rewrote use of {{{withtype}}} in signature.
+ * {{{ast/pp/pp-lib.sml}}} (modified): Rewrote use of ''or-patterns''.
+ * {{{ast/pp/pp-ast-ext-sig.sml}}} (modified): Rewrote use of {{{signature}}} in {{{local}}}.
+ * {{{ast/pp/pp-ast-adornment-sig.sml}}} (modified): Rewrote use of {{{signature}}} in {{{local}}}.
+ * {{{ast/type-util-sig.sml}}} (modified): Rewrote use of {{{signature}}} in {{{local}}}.
+ * {{{ast/type-util.sml}}} (modified): Rewrote use of ''or-patterns''.
+ * {{{ast/sizeof.sml}}} (modified): Rewrote use of ''or-patterns''.
+ * {{{ast/initializer-normalizer.sml}}} (modified): Rewrote use of ''or-patterns''.
+ * {{{ast/build-ast.sml}}} (modified): Rewrote use of ''or-patterns''.

@@ -1,0 +1,670 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l4 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb $(SML_LIB)/basis/unsafe.mlb
+    end
+  basis l111 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l9 = 
+    bas
+      (* $MLRISC.cm(=(proxyLib.cm):.)/MLRISC.cm =??=> *) MLRISC.mlb
+    end
+  basis l46 = 
+    bas
+      (* $Control.cm(=(proxyLib.cm):.)/Control.cm =??=> *) Control.mlb
+    end
+  basis l223 = 
+    bas
+      (* $Graphs.cm(=(proxyLib.cm):.)/Graphs.cm =??=> *) Graphs.mlb
+    end
+  basis l34 = 
+    bas
+      (* $Lib.cm(=(proxyLib.cm):.)/Lib.cm =??=> *) Lib.mlb
+    end
+  basis l276 = 
+    bas
+      (* $MLTREE.cm(=(proxyLib.cm):.)/MLTREE.cm =??=> *) MLTREE.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = Int
+   end
+   local
+      open l9
+   in
+      signature gs_1 = REGION
+   end
+   local
+      open l9
+   in
+      signature gs_2 = CONSTANT
+   end
+   local
+      open l9
+   in
+      signature gs_3 = MLTREE
+   end
+   local
+      open l9
+   in
+      signature gs_4 = CELLS_BASIS
+   end
+   local
+      open l9
+   in
+      structure gs_5 = CellsBasis
+   end
+   local
+      open l9
+   in
+      structure gs_6 = Label
+   end
+   local
+      open l4
+   in
+      structure gs_7 = Int64
+   end
+   local
+      open l4
+   in
+      structure gs_8 = Int32
+   end
+   local
+      open l34
+   in
+      structure gs_9 = Annotations
+   end
+   local
+      open l9
+   in
+      functor gs_10 = Cells
+   end
+   local
+      open l9
+   in
+      signature gs_11 = CELLS
+   end
+   local
+      open l46
+   in
+      signature gs_12 = MLRISC_ERROR_MSG
+      structure gs_13 = MLRiscErrorMsg
+   end
+   local
+      signature CELLS = gs_11
+      functor Cells = gs_10
+      structure CellsBasis = gs_5
+      structure Int = gs_0
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      ../amd64/instructions/amd64Cells.sml
+   in
+      signature gs_14 = AMD64CELLS
+      structure gs_15 = AMD64Cells
+   end
+   local
+      signature AMD64CELLS = gs_14
+      structure AMD64Cells = gs_15
+      structure Annotations = gs_9
+      signature CELLS_BASIS = gs_4
+      signature CONSTANT = gs_2
+      structure CellsBasis = gs_5
+      structure Int32 = gs_8
+      structure Int64 = gs_7
+      structure Label = gs_6
+      signature MLTREE = gs_3
+      signature REGION = gs_1
+      ../amd64/instructions/amd64Instr.sml
+   in
+      signature gs_16 = AMD64INSTR
+      functor gs_17 = AMD64Instr
+   end
+   local
+      signature AMD64INSTR = gs_16
+      functor AMD64Instr = gs_17
+      structure Int = gs_0
+      ../amd64/mltree/amd64-opcodes.sml
+   in
+      functor gs_18 = AMD64Opcodes
+   end
+   local
+      open l9
+   in
+      signature gs_19 = MC_EMIT
+   end
+   local
+      open l4
+   in
+      structure gs_20 = Word32
+   end
+   local
+      open l4
+   in
+      structure gs_21 = Word8
+   end
+   local
+      open l4
+   in
+      structure gs_22 = LargeWord
+   end
+   local
+      open l4
+   in
+      structure gs_23 = Word8Vector
+   end
+   local
+      open l4
+   in
+      structure gs_24 = Word
+   end
+   local
+      open l9
+   in
+      signature gs_25 = MLTREE_EVAL
+   end
+   local
+      open l9
+   in
+      functor gs_26 = Shuffle
+   end
+   local
+      signature AMD64INSTR = gs_16
+      functor AMD64Instr = gs_17
+      structure CellsBasis = gs_5
+      functor Shuffle = gs_26
+      ../amd64/instructions/amd64Shuffle.sml
+   in
+      signature gs_27 = AMD64SHUFFLE
+      functor gs_28 = AMD64Shuffle
+   end
+   local
+      signature AMD64INSTR = gs_16
+      functor AMD64Instr = gs_17
+      signature AMD64SHUFFLE = gs_27
+      functor AMD64Shuffle = gs_28
+      structure CellsBasis = gs_5
+      structure Int32 = gs_8
+      structure LargeWord = gs_22
+      signature MC_EMIT = gs_19
+      signature MLTREE_EVAL = gs_25
+      structure Word = gs_24
+      structure Word32 = gs_20
+      structure Word8 = gs_21
+      structure Word8Vector = gs_23
+      ../amd64/amd64MCFn.sml
+   in
+      functor gs_29 = AMD64MCFn
+   end
+   local
+      open l9
+   in
+      signature gs_30 = INSTRUCTION_EMITTER
+   end
+   local
+      signature AMD64INSTR = gs_16
+      functor AMD64Instr = gs_17
+      signature AMD64SHUFFLE = gs_27
+      functor AMD64Shuffle = gs_28
+      structure CellsBasis = gs_5
+      signature INSTRUCTION_EMITTER = gs_30
+      structure Int = gs_0
+      structure Int32 = gs_8
+      structure LargeWord = gs_22
+      signature MC_EMIT = gs_19
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE_EVAL = gs_25
+      structure Word = gs_24
+      structure Word32 = gs_20
+      structure Word8 = gs_21
+      structure Word8Vector = gs_23
+      ../amd64/amd64MC.sml
+   in
+      functor gs_31 = AMD64MCEmitter
+   end
+   local
+      open l9
+   in
+      signature gs_32 = PSEUDO_OPS_BASIS
+   end
+   local
+      open l9
+   in
+      functor gs_33 = GasPseudoOps
+   end
+   local
+      open l9
+   in
+      functor gs_34 = PseudoOpsLittle
+   end
+   local
+      open l111
+   in
+      structure gs_35 = Format
+   end
+   local
+      open l9
+   in
+      structure gs_36 = PseudoOpsBasisTyp
+   end
+   local
+      structure Format = gs_35
+      functor GasPseudoOps = gs_33
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE = gs_3
+      signature MLTREE_EVAL = gs_25
+      signature PSEUDO_OPS_BASIS = gs_32
+      structure PseudoOpsBasisTyp = gs_36
+      functor PseudoOpsLittle = gs_34
+      structure Word32 = gs_20
+      ../amd64/flowgraph/amd64GasPseudoOps.sml
+   in
+      functor gs_37 = AMD64GasPseudoOps
+   end
+   local
+      open l4
+   in
+      structure gs_38 = List
+   end
+   local
+      open l9
+   in
+      signature gs_39 = MLTREE_HASH
+   end
+   local
+      open l9
+   in
+      signature gs_40 = INSN_PROPERTIES
+   end
+   local
+      signature AMD64INSTR = gs_16
+      functor AMD64Instr = gs_17
+      structure CellsBasis = gs_5
+      signature INSN_PROPERTIES = gs_40
+      structure Int = gs_0
+      structure Int32 = gs_8
+      structure Int64 = gs_7
+      structure Label = gs_6
+      structure List = gs_38
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE_EVAL = gs_25
+      signature MLTREE_HASH = gs_39
+      structure Word = gs_24
+      ../amd64/instructions/amd64Props.sml
+   in
+      signature gs_41 = AMD64INSN_PROPERTIES
+      functor gs_42 = AMD64Props
+   end
+   local
+      open l9
+   in
+      signature gs_43 = SDI_JUMPS
+   end
+   local
+      signature AMD64INSTR = gs_16
+      functor AMD64Instr = gs_17
+      signature AMD64SHUFFLE = gs_27
+      functor AMD64Shuffle = gs_28
+      signature MC_EMIT = gs_19
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE_EVAL = gs_25
+      signature SDI_JUMPS = gs_43
+      structure Word8Vector = gs_23
+      ../amd64/backpatch/amd64Jumps.sml
+   in
+      functor gs_44 = AMD64Jumps
+   end
+   local
+      open l9
+   in
+      signature gs_45 = CONTROL_FLOW_GRAPH
+   end
+   local
+      open l9
+   in
+      signature gs_46 = MLTREE_STREAM
+   end
+   local
+      ../amd64/instructions/amd64InstrExt.sml
+   in
+      structure gs_47 = AMD64InstrExt
+   end
+   local
+      signature AMD64INSTR = gs_16
+      functor AMD64Instr = gs_17
+      structure AMD64InstrExt = gs_47
+      signature CONTROL_FLOW_GRAPH = gs_45
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE_STREAM = gs_46
+      ../amd64/instructions/amd64CompInstrExt.sml
+   in
+      signature gs_48 = AMD64COMP_INSTR_EXT
+      functor gs_49 = AMD64CompInstrExt
+   end
+   local
+      open l9
+   in
+      functor gs_50 = DarwinPseudoOps
+   end
+   local
+      functor DarwinPseudoOps = gs_50
+      structure Format = gs_35
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE = gs_3
+      signature MLTREE_EVAL = gs_25
+      signature PSEUDO_OPS_BASIS = gs_32
+      structure PseudoOpsBasisTyp = gs_36
+      functor PseudoOpsLittle = gs_34
+      structure Word32 = gs_20
+      ../amd64/flowgraph/amd64-darwin-pseudo-ops.sml
+   in
+      functor gs_51 = AMD64DarwinPseudoOps
+   end
+   local
+      open l9
+   in
+      signature gs_52 = ASM_FORMAT_UTIL
+      structure gs_53 = AsmFormatUtil
+   end
+   local
+      open l9
+   in
+      signature gs_54 = ASM_STREAM
+      structure gs_55 = AsmStream
+   end
+   local
+      open l4
+   in
+      structure gs_56 = TextIO
+   end
+   local
+      open l4
+   in
+      structure gs_57 = String
+   end
+   local
+      open l4
+   in
+      structure gs_58 = Char
+   end
+   local
+      open l9
+   in
+      structure gs_59 = AsmFlags
+   end
+   local
+      open l9
+   in
+      signature gs_60 = INSTRUCTION_STREAM
+   end
+   local
+      signature AMD64INSTR = gs_16
+      functor AMD64Instr = gs_17
+      signature AMD64SHUFFLE = gs_27
+      functor AMD64Shuffle = gs_28
+      signature ASM_FORMAT_UTIL = gs_52
+      signature ASM_STREAM = gs_54
+      structure Annotations = gs_9
+      structure AsmFlags = gs_59
+      structure AsmFormatUtil = gs_53
+      structure AsmStream = gs_55
+      structure CellsBasis = gs_5
+      structure Char = gs_58
+      signature INSTRUCTION_EMITTER = gs_30
+      signature INSTRUCTION_STREAM = gs_60
+      structure Int = gs_0
+      structure Int32 = gs_8
+      structure Int64 = gs_7
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE_EVAL = gs_25
+      structure String = gs_57
+      structure TextIO = gs_56
+      ../amd64/emit/amd64Asm.sml
+   in
+      functor gs_61 = AMD64AsmEmitter
+   end
+   local
+      open l9
+   in
+      signature gs_62 = CFG_OPTIMIZATION
+   end
+   local
+      open l9
+   in
+      functor gs_63 = GetReg
+   end
+   local
+      open l9
+   in
+      signature gs_64 = PRINT_FLOWGRAPH
+      functor gs_65 = PrintFlowgraph
+   end
+   local
+      open l9
+   in
+      functor gs_66 = RegisterAllocator
+   end
+   local
+      open l9
+   in
+      functor gs_67 = MemoryRA
+   end
+   local
+      open l9
+   in
+      functor gs_68 = RADeadCodeElim
+   end
+   local
+      open l9
+   in
+      functor gs_69 = ClusterRA
+   end
+   local
+      open l111
+   in
+      structure gs_70 = IntHashTable
+   end
+   local
+      open l46
+   in
+      signature gs_71 = MLRISC_CONTROL
+      structure gs_72 = MLRiscControl
+   end
+   local
+      open l223
+   in
+      structure gs_73 = Graph
+   end
+   local
+      open l4
+   in
+      structure gs_74 = Array
+   end
+   local
+      open l4
+   in
+      structure gs_75 = Option
+   end
+   local
+      open l9
+   in
+      signature gs_76 = RA_SPILL
+   end
+   local
+      open l9
+   in
+      signature gs_77 = RA_SPILL_HEURISTICS
+   end
+   local
+      open l9
+   in
+      structure gs_78 = RAGraph
+   end
+   local
+      open l9
+   in
+      signature gs_79 = ARCH_SPILL_INSTR
+   end
+   local
+      open l9
+   in
+      structure gs_80 = MLRiscAnnotations
+   end
+   local
+      signature AMD64INSN_PROPERTIES = gs_41
+      signature AMD64INSTR = gs_16
+      functor AMD64Instr = gs_17
+      functor AMD64Props = gs_42
+      signature ARCH_SPILL_INSTR = gs_79
+      structure Annotations = gs_9
+      structure CellsBasis = gs_5
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscAnnotations = gs_80
+      structure MLRiscErrorMsg = gs_13
+      ../amd64/ra/amd64SpillInstr.sml
+   in
+      functor gs_81 = AMD64SpillInstr
+   end
+   local
+      signature AMD64INSN_PROPERTIES = gs_41
+      signature AMD64INSTR = gs_16
+      functor AMD64Instr = gs_17
+      functor AMD64Props = gs_42
+      functor AMD64SpillInstr = gs_81
+      structure Annotations = gs_9
+      structure Array = gs_74
+      signature CFG_OPTIMIZATION = gs_62
+      signature CONTROL_FLOW_GRAPH = gs_45
+      structure CellsBasis = gs_5
+      functor ClusterRA = gs_69
+      functor GetReg = gs_63
+      structure Graph = gs_73
+      signature INSTRUCTION_EMITTER = gs_30
+      structure IntHashTable = gs_70
+      structure List = gs_38
+      signature MLRISC_CONTROL = gs_71
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscControl = gs_72
+      structure MLRiscErrorMsg = gs_13
+      functor MemoryRA = gs_67
+      structure Option = gs_75
+      signature PRINT_FLOWGRAPH = gs_64
+      functor PrintFlowgraph = gs_65
+      functor RADeadCodeElim = gs_68
+      structure RAGraph = gs_78
+      signature RA_SPILL = gs_76
+      signature RA_SPILL_HEURISTICS = gs_77
+      functor RegisterAllocator = gs_66
+      ../amd64/ra/amd64RegAlloc.sml
+   in
+      functor gs_82 = AMD64RegAlloc
+   end
+   local
+      open l9
+   in
+      functor gs_83 = MLTreeGen
+   end
+   local
+      open l9
+   in
+      functor gs_84 = MLTreeSize
+   end
+   local
+      open l4
+   in
+      structure gs_85 = IntInf
+   end
+   local
+      open l34
+   in
+      signature gs_86 = PROBABILITY
+      structure gs_87 = Probability
+   end
+   local
+      open l4
+   in
+      structure gs_88 = ListPair
+   end
+   local
+      open l9
+   in
+      signature gs_89 = MLTREECOMP
+      signature gs_90 = MLTREE_EXTENSION_COMP
+   end
+   local
+      open l276
+   in
+      signature gs_91 = MLTREE_UTILS
+   end
+   local
+      signature AMD64INSTR = gs_16
+      functor AMD64Instr = gs_17
+      functor AMD64Opcodes = gs_18
+      structure CellsBasis = gs_5
+      structure Int32 = gs_8
+      structure Int64 = gs_7
+      structure IntInf = gs_85
+      structure Label = gs_6
+      structure List = gs_38
+      structure ListPair = gs_88
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscAnnotations = gs_80
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREECOMP = gs_89
+      signature MLTREE_EXTENSION_COMP = gs_90
+      signature MLTREE_UTILS = gs_91
+      functor MLTreeGen = gs_83
+      functor MLTreeSize = gs_84
+      signature PROBABILITY = gs_86
+      structure Probability = gs_87
+      functor Shuffle = gs_26
+      structure Word = gs_24
+      structure Word32 = gs_20
+      ../amd64/mltree/amd64-gen.sml
+   in
+      functor gs_92 = AMD64Gen
+   end
+in
+   functor AMD64AsmEmitter = gs_61
+   signature AMD64CELLS = gs_14
+   structure AMD64Cells = gs_15
+   functor AMD64CompInstrExt = gs_49
+   functor AMD64DarwinPseudoOps = gs_51
+   functor AMD64GasPseudoOps = gs_37
+   functor AMD64Gen = gs_92
+   signature AMD64INSN_PROPERTIES = gs_41
+   signature AMD64INSTR = gs_16
+   functor AMD64Instr = gs_17
+   structure AMD64InstrExt = gs_47
+   functor AMD64Jumps = gs_44
+   functor AMD64MCEmitter = gs_31
+   functor AMD64MCFn = gs_29
+   functor AMD64Opcodes = gs_18
+   functor AMD64Props = gs_42
+   functor AMD64RegAlloc = gs_82
+   signature AMD64SHUFFLE = gs_27
+   functor AMD64Shuffle = gs_28
+   functor AMD64SpillInstr = gs_81
+end
+end
+
+end

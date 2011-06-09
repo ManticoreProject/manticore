@@ -1,0 +1,104 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l4 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb $(SML_LIB)/basis/unsafe.mlb
+    end
+  basis l28 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l12 = 
+    bas
+      (* $/controls-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Controls/controls-lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = Timer
+   end
+   local
+      open l4
+   in
+      structure gs_1 = Time
+   end
+   local
+      open l12
+   in
+      structure gs_2 = Controls
+   end
+   local
+      open l12
+   in
+      structure gs_3 = ControlUtil
+   end
+   local
+      open l12
+   in
+      structure gs_4 = ControlSet
+   end
+   local
+      open l12
+   in
+      structure gs_5 = ControlRegistry
+   end
+   local
+      open l4
+   in
+      structure gs_6 = TextIO
+   end
+   local
+      open l28
+   in
+      structure gs_7 = Atom
+   end
+   local
+      structure Atom = gs_7
+      structure ControlRegistry = gs_5
+      structure ControlSet = gs_4
+      structure ControlUtil = gs_3
+      structure Controls = gs_2
+      structure TextIO = gs_6
+      structure Time = gs_1
+      ../control/mlrisc-control.sml
+   in
+      signature gs_8 = MLRISC_CONTROL
+      structure gs_9 = MLRiscControl
+   end
+   local
+      signature MLRISC_CONTROL = gs_8
+      structure MLRiscControl = gs_9
+      structure Time = gs_1
+      structure Timer = gs_0
+      ../control/mlrisc-timing.sml
+   in
+      signature gs_10 = MLRISC_TIMING
+      structure gs_11 = MLRiscTiming
+   end
+   local
+      structure TextIO = gs_6
+      ../control/mlriscErrormsg.sml
+   in
+      signature gs_12 = MLRISC_ERROR_MSG
+      structure gs_13 = MLRiscErrorMsg
+   end
+in
+   signature MLRISC_CONTROL = gs_8
+   signature MLRISC_ERROR_MSG = gs_12
+   signature MLRISC_TIMING = gs_10
+   structure MLRiscControl = gs_9
+   structure MLRiscErrorMsg = gs_13
+   structure MLRiscTiming = gs_11
+end
+end
+
+end

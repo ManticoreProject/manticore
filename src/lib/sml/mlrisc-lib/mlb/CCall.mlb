@@ -1,0 +1,96 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l20 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb $(SML_LIB)/basis/unsafe.mlb
+    end
+  basis l4 = 
+    bas
+      (* $MLRISC.cm(=(proxyLib.cm):.)/MLRISC.cm =??=> *) MLRISC.mlb
+    end
+  basis l9 = 
+    bas
+      (* $StagedAlloc.cm(=(proxyLib.cm):.)/StagedAlloc.cm =??=> *) StagedAlloc.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      signature gs_0 = MLTREE
+   end
+   local
+      open l9
+   in
+      signature gs_1 = STAGED_ALLOCATION
+   end
+   local
+      open l9
+   in
+      structure gs_2 = CLocKind
+   end
+   local
+      structure CLocKind = gs_2
+      signature MLTREE = gs_0
+      signature STAGED_ALLOCATION = gs_1
+      ../c-call/gen/c-call-gen-sig.sml
+   in
+      signature gs_3 = C_CALL_GEN
+   end
+   local
+      open l20
+   in
+      structure gs_4 = List
+   end
+   local
+      structure List = gs_4
+      ../c-call/gen/c-type.sml
+   in
+      structure gs_5 = CType
+   end
+   local
+      structure CType = gs_5
+      signature C_CALL_GEN = gs_3
+      signature MLTREE = gs_0
+      ../c-call/gen/c-call-sig.sml
+   in
+      signature gs_6 = C_CALL
+   end
+   local
+      open l20
+   in
+      structure gs_7 = ListPair
+   end
+   local
+      open l4
+   in
+      signature gs_8 = CELLS
+   end
+   local
+      signature CELLS = gs_8
+      structure CLocKind = gs_2
+      signature C_CALL_GEN = gs_3
+      structure List = gs_4
+      structure ListPair = gs_7
+      signature MLTREE = gs_0
+      signature STAGED_ALLOCATION = gs_1
+      ../c-call/gen/c-call-gen-fn.sml
+   in
+      functor gs_9 = CCallGenFn
+   end
+in
+   functor CCallGenFn = gs_9
+   structure CType = gs_5
+   signature C_CALL = gs_6
+   signature C_CALL_GEN = gs_3
+end
+end
+
+end

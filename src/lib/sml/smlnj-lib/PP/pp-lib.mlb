@@ -1,0 +1,212 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l4 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb 
+    end
+  basis l26 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l83 = 
+    bas
+      (* $/html-lib.cm ====> *) $(SML_LIB)/smlnj-lib/HTML/html-lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = TextIO
+   end
+   local
+      src/pp-stream-sig.sml
+   in
+      signature gs_1 = PP_STREAM
+   end
+   local
+      signature PP_STREAM = gs_1
+      structure TextIO = gs_0
+      src/pp-debug-fn.sml
+   in
+      functor gs_2 = PPDebugFn
+   end
+   local
+      src/pp-device-sig.sml
+   in
+      signature gs_3 = PP_DEVICE
+   end
+   local
+      open l4
+   in
+      structure gs_4 = StringCvt
+   end
+   local
+      signature PP_DEVICE = gs_3
+      structure StringCvt = gs_4
+      structure TextIO = gs_0
+      devices/simple-textio-dev.sml
+   in
+      structure gs_5 = SimpleTextIODev
+   end
+   local
+      open l26
+   in
+      structure gs_6 = Format
+   end
+   local
+      open l26
+   in
+      structure gs_7 = Queue
+   end
+   local
+      open l26
+   in
+      structure gs_8 = ListFormat
+   end
+   local
+      open l4
+   in
+      structure gs_9 = String
+   end
+   local
+      open l4
+   in
+      structure gs_10 = Option
+   end
+   local
+      open l4
+   in
+      structure gs_11 = Int
+   end
+   local
+      src/pp-token-sig.sml
+   in
+      signature gs_12 = PP_TOKEN
+   end
+   local
+      structure Format = gs_6
+      structure Int = gs_11
+      structure ListFormat = gs_8
+      structure Option = gs_10
+      signature PP_DEVICE = gs_3
+      signature PP_STREAM = gs_1
+      signature PP_TOKEN = gs_12
+      structure Queue = gs_7
+      structure String = gs_9
+      structure TextIO = gs_0
+      src/pp-stream-fn.sml
+   in
+      functor gs_13 = PPStreamFn
+   end
+   local
+      signature PP_STREAM = gs_1
+      src/pp-desc-sig.sml
+   in
+      signature gs_14 = PP_DESC
+   end
+   local
+      signature PP_DESC = gs_14
+      signature PP_STREAM = gs_1
+      src/pp-desc-fn.sml
+   in
+      functor gs_15 = PPDescFn
+   end
+   local
+      signature PP_TOKEN = gs_12
+      structure String = gs_9
+      devices/string-token.sml
+   in
+      structure gs_16 = StringToken
+   end
+   local
+      functor PPStreamFn = gs_13
+      signature PP_STREAM = gs_1
+      structure SimpleTextIODev = gs_5
+      structure StringToken = gs_16
+      structure TextIO = gs_0
+      devices/textio-pp.sml
+   in
+      structure gs_17 = TextIOPP
+   end
+   local
+      open l26
+   in
+      structure gs_18 = ANSITerm
+   end
+   local
+      open l4
+   in
+      structure gs_19 = TextPrimIO
+   end
+   local
+      open l4
+   in
+      structure gs_20 = OS
+   end
+   local
+      structure ANSITerm = gs_18
+      structure OS = gs_20
+      signature PP_DEVICE = gs_3
+      structure StringCvt = gs_4
+      structure TextIO = gs_0
+      structure TextPrimIO = gs_19
+      devices/ansi-term-dev.sml
+   in
+      structure gs_21 = ANSITermDev
+   end
+   local
+      open l4
+   in
+      structure gs_22 = List
+   end
+   local
+      open l83
+   in
+      structure gs_23 = HTML
+   end
+   local
+      structure HTML = gs_23
+      structure List = gs_22
+      signature PP_DEVICE = gs_3
+      structure String = gs_9
+      devices/html-dev.sml
+   in
+      structure gs_24 = HTMLDev
+   end
+   local
+      structure ANSITermDev = gs_21
+      functor PPStreamFn = gs_13
+      signature PP_STREAM = gs_1
+      signature PP_TOKEN = gs_12
+      structure String = gs_9
+      structure TextIO = gs_0
+      devices/ansi-term-pp.sml
+   in
+      structure gs_25 = ANSITermPP
+   end
+in
+   structure ANSITermDev = gs_21
+   structure ANSITermPP = gs_25
+   structure HTMLDev = gs_24
+   functor PPDebugFn = gs_2
+   functor PPDescFn = gs_15
+   functor PPStreamFn = gs_13
+   signature PP_DESC = gs_14
+   signature PP_DEVICE = gs_3
+   signature PP_STREAM = gs_1
+   signature PP_TOKEN = gs_12
+   structure SimpleTextIODev = gs_5
+   structure StringToken = gs_16
+   structure TextIOPP = gs_17
+end
+end
+
+end
