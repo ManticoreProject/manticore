@@ -1,0 +1,9 @@
+Group
+
+structure Char
+structure IO
+structure TextIO
+structure TextPrimIO
+
+is
+  $/basis.cm

@@ -13,11 +13,12 @@ functor FrontEnd
 functor MLBFrontEnd
 
 is
-
-../../../../lib/mlton/sources.cm
+basis-no-char.cm
+stubs.cm
 ml-yacc-lib-proxy.cm
 ../ast/sources.cm
 ../control/sources.cm
+
 
 ml.lex
 ml.grm

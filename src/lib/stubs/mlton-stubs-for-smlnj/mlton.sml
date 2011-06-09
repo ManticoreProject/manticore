@@ -4,6 +4,9 @@
  *
  * MLton is released under a BSD-style license.
  * See the file MLton-LICENSE for details.
+ *
+ * LARSBERG: We do not use any of this information later, so we no longer dynamically
+ * determine the platform.
  *)
 
 structure MLton =
@@ -49,13 +52,13 @@ structure MLton =
                   struct
                      type t = string
                      val toString = fn s => s
-                     val host = mkHost "host-arch"
+                     val host = "x86"
                   end
                structure OS =
                   struct
                      type t = string
                      val toString = fn s => s
-                     val host = mkHost "host-os"
+                     val host = "Darwin"
                   end
             end
          end

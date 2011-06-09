@@ -1211,7 +1211,7 @@ const'  : int                   (Const.Int int)
 
 string : STRING  (CharVector.tabulate
                   (Vector.length STRING, fn i =>
-                   Char.fromInt (Int.fromIntInf (Vector.sub (STRING, i)))))
+                   Char.chr (Int.fromIntInf (Vector.sub (STRING, i)))))
 
 idNoAsterisk : longidNoAsterisk (ensureNonqualified longidNoAsterisk)
 

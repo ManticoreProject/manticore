@@ -1,6 +1,10 @@
 structure Wrapper =
 struct
     structure Compile = Compile()
+    structure Main = Main()
+
+    (* Initialize MLton constants with default values*)
+    val _ = Main.commandLine []
                         
     fun makeFileDummy f = fn () =>
         {file = f,

@@ -2,7 +2,8 @@
 X Remove everything after SXML
 
 -- Combine frontends
-Push the MLton frontend sources into the src/tools/mc directory
+X Push the MLton frontend sources into the src/tools/mc directory
+Get Manticore running the parse->Sxml chain
 Create a new combined mlton-main/swp-driver SML file to be the root of the SMLNJ
 image created during the compilation
 Disable everything Manticore before BOM
