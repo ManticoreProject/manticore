@@ -44,9 +44,9 @@ fun lexAndParse (source: Source.t, ins: In.t): Ast.Program.t =
       result
    end
 
-fun lexAndParseFile (f: File.t) = (print (concat["Parsing: ", f, "\n"]);
+fun lexAndParseFile (f: File.t) =
    File.withIn
-   (f, fn ins => lexAndParse (Source.new f, ins)))
+   (f, fn ins => lexAndParse (Source.new f, ins))
 
 val lexAndParseFile =
     Trace.trace ("FrontEnd.lexAndParseFile", File.layout, Ast.Program.layout)
