@@ -13,7 +13,7 @@ local
     end
   basis l73 = 
     bas
-      (* $/ml-lpt-lib.cm ====> *) $(SML_LIB)/ml-lpt/lib/ml-lpt-lib.mlb
+      (* $/ml-lpt-lib.cm ====> *) $(SML_LIB)/mllpt-lib/ml-lpt-lib.mlb
     end
   basis l8 = 
     bas
