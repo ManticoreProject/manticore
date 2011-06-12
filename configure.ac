@@ -250,14 +250,14 @@ fi
 AC_SUBST(ML_BUILD)
 
 dnl
-dnl look for ml-lex
+dnl look for mllex
 dnl
 tmpPATH="$SMLNJ_PATH:$PATH"
-AC_PATH_PROG(ML_LEX, ml-lex, none, $tmpPATH)
-if test $ML_LEX = none ; then
-  AC_MSG_ERROR([ml-lex not found])
+AC_PATH_PROG(MLLEX, mllex, none, $tmpPATH)
+if test $MLLEX = none ; then
+  AC_MSG_ERROR([mllex not found])
 fi
-AC_SUBST(ML_LEX)
+AC_SUBST(MLLEX)
 
 dnl
 dnl look for ml-ulex
@@ -280,14 +280,14 @@ fi
 AC_SUBST(ML_ANTLR)
 
 dnl
-dnl look for ml-yacc
+dnl look for mlyacc
 dnl
 tmpPATH="$SMLNJ_PATH:$PATH"
-AC_PATH_PROG(ML_YACC, ml-yacc, none, $tmpPATH)
-if test $ML_YACC = none ; then
-  AC_MSG_ERROR([ml-yacc not found])
+AC_PATH_PROG(MLYACC, mlyacc, none, $tmpPATH)
+if test $MLYACC = none ; then
+  AC_MSG_ERROR([mlyacc not found])
 fi
-AC_SUBST(ML_YACC)
+AC_SUBST(MLYACC)
 
 dnl
 dnl allow the user to override the location of the MLRisc library

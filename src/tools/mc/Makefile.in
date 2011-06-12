@@ -36,10 +36,10 @@ ML_BUILD_FLAGS =	-Ctdp.instrument=true \$$smlnj-tdp/back-trace.cm
 ML_MAKEDEPEND =		@ML_MAKEDEPEND@
 ML_MAKEDEPEND_FLAGS =
 
-ML_LEX = 	@ML_LEX@
+MLLEX = 	@MLLEX@
 ML_ULEX =	@ML_ULEX@
 ML_ANTLR = 	@ML_ANTLR@
-ML_YACC =	@ML_YACC@
+MLYACC =	@MLYACC@
 MLTON =		@MLTON@
 MLTON_FLAGS =	-verbose 1
 
@@ -112,10 +112,10 @@ parser/%.grm.sig parser/%.grm.sml: parser/%.grm
 	(cd parser ; $(ML_ANTLR) $(<F))
 
 mlton/front-end/%.lex.sml: mlton/front-end/%.lex
-	$(ML_LEX) $<
+	$(MLLEX) $<
 
 mlton/front-end/%.grm.sig mlton/front-end/%.grm.sml: mlton/front-end/%.grm
-	$(ML_YACC) $<
+	$(MLYACC) $<
 
 
 .PHONY:		mlton
@@ -155,6 +155,8 @@ CLEAN_SUBDIRS =
 CLEAN_FILES =		$(HEAP_IMAGE) \
 			*/*.grm.sml \
 			*/*.lex.sml \
+			mlton/*/*.grm.sml \
+			mlton/*/*.lex.sml \
 			.depend
 
 DISTCLEAN_FILES =	codegen/group.cm \
