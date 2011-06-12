@@ -1,0 +1,35 @@
+local
+  basis l3 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l3
+   in
+      structure gs_0 = TextPrimIO
+   end
+   local
+      open l3
+   in
+      structure gs_1 = TextIO
+   end
+   local
+      open l3
+   in
+      structure gs_2 = Char
+   end
+   local
+      open l3
+   in
+      structure gs_3 = IO
+   end
+in
+   structure Char = gs_2
+   structure IO = gs_3
+   structure TextIO = gs_1
+   structure TextPrimIO = gs_0
+end
+end

@@ -25,7 +25,18 @@ signature MANTICORE_PSEUDO_OPS = sig
     val int : (int_size * IntInf.int list) -> pseudo_op
 
     structure PseudoOps : PSEUDO_OPS 
-	  where T = P.T
-	  and type Client.pseudo_op = pseudo_op_ext
+          where type T.cond = P.T.cond
+          where type T.fcond = P.T.fcond
+          where type T.rounding_mode = P.T.rounding_mode
+          where type T.div_rounding_mode = P.T.div_rounding_mode
+          where type T.ext = P.T.ext
+          where type T.stm = P.T.stm
+          where type T.rexp = P.T.rexp
+          where type T.rep = P.T.rep
+          where type T.oper = P.T.oper
+          where type T.fexp = P.T.fexp
+          where type T.ccexp = P.T.ccexp
+          where type T.mlrisc = P.T.mlrisc
+	  where type Client.pseudo_op = pseudo_op_ext
 
 end (* MANTICORE_PSEUDO_OPS *)

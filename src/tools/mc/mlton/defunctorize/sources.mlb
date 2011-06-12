@@ -7,7 +7,7 @@
  *)
 
 local
-   ../../lib/mlton/sources.mlb
+   ../../../../lib/mlton/sources.mlb
    ../control/sources.mlb
    ../core-ml/sources.mlb
    ../match-compile/sources.mlb

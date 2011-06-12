@@ -1,0 +1,447 @@
+local
+  basis l4 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb
+    end
+  basis l14 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l62 = 
+    bas
+      (* $/controls-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Controls/controls-lib.mlb
+    end
+  basis l136 = 
+    bas
+      (* $/ml-lpt-lib.cm ====> *) $(SML_LIB)/ml-lpt/lib/ml-lpt-lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = OS
+   end
+   local
+      structure OS = gs_0
+      load-paths.sml
+   in
+      structure gs_1 = LoadPaths
+   end
+   local
+      open l4
+   in
+      structure gs_2 = Int
+   end
+   local
+      open l14
+   in
+      signature gs_3 = MONO_HASH_TABLE
+   end
+   local
+      structure Int = gs_2
+      signature MONO_HASH_TABLE = gs_3
+      check-var-counts-fn.sml
+   in
+      functor gs_4 = CheckVarCountsFn
+   end
+   local
+      open l4
+   in
+      structure gs_5 = IntInf
+   end
+   local
+      structure IntInf = gs_5
+      runtime-constants-sig.sml
+   in
+      signature gs_6 = RUNTIME_CONSTANTS
+   end
+   local
+      open l4
+   in
+      structure gs_7 = Word
+   end
+   local
+      structure IntInf = gs_5
+      structure Word = gs_7
+      integer-lit.sml
+   in
+      structure gs_8 = IntegerLit
+   end
+   local
+      structure IntegerLit = gs_8
+      signature RUNTIME_CONSTANTS = gs_6
+      target-spec-sig.sml
+   in
+      signature gs_9 = TARGET_SPEC
+   end
+   local
+      structure IntInf = gs_5
+      structure IntegerLit = gs_8
+      const-arith.sml
+   in
+      structure gs_10 = ConstArith
+   end
+   local
+      open l4
+   in
+      structure gs_11 = Substring
+   end
+   local
+      open l4
+   in
+      structure gs_12 = Word8
+   end
+   local
+      open l4
+   in
+      structure gs_13 = Word8Vector
+   end
+   local
+      open l4
+   in
+      structure gs_14 = List
+   end
+   local
+      open l4
+   in
+      structure gs_15 = Char
+   end
+   local
+      structure Char = gs_15
+      structure Int = gs_2
+      structure List = gs_14
+      structure Substring = gs_11
+      structure Word = gs_7
+      structure Word8 = gs_12
+      structure Word8Vector = gs_13
+      float-lit.sml
+   in
+      structure gs_16 = FloatLit
+   end
+   local
+      open l62
+   in
+      structure gs_17 = Controls
+   end
+   local
+      open l62
+   in
+      structure gs_18 = ControlUtil
+   end
+   local
+      open l4
+   in
+      structure gs_19 = CharVector
+   end
+   local
+      open l62
+   in
+      structure gs_20 = ControlRegistry
+   end
+   local
+      open l4
+   in
+      structure gs_21 = TextIO
+   end
+   local
+      open l4
+   in
+      structure gs_22 = Time
+   end
+   local
+      structure CharVector = gs_19
+      structure ControlRegistry = gs_20
+      structure ControlUtil = gs_18
+      structure Controls = gs_17
+      structure Int = gs_2
+      structure TextIO = gs_21
+      structure Time = gs_22
+      basic-control.sml
+   in
+      structure gs_23 = BasicControl
+   end
+   local
+      open l14
+   in
+      functor gs_24 = HashTableFn
+   end
+   local
+      open l14
+   in
+      functor gs_25 = RedBlackSetFn
+   end
+   local
+      open l14
+   in
+      functor gs_26 = RedBlackMapFn
+   end
+   local
+      open l14
+   in
+      structure gs_27 = PropList
+   end
+   local
+      open l4
+   in
+      structure gs_28 = String
+   end
+   local
+      open l14
+   in
+      signature gs_29 = ORD_MAP
+   end
+   local
+      open l14
+   in
+      signature gs_30 = ORD_SET
+   end
+   local
+      open l4
+   in
+      structure gs_31 = StringCvt
+   end
+   local
+      functor HashTableFn = gs_24
+      signature MONO_HASH_TABLE = gs_3
+      signature ORD_MAP = gs_29
+      signature ORD_SET = gs_30
+      functor RedBlackMapFn = gs_26
+      functor RedBlackSetFn = gs_25
+      structure StringCvt = gs_31
+      structure Word = gs_7
+      stamp.sml
+   in
+      structure gs_32 = Stamp
+   end
+   local
+      structure PropList = gs_27
+      structure Stamp = gs_32
+      var-rep.sml
+   in
+      structure gs_33 = VarRep
+   end
+   local
+      functor HashTableFn = gs_24
+      structure List = gs_14
+      signature MONO_HASH_TABLE = gs_3
+      signature ORD_MAP = gs_29
+      signature ORD_SET = gs_30
+      structure PropList = gs_27
+      functor RedBlackMapFn = gs_26
+      functor RedBlackSetFn = gs_25
+      structure Stamp = gs_32
+      structure String = gs_28
+      structure VarRep = gs_33
+      var-fn.sml
+   in
+      signature gs_34 = VAR
+      signature gs_35 = VAR_PARAMS
+      functor gs_36 = VarFn
+   end
+   local
+      open l4
+   in
+      structure gs_37 = Array
+   end
+   local
+      open l4
+   in
+      structure gs_38 = ArraySlice
+   end
+   local
+      structure Array = gs_37
+      structure ArraySlice = gs_38
+      structure BasicControl = gs_23
+      structure ControlRegistry = gs_20
+      structure ControlUtil = gs_18
+      structure Controls = gs_17
+      structure Int = gs_2
+      structure OS = gs_0
+      structure String = gs_28
+      structure StringCvt = gs_31
+      structure TextIO = gs_21
+      stats.sml
+   in
+      structure gs_39 = Stats
+   end
+   local
+      open l14
+   in
+      structure gs_40 = Format
+   end
+   local
+      open l136
+   in
+      structure gs_41 = AntlrRepair
+   end
+   local
+      open l136
+   in
+      structure gs_42 = AntlrStreamPos
+   end
+   local
+      open l14
+   in
+      structure gs_43 = ListMergeSort
+   end
+   local
+      open l4
+   in
+      structure gs_44 = Position
+   end
+   local
+      structure AntlrRepair = gs_41
+      structure AntlrStreamPos = gs_42
+      structure Format = gs_40
+      structure List = gs_14
+      structure ListMergeSort = gs_43
+      structure Position = gs_44
+      structure String = gs_28
+      structure TextIO = gs_21
+      error.sml
+   in
+      structure gs_45 = Error
+   end
+   local
+      open l4
+   in
+      structure gs_46 = Option
+   end
+   local
+      structure Int = gs_2
+      structure List = gs_14
+      structure Option = gs_46
+      structure String = gs_28
+      expansion-opts.sml
+   in
+      structure gs_47 = ExpansionOpts
+   end
+   local
+      raw-types.sml
+   in
+      structure gs_48 = RawTypes
+   end
+   local
+      open l14
+   in
+      structure gs_49 = Atom
+   end
+   local
+      structure Atom = gs_49
+      basis-names.sml
+   in
+      structure gs_50 = BasisNames
+   end
+   local
+      functor HashTableFn = gs_24
+      signature MONO_HASH_TABLE = gs_3
+      signature ORD_MAP = gs_29
+      signature ORD_SET = gs_30
+      functor RedBlackMapFn = gs_26
+      functor RedBlackSetFn = gs_25
+      structure Stamp = gs_32
+      exn-name.sml
+   in
+      structure gs_51 = ExnName
+   end
+   local
+      structure List = gs_14
+      structure RawTypes = gs_48
+      structure String = gs_28
+      c-functions.sml
+   in
+      structure gs_52 = CFunctions
+      signature gs_53 = C_FUNCTIONS
+   end
+   local
+      open l14
+   in
+      structure gs_54 = HashString
+   end
+   local
+      open l14
+   in
+      structure gs_55 = UTF8
+   end
+   local
+      structure Char = gs_15
+      structure FloatLit = gs_16
+      structure HashString = gs_54
+      functor HashTableFn = gs_24
+      structure IntegerLit = gs_8
+      signature MONO_HASH_TABLE = gs_3
+      structure String = gs_28
+      structure StringCvt = gs_31
+      structure UTF8 = gs_55
+      structure Word = gs_7
+      literal.sml
+   in
+      structure gs_56 = Literal
+   end
+   local
+      open l4
+   in
+      structure gs_57 = Unix
+   end
+   local
+      structure Int = gs_2
+      structure List = gs_14
+      structure OS = gs_0
+      structure String = gs_28
+      structure StringCvt = gs_31
+      structure Substring = gs_11
+      structure TextIO = gs_21
+      structure Unix = gs_57
+      run-cpp.sml
+   in
+      structure gs_58 = RunCPP
+   end
+   local
+      structure Format = gs_40
+      functor HashTableFn = gs_24
+      signature MONO_HASH_TABLE = gs_3
+      signature ORD_MAP = gs_29
+      signature ORD_SET = gs_30
+      structure PropList = gs_27
+      functor RedBlackMapFn = gs_26
+      functor RedBlackSetFn = gs_25
+      structure Word = gs_7
+      prog-point.sml
+   in
+      structure gs_59 = ProgPt
+   end
+   local
+      memo.sml
+   in
+      structure gs_60 = Memo
+   end
+in
+   structure BasicControl = gs_23
+   structure BasisNames = gs_50
+   structure CFunctions = gs_52
+   signature C_FUNCTIONS = gs_53
+   functor CheckVarCountsFn = gs_4
+   structure ConstArith = gs_10
+   structure Error = gs_45
+   structure ExnName = gs_51
+   structure ExpansionOpts = gs_47
+   structure FloatLit = gs_16
+   structure IntegerLit = gs_8
+   structure Literal = gs_56
+   structure LoadPaths = gs_1
+   structure Memo = gs_60
+   structure ProgPt = gs_59
+   signature RUNTIME_CONSTANTS = gs_6
+   structure RawTypes = gs_48
+   structure RunCPP = gs_58
+   structure Stamp = gs_32
+   structure Stats = gs_39
+   signature TARGET_SPEC = gs_9
+   signature VAR = gs_34
+   signature VAR_PARAMS = gs_35
+   functor VarFn = gs_36
+   structure VarRep = gs_33
+end
+end

@@ -1,0 +1,351 @@
+local
+  basis l13 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb
+    end
+  basis l49 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l9 = 
+    bas
+      (* ../common/sources.cm ===> *) ../common/sources.mlb
+    end
+  basis l4 = 
+    bas
+      (* ../prim/sources.cm ===> *) ../prim/sources.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = CondUtil
+   end
+   local
+      open l9
+   in
+      structure gs_1 = CFunctions
+      signature gs_2 = C_FUNCTIONS
+   end
+   local
+      open l13
+   in
+      structure gs_3 = Option
+   end
+   local
+      open l13
+   in
+      structure gs_4 = List
+   end
+   local
+      open l13
+   in
+      structure gs_5 = String
+   end
+   local
+      open l13
+   in
+      structure gs_6 = Int
+   end
+   local
+      open l13
+   in
+      structure gs_7 = IntInf
+   end
+   local
+      open l9
+   in
+      structure gs_8 = Literal
+   end
+   local
+      open l4
+   in
+      functor gs_9 = PrimTyFn
+   end
+   local
+      open l4
+   in
+      structure gs_10 = PrimUtil
+   end
+   local
+      open l9
+   in
+      structure gs_11 = VarRep
+   end
+   local
+      open l13
+   in
+      structure gs_12 = ListPair
+   end
+   local
+      open l9
+   in
+      structure gs_13 = Stamp
+   end
+   local
+      open l49
+   in
+      structure gs_14 = Atom
+   end
+   local
+      open l13
+   in
+      structure gs_15 = StringCvt
+   end
+   local
+      open l9
+   in
+      structure gs_16 = RawTypes
+   end
+   local
+      open l13
+   in
+      structure gs_17 = Word
+   end
+   local
+      structure CFunctions = gs_1
+      signature C_FUNCTIONS = gs_2
+      structure RawTypes = gs_16
+      structure Stamp = gs_13
+      structure Word = gs_17
+      bom-ty.sml
+   in
+      structure gs_18 = BOMTy
+   end
+   local
+      structure BOMTy = gs_18
+      structure List = gs_4
+      structure Stamp = gs_13
+      bom-tycon.sml
+   in
+      structure gs_19 = BOMTyCon
+   end
+   local
+      structure BOMTy = gs_18
+      structure BOMTyCon = gs_19
+      structure CFunctions = gs_1
+      signature C_FUNCTIONS = gs_2
+      structure List = gs_4
+      structure ListPair = gs_12
+      structure RawTypes = gs_16
+      structure Stamp = gs_13
+      structure StringCvt = gs_15
+      structure Word = gs_17
+      bom-ty-util.sml
+   in
+      structure gs_20 = BOMTyUtil
+   end
+   local
+      structure Atom = gs_14
+      structure BOMTy = gs_18
+      structure BOMTyUtil = gs_20
+      structure List = gs_4
+      structure Stamp = gs_13
+      structure String = gs_5
+      hlop.sml
+   in
+      structure gs_21 = HLOp
+   end
+   local
+      open l9
+   in
+      signature gs_22 = VAR
+      signature gs_23 = VAR_PARAMS
+      functor gs_24 = VarFn
+   end
+   local
+      open l9
+   in
+      structure gs_25 = ProgPt
+   end
+   local
+      open l4
+   in
+      structure gs_26 = Prim
+   end
+   local
+      structure Atom = gs_14
+      structure BOMTy = gs_18
+      structure BOMTyUtil = gs_20
+      structure CFunctions = gs_1
+      signature C_FUNCTIONS = gs_2
+      structure HLOp = gs_21
+      structure Int = gs_6
+      structure IntInf = gs_7
+      structure List = gs_4
+      structure Literal = gs_8
+      structure Option = gs_3
+      structure Prim = gs_26
+      structure ProgPt = gs_25
+      signature VAR = gs_22
+      signature VAR_PARAMS = gs_23
+      functor VarFn = gs_24
+      structure VarRep = gs_11
+      bom.sml
+   in
+      structure gs_27 = BOM
+   end
+   local
+      structure BOM = gs_27
+      structure BOMTy = gs_18
+      structure BOMTyUtil = gs_20
+      structure CFunctions = gs_1
+      signature C_FUNCTIONS = gs_2
+      structure CondUtil = gs_0
+      structure HLOp = gs_21
+      structure Int = gs_6
+      structure IntInf = gs_7
+      structure List = gs_4
+      structure ListPair = gs_12
+      structure Literal = gs_8
+      structure Option = gs_3
+      functor PrimTyFn = gs_9
+      structure PrimUtil = gs_10
+      structure String = gs_5
+      structure VarRep = gs_11
+      bom-util.sml
+   in
+      structure gs_28 = BOMUtil
+   end
+   local
+      structure BOM = gs_27
+      structure BOMUtil = gs_28
+      structure CFunctions = gs_1
+      signature C_FUNCTIONS = gs_2
+      structure CondUtil = gs_0
+      structure List = gs_4
+      structure Option = gs_3
+      census.sml
+   in
+      structure gs_29 = Census
+   end
+   local
+      open l49
+   in
+      functor gs_30 = RedBlackMapFn
+   end
+   local
+      structure Atom = gs_14
+      structure BOM = gs_27
+      structure BOMTy = gs_18
+      structure HLOp = gs_21
+      structure IntInf = gs_7
+      structure List = gs_4
+      structure ListPair = gs_12
+      structure Literal = gs_8
+      functor RedBlackMapFn = gs_30
+      structure Stamp = gs_13
+      structure String = gs_5
+      rewrites.sml
+   in
+      structure gs_31 = Rewrites
+   end
+   local
+      open l9
+   in
+      structure gs_32 = Stats
+   end
+   local
+      open l9
+   in
+      structure gs_33 = BasicControl
+   end
+   local
+      open l49
+   in
+      structure gs_34 = URef
+   end
+   local
+      structure Atom = gs_14
+      structure BOM = gs_27
+      structure BOMTy = gs_18
+      structure BOMUtil = gs_28
+      structure BasicControl = gs_33
+      structure HLOp = gs_21
+      structure Int = gs_6
+      structure List = gs_4
+      structure ListPair = gs_12
+      structure Option = gs_3
+      structure PrimUtil = gs_10
+      structure ProgPt = gs_25
+      structure Stats = gs_32
+      structure String = gs_5
+      structure URef = gs_34
+      cfa-bom.sml
+   in
+      structure gs_35 = CFABOM
+   end
+   local
+      open l13
+   in
+      structure gs_36 = TextIO
+   end
+   local
+      structure Atom = gs_14
+      structure BOM = gs_27
+      structure BOMTy = gs_18
+      structure BOMTyCon = gs_19
+      structure BOMTyUtil = gs_20
+      structure CFunctions = gs_1
+      signature C_FUNCTIONS = gs_2
+      structure CondUtil = gs_0
+      structure HLOp = gs_21
+      structure Int = gs_6
+      structure IntInf = gs_7
+      structure List = gs_4
+      structure Literal = gs_8
+      structure PrimUtil = gs_10
+      structure String = gs_5
+      structure TextIO = gs_36
+      print-bom.sml
+   in
+      structure gs_37 = PrintBOM
+   end
+   local
+      open l9
+   in
+      functor gs_38 = CheckVarCountsFn
+   end
+   local
+      structure Atom = gs_14
+      structure BOM = gs_27
+      structure BOMTy = gs_18
+      structure BOMTyUtil = gs_20
+      structure BOMUtil = gs_28
+      structure BasicControl = gs_33
+      structure CFunctions = gs_1
+      signature C_FUNCTIONS = gs_2
+      functor CheckVarCountsFn = gs_38
+      structure CondUtil = gs_0
+      structure HLOp = gs_21
+      structure Int = gs_6
+      structure IntInf = gs_7
+      structure List = gs_4
+      structure ListPair = gs_12
+      structure Literal = gs_8
+      structure Option = gs_3
+      structure Prim = gs_26
+      structure PrimUtil = gs_10
+      structure PrintBOM = gs_37
+      structure String = gs_5
+      structure TextIO = gs_36
+      check-bom.sml
+   in
+      structure gs_39 = CheckBOM
+   end
+in
+   structure BOM = gs_27
+   structure BOMTy = gs_18
+   structure BOMTyCon = gs_19
+   structure BOMTyUtil = gs_20
+   structure BOMUtil = gs_28
+   structure CFABOM = gs_35
+   structure Census = gs_29
+   structure CheckBOM = gs_39
+   structure HLOp = gs_21
+   structure PrintBOM = gs_37
+   structure Rewrites = gs_31
+end
+end

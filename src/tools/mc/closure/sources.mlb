@@ -1,0 +1,247 @@
+local
+  basis l62 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb
+    end
+  basis l72 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l29 = 
+    bas
+      (* $/controls-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Controls/controls-lib.mlb
+    end
+  basis l18 = 
+    bas
+      (* ../common/sources.cm ===> *) ../common/sources.mlb
+    end
+  basis l33 = 
+    bas
+      (* ../prim/sources.cm ===> *) ../prim/sources.mlb
+    end
+  basis l4 = 
+    bas
+      (* ../cps/sources.cm ===> *) ../cps/sources.mlb
+    end
+  basis l11 = 
+    bas
+      (* ../cfg/sources.cm ===> *) ../cfg/sources.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = CFACPS
+   end
+   local
+      open l4
+   in
+      structure gs_1 = PrintCPS
+   end
+   local
+      open l11
+   in
+      structure gs_2 = PrintCFG
+   end
+   local
+      open l4
+   in
+      structure gs_3 = CheckCPS
+   end
+   local
+      open l18
+   in
+      structure gs_4 = BasicControl
+   end
+   local
+      open l4
+   in
+      structure gs_5 = CPS
+   end
+   local
+      open l11
+   in
+      structure gs_6 = CFG
+   end
+   local
+      open l29
+   in
+      structure gs_7 = Controls
+   end
+   local
+      open l33
+   in
+      structure gs_8 = CondUtil
+   end
+   local
+      open l4
+   in
+      structure gs_9 = CPSTyUtil
+   end
+   local
+      open l33
+   in
+      structure gs_10 = PrimUtil
+   end
+   local
+      open l4
+   in
+      structure gs_11 = CPSTy
+   end
+   local
+      open l11
+   in
+      structure gs_12 = CFGTy
+   end
+   local
+      open l4
+   in
+      structure gs_13 = CPSUtil
+   end
+   local
+      open l18
+   in
+      structure gs_14 = CFunctions
+      signature gs_15 = C_FUNCTIONS
+   end
+   local
+      open l18
+   in
+      structure gs_16 = Literal
+   end
+   local
+      open l11
+   in
+      structure gs_17 = CFGTyUtil
+   end
+   local
+      open l62
+   in
+      structure gs_18 = ListPair
+   end
+   local
+      open l62
+   in
+      structure gs_19 = Option
+   end
+   local
+      open l62
+   in
+      structure gs_20 = List
+   end
+   local
+      open l72
+   in
+      structure gs_21 = Atom
+   end
+   local
+      open l62
+   in
+      structure gs_22 = Int
+   end
+   local
+      structure BasicControl = gs_4
+      closure-controls.sml
+   in
+      structure gs_23 = ClosureControls
+   end
+   local
+      open l18
+   in
+      structure gs_24 = ProgPt
+   end
+   local
+      open l18
+   in
+      structure gs_25 = Stats
+   end
+   local
+      open l29
+   in
+      structure gs_26 = ControlUtil
+   end
+   local
+      open l29
+   in
+      structure gs_27 = ControlRegistry
+   end
+   local
+      structure CPS = gs_5
+      structure CPSUtil = gs_13
+      structure ClosureControls = gs_23
+      structure ControlRegistry = gs_27
+      structure ControlUtil = gs_26
+      structure Controls = gs_7
+      structure List = gs_20
+      structure Option = gs_19
+      structure Stats = gs_25
+      classify-conts.sml
+   in
+      structure gs_28 = ClassifyConts
+   end
+   local
+      structure Atom = gs_21
+      structure BasicControl = gs_4
+      structure CPS = gs_5
+      structure CPSUtil = gs_13
+      structure ClassifyConts = gs_28
+      structure ClosureControls = gs_23
+      structure CondUtil = gs_8
+      structure Controls = gs_7
+      structure List = gs_20
+      structure Option = gs_19
+      structure PrimUtil = gs_10
+      structure ProgPt = gs_24
+      free-vars.sml
+   in
+      structure gs_29 = FreeVars
+   end
+   local
+      structure Atom = gs_21
+      structure CFACPS = gs_0
+      structure CFG = gs_6
+      structure CFGTy = gs_12
+      structure CFGTyUtil = gs_17
+      structure CFunctions = gs_14
+      structure CPS = gs_5
+      structure CPSTy = gs_11
+      structure CPSTyUtil = gs_9
+      structure CPSUtil = gs_13
+      signature C_FUNCTIONS = gs_15
+      structure ClassifyConts = gs_28
+      structure ClosureControls = gs_23
+      structure CondUtil = gs_8
+      structure Controls = gs_7
+      structure FreeVars = gs_29
+      structure Int = gs_22
+      structure List = gs_20
+      structure ListPair = gs_18
+      structure Literal = gs_16
+      structure Option = gs_19
+      structure PrimUtil = gs_10
+      flat-closure-with-cfa.sml
+   in
+      structure gs_30 = FlatClosureWithCFA
+   end
+   local
+      structure BasicControl = gs_4
+      structure CFACPS = gs_0
+      structure CFG = gs_6
+      structure CPS = gs_5
+      structure CheckCPS = gs_3
+      structure ClassifyConts = gs_28
+      structure ClosureControls = gs_23
+      structure FlatClosureWithCFA = gs_30
+      structure FreeVars = gs_29
+      structure PrintCFG = gs_2
+      structure PrintCPS = gs_1
+      closure.sml
+   in
+      structure gs_31 = Closure
+   end
+in
+   structure Closure = gs_31
+end
+end

@@ -1,0 +1,67 @@
+local
+  basis l20 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb
+    end
+  basis l8 = 
+    bas
+      (* ../codegen/sources.cm ===> *) ../codegen/sources.mlb
+    end
+  basis l16 = 
+    bas
+      (* ../common/sources.cm ===> *) ../common/sources.mlb
+    end
+  basis l4 = 
+    bas
+      (* sources.cm ===> *) sources.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      functor gs_0 = MainFn
+   end
+   local
+      open l8
+   in
+      functor gs_1 = AMD64GenFn
+   end
+   local
+      open l4
+   in
+      functor gs_2 = TargetSpecFn
+   end
+   local
+      open l16
+   in
+      signature gs_3 = RUNTIME_CONSTANTS
+   end
+   local
+      open l20
+   in
+      structure gs_4 = IntInf
+   end
+   local
+      structure IntInf = gs_4
+      signature RUNTIME_CONSTANTS = gs_3
+      runtime-constants.sml
+   in
+      structure gs_5 = RuntimeConstants
+   end
+   local
+      functor AMD64GenFn = gs_1
+      functor MainFn = gs_0
+      structure RuntimeConstants = gs_5
+      functor TargetSpecFn = gs_2
+      x86_64-linux.sml
+   in
+      structure gs_6 = AMD64TargetSpec
+      structure gs_7 = CodeGen
+      structure gs_8 = Main
+   end
+in
+   structure Main = gs_8
+end
+end

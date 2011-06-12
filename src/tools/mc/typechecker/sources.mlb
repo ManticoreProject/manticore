@@ -1,0 +1,394 @@
+local
+  basis l32 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb
+    end
+  basis l39 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l124 = 
+    bas
+      (* $/controls-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Controls/controls-lib.mlb
+    end
+  basis l19 = 
+    bas
+      (* ../common/sources.cm ===> *) ../common/sources.mlb
+    end
+  basis l12 = 
+    bas
+      (* ../parse-tree/sources.cm ===> *) ../parse-tree/sources.mlb
+    end
+  basis l4 = 
+    bas
+      (* ../ast/sources.cm ===> *) ../ast/sources.mlb
+    end
+  basis l8 = 
+    bas
+      (* ../env/sources.cm ===> *) ../env/sources.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = Types
+   end
+   local
+      open l8
+   in
+      structure gs_1 = ModuleEnv
+   end
+   local
+      open l12
+   in
+      structure gs_2 = ProgramParseTree
+   end
+   local
+      open l4
+   in
+      structure gs_3 = PrintAST
+   end
+   local
+      open l19
+   in
+      structure gs_4 = BasicControl
+   end
+   local
+      open l19
+   in
+      structure gs_5 = Stamp
+   end
+   local
+      open l19
+   in
+      structure gs_6 = Error
+   end
+   local
+      open l4
+   in
+      structure gs_7 = ASTUtil
+   end
+   local
+      open l32
+   in
+      structure gs_8 = ListPair
+   end
+   local
+      open l32
+   in
+      structure gs_9 = List
+   end
+   local
+      open l39
+   in
+      structure gs_10 = Atom
+   end
+   local
+      open l4
+   in
+      structure gs_11 = Var
+   end
+   local
+      open l4
+   in
+      structure gs_12 = AST
+   end
+   local
+      structure BasicControl = gs_4
+      tc-controls.sml
+   in
+      structure gs_13 = TCControls
+   end
+   local
+      open l4
+   in
+      structure gs_14 = TypeUtil
+   end
+   local
+      open l4
+   in
+      structure gs_15 = SubstVar
+   end
+   local
+      open l4
+   in
+      structure gs_16 = SubstTy
+   end
+   local
+      open l4
+   in
+      structure gs_17 = TyCon
+   end
+   local
+      open l4
+   in
+      structure gs_18 = DataCon
+   end
+   local
+      open l8
+   in
+      structure gs_19 = BindingEnv
+   end
+   local
+      open l32
+   in
+      structure gs_20 = Option
+   end
+   local
+      open l4
+   in
+      structure gs_21 = Exn
+   end
+   local
+      structure AST = gs_12
+      structure List = gs_9
+      structure ModuleEnv = gs_1
+      structure Option = gs_20
+      structure Stamp = gs_5
+      structure TyCon = gs_17
+      structure Types = gs_0
+      structure Var = gs_11
+      copy-sig.sml
+   in
+      structure gs_22 = CopySig
+   end
+   local
+      structure Error = gs_6
+      error-stream.sml
+   in
+      structure gs_23 = ErrorStream
+   end
+   local
+      open l4
+   in
+      structure gs_24 = MetaVar
+   end
+   local
+      open l4
+   in
+      structure gs_25 = TypeClass
+   end
+   local
+      open l4
+   in
+      structure gs_26 = Basis
+   end
+   local
+      open l19
+   in
+      structure gs_27 = Literal
+   end
+   local
+      open l4
+   in
+      structure gs_28 = TypeOf
+   end
+   local
+      open l32
+   in
+      structure gs_29 = String
+   end
+   local
+      open l32
+   in
+      structure gs_30 = Int
+   end
+   local
+      open l4
+   in
+      structure gs_31 = TyVar
+   end
+   local
+      structure Basis = gs_26
+      structure List = gs_9
+      structure ListPair = gs_8
+      structure MetaVar = gs_24
+      structure TyCon = gs_17
+      structure TyVar = gs_31
+      structure TypeClass = gs_25
+      structure TypeUtil = gs_14
+      structure Types = gs_0
+      unify.sml
+   in
+      structure gs_32 = Unify
+   end
+   local
+      open l39
+   in
+      structure gs_33 = AtomSet
+   end
+   local
+      open l39
+   in
+      structure gs_34 = AtomMap
+   end
+   local
+      structure AST = gs_12
+      structure Atom = gs_10
+      structure AtomMap = gs_34
+      structure AtomSet = gs_33
+      structure Error = gs_6
+      structure ErrorStream = gs_23
+      structure List = gs_9
+      structure ListPair = gs_8
+      structure ModuleEnv = gs_1
+      structure ProgramParseTree = gs_2
+      structure TyCon = gs_17
+      structure TyVar = gs_31
+      structure TypeUtil = gs_14
+      structure Types = gs_0
+      chk-ty.sml
+   in
+      structure gs_35 = ChkTy
+   end
+   local
+      open l124
+   in
+      structure gs_36 = Controls
+   end
+   local
+      open l124
+   in
+      structure gs_37 = ControlUtil
+   end
+   local
+      open l124
+   in
+      structure gs_38 = ControlRegistry
+   end
+   local
+      structure AST = gs_12
+      structure BasicControl = gs_4
+      structure Basis = gs_26
+      structure ControlRegistry = gs_38
+      structure ControlUtil = gs_37
+      structure Controls = gs_36
+      structure List = gs_9
+      structure String = gs_29
+      structure TCControls = gs_13
+      structure TypeUtil = gs_14
+      structure Types = gs_0
+      structure Unify = gs_32
+      structure Var = gs_11
+      overload.sml
+   in
+      structure gs_39 = Overload
+   end
+   local
+      structure AST = gs_12
+      structure ASTUtil = gs_7
+      structure Basis = gs_26
+      structure ChkTy = gs_35
+      structure DataCon = gs_18
+      structure Error = gs_6
+      structure ErrorStream = gs_23
+      structure Int = gs_30
+      structure List = gs_9
+      structure ListPair = gs_8
+      structure Literal = gs_27
+      structure MetaVar = gs_24
+      structure ModuleEnv = gs_1
+      structure Overload = gs_39
+      structure ProgramParseTree = gs_2
+      structure String = gs_29
+      structure TypeClass = gs_25
+      structure TypeOf = gs_28
+      structure TypeUtil = gs_14
+      structure Types = gs_0
+      structure Unify = gs_32
+      structure Var = gs_11
+      chk-exp.sml
+   in
+      structure gs_40 = ChkExp
+   end
+   local
+      structure AST = gs_12
+      structure Basis = gs_26
+      structure List = gs_9
+      structure ListPair = gs_8
+      structure MetaVar = gs_24
+      structure ModuleEnv = gs_1
+      structure TyCon = gs_17
+      structure TyVar = gs_31
+      structure TypeClass = gs_25
+      structure TypeUtil = gs_14
+      structure Types = gs_0
+      match-ty.sml
+   in
+      structure gs_41 = MatchTy
+   end
+   local
+      structure Atom = gs_10
+      structure CopySig = gs_22
+      structure DataCon = gs_18
+      structure Error = gs_6
+      structure ErrorStream = gs_23
+      structure List = gs_9
+      structure ListPair = gs_8
+      structure MatchTy = gs_41
+      structure ModuleEnv = gs_1
+      structure ProgramParseTree = gs_2
+      structure TypeUtil = gs_14
+      structure Types = gs_0
+      structure Var = gs_11
+      match-sig.sml
+   in
+      structure gs_42 = MatchSig
+   end
+   local
+      structure AST = gs_12
+      structure Atom = gs_10
+      structure BindingEnv = gs_19
+      structure ChkExp = gs_40
+      structure ChkTy = gs_35
+      structure CopySig = gs_22
+      structure DataCon = gs_18
+      structure Error = gs_6
+      structure ErrorStream = gs_23
+      structure Exn = gs_21
+      structure List = gs_9
+      structure MatchSig = gs_42
+      structure ModuleEnv = gs_1
+      structure Option = gs_20
+      structure ProgramParseTree = gs_2
+      structure Stamp = gs_5
+      structure SubstTy = gs_16
+      structure SubstVar = gs_15
+      structure TyCon = gs_17
+      structure TypeUtil = gs_14
+      structure Types = gs_0
+      structure Var = gs_11
+      chk-module.sml
+   in
+      structure gs_43 = ChkModule
+   end
+   local
+      structure AST = gs_12
+      structure ASTUtil = gs_7
+      structure Atom = gs_10
+      structure BasicControl = gs_4
+      structure ChkModule = gs_43
+      structure Error = gs_6
+      structure List = gs_9
+      structure ListPair = gs_8
+      structure ModuleEnv = gs_1
+      structure Overload = gs_39
+      structure PrintAST = gs_3
+      structure ProgramParseTree = gs_2
+      structure Stamp = gs_5
+      structure TCControls = gs_13
+      structure Types = gs_0
+      structure Var = gs_11
+      chk-program.sml
+   in
+      structure gs_44 = ChkProgram
+   end
+in
+   structure ChkModule = gs_43
+   structure ChkProgram = gs_44
+   structure CopySig = gs_22
+   structure MatchSig = gs_42
+end
+end

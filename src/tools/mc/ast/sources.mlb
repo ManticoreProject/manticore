@@ -1,0 +1,403 @@
+local
+  basis l4 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb
+    end
+  basis l32 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l112 = 
+    bas
+      (* $/pp-lib.cm ====> *) $(SML_LIB)/smlnj-lib/PP/pp-lib.mlb
+    end
+  basis l16 = 
+    bas
+      (* ../common/sources.cm ===> *) ../common/sources.mlb
+    end
+  basis l12 = 
+    bas
+      (* ../parse-tree/sources.cm ===> *) ../parse-tree/sources.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = Option
+   end
+   local
+      open l4
+   in
+      structure gs_1 = List
+   end
+   local
+      open l12
+   in
+      structure gs_2 = ProgramParseTree
+   end
+   local
+      open l16
+   in
+      structure gs_3 = Stamp
+   end
+   local
+      open l16
+   in
+      structure gs_4 = Error
+   end
+   local
+      open l16
+   in
+      structure gs_5 = ExpansionOpts
+   end
+   local
+      open l16
+   in
+      structure gs_6 = Literal
+   end
+   local
+      open l16
+   in
+      structure gs_7 = VarRep
+   end
+   local
+      open l32
+   in
+      structure gs_8 = Atom
+   end
+   local
+      open l32
+   in
+      structure gs_9 = PropList
+   end
+   local
+      structure Atom = gs_8
+      structure PropList = gs_9
+      structure Stamp = gs_3
+      types.sml
+   in
+      structure gs_10 = Types
+   end
+   local
+      structure Atom = gs_8
+      structure Error = gs_4
+      structure ExpansionOpts = gs_5
+      structure Literal = gs_6
+      structure ProgramParseTree = gs_2
+      structure Stamp = gs_3
+      structure Types = gs_10
+      structure VarRep = gs_7
+      ast.sml
+   in
+      structure gs_11 = AST
+   end
+   local
+      open l16
+   in
+      signature gs_12 = VAR
+      signature gs_13 = VAR_PARAMS
+      functor gs_14 = VarFn
+   end
+   local
+      open l4
+   in
+      structure gs_15 = String
+   end
+   local
+      open l4
+   in
+      structure gs_16 = ListPair
+   end
+   local
+      open l4
+   in
+      structure gs_17 = Int
+   end
+   local
+      open l32
+   in
+      signature gs_18 = ORD_MAP
+   end
+   local
+      open l32
+   in
+      functor gs_19 = RedBlackMapFn
+   end
+   local
+      signature ORD_MAP = gs_18
+      functor RedBlackMapFn = gs_19
+      structure Stamp = gs_3
+      structure Types = gs_10
+      meta-var.sml
+   in
+      structure gs_20 = MetaVar
+   end
+   local
+      open l32
+   in
+      signature gs_21 = MONO_HASH_TABLE
+   end
+   local
+      open l32
+   in
+      functor gs_22 = HashTableFn
+   end
+   local
+      open l32
+   in
+      functor gs_23 = BinaryMapFn
+   end
+   local
+      open l4
+   in
+      structure gs_24 = Vector
+   end
+   local
+      open l32
+   in
+      signature gs_25 = ORD_SET
+   end
+   local
+      open l32
+   in
+      functor gs_26 = RedBlackSetFn
+   end
+   local
+      structure AST = gs_11
+      structure Atom = gs_8
+      signature ORD_MAP = gs_18
+      signature ORD_SET = gs_25
+      functor RedBlackMapFn = gs_19
+      functor RedBlackSetFn = gs_26
+      structure Stamp = gs_3
+      structure Types = gs_10
+      ty-var.sml
+   in
+      structure gs_27 = TyVar
+   end
+   local
+      structure AST = gs_11
+      structure Atom = gs_8
+      functor BinaryMapFn = gs_23
+      functor HashTableFn = gs_22
+      structure List = gs_1
+      signature MONO_HASH_TABLE = gs_21
+      signature ORD_MAP = gs_18
+      structure PropList = gs_9
+      structure Stamp = gs_3
+      structure TyVar = gs_27
+      structure Types = gs_10
+      structure Vector = gs_24
+      ty-con.sml
+   in
+      structure gs_28 = TyCon
+   end
+   local
+      structure List = gs_1
+      structure Stamp = gs_3
+      structure TyCon = gs_28
+      structure Types = gs_10
+      type-class.sml
+   in
+      structure gs_29 = TypeClass
+   end
+   local
+      structure AST = gs_11
+      structure Atom = gs_8
+      structure Int = gs_17
+      structure List = gs_1
+      structure ListPair = gs_16
+      structure MetaVar = gs_20
+      structure Option = gs_0
+      structure Stamp = gs_3
+      structure String = gs_15
+      structure TyCon = gs_28
+      structure TyVar = gs_27
+      structure TypeClass = gs_29
+      structure Types = gs_10
+      type-util.sml
+   in
+      structure gs_30 = TypeUtil
+   end
+   local
+      structure AST = gs_11
+      structure TypeUtil = gs_30
+      signature VAR = gs_12
+      signature VAR_PARAMS = gs_13
+      functor VarFn = gs_14
+      var.sml
+   in
+      structure gs_31 = Var
+   end
+   local
+      structure AST = gs_11
+      structure List = gs_1
+      structure Option = gs_0
+      structure Var = gs_31
+      subst-var.sml
+   in
+      structure gs_32 = SubstVar
+   end
+   local
+      open l112
+   in
+      structure gs_33 = TextIOPP
+   end
+   local
+      open l4
+   in
+      structure gs_34 = TextIO
+   end
+   local
+      structure AST = gs_11
+      structure TextIO = gs_34
+      structure TextIOPP = gs_33
+      structure TypeUtil = gs_30
+      structure Types = gs_10
+      print-types.sml
+   in
+      structure gs_35 = PrintTypes
+   end
+   local
+      structure AST = gs_11
+      structure List = gs_1
+      structure Option = gs_0
+      structure Types = gs_10
+      structure Var = gs_31
+      var-subst.sml
+   in
+      structure gs_36 = VarSubst
+   end
+   local
+      structure AST = gs_11
+      structure Atom = gs_8
+      structure Int = gs_17
+      structure Literal = gs_6
+      structure TextIO = gs_34
+      structure TextIOPP = gs_33
+      structure TyCon = gs_28
+      structure TypeUtil = gs_30
+      structure Types = gs_10
+      structure Var = gs_31
+      structure VarRep = gs_7
+      print-ast.sml
+   in
+      structure gs_37 = PrintAST
+   end
+   local
+      structure AST = gs_11
+      structure List = gs_1
+      structure Option = gs_0
+      structure Var = gs_31
+      subst-ty.sml
+   in
+      structure gs_38 = SubstTy
+   end
+   local
+      open l16
+   in
+      structure gs_39 = BasisNames
+   end
+   local
+      open l4
+   in
+      structure gs_40 = Word
+   end
+   local
+      structure AST = gs_11
+      structure Atom = gs_8
+      functor HashTableFn = gs_22
+      structure Int = gs_17
+      structure List = gs_1
+      signature MONO_HASH_TABLE = gs_21
+      structure Option = gs_0
+      structure Stamp = gs_3
+      structure String = gs_15
+      structure TyCon = gs_28
+      structure TypeUtil = gs_30
+      structure Types = gs_10
+      structure Word = gs_40
+      data-con.sml
+   in
+      structure gs_41 = DataCon
+   end
+   local
+      structure AST = gs_11
+      structure Atom = gs_8
+      structure BasisNames = gs_39
+      structure DataCon = gs_41
+      structure TyCon = gs_28
+      structure Types = gs_10
+      exn.sml
+   in
+      structure gs_42 = Exn
+   end
+   local
+      structure AST = gs_11
+      structure Atom = gs_8
+      structure BasisNames = gs_39
+      structure DataCon = gs_41
+      structure Exn = gs_42
+      structure TyCon = gs_28
+      structure TyVar = gs_27
+      structure Types = gs_10
+      structure Var = gs_31
+      basis.sml
+   in
+      structure gs_43 = Basis
+   end
+   local
+      open l4
+   in
+      structure gs_44 = IntInf
+   end
+   local
+      structure AST = gs_11
+      structure Basis = gs_43
+      structure DataCon = gs_41
+      structure List = gs_1
+      structure TypeUtil = gs_30
+      structure Types = gs_10
+      structure Var = gs_31
+      type-of.sml
+   in
+      structure gs_45 = TypeOf
+   end
+   local
+      structure AST = gs_11
+      structure Basis = gs_43
+      structure IntInf = gs_44
+      structure List = gs_1
+      structure Literal = gs_6
+      structure Option = gs_0
+      structure TypeOf = gs_45
+      structure TypeUtil = gs_30
+      structure Var = gs_31
+      ast-util.sml
+   in
+      structure gs_46 = ASTUtil
+   end
+in
+   structure AST = gs_11
+   structure ASTUtil = gs_46
+   structure Basis = gs_43
+   structure DataCon = gs_41
+   structure Exn = gs_42
+   structure MetaVar = gs_20
+   structure PrintAST = gs_37
+   structure PrintTypes = gs_35
+   structure SubstTy = gs_38
+   structure SubstVar = gs_32
+   structure TyCon = gs_28
+   structure TyVar = gs_27
+   structure TypeClass = gs_29
+   structure TypeOf = gs_45
+   structure TypeUtil = gs_30
+   structure Types = gs_10
+   structure Var = gs_31
+   structure VarRep = gs_7
+   structure VarSubst = gs_36
+end
+end

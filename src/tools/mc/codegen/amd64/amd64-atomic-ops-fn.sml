@@ -7,10 +7,23 @@
 functor AMD64AtomicOpsFn (
 
     structure MTy : MLRISC_TYPES
-      where T.Extension = AMD64Extension
+      where type ('s,'r,'f,'c) T.Extension.sx = ('s,'r,'f,'c) AMD64Extension.sx
+      where type ('s,'r,'f,'c) T.Extension.rx = ('s,'r,'f,'c) AMD64Extension.rx
+      where type ('s,'r,'f,'c) T.Extension.fx = ('s,'r,'f,'c) AMD64Extension.fx
+      where type ('s,'r,'f,'c) T.Extension.ccx = ('s,'r,'f,'c) AMD64Extension.ccx
     structure I : AMD64INSTR
-      where T = MTy.T
-
+          where type T.cond = MTy.T.cond
+          where type T.fcond = MTy.T.fcond
+          where type T.rounding_mode = MTy.T.rounding_mode
+          where type T.div_rounding_mode = MTy.T.div_rounding_mode
+          where type T.ext = MTy.T.ext
+          where type T.stm = MTy.T.stm
+          where type T.rexp = MTy.T.rexp
+          where type T.rep = MTy.T.rep
+          where type T.oper = MTy.T.oper
+          where type T.fexp = MTy.T.fexp
+          where type T.ccexp = MTy.T.ccexp
+          where type T.mlrisc = MTy.T.mlrisc
   ) : ATOMIC_OPS = struct
 
     structure MTy = MTy

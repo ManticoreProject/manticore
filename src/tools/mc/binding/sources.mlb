@@ -1,0 +1,201 @@
+local
+  basis l23 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb
+    end
+  basis l4 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l69 = 
+    bas
+      (* $/controls-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Controls/controls-lib.mlb
+    end
+  basis l12 = 
+    bas
+      (* ../common/sources.cm ===> *) ../common/sources.mlb
+    end
+  basis l8 = 
+    bas
+      (* ../parse-tree/sources.cm ===> *) ../parse-tree/sources.mlb
+    end
+  basis l16 = 
+    bas
+      (* ../env/sources.cm ===> *) ../env/sources.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = AtomSet
+   end
+   local
+      open l8
+   in
+      structure gs_1 = ProgramParseTree
+   end
+   local
+      open l12
+   in
+      structure gs_2 = Error
+   end
+   local
+      open l16
+   in
+      structure gs_3 = QualifiedId
+   end
+   local
+      open l16
+   in
+      structure gs_4 = BindingEnv
+   end
+   local
+      open l23
+   in
+      structure gs_5 = Option
+   end
+   local
+      open l23
+   in
+      structure gs_6 = List
+   end
+   local
+      open l4
+   in
+      structure gs_7 = Atom
+   end
+   local
+      structure Error = gs_2
+      error-stream.sml
+   in
+      structure gs_8 = ErrorStream
+   end
+   local
+      open l4
+   in
+      structure gs_9 = AtomMap
+   end
+   local
+      open l12
+   in
+      structure gs_10 = CFunctions
+      signature gs_11 = C_FUNCTIONS
+   end
+   local
+      structure Atom = gs_7
+      structure AtomMap = gs_9
+      structure AtomSet = gs_0
+      structure BindingEnv = gs_4
+      structure CFunctions = gs_10
+      signature C_FUNCTIONS = gs_11
+      structure Error = gs_2
+      structure ErrorStream = gs_8
+      structure List = gs_6
+      structure Option = gs_5
+      structure ProgramParseTree = gs_1
+      structure QualifiedId = gs_3
+      bom-bound-variable-check.sml
+   in
+      structure gs_12 = BOMBoundVariableCheck
+   end
+   local
+      structure BindingEnv = gs_4
+      structure List = gs_6
+      structure ProgramParseTree = gs_1
+      structure QualifiedId = gs_3
+      binding.sml
+   in
+      structure gs_13 = Binding
+   end
+   local
+      structure Atom = gs_7
+      structure AtomSet = gs_0
+      structure BOMBoundVariableCheck = gs_12
+      structure Binding = gs_13
+      structure BindingEnv = gs_4
+      structure Error = gs_2
+      structure ErrorStream = gs_8
+      structure List = gs_6
+      structure Option = gs_5
+      structure ProgramParseTree = gs_1
+      structure QualifiedId = gs_3
+      bound-variable-check.sml
+   in
+      structure gs_14 = BoundVariableCheck
+   end
+   local
+      structure CFunctions = gs_10
+      signature C_FUNCTIONS = gs_11
+      structure List = gs_6
+      structure ProgramParseTree = gs_1
+      bom-used-vars.sml
+   in
+      structure gs_15 = BOMUsedVars
+   end
+   local
+      structure BOMUsedVars = gs_15
+      structure List = gs_6
+      structure ProgramParseTree = gs_1
+      used-vars.sml
+   in
+      structure gs_16 = UsedVars
+   end
+   local
+      open l4
+   in
+      functor gs_17 = RedBlackSetFn
+   end
+   local
+      open l4
+   in
+      functor gs_18 = GraphSCCFn
+   end
+   local
+      open l69
+   in
+      structure gs_19 = Controls
+   end
+   local
+      open l16
+   in
+      structure gs_20 = DelayedBasis
+   end
+   local
+      open l12
+   in
+      structure gs_21 = BasicControl
+   end
+   local
+      open l23
+   in
+      structure gs_22 = String
+   end
+   local
+      open l23
+   in
+      structure gs_23 = Int
+   end
+   local
+      structure BOMUsedVars = gs_15
+      structure BasicControl = gs_21
+      structure Controls = gs_19
+      structure DelayedBasis = gs_20
+      functor GraphSCCFn = gs_18
+      structure Int = gs_23
+      structure List = gs_6
+      structure ProgramParseTree = gs_1
+      functor RedBlackSetFn = gs_17
+      structure String = gs_22
+      structure UsedVars = gs_16
+      tree-shake.sml
+   in
+      structure gs_24 = TreeShake
+   end
+in
+   structure BoundVariableCheck = gs_14
+   structure TreeShake = gs_24
+   structure UsedVars = gs_16
+end
+end

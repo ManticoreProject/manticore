@@ -1,0 +1,41 @@
+local
+  $(SML_LIB)/basis/basis.mlb
+  $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+  $(SML_LIB)/smlnj-lib/Controls/controls-lib.mlb
+
+  ../parse-tree/sources.mlb
+  ../parser/sources.mlb
+  ../ast-opt/sources.mlb
+  ../binding/sources.mlb
+  ../bom-opt/sources.mlb
+  ../bom/sources.mlb
+  ../cfg-opt/sources.mlb
+  ../cfg/sources.mlb
+  ../closure/sources.mlb
+  ../codegen/sources.mlb
+  ../common/sources.mlb
+  ../convert/sources.mlb
+  ../cps-opt/sources.mlb
+  ../cps/sources.mlb
+  ../match-comp/sources.mlb
+  ../mlb/sources.mlb
+  ../env/sources.mlb
+  ../ast/sources.mlb
+  ../prim/sources.mlb
+  ../translate/sources.mlb
+  ../typechecker/sources.mlb
+  ../mlton/sources.mlb
+  ../mlton/xml/sources.mlb
+in
+
+  initial-basis.sml
+  version-fn.sml
+  header-tbl-print-debug.sml
+  header-tbl-print.sml
+  build-executable.sml		(* generated file *)
+  main-fn.sml
+  target-spec-fn.sml
+
+  mlton-main.sml
+
+end

@@ -1,0 +1,52 @@
+local
+  basis l11 = 
+    bas
+      (* $/ml-yacc-lib.cm ====> *) $(SML_LIB)/mlyacc-lib/mlyacc-lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l11
+   in
+      signature gs_0 = ARG_LEXER
+      signature gs_1 = ARG_PARSER
+      signature gs_2 = LEXER
+      signature gs_3 = LR_PARSER
+      signature gs_4 = LR_TABLE
+      signature gs_5 = PARSER
+      signature gs_6 = PARSER_DATA
+      signature gs_7 = STREAM
+      signature gs_8 = TOKEN
+   end
+   local
+      open l11
+   in
+      structure gs_9 = LrParser
+   end
+   local
+      open l11
+   in
+      structure gs_10 = LrTable
+   end
+   local
+      open l11
+   in
+      functor gs_11 = Join
+      functor gs_12 = JoinWithArg
+   end
+in
+   signature ARG_LEXER = gs_0
+   signature ARG_PARSER = gs_1
+   functor Join = gs_11
+   functor JoinWithArg = gs_12
+   signature LEXER = gs_2
+   signature LR_PARSER = gs_3
+   signature LR_TABLE = gs_4
+   structure LrParser = gs_9
+   structure LrTable = gs_10
+   signature PARSER = gs_5
+   signature PARSER_DATA = gs_6
+   signature TOKEN = gs_8
+end
+end

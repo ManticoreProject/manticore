@@ -8,8 +8,8 @@
  *)
 
 local
-   ../../lib/mlton/sources.mlb
-   ../../lib/mlyacc-lib/mlyacc-lib.mlb
+   ../../../../lib/mlton/sources.mlb
+   $(SML_LIB)/mlyacc-lib/mlyacc-lib.mlb
    ../ast/sources.mlb
    ../control/sources.mlb
 

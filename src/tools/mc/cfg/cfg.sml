@@ -21,15 +21,15 @@ structure CFG =
 
   (* functions and continuations *)
     datatype func = FUNC of {
-	lab : label,		(* label of function *)
+	lab : (label_kind, ty) VarRep.var_rep,		(* label of function *)
 	entry : convention,	(* calling convention, includes parameters *)
 	start : block,		(* special start block *)
 	body : block list	(* body of function is straight-line sequence of bindings *)
       }
 
     and block = BLK of {
-        lab : label,            (* label of block *)
-	args : var list,	(* argument list *)
+        lab : (label_kind, ty) VarRep.var_rep,            (* label of block *)
+	args : (var_kind, ty) VarRep.var_rep list,	(* argument list *)
 	body : exp list,	(* body of function is straight-line sequence of bindings *)
 	exit : transfer		(* control transfer out of function *)
       }
@@ -37,63 +37,63 @@ structure CFG =
     and convention
       = StdFunc of {		(* a function that may be called from unknown sites; it uses *)
 				(* the standard function-calling convention. *)
-	    clos : var,		  (* closure parameter *)
-	    ret : var,		  (* return-continuation parameter *)
-	    exh : var		  (* exception-handler-continuation parameter *)
+	    clos : (var_kind, ty) VarRep.var_rep,		  (* closure parameter *)
+	    ret : (var_kind, ty) VarRep.var_rep,		  (* return-continuation parameter *)
+	    exh : (var_kind, ty) VarRep.var_rep		  (* exception-handler-continuation parameter *)
 	  }
       | StdCont of {		(* a continuation that may be thrown to from unknown sites; *)
 				(* it uses the standard continuation-calling convention *)
-	    clos : var		  (* closure parameter *)
+	    clos : (var_kind, ty) VarRep.var_rep		  (* closure parameter *)
 	  }
       | KnownFunc of {		(* a function/continuation for which we know all of its call sites *)
 				(* and only known functions are called from those sites (Serrano's *)
 				(* "T" property).  It uses a specialized calling convention. *)
-	    clos : var		  (* closure parameter *)
+	    clos : (var_kind, ty) VarRep.var_rep		  (* closure parameter *)
           }
 
     and exp
-      = E_Var of var list * var list            (* parallel assignment *)
-      | E_Const of var * Literal.literal * ty
-      | E_Cast of var * ty * var		(* typecast *)
-      | E_Label of var * label
-      | E_Select of (var * int * var)		(* select i'th field (zero-based) *)
-      | E_Update of (int * var * var)		(* update i'th field (zero-based) *)
-      | E_AddrOf of (var * int * var)		(* return address of i'th field (zero-based) *)
-      | E_Alloc of var * ty * var list
-      | E_GAlloc of var * ty * var list		(* allocate in the global heap *)
-      | E_Promote of var * var			(* promote value to global heap *)
-      | E_Prim0 of prim				(* primop w/o any results *)
-      | E_Prim of var * prim
-      | E_CCall of (var list * var * var list)
+      = E_Var of (var_kind, ty) VarRep.var_rep list * (var_kind, ty) VarRep.var_rep list            (* parallel assignment *)
+      | E_Const of (var_kind, ty) VarRep.var_rep * Literal.literal * ty
+      | E_Cast of (var_kind, ty) VarRep.var_rep * ty * (var_kind, ty) VarRep.var_rep		(* typecast *)
+      | E_Label of (var_kind, ty) VarRep.var_rep * (label_kind, ty) VarRep.var_rep
+      | E_Select of ((var_kind, ty) VarRep.var_rep * int * (var_kind, ty) VarRep.var_rep)		(* select i'th field (zero-based) *)
+      | E_Update of (int * (var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep)		(* update i'th field (zero-based) *)
+      | E_AddrOf of ((var_kind, ty) VarRep.var_rep * int * (var_kind, ty) VarRep.var_rep)		(* return address of i'th field (zero-based) *)
+      | E_Alloc of (var_kind, ty) VarRep.var_rep * ty * (var_kind, ty) VarRep.var_rep list
+      | E_GAlloc of (var_kind, ty) VarRep.var_rep * ty * (var_kind, ty) VarRep.var_rep list		(* allocate in the global heap *)
+      | E_Promote of (var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep			(* promote value to global heap *)
+      | E_Prim0 of (var_kind, ty) VarRep.var_rep Prim.prim				(* primop w/o any results *)
+      | E_Prim of (var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep Prim.prim
+      | E_CCall of ((var_kind, ty) VarRep.var_rep list * (var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list)
     (* VProc operations *)
-      | E_HostVProc of var			(* gets the hosting VProc *)
-      | E_VPLoad of (var * offset * var)	(* load a value from the given byte offset *)
+      | E_HostVProc of (var_kind, ty) VarRep.var_rep			(* gets the hosting VProc *)
+      | E_VPLoad of ((var_kind, ty) VarRep.var_rep * offset * (var_kind, ty) VarRep.var_rep)	(* load a value from the given byte offset *)
 						(* in the vproc structure *)
-      | E_VPStore of (offset * var * var)	(* store a value at the given byte offset *)
+      | E_VPStore of (offset * (var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep)	(* store a value at the given byte offset *)
 						(* in the vproc structure *)
-      | E_VPAddr of (var * offset * var)	(* address of given byte offset in the vproc *)
+      | E_VPAddr of ((var_kind, ty) VarRep.var_rep * offset * (var_kind, ty) VarRep.var_rep)	(* address of given byte offset in the vproc *)
 						(* structure *)
 
     and transfer
-      = StdApply of {f : var, clos : var, args : var list, ret : var, exh : var}
-      | StdThrow of {k : var, clos : var, args : var list}
-      | Apply of {f : var, clos : var, args : var list}
-      | Goto of jump
-      | If of (cond * jump * jump)
-      | Switch of (var * (tag * jump) list * jump option)
-      | HeapCheck of {hck : heap_check_kind, szb : word, nogc : jump}
-      | HeapCheckN of {hck : heap_check_kind, n : var, szb : word, nogc : jump}
+      = StdApply of {f : (var_kind, ty) VarRep.var_rep, clos : (var_kind, ty) VarRep.var_rep, args : (var_kind, ty) VarRep.var_rep list, ret : (var_kind, ty) VarRep.var_rep, exh : (var_kind, ty) VarRep.var_rep}
+      | StdThrow of {k : (var_kind, ty) VarRep.var_rep, clos : (var_kind, ty) VarRep.var_rep, args : (var_kind, ty) VarRep.var_rep list}
+      | Apply of {f : (var_kind, ty) VarRep.var_rep, clos : (var_kind, ty) VarRep.var_rep, args : (var_kind, ty) VarRep.var_rep list}
+      | Goto of ((label_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list)
+      | If of ((var_kind, ty) VarRep.var_rep Prim.cond * ((label_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list) * ((label_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list))
+      | Switch of ((var_kind, ty) VarRep.var_rep * (tag * ((label_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list)) list * ((label_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list) option)
+      | HeapCheck of {hck : heap_check_kind, szb : word, nogc : ((label_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list)}
+      | HeapCheckN of {hck : heap_check_kind, n : (var_kind, ty) VarRep.var_rep, szb : word, nogc : ((label_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list)}
       | AllocCCall of { (* a CCall that does allocation *)
-	    lhs : var list,
-	    f : var,
-	    args : var list,
-	    ret : jump            (* jump to ret after calling f(args) *)
+	    lhs : (var_kind, ty) VarRep.var_rep list,
+	    f : (var_kind, ty) VarRep.var_rep,
+	    args : (var_kind, ty) VarRep.var_rep list,
+	    ret : ((label_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list)            (* jump to ret after calling f(args) *)
 	  }
 
     and var_kind
       = VK_None			(* for initialization purposes *)
       | VK_Let of exp		(* let-bound variable *)
-      | VK_Param of label	(* function/block parameter *)
+      | VK_Param of (label_kind, ty) VarRep.var_rep	(* function/block parameter *)
 
     and label_kind
       = LK_None			(* for initialization purposes *)
@@ -104,12 +104,12 @@ structure CFG =
 	  }
       | LK_Block of block	(* labels a block in a function *)
 
-    withtype var = (var_kind, ty) VarRep.var_rep
-	 and label = (label_kind, ty) VarRep.var_rep
-         and cond = var Prim.cond
-         and prim = var Prim.prim
-         and jump = (label * var list)
-	 and cfun = label CFunctions.c_fun
+    type var = (var_kind, ty) VarRep.var_rep
+    type label = (label_kind, ty) VarRep.var_rep
+    type cond = var Prim.cond
+    type prim = var Prim.prim
+    type jump = (label * var list)
+    type cfun = label CFunctions.c_fun
 
     datatype module = MODULE of {
 	name : Atom.atom,

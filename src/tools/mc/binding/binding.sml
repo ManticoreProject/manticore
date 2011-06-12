@@ -49,9 +49,9 @@ structure Binding =
     fun bindsOfValDecl (vd, env) = (
 	  case vd
 	   of PT.MarkVDecl {tree, ...} => bindsOfValDecl(tree, env)
-	    | ( PT.ValVDecl (p, _) |
-		PT.PValVDecl  (p, _) |
-		PT.PrimVDecl (p, _) ) => varsOfPat(p, env)
+	    | ( PT.ValVDecl (p, _)) => varsOfPat(p, env)
+	    | ( PT.PValVDecl  (p, _)) => varsOfPat(p, env)
+	    | ( PT.PrimVDecl (p, _) ) => varsOfPat(p, env)
 	    | PT.FunVDecl funs => concatMap bindsOfFunct funs
           (* end case *))
 

@@ -1,0 +1,331 @@
+local
+  basis l31 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb
+    end
+  basis l85 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l74 = 
+    bas
+      (* $/controls-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Controls/controls-lib.mlb
+    end
+  basis l11 = 
+    bas
+      (* ../common/sources.cm ===> *) ../common/sources.mlb
+    end
+  basis l45 = 
+    bas
+      (* ../prim/sources.cm ===> *) ../prim/sources.mlb
+    end
+  basis l4 = 
+    bas
+      (* ../cfg/sources.cm ===> *) ../cfg/sources.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = PrintCFG
+   end
+   local
+      open l4
+   in
+      structure gs_1 = CheckCFG
+   end
+   local
+      open l11
+   in
+      structure gs_2 = BasicControl
+   end
+   local
+      open l4
+   in
+      structure gs_3 = CFG
+   end
+   local
+      open l11
+   in
+      signature gs_4 = TARGET_SPEC
+   end
+   local
+      open l4
+   in
+      structure gs_5 = CFGTy
+   end
+   local
+      open l11
+   in
+      structure gs_6 = RawTypes
+   end
+   local
+      open l11
+   in
+      structure gs_7 = Literal
+   end
+   local
+      open l31
+   in
+      structure gs_8 = List
+   end
+   local
+      structure CFG = gs_3
+      structure CFGTy = gs_5
+      structure List = gs_8
+      structure Literal = gs_7
+      structure RawTypes = gs_6
+      signature TARGET_SPEC = gs_4
+      implement-calls-fn.sml
+   in
+      functor gs_9 = ImplementCallsFn
+   end
+   local
+      open l4
+   in
+      structure gs_10 = CFGUtil
+   end
+   local
+      open l31
+   in
+      structure gs_11 = ListPair
+   end
+   local
+      open l45
+   in
+      structure gs_12 = Prim
+   end
+   local
+      open l45
+   in
+      structure gs_13 = CondUtil
+   end
+   local
+      open l45
+   in
+      structure gs_14 = PrimUtil
+   end
+   local
+      open l11
+   in
+      structure gs_15 = CFunctions
+      signature gs_16 = C_FUNCTIONS
+   end
+   local
+      open l31
+   in
+      structure gs_17 = Option
+   end
+   local
+      structure CFG = gs_3
+      structure CFunctions = gs_15
+      signature C_FUNCTIONS = gs_16
+      structure CondUtil = gs_13
+      structure List = gs_8
+      structure Option = gs_17
+      structure PrimUtil = gs_14
+      census.sml
+   in
+      structure gs_18 = Census
+   end
+   local
+      structure CFG = gs_3
+      structure CFGTy = gs_5
+      structure CFGUtil = gs_10
+      structure Census = gs_18
+      structure List = gs_8
+      structure ListPair = gs_11
+      structure Prim = gs_12
+      signature TARGET_SPEC = gs_4
+      add-alloc-vec-checks-fn.sml
+   in
+      functor gs_19 = AddAllocVecChecksFn
+   end
+   local
+      structure CFG = gs_3
+      structure CFGTy = gs_5
+      structure CFGUtil = gs_10
+      structure CFunctions = gs_15
+      signature C_FUNCTIONS = gs_16
+      structure Census = gs_18
+      structure List = gs_8
+      structure ListPair = gs_11
+      signature TARGET_SPEC = gs_4
+      alloc-c-calls-fn.sml
+   in
+      functor gs_20 = AllocCCallsFn
+   end
+   local
+      open l74
+   in
+      structure gs_21 = Controls
+   end
+   local
+      open l31
+   in
+      structure gs_22 = String
+   end
+   local
+      open l31
+   in
+      structure gs_23 = Word
+   end
+   local
+      open l85
+   in
+      signature gs_24 = ORD_SET
+   end
+   local
+      open l85
+   in
+      functor gs_25 = GraphSCCFn
+   end
+   local
+      open l85
+   in
+      functor gs_26 = RedBlackMapFn
+   end
+   local
+      open l85
+   in
+      functor gs_27 = RedBlackSetFn
+   end
+   local
+      open l85
+   in
+      structure gs_28 = LibBase
+   end
+   local
+      open l31
+   in
+      structure gs_29 = Int
+   end
+   local
+      functor GraphSCCFn = gs_25
+      structure Int = gs_29
+      structure LibBase = gs_28
+      structure List = gs_8
+      signature ORD_SET = gs_24
+      structure Option = gs_17
+      functor RedBlackMapFn = gs_26
+      functor RedBlackSetFn = gs_27
+      feedback-fn.sml
+   in
+      functor gs_30 = FeedbackFn
+      signature gs_31 = VERTEX
+   end
+   local
+      open l74
+   in
+      structure gs_32 = ControlUtil
+   end
+   local
+      open l74
+   in
+      structure gs_33 = ControlRegistry
+   end
+   local
+      structure BasicControl = gs_2
+      cfg-opt-controls.sml
+   in
+      structure gs_34 = CFGOptControls
+   end
+   local
+      structure CFG = gs_3
+      structure CFGOptControls = gs_34
+      structure CFGTy = gs_5
+      structure CFGUtil = gs_10
+      structure ControlRegistry = gs_33
+      structure ControlUtil = gs_32
+      structure Controls = gs_21
+      structure Int = gs_29
+      structure List = gs_8
+      structure ListPair = gs_11
+      structure Option = gs_17
+      structure PrimUtil = gs_14
+      structure String = gs_22
+      cfa-cfg.sml
+   in
+      structure gs_35 = CFACFG
+   end
+   local
+      structure CFACFG = gs_35
+      structure CFG = gs_3
+      structure CFGOptControls = gs_34
+      structure CFGTy = gs_5
+      structure CFGUtil = gs_10
+      structure Census = gs_18
+      structure Controls = gs_21
+      functor FeedbackFn = gs_30
+      structure List = gs_8
+      structure String = gs_22
+      signature TARGET_SPEC = gs_4
+      signature VERTEX = gs_31
+      structure Word = gs_23
+      add-alloc-checks-fn.sml
+   in
+      functor gs_36 = AddAllocChecksFn
+   end
+   local
+      open l11
+   in
+      structure gs_37 = Stats
+   end
+   local
+      open l11
+   in
+      structure gs_38 = VarRep
+   end
+   local
+      structure CFG = gs_3
+      structure Census = gs_18
+      structure CondUtil = gs_13
+      structure List = gs_8
+      structure ListPair = gs_11
+      structure Option = gs_17
+      structure PrimUtil = gs_14
+      structure Stats = gs_37
+      structure VarRep = gs_38
+      contract.sml
+   in
+      structure gs_39 = Contract
+   end
+   local
+      open l85
+   in
+      structure gs_40 = URef
+   end
+   local
+      structure CFACFG = gs_35
+      structure CFG = gs_3
+      structure List = gs_8
+      structure URef = gs_40
+      specialize-calls.sml
+   in
+      structure gs_41 = SpecializeCalls
+   end
+   local
+      functor AddAllocChecksFn = gs_36
+      functor AddAllocVecChecksFn = gs_19
+      functor AllocCCallsFn = gs_20
+      structure BasicControl = gs_2
+      structure CFACFG = gs_35
+      structure CFG = gs_3
+      structure CFGOptControls = gs_34
+      structure Census = gs_18
+      structure CheckCFG = gs_1
+      structure Contract = gs_39
+      functor ImplementCallsFn = gs_9
+      structure PrintCFG = gs_0
+      structure SpecializeCalls = gs_41
+      signature TARGET_SPEC = gs_4
+      cfg-opt-fn.sml
+   in
+      functor gs_42 = CFGOptFn
+   end
+in
+   functor CFGOptFn = gs_42
+end
+end

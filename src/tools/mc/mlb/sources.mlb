@@ -1,0 +1,241 @@
+local
+  basis l29 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb
+    end
+  basis l12 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l4 = 
+    bas
+      (* $/controls-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Controls/controls-lib.mlb
+    end
+  basis l73 = 
+    bas
+      (* $/ml-lpt-lib.cm ====> *) $(SML_LIB)/ml-lpt/lib/ml-lpt-lib.mlb
+    end
+  basis l8 = 
+    bas
+      (* ../common/sources.cm ===> *) ../common/sources.mlb
+    end
+  basis l16 = 
+    bas
+      (* ../parse-tree/sources.cm ===> *) ../parse-tree/sources.mlb
+    end
+  basis l45 = 
+    bas
+      (* ../parser/sources.cm ===> *) ../parser/sources.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = Controls
+   end
+   local
+      open l8
+   in
+      structure gs_1 = LoadPaths
+   end
+   local
+      open l12
+   in
+      structure gs_2 = AtomSet
+   end
+   local
+      open l16
+   in
+      structure gs_3 = ProgramParseTree
+   end
+   local
+      open l8
+   in
+      structure gs_4 = BasicControl
+   end
+   local
+      open l8
+   in
+      structure gs_5 = Error
+   end
+   local
+      open l8
+   in
+      structure gs_6 = ExpansionOpts
+   end
+   local
+      open l29
+   in
+      structure gs_7 = Substring
+   end
+   local
+      open l29
+   in
+      structure gs_8 = TextIO
+   end
+   local
+      open l29
+   in
+      structure gs_9 = String
+   end
+   local
+      open l8
+   in
+      structure gs_10 = RunCPP
+   end
+   local
+      open l29
+   in
+      structure gs_11 = ListPair
+   end
+   local
+      open l45
+   in
+      structure gs_12 = Parser
+   end
+   local
+      open l29
+   in
+      structure gs_13 = Option
+   end
+   local
+      open l29
+   in
+      structure gs_14 = Unix
+   end
+   local
+      open l29
+   in
+      structure gs_15 = List
+   end
+   local
+      open l12
+   in
+      structure gs_16 = Atom
+   end
+   local
+      open l29
+   in
+      structure gs_17 = OS
+   end
+   local
+      structure Atom = gs_16
+      structure Error = gs_5
+      mlb-parse-tree.sml
+   in
+      structure gs_18 = MLBParseTree
+   end
+   local
+      open l12
+   in
+      structure gs_19 = AtomTable
+   end
+   local
+      open l73
+   in
+      structure gs_20 = AntlrStreamPos
+   end
+   local
+      open l29
+   in
+      structure gs_21 = Vector
+   end
+   local
+      open l73
+   in
+      structure gs_22 = ULexBuffer
+   end
+   local
+      open l12
+   in
+      structure gs_23 = UTF8
+   end
+   local
+      open l73
+   in
+      functor gs_24 = AntlrEBNF
+   end
+   local
+      open l73
+   in
+      functor gs_25 = AntlrErrHandler
+   end
+   local
+      open l73
+   in
+      signature gs_26 = ANTLR_LEXER
+   end
+   local
+      signature ANTLR_LEXER = gs_26
+      functor AntlrEBNF = gs_24
+      functor AntlrErrHandler = gs_25
+      structure AntlrStreamPos = gs_20
+      structure Atom = gs_16
+      structure MLBParseTree = gs_18
+      structure String = gs_9
+      mlb.grm.sml
+   in
+      functor gs_27 = MLBParseFn
+      structure gs_28 = MLBTokens
+   end
+   local
+      structure AntlrStreamPos = gs_20
+      structure Atom = gs_16
+      structure AtomTable = gs_19
+      structure List = gs_15
+      functor MLBParseFn = gs_27
+      structure MLBTokens = gs_28
+      structure String = gs_9
+      structure Substring = gs_7
+      structure TextIO = gs_8
+      structure ULexBuffer = gs_22
+      structure UTF8 = gs_23
+      structure Vector = gs_21
+      mlb.lex.sml
+   in
+      structure gs_29 = MLBLex
+   end
+   local
+      structure BasicControl = gs_4
+      structure Error = gs_5
+      structure List = gs_15
+      structure MLBLex = gs_29
+      functor MLBParseFn = gs_27
+      structure MLBParseTree = gs_18
+      structure MLBTokens = gs_28
+      structure TextIO = gs_8
+      mlb-parser.sml
+   in
+      structure gs_30 = MLBParser
+   end
+   local
+      structure Atom = gs_16
+      structure AtomSet = gs_2
+      structure BasicControl = gs_4
+      structure Controls = gs_0
+      structure Error = gs_5
+      structure ExpansionOpts = gs_6
+      structure List = gs_15
+      structure ListPair = gs_11
+      structure LoadPaths = gs_1
+      structure MLBParseTree = gs_18
+      structure MLBParser = gs_30
+      structure OS = gs_17
+      structure Option = gs_13
+      structure Parser = gs_12
+      structure ProgramParseTree = gs_3
+      structure RunCPP = gs_10
+      structure String = gs_9
+      structure Substring = gs_7
+      structure TextIO = gs_8
+      structure Unix = gs_14
+      mlb.sml
+   in
+      structure gs_31 = MLB
+   end
+in
+   structure MLB = gs_31
+end
+end

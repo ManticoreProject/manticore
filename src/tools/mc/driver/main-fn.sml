@@ -15,11 +15,11 @@ functor MainFn (
 
   end = struct
 
-    val _ = (
+(*    val _ = (
         SMLofNJ.Internals.TDP.mode := true;
         Coverage.install ();
         BackTrace.install ())
-
+*)
     structure Version = VersionFn (Spec)
     structure BOMOpt = BOMOptFn (Spec)
     structure CPSOpt = CPSOptFn (Spec)
@@ -181,7 +181,7 @@ functor MainFn (
 	    Stats.report ()
 	  end
 
-    fun doFile file = BackTrace.monitor (fn () => let
+    fun doFile file = let
 	  val verbose = (Controls.get BasicControl.verbose > 0)
 	  val {base, ext} = OS.Path.splitBaseExt file
 	  in
@@ -190,7 +190,7 @@ functor MainFn (
 	      | SOME _ => ()
 	    (* end case *);
 	    mlbC (verbose, Error.mkErrStream file, file, OS.Path.joinBaseExt{base = base, ext = SOME "s"})
-	  end)
+	  end
 
     fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)
 
@@ -265,7 +265,8 @@ functor MainFn (
 		(* end case *))
 	   end
 
-    fun processArgs args = (case args
+    fun processArgs args = (print (concat["ARGS!\n", concat args]);
+                            case args
            of arg :: args =>
 		if String.isPrefix "-" arg
 		  then processOption (arg, args)
@@ -312,5 +313,4 @@ functor MainFn (
 	  end
 
     fun main (_, args) = processArgs args
- 
   end

@@ -1,0 +1,884 @@
+local
+  basis l3 = 
+    bas
+      (* ../../../../lib/mlton/sources.cm ===> *) ../../../../lib/mlton/sources.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l3
+   in
+      structure gs_0 = InitScript
+   end
+   local
+      open l3
+   in
+      structure gs_1 = Layout
+   end
+   local
+      open l3
+   in
+      structure gs_2 = AppendList
+   end
+   local
+      open l3
+   in
+      structure gs_3 = DirectedSubGraph
+   end
+   local
+      open l3
+   in
+      structure gs_4 = Itimer
+   end
+   local
+      open l3
+   in
+      structure gs_5 = IntInf
+      structure gs_6 = LargeInt
+   end
+   local
+      open l3
+   in
+      functor gs_7 = MakeMonoEnv
+      functor gs_8 = MonoEnv
+   end
+   local
+      open l3
+   in
+      structure gs_9 = Property
+      structure gs_10 = PropertyList
+   end
+   local
+      open l3
+   in
+      structure gs_11 = Counter
+   end
+   local
+      open l3
+   in
+      functor gs_12 = Control
+   end
+   local
+      open l3
+   in
+      structure gs_13 = Console
+   end
+   local
+      open l3
+   in
+      signature gs_14 = INT_INF
+   end
+   local
+      open l3
+   in
+      signature gs_15 = INTEGER
+   end
+   local
+      open l3
+   in
+      structure gs_16 = DotColor
+   end
+   local
+      open l3
+   in
+      structure gs_17 = SMLofNJ
+   end
+   local
+      open l3
+   in
+      structure gs_18 = StringCvt
+   end
+   local
+      open l3
+   in
+      structure gs_19 = Array
+      functor gs_20 = MonoArray
+   end
+   local
+      open l3
+   in
+      structure gs_21 = Export
+   end
+   local
+      open l3
+   in
+      structure gs_22 = Queue
+      structure gs_23 = TwoListQueue
+   end
+   local
+      open l3
+   in
+      structure gs_24 = Escape
+   end
+   local
+      open l3
+   in
+      structure gs_25 = Engine
+   end
+   local
+      open l3
+   in
+      structure gs_26 = FileDesc
+   end
+   local
+      open l3
+   in
+      structure gs_27 = InsertionSort
+   end
+   local
+      open l3
+   in
+      structure gs_28 = DisjointSet
+   end
+   local
+      open l3
+   in
+      structure gs_29 = Buffer
+   end
+   local
+      open l3
+   in
+      structure gs_30 = Base64
+   end
+   local
+      open l3
+   in
+      structure gs_31 = Assert
+   end
+   local
+      open l3
+   in
+      structure gs_32 = Promise
+   end
+   local
+      open l3
+   in
+      structure gs_33 = Process
+   end
+   local
+      open l3
+   in
+      structure gs_34 = Array2
+   end
+   local
+      open l3
+   in
+      functor gs_35 = UnorderedSet
+   end
+   local
+      open l3
+   in
+      functor gs_36 = Env
+      functor gs_37 = PolyEnv
+   end
+   local
+      open l3
+   in
+      structure gs_38 = Pointer
+   end
+   local
+      open l3
+   in
+      functor gs_39 = IntUniqueId
+      functor gs_40 = UniqueId
+   end
+   local
+      open l3
+   in
+      structure gs_41 = LargeWord
+      structure gs_42 = SysWord
+      structure gs_43 = Word
+      structure gs_44 = Word8
+   end
+   local
+      open l3
+   in
+      structure gs_45 = Pervasive
+   end
+   local
+      open l3
+   in
+      structure gs_46 = CommandLine
+   end
+   local
+      open l3
+   in
+      signature gs_47 = ORDERED_RING
+   end
+   local
+      open l3
+   in
+      structure gs_48 = HashSet
+   end
+   local
+      open l3
+   in
+      functor gs_49 = BitVectorSet
+   end
+   local
+      open l3
+   in
+      structure gs_50 = Iterate
+   end
+   local
+      open l3
+   in
+      structure gs_51 = Relation
+   end
+   local
+      open l3
+   in
+      structure gs_52 = PolyCache
+   end
+   local
+      open l3
+   in
+      structure gs_53 = ClearablePromise
+   end
+   local
+      open l3
+   in
+      signature gs_54 = MONO_ENV
+   end
+   local
+      open l3
+   in
+      functor gs_55 = AlphaBeta
+   end
+   local
+      open l3
+   in
+      structure gs_56 = DirectedGraph
+   end
+   local
+      open l3
+   in
+      structure gs_57 = ResizableArray
+   end
+   local
+      open l3
+   in
+      structure gs_58 = Word8
+   end
+   local
+      open l3
+   in
+      signature gs_59 = UNIQUE_ID
+   end
+   local
+      open l3
+   in
+      structure gs_60 = Computation
+      structure gs_61 = Trace
+   end
+   local
+      open l3
+   in
+      structure gs_62 = Timer
+   end
+   local
+      open l3
+   in
+      structure gs_63 = Power
+   end
+   local
+      open l3
+   in
+      structure gs_64 = Posix
+   end
+   local
+      open l3
+   in
+      structure gs_65 = Parse
+   end
+   local
+      open l3
+   in
+      signature gs_66 = ORDER
+   end
+   local
+      open l3
+   in
+      structure gs_67 = MLton
+   end
+   local
+      open l3
+   in
+      structure gs_68 = Lines
+   end
+   local
+      open l3
+   in
+      structure gs_69 = Error
+   end
+   local
+      open l3
+   in
+      signature gs_70 = ERROR
+   end
+   local
+      open l3
+   in
+      functor gs_71 = Cache
+   end
+   local
+      open l3
+   in
+      signature gs_72 = ARRAY
+   end
+   local
+      open l3
+   in
+      signature gs_73 = POLY_CACHE
+   end
+   local
+      open l3
+   in
+      structure gs_74 = CharVector
+   end
+   local
+      open l3
+   in
+      functor gs_75 = MonoList
+   end
+   local
+      open l3
+   in
+      structure gs_76 = LargeWord
+   end
+   local
+      open l3
+   in
+      signature gs_77 = RING_WITH_IDENTITY
+   end
+   local
+      open l3
+   in
+      structure gs_78 = QuickSort
+   end
+   local
+      open l3
+   in
+      functor gs_79 = UniqueSet
+   end
+   local
+      open l3
+   in
+      functor gs_80 = OrderedUniqueSet
+   end
+   local
+      open l3
+   in
+      structure gs_81 = FixedPoint
+   end
+   local
+      open l3
+   in
+      functor gs_82 = MonoVector
+   end
+   local
+      open l3
+   in
+      structure gs_83 = Substring
+   end
+   local
+      open l3
+   in
+      signature gs_84 = EUCLIDEAN_RING
+   end
+   local
+      open l3
+   in
+      structure gs_85 = Justify
+   end
+   local
+      open l3
+   in
+      functor gs_86 = EuclideanRing
+   end
+   local
+      open l3
+   in
+      functor gs_87 = MonoOption
+   end
+   local
+      open l3
+   in
+      signature gs_88 = PROMISE
+   end
+   local
+      open l3
+   in
+      structure gs_89 = ChoicePattern
+   end
+   local
+      open l3
+   in
+      structure gs_90 = Postscript
+   end
+   local
+      open l3
+   in
+      structure gs_91 = Vector
+   end
+   local
+      open l3
+   in
+      structure gs_92 = Unsafe
+   end
+   local
+      open l3
+   in
+      signature gs_93 = VECTOR
+   end
+   local
+      open l3
+   in
+      structure gs_94 = Thread
+   end
+   local
+      open l3
+   in
+      functor gs_95 = RingWithIdentity
+   end
+   local
+      open l3
+   in
+      structure gs_96 = String
+   end
+   local
+      open l3
+   in
+      structure gs_97 = Stream
+   end
+   local
+      open l3
+   in
+      structure gs_98 = Socket
+   end
+   local
+      open l3
+   in
+      structure gs_99 = Signal
+   end
+   local
+      open l3
+   in
+      structure gs_100 = Function
+   end
+   local
+      open l3
+   in
+      structure gs_101 = BinarySearch
+   end
+   local
+      open l3
+   in
+      signature gs_102 = STRING
+   end
+   local
+      open l3
+   in
+      structure gs_103 = Result
+   end
+   local
+      open l3
+   in
+      structure gs_104 = Regexp
+   end
+   local
+      open l3
+   in
+      structure gs_105 = Real
+      structure gs_106 = Real32
+      structure gs_107 = Real64
+   end
+   local
+      open l3
+   in
+      structure gs_108 = Reader
+   end
+   local
+      open l3
+   in
+      structure gs_109 = Unimplemented
+   end
+   local
+      open l3
+   in
+      structure gs_110 = Random
+   end
+   local
+      open l3
+   in
+      structure gs_111 = Int
+      structure gs_112 = LargeInt
+      structure gs_113 = Position
+   end
+   local
+      open l3
+   in
+      functor gs_114 = MoveToFrontEnv
+   end
+   local
+      open l3
+   in
+      structure gs_115 = Option
+   end
+   local
+      open l3
+   in
+      functor gs_116 = OrderedField
+   end
+   local
+      open l3
+   in
+      structure gs_117 = INetSock
+   end
+   local
+      open l3
+   in
+      functor gs_118 = HashedUniqueSet
+   end
+   local
+      open l3
+   in
+      signature gs_119 = OPTION
+   end
+   local
+      open l3
+   in
+      structure gs_120 = Word
+   end
+   local
+      open l3
+   in
+      structure gs_121 = Unit
+   end
+   local
+      open l3
+   in
+      functor gs_122 = Tree
+      structure gs_123 = Tree
+   end
+   local
+      open l3
+   in
+      structure gs_124 = Time
+   end
+   local
+      open l3
+   in
+      structure gs_125 = Sexp
+   end
+   local
+      open l3
+   in
+      functor gs_126 = Ring
+   end
+   local
+      open l3
+   in
+      signature gs_127 = RING
+   end
+   local
+      open l3
+   in
+      signature gs_128 = REAL
+   end
+   local
+      open l3
+   in
+      structure gs_129 = Port
+   end
+   local
+      open l3
+   in
+      structure gs_130 = Popt
+   end
+   local
+      open l3
+   in
+      functor gs_131 = Pair
+   end
+   local
+      open l3
+   in
+      structure gs_132 = List
+   end
+   local
+      open l3
+   in
+      signature gs_133 = LIST
+   end
+   local
+      open l3
+   in
+      structure gs_134 = Http
+   end
+   local
+      open l3
+   in
+      structure gs_135 = Html
+   end
+   local
+      open l3
+   in
+      structure gs_136 = File
+   end
+   local
+      open l3
+   in
+      structure gs_137 = Date
+   end
+   local
+      open l3
+   in
+      structure gs_138 = Byte
+   end
+   local
+      open l3
+   in
+      structure gs_139 = Bool
+   end
+   local
+      open l3
+   in
+      structure gs_140 = Url
+   end
+   local
+      open l3
+   in
+      functor gs_141 = Sum
+   end
+   local
+      open l3
+   in
+      signature gs_142 = SUM
+   end
+   local
+      open l3
+   in
+      signature gs_143 = SET
+   end
+   local
+      open l3
+   in
+      structure gs_144 = Ref
+   end
+   local
+      open l3
+   in
+      structure gs_145 = RDB
+   end
+   local
+      open l3
+   in
+      structure gs_146 = Pid
+   end
+   local
+      open l3
+   in
+      structure gs_147 = Out
+   end
+   local
+      open l3
+   in
+      structure gs_148 = Net
+   end
+   local
+      open l3
+   in
+      structure gs_149 = Int
+   end
+   local
+      open l3
+   in
+      structure gs_150 = Exn
+   end
+   local
+      open l3
+   in
+      structure gs_151 = Dot
+   end
+   local
+      open l3
+   in
+      signature gs_152 = ENV
+   end
+   local
+      open l3
+   in
+      structure gs_153 = Dir
+   end
+   local
+      open l3
+   in
+      structure gs_154 = OS
+   end
+   local
+      open l3
+   in
+      structure gs_155 = In
+   end
+   local
+      open l3
+   in
+      signature gs_156 = T
+   end
+in
+   signature ARRAY = gs_72
+   functor AlphaBeta = gs_55
+   structure AppendList = gs_2
+   structure Array = gs_19
+   structure Array2 = gs_34
+   structure Assert = gs_31
+   structure Base64 = gs_30
+   structure BinarySearch = gs_101
+   functor BitVectorSet = gs_49
+   structure Bool = gs_139
+   structure Buffer = gs_29
+   structure Byte = gs_138
+   functor Cache = gs_71
+   structure CharVector = gs_74
+   structure ChoicePattern = gs_89
+   structure ClearablePromise = gs_53
+   structure CommandLine = gs_46
+   structure Computation = gs_60
+   structure Console = gs_13
+   functor Control = gs_12
+   structure Counter = gs_11
+   structure Date = gs_137
+   structure Dir = gs_153
+   structure DirectedGraph = gs_56
+   structure DirectedSubGraph = gs_3
+   structure DisjointSet = gs_28
+   structure Dot = gs_151
+   structure DotColor = gs_16
+   signature ENV = gs_152
+   signature ERROR = gs_70
+   signature EUCLIDEAN_RING = gs_84
+   structure Engine = gs_25
+   functor Env = gs_36
+   structure Error = gs_69
+   structure Escape = gs_24
+   functor EuclideanRing = gs_86
+   structure Exn = gs_150
+   structure Export = gs_21
+   structure File = gs_136
+   structure FileDesc = gs_26
+   structure FixedPoint = gs_81
+   structure Function = gs_100
+   structure HashSet = gs_48
+   functor HashedUniqueSet = gs_118
+   structure Html = gs_135
+   structure Http = gs_134
+   signature INTEGER = gs_15
+   signature INT_INF = gs_14
+   structure INetSock = gs_117
+   structure In = gs_155
+   structure InitScript = gs_0
+   structure InsertionSort = gs_27
+   structure Int = gs_149
+   structure IntInf = gs_5
+   functor IntUniqueId = gs_39
+   structure Iterate = gs_50
+   structure Itimer = gs_4
+   structure Justify = gs_85
+   signature LIST = gs_133
+   structure LargeInt = gs_112
+   structure LargeWord = gs_76
+   structure Layout = gs_1
+   structure Lines = gs_68
+   structure List = gs_132
+   structure MLton = gs_67
+   signature MONO_ENV = gs_54
+   functor MakeMonoEnv = gs_7
+   functor MonoArray = gs_20
+   functor MonoEnv = gs_8
+   functor MonoList = gs_75
+   functor MonoOption = gs_87
+   functor MonoVector = gs_82
+   functor MoveToFrontEnv = gs_114
+   structure Net = gs_148
+   signature OPTION = gs_119
+   signature ORDER = gs_66
+   signature ORDERED_RING = gs_47
+   structure OS = gs_154
+   structure Option = gs_115
+   functor OrderedField = gs_116
+   functor OrderedUniqueSet = gs_80
+   structure Out = gs_147
+   signature POLY_CACHE = gs_73
+   signature PROMISE = gs_88
+   functor Pair = gs_131
+   structure Parse = gs_65
+   structure Pervasive = gs_45
+   structure Pid = gs_146
+   structure Pointer = gs_38
+   structure PolyCache = gs_52
+   functor PolyEnv = gs_37
+   structure Popt = gs_130
+   structure Port = gs_129
+   structure Position = gs_113
+   structure Posix = gs_64
+   structure Postscript = gs_90
+   structure Power = gs_63
+   structure Process = gs_33
+   structure Promise = gs_32
+   structure Property = gs_9
+   structure PropertyList = gs_10
+   structure Queue = gs_22
+   structure QuickSort = gs_78
+   structure RDB = gs_145
+   signature REAL = gs_128
+   signature RING = gs_127
+   signature RING_WITH_IDENTITY = gs_77
+   structure Random = gs_110
+   structure Reader = gs_108
+   structure Real = gs_105
+   structure Real32 = gs_106
+   structure Real64 = gs_107
+   structure Ref = gs_144
+   structure Regexp = gs_104
+   structure Relation = gs_51
+   structure ResizableArray = gs_57
+   structure Result = gs_103
+   functor Ring = gs_126
+   functor RingWithIdentity = gs_95
+   signature SET = gs_143
+   structure SMLofNJ = gs_17
+   signature STRING = gs_102
+   signature SUM = gs_142
+   structure Sexp = gs_125
+   structure Signal = gs_99
+   structure Socket = gs_98
+   structure Stream = gs_97
+   structure String = gs_96
+   structure StringCvt = gs_18
+   structure Substring = gs_83
+   functor Sum = gs_141
+   structure SysWord = gs_42
+   signature T = gs_156
+   structure Thread = gs_94
+   structure Time = gs_124
+   structure Timer = gs_62
+   structure Trace = gs_61
+   functor Tree = gs_122
+   structure Tree = gs_123
+   structure TwoListQueue = gs_23
+   signature UNIQUE_ID = gs_59
+   structure Unimplemented = gs_109
+   functor UniqueId = gs_40
+   functor UniqueSet = gs_79
+   structure Unit = gs_121
+   functor UnorderedSet = gs_35
+   structure Unsafe = gs_92
+   structure Url = gs_140
+   signature VECTOR = gs_93
+   structure Vector = gs_91
+   structure Word = gs_120
+   structure Word8 = gs_58
+end
+end
