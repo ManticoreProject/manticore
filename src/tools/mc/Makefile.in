@@ -135,7 +135,9 @@ parser/manticore.grm:	parser/bom.grm parser/sml.grm
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),devclean)
 ifneq ($(MAKECMDGOALS),distclean)
+ifneq ($(MAKECMDGOALS),mlton)
 sinclude .depend
+endif
 endif
 endif
 endif
