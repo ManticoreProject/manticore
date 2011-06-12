@@ -1,81 +1,12 @@
 local
-  basis l4 = 
-    bas
-      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb
-    end
-  basis l16 = 
-    bas
-      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
-    end
-  basis l23 = 
-    bas
-      (* ../common/sources.cm ===> *) ../common/sources.mlb
-    end
+    $(SML_LIB)/basis/basis.mlb
+    $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    ../common/sources.mlb
+    $(SML_LIB)/basis/pervasive.mlb
 in
-local
-   $(SML_LIB)/basis/pervasive.mlb
-   local
-      open l4
-   in
-      structure gs_0 = List
-   end
-   local
-      prim.sml
-   in
-      structure gs_1 = Prim
-   end
-   local
-      structure List = gs_0
-      structure Prim = gs_1
-      cond-util.sml
-   in
-      structure gs_2 = CondUtil
-   end
-   local
-      open l16
-   in
-      structure gs_3 = AtomTable
-   end
-   local
-      open l16
-   in
-      structure gs_4 = Atom
-   end
-   local
-      open l23
-   in
-      structure gs_5 = RawTypes
-   end
-   local
-      structure Atom = gs_4
-      structure AtomTable = gs_3
-      structure List = gs_0
-      structure Prim = gs_1
-      structure RawTypes = gs_5
-      make-prim-fn.sml
-   in
-      functor gs_6 = MakePrimFn
-      signature gs_7 = PRIM_TYPES
-   end
-   local
-      structure List = gs_0
-      structure Prim = gs_1
-      prim-util.sml
-   in
-      structure gs_8 = PrimUtil
-   end
-   local
-      structure Prim = gs_1
-      structure RawTypes = gs_5
-      prim-ty-fn.sml
-   in
-      functor gs_9 = PrimTyFn
-   end
-in
-   structure CondUtil = gs_2
-   functor MakePrimFn = gs_6
-   structure Prim = gs_1
-   functor PrimTyFn = gs_9
-   structure PrimUtil = gs_8
-end
+    prim.sml
+    cond-util.sml
+    make-prim-fn.sml
+    prim-util.sml
+    prim-ty-fn.sml
 end

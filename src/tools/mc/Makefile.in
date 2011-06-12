@@ -49,6 +49,7 @@ PROGRAM =		pmlc
 TARGET =		@TARGET@
 HEAP_IMAGE =		$(PROGRAM).@SMLNJ_HEAP_SUFFIX@
 ROOT_CM =		driver/$(TARGET).cm
+ROOT_MLB =		driver/$(TARGET).mlb
 
 CM_FILES =		ast-opt/sources.cm \
 			ast/sources.cm \
@@ -120,7 +121,7 @@ mlton/front-end/%.grm.sig mlton/front-end/%.grm.sml: mlton/front-end/%.grm
 
 .PHONY:		mlton
 mlton:	$(PARSER_OUTPUT)
-	$(MLTON) -output $(PROGRAM) $(MLTON_FLAGS) driver/sources.mlb
+	$(MLTON) -output $(PROGRAM) $(MLTON_FLAGS) $(ROOT_MLB)
 
 # the following rule forces rerunning of ml-antlr if one of the inputs
 # changes.
