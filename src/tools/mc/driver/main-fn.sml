@@ -265,8 +265,7 @@ functor MainFn (
 		(* end case *))
 	   end
 
-    fun processArgs args = (print (concat["ARGS!\n", concat args]);
-                            case args
+    fun processArgs args = (case args
            of arg :: args =>
 		if String.isPrefix "-" arg
 		  then processOption (arg, args)
