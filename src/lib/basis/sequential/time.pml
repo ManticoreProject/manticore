@@ -53,6 +53,8 @@ structure Time =
 	     sign ^ Long.toString(toSecs t) ^ frac
 	   end
 
+    fun toStringMicrosec (t : time) = Long.toString t
+
 (* FIXME: this function does not belong here!!! *)
   (* timeToEval : (unit -> 'a) -> 'a * time *)
   (* Pass in a suspended computation; get back the result and the time it took. *)

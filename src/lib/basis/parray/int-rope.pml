@@ -1201,20 +1201,18 @@ structure IntRope = struct
   fun tab (n, f) = tabFromTo (0, n-1, f)
 
   (* tabFromToStep : int * int * int * (int -> 'a) -> 'a rope *)
-  (* lo inclusive, hi inclusive *)
-  fun tabFromToStep (from, to_, step, f) = (case Int.compare (step, 0)
-    of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around raiseExp -ams *)
-     | LESS (* negative step *) =>
-         if (to_ > from) then
-           empty ()
-       	 else
-           tabFromTo (0, (from-to_) div (~step), fn i => f (from + (step*i)))
-     | GREATER (* positive step *) =>
-       	 if (from > to_) then
-       	   empty ()
-       	 else
-           tabFromTo (0, (to_-from) div step, fn i => f (from + (step*i)))
-    (* end case *))
+  fun tabFromToStep (from, to_, step, f) = let
+    fun f' i = f (from + (step * i))
+    fun tab t = tabFromTo (0, t, f')
+    in case Int.compare (step, 0)
+      of EQUAL => (raise Fail "0 step") (* FIXME parse bug? can't remove parens -ams *)        
+       | LESS (* negative step *) =>
+           if (to_ > from) then tab 0
+	   else tab ((from-to_) div (~step))
+       | GREATER (* positive step *) =>
+       	   if (from > to_) then tab 0
+       	   else tab ((to_-from) div step)
+    end
 
   (* rangeP : int * int * int -> int_rope *)
   (* note: both from and to are inclusive bounds *)

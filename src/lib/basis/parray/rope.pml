@@ -1160,27 +1160,25 @@ fun app f rp = let
     fun tab (n, f) = tabFromTo (0, n-1, f)
 
   (* tabFromToStep : int * int * int * (int -> 'a) -> 'a rope *)
-  (* lo inclusive, hi inclusive *)
-    fun tabFromToStep (from, to_, step, f) = (case Int.compare (step, 0)
-      of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around raiseExp -ams *)
-       | LESS (* negative step *) =>
-           if (to_ > from) then
-             empty ()
-       	   else
-             tabFromTo (0, (from-to_) div (~step), fn i => f (from + (step*i)))
-       | GREATER (* positive step *) =>
-       	   if (from > to_) then
-       	     empty ()
-       	   else
-             tabFromTo (0, (to_-from) div step, fn i => f (from + (step*i)))
-      (* end case *))
+    fun tabFromToStep (from, to_, step, f) = let
+      fun f' i = f (from + (step * i))
+      fun tab t = tabFromTo (0, t, f')
+      in case Int.compare (step, 0)
+        of EQUAL => (raise Fail "0 step") (* FIXME parse bug? can't remove parens -ams *)        
+         | LESS (* negative step *) =>
+             if (to_ > from) then tab 0
+	     else tab ((from-to_) div (~step))
+         | GREATER (* positive step *) =>
+       	     if (from > to_) then tab 0
+       	     else tab ((to_-from) div step)
+      end
 
   (* range : int * int * int -> int rope *)
     val range = Range.mkRange (singleton, tabulate)
 
   (* rangePNoStep : int * int -> int rope *)
     fun rangeNoStep (from, to_) = (* "to" is syntax in pml *)
-	  range (from, to_, 1)
+      range (from, to_, 1)
                                               
   (* partialSeq : 'a rope * int * int -> 'a seq *)
   (* return the sequence of elements from low incl to high excl *)
