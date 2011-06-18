@@ -121,8 +121,17 @@ Value_t GlobalAllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
     Word_t *obj;
     assert(nElems >= 0);
     assert(nArrayBytes < HEAP_CHUNK_SZB); /* the array has to fit inside a heap chunk */
-    if (vp->globNextW + nObjBytes >= vp->globLimit)
-	AllocToSpaceChunk(vp);
+        
+    //check if we have enough global memory in the current chunk, if not we have to allocate a new one
+    if (vp->globNextW + nObjBytes >= vp->globLimit) {     
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
+    }
+            
     obj = (Word_t*)(vp->globNextW);
     obj[-1] = RAW_HDR(BYTES_TO_WORDS(nArrayBytes));
     vp->globNextW += nObjBytes;
@@ -230,8 +239,14 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
     Value_t	elems[nElems];
     va_list	ap;
 
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
+    //check if we have enough global memory in the current chunk, if not we have to allocate a new one
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {     
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
     }
 
     assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
@@ -271,8 +286,14 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
 
     bits[0]='\0';
 
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
+    //check if we have enough global memory in the current chunk, if not we have to allocate a new one
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {     
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
     }
 
     assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
@@ -325,8 +346,14 @@ Value_t GlobalAllocVector (VProc_t *vp, int len, Value_t values)
   /* the array must fit into a global chunk */
     assert (HEAP_CHUNK_SZB > WORD_SZB*(len+1) && len >= 0);
 
-    if (vp->globNextW + WORD_SZB * (len+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
+    //check if we have enough global memory in the current chunk, if not we have to allocate a new one
+    if (vp->globNextW + WORD_SZB * (len+1) >= vp->globLimit) {     
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
     }
 
     Word_t *obj = (Word_t*)(vp->globNextW);
@@ -353,8 +380,17 @@ Value_t GlobalAllocVector (VProc_t *vp, int len, Value_t values)
 Value_t GlobalAllocPolyArray (VProc_t *vp, int nElems, Value_t init)
 {
     assert (HEAP_CHUNK_SZB > WORD_SZB*(nElems+1) && nElems >= 0);
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit)
-	AllocToSpaceChunk(vp);
+        
+    //check if we have enough global memory in the current chunk, if not we have to allocate a new one
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit){     
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
+    }
+        
     Word_t *obj = (Word_t*)(vp->globNextW);
     obj[-1] = VEC_HDR(nElems);
     for (int i = 0;  i < nElems; i++)
