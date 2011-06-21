@@ -15,11 +15,11 @@ functor MainFn (
 
   end = struct
 
-(*    val _ = (
+    val _ = (
         SMLofNJ.Internals.TDP.mode := true;
         Coverage.install ();
         BackTrace.install ())
-*)
+
     structure Version = VersionFn (Spec)
     structure BOMOpt = BOMOptFn (Spec)
     structure CPSOpt = CPSOptFn (Spec)
@@ -162,10 +162,11 @@ functor MainFn (
 
   (* compile an MLB or PML file *)
     fun mlbC (verbose, errStrm, srcFile, asmFile) = let
+	  val _ = if verbose then print "initializing environment\n" else ()
 	  val (bEnv0, mEnv0, ast0, glueAST) = initialEnv()
-(*          val _ = if verbose then print(concat["mlton parsing \"", srcFile, "\"\n"]) else ()
+          val _ = if verbose then print(concat["mlton parsing \"", srcFile, "\"\n"]) else ()
           val sxml = Wrapper.compileSML (srcFile, asmFile)
-	  val _ = if verbose then print(concat["parsing \"", srcFile, "\"\n"]) else () *)
+	  val _ = if verbose then print(concat["parsing \"", srcFile, "\"\n"]) else ()
           val ast = mlbToAST (errStrm, bEnv0, mEnv0, srcFile)
           val _ = checkForErrors errStrm
           val ast = ASTOpt.optimize(glueAST(ast0, ast))
@@ -180,7 +181,7 @@ functor MainFn (
 	    Stats.report ()
 	  end
 
-    fun doFile file = let
+    fun doFile file = BackTrace.monitor (fn () => let
 	  val verbose = (Controls.get BasicControl.verbose > 0)
 	  val {base, ext} = OS.Path.splitBaseExt file
 	  in
@@ -189,7 +190,7 @@ functor MainFn (
 	      | SOME _ => ()
 	    (* end case *);
 	    mlbC (verbose, Error.mkErrStream file, file, OS.Path.joinBaseExt{base = base, ext = SOME "s"})
-	  end
+	  end)
 
     fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)
 
@@ -311,4 +312,5 @@ functor MainFn (
 	  end
 
     fun main (_, args) = processArgs args
+ 
   end

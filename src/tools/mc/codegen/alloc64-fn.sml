@@ -13,21 +13,7 @@ functor Alloc64Fn (
     structure Types : ARCH_TYPES
     structure MLTreeComp : MLTREECOMP 
     structure VProcOps : VPROC_OPS
-          where type MTy.mlrisc_kind = MTy.mlrisc_kind
-          where type MTy.mlrisc_tree = MTy.mlrisc_tree
-          where type MTy.mlrisc_reg = MTy.mlrisc_reg
-          where type MTy.T.cond = MTy.T.cond
-          where type MTy.T.fcond = MTy.T.fcond
-          where type MTy.T.rounding_mode = MTy.T.rounding_mode
-          where type MTy.T.div_rounding_mode = MTy.T.div_rounding_mode
-          where type MTy.T.ext = MTy.T.ext
-          where type MTy.T.stm = MTy.T.stm
-          where type MTy.T.rexp = MTy.T.rexp
-          where type MTy.T.rep = MTy.T.rep
-          where type MTy.T.oper = MTy.T.oper
-          where type MTy.T.fexp = MTy.T.fexp
-          where type MTy.T.ccexp = MTy.T.ccexp
-          where type MTy.T.mlrisc = MTy.T.mlrisc
+	where MTy = MTy
   ) : ALLOC = struct
 
     structure MTy = MTy

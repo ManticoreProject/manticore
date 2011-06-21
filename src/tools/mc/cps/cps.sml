@@ -15,38 +15,38 @@ structure CPS =
     datatype exp = Exp of (ProgPt.ppt * term)
 
     and term
-      = Let of ((var_kind, ty) VarRep.var_rep list * rhs * exp)
+      = Let of (var list * rhs * exp)
       | Fun of (lambda list * exp)
       | Cont of (lambda * exp)
-      | If of ((var_kind, ty) VarRep.var_rep Prim.cond * exp * exp)
-      | Switch of ((var_kind, ty) VarRep.var_rep * (tag * exp) list * exp option)
-      | Apply of ((var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list * (var_kind, ty) VarRep.var_rep list)
-      | Throw of ((var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list)
+      | If of (cond * exp * exp)
+      | Switch of (var * (tag * exp) list * exp option)
+      | Apply of (var * var list * var list)
+      | Throw of (var * var list)
 
     and rhs
-      = Var of (var_kind, ty) VarRep.var_rep list
-      | Cast of ty * (var_kind, ty) VarRep.var_rep		(* typecast *)
+      = Var of var list
+      | Cast of ty * var		(* typecast *)
       | Const of (Literal.literal * ty)
-      | Select of (int * (var_kind, ty) VarRep.var_rep)		(* select i'th field (zero-based) *)
-      | Update of (int * (var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep)	(* update i'th field (zero-based) *)
-      | AddrOf of (int * (var_kind, ty) VarRep.var_rep)		(* return address of i'th field (zero-based) *)
-      | Alloc of (ty * (var_kind, ty) VarRep.var_rep list)	(* local-heap allocation *)
-      | Promote of (var_kind, ty) VarRep.var_rep			(* promote a heap object to the global heap *)
-      | Prim of (var_kind, ty) VarRep.var_rep Prim.prim
-      | CCall of ((var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list)
+      | Select of (int * var)		(* select i'th field (zero-based) *)
+      | Update of (int * var * var)	(* update i'th field (zero-based) *)
+      | AddrOf of (int * var)		(* return address of i'th field (zero-based) *)
+      | Alloc of (ty * var list)	(* local-heap allocation *)
+      | Promote of var			(* promote a heap object to the global heap *)
+      | Prim of prim
+      | CCall of (var * var list)
     (* VProc operations *)
       | HostVProc			(* gets the hosting VProc *)
-      | VPLoad of (offset * (var_kind, ty) VarRep.var_rep)	(* load a value from the given byte offset *)
+      | VPLoad of (offset * var)	(* load a value from the given byte offset *)
 					(* in the vproc structure *)
-      | VPStore of (offset * (var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep)	(* store a value at the given byte offset *)
+      | VPStore of (offset * var * var)	(* store a value at the given byte offset *)
 					(* in the vproc structure *)
-      | VPAddr of (offset * (var_kind, ty) VarRep.var_rep)	(* address of given byte offset in the vproc *)
+      | VPAddr of (offset * var)	(* address of given byte offset in the vproc *)
 					(* structure *)
 
     and lambda = FB of {	      (* function/continuation abstraction *)
-	  f : (var_kind, ty) VarRep.var_rep,			(* function name *)
-	  params : (var_kind, ty) VarRep.var_rep list,		(* parameters *)
-	  rets : (var_kind, ty) VarRep.var_rep list,		(* return/exception continuations *)
+	  f : var,			(* function name *)
+	  params : var list,		(* parameters *)
+	  rets : var list,		(* return/exception continuations *)
 	  body : exp			(* function body *)
 	}
 
@@ -56,12 +56,12 @@ structure CPS =
       | VK_Fun of lambda
       | VK_Cont of lambda
       | VK_Param of lambda
-      | VK_CFun of (var_kind, ty) VarRep.var_rep CFunctions.c_fun
+      | VK_CFun of c_fun
 
-    type var = (var_kind, ty) VarRep.var_rep
-    type cond = var Prim.cond
-    type prim = var Prim.prim
-    type c_fun = var CFunctions.c_fun
+    withtype var = (var_kind, ty) VarRep.var_rep
+         and cond = var Prim.cond
+         and prim = var Prim.prim
+	 and c_fun = var CFunctions.c_fun
 
     datatype module = MODULE of {
 	name : Atom.atom,

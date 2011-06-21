@@ -33,9 +33,9 @@ structure TreeShake =
     fun bindsOfValDecl (vd, m) = (
 	  case vd
 	   of PT.MarkVDecl {tree, ...} => bindsOfValDecl (tree, m)
-	    | ( PT.ValVDecl (p, _) ) => List.map (fn v => (m,v)) (varsOfPat p)
-	    | ( PT.PValVDecl  (p, _)) => List.map (fn v => (m,v)) (varsOfPat p)
-	    | ( PT.PrimVDecl (p, _) ) => List.map (fn v => (m,v)) (varsOfPat p)
+	    | ( PT.ValVDecl (p, _) |
+		PT.PValVDecl  (p, _) |
+	        PT.PrimVDecl (p, _) ) => List.map (fn v => (m,v)) (varsOfPat p)
 	    | PT.FunVDecl funs => List.concat (List.map (fn f => bindsOfFunct (f,m)) funs)
           (* end case *))
 

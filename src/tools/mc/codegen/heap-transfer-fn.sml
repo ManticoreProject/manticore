@@ -14,120 +14,25 @@ end
 
 functor HeapTransferFn (
     structure MTy : MLRISC_TYPES
-    structure VarDef : VAR_DEF 
-          where type MTy.mlrisc_kind = MTy.mlrisc_kind
-          where type MTy.mlrisc_tree = MTy.mlrisc_tree
-          where type MTy.mlrisc_reg = MTy.mlrisc_reg
-          where type MTy.T.cond = MTy.T.cond
-          where type MTy.T.fcond = MTy.T.fcond
-          where type MTy.T.rounding_mode = MTy.T.rounding_mode
-          where type MTy.T.div_rounding_mode = MTy.T.div_rounding_mode
-          where type MTy.T.ext = MTy.T.ext
-          where type MTy.T.stm = MTy.T.stm
-          where type MTy.T.rexp = MTy.T.rexp
-          where type MTy.T.rep = MTy.T.rep
-          where type MTy.T.oper = MTy.T.oper
-          where type MTy.T.fexp = MTy.T.fexp
-          where type MTy.T.ccexp = MTy.T.ccexp
-          where type MTy.T.mlrisc = MTy.T.mlrisc
+    structure VarDef : VAR_DEF where MTy = MTy
     structure SpillLoc : SPILL_LOC 
-    structure Copy : COPY 
-          where type MTy.mlrisc_kind = VarDef.MTy.mlrisc_kind
-          where type MTy.mlrisc_tree = VarDef.MTy.mlrisc_tree
-          where type MTy.mlrisc_reg = VarDef.MTy.mlrisc_reg
-          where type MTy.T.cond = MTy.T.cond
-          where type MTy.T.fcond = MTy.T.fcond
-          where type MTy.T.rounding_mode = MTy.T.rounding_mode
-          where type MTy.T.div_rounding_mode = MTy.T.div_rounding_mode
-          where type MTy.T.ext = MTy.T.ext
-          where type MTy.T.stm = MTy.T.stm
-          where type MTy.T.rexp = MTy.T.rexp
-          where type MTy.T.rep = MTy.T.rep
-          where type MTy.T.oper = MTy.T.oper
-          where type MTy.T.fexp = MTy.T.fexp
-          where type MTy.T.ccexp = MTy.T.ccexp
-          where type MTy.T.mlrisc = MTy.T.mlrisc
+    structure Copy : COPY where MTy = VarDef.MTy
     structure Regs : MANTICORE_REGS
     structure Alloc : ALLOC
-          where type MTy.mlrisc_kind = MTy.mlrisc_kind
-          where type MTy.mlrisc_tree = MTy.mlrisc_tree
-          where type MTy.mlrisc_reg = MTy.mlrisc_reg
-          where type MTy.T.cond = MTy.T.cond
-          where type MTy.T.fcond = MTy.T.fcond
-          where type MTy.T.rounding_mode = MTy.T.rounding_mode
-          where type MTy.T.div_rounding_mode = MTy.T.div_rounding_mode
-          where type MTy.T.ext = MTy.T.ext
-          where type MTy.T.stm = MTy.T.stm
-          where type MTy.T.rexp = MTy.T.rexp
-          where type MTy.T.rep = MTy.T.rep
-          where type MTy.T.oper = MTy.T.oper
-          where type MTy.T.fexp = MTy.T.fexp
-          where type MTy.T.ccexp = MTy.T.ccexp
-          where type MTy.T.mlrisc = MTy.T.mlrisc
-    structure MLTreeComp : MLTREECOMP 
-          where type TS.T.cond = VarDef.MTy.T.cond
-          where type TS.T.fcond = VarDef.MTy.T.fcond
-          where type TS.T.rounding_mode = VarDef.MTy.T.rounding_mode
-          where type TS.T.div_rounding_mode = VarDef.MTy.T.div_rounding_mode
-          where type TS.T.ext = VarDef.MTy.T.ext
-          where type TS.T.stm = VarDef.MTy.T.stm
-          where type TS.T.rexp = VarDef.MTy.T.rexp
-          where type TS.T.rep = VarDef.MTy.T.rep
-          where type TS.T.oper = VarDef.MTy.T.oper
-          where type TS.T.fexp = VarDef.MTy.T.fexp
-          where type TS.T.ccexp = VarDef.MTy.T.ccexp
-          where type TS.T.mlrisc = VarDef.MTy.T.mlrisc
+	where MTy = MTy
+    structure MLTreeComp : MLTREECOMP where TS.T = VarDef.MTy.T
     structure Target : TARGET_TRANSFER_HEAP
 	where type stm = VarDef.MTy.T.stm
     structure Spec : TARGET_SPEC
     structure LabelCode : LABEL_CODE
-          where type MTy.mlrisc_kind = MTy.mlrisc_kind
-          where type MTy.mlrisc_tree = MTy.mlrisc_tree
-          where type MTy.mlrisc_reg = MTy.mlrisc_reg
-          where type MTy.T.cond = MTy.T.cond
-          where type MTy.T.fcond = MTy.T.fcond
-          where type MTy.T.rounding_mode = MTy.T.rounding_mode
-          where type MTy.T.div_rounding_mode = MTy.T.div_rounding_mode
-          where type MTy.T.ext = MTy.T.ext
-          where type MTy.T.stm = MTy.T.stm
-          where type MTy.T.rexp = MTy.T.rexp
-          where type MTy.T.rep = MTy.T.rep
-          where type MTy.T.oper = MTy.T.oper
-          where type MTy.T.fexp = MTy.T.fexp
-          where type MTy.T.ccexp = MTy.T.ccexp
-          where type MTy.T.mlrisc = MTy.T.mlrisc
+	where MTy = MTy
     structure Types : ARCH_TYPES
     structure CCall : C_CALL
-          where type T.cond = MTy.T.cond
-          where type T.fcond = MTy.T.fcond
-          where type T.rounding_mode = MTy.T.rounding_mode
-          where type T.div_rounding_mode = MTy.T.div_rounding_mode
-          where type T.ext = MTy.T.ext
-          where type T.stm = MTy.T.stm
-          where type T.rexp = MTy.T.rexp
-          where type T.rep = MTy.T.rep
-          where type T.oper = MTy.T.oper
-          where type T.fexp = MTy.T.fexp
-          where type T.ccexp = MTy.T.ccexp
-          where type T.mlrisc = MTy.T.mlrisc
+	where T = MTy.T
     structure Frame : MANTICORE_FRAME
     structure VProcOps : VPROC_OPS
-          where type VarDef.var_def_tbl = VarDef.var_def_tbl
-          where type MTy.mlrisc_kind = MTy.mlrisc_kind
-          where type MTy.mlrisc_tree = MTy.mlrisc_tree
-          where type MTy.mlrisc_reg = MTy.mlrisc_reg
-          where type MTy.T.cond = MTy.T.cond
-          where type MTy.T.fcond = MTy.T.fcond
-          where type MTy.T.rounding_mode = MTy.T.rounding_mode
-          where type MTy.T.div_rounding_mode = MTy.T.div_rounding_mode
-          where type MTy.T.ext = MTy.T.ext
-          where type MTy.T.stm = MTy.T.stm
-          where type MTy.T.rexp = MTy.T.rexp
-          where type MTy.T.rep = MTy.T.rep
-          where type MTy.T.oper = MTy.T.oper
-          where type MTy.T.fexp = MTy.T.fexp
-          where type MTy.T.ccexp = MTy.T.ccexp
-          where type MTy.T.mlrisc = MTy.T.mlrisc
+	where VarDef = VarDef
+	where MTy = MTy
 ) : TRANSFER = struct
 
   structure MTy = MTy

@@ -9,7 +9,7 @@
 signature MLRISC_TYPES = sig
 
     structure T : MLTREE
-	where type Region.region = ManticoreRegion.region
+	where Region = ManticoreRegion 
 
     datatype mlrisc_kind = K_INT | K_FLOAT | K_COND
 
@@ -44,7 +44,7 @@ end (* MLRISC_TYPES *)
 functor MLRiscTypesFn (
 	structure Spec : TARGET_SPEC
 	structure T : MLTREE
-		where type Region.region = ManticoreRegion.region
+		where Region = ManticoreRegion
 ) : MLRISC_TYPES = struct
 
   val ty = (IntInf.toInt Spec.ABI.wordSzB) * 8
@@ -67,10 +67,8 @@ functor MLRiscTypesFn (
   datatype mlrisc_reg = GPReg of (T.ty * T.var)
 		      | FPReg of (T.fty * T.var)
 
-  fun kindOf ( GPR _ ) = K_INT
-    | kindOf ( EXP _ ) = K_INT
-    | kindOf ( FPR _ ) = K_FLOAT
-    | kindOf ( FEXP _ ) = K_FLOAT
+  fun kindOf ( (GPR _ | EXP _) ) = K_INT
+    | kindOf ( (FPR _ | FEXP _) ) = K_FLOAT
     | kindOf ( CEXP _  ) = K_COND   
 
   fun treeToString (GPR(ty, x)) = CellsBasis.toStringWithSize(x, ty)
@@ -122,8 +120,7 @@ functor MLRiscTypesFn (
 
   fun cfgTyToMLRisc ty =
       (case ty 
-	of ( Ty.T_Raw Ty.T_Float ) => K_FLOAT
-	 | ( Ty.T_Raw Ty.T_Double ) => K_FLOAT
+	of ( Ty.T_Raw Ty.T_Float | Ty.T_Raw Ty.T_Double ) => K_FLOAT
 	 | _ => K_INT
       (* esac *))
 

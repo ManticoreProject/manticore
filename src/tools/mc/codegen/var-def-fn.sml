@@ -9,19 +9,7 @@
 functor VarDefFn (
 	structure Spec : TARGET_SPEC
 	structure MTy : MLRISC_TYPES
-	structure MLTreeComp : MLTREECOMP 
-          where type TS.T.cond = MTy.T.cond
-          where type TS.T.fcond = MTy.T.fcond
-          where type TS.T.rounding_mode = MTy.T.rounding_mode
-          where type TS.T.div_rounding_mode = MTy.T.div_rounding_mode
-          where type TS.T.ext = MTy.T.ext
-          where type TS.T.stm = MTy.T.stm
-          where type TS.T.rexp = MTy.T.rexp
-          where type TS.T.rep = MTy.T.rep
-          where type TS.T.oper = MTy.T.oper
-          where type TS.T.fexp = MTy.T.fexp
-          where type TS.T.ccexp = MTy.T.ccexp
-          where type TS.T.mlrisc = MTy.T.mlrisc
+	structure MLTreeComp : MLTREECOMP where TS.T = MTy.T
 ) : VAR_DEF = struct
 
   structure Cells = MLTreeComp.I.C

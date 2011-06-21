@@ -15,52 +15,50 @@ structure BOM =
 
     type offset = IntInf.int
 
-    type const = (Literal.literal * ty)
-
-    datatype  exp = E_Pt of (ProgPt.ppt * term)
+    datatype exp = E_Pt of (ProgPt.ppt * term)
 
     and term
-      = E_Let of ((var_kind, ty) VarRep.var_rep list * exp * exp)
-      | E_Stmt of ((var_kind, ty) VarRep.var_rep list * rhs * exp)
+      = E_Let of (var list * exp * exp)
+      | E_Stmt of (var list * rhs * exp)
       | E_Fun of (lambda list * exp)
       | E_Cont of (lambda * exp)
-      | E_If of ((var_kind, ty) VarRep.var_rep Prim.cond * exp * exp)
-      | E_Case of ((var_kind, ty) VarRep.var_rep * (pat * exp) list * exp option)
-      | E_Apply of ((var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list * (var_kind, ty) VarRep.var_rep list)
-      | E_Throw of ((var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list)
-      | E_Ret of (var_kind, ty) VarRep.var_rep list
-      | E_HLOp of (hlop * (var_kind, ty) VarRep.var_rep list * (var_kind, ty) VarRep.var_rep list)	(* application of high-level operator *)
+      | E_If of (cond * exp * exp)
+      | E_Case of (var * (pat * exp) list * exp option)
+      | E_Apply of (var * var list * var list)
+      | E_Throw of (var * var list)
+      | E_Ret of var list
+      | E_HLOp of (hlop * var list * var list)	(* application of high-level operator *)
 
     and rhs
       = E_Const of const
-      | E_Cast of (ty * (var_kind, ty) VarRep.var_rep)
-      | E_Select of (int * (var_kind, ty) VarRep.var_rep)
-      | E_Update of (int * (var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep)		(* update i'th field (zero-based) *)
-      | E_AddrOf of (int * (var_kind, ty) VarRep.var_rep)			(* return address of i'th field (zero-based) *)
-      | E_Alloc of (ty * (var_kind, ty) VarRep.var_rep list)		(* allocation in local heap *)
-      | E_Promote of (var_kind, ty) VarRep.var_rep			(* promotion of object to global heap *)
-      | E_Prim of (var_kind, ty) VarRep.var_rep Prim.prim
-      | E_DCon of (data_con * (var_kind, ty) VarRep.var_rep list)		(* data constructor; the argument list is empty for *)
+      | E_Cast of (ty * var)
+      | E_Select of (int * var)
+      | E_Update of (int * var * var)		(* update i'th field (zero-based) *)
+      | E_AddrOf of (int * var)			(* return address of i'th field (zero-based) *)
+      | E_Alloc of (ty * var list)		(* allocation in local heap *)
+      | E_Promote of var			(* promotion of object to global heap *)
+      | E_Prim of prim
+      | E_DCon of (data_con * var list)		(* data constructor; the argument list is empty for *)
 						(* nullary constructors *)
-      | E_CCall of ((var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep list)		(* foreign-function calls *)
+      | E_CCall of (var * var list)		(* foreign-function calls *)
     (* VProc operations *)
       | E_HostVProc				(* gets the hosting VProc *)
-      | E_VPLoad of (offset * (var_kind, ty) VarRep.var_rep)		(* load a value from the given byte *)
+      | E_VPLoad of (offset * var)		(* load a value from the given byte *)
 						(* offset in the vproc structure *)
-      | E_VPStore of (offset * (var_kind, ty) VarRep.var_rep * (var_kind, ty) VarRep.var_rep)	(* store a value at the given byte *)
+      | E_VPStore of (offset * var * var)	(* store a value at the given byte *)
 						(* offset in the vproc structure *)
-      | E_VPAddr of (offset * (var_kind, ty) VarRep.var_rep)		(* address of given byte offset *)
+      | E_VPAddr of (offset * var)		(* address of given byte offset *)
 						(* in the vproc structure *)
 
     and lambda = FB of {	  	    (* function/continuation abstraction *)
-	  f : (var_kind, ty) VarRep.var_rep,				(* function name *)
-	  params : (var_kind, ty) VarRep.var_rep list,			(* parameters *)
-	  exh : (var_kind, ty) VarRep.var_rep list,			(* exception continuation *)
+	  f : var,				(* function name *)
+	  params : var list,			(* parameters *)
+	  exh : var list,			(* exception continuation *)
 	  body : exp				(* function body *)
 	}
 
     and pat			  	    (* simple, one-level, patterns *)
-      = P_DCon of data_con * (var_kind, ty) VarRep.var_rep list		(* data constructor; the argument *)
+      = P_DCon of data_con * var list		(* data constructor; the argument *)
 						(* list is empty for *)
 						(* nullary constructors *)
       | P_Const of const
@@ -72,14 +70,14 @@ structure BOM =
       | VK_Param
       | VK_Fun of lambda
       | VK_Cont of lambda
-      | VK_CFun of (var_kind, ty) VarRep.var_rep CFunctions.c_fun
+      | VK_CFun of c_fun
 
   (* rewrite pattern *)
     and rw_pattern 
       = RW_HLOpApply of (hlop * rw_pattern list)        (* application of a hlop *)
-      | RW_Prim of ((var_kind, ty) VarRep.var_rep * rw_pattern list)              (* application of a prim-op or data constructor  *)
+      | RW_Prim of (var * rw_pattern list)              (* application of a prim-op or data constructor  *)
       | RW_Const of (Literal.literal * ty)
-      | RW_Var of (var_kind, ty) VarRep.var_rep
+      | RW_Var of var
       | RW_Alloc of rw_pattern list                     (* allocation in the local heap *)
 
     and rewrite = Rewrite of { label  : Atom.atom,         (* hlop rewrite rule *)
@@ -87,16 +85,11 @@ structure BOM =
 			       rhs    : rw_pattern,
 			       weight : IntInf.int }		         
 
-(*    withtype var = (var_kind, ty) VarRep.var_rep
+    withtype var = (var_kind, ty) VarRep.var_rep
          and cond = var Prim.cond
          and prim = var Prim.prim
 	 and const = (Literal.literal * ty)
-	 and c_fun = var CFunctions.c_fun*)
-
-    type var = (var_kind, ty) VarRep.var_rep
-    type cond = var Prim.cond
-    type prim = var Prim.prim
-    type c_fun = var CFunctions.c_fun
+	 and c_fun = var CFunctions.c_fun
 
     fun varKindToString VK_None = "None"
       | varKindToString (VK_Let _) = "Let"
