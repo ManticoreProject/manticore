@@ -106,6 +106,21 @@ structure FArrayUtil = struct
          (* end case *))
     (* end case *))
 
+(* map_IFF_IF : (int_farray -> int) -> int_farray -> int_farray *)
+  fun map_IFF_IF f nss = let
+    val len = IF.length nss
+    fun lp (i, acc) =  
+      if (i<0) then
+        IF.fromList acc
+      else let
+        val n = f (IF.nestedSub (nss, i))
+        in
+	  lp (i-1, n::acc)
+	end
+    in
+      lp (len-1, [])
+    end
+
 (* mapDDD : (dbl * dbl -> dbl) * dbl_farray * dbl_farray -> dbl_farray *)
   fun mapDDD (f : double * double -> double, a1, a2) = let
     val (DF.FArray (data1, shape1)) = DF.clean a1
