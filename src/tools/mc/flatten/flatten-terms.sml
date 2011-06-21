@@ -12,6 +12,7 @@ structure FlattenTerms : sig
   val flatten : AST.exp -> AST.exp * TyCon.Set.set
 
 end = struct
+
   structure DTy = DelayedBasis.Ty
   structure DD = DelayedBasis.DataCon
 

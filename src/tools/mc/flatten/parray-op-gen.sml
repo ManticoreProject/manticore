@@ -220,6 +220,8 @@ structure PArrayOpGen = struct
           A.VarExp (DV.mapIFPoly (), [beta])
         else if FU.isGroundTy alpha then
           A.VarExp (DV.fmap (), [alpha, beta])
+	else if FU.isInt_farray alpha andalso FU.isInt beta then
+          monoVarExp' DV.map_IFF_IF
 	else (case alpha
           of tup as T.TupleTy [t1, t2] =>
                if both FU.isGroundTy (t1, t2) then
