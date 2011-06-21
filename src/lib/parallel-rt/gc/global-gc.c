@@ -7,6 +7,7 @@
 
 #include <strings.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 #include "manticore-rt.h"
 #include "gc.h"
@@ -358,7 +359,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_GLOBAL) {
 	if (leaderVProc)
-	    SayDebug("[%2d] Completed global GC; %lld/%lld bytes copied\n",
+	    SayDebug("[%2d] Completed global GC; %"PRIu64"/%"PRIu64" bytes copied\n",
 		self->id, NBytesCopied, FromSpaceSzb);
 	else
 	    SayDebug("[%2d] Leaving global GC\n", self->id);
@@ -484,7 +485,7 @@ MemChunk_t *GetNextScanChunk(VProc_t *vp, int node) {
     if (GCDebug >= GC_DEBUG_GLOBAL)
 	SayDebug("[%2d]   Returning allocation chunk for scan %p..%p at %p\n",
                  vp->id, (void *)(vp->globAllocChunk->baseAddr),
-                 vp->globAllocChunk->usedTop, vp->globAllocChunk->scanProgress);
+             (void*)vp->globAllocChunk->usedTop, (void*)vp->globAllocChunk->scanProgress);
 #endif
             assert(vp->globAllocChunk->next == NULL);
             return vp->globAllocChunk;
@@ -708,6 +709,18 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 	    self, ValueToPtr(self->proxyTable[i].localObj), "proxy-table local pointer");
 	CheckGlobalPtr (
 	    self, ValueToPtr(self->proxyTable[i].proxyObj), "proxy-table global pointer");
+    }
+        
+  //check consistency of the proxy table
+
+    for (int i=0; i < self->proxyTableentries;i++) {
+        Value_t p = self->proxyTable[i].proxyObj;
+        //assert (isFromSpacePtr(p));
+        
+        Word_t	*p2 = ((Word_t *)ValueToPtr(p));
+        
+        assert(p2[1] == i);
+        
     }
 
   // check the local heap

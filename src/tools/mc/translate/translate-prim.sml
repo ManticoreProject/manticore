@@ -712,9 +712,9 @@ structure TranslatePrim : sig
 	   of SOME(ModuleEnv.Var pmlVar) => (
 	      case TranslateEnv.lookupVar(getTranslateEnv(), pmlVar)
 	       of TranslateEnv.Var bomVar => bomVar
-		| _ => raise Fail "compiler bug: cannot find pmlId in translate environment"
+		| _ => raise Fail (concat["compiler bug: cannot find pmlId ", PTVar.toString pmlId, " in translate environment"])
 	      (* end case *))
-	    | _ => raise Fail "compiler bug: cannot find pmlId in module environment"
+	    | _ => raise Fail (concat["compiler bug: cannot find pmlId ", PTVar.toString pmlId, " in module environment"])
           (* end case *))
 
     (* this is the first pass, which binds C-function prototypes, adds defined types to the translation

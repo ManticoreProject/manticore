@@ -42,15 +42,17 @@ signature ALLOC =
 	    args : MTy.mlrisc_tree list
           } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 
-  (* heap limit check.  evaluates to true when the heap contains sufficient
-   * space for the given size.
-   *)
+  (* genAllocCheck szb *)
+  (* generates MLRISC code that checks if there are at least szb bytes free *)
+  (* in the nursery *)
     val genAllocCheck : word -> {stms : MTy.T.stm list, allocCheck : MTy.T.ccexp}
 
-  (* heap limit check.  evaluates to true when the heap contains sufficient
-   * space for the given size.
-   *)
-    val genAllocNCheck : MTy.T.rexp -> {stms : MTy.T.stm list, allocCheck : MTy.T.ccexp}
+  (* genAllocNCheck (e, szb) *)
+  (* MLRISC expression e represents the number of elements to be allocated *)
+  (* the unsigned integer szb is the size in bytes of an element *)
+  (* generates the MLRISC code check if there are sufficient bytes in the nursery to *)
+  (* allocate an object of the size represented by e and szb *)
+    val genAllocNCheck : (MTy.T.rexp * word) -> {stms : MTy.T.stm list, allocCheck : MTy.T.ccexp}
 
   (* global heap limit check.  evaluates to true when the global heap contains sufficient
    * space for the given size.

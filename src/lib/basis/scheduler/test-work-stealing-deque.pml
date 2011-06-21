@@ -1,5 +1,5 @@
 structure D = WorkStealingDeque
-structure A = Array64
+structure A = Array
 
 #define DUMMY_ELT enum(2):any
 #define DUMMY_ELT2 enum(3):any

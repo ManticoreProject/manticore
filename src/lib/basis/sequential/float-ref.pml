@@ -21,13 +21,22 @@ structure FloatRef =
 
       define inline @set (args : [ref, ml_float] / exh: exh) : unit =
         let r : ref = #0(args)
-        let x : float = unwrap(#1(args))
+        let x : float = #0(#1(args))
         do #0(r) := x
         return(UNIT)
         ;
 
       define inline @get (r: ref / exh: exh) : ml_float = 
-        return(alloc(#0(r)))
+(*        return(alloc(#0(r)))*)
+let f : float = ArrLoadF32 (r, 0)
+return (alloc(f))
+        ;
+
+      define inline @same (args : [ref, ref] / exh: exh) : bool =
+        if Equal (#0(args), #1(args)) then
+	  return(true)
+	else
+	  return(false)
         ;
     )
 
@@ -36,5 +45,7 @@ structure FloatRef =
     val new : float -> ref        = _prim(@new)
     val set : ref * float -> unit = _prim(@set)
     val get : ref -> float        = _prim(@get)
+
+    val same : ref * ref -> bool = _prim(@same)
 
   end

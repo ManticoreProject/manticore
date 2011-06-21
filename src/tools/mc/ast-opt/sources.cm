@@ -28,8 +28,6 @@ Library
   structure Unpar
   structure Future1
   structure ParrLitToRope
-
-  structure BasisUtil
   structure JFPTranslatePCase
 
 is
@@ -62,6 +60,5 @@ is
   future1.sml
   parr-lit-to-rope.sml
   lookup-infix-ops.sml
-
-  basis-util.sml
   jfp-translate-pcase.sml
+

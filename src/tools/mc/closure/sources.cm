@@ -20,9 +20,11 @@ is
   ../cps/sources.cm
   ../cps-opt/sources.cm
   ../cfg/sources.cm
+  ../codegen/sources.cm
 
   classify-conts.sml
   closure.sml
   closure-controls.sml
   free-vars.sml
   flat-closure-with-cfa.sml
+(*  eff-sfs-closure.sml *)

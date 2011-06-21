@@ -121,6 +121,7 @@ dnl
 dnl extra CFLAGS
 dnl
 CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic"
+CXXFLAGS="$CXXFLAGS -D_GNU_SOURCE -D__STDC_FORMAT_MACROS"
 
 dnl
 dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for
@@ -157,9 +158,9 @@ save_LIBS=$LIBS
 LIBS="-lrt $LIBS"
 AC_MSG_CHECKING([for clock_gettime])
 AC_LINK_IFELSE(
-  AC_LANG_PROGRAM(
+  [AC_LANG_PROGRAM(
     [[#include <time.h>]],
-    [[struct timespec t; clock_gettime(CLOCK_REALTIME, &t); ]]),
+    [[struct timespec t; clock_gettime(CLOCK_REALTIME, &t); ]])],
   [ ac_cv_func_clock_gettime=yes;
     AC_DEFINE(HAVE_CLOCK_GETTIME, [1], [is clock_gettime available?])],
   [ac_cv_func_clock_gettime=no])
@@ -185,9 +186,9 @@ LIBS="$PTHREAD_LIBS $LIBS"
 CFLAGS="$PTHREAD_CFLAGS $CFLAGS"
 AC_MSG_CHECKING([for pthread_setaffinity_np])
 AC_LINK_IFELSE(
-  AC_LANG_PROGRAM(
+  [AC_LANG_PROGRAM(
     [[#include <pthread.h>]],
-    [[cpu_set_t s; pthread_setaffinity_np(pthread_self(), sizeof(s), &s); ]]),
+    [[cpu_set_t s; pthread_setaffinity_np(pthread_self(), sizeof(s), &s); ]])],
   [ ac_cv_func_pthread_setaffinity_np=yes;
     AC_DEFINE(HAVE_PTHREAD_SETAFFINITY_NP, [1], [is pthread_setaffinity_np available?])],
   [ac_cv_func_pthread_setaffinity_np=no])
@@ -341,7 +342,7 @@ dnl check for gcc builtin atomic operations
 dnl
 AC_MSG_CHECKING([for builtin atomic operations])
 AC_LINK_IFELSE(
-   AC_LANG_PROGRAM([], [int foo1; int foo2 = __sync_fetch_and_add(&foo1, 1);]),
+   [AC_LANG_PROGRAM([], [int foo1; int foo2 = __sync_fetch_and_add(&foo1, 1);])],
    AC_MSG_RESULT(yes)
    AC_DEFINE(
     [HAVE_BUILTIN_ATOMIC_OPS], 1,

@@ -160,6 +160,7 @@ structure PrintAST : sig
           pr "(* end pcase *))";
 	  closeBox ())
       | exp (A.HandleExp(e, matches, ty)) = (
+          pr "(";
 	  openHOVBox (rel 2);
 	    openHBox ();
 	      pr "(";
@@ -381,12 +382,17 @@ structure PrintAST : sig
 	   pr ")";
 	   closeBox ())
       | pat (A.VarPat v) = var v
-      | pat (A.WildPat ty) = pr "_"
+      | pat (A.WildPat ty) = 
+         (if !showTypes
+	  then pr ("(_:" ^ TypeUtil.toString ty ^ ")")
+	  else pr "_")
       | pat (A.ConstPat c) = const c
 
   (* const : A.const -> unit *)
     and const (A.DConst (c, ts)) = dcon c
-      | const (A.LConst (lit, t)) = pr (Literal.toString lit)
+      | const (A.LConst (lit, ty)) = (
+	  pr "("; pr (Literal.toString lit);
+	  pr ":"; pr (TypeUtil.toString ty); pr ")")
 
   (* dcon : T.dcon -> unit *)
     and dcon (dc as T.DCon{name, owner, ...}) = let
@@ -405,7 +411,7 @@ structure PrintAST : sig
     and var (v as VarRep.V{name, ...}) = let
       val x = if !showStamps then Var.toString v else Var.nameOf v
       val t = TypeUtil.schemeToString (Var.typeOf v) 
-      val s = if !showTypes then x ^ " : " ^ t else x
+      val s = if !showTypes then "(" ^ x ^ ":" ^ t ^ ")" else x
       in
 	pr s
       end

@@ -4,6 +4,7 @@
  * All rights reserved.
  */
 
+#include <inttypes.h>
 #include "manticore-rt.h"
 #include "heap.h"
 #include "vproc.h"
@@ -239,7 +240,26 @@ void AllocToSpaceChunk (VProc_t *vp)
 
     vp->globNextW = chunk->baseAddr + WORD_SZB;
     vp->globLimit = chunk->baseAddr + chunk->szB;
+        
+        printf("get new memory AllocToSpace\n");
 
+}
+
+/* Allocates a new to space chunk
+ and adds the old chunk to the unscanned list of the global GC
+ */
+
+void AllocToSpaceChunkScan(VProc_t * vp) {
+        
+        printf("Need new memory\n");
+        
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
+        
 }
 
 /*! \brief Allocate a VProc's local memory object.
@@ -460,7 +480,7 @@ void ReportGCStats ()
 	    double globalT = TIMER_GetTime (&(vp->globalStats.timer));
 	  // use comma-separated-values format
 	    fprintf (outF,
-		"p%02d, %f, %f, %d, %lld, %lld, %lld, %f, %d, %lld, %lld, %lld, %f, %d, %lld, %f, %d, %lld, %lld, %lld, %f\n",
+		"p%02d, %f, %f, %d, %" PRIi64 ", %" PRIi64 ", %" PRIi64 ", %f, %d, %" PRIi64 ", %" PRIi64 ", %" PRIi64 ", %f, %d, %" PRIi64 ", %f, %d, %" PRIi64 ", %" PRIi64 ", %" PRIi64 ", %f\n",
 		i,
 		TIMER_GetTime (&(vp->timer)), minorT + majorT + promoteT + globalT,
 		vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCollected, vp->minorStats.nBytesCopied, TIMER_GetTime (&(vp->minorStats.timer)),
@@ -481,10 +501,10 @@ void ReportGCStats ()
 		"GCST{\n"
 		"    processor=%d,\n"
 		"    time=%f,\n"
-		"    minor=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f},\n"
-		"    major=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f},\n"
-		"    promotion={num=%d, bytes=%lld, time=%f}, \n"
-		"    global=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f}\n"
+		"    minor=GC{num=%d, alloc=%" PRIi64 ", collected=%" PRIi64 ", copied=%" PRIi64 ", time=%f},\n"
+		"    major=GC{num=%d, alloc=%" PRIi64 ", collected=%" PRIi64 ", copied=%" PRIi64 ", time=%f},\n"
+		"    promotion={num=%d, bytes=%" PRIi64 ", time=%f}, \n"
+		"    global=GC{num=%d, alloc=%" PRIi64 ", collected=%" PRIi64 ", copied=%" PRIi64 ", time=%f}\n"
 		"  } ::\n",
 		i,
 		TIMER_GetTime (&(vp->timer)),

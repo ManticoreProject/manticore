@@ -9,6 +9,7 @@
 Library
 
   functor CPSOptFn
+  structure CPSCensus
 
 is
 
@@ -24,9 +25,11 @@ is
 
   arity-raising.sml
   census.sml
+  common-subexpression-elimination.sml
   contract.sml
   copy-propagation.sml
   cps-opt-controls.sml
   cps-opt-fn.sml
+  elim-uncalled.sml
   eta-expand.sml
 

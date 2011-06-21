@@ -57,10 +57,10 @@ void isPrintProxy (int id) {
 
 void globalCheck (VProc_t *vp) {
 	
-	printf("Proxy Memory Check");
+	printf("Proxy Memory Check\n");
 	
 	if ((vp->globNextW + WORD_SZB * 3) >= vp->globLimit) {
-		AllocToSpaceChunk(vp);
+		//AllocToSpaceChunk(vp);
 		printf("AllocProxy need more space\n");
 	}
 }
@@ -73,6 +73,7 @@ void isProxy (VProc_t *vp, int id) {
     if ((id > -1) && (id < 512)){
 	    printf("Hallo 1 \n");
 	Word_t *p = (Word_t *)(vp->proxyTable[id].proxyObj);
+            printf("Hallo 2 localobj %llu, pos = %p\n",(long long int)vp->proxyTable[id].localObj,(void*)vp->proxyTable[id].localObj);
 	    printf("Hallo 2 %llu, pos = %p\n",(long long int)vp->proxyTable[id].proxyObj,(void*)vp->proxyTable[id].proxyObj);
 	    
 	Word_t hdr = p[-1];
@@ -80,7 +81,7 @@ void isProxy (VProc_t *vp, int id) {
     
 	if (getID(hdr) == 2) 
 		printf("Found Proxy, vproc %d id %d, length = %d\n",vp->id,id,GetLength(hdr));
-	        printf("Position in Memory Proxy, vproc %p\n",(void *) vp);
+	        printf("Position in Memory Proxy, vproc %p, globalptr %p, limit is %p there is %d left\n",(void *) vp,(void*)vp->globNextW,(void*)vp->globLimit, (int) ( vp->globLimit - vp->globNextW ));
     } else { 
 	    printf("ERROR NO RPOXY\n");
     }

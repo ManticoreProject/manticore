@@ -12,6 +12,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include "manticore-rt.h"
 #include <stdio.h>
 #include <string.h>
@@ -28,7 +29,7 @@ static int LogBufSz = LOGBUF_SZ;
 
 /* print the definition of a symbol */
 #define PR_DEFINE(symb, val)							\
-	printf("#define " #symb " %#0llx\n", (uint64_t)val)
+	printf("#define " #symb " %#0" PRIx64 "\n", (uint64_t)val)
 
 /* print a value definition and record it in the CRC buffer */
 #define PR_VALUE(tag, var, value)						\

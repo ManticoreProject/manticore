@@ -46,7 +46,7 @@ structure FlatClosureWithCFA : sig
           CFG.T_Tuple(mut, List.map cvtTyBot tys)
       | cvtTy (CPSTy.T_Addr ty, CFA.TOP) = CFG.T_Addr(cvtTyTop ty)
       | cvtTy (CPSTy.T_Addr ty, CFA.BOT) = CFG.T_Addr(cvtTyBot ty)
-      | cvtTy (ty as CPSTy.T_Fun(_, []), v) = cvtStdContTy (ty, v)
+      | cvtTy (ty as CPSTy.T_Cont _, v) = cvtStdContTy (ty, v)
       | cvtTy (ty as CPSTy.T_Fun _, v) = cvtStdFunTy (ty, v)
       | cvtTy (CPSTy.T_CFun cproto, _) = CFGTy.T_CFun cproto
       | cvtTy (CPSTy.T_VProc, CFA.TOP) = CFGTy.T_VProc
@@ -79,6 +79,10 @@ structure FlatClosureWithCFA : sig
       | cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [retTy])) = CFGTy.T_KnownFunc{
             clos = CFGTy.T_Any,
             args = List.map cvtTyTop argTys @ [cvtStdContTy (retTy, CFA.TOP)]
+          }
+      | cvtStdFunTyAuxStd (CPSTy.T_Fun(argTys, [])) = CFGTy.T_KnownFunc{
+            clos = CFGTy.T_Any,
+            args = List.map cvtTyTop argTys
           }
       | cvtStdFunTyAuxStd (CPSTy.T_Any) = CFGTy.T_StdFun{
             clos = CFGTy.T_Any,
@@ -115,13 +119,13 @@ structure FlatClosureWithCFA : sig
           end
       | cvtStdContTyAux (ty, v) = raise Fail(concat[
           "bogus continuation type ", CPSTyUtil.toString ty, " : ", CFA.valueToString v])
-    and cvtStdContTyAuxStd (CPSTy.T_Fun(argTys, [])) =
+    and cvtStdContTyAuxStd (CPSTy.T_Cont(argTys)) =
           CFGTyUtil.stdContTy(CFGTy.T_Any, List.map cvtTyTop argTys)
       | cvtStdContTyAuxStd (CPSTy.T_Any) = 
           CFGTyUtil.stdContTy(CFGTy.T_Any, [CFGTy.T_Any])
       | cvtStdContTyAuxStd ty = raise Fail(concat[
           "bogus continuation type ", CPSTyUtil.toString ty])
-    and cvtStdContTyAuxKwn (CPSTy.T_Fun(argTys, []), args) = let
+    and cvtStdContTyAuxKwn (CPSTy.T_Cont(argTys), args) = let
           fun cvtTy' (ty, x) = cvtTy (ty, CFA.valueOf x)
           in
             CFGTyUtil.kwnContTy(CFGTy.T_Any, ListPair.mapEq cvtTy' (argTys, args))
@@ -364,6 +368,11 @@ structure FlatClosureWithCFA : sig
             lookup (List.rev xs, [], [])
           end
 
+    fun isPtr var = case (CPSTyUtil.kindOf (CPS.Var.typeOf var))
+                     of CPSTy.K_UNIFORM => true
+                      | CPSTy.K_BOXED => true
+                      | _ => false
+                             
   (* given a set of free CPS variables that define the environment of a function, create the
    * argument variables and bindings to build the closure and the parameter variables and
    * environment for the function's body.
@@ -374,8 +383,11 @@ structure FlatClosureWithCFA : sig
                 in
                   (i+1, b@binds, VMap.insert(clos, x, Global i), x'::xs)
                 end
+          val (fvPtr, fvRaw) = CPS.Var.Set.partition isPtr fv
+          val (i, binds, clos, cfgArgs) =
+                CPS.Var.Set.foldl mkArgs (0, [], externEnv, []) fvPtr
           val (_, binds, clos, cfgArgs) =
-                CPS.Var.Set.foldl mkArgs (0, [], externEnv, []) fv
+                CPS.Var.Set.foldl mkArgs (i, binds, clos, cfgArgs) fvRaw
           val cfgArgs = List.rev cfgArgs
 	  val epTy = envPtrType (List.map CFG.Var.typeOf cfgArgs)
           val ep = newEP epTy
@@ -403,8 +415,11 @@ structure FlatClosureWithCFA : sig
 	  val env = ListPair.foldl
 		(fn (x, x', env) => VMap.insert(env, x, Local x'))
 		  externEnv (params, params')
+          val (fvPtr, fvRaw) = CPS.Var.Set.partition isPtr fv
+          val (i, binds, clos, cfgArgs) =
+                CPS.Var.Set.foldl mkArgs (1, [], env, []) fvPtr
           val (_, binds, clos, cfgArgs) =
-                CPS.Var.Set.foldl mkArgs (1, [], env, []) fv
+                CPS.Var.Set.foldl mkArgs (i, binds, clos, cfgArgs) fvRaw
           val cfgArgs = List.rev cfgArgs
 	  val epTy = envPtrType (mkContTy(CFGTy.T_Any, List.map CFG.Var.typeOf params')
                 :: List.map CFG.Var.typeOf cfgArgs)
@@ -979,8 +994,6 @@ structure FlatClosureWithCFA : sig
                   (lab, conv, cvtExp (env, params, f, lab, body))
                 end
           in
-            CFA.analyze m;
-            FV.analyze m;
             assignLabels body;
             let
                 val (lab, conv, (start, body)) = cvtModLambda body

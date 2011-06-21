@@ -26,15 +26,24 @@ structure ASTUtil : sig
   (* create an AST list given a list of expressions and a type *)
     val mkList : AST.exp list * AST.ty -> AST.exp
 
-  (* create an AST int from an SML int *)
+  (* create various flavors of AST ints from an SML int *)
+    val mkIntLit   : int -> Literal.literal
     val mkIntConst : int -> AST.const
+    val mkIntPat   : int -> AST.pat
     val mkInt      : int -> AST.exp
+
+  (* build expressions for e+n and e+1 *)
+    val addInt : AST.exp * int -> AST.exp
+    val add1   : AST.exp -> AST.exp
 
   (* boolean constants *)
     val trueConst  : AST.const
     val falseConst : AST.const
     val trueExp    : AST.exp
     val falseExp   : AST.exp
+
+  (* exception constants *)
+    val exnMatchExp : AST.exp
 
   (* unit *)
     val unitConst : AST.const
@@ -65,6 +74,8 @@ structure ASTUtil : sig
 
     structure A = AST
     structure B = Basis
+
+    structure TU = TypeUtil
 
     fun mkTupleExp [e] = e
       | mkTupleExp es = AST.TupleExp es
@@ -122,13 +133,17 @@ structure ASTUtil : sig
 
     fun mkArray (es, ty) = raise Fail "todo: ASTUtil.mkArray"
 
-    fun mkIntConst n = A.LConst (Literal.Int (IntInf.fromInt n), Basis.intTy)
+    fun mkIntLit n = Literal.Int (IntInf.fromInt n)
+    fun mkIntConst n = A.LConst (mkIntLit n, Basis.intTy)
+    fun mkIntPat n = A.ConstPat (mkIntConst n)
     fun mkInt n = A.ConstExp (mkIntConst n)
 
     val trueConst  = A.LConst (Literal.trueLit, Basis.boolTy)
     val falseConst = A.LConst (Literal.falseLit, Basis.boolTy)
     val trueExp    = A.ConstExp trueConst
     val falseExp   = A.ConstExp falseConst
+
+    val exnMatchExp = A.ConstExp (A.DConst (Basis.exnMatch, []))
 
 (* FIXME: Should this be the empty tuple instead? *)
     val unitConst = A.LConst (Literal.unitLit, Basis.unitTy)
@@ -153,6 +168,17 @@ structure ASTUtil : sig
     fun mkIfExp (e1, e2, e3) = A.IfExp(e1, e2, e3, TypeOf.exp(e2))
 
     fun mkVarExp (v, tys) = A.VarExp (v, tys)
+
+    fun addInt (e : A.exp, n : int) : A.exp = let
+      val t = TypeOf.exp e
+      in
+        if TU.same (t, B.intTy) then
+          mkApplyExp (A.VarExp (B.int_plus, []), [e, mkInt n])
+        else
+          raise Fail ("unexpected ty " ^ TU.toString t)
+      end
+
+    fun add1 (e : A.exp) : A.exp = addInt (e, 1)
 
     fun copyPat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)

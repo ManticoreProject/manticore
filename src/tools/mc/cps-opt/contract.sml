@@ -17,11 +17,11 @@ structure Contract : sig
     structure CV = C.Var
     structure VMap = CV.Map
     structure ST = Stats
+    structure Census = CPSCensus
 
   (********** Counters for statistics **********)
     val cntUnusedStmt           = ST.newCounter "cps-contract:unused-stmt"
     val cntVarRename		= ST.newCounter "cps-contract:var-rename"
-    val cntSelectRename         = ST.newCounter "cps-contract:select-rename"
     val cntSelectConst          = ST.newCounter "cps-contract:select-const"
     val cntBeta                 = ST.newCounter "cps-contract:beta"
     val cntBetaCont             = ST.newCounter "cps-contract:beta-cont"
@@ -133,81 +133,67 @@ structure Contract : sig
     fun isInlined (VarRep.V{kind = ref C.VK_None, ...}) = true
       | isInlined _ = false
 
-    fun doExp (env, selEnv, exp as C.Exp(_, e)) = (case e
+    fun doExp (env, exp as C.Exp(_, e)) = (case e
 	   of C.Let(lhs, C.Var rhs, e) => (
 		ST.tick cntVarRename;
 		dec' rhs;
-		doExp (rename'(env, lhs, rhs), selEnv, e))
-	    | C.Let([y], C.Select(i, x), e) => (
-              case CV.typeOf x
-               of CTy.T_Tuple (true, _) => 
-                  C.mkLet([y], C.Select(i,x), doExp (env, selEnv, e))
-                | _ => (
-                  if unused y
-		  then (
-		      ST.tick cntUnusedStmt;
-		      substDec (env, x);
-		      doExp (env, selEnv, e))
-		  else let
-		          val x = subst(env, x)
-		      in
-		          case bindingOf x
-		           of C.VK_Let(C.Alloc(CTy.T_Tuple(false, _), xs)) => let
-			          val z = List.nth(xs, i)
-			          val (env, casts) = extendWithCasts {env = env, fromVars = [z], toVars = [y]}
-			      in
-			          ST.tick cntSelectConst;
-			          dec x; inc z;
-			          C.mkLets (casts, doExp (env, selEnv, e))
-			      end
-		            | _ => let
-                                  val (env, selEnv, elim) = (
-                                      case VMap.find (selEnv, x)
-                                       of SOME l => (case List.find (fn (i',_) => i'=i) l
-                                                      of SOME (entry as (_, y')) => (
-                                                         ST.tick cntSelectRename;
-                                                         (rename (env, y, y'), selEnv, true))
-                                                       | NONE => (env,
-                                                         VMap.insert (selEnv, x, (i,y)::l), false))
-                                        | NONE => (env, VMap.insert (selEnv, x, [(i,y)]), false))
-			          val e = doExp (env, selEnv, e)
-			      in
-			          if elim orelse unused y
-			          then (
-				      ST.tick cntUnusedStmt;
-                                      dec x;
-				      e)
-			          else C.mkLet([y], C.Select(i, x), e)
-			      end
-		      (* end case *)
-		  end))
+		doExp (rename'(env, lhs, rhs), e))
+	    | C.Let([y], C.Select(i, x), e) => if unused y
+		then (
+		  ST.tick cntUnusedStmt;
+		  substDec (env, x);
+		  doExp (env, e))
+		else let
+		  val x = subst(env, x)
+		  in
+		    case bindingOf x
+		     of C.VK_Let(C.Alloc(CTy.T_Tuple(false, _), xs)) => let
+			  val z = List.nth(xs, i)
+			  val (env, casts) = extendWithCasts {env = env, fromVars = [z], toVars = [y]}
+			  in
+			    ST.tick cntSelectConst;
+			    dec x; inc z;
+			    C.mkLets (casts, doExp (env, e))
+			  end
+		      | _ => let
+			  val e = doExp (env, e)
+			  in
+			    if unused y
+			      then (
+				ST.tick cntUnusedStmt;
+				dec x;
+				e)
+			      else C.mkLet([y], C.Select(i, x), e)
+			  end
+		    (* end case *)
+		  end
 	    | C.Let([], C.Update(i, x, z), e) =>
 		C.mkLet([], C.Update(i, subst(env, x), subst(env, z)),
-		  doExp(env, selEnv, e))
+		  doExp(env, e))
 	    | C.Let(lhs, rhs as C.CCall(cf, xs), e) => let
 		fun doit () = C.mkLet(
 		      lhs, C.CCall(cf, subst'(env, xs)),
-		      doExp(env, selEnv, e))
+		      doExp(env, e))
 		in
 		  case CV.kindOf cf
 		   of C.VK_CFun cf => if CFunctions.isPure cf
-			then doPureLet (env, selEnv, lhs, rhs, e)
+			then doPureLet (env, lhs, rhs, e)
 			else doit()
 		    | _ => doit()
 		  (* end case *)
 		end
 	    | C.Let([], C.VPStore(n, x, z), e) =>
 		C.mkLet([], C.VPStore(n, subst(env, x), subst(env, z)),
-		  doExp(env, selEnv, e))
+		  doExp(env, e))
 	    | C.Let(lhs, rhs as C.Prim p, e) => if PrimUtil.isPure p
-		then doPureLet (env, selEnv, lhs, rhs, e)
+		then doPureLet (env, lhs, rhs, e)
 		else let
 		  val rhs = C.Prim(PrimUtil.map (fn x => subst(env, x)) p)
 		  in
 		    setBindings (lhs, C.VK_Let rhs);
-		    C.mkLet(lhs, rhs, doExp(env, selEnv, e))
+		    C.mkLet(lhs, rhs, doExp(env, e))
 		  end
-	    | C.Let(lhs, rhs, e) => doPureLet (env, selEnv, lhs, rhs, e)
+	    | C.Let(lhs, rhs, e) => doPureLet (env, lhs, rhs, e)
 	    | C.Fun(fbs, e) => let
 	      (* blackhole to avoid recursive inlining *)
 		val _ = List.app
@@ -220,11 +206,11 @@ structure Contract : sig
 			NONE)
 		      else SOME(C.FB{
 			  f=f, params=params, rets=rets,
-			  body=doExp(env, selEnv, body)
+			  body=doExp(env, body)
 			})
 	      (* note that the mkLambda resets the kind info *)
-		val fbs = List.map C.mkLambda (List.mapPartial doFB fbs)
-		val e = doExp(env, selEnv, e)
+		val fbs = List.map (fn x => C.mkLambda (x,false)) (List.mapPartial doFB fbs)
+		val e = doExp(env, e)
 		fun filterDead (fb as C.FB{f, body, ...}) = if isInlined f
 			then NONE
 		      else if unused f
@@ -243,32 +229,32 @@ structure Contract : sig
 		then (
 		  ST.tick cntUnusedCont;
 		  Census.delete (env, body);
-		  doExp (env, selEnv, e))
+		  doExp (env, e))
 		else let
 		(* blackhole to avoid recursive inlining *)
 		  val _ = setBinding(f, C.VK_None)
-		  val fb = C.FB{f=f, params=params, rets=rets, body=doExp(env, selEnv, body)}
+		  val fb = C.FB{f=f, params=params, rets=rets, body=doExp(env, body)}
 		  val _ = setBinding(f, C.VK_Cont fb)
-		  val e = doExp (env, selEnv, e)
+		  val e = doExp (env, e)
 		  in
 		    if isInlined f
-		      then doExp (env, selEnv, e)
+		      then doExp (env, e)
 		    else if unused f
 		      then (
 			ST.tick cntUnusedCont; 
 			Census.delete (env, body);
-			doExp (env, selEnv, e))
+			doExp (env, e))
 		      else C.mkCont(fb, e)
 		  end
 	    | C.If(cond, e1, e2) => C.mkIf(CondUtil.map (fn x => subst(env, x)) cond,
-		doExp(env, selEnv, e1),
-		doExp(env, selEnv, e2))
+		doExp(env, e1),
+		doExp(env, e2))
 	    | C.Switch(x, cases, dflt) => let
 		val x = subst(env, x)
 		in
 		  C.mkSwitch (x,
-		    List.map (fn (l, e) => (l, doExp(env, selEnv, e))) cases,
-		    Option.map (fn e => doExp(env, selEnv, e)) dflt)
+		    List.map (fn (l, e) => (l, doExp(env, e))) cases,
+		    Option.map (fn e => doExp(env, e)) dflt)
 		end
 	    | C.Apply(f, args, conts) => let
 		val f = subst(env, f)
@@ -281,7 +267,7 @@ structure Contract : sig
 			  then ((* inline function that is only called once *)
 			    ST.tick cntBeta;
 			    markInlined f;
-			    inline (env, selEnv, params@rets, body, args@conts))
+			    inline (env, params@rets, body, args@conts))
 			  else C.mkApply(f, args, conts)
 		    | _ => C.mkApply(f, args, conts)
 		  (* end case *)
@@ -296,22 +282,22 @@ structure Contract : sig
 			  then ((* inline continuation that is only called once *)
 			    ST.tick cntBetaCont;
 			    markInlined k;
-			    inline (env, selEnv, params, body, args))
+			    inline (env, params, body, args))
 			  else C.mkThrow(k, args)
 		    | _ => C.mkThrow(k, args)
 		  (* end case *)
 		end
 	  (* end case *))
 
-    and doPureLet (env, selEnv, lhs, rhs, e) = if List.all unused lhs
+    and doPureLet (env, lhs, rhs, e) = if List.all unused lhs
 	  then (
 	    ST.tick cntUnusedStmt;
 	    CPSUtil.appRHS (fn x => substDec (env, x)) rhs;
-	    doExp (env, selEnv, e))
+	    doExp (env, e))
 	  else let
 	    val rhs = CPSUtil.mapRHS (fn x => subst(env, x)) rhs
 	    val _ = setBindings (lhs, C.VK_Let rhs)
-	    val e = doExp (env, selEnv, e)
+	    val e = doExp (env, e)
 	    in
 	      if List.all unused lhs
 		then (
@@ -321,10 +307,10 @@ structure Contract : sig
 		else C.mkLet(lhs, rhs, e)
 	    end
 
-    and inline (env, selEnv, params, body, args) = let
+    and inline (env, params, body, args) = let
 	  val (env, casts) = extendWithCasts {env = env, fromVars = args, toVars = params}
 	  in
-	    C.mkLets (casts, doExp (env, selEnv, body))
+	    C.mkLets (casts, doExp (env, body))
 	  end
 
     fun transform (C.MODULE{name, externs, body}) = let
@@ -333,7 +319,7 @@ structure Contract : sig
 	  fun ticks () = ST.sum {from = firstCounter, to = lastCounter}
 	  fun loop (body, prevSum) = let
 		val _ = ST.tick cntIters
-		val body = doExp(VMap.empty, VMap.empty, body)
+		val body = doExp(VMap.empty, body)
 		val sum = ticks()
 		in
 		  if (prevSum <> sum)
@@ -341,7 +327,7 @@ structure Contract : sig
 		    else body
 		end
 	  val body = loop (body, ticks())
-	  val fb = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=body})
+	  val fb = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=body}, false)
 	  in
 	    C.MODULE{name=name, externs=externs, body=fb}
 	  end

@@ -18,6 +18,7 @@ structure Float =
 	extern float M_Sinf (float) __attribute__((pure));
 	extern float M_Tanf (float) __attribute__((pure));
 	extern void *M_FloatToString (float) __attribute__((alloc,pure));
+	extern void *M_FloatFromString (void*) __attribute__((alloc,pure));
     )
 
   (* HLOps that wrap C functions *)
@@ -42,6 +43,10 @@ structure Float =
 	    let res : PT.ml_string = ccall M_FloatToString (#0(f))
 	      return (res)
 	;
+	define inline @from-string (str : ml_string / exh : exh) : (* ml_float *) Option.option =
+	    let r : Option.option = ccall M_FloatFromString (str)
+	    return (r)
+	  ;
 	define inline @from-int (f : PT.ml_int / exh : PT.exh) : PT.ml_float =
 	    let res : PT.ml_float = alloc(I32ToF32 (#0(f)))
 	      return (res)
@@ -53,6 +58,8 @@ structure Float =
 
     )
 
+    type float = float
+
   (* SML interface *)
     val cos : float -> float = _prim (@float-cos)
     val sin : float -> float = _prim (@float-sin)
@@ -60,6 +67,7 @@ structure Float =
     val sqrt : float -> float = _prim (@float-sqrt)
     val pow : (float * float) -> float = _prim (@float-pow)
     val toString : float -> string = _prim(@to-string)
+    val fromString : string -> float Option.option = _prim(@from-string)
     val fromInt : int -> float = _prim(@from-int)
     val fromLong : long -> float = _prim(@from-long)
 

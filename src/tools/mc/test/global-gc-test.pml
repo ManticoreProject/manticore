@@ -1,4 +1,4 @@
-structure Arr = Array64
+structure Arr = Array
 fun alloc n = Arr.array(n, 0)
 (* increment each element of the array *)
 fun inc arr = let

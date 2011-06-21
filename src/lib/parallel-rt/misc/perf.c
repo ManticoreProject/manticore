@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <inttypes.h>
 
 static bool	ReportStatsFlg = false;	// true for report enabled
 static bool	CSVStatsFlg = false;	// true for CSV-format report
@@ -141,7 +142,7 @@ void ReportPerfCounters () {
         for (int i = 0;  i < NumVProcs;  i++) {
             VProc_t *vp = VProcs[i];
             if (vp->misses.enabled)
-                fprintf(StatsOutFile, "%d, %d, %d, %d, %d\n", i, vp->misses.nonGC, vp->misses.GC, vp->reads.nonGC, vp->reads.GC);
+                fprintf(StatsOutFile, "%" PRIi64 ", %" PRIi64 ", %" PRIi64 ", %" PRIi64 ", %" PRIi64 "\n", i, vp->misses.nonGC, vp->misses.GC, vp->reads.nonGC, vp->reads.GC);
         }
 
         fclose (StatsOutFile);
@@ -156,8 +157,8 @@ void ReportPerfCounters () {
             if (vp->misses.enabled)
                 fprintf (StatsOutFile,
                          "PST{processor=%d, \n\
-                      nonGCmiss=%d, GCmiss=%d,\n                    \
-                      nonGCreferences=%d, GCreferences=%d} ::\n",
+                      nonGCmiss=%" PRIi64 ", GCmiss=%" PRIi64 ",\n                    \
+                      nonGCreferences=%" PRIi64 ", GCreferences=%" PRIi64 "} ::\n",
                          i, vp->misses.nonGC, vp->misses.GC,
                          vp->reads.nonGC, vp->reads.GC);
         }
@@ -171,7 +172,7 @@ void ReportPerfCounters () {
             VProc_t *vp = VProcs[i];
             
             if (vp->misses.enabled)
-                fprintf(stderr, "vproc %d, %d nonGC misses, %d GC misses, %d nonGC reads, %d GC reads\n",
+                fprintf(stderr, "vproc %d, %" PRIi64 " nonGC misses, %" PRIi64 " GC misses, %" PRIi64 " nonGC reads, %" PRIi64 " GC reads\n",
                         i, vp->misses.nonGC, vp->misses.GC, vp->reads.nonGC, vp->reads.GC);
         }
     }
@@ -186,7 +187,7 @@ void PERF_StartGC(PerfCntrs_t *p)
     assert(!p->inGC);
 
     unsigned long long count;
-    read(p->fd, &count, sizeof(count));
+    int ignored = read(p->fd, &count, sizeof(count));
 
     p->nonGC += (count - p->last);
     p->last = count;
@@ -202,7 +203,7 @@ void PERF_StopGC(PerfCntrs_t *p)
     assert(p->inGC);
 
     unsigned long long count;
-    read(p->fd, &count, sizeof(count));
+    int ignored = read(p->fd, &count, sizeof(count));
 
     p->GC += (count - p->last);
     p->last = count;

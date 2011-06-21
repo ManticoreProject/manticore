@@ -435,7 +435,7 @@ structure CheckBOM : sig
 			      cerror ["  rhs type ", t2s allocTy, "\n"]))
 		  | ([ty], B.E_Promote y) => (
 		      chkVar (y, "Promote");
-		      if BTU.equal(ty, BV.typeOf y) then ()
+		      if BTU.equal(ty, BV.typeOf y) orelse BTU.equal(ty, BTy.T_Any) then ()
 			else error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s y, "\n"])
 		  | (lhsTys, B.E_Prim p) => chkPrim (lhs, lhsTys, p)
                   | ([ty], B.E_DCon(BTy.DCon{name, argTy, myTyc, ...}, args)) => (

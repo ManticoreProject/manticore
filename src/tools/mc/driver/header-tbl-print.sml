@@ -276,7 +276,7 @@ struct
         TextIO.output (MyoutStrm, "\n" );
         TextIO.output (MyoutStrm, "assert (isRawHdr(ptr[-1]));\n");
         TextIO.output (MyoutStrm, "\n");
-		TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
+        TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
         TextIO.output (MyoutStrm, "}\n");
         
         TextIO.output (MyoutStrm, "Word_t * globalGCscanVECTORpointer (Word_t* ptr, VProc_t *vp) {\n");
@@ -289,24 +289,21 @@ struct
         TextIO.output (MyoutStrm, "          *nextScan = (Word_t)ForwardObjGlobal(vp, v);\n");
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "   }\n");
-		TextIO.output (MyoutStrm, "return (ptr+len);\n");
+        TextIO.output (MyoutStrm, "return (ptr+len);\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
 		
-		TextIO.output (MyoutStrm, "Word_t * globalGCscanPROXYpointer (Word_t* ptr, VProc_t *vp) {\n");
+        TextIO.output (MyoutStrm, "Word_t * globalGCscanPROXYpointer (Word_t* ptr, VProc_t *vp) {\n");
         TextIO.output (MyoutStrm, "  \n");
-		TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
-	    TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
-		TextIO.output (MyoutStrm, "    v = *(Value_t *)(scanP+0);\n");
-		TextIO.output (MyoutStrm, "   if (isFromSpacePtr(v)) {\n");
-		TextIO.output (MyoutStrm, "     *(scanP+0) = (Word_t)ForwardObjGlobal(vp, v);\n");
-		TextIO.output (MyoutStrm, "  } \n");
-		TextIO.output (MyoutStrm,"    v = *(Value_t *)(scanP+1);\n");
-		TextIO.output (MyoutStrm, "   if (isFromSpacePtr(v)) {\n");
-		TextIO.output (MyoutStrm, "     *(scanP+1) = (Word_t)ForwardObjGlobal(vp, v);\n");
-		TextIO.output (MyoutStrm, "  } \n");
-		TextIO.output (MyoutStrm, "return (ptr+2);\n");
-        TextIO.output (MyoutStrm, "  }\n");
+        TextIO.output (MyoutStrm, "   Value_t v = (Value_t )ptr[1];\n");
+        TextIO.output (MyoutStrm, "   if( (unsigned long)v >= vp->maxProxy ) {\n");
+        TextIO.output (MyoutStrm, "     assert (isFromSpacePtr( v ));\n");
+        TextIO.output (MyoutStrm, "     Value_t p = ForwardObjGlobal(vp, v);\n");
+        TextIO.output (MyoutStrm, "     ptr[1]=(Word_t)p;\n");
+        TextIO.output (MyoutStrm, "   }\n");
+        TextIO.output (MyoutStrm, "   return (ptr+2);\n");
+        TextIO.output (MyoutStrm, "}\n");
+
         ()
         )
 

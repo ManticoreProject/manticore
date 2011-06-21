@@ -10,6 +10,7 @@
 #include <sys/time.h>
 #include <math.h>
 #include <ctype.h>
+#include <inttypes.h>
 #include "vproc.h"
 #include "topology.h"
 #include "value.h"
@@ -86,7 +87,7 @@ Value_t M_IntFromString (SequenceHdr_t *s)
 Value_t M_LongToString (int64_t n)
 {
     char buf[32];
-    snprintf(buf, sizeof(buf), "%lld", n);
+    snprintf(buf, sizeof(buf), "%" PRIi64, n);
     return AllocString (VProcSelf(), buf);
 }
 
@@ -108,10 +109,10 @@ Value_t M_LongFromString (SequenceHdr_t *s)
     if (len > 0) {
 	int64_t n;
 	if (isHex (str, len)) {
-	    if (sscanf(str, "%llx", (uint64_t *)&n) != 1)
+	    if (sscanf(str, "%" PRIu64, (uint64_t *)&n) != 1)
 		return M_NONE;
 	}
-	else if (sscanf(str, "%lld", &n) != 1)
+	else if (sscanf(str, "%" PRIi64, &n) != 1)
 	    return M_NONE;
 	VProc_t *vp = VProcSelf();
 	return Some(vp, WrapWord(vp, (Word_t)n));
@@ -126,7 +127,7 @@ Value_t M_LongFromString (SequenceHdr_t *s)
 Value_t M_Word64ToString (uint64_t n)
 {
     char buf[32];
-    snprintf(buf, sizeof(buf), "%llu", n);
+    snprintf(buf, sizeof(buf), "%" PRIu64, n);
     return AllocString (VProcSelf(), buf);
 }
 
@@ -137,6 +138,32 @@ Value_t M_FloatToString (float f)
     char buf[64];
     snprintf(buf, sizeof(buf), "%f", (double)f);
     return AllocString (VProcSelf(), buf);
+}
+
+/* M_FloatFromString:
+ */
+Value_t M_FloatFromString (Value_t str)
+{
+    VProc_t             *vp = VProcSelf ();
+    SequenceHdr_t	*strS = (SequenceHdr_t *)ValueToPtr(str);
+    if (strS->len < 1) {
+	return M_NONE;
+    }
+    else {
+	char *strData = (char*)strS->data;
+	if (strData[0] == '~')
+	    strData[0] = '-';
+	float f;
+	int ret = sscanf (strData, "%f", &f);
+	RawFloat_t rf;
+	rf.f = f;
+	if (ret > 0) {
+	    return Some (vp, AllocNonUniform(vp, 1, FLOAT(rf)));
+	}
+	else {
+	    return M_NONE;
+	}
+    }
 }
 
 /* M_DoubleToString:
@@ -383,7 +410,7 @@ void M_PrintPtr (const char *name, void *ptr)
  */
 void M_PrintLong (int64_t n)
 {
-    Say("%lld", n);
+    Say("%"PRIi64, n);
 }
 
 /* M_PrintInt:
@@ -401,21 +428,21 @@ void M_PrintFloat (float f)
 int M_ReadInt ()
 {
     int i;
-    scanf ("%d\n", &i);
+    int ignored = scanf ("%d\n", &i);
     return i;
 }
 
 float M_ReadFloat ()
 {
     float i;
-    scanf ("%f", &i);
+    int ignored = scanf ("%f", &i);
     return (float)i;
 }
 
 double M_ReadDouble ()
 {
     double i;
-    scanf ("%lf", &i);
+    int ignored = scanf ("%lf", &i);
     return i;
 }
 
@@ -451,7 +478,8 @@ void M_SeedRand ()
  */
 Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
 {
-    return GlobalAllocArray (vp, nElems, elt);
+  Say("M_NewArray: fail\n");
+  return 0;
 }
 
 float M_Powf (float x, float y)
@@ -542,6 +570,30 @@ Value_t M_TextIOInputLine (void *instream)
     else  {
 	return Some (vp, AllocString (vp, buf));
     }
+}
+
+void *M_TextIOOpenOut (Value_t filename)
+{
+    SequenceHdr_t	*filenameS = (SequenceHdr_t *)ValueToPtr(filename);
+
+    return fopen ((char*)(filenameS->data), "w");
+}
+
+void M_TextIOCloseOut (void *outstream)
+{
+    fclose (outstream);
+}
+
+void M_TextIOOutput (void *outstream, void *ws)
+{
+    SequenceHdr_t	*str = (SequenceHdr_t *)ValueToPtr(ws);
+    fprintf(outstream, "%s", (char*)(str->data));
+}
+
+void M_TextIOOutputLine (void *ws, void *outstream)
+{
+    SequenceHdr_t	*str = (SequenceHdr_t *)ValueToPtr(ws);
+    fputs((char*)(str->data), outstream);
 }
 
 Value_t M_StringTokenize (Value_t str, Value_t sep)

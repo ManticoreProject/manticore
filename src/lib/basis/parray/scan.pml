@@ -20,7 +20,7 @@
 
 structure Scan = struct
 
-    structure S = Rope.S
+    structure S = Seq
     structure R = Rope
 
     datatype option = datatype Option.option
@@ -103,8 +103,8 @@ structure Scan = struct
     fun upsweep seed t = let
       fun lp r = 
        (case r 
-	  of (R.LEAF s) => Leaf (seqsum seed s, S.length s, s)
-	   | (R.CAT (d, len, rL, rR)) => let
+	  of (R.Leaf s) => Leaf (seqsum seed s, S.length s, s)
+	   | (R.Cat (d, len, rL, rR)) => let
                val (uL, uR) = (| lp rL, lp rR |)
                in 
                  Cat (datumOf uL + datumOf uR, d, len, uL, uR)
@@ -122,12 +122,12 @@ structure Scan = struct
           of (Cat (_, d, len, cL, cR)) => let
                val nL = datumOf cL
 	       in
-                 R.CAT (| d, len, lp (c, cL), lp (c+nL, cR) |)
+                 R.Cat (| d, len, lp (c, cL), lp (c+nL, cR) |)
                end
 	   | (Leaf (_, len, s)) => let
                val (scanned, _) = seqscan c s
                in
-                 R.LEAF scanned
+                 R.Leaf scanned
                end)
       in
         lp (seed, t)
@@ -191,8 +191,8 @@ structure Scan = struct
     fun upsweep_float (seed:float) t = let
       fun lp r = 
        (case r 
-	  of (R.LEAF s) => Leaf (seqsum_float seed s, S.length s, s)
-	   | (R.CAT (d, len, rL, rR)) => let
+	  of (R.Leaf s) => Leaf (seqsum_float seed s, S.length s, s)
+	   | (R.Cat (d, len, rL, rR)) => let
                val (uL, uR) = (| lp rL, lp rR |)
                in 
                  Cat (datumOf uL + datumOf uR, d, len, uL, uR)
@@ -210,12 +210,12 @@ structure Scan = struct
           of (Cat (_, d, len, cL, cR)) => let
                val nL = datumOf cL
 	       in
-                 R.CAT (| d, len, lp (c, cL), lp (c+nL, cR) |)
+                 R.Cat (| d, len, lp (c, cL), lp (c+nL, cR) |)
                end
 	   | (Leaf (_, len, s)) => let
                val (scanned, _) = seqscan_float c s
                in
-                 R.LEAF scanned
+                 R.Leaf scanned
                end)
       in
         lp (seed, t)

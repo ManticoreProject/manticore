@@ -25,6 +25,11 @@ structure CPSTyUtil : sig
   (* convert a C type into a CPS type with the same representation *)
     val ctypeToCPS : CFunctions.c_type -> CPSTy.ty list
 
+  (* return the kind of a type *)
+    val kindOf : CPSTy.ty -> CPSTy.kind
+
+  (* isKind k1 k2 --- returns true if k2 is a subkind of k1 *)
+    val isKind : CPSTy.kind -> CPSTy.kind -> bool
   end = struct
 
     structure CTy = CPSTy
@@ -37,7 +42,6 @@ structure CPSTyUtil : sig
 	    | CTy.K_TYPE => "TYPE"
 	  (* end case *))
 
-  (* isKind k1 k2 --- returns true if k2 is a subkind of k1 *)
     fun isKind CTy.K_TYPE _ = true
       | isKind CTy.K_UNIFORM CTy.K_BOXED = true
       | isKind CTy.K_UNIFORM CTy.K_UNBOXED = true
@@ -49,6 +53,7 @@ structure CPSTyUtil : sig
       | kindOf (CTy.T_Tuple _) = CTy.K_BOXED
       | kindOf (CTy.T_Addr _) = CTy.K_TYPE
       | kindOf (CTy.T_Fun _) = CTy.K_BOXED
+      | kindOf (CTy.T_Cont _) = CTy.K_BOXED
       | kindOf (CTy.T_CFun _) = CTy.K_UNIFORM
       | kindOf CTy.T_VProc = CTy.K_RAW
 
@@ -65,6 +70,9 @@ structure CPSTyUtil : sig
 	      CTy.T_Fun (argTys2, contTys2)) =>
 		ListPair.allEq equal (argTys1, argTys2) andalso
 		ListPair.allEq equal (contTys1, contTys2)
+	   | (CTy.T_Cont (argTys1), 
+	      CTy.T_Cont (argTys2)) =>
+		ListPair.allEq equal (argTys1, argTys2)
 	   | (CTy.T_CFun c_proto1, CTy.T_CFun c_proto2) =>
 		c_proto1 = c_proto2
 	   | (CTy.T_VProc, CTy.T_VProc) => true
@@ -95,6 +103,9 @@ structure CPSTyUtil : sig
 		ListPair.allEq (fn (x,y) => match' (x,y,sound)) (argTys2, argTys1)
                 andalso ListPair.allEq (fn (x,y) => match' (x,y,sound))
                                        (contTys2, contTys1)
+	    | (CTy.T_Cont(argTys1), CTy.T_Cont(argTys2)) =>
+	      (* Note contravariance for arguments! *)
+		ListPair.allEq (fn (x,y) => match' (x,y,sound)) (argTys2, argTys1)
 	    | _ => equal(ty1, ty2)
 	  (* end case *))
 
@@ -121,7 +132,7 @@ structure CPSTyUtil : sig
 	      | CTy.T_Tuple(false, tys) => concat("[" :: tys2l(tys, ["]"]))
 	      | CTy.T_Tuple(true, tys) => concat("![" :: tys2l(tys, ["]"]))
 	      | CTy.T_Addr ty => concat["addr(", toString ty, ")"]
-	      | CTy.T_Fun(tys, []) => concat("cont(" :: tys2l(tys, [")"]))
+	      | CTy.T_Cont(tys) => concat("cont(" :: tys2l(tys, [")"]))
 	      | CTy.T_Fun(tys1, tys2) => concat("fun(" :: tys2l(tys1, " / " :: tys2l(tys2, [")"])))
 	      | CTy.T_CFun cp => CFunctions.protoToString cp
 	      | CTy.T_VProc => "vproc"

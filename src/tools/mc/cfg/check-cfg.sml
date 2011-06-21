@@ -477,7 +477,7 @@ structure CheckCFG : sig
 		      (* end case *))
 		  | CFG.HeapCheck{hck, szb, nogc} => (
                       chkJump (env, nogc, "HeapCheck"))
-		  | CFG.HeapCheckN{hck, n, nogc} => (
+		  | CFG.HeapCheckN{hck, n, szb, nogc} => (
 		      chkVar (env, n, "HeapCheckN");
 		      chkJump (env, nogc, "HeapCheck"))
                   | CFG.AllocCCall{lhs, f, args, ret = (l,rargs)} => (

@@ -90,9 +90,12 @@ structure Proxy (* :
 	let myAddr : addr(any) = vpload(PROXYTABLE,host_vproc)
 	(* get next free entry in the proxy table *)
 	let pos : int = vpload (PROXYTABLEENTRIES,host_vproc)
+
+(* do ccall M_PrintInt(1) 
+do ccall globalCheck(host_vproc) *)
 	
-	(* let myProxy : proxy = ccall AllocProxy (host_vproc,2,host_vproc, pos) *)
-	let myProxy : proxy = alloc_special (host_vproc, pos)
+	let myProxy : proxy = ccall AllocProxy (host_vproc,2,host_vproc, pos)
+	(* let myProxy : proxy = alloc_special (host_vproc, pos) *)
 	
 	(* store the proxy and continuation at the offside position *)
 	do AdrStore(AdrAddI32(myAddr,TABLE_POS(pos)),myProxy)
@@ -103,6 +106,9 @@ structure Proxy (* :
 	(* move free pointer to next object *)
 	let nextid : int = I32Add(pos,1)
 	do vpstore (PROXYTABLEENTRIES,host_vproc,nextid)
+
+do ccall isProxy(host_vproc, pos)
+
 	return(myProxy) 
      ;
      

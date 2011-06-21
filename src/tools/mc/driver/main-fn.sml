@@ -88,14 +88,21 @@ functor MainFn (
 	  end
 
   (* dead function elimination on the parse tree *)
+    fun printTrees ([]) = ()
+      | printTrees ({tree,span}::rest) = (
+        PrintPT.print tree;
+        printTrees rest)
     fun treeShake p2s =
 	  if Controls.get BasicControl.treeShake
 	     then (
+              if Controls.get BasicControl.treeShakeDebug
+              then printTrees p2s
+              else ();
 	      TreeShake.setDeadFuns (allDecls p2s);
 	      TreeShake.shakeProgram p2s)
 	  else p2s
 
-    fun getPArrImpl () = BasisEnv.getTyConFromBasis ["Rope", "rope"]
+    val getPArrImpl : unit -> Types.tycon = DelayedBasis.TyCon.rope
 
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, bEnv, mEnv, file) = let
@@ -258,7 +265,7 @@ functor MainFn (
 
     fun processArgs args = (case args
            of arg :: args =>
-		if String.size arg > 0 andalso String.sub (arg, 0) = #"-"
+		if String.isPrefix "-" arg
 		  then processOption (arg, args)
 		  else processFile (arg, args)
             | _ => usage ()

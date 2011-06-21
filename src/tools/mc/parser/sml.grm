@@ -433,7 +433,6 @@ PBind
 
 PPat
         : "?" => (markPPat (FULL_SPAN, PT.NDWildPat))
-	| "handle" Pat => (markPPat (FULL_SPAN, PT.HandlePat Pat))
 	| Pat => (markPPat (FULL_SPAN, PT.Pat Pat))
         ;
 

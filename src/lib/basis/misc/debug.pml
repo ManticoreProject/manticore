@@ -13,7 +13,7 @@
  * Common usage for printMsg is the DEBUG(msg) macro defined in include/debug.def.
  *)
 
-structure Debug :
+structure Debug (* :
   sig
 
   (* prints a message when the program is in debug mode. *)
@@ -24,7 +24,9 @@ structure Debug :
    *)
     val assertFail : (string * string * int) -> unit
 
-  end = struct
+    val failwith : string -> unit
+
+  end *) = struct
 
     structure PT = PrimTypes
 
@@ -71,5 +73,7 @@ structure Debug :
 	  printMsg(msg, file, lineNum);
 	  Print.printLn "";
 	  terminateProgram())
+
+    fun failwith msg = (Print.printLn msg; raise Fail msg)
 
   end

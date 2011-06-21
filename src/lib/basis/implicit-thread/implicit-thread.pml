@@ -115,7 +115,7 @@ structure ImplicitThread (* :
 #define THREAD_ITE_OFF     1
 
       structure PT = PrimTypes
-      structure Arr = Array64
+      structure Arr = UnsafeArray
 
       _primcode (
 
@@ -245,7 +245,7 @@ structure ImplicitThread (* :
 			      / exh : exh) : work_group =
 	    do @migrate-to-top-level-sched (/ exh)	    
             let nVProcs : int = VProc.@num-vprocs ()
-            let suspendResumeArr : Arr.array = Arr.@array (nVProcs, false / exh)
+            let suspendResumeArr : Arr.array = Arr.@create (nVProcs, false / exh)
             let group : work_group = promote (alloc (workGroupId,
 						     spawnFn, 
 						     resumeFn, 

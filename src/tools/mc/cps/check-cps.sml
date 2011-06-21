@@ -96,6 +96,17 @@ structure CheckCPS : sig
 		  else error["unbound variable ", v2s x, " in ", cxt, "\n"])
 	  fun chkApplyVar (env, x, cxt) = (
 		appVar x;
+                case (CV.kindOf x)
+                 of C.VK_Cont _ => error ["unable to apply to variable ", v2s x, " of kind cont\n"]
+                  | _ => ();
+		if VSet.member(env, x)
+		  then ()
+		  else error["unbound variable ", v2s x, " in ", cxt, "\n"])
+	  fun chkThrowVar (env, x, cxt) = (
+		appVar x;
+                case (CV.kindOf x)
+                 of C.VK_Fun _ => error ["unable to throw to variable ", v2s x, " of kind fun\n"]
+                  | _ => ();
 		if VSet.member(env, x)
 		  then ()
 		  else error["unbound variable ", v2s x, " in ", cxt, "\n"])
@@ -127,13 +138,13 @@ structure CheckCPS : sig
 		  | C.Fun(fbs, e) => let
 		      val env = List.foldl (addFB C.VK_Fun) env fbs
 		      in
-			List.app (fn fb => chkFB(env, fb)) fbs;
+			List.app (fn fb => chkFB(env, true, fb)) fbs;
 			chkExp(env, e)
 		      end
 		  | C.Cont(fb, e) => let
 		      val env = addFB C.VK_Cont (fb, env)
 		      in
-			chkFB(env, fb); 
+			chkFB(env, false, fb); 
                         chkExp(env, e)
 		      end
 		  | C.If(cond, e1, e2) => (
@@ -185,14 +196,14 @@ structure CheckCPS : sig
 		       of CTy.T_Fun(argTys, retTys) => (
 			    chkVars (env, args, "Apply args");
 			    chkVars (env, rets, "Apply rets");
-			    checkArgTypes (CTU.match, concat["Apply ", v2s f, " args"], argTys, typesOf args);
-			    checkArgTypes (CTU.match, concat["Apply ", v2s f, " rets"], retTys, typesOf rets))
+			    checkArgTypes (CTU.match, concat["Apply ", v2s f, " args", vl2s args], argTys, typesOf args);
+			    checkArgTypes (CTU.match, concat["Apply ", v2s f, " rets", vl2s rets], retTys, typesOf rets))
 			| ty => error[v2s f, ":", CTU.toString ty, " is not a function\n"]
 		      (* end case *))
 		  | C.Throw(k, args) => (
-		      chkApplyVar (env, k, "Throw");
+		      chkThrowVar (env, k, "Throw");
 		      case CV.typeOf k
-		       of CTy.T_Fun(argTys, []) => (
+		       of CTy.T_Cont(argTys) => (
 			    chkVars (env, args, "Throw args");
 			    checkArgTypes (CTU.match, concat["Throw " ^ v2s k, " args"], argTys, typesOf args))
 			| ty => error[v2s k, ":", CTU.toString ty, " is not a continuation\n"]
@@ -337,16 +348,22 @@ structure CheckCPS : sig
 			  ])
 		  | _ => error["bogus rhs for ", vl2s lhs, "\n"]
 		(* end case *))
-	  and chkFB (env, fb as C.FB{f, params, rets, body}) = let
+	  and chkFB (env, chkFun, fb as C.FB{f, params, rets, body}) = let
                 val (argTys, retTys) =
                       case CV.typeOf f
                        of CTy.T_Fun(argTys, retTys) =>
                               (argTys, retTys)
+                        | CTy.T_Cont(argTys) =>
+                              (argTys, [])
                         | ty => (error["expected function/continuation type for ",
                                        v2s f, ":", CTU.toString(CV.typeOf f), "\n"];
                                  ([],[]))
                       (* end case *)
                 in
+                  case (CV.kindOf f, chkFun)
+                   of (C.VK_Fun _, false) => error["got function type for continuation FB: ", CV.toString f, "\n"]
+                    | (C.VK_Cont _, true) => error["got continutation type for function  FB: ", CV.toString f, "\n"]
+                    | (_, _) => ();
 		  chkBindings (params, C.VK_Param fb);
 		  checkArgTypes(CTU.equal, concat["Fun ", v2s f, " params"], argTys, typesOf params);
 		  chkBindings (rets, C.VK_Param fb);
@@ -357,7 +374,7 @@ structure CheckCPS : sig
 		(fn (cf, env) => VSet.add(env, CFunctions.varOf cf))
 		  VSet.empty externs
 	  in
-	    chkFB (addFB C.VK_Fun (body, env), body);
+	    chkFB (addFB C.VK_Fun (body, env), true, body);
 	  (* check census counts *)
 	    ChkVC.checkCounts counts;
 	  (* check for errors *)

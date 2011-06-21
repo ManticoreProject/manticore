@@ -13,18 +13,19 @@ structure TranslateRange : sig
   end = struct
 
     structure A = AST
+    structure B = Basis
     structure T = Types
+    structure DV = DelayedBasis.Var
 
   (* tr : A.exp * A.exp * A.exp option * A.ty -> A.exp *)
   (* This is simple because all the work is done in rope.pml. *)
     fun tr (fromExp, toExp, optStepExp, ty) = let
-      fun get v = BasisEnv.getVarFromBasis ["Rope", v]
       val (rangeFnV, arg) =
        (case optStepExp
-	  of NONE => (get "rangePNoStep", A.TupleExp [fromExp, toExp])
-	   | SOME stepExp => (get "rangeP", A.TupleExp [fromExp, toExp, stepExp]))
+	  of NONE => (DV.ropeRangeNS (), A.TupleExp [fromExp, toExp])
+	   | SOME stepExp => (DV.ropeRange (), A.TupleExp [fromExp, toExp, stepExp]))
       in 
-        A.ApplyExp (A.VarExp (rangeFnV, []), arg, Basis.parrayTy Basis.intTy)
+        A.ApplyExp (A.VarExp (rangeFnV, []), arg, B.parrayTy B.intTy)
       end
 
   end

@@ -18,7 +18,7 @@ structure Long =
       extern void *M_LongFromString (void *) __attribute__((alloc,pure));
 
       define inline @to-string (n : PT.ml_long / exh : PT.exh) : PT.ml_string =
-	  let res : PT.ml_string = ccall M_LongToString (unwrap(n))
+	  let res : PT.ml_string = ccall M_LongToString (#0(n))
 	    return (res)
       ;
 
@@ -28,7 +28,7 @@ structure Long =
       ;
 
       define inline @to-int (n : ml_long / exh : exh) : ml_int =
-	  return(wrap(I64ToI32(unwrap(n))))
+	  return(alloc(I64ToI32(#0(n))))
 	;
 
     )

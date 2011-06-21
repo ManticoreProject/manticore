@@ -63,6 +63,7 @@ STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
 extern void HeapInit (Options_t *opts);
 extern void InitVProcHeap (VProc_t *vp);
 extern void AllocToSpaceChunk (VProc_t *vp);
+extern void AllocToSpaceChunkScan (VProc_t *vp);
 extern Addr_t AllocVProcMemory (int id, Location_t loc);
 
 extern uint32_t	NumGlobalGCs;

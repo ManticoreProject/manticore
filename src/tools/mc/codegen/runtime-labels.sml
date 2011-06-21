@@ -25,9 +25,12 @@ structure RuntimeLabels =
   (* runtime code to promote objects *)
     val promote = global "PromoteObj"
   (* runtime code to get a new global-heap chunk *)
-    val getGlobalChunk = global "AllocToSpaceChunk"
+    val getGlobalChunk = global "AllocToSpaceChunkScan"
     val allocVector = global "AllocVector"
-    val allocLongArray = global "AllocRaw64Array"
+    val allocIntArray = global "AllocIntArray"
+    val allocLongArray = global "AllocLongArray"
+    val allocFloatArray = global "AllocFloatArray"
+    val allocDoubleArray = global "AllocDoubleArray"
     end (* local *)
 
   end (* RuntimeLabels *)

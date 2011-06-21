@@ -389,7 +389,7 @@ functor Alloc64Fn (
    *    then continue;
    *    else doGC ();
    *)
-  fun genAllocNCheck n = let
+  fun genAllocNCheck (n, szb) = let
       val vpReg = Cells.newReg()
       val MTy.EXP(_, hostVP) = VProcOps.genHostVP
       val limitPtr = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.limitPtr, T.REG(MTy.wordTy, vpReg))
@@ -399,7 +399,7 @@ functor Alloc64Fn (
 	 allocCheck=
 	 T.CMP (MTy.wordTy, T.Basis.LE, 
 		T.SUB (MTy.wordTy, limitPtr, T.REG (MTy.wordTy, Regs.apReg)),
-		T.MULU (64, wordLit 8, T.ADD (64, wordLit 4, T.ZX (64, 32, n))))
+		T.MULU (64, wordLit (Word.toInt szb), T.ADD (64, wordLit 4, T.ZX (64, 32, n))))
 	}
       end
 

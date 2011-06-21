@@ -71,7 +71,7 @@ file:  Path to a file of \"name = value\" pairs:\n\
   MAX_NURSERY_SZB=size\n\
   MAJOR_GC_THRESHOLD=size\n\
   BASE_GLOBAL_HEAP_SZB=size\n\
-  PER_VPROC_HEAP_SZB=size\n\  
+  PER_VPROC_HEAP_SZB=size\n\
 \n\
 procs:\n\
   Comma-separated list of numbers corresponding to procesors for\n\

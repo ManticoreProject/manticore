@@ -210,11 +210,6 @@ structure BoundVariableCheck :> sig
 	        in
 		  (PT2.Pat p, env)
 	        end			     
-	    | PT1.HandlePat p => let
-                val (p, env) = chkPat loc (p, env)
-                in
-                  (PT2.HandlePat p, env)
-	        end
            (* end case *))
 
     and chkPPats loc (ppats, env) = chkList loc (chkPPat, ppats, env)

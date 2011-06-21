@@ -45,6 +45,9 @@ structure CFACPS : sig
   (* return true if the given lambda variable escapes *)
     val isEscaping : CPS.var -> bool
 
+  (* return true if the given lambda variable is never called *)
+    val isUncalled : CPS.var -> bool
+
   (* flags to control debugging *)
     val debugFlg : bool ref
     val resultsFlg : bool ref
@@ -111,15 +114,16 @@ structure CFACPS : sig
 
 
   (* create an approximate value for a function type. *)
-    fun valueFromFunType (paramTys, retTys) = let
-          val ty = CPSTy.T_Fun(paramTys, retTys)
+    fun valueFromFunType' (paramTys, retTys, isCont) = let
+          val ty = if isCont then CPSTy.T_Cont(paramTys)
+                   else CPSTy.T_Fun(paramTys, retTys)
           val params = map (fn ty => CV.new("cfaProxyParam", ty)) paramTys
           val () = app (fn x => setIsProxy(x, true)) params
           val rets = map (fn ty => CV.new("cfaProxyRet", ty)) retTys
           val () = app (fn x => setIsProxy(x, true)) rets
           val f = CV.new("cfaProxyF", ty)
           val () = setIsProxy(f, true)
-          val z = CV.new("cfaProxyZ", CPSTy.T_Fun([],[]))
+          val z = CV.new("cfaProxyZ", CPSTy.T_Cont([]))
           val () = setIsProxy(z, true)
           val lambda = CPS.FB {
 		  f = f,
@@ -129,12 +133,14 @@ structure CFACPS : sig
 	        }
            val () = app (fn x => CV.setKind(x, CPS.VK_Param lambda)) params
            val () = app (fn x => CV.setKind(x, CPS.VK_Param lambda)) rets
-           val () = if null retTys 
+           val () = if isCont
 		 then CV.setKind(f, CPS.VK_Cont lambda)
 		 else CV.setKind(f, CPS.VK_Fun lambda)
            in 
              LAMBDAS(VSet.singleton f)
            end 
+    fun valueFromContType (paramTys) = valueFromFunType' (paramTys, [], true)
+    fun valueFromFunType (paramTys, retTys) = valueFromFunType' (paramTys, retTys, false)
 
   (* create an approximate value from a type.  These values are used 
    * to initialize the abstract value property for variables.  
@@ -147,6 +153,7 @@ structure CFACPS : sig
             | CPSTy.T_Tuple(false, tys) => TUPLE(List.map valueFromType tys)
             | CPSTy.T_Addr _ => TOP
             | CPSTy.T_Fun _ => LAMBDAS(VSet.empty)
+            | CPSTy.T_Cont _ => LAMBDAS(VSet.empty)
             | CPSTy.T_CFun _ => TOP
             | CPSTy.T_VProc => TOP
           (* end case *))
@@ -162,6 +169,9 @@ structure CFACPS : sig
 
   (* return true if the given lambda variable escapes *)
     fun isEscaping f = (case callersOf f of Unknown => true | _ => false)
+
+  (* return true if the given lambda variable is un *)
+    fun isUncalled f = (case callersOf f of Known(s) => (VSet.numItems s = 0) | _ => false)
 
   (* test if a new approximate value is different from an old value; this
    * code assumes that values change according to the lattice order.
@@ -204,6 +214,18 @@ structure CFACPS : sig
           in
             if changedValue(newV, oldV)
               then (changed := true; setValue(x, newV))
+              else ()
+          end
+
+  (* when the code has already computed a joined value and needs to propagate it
+   * to e.g. all of the function params/rets in a LAMBDAS, there is no need to re-do the
+   * joinValues
+   *)
+    and setInfo (x, v) = let
+          val oldV = getValue x
+          in
+            if changedValue(v, oldV)
+              then (changed := true; setValue(x, v))
               else ()
           end
 
@@ -252,9 +274,10 @@ structure CFACPS : sig
                 in
                   TUPLE(join(vs1, vs2))
                 end
-            | kJoin (k, v1 as LAMBDAS fs1, v2 as LAMBDAS fs2) = 
+            | kJoin (k, v1 as LAMBDAS fs1, v2 as LAMBDAS fs2) =
                 if VSet.isEmpty fs1 then v2
                 else if VSet.isEmpty fs2 then v1
+                else if VSet.equal (fs1,fs2) then v1
                 else let
               (* join params and rets of joined lambdas *)
                 fun getParamsRets f = (case CV.kindOf f
@@ -266,22 +289,27 @@ structure CFACPS : sig
                             ])
                      (* end case *))
                 val SOME f1 = VSet.find (fn _ => true) fs1
-                val (params1, rets1) = getParamsRets f1
                 val SOME f2 = VSet.find (fn _ => true) fs2
-                val (params2, rets2) = getParamsRets f2
-                val params' = ListPair.mapEq (fn (x1,x2) => kJoin(k-1, getValue x1, getValue x2)) 
-                                             (params1, params2)
-                val rets' = ListPair.mapEq (fn (x1,x2) => kJoin(k-1, getValue x1, getValue x2)) 
-                                           (rets1, rets2)
+                val _ = if !debugFlg then print (concat["[", CV.toString f1, ", ", CV.toString f2, "]\n"]) else ()
               (* join isEscaping of joined lambdas *)
                 val isEscaping = isEscaping f1 orelse isEscaping f2
                 val fs = VSet.union (fs1, fs2)
+                fun addParamsRets (f, (p',r')) = let
+                    val (params,rets) = getParamsRets f
+                in
+                    (ListPair.map (fn (x,r) => kJoin (k-1, x, getValue r)) (p', params),
+                     ListPair.map (fn (x,r) => kJoin (k-1, x, getValue r)) (r', rets))
+                end
+                val (params,rets) = getParamsRets f1
+                val (params,rets) = (List.map getValue params, List.map getValue rets)
+
+                val (params', rets') = VSet.foldr (fn (f, (p',r')) => addParamsRets (f, (p',r'))) (params,rets) fs
                 val () = VSet.app (fn f => let
                                    val (params, rets) = getParamsRets f
                                    in
                                      if isEscaping then setCallers(f, Unknown) else ();
-                                     ListPair.app addInfo (params, params');
-                                     ListPair.app addInfo (rets, rets')
+                                     ListPair.app setInfo (params, params');
+                                     ListPair.app setInfo (rets, rets')
                                    end)
                                   fs
                 in
@@ -463,6 +491,10 @@ structure CFACPS : sig
                       if VSet.isEmpty fs 
                          then addInfo (x, valueFromFunType (params, rets))
                          else ()
+                  | (CPSTy.T_Cont (params), LAMBDAS fs) =>
+                      if VSet.isEmpty fs 
+                         then addInfo (x, valueFromContType (params))
+                         else ()
                   | _ => ()
                 (* end case *))
           fun doLambda (CPS.FB {f, params, rets, body}) = (
@@ -490,6 +522,7 @@ structure CFACPS : sig
                       then (fn (x, v) => let
                         val prevV = getValue x
                         in
+                          print (concat["startAddInfo(", CV.toString x, ")\n"]);
                           addInfo (x, v);
                           if changedValue(getValue x, prevV) 
                             then print(concat[
@@ -568,7 +601,7 @@ structure CFACPS : sig
                        of CPS.VK_Cont (fb as CPS.FB {f, params, rets, body}) => (
                             ListPair.appEq eqInfo' (params, args);
                             ListPair.appEq eqInfo' (rets, []))
-                        | _ => raise Fail "type error: doThrowAux"
+                        | _ => raise Fail (concat["type error: doThrowAux, ", CV.toString f])
                       (* end case *))
                 in
                   changed := false;

@@ -6,7 +6,7 @@
  * Census for CPS variables.
  *)
 
-structure Census : sig
+structure CPSCensus : sig
 
     val census : CPS.module -> unit
 
