@@ -6,7 +6,7 @@
 
 Library
 
-  structure Closure
+  functor ClosureFn
 
 is
 
@@ -23,8 +23,8 @@ is
   ../codegen/sources.cm
 
   classify-conts.sml
-  closure.sml
+  closure-fn.sml
   closure-controls.sml
   free-vars.sml
   flat-closure-with-cfa.sml
-(*  eff-sfs-closure.sml *)
+  eff-sfs-closure-fn.sml  

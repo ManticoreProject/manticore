@@ -1,14 +1,16 @@
-(* closure.sml
+(* closure-fn.sml
  *
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *)
 
-structure Closure : sig
+functor ClosureFn (Target : TARGET_SPEC) : sig
 
     val convert : CPS.module -> CFG.module
 
   end = struct
+
+    structure ClosureConvert = ClosureConvertFn (Target)
 
     fun transform {passName, pass} = let
 	  val xform = BasicControl.mkKeepPassSimple {
@@ -28,7 +30,7 @@ structure Closure : sig
 	    xform'
 	  end
 
-(*    val closureConvert = transform {passName = "closure-convert", pass = ClosureConvert.transform} *)
+    val closureConvert = transform {passName = "closure-convert", pass = ClosureConvert.transform} 
 
     fun analyze {passName, pass} = BasicControl.mkTracePassSimple {
             passName = passName,
@@ -52,7 +54,7 @@ structure Closure : sig
         val _ = freeVars module
         val module = closureConvert module
         val _ = CFACPS.clearInfo module 
-        val _ = FreeVars.clear module*)
+        val _ = FreeVars.clear module *)
         val _ = ClassifyConts.analyze module
         val _ = cfa module
         val _ = freeVars module 

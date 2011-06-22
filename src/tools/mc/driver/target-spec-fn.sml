@@ -13,7 +13,7 @@ functor TargetSpecFn (
     val maxGPRArgs : int
     val maxFPRArgs : int
     val maxVPRArgs : int
-
+    val availRegs : int
 
   ) :> TARGET_SPEC = struct
 
@@ -34,5 +34,6 @@ functor TargetSpecFn (
     val maxGPRArgs = maxGPRArgs
     val maxFPRArgs = maxFPRArgs
     val maxVPRArgs = maxVPRArgs
+    val availRegs = availRegs
 
   end (* TargetSpecFn *)

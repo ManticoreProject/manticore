@@ -26,6 +26,7 @@ signature TARGET_SPEC =
     val maxGPRArgs : int	(* max number of general-purpose-register args *)
     val maxFPRArgs : int	(* max number of floating-point-register args *)
     val maxVPRArgs : int	(* max number of vector-register args *)
+    val availRegs  : int        (* max number of unused GP registers *)
 
   end (* TARGET_SPEC *)
 

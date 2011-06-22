@@ -11,7 +11,8 @@ structure AMD64TargetSpec = TargetSpecFn (
     structure ABI = RuntimeConstants
     val maxGPRArgs = 8
     val maxFPRArgs = 6
-    val maxVPRArgs = 0)
+    val maxVPRArgs = 0
+    val availRegs = 13)
 
 structure CodeGen = AMD64GenFn (structure Spec = AMD64TargetSpec)
 

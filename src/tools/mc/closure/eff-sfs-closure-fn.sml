@@ -6,11 +6,9 @@
  * This transformation converts from a CPS IR with free variables to a
  * version of the CPS where closures are explicit and each function has
  * no free variables (known as CLO in the Shao/Appel work).
- *
- * TODO: this has only begun implementation and does not work yet.
  *)
 
-structure ClosureConvert : sig
+functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 
     val transform : CPS.module -> CPS.module
 
@@ -25,10 +23,10 @@ structure ClosureConvert : sig
     structure CFA = CFACPS
     structure ST = Stats
 
-    val N = List.length AMD64Regs.miscRegs
+    val N = Target.availRegs
 
   (***** controls ******)
-    val enableClosureConversion = ref true
+    val enableClosureConversion = ref false
     val closureConversionDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register ClosureControls.registry {
@@ -51,7 +49,7 @@ structure ClosureConvert : sig
                   }
             ]
 
-
+(*
     (* The params properties list the new parameters for a given KNOWN function *)
     val {setFn=setParams, peekFn=peekParams, ...} = CV.newProp (fn f => []:C.Var list)
 
@@ -137,13 +135,18 @@ structure ClosureConvert : sig
       | transformRHS(env, C.VPStore (off, v1, v2)) = C.VPStore (off, subst(env, v1), subst(env,v2))
       | transformRHS(env, C.VPAddr (off, var)) = C.VPAddr (off, subst(env, var))
       | transformRHS(env, x) = x
-
-    (* *)
     fun transform (env, C.MODULE{name,externs,body}) = let
     in
         C.MODULE{
         name=name, externs=externs,
         body = transformExp (VMap.empty, body)}
     end
+                               *)
 
+    (* *)
+
+    fun transform module = let
+    in
+        module
+    end
 end
