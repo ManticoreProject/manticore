@@ -18,12 +18,11 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     structure C = CPS
     structure CV = C.Var
     structure VMap = CV.Map
+    structure VSet = CV.Set
     structure U = CPSUtil
     structure CTy = CPSTy
     structure CFA = CFACPS
     structure ST = Stats
-
-    val N = Target.availRegs
 
   (***** controls ******)
     val enableClosureConversion = ref false
@@ -48,6 +47,235 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                   help = "debug closure conversion "
                   }
             ]
+
+    (* The stage number is:
+     * 1 for the outermost function
+     * 1+ SN(g) if if is a function and g encloses f
+     * 1+ max{SN(g) | g \in CFA.callersOf k} if k is a continuation
+     *)
+    local
+        val {setFn, getFn=getSN, ...} =
+            CV.newProp (fn f => NONE)
+    in
+    fun setSN(f, i : int) = setFn(f, SOME i)
+    val getSN = getSN
+    end
+
+    (* The FV property maps from a function to a Varmap from the (raw) free variables
+     * to their first and last used times (SNs). The initial values are set to
+     * the current function's SN (else they would not be free!), but the last used
+     * time will be updated during the analysis of the static nesting of the
+     * functions.
+     *)
+    val {setFn=setFVMap, getFn=getFVMap, ...} =
+        CV.newProp (fn f => let
+                           val fvSet = FreeVars.envOfFun f
+                           val fut = valOf (getSN f)
+                       in
+                           VSet.foldl (fn (x, m) => VMap.insert (m, x, (fut, fut)))
+                           VMap.empty fvSet                           
+                       end)
+
+    (* The slot count is the number of available registers to use for extra closure
+     * parameters.
+     * Initialize:
+     * - 1 for any lambda with unknown call sites
+     * - otherwise, (Target.availRegs - #params)
+     *
+     * Loop to discover the final count per section 4.3
+     *)
+    val {setFn=setSlot, getFn=getSlot, ...} =
+        CV.newProp (fn f =>
+                       if CFACPS.isEscaping f
+                       then 1
+                       else Target.availRegs - (
+                            case CV.kindOf f
+                             of C.VK_Fun (C.FB{params, rets,...}) =>
+                                (List.length params + List.length rets)
+                              | C.VK_Cont (C.FB{params, rets,...}) =>
+                                (List.length params + List.length rets)
+                              | k => raise Fail (concat["Variable: ",
+                                                        CV.toString f,
+                                                        " cannot have slots because it is of kind: ",
+                                                        C.varKindToString k])))
+
+    fun setSNs (CPS.MODULE{body, ...}) = let
+          fun doLambda (CPS.FB{f, params, rets, body}, i) = (
+              setSN (f, i);
+              doExp (body, i))
+          and doCont (CPS.FB{f, params, rets, body}, i) = f::doExp (body, i)
+          and doExp (CPS.Exp(_, e), i) = (case e 
+                 of CPS.Let(xs, _, e) => (doExp (e, i))
+                  | CPS.Fun(fbs, e) => (List.foldl (fn (f,l) => l@doLambda (f,i+1)) [] fbs) @ doExp (e, i)
+                  | CPS.Cont(fb, e) => (doCont (fb, i+1) @ doExp (e, i))
+                  | CPS.If(_, e1, e2) => (doExp (e1, i) @ doExp (e2, i))
+                  | CPS.Switch(_, cases, dflt) => (
+		      (List.foldl (fn (c,l) => l@doExp(#2 c, i)) [] cases) @
+                      (case dflt of NONE => []
+                                  | SOME e => doExp (e, i)))
+                  | CPS.Apply _ => []
+                  | CPS.Throw _ => []
+                (* end case *))
+          val conts = doLambda (body, 1)
+          fun handleConts ([], [], i) = ()
+            | handleConts ([], later, i) = let
+              in
+                  (*
+                   * The statement about CPS call graphs in 4.1/4.2 is a bit tricky for us.
+                   * Our continutations can take multiple continuations as arguments, which
+                   * means that while we cannot have statically mutually recursive continuations,
+                   * dynamically they can be (and often are!).
+                   *
+                   * This case implements a somewhat-arbitrary tie-breaker. If there is a set
+                   * of continuations we are not making progress on, just set the stage number
+                   * of the first one in the list based on the knowledge we do have so far and then
+                   * continue with the rest.
+                   *)
+                  if (List.length later = i)
+                  then let
+                          val first::rest = later
+                          val CFACPS.Known(s) = CFACPS.callersOf first
+                      in
+                          setSN (first, 1 + VSet.foldl (fn (f, i) => Int.max (i,
+                                                                              case getSN f
+                                                                               of NONE => 0
+                                                                                | SOME i' => i'))
+                                        0 s);
+                          handleConts (List.rev rest, [], i-1)
+                      end
+                  else handleConts (List.rev later, [], List.length later)
+              end
+            | handleConts (k::conts, later, i) = let
+                  val callers = CFACPS.callersOf k
+              in
+                  case callers
+                   of CFACPS.Unknown => (setSN(k, 1);
+                                         handleConts (conts, later, i))
+                    | CFACPS.Known s => let
+                          val f = VSet.find (fn f => not (isSome (getSN f))) s
+                      in
+                      if not (isSome (f))
+                      then (setSN(k, 1 + VSet.foldl (fn (f,i) => Int.max (i, valOf (getSN f)))
+                                                    0 s);
+                            handleConts (conts, later, i))
+                      else (handleConts (conts, k::later, i))
+                      end
+              end
+    in
+        handleConts (conts, [], 0)
+    end
+
+    (* Also add fut/lut properties to variables, per function.
+     * Need to add an FV->{fut,lut} map to each function variable.
+     * a. Do it as a depth-first traversal. At the leaf, all FVs basically have the SN(f) for their fut/lut
+     * b. Return the union of the var-maps from the other functions. Collisions get the min(fut) but the max(lut)
+     * c. In the intermediate nodes, if the FV is used, fut = SN(f), else fut=lut(union-map)
+     *)
+    fun updateLUTs (CPS.MODULE{body, ...}) = let
+          fun mergeFVMaps (maps) = let
+              fun mergeMaps ([], final) = final
+                | mergeMaps (m::maps, final) =
+                  mergeMaps (maps,
+                             (VMap.foldli (fn (v, p as (fut, lut), final) =>
+                                            case VMap.find (final, v)
+                                             of NONE => VMap.insert (final, v, p)
+                                              | SOME (fut', lut') =>
+                                                VMap.insert (final, v, (Int.min (fut, fut'),
+                                                                        Int.max (lut, lut'))))
+                                         final m))
+          in
+              case maps
+               of [] => VMap.empty
+                | [m] => m
+                | m::ms => mergeMaps (ms, m)
+          end
+          fun doLambda (CPS.FB{f, params, rets, body}) = let
+              val childMap = doExp body
+              val (newMap, retMap) =
+                  VMap.foldli (fn (v, p as (fut, lut), (newMap, retMap)) => 
+                                 case VMap.find (retMap, v)
+                                  of NONE => (newMap,
+                                              VMap.insert (retMap, v, p))
+                                   | SOME (_, lut') => 
+                                     if (lut' > lut)
+                                     then (VMap.insert (newMap, v, (fut, lut')),
+                                           retMap)
+                                     else (newMap, retMap))
+                  (childMap, childMap) (getFVMap f)
+          in
+              setFVMap (f, newMap);
+              retMap
+          end
+          and doExp (CPS.Exp(_, e)) = (case e 
+                 of CPS.Let(xs, _, e) => (doExp e)
+                  | CPS.Fun(fbs, e) => (mergeFVMaps ((doExp e)::(List.map doLambda fbs)))
+                  | CPS.Cont(fb, e) => (mergeFVMaps([doLambda fb, doExp e]))
+                  | CPS.If(_, e1, e2) => (mergeFVMaps([doExp e1, doExp e2]))
+                  | CPS.Switch(_, cases, dflt) => let
+                        val caseMaps = List.map (fn c => doExp (#2 c)) cases
+                        val l = case dflt of NONE => caseMaps
+                                   | SOME e => (doExp e)::caseMaps
+                    in
+                        mergeFVMaps l
+                    end
+                  | CPS.Apply _ => VMap.empty
+                  | CPS.Throw _ => VMap.empty
+                (* end case *))
+          in
+            doLambda body
+          end
+
+    (* Assign the # of slots to functions for their free variables
+     * a. Initialize S(f) = max(AVAIL_REG - arg_count(f), 0)  for known, = 1 for escaping
+     * b. Iterate S(f) = min ({T(g, f) | g \in V(f)} U {S(f)})
+     * c. where T(g, f) = max(1, S(g)- |FV(g)-  FV(f)|)
+     *)
+    fun setSlots (CPS.MODULE{body, ...}) = let
+        fun doLambda (CPS.FB{f, params, rets, body}) = f::(doExp body)
+        and doExp (CPS.Exp(_, e)) = (
+            case e 
+             of CPS.Let(xs, _, e) => (doExp e)
+              | CPS.Fun(fbs, e) => (doExp e @ (List.foldl (fn (fb,l) => l @ doLambda fb) [] fbs))
+              | CPS.Cont(fb, e) => (doLambda fb @ doExp e)
+              | CPS.If(_, e1, e2) => (doExp e1 @ doExp e2)
+              | CPS.Switch(_, cases, dflt) => let
+                    val cases = List.foldl (fn (c,l) => l@doExp (#2 c)) [] cases
+                in
+                    case dflt of NONE => cases
+                               | SOME e => (doExp e)@cases
+                end
+              | CPS.Apply _ => []
+              | CPS.Throw _ => []
+        (* end case *))
+        val funs = doLambda body
+        val funs = List.filter (fn (f) => not(CFACPS.isEscaping f)) funs
+        fun updateSlotCount(f) = let
+            val fFVs = (FreeVars.envOfFun f)
+            val fFVfuns = VSet.filter (fn v => case CV.kindOf v
+                                                of C.VK_Cont _ => true (* ? *)
+                                                 | C.VK_Fun _ => true
+                                                 | _ => false) fFVs
+            val CFACPS.Known(fPreds) = CFACPS.callersOf f
+            val fFreePreds = VSet.intersection (fPreds, fFVfuns)
+            fun T(g) = Int.max (1, (getSlot g) - VSet.numItems (VSet.difference ((FreeVars.envOfFun g),
+                                                                          fFVs)))
+            and S(f) = VSet.foldl (fn (g, i) => Int.min (i, T(g))) (getSlot f) fFreePreds
+            val newCount = S(f)
+        in
+            if (newCount <> getSlot f)
+            then (setSlot (f, newCount); true)
+            else false
+        end
+        fun loop () = let
+            val changed = List.foldl (fn (f, b) => b orelse updateSlotCount f) false funs
+        in
+            if changed
+            then loop()
+            else ()
+        end
+    in
+        loop()
+    end
 
 (*
     (* The params properties list the new parameters for a given KNOWN function *)
@@ -145,8 +373,24 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 
     (* *)
 
-    fun transform module = let
-    in
-        module
-    end
+    fun transform module =
+        if !enableClosureConversion
+        then let
+                val _ = CFACPS.analyze module
+                val _ = FreeVars.analyze module
+                val _ = print "Setting SNs\n"
+                val _ = setSNs module
+                val _ = print "Setting luts\n"
+                val _ = updateLUTs module
+                val _ = print "Setting slot counts\n"
+                val _ = setSlots module
+                val _ = print "Done setting slots\n"
+                        
+                        
+                val _ = CFACPS.clearInfo module 
+                val _ = FreeVars.clear module
+            in
+                module
+            end
+        else module
 end
