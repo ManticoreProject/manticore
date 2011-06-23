@@ -152,10 +152,11 @@ structure Proxy (* :
 	    let ch : ![Option.option] = promote (ch)
 	  (* the thief fiber executes on the victim vproc *)
 	    cont thief (_ : unit) =
+              (* promote the proxy on the vproc so we can access the promoted continuation *)  
               do ccall promoteProxy(#0(myProxy),#1(myProxy))
 	      let myFiber : PT.fiber = #1(myProxy)		
 	      (* successfully stole multiple threads *)
-	      let x : Option.option = (Option.SOME(myFiber))
+	      let x : Option.option = Option.SOME(myFiber)
 	      do #0(ch) := x
 	      SchedulerAction.@stop ()
 	      
