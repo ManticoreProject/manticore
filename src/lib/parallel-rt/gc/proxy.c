@@ -104,44 +104,37 @@ void deleteProxy (VProc_t *vp, int id) {
 	printf("delete id = %d , last = %d, scanp = %p, global %p, vproc %d\n",id,last,(void*)(vp->proxyTable[id].localObj),(void*)(vp->proxyTable[id].proxyObj),vp->id);
 	
 	if (id <= last) {
-		memcpy(&vp->proxyTable[id].proxyObj, &vp->proxyTable[last].proxyObj, sizeof(Value_t));
-		memcpy(&vp->proxyTable[id].localObj, &vp->proxyTable[last].localObj, sizeof(Value_t));
+		vp->proxyTable[id].proxyObj = vp->proxyTable[last].proxyObj;
+		vp->proxyTable[id].localObj = vp->proxyTable[last].localObj;
 		
 		if (id != last) {
 			vp->proxyTable[last].proxyObj = (Value_t)(0xdeadbeafdeadbeaf);
 			vp->proxyTable[last].localObj = (Value_t)(0xdeadbeafdeadbeaf);
 		}
-		//if (isPtr(vp->proxyTable[last].localObj)) printf("id = %d is ptr\n",last);
-		//if (isForwardPtr(vp->proxyTable[last].localObj)) printf("id = %d is fwd ptr\n",last);
-		
+                
 		Word_t *proxyObj = (Word_t *)(vp->proxyTable[id].proxyObj);
 		proxyObj[1] = (Word_t)id;
 		vp->proxyTable[id].proxyObj = PtrToValue(proxyObj);
-                
-		printf("new id is %d, localptr %p, globalptr %p\n",id,(void*)(vp->proxyTable[id].localObj),(void*)(vp->proxyTable[id].proxyObj));
-		
+
 		vp->proxyTableentries = last;
-		
-		//printf("delete id = %d , last = %d, scanp = %lu, global %p, vproc %d\n",id,last,(unsigned long)(vp->proxyTable[id].localObj),(void*)(vp->proxyTable[id].proxyObj),vp->id);
+
 	} else {
 		if(id > last) printf("WARNING something is wrong in delete\n");
 		
 		vp->proxyTable[last].proxyObj = (Value_t)(0xdeadbeafdeadbeaf);
 		vp->proxyTable[last].localObj = (Value_t)(0xdeadbeafdeadbeaf);
-		//printf("delete id = %d , last = %d, scanp = %p, global %p, vproc %d\n",id,last,(void*)(vp->proxyTable[id].localObj),(void*)(vp->proxyTable[id].proxyObj),vp->id);
+
 	}
         
-	//printf("Max = %d, last = %d\n",vp->proxyTableentries,last);
-	
 }
 
-void promoteCont (VProc_t *vp, int id) {
+void promoteProxy (VProc_t *vp, int id) {
 	
 	vp->proxyTable[id].localObj = PromoteObj(vp,vp->proxyTable[id].localObj);
 	
-	Word_t * scanP = (Word_t *)(vp->proxyTable[id].proxyObj);
+	Word_t *proxyObj = (Word_t *)(vp->proxyTable[id].proxyObj);
 	
-	*(scanP+1) = (Word_t)vp->proxyTable[id].localObj;
+	proxyObj[1] = (Word_t)vp->proxyTable[id].localObj;
 	
 	deleteProxy(vp,id);
 }
