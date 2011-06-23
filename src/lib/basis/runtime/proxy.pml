@@ -49,6 +49,7 @@ structure Proxy (* :
      extern void isProxy (void *, int);
      extern void isPrintProxy (int);
      extern void globalCheck(void *);
+     extern void * returnCont (void *);
      
       define inline @getFiberFromTable (myProxy : proxy) : PT.fiber =
         (* get address of the proxy table *)
@@ -90,12 +91,14 @@ structure Proxy (* :
 	let myAddr : addr(any) = vpload(PROXYTABLE,host_vproc)
 	(* get next free entry in the proxy table *)
 	let pos : int = vpload (PROXYTABLEENTRIES,host_vproc)
+        (* we need to cast pos to a 64 bit number in order to get a clean allocation with alloc special *)
+        let pos2 : long = I32ToI64(pos)
 
-(* do ccall M_PrintInt(1) 
-do ccall globalCheck(host_vproc) *)
+(* do ccall M_PrintInt(1) *)
+(* do ccall globalCheck(host_vproc) *)
 	
-	let myProxy : proxy = ccall AllocProxy (host_vproc,2,host_vproc, pos)
-	(* let myProxy : proxy = alloc_special (host_vproc, pos) *)
+	(* let myProxy : proxy = ccall AllocProxy (host_vproc,2,host_vproc, pos) *)
+	let myProxy : proxy = alloc_special (host_vproc, pos2)
 	
 	(* store the proxy and continuation at the offside position *)
 	do AdrStore(AdrAddI32(myAddr,TABLE_POS(pos)),myProxy)
@@ -107,7 +110,7 @@ do ccall globalCheck(host_vproc) *)
 	let nextid : int = I32Add(pos,1)
 	do vpstore (PROXYTABLEENTRIES,host_vproc,nextid)
 
-do ccall isProxy(host_vproc, pos)
+(* do ccall isProxy(host_vproc, pos) *)
 
 	return(myProxy) 
      ;
@@ -194,6 +197,10 @@ do ccall isProxy(host_vproc, pos)
 		    (* if not we have to send a thief *)
 		    let myFiber : PT.fiber = @thief-from-atomic-proxy (host_vproc,myProxy)
 		    throw myFiber(x)
+
+  (*             let myFiber : PT.fiber = ccall returnCont(myProxy)
+                throw myFiber(x)
+*)
 	    return(Proxy)	
 	else
 	    (*if no free entries return the original fiber *)

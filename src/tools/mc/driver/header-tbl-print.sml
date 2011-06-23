@@ -296,7 +296,9 @@ struct
         TextIO.output (MyoutStrm, "Word_t * globalGCscanPROXYpointer (Word_t* ptr, VProc_t *vp) {\n");
         TextIO.output (MyoutStrm, "  \n");
         TextIO.output (MyoutStrm, "   Value_t v = (Value_t )ptr[1];\n");
+        TextIO.output (MyoutStrm, "  //printf(\"This is GlobalGC proxyscan begin scanptr is %p!, vaue of v is %lu\\n\",(void*)ptr,(unsigned long)v);\n");
         TextIO.output (MyoutStrm, "   if( (unsigned long)v >= vp->maxProxy ) {\n");
+        TextIO.output (MyoutStrm, "  //printf(\"Forward the proxyobj 2 %p!\\n\",(void*)ptr[1]);\n");
         TextIO.output (MyoutStrm, "     assert (isFromSpacePtr( v ));\n");
         TextIO.output (MyoutStrm, "     Value_t p = ForwardObjGlobal(vp, v);\n");
         TextIO.output (MyoutStrm, "     ptr[1]=(Word_t)p;\n");

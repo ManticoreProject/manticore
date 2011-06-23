@@ -17,6 +17,7 @@
 #include "gc-scan.h"
 
 #include <stdio.h>
+#include <string.h>
 
 int isFree (VProc_t *vp) {
 	//if no entries left return 1 else 0
@@ -35,20 +36,6 @@ void createList (VProc_t *vp) {
 	vp->proxyTableentries = 0;
 }
 
-Value_t createProxy (VProc_t *vp, Value_t fls) {
-    
-    int next = vp->proxyTableentries;
-	
-	vp->proxyTableentries++;
-	
-	//printf("Create Proxy pointer = %d\n",vp->proxyTableentries);
-    
-    vp->proxyTable[next].proxyObj = AllocProxy(vp,2,vp,next);
-    vp->proxyTable[next].localObj = fls;
-
-    return (vp->proxyTable[next].proxyObj);
-
-}
 
 void isPrintProxy (int id) {
 	
@@ -57,12 +44,31 @@ void isPrintProxy (int id) {
 
 void globalCheck (VProc_t *vp) {
 	
-	printf("Proxy Memory Check\n");
+	//printf("Proxy Memory Check, global alloc ptr is %p, the limit is %p\n",(void *)vp->globNextW,(void*)vp->globLimit);
 	
 	if ((vp->globNextW + WORD_SZB * 3) >= vp->globLimit) {
-		//AllocToSpaceChunk(vp);
+		AllocToSpaceChunkScan(vp);
 		printf("AllocProxy need more space\n");
 	}
+}
+
+void checkTable(VProc_t *self) {
+        
+        for (int i=0; i < self->proxyTableentries;i++) {
+                Value_t p = self->proxyTable[i].proxyObj;
+                //assert (isFromSpacePtr(p));
+                
+                Word_t	*p2 = ((Word_t *)ValueToPtr(p));
+                
+                if ( p2[1] != i ) { 
+                        
+                        printf("Error at slot %d, the value is %lu\n",i,(unsigned long)p2[1]);
+                        
+                        assert(p2[1] == i);
+                }
+        }
+        
+        
 }
 
 void isProxy (VProc_t *vp, int id) {
@@ -79,44 +85,54 @@ void isProxy (VProc_t *vp, int id) {
 	Word_t hdr = p[-1];
 	    printf("Hallo 3 \n");
     
-	if (getID(hdr) == 2) 
-		printf("Found Proxy, vproc %d id %d, length = %d\n",vp->id,id,GetLength(hdr));
+            if (getID(hdr) == 2) {
+		printf("Found Proxy, vproc %d id %d, length = %d and slot entry is %lu\n",vp->id,id,GetLength(hdr),(unsigned long)p[1]);
 	        printf("Position in Memory Proxy, vproc %p, globalptr %p, limit is %p there is %d left\n",(void *) vp,(void*)vp->globNextW,(void*)vp->globLimit, (int) ( vp->globLimit - vp->globNextW ));
+            } else printf("NO PROXY HEADER\n");
     } else { 
 	    printf("ERROR NO RPOXY\n");
     }
+        
+        checkTable(vp);
 }
 
 
 void deleteProxy (VProc_t *vp, int id) {
 	
-	int last = vp->proxyTableentries -1;
+	int last = vp->proxyTableentries - 1;
 	
-	if (id != last) {
-		vp->proxyTable[id].proxyObj = vp->proxyTable[last].proxyObj;
-		vp->proxyTable[id].localObj = vp->proxyTable[last].localObj;
+	printf("delete id = %d , last = %d, scanp = %p, global %p, vproc %d\n",id,last,(void*)(vp->proxyTable[id].localObj),(void*)(vp->proxyTable[id].proxyObj),vp->id);
+	
+	if (id <= last) {
+		memcpy(&vp->proxyTable[id].proxyObj, &vp->proxyTable[last].proxyObj, sizeof(Value_t));
+		memcpy(&vp->proxyTable[id].localObj, &vp->proxyTable[last].localObj, sizeof(Value_t));
 		
-		vp->proxyTable[last].proxyObj = (Value_t)(0);
-		vp->proxyTable[last].localObj = (Value_t)(0);
-		
+		if (id != last) {
+			vp->proxyTable[last].proxyObj = (Value_t)(0xdeadbeafdeadbeaf);
+			vp->proxyTable[last].localObj = (Value_t)(0xdeadbeafdeadbeaf);
+		}
 		//if (isPtr(vp->proxyTable[last].localObj)) printf("id = %d is ptr\n",last);
 		//if (isForwardPtr(vp->proxyTable[last].localObj)) printf("id = %d is fwd ptr\n",last);
 		
-		Word_t * scanP = (Word_t *)(vp->proxyTable[id].proxyObj);
+		Word_t *proxyObj = (Word_t *)(vp->proxyTable[id].proxyObj);
+		proxyObj[1] = (Word_t)id;
+		vp->proxyTable[id].proxyObj = PtrToValue(proxyObj);
+                
+		printf("new id is %d, localptr %p, globalptr %p\n",id,(void*)(vp->proxyTable[id].localObj),(void*)(vp->proxyTable[id].proxyObj));
 		
-		*(scanP+1) = (Word_t)(id);
+		vp->proxyTableentries = last;
 		
-		Value_t v = vp->proxyTable[id].localObj;
-		Word_t	*p = ((Word_t *)ValueToPtr(v));
-		Word_t	hdr = p[-1];
-		if (hdr == 0) printf("MinorNonProm Null pointer in vp %d, id = %d\n",vp->id,id);
-		if (getID(hdr) != 1) printf("MinorNonProm HeaderID Error hdrid = %d in vp %d, id = %d\n",getID(hdr),vp->id,id);
-		if (GetLength(hdr) != 2) printf("MinorNonProm LengthHDR Error length = %d in vp %d, id = %d\n",GetLength(hdr),vp->id,id);
+		//printf("delete id = %d , last = %d, scanp = %lu, global %p, vproc %d\n",id,last,(unsigned long)(vp->proxyTable[id].localObj),(void*)(vp->proxyTable[id].proxyObj),vp->id);
+	} else {
+		if(id > last) printf("WARNING something is wrong in delete\n");
 		
-		//printf("delete id = %d , last = %d, scanp = %llu\n",id,last,(long long int)(vp->proxyTable[id].localObj));
+		vp->proxyTable[last].proxyObj = (Value_t)(0xdeadbeafdeadbeaf);
+		vp->proxyTable[last].localObj = (Value_t)(0xdeadbeafdeadbeaf);
+		//printf("delete id = %d , last = %d, scanp = %p, global %p, vproc %d\n",id,last,(void*)(vp->proxyTable[id].localObj),(void*)(vp->proxyTable[id].proxyObj),vp->id);
 	}
+        
 	//printf("Max = %d, last = %d\n",vp->proxyTableentries,last);
-	vp->proxyTableentries = last;
+	
 }
 
 void promoteCont (VProc_t *vp, int id) {
@@ -130,11 +146,49 @@ void promoteCont (VProc_t *vp, int id) {
 	deleteProxy(vp,id);
 }
 
-
-Value_t returnCont (VProc_t *vp,int id) {
+//returns the continuation wherever it is
+Value_t returnCont (Value_t proxyObj) {
 	
-	//printf("return cont Vproc = %d, id = %d\n",vp->id,id);
+	Word_t	*p2 = ((Word_t *)ValueToPtr(proxyObj));
+	Word_t	oldHdr = p2[-1];
+	Value_t v;
+	VProc_t * vp = (VProc_t *)p2[0];
+	
+	printf("return cont Vproc = %d, id = %lu, proxy is at %p\n",vp->id,(unsigned long)p2[1],(void*)proxyObj);
+	
+	if ( ((unsigned long)p2[1] < 512) ) { 
+                
+		v = (Value_t)ValueToPtr(vp->proxyTable[p2[1]].localObj);
+		deleteProxy(vp,(int)p2[1]);
+		
+		printf("return cont Vproc = %d, id = %lu, cont is at %p\n",vp->id,(unsigned long)p2[1],(void*)v);
+		
+	} else { 
+		v = (Value_t)ValueToPtr((Value_t)p2[1]);
+		printf("retunr global cont proxy = %p, returncont %p\n",(void*)(p2),(void*)v);
+                
+	}
+        
+	return ((v));
+}
 
-	return (vp->proxyTable[id].localObj);
+Value_t createProxy (VProc_t *vp, Word_t * fls) {
+	
+	int next = vp->proxyTableentries;
+        
+	Value_t p = AllocProxy(vp,2,vp,next);
+	
+	vp->proxyTable[next].proxyObj = p;
+	vp->proxyTable[next].localObj = PtrToValue(fls);
+	
+	
+	printf("Create Proxy pointer = %d, next is %d, the continuation is %p and as prtoval %p, the proxy %p, vproc %d\n",vp->proxyTableentries + 1,next, (void*)(fls),(void*)PtrToValue(fls),(void*)p ,vp->id);
+	
+	//isProxy(vp, next);
+	
+	vp->proxyTableentries++;
+	
+	return (p);
+	
 }
 

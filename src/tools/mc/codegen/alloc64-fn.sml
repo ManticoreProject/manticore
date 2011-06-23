@@ -132,10 +132,9 @@ functor Alloc64Fn (
         val hdrWord = W.toLargeInt (
 		      W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
 		                    W.<< (W.fromInt id, 0w1)), 0w1) )
+        val _ = if Controls.get CodegenControls.debug then print (" special\n") else ()
     in	  
-	if ((IntInf.fromInt totalSize) > Spec.ABI.maxObjectSzB)
-	then raise Fail "object size too large"
-	else (totalSize, hdrWord, stms)
+	(totalSize, hdrWord, stms)
     end (* allocSpecialObj *)
 
     fun offAp i = T.ADD(MTy.wordTy, T.REG(MTy.wordTy, Regs.apReg), i)
@@ -312,7 +311,7 @@ functor Alloc64Fn (
 	      end
 	val globalAP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg)
 	val globalLP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globLimit, vpReg)
-	in
+	in            
 	   {stms=[ setVP ],
 	      allocCheck=T.CMP (MTy.wordTy, T.Basis.LE,
 	   T.SUB (MTy.wordTy, globalLP, globalAP),

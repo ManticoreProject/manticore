@@ -240,19 +240,16 @@ void AllocToSpaceChunk (VProc_t *vp)
 
     vp->globNextW = chunk->baseAddr + WORD_SZB;
     vp->globLimit = chunk->baseAddr + chunk->szB;
-        
-        printf("get new memory AllocToSpace\n");
 
 }
 
 /* Allocates a new to space chunk
  and adds the old chunk to the unscanned list of the global GC
+This function can't be called within a global GC function!
  */
 
 void AllocToSpaceChunkScan(VProc_t * vp) {
-        
-        printf("Need new memory\n");
-        
+
         //save the old global allocation pointer 
         MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
         //allocate a new chunk of global memory

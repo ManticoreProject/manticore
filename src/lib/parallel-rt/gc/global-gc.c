@@ -391,8 +391,8 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     /* process the proxy table */
     for (int i=0; i < vp->proxyTableentries;i++) {
 	Value_t p = vp->proxyTable[i].proxyObj;
-	assert (isFromSpacePtr(p));
-	vp->proxyTable[i].proxyObj = ForwardObjGlobal(vp, p);
+	if (isFromSpacePtr(p)) vp->proxyTable[i].proxyObj = ForwardObjGlobal(vp, p);
+        else printf("No From Space PTR in PRXY\n");
     }	
 	
     ScanVProcHeap (vp);

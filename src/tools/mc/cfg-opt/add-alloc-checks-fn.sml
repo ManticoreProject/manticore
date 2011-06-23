@@ -62,22 +62,26 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 
   (* global alloc check label annotations *)
     val {clrFn=gClrAlloc, getFn=gGetAlloc, peekFn=gPeekAlloc, setFn=gSetAlloc} =
-	  CFG.Label.newProp (fn _ => 0w0)
+          CFG.Label.newProp (fn _ => 0w0)
 
   (* the amount of storage allocated by an expression *)
     fun expAlloc (CFG.E_Alloc(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
-      | expAlloc _ = 0w0
+          | expAlloc _ = 0w0
 
   (* the amount of storage allocated by an expression *)
     fun gExpAlloc (CFG.E_GAlloc(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
-      | gExpAlloc _ = 0w0
+          | gExpAlloc (CFG.E_AllocSpecial(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
+          | gExpAlloc _ = 0w0
 
     fun transform (CFG.MODULE{name, externs, code}) = let
 	  val graph = makeGraph code
 	  val fbSet = FB.feedback graph
         (* add allocation checks as needed to a function *)
 	  fun addAllocChecks hcKind = let
-                val checkLabel = "Check"
+                val (checkLabel, expAlloc, clrAlloc, getAlloc, peekAlloc, setAlloc) = (
+                case hcKind
+                        of CFG.HCK_Local => ("Check", expAlloc, clrAlloc, getAlloc, peekAlloc, setAlloc)
+                        | CFG.HCK_Global => ("GCheck", gExpAlloc, gClrAlloc, gGetAlloc, gPeekAlloc, gSetAlloc))
 	      (* compute the allocation performed by a function and annotate
 	       * its label with it.
 	       *)
@@ -182,6 +186,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		  rewrite
 		end
 	  val code = List.foldr (addAllocChecks CFG.HCK_Local) [] code
+          val code = List.foldr (addAllocChecks CFG.HCK_Global) [] code
 	  val module = CFG.mkModule(name, externs, code)
 	  in
 	  (* recompute the census counts *)
