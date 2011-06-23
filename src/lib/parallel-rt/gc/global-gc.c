@@ -388,19 +388,34 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 	}
     }
 	
-    /* process the proxy table */
-    for (int i=0; i < vp->proxyTableentries;i++) {
-	Value_t p = vp->proxyTable[i].proxyObj;
-	if (isFromSpacePtr(p)) vp->proxyTable[i].proxyObj = ForwardObjGlobal(vp, p);
-        else printf("No From Space PTR in PRXY\n");
-    }	
-	
     ScanVProcHeap (vp);
 
     PushToSpaceChunks (vp, original, true);
 
   /* scan to-space chunks */
     ScanGlobalToSpace (vp);
+         
+  /* process the proxy table */
+  for (int i=0; i < vp->proxyTableentries;i++) {
+        Value_t p = vp->proxyTable[i].proxyObj;
+        assert(isFromSpacePtr(p));
+        //get the proxy object and check if it is a forward pointer otherwise delete it
+        Word_t *proxyObj = (Word_t *)(vp->proxyTable[i].proxyObj);
+        if (isForwardPtr(proxyObj[-1])) vp->proxyTable[i].proxyObj = ForwardObjGlobal(vp, p);
+        else { 
+                //in this case no root pointed at the proxy and we can just delete it
+                int last = vp->proxyTableentries - 1;
+                
+                proxyObj = (Word_t *)(vp->proxyTable[last].proxyObj);
+                proxyObj[1] = (Word_t)i;
+                vp->proxyTable[i].proxyObj = PtrToValue(proxyObj);
+		vp->proxyTable[i].localObj = vp->proxyTable[last].localObj;
+                
+                vp->proxyTableentries--;
+                
+        }
+  }	
+        
     LogGlobalGCVPDone (vp, 0/*FIXME*/);
 
 #ifndef NDEBUG
@@ -715,7 +730,6 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 
     for (int i=0; i < self->proxyTableentries;i++) {
         Value_t p = self->proxyTable[i].proxyObj;
-        //assert (isFromSpacePtr(p));
         
         Word_t	*p2 = ((Word_t *)ValueToPtr(p));
         
