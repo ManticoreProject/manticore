@@ -30,10 +30,12 @@
 
   fun dotp (sv, v) = let
     fun f (i, x) = x * (v!i)
-    val m = PArray.map f sv
+    (* val m = PArray.map f sv *)
+    val m = PArray.map (f, sv)
     fun plus (a:double, b:double) = a+b
     in
-      PArray.reduce plus 0.0 m
+      (* PArray.reduce plus 0.0 m *)
+      PArray.reduce (plus, 0.0, m)
     end
 
   fun rnd () = Rand.randDouble (0.0, 1.0)
