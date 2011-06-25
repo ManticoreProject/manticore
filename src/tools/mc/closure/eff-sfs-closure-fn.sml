@@ -248,7 +248,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                     then (VMap.insert (newMap, v, (fut, lut')),
                                           retMap)
                                     else (newMap, retMap))
-                            (childMap, childMap) (getFVMap f)
+                            (VMap.empty, childMap) (getFVMap f)
         in
             setFVMap (f, newMap);
             retMap
@@ -394,7 +394,8 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
             then let
                     val newArgsMap = getParams f
                     val oldNewList = VMap.listItemsi newArgsMap
-                    val params = params @ (List.map (fn (p, _) => p) oldNewList)
+                    val newParams = List.map (fn (p, _) => p) oldNewList
+                    val params = params @ newParams
                     val body = convertExp body
                     val origType = CV.typeOf f
                     val newType = case origType
@@ -406,9 +407,12 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                                               ":", CPSTyUtil.toString (CV.typeOf f)])
                     val _ = CV.setType (f, newType)
                     val _ = if !closureConversionDebug
-                            then print (concat[CV.toString f, " closed. Orig type: ",
-                                               CPSTyUtil.toString origType, " New type: ",
-                                               CPSTyUtil.toString newType, "\n"])
+                            then print (concat[CV.toString f, " added params\nOrig: ",
+                                               CPSTyUtil.toString origType, "\nNew : ",
+                                               CPSTyUtil.toString newType, "\nParams :",
+                                               String.concatWith "," (List.map CV.toString newParams), "\nNParams:",
+                                               String.concatWith "," (List.map CV.toString (List.map (fn (_, p) => p) oldNewList)),
+                                               "\n"])
                             else ()
                 in
                     C.FB{f=f, params=params, rets=rets, body=body}
@@ -639,8 +643,8 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
             then let
                     val newArgsMap = getParams f
                     val oldNewList = VMap.listItemsi newArgsMap
+                    val params = subst' (newArgsMap, params)
                     val env = List.foldr (fn ((x, y), m) => rename (m, x, y)) env oldNewList
-                    val params = subst' (env, params)
                     val body = convertExp (env, body)
                 in
                     C.FB{f=f, params=params, rets=rets, body=body}
@@ -714,6 +718,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         if !enableClosureConversion
         then let
                 val _ = FreeVars.analyze module
+                val _ = CFACPS.analyze module
                 val _ = setSafety module
                 val _ = setSNs module
                 val _ = updateLUTs module
@@ -726,6 +731,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 val module = convert (VMap.empty, module)
                 val _ = print (concat ["Closed: ", Int.toString (ST.count cntFunsClosed)])
                 val _ = print (concat ["Partial-closed: ", Int.toString (ST.count cntFunsPartial)])
+                val _ = CFACPS.clearInfo module
                 val _ = FreeVars.clear module
 	        val _ = CPSCensus.census module
             in
