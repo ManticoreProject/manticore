@@ -219,58 +219,59 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
      * c. In the intermediate nodes, if the FV is used, fut = SN(f), else fut=lut(union-map)
      *)
     fun updateLUTs (CPS.MODULE{body, ...}) = let
-          fun mergeFVMaps (maps) = let
-              fun mergeMaps ([], final) = final
-                | mergeMaps (m::maps, final) =
-                  mergeMaps (maps,
-                             (VMap.foldli (fn (v, p as (fut, lut), final) =>
+        fun mergeFVMaps (maps) = let
+            fun mergeMaps ([], final) = final
+              | mergeMaps (m::maps, final) =
+                mergeMaps (maps,
+                           (VMap.foldli (fn (v, p as (fut, lut), final) =>
                                             case VMap.find (final, v)
                                              of NONE => VMap.insert (final, v, p)
                                               | SOME (fut', lut') =>
                                                 VMap.insert (final, v, (Int.min (fut, fut'),
                                                                         Int.max (lut, lut'))))
-                                         final m))
-          in
-              case maps
-               of [] => VMap.empty
-                | [m] => m
-                | m::ms => mergeMaps (ms, m)
-          end
-          fun doLambda (CPS.FB{f, params, rets, body}) = let
-              val childMap = doExp body
-              val (newMap, retMap) =
-                  VMap.foldli (fn (v, p as (fut, lut), (newMap, retMap)) => 
-                                 case VMap.find (retMap, v)
-                                  of NONE => (newMap,
-                                              VMap.insert (retMap, v, p))
-                                   | SOME (_, lut') => 
-                                     if (lut' > lut)
-                                     then (VMap.insert (newMap, v, (fut, lut')),
-                                           retMap)
-                                     else (newMap, retMap))
-                  (childMap, childMap) (getFVMap f)
-          in
-              setFVMap (f, newMap);
-              retMap
-          end
-          and doExp (CPS.Exp(_, e)) = (case e 
-                 of CPS.Let(xs, _, e) => (doExp e)
-                  | CPS.Fun(fbs, e) => (mergeFVMaps ((doExp e)::(List.map doLambda fbs)))
-                  | CPS.Cont(fb, e) => (mergeFVMaps([doLambda fb, doExp e]))
-                  | CPS.If(_, e1, e2) => (mergeFVMaps([doExp e1, doExp e2]))
-                  | CPS.Switch(_, cases, dflt) => let
-                        val caseMaps = List.map (fn c => doExp (#2 c)) cases
-                        val l = case dflt of NONE => caseMaps
-                                   | SOME e => (doExp e)::caseMaps
-                    in
-                        mergeFVMaps l
-                    end
-                  | CPS.Apply _ => VMap.empty
-                  | CPS.Throw _ => VMap.empty
-                (* end case *))
-          in
-            doLambda body
-          end
+                                        final m))
+        in
+            case maps
+             of [] => VMap.empty
+              | [m] => m
+              | m::ms => mergeMaps (ms, m)
+        end
+        fun doLambda (CPS.FB{f, params, rets, body}) = let
+            val childMap = doExp body
+            val (newMap, retMap) =
+                VMap.foldli (fn (v, p as (fut, lut), (newMap, retMap)) => 
+                                case VMap.find (retMap, v)
+                                 of NONE => (newMap,
+                                             VMap.insert (retMap, v, p))
+                                  | SOME (_, lut') => 
+                                    if (lut' > lut)
+                                    then (VMap.insert (newMap, v, (fut, lut')),
+                                          retMap)
+                                    else (newMap, retMap))
+                            (childMap, childMap) (getFVMap f)
+        in
+            setFVMap (f, newMap);
+            retMap
+        end
+        and doExp (CPS.Exp(_, e)) = (
+            case e 
+             of CPS.Let(xs, _, e) => (doExp e)
+              | CPS.Fun(fbs, e) => (mergeFVMaps ((doExp e)::(List.map doLambda fbs)))
+              | CPS.Cont(fb, e) => (mergeFVMaps([doLambda fb, doExp e]))
+              | CPS.If(_, e1, e2) => (mergeFVMaps([doExp e1, doExp e2]))
+              | CPS.Switch(_, cases, dflt) => let
+                    val caseMaps = List.map (fn c => doExp (#2 c)) cases
+                    val l = case dflt of NONE => caseMaps
+                                       | SOME e => (doExp e)::caseMaps
+                in
+                    mergeFVMaps l
+                end
+              | CPS.Apply _ => VMap.empty
+              | CPS.Throw _ => VMap.empty
+        (* end case *))
+    in
+        doLambda body
+    end
 
     fun getSafeFuns (CPS.MODULE{body, ...}) = let
         fun doLambda (CPS.FB{f, params, rets, body}) = f::(doExp body)
@@ -374,122 +375,165 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                 setParams (f, 
                                            List.foldl (fn (p, m) => VMap.insert (m, p, CV.copy p))
                                                        VMap.empty toCopy)
-                                
                             end))
         end
     in
         List.app computeParam funs
     end
 
-    (* env is a VMap.empty, CV.Var->CV.Var *)
-    fun rename (env, x, y) = (
-	(* every use of x will be replaced by a use of y *)
-	  VMap.insert(env, x, y))
-
-    (* apply a substitution to a variable *)
-    fun subst (env, x) = (case VMap.find(env, x)
-	   of SOME y => y
-	    | NONE => x
-	  (* end case *))
-
-    (* apply a substitution to a list of variables *)
-    fun subst' (env, []) = []
-      | subst' (env, x::xs) = subst(env, x) :: subst'(env, xs)
 
     (*
-     * Convert does two things:
-     * - Changes the FBs to take their new parameters and alters the uses within the
-     * environment to be to the new params instead of the previously FV
-     * - Changes Apply/Throw to safe functions to take the new parameters
+     * Simply adds the new parameters to the function.
+     * Note that they retain their old names because this allows the type-based
+     * iterative fixup to correctly globally update all associated types without
+     * performing CFA a second time to give us enough info to fix them up directly.
      *)
-    fun getSafeCallTarget f =
-        case CFACPS.equivalentFuns f
-         of [] => NONE
-          | [a] => (if getSafe a andalso (case CV.kindOf a
-                                           of C.VK_Fun _ => true
-                                            | C.VK_Cont _ => true
-                                            | _ => false)
-                    then SOME a else NONE)
-          | _ => NONE
-
-    fun convertFB (env, C.FB{f, params, rets, body}) =
-        if getSafe f
-        then let
-                val newArgsMap = getParams f
-                val oldNewList = VMap.listItemsi newArgsMap
-                val params = params @ (List.map (fn (_, p) => p) oldNewList)
-                val env = List.foldr (fn ((x, y), m) => rename (m, x, y)) env oldNewList
-                val body = convertExp (env, body)
-            in
-                C.FB{f=f, params=params, rets=rets, body=body}
-            end
-        else C.FB{f=f, params=params, rets=rets, body=convertExp (env, body)}
-    and convertExp (env, C.Exp(ppt,t)) = (case t
-     of C.Let (lhs, rhs, exp) => C.mkLet(lhs, convertRHS(env, rhs),
-                                         convertExp (env, exp))
-      | C.Fun (lambdas, exp) => (C.mkFun (List.map (fn fb => convertFB (env, fb)) lambdas, convertExp (env, exp))) 
-      | C.Cont (lambda, exp) => (C.mkCont (convertFB (env, lambda), convertExp (env, exp)))
-      | C.If (cond, e1, e2) => C.mkIf(CondUtil.map (fn x => subst(env, x)) cond,
-		                      convertExp(env, e1),
-		                      convertExp(env, e2))
-      | C.Switch(x, cases, dflt) => let
-	    val x = subst(env, x)
-	in
-	    C.mkSwitch (x,
-		        List.map (fn (l, e) => (l, convertExp(env, e))) cases,
-		        Option.map (fn e => convertExp(env, e)) dflt)
-	end
-      | C.Apply(f, args, conts) => let
-	    val f' = subst(env, f)
-	    val args = subst'(env, args)
-	    val conts = subst'(env, conts)
-	in
-            case getSafeCallTarget f
-             of SOME a => let
-                    val newArgsMap = getParams a
-                    val newArgs = subst' (env, VMap.foldri (fn (v, _, l) => v::l) [] newArgsMap)
-                    val args = args @ newArgs
+    fun addParams (C.MODULE{name,externs,body}) = let
+        fun convertFB (C.FB{f, params, rets, body}) =
+            if getSafe f
+            then let
+                    val newArgsMap = getParams f
+                    val oldNewList = VMap.listItemsi newArgsMap
+                    val params = params @ (List.map (fn (p, _) => p) oldNewList)
+                    val body = convertExp body
+                    val origType = CV.typeOf f
+                    val newType = case origType
+                                   of CTy.T_Fun (_, retTys) =>
+                                      CTy.T_Fun(List.map CV.typeOf params, retTys)
+                                    | CTy.T_Cont (_) => 
+                                      CTy.T_Cont(List.map CV.typeOf params)
+                                    | x => raise Fail (concat["Non-function type - ", CV.toString f,
+                                                              ":", CPSTyUtil.toString (CV.typeOf f)])
+                    val _ = CV.setType (f, newType)
+                    val _ = if !closureConversionDebug
+                            then print (concat[CV.toString f, " closed. Orig type: ",
+                                               CPSTyUtil.toString origType, " New type: ",
+                                               CPSTyUtil.toString newType, "\n"])
+                            else ()
                 in
-                    C.mkApply (f', args, conts)
+                    C.FB{f=f, params=params, rets=rets, body=body}
                 end
-              | NONE => C.mkApply(f', args, conts)
-	end
-      | C.Throw(k, args) => let
-	    val k' = subst(env, k)
-	    val args = subst'(env, args)
-	in
-            case getSafeCallTarget k
-             of SOME a => let
-                    val newArgsMap = getParams a
-                    val newArgs = subst' (env, VMap.foldri (fn (v, _, l) => v::l) [] newArgsMap)
-                    val args = args @ newArgs
-                in
-                    C.mkThrow (k', args)
-                end
-              | NONE => C.mkThrow (k', args)
-	end)
-    and convertRHS(env, C.Var(vars)) = C.Var(subst'(env,vars))
-      | convertRHS(env, C.Cast(ty,v)) = C.Cast(ty,subst(env,v))
-      | convertRHS(env, C.Select(i,v)) = C.Select(i,subst(env,v))
-      | convertRHS(env, C.Update(i,v1,v2)) = C.Update(i,subst(env,v1),subst(env,v2))
-      | convertRHS(env, C.AddrOf(i,v)) = C.AddrOf(i, subst(env,v))
-      | convertRHS(env, C.Alloc(ty,vars)) = C.Alloc(ty, subst'(env,vars))
-      | convertRHS(env, C.Promote (v)) = C.Promote(subst(env,v))
-      | convertRHS(env, C.Prim(p)) = C.Prim(PrimUtil.map (fn x => subst(env, x)) p)
-      | convertRHS(env, C.CCall (var, vars)) = C.CCall (var, subst'(env,vars))
-      | convertRHS(env, C.VPLoad(off,var)) = C.VPLoad (off, subst(env,var))
-      | convertRHS(env, C.VPStore (off, v1, v2)) = C.VPStore (off, subst(env, v1), subst(env,v2))
-      | convertRHS(env, C.VPAddr (off, var)) = C.VPAddr (off, subst(env, var))
-      | convertRHS(env, x) = x
-
-    fun convert (env, C.MODULE{name,externs,body}) = let
+            else C.FB{f=f, params=params, rets=rets, body=convertExp body}
+        and convertExp (C.Exp(ppt,t)) = (
+            case t
+             of C.Let (lhs, rhs, exp) => C.mkLet(lhs, rhs,
+                                                 convertExp exp)
+              | C.Fun (lambdas, exp) => (C.mkFun (List.map (fn fb => convertFB (fb)) lambdas, convertExp (exp))) 
+              | C.Cont (lambda, exp) => (C.mkCont (convertFB (lambda), convertExp (exp)))
+              | C.If (cond, e1, e2) => C.mkIf(cond,
+		                              convertExp(e1),
+		                              convertExp(e2))
+              | C.Switch(x, cases, dflt) => 
+	        C.mkSwitch (x,
+		            List.map (fn (l, e) => (l, convertExp(e))) cases,
+		            Option.map (fn e => convertExp(e)) dflt)
+              | e => C.mkExp e)
     in
         C.MODULE{
         name=name, externs=externs,
-        body = convertFB (VMap.empty, body)}
+        body = convertFB body}
     end
 
-    local
+    (* 
+     * The function types on all variables that are equivalent to the
+     * safe/converted functions need to be fixed up to have the same
+     * type as the function now has.
+     *
+     * Because this change can affect parameters to functions, we need
+     * to push these changes through iteratively until the types no longer
+     * change.
+     * NOTE: this code is a simpler version of the code appearing in
+     * signature fixup in cps-opt/arity-raising.
+     *)
+    fun propagateFunChanges (C.MODULE{body=fb,...}) = let
+        val changed = ref false
+        fun transformParam(param) = let
+            fun getParamFunType (l) = let
+                val lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
+            in
+                if List.length lambdas = 0
+                then CV.typeOf param
+                else let
+                        val l::lambdas = lambdas
+                    in
+                        l
+(*                        foldr ArityRaising.safeMergeTypes l lambdas *)
+                    end
+            end
+            fun buildType (CPSTy.T_Tuple (heap, tys), cpsValues) = let
+                fun updateSlot (origTy, cpsValue) = (
+                    case cpsValue
+                     of CFACPS.LAMBDAS(l) => getParamFunType l
+                      | CFACPS.TUPLE (values) => buildType (origTy, values)
+                      | _ => origTy
+                (* end case *))
+                val newTys = ListPair.map updateSlot (tys, cpsValues)
+            in
+                CPSTy.T_Tuple (heap, newTys)
+            end
+              | buildType (ty, _) = ty
+        in
+            case CFACPS.valueOf param
+             of CFACPS.LAMBDAS(l) => let
+                    val newType = getParamFunType l
+                in
+                    if CPSTyUtil.equal (CV.typeOf param, newType)
+                    then ()
+                    else (changed := true;
+                          CV.setType (param, newType))
+                end
+
+              | CFACPS.TUPLE(values) => let
+                    val newType = buildType (CV.typeOf param, values)
+                in
+                    if CPSTyUtil.equal (CV.typeOf param, newType)
+                    then ()
+                    else (changed := true;
+                          CV.setType (param, newType))
+                end
+              | _ => ()
+        end
+        and handleLambda(func as C.FB{f, params, rets, body}) = let
+            val origType = CV.typeOf f
+            val _ = List.app transformParam params
+            val _ = List.app transformParam rets
+	    val newType = case origType
+                           of CTy.T_Fun _ => CTy.T_Fun (List.map CV.typeOf params, List.map CV.typeOf rets)
+                            | CTy.T_Cont _ => CTy.T_Cont (List.map CV.typeOf params)
+                            | _ => raise Fail (concat["Non-function type variable in a FB block: ", CV.toString f, " : ",
+                                                      CPSTyUtil.toString origType])
+            val _ = CV.setType (f, newType)
+	in
+            walkBody (body)
+	end
+        and walkBody (C.Exp(_, e)) = (
+            case e
+             of C.Let (lhs, _, e) => (walkBody (e))
+              | C.Fun (lambdas, body) => (List.app handleLambda lambdas; walkBody (body))
+              | C.Cont (f, body) => (handleLambda f; walkBody (body))
+              | C.If (_, e1, e2) => (walkBody (e1); walkBody (e2))
+              | C.Switch (_, cases, body) => (
+                List.app (fn (_, e) => walkBody (e)) cases;
+                Option.app (fn x => walkBody (x)) body)
+              | C.Apply (_, _, _) => ()
+              | C.Throw (_, _) => ())
+        (*
+         * If we change the signature of a function that was passed in as an argument
+         * to an earlier function, we may need to go back and fix it up. Therefore, we
+         * iterate until we reach a fixpoint.
+         *)
+        fun loopParams (fb) = (
+            handleLambda (fb);
+            if (!changed)
+            then (changed := false; loopParams (fb))
+            else ())
+    in
+        loopParams(fb)
+    end
+
+
+
+(*    local
         val {setFn, getFn=getFixed, ...} = CV.newProp (fn f => false)
     in
     val getFixed = getFixed
@@ -547,31 +591,141 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
               | C.Throw(k, args) => ())
     in
         fixupFB body
+    end *)
+
+    (* env is a VMap.empty, CV.Var->CV.Var *)
+    fun rename (env, x, y) = (
+	(* every use of x will be replaced by a use of y *)
+	  VMap.insert(env, x, y))
+
+    (* apply a substitution to a variable *)
+    fun subst (env, x) = (case VMap.find(env, x)
+	   of SOME y => let
+                  val xty = CV.typeOf x
+                  val yty = CV.typeOf y
+              in
+                  if not(CPSTyUtil.equal (xty, yty))
+                  then CV.setType (y, xty)
+                  else ();
+                  y
+              end
+	    | NONE => x
+	  (* end case *))
+
+    (* apply a substitution to a list of variables *)
+    fun subst' (env, []) = []
+      | subst' (env, x::xs) = subst(env, x) :: subst'(env, xs)
+
+    (*
+     * Convert does two things:
+     * - Changes the FB param names from the "original" ones with associated
+     * CFA info (so we could type-correct them!) to new ones, with the
+     * copied type blasted to be equal to the one from the source
+     * - Changes Apply/Throw to safe functions to take the new parameters
+     *)
+    fun getSafeCallTarget f =
+        case CFACPS.equivalentFuns f
+         of [] => NONE
+          | [a] => (if getSafe a andalso (case CV.kindOf a
+                                           of C.VK_Fun _ => true
+                                            | C.VK_Cont _ => true
+                                            | _ => false)
+                    then SOME a else NONE)
+          | _ => NONE
+
+    fun convert (env, C.MODULE{name,externs,body}) = let
+        fun convertFB (env, C.FB{f, params, rets, body}) =
+            if getSafe f
+            then let
+                    val newArgsMap = getParams f
+                    val oldNewList = VMap.listItemsi newArgsMap
+                    val env = List.foldr (fn ((x, y), m) => rename (m, x, y)) env oldNewList
+                    val params = subst' (env, params)
+                    val body = convertExp (env, body)
+                in
+                    C.FB{f=f, params=params, rets=rets, body=body}
+                end
+            else C.FB{f=f, params=params, rets=rets, body=convertExp (env, body)}
+        and convertExp (env, C.Exp(ppt,t)) = (
+            case t
+             of C.Let (lhs, rhs, exp) => C.mkLet(lhs, convertRHS(env, rhs),
+                                                 convertExp (env, exp))
+              | C.Fun (lambdas, exp) => (C.mkFun (List.map (fn fb => convertFB (env, fb)) lambdas, convertExp (env, exp))) 
+              | C.Cont (lambda, exp) => (C.mkCont (convertFB (env, lambda), convertExp (env, exp)))
+              | C.If (cond, e1, e2) => C.mkIf(CondUtil.map (fn x => subst(env, x)) cond,
+		                              convertExp(env, e1),
+		                              convertExp(env, e2))
+              | C.Switch(x, cases, dflt) => let
+	            val x = subst(env, x)
+	        in
+	            C.mkSwitch (x,
+		                List.map (fn (l, e) => (l, convertExp(env, e))) cases,
+		                Option.map (fn e => convertExp(env, e)) dflt)
+	        end
+              | C.Apply(f, args, conts) => let
+	            val f' = subst(env, f)
+	            val args = subst'(env, args)
+	            val conts = subst'(env, conts)
+	        in
+                    case getSafeCallTarget f
+                     of SOME a => let
+                            val newArgsMap = getParams a
+                            val newArgs = subst' (env, VMap.foldri (fn (v, _, l) => v::l) [] newArgsMap)
+                            val args = args @ newArgs
+                        in
+                            C.mkApply (f', args, conts)
+                        end
+                      | NONE => C.mkApply(f', args, conts)
+	        end
+              | C.Throw(k, args) => let
+	            val k' = subst(env, k)
+	            val args = subst'(env, args)
+	        in
+                    case getSafeCallTarget k
+                     of SOME a => let
+                            val newArgsMap = getParams a
+                            val newArgs = subst' (env, VMap.foldri (fn (v, _, l) => v::l) [] newArgsMap)
+                            val args = args @ newArgs
+                        in
+                            C.mkThrow (k', args)
+                        end
+                      | NONE => C.mkThrow (k', args)
+	        end)
+        and convertRHS(env, C.Var(vars)) = C.Var(subst'(env,vars))
+          | convertRHS(env, C.Cast(ty,v)) = C.Cast(ty,subst(env,v))
+          | convertRHS(env, C.Select(i,v)) = C.Select(i,subst(env,v))
+          | convertRHS(env, C.Update(i,v1,v2)) = C.Update(i,subst(env,v1),subst(env,v2))
+          | convertRHS(env, C.AddrOf(i,v)) = C.AddrOf(i, subst(env,v))
+          | convertRHS(env, C.Alloc(ty,vars)) = C.Alloc(ty, subst'(env,vars))
+          | convertRHS(env, C.Promote (v)) = C.Promote(subst(env,v))
+          | convertRHS(env, C.Prim(p)) = C.Prim(PrimUtil.map (fn x => subst(env, x)) p)
+          | convertRHS(env, C.CCall (var, vars)) = C.CCall (var, subst'(env,vars))
+          | convertRHS(env, C.VPLoad(off,var)) = C.VPLoad (off, subst(env,var))
+          | convertRHS(env, C.VPStore (off, v1, v2)) = C.VPStore (off, subst(env, v1), subst(env,v2))
+          | convertRHS(env, C.VPAddr (off, var)) = C.VPAddr (off, subst(env, var))
+          | convertRHS(env, x) = x
+    in
+        C.MODULE{
+        name=name, externs=externs,
+        body = convertFB (VMap.empty, body)}
     end
 
     fun transform module =
         if !enableClosureConversion
         then let
-                val _ = CFACPS.analyze module
                 val _ = FreeVars.analyze module
-                val _ = print "Setting safety\n"
                 val _ = setSafety module
-                val _ = print "Setting SNs\n"
                 val _ = setSNs module
-                val _ = print "Setting luts\n"
                 val _ = updateLUTs module
-                val _ = print "Setting slot counts\n"
                 val funs = getSafeFuns module
                 val _ = setSlots funs
-                val _ = print "Computing new params\n"
                 val _ = computeParams funs
-                val _ = print "Converting module\n"
+                val module = addParams module
+                val _ = propagateFunChanges module
+(*                val _ = fixupTypes module *)
                 val module = convert (VMap.empty, module)
-                val _ = fixupTypes module
-                val _ = print "Done converting module\n"
                 val _ = print (concat ["Closed: ", Int.toString (ST.count cntFunsClosed)])
                 val _ = print (concat ["Partial-closed: ", Int.toString (ST.count cntFunsPartial)])
-                val _ = CFACPS.clearInfo module 
                 val _ = FreeVars.clear module
 	        val _ = CPSCensus.census module
             in

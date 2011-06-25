@@ -50,9 +50,9 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
 	  }
 
     fun convert module = let
-        val module = closureConvert module
         val _ = ClassifyConts.analyze module
         val _ = cfa module
+        val module = closureConvert module
         val _ = freeVars module 
     in
         convert' module
