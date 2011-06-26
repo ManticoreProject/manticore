@@ -6,6 +6,17 @@
  * This transformation converts from a CPS IR with free variables to a
  * version of the CPS where closures are explicit and each function has
  * no free variables (known as CLO in the Shao/Appel work).
+ *
+ *       "Efficient and Safe-for-Space Closure Conversion
+ *       Zhong Shao and Andrew W. Appel
+ *       TOPLAS, V 22, Nr. 1, January 2000, pp 129-161.
+ *
+ * Note that we only use the portion of this work that determins which
+ * FVs should be turned into parameters, based on the number of available
+ * registers. Then, we rely on simple flat closure conversion to handle
+ * both unknown functions (as in the SSCC work) and for known functions
+ * that have too many FVs (different from the SSCC work, which uses linked
+ * closures).
  *)
 
 functor ClosureConvertFn (Target : TARGET_SPEC) : sig
@@ -88,10 +99,18 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 
     fun setSafety (CPS.MODULE{body, ...}) = let
           fun handleFun (f) =
-              case CFACPS.equivalentFuns f
-               of [] => ()
-                | [a] => () (* OK, just one! *)
-                | l as x::xs => (List.app setUnsafe l)
+              case CFACPS.valueOf f
+               of a as CFACPS.LAMBDAS(s) => if (VSet.numItems s = 1)
+                               then (print (concat[CV.toString f, " apply/throw safe to ", CFACPS.valueToString a, "\n"])) (* OK, just one! *)
+                               else let
+                                       val items = VSet.listItems s
+                                       val _ = print (concat[CV.toString f, " apply/throw UNsafe to:",
+                                                             CFACPS.valueToString a, "\n"])
+                                   in
+                                       List.app setUnsafe items;
+                                       setUnsafe f
+                                   end
+                | _ => (print (concat[CV.toString f, " apply/throw safe to non-LAMBDAs CFA value.\n"]))
           fun doLambda (CPS.FB{f, params, rets, body}) = doExp body
           and doExp (CPS.Exp(_, e)) = (case e 
                  of CPS.Let(xs, _, e) => (doExp e)
@@ -438,6 +457,14 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         body = convertFB body}
     end
 
+    fun getSafeCallTarget f =
+        case CFACPS.valueOf f
+         of a as CFACPS.LAMBDAS(s) =>
+            if (VSet.numItems s = 1)
+            then (SOME (hd (VSet.listItems s)))
+            else NONE
+          | _ => NONE
+
     (* 
      * The function types on all variables that are equivalent to the
      * safe/converted functions need to be fixed up to have the same
@@ -454,14 +481,13 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         fun transformParam(param) = let
             fun getParamFunType (l) = let
                 val lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
-            in
+             in
                 if List.length lambdas = 0
                 then CV.typeOf param
                 else let
                         val l::lambdas = lambdas
                     in
                         l
-(*                        foldr ArityRaising.safeMergeTypes l lambdas *)
                     end
             end
             fun buildType (CPSTy.T_Tuple (heap, tys), cpsValues) = let
@@ -627,16 +653,6 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
      * copied type blasted to be equal to the one from the source
      * - Changes Apply/Throw to safe functions to take the new parameters
      *)
-    fun getSafeCallTarget f =
-        case CFACPS.equivalentFuns f
-         of [] => NONE
-          | [a] => (if getSafe a andalso (case CV.kindOf a
-                                           of C.VK_Fun _ => true
-                                            | C.VK_Cont _ => true
-                                            | _ => false)
-                    then SOME a else NONE)
-          | _ => NONE
-
     fun convert (env, C.MODULE{name,externs,body}) = let
         fun convertFB (env, C.FB{f, params, rets, body}) =
             if getSafe f
@@ -676,10 +692,20 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                             val newArgsMap = getParams a
                             val newArgs = subst' (env, VMap.foldri (fn (v, _, l) => v::l) [] newArgsMap)
                             val args = args @ newArgs
+                            val _ = if !closureConversionDebug
+                                    then print (concat["Apply to safe call target through: ", CV.toString f,
+                                                       " renamed to: ", CV.toString f', " safe call target named: ",
+                                                       CV.toString a, "\n"])
+                                    else ()       
                         in
                             C.mkApply (f', args, conts)
                         end
-                      | NONE => C.mkApply(f', args, conts)
+                      | NONE => (
+                        if !closureConversionDebug
+                        then print (concat["Apply to unsafe call target through: ", CV.toString f,
+                                           " renamed to: ", CV.toString f', "\n"])
+                        else ();
+                        C.mkApply(f', args, conts))
 	        end
               | C.Throw(k, args) => let
 	            val k' = subst(env, k)
@@ -690,10 +716,20 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                             val newArgsMap = getParams a
                             val newArgs = subst' (env, VMap.foldri (fn (v, _, l) => v::l) [] newArgsMap)
                             val args = args @ newArgs
+                            val _ = if !closureConversionDebug
+                                    then print (concat["Throw to safe call target through: ", CV.toString k,
+                                                       " renamed to: ", CV.toString k', " safe call target named: ",
+                                                       CV.toString a, "\n"])
+                                    else ()       
                         in
                             C.mkThrow (k', args)
                         end
-                      | NONE => C.mkThrow (k', args)
+                      | NONE => (
+                        if !closureConversionDebug
+                        then print (concat["Throw to unsafe call target through: ", CV.toString k,
+                                           " renamed to: ", CV.toString k', "\n"])
+                        else ();
+                        C.mkThrow (k', args))
 	        end)
         and convertRHS(env, C.Var(vars)) = C.Var(subst'(env,vars))
           | convertRHS(env, C.Cast(ty,v)) = C.Cast(ty,subst(env,v))
