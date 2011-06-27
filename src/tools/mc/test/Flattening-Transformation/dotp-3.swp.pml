@@ -49,6 +49,7 @@
   fun prcsv ss = Print.printLn (String.concatWith "," ss)
 
   fun main (n, svTimes, vTimes, pTimes) = 
+ImplicitThread.runOnWorkGroup (WorkStealing.workGroup (), fn () =>
     if (n <= 0) then let
       val itos = Int.toString
       val tos = Long.toString
@@ -68,7 +69,7 @@
       val _ = Print.printLn "just computed dotp"
       in
         main (n-1, t1::svTimes, t2::vTimes, t3::pTimes)
-      end
+      end)
 
   val _ = main (times, nil, nil, nil)
 
