@@ -68,5 +68,7 @@
         main (n-1, t1::svTimes, t2::vTimes, t3::pTimes)
       end
 
-  val _ = main (times, nil, nil, nil)
+  fun makeItWork thunk = ImplicitThread.runOnWorkGroup (WorkStealing.workGroup (), thunk)
+
+  val _ = makeItWork (fn () => main (times, nil, nil, nil))
 
