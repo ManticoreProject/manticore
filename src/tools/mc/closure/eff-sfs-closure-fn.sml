@@ -77,82 +77,11 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     end
 
     (*
-     * We only transform functions (i.e. they are safe) if:
-     * 1) They are known
-     * 2) At each call site, that site is not shared with any other function
-     * 3) They are never passed as an argument to an unsafe function
-     * 4) They are not shared in any parameter to a function
+     * The SML/NJ Known property corresponds to whether the function variable
+     * is never captured (not just if they only have Known call sites).
      *)
-    local
-        val {setFn, getFn=getSafe, ...} =
-            CV.newProp (fn f => not(CFACPS.isEscaping f))
-    in
-    (*
-     * In addition to setting the safety property to false, this also return true if
-     * the previous safety value was true.
-     *)
-    fun setUnsafe(f) = (
-        if (getSafe f)
-        then (
-            if !closureConversionDebug andalso not(CFACPS.isEscaping f)
-            then print (concat[CV.toString f, " set unsafe.\n"])
-            else ();
-            setFn(f, false);
-            true)
-        else false)
-    val getSafe=getSafe
-    end
-
-    fun setSafety (CPS.MODULE{body, ...}) = let
-          fun handleFun (f) =
-              case CFACPS.valueOf f
-               of a as CFACPS.LAMBDAS(s) => if (VSet.numItems s = 1)
-                               then (false)
-                               else let
-                                       val items = VSet.listItems s
-                                   in
-                                       List.foldl (fn (f, b) => b orelse setUnsafe f) (setUnsafe f) items
-                                   end
-                | _ => (setUnsafe f)
-          fun doLambda (CPS.FB{f, params, rets, body}) =
-              if getSafe f
-              then let
-                      val paramsChanged = List.foldl (fn (f, b) => b orelse handleFun f) false params
-                      val retsChanged = List.foldl (fn (f, b) => b orelse handleFun f) false rets
-                  in
-                      paramsChanged orelse retsChanged orelse doExp body
-                  end
-              else let
-                      val paramsChanged = List.foldl (fn (f, b) => b orelse setUnsafe f) false params
-                      val retsChanged = List.foldl (fn (f, b) => b orelse setUnsafe f) false rets
-                  in
-                      paramsChanged orelse retsChanged orelse doExp body
-                  end
-          and doExp (CPS.Exp(_, e)) = (case e 
-                 of CPS.Let(xs, _, e) => (doExp e)
-                  | CPS.Fun(fbs, e) => (List.foldl (fn (fb,b) => b orelse doLambda fb) false fbs orelse doExp e)
-                  | CPS.Cont(fb, e) => (doLambda fb orelse doExp e)
-                  | CPS.If(_, e1, e2) => (doExp e1 orelse doExp e2)
-                  | CPS.Switch(_, cases, dflt) => let
-                        val casesChanged = List.foldl (fn (c, b) => b orelse doExp (#2 c)) false cases
-                    in
-                        case dflt
-                         of SOME e => casesChanged orelse doExp e
-                          | _ => casesChanged
-                    end
-                  | CPS.Apply (f, _, _) => handleFun f
-                  | CPS.Throw (k, _) => handleFun k
-                (* end case *))
-          fun loop () = let
-              val changed = doLambda body
-          in
-              if changed
-              then loop()
-              else ()
-          end
-    in
-        loop ()
-    end
+    fun getSafe f = (CV.useCount f = CV.appCntOf f andalso
+                     case CFACPS.callersOf f of CFACPS.Known _ => true | _ => false)
 
     (* The FV property maps from a function to a Varmap from the (raw) free variables
      * to their first and last used times (SNs). The initial values are set to
@@ -320,7 +249,13 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     end
 
     fun getSafeFuns (CPS.MODULE{body, ...}) = let
-        fun doLambda (CPS.FB{f, params, rets, body}) = f::(doExp body)
+        fun doLambda (CPS.FB{f, params, rets, body}) = let
+            val body = doExp body
+        in
+            case CV.typeOf f
+             of CTy.T_Fun _ => f::body
+              | _ => body
+        end
         and doExp (CPS.Exp(_, e)) = (
             case e 
              of CPS.Let(xs, _, e) => (doExp e)
@@ -436,7 +371,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
      *)
     fun addParams (C.MODULE{name,externs,body}) = let
         fun convertFB (C.FB{f, params, rets, body}) =
-            if getSafe f
+            if getSafe f andalso (case CV.typeOf f of CTy.T_Fun _ => true | _ => false)
             then let
                     val newArgsMap = getParams f
                     val oldNewList = VMap.listItemsi newArgsMap
@@ -473,8 +408,9 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
             case t
              of C.Let (lhs, rhs, exp) => C.mkLet(lhs, rhs,
                                                  convertExp exp)
-              | C.Fun (lambdas, exp) => (C.mkFun (List.map (fn fb => convertFB (fb)) lambdas, convertExp (exp))) 
-              | C.Cont (lambda, exp) => (C.mkCont (convertFB (lambda), convertExp (exp)))
+              | C.Fun (lambdas, exp) => (C.mkFun (List.map (fn fb => convertFB (fb)) lambdas, convertExp (exp)))
+              (* TODO: convert cont fbs by adding callee-save registers *)
+              | C.Cont (lambda, exp) => (C.mkCont (convertFB lambda, convertExp (exp)))
               | C.If (cond, e1, e2) => C.mkIf(cond,
 		                              convertExp(e1),
 		                              convertExp(e2))
@@ -547,10 +483,12 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                     if CPSTyUtil.equal (CV.typeOf param, newType)
                     then ()
                     else (changed := true;
-                          print (concat["Changed LAMBDAS(", CFACPS.valueToString a, ") for ",
-                                        CV.toString param, " from: ",
-                                        CPSTyUtil.toString (CV.typeOf param), " to: ",
-                                        CPSTyUtil.toString newType, "\n"]);
+                          if !closureConversionDebug
+                          then print (concat["Changed LAMBDAS(", CFACPS.valueToString a, ") for ",
+                                             CV.toString param, " from: ",
+                                             CPSTyUtil.toString (CV.typeOf param), " to: ",
+                                             CPSTyUtil.toString newType, "\n"])
+                          else ();
                           CV.setType (param, newType))
                 end
 
@@ -560,9 +498,11 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                     if CPSTyUtil.equal (CV.typeOf param, newType)
                     then ()
                     else (
-                          print (concat["Changed TUPLE for ", CV.toString param, " from: ",
-                                        CPSTyUtil.toString (CV.typeOf param), " to: ",
-                                        CPSTyUtil.toString newType, "\n"]);
+                          if !closureConversionDebug
+                          then print (concat["Changed TUPLE for ", CV.toString param, " from: ",
+                                             CPSTyUtil.toString (CV.typeOf param), " to: ",
+                                             CPSTyUtil.toString newType, "\n"])
+                          else ();
                           changed := true;
                           CV.setType (param, newType))
                 end
@@ -579,10 +519,11 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                                       CPSTyUtil.toString origType])
             val _ = if CPSTyUtil.equal (origType, newType)
                     then ()
-                    else (
-                          print (concat["Changed FB type for ", CV.toString f, " from: ",
-                                        CPSTyUtil.toString origType, " to: ",
-                                        CPSTyUtil.toString newType, "\n"]))
+                    else (if !closureConversionDebug
+                          then print (concat["Changed FB type for ", CV.toString f, " from: ",
+                                             CPSTyUtil.toString origType, " to: ",
+                                             CPSTyUtil.toString newType, "\n"])
+                          else ())
             val _ = CV.setType (f, newType)
 	in
             walkBody (body)
@@ -644,7 +585,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
      *)
     fun convert (env, C.MODULE{name,externs,body}) = let
         fun convertFB (env, C.FB{f, params, rets, body}) =
-            if getSafe f
+            if getSafe f andalso (case CV.typeOf f of CPSTy.T_Fun _ => true | _ => false)
             then let
                     val newArgsMap = getParams f
                     val oldNewList = VMap.listItemsi newArgsMap
@@ -700,7 +641,8 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	            val k' = subst(env, k)
 	            val args = subst'(env, args)
 	        in
-                    case getSafeCallTarget k
+                    C.mkThrow (k', args)
+(*                    case getSafeCallTarget k
                      of SOME a => let
                             val newArgsMap = getParams a
                             val newArgs = subst' (env, VMap.foldri (fn (v, _, l) => v::l) [] newArgsMap)
@@ -718,7 +660,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                         then print (concat["Throw to unsafe call target through: ", CV.toString k,
                                            " renamed to: ", CV.toString k', "\n"])
                         else ();
-                        C.mkThrow (k', args))
+                        C.mkThrow (k', args)) *)
 	        end)
         and convertRHS(env, C.Var(vars)) = C.Var(subst'(env,vars))
           | convertRHS(env, C.Cast(ty,v)) = C.Cast(ty,subst(env,v))
@@ -744,18 +686,14 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         then let
                 val _ = FreeVars.analyze module
                 val _ = CFACPS.analyze module
-                val _ = setSafety module
                 val _ = setSNs module
                 val _ = updateLUTs module
                 val funs = getSafeFuns module
-                val _ = List.app (fn f => print (concat[CV.toString f, " is safe\n"])) funs
+                val _ = List.app (fn f => print (concat[CV.toString f, " is safe.\n"])) funs
                 val _ = setSlots funs
                 val _ = computeParams funs
                 val module = addParams module
-                             val _ = print "done add\n"
                 val _ = propagateFunChanges module
-                             val _ = print "done prop\n"
-(*                val _ = fixupTypes module *)
                 val module = convert (VMap.empty, module)
                 val _ = print (concat ["Closed: ", Int.toString (ST.count cntFunsClosed)])
                 val _ = print (concat ["Partial-closed: ", Int.toString (ST.count cntFunsPartial)])
