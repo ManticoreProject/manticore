@@ -41,7 +41,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 
   (***** controls ******)
     val enableClosureConversion = ref false
-    val closureConversionDebug = ref true
+    val closureConversionDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register ClosureControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
@@ -249,13 +249,13 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     end
 
     fun getSafeFuns (CPS.MODULE{body, ...}) = let
-        fun doLambda (CPS.FB{f, params, rets, body}) = let
+        fun doLambda (CPS.FB{f, params, rets, body}) = (f::(doExp body)) (*let
             val body = doExp body
         in
             case CV.typeOf f
              of CTy.T_Fun _ => f::body
               | _ => body
-        end
+        end*)
         and doExp (CPS.Exp(_, e)) = (
             case e 
              of CPS.Let(xs, _, e) => (doExp e)
@@ -372,7 +372,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         fun isEligible f =
             case (CV.kindOf f, getSafe f)
              of (C.VK_Fun _, true) => true
-              | (C.VK_Cont _, true) => false (*TODO*)
+              | (C.VK_Cont _, true) => true
               | _ => false
         fun reduceParam f = let
             val pset = VMap.foldli (fn (v,_,s) => VSet.add(s,v)) VSet.empty (getParams f)
@@ -401,7 +401,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
      *)
     fun addParams (C.MODULE{name,externs,body}) = let
         fun convertFB (C.FB{f, params, rets, body}) =
-            if getSafe f andalso (case CV.typeOf f of CTy.T_Fun _ => true | _ => false)
+            if getSafe f (* andalso (case CV.typeOf f of CTy.T_Fun _ => true | _ => false) *)
             then let
                     val newArgsMap = getParams f
                     val oldNewList = VMap.listItemsi newArgsMap
@@ -439,7 +439,6 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
              of C.Let (lhs, rhs, exp) => C.mkLet(lhs, rhs,
                                                  convertExp exp)
               | C.Fun (lambdas, exp) => (C.mkFun (List.map (fn fb => convertFB (fb)) lambdas, convertExp (exp)))
-              (* TODO: convert cont fbs by adding callee-save registers *)
               | C.Cont (lambda, exp) => (C.mkCont (convertFB lambda, convertExp (exp)))
               | C.If (cond, e1, e2) => C.mkIf(cond,
 		                              convertExp(e1),
@@ -577,7 +576,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         fun loopParams (fb) = (
             handleLambda (fb);
             if (!changed)
-            then (changed := false; print "LOOP!\n"; loopParams (fb))
+            then (changed := false; loopParams (fb))
             else ())
     in
         loopParams(fb)
@@ -615,7 +614,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
      *)
     fun convert (env, C.MODULE{name,externs,body}) = let
         fun convertFB (env, C.FB{f, params, rets, body}) =
-            if getSafe f andalso (case CV.typeOf f of CPSTy.T_Fun _ => true | _ => false)
+            if getSafe f (* andalso (case CV.typeOf f of CPSTy.T_Fun _ => true | _ => false) *)
             then let
                     val newArgsMap = getParams f
                     val oldNewList = VMap.listItemsi newArgsMap
@@ -671,8 +670,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	            val k' = subst(env, k)
 	            val args = subst'(env, args)
 	        in
-                    C.mkThrow (k', args)
-(*                    case getSafeCallTarget k
+                    case getSafeCallTarget k
                      of SOME a => let
                             val newArgsMap = getParams a
                             val newArgs = subst' (env, VMap.foldri (fn (v, _, l) => v::l) [] newArgsMap)
@@ -690,7 +688,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                         then print (concat["Throw to unsafe call target through: ", CV.toString k,
                                            " renamed to: ", CV.toString k', "\n"])
                         else ();
-                        C.mkThrow (k', args)) *)
+                        C.mkThrow (k', args))
 	        end)
         and convertRHS(env, C.Var(vars)) = C.Var(subst'(env,vars))
           | convertRHS(env, C.Cast(ty,v)) = C.Cast(ty,subst(env,v))
@@ -719,15 +717,12 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 val _ = setSNs module
                 val _ = updateLUTs module
                 val funs = getSafeFuns module
-                val _ = List.app (fn f => print (concat[CV.toString f, " is safe.\n"])) funs
                 val _ = setSlots funs
                 val _ = computeParams funs
                 val _ = reduceParams funs
                 val module = addParams module
                 val _ = propagateFunChanges module
                 val module = convert (VMap.empty, module)
-                val _ = print (concat ["Closed: ", Int.toString (ST.count cntFunsClosed)])
-                val _ = print (concat ["Partial-closed: ", Int.toString (ST.count cntFunsPartial)])
                 val _ = CFACPS.clearInfo module
                 val _ = FreeVars.clear module
 	        val _ = CPSCensus.census module
