@@ -362,6 +362,36 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         List.app computeParam funs
     end
 
+    (*
+     * We can remove a function from the FV list if:
+     * 1) it is a function name
+     * 2) it is safe
+     * 3) all of its params have been passed in
+     *)
+    fun reduceParams funs = let
+        fun isEligible f =
+            case (CV.kindOf f, getSafe f)
+             of (C.VK_Fun _, true) => true
+              | (C.VK_Cont _, true) => false (*TODO*)
+              | _ => false
+        fun reduceParam f = let
+            val pset = VMap.foldli (fn (v,_,s) => VSet.add(s,v)) VSet.empty (getParams f)
+            val (params,funs) = VSet.foldl (fn (f, (ps,fs)) => if isEligible f
+                                                               then (ps, VSet.add (fs,f))
+                                                               else (VSet.add (ps,f), fs))
+                                           (VSet.empty, VSet.empty) pset
+            val keepFuns = VSet.foldl (fn (v,s) => if VSet.isSubset (FreeVars.envOfFun v, pset)
+                                                   then s
+                                                   else (VSet.add (s,v)))
+                           VSet.empty funs
+            val pset = VSet.union (params, keepFuns)
+            fun mustKeep (f,_) = VSet.member (pset, f)
+        in
+            setParams (f, VMap.filteri mustKeep (getParams f))
+        end
+    in
+        List.app reduceParam funs
+    end
 
     (*
      * Simply adds the new parameters to the function.
@@ -692,6 +722,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 val _ = List.app (fn f => print (concat[CV.toString f, " is safe.\n"])) funs
                 val _ = setSlots funs
                 val _ = computeParams funs
+                val _ = reduceParams funs
                 val module = addParams module
                 val _ = propagateFunChanges module
                 val module = convert (VMap.empty, module)
