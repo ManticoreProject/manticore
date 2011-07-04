@@ -107,7 +107,7 @@ structure RopePair (* : ROPE_PAIR *) = struct
   (* Zipping silently completes when one rope runs out. *)
     fun zip (r1, r2) = failwith "todo" (* mapP (fn (a,b) => (a,b), r1, r2) *)
 
-  (* unzipP : ('a * 'b) rope -> 'a rope * 'b rope *)
+  (* unzip : ('a * 'b) rope -> 'a rope * 'b rope *)
   (* pre: input rope is balanced. *)
   (* post: output ropes have exactly the shape as the input rope. *)
     fun unzip rope = 

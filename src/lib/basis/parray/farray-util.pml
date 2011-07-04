@@ -48,6 +48,7 @@ structure FArrayUtil = struct
 	        fun lp (i, acc) = 
                   if (i<0) then fromList acc
 	  	  else lp (i-1, Rope.sub(data,i)::acc)
+		val _ = Print.printLn "running flatten_IF_F"
                 in
                   lp (hi-1, [])
 	        end
@@ -84,6 +85,7 @@ structure FArrayUtil = struct
 	        fun lp (i, acc) = 
                   if (i<0) then fromList acc
 	  	  else lp (i-1, Rope.sub(data,i)::acc)
+		val _ = Print.printLn "running flatten_DF_F"
                 in
                   lp (hi-1, [])
 	        end
@@ -121,6 +123,40 @@ structure FArrayUtil = struct
       lp (len-1, [])
     end
 
+(* map_IFF_DFF_DF : (int_farray * dbl_farray -> dbl) -> int_farray * dbl_farray -> dbl_farray *)
+  fun map_IFF_DFF_DF f (nss, xss) = let
+    val prln = Print.printLn
+    fun loc i = prln ("location " ^ Int.toString i)
+    val _ = prln "entering map_IFF_DFF_DF"
+    val len = IF.length nss
+    val len' = DF.length xss
+    val _ = prln ("length of nss is " ^ Int.toString len)
+    val _ = prln ("length of xss is " ^ Int.toString len')
+    val _ = loc 0
+    val _ = if (len = len') then () else fail "map_IFF_DFF_DF" "length"
+    val _ = loc 1
+    fun lp (i, acc) = 
+      if (i<0) then
+        DF.fromList acc
+      else let
+	val _ = prln ("in lp, i is " ^ Int.toString i)
+	val ns = IF.clean (IF.nestedSub (nss, i))
+	val _ = prln ("length of ns is " ^ Int.toString (IF.length ns))
+	val _ = loc 11
+	val xs = DF.clean (DF.nestedSub (xss, i))
+	val _ = prln ("length of xs is " ^ Int.toString (DF.length xs))
+	val _ = loc 12
+        val x = f (ns, xs)
+        in
+          lp (i-1, x::acc)
+        end
+    val res = lp (len-1, [])
+    val _ = loc 2
+    val _ = prln "exiting map_IFF_DFF_DF"
+    in 
+      res      
+    end
+
 (* mapDDD : (dbl * dbl -> dbl) * dbl_farray * dbl_farray -> dbl_farray *)
   fun mapDDD (f : double * double -> double, a1, a2) = let
     val (DF.FArray (data1, shape1)) = DF.clean a1
@@ -137,5 +173,27 @@ structure FArrayUtil = struct
     in
       DF.FArray (data, shape1)
     end
+
+(* unzip_IF_IF *)
+  fun unzip_IF_IF (x : (IF.int_farray * IF.int_farray) F.farray)
+            : IF.int_farray F.farray * IF.int_farray F.farray = (case x
+    of F.FArray (data, shape) => let
+         val (data1, data2) = RopePair.unzip data
+         in
+	   (F.FArray (data1, shape), F.FArray (data2, shape))
+         end
+    (* end case *))
+
+(* unzip_IF_DF *)
+  fun unzip_IF_DF (x : (IF.int_farray * DF.double_farray) F.farray)
+            : IF.int_farray F.farray * DF.double_farray F.farray = (case x
+    of F.FArray (data, shape) => let
+         val (data1, data2) = RopePair.unzip data
+         in
+	   (F.FArray (data1, shape), F.FArray (data2, shape))
+         end
+    (* end case *))
+
+  
 
 end
