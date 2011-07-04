@@ -127,32 +127,30 @@ structure FArrayUtil = struct
   fun map_IFF_DFF_DF f (nss, xss) = let
     val prln = Print.printLn
     fun loc i = prln ("location " ^ Int.toString i)
-    val _ = prln "entering map_IFF_DFF_DF"
+    (* val _ = prln "entering map_IFF_DFF_DF" *)
     val len = IF.length nss
     val len' = DF.length xss
-    val _ = prln ("length of nss is " ^ Int.toString len)
-    val _ = prln ("length of xss is " ^ Int.toString len')
-    val _ = loc 0
+    (* val _ = prln ("length of nss is " ^ Int.toString len) *)
+    (* val _ = prln ("length of xss is " ^ Int.toString len') *)
+    (* val _ = loc 0 *)
     val _ = if (len = len') then () else fail "map_IFF_DFF_DF" "length"
-    val _ = loc 1
+    (* val _ = loc 1 *)
     fun lp (i, acc) = 
       if (i<0) then
         DF.fromList acc
       else let
-	val _ = prln ("in lp, i is " ^ Int.toString i)
+	(* val _ = prln ("in lp, i is " ^ Int.toString i) *)
 	val ns = IF.clean (IF.nestedSub (nss, i))
-	val _ = prln ("length of ns is " ^ Int.toString (IF.length ns))
-	val _ = loc 11
+	(* val _ = prln ("length of ns is " ^ Int.toString (IF.length ns)) *)
+	(* val _ = loc 11 *)
 	val xs = DF.clean (DF.nestedSub (xss, i))
-	val _ = prln ("length of xs is " ^ Int.toString (DF.length xs))
-	val _ = loc 12
+	(* val _ = prln ("length of xs is " ^ Int.toString (DF.length xs)) *)
+	(* val _ = loc 12 *)
         val x = f (ns, xs)
         in
           lp (i-1, x::acc)
         end
     val res = lp (len-1, [])
-    val _ = loc 2
-    val _ = prln "exiting map_IFF_DFF_DF"
     in 
       res      
     end
