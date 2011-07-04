@@ -236,6 +236,9 @@ structure PArrayOpGen = struct
                      AU.mkLetExp (binds, monoVarExp fmap)
                    end
 		 (* else A.VarExp (DV.fpmap (), [alpha, beta]) *)
+	       else if FU.isInt_farray t1 andalso FU.isDbl_farray t2 andalso FU.isDouble beta then
+                 (* (print "hit it\n"; raise Fail "halt") *)
+	         monoVarExp' DV.map_IFF_DFF_DF
 	       else raise Fail ("genMap(loc1) todo: " ^ TU.toString tup)
 	   | _ => raise Fail ("genMap(loc2) todo: " ^ TU.toString t)
           (* end case *))
@@ -290,7 +293,13 @@ structure PArrayOpGen = struct
        | A.PA_Tab t => genTab t	     
        | A.PA_TabFTS t => genTabFTS t
        | A.PA_TabTupleFTS ts => genTabTupleFTS ts
-       | A.PA_Map t => genMap t
+       | A.PA_Map t => let
+           val m = genMap t 
+           in
+	     print ("generated map for " ^ TU.toString t ^ "\n");
+	     (* PrintAST.printExp m; *)
+	     m
+	   end
        | A.PA_Reduce t => genReduce t
        | A.PA_Range t => genRange t
        | A.PA_App t => genApp t

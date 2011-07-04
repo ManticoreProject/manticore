@@ -221,10 +221,13 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
 
       val binds = List.map (fn (h,_) => A.FunBind [h]) hashes
       val ptup = mkPTup (map mkMapHash hashes)
-      val msg = mkPrintln ("running " ^ Var.nameOf unzip)
-      val body = A.SeqExp (msg,
-        AU.mkCaseExp (A.VarExp (arg, [T.TupleTy ts]),
-		      [A.PatMatch (fArrPat, AU.mkLetExp (binds, ptup))]))
+      val msg0 = mkPrintln ("running " ^ Var.nameOf unzip)
+      val msg1 = mkPrintln ("done with " ^ Var.nameOf unzip)
+      val res = Var.new ("res", TypeOf.exp ptup)
+      val caseExp = AU.mkCaseExp (A.VarExp (arg, [T.TupleTy ts]),
+        [A.PatMatch (fArrPat, AU.mkLetExp (binds, ptup))])
+      val bindRes = A.ValBind (A.VarPat res, caseExp)
+      val body = A.SeqExp (msg0, AU.mkLetExp ([bindRes], A.SeqExp (msg1, A.VarExp (res, []))))
       in
       (* all together now... *)
 	AU.mkFunWithParams (unzip, [arg], body)
@@ -240,12 +243,31 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
 	PrintAST.printExp e
       end
  * -debug *)
+
+  (* customUnzip *)
+    fun customUnzip u = let
+      val unzip = A.VarExp (u (), [])
+      val unzipTy = TypeOf.exp unzip
+      val (domTy, rngTy) = (case unzipTy
+        of T.FunTy (d, r) => (d, r)
+	 | _ => raise Fail "?")
+      val arg = Var.new ("arg", domTy)
+      val body = AU.mkApplyExp (unzip, [A.VarExp (arg, [])])
+      in
+	AU.mkFunWithParams (Var.new ("unzipWrapper", unzipTy), [arg], body)
+      end
+   
   (* mkUnzip : ty -> lambda *)
   (* pre: ty is an farray of tuples of length at least two *)
     fun mkUnzip (ty : T.ty) : A.lambda = (case ty
-      of T.ConTy ([T.TupleTy (ts as _::_::_)], c) =>  
+      of T.ConTy ([T.TupleTy (ts as t1::t2::_)], c) =>  
            if FU.isFArrayTyc c then 
-             mk ts
+            (if FU.isInt_farray t1 andalso FU.isInt_farray t2 then
+               customUnzip DV.unzip_IF_IF
+	     else if FU.isInt_farray t1 andalso FU.isDbl_farray t2 then
+	       customUnzip DV.unzip_IF_DF
+	     else
+               mk ts)
 	   else 
              raise Fail "mkUnzip: expecting farray"
        | _ => raise Fail ("mkUnzip: " ^ TU.toString ty)

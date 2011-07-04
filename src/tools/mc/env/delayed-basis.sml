@@ -250,6 +250,10 @@ structure DelayedBasis = struct
     val mapIFPoly     = memoVar ["FArrayUtil", "map_IF_poly"]
     val map_IFF_IF    = memoVar ["FArrayUtil", "map_IFF_IF"]
     val fmapDDD       = memoVar ["FArrayUtil", "mapDDD"]
+    val unzip_IF_IF   = memoVar ["FArrayUtil", "unzip_IF_IF"]
+    val unzip_IF_DF   = memoVar ["FArrayUtil", "unzip_IF_DF"]
+
+    val map_IFF_DFF_DF = memoVar ["FArrayUtil", "map_IFF_DFF_DF"]
 
     val shapeSame     = memoVar ["Shape", "same"]
     val shapeRegular  = memoVar ["Shape", "regularShape"]
