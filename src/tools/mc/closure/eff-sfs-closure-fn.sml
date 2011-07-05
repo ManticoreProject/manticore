@@ -468,7 +468,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 fun genCalleeSaveParam 0 = []
                   | genCalleeSaveParam i = ((CV.new (CV.nameOf ret ^ Int.toString i,
                                                      CTy.T_Any))::(genCalleeSaveParam (i-1)))
-                val nParams = if getEscaping ret
+                val nParams = if Option.isSome(getSafeCallTarget ret) orelse getEscaping ret
                               then 0
                               else nCalleeSaveRegs
                 val params = genCalleeSaveParam nParams
