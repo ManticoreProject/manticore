@@ -13,10 +13,10 @@
  *
  * Note that we only use the portion of this work that determins which
  * FVs should be turned into parameters, based on the number of available
- * registers. Then, we rely on simple flat closure conversion to handle
- * both unknown functions (as in the SSCC work) and for known functions
- * that have too many FVs (different from the SSCC work, which uses linked
- * closures).
+ * registers, including callee-save registers for continuations.
+ * Then, we rely on simple flat closure conversion to handle both unknown
+ * functions (as in the SSCC work) and for known functions that have too
+ * many FVs (different from the SSCC work, which uses linked closures).
  *)
 
 functor ClosureConvertFn (Target : TARGET_SPEC) : sig
@@ -41,7 +41,9 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 
   (***** controls ******)
     val enableClosureConversion = ref false
-    val closureConversionDebug = ref false
+    val closureConversionDebug = ref true
+
+    val nCalleeSaveRegs = 3
 
     val () = List.app (fn ctl => ControlRegistry.register ClosureControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
@@ -76,12 +78,21 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     val getSN = getSN
     end
 
-    (*
-     * The SML/NJ Known property corresponds to whether the function variable
-     * is never captured (not just if they only have Known call sites).
-     *)
     fun getSafe f = (CV.useCount f = CV.appCntOf f andalso
-                     case CFACPS.callersOf f of CFACPS.Known _ => true | _ => false)
+                         case CFACPS.callersOf f of CFACPS.Known _ => true | _ => false)
+    (*
+     * Any continuation that escapes through any location other than the
+     * retK is considered escaping. This distinction will roughly correspond to
+     * partitioning the continuations into user and CPS-introduced continuations.
+     *)
+    local
+        val {setFn, getFn=getEscaping, ...} =
+            CV.newProp (fn f => false)
+    in
+    fun setEscaping(f) = (print (concat[CV.toString f, " is an escaping continuation\n"]); setFn(f, true))
+    val getEscaping = getEscaping
+    end
+
 
     (* The FV property maps from a function to a Varmap from the (raw) free variables
      * to their first and last used times (SNs). The initial values are set to
@@ -113,9 +124,9 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                        else Target.availRegs - (
                             case CV.kindOf f
                              of C.VK_Fun (C.FB{params, rets,...}) =>
-                                (List.length params + List.length rets)
+                                (List.length params + List.length rets + (List.length rets * nCalleeSaveRegs))
                               | C.VK_Cont (C.FB{params, rets,...}) =>
-                                (List.length params + List.length rets)
+                                (List.length params + List.length rets + nCalleeSaveRegs)
                               | k => raise Fail (concat["Variable: ",
                                                         CV.toString f,
                                                         " cannot have slots because it is of kind: ",
@@ -249,16 +260,20 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     end
 
     fun getSafeFuns (CPS.MODULE{body, ...}) = let
-        fun doLambda (CPS.FB{f, params, rets, body}) = (f::(doExp body)) (*let
-            val body = doExp body
+        fun checkEscapingCont v = (print (concat["checking: ", CV.toString v, ":", CPSTyUtil.toString (CV.typeOf v), "\n"]);
+            case CV.typeOf v
+             of CTy.T_Cont _ => setEscaping v
+              | _ => ())
+        fun doLambda (CPS.FB{f, params, rets, body}) = let
+            val _ = List.app checkEscapingCont params
         in
-            case CV.typeOf f
-             of CTy.T_Fun _ => f::body
-              | _ => body
-        end*)
+            (f::(doExp body))
+        end
         and doExp (CPS.Exp(_, e)) = (
             case e 
-             of CPS.Let(xs, _, e) => (doExp e)
+             of CPS.Let(xs, rhs, e) => (List.app checkEscapingCont xs;
+                                        List.app checkEscapingCont (CPSUtil.varsOfRHS rhs);
+                                        doExp e)
               | CPS.Fun(fbs, e) => (doExp e @ (List.foldl (fn (fb,l) => l @ doLambda fb) [] fbs))
               | CPS.Cont(fb, e) => (doLambda fb @ doExp e)
               | CPS.If(_, e1, e2) => (doExp e1 @ doExp e2)
@@ -268,8 +283,8 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                     case dflt of NONE => cases
                                | SOME e => (doExp e)@cases
                 end
-              | CPS.Apply _ => []
-              | CPS.Throw _ => []
+              | CPS.Apply (_, args, _) => (List.app checkEscapingCont args; [])
+              | CPS.Throw (_, args) => (List.app checkEscapingCont args; [])
         (* end case *))
         val funs = doLambda body
         val funs = List.filter (fn (f) => getSafe f) funs
@@ -327,11 +342,15 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     end
 
     (*
-     * So, if the number of FVs is < the number of slots available
+     * For safe FBs, if the number of FVs is < the number of slots available
      * then, we just add all of those variables as new, additional parameters to the function
      * else, add (slots-1) of those FVs, preferring lowest LUT then lowest FUT
+     *
+     * For unsafe conts, we add up to the nCalleeSaves of the top-ranked FVs to be added as
+     * new parameters for callers to track. Note that they will be passed around as :any,
+     * so we must restrict the map to variables of non-raw types.
      *)
-    fun computeParams funs = let
+    fun computeParams (CPS.MODULE{body, ...}) = let
         fun findBest (n, map) = let
             fun firstBigger ((_, (fut1, lut1)), (_, (fut2, lut2))) =
                 (lut1 > lut2) orelse ((lut1 = lut2) andalso (fut1 > fut2))
@@ -339,27 +358,54 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         in
             List.map (fn (p, _) => p) (List.take (sorted, n))
         end
-        fun computeParam f = let
+        fun computeParam (f, map, i) = let
             val map = getFVMap f
+            val i = getSlot f
         in
             case VMap.numItems map
              of 0 => (setParams (f, VMap.empty))
-              | n => (if n <= getSlot f
+              | n => (if n <= i
                       then (ST.tick cntFunsClosed;
                             setParams (f, 
                                        VMap.foldli (fn (p, _, m) => VMap.insert (m, p, CV.copy p))
                                        VMap.empty map))
                       else (let
                                 val _ = ST.tick cntFunsPartial
-                                val toCopy = findBest (n-1, map)
+                                val toCopy = findBest (i-1, map)
                             in
                                 setParams (f, 
                                            List.foldl (fn (p, m) => VMap.insert (m, p, CV.copy p))
                                                        VMap.empty toCopy)
                             end))
         end
+        fun doLambda (fb as CPS.FB{f, params, rets, body}) = (
+            if getSafe f
+            then computeParam (f, getFVMap f, getSlot f)
+            else (case CV.typeOf f
+                   of CTy.T_Cont _ => let
+                          val map = getFVMap f
+                          val map = VMap.filteri (fn (v,_) => case CPSTyUtil.kindOf (CV.typeOf v)
+                                                               of CTy.K_RAW => false
+                                                                | _ => true) map
+                      in
+                          computeParam (f, map, nCalleeSaveRegs)
+                      end
+                    | _ => ());
+            (doExp body))
+        and doExp (CPS.Exp(_, e)) = (
+            case e 
+             of CPS.Let(xs, _, e) => (doExp e)
+              | CPS.Fun(fbs, e) => (List.app doLambda fbs; doExp e )
+              | CPS.Cont(fb, e) => (doLambda fb ; doExp e)
+              | CPS.If(_, e1, e2) => (doExp e1 ; doExp e2)
+              | CPS.Switch(_, cases, dflt) => (
+                List.app (fn c => doExp (#2 c)) cases;
+                Option.app doExp dflt)
+              | CPS.Apply _ => ()
+              | CPS.Throw _ => ()
+        (* end case *))
     in
-        List.app computeParam funs
+        doLambda body
     end
 
     (*
@@ -394,23 +440,84 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     end
 
     (*
+     * The params properties list the new parameters for a given SAFE function.
+     * It is a VMap from old FV-name to new param-name.
+     *)
+    local
+        val {setFn=setCalleeParams, getFn=getCalleeParams, ...} =
+            CV.newProp (fn f => raise Fail (concat[CV.toString f, " has no callee-save params associated with it."]))
+    in
+    val getCalleeParams: CV.var -> (CV.var list) = getCalleeParams
+    val setCalleeParams=setCalleeParams
+    end
+    (*
      * Simply adds the new parameters to the function.
      * Note that they retain their old names because this allows the type-based
      * iterative fixup to correctly globally update all associated types without
      * performing CFA a second time to give us enough info to fix them up directly.
+     *
+     * Also, notice the callee-save register additions. They are made in two places:
+     * - All _Fun types get (length rets)*nCalleeSaveRegs additional params of type :any
+     * - All _Cont types that are NOT safe get three additional params, again of
+     * type :any
+     * These conts are restricted to just the ones that are non-escaping.
      *)
     fun addParams (C.MODULE{name,externs,body}) = let
-        fun convertFB (C.FB{f, params, rets, body}) =
-            if getSafe f (* andalso (case CV.typeOf f of CTy.T_Fun _ => true | _ => false) *)
+        fun convertFB (C.FB{f, params, rets, body}) = let
+            fun genCalleeSaveParams ret = let
+                fun genCalleeSaveParam 0 = []
+                  | genCalleeSaveParam i = ((CV.new (CV.nameOf ret ^ Int.toString i,
+                                                     CTy.T_Any))::(genCalleeSaveParam (i-1)))
+                val nParams = if getEscaping ret
+                              then 0
+                              else nCalleeSaveRegs
+                val params = genCalleeSaveParam nParams
+                val _ = case CV.typeOf ret
+                         of CTy.T_Cont orig => CV.setType (ret, CTy.T_Cont (orig @ List.map (fn v => CV.typeOf v) params))
+                          | x => raise Fail (concat["Non-cont type - ", CV.toString ret,
+                                                    ":", CPSTyUtil.toString (CV.typeOf ret)])
+
+                val _ = setCalleeParams (ret, params)
+            in
+                params
+            end
+            val calleeSaveParams = List.concat (List.map genCalleeSaveParams rets)
+        in
+            if getSafe f
             then let
                     val newArgsMap = getParams f
                     val oldNewList = VMap.listItemsi newArgsMap
                     val newParams = List.map (fn (p, _) => p) oldNewList
+                    val params' = params @ newParams @ calleeSaveParams
+                    val body = convertExp body
+                    val origType = CV.typeOf f
+                    val newType = case origType
+                                   of CTy.T_Fun (_, retTys) =>
+                                      CTy.T_Fun(List.map CV.typeOf params', retTys)
+                                    | CTy.T_Cont (_) => 
+                                      CTy.T_Cont(List.map CV.typeOf params')
+                                    | x => raise Fail (concat["Non-function type - ", CV.toString f,
+                                                              ":", CPSTyUtil.toString (CV.typeOf f)])
+                    val _ = CV.setType (f, newType)
+                    val _ = if !closureConversionDebug
+                            then print (concat[CV.toString f, " safe fun added params\nOrig: ",
+                                               CPSTyUtil.toString origType, "\nNew : ",
+                                               CPSTyUtil.toString newType, "\nParams   :",
+                                               String.concatWith "," (List.map CV.toString params), "\nNewParams :",
+                                               String.concatWith "," (List.map CV.toString newParams), "\nCalleeSaveP:",
+                                               String.concatWith "," (List.map CV.toString calleeSaveParams), "\nMap:",
+                                               String.concatWith "," (List.map CV.toString (List.map (fn (_, p) => p) oldNewList)),
+                                               "\n"])
+                            else ()
                     val _  = List.app (fn p => (List.app (fn p' => if CV.same(p, p')
                                                                    then raise Fail (concat["In ", CV.toString f, " double-adding ",
                                                                                            CV.toString p])
                                                                    else ()) newParams)) params
-                    val params = params @ newParams
+                in
+                    C.FB{f=f, params=params', rets=rets, body=body}
+                end
+            else let
+                    val params = params @ calleeSaveParams
                     val body = convertExp body
                     val origType = CV.typeOf f
                     val newType = case origType
@@ -422,18 +529,15 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                                               ":", CPSTyUtil.toString (CV.typeOf f)])
                     val _ = CV.setType (f, newType)
                     val _ = if !closureConversionDebug
-                            then print (concat[CV.toString f, " added params\nOrig: ",
+                            then print (concat[CV.toString f, " non-safe fun added params\nOrig: ",
                                                CPSTyUtil.toString origType, "\nNew : ",
                                                CPSTyUtil.toString newType, "\nParams   :",
-                                               String.concatWith "," (List.map CV.toString params), "\nNewParams :",
-                                               String.concatWith "," (List.map CV.toString newParams), "\nNParams:",
-                                               String.concatWith "," (List.map CV.toString (List.map (fn (_, p) => p) oldNewList)),
-                                               "\n"])
+                                               String.concatWith "," (List.map CV.toString params), "\n"])
                             else ()
                 in
                     C.FB{f=f, params=params, rets=rets, body=body}
                 end
-            else C.FB{f=f, params=params, rets=rets, body=convertExp body}
+        end
         and convertExp (C.Exp(ppt,t)) = (
             case t
              of C.Let (lhs, rhs, exp) => C.mkLet(lhs, rhs,
@@ -614,7 +718,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
      *)
     fun convert (env, C.MODULE{name,externs,body}) = let
         fun convertFB (env, C.FB{f, params, rets, body}) =
-            if getSafe f (* andalso (case CV.typeOf f of CPSTy.T_Fun _ => true | _ => false) *)
+            if getSafe f
             then let
                     val newArgsMap = getParams f
                     val oldNewList = VMap.listItemsi newArgsMap
@@ -644,27 +748,53 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
               | C.Apply(f, args, conts) => let
 	            val f' = subst(env, f)
 	            val args = subst'(env, args)
-	            val conts = subst'(env, conts)
+	            val conts' = subst'(env, conts)
+                    val temp = CV.new ("anyCallee", CTy.T_Any)
+                    fun handleCont k =
+                        if getEscaping k
+                        then ([], false)
+                        else (case CV.kindOf k
+                               of C.VK_Param _ => (getCalleeParams k, false)
+                                | C.VK_Cont _ => let
+                                      val calleeParams = getParams k
+                                      val extras = List.map (fn (v,_) => v) (VMap.listItemsi calleeParams)
+                                      val nEmpties = nCalleeSaveRegs - (List.length extras)
+                                  in
+                                      (extras @ (List.tabulate (nEmpties, (fn (_) => temp))),
+                                       nEmpties > 0)
+                                  end
+                                | _ => (List.tabulate (nCalleeSaveRegs, (fn (_) => temp)),
+                                        nCalleeSaveRegs > 0))
+                    val (calleeSaveParams, needsTemp) =
+                        List.foldr (fn (k, (l,b)) => let
+                                           val (l',b') = handleCont k
+                                       in
+                                           (l'@l, b' orelse b)
+                                       end) ([],false) conts
+                    fun maybeWrap w =
+                        if needsTemp
+                        then C.mkLet ([temp], C.Const(Literal.Enum(0w0), CTy.T_Any), w)
+                        else w
 	        in
                     case getSafeCallTarget f
                      of SOME a => let
                             val newArgsMap = getParams a
                             val newArgs = subst' (env, VMap.foldri (fn (v, _, l) => v::l) [] newArgsMap)
-                            val args = args @ newArgs
+                            val args = args @ newArgs @ calleeSaveParams
                             val _ = if !closureConversionDebug
                                     then print (concat["Apply to safe call target through: ", CV.toString f,
                                                        " renamed to: ", CV.toString f', " safe call target named: ",
                                                        CV.toString a, "\n"])
                                     else ()       
                         in
-                            C.mkApply (f', args, conts)
+                            maybeWrap (C.mkApply (f', args, conts'))
                         end
                       | NONE => (
                         if !closureConversionDebug
                         then print (concat["Apply to unsafe call target through: ", CV.toString f,
                                            " renamed to: ", CV.toString f', "\n"])
                         else ();
-                        C.mkApply(f', args, conts))
+                        maybeWrap (C.mkApply(f', args @ calleeSaveParams, conts')))
 	        end
               | C.Throw(k, args) => let
 	            val k' = subst(env, k)
@@ -683,12 +813,50 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                         in
                             C.mkThrow (k', args)
                         end
-                      | NONE => (
-                        if !closureConversionDebug
-                        then print (concat["Throw to unsafe call target through: ", CV.toString k,
-                                           " renamed to: ", CV.toString k', "\n"])
-                        else ();
-                        C.mkThrow (k', args))
+                      | NONE => let
+                            val _ = if !closureConversionDebug
+                                    then print (concat["Throw to unsafe call target through: ", CV.toString k,
+                                                       " renamed to: ", CV.toString k', "\n"])
+                                    else ()
+                        in
+                            if getEscaping k
+                            then C.mkThrow (k', args)
+                            else (
+                                (*
+                                 * Params will have been annotated with the callee-save params.
+                                 * Let-bound continuations are just "unused" thunks introduced in earlier
+                                 * optimizations.
+                                 * Otherwise, it's the name of an FB itself and we need to check that
+                                 * for its params.
+                                 *)
+                                case CV.kindOf k'
+                                 of C.VK_Param _ => let
+                                        val extras = getCalleeParams k
+                                    in
+                                        C.mkThrow (k', args @ extras)
+                                    end
+                                  | C.VK_Cont _ => let
+                                        val calleeParams = getParams k
+                                        val extras = List.map (fn (v,_) => v) (VMap.listItemsi calleeParams)
+                                        val nEmpties = nCalleeSaveRegs - (List.length extras)
+                                    in
+                                        if nEmpties = 0
+                                        then C.mkThrow (k', args @ extras)
+                                        else let
+                                                val temp = CV.new ("anyCallee", CTy.T_Any)
+                                            in
+                                                C.mkLet ([temp], C.Const(Literal.Enum(0w0), CTy.T_Any),
+                                                         C.mkThrow (k', args @ extras @ (List.tabulate (nEmpties, (fn (_) => temp)))))
+                                            end
+                                    end
+                                  | _ => let
+                                        val temp = CV.new ("anyCallee", CTy.T_Any)
+                                    in
+                                        C.mkLet ([temp], C.Const(Literal.Enum(0w0), CTy.T_Any),
+                                                 C.mkThrow (k', args @ (List.tabulate (nCalleeSaveRegs, (fn (_) => temp)))))
+                                        
+                                    end)                                             
+                        end
 	        end)
         and convertRHS(env, C.Var(vars)) = C.Var(subst'(env,vars))
           | convertRHS(env, C.Cast(ty,v)) = C.Cast(ty,subst(env,v))
@@ -718,7 +886,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 val _ = updateLUTs module
                 val funs = getSafeFuns module
                 val _ = setSlots funs
-                val _ = computeParams funs
+                val _ = computeParams module
                 val _ = reduceParams funs
                 val module = addParams module
                 val _ = propagateFunChanges module
