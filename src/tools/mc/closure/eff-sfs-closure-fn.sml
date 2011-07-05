@@ -450,6 +450,21 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     val getCalleeParams: CV.var -> (CV.var list) = getCalleeParams
     val setCalleeParams=setCalleeParams
     end
+
+    fun getSafeCallTarget f =
+        case CFACPS.valueOf f
+         of a as CFACPS.LAMBDAS(s) =>
+            if (VSet.numItems s = 1)
+            then let
+                    val target = hd (VSet.listItems s)
+                in
+                    if getSafe target
+                    then SOME(target)
+                    else NONE
+                end
+            else NONE
+          | _ => NONE
+
     (*
      * Simply adds the new parameters to the function.
      * Note that they retain their old names because this allows the type-based
@@ -557,20 +572,6 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         name=name, externs=externs,
         body = convertFB body}
     end
-
-    fun getSafeCallTarget f =
-        case CFACPS.valueOf f
-         of a as CFACPS.LAMBDAS(s) =>
-            if (VSet.numItems s = 1)
-            then let
-                    val target = hd (VSet.listItems s)
-                in
-                    if getSafe target
-                    then SOME(target)
-                    else NONE
-                end
-            else NONE
-          | _ => NONE
 
     (* 
      * The function types on all variables that are equivalent to the
