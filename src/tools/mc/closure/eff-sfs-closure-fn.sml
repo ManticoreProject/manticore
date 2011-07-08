@@ -628,7 +628,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
          of a as CFACPS.LAMBDAS(s) => let
                     val target = hd (VSet.listItems s)
                 in
-                    if VSet.numItems s = 1 andalso getSafe target
+                    if VSet.numItems s > 0 andalso getSafe target
                     then (print (concat["GSCT: ", CV.toString f, " => ", CV.toString target, "\n"]); SOME(target))
                     else NONE
                 end
@@ -669,10 +669,9 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
              in
                 case List.length lambdas
                  of 0 => orig
-                  | 1 => (case getSafeCallTarget' (hd lambdas)
+                  | _ => (case getSafeCallTarget' (hd lambdas)
                            of SOME a => CV.typeOf a
                             | NONE => orig)
-                  | _ => orig
             end
             fun buildType (CPSTy.T_Tuple (heap, tys), cpsValues) = let
                 fun updateSlot (origTy, cpsValue) = (
@@ -734,8 +733,9 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                           then print (concat["Changed FB type for ", CV.toString f, " from: ",
                                              CPSTyUtil.toString origType, " to: ",
                                              CPSTyUtil.toString newType, "\n"])
-                          else ())
-            val _ = CV.setType (f, newType)
+                          else ();
+                          changed := true;
+                          CV.setType (f, newType))
 	in
             walkBody (body)
 	end
