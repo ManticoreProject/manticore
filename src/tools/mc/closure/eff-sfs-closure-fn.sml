@@ -634,6 +634,119 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 end
           | _ => NONE
 
+    fun fixLet (lhs, rhs) = let
+        (* Only return a changed type if it's likely to be different.
+         * For many RHS values, it's neither straightforward nor necessary to
+         * compute a new type value, as it can't have been changed by the
+         * flattening transformation.
+         *)
+        fun typeOfRHS(C.Var ([v])) = SOME (CV.typeOf v)
+          | typeOfRHS(C.Var (vars)) = NONE
+          | typeOfRHS(C.Cast (typ, var)) = (* if the cast is or contains a function type,
+                                            * we may have updated it in an incompatible way
+                                            * for the cast, so just fill in our type.
+                                            * This frequently happens around the generated _cast
+                                            * for ropes code
+                                            *)
+            let
+                val rhsType = CV.typeOf var
+                fun cleanup (CTy.T_Tuple (b, dstTys), CTy.T_Tuple (b', srcTys)) = let
+                    val dstLen = List.length dstTys
+                    val srcLen = List.length srcTys
+                    val (dst', src') = (
+                        case Int.compare (dstLen, srcLen)
+                         of LESS => (dstTys @ (List.tabulate (srcLen-dstLen, (fn (x) => CTy.T_Any))), srcTys)
+                          | EQUAL => (dstTys, srcTys)
+                          | GREATER => (dstTys, srcTys @ (List.tabulate (dstLen-srcLen, (fn (x) => CTy.T_Any)))))
+                in
+                    CTy.T_Tuple (b, ListPair.mapEq cleanup (dst', src'))
+                end
+                  | cleanup (dst as CTy.T_Fun(_, _), src as CTy.T_Fun (_, _)) =
+                    if CPSTyUtil.soundMatch (dst, src)
+                    then dst
+                    else src
+                  | cleanup (dst as CTy.T_Cont(_), src as CTy.T_Cont (_)) =
+                    if CPSTyUtil.soundMatch (dst, src)
+                    then dst
+                    else src
+                  | cleanup (dst, _) = dst
+                val result = cleanup (typ, rhsType) 
+            in
+                SOME (result)
+            end
+          | typeOfRHS(C.Const (_, typ)) = SOME(typ)
+          | typeOfRHS(C.Select (i, v)) = (
+            (* Select is often used as a pseudo-cast, so only "change" the type if we've 
+             * come across a slot that is a function type, which we might have updated.
+             *)
+            case CV.typeOf v
+             of CTy.T_Tuple (_, tys) => (
+                case List.nth (tys, i)
+                 of newTy as CTy.T_Fun (_, _) => SOME (newTy)
+                  | newTy as CTy.T_Cont _ => SOME (newTy)
+                  | _ => NONE
+                (* end case *))
+              | ty => raise Fail (concat [CV.toString v,
+                                          " was not of tuple type, was: ",
+                                          CPSTyUtil.toString ty])
+            (* end case *))
+          | typeOfRHS(C.Update (_, _, _)) = NONE
+          | typeOfRHS(C.AddrOf (i, v)) = (
+            (* Select is often used as a pseudo-cast, so only "change" the type if we've 
+             * come across a slot that is a function type, which we might have updated.
+             *)
+            case CV.typeOf v
+             of CTy.T_Tuple (_, tys) => (
+                case List.nth (tys, i)
+                 of newTy as CTy.T_Fun (_, _) => SOME (CTy.T_Addr(newTy))
+                  | newTy as CTy.T_Cont _ => SOME (CTy.T_Addr(newTy))
+                  | _ => NONE
+                (* end case *))
+              | ty => raise Fail (concat [CV.toString v,
+                                          " was not of tuple type, was: ",
+                                          CPSTyUtil.toString ty])
+            (* end case *))
+          | typeOfRHS(C.Alloc (CPSTy.T_Tuple(b, tys), vars)) = let
+                (*
+                 * Types of items stored into an alloc are frequently wrong relative to
+                 * how they're going to be used (i.e. a :enum(0) in for a ![any, any]).
+                 * Only update function types.
+                 *)
+                fun chooseType (ty, vTy as CTy.T_Fun(_, _)) = vTy
+                  | chooseType (ty, vTy as CTy.T_Cont _) = vTy
+                  | chooseType (ty as CTy.T_Tuple(_,tys), vTy as CTy.T_Tuple(b,vTys)) =
+                    CTy.T_Tuple(b, ListPair.map chooseType (tys, vTys))
+                  | chooseType (ty, _) = ty
+            in
+                SOME (CPSTy.T_Tuple(b, ListPair.map chooseType (tys, (List.map CV.typeOf vars))))
+            end
+          | typeOfRHS(C.Alloc (_, vars)) = raise Fail "encountered an alloc that didn't originally have a tuple type."
+          | typeOfRHS(C.Promote (v)) = SOME (CV.typeOf v)
+          | typeOfRHS(C.Prim (prim)) = NONE (* do I need to do this one? *)
+          | typeOfRHS(C.CCall (cfun, _)) = NONE
+          | typeOfRHS(C.HostVProc) = NONE
+          | typeOfRHS(C.VPLoad (_, _)) = NONE
+          | typeOfRHS(C.VPStore (_, _, _)) = NONE
+          | typeOfRHS(C.VPAddr (_, _)) = NONE
+    in
+        (case lhs
+          of [v] => (
+             case typeOfRHS (rhs)
+              (* Even if we got a new type back, if the existing one is equal or more
+               * specific, stick with the old one.
+               *)
+              of SOME(ty) => (if !closureConversionDebug
+                              then print (concat["Changing ", CV.toString v,
+                                                 " from: ", CPSTyUtil.toString (CV.typeOf v),
+                                                 " to: ", CPSTyUtil.toString ty, "\n"])
+                              else ();
+                              CV.setType (v, ty))
+               | NONE => ()
+             (* end case *))
+           | _ => ()
+        (* end case *))
+    end
+
     (* 
      * The function types on all variables that are equivalent to the
      * safe/converted functions need to be fixed up to have the same
@@ -741,7 +854,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	end
         and walkBody (C.Exp(_, e)) = (
             case e
-             of C.Let (lhs, _, e) => (walkBody (e))
+             of C.Let (lhs, rhs, e) => (fixLet (lhs, rhs); walkBody (e))
               | C.Fun (lambdas, body) => (List.app handleLambda lambdas; walkBody (body))
               | C.Cont (f, body) => (handleLambda f; walkBody (body))
               | C.If (_, e1, e2) => (walkBody (e1); walkBody (e2))
