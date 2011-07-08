@@ -1052,6 +1052,49 @@ structure ArityRaising : sig
             CPS.Var.Set.listItems l
           | _ => []
         
+    (* If they are equal, or if one of the types is ANY, we are fine.
+     * Any arises in two cases: 1) polymorphic types 2) unused parameters that are put 
+     * in to keep a uniform calling convention.
+     *)
+    fun safeMergable ([],[]) = true
+      | safeMergable (_,[]) = false
+      | safeMergable ([],_) = false
+      | safeMergable (x::xs, y::ys) = CPSTyUtil.validCast (x,y) andalso safeMergable (xs,ys)
+
+    fun safeMergeTypes (CPSTy.T_Fun (p1,r1), CPSTy.T_Fun (p2,r2)) =
+        if safeMergable(p1,p2) andalso safeMergable(r1,r2)
+        then let
+                val args = if (List.length p1 = List.length p2)
+                           then (ListPair.map safeMergeTypes (p1,p2))
+                           else [CPSTy.T_Any]
+                val rets = if (List.length r1 = List.length r2)
+                           then (ListPair.map safeMergeTypes (r1,r2))
+                           else [CPSTy.T_Any]
+            in
+                CPSTy.T_Fun(args, rets)
+            end
+        else CPSTy.T_Any
+      | safeMergeTypes (CPSTy.T_Cont (p1), CPSTy.T_Cont (p2)) =
+        if safeMergable(p1,p2)
+        then let
+                val args = if (List.length p1 = List.length p2)
+                           then (ListPair.map safeMergeTypes (p1,p2))
+                           else [CPSTy.T_Any]
+            in
+                CPSTy.T_Cont(args)
+            end
+        else CPSTy.T_Any
+      | safeMergeTypes (CPSTy.T_Tuple (b, t1), CPSTy.T_Tuple(b2,t2)) =
+        if (List.length t1 = List.length t2)
+        then CPSTy.T_Tuple(b, ListPair.map safeMergeTypes (t1,t2))
+        else CPSTy.T_Any
+      | safeMergeTypes (x,y) =
+        if CPSTyUtil.validCast (x,y)
+        then x
+        else (if CPSTyUtil.validCast (y,x)
+              then y
+              else CPSTy.T_Any)
+
     (*
      * Before performing the actual flattening, go through and figure out the new signatures.
      * Note that some of the return continuations may be flattening candidates, so we need
@@ -1073,17 +1116,21 @@ structure ArityRaising : sig
          *)
         fun transformParam(param) = let
             fun getParamFunType (l) = let
-                val lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
+                val funs = CPS.Var.Set.listItems l
+                val lambdas = map CV.typeOf funs
                 val _ = if !arityRaisingDebug
-                        then print (concat["Merging signatures for fn types: ", String.concatWith "," (List.map (fn x => ((CPSTyUtil.toString x)^" ")) lambdas), " from variables: ", String.concatWith "," (List.map CPS.Var.toString (CPS.Var.Set.listItems l)), "\n"])
+                        then print (concat["Merging signatures for fn types: ", String.concatWith "," (List.map (fn x => ((CPSTyUtil.toString x)^" ")) lambdas), " from variables: ", String.concatWith "," (List.map CPS.Var.toString funs), "\n"])
                         else ()
             in
+                (* TODO: integrate knowledge of whether a param is "useless" or not before
+                 * forcing a merge
+                 *)
                 if List.length lambdas = 0
                 then CV.typeOf param
                 else let
                         val l::lambdas = lambdas
                     in
-                        foldr CPSTyUtil.safeMergeTypes l lambdas
+                        foldr safeMergeTypes l lambdas
                     end
             end
             fun buildType (CPSTy.T_Tuple (heap, tys), cpsValues) = let
@@ -1388,7 +1435,7 @@ structure ArityRaising : sig
                       if CPSTyUtil.soundMatch (argType, paramType)
                       then matchTypes (paramTypes, orig, arg::accum, final)
                       else let
-                              val newParamType = CPSTyUtil.safeMergeTypes (argType, paramType)
+                              val newParamType = safeMergeTypes (argType, paramType)
                               val typed = CV.new ("coerced", newParamType)
                               val _ = if !arityRaisingDebug
                                       then print (concat["Coercing from: ",

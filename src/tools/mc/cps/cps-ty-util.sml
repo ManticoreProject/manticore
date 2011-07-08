@@ -30,8 +30,7 @@ structure CPSTyUtil : sig
 
   (* isKind k1 k2 --- returns true if k2 is a subkind of k1 *)
     val isKind : CPSTy.kind -> CPSTy.kind -> bool
-                                             
-    val safeMergeTypes : CPSTy.ty * CPSTy.ty -> CPSTy.ty
+
   end = struct
 
     structure CTy = CPSTy
@@ -158,43 +157,4 @@ structure CPSTyUtil : sig
       | ctypeToCPS (CFunctions.BaseTy rTy) = [CTy.T_Raw rTy]
       | ctypeToCPS (CFunctions.VoidTy) = []
 
-    (* If they are equal, or if one of the types is ANY, we are fine.
-     * Any arises in two cases: 1) polymorphic types 2) unused parameters that are put 
-     * in to keep a uniform calling convention.
-     *)
-    fun safeMergable ([],[]) = true
-      | safeMergable (_,[]) = false
-      | safeMergable ([],_) = false
-      | safeMergable (x::xs, y::ys) = validCast (x,y) andalso safeMergable (xs,ys)
-    fun safeMergeTypes (CPSTy.T_Fun (p1,r1), CPSTy.T_Fun (p2,r2)) =
-        if safeMergable(p1,p2) andalso safeMergable(r1,r2)
-        then let
-                val args = if (List.length p1 = List.length p2)
-                           then (ListPair.map safeMergeTypes (p1,p2))
-                           else [CPSTy.T_Any]
-                val rets = if (List.length r1 = List.length r2)
-                           then (ListPair.map safeMergeTypes (r1,r2))
-                           else [CPSTy.T_Any]
-            in
-                CPSTy.T_Fun(args, rets)
-            end
-        else CPSTy.T_Any
-      | safeMergeTypes (CPSTy.T_Cont (p1), CPSTy.T_Cont (p2)) =
-        if safeMergable(p1,p2)
-        then let
-                val args = if (List.length p1 = List.length p2)
-                           then (ListPair.map safeMergeTypes (p1,p2))
-                           else [CPSTy.T_Any]
-            in
-                CPSTy.T_Cont(args)
-            end
-        else CPSTy.T_Any
-      | safeMergeTypes (CPSTy.T_Tuple (b, t1), CPSTy.T_Tuple(b2,t2)) =
-        if (List.length t1 = List.length t2)
-        then CPSTy.T_Tuple(b, ListPair.map safeMergeTypes (t1,t2))
-        else CPSTy.T_Any
-      | safeMergeTypes (x,y) =
-        if equal (x,y)
-        then x
-        else CPSTy.T_Any
   end
