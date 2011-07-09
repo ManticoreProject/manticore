@@ -768,9 +768,12 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                         val target = hd (VSet.listItems s)
                         val newType = CV.typeOf target
                     in
-                        if CPSTyUtil.equal (CV.typeOf target, newType)
+                        if CPSTyUtil.equal (CV.typeOf ret, newType)
                         then ()
-                        else (changed := true;
+                        else (print (concat["Changed: ", CV.toString ret, " from ",
+                                            CPSTyUtil.toString (CV.typeOf ret), " to ",
+                                            CPSTyUtil.toString newType, "\n"]);
+                              changed := true;
                               CV.setType (ret, newType))
                     end
                   | _ => raise Fail "blah")
@@ -900,15 +903,44 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     fun subst' (env, []) = []
       | subst' (env, x::xs) = subst(env, x) :: subst'(env, xs)
 
-
     (*
-     * Convert does two things:
+     * Convert does three things:
      * - Changes the FB param names from the "original" ones with associated
      * CFA info (so we could type-correct them!) to new ones, with the
      * copied type blasted to be equal to the one from the source
      * - Changes Apply/Throw to safe functions to take the new parameters
+     * - Coerces any parameters to their required types as needed
      *)
     fun convert (env, C.MODULE{name,externs,body}) = let
+        fun matchTypes (paramType::paramTypes, arg::orig, accum, final) = let
+                val argType = CV.typeOf arg
+            in
+                if CPSTyUtil.equal (argType, paramType)
+                then (print (concat[CV.toString arg, "=OK;"]); matchTypes (paramTypes, orig, arg::accum, final))
+                else let
+                        val typed = CV.new ("coerced", paramType)
+                        val _ = if !closureConversionDebug
+                                then print (concat["Coercing from: ",
+                                                   CPSTyUtil.toString argType,
+                                                   " to: ",
+                                                   CPSTyUtil.toString paramType,
+                                                   " for argument: ",
+                                                   CV.toString arg, "\n"])
+                                else ()
+                    in
+                        C.mkLet ([typed], C.Cast(paramType, arg),
+                                 matchTypes (paramTypes, orig, typed::accum, final))
+                    end
+            end
+          | matchTypes (paramTypes, [], accum, final) =
+            (print "\n"; final (rev accum))
+          | matchTypes (_, _, accum, final) =
+            raise Fail (concat["Can't happen - call to method had mismatched arg/params."])
+        fun getParamTypes f =
+            case CV.typeOf f
+             of CTy.T_Cont p => p
+              | CTy.T_Fun (p,_) => p
+              | _ => raise Fail (concat[CV.toString f, " not a fun or cont type"])
         fun convertFB (env, C.FB{f, params, rets, body}) =
             if getSafe f orelse (isCont f andalso case getContKind f of CALLEE_SAVE => true | _ => false)
             then let
@@ -923,7 +955,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
             else C.FB{f=f, params=params, rets=rets, body=convertExp (env, body)}
         and convertExp (env, C.Exp(ppt,t)) = (
             case t
-             of C.Let (lhs, rhs, exp) => C.mkLet(lhs, convertRHS(env, rhs),
+             of C.Let (lhs, rhs, exp) => C.mkLet(lhs, convertRHS(env, lhs, rhs),
                                                  convertExp (env, exp))
               | C.Fun (lambdas, exp) => (C.mkFun (List.map (fn fb => convertFB (env, fb)) lambdas, convertExp (env, exp))) 
               | C.Cont (lambda, exp) => (C.mkCont (convertFB (env, lambda), convertExp (env, exp)))
@@ -992,14 +1024,20 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                                        "\n"])
                                     else ()       
                         in
-                            maybeWrap (C.mkApply (f', args, conts'))
+                            maybeWrap (matchTypes (getParamTypes f', args, [], fn (args) =>
+                                                                                  C.mkApply (f', args, conts')))
                         end
-                      | NONE => (
-                        if !closureConversionDebug
-                        then print (concat["Apply to unsafe call target through: ", CV.toString f,
-                                           " renamed to: ", CV.toString f', "\n"])
-                        else ();
-                        maybeWrap (C.mkApply(f', args @ calleeSaveParams, conts')))
+                      | NONE => let
+                            val _ = if !closureConversionDebug
+                                    then print (concat["Apply to unsafe call target through: ", CV.toString f,
+                                                       " renamed to: ", CV.toString f', "with args: ",
+                                                       String.concatWith "," (List.map CV.toString args), "\n"])
+                                    else ()
+                            val args = args @ calleeSaveParams
+                        in
+                        maybeWrap (matchTypes (getParamTypes f', args, [], fn (args) =>
+                                                                                  C.mkApply (f', args, conts')))
+                        end
 	        end
               | C.Throw(k, args) => let
 	            val k' = subst(env, k)
@@ -1017,12 +1055,13 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                                        "\n"])
                                     else ()       
                         in
-                            C.mkThrow (k', args)
+                            matchTypes (getParamTypes k', args, [], fn (args) => C.mkThrow (k', args))
                         end
                       | NONE => let
                             val _ = if !closureConversionDebug
                                     then print (concat["Throw to unsafe call target through: ", CV.toString k,
-                                                       " renamed to: ", CV.toString k', "\n"])
+                                                       " renamed to: ", CV.toString k', " with args: ",
+                                                       String.concatWith "," (List.map CV.toString args), "\n"])
                                     else ()
                         in
                             case getContKind k
@@ -1043,9 +1082,10 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                         then C.mkThrow (k', args @ calleeParams)
                                         else let
                                                 val temp = CV.new ("anyCalleeT", CTy.T_Any)
+                                                val args = args @ calleeParams @ (List.tabulate (nEmpties, (fn (_) => temp)))
                                             in
                                                 C.mkLet ([temp], C.Const(Literal.Enum(0w0), CTy.T_Any),
-                                                         C.mkThrow (k', args @ calleeParams @ (List.tabulate (nEmpties, (fn (_) => temp)))))
+                                                         matchTypes (getParamTypes k', args, [], fn (args) => C.mkThrow (k', args)))
                                             end
                                     end
                                   | C.VK_Cont _ => let
@@ -1054,37 +1094,42 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                         val nEmpties = nCalleeSaveRegs - (List.length extras)
                                     in
                                         if nEmpties = 0
-                                        then C.mkThrow (k', args @ extras)
+                                        then let
+                                                val args = args @ extras
+                                            in
+                                                matchTypes (getParamTypes k', args, [], fn (args) => C.mkThrow (k', args))
+                                            end
                                         else let
                                                 val temp = CV.new ("anyCalleeT", CTy.T_Any)
+                                                val args = args @ extras @ (List.tabulate (nEmpties, (fn (_) => temp)))
                                             in
                                                 C.mkLet ([temp], C.Const(Literal.Enum(0w0), CTy.T_Any),
-                                                         C.mkThrow (k', args @ extras @ (List.tabulate (nEmpties, (fn (_) => temp)))))
+                                                         matchTypes (getParamTypes k', args, [], fn (args) => C.mkThrow (k', args)))
                                             end
                                     end
                                   | _ => let
                                         val temp = CV.new ("anyCalleeT", CTy.T_Any)
+                                        val args = args @ (List.tabulate (nCalleeSaveRegs, (fn (_) => temp)))
                                     in
                                         C.mkLet ([temp], C.Const(Literal.Enum(0w0), CTy.T_Any),
-                                                 C.mkThrow (k', args @ (List.tabulate (nCalleeSaveRegs, (fn (_) => temp)))))
-                                        
+                                                 matchTypes (getParamTypes k', args, [], fn (args) => C.mkThrow (k', args)))
                                     end)
-                              | _ => C.mkThrow (k', args)
+                              | _ => matchTypes (getParamTypes k', args, [], fn (args) => C.mkThrow (k', args))
                         end
 	        end)
-        and convertRHS(env, C.Var(vars)) = C.Var(subst'(env,vars))
-          | convertRHS(env, C.Cast(ty,v)) = C.Cast(ty,subst(env,v))
-          | convertRHS(env, C.Select(i,v)) = C.Select(i,subst(env,v))
-          | convertRHS(env, C.Update(i,v1,v2)) = C.Update(i,subst(env,v1),subst(env,v2))
-          | convertRHS(env, C.AddrOf(i,v)) = C.AddrOf(i, subst(env,v))
-          | convertRHS(env, C.Alloc(ty,vars)) = C.Alloc(ty, subst'(env,vars))
-          | convertRHS(env, C.Promote (v)) = C.Promote(subst(env,v))
-          | convertRHS(env, C.Prim(p)) = C.Prim(PrimUtil.map (fn x => subst(env, x)) p)
-          | convertRHS(env, C.CCall (var, vars)) = C.CCall (var, subst'(env,vars))
-          | convertRHS(env, C.VPLoad(off,var)) = C.VPLoad (off, subst(env,var))
-          | convertRHS(env, C.VPStore (off, v1, v2)) = C.VPStore (off, subst(env, v1), subst(env,v2))
-          | convertRHS(env, C.VPAddr (off, var)) = C.VPAddr (off, subst(env, var))
-          | convertRHS(env, x) = x
+        and convertRHS(env, _, C.Var(vars)) = C.Var(subst'(env,vars))
+          | convertRHS(env, [l], C.Cast(ty,v)) = C.Cast(CV.typeOf l,subst(env,v))
+          | convertRHS(env, _, C.Select(i,v)) = C.Select(i,subst(env,v))
+          | convertRHS(env, _, C.Update(i,v1,v2)) = C.Update(i,subst(env,v1),subst(env,v2))
+          | convertRHS(env, _, C.AddrOf(i,v)) = C.AddrOf(i, subst(env,v))
+          | convertRHS(env, _, C.Alloc(ty,vars)) = C.Alloc(ty, subst'(env,vars))
+          | convertRHS(env, _, C.Promote (v)) = C.Promote(subst(env,v))
+          | convertRHS(env, _, C.Prim(p)) = C.Prim(PrimUtil.map (fn x => subst(env, x)) p)
+          | convertRHS(env, _, C.CCall (var, vars)) = C.CCall (var, subst'(env,vars))
+          | convertRHS(env, _, C.VPLoad(off,var)) = C.VPLoad (off, subst(env,var))
+          | convertRHS(env, _, C.VPStore (off, v1, v2)) = C.VPStore (off, subst(env, v1), subst(env,v2))
+          | convertRHS(env, _, C.VPAddr (off, var)) = C.VPAddr (off, subst(env, var))
+          | convertRHS(env, _, x) = x
     in
         C.MODULE{
         name=name, externs=externs,
