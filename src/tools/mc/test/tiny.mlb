@@ -1,0 +1,7 @@
+local
+  $(SML_LIB)/basis/primitive/primitive.mlb 
+(*  $(SML_LIB)/basis/libs/basis-2002/basis2002.mlb  *)
+(*  $(SML_LIB)/basis/basis2002.mlb  *)
+in
+  tiny.sml
+end
