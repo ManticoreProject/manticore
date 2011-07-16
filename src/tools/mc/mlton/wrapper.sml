@@ -15,4 +15,8 @@ struct
         Compile.compileSML {input=[srcFile],
                             outputC=makeFileDummy "foo.c",
                             outputS=makeFileDummy asmFile}
+    fun compileMLB (srcFile : string, asmFile : string) =
+        Compile.compileMLB {input=srcFile,
+                            outputC=makeFileDummy "foo.c",
+                            outputS=makeFileDummy asmFile}
 end

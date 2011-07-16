@@ -165,7 +165,8 @@ functor MainFn (
 	  val _ = if verbose then print "initializing environment\n" else ()
 	  val (bEnv0, mEnv0, ast0, glueAST) = initialEnv()
           val _ = if verbose then print(concat["mlton parsing \"", srcFile, "\"\n"]) else ()
-          val sxml = Wrapper.compileSML (srcFile, asmFile)
+(*          val sxml = Wrapper.compileSML (srcFile, asmFile) *)
+          val sxml = Wrapper.compileMLB (srcFile, asmFile)
 	  val _ = if verbose then print(concat["parsing \"", srcFile, "\"\n"]) else ()
           val ast = mlbToAST (errStrm, bEnv0, mEnv0, srcFile)
           val _ = checkForErrors errStrm
