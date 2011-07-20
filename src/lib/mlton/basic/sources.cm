@@ -152,9 +152,9 @@ functor Env
 functor EuclideanRing
 functor IntUniqueId
 functor MonoArray
-functor MonoList
-functor MonoList
-functor MonoOption
+(*functor MonoList*)    (* unused [jhr] *)
+(*functor MonoList*)    (* unused [jhr] *)
+(*functor MonoOption*)    (* unused [jhr] *)
 functor MonoVector
 functor OrderedField
 functor Pair
@@ -377,8 +377,10 @@ linked-list.sig
 linked-list.sml
 mark.sig
 mark.sml
+(* unused [jhr]
 mono-list.fun
 mono-option.fun
+*)
 net.sig
 net.sml
 pair.fun

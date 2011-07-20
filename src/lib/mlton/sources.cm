@@ -162,10 +162,10 @@ functor HashedUniqueSet
 functor IntUniqueId
 functor MakeMonoEnv
 functor MonoArray
-functor MonoList
+(*functor MonoList*)    (* unused [jhr] *)
 functor MonoEnv
-functor MonoList
-functor MonoOption
+(*functor MonoList*)    (* unused [jhr] *)
+(*functor MonoOption*)  (* unused [jhr] *)
 functor MonoVector
 functor MoveToFrontEnv
 functor OrderedField
