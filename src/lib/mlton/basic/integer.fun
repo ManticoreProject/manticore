@@ -5,18 +5,11 @@
  * MLton is released under a BSD-style license.
  * See the file MLton-LICENSE for details.
  *)
-structure blah = struct end
-(*functor Integer (S: INTEGER_STRUCTS): INTEGER =
-struct
-local
-    open Pervasive.Int
-in
-    fun divMod(a, b) = (a div b, a mod b)
-    fun quotRem(a, b) = (quot(a, b), rem(a, b))
-    val toIntInf = Pervasive.IntInf.fromInt
-end
 
-    open Pervasive.Int
+functor Integer (S: INTEGER_STRUCTS): INTEGER =
+struct
+
+open S
 
 structure In = In0
 
@@ -156,4 +149,3 @@ fun scan (radix, reader) = Int.scan radix reader
 fun format (i, r) = fmt r i
 
 end
-*)
