@@ -56,6 +56,8 @@ struct struct_vproc {
     Value_t	shutdownPending; //!< true, when runtime shutdown is pending
     Value_t	rdyQHd;		//!< the head of the primary ready queue
     Value_t	rdyQTl;		//!< the tail of the primary ready queue
+    Value_t	sndQHd;		//!< the head of the secondary ready queue
+    Value_t	sndQTl;		//!< the tail of the secondary ready queue
 			      /* VProc registers */
     Value_t	stdArg;		//!< holds value of standard argument reg.
     Value_t	stdEnvPtr;	//!< holds value of standard environment-pointer reg.

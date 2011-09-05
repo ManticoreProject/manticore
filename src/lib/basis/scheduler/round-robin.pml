@@ -44,7 +44,7 @@ structure RoundRobin =
 	      (* the first list contains ready threads and second contains sleeping threads *)
 		let res : [List.list, List.list] = PrimList.@partition (f, #0(sleeping) / exh)
 		fun enq (thread : [FLS.fls, PT.fiber, ml_long] / exh : exh) : () =
-		    do VProcQueue.@enqueue-from-atomic (self, #0(thread), #1(thread))
+		    do VProcQueue.@enqueue-in-atomic (self, #0(thread), #1(thread))
 		    return ()
 		do PrimList.@app (enq, #0(res) / exh)
                 let newSleeping : List.list = promote (#1(res))
@@ -78,7 +78,7 @@ structure RoundRobin =
 	    fun waitForWork () : () =
 		cont workIsAvailable () = return ()  (* leave the waitForWork loop *)
 		fun lp1 (i : int) : () =
-		    let w : bool = VProcQueue.@poll-landing-pad-from-atomic (self)
+		    let w : bool = VProcQueue.@poll-landing-pad-in-atomic (self)
 		    do case w
 			of true => throw workIsAvailable ()
 			 | false => return ()
@@ -94,13 +94,13 @@ structure RoundRobin =
 		    of true => throw workIsAvailable ()
 		     | false => return ()
 		   end
-		let _ : bool = VProc.@nanosleep-from-atomic (self, 1000000:long)
+		let _ : bool = VProc.@nanosleep-in-atomic (self, 1000000:long)
                 apply waitForWork ()
 
 	    cont switch (s : PT.signal) =
 	     (* pick the next thread to run *)
 		cont dispatch () =
-		  let item : Option.option = VProcQueue.@dequeue-from-atomic(self)
+		  let item : Option.option = VProcQueue.@dequeue-in-atomic(self)
 		  case item
 		   of Option.NONE => 
 		      do apply waitForWork ()
@@ -115,8 +115,8 @@ structure RoundRobin =
 		   throw dispatch ()
 		 | PT.PREEMPT (k : PT.fiber) =>
 		   let fls : FLS.fls = FLS.@get-in-atomic (self)
-		   do VProcQueue.@enqueue-from-atomic (self, fls, k)
-		   let _ : bool = VProcQueue.@poll-landing-pad-from-atomic (self)
+		   do VProcQueue.@enqueue-in-atomic (self, fls, k)
+		   let _ : bool = VProcQueue.@poll-landing-pad-in-atomic (self)
 		   let _ : bool = apply wakeupSleepingThreads ()
 		   throw dispatch () 
 		 | PT.SLEEP (k : PT.fiber, durationNs : long) =>

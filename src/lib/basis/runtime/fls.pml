@@ -111,6 +111,7 @@ structure FLS :
 #define ITE_OFF                1
 #define DICT_COUNTER_OFF       2
 #define DICT_OFF               3
+#define DONE_COMM_OFF          4
 
 (* default dictionary entries *)
 #define DICT_BUILTIN_TOPOLOGY          0
@@ -132,7 +133,8 @@ structure FLS :
 (* FIXME: using an option type here adds an unnecessary level of indirection *)
 	  Option.option,	(* optional implicit-thread environment (ITE) *)
 	  int,                  (* dictionary counter *)
-	  List.list             (* dictionary *)
+	  List.list,            (* dictionary *)
+	  bool                  (* is the fiber classified as interactive, or computationally intensive? *)
 	];
 
       define @initial-dict () : [int, List.list] =
@@ -148,14 +150,14 @@ structure FLS :
     (* create fls *)
       define inline @new (x : unit / exh : exh) : fls =
           let dict : [int, List.list] = @initial-dict()
-	  let fls : fls = alloc(~1, Option.NONE, #0(dict), #1(dict))
+	  let fls : fls = alloc(~1, Option.NONE, #0(dict), #1(dict), true)
 	  return (fls)
 	;
 
     (* create a new FLS pinned to the given vproc *)
       define inline @new-pinned (vprocId : int) : fls =
           let dict : [int, List.list] = @initial-dict()
-	  let fls : fls = alloc(vprocId, Option.NONE, #0(dict), #1(dict))
+	  let fls : fls = alloc(vprocId, Option.NONE, #0(dict), #1(dict), true)
 	  return (fls)
 	;
 
@@ -197,7 +199,7 @@ structure FLS :
 
     (* set the fls as pinned to the given vproc *)
       define inline @pin-to (fls : fls, vprocId : int / exh : exh) : fls =
-	  let fls : fls = alloc(vprocId, SELECT(ITE_OFF, fls), SELECT(DICT_COUNTER_OFF, fls), SELECT(DICT_OFF, fls))
+	  let fls : fls = alloc(vprocId, SELECT(ITE_OFF, fls), SELECT(DICT_COUNTER_OFF, fls), SELECT(DICT_OFF, fls), SELECT(DONE_COMM_OFF, fls))
 	  return(fls)
 	;
 
@@ -231,10 +233,24 @@ structure FLS :
       define @set-ite (ite : ite / exh : exh) : () =
 	  let fls : fls = @get()
 	  let vprocId : int = @pin-info(fls / exh)
-	   let fls : fls = alloc(vprocId, Option.SOME(ite), SELECT(DICT_COUNTER_OFF, fls), SELECT(DICT_OFF, fls))
+	   let fls : fls = alloc(vprocId, Option.SOME(ite), SELECT(DICT_COUNTER_OFF, fls), SELECT(DICT_OFF, fls), SELECT(DONE_COMM_OFF, fls))
 	  do @set(fls)  
 	  return()
 	;
+
+    (* set the doneComm flag *)
+      define @set-done-comm (doneComm : bool / exh : exh) : unit =
+	let fls : fls = @get()
+	let fls : fls = alloc (SELECT(VPROC_OFF,fls), SELECT(ITE_OFF, fls), SELECT(DICT_COUNTER_OFF, fls), SELECT(DICT_OFF, fls), doneComm)
+	do @set(fls)
+	return(UNIT)
+      ;
+
+    (* get the value of the doneComm flag *)
+      define @get-done-comm (/ exh : exh) : bool =
+	let fls : fls = @get()
+	return (SELECT(DONE_COMM_OFF, fls))
+      ;
 
       define @keys-same (arg : [[int], [int]] / exh : exh) : bool =
 	if I32Eq(#0(#0(arg)), #0(#1(arg))) then return(true) else return(false)
@@ -242,7 +258,7 @@ structure FLS :
 
       define @set-dict (dict : List.list / exh : exh) : unit =
 	let fls : fls = @get()
-	let fls : fls = alloc(SELECT(VPROC_OFF, fls), SELECT(ITE_OFF, fls), SELECT(DICT_COUNTER_OFF, fls), dict)
+	let fls : fls = alloc(SELECT(VPROC_OFF, fls), SELECT(ITE_OFF, fls), SELECT(DICT_COUNTER_OFF, fls), dict, SELECT(DONE_COMM_OFF, fls))
 	do @set(fls)
 	return(UNIT)
       ;
@@ -255,7 +271,7 @@ structure FLS :
       define @increment-dict-counter () : int =
 	let fls : fls = @get()
 	let counter : int = SELECT(DICT_COUNTER_OFF, fls)
-	let fls : fls = alloc(SELECT(VPROC_OFF, fls), SELECT(ITE_OFF, fls), I32Add(counter, 1), SELECT(DICT_OFF, fls))
+	let fls : fls = alloc(SELECT(VPROC_OFF, fls), SELECT(ITE_OFF, fls), I32Add(counter, 1), SELECT(DICT_OFF, fls), SELECT(DONE_COMM_OFF, fls))
 	do @set(fls)
         return(counter)
       ;

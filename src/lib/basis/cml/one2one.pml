@@ -84,7 +84,7 @@ structure OneOneChan (*: sig
                   if Equal(self, SELECT(ITEM_VPROC, recvval))                                                                                                             
                     then                                                                                                                                                      
                       let fls : FLS.fls = FLS.@get-in-atomic(self)                                                                                                            
-                      do VProcQueue.@enqueue-from-atomic(self, fls, sendK)                                                                                                    
+                      do VProcQueue.@enqueue-in-atomic(self, fls, sendK)                                                                                                    
                       do FLS.@set-in-atomic(self, SELECT(ITEM_FLS, recvval))                                                                                                  
                       do SchedulerAction.@atomic-end(self)                                                                                                                    
                       let k : cont(any) = SELECT(ITEM_CONT, recvval)                                                                                                          

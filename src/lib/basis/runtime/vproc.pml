@@ -27,31 +27,31 @@ structure VProc (* :
     (* returns the list of all vprocs, excluding host vproc. 
      * NOTE: signals must be masked before the call.
      *)
-      define @other-vprocs-from-atomic (self : vproc / exh : exh) : List.list;
+      define @other-vprocs-in-atomic (self : vproc / exh : exh) : List.list;
     (* apply f to each vproc *)
       define @for-each-vproc(f : fun(vproc / exh ->) / exh : exh) : ();
     (* apply f to each vproc except the host vproc. *)
-      define @for-other-vprocs-from-atomic (self : vproc, f : fun(vproc / exh ->) / exh : exh) : ();
+      define @for-other-vprocs-in-atomic (self : vproc, f : fun(vproc / exh ->) / exh : exh) : ();
 
     (** Signaling and sleeping **)
 
     (* place a signal on the landing pad of the remote vproc. 
      * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
      *) 
-      define @send-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
+      define @send-in-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
     (* returns threads that have been placed on the given vproc's landing pad *)
-      define @recv-from-atomic (self : vproc) : queue_item;
+      define @recv-in-atomic (self : vproc) : queue_item;
     (* put the vproc to sleep until a signal arrives on its landing pad 
      * PRECONDITION: Equal(self, host_vproc)
      *)
-      define @sleep-from-atomic (vp : vproc) : ();
+      define @sleep-in-atomic (vp : vproc) : ();
     (* put the vproc to sleep until either a signal arrives on its landing pad or the given amount
      * of time has elapsed
      * the return value depends on how the vproc was brought out of sleeping: true if by
      * a remote vproc and false if by a POSIX signal or timeout
      * PRECONDITION: Equal(self, host_vproc)
      *)
-      define @nanosleep-from-atomic (vp : vproc, nsec : long) : bool;
+      define @nanosleep-in-atomic (vp : vproc, nsec : long) : bool;
 
     )
 
@@ -114,7 +114,7 @@ structure VProc (* :
     (* returns the list of all vprocs, excluding the host vproc. 
      * NOTE: signals must be masked before the call.
      *)
-      define @other-vprocs-from-atomic (self : vproc / exh : exh) : List.list =
+      define @other-vprocs-in-atomic (self : vproc / exh : exh) : List.list =
 	  fun lp (vps : List.list, others : List.list) : List.list =
 	      case vps
 	       of nil => return(others)
@@ -143,7 +143,7 @@ structure VProc (* :
     (* apply f to each vproc except the host vproc. 
      * NOTE: the functions are applied in
      *)
-      define @for-other-vprocs-from-atomic (self : vproc, f : fun(vproc / exh ->) / exh : exh) : () =
+      define @for-other-vprocs-in-atomic (self : vproc, f : fun(vproc / exh ->) / exh : exh) : () =
 	  fun g (vp : vproc / exh : exh) : () =
 		if NotEqual(vp, self) then apply f(vp / exh)
 		else return()
@@ -155,7 +155,7 @@ structure VProc (* :
     (* place a signal on the landing pad of the remote vproc.
      * PRECONDITION: NotEqual(self, dst) and Equal(self, host_vproc)
      *) 
-      define @send-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
+      define @send-in-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
           do assert(NotEqual(self, dst))
 	  fun lp () : () =
 	      let ldgPadOrig : queue_item = vpload(VP_LANDING_PAD, dst)
@@ -192,7 +192,7 @@ structure VProc (* :
       ;
 
     (* returns threads that have been placed on the given vproc's landing pad *)
-      define @recv-from-atomic (self : vproc) : queue_item =
+      define @recv-in-atomic (self : vproc) : queue_item =
           let ldgPadOrig : queue_item = vpload(VP_LANDING_PAD, self)
           if Equal (ldgPadOrig, Q_EMPTY) then
 	      return (Q_EMPTY)
@@ -215,7 +215,7 @@ structure VProc (* :
     (* put the vproc to sleep until a signal arrives on its landing pad 
      * PRECONDITION: Equal(vp, host_vproc)
      *)
-      define @sleep-from-atomic (vp : vproc) : () =
+      define @sleep-in-atomic (vp : vproc) : () =
 	  fun sleep () : () =
               cont wakeupK (b : bool) = return ()
 	    (* the C runtime expects the resumption continuation to be in vp->wakeupCont *)
@@ -233,7 +233,7 @@ structure VProc (* :
      * a remote vproc and false if by a POSIX signal or timeout
      * PRECONDITION: Equal(self, host_vproc)
      *)
-      define @nanosleep-from-atomic (vp : vproc, nsec : long) : bool =
+      define @nanosleep-in-atomic (vp : vproc, nsec : long) : bool =
           cont wakeupK (b : bool) = return (b)
 	  fun sleep () : () =
 	    (* the C runtime expects the resumption continuation to be in vp->wakeupCont *)

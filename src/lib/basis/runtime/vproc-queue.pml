@@ -21,28 +21,34 @@ structure VProcQueue (* :
     (**** Predicates ****)
 
     (* returns true if the local queue is empty *)
-      define @is-local-queue-empty-from-atomic (self : vproc) : bool;
+      define @is-local-queue-empty-in-atomic (self : vproc) : bool;
+      define @secondary-is-local-queue-empty-in-atomic (self : vproc) : bool;
     (* returns true if the local queue contains more than one thread *)
-      define @more-than-one-from-atomic (vp : vproc) : bool;
+      define @more-than-one-in-atomic (vp : vproc) : bool;
+      define @secondary-more-than-one-in-atomic (vp : vproc) : bool;
 
     (**** Local-queue operations ****)
 
     (* enqueue on the host's vproc's thread queue *)
-      define inline @enqueue-from-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : ();
+      define inline @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : ();
       define inline @enqueue (fls : FLS.fls, fiber : PT.fiber) : ();
+      define inline @secondary-enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : ();
+      define inline @secondary-enqueue (fls : FLS.fls, fiber : PT.fiber) : ();
     (* dequeue from the local queue  *)
-      define inline @dequeue-from-atomic () : O.option;
+      define inline @dequeue-in-atomic () : O.option;
+      define inline @secondary-dequeue-in-atomic () : O.option;
     (* dequeue the first item to satisfy the given predicate  *)
-      define @dequeue-with-pred-from-atomic (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option;
+      define @dequeue-with-pred-in-atomic (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option;
+      define @secondary-dequeue-with-pred-in-atomic (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option;
 
     (**** Remote-queue operations ****)
 
     (* poll the landing pad for threads. if there are threads, we move them to the local thread queue
      * and return true. otherwise we return false.
      *)
-      define inline @poll-landing-pad-from-atomic (vp : vproc) : bool:
+      define inline @poll-landing-pad-in-atomic (vp : vproc) : bool:
     (* enqueue on a given vproc *)
-      define @enqueue-on-vproc-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
+      define @enqueue-on-vproc-in-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
     (* enqueue on a remote vproc *)
       define @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : ();
 
@@ -60,7 +66,7 @@ structure VProcQueue (* :
     (**** Predicates ****)
 
     (* returns true if the local queue is empty *)
-      define @is-local-queue-empty-from-atomic (self : vproc) : bool =
+      define @is-local-queue-empty-in-atomic (self : vproc) : bool =
 	  let tl : queue_item = vpload (VP_RDYQ_TL, self)
 	  if Equal(tl, Q_EMPTY) then
 	      let hd : queue_item = vpload (VP_RDYQ_HD, self)
@@ -71,10 +77,37 @@ structure VProcQueue (* :
 	    else return (false)
 	;
 
+    (* returns true if the secondary vproc queue is empty *)
+      define @secondary-is-local-queue-empty-in-atomic (self : vproc, TL_OFF : int, HD_OFF : int) : bool =
+	  let tl : queue_item = vpload (VP_SNDQ_TL, self)
+	  if Equal(tl, Q_EMPTY) then
+	      let hd : queue_item = vpload (VP_SNDQ_HD, self)
+	      (* in *)
+		if Equal(hd, Q_EMPTY)
+		  then return (true)
+		  else return (false)
+	    else return (false)
+	;
+
     (* returns true if the local queue contains more than one thread *)
-      define @more-than-one-from-atomic (vp : vproc) : bool =
+      define @more-than-one-in-atomic (vp : vproc) : bool =
 	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
 	  let hd : queue_item = vpload (VP_RDYQ_HD, vp)
+	  let nTl : int =
+		if Equal(tl, Q_EMPTY) then return(0)
+		else if Equal(SELECT(LINK_OFF, tl), Q_EMPTY) then return (1)
+		else return(2)
+	  let nHd : int =
+		if Equal(hd, Q_EMPTY) then return(0)
+		else if Equal(SELECT(LINK_OFF, hd), Q_EMPTY) then return (1)
+		else return(2)
+	  if I32Gt(I32Add(nTl, nHd), 1) then return(true) else return(false)
+	;
+
+    (* returns true if the local queue contains more than one thread *)
+      define @secondary-more-than-one-in-atomic (vp : vproc) : bool =
+	  let tl : queue_item = vpload (VP_SNDQ_TL, vp)
+	  let hd : queue_item = vpload (VP_SNDQ_HD, vp)
 	  let nTl : int =
 		if Equal(tl, Q_EMPTY) then return(0)
 		else if Equal(SELECT(LINK_OFF, tl), Q_EMPTY) then return (1)
@@ -116,7 +149,7 @@ structure VProcQueue (* :
       ;
 
     (* dequeue from the local queue  *)
-      define inline @dequeue-from-atomic (vp : vproc) : O.option =
+      define inline @dequeue-in-atomic (vp : vproc) : O.option =
 	  let hd : queue_item = vpload (VP_RDYQ_HD, vp)	  
           if NotEqual(hd, Q_EMPTY) then
 	    (* got a thread from the primary list *)
@@ -136,31 +169,67 @@ structure VProcQueue (* :
                   return (O.NONE)
 	    ;
 
+    (* dequeue from the secondary local queue  *)
+      define inline @secondary-dequeue-in-atomic (vp : vproc) : O.option =
+	  let hd : queue_item = vpload (VP_SNDQ_HD, vp)	  
+          if NotEqual(hd, Q_EMPTY) then
+	    (* got a thread from the primary list *)
+	      do vpstore (VP_SNDQ_HD, vp, SELECT(LINK_OFF, hd))
+	      return (O.SOME (hd))
+	  else
+	      let tl : queue_item = vpload (VP_SNDQ_TL, vp)
+	      if NotEqual(tl, Q_EMPTY) then
+		(* got a thread from the secondary list *)
+		  do vpstore (VP_SNDQ_TL, vp, Q_EMPTY)
+		  let qitem : queue_item = @queue-reverse (SELECT(FLS_OFF, tl), 
+							   SELECT(FIBER_OFF, tl), 
+							   (queue_item)SELECT(LINK_OFF, tl))
+		  do vpstore (VP_SNDQ_HD, vp, (queue_item)SELECT(LINK_OFF, qitem))
+		  return (O.SOME(qitem))
+	      else
+                  return (O.NONE)
+	    ;
+
     (* enqueue on the local queue. NOTE: signals must be masked *)
-      define inline @enqueue-from-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
+      define inline @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
 	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
 	  let qitem : queue_item = alloc(fls, fiber, tl)
 	  do vpstore (VP_RDYQ_TL, vp, qitem)
 	  return () 
 	;
 
+    (* enqueue on the secondary local queue. NOTE: signals must be masked *)
+      define inline @secondary-enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
+	  let tl : queue_item = vpload (VP_SNDQ_TL, vp)
+	  let qitem : queue_item = alloc(fls, fiber, tl)
+	  do vpstore (VP_SNDQ_TL, vp, qitem)
+	  return () 
+	;
     (* enqueue on the host's vproc's thread queue *)
       define inline @enqueue (fls : FLS.fls, fiber : PT.fiber) : () =
 	  let vp : vproc = SchedulerAction.@atomic-begin()
-	  do @enqueue-from-atomic (vp, fls, fiber)
+	  do @enqueue-in-atomic (vp, fls, fiber)
+	  do SchedulerAction.@atomic-end(vp)
+	  return ()
+	;
+
+    (* enqueue on the host's vproc's secondary thread queue *)
+      define inline @secondary-enqueue (fls : FLS.fls, fiber : PT.fiber) : () =
+	  let vp : vproc = SchedulerAction.@atomic-begin()
+	  do @secondary-enqueue-in-atomic (vp, fls, fiber)
 	  do SchedulerAction.@atomic-end(vp)
 	  return ()
 	;
 
     (* dequeue the first item to satisfy the given predicate  *)
-      define @dequeue-with-pred-from-atomic (self : vproc, f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option =
+      define @dequeue-with-pred-in-atomic (self : vproc, f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option =
 	  cont exit (x : O.option) = return(x)
-	  let qitem : O.option = @dequeue-from-atomic(self)
+	  let qitem : O.option = @dequeue-in-atomic(self)
 	  case qitem
 	   of O.NONE => throw exit(O.NONE)
 	    | O.SOME (origItem : queue_item) =>
 	      fun lp () : O.option =
-		  let qitem : O.option = @dequeue-from-atomic(self)
+		  let qitem : O.option = @dequeue-in-atomic(self)
 		  case qitem
 		   of O.NONE => throw exit(O.NONE)
 		    | O.SOME(item : queue_item) =>
@@ -170,10 +239,10 @@ structure VProcQueue (* :
 			| false =>
 			    if Equal(SELECT(FLS_OFF, item), SELECT(FLS_OFF, origItem))
 			      then 
-				do @enqueue-from-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
+				do @enqueue-in-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
 				throw exit (O.NONE)
 			      else 
-				do @enqueue-from-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
+				do @enqueue-in-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
 				apply lp()
 		      end
 		  end
@@ -181,7 +250,42 @@ structure VProcQueue (* :
 		case b
 		 of true => throw exit(O.SOME(origItem))
 		  | false =>
-		      do @enqueue-from-atomic(self, SELECT(FLS_OFF, origItem), SELECT(FIBER_OFF, origItem))
+		      do @enqueue-in-atomic(self, SELECT(FLS_OFF, origItem), SELECT(FIBER_OFF, origItem))
+		      apply lp()
+		end
+	  end
+	;
+
+    (* dequeue the first item to satisfy the given predicate  *)
+      define @secondary-dequeue-with-pred-in-atomic (self : vproc, f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option =
+	  cont exit (x : O.option) = return(x)
+	  let qitem : O.option = @secondary-dequeue-in-atomic(self)
+	  case qitem
+	   of O.NONE => throw exit(O.NONE)
+	    | O.SOME (origItem : queue_item) =>
+	      fun lp () : O.option =
+		  let qitem : O.option = @secondary-dequeue-in-atomic(self)
+		  case qitem
+		   of O.NONE => throw exit(O.NONE)
+		    | O.SOME(item : queue_item) =>
+		      let b : bool = apply f (SELECT(FLS_OFF, item) / exh)
+		      case b
+		       of true => throw exit (O.SOME(item))
+			| false =>
+			    if Equal(SELECT(FLS_OFF, item), SELECT(FLS_OFF, origItem))
+			      then 
+				do @secondary-enqueue-in-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
+				throw exit (O.NONE)
+			      else 
+				do @secondary-enqueue-in-atomic(self, SELECT(FLS_OFF, item), SELECT(FIBER_OFF, item))
+				apply lp()
+		      end
+		  end
+	      let b : bool = apply f (SELECT(FLS_OFF, origItem) / exh)
+		case b
+		 of true => throw exit(O.SOME(origItem))
+		  | false =>
+		      do @secondary-enqueue-in-atomic(self, SELECT(FLS_OFF, origItem), SELECT(FIBER_OFF, origItem))
 		      apply lp()
 		end
 	  end
@@ -192,8 +296,8 @@ structure VProcQueue (* :
     (* poll the landing pad for threads. if there are threads, we move them to the local thread queue
      * and return true. otherwise we return false.
      *)
-      define inline @poll-landing-pad-from-atomic (vp : vproc) : bool =
-	  let landingPadItems : queue_item = VProc.@recv-from-atomic(vp)
+      define inline @poll-landing-pad-in-atomic (vp : vproc) : bool =
+	  let landingPadItems : queue_item = VProc.@recv-in-atomic(vp)
 	  if Equal (landingPadItems, Q_EMPTY) then
 	      return (false)
 	  else
@@ -204,16 +308,16 @@ structure VProcQueue (* :
 	;
 
     (* enqueue on a given vproc. NOTE: signals must be masked  *)
-      define inline @enqueue-on-vproc-from-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
+      define inline @enqueue-on-vproc-in-atomic (self : vproc, dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
           if Equal(self, dst)
-	    then @enqueue-from-atomic(self, fls, k)
-	    else VProc.@send-from-atomic(self, dst, fls, k)
+	    then @enqueue-in-atomic(self, fls, k)
+	    else VProc.@send-in-atomic(self, dst, fls, k)
       ;
 
     (* enqueue on a remote vproc *)
       define inline @enqueue-on-vproc (dst : vproc, fls : FLS.fls, k : PT.fiber) : () =
 	let self : vproc = SchedulerAction.@atomic-begin()
-	do @enqueue-on-vproc-from-atomic(self, dst, fls, k)
+	do @enqueue-on-vproc-in-atomic(self, dst, fls, k)
 	do SchedulerAction.@atomic-end(self)
 	return()
       ;

@@ -34,9 +34,9 @@ structure WorkStealers =
     (* wake up any idle vprocs by enqueuing dummy threads on them *)
       define @wake-idle-vprocs (self : vproc / exh : exh) : () =
 	fun f (vp : vproc / exh : exh) : () =
-            do VProc.@preempt-from-atomic(self, vp)
+            do VProc.@preempt-in-atomic(self, vp)
             return()
-	do VProc.@for-other-vprocs-from-atomic(self, f / exh)
+	do VProc.@for-other-vprocs-in-atomic(self, f / exh)
         return()
       ;
 
@@ -48,7 +48,7 @@ structure WorkStealers =
 
 	(* try to steal a thread from a remote vproc *)
 	  fun thief (victimVP : vproc, vps : L.list) : () =
-		let noStealableFibers : bool = VPQ.@is-local-queue-empty-from-atomic(victimVP)
+		let noStealableFibers : bool = VPQ.@is-local-queue-empty-in-atomic(victimVP)
 		if noStealableFibers
 		  then 
 		    PRINT_DEBUG("WorkStealers.thief: no available fibers")
@@ -58,7 +58,7 @@ structure WorkStealers =
 			let pinned : int = FLS.@pin-info(fls / exh)
                         let victim : int = VProc.@vproc-id(victimVP)
 			return (NotEqual(pinned, victim))
-		    let item : O.option = VPQ.@dequeue-with-pred-from-atomic (victimVP, isNotPinned / exh)
+		    let item : O.option = VPQ.@dequeue-with-pred-in-atomic (victimVP, isNotPinned / exh)
 		    case item
 		     of O.NONE =>
 			  PRINT_DEBUG("WorkStealers.thief: failed to steal work")
@@ -87,24 +87,24 @@ structure WorkStealers =
               (* prevent the victim from migrating the thief to another vproc *)
                 let thiefFLS : FLS.fls = FLS.@new-pinned(vpId)
 		do VPQ.@enqueue-on-vproc(victimVP, thiefFLS, thiefK)
-	        do VProc.@preempt-from-atomic(self, victimVP)
+	        do VProc.@preempt-in-atomic(self, victimVP)
                 return()
 	      end
 
 	  cont switch (sign : PT.signal) =
 	      cont dispatch () =
 	      (* notify any idle vprocs if there is extra local work *)
-		let hasElts : bool = VPQ.@more-than-one-from-atomic(self)
+		let hasElts : bool = VPQ.@more-than-one-in-atomic(self)
 		do case hasElts
 		    of true => @wake-idle-vprocs(self / exh)
 		       | false => return()
                    end
-		let item : O.option = VPQ.@dequeue-from-atomic(self)
+		let item : O.option = VPQ.@dequeue-in-atomic(self)
 		case item
 		 of O.NONE => 
-		    let potentialVictims : L.list = VProc.@other-vprocs-from-atomic(self / exh)
+		    let potentialVictims : L.list = VProc.@other-vprocs-in-atomic(self / exh)
 		    do apply sendThieves(potentialVictims)
-		    do VProc.@sleep-from-atomic(self)
+		    do VProc.@sleep-in-atomic(self)
 		    throw dispatch()
 		  | O.SOME(qitem : VPQ.queue_item) =>
 		    do SchedulerAction.@dispatch-from-atomic (self, switch, SELECT(FIBER_OFF, qitem), SELECT(FLS_OFF, qitem))
@@ -116,7 +116,7 @@ structure WorkStealers =
 		throw dispatch()
 	      | PT.PREEMPT(k : PT.fiber) => 
 		let fls : FLS.fls = FLS.@get-in-atomic (self)
-		do VPQ.@enqueue-from-atomic (self, fls, k)
+		do VPQ.@enqueue-in-atomic (self, fls, k)
 		throw dispatch () 
 	      | _ =>
 		let e : exn = Match

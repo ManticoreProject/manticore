@@ -281,6 +281,8 @@ void *NewVProc (void *arg)
     vproc->shutdownPending = M_FALSE;
     vproc->rdyQHd = M_NIL;
     vproc->rdyQTl = M_NIL;
+    vproc->sndQHd = M_NIL;
+    vproc->sndQTl = M_NIL;
     vproc->landingPad = M_NIL;
     vproc->stdArg = M_UNIT;
     vproc->stdEnvPtr = M_UNIT;
