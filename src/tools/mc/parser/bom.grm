@@ -131,6 +131,11 @@
   val nilPat = BPT.RW_Const((Literal.Enum(Word.fromInt 0), listTyTerm))
   val listCons = {tree = ([Atom.atom "List"], Atom.atom "CONS"), span = (0, 0)}
 
+  val trueID = {tree = ([] : Atom.atom list, Atom.atom "true"), span = (0, 0)}
+  val trueVar = BPT.SE_Var trueID
+  fun mkTrueCheck se =
+      [se, trueVar]
+
   fun listToDConList [] = nilPat
     | listToDConList (pat :: ps) = BPT.RW_Prim(listCons,
                                                [pat, listToDConList ps])
@@ -271,6 +276,8 @@ BOMExp
 		=> (markBOMExp(FULL_SPAN, BPT.E_Fun(BOMLambda::SR, BOMExp)))
 	| "cont" CLambda BOMExp
 		=> (markBOMExp(FULL_SPAN, BPT.E_Cont(CLambda, BOMExp)))
+	| "if" "(" SimpleExp ")" "then" BOMExp "else" BOMExp
+		=> (markBOMExp(FULL_SPAN, BPT.E_If(Atom.atom "Equal", mkTrueCheck SimpleExp, BOMExp1, BOMExp2)))
 	| "if" ID "(" Args ")" "then" BOMExp "else" BOMExp
 		=> (markBOMExp(FULL_SPAN, BPT.E_If(ID, Args, BOMExp1, BOMExp2)))
         | "case" SimpleExp "of" Rules ("|" Default)? "end"
