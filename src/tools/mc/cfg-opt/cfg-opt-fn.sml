@@ -45,6 +45,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val cfaClear = CFACFG.clearInfo
   (* wrap transformation passes with keep controls *)
     val contract = transform {passName = "contract", pass = Contract.transform}
+    val unrollLoops = transform {passName = "unroll-loops", pass = UnrollLoops.transform}
     val specialCalls = transform {passName = "specialize-calls", pass = SpecializeCalls.transform}
     val implCalls = transform {passName = "implement-calls", pass = ImplementCalls.transform}
     val allocChecks = transform {passName = "alloc-checks", pass = AddAllocChecks.transform}
@@ -55,6 +56,9 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  val _ = census module
 	  val _ = CheckCFG.check ("closure", module)
 	  val module = contract module
+          val _ = cfa module
+          val module = unrollLoops module
+          val _ = cfaClear module
           val _ = cfa module
           val module = specialCalls module
           val _ = cfaClear module
