@@ -94,6 +94,7 @@
 %defs(
     structure BPT = ProgramParseTree.PML1.BOMParseTree
     structure CF = CFunctions
+    structure Op = BasisNames
 
     fun flatten NONE = []
       | flatten (SOME(x, xs)) = x::xs
@@ -126,12 +127,12 @@
     ret_val
   end (* new_label() *)
 
-  val listTyTerm = BPT.T_TyCon {tree = ([Atom.atom "List"], Atom.atom "list"), span = (0, 0)}
+  val listTyTerm = BPT.T_TyCon {tree = ([Atom.atom "List"], Op.list), span = (0, 0)}
 
   val nilPat = BPT.RW_Const((Literal.Enum(Word.fromInt 0), listTyTerm))
-  val listCons = {tree = ([Atom.atom "List"], Atom.atom "CONS"), span = (0, 0)}
+  val listCons = {tree = ([Atom.atom "List"], Op.listCons'), span = (0, 0)}
 
-  val trueID = {tree = ([] : Atom.atom list, Atom.atom "true"), span = (0, 0)}
+  val trueID = {tree = ([] : Atom.atom list, Op.boolTrue), span = (0, 0)}
   val trueVar = BPT.SE_Var trueID
   fun mkTrueCheck se =
       [se, trueVar]
