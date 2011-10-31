@@ -126,7 +126,8 @@ structure CommonSubexpressionElimination : sig
 		     case List.find (fn (vars', _) => 
                                         ListPair.allEq (fn (v, v') => 
                                                            (case (v, v') 
-                                                              of (VarRep.V{kind = ref(C.VK_Let(C.Const(lit, _))), ...}, VarRep.V{kind = ref(C.VK_Let(C.Const(lit', _))), ...}) => Literal.same (lit, lit') 
+                                                              of (VarRep.V{kind = ref(C.VK_Let(C.Const(lit,ty))), ...}, VarRep.V{kind = ref(C.VK_Let(C.Const(lit',ty'))), ...}) =>
+							              CPSTyUtil.equal (ty, ty') andalso  Literal.same (lit, lit')
                                                                | _ => false)) (vars, vars')) cseListAlloc
 		      of SOME (_, l') => (
 			 ST.tick cntElim;
