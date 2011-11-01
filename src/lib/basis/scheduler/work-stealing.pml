@@ -418,6 +418,12 @@ structure WorkStealing (* :
 		do D.@push-new-end-in-atomic (self, deque, t)
 		let _ : vproc = SchedulerAction.@yield-in-atomic (self)
 		throw executeNextTask ()
+	      | PT.BLOCK (k : PT.fiber) =>
+		do Logging.@log-WSPreempted (self, logWID)
+		let t : task = ImplicitThread.@capture (k / exh)
+		do D.@push-new-end-in-atomic (self, deque, t)
+		let _ : vproc = SchedulerAction.@yield-in-atomic (self)
+		throw executeNextTask ()
 	    end
           throw schedLp (PT.STOP)
 	return (init)

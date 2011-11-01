@@ -22,10 +22,8 @@ structure VProcQueue (* :
 
     (* returns true if the local queue is empty *)
       define @is-local-queue-empty-in-atomic (self : vproc) : bool;
-      define @secondary-is-local-queue-empty-in-atomic (self : vproc) : bool;
     (* returns true if the local queue contains more than one thread *)
       define @more-than-one-in-atomic (vp : vproc) : bool;
-      define @secondary-more-than-one-in-atomic (vp : vproc) : bool;
 
     (**** Local-queue operations ****)
 
@@ -36,10 +34,8 @@ structure VProcQueue (* :
       define inline @secondary-enqueue (fls : FLS.fls, fiber : PT.fiber) : ();
     (* dequeue from the local queue  *)
       define inline @dequeue-in-atomic () : O.option;
-      define inline @secondary-dequeue-in-atomic () : O.option;
     (* dequeue the first item to satisfy the given predicate  *)
       define @dequeue-with-pred-in-atomic (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option;
-      define @secondary-dequeue-with-pred-in-atomic (f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option;
 
     (**** Remote-queue operations ****)
 
@@ -66,7 +62,7 @@ structure VProcQueue (* :
     (**** Predicates ****)
 
     (* returns true if the local queue is empty *)
-      define @is-local-queue-empty-in-atomic (self : vproc) : bool =
+      define @primary-is-local-queue-empty-in-atomic (self : vproc) : bool =
 	  let tl : queue_item = vpload (VP_RDYQ_TL, self)
 	  if Equal(tl, Q_EMPTY) then
 	      let hd : queue_item = vpload (VP_RDYQ_HD, self)
@@ -78,7 +74,7 @@ structure VProcQueue (* :
 	;
 
     (* returns true if the secondary vproc queue is empty *)
-      define @secondary-is-local-queue-empty-in-atomic (self : vproc, TL_OFF : int, HD_OFF : int) : bool =
+      define @secondary-is-local-queue-empty-in-atomic (self : vproc) : bool =
 	  let tl : queue_item = vpload (VP_SNDQ_TL, self)
 	  if Equal(tl, Q_EMPTY) then
 	      let hd : queue_item = vpload (VP_SNDQ_HD, self)
@@ -89,8 +85,16 @@ structure VProcQueue (* :
 	    else return (false)
 	;
 
+    (* returns true if both queues are empty *)
+      define @is-local-queue-empty-in-atomic (self : vproc) : bool =
+      	let v : bool = @primary-is-local-queue-empty-in-atomic(self)
+	let w : bool = @secondary-is-local-queue-empty-in-atomic(self)
+	if (v) then return(w)
+	else return (false)
+	;
+
     (* returns true if the local queue contains more than one thread *)
-      define @more-than-one-in-atomic (vp : vproc) : bool =
+      define @primary-more-than-one-in-atomic (vp : vproc) : bool =
 	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
 	  let hd : queue_item = vpload (VP_RDYQ_HD, vp)
 	  let nTl : int =
@@ -117,6 +121,20 @@ structure VProcQueue (* :
 		else if Equal(SELECT(LINK_OFF, hd), Q_EMPTY) then return (1)
 		else return(2)
 	  if I32Gt(I32Add(nTl, nHd), 1) then return(true) else return(false)
+	;
+
+    (* returns true if between both queues, there are at least two threads *)
+      define @more-than-one-in-atomic (self : vproc) : bool =
+      	let v : bool = @primary-more-than-one-in-atomic(self)
+	let w : bool = @secondary-more-than-one-in-atomic(self)
+	if (v) then return(true)
+	else
+	  if (w) then return(true)
+	  else
+	    let a : bool = @primary-is-local-queue-empty-in-atomic(self)
+	    let b : bool = @secondary-is-local-queue-empty-in-atomic(self)
+	    if (a) then return(b)
+	    else return(false)
 	;
 
     (**** Local-queue operations ****)
@@ -149,7 +167,7 @@ structure VProcQueue (* :
       ;
 
     (* dequeue from the local queue  *)
-      define inline @dequeue-in-atomic (vp : vproc) : O.option =
+      define inline @primary-dequeue-in-atomic (vp : vproc) : O.option =
 	  let hd : queue_item = vpload (VP_RDYQ_HD, vp)	  
           if NotEqual(hd, Q_EMPTY) then
 	    (* got a thread from the primary list *)
@@ -190,6 +208,17 @@ structure VProcQueue (* :
                   return (O.NONE)
 	    ;
 
+    (* dequeue from the first nonempty local queue available *)
+      define inline @dequeue-in-atomic (vp : vproc) : O.option =
+        let t : O.option = @primary-dequeue-in-atomic(vp)
+	case t
+	  of O.SOME(q : queue_item) => return (O.SOME(q))
+	   | O.NONE =>
+	     let p : O.option = @secondary-dequeue-in-atomic(vp)
+	     return (p)
+	end
+	;
+
     (* enqueue on the local queue. NOTE: signals must be masked *)
       define inline @enqueue-in-atomic (vp : vproc, fls : FLS.fls, fiber : PT.fiber) : () =
 	  let tl : queue_item = vpload (VP_RDYQ_TL, vp)
@@ -222,7 +251,7 @@ structure VProcQueue (* :
 	;
 
     (* dequeue the first item to satisfy the given predicate  *)
-      define @dequeue-with-pred-in-atomic (self : vproc, f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option =
+      define @primary-dequeue-with-pred-in-atomic (self : vproc, f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option =
 	  cont exit (x : O.option) = return(x)
 	  let qitem : O.option = @dequeue-in-atomic(self)
 	  case qitem
@@ -289,6 +318,17 @@ structure VProcQueue (* :
 		      apply lp()
 		end
 	  end
+	;
+
+    (* dequeue from the first nonempty local queue available, with the given predicate *)
+      define @dequeue-with-pred-in-atomic (self : vproc, f : fun(FLS.fls / exh -> bool) / exh : exh) : O.option =
+        let t : O.option = @primary-dequeue-with-pred-in-atomic(self,f / exh)
+	case t
+	  of O.SOME(q : queue_item) => return (O.SOME(q))
+	   | O.NONE =>
+	     let p : O.option = @secondary-dequeue-with-pred-in-atomic(self, f / exh)
+	     return (p)
+	end
 	;
 
     (**** Remote-queue operations ****)

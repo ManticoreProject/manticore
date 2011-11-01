@@ -35,8 +35,7 @@ structure PrimTypes =
       | SLEEP of (fiber * long)         (* the first argument is the resumption fiber,
 					 * and the second is the minimum time to sleep
 					 * given in nanoseconds. *)
-      | UNBLOCK of (fiber * fiber)
-      | BLOCK of fiber
+      | BLOCK of fiber			(* the argument is the resumption fiber. *)
 
     _primcode (
       typedef sched_act = cont(signal);

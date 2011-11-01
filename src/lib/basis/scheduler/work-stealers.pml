@@ -118,6 +118,10 @@ structure WorkStealers =
 		let fls : FLS.fls = FLS.@get-in-atomic (self)
 		do VPQ.@enqueue-in-atomic (self, fls, k)
 		throw dispatch () 
+	      | PT.BLOCK (k : PT.fiber) => 
+		let fls : FLS.fls = FLS.@get-in-atomic (self)
+		do VPQ.@enqueue-in-atomic (self, fls, k)
+		throw dispatch () 
 	      | _ =>
 		let e : exn = Match
 		throw exh(e)

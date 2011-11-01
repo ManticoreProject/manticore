@@ -134,7 +134,7 @@ structure FLS :
 	  Option.option,	(* optional implicit-thread environment (ITE) *)
 	  int,                  (* dictionary counter *)
 	  List.list,            (* dictionary *)
-	  bool                  (* is the fiber classified as interactive, or computationally intensive? *)
+	  ![bool]               (* is the fiber classified as interactive, or computationally intensive? -- Mutable *)
 	];
 
       define @initial-dict () : [int, List.list] =
@@ -150,14 +150,16 @@ structure FLS :
     (* create fls *)
       define inline @new (x : unit / exh : exh) : fls =
           let dict : [int, List.list] = @initial-dict()
-	  let fls : fls = alloc(~1, Option.NONE, #0(dict), #1(dict), true)
+	  let dc : ![bool] = alloc(true)
+	  let fls : fls = alloc(~1, Option.NONE, #0(dict), #1(dict), dc)
 	  return (fls)
 	;
 
     (* create a new FLS pinned to the given vproc *)
       define inline @new-pinned (vprocId : int) : fls =
           let dict : [int, List.list] = @initial-dict()
-	  let fls : fls = alloc(vprocId, Option.NONE, #0(dict), #1(dict), true)
+	  let dc : ![bool] = alloc(true)
+	  let fls : fls = alloc(vprocId, Option.NONE, #0(dict), #1(dict), dc)
 	  return (fls)
 	;
 
@@ -241,15 +243,14 @@ structure FLS :
     (* set the doneComm flag *)
       define @set-done-comm (doneComm : bool / exh : exh) : unit =
 	let fls : fls = @get()
-	let fls : fls = alloc (SELECT(VPROC_OFF,fls), SELECT(ITE_OFF, fls), SELECT(DICT_COUNTER_OFF, fls), SELECT(DICT_OFF, fls), doneComm)
-	do @set(fls)
+	do UPDATE(0, SELECT(DONE_COMM_OFF, fls), doneComm)
 	return(UNIT)
       ;
 
     (* get the value of the doneComm flag *)
       define @get-done-comm (/ exh : exh) : bool =
 	let fls : fls = @get()
-	return (SELECT(DONE_COMM_OFF, fls))
+	return (SELECT(0,SELECT(DONE_COMM_OFF, fls)))
       ;
 
       define @keys-same (arg : [[int], [int]] / exh : exh) : bool =
