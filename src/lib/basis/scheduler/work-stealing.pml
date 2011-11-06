@@ -147,20 +147,6 @@ structure WorkStealing (* :
 	    else
 		return ()
 	end
-      (* try secondary deque *)
-	let deque : Option.option = D.@secondary-deque-in-atomic (self, workGroupID)
-        do case deque
-	 of Option.NONE =>
-	    return ()
-	  | Option.SOME (deque : D.deque) =>
-	    let stolenTask : Option.option = D.@pop-old-end-in-atomic (self, deque)
-	    case stolenTask
-	      of Option.NONE =>
-		 return ()
-	       | Option.SOME (t : task) =>
-		 throw succeed (CONS (t, List.nil))
-	    end
-        end
 	return (List.nil)
       ;
 
@@ -202,20 +188,6 @@ structure WorkStealing (* :
 		 throw succeed (CONS (t, List.nil))
 	     end
         end
-      (* try secondary deque *)
-	let deque : Option.option = D.@secondary-deque-in-atomic (self, workGroupID)
-        do case deque
-          of Option.NONE =>
-	     return ()
-	   | Option.SOME (deque : D.deque) =>
-	     let stolenTask : Option.option = D.@pop-new-end-in-atomic (self, deque)
-	     case stolenTask
-	       of Option.NONE =>
-		  return ()
-		| Option.SOME (t : task) =>
-		  throw succeed (CONS (t, List.nil))
-	     end
-	end
 	return (List.nil)
       ;
 
