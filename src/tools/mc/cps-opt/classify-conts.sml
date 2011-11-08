@@ -41,7 +41,7 @@ structure ClassifyConts : sig
   (* controls *)
     val enableFlg = ref true
 
-    val () = List.app (fn ctl => ControlRegistry.register ClosureControls.registry {
+    val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
 	      envName = NONE
 	    }) [
@@ -169,7 +169,7 @@ structure ClassifyConts : sig
 		  else (* we don't support recursive join conts *)
 		    markAsOther f;
 		analExp (outer, e);
-		if Controls.get ClosureControls.debug
+		if Controls.get CPSOptControls.debug
 		  then print(concat[
 		      "ClassifyConts: kindOf(", CV.toString f, ") = ",
 		      kindToString(kindOf f), "\n"

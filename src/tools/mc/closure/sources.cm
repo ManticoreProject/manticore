@@ -22,9 +22,7 @@ is
   ../cfg/sources.cm
   ../codegen/sources.cm
 
-  classify-conts.sml
   closure-fn.sml
   closure-controls.sml
-  free-vars.sml
   flat-closure-with-cfa.sml
   eff-sfs-closure-fn.sml  

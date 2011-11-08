@@ -166,7 +166,7 @@ structure FreeVars : sig
     fun envOfFun f = let
 	  val fv = getFV f
 	  in
-            if Controls.get ClosureControls.debug
+            if Controls.get CPSOptControls.debug
                then (print(concat["FV(", V.toString f, ") = "]); prSet fv; print "\n")
             else ();
 	    fv
