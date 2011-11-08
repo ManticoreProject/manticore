@@ -120,10 +120,10 @@ structure RoundRobin =
 		   let w : bool = CF.@done-comm-ops-in-atomic(self, false / exh) 
 		   let fls : FLS.fls = FLS.@get-in-atomic (self)
 		   do case w
-			 of true => do VProcQueue.@secondary-enqueue-in-atomic(self, fls, k)
+			of true => do VProcQueue.@secondary-enqueue-in-atomic(self, fls, k)
+				   return()
+			 | false => do VProcQueue.@enqueue-in-atomic (self, fls, k)
 				    return()
-			  | false => do VProcQueue.@enqueue-in-atomic (self, fls, k)
-				     return()
 		      end
 		   let _ : bool = VProcQueue.@poll-landing-pad-in-atomic (self)
 		   let _ : bool = apply wakeupSleepingThreads ()

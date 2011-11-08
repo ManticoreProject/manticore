@@ -151,6 +151,7 @@ structure FLS :
       define inline @new (x : unit / exh : exh) : fls =
           let dict : [int, List.list] = @initial-dict()
 	  let dc : ![bool] = alloc(true)
+	  let dc : ![bool] = promote(dc)
 	  let fls : fls = alloc(~1, Option.NONE, #0(dict), #1(dict), dc)
 	  return (fls)
 	;
@@ -159,6 +160,7 @@ structure FLS :
       define inline @new-pinned (vprocId : int) : fls =
           let dict : [int, List.list] = @initial-dict()
 	  let dc : ![bool] = alloc(true)
+	  let dc : ![bool] = promote(dc)
 	  let fls : fls = alloc(vprocId, Option.NONE, #0(dict), #1(dict), dc)
 	  return (fls)
 	;
@@ -250,7 +252,8 @@ structure FLS :
     (* get the value of the doneComm flag *)
       define @get-done-comm (/ exh : exh) : bool =
 	let fls : fls = @get()
-	return (SELECT(0,SELECT(DONE_COMM_OFF, fls)))
+	let dc : ![bool] = SELECT(DONE_COMM_OFF, fls)
+	return (#0(dc))
       ;
 
       define @keys-same (arg : [[int], [int]] / exh : exh) : bool =
