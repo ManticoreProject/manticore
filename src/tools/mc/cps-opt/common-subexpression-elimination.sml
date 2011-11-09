@@ -76,7 +76,7 @@ structure CommonSubexpressionElimination : sig
      * elements are constants.
      *)
 
-    fun doExp (env, cseMapSelect, cseListPrim, cseListAlloc, C.Exp(ppt, t)) = 
+    fun doExp (hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, C.Exp(ppt, t)) = 
         (case t
 	  of C.Let(lhs as [l], rhs as C.Select(i, x), e) => let
                  val x = subst(env, x)
@@ -85,23 +85,27 @@ structure CommonSubexpressionElimination : sig
                   of SOME x' =>
                      (case List.find (fn (x,_) => x=i) x'
                        of SOME (_, l') => 
-                          (case CV.typeOf l'
-                            of CPSTy.T_Tuple(_,_) => (
-                               ST.tick cntElim;
-                               doExp(VMap.insert(env, l, l'), cseMapSelect, cseListPrim, cseListAlloc, e))
-                             | _ => (* This error occurs when we have added a variable that is selected
-                                      * into elsewhere, but that variable does not actually have a tuple
-                                      * type.*)
-                               C.mkLet(lhs, C.Select(i, x), doExp(env, cseMapSelect, cseListPrim, cseListAlloc, e)))
+                          if hasFreeVars (* environment performance test *)
+                            then
+                              (case CV.typeOf l'
+                                of CPSTy.T_Tuple(_,_) => (
+                                   ST.tick cntElim;
+                                   doExp(hasFreeVars, VMap.insert(env, l, l'), cseMapSelect, cseListPrim, cseListAlloc, e))
+                                 | _ => (* This error occurs when we have added a variable that is selected
+                                          * into elsewhere, but that variable does not actually have a tuple
+                                          * type.*)
+                                   C.mkLet(lhs, C.Select(i, x), doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e)))
+                            else
+                              C.mkLet(lhs, C.Select(i, x), doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e))
                         | NONE => let
                               val cseMapSelect = VMap.insert (cseMapSelect, x, (i, l)::x')
                           in
-                              C.mkLet(lhs, C.Select(i, x), doExp(env, cseMapSelect, cseListPrim, cseListAlloc, e))
+                              C.mkLet(lhs, C.Select(i, x), doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e))
                           end)
                    | NONE => let
                          val cseMapSelect = VMap.insert (cseMapSelect, x, [(i, l)])
                      in
-                         C.mkLet(lhs, C.Select(i, x), doExp(env, cseMapSelect, cseListPrim, cseListAlloc, e))
+                         C.mkLet(lhs, C.Select(i, x), doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e))
                      end
              end
            | C.Let(lhs as [l], rhs as C.Prim p, e) => let
@@ -110,12 +114,16 @@ structure CommonSubexpressionElimination : sig
                  if PrimUtil.isPure p  (* only do cse on pure (no side-effects) prim operations *)
 		   then
                      case List.find (fn (x,_) => (PrimUtil.nameOf x = PrimUtil.nameOf p) andalso (ListPair.allEq CV.same (PrimUtil.varsOf x, PrimUtil.varsOf p))) cseListPrim
-		      of SOME (_, l') => (
-			 ST.tick cntElim;
-			 doExp(VMap.insert(env, l, l'), cseMapSelect, cseListPrim, cseListAlloc, e))
-		       | NONE => C.mkLet(lhs, C.Prim p, doExp(env, cseMapSelect, (p, l)::cseListPrim, cseListAlloc, e))
+		      of SOME (_, l') => 
+                         if hasFreeVars (* environment performance test *)
+                           then (
+			     ST.tick cntElim;
+			     doExp(hasFreeVars, VMap.insert(env, l, l'), cseMapSelect, cseListPrim, cseListAlloc, e))
+                           else
+                             C.mkLet(lhs, C.Prim p, doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e))
+		       | NONE => C.mkLet(lhs, C.Prim p, doExp(hasFreeVars, env, cseMapSelect, (p, l)::cseListPrim, cseListAlloc, e))
 		   else
-                     C.mkLet(lhs, C.Prim p, doExp(env, cseMapSelect, cseListPrim, cseListAlloc, e))
+                     C.mkLet(lhs, C.Prim p, doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e))
                end
 	   | C.Let(lhs as [l], rhs as C.Alloc(CPSTy.T_Tuple(false, tys), vars), e) => let
 		 val vars = subst'(env, vars)
@@ -129,28 +137,32 @@ structure CommonSubexpressionElimination : sig
                                                               of (VarRep.V{kind = ref(C.VK_Let(C.Const(lit,ty))), ...}, VarRep.V{kind = ref(C.VK_Let(C.Const(lit',ty'))), ...}) =>
 							              CPSTyUtil.equal (ty, ty') andalso  Literal.same (lit, lit')
                                                                | _ => false)) (vars, vars')) cseListAlloc
-		      of SOME (_, l') => (
-			 ST.tick cntElim;
-			 doExp(VMap.insert(env, l, l'), cseMapSelect, cseListPrim, cseListAlloc, e))
-		       | NONE => C.mkLet(lhs, C.Alloc(CPSTy.T_Tuple(false, tys), vars), doExp(env, cseMapSelect, cseListPrim, (vars, l)::cseListAlloc, e))
+		      of SOME (_, l') =>
+                         if hasFreeVars (* environment performance test *)
+                           then (
+  			     ST.tick cntElim;
+			     doExp(hasFreeVars, VMap.insert(env, l, l'), cseMapSelect, cseListPrim, cseListAlloc, e))
+                           else
+                             C.mkLet(lhs, C.Alloc(CPSTy.T_Tuple(false, tys), vars), doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e))
+		       | NONE => C.mkLet(lhs, C.Alloc(CPSTy.T_Tuple(false, tys), vars), doExp(hasFreeVars, env, cseMapSelect, cseListPrim, (vars, l)::cseListAlloc, e))
 		   else
-		     C.mkLet(lhs, C.Alloc(CPSTy.T_Tuple(false, tys), vars), doExp(env, cseMapSelect, cseListPrim, cseListAlloc, e))
+		     C.mkLet(lhs, C.Alloc(CPSTy.T_Tuple(false, tys), vars), doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e))
              end
-           | C.Let(lhs, rhs, e) => C.mkLet(lhs, CPSUtil.mapRHS (fn (x) => subst (env, x)) rhs, doExp(env, cseMapSelect, cseListPrim, cseListAlloc, e))
+           | C.Let(lhs, rhs, e) => C.mkLet(lhs, CPSUtil.mapRHS (fn (x) => subst (env, x)) rhs, doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e))
 	   | C.Fun(fbs, e) =>
-             C.mkFun(List.map (fn (x) => doFB (env, cseMapSelect, cseListPrim, cseListAlloc, x)) fbs, doExp(env, cseMapSelect, cseListPrim, cseListAlloc, e))
+             C.mkFun(List.map (fn (x) => doFB (env, cseMapSelect, cseListPrim, cseListAlloc, x)) fbs, doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e))
 	   | C.Cont(fb, e) => 
-             C.mkCont(doFB (env, cseMapSelect, cseListPrim, cseListAlloc, fb), doExp(env, cseMapSelect, cseListPrim, cseListAlloc, e))
-	   | C.If(x, e1, e2) => C.mkIf(CondUtil.map (fn (v) => subst (env, v)) x, doExp(env, cseMapSelect, cseListPrim, cseListAlloc, e1), doExp(env, cseMapSelect, cseListPrim, cseListAlloc, e2))
+             C.mkCont(doFB (env, cseMapSelect, cseListPrim, cseListAlloc, fb), doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e))
+	   | C.If(x, e1, e2) => C.mkIf(CondUtil.map (fn (v) => subst (env, v)) x, doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e1), doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e2))
 	   | C.Switch(x, cases, dflt) =>
              C.mkSwitch(
 	     subst(env, x),
-	     List.map (fn (tag, e) => (tag, doExp(env, cseMapSelect, cseListPrim, cseListAlloc, e))) cases,
-	     Option.map (fn e => doExp (env, cseMapSelect, cseListPrim, cseListAlloc, e)) dflt)
+	     List.map (fn (tag, e) => (tag, doExp(hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e))) cases,
+	     Option.map (fn e => doExp (hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e)) dflt)
 	   | C.Apply(f, args, rets) => C.mkApply(subst(env, f), subst'(env, args), subst'(env, rets))
 	   | C.Throw(k, args) => C.mkThrow(subst(env, k), subst'(env, args)))
     and doFB (env, cseMapSelect, cseListPrim, cseListAlloc, C.FB{f, params, rets, body}) =
-        C.FB{f=f, params=params, rets=rets, body=doExp (env, cseMapSelect, cseListPrim, cseListAlloc, body)}
+        C.FB{f=f, params=params, rets=rets, body=doExp (not (CV.Set.isEmpty(FreeVars.envOfFun f)), env, cseMapSelect, cseListPrim, cseListAlloc, body)}
 
     fun transform (m as C.MODULE{name, externs, body}) =
 	  if !cseFlg
