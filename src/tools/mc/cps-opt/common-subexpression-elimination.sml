@@ -46,6 +46,8 @@ structure CommonSubexpressionElimination : sig
   (********** Counters for statistics **********)
 
     val cntElim	= ST.newCounter "cse:elim"
+    val cntFbs  = ST.newCounter "cse:fb"
+    val cntClosedFun = ST.newCounter "cse:closed-fns"
 
 
   (***** var to var substitution ******)
@@ -161,14 +163,18 @@ structure CommonSubexpressionElimination : sig
 	     Option.map (fn e => doExp (hasFreeVars, env, cseMapSelect, cseListPrim, cseListAlloc, e)) dflt)
 	   | C.Apply(f, args, rets) => C.mkApply(subst(env, f), subst'(env, args), subst'(env, rets))
 	   | C.Throw(k, args) => C.mkThrow(subst(env, k), subst'(env, args)))
-    and doFB (env, cseMapSelect, cseListPrim, cseListAlloc, C.FB{f, params, rets, body}) =
-        C.FB{f=f, params=params, rets=rets, body=doExp (not (CV.Set.isEmpty(FreeVars.envOfFun f)), env, cseMapSelect, cseListPrim, cseListAlloc, body)}
+    and doFB (env, cseMapSelect, cseListPrim, cseListAlloc, C.FB{f, params, rets, body}) = (
+        ST.tick cntFbs;
+        (if CV.Set.isEmpty(FreeVars.envOfFun f) then ST.tick cntClosedFun else ());
+        C.FB{f=f, params=params, rets=rets, body=doExp (not (CV.Set.isEmpty(FreeVars.envOfFun f)), env, cseMapSelect, cseListPrim, cseListAlloc, body)})
 
     fun transform (m as C.MODULE{name, externs, body}) =
 	  if !cseFlg
 	    then let
+              val _ = FreeVars.analyze m
 	      val body = doFB (VMap.empty, VMap.empty, [], [], body)
               val m' = C.MODULE{name=name, externs=externs, body=C.mkLambda (body, false)}
+              val _ = FreeVars.clear m
               val _ = Census.census m'
 	      in
                   m'
