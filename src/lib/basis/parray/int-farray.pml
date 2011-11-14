@@ -111,14 +111,12 @@ structure IntFArray = struct
          if lo = 0 andalso hi = R.length data then 
            FArray (data, shape)
 	 else let
-		   (* FIXME this is a slow implementation *)
            val data' = R.fromSeq (R.partialSeq (data, lo, hi))
            in
              FArray (data', S.Lf (0, hi-lo))
            end
      | S.Nd ts => let
          val (lo, hi) = S.span shape
-           (* FIXME this is a slow implementation *)
 	 val data' = R.fromSeq (R.partialSeq (data, lo, hi))
          in
            if lo = 0 then

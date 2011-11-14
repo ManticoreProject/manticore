@@ -199,7 +199,7 @@ fun farrayMap f = let
               if not(S.same(s1,s2)) then
                 raise Fail "shape"
               else let
-                val r = r_map f (s1, s2)
+                val r = ropeMap f (d1, d2)
                 in
                   F3.FArray (r, s1)             
                 end))))

@@ -126,8 +126,7 @@ structure FArrayUtil = struct
 (* map_IFF_DFF_DF : (int_farray * dbl_farray -> dbl) -> int_farray * dbl_farray -> dbl_farray *)
   fun map_IFF_DFF_DF (f : IF.int_farray * DF.double_farray -> double) (nss, xss) = let
     val len = IF.length nss
-    val len' = DF.length xss
-    val _ = if (len = len') then () else fail "map_IFF_DFF_DF" "length"
+    val _ = if (len = DF.length xss) then () else fail "map_IFF_DFF_DF" "length mismatch"
     fun isub (nss, i) = IF.clean (IF.nestedSub (nss, i))
     fun dsub (xss, i) = DF.clean (DF.nestedSub (xss, i))     
     in 
