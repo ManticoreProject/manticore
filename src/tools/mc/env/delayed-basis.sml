@@ -163,6 +163,7 @@ structure DelayedBasis = struct
     val intTab        = memoVar ["IntFArray", "tab"]
     val intTabFTS     = memoVar ["IntFArray", "tabFromToStep"]
     val intFlatSub    = memoVar ["IntFArray", "flatSub"]
+    val intNestedSub  = memoVar ["IntFArray", "nestedSub"]
     val ifFromList    = memoVar ["IntFArray", "fromList"]
     val ifmap         = memoVar ["IntFArray", "flatMap"]
 
