@@ -18,4 +18,8 @@ structure VarRep =
 	props : PropList.holder
       }
 
+    fun compare (V {id, ...}, V {id = id', ...}) = Stamp.compare (id, id')
+
+    fun toString (V {name, id, ...}) = name ^ Stamp.toString id
+
   end
