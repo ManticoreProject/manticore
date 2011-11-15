@@ -62,31 +62,28 @@ fun debugSetMap dom = debug (LabelMap_toSexp LabelSet_toSexp) dom
 fun debugIntPairList list =
     debug (Sexp.List o List.map (fn (i, i') => Sexp.List [ Sexp.Atom (Int.toString i), Sexp.Atom (Int.toString i') ])) list
 
-(* (k, (v1, v2, ...)) in dominators (n0, nodes, callers) means block k is
-                    dominated by v1, v2, ... in the call graph rooted at n0. *)
-fun dominators (n0, callees_alist) : LabelSet.set LabelMap.map = let
-
-    (* (k, (v1, v2, ...)) in callers means blocks v1, v2, ... can jump to block k *)
-    val callers : LabelSet.set LabelMap.map =
-    let
-        fun f (key, value, acc) =
-        let
-            fun f' (v, acc) =
-            case LabelMap.find (acc, v)
-             of NONE => LabelMap.insert (acc, v, LabelSet.singleton key)
-              | SOME set => LabelMap.insert (acc, v, LabelSet.add (set, key))
-        in
-            LabelSet.foldl f' acc value
-        end
-
-        (* (k, (v1, v2, ...)) in callees means block k can jump to any of v1, v2, ... *)
-        val callees : LabelSet.set LabelMap.map =
-        (LabelMap_ofAList o List.map (fn (key, values) => (key, LabelSet_ofList values))) callees_alist
+(* (k, (v1, v2, ...)) in callers means blocks v1, v2, ... can jump to block k *)
+fun callers callees_alist : LabelSet.set LabelMap.map = let
+    fun f (key, value, acc) = let
+	fun f' (v, acc) =
+	    case LabelMap.find (acc, v)
+	     of NONE => LabelMap.insert (acc, v, LabelSet.singleton key)
+	      | SOME set => LabelMap.insert (acc, v, LabelSet.add (set, key))
     in
-        LabelMap.foldli f LabelMap.empty callees
+	LabelSet.foldl f' acc value
     end
 
-    val _ = debugSetMap callers
+    (* (k, (v1, v2, ...)) in callees means block k can jump to any of v1, v2, ... *)
+    val callees : LabelSet.set LabelMap.map =
+        (LabelMap_ofAList o List.map (fn (key, values) => (key, LabelSet_ofList values))) callees_alist
+in
+    LabelMap.foldli f LabelMap.empty callees
+end
+
+
+(* (k, (v1, v2, ...)) in dominators (n0, nodes, callers) means block k is
+                    dominated by v1, v2, ... in the call graph rooted at n0. *)
+fun dominators (n0, callers) : LabelSet.set LabelMap.map = let
 
     val nodes = LabelMap.foldli (fn (key, _, acc) => key::acc) [] callers
     val all_nodes = List.foldl LabelSet.add' (LabelSet.singleton n0) nodes
@@ -163,7 +160,7 @@ fun backedges (n0, callees_of : LabelSet.set LabelMap.map, dominators_of : Label
 			pair "seen" (LabelSet_toSexp seen),
 			pair "callee" (Ord.toSexp callee),
 			pair "acc" (Sexp.List (List.map (fn (a, b) => Sexp.List [Ord.toSexp a, Ord.toSexp b]) acc)) ]
-	val _ = debug toSexp (this, seen, callee, acc)
+	(* val _ = debug toSexp (this, seen, callee, acc) *)
 
 	val acc =
 	    case LabelMap.find (dominators_of, this)
@@ -179,7 +176,7 @@ fun backedges (n0, callees_of : LabelSet.set LabelMap.map, dominators_of : Label
 			pair "this" (Ord.toSexp this),
 			pair "seen" (LabelSet_toSexp seen),
 			pair "acc" (Sexp.List (List.map (fn (a, b) => Sexp.List [Ord.toSexp a, Ord.toSexp b]) acc)) ]
-	val _ = debug toSexp (this, seen, acc)
+	(* val _ = debug toSexp (this, seen, acc) *)
     in
 	if LabelSet.member (seen, this) then acc else let
 	    val dominators = Option.getOpt (LabelMap.find (dominators_of, this), LabelSet.empty)
@@ -191,6 +188,30 @@ fun backedges (n0, callees_of : LabelSet.set LabelMap.map, dominators_of : Label
     end
 in
     iter (n0, LabelSet.empty, [])
+end
+
+(* Given a back edge n -> h, where h dominates n, we say x is in the
+   natural loop whose head is h iff there is a path P from x to n that
+   does not include h.  (This implies that h dominate x also.)
+ *)
+
+(* TODO given n -> h, where h dominates n, take the transitive closure of nodes that are not h and that call n  *)
+fun naturalLoops callers_of backedges = let
+    fun closure (x, acc) = let
+	val _ = debug LabelSet_toSexp acc
+    in
+	if LabelSet.member (acc, x) then acc else
+	  LabelSet.foldl closure (LabelSet.add (acc, x)) (Option.getOpt (LabelMap.find (callers_of, x), LabelSet.empty))
+    end
+
+    fun f ((n, h), acc) = let
+	val cdr = Option.getOpt (LabelMap.find (acc, h), [])
+	val car = closure (n, LabelSet.singleton h)
+    in
+	LabelMap.insert (acc, h, car :: cdr)
+    end
+in
+    List.foldl f LabelMap.empty backedges
 end
 
 fun transform code = let
@@ -265,13 +286,17 @@ fun transform m = let
       | intOption_toSexp (SOME i) = Sexp.List  [ Sexp.Atom "SOME", Sexp.Atom (Int.toString i)]
     fun labelOption_toSexp NONE = Sexp.Atom "NONE"
       | labelOption_toSexp (SOME l) = Sexp.List  [ Sexp.Atom "SOME", Sexp.Atom (VarRep.toString l)]
+    fun List_toSexp toSexp list = Sexp.List (List.map toSexp list)
 
     val _ =
-	if true then
+	if false then
 	    let
-		val dominators = (IntSolver.debugSetMap o IntSolver.dominators) test
+		val callers = IntSolver.callers (#2 test)
+		val dominators = (IntSolver.debugSetMap o IntSolver.dominators) (#1 test, callers)
 		val idoms = IntSolver.debug (IntSolver.LabelMap_toSexp intOption_toSexp) (IntSolver.immediateDominators dominators)
 		val backedges = IntSolver.debugIntPairList (IntSolver.backedges (#1 test, intMapOfAList (#2 test), dominators))
+		val naturalLoops = (IntSolver.debug (IntSolver.LabelMap_toSexp (List_toSexp IntSolver.LabelSet_toSexp)) o IntSolver.naturalLoops callers) backedges
+
 	    in () end
 	else
 	    let
@@ -279,8 +304,12 @@ fun transform m = let
 		val code = getCode m
 		val n0 = getN0 code
 		val callees_alist = makeGraph code
-		val dominators = (CFGSolver.debugSetMap o CFGSolver.dominators) (n0, callees_alist)
+		val callees = CFGSolver.LabelMap_ofAList (List.map (fn (k, v) => (k, CFGSolver.LabelSet_ofList v)) callees_alist)
+		val callers = CFGSolver.callers callees_alist
+		val dominators = (CFGSolver.debugSetMap o CFGSolver.dominators) (n0, callers)
 		val idoms = CFGSolver.debug (CFGSolver.LabelMap_toSexp labelOption_toSexp) (CFGSolver.immediateDominators dominators)
+		val backedges = CFGSolver.backedges (n0, callees, dominators)
+		val naturalLoops = (CFGSolver.debug (CFGSolver.LabelMap_toSexp (List_toSexp CFGSolver.LabelSet_toSexp)) o CFGSolver.naturalLoops callers) backedges
 	    in
 		()
 	    end
