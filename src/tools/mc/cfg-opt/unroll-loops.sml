@@ -59,8 +59,20 @@ fun debug (toSexp : 'a -> Sexp.t) dom : 'a =
 
 
 fun debugSetMap dom = debug (LabelMap_toSexp LabelSet_toSexp) dom
-fun debugIntPairList list =
-    debug (Sexp.List o List.map (fn (i, i') => Sexp.List [ Sexp.Atom (Int.toString i), Sexp.Atom (Int.toString i') ])) list
+fun debugPairList list =
+    debug (Sexp.List o List.map (fn (i, i') => Sexp.List [ Ord.toSexp i, Ord.toSexp i' ])) list
+
+fun toDOT filename callees = let
+    val outf = TextIO.openOut filename
+    val alist = LabelMap.listItemsi callees
+    fun tr c = if c = #"<" then "&lt;" else if c = #">" then "&gt;" else Char.toString c
+    fun toS a = "\"" ^ (String.translate tr o Sexp.toString o Ord.toSexp) a ^ "\""
+    fun f caller (callee, acc) = toS caller :: " -> " :: toS callee :: ";\n" :: acc
+    fun edges alist = List.foldr (fn ((caller, callees), acc) => LabelSet.foldl (f caller) acc callees) ["}"] alist
+    val str = String.concat ("digraph {\n" :: edges alist)
+in
+    TextIO.outputSubstr (outf, Substring.extract (str, 0, NONE))
+end
 
 (* (k, (v1, v2, ...)) in callers means blocks v1, v2, ... can jump to block k *)
 fun callers callees_alist : LabelSet.set LabelMap.map = let
@@ -152,7 +164,7 @@ end
 
 (* (caller, callee) list *)
 fun backedges (n0, callees_of : LabelSet.set LabelMap.map, dominators_of : LabelSet.set LabelMap.map) : (Ord.ord_key * Ord.ord_key) list = let
-    fun backedgesFrom (this, seen) (callee, acc) = let
+    fun backedgesFrom this (callee, (seen, acc)) = let
 	fun pair a b = Sexp.List [ Sexp.Atom a, b ]
 	fun toSexp (this, seen, callee, acc) =
 	    Sexp.List [ Sexp.Atom "backedgesFrom",
@@ -160,7 +172,7 @@ fun backedges (n0, callees_of : LabelSet.set LabelMap.map, dominators_of : Label
 			pair "seen" (LabelSet_toSexp seen),
 			pair "callee" (Ord.toSexp callee),
 			pair "acc" (Sexp.List (List.map (fn (a, b) => Sexp.List [Ord.toSexp a, Ord.toSexp b]) acc)) ]
-	(* val _ = debug toSexp (this, seen, callee, acc) *)
+	val _ = debug toSexp (this, seen, callee, acc)
 
 	val acc =
 	    case LabelMap.find (dominators_of, this)
@@ -176,18 +188,19 @@ fun backedges (n0, callees_of : LabelSet.set LabelMap.map, dominators_of : Label
 			pair "this" (Ord.toSexp this),
 			pair "seen" (LabelSet_toSexp seen),
 			pair "acc" (Sexp.List (List.map (fn (a, b) => Sexp.List [Ord.toSexp a, Ord.toSexp b]) acc)) ]
-	(* val _ = debug toSexp (this, seen, acc) *)
+	val _ = debug toSexp (this, seen, acc)
     in
-	if LabelSet.member (seen, this) then acc else let
+	if LabelSet.member (seen, this) then (seen, acc) else let
+	    val _ = TextIO.print (Sexp.toString (Ord.toSexp this) ^ " not in " ^ Sexp.toString (LabelSet_toSexp seen))
 	    val dominators = Option.getOpt (LabelMap.find (dominators_of, this), LabelSet.empty)
 	in
 	    case LabelMap.find (callees_of, this)
-	     of NONE => acc
-	      | SOME callees => LabelSet.foldl (backedgesFrom (this, LabelSet.add (seen, this))) acc callees
+	     of NONE => (seen, acc)
+	      | SOME callees => LabelSet.foldl (backedgesFrom this) (LabelSet.add (seen, this), acc) callees
 	end
     end
 in
-    iter (n0, LabelSet.empty, [])
+    #2 (iter (n0, LabelSet.empty, []))
 end
 
 (* Given a back edge n -> h, where h dominates n, we say x is in the
@@ -198,7 +211,7 @@ end
 (* TODO given n -> h, where h dominates n, take the transitive closure of nodes that are not h and that call n  *)
 fun naturalLoops callers_of backedges = let
     fun closure (x, acc) = let
-	val _ = debug LabelSet_toSexp acc
+	(* val _ = debug LabelSet_toSexp acc *)
     in
 	if LabelSet.member (acc, x) then acc else
 	  LabelSet.foldl closure (LabelSet.add (acc, x)) (Option.getOpt (LabelMap.find (callers_of, x), LabelSet.empty))
@@ -294,7 +307,7 @@ fun transform m = let
 		val callers = IntSolver.callers (#2 test)
 		val dominators = (IntSolver.debugSetMap o IntSolver.dominators) (#1 test, callers)
 		val idoms = IntSolver.debug (IntSolver.LabelMap_toSexp intOption_toSexp) (IntSolver.immediateDominators dominators)
-		val backedges = IntSolver.debugIntPairList (IntSolver.backedges (#1 test, intMapOfAList (#2 test), dominators))
+		val backedges = IntSolver.debugPairList (IntSolver.backedges (#1 test, intMapOfAList (#2 test), dominators))
 		val naturalLoops = (IntSolver.debug (IntSolver.LabelMap_toSexp (List_toSexp IntSolver.LabelSet_toSexp)) o IntSolver.naturalLoops callers) backedges
 
 	    in () end
@@ -305,10 +318,11 @@ fun transform m = let
 		val n0 = getN0 code
 		val callees_alist = makeGraph code
 		val callees = CFGSolver.LabelMap_ofAList (List.map (fn (k, v) => (k, CFGSolver.LabelSet_ofList v)) callees_alist)
+		val _ = CFGSolver.toDOT "cfg.dot" callees
 		val callers = CFGSolver.callers callees_alist
 		val dominators = (CFGSolver.debugSetMap o CFGSolver.dominators) (n0, callers)
 		val idoms = CFGSolver.debug (CFGSolver.LabelMap_toSexp labelOption_toSexp) (CFGSolver.immediateDominators dominators)
-		val backedges = CFGSolver.backedges (n0, callees, dominators)
+		val backedges = CFGSolver.debugPairList (CFGSolver.backedges (n0, callees, dominators))
 		val naturalLoops = (CFGSolver.debug (CFGSolver.LabelMap_toSexp (List_toSexp CFGSolver.LabelSet_toSexp)) o CFGSolver.naturalLoops callers) backedges
 	    in
 		()
