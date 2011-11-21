@@ -1,0 +1,10 @@
+(* run-par.mlb
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+ann "cpp" ""
+in
+  run-par.pml
+end

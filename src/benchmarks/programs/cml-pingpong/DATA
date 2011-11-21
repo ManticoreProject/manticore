@@ -1,0 +1,38 @@
+CML:
+10000000 messages in 6.275 seconds
+10000000 messages in 6.300 seconds
+10000000 messages in 6.302 seconds
+10000000 messages in 6.278 seconds
+10000000 messages in 6.220 seconds
+10000000 messages in 6.355 seconds
+10000000 messages in 6.232 seconds
+10000000 messages in 6.375 seconds
+10000000 messages in 6.272 seconds
+10000000 messages in 6.208 seconds
+
+MLton:
+
+Manticore 1P:
+5000000 messages in 7.670 seconds
+5000000 messages in 7.794 seconds
+5000000 messages in 7.707 seconds
+5000000 messages in 7.646 seconds
+5000000 messages in 7.583 seconds
+5000000 messages in 7.521 seconds
+5000000 messages in 7.583 seconds
+5000000 messages in 7.511 seconds
+5000000 messages in 7.796 seconds
+5000000 messages in 7.502 seconds
+
+Manticore 2P:
+1000000 messages in 4.261 seconds
+1000000 messages in 4.238 seconds
+1000000 messages in 4.240 seconds
+1000000 messages in 4.242 seconds
+1000000 messages in 4.238 seconds
+1000000 messages in 4.236 seconds
+1000000 messages in 4.246 seconds
+1000000 messages in 4.270 seconds
+1000000 messages in 4.257 seconds
+1000000 messages in 4.284 seconds
+

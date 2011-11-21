@@ -1,0 +1,19 @@
+#!/bin/bash
+
+PATH_TO_SWP=$1
+PATH_TO_TRUNK=$2
+NAME=$3
+DESCRIPTION=$4
+
+# number of times to test each data point; for statistical validity
+NUM_TRIALS="@NUM_TRIALS@"
+MANTI_BENCH_ROOT=@MANTI_BENCH_ROOT@
+PMLCFLAGS="@PMLCFLAGS@"
+
+$PATH_TO_SWP/bin/pmlc $PMLCFLAGS -o tree-add-swp  tree-add.mlb
+$PATH_TO_TRUNK/bin/pmlc $PMLCFLAGS -o tree-add-trunk tree-add.mlb
+
+for i in 11 12 13 14; do
+    $MANTI_BENCH_ROOT/scripts/experiment.sh -p @NUM_PROCS@ -f tree-add-swp -n "$NAME" -d "$DESCRIPTION" -t $NUM_TRIALS -r $PATH_TO_SWP -s $i
+    $MANTI_BENCH_ROOT/scripts/experiment.sh -p @NUM_PROCS@ -f tree-add-trunk -n "$NAME" -d "$DESCRIPTION" -t $NUM_TRIALS -r $PATH_TO_TRUNK -s $i
+done

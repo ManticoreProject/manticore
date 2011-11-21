@@ -1,0 +1,161 @@
+#!/bin/bash
+#
+# COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# See the README file for instructions.
+
+RESULTS_DIR="@MANTI_BENCH_RESULTS@"
+SCRIPTS_DIR="@MANTI_BENCH_SCRIPTS@"
+MLTON="@MLTON@"
+INPUT=""
+BENCHMARK_EXE=""
+EXPERIMENT_NAME="experiment"
+DESCRIPTION=""
+GEN_GC_STATS="@GEN_GC_STATS@"
+NUM_TRIALS="1"
+
+usage="See the README file for instructions"
+
+while getopts ":s:f:n:d:t:" options; 
+do
+    case $options in
+	s ) INPUT="$OPTARG";;
+	f ) BENCHMARK_EXE="$OPTARG";;
+	n ) EXPERIMENT_NAME="$OPTARG";;
+	d ) DESCRIPTION="$OPTARG";;
+	t ) NUM_TRIALS="$OPTARG";;
+	\? ) echo $usage
+            exit 1;;
+	* ) echo $usage
+            exit 1;;
+    esac
+done
+
+if [ ! -x $BENCHMARK_EXE ]; then
+    echo "$BENCHMARK_EXE does not exist"
+    exit 1
+elif [ ! -d "$RESULTS_DIR" ]; then
+    echo "Nonexistant results directory $RESULTS_DIR"
+    exit 1
+fi
+
+# avoid running this experiment within the same second as a previous experiment
+sleep 2
+
+# Gather metadata
+
+function metadata {
+    echo -e "\"$1\" : $2," >> $LOG_FILE
+}
+
+function metadata_list {
+    echo -e "\"$2\" : [" >> $LOG_FILE
+    n=0
+    for x in $1
+    do
+	n=$(( n + 1 ))
+    done
+    cnt=0
+    for x in $1
+    do
+	if [ $cnt -lt $(( n - 1 )) ]; then
+	    echo -n -e " $x, " >> $LOG_FILE
+	else 
+	    echo -n -e " $x " >> $LOG_FILE
+	fi
+	cnt=$(( cnt + 1 ))
+    done
+    echo -e "]," >> $LOG_FILE
+}
+
+DATETIME=$( date +"%F-%H-%M-%S" )
+EXPERIMENT_RESULTS_DIR="$RESULTS_DIR/$EXPERIMENT_NAME"
+if [ ! -e $EXPERIMENT_RESULTS_DIR ]; then
+    mkdir $EXPERIMENT_RESULTS_DIR
+fi
+LOG_FILE="$EXPERIMENT_RESULTS_DIR/$EXPERIMENT_NAME-$DATETIME.json"
+DATETIME_SML=${DATETIME//-/_}
+DATETIME_MD=$( date +"%F %H:%M:%S" )
+
+SCRIPT_SVN_REVISION=$( svn info | grep Revision )
+SCRIPT_SVN_REVISION=${SCRIPT_SVN_REVISION:10}
+SCRIPT_SVN_URL=$( svn info | grep URL )
+SCRIPT_SVN_URL=${SCRIPT_SVN_URL:5}
+
+CURRENT_DIR=`pwd`
+BENCHMARK_PATH="$CURRENT_DIR/$BENCHMARK_EXE"
+BENCHMARK_DIR=$( dirname $BENCHMARK_PATH )
+
+pushd $BENCHMARK_DIR > /dev/null
+
+BENCHMARK_SVN_REVISION=$( svn info | grep Revision )
+BENCHMARK_SVN_REVISION=${BENCHMARK_SVN_REVISION:10}
+BENCHMARK_SVN_URL=$( svn info | grep URL )
+BENCHMARK_SVN_URL=${BENCHMARK_SVN_URL:5}
+BENCHMARK_SVN_STATUS=$( svn st -q | grep -v Fetching | wc -l )
+if [ $BENCHMARK_SVN_STATUS != "0" ]; then
+    echo "WARNING: not all changes have been committed to the benchmark directory"
+fi
+EXPERIMENTOR=$( whoami )
+MACHINE=$( uname -n )
+
+EXPERIMENT_NAME_SML=${EXPERIMENT_NAME//"-"/"_"}
+echo -e "{" >> $LOG_FILE
+
+metadata "problem_name" "\"$EXPERIMENT_NAME\""
+
+metadata "compiler_src_url" "\"$COMPILER_SVN_URL\""
+metadata "compiler_svn" "0"
+metadata "script_url" "\"$SCRIPT_SVN_URL\""
+metadata "script_svn" "$SCRIPT_SVN_REVISION"
+metadata "seq_compilation" "true"
+
+metadata "max_leaf_size" "0"
+metadata "seq_cutoff" "0"
+
+metadata "language" "\"SML\""
+metadata "compiler" "\"mlton\""
+MLTON_VERSION=$( $MLTON )
+metadata "version" "\"$MLTON_VERSION\""
+
+metadata "bench_url" "\"$BENCHMARK_SVN_URL\""
+metadata "bench_svn" "$BENCHMARK_SVN_REVISION"
+metadata "input" "\"$INPUT\""
+metadata "username" "\"$EXPERIMENTOR\""
+metadata "datetime" "\"$DATETIME_MD\""
+metadata "machine" "\"$MACHINE\""
+metadata "description" "\"$DESCRIPTION\""
+
+# extras
+metadata "nTrials" "$NUM_TRIALS"
+
+# Build and run the benchmarks
+
+echo "Logging performance results to $LOG_FILE"
+
+cnt=0
+echo "\"runs\" : [" >> $LOG_FILE
+for ((i=1;i<=NUM_TRIALS;i+=1)); do
+    echo "./$BENCHMARK_EXE $INPUT"
+    RES=$( ./$BENCHMARK_EXE $INPUT )
+    if [ $? == "0" ]; then
+	echo -n -e "\t\t{ \"n_procs\" : 0,\t\t\"time_sec\" : " >> $LOG_FILE
+	echo -n -e "$RES" >> $LOG_FILE
+	echo -n -e ",\t\t" >> $LOG_FILE
+	echo -n -e "\"gc\" : []" >> $LOG_FILE
+    else
+	echo "Benchmark failed unexpectedly with nonzero return code"
+	exit 1
+    fi
+    echo -n -e "}" >> $LOG_FILE
+    if [ $cnt -lt $(( $NUM_TRIALS - 1 )) ]; then
+        echo -e "," >> $LOG_FILE
+    fi
+    cnt=$(( $cnt + 1 ))
+done
+echo -e "\t\t]" >> $LOG_FILE
+
+echo -e "}" >> $LOG_FILE # structure
+
+popd > /dev/null

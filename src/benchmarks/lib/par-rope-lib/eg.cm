@@ -1,0 +1,18 @@
+Group
+  functor MapSum
+(*  
+  structure Eg1
+structure Eg2
+  structure Eg3
+*)
+is
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  sources.cm
+
+  ex-map-sum.sml
+(*  eg2.sml
+  eg3.sml
+*)
+

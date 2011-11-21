@@ -1,0 +1,47 @@
+#!/bin/bash
+#
+# COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# Generate a makefile for the benchmark that lives in the current directory
+
+rm -rf Makefile
+touch Makefile
+
+SMLNJ="@SMLNJ_CMD@"
+MLTON="@MLTON@"
+PMLC="@PMLC@"
+PMLCFLAGS="@PMLCFLAGS@"
+
+PML_FILES=""
+for f in $( ls *.pml ); do
+    PML_FILES="$f $PML_FILES"
+done
+SML_FILES=""
+for f in $( ls *.sml ); do
+    SML_FILES="$f $SML_FILES"
+done
+
+(
+cat <<EOF
+all:	mc-par mc-seq-elision mlton smlnj
+
+mc-par:	mc.mlb $PML_FILES
+	$PMLC $PMLCFLAGS -o mc-par mc.mlb
+mc-seq-elision:	mc.mlb $PML_FILES
+	$PMLC $PMLCFLAGS -sequential -o mc-seq-elision mc.mlb
+mc-par-log:	mc.mlb $PML_FILES
+	$PMLC $PMLCFLAGS -log -o mc-par mc.mlb
+mc-seq-elision-log:	mc.mlb $PML_FILES
+	$PMLC $PMLCFLAGS -log -sequential -o mc-seq-elision mc.mlb
+mlton:	mlton.mlb $SML_FILES
+	$MLTON -codegen amd64 -output mlton mlton.mlb
+smlnj:	smlnj.cm $SML_FILES
+	echo "SMLofNJ.exportFn(\"smlnj\", Main.main);" | $SMLNJ smlnj.cm
+
+.PHONY: clean
+clean:
+	rm -rf mc-par mc-seq-elision mlton smlnj.x86.* *.s .cm
+
+EOF
+) >> Makefile

@@ -1,0 +1,10 @@
+Group
+  structure T
+  structure TRP
+is
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  sources.cm
+  test.sml
+  testropepair.sml

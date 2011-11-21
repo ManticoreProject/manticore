@@ -1,0 +1,10 @@
+#!/bin/sh
+
+echo 'building C.out (c executable)'
+gcc -std=c99 -Wall -O2 -o C.out mandelbrot.c
+
+echo 'building N.out (non-flattened pml executable)'
+pmlc -Cftrx.on=false -o N.out pml.mlb
+
+echo 'building F.out (flattened pml executable)'
+pmlc -Cftrx.on=true -o F.out pml.mlb

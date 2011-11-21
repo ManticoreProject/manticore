@@ -1,0 +1,33 @@
+#!/bin/bash
+#
+# COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# Generate some scripts that run a given benchmark under certain conditions
+# e.g., gen-run.sh fib "parallel fibonacci benchmark" 2 "1 2 4"
+# for the fibonacci benchmark (called fib) with 2 runs and on 1,2,4 processors.
+
+NAME=$1
+DESCRIPTION=$2
+NUM_TRIALS=$3
+PROCS_LIST=$4
+
+MANTI_BENCH_ROOT=@MANTI_BENCH_ROOT@
+
+rm -rf par.sh
+touch par.sh
+
+# generate different processor configurations used by the experiment
+# e.g., -p 1 -p 2 ... -p num_procs
+FPROCS_LIST=""
+for p in $PROCS_LIST; do
+    FPROCS_LIST="$FPROCS_LIST -p $p"
+done
+
+(
+cat <<EOF
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS
+EOF
+) >> par.sh
+
+chmod +x par.sh

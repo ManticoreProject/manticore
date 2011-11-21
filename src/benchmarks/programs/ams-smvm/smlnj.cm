@@ -1,0 +1,12 @@
+Library
+
+	structure Main
+
+is
+
+	$/basis.cm
+	$/smlnj-lib.cm
+
+	../../common/run-seq.sml
+	../../lib/par-rope-lib/sources.cm
+	smvm.sml

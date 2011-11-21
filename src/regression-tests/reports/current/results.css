@@ -1,0 +1,84 @@
+body {
+  font-family : Trebuchet MS, Verdana, sans serif;
+  background-color : dodgerblue;
+}
+
+h1, h2.datetime, h3.revision, div.goal {
+o  margin-left      : 30px;
+  margin-right     : 30px;
+}
+
+div.goal {
+  background-color : white;
+  margin-bottom    : 20px;
+  padding          : 10px;
+  border           : thin solid black;
+}
+
+h1, h2, h3 {
+  padding : 4px;
+}
+
+h1 {
+  text-align       : center;
+  background-color : black;
+  color            : whitesmoke;
+}
+
+h2.goal {
+  background-color : lightblue;
+  border           : thin solid black;
+}
+
+h2.datetime {
+  text-align       : center;
+  background-color : lightblue;
+  border           : thin solid black;
+}
+
+h3.testfile {
+  // background-color : lightblue;
+  margin-left      : 20px;
+  font-style       : italic;
+}
+
+h3.revision {
+  text-align : center;
+  // font-weight : normal;
+}
+
+p.results {
+  margin-left : 40px;
+}
+
+table.results {
+  font-size : 9pt;
+}
+
+p.results table {
+  border : thin solid black;
+}
+
+p.results table td, p.results table th {
+  border  : thin solid black;
+  padding : 5px;
+}
+
+th {
+  background-color : yellow;
+  font-weight      : normal;
+  text-align       : left;
+}
+
+span.outcome-dnc {
+  color : gray;
+}
+
+span.outcome-failed {
+  font-weight : bold;
+  color : red;
+}
+
+span.outcome-succeeded {
+  color : green;
+}

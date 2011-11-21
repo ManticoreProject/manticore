@@ -1,0 +1,11 @@
+Library
+
+	structure Main
+
+is
+
+	$/basis.cm
+	$/smlnj-lib.cm
+
+	../../common/run-seq.sml
+	id-raytracer.sml

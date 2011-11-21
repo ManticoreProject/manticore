@@ -1,0 +1,44 @@
+#!/bin/bash
+#
+# COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# Argument is benchmark name.
+#
+
+NAME=$1
+if [ "$NAME" == "" ]; then
+    echo "error: provide the name of the benchmark as first argument"
+    exit
+fi
+DESCRIPTION="Speedups"
+NUM_TRIALS=3
+PROCS_LIST="1 8 16 24 32 42 48"
+SCRIPT_FILE="speedup.sh"
+
+MANTI_BENCH_ROOT=@MANTI_BENCH_ROOT@
+
+rm -rf $SCRIPT_FILE
+touch $SCRIPT_FILE
+
+# generate different processor configurations used by the experiment
+# e.g., -p 1 -p 2 ... -p num_procs
+FPROCS_LIST=""
+for p in $PROCS_LIST; do
+    FPROCS_LIST="$FPROCS_LIST -p $p"
+done
+
+(
+cat <<EOF
+$MANTI_BENCH_ROOT/scripts/experiment-mlton.sh -f mlton -n $NAME -d "$DESCRIPTION" -t 1 -s "-chunking-policy SEQ"
+$MANTI_BENCH_ROOT/scripts/experiment-mlton.sh -f mlton -n $NAME -d "$DESCRIPTION" -t 1 -s "-chunking-policy LTS 1"
+$MANTI_BENCH_ROOT/scripts/experiment.sh -f mc-seq-elision -e -n $NAME -d "$DESCRIPTION" -t 1 -s "-chunking-policy SEQ"
+$MANTI_BENCH_ROOT/scripts/experiment.sh -f mc-seq-elision -e -n $NAME -d "$DESCRIPTION" -t 1 -s "-chunking-policy LTS 1"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-chunking-policy ETS 1"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-chunking-policy ETS 128"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-chunking-policy ETS 16384"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-chunking-policy LTS 1"
+EOF
+) >> $SCRIPT_FILE
+
+chmod +x $SCRIPT_FILE

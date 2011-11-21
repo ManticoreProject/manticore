@@ -1,0 +1,267 @@
+#!/bin/bash
+#
+# COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# See the README file for instructions.
+
+MANTICORE_ROOT="@MANTICORE_ROOT@"
+RESULTS_DIR="@MANTI_BENCH_RESULTS@"
+SCRIPTS_DIR="@MANTI_BENCH_SCRIPTS@"
+PMLC="@PMLC@"
+INPUT=""
+PROCS=""
+SEQUENTIAL_BINARY="false"
+BENCHMARK_PATH=""
+EXPERIMENT_NAME="experiment"
+DESCRIPTION=""
+GEN_GC_STATS="@GEN_GC_STATS@"
+PMLC_FLAGS="@PMLCFLAGS@"
+NUM_TRIALS="1"
+PRETTY_INPUT=""
+
+usage="See the README file for instructions"
+
+while getopts ":s:p:f:en:d:t:r:i:" options; 
+do
+    case $options in
+	s ) INPUT="$OPTARG";;
+	p ) PROCS="$PROCS $OPTARG";;
+	f ) BENCHMARK_PATH="$OPTARG";;
+	e ) SEQUENTIAL_BINARY="true";;
+	n ) EXPERIMENT_NAME="$OPTARG";;
+	d ) DESCRIPTION="$OPTARG";;
+	t ) NUM_TRIALS="$OPTARG";;
+	r ) MANTICORE_ROOT="$OPTARG";;
+	i ) PRETTY_INPUT="$OPTARG";;
+	\? ) echo $usage
+            exit 1;;
+	* ) echo $usage
+            exit 1;;
+    esac
+done
+
+if [ ! -x $BENCHMARK_PATH ]; then
+    echo "$BENCHMARK_PATH does not exist"
+    exit 1
+fi
+
+# avoid running this experiment within the same second as a previous experiment
+sleep 2
+
+if [ $SEQUENTIAL_BINARY == "true" ]; then
+    PROCS="1"
+fi
+
+if [ "$PRETTY_INPUT" == "" ]; then
+    PRETTY_INPUT=$INPUT
+fi
+
+if [ -z "$PROCS" ] && [ $SEQUENTIAL_BINARY == "false" ]; then
+    echo "Enter at least one choice for number of processors"
+    exit 1
+elif [ ! -w "$BENCHMARK_PATH" ]; then
+    echo "Need a path to the benchmark executable"
+    exit 1
+elif [ -z "$MANTICORE_ROOT" ]; then
+    echo "Need to set the environment variable MANTICORE_ROOT to contain the path to the Manticore root directory"
+    exit 1
+elif [ ! -d "$RESULTS_DIR" ]; then
+    echo "Nonexistant results directory $RESULTS_DIR"
+    exit 1
+else
+    :
+fi
+
+# Gather metadata
+
+function metadata {
+    echo -e "\"$1\" : $2," >> $LOG_FILE
+}
+
+function metadata_list {
+    echo -e "\"$2\" : [" >> $LOG_FILE
+    n=0
+    for x in $1
+    do
+	n=$(( n + 1 ))
+    done
+    cnt=0
+    for x in $1
+    do
+	if [ $cnt -lt $(( n - 1 )) ]; then
+	    echo -n -e " $x, " >> $LOG_FILE
+	else 
+	    echo -n -e " $x " >> $LOG_FILE
+	fi
+	cnt=$(( cnt + 1 ))
+    done
+    echo -e "]," >> $LOG_FILE
+}
+
+DATETIME=$( date +"%F-%H-%M-%S" )
+EXPERIMENT_RESULTS_DIR="$RESULTS_DIR/$EXPERIMENT_NAME"
+if [ ! -e $EXPERIMENT_RESULTS_DIR ]; then
+    mkdir $EXPERIMENT_RESULTS_DIR
+fi
+LOG_FILE="$EXPERIMENT_RESULTS_DIR/$EXPERIMENT_NAME-$DATETIME.json"
+DATETIME_SML=${DATETIME//-/_}
+DATETIME_MD=$( date +"%F %H:%M:%S" )
+
+SCRIPT_SVN_REVISION=$( svn info | grep Revision )
+SCRIPT_SVN_REVISION=${SCRIPT_SVN_REVISION:10}
+SCRIPT_SVN_URL=$( svn info | grep URL )
+SCRIPT_SVN_URL=${SCRIPT_SVN_URL:5}
+
+CURRENT_DIR=`pwd`
+BENCHMARK_PATH="$CURRENT_DIR/$BENCHMARK_PATH"
+BENCHMARK_DIR=$( dirname $BENCHMARK_PATH )
+
+pushd $BENCHMARK_DIR > /dev/null
+
+BENCHMARK_SVN_REVISION=$( svn info | grep Revision )
+BENCHMARK_SVN_REVISION=${BENCHMARK_SVN_REVISION:10}
+BENCHMARK_SVN_URL=$( svn info | grep URL )
+BENCHMARK_SVN_URL=${BENCHMARK_SVN_URL:5}
+BENCHMARK_SVN_STATUS=$( svn st -q | grep [UAD] | grep -v Fetching |wc -l )
+if [ $BENCHMARK_SVN_STATUS != "0" ]; then
+    echo "WARNING: not all changes have been committed to the benchmark directory"
+fi
+EXPERIMENTOR=$( whoami )
+MACHINE=$( uname -n )
+
+pushd $MANTICORE_ROOT > /dev/null
+    COMPILER_SVN_REVISION=$( svn info | grep Revision )
+    COMPILER_SVN_REVISION=${COMPILER_SVN_REVISION:10}
+    COMPILER_SVN_URL=$( svn info | grep URL )
+    COMPILER_SVN_URL=${COMPILER_SVN_URL:5}
+    COMPILER_SVN_STATUS=$( svn st -q | wc -l )
+    if [ $COMPILER_SVN_STATUS != "0" ]; then
+	echo "WARNING: not all changes have been committed to the compiler"
+    fi
+popd > /dev/null
+
+EXPERIMENT_NAME_SML=${EXPERIMENT_NAME//"-"/"_"}
+echo -e "{" >> $LOG_FILE
+
+metadata "problem_name" "\"$EXPERIMENT_NAME\""
+
+metadata "compiler_src_url" "\"$COMPILER_SVN_URL\""
+metadata "compiler_svn" "$COMPILER_SVN_REVISION"
+metadata "script_url" "\"$SCRIPT_SVN_URL\""
+metadata "script_svn" "$SCRIPT_SVN_REVISION"
+if [ $SEQUENTIAL_BINARY == "true" ]; then
+    metadata "seq_compilation" "true"
+else
+    metadata "seq_compilation" "false"
+fi
+metadata "max_leaf_size" "0"
+metadata "seq_cutoff" "0"
+
+metadata "language" "\"Manticore\""
+metadata "compiler" "\"pmlc\""
+PMLC_VERSION=$( $PMLC -version 2>&1 )
+metadata "version" "\"$PMLC_VERSION\""
+
+metadata "bench_url" "\"$BENCHMARK_SVN_URL\""
+metadata "bench_svn" "$BENCHMARK_SVN_REVISION"
+metadata "input" "\"$PRETTY_INPUT\""
+metadata "username" "\"$EXPERIMENTOR\""
+metadata "datetime" "\"$DATETIME_MD\""
+metadata "machine" "\"$MACHINE\""
+metadata "description" "\"$DESCRIPTION\""
+
+# extras
+metadata "pmlcFlags" "\"$PMLC_FLAGS\""
+metadata_list "$PROCS" "n_procs"
+metadata "nTrials" "$NUM_TRIALS"
+
+# Build and run the benchmarks
+
+echo "Logging performance results to $LOG_FILE"
+
+if [ $GEN_GC_STATS == "false" ]; then
+    ARGS="$INPUT"
+else
+    ARGS="$INPUT -gcstats=all,json"
+fi
+
+if [ $SEQUENTIAL_BINARY == "true" ]; then
+    cnt=0
+    SEQUENTIAL_EXE=$BENCHMARK_PATH
+    echo "\"runs\" : [" >> $LOG_FILE
+    for ((i=1;i<=NUM_TRIALS;i+=1)); do
+	echo "$SEQUENTIAL_EXE $ARGS"
+	RES=$( $SEQUENTIAL_EXE $ARGS 2> stats.json )
+	if [ $? == "0" ]; then
+	    echo -n -e "\t\t{ \"n_procs\" : 0,\t\t\"time_sec\" : " >> $LOG_FILE
+	    echo -n -e "$RES" >> $LOG_FILE
+	    echo -n -e ",\t\t" >> $LOG_FILE
+	    if [ $GEN_GC_STATS == "false" ]; then
+		echo -n -e "\"gc\" : []" >> $LOG_FILE
+	    else
+		echo -n -e "\"gc\" :" >> $LOG_FILE
+		cat stats.json >> $LOG_FILE
+		rm -rf stats.json
+	    fi
+	else
+	    echo "Benchmark failed unexpectedly with nonzero return code"
+	    exit 1
+	fi
+	echo -n -e "}" >> $LOG_FILE
+	if [ $cnt -lt $(( $NUM_TRIALS - 1 )) ]; then
+	    echo -e "," >> $LOG_FILE
+	fi
+	cnt=$(( $cnt + 1 ))
+    done
+    echo -e "\t\t]" >> $LOG_FILE
+else
+    n=0
+    for ((i=1;i<=NUM_TRIALS;i+=1)); do
+	for p in $PROCS; do
+	    n=$(( $n + 1 ))
+	done
+    done
+
+    PARALLEL_EXE=$BENCHMARK_PATH
+    echo "\"runs\" : [" >> $LOG_FILE
+    cnt=0
+    for ((i=1;i<=NUM_TRIALS;i+=1)); do
+	for p in $PROCS; do
+	    echo "$PARALLEL_EXE -p $p $ARGS"
+	    RES=$( $PARALLEL_EXE -p $p $ARGS 2> stats.json )
+	    retcode=$?
+	    nretries=0
+	    while [ $retcode != "0" ]; do
+		let nretries=nretries+1
+		echo "Benchmark failed unexpectedly with nonzero return code -- retrying."
+		RES=$( $PARALLEL_EXE -p $p $ARGS 2> stats.json )
+		retcode=$?
+		if [ $nretries -gt 100 ]; then
+		    echo "Exceeded maximum number of failed executions of the benchmark"
+		    exit 1
+		fi
+	    done
+	    echo -n -e "\t\t{ \"n_procs\" : $p,\t\t\"time_sec\" : " >> $LOG_FILE
+	    echo -n -e "$RES" >> $LOG_FILE
+	    echo -n -e ",\t\t" >> $LOG_FILE
+	    if [ $GEN_GC_STATS == "false" ]; then
+		echo -n -e "\"gc\" : []" >> $LOG_FILE
+	    else
+		echo -n -e "\"gc\" :" >> $LOG_FILE
+		cat stats.json >> $LOG_FILE
+		rm -rf stats.json
+	    fi 
+	    echo -n "}" >> $LOG_FILE
+	    if [ $cnt -lt $(( $n - 1 )) ]; then
+		echo -e "," >> $LOG_FILE
+	    fi
+	    cnt=$(( cnt + 1 ))
+	done
+    done
+    echo -e "\t\t]" >> $LOG_FILE
+fi
+
+echo -e "}" >> $LOG_FILE
+
+popd > /dev/null

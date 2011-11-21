@@ -1,0 +1,10 @@
+#!/bin/sh
+
+echo 'building SML.out (sml executable)'
+mlton -output SML.out mlton.mlb
+
+echo 'building N.out (non-flattened pml executable)'
+pmlc -Cftrx.on=false -o N.out nested-pml.mlb
+
+echo 'building F.out (flattened pml executable)'
+pmlc -Cftrx.on=true -o F.out pml.mlb

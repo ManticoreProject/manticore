@@ -1,0 +1,37 @@
+local
+    $(SML_LIB)/basis/basis.mlb
+    $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+in
+	either.sml
+	progress-ty.sml
+
+	splitting-strategy.sml
+	runtime-sig.sml
+
+	seq-pair-sig.sml
+	seq-sig.sml
+
+	rope-ty-sig.sml
+        rope-ty-fn.sml
+
+	zipper1-fn.sml
+	zipper2-fn.sml
+
+	rope-permute-sig.sml
+	rope-permute-fn.sml
+
+	rope-scan-sig.sml
+	rope-pair-sig.sml
+	rope-sig.sml
+
+	rope-scan-fn.sml
+	rope-pair-fn.sml
+	rope-impl-fn.sml
+        rope-fn.sml
+
+	vector-seq-pair.sml
+	vector-seq.sml
+
+	sequential-runtime.sml
+
+end

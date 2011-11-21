@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+# COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# Generate a make file for each benchmark
+
+MANTI_BENCH_ROOT="@MANTI_BENCH_ROOT@"
+
+cd $MANTI_BENCH_ROOT/programs
+for p in $( ls ); do
+    if [ -d $p ]; then
+	pushd $p
+	$MANTI_BENCH_ROOT/scripts/gen-makefile.sh
+	popd
+    fi
+done

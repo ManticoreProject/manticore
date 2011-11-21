@@ -1,0 +1,13 @@
+#!/bin/bash
+
+NAME="life-seq"
+DESCRIPTION="sequential version of John Conway's game of life"
+
+## Parameters provided by the configure script
+
+# number of times to test each data point; for statistical validity
+NUM_TRIALS="@NUM_TRIALS@"
+MANTI_BENCH_ROOT=@MANTI_BENCH_ROOT@
+
+# sequential elison 
+$MANTI_BENCH_ROOT/scripts/experiment.sh -e -f life-seq -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS 

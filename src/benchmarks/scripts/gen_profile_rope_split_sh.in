@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+# COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# Gather profiling data for a given benchmark under several splitting strategies.
+#
+# Argument is benchmark name.
+#
+# Run the given benchmark under the several rope-splitting strategies
+
+NAME=$1
+if [ "$NAME" == "" ]; then
+    echo "error: provide the name of the benchmark as first argument"
+    exit
+fi
+DESCRIPTION="Comparison of different rope-splitting strategies."
+NUM_TRIALS=10
+PROCS_LIST="16"
+SCRIPT_FILE="profile-rope-split.sh"
+
+MANTI_BENCH_ROOT=@MANTI_BENCH_ROOT@
+
+rm -rf $SCRIPT_FILE
+touch $SCRIPT_FILE
+
+# generate different processor configurations used by the experiment
+# e.g., -p 1 -p 2 ... -p num_procs
+FPROCS_LIST=""
+for p in $PROCS_LIST; do
+    FPROCS_LIST="$FPROCS_LIST -p $p"
+done
+
+(
+cat <<EOF
+make clean
+make -j2 mc-par-log mc-seq-elision-log
+
+$MANTI_BENCH_ROOT/scripts/work-stealing-stats.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 128"
+$MANTI_BENCH_ROOT/scripts/work-stealing-stats.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 256"
+$MANTI_BENCH_ROOT/scripts/work-stealing-stats.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 384"
+$MANTI_BENCH_ROOT/scripts/work-stealing-stats.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 512"
+$MANTI_BENCH_ROOT/scripts/work-stealing-stats.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 768"
+$MANTI_BENCH_ROOT/scripts/work-stealing-stats.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 1024"
+$MANTI_BENCH_ROOT/scripts/work-stealing-stats.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy lbs 1"
+$MANTI_BENCH_ROOT/scripts/work-stealing-stats.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy lbs 2"
+$MANTI_BENCH_ROOT/scripts/work-stealing-stats.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy lbs 32"
+$MANTI_BENCH_ROOT/scripts/work-stealing-stats.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy lbs 64"
+EOF
+) >> $SCRIPT_FILE
+
+chmod +x $SCRIPT_FILE

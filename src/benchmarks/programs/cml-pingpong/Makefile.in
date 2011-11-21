@@ -1,0 +1,27 @@
+# Makefile for ping-pong benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+
+TARGET =	pingpong
+
+all:		$(TARGET)-smlnj $(TARGET)-mc1 $(TARGET)-mc2
+
+$(TARGET)-smlnj:	smlnj.cm pingpong.sml
+	echo "SMLofNJ.exportFn(\"pingpong-smlnj\", Main.main);" | $(SMLNJ) smlnj.cm
+
+$(TARGET)-mc1:	pingpong1.pml
+	$(PMLC) -o $(TARGET)-mc1 pingpong1.pml
+
+$(TARGET)-mc2:	pingpong2.pml
+	$(PMLC) -o $(TARGET)-mc2 pingpong2.pml
+
+.PHONY:		clean
+clean:		rm -f $(TARGET)-smlnj.* $(TARGET)-mc1 $(TARGET)-mc2
+

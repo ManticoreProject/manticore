@@ -1,0 +1,22 @@
+(* tree-add.cm
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Tree add
+ * 
+ *   Mike Rainey (mrainey@cs.uchicago.edu)
+ *
+ *)
+
+Group
+
+	structure Main
+
+is
+
+	$/basis.cm
+	$/smlnj-lib.cm
+
+	../../common/run-seq.sml
+	tree-add.sml

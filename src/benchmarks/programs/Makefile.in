@@ -1,0 +1,127 @@
+# Makefile for barnes-hut benchmarks
+#
+# @configure_input@
+#
+
+SHELL =		/bin/sh
+
+SMLNJ =		@SMLNJ_CMD@
+MLTON =		@MLTON@
+PMLC =		@PMLC@
+PMLCFLAGS =	@PMLCFLAGS@
+
+mc-barnes-hut-par:
+	cd barnes-hut && $(MAKE) barnes-hut-par
+mc-barnes-hut-seq:
+	cd barnes-hut && $(MAKE) barnes-hut-seq-elison
+mc-fib-par:
+	cd fib && $(MAKE) pfib
+mc-fib-seq:
+	cd fib && $(MAKE) pfib-seq-elison
+mc-mandelbrot-par:
+	cd mandelbrot && $(MAKE) mandelbrot-par
+mc-mandelbrot-seq:
+	cd mandelbrot && $(MAKE) mandelbrot-seq
+mc-ttt-par:
+	cd minimax && $(MAKE) ttt-par
+mc-ttt-seq:
+	cd minimax && $(MAKE) ttt-seq
+mc-plus-reduce-par:
+	cd plus-reduce && $(MAKE) plus-reduce-par
+mc-plus-reduce-seq:
+	cd plus-reduce && $(MAKE) plus-reduce-seq-elison
+mc-plus-scan-par:
+	cd plus-scan && $(MAKE) plus-scan-par
+mc-plus-scan-seq:
+	cd plus-scan && $(MAKE) plus-scan-seq-elison
+mc-pmergesort-par:
+	cd pmergesort && $(MAKE) pmergesort-par
+mc-pmergesort-seq:
+	cd pmergesort && $(MAKE) pmergesort-seq-elison
+mc-pquicksort-par:
+	cd pquicksort && $(MAKE) pquicksort-par
+mc-pquicksort-seq:
+	cd pquicksort && $(MAKE) pquicksort-seq-elison
+mc-smvm-par:
+	cd smvm && $(MAKE) smvm-par
+mc-smvm-seq:
+	cd smvm && $(MAKE) smvm-seq-elison
+mc-tree-add-par:
+	cd tree-add && $(MAKE) tree-add
+mc-tree-add-seq:
+	cd tree-add && $(MAKE) tree-add-seq-elison
+mc-pquickhull-par:
+	cd pquickhull && $(MAKE) pquickhull-par
+mc-pquickhull-seq:
+	cd pquickhull && $(MAKE) pquickhull-seq-elison
+mc-life-seq:
+	cd life-seq && $(MAKE) life-seq
+mc-list-mergesort:
+	cd list-mergesort && $(MAKE) list-mergesort
+mc-list-quicksort:
+	cd list-quicksort && $(MAKE) list-quicksort
+mc-plus-prefix:
+	cd plus-prefix && $(MAKE) plus-prefix
+
+mc-par1: mc-barnes-hut-par mc-fib-par mc-mandelbrot-par mc-ttt-par mc-plus-reduce-par \
+	mc-plus-scan-par mc-pmergesort-par mc-pquicksort-par mc-smvm-par mc-tree-add-par \
+	mc-pquickhull-par
+
+# it is unsafe to compile id-raytracer in parallel with other benchmarks, since the build process for
+# id raytracer modifies the max leaf size file
+
+mc-par: mc-par1
+	@cd id-raytracer && $(MAKE) id-raytracer-par
+
+mc-seq1: mc-barnes-hut-seq mc-fib-seq mc-mandelbrot-seq mc-ttt-seq mc-plus-reduce-seq \
+	mc-plus-scan-seq mc-pmergesort-seq mc-pquicksort-seq mc-smvm-seq mc-tree-add-seq \
+	mc-pquickhull-seq
+
+mc-seq: mc-seq1
+	@cd id-raytracer && $(MAKE) id-raytracer-seq
+
+mc-seq-only: mc-seq
+	mc-life-seq mc-list-mergesort mc-list-quicksort mc-plus-prefix
+
+mlton:
+	cd barnes-hut && $(MAKE) barnes-hut-rope-mlton
+	cd fib && $(MAKE) fib-mlton
+	cd id-raytracer && $(MAKE) id-raytracer-mlton
+	cd mandelbrot && $(MAKE) mandelbrot-mlton
+	cd minimax && $(MAKE) ttt-mlton
+	cd plus-reduce && $(MAKE) plus-reduce-mlton
+	cd plus-scan && $(MAKE) plus-scan-mlton
+	cd pmergesort && $(MAKE) pmergesort-mlton
+	cd pquicksort && $(MAKE) rope-quicksort-mlton
+	cd smvm && $(MAKE) smvm-mlton
+	cd tree-add && $(MAKE) tree-add-mlton
+	cd pquickhull && $(MAKE) quickhull-mlton
+
+smlnj:
+	cd barnes-hut && $(MAKE) barnes-hut-rope-smlnj
+	cd fib && $(MAKE) fib-smlnj
+	cd id-raytracer && $(MAKE) id-raytracer-smlnj
+	cd mandelbrot && $(MAKE) mandelbrot-smlnj
+	cd minimax && $(MAKE) ttt-smlnj
+	cd plus-reduce && $(MAKE) plus-reduce-smlnj
+	cd plus-scan && $(MAKE) plus-scan-smlnj
+	cd pmergesort && $(MAKE) pmergesort-smlnj
+	cd pquicksort && $(MAKE) rope-quicksort-smlnj
+	cd smvm && $(MAKE) smvm-smlnj
+	cd tree-add && $(MAKE) tree-add-smlnj
+	cd pquickhull && $(MAKE) quickhull-smlnj
+
+pldi10-par1: mc-barnes-hut-par mc-fib-par mc-pquicksort-par mc-tree-add-par mc-pquickhull-par mc-smvm-par
+pldi10-par: pldi10-par1
+	@cd id-raytracer && $(MAKE) id-raytracer-par
+pldi10-seq1: mc-barnes-hut-seq mc-fib-seq mc-pquicksort-seq mc-tree-add-seq mc-pquickhull-seq mc-smvm-seq
+pldi10-seq: pldi10-seq1
+	@cd id-raytracer && $(MAKE) id-raytracer-seq
+pldi10-mlton:
+	cd barnes-hut && $(MAKE) barnes-hut-rope-mlton
+	cd fib && $(MAKE) fib-mlton
+	cd id-raytracer && $(MAKE) id-raytracer-mlton
+	cd pquicksort && $(MAKE) rope-quicksort-mlton
+	cd smvm && $(MAKE) smvm-mlton
+	cd tree-add && $(MAKE) tree-add-mlton
+	cd pquickhull && $(MAKE) quickhull-mlton

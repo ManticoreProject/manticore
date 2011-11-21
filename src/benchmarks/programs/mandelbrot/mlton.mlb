@@ -1,0 +1,10 @@
+local
+      $(SML_LIB)/basis/basis.mlb
+      $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+
+    ../../lib/rope/sml/mlton.mlb
+    ../../common/run-seq.sml
+in
+  mandelbrot.sml
+  ../../common/run-main.sml
+end

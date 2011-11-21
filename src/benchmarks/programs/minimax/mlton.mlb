@@ -1,0 +1,8 @@
+local
+    $(SML_LIB)/basis/basis.mlb
+
+    ../../common/run-seq.sml
+    ttt.sml
+in
+  ../../common/run-main.sml
+end

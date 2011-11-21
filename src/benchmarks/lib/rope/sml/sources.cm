@@ -1,0 +1,55 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Ropes for Standard ML.
+ * 
+ * Authors:
+ *   Mike Rainey (mrainey@mpi-sws.org)
+ *   Adam Shaw (ams@cs.uchicago.edu)
+ *   Lars Bergstrom (larsberg@cs.uchicago.edu) 
+ * 
+ *)
+
+Library
+
+  signature SEQ
+  signature ROPE
+  signature ROPE_PAIR
+
+  structure LeafSize
+  structure SimpleRuntime
+  structure ChunkingPolicy
+(*  structure ListSeq*)
+  structure VectorSeq
+  functor RopeImplFn
+  functor RopePairImplFn
+
+  structure Chk
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  parse-command-line.sml
+  progress.sml
+  chunking-policy.sml
+  leaf-size.sml
+  simple-runtime.sml
+
+  runtime-sig.sml
+  seq-sig.sml
+  rope-sig.sml
+  rope-pair-sig.sml
+  rope-ty-sig.sml
+
+  rope-ty-fn.sml
+  rope-impl-fn.sml
+  rope-pair-impl-fn.sml
+
+(*  list-seq.sml*)
+  vector-seq.sml
+
+  check.sml

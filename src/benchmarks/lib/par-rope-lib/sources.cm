@@ -1,0 +1,66 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Ropes for Standard ML.
+ * 
+ * Authors:
+ *   Mike Rainey (mrainey@cs.uchicago.edu)
+ *   Adam Shaw (ams@cs.uchicago.edu)
+ *
+ *)
+
+Library
+
+	signature SEQ
+	signature SEQ_PAIR
+	signature ROPE	
+        signature ROPE_PAIR
+    	signature ROPE_SCAN
+
+	functor RopeFn
+
+(*	structure ListSeq*)
+	structure VectorSeq
+
+	structure SplittingStrategy
+	signature RUNTIME
+	structure SequentialRuntime
+
+is
+
+	$/basis.cm
+	$/smlnj-lib.cm
+
+	either.sml
+	progress-ty.sml
+
+	rope-ty-sig.sml
+        rope-ty-fn.sml
+
+	zipper1-fn.sml
+	zipper2-fn.sml
+
+	seq-sig.sml
+	seq-pair-sig.sml
+	rope-impl-fn.sml
+        rope-fn.sml
+	rope-sig.sml
+
+(*	list-seq.sml*)
+	vector-seq.sml
+	vector-seq-pair.sml
+
+	splitting-strategy.sml
+	runtime-sig.sml
+	sequential-runtime.sml
+
+	rope-pair-sig.sml
+	rope-pair-fn.sml
+
+	rope-scan-sig.sml
+	rope-scan-fn.sml
+
+	rope-permute-sig.sml
+	rope-permute-fn.sml

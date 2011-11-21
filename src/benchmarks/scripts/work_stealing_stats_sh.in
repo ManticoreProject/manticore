@@ -1,0 +1,232 @@
+#!/bin/bash
+#
+# COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# See the README file for instructions.
+
+MANTICORE_ROOT="@MANTICORE_ROOT@"
+RESULTS_DIR="@MANTI_BENCH_RESULTS@"
+SCRIPTS_DIR="@MANTI_BENCH_SCRIPTS@"
+PMLC="@PMLC@"
+SIZE=""
+PROCS=""
+SEQUENTIAL_BINARY="false"
+BENCHMARK_PATH=""
+EXPERIMENT_NAME="experiment"
+DESCRIPTION=""
+GEN_GC_STATS="@GEN_GC_STATS@"
+PMLCFLAGS="@PMLCFLAGS@"
+NUM_TRIALS="1"
+LOG_WORK_STEALING="@LOG_WORK_STEALING@"
+
+usage="See the README file for instructions"
+
+while getopts ":s:p:f:en:d:t:" options; 
+do
+    case $options in
+	s ) SIZE="$OPTARG";;
+	p ) PROCS="$PROCS $OPTARG";;
+	f ) BENCHMARK_PATH="$OPTARG";;
+	e ) SEQUENTIAL_BINARY="true";;
+	n ) EXPERIMENT_NAME="$OPTARG";;
+	d ) DESCRIPTION="$OPTARG";;
+	t ) NUM_TRIALS="$OPTARG";;
+	\? ) echo $usage
+            exit 1;;
+	* ) echo $usage
+            exit 1;;
+    esac
+done
+
+# avoid running this experiment within the same second as a previous experiment
+sleep 2
+
+if [ $SEQUENTIAL_BINARY == "true" ]; then
+    exit 0
+fi
+
+if [ -z "$PROCS" ] && [ $SEQUENTIAL_BINARY == "false" ]; then
+    echo "Enter at least one choice for number of processors"
+    exit 1
+elif [ ! -w "$BENCHMARK_PATH" ]; then
+    echo "Need a path to the benchmark executable"
+    exit 1
+elif [ -z "$MANTICORE_ROOT" ]; then
+    echo "Need to set the environment variable MANTICORE_ROOT to contain the path to the Manticore root directory"
+    exit 1
+else
+    :
+fi
+
+# Gather metadata
+
+function metadata {
+    echo -e "val $1 = $2" >> $LOG_FILE
+}
+
+function metadata_list {
+    echo -e "val $2 = " >> $LOG_FILE
+    for x in $1
+    do
+	echo -n -e " $x :: " >> $LOG_FILE
+    done
+    echo -e "nil" >> $LOG_FILE
+}
+
+DATETIME=$( date +"%F-%H-%M-%S" )
+LOG_FILE_NAME=$EXPERIMENT_NAME-$DATETIME.sml
+RESULTS_DIR="$RESULTS_DIR/$EXPERIMENT_NAME"
+if [ ! -e $RESULTS_DIR ]; then
+    mkdir $RESULTS_DIR
+fi
+LOG_FILE=$RESULTS_DIR/$LOG_FILE_NAME
+DATETIME_SML=${DATETIME//-/_}
+DATETIME_MD=$( date +"%F %H:%M:%S" )
+
+SCRIPT_SVN_REVISION=$( svn info | grep Revision )
+SCRIPT_SVN_REVISION=${SCRIPT_SVN_REVISION:10}
+SCRIPT_SVN_URL=$( svn info | grep URL )
+SCRIPT_SVN_URL=${SCRIPT_SVN_URL:5}
+
+CURRENT_DIR=`pwd`
+BENCHMARK_PATH="$CURRENT_DIR/$BENCHMARK_PATH"
+BENCHMARK_DIR=$( dirname $BENCHMARK_PATH )
+
+pushd $BENCHMARK_DIR > /dev/null
+
+BENCHMARK_SVN_REVISION=$( svn info | grep Revision )
+BENCHMARK_SVN_REVISION=${BENCHMARK_SVN_REVISION:10}
+BENCHMARK_SVN_URL=$( svn info | grep URL )
+BENCHMARK_SVN_URL=${BENCHMARK_SVN_URL:5}
+BENCHMARK_SVN_STATUS=$( svn st -q | grep [UAD] | wc -l )
+if [ $BENCHMARK_SVN_STATUS != "0" ]; then
+    echo "WARNING: not all changes have been committed to the benchmark directory"
+fi
+EXPERIMENTOR=$( whoami )
+MACHINE=$( uname -n )
+
+pushd $MANTICORE_ROOT > /dev/null
+    COMPILER_SVN_REVISION=$( svn info | grep Revision )
+    COMPILER_SVN_REVISION=${COMPILER_SVN_REVISION:10}
+    COMPILER_SVN_URL=$( svn info | grep URL )
+    COMPILER_SVN_URL=${COMPILER_SVN_URL:5}
+    COMPILER_SVN_STATUS=$( svn st -q | wc -l )
+    if [ $COMPILER_SVN_STATUS != "0" ]; then
+	echo "WARNING: not all changes have been committed to the compiler"
+    fi
+popd > /dev/null
+
+EXPERIMENT_NAME_SML=${EXPERIMENT_NAME//"-"/"_"}
+LOG_SML_MODULENAME="$EXPERIMENT_NAME_SML$DATETIME_SML"
+echo -e "structure $LOG_SML_MODULENAME : WORK_STEALING_EXPERIMENT = struct" >> $LOG_FILE
+
+echo "datatype gc = datatype Common.gc" >> $LOG_FILE
+echo "datatype gc_stats = datatype Common.gc_stats" >> $LOG_FILE
+metadata "problem_name" "\"$EXPERIMENT_NAME\""
+
+metadata "compiler_src_url" "SOME \"$COMPILER_SVN_URL\""
+metadata "compiler_svn" "SOME $COMPILER_SVN_REVISION"
+metadata "script_url" "SOME \"$SCRIPT_SVN_URL\""
+metadata "script_svn" "SOME $SCRIPT_SVN_REVISION"
+if [ $SEQUENTIAL_BINARY == "true" ]; then
+    metadata "seq_compilation" "SOME true"
+else
+    metadata "seq_compilation" "SOME false"
+fi
+metadata "max_leaf_size" "NONE"
+metadata "seq_cutoff" "NONE"
+
+metadata "language" "Common.Manticore"
+metadata "compiler" "\"pmlc\""
+PMLC_VERSION=$( $PMLC -version 2>&1 )
+metadata "version" "\"$PMLC_VERSION\""
+
+metadata "bench_url" "\"$BENCHMARK_SVN_URL\""
+metadata "bench_svn" "$BENCHMARK_SVN_REVISION"
+metadata "input" "\"$SIZE\""
+metadata "username" "\"$EXPERIMENTOR\""
+metadata "datetime" "\"$DATETIME_MD\""
+metadata "machine" "\"$MACHINE\""
+metadata "description" "\"$DESCRIPTION\""
+
+# extras
+metadata "pmlcFlags" "\"$PMLC_FLAGS\""
+metadata_list "$PROCS" "n_procs"
+metadata "nTrials" "$NUM_TRIALS"
+
+# Build and run the benchmarks
+
+echo "Logging performance results to $LOG_FILE"
+
+if [ $GEN_GC_STATS == "false" ]; then
+    ARGS="$SIZE"
+else
+    ARGS="$SIZE -gcstats=all,sml"
+fi
+
+    PARALLEL_EXE=$BENCHMARK_PATH
+    echo "val runs =" >> $LOG_FILE
+    for ((i=1;i<=NUM_TRIALS;i+=1)); do
+	for p in $PROCS; do
+	    echo "$PARALLEL_EXE -p $p $ARGS"
+	    RES=$( $PARALLEL_EXE -p $p $ARGS 2> gc-stats.sml )
+	    retcode=$?
+
+	    if [ ! -e "LOG" ]; then
+		echo "Cannot find log file"
+		exit 1
+	    fi
+	    $LOG_WORK_STEALING -log LOG -o ws-stats.sml
+	    rc2=$?
+	    if [ $retcode == "0" ]; then
+		retcode=$rc2
+	    fi
+
+	    nretries=0
+	    while [ $retcode != "0" ]; do
+		let nretries=nretries+1
+		echo "Benchmark failed unexpectedly with nonzero return code -- retrying."
+		RES=$( $PARALLEL_EXE -p $p $ARGS 2> gc-stats.sml )
+		retcode=$?
+
+		if [ ! -e "LOG" ]; then
+		    echo "Cannot find log file"
+		    exit 1
+		fi
+		$LOG_WORK_STEALING -log LOG -o ws-stats.sml
+		rc2=$?
+		if [ $retcode == "0" ]; then
+		    retcode=$rc2
+		fi
+
+		if [ $nretries -gt 100 ]; then
+		    echo "Exceeded maximum number of failed executions of the benchmark"
+		    exit 1
+		fi
+	    done
+	    echo -n -e "\t\t{ n_procs=$p,\t\ttime_sec=" >> $LOG_FILE
+	    echo -n -e "$RES" >> $LOG_FILE
+	    echo -n -e ",\t\t" >> $LOG_FILE
+	    if [ $GEN_GC_STATS == "false" ]; then
+		echo -n -e "gc=[]" >> $LOG_FILE
+	    else
+		echo -n -e "gc=" >> $LOG_FILE
+		cat gc-stats.sml >> $LOG_FILE
+		rm -rf gc-stats.sml LOG
+	    fi
+	    echo "," >> $LOG_FILE	    
+	    echo -n -e "workStealing=" >> $LOG_FILE
+	    cat ws-stats.sml >> $LOG_FILE
+	    rm -rf ws-stats.sml
+	    echo -e ", \t\tcpu_time_sec=NONE,\t\tmax_space_bytes=NONE} ::" >> $LOG_FILE
+	done
+    done
+    echo -e "\t\tnil" >> $LOG_FILE
+
+
+echo -e "end" >> $LOG_FILE # structure
+
+echo "$LOG_FILE_NAME,$LOG_SML_MODULENAME" >> $RESULTS_DIR/metadata
+
+popd > /dev/null

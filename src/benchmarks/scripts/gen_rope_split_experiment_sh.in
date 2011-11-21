@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# Argument is benchmark name.
+#
+# Run the given benchmark under the following rope-splitting strategies
+#  - ns
+#  - ebs-sp (SST in {16,32,64,128,256,384,512})
+#  - ebs-ap (K in {1,2,4,8})
+#  - lbs (PPT in {1,2,32,64})
+#  - lps (PPT in {1,2,32,64})
+
+NAME=$1
+if [ "$NAME" == "" ]; then
+    echo "error: provide the name of the benchmark as first argument"
+    exit
+fi
+DESCRIPTION="Comparison of different rope-splitting strategies."
+NUM_TRIALS=10
+PROCS_LIST="16"
+SCRIPT_FILE="rope-split-experiment.sh"
+
+MANTI_BENCH_ROOT=@MANTI_BENCH_ROOT@
+
+rm -rf $SCRIPT_FILE
+touch $SCRIPT_FILE
+
+# generate different processor configurations used by the experiment
+# e.g., -p 1 -p 2 ... -p num_procs
+FPROCS_LIST=""
+for p in $PROCS_LIST; do
+    FPROCS_LIST="$FPROCS_LIST -p $p"
+done
+
+(
+cat <<EOF
+$MANTI_BENCH_ROOT/scripts/experiment-mlton.sh -f mlton -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ns"
+$MANTI_BENCH_ROOT/scripts/experiment-mlton.sh -f mlton -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy lbs 1"
+
+$MANTI_BENCH_ROOT/scripts/experiment.sh -p 1 -f mc-seq-elision -e -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ns"
+$MANTI_BENCH_ROOT/scripts/experiment.sh -p 1 -f mc-seq-elision -e -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy lbs 1"
+
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 16"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 32"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 64"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 128"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 256"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 384"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 512"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 768"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-sp 1024"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-ap 1 4"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy ebs-ap 4 4"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy lbs 1"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy lbs 2"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy lbs 32"
+$MANTI_BENCH_ROOT/scripts/experiment.sh $FPROCS_LIST -f mc-par -n $NAME -d "$DESCRIPTION" -t $NUM_TRIALS -s "-splitting-strategy lbs 64"
+EOF
+) >> $SCRIPT_FILE
+
+chmod +x $SCRIPT_FILE

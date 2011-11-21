@@ -1,0 +1,17 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+
+  structure Main
+
+is
+
+  $cml/basis.cm
+  $cml/cml.cm
+
+  merge.sml
+

@@ -1,0 +1,87 @@
+Prime(2000) = 17389; 3.269 seconds on 1 processors
+Prime(2000) = 17389; 3.196 seconds on 1 processors
+Prime(2000) = 17389; 3.195 seconds on 1 processors
+Prime(2000) = 17389; 3.204 seconds on 1 processors
+Prime(2000) = 17389; 3.224 seconds on 1 processors
+Prime(2000) = 17389; 3.205 seconds on 1 processors
+Prime(2000) = 17389; 3.210 seconds on 1 processors
+Prime(2000) = 17389; 3.256 seconds on 1 processors
+Prime(2000) = 17389; 3.229 seconds on 1 processors
+Prime(2000) = 17389; 3.230 seconds on 1 processors
+
+Prime(2000) = 17389; 3.201 seconds on 2 processors
+Prime(2000) = 17389; 3.210 seconds on 2 processors
+Prime(2000) = 17389; 3.211 seconds on 2 processors
+Prime(2000) = 17389; 3.213 seconds on 2 processors
+Prime(2000) = 17389; 3.210 seconds on 2 processors
+Prime(2000) = 17389; 3.217 seconds on 2 processors
+Prime(2000) = 17389; 3.225 seconds on 2 processors
+Prime(2000) = 17389; 3.180 seconds on 2 processors
+Prime(2000) = 17389; 3.220 seconds on 2 processors
+Prime(2000) = 17389; 3.212 seconds on 2 processors
+
+Prime(2000) = 17389; 3.198 seconds on 3 processors
+Prime(2000) = 17389; 3.206 seconds on 3 processors
+Prime(2000) = 17389; 3.208 seconds on 3 processors
+Prime(2000) = 17389; 3.222 seconds on 3 processors
+Prime(2000) = 17389; 3.213 seconds on 3 processors
+Prime(2000) = 17389; 3.213 seconds on 3 processors
+Prime(2000) = 17389; 3.200 seconds on 3 processors
+Prime(2000) = 17389; 3.226 seconds on 3 processors
+Prime(2000) = 17389; 3.235 seconds on 3 processors
+Prime(2000) = 17389; 3.197 seconds on 3 processors
+
+Prime(2000) = 17389; 3.209 seconds on 4 processors
+Prime(2000) = 17389; 3.200 seconds on 4 processors
+Prime(2000) = 17389; 3.200 seconds on 4 processors
+Prime(2000) = 17389; 3.201 seconds on 4 processors
+Prime(2000) = 17389; 3.220 seconds on 4 processors
+Prime(2000) = 17389; 3.205 seconds on 4 processors
+Prime(2000) = 17389; 3.233 seconds on 4 processors
+Prime(2000) = 17389; 3.227 seconds on 4 processors
+Prime(2000) = 17389; 3.202 seconds on 4 processors
+Prime(2000) = 17389; 3.205 seconds on 4 processors
+
+Prime(2000) = 17389; 3.213 seconds on 5 processors
+Prime(2000) = 17389; 3.187 seconds on 5 processors
+Prime(2000) = 17389; 3.205 seconds on 5 processors
+Prime(2000) = 17389; 3.206 seconds on 5 processors
+Prime(2000) = 17389; 3.210 seconds on 5 processors
+Prime(2000) = 17389; 3.212 seconds on 5 processors
+Prime(2000) = 17389; 3.209 seconds on 5 processors
+Prime(2000) = 17389; 3.208 seconds on 5 processors
+Prime(2000) = 17389; 3.220 seconds on 5 processors
+Prime(2000) = 17389; 3.199 seconds on 5 processors
+
+Prime(2000) = 17389; 3.214 seconds on 6 processors
+Prime(2000) = 17389; 3.209 seconds on 6 processors
+Prime(2000) = 17389; 3.224 seconds on 6 processors
+Prime(2000) = 17389; 3.216 seconds on 6 processors
+Prime(2000) = 17389; 3.198 seconds on 6 processors
+Prime(2000) = 17389; 3.213 seconds on 6 processors
+Prime(2000) = 17389; 3.212 seconds on 6 processors
+Prime(2000) = 17389; 3.207 seconds on 6 processors
+Prime(2000) = 17389; 3.227 seconds on 6 processors
+Prime(2000) = 17389; 3.247 seconds on 6 processors
+
+Prime(2000) = 17389; 3.250 seconds on 7 processors
+Prime(2000) = 17389; 3.258 seconds on 7 processors
+Prime(2000) = 17389; 3.248 seconds on 7 processors
+Prime(2000) = 17389; 3.227 seconds on 7 processors
+Prime(2000) = 17389; 3.236 seconds on 7 processors
+Prime(2000) = 17389; 3.241 seconds on 7 processors
+Prime(2000) = 17389; 3.270 seconds on 7 processors
+Prime(2000) = 17389; 3.242 seconds on 7 processors
+Prime(2000) = 17389; 3.246 seconds on 7 processors
+Prime(2000) = 17389; 3.229 seconds on 7 processors
+
+Prime(2000) = 17389; 3.248 seconds on 8 processors
+Prime(2000) = 17389; 3.258 seconds on 8 processors
+Prime(2000) = 17389; 3.247 seconds on 8 processors
+Prime(2000) = 17389; 3.243 seconds on 8 processors
+Prime(2000) = 17389; 3.237 seconds on 8 processors
+Prime(2000) = 17389; 3.253 seconds on 8 processors
+Prime(2000) = 17389; 3.232 seconds on 8 processors
+Prime(2000) = 17389; 3.233 seconds on 8 processors
+Prime(2000) = 17389; 3.258 seconds on 8 processors
+Prime(2000) = 17389; 3.249 seconds on 8 processors

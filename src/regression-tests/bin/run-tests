@@ -1,0 +1,4 @@
+#! /bin/sh
+
+sml @SMLload=.heap/run-tests $*
+

@@ -1,0 +1,12 @@
+Library
+
+	structure Main
+	structure GenBodies
+	structure Vector2
+is
+
+	$/basis.cm
+	$/smlnj-lib.cm
+
+	vector2.sml
+	gen-bodies.sml

@@ -1,0 +1,12 @@
+Library
+
+	structure Main
+
+is
+
+	$/basis.cm
+	$/smlnj-lib.cm
+	../../lib/par-rope-lib/sources.cm
+	../../common/run-seq.sml
+
+	dense-matrix-multiply.sml

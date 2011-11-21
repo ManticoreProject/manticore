@@ -1,0 +1,17 @@
+#!/bin/bash
+
+MANTI_BENCH_ROOT="@MANTI_BENCH_ROOT@"
+
+pushd $MANTI_BENCH_ROOT/programs/barnes-hut
+./gen-bodies.sh
+popd
+
+pushd $MANTI_BENCH_ROOT/programs/quickhull
+./gen-points.sh
+popd
+
+pushd $MANTI_BENCH_ROOT/programs/quicksort
+./gen-random-int-list.sh
+popd
+
+# $MANTI_BENCH_ROOT/programs/smvm/gen-mtx.sh

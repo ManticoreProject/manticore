@@ -1,0 +1,23 @@
+The utility in this directory consumes a JSON file and writes its
+information into the Manticore database.
+
+Note the two (third-party) jar files in this directory are necessary
+to execute the code.
+
+To compile the code, run the script
+
+  ./compile.sh
+
+. To run the code, run the script
+
+  ./run.sh <json-file>
+
+.
+
+The scripts are just shell commands that run the javac and java with
+the appropriate flags.
+
+See TODO for outstanding issues.
+
+Adam Shaw
+October 2009

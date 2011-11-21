@@ -1,0 +1,17 @@
+(* smlnj.cm
+ *
+ * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+
+  structure Main
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  ../../common/run-seq.sml
+
+  black-scholes.sml

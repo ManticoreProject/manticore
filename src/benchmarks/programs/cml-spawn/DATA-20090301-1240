@@ -1,0 +1,37 @@
+20090301-1240
+
+CML:
+10000000 threads spawned in 3.807 seconds
+10000000 threads spawned in 3.810 seconds
+10000000 threads spawned in 3.807 seconds
+10000000 threads spawned in 3.815 seconds
+10000000 threads spawned in 3.804 seconds
+10000000 threads spawned in 3.795 seconds
+10000000 threads spawned in 3.816 seconds
+10000000 threads spawned in 3.810 seconds
+10000000 threads spawned in 3.789 seconds
+10000000 threads spawned in 3.797 seconds
+
+Manticore 1P:
+10000000 threads spawned in 8.116 seconds
+10000000 threads spawned in 8.076 seconds
+10000000 threads spawned in 8.107 seconds
+10000000 threads spawned in 8.105 seconds
+10000000 threads spawned in 8.104 seconds
+10000000 threads spawned in 8.059 seconds
+10000000 threads spawned in 8.060 seconds
+10000000 threads spawned in 8.140 seconds
+10000000 threads spawned in 8.112 seconds
+10000000 threads spawned in 8.094 seconds
+
+Manticore 2P:
+2000000 threads spawned in 6.051 seconds
+2000000 threads spawned in 5.984 seconds
+2000000 threads spawned in 6.091 seconds
+2000000 threads spawned in 6.019 seconds
+2000000 threads spawned in 6.014 seconds
+2000000 threads spawned in 6.038 seconds
+2000000 threads spawned in 6.268 seconds
+2000000 threads spawned in 6.052 seconds
+2000000 threads spawned in 6.006 seconds
+2000000 threads spawned in 6.031 seconds

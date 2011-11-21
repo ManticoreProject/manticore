@@ -1,0 +1,10 @@
+local
+    $(SML_LIB)/basis/basis.mlb
+    $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+
+    ../../lib/par-rope-lib/mlton.mlb
+    ../../common/run-seq.sml
+    tree-add.sml
+in
+  ../../common/run-main.sml
+end

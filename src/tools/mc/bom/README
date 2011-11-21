@@ -1,0 +1,5 @@
+This directory contains the definition of the BOM IR and support code.  The BOM IR
+is a normalized direct-style representation that mixes high-level (domain-specific)
+and low-level representations.  It can be thought of as a successor to the Moby BOL
+representation (BOL+1 = BOM).
+

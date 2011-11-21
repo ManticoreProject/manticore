@@ -1,0 +1,61 @@
+# Makefile.in
+#
+# COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# @configure_input@
+#
+
+#
+# root of Manticore source tree
+#
+ROOTDIR =		@MANTICORE_ROOT@
+
+#
+# directories for the local-install target
+#
+SRCDIR =	@MANTICORE_ROOT@/src
+LIBDIR =	@MANTICORE_ROOT@/lib
+BINDIR =	@MANTICORE_ROOT@/bin
+HEAPDIR =	$(BINDIR)/.heap
+
+INSTALL =	@INSTALL@
+SHELL =		@SHELL@
+@SET_MAKE@
+
+INSTALL_SMLNJ_WRAPPER =	@INSTALL_SMLNJ_WRAPPER@
+ML_BUILD =		@ML_BUILD@
+ML_BUILD_FLAGS =
+ML_MAKEDEPEND =		@ML_MAKEDEPEND@
+ML_MAKEDEPEND_FLAGS =
+
+PROGRAM =		log-gen
+HEAP_IMAGE =		$(PROGRAM).@SMLNJ_HEAP_SUFFIX@
+
+CM_FILES =		sources.cm
+
+build:		$(HEAP_IMAGE)
+
+$(HEAP_IMAGE):
+	$(ML_BUILD) $(ML_BUILD_FLAGS) sources.cm Main.main $(PROGRAM)
+	touch $(HEAP_IMAGE)
+
+.depend:	$(CM_FILES)
+	touch .depend
+	$(ML_MAKEDEPEND) $(ML_MAKEDEPEND_FLAGS) -n -f .depend sources.cm $(HEAP_IMAGE)
+
+sinclude .depend
+
+local-install:	$(HEAP_IMAGE)
+	$(INSTALL_SMLNJ_WRAPPER) $(PROGRAM) $(BINDIR)
+
+#################### Cleanup ####################
+
+CLEAN_SUBDIRS =
+CLEAN_FILES =		$(HEAP_IMAGE) \
+			.depend
+DISTCLEAN_FILES =	Makefile \
+			main.sml
+DEVCLEAN_FILES =
+
+include @MANTICORE_MKDIR@/clean-rules.gmk

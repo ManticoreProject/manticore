@@ -1,0 +1,10 @@
+local
+    $(SML_LIB)/basis/basis.mlb
+    $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    vector2.sml
+    gen-bodies.sml
+in
+	structure Main
+	structure GenBodies
+	structure Vector2
+end

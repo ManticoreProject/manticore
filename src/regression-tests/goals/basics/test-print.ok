@@ -1,0 +1,10 @@
+a printing test
+an integer: 42
+a negative integer: -17
+a long: 9999999
+a negative long: -133
+a float: 0.010000
+a negative float: -3.141500
+a double: 0.010000
+a negative double: -3.141500
+done
