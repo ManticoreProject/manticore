@@ -10,10 +10,28 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 
   end = struct
 
+
+    val cfgDOT : bool Controls.control = Controls.genControl {
+	    name = "dump-dot",
+	    pri = [0, 0],
+	    obscurity = 0,
+	    help = "also dump CFGs in Graphviz DOT format",
+	    default = false
+	  }
+
+    val _ = ControlRegistry.register CFGOptControls.registry {
+	    ctl = Controls.stringControl ControlUtil.Cvt.bool cfgDOT,
+	    envName = NONE
+	    }
+
   (* a wrapper for CFG optimization passes.  The wrapper includes an invariant check. *)
     fun transform {passName, pass} = let
+	  fun output (outf, module) =
+	      (if Controls.get cfgDOT then PrintDOT.output (outf, module) else ();
+	      PrintCFG.output {counts = true, types = false} (outf, module))
+
 	  val xform = BasicControl.mkKeepPassSimple {
-		  output = PrintCFG.output {counts=true, types = false},
+		  output = output,
 		  ext = "cfg",
 		  passName = passName,
 		  pass = pass,

@@ -34,3 +34,4 @@ is
   alloc-c-calls-fn.sml
   add-alloc-vec-checks-fn.sml
   unroll-loops.sml
+  print-dot.sml
