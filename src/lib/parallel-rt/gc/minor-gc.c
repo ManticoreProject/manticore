@@ -83,7 +83,7 @@ void MinorGC (VProc_t *vp)
    * holds the GC root.
    */
     int nWorkStealingRoots = M_NumDequeRoots (vp);
-    Value_t *roots[16 + nWorkStealingRoots], **rp;
+    Value_t *roots[18 + nWorkStealingRoots], **rp;
     rp = roots;
     *rp++ = &(vp->currentFLS);
     *rp++ = &(vp->actionStk);
@@ -93,6 +93,8 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->shutdownCont);
     *rp++ = &(vp->rdyQHd);
     *rp++ = &(vp->rdyQTl);
+    *rp++ = &(vp->sndQHd);
+    *rp++ = &(vp->sndQTl);
     *rp++ = &(vp->landingPad);
     *rp++ = &(vp->stdEnvPtr);
     rp = M_AddDequeEltsToLocalRoots(vp, rp);

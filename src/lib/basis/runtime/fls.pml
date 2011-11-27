@@ -245,15 +245,14 @@ structure FLS :
     (* set the doneComm flag *)
       define @set-done-comm (doneComm : bool / exh : exh) : unit =
 	let fls : fls = @get()
-	do UPDATE(0, SELECT(DONE_COMM_OFF, fls), doneComm)
+	do #0(SELECT(DONE_COMM_OFF, fls)) := doneComm
 	return(UNIT)
       ;
 
     (* get the value of the doneComm flag *)
       define @get-done-comm (/ exh : exh) : bool =
 	let fls : fls = @get()
-	let dc : ![bool] = SELECT(DONE_COMM_OFF, fls)
-	return (#0(dc))
+	return (#0(SELECT(DONE_COMM_OFF, fls)))
       ;
 
       define @keys-same (arg : [[int], [int]] / exh : exh) : bool =
