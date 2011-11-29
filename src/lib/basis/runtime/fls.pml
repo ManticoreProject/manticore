@@ -120,6 +120,12 @@ structure FLS :
 
       typedef key = [int];
 
+    (* WARNING!
+      These typedefs (ite and fls) are "known" by the compiler. The C runtime generates a fake version of
+      them in vproc/vproc.c, and that _must_ be updated to match any type changes here. Further,
+      the layouts of the objects must be mirrored in gc/alloc.c, GlobalAllocNonUniform() and in the type
+      header tags defined in codegen/header-tbl-struct.sml. *)
+
     (* environment of an implicit thread *)
       typedef ite = [
 	  List.list,		(* work-group stack *)
