@@ -568,14 +568,22 @@ structure Translate : sig
   (* get the list of imported C functions from the environment *)
     val listImports = AtomTable.listItems o E.getImportEnv
 
+  (* function to assign cost values to AST expressions *)
     fun costAST (env,exp) = (case prune exp 
-            of AST.LetExp(b, e) => let
+            of e as AST.LetExp(_,_) => let
+                        fun costBinds (A.LetExp(b, e)) = let
+                                val c1 = cost_binding(b,env)
+                                val c2 = costBinds(e)
+                                val c = c1 + c2
+                           in   
+                                c
+                           end
+                           | costBinds e = costAST(env,e)
+        
                         val _ = TextIO.print("LetExp normal \n")
-                        val c1 = cost_binding(b,env)
-                        val c2 = costAST(env,e)
-                        val c = c1 + c2
-                        val _ = TextIO.print(String.concat["Cost are" , Int.toString c])
+                        val c = costBinds(e)
                 in      
+                        TextIO.print(String.concat["Cost are " , Int.toString c, "end Let\n"]);
                         c
                 end
 	    | AST.IfExp(e1, e2, e3, ty) => let
@@ -674,8 +682,7 @@ structure Translate : sig
 	    | AST.ExpansionOptsExp (opts, e) => let
                         val _ = TextIO.print("ExpansionoptsExp\n")
                 in           
-                        (* printcostAST(env,e) *)
-                        0
+                        costAST(env,e)
                 end
             | _ => raise Fail "Unknown expression\n"
         )
@@ -687,15 +694,21 @@ structure Translate : sig
 
         and cost_binding (e,env) = (case e
                         of AST.ValBind(p, e) => let
-                                        val _ = TextIO.print("val XX =")
-                                in
-                                        costAST(env,e)
-                                end
-                        | AST.PValBind(p, e) => costAST(env,e)
+                                                val _ = TextIO.print("val XX = \n")
+                                        in
+                                                costAST(env,e)
+                                        end
+                        | AST.PValBind(p, e) => let
+                                                val _ = TextIO.print("pval XX =")
+                                        in
+                                                costAST(env,e)
+                                        end
                         | AST.FunBind(lam) => let
                                         val _ = TextIO.print("FunExp in LetExp \n")
+                                        val c = costlambda(lam,env)
+                                        val _ = TextIO.print(String.concat["with cost  ", Int.toString c, "\n"])
                                 in
-                                        costlambda(lam,env)
+                                        c
                                 end
                         (* these should be the primitive operators *)
                         (* | AST.PrimVBind (x, _) => mysize(V.typeof x) *)
@@ -719,6 +732,8 @@ structure Translate : sig
         and costlambda ([], _) = 0
                 | costlambda ( A.FB(f, x, e)::l, env ) = let
                         (* look up cost of the function *)
+                        val _ = TextIO.print("Funbinding \n")
+                        val _ = TextIO.print(String.concat[Var.toString f, " = ", Var.toString x])
                 in
                         1 + costlambda(l,env)
                 end
