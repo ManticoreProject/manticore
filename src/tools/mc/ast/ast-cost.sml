@@ -17,14 +17,17 @@ end = struct
     structure Ty = Types
 
 
+    val Tlimit = 1000
+
+
     (* f is the variable we want to assign a value to *)
-local
+    local
         val {setFn, getFn, peekFn, clrFn} = V.newProp (fn f => ~1)
-in
+    in
         fun clearCost f = clrFn f
         fun setCost (f, cost) = setFn (f, cost)
         fun getCost f = getFn f
-end  
+    end  
 
     (* prune out overload nodes.
    * NOTE: we should probably have a pass that does this before
@@ -310,10 +313,10 @@ This function will add a sequential version and changes the original PTuple expr
             | AST.PTupleExp[] => AST.PTupleExp[]
             | AST.PTupleExp (exps) => let
                         val exps' = List.map (fn e => ASTaddchunking(env, e)) exps
-                        val test = Basis.int_gt
-                        val test1 = AST.ConstExp(AST.LConst(Literal.Int(10),Basis.intTy))
-                        val test2 = AST.ConstExp(AST.LConst(Literal.Int(5),Basis.intTy))
-                        val applye = AST.ApplyExp(AST.VarExp(test,[]), AST.TupleExp([test1,test2]), Basis.boolTy)
+                (* replace this by the actual costs of the statement *)
+                        val ifone = AST.ConstExp(AST.LConst(Literal.Int(Tlimit),Basis.intTy))
+                        val iftwo = AST.ConstExp(AST.LConst(Literal.Int(5),Basis.intTy))
+                        val applye = AST.ApplyExp(AST.VarExp(Basis.int_gt,[]), AST.TupleExp([ifone,iftwo]), Basis.boolTy)
                        
                 in           
                         (* AST.PTupleExp (exps') *)
