@@ -568,6 +568,7 @@ structure Translate : sig
   (* get the list of imported C functions from the environment *)
     val listImports = AtomTable.listItems o E.getImportEnv
 
+(*
   (* function to assign cost values to AST expressions *)
     fun costAST (env,exp) = (case prune exp 
             of e as AST.LetExp(_,_) => let
@@ -606,7 +607,7 @@ structure Translate : sig
                 in     
                         c
                 end
-            (* FIX ME nee function costs *)
+            (* FIX ME need function costs *)
             | AST.FunExp(x, body, ty) => let
                         val _ = TextIO.print("FunExp of type \n")
                         val _ = mysize(ty)
@@ -766,14 +767,14 @@ structure Translate : sig
 	  in
 	    toS(ty1)
 	  end
-        
+*)        
 
     fun translate (env0, body) = let
           val argTy = BTy.T_Raw RawTypes.T_Int
           val arg = BV.new("_arg", argTy)
 	  val (exh, env) = E.newHandler env0
 	  val _ = ropeMapSet := LambdaSet.empty
-          val _ = costAST(env,body)
+          val body = ASTCost.translate(env,body)
 	  val body' = trExpToExp (env, body)
 	  val body'' = (case LambdaSet.listItems(!ropeMapSet)
 		 of [] => body'
