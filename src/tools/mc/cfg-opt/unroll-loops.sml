@@ -13,6 +13,9 @@ datatype t = Atom of string
 
 fun toString (Atom str) = str
   | toString (List sexps) = "(" ^ (String.concatWith " " (List.map toString sexps)) ^ ")"
+
+fun pair str sexps = List [ Atom str, List sexps ]
+fun pair' str sexp = List [ Atom str, sexp ]
 end
 
 signature SOLVER_PARAM = sig
@@ -62,18 +65,6 @@ fun debugSetMap dom = debug (LabelMap_toSexp LabelSet_toSexp) dom
 fun debugPairList list =
     debug (Sexp.List o List.map (fn (i, i') => Sexp.List [ Ord.toSexp i, Ord.toSexp i' ])) list
 
-fun toDOT filename callees = let
-    val outf = TextIO.openOut filename
-    val alist = LabelMap.listItemsi callees
-    fun tr c = if c = #"<" then "&lt;" else if c = #">" then "&gt;" else Char.toString c
-    fun toS a = "\"" ^ (String.translate tr o Sexp.toString o Ord.toSexp) a ^ "\""
-    fun f caller (callee, acc) = toS caller :: " -> " :: toS callee :: ";\n" :: acc
-    fun edges alist = List.foldr (fn ((caller, callees), acc) => LabelSet.foldl (f caller) acc callees) ["}"] alist
-    val str = String.concat ("digraph {\n" :: edges alist)
-in
-    TextIO.outputSubstr (outf, Substring.extract (str, 0, NONE))
-end
-
 (* (k, (v1, v2, ...)) in callers means blocks v1, v2, ... can jump to block k *)
 fun callers callees_alist : LabelSet.set LabelMap.map = let
     fun f (key, value, acc) = let
@@ -110,7 +101,7 @@ fun dominators (n0, callers) : LabelSet.set LabelMap.map = let
       | SOME set => set
 
     fun iter dom = let
-	val _ = debugSetMap dom
+	(* val _ = debugSetMap dom *)
 
 	val (continue, dom') = let
             fun f (n, n_doms, (continue, acc)) =
@@ -172,7 +163,7 @@ fun backedges (n0, callees_of : LabelSet.set LabelMap.map, dominators_of : Label
 			pair "seen" (LabelSet_toSexp seen),
 			pair "callee" (Ord.toSexp callee),
 			pair "acc" (Sexp.List (List.map (fn (a, b) => Sexp.List [Ord.toSexp a, Ord.toSexp b]) acc)) ]
-	val _ = debug toSexp (this, seen, callee, acc)
+	(* val _ = debug toSexp (this, seen, callee, acc) *)
 
 	val acc =
 	    case LabelMap.find (dominators_of, this)
@@ -188,10 +179,10 @@ fun backedges (n0, callees_of : LabelSet.set LabelMap.map, dominators_of : Label
 			pair "this" (Ord.toSexp this),
 			pair "seen" (LabelSet_toSexp seen),
 			pair "acc" (Sexp.List (List.map (fn (a, b) => Sexp.List [Ord.toSexp a, Ord.toSexp b]) acc)) ]
-	val _ = debug toSexp (this, seen, acc)
+	(* val _ = debug toSexp (this, seen, acc) *)
     in
 	if LabelSet.member (seen, this) then (seen, acc) else let
-	    val _ = TextIO.print (Sexp.toString (Ord.toSexp this) ^ " not in " ^ Sexp.toString (LabelSet_toSexp seen))
+	    (* val _ = TextIO.print (Sexp.toString (Ord.toSexp this) ^ " not in " ^ Sexp.toString (LabelSet_toSexp seen)) *)
 	    val dominators = Option.getOpt (LabelMap.find (dominators_of, this), LabelSet.empty)
 	in
 	    case LabelMap.find (callees_of, this)
@@ -208,7 +199,6 @@ end
    does not include h.  (This implies that h dominate x also.)
  *)
 
-(* TODO given n -> h, where h dominates n, take the transitive closure of nodes that are not h and that call n  *)
 fun naturalLoops callers_of backedges = let
     fun closure (x, acc) = let
 	(* val _ = debug LabelSet_toSexp acc *)
@@ -241,6 +231,60 @@ structure UnrollLoops : sig
     val transform : CFG.module -> CFG.module
 
 end = struct
+
+infixr 6 >>=
+
+fun t >>= f = Option.mapPartial f t
+
+
+(* For the first try, we will unroll loops of the form
+     fun f n = if n = 0 then ... else f (n - 1)
+   The tail must be unique, the conditional must be CFG.If
+*)
+
+(* We call the tail of a loop the block where we decide whether to
+jump back to the head.  Note that the tail need not be unique. *)
+
+fun tailOfLoop callers_of headLabel (loop : CFG.Label.Set.set)
+    : (CFG.label * CFG.Label.Set.set * CFG.block) option = let
+    val () = TextIO.print ("tailOfLoop on " ^ VarRep.toString headLabel ^ "\n")
+
+    fun find_if (_, (NONE, seen))  = (NONE, seen)
+      | find_if (lab, (SOME acc, seen)) = (TextIO.print ("find_if on " ^ VarRep.toString lab ^ "\n");
+	if not (CFG.Label.Set.member (loop, lab)) then
+	    (TextIO.print (VarRep.toString lab ^ "not in loop\n");
+	     (SOME acc, seen))
+	else if CFG.Label.Set.member (seen, lab) then
+	    (TextIO.print (VarRep.toString lab ^ "already seen\n");
+	     (SOME acc, seen))
+	else ( (* Sorry for the indentation; I don't know why Emacs insists on this *)
+	    case (CFGUtil.blockOfLabel lab)
+		     >>= (fn blk as CFG.BLK {exit, ...} =>
+			     CFA.labelsOf exit
+					  >>= (fn jumps =>
+						  (* if numItems is not None, then numItems >= 1 because
+												 we got to this node by following the caller-of relation. *)
+						  if CFG.Label.Set.numItems jumps = 1 then
+						      SOME (iter (lab, CFG.Label.Set.add (seen, lab)))
+						  else (TextIO.print ("returning " ^ VarRep.toString lab ^ "\n");
+					       SOME (SOME ((headLabel, loop, (blk : CFG.block)) :: acc), CFG.Label.Set.add (seen, lab)))))
+	     of NONE => (TextIO.print ("NONE on find_if"); (SOME acc, CFG.Label.Set.add (seen, lab)))
+	      | SOME x => x)
+					  )
+
+    and iter (label, seen)
+	: ((CFG.label * CFG.Label.Set.set * CFG.block) list option * CFG.Label.Set.set) = let
+	val () = TextIO.print ("iter on " ^ VarRep.toString label ^ "\n");
+    in
+	case CFG.Label.Map.find (callers_of, label)
+	 of NONE => (NONE, seen)
+	  | SOME callers => CFG.Label.Set.foldl find_if (SOME [], seen) callers
+    end
+in
+    case #1 (iter (headLabel, CFG.Label.Set.empty))
+     of SOME [block] => SOME block (* TODO handle non-unique tails *)
+      | _ => NONE
+end
 
 fun getN0 code =
     case code
@@ -293,13 +337,24 @@ val test = (1,
          (11, [12]),
          (12, [])])
 
+fun List_toSexp toSexp list = Sexp.List (List.map toSexp list)
+
+fun debugTails (x as (headLabel, loopSet, CFG.BLK {lab = tailLabel, ...})) = let
+    val sexp = [Sexp.pair "head" [Sexp.Atom (VarRep.toString headLabel)],
+		Sexp.pair' "body" (List_toSexp (Sexp.Atom o VarRep.toString) (CFG.Label.Set.listItems loopSet)),
+		Sexp.pair "tail" [Sexp.Atom (VarRep.toString tailLabel)]]
+    val () = TextIO.print (Sexp.toString (Sexp.pair "tail" sexp) ^ "\n")
+in
+    x
+end
+
+
 fun transform m = let
     fun intMapOfAList alist = IntSolver.LabelMap_ofAList (List.map (fn (k, v) => (k, IntSolver.LabelSet_ofList v)) alist)
     fun intOption_toSexp NONE = Sexp.Atom "NONE"
       | intOption_toSexp (SOME i) = Sexp.List  [ Sexp.Atom "SOME", Sexp.Atom (Int.toString i)]
     fun labelOption_toSexp NONE = Sexp.Atom "NONE"
       | labelOption_toSexp (SOME l) = Sexp.List  [ Sexp.Atom "SOME", Sexp.Atom (VarRep.toString l)]
-    fun List_toSexp toSexp list = Sexp.List (List.map toSexp list)
 
     val _ =
 	if false then
@@ -318,12 +373,27 @@ fun transform m = let
 		val n0 = getN0 code
 		val callees_alist = makeGraph code
 		val callees = CFGSolver.LabelMap_ofAList (List.map (fn (k, v) => (k, CFGSolver.LabelSet_ofList v)) callees_alist)
-		val _ = CFGSolver.toDOT "cfg.dot" callees
 		val callers = CFGSolver.callers callees_alist
-		val dominators = (CFGSolver.debugSetMap o CFGSolver.dominators) (n0, callers)
-		val idoms = CFGSolver.debug (CFGSolver.LabelMap_toSexp labelOption_toSexp) (CFGSolver.immediateDominators dominators)
-		val backedges = CFGSolver.debugPairList (CFGSolver.backedges (n0, callees, dominators))
-		val naturalLoops = (CFGSolver.debug (CFGSolver.LabelMap_toSexp (List_toSexp CFGSolver.LabelSet_toSexp)) o CFGSolver.naturalLoops callers) backedges
+		val dominators = ((* CFGSolver.debugSetMap o *) CFGSolver.dominators) (n0, callers)
+		val idoms = (* CFGSolver.debug (CFGSolver.LabelMap_toSexp labelOption_toSexp) *) (CFGSolver.immediateDominators dominators)
+		val backedges = (* CFGSolver.debugPairList *) (CFGSolver.backedges (n0, callees, dominators))
+
+		fun alistOfSetMap (headNode, loopSetList, acc) =
+		    CFG.Label.Map.insert (acc, headNode, List.map (CFGSolver.LabelSet.foldl CFG.Label.Set.add' CFG.Label.Set.empty) loopSetList)
+		val naturalLoops : CFG.Label.Set.set list CFG.Label.Map.map = (CFGSolver.LabelMap.foldli alistOfSetMap CFG.Label.Map.empty
+				    o CFGSolver.debug (CFGSolver.LabelMap_toSexp (List_toSexp CFGSolver.LabelSet_toSexp))
+				    o CFGSolver.naturalLoops callers)
+				       backedges
+		fun fromCFGSolverSetMap setMap = let
+		    fun f (key, valueSet, acc) =
+			CFG.Label.Map.insert (acc, key, CFGSolver.LabelSet.foldl CFG.Label.Set.add' CFG.Label.Set.empty valueSet)
+		in
+		    CFGSolver.LabelMap.foldli f CFG.Label.Map.empty setMap
+		end
+		val callers : CFG.Label.Set.set CFG.Label.Map.map = fromCFGSolverSetMap callers
+		fun getTails (headNode, loopSetList) =
+		    List.mapPartial (Option.map debugTails o tailOfLoop callers headNode) loopSetList
+		val tails = CFG.Label.Map.mapi getTails naturalLoops
 	    in
 		()
 	    end
