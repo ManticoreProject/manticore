@@ -123,6 +123,10 @@ dnl
 CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic"
 CXXFLAGS="$CXXFLAGS -D_GNU_SOURCE -D__STDC_FORMAT_MACROS"
 
+if test $OS = darwin; then
+   LDFLAGS="$LDFLAGS -Wl,-no_pie"
+fi
+
 dnl
 dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for
 dnl the old cpp.
