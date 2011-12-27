@@ -157,7 +157,7 @@ void VProcInit (bool isSequential, Options_t *opts)
         }
     } else if (denseLayout) {
 	for (int i = 0;  i < NumVProcs;  i++)
-	    initData[i].loc = Locations[i];
+	    initData[i].loc = Locations[i%NumHWThreads];
     }
     else if (NumVProcs <= NumHWNodes) {
       /* at most one vproc per node */
