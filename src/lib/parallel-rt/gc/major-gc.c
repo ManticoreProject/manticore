@@ -191,7 +191,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
   /* copy the live data between vp->oldTop and top to the base of the heap */
     Addr_t youngSzB = top - vp->oldTop;
-    memcpy ((void *)heapBase, (void *)(vp->oldTop), youngSzB);
+    memmove ((void *)heapBase, (void *)(vp->oldTop), youngSzB);
     vp->oldTop = vp->heapBase + youngSzB;
 
 #ifndef NO_GC_STATS
