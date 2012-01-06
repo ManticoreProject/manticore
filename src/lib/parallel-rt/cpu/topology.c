@@ -62,7 +62,9 @@ void DiscoverTopology ()
         Die ("NUMA is not available on this machine");
     }
 #else
+#ifndef NDEBUG
     SayDebug ("LIBNUMA is not installed on this machine\n");
+#endif
 #endif
 
 #ifndef NDEBUG
