@@ -6,8 +6,8 @@
 
 structure ASTCost : sig
 
-        val costAST : (TranslateEnv.env * AST.exp) -> int
-        val translate : (TranslateEnv.env * AST.exp) -> AST.exp
+        val translate : AST.exp -> AST.exp
+        val costAST : AST.var * AST.exp -> int
 
 end = struct
 
@@ -24,6 +24,12 @@ end = struct
 
     fun vexp v = AST.VarExp (v, [])
 
+    fun dummyvar () = (Var.new ("dummy", B.unitTy))
+    
+    (* unkown costs is -1 *)
+    val Cunkown = ~1
+
+    (* cut off limit for the costs *)
     val Tlimit = 1000
 
 
@@ -38,6 +44,18 @@ end = struct
         fun exist f = peekFn f
     end  
 
+    (* f is the variable we want to assign a value to *)
+    (* we use this to store the extra information to create the cost function, especially the fixcosts *)
+    local
+        val {setFn, getFn, peekFn, clrFn} = V.newProp (fn f => ~1)
+    in
+        fun clearCostfct f = clrFn f
+        fun setCostfct (f, cost) = setFn (f, cost)
+        fun getCostfct f = getFn f
+        (* returns SOME var if exist otherwise NONE *) 
+        fun existCostfct f = peekFn f
+    end  
+
     (* prune out overload nodes.
    * NOTE: we should probably have a pass that does this before
    * AST optimization.
@@ -46,17 +64,23 @@ end = struct
       | prune (AST.OverloadExp _) = raise Fail "unresolved overloading"
       | prune e = e
 
-    (* function to assign cost values to AST expressions *)
-    fun costAST (env,exp) = (case prune exp 
+(*
+-----------------------------------------------------------------------------------------------
+This function analyzes the tree and assigns costs to functions or ~1 if we need to reevaluate and maybe create a cost function
+-----------------------------------------------------------------------------------------------
+*)
+
+    (* function to assign cost values to AST expressions if possible if the function is open it assigns ~1 *)
+    fun costAST (pre,exp) = (case prune exp 
             of e as AST.LetExp(_,_) => let
                         fun costBinds (A.LetExp(b, e)) = let
-                                val c1 = cost_binding(b,env)
+                                val c1 = cost_binding(b,pre)
                                 val c2 = costBinds(e)
                                 val c = c1 + c2
                            in   
                                 c
                            end
-                           | costBinds e = costAST(env,e)
+                           | costBinds e = costAST(pre,e)
         
                         val _ = TextIO.print("LetExp normal \n")
                         val c = costBinds(e)
@@ -67,9 +91,9 @@ end = struct
 	    | AST.IfExp(e1, e2, e3, ty) => let
                         val _ = TextIO.print("IfExp of type\n") 
                         val _ = TextIO.print(TypeUtil.toString ty)
-                        val c1 = costAST(env,e1)
-                        val c2 = costAST(env,e2)
-                        val c3 = costAST(env,e3)
+                        val c1 = costAST(pre,e1)
+                        val c2 = costAST(pre,e2)
+                        val c3 = costAST(pre,e3)
                         val c = 1 + c1 + Int.max(c2,c3)
                         val _ = TextIO.print(String.concat[" If exp Cost are " , Int.toString c, " (** end IF **) "])
                 in      
@@ -77,8 +101,8 @@ end = struct
                 end
 	    | AST.CaseExp(e, rules, ty) => let
                         val _ = TextIO.print("CaseExp of type\n")
-                        val c1 = costAST(env,e)
-                        val c2 = casematch(rules, env)
+                        val c1 = costAST(pre,e)
+                        val c2 = casematch(rules, pre)
                         val c = c1 + c2
                         val _ = TextIO.print(String.concat["cost are ",Int.toString c, " * (end case) * \n"])
                 in     
@@ -90,8 +114,13 @@ end = struct
                         (* val _ = mysize(ty) *)
                         val _ = TextIO.print(TypeUtil.toString ty)
                         val _ = TextIO.print (V.toString x)
-                        val c1 = costAST(env,body)
+                        val c1 = costAST(x,body)
                         val c = c1
+                        fun varcost () = (
+                                case exist x
+                                of (SOME num) => setCostfct(x,c)
+                                | NONE =>  setCost (x, c)
+                        )
                         val _ = TextIO.print(String.concat["Cost are", Int.toString c, "\n"])  
                 in      
                         c
@@ -101,8 +130,8 @@ end = struct
                         val _ = TextIO.print("ApplyExp of type (")
                         val _ = TextIO.print(TypeUtil.toString ty)
                         val _ = TextIO.print("\n")
-                        val c1 = costAST(env,e1)
-                        val c2 = costAST(env,e2)
+                        val c1 = costAST(pre,e1)
+                        val c2 = costAST(pre,e2)
                         val c = c1 + c2 + 1
                         val _ =  TextIO.print(String.concat["Apply costs are ", Int.toString c, ") \n ** end apply ** \n"])
                 in
@@ -112,7 +141,7 @@ end = struct
             | AST.TupleExp (exps) => let
 (* FIX ME : need to check for not closed expressions *)
                         val _ = TextIO.print("TupleExp not unit \n")
-                        val exps' = List.map (fn e => costAST(env, e)) exps
+                        val exps' = List.map (fn e => costAST(pre, e)) exps
                         fun addL(L) =
                                 if L=[] 
                                 then 0 
@@ -134,6 +163,10 @@ end = struct
                                                 end
                                         )
                                 val mycost = varcost()
+
+                                (* we check for recursive and unknown function here *)
+                                val _ = if (mycost = ~1) then setCost(pre,~1) 
+                                                      else TextIO.print(String.concat["Var exp ", printvar(x), "is fine \n"])
                         in
                                 TextIO.print(String.concat["Var exp ", printvar(x), " with costs for size ", Int.toString mycost, " \n"]);
                                 mycost
@@ -155,14 +188,14 @@ end = struct
             | AST.PTupleExp[] => 0
             | AST.PTupleExp (exps) => let
                         val _ = TextIO.print("PTupleExp\n")
-                      (*  val c1 = costAST(env,e) *)
+                      (*  val c1 = costAST(pre,e) *)
                         (* We need the maximum of all the ptuple expressions *)
 (* FIX ME : need to check for not closed expressions *)
                         fun maxList(L) = 
                                 if L=[] 
                                 then ~1 
                                 else Int.max(hd(L), maxList(tl(L)))
-                        val exps' = List.map (fn e => costAST(env, e)) exps
+                        val exps' = List.map (fn e => costAST(pre, e)) exps
                         val c = maxList(exps');
                         val _ = TextIO.print(String.concat["PTupleExp costs are ", Int.toString c, "\n (** End PTupleexp **) \n"])
                 in                          
@@ -174,13 +207,13 @@ end = struct
 	    | AST.SpawnExp e => let
                         val _ = TextIO.print("SpawnExp\n")
                 in           
-                        costAST(env,e)
+                        costAST(pre,e)
                 end
 	    | AST.ConstExp (constexp) => const_cost(constexp)
 	    | AST.SeqExp (e1,e2) => let
                         val _ = TextIO.print("SeqExp\n")
-                        val c1 = costAST(env,e1)
-                        val c2 = costAST(env,e2)
+                        val c1 = costAST(pre,e1)
+                        val c2 = costAST(pre,e2)
                 in           
                         c1 + c2
                 end
@@ -188,7 +221,7 @@ end = struct
 	    | AST.ExpansionOptsExp (opts, e) => let
                         val _ = TextIO.print("ExpansionoptsExp\n")
                 in           
-                        costAST(env,e)
+                        costAST(pre,e)
                 end
         )
 
@@ -205,20 +238,20 @@ end = struct
                                 end
         )
 
-        and cost_binding (e,env) = (case e
+        and cost_binding (e,pre) = (case e
                         of AST.ValBind(p, e) => let
                                                 val _ = TextIO.print("val XX = \n")
                                         in
-                                                costAST(env,e)
+                                                costAST(pre,e)
                                         end
                         | AST.PValBind(p, e) => let
                                                 val _ = TextIO.print("pval XX =")
                                         in
-                                                costAST(env,e)
+                                                costAST(pre,e)
                                         end
                         | AST.FunBind(lam) => let
                                         val _ = TextIO.print("FunExp in LetExp \n")
-                                        val c = costlambda(lam,env)
+                                        val c = costlambda(lam,pre)
                                         val _ = TextIO.print(String.concat["with cost  ", Int.toString c, "\n"])
                                 in
                                         c
@@ -239,12 +272,12 @@ end = struct
                         
         )
         (* for the case e of pat => expr take the maximum of the (pat,expr) pair *)
-        and casematch (rule::rest, env) = (case rule 
+        and casematch (rule::rest, pre) = (case rule 
                                 of AST.PatMatch (pat,e) => let
                                         val _ = TextIO.print("PatMatch \n")
-                                        val c = costAST(env,e)
+                                        val c = costAST(pre,e)
                                 in      
-                                        Int.max(c,casematch(rest, env))
+                                        Int.max(c,casematch(rest, pre))
                                 end
                                 (* CondMatch is not used yet *)
                                 | AST.CondMatch (pat,e1,e2) => 0
@@ -252,22 +285,27 @@ end = struct
                         | casematch ([], _) = 0
         (* FIX ME *)
         and costlambda ([], _) = 0
-                | costlambda ( A.FB(f, x, e)::l, env ) = let
+                | costlambda ( A.FB(f, x, e)::l, pre ) = let
                         (* look up cost of the function *)
                         val _ = TextIO.print(String.concat["Funbinding ", printvar(f), " to " , printvar(x)," \n"])
-                        val c = costAST(env,e)
-                        val _ = setCost (f, c)
+                        val c = costAST(f,e)
+                        (* check if the costs are -1 already which means unknown *)
+                        fun varcost () = (
+                                case exist f
+                                of (SOME num) => setCostfct(f,c)
+                                | NONE =>  setCost (f, c)
+                        )
                         val _ = TextIO.print(String.concat["Funbinding ", printvar(f), " has cost ", Int.toString c," \n (** End Funbinding **) \n"])
                         val readout = getCost(f)
                         val _ = TextIO.print(String.concat["Check: Reading out the cost of the function = ", Int.toString readout, " !!******!!! "])
                 in
-                        costlambda(l,env)
+                        costlambda(l,pre)
                 end
 
         (* MISSING and pmatch *)
 
         (* we shouldn't need this
-        and cost_pat (expr,env) = (case expr 
+        and cost_pat (expr,pre) = (case expr 
                 of AST.ConPat (dcon,_,pat) => TextIO.print ("Conpat\n")
                 | AST.TuplePat(p::pat) => TextIO.print ("TuplePat\n")
                 | AST.VarPat(v) => TextIO.print ("VarPat\n")
@@ -295,6 +333,8 @@ end = struct
 
         and printvar(x) = String.concat[Var.toString x, " : ", TypeUtil.schemeToString (Var.typeOf x),"\n"]
 
+
+
 (* FIX ME: just takes fix costs and the number of recursive calls to itself and the function name so far *)
         and create_cost_fct (cost, numrec, f, x) = let
                 (* create the name of the function and the type of the input argument *)
@@ -313,30 +353,144 @@ end = struct
 
 (*
 -----------------------------------------------------------------------------------------------
+This function will create cost functions for the open function costs of the previous analysis or add unknown
+to the function if we can't assign costs to it
+-----------------------------------------------------------------------------------------------
+*)
+
+        fun costFctsAST (exp) = (case prune exp 
+                of e as AST.LetExp(_,_) => let
+                        fun letBinds (AST.LetExp(b, e)) = let
+                                val b1 = binding(b)
+                                val c1 = letBinds(e)
+                           in   
+                                ()
+                           end
+                           | letBinds e = costFctsAST(e)
+                in      
+                        letBinds(e)
+                end
+	    | AST.IfExp(e1, e2, e3, ty) => let
+                        val _ = costFctsAST(e1)
+                        val _ = costFctsAST(e2)
+                        val _ = costFctsAST(e3)
+                        in
+                                ()
+                        end
+	    | AST.CaseExp(e, rules, ty) => let
+                        val _ = costFctsAST(e)
+                        in
+                                casematch(rules)
+                        end
+            | AST.FunExp(x, body, ty) => (
+                        case exist x
+                                of (SOME num) => ()
+                                | NONE =>  let
+(* FIX ME NEED TO RECOMPUTE COSTS HERE *)
+                                        val cost = 0
+                                        in
+                                                case cost
+                                                of ~1 => setCost (x, Cunkown)
+                                                | Cunkown => setCost (x, Cunkown)
+                                                (* | _ => setCost (x, cost) *)
+                                        end
+                )
+            | AST.ApplyExp(e1, e2, ty) => let
+                                val _ = costFctsAST(e1)
+                        in
+                                costFctsAST(e2)
+                        end
+            | AST.TupleExp[] => ()
+            | AST.TupleExp (exps) => let
+                                val _ = List.map (fn e => costFctsAST(e)) exps
+                        in
+                                ()
+                        end
+            | AST.VarExp(x, tys) => (case getCost x
+                        of ~1 => TextIO.print(String.concat["Variable ", printvar(x), " has cost ", Int.toString ~1," \n (** End VAR **) \n"])
+                        | _ => TextIO.print(String.concat["Variable ", printvar(x), " has cost ", Int.toString (getCost x)," \n (** End VAR **) \n"])
+                )
+            | AST.PCaseExp _ => raise Fail "PCaseExp" (* FIXME *)
+	    | AST.HandleExp(e, mc, ty) =>  ()   
+	    | AST.RaiseExp(e, ty) => ()
+	    | AST.VarArityOpExp (oper, i, ty) => ()
+	    | AST.RangeExp (lo, hi, optStep, ty) => raise Fail "FIXME (range construction)"
+            | AST.PTupleExp[] => ()
+(* we have to change ptuple expressions to the if else statement *)
+            | AST.PTupleExp (exps) => raise Fail "MISSING PTUPLE"
+	    | AST.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
+	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
+	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
+	    | AST.SpawnExp e => costFctsAST(e)
+	    | AST.ConstExp (constexp) => ()
+	    | AST.SeqExp (e1,e2) => let
+                                val _ = costFctsAST(e1) 
+                        in
+                                costFctsAST(e2)
+                        end
+	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
+	    | AST.ExpansionOptsExp (opts, e) => costFctsAST(e)
+        )
+
+        and binding (e) = (case e
+                        of AST.ValBind(p, e) => costFctsAST(e)
+                        | AST.PValBind(p, e) => costFctsAST(e)
+                        | AST.FunBind(lam) => lambda(lam)
+                        (* these should be the primitive operators *)
+                        (* | AST.PrimVBind (x, _) => mysize(V.typeof x) *)
+                        | e => ()
+                        
+        )
+        (* for the case e of pat => expr take the maximum of the (pat,expr) pair *)
+        and casematch (rule::rest) = (case rule 
+                                of AST.PatMatch (pat,e) => let
+                                        val _ = costFctsAST(e)
+                                in      
+                                        casematch(rest)
+                                end
+                                (* CondMatch is not used yet *)
+                                | AST.CondMatch (pat,cond,e2) => raise Fail "unexpected AST.CondMatch"
+                                )
+                        | casematch ([]) = ()
+        (* FIX ME *)
+        and lambda ([]) = () 
+                | lambda ( A.FB(f, x, e)::l ) = (case getCost(f) 
+                                of ~1 => let
+                                                val _ = TextIO.print("Need to add costs here\n")
+                                        in
+                                                lambda(l)
+                                        end
+                                | _ => lambda(l)
+                )
+(* fix me add check for function *)
+
+
+(*
+-----------------------------------------------------------------------------------------------
 This function will add a sequential version and changes the original PTuple expression for chunking
 PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
 -----------------------------------------------------------------------------------------------
 *)
 
-        fun ASTaddchunking (env,exp) = (case prune exp 
+        fun ASTaddchunking (exp) = (case prune exp 
                 of e as AST.LetExp(_,_) => let
                         fun letBinds (AST.LetExp(b, e)) = let
-                                val b1 = binding(b,env)
+                                val b1 = binding(b)
                                 val c1 = letBinds(e)
                            in   
                                 AST.LetExp(b1, c1)
                            end
-                           | letBinds e = ASTaddchunking(env,e)
+                           | letBinds e = ASTaddchunking(e)
                 in      
                         letBinds(e)
                 end
-	    | AST.IfExp(e1, e2, e3, ty) => AST.IfExp(ASTaddchunking(env,e1), ASTaddchunking(env,e2), ASTaddchunking(env,e3), ty)
-	    | AST.CaseExp(e, rules, ty) => AST.CaseExp(ASTaddchunking(env,e) , casematch(rules, env), ty)
-            | AST.FunExp(x, body, ty) => AST.FunExp(x, ASTaddchunking(env,body), ty)
-            | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(ASTaddchunking(env,e1), ASTaddchunking(env,e2), ty)
+	    | AST.IfExp(e1, e2, e3, ty) => AST.IfExp(ASTaddchunking(e1), ASTaddchunking(e2), ASTaddchunking(e3), ty)
+	    | AST.CaseExp(e, rules, ty) => AST.CaseExp(ASTaddchunking(e) , casematch(rules), ty)
+            | AST.FunExp(x, body, ty) => AST.FunExp(x, ASTaddchunking(body), ty)
+            | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(ASTaddchunking(e1), ASTaddchunking(e2), ty)
             | AST.TupleExp[] => AST.TupleExp[]
             | AST.TupleExp (exps) => let
-                        val exps' = List.map (fn e => ASTaddchunking(env, e)) exps
+                        val exps' = List.map (fn e => ASTaddchunking( e)) exps
                 in           
                         AST.TupleExp (exps')
                 end
@@ -348,50 +502,50 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
 	    | AST.RangeExp (lo, hi, optStep, ty) => raise Fail "FIXME (range construction)"
             | AST.PTupleExp[] => AST.PTupleExp[]
 (* we have to change ptuple expressions to the if else statement *)
-            | AST.PTupleExp (exps) => ptup (env,exps)
+            | AST.PTupleExp (exps) => ptup (exps)
 	    | AST.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
-	    | AST.SpawnExp e => AST.SpawnExp(ASTaddchunking(env,e))
+	    | AST.SpawnExp e => AST.SpawnExp(ASTaddchunking(e))
 	    | AST.ConstExp (constexp) => AST.ConstExp (constexp)
-	    | AST.SeqExp (e1,e2) => AST.SeqExp (ASTaddchunking(env,e1),ASTaddchunking(env,e2))
+	    | AST.SeqExp (e1,e2) => AST.SeqExp (ASTaddchunking(e1),ASTaddchunking(e2))
 	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
-	    | AST.ExpansionOptsExp (opts, e) => AST.ExpansionOptsExp (opts, ASTaddchunking(env,e)) 
+	    | AST.ExpansionOptsExp (opts, e) => AST.ExpansionOptsExp (opts, ASTaddchunking(e)) 
         )
 
-        and binding (e,env) = (case e
-                        of AST.ValBind(p, e) => AST.ValBind(p,ASTaddchunking(env,e))
-                        | AST.PValBind(p, e) => AST.PValBind(p,ASTaddchunking(env,e))
-                        | AST.FunBind(lam) => AST.FunBind(lambda(lam,env))
+        and binding (e) = (case e
+                        of AST.ValBind(p, e) => AST.ValBind(p,ASTaddchunking(e))
+                        | AST.PValBind(p, e) => AST.PValBind(p,ASTaddchunking(e))
+                        | AST.FunBind(lam) => AST.FunBind(lambda(lam))
                         (* these should be the primitive operators *)
                         (* | AST.PrimVBind (x, _) => mysize(V.typeof x) *)
                         | e => e
                         
         )
         (* for the case e of pat => expr take the maximum of the (pat,expr) pair *)
-        and casematch (rule::rest, env) = (case rule 
+        and casematch (rule::rest) = (case rule 
                                 of AST.PatMatch (pat,e) => let
-                                        val e1 = ASTaddchunking(env,e)
+                                        val e1 = ASTaddchunking(e)
                                 in      
-                                        AST.PatMatch(pat,e1)::casematch(rest,env)
+                                        AST.PatMatch(pat,e1)::casematch(rest)
                                 end
                                 (* CondMatch is not used yet *)
                                 | AST.CondMatch (pat,cond,e2) => raise Fail "unexpected AST.CondMatch"
                                 )
-                        | casematch ([], _) = [] 
+                        | casematch ([]) = [] 
         (* FIX ME *)
-        and lambda ([], env) = [] 
-                | lambda ( A.FB(f, x, e)::l, env ) = let
-                        val e1 = ASTaddchunking(env,e)
+        and lambda ([]) = [] 
+                | lambda ( A.FB(f, x, e)::l) = let
+                        val e1 = ASTaddchunking(e)
                 in
-                        A.FB(f, x, e1)::lambda(l,env)
+                        A.FB(f, x, e1)::lambda(l)
                 end
 
 
-        and ptup (env, exps) = 
+        and ptup (exps) = 
          (case exps
            of [e1, e2] => let
-                val exps' = List.map (fn e => ASTaddchunking(env, e)) exps
+                val exps' = List.map (fn e => ASTaddchunking( e)) exps
                 (* The ptuple statement (| exp1, exp2 |) will change to if (cost(exp1) + cost(exp2) > T) then (| exp1, exp2 |) else ( exp1, exp2 ) *) 
                 (* where cost() a function that may have to compute the cost on the fly *)
 
@@ -415,9 +569,10 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
           (* end case *))
 
 
-        fun translate (env, body) = let
-                val _ = costAST(env,body)
-                val body' = ASTaddchunking(env,body)
+        fun translate (body) = let
+                val _ = costAST(dummyvar() , body)
+                val _ = costFctsAST(body)
+                val body' = ASTaddchunking(body)
         in   
                 body'
         end
