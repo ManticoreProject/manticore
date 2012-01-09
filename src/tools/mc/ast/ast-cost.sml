@@ -26,12 +26,20 @@ end = struct
 
     fun dummyvar () = (Var.new ("dummy", B.unitTy))
     
+    (* The size of the hash that we use to store information about function calls within a function *)
+    val hashsize = 8
+    
     (* unkown costs is -1 *)
     val Cunkown = ~1
 
     (* cut off limit for the costs *)
     val Tlimit = 1000
 
+(*
+-----------------------------------------------------------------------------------------------
+annotation for the variables to save the costs to it
+-----------------------------------------------------------------------------------------------
+*)
 
     (* f is the variable we want to assign a value to *)
     local
@@ -44,6 +52,12 @@ end = struct
         fun exist f = peekFn f
     end  
 
+(*
+-----------------------------------------------------------------------------------------------
+annotation for the variables with a hash table that saves hash[fctname]=count occurences in body of f
+-----------------------------------------------------------------------------------------------
+*)
+
     (* f is the variable we want to assign a value to *)
     (* we use this to store the extra information to create the cost function, especially the fixcosts *)
     local
@@ -52,7 +66,7 @@ end = struct
     in
         fun clearCostfct f = clrFn f
         fun setCostfct (f, x) = let
-                                        val hash : int Var.Tbl.hash_table = Var.Tbl.mkTable (8, Fail "var to count")
+                                        val hash : int Var.Tbl.hash_table = Var.Tbl.mkTable (hashsize, Fail "var to count")
                                         val _ = Var.Tbl.insert hash (x, 1)
                                 in
                                         setFn (f, hash)
@@ -63,11 +77,32 @@ end = struct
         fun addCostfct (f,x) = case (existCostfct f)
                                 of SOME hash => (case Var.Tbl.find hash (x) 
                                                         of SOME n => Var.Tbl.insert hash (x, n+1)
-                                                        | NONE => Var.Tbl.insert hash (x, 1)
+                                                        | NONE => 
+(* FIX ME CHECK FOR FULL HASH TABLE *)
+                                                                (* if (Var.Tbl.numItems hash = hashsize) then raise Fail "Hash Table is full increase MAX value"       
+                                                                else *) Var.Tbl.insert hash (x, 1)
                                                 ) (** end case **)
                                 | NONE => setCostfct(f,x)
                                 
     end  
+
+(*
+-----------------------------------------------------------------------------------------------
+annotation for the variables to save the name of the costfunction if one is created for the particular f
+-----------------------------------------------------------------------------------------------
+*)
+
+   (* f is the variable we want to assign a value to *)
+    local
+        val {setFn, getFn, peekFn, clrFn} = V.newProp (fn f => dummyvar)
+    in
+        fun clearCFname f = clrFn f
+        fun setCFname (f, cost) = setFn (f, cost)
+        fun getCFname f = getFn f
+        (* returns SOME var if exist otherwise NONE *) 
+        fun existCFname f = peekFn f
+    end
+
 
     (* prune out overload nodes.
    * NOTE: we should probably have a pass that does this before
@@ -119,6 +154,11 @@ A pretty printer for the cost functions
                         val _ = TextIO.print(String.concat["Funexp ", printvar(x), " of type " ," \n"])
                         val _ = TextIO.print(TypeUtil.toString ty)
                         val _ = printCost(body)
+                         fun checkcostfct () = (case existCostfct(x)
+                                of SOME n => printhash(x)
+                                | NONE => ()
+                        )
+                        val _ = checkcostfct()
                 in      
                         TextIO.print(String.concat["Cost are", Int.toString(getCost(x)), "(** End Funexp **)\n"])  
                 end
@@ -223,7 +263,7 @@ A pretty printer for the cost functions
                         val _ = printCost(e)
                         val _ = TextIO.print(String.concat["Funbinding ", printvar(f), " has cost ", Int.toString (getCost(f))," \n (** End Funbinding **) \n"])
                         fun checkcostfct () = (case existCostfct(f)
-                                of SOME n => TextIO.print("Need to create a costfunction for this\n")
+                                of SOME n => printhash(f)
                                 | NONE => ()
                         )
                         val _ = checkcostfct()
@@ -239,7 +279,8 @@ A pretty printer for the cost functions
                         val _ = TextIO.print(String.concat["Printing the costfunction variables for ", Var.toString x])
                         fun printhash (key,value) = TextIO.print(String.concat[" Count of ", Var.toString key, " = ", Int.toString(value), "\n" ])
                 in      
-                        List.map printhash listitems
+                        List.map printhash listitems;
+                        ()
                 end
 
 (*
@@ -312,12 +353,16 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                                         mysize(tys)
                                                 end
                                 ) (** end varcost **)
-(* NEED 2 CASES: 1) call to parent itself 2) call to another unknown function which we resolve in the second pass *)
+(* add the function to the hash that stores calls to unknown functions within the current parent function *)
                                 fun setvarcost (c) = (
                                         case c
-                                        (* check for parent *)
+                                        (*  ~1 means the cost are unknown and we add it to the hashtable*)
                                         of ~1 => addCostfct(pre,x)
-                                        | _ => setCost(x,c)
+                                        (* we have to check if there will be a cost function for the variable and attach it to our current cost function *)
+                                        | _ => (case existCostfct(x) 
+                                                of SOME n => addCostfct(pre,x)
+                                                | NONE => setCost(x,c)
+                                                )
                                 ) (** end setvarcost **)
                                 val c = varcost()
                                 val _ = setvarcost(c)
@@ -394,6 +439,8 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                         val c = costAST(f,e)
                         val _ = setCost (f, c)
                         val _ = printvarcost(c)
+                        val _ = case existCostfct(f) of SOME n => equalparent(f,x) 
+                                                        | NONE => ()
                 in
                         costlambda(l,pre)
                 end
@@ -429,22 +476,39 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
 
         and printvar(x) = String.concat[Var.toString x, " : ", TypeUtil.schemeToString (Var.typeOf x),"\n"]
 
+        and equalparent(parent,x) = let
+                        val hash = getCostfct(parent)
+                        val (key,value)::listitems = Var.Tbl.listItemsi hash
+                in      
+                        if (Var.Tbl.numItems hash = 1) then
+                                if (V.same(parent,key)) then create_cost_fct_simple(parent,x)
+(* TextIO.print("Easy to create cost function\n") *)
+                                else TextIO.print("Can't create cost function 1\n")
+                         else TextIO.print("Can't create cost function 2\n")
+                end
 
+(* FIX ME: will create a simple cost function of the form cost(x) = c + n * cost(x/n) *)
+        and create_cost_fct_simple (f, x) = let
+                val cost = getCost(f)
 
-(* FIX ME: just takes fix costs and the number of recursive calls to itself and the function name so far *)
-        and create_cost_fct (cost, numrec, f, x) = let
                 (* create the name of the function and the type of the input argument *)
-                val costname = String.concat[Var.toString f, "cost"]
+                val costname = String.concat[Var.nameOf f, "cost"]
+                val _ = TextIO.print(String.concat["Variable name is ", costname, "\n"])
                 val AST.TyScheme(_, argtys) = V.typeOf x
                 val estCost = Var.new (costname,argtys --> B.intTy) (* compute the appropriate function type *)
+
                 (* create the input argument for the cost function *)
-                val inputname = String.concat[Var.toString f, "arg"]
+                val inputname = String.concat[Var.nameOf f, "arg"]
                 val inputCostFn = Var.new (inputname, argtys)
+
                 (* create the recursive function call to the cost function *)
-                val body = (U.plus (U.mkInt(cost)) (U.times (U.mkInt(numrec)) (U.mkApplyExp(vexp estCost,[vexp inputCostFn]))) )
+                val hash = getCostfct(f)
+                val (key,value)::listitems = Var.Tbl.listItemsi hash
+
+                val body = (U.plus (U.mkInt(cost)) (U.times (U.mkInt(value)) (U.mkApplyExp(vexp estCost,[U.intDiv(vexp inputCostFn,U.mkInt(value))] )) ))
                 val estCostFn = U.mkFunWithParams(estCost,[inputCostFn], body)
                 in
-                        estCostFn
+                        printlambda(estCostFn::[])
                 end
 
 (*
@@ -671,7 +735,16 @@ The main function of this structure
 -----------------------------------------------------------------------------------------------
 *)
 
-        fun translate (body) = let
+        (* add costs to basis values before calling the analysis *)
+        fun preassigncosts () = let
+                        val _ = setCost(B.eq,0)
+                        val _ = setCost(B.neq,0)
+                in            
+                        ()
+                end
+
+        fun translate (body) = let      
+                val _ = preassigncosts()
                 val _ = costAST(dummyvar() , body)
                 val _ = printCost(body)
                 (* val _ = costFctsAST(body) *)
