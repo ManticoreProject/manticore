@@ -73,7 +73,7 @@ structure TypeUtil : sig
     structure MVMap = MetaVar.Map
     structure Ty = Types
 
-    fun tyvarToString (Ty.TVar{name, stamp, ...}) = Atom.toString name
+    fun tyvarToString (Ty.TVar{name, stamp, ...}) = concat[Atom.toString name, Stamp.toString stamp]
 
   (* return a string representation of a type (for debugging) *)
     fun fmt {long} = let
