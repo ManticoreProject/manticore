@@ -369,8 +369,10 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
             | AST.FunExp(x, body, ty) => let
                         val c = costAST(x,body)
                         val _ = setCost(x,c)
+                        (* do we need to create a cost function ? *)
+                        val _ = case existCostfct(f) of SOME n => costfunction(f,x) 
+                                                        | NONE => ()
                 in      
-(* FIX ME SET TO REAL COSTS OR COSTFCT *)
                         c
                 end
             (* FIX ME add cost of eval function *)
@@ -675,17 +677,12 @@ to the function if we can't assign costs to it
                                 casematch(rules)
                         end
             | AST.FunExp(x, body, ty) => (
-                        case existCost x
-                                of (SOME num) => ()
-                                | NONE =>  let
-(* FIX ME NEED TO RECOMPUTE COSTS HERE *)
-                                        val cost = 0
-                                        in
-                                                case cost
-                                                of ~1 => setCost (x, Cunkown)
-                                                | Cunkown => setCost (x, Cunkown)
-                                                (* | _ => setCost (x, cost) *)
-                                        end
+                        (* do we need to create a cost function ? *)
+                        case existCFname(f)
+                        of SOME n => ()
+                        | NONE => (case existCostfct(f) of SOME n => costfunction(f,x) 
+                                                        | NONE => ()
+                                  )
                 )
             | AST.ApplyExp(e1, e2, ty) => let
                                 val _ = costFctsAST(e1)
