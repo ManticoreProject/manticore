@@ -376,9 +376,11 @@ fun join decode finish zipCursor (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2)) = let
   val (mn, mls) = (List.last ms, List.take (ms, List.length ms - 1))
   val (mrs, rps2) = (List.take (xs2, n2), List.drop (xs2, n2))
   val m = finish (zipCursor (mn, (mls, mrs, mds)))
-  val rp :: rs = rps1 @ (m::nil) @ rps2
+  val ropes = rps1 @ (m::nil) @ rps2
   in
-    zipCursor (rp, (ls, rs, ds))
+    case ropes
+     of rp::rs => zipCursor (rp, (ls, rs, ds))
+      | _ => failwith "join"
   end
 
 fun encodeRope rps = let
