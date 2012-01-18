@@ -78,7 +78,9 @@ structure TranslateTypes : sig
 				   | SOME (ModuleEnv.TyDef tys) => trScheme(env, tys)
 				   | SOME (ModuleEnv.BOMTyDef ty) => cvtPrimTy env ty
 (* FIXME When parray is looked up, we get NONE. *)
-				   | NONE => trTyc (env, tyc)
+				   | NONE => 
+(TextIO.print ("(translate-types) the current tyc is " ^ TyCon.toString tyc ^ "\n");
+ trTyc (env, tyc))
 			         (* end case *))
 			     | _ => trTyc (env, tyc)
 			  (* end case *))

@@ -13,12 +13,21 @@ structure Flatten : sig
 
 end = struct
 
+  fun lambda (lam as BOM.FB {f, params, exh, body}) = (* identity flattening *) lam
+
+  fun module (BOM.MODULE {name, externs, hlops, rewrites, body}) =
+    BOM.MODULE {name=name,
+		externs=externs,
+		hlops=hlops,
+		rewrites=rewrites,
+		body=lambda(body)}
+
   fun transform m = 
     if not(!BOMOptControls.flattenFlg) then m 
     else let
       val _ = TextIO.print "The compiler *would* be flattening now.\n"
       in
-        m
+        module m
       end
 
 end
