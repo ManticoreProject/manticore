@@ -1089,11 +1089,9 @@ structure ArityRaising : sig
         then CPSTy.T_Tuple(b, ListPair.map safeMergeTypes (t1,t2))
         else CPSTy.T_Any
       | safeMergeTypes (x,y) =
-        if CPSTyUtil.validCast (x,y)
+        if CPSTyUtil.soundMatch (x,y) andalso CPSTyUtil.soundMatch (y,x)
         then x
-        else (if CPSTyUtil.validCast (y,x)
-              then y
-              else CPSTy.T_Any)
+        else CPSTy.T_Any
 
     (*
      * Before performing the actual flattening, go through and figure out the new signatures.

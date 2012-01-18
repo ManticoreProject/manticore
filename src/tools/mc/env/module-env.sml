@@ -64,8 +64,13 @@ structure ModuleEnv =
 	    outerEnv=outerEnv
 	  }
 		
-    fun varEnv (ModEnv{varEnv, ...}) = varEnv
+  (* selectors *)
     fun modRef (ModEnv{modRef, ...}) = modRef
+    fun tyEnv  (ModEnv{tyEnv, ...})  = tyEnv
+    fun varEnv (ModEnv{varEnv, ...}) = varEnv
+    fun modEnv (ModEnv{modEnv, ...}) = modEnv
+    fun sigEnv (ModEnv{sigEnv, ...}) = sigEnv
+    fun outerEnv (ModEnv{outerEnv, ...}) = outerEnv
 
     fun find (ModEnv fields, select, x) = VarMap.find(select fields, x)
     fun findInEnvs ([], select, x) = NONE
@@ -137,6 +142,57 @@ structure ModuleEnv =
     fun insertTy (ModEnv {modRef, tyEnv, varEnv, modEnv, sigEnv, outerEnv}, tv, x) = (
 	setTyDef(tv, SOME x);
 	ModEnv{modRef=modRef, tyEnv=VarMap.insert (tyEnv, tv, x), varEnv=varEnv, modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
+
+  (* functional update of ModEnv components *)
+
+    fun updModRef mref (ModEnv {tyEnv, varEnv, modEnv, sigEnv, outerEnv, ...}) = 
+      ModEnv {modRef = mref, 
+	      varEnv = varEnv,
+	      tyEnv = tyEnv,
+	      modEnv = modEnv,
+	      sigEnv = sigEnv,
+	      outerEnv = outerEnv}
+
+    fun updTyEnv tenv (ModEnv {modRef, varEnv, modEnv, sigEnv, outerEnv, ...}) = 
+      ModEnv {modRef = modRef, 
+	      varEnv = varEnv,
+	      tyEnv = tenv,
+	      modEnv = modEnv,
+	      sigEnv = sigEnv,
+	      outerEnv = outerEnv}
+
+    fun updVarEnv venv (ModEnv {modRef, tyEnv, modEnv, sigEnv, outerEnv, ...}) =
+      ModEnv {modRef = modRef, 
+	      varEnv = venv,
+	      tyEnv = tyEnv,
+	      modEnv = modEnv,
+	      sigEnv = sigEnv,
+	      outerEnv = outerEnv}
+
+    fun updModEnv menv (ModEnv {modRef, varEnv, tyEnv, sigEnv, outerEnv, ...}) =
+      ModEnv {modRef = modRef, 
+	      varEnv = varEnv,
+	      tyEnv = tyEnv,
+	      modEnv = menv,
+	      sigEnv = sigEnv,
+	      outerEnv = outerEnv}
+
+    fun updSigEnv senv (ModEnv {modRef, varEnv, tyEnv, modEnv, outerEnv, ...}) =
+      ModEnv {modRef = modRef, 
+	      varEnv = varEnv,
+	      tyEnv = tyEnv,
+	      modEnv = modEnv,
+	      sigEnv = senv,
+	      outerEnv = outerEnv}
+
+    fun updOuterEnv oenv (ModEnv {modRef, tyEnv, varEnv, modEnv, sigEnv, ...}) = 
+      ModEnv {modRef = modRef, 
+	      varEnv = varEnv,
+	      tyEnv = tyEnv,
+	      modEnv = modEnv,
+	      sigEnv = sigEnv,
+	      outerEnv = oenv}
+	      
   (* primtive types
    *   type tyvars tv = _prim(bty)
    * where tv is a type binding and bty is a primitive BOM type. we bind tv in both BOM and PML.
@@ -146,13 +202,14 @@ structure ModuleEnv =
 	  setRealizationOfTyc(tyc, BOMTyDef bty);
 	  setPrimTyDef(tv, SOME bty);
 	  insertTy(env, tv, TyCon tyc))
-    fun insertVar (ModEnv{modRef, varEnv, tyEnv, modEnv, sigEnv, outerEnv}, v, x) = (
+
+    fun insertVar (env, v, x) = (
 	setValBind(v, SOME x);
-	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=VarMap.insert (varEnv, v, x), modEnv=modEnv, sigEnv=sigEnv, outerEnv=outerEnv})
-    fun insertMod (ModEnv {modRef, modEnv, sigEnv, tyEnv, varEnv, outerEnv}, v, x) = 
-	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=varEnv, modEnv=VarMap.insert (modEnv, v, x), sigEnv=sigEnv, outerEnv=outerEnv}
-    fun insertSig (ModEnv {modRef, modEnv, sigEnv, tyEnv, varEnv, outerEnv}, v, x) = 
-	ModEnv{modRef=modRef, tyEnv=tyEnv, varEnv=varEnv, modEnv=modEnv, sigEnv=VarMap.insert (sigEnv, v, x), outerEnv=outerEnv}
+        updVarEnv (VarMap.insert (varEnv env, v, x)) env)
+
+    fun insertMod (env, v, x) = updModEnv (VarMap.insert (modEnv env, v, x)) env
+
+    fun insertSig (env, v, x) = updSigEnv (VarMap.insert (sigEnv env, v, x)) env
 
     val inDomainTy = Option.isSome o findTy
     val inDomainVar = Option.isSome o findVar

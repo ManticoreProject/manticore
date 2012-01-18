@@ -1,4 +1,0 @@
-This is a micro benchmark for measuring the performance of message passing
-in a parallel setting.  We create 8 pairs of communicating processes and
-measure the time that it takes for all of them to communicate a certain
-number of messages.

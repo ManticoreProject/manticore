@@ -376,9 +376,11 @@ fun join decode finish zipCursor (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2)) = let
   val (mn, mls) = (List.last ms, List.take (ms, List.length ms - 1))
   val (mrs, rps2) = (List.take (xs2, n2), List.drop (xs2, n2))
   val m = finish (zipCursor (mn, (mls, mrs, mds)))
-  val rp :: rs = rps1 @ (m::nil) @ rps2
+  val ropes = rps1 @ (m::nil) @ rps2
   in
-    zipCursor (rp, (ls, rs, ds))
+    case ropes
+     of rp::rs => zipCursor (rp, (ls, rs, ds))
+      | _ => failwith "join"
   end
 
 fun encodeRope rps = let
@@ -478,7 +480,10 @@ fun tabulateUntil cond (cur, f) = let
            val us = (lo + Seq.length ps, hi)
 	   in
              if numUnprocessedTab (us, c) < 2 then let
-	       val Done us' = Seq.tabulateUntil (fn _ => false) (us, f)
+	       val us' = 
+                 (case Seq.tabulateUntil (fn _ => false) (us, f)
+		    of Done x => x
+		     | _ => failwith "expected Done")
 	       val ps' = Seq.cat2 (ps, us')
 	       in
 		 case nextTab (leaf ps', c)
@@ -942,7 +947,10 @@ fun downsweepUntil cond f b acc cur = let
   fun d (s, c, acc) = (case Seq.scanUntil cond f acc s
     of (acc, More (us, ps)) => 
          if numUnprocessedDownsweep (mcleaf' (b, us), c) < 2 then let
-	    val (acc', Done us') = Seq.scanUntil (fn _ => false) f acc us
+	    val (acc', us') = 
+             (case Seq.scanUntil (fn _ => false) f acc us
+                of (acc', Done us') => (acc', us')
+		 | _ => failwith "downsweepUntil: expected Done")
             in
 	      case nextDownsweep (leaf (Seq.cat2 (ps, us')), c)
 	       of Done p' => Done p'

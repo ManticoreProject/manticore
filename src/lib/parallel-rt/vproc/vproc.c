@@ -157,7 +157,7 @@ void VProcInit (bool isSequential, Options_t *opts)
         }
     } else if (denseLayout) {
 	for (int i = 0;  i < NumVProcs;  i++)
-	    initData[i].loc = Locations[i];
+	    initData[i].loc = Locations[i%NumHWThreads];
     }
     else if (NumVProcs <= NumHWNodes) {
       /* at most one vproc per node */
@@ -445,7 +445,8 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
 {
     Value_t landingPadOrig, landingPadNew, x;
 
-    Value_t dummyFLS = GlobalAllocNonUniform (self, 4, INT(-1), PTR(M_NONE), INT(0), PTR(M_NIL));
+    Value_t dummyBool = GlobalAllocNonUniform (self, 1, INT(3));
+    Value_t dummyFLS = GlobalAllocNonUniform (self, 5, INT(-1), PTR(M_NONE), INT(0), PTR(M_NIL), PTR(dummyBool));
 
     do {
 	landingPadOrig = vp->landingPad;

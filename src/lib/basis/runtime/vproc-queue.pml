@@ -234,6 +234,7 @@ structure VProcQueue (* :
 	  do vpstore (VP_SNDQ_TL, vp, qitem)
 	  return () 
 	;
+
     (* enqueue on the host's vproc's thread queue *)
       define inline @enqueue (fls : FLS.fls, fiber : PT.fiber) : () =
 	  let vp : vproc = SchedulerAction.@atomic-begin()

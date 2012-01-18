@@ -44,7 +44,7 @@ structure BuildExecutable : sig
 	  val libDirs = List.map (fn path => "-L" ^ path) libDirs
 	  val rtLib = "-l" ^ libName
 	  in
-	    cat (libDirs @ ("@LDFLAGS@" ++ rtLib ++ "@LIBS@" ++ "-lpthread" ++ []))
+	    cat (libDirs @ (rtLib ++ "@LDFLAGS@" ++ "@LIBS@" ++ "-lpthread" ++ []))
 	  end
 
     fun systemWithTiming (cmd, mustPrint) = let

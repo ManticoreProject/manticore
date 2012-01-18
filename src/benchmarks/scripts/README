@@ -1,6 +1,0 @@
-
-
-Binary             Description                        Build file name
-mc-par             manticore parallel                 mc.mlb
-mlton              mlton (sequential)                 mlton.mlb
-smlnj              smlnj (sequential)                 smlnj.mlb

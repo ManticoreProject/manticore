@@ -28,6 +28,7 @@ structure WorkStealers =
     structure VPQ = VProcQueue
     structure O = Option
     structure L = List
+    structure CF = Classify
 
     _primcode(
 
@@ -113,12 +114,15 @@ structure WorkStealers =
 	  (* in *)
 	    case sign
 	     of PT.STOP => 
+		let _ : bool = CF.@done-comm-ops-in-atomic(self, true / exh)
 		throw dispatch()
 	      | PT.PREEMPT(k : PT.fiber) => 
+		let _ : bool = CF.@done-comm-ops-in-atomic(self, false / exh)
 		let fls : FLS.fls = FLS.@get-in-atomic (self)
 		do VPQ.@enqueue-in-atomic (self, fls, k)
 		throw dispatch () 
 	      | PT.BLOCK (k : PT.fiber) => 
+		let _ : bool = CF.@done-comm-ops-in-atomic(self, true / exh)
 		let fls : FLS.fls = FLS.@get-in-atomic (self)
 		do VPQ.@enqueue-in-atomic (self, fls, k)
 		throw dispatch () 

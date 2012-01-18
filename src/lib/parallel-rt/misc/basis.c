@@ -205,7 +205,7 @@ void M_Print (const char *s)
 {
 #ifdef NDEBUG
     Say("%s", s);
-#else  
+#else
     Say("[%2d] %s", VProcSelf()->id, s);
 #endif
 }
@@ -384,7 +384,7 @@ void M_PrintDebug (const char *s)
 {
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] %s", VProcSelf()->id, s);  
+	SayDebug("[%2d] %s", VProcSelf()->id, s);
 #endif
 }
 
@@ -403,7 +403,7 @@ void M_PrintTestingMsg (const char *msg, char *file, int line)
 
 void M_PrintPtr (const char *name, void *ptr)
 {
-    Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);  
+    Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);
 }
 
 /* M_PrintLong:
@@ -482,6 +482,11 @@ Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
   return 0;
 }
 
+double M_log (double d)
+{
+    return log(d);
+}
+
 float M_Powf (float x, float y)
 {
     return powf(x, y);
@@ -524,7 +529,7 @@ double M_Tan (double x)
 
 /*! \brief compute floor(log_2(v)). NOTE: this function relies on little endianness
  */
-int M_FloorLg (int v) 
+int M_FloorLg (int v)
 {
   int r; // result of log_2(v) goes here
   union { unsigned int u[2]; double d; } t; // temp
@@ -538,7 +543,7 @@ int M_FloorLg (int v)
 
 /*! \brief compute ceiling(log_2(v))
  */
-int M_CeilingLg (int v) 
+int M_CeilingLg (int v)
 {
   int lg = M_FloorLg(v);
   return lg + (v - (1<<lg) > 0);

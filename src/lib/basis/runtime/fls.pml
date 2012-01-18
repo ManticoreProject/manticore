@@ -120,6 +120,12 @@ structure FLS :
 
       typedef key = [int];
 
+    (* WARNING!
+      These typedefs (ite and fls) are "known" by the compiler. The C runtime generates a fake version of
+      them in vproc/vproc.c, and that _must_ be updated to match any type changes here. Further,
+      the layouts of the objects must be mirrored in gc/alloc.c, GlobalAllocNonUniform() and in the type
+      header tags defined in codegen/header-tbl-struct.sml. *)
+
     (* environment of an implicit thread *)
       typedef ite = [
 	  List.list,		(* work-group stack *)
@@ -245,15 +251,14 @@ structure FLS :
     (* set the doneComm flag *)
       define @set-done-comm (doneComm : bool / exh : exh) : unit =
 	let fls : fls = @get()
-	do UPDATE(0, SELECT(DONE_COMM_OFF, fls), doneComm)
+	do #0(SELECT(DONE_COMM_OFF, fls)) := doneComm
 	return(UNIT)
       ;
 
     (* get the value of the doneComm flag *)
       define @get-done-comm (/ exh : exh) : bool =
 	let fls : fls = @get()
-	let dc : ![bool] = SELECT(DONE_COMM_OFF, fls)
-	return (#0(dc))
+	return (#0(SELECT(DONE_COMM_OFF, fls)))
       ;
 
       define @keys-same (arg : [[int], [int]] / exh : exh) : bool =

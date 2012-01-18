@@ -6,7 +6,6 @@
 
 Library
 
-  structure ASTCost
   structure ListMapMaker
   structure RopeMapMaker
   structure Translate
@@ -31,7 +30,6 @@ is
 (* FIXME: we shouldn't depend on stuff from another transform phase! *)
   ../ast-opt/sources.cm
 
-  ../ast/ast-cost.sml
   cache-fn.sml
   equality.sml
   flatten-rep.sml
