@@ -153,6 +153,121 @@ annotation for the variables to save the costfunction if one is created for the 
 
 (*
 -----------------------------------------------------------------------------------------------
+Collect user datacon in apply exp 
+-----------------------------------------------------------------------------------------------
+*)
+
+        fun ASTcollectDCON (exp) = (case prune exp 
+                of e as AST.LetExp(_,_) => let
+                        fun letBinds (AST.LetExp(b, e)) = let
+                                val b1 = binding(b)
+                                val c1 = letBinds(e)
+                           in   
+                               ()
+                           end
+                           | letBinds e = ASTcollectDCON(e)
+                in      
+                        letBinds(e)
+                end
+	    | AST.IfExp(e1, e2, e3, ty) => let
+                                val _ = ASTcollectDCON(e1)
+                                val _ = ASTcollectDCON(e2)
+                        in
+                                ASTcollectDCON(e3)
+                        end
+	    | AST.CaseExp(e, rules, ty) => let
+                                val _ = ASTcollectDCON(e)
+                        in
+                                casematch(rules)
+                        end
+            | AST.FunExp(x, body, ty) => ASTcollectDCON(body)
+            | AST.ApplyExp(e1, e2, ty) => let
+                        val _ = (case e1 
+                                (* data constructor used, we might need to rewrite those so we collect the information *)
+                                of AST.ConstExp(const as AST.DConst(dcon, tylist)) => let
+                                                        val tyconname = DataCon.ownerOf dcon
+                                                in
+                                                        case TTbl.find dconhash (tyconname) 
+                                                        of SOME n => ()
+                                                        | NONE => let
+                                                                        val typevar = U.dcontotype(AST.ConstExp(const))
+                                                                        val sizename = String.concat[TyCon.toString (tyconname), "size"]
+                                                                        val estSize = Var.new (sizename,typevar --> B.intTy)
+                                                                   in
+                                                                        TTbl.insert dconhash (tyconname,estSize);
+                                                                        TTbl.insert useddconhash(tyconname,false)
+                                                                   end
+                                                end
+                                | _ => ()       
+                                )
+                        in
+                                ASTcollectDCON(e1);
+                                ASTcollectDCON(e2)
+                        end
+            | AST.TupleExp[] => ()
+            | AST.TupleExp (exps) => let
+                        val _ = List.map (fn e => ASTcollectDCON(e)) exps
+                in           
+                        ()
+                end
+            | AST.VarExp(x, tys) => ()
+            | AST.PCaseExp _ => raise Fail "PCaseExp" (* FIXME *)
+	    | AST.HandleExp(e, mc, ty) =>  ()  
+	    | AST.RaiseExp(e, ty) => ()
+	    | AST.VarArityOpExp (oper, i, ty) => ()
+	    | AST.RangeExp (lo, hi, optStep, ty) => raise Fail "FIXME (range construction)"
+            | AST.PTupleExp[] => ()
+            | AST.PTupleExp (exps) => let
+                        val _ = List.map (fn e => ASTcollectDCON(e)) exps
+                in           
+                        ()
+                end
+	    | AST.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
+	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
+	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
+	    | AST.SpawnExp e => ASTcollectDCON(e)
+	    | AST.ConstExp (constexp) => ()
+	    | AST.SeqExp (e1,e2) => let
+                                val _ = ASTcollectDCON(e1)
+                        in 
+                                ASTcollectDCON(e2)
+                        end
+	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
+	    | AST.ExpansionOptsExp (opts, e) => ASTcollectDCON(e) 
+        )
+
+        and binding (e) = (case e
+                        of AST.ValBind(p, e) => ASTcollectDCON(e)
+                        | AST.PValBind(p, e) => ASTcollectDCON(e)
+                        | AST.FunBind(lam) => lambda(lam)
+                        (* these should be the primitive operators *)
+                        (* | AST.PrimVBind (x, _) => mysize(V.typeof x) *)
+                        | e => ()
+                        
+        )
+        (* for the case e of pat => expr take the maximum of the (pat,expr) pair *)
+        and casematch (rule::rest) = (case rule 
+                                of AST.PatMatch (pat,e) => let
+                                        val _ = ASTcollectDCON(e)
+                                in      
+                                       casematch(rest)
+                                end
+                                (* CondMatch is not used yet *)
+                                | AST.CondMatch (pat,cond,e2) => raise Fail "unexpected AST.CondMatch"
+                                )
+                        | casematch ([]) = ()
+
+        and lambda ([]) = ()
+            | lambda ( A.FB(f, x, e)::l) = let
+                                val _ = ASTcollectDCON(e)
+                        in
+                                lambda(l)
+                        end
+
+
+
+(*
+-----------------------------------------------------------------------------------------------
 A pretty printer for the cost functions
 -----------------------------------------------------------------------------------------------
 *)
@@ -424,7 +539,7 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                                         | NONE => TextIO.print(String.concat["Couldn't find a costfct for ", printvar(x)," check for fix costs\n"])
                                                         ) (** end case **)
                                 (* data constructor used, we might need to rewrite those so we collect the information *)
-                                | AST.ConstExp(const as AST.DConst(dcon, tylist)) => let
+                               (* | AST.ConstExp(const as AST.DConst(dcon, tylist)) => let
                                                         val tyconname = DataCon.ownerOf dcon
                                                 in
                                                         case TTbl.find dconhash (tyconname) 
@@ -438,6 +553,7 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                                                         TTbl.insert useddconhash(tyconname,false)
                                                                    end
                                                 end
+                *)
                                 | _ => ()
                         ) (** end case **)
                 in
@@ -659,12 +775,17 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                 if (TypeUtil.same(DataCon.resultOf(dcon),argtys)) 
                                 then let
 (*FIX ME mark as used has to go to the PTuple change *)
+                                        val _ = TextIO.print(String.concat["Add the following tycon to the useddconlist ", TyCon.toString(tycon), "!!\n"])
                                         val _ = TTbl.insert useddconhash(tycon,true)
                                      in
                                         SOME (sizename)
                                      end
-                                else comparedcontype(rest)
-                        end
+                                else let
+val _ = TextIO.print(String.concat["DIDN'T Add the following tycon to the useddconlist ", TyCon.toString(tycon), "!!\n"])
+in
+comparedcontype(rest)
+end
+                end
                 | comparedcontype ([]) = NONE 
                 
                 (* this function will a) check if all the other calls to costfunctions are closed (have a known input argument to them) and if 
@@ -1042,8 +1163,9 @@ The main function of this structure
 
         fun translate (body) = let      
                 val _ = preassigncosts()
+                val _ = ASTcollectDCON(body)
                 val _ = costAST(dummyvar() , body)
-                (* val _ = printCost(body) *)
+                val _ = printCost(body)
                 (* val _ = costFctsAST(body) *)
                 (* val body' = ASTaddchunking(body) *)
                 val _ = changesize(body)
