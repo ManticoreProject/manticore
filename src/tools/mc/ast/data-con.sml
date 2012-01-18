@@ -47,6 +47,9 @@ structure DataCon : sig
   (* hash tables keyed by data constructors *)
     structure Tbl : MONO_HASH_TABLE where type Key.hash_key = AST.dcon
 
+  (* returns the type of the dataconstructor *)
+    val resultOf : AST.dcon -> AST.ty
+
    end = struct
 
     datatype dcon = datatype AST.dcon
@@ -91,6 +94,10 @@ structure DataCon : sig
 	      | SOME ty' => AST.TyScheme(params, AST.FunTy(ty', ty))
 	    (* end case *)
 	  end
+
+
+    fun resultOf (DCon{owner as Types.Tyc{params, ...}, argTy, ...}) = AST.ConTy(List.map AST.VarTy params, owner)
+
 
     fun typeOf' (dc, args) = TypeUtil.apply(typeOf dc, args)
 

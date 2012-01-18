@@ -9,19 +9,28 @@
 structure ASTUtil : sig
 
   (* create a tuple expression, with singleton tuples mapping to their element expression *)
-    val mkTupleExp : AST.exp list-> AST.exp
+    val mkTupleExp : AST.exp list -> AST.exp
+
+  (* create a parallel tuple, with singleton tuples mapping to their element expression *)
+    val mkPTupleExp : AST.exp list -> AST.exp
 
   (* create a series of let expressions from a list of bindings and a body *)
     val mkLetExp : AST.binding list * AST.exp -> AST.exp
 
+  (* create a case expression *)
+    val mkCaseExp : AST.exp * AST.match list -> AST.exp 
+
   (* create a tuple pattern, with singleton tuples mapping to their element pattern *)
-    val mkTuplePat : AST.pat list-> AST.pat
+    val mkTuplePat : AST.pat list -> AST.pat
 
   (* create a function given the function's name, a list of parameter variables, and its body *)
     val mkFunWithParams : AST.var * AST.var list * AST.exp -> AST.lambda
 
   (* create a function given the function's name, a parameter pattern, and its body *)
     val mkFunWithPat : AST.var * AST.pat * AST.exp -> AST.lambda
+
+  (* make an anonymous function expression *)
+    val mkFunExp : AST.var * AST.exp -> AST.exp
 
   (* create an AST list given a list of expressions and a type *)
     val mkList : AST.exp list * AST.ty -> AST.exp
@@ -32,21 +41,40 @@ structure ASTUtil : sig
     val mkIntPat   : int -> AST.pat
     val mkInt      : int -> AST.exp
 
-  (* build expressions for e+n and e+1 *)
-    val addInt : AST.exp * int -> AST.exp
-    val add1   : AST.exp -> AST.exp
+  (* generate code for arithmetic *)
+    val zero       : AST.exp (* integer 0 *)
+    val one        : AST.exp (* integer 1 *)
+    val plus       : AST.exp -> AST.exp -> AST.exp
+    val plusOne    : AST.exp -> AST.exp
+    val minus      : AST.exp -> AST.exp -> AST.exp
+    val minusOne   : AST.exp -> AST.exp
+    val times      : AST.exp -> AST.exp -> AST.exp
+    val intNeg     : AST.exp -> AST.exp
+    val intDiv     : AST.exp * AST.exp -> AST.exp
+    val intMod     : AST.exp * AST.exp -> AST.exp
+    val intGTE     : AST.exp * AST.exp -> AST.exp
+    val intGT      : AST.exp * AST.exp -> AST.exp
+    val intLT      : AST.exp * AST.exp -> AST.exp
 
+    val mkMax      : AST.exp * AST.exp -> AST.exp
+ 
   (* boolean constants *)
     val trueConst  : AST.const
     val falseConst : AST.const
     val trueExp    : AST.exp
     val falseExp   : AST.exp
 
-  (* exception constants *)
+  (* bool utils *)
+    val mkNot : AST.exp -> AST.exp
+
+  (* strings *)
+    val mkString : string -> AST.exp 
+
+  (* exceptions *)
     val exnMatchExp : AST.exp
+    val mkFail : string * AST.ty -> AST.exp
 
   (* unit *)
-    val unitConst : AST.const
     val unitExp   : AST.exp
 
   (* operations on boolean expressions *)
@@ -55,8 +83,17 @@ structure ASTUtil : sig
   (* create an expression that applies a function *)
     val mkApplyExp : (AST.exp * AST.exp list) -> AST.exp
 
+  (* create an expression that applies a curried function *)
+    val mkCurriedApplyExp : (AST.exp * AST.exp list) -> AST.exp
+
   (* create a sequence of expressions *)
     val mkSeqExp : (AST.exp list * AST.exp) -> AST.exp
+
+  (* make a FunExp which is the composition of two functional expressions *)
+    val mkCompose : AST.exp * AST.exp -> AST.exp
+
+  (* return the application of given expression to unit *)
+    val mkForce : AST.exp -> AST.exp
 
   (* create an if expression *)
     val mkIfExp : (AST.exp * AST.exp * AST.exp) -> AST.exp
@@ -70,12 +107,24 @@ structure ASTUtil : sig
   (* make an array out of given expressions *)
     val mkArray : AST.exp list * AST.ty -> AST.exp
 
+  (* debugging util *)
+    val patToString : AST.pat -> string
+  
+  (* returns the final type of the dataconstructor *)
+    val dcontotype : AST.exp -> Types.ty
+
   end = struct
 
     structure A = AST
     structure B = Basis
+    structure T = Types
 
     structure TU = TypeUtil
+ 
+    fun dcontotype (A.ConstExp(astdconst as A.DConst(dcon,typelist))) = case DataCon.typeOf'(dcon,typelist)
+                                of T.FunTy(_,ty) => ty
+                                | T.ConTy(tylist, tycon) => T.ConTy(tylist, tycon)
+                                | _ => raise Fail "No Correct Datacon"
 
     fun mkTupleExp [e] = e
       | mkTupleExp es = AST.TupleExp es
@@ -83,8 +132,15 @@ structure ASTUtil : sig
     fun mkTuplePat [p] = p
       | mkTuplePat ps = AST.TuplePat ps
 
+    fun mkPTupleExp [e] = e
+      | mkPTupleExp es = AST.PTupleExp es
+
     fun mkLetExp ([], e) = e
       | mkLetExp (bind::r, e) = AST.LetExp (bind, mkLetExp (r, e))
+
+  (* pre: all matches have same type *)
+    fun mkCaseExp (e, ms as m::_) = A.CaseExp (e, ms, TypeOf.match m)
+      | mkCaseExp _ = raise Fail "must provide at least one match"
 
     fun mkFunWithParams (f, [], e) = let
 	  val param = Var.new ("param", Basis.unitTy)
@@ -112,42 +168,39 @@ structure ASTUtil : sig
 	    AST.FB(f, param, e)
 	  end
       | mkFunWithPat (f, pat, e) = let
-	  val (argTy, resTy) =
-	    (case Var.typeOf f
-	      of AST.TyScheme(_, AST.FunTy(a,r)) => (a,r)
-	       | _ => raise Fail "not a function" (* shouldn't happen *)
-	     (* end case *))
+	  val (argTy, resTy) = (case Var.typeOf f
+	    of AST.TyScheme(_, AST.FunTy(a,r)) => (a,r)
+	     | _ => raise Fail "not a function" (* shouldn't happen *)
+	    (* end case *))
 	  val param = Var.new ("param", argTy)
 	  in
 	    AST.FB(f, param, AST.CaseExp(AST.VarExp(param, []), [AST.PatMatch(pat, e)], resTy))
 	  end
 
-    fun mkList ([], ty) = A.ConstExp (A.DConst (B.listNil, [ty]))
-      | mkList (exps, ty) = let
-          val ::! = A.ConstExp (A.DConst (B.listCons, [ty]))
-	  fun cons' (x, xs) = A.ApplyExp (::!, A.TupleExp [x, xs], B.listTy ty)
-	  val nil' = mkList ([], ty)
-	  in
-	    List.foldr cons' nil' exps
-	  end
+  (* make a FunExp from a var and an exp *)
+    fun mkFunExp (x, body) = A.FunExp (x, body, TypeOf.exp body)
 
     fun mkArray (es, ty) = raise Fail "todo: ASTUtil.mkArray"
+
+    val unit = A.TupleExp []
 
     fun mkIntLit n = Literal.Int (IntInf.fromInt n)
     fun mkIntConst n = A.LConst (mkIntLit n, Basis.intTy)
     fun mkIntPat n = A.ConstPat (mkIntConst n)
     fun mkInt n = A.ConstExp (mkIntConst n)
 
-    val trueConst  = A.LConst (Literal.trueLit, Basis.boolTy)
-    val falseConst = A.LConst (Literal.falseLit, Basis.boolTy)
+    val trueConst  = A.DConst (Basis.boolTrue, [])
+    val falseConst = A.DConst (Basis.boolFalse, [])
     val trueExp    = A.ConstExp trueConst
     val falseExp   = A.ConstExp falseConst
 
-    val exnMatchExp = A.ConstExp (A.DConst (Basis.exnMatch, []))
+    fun mkNot e = 
+      A.CaseExp (e, 
+        [A.PatMatch (A.ConstPat trueConst, falseExp),
+	 A.PatMatch (A.ConstPat falseConst, trueExp)],
+        Basis.boolTy)
 
-(* FIXME: Should this be the empty tuple instead? *)
-    val unitConst = A.LConst (Literal.unitLit, Basis.unitTy)
-    val unitExp   = A.ConstExp unitConst
+    val unitExp = A.TupleExp []
 
     fun boolEq (A.ConstExp k1, A.ConstExp k2) =
           (case (k1, k2)
@@ -162,6 +215,12 @@ structure ASTUtil : sig
     fun mkApplyExp (e, es) = 
 	A.ApplyExp (e, mkTupleExp(es), TypeUtil.rangeType(TypeOf.exp(e)))
 
+    fun mkCurriedApplyExp (e, es) = (case es
+      of arg::[]   => mkApplyExp (e, [arg])
+       | arg::args => mkCurriedApplyExp (mkApplyExp (e, [arg]), args)
+       | [] => raise Fail "mkCurriedApplyExp"
+      (* end case *))
+
     fun mkSeqExp (es, e) = 
 	List.foldr (fn (e, seqExp) => A.SeqExp (e, seqExp)) e es
 
@@ -169,16 +228,98 @@ structure ASTUtil : sig
 
     fun mkVarExp (v, tys) = A.VarExp (v, tys)
 
-    fun addInt (e : A.exp, n : int) : A.exp = let
-      val t = TypeOf.exp e
+    val exnMatchExp = A.ConstExp (A.DConst (Basis.exnMatch, []))
+
+    fun mkString s = A.ConstExp (A.LConst (Literal.String s, Basis.stringTy))
+
+    fun mkFail (s, t) = let
+      val failConst = A.ConstExp (A.DConst (Basis.exnFail, []))
+      val exn = mkApplyExp (failConst, [mkString s])
       in
-        if TU.same (t, B.intTy) then
-          mkApplyExp (A.VarExp (B.int_plus, []), [e, mkInt n])
-        else
-          raise Fail ("unexpected ty " ^ TU.toString t)
+        A.RaiseExp (exn, t)
       end
 
-    fun add1 (e : A.exp) : A.exp = addInt (e, 1)
+    fun mkList ([], t) = A.ConstExp (A.DConst (B.listNil, [t]))
+      | mkList (exps, t) = let
+          val ::: = A.ConstExp (A.DConst (B.listCons, [t]))
+	  fun cons' (x, xs) = mkApplyExp (:::, [x, xs])
+	  val nil' = mkList ([], t)
+	  in
+	    List.foldr cons' nil' exps
+	  end
+
+  (* make a FunExp which is the composition of two functional expressions *)
+  (* ... and check types along the way *)
+    fun mkCompose (f, g) = (case (TypeOf.exp f, TypeOf.exp g)
+      of (A.FunTy (fDom, fRng), A.FunTy (gDom, gRng)) =>
+	   if TypeUtil.same (fDom, gRng) then let
+             val arg = Var.new ("arg", gDom)
+             fun v x = A.VarExp (x, [])
+	     val body = mkApplyExp (f, [mkApplyExp (g, [v arg])])
+             in
+               A.FunExp (arg, body, fRng)
+	     end
+	   else
+	     raise Fail "mkCompose: f's domain <> g's range"
+       | _ => raise Fail "mkCompose"
+      (* end case *))
+
+    fun mkForce thunk = mkApplyExp (thunk, [A.TupleExp []])
+
+    val zero = mkInt 0
+    val one = mkInt 1
+
+    local
+      fun intBin binop = fn args => mkApplyExp (A.VarExp (binop, []), args) 
+      val mkPlus = intBin B.int_plus
+      val mkMinus = intBin B.int_minus
+      val mkTimes = intBin B.int_times
+      val mkDiv = intBin B.int_div
+      val mkMod = intBin B.int_mod
+      val mkGT = intBin B.int_gt
+      val mkGTE = intBin B.int_gte
+      val mkLT = intBin B.int_lt
+    in
+      fun plusOne n = mkPlus [n, one]
+      fun plus n m = mkPlus [n, m]
+      fun minusOne n = mkMinus [n, one]
+      fun minus n m = mkMinus [n, m]
+      fun times n m = mkTimes [n, m]
+      fun intDiv (n, m) = mkDiv [n, m]
+      fun intMod (n, m) = mkMod [n, m]
+      fun intGTE (n, m) = mkGTE [n, m]
+      fun intGT (n, m) = mkGT [n, m]
+      fun intLT (n, m) = mkLT [n, m]
+      fun intNeg n = mkApplyExp (A.VarExp (B.int_neg, []), [n])
+    end (* local *)
+ 
+    fun mkMax (e1, e2) = mkIfExp (intGT (e1, e2), e1, e2)
+                     
+    val lower: string -> string = implode o List.map Char.toLower o explode    
+
+    val isBool: AST.ty -> bool = (fn t => TypeUtil.same (Basis.boolTy, t))
+    val isUnit: AST.ty -> bool = (fn t => TypeUtil.same (Basis.unitTy, t))
+
+    val patToString : AST.pat -> string = let
+      fun tos (AST.ConPat (c, ts, p)) = (case p
+	    of AST.TuplePat _ => DataCon.nameOf c ^ tos p
+	     | _ => DataCon.nameOf c ^ "(" ^ tos p ^ ")")
+	| tos (AST.TuplePat []) = "()"
+	| tos (AST.TuplePat ps) = 
+            String.concat ["(", String.concatWith "," (List.map tos ps), ")"]
+	| tos (AST.VarPat x) = Var.nameOf x
+	| tos (AST.WildPat ty) = "_" (* "(_:" ^ TypeUtil.toString ty ^ ")" *)
+	| tos (AST.ConstPat (AST.DConst (c, _))) = DataCon.nameOf c
+	| tos (p as AST.ConstPat (AST.LConst (lit, ty))) = let
+            val s = Literal.toString lit
+            in
+              if isBool ty then lower s 
+	      else if isUnit ty then "()"
+	      else s
+            end
+      in
+        tos
+      end
 
     fun copyPat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)
@@ -244,4 +385,5 @@ structure ASTUtil : sig
 	in
 	    copyExpWalk s e
 	end
+
   end

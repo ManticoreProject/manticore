@@ -40,6 +40,9 @@ structure TyCon : sig
   (* hash tables keyed by type constructors *)
     structure Tbl : MONO_HASH_TABLE where type Key.hash_key = Types.tycon
 
+  (* returns the dataconstructors associated with this typeconstructor *)
+   val returnDcons : Types.tycon -> AST.dcon list ref
+
   (* per-type properties *)
     val newProp : (Types.tycon -> 'a) -> {
 	    clrFn : Types.tycon -> unit,
@@ -118,7 +121,9 @@ structure TyCon : sig
 
   (* return the arity of a type constructor *)
     fun arityOf (Tyc{arity, ...}) = arity
-
+ 
+  (* returns the dataconstructors associated with this typeconstructor *)
+    fun returnDcons (tyc as Types.Tyc{def=Types.DataTyc{nCons, cons}, ...}) = cons
 
     structure Map = BinaryMapFn (
       type ord_key = tycon
