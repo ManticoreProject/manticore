@@ -9,6 +9,7 @@
 Library
 
   functor BOMOptFn
+  structure BOMOptControls
 
 is
 
