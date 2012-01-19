@@ -44,7 +44,7 @@ end = struct
     val dconhash : AST.var TTbl.hash_table = TTbl.mkTable (20, Fail "dconhash error")
 
     (* we need to check if we actually used the dcon in a cost function *)
-    val useddconhash : bool TTbl.hash_table = TTbl.mkTable (20, Fail "useddconhash error")
+    val usedtyconhash : bool TTbl.hash_table = TTbl.mkTable (20, Fail "usedtyconhash error")
 
 (*
 -----------------------------------------------------------------------------------------------
@@ -153,7 +153,7 @@ annotation for the variables to save the costfunction if one is created for the 
 
 (*
 -----------------------------------------------------------------------------------------------
-Collect user datacon in apply exp 
+Collect user datacon in apply exp, WE SHOULD TRY AND REMOVE THIS PASS
 -----------------------------------------------------------------------------------------------
 *)
 
@@ -195,7 +195,7 @@ Collect user datacon in apply exp
                                                                         val estSize = Var.new (sizename,typevar --> B.intTy)
                                                                    in
                                                                         TTbl.insert dconhash (tyconname,estSize);
-                                                                        TTbl.insert useddconhash(tyconname,false)
+                                                                        TTbl.insert usedtyconhash(tyconname,false)
                                                                    end
                                                 end
                                 | _ => ()       
@@ -474,10 +474,27 @@ A pretty printer for the cost functions
                                                 TextIO.print("Metatype \n")
                                         end
                         | Ty.VarTy (_) => TextIO.print("Vartype \n")
-                        | Ty.ConTy (tylist, tycon) => TextIO.print("Contype \n")
+                        | Ty.ConTy (tylist, tycon) => let
+                                        val _ = TextIO.print("Contype with: \n")
+                                in      
+                                        printtypelist(tylist);
+                                        TextIO.print(TyCon.toString(tycon));
+                                        TextIO.print("END Contype *** \n")
+                                end
                         | Ty.FunTy (ty1, ty2) => TextIO.print("Funtype \n")
-                        | Ty.TupleTy (tylist) => TextIO.print("Tupletype \n")
-                )
+                        | Ty.TupleTy (tylist) => let
+                                        val _ = TextIO.print("Tupletype with: \n")
+                                in      
+                                        printtypelist(tylist);
+                                        TextIO.print("END Tupletype *** \n")
+                                end
+)
+        and printtypelist(ty::rest) = let     
+                        val _ = printtype(ty)
+                in
+                        printtypelist(rest)
+                end
+        | printtypelist([]) = ()
 
 (*
 -----------------------------------------------------------------------------------------------
@@ -550,7 +567,7 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                                                         val estSize = Var.new (sizename,typevar --> B.intTy)
                                                                    in
                                                                         TTbl.insert dconhash (tyconname,estSize);
-                                                                        TTbl.insert useddconhash(tyconname,false)
+                                                                        TTbl.insert usedtyconhash(tyconname,false)
                                                                    end
                                                 end
                 *)
@@ -776,22 +793,18 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                 then let
 (*FIX ME mark as used has to go to the PTuple change *)
                                         val _ = TextIO.print(String.concat["Add the following tycon to the useddconlist ", TyCon.toString(tycon), "!!\n"])
-                                        val _ = TTbl.insert useddconhash(tycon,true)
+                                        val _ = TTbl.insert usedtyconhash(tycon,true)
                                      in
                                         SOME (sizename)
                                      end
-                                else let
-val _ = TextIO.print(String.concat["DIDN'T Add the following tycon to the useddconlist ", TyCon.toString(tycon), "!!\n"])
-in
-comparedcontype(rest)
-end
+                                else comparedcontype(rest)
                 end
                 | comparedcontype ([]) = NONE 
                 
                 (* this function will a) check if all the other calls to costfunctions are closed (have a known input argument to them) and if 
                 if so, extends the body of the current cost function with that call *)
                 fun addconst ((key,(value,size))::rest, body) =
-                        (* is this the call to the function itself ? *)
+                        (* this is the call to the function itself *)
                         (if (V.same(key,f)) 
                                 then let
                                                 (* check if the argument is a ConType and if we have a size function for it *)
@@ -1047,37 +1060,104 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
 This function will check if we need to manipulate tycon and dcon in order to account for size informations
 -----------------------------------------------------------------------------------------------
 *)
+        (* map to map the old dcon without size information to the new dcon with size information 
+        val dconmap : AST.dcon TTbl.hash_table = TTbl.mkTable (20, Fail "dconhash error") *)
 
         fun changesize (body) = let
-                        fun checkdcon ((tycon,flag)::rest,returnlist ) = 
-                                if (flag) then checkdcon(rest,returnlist@[tycon]) else checkdcon(rest,returnlist)
-                        | checkdcon ([], returnlist) = returnlist
+                        fun checktycon ((tycon,flag)::rest,returnlist ) = 
+                                if (flag) then checktycon(rest,returnlist@[tycon]) else checktycon(rest,returnlist)
+                        | checktycon ([], returnlist) = returnlist
 
-                        val dconlist = checkdcon(TTbl.listItemsi useddconhash,[])
+                        val tyconlist = checktycon(TTbl.listItemsi usedtyconhash,[])
 
                 in
-                        if (List.null dconlist) 
+                        if (List.null tyconlist) 
                         then body 
                         else let
-                                fun infos (tycon::rest) = let
+                                (* fun infos (tycon::rest) = let
                                                 val mylist = !(TyCon.returnDcons(tycon))
-fun printdcons(dcon::rest) = let
-                val _ = TextIO.print(String.concat[Option.getOpt (Option.map TypeUtil.toString (DataCon.argTypeOf(dcon)), ""),"\n"] )
-        in
-                printdcons(rest)
-        end
-  | printdcons([]) = ()
+                                                (* this prints the type of the dcons of the typecon *)
+                                                fun printdcons(dcon::rest) = let
+                                                                val _ = TextIO.print(String.concat[Option.getOpt (Option.map TypeUtil.toString (DataCon.argTypeOf(dcon)), ""),"\n"] )
+                                                                val _ = (case (DataCon.argTypeOf(dcon))
+                                                                        of SOME ty => let 
+                                                                                        val _ = DataCon.new tycon (Atom.atom (DataCon.nameOf(dcon)),SOME (changedcon(ty)))
+                                                                                in
+                                                                                        printtype(ty)
+                                                                                end
+                                                                        | NONE => ()
+                                                                        )
+                                                        in
+                                                                printdcons(rest)
+                                                        end
+                                                  | printdcons([]) = ()
+                                                (* this function adds a dcon with a size field to the tycon for each existing dcon *)
+                                                fun adddcons(dcon::rest) = (case (DataCon.argTypeOf(dcon))
+                                                                        of SOME ty => let 
+                                                                                        val _ = DataCon.new tycon (Atom.atom (DataCon.nameOf(dcon)),SOME (changedcon(ty)))
+                                                                                in
+                                                                                        adddcons(rest)
+                                                                                end
+                                                                        | NONE => ()
+                                                                        )
+                                                  | adddcons([]) = ()
 
-val _ = printdcons(mylist)
+                                                val _ = adddcons(mylist)
+                                                val _ = printdcons(!(TyCon.returnDcons(tycon)))
                                                 in
                                                         infos(rest)
                                                 end
                                 | infos([]) = ()
-                                val _ = infos(dconlist)
+                                val _ = infos(tyconlist)
+                                *)
+                                
+                                (* lets try and change the existing dcon *)
+                                fun changedycon (tycon::rest) = let
+                                        (* changes the types and returns a new dcon *)
+                                        fun newdcon (AST.DCon {id, name, owner, argTy}, newargs) = AST.DCon{id = id, name = name, owner = owner, argTy = newargs}
+                                        (* set the new cons in the typeconstructor *)
+                                        fun new (tyc as Types.Tyc{def=Types.DataTyc{nCons, cons}, ...},newcons) = cons := newcons
+
+                                        fun newargs (dcon) = (case (DataCon.argTypeOf(dcon))
+                                                                        of SOME ty => SOME (changedcon(ty))
+                                                                        | NONE => NONE
+                                                                        )
+                                                        
+                                        fun newdcons (dcon::rest,list) = newdcons(rest,list@[newdcon(dcon,newargs(dcon))])
+                                         |  newdcons ([],list) = list
+
+                                        fun printdcons(dcon::rest) = let
+                                                                val _ = TextIO.print(String.concat[Option.getOpt (Option.map TypeUtil.toString (DataCon.argTypeOf(dcon)), ""),"\n"] )
+                                                                val _ = (case (DataCon.argTypeOf(dcon))
+                                                                        of SOME ty => printtype(ty)
+                                                                        | NONE => ()
+                                                                        )
+                                                        in
+                                                                printdcons(rest)
+                                                        end
+                                                  | printdcons([]) = ()
+
+                                        val dcons = newdcons(!(TyCon.returnDcons(tycon)),[])
+                                in
+                                        new(tycon,dcons);
+                                        printdcons(!(TyCon.returnDcons(tycon)));
+                                        changedycon(rest)
+                                end
+                                | changedycon([]) = ()
+
+                                val _ = changedycon(tyconlist)
+
                         in
-                                ASTchangesize(body,dconlist)
+                                ASTchangesize(body,tyconlist)
                         end
                 end
+
+        and changedcon (ctype) = (case ctype
+                        of Ty.ConTy (tylist, tycon) => Ty.TupleTy([Basis.intTy,Ty.ConTy (tylist, tycon)])
+                        | Ty.TupleTy (tylist) => Ty.TupleTy(Basis.intTy::tylist)
+                        | _ => raise Fail "Error rewriting the DataConstructor"
+        )
+
 
         and ASTchangesize (exp,dconlist) : AST.exp = (case prune exp 
                 of e as AST.LetExp(_,_) => let
@@ -1094,7 +1174,45 @@ val _ = printdcons(mylist)
 	    | AST.IfExp(e1, e2, e3, ty) => AST.IfExp(ASTchangesize(e1,dconlist), ASTchangesize(e2,dconlist), ASTchangesize(e3,dconlist), ty)
 	    | AST.CaseExp(e, rules, ty) => AST.CaseExp(ASTchangesize(e,dconlist) , casematch_size(rules,dconlist), ty)
             | AST.FunExp(x, body, ty) => AST.FunExp(x, ASTchangesize(body,dconlist), ty)
-            | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(ASTchangesize(e1,dconlist), ASTchangesize(e2,dconlist), ty)
+            | AST.ApplyExp(e1, e2, ty) => let
+                                        (* change the dcon to the new one *)
+fun getdcon (tyc as Types.Tyc{def=Types.DataTyc{nCons, cons}, ...},id) = let
+                                                                val dcons = !cons
+                                                        in
+                                                                List.nth(dcons,id)
+                                                        end
+                                        (* check if we have a dcon in apply and if we have to change it,
+                                           if so, we also have to change the second argument to account for size information *)
+                                        fun changeapply (e) = (case e
+                                                        of AST.ConstExp(const as AST.DConst(dcon, tylist)) => let
+                                                                val tyconname = DataCon.ownerOf dcon
+                                                                val dconid = DataCon.idOf dcon
+                                                        in
+                                                                (* check if the tycon is one that we have to change *)
+                                                                case List.find (fn (e) => TyCon.same(tyconname,e) ) dconlist 
+                                                                of SOME n => (case (DataCon.argTypeOf(dcon))
+                                                                        of SOME ty => if (recursivedcon(ty,tyconname))
+                                                                                        (* then change the entire statement for the NODE *)
+                                                                                      then AST.ApplyExp(ASTchangesize(AST.ConstExp(AST.DConst(getdcon(tyconname,dconid),tylist)),dconlist), ASTchangesize(e2,dconlist), ty)
+                                                                                        (* this the simple case e.g. LEAF *)
+                                                                                        else let
+                                                                                                val tuple = U.mkTupleExp([U.mkInt(1),e2])
+                                                                                                val newty = Ty.TupleTy([Basis.intTy,ty])
+                                                                                        in
+                                                                                                AST.ApplyExp(ASTchangesize(ASTchangesize(AST.ConstExp(AST.DConst(getdcon(tyconname,dconid),tylist)),dconlist),dconlist), ASTchangesize(tuple,dconlist), newty)
+
+                                                                                        end
+                                                                        | NONE => AST.ApplyExp(ASTchangesize(AST.ConstExp(AST.DConst(getdcon(tyconname,dconid),tylist)),dconlist), ASTchangesize(e2,dconlist), ty)
+                                                                )
+                                                                | NONE => AST.ApplyExp(ASTchangesize(e,dconlist), ASTchangesize(e2,dconlist), ty)
+                                                        end
+                                                        | _ =>  AST.ApplyExp(ASTchangesize(e,dconlist), ASTchangesize(e2,dconlist), ty)
+                                        )
+(* (NODE,tree) => true, (LEAF,tree) => false *)
+
+                                in
+                                        changeapply(e1)
+                                end
             | AST.TupleExp[] => AST.TupleExp[]
             | AST.TupleExp (exps) => let
                         val exps' = List.map (fn e => ASTchangesize(e,dconlist)) exps
@@ -1147,6 +1265,19 @@ val _ = printdcons(mylist)
         and lambda_size ([],dconlist) = [] 
             | lambda_size ( A.FB(f, x, e)::l, dconlist) = A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)
 
+        (* check if the dataconstructor type is recursive or the default case e.g (NODE,tree) => true, (LEAF,tree) => false *)
+        and recursivedcon (typeprint,tyconin) = (case typeprint
+                        of Ty.ConTy (tylist, tycon) => if (TyCon.same (tycon,tyconin))
+                                                       then true
+                                                       else recursivetypelist(tylist,tyconin)
+                        | Ty.TupleTy (tylist) => recursivetypelist(tylist,tyconin)
+                        | _ => raise Fail "ERROR IN RECURSIVEDCON \n" 
+        )
+        and recursivetypelist(ty::rest,tycon) = if (recursivedcon(ty, tycon) ) 
+                                            then true
+                                            else recursivetypelist(rest,tycon)
+        | recursivetypelist([], _) = false
+
 (*
 -----------------------------------------------------------------------------------------------
 The main function of this structure
@@ -1165,11 +1296,10 @@ The main function of this structure
                 val _ = preassigncosts()
                 val _ = ASTcollectDCON(body)
                 val _ = costAST(dummyvar() , body)
-                val _ = printCost(body)
                 (* val _ = costFctsAST(body) *)
                 (* val body' = ASTaddchunking(body) *)
-                val _ = changesize(body)
-                (* val _ = printCost(body') *)
+                val body' = changesize(body)
+                val _ = printCost(body')
         in   
                 body
         end
