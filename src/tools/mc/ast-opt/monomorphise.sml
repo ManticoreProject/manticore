@@ -61,7 +61,7 @@ structure Monomorphise : sig
             }) [
               Controls.control {
                   ctl = enableMonomorphisation,
-                  name = "monomorpisation",
+                  name = "monomorphisation",
                   pri = [0, 1],
                   obscurity = 0,
                   help = "enable monomorphisation"
