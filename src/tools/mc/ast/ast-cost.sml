@@ -1180,6 +1180,8 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 	    | AST.CaseExp(e, rules, ty) => if (testvar(e))
                                            then (case rules
 (* it should just be one pat here but not sure !! *)
+                                                (* this function will change the pattern in case we added size information to it and it is a recursive case
+                                                we have to changecase (DCON(rec1,rec2,..) => case(x:rec1,..) => x,... to  DCON(int,rec1,rec2,..) => case(_:int,x:rec1,..) => x,... *)
                                                 of AST.PatMatch (pat,patexp)::rest =>
                                                         (case pat
                                                         of AST.TuplePat (patlist) => let
@@ -1198,7 +1200,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 
 
                                         fun changestat (constexp) = let 
-                                                        (* ADD CODE HERE *)
+                                                        (* ADD CODE HERE, ADD CORRECT SIZE INFORMATION*)
                                                         val newe2 = (case e2 
                                                                         of AST.TupleExp(exps) => AST.TupleExp(U.mkInt(1)::exps)
                                                                         | AST.PTupleExp(exps) => AST.PTupleExp(U.mkInt(1)::exps)
@@ -1280,7 +1282,8 @@ This function will check if we need to manipulate tycon and dcon in order to acc
         (* for the case e of pat => expr take the maximum of the (pat,expr) pair *)
         and casematch_size (rule::rest,dconlist) = (case rule 
                                 of AST.PatMatch (pat,e) => let
-
+                                        (* this function will change the expression e in case we added size information to it and it is a base case
+                                        we have to change case (DCON(x:base) => x) to case (DCON(int,base) => case(_:int,x:base) => x *)
                                         fun changee () = if (testvar(e)) 
                                                         (* we have a match for a changed variable that comes out of a dcon case, 
                                                            we have to change var to case ( _ , var) => var *)
@@ -1311,13 +1314,15 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 
         and pat_size(p,dconlist) = (case p 
                         of AST.ConPat (dcon, tylist, pat) => let
-                                        fun newdcon () = let
+                                          (* change the dcon to a new one with size information, it will be saved in the tycon so we just need to read it out of the owner of the old dcon *)
+                                            fun newdcon () = let
                                                 val tyconname = DataCon.ownerOf dcon
                                                 val dconid = DataCon.idOf dcon
                                             in    
                                                 getdcon(tyconname,dconid)
                                             end
 
+                                            (* we need to check if we have to change the type to add size information *)
                                             fun changevartype(pattern) = case pattern 
                                                         of AST.VarPat (var as VarRep.V{ty,...}) => let
                                                                         val AST.TyScheme(t, tys) = V.typeOf var
@@ -1344,11 +1349,13 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                         | AST.WildPat (ty) => AST.WildPat (ty) 
                         | AST.ConstPat (const) => AST.ConstPat (const)
                 )
-   
+
+        (* check if the dcon is in out list of dcons to add size information to them *)
         and dconinlist(dcon,dconlist) = case List.find (fn (e) => TyCon.same((DataCon.ownerOf dcon),e) ) dconlist 
                                                                 of SOME _ => true
                                                                 | NONE => false
 
+        (* add the size type information to a type, used for types that belong to dcons we changed *)
         and newty(ty) = (case ty
                 of Ty.TupleTy(tylist) => Ty.TupleTy([Basis.intTy]@tylist)
                 | _ => Ty.TupleTy([Basis.intTy,ty])
@@ -1369,11 +1376,13 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                         | Ty.TupleTy (tylist) => recursivetypelist(tylist,tyconin)
                         | _ => raise Fail "ERROR IN RECURSIVEDCON \n" 
         )
+        (* check if the dcon is the base case (false) or a recursive case (true) *)
         and recursivetypelist(ty::rest,tycon) = if (recursivedcon(ty, tycon) ) 
                                             then true
                                             else recursivetypelist(rest,tycon)
         | recursivetypelist([], _) = false
 
+        (* test if the saved variable matches the input, we need this to change the case exp to accomodate for the new size exp *)
         and testvar (exp) = (case exp 
                                 of AST.VarExp(var, x) => 
                                         (if V.same(var,(!anonvar) )
