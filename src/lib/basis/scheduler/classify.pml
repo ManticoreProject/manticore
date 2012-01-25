@@ -48,15 +48,14 @@ structure Classify =
     (* handles done-comm based on the type of processor yield, for all cases where the scheduler can safely reschedule the thread
        returns the results of the demote test *)
       define @done-comm-ops-in-atomic (self : vproc, voluntary : bool / exh : exh) : bool = 
-	(* if (voluntary) then 
+	if (voluntary) then 
 		do @move-threads-in-atomic(self / exh)
 		do @update-done-comm-in-atomic(voluntary / exh)
 		return(false)
 	else 
 		let v : bool = @demote-test-in-atomic(/ exh)
 		do @update-done-comm-in-atomic(voluntary / exh)
-		return (v)*)
-	return(false)
+		return (v)
       ;
     )
 
