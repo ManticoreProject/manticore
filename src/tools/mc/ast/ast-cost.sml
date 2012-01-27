@@ -46,6 +46,9 @@ end = struct
     (* we need to check if we actually used the dcon in a cost function *)
     val usedtyconhash : bool TTbl.hash_table = TTbl.mkTable (20, Fail "usedtyconhash error")
 
+    (* this maps the cost function to the size function we need to use for the input argument to the cost function *)
+    val costfcttosizefct : AST.var VTbl.hash_table = VTbl.mkTable (20, "Error in the mapping of costfcttosizefct")
+ 
     (* this list saves all the functions we need to add to the tree after creating them *)
     val fctlist : AST.lambda list ref = ref[]
 
@@ -833,6 +836,12 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
 (* FIX ME mark as used has to go to the PTuple change *)
                                         val _ = TextIO.print(String.concat["Add the following tycon to the useddconlist ", TyCon.toString(tycon), "!!\n"])
                                         val _ = TTbl.insert usedtyconhash(tycon,true)
+                                        (* save the size function to the costfct *)
+                                        val sizename = (case TTbl.find tyconhash (tycon) 
+                                                        of SOME n => n
+                                                        | NONE => raise Fail "Problem can't find sizefct "
+                                        )
+                                        val _ = VTbl.insert costfcttosizefct (estCost,sizename)
                                      in
                                         true
                                      end
@@ -1063,10 +1072,22 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
                 | lambda ( A.FB(f, x, e)::l) = A.FB(f, x, ASTaddchunking(e))::lambda(l)
                 
 (* FIX ME: add support for more than tupples *)
-        and ptup (exps) = 
-         (case exps
-           of [e1, e2] => let
-                val exps' = List.map (fn e => ASTaddchunking( e)) exps
+        and ptup (exps) = let
+         
+                val lambdas = ref[]
+(*
+                (* this function will check if the expression in the ptuple is an applyexp with a function call that has a costfct attached *)
+                fun getcostfct (exp::rest) = (case exp
+                                        of AST.ApplyExp(e1, e2, ty) => (case e1
+                                                                        of AST.VarExp(x,tys) => (case existCFname(x)
+                                                                                                of SOME fctname => let
+                                                                                                                  val sizename = 
+                                                                                                                in
+lambdas := lambdas@[]
+                                                                                                | NONE => false
+VTbl.insert costfcttosizefct (estCost,sizename)  
+*)                             
+
                 (* The ptuple statement (| exp1, exp2 |) will change to if (cost(exp1) + cost(exp2) > T) then (| exp1, exp2 |) else ( exp1, exp2 ) *) 
                 (* where cost() a function that may have to compute the cost on the fly *)
 
@@ -1086,9 +1107,8 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
                 in           
                   U.mkLetExp([bindEstCosts,bindEstCost], U.mkIfExp(test,AST.PTupleExp(exps'),AST.TupleExp(exps')))
                 end
-            | _ => raise Fail "only pair ptups currently supported in this branch"
-          (* end case *))
-
+            
+val exps' = List.map (fn e => ASTaddchunking( e)) exps
 
 (*
 -----------------------------------------------------------------------------------------------
