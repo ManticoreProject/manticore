@@ -41,7 +41,7 @@ end = struct
     fun printvar(x) = String.concat[Var.toString x, " : ", TypeUtil.schemeToString (Var.typeOf x),"\n"]
  
     (* this hash is used to save all the data constructor that we need to rewrite to add size information *)
-    val dconhash : AST.var TTbl.hash_table = TTbl.mkTable (20, Fail "dconhash error")
+    val tyconhash : AST.var TTbl.hash_table = TTbl.mkTable (20, Fail "tyconhash error")
 
     (* we need to check if we actually used the dcon in a cost function *)
     val usedtyconhash : bool TTbl.hash_table = TTbl.mkTable (20, Fail "usedtyconhash error")
@@ -59,7 +59,7 @@ helper functions
 -----------------------------------------------------------------------------------------------
 *)
 
-        fun addtofctlist(list,exp) = list := !list@[exp]
+        fun addtofctlist(list,exp) = list := [exp]@(!list)
 
         fun addvartoannon (exp) = anonvar := exp
 
@@ -205,14 +205,14 @@ Collect user datacon in apply exp, WE SHOULD TRY AND REMOVE THIS PASS
                                 of AST.ConstExp(const as AST.DConst(dcon, tylist)) => let
                                                         val tyconname = DataCon.ownerOf dcon
                                                 in
-                                                        case TTbl.find dconhash (tyconname) 
+                                                        case TTbl.find tyconhash (tyconname) 
                                                         of SOME n => ()
                                                         | NONE => let
                                                                         val typevar = U.dcontotype(AST.ConstExp(const))
                                                                         val sizename = String.concat[TyCon.toString (tyconname), "size"]
                                                                         val estSize = Var.new (sizename,typevar --> B.intTy)
                                                                    in
-                                                                        TTbl.insert dconhash (tyconname,estSize);
+                                                                        TTbl.insert tyconhash (tyconname,estSize);
                                                                         TTbl.insert usedtyconhash(tyconname,false)
                                                                    end
                                                 end
@@ -598,14 +598,14 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                (* | AST.ConstExp(const as AST.DConst(dcon, tylist)) => let
                                                         val tyconname = DataCon.ownerOf dcon
                                                 in
-                                                        case TTbl.find dconhash (tyconname) 
+                                                        case TTbl.find tyconhash (tyconname) 
                                                         of SOME n => ()
                                                         | NONE => let
                                                                         val typevar = U.dcontotype(AST.ConstExp(const))
                                                                         val sizename = String.concat[TyCon.toString (tyconname), "size"]
                                                                         val estSize = Var.new (sizename,typevar --> B.intTy)
                                                                    in
-                                                                        TTbl.insert dconhash (tyconname,estSize);
+                                                                        TTbl.insert tyconhash (tyconname,estSize);
                                                                         TTbl.insert usedtyconhash(tyconname,false)
                                                                    end
                                                 end
@@ -812,14 +812,14 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                 val costname = String.concat[Var.nameOf f, "cost"]
                 val _ = TextIO.print(String.concat["Variable name is ", costname, "\n"])
                 val AST.TyScheme(_, argtys) = V.typeOf x
-                val estCost = Var.new (costname,argtys --> B.intTy) (* compute the appropriate function type *)
+                val estCost = Var.new (costname,B.intTy --> B.intTy) (* compute the appropriate function type *)
 
                 val _ = TextIO.print(String.concat["New variable name is and type is ", printvar(estCost), "\n"])
                 val _ = printtype(argtys)
                 
                 (* create the input argument for the cost function *)
                 val inputname = String.concat[Var.nameOf f, "arg"]
-                val inputCostFn = Var.new (inputname, argtys)
+                val inputCostFn = Var.new (inputname, Basis.intTy)
 
                 (* create the recursive function call to the cost function *)
                 val body = U.mkInt(cost)
@@ -830,15 +830,16 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                         in
                                 if (TypeUtil.same(DataCon.resultOf(dcon),argtys)) 
                                 then let
-(*FIX ME mark as used has to go to the PTuple change *)
+(* FIX ME mark as used has to go to the PTuple change *)
                                         val _ = TextIO.print(String.concat["Add the following tycon to the useddconlist ", TyCon.toString(tycon), "!!\n"])
                                         val _ = TTbl.insert usedtyconhash(tycon,true)
                                      in
-                                        SOME (sizename)
+                                        true
                                      end
                                 else comparedcontype(rest)
                 end
-                | comparedcontype ([]) = NONE 
+                | comparedcontype ([]) = false
+
                 
                 (* this function will a) check if all the other calls to costfunctions are closed (have a known input argument to them) and if 
                 if so, extends the body of the current cost function with that call *)
@@ -846,16 +847,13 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                         (* this is the call to the function itself *)
                         (if (V.same(key,f)) 
                                 then let
-                                                (* check if the argument is a ConType and if we have a size function for it *)
-                                               fun makebody () : AST.exp = (case comparedcontype(TTbl.listItemsi dconhash)
-                                                        of SOME sizefunction => let
-                                                                                        (* Apply (sizefunction,inputargument) *)
-                                                                                        val mksizearg = U.mkApplyExp(vexp sizefunction,[vexp inputCostFn])
-                                                                                in 
-                                                                                        (U.plus(body) (U.times (U.mkInt(value)) (U.mkApplyExp(vexp estCost,[U.intDiv(mksizearg,U.mkInt(value))] )) ))
-                                                                                end
-                                                        | NONE => (U.plus(body) (U.times (U.mkInt(value)) (U.mkApplyExp(vexp estCost,[U.intDiv(vexp inputCostFn,U.mkInt(value))] )) ))
-                                                ) (** end case **)
+                                                (* check if the argument is a ConType then we have to add the statement n * fct(input/n) *)
+                                               fun makebody () : AST.exp = (if (comparedcontype(TTbl.listItemsi tyconhash))
+                                                                                then 
+                                                                                        (U.plus(body) (U.times (U.mkInt(value)) (U.mkApplyExp(vexp estCost,[U.intDiv(vexp inputCostFn,U.mkInt(value))] )) ))
+
+                                                                                else (U.plus(body) (U.times (U.mkInt(value)) (U.mkApplyExp(vexp estCost,[U.intDiv(vexp inputCostFn,U.mkInt(value))] )) ))
+                                                ) (** end if **)
                                         in
                                                 addconst(rest,makebody())
                                         end
@@ -881,6 +879,7 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                         if (addconst(listitems,body)) then let
                                         val costfct = getCFname(f) 
                                 in
+                                        addtofctlist(fctlist,costfct);
                                         printlambda(costfct::[])
                                 end
                         else ()
@@ -1017,7 +1016,7 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
             | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(ASTaddchunking(e1), ASTaddchunking(e2), ty)
             | AST.TupleExp[] => AST.TupleExp[]
             | AST.TupleExp (exps) => let
-                        val exps' = List.map (fn e => ASTaddchunking( e)) exps
+                        val exps' = List.map (fn e => ASTaddchunking(e)) exps
                 in           
                         AST.TupleExp (exps')
                 end
@@ -1060,12 +1059,9 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
                                 | AST.CondMatch (pat,cond,e2) => raise Fail "unexpected AST.CondMatch"
                                 )
                         | casematch ([]) = [] 
-(* FIX ME we might not need to add all of these functions *)
         and lambda ([]) = [] 
-                | lambda ( A.FB(f, x, e)::l) = (case existCFname(f) 
-                                of SOME fct => A.FB(f, x, ASTaddchunking(e))::fct::lambda(l)
-                                | NONE => A.FB(f, x, ASTaddchunking(e))::lambda(l)
-                )
+                | lambda ( A.FB(f, x, e)::l) = A.FB(f, x, ASTaddchunking(e))::lambda(l)
+                
 (* FIX ME: add support for more than tupples *)
         and ptup (exps) = 
          (case exps
@@ -1099,8 +1095,6 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
 This function will check if we need to manipulate tycon and dcon in order to account for size informations
 -----------------------------------------------------------------------------------------------
 *)
-        (* map to map the old dcon without size information to the new dcon with size information 
-        val dconmap : AST.dcon TTbl.hash_table = TTbl.mkTable (20, Fail "dconhash error") *)
 
         fun changesize (body) = let
                         fun checktycon ((tycon,flag)::rest,returnlist ) = 
@@ -1151,6 +1145,8 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                 val _ = changedycon(tyconlist)
 
                         in
+                                (* create the corresponding size functions *)
+                                createsizefcts(tyconlist); 
                                 ASTchangesize(body,tyconlist)
                         end
                 end
@@ -1160,6 +1156,78 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                         | Ty.TupleTy (tylist) => Ty.TupleTy(Basis.intTy::tylist)
                         | _ => raise Fail "Error rewriting the DataConstructor"
         )
+
+        and createsizefcts(tycon::rest) = let
+                                (* read out the predefined name of the sizefunction
+                                   which is a var with type TYCON -> int *)
+                                val estSize = (case TTbl.find tyconhash tycon
+                                                of NONE => raise Fail "Missing size argument for the tycon \n"
+                                                | SOME varname => varname
+                                                )
+                                (* create the input argument to the size function and set the correct type *)
+                                val inputname = String.concat[Var.nameOf estSize, "arg"]
+                                val AST.TyScheme(_, tys) = V.typeOf(estSize)
+                                val argty = (case tys 
+                                             of Ty.FunTy(ty,_) => ty
+                                             | _ => raise Fail "No Correct type in the sizefctname"
+                                        )
+                                val inputestSizeFn = Var.new (inputname, argty)
+                                (* get all the dcons of the current tycon *)
+                                val dcons = !(TyCon.returnDcons(tycon))
+
+                                val matches = ref[]
+
+                                (* we have to create a size function that looks like this:
+                                fun sizetree (input : tree) : int = case input 
+                                                of Leaf(int * int):x(int * int) => case x(int * int)
+                                                                        of (y:int, _ :int) => y:int
+                                                | Node(int * tree * tree):x(int * tree * tree) => case x(int * tree * tree)
+                                                                                of (y:int, _:tree,_:tree) => y:int
+                                *)
+
+
+                                fun makematch (dcon::rest) = let
+                                                (* the variable with the size information *)
+                                                val myvar =  Var.new ("_anon_", Basis.intTy)
+                                                val patlist = ref [AST.VarPat (myvar)]
+                                                (* type of the dcon we know the first one is an int *)
+                                                val Ty.TupleTy(arg::tuplerest) = (case DataCon.argTypeOf(dcon)
+                                                                                  of SOME n => n
+                                                                                 | NONE => raise Fail "Error in reading out the contype if the dcon in creating size function"
+                                                                                )
+                                                (* this function adds the wildpat to the of exp since we just need the first argument of the dcon *)
+                                                fun addwilds (type1::rest) = let
+                                                                        
+                                                                in
+                                                                        patlist := !patlist@[AST.WildPat (type1)];
+                                                                        addwilds(rest)
+                                                                end
+                                                | addwilds ([]) = ()
+                
+                                                (* create the second case exp *)
+                                                val _ = addwilds(tuplerest)
+                                                val matchdconvar = Var.new ("_anon_", Ty.TupleTy(arg::tuplerest))
+                                                val secondpat = AST.PatMatch(AST.TuplePat(!patlist),vexp myvar)
+                                                val secondcase = U.mkCaseExp(vexp matchdconvar, [secondpat])
+
+                                        in
+                                                matches := !matches@[AST.PatMatch (AST.ConPat (dcon, arg::tuplerest, AST.VarPat(matchdconvar)),secondcase)];
+                                                makematch(rest)
+                                        end
+                                | makematch ([]) = ()
+
+                                val _ = makematch(dcons)
+                                val caseexp = U.mkCaseExp(vexp inputestSizeFn, (!matches))
+
+                                (* create the function *)
+                                val sizefct = U.mkFunWithParams(estSize,[inputestSizeFn], caseexp)
+                                val _ = addtofctlist(fctlist, sizefct)
+
+                                in
+                                        
+                                        createsizefcts(rest)
+                                end
+        | createsizefcts([]) = ()
 
 
         and ASTchangesize (exp,dconlist) : AST.exp = (case prune exp 
@@ -1199,15 +1267,84 @@ This function will check if we need to manipulate tycon and dcon in order to acc
             | AST.ApplyExp(e1, e2, ty) => let
 
 
-                                        fun changestat (constexp) = let 
-                                                        (* ADD CODE HERE, ADD CORRECT SIZE INFORMATION*)
-                                                        val newe2 = (case e2 
-                                                                        of AST.TupleExp(exps) => AST.TupleExp(U.mkInt(1)::exps)
-                                                                        | AST.PTupleExp(exps) => AST.PTupleExp(U.mkInt(1)::exps)
-                                                                        | e => e
+                                        fun changestat (constexp, tycon) = let 
+                                                        
+                                                        (* read out the predefined name of the sizefunction
+                                                                which is a var with type TYCON -> int *)
+                                                        val sizename = (case TTbl.find tyconhash tycon
+                                                                        of NONE => raise Fail "Missing size argument for the tycon \n"
+                                                                        | SOME varname => varname
+                                                                        )
+                                                        
+                                                        (* we need to change the apply statement to account for sizes e.g. 
+                                                           Apply(DCON(tree,tree),(mktree(exp1),mktree(exp2))) 
+                                                          => let
+                                                                val (x1, x2) = (|mktree(exp1), mktree(exp2)|)
+
+                                                                val size = sizetree(x1) + sizetree(x2)
+                                                             in 
+                                                                Applt(DCON(int, tree, tree), (size,x1,x2))
+                                                             end
+                                                         *)
+                                                
+                                                        (* LetExp(binding,exp), create the bindings which are the val statements *)
+                                                        val expressions = ref[]
+                                                        val arguments = ref[]
+                                                        val pattern = ref[]
+                                                        val bindings = ref[]
+
+                                                        fun createbinding(expr::rest) = let
+                                                                        val patvar = Var.new ("_anon_",TypeOf.exp(expr))
+                                                                        val valpat = AST.VarPat(patvar)
+                                                                        (* val valbind = AST.ValBind(valpat,expr) *)
+                                                                in     
+                                                                        arguments := !arguments@[patvar];
+                                                                        expressions := !expressions@[expr];
+                                                                        pattern := !pattern@[valpat];
+                                                                        createbinding(rest)
+                                                                end
+                                                        | createbinding([]) = let
+                                                                (* create the size val *)
+                                                                        val patvar = Var.new ("mysize",Basis.intTy)
+                                                                        val valpat = AST.VarPat(patvar)
+
+                                                                        fun mksize (x::rest) = let
+                                                                                                val apply = U.mkApplyExp(vexp sizename,[vexp x])
+                                                                                        in
+                                                                                               (U.plus(apply) (mksize(rest)))
+                                                                                        end
+                                                                        | mksize([]) = (U.mkInt(0))
+
+                                                                        val expr = mksize(!arguments)
+                                                                        val valbind = AST.ValBind(valpat,expr)
+
+                                                                        val tupleval = AST.ValBind(AST.TuplePat(!pattern),AST.PTupleExp(!expressions))
+                                                                in
+                                                                        arguments := [patvar]@(!arguments);
+                                                                        bindings := [tupleval,valbind];
+                                                                        ()
+                                                                end
+
+                                                       fun newe2 () = (case ASTchangesize(e2,dconlist) 
+                                                                        of AST.TupleExp(exps) => let
+                                                                                                val _ = createbinding(exps)
+                                                                                                val mytuple = List.map (fn e => (vexp e)) (!arguments)
+                                                                                        in
+
+                                                                                                U.mkLetExp(!bindings,AST.ApplyExp(ASTchangesize(constexp,dconlist),AST.TupleExp(mytuple), ty))
+                                                                                        end
+                                                                        | AST.PTupleExp(exps) => let
+                                                                                                val _ = createbinding(exps)
+                                                                                                val mytuple = List.map (fn e => (vexp e)) (!arguments)
+                                                                                        in
+
+                                                                                                U.mkLetExp(!bindings,AST.ApplyExp(ASTchangesize(constexp,dconlist),AST.TupleExp(mytuple), ty))
+                                                                                        end
+                                                                        | _ => raise Fail "Problem creating the new dcon apply exp"
                                                         )
+
                                                 in
-                                                        AST.ApplyExp(ASTchangesize(constexp,dconlist), ASTchangesize(newe2,dconlist), ty)
+                                                        newe2()
                                                 end
 
                                         (* check if we have a dcon in apply and if we have to change it,
@@ -1223,10 +1360,10 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                                         of SOME dcontype => if (recursivedcon(dcontype,tyconname))
                                                                                         (* then change the entire statement for the NODE *)
                                                                                       then 
-                                                                                        changestat(AST.ConstExp(AST.DConst(getdcon(tyconname,dconid),tylist)))
+                                                                                        changestat(AST.ConstExp(AST.DConst(getdcon(tyconname,dconid),tylist)), tyconname)
                                                                                         (* this the simple case e.g. LEAF *)
                                                                                         else let
-                                                                                                val tuple = U.mkTupleExp([U.mkInt(1),e2])
+                                                                                                val tuple = U.mkPTupleExp([U.mkInt(1),e2])
                                                                                         in
                                                                                         AST.ApplyExp(ASTchangesize(ASTchangesize(AST.ConstExp(AST.DConst(getdcon(tyconname,dconid),tylist)),dconlist),dconlist), ASTchangesize(tuple,dconlist), ty)
 
@@ -1310,7 +1447,16 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                         | casematch_size ([], _) = [] 
 
         and lambda_size ([],dconlist) = [] 
-            | lambda_size ( A.FB(f, x, e)::l, dconlist) = A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)
+            | lambda_size ( A.FB(f, x, e)::l, dconlist) = 
+                                                (* piggy bag all created functions onto the first lambda block we can find *)
+                                                if (List.null (!fctlist) ) 
+                                                then A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)     
+                                                else let
+                                                        val fcts = !fctlist
+                                                      in
+                                                        fctlist := [];
+                                                        fcts@A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)
+                                                      end  
 
         and pat_size(p,dconlist) = (case p 
                         of AST.ConPat (dcon, tylist, pat) => let
@@ -1418,7 +1564,7 @@ The main function of this structure
                 (* val _ = costFctsAST(body) *)
                 (* val body' = ASTaddchunking(body) *)
                 val body' = changesize(body)
-                (* val _ = printCost(body') *)
+                val _ = printCost(body') 
                 val _ = PrintAST.printExp(body')
         in   
                 body'
