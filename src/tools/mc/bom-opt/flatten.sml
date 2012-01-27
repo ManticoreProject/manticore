@@ -32,7 +32,7 @@ end = struct
 
   fun trVar (env : env) (v : B.var) = 
     if needNew v then let
-      val v' = BOM.Var.new (BV.nameOf v ^ "FLAT", BV.typeOf v)
+      val v' = BV.newWithKind (BV.nameOf v ^ "FLAT", BV.kindOf v, BV.typeOf v)
       val env' = U.extend (env, v, v') (* TODO: check whether order of v, v' is right *)
       in
         SOME (env', v')
@@ -43,8 +43,8 @@ end = struct
     fun lp (env, [], acc) = (env, List.rev acc)
       | lp (env, v::vs, acc) = 
          (case (trVar env v)
-	    of SOME (env', v') => lp (env', vs, v'::acc)
-	     | NONE => lp (env, vs, v::acc)
+            of SOME (env', v') => lp (env', vs, v'::acc)
+             | NONE => lp (env, vs, v::acc)
            (* end case *))
     in
       lp (env, vs, [])
@@ -53,83 +53,79 @@ end = struct
   fun trRHS (env : env) (r) = U.substRHS (env,r)
 
   fun trExp (env : env) (exp : B.exp) = let
-	val B.E_Pt(ppt, term) = U.substExp (env, exp)
-	val newterm =
-		case term
-		  of B.E_Let (vs, e1, e2) => let		       
-                       val (env', vs') = trVars env vs
-                       val e1' = trExp env e1
-		       val e2' = trExp env' e2
-                       in
-                         B.E_Let (vs', e1', e2')
-		       end 
-		   | B.E_Stmt(vs, rhs, e) => let
-                       val (env', vs') = trVars env vs
-		       val rhs' = trRHS env rhs
-		       val e' = trExp env' e
-		       in
-                         B.E_Stmt(vs', rhs', e)
-		       end
-		   | B.E_Fun(lamlist, e) =>
-			B.E_Fun(map (trLambda env) lamlist,
-				trExp env e)
-		   | B.E_Cont(lam, e) =>
-			B.E_Cont(trLambda env lam,
-				 trExp env e)
-		   | B.E_If(cond, e1, e2) =>
-			B.E_If(cond,
-			       trExp env e1,
-			       trExp env e2)
-		   | B.E_Case(v, pelist, eopt) => let
-			val (env', v') = Option.getOpt(trVar env v, (env,v))
-			in
-			  B.E_Case(v', pelist, Option.map (trExp env) eopt)
-			end
-		   | B.E_Apply(v, vs1, vs2) => let
-			val (_, v') = Option.getOpt(trVar env v, (env,v))
-			val (_, vs1') = trVars env vs1
-			val (_, vs2') = trVars env vs2
-			in
-			  B.E_Apply(v', vs1', vs2')
-			end
-		   | B.E_Throw(v, vs) => let
-			val (env', v') = Option.getOpt(trVar env v, (env,v))
-			val (_, vs') = trVars env' vs
-			in
-			  B.E_Throw(v', vs')
-			end
-		   | B.E_Ret(vs) => let
-			val (_, vs') = trVars env vs
-			in
-			  B.E_Ret(vs')
-			end
-		   | B.E_HLOp(oper, vs1, vs2) => let
-			val (_, vs1') = trVars env vs1
-			val (_, vs2') = trVars env vs2
-			in
-			  B.E_HLOp(oper, vs1', vs2')
-			end
-	in B.E_Pt(ppt, newterm) end
-	
+    val B.E_Pt(_, term) = U.substExp (env, exp)
+    in
+      (case term
+         of B.E_Let (vs, e1, e2) => let
+            val (env', vs') = trVars env vs
+            val e2' = trExp env' e2
+            in
+              B.mkLet(vs', e1, e2')
+            end 
+          | B.E_Stmt(vs, rhs, e) => let
+            val (env', vs') = trVars env vs
+            in
+            B.mkStmt(vs,
+                     rhs,
+                     e)
+            end
+          | B.E_Fun(lamlist, e) => B.mkFun(lamlist, e)
+          | B.E_Cont(lam, e) => B.mkCont(lam, e)
+          | B.E_If(cond, e1, e2) =>
+            B.mkIf(cond,
+                   e1,
+                   e2)
+          | B.E_Case(v, pelist, eopt) => let
+            val (env', v') = Option.getOpt(trVar env v, (env,v))
+            in
+              B.mkCase(v, pelist, eopt)
+            end
+          | B.E_Apply(v, vs1, vs2) => let
+            val (_, v') = Option.getOpt(trVar env v, (env,v))
+            val (_, vs1') = trVars env vs1
+            val (_, vs2') = trVars env vs2
+            in
+              B.mkApply(v, vs1, vs2)
+            end
+          | B.E_Throw(v, vs) => let
+            val (env', v') = Option.getOpt(trVar env v, (env,v))
+            val (_, vs') = trVars env' vs
+            in
+              B.mkThrow(v, vs)
+            end
+          | B.E_Ret(vs) => let
+            val (_, vs') = trVars env vs
+            in
+              B.mkRet(vs)
+            end
+          | B.E_HLOp(oper, vs1, vs2) => let
+            val (_, vs1') = trVars env vs1
+            val (_, vs2') = trVars env vs2
+            in
+              B.mkHLOp(oper, vs1, vs2)
+            end
+        (*end case*))
+    end
+        
   and trLambda (env : env) (lam as B.FB {f, params, exh, body}) =
-	B.FB {f=f,
-	      params=params,
-	      exh=exh,
-	      body=(trExp env body)}
-	
+        B.FB {f=f,
+              params=params,
+              exh=exh,
+              body=(trExp env body)}
+        
   fun module (B.MODULE {name, externs, hlops, rewrites, body}) =
       B.MODULE {name=name,
-		externs=externs,
-		hlops=hlops,
-		rewrites=rewrites,
-		body=(trLambda U.empty body)}
+                externs=externs,
+                hlops=hlops,
+                rewrites=rewrites,
+                body=(trLambda U.empty body)}
       
   fun transform m = 
       if not(!BOMOptControls.flattenFlg) then m 
       else let
         val _ = TextIO.print "The compiler *would* be flattening now.\n"
-	in
-	  module m
-	end
+        in
+          module m
+        end
 
 end
