@@ -85,9 +85,9 @@ end = struct
                        trRHS env rhs,
                        trExp env e)
             end
-          | B.E_Fun(lamlist, e) =>
+          | B.E_Fun(lamlist, e) => U.substExp (env, exp) (*
             B.mkFun(map (trLambda env) lamlist,
-                    trExp env e)
+                    trExp env e) *)
           | B.E_Cont(lam, e) =>
             B.mkCont(trLambda env lam,
                      trExp env e)
