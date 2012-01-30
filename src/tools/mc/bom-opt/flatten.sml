@@ -13,11 +13,12 @@ structure Flatten : sig
 
   val transform : BOM.module -> BOM.module
 
-  val trLambda : env -> BOM.lambda -> BOM.lambda
-  val trExp : env -> BOM.exp -> BOM.exp
-  val trRHS : env -> BOM.rhs -> BOM.rhs
-  val trVar : env -> BOM.var -> (env * BOM.var)
-  val trVars : env -> BOM.var list -> (env * BOM.var list)
+  val trLambda : env -> BOM.lambda -> (env * BOM.lambda)
+  val trBody   : env -> BOM.lambda -> BOM.lambda
+  val trExp    : env -> BOM.exp -> BOM.exp
+  val trRHS    : env -> BOM.rhs -> BOM.rhs
+  val trVar    : env -> BOM.var -> (env * BOM.var)
+  val trVars   : env -> BOM.var list -> (env * BOM.var list)
 
 end = struct
 
@@ -36,15 +37,15 @@ end = struct
 (* checks if we should be creating a new var as subst. for given var *)
   fun needNew v = (* bogus implementation *) true
 
-(* Begin Local *) local
+  local
     fun trVar' (env : env) (v : B.var) = 
       if needNew v then let
         val v' = BV.newWithKind (BV.nameOf v ^ "FLAT", BV.kindOf v, BV.typeOf v)
         val env' = U.extend (env, v, v') (* TODO: check whether order of v, v' is right *)
         in
           SOME (env', v')
-        end
-      else NONE
+        end 
+     else NONE
   in
 
   fun trVar (env : env) (v : B.var) =
@@ -61,7 +62,7 @@ end = struct
       lp (env, vs, [])
     end
 
-  end (* End Local *)
+  end (* local *)
 
 
   fun trRHS (env : env) (r) = U.substRHS (env,r)
@@ -85,12 +86,29 @@ end = struct
                        trRHS env rhs,
                        trExp env e)
             end
-          | B.E_Fun(lamlist, e) => U.substExp (env, exp) (*
-            B.mkFun(map (trLambda env) lamlist,
-                    trExp env e) *)
-          | B.E_Cont(lam, e) =>
-            B.mkCont(trLambda env lam,
-                     trExp env e)
+          | B.E_Fun(lamlist, e) => let
+              fun lp ([], lamsAcc, envAcc) = (envAcc, List.rev lamsAcc)
+		| lp (lam::lams, lamsAcc, envAcc) = (case lam
+                    of B.FB {f, params, exh, body} => let
+		         val (env1, f') = trVar envAcc f
+			 val (env2, params') = trVars env1 params
+			 val (env3, exh') = trVars env2 exh
+		         val lam' = B.FB {f=f', params=params', exh=exh', body=body}
+                         in 
+                           lp (lams, lam'::lamsAcc, env3)
+                         end
+                       (* end case *))
+	      val (env', lams') = lp (lamlist, [], env)
+	      val lams'' = List.map (trBody env') lams'
+	      val e' = trExp env' e
+              in
+		B.mkFun (lams'', e')
+	      end
+          | B.E_Cont(lam, e) => let
+              val (env', lam') = trLambda env lam
+              in
+                B.mkCont(lam', trExp env' e)
+              end
           | B.E_If(cond, e1, e2) =>
             B.mkIf(CondUtil.map (vSub env) cond,
                    trExp env e1,
@@ -134,18 +152,30 @@ end = struct
         (*end case*))
     end
         
-  and trLambda (env : env) (lam as B.FB {f, params, exh, body}) =
-        B.FB {f=f,
-              params=params,
-              exh=exh,
-              body=(trExp env body)}
+  and trLambda (env : env) (lam as B.FB {f, params, exh, body}) = let
+    val (env1, f') = trVar env f
+    val (env2, params') = trVars env1 params
+    val (env3, exh') = trVars env2 exh
+    val body' = trExp env3 body
+    in
+      (env3, B.mkLambda {f=f', params=params', exh=exh', body=body'})
+    end
+
+  and trBody (env : env) (B.FB {f, params, exh, body}) = let
+    val body' = trExp env body
+    in
+      B.mkLambda {f=f, params=params, exh=exh, body=body'}
+    end
         
-  fun module (B.MODULE {name, externs, hlops, rewrites, body}) =
+  fun module (B.MODULE {name, externs, hlops, rewrites, body}) = let
+    val (_, body') = trLambda U.empty body
+    in
       B.MODULE {name=name,
                 externs=externs,
                 hlops=hlops,
                 rewrites=rewrites,
-                body=(trLambda U.empty body)}
+                body=body'}
+    end
       
   fun transform m = 
       if not(!BOMOptControls.flattenFlg) then m 
