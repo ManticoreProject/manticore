@@ -47,7 +47,7 @@ end = struct
     val usedtyconhash : bool TTbl.hash_table = TTbl.mkTable (20, Fail "usedtyconhash error")
 
     (* this maps the cost function to the size function we need to use for the input argument to the cost function *)
-    val costfcttosizefct : AST.var VTbl.hash_table = VTbl.mkTable (20, "Error in the mapping of costfcttosizefct")
+    val costfcttosizefct : AST.var VTbl.hash_table = VTbl.mkTable (20, Fail "Error in the mapping of costfcttosizefct")
  
     (* this list saves all the functions we need to add to the tree after creating them *)
     val fctlist : AST.lambda list ref = ref[]
@@ -877,6 +877,10 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                 )
                         )
                 | addconst ([], body) = let 
+                                        val threshold = U.mkInt(0)
+                                        val test = U.intGT(vexp inputCostFn, threshold)
+
+                                        val body = U.mkIfExp(test,body,U.mkInt(0))
                                         val estCostFn = U.mkFunWithParams(estCost,[inputCostFn], body)
                                         val _ = setCFname(f,estCostFn)
                                 in
@@ -1071,23 +1075,57 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
         and lambda ([]) = [] 
                 | lambda ( A.FB(f, x, e)::l) = A.FB(f, x, ASTaddchunking(e))::lambda(l)
                 
-(* FIX ME: add support for more than tupples *)
         and ptup (exps) = let
          
                 val lambdas = ref[]
-(*
+
                 (* this function will check if the expression in the ptuple is an applyexp with a function call that has a costfct attached *)
+(* FIX ME how about exp with fix costs *)
                 fun getcostfct (exp::rest) = (case exp
                                         of AST.ApplyExp(e1, e2, ty) => (case e1
-                                                                        of AST.VarExp(x,tys) => (case existCFname(x)
+                                                                        of AST.VarExp(x,tys) =>  (case existCFname(x)
                                                                                                 of SOME fctname => let
-                                                                                                                  val sizename = 
-                                                                                                                in
-lambdas := lambdas@[]
+                                                                                                                  val A.FB(f, x, e) = fctname
+                                                                                                                  in
+                                                                                                                        (case VTbl.find costfcttosizefct (f) 
+                                                                                                                                of SOME sizename => let
+                                                                                                                        val applysize = U.mkApplyExp(vexp sizename, [e2])
+                                                                                                                        val applycst = U.mkApplyExp(vexp f, [applysize]) 
+                                                                                                                        in
+                                                                                                                          lambdas := !lambdas@[applycst];
+                                                                                                                          getcostfct(rest)
+                                                                                                                        end
+                                                                                                                                | NONE => false
+                                                                                                                                )
+                                                                                                                  end
                                                                                                 | NONE => false
-VTbl.insert costfcttosizefct (estCost,sizename)  
-*)                             
+                                                                                                )
+                                                                        | _ => false
+                                                                        )
+                                        | _ => false
+                                        )
+                | getcostfct ([]) = true
+  
+                val check = getcostfct(exps)
+                
+                in
+                  if (check) 
+                  then let
+                        val _ = TextIO.print("*** PRINT PTUPLE CHANGES ***") 
+                        val _ = printCost(AST.PTupleExp(exps))
 
+                        fun makeif (myexp::rest) = (U.plus(myexp) (makeif(rest)))
+                         | makeif ([]) = U.mkInt(0)
+
+                        val threshold = U.mkInt(Tlimit)
+                        val test = U.intGT(makeif(!lambdas), threshold)
+                  in
+                        U.mkIfExp(test,AST.PTupleExp(exps),AST.TupleExp(exps))
+
+                  end
+                  else AST.PTupleExp(exps)
+                end
+(*
                 (* The ptuple statement (| exp1, exp2 |) will change to if (cost(exp1) + cost(exp2) > T) then (| exp1, exp2 |) else ( exp1, exp2 ) *) 
                 (* where cost() a function that may have to compute the cost on the fly *)
 
@@ -1105,10 +1143,10 @@ VTbl.insert costfcttosizefct (estCost,sizename)
                 val threshold = U.mkInt(Tlimit)
                 val test = U.intGT(vexp estCost, threshold)
                 in           
-                  U.mkLetExp([bindEstCosts,bindEstCost], U.mkIfExp(test,AST.PTupleExp(exps'),AST.TupleExp(exps')))
+                  U.mkLetExp([bindEstCosts,bindEstCost], U.mkIfExp(test,AST.PTupleExp(exps),AST.TupleExp(exps)))
                 end
-            
-val exps' = List.map (fn e => ASTaddchunking( e)) exps
+ *)           
+(* val exps' = List.map (fn e => ASTaddchunking( e)) exps *)
 
 (*
 -----------------------------------------------------------------------------------------------
@@ -1301,7 +1339,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                           => let
                                                                 val (x1, x2) = (|mktree(exp1), mktree(exp2)|)
 
-                                                                val size = sizetree(x1) + sizetree(x2)
+                                                                val size = sizetree(x1) + sizetree(x2) + 1
                                                              in 
                                                                 Applt(DCON(int, tree, tree), (size,x1,x2))
                                                              end
@@ -1313,7 +1351,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                         val pattern = ref[]
                                                         val bindings = ref[]
 
-                                                        fun createbinding(expr::rest) = let
+                                                    fun createbinding(expr::rest) = let
                                                                         val patvar = Var.new ("_anon_",TypeOf.exp(expr))
                                                                         val valpat = AST.VarPat(patvar)
                                                                         (* val valbind = AST.ValBind(valpat,expr) *)
@@ -1333,7 +1371,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                                                         in
                                                                                                (U.plus(apply) (mksize(rest)))
                                                                                         end
-                                                                        | mksize([]) = (U.mkInt(0))
+                                                                        | mksize([]) = (U.mkInt(1))
 
                                                                         val expr = mksize(!arguments)
                                                                         val valbind = AST.ValBind(valpat,expr)
@@ -1582,12 +1620,12 @@ The main function of this structure
                 val _ = ASTcollectDCON(body)
                 val _ = costAST(dummyvar() , body)
                 (* val _ = costFctsAST(body) *)
-                (* val body' = ASTaddchunking(body) *)
-                val body' = changesize(body)
-                val _ = printCost(body') 
-                val _ = PrintAST.printExp(body')
+                val body' = ASTaddchunking(body)
+                val body'' = changesize(body')
+                val _ = printCost(body'') 
+                val _ = PrintAST.printExp(body'')
         in   
-                body'
+                body''
         end
 
 end
