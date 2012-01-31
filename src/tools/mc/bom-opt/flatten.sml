@@ -13,12 +13,12 @@ structure Flatten : sig
 
   val transform : BOM.module -> BOM.module
 
-  val trLambda : env -> BOM.lambda -> (env * BOM.lambda)
-  val trBody   : env -> BOM.lambda -> BOM.lambda
-  val trExp    : env -> BOM.exp -> BOM.exp
-  val trRHS    : env -> BOM.rhs -> BOM.rhs
-  val trVar    : env -> BOM.var -> (env * BOM.var)
-  val trVars   : env -> BOM.var list -> (env * BOM.var list)
+  val trLambda  : env -> BOM.lambda -> (env * BOM.lambda)
+  val trLambdas : env -> BOM.lambda list -> (env * BOM.lambda list)
+  val trExp     : env -> BOM.exp -> BOM.exp
+  val trRHS     : env -> BOM.rhs -> BOM.rhs
+  val trVar     : env -> BOM.var -> (env * BOM.var)
+  val trVars    : env -> BOM.var list -> (env * BOM.var list)
 
 end = struct
 
@@ -28,7 +28,6 @@ end = struct
 
   type env = U.subst
   val vSub = U.subst : env -> B.var -> B.var
-
   (* curry this for consistency *)
   fun vsSub (env : env) (vs : B.var list) =
     U.subst' (env, vs)
@@ -36,16 +35,22 @@ end = struct
 (* needNew : var -> bool *)
 (* checks if we should be creating a new var as subst. for given var *)
   fun needNew v = (* bogus implementation *) true
-
+        
   local
-    fun trVar' (env : env) (v : B.var) = 
-      if needNew v then let
-        val v' = BV.newWithKind (BV.nameOf v ^ "FLAT", BV.kindOf v, BV.typeOf v)
-        val env' = U.extend (env, v, v') (* TODO: check whether order of v, v' is right *)
-        in
-          SOME (env', v')
-        end 
-     else NONE
+    fun trVar' (env : env) (v : B.var) = let
+      val sub = vSub env v
+      in
+        if not(BV.same(sub,v)) then SOME(env, sub)
+        else
+          if needNew v then let
+            val v' = BV.newWithKind (BV.nameOf v ^ "FLAT", BV.kindOf v, BV.typeOf v)
+            val _ = TextIO.print (BV.nameOf v' ^ "\n")
+            val env' = U.extend (env, v, v')
+            in
+              SOME (env', v')
+            end 
+          else NONE
+      end
   in
 
   fun trVar (env : env) (v : B.var) =
@@ -61,14 +66,12 @@ end = struct
     in
       lp (env, vs, [])
     end
-
   end (* local *)
-
 
   fun trRHS (env : env) (r) = U.substRHS (env,r)
 
   fun trExp (env : env) (exp : B.exp) = let
-    val B.E_Pt(_, term) = exp (* U.substExp (env, exp) *)
+    val B.E_Pt(_, term) = exp
     in
       (case term
          of B.E_Let (vs, e1, e2) => let
@@ -86,24 +89,12 @@ end = struct
                        trRHS env rhs,
                        trExp env e)
             end
-          | B.E_Fun(lamlist, e) => let
-              fun lp ([], lamsAcc, envAcc) = (envAcc, List.rev lamsAcc)
-		| lp (lam::lams, lamsAcc, envAcc) = (case lam
-                    of B.FB {f, params, exh, body} => let
-		         val (env1, f') = trVar envAcc f
-			 val (env2, params') = trVars env1 params
-			 val (env3, exh') = trVars env2 exh
-		         val lam' = B.FB {f=f', params=params', exh=exh', body=body}
-                         in 
-                           lp (lams, lam'::lamsAcc, env3)
-                         end
-                       (* end case *))
-	      val (env', lams') = lp (lamlist, [], env)
-	      val lams'' = List.map (trBody env') lams'
+          | B.E_Fun(lams, e) => U.substExp (env, exp) (* let
+              val (env', lams') = trLambdas env lams
 	      val e' = trExp env' e
               in
-		B.mkFun (lams'', e')
-	      end
+		B.mkFun (lams', e')
+	      end *)
           | B.E_Cont(lam, e) => let
               val (env', lam') = trLambda env lam
               in
@@ -161,12 +152,30 @@ end = struct
       (env3, B.mkLambda {f=f', params=params', exh=exh', body=body'})
     end
 
-  and trBody (env : env) (B.FB {f, params, exh, body}) = let
-    val body' = trExp env body
+  and trLambdas (env : env) lams = let
+    fun trBody (env : env) (B.FB {f, params, exh, body}) =
+      let
+        val (env1, params') = trVars env params
+        val (env2, exh') = trVars env1 exh
+        val body' = trExp env2 body
+      in
+        B.mkLambda {f=f, params=params', exh=exh', body=body'}
+      end
+    fun lp ([], acc, env) = (env, List.rev acc)
+      | lp (lam::lams, acc, env) =
+          let
+            val B.FB {f, params, exh, body} = lam
+            val (env', f') = trVar env f
+            val lam' = B.FB {f=f', params=params, exh=exh, body=body}
+          in 
+            lp (lams, lam'::acc, env')
+          end
+    val (env', lams') = lp (lams, [], env)
+    val lams'' = List.map (trBody env') lams'
     in
-      B.mkLambda {f=f, params=params, exh=exh, body=body'}
+      (env', lams'')
     end
-        
+
   fun module (B.MODULE {name, externs, hlops, rewrites, body}) = let
     val (_, body') = trLambda U.empty body
     in
