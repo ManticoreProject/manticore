@@ -35,8 +35,11 @@ end = struct
     (* unkown costs is -1 *)
     val Cunkown = ~1
 
+    (* can't compute cost *)
+    val nocost = ~2
+
     (* cut off limit for the costs *)
-    val Tlimit = 1000
+    val Tlimit = 8000
 
     fun printvar(x) = String.concat[Var.toString x, " : ", TypeUtil.schemeToString (Var.typeOf x),"\n"]
  
@@ -54,6 +57,9 @@ end = struct
 
     (* this list saves all the functions we need to add to the tree after creating them *)
     val anonvar : AST.var ref = ref (Var.new ("dummy", B.unitTy))
+
+    (* boolean to indicate if we actually have to change the program *)
+    val changeprogram : bool ref = ref false
 
 
 (*
@@ -128,14 +134,14 @@ annotation for the variables with a hash table that saves hash[fctname]=count oc
                                 of SOME hash => (case VTbl.find hash (x) 
                                                         of SOME (n,exp) => VTbl.insert hash (x, (n+1,exp))
                                                         | NONE => 
-(* FIX ME CHECK FOR FULL HASH TABLE *)
+                                                        (* FIX ME CHECK FOR FULL HASH TABLE *)
                                                                 (* if (VTbl.numItems hash = hashsize) then raise Fail "Hash Table is full increase MAX value"       
                                                                 else *) VTbl.insert hash (x, (1,dummyexp))
                                                 ) (** end case **)
                                 | NONE => setCostfct(f,x)
         fun addcostfctargsize(f,x,argsize) = case (existCostfct f)
                                       of SOME hash => (case VTbl.find hash (x) 
-(* FIX ME NEED A POLICY TO COMPARE ARGUMENTS, JUST OVERWRITING THE OLD ONE NOW *)
+        (* FIX ME NEED A POLICY TO COMPARE ARGUMENTS, JUST OVERWRITING THE OLD ONE NOW *)
                                                         of SOME (n,size) => if (argsize > size ) then VTbl.insert hash (x, (n,argsize)) else ()
                                                         | NONE => raise Fail (String.concat["Can't find entry for ",printvar(x)," in hash table for function", printvar(f),"\n"])
                                                 ) (** end case **)
@@ -629,7 +635,6 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                 in           
                         addL(exps')
                 end
-(* FIX ME VAR EXP *)
             | AST.VarExp(x, tys) => let
                                 fun varcost () = (
                                         case existCost x
@@ -642,8 +647,9 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                 ) (** end varcost **)
                                 fun setvarcost (c) = (
                                         case c
-                                        (*  ~1 means the cost are unknown and we add it to the hashtable*)
+                                        (*  ~1 means the cost are unknown and we add it to the hashtable *)
                                         of ~1 => addCostfct(pre,x)
+                                        | ~2 => setCost(pre,c)
                                         (* we have to check if there will be a cost function for the variable and attach it to our current cost function *)
                                         | _ => (case existCostfct(x) 
                                                 of SOME n => addCostfct(pre,x)
@@ -732,16 +738,16 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
         (* collects cost information for AST.FB *)
         and costlambda ([], _) = 0
                 | costlambda ( A.FB(f, x, e)::l, pre ) = let
-                        fun printvarcost (c) = (
-                                case existCost f
-                                of (SOME num) => TextIO.print(String.concat["Funbinding ", printvar(f), " to " , printvar(x)," has cost of ", Int.toString(num), "\n"])
-                                | NONE =>  TextIO.print(String.concat["Funbinding ", printvar(f), " to " , printvar(x), "will get cost of ", Int.toString(c), "\n"])
-                        )
                         (* look up cost of the function *)
-                        val _ = printvarcost(0)
                         val c = costAST(f,e)
-                        val _ = setCost (f, c)
-                        val _ = printvarcost(c)
+                        val _ = (case existCost(f)
+                                of SOME n => (case n 
+                                                of ~2 => ()
+                                                | _ => setCost (f, c)
+                                              )
+                                | NONE => setCost (f, c)
+                                )
+
                         (* do we need to create a cost function ? *)
                         val _ = case existCostfct(f) of SOME n => costfunction(f,x) 
                                                         | NONE => ()
@@ -749,7 +755,7 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                         costlambda(l,pre)
                 end
 
-(* MISSING pmatch *)
+        (* pmatch is not in the tree anymore at this point *)
 
         (* we need to save the size information to var bindings *)
         and cost_pat (pat,exp) = (case pat 
@@ -773,8 +779,8 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
 	    | toS (Ty.ConTy([], tyc)) = 0
 	    | toS (Ty.ConTy([ty], tyc)) = 1
 	    | toS (Ty.ConTy(tys, tyc)) = length(tys)
-	    (* | toS (Ty.FunTy(ty1 as Ty.FunTy _, ty2)) = TextIO.print ("funType 1\n") *) (* HIGHER ORDER FUNCTION *)
-	    | toS (Ty.FunTy(ty1, ty2)) = ~1 (* SHOULD BE THE RECURSIVE FUNCTION *)
+	    | toS (Ty.FunTy(ty1 as Ty.FunTy _, ty2)) = nocost (* HIGHER ORDER FUNCTION *)
+	    | toS (Ty.FunTy(ty1, ty2)) = Cunkown (* SHOULD BE THE RECURSIVE FUNCTION *)
 	    | toS (Ty.TupleTy []) = 0
 	    | toS (Ty.TupleTy tys) = length(tys)
 	  in
@@ -901,70 +907,91 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
 (*
 -----------------------------------------------------------------------------------------------
 This function will create cost functions for the open function costs of the previous analysis or add unknown
-to the function if we can't assign costs to it
+to the function if we can't assign costs to it. This function will get called on the arguments of a
+PTuple and will return the static costs
 -----------------------------------------------------------------------------------------------
 *)
+        (* we will save all the function calls here that come out of the analysis *)
+(*        val calledfcts : AST.lambda list ref = ref[]
+        val functionknown : bool ref = ref true
+
+        fun setknown (input) = functionknown := input
+
+        fun analysePTuple(exp) = let
+                        in
+                                calledfcts := [];
+                                functionknown := true;
+                                costFctsAST(exp)
+                        end
 
         fun costFctsAST (exp) = (case prune exp 
                 of e as AST.LetExp(_,_) => let
                         fun letBinds (AST.LetExp(b, e)) = let
-                                val b1 = binding(b)
-                                val c1 = letBinds(e)
+                                val c1 = binding(b)
+                                val c2 = letBinds(e)
                            in   
-                                ()
+                                c1 + c2
                            end
                            | letBinds e = costFctsAST(e)
                 in      
                         letBinds(e)
                 end
 	    | AST.IfExp(e1, e2, e3, ty) => let
-                        val _ = costFctsAST(e1)
-                        val _ = costFctsAST(e2)
-                        val _ = costFctsAST(e3)
+                        val c1 = costFctsAST(e1)
+                        val c2 = costFctsAST(e2)
+                        val c3 = costFctsAST(e3)
                         in
-                                ()
+                                1 + c1 + Int.max(c2,c3)
                         end
 	    | AST.CaseExp(e, rules, ty) => let
-                        val _ = costFctsAST(e)
+                                val c1 = costFctsAST(e)
+                                val c2 = casematch(rules)
                         in
-                                casematch(rules)
+                                c1 + c2
                         end
-            | AST.FunExp(x, body, ty) => costFctsAST(body)
+            | AST.FunExp(x, body, ty) => getCost(x,c)
             | AST.ApplyExp(e1, e2, ty) => let
-                                val _ = costFctsAST(e1)
+                                val c1 = costFctsAST(e1)
+                                val c2 = costFctsAST(e2)
                         in
-                                costFctsAST(e2)
+                                c1 + c2 + 1
                         end
-            | AST.TupleExp[] => ()
+            | AST.TupleExp[] => 0
             | AST.TupleExp (exps) => let
-                                val _ = List.map (fn e => costFctsAST(e)) exps
-                        in
-                                ()
+                                val exps' = List.map (fn e => costFctsAST(e)) exps
+                                fun addL(L) =
+                                        if L=[] 
+                                        then 0 
+                                        else hd(L) + addL(tl(L))
+                        in           
+                                addL(exps')
                         end
-            | AST.VarExp(x, tys) => (case getCost x
-                        of ~1 => TextIO.print(String.concat["Variable ", printvar(x), " has cost ", Int.toString ~1," \n (** End VAR **) \n"])
-                        | _ => TextIO.print(String.concat["Variable ", printvar(x), " has cost ", Int.toString (getCost x)," \n (** End VAR **) \n"])
-                )
+            | AST.VarExp(x, tys) => (** TEST **)
             | AST.PCaseExp _ => raise Fail "PCaseExp" (* FIXME *)
-	    | AST.HandleExp(e, mc, ty) =>  ()   
-	    | AST.RaiseExp(e, ty) => ()
-	    | AST.VarArityOpExp (oper, i, ty) => ()
+	    | AST.HandleExp(e, mc, ty) =>  0   
+	    | AST.RaiseExp(e, ty) => 0
+	    | AST.VarArityOpExp (oper, i, ty) => 0
 	    | AST.RangeExp (lo, hi, optStep, ty) => raise Fail "FIXME (range construction)"
-            | AST.PTupleExp[] => ()
+            | AST.PTupleExp[] => 0
             | AST.PTupleExp (exps) => let
                                 val _ = List.map (fn e => costFctsAST(e)) exps
-                        in
-                                ()
+                                fun maxList(L) = 
+                                        if L=[] 
+                                        then ~1 
+                                        else Int.max(hd(L), maxList(tl(L)))
+                        in                          
+                                maxList(exps')
                         end
 	    | AST.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
 	    | AST.PChoiceExp _ => raise Fail "unexpected PChoiceExp"
 	    | AST.SpawnExp e => costFctsAST(e)
-	    | AST.ConstExp (constexp) => ()
+	    | AST.ConstExp (constexp) => 0
 	    | AST.SeqExp (e1,e2) => let
-                                val _ = costFctsAST(e1) 
+                                val c1 = costFctsAST(e1) 
+                                val c2 = costFctsAST(e2)
                         in
-                                costFctsAST(e2)
+                                c1 + c2
                         end
 	    | AST.OverloadExp _ => raise Fail "unresolved overloading"
 	    | AST.ExpansionOptsExp (opts, e) => costFctsAST(e)
@@ -976,33 +1003,45 @@ to the function if we can't assign costs to it
                         | AST.FunBind(lam) => lambda(lam)
                         (* these should be the primitive operators *)
                         (* | AST.PrimVBind (x, _) => mysize(V.typeof x) *)
-                        | e => ()
+                        | e => 0
                         
         )
         (* for the case e of pat => expr take the maximum of the (pat,expr) pair *)
         and casematch (rule::rest) = (case rule 
                                 of AST.PatMatch (pat,e) => let
-                                        val _ = costFctsAST(e)
+                                        val c1 = costFctsAST(e)
                                 in      
-                                        casematch(rest)
+                                        c1 + casematch(rest)
                                 end
                                 (* CondMatch is not used yet *)
                                 | AST.CondMatch (pat,cond,e2) => raise Fail "unexpected AST.CondMatch"
                                 )
-                        | casematch ([]) = ()
+                        | casematch ([]) = 0
         (* check the lambdas if there is an open cost function *)
         and lambda ([]) = () 
-                | lambda ( A.FB(f, x, e)::l ) = (case existCFname(f) 
-                                of NONE => let
-                                        (* use the function from the previous pass to check if we can create a cost function now *)
-                                        val _ = case existCostfct(f) of SOME n => costfunction(f,x) 
-                                                                        | NONE => ()
-                                        in
-                                                lambda(l)
-                                        end
-                                | SOME n => lambda(l)
-                )
-
+                | lambda ( A.FB(f, x, e)::l ) = (case existCost(f) 
+                                        of SOME n => (case n 
+                                                      of ~2 => let
+                                                           (* this function has unknown costs and we don't need to do anything anymore *)
+                                                            val _ = setknown(false)
+                                                        in
+                                                                 A.FB(f, x, e)::l
+                                                        end
+                                                    | _ => (case existCostfct(f) 
+                                                           of NONE => n + lambda(l)
+                                                           | SOME fct => (case existCFname(f) 
+                                                                          of NONE => let
+                                                                                (* use the function from the previous pass to check if we can create a cost function now *)
+                                                                                val _ = case existCostfct(f) of SOME n => costfunction(f,x) 
+                                                                                                                | NONE => ()
+                                                                                in
+                                                                                        lambda(l)
+                                                                                end
+                                                                        | SOME n => let                
+                                                                                
+                                                                                lambda(l)
+                                                        )
+*)
 
 (*
 -----------------------------------------------------------------------------------------------
@@ -1040,7 +1079,7 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
 	    | AST.VarArityOpExp (oper, i, ty) => AST.VarArityOpExp (oper, i, ty)
 	    | AST.RangeExp (lo, hi, optStep, ty) => raise Fail "FIXME (range construction)"
             | AST.PTupleExp[] => AST.PTupleExp[]
-(* we have to change ptuple expressions to the if else statement *)
+            (* we have to change ptuple expressions to the if else statement *)
             | AST.PTupleExp (exps) => ptup (exps)
 	    | AST.PArrayExp(exps, ty) => raise Fail "unexpected PArrayExp"
 	    | AST.PCompExp _ => raise Fail "unexpected PCompExp"
@@ -1081,7 +1120,7 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
 
                 (* this function will check if the expression in the ptuple is an applyexp with a function call that has a costfct attached *)
 (* FIX ME how about exp with fix costs *)
-                fun getcostfct (exp::rest) = (case exp
+                fun getcostfct (exp::rest,sizenamelist) = (case exp
                                         of AST.ApplyExp(e1, e2, ty) => (case e1
                                                                         of AST.VarExp(x,tys) =>  (case existCFname(x)
                                                                                                 of SOME fctname => let
@@ -1093,7 +1132,7 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
                                                                                                                         val applycst = U.mkApplyExp(vexp f, [applysize]) 
                                                                                                                         in
                                                                                                                           lambdas := !lambdas@[applycst];
-                                                                                                                          getcostfct(rest)
+                                                                                                                          getcostfct(rest,sizenamelist@[sizename])
                                                                                                                         end
                                                                                                                                 | NONE => false
                                                                                                                                 )
@@ -1104,9 +1143,25 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
                                                                         )
                                         | _ => false
                                         )
-                | getcostfct ([]) = true
+                | getcostfct ([],sizenamelist) = let
+
+
+(*                                fun addfcttolist (sizename) = 
+
+val sizename = (case TTbl.find tyconhash (tycon) 
+of SOME n => n
+| NONE => raise Fail "Problem can't find sizefct "
+) 
+val _ = TTbl.insert usedtyconhash(tycon,true)
+addtofctlist(fctlist,costfct);
+
+*)
+                                in
+                                        changeprogram := true;
+                                        true
+                                end
   
-                val check = getcostfct(exps)
+                val check = getcostfct(exps,[])
                 
                 in
                   if (check) 
@@ -1123,30 +1178,12 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
                         U.mkIfExp(test,AST.PTupleExp(exps),AST.TupleExp(exps))
 
                   end
-                  else AST.PTupleExp(exps)
+                  else let
+                        val exps' = List.map (fn e => ASTaddchunking(e)) exps
+                       in
+                        AST.PTupleExp(exps')
+                       end
                 end
-(*
-                (* The ptuple statement (| exp1, exp2 |) will change to if (cost(exp1) + cost(exp2) > T) then (| exp1, exp2 |) else ( exp1, exp2 ) *) 
-                (* where cost() a function that may have to compute the cost on the fly *)
-
-                (* replace this by the actual costs of the statement *)
-                val estCost1 = Var.new ("estCost1", B.unitTy --> B.intTy) (* compute the appropriate function type *)
-                val estCostFn1 = U.mkFunWithParams(estCost1,[], U.mkInt 5)
-                val estCost2 = Var.new ("estCost2", B.unitTy --> B.intTy)
-                val estCostFn2 = U.mkFunWithParams(estCost2, [], U.mkInt 6)
-                val estCost = Var.new ("estCost", Basis.intTy)
-                (* creates a fun ... and ... *)
-                val bindEstCosts = AST.FunBind [estCostFn1, estCostFn2]
-                val bindEstCost = AST.ValBind(AST.VarPat estCost, 
-                                              U.mkMax(U.mkApplyExp(vexp estCost1, [U.unitExp]),
-                                                      U.mkApplyExp(vexp estCost2, [U.unitExp])))
-                val threshold = U.mkInt(Tlimit)
-                val test = U.intGT(vexp estCost, threshold)
-                in           
-                  U.mkLetExp([bindEstCosts,bindEstCost], U.mkIfExp(test,AST.PTupleExp(exps),AST.TupleExp(exps)))
-                end
- *)           
-(* val exps' = List.map (fn e => ASTaddchunking( e)) exps *)
 
 (*
 -----------------------------------------------------------------------------------------------
@@ -1302,10 +1339,9 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                 end
 	    | AST.IfExp(e1, e2, e3, ty) => AST.IfExp(ASTchangesize(e1,dconlist), ASTchangesize(e2,dconlist), ASTchangesize(e3,dconlist), ty)
                 (* if the type signature is equal to one of the dcons, we have to add another size variable to the pattern *)
-(* This just works because we don't use CondMatch yet *)
+            (* This just works because we don't use CondMatch yet *)
 	    | AST.CaseExp(e, rules, ty) => if (testvar(e))
                                            then (case rules
-(* it should just be one pat here but not sure !! *)
                                                 (* this function will change the pattern in case we added size information to it and it is a recursive case
                                                 we have to changecase (DCON(rec1,rec2,..) => case(x:rec1,..) => x,... to  DCON(int,rec1,rec2,..) => case(_:int,x:rec1,..) => x,... *)
                                                 of AST.PatMatch (pat,patexp)::rest =>
@@ -1313,7 +1349,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                         of AST.TuplePat (patlist) => let
                                                                         val patexp = AST.PatMatch(AST.TuplePat (AST.WildPat(Basis.intTy)::patlist),patexp)::rest
                                                                 in
-                                                                        AST.CaseExp(ASTchangesize(e,dconlist) , casematch_size(patexp,dconlist), ty)
+                                                                        AST.CaseExp(e, casematch_size(patexp,dconlist), ty)
                                                                 end
                                                         | _ => raise Fail "Something wrong with the pattern in CaseExp \n"
                                                         )
@@ -1323,7 +1359,6 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                            
             | AST.FunExp(x, body, ty) => AST.FunExp(x, ASTchangesize(body,dconlist), ty)
             | AST.ApplyExp(e1, e2, ty) => let
-
 
                                         fun changestat (constexp, tycon) = let 
                                                         
@@ -1363,8 +1398,8 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                                 end
                                                         | createbinding([]) = let
                                                                 (* create the size val *)
-                                                                        val patvar = Var.new ("mysize",Basis.intTy)
-                                                                        val valpat = AST.VarPat(patvar)
+                                                                        val patvartemp = Var.new ("mysizetemp",Basis.intTy)
+                                                                        val valpatemp = AST.VarPat(patvartemp)
 
                                                                         fun mksize (x::rest) = let
                                                                                                 val apply = U.mkApplyExp(vexp sizename,[vexp x])
@@ -1374,12 +1409,20 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                                         | mksize([]) = (U.mkInt(1))
 
                                                                         val expr = mksize(!arguments)
-                                                                        val valbind = AST.ValBind(valpat,expr)
+                                                                        val valbindtemp = AST.ValBind(valpatemp,expr)
+                                                                        (* we want to optimize the size and say if (size > Tlimit) then Tlimit  else size *)
+                                                                        val patvar = Var.new ("mysize",Basis.intTy)
+                                                                        val valpat = AST.VarPat(patvar)
+                                                                        val threshold = U.mkInt(Tlimit)
+                                                                        val test = U.intGT(vexp patvartemp, threshold)
+                                                                        val ifexp = U.mkIfExp(test,threshold,vexp patvartemp)
 
+                                                                        val valbind = AST.ValBind(valpat,ifexp)
+        
                                                                         val tupleval = AST.ValBind(AST.TuplePat(!pattern),AST.PTupleExp(!expressions))
                                                                 in
                                                                         arguments := [patvar]@(!arguments);
-                                                                        bindings := [tupleval,valbind];
+                                                                        bindings := [tupleval,valbindtemp,valbind];
                                                                         ()
                                                                 end
 
@@ -1432,8 +1475,6 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                         end
                                                         | _ =>  AST.ApplyExp(ASTchangesize(e,dconlist), ASTchangesize(e2,dconlist), ty)
                                         )
-(* (NODE,tree) => true, (LEAF,tree) => false *)
-
                                 in
                                         changeapply(e1)
                                 end
@@ -1443,7 +1484,22 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                 in           
                         AST.TupleExp (exps')
                 end
-            | AST.VarExp(x, tys) => AST.VarExp(x, tys)
+            | AST.VarExp(x, tys) => 
+                                 if (testvar(AST.VarExp(x, tys))) 
+                                        (* we have a match for a changed variable that comes out of a dcon case, 
+                                   we have to change var to case ( _ , var) => var *)
+                                 then let
+                                                val Ty.TupleTy(ty1::ty2::rest) = TypeOf.exp(AST.VarExp(x,tys))
+                                                val myvar = Var.new ("_anon_", ty2) (* compute the appropriate function type *)
+                                                val mypat = U.mkTuplePat([AST.WildPat(ty1),AST.VarPat(myvar)])
+                                                val mkpat = AST.PatMatch(mypat,vexp myvar)
+                                                val mycase = U.mkCaseExp(AST.VarExp(x,tys),[mkpat])
+                                                val _ = addvartoannon(dummyvar())
+                                           in
+                                                mycase
+                                           end
+                                else AST.VarExp(x, tys)
+
             | AST.PCaseExp _ => raise Fail "PCaseExp" (* FIXME *)
 	    | AST.HandleExp(e, mc, ty) =>  AST.HandleExp(e, mc, ty)   
 	    | AST.RaiseExp(e, ty) => AST.RaiseExp(e, ty)
@@ -1477,8 +1533,8 @@ This function will check if we need to manipulate tycon and dcon in order to acc
         (* for the case e of pat => expr take the maximum of the (pat,expr) pair *)
         and casematch_size (rule::rest,dconlist) = (case rule 
                                 of AST.PatMatch (pat,e) => let
-                                        (* this function will change the expression e in case we added size information to it and it is a base case
-                                        we have to change case (DCON(x:base) => x) to case (DCON(int,base) => case(_:int,x:base) => x *)
+                                        (* this function will change the expression e in case we added size information to it and
+                                        we have to change case (DCON(x:type) => x) to case (DCON(int,type) => case(_:int,x:type) => x *)
                                         fun changee () = if (testvar(e)) 
                                                         (* we have a match for a changed variable that comes out of a dcon case, 
                                                            we have to change var to case ( _ , var) => var *)
@@ -1489,6 +1545,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                                         val mypat = U.mkTuplePat([AST.WildPat(ty1),AST.VarPat(myvar)])
                                                                         val mkpat = AST.PatMatch(mypat,vexp myvar)
                                                                         val mycase = U.mkCaseExp(AST.VarExp(x,tys),[mkpat])
+                                                                        val _ = addvartoannon(dummyvar())
                                                                    in
                                                                         mycase
                                                                    end
@@ -1528,7 +1585,8 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 
                                             (* we need to check if we have to change the type to add size information *)
                                             fun changevartype(pattern) = case pattern 
-                                                        of AST.VarPat (var as VarRep.V{ty,...}) => let
+                                                        of AST.VarPat (var as VarRep.V{ty,...}) => 
+                                                                let
                                                                         val AST.TyScheme(t, tys) = V.typeOf var
                                                                         (* we have to save the var to change the next patternmatch that uses it *)
                                                                         val _ = addvartoannon(var)
@@ -1621,7 +1679,7 @@ The main function of this structure
                 val _ = costAST(dummyvar() , body)
                 (* val _ = costFctsAST(body) *)
                 val body' = ASTaddchunking(body)
-                val body'' = changesize(body')
+                val body'' = if (!changeprogram) then changesize(body') else body
                 val _ = printCost(body'') 
                 val _ = PrintAST.printExp(body'')
         in   
