@@ -72,7 +72,6 @@ helper functions
 
         fun addvartoannon (exp) = anonvar := exp
 
-
 (*
 -----------------------------------------------------------------------------------------------
 annotation for the variables to save the costs to it
@@ -1050,6 +1049,27 @@ PtupleExp(exp) => If(Cost > Threshhold) then Ptupleexp else Tupleexp
 -----------------------------------------------------------------------------------------------
 *)
 
+
+        fun removeannotation (var) = (case existCost(var) 
+                                      of SOME _ => let 
+                                                        val _ = clearCost(var)
+                                                   in
+                                                        (case existCostfct(var)
+                                                         of SOME _ => let
+                                                                        val _ = clearCostfct(var)
+                                                                      in
+                                                                        (case existCFname(var)
+                                                                         of SOME _ => clearCFname(var)
+                                                                         | NONE => ()
+                                                                        )
+                                                                      end
+                                                        | NONE => ()
+                                                        )
+                                                   end
+                                        | NONE => ()
+                                )
+
+
         fun ASTaddchunking (exp) = (case prune exp 
                 of e as AST.LetExp(_,_) => let
                         fun letBinds (AST.LetExp(b, e)) = let
@@ -1484,21 +1504,24 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                 in           
                         AST.TupleExp (exps')
                 end
-            | AST.VarExp(x, tys) => 
-                                 if (testvar(AST.VarExp(x, tys))) 
-                                        (* we have a match for a changed variable that comes out of a dcon case, 
-                                   we have to change var to case ( _ , var) => var *)
-                                 then let
-                                                val Ty.TupleTy(ty1::ty2::rest) = TypeOf.exp(AST.VarExp(x,tys))
-                                                val myvar = Var.new ("_anon_", ty2) (* compute the appropriate function type *)
-                                                val mypat = U.mkTuplePat([AST.WildPat(ty1),AST.VarPat(myvar)])
-                                                val mkpat = AST.PatMatch(mypat,vexp myvar)
-                                                val mycase = U.mkCaseExp(AST.VarExp(x,tys),[mkpat])
-                                                val _ = addvartoannon(dummyvar())
-                                           in
-                                                mycase
-                                           end
-                                else AST.VarExp(x, tys)
+            | AST.VarExp(x, tys) => let 
+                                        val _ = removeannotation(x)
+                                    in
+                                         if (testvar(AST.VarExp(x, tys))) 
+                                                (* we have a match for a changed variable that comes out of a dcon case, 
+                                           we have to change var to case ( _ , var) => var *)
+                                         then let
+                                                        val Ty.TupleTy(ty1::ty2::rest) = TypeOf.exp(AST.VarExp(x,tys))
+                                                        val myvar = Var.new ("_anon_", ty2) (* compute the appropriate function type *)
+                                                        val mypat = U.mkTuplePat([AST.WildPat(ty1),AST.VarPat(myvar)])
+                                                        val mkpat = AST.PatMatch(mypat,vexp myvar)
+                                                        val mycase = U.mkCaseExp(AST.VarExp(x,tys),[mkpat])
+                                                        val _ = addvartoannon(dummyvar())
+                                                   in
+                                                        mycase
+                                                   end
+                                        else AST.VarExp(x, tys)
+                                    end
 
             | AST.PCaseExp _ => raise Fail "PCaseExp" (* FIXME *)
 	    | AST.HandleExp(e, mc, ty) =>  AST.HandleExp(e, mc, ty)   
@@ -1562,16 +1585,19 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                         | casematch_size ([], _) = [] 
 
         and lambda_size ([],dconlist) = [] 
-            | lambda_size ( A.FB(f, x, e)::l, dconlist) = 
-                                                (* piggy bag all created functions onto the first lambda block we can find *)
-                                                if (List.null (!fctlist) ) 
-                                                then A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)     
-                                                else let
-                                                        val fcts = !fctlist
-                                                      in
-                                                        fctlist := [];
-                                                        fcts@A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)
-                                                      end  
+            | lambda_size ( A.FB(f, x, e)::l, dconlist) = let
+                                                        val _ = removeannotation(f)
+                                                    in
+                                                        (* piggy bag all created functions onto the first lambda block we can find *)
+                                                        if (List.null (!fctlist) ) 
+                                                        then A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)     
+                                                        else let
+                                                                val fcts = !fctlist
+                                                              in
+                                                                fctlist := [];
+                                                                fcts@A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)
+                                                              end  
+                                                    end
 
         and pat_size(p,dconlist) = (case p 
                         of AST.ConPat (dcon, tylist, pat) => let
