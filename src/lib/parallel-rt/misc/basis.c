@@ -551,9 +551,15 @@ int M_CeilingLg (int v)
 
 void *M_TextIOOpenIn (Value_t filename)
 {
+    VProc_t *vp         = VProcSelf ();
     SequenceHdr_t	*filenameS = (SequenceHdr_t *)ValueToPtr(filename);
+    FILE *result = fopen ((char*)(filenameS->data), "r");
 
-    return fopen ((char*)(filenameS->data), "r");
+    if (result == NULL) {
+        return M_NONE;
+    } else {
+        return Some (vp, WrapWord(vp, (Word_t)result));
+    }
 }
 
 void M_TextIOCloseIn (void *instream)

@@ -14,9 +14,9 @@ structure TextIO =
 
       typedef instream = ml_long;
 
-      define @open-in (str : ml_string / exh : exh) : instream =
-	  let h : long = ccall M_TextIOOpenIn (str)
-	  return (alloc (h))
+      define @open-in (str : ml_string / exh : exh) : (* instream *) Option.option =
+	  let h : Option.option = ccall M_TextIOOpenIn (str)
+	  return (h)
 	;
 
       define @close-in (ins : instream / exh : exh) : unit =
@@ -55,7 +55,13 @@ structure TextIO =
 
     type instream = _prim (instream)
 
-    val openIn : string -> instream = _prim (@open-in)
+    val rawOpenIn : string -> instream option = _prim (@open-in)
+    fun openIn (str) =
+        case (rawOpenIn str)
+         of SOME h => h
+          | NONE => Debug.failwith (String.concat ["Failed to open file: ",
+                                                   str])
+
     val closeIn : instream -> unit = _prim (@close-in)
     val inputLine : instream -> string option = _prim (@input-line)
 
