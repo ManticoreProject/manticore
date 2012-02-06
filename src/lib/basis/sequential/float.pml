@@ -19,6 +19,8 @@ structure Float =
 	extern float M_Tanf (float) __attribute__((pure));
 	extern void *M_FloatToString (float) __attribute__((alloc,pure));
 	extern void *M_FloatFromString (void*) __attribute__((alloc,pure));
+        extern float M_log2 (float);
+        extern float M_log10 (float);
     )
 
   (* HLOps that wrap C functions *)
@@ -56,6 +58,22 @@ structure Float =
 	      return (res)
 	;
 
+        define inline @log (x : PT.ml_int / exh : PT.exh) : PT.ml_float =
+                let res : float = ccall M_log2(I32ToF32 (#0(x)))
+                  return (res)
+        ;
+
+        define inline @log10 (x : PT.ml_int / exh : PT.exh) : PT.ml_float =
+                let res : float = ccall M_log10(I32ToF32 (#0(x)))
+                  return (res)
+        ;
+
+        define inline @floattoint (x : PT.ml_float / exh : PT.exh) : PT.ml_int =
+                let res : int = F32ToI32 (#0(x))
+                  return (res)
+        ;
+
+
     )
 
     type float = float
@@ -70,6 +88,9 @@ structure Float =
     val fromString : string -> float Option.option = _prim(@from-string)
     val fromInt : int -> float = _prim(@from-int)
     val fromLong : long -> float = _prim(@from-long)
+    val log : int -> float = _prim(@log)
+    val log10 : int -> float = _prim(@log10)
+    val floattoint : float -> int = _prim(@floattoint)
 
     fun max (x:float, y) = if x > y then x else y
     fun min (x:float, y) = if x < y then x else y

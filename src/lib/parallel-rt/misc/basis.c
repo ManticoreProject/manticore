@@ -487,6 +487,16 @@ double M_log (double d)
     return log(d);
 }
 
+float M_log2 (float x)
+{
+        return log(x);
+}
+
+float M_log10 (float x)
+{
+        return log10(x);
+}
+
 float M_Powf (float x, float y)
 {
     return powf(x, y);

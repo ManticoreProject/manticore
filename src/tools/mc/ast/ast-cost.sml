@@ -854,6 +854,7 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                 end
                 | comparedcontype ([]) = false
 
+                val recursiveconst =  ref 0
                 
                 (* this function will a) check if all the other calls to costfunctions are closed (have a known input argument to them) and if 
                 if so, extends the body of the current cost function with that call *)
@@ -864,8 +865,16 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                                 (* check if the argument is a ConType then we have to add the statement n * fct(input/n) *)
                                                fun makebody () : AST.exp = (if (comparedcontype(TTbl.listItemsi tyconhash))
                                                                                 then 
+let
+in
+recursiveconst := value;
+body
+end (*
+
+
                                                                                         (U.plus(body) (U.times (U.mkInt(value)) (U.mkApplyExp(vexp estCost,[U.intDiv(vexp inputCostFn,U.mkInt(value))] )) ))
 
+*)
                                                                                 else (U.plus(body) (U.times (U.mkInt(value)) (U.mkApplyExp(vexp estCost,[U.intDiv(vexp inputCostFn,U.mkInt(value))] )) ))
                                                 ) (** end if **)
                                         in
@@ -882,11 +891,52 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                 )
                         )
                 | addconst ([], body) = let 
+                                        (* check if we have a recursive function *)
+                                        val body' = if (!recursiveconst <> 0) 
+                                                then let
+                                                        (* we need to create the closed form expression of the form 
+                                                        f n = c * (−1 + k^( 1+log_k (n) ) ) / (-1 + k) + (a*k^(1+log_k (n)) −a*k^log_k (n) ) / (-1 + k) if k != 1 
+                                                        otherwise f n = ( a*log(k) + c*log(n) ) / log(k) = a + c * log_k (n)
+                                                        and we use the fact that log_b(n) = log_i (n) / log_i (k)
+                                                        *)
+                                                        val k = !recursiveconst
+                                                        val mybody = if ( k = 1 ) 
+                                                        then 
+                                                                let
+                                                                        (* ln(n) / ln(k) *)
+                                                                        val logaritm = (U.intDiv (U.intlog(vexp inputCostFn)  , (U.intlog(U.mkInt(k))) ) )
+                                                                in
+                                                                        U.plus (U.times(body) (logaritm)) (U.mkInt(1))
+                                                                end
+                                                        else let
+                                                               
+                                                                val logaritm = (U.intDiv (U.intlog(vexp inputCostFn)  , (U.intlog(U.mkInt(k))) ) )
+                                                                (* k^( 1+log_k (n) ) *)
+                                                                val term1 =  (U.intpow(U.mkInt(k), (U.plus(U.mkInt(1)) (logaritm))))
+                                                                val denom1 = U.plus (U.mkInt(~1)) (term1)
+                                                                (* c * denom1 / (-1 + k) *)
+                                                                val firstterm = U.intDiv((U.times (body) (denom1)) , (U.plus (U.mkInt(~1)) (U.mkInt(k))))
+                                                
+                                                                (* (a*k^(1+log_k (n)) *)
+                                                                val term2 = U.times (U.mkInt(1)) (term1)
+                                                                (* −a* k ^ log_k (n) *)
+                                                                val term3 = U.times (U.mkInt(~1)) (U.intpow(U.mkInt(k), (logaritm)))
+                                                                (* term2 + term3 / (-1 + k) *)
+                                                                val secondterm = U.intDiv(U.plus (term2) (term3),  (U.plus (U.mkInt(~1)) (U.mkInt(k)) ))
+                                                              in
+                                                                (U.plus (firstterm) (secondterm))
+                                                              end
+                                                in
+                                                        mybody
+                                                end
+                                        else body
+
+
                                         val threshold = U.mkInt(0)
                                         val test = U.intGT(vexp inputCostFn, threshold)
 
-                                        val body = U.mkIfExp(test,body,U.mkInt(0))
-                                        val estCostFn = U.mkFunWithParams(estCost,[inputCostFn], body)
+                                        val body = U.mkIfExp(test,body',U.mkInt(0))
+                                        val estCostFn = U.mkFunWithParams(estCost,[inputCostFn], body')
                                         val _ = setCFname(f,estCostFn)
                                 in
                                         true

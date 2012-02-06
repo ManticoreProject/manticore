@@ -154,6 +154,7 @@ structure InitialBasis : sig
 
     val div = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
 	       [int_div, long_div])
+
     val mod = (tyScheme(Types.Int, fn tv => (tv ** tv --> tv)),
 	       [int_mod, long_mod])
 
@@ -307,6 +308,9 @@ structure InitialBasis : sig
 		  float_neg,
 		  float_plus,
 		  float_times,
+                  float_log,
+                  float_log10,
+                  float_toint,
 		  double_fdiv,
 		  double_gt,
 		  double_gte,
