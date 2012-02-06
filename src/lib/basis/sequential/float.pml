@@ -19,8 +19,9 @@ structure Float =
 	extern float M_Tanf (float) __attribute__((pure));
 	extern void *M_FloatToString (float) __attribute__((alloc,pure));
 	extern void *M_FloatFromString (void*) __attribute__((alloc,pure));
-        extern float M_log2 (float);
-        extern float M_log10 (float);
+        extern float M_log2 (float) __attribute__((pure));
+        extern float M_log10 (float) __attribute__((pure));
+        extern int M_makeint (float) __attribute__((pure));
     )
 
   (* HLOps that wrap C functions *)
@@ -59,19 +60,23 @@ structure Float =
 	;
 
         define inline @log (x : PT.ml_int / exh : PT.exh) : PT.ml_float =
-                let res : float = ccall M_log2(I32ToF32 (#0(x)))
-                  return (res)
+                let res : float = ccall M_log2(I32ToF32(#0(x)))
+                  return (alloc(res))
         ;
 
         define inline @log10 (x : PT.ml_int / exh : PT.exh) : PT.ml_float =
                 let res : float = ccall M_log10(I32ToF32 (#0(x)))
-                  return (res)
+                  return (alloc(res))
         ;
 
         define inline @floattoint (x : PT.ml_float / exh : PT.exh) : PT.ml_int =
-                let res : int = F32ToI32 (#0(x))
-                  return (res)
+                let res : int = ccall M_makeint (#0(x))
+                  return (alloc(res))
         ;
+
+        define inline @float-powint (arg : [PT.ml_int, PT.ml_int] / exh : PT.exh) : PT.ml_float =
+	    let res : float = ccall M_Powf (I32ToF32(#0 (#0(arg))),I32ToF32( #0 (#1(arg))))
+	      return (alloc(res));
 
 
     )
@@ -84,6 +89,7 @@ structure Float =
     val tan : float -> float = _prim (@float-tan)
     val sqrt : float -> float = _prim (@float-sqrt)
     val pow : (float * float) -> float = _prim (@float-pow)
+    val powint : (int * int) -> float = _prim (@float-powint)
     val toString : float -> string = _prim(@to-string)
     val fromString : string -> float Option.option = _prim(@from-string)
     val fromInt : int -> float = _prim(@from-int)

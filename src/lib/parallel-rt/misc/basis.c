@@ -497,6 +497,11 @@ float M_log10 (float x)
         return log10(x);
 }
 
+int M_makeint (float x)
+{
+        return (int)x;
+}
+
 float M_Powf (float x, float y)
 {
     return powf(x, y);

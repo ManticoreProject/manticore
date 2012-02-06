@@ -104,10 +104,6 @@ structure Basis : sig
     val float_neg	: AST.var
     val float_plus	: AST.var
     val float_times	: AST.var
-    val float_log       : AST.var
-    val float_log10     : AST.var
-    val float_toint     : AST.var
-    val float_pow       : AST.var
     val double_fdiv	: AST.var
     val double_gt	: AST.var
     val double_gte	: AST.var
@@ -316,10 +312,6 @@ structure Basis : sig
     val float_neg =	monoVar(name "neg", floatTy --> floatTy)
     val float_plus =    monoVar(name "add", floatTy ** floatTy --> floatTy)
     val float_times =   monoVar(name "mul", floatTy ** floatTy --> floatTy)
-    val float_log =     monoVar(name "log", integerTy --> floatTy)
-    val float_log10 =   monoVar(name "log10", integerTy --> floatTy)
-    val float_toint =   monoVar(name "floattoint", floatTy --> integerTy)
-    val float_pow =     monoVar(name "pow", floatTy ** floatTy --> floatTy)
     end
 
     local

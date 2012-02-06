@@ -175,6 +175,12 @@ structure DelayedBasis = struct
     val flattenIFF    = memoVar ["FArrayUtil", "flatten_IF_F"]
     val mapIFPoly     = memoVar ["FArrayUtil", "map_IF_poly"]
 
+    val float_log     = memoVar ["Float", "log"]
+    val float_log10   = memoVar ["Float", "log10"]
+    val float_pow     = memoVar ["Float", "pow"]
+    val float_powint  = memoVar ["Float", "powint"]
+    val float_toint   = memoVar ["Float", "floattoint"]
+
   end
 
   structure Ty = struct

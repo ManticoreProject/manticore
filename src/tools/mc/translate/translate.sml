@@ -571,7 +571,6 @@ structure Translate : sig
           val arg = BV.new("_arg", argTy)
 	  val (exh, env) = E.newHandler env0
 	  val _ = ropeMapSet := LambdaSet.empty
-          val body = ASTCost.translate(body)
 	  val body' = trExpToExp (env, body)
 	  val body'' = (case LambdaSet.listItems(!ropeMapSet)
 		 of [] => body'

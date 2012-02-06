@@ -55,16 +55,6 @@ structure ASTUtil : sig
     val intGTE     : AST.exp * AST.exp -> AST.exp
     val intGT      : AST.exp * AST.exp -> AST.exp
     val intLT      : AST.exp * AST.exp -> AST.exp
-
-    val mkMax      : AST.exp * AST.exp -> AST.exp
-    val floatlog   : AST.exp -> AST.exp
-    val floatlog10 : AST.exp -> AST.exp
-    val floattoint : AST.exp -> AST.exp
-    val floatpow   : AST.exp * AST.exp -> AST.exp
-    val intpow     : AST.exp * AST.exp -> AST.exp
- 
-    val intlog     : AST.exp -> AST.exp
-    val intlog10   : AST.exp -> AST.exp
  
   (* boolean constants *)
     val trueConst  : AST.const
@@ -299,13 +289,6 @@ structure ASTUtil : sig
       fun intGT (n, m) = mkGT [n, m]
       fun intLT (n, m) = mkLT [n, m]
       fun intNeg n = mkApplyExp (A.VarExp (B.int_neg, []), [n])
-      fun floatlog n = mkApplyExp (A.VarExp (B.float_log, []), [n])
-      fun floatlog10 n = mkApplyExp (A.VarExp (B.float_log10, []), [n])
-      fun floattoint n = mkApplyExp (A.VarExp (B.float_toint, []), [n])
-      fun intlog n = floattoint(floatlog (n))
-      fun intlog10 n = floattoint(floatlog10 (n))
-      fun floatpow (n, m) = mkApplyExp (A.VarExp (B.float_pow, []), [n,m])   
-      fun intpow (n, m) = floattoint(floatpow (n,m))
     end (* local *)
  
     fun mkMax (e1, e2) = mkIfExp (intGT (e1, e2), e1, e2)

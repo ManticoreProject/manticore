@@ -171,6 +171,7 @@ functor MainFn (
           val ast = ASTOpt.optimize(glueAST(ast0, ast))
 	  val _ = MatchCheck.checkExp (errStrm, ast)
 	  val ast = MatchCompile.compile (errStrm, ast)
+          val ast = ASTCost.translate(ast)
           val _ = checkForErrors errStrm
 	(* create the initial translation environment *)
           val bom = Translate.translate (IB.primTranslationEnv, ast)

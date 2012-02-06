@@ -9,6 +9,7 @@
 Library
 
   structure ASTOpt
+  structure ASTCost
   structure CompletionBitstring
   structure DerivedForms
   structure FlatParTup
@@ -42,6 +43,7 @@ is
 
   ast-opt.sml
   ast-opt-controls.sml
+  ast-cost.sml
   completion-bitstring.sml
   derived-forms.sml
   flat-par-tup.sml

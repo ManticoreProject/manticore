@@ -20,6 +20,8 @@ end = struct
     structure TTbl = TyCon.Tbl
     structure VTbl = Var.Tbl
     structure DTbl = DataCon.Tbl
+    structure D   = DelayedBasis
+    structure DV  = D.Var
 
 
     infixr 2 -->
@@ -68,9 +70,17 @@ helper functions
 -----------------------------------------------------------------------------------------------
 *)
 
-        fun addtofctlist(list,exp) = list := [exp]@(!list)
+      fun addtofctlist(list,exp) = list := [exp]@(!list)
 
-        fun addvartoannon (exp) = anonvar := exp
+      fun addvartoannon (exp) = anonvar := exp
+ 
+      fun floatlog n = U.mkApplyExp (A.VarExp (DV.float_log(), []), [n])
+      fun floatlog10 n = U.mkApplyExp (A.VarExp (DV.float_log10(), []), [n])
+      fun floattoint n = U.mkApplyExp (A.VarExp (DV.float_toint(), []), [n])
+      fun intlog n = floattoint(floatlog (n))
+      fun intlog10 n = floattoint(floatlog10 (n))
+      fun floatpow (n, m) = U.mkApplyExp (A.VarExp (DV.float_powint(), []), [n,m])   
+      fun intpow (n, m) = floattoint(floatpow (n,m))
 
 (*
 -----------------------------------------------------------------------------------------------
@@ -873,8 +883,8 @@ end (*
 
 
                                                                                         (U.plus(body) (U.times (U.mkInt(value)) (U.mkApplyExp(vexp estCost,[U.intDiv(vexp inputCostFn,U.mkInt(value))] )) ))
-
 *)
+
                                                                                 else (U.plus(body) (U.times (U.mkInt(value)) (U.mkApplyExp(vexp estCost,[U.intDiv(vexp inputCostFn,U.mkInt(value))] )) ))
                                                 ) (** end if **)
                                         in
@@ -904,15 +914,15 @@ end (*
                                                         then 
                                                                 let
                                                                         (* ln(n) / ln(k) *)
-                                                                        val logaritm = (U.intDiv (U.intlog(vexp inputCostFn)  , (U.intlog(U.mkInt(k))) ) )
+                                                                        val logaritm = (U.intDiv (intlog(vexp inputCostFn)  , (intlog(U.mkInt(k))) ) )
                                                                 in
                                                                         U.plus (U.times(body) (logaritm)) (U.mkInt(1))
                                                                 end
                                                         else let
                                                                
-                                                                val logaritm = (U.intDiv (U.intlog(vexp inputCostFn)  , (U.intlog(U.mkInt(k))) ) )
+                                                                val logaritm = (U.intDiv (intlog(vexp inputCostFn)  , (intlog(U.mkInt(k))) ) )
                                                                 (* k^( 1+log_k (n) ) *)
-                                                                val term1 =  (U.intpow(U.mkInt(k), (U.plus(U.mkInt(1)) (logaritm))))
+                                                                val term1 =  (intpow(U.mkInt(k), (U.plus(U.mkInt(1)) (logaritm))))
                                                                 val denom1 = U.plus (U.mkInt(~1)) (term1)
                                                                 (* c * denom1 / (-1 + k) *)
                                                                 val firstterm = U.intDiv((U.times (body) (denom1)) , (U.plus (U.mkInt(~1)) (U.mkInt(k))))
@@ -920,7 +930,7 @@ end (*
                                                                 (* (a*k^(1+log_k (n)) *)
                                                                 val term2 = U.times (U.mkInt(1)) (term1)
                                                                 (* −a* k ^ log_k (n) *)
-                                                                val term3 = U.times (U.mkInt(~1)) (U.intpow(U.mkInt(k), (logaritm)))
+                                                                val term3 = U.times (U.mkInt(~1)) (intpow(U.mkInt(k), (logaritm)))
                                                                 (* term2 + term3 / (-1 + k) *)
                                                                 val secondterm = U.intDiv(U.plus (term2) (term3),  (U.plus (U.mkInt(~1)) (U.mkInt(k)) ))
                                                               in
@@ -936,7 +946,7 @@ end (*
                                         val test = U.intGT(vexp inputCostFn, threshold)
 
                                         val body = U.mkIfExp(test,body',U.mkInt(0))
-                                        val estCostFn = U.mkFunWithParams(estCost,[inputCostFn], body')
+                                        val estCostFn = U.mkFunWithParams(estCost,[inputCostFn], body)
                                         val _ = setCFname(f,estCostFn)
                                 in
                                         true
@@ -1260,6 +1270,8 @@ addtofctlist(fctlist,costfct);
 This function will check if we need to manipulate tycon and dcon in order to account for size informations
 -----------------------------------------------------------------------------------------------
 *)
+                                                
+        val attachfcts : int ref = ref 1
 
         fun changesize (body) = let
                         fun checktycon ((tycon,flag)::rest,returnlist ) = 
@@ -1641,12 +1653,17 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                         (* piggy bag all created functions onto the first lambda block we can find *)
                                                         if (List.null (!fctlist) ) 
                                                         then A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)     
-                                                        else let
+                                                        else if (!attachfcts = 10) then let
                                                                 val fcts = !fctlist
                                                               in
                                                                 fctlist := [];
                                                                 fcts@A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)
                                                               end  
+                                                                else let 
+                                                val _ = attachfcts := !attachfcts+1 
+                                                in
+                                                        A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist) 
+                                                end
                                                     end
 
         and pat_size(p,dconlist) = (case p 
