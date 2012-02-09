@@ -875,15 +875,15 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                                                 (* check if the argument is a ConType then we have to add the statement n * fct(input/n) *)
                                                fun makebody () : AST.exp = (if (comparedcontype(TTbl.listItemsi tyconhash))
                                                                                 then 
-let
-in
-recursiveconst := value;
-body
-end (*
+                                                                                     (*   let
+                                                                                                val _ = recursiveconst := value
+                                                                                        in
+                                                                                                body
+                                                                                        end *)
 
 
                                                                                         (U.plus(body) (U.times (U.mkInt(value)) (U.mkApplyExp(vexp estCost,[U.intDiv(vexp inputCostFn,U.mkInt(value))] )) ))
-*)
+
 
                                                                                 else (U.plus(body) (U.times (U.mkInt(value)) (U.mkApplyExp(vexp estCost,[U.intDiv(vexp inputCostFn,U.mkInt(value))] )) ))
                                                 ) (** end if **)
@@ -901,8 +901,9 @@ end (*
                                 )
                         )
                 | addconst ([], body) = let 
+                                        (* We don't use this representation since it is significantly slower *)
                                         (* check if we have a recursive function *)
-                                        val body' = if (!recursiveconst <> 0) 
+                                      (*  val body' = if (!recursiveconst <> 0) 
                                                 then let
                                                         (* we need to create the closed form expression of the form 
                                                         f n = c * (−1 + k^( 1+log_k (n) ) ) / (-1 + k) + (a*k^(1+log_k (n)) −a*k^log_k (n) ) / (-1 + k) if k != 1 
@@ -939,13 +940,13 @@ end (*
                                                 in
                                                         mybody
                                                 end
-                                        else body
+                                        else body *)
 
 
                                         val threshold = U.mkInt(0)
                                         val test = U.intGT(vexp inputCostFn, threshold)
 
-                                        val body = U.mkIfExp(test,body',U.mkInt(0))
+                                        val body = U.mkIfExp(test,body,U.mkInt(0))
                                         val estCostFn = U.mkFunWithParams(estCost,[inputCostFn], body)
                                         val _ = setCFname(f,estCostFn)
                                 in
