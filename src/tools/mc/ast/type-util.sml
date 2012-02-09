@@ -261,6 +261,9 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 		end
 	  val (tvs, ty) = genVars (ty, MetaVar.Map.empty)
 	  in
+            MVMap.appi
+                (fn (Ty.MVar{info, ...}, tv) => info := Ty.INSTANCE(Ty.VarTy tv))
+                tvs;
 	    Ty.TyScheme(MVMap.listItems tvs, ty)
 	  end
 

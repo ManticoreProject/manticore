@@ -24,6 +24,7 @@ is
   ../ast/sources.cm
   ../env/sources.cm
   ../bom/sources.cm
+  ../bom-opt/sources.cm
 (*  ../hlop/sources.cm *)
   ../typechecker/sources.cm
   ../parse-tree/sources.cm

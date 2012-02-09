@@ -75,6 +75,7 @@ structure BOMTyUtil : sig
       | kindOf BTy.T_VProc = BTy.K_RAW
       | kindOf (BTy.T_TyCon(BTy.DataTyc{name, kind, ...})) = !kind
       | kindOf (BTy.T_TyCon(BTy.AbsTyc _)) = BTy.K_UNIFORM
+      | kindOf (BTy.T_Parr _) = BTy.K_BOXED
 
   (* compare types for equality *)
     fun equal (ty1, ty2) = (case (ty1, ty2)
@@ -96,8 +97,11 @@ structure BOMTyUtil : sig
 		c_proto1 = c_proto2
 	   | (BTy.T_VProc, BTy.T_VProc) => true
 	   | (BTy.T_TyCon tyc1, BTy.T_TyCon tyc2) => BOMTyCon.sameTyc (tyc1, tyc2)
+	   | (BTy.T_Parr p1, BTy.T_Parr p2) => sameParr (p1, p2)
 	   | _ => false
 	  (* end case *))
+
+  and sameParr (BTy.IntParr, BTy.IntParr) = true
 
   (* does the first type "match" the second type (i.e., can values of the first
    * type be used wherever the second type is expected)?
@@ -154,6 +158,10 @@ structure BOMTyUtil : sig
 	    | tys2l (ty::tys, l) =
 		toString ty ::
 		  (List.foldr (fn (ty, l) => "," :: toString ty :: l) l tys)
+	  fun ptos p = 
+           (case p
+	     of BTy.IntParr => "int_parray"
+             (* end case *))
 	  in
 	    case ty
 	     of BTy.T_Any => "any"
@@ -180,6 +188,7 @@ structure BOMTyUtil : sig
 	      | BTy.T_VProc=> "vproc"
 	      | BTy.T_TyCon(BTy.DataTyc{name, stamp, ...}) => name^Stamp.toString stamp
 	      | BTy.T_TyCon(BTy.AbsTyc{name, stamp, ...}) => name^Stamp.toString stamp
+	      | BTy.T_Parr p => ptos p
 	    (* end case *)
 	  end
 
@@ -230,3 +239,4 @@ structure BOMTyUtil : sig
     end
 
   end
+

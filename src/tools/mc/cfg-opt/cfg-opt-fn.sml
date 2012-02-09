@@ -75,7 +75,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  val _ = CheckCFG.check ("closure", module)
 	  val module = contract module
           val _ = cfa module
-          (* val module = unrollLoops module *)
+          val module = unrollLoops module
           val _ = cfaClear module
           val _ = cfa module
           val module = specialCalls module

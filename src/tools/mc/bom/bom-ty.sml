@@ -31,6 +31,10 @@ structure BOMTy =
       | T_CFun of CFunctions.c_proto	(* C functions *)
       | T_VProc				(* address of VProc runtime structure *)
       | T_TyCon of tyc			(* high-level type constructor *)
+      | T_Parr of parr
+
+    and parr
+      = IntParr
 
     and tyc			      (* high-level type constructor *)
       = DataTyc of {
