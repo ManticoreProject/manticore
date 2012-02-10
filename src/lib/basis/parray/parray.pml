@@ -92,7 +92,7 @@ structure PArray = struct
 
   (* end (* local *) *)
 
-(* (* I can't write polymorphic toString, unfortunately. Specific implementations below. *)
+ (* I can't write polymorphic toString, unfortunately. Specific implementations below. *)
   (* toString : ('a -> string ) -> string -> 'a parray -> string *)
   (* FIXME: should we exploit the fact that we're dealing with a rope? *)
     fun toString eltToString sep parr = let
@@ -111,7 +111,6 @@ structure PArray = struct
 	  in
 	    String.concat (lp (0, init))
 	  end
-*)
 
   fun tos_int (parr : int parray) = let
     fun tos i = Int.toString (parr ! i)
@@ -190,6 +189,26 @@ structure PArray = struct
       if (n<0) then
         fail "tos_intPair" "BUG: negative length"
       else if (n=0) then "[||]"
+      else let
+        val init = [tos(n-1),"|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
+  fun tos_float (parr : float parray) = let
+    fun tos i = Float.toString (parr ! i)
+    fun lp (i, acc) =
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::","::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        fail "tos_float" "BUG: negative length"
+      else if (n=0) then 
+        "[||]"
       else let
         val init = [tos(n-1),"|]"]
         in
