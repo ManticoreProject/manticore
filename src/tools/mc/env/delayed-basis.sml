@@ -190,7 +190,11 @@ structure DelayedBasis = struct
     val dseqEmpty     = memoVar ["DoubleSeq", "empty"]
     val dseqCreate    = memoVar ["DoubleSeq", "unsafeCreate"]
 
+    val parrayApp     = memoVar ["PArray", "app"]
+    val parrayFRope   = memoVar ["PArray", "fromRope"]
+    val parrayLength  = memoVar ["PArray", "length"]
     val parrayMap     = memoVar ["PArray", "map"]
+    val parrayReduce  = memoVar ["PArray", "reduce"]
     val parraySub     = memoVar ["PArray", "sub"]
     val parrayTab     = memoVar ["PArray", "tab"]
     val parrayTabFTS  = memoVar ["PArray", "tabFromToStep"]
@@ -198,6 +202,7 @@ structure DelayedBasis = struct
     val parrayTab3D   = memoVar ["PArray", "tab3D"]
     val parrayTab4D   = memoVar ["PArray", "tab4D"]
     val parrayTab5D   = memoVar ["PArray", "tab5D"]
+    val parrayToRope  = memoVar ["PArray", "toRope"]
     val parrayRange   = memoVar ["PArray", "range"]
 
     val parrPairMap   = memoVar ["PArrayPair", "map"]

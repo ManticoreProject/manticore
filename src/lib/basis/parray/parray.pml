@@ -23,24 +23,6 @@ structure PArray = struct
   val toRope : 'a parray -> 'a Rope.rope = _prim(@to-rope)
   val fromRope : 'a Rope.rope -> 'a parray = _prim(@from-rope)
 
-  (* FIXME too tightly coupled *)
-    fun sub (pa, i) = Rope.sub(toRope pa, i)
-    fun length pa = Rope.length(toRope pa)
-    fun reduce (rator, init, pa) = Rope.reduce rator init (toRope pa)
-    fun filter (pred, pa) = fromRope(Rope.filter pred (toRope pa))
-    fun map (f, pa) = fromRope(Rope.map f (toRope pa))
-    fun rev pa = fromRope(Rope.rev(toRope pa))
-    fun fromList l = fromRope(Rope.fromList l)
-    fun concat (pa1, pa2) = fromRope(Rope.concat(toRope pa1, toRope pa2))
-    fun tabulateWithPred (n, f) = fromRope(Rope.tabulate(n, f))
-    fun forP (n, f) = Rope.for (n,f)
-    fun app (f, pa) = Rope.app (f, toRope pa)
-
-  (* repP : int * 'a -> 'a parray *)
-  (* called "dist" in NESL and Keller *)
-  (* called "replicateP" in DPH impl *)
-    fun repP (n, x) = fromRope(Rope.tabulate (n, fn _ => x))
-
   (* in *)
 
   (* Rope implementations are the default. *)
