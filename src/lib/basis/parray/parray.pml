@@ -8,7 +8,7 @@
 
 structure PArray = struct
 
-  val fail = Fail.fail "PArray"
+  fun failwith s = raise Fail s
 
   _primcode (
     define inline @to-rope (x : parray / _ : exh) : Rope.rope =
@@ -62,7 +62,7 @@ structure PArray = struct
             tabFromToStep (mF, mT, mS, fn m => f (i, j, k, l, m))))))
 
 (* higher dimensional regular tabbing *)
-  fun tabHD (triples, f) = fail "tabHD" "todo"
+  fun tabHD (triples, f) = failwith "tabHD-todo"
 
   (* fun filter (pred, pa) = fromRope(Rope.filter pred (toRope pa)) *)
   (* fun rev pa = fromRope(Rope.rev(toRope pa)) *)
@@ -104,7 +104,7 @@ structure PArray = struct
     val n = length parr
     in
       if (n<0) then
-        fail "tos_int" "BUG: negative length"
+        failwith "tos_int - BUG: negative length"
       else if (n=0) then 
         "[||]"
       else let
@@ -124,7 +124,7 @@ structure PArray = struct
     val n = length parr
     in
       if (n<0) then
-        fail "tos_intParr" "BUG: negative length"
+        failwith "tos_intParr - BUG: negative length"
       else if (n=0) then
         "[||]"
       else let
@@ -144,7 +144,7 @@ structure PArray = struct
     val n = length parr
     in
       if (n<0) then
-        fail "tos_intParrParr" "BUG: negative length"
+        failwith "tos_intParrParr - BUG: negative length"
       else if (n=0) then
         "[||]"
       else let
@@ -169,7 +169,7 @@ structure PArray = struct
     val n = length parr
     in
       if (n<0) then
-        fail "tos_intPair" "BUG: negative length"
+        failwith "tos_intPair - BUG: negative length"
       else if (n=0) then "[||]"
       else let
         val init = [tos(n-1),"|]"]
@@ -188,7 +188,7 @@ structure PArray = struct
     val n = length parr
     in
       if (n<0) then
-        fail "tos_float" "BUG: negative length"
+        failwith "tos_float - BUG: negative length"
       else if (n=0) then 
         "[||]"
       else let
@@ -208,7 +208,7 @@ structure PArray = struct
     val n = length parr
     in
       if (n<0) then
-        fail "tos_int" "BUG: negative length"
+        failwith "tos_int - BUG: negative length"
       else if (n=0) then 
         "[||]"
       else let
@@ -228,7 +228,7 @@ structure PArray = struct
     val n = length parr
     in
       if (n<0) then
-        fail "tos_intParr" "BUG: negative length"
+        failwith "tos_intParr - BUG: negative length"
       else if (n=0) then
         "[||]"
       else let
