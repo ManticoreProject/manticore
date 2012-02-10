@@ -140,6 +140,32 @@ Value_t M_FloatToString (float f)
     return AllocString (VProcSelf(), buf);
 }
 
+/* M_FloatFromString:
+ */
+Value_t M_FloatFromString (Value_t str)
+{
+    VProc_t             *vp = VProcSelf ();
+    SequenceHdr_t	*strS = (SequenceHdr_t *)ValueToPtr(str);
+    if (strS->len < 1) {
+	return M_NONE;
+    }
+    else {
+	char *strData = (char*)strS->data;
+	if (strData[0] == '~')
+	    strData[0] = '-';
+	float f;
+	int ret = sscanf (strData, "%f", &f);
+	RawFloat_t rf;
+	rf.f = f;
+	if (ret > 0) {
+	    return Some (vp, AllocNonUniform(vp, 1, FLOAT(rf)));
+	}
+	else {
+	    return M_NONE;
+	}
+    }
+}
+
 /* M_DoubleToString:
  */
 Value_t M_DoubleToString (double f)
@@ -179,7 +205,7 @@ void M_Print (const char *s)
 {
 #ifdef NDEBUG
     Say("%s", s);
-#else  
+#else
     Say("[%2d] %s", VProcSelf()->id, s);
 #endif
 }
@@ -358,7 +384,7 @@ void M_PrintDebug (const char *s)
 {
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] %s", VProcSelf()->id, s);  
+	SayDebug("[%2d] %s", VProcSelf()->id, s);
 #endif
 }
 
@@ -377,7 +403,7 @@ void M_PrintTestingMsg (const char *msg, char *file, int line)
 
 void M_PrintPtr (const char *name, void *ptr)
 {
-    Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);  
+    Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);
 }
 
 /* M_PrintLong:
@@ -456,6 +482,11 @@ Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
   return 0;
 }
 
+double M_log (double d)
+{
+    return log(d);
+}
+
 float M_Powf (float x, float y)
 {
     return powf(x, y);
@@ -513,7 +544,7 @@ int64_t M_Lround (double x)
 
 /*! \brief compute floor(log_2(v)). NOTE: this function relies on little endianness
  */
-int M_FloorLg (int v) 
+int M_FloorLg (int v)
 {
   int r; // result of log_2(v) goes here
   union { unsigned int u[2]; double d; } t; // temp
@@ -527,7 +558,7 @@ int M_FloorLg (int v)
 
 /*! \brief compute ceiling(log_2(v))
  */
-int M_CeilingLg (int v) 
+int M_CeilingLg (int v)
 {
   int lg = M_FloorLg(v);
   return lg + (v - (1<<lg) > 0);
@@ -571,6 +602,12 @@ void *M_TextIOOpenOut (Value_t filename)
 void M_TextIOCloseOut (void *outstream)
 {
     fclose (outstream);
+}
+
+void M_TextIOOutput (void *outstream, void *ws)
+{
+    SequenceHdr_t	*str = (SequenceHdr_t *)ValueToPtr(ws);
+    fprintf(outstream, "%s", (char*)(str->data));
 }
 
 void M_TextIOOutputLine (void *ws, void *outstream)

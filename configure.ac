@@ -124,6 +124,23 @@ CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic"
 CXXFLAGS="$CXXFLAGS -D_GNU_SOURCE -D__STDC_FORMAT_MACROS"
 
 dnl
+dnl check for whether we should use the no_pie argument. LLVM has a
+dnl new default that generates a warning for Manticore-compiled code.
+dnl
+save_LDFLAGS=$LDFLAGS
+LDFLAGS="$LDFLAGS -Wl,-no_pie"
+AC_MSG_CHECKING([Checking for -Wl,-no_pie])
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM(
+    [[]])],
+  [ac_supports_no_pie=yes],
+  [ac_supports_no_pie=no])
+AC_MSG_RESULT($ac_supports_no_pie)
+if test "$ac_supports_no_pie" = "no" ; then
+  LDFLAGS=$save_LDFLAGS
+fi
+
+dnl
 dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for
 dnl the old cpp.
 dnl

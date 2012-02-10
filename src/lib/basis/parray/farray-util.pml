@@ -11,13 +11,12 @@
 
 structure FArrayUtil = struct
 
-  val fail = Fail.fail "FArrayUtil"
-
   structure S  = Shape
   structure F  = FArray
   structure IF = IntFArray
   structure DF = DoubleFArray
 
+  fun failwith s = (Print.printLn s; raise Fail s)
   val pr = Print.printLn
 
   local
@@ -52,7 +51,7 @@ structure FArrayUtil = struct
                 in
                   lp (hi-1, [])
 	        end
-	    | S.Nd _ => fail "flatten_IF_F" "not a flat farray"
+	    | S.Nd _ => failwith "flatten_IF_F - not a flat farray"
            (* end case *))
       (* end case *))
   end (* local *)
@@ -89,7 +88,7 @@ structure FArrayUtil = struct
                 in
                   lp (hi-1, [])
 	        end
-	    | S.Nd _ => fail "flatten_IF_F" "not a flat farray"
+	    | S.Nd _ => failwith "flatten_IF_F - not a flat farray"
            (* end case *))
       (* end case *))
   end (* local *)
@@ -104,7 +103,7 @@ structure FArrayUtil = struct
                 in
                   lp (hi-1, [])
                 end
-	  | S.Nd _ => fail "map_IF_poly" "not a flat int_farray"
+	  | S.Nd _ => failwith "map_IF_poly - not a flat int_farray"
          (* end case *))
     (* end case *))
 
@@ -126,7 +125,7 @@ structure FArrayUtil = struct
 (* map_IFF_DFF_DF : (int_farray * dbl_farray -> dbl) -> int_farray * dbl_farray -> dbl_farray *)
   fun map_IFF_DFF_DF (f : IF.int_farray * DF.double_farray -> double) (nss, xss) = let
     val len = IF.length nss
-    val _ = if (len = DF.length xss) then () else fail "map_IFF_DFF_DF" "length mismatch"
+    val _ = if (len = DF.length xss) then () else failwith "map_IFF_DFF_DF - length mismatch"
     fun isub (nss, i) = IF.clean (IF.nestedSub (nss, i))
     fun dsub (xss, i) = DF.clean (DF.nestedSub (xss, i))     
     in 
@@ -143,7 +142,7 @@ structure FArrayUtil = struct
 			Shape.toString shape1 ^ "/" ^
 			Shape.toString shape2
 	      in
-                fail "mapDDD" msg
+                failwith msg
               end
     val data = RopeUtil.mapDDD (f, data1, data2)
     in

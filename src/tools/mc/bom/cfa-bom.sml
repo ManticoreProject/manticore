@@ -158,6 +158,7 @@ structure CFABOM : sig
             | BOMTy.T_CFun _ => TOP
             | BOMTy.T_VProc => TOP
             | BOMTy.T_TyCon _ => TOP
+	    | BOMTy.T_Parr _ => TOP
           (* end case *))
 
   (* property to track callers *)

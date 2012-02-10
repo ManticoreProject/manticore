@@ -350,6 +350,14 @@ structure MLB : sig
 
     val emptyEnv = Env{loc=(0,0), pts=[], preprocs=[]}
 
+    fun chkExists filename = (OS.FileSys.isLink filename; true)
+      handle OS.SysErr ("No such file or directory", _) => let
+               val msg = String.concat ["Error: the file \"", filename, "\" does not exist."]
+               in
+                 raise Fail msg
+               end	       
+           | e => raise e
+
     datatype ext = MLB | PML
 
     fun chkExists filename = (OS.FileSys.isLink filename; true)
@@ -373,6 +381,7 @@ structure MLB : sig
         (* first, check that file exists and is either .mlb or .pml *)
 	  val _	= chkExists file	  
 	  val e = chkExt file
+        (* now load the basis etc. *)
 	  val basis = loadBasisLib emptyEnv
 	  val pts = (case e
             of MLB => loadMLB (file, emptyEnv)

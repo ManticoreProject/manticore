@@ -257,7 +257,7 @@ structure CopyPropagation : sig
                         fun wrapFun ((p as C.FB{f,...})::preds, wrapper, env, map) =
                             if false (* isClosed (p, env) andalso not(VSet.member (env, f))*)
                             then let
-                                    val (l as C.FB{rets,...}, env, map) = copyPropagateLambda (p, env, map)
+                                    val (l as C.FB{rets,...}, env, map) = copyPropagateLambda (p, env, map, false)
                                     val _ = if !propagationDebug
                                             then print (concat [CV.toString f, " is being hoisted above ",
                                                                 CV.toString f', ".\n"])
@@ -309,7 +309,7 @@ structure CopyPropagation : sig
                             if VSet.member (env, f)
                             then (ls, env, map)
                             else let
-                                    val (l', env', map') = copyPropagateLambda (l, env, map)
+                                    val (l', env', map') = copyPropagateLambda (l, env, map, false)
                                 in
                                     (l'::ls, env', map')
                                 end
@@ -339,7 +339,7 @@ structure CopyPropagation : sig
                             (wrapper body, env, map'')
                         end
                     else let
-                            val (lambda, env', map') = copyPropagateLambda (f, env, map)
+                            val (lambda, env', map') = copyPropagateLambda (f, env, map, true)
                             val (body, _, map'') = copyPropagateExp (body, env', map', parent)
                         in
                             (wrapper (C.mkCont (lambda, body)), env', map'')
@@ -382,7 +382,7 @@ structure CopyPropagation : sig
                   | SKIP => (C.mkThrow (k, args), env, map)
                 (* end case *))
         (* end case *))
-        and copyPropagateLambda (lambda as C.FB{f, params, rets, body}, env, map) = let
+        and copyPropagateLambda (lambda as C.FB{f, params, rets, body}, env, map, isCont) = let
             val _ = if (!pass) = 0 then setFB (f, lambda) else ()
             val _ = if VSet.member (env, f) then (raise Fail (concat[CV.toString f, " is already a member"])) else ()
             val env' = VSet.add (env, f)
@@ -390,7 +390,7 @@ structure CopyPropagation : sig
             val env' = VSet.addList (env', rets)
             val (body, _, map') = copyPropagateExp (body, env', map, f)
         in
-            (C.mkLambda(C.FB{f=f,params=params,rets=rets,body=body}), env', map')
+            (C.mkLambda(C.FB{f=f,params=params,rets=rets,body=body}, isCont), env', map')
         end
         val env = VSet.add (externsEnv, main)
         (* In the first pass, gather desired moves *)
@@ -405,7 +405,7 @@ structure CopyPropagation : sig
 	body = C.mkLambda(C.FB{
                           f=main,params=modParams,rets=modRets,
                           body=body'
-		         })
+		         }, false)
 	}
     end
 

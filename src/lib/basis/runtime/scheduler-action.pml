@@ -34,6 +34,12 @@ structure SchedulerAction (* :
       define inline @yield-from-atomic (vp : vproc) : ();
       define inline @yield () : ();
 
+    (* yeild control to the parent scheduler; indicate a voluntary release of the processor *)
+      define inline @block-in-atomic (vp : vproc) : vproc;  
+			                         (* returns the new host vproc *)
+      define inline @block-from-atomic (vp : vproc) : ();
+      define inline @block () : ();
+
     (* blocks the current fiber for a minimum of t nanoseconds *)
       define inline @sleep-in-atomic (vp : vproc, t : long) : ();  
 			                         (* returns the new host vproc *)
@@ -144,6 +150,30 @@ structure SchedulerAction (* :
 	define inline @yield () : () =
 	  cont k (x : unit) = return ()
 	  do @forward (PT.PREEMPT(k))
+	  return ()
+	;
+
+    (* yield control to the parent scheduler, masking signals upon return; indicate voluntary release *)
+      define inline @block-in-atomic (vp : vproc) : vproc =
+	  cont k (x : unit) = 
+	    let vp : vproc = @atomic-begin()         (* mask signals before resuming *)
+	    return(vp)
+	  do @forward-from-atomic (vp, PT.BLOCK(k))
+	  do assert_fail() (* control should never reach this point *)
+	  return(vp)
+	;
+
+    (* yield control to the parent scheduler; indicate voluntary release *)
+      define inline @block-from-atomic (vp : vproc) : () =
+	  cont k (x : unit) = return ()
+	  do @forward-from-atomic (vp, PT.BLOCK(k))
+	  return ()
+	;
+
+    (* yield control to the parent scheduler; indicate voluntary release *)
+	define inline @block () : () =
+	  cont k (x : unit) = return ()
+	  do @forward (PT.BLOCK(k))
 	  return ()
 	;
 

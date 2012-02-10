@@ -209,7 +209,7 @@ structure Contract : sig
 			  body=doExp(env, body)
 			})
 	      (* note that the mkLambda resets the kind info *)
-		val fbs = List.map C.mkLambda (List.mapPartial doFB fbs)
+		val fbs = List.map (fn x => C.mkLambda (x,false)) (List.mapPartial doFB fbs)
 		val e = doExp(env, e)
 		fun filterDead (fb as C.FB{f, body, ...}) = if isInlined f
 			then NONE
@@ -327,7 +327,7 @@ structure Contract : sig
 		    else body
 		end
 	  val body = loop (body, ticks())
-	  val fb = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=body})
+	  val fb = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=body}, false)
 	  in
 	    C.MODULE{name=name, externs=externs, body=fb}
 	  end

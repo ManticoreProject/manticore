@@ -11,9 +11,9 @@ structure DoubleFArray = struct
   structure S = Shape
   structure R = DoubleRope
 
-  val fail = Fail.fail "IntFArray"
-
   (* ***** FLATTENED ARRAYS ***** *)  
+
+  fun failwith s = (Print.printLn s; raise Fail s)
 
   datatype double_farray = FArray of R.double_rope * S.shape
   
@@ -66,14 +66,14 @@ structure DoubleFArray = struct
          in
            R.sub (data, lo+i)
          end
-     | S.Nd ts => fail "flatSub" "Nd"
+     | S.Nd ts => failwith "flatSub - Nd"
     (* end case *))
 
 (* nestedSub : int_farray * int -> int_farray *)
 (* the f_array returned is one level less deep than the arg *)
   fun nestedSub (FArray (data, shape), i) = (case shape
     of S.Nd ts => FArray (data, List.nth (ts, i))
-     | S.Lf _ => fail "nestedSub" "Lf"
+     | S.Lf _ => failwith "nestedSub - Lf"
     (* end case *))
 
 (* tab : int * (int -> double) -> double_farray *)
@@ -103,7 +103,7 @@ structure DoubleFArray = struct
     end
 
 (* nestedMap : (int -> 'b) -> int_farray -> 'b f_array *)
-  fun nestedMap f (FArray (data, shape)) = fail "nestedMap" "todo"
+  fun nestedMap f (FArray (data, shape)) = failwith "nestedMap - todo"
 
 (* clean : int_farray -> int_farray *)
   fun clean (FArray (data, shape)) = (case shape
@@ -126,7 +126,7 @@ structure DoubleFArray = struct
 	   else if lo > 0 then
 	     FArray (data', S.incrBy (~lo) shape)
 	   else
-	     fail "clean" "bug"
+	     failwith "clean - bug"
 	 end
     (* end case *))
 
@@ -137,7 +137,7 @@ structure DoubleFArray = struct
          in 
            R.reduce assocOp zero data'
          end
-       | S.Nd _ => fail "reduce" "flat double_farray expected"
+       | S.Nd _ => failwith "reduce - flat double_farray expected"
       (* end case *))
 
 (* flatApp : (int -> unit) -> int_farray -> unit *)
@@ -148,7 +148,7 @@ structure DoubleFArray = struct
            R.app f data
          else
            flatApp f (clean (FArray (data, shape)))
-     | S.Nd _ => fail "flatApp" "Nd"
+     | S.Nd _ => failwith "flatApp - Nd"
     (* end case *))
 
 (* fromList : int list -> int_farray *)

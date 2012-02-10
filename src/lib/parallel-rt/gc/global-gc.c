@@ -690,7 +690,7 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 {
   // check the roots
     for (int i = 0;  roots[i] != 0;  i++) {
-	char buf[16];
+	char buf[18];
 	sprintf(buf, "root[%d]", i);
 	Value_t v = *roots[i];
 	CheckLocalPtrGlobal (self, roots[i], buf);
@@ -737,6 +737,8 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
     CHECK_VP(wakeupCont);
     CHECK_VP(rdyQHd);
     CHECK_VP(rdyQTl);
+    CHECK_VP(sndQHd);
+    CHECK_VP(sndQTl);
     CHECK_VP(stdArg);
     CHECK_VP(stdEnvPtr);
     CHECK_VP(stdCont);

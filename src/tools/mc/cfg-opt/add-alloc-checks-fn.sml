@@ -175,10 +175,10 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 						    end
 						else b::rr) other bodyBlocks
 		      val f' = CFG.mkFunc(lab, entry, start, body, export)
-		      in 
+		      in
 			f' :: fs
 		      end (* rewrite *)
-		in 
+		in
 		  rewrite
 		end
 	  val code = List.foldr (addAllocChecks CFG.HCK_Local) [] code

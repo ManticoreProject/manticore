@@ -235,7 +235,7 @@ structure Convert : sig
 		end
 	  val (externs', env) = List.foldr cvtExtern ([], E.empty) externs
 	  val env = bindLambda (body, env)
-	  val body' = C.mkLambda(cvtLambda (env, body))
+	  val body' = C.mkLambda(cvtLambda (env, body), false)
 	  in
 	    C.MODULE{
 		name = name, 

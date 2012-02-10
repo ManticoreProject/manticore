@@ -8,7 +8,7 @@
 
 structure FArray = struct
 
-  val fail = Fail.fail "FArray"
+  fun failwith s = (Print.printLn s; raise Fail s)
 
   structure S = Shape
   structure R = Rope
@@ -54,14 +54,14 @@ structure FArray = struct
   (* flatSub : 'a farray * int -> 'a *)
     fun flatSub (FArray (data, shape), i) = (case shape
       of S.Lf (lo, hi) => R.sub (data, lo+i)
-       | S.Nd ts => fail "flatSub" "Nd"
+       | S.Nd ts => failwith "flatSub - Nd"
       (* end case *))
 
   (* nestedSub : 'a farray * int -> 'a farray *)
   (* the farray returned is one level less deep than the arg *)
     fun nestedSub (FArray (data, shape), i) = (case shape
       of S.Nd ts => FArray (data, List.nth (ts, i))
-       | S.Lf _ => fail "nestedSub" "Lf"
+       | S.Lf _ => failwith "nestedSub - Lf"
       (* end case *))
 
   (* tab : int * (int -> 'a) -> 'a farray *)
@@ -69,7 +69,7 @@ structure FArray = struct
       if n <= 0 then 
         empty
       else let
-        val data = R.tab (n, f)
+        val data = R.tabulate (n, f)
 	val shape = S.Lf (0, n)
         in
           FArray (data, shape)
@@ -95,7 +95,7 @@ structure FArray = struct
       end
 
   (* nestedMap : ('a -> 'b) -> 'a farray -> 'b farray *)
-    fun nestedMap f (FArray (data, shape)) = fail "nestedMap" "todo"
+    fun nestedMap f (FArray (data, shape)) = failwith "nestedMap - todo"
 
   (* fromList : 'a list -> 'a farray *)
     fun fromList xs = (case xs
@@ -129,7 +129,7 @@ structure FArray = struct
 	     else if lo > 0 then
 	       FArray (data', S.incrBy (~lo) shape)
 	     else
-	       fail "clean" "this should never happen"
+	       failwith "clean - this should never happen"
 	   end
       (* end case *))
 
@@ -141,7 +141,7 @@ structure FArray = struct
              in 
                R.reduce assocOp zero data'
 	     end
-	 | S.Nd _ => fail "groundReduce" "flat array of ground types expected"
+	 | S.Nd _ => failwith "groundReduce - flat array of ground types expected"
         (* end case *))
 
   (* intRange : int * int * int -> int farray *)
@@ -160,7 +160,7 @@ structure FArray = struct
              R.app f data
 	   else
              R.app f (R.fromSeq (R.partialSeq (data, lo, hi)))
-       | S.Nd _ => fail "flatApp" "Nd"
+       | S.Nd _ => failwith "flatApp - Nd"
       (* end case *))
 
 end

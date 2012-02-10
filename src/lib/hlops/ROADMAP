@@ -1,9 +1,0 @@
-The high-level operators are organized into subdirectories as follows:
-
-	basis/			- support for the sequential-language Basis
-	cml/			- events, channels, etc.
-	extras/			- extra operations to support demos
-	include/		- ".def" files
-	parallel/		- parrays, ropes, futures, etc.
-	runtime/		- schedulers and misc. fiber stuff.
-

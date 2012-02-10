@@ -56,7 +56,8 @@ structure Var =
       fun getInterfaceTy x = getFn x    	  
     end
 
-  (* TODO: add setTypeOf *)
+  (* return the type scheme of a variable *)
+    fun setTypeOf (x, t) = (V.typeOf x) := t
 
     end (* local *)
 

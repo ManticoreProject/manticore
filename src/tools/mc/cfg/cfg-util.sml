@@ -181,7 +181,7 @@ structure CFGUtil : sig
 	      | Switch(x, cases, dflt) =>
 		  Switch(sv x, List.map (fn (c, j) => (c, sj j)) cases, Option.map sj dflt)
 	      | HeapCheck{hck, szb, nogc} => HeapCheck{hck=hck, szb=szb, nogc=sj nogc}
-	      | HeapCheckN{hck, n, nogc} => HeapCheckN{hck=hck, n=sv n, nogc=sj nogc}
+	      | HeapCheckN{hck, n, szb, nogc} => HeapCheckN{hck=hck, n=sv n, szb=szb, nogc=sj nogc}
 	      | AllocCCall{lhs, f, args, ret} =>
 		  AllocCCall{lhs=lhs, f=sv f, args=List.map sv args, ret=sj ret}
 	     (* end case *)

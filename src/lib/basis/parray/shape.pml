@@ -8,9 +8,9 @@
 
 structure Shape = struct
 
-  val fail = Fail.fail "Shape"
-
   (* ***** NESTING TREES ***** *)
+
+  fun failwith s = (Print.printLn s; raise Fail s)
 
   (* The shape tree datatype and some basic operations. *)
     datatype shape
@@ -37,7 +37,7 @@ structure Shape = struct
            fun lp ts = (case ts
              of t::nil => maxIdx t
 	      | _::tl  => lp tl
-	      | nil => fail "maxIdx" "empty Nd"
+	      | nil => failwith "maxIdx - empty Nd"
              (* end case *))
 	   in
 	     lp ts
@@ -97,11 +97,11 @@ structure Shape = struct
     fun regularShape triples = let
       fun copy (n, x) = List.tabulate (n, fn i => x)
       fun lp ts = (case ts
-        of nil => fail "regularShape" "empty arg"
-	 | t::nil => Lf (0, Range.nElts t)
+        of nil => failwith "regularShape -empty arg"
+	 | t::nil => Lf (0, Rope.nEltsInRange t)
 	 | t::ts => let
              val s = lp ts
-             val n = Range.nElts t
+             val n = Rope.nEltsInRange t
              in
 	       buildNode (copy (n, s))
              end)

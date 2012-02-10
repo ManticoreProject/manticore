@@ -24,6 +24,7 @@ functor MainFn (
     structure BOMOpt = BOMOptFn (Spec)
     structure CPSOpt = CPSOptFn (Spec)
     structure CFGOpt = CFGOptFn (Spec)
+    structure Closure = ClosureFn (Spec)
     structure IB = InitialBasis
 
     fun err s = TextIO.output (TextIO.stdErr, s)
@@ -88,12 +89,21 @@ functor MainFn (
 	  end
 
   (* dead function elimination on the parse tree *)
+    fun printTrees ([]) = ()
+      | printTrees ({tree,span}::rest) = (
+        PrintPT.print tree;
+        printTrees rest)
     fun treeShake p2s =
 	  if Controls.get BasicControl.treeShake
 	     then (
+              if Controls.get BasicControl.treeShakeDebug
+              then printTrees p2s
+              else ();
 	      TreeShake.setDeadFuns (allDecls p2s);
 	      TreeShake.shakeProgram p2s)
 	  else p2s
+
+    val getPArrImpl : unit -> Types.tycon = DelayedBasis.TyCon.rope
 
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, bEnv, mEnv, file) = let

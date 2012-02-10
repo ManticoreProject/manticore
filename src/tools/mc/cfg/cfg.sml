@@ -82,7 +82,7 @@ structure CFG =
       | If of (cond * jump * jump)
       | Switch of (var * (tag * jump) list * jump option)
       | HeapCheck of {hck : heap_check_kind, szb : word, nogc : jump}
-      | HeapCheckN of {hck : heap_check_kind, n : var, nogc : jump}
+      | HeapCheckN of {hck : heap_check_kind, n : var, szb : word, nogc : jump}
       | AllocCCall of { (* a CCall that does allocation *)
 	    lhs : var list,
 	    f : var,

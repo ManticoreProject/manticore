@@ -19,8 +19,6 @@ Group
   structure HeaderHash
   structure HeaderTableStruct
 
-  structure AMD64Regs
-
   functor AMD64GenFn
 
 is

@@ -223,7 +223,10 @@ structure ArityRaising : sig
 		else q::qs
 	    | removeDerivedPaths (_, []) = []
           val defaultArgPath = (0,[])
-          val CPSTy.T_Fun(params, _) = sig1Type
+          val params = case sig1Type
+                        of CPSTy.T_Fun(params, _) => params
+                         | CPSTy.T_Cont(params) => params
+                         | _ => raise Fail (concat["non-funciton type passed to sigMeet: ", CPSTyUtil.toString sig1Type])
           (* We only check against the signature being merged into. This
            * is because we'll use the result of our signature creation process
            * and feed it through sigMeet a second time to make sure it's compatible
@@ -367,6 +370,12 @@ structure ArityRaising : sig
 		            orelse (case CFA.equivalentFuns f of [] => false | _ => true))
 		then (case CV.typeOf f
 		     of CTy.T_Fun(tys, _) =>
+			if List.exists (fn CTy.T_Tuple(false, _) => true | _ => false) tys
+			then (
+                            ST.tick cntCandidateFun;
+			    setFn (f, ref []))
+			else ()
+		     | CTy.T_Cont(tys) =>
 			if List.exists (fn CTy.T_Tuple(false, _) => true | _ => false) tys
 			then (
                             ST.tick cntCandidateFun;
@@ -1051,6 +1060,7 @@ structure ArityRaising : sig
       | safeMergable (_,[]) = false
       | safeMergable ([],_) = false
       | safeMergable (x::xs, y::ys) = CPSTyUtil.validCast (x,y) andalso safeMergable (xs,ys)
+
     fun safeMergeTypes (CPSTy.T_Fun (p1,r1), CPSTy.T_Fun (p2,r2)) =
         if safeMergable(p1,p2) andalso safeMergable(r1,r2)
         then let
@@ -1064,12 +1074,22 @@ structure ArityRaising : sig
                 CPSTy.T_Fun(args, rets)
             end
         else CPSTy.T_Any
+      | safeMergeTypes (CPSTy.T_Cont (p1), CPSTy.T_Cont (p2)) =
+        if safeMergable(p1,p2)
+        then let
+                val args = if (List.length p1 = List.length p2)
+                           then (ListPair.map safeMergeTypes (p1,p2))
+                           else [CPSTy.T_Any]
+            in
+                CPSTy.T_Cont(args)
+            end
+        else CPSTy.T_Any
       | safeMergeTypes (CPSTy.T_Tuple (b, t1), CPSTy.T_Tuple(b2,t2)) =
         if (List.length t1 = List.length t2)
         then CPSTy.T_Tuple(b, ListPair.map safeMergeTypes (t1,t2))
         else CPSTy.T_Any
       | safeMergeTypes (x,y) =
-        if CPSTyUtil.equal (x,y)
+        if CPSTyUtil.soundMatch (x,y) andalso CPSTyUtil.soundMatch (y,x)
         then x
         else CPSTy.T_Any
 
@@ -1094,11 +1114,15 @@ structure ArityRaising : sig
          *)
         fun transformParam(param) = let
             fun getParamFunType (l) = let
-                val lambdas = map CV.typeOf (CPS.Var.Set.listItems l)
+                val funs = CPS.Var.Set.listItems l
+                val lambdas = map CV.typeOf funs
                 val _ = if !arityRaisingDebug
-                        then print (concat["Merging signatures for fn types: ", String.concatWith "," (List.map (fn x => ((CPSTyUtil.toString x)^" ")) lambdas), " from variables: ", String.concatWith "," (List.map CPS.Var.toString (CPS.Var.Set.listItems l)), "\n"])
+                        then print (concat["Merging signatures for fn types: ", String.concatWith "," (List.map (fn x => ((CPSTyUtil.toString x)^" ")) lambdas), " from variables: ", String.concatWith "," (List.map CPS.Var.toString funs), "\n"])
                         else ()
             in
+                (* TODO: integrate knowledge of whether a param is "useless" or not before
+                 * forcing a merge
+                 *)
                 if List.length lambdas = 0
                 then CV.typeOf param
                 else let
@@ -1157,7 +1181,12 @@ structure ArityRaising : sig
                     val newRets = if not(isShared f)
                                   then List.filter getUseful rets
                                   else rets
-		    val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
+                    val origType = CV.typeOf f
+		    val newType = case origType
+                                   of CTy.T_Fun _ => CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
+                                    | CTy.T_Cont _ => CTy.T_Cont (List.map CV.typeOf newParams)
+                                    | _ => raise Fail (concat["non-function type marked as candidate: ", CV.toString f, " : ",
+                                                              CPSTyUtil.toString origType])
                     val _ = if !arityRaisingDebug
                             then print (concat[" NEW: ", CPSTyUtil.toString (newType), "\n"])
                             else ()
@@ -1177,7 +1206,12 @@ structure ArityRaising : sig
                             else ()
                     val _ = List.app transformParam params
                     val _ = List.app transformParam rets
-		    val newType = CTy.T_Fun (List.map CV.typeOf params, List.map CV.typeOf rets)
+                    val origType = CV.typeOf f
+		    val newType = case origType
+                                   of CTy.T_Fun _ => CTy.T_Fun (List.map CV.typeOf params, List.map CV.typeOf rets)
+                                    | CTy.T_Cont _ => CTy.T_Cont (List.map CV.typeOf params)
+                                    | _ => raise Fail (concat["non-function type marked as candidate: ", CV.toString f, " : ",
+                                                              CPSTyUtil.toString origType])
                     val _ = CV.setType (f, newType)
                     val _ = if !arityRaisingDebug
                             then print (concat[" new: ", CPSTyUtil.toString newType, "\n"])
@@ -1200,7 +1234,12 @@ structure ArityRaising : sig
                     val _ = List.app transformParam rets
                     val _ = List.app transformParam newParams
                     val _ = List.app transformParam newRets
-		    val newType = CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
+                    val origType = CV.typeOf f
+		    val newType = case origType
+                                   of CTy.T_Fun _ => CTy.T_Fun (List.map CV.typeOf newParams, List.map CV.typeOf newRets)
+                                    | CTy.T_Cont _ => CTy.T_Cont (List.map CV.typeOf newParams)
+                                    | _ => raise Fail (concat["non-function type marked as candidate: ", CV.toString f, " : ",
+                                                              CPSTyUtil.toString origType])
                     val _ = CV.setType (f, newType)
 		    val _ = setInfo (f, vmap, pmap, params, rets, sign, SOME(newParams), SOME(newRets))
                     val _ = if !arityRaisingDebug
@@ -1271,6 +1310,10 @@ structure ArityRaising : sig
                     if CPSTyUtil.soundMatch (dst, src)
                     then dst
                     else src
+                  | cleanup (dst as CTy.T_Cont(_), src as CTy.T_Cont (_)) =
+                    if CPSTyUtil.soundMatch (dst, src)
+                    then dst
+                    else src
                   | cleanup (dst, _) = dst
                 val result = cleanup (typ, rhsType) 
             in
@@ -1285,6 +1328,7 @@ structure ArityRaising : sig
              of CTy.T_Tuple (_, tys) => (
                 case List.nth (tys, i)
                  of newTy as CTy.T_Fun (_, _) => SOME (newTy)
+                  | newTy as CTy.T_Cont _ => SOME (newTy)
                   | _ => NONE
                 (* end case *))
               | ty => raise Fail (concat [CV.toString v,
@@ -1300,6 +1344,7 @@ structure ArityRaising : sig
              of CTy.T_Tuple (_, tys) => (
                 case List.nth (tys, i)
                  of newTy as CTy.T_Fun (_, _) => SOME (CTy.T_Addr(newTy))
+                  | newTy as CTy.T_Cont _ => SOME (CTy.T_Addr(newTy))
                   | _ => NONE
                 (* end case *))
               | ty => raise Fail (concat [CV.toString v,
@@ -1313,6 +1358,7 @@ structure ArityRaising : sig
                  * Only update function types.
                  *)
                 fun chooseType (ty, vTy as CTy.T_Fun(_, _)) = vTy
+                  | chooseType (ty, vTy as CTy.T_Cont _) = vTy
                   | chooseType (ty as CTy.T_Tuple(_,tys), vTy as CTy.T_Tuple(b,vTys)) =
                     CTy.T_Tuple(b, ListPair.map chooseType (tys, vTys))
                   | chooseType (ty, _) = ty
@@ -1374,6 +1420,7 @@ structure ArityRaising : sig
                 | CTy.T_Tuple (_, _) => cast ()
                 | CTy.T_Addr (_) => cast ()
                 | CTy.T_Fun (_, _) => cast ()
+                | CTy.T_Cont _ => cast ()
                 | CTy.T_CFun (_) => cast ()
                 | CTy.T_VProc => cast()
           end
@@ -1433,7 +1480,11 @@ structure ArityRaising : sig
                           else ()
 		  val {sign, params, rets, newRets=SOME(newRets),
                        newParams=SOME(fParams), ...} = getInfo f
-                  val CPSTy.T_Fun(callParamTypes, retTypes) = CV.typeOf g
+                  val (callParamTypes, retTypes) = case CV.typeOf g
+                                                    of CPSTy.T_Fun(callParamTypes, retTypes) => (callParamTypes, retTypes)
+                                                     | CPSTy.T_Cont(callParamTypes) => (callParamTypes, [])
+                                                     | _ => raise Fail (concat["non-function type passed to flattenApplyThrow: ", CV.toString g,
+                                                                               ":", CPSTyUtil.toString (CV.typeOf g)])
 		  fun genCall (sign, params, newArgs, progress, args') =
                         if null sign orelse null params
 			  then (case retArgs
@@ -1546,7 +1597,11 @@ structure ArityRaising : sig
                          * the appropriate types. Args may have been retyped during flattening
                          * of the enclosing function.
                          *)
-                        val CPSTy.T_Fun(paramTypes, retTypes) = CV.typeOf g
+                        val (paramTypes, retTypes) = case CV.typeOf g
+                                                      of CPSTy.T_Fun(callParamTypes, retTypes) => (callParamTypes, retTypes)
+                                                       | CPSTy.T_Cont(callParamTypes) => (callParamTypes, [])
+                                                       | _ => raise Fail (concat["non-function type passed to flattenApplyThrow non-candidate: ", CV.toString g,
+                                                                                 ":", CPSTyUtil.toString (CV.typeOf g)])
                     in
                         matchTypes (paramTypes, args, [],
                           fn newArgs =>
@@ -1670,7 +1725,7 @@ structure ArityRaising : sig
             else let
 		  val {params, rets, newParams=SOME(newParams), newRets=SOME(newRets), ...} = getInfo f
 		  val body = walkExp (f, newParams, body)
-		  val lambda = C.mkLambda(C.FB{f=f, params=newParams, rets=newRets, body=body})
+		  val lambda = C.mkLambda(C.FB{f=f, params=newParams, rets=newRets, body=body}, isCont)
                 in
                     setFB (f, lambda);
                     lambda
@@ -1682,7 +1737,7 @@ structure ArityRaising : sig
 	      body = C.mkLambda(C.FB{
                   f=main,params=modParams,rets=modRets,
                   body= walkExp (main, modParams, modBody)
-		})
+		}, false)
 	    }
 	end
         
@@ -1694,9 +1749,6 @@ structure ArityRaising : sig
      * Flatten+useless elim can leave around useCnt=0 params on flattened functions.
      * This removes them, cleans up the types, and cleans up the call sites.
      * It also cleans up any unused let bindings.
-     *
-     * Additionally, if we've gotten to a point where any of the C.Fun lambdas have
-     * had all of their return continuations eliminated, change those into C.Cont
      *
      * Do not clean up arguments on:
      * - non-candidate functions (we don't necessarily know all of their call sites)
@@ -1748,20 +1800,17 @@ structure ArityRaising : sig
                 end
               | C.Let (_, _, _) => raise Fail "let-binding had multiple LHS but not a multi-var-bind RHS."
               | C.Fun (lambdas, body) => let
-                    val lambdas = List.map cleanupLambda lambdas
+                    val lambdas = List.map (fn x => cleanupLambda (x,false)) lambdas
                 in
                     C.mkFun (lambdas, cleanupExp body)
                 end
-              | C.Cont (f, body) => C.mkCont (cleanupLambda f, cleanupExp body)
+              | C.Cont (f, body) => C.mkCont (cleanupLambda (f, true), cleanupExp body)
               | C.If (v, e1, e2) => C.mkIf (v, cleanupExp e1, cleanupExp e2)
               | C.Switch (v, cases, body) => C.mkSwitch(v, List.map (fn (tag,e) => (tag, cleanupExp e))
                                                                     cases, Option.map cleanupExp body)
               | C.Apply (f, args, retArgs) => (
                 if skipParamCleanup f
-                then (case CV.typeOf f
-                       of CPSTy.T_Fun (_, []) => C.mkThrow (f, args)
-                        | _ => exp 
-                     (* end case *))
+                then exp
                 else case getFB f
                       of SOME(C.FB{params,rets,...}) => let
                              val newArgs = ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
@@ -1773,13 +1822,10 @@ structure ArityRaising : sig
                          in
                              case CV.kindOf f
                               of CPS.VK_Fun(_) => C.mkApply (f, newArgs, newRets)
-                               | _ => C.mkThrow (f, newArgs)
+                               | _ => raise Fail (concat["Attempt to to variable: ", CV.toString f,
+                                                         " of kind: ", C.varKindToString (CV.kindOf f)])
                          end
-                       | NONE => (case CV.typeOf f
-                                   of CPSTy.T_Fun (_, []) => C.mkThrow (f, args)
-                                    | _ => exp 
-                                 (* end case *))
-                )
+                       | NONE => exp)
               | C.Throw (k, args) => (
                 if skipParamCleanup k
                 then exp
@@ -1789,21 +1835,26 @@ structure ArityRaising : sig
                                    ListPair.foldr (fn (a,b,rr) => if CV.useCount a > 0 then b::rr
                                                                   else (ST.tick cntUnusedArg; Census.decUseCnt b ; rr))
                                                   [] (params, args))
-                       | NONE => exp
-                (* end case *)))
-        and cleanupLambda (lambda as C.FB{f, params, rets, body}) =
+                       | NONE => exp)
+                (* end case *))
+        and cleanupLambda (lambda as C.FB{f, params, rets, body}, isCont) =
             if skipParamCleanup f
-            then C.mkLambda(C.FB{f=f,params=params,rets=rets,body=cleanupExp body})
+            then C.mkLambda(C.FB{f=f,params=params,rets=rets,body=cleanupExp body}, isCont)
             else let
                     val params' = List.filter (fn p => (CV.useCount p) > 0) params
                     val rets' = List.filter (fn p => (CV.useCount p) > 0) rets
                     val _ = ST.bump (cntUnusedParam, ((length params) + (length rets)) -
                                                      ((length params') + (length rets')))
-		    val newType = CTy.T_Fun (List.map CV.typeOf params', List.map CV.typeOf rets')
+                    val origType = CV.typeOf f
+		    val newType = case origType
+                                   of CTy.T_Fun _ => CTy.T_Fun (List.map CV.typeOf params', List.map CV.typeOf rets')
+                                    | CTy.T_Cont _ => CTy.T_Cont (List.map CV.typeOf params')
+                                    | _ => raise Fail (concat["non-function type marked as candidate: ", CV.toString f, " : ",
+                                                              CPSTyUtil.toString origType])
                     val _ = CV.setType (f, newType)
                     val fb = C.FB{f=f,params=params',rets=rets',body=cleanupExp body}
                 in
-                    C.mkLambda(fb)
+                    C.mkLambda(fb, isCont)
                 end
     in
         C.MODULE{
@@ -1811,7 +1862,7 @@ structure ArityRaising : sig
 	body = C.mkLambda(C.FB{
                           f=main,params=modParams,rets=modRets,
                           body= cleanupExp (modBody)
-		         })
+		         }, false)
 	}
     end
 

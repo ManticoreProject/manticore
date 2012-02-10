@@ -15,43 +15,43 @@ structure Word64 =
       typedef ml_word = [word];
 
       define @add (arg : [ml_word, ml_word] / exh : exh) : ml_word =
-	  return (alloc (I64Add (unwrap (#0(arg)), unwrap (#1(arg)))))
+	  return (alloc (I64Add (#0 (#0(arg)), #0 (#1(arg)))))
 	;
 
       define @sub (arg : [ml_word, ml_word] / exh : exh) : ml_word =
-	  return (alloc (I64Sub (unwrap (#0(arg)), unwrap (#1(arg)))))
+	  return (alloc (I64Sub (#0 (#0(arg)), #0 (#1(arg)))))
 	;
 
       define @mul (arg : [ml_word, ml_word] / exh : exh) : ml_word =
-	  return (alloc (U64Mul (unwrap (#0(arg)), unwrap (#1(arg)))))
+	  return (alloc (U64Mul (#0 (#0(arg)), #0 (#1(arg)))))
 	;
 
       define @udiv (arg : [ml_word, ml_word] / exh : exh) : ml_word =
-	  return (alloc (U64Div (unwrap (#0(arg)), unwrap (#1(arg)))))
+	  return (alloc (U64Div (#0 (#0(arg)), #0 (#1(arg)))))
 	;
 
       define @lsh (arg : [ml_word, ml_word] / exh : exh) : ml_word =
-	  return (alloc (I64LSh (unwrap (#0(arg)), unwrap (#1(arg)))))
+	  return (alloc (I64LSh (#0 (#0(arg)), #0 (#1(arg)))))
 	;
 
       define @same (arg : [ml_word, ml_word] / exh : exh) : bool =
-	  if I64Eq (unwrap (#0(arg)), unwrap (#1(arg)))
+	  if I64Eq (#0 (#0(arg)), #0 (#1(arg)))
 	    then return (true)
 	    else return (false)
 	;
 
       define @less-than (arg : [ml_word, ml_word] / exh : exh) : bool =
-	  if U64Lt (unwrap (#0(arg)), unwrap (#1(arg)))
+	  if U64Lt (#0 (#0(arg)), #0 (#1(arg)))
 	    then return (true)
 	    else return (false)
 	;
 
       define @from-int (x : ml_int / exh : exh) : ml_word =
-	  return (alloc (I32ToI64 (unwrap (x))))
+	  return (alloc (I32ToI64 (#0 (x))))
 	;
 
       define inline @to-string (n : ml_word / exh : exh) : ml_string =
-	  let res : ml_string = ccall M_Word64ToString (unwrap(n))
+	  let res : ml_string = ccall M_Word64ToString (#0(n))
 	    return (res)
       ;
 
@@ -69,10 +69,18 @@ structure Word64 =
     val fromInt : int -> word = _prim (@from-int)
     val toString : word -> string = _prim(@to-string)
 
+    fun fromLong (x:long) = if x < 0 then raise Fail "Word64.fromLong: negative value" else x
+    fun toLong (x:long) = if x < 0 then raise Fail "Word64.toLong: argument too large" else x
+
     fun compare (x, y) = 
 	  if same (x, y) then EQUAL 
 	  else if lessThan (x, y) then LESS 
 	  else GREATER
+
+    fun toInt (x:word) = 
+      (case compare (x, fromInt 1073741823)
+	of LESS => Long.toInt x 
+	 | _ => raise Fail "Word64.toInt: argument too large")
 
     fun floorLg x = let
 	  fun lp (x, i) = if same (x, 1) then i else lp (udiv (x, 2), add (i, 1))

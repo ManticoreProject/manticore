@@ -238,11 +238,11 @@ if MChkTy.check stm
 		    | NONE => ()
 		  (* end case *)
 		end
-	    | genTransfer (M.HeapCheckN {hck, n, nogc}) = let
+	    | genTransfer (M.HeapCheckN {hck, n, szb, nogc}) = let
 		  val vpReg = Cells.newReg()
 		  val MTy.EXP(_, hostVP) = BE.VProcOps.genHostVP
 		  val nLoc = BE.VProcOps.genVPLoad' (32, Spec.ABI.eventId, hostVP)
-		val {stms=checkStms, allocCheck} = BE.Alloc.genAllocNCheck nLoc
+		val {stms=checkStms, allocCheck} = BE.Alloc.genAllocNCheck (nLoc, szb)
 		val {stms, return} = BE.Transfer.genHeapCheck varDefTbl 
 				      {hck=hck, nogc=nogc, checkStms=checkStms, allocCheck=allocCheck}
 		in 

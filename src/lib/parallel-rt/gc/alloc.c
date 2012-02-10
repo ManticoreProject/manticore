@@ -78,6 +78,22 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     return PtrToValue(obj);
 }
 
+/*! \brief allocate raw-data object  in the nursery
+ *  \param vp the host vproc
+ *  \param len the number of bytes to allocate
+ *  \return the allocated heap object
+ */
+Value_t AllocRaw (VProc_t *vp, uint32_t len)
+{
+    Word_t	*obj = (Word_t *)(vp->allocPtr);
+    int nWords = BYTES_TO_WORDS(len);
+    obj[-1] = RAW_HDR(nWords);
+    vp->allocPtr += WORD_SZB * (nWords+1);
+
+    return PtrToValue(obj);
+
+}
+
 /*! \brief allocate in the local heap an array of raw values
  *  \param vp the host vproc
  *  \param nElems the length of the array
@@ -86,10 +102,8 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
  */
 Value_t AllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
 {
-    Word_t *obj = (Word_t *)(vp->allocPtr);    
-    obj[-1] = RAW_HDR(nElems);
-    vp->allocPtr += WORD_SZB + szBOfElt * nElems;
-    return AllocNonUniform (vp, 2, PTR(PtrToValue(obj)), INT(nElems));
+    Value_t data = AllocRaw (vp, nElems * szBOfElt);
+    return AllocNonUniform (vp, 2, PTR(data), INT(nElems));
 }
 
 /*! \brief allocate in the global heap an array of raw values
@@ -107,8 +121,17 @@ Value_t GlobalAllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
     Word_t *obj;
     assert(nElems >= 0);
     assert(nArrayBytes < HEAP_CHUNK_SZB); /* the array has to fit inside a heap chunk */
-    if (vp->globNextW + nObjBytes >= vp->globLimit)
-	AllocToSpaceChunk(vp);
+        
+    //check if we have enough global memory in the current chunk, if not we have to allocate a new one
+    if (vp->globNextW + nObjBytes >= vp->globLimit) {     
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
+    }
+            
     obj = (Word_t*)(vp->globNextW);
     obj[-1] = RAW_HDR(BYTES_TO_WORDS(nArrayBytes));
     vp->globNextW += nObjBytes;
@@ -207,22 +230,6 @@ Value_t AllocString (VProc_t *vp, const char *s)
 
 }
 
-/*! \brief allocate raw-data object  in the nursery
- *  \param vp the host vproc
- *  \param len the number of bytes to allocate
- *  \return the allocated heap object
- */
-Value_t AllocRaw (VProc_t *vp, uint32_t len)
-{
-    Word_t	*obj = (Word_t *)(vp->allocPtr);
-    int nWords = BYTES_TO_WORDS(len);
-    obj[-1] = RAW_HDR(nWords);
-    vp->allocPtr += WORD_SZB * (nWords+1);
-
-    return PtrToValue(obj);
-
-}
-
 /*! \brief allocate a tuple of uniform values on the global heap.
  *  \param vp the host vproc
  *  \param nElems the number of tuple elements.
@@ -232,8 +239,14 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
     Value_t	elems[nElems];
     va_list	ap;
 
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
+    //check if we have enough global memory in the current chunk, if not we have to allocate a new one
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {     
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
     }
 
     assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
@@ -268,13 +281,19 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
 Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
 {
     Value_t	elems[nElems];
-    char	bits[5];
+    char	bits[6];
     va_list	ap;
 
     bits[0]='\0';
 
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
+    //check if we have enough global memory in the current chunk, if not we have to allocate a new one
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {     
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
     }
 
     assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
@@ -291,14 +310,13 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
     va_end(ap);
 
     Word_t *obj = (Word_t *)(vp->globNextW);
-/* FIXME: what if there isn't enough space!!! */
     
    bits[strlen(bits)]='\0';
    //compare strings are reversed due to strcat(dst,src)
    if (strcmp(bits,"0") == 0) obj[-1] = MIXED_HDR(predefined, nElems);
    else if (strcmp(bits,"10") == 0) obj[-1] = MIXED_HDR(predefined+1, nElems);
    else if (strcmp(bits,"1") == 0) obj[-1] = MIXED_HDR(predefined+2, nElems);
-   else if (strcmp(bits,"0101") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
+   else if (strcmp(bits,"01011") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
    else { printf("Error GlobalAllocNonUniform\n"); exit(5);}	
 	
     for (int i = 0;  i < nElems;  i++) {
@@ -327,8 +345,14 @@ Value_t GlobalAllocVector (VProc_t *vp, int len, Value_t values)
   /* the array must fit into a global chunk */
     assert (HEAP_CHUNK_SZB > WORD_SZB*(len+1) && len >= 0);
 
-    if (vp->globNextW + WORD_SZB * (len+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
+    //check if we have enough global memory in the current chunk, if not we have to allocate a new one
+    if (vp->globNextW + WORD_SZB * (len+1) >= vp->globLimit) {     
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
     }
 
     Word_t *obj = (Word_t*)(vp->globNextW);
@@ -355,8 +379,17 @@ Value_t GlobalAllocVector (VProc_t *vp, int len, Value_t values)
 Value_t GlobalAllocPolyArray (VProc_t *vp, int nElems, Value_t init)
 {
     assert (HEAP_CHUNK_SZB > WORD_SZB*(nElems+1) && nElems >= 0);
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit)
-	AllocToSpaceChunk(vp);
+        
+    //check if we have enough global memory in the current chunk, if not we have to allocate a new one
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit){     
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
+    }
+        
     Word_t *obj = (Word_t*)(vp->globNextW);
     obj[-1] = VEC_HDR(nElems);
     for (int i = 0;  i < nElems; i++)

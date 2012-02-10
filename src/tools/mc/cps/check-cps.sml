@@ -96,6 +96,17 @@ structure CheckCPS : sig
 		  else error["unbound variable ", v2s x, " in ", cxt, "\n"])
 	  fun chkApplyVar (env, x, cxt) = (
 		appVar x;
+                case (CV.kindOf x)
+                 of C.VK_Cont _ => error ["unable to apply to variable ", v2s x, " of kind cont\n"]
+                  | _ => ();
+		if VSet.member(env, x)
+		  then ()
+		  else error["unbound variable ", v2s x, " in ", cxt, "\n"])
+	  fun chkThrowVar (env, x, cxt) = (
+		appVar x;
+                case (CV.kindOf x)
+                 of C.VK_Fun _ => error ["unable to throw to variable ", v2s x, " of kind fun\n"]
+                  | _ => ();
 		if VSet.member(env, x)
 		  then ()
 		  else error["unbound variable ", v2s x, " in ", cxt, "\n"])
@@ -190,9 +201,9 @@ structure CheckCPS : sig
 			| ty => error[v2s f, ":", CTU.toString ty, " is not a function\n"]
 		      (* end case *))
 		  | C.Throw(k, args) => (
-		      chkApplyVar (env, k, "Throw");
+		      chkThrowVar (env, k, "Throw");
 		      case CV.typeOf k
-		       of CTy.T_Fun(argTys, []) => (
+		       of CTy.T_Cont(argTys) => (
 			    chkVars (env, args, "Throw args");
 			    checkArgTypes (CTU.match, concat["Throw " ^ v2s k, " args"], argTys, typesOf args))
 			| ty => error[v2s k, ":", CTU.toString ty, " is not a continuation\n"]
@@ -340,6 +351,8 @@ structure CheckCPS : sig
                       case CV.typeOf f
                        of CTy.T_Fun(argTys, retTys) =>
                               (argTys, retTys)
+                        | CTy.T_Cont(argTys) =>
+                              (argTys, [])
                         | ty => (error["expected function/continuation type for ",
                                        v2s f, ":", CTU.toString(CV.typeOf f), "\n"];
                                  ([],[]))

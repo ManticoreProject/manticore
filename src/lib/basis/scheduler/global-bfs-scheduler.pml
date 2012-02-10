@@ -53,6 +53,10 @@ structure GlobalBFSScheduler (* :
 		 let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
 		 let _ : vproc = SchedulerAction.@yield-in-atomic (self)
 		 throw run (thd)
+	       | PT.BLOCK (k : PT.fiber) =>
+		 let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
+		 let _ : vproc = SchedulerAction.@block-in-atomic (self)
+		 throw run (thd)
 	       | _ => 
 		 throw exh (Match)
 	     end

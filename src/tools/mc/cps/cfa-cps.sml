@@ -114,15 +114,16 @@ structure CFACPS : sig
 
 
   (* create an approximate value for a function type. *)
-    fun valueFromFunType (paramTys, retTys) = let
-          val ty = CPSTy.T_Fun(paramTys, retTys)
+    fun valueFromFunType' (paramTys, retTys, isCont) = let
+          val ty = if isCont then CPSTy.T_Cont(paramTys)
+                   else CPSTy.T_Fun(paramTys, retTys)
           val params = map (fn ty => CV.new("cfaProxyParam", ty)) paramTys
           val () = app (fn x => setIsProxy(x, true)) params
           val rets = map (fn ty => CV.new("cfaProxyRet", ty)) retTys
           val () = app (fn x => setIsProxy(x, true)) rets
           val f = CV.new("cfaProxyF", ty)
           val () = setIsProxy(f, true)
-          val z = CV.new("cfaProxyZ", CPSTy.T_Fun([],[]))
+          val z = CV.new("cfaProxyZ", CPSTy.T_Cont([]))
           val () = setIsProxy(z, true)
           val lambda = CPS.FB {
 		  f = f,
@@ -132,12 +133,14 @@ structure CFACPS : sig
 	        }
            val () = app (fn x => CV.setKind(x, CPS.VK_Param lambda)) params
            val () = app (fn x => CV.setKind(x, CPS.VK_Param lambda)) rets
-           val () = if null retTys 
+           val () = if isCont
 		 then CV.setKind(f, CPS.VK_Cont lambda)
 		 else CV.setKind(f, CPS.VK_Fun lambda)
            in 
              LAMBDAS(VSet.singleton f)
            end 
+    fun valueFromContType (paramTys) = valueFromFunType' (paramTys, [], true)
+    fun valueFromFunType (paramTys, retTys) = valueFromFunType' (paramTys, retTys, false)
 
   (* create an approximate value from a type.  These values are used 
    * to initialize the abstract value property for variables.  
@@ -150,6 +153,7 @@ structure CFACPS : sig
             | CPSTy.T_Tuple(false, tys) => TUPLE(List.map valueFromType tys)
             | CPSTy.T_Addr _ => TOP
             | CPSTy.T_Fun _ => LAMBDAS(VSet.empty)
+            | CPSTy.T_Cont _ => LAMBDAS(VSet.empty)
             | CPSTy.T_CFun _ => TOP
             | CPSTy.T_VProc => TOP
           (* end case *))
@@ -487,6 +491,10 @@ structure CFACPS : sig
                       if VSet.isEmpty fs 
                          then addInfo (x, valueFromFunType (params, rets))
                          else ()
+                  | (CPSTy.T_Cont (params), LAMBDAS fs) =>
+                      if VSet.isEmpty fs 
+                         then addInfo (x, valueFromContType (params))
+                         else ()
                   | _ => ()
                 (* end case *))
           fun doLambda (CPS.FB {f, params, rets, body}) = (
@@ -592,7 +600,7 @@ structure CFACPS : sig
                        of CPS.VK_Cont (fb as CPS.FB {f, params, rets, body}) => (
                             ListPair.appEq eqInfo' (params, args);
                             ListPair.appEq eqInfo' (rets, []))
-                        | _ => raise Fail "type error: doThrowAux"
+                        | _ => raise Fail (concat["type error: doThrowAux, ", CV.toString f])
                       (* end case *))
                 in
                   changed := false;

@@ -31,6 +31,4 @@ end
   double-rope.pml
 
   rope-util.pml
-
-  (* test.pml *)
-
+(*  test.pml*)

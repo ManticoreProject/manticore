@@ -1,9 +1,3 @@
-(* vector-seq.pml  
- *
- * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
- * All rights reserved.
- *)
-
 structure Seq = struct
 
 fun failwith s = raise Fail s
@@ -184,5 +178,6 @@ fun filterUntil cond f s = let
 						     else sub (s, j))
 
   fun null s = (Vector.length s = 0)
+
 
 end

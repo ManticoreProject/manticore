@@ -1,29 +1,18 @@
-(* rope.pml  
- *
- * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
- * All rights reserved.
- *
- * LTS ropes.
- *)
-
 structure Rope = struct
 
-  val fail = Fail.fail "Rope"
+val C = 2
 
-  val C = 2
+fun failwith s = raise Fail s
+fun subscript () = raise Fail "subscript"
 
-  fun failwith s = raise Fail s
-  fun subscript () = raise Fail "subscript"
+structure RT = Runtime
+structure Seq = Seq
+structure RTy = RopeTy
 
-  structure RT = Runtime
-  structure Seq = Seq
-  structure RTy = RopeTy
+datatype progress = datatype Progress.progress
 
-  datatype progress = datatype Progress.progress
-			       
-  type 'a seq = 'a Seq.seq
-
-  datatype rope = datatype RTy.rope
+type 'a seq = 'a Seq.seq
+datatype rope = datatype RTy.rope
 
 fun length rp = (case rp
   of Leaf s => Seq.length s
@@ -106,7 +95,6 @@ fun subInBounds (rp, i) = (case rp
        subInBounds (r1, i)
      else 
        subInBounds (r2, i - length r1))
-
 fun sub (rp, i) =
   if inBounds (rp, i) then
     subInBounds (rp, i)
@@ -388,11 +376,11 @@ fun join decode finish zipCursor (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2)) = let
   val (mn, mls) = (List.last ms, List.take (ms, List.length ms - 1))
   val (mrs, rps2) = (List.take (xs2, n2), List.drop (xs2, n2))
   val m = finish (zipCursor (mn, (mls, mrs, mds)))
-  val (rp, rs) = (case (rps1 @ (m::nil) @ rps2)
-    of h::t => (h, t)
-     | nil => fail "join" "empty")
+  val ropes = rps1 @ (m::nil) @ rps2
   in
-    zipCursor (rp, (ls, rs, ds))
+    case ropes
+     of rp::rs => zipCursor (rp, (ls, rs, ds))
+      | _ => failwith "join"
   end
 
 fun encodeRope rps = let
@@ -492,9 +480,10 @@ fun tabulateUntil cond (cur, f) = let
            val us = (lo + Seq.length ps, hi)
 	   in
              if numUnprocessedTab (us, c) < 2 then let
-	       val us' = (case Seq.tabulateUntil (fn _ => false) (us, f)
-	         of Done x => x
-		  | More _ => fail "tabulateUntil" "More")
+	       val us' = 
+                 (case Seq.tabulateUntil (fn _ => false) (us, f)
+		    of Done x => x
+		     | _ => failwith "expected Done")
 	       val ps' = Seq.cat2 (ps, us')
 	       in
 		 case nextTab (leaf ps', c)
@@ -561,38 +550,37 @@ fun decodeRopeTab (rp, n) = let
     List.rev (d (rp, n))
   end
 
-  fun rootU (rp, uc) = (case uc
-    of (nil, nil, nil) => rp
-     | (ls, r :: rs, Left :: ds) => rootU (nccat2 (rp, r), (ls, rs, ds))
-     | (l :: ls, rs, Right :: ds) => rootU (nccat2 (l, rp), (ls, rs, ds))
-     | _ => failwith "rootU")
+fun rootU (rp, uc) = (case uc
+  of (nil, nil, nil) => rp
+   | (ls, r :: rs, Left :: ds) => rootU (nccat2 (rp, r), (ls, rs, ds))
+   | (l :: ls, rs, Right :: ds) => rootU (nccat2 (l, rp), (ls, rs, ds))
+   | _ => failwith "rootU")
 
-  fun tabulateLTS PPT (n, f) = let
-    fun t cur = (case tabulateUntil RT.hungryProcs (cur, f)
-      of Done rp => rp
-       | More cur' => let
-	   val mid = numUnprocessedTab cur' div 2
-	   fun id x = x
-	   val (cur1, cur2, reb) = 
-	     splitAt intervalLength encodeCur cursorAtIxIntv id id (unzipCursor cur') mid
-	   val (rp1, rp2) = RT.par2 (fn () => t cur1, fn () => t cur2)
-	   in
-	     join decodeRopeTab id rootU (rp1, rp2, reb)
-           end)
-    in
-      t ((0, n), GCTop)
-    end
-
+fun tabulateLTS PPT (n, f) = let
+  fun t cur = (case tabulateUntil RT.hungryProcs (cur, f)
+    of Done rp => rp
+     | More cur' => let
+	 val mid = numUnprocessedTab cur' div 2
+	 fun id x = x
+	 val (cur1, cur2, reb) = 
+	       splitAt intervalLength encodeCur cursorAtIxIntv id id (unzipCursor cur') mid
+	 val (rp1, rp2) = RT.par2 (fn () => t cur1, fn () => t cur2)
+	 in
+	   join decodeRopeTab id rootU (rp1, rp2, reb)
+         end)
+  in
+    t ((0, n), GCTop)
+  end
 in
-
-  fun tabulate (n, f) = 
-    if n < 0 then 
-      failwith "Size" 
-    else case ChunkingPolicy.get ()
-      of ChunkingPolicy.Sequential => tabulateSequential f (0, n)
-       | ChunkingPolicy.ETS SST => tabulateETS SST (n, f)
-       | ChunkingPolicy.LTS PPT => tabulateLTS PPT (n, f)
-
+fun tabulate (n, f) = 
+  if n < 0 then failwith "Size" else
+  (case ChunkingPolicy.get ()
+    of ChunkingPolicy.Sequential => 
+         tabulateSequential f (0, n)
+     | ChunkingPolicy.ETS SST => 
+         tabulateETS SST (n, f)
+     | ChunkingPolicy.LTS PPT => 
+         tabulateLTS PPT (n, f))
 end (* local *)
 
 (*local*)
@@ -601,7 +589,6 @@ fun mapSequential f rp = (case rp
        leaf (Seq.map f s)
    | Cat(len, d, l, r) => 
        Cat (len, d, mapSequential f l, mapSequential f r))
-
 fun mapETS SST f rp =
   if length rp <= SST then mapSequential f rp
   else let 
@@ -658,17 +645,12 @@ fun mapLTS PPT f rp = let
     if PPT <> 1 then failwith "PPT != 1 currently unsupported" else
     m (start rp)
   end
-
 (*in*)
-
-  fun map f rp = (case ChunkingPolicy.get ()
-    of ChunkingPolicy.Sequential => mapSequential f rp
-     | ChunkingPolicy.ETS SST => mapETS SST f rp
-     | ChunkingPolicy.LTS PPT => mapLTS PPT f rp
-    (* end case *))
-
-  fun mapUncurried (f, rp) = map f rp
-
+fun map f rp = (case ChunkingPolicy.get ()
+  of ChunkingPolicy.Sequential => mapSequential f rp
+   | ChunkingPolicy.ETS SST => mapETS SST f rp
+   | ChunkingPolicy.LTS PPT => mapLTS PPT f rp)
+fun mapUncurried (f, rp) = map f rp
 (*end*)
 
 (*local*)
@@ -736,12 +718,10 @@ fun reduceLTS PPT f b rp = let
     red rp
   end
 (*in*)
-
-  fun reduce f b rp = (case ChunkingPolicy.get ()
-    of ChunkingPolicy.Sequential => reduceSequential f b rp
-     | ChunkingPolicy.ETS SST => reduceETS SST f b rp
-     | ChunkingPolicy.LTS PPT => reduceLTS PPT f b rp)
-
+fun reduce f b rp = (case ChunkingPolicy.get ()
+  of ChunkingPolicy.Sequential => reduceSequential f b rp
+   | ChunkingPolicy.ETS SST => reduceETS SST f b rp
+   | ChunkingPolicy.LTS PPT => reduceLTS PPT f b rp)
 (*end*) (* local *)
 
 (*local*)
@@ -967,9 +947,10 @@ fun downsweepUntil cond f b acc cur = let
   fun d (s, c, acc) = (case Seq.scanUntil cond f acc s
     of (acc, More (us, ps)) => 
          if numUnprocessedDownsweep (mcleaf' (b, us), c) < 2 then let
-	    val (acc', us') = (case Seq.scanUntil (fn _ => false) f acc us
-              of (a', Done u') => (a', u')
-	       | (_, More _) => fail "downsweepUntil" "More")
+	    val (acc', us') = 
+             (case Seq.scanUntil (fn _ => false) f acc us
+                of (acc', Done us') => (acc', us')
+		 | _ => failwith "downsweepUntil: expected Done")
             in
 	      case nextDownsweep (leaf (Seq.cat2 (ps, us')), c)
 	       of Done p' => Done p'
@@ -1138,7 +1119,7 @@ fun app f rp = let
 
     val concat = ccat2
 
-  (* tabFromTo : int * int * (int -> 'a) -> 'a rope *)
+  (* tabFromToP : int * int * (int -> 'a) -> 'a rope *)
   (* lo inclusive, hi inclusive *)
     fun tabFromTo (lo, hi, f) =
       if (lo > hi) then
@@ -1156,29 +1137,43 @@ fun app f rp = let
             end
         end
 
-  (* tab : int * (int -> 'a) -> 'a rope *)
-    fun tab (n, f) = tabFromTo (0, n-1, f)
+  (* tabFromToStepP : int * int * int * (int -> 'a) -> 'a rope *)
+  (* lo inclusive, hi inclusive *)
+    fun tabFromToStep (from, to_, step, f) = (case Int.compare (step, 0)
+      of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around raiseExp -ams *)
+       | LESS (* negative step *) =>
+           if (to_ > from) then
+             empty ()
+       	   else
+             tabFromTo (0, (from-to_) div (~step), fn i => f (from + (step*i)))
+       | GREATER (* positive step *) =>
+       	   if (from > to_) then
+       	     empty ()
+       	   else
+             tabFromTo (0, (to_-from) div step, fn i => f (from + (step*i)))
+      (* end case *))
 
-  (* tabFromToStep : int * int * int * (int -> 'a) -> 'a rope *)
-    fun tabFromToStep (from, to_, step, f) = let
-      fun f' i = f (from + (step * i))
-      fun tab t = tabFromTo (0, t, f')
-      in case Int.compare (step, 0)
-        of EQUAL => (raise Fail "0 step") (* FIXME parse bug? can't remove parens -ams *)        
-         | LESS (* negative step *) =>
-             if (to_ > from) then tab 0
-	     else tab ((from-to_) div (~step))
-         | GREATER (* positive step *) =>
-       	     if (from > to_) then tab 0
-       	     else tab ((to_-from) div step)
-      end
+  (* nEltsInRange : int * int * int -> int *)
+    fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
+	  if step = 0 then failwith "cannot have step 0 in a range"
+	  else if from = to_ then 1
+	  else if (from > to_ andalso step > 0) then 0
+	  else if (from < to_ andalso step < 0) then 0
+	  else (Int.abs (from - to_) div Int.abs step) + 1
 
-  (* range : int * int * int -> int rope *)
-    val range = Range.mkRange (singleton, tabulate)
+  (* rangeP : int * int * int -> int rope *)
+    fun range (from, to_, step) = (* "to" is syntax in pml *)
+     (if from = to_ then singleton from
+      else let
+        val sz = nEltsInRange (from, to_, step)
+        fun gen n = step * n + from
+        in
+          tabulate (sz, gen)
+        end)
 
   (* rangePNoStep : int * int -> int rope *)
     fun rangeNoStep (from, to_) = (* "to" is syntax in pml *)
-      range (from, to_, 1)
+	  range (from, to_, 1)
                                               
   (* partialSeq : 'a rope * int * int -> 'a seq *)
   (* return the sequence of elements from low incl to high excl *)
@@ -1212,5 +1207,4 @@ fun app f rp = let
   (* fromSeq *)
   (* FIXME slow implementation *)
     fun fromSeq s = fromList (Seq.toList s)
-
 end

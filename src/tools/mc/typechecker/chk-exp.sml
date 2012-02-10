@@ -208,6 +208,15 @@ structure ChkExp :> sig
 	  (* end case *))
 
   (* typecheck value declarations as described in Section 6.6 *)
+    and isValue (e) = (
+        case e
+         of AST.VarExp _ => true
+          | AST.ConstExp _ => true
+          | AST.LetExp (_, e') => isValue e'
+          | AST.TupleExp es => List.all isValue es
+          | AST.PTupleExp es => List.all isValue es
+          | AST.PArrayExp (es, _) => List.all isValue es
+          | _ => false)
     and chkValDcl (loc, depth, decl) = (case decl
 	   of PT.MarkVDecl{span, tree} => chkValDcl (span, depth, tree)
 	    | PT.ValVDecl(pat, e) => let
@@ -224,8 +233,9 @@ structure ChkExp :> sig
                         \  rhs: ", TypeUtil.toString rhsTy, ".\n"
 		      ])
 		    else ();
-(* FIXME: shouldn't generalize when the rhs is not a value! *)
-		  generalizePat (depth, pat');
+                  if (isValue e')
+                  then generalizePat (depth, pat')
+                  else (); 
 		  AST.ValBind(pat', e')
 		end
 	    | PT.PValVDecl(pat, e) => let

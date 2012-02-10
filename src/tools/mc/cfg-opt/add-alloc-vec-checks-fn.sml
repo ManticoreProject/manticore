@@ -36,25 +36,40 @@ functor AddAllocVecChecksFn (Target : TARGET_SPEC) : sig
 	    of CFG.E_Prim (lhs, Prim.AllocPolyVec (n, xs)) => let
                  val vs' = CFG.E_Prim (lhs, Prim.AllocPolyVec (n, xs)) :: vs
 		 in
-		   RIGHT ("AllocPolyVec", lhs, n, List.rev es, vs', addList (liveVarsOfExp (e, fvs), [n, xs]))
+		   RIGHT ("AllocPolyVec", lhs, n, List.rev es, vs', addList (liveVarsOfExp (e, fvs), [n, xs]), 0w8)
 	       end
 	     | CFG.E_Prim (lhs, Prim.AllocLongArray n) => let
                  val vs' = CFG.E_Prim (lhs, Prim.AllocLongArray n) :: vs
 		 in
-		   RIGHT ("AllocLongArray", lhs, n, List.rev es, vs', addList (liveVarsOfExp (e, fvs), [n]))
+		   RIGHT ("AllocLongArray", lhs, n, List.rev es, vs', addList (liveVarsOfExp (e, fvs), [n]), 0w8)
+	         end
+	     | CFG.E_Prim (lhs, Prim.AllocIntArray n) => let
+                 val vs' = CFG.E_Prim (lhs, Prim.AllocIntArray n) :: vs
+		 in
+		   RIGHT ("AllocIntArray", lhs, n, List.rev es, vs', addList (liveVarsOfExp (e, fvs), [n]), 0w4)
+	         end
+	     | CFG.E_Prim (lhs, Prim.AllocDoubleArray n) => let
+                 val vs' = CFG.E_Prim (lhs, Prim.AllocDoubleArray n) :: vs
+		 in
+		   RIGHT ("AllocDoubleArray", lhs, n, List.rev es, vs', addList (liveVarsOfExp (e, fvs), [n]), 0w8)
+	         end
+	     | CFG.E_Prim (lhs, Prim.AllocFloatArray n) => let
+                 val vs' = CFG.E_Prim (lhs, Prim.AllocFloatArray n) :: vs
+		 in
+		   RIGHT ("AllocFloatArray", lhs, n, List.rev es, vs', addList (liveVarsOfExp (e, fvs), [n]), 0w4)
 	         end
 	     | _ => splitBody (es, e :: vs, liveVarsOfExp (e, fvs))
 	   (* end case *))
       fun splitBlockLp (CFG.BLK {lab, args, body, exit}, blocks) =
 	(case splitBody (List.rev body, [], liveVarsOfXfer exit)
 	  of LEFT vs => CFG.BLK {lab=lab, args=args, body=vs, exit=exit} :: blocks
-	   | RIGHT (plab, lhs, n, es, vs, fvs) => let
+	   | RIGHT (plab, lhs, n, es, vs, fvs, szb) => let
 	       val liveVars = VSet.listItems fvs
 	       val freshLiveVars = List.map CFG.Var.copy liveVars
 	       val env = List.foldl VMap.insert' VMap.empty (ListPair.zip (liveVars, freshLiveVars))
 	       val lab' = CFG.Label.new(plab, CFGTy.T_Block{args = List.map CFG.Var.typeOf freshLiveVars})
 	       val block' = CFG.mkBlock (lab, args, es, 
-				 CFG.HeapCheckN {hck=CFG.HCK_Local, n=n, nogc=(lab', liveVars)})
+				 CFG.HeapCheckN {hck=CFG.HCK_Local, n=n, szb=szb, nogc=(lab', liveVars)})
 	       val block'' = CFG.mkBlock (lab', freshLiveVars, 
 				      List.map (CFGUtil.substExp env) vs,
 				      CFGUtil.substTransfer env exit)

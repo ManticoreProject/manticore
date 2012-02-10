@@ -130,9 +130,9 @@ structure Cancelation (* : sig
 	  return()
 	;
 
-    (* @set-active-from-atomic (vp, c) *)
+    (* @set-active-in-atomic (vp, c) *)
     (* puts c in the active state where implicit thread associated with c is executing on vproc vp *)
-      define @set-active-from-atomic (vp : vproc, c : cancelable / exh : exh) : () =
+      define @set-active-in-atomic (vp : vproc, c : cancelable / exh : exh) : () =
 	  do @set-current(O.SOME(c) / exh)
 	  let inactive : ![vproc] = @get-inactive-flag(c)
 	(* FIXME: an atomic write would suffice *)
@@ -158,7 +158,7 @@ structure Cancelation (* : sig
 	       throw impossible()
 	  cont dispatch (act : PT.sched_act, k : fiber) =
                let self : vproc = SchedulerAction.@atomic-begin()
-	       do @set-active-from-atomic(self, c / exh)
+	       do @set-active-in-atomic(self, c / exh)
 	       let canceledFlg : ![bool] = @get-canceled-flag(c)
 	       case #0(canceledFlg)
 		of true =>
@@ -255,7 +255,7 @@ structure Cancelation (* : sig
 			| false =>
 			  let dummyK : fiber = vpload(VP_DUMMYK, self)
 	                  let fls : FLS.fls = FLS.@get()
-			  do VProc.@send-from-atomic(self, #0(inactive), fls, dummyK)
+			  do VProc.@send-in-atomic(self, #0(inactive), fls, dummyK)
 			  apply cancelAll(self, cs1, CONS(c, cs2))
                       end
 		       

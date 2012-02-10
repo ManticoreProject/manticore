@@ -38,8 +38,8 @@ structure BasicControl :  sig
   (* enable hw perf counters mode *)
     val perf : bool Controls.control
 
-  (* maximum leaf size in ropes *)  
-    val maxLeafSize : int Controls.control 
+  (* maximum leaf size in ropes *)
+    val maxLeafSize : int Controls.control
 
   (* perform dead function elimination on the parse tree *)
     val treeShake : bool Controls.control
@@ -47,7 +47,7 @@ structure BasicControl :  sig
   (* perform dead function elimination on the parse tree *)
     val treeShakeDebug : bool Controls.control
 
-  (* wrap a 'pre -> 'post pass with a tracing diagnostic, controled by the 
+  (* wrap a 'pre -> 'post pass with a tracing diagnostic, controled by the
    * "verbose" control.
    *)
     val mkTracePass : {
@@ -84,7 +84,7 @@ structure BasicControl :  sig
    val debugObscurity : int
 
   (* *)
-    val showAll : (string -> unit) -> 
+    val showAll : (string -> unit) ->
                   (({ctl: string Controls.control,
                      info: ControlRegistry.control_info} -> string) *
                    ({ctl: string Controls.control,
@@ -125,7 +125,7 @@ structure BasicControl :  sig
 
     val maxLeafSize : int Controls.control = Controls.genControl {
             name = "max-leaf-size",
-            pri = [0, 0], 
+            pri = [0, 0],
             obscurity = 0,
             help = "sets the upper bound on number of data items at leaves of ropes",
             default = 256
@@ -133,15 +133,15 @@ structure BasicControl :  sig
 
     val treeShake : bool Controls.control = Controls.genControl {
             name = "tree-shake",
-            pri = [0, 0], 
+            pri = [0, 0],
             obscurity = 0,
             help = "dead function elimination on the parse tree (dead functions do not get type checked)",
-            default = false
+            default = true
           }
 
     val treeShakeDebug : bool Controls.control = Controls.genControl {
             name = "tree-shake-debug",
-            pri = [0, 0], 
+            pri = [0, 0],
             obscurity = 0,
             help = "debug tree-shake",
             default = false
@@ -264,7 +264,7 @@ structure BasicControl :  sig
 		val msg = Controls.get verboseCtl >= verbose
                 val inclusiveStart = Time.now()
 		in
-		  if msg 
+		  if msg
 		    then (push (); say (concat [passName, " starting"]))
 		    else ();
 (***** NOTE: intercepting the exception here breaks the backtrace monitor.
@@ -275,7 +275,7 @@ structure BasicControl :  sig
 		  ) before
 *)
 		  (pass pre) before
-		    (if msg 
+		    (if msg
 		      then (let
                                 val inclusive = Time.-(Time.now(), inclusiveStart)
                             in
@@ -400,7 +400,7 @@ structure BasicControl :  sig
 		  help = "debug",
 		  default = false
 		}
-	  in	
+	  in
 	    ControlRegistry.register newReg {
 	        ctl = Controls.stringControl ControlUtil.Cvt.bool debugCtl,
 		envName = NONE

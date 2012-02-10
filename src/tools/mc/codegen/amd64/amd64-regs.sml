@@ -32,7 +32,7 @@ structure AMD64Regs : MANTICORE_REGS = struct
   
     val miscRegs =
 	let val rSet = List.foldl C.rmvReg allRegsSet dedicatedRegs
-	in 
+	in
 	    C.getReg rSet 
 	end
 

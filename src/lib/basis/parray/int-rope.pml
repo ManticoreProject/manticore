@@ -10,8 +10,6 @@ structure IntRope = struct
 
   val C = 2
 
-  val fail = Fail.fail "IntRope"
-
   fun failwith s = raise Fail s
   fun subscript () = raise Fail "subscript"
 
@@ -399,7 +397,7 @@ structure IntRope = struct
       val m = finish (zipCursor (mn, (mls, mrs, mds)))
       val (rp, rs) = (case (rps1 @ (m::nil) @ rps2)
         of h::t => (h, t)
-	 | nil => fail "join" "empty")
+	 | nil => failwith "join.empty")
       in
         zipCursor (rp, (ls, rs, ds))
       end)
@@ -504,7 +502,7 @@ structure IntRope = struct
                if numUnprocessedTab (us, c) < 2 then let
 	         val us' = (case S.tabulateUntil (fn _ => false) (us, f)
                    of Done x => x
-		    | More _ => fail "tabulateUntil" "More")
+		    | More _ => failwith "expected Done")
 		 val ps' = S.cat2 (ps, us')
 	         in
 		   case nextTab (leaf ps', c)
@@ -753,7 +751,7 @@ structure IntRope = struct
 			 Int.toString (length u) ^ " " ^
 			 Int.toString (numUnprocessedRed cur)
                in
-                 fail "reduceLTS" msg
+                 failwith msg
 	       end
            in
 	     f (p, f (RT.par2 (fn () => red u1, fn () => red u2)))
@@ -811,7 +809,7 @@ structure IntRope = struct
 
   fun mcleaf' (b, s) = 
     if S.length s > LeafSize.getMax () then
-      fail "mcleaf'" "bogus leaf size"
+      failwith "mcleaf', bogus leaf size"
     else 
       MCLeaf (b, s)
 
@@ -1004,7 +1002,7 @@ structure IntRope = struct
 	   if numUnprocessedDownsweep (mcleaf' (b, us), c) < 2 then let
 	      val (acc', us') = (case S.scanUntil (fn _ => false) f acc us
 		of (acc', Done us') => (acc', us')
-		 | (_, More _) => fail "downsweepUntil" "More")
+		 | (_, More _) => failwith "downsweepUntil, More")
 	      in case nextDownsweep (leaf (S.cat2 (ps, us')), c)
 		of Done p' => Done p'
 		 | More (_, s', c') => d (s', c', acc')
@@ -1229,7 +1227,7 @@ structure IntRope = struct
   fun partialSeq (r, lo, hi) = (case r
     of Leaf s => 
          (if lo >= S.length s orelse hi > S.length s then
-            fail "partialSeq" "err"
+            failwith "partialSeq" "err"
 	  else
 	    S.take (S.drop (s, lo), hi-lo))
      | Cat (_, len, rL, rR) => let
@@ -1266,7 +1264,7 @@ structure IntRope = struct
     val demanded = hiExcl - loIncl
     in
       if (demanded > n) then 
-        fail "subseq" "too few elements"
+        failwith "subseq: too few elements"
       else let
         fun f i = S.sub (s, loIncl+i)
         in

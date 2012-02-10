@@ -16,11 +16,11 @@ structure CPSTy =
       | T_Tuple of bool * ty list	(* heap-allocated tuple; the boolean is true for *)
 					(* mutable tuples *)
       | T_Addr of ty			(* address of a tuple's field *)
-      | T_Fun of (ty list * ty list)	(* function/continuation type; the second list of types *)
+      | T_Fun of (ty list * ty list)	(* function type; the second list of types *)
 					(* are the types of the return continuations and can *)
 					(* have 0, 1, or 2 entries.  The first is the normal return *)
 					(* continuation and the second is the exception-handler *)
-					(* continuation *)
+      | T_Cont of (ty list)             (* continuation types *)
       | T_CFun of CFunctions.c_proto	(* C functions *)
       | T_VProc				(* address of VProc runtime structure *)
 
@@ -35,7 +35,6 @@ structure CPSTy =
       | K_UNIFORM	(* either K_BOXED or K_UNBOXED *)
       | K_TYPE		(* type (any of the above kinds) *)
 
-  (* a continuation type has no return or exception continuations *)
-    fun contTy paramTys = T_Fun(paramTys, [])
+    fun contTy paramTys = T_Cont(paramTys)
 
   end
