@@ -748,6 +748,11 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
         and costlambda ([], _) = 0
                 | costlambda ( A.FB(f, x, e)::l, pre ) = let
                         (* look up cost of the function *)
+ 
+                        val _ = if (V.same(f,DV.intlist_split())) 
+                                then () 
+                                else let
+ 
                         val c = costAST(f,e)
                         val _ = (case existCost(f)
                                 of SOME n => (case n 
@@ -760,6 +765,9 @@ This function analyzes the tree and assigns costs to functions or ~1 if we need 
                         (* do we need to create a cost function ? *)
                         val _ = case existCostfct(f) of SOME n => costfunction(f,x) 
                                                         | NONE => ()
+                                in 
+                                        ()
+                                end
                 in
                         costlambda(l,pre)
                 end
@@ -1305,7 +1313,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                                 val _ = TextIO.print(String.concat[Option.getOpt (Option.map TypeUtil.toString (DataCon.argTypeOf(dcon)), ""),"\n"] )
                                                                 val _ = (case (DataCon.argTypeOf(dcon))
                                                                         of SOME ty => printtype(ty)
-                                                                        | NONE => ()
+                                                                        | NONE => TextIO.print("Sonmething is wrong, not type")
                                                                         )
                                                         in
                                                                 printdcons(rest)
@@ -1336,6 +1344,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
         )
 
         and createsizefcts(tycon::rest) = let
+                                val _ = TextIO.print(String.concat["Changing the size of Tycon ", TyCon.toString(tycon), "\n"])
                                 (* read out the predefined name of the sizefunction
                                    which is a var with type TYCON -> int *)
                                 val estSize = (case TTbl.find tyconhash tycon
@@ -1365,6 +1374,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 
 
                                 fun makematch (dcon::rest) = let
+                                                val _ = TextIO.print(String.concat["Trying to add size information for dcon ", DataCon.toString(dcon), "\n"])
                                                 (* the variable with the size information *)
                                                 val myvar =  Var.new ("_anon_", Basis.intTy)
                                                 val patlist = ref [AST.VarPat (myvar)]
@@ -1763,6 +1773,7 @@ The main function of this structure
         fun preassigncosts () = let
                         val _ = setCost(B.eq,0)
                         val _ = setCost(B.neq,0)
+                        val _ = setCost(DV.intlist_split(),10)
                 in            
                         ()
                 end
@@ -1772,9 +1783,10 @@ The main function of this structure
                 val _ = ASTcollectDCON(body)
                 val _ = costAST(dummyvar() , body)
                 (* val _ = costFctsAST(body) *)
+                val _ = printCost(body) 
                 val body' = ASTaddchunking(body)
                 val body'' = if (!changeprogram) then changesize(body') else body
-                val _ = printCost(body'') 
+                (* val _ = printCost(body'') *)
                 val _ = PrintAST.printExp(body'')
         in   
                 body''

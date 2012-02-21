@@ -181,6 +181,8 @@ structure DelayedBasis = struct
     val float_powint  = memoVar ["Float", "powint"]
     val float_toint   = memoVar ["Float", "floattoint"]
 
+    val intlist_split = memoVar ["Intlist", "split"]
+
   end
 
   structure Ty = struct
