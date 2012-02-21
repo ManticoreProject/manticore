@@ -263,9 +263,12 @@ structure PrintAST : sig
       | exp (A.ConstExp c) = const c
       | exp (A.VarExp (v, ts)) = (
         var v ;
-        pr "[" ;
-        pr (String.concatWith "," (List.map typeToString ts));
-        pr "]")
+        if !showTypes
+        then (
+            pr "[" ;
+            pr (String.concatWith "," (List.map typeToString ts));
+            pr "]")
+        else ())
       | exp (A.SeqExp (e1, e2)) = (
 	  pr "(";
 	  exp e1;
@@ -460,7 +463,9 @@ structure PrintAST : sig
     and const (A.DConst (c, ts)) = dcon c
       | const (A.LConst (lit, ty)) = (
 	  pr "("; pr (Literal.toString lit);
-	  pr ":"; pr (TypeUtil.toString ty); pr ")")
+          if !showTypes
+          then (pr ":"; pr (TypeUtil.toString ty); pr ")")
+          else ())
 
   (* dcon : T.dcon -> unit *)
     and dcon (dc as T.DCon{name, owner, ...}) = let
@@ -534,10 +539,12 @@ structure PrintAST : sig
 
   (* outputExpNoTypes : TextIO.outstream * A.exp -> unit *)
     fun outputExpNoTypes (outS : TextIO.outstream, e : A.exp) : unit = let
-      val store = !showTypes
-      fun restoreShowTypes () = (showTypes := store)
+      val storeTy = !showTypes
+      val storeSt = !showStamps
+      fun restoreShowTypes () = (showTypes := storeTy; showStamps := storeSt)
       in
         showTypes := false;
+        showStamps := false;
 	outputExp (outS, e);
 	restoreShowTypes ()
       end

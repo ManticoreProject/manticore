@@ -14,6 +14,7 @@ structure TranslatePComp : sig
   end  = struct
 
     structure A = AST
+    structure VSet = Var.Set
     structure B = Basis
     structure T = Types
     structure AU = ASTUtil
@@ -44,6 +45,7 @@ structure TranslatePComp : sig
 	    | _ => NONE)
        | _ => NONE)
     and collect (f_ij, (iFrom, iTo, iStepOpt, iTy), (jFrom, jTo, jStepOpt, jTy)) = let
+                  val _ = print "k"
       val _ = if TU.same (iTy, B.intTy) then () else raise Fail "i is not an int"
       val _ = if TU.same (jTy, B.intTy) then () else raise Fail "j is not an int"
       val iStep = Option.getOpt (iStepOpt, AU.one)
@@ -60,10 +62,12 @@ structure TranslatePComp : sig
   (* A "range triple" is a triple of ints, representing from, to, and step. *)
   (* Each range must be "rigid" in the sense that its range triple consists *)
   (*   only of constants and/or variables. *)
+  (* Additionally, these variables must be bound outside of the range expressions. *)
   (* TODO: This only catches ranges -- it's too conservative. *)
     fun regularD trExp (e, pes, oe) = let
-      fun lp (A.PCompExp (e, [(p, A.RangeExp rng)], NONE), vars) = let
+        fun lp (pce as A.PCompExp (e, [(p, A.RangeExp rng)], NONE), vars) = let
             val (iFrom, iTo, iStepOpt, ty) = rng
+            val usedVars = ASTUtil.varsOfExp pce
             val i = (case p
               of A.VarPat i => i
 	       | A.WildPat _ => Var.new ("dummy", ty)
@@ -72,9 +76,13 @@ structure TranslatePComp : sig
 				  AU.patToString p)
               (* end case *))
             val iStep = Option.getOpt (iStepOpt, AU.one)
-            in case lp (e, vars)
-              of NONE => NONE
-	       | SOME (tups, vars, e') => SOME ((trExp iFrom, trExp iTo, trExp iStep)::tups, i::vars, e')
+            in
+            if List.exists (fn (v) => Var.same(v, i)) usedVars
+            then NONE
+            else (
+                case lp (e, vars)
+                 of NONE => NONE
+	          | SOME (tups, vars, e') => SOME ((trExp iFrom, trExp iTo, trExp iStep)::tups, i::vars, e'))
             end
 	| lp (A.PCompExp _, _) = NONE
 	| lp (innermostExp, vars) = SOME ([], vars, trExp innermostExp)

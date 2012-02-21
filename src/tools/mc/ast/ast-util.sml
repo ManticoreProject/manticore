@@ -108,6 +108,8 @@ structure ASTUtil : sig
   (* debugging util *)
     val patToString : AST.pat -> string
 
+    val varsOfExp : AST.exp -> AST.var list
+
   end = struct
 
     structure A = AST
@@ -380,4 +382,64 @@ structure ASTUtil : sig
 	    copyExpWalk s e
 	end
 
+    fun varsOfExp (e) = let
+      fun exp (A.LetExp (b, e), vars) = exp (e, binding (b, vars))
+	| exp (A.IfExp (e1, e2, e3, t), vars) = exp (e1, exp (e2, exp (e3, vars)))
+	| exp (A.CaseExp (e, ms, t), vars) = exp (e, List.foldl match vars ms)
+	| exp (A.PCaseExp (es, pms, t), vars) = List.foldl exp (List.foldl pmatch vars pms) es
+	| exp (A.HandleExp (e, ms, t), vars) = exp (e, List.foldl match vars ms)
+	| exp (A.RaiseExp (e, t), vars) = exp (e, vars)
+	| exp (A.FunExp (x, e, t), vars) = exp (e, x::vars)
+	| exp (A.ApplyExp (e1, e2, t), vars) = exp (e1, exp (e2, vars))
+	| exp (m as A.VarArityOpExp _, vars) = vars
+	| exp (A.TupleExp es, vars) = List.foldl exp vars es
+	| exp (A.RangeExp (e1, e2, oe3, t), vars) = let
+              val vars = case oe3 of NONE => vars | SOME e => exp (e, vars)
+          in exp (e1, exp (e2, vars)) end
+	| exp (A.PTupleExp es, vars) = List.foldl exp vars es
+	| exp (A.PArrayExp (es, t), vars) = List.foldl exp vars es
+	| exp (A.PCompExp (e, pes, opred), vars) = let
+              val vars = List.foldl (fn ((p,e), vars) => pat (p, exp (e, vars))) vars pes
+              val vars = case opred of NONE => vars | SOME e => exp (e, vars)
+            in
+              vars
+	    end
+	| exp (A.PChoiceExp (es, t), vars) = List.foldl exp vars es
+	| exp (A.SpawnExp e, vars) = exp (e, vars)
+	| exp (k as A.ConstExp _, vars) = vars
+	| exp (v as A.VarExp (x, ts), vars) = x::vars
+	| exp (A.SeqExp (e1, e2), vars) = exp (e1, exp (e2, vars))
+	| exp (ov as A.OverloadExp r, vars) = 
+            (case !r
+	       of A.Unknown (ty, xs) => xs@vars
+		| A.Instance x => x::vars
+	      (* end case *))
+	| exp (A.ExpansionOptsExp (os, e), vars) = exp (e, vars)
+	| exp (A.FTupleExp es, vars) = (List.foldl exp vars es)
+	| exp (A.FArrayExp (es, n, t), vars) = ntree (n, List.foldl exp vars es)
+	| exp (A.FlOp oper, vars) = vars
+	| exp (A.PArrayOp oper, vars) = vars
+      and ntree (A.Lf (e1, e2), vars) = exp (e1, exp (e2, vars))
+	| ntree (A.Nd ns, vars) = List.foldl ntree vars ns
+      and match (A.PatMatch (p, e), vars) = exp (e, pat (p, vars))
+	| match (A.CondMatch (p, cond, e), vars) = exp (cond, exp (e, pat (p, vars)))
+      and pmatch (A.PMatch (pps, e), vars) = exp (e, List.foldl ppat vars pps)
+	| pmatch (A.Otherwise (ts, e), vars) = exp (e, vars)
+      and ppat (A.NDWildPat t, vars) = vars
+	| ppat (A.HandlePat (p, t), vars) = pat (p, vars)
+	| ppat (A.Pat p, vars) = pat (p, vars)
+      and pat (A.ConPat (c, ts, p), vars) = pat (p, vars)
+	| pat (A.TuplePat ps, vars) = List.foldl pat vars ps
+	| pat (v as A.VarPat x, vars) = x::vars
+	| pat (A.WildPat t, vars) = vars
+	| pat (k as A.ConstPat _, vars) = vars
+      and binding (A.ValBind (p, e), vars) = exp (e, pat (p, vars))
+	| binding (A.PValBind (p, e), vars) = exp (e, pat (p, vars))
+	| binding (A.FunBind ls, vars) = List.foldl lambda vars ls
+	| binding (primV as A.PrimVBind _, vars) = vars
+	| binding (code as A.PrimCodeBind _, vars) = vars
+      and lambda (A.FB (f, x, e), vars) = exp (e, f::vars)
+      in
+        exp (e, [])
+      end
   end

@@ -15,7 +15,7 @@ structure ASTOpt : sig
 
   (* a wrapper for AST optimization passes *)
     fun transform {passName, pass} = BasicControl.mkKeepPassSimple {
-	    output = PrintAST.outputExp,
+	    output = PrintAST.outputExpNoTypes,
 	    ext = "ast",
 	    passName = passName,
 	    pass = pass,
