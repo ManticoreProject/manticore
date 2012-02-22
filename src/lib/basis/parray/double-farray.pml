@@ -10,6 +10,8 @@ structure DoubleFArray = struct
 
   structure S = Shape
   structure R = DoubleRope
+  structure DS = DoubleSeq
+  structure SR = SegReduce
 
   (* ***** FLATTENED ARRAYS ***** *)  
 
@@ -157,6 +159,75 @@ structure DoubleFArray = struct
     val shape = S.Lf (0, R.length data)
     in
       FArray (data, shape)
+    end
+
+(* Segmented Reduce
+   This is almost identical to the code in SR, but
+   rewritten to use monomorphic Double Ropes and Double Seqs *)
+
+  (* writePairs : 'a seq * (int * 'a) list -> 'a list *)
+  fun writePairs res pss = let
+    fun sub i = DS.sub (res, i)
+    fun upd (i, x) = DS.update (res, i, x)
+    fun lp1 ps = (case ps
+      of nil => ()
+       | (i,n)::t => (upd (i, n); lp1 t)
+      (* end case *))
+    fun lp0 ps = (case ps
+      of nil => ()
+       | (i,n)::t => (upd (i, n+sub(i)); lp1 t)
+      (* end case *))
+    in 
+      List.app lp0 pss
+    end
+
+  (* partReduce : ('a -> 'a) * 'a * 'a seq * int * int -> 'a *)
+  fun partReduce (f, init, data, lo, hi) = let
+    fun sub i = DS.sub(data,i)
+    fun lp (i, acc) =
+      if i >= hi then acc
+      else lp (i+1, f(acc, sub i))
+    in
+      lp (lo, init)
+    end
+
+  (* segReducev : ('a -> 'a) * 'a * 'a seq * (int * int) list -> (int * 'a) list *)
+  fun segReducev (f, init, v, ps) = let
+    fun lp (i, ps) = (case ps
+      of nil => nil
+       | (j,n)::t => let
+           val s = partReduce (f, init, v, i, n)
+           in
+             (j,s)::lp(i+n,t)
+           end
+      (* end case *))
+    in
+      lp (0, ps)
+    end
+
+  (* segreduce : ('a -> 'a) * 'a * 'a farray farray -> 'a farray *)
+  fun segreduce (f, init, nss) = let
+    val (FArray (data, shape)) = nss
+    val segdes = SR.segdesFromShape shape
+    fun lp (r, ps) = (case r
+      of R.Leaf v => segReducev(f,init,v,ps)::nil
+       | R.Cat (_, _, rL, rR) => let
+           val nL = R.length rL
+           val (psL, psR) = SR.split (nL, ps)
+           val (sumsL, sumsR) = (| lp (rL, psL), lp (rR, psR) |)
+           in
+             sumsL @ sumsR
+           end
+      (* end case *))
+    val pss = lp (data, segdes)
+    (* val _ = Print.printLn "in segsum: computed pss:" *)
+    (* val _ = Print.printLn (psstos pss) *)
+    val reductions = DS.tabulate (List.length segdes, fn _ => init)
+    val _ = writePairs reductions pss
+    val data' = R.fromSeq reductions
+    val shape' = S.Lf (0, R.length data')
+    in
+      FArray (data', shape')
     end
 
 end

@@ -18,6 +18,7 @@
 
   shape.pml
   farray.pml
+  segreduce.pml
   int-farray.pml
   double-farray.pml
   farray-util.pml
