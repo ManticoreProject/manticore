@@ -1496,6 +1496,8 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                            
             | AST.FunExp(x, body, ty) => AST.FunExp(x, ASTchangesize(body,dconlist), ty)
             | AST.ApplyExp(e1, e2, ty) => let
+                                        
+                                        val parallel = ref true
 
                                         fun changestat (constexp, tycon) = let 
                                                         
@@ -1513,7 +1515,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 
                                                                 val size = sizetree(x1) + sizetree(x2) + 1
                                                              in 
-                                                                Applt(DCON(int, tree, tree), (size,x1,x2))
+                                                                Apply(DCON(int, tree, tree), (size,x1,x2))
                                                              end
                                                          *)
                                                 
@@ -1565,7 +1567,9 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 
                                                                         val valbind = AST.ValBind(valpat,ifexp)
         
-                                                                        val tupleval = AST.ValBind(AST.TuplePat(!pattern),AST.TupleExp(!expressions))
+                                                                        val tupleval =  if ( !parallel ) 
+                                                                                        then AST.ValBind(AST.TuplePat(!pattern),AST.PTupleExp(!expressions))
+                                                                                        else AST.ValBind(AST.TuplePat(!pattern),AST.TupleExp(!expressions))
                                                                 in
                                                                         arguments := [patvar]@(!arguments);
                                                                         bindings := [tupleval,valbindtemp,valbind];
@@ -1574,6 +1578,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 
                                                        fun newe2 () = (case ASTchangesize(e2,dconlist) 
                                                                         of AST.TupleExp(exps) => let
+                                                                                                val _ = parallel:=false
                                                                                                 val _ = createbinding(exps)
                                                                                                 val mytuple = List.map (fn e => (vexp e)) (!arguments)
                                                                                         in
