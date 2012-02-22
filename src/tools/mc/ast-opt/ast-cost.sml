@@ -1280,7 +1280,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 -----------------------------------------------------------------------------------------------
 *)
                                                 
-        val attachfcts : int ref = ref 1
+       (* val attachfcts : int ref = ref 1 *)
 
         fun changesize (body) = let
                         fun checktycon ((tycon,flag)::rest,returnlist ) = 
@@ -1337,8 +1337,9 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                         end
                 end
 
-        and changedcon (ctype) = (case ctype
-                        of Ty.ConTy (tylist, tycon) => Ty.TupleTy([Basis.intTy,Ty.ConTy (tylist, tycon)])
+        and changedcon (ctype) = (case ctype    
+                        (* base case *)
+                        of Ty.ConTy (tylist, tycon) => Ty.ConTy (tylist, tycon)
                         | Ty.TupleTy (tylist) => Ty.TupleTy(Basis.intTy::tylist)
                         | _ => raise Fail "Error rewriting the DataConstructor"
         )
@@ -1366,8 +1367,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 
                                 (* we have to create a size function that looks like this:
                                 fun sizetree (input : tree) : int = case input 
-                                                of Leaf(int * int):x(int * int) => case x(int * int)
-                                                                        of (y:int, _ :int) => y:int
+                                                of Leaf(int):_(int) => 1
                                                 | Node(int * tree * tree):x(int * tree * tree) => case x(int * tree * tree)
                                                                                 of (y:int, _:tree,_:tree) => y:int
                                 *)
@@ -1375,31 +1375,75 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 
                                 fun makematch (dcon::rest) = let
                                                 val _ = TextIO.print(String.concat["Trying to add size information for dcon ", DataCon.toString(dcon), "\n"])
-                                                (* the variable with the size information *)
-                                                val myvar =  Var.new ("_anon_", Basis.intTy)
-                                                val patlist = ref [AST.VarPat (myvar)]
-                                                (* type of the dcon we know the first one is an int *)
-                                                val Ty.TupleTy(arg::tuplerest) = (case DataCon.argTypeOf(dcon)
-                                                                                  of SOME n => n
-                                                                                 | NONE => raise Fail "Error in reading out the contype if the dcon in creating size function"
+                                              
+                                                (* check if we have a base case or not *)
+                                                val tyconname = DataCon.ownerOf dcon
+                                                (* (NODE,tree) => true, (LEAF,tree) => false *)
+                                                val typedcon = (case DataCon.argTypeOf(dcon)
+                                                        of SOME dcontype => dcontype
+                                                        | NONE => Basis.unitTy )
+                                              
+                                                val _ = ((if (recursivedcon(typedcon,tyconname))
+                                                                            then let
+                                              
+                                                                                (* the variable with the size information *)
+                                                                                val myvar =  Var.new ("_anon_", Basis.intTy)
+                                                                                val patlist = ref [AST.VarPat (myvar)]
+                                                                              
+                                                                                (* type of the dcon we know the first one is an int *)
+                                                                                val Ty.TupleTy(arg::tuplerest) = (case DataCon.argTypeOf(dcon)
+                                                                                                                  of SOME n => n
+                                                                                                                 | NONE => raise Fail "Error in reading out the contype if the dcon in creating size function"
+                                                                                                                )
+                                                                                (* this function adds the wildpat to the of exp since we just need the first argument of the dcon *)
+                                                                                fun addwilds (type1::rest) = let
+                                                                                                        
+                                                                                                in
+                                                                                                        patlist := !patlist@[AST.WildPat (type1)];
+                                                                                                        addwilds(rest)
+                                                                                                end
+                                                                                | addwilds ([]) = ()
+                                                
+                                                                                (* create the second case exp *)
+                                                                                val _ = addwilds(tuplerest)
+                                                                                val matchdconvar = Var.new ("_anon_", Ty.TupleTy(arg::tuplerest))
+                                                                                val secondpat = AST.PatMatch(AST.TuplePat(!patlist),vexp myvar)
+                                                                                val secondcase = U.mkCaseExp(vexp matchdconvar, [secondpat])
+                                              
+                                                                        in
+                                                                                matches := !matches@[AST.PatMatch (AST.ConPat (dcon, arg::tuplerest, AST.VarPat(matchdconvar)),secondcase)]
+                                                                        end
+                                              
+                                                                        else
+                                                                        (*let 
+                                                                                val Ty.ConTy (tylist, tycon) = (case DataCon.argTypeOf(dcon)
+                                                                                                                  of SOME n => n
+                                                                                                                 | NONE => NONE
+                                                                                                                )
+                                                                                val matchdconvar = Var.new ("_anon_",  Ty.ConTy (tylist, tycon))
+                                                                        in
+                                                                                matches := !matches@[AST.PatMatch (AST.ConPat (dcon, tylist, AST.VarPat(matchdconvar)),U.mkInt(1))]
+                                                                        end
+                                                                        *)
+                                                                                (case DataCon.argTypeOf(dcon)
+                                                                                  of SOME n => let
+                                                                                                val Ty.ConTy (tylist, tycon) = n 
+                                                                                                val matchdconvar = Var.new ("_anon_",  Ty.ConTy (tylist, tycon))
+                                                                                                in
+                                                                                                        matches := !matches@[AST.PatMatch (AST.ConPat (dcon, tylist, AST.VarPat(matchdconvar)),U.mkInt(1))]
+                                                                                                end
+                                                                                 | NONE => let 
+                                                                                                val typedcon = DataCon.resultOf(dcon)
+                                                                                                val matchdconvar = Var.new ("_anon_",  typedcon)
+                                                                                                in
+                                                                                                        matches := !matches@[AST.PatMatch (AST.ConstPat(AST.DConst(dcon,[])),U.mkInt(1))]
+                                                                                                end
                                                                                 )
-                                                (* this function adds the wildpat to the of exp since we just need the first argument of the dcon *)
-                                                fun addwilds (type1::rest) = let
-                                                                        
-                                                                in
-                                                                        patlist := !patlist@[AST.WildPat (type1)];
-                                                                        addwilds(rest)
-                                                                end
-                                                | addwilds ([]) = ()
-                
-                                                (* create the second case exp *)
-                                                val _ = addwilds(tuplerest)
-                                                val matchdconvar = Var.new ("_anon_", Ty.TupleTy(arg::tuplerest))
-                                                val secondpat = AST.PatMatch(AST.TuplePat(!patlist),vexp myvar)
-                                                val secondcase = U.mkCaseExp(vexp matchdconvar, [secondpat])
+                                                                )
+                                                )
 
                                         in
-                                                matches := !matches@[AST.PatMatch (AST.ConPat (dcon, arg::tuplerest, AST.VarPat(matchdconvar)),secondcase)];
+                                                
                                                 makematch(rest)
                                         end
                                 | makematch ([]) = ()
@@ -1495,10 +1539,19 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                                         val valpatemp = AST.VarPat(patvartemp)
 
                                                                         fun mksize (x::rest) = let
+                                                                                        val AST.TyScheme(_, tys) = V.typeOf (sizename)
+                                                                                        val Ty.FunTy(intype,outtype) = tys
+                                                                                in
+                                                                                        (* we have to check if the argument has the recursive type *)
+                                                                                        if (TypeUtil.same(TypeOf.exp(vexp x), intype))
+                                                                                        then
+                                                                                        let
                                                                                                 val apply = U.mkApplyExp(vexp sizename,[vexp x])
                                                                                         in
                                                                                                (U.plus(apply) (mksize(rest)))
                                                                                         end
+                                                                                        else (U.plus(U.mkInt(0)) (mksize(rest)))
+                                                                                end
                                                                         | mksize([]) = (U.mkInt(1))
 
                                                                         val expr = mksize(!arguments)
@@ -1512,7 +1565,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
 
                                                                         val valbind = AST.ValBind(valpat,ifexp)
         
-                                                                        val tupleval = AST.ValBind(AST.TuplePat(!pattern),AST.PTupleExp(!expressions))
+                                                                        val tupleval = AST.ValBind(AST.TuplePat(!pattern),AST.TupleExp(!expressions))
                                                                 in
                                                                         arguments := [patvar]@(!arguments);
                                                                         bindings := [tupleval,valbindtemp,valbind];
@@ -1557,7 +1610,7 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                                                         changestat(AST.ConstExp(AST.DConst(getdcon(tyconname,dconid),tylist)), tyconname)
                                                                                         (* this the simple case e.g. LEAF *)
                                                                                         else let
-                                                                                                val tuple = U.mkPTupleExp([U.mkInt(1),e2])
+                                                                                                val tuple = e2
                                                                                         in
                                                                                         AST.ApplyExp(ASTchangesize(ASTchangesize(AST.ConstExp(AST.DConst(getdcon(tyconname,dconid),tylist)),dconlist),dconlist), ASTchangesize(tuple,dconlist), ty)
 
@@ -1664,17 +1717,12 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                         (* piggy bag all created functions onto the first lambda block we can find *)
                                                         if (List.null (!fctlist) ) 
                                                         then A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)     
-                                                        else if (!attachfcts = 10) then let
+                                                        else let
                                                                 val fcts = !fctlist
                                                               in
                                                                 fctlist := [];
                                                                 fcts@A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist)
                                                               end  
-                                                                else let 
-                                                val _ = attachfcts := !attachfcts+1 
-                                                in
-                                                        A.FB(f, x, ASTchangesize(e,dconlist))::lambda_size(l,dconlist) 
-                                                end
                                                     end
 
         and pat_size(p,dconlist) = (case p 
@@ -1703,8 +1751,18 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                                                         | _ => pat_size(pat,dconlist)
 
                                 in
-                                        if (dconinlist(dcon,dconlist)) then AST.ConPat (newdcon(), tylist, changevartype(pat) )
-                                                                       else AST.ConPat (dcon, tylist, pat_size(pat,dconlist) )
+                                        if (dconinlist(dcon,dconlist)) then 
+                                                                        (* (NODE,tree) => true, (LEAF,tree) => false *)
+                                                                        (case DataCon.argTypeOf(dcon)
+                                                                                of SOME dcontype => (if (recursivedcon(dcontype,DataCon.ownerOf(dcon))) 
+                                                                                                        then AST.ConPat (newdcon(), tylist, changevartype(pat) )
+                                                                                                        else AST.ConPat (dcon, tylist, pat_size(pat,dconlist) )
+                                                                                                        )
+                                                                                | NONE => raise Fail "Error in pattern match size"
+                                                                                
+                                                                        )
+                                                                
+                                        else AST.ConPat (dcon, tylist, pat_size(pat,dconlist) )
                                 end
                         | AST.TuplePat (patlist) => let
                                         val pat = List.map (fn e => pat_size(e,dconlist) ) patlist
@@ -1735,12 +1793,12 @@ This function will check if we need to manipulate tycon and dcon in order to acc
                         end
 
         (* check if the dataconstructor type is recursive or the default case e.g (NODE,tree) => true, (LEAF,tree) => false *)
-        and recursivedcon (typeprint,tyconin) = (case typeprint
+        and recursivedcon (typeprint : Types.ty, tyconin : Types.tycon) = (case typeprint
                         of Ty.ConTy (tylist, tycon) => if (TyCon.same (tycon,tyconin))
                                                        then true
                                                        else recursivetypelist(tylist,tyconin)
                         | Ty.TupleTy (tylist) => recursivetypelist(tylist,tyconin)
-                        | _ => raise Fail "ERROR IN RECURSIVEDCON \n" 
+                        | _ => false
         )
         (* check if the dcon is the base case (false) or a recursive case (true) *)
         and recursivetypelist(ty::rest,tycon) = if (recursivedcon(ty, tycon) ) 
@@ -1783,10 +1841,9 @@ The main function of this structure
                 val _ = ASTcollectDCON(body)
                 val _ = costAST(dummyvar() , body)
                 (* val _ = costFctsAST(body) *)
-                val _ = printCost(body) 
                 val body' = ASTaddchunking(body)
                 val body'' = if (!changeprogram) then changesize(body') else body
-                (* val _ = printCost(body'') *)
+                val _ = printCost(body'')
                 val _ = PrintAST.printExp(body'')
         in   
                 body''
