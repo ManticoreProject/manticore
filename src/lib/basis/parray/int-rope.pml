@@ -336,28 +336,28 @@ structure IntRope = struct
       (S.take (ls, S.length ls - 1), seqLast ls, rs)
     end
 
-  fun cursorAtIx (rp, i) = let
-    fun nav ((rp, (ls, rs, ds)), i) = (case rp
-      of Leaf s =>
-           if S.length s = 1 then
-	     (leaf s, (ls, rs, ds))
-	   else let
-	     val (l, m, r) = seqSplitAtIx3 (s, i)
-	     val c' = (leaf l :: ls, leaf r :: rs, Right :: Left :: ds)
-	     in
-	       (leaf (S.singleton m), c')
-	     end
-       | Cat (_, _, l, r) =>
-	   if i < length l then
-	     nav ((l, (ls, r :: rs, Left :: ds)), i)
-	   else
-	    nav ((r, (l :: ls, rs, Right :: ds)), i - length l))
-    in
+  fun nav ((rp, (ls, rs, ds)), i) = (
+      case rp
+       of Leaf s =>
+          if S.length s = 1 then
+	      (leaf s, (ls, rs, ds))
+	  else let
+	          val (l, m, r) = seqSplitAtIx3 (s, i)
+	          val c' = (leaf l :: ls, leaf r :: rs, Right :: Left :: ds)
+	      in
+	          (leaf (S.singleton m), c')
+	      end
+        | Cat (_, _, l, r) =>
+	  if i < length l then
+	      nav ((l, (ls, r :: rs, Left :: ds)), i)
+	  else
+	      nav ((r, (l :: ls, rs, Right :: ds)), i - length l))
+
+  fun cursorAtIx (rp, i) = (
       if inBounds (rp, i) then
         nav ((rp, (nil, nil, nil)), i)
       else
-        subscript ()
-    end
+        subscript ())
 
   fun divide length (intvs, k) = let
     fun d (intvs, k) = (case intvs
