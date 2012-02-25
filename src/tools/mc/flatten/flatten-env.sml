@@ -80,7 +80,7 @@ end *) = struct
 	      ("tab", SOME PArrayOp.constructTab),
 	      ("tabFromToStep", SOME PArrayOp.constructTabFTS),
 	      ("map", SOME PArrayOp.constructMap),
-	      ("reduce", SOME PArrayOp.constructReduce),
+	      ("reduceUncurried", SOME PArrayOp.constructReduce),
 	      ("range", SOME PArrayOp.constructRange),
 	      ("app", SOME PArrayOp.constructApp),
 	      ("tab2D", SOME PArrayOp.constructTabHD),

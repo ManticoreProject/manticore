@@ -165,7 +165,7 @@ structure DoubleFArray = struct
    This is almost identical to the code in SR, but
    rewritten to use monomorphic Double Ropes and Double Seqs *)
 
-  (* writePairs : 'a seq * (int * 'a) list -> 'a list *)
+  (* writePairs : 'a double_seq * (int * 'a) list -> 'a list *)
   fun writePairs res pss = let
     fun sub i = DS.sub (res, i)
     fun upd (i, x) = DS.update (res, i, x)
@@ -181,7 +181,7 @@ structure DoubleFArray = struct
       List.app lp0 pss
     end
 
-  (* partReduce : ('a -> 'a) * 'a * 'a seq * int * int -> 'a *)
+  (* partReduce : ('a -> 'a) * 'a * 'a double_seq * int * int -> 'a *)
   fun partReduce (f, init, data, lo, hi) = let
     fun sub i = DS.sub(data,i)
     fun lp (i, acc) =
@@ -191,7 +191,7 @@ structure DoubleFArray = struct
       lp (lo, init)
     end
 
-  (* segReducev : ('a -> 'a) * 'a * 'a seq * (int * int) list -> (int * 'a) list *)
+  (* segReducev : ('a -> 'a) * 'a * 'a double_seq * (int * int) list -> (int * 'a) list *)
   fun segReducev (f, init, v, ps) = let
     fun lp (i, ps) = (case ps
       of nil => nil
@@ -205,7 +205,7 @@ structure DoubleFArray = struct
       lp (0, ps)
     end
 
-  (* segreduce : ('a -> 'a) * 'a * 'a farray farray -> 'a farray *)
+  (* segreduce : ('a -> 'a) * 'a * 'a double_farray farray -> 'a double_farray *)
   fun segreduce (f, init, nss) = let
     val (FArray (data, shape)) = nss
     val segdes = SR.segdesFromShape shape
