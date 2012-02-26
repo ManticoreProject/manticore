@@ -7,7 +7,7 @@
  * flattening (or arity-raising).
  *)
 
-structure ArityRaising : sig
+functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
 
     val transform : CPS.module -> CPS.module
 
@@ -28,6 +28,7 @@ structure ArityRaising : sig
     val argumentOnly = ref false
     val arityRaisingDebug = ref false
     val multiPass = ref true
+    val maxParams = ref Spec.availRegs
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
@@ -61,9 +62,19 @@ structure ArityRaising : sig
                   obscurity = 0,
                   help = "use multipass signature changes"
                   }
-            ]
-
-
+             ]
+             
+    val _ = ControlRegistry.register CPSOptControls.registry {
+            ctl = Controls.stringControl ControlUtil.Cvt.int (                      
+              Controls.control {
+                  ctl = maxParams,
+                  name = "max-arity-params",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "limit on the maxiumum total parameters arity raising will increase up to"
+                  }),
+            envName = NONE }
+            
   (***** Statistics *****)
     val cntCandidateFun		= ST.newCounter "cps-arity:candidate-fn"
     val cntFlattenedFun		= ST.newCounter "cps-arity:flattened-fn"
@@ -201,14 +212,36 @@ structure ArityRaising : sig
     fun computeSig pmap = let
 	(* filter out paths that are derived from others on the list; for this
 	 * process, we rely on the ordering used to structure the pmap.
+         *
+         * Additionally, this function is where we limit the maxiumum number
+         * of parameters for the signature based on the control.
 	 *)
 	  fun filter ([], _, l) = List.rev l
 	    | filter (p::r, q, l) = if isPrefix(q, p)
 		then filter (r, q, l)
 		else filter (r, p, p::l)
-	  in
-	    filter (computeMaxSig pmap, (~1, []), [])
-	  end
+          val filteredSig = filter (computeMaxSig pmap, (~1, []), [])
+          fun merge ((i,p1)::ps) = let
+              val justParam = (i,[])
+          in
+              if List.exists (fn p => isPrefix(justParam, p)) ps
+              then justParam::(filter (ps, justParam, []))
+              else (i,p1)::merge(ps)
+          end
+            (* If we couldn't merge any more, give up *)
+            | merge ls = ls 
+          fun collapse (0, l) = l
+            | collapse (i, xs) = collapse (i-1, merge(xs))
+          fun clamp (l) = let
+              val over = List.length l - !maxParams
+          in
+              if (over <= 0)
+              then l
+              else collapse (over, l)
+          end
+    in
+        clamp filteredSig	
+    end
 
   (* merge two signatures to have a common calling convention.
    * We use this operation to handle the case where there are multiple
@@ -226,7 +259,7 @@ structure ArityRaising : sig
           val params = case sig1Type
                         of CPSTy.T_Fun(params, _) => params
                          | CPSTy.T_Cont(params) => params
-                         | _ => raise Fail (concat["non-funciton type passed to sigMeet: ", CPSTyUtil.toString sig1Type])
+                         | _ => raise Fail (concat["non-function type passed to sigMeet: ", CPSTyUtil.toString sig1Type])
           (* We only check against the signature being merged into. This
            * is because we'll use the result of our signature creation process
            * and feed it through sigMeet a second time to make sure it's compatible
