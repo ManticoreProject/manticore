@@ -96,11 +96,7 @@ end *) = struct
           of T.FArrayTy _ => raise Fail ("todo: " ^ TU.toString f)
 	   | _ => f
           (* end case *))
-      | ty (f as T.FArrayTy (t, n)) = let
-          val msg = "Asked to flatten type " ^ TypeUtil.toString f ^ "; should this happen?"
-          in
-	    raise Fail msg
-	  end         
+      | ty (f as T.FArrayTy (t, n)) = f
       | ty (T.ConTy (ts, c)) = conTy (ts, c)
     and conTy (ts, c) = 
 	 (if isPArrayTyc c then (case ts 

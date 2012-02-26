@@ -171,7 +171,7 @@ Value_t M_FloatFromString (Value_t str)
 Value_t M_DoubleToString (double f)
 {
     char buf[64];
-    snprintf(buf, sizeof(buf), "%f", f);
+    snprintf(buf, sizeof(buf), "%.10f", f);
     return AllocString (VProcSelf(), buf);
 }
 
