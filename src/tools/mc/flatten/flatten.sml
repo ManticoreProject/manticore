@@ -17,11 +17,13 @@ end = struct
   fun fltExp (e0 : AST.exp) : AST.exp = 
     if not (!FlattenControls.onFlg) then e0
     else let
-      val (e1, flatTycs) = FlattenTerms.flatten e0
-      val e2 = FlattenOpFusion.fuseExp e1
-      val e3 = RealizeTerms.realize (e2, flatTycs)
+      (* val e1 = SegReduce.translate e0 *)
+      val e1 = e0
+      val (e2, flatTycs) = FlattenTerms.flatten e1
+      val e3 = FlattenOpFusion.fuseExp e2
+      val e4 = RealizeTerms.realize (e3, flatTycs)
       in
-        e3
+        e4
       end
 
   val flatten = BasicControl.mkKeepPassSimple {
