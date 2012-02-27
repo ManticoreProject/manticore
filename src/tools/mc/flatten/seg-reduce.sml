@@ -1,4 +1,4 @@
-(* segreduce.sml
+(* seg-reduce.sml
  *
  * COPYRIGHT (c) 2012 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
