@@ -262,9 +262,9 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
     fun mkUnzip (ty : T.ty) : A.lambda = (case ty
       of T.ConTy ([T.TupleTy (ts as t1::t2::_)], c) =>  
            if FU.isFArrayTyc c then 
-            (if FU.isInt_farray t1 andalso FU.isInt_farray t2 then
+            (if FU.isInt_farray t1 andalso FU.isInt_farray t2 andalso length ts = 2 then
                customUnzip DV.unzip_IF_IF
-	     else if FU.isInt_farray t1 andalso FU.isDbl_farray t2 then
+	     else if FU.isInt_farray t1 andalso FU.isDbl_farray t2 andalso length ts = 2 then
 	       customUnzip DV.unzip_IF_DF
 	     else
                mk ts)
