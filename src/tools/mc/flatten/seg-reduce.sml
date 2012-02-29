@@ -102,6 +102,7 @@ end = struct
 
   and translateBinding (A.ValBind(p,e)) = A.ValBind(p, translate e)
     | translateBinding (A.PValBind(p,e)) = A.PValBind(p, translate e)
+    | translateBinding (A.FunBind(lams)) = A.FunBind(List.map translateLam lams)
     | translateBinding b = b
 
   and translateMatch (A.PatMatch(p,e)) = A.PatMatch(p, translate e)
@@ -109,5 +110,7 @@ end = struct
 
   and translatePMatch (A.PMatch(ps,e)) = A.PMatch(ps, translate e)
     | translatePMatch (A.Otherwise(ts, e)) = A.Otherwise(ts, translate e)
+
+  and translateLam (A.FB(v1,v2,e)) = A.FB(v1, v2, translate e)
 
 end
