@@ -17,29 +17,43 @@ structure SegReduce : sig
 
 end = struct
 
+  (* App(App(map,App(App(reduceCurried,oper),ident)),e) *)
+  (* --> *)
+  (* App(PArray.segReduce(oper,ident,e))  *)
   structure A = AST
 
-  fun isReduceU e =
+  fun isReduce e =
    (case e
       of A.VarExp (x, ts) => let
-           val reduceUncurriedVar = DelayedBasis.Var.parrayReduce ()
+           val reduceVar = DelayedBasis.Var.parrayReduce ()
            in
-             Var.same (x, reduceUncurriedVar)
+             Var.same (x, reduceVar)
+           end
+       | _ => false)
+
+
+  fun isMap e =
+   (case e
+      of A.VarExp (x, ts) => let
+           val map = DelayedBasis.Var.parrayMap ()
+           in
+             Var.same (x, map)
            end
        | _ => false)
 
   fun translate e = let
-    fun exp (A.PCompExp (e, pes, optE)) = let
-          val e' = translate e
-          val pes' = List.map (fn (p,e) => (p, translate e)) pes
-          val optE' = Option.map translate optE
-          in case e'
-            of A.ApplyExp (f, args, t) =>
-                 if (isReduceU f) then
-                   raise Fail "SegReduce.translate -- todo: FOUND ONE!!!!"
-                 else
-                   A.PCompExp (e', pes', optE')
-             | _ => A.PCompExp (e', pes', optE')
+    fun exp (A.ApplyExp (e1,e2,t)) = let
+          val e1' = translate e1
+          val e2' = translate e2
+          in
+            (case e1'
+               of A.ApplyExp(segreduce,A.TupleExp([oper,init,nss]),_) => let
+                  val _ = print "Found a possible segreduce, check stamps now.\n"
+                  in
+                    A.ApplyExp(e1',e2',t)
+                  end
+                | _ => A.ApplyExp(e1',e2',t)
+            (*end case*))
           end
       | exp (A.LetExp (b,e)) =
           A.LetExp(translateBinding b,
@@ -68,10 +82,6 @@ end = struct
           A.FunExp (v,
                     translate e,
                     t)
-      | exp (A.ApplyExp (e1,e2,t)) =
-          A.ApplyExp (translate e1,
-                      translate e2,
-                      t)
       | exp (A.TupleExp (es)) =
           A.TupleExp (List.map translate es)
       | exp (A.RangeExp (e1, e2, optE, t)) =
@@ -84,6 +94,10 @@ end = struct
       | exp (A.PArrayExp (es,t)) =
           A.PArrayExp (List.map translate es,
                        t)
+      | exp (A.PCompExp (e, pes, optE)) =
+          A.PCompExp(translate e,
+                     List.map (fn(p,e)=>(p,translate e)) pes,
+                     Option.map translate optE)
       | exp (A.PChoiceExp (es,t)) =
           A.PChoiceExp (List.map translate es,
                         t)

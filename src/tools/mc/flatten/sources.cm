@@ -10,6 +10,7 @@ Library
   structure FlattenEnv
   structure FlattenTypes
   structure FlattenTerms
+  structure SegReduce
   structure FlattenOpGen
   structure FlattenOpFusion
   structure RealizeTerms
@@ -40,12 +41,13 @@ is
   flatten-env.sml
   flatten-types.sml
   flatten-terms.sml
+  seg-reduce.sml
   flatten-op-gen.sml  
   flatten-op-fusion.sml
   realize-terms.sml
   realize-types.sml
   parray-op-gen.sml
-  flatten-util.sml	
+  flatten-util.sml
   synth-map.sml
   synth-tab.sml  
   (*

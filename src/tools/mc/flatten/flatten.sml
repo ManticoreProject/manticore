@@ -14,11 +14,18 @@ end = struct
 
 (* *** FLATTENING *** *)
 
-  fun fltExp (e0 : AST.exp) : AST.exp = 
+  val segreduce = BasicControl.mkKeepPassSimple {
+    output = PrintAST.outputExp, (* NoTypes, *)
+    ext = "ast",
+    passName = "segr",
+    pass = SegReduce.translate,
+    registry = FlattenControls.registry
+  }
+
+ fun fltExp (e0 : AST.exp) : AST.exp = 
     if not (!FlattenControls.onFlg) then e0
     else let
-      (* val e1 = SegReduce.translate e0 *)
-      val e1 = e0
+      val e1 = segreduce e0
       val (e2, flatTycs) = FlattenTerms.flatten e1
       val e3 = FlattenOpFusion.fuseExp e2
       val e4 = RealizeTerms.realize (e3, flatTycs)
@@ -26,7 +33,7 @@ end = struct
         e4
       end
 
-  val flatten = BasicControl.mkKeepPassSimple {
+ val flatten = BasicControl.mkKeepPassSimple {
     output = PrintAST.outputExp, (* NoTypes, *)
     ext = "ast",
     passName = "ft",

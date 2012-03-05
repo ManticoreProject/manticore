@@ -170,13 +170,35 @@ structure TranslatePComp : sig
 		val x1 = Var.new ("x1", patTy)
 		val e' = trExp e
 		val c1 = AU.mkCaseExp (A.VarExp (x1, []), [A.PatMatch (p1, e')])
-		val f = AU.mkFunExp (x1, c1)
+                val f = AU.mkFunExp (x1,c1)
 		val e1' = trExp e1
 		val mapP = A.VarExp (DV.parrayMap (), [eltTy, patTy]) 
                 (* NOTE: these type args seem backwards to me, but I've tested this. - ams*)
 		fun map arr = AU.mkCurriedApplyExp (mapP, [f, arr])
+                fun g arr = let
+                  fun isReduce e =
+                   (case e
+                      of A.VarExp (x, ts) => let
+                           val reduceVar = DV.parrayReduce ()
+                           in
+                             Var.same (x, reduceVar)
+                           end
+                       | _ => false)
+                  in 
+                    (case e'
+                       of (A.ApplyExp(A.ApplyExp(reduce, oper, _), init, _)) =>
+                            if isReduce(reduce) then let
+                              val segred = A.VarExp(DV.parraySegreduce(),
+                                                    [TypeOf.exp oper, TypeOf.exp init, TypeOf.exp arr])
+                              in
+                                AU.mkApplyExp(segred, [oper,init,arr])
+                              end
+                            else map arr
+                        | _ => map arr
+                    (*end case*))
+                  end
                 in case optPred
-		  of NONE => map e1'
+		  of NONE => g e1'
 		   | SOME pred => raise Fail "todo(1)" (* see COMMENT 1 below *) 
 		end
 	    | ([(p1, e1), (p2, e2)], NONE) => let
