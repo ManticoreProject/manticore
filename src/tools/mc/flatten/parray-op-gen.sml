@@ -260,6 +260,14 @@ structure PArrayOpGen = struct
         raise Fail ("todo: reduce for type " ^ TU.toString t)
   end
 
+  fun genSegReduce (t : T.ty) : A.exp = 
+    if FU.isInt t then
+      monoVarExp' DV.intSegReduce
+    else if FU.isDouble t then
+      monoVarExp' DV.dblSegReduce
+    else
+      raise Fail ("todo: segreduce for type " ^ TU.toString t)
+
   fun genRange t =
     if FU.isInt t then
       A.VarExp (DV.intRange (), [])
@@ -300,6 +308,7 @@ structure PArrayOpGen = struct
 	     m
 	   end
        | A.PA_Reduce t => genReduce t
+       | A.PA_SegReduce t => genSegReduce t
        | A.PA_Range t => genRange t
        | A.PA_App t => genApp t
        | A.PA_TabHD (d, t) => genTabHD (d, t)

@@ -186,14 +186,21 @@ structure TranslatePComp : sig
                        | _ => false)
                   in 
                     (case e'
-                       of (A.ApplyExp(A.ApplyExp(reduce, oper, _), init, _)) =>
+                       of A.ApplyExp (A.ApplyExp (A.ApplyExp (reduce, oper, _), ident, _), ns, _) =>
                             if isReduce(reduce) then let
-                              val segred = A.VarExp(DV.parraySegreduce(),
-                                                    [TypeOf.exp oper, TypeOf.exp init, TypeOf.exp arr])
+		              val _ = print "in translate-pcomp: exchanging (map reduce) for (segreduce)\n"
+                              val segred = A.VarExp (DV.parraySegreduce(), [TypeOf.exp ident])
+                                                    (* [TypeOf.exp oper, TypeOf.exp ident, TypeOf.exp nss]) *)
                               in
-                                AU.mkApplyExp(segred, [oper,init,arr])
+                                AU.mkApplyExp (segred, [oper, ident, e1'])
                               end
-                            else map arr
+                            else let
+                              val _ = print "in translate-pcomp: found map, but not (map reduce)\n"
+			      val _ = print "would be reduce is as follows:\n"
+			      val _ = PrintAST.printExp reduce
+		              in
+			        map arr
+		              end
                         | _ => map arr
                     (*end case*))
                   end

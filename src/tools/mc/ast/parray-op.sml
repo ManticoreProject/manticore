@@ -24,6 +24,9 @@ structure PArrayOp = struct
   infixr -->
   fun domTy --> rngTy = T.FunTy (domTy, rngTy)
 
+  infixr **
+  fun t1 ** t2 = T.TupleTy [t1, t2]
+
   fun `f x = (fn y => f (x, y))
 
   local
@@ -53,6 +56,7 @@ structure PArrayOp = struct
             "PA_TabTupleFTS_{" ^ commas ($TU.toString ts) ^ "}"
 	| pop (A.PA_Map t) = tos "PA_Map" t
 	| pop (A.PA_Reduce t) = tos "PA_Reduce" t				  
+	| pop (A.PA_SegReduce t) = tos "PA_SegReduce" t
 	| pop (A.PA_Range t) = tos "PA_Range" t
 	| pop (A.PA_App t) = tos "PA_App" t
 	| pop (A.PA_TabHD (d, t)) = tos ("PA_TabHD_" ^ Int.toString d) t
@@ -143,11 +147,22 @@ structure PArrayOp = struct
             end
           else
 	    raise Fail ("todo: reductions on " ^ TU.toString t)
+      | pop (A.PA_SegReduce t) =
+          if isGroundTy t then let
+            val operTy = (t ** t) --> t
+	    val fty = T.FArrayTy (t, T.NdTy T.LfTy)
+            in
+              (T.TupleTy [operTy, t, fty]) --> T.FArrayTy (t, T.LfTy)
+	    end
+	  else
+	    raise Fail ("in PArrayOp.typeOf: SegReduce of a non ground type "
+			^ TU.toString t)
       | pop (A.PA_Range t) = let
           val _ = if TU.same (t, B.intTy) then () 
 		  else raise Fail ("not int: " ^ TU.toString t)
           in
-	    (T.TupleTy [B.intTy, B.intTy, B.intTy]) --> (B.parrayTy B.intTy)
+	    (T.TupleTy [B.intTy, B.intTy, B.intTy]) --> (T.FArrayTy (B.intTy, T.LfTy))
+                                                        (* (B.parrayTy B.intTy) *)
 	  end
       | pop (A.PA_App eltTy) = let
           val domTy = eltTy --> B.unitTy
@@ -187,11 +202,12 @@ structure PArrayOp = struct
       | consIndex (A.PA_TabFTS _)        = 3
       | consIndex (A.PA_Map _)           = 4
       | consIndex (A.PA_Reduce _)        = 5
-      | consIndex (A.PA_Range _)         = 6
-      | consIndex (A.PA_App _)           = 7
-      | consIndex (A.PA_TabTupleFTS _)   = 8
-      | consIndex (A.PA_TabHD _)         = 9
-      | consIndex (A.PA_PairMap _)       = 10
+      | consIndex (A.PA_SegReduce _)     = 6
+      | consIndex (A.PA_Range _)         = 7
+      | consIndex (A.PA_App _)           = 8
+      | consIndex (A.PA_TabTupleFTS _)   = 9
+      | consIndex (A.PA_TabHD _)         = 10
+      | consIndex (A.PA_PairMap _)       = 11
   in
 
     val compare : A.parray_op * A.parray_op -> order = let
@@ -221,6 +237,7 @@ structure PArrayOp = struct
 	     | (A.PA_TabTupleFTS ts1, A.PA_TabTupleFTS ts2) => $TU.compare (ts1, ts2)
 	     | (A.PA_Map t1, A.PA_Map t2) => TU.compare (t1, t2)
 	     | (A.PA_Reduce t1, A.PA_Reduce t2) => TU.compare (t1, t2)
+	     | (A.PA_SegReduce t1, A.PA_SegReduce t2) => TU.compare (t1, t2)
 	     | (A.PA_Range t1, A.PA_Range t2) => TU.compare (t1, t2)
 	     | (A.PA_App t1, A.PA_App t2) => TU.compare (t1, t2)
 	     | (A.PA_TabHD (d1, t1), A.PA_TabHD (d2, t2)) => (case Int.compare (d1, d2)
@@ -453,6 +470,37 @@ structure PArrayOp = struct
             raise Fail ("cannot be an associative operator with type " ^ 
 			TU.toString operTy)
       | mk t = raise Fail ("unexpected type " ^ TU.toString t)
+    in
+      mk
+    end
+
+(* constructSegReduce : ty -> exp *)
+  val constructSegReduce : T.ty -> A.exp = let
+    fun fail msg = raise Fail ("constructSegReduce: " ^ msg)
+    fun parr c = TyCon.same (c, B.parrayTyc)
+    fun mk (argsTy as T.TupleTy [operTy, identTy, parrTy]) = let
+          (* make some assertions before proceeding *)
+          (* check that oper is of type t*t->t *)
+          val t = (case operTy
+            of T.FunTy (T.TupleTy [t1, t2], t3) =>
+	         if TU.same (t1, t2) andalso TU.same (t2, t3) then t1
+		 else fail ("bogus operTy " ^ TU.toString operTy)
+	     | _ => fail ("bogus operTy " ^ TU.toString operTy)
+            (* end case *))
+          (* check that ident is of the same type t *)
+	  val _ = if TU.same (t, identTy) then () 
+		  else fail ("bogus identTy: " ^ TU.toString identTy)
+	  (* check that parr is of type t parray parray *)
+	  val _ = (case parrTy
+	    of T.FArrayTy (t', T.NdTy T.LfTy) =>
+                 if TU.same (t, t') then ()
+		 else fail ("bogus parrTy: " ^ TU.toString parrTy)
+	     | _ => fail ("bogus parrTy: " ^ TU.toString parrTy)
+            (* end case *))
+          in
+            A.PArrayOp (A.PA_SegReduce t)
+          end
+      | mk t = fail ("unexpected type " ^ TU.toString t)
     in
       mk
     end

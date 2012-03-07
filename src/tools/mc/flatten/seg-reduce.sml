@@ -31,7 +31,6 @@ end = struct
            end
        | _ => false)
 
-
   fun isMap e =
    (case e
       of A.VarExp (x, ts) => let

@@ -228,6 +228,7 @@ structure DelayedBasis = struct
     val fpmap         = memoVar ["FArrayPair", "flatMapEq"]
 
     val intReduce     = memoVar ["IntFArray", "reduce"]
+    val intSegReduce  = memoVar ["IntFArray", "segreduce"]
     val intRange      = memoVar ["IntFArray", "intRange"]
     val intLen        = memoVar ["IntFArray", "length"]
     val intTab        = memoVar ["IntFArray", "tab"]
@@ -244,6 +245,7 @@ structure DelayedBasis = struct
     val dblTabFTS     = memoVar ["DoubleFArray", "tabFromToStep"]
     val dblMap        = memoVar ["DoubleFArray", "flatMap"]
     val dblReduce     = memoVar ["DoubleFArray", "reduce"]
+    val dblSegReduce  = memoVar ["DoubleFArray", "segreduce"]
     val dfFromList    = memoVar ["DoubleFArray", "fromList"]
 
     val ifpTab        = memoVar ["IntFArrayPair", "tabulate"]

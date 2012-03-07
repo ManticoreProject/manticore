@@ -153,6 +153,7 @@ end *) = struct
       | pop (A.PA_TabFTS t) = A.PA_TabFTS (ty t)
       | pop (A.PA_Map t) = A.PA_Map (ty t)
       | pop (A.PA_Reduce t) = A.PA_Reduce (ty t)
+      | pop (A.PA_SegReduce t) = A.PA_SegReduce (ty t)
       | pop (A.PA_Range t) = A.PA_Range (ty t)
       | pop (A.PA_App t) = A.PA_App (ty t)
       | pop (A.PA_TabTupleFTS ts) = A.PA_TabTupleFTS ($ty ts)

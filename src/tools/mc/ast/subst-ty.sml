@@ -119,6 +119,7 @@ structure SubstTy =
 	| p (A.PA_TabTupleFTS ts) = A.PA_TabTupleFTS (List.map (`substTy s) ts)
 	| p (A.PA_Map t) = A.PA_Map (substTy (s, t))
 	| p (A.PA_Reduce t) = A.PA_Reduce (substTy (s, t))
+	| p (A.PA_SegReduce t) = A.PA_SegReduce (substTy (s, t))
 	| p (A.PA_Range t) = A.PA_Range (substTy (s, t))
 	| p (A.PA_App t) = A.PA_App (substTy (s, t))
 	| p (A.PA_TabHD (d, t)) = A.PA_TabHD (d, substTy (s, t))
