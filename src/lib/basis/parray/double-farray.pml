@@ -182,7 +182,8 @@ structure DoubleFArray = struct
     end
 
   (* partReduce : ('a -> 'a) * 'a * 'a double_seq * int * int -> 'a *)
-  fun partReduce (f, init, data, lo, hi) = let
+  fun partReduce (f, init, data, lo, len) = let
+    val hi = lo+len
     fun sub i = DS.sub(data,i)
     fun lp (i, acc) =
       if i >= hi then acc
