@@ -48,8 +48,10 @@ structure FArrayUtil = struct
                   if (i<0) then fromList acc
 	  	  else lp (i-1, Rope.sub(data,i)::acc)
 		val _ = Print.printLn "running flatten_IF_F"
+		val res = lp (hi-1, [])
+		val _ = Print.printLn "done running flatten_IF_F"
                 in
-                  lp (hi-1, [])
+                  res
 	        end
 	    | S.Nd _ => failwith "flatten_IF_F - not a flat farray"
            (* end case *))

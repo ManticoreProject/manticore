@@ -216,6 +216,7 @@ structure IntFArray = struct
 
   (* segreduce : ('a -> 'a) * 'a * 'a int_farray farray -> 'a int_farray *)
   fun segreduce (f, init, nss) = let
+    val _ = Print.printLn "called IntFArray.segreduce"
     val (FArray (data, shape)) = nss
     val segdes = SR.segdesFromShape shape
     fun lp (r, ps) = (case r
