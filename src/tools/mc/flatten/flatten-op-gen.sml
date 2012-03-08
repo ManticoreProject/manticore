@@ -227,7 +227,8 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
       val caseExp = AU.mkCaseExp (A.VarExp (arg, [T.TupleTy ts]),
         [A.PatMatch (fArrPat, AU.mkLetExp (binds, ptup))])
       val bindRes = A.ValBind (A.VarPat res, caseExp)
-      val body = A.SeqExp (msg0, AU.mkLetExp ([bindRes], A.SeqExp (msg1, A.VarExp (res, []))))
+      (* val body = A.SeqExp (msg0, AU.mkLetExp ([bindRes], A.SeqExp (msg1, A.VarExp (res, [])))) *)
+      val body = AU.mkLetExp ([bindRes], A.VarExp (res, []))
       in
       (* all together now... *)
 	AU.mkFunWithParams (unzip, [arg], body)
@@ -341,6 +342,7 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
 (* val msg = mkPrintln ("running " ^ Var.nameOf f_o_g) *)
 (* val body = A.SeqExp (msg, v f @@ [v g @@ [v arg]]) *)
 (* (\* end debugging *\) *)
+      val body = v f @@ [v g @@ [v arg]]
       in
 	AU.mkFunWithParams (f_o_g, [arg], body)
       end
