@@ -42,6 +42,7 @@ structure AST =
       | PA_PairMap of ty           (* type of the function to be mapped *)
       | PA_Reduce of ty            (* type 'a in the associative operator ('a * 'a -> 'a) *)
       | PA_SegReduce of ty         (* type 'a in assoc oper, ident, and the 'a parray parray *)
+      | PA_MapSP of ty             (* type type of mapped fn *)
       | PA_Range of ty             (* type is element type (currently only int supported) *)
       | PA_App of ty               (* type is the element type *)
       | PA_TabHD of int * ty       (* the dim and the type of elts to be created by the tab *)

@@ -270,6 +270,20 @@ structure PArrayOpGen = struct
     else
       raise Fail ("todo: segreduce for type " ^ TU.toString t)
 
+  fun genMapSP (t : T.ty) : A.exp = 
+   (case t
+      of T.FunTy (a, b) => 
+          (case a
+	    of T.TupleTy [a1, a2] =>
+	         if FU.isInt a1 andalso FU.isDouble a2 andalso FU.isDouble b then
+		     monoVarExp' DV.mapSP
+		 else
+		     raise Fail "todo"
+	     | _ => raise Fail "todo"
+            (* end case *))
+       | _ => raise Fail ("unexpected type " ^ TU.toString t)
+      (* end case *))
+
   fun genRange t =
     if FU.isInt t then
       A.VarExp (DV.intRange (), [])
@@ -311,6 +325,7 @@ structure PArrayOpGen = struct
 	   end
        | A.PA_Reduce t => genReduce t
        | A.PA_SegReduce t => genSegReduce t
+       | A.PA_MapSP t => genMapSP t
        | A.PA_Range t => genRange t
        | A.PA_App t => genApp t
        | A.PA_TabHD (d, t) => genTabHD (d, t)

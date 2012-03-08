@@ -82,6 +82,7 @@ end *) = struct
 	      ("map", SOME PArrayOp.constructMap),
 	      ("reduce", SOME PArrayOp.constructReduce),
 	      ("segreduce", SOME PArrayOp.constructSegReduce),
+	      ("mapSP", SOME PArrayOp.constructMapSP),
 	      ("range", SOME PArrayOp.constructRange),
 	      ("app", SOME PArrayOp.constructApp),
 	      ("tab2D", SOME PArrayOp.constructTabHD),

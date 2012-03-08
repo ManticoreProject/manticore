@@ -200,7 +200,7 @@ structure TranslatePComp : sig
                                 of T.FunTy (dom, rng) => (dom, rng)
 				 | _ => raise Fail "translate-pcomp: f not a function"
                                 (* end case *))
-			      val mapSP = A.VarExp (DV.parrayMapSP(), [frng, fdom])
+			      val mapSP = A.VarExp (DV.parrayMapSP(), [fdom, frng])
                               val segred = A.VarExp (DV.parraySegreduce(), [TypeOf.exp ident])
                               in
                                 AU.mkApplyExp (segred, [oper, ident, AU.mkApplyExp (mapSP, [f, e1'])])

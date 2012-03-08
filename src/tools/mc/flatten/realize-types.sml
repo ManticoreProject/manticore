@@ -159,6 +159,7 @@ end *) = struct
       | pop (A.PA_TabTupleFTS ts) = A.PA_TabTupleFTS ($ty ts)
       | pop (A.PA_TabHD (d, t)) = A.PA_TabHD (d, ty t)
       | pop (A.PA_PairMap t) = A.PA_PairMap (ty t)
+      | pop (A.PA_MapSP t) = A.PA_MapSP (ty t)
     in
       pop
     end

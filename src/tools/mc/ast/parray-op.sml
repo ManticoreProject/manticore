@@ -55,6 +55,7 @@ structure PArrayOp = struct
 	| pop (A.PA_TabTupleFTS ts) = 
             "PA_TabTupleFTS_{" ^ commas ($TU.toString ts) ^ "}"
 	| pop (A.PA_Map t) = tos "PA_Map" t
+	| pop (A.PA_MapSP t) = tos "PA_MapSP" t
 	| pop (A.PA_Reduce t) = tos "PA_Reduce" t				  
 	| pop (A.PA_SegReduce t) = tos "PA_SegReduce" t
 	| pop (A.PA_Range t) = tos "PA_Range" t
@@ -157,6 +158,18 @@ structure PArrayOp = struct
 	  else
 	    raise Fail ("in PArrayOp.typeOf: SegReduce of a non ground type "
 			^ TU.toString t)
+      | pop (A.PA_MapSP t) = let
+          fun fty t = T.FArrayTy (t, T.NdTy T.LfTy)
+          in case t
+	    of T.FunTy (a, b) =>
+                (case a
+		   of T.TupleTy [a1, a2] =>
+                        T.FunTy (T.TupleTy [t, T.TupleTy [fty a1, fty a2]], fty b)
+		    | _ => raise Fail "todo"
+                   (* end case *))
+	     | _ => raise Fail ("unexpected ty " ^ TU.toString t)
+            (* end case *)
+	  end
       | pop (A.PA_Range t) = let
           val _ = if TU.same (t, B.intTy) then () 
 		  else raise Fail ("not int: " ^ TU.toString t)
@@ -208,6 +221,7 @@ structure PArrayOp = struct
       | consIndex (A.PA_TabTupleFTS _)   = 9
       | consIndex (A.PA_TabHD _)         = 10
       | consIndex (A.PA_PairMap _)       = 11
+      | consIndex (A.PA_MapSP _)         = 12
   in
 
     val compare : A.parray_op * A.parray_op -> order = let
@@ -244,6 +258,7 @@ structure PArrayOp = struct
                  of EQUAL => TU.compare (t1, t2)
 		  | neq => neq)
 	     | (A.PA_PairMap t1, A.PA_PairMap t2) => TU.compare (t1, t2)
+	     | (A.PA_MapSP t1, A.PA_MapSP t2) => TU.compare (t1, t2)
 	     | _ => raise Fail "compiler bug"
         end
       in
@@ -501,6 +516,26 @@ structure PArrayOp = struct
             A.PArrayOp (A.PA_SegReduce t)
           end
       | mk t = fail ("unexpected type " ^ TU.toString t)
+    in
+      mk
+    end
+
+(* constructMapSP : ty -> exp *)
+  val constructMapSP : T.ty -> A.exp = let
+    fun mk (argsTy as T.TupleTy [fty, T.TupleTy [arrTy1, arrTy2]]) = 
+         (case fty
+	   of T.FunTy (T.TupleTy [a1, a2], b) =>
+                (case (arrTy1, arrTy2)
+		  of (T.FArrayTy (eltTy1, T.NdTy T.LfTy), T.FArrayTy (eltTy2, T.NdTy T.LfTy)) =>
+		       if TU.same (a1, eltTy1) andalso TU.same (a2, eltTy2) then
+		         A.PArrayOp (A.PA_MapSP fty)
+		       else
+                         raise Fail ("bad types(1): " ^ TU.toString argsTy)
+		   | _ => raise Fail ("bad types(2): " ^ TU.toString argsTy)
+                  (* end case *))
+	    | _ => raise Fail ("bad types(3): " ^ TU.toString argsTy)
+	   (* end case *))
+      | mk argsTy = raise Fail ("bad types(4): " ^ TU.toString argsTy)
     in
       mk
     end
