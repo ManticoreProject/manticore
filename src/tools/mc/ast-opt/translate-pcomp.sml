@@ -184,18 +184,29 @@ structure TranslatePComp : sig
                              Var.same (x, reduceVar)
                            end
                        | _ => false)
+                  fun isMap m =
+		   (case m
+		      of A.VarExp(x,ts) => Var.same(x, DV.parrayMap())
+		       | _ => false)
                   in 
-                    (case e'
-                       of A.ApplyExp (A.ApplyExp (A.ApplyExp (reduce, oper, _), ident, _), ns, _) =>
-                            if isReduce(reduce) then let
-		              val _ = print "in translate-pcomp: exchanging (map reduce) for (segreduce)\n"
+                    (case (p1, e')
+                       of (A.VarPat ns, A.ApplyExp (A.ApplyExp (A.ApplyExp (reduce, oper, _), ident, _), A.ApplyExp (A.ApplyExp (inner_map, f, _), xs, _), _)) =>
+                            if isReduce(reduce) andalso isMap(inner_map) then let
+                            (* [| reduce oper ident e_ns | ns in nss |] *)
+		            (* --> *)
+		            (* segreduce (oper, ident, map (fn ns => e_ns) nss) *)
+			      val _ = print "in translate-pcomp: exchanging (map reduce (map f)) for (segreduce (mapSP f))\n"
+		              val (fdom, frng) = (case TypeOf.exp f
+                                of T.FunTy (dom, rng) => (dom, rng)
+				 | _ => raise Fail "translate-pcomp: f not a function"
+                                (* end case *))
+			      val mapSP = A.VarExp (DV.parrayMapSP(), [frng, fdom])
                               val segred = A.VarExp (DV.parraySegreduce(), [TypeOf.exp ident])
-                                                    (* [TypeOf.exp oper, TypeOf.exp ident, TypeOf.exp nss]) *)
                               in
-                                AU.mkApplyExp (segred, [oper, ident, e1'])
+                                AU.mkApplyExp (segred, [oper, ident, AU.mkApplyExp (mapSP, [f, e1'])])
                               end
                             else let
-                              val _ = print "in translate-pcomp: found map, but not (map reduce)\n"
+                              val _ = print "in translate-pcomp: found map, but not (map reduce (map))\n"
 			      val _ = print "would be reduce is as follows:\n"
 			      val _ = PrintAST.printExp reduce
 		              in

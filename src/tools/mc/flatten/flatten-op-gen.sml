@@ -131,10 +131,10 @@ end *) = struct
       val (x, p) = lp (0, ts, NONE, [])
       val body = A.LetExp (A.ValBind (p, A.VarExp (arg, [])),
 			   A.VarExp (x, []))
-(* +debug *)
-val msg = mkPrintln ("running " ^ Var.nameOf f)
-val body = A.SeqExp (msg, body) 
-(* -debug *)
+(* (\* +debug *\) *)
+(* val msg = mkPrintln ("running " ^ Var.nameOf f) *)
+(* val body = A.SeqExp (msg, body)  *)
+(* (\* -debug *\) *)
       in
         A.FB (f, arg, body)
       end

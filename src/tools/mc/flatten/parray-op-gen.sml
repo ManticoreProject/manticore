@@ -238,6 +238,8 @@ structure PArrayOpGen = struct
 		 (* else A.VarExp (DV.fpmap (), [alpha, beta]) *)
 	       else if FU.isInt_farray t1 andalso FU.isDbl_farray t2 andalso FU.isDouble beta then
 	         monoVarExp' DV.map_IFF_DFF_DF
+	       else if FU.isInt_farray t1 andalso FU.isDbl_farray t2 andalso FU.isDbl_farray beta then
+                 raise Fail "todo" (* monoVarExp' DV.map_IFF_DFF_DFF *)
 	       else raise Fail ("genMap(loc1) todo: " ^ TU.toString t)
 	   | _ => raise Fail ("genMap(loc2) todo: " ^ TU.toString t)
           (* end case *))
