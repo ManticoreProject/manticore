@@ -124,6 +124,7 @@ structure SubstTy =
 	| p (A.PA_App t) = A.PA_App (substTy (s, t))
 	| p (A.PA_TabHD (d, t)) = A.PA_TabHD (d, substTy (s, t))
 	| p (A.PA_PairMap t) = A.PA_PairMap (substTy (s, t))
+	| p (A.PA_MapSP t) = A.PA_MapSP (substTy (s, t))
       in
         p oper
       end
