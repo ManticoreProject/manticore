@@ -221,8 +221,8 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
 
       val binds = List.map (fn (h,_) => A.FunBind [h]) hashes
       val ptup = mkPTup (map mkMapHash hashes)
-      val msg0 = mkPrintln ("running " ^ Var.nameOf unzip)
-      val msg1 = mkPrintln ("done with " ^ Var.nameOf unzip)
+      (* val msg0 = mkPrintln ("running " ^ Var.nameOf unzip) *)
+      (* val msg1 = mkPrintln ("done with " ^ Var.nameOf unzip) *)
       val res = Var.new ("res", TypeOf.exp ptup)
       val caseExp = AU.mkCaseExp (A.VarExp (arg, [T.TupleTy ts]),
         [A.PatMatch (fArrPat, AU.mkLetExp (binds, ptup))])
@@ -336,11 +336,11 @@ val _ = println (concat ["building ", Var.nameOf unzip, ":", TU.toString (domTy 
       val name  = Var.nameOf f ^ "_o_" ^ Var.nameOf g
       val f_o_g = Var.new (name, domTy --> rngTy)
       val arg   = Var.new ("arg", domTy)
-(* debugging and meta-debugging *)
-val _ = println (concat ["building ", name, ":", TU.toString (domTy --> rngTy)])
-val msg = mkPrintln ("running " ^ Var.nameOf f_o_g)
-val body = A.SeqExp (msg, v f @@ [v g @@ [v arg]])
-(* end debugging *)
+(* (\* debugging and meta-debugging *\) *)
+(* val _ = println (concat ["building ", name, ":", TU.toString (domTy --> rngTy)]) *)
+(* val msg = mkPrintln ("running " ^ Var.nameOf f_o_g) *)
+(* val body = A.SeqExp (msg, v f @@ [v g @@ [v arg]]) *)
+(* (\* end debugging *\) *)
       in
 	AU.mkFunWithParams (f_o_g, [arg], body)
       end
