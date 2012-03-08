@@ -178,7 +178,7 @@ end*) = struct
                A.ID (fArray r)
 	     else 
 	       raise Fail ("todo: parrays of datatypes (" ^ TU.toString r ^ ")")
-	 | T.VarTy a => raise Fail "todo"
+	 | T.VarTy a => raise Fail ("todo: FArrayOp.construct " ^ TU.toString r)
 	 | _ => raise Fail ("construct: " ^ TU.toString r)
 	(* end case *))
     in

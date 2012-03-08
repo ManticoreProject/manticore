@@ -54,14 +54,14 @@ structure SegReduce = struct
     in
       case s
         of S.Nd ls => let
-             val itos = Int.toString
+             (* val itos = Int.toString
              fun ptos (n,m) = "(" ^ itos n ^ "," ^ itos m ^ ")"
-             fun pstos ps = String.concat (List.map ptos ps)
+             fun pstos ps = String.concat (List.map ptos ps) *)
              val sd = lp (0, ls, nil) 
-             val _ = Print.printLn "original shape:"
+             (* val _ = Print.printLn "original shape:"
              val _ = Print.printLn (S.toString s)
              val _ = Print.printLn "segdes:"
-             val _ = Print.printLn (pstos sd)
+             val _ = Print.printLn (pstos sd) *)
              in
                sd
              end

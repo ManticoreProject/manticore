@@ -15,7 +15,7 @@ structure RopeUtil = struct
   (* map_int : ('a -> int) * 'a rope -> IR.int_rope *)
   (* post : the output has the same shape as the input *)
     fun map_int (f, rope) = let
-val _ = Print.printLn ("RopeUtil.map_int " ^ Int.toString (R.length rope))
+(* val _ = Print.printLn ("RopeUtil.map_int " ^ Int.toString (R.length rope)) *)
       fun m r = (case r
         of R.Leaf s => let 
              val s' = SeqUtil.map_int (f, s)
@@ -31,7 +31,7 @@ val _ = Print.printLn ("RopeUtil.map_int " ^ Int.toString (R.length rope))
   (* map_double : ('a -> double) * 'a rope -> DR.double_rope *)
   (* post : the output has the same shape as the input *)
     fun map_double (f, rope) = let
-val _ = Print.printLn "map_double"
+(* val _ = Print.printLn "map_double" *)
       fun m r = (case r
         of R.Leaf s => let 
              val s' = SeqUtil.map_double (f, s)

@@ -142,8 +142,12 @@ structure IntFArray = struct
 
 (* intRange : int * int * int -> int_farray *)
   fun intRange (from, to_, step) = let
+(*    val _ = Print.printLn ("intRange args: " ^ (Int.toString from) ^ ", " ^ (Int.toString to_) ^ ", " ^ (Int.toString step))
+    val _ = Print.printLn "intRange: a" *)
     val data = R.range (from, to_, step)
+(*    val _ = Print.printLn "intRange: b" *)
     val len = R.length data
+(*    val _ = Print.printLn "intRange: c" *)
     in
       if (len = 0) then
         empty
@@ -217,7 +221,7 @@ structure IntFArray = struct
 
   (* segreduce : ('a -> 'a) * 'a * 'a int_farray farray -> 'a int_farray *)
   fun segreduce (f, init, nss) = let
-    val _ = Print.printLn "called IntFArray.segreduce"
+(*    val _ = Print.printLn "called IntFArray.segreduce" *)
     val (FArray (data, shape)) = nss
     val segdes = SR.segdesFromShape shape
     fun lp (r, ps) = (case r

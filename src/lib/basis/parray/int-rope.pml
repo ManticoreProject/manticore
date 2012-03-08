@@ -600,7 +600,7 @@ structure IntRope = struct
         failwith "Size" 
       else let
         val cp = CP.get ()
-       (* val _ = Print.printLn ("chunking policy: " ^ CP.toString cp) *)
+        (* val _ = Print.printLn ("chunking policy: " ^ CP.toString cp) *)
         in case cp
           of CP.Sequential => tabulateSequential f (0, n)
 	   | CP.ETS SST => tabulateETS SST (n, f)

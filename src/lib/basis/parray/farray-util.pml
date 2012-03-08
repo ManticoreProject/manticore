@@ -47,9 +47,9 @@ structure FArrayUtil = struct
 	        fun lp (i, acc) = 
                   if (i<0) then fromList acc
 	  	  else lp (i-1, Rope.sub(data,i)::acc)
-		val _ = Print.printLn "running flatten_IF_F"
+(*		val _ = Print.printLn "running flatten_IF_F" *)
 		val res = lp (hi-1, [])
-		val _ = Print.printLn "done running flatten_IF_F"
+(*		val _ = Print.printLn "done running flatten_IF_F" *)
                 in
                   res
 	        end
@@ -86,7 +86,7 @@ structure FArrayUtil = struct
 	        fun lp (i, acc) = 
                   if (i<0) then fromList acc
 	  	  else lp (i-1, Rope.sub(data,i)::acc)
-		val _ = Print.printLn "running flatten_DF_F"
+(*		val _ = Print.printLn "running flatten_DF_F" *)
                 in
                   lp (hi-1, [])
 	        end
