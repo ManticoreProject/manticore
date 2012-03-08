@@ -34,6 +34,7 @@ structure PArray = struct
   fun map f pa = fromRope (Rope.map f (toRope pa))
   fun reduce rator init pa = Rope.reduce rator init (toRope pa)
   fun segreduce (oper,init,pa) = map (reduce oper init) pa
+  fun mapSP (f, paa) = map (map f) paa
   fun range (from, to_, step) = fromRope (Rope.range (from, to_, step))
   fun app f pa = Rope.app f (toRope pa)
 

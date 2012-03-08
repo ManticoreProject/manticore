@@ -134,6 +134,35 @@ structure FArrayUtil = struct
       DF.tab (len, fn i => f (isub (nss, i), dsub (xss, i))) 
     end
 
+(* utils to implement map_IFF_DFF_DFF *)
+
+(* --- ADAPT FOR ROPES --- *)
+
+(* mapSP : (int * dbl -> dbl) -> int_farray * dbl_farray -> dbl_farray *)
+(* SP for "shape preserving" *)
+  fun mapSP (f : int * double -> double) (nss, xss) = let
+    val IF.FArray (nssRope, nssShape) = nss
+    val DF.FArray (xssRope, xssShape) = xss
+    val _ = if S.same (xssShape, nssShape) then () 
+	    else (Print.printLn "map_IFF_DFF_DFF: shapes not same"; raise Fail "shapes not same")
+    val resRope = IntDoubleRopePair.fastMapDbl (f, nssRope, xssRope)
+    val resFArray = DF.FArray (resRope, nssShape)
+    in
+      resFArray
+    end
+
+(*
+    val len = IF.length nss
+    val _ = if (len = DF.length xss) then () else failwith "map_IFF_DFF_DFF - length mismatch"
+    fun isub (nss, i) = IF.clean (IF.nestedSub (nss, i))
+    fun dsub (xss, i) = DF.clean (DF.nestedSub (xss, i))     
+    val data = DoubleRope.tabulate (len, fn i => f (isub (nss, i), dsub (xss, i)))
+    val shape = S.Lf (0, len)
+    in
+      DF.FArray (data, shape)
+    end
+*)
+
 (* mapDDD : (dbl * dbl -> dbl) * dbl_farray * dbl_farray -> dbl_farray *)
   fun mapDDD (f : double * double -> double, a1, a2) = let
     val (DF.FArray (data1, shape1)) = DF.clean a1
