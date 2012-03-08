@@ -138,9 +138,9 @@ structure FArrayUtil = struct
 
 (* --- ADAPT FOR ROPES --- *)
 
-(* mapSP : (int * dbl -> dbl) -> int_farray * dbl_farray -> dbl_farray *)
+(* mapSP : (int * dbl -> dbl) * int_farray * dbl_farray -> dbl_farray *)
 (* SP for "shape preserving" *)
-  fun mapSP (f : int * double -> double) (nss, xss) = let
+  fun mapSP (f : int * double -> double, (nss, xss)) = let
     val IF.FArray (nssRope, nssShape) = nss
     val DF.FArray (xssRope, xssShape) = xss
     val _ = if S.same (xssShape, nssShape) then () 
