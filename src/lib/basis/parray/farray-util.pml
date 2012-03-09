@@ -95,16 +95,34 @@ structure FArrayUtil = struct
       (* end case *))
   end (* local *)
 
+(* map_IF_DF : (int -> double) -> int_farray -> double_farray *)
+  fun map_IF_DF f ns = (case IF.clean ns
+    of IF.FArray (data, shape) => (case shape
+         of S.Lf (lo, hi) => let
+              (* val _ = Print.printLn "in map_IF_DF" *)
+              fun lp (i, acc) = 
+                if (i<0) then DF.fromList (List.rev acc)
+		else lp (i-1, f (IntRope.sub(data,i))::acc)
+              val res = lp (hi-1, []) 
+              in
+                res
+              end
+	  | S.Nd _ => failwith "map_IF_DF - not a flat int_farray"
+         (* end case *))
+    (* end case *))
+
 (* map_IF_poly : (int -> 'b) -> int_farray -> 'b farray *)
   fun map_IF_poly f ns = (case IF.clean ns
     of IF.FArray (data, shape) => (case shape
          of S.Lf (lo, hi) => let
+              (* val _ = Print.printLn "in map_IF_poly" *)
               fun lp (i, acc) = 
                 if (i<0) then FArray.fromList (List.rev acc)
 		else lp (i-1, f (IntRope.sub(data,i))::acc)
-                in
-                  lp (hi-1, [])
-                end
+              val res = lp (hi-1, []) 
+              in
+                res
+              end
 	  | S.Nd _ => failwith "map_IF_poly - not a flat int_farray"
          (* end case *))
     (* end case *))

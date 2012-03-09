@@ -18,6 +18,10 @@ structure IntDoubleRopePair = struct
 
   (* ***** UTILITIES ***** *)
 
+    val itos = Int.toString
+
+    val dtos = Double.toString
+
   (* iddmap : (int * double -> double) * int_seq * dbl_seq -> dbl_seq *)
     fun iddmap (f : int * double -> double, is : IS.int_seq, ds : DS.double_seq) 
         : DS.double_seq = let
@@ -25,7 +29,18 @@ structure IntDoubleRopePair = struct
       val _ = if DS.length ds = n then ()
 	      else (Print.printLn "iddmap: length mismatch";
 		    raise Fail "iddmap -- length mismatch")
-      val res = DS.tabulate (n, fn i => (f (IS.sub (is, i), DS.sub (ds, i))))
+      fun f' i = let
+	val n = IS.sub (is, i)
+	val x = DS.sub (ds, i)
+	val res = f (n, x)
+        (* val _ = Print.printLn ("f(" ^ itos n ^ "," ^ dtos x ^ ") = " ^ dtos res) *)
+        in
+          res
+        end
+      val res = DS.tabulate (n, f')
+      (* val _ = Print.printLn "here's iddmap's result:" *)
+      (* fun lp i = if i=n then () else (Print.printLn (dtos (DS.sub (res, i))); lp (i+1)) *)
+      (* val _ = lp 0 *)
       in
         res
       end
@@ -38,7 +53,7 @@ structure IntDoubleRopePair = struct
         of (IR.Leaf s1, DR.Leaf s2) => 
              DR.leaf (iddmap (f, s1, s2))
 	 | (IR.Cat (d1, len1, r1L, r1R), DR.Cat (d2, len2, r2L, r2R)) =>
-             DR.Cat (| d1, len1+len2, lp (r1L, r2L), lp (r1R, r2R) |)
+             DR.Cat (| d1, len1, lp (r1L, r2L), lp (r1R, r2R) |)
 	 | _ => (Print.printLn "IDRP.fastMapDbl -- BUG: called on ropes of different shapes";
 		 raise Fail "fastMapP -- BUG: called on ropes of different shapes")
         (* end case *))
