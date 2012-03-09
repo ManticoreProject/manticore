@@ -165,6 +165,15 @@ structure DoubleFArray = struct
    This is almost identical to the code in SR, but
    rewritten to use monomorphic Double Ropes and Double Seqs *)
 
+  fun stopwatch (label, thunk) = let
+    val t0 = Time.now ()
+    val x = thunk ()
+    val t1 = Time.now ()
+    val _ = Print.printLn ("time in " ^ label ^ ": " ^ Time.toStringMicrosec(t1-t0))
+    in
+      x
+    end
+
   (* writePairs : 'a double_seq * (int * 'a) list -> 'a list *)
   fun writePairs res pss = let
     fun sub i = DS.sub (res, i)
@@ -220,24 +229,17 @@ structure DoubleFArray = struct
              sumsL @ sumsR
            end
       (* end case *))
-    val pss = lp (data, segdes)
+    val pss = stopwatch ("segreduce'.lp", fn () => lp (data, segdes))
     (* val _ = Print.printLn "in segsum: computed pss:" *)
     (* val _ = Print.printLn (psstos pss) *)
-    val reductions = DS.tabulate (List.length segdes, fn _ => init)
-    val _ = writePairs reductions pss
+    val reductions = stopwatch ("segreduce'.reductions", fn () => DS.tabulate (List.length segdes, fn _ => init))
+    val _ = stopwatch ("segreduce'.writePairs", fn () => writePairs reductions pss)
     val data' = R.fromSeq reductions
     val shape' = S.Lf (0, R.length data')
     in
       FArray (data', shape')
     end
 
-  fun segreduce (f, init, nss) = let
-    val b = Time.now()
-    val ans = segreduce'(f,init,nss)
-    val e = Time.now()
-    val _ = Print.printLn ("Time in segreduce: " ^ Time.toStringMicrosec(e-b))
-    in
-      ans
-    end
+  fun segreduce (f, init, nss) = stopwatch ("segreduce", fn () => segreduce' (f, init, nss))
 
 end
