@@ -65,9 +65,9 @@ structure TranslatePComp : sig
   (* Additionally, these variables must be bound outside of the range expressions. *)
   (* TODO: This only catches ranges -- it's too conservative. *)
     fun regularD trExp (e, pes, oe) = let
-        fun lp (pce as A.PCompExp (e, [(p, A.RangeExp rng)], NONE), vars) = let
+        fun lp (pce as A.PCompExp (e, [(p, arng as A.RangeExp rng)], NONE), vars) = let
             val (iFrom, iTo, iStepOpt, ty) = rng
-            val usedVars = ASTUtil.varsOfExp pce
+            val usedVars = ASTUtil.varsOfExp arng
             val i = (case p
               of A.VarPat i => i
 	       | A.WildPat _ => Var.new ("dummy", ty)
@@ -75,14 +75,15 @@ structure TranslatePComp : sig
 	       | _ => raise Fail ("unexpected pat in pcomp (can it match an int?): " ^ 
 				  AU.patToString p)
               (* end case *))
+            val vars = i::vars
             val iStep = Option.getOpt (iStepOpt, AU.one)
             in
-            if List.exists (fn (v) => Var.same(v, i)) usedVars
+            if List.exists (fn (v1) => List.exists (fn (v) => Var.same(v, v1)) usedVars) (vars)
             then NONE
             else (
                 case lp (e, vars)
                  of NONE => NONE
-	          | SOME (tups, vars, e') => SOME ((trExp iFrom, trExp iTo, trExp iStep)::tups, i::vars, e'))
+	          | SOME (tups, vars, e') => SOME ((trExp iFrom, trExp iTo, trExp iStep)::tups, vars, e'))
             end
 	| lp (A.PCompExp _, _) = NONE
 	| lp (innermostExp, vars) = SOME ([], vars, trExp innermostExp)

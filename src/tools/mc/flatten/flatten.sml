@@ -15,7 +15,7 @@ end = struct
 (* *** FLATTENING *** *)
 
   val segreduce = BasicControl.mkKeepPassSimple {
-    output = PrintAST.outputExp, (* NoTypes, *)
+    output = PrintAST.outputExpNoTypes, 
     ext = "ast",
     passName = "segr",
     pass = SegReduce.translate,
