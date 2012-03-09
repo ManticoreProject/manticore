@@ -141,12 +141,15 @@ structure FArrayUtil = struct
 (* mapSP : (int * dbl -> dbl) * int_farray * dbl_farray -> dbl_farray *)
 (* SP for "shape preserving" *)
   fun mapSP (f : int * double -> double, (nss, xss)) = let
+    val b = Time.now()
     val IF.FArray (nssRope, nssShape) = nss
     val DF.FArray (xssRope, xssShape) = xss
     val _ = if S.same (xssShape, nssShape) then () 
 	    else (Print.printLn "map_IFF_DFF_DFF: shapes not same"; raise Fail "shapes not same")
     val resRope = IntDoubleRopePair.fastMapDbl (f, nssRope, xssRope)
     val resFArray = DF.FArray (resRope, nssShape)
+    val e = Time.now()
+    val _ = Print.printLn ("Time in mapSP: " ^ (Time.toStringMicrosec(e-b)))
     in
       resFArray
     end

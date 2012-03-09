@@ -187,7 +187,7 @@ structure DoubleFArray = struct
     fun sub i = DS.sub(data,i)
     fun lp (i, acc) =
       if i >= hi then acc
-      else lp (i+1, f(acc, sub i))
+      else lp (i+1, f(acc, (sub i)))
     in
       lp (lo, init)
     end
@@ -207,7 +207,7 @@ structure DoubleFArray = struct
     end
 
   (* segreduce : ('a -> 'a) * 'a * 'a double_farray farray -> 'a double_farray *)
-  fun segreduce (f, init, nss) = let
+  fun segreduce' (f, init, nss) = let
     val (FArray (data, shape)) = nss
     val segdes = SR.segdesFromShape shape
     fun lp (r, ps) = (case r
@@ -229,6 +229,15 @@ structure DoubleFArray = struct
     val shape' = S.Lf (0, R.length data')
     in
       FArray (data', shape')
+    end
+
+  fun segreduce (f, init, nss) = let
+    val b = Time.now()
+    val ans = segreduce'(f,init,nss)
+    val e = Time.now()
+    val _ = Print.printLn ("Time in segreduce: " ^ Time.toStringMicrosec(e-b))
+    in
+      ans
     end
 
 end
