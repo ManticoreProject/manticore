@@ -256,6 +256,7 @@ structure DelayedBasis = struct
 
     val flattenIFF    = memoVar ["FArrayUtil", "flatten_IF_F"]
     val flattenDFF    = memoVar ["FArrayUtil", "flatten_DF_F"]
+    val map_IF_DF     = memoVar ["FArrayUtil", "map_IF_DF"]
     val mapIFPoly     = memoVar ["FArrayUtil", "map_IF_poly"]
     val map_IFF_IF    = memoVar ["FArrayUtil", "map_IFF_IF"]
     val fmapDDD       = memoVar ["FArrayUtil", "mapDDD"]

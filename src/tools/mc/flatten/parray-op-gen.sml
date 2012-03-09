@@ -216,6 +216,8 @@ structure PArrayOpGen = struct
           monoVarExp' DV.intMap
 	else if both FU.isDouble (alpha, beta) then
           monoVarExp' DV.dblMap
+	else if FU.isInt alpha andalso FU.isDouble beta then
+          monoVarExp' DV.map_IF_DF
 	else if FU.isInt alpha then
           A.VarExp (DV.mapIFPoly (), [beta])
         else if FU.isGroundTy alpha then
