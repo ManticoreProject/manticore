@@ -218,7 +218,7 @@ structure DoubleFArray = struct
   (* segreduce : ('a -> 'a) * 'a * 'a double_farray farray -> 'a double_farray *)
   fun segreduce' (f, init, nss) = let
     val (FArray (data, shape)) = nss
-    val segdes = SR.segdesFromShape shape
+    val segdes = stopwatch ("segreduce'.segdesFromShape", fn () => SR.segdesFromShape shape)
     fun lp (r, ps) = (case r
       of R.Leaf v => segReducev(f,init,v,ps)::nil
        | R.Cat (_, _, rL, rR) => let
@@ -234,7 +234,7 @@ structure DoubleFArray = struct
     (* val _ = Print.printLn (psstos pss) *)
     val reductions = stopwatch ("segreduce'.reductions", fn () => DS.tabulate (List.length segdes, fn _ => init))
     val _ = stopwatch ("segreduce'.writePairs", fn () => writePairs reductions pss)
-    val data' = R.fromSeq reductions
+    val data' = stopwatch ("segreduce'.fromSeq", fn () => R.fromSeq reductions)
     val shape' = S.Lf (0, R.length data')
     in
       FArray (data', shape')
