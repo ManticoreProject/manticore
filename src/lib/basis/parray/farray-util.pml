@@ -101,7 +101,7 @@ structure FArrayUtil = struct
          of S.Lf (lo, hi) => let
               (* val _ = Print.printLn "in map_IF_DF" *)
               fun lp (i, acc) = 
-                if (i<0) then DF.fromList (List.rev acc)
+                if (i<0) then DF.fromList acc
 		else lp (i-1, f (IntRope.sub(data,i))::acc)
               val res = lp (hi-1, []) 
               in
@@ -117,7 +117,7 @@ structure FArrayUtil = struct
          of S.Lf (lo, hi) => let
               (* val _ = Print.printLn "in map_IF_poly" *)
               fun lp (i, acc) = 
-                if (i<0) then FArray.fromList (List.rev acc)
+                if (i<0) then FArray.fromList acc
 		else lp (i-1, f (IntRope.sub(data,i))::acc)
               val res = lp (hi-1, []) 
               in
@@ -216,11 +216,16 @@ structure FArrayUtil = struct
             : IF.int_farray F.farray * DF.double_farray F.farray = (case x
     of F.FArray (data, shape) => let
          val (data1, data2) = RopePair.unzip data
+(*        (\* +debug *\) *)
+(* 	 val _ = Print.printLn "in unzip_IF_DF:" *)
+(* 	 fun prI n = Print.printLn (Int.toString n) *)
+(* 	 fun prD x = Print.printLn (Double.toString x) *)
+(* 	 val _ = (Print.printLn "data1:"; Rope.app (IF.flatApp prI) data1) *)
+(* 	 val _ = (Print.printLn "data2:"; Rope.app (DF.flatApp prD) data2)  *)
+(*        (\* -debug *\) *)
          in
 	   (F.FArray (data1, shape), F.FArray (data2, shape))
          end
     (* end case *))
-
-  
 
 end

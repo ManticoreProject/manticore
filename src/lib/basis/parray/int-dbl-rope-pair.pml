@@ -29,6 +29,12 @@ structure IntDoubleRopePair = struct
       val _ = if DS.length ds = n then ()
 	      else (Print.printLn "iddmap: length mismatch";
 		    raise Fail "iddmap -- length mismatch")
+(*       val _ = Print.printLn "here's iddmap's is:" *)
+(*       fun lp1 i = if i=n then () else (Print.printLn (itos (IS.sub (is, i))); lp1 (i+1)) *)
+(*       val _ = lp1 0 *)
+(*       val _ = Print.printLn "here's iddmap's ds:" *)
+(*       fun lp2 i = if i=n then () else (Print.printLn (dtos (DS.sub (ds, i))); lp2 (i+1)) *)
+(*       val _ = lp2 0 *)
       fun f' i = let
 	val n = IS.sub (is, i)
 	val x = DS.sub (ds, i)
@@ -38,9 +44,9 @@ structure IntDoubleRopePair = struct
           res
         end
       val res = DS.tabulate (n, f')
-      (* val _ = Print.printLn "here's iddmap's result:" *)
-      (* fun lp i = if i=n then () else (Print.printLn (dtos (DS.sub (res, i))); lp (i+1)) *)
-      (* val _ = lp 0 *)
+(*       val _ = Print.printLn "here's iddmap's result:" *)
+(*       fun lp3 i = if i=n then () else (Print.printLn (dtos (DS.sub (res, i))); lp3 (i+1)) *)
+(*       val _ = lp3 0 *)
       in
         res
       end
