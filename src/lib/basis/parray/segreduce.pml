@@ -44,11 +44,11 @@ structure SegReduce = struct
 
   (* segdesFromShape : shape -> (int * int) list *)
   fun segdesFromShape s = let
-    fun lp (i, ls, acc) = (case ls
-      of nil => List.rev acc
+    fun lp (i, ls) = (case ls
+      of nil => []
        | l::ls => (case l
-           of S.Lf(lo,hi) => lp (i+1, ls, (i,hi-lo)::acc)
-        | S.Nd _ => fail "segdesFromShape" "Nd"
+           of S.Lf(lo,hi) => (i,hi-lo)::lp (i+1, ls)
+            | S.Nd _ => fail "segdesFromShape" "Nd"
            (* end case *))
       (* end case *))
     in
@@ -57,7 +57,7 @@ structure SegReduce = struct
              (* val itos = Int.toString
              fun ptos (n,m) = "(" ^ itos n ^ "," ^ itos m ^ ")"
              fun pstos ps = String.concat (List.map ptos ps) *)
-             val sd = lp (0, ls, nil) 
+             val sd = lp (0, ls) 
              (* val _ = Print.printLn "original shape:"
              val _ = Print.printLn (S.toString s)
              val _ = Print.printLn "segdes:"
@@ -107,7 +107,23 @@ structure SegReduce = struct
              sumsL @ sumsR
            end
       (* end case *))
-    val pss = lp (data, segdes)
+     fun lp2 (r, ps) = (case r
+      of R.Leaf v => [segReducev(f,init,v,ps)::nil]
+       | R.Cat (_, _, rL, rR) => let
+           val nL = R.length rL
+           val (psL, psR) = split (nL, ps)
+           val (sumsL, sumsR) = (| lp2 (rL, psL), lp2 (rR, psR) |)
+           in
+             sumsL @ sumsR
+           end
+      (* end case *))
+    fun reassemble pssL = (case pssL
+     of pss::t => pss @ (reassemble t)
+      | nil => nil
+      (* end case *))
+    val pssList = lp2 (data, segdes)
+    val pss = reassemble pssList
+(*    val pss = lp (data, segdes) *)
     (* val _ = Print.printLn "in segsum: computed pss:" *)
     (* val _ = Print.printLn (psstos pss) *)
     val reductions = Seq.tabulate (List.length segdes, fn _ => init)
