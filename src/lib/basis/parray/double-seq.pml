@@ -30,7 +30,13 @@ structure DoubleSeq = struct
 
   fun singleton x = fromList (x::nil)
 
-  val tabulate = A.tabulate
+  fun tabulate args = let
+    (* val _ = Print.printLn "--- begin DS.tab ---" *)
+    val res = A.tabulate args
+    (* val _ = Print.printLn "--- end DS.tab ---" *)
+    in
+      res
+    end
 
   val sub = A.sub
 

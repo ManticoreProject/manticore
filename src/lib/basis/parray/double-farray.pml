@@ -240,6 +240,61 @@ structure DoubleFArray = struct
       FArray (data', shape')
     end
 
-  fun segreduce (f, init, nss) = stopwatch ("segreduce", fn () => segreduce' (f, init, nss))
+  fun mergeAppend (psL, psR) =
+   (case (psL, psR)
+     of (nil, _) => psR
+      | ((i,x)::nil, (j,y)::more) => if (i=j) then (i,x+y)::more else (i,x)::psR
+      | (p::ps, _) => p::mergeAppend(ps,psR)
+     (* end case *))
+
+  fun yell s = Print.printLn s
+
+  fun mkRope arr = let
+    val n = DS.length arr
+    fun subArr (lo, hi) = DS.tabulate (hi-lo+1, fn i => DS.sub (arr,lo+i))
+    fun lp (lo, hi) = let
+      val len = hi-lo+1
+      in
+        if len>LeafSize.getMax() then let
+          val m = lo + (len div 2)
+          val (rL, rR) = (| lp (lo,m), lp(m+1,hi) |)
+          in
+            R.nccat2 (rL, rR)
+          end
+        else
+          R.Leaf (subArr (lo, hi))
+      end
+    in
+      lp (0, n-1)
+    end
+
+  fun newSegReduce (f, ident, xss) = let
+    val (FArray (data, shape)) = xss
+    val segdes = SR.segdesFromShape shape
+    val nSegs = List.length segdes
+    val sums = DS.tabulate (nSegs, fn _ => ident)
+    fun updateSums (i, x) = DS.update (sums, i, x)
+    fun lp (r, ps) = (case r
+      of R.Leaf v => segReducev (f, ident, v, ps)
+       | R.Cat (_, _, rL, rR) => let
+           val nL = R.length rL
+           val (psL, psR) = SR.split (nL, ps)
+           val (sumsL, sumsR) = (| lp(rL,psL), lp(rR,psR) |)
+           val res = stopwatch ("mergeAppend", fn () => mergeAppend (sumsL, sumsR))
+           in
+             res
+           end
+      (* end case *))
+    val ps = stopwatch ("newSegReduce main loop", fn () => lp (data, segdes))
+    val _ = stopwatch ("updateSums", fn () => List.app updateSums ps)
+    val data' = stopwatch ("mkRope", fn () => mkRope sums)
+    val shape' = S.Lf (0, nSegs)
+    in
+      FArray (data', shape')
+    end
+
+  fun mikeSegReduce _ = raise Fail "todo"
+
+  fun segreduce (f, init, nss) = stopwatch ("segreduce", fn () => newSegReduce (f, init, nss))
 
 end

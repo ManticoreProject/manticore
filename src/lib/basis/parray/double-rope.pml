@@ -1213,6 +1213,19 @@ fun app f rp = let
 	     end
         (* end case *))
 
+(*   fun fromList xs = let *)
+(*     val l = List.length xs *)
+(*     in *)
+(*       if l < LeafSize.getMax () orelse l = 1 then  *)
+(*         leaf (S.fromList xs) *)
+(*       else let *)
+(*         val t = List.take (xs, l div 2) *)
+(* 	val d = List.drop (xs, l div 2) *)
+(*         in *)
+(*           nccat2 (fromList t, fromList d) *)
+(*         end *)
+(*     end *)
+
   (* fromSeq *)
   (* FIXME slow implementation *)
     fun fromSeq s = fromList (S.toList s)
