@@ -417,7 +417,7 @@ local
       range
 *)
 
-fun intervalLength (lo, hi) = hi - lo 
+fun intervalLength (lo, hi) = hi - lo
 
 fun tabulateSequence f (lo, hi) = 
   Seq.tabulate (intervalLength (lo, hi), fn i => f (lo + i))
@@ -590,11 +590,11 @@ fun tabFromTo (lo, hi, f) =
     else
         (case ChunkingPolicy.get ()
           of ChunkingPolicy.Sequential => 
-             tabulateSequential f (lo, hi)
+             tabulateSequential f (lo, hi+1)
            | ChunkingPolicy.ETS SST => 
-             tabulateETS SST ((lo, hi), f)
+             tabulateETS SST ((lo, hi+1), f)
            | ChunkingPolicy.LTS PPT => 
-             tabulateLTS PPT ((lo, hi), f))
+             tabulateLTS PPT ((lo, hi+1), f))
 
 end (* local *)
 
