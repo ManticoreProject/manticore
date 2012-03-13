@@ -445,7 +445,7 @@ fun tabulateSequential f intv = let
     t intv
   end
 
-fun tabulateETS SST (n, f) = let
+fun tabulateETS SST (intv, f) = let
   fun t intv = let
     val len = intervalLength intv 
     in
@@ -458,7 +458,7 @@ fun tabulateETS SST (n, f) = let
 	end
     end
   in
-    t (0, n)
+    t intv
   end
 
 fun numUnprocessedTab cur = numUnprocessed length intervalLength cur
@@ -556,7 +556,7 @@ fun rootU (rp, uc) = (case uc
    | (l :: ls, rs, Right :: ds) => rootU (nccat2 (l, rp), (ls, rs, ds))
    | _ => failwith "rootU")
 
-fun tabulateLTS PPT (n, f) = let
+fun tabulateLTS PPT (intv, f) = let
   fun t cur = (case tabulateUntil RT.hungryProcs (cur, f)
     of Done rp => rp
      | More cur' => let
@@ -569,7 +569,7 @@ fun tabulateLTS PPT (n, f) = let
 	   join decodeRopeTab id rootU (rp1, rp2, reb)
          end)
   in
-    t ((0, n), GCTop)
+    t (intv, GCTop)
   end
 in
 fun tabulate (n, f) = 
@@ -578,9 +578,24 @@ fun tabulate (n, f) =
     of ChunkingPolicy.Sequential => 
          tabulateSequential f (0, n)
      | ChunkingPolicy.ETS SST => 
-         tabulateETS SST (n, f)
+         tabulateETS SST ((0, n), f)
      | ChunkingPolicy.LTS PPT => 
-         tabulateLTS PPT (n, f))
+         tabulateLTS PPT ((0, n), f))
+
+(* tabFromToP : int * int * (int -> 'a) -> 'a rope *)
+(* lo inclusive, hi inclusive *)
+fun tabFromTo (lo, hi, f) =
+    if (lo > hi) then
+        empty ()
+    else
+        (case ChunkingPolicy.get ()
+          of ChunkingPolicy.Sequential => 
+             tabulateSequential f (lo, hi)
+           | ChunkingPolicy.ETS SST => 
+             tabulateETS SST ((lo, hi), f)
+           | ChunkingPolicy.LTS PPT => 
+             tabulateLTS PPT ((lo, hi), f))
+
 end (* local *)
 
 (*local*)
@@ -1118,24 +1133,6 @@ fun app f rp = let
       end
 
     val concat = ccat2
-
-  (* tabFromToP : int * int * (int -> 'a) -> 'a rope *)
-  (* lo inclusive, hi inclusive *)
-    fun tabFromTo (lo, hi, f) =
-      if (lo > hi) then
-        empty ()
-      else let
-        val nElts = hi - lo + 1
-        in
-          if nElts <= LeafSize.getMax () then
-            leaf (Seq.tabulate (nElts, fn i => f (lo + i)))
-          else let
-            val m = (hi + lo) div 2
-            in
-              nccat2 (| tabFromTo (lo, m, f),
-		      tabFromTo (m+1, hi, f) |)
-            end
-        end
 
   (* tabFromToStepP : int * int * int * (int -> 'a) -> 'a rope *)
   (* lo inclusive, hi inclusive *)
