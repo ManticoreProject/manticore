@@ -1,210 +1,235 @@
-structure Rope = struct
+(* double-rope.pml  
+ *
+ * COPYRIGHT (c) 2011 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Monomorphic LTS ropes of doubles.
+ *)
 
-val C = 2
+structure DoubleRope = struct
 
-fun failwith s = raise Fail s
-fun subscript () = raise Fail "subscript"
+  val C = 2
 
-structure RT = Runtime
-structure Seq = Seq
-structure RTy = RopeTy
+  fun failwith s = (Print.printLn s; raise Fail s)
+  fun subscript () = raise Fail "subscript"
 
-datatype progress = datatype Progress.progress
+  structure RT = Runtime
 
-type 'a seq = 'a Seq.seq
-datatype rope = datatype RTy.rope
+  structure S = DoubleSeq
 
-fun length rp = (case rp
-  of Leaf s => Seq.length s
-   | Cat (l, _, _, _) => l)
-fun depth rp = (case rp
-  of Leaf _ => 0
-   | Cat (_, d, _, _) => d)
-fun empty () = Leaf (Seq.empty ())
-fun isEmpty rp = length rp = 0
-fun singleton x = Leaf (Seq.singleton x)
-fun inBounds (r, i) = (i < length r) andalso (i >= 0)
-fun ropeOK rp = let
-  fun length' rp = (case rp
-    of Leaf s => Seq.length s
-     | Cat (_, _, rp1, rp2) => length' rp1 + length' rp2)
-  fun depth' rp = (case rp
+  datatype progress = datatype Progress.progress
+
+  type seq = S.double_seq
+
+  datatype double_rope 
+    = Leaf of seq
+    | Cat of int * int * double_rope * double_rope
+
+  fun length rp = (case rp
+    of Leaf s => S.length s
+     | Cat (l, _, _, _) => l)
+
+  fun depth rp = (case rp
     of Leaf _ => 0
-     | Cat (_, _, rp1, rp2) => Int.max (depth' rp1, depth' rp2) + 1)
-  fun check rp = (case rp
-    of Leaf s => true
-     | Cat (_, _, rp1, rp2) => 
-         length rp = length' rp andalso depth rp = depth' rp andalso
-	 check rp1 andalso check rp2)
-  in
-    check rp
-  end
+     | Cat (_, d, _, _) => d)
 
-fun leaf s =
-  if Seq.length s > LeafSize.getMax () then
-    failwith "bogus leaf size"
-  else 
-    Leaf s
+  fun empty () = Leaf (S.empty ())
 
-fun toList rp = (case rp
-  of Leaf s => Seq.toList s
-   | Cat(_, _, l, r) => toList l @ toList r)
+  fun isEmpty rp = length rp = 0
 
-fun leaves rp = (case rp
-  of Leaf s => s::nil
-   | Cat (_, _, rp1, rp2) => leaves rp1 @ leaves rp2)
+  fun singleton x = Leaf (S.singleton x)
 
-fun toSeq rp = Seq.catN (leaves rp)
+  fun inBounds (r, i) = (i < length r) andalso (i >= 0)
 
-(* non-coalescing rope concatenation *)
-fun nccat2 (rp1, rp2) = let
-  val l = length rp1 + length rp2
-  val d = Int.max (depth rp1, depth rp2) + 1
-  in
-    Cat (l, d, rp1, rp2)
-  end
+  fun ropeOK rp = let
+    fun length' rp = (case rp
+      of Leaf s => S.length s
+       | Cat (_, _, rp1, rp2) => length' rp1 + length' rp2)
+    fun depth' rp = (case rp
+      of Leaf _ => 0
+       | Cat (_, _, rp1, rp2) => Int.max (depth' rp1, depth' rp2) + 1)
+    fun check rp = (case rp
+      of Leaf s => true
+       | Cat (_, _, rp1, rp2) => 
+           length rp = length' rp andalso depth rp = depth' rp andalso
+	   check rp1 andalso check rp2)
+    in
+      check rp
+    end
 
-(* coalescing rope concatenation *)
-fun ccat2 (rp1, rp2) =
-  if length rp1 + length rp2 <= LeafSize.getMax () then
-    Leaf (toSeq (nccat2 (rp1, rp2)))
-  else
-    nccat2 (rp1, rp2)
+  fun leaf s =
+    if S.length s > LeafSize.getMax () then
+      failwith "bogus leaf size"
+    else 
+      Leaf s
 
-fun split2 rp =
-  (case rp 
-    of Leaf s => let val (s1, s2) = Seq.split2 s
-                 in (leaf s1, leaf s2)
-                 end
-     | Cat (_, _, l, r) => (l, r))
+  fun toList rp = (case rp
+    of Leaf s => S.toList s
+     | Cat(_, _, l, r) => toList l @ toList r)
 
-fun splitN _ = failwith "todo"
+  fun leaves rp = (case rp
+    of Leaf s => s::nil
+     | Cat (_, _, rp1, rp2) => leaves rp1 @ leaves rp2)
 
-fun fromList xs = let
-  val l = List.length xs
-  in
-    if l < LeafSize.getMax () orelse l = 1 then leaf (Seq.fromList xs)
-    else nccat2 (fromList (List.take (xs, l div 2)),
-                 fromList (List.drop (xs, l div 2)))
-  end
+  fun toSeq rp = S.catN (leaves rp)
 
-fun subInBounds (rp, i) = (case rp
-  of Leaf s => Seq.sub (s, i)
-   | Cat (_, _, r1, r2) =>
-     if i < length r1 then 
-       subInBounds (r1, i)
-     else 
-       subInBounds (r2, i - length r1))
-fun sub (rp, i) =
-  if inBounds (rp, i) then
-    subInBounds (rp, i)
-  else
-    subscript ()
+  (* non-coalescing rope concatenation *)
+  fun nccat2 (rp1, rp2) = let
+    val l = length rp1 + length rp2
+    val d = Int.max (depth rp1, depth rp2) + 1
+    in
+      Cat (l, d, rp1, rp2)
+    end
 
-fun seqSplitAtIx2 (s, i) = 
-  (Seq.take (s, i + 1), Seq.drop (s, i + 1))
+  (* coalescing rope concatenation *)
+  fun ccat2 (rp1, rp2) =
+    if length rp1 + length rp2 <= LeafSize.getMax () then
+      Leaf (toSeq (nccat2 (rp1, rp2)))
+    else
+      nccat2 (rp1, rp2)
 
-fun splitAtIx2' (rp, i) = (case rp
-  of Leaf s => let
-       val (s1, s2) = seqSplitAtIx2 (s, i)
-       in
-         (leaf s1, leaf s2)
-       end
-   | Cat (_, _, l, r) =>
-       if i = length l - 1 then
-	 (l, r)
-       else if i < length l then let
-         val (l1, l2) = splitAtIx2' (l, i)
-	 in
-	   (l1, nccat2 (l2, r))
-	 end
-       else let
-         val (r1, r2) = splitAtIx2' (r, i - length l)
+  fun split2 rp = case rp 
+    of Leaf s => let 
+         val (s1, s2) = S.split2 s
+         in 
+	   (leaf s1, leaf s2)
+         end
+     | Cat (_, _, l, r) => (l, r)
+
+  fun splitN _ = failwith "todo"
+
+  fun fromList xs = let
+    val l = List.length xs
+    in
+      if l < LeafSize.getMax () orelse l = 1 then 
+        leaf (S.fromList xs)
+      else let
+        val t = List.take (xs, l div 2)
+	val d = List.drop (xs, l div 2)
+        in
+          nccat2 (fromList t, fromList d)
+        end
+    end
+
+  fun subInBounds (rp, i) = case rp
+    of Leaf s => S.sub (s, i)
+     | Cat (_, _, r1, r2) =>
+         if i < length r1 then 
+           subInBounds (r1, i)
+	 else 
+           subInBounds (r2, i - length r1)
+
+  fun sub (rp, i) =
+    if inBounds (rp, i) then
+      subInBounds (rp, i)
+    else
+      subscript ()
+
+  fun seqSplitAtIx2 (s, i) = (S.take (s, i + 1), S.drop (s, i + 1))
+
+  fun splitAtIx2' (rp, i) = (case rp
+    of Leaf s => let
+         val (s1, s2) = seqSplitAtIx2 (s, i)
          in
-	   (nccat2 (l, r1), r2)
-         end)
-fun splitAtIx2 (rp, i) =
-  if inBounds (rp, i) then
-    splitAtIx2' (rp, i)
-  else
-    subscript ()
+           (leaf s1, leaf s2)
+         end
+     | Cat (_, _, l, r) =>
+         if i = length l - 1 then
+	   (l, r)
+	 else if i < length l then let
+           val (l1, l2) = splitAtIx2' (l, i)
+	   in
+	     (l1, nccat2 (l2, r))
+	   end
+	 else let
+           val (r1, r2) = splitAtIx2' (r, i - length l)
+           in
+	     (nccat2 (l, r1), r2)
+           end)
 
-fun seqLast s = Seq.sub (s, Seq.length s - 1)
+  fun splitAtIx2 (rp, i) =
+    if inBounds (rp, i) then
+      splitAtIx2' (rp, i)
+    else
+      subscript ()
 
-fun isBalanced rp =
-  (case rp
+  fun seqLast s = S.sub (s, S.length s - 1)
+
+  fun isBalanced rp = case rp
     of Leaf _ => true
-     | _ => depth rp <= C * Int.ceilingLg (length rp))
+     | _ => depth rp <= C * Int.ceilingLg (length rp)
 
 (*local*)
-fun balanceSequential rp =
-  if isBalanced rp then
-    rp
-  else if length rp <= LeafSize.getMax () orelse length rp < 2 then
-    leaf (toSeq rp)
-  else let
-    val (rp1, rp2) = splitAtIx2 (rp, length rp div 2 - 1)
-    in
-      nccat2 (balanceSequential rp1, balanceSequential rp2)
-    end
 
-fun balanceETS SST rp =
-  if isBalanced rp then
-    rp
-  else if length rp <= LeafSize.getMax () orelse length rp < 2 then
-    leaf (toSeq rp)
-  else if length rp <= SST then 
-    balanceSequential rp
-  else let
-    val (rp1, rp2) = splitAtIx2 (rp, length rp div 2 - 1)
-    in
-      nccat2 (RT.par2 (fn () => balanceETS SST rp1, 
-		       fn () => balanceETS SST rp2))
-    end
+  fun balanceSequential rp =
+    if isBalanced rp then
+      rp
+    else if length rp <= LeafSize.getMax () orelse length rp < 2 then
+      leaf (toSeq rp)
+    else let
+      val (rp1, rp2) = splitAtIx2 (rp, length rp div 2 - 1)
+      in
+        nccat2 (balanceSequential rp1, balanceSequential rp2)
+      end
+
+  fun balanceETS SST rp =
+    if isBalanced rp then
+      rp
+    else if length rp <= LeafSize.getMax () orelse length rp < 2 then
+      leaf (toSeq rp)
+    else if length rp <= SST then 
+      balanceSequential rp
+    else let
+      val (rp1, rp2) = splitAtIx2 (rp, length rp div 2 - 1)
+      in
+        nccat2 (RT.par2 (fn () => balanceETS SST rp1, 
+			 fn () => balanceETS SST rp2))
+      end
+
 (*in*)
-fun balance rp = (case ChunkingPolicy.get ()
-  of ChunkingPolicy.Sequential => 
-       balanceSequential rp
-   | ChunkingPolicy.ETS SST => 
-       balanceETS SST rp
-   | ChunkingPolicy.LTS PPT => 
-     (* balanceLTS PPT rp *)
-     (* TODO: fix me *)
-     balanceETS 10000 rp)
+
+  fun balance rp = (case ChunkingPolicy.get ()
+    of ChunkingPolicy.Sequential => 
+         balanceSequential rp
+     | ChunkingPolicy.ETS SST => 
+         balanceETS SST rp
+     | ChunkingPolicy.LTS PPT => 
+         (* balanceLTS PPT rp *)
+         (* TODO: fix me *)
+         balanceETS 10000 rp)
+
 (*end*)
 
-fun cat2 (rp1, rp2) = balance (nccat2 (rp1, rp2))
+  fun cat2 (rp1, rp2) = balance (nccat2 (rp1, rp2))
 
-fun catN rps = balance (List.foldr nccat2 (empty ()) rps)
+  fun catN rps = balance (List.foldr nccat2 (empty ()) rps)
 
 (*** Cursor navigation ***)
 
-datatype ('a, 'b) gen_ctx
-  = GCTop
-  | GCLeft of ('a, 'b) gen_ctx * 'a
-  | GCRight of 'b * ('a, 'b) gen_ctx
+  datatype ('a, 'b) gen_ctx
+    = GCTop
+    | GCLeft of ('a, 'b) gen_ctx * 'a
+    | GCRight of 'b * ('a, 'b) gen_ctx
 
-type ('a, 'b) gen_cur = 'a * ('a, 'b) gen_ctx
+  type ('a, 'b) gen_cur = 'a * ('a, 'b) gen_ctx
 
-fun ctxLength lengthL lengthR (c : ('a,'b) gen_ctx) = let
-  fun len c = (case c
-    of GCTop => 
-	 (0, 0)
-     | GCLeft (c, r) =>
-	 let
-	     val (np, nu) = len c
-	 in
+  fun ctxLength lengthL lengthR (c : ('a,'b) gen_ctx) = let
+    fun len c = (case c
+      of GCTop => 
+	   (0, 0)
+       | GCLeft (c, r) => let
+	   val (np, nu) = len c
+	   in
 	     (np, nu + lengthR r)
-	 end
-     | GCRight (l, c) =>
-	 let 
-	     val (np, nu) = len c
-	 in
+	   end
+       | GCRight (l, c) => let 
+	   val (np, nu) = len c
+	   in
 	     (np + lengthL l, nu)
-	 end)
-  in
-    len c
-  end
+	   end)
+    in
+      len c
+    end
 
 fun cursorLength lengthL lengthR (f, c) = let
   val (np, nu) = ctxLength lengthL lengthR c
@@ -315,19 +340,19 @@ fun zipCursor (rp, c) = (rp, zipCtx c)
 fun seqSplitAtIx3 (s, i) = let
   val (ls, rs) = seqSplitAtIx2 (s, i)
   in
-    (Seq.take (ls, Seq.length ls - 1), seqLast ls, rs)
+    (S.take (ls, S.length ls - 1), seqLast ls, rs)
   end
 
 fun nav ((rp, (ls, rs, ds)), i) = (
     case rp
      of Leaf s =>
-        if Seq.length s = 1 then
+        if S.length s = 1 then
 	    (leaf s, (ls, rs, ds))
 	else let
 	        val (l, m, r) = seqSplitAtIx3 (s, i)
 	        val c' = (leaf l :: ls, leaf r :: rs, Right :: Left :: ds)
 	    in
-	        (leaf (Seq.singleton m), c')
+	        (leaf (S.singleton m), c')
 	    end
       | Cat (_, _, l, r) =>
 	if i < length l then
@@ -356,8 +381,8 @@ fun divide length (intvs, k) = let
     d (intvs, k)
   end
 
-type 'b rebuilder = 
-  ('b rope list * dir list * dir list * int * int * int * int)
+type rebuilder = 
+  (double_rope list * dir list * dir list * int * int * int * int)
 
 fun splitAt length encode cursorAtIx unzipCursorL unzipCursorR cur n = let
   val (rp, (ls, rs, ds)) = unzipCursorL cur
@@ -376,11 +401,11 @@ fun join decode finish zipCursor (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2)) = let
   val (mn, mls) = (List.last ms, List.take (ms, List.length ms - 1))
   val (mrs, rps2) = (List.take (xs2, n2), List.drop (xs2, n2))
   val m = finish (zipCursor (mn, (mls, mrs, mds)))
-  val ropes = rps1 @ (m::nil) @ rps2
+  val (rp, rs) = (case (rps1 @ (m::nil) @ rps2)
+    of h::t => (h, t)
+     | nil => failwith "join - empty")
   in
-    case ropes
-     of rp::rs => zipCursor (rp, (ls, rs, ds))
-      | _ => failwith "join"
+    zipCursor (rp, (ls, rs, ds))
   end
 
 fun encodeRope rps = let
@@ -417,10 +442,10 @@ local
       range
 *)
 
-fun intervalLength (lo, hi) = hi - lo
+fun intervalLength (lo, hi) = hi - lo 
 
 fun tabulateSequence f (lo, hi) = 
-  Seq.tabulate (intervalLength (lo, hi), fn i => f (lo + i))
+  S.tabulate (intervalLength (lo, hi), fn i => f (lo + i))
 
 (* pre: intervalLength (lo, hi) > 1 *)
 fun splitInterval2 (lo, hi) = let 
@@ -445,7 +470,7 @@ fun tabulateSequential f intv = let
     t intv
   end
 
-fun tabulateETS SST (intv, f) = let
+fun tabulateETS SST (n, f) = let
   fun t intv = let
     val len = intervalLength intv 
     in
@@ -458,7 +483,7 @@ fun tabulateETS SST (intv, f) = let
 	end
     end
   in
-    t intv
+    t (0, n)
   end
 
 fun numUnprocessedTab cur = numUnprocessed length intervalLength cur
@@ -474,24 +499,23 @@ fun nextTab cur = next leftmostTab nccat2 cur
 
 fun tabulateUntil cond (cur, f) = let
   fun t (intv, c) = 
-    (case Seq.tabulateUntil cond (intv, f)
+    (case S.tabulateUntil cond (intv, f)
       of More ps => let
  	   val (lo, hi) = intv
-           val us = (lo + Seq.length ps, hi)
+           val us = (lo + S.length ps, hi)
 	   in
              if numUnprocessedTab (us, c) < 2 then let
-	       val us' = 
-                 (case Seq.tabulateUntil (fn _ => false) (us, f)
-		    of Done x => x
-		     | _ => failwith "expected Done")
-	       val ps' = Seq.cat2 (ps, us')
+	       val us' = (case S.tabulateUntil (fn _ => false) (us, f)
+                 of Done x => x
+		  | More _ => failwith "tabulateUntil" "More")
+	       val ps' = S.cat2 (ps, us')
 	       in
 		 case nextTab (leaf ps', c)
 		  of Done p' => Done p'
 		   | More (s', c') => t (s', c')
 	       end
 	     else
-	       more Seq.length (fn x => x) leaf (us, ps, c)
+	       more S.length (fn x => x) leaf (us, ps, c)
 	   end
        | Done ps => (case nextTab (leaf ps, c)
            of Done p' => Done p'
@@ -556,7 +580,7 @@ fun rootU (rp, uc) = (case uc
    | (l :: ls, rs, Right :: ds) => rootU (nccat2 (l, rp), (ls, rs, ds))
    | _ => failwith "rootU")
 
-fun tabulateLTS PPT (intv, f) = let
+fun tabulateLTS PPT (n, f) = let
   fun t cur = (case tabulateUntil RT.hungryProcs (cur, f)
     of Done rp => rp
      | More cur' => let
@@ -569,7 +593,7 @@ fun tabulateLTS PPT (intv, f) = let
 	   join decodeRopeTab id rootU (rp1, rp2, reb)
          end)
   in
-    t (intv, GCTop)
+    t ((0, n), GCTop)
   end
 in
 fun tabulate (n, f) = 
@@ -578,30 +602,15 @@ fun tabulate (n, f) =
     of ChunkingPolicy.Sequential => 
          tabulateSequential f (0, n)
      | ChunkingPolicy.ETS SST => 
-         tabulateETS SST ((0, n), f)
+         tabulateETS SST (n, f)
      | ChunkingPolicy.LTS PPT => 
-         tabulateLTS PPT ((0, n), f))
-
-(* tabFromToP : int * int * (int -> 'a) -> 'a rope *)
-(* lo inclusive, hi inclusive *)
-fun tabFromTo (lo, hi, f) =
-    if (lo > hi) then
-        empty ()
-    else
-        (case ChunkingPolicy.get ()
-          of ChunkingPolicy.Sequential => 
-             tabulateSequential f (lo, hi+1)
-           | ChunkingPolicy.ETS SST => 
-             tabulateETS SST ((lo, hi+1), f)
-           | ChunkingPolicy.LTS PPT => 
-             tabulateLTS PPT ((lo, hi+1), f))
-
+         tabulateLTS PPT (n, f))
 end (* local *)
 
 (*local*)
 fun mapSequential f rp = (case rp
   of Leaf s => 
-       leaf (Seq.map f s)
+       leaf (S.map f s)
    | Cat(len, d, l, r) => 
        Cat (len, d, mapSequential f l, mapSequential f r))
 fun mapETS SST f rp =
@@ -628,14 +637,14 @@ fun nextMap cur = let
   end
 
 fun mapUntil cond f cur = let
-  fun m (s, c) = (case Seq.mapUntil cond f s
+  fun m (s, c) = (case S.mapUntil cond f s
      of More (us, ps) => 
 	  if numUnprocessedMap (leaf us, c) < 2 then
-	    (case nextMap (leaf (Seq.cat2 (ps, Seq.map f us)), c)
+	    (case nextMap (leaf (S.cat2 (ps, S.map f us)), c)
 	      of Done p' => Done p'
 	       | More (s', c') => m (s', c'))
 	  else
-	    more Seq.length leaf leaf (us, ps, c)
+	    more S.length leaf leaf (us, ps, c)
       | Done ps => (case nextMap (leaf ps, c)
 	  of Done p' => Done p'
 	   | More (s', c') => m (s', c')))
@@ -672,78 +681,85 @@ fun mapUncurried (f, rp) = map f rp
 fun reduceSequential f b rp =
   (case rp
     of Leaf s => 
-         Seq.reduce f b s
+         S.reduce f b s
      | Cat(_, _, l, r) => 
          f (reduceSequential f b l, reduceSequential f b r))
 
-fun reduceETS SST f b rp = let
-  fun red rp =
-    if length rp <= SST then 
-      reduceSequential f b rp
-    else let
-      val (l, r) = splitAtIx2 (rp, length rp div 2 - 1)
-      in
-        f (RT.par2 (fn () => red l, fn () => red r))
-      end
-  in
-    red rp
-  end
+  fun reduceETS SST f b rp = let
+    fun red rp =
+      if length rp <= SST then 
+        reduceSequential f b rp
+      else let
+        val (l, r) = splitAtIx2 (rp, length rp div 2 - 1)
+        in
+          f (RT.par2 (fn () => red l, fn () => red r))
+        end
+    in
+      red rp
+    end
 
-fun numUnprocessedRed cur = numUnprocessed (fn _ => 0) length cur
+  fun numUnprocessedRed cur = numUnprocessed (fn _ => 0) length cur
 
-fun reduceUntil PPT cond f b cur = let
-  fun next cur = let
-    fun n (k, c) = (case c
-      of GCTop => 
-	   Done k
-       | GCLeft (c', r) =>
-	   More (leftmostLeaf (r, GCRight (k, c')))
-       | GCRight (l, c') =>
-	   n (f (l, k), c'))
+  fun reduceUntil PPT cond f b cur = let
+    fun next cur = let
+      fun n (k, c) = (case c
+        of GCTop => Done k
+         | GCLeft (c', r) => More (leftmostLeaf (r, GCRight (k, c')))
+         | GCRight (l, c') => n (f (l, k), c'))
     in
       n cur
     end
-  fun red (s, c) = (case Seq.reduceUntil cond f b s
-    of Done p => (case next (p, c)
-         of Done p => Done p
-	  | More (s', c') => red (s', c'))
-     | More (p, us) =>
-         if numUnprocessedRed (leaf us, c) < 2 then
-	    (case next (Seq.reduce f p us, c)
-	      of Done p' => Done p'
-	       | More (s', c') => red (s', c'))
-	  else
-            More (leaf us, GCRight (p, c)))
-  val (s, c) = leftmostLeaf cur
-  in
-    red (s, c)
-  end
+    fun red (s, c) = (case S.reduceUntil cond f b s
+      of Done p => (case next (p, c)
+           of Done p => Done p
+	    | More (s', c') => red (s', c'))
+       | More (p, us) =>
+           if numUnprocessedRed (leaf us, c) < 2 then
+	     (case next (S.reduce f p us, c)
+	       of Done p' => Done p'
+		| More (s', c') => red (s', c'))
+	   else
+             More (leaf us, GCRight (p, c)))
+    val (s, c) = leftmostLeaf cur
+    in
+      red (s, c)
+    end
 
-fun reduceLTS PPT f b rp = let
-  fun red rp = (case reduceUntil PPT RT.hungryProcs f b (rp, GCTop)
-    of Done v => v
-     | More cur => let
-	 val (p, u) = splitCursor (f, b) (cat2, empty ()) cur
-	 val mid = numUnprocessedRed cur div 2
-	 val (u1, u2) = splitAtIx2 (u, mid - 1) handle _ => raise Fail (Int.toString (mid-1)^" "^Int.toString (length u)^" " ^Int.toString (numUnprocessedRed cur))
-         in
-	   f (p, f (RT.par2 (fn () => red u1, fn () => red u2)))
-         end)
-  in
-    red rp
-  end
+  fun reduceLTS PPT f b rp = let
+    val itos = Int.toString
+    fun red rp = (case reduceUntil PPT RT.hungryProcs f b (rp, GCTop)
+      of Done v => v
+       | More cur => let
+	   val (p, u) = splitCursor (f, b) (cat2, empty ()) cur
+	   val mid = numUnprocessedRed cur div 2
+	   val (u1, u2) = splitAtIx2 (u, mid - 1) handle _ => 
+             failwith (itos (mid-1) ^ " " ^
+		       itos (length u) ^ " " ^
+		       itos (numUnprocessedRed cur))
+           in
+	     f (p, f (RT.par2 (fn () => red u1, fn () => red u2)))
+           end)
+    in
+      red rp
+    end
+
 (*in*)
-fun reduce f b rp = (case ChunkingPolicy.get ()
-  of ChunkingPolicy.Sequential => reduceSequential f b rp
-   | ChunkingPolicy.ETS SST => reduceETS SST f b rp
-   | ChunkingPolicy.LTS PPT => reduceLTS PPT f b rp)
+
+  val ln = Print.printLn
+
+  fun reduce f b rp = (case ChunkingPolicy.get ()
+    of ChunkingPolicy.Sequential => reduceSequential f b rp
+     | ChunkingPolicy.ETS SST => reduceETS SST f b rp
+     | ChunkingPolicy.LTS PPT => reduceLTS PPT f b rp
+    (* end case *))
+
 (*end*) (* local *)
 
 (*local*)
 fun scanSequential f b rp = let
   fun s (rp, acc) = (case rp
     of Leaf s => let
-	 val s' = Seq.scan f acc s
+	 val s' = S.scan f acc s
 	 in
 	    (Leaf s', f (seqLast s, seqLast s'))
 	 end
@@ -758,18 +774,18 @@ fun scanSequential f b rp = let
     srp
   end
 
-datatype 'a mc_rope
-  = MCLeaf of 'a * 'a Seq.seq
-  | MCCat of 'a * int * int * 'a mc_rope * 'a mc_rope
+datatype mc_rope
+  = MCLeaf of double * S.double_seq
+  | MCCat of double * int * int * mc_rope * mc_rope
 
-fun mcempty b = MCLeaf (b, Seq.empty ())
+fun mcempty b = MCLeaf (b, S.empty ())
 
 fun mcval mcrp = (case mcrp
   of MCLeaf (c, _) => c
    | MCCat (c, _, _, _, _) => c)
 
 fun mclength mcrp = (case mcrp
-  of MCLeaf (_, s) => Seq.length s
+  of MCLeaf (_, s) => S.length s
    | MCCat (_, len, _, _, _) => len)
 
 fun mcdepth mcrp = (case mcrp
@@ -777,16 +793,16 @@ fun mcdepth mcrp = (case mcrp
    | MCCat (_, _, d, _, _) => d)
 
 fun mcleaf' (b, s) = 
-  if Seq.length s > LeafSize.getMax () then
+  if S.length s > LeafSize.getMax () then
     failwith "bogus leaf size"
   else 
     MCLeaf (b, s)
-fun mcleaf (f, b, s) = mcleaf' (Seq.reduce f b s, s)
+fun mcleaf (f, b, s) = mcleaf' (S.reduce f b s, s)
 
-fun mcsingleton e = MCLeaf (e, Seq.singleton e)
+fun mcsingleton e = MCLeaf (e, S.singleton e)
 
 fun toListMC rp = (case rp
-  of MCLeaf (_, s) => Seq.toList s
+  of MCLeaf (_, s) => S.toList s
    | MCCat(_, _, _, l, r) => (toListMC l) @ (toListMC r))
 
 fun mcnccat2 (f, mcrp1, mcrp2) = let
@@ -803,7 +819,7 @@ fun mcleaves rp = (case rp
   of MCLeaf (_, s) => s::nil
    | MCCat (_, _, _, rp1, rp2) => mcleaves rp1 @ mcleaves rp2)
 
-fun mcToSeq rp = Seq.catN (mcleaves rp)
+fun mcToSeq rp = S.catN (mcleaves rp)
 
 fun mcccat2 (f, mcrp1, mcrp2) =
   if mclength mcrp1 + mclength mcrp2 <= LeafSize.getMax () then 
@@ -813,7 +829,7 @@ fun mcccat2 (f, mcrp1, mcrp2) =
 
 fun mcsplit2 (f, b, mcrp) =
   (case mcrp 
-    of MCLeaf (_, s) => let val (s1, s2) = Seq.split2 s
+    of MCLeaf (_, s) => let val (s1, s2) = S.split2 s
 			in (mcleaf (f, b, s1), mcleaf (f, b, s2))
 			end
      | MCCat (_, _, _, l, r) => (l, r))
@@ -833,13 +849,13 @@ fun startMC rp = let
 fun cursorAtIxMC f b (rp, i) = let
   fun nav ((rp, (ls, rs, ds)), i) = (case rp
     of MCLeaf (cv, s) =>
-         if Seq.length s = 1 then
+         if S.length s = 1 then
 	   (mcleaf' (cv, s), (ls, rs, ds))
 	 else let
 	   val (l, m, r) = seqSplitAtIx3 (s, i)
 	   val c' = (mcleaf (f, b, l) :: ls, mcleaf (f, b, r) :: rs, Right :: Left :: ds)
 	   in
-	     (mcleaf (f, b, Seq.singleton m), c')
+	     (mcleaf (f, b, S.singleton m), c')
 	   end
     | MCCat (_, _, _, l, r) =>
 	if i < mclength l then
@@ -855,11 +871,11 @@ fun cursorAtIxMC f b (rp, i) = let
 
 fun decodeMCRope (rp, n) = 
   if n = 1 then
-    rp::nil
+    [rp]
   else (case rp
-    of MCCat (_, _, _, rp1, rp2) =>
-       rp1 :: decodeMCRope (rp2, n - 1)
-     | _ => failwith "decodeRope")
+    of MCCat (_, _, _, rp1, rp2) => rp1 :: decodeMCRope (rp2, n - 1)
+     | _ => failwith "decodeRope"
+    (* end case *))
 
 fun encodeMCRope f rps = let
   fun e rs = (case rs
@@ -883,7 +899,7 @@ fun upsweepSequential f b rp = let
 fun downsweepSequential f b mcrp = let
   fun down (mcrp, acc) = (case mcrp
     of MCLeaf (_, s) => 
-         leaf (Seq.scan f acc s)
+         leaf (S.scan f acc s)
      | MCCat (_, _, _, mcrp1, mcrp2) => 
          nccat2 (down (mcrp1, acc), down (mcrp2, f (acc, mcval mcrp1))))
   in
@@ -919,9 +935,9 @@ fun nextUpsweep f cur = next leftmostLeaf (mcnccat2' f) cur
 fun finishUpsweep f cur = finish (mcnccat2' f) cur
 
 fun upsweepUntil cond f b cur = let
-  fun u (s, c) = (case Seq.reduceUntil cond f b s
+  fun u (s, c) = (case S.reduceUntil cond f b s
      of More (p, us) => let
-	  val ps = mcleaf' (p, Seq.take (s, Seq.length s - Seq.length us))
+	  val ps = mcleaf' (p, S.take (s, S.length s - S.length us))
 	  in
 	    if numUnprocessedUpsweep (leaf us, c) < 2 then
 	      (case nextUpsweep f (mcccat2 (f, ps, mcleaf (f, b, us)), c)
@@ -959,20 +975,19 @@ fun finishDownsweep cur = finish nccat2 cur
 fun nextDownsweep cur = next leftmostMCLeaf nccat2 cur
 
 fun downsweepUntil cond f b acc cur = let
-  fun d (s, c, acc) = (case Seq.scanUntil cond f acc s
+  fun d (s, c, acc) = (case S.scanUntil cond f acc s
     of (acc, More (us, ps)) => 
          if numUnprocessedDownsweep (mcleaf' (b, us), c) < 2 then let
-	    val (acc', us') = 
-             (case Seq.scanUntil (fn _ => false) f acc us
-                of (acc', Done us') => (acc', us')
-		 | _ => failwith "downsweepUntil: expected Done")
+	    val (acc', us') = (case S.scanUntil (fn _ => false) f acc us
+              of (a', Done u') => (a', u')
+	       | (_, More _) => failwith "downsweepUntil - More")
             in
-	      case nextDownsweep (leaf (Seq.cat2 (ps, us')), c)
+	      case nextDownsweep (leaf (S.cat2 (ps, us')), c)
 	       of Done p' => Done p'
 		| More (_, s', c') => d (s', c', acc')
             end
 	  else let
-            val c' = if Seq.length ps = 0 then c else GCRight (leaf ps, c)
+            val c' = if S.length ps = 0 then c else GCRight (leaf ps, c)
 	    in
               More (acc, (mcleaf (f, b, us), c'))
 	    end
@@ -1023,7 +1038,7 @@ fun drop (rp, n) = let
 fun filterSequential f rp =
   (case rp
     of Leaf s => 
-         leaf (Seq.filter f s)
+         leaf (S.filter f s)
      | Cat(_, _, l, r) => 
          ccat2 (filterSequential f l, filterSequential f r))
 
@@ -1055,14 +1070,14 @@ fun nextFilt cur = let
 fun numUnprocessedFilt cur = numUnprocessed length length cur
 
 fun filterUntil PPT cond f cur = let
-  fun flt (s, c) = (case Seq.filterUntil cond f s
+  fun flt (s, c) = (case S.filterUntil cond f s
     of More (us, ps) => 
          if numUnprocessedFilt (leaf us, c) < 2 then
-	    (case nextFilt (leaf (Seq.cat2 (ps, Seq.filter f us)), c)
+	    (case nextFilt (leaf (S.cat2 (ps, S.filter f us)), c)
 	      of Done p' => Done p'
 	       | More (s', c') => flt (s', c'))
 	  else
-	    more Seq.length leaf leaf (us, ps, c)
+	    more S.length leaf leaf (us, ps, c)
      | Done ps => (case nextFilt (Leaf ps, c)
          of Done p' => Done p'
 	  | More (s', c') => flt (s', c')))
@@ -1095,7 +1110,7 @@ fun filterUncurried (f, rp) = balance (filter' f rp)
 
 fun app f rp = let
   fun doit rp = (case rp
-    of Leaf s => Seq.app f s
+    of Leaf s => S.app f s
      | Cat (_, _, rp1, rp2) => (doit rp1; doit rp2))
   in
     doit rp
@@ -1104,7 +1119,7 @@ fun app f rp = let
   (* FIXME: MISSING FROM BASIS *)
   fun rev r = 
     (case r
-      of Leaf s => leaf (Seq.rev s)
+      of Leaf s => leaf (S.rev s)
        | Cat (dpt, len, r1, r2) => let
 	     val (r1, r2) = (| rev r1, rev r2 |)
 	 in
@@ -1134,44 +1149,41 @@ fun app f rp = let
 
     val concat = ccat2
 
-  (* tabFromToStepP : int * int * int * (int -> 'a) -> 'a rope *)
+  (* tabFromTo : int * int * (int -> 'a) -> 'a rope *)
   (* lo inclusive, hi inclusive *)
-    fun tabFromToStep (from, to_, step, f) = (case Int.compare (step, 0)
-      of EQUAL => (raise Fail "0 step") (* FIXME parse error? I can't remove parens around raiseExp -ams *)
-       | LESS (* negative step *) =>
-           if (to_ > from) then
-             empty ()
-       	   else
-             tabFromTo (0, (from-to_) div (~step), fn i => f (from + (step*i)))
-       | GREATER (* positive step *) =>
-       	   if (from > to_) then
-       	     empty ()
-       	   else
-             tabFromTo (0, (to_-from) div step, fn i => f (from + (step*i)))
-      (* end case *))
-
-  (* nEltsInRange : int * int * int -> int *)
-    fun nEltsInRange (from, to_, step) = (* "to" is syntax in pml *)
-	  if step = 0 then failwith "cannot have step 0 in a range"
-	  else if from = to_ then 1
-	  else if (from > to_ andalso step > 0) then 0
-	  else if (from < to_ andalso step < 0) then 0
-	  else (Int.abs (from - to_) div Int.abs step) + 1
-
-  (* rangeP : int * int * int -> int rope *)
-    fun range (from, to_, step) = (* "to" is syntax in pml *)
-     (if from = to_ then singleton from
+    fun tabFromTo (lo, hi, f) =
+      if (lo > hi) then
+        empty ()
       else let
-        val sz = nEltsInRange (from, to_, step)
-        fun gen n = step * n + from
+        val nElts = hi - lo + 1
         in
-          tabulate (sz, gen)
-        end)
+          if nElts <= LeafSize.getMax () then
+            leaf (S.tabulate (nElts, fn i => f (lo + i)))
+          else let
+            val m = (hi + lo) div 2
+            in
+              nccat2 (| tabFromTo (lo, m, f),
+		      tabFromTo (m+1, hi, f) |)
+            end
+        end
 
-  (* rangePNoStep : int * int -> int rope *)
-    fun rangeNoStep (from, to_) = (* "to" is syntax in pml *)
-	  range (from, to_, 1)
-                                              
+  (* tab : int * (int -> 'a) -> 'a rope *)
+    fun tab (n, f) = tabFromTo (0, n-1, f)
+
+  (* tabFromToStep : int * int * int * (int -> 'a) -> 'a rope *)
+    fun tabFromToStep (from, to_, step, f) = let
+      fun f' i = f (from + (step * i))
+      fun tab t = tabFromTo (0, t, f')
+      in case Int.compare (step, 0)
+        of EQUAL => (raise Fail "0 step") (* FIXME parse bug? can't remove parens -ams *)        
+         | LESS (* negative step *) =>
+             if (to_ > from) then tab 0
+	     else tab ((from-to_) div (~step))
+         | GREATER (* positive step *) =>
+       	     if (from > to_) then tab 0
+       	     else tab ((to_-from) div step)
+      end
+
   (* partialSeq : 'a rope * int * int -> 'a seq *)
   (* return the sequence of elements from low incl to high excl *)
   (* zero-based *)
@@ -1180,10 +1192,10 @@ fun app f rp = let
     fun partialSeq (r, lo, hi) =
      (case r
         of Leaf s => 
-            (if lo >= Seq.length s orelse hi > Seq.length s then
+            (if lo >= S.length s orelse hi > S.length s then
                failwith "err"
 	     else
-	       Seq.take (Seq.drop (s, lo), hi-lo))
+	       S.take (S.drop (s, lo), hi-lo))
 	 | Cat (_, len, rL, rR) => let
              val lenL = length rL
 	     val lenR = length rR
@@ -1196,12 +1208,33 @@ fun app f rp = let
                  val sL = partialSeq (rL, lo, lenL)
 		 val sR = partialSeq (rR, 0, hi-lenL)
                  in
-		   Seq.cat2 (sL, sR)
+		   S.cat2 (sL, sR)
 		 end
 	     end
         (* end case *))
 
+(*   fun fromList xs = let *)
+(*     val l = List.length xs *)
+(*     in *)
+(*       if l < LeafSize.getMax () orelse l = 1 then  *)
+(*         leaf (S.fromList xs) *)
+(*       else let *)
+(*         val t = List.take (xs, l div 2) *)
+(* 	val d = List.drop (xs, l div 2) *)
+(*         in *)
+(*           nccat2 (fromList t, fromList d) *)
+(*         end *)
+(*     end *)
+
   (* fromSeq *)
   (* FIXME slow implementation *)
-    fun fromSeq s = fromList (Seq.toList s)
+    fun fromSeq s = fromList (S.toList s)
+
+    fun sameShape (r1, r2) = (case (r1, r2)
+      of (Leaf s1, Leaf s2) => S.length s1 = S.length s2
+       | (Cat (_, _, r1, r2), Cat (_, _, r1', r2')) =>
+           sameShape (r1, r1') andalso sameShape (r2, r2')
+       | _ => false
+      (* end case *))
+
 end

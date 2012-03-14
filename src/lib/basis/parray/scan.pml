@@ -79,13 +79,13 @@ structure Scan = struct
   (* Returns the scanned sequence and the total. *)
   (* NOTE: this version more efficient with immutable vectors, since updates are costly *)
     fun seqscan seed seq =
-	if S.null seq then (S.empty, seed)
+	if S.null seq then (S.empty (), seed)
 	else let
 	    val len = S.length seq
           (* we accumulate the prefix, res, in reverse order *)
 	    fun lp (i, last, res) =
 		if i >= len then
-		    (S.fromListRev (res, len), last)
+		    (S.fromListRev res, last)
 		else
 		    lp (i+1, last + S.sub (seq, i), last :: res)
 	    in
@@ -96,7 +96,7 @@ structure Scan = struct
     fun seqsum seed s = let
       fun plus (a, b) = a + b
       in
-        S.foldl (plus, seed, s)
+        S.foldl plus seed s
       end
 
   (* upsweep : num -> num R.rope -> num scan_rope *)
@@ -165,7 +165,7 @@ structure Scan = struct
   (* Does a prefix scan starting from the given seed value. *)
   (* Returns the scanned sequence and the total. *)
     fun seqscan_float (seed:float) seq =
-      if S.null seq then (S.empty, seed)
+      if S.null seq then (S.empty (), seed)
       else let
         val len = S.length seq
         val seq' = S.tabulate (len, fn _ => seed)
@@ -184,7 +184,7 @@ structure Scan = struct
     fun seqsum_float (seed:float) s = let
       fun plus (a, b) = a + b
       in
-        S.foldl (plus, seed, s)
+        S.foldl plus seed s
       end
 
   (* upsweep_float : num -> num R.rope -> num scan_rope *)

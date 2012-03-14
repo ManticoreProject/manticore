@@ -18,8 +18,18 @@ ann "cpp" "" in
 end
 
   vector-seq.pml
+  int-seq.pml
+  double-seq.pml
+  seq-util.pml
+
+  range.pml
 
   rope-ty.pml
   rope.pml
   rope-pair.pml
+  int-rope.pml
+  double-rope.pml
+  int-dbl-rope-pair.pml
+
+  rope-util.pml
 (*  test.pml*)

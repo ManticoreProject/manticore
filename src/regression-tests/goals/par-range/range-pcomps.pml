@@ -1,7 +1,7 @@
 fun incr n = n+1
 
 fun tos parr = let
-  val len = lengthP parr
+  val len = PArray.length parr
   fun lp (i, acc) = 
     if (i < 0) then
       String.concat ("[|" :: acc)

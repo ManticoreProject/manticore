@@ -10,7 +10,7 @@ val a = [| [| 1 to 2 by 1 |],
 	   [| 5 to 1 |],
            [| 5 to 1 by ~1 |] |]
 
-val s = PArray.toString (PArray.toString Int.toString ",") "," a 
+val s = PArray.tos_intParr a
 
 val _ = Print.printLn s
 
