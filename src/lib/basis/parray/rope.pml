@@ -670,11 +670,19 @@ fun mapUncurried (f, rp) = map f rp
 
 (*local*)
 
+fun ignore x = ()
+
+fun imperativePar2 (f, g) = let
+  val (x, y) = RT.par2 (f, g)
+  in
+    x + y
+  end
+
 fun foreachSequentialRec i f rp = (case rp
   of Leaf s => 
-       Seq.foreach i f s
+       (Seq.foreach i f s; 0)
    | Cat(len, d, l, r) => 
-       (foreachSequentialRec i f l; foreachSequentialRec (i+length l) f r))
+       (foreachSequentialRec i f l) + (foreachSequentialRec (i+length l) f r))
 
 fun foreachSequential f rp = foreachSequentialRec 0 f rp
 
@@ -684,9 +692,8 @@ fun foreachETS SST f rp = let
     else let 
       val (l, r) = split2 rp
       in
-	RT.par2 (fn () => fe (i, l), 
-		 fn () => fe (i+length l, r));
-        ()
+	imperativePar2 (fn () => fe (i, l), 
+	  	        fn () => fe (i+length l, r))
       end
   in
     fe (0, rp)
@@ -725,21 +732,20 @@ fun foreachUntil i cond f cur = let
 
 fun foreachLTS PPT f rp = let
   fun m (i, cur) = (case foreachUntil i RT.hungryProcs f cur
-    of Done () => ()
+    of Done () => 0
      | More cur' => let
 	 val mid = numUnprocessedForeach cur' div 2
 	 val (rp1, rp2, _) = 
 	       splitAt length encodeRope cursorAtIx unzipCursor unzipCursor cur' mid
          in
-	   RT.par2 (fn () => m (i, start rp1), fn () => m (i+length rp1, start rp2));
-	   ()
+	   imperativePar2 (fn () => m (i, start rp1), fn () => m (i+length rp1, start rp2))
          end)
   in
     if PPT <> 1 then failwith "PPT != 1 currently unsupported" else
     m (0, start rp)
   end
 (*in*)
-fun foreach f rp = (case ChunkingPolicy.get ()
+fun foreach f rp = ignore (case ChunkingPolicy.get ()
   of ChunkingPolicy.Sequential => foreachSequential f rp
    | ChunkingPolicy.ETS SST => foreachETS SST f rp
    | ChunkingPolicy.LTS PPT => foreachLTS PPT f rp)
