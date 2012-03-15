@@ -179,5 +179,28 @@ fun filterUntil cond f s = let
 
   fun null s = (Vector.length s = 0)
 
+  fun foreach start f v =
+      let
+	  val len = length v
+	  fun lp i =
+	      if i < len then (f (start+i, sub (v, i)); lp (i + 1))
+	      else ()
+      in
+	  lp 0
+      end
+
+  fun foreachUntil cond start f s = let
+    val len = length s
+    fun lp i = 
+      if i < len then
+	if cond () then
+	  More (drop (s, i), ())
+	else
+	  (f (start+i, sub (s, i)); lp (i+1))
+      else
+	Done ()
+    in
+      lp 0
+    end
 
 end

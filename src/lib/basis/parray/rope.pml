@@ -669,6 +669,85 @@ fun mapUncurried (f, rp) = map f rp
 (*end*)
 
 (*local*)
+
+fun foreachSequentialRec i f rp = (case rp
+  of Leaf s => 
+       Seq.foreach i f s
+   | Cat(len, d, l, r) => 
+       (foreachSequentialRec i f l; foreachSequentialRec (i+length l) f r))
+
+fun foreachSequential f rp = foreachSequentialRec 0 f rp
+
+fun foreachETS SST f rp = let
+  fun fe (i, rp) =
+    if length rp <= SST then foreachSequentialRec i f rp
+    else let 
+      val (l, r) = split2 rp
+      in
+	RT.par2 (fn () => fe (i, l), 
+		 fn () => fe (i+length l, r));
+        ()
+      end
+  in
+    fe (0, rp)
+  end
+
+fun numUnprocessedForeach cur = numUnprocessed length length cur
+
+fun nextForeach cur = let
+  fun n (f, c) = (case c
+    of GCTop => 
+	 Done f
+     | GCLeft (c', r) =>
+	 More (leftmostLeaf (r, GCRight (f, c')))
+     | GCRight (l, c') =>
+	 n (nccat2 (l, f), c'))
+  in
+    n cur
+  end
+
+fun foreachUntil i cond f cur = let
+  fun m (i, s, c) = (case Seq.foreachUntil cond i f s
+     of More (us, ()) => 
+	  if numUnprocessedForeach (leaf us, c) < 2 then
+	    (Seq.foreach i f us; case nextForeach (empty(), c)
+	      of Done _ => Done ()
+	       | More (s', c') => m (i+Seq.length us, s', c'))
+	  else 
+	    More (leaf us, c)      
+      | Done () => (case nextForeach (empty (), c)
+	  of Done _ => Done ()
+	   | More (s', c') => m (i+Seq.length s, s', c')))
+  val (s, c) = leftmostLeaf cur
+  in
+    m (i, s, c)
+  end
+
+fun foreachLTS PPT f rp = let
+  fun m (i, cur) = (case foreachUntil i RT.hungryProcs f cur
+    of Done () => ()
+     | More cur' => let
+	 val mid = numUnprocessedForeach cur' div 2
+	 val (rp1, rp2, _) = 
+	       splitAt length encodeRope cursorAtIx unzipCursor unzipCursor cur' mid
+         in
+	   RT.par2 (fn () => m (i, start rp1), fn () => m (i+length rp1, start rp2));
+	   ()
+         end)
+  in
+    if PPT <> 1 then failwith "PPT != 1 currently unsupported" else
+    m (0, start rp)
+  end
+(*in*)
+fun foreach f rp = (case ChunkingPolicy.get ()
+  of ChunkingPolicy.Sequential => foreachSequential f rp
+   | ChunkingPolicy.ETS SST => foreachETS SST f rp
+   | ChunkingPolicy.LTS PPT => foreachLTS PPT f rp)
+fun foreachUncurried (f, rp) = foreach f rp
+(*end*)
+
+
+(*local*)
 fun reduceSequential f b rp =
   (case rp
     of Leaf s => 
@@ -1205,3 +1284,4 @@ fun app f rp = let
   (* FIXME slow implementation *)
     fun fromSeq s = fromList (Seq.toList s)
 end
+
