@@ -34,18 +34,18 @@ structure PArray = struct
   fun map f pa = fromRope (Rope.map f (toRope pa))
   fun reduce rator init pa = Rope.reduce rator init (toRope pa)
   fun segreduce (oper,init,pa) = let
-    val b = Time.now()
+(*    val b = Time.now() *)
     val res = map (reduce oper init) pa
-    val e = Time.now()
-    val _ = Print.printLn ("Time spent in PArray.segreduce: " ^ (Time.toStringMicrosec (e-b)))
+(*    val e = Time.now()
+    val _ = Print.printLn ("Time spent in PArray.segreduce: " ^ (Time.toStringMicrosec (e-b))) *)
     in
       res
     end
   fun mapSP (f, paa) = let
-    val b = Time.now()
+(*    val b = Time.now() *)
     val res = map (map f) paa
-    val e = Time.now()
-    val _ = Print.printLn ("Time spent in PArray.mapSP: " ^ (Time.toStringMicrosec (e-b)))
+(*    val e = Time.now()
+    val _ = Print.printLn ("Time spent in PArray.mapSP: " ^ (Time.toStringMicrosec (e-b))) *)
     in
       res
     end

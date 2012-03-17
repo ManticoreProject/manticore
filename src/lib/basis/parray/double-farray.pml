@@ -165,14 +165,15 @@ structure DoubleFArray = struct
    This is almost identical to the code in SR, but
    rewritten to use monomorphic Double Ropes and Double Seqs *)
 
-  fun stopwatch (label, thunk) = let
+(*  fun stopwatch (label, thunk) = let
     val t0 = Time.now ()
     val x = thunk ()
     val t1 = Time.now ()
     val _ = Print.printLn ("time in " ^ label ^ ": " ^ Time.toStringMicrosec(t1-t0))
     in
       x
-    end
+    end*)
+  fun stopwatch (_, thunk) = thunk ()
 
   (* writePairs : 'a double_seq * (int * 'a) list -> 'a list *)
   fun writePairs res pss = let
