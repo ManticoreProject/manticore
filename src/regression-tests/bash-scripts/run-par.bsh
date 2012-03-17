@@ -12,7 +12,7 @@ AOUTFLAGS="-chunking-policy ETS 1024"
 DATE=$( date +"%F-%H-%M-%S" )
 REPORT_FILE=report-$DATE
 REPORT="$DIR/reports/$REPORT_FILE"
-LOG="$DIR/LOG"
+LOG="$DIR/LOG-PAR"
 
 # allow core dumps
 ulimit -c unlimited

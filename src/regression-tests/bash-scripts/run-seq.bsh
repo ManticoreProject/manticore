@@ -13,7 +13,7 @@ PMLCFLAGS="-sequential -Cmatch.check=true -Cftrx.on=false"
 DATE=$( date +"%F-%H-%M-%S" )
 REPORT_FILE=report-$DATE
 REPORT="$DIR/reports/$REPORT_FILE"
-LOG="$DIR/LOG"
+LOG="$DIR/LOG-SEQ"
 
 # allow core dumps
 ulimit -c unlimited
