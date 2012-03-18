@@ -54,8 +54,8 @@ Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
 		vp->globNextW = (Addr_t)(newObj+len+1);
 		p[-1] = MakeForwardPtr(hdr, newObj);
 
-        assert (AddrToChunk(p)->sts == FROM_SP_CHUNK ||
-                AddrToChunk(p)->sts == VPROC_CHUNK_TAG);
+        assert (AddrToChunk(ValueToAddr(v))->sts == FROM_SP_CHUNK ||
+                IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts));
         
 		return PtrToValue(newObj);
 	}
@@ -264,6 +264,9 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
    * system gets called.
    */
     if (isPtr(root) && inVPHeap(heapBase, ValueToAddr(root))) {
+        assert (AddrToChunk(ValueToAddr(root))->sts == FROM_SP_CHUNK ||
+                IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(root))->sts));
+
 	MemChunk_t	*scanChunk = vp->globAllocChunk;
 	Word_t		*scanPtr = (Word_t *)(vp->globNextW - WORD_SZB);
 
