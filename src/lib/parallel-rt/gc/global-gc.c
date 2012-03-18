@@ -58,7 +58,7 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 	if (isForwardPtr(oldHdr)) {
 		Value_t v = PtrToValue(GetForwardPtr(oldHdr));
 		assert (isPtr(v));
-                assert (AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK);
+        assert (AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK);
 		return v;
 	}
 	else {
@@ -81,12 +81,18 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 				newObj[i] = p[i];
 			}
 			vp->globNextW = (Addr_t)(newObj+len+1);
+        
+            assert (AddrToChunk(p)->sts == FROM_SP_CHUNK ||
+                    AddrToChunk(p)->sts == VPROC_CHUNK_TAG);
+            assert (AddrToChunk(newObj)->sts == TO_SP_CHUNK);
+        
 			return PtrToValue(newObj);
 		}
 		else {
 			// some other vproc forwarded the object, so return the forwarded
 			// object.
 			assert (isForwardPtr(hdr));
+            assert (AddrToChunk(GetForwardPtr(hdr))->sts == TO_SP_CHUNK);
 			return PtrToValue(GetForwardPtr(hdr));
 		}
 	}
@@ -126,6 +132,7 @@ void ConvertToSpaceChunks (VProc_t *self, MemChunk_t *p) {
                      (void *)(p->baseAddr+p->szB));
 #endif
         p->sts = FROM_SP_CHUNK;
+        p->scanProgress = 0;
 #ifndef NO_GC_STATS
         uint32_t used = (p == self->globAllocChunk)
             ? (self->globNextW - WORD_SZB) - p->baseAddr
@@ -757,10 +764,16 @@ void CheckToSpacesAfterGlobalGC (VProc_t *self)
         while (cp != (MemChunk_t *)0) {
             assert (cp->sts = TO_SP_CHUNK);
             Word_t *p = (Word_t *)(cp->baseAddr);
-            Word_t *top = (Word_t *)(cp->usedTop);
+            Word_t *top = UsedTopOfChunk(self, cp);
             while (p < top) {
                 Word_t hdr = *p++;
                 Word_t *scanptr = p;
+                //assert (!isForwardPtr(hdr));
+                if (isForwardPtr(hdr)) {
+                    p++;
+                    continue;
+                }
+
 		tableDebug[getID(hdr)].globalGCdebugGlobal(self,scanptr);
 		
 		p += GetLength(hdr);
