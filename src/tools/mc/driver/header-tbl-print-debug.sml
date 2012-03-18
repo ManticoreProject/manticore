@@ -458,10 +458,9 @@ struct
         TextIO.output (MyoutStrm, "                      else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {\n");
         TextIO.output (MyoutStrm, "                           SayDebug(\"[%2d] ** global unexpected local pointer %p at %p in vector[%d] is out of bounds\\n\",\n");
         TextIO.output (MyoutStrm, "                                     self->id, ValueToPtr(v), (void *)ptr, i);\n");
-        TextIO.output (MyoutStrm, "                      }\n");
         TextIO.output (MyoutStrm, "                      } else {\n");
-        TextIO.output (MyoutStrm, "                           SayDebug(\"[%2d] ** global unexpected local pointer %p at %p in vector\\n\",\n");
-        TextIO.output (MyoutStrm, "                                     self->id, ValueToPtr(v), (void *)ptr);\n");
+        TextIO.output (MyoutStrm, "                           SayDebug(\"[%2d] ** global unexpected local pointer %p at %p in vector between %p and %p:: %d, %d\\n\",\n");
+        TextIO.output (MyoutStrm, "                                     self->id, ValueToPtr(v), (void *)ptr, self->heapBase, self->oldTop, ValueToAddr(v)-self->heapBase, self->oldTop-self->heapBase);\n");
         TextIO.output (MyoutStrm, "                      }\n");
         TextIO.output (MyoutStrm, "                }\n");
         TextIO.output (MyoutStrm, "                else if (cq->sts == FREE_CHUNK)\n");
@@ -469,6 +468,7 @@ struct
         TextIO.output (MyoutStrm, "                             self->id, ValueToPtr(v), (void *)ptr);\n");
         TextIO.output (MyoutStrm, "             }\n");
         TextIO.output (MyoutStrm, "          }\n");
+        TextIO.output (MyoutStrm, "     }\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
         
