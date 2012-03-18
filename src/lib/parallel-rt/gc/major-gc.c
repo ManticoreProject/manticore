@@ -54,8 +54,9 @@ Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
 		vp->globNextW = (Addr_t)(newObj+len+1);
 		p[-1] = MakeForwardPtr(hdr, newObj);
 
-        assert (AddrToChunk(ValueToAddr(v))->sts == FROM_SP_CHUNK ||
-                IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts));
+                assert (AddrToChunk(ValueToAddr(v))->sts == FROM_SP_CHUNK ||
+                        IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts));
+                assert (AddrToChunk(newObj)->sts == TO_SP_CHUNK);
         
 		return PtrToValue(newObj);
 	}
