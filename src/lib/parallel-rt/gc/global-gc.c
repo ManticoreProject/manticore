@@ -540,6 +540,8 @@ static void ScanGlobalToSpace (VProc_t *vp)
                         if (isFromSpacePtr(v)) {
                             *scanP = ForwardObjGlobal(vp, v);
                         }
+                        
+                        assert (!(isPtr(v) && IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts)));
                     }
                 } else if (isRawHdr(hdr)) {
                     assert (isRawHdr(hdr));
@@ -575,6 +577,8 @@ static void ScanGlobalToSpace (VProc_t *vp)
                 PushToSpaceChunks (vp, tmp, true);
             }
         } else {
+            assert(scanChunk->next == NULL);
+
             MutexLock(&NodeHeaps[node].lock);
             scanChunk->next = NodeHeaps[node].scannedTo;
             NodeHeaps[node].scannedTo = scanChunk;
