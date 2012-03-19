@@ -383,7 +383,7 @@ structure ImplicitThread (* :
 	;
 
       define @default-work-group-begin (defaultGroup : work_group / exh : exh) : unit =
-	  do @push-work-group (defaultGroup / exh)
+          do @work-group-begin (defaultGroup / exh)
 	  return (UNIT)
 	;
 
