@@ -74,7 +74,7 @@ structure ParrLitToRope : sig
 	| exp (A.CaseExp (e, ms, _)) = exp e andalso $match ms
 	| exp (A.PCaseExp (es, ms, _)) = $exp es andalso $pmatch ms
 	| exp (A.HandleExp (e, ms, _)) = exp e andalso $match ms
-	| exp (A.RaiseExp (e, _)) = exp e
+	| exp (A.RaiseExp (_, e, _)) = exp e
 	| exp (A.FunExp (_, e, _)) = true
 	| exp (A.ApplyExp _) = false (* TODO improve this. 1+1 should not be parallelized. *)
 	| exp (A.VarArityOpExp _) = true

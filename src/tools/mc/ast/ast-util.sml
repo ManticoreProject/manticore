@@ -228,7 +228,7 @@ structure ASTUtil : sig
       val failConst = A.ConstExp (A.DConst (Basis.exnFail, []))
       val exn = mkApplyExp (failConst, [mkString s])
       in
-        A.RaiseExp (exn, t)
+        A.RaiseExp (Error.UNKNOWN, exn, t)
       end
 
     fun mkList ([], t) = A.ConstExp (A.DConst (B.listNil, [t]))
@@ -333,7 +333,7 @@ structure ASTUtil : sig
 	      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
 	      | exp (A.PCaseExp (es, pms, t)) = A.PCaseExp (map exp es, map pmatch pms, t)
 	      | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t)
-	      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
+	      | exp (A.RaiseExp (l, e, t)) = A.RaiseExp (l, exp e, t)
 	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
 	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
 	      | exp (m as A.VarArityOpExp _) = m
@@ -388,7 +388,7 @@ structure ASTUtil : sig
 	| exp (A.CaseExp (e, ms, t), vars) = exp (e, List.foldl match vars ms)
 	| exp (A.PCaseExp (es, pms, t), vars) = List.foldl exp (List.foldl pmatch vars pms) es
 	| exp (A.HandleExp (e, ms, t), vars) = exp (e, List.foldl match vars ms)
-	| exp (A.RaiseExp (e, t), vars) = exp (e, vars)
+	| exp (A.RaiseExp (_, e, t), vars) = exp (e, vars)
 	| exp (A.FunExp (x, e, t), vars) = exp (e, x::vars)
 	| exp (A.ApplyExp (e1, e2, t), vars) = exp (e1, exp (e2, vars))
 	| exp (m as A.VarArityOpExp _, vars) = vars

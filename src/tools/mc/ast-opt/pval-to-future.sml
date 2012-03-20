@@ -58,10 +58,10 @@ structure PValToFuture =
 	    | A.HandleExp (e, ms, t) => 
 	      (* FIXME *)
 	      (A.HandleExp (e, ms, t), pLive)
-	    | A.RaiseExp (e, t) =>  
+	    | A.RaiseExp (l, e, t) =>  
 	      let val (e', pLive') = trExp (e, pLive)
 	      in
-		  (A.RaiseExp (e', t), pLive')
+		  (A.RaiseExp (l, e', t), pLive')
 	      end
 	    | A.FunExp (x, e, t) => 
 	      let val (e', pLive') = trExp (e, pLive)

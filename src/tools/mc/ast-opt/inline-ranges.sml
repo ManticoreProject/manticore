@@ -148,7 +148,7 @@ end = struct
        | A.PCaseExp (es, ms, t) =>
            A.PCaseExp ($exp es, $pmatch ms, t)
        | A.HandleExp (e, ms, t) => A.HandleExp (exp e, $match ms, t)
-       | A.RaiseExp (e, t) => A.RaiseExp (exp e, t)
+       | A.RaiseExp (l, e, t) => A.RaiseExp (l, exp e, t)
        | A.FunExp (x, e, t) => A.FunExp (x, exp e, t)
        | A.ApplyExp (e1, e2, t) => A.ApplyExp (exp e1, exp e2, t)
        | v as A.VarArityOpExp _ => v

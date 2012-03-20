@@ -74,7 +74,7 @@ end = struct
           in
 	    A.HandleExp (e', ms', t')
 	  end
-      | ex (A.RaiseExp (e, t)) = A.RaiseExp (ex e, ty t)
+      | ex (A.RaiseExp (l, e, t)) = A.RaiseExp (l, ex e, ty t)
       | ex (A.FunExp (x, e, t)) = let
           val (env', x') = var env x
           val e' = exp env' e

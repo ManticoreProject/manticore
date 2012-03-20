@@ -11,4 +11,6 @@ structure ErrorStream =
 
     fun error (span, msg) = Error.errorAt (!errStrm, span, msg)
 
+    fun getLoc span = Error.location (!errStrm, span)
+
   end

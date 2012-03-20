@@ -74,8 +74,8 @@ end = struct
           A.HandleExp (translate e,
                        List.map translateMatch ms,
                        t)
-      | exp (A.RaiseExp (e,t)) =
-          A.RaiseExp (translate e,
+      | exp (A.RaiseExp (l, e,t)) =
+          A.RaiseExp (l, translate e,
                       t)
       | exp (A.FunExp (v,e,t)) =
           A.FunExp (v,

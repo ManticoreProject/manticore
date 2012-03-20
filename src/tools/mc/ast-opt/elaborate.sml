@@ -49,7 +49,7 @@ structure Elaborate : sig
       | trExp (A.CaseExp (e, ms, t)) = A.CaseExp (trExp e, map trMatch ms, trTy t)
       | trExp (A.PCaseExp (es, pms, t)) = trPCase (map trExp es, pms, trTy t)
       | trExp (A.HandleExp (e, ms, t)) = A.HandleExp (trExp e, map trMatch ms, trTy t)
-      | trExp (A.RaiseExp (e, t)) = A.RaiseExp (trExp e, trTy t)
+      | trExp (A.RaiseExp (l, e, t)) = A.RaiseExp (l, trExp e, trTy t)
       | trExp (A.FunExp (x, e, t)) = A.FunExp (trVar x, trExp e, trTy t)
       | trExp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (trExp e1, trExp e2, trTy t)
       | trExp (A.VarArityOpExp (m, n, t)) = A.VarArityOpExp (m, n, trTy t)

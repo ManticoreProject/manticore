@@ -227,7 +227,7 @@ structure Monomorphise : sig
           in
               exp (e, funMap, metaMap, dconMap)
           end
-	| exp (A.RaiseExp (e, t), funMap, metaMap, dconMap) = exp (e, funMap, metaMap, dconMap)
+	| exp (A.RaiseExp (l, e, t), funMap, metaMap, dconMap) = exp (e, funMap, metaMap, dconMap)
 	| exp (A.FunExp (x, e, t), funMap, metaMap, dconMap) = exp (e, funMap, metaMap, dconMap)
 	| exp (A.ApplyExp (e1, e2, t), funMap, metaMap, dconMap) = let
               val (funMap, metaMap, dconMap) = exp (e1, funMap, metaMap, dconMap)
@@ -355,7 +355,7 @@ structure Monomorphise : sig
 	| exp (A.IfExp (e1, e2, e3, t)) = A.IfExp (exp e1, exp e2, exp e3, substBound t)
 	| exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, substBound t)
 	| exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, substBound t)
-	| exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, substBound t)
+	| exp (A.RaiseExp (l, e, t)) = A.RaiseExp (l, exp e, substBound t)
 	| exp (A.FunExp (param, e, t)) = A.FunExp (param, exp e, substBound t)
 	| exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, substBound t)
 	| exp (m as A.VarArityOpExp _) = m

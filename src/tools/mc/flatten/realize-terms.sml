@@ -137,7 +137,7 @@ end = struct
       | exp (A.PCaseExp (es, ms, t)) = 
 	  A.PCaseExp (List.map exp es, List.map pmatch ms, ty t)
       | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, List.map match ms, ty t)
-      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, ty t)
+      | exp (A.RaiseExp (l, e, t)) = A.RaiseExp (l, exp e, ty t)
       | exp (A.FunExp (x, e, t)) = let
           val x' = var x
           in
@@ -261,7 +261,7 @@ end = struct
       | exp (A.PCaseExp (es, ms, t)) = 
 	  A.PCaseExp (List.map exp es, List.map pmatch ms, t)
       | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, List.map match ms, t)
-      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
+      | exp (A.RaiseExp (l, e, t)) = A.RaiseExp (l, exp e, t)
       | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (A.VarArityOpExp _) = raise Fail "todo"
@@ -328,7 +328,7 @@ end = struct
 	| exp (A.CaseExp (e, ms, _)) = exp e orelse List.exists match ms
 	| exp (A.PCaseExp (es, ms, _)) = List.exists exp es orelse List.exists pmatch ms
 	| exp (A.HandleExp (e, ms, _)) = exp e orelse List.exists match ms
-	| exp (A.RaiseExp (e, _)) = exp e
+	| exp (A.RaiseExp (_, e, _)) = exp e
 	| exp (A.FunExp (_, e, _)) = exp e
 	| exp (A.ApplyExp (e1, e2, _)) = exp e1 orelse exp e2
 	| exp (A.VarArityOpExp _) = false

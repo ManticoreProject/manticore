@@ -310,13 +310,13 @@ structure MatchCompile : sig
 
   (* create the AST to raise an exception (either MatchFail or BindFail) *)
     fun raiseExn exn (loc : Err.span, rootArg : AST.var, ty : AST.ty) =
-	  AST.RaiseExp(AST.ConstExp(AST.DConst(exn, [])), ty)
+	  AST.RaiseExp(Error.UNKNOWN, AST.ConstExp(AST.DConst(exn, [])), ty)
     val raiseMatchFail = raiseExn Basis.exnMatch
     val raiseBindFail = raiseExn Basis.exnBind
 
   (* create the AST to reraise an exception in a handle match *)
     fun reraiseExn (loc : Err.span, rootArg : AST.var, ty : AST.ty) =
-	  AST.RaiseExp(AST.VarExp(rootArg, []), ty)
+	  AST.RaiseExp(Error.UNKNOWN, AST.VarExp(rootArg, []), ty)
 
     fun rewrite (loc, env, exp : AST.exp) : AST.exp = let
 	  fun rewrite' e = rewrite (loc, env, e)
@@ -357,7 +357,7 @@ structure MatchCompile : sig
 		  if MatchUtil.areSimpleMatches mc
 		    then AST.HandleExp(rewrite' e, List.map rewriteSimplePatMatch mc, ty)
 		    else AST.HandleExp(rewrite' e, rewriteHandle(loc, env, mc, ty), ty)
-	      | AST.RaiseExp(e, ty) => AST.RaiseExp(rewrite' e, ty)
+	      | AST.RaiseExp(l, e, ty) => AST.RaiseExp(l, rewrite' e, ty)
 	      | AST.FunExp(x, e, ty) => AST.FunExp(x, rewrite' e, ty)
 	      | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(rewrite' e1, rewrite' e2, ty)
 	      | AST.VarArityOpExp _ => exp
