@@ -357,7 +357,7 @@ structure ChkExp :> sig
 		  if not(U.unify(ty, Basis.exnTy))
 		    then error(loc, ["argument of raise must be an exception"])
 		    else ();
-		  (AST.RaiseExp(e', resTy), resTy)
+		  (AST.RaiseExp(ErrorStream.getLoc loc, e', resTy), resTy)
 		end
 	    | PT.PChoiceExp es => let
 		fun chk (e, (es, ty)) = let

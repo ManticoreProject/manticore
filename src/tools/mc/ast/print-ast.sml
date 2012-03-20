@@ -179,7 +179,7 @@ structure PrintAST : sig
 	      pr "(* end handle *))";
 	    closeBox ();
 	 closeBox ())
-      | exp (A.RaiseExp(e, ty)) = (
+      | exp (A.RaiseExp(l, e, ty)) = (
 	  openHVBox (rel 2);
 	    pr "raise"; sp (); exp e;
 	  closeBox ())

@@ -202,7 +202,7 @@ structure ASTUtil : sig
 	      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
 	      | exp (A.PCaseExp (es, pms, t)) = A.PCaseExp (map exp es, map pmatch pms, t)
 	      | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t)
-	      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
+	      | exp (A.RaiseExp (l, e, t)) = A.RaiseExp (l, exp e, t)
 	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
 	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
 	      | exp (m as A.VarArityOpExp _) = m

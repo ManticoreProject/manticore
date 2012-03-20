@@ -619,3 +619,10 @@ Value_t M_StringTokenize (Value_t str, Value_t sep)
     }
     return l;
 }
+
+void DebugThrow (VProc_t *vp, char *loc)
+{
+#ifndef NDEBUG
+    SayDebug("[%2d] %s\n", vp->id, loc);
+#endif
+}
