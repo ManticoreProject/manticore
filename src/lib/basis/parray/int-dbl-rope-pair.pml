@@ -36,8 +36,8 @@ structure IntDoubleRopePair = struct
 (*       fun lp2 i = if i=n then () else (Print.printLn (dtos (DS.sub (ds, i))); lp2 (i+1)) *)
 (*       val _ = lp2 0 *)
       fun f' i = let
-	val n = IS.sub (is, i)
-	val x = DS.sub (ds, i)
+	val n = IS.unsafeSub (is, i)
+	val x = DS.unsafeSub (ds, i)
 	val res = f (n, x)
         (* val _ = Print.printLn ("f(" ^ itos n ^ "," ^ dtos x ^ ") = " ^ dtos res) *)
         in

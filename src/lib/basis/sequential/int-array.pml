@@ -35,6 +35,8 @@ structure U = UnsafeIntArray
     else
       Debug.failwith "IntArray.sub: index out of bounds"
 
+  val unsafeSub = U.sub
+
   fun tabulate (n, f : int -> int) = 
     if n < 0 then let
       val msg = "IntArray.tabulate: size " ^ Int.toString n
