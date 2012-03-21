@@ -58,8 +58,12 @@ structure IntDoubleRopePair = struct
       fun lp ropes = (case ropes
         of (IR.Leaf s1, DR.Leaf s2) => 
              DR.leaf (iddmap (f, s1, s2))
-	 | (IR.Cat (d1, len1, r1L, r1R), DR.Cat (d2, len2, r2L, r2R)) =>
-             DR.Cat (| d1, len1, lp (r1L, r2L), lp (r1R, r2R) |)
+	 | (IR.Cat (d1, len1, r1L, r1R), DR.Cat (d2, len2, r2L, r2R)) => let
+               pval left = lp (r1L, r2L)
+               val right = lp (r1R, r2R)
+           in
+             DR.Cat ( d1, len1, left, right )
+           end
 	 | _ => (Print.printLn "IDRP.fastMapDbl -- BUG: called on ropes of different shapes";
 		 raise Fail "fastMapP -- BUG: called on ropes of different shapes")
         (* end case *))
