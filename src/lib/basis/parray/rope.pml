@@ -364,7 +364,7 @@ fun splitAt length encode cursorAtIx unzipCursorL unzipCursorR cur n = let
   val (rps1, m, k, rps2) = divide length (rp :: rs, n)
   val (mn, (mls, mrs, mds)) = cursorAtIx (m, k - 1)
   val (n1, n2) = (List.length rps1, List.length mrs)
-  val (xs1, xs2) = (rps1 @ mls @ (mn::nil), mrs @ rps2)
+  val (xs1, xs2) = (rps1 @ List.rev mls @ (mn::nil), mrs @ rps2)
   val ((rp1, l1), (rp2, l2)) = (encode xs1, encode xs2)
   in
     (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2))
@@ -373,7 +373,7 @@ fun splitAt length encode cursorAtIx unzipCursorL unzipCursorR cur n = let
 fun join decode finish zipCursor (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2)) = let
   val (xs1, xs2) = (decode (rp1, l1), decode (rp2, l2))
   val (rps1, ms) = (List.take (xs1, n1), List.drop (xs1, n1))
-  val (mn, mls) = (List.last ms, List.take (ms, List.length ms - 1))
+  val (mn, mls) = (List.last ms, List.rev (List.take (ms, List.length ms - 1)))
   val (mrs, rps2) = (List.take (xs2, n2), List.drop (xs2, n2))
   val m = finish (zipCursor (mn, (mls, mrs, mds)))
   val ropes = rps1 @ (m::nil) @ rps2
@@ -667,6 +667,91 @@ fun map f rp = (case ChunkingPolicy.get ()
    | ChunkingPolicy.LTS PPT => mapLTS PPT f rp)
 fun mapUncurried (f, rp) = map f rp
 (*end*)
+
+(*local*)
+
+fun ignore x = ()
+
+fun imperativePar2 (f, g) = let
+  val (x, y) = RT.par2 (f, g)
+  in
+    x + y
+  end
+
+fun foreachSequentialRec i f rp = (case rp
+  of Leaf s => 
+       (Seq.foreach i f s; 0)
+   | Cat(len, d, l, r) => 
+       (foreachSequentialRec i f l) + (foreachSequentialRec (i+length l) f r))
+
+fun foreachSequential f rp = foreachSequentialRec 0 f rp
+
+fun foreachETS SST f rp = let
+  fun fe (i, rp) =
+    if length rp <= SST then foreachSequentialRec i f rp
+    else let 
+      val (l, r) = split2 rp
+      in
+	imperativePar2 (fn () => fe (i, l), 
+	  	        fn () => fe (i+length l, r))
+      end
+  in
+    fe (0, rp)
+  end
+
+fun numUnprocessedForeach cur = numUnprocessed length length cur
+
+fun nextForeach cur = let
+  fun n (f, c) = (case c
+    of GCTop => 
+	 Done f
+     | GCLeft (c', r) =>
+	 More (leftmostLeaf (r, GCRight (f, c')))
+     | GCRight (l, c') =>
+	 n (nccat2 (l, f), c'))
+  in
+    n cur
+  end
+
+fun foreachUntil i cond f cur = let
+  fun m (i, s, c) = (case Seq.foreachUntil cond i f s
+     of More (us, ()) => 
+	  if numUnprocessedForeach (leaf us, c) < 2 then
+	    (Seq.foreach i f us; case nextForeach (empty(), c)
+	      of Done _ => Done ()
+	       | More (s', c') => m (i+Seq.length us, s', c'))
+	  else 
+	    More (leaf us, c)      
+      | Done () => (case nextForeach (empty (), c)
+	  of Done _ => Done ()
+	   | More (s', c') => m (i+Seq.length s, s', c')))
+  val (s, c) = leftmostLeaf cur
+  in
+    m (i, s, c)
+  end
+
+fun foreachLTS PPT f rp = let
+  fun m (i, cur) = (case foreachUntil i RT.hungryProcs f cur
+    of Done () => 0
+     | More cur' => let
+	 val mid = numUnprocessedForeach cur' div 2
+	 val (rp1, rp2, _) = 
+	       splitAt length encodeRope cursorAtIx unzipCursor unzipCursor cur' mid
+         in
+	   imperativePar2 (fn () => m (i, start rp1), fn () => m (i+length rp1, start rp2))
+         end)
+  in
+    if PPT <> 1 then failwith "PPT != 1 currently unsupported" else
+    m (0, start rp)
+  end
+(*in*)
+fun foreach f rp = ignore (case ChunkingPolicy.get ()
+  of ChunkingPolicy.Sequential => foreachSequential f rp
+   | ChunkingPolicy.ETS SST => foreachETS SST f rp
+   | ChunkingPolicy.LTS PPT => foreachLTS PPT f rp)
+fun foreachUncurried (f, rp) = foreach f rp
+(*end*)
+
 
 (*local*)
 fun reduceSequential f b rp =
@@ -1205,3 +1290,4 @@ fun app f rp = let
   (* FIXME slow implementation *)
     fun fromSeq s = fromList (Seq.toList s)
 end
+
