@@ -194,12 +194,17 @@ structure DoubleFArray = struct
   (* partReduce : ('a -> 'a) * 'a * 'a double_seq * int * int -> 'a *)
   fun partReduce (f, init, data, lo, len) = let
     val hi = lo+len
-    fun sub i = DS.sub(data,i)
+    val dataLen = DS.length data
+    fun sub i = DS.unsafeSub(data,i)
     fun lp (i, acc) =
       if i >= hi then acc
       else lp (i+1, f(acc, (sub i)))
     in
-      lp (lo, init)
+      if hi > dataLen
+      then
+          raise Fail "partReduce: index out of bounds"
+      else 
+          lp (lo, init)
     end
 
   (* segReducev : ('a -> 'a) * 'a * 'a double_seq * (int * int) list -> (int * 'a) list *)
