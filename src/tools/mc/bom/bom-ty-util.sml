@@ -73,6 +73,7 @@ structure BOMTyUtil : sig
       | kindOf (BTy.T_Cont _) = BTy.K_BOXED
       | kindOf (BTy.T_CFun _) = BTy.K_UNIFORM
       | kindOf BTy.T_VProc = BTy.K_RAW
+      | kindOf BTy.T_Deque = BTy.K_RAW
       | kindOf (BTy.T_TyCon(BTy.DataTyc{name, kind, ...})) = !kind
       | kindOf (BTy.T_TyCon(BTy.AbsTyc _)) = BTy.K_UNIFORM
       | kindOf (BTy.T_Parr _) = BTy.K_BOXED
@@ -96,6 +97,7 @@ structure BOMTyUtil : sig
 	   | (BTy.T_CFun c_proto1, BTy.T_CFun c_proto2) =>
 		c_proto1 = c_proto2
 	   | (BTy.T_VProc, BTy.T_VProc) => true
+	   | (BTy.T_Deque, BTy.T_Deque) => true
 	   | (BTy.T_TyCon tyc1, BTy.T_TyCon tyc2) => BOMTyCon.sameTyc (tyc1, tyc2)
 	   | (BTy.T_Parr p1, BTy.T_Parr p2) => sameParr (p1, p2)
 	   | _ => false
@@ -186,6 +188,7 @@ structure BOMTyUtil : sig
 	      | BTy.T_Cont tys => concat("cont(" :: tys2l(tys, [")"]))
 	      | BTy.T_CFun cp => CFunctions.protoToString cp
 	      | BTy.T_VProc=> "vproc"
+	      | BTy.T_Deque=> "deque"
 	      | BTy.T_TyCon(BTy.DataTyc{name, stamp, ...}) => name^Stamp.toString stamp
 	      | BTy.T_TyCon(BTy.AbsTyc{name, stamp, ...}) => name^Stamp.toString stamp
 	      | BTy.T_Parr p => ptos p
@@ -215,6 +218,7 @@ structure BOMTyUtil : sig
   (* select i'th type component from a tuple *)
     fun select (BTy.T_Tuple(_, tys), i) = List.nth(tys, i)
       | select (BTy.T_VProc, _) = BTy.T_Any
+      | select (BTy.T_Deque, _) = BTy.T_Any
       | select (ty, _) = raise Fail("expected tuple type, but found " ^ toString ty)
 
   (* return the type of a data constructor *)

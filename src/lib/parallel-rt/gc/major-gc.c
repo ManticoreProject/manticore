@@ -178,17 +178,15 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 					    // so adjust it.
 					    *nextScan = (Word_t)((Addr_t)v - oldSzB);
 				    } else {
-                        MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-                        assert (cq->sts == TO_SP_CHUNK);
+                                        MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+                                        assert (cq->sts == TO_SP_CHUNK);
+                                    }
+                            }
                     }
-			    }
-		    }
-			
-			
-		}else if (isRawHdr(hdr)) {
+		} else if (isRawHdr(hdr)) {
 			assert (isRawHdr(hdr));
 			nextScan += GetLength(hdr);
-		}else {
+		} else {
 			
 			nextScan = table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
 			

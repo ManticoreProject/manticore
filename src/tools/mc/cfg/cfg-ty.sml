@@ -21,6 +21,7 @@ structure CFGTy =
       | T_Addr of ty			(* address of a tuple's field *)
       | T_CFun of CFunctions.c_proto	(* a C function prototype *)
       | T_VProc				(* address of runtime vproc structure *)
+      | T_Deque				(* address of runtime deque *)
     (* function/continuation types.  The type specifies the calling convention.  These
      * types should be used for labels and code addresses.
      *)

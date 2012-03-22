@@ -258,6 +258,7 @@ structure CheckCPS : sig
 				  "type mismatch in Select: ",
 				   vl2s' lhs, " = #", Int.toString i, "(", v2s' x, ")\n"
 				]
+                        | CTy.T_Deque => ()
 			| ty => error[v2s x, ":", CTU.toString ty, " is not a tuple: ",
                                     vl2s lhs, " = #", Int.toString i, "(", v2s x, ")\n"]
 		      (* end case *))
@@ -283,6 +284,7 @@ structure CheckCPS : sig
 			    if (i < List.length tys) andalso CTU.match(CTy.T_Addr(List.nth (tys, i)), ty)
                               then ()
                               else error["type mismatch in AddrOf: ", vl2s lhs, " = &(", v2s x, ")\n"]
+                        | CTy.T_Deque => ()
 			| ty => error[v2s x, ":", CTU.toString ty, " is not a tuple: ",
                                     vl2s lhs, " = &(", v2s x, ")\n"]
 		      (* end case *))
