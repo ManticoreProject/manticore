@@ -312,6 +312,7 @@ functor HeapTransferFn (
 	  | Ty.T_Tuple _ => CTy.C_PTR
 	  | Ty.T_OpenTuple _ => CTy.C_PTR
 	  | Ty.T_VProc => CTy.C_PTR
+	  | Ty.T_Deque => CTy.C_PTR
 	  | _ => raise Fail(concat["cfgTyToCTy(", CFGTyUtil.toString ty, ")"])
 	(* end case *))
 

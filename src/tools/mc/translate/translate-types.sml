@@ -254,6 +254,7 @@ structure TranslateTypes : sig
 		 | (BPT.T_Cont tys) => BTy.T_Cont(cvtTys tys)
 		 | (BPT.T_CFun cproto) => BTy.T_CFun cproto
 		 | (BPT.T_VProc) => BTy.T_VProc
+		 | (BPT.T_Deque) => BTy.T_Deque
 		 | (BPT.T_TyCon tyc) => (
 		     case E.findBOMTy tyc
 		      of E.BTY_NONE => raise Fail("unbound BOM type constructor " ^ PTVar.toString tyc)

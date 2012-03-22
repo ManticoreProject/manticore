@@ -68,6 +68,7 @@ structure Keywords : sig
             ("constr",          T.KW_constr),
 	    ("datatype",	T.KW_datatype),
 	    ("define",		T.KW_define),
+	    ("deque",		T.KW_deque),
 	    ("do",		T.KW_do),
 	    ("double",		T.KW_double),
 	    ("else",		T.KW_else),

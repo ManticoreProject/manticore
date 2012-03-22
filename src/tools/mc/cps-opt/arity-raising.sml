@@ -1364,6 +1364,7 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
                   | newTy as CTy.T_Cont _ => SOME (newTy)
                   | _ => NONE
                 (* end case *))
+              | CTy.T_Deque => NONE
               | ty => raise Fail (concat [CV.toString v,
                                           " was not of tuple type, was: ",
                                           CPSTyUtil.toString ty])
@@ -1380,6 +1381,7 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
                   | newTy as CTy.T_Cont _ => SOME (CTy.T_Addr(newTy))
                   | _ => NONE
                 (* end case *))
+              | CTy.T_Deque => NONE
               | ty => raise Fail (concat [CV.toString v,
                                           " was not of tuple type, was: ",
                                           CPSTyUtil.toString ty])
@@ -1456,6 +1458,7 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
                 | CTy.T_Cont _ => cast ()
                 | CTy.T_CFun (_) => cast ()
                 | CTy.T_VProc => cast()
+                | CTy.T_Deque => cast()
           end
 	  fun flattenApplyThrow (ppt, encl, g, args, retArgs) = let
               val lambdas = cfaGetLambdas g

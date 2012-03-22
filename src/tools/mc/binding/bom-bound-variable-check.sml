@@ -110,6 +110,7 @@ structure BOMBoundVariableCheck :> sig
 	    | PT1.T_Cont params => PT2.T_Cont (chkTys loc (params, env))
 	    | PT1.T_CFun cp => PT2.T_CFun cp
 	    | PT1.T_VProc => PT2.T_VProc
+	    | PT1.T_Deque => PT2.T_Deque
 	    | PT1.T_TyCon tc => PT2.T_TyCon (findBOMTyQid(loc, env, tc))
 	  (* end case *))
 

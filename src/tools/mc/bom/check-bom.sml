@@ -323,6 +323,7 @@ structure CheckBOM : sig
 (* NOTE: the following shouldn't be necessary, but case-simplify doesn't put in enum types! *)
 			| (Literal.Enum _, BTy.T_Any) => ()
                         | (Literal.Enum _, BTy.T_VProc) => ()
+                        | (Literal.Enum _, BTy.T_Deque) => ()
 			| (Literal.StateVal w, _) => () (* what is the type of StateVals? *)
 			| (Literal.Tag s, _) => () (* what is the type of Tags? *)
 			| (Literal.Int _, BTy.T_Raw BTy.T_Byte) => ()
@@ -370,6 +371,7 @@ structure CheckBOM : sig
 				  "type mismatch in Select: ",
 				   vl2s' lhs, " = #", Int.toString i, "(", v2s' x, ")\n"
 				]
+                        | BTy.T_Deque => ()
 			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple: ",
                                     vl2s lhs, " = #", Int.toString i, "(", v2s x, ")\n"]
 		      (* end case *))
@@ -410,6 +412,7 @@ structure CheckBOM : sig
 			    if (i < List.length tys) andalso BTU.match(BTy.T_Addr(List.nth (tys, i)), ty)
 			      then ()
                               else error["type mismatch in AddrOf: ", vl2s lhs, " = &(", v2s x, ")\n"]
+                        | BTy.T_Deque => ()
 			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple",
                                     vl2s lhs, " = &(", v2s x, ")\n"]
 		      (* end case *))

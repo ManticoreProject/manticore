@@ -71,6 +71,7 @@
       | T_Cont of ty list		(* first-class continuation *)
       | T_CFun of CFunctions.c_proto	(* C functions *)
       | T_VProc				(* address of VProc runtime structure *)
+      | T_Deque				(* address of VProc deque *)
       | T_TyCon of ty_con		(* high-level type constructor *)
 
     and exp
@@ -162,6 +163,7 @@
         | lp (T_Cont ts) = par "cont" (sp (map lp ts))
 	| lp (T_CFun proto) = par "cfun" (CFunctions.protoToString proto)
 	| lp (T_VProc) = "vproc"
+	| lp (T_Deque) = "deque"
 	| lp (T_TyCon c) = ty_conToString c
       in
 	lp t
