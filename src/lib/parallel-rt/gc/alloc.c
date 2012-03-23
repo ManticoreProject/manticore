@@ -95,7 +95,8 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     else if (strcmp(bits,"10") == 0) obj[-1] = MIXED_HDR(predefined+1, nElems);
     else if (strcmp(bits,"1") == 0) obj[-1] = MIXED_HDR(predefined+2, nElems);
     else if (strcmp(bits,"01011") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
-    else { printf("Error AllocNonUniform\n"); exit(5);}
+    else if (strcmp(bits,"001") == 0) obj[-1] = MIXED_HDR(predefined+4, nElems);
+    else { printf("Error AllocNonUniform: %s\n", bits); exit(5);}
 
     vp->allocPtr += WORD_SZB * (nElems+1);
     return PtrToValue(obj);
@@ -315,6 +316,7 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
    else if (strcmp(bits,"10") == 0) obj[-1] = MIXED_HDR(predefined+1, nElems);
    else if (strcmp(bits,"1") == 0) obj[-1] = MIXED_HDR(predefined+2, nElems);
    else if (strcmp(bits,"01011") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
+   else if (strcmp(bits,"001") == 0) obj[-1] = MIXED_HDR(predefined+4, nElems);
    else { printf("Error GlobalAllocNonUniform\n"); exit(5);}	
 	
     for (int i = 0;  i < nElems;  i++) {
