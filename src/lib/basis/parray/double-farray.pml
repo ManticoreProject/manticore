@@ -165,14 +165,15 @@ structure DoubleFArray = struct
    This is almost identical to the code in SR, but
    rewritten to use monomorphic Double Ropes and Double Seqs *)
 
-  fun stopwatch (label, thunk) = let
+(*  fun stopwatch (label, thunk) = let
     val t0 = Time.now ()
     val x = thunk ()
     val t1 = Time.now ()
     val _ = Print.printLn ("time in " ^ label ^ ": " ^ Time.toStringMicrosec(t1-t0))
     in
       x
-    end
+    end*)
+  fun stopwatch (_, thunk) = thunk () 
 
   (* writePairs : 'a double_seq * (int * 'a) list -> 'a list *)
   fun writePairs res pss = let
@@ -193,12 +194,17 @@ structure DoubleFArray = struct
   (* partReduce : ('a -> 'a) * 'a * 'a double_seq * int * int -> 'a *)
   fun partReduce (f, init, data, lo, len) = let
     val hi = lo+len
-    fun sub i = DS.sub(data,i)
+    val dataLen = DS.length data
+    fun sub i = DS.unsafeSub(data,i)
     fun lp (i, acc) =
       if i >= hi then acc
       else lp (i+1, f(acc, (sub i)))
     in
-      lp (lo, init)
+      if hi > dataLen
+      then
+          raise Fail "partReduce: index out of bounds"
+      else 
+          lp (lo, init)
     end
 
   (* segReducev : ('a -> 'a) * 'a * 'a double_seq * (int * int) list -> (int * 'a) list *)
@@ -280,7 +286,7 @@ structure DoubleFArray = struct
            val nL = R.length rL
            val (psL, psR) = SR.split (nL, ps)
            val (sumsL, sumsR) = (| lp(rL,psL), lp(rR,psR) |)
-           val res = stopwatch ("mergeAppend", fn () => mergeAppend (sumsL, sumsR))
+           val res = stopwatch ("mergeAppend", fn () => mergeAppend (sumsL, sumsR)) 
            in
              res
            end

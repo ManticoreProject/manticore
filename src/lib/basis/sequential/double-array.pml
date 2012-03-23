@@ -35,6 +35,8 @@ structure DoubleArray = struct
     else
       Debug.failwith "DoubleArray.sub: index out of bounds"
 
+  val unsafeSub = U.sub
+
   fun tabulate (n, f) = 
     if n < 0 then
       raise Fail "Size"

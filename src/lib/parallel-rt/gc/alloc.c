@@ -111,7 +111,7 @@ Value_t AllocRaw (VProc_t *vp, uint32_t len)
     Word_t	*obj = (Word_t *)(vp->allocPtr);
     int nWords = BYTES_TO_WORDS(len);
 
-    EnsureNurserySpace (vp, nWords/WORD_SZB);
+    EnsureNurserySpace (vp, nWords);
 
     obj[-1] = RAW_HDR(nWords);
     vp->allocPtr += WORD_SZB * (nWords+1);
@@ -237,7 +237,7 @@ Value_t AllocString (VProc_t *vp, const char *s)
     int len = strlen(s) + 1;
     int nWords = BYTES_TO_WORDS(len);
 
-    EnsureNurserySpace (vp, nWords/WORD_SZB+3);
+    EnsureNurserySpace (vp, nWords+1);
 
   /* allocate the raw data object */
     Word_t	*obj = (Word_t *)(vp->allocPtr);
@@ -246,14 +246,7 @@ Value_t AllocString (VProc_t *vp, const char *s)
     vp->allocPtr += WORD_SZB * (nWords+1);
 
   /* allocate the string header object */
-    Word_t	*hdr = (Word_t *)(vp->allocPtr);
-    hdr[-1] = VEC_HDR(2);
-    hdr[0] = (Word_t)(PtrToValue(obj));
-    hdr[1] = (Word_t)len-1;
-    vp->allocPtr += WORD_SZB * 3;
-
-    return PtrToValue(hdr);
-
+    return AllocNonUniform (vp, 2, PTR(obj), INT(len-1));
 }
 
 /*! \brief allocate a tuple of uniform values on the global heap.

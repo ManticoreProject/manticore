@@ -34,6 +34,8 @@ structure IntSeq = struct
 
   val sub = A.sub
 
+  val unsafeSub = A.unsafeSub
+
   val unsafeCreate = A.unsafeCreate
 
   fun cat2 (x, y) = let
