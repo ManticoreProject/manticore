@@ -285,8 +285,7 @@ structure DoubleFArray = struct
        | R.Cat (_, _, rL, rR) => let
            val nL = R.length rL
            val (psL, psR) = SR.split (nL, ps)
-           pval sumsL = lp(rL,psL)
-           val sumsR = lp(rR,psR)
+           val (sumsL, sumsR) = (| lp(rL,psL), lp(rR,psR) |)
            val res = stopwatch ("mergeAppend", fn () => mergeAppend (sumsL, sumsR)) 
            in
              res
