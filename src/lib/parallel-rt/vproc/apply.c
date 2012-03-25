@@ -94,10 +94,10 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
 	  /* is there a pending signal that we can deliver? */
 	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
-		Value_t resumeK = AllocUniform (vp, 3,
-                                                PtrToValue(&ASM_Resume),
-                                                vp->stdCont,
-                                                vp->stdEnvPtr);
+		Value_t resumeK = AllocNonUniform (vp, 3,
+                                           INT(PtrToValue(&ASM_Resume)),
+                                           INT(PtrToValue(vp->stdCont)),
+                                           PTR(vp->stdEnvPtr));
 	      /* pass the signal to scheduling code in the BOM runtime */
 		envP = vp->schedCont;
 		codeP = ValueToAddr(ValueToCont(envP)->cp);

@@ -58,7 +58,12 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 	if (isForwardPtr(oldHdr)) {
 		Value_t v = PtrToValue(GetForwardPtr(oldHdr));
 		assert (isPtr(v));
-        assert (AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK);
+#ifndef NDEBUG
+        MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+        if (cq->sts != TO_SP_CHUNK) {
+            fprintf(stderr, "[%2d] Value %llx is not in to-space\n", vp->id, v);}
+#endif
+                assert (AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK);
 		return v;
 	}
 	else {
@@ -317,6 +322,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
                 cp->sts = FREE_CHUNK;
                 cp->usedTop = cp->baseAddr;
 #ifndef NDEBUG
+                
                 if (GCDebug >= GC_DEBUG_GLOBAL)
                     SayDebug("[%2d]   Free-Space chunk %#tx..%#tx\n",
                              self->id, cp->baseAddr, cp->baseAddr+cp->szB);
