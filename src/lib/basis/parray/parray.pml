@@ -80,9 +80,11 @@ structure PArray = struct
 (* higher dimensional regular tabbing *)
   fun tabHD (triples, f) = failwith "tabHD-todo"
 
-  (* fun filter (pred, pa) = fromRope(Rope.filter pred (toRope pa)) *)
+  fun filter (pred, pa) = fromRope(Rope.filter pred (toRope pa)) 
   (* fun rev pa = fromRope(Rope.rev(toRope pa)) *)
-  (* fun fromList l = fromRope(Rope.fromList l) *)
+  fun fromList l = fromRope(Rope.fromList l)
+  fun empty () = fromRope(Rope.empty ())
+  
   (* fun concat (pa1, pa2) = fromRope(Rope.concat(toRope pa1, toRope pa2)) *)
   (* fun tabulateWithPred (n, f) = fromRope(Rope.tabulate(n, f)) *)
   (* fun forP (n, f) = Rope.for (n,f) *)
