@@ -257,7 +257,7 @@ structure DoubleFArray = struct
 
   fun mkRope arr = let
     val n = DS.length arr
-    fun subArr (lo, hi) = DS.tabulate (hi-lo+1, fn i => DS.sub (arr,lo+i))
+    fun subArr (lo, hi) = DS.tabulate (hi-lo+1, fn i => DS.unsafeSub (arr,lo+i))
     fun lp (lo, hi) = let
       val len = hi-lo+1
       in
