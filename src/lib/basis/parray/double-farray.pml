@@ -246,11 +246,11 @@ structure DoubleFArray = struct
       FArray (data', shape')
     end
 
-  fun mergeAppend (psL, psR) =
+  fun mergeAppend (psL, psR, f) =
    (case (psL, psR)
      of (nil, _) => psR
-      | ((i,x)::nil, (j,y)::more) => if (i=j) then (i,x+y)::more else (i,x)::psR
-      | (p::ps, _) => p::mergeAppend(ps,psR)
+      | ((i,x)::nil, (j,y)::more) => if (i=j) then (i,f(x,y))::more else (i,x)::psR
+      | (p::ps, _) => p::mergeAppend(ps,psR,f)
      (* end case *))
 
   fun yell s = Print.printLn s
@@ -286,7 +286,7 @@ structure DoubleFArray = struct
            val nL = R.length rL
            val (psL, psR) = SR.split (nL, ps)
            val (sumsL, sumsR) = (| lp(rL,psL), lp(rR,psR) |)
-           val res = stopwatch ("mergeAppend", fn () => mergeAppend (sumsL, sumsR)) 
+           val res = stopwatch ("mergeAppend", fn () => mergeAppend (sumsL, sumsR, f)) 
            in
              res
            end
