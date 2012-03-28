@@ -57,7 +57,7 @@ structure SegReduce = struct
              (* val itos = Int.toString
              fun ptos (n,m) = "(" ^ itos n ^ "," ^ itos m ^ ")"
              fun pstos ps = String.concat (List.map ptos ps) *)
-             val sd = lp (0, ls) 
+             val sd = lp (0, Rope.toList ls) 
              (* val _ = Print.printLn "original shape:"
              val _ = Print.printLn (S.toString s)
              val _ = Print.printLn "segdes:"
@@ -66,7 +66,7 @@ structure SegReduce = struct
                sd
              end
          | S.Lf _ => fail "segdesFromShape" "Lf"
-    end
+    end 
 
   (* partReduce : ('a -> 'a) * 'a * 'a seq * int * int -> 'a *)
   fun partReduce (f, init, data, lo, len) = let

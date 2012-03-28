@@ -24,7 +24,7 @@ structure FArrayUtil = struct
     fun fromList fs = let
       fun lp (nil, ropeAcc, shapeAcc, _) = let
 	    val r = IntRope.balance ropeAcc
-	    val s = S.Nd (List.rev shapeAcc)
+	    val s = S.Nd (Rope.fromList (List.rev shapeAcc))
             in
 	      IF.FArray (r, s)
             end
@@ -63,7 +63,7 @@ structure FArrayUtil = struct
     fun fromList fs = let
       fun lp (nil, ropeAcc, shapeAcc, _) = let
 	    val r = DoubleRope.balance ropeAcc
-	    val s = S.Nd (List.rev shapeAcc)
+	    val s = S.Nd (Rope.fromList (List.rev shapeAcc))
             in
 	      DF.FArray (r, s)
             end
@@ -159,15 +159,15 @@ structure FArrayUtil = struct
 (* mapSP : (int * dbl -> dbl) * int_farray * dbl_farray -> dbl_farray *)
 (* SP for "shape preserving" *)
   fun mapSP (f : int * double -> double, (nss, xss)) = let
-(*    val b = Time.now() *)
+(*    val b = Time.now()  *)
     val IF.FArray (nssRope, nssShape) = nss
     val DF.FArray (xssRope, xssShape) = xss
-    val _ = if S.same (xssShape, nssShape) then () 
-	    else (Print.printLn "map_IFF_DFF_DFF: shapes not same"; raise Fail "shapes not same")
+(*    val _ = if S.same (xssShape, nssShape) then () 
+	    else (Print.printLn "map_IFF_DFF_DFF: shapes not same"; raise Fail "shapes not same") *)
     val resRope = IntDoubleRopePair.fastMapDbl (f, nssRope, xssRope)
     val resFArray = DF.FArray (resRope, nssShape)
 (*    val e = Time.now()
-    val _ = Print.printLn ("Time in mapSP: " ^ (Time.toStringMicrosec(e-b))) *)
+    val _ = Print.printLn ("Time in mapSP: " ^ (Time.toStringMicrosec(e-b)))  *)
     in
       resFArray
     end

@@ -53,7 +53,7 @@ structure IntFArray = struct
 (* length : int_farray -> int *)
   fun length (FArray (_, t)) = (case t
     of S.Lf (lo, hi) => hi-lo (* note: hi is excl upper bound, lo is incl lower bound *)
-     | S.Nd ts => List.length ts
+     | S.Nd ts => Rope.length ts
     (* end case *))
 
 (* flatSub : int_farray * int -> int *)
@@ -74,7 +74,7 @@ structure IntFArray = struct
 (* nestedSub : int_farray * int -> int_farray *)
 (* the f_array returned is one level less deep than the arg *)
   fun nestedSub (FArray (data, shape), i) = (case shape
-    of S.Nd ts => FArray (data, List.nth (ts, i))
+    of S.Nd ts => FArray (data, Rope.sub (ts, i))
      | S.Lf _ => failwith "nestedSub - Lf"
     (* end case *))
 

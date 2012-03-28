@@ -53,7 +53,7 @@ structure DoubleFArray = struct
 (* length : int_farray -> int *)
   fun length (FArray (_, t)) = (case t
     of S.Lf (lo, hi) => hi-lo (* note: hi is excl upper bound, lo is incl lower bound *)
-     | S.Nd ts => List.length ts
+     | S.Nd ts => Rope.length ts
     (* end case *))
 
 (* flatSub : int_farray * int -> int *)
@@ -74,7 +74,7 @@ structure DoubleFArray = struct
 (* nestedSub : int_farray * int -> int_farray *)
 (* the f_array returned is one level less deep than the arg *)
   fun nestedSub (FArray (data, shape), i) = (case shape
-    of S.Nd ts => FArray (data, List.nth (ts, i))
+    of S.Nd ts => FArray (data, Rope.sub (ts, i))
      | S.Lf _ => failwith "nestedSub - Lf"
     (* end case *))
 
@@ -172,8 +172,9 @@ structure DoubleFArray = struct
     val _ = Print.printLn ("time in " ^ label ^ ": " ^ Time.toStringMicrosec(t1-t0))
     in
       x
-    end*)
-  fun stopwatch (_, thunk) = thunk () 
+    end *)
+  fun stopwatch (_, thunk) = thunk ()
+
 
   (* writePairs : 'a double_seq * (int * 'a) list -> 'a list *)
   fun writePairs res pss = let
@@ -274,27 +275,27 @@ structure DoubleFArray = struct
       lp (0, n-1)
     end
 
+  fun reduceSeg (f, ident, i, data, (lo, hi)) = let
+      val part = R.partialSeq (data, lo, hi)
+  in
+      DS.reduce f ident part
+  end
+
   fun newSegReduce (f, ident, xss) = let
     val (FArray (data, shape)) = xss
-    val segdes = SR.segdesFromShape shape
-    val nSegs = List.length segdes
-    val sums = DS.tabulate (nSegs, fn _ => ident)
-    fun updateSums (i, x) = DS.update (sums, i, x)
-    fun lp (r, ps) = (case r
-      of R.Leaf v => segReducev (f, ident, v, ps)
-       | R.Cat (_, _, rL, rR) => let
-           val nL = R.length rL
-           val (psL, psR) = SR.split (nL, ps)
-           val (sumsL, sumsR) = (| lp(rL,psL), lp(rR,psR) |)
-           val res = stopwatch ("mergeAppend", fn () => mergeAppend (sumsL, sumsR, f)) 
-           in
-             res
-           end
-      (* end case *))
-    val ps = stopwatch ("newSegReduce main loop", fn () => lp (data, segdes))
-    val _ = stopwatch ("updateSums", fn () => List.app updateSums ps)
-    val data' = stopwatch ("mkRope", fn () => mkRope sums)
+    val segments = (case shape
+                     of Shape.Nd segs => segs
+                      | _ => raise Fail "newSegReduce passed unflattened FArray")
+    val nSegs = Rope.length segments
     val shape' = S.Lf (0, nSegs)
+    fun doSegment (i) = let
+        val rng = (case Rope.subInBounds (segments, i)
+                    of Shape.Lf rng => rng
+                      | _ => raise Fail "newSegReduce passed unflattened FArray2")
+    in
+        reduceSeg (f, ident, i, data, rng)
+    end
+    val data' = R.tabulate (nSegs, doSegment)             
     in
       FArray (data', shape')
     end

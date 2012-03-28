@@ -28,7 +28,7 @@ structure FArray = struct
       val len = R.length fs
       fun lp (curr, i, data, ts) =
         if curr >= len then
-          FArray (data, S.Nd (List.rev ts))
+          FArray (data, S.Nd (R.fromList (List.rev ts)))
 	else let
           val FArray (d, t) = R.sub (fs, curr)
           val data' = R.concat (data, d)
@@ -48,7 +48,7 @@ structure FArray = struct
   (* length : 'a farray -> int *)
     fun length (FArray (_, t)) = (case t
       of S.Lf (lo, hi) => hi-lo (* note: hi is excl upper bound, lo is incl lower bound *)
-       | S.Nd ts => List.length ts
+       | S.Nd ts => R.length ts
       (* end case *))
 
   (* flatSub : 'a farray * int -> 'a *)
@@ -60,7 +60,7 @@ structure FArray = struct
   (* nestedSub : 'a farray * int -> 'a farray *)
   (* the farray returned is one level less deep than the arg *)
     fun nestedSub (FArray (data, shape), i) = (case shape
-      of S.Nd ts => FArray (data, List.nth (ts, i))
+      of S.Nd ts => FArray (data, R.sub (ts, i))
        | S.Lf _ => failwith "nestedSub - Lf"
       (* end case *))
 
