@@ -1213,6 +1213,34 @@ fun app f rp = let
 	     end
         (* end case *))
 
+  (* partialReduce :  (double * double -> double) * double * double rope * int * int -> double *)
+  (* reduce the sequence of elements from low incl to high excl *)
+  (* failure when lower bound is less than 0  *)
+  (* failure when upper bound is off the rope (i.e., more than len rope + 1) *)
+    fun partialReduce (f, ident, r, lo, hi) =
+     (case r
+        of Leaf s => 
+            (if lo >= S.length s orelse hi > S.length s then
+               failwith "err"
+	     else
+	       S.reduce f ident (S.take (S.drop (s, lo), hi-lo)))
+	 | Cat (_, len, rL, rR) => let
+             val lenL = length rL
+	     val lenR = length rR
+	     in
+	       if hi <= lenL then (* everything's on the left *)
+		   partialReduce (f, ident, rL, lo, hi)
+	       else if lo >= lenL then (* everything's on the right *)
+		   partialReduce (f, ident, rR, lo-lenL, hi-lenL)
+	       else let
+                 val rL = partialReduce (f, ident, rL, lo, lenL)
+		 val rR = partialReduce (f, ident, rR, 0, hi-lenL)
+                 in
+		   f(rL, rR)
+		 end
+	     end
+        (* end case *))
+
 (*   fun fromList xs = let *)
 (*     val l = List.length xs *)
 (*     in *)

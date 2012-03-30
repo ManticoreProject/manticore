@@ -31,7 +31,7 @@ structure DoubleFArray = struct
   (*     fun lp (curr, i, data, ts) = *)
   (*       if curr >= len then *)
   (*         FArray (data, S.Nd (List.rev ts)) *)
-  (* 	else let *)
+  (*    else let *)
   (*         val FArray (d, t) = R.sub (fs, curr) *)
   (*         val data' = R.concat (data, d) *)
   (*         val t' = S.incrBy i t *)
@@ -39,9 +39,9 @@ structure DoubleFArray = struct
   (*         val i' = S.maxIdx t' *)
   (*         in *)
   (*           lp (curr+1, i', data', ts') *)
-  (* 	  end *)
+  (*      end *)
   (*     in *)
-  (* 	lp (0, 0, R.empty (), nil) *)
+  (*    lp (0, 0, R.empty (), nil) *)
   (*     end *)
 
 (*
@@ -59,11 +59,11 @@ structure DoubleFArray = struct
 (* flatSub : int_farray * int -> int *)
   fun flatSub (FArray (data, shape), i) = (case shape
     of S.Lf (lo, hi) => let
-	 val _ = ()
+         val _ = ()
          (* val _ = Print.printLn ("flatSub called.") *)
-	 (* val _ = Print.printLn ("Lf " ^ Int.toString lo ^ "/" ^ Int.toString hi) *)
-	 (* val _ = Print.printLn ("i is " ^ Int.toString i) *)
-	 (* val _ = Print.printLn ("the length of data is " ^ Int.toString (R.length data)) *)
+         (* val _ = Print.printLn ("Lf " ^ Int.toString lo ^ "/" ^ Int.toString hi) *)
+         (* val _ = Print.printLn ("i is " ^ Int.toString i) *)
+         (* val _ = Print.printLn ("the length of data is " ^ Int.toString (R.length data)) *)
          (* val _ = Print.printLn (R.toString data) *)
          in
            R.sub (data, lo+i)
@@ -112,8 +112,8 @@ structure DoubleFArray = struct
     of S.Lf (lo, hi) =>
          if lo = 0 andalso hi = R.length data then 
            FArray (data, shape)
-	 else let
-		   (* FIXME this is a slow implementation *)
+         else let
+                   (* FIXME this is a slow implementation *)
            val data' = R.fromSeq (R.partialSeq (data, lo, hi))
            in
              FArray (data', S.Lf (0, hi-lo))
@@ -121,15 +121,15 @@ structure DoubleFArray = struct
      | S.Nd ts => let
          val (lo, hi) = S.span shape
            (* FIXME this is a slow implementation *)
-	 val data' = R.fromSeq (R.partialSeq (data, lo, hi))
+         val data' = R.fromSeq (R.partialSeq (data, lo, hi))
          in
            if lo = 0 then
              FArray (data', shape)
-	   else if lo > 0 then
-	     FArray (data', S.incrBy (~lo) shape)
-	   else
-	     failwith "clean - bug"
-	 end
+           else if lo > 0 then
+             FArray (data', S.incrBy (~lo) shape)
+           else
+             failwith "clean - bug"
+         end
     (* end case *))
 
 (* reduce : (dbl * dbl -> dbl) -> dbl -> dbl_farray -> dbl *) 
@@ -275,12 +275,6 @@ structure DoubleFArray = struct
       lp (0, n-1)
     end
 
-  fun reduceSeg (f, ident, i, data, (lo, hi)) = let
-      val part = R.partialSeq (data, lo, hi)
-  in
-      DS.reduce f ident part
-  end
-
   fun newSegReduce (f, ident, xss) = let
     val (FArray (data, shape)) = xss
     val segments = (case shape
@@ -292,9 +286,11 @@ structure DoubleFArray = struct
         val rng = (case Rope.subInBounds (segments, i)
                     of Shape.Lf rng => rng
                       | _ => raise Fail "newSegReduce passed unflattened FArray2")
-    in
-        reduceSeg (f, ident, i, data, rng)
-    end
+        val (lo, hi) = rng
+        in
+          R.partialReduce (f, ident, data, lo, hi)
+        end
+
     val data' = R.tabulate (nSegs, doSegment)             
     in
       FArray (data', shape')
