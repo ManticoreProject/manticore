@@ -145,16 +145,8 @@ structure FArrayUtil = struct
 (* map_DFF_DF : (double_farray -> double) -> double_farray -> double_farray *)
   fun map_DFF_DF f nss = let
     val len = DF.length nss
-    fun lp (i, acc) =  
-      if (i<0) then
-        DF.fromList acc
-      else let
-        val n = f (DF.nestedSub (nss, i))
-        in
-	  lp (i-1, n::acc)
-	end
     in
-      lp (len-1, [])
+      DF.tab (len, fn i => f (DF.nestedSub (nss, i)))
     end
 
 (* map_IFF_DFF_DF : (int_farray * dbl_farray -> dbl) -> int_farray * dbl_farray -> dbl_farray *)
