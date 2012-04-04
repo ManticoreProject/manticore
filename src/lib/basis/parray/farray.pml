@@ -163,4 +163,8 @@ structure FArray = struct
        | S.Nd _ => failwith "flatApp - Nd"
       (* end case *))
 
+  (* pre: sameShape (shape0, shape1) *)
+    fun flatMapPair f (FArray (data0, shape0), FArray (data1, shape1)) = 
+      FArray (RopePair.map f (data0, data1), shape0)
+
 end
