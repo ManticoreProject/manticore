@@ -183,7 +183,7 @@ fun filterUntil cond f s = let
       let
 	  val len = length v
 	  fun lp i =
-	      if i < len then (f (start+i, sub (v, i)); lp (i + 1))
+	      if i < len then (f (i+start, sub (v, i)); lp (i + 1))
 	      else ()
       in
 	  lp 0
@@ -194,13 +194,21 @@ fun filterUntil cond f s = let
     fun lp i = 
       if i < len then
 	if cond () then
-	  More (drop (s, i), ())
+	  (Print.printLn "split" ; More (drop (s, i), ()))
 	else
-	  (f (start+i, sub (s, i)); lp (i+1))
+	  (f (i+start, sub (s, i)); lp (i+1))
       else
 	Done ()
     in
       lp 0
     end
+
+  fun min (x, y) = if x < y then x else y
+
+  fun mapPair f (s0, s1) = 
+    if length s0 = length s1 then 
+	tabulate (length s0, fn i => f (sub (s0, i), sub (s1, i))) 
+    else 
+	raise Fail "mapPair"
 
 end

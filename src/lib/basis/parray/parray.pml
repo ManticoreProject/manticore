@@ -51,6 +51,7 @@ structure PArray = struct
     end
   fun range (from, to_, step) = fromRope (Rope.range (from, to_, step))
   fun app f pa = Rope.app f (toRope pa)
+  fun foreach f pa = Rope.foreach f pa
 
 (* These higher-dimension regular tabs (tab2D, etc.) are spelled out since I 
  * want them to be relatively fast for fair comparisons with flattened versions. 

@@ -737,6 +737,10 @@ fun foreachLTS PPT f rp = let
 	 val mid = numUnprocessedForeach cur' div 2
 	 val (rp1, rp2, _) = 
 	       splitAt length encodeRope cursorAtIx unzipCursor unzipCursor cur' mid
+fun pr x = Print.printLn "d"
+val _ = Print.printLn "start"
+val _ = app pr rp1
+val _ = Print.printLn "end"
          in
 	   imperativePar2 (fn () => m (i, start rp1), fn () => m (i+length rp1, start rp2))
          end)
