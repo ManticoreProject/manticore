@@ -1293,5 +1293,30 @@ fun app f rp = let
   (* fromSeq *)
   (* FIXME slow implementation *)
     fun fromSeq s = fromList (Seq.toList s)
+
+    fun flatten rps = balance (reduce nccat2 (empty ()) rps)
+
+    (* writeBits (n, ixs) *)
+    (* Takes an integer n and a set of indices ixs and returns a
+     * boolean array in which element i is true iff i is in ixs. *)
+    (* pre: for any i in ixs, 0 <= i < n *)
+    fun writeBits (n : int, ixs : int rope) : bool rope = let
+      fun doit (lo, hi, ixs) =
+	if hi - lo = 0 then
+	  empty ()
+	else if hi - lo = 1 then
+	  singleton (length ixs > 0)
+	else let
+	  val m = (hi + lo) div 2
+	  val (los, his) = (doit (lo, m, filter (fn x => x < m) ixs),
+			    doit (m, hi, filter (fn x => x >= m) ixs))
+	  in
+	    ccat2 (los, his)
+	  end
+      in
+	doit (0, n, ixs)
+      end
+
+
 end
 
