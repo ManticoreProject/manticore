@@ -218,7 +218,21 @@ structure TranslatePComp : sig
                   end
                 in case optPred
 		  of NONE => g e1'
-		   | SOME pred => raise Fail "todo(1)" (* see COMMENT 1 below *) 
+		   | SOME pred => let
+                        val pred' = trExp pred
+                        val filterPV = DV.parrayFilter ()
+ 			val filterP = A.VarExp (filterPV, [eltTy])
+ 			val tmpV = Var.new ("tmp", eltTy)
+ 			val cs = A.CaseExp (A.VarExp (tmpV, []),
+ 					    [A.PatMatch (p1, pred')],
+ 					    Basis.boolTy)
+ 			val predFn = A.FunExp (tmpV, cs, Basis.boolTy)
+ 			val filtered = A.ApplyExp (filterP,
+ 						   A.TupleExp [predFn, e1'],
+ 						   Basis.parrayTy eltTy)
+                         in
+ 			  map filtered
+ 		        end
 		end
 	    | ([(p1, e1), (p2, e2)], NONE) => let
                 val eltTy = TypeOf.exp e

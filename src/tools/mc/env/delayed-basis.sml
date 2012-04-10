@@ -206,6 +206,7 @@ structure DelayedBasis = struct
     val parrayTab5D   = memoVar ["PArray", "tab5D"]
     val parrayToRope  = memoVar ["PArray", "toRope"]
     val parrayRange   = memoVar ["PArray", "range"]
+    val parrayFilter  = memoVar ["PArray", "filter"]
 
     val parrPairMap   = memoVar ["PArrayPair", "map"]
 
