@@ -1097,7 +1097,8 @@ fun scan f b rp = (case ChunkingPolicy.get ()
    | ChunkingPolicy.LTS PPT => scanLTS PPT f b rp)
 (*end*)
 
-fun take (rp, n) = let
+fun take (rp, n) = 
+  if n = 0 then empty () else let
   val (l, _) = splitAtIx2 (rp, n - 1)
   in
     balance l
@@ -1105,7 +1106,7 @@ fun take (rp, n) = let
 fun drop (rp, n) = let
   val (_, r) = splitAtIx2 (rp, n - 1)
   in
-    balance r
+   balance r
   end
 
 (*local*)

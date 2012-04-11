@@ -94,7 +94,15 @@ fun mapUntil cond f s = let
     lp (0, nil)
   end
 
-val reduce = Vector.foldl
+fun reduce f b s = let
+  fun lp (i, acc) =
+    if i < length s then
+      lp (i+1, f (acc, sub (s, i)))
+    else
+      acc
+  in
+    lp (0, b)
+  end
 
 fun reduceUntil cond f b s = let
   fun lp (i, acc) =
