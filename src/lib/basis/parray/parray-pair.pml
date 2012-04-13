@@ -16,4 +16,6 @@ structure PArrayPair = struct
       [| f' i | i in [| 0 to (n-1) |] |]
     end
 
+  fun unzip p = (PArray.map (fn (x, _) => x) p, PArray.map (fn (_, y) => y) p)
+
 end
