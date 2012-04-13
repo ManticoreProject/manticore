@@ -382,7 +382,7 @@ structure IntRope = struct
     val (rps1, m, k, rps2) = divide length (rp :: rs, n)
     val (mn, (mls, mrs, mds)) = cursorAtIx (m, k - 1)
     val (n1, n2) = (List.length rps1, List.length mrs)
-    val (xs1, xs2) = (rps1 @ mls @ (mn::nil), mrs @ rps2)
+    val (xs1, xs2) = (rps1 @ List.rev mls @ (mn::nil), mrs @ rps2)
     val ((rp1, l1), (rp2, l2)) = (encode xs1, encode xs2)
     in
       (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2))
@@ -392,7 +392,7 @@ structure IntRope = struct
     (fn (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2)) => let
       val (xs1, xs2) = (decode (rp1, l1), decode (rp2, l2))
       val (rps1, ms) = (List.take (xs1, n1), List.drop (xs1, n1))
-      val (mn, mls) = (List.last ms, List.take (ms, List.length ms - 1))
+      val (mn, mls) = (List.last ms, List.rev (List.take (ms, List.length ms - 1)))
       val (mrs, rps2) = (List.take (xs2, n2), List.drop (xs2, n2))
       val m = finish (zipCursor (mn, (mls, mrs, mds)))
       val (rp, rs) = (case (rps1 @ (m::nil) @ rps2)
