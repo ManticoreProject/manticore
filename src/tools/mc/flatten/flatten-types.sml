@@ -72,7 +72,7 @@ end *) = struct
            isPArrayTyc c orelse mustFlattenTyc (env, c) orelse List.exists ty ts
        | T.FunTy (t1, t2) => ty t1 orelse ty t2
        | T.TupleTy ts => List.exists ty ts
-       | T.FArrayTy _ => raise Fail "mustFlatten: shouldn't happen"
+       | T.FArrayTy _ => raise Fail ("mustFlatten: shouldn't happen, asked to flatten " ^ (TU.toString t))
       (* end case *))
     in
       ty t
@@ -81,11 +81,10 @@ end *) = struct
   fun flattenTy (env : FEnv.env) (t : T.ty) : T.ty = let
     fun ty T.ErrorTy = T.ErrorTy
       | ty (meta as T.MetaTy m) = (case m
-          of T.MVar {info=info as ref(T.INSTANCE t), ...} => let
+          of T.MVar {stamp=stamp,info=info as ref(T.INSTANCE t)} => let
                val t' = flattenTy env t
                in
-                 info := T.INSTANCE t';
-		 meta
+                 T.MetaTy(T.MVar{stamp=stamp,info=ref(T.INSTANCE t')})
 	       end
 	   | _ => meta
 	  (* end case *))
