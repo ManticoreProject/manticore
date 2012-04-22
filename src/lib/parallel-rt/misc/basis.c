@@ -210,6 +210,17 @@ void M_Print (const char *s)
 #endif
 }
 
+/* M_PrintOrd:
+ */
+void M_PrintOrd (const int i)
+{
+#ifdef NDEBUG
+    Say("%c", i);
+#else
+    Say("[%2d] %c", VProcSelf()->id, i);
+#endif
+}
+
 /* M_StringSame
  * returns 1 when the two Manticore strings are the same length and contain the same
  * characters and 0 otherwise
