@@ -16,10 +16,11 @@ structure Reflow : sig
 
     val pathExists : ProgPt.ppt * ProgPt.ppt -> bool
 
+    val debugFlg : bool ref
+
   end = struct
 
-    val debugFlg = ref false
-    val resultsFlg = ref false
+    val debugFlg = ref true
 
     structure CV = CPS.Var
     structure VSet = CV.Set
@@ -173,7 +174,19 @@ structure Reflow : sig
                                     val (changed, new) = union (r1, r2)
                                 in
                                     if changed
-                                    then (changed, PMap.insert (map, ppt, new))
+                                    then let
+                                            (*
+                                             * Since we computed the closure w.r.t
+                                             * all reachable items, we might as well
+                                             * update those reachable items with the
+                                             * result as well.
+                                             *)
+                                            fun update (ppt, map) =
+                                                PMap.insert (map, ppt, new)
+                                            val map = PSet.foldl update map ps'
+                                        in
+                                            (changed, PMap.insert (map, ppt, new))
+                                        end
                                     else (b, map)
                                 end))
                 in
@@ -196,6 +209,11 @@ structure Reflow : sig
     fun analyze (module as CPS.MODULE{body, ...}) = let
         val _ = setLocations module
         val neighbors = addNeighbors module
+        val _ = if !debugFlg
+                then print (concat["Number of program points: ",
+                                   Int.toString (PMap.numItems neighbors),
+                                   "\n"])
+                else ()
         val reachability = computeReachability neighbors
     in
         graph := reachability
