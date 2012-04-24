@@ -26,8 +26,9 @@
  * Even though k is known to be k1, since k1 is not in scope, it can't be propagated
  * without hoisting.
  *
- * TODOs:
+ * FIXME:
  * Split analysis from transformation. !pass is a horrible hack
+ * Re-do hoisting.
  *)
 
 structure CopyPropagation : sig
@@ -49,6 +50,7 @@ structure CopyPropagation : sig
 
   (***** controls ******)
     val enableCopyPropagation = ref true
+    val enableCopyPropagationReflow = ref false
     val propagationDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
@@ -61,6 +63,13 @@ structure CopyPropagation : sig
                   pri = [0, 1],
                   obscurity = 0,
                   help = "enable copy propagation"
+                },
+              Controls.control {
+                  ctl = enableCopyPropagationReflow,
+                  name = "copy-propagation-reflow",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "enable copy propagation and reflow analysis"
                 },
               Controls.control {
                   ctl = propagationDebug,
@@ -76,6 +85,8 @@ structure CopyPropagation : sig
     (***** Statistics *****)
     val cntPropagatedFunctions  = ST.newCounter "cps-copy-propagation:propagated-functions"
     val cntHoistedFunctions     = ST.newCounter "cps-copy-propagation:hoisted-functions"
+    val cntSafe                 = ST.newCounter "cps-copy-propagation:safe-functions"
+    val cntUnsafe               = ST.newCounter "cps-copy-propagation:unsafe-functions"
 
     (* Type used for building a function nesting hierarchy
      * This is used to determine a common-parent (LUB) when hoisting
@@ -122,75 +133,34 @@ structure CopyPropagation : sig
     fun getFB f = getFn f
     end
 
-    fun isClosed (lambda as C.FB{f,params,rets,body}, env) = let
-        val env = VSet.addList (env, params)
-        val env = VSet.addList (env, rets)
-        val env = VSet.add (env, f)
-        fun checkMembership (env, var) = let
-            val isMember = VSet.member (env, var)
+    fun isSafe (pptInlineLocation, lambda, env) = let
+        val CPS.FB{f,...} = lambda
+        val fvs = FreeVars.envOfFun f
+        fun unsafeFV fv = let
+            val funLoc = Reflow.bindingLocation f
+            val fvLoc = Reflow.bindingLocation fv
+            val result = (Reflow.pathExists (funLoc, fvLoc)) andalso
+                         (Reflow.pathExists (fvLoc, pptInlineLocation))
         in
-            if (!propagationDebug) andalso not(isMember)
-            then (print (concat [CV.toString var, " is free in attempted hoist.\n"]) ; isMember)
-            else isMember
+            if !propagationDebug
+            then ((if result
+                   then print (concat [CV.toString fv, " is unsafe in ", CV.toString f, ".\n"])
+                   else print (concat [CV.toString fv, " is safe in ", CV.toString f, ".\n"]));
+                  result)
+            else result
         end
-        fun checkList (env, l) = List.foldl (fn (a,b) => b andalso checkMembership (env, a)) true l
-        fun isClosedExp (C.Exp(ppt, e), env) = isClosedTerm (e, env)
-        and isClosedTerm (C.Let (lhs, rhs, body), env) = let
-            val env = VSet.addList (env, lhs)
-        in
-            isClosedRHS (rhs, env) andalso isClosedExp (body, env)
-        end
-          | isClosedTerm (C.Fun (lambdas, body), env) = let
-                val (b, env) = List.foldr (fn (f,(b,e)) => let val (b',e') = isClosedLambda (f,e) in
-                                                               (b andalso b', e') end) (true,env) lambdas
-            in
-                b andalso isClosedExp (body, env)
-            end
-          | isClosedTerm (C.Cont (lambda, body), env) = let
-                val (b,env) = isClosedLambda (lambda, env)
-            in
-                b andalso isClosedExp (body, env)
-            end
-          | isClosedTerm (C.If (cond, e1, e2), env) = checkList (env, CondUtil.varsOf cond) andalso
-            isClosedExp (e1, env) andalso isClosedExp (e2, env)
-          | isClosedTerm (C.Switch (x, cases, default), env) =
-            checkMembership (env, x) andalso
-            (List.foldl (fn ((tag,body),b) => b andalso isClosedExp (body, env)) true cases) andalso
-            (case default of SOME(e) => isClosedExp(e, env) | NONE => true)
-          | isClosedTerm (C.Apply (f, args, params), env) =
-            checkMembership (env, f) andalso
-            checkList (env, args) andalso
-            checkList (env, params)
-          | isClosedTerm (C.Throw (k, args), env) =
-            checkMembership (env, k) andalso
-            checkList (env, args)
-        and isClosedRHS (C.Var (vars), env) = checkList (env, vars)
-          | isClosedRHS (C.Cast (_, v), env) = checkMembership (env, v)
-          | isClosedRHS (C.Const (_, _), _) = true
-          | isClosedRHS (C.Select (_, v), env) = checkMembership (env, v)
-          | isClosedRHS (C.Update (_, v1, v2), env) = checkMembership (env, v1) andalso checkMembership (env, v2)
-          | isClosedRHS (C.AddrOf (_, v), env) = checkMembership (env, v)
-          | isClosedRHS (C.Alloc (_, vars), env) = checkList (env, vars)
-          | isClosedRHS (C.Promote (v), env) = checkMembership (env, v)
-          | isClosedRHS (C.Prim (prim), env) = checkList (env, PrimUtil.varsOf prim)
-          | isClosedRHS (C.CCall (v, vars), env) = checkMembership (env, v) andalso checkList (env, vars)
-          | isClosedRHS (C.HostVProc, _) = true
-          | isClosedRHS (C.VPLoad (_, v), env) = checkMembership (env, v)
-          | isClosedRHS (C.VPStore (_, v1, v2), env) = checkMembership (env, v1) andalso checkMembership (env, v2)
-          | isClosedRHS (C.VPAddr (_, v), env) = checkMembership (env, v)
-        and isClosedLambda (lambda as C.FB{f,params,rets,body}, env) = let
-            val env = VSet.add (env, f)
-            val env' = VSet.addList (env, params)
-            val env' = VSet.addList (env', rets)
-        in
-            (isClosedExp (body, env'), env)
-        end
+        val result = if !enableCopyPropagationReflow
+                     then not(VSet.exists unsafeFV fvs)
+                     else VSet.isEmpty fvs
     in
-        isClosedExp (body, env)
+        if result
+        then ST.tick cntSafe
+        else ST.tick cntUnsafe;
+        result
     end
-
-    fun copyPropagate (C.MODULE{name,externs,body=(mainLambda
-                                                       as C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
+                               
+    fun copyPropagate (C.MODULE{name,externs,
+                                body=(mainLambda as C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
         val pass = ref 0
         (* Only insert into the map if the callee isn't already being moved up.
          * If it has already been scheduled for a move, that will also 'work' for the later
@@ -205,7 +175,7 @@ structure CopyPropagation : sig
              of NONE => VMap.insert (map, callee, caller)
               | _ => map
         (* end case *))
-        fun findCopy (f, env, parent) = (
+        fun findCopy (ppt, f, env, parent) = (
             case CFA.valueOf f
              of CFA.LAMBDAS (l) => (
                 case CV.Set.listItems l
@@ -216,12 +186,9 @@ structure CopyPropagation : sig
                          (if VSet.member (env, f')
                           then if !pass = 1
                                then let
-                                       (* TODO: this is far too conservative - instead compute whether the
-                                        * environment contains bindings set on the same call contour (reflow)
-                                        *)
-                                       val isSafe = isClosed (getFB f', externsEnv)
+                                       val safe = isSafe (ppt, getFB f', externsEnv) 
                                    in
-                                       if isSafe
+                                       if safe
                                        then (if !propagationDebug
                                              then print (concat [CV.toString f', " is being propagated.\n"])
                                              else ();
@@ -363,7 +330,7 @@ structure CopyPropagation : sig
                     (C.mkSwitch(v, switches, default), env, map''')
                 end
               | C.Apply (f, args, retArgs) => (
-                case findCopy (f, env, parent)
+                case findCopy (ppt, f, env, parent)
                  of COPY (f') => (ST.tick cntPropagatedFunctions;
                                   Census.decAppCnt f;
                                   Census.incAppCnt f';
@@ -373,7 +340,7 @@ structure CopyPropagation : sig
                   | SKIP => (C.mkApply (f, args, retArgs), env, map)
                 (* end case *))
               | C.Throw (k, args) => (
-                case findCopy (k, env, parent)
+                case findCopy (ppt, k, env, parent)
                  of COPY (k') => (ST.tick cntPropagatedFunctions;
                                   Census.decAppCnt k;
                                   Census.incAppCnt k';
@@ -411,7 +378,11 @@ structure CopyPropagation : sig
 
     fun transform m =
         if !enableCopyPropagation
-	then copyPropagate m
+	then (FreeVars.analyze m;
+              if !enableCopyPropagationReflow
+              then ignore (Reflow.analyze m)
+              else ();
+              copyPropagate m)
         else m
 
   end
