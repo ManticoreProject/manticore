@@ -191,28 +191,37 @@ structure TranslatePComp : sig
 		       | _ => false)
                   in 
                     (case (p1, e')
-                       of (A.VarPat ns, A.ApplyExp (A.ApplyExp (A.ApplyExp (reduce, oper, _), ident, _), A.ApplyExp (A.ApplyExp (inner_map, f, _), xs, _), _)) =>
-                            if isReduce(reduce) andalso isMap(inner_map) then let
-                            (* [| reduce oper ident e_ns | ns in nss |] *)
-		            (* --> *)
-		            (* segreduce (oper, ident, map (fn ns => e_ns) nss) *)
-			      val _ = print "in translate-pcomp: exchanging (map reduce (map f)) for (segreduce (mapSP f))\n"
-		              val (fdom, frng) = (case TypeOf.exp f
-                                of T.FunTy (dom, rng) => (dom, rng)
-				 | _ => raise Fail "translate-pcomp: f not a function"
-                                (* end case *))
-			      val mapSP = A.VarExp (DV.parrayMapSP(), [fdom, frng])
+                       of (A.VarPat ns, A.ApplyExp (A.ApplyExp (A.ApplyExp (reduce, oper, _), ident, _), target, _)) =>
+                          if not (isReduce reduce) then map arr
+                          else
+                            let
+                              val _ = print "in translate-pcomp: replacing (map reduce) with (segreduce)\n"
                               val segred = A.VarExp (DV.parraySegreduce(), [TypeOf.exp ident])
-                              in
-                                AU.mkApplyExp (segred, [oper, ident, AU.mkApplyExp (mapSP, [f, e1'])])
-                              end
-                            else let
-                              val _ = print "in translate-pcomp: found map, but not (map reduce (map))\n"
-			      val _ = print "would be reduce is as follows:\n"
-			      val _ = PrintAST.printExp reduce
-		              in
-			        map arr
-		              end
+                              val f = AU.mkFunExp (ns,target)
+                              val sMap = A.VarExp (DV.parrayMap(), [TypeOf.exp target, TypeOf.pat p1] )
+                              val fmap = AU.mkCurriedApplyExp (sMap, [f, arr])
+                              (* This value is used unless we find an inner map, which we want to turn into a shape-preserving (SP) map *)
+                              val default = AU.mkApplyExp (segred, [oper, ident, fmap])
+                            in
+                              (case target
+                                 of A.ApplyExp (A.ApplyExp (innerMap, f, _), xs, _) =>
+                                    if (isMap innerMap) then let
+                                       (* [| reduce oper ident e_ns | ns in nss |] *)
+                                       (* --> *)
+                                       (* segreduce (oper, ident, map (fn ns => e_ns) nss) *)
+                                         val _ = print "in translate-pcomp: exchanging (map reduce (map f)) for (segreduce (mapSP f))\n"
+                                         val (fdom, frng) = (case TypeOf.exp f
+                                           of T.FunTy (dom, rng) => (dom, rng)
+                                            | _ => raise Fail "translate-pcomp: f not a function"
+                                           (* end case *))
+                                         val mapSP = A.VarExp (DV.parrayMapSP(), [fdom, frng])
+                                         in
+                                           AU.mkApplyExp (segred, [oper, ident, AU.mkApplyExp (mapSP, [f, arr])])
+                                         end
+                                    else default
+                                  | _ =>  default
+                              (*end case*))
+                            end
                         | _ => map arr
                     (*end case*))
                   end
