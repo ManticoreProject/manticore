@@ -32,19 +32,47 @@ MLYACC := no-mlyacc
 endif
 endif
 
+# Cannot use "mlulex" from mlton because it creates 64-bit word constants, which are too 
+# large for SML/NJ to compile.
+ifeq (ml-ulex, $(shell if ml-ulex >/dev/null 2>&1 || [ $$? != 127 ] ; then echo ml-ulex; fi))
+MLULEX := ml-ulex
+else
+MLULEX := no-mlulex
+endif
+
+ifeq (mlantlr, $(shell if mlantlr >/dev/null 2>&1 || [ $$? != 127 ] ; then echo mlantlr; fi))
+MLANTLR := mlantlr
+else
+ifeq (ml-antlr, $(shell if ml-lex >/dev/null 2>&1 || [ $$? != 127 ] ; then echo ml-antlr; fi))
+MLANTLR := ml-antlr
+else
+MLANTLR := no-mlantlr
+endif
+endif
+
 .PHONY: all
-all: ml.lex.sml ml.grm.sig ml.grm.sml mlb.lex.sml mlb.grm.sig mlb.grm.sml
+all: ml.lex.sml ml.grm.sml mlb.lex.sml mlb.grm.sig mlb.grm.sml
 
 .PHONY: clean
 clean:
 	../../bin/clean
 
-%.lex.sml: %.lex
+mlb.lex.sml: mlb.lex
 	rm -f $@
 	$(MLLEX) $<
 	chmod -w $@
 
-%.grm.sig %.grm.sml: %.grm
+mlb.grm.sig mlb.grm.sml: mlb.grm
 	rm -f $<.*
 	$(MLYACC) $<
+	chmod -w $<.*
+
+ml.lex.sml: ml.lex
+	rm -f $@
+	$(MLULEX) --strict-sml $<
+	chmod -w $@
+
+ml.grm.sml: ml.grm
+	rm -f $<.*
+	$(MLANTLR) $<
 	chmod -w $<.*

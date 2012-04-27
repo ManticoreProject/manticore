@@ -1,0 +1,17 @@
+Group
+
+functor MLParserFun
+structure Tokens
+signature SOURCE_MAP
+
+is
+  $/ml-lpt-lib.cm
+
+  basis-no-string.cm
+  ../ast/sources.cm
+  ../control/sources.cm
+
+  sml-basis-grm-proxy.cm
+
+  source-map.sig
+  ml.grm : ml-antlr

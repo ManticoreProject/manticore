@@ -9,44 +9,72 @@
 functor FrontEnd (S: FRONT_END_STRUCTS): FRONT_END = 
 struct
 
+structure SourceMap : SOURCE_MAP = struct
+  val map : AntlrStreamPos.sourcemap option ref = ref NONE
+  fun getMap() = valOf (!map)
+  fun setMap(m) = map := SOME(m)
+end
+
+
 open S
 
-structure LrVals = MLLrValsFun (structure Token = LrParser.Token
+(* glue together the lexer and parser *)
+structure Parser = MLParserFun (structure Lex = MLLexer
+                                structure SourceMap = SourceMap
                                 structure Ast = Ast)
-structure Lex = MLLexFun (structure Tokens = LrVals.Tokens)
-structure Parse = JoinWithArg (structure ParserData = LrVals.ParserData
-                               structure Lex = Lex
-                               structure LrParser = LrParser)
 
-fun lexAndParse (source: Source.t, ins: In.t): Ast.Program.t =
-   let
-      val stream =
-         Parse.makeLexer (fn n => In.inputN (ins, n))
-         {source = source}
-      val lookahead = 30
-      val result =
-         (#1 (Parse.parse (lookahead, stream, fn (s, left, right) =>
-                           Control.errorStr (Region.make {left = left,
-                                                          right = right},
-                                             s),
-                           ())))
-         handle _ =>
-            let
-               val i = Source.lineStart source
-               val _ = 
-                  Control.errorStr (Region.make {left = i, right = i},
-                                    "parse error")
-            in
-               Ast.Program.T []
-            end
-      val () = Ast.Program.checkSyntax result
-   in
-      result
-   end
+fun posToReg (map, pos) = let
+    val {fileName = file, lineNo=lineNo, colNo=colNo} = AntlrStreamPos.sourceLoc map pos
+    val file = case file of SOME x => x | NONE => ""
+    val sp = SourcePos.make({column=colNo, file=file, line=lineNo})
+in
+    Region.make({left=sp,
+		 right=sp})
+end
+
+fun lexAndParse (file: File.t, ins: In.t): Ast.Program.t = let
+    val source = Source.new file
+    val sm = AntlrStreamPos.mkSourcemap()
+    val lexer = MLLexer.lex sm {source=source}
+    fun lexer'(a,b) = let
+	val v = lexer(a,b)
+	val (tok,_,_) = v
+    in
+	Out.outputl (Out.error, Tokens.toString tok);
+	v
+    end
+    val _ = SourceMap.setMap(sm)
+in
+    case Parser.parse lexer (MLLexer.streamifyInstream ins)
+     of (SOME pt, _, []) => (pt)
+      | (_, _, errs) => (
+        let
+	    val _ = Out.outputl (Out.error, concat["FAILURE parsing file: ", file])
+            val i = Source.lineStart source
+	    fun parseError (pos, repair) = let
+		fun toksToStr (toks) = String.concatWith((List.map (toks, Tokens.toString)), " ")
+		val msg = (case repair
+			    of AntlrRepair.Insert toks => ["syntax error; try inserting \"", toksToStr toks, "\""]
+			     | AntlrRepair.Delete toks => ["syntax error; try deleting \"", toksToStr toks, "\""]
+			     | AntlrRepair.Subst{old, new} => [
+			       "syntax error; try substituting \"", toksToStr new, "\" for \"",
+			       toksToStr old, "\""
+			       ]
+			     | AntlrRepair.FailureAt tok => ["syntax error at ", Tokens.toString tok]
+			  (* end case *))
+	    in
+		Out.outputl (Out.error, String.concat ("ERR: "::msg));		
+		Control.errorStr (posToReg(sm, pos), String.concat msg)
+	    end
+            val _ = List.map (errs, parseError)
+        in
+            Ast.Program.T []
+        end)
+end
 
 fun lexAndParseFile (f: File.t) =
    File.withIn
-   (f, fn ins => lexAndParse (Source.new f, ins))
+   (f, fn ins => lexAndParse (f, ins))
 
 val lexAndParseFile =
     Trace.trace ("FrontEnd.lexAndParseFile", File.layout, Ast.Program.layout)

@@ -13,15 +13,18 @@ functor FrontEnd
 functor MLBFrontEnd
 
 is
+
+$/ml-lpt-lib.cm
+
 basis-no-char.cm
 stubs.cm
 ml-yacc-lib-proxy.cm
 ../ast/sources.cm
 ../control/sources.cm
 
+ml-lex.cm
+ml-grm.cm
 
-ml.lex
-ml.grm
 mlb.lex
 mlb.grm
 
