@@ -24,7 +24,7 @@ structure FlattenPArrays = struct
 	| A.PCaseExp (es, ms, t) => 
 	    A.PCaseExp (List.map exp es, List.map pmatch ms, ty t)
 	| A.HandleExp (e, ms, t) => A.HandleExp (exp e, List.map match ms, ty t)
-	| A.RaiseExp (e, t) => A.RaiseExp (exp e, ty t)
+	| A.RaiseExp (l, e, t) => A.RaiseExp (l, exp e, ty t)
 	| A.FunExp (x, e, t) => A.FunExp (var x, exp e, ty t)
 	| A.ApplyExp (e1, e2, t) => A.ApplyExp (exp e1, exp e2, ty t)
 	| A.VarArityOpExp (oper, n, t) => A.VarArityOpExp (oper, n, ty t)

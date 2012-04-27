@@ -53,6 +53,11 @@ Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
 		}
 		vp->globNextW = (Addr_t)(newObj+len+1);
 		p[-1] = MakeForwardPtr(hdr, newObj);
+
+                assert (AddrToChunk(ValueToAddr(v))->sts == FROM_SP_CHUNK ||
+                        IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts));
+                assert (AddrToChunk(newObj)->sts == TO_SP_CHUNK);
+        
 		return PtrToValue(newObj);
 	}
 	
@@ -88,6 +93,7 @@ MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal
                          (void *)(tmp->baseAddr+tmp->szB));
 #endif
             assert (tmp->sts == TO_SP_CHUNK);
+
             tmp->next = NodeHeaps[node].unscannedTo;
             NodeHeaps[node].unscannedTo = tmp;
         }
@@ -172,14 +178,12 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 					    // so adjust it.
 					    *nextScan = (Word_t)((Addr_t)v - oldSzB);
 				    }
-			    }
-		    }
-			
-			
-		}else if (isRawHdr(hdr)) {
+                }
+            }
+		} else if (isRawHdr(hdr)) {
 			assert (isRawHdr(hdr));
 			nextScan += GetLength(hdr);
-		}else {
+		} else {
 			
 			nextScan = table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
 			
@@ -191,7 +195,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
   /* copy the live data between vp->oldTop and top to the base of the heap */
     Addr_t youngSzB = top - vp->oldTop;
-    memcpy ((void *)heapBase, (void *)(vp->oldTop), youngSzB);
+    memmove ((void *)heapBase, (void *)(vp->oldTop), youngSzB);
     vp->oldTop = vp->heapBase + youngSzB;
 
 #ifndef NO_GC_STATS
@@ -256,6 +260,9 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
    * system gets called.
    */
     if (isPtr(root) && inVPHeap(heapBase, ValueToAddr(root))) {
+        assert (AddrToChunk(ValueToAddr(root))->sts == FROM_SP_CHUNK ||
+                IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(root))->sts));
+
 	MemChunk_t	*scanChunk = vp->globAllocChunk;
 	Word_t		*scanPtr = (Word_t *)(vp->globNextW - WORD_SZB);
 
@@ -324,50 +331,56 @@ static void ScanGlobalToSpace (
 
     do {
     
-	while (scanPtr < scanTop) {
+        bool handlingAlloc = scanChunk == vp->globAllocChunk;
+
+        do {
+            while (scanPtr < scanTop) {
+                Word_t hdr = *scanPtr++;	// get object header
 		
-		Word_t hdr = *scanPtr++;	// get object header
-		
-		if (isVectorHdr(hdr)) {
-			int len = GetLength(hdr);
-			for (int i = 0;  i < len;  i++, scanPtr++) {
-				Value_t *scanP = (Value_t *)scanPtr;
-				Value_t v = *scanP;
-				if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {
-					*scanP = ForwardObjMajor(vp, v);
+                if (isVectorHdr(hdr)) {
+                    int len = GetLength(hdr);
+                    for (int i = 0;  i < len;  i++, scanPtr++) {
+                        Value_t *scanP = (Value_t *)scanPtr;
+                        Value_t v = *scanP;
+                        if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {
+                            *scanP = ForwardObjMajor(vp, v);
+                        }
+                    }
+                } else if (isRawHdr(hdr)) {
+                    assert (isRawHdr(hdr));
+                    scanPtr += GetLength(hdr);
+                } else {
+                    scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
                 }
-			}
-			
-			
-		}else if (isRawHdr(hdr)) {
-			assert (isRawHdr(hdr));
-			scanPtr += GetLength(hdr);
-		}else {
-			scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
-		}
-			
+            }
 
-	}
+            if (vp->globAllocChunk == scanChunk) {
+                // Continue to iterate on the current data, if we are scanning
+                // the same block we are allocating into.
+                vp->globAllocChunk->scanProgress = (Addr_t)scanPtr;
+                scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
+            } else if (handlingAlloc) {
+                // Ensure we finished the alloc chunk before moving on. In
+                // this case, we have changed the allocation chunk but are
+                // not guaranteed to have scanned any objects allocated
+                // between the previous scanTop value and the final usedTop.
+                scanTop = UsedTopOfChunk (vp, scanChunk);                
+            }
+        } while (scanPtr < scanTop);
 
-      /* recompute the scan top, switching chunks if necessary */
-	if (scanChunk->next == (MemChunk_t *)0)
-	    scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
-	else if (scanPtr == (Word_t *)scanChunk->usedTop) {
-        scanChunk = scanChunk->next;
+        if (scanChunk->next != (MemChunk_t *)0) {
+            scanChunk = scanChunk->next;
         
-        if (scanChunk->next == NULL) {
-            assert ((scanChunk->baseAddr < vp->globNextW)
-                    && (vp->globNextW < scanChunk->baseAddr+scanChunk->szB));
-            scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
-            scanPtr = (Word_t *)(scanChunk->baseAddr);
-        } else {
-            scanTop = (Word_t *)(scanChunk->usedTop);
-            scanPtr = (Word_t *)(scanChunk->baseAddr);
+            if (scanChunk->next == NULL) {
+                assert ((scanChunk->baseAddr < vp->globNextW)
+                        && (vp->globNextW < scanChunk->baseAddr+scanChunk->szB));
+                scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
+                scanPtr = (Word_t *)(scanChunk->baseAddr);
+            } else {
+                scanTop = (Word_t *)(scanChunk->usedTop);
+                scanPtr = (Word_t *)(scanChunk->baseAddr);
+            }
         }
-	}
-	else
-	    scanTop = (Word_t *)(scanChunk->usedTop);
-    
     } while (scanPtr < scanTop);
 
 }

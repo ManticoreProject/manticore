@@ -227,6 +227,7 @@ structure CheckCFG : sig
 			      if (i < List.length tys) andalso TyU.match (List.nth (tys, i), V.typeOf x)
 				then ()
 				else err ()
+                          | Ty.T_Deque => ()
 			  | _ => err ()
 			(* end case *);
 			addVar (env, x)
@@ -244,6 +245,7 @@ structure CheckCFG : sig
 			      andalso TyU.validCast (V.typeOf z, List.nth (tys, i))
 				then ()
 				else err ()
+                          | Ty.T_Deque => ()
 			  | ty => err ()
 			(* end case *);
 			env
@@ -261,6 +263,7 @@ structure CheckCFG : sig
 			      andalso isMut
 				then ()
 				else err ()
+                          | Ty.T_Deque => ()
 			  | _ => err ()
 			(* end case *);
 			addVar (env, x)

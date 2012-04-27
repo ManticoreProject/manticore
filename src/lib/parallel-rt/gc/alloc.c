@@ -21,6 +21,25 @@
 //predefined table entries, important for AllocUniform and GlobalAllocUniform
 int predefined = 3;
 
+void EnsureGlobalSpace(VProc_t *vp, int nElems) {
+    //check if we have enough global memory in the current chunk, if not we have to allocate a new one
+    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {     
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
+    }
+
+    assert (vp->globNextW + WORD_SZB * (nElems+1) < vp->globLimit);
+}
+
+void EnsureNurserySpace(VProc_t *vp, int nElems) {
+    /* 4KB is the slop size */
+    assert((vp->allocPtr + WORD_SZB * (nElems+1) < (vp->limitPtr + 4096)) || (vp->limitPtr == 0));
+}
+
 /*! \brief allocate a tuple of uniform values in the nursery
  *  \param vp the host vproc
  *  \param nElems the number of tuple elements.
@@ -29,6 +48,8 @@ Value_t AllocUniform (VProc_t *vp, int nElems, ...)
 {
     Word_t	*obj = (Word_t *)(vp->allocPtr);
     va_list	ap;
+
+    EnsureNurserySpace (vp, nElems);
 
     va_start(ap, nElems);
     obj[-1] = VEC_HDR(nElems);
@@ -54,7 +75,9 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     va_list	ap;
 	
     bits[0]='\0';
-	
+
+    EnsureNurserySpace (vp, nElems);
+
     va_start(ap, nElems);
     for (int i = 0;  i < nElems;  i++) {
 	int tag = va_arg(ap, int);
@@ -71,8 +94,9 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     if (strcmp(bits,"0") == 0) obj[-1] = MIXED_HDR(predefined, nElems);
     else if (strcmp(bits,"10") == 0) obj[-1] = MIXED_HDR(predefined+1, nElems);
     else if (strcmp(bits,"1") == 0) obj[-1] = MIXED_HDR(predefined+2, nElems);
-    else if (strcmp(bits,"0101") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
-    else { printf("Error AllocNonUniform\n"); exit(5);}
+    else if (strcmp(bits,"01011") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
+    else if (strcmp(bits,"001") == 0) obj[-1] = MIXED_HDR(predefined+4, nElems);
+    else { printf("Error AllocNonUniform: %s\n", bits); exit(5);}
 
     vp->allocPtr += WORD_SZB * (nElems+1);
     return PtrToValue(obj);
@@ -87,6 +111,9 @@ Value_t AllocRaw (VProc_t *vp, uint32_t len)
 {
     Word_t	*obj = (Word_t *)(vp->allocPtr);
     int nWords = BYTES_TO_WORDS(len);
+
+    EnsureNurserySpace (vp, nWords);
+
     obj[-1] = RAW_HDR(nWords);
     vp->allocPtr += WORD_SZB * (nWords+1);
 
@@ -121,8 +148,9 @@ Value_t GlobalAllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
     Word_t *obj;
     assert(nElems >= 0);
     assert(nArrayBytes < HEAP_CHUNK_SZB); /* the array has to fit inside a heap chunk */
-    if (vp->globNextW + nObjBytes >= vp->globLimit)
-	AllocToSpaceChunk(vp);
+
+    EnsureGlobalSpace (vp, nElems);
+            
     obj = (Word_t*)(vp->globNextW);
     obj[-1] = RAW_HDR(BYTES_TO_WORDS(nArrayBytes));
     vp->globNextW += nObjBytes;
@@ -143,6 +171,8 @@ Value_t AllocVector (VProc_t *vp, Value_t values)
     Value_t retval;
     Word_t	*obj = (Word_t *)(vp->allocPtr);    
 	int i = 0;
+
+    EnsureNurserySpace(vp, i);
 
     while (values != M_NIL) {
 	ListCons_t *valueList = (ListCons_t*)ValueToPtr(values);
@@ -167,6 +197,8 @@ Value_t AllocVector (VProc_t *vp, Value_t values)
  */
 Value_t AllocVectorRev (VProc_t *vp, int len, Value_t values)
 {
+    EnsureNurserySpace (vp, len);
+
     Word_t	*obj = (Word_t *)(vp->allocPtr);    
     int         i    = 0;
 
@@ -189,6 +221,8 @@ Value_t AllocVectorRev (VProc_t *vp, int len, Value_t values)
  */
 Value_t WrapWord (VProc_t *vp, Word_t i)
 {
+    EnsureNurserySpace(vp, 2);
+
     Word_t	*obj = (Word_t *)(vp->allocPtr);
     obj[-1] = RAW_HDR(1);
     obj[0] = i;
@@ -202,23 +236,18 @@ Value_t WrapWord (VProc_t *vp, Word_t i)
 Value_t AllocString (VProc_t *vp, const char *s)
 {
     int len = strlen(s) + 1;
+    int nWords = BYTES_TO_WORDS(len);
+
+    EnsureNurserySpace (vp, nWords+1);
 
   /* allocate the raw data object */
     Word_t	*obj = (Word_t *)(vp->allocPtr);
-    int nWords = BYTES_TO_WORDS(len);
     obj[-1] = RAW_HDR(nWords);
     memcpy (obj, s, len);
     vp->allocPtr += WORD_SZB * (nWords+1);
 
   /* allocate the string header object */
-    Word_t	*hdr = (Word_t *)(vp->allocPtr);
-    hdr[-1] = VEC_HDR(2);
-    hdr[0] = (Word_t)(PtrToValue(obj));
-    hdr[1] = (Word_t)len-1;
-    vp->allocPtr += WORD_SZB * 3;
-
-    return PtrToValue(hdr);
-
+    return AllocNonUniform (vp, 2, PTR(obj), INT(len-1));
 }
 
 /*! \brief allocate a tuple of uniform values on the global heap.
@@ -230,11 +259,7 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
     Value_t	elems[nElems];
     va_list	ap;
 
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
-    }
-
-    assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
+    EnsureGlobalSpace (vp, nElems);
 
   /* first we must ensure that the elements are in the global heap */
     va_start(ap, nElems);
@@ -244,7 +269,6 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
     va_end(ap);
 
     Word_t *obj = (Word_t *)(vp->globNextW);
-/* FIXME: what if there isn't enough space!!! */
     obj[-1] = VEC_HDR(nElems);
     for (int i = 0;  i < nElems;  i++) {
 	obj[i] = (Word_t)elems[i];
@@ -266,16 +290,12 @@ Value_t GlobalAllocUniform (VProc_t *vp, int nElems, ...)
 Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
 {
     Value_t	elems[nElems];
-    char	bits[5];
+    char	bits[6];
     va_list	ap;
 
     bits[0]='\0';
 
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
-    }
-
-    assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
+    EnsureGlobalSpace (vp, nElems);
 
   /* first we must ensure that the elements are in the global heap */
     va_start(ap, nElems);
@@ -289,14 +309,14 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
     va_end(ap);
 
     Word_t *obj = (Word_t *)(vp->globNextW);
-/* FIXME: what if there isn't enough space!!! */
     
    bits[strlen(bits)]='\0';
    //compare strings are reversed due to strcat(dst,src)
    if (strcmp(bits,"0") == 0) obj[-1] = MIXED_HDR(predefined, nElems);
    else if (strcmp(bits,"10") == 0) obj[-1] = MIXED_HDR(predefined+1, nElems);
    else if (strcmp(bits,"1") == 0) obj[-1] = MIXED_HDR(predefined+2, nElems);
-   else if (strcmp(bits,"0101") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
+   else if (strcmp(bits,"01011") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
+   else if (strcmp(bits,"001") == 0) obj[-1] = MIXED_HDR(predefined+4, nElems);
    else { printf("Error GlobalAllocNonUniform\n"); exit(5);}	
 	
     for (int i = 0;  i < nElems;  i++) {
@@ -325,9 +345,7 @@ Value_t GlobalAllocVector (VProc_t *vp, int len, Value_t values)
   /* the array must fit into a global chunk */
     assert (HEAP_CHUNK_SZB > WORD_SZB*(len+1) && len >= 0);
 
-    if (vp->globNextW + WORD_SZB * (len+1) >= vp->globLimit) {
-	AllocToSpaceChunk(vp);
-    }
+    EnsureGlobalSpace (vp, len);
 
     Word_t *obj = (Word_t*)(vp->globNextW);
     obj[-1] = VEC_HDR(len);
@@ -353,8 +371,9 @@ Value_t GlobalAllocVector (VProc_t *vp, int len, Value_t values)
 Value_t GlobalAllocPolyArray (VProc_t *vp, int nElems, Value_t init)
 {
     assert (HEAP_CHUNK_SZB > WORD_SZB*(nElems+1) && nElems >= 0);
-    if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit)
-	AllocToSpaceChunk(vp);
+
+    EnsureGlobalSpace (vp, nElems);        
+        
     Word_t *obj = (Word_t*)(vp->globNextW);
     obj[-1] = VEC_HDR(nElems);
     for (int i = 0;  i < nElems; i++)

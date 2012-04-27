@@ -6,6 +6,8 @@ X Push the MLton frontend sources into the src/tools/mc directory
 X Get Manticore running the parse->Sxml chain
 X Bring the mlton/basis-library into lib/basis
 
+** Bring over the ML-ANTLR version of the grammar from the mlton-antlr branch
+
 ** Tie the compilers together
 Convert SXML to BOM
 Disable everything Manticore before BOM

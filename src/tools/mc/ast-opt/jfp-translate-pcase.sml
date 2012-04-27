@@ -450,7 +450,7 @@ structure JFPTranslatePCase = struct
     (* this loop makes a big nested if statetement *)
     (* the "default" is raise Match *)
       fun lp (ss, memNext_k) = let
-        fun lp' [] = A.RaiseExp (A.ConstExp (A.DConst (B.exnMatch, [])), resTy)
+        fun lp' [] = A.RaiseExp (Error.UNKNOWN, A.ConstExp (A.DConst (B.exnMatch, [])), resTy)
 	  | lp' ((bs,stFun)::t) = 
               if memNext_k bs 
 	      then A.IfExp (mkTest bs, mkApp stFun, lp' t, resTy)	        
@@ -762,7 +762,7 @@ structure JFPTranslatePCase = struct
               pcase (List.map exp es, List.map pmatch ms, t)
 	  | A.HandleExp (e, ms, t) => 
 	      A.HandleExp (exp e, List.map match ms, t)
-	  | A.RaiseExp (e, t) => A.RaiseExp (exp e, t)
+	  | A.RaiseExp (l, e, t) => A.RaiseExp (l, exp e, t)
 	  | A.FunExp (x, e, t) => A.FunExp (x, exp e, t)
 	  | A.ApplyExp (e1, e2, t) => A.ApplyExp (exp e1, exp e2, t)
 	  | oper as A.VarArityOpExp _ => oper

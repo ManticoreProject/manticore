@@ -242,6 +242,7 @@ _primcode (
   extern void CheckGlobalPtr (void *, void *, void *);
   extern void CheckGlobalAddr (void *, void *, void *);
   extern void DebugPromote (void *, void *, void *, void *);
+  extern void DebugThrow (void *, void *);
 #endif
 
 #ifndef SEQUENTIAL

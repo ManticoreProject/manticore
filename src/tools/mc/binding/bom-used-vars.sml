@@ -42,6 +42,7 @@ structure BOMUsedVars : sig
 	    | PT.T_Cont params => usedOfTys params
 	    | PT.T_CFun cp => empty
 	    | PT.T_VProc => empty
+	    | PT.T_Deque => empty
 	    | PT.T_TyCon tc => var tc
 	  (* end case *))
 

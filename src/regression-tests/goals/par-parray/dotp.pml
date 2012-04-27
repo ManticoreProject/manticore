@@ -3,13 +3,13 @@
 fun sumP_float a = let
   fun add (x, y) = x + y
   in
-    PArray.reduce (add, 0.0, a)
+    PArray.reduce add 0.0 a
   end
 
 fun sumP_int a = let
   fun add (x, y) = x+y
   in
-    PArray.reduce (add, 0, a)
+    PArray.reduce add 0 a
   end
 
 val sumP = sumP_int

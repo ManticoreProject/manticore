@@ -113,7 +113,7 @@ structure Future1 : sig
 		| exp (A.CaseExp (e, ms, _)) = exp e orelse List.exists match ms
 		| exp (A.PCaseExp (es, pms, _)) = exp e orelse List.exists pmatch pms
 		| exp (A.HandleExp (e, ms, _)) = exp e orelse List.exists match ms
-		| exp (A.RaiseExp (e, _)) = exp e
+		| exp (A.RaiseExp (_, e, _)) = exp e
 		| exp (A.FunExp (x, e, _)) = false
 		| exp (A.ApplyExp (e1, e2, _)) = true
 		| exp (A.VarArityOpExp _) = false

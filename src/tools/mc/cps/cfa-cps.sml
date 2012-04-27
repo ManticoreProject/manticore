@@ -156,6 +156,7 @@ structure CFACPS : sig
             | CPSTy.T_Cont _ => LAMBDAS(VSet.empty)
             | CPSTy.T_CFun _ => TOP
             | CPSTy.T_VProc => TOP
+            | CPSTy.T_Deque => TOP
           (* end case *))
 
   (* property to track callers *)

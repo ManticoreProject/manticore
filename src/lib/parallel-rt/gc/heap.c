@@ -222,6 +222,7 @@ void AllocToSpaceChunk (VProc_t *vp)
 	    vp->id, chunk->szB/1024, (void *)(chunk->baseAddr),
                  (void *)(chunk->baseAddr+chunk->szB),
                  vp->globAllocChunk==NULL?NULL:vp->globAllocChunk->baseAddr, chunk->where);
+    bzero((void*)chunk->baseAddr, chunk->szB);
 #endif
 
     /* add to the tail of the vproc's list of to-space chunks */

@@ -376,7 +376,7 @@ structure TranslatePCase (* : sig
     val _ = raise Fail "FIXME"
     val ts = raise Fail "FIXME"
     in
-      A.Otherwise (ts, A.RaiseExp (exnMatch, t)) 
+      A.Otherwise (ts, A.RaiseExp (Error.UNKNOWN, exnMatch, t)) 
     end
 
 (* The function "otherwise" appends "otherwise => raise Match" if no Otherwise is present. *)

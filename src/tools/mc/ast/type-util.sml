@@ -73,7 +73,7 @@ structure TypeUtil : sig
     structure MVMap = MetaVar.Map
     structure Ty = Types
 
-    fun tyvarToString (Ty.TVar{name, stamp, ...}) = Atom.toString name
+    fun tyvarToString (Ty.TVar{name, stamp, ...}) = concat[Atom.toString name, Stamp.toString stamp]
 
   (* return a string representation of a type (for debugging) *)
     fun fmt {long} = let
@@ -261,6 +261,9 @@ String.concatWith "," (List.map toString tys), "])\n"]); raise ex)
 		end
 	  val (tvs, ty) = genVars (ty, MetaVar.Map.empty)
 	  in
+            MVMap.appi
+                (fn (Ty.MVar{info, ...}, tv) => info := Ty.INSTANCE(Ty.VarTy tv))
+                tvs;
 	    Ty.TyScheme(MVMap.listItems tvs, ty)
 	  end
 

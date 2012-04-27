@@ -56,4 +56,14 @@ val sub : array * int -> double = _prim (@sub)
 (* it is required that 0 <= i < |a|, where |a| is the size of a *)
 val update : array * int * double -> unit = _prim (@update)
 
+fun fromList (xs : double list) = let
+        val len = List.length xs
+    val arr = create len
+    fun lp (i, ys) = case ys
+        of nil => arr
+        | h::t => (update (arr, i, h); lp (i+1, t))
+    in
+        lp (0, xs)
+end
+
 end

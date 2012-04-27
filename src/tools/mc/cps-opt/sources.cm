@@ -8,8 +8,10 @@
 
 Library
 
+  structure ClassifyConts
   functor CPSOptFn
   structure CPSCensus
+  structure FreeVars
 
 is
 
@@ -25,6 +27,7 @@ is
 
   arity-raising.sml
   census.sml
+  classify-conts.sml
   common-subexpression-elimination.sml
   contract.sml
   copy-propagation.sml
@@ -32,4 +35,4 @@ is
   cps-opt-fn.sml
   elim-uncalled.sml
   eta-expand.sml
-
+  free-vars.sml

@@ -38,7 +38,7 @@ structure Unpar : sig
 		| PTUP => A.PCaseExp (List.map exp es, List.map pmatch ms, ty)
 	      (* end case *))
 	| exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t)
-	| exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
+	| exp (A.RaiseExp (l, e, t)) = A.RaiseExp (l, exp e, t)
 	| exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
 	| exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
 	| exp (m as A.VarArityOpExp _) = m

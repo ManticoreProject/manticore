@@ -93,7 +93,7 @@ define @spread-across-vprocs (x : unit / exh : exh) : unit =
   fun f (vp : vproc / exh : exh) : () =
       @run-remote-fiber(vp)
   let vp : vproc = SchedulerAction.@atomic-begin()
-  do VProc.@for-other-vprocs-from-atomic(f / exh)
+  do VProc.@for-other-vprocs-in-atomic(f / exh)
   do SchedulerAction.@atomic-end(vp)
   return(UNIT)
 ;

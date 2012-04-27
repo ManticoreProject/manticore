@@ -10,6 +10,8 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 
   end = struct
 
+    structure ArityRaising = ArityRaisingFn (Spec)
+                               
   (* a wrapper for BOM optimization passes.  The wrapper includes an invariant check. *)
     fun transform {passName, pass} = let
 	  val xform = BasicControl.mkKeepPassSimple {

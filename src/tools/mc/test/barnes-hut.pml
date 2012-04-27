@@ -70,7 +70,7 @@
 
 (* bhTree : area * cen list -> tree *)
   fun bhTree (a, cs) =
-      if (plen(cs) = 1) then
+      if (PArray.length(cs) = 1) then
 	  singletonTree (cs ! 0)
       else
 	  let val (a1, a2, a3, a4) = cut a

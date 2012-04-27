@@ -94,6 +94,8 @@
 (* apply a mark constructor to a span and a tree *)
   fun mark cons (span : AntlrStreamPos.span, tr) = cons{span = span, tree = tr}
 
+  val nilID = {tree = ([] : Atom.atom list, Op.listNil), span = (0, 0)}
+
 (* specialize mark functions for common node types *)
   val markDecl = mark PT.MarkDecl
   fun markTy (_, e as PT.MarkTy _) = e
@@ -446,6 +448,7 @@ Pat
 InfixPat
 	: ApplyPat ("::" ApplyPat => (FULL_SPAN, {span=FULL_SPAN, tree=([], Op.listCons)}, ApplyPat))*
 		=> (markPat (FULL_SPAN, mkRBinPat (ApplyPat, SR)))
+        | "[" "]" => (markPat (FULL_SPAN, PT.IdPat nilID))
 	;
 
 ApplyPat

@@ -138,6 +138,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
              | CFGTy.T_Addr ty => CFGTy.T_Addr (transTy ty)
              | CFGTy.T_CFun cp => CFGTy.T_CFun cp
              | CFGTy.T_VProc => CFGTy.T_VProc
+             | CFGTy.T_Deque => CFGTy.T_Deque
              | CFGTy.T_StdFun {clos, args, ret, exh} =>
                   CFGTy.T_StdFun {clos = transTy clos, args = [transTyStdArgs args],
                                   ret = transTy ret, exh = transTy exh}

@@ -84,9 +84,10 @@ structure CVar (*: sig
 
       (* wait for a variable to be signaled *)
 	define @cvar-wait (cv : cvar / _ : exh) : unit =
-	    case SELECT(CV_STATE, cv)
-	     of true => return (UNIT)
-	      | false => (* slow-path requires waiting *)
+	    if (SELECT(CV_STATE, cv))
+            then return (UNIT)
+            else 
+	      (* slow-path requires waiting *)
 		let self : vproc = SchedulerAction.@atomic-begin ()
 		SPIN_LOCK(cv, CV_LOCK)
 		case SELECT(CV_STATE, cv)
@@ -106,7 +107,6 @@ structure CVar (*: sig
 		      SPIN_UNLOCK(cv, CV_LOCK)
 		      SchedulerAction.@stop-from-atomic (self)
 		end
-	    end
 	  ;
 
 	define inline @cvar-wait-evt (cv : cvar / _ : exh) : PEvt.pevent =

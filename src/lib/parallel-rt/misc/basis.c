@@ -171,7 +171,7 @@ Value_t M_FloatFromString (Value_t str)
 Value_t M_DoubleToString (double f)
 {
     char buf[64];
-    snprintf(buf, sizeof(buf), "%f", f);
+    snprintf(buf, sizeof(buf), "%.10f", f);
     return AllocString (VProcSelf(), buf);
 }
 
@@ -205,8 +205,19 @@ void M_Print (const char *s)
 {
 #ifdef NDEBUG
     Say("%s", s);
-#else  
+#else
     Say("[%2d] %s", VProcSelf()->id, s);
+#endif
+}
+
+/* M_PrintOrd:
+ */
+void M_PrintOrd (const int i)
+{
+#ifdef NDEBUG
+    Say("%c", i);
+#else
+    Say("[%2d] %c", VProcSelf()->id, i);
 #endif
 }
 
@@ -384,7 +395,7 @@ void M_PrintDebug (const char *s)
 {
 #ifndef NDEBUG
     if (DebugFlg)
-	SayDebug("[%2d] %s", VProcSelf()->id, s);  
+	SayDebug("[%2d] %s", VProcSelf()->id, s);
 #endif
 }
 
@@ -403,7 +414,7 @@ void M_PrintTestingMsg (const char *msg, char *file, int line)
 
 void M_PrintPtr (const char *name, void *ptr)
 {
-    Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);  
+    Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);
 }
 
 /* M_PrintLong:
@@ -482,6 +493,11 @@ Value_t M_NewArray (VProc_t *vp, int nElems, Value_t elt)
   return 0;
 }
 
+double M_log (double d)
+{
+    return log(d);
+}
+
 float M_Powf (float x, float y)
 {
     return powf(x, y);
@@ -522,9 +538,24 @@ double M_Tan (double x)
   return tan(x);
 }
 
+double M_Atan (double x)
+{
+  return atan(x);
+}
+
+double M_Atan2 (double x, double y)
+{
+  return atan2(x,y);
+}
+
+int64_t M_Lround (double x)
+{
+  return lround(x);
+}
+
 /*! \brief compute floor(log_2(v)). NOTE: this function relies on little endianness
  */
-int M_FloorLg (int v) 
+int M_FloorLg (int v)
 {
   int r; // result of log_2(v) goes here
   union { unsigned int u[2]; double d; } t; // temp
@@ -538,7 +569,7 @@ int M_FloorLg (int v)
 
 /*! \brief compute ceiling(log_2(v))
  */
-int M_CeilingLg (int v) 
+int M_CeilingLg (int v)
 {
   int lg = M_FloorLg(v);
   return lg + (v - (1<<lg) > 0);
@@ -613,4 +644,11 @@ Value_t M_StringTokenize (Value_t str, Value_t sep)
 	token = strtok(NULL, sepData);
     }
     return l;
+}
+
+void DebugThrow (VProc_t *vp, char *loc)
+{
+#ifndef NDEBUG
+    SayDebug("[%2d] %s\n", vp->id, loc);
+#endif
 }

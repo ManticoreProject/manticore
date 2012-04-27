@@ -30,6 +30,7 @@ structure CPSTyUtil : sig
 
   (* isKind k1 k2 --- returns true if k2 is a subkind of k1 *)
     val isKind : CPSTy.kind -> CPSTy.kind -> bool
+
   end = struct
 
     structure CTy = CPSTy
@@ -56,6 +57,7 @@ structure CPSTyUtil : sig
       | kindOf (CTy.T_Cont _) = CTy.K_BOXED
       | kindOf (CTy.T_CFun _) = CTy.K_UNIFORM
       | kindOf CTy.T_VProc = CTy.K_RAW
+      | kindOf CTy.T_Deque = CTy.K_RAW
 
   (* compare types for equality *)
     fun equal (ty1, ty2) = (case (ty1, ty2)
@@ -76,6 +78,7 @@ structure CPSTyUtil : sig
 	   | (CTy.T_CFun c_proto1, CTy.T_CFun c_proto2) =>
 		c_proto1 = c_proto2
 	   | (CTy.T_VProc, CTy.T_VProc) => true
+	   | (CTy.T_Deque, CTy.T_Deque) => true
            | _ => false
 	  (* end case *))
 
@@ -136,6 +139,7 @@ structure CPSTyUtil : sig
 	      | CTy.T_Fun(tys1, tys2) => concat("fun(" :: tys2l(tys1, " / " :: tys2l(tys2, [")"])))
 	      | CTy.T_CFun cp => CFunctions.protoToString cp
 	      | CTy.T_VProc => "vproc"
+	      | CTy.T_Deque => "deque"
 	    (* end case *)
 	  end
 
