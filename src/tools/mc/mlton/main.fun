@@ -1450,11 +1450,11 @@ fun commandLine (args: string list): unit =
                   val compileSML =
                      mkCompileSrc {listFiles = fn {input} => Vector.fromList input,
                                    elaborate = Compile.elaborateSML,
-                                   compile = Compile.compileSML}
+                                   compile = (fn x => ignore (Compile.compileSML x))}
                   val compileMLB =
                      mkCompileSrc {listFiles = Compile.sourceFilesMLB,
                                    elaborate = Compile.elaborateMLB,
-                                   compile = Compile.compileMLB}
+                                   compile = (fn x => ignore (Compile.compileMLB x))}
                   fun compileCM (file: File.t) =
                      let
                         val _ =

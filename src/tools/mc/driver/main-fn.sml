@@ -25,7 +25,7 @@ functor MainFn (
     structure CPSOpt = CPSOptFn (Spec)
     structure CFGOpt = CFGOptFn (Spec)
     structure Closure = ClosureFn (Spec)
-    structure IB = InitialBasis
+(*    structure IB = InitialBasis *)
 
     fun err s = TextIO.output (TextIO.stdErr, s)
     fun err1 c =  TextIO.output1 (TextIO.stdErr, c)
@@ -68,7 +68,7 @@ functor MainFn (
     fun allDecls pts = List.concat(List.map tree pts)
 
   (* environment bootstrapping *)
-    fun initialEnv () = let
+(*    fun initialEnv () = let
 	(* load the initial-basis.pml file *)
 	  val initialBasisPath = OS.Path.joinDirFile{
 		  dir = LoadPaths.sequentialBasisDir,
@@ -86,7 +86,7 @@ functor MainFn (
 	  val {bEnv, mEnv, glueAST} = IB.extendInitialEnv(bEnv, mEnv)
 	  in
 	    (bEnv, mEnv, initialAST, glueAST)
-	  end
+	  end *)
 
   (* dead function elimination on the parse tree *)
     fun printTrees ([]) = ()
@@ -164,19 +164,12 @@ functor MainFn (
   (* compile an MLB or PML file *)
     fun mlbC (verbose, errStrm, srcFile, asmFile) = let
 	  val _ = if verbose then print "initializing environment\n" else ()
-	  val (bEnv0, mEnv0, ast0, glueAST) = initialEnv()
+(* 	  val (bEnv0, mEnv0, ast0, glueAST) = initialEnv() *)
           val _ = if verbose then print(concat["mlton parsing \"", srcFile, "\"\n"]) else ()
+          (* FIXME: detect file type *)
 (*          val sxml = Wrapper.compileSML (srcFile, asmFile) *)
-          val sxml = Wrapper.compileMLB (srcFile, asmFile)
+          val bom = Wrapper.compileMLB (srcFile, asmFile)
 	  val _ = if verbose then print(concat["parsing \"", srcFile, "\"\n"]) else ()
-          val ast = mlbToAST (errStrm, bEnv0, mEnv0, srcFile)
-          val _ = checkForErrors errStrm
-          val ast = ASTOpt.optimize(glueAST(ast0, ast))
-	  val _ = MatchCheck.checkExp (errStrm, ast)
-	  val ast = MatchCompile.compile (errStrm, ast)
-          val _ = checkForErrors errStrm
-	(* create the initial translation environment *)
-          val bom = Translate.translate (IB.primTranslationEnv, ast)
           val cfg = bomToCFG bom
 	  in
 	    codegen (verbose, asmFile, cfg);

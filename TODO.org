@@ -30,8 +30,7 @@ Begin integrating Manticore language features into the MLton frontend
 Add Manticore basis extensions into the library (e.g. Image)
 Add Manticore regression tests to the regression library
 Generate constants from configure
+Merge the two different types of compiler controls
 
 ** Much later
 Manticore benchmarks
-
-

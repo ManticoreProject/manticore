@@ -9,6 +9,7 @@
 Group
 
 signature SXML
+signature SXML_STRUCTS
 signature XML
 signature XML_TYPE
 

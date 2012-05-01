@@ -13,8 +13,11 @@ core-ml/sources.cm
 defunctorize/sources.cm
 elaborate/sources.cm
 front-end/sources.cm
+translate/sources.cm
 xml/sources.cm
 mcore-common.cm
+
+../bom/sources.cm
 
 lookup-constant.sig
 lookup-constant.fun

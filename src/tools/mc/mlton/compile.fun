@@ -69,6 +69,8 @@ structure CoreML = CoreML (open Atoms
                               end)
 structure Xml = Xml (open Atoms)
 structure Sxml = Sxml (open Xml)
+structure Translate = Translate (open Sxml)
+
 (*structure Ssa = Ssa (open Atoms)
 structure Ssa2 = Ssa2 (open Atoms)
 structure Machine = Machine (open Atoms
@@ -715,13 +717,15 @@ fun generateSXML {input: MLBString.t} =
             else ()
          end *)
    in
-      print "Completed generation of sxml";
+      print "Completed generation of sxml\n";
       sxml
    end
 
-fun compile {input: MLBString.t, outputC, outputS}: unit =
+fun compile {input: MLBString.t, outputC, outputS} =
    let
        val sxml = generateSXML {input=input}
+       val _ = "About to translate...\n"
+       val bom = Translate.translate sxml
 (*      val machine =
          Control.trace (Control.Top, "pre codegen")
          preCodegen {input = input}
@@ -754,10 +758,10 @@ fun compile {input: MLBString.t, outputC, outputS}: unit =
       val _ = Control.message (Control.Detail, PropertyList.stats)
       val _ = Control.message (Control.Detail, HashSet.stats) 
    in
-      ()
-   end handle Done => ()
+      bom
+   end
 
-fun compileMLB {input: File.t, outputC, outputS}: unit =
+fun compileMLB {input: File.t, outputC, outputS} =
    compile {input = MLBString.fromFile input,
             outputC = outputC,
             outputS = outputS}
@@ -788,7 +792,7 @@ local
                 end)
       end
 in
-   fun compileSML {input: File.t list, outputC, outputS}: unit =
+   fun compileSML {input: File.t list, outputC, outputS} =
       compile {input = genMLB {input = input},
                outputC = outputC,
                outputS = outputS}
