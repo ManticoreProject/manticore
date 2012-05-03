@@ -112,12 +112,21 @@ structure DoubleFArray = struct
     of S.Lf (lo, hi) =>
          if lo = 0 andalso hi = R.length data then 
            FArray (data, shape)
-         else let
-                   (* FIXME this is a slow implementation *)
-           val data' = R.fromSeq (R.partialSeq (data, lo, hi))
-           in
-             FArray (data', S.Lf (0, hi-lo))
-           end
+         else (
+             case data
+              of R.Leaf s =>
+                 FArray (R.leaf (DS.tabulate (hi-lo, fn i => DS.unsafeSub (s, i+lo))),
+                         S.Lf (0, hi-lo))
+               | _ => let 
+                     (* FIXME this is a slow implementation *)
+                     val data' = R.fromSeq (R.partialSeq (data, lo, hi)) 
+(* LARSBERG: why doesn't this work?
+                     val data' = R.tabulate (hi-lo, 
+                                      fn i => R.subInBounds (data, i+lo))  *)
+
+                 in
+                     FArray (data', S.Lf (0, hi-lo))
+                 end)
      | S.Nd ts => let
          val (lo, hi) = S.span shape
            (* FIXME this is a slow implementation *)

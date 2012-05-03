@@ -1195,7 +1195,7 @@ fun app f rp = let
             (if lo >= S.length s orelse hi > S.length s then
                failwith "err"
 	     else
-	       S.take (S.drop (s, lo), hi-lo))
+                 S.tabulate (hi-lo, fn i => S.unsafeSub (s, lo+i)))
 	 | Cat (_, len, rL, rR) => let
              val lenL = length rL
 	     val lenR = length rR
@@ -1241,22 +1241,21 @@ fun app f rp = let
 	     end
         (* end case *))
 
-(*   fun fromList xs = let *)
-(*     val l = List.length xs *)
-(*     in *)
-(*       if l < LeafSize.getMax () orelse l = 1 then  *)
-(*         leaf (S.fromList xs) *)
-(*       else let *)
-(*         val t = List.take (xs, l div 2) *)
-(* 	val d = List.drop (xs, l div 2) *)
-(*         in *)
-(*           nccat2 (fromList t, fromList d) *)
-(*         end *)
-(*     end *)
-
-  (* fromSeq *)
-  (* FIXME slow implementation *)
-    fun fromSeq s = fromList (S.toList s)
+    fun fromSeq s = let
+        fun takeRange (lo, hi) =
+            S.tabulate (hi-lo, fn i => S.unsafeSub (s, i+lo))
+        fun fromSeq (lo, hi) =
+            if hi-lo < LeafSize.getMax ()
+            then leaf (takeRange (lo, hi))
+            else let
+                    val half = (hi-lo) div 2
+                in
+                    nccat2 (fromSeq (lo, lo+half),
+                            fromSeq (lo+half, hi))
+                end
+    in
+        fromSeq (0, S.length s)
+    end
 
     fun sameShape (r1, r2) = (case (r1, r2)
       of (Leaf s1, Leaf s2) => S.length s1 = S.length s2
