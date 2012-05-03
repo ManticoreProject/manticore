@@ -1193,7 +1193,7 @@ fun app f rp = let
      (case r
         of Leaf s => 
             (if lo >= S.length s orelse hi > S.length s then
-               failwith "err"
+                 failwith "err"
 	     else
                  S.tabulate (hi-lo, fn i => S.unsafeSub (s, lo+i)))
 	 | Cat (_, len, rL, rR) => let
@@ -1206,7 +1206,7 @@ fun app f rp = let
 		   partialSeq (rR, lo-lenL, hi-lenL)
 	       else let
                  val sL = partialSeq (rL, lo, lenL)
-		 val sR = partialSeq (rR, 0, hi-lenL)
+                 val sR = partialSeq (rR, 0, hi-lenL)
                  in
 		   S.cat2 (sL, sR)
 		 end
@@ -1250,11 +1250,28 @@ fun app f rp = let
             else let
                     val half = (hi-lo) div 2
                 in
-                    nccat2 (fromSeq (lo, lo+half),
-                            fromSeq (lo+half, hi))
+                    nccat2 (| fromSeq (lo, lo+half),
+                              fromSeq (lo+half, hi) |)
                 end
     in
         fromSeq (0, S.length s)
+    end
+
+    (* NOTE: this is slower than fromSeq(partialSeq(r,lo,hi)) *)
+    fun fromRope (r, lo, hi) = let
+        fun takeRange (lo, hi) =
+            S.tabulate (hi-lo, fn i => subInBounds (r, i+lo))
+        fun fromRope (lo, hi) =
+            if hi-lo < LeafSize.getMax ()
+            then leaf (takeRange (lo, hi))
+            else let
+                    val half = (hi-lo) div 2
+                in
+                    nccat2 (| fromRope (lo, lo+half),
+                              fromRope (lo+half, hi) |)
+                end
+    in
+        fromRope (lo, hi)
     end
 
     fun sameShape (r1, r2) = (case (r1, r2)
