@@ -49,9 +49,9 @@ structure DoubleSeq = struct
     val yn = length y
     fun elt i =
       if i < xn then
-        sub (x, i)
+        unsafeSub (x, i)
       else
-        sub (y, i-xn)
+        unsafeSub (y, i-xn)
     in
       tabulate (xn+yn, elt)      
     end
@@ -62,14 +62,14 @@ structure DoubleSeq = struct
     val len = length s
     in
       if n >= len then s
-      else tabulate (n, fn i => sub (s, i))
+      else tabulate (n, fn i => unsafeSub (s, i))
     end
 
   fun drop (s, n) = let
     val len = length s
     in
       if n >= len then (empty())
-      else tabulate (len-n, fn i => sub (s, i+n))
+      else tabulate (len-n, fn i => unsafeSub (s, i+n))
     end
 
   fun split2 s = let

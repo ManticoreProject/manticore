@@ -50,7 +50,7 @@ structure RopeUtil = struct
         fun lp (r1, r2) = (case (r1, r2)
           of (DR.Leaf s1, DR.Leaf s2) => let
                val n = DoubleSeq.length s1
-	       fun f' i = f (DoubleSeq.sub (s1, i), DoubleSeq.sub (s2, i))
+	       fun f' i = f (DoubleSeq.unsafeSub (s1, i), DoubleSeq.unsafeSub (s2, i))
 	       val s = DoubleSeq.tabulate (n, f')
                in
 		 DR.leaf s
@@ -59,7 +59,7 @@ structure RopeUtil = struct
 	       DR.Cat (| d, l, lp (r1, r1'), lp (r2, r2') |)
           (* end case *))
         in
-	  lp (r1, r2)
+	      lp (r1, r2)
 	end
       else 
         fail "mapDDD" "different shapes"

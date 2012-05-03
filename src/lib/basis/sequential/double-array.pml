@@ -59,7 +59,7 @@ structure DoubleArray = struct
     val n = length a
     fun m i =
       if i < n then
-        (update (a, i, f (sub (a, i))); m (i + 1))
+        (update (a, i, f (unsafeSub (a, i))); m (i + 1))
       else
         ()
     in
@@ -70,7 +70,7 @@ structure DoubleArray = struct
     val len = length arr
     fun fold (i, a) =
       if (i >= len) then a
-      else fold (i+1, f (sub (arr, i), a))
+      else fold (i+1, f (unsafeSub (arr, i), a))
     in
       fold (0, init)
     end
@@ -79,7 +79,7 @@ structure DoubleArray = struct
     val len = length arr
     fun fold (i, a) = 
       if (i < 0) then a
-      else fold (i-1, f (sub (arr, i), a))
+      else fold (i-1, f (unsafeSub (arr, i), a))
     in
       fold (len-1, init)
     end
