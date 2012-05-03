@@ -41,6 +41,20 @@ structure DoubleRope = struct
 
   fun inBounds (r, i) = (i < length r) andalso (i >= 0)
 
+  fun subInBounds (rp, i) = case rp
+    of Leaf s => S.sub (s, i)
+     | Cat (_, _, r1, r2) =>
+         if i < length r1 then 
+           subInBounds (r1, i)
+	 else 
+           subInBounds (r2, i - length r1)
+
+  fun sub (rp, i) =
+    if inBounds (rp, i) then
+      subInBounds (rp, i)
+    else
+      subscript ()
+
   fun ropeOK rp = let
     fun length' rp = (case rp
       of Leaf s => S.length s
@@ -71,7 +85,12 @@ structure DoubleRope = struct
     of Leaf s => s::nil
      | Cat (_, _, rp1, rp2) => leaves rp1 @ leaves rp2)
 
-  fun toSeq rp = S.catN (leaves rp)
+(*  fun toSeq rp = S.catN (leaves rp) *)
+  fun toSeq rp = (
+      case rp
+       of Leaf s => s
+        | Cat (lo, hi, _, _) =>
+          S.tabulate (hi-lo, fn i => subInBounds (rp, i+lo)))
 
   (* non-coalescing rope concatenation *)
   fun nccat2 (rp1, rp2) = let
@@ -110,20 +129,6 @@ structure DoubleRope = struct
           nccat2 (fromList t, fromList d)
         end
     end
-
-  fun subInBounds (rp, i) = case rp
-    of Leaf s => S.sub (s, i)
-     | Cat (_, _, r1, r2) =>
-         if i < length r1 then 
-           subInBounds (r1, i)
-	 else 
-           subInBounds (r2, i - length r1)
-
-  fun sub (rp, i) =
-    if inBounds (rp, i) then
-      subInBounds (rp, i)
-    else
-      subscript ()
 
   fun seqSplitAtIx2 (s, i) = (S.take (s, i + 1), S.drop (s, i + 1))
 
