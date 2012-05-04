@@ -90,7 +90,7 @@ structure DoubleRope = struct
       case rp
        of Leaf s => s
         | Cat (lo, hi, _, _) =>
-          S.tabulate (hi-lo, fn i => subInBounds (rp, i+lo)))
+          S.tabulate (hi-lo-1, fn i => subInBounds (rp, i+lo)))
 
   (* non-coalescing rope concatenation *)
   fun nccat2 (rp1, rp2) = let
