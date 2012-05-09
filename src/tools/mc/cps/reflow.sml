@@ -34,6 +34,11 @@ structure Reflow : sig
      * It is a reachability (closure of adjacency) map. *)
     val graph : reaches PMap.map ref = ref PMap.empty
 
+    (* This map goes from a program point to its path-compressed
+     * representative.
+     *)
+    val representative : ProgPt.ppt PMap.map ref = ref PMap.empty
+
     (* property mapping variables to binding locations *)
     val {getFn=bindingLocation : CV.var -> ProgPt.ppt, clrFn=clrBindingLocation, setFn=setBindingLocation, ...} =
           CV.newProp (fn v => raise Fail (concat[CV.toString v, ": variable missing binding location"]))
@@ -206,6 +211,9 @@ structure Reflow : sig
         loop map
     end
 
+    (* TODO: implement *)
+    fun compressPaths p = p
+
     fun analyze (module as CPS.MODULE{body, ...}) = let
         val _ = setLocations module
         val neighbors = addNeighbors module
@@ -214,11 +222,16 @@ structure Reflow : sig
                                    Int.toString (PMap.numItems neighbors),
                                    "\n"])
                 else ()
-        val reachability = computeReachability neighbors
+        val pathCompressed = compressPaths neighbors
+        val reachability = computeReachability pathCompressed
     in
         graph := reachability
     end
 
+    (*
+     * TODO: this needs to look up the program points in the
+     * representative maps before checking them in the graph.
+     *)
     fun pathExists (p1, p2) = (
         case PMap.find (!graph, p1)
          of NONE => false
