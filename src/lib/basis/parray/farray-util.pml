@@ -166,6 +166,31 @@ structure FArrayUtil = struct
       DF.tab (len, fn i => f (isub (nss, i), dsub (xss, i))) 
     end
 
+(* monomorphic maps for MIS *)
+
+(* the deadly map_IIFF_IF function, for MIS *)
+(* map_IIFF_IF : (int * int_farray -> int) -> int_farray * (int_farray farray) -> int_farray *)
+  fun map_IIFF_IF (f : int * IF.int_farray -> int) (nss, xss) = let
+    val len = IF.length nss
+    val _ = if (len = IF.length xss) then () else failwith "map_IIFF_IF - length mismatch"
+    fun isub (nss, i) = IF.flatSub (nss, i)
+    fun ifsub (xss, i) = IF.nestedSub (xss, i)
+    in 
+      IF.tab (len, fn i => f (isub (nss, i), ifsub (xss, i))) 
+    end
+
+(* the dangerous map_IIFF_IFF function, for MIS *)
+(* map_IIFF_IFF : (int * int_farray -> int_farray) -> int_farray * (int_farray) -> int_farray *)
+  fun map_IIFF_IFF (f : int * IF.int_farray -> IF.int_farray) (nss, xss) = let
+    val len = IF.length nss
+    val _ = if (len = IF.length xss) then () else failwith "map_IIFF_IFF - length mismatch"
+    fun isub (nss, i) = IF.flatSub (nss, i)
+    fun ifsub (xss, i) = IF.nestedSub (xss, i)
+    in
+(* FIXME: Atrociously slow implementation, replace with intelligent tab *)
+      flatten_IF_F (FArray.tab (len, fn i => f (isub (nss, i), ifsub (xss, i))))
+    end
+
 (* utils to implement map_IFF_DFF_DFF *)
 
 (* --- ADAPT FOR ROPES --- *)

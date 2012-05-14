@@ -216,7 +216,7 @@ structure DoubleFArray = struct
     fun lp (i, ps) = (case ps
       of nil => nil
        | (j,n)::t => let
-           val s = partReduce (f, init, v, i, n)
+           val s = stopwatch("segreduce..partReduce", fn () => partReduce (f, init, v, i, n))
            in
              (j,s)::lp(i+n,t)
            end

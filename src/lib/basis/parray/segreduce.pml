@@ -126,7 +126,7 @@ structure SegReduce = struct
 (*    val pss = lp (data, segdes) *)
     (* val _ = Print.printLn "in segsum: computed pss:" *)
     (* val _ = Print.printLn (psstos pss) *)
-    val reductions = Seq.tabulate (List.length segdes, fn _ => init)
+    val reductions = Seq.tabulate (List.length segdes - 1, fn _ => init)
     val _ = writePairs reductions pss
     val data' = R.fromSeq reductions
     val shape' = S.Lf (0, R.length data')
