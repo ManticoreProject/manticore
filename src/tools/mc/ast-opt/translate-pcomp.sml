@@ -251,7 +251,18 @@ structure TranslatePComp : sig
 		val body = AU.mkCaseExp (A.VarExp (arg, []),
 		  [A.PatMatch (A.TuplePat [p1, p2], trExp e)])
 		val f = AU.mkFunExp (arg, body)
-		val map = A.VarExp (DV.parrPairMap (), [p1Ty, p2Ty, eltTy])
+		val map = A.VarExp (DV.parrPairMap (), [p2Ty, p1Ty, eltTy]) 
+(* Yes, this does seem to be the correct order of types in the VarExp... *)
+(* That is, in order to instantiate PairMap at (a b -> g) * a parr * b parr -> g parr, *)
+(* you need to present the type arguments in the order [b, a, g]. I don't know why! -ams *)
+(*+debug*)
+(* 		val _ = (print "!!!!! I've just generated a pair map with three types, and here's its type\n"; *)
+(* 			 print ("- type 1 (p1Ty): " ^ TypeUtil.toString p1Ty ^"\n"); *)
+(* 			 print ("- type 2 (p2Ty): " ^ TypeUtil.toString p2Ty ^"\n"); *)
+(* 			 print ("- type 3 (eltTy): " ^ TypeUtil.toString eltTy ^"\n"); *)
+(* 			 print ("the type is " ^ TypeUtil.toString (TypeOf.exp map)); *)
+(* 			 print "\n\n") *)
+(*-debug*)
 		val args = [f, trExp e1, trExp e2]
 	        in
 	          AU.mkApplyExp (map, args)
