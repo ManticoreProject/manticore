@@ -212,7 +212,7 @@ structure Reflow : sig
     end
 
     (* TODO: implement *)
-    fun compressPaths p = p
+    fun compressSCC p = p
 
     fun analyze (module as CPS.MODULE{body, ...}) = let
         val _ = setLocations module
@@ -222,8 +222,8 @@ structure Reflow : sig
                                    Int.toString (PMap.numItems neighbors),
                                    "\n"])
                 else ()
-        val pathCompressed = compressPaths neighbors
-        val reachability = computeReachability pathCompressed
+        val SCCCompressed = compressSCC neighbors
+        val reachability = computeReachability SCCCompressed
     in
         graph := reachability
     end
