@@ -227,6 +227,11 @@ structure Reflow : sig
 	     of TOP => ptlist
 	      |REACHES l => PSet.listItems l
 	val components = SCC.topOrder'{roots = ptlist, follow = follow} (*why is this a type mismatch???*)
+        val _ = if !debugFlg
+                then print (concat["Number of SCC components: ",
+                                   Int.toString (List.length components),
+                                   "\n"])
+                else ()
     in
 	p
     end
