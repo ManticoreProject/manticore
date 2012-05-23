@@ -68,7 +68,8 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
     fun doConvert module = (
       case Controls.get convertStyle
        of ConvertStyle.Flat => FlatClosureWithCFA.convert module
-        | ConvertStyle.SafeForSpace => raise Fail "Safe-for-space closure conversion is not yet implemented"
+        | ConvertStyle.SafeForSpace => SafeForSpaceClosures.newConvert module
+(* raise Fail "Safe-for-space closure conversion is not yet implemented" *)
       (* end case *))
 
     val convert' = BasicControl.mkKeepPass {

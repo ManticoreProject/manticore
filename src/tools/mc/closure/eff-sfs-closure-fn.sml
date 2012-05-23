@@ -126,7 +126,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
      * time will be updated during the analysis of the static nesting of the
      * functions.
      *)
-    val {setFn=setFVMap, getFn=getFVMap, ...} =
+    val {setFn=setFVMap', getFn=getFVMap, ...} =
         CV.newProp (fn f => let
                            val fvSet = FreeVars.envOfFun f
                            val fut = valOf (getSN f)
@@ -134,7 +134,20 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                            VSet.foldl (fn (x, m) => VMap.insert (m, x, (fut, fut)))
                            VMap.empty fvSet                           
                        end)
+    (* +DEBUG *)
 
+	fun freeVarsToString fvmap = let
+	    fun varToString (x,p,s) = concat [s,CPS.Var.toString x, ", "]
+	in
+	    VMap.foldli varToString "" fvmap
+	end  
+
+
+    fun setFVMap (f, map)= (
+	print(concat["Calling setFVMap on ", CPS.Var.toString f, " with ", freeVarsToString map, "\n"]);
+	setFVMap' (f,map))
+
+    (* -DEBUG *)
     (* The slot count is the number of available registers to use for extra closure
      * parameters.
      * Initialize:
@@ -227,6 +240,18 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         handleConts (conts, [], 0)
     end
 
+(* +DEBUG *)
+    fun prSet s = (
+	  print "{";
+	  VSet.foldl
+	    (fn (x, false) => (print("," ^ CPS.Var.toString x); false)
+	      | (x, true) => (print(CPS.Var.toString x); false)
+	    ) true s;
+	  print "}";
+	  print "\n")
+(* -DEBUG*)
+
+
     (* Also add fut/lut properties to variables, per function.
      * Need to add an FV->{fut,lut} map to each function variable.
      * a. Do it as a depth-first traversal. At the leaf, all FVs basically have the SN(f) for their fut/lut
@@ -252,17 +277,25 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
               | m::ms => mergeMaps (ms, m)
         end
         fun doLambda (CPS.FB{f, params, rets, body}) = let
+	(* + DEBUG *)
+	    val _ = print (concat ["Updating LUT for func: ", CV.toString f,
+				   " and its free vars are: "])
+	    val _ = prSet (FreeVars.envOfFun f)
+	    val _ = print(concat["There are ", Int.toString(VMap.numItems(getFVMap f)), "\n"])
+(* - DEBUG *)
+
             val childMap = doExp body
+	    val _ = print(concat["childMap has ", Int.toString(VMap.numItems(childMap)), "\n"])
             val (newMap, retMap) =
                 VMap.foldli (fn (v, p as (fut, lut), (newMap, retMap)) => 
                                 case VMap.find (retMap, v)
-                                 of NONE => (newMap,
+                                 of NONE => (VMap.insert (newMap, v, p),
                                              VMap.insert (retMap, v, p))
                                   | SOME (_, lut') => 
                                     if (lut' > lut)
                                     then (VMap.insert (newMap, v, (fut, lut')),
                                           retMap)
-                                    else (newMap, retMap))
+                                    else (VMap.insert (newMap, v, p), retMap))
                             (VMap.empty, childMap) (getFVMap f)
         in
             setFVMap (f, newMap);
@@ -1361,6 +1394,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
       | EnclCont		(* the enclosing continuation function *)
       | JoinCont		(* a join continuation *)
       | Extern of CFG.label	(* bound to an external variable (e.g., C function *)
+      | Closure of CFG.var      (* implements Shao's & Appel's whatMap *)
 
   (* an envrionment for mapping from CPS variables to CFG variables.  We also
    * track the current closure.
@@ -1378,6 +1412,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
       | locToString EnclCont = "EnclCont"
       | locToString JoinCont = "JoinCont"
       | locToString (Extern lab) = concat["X(", CFG.Label.toString lab, ")"]
+      | locToString (Closure x) = "Closure pointer"
     fun prEnv (E{ep, env}) = let
 	  fun f (x, loc) = print(concat[
 		  "\n    ", CPS.Var.toString x, " --> ", locToString loc
@@ -1533,6 +1568,10 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                 in
                   ([CFG.mkLabel(tmp, lab)], tmp)
                 end
+	    | SOME (Closure x) => ([], x)
+	    (* This implements Shao's and Appel's whatMap. *)
+	    (* We don't return any binds for a closure because we assume the bind was added when *)
+	    (* the closure was created. *)
             | NONE => raise Fail(concat[
 		  "unbound variable ", CPS.Var.toString x, "; ep = ", CFG.Var.toString ep
 		])
@@ -1873,7 +1912,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	    val n = getSlot f (* assumes setSlots already called *)
 		    (* TODO: Go through setSlot/getSlot and remove all the nCalleeSaveRegs stuff. *)
 	in
-	    if m > n
+	    if m > 0 (* we don't do callee-save regs, so f should have only one slot. *)
 	    then let
 		    (* this is the predicate that makes the sharing safe for space *)
 		    fun subset(submap) = let
@@ -1921,20 +1960,38 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	    else (map, emptyEnv, ~1) (* if |TFV(f)| < slots(f) there is nothing to do *)
 	end
 
-
-
 								       
     (* note changed signature: *)
     fun mkFunClosure externEnv (env, recs, whatMap, whereMap) = let
+	val f = List.hd recs
+	(* + DEBUG *)
+	val _ = print (concat ["I think the raw free vars of ", CPS.Var.toString f, 
+			       " are: ", freeVarsToString(getFVMap f), " in other words, "])
+val _ = prSet (FreeVars.envOfFun f)
+
+	(* - DEBUG *)
+
+
 	(* + CARSEN *)
 	(* we assume that the transitive closure has already been calculated *)
 	(* first we calculate the true free variables *)
-	val f = List.hd recs
+ (*	val f = List.hd recs *)
 	(* TODO: Fix getTrueFreeVars. *)
 	(* for now I'm going to comment out getTrueFreeVars becuase *)
 	(* I just want to get this to compile. *)
 
 	(* val _ = setFVMap (f, getTrueFreeVars(f, recs, whatMap)) *)
+
+	fun isNotRec (x,p) = (
+	    case CV.typeOf x
+	     of CTy.T_Fun _ => (if List.exists (fn v => CV.same(x,v)) recs
+				then false
+				else true)
+	      | _ => true
+	(* end case *))
+
+	val noRecs = VMap.filteri isNotRec (getFVMap f)
+	val _ = setFVMap (f, noRecs)
 
 	(* then we use any preexisting closures we can share *)
 	(* Assumption: shareClosures passes back a pair, where the first *)
@@ -1945,12 +2002,19 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	(* closLUT will be -1 if no reusable closure was found. *)
 	val (fvMap, sharedClos as E{ep = closEP, env = closEnv}, closLut) = shareClosures(f, whereMap)
 	val _ = setFVMap (f, fvMap)
+	(* + DEBUG *)
+	val _ = print (concat ["I think the true free vars of ", CPS.Var.toString f, 
+			       " are: \n", freeVarsToString(getFVMap f), "\n"])
+
+	(* - DEBUG *)
+
 	(* then we partition the vars into closures based on lut numbers *)
 	fun partition (v, (futv, lutv), parts) =
 	    case IntBinaryMap.find(parts, lutv)
 	     of SOME vs => IntBinaryMap.insert(parts, lutv, v::vs)
 	      | NONE => IntBinaryMap.insert(parts, lutv, [v])
 	val parts = VMap.foldli partition IntBinaryMap.empty (getFVMap f)
+	val _ = print(concat["There are ", Int.toString(IntBinaryMap.numItems parts), " partitions.\n"])
 	(* now I want to fold mkArgs over each partition. *)
 	(* each partition is just a list of CPS vars, all with the same lut. *)
 	(* after that, if there is more than one partition, I will create a *)
@@ -1970,22 +2034,53 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	  | concatBinds(b1::b2::bs,bs',link) = b1::concatBinds(b2::bs,bs',link)
 *)
 	(* nb: the index should not increment in mkSharedArgs. *)
-	fun mkSharedArgs (x, (Global is), (i, binds, clos, xs)) = let
+	fun mkSharedArgs (x, location, (i, binds, clos, xs)) = let
 	    val (b, x') = lookupVar(sharedClos, x)
-	  (*   val bind = concatBinds(b, closBind, closEP') *)
+	    val location = (
+		case location
+		 of Global is => Global (i::is)
+		  | Closure x' => Closure x'
+	    (* end case *))
 	in
-	    (* actually, I think I might not even need to add any new binds to the *)
-	    (* binds list for the vars that are in the reused closure, because they *)
-	    (* should have already been bound up above. The only thing then that I *)
-	    (* would need to do here is do the Global i::is stuff. *)
-	    (* But I'll leave it like it is for now; I don't think it will hurt. *)
-	    (i, b@binds, VMap.insert(clos, x, Global (i::is)), xs)
+	    (i, binds, VMap.insert(clos, x, location), xs)
 	end
 
+	(* Actually, whatMap only needs to be a VMap of CPS function *)
+	(* vars to the CFG ep of their closure. *)
+
+	(* In the following, if x is a function var, I don't add it to the *)
+	(* environment because we will never look up function vars in *)
+	(* the environment: rather, we will look them up in whatMap. *)
+	(* Furthermore, I don't need to add a bind for a function var *)
+	(* (or, more precisely, for its ep) because that bind was already *)
+	(* added when we created the closure and added it to the whatMap. *)
+
+	(* Actually no. That's dumb. What I want to do is not use a whatMap *)
+	(* at all, but rather, adjust the loc datatype and use environmets. *)
+
 	fun mkArgs (x, (i, binds, clos, xs)) = let
+(*	    val (b, clos, xs) = (
+		case CV.typeOf x
+		 of CTy.T_Fun _ => (if List.exists (fn v => CV.same(v,x)) recs
+				     then ([], clos, xs) (* avail. in own bdy *)
+				     else (
+					 case VMap.find (whatMap, x)
+					  of SOME ep => ([], ep::xs)
+					   | NONE => raise Fail("function closure not found.")))
+		  | _ => let
+			val (b, x') = lookupVar(env, x)
+		    in
+			(b, VMap.insert( x'::xs)
+		    end
+	    (* end case *)) *)
 	    val (b, x') = lookupVar(env, x)
+	    val location = (
+		case CV.typeOf x
+		 of CTy.T_Fun _ => (Closure x')
+		  | _ => (Global [i])
+	    (* end case *))
 	in
-	    (i+1, b@binds, VMap.insert(clos, x, Global [i]), x'::xs)
+	    (i+1, b@binds, VMap.insert(clos, x, location), x'::xs)
 	end
 		       
 	(* At some point I will have to add the new closures I create to *)
@@ -2030,7 +2125,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	val closures =
 	    if (closLut > ~1 andalso not (!foundClosure))
 	    then let
-		    fun mkClosBinds (x, loc, binds) = let
+(*		    fun mkClosBinds (x, loc, binds) = let
 			val (b, x') = lookupVar(sharedClos, x)
 			(* val bind = concatBinds(b, closBind, closEP') *)
 		    in
@@ -2038,9 +2133,9 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 		    end
 		    val binds = VMap.foldli mkClosBinds [] closEnv
 		    (* But see comment up above. I think in retrospect I don't even need to *)
-		    (* compute any binds here and I could just return the [] for binds. *)
+		    (* compute any binds here and I could just return the [] for binds. *) *)
 		    val closurePart =
-			(binds, closEP, [], sharedClos)
+			([], closEP, [], sharedClos)
 		in
 		    closurePart::closures
 		end
@@ -2071,6 +2166,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	fun mkClosArgs ((bs, ep', cfgArgs', E{ep = ep, env = clos'}),
 			(i, binds, clos, cfgClosureArgs)) = let
 	    fun mkClosArgs0 (x, Global is, clos) = VMap.insert(clos, x, Global (i::is))
+	      | mkClosArgs0 (x, Closure x', clos) = VMap.insert(clos, x, Closure x')
 	    val clos = VMap.foldli mkClosArgs0 clos clos'
 	in
 	    (* I shouldn't need to do anything with binds here, because I have *)
@@ -2083,14 +2179,6 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	val (_, binds, clos, cfgClosureArgs) =
 	    List.foldl mkClosArgs (0, [], externEnv, []) closures
 
-	(* at this point, I want to add each of the closure records I have *)
-	(* created to the current environment, so that I can look up bindings *)
-	(* for them in the future. NB: I /THINK/ this is necessary? Is it *)
-	(* possible to get by with only adding them to the whereMap? *)
-	(* I do not think so, because you still need to be able to *)
-	(* look up the bindings of the closures themselves to get the full *)
-	(* access paths of the variables. *)
-
 	val cfgClosureArgs = List.rev cfgClosureArgs
 	val epTy = envPtrType (List.map CFG.Var.typeOf cfgClosureArgs)
 	val ep = newEP epTy
@@ -2099,6 +2187,8 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 	       of CFGTy.T_Enum _ => CFG.mkConst(ep', Literal.Enum 0w0, epTy)
 		| _ => CFG.mkAlloc(ep', epTy, cfgClosureArgs)
 	  (* end case *))
+    (* Now we update whatMap: *)
+	val clos = List.foldl (fn (x, clos) => VMap.insert(clos, x, Closure ep')) clos recs
     in
 	(* NB: The cfgClosureArgs I am returning here might not be what is expected. *)
 	(* It is fine in this case since no caller ever uses that return value, *)
@@ -2214,9 +2304,9 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                         in
                                           (bEnv', x' :: args, x'' :: params)
                                         end
-                                    | Global i => (
+                                    | Global is => (
                                         needsEP := true; 
-                                        (insertVar(bEnv, x, Global i), args, params))
+                                        (insertVar(bEnv, x, Global is), args, params))
                                     | EnclFun => (
                                         needsEP := true;
                                         (insertVar(bEnv, x, EnclFun), args, params))
@@ -2224,6 +2314,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                                         needsEP := true;
                                         (insertVar(bEnv, x, EnclCont), args, params))
 				    | JoinCont => (bEnv, args, params)
+				    | Closure x' => (insertVar(bEnv, x, Closure x'), args, params)
                                     | Extern _ => raise Fail "unexpected extern in free-var list"
                                   (* end case *))
                             val (branchEnv, args, params) =
@@ -2422,10 +2513,27 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
         (* convert bound functions *)
           and cvtFunc (env, fbs, whatMap, whereMap) = let
 	      val recs = List.map funVar fbs
+	      val f = List.hd recs
 	      (* I need to call my own transClos function because, even though *)
 	      (* FV.envOfFun returns the free vars in all recursive funs, *)
 	      (* I still need to calculate the futs and luts. *)
+
+	(* + DEBUG *)
+	    val _ = print (concat ["Before transClos for func: ", CV.toString f,
+				   " and its free vars are: ", freeVarsToString(getFVMap f)])
+	    val _ = print(concat["There are ", Int.toString(VMap.numItems(getFVMap f)), "\n"])
+
+
+(*	    val _ = prSet (FreeVars.envOfFun f)*)
+(* - DEBUG *)
+
 	      val _ = transClos (fbs, recs)
+	(* + DEBUG *)
+	    val _ = print (concat ["After transClos for func: ", CV.toString f,
+				   " and its free vars are: ", freeVarsToString(getFVMap f)])
+(*	    val _ = prSet (FreeVars.envOfFun f) *)
+(* - DEBUG *)
+
               (* the functions share a common environment tuple *)
                 val (binds, ep, clos, sharedEnv, whatMap, whereMap) =
 		    mkFunClosure (env, recs, whatMap, whereMap) (* changing the sig to pass in all fbs *)
@@ -2484,9 +2592,9 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 			      in
 				(bEnv', x' :: params)
 			      end
-			  | Global i => (
+			  | Global is => (
 			      needsEP := true;
-			      (insertVar(bEnv, x, Global i), params))
+			      (insertVar(bEnv, x, Global is), params))
 			  | EnclFun => (
 			      needsEP := true;
 			      (insertVar(bEnv, x, EnclFun), params))
@@ -2494,6 +2602,7 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 			      needsEP := true;
 			      (insertVar(bEnv, x, EnclCont), params))
 			  | JoinCont => (bEnv, params)
+			  | Closure x' => (insertVar(bEnv, x, Closure x'), params)
 			  | Extern _ => raise Fail "unexpected extern in free-var list"
 			(* end case *))
 		  val paramEP = CFG.Var.copy (envPtrOf env)
@@ -2739,8 +2848,18 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
           in
             assignLabels body;
             let
+		(* + S&A passes *)
+		val _ = FreeVars.analyze m
+		val _ = CFACPS.analyze m
+		val funs = getSafeFuns m
+		val _ = setSNs m
+		val _ = updateLUTs m
+		val _ = setSlots funs (* Do I need this? *)
+		(* - S&A passes *)
                 val (lab, conv, (start, body)) = cvtModLambda body
 		val init = CFG.mkExportFunc(lab, conv, start, body, Atom.toString name ^ "_init")
+		val _ = CFACPS.clearInfo m
+		val _ = FreeVars.clear m
 	    in
 	      CFG.mkModule(name, externs, init::(!blocks))
 	    end
