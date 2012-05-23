@@ -28,6 +28,14 @@ structure Reflow : sig
     structure PMap = ProgPt.Map
     structure PSet = ProgPt.Set
 
+    (*structures needed for SCC compression*)
+    structure ProgNd = struct
+        type ord_key = ProgPt.ppt
+        val compare = ProgPt.compare
+      end
+
+    structure SCC = GraphSCCFn (ProgNd)
+
     datatype reaches = REACHES of PSet.set | TOP
 
     (* This graph is used to answer the pathExists query above.
@@ -211,8 +219,18 @@ structure Reflow : sig
         loop map
     end
 
-    (* TODO: implement *)
-    fun compressSCC p = p
+    (* TODO: finish implementing *)
+    fun compressSCC (p) = let
+    	val ptlist = map #1 (PMap.listItemsi p)
+	fun follow pt = 
+	    case Option.valOf(PMap.find(p, pt))
+	     of TOP => ptlist
+	      |REACHES l => PSet.listItems l
+	val components = SCC.topOrder'{roots = ptlist, follow = follow} (*why is this a type mismatch???*)
+    in
+	p
+    end
+
 
     fun analyze (module as CPS.MODULE{body, ...}) = let
         val _ = setLocations module
