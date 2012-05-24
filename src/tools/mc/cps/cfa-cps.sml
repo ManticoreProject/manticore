@@ -610,13 +610,19 @@ structure CFACPS : sig
                 end
           fun iterate () = if onePass() then iterate() else ()
           in
-          (* initialize the arguments to the module entry to top *)
+          (* initialize the arguments to the module entry to proxy values.
+           * We cannot initialize to TOP because that causes the control-flow graph
+           * to be a single connected component.
+           *)
             case body
-             of CPS.FB{f, params, rets, ...} => (
-                  setCallers (f, Unknown);
-                  List.app (fn x => setValue (x, TOP)) params;
-                  List.app (fn x => setValue (x, TOP)) rets)
-            (* end case *);
+             of CPS.FB{f, params, rets, ...} => let
+                 val _ = setCallers (f, Unknown)
+                 val _ = List.app (fn x => setValue (x, TOP)) params
+                 val retTys = List.map CV.typeOf rets
+             in
+                 ListPair.app (fn (ret, CPSTy.T_Cont params) => setValue (ret, valueFromContType params))
+                              (rets, retTys)
+             end;
           (* iterate to a fixed point *)
             iterate ();
           (* "bump" the abstract value of variables of function type

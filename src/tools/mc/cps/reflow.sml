@@ -53,7 +53,7 @@ structure Reflow : sig
 
     (* property mapping function variables to their body location *)
     val {getFn=bodyLocation : CV.var -> ProgPt.ppt, clrFn=clrBodyLocation, setFn=setBodyLocation, ...} =
-          CV.newProp (fn v => raise Fail (concat[CV.toString v, ": variable missing body binding location"]))
+          CV.newProp (fn _ => ProgPt.new())
 
   (***** Statistics *****)
     val cntPasses		= ST.newCounter "reflow:num-passes"
@@ -136,7 +136,7 @@ structure Reflow : sig
                     end
                   | CPS.Apply (f, _, _) => (
                     case CFACPS.valueOf f
-                     of CFACPS.TOP => setTop (m, ppt)
+                     of CFACPS.TOP => (print (concat["Apply TOP to var: ", CV.toString f, "\n"]); setTop (m, ppt))
                       | CFACPS.LAMBDAS ls => let
                             val ll = VSet.listItems ls
                             val pl = List.map bodyLocation ll
@@ -147,7 +147,7 @@ structure Reflow : sig
                       | CFACPS.TUPLE _ => raise Fail (concat[CV.toString f, " is in an application position but is a tuple according to CFA."]))
                   | CPS.Throw (k, _) => (
                     case CFACPS.valueOf k
-                     of CFACPS.TOP => setTop (m, ppt)
+                     of CFACPS.TOP => (print (concat["Throw TOP to var: ", CV.toString k, "\n"]); setTop (m, ppt))
                       | CFACPS.LAMBDAS ls => let
                             val ll = VSet.listItems ls
                             val pl = List.map bodyLocation ll
@@ -179,7 +179,7 @@ structure Reflow : sig
               | r1 as REACHES ps => let
                     fun extend (ppt', (b, map)) = (
                         case (PMap.find (map, ppt'))
-                         of NONE => raise Fail "missing ppt?"
+                         of NONE => (b, map)
                           | SOME reaches' => (
                             case reaches'
                              of TOP => (true, PMap.insert (map, ppt, TOP))
@@ -222,10 +222,12 @@ structure Reflow : sig
     (* TODO: finish implementing *)
     fun compressSCC (p) = let
     	val ptlist = map #1 (PMap.listItemsi p)
-	fun follow pt = 
-	    case Option.valOf(PMap.find(p, pt))
-	     of TOP => ptlist
-	      |REACHES l => PSet.listItems l
+	fun follow pt =
+            case PMap.find(p, pt)
+             of SOME v => (case v
+	                    of TOP => ptlist
+	                     | REACHES l => PSet.listItems l)
+              | NONE => []
 	val components = SCC.topOrder'{roots = ptlist, follow = follow} (*why is this a type mismatch???*)
         val _ = if !debugFlg
                 then print (concat["Number of SCC components: ",
