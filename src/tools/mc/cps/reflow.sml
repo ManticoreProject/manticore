@@ -228,14 +228,34 @@ structure Reflow : sig
 	                    of TOP => ptlist
 	                     | REACHES l => PSet.listItems l)
               | NONE => []
-	val components = SCC.topOrder'{roots = ptlist, follow = follow} (*why is this a type mismatch???*)
+	val components = SCC.topOrder'{roots = ptlist, follow = follow}
         val _ = if !debugFlg
                 then print (concat["Number of SCC components: ",
                                    Int.toString (List.length components),
                                    "\n"])
                 else ()
+	fun updateReps (SCC.SIMPLE nd) = representative := PMap.insert(PMap.empty, nd, nd) 
+	  | updateReps (SCC.RECURSIVE ndList) =
+	    let
+		val rep = hd(ndList)
+		val repMap = foldl (fn (n, mp) => PMap.insert(mp, n, rep)) PMap.empty ndList 
+	    in
+		representative := repMap
+	    end
+	val _ = map updateReps components (* is using val _ here unidiomatic? is there a cleaner way to do this? *)
+	fun fixLH (pt, _) =
+	    if ProgPt.compare(pt, Option.valOf(PMap.find(!representative, pt))) = EQUAL
+	    then true
+	    else false
+	fun fixRH adjs = (* this assumes that ORD_SET just ignores duplicates, since it's a set *)
+	    case adjs
+	     of TOP => TOP
+	      | REACHES ns => let
+		    fun mapToRep pt = Option.valOf(PMap.find(!representative, pt))  
+		in REACHES ((PSet.map mapToRep) ns)
+		end
     in
-	p
+	PMap.map fixRH (PMap.filteri fixLH p)
     end
 
 
@@ -258,10 +278,10 @@ structure Reflow : sig
      * representative maps before checking them in the graph.
      *)
     fun pathExists (p1, p2) = (
-        case PMap.find (!graph, p1)
+        case PMap.find (!graph, Option.valOf(PMap.find(!representative, p1)))
          of NONE => false
           | SOME r => (case r
-                        of REACHES ps => PSet.member (ps, p2)
+                        of REACHES ps => PSet.member (ps, Option.valOf(PMap.find(!representative, p2)))
                          | TOP => true))
 
 
