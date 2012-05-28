@@ -219,7 +219,6 @@ structure Reflow : sig
         loop map
     end
 
-    (* TODO: finish implementing *)
     fun compressSCC (p) = let
     	val ptlist = map #1 (PMap.listItemsi p)
 	fun follow pt =
@@ -234,19 +233,22 @@ structure Reflow : sig
                                    Int.toString (List.length components),
                                    "\n"])
                 else ()
-	fun updateReps (SCC.SIMPLE nd) = representative := PMap.insert(PMap.empty, nd, nd) 
+	fun updateReps (SCC.SIMPLE nd) = PMap.insert(PMap.empty, nd, nd) 
 	  | updateReps (SCC.RECURSIVE ndList) =
 	    let
 		val rep = hd(ndList)
-		val repMap = foldl (fn (n, mp) => PMap.insert(mp, n, rep)) PMap.empty ndList 
 	    in
-		representative := repMap
+		foldl (fn (n, mp) => PMap.insert(mp, n, rep)) PMap.empty ndList
 	    end
-	val _ = map updateReps components (* is using val _ here unidiomatic? is there a cleaner way to do this? *)
+	    fun foldnewreps(c, mp) = PMap.unionWith (fn(a, b) => a) ((updateReps c), mp)
+	val newreps = foldl foldnewreps PMap.empty components
 	fun fixLH (pt, _) =
-	    if ProgPt.compare(pt, Option.valOf(PMap.find(!representative, pt))) = EQUAL
-	    then true
-	    else false
+	    case PMap.find(!representative, pt)
+	     of NONE => (print ("Oops\n"); false)
+	      | SOME rep =>
+		if ProgPt.compare(pt, rep) = EQUAL
+		then true
+		else false
 	fun fixRH adjs = (* this assumes that ORD_SET just ignores duplicates, since it's a set *)
 	    case adjs
 	     of TOP => TOP
@@ -255,7 +257,9 @@ structure Reflow : sig
 		in REACHES ((PSet.map mapToRep) ns)
 		end
     in
-	PMap.map fixRH (PMap.filteri fixLH p)
+	(representative := newreps;
+	 print (concat["Number of keys in rep (should match number of program points): ", Int.toString(PMap.numItems(!representative)), "\n"]);
+	 PMap.map fixRH (PMap.filteri fixLH p))
     end
 
 
