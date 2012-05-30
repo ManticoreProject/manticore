@@ -220,6 +220,11 @@ structure Reflow : sig
     end
 
     fun compressSCC (p) = let
+        (* TODO:
+         * This list (the places an unknown call can go to) can be reduced to just
+         * those program points that define functions whose callersOf are unknown.
+         * If the list is still too big, it could also be split by fun/cont types.
+         *)
     	val ptlist = map #1 (PMap.listItemsi p)
 	fun follow pt =
             case PMap.find(p, pt)
@@ -240,7 +245,7 @@ structure Reflow : sig
 	    in
 		foldl (fn (n, mp) => PMap.insert(mp, n, rep)) PMap.empty ndList
 	    end
-	    fun foldnewreps(c, mp) = PMap.unionWith (fn(a, b) => a) ((updateReps c), mp)
+	fun foldnewreps(c, mp) = PMap.unionWith (fn(a, b) => a) ((updateReps c), mp)
 	val newreps = foldl foldnewreps PMap.empty components
 	fun fixLH (pt, _) =
 	    case PMap.find(!representative, pt)
