@@ -311,8 +311,6 @@ structure PArrayOpGen = struct
          of T.TupleTy [t1, t2] => 
               if List.all FU.isDouble [t1, t2, fRngTy] then
                 A.VarExp (DV.fmapDDD (), [])
-	      else if List.all FU.isInt [t1, t2, fRngTy] then
-                A.VarExp (DV.fmapIII (), [])
 	      else
                 raise Fail ("todo: " ^ TU.toString t)
 	  | _ => raise Fail ("expected a pair: " ^ TU.toString t)
