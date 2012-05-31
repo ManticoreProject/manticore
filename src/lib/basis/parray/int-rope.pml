@@ -1302,4 +1302,12 @@ structure IntRope = struct
       build leaves
     end
 
+  fun sameShape (r1, r2) = (case (r1, r2)
+    of (Leaf s1, Leaf s2) => S.length s1 = S.length s2
+     | (Cat (_, _, r1, r2), Cat (_, _, r1', r2')) =>
+         sameShape (r1, r1') andalso sameShape (r2, r2')
+     | _ => false
+    (* end case *))
+
+
 end

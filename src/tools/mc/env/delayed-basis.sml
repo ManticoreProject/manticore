@@ -157,6 +157,7 @@ structure DelayedBasis = struct
     val ropeMap_int   = memoVar ["RopeUtil", "map_int"]
     val ropeMap_dbl   = memoVar ["RopeUtil", "map_double"]
     val ropeMapDDD    = memoVar ["RopeUtil", "mapDDD"]
+    val ropeMapIII    = memoVar ["RopeUtil", "mapIII"]
 
     val irEmpty       = memoVar ["IntRope", "empty"]
     val irLength      = memoVar ["IntRope", "length"]
@@ -263,6 +264,7 @@ structure DelayedBasis = struct
     val map_DFF_DF    = memoVar ["FArrayUtil", "map_DFF_DF"]
     val map_DFF_DFF   = memoVar ["FArrayUtil", "map_DFF_DFF"]
     val fmapDDD       = memoVar ["FArrayUtil", "mapDDD"]
+    val fmapIII       = memoVar ["FArrayUtil", "mapIII"]
     val unzip_IF_IF   = memoVar ["FArrayUtil", "unzip_IF_IF"]
     val unzip_IF_DF   = memoVar ["FArrayUtil", "unzip_IF_DF"]
 

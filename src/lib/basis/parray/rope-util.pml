@@ -64,4 +64,25 @@ structure RopeUtil = struct
       else 
         fail "mapDDD" "different shapes"
 
+  (* mapIII : (int * int -> int) * int_rope * int_rope -> int_rope *)
+    fun mapIII (f : int * int -> int, r1, r2) = 
+      if IR.sameShape (r1, r2) then let
+        fun lp (r1, r2) = (case (r1, r2)
+          of (IR.Leaf s1, IR.Leaf s2) => let
+               val n = IntSeq.length s1
+	       fun f' i = f (IntSeq.unsafeSub (s1, i), IntSeq.unsafeSub (s2, i))
+	       val s = IntSeq.tabulate (n, f')
+               in
+		 IR.leaf s
+	       end
+	   | (IR.Cat (d, l, r1, r2), IR.Cat (_, _, r1', r2')) =>
+	       IR.Cat (| d, l, lp (r1, r1'), lp (r2, r2') |)
+          (* end case *))
+        in
+	      lp (r1, r2)
+	end
+      else 
+        fail "mapIII" "different shapes"
+
+
 end

@@ -240,6 +240,24 @@ structure FArrayUtil = struct
       DF.FArray (data, shape1)
     end
 
+(* mapIII : (int * int -> int) * int_farray * int_farray -> int_farray *)
+  fun mapIII (f : int * int -> int, a1, a2) = let
+    val (IF.FArray (data1, shape1)) = IF.clean a1
+    val (IF.FArray (data2, shape2)) = IF.clean a2
+    val _ = if Shape.same (shape1, shape2) then () 
+	    else let
+              val msg = "todo: differing shapes " ^ 
+			Shape.toString shape1 ^ "/" ^
+			Shape.toString shape2
+	      in
+                failwith msg
+              end
+    val data = RopeUtil.mapIII (f, data1, data2)
+    in
+      IF.FArray (data, shape1)
+    end
+
+
 (* unzip_IF_IF *)
   fun unzip_IF_IF (x : (IF.int_farray * IF.int_farray) F.farray)
             : IF.int_farray F.farray * IF.int_farray F.farray = (case x
