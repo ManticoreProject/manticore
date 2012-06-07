@@ -13,10 +13,6 @@
  * variable bound to a value A from being replaced with a call to the known function
  * in an environment where the variable is bound to a value B.
  *
- * DISABLED (larsberg): The hoisting feature does not properly handle some cases 
- * where nested functions both get hoisted to different levels. This whole process 
- * needs to be rethought.
- * 
  * This pass also performs a hoisting of function definitions as high as they can
  * safely go. This transformation is performed in order to open up more copy-prop
  * opportunities, as we have a lot of code of the form:
@@ -28,7 +24,6 @@
  *
  * FIXME:
  * Split analysis from transformation. !pass is a horrible hack
- * Re-do hoisting.
  *)
 
 structure CopyPropagation : sig
@@ -133,6 +128,74 @@ structure CopyPropagation : sig
     fun getFB f = getFn f
     end
 
+    fun isClosed (lambda as C.FB{f,params,rets,body}, env) = let
+        val env = VSet.addList (env, params)
+        val env = VSet.addList (env, rets)
+        val env = VSet.add (env, f)
+        fun checkMembership (env, var) = let
+            val isMember = VSet.member (env, var)
+        in
+            if (!propagationDebug) andalso not(isMember)
+            then (print (concat [CV.toString var, " is free in attempted hoist.\n"]) ; isMember)
+            else isMember
+        end
+        fun checkList (env, l) = List.foldl (fn (a,b) => b andalso checkMembership (env, a)) true l
+        fun isClosedExp (C.Exp(ppt, e), env) = isClosedTerm (e, env)
+        and isClosedTerm (C.Let (lhs, rhs, body), env) = let
+            val env = VSet.addList (env, lhs)
+        in
+            isClosedRHS (rhs, env) andalso isClosedExp (body, env)
+        end
+          | isClosedTerm (C.Fun (lambdas, body), env) = let
+              val (b, env) = List.foldr (fn (f,(b,e)) => let val (b',e') = isClosedLambda (f,env) in
+                                                             (b andalso b', e') end) (true,env) lambdas
+          in
+              b andalso isClosedExp (body, env)
+          end
+          | isClosedTerm (C.Cont (lambda, body), env) = let
+              val (b,env) = isClosedLambda (lambda, env)
+          in
+              b andalso isClosedExp (body, env)
+          end
+          | isClosedTerm (C.If (cond, e1, e2), env) = checkList (env, CondUtil.varsOf cond) andalso
+                                                      isClosedExp (e1, env) andalso isClosedExp (e2, env)
+          | isClosedTerm (C.Switch (x, cases, default), env) =
+            checkMembership (env, x) andalso
+            (List.foldl (fn ((tag,body),b) => b andalso isClosedExp (body, env)) true cases) andalso
+            (case default of SOME(e) => isClosedExp(e, env) | NONE => true)
+          | isClosedTerm (C.Apply (f, args, params), env) =
+            checkMembership (env, f) andalso
+            checkList (env, args) andalso
+            checkList (env, params)
+          | isClosedTerm (C.Throw (k, args), env) =
+            checkMembership (env, k) andalso
+            checkList (env, args)
+        and isClosedRHS (C.Var (vars), env) = checkList (env, vars)
+          | isClosedRHS (C.Cast (_, v), env) = checkMembership (env, v)
+          | isClosedRHS (C.Const (_, _), _) = true
+          | isClosedRHS (C.Select (_, v), env) = checkMembership (env, v)
+          | isClosedRHS (C.Update (_, v1, v2), env) = checkMembership (env, v1) andalso checkMembership (env, v2)
+          | isClosedRHS (C.AddrOf (_, v), env) = checkMembership (env, v)
+          | isClosedRHS (C.Alloc (_, vars), env) = checkList (env, vars)
+          | isClosedRHS (C.Promote (v), env) = checkMembership (env, v)
+          | isClosedRHS (C.Prim (prim), env) = checkList (env, PrimUtil.varsOf prim)
+          | isClosedRHS (C.CCall (v, vars), env) = checkMembership (env, v) andalso checkList (env, vars)
+          | isClosedRHS (C.HostVProc, _) = true
+          | isClosedRHS (C.VPLoad (_, v), env) = checkMembership (env, v)
+          | isClosedRHS (C.VPStore (_, v1, v2), env) = checkMembership (env, v1) andalso checkMembership (env, v2)
+          | isClosedRHS (C.VPAddr (_, v), env) = checkMembership (env, v)
+        and isClosedLambda (lambda as C.FB{f,params,rets,body}, env) = let
+            val env = VSet.add (env, f)
+            val env' = VSet.addList (env, params)
+            val env' = VSet.addList (env', rets)
+        in
+            (isClosedExp (body, env'), env)
+        end
+    in
+        isClosedExp (body, env)
+    end
+
+
     fun isSafe (pptInlineLocation, lambda, env) = let
         val CPS.FB{f,...} = lambda
         val fvs = FreeVars.envOfFun f
@@ -222,7 +285,7 @@ structure CopyPropagation : sig
                                                   (VMap.filter
                                                        (fn a => (CV.compare (a,f')=EQUAL)) map))
                         fun wrapFun ((p as C.FB{f,...})::preds, wrapper, env, map) =
-                            if false (* isClosed (p, env) andalso not(VSet.member (env, f))*)
+                            if isClosed (p, env) andalso not(VSet.member (env, f))
                             then let
                                     val (l as C.FB{rets,...}, env, map) = copyPropagateLambda (p, env, map, false)
                                     val _ = if !propagationDebug
