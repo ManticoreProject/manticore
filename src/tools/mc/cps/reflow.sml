@@ -20,8 +20,8 @@ structure Reflow : sig
 
   end = struct
 
-    val debugFlg = ref true
 
+    val debugFlg = ref true
     structure CV = CPS.Var
     structure VSet = CV.Set
     structure ST = Stats
@@ -102,63 +102,72 @@ structure Reflow : sig
     fun setTop (m, ppt) = PMap.insert (m, ppt, TOP)
 
     fun addNeighbors (CPS.MODULE{body as CPS.FB{f,...}, ...}) = let
-          fun doLambda (ppt, CPS.FB{f, params, rets, body}, m) =
-              doExp (body, m)
-          and doExp (CPS.Exp(ppt, e), m) = (case e 
+          fun doLambda (ppt, CPS.FB{f, params, rets, body}, (m, ptlist)) =
+              doExp (body, (m, ptlist))
+          and doExp (CPS.Exp(ppt, e), (m, ptlist)) = (case e 
                  of CPS.Let(xs, _, e) => 
-                    doExp (e, addInfo (m, ppt, pptOfExp e))
+                    doExp (e, (addInfo (m, ppt, pptOfExp e), ptlist))
                   | CPS.Fun(fbs, e) => let
-                        val m = List.foldr (fn (fb, m) => doLambda(ppt, fb, m)) m fbs
+                        val (m, ptlist) = List.foldr (fn (fb, (m, ptlist)) => doLambda(ppt, fb, (m, ptlist))) (m, ptlist) fbs
+			fun anyknown(fb as CPS.FB{f,...}, truth) = 
+			    (case CFACPS.callersOf f
+			      of CFACPS.Unknown => true
+			       | _ => truth)
+			val notknown = List.foldr anyknown false fbs (*TRUE if any fbs have unknown callersOf, FALSE otherwise *)
                     in
-                        doExp (e, addInfo (m, ppt, pptOfExp e))
+                        case notknown
+			 of true => doExp (e, (addInfo (m, ppt, pptOfExp e), (pptOfExp e)::ptlist))
+			  | false => doExp (e, (addInfo (m, ppt, pptOfExp e), ptlist))
                     end
-                  | CPS.Cont(fb, e) => let
-                        val m = doLambda (ppt, fb, m)
-                    in
-                        doExp (e, addInfo (m, ppt, pptOfExp e))
+                  | CPS.Cont(fb as CPS.FB{f,...}, e) => let
+                        val (m, ptlist) = doLambda (ppt, fb, (m, ptlist))
+                    in 
+			(case CFACPS.callersOf f
+			  of CFACPS.Unknown => doExp(e, (addInfo (m, ppt, pptOfExp e), (pptOfExp e)::ptlist))
+			   | _ => doExp (e, (addInfo (m, ppt, pptOfExp e), ptlist)))
                     end
                   | CPS.If(_, e1, e2) => let
                         val m = addInfo (m, ppt, pptOfExp e1)
                         val m = addInfo (m, ppt, pptOfExp e2)
-                        val m = doExp (e1, m)
+                        val (m, ptlist) = doExp (e1, (m, ptlist))
                     in
-                        doExp (e2, m)
+                        doExp (e2, (m, ptlist))
                     end
                   | CPS.Switch(_, cases, dflt) => let
                         val caseExps = List.map #2 cases
                         val ppts = List.map pptOfExp caseExps
                         val m = List.foldr (fn (cppt, m) => addInfo (m, ppt, cppt)) m ppts
-                        val m = List.foldr (fn (e, m) => doExp (e, m)) m caseExps
+                        val (m, ptlist) = List.foldr (fn (e, (m, ptlist)) => doExp (e, (m, ptlist))) (m, ptlist) caseExps
                     in
                         case dflt
-                         of NONE => m
-                          | SOME e => doExp (e, addInfo (m, ppt, pptOfExp e))
+                         of NONE => (m, ptlist)
+                          | SOME e => doExp (e, (addInfo (m, ppt, pptOfExp e), ptlist))
                     end
                   | CPS.Apply (f, _, _) => (
                     case CFACPS.valueOf f
-                     of CFACPS.TOP => (print (concat["Apply TOP to var: ", CV.toString f, "\n"]); setTop (m, ppt))
+                     of CFACPS.TOP => (print (concat["Apply TOP to var: ", CV.toString f, "\n"]); (setTop (m, ppt), ptlist))
                       | CFACPS.LAMBDAS ls => let
                             val ll = VSet.listItems ls
                             val pl = List.map bodyLocation ll
                         in
-                            List.foldr (fn (fppt, m) => addInfo (m, ppt, fppt)) m pl
+                            (List.foldr (fn (fppt, m) => addInfo (m, ppt, fppt)) m pl, ptlist)
                         end
-                      | CFACPS.BOT => m
+                      | CFACPS.BOT => (m, ptlist)
                       | CFACPS.TUPLE _ => raise Fail (concat[CV.toString f, " is in an application position but is a tuple according to CFA."]))
                   | CPS.Throw (k, _) => (
                     case CFACPS.valueOf k
-                     of CFACPS.TOP => (print (concat["Throw TOP to var: ", CV.toString k, "\n"]); setTop (m, ppt))
+                     of CFACPS.TOP => (print (concat["Throw TOP to var: ", CV.toString k, "\n"]); (setTop (m, ppt), ptlist))
                       | CFACPS.LAMBDAS ls => let
                             val ll = VSet.listItems ls
                             val pl = List.map bodyLocation ll
                         in
-                            List.foldr (fn (fppt, m) => addInfo (m, ppt, fppt)) m pl
+                            (List.foldr (fn (fppt, m) => addInfo (m, ppt, fppt)) m pl, ptlist)
                         end
-                      | CFACPS.BOT => m
+                      | CFACPS.BOT => (m, ptlist)
                       | CFACPS.TUPLE _ => raise Fail (concat[CV.toString k, " is in an application position but is a tuple according to CFA."]))
                 (* end case *))
           in
-            doLambda (bindingLocation f, body, PMap.empty)
+            doLambda (bindingLocation f, body, (PMap.empty, nil))
           end
 
     (* union returns a flag for whether or not the value changed and the result of the union *)
@@ -219,20 +228,19 @@ structure Reflow : sig
         loop map
     end
 
-    fun compressSCC (p) = let
+    fun compressSCC (p, ptlist) = let
         (* TODO:
          * This list (the places an unknown call can go to) can be reduced to just
          * those program points that define functions whose callersOf are unknown.
          * If the list is still too big, it could also be split by fun/cont types.
          *)
-    	val ptlist = map #1 (PMap.listItemsi p)
 	fun follow pt =
             case PMap.find(p, pt)
              of SOME v => (case v
 	                    of TOP => ptlist
 	                     | REACHES l => PSet.listItems l)
               | NONE => []
-	val components = SCC.topOrder'{roots = ptlist, follow = follow}
+	val components = SCC.topOrder'{roots = map #1 (PMap.listItemsi p), follow = follow}
         val _ = if !debugFlg
                 then print (concat["Number of SCC components: ",
                                    Int.toString (List.length components),
@@ -249,7 +257,9 @@ structure Reflow : sig
 	val newreps = foldl foldnewreps PMap.empty components
 	fun fixLH (pt, _) =
 	    case PMap.find(!representative, pt)
-	     of NONE => (print ("Oops\n"); false)
+	     of NONE => if !debugFlg
+			then (print ("Oops\n"); false)
+			else false
 	      | SOME rep =>
 		if ProgPt.compare(pt, rep) = EQUAL
 		then true
@@ -270,22 +280,19 @@ structure Reflow : sig
 
     fun analyze (module as CPS.MODULE{body, ...}) = let
         val _ = setLocations module
-        val neighbors = addNeighbors module
+        val (neighbors, neighborlist) = addNeighbors module
         val _ = if !debugFlg
                 then print (concat["Number of program points: ",
                                    Int.toString (PMap.numItems neighbors),
                                    "\n"])
                 else ()
-        val SCCCompressed = compressSCC neighbors
+        val SCCCompressed = compressSCC (neighbors, neighborlist)
         val reachability = computeReachability SCCCompressed
     in
         graph := reachability
     end
 
-    (*
-     * TODO: this needs to look up the program points in the
-     * representative maps before checking them in the graph.
-     *)
+
     fun pathExists (p1, p2) = (
         case PMap.find (!graph, Option.valOf(PMap.find(!representative, p1)))
          of NONE => false
