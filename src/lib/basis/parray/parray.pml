@@ -83,7 +83,7 @@ structure PArray = struct
   (* fun filter (pred, pa) = fromRope(Rope.filter pred (toRope pa)) *)
   (* fun rev pa = fromRope(Rope.rev(toRope pa)) *)
   (* fun fromList l = fromRope(Rope.fromList l) *)
-  (* fun concat (pa1, pa2) = fromRope(Rope.concat(toRope pa1, toRope pa2)) *)
+  fun concat (pa1, pa2) = fromRope(Rope.concat(toRope pa1, toRope pa2))
   (* fun tabulateWithPred (n, f) = fromRope(Rope.tabulate(n, f)) *)
   (* fun forP (n, f) = Rope.for (n,f) *)
   (* fun repP (n, x) = fromRope(Rope.tabulate (n, fn _ => x)) *)
@@ -256,18 +256,21 @@ structure PArray = struct
 
 end
 
+ val concatP = PArray.concat
+ val reduceP = PArray.reduce 
+
 (* (\* FIXME: the following definitions should be in a separate *)
 (*  * file (a la sequential/pervasives.pml) *)
 (*  *\) *)
 (* (\* Below is the subset of the parallel array module that should bound at the top level. *\) *)
-(* val reduceP = PArray.reduce *)
+
 (* val filterP = PArray.filter *)
 (* val subP = PArray.sub *)
 (* val revP = PArray.rev *)
 (* val lengthP = PArray.length *)
 (* val mapP = PArray.map *)
 (* val fromListP = PArray.fromList *)
-(* val concatP = PArray.concat *)
+
 (* val tabP = PArray.tabulateWithPred *)
 (* val forP = PArray.forP *)
 (* *\) *)

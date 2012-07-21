@@ -215,7 +215,7 @@ void M_Print (const char *s)
 void M_PrintOrd (const int i)
 {
 #ifdef NDEBUG
-    Say("%c", i);
+    putchar(i);
 #else
     Say("[%2d] %c", VProcSelf()->id, i);
 #endif

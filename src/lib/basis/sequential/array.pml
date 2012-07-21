@@ -27,10 +27,8 @@ val length : 'a array -> int = _prim (@length)
 fun isIxInBounds (a, i) = i >= 0 andalso i < length a
 
 fun update (a, i, x) = 
-  if isIxInBounds (a, i) then
     U.update (a, i, x)
-  else
-    Debug.failwith "Array.update: index i out of bounds"
+
 fun sub (a, i) =
   if isIxInBounds (a, i) then
     U.sub (a, i)
