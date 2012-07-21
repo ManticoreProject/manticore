@@ -67,9 +67,10 @@ structure TranslateTypes : sig
 		  | Ty.MetaTy _ => raise Fail "unexpected kinded MetaTy"
 		  | Ty.VarTy _ => BTy.T_Any
 		  | Ty.ConTy(tyArgs, tyc) => (
-		      case TranslateEnv.findTyc (env, tyc)
-		       of SOME ty => ty
-			| NONE => 
+		      case (trPArray(tyArgs, tyc), TranslateEnv.findTyc (env, tyc))
+                       of (SOME ty, _) => ty
+                        | (NONE, SOME ty) => ty
+			| (NONE, NONE) => 
 			  (case tyc
 			    of Ty.Tyc{def=Ty.AbsTyc, ...} => 
 			       (* look for the concrete type of the constructor *)
@@ -77,7 +78,6 @@ structure TranslateTypes : sig
 				  of SOME (ModuleEnv.TyCon tyc) => trTyc(env, tyc)
 				   | SOME (ModuleEnv.TyDef tys) => trScheme(env, tys)
 				   | SOME (ModuleEnv.BOMTyDef ty) => cvtPrimTy env ty
-(* FIXME When parray is looked up, we get NONE. *)
 				   | NONE => trTyc (env, tyc)
 			         (* end case *))
 			     | _ => trTyc (env, tyc)
@@ -91,6 +91,24 @@ structure TranslateTypes : sig
 	    tr' ty
 	  end
 
+        (*
+         * FIXME: This only handles the single "int parray" type. Should it handle
+         * more? And, should it be creating the BOM types differently (i.e. using
+         * a real datatype)?
+         *)
+    and trPArray (tyArgs, tyc) = 
+        if not(!BOMOptControls.flattenFlg) then NONE
+        else (if TyCon.same (tyc, Basis.parrayTyc)
+              then (print (concat["Parray of type: ",
+                                  String.concatWith "," (List.map TypeUtil.toString  tyArgs),
+                                  "\n"]);
+                    case tyArgs
+                     of [single] => (if (TypeUtil.same(single, Basis.intTy))
+                                     then SOME(BTy.T_Parr (BTy.IntParr))
+                                     else NONE)
+                      | _ => NONE)
+              else NONE)
+             
     and trScheme (env, Ty.TyScheme(_, ty)) = tr (env, ty)
 
     and trTyc (env, tyc as Ty.Tyc {name, def, ...}) = (case def
@@ -199,6 +217,7 @@ structure TranslateTypes : sig
 		 | (BPT.T_Cont tys) => BTy.T_Cont(cvtTys tys)
 		 | (BPT.T_CFun cproto) => BTy.T_CFun cproto
 		 | (BPT.T_VProc) => BTy.T_VProc
+		 | (BPT.T_Deque) => BTy.T_Deque
 		 | (BPT.T_TyCon tyc) => (
 		     case E.findBOMTy tyc
 		      of E.BTY_NONE => raise Fail("unbound BOM type constructor " ^ PTVar.toString tyc)

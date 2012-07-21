@@ -63,6 +63,9 @@ structure Equality : sig
 		    | BTy.T_Vec128 => raise Fail "Raw T_Vec128 equality"
 		  (* end case *))
 	      | BTy.T_Tuple(false, tys) => mkTuple (0, tys)
+	      | BTy.T_TyCon(BTy.DataTyc{kind = ref BTy.K_UNBOXED, ...}) =>
+		  mkTest (P.Equal, P.NotEqual)
+(* FIXME: other BOM datatypes should be handled too *)
 	      | _ => raise Fail(BOMTyUtil.toString ty ^ " not an equality type")
 	    (* end case *)
 	  end

@@ -32,24 +32,24 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
     fun liveVarsOfXfer transfer =
 	  deleteList (fromList (CFGUtil.varsOfXfer transfer), CFGUtil.lhsOfXfer transfer)
 
-  (* if the function body contains a C call that allocates, split the body at that point *)
-    fun splitFunBody ([], _, _) = NONE
-      | splitFunBody (e :: es, preds, fvs) = (case e
+  (* if the block body  contains a C call that allocates, split the body at that point *)
+    fun splitBlockBody ([], _, _) = NONE
+      | splitBlockBody (e :: es, preds, fvs) = (case e
 	   of CFG.E_CCall (lhs, f, args) => 
 	        if (CFunctions.protoHasAttr CFunctions.A_alloc (getCPrototype f))
 		   then SOME (lhs, f, args, preds, es, deleteList (fvs, lhs))
-		   else splitFunBody (es, e :: preds, liveVarsOfExp (e, fvs))
-	    | e => splitFunBody (es, e :: preds, liveVarsOfExp (e, fvs))
+		   else splitBlockBody (es, e :: preds, liveVarsOfExp (e, fvs))
+	    | e => splitBlockBody (es, e :: preds, liveVarsOfExp (e, fvs))
 	  (* end case *))
 	
-    fun revBody (CFG.FUNC{lab, entry, body, exit}) = 
-	CFG.FUNC{lab=lab, entry=entry, body=List.rev body, exit=exit}
+    fun revBody (CFG.BLK{lab, args, body, exit}) = 
+	CFG.BLK{lab=lab, args=args, body=List.rev body, exit=exit}
 
-    fun rewriteFunc func = let
-	(* keep splitting the function body until we have no more calls to C functions that allocate *)
-	  fun split (func as CFG.FUNC{lab, entry, body, exit}, funcs) = (
-		case splitFunBody (body, [], liveVarsOfXfer exit)
-		 of NONE => revBody func :: funcs
+    fun rewriteFunc (func as CFG.FUNC{lab, entry, start, body}) = let
+	(* keep splitting the block until we have no more calls to C functions that allocate *)
+	  fun split (block as CFG.BLK{lab, args, body, exit}, blocks) = (
+		case splitBlockBody (body, [], liveVarsOfXfer exit)
+		 of NONE => revBody block :: blocks
 		(* split the function func *)
 		  | SOME (lhs, f, cArgs, preds, body, fvs') => let
 		    (* live variables in f'' *)
@@ -60,26 +60,33 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
 		      val lab' = CFG.Label.new(
 				 "allocCCall",
 				 CFGTy.T_Block{args = List.map CFG.Var.typeOf (lhs @ freshLiveVars)})
-		    (* f' is the new function up to and including the C call and f'' is the function after the C call *)
-		      val func' = CFGUtil.rewriteFunc (func, body, CFG.AllocCCall{
+		    (* block' is the new function up to and including the C call
+                     * and block'' is the function after the C call *)
+                      val block' = CFG.BLK {lab=lab, args=args, body=body,
+                                            exit=CFG.AllocCCall{
 			      lhs = List.map CFG.Var.copy lhs,
 			      f = f,
 			      args = cArgs,
 			      ret = (lab', liveVars)
-			    })
-		      val func'' = CFG.mkLocalFunc (lab',
-			    CFG.Block{args = lhs @ freshLiveVars},
-			    List.map (CFGUtil.substExp env) preds, CFGUtil.substTransfer env exit)
+			    }}
+                      val block'' = CFG.BLK {lab=lab', args=lhs @ freshLiveVars, body=List.map (CFGUtil.substExp env) preds,
+                                             exit=CFGUtil.substTransfer env exit}
 		      in
-			  split (func', func'' :: funcs)
+			  split (block', block'' :: blocks)
 		      end (* split *)
 	      (* end case *))
+          val start::rest = split (revBody start, [])
+          val bodyBlocks = List.foldr (fn (b,rr) => (split (revBody b, []))@rr) rest body
+	  val export = (case CFG.Label.kindOf lab
+			 of CFG.LK_Func{export, ...} => export
+			  | _ => raise Fail "bogus label kind"
+		       (* end case *))
 	  in
-	    split (revBody func, [])
+            CFG.mkFunc (lab, entry, start, rest, export)
 	  end
 			       
     fun transform (CFG.MODULE{name, externs, code}) = let
-	  val code = List.concat (List.map rewriteFunc code)
+	  val code = List.map rewriteFunc code
 	  val module = CFG.mkModule (name, externs, code)
 	  in
 	    Census.census module;

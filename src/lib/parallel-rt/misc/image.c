@@ -5,6 +5,7 @@
  */
 
 #include "manticore-rt.h"
+#include "image.h"
 #include <stdio.h>
 
 #define MAX_SZ		4096
@@ -18,13 +19,6 @@ STATIC_INLINE double clampd (double d)
 {
     if (d < 0.0) return 0.0; else if (d > 1.0) return 1.0; else return d;
 }
-
-typedef unsigned char Pixel_t[8];
-
-typedef struct {
-    unsigned int	wid, ht;
-    Pixel_t		*pixels;
-} Image_t;
 
 /* M_NewImage:
  */

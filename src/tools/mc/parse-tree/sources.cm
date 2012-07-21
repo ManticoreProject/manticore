@@ -9,6 +9,7 @@
 Library
 
   structure ProgramParseTree
+  structure PrintPT
 
 is
   
@@ -22,4 +23,5 @@ is
   bom-parse-tree-fn.sml
   pml-parse-tree-fn.sml
   prog-parse-tree.sml
+  print-pt.sml
 

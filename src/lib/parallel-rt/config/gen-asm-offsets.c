@@ -12,6 +12,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include "manticore-rt.h"
 #include <stdio.h>
 #include <string.h>
@@ -28,7 +29,7 @@ static int LogBufSz = LOGBUF_SZ;
 
 /* print the definition of a symbol */
 #define PR_DEFINE(symb, val)							\
-	printf("#define " #symb " %#0llx\n", (uint64_t)val)
+	printf("#define " #symb " %#0" PRIx64 "\n", (uint64_t)val)
 
 /* print a value definition and record it in the CRC buffer */
 #define PR_VALUE(tag, var, value)						\
@@ -60,7 +61,7 @@ int main ()
     LogBuffer_t		logBuffer;
     LogEvent_t		logEvent;
     SchedActStkItem_t	actcons;
-    RdyQItem_t		rdyq;
+    RdyQItem_t		rdyq, sndq;
     unsigned char	buf[8*1024];
     char		*bp = (char *)buf;
 
@@ -91,13 +92,6 @@ int main ()
     PR_OFFSET_NOCRC(actcons, ACTCONS_ACT, act);
     PR_OFFSET_NOCRC(actcons, ACTCONS_LINK, link);
 
-    printf("\n/* constants for the ready queue elements */\n");
-    PR_DEFINE(RDYQ_HDR, VEC_HDR(3));
-    PR_DEFINE(RDYQ_SZB, sizeof(RdyQItem_t) + WORD_SZB);
-    PR_OFFSET_NOCRC(rdyq, RDYQ_FIBER, fiber);
-    PR_OFFSET_NOCRC(rdyq, RDYQ_TID, tid);
-    PR_OFFSET_NOCRC(rdyq, RDYQ_LINK, link);
-    
     printf("\n/* Stack-frame size */\n");
     PR_DEFINE(FRAME_SZB, FRAME_SZB);
 

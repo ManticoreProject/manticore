@@ -10,13 +10,13 @@ fun catw (sep, ss) =
     (* end case *));
 
 fun parrString a =
-  let val len = plen a
+  let val len = PArray.length a
       fun build (curr, acc) =
         if curr=len
         then rev acc
         else build (curr+1, (Int.toString (a!curr)) :: acc)
   in
-      "[" ^ (concatWith (",", build (0, nil))) ^ "]"
+      "[" ^ String.concatWith "," (build (0, nil)) ^ "]"
   end;
 
 (*** Test Code ***)
@@ -24,7 +24,7 @@ fun parrString a =
 val pc = [| x*x | x in [| 1 to 20 |] |];
 (* val pc = [| x*x | x in [| 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20 |] |]; *)
 
-val s = parrString pc;
+val s = parrString pc
 
-print ("RESULT: " ^ s ^ "\n     (expected 1, 4, 9, ..., 400)\n")
+val _ = Print.printLn ("RESULT: " ^ s ^ "\n     (expected 1, 4, 9, ..., 400)")
 

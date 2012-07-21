@@ -33,7 +33,7 @@ structure SpecializeCalls : sig
 			   * called from the same sites.
 			   *)
 			    fun merge siteLab = let
-				  val CFG.LK_Local{func=CFG.FUNC{exit, ...}, ...} =
+				  val CFG.LK_Func{func=CFG.FUNC{start as CFG.BLK{exit,...}, ...}, ...} =
 					CFG.Label.kindOf siteLab
 				  fun mergeEqClasses dst = (case CFA.valueOf dst
 					 of CFA.LABELS labs => let

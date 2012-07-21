@@ -32,7 +32,7 @@ structure PrimList =
 
       define (* inline *) @length (xs : list / exh : exh) : int =
 	  let l : ml_int = @length-w (xs / exh)
-	  return (unwrap(l))
+	  return (#0(l))
 	;
 
       define (* inline *) @app (f : fun(any / exh -> ), ls : list / exh : exh) : () =

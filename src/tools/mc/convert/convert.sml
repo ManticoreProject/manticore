@@ -36,6 +36,7 @@ structure Convert : sig
       | cvtTy (BTy.T_Cont tys) = CTy.contTy(List.map cvtTy tys)
       | cvtTy (BTy.T_CFun cproto) = CTy.T_CFun cproto
       | cvtTy (BTy.T_VProc) = CTy.T_VProc
+      | cvtTy (BTy.T_Deque) = CTy.T_Deque
       | cvtTy (BTy.T_TyCon tyc) = raise Fail("unexpected tycon " ^ BOMTyCon.tycName tyc)
 
   (* create a new CPS variable using the name of a BOM variable *)
@@ -227,7 +228,7 @@ structure Convert : sig
 	    (env, C.FB{f = f', params = params', rets = [], body = body'})
 	  end
 
-    fun transform (B.MODULE{name, externs, hlops, body}) = let
+    fun transform (B.MODULE{name, externs, hlops, rewrites, body}) = let
 	  fun cvtExtern (CFunctions.CFun{var, name, retTy, argTys, attrs, varArg}, (cfs, env)) = let
 		val (var', env) = bindVar(env, var)
 		in
@@ -235,7 +236,7 @@ structure Convert : sig
 		end
 	  val (externs', env) = List.foldr cvtExtern ([], E.empty) externs
 	  val env = bindLambda (body, env)
-	  val body' = C.mkLambda(cvtLambda (env, body))
+	  val body' = C.mkLambda(cvtLambda (env, body), false)
 	  in
 	    C.MODULE{
 		name = name, 

@@ -140,6 +140,7 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I64Neg",	mk Prim1 (P.I64Neg,		i64,			i64)),
 		("U64Mul",      mk Prim2 (P.U64Mul,     	(i64, i64),     	i64)),
 		("U64Div",      mk Prim2 (P.U64Div,     	(i64, i64),     	i64)),
+		("U64Rem",      mk Prim2 (P.U64Rem,     	(i64, i64),     	i64)),
 		("F32Add",	mk Prim2 (P.F32Add,		(f32, f32),		f32)),
 		("F32Sub",	mk Prim2 (P.F32Sub,		(f32, f32),		f32)),
 		("F32Mul",	mk Prim2 (P.F32Mul,		(f32, f32),		f32)),
@@ -156,6 +157,7 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("F64Abs",	mk Prim1 (P.F64Abs,		f64,			f64)),
                 ("I32ToI64X",   mk Prim1 (P.I32ToI64X,  	i32,            	i64)),
                 ("I32ToI64",    mk Prim1 (P.I32ToI64,   	i32,            	i64)),
+                ("I64ToI32",    mk Prim1 (P.I64ToI32,   	i64,            	i32)),
                 ("I32ToF32",    mk Prim1 (P.I32ToF32,   	i32,            	f32)),
                 ("I32ToF64",    mk Prim1 (P.I32ToF64,   	i32,            	f64)),
                 ("I64ToF32",    mk Prim1 (P.I64ToF32,   	i64,            	f32)),
@@ -187,19 +189,24 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("ArrLoadI64",	mk Prim2 (P.ArrLoadI64,		(adrTy, i32),		i64)),
 		("ArrLoadF32",	mk Prim2 (P.ArrLoadF32,		(adrTy, i32),		f32)),
 		("ArrLoadF64",	mk Prim2 (P.ArrLoadF64,		(adrTy, i32),		f64)),
-		("ArrLoad",	mk Prim2 (P.ArrLoad,		(adrTy, i32),		f64)),
+		("ArrLoad",	mk Prim2 (P.ArrLoad,		(adrTy, i32),		aTy)),
 		("ArrStoreI32",	mk Prim3 (P.ArrStoreI32,	(adrTy, i32, i32),	uTy)),
 		("ArrStoreI64",	mk Prim3 (P.ArrStoreI64,	(adrTy, i32, i64),	uTy)),
 		("ArrStoreF32",	mk Prim3 (P.ArrStoreF32,	(adrTy, i32, f32),	uTy)),
 		("ArrStoreF64",	mk Prim3 (P.ArrStoreF64,	(adrTy, i32, f64),	uTy)),
-		("ArrStore",	mk Prim3 (P.ArrStore,		(adrTy, i32, f64),	uTy)),
+		("ArrStore",	mk Prim3 (P.ArrStore,		(adrTy, i32, aTy),	uTy)),
 		("I32FetchAndAdd", mk Prim2 (P.I32FetchAndAdd,	(i32, i32),		i32)),
 		("I64FetchAndAdd", mk Prim2 (P.I64FetchAndAdd,	(i64, i64),		i64)),
 		("CAS",		mk Prim3 (P.CAS,		(adrTy, aTy, aTy),	aTy)),
 		("Pause",	mk0 (P.Pause,						uTy)),
 		("FenceRead",	mk0 (P.FenceRead,					uTy)),
 		("FenceWrite",	mk0 (P.FenceWrite,					uTy)),
-		("FenceRW",	mk0 (P.FenceRW,						uTy))
+		("FenceRW",	mk0 (P.FenceRW,						uTy)),
+		("AllocPolyVec", mk Prim2 (P.AllocPolyVec,      (i32, aTy),             aTy)),
+		("AllocIntArray", mk Prim1 (P.AllocIntArray,        i32,                aTy)),
+		("AllocLongArray", mk Prim1 (P.AllocLongArray,      i32,                aTy)),
+		("AllocFloatArray", mk Prim1 (P.AllocFloatArray,    i32,                aTy)),
+		("AllocDoubleArray", mk Prim1 (P.AllocDoubleArray,  i32,                aTy))
 	      ];
 	    AtomTable.find tbl
 	  end

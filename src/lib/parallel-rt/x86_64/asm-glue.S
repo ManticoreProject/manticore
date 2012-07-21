@@ -9,7 +9,8 @@
 #include "asm-offsets.h"
 #include "registers.h"
 
-#define TMP_REG1            %rcx          /* must be caller save */
+#define TMP_REG1            %r10          /* must be caller save */
+#define TMP_REG2            %r15          /* must be caller save */	
 
 /* Stack frame layout */
 #define RBX_OFF		(-2*8)	/* offset off %rbp for saving %rbx */
@@ -51,8 +52,6 @@ _GSYM(ASM_Apply):
 	movq	%r9,STD_EXH_REG		/* exception continuation */
       /* load Manticore state */
 	movq	ALLOC_PTR(VPROC_PTR_REG),ALLOC_PTR_REG	/* load allocation pointer */
-	movq	LIMIT_PTR(VPROC_PTR_REG),LIMIT_PTR_REG	/* limit pointer */
-	movq	$M_TRUE,IN_MANTICORE(VPROC_PTR_REG) /* we are running manticore code now! */
 	jmp	*%r12
 
 /* code address for uncaught exception continuation */
@@ -109,9 +108,6 @@ switch_to_c:
 	jmp 	invalidate_spill_area
 continue_to_c:		
 #endif
-
-      /* mark that we are not running Manticore code anymore */
-	movq	$M_FALSE,IN_MANTICORE(VPROC_PTR_REG)
       /* save Manticore state */
 	movq	STD_ARG_REG,STD_ARG(VPROC_PTR_REG)
 	movq	STD_EP_REG,STD_EP(VPROC_PTR_REG)

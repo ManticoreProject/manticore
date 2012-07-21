@@ -19,7 +19,6 @@
  *	
  */
 
-    VP_OFFSET(vp, IN_MANTICORE, inManticore, true);
     VP_OFFSET(vp, ATOMIC, atomic, true);
     VP_OFFSET(vp, SIG_PENDING, sigPending, false);
     VP_OFFSET(vp, VP_SLEEPING, sleeping, false);
@@ -31,6 +30,8 @@
     VP_OFFSET(vp, VP_SHUTDOWN_CONT, shutdownCont, true);
     VP_OFFSET(vp, VP_RDYQ_HD, rdyQHd, true);
     VP_OFFSET(vp, VP_RDYQ_TL, rdyQTl, true);
+    VP_OFFSET(vp, VP_SNDQ_HD, sndQHd, true);
+    VP_OFFSET(vp, VP_SNDQ_TL, sndQTl, true);
     VP_OFFSET(vp, STD_ARG, stdArg, true);
     VP_OFFSET(vp, STD_EP, stdEnvPtr, true);
     VP_OFFSET(vp, STD_CONT, stdCont, true);
@@ -45,3 +46,4 @@
     VP_OFFSET(vp, VPROC_ID, id, true);
     VP_OFFSET(vp, VP_LANDING_PAD, landingPad, false);
     VP_OFFSET(vp, LIMIT_PTR, limitPtr, true);
+    VP_OFFSET(vp, ALLOC_POLY_VEC_N, eventId, true);

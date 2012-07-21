@@ -45,6 +45,10 @@ structure VProcInit (* :
              return ()
           let shutdownCont : PT.fiber = promote(shutdownCont)
           do vpstore(VP_SHUTDOWN_CONT, vp, shutdownCont)
+	(**** vp->currentFLS ****)
+	  let fls : FLS.fls = FLS.@new(UNIT / exh)
+	  let fls : FLS.fls = promote(fls)
+	  do vpstore(CURRENT_FLS, vp, fls)
 	(**** vp->dummyK ****)
 	  cont dummyK (x : unit) = 
 	      let _ : unit = SchedulerAction.@stop()

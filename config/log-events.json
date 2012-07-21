@@ -253,6 +253,13 @@
         "attrs" : ["src", "pml"],
 	"desc" : "work-stealing group initialization"
       },
+      { "name" : "WSTerminate",
+	"args" : [
+	    {"name" : "wgid", "ty" : "id", "desc" : "unique ID of work group"}
+	 ],
+        "attrs" : ["pml"],
+	"desc" : "work-stealing group termination"
+      },
       { "name" : "WSWorkerInit",
         "args" : [
 	    {"name" : "wid", "ty" : "new-id", "desc" : "unique ID of the worker"},

@@ -99,6 +99,9 @@ structure PrintAST : sig
   (* FIXME: should have proper pretty printing for types *)
     fun tyScheme ts = pr(TypeUtil.schemeToString ts)
 
+(*    fun typeToString ty = TypeUtil.fmt {long=true} ty *)
+    fun typeToString ty = TypeUtil.toString ty
+
     fun exp (e as A.LetExp _) = let
 	  fun prBinds (A.LetExp(b, e)) = (
 		ln ();
@@ -153,13 +156,14 @@ structure PrintAST : sig
 	  openVBox (abs 1);
 	    ln ();
 	    case pms
-	     of m::ms => (ppm " of" m; app (ppm "  |") ms)
+	     of m::ms => (ppm "of" m; app (ppm " |") ms)
 	      | nil => raise Fail "pcase without any branches"
 	    (* end case *);
             closeBox ();
           pr "(* end pcase *))";
 	  closeBox ())
       | exp (A.HandleExp(e, matches, ty)) = (
+          pr "(";
 	  openHOVBox (rel 2);
 	    openHBox ();
 	      pr "(";
@@ -175,7 +179,7 @@ structure PrintAST : sig
 	      pr "(* end handle *))";
 	    closeBox ();
 	 closeBox ())
-      | exp (A.RaiseExp(e, ty)) = (
+      | exp (A.RaiseExp(l, e, ty)) = (
 	  openHVBox (rel 2);
 	    pr "raise"; sp (); exp e;
 	  closeBox ())
@@ -249,7 +253,11 @@ structure PrintAST : sig
 	  exp e;
 	  closeBox ())
       | exp (A.ConstExp c) = const c
-      | exp (A.VarExp (v, ts)) = var v
+      | exp (A.VarExp (v, ts)) = (
+        var v ;
+        pr "[" ;
+        pr (String.concatWith "," (List.map typeToString ts));
+        pr "]")
       | exp (A.SeqExp (e1, e2)) = (
 	  pr "(";
 	  exp e1;
@@ -298,9 +306,11 @@ structure PrintAST : sig
             exp e;
             ln ();
           closeBox ())
-      | ppm s (A.Otherwise e) = (
+      | ppm s (A.Otherwise (ts, e)) = (
           openVBox (rel 0);
-            pr "| otherwise =>";
+            pr s;
+	    sp ();
+            pr "otherwise =>";
             sp ();
             exp e;
             ln ();
@@ -379,12 +389,17 @@ structure PrintAST : sig
 	   pr ")";
 	   closeBox ())
       | pat (A.VarPat v) = var v
-      | pat (A.WildPat ty) = pr "_"
+      | pat (A.WildPat ty) = 
+         (if !showTypes
+	  then pr ("(_:" ^ TypeUtil.toString ty ^ ")")
+	  else pr "_")
       | pat (A.ConstPat c) = const c
 
   (* const : A.const -> unit *)
     and const (A.DConst (c, ts)) = dcon c
-      | const (A.LConst (lit, t)) = pr (Literal.toString lit)
+      | const (A.LConst (lit, ty)) = (
+	  pr "("; pr (Literal.toString lit);
+	  pr ":"; pr (TypeUtil.toString ty); pr ")")
 
   (* dcon : T.dcon -> unit *)
     and dcon (dc as T.DCon{name, owner, ...}) = let
@@ -403,7 +418,7 @@ structure PrintAST : sig
     and var (v as VarRep.V{name, ...}) = let
       val x = if !showStamps then Var.toString v else Var.nameOf v
       val t = TypeUtil.schemeToString (Var.typeOf v) 
-      val s = if !showTypes then x ^ " : " ^ t else x
+      val s = if !showTypes then "(" ^ x ^ ":" ^ t ^ ")" else x
       in
 	pr s
       end

@@ -24,17 +24,19 @@
     implicit-thread-ivar.pml
   end
 
-(* parallel suspensions *)
-  par-susp-sig.pml
-  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
-  in
-    par-susp.pml
-    par-susp1.pml
-  end
-
 (* multilisp futures *)
   future-sig.pml
   ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
   in
     multilisp-future.pml
+  end
+
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    parallel-suspensions.pml
+  end
+
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    pcase.pml
   end

@@ -30,20 +30,21 @@
 
 @synthesize resource;
 @synthesize size;
-@synthesize start;
+@synthesize logInterval;
 
 #pragma mark Initializations
 
 - (Summary *)initWithSize:(uint64_t)s
-		 andStart:(uint64_t)st
-	       andResource:(StateGroup *)res
+	      andInterval:(struct LogInterval)interval
+		andNumber:(int)num
+	      andResource:(StateGroup *)res
 {
     if (![super init]) return nil;
 
     resource = res;
     size = s;
-    start = st;
-    pies = [[NSMutableArray alloc] init];
+    logInterval = interval;
+    pies = [NSMutableArray arrayWithCapacity:num];
 
     return self;
 }
@@ -60,7 +61,8 @@
 {
 
     Summary *ret = [[Summary alloc] initWithSize:size
-					andStart:start
+				     andInterval:logInterval
+				       andNumber:(pies.count / block)
 				     andResource:resource];
     NSMutableArray *arr = ret.pies;
 
@@ -85,10 +87,11 @@
 
 /// Boxcar average of size window
 /// The new summary's size is the old summary's size - window + 1
-- (Summary *)coarseBoxcar:(int)window group:(StateGroup *)g
+- (Summary *)coarseBoxcar:(unsigned int)window group:(StateGroup *)g
 {
     Summary *ret = [[Summary alloc] initWithSize:size
-					andStart:start
+				     andInterval:logInterval
+				       andNumber:pies.count - window + 1
 				     andResource:resource];
     NSMutableArray *arr = ret.pies;
 
@@ -100,7 +103,7 @@
 
     // Initialize the first element of arr
     Pie *tot = [Pie emptyForStateGroup:g];
-    for (int i = 0; i < window; ++i)
+    for (unsigned int i = 0; i < window; ++i)
     {
 	Pie *pie = [pies objectAtIndex:i];
 	[tot increaseBy:pie];
@@ -110,7 +113,7 @@
     [arr addObject:tot];
 
     // Initialize the rest of arr
-    for (int i = 0; i < pies.count - window; ++i)
+    for (unsigned int i = 0; i < pies.count - window; ++i)
     {
 	[tot multiplyBy:window];  //< Undo the division of tot from before
 
@@ -132,7 +135,8 @@
     assert ( 0 < weight && weight < 1 );
 
     Summary *ret = [[Summary alloc] initWithSize:size
-					andStart:start
+				     andInterval:logInterval
+				       andNumber:pies.count
 				     andResource:resource];
     NSMutableArray *arr = ret.pies;
     assert (pies.count > 0);
@@ -140,7 +144,7 @@
     Pie *tot = [[pies objectAtIndex:0] copy];
     [arr addObject:tot];
 
-    for (int i = 1; i < pies.count; ++i)
+    for (unsigned int i = 1; i < pies.count; ++i)
     {
 	Pie *pie = [[pies objectAtIndex:i] copy];
 	[tot multiplyBy:weight];
@@ -163,7 +167,7 @@
 				     forState:(StateGroup *)state
 				     forVProc:(int32_t)vp
 				     withSize:(uint64_t)s
-				     andStart:(uint64_t)st
+				  andInterval:(struct LogInterval)interval
 				    andNumber:(uint64_t)n
 {
     double weight = DEFAULT_EXP_DECAY_WEIGHT;
@@ -172,7 +176,7 @@
 					  forState:state
 					  forVProc:vp
 					  withSize:size
-    					  andStart:st
+				       andInterval:interval
     					 andNumber:n];
     ret = [ret coarseExpDecay:weight];
     return ret;
@@ -182,7 +186,7 @@
 				   forState:(StateGroup *)state
 				   forVProc:(int32_t)vp
 				   withSize:(uint64_t)s
-				   andStart:(uint64_t)st
+				andInterval:(struct LogInterval)interval
 				  andNumber:(uint64_t)n
 {
     int window = DEFAULT_BOXCAR_WINDOW;
@@ -192,7 +196,7 @@
 					   forState:state
 					   forVProc:vp
 					   withSize:size
-    					   andStart:st
+					andInterval:interval
     					  andNumber:fine_n];
     ret = [ret coarseBoxcar:window group:state];
     return ret;
@@ -201,7 +205,7 @@
 				      forState:(StateGroup *)state
 				      forVProc:(int32_t)vp
 				      withSize:(uint64_t)s
-				      andStart:(uint64_t)st
+				   andInterval:(struct LogInterval)interval
 				     andNumber:(uint64_t)n
 {
     int block = DEFAULT_PARTITION_BLOCK;
@@ -211,7 +215,7 @@
 					  forState:state
 					  forVProc:vp
 					  withSize:size
-    					  andStart:st
+				       andInterval:interval
     					 andNumber:t];
 
 
@@ -229,29 +233,28 @@
 			     forState:(StateGroup *)state
 			     forVProc:(int32_t)vp
 			     withSize:(uint64_t)s
-			     andStart:(uint64_t)st
+			  andInterval:(struct LogInterval)interval
 			    andNumber:(uint64_t)n
 {
     Summary *sum = [Summary coarseSummaryFromLogDataPartition:logData
 						     forState:state
 						     forVProc:vp
 						     withSize:s
-						     andStart:st
+						  andInterval:interval
 						    andNumber:n];
     return sum;
 }
 
 
-STATIC_INLINE void pieInc(Pie *pie, uint64_t amt, uint64_t d, Detail *details)
+static inline void pieInc(Pie *pie, uint64_t amt, uint64_t d, Detail *details)
 {
     // NSLog(@"Incrementing pie %@ by amount %qu", pie, amt);
-    int consumer_int = Detail_State_state(details[d]);
-    NSNumber *consumer = [NSNumber numberWithInt:consumer_int];
+    int consumer = Detail_State_state(details[d]);
     [pie incrementConsumer:consumer byAmount:amt];
 }
 
 
-///////////////////////////////////// UTILITIES for fineSummaryFromLogData /////////////////////////// {{{
+#pragma mark UTILITIES for fineSummaryFromLogData
 
 
 int state_detail_end_before(Detail d, uint64_t t)
@@ -288,14 +291,13 @@ int state_detail_end_after(Detail d, uint64_t t)
     return e ? Event_Time(*e) > t : 1;
 }
 
-///////////////////////////////////// END UTILITIES /////////////////////////// }}}
 
 /// Common subroutine for reading data from log file
 + (Summary *)fineSummaryFromLogData:(LogData *)logData
 			   forState:(StateGroup *)state
 			   forVProc:(int32_t)vp
 			   withSize:(uint64_t)size
-			   andStart:(uint64_t)st
+			andInterval:(struct LogInterval)interval
 			  andNumber:(uint64_t)n
 {
     VProc *vProc = [logData.vProcs objectAtIndex:vp];
@@ -311,13 +313,15 @@ int state_detail_end_after(Detail d, uint64_t t)
 
 
     // Initialize t, p, pie, pies, d to have the invariants listed below
-    t = st;
-    p = st;
+    t = p = interval.x;
     pie = [Pie emptyForStateGroup:state];
+    
+    assert (pie.nConsumers != 0);
 
     Summary *ret = [[Summary alloc] initWithSize:size
-					andStart:st
-					andResource:state];
+				     andInterval:interval
+				       andNumber:n
+				     andResource:state];
     pies = ret.pies;
     assert ( pies.count == 0);
 
@@ -335,7 +339,8 @@ int state_detail_end_after(Detail d, uint64_t t)
 	    ++d;
 	    continue;
 	}
-	if ( state_detail_start_before_eq(details[d], st) && state_detail_end_after(details[d], st))
+	if (state_detail_start_before_eq(details[d], interval.x) &&
+	    state_detail_end_after(details[d], interval.x))
 	{
 	    // d is now the correct index
 	    break;
@@ -382,27 +387,6 @@ int state_detail_end_after(Detail d, uint64_t t)
 	    pieInc(pie, k - t, old_d, details);
 	    t = k;
 
-	    /*
-	    
-	    uint64_t t2 = Event_Time(*Detail_State_start(details[d]));
-	    assert (t == t2);
-
-	    event *e = Detail_State_end(details[d]);
-	    if (e == NULL)
-	    {
-		// Final
-		pieInc(pie, p + size - t, d, details);
-		[pie divideBy:size];
-		[pie assertStochastic];
-		[pies addObject:pie];
-		
-		return ret;
-	    }
-	    else
-	    {
-		pieInc(pie,  Event_Time(*e) - t, d, details);
-	    }
-	    */
 	}
 	else if (i == n)
 	{
@@ -424,169 +408,10 @@ int state_detail_end_after(Detail d, uint64_t t)
 	    [pie assertStochastic];
 	    [pies addObject:pie];
 	    pie = [Pie emptyForStateGroup:state];
+	    assert(pie.nConsumers != 0);
 	    t = p = p + size;
 	}
     }
 }
 
-
-// Common subroutine for reading data from log file
-// This function has bugs, so it is being rewritten above
-+ (Summary *)oldFineSummaryFromLogData:(LogData *)logData
-			   forState:(StateGroup *)state
-			   forVProc:(int32_t)vp
-			   withSize:(uint64_t)size
-			   andStart:(uint64_t)st
-			  andNumber:(uint64_t)n
-{
-    Summary *ret = [[Summary alloc] initWithSize:size
-					andStart:st
-				     andResource:state];
-    NSMutableArray *arr = ret.pies;
-    assert (arr.count == 0);
-
-    DetailEnumerator *d = [[DetailEnumerator alloc] initWithLogData:logData
-							   andVProc:vp
-							   andGroup:state];
-    uint64_t p = st;
-    // Make the first pie
-    Pie *pie = [Pie emptyForStateGroup:state];
-
-    for (Detail detail = d.next; (detail != NULL) && (arr.count < n); detail = d.next)
-    {
-	//NSLog(@"summary: examining new detail to put into pies");
-        uint64_t start, end;
-	event *start_event = Detail_State_start(detail);
-	event *end_event = Detail_State_end(detail);
-        start = start_event == NULL ? logData.firstTime : Event_Time(*start_event);
-        end = end_event == NULL ? logData.lastTime : Event_Time(*end_event);
-
-	// Sanity checks
-	{
-
-	if (! ( start <= end ) )
-	{
-	    NSLog(@"start <= end has failed start = %qu, end = %qu", start, end);
-	    if (start == st) NSLog(@"start == st");
-	    if (end == st + size * n) NSLog(@"end == st + size * n");
-	    assert (start <= end);
-	}
-	// Skip events that lie outside the given interval (st, st + n * size)
-	if ( end < st || st + n * size < start)
-	{
-	    continue;
-	}
-	
-	// XXX correct?!
-	if (start < p) start = p;
-	
-	
-	if (! (p <= start))
-	{
-	    NSLog(@"p <= start has failed: p = %qu, start = %qu start event %x end event %x", p, start, start_event, end_event);
-	    assert (p <= start && start <= p + size);
-	}
-	if (! (start <= p + size))
-	{
-	    NSLog(@"start <= p + size has failed: p = %qu, start = %qu", p, start);
-	    assert (p <= start && start <= p + size);
-	}
-	if (! (end > p))
-	{
-	    NSLog(@"end = %qu, p = %qu, failing", end, p);
-	    assert (end > p);
-	}
-	
-	}
-	
-	//NSLog(@"Passed time tests");
-
-        int consumer_int = Detail_State_state(detail);
-        NSNumber *consumer = [NSNumber numberWithInt:consumer_int];
-
-        if (end < p + size)
-        {
-	   // NSLog(@"summary: incrementing counter");
-	   [pie incrementConsumer:consumer byAmount:end - start];
-        }
-        else // ( end >= p + size )
-        {
-	   // Finish this pie
-    	   [pie incrementConsumer:consumer byAmount:p + size - start];
-    	   [pie divideBy:size];
-    	   [pie assertStochastic];
-    	   [arr addObject:pie];
-	    if (arr.count == n) return ret;
-	 //   NSLog(@"adding pie to array");
-
-    	   // Start the next pie
-    	   while ( end >= p + size)
-	   {
-	       p += size;
-	       pie = [Pie emptyForStateGroup:state];
-	       [pie incrementConsumer:consumer byAmount:size];
-	       [pie divideBy:size];
-	       [pie assertStochastic];
-	   //    NSLog(@"adding pie to array, pie has a single slice");
-	       [arr addObject:pie];
-	       if (arr.count == n) return ret;
-	   }
-    	   pie = [Pie emptyForStateGroup:state];
-    	   [pie incrementConsumer:consumer byAmount:end - p];
-        }
-    }
-
-  //  NSLog(@"fine summary allocated with array of pies %@", ret.pies);
-    assert (ret.pies.count <= n);
-    return ret;
-}
-
-
-
-
 @end
-
-
-// OLD CODE SECTION
-/* pies is
-	// Fill the pie 
-	while (1)
-	{
-	    int consumer_int = Detail_State_state(d.detail);
-	    NSNumber *consumer = [NSNumber numberWithInt:consumer_int];
-	    if (b >= p + size)
-	    {
-		[pie incrementConsumer:consumer byAmount:p + size - a];
-		p += size;
-		a = p;
-		// b = b;  logically relevant, but computationally unneccessary
-		break;
-	    }
-	    else // ( b < p + size )
-	    {
-		[pie incrementConsumer:consumer byAmount:b - a];
-
-		tmp = b;
-		NSNumber *tmp2 = d.next;
-		if (tmp2 == NULL) return ret;
-		b = tmp2.unsignedLongLongValue;
-
-		a = tmp;
-		continue;
-	    }
-	}
-
-	// Insert the pie
-	[pie divideBy:size];
-	[pie assertStochastic];
-	[arr addObject:pie];
-    }
-
-
-
-
-    return ret;
-}
-*/
-
-

@@ -13,10 +13,10 @@
    val ivar = ImplicitThreadIVar.empty-ivar()
    fun bodyFn selFn = [| e2 |][x -> selFn()]
    cont slowPathK () = bodyFn(fn () => ImplicitThreadIVar.get ivar)
-   val _ = MultiprogrammedWorkStealing.push-tl(ImplicitThread.thread slowPathK)
+   val _ = SwpWorkStealing.push-tl(ImplicitThread.thread slowPathK)
    val x = [| e1 |]
    in
-      if (MultiprogrammedWorkStealing.pop-tl())
+      if (SwpWorkStealing.pop-tl())
 	 then bodyFn(fn () => x)
       else ( ImplicitThreadIVar.put(ivar, x); SchedulerAction.stop() )
    
@@ -63,9 +63,9 @@ structure TranslatePValCilk5  : sig
 	  B.mkHLOp(findHLOp["ImplicitThread", "thread-no-cancelable"], [k], [exh])
   (* deque support *)
     fun mkWsPush (exh, kLocal) =
-	  B.mkHLOp(findHLOp["MultiprogrammedWorkStealing", "push-tl"], [kLocal], [exh])
+	  B.mkHLOp(findHLOp["SwpWorkStealing", "push-tl"], [kLocal], [exh])
     fun mkWsPop exh =
-	  B.mkHLOp(findHLOp["MultiprogrammedWorkStealing", "pop-tl"], [], [exh])
+	  B.mkHLOp(findHLOp["SwpWorkStealing", "pop-tl"], [], [exh])
 
     fun mkRaiseExn (env, exh) = let
 	  val matchExnDCon = (

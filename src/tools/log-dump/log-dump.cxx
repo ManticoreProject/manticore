@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <assert.h>
+#include <inttypes.h>
 #include "log-file.h"
 #include "event-desc.hxx"
 #include "log-desc.hxx"
@@ -144,7 +145,7 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
     }
 
   /* read the header */
-    fread (buf, LOGBLOCK_SZB, 1, f);
+    int ignored = fread (buf, LOGBLOCK_SZB, 1, f);
     Hdr = new LogFileHeader_t;
     memcpy (Hdr, buf, sizeof(LogFileHeader_t));
 
@@ -185,7 +186,8 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
     }
 
   // count the number of buffers per vproc
-    int NumBufs[Hdr->nVProcs];
+    int *NumBufs;
+    NumBufs = (int*)malloc(sizeof(int)*Hdr->nVProcs);
     for (int i = 0;  i < Hdr->nVProcs; i++)
 	NumBufs[i] = 0;
 
@@ -195,7 +197,7 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
 
   /* read in the events */
     for (int i = 0;  i < numBufs;  i++) {
-	fread (buf, LogBufSzB, 1, f);
+	int ignored = fread (buf, LogBufSzB, 1, f);
 	LogBuffer_t *log = (LogBuffer_t *)buf;
       // check for valid vproc ID
 	if ((log->vpId < 0) || (Hdr->nVProcs <= log->vpId)) {
@@ -229,7 +231,7 @@ static void LoadLogFile (LogFileDesc *logFileDesc, const char *file)
   /* Adjust the timestamps to be relative to the start of the run */
     uint64_t startTime = GetTimestamp (&(Hdr->startTime));
     if (Events[0].timestamp < startTime) {
-	fprintf (stdout, "** Warning: first event occurs %lld ns. before start\n",
+	fprintf (stdout, "** Warning: first event occurs %" PRIu64 " ns. before start\n",
 	    startTime - Events[0].timestamp);
 	startTime = Events[0].timestamp;
     }

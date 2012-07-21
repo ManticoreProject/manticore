@@ -126,7 +126,7 @@ structure GenInlineLogH : GENERATOR =
 	  in
 	    prl ["#define Log", #name ed, "(vp"];
 	    prParams args;
-	    pr ")\n"
+	    pr ") 0\n"
 	  end
 
   (* compute a mapping from signatures to their argument info from the list of event

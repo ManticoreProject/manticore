@@ -40,10 +40,10 @@
 
 #pragma mark Initializations
 
-- (Interval *)initWithRect:(NSRect)r
-		     color:(NSColor *)c
-		     start:(event *)s
-		       end:(event *)f;
+- (id)initWithRect:(NSRect)r
+	     color:(NSColor *)c
+	     start:(event *)s
+	       end:(event *)f
 {
     if (![super init])
 	return nil;
@@ -65,10 +65,10 @@
 	[roundedRect moveToPoint:rect.origin];
 	[roundedRect lineToPoint:NSMakePoint(rect.origin.x, rect.origin.y + rect.size.height)];
 #else
-	NSPoint s = rect.origin;
-	[roundedRect moveToPoint:s];
-	s.y += rect.size.height;
-	[roundedRect lineToPoint:s];
+	NSPoint o = rect.origin;
+	[roundedRect moveToPoint:o];
+	o.y += rect.size.height;
+	[roundedRect lineToPoint:o];
 #endif
 	 
     }
@@ -124,6 +124,12 @@
     }
     
 }
+
+- (NSRect)bounds
+{
+    return rect;
+}
+
 
 - (shapeTag)kind
 {

@@ -54,11 +54,11 @@ structure CFGTyUtil : sig
       | kindOf (CTy.T_OpenTuple _) = CTy.K_BOXED
       | kindOf (CTy.T_Addr _) = CTy.K_TYPE
       | kindOf (CTy.T_CFun _) = CTy.K_UNIFORM
-      | kindOf CTy.T_VProc = CTy.K_ANY
-      | kindOf (CTy.T_StdFun _) = CTy.K_BOXED
-      | kindOf (CTy.T_StdCont _) = CTy.K_BOXED
+      | kindOf CTy.T_VProc = CTy.K_RAW
+      | kindOf CTy.T_Deque = CTy.K_RAW
+      | kindOf (CTy.T_StdFun _) = CTy.K_RAW
+      | kindOf (CTy.T_StdCont _) = CTy.K_RAW
       | kindOf (CTy.T_KnownFunc _) = CTy.K_TYPE
-      | kindOf (CTy.T_Block _) = CTy.K_TYPE
 
   (* compare types for equality *)
     fun equal (ty1, ty2) = (case (ty1, ty2)
@@ -72,6 +72,7 @@ structure CFGTyUtil : sig
 	    | (CTy.T_Addr ty1, CTy.T_Addr ty2) => equal (ty1, ty2)
 	    | (CTy.T_CFun c_proto1, CTy.T_CFun c_proto2) => c_proto1 = c_proto2
 	    | (CTy.T_VProc, CTy.T_VProc) => true
+	    | (CTy.T_Deque, CTy.T_Deque) => true
             | (CTy.T_StdFun{clos = clos1, args = args1, ret = ret1, exh = exh1},
                CTy.T_StdFun{clos = clos2, args = args2, ret = ret2, exh = exh2}) =>
                   equal (clos1, clos2) andalso equalList (args1, args2) andalso
@@ -82,9 +83,6 @@ structure CFGTyUtil : sig
             | (CTy.T_KnownFunc{clos = clos1, args = args1}, 
                CTy.T_KnownFunc{clos = clos2, args = args2}) => 
                   equal (clos1, clos2) andalso equalList (args1, args2)
-            | (CTy.T_Block{args = args1}, 
-               CTy.T_Block{args = args2}) => 
-                  equalList (args1, args2)
             | _ => false
 	  (* end case *))
     and equalList (tys1, tys2) = ListPair.allEq equal (tys1, tys2)
@@ -141,10 +139,6 @@ structure CFGTyUtil : sig
               (* Note contravariance for arguments! *)
                   (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
                   ListPair.allEq match (args2, args1)
-            | (CTy.T_Block{args = args1}, 
-               CTy.T_Block{args = args2}) => 
-              (* Note contravariance for arguments! *)
-                  ListPair.allEq match (args2, args1)
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 
@@ -172,6 +166,7 @@ structure CFGTyUtil : sig
 	      | CTy.T_Addr ty => concat["addr(", toString ty, ")"]
 	      | CTy.T_CFun proto => CFunctions.protoToString proto
 	      | CTy.T_VProc => "vproc"
+	      | CTy.T_Deque => "deque"
 	      | CTy.T_StdFun{clos, args, ret, exh} => concat[
 		    "fun(", toString clos, "/", args2s args, "/",
 		    toString ret, "/", toString exh, ")"
@@ -182,7 +177,6 @@ structure CFGTyUtil : sig
 	      | CTy.T_KnownFunc{clos, args} => concat[
                     "kfun(", toString clos, "/", args2s args, ")"
                   ]
-	      | CTy.T_Block{args} => concat("block(" :: tys2l(args, [")"]))
 	    (* end case *)
 	  end
 

@@ -22,7 +22,7 @@ end = struct
 
   type cluster = CFG.func list
 
-  fun addEdges (M.FUNC {lab, exit, ...}, edgeMap) = let
+  fun addEdges (M.FUNC {lab, start as M.BLK{exit,...}, body, ...}, edgeMap) = let
       (* add an undirected edge: lab <-> l *)
       fun addEdge (l, edgeMap) = (case (LM.find (edgeMap, lab), LM.find (edgeMap, l))
 	  of (SOME labLs, SOME lLs) => let
@@ -32,9 +32,12 @@ end = struct
 	     end
 	   | _ => raise Fail "addEdge")
       (* get the jump labels of a transfer *)
-      val labs = CFGUtil.labelsOfXfer exit
+      val exits = [exit]
+      val exits = List.foldl (fn (M.BLK{exit,...}, ls) => exit::ls) exits body
+      val labs = List.foldl (fn (exit, labs) => (CFGUtil.labelsOfXfer exit) @ labs) [] exits
+      val funs = List.map CFG.getParent labs
       in
-	  List.foldl addEdge edgeMap labs
+	  List.foldl addEdge edgeMap funs
       end
 
   (* clusters takes a list of functions, and returns the clusters of those
@@ -59,7 +62,6 @@ end = struct
       fun toCluster (SCC.SIMPLE l) = [getFunc l]
 	| toCluster (SCC.RECURSIVE ls) = List.map getFunc ls
       in
-	  List.map toCluster sccs
+          List.map toCluster sccs
       end
-
 end

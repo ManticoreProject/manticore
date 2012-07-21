@@ -27,6 +27,8 @@ structure CheckBOM : sig
     val t2s = BTU.toString
     fun tl2s ts = concat["(", String.concatWith "," (map t2s ts), ")"]
 
+    val debug = false
+
   (* for checking census counts *)
     structure ChkVC = CheckVarCountsFn (
       struct
@@ -62,9 +64,21 @@ structure CheckBOM : sig
 
   (* get the binding of a variable, chasing through casts and renamings *)
     fun resolveBinding x = let
-	  fun lp x = (case BV.kindOf x
-		 of B.VK_Let(B.E_Pt(_, B.E_Ret[y])) => lp y
+          fun munchStmts (B.E_Pt (_, B.E_Stmt (_, _, e))) = munchStmts e
+            | munchStmts (e) = e
+	  fun lp x = (if debug
+                      then print (concat["resolve: ", v2s x, " kind: ", vkToString (BV.kindOf x), "\n"])
+                      else ();
+                      case BV.kindOf x
+		 of k as B.VK_Let(e) => let
+                        val inner = munchStmts e
+                    in
+                        case inner
+                         of B.E_Pt (_, B.E_Ret [x]) => lp x
+                          | _ => k
+                    end
 		  | B.VK_RHS(B.E_Cast(_, y)) => lp y
+		  | B.VK_RHS(B.E_Select(i,y)) => lp y
 		  | k => k
 		(* end case *))
 	  in
@@ -73,6 +87,15 @@ structure CheckBOM : sig
 
   (* check for assignments of unpromoted values; return true if okay and false
    * otherwise.
+   * The following cases report true because they are currently uncheckable:
+   * - VK_Param. We do not do data flow, so we do not know if the arguments were promoted
+   * - VK_Let(E_Apply). We do not do data flow, so we do not know if the return values
+   * of the called function(s) are guaranteed to have been promoted
+   * - VK_Let(E_HLOp). We do not provide annotations on HLOPs as to whether their data is
+   * promoted or not. HLOPs encountered will be expanded into full BOM later and can be
+   * checked for promotion at that time.
+   * - VK_None. Default var kind, and commonly comes up for language constructs like
+   * pattern-bound variables in case statements where we don't have an appropriate VK.
    *)
     fun checkAssign (ty, x) = let
 	  val k = BTU.kindOf ty
@@ -81,13 +104,18 @@ structure CheckBOM : sig
 	      then (case resolveBinding x
 		 of B.VK_RHS(B.E_Promote _) => true
 		  | B.VK_RHS(B.E_Const _) => true
+		  | B.VK_RHS(B_E_HostVProc) => true
+                  | B.VK_Param => true
+                  | B.VK_Let(B.E_Pt (_, B.E_Apply _)) => true
+                  | B.VK_Let(B.E_Pt (_, B.E_HLOp _)) => true
+                  | B.VK_None => true
 		  | _ => false
 		(* end case *))
 	      else true
 	  end
 
     fun check (phase, module) = let
-	  val B.MODULE{name, externs, hlops, body} = module
+	  val B.MODULE{name, externs, hlops, rewrites, body} = module
 	  val anyErrors = ref false
 	  val anyWarnings = ref false
 	(* report an error *)
@@ -294,6 +322,8 @@ structure CheckBOM : sig
 			| (Literal.Enum _, BTy.T_TyCon _) => ()
 (* NOTE: the following shouldn't be necessary, but case-simplify doesn't put in enum types! *)
 			| (Literal.Enum _, BTy.T_Any) => ()
+                        | (Literal.Enum _, BTy.T_VProc) => ()
+                        | (Literal.Enum _, BTy.T_Deque) => ()
 			| (Literal.StateVal w, _) => () (* what is the type of StateVals? *)
 			| (Literal.Tag s, _) => () (* what is the type of Tags? *)
 			| (Literal.Int _, BTy.T_Raw BTy.T_Byte) => ()
@@ -341,6 +371,7 @@ structure CheckBOM : sig
 				  "type mismatch in Select: ",
 				   vl2s' lhs, " = #", Int.toString i, "(", v2s' x, ")\n"
 				]
+                        | BTy.T_Deque => ()
 			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple: ",
                                     vl2s lhs, " = #", Int.toString i, "(", v2s x, ")\n"]
 		      (* end case *))
@@ -381,6 +412,7 @@ structure CheckBOM : sig
 			    if (i < List.length tys) andalso BTU.match(BTy.T_Addr(List.nth (tys, i)), ty)
 			      then ()
                               else error["type mismatch in AddrOf: ", vl2s lhs, " = &(", v2s x, ")\n"]
+                        | BTy.T_Deque => ()
 			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple",
                                     vl2s lhs, " = &(", v2s x, ")\n"]
 		      (* end case *))
@@ -399,7 +431,7 @@ structure CheckBOM : sig
 			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
 		  | ([ty], B.E_Promote y) => (
 		      chkVar (y, "Promote");
-		      if BTU.equal(ty, BV.typeOf y) then ()
+		      if BTU.equal(ty, BV.typeOf y) orelse BTU.equal(ty, BTy.T_Any) then ()
 			else error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s y, "\n"])
 		  | (lhsTys, B.E_Prim p) => chkPrim (lhs, lhsTys, p)
                   | ([ty], B.E_DCon(BTy.DCon{name, argTy, myTyc, ...}, args)) => (

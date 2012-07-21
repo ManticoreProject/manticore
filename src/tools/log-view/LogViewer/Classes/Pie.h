@@ -12,11 +12,20 @@ struct StateGroup;
  * self has a consumer for each state in the StateGroup g used to initialize self
  * each consumer takes up a certain amount of time.
  */
+
+typedef struct PieSlice
+{
+    double fraction;
+    int    consumer;
+} PieSlice_t;
+
 @interface Pie : NSObject {
-    NSMutableArray *consumers;
+    PieSlice_t *consumers;
+    size_t nConsumers;
 }
 
-@property (readwrite, assign) NSMutableArray *consumers;
+@property (readonly) PieSlice_t *consumers;
+@property (readonly) size_t nConsumers;
 
 /// Return a new empty pie initialized for StateGroup g
 + (Pie *)emptyForStateGroup:(struct StateGroup *)g;
@@ -38,7 +47,7 @@ struct StateGroup;
 - (void)assertStochastic;
 
 /// increment the time taken up by the given consumer by the given amount
-- (void)incrementConsumer:(NSNumber *)n byAmount:(uint64_t)a;
+- (void)incrementConsumer:(int)i byAmount:(uint64_t)a;
 
 /// return a copy of this Pie
 - (Pie *)copy;

@@ -31,14 +31,19 @@ structure MultilispFuture (* : FUTURE *) =
 	    do ImplicitThreadIVar.@put (ivar, Result.EXN(exn) / exh)
 	    SchedulerAction.@stop()
 	  let v : any = apply f (UNIT / exh')
-	  let wasNotMigrated : bool = ImplicitThread.@remove-thread (thd / exh)
-	  case wasNotMigrated
-	   of true =>
-	      (* fast clone *)
-	      let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar (Result.RES(v) / exh)
-	      let fut : future = alloc (ivar, Option.NONE)
-	      return (fut)
-	    | false =>
+	  let t : Option.option = ImplicitThread.@remove-thread (thd / exh)
+	  case t
+	   of Option.SOME (thd2 : ImplicitThread.thread) =>
+	      if Equal (thd, thd2) then
+		  (* fast clone *)
+		  let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar (Result.RES(v) / exh)
+		  let fut : future = alloc (ivar, Option.NONE)
+		  return (fut)
+	      else
+		  (* slow clone *)
+		  do ImplicitThreadIVar.@put (ivar, Result.RES(v) / exh)
+	          SchedulerAction.@stop ()
+	    | Option.NONE =>
 	      (* slow clone *)
 	      do ImplicitThreadIVar.@put (ivar, Result.RES(v) / exh)
 	      SchedulerAction.@stop ()
@@ -47,7 +52,7 @@ structure MultilispFuture (* : FUTURE *) =
 
       define @future-with-cancelation (f : fun(unit / exh -> any) / exh : exh) : future =
 	  let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@empty-ivar (/ exh)
-	  let c : Cancelation.cancelable = Cancelation.@new (/ exh)
+	  let c : Cancelation.cancelable = Cancelation.@new (UNIT / exh)
 	  let fut : future = alloc(ivar, Option.SOME(c))
 	(* fiber that represents the context of the future *)
 	  cont k (x : unit) = return (fut)
@@ -59,14 +64,20 @@ structure MultilispFuture (* : FUTURE *) =
 	      do ImplicitThreadIVar.@put (ivar, Result.EXN(exn) / exh)
 	      SchedulerAction.@stop ()
 	    let v : any = apply f (UNIT / exh')
-	    let wasNotMigrated : bool = ImplicitThread.@remove-thread (thd / exh)
-	    case wasNotMigrated
-	     of true =>
-		(* fast clone *)
-		let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar (v / exh)
-		let fut : future = alloc (ivar, Option.NONE)
-		return (fut)
-	      | false =>
+	    let t : Option.option = ImplicitThread.@remove-thread (thd / exh)
+	    case t
+	     of Option.SOME (thd2 : ImplicitThread.thread) =>
+		if Equal (thd, thd2) then
+		    (* fast clone *)
+		    let ivar : ImplicitThreadIVar.ivar = ImplicitThreadIVar.@ivar (v / exh)
+		    let fut : future = alloc (ivar, Option.NONE)
+		    return (fut)
+		else
+		    (* slow clone *)
+		    do ImplicitThreadIVar.@put (ivar, Result.RES(v) / exh)
+		    let _ : unit = SchedulerAction.@stop ()
+		    return (fut)
+	      | Option.NONE =>
 		(* slow clone *)
 		do ImplicitThreadIVar.@put (ivar, Result.RES(v) / exh)
 		let _ : unit = SchedulerAction.@stop ()
@@ -105,7 +116,7 @@ structure MultilispFuture (* : FUTURE *) =
 	      (* QUESTION: is this an error? *)
 	      return (UNIT)
 	    | Option.SOME(c : Cancelation.cancelable) =>
-	      do Cancelation.@cancel (c / exh)
+	      let _ : unit = Cancelation.@cancel (c / exh)
 	      return (UNIT)
 	  end
 	;

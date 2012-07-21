@@ -131,6 +131,7 @@ fun fromHexString s = let
 <INITIAL,PRIMCODE> "}"	=> (T.RCB);
 <INITIAL,PRIMCODE> "->"	=> (T.ARROW);
 <INITIAL,PRIMCODE> "=>"	=> (T.DARROW);
+<INITIAL,PRIMCODE> "==>" => (T.DDARROW);
 <INITIAL,PRIMCODE> "_"	=> (T.WILD);
 <INITIAL,PRIMCODE> "!"   => (T.PSUB);
 <INITIAL,PRIMCODE> "*"	=> (T.TIMES);
@@ -203,7 +204,7 @@ fun fromHexString s = let
 <COMMENT> .|"\n"		=> (skip ());
 
 <PRIMCODE> {id}			=> (Keywords.bomIdToken yytext);
-<PRIMCODE> {qualifiedhlid}	=> (T.QHLOP(mkQHLOpId yytext));
+<PRIMCODE> {qualifiedhlid}	=> (T.QHLOP(mkQHLOpId yytext))
 <PRIMCODE> {qualifiedid}	=> (T.QID(mkQId yytext));
 <PRIMCODE> {hlid}		=> (T.HLOP(cvtHLOpId yytext));
 <PRIMCODE> "("			=> (primPush(); T.LP);

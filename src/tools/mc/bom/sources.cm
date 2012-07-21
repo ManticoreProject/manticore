@@ -12,9 +12,11 @@ Library
   structure BOMTyUtil
   structure BOMUtil
   structure Census
+  structure CFABOM
   structure CheckBOM
   structure HLOp
   structure PrintBOM
+  structure Rewrites
 
 is
 
@@ -31,6 +33,8 @@ is
   bom-ty-util.sml
   bom-util.sml
   census.sml
+  cfa-bom.sml
   check-bom.sml
   hlop.sml
+  rewrites.sml
   print-bom.sml

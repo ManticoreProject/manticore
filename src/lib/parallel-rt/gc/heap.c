@@ -4,6 +4,7 @@
  * All rights reserved.
  */
 
+#include <inttypes.h>
 #include "manticore-rt.h"
 #include "heap.h"
 #include "vproc.h"
@@ -31,7 +32,8 @@ Addr_t		MaxNurserySzB;	/* limit on size of nursery in vproc heap */
 Addr_t		MajorGCThreshold; /* when the size of the nursery goes below this limit */
 				/* it is time to do a GC. */
 MemChunk_t	*FromSpaceChunks; /* list of chunks is from-space */
-MemChunk_t	**FreeChunks;	/* lists of free chunks, one per node */
+NodeHeap_t  *NodeHeaps; /*!< list of per-node heap information */
+
 uint32_t	NumGlobalGCs = 0;
 
 
@@ -76,9 +78,6 @@ static bool	DetailStatsFlg = false;	// true for detailed report (per-vproc)
 static bool	CSVStatsFlg = false;	// true for CSV-format report
 static bool	SMLStatsFlg = false;	// true for SML-format report
 static FILE     *StatsOutFile = 0;      // stats output file
-
-Addr_t		MaxLiveData = 0;	// the high-water mark for live data (recorded
-					// at global GCs)
 #endif
 
 /* HeapInit:
@@ -144,9 +143,17 @@ void HeapInit (Options_t *opts)
     ToSpaceLimit = BaseHeapSzB; // we don't know the number of vprocs yet!
     TotalVM = 0;
     FromSpaceChunks = (MemChunk_t *)0;
-    FreeChunks = NEWVEC(MemChunk_t *, NumHWNodes);
-    for (int i = 0;  i < NumHWNodes;  i++)
-	FreeChunks[i] = 0;
+    
+    NodeHeaps = NEWVEC(NodeHeap_t, NumHWNodes);
+    for (int i = 0;  i < NumHWNodes;  i++) {
+        MutexInit(&NodeHeaps[i].lock);
+        CondInit(&NodeHeaps[i].scanWait);
+        NodeHeaps[i].numWaiting = 0;
+        NodeHeaps[i].scannedTo = NULL;
+        NodeHeaps[i].unscannedTo = NULL;
+        NodeHeaps[i].fromSpace = NULL;
+        NodeHeaps[i].freeChunks = NULL;
+    }
 
     InitGlobalGC ();
 
@@ -156,8 +163,7 @@ void HeapInit (Options_t *opts)
  */
 void InitVProcHeap (VProc_t *vp)
 {
-    vp->globToSpHd = (MemChunk_t *)0;
-    vp->globToSpTl = (MemChunk_t *)0;
+    vp->globAllocChunk = (MemChunk_t *)0;
     vp->globalGCPending = false;
 
   /* allocate the initial chunk for the vproc */
@@ -180,49 +186,61 @@ void AllocToSpaceChunk (VProc_t *vp)
     int		node = LocationNode(vp->location);
 
     MutexLock (&HeapLock);
-	if (FreeChunks[node] == (MemChunk_t *)0) {
+    MutexLock (&NodeHeaps[node].lock);
+
+	if (NodeHeaps[node].freeChunks == (MemChunk_t *)0) {
 	  /* no free chunks on this node, so allocate storage from OS */
 	    int nPages = HEAP_CHUNK_SZB >> PAGE_BITS;
-	    memObj = AllocMemory(&nPages, BIBOP_PAGE_SZB, nPages);
+        void *allocBase;
+	    memObj = AllocMemory(&nPages, BIBOP_PAGE_SZB, nPages, &allocBase);
 	    chunk = NEW(MemChunk_t);
 	    if ((memObj == (void *)0) || (chunk == (MemChunk_t *)0)) {
 		Die ("unable to allocate memory for global heap\n");
 	    }
+        chunk->allocBase = allocBase;
 	    chunk->baseAddr = (Addr_t)memObj;
 	    chunk->szB = nPages * BIBOP_PAGE_SZB;
 	    chunk->where = node;
 	    UpdateBIBOP (chunk);
 	}
 	else {
-	    chunk = FreeChunks[node];
-	    FreeChunks[node] = chunk->next;
+	    chunk = NodeHeaps[node].freeChunks;
+	    NodeHeaps[node].freeChunks = chunk->next;
 	    assert (chunk->where == node);
 	}
 	chunk->sts = TO_SP_CHUNK;
 	ToSpaceSz += HEAP_CHUNK_SZB;
+
+    MutexUnlock (&NodeHeaps[node].lock);
     MutexUnlock (&HeapLock);
 
-  /* add to the tail of the vproc's list of to-space chunks */
+    chunk->scanProgress = 0;
+
+#ifndef NDEBUG
+    if (GCDebug > GC_DEBUG_NONE)
+	SayDebug("[%2d] AllocToSpaceChunk: %ld Kb at %p..%p parent %p (node %d)\n",
+	    vp->id, chunk->szB/1024, (void *)(chunk->baseAddr),
+                 (void *)(chunk->baseAddr+chunk->szB),
+                 vp->globAllocChunk==NULL?NULL:vp->globAllocChunk->baseAddr, chunk->where);
+    bzero((void*)chunk->baseAddr, chunk->szB);
+#endif
+
+    /* add to the tail of the vproc's list of to-space chunks */
     chunk->next = (MemChunk_t *)0;
-    if (vp->globToSpHd == (MemChunk_t *)0) {
-	vp->globToSpHd = chunk;
-	vp->globToSpTl = chunk;
+    if (vp->globAllocChunk == (MemChunk_t *)0) {
+        vp->globAllocChunk = chunk;
     }
     else {
-	vp->globToSpTl->usedTop = vp->globNextW - WORD_SZB;
-	vp->globToSpTl->next = chunk;
-	vp->globToSpTl = chunk;
+        vp->globAllocChunk->usedTop = vp->globNextW - WORD_SZB;
+        MemChunk_t *tmp = vp->globAllocChunk;
+        while (tmp->next != NULL)
+            tmp = tmp->next;
+        tmp->next = chunk;
+        vp->globAllocChunk = chunk;
     }
 
     vp->globNextW = chunk->baseAddr + WORD_SZB;
     vp->globLimit = chunk->baseAddr + chunk->szB;
-
-#ifndef NDEBUG
-    if (GCDebug > GC_DEBUG_NONE)
-	SayDebug("[%2d] AllocToSpaceChunk: %ld Kb at %p..%p (node %d)\n",
-	    vp->id, chunk->szB/1024, (void *)(chunk->baseAddr),
-	    (void *)(chunk->baseAddr+chunk->szB), chunk->where);
-#endif
 
 }
 
@@ -233,8 +251,9 @@ Addr_t AllocVProcMemory (int id, Location_t loc)
     assert (VP_HEAP_SZB >= BIBOP_PAGE_SZB);
 
     int nPages = VP_HEAP_SZB / BIBOP_PAGE_SZB;
+    void *allocBase;
     MutexLock (&HeapLock);
-	Addr_t vpHeap = (Addr_t) AllocMemory (&nPages, BIBOP_PAGE_SZB, nPages);
+	Addr_t vpHeap = (Addr_t) AllocMemory (&nPages, BIBOP_PAGE_SZB, nPages, &allocBase);
 	if (vpHeap == 0) {
 	    MutexUnlock (&HeapLock);
 	    return 0;
@@ -245,6 +264,7 @@ Addr_t AllocVProcMemory (int id, Location_t loc)
 	    MutexUnlock (&HeapLock);
 	    return 0;
 	}
+    chunk->allocBase = allocBase;
 	chunk->baseAddr = vpHeap;
 	chunk->szB = VP_HEAP_SZB;
 	chunk->sts = VPROC_CHUNK(id);
@@ -442,7 +462,7 @@ void ReportGCStats ()
 	    double globalT = TIMER_GetTime (&(vp->globalStats.timer));
 	  // use comma-separated-values format
 	    fprintf (outF,
-		"p%02d, %f, %f, %d, %lld, %lld, %lld, %f, %d, %lld, %lld, %lld, %f, %d, %lld, %f, %d, %lld, %lld, %lld, %f\n",
+		"p%02d, %f, %f, %d, %" PRIi64 ", %" PRIi64 ", %" PRIi64 ", %f, %d, %" PRIi64 ", %" PRIi64 ", %" PRIi64 ", %f, %d, %" PRIi64 ", %f, %d, %" PRIi64 ", %" PRIi64 ", %" PRIi64 ", %f\n",
 		i,
 		TIMER_GetTime (&(vp->timer)), minorT + majorT + promoteT + globalT,
 		vp->nMinorGCs, vp->minorStats.nBytesAlloc, vp->minorStats.nBytesCollected, vp->minorStats.nBytesCopied, TIMER_GetTime (&(vp->minorStats.timer)),
@@ -463,10 +483,10 @@ void ReportGCStats ()
 		"GCST{\n"
 		"    processor=%d,\n"
 		"    time=%f,\n"
-		"    minor=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f},\n"
-		"    major=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f},\n"
-		"    promotion={num=%d, bytes=%lld, time=%f}, \n"
-		"    global=GC{num=%d, alloc=%lld, collected=%lld, copied=%lld, time=%f}\n"
+		"    minor=GC{num=%d, alloc=%" PRIi64 ", collected=%" PRIi64 ", copied=%" PRIi64 ", time=%f},\n"
+		"    major=GC{num=%d, alloc=%" PRIi64 ", collected=%" PRIi64 ", copied=%" PRIi64 ", time=%f},\n"
+		"    promotion={num=%d, bytes=%" PRIi64 ", time=%f}, \n"
+		"    global=GC{num=%d, alloc=%" PRIi64 ", collected=%" PRIi64 ", copied=%" PRIi64 ", time=%f}\n"
 		"  } ::\n",
 		i,
 		TIMER_GetTime (&(vp->timer)),

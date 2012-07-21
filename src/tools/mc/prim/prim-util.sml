@@ -37,6 +37,7 @@ structure PrimUtil : sig
       | nameOf (P.I64Neg _) = "I64Neg"
       | nameOf (P.U64Mul _) = "U64Mul"
       | nameOf (P.U64Div _) = "U64Div"
+      | nameOf (P.U64Rem _) = "U64Rem"
       | nameOf (P.F32Add _) = "F32Add"
       | nameOf (P.F32Sub _) = "F32Sub"
       | nameOf (P.F32Mul _) = "F32Mul"
@@ -53,6 +54,7 @@ structure PrimUtil : sig
       | nameOf (P.F64Abs _) = "F64Abs"
       | nameOf (P.I32ToI64X _) = "I32ToI64X"
       | nameOf (P.I32ToI64 _) = "I32ToI64"
+      | nameOf (P.I64ToI32 _) = "I64ToI32"
       | nameOf (P.I32ToF32 _) = "I32ToF32"
       | nameOf (P.I32ToF64 _) = "I32ToF64"
       | nameOf (P.I64ToF32 _) = "I64ToF32"
@@ -97,6 +99,11 @@ structure PrimUtil : sig
       | nameOf P.FenceRead = "FenceRead"
       | nameOf P.FenceWrite = "FenceWrite"
       | nameOf P.FenceRW = "FenceRW"
+      | nameOf (P.AllocPolyVec _) = "AllocPolyVec"
+      | nameOf (P.AllocIntArray _) = "AllocIntArray"
+      | nameOf (P.AllocLongArray _) = "AllocLongArray"
+      | nameOf (P.AllocFloatArray _) = "AllocFloatArray"
+      | nameOf (P.AllocDoubleArray _) = "AllocDoubleArray"
 
   (* return the list of variables referenced in a primitive operation *)
     fun varsOf (P.I32Add(a, b)) = [a, b]
@@ -115,6 +122,7 @@ structure PrimUtil : sig
       | varsOf (P.I64Neg a) = [a]
       | varsOf (P.U64Mul(a, b)) = [a, b]
       | varsOf (P.U64Div(a, b)) = [a, b]
+      | varsOf (P.U64Rem(a, b)) = [a, b]
       | varsOf (P.F32Add(a, b)) = [a, b]
       | varsOf (P.F32Sub(a, b)) = [a, b]
       | varsOf (P.F32Mul(a, b)) = [a, b]
@@ -131,6 +139,7 @@ structure PrimUtil : sig
       | varsOf (P.F64Abs a) = [a]
       | varsOf (P.I32ToI64X a) = [a]
       | varsOf (P.I32ToI64 a) = [a]
+      | varsOf (P.I64ToI32 a) = [a]
       | varsOf (P.I32ToF32 a) = [a]
       | varsOf (P.I32ToF64 a) = [a]
       | varsOf (P.I64ToF32 a) = [a]
@@ -175,6 +184,11 @@ structure PrimUtil : sig
       | varsOf P.FenceRead = []
       | varsOf P.FenceWrite = []
       | varsOf P.FenceRW = []
+      | varsOf (P.AllocPolyVec (a, b)) = [a, b]
+      | varsOf (P.AllocIntArray a) = [a]
+      | varsOf (P.AllocLongArray a) = [a]
+      | varsOf (P.AllocFloatArray a) = [a]
+      | varsOf (P.AllocDoubleArray a) = [a]
 
     fun fmt v2s p = (case varsOf p
 	   of [] => nameOf p ^ "()"
@@ -209,6 +223,7 @@ structure PrimUtil : sig
       | explode (P.I64Neg a) = (p1 P.I64Neg, [a])
       | explode (P.U64Mul(a, b)) = (p2 P.U64Mul, [a, b])
       | explode (P.U64Div(a, b)) = (p2 P.U64Div, [a, b])
+      | explode (P.U64Rem(a, b)) = (p2 P.U64Rem, [a, b])
       | explode (P.F32Add(a, b)) = (p2 P.F32Add, [a, b])
       | explode (P.F32Sub(a, b)) = (p2 P.F32Sub, [a, b])
       | explode (P.F32Mul(a, b)) = (p2 P.F32Mul, [a, b])
@@ -225,6 +240,7 @@ structure PrimUtil : sig
       | explode (P.F64Abs a) = (p1 P.F64Abs, [a])
       | explode (P.I32ToI64X a) = (p1 P.I32ToI64X, [a])
       | explode (P.I32ToI64 a) = (p1 P.I32ToI64, [a])
+      | explode (P.I64ToI32 a) = (p1 P.I64ToI32, [a])
       | explode (P.I32ToF32 a) = (p1 P.I32ToF32, [a])
       | explode (P.I32ToF64 a) = (p1 P.I32ToF64, [a])
       | explode (P.I64ToF32 a) = (p1 P.I64ToF32, [a])
@@ -269,6 +285,11 @@ structure PrimUtil : sig
       | explode P.FenceRead = (p0 P.FenceRead, [])
       | explode P.FenceWrite = (p0 P.FenceWrite, [])
       | explode P.FenceRW = (p0 P.FenceRW, [])
+      | explode (P.AllocPolyVec (a, b)) = (p2 P.AllocPolyVec, [a, b])
+      | explode (P.AllocIntArray a) = (p1 P.AllocIntArray, [a])
+      | explode (P.AllocLongArray a) = (p1 P.AllocLongArray, [a])
+      | explode (P.AllocFloatArray a) = (p1 P.AllocFloatArray, [a])
+      | explode (P.AllocDoubleArray a) = (p1 P.AllocDoubleArray, [a])
     end (* local *)
 
     fun map f p = let val (mk, args) = explode p in mk(List.map f args) end

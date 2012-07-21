@@ -200,19 +200,19 @@ typedef DynamicEvent_struct DynamicEvent;
 
 
 /// The time the event was logged in nanoseconds
-STATIC_INLINE uint64_t timeStamp(DynamicEvent event, LogFileDesc *desc)
+static inline uint64_t timeStamp(DynamicEvent event, LogFileDesc *desc)
 {
     return event.timestamp;
 }
 
 /// The static version of this event
-STATIC_INLINE EventDesc *description(DynamicEvent event, LogFileDesc *desc)
+static inline EventDesc *description(DynamicEvent event, LogFileDesc *desc)
 {
     return event.desc;
 }
 
 /// Recover the arguments of this event
-STATIC_INLINE ArgValue getArg(DynamicEvent event, LogFileDesc *desc, int argNum)
+static inline ArgValue getArg(DynamicEvent event, LogFileDesc *desc, int argNum)
 {
     return event.desc->GetArg(&event.value, argNum);
 }
@@ -226,25 +226,25 @@ STATIC_INLINE ArgValue getArg(DynamicEvent event, LogFileDesc *desc, int argNum)
 
  
 /// Get this event's destinations.  The event must be a message source event.
-STATIC_INLINE DynamicEvent **getRefDsts(DynamicEvent e)
+static inline DynamicEvent **getRefDsts(DynamicEvent e)
 {
     return (DynamicEvent **) (e.references.dsts);
 }
 
 /// Get this event's source.  The event must be a message destination event.
-STATIC_INLINE DynamicEvent *getRefSrc(DynamicEvent e)
+static inline DynamicEvent *getRefSrc(DynamicEvent e)
 {
     return e.references.src;
 }
 
 /// Get this event's start.  The event must be an interval end event.
-STATIC_INLINE DynamicEvent *getRefStart(DynamicEvent e)
+static inline DynamicEvent *getRefStart(DynamicEvent e)
 {
     return e.references.start;
 }
 
 /// Get this event's end.  The event must be a interval start event.
-STATIC_INLINE DynamicEvent *getRefEnd(DynamicEvent e)
+static inline DynamicEvent *getRefEnd(DynamicEvent e)
 {
     return e.references.end;
 }

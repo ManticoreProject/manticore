@@ -42,6 +42,7 @@ structure BOMUsedVars : sig
 	    | PT.T_Cont params => usedOfTys params
 	    | PT.T_CFun cp => empty
 	    | PT.T_VProc => empty
+	    | PT.T_Deque => empty
 	    | PT.T_TyCon tc => var tc
 	  (* end case *))
 
@@ -124,7 +125,8 @@ structure BOMUsedVars : sig
 	    | PT.D_Extern(CFunctions.CFun{var, name, retTy, argTys, varArg, attrs}) => 
 		empty
 	    | PT.D_TypeDef(td, ty) => usedOfTy ty
-	    | PT.D_ImportML _ => raise Fail "FIXME"
+	    | PT.D_ImportML (_, _, pmlvar) => var pmlvar
+	    | PT.D_Rewrite _ => raise Fail "FIXME"
 	  (* end case *))
 
     fun usedOfCode defns = usedOfList usedOfDefn defns

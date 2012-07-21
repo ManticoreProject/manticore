@@ -21,8 +21,10 @@
 (*	| KW_case	("case")		*)
 	| KW_ccall	("ccall")
 	| KW_cont	("cont")
+        | KW_constr     ("constr")
 (*	| KW_datatype	("datatype")		*)
 	| KW_define	("define")
+	| KW_deque	("deque")
 	| KW_do		("do")   
 	| KW_double	("double")
 (*	| KW_else	("else")		*)
@@ -39,6 +41,7 @@
 	| KW_long	("long")
 	| KW_module	("module")
 	| KW_noreturn	("noreturn")
+	| KW_nullVP	("nullVP")
 (*	| KW_of		("of")			*)
 	| KW_promote	("promote")
 	| KW_pure	("pure")
@@ -61,6 +64,8 @@
 (*	| RP		(")")			*)
 (*	| LB		("[")			*)
 (*	| RB		("]")			*)
+(*      | LCB		("{")                   *)
+(*      | RCB		("}")                   *)
 	| HASH		("#")
 (*	| STAR		("*")			*)
 (*	| COMMA		(",")			*)
@@ -76,6 +81,7 @@
 	| ASSIGN	(":=")
 (*	| DARROW	("=>")			*)
 (*	| ARROW		("->")			*)
+        | DDARROW       ("==>")
 (*	| ID of Atom.atom			*)
 	| HLOP of Atom.atom
 	| QHLOP of (Atom.atom list) * Atom.atom
@@ -89,6 +95,7 @@
 %defs(
     structure BPT = ProgramParseTree.PML1.BOMParseTree
     structure CF = CFunctions
+    structure Op = BasisNames
 
     fun flatten NONE = []
       | flatten (SOME(x, xs)) = x::xs
@@ -108,6 +115,32 @@
   val markBOMPat = markBOM BPT.P_PMark
   val markBOMVarPat = markBOM BPT.P_VPMark
   val markBOMSE = markBOM BPT.SE_Mark
+
+  val zero = IntInf.fromInt 0
+	     
+  val label_counter = ref 0
+		      
+  fun new_label () = let
+      val ret_val = Atom.atom ("$rewrite" ^
+                               (Int.toString (!label_counter)))
+  in
+    label_counter := !label_counter + 1;
+    ret_val
+  end (* new_label() *)
+
+  val listTyTerm = BPT.T_TyCon {tree = ([Atom.atom "List"], Op.list), span = (0, 0)}
+
+  val nilPat = BPT.RW_Const((Literal.Enum(Word.fromInt 0), listTyTerm))
+  val listCons = {tree = ([Atom.atom "List"], Op.listCons'), span = (0, 0)}
+
+  val trueID = {tree = ([] : Atom.atom list, Op.boolTrue), span = (0, 0)}
+  val trueVar = BPT.SE_Var trueID
+  fun mkTrueCheck se =
+      [se, trueVar]
+
+  fun listToDConList [] = nilPat
+    | listToDConList (pat :: ps) = BPT.RW_Prim(listCons,
+                                               [pat, listToDConList ps])
 );
 
 
@@ -131,28 +164,34 @@ Definition
 	| "typedef" Name "=" BOMType ";"
 		=> (markBOMDefn(KW_typedef_SPAN, BPT.D_TypeDef(Name, BOMType)))
 (*
-	| "define" optInline HLOpId FunParams ReturnTy ("=" BOMExp)? ";"
+	| "define" optAttrs HLOpId FunParams ReturnTy ("=" BOMExp)? ";"
 		=> (markBOMDefn(FULL_SPAN, let val (p1, p2) = FunParams in
-		      BPT.D_Define(optInline, HLOpId, p1, p2, ReturnTy, SR)
+		      BPT.D_Define(optAttrs, HLOpId, p1, p2, ReturnTy, SR)
 		    end))
         | "define" HLOpId "=" QualifiedId ";"
 		=> (markBOMDefn(FULL_SPAN, 
 		      BPT.D_ImportPML(HLOpId, QualifiedId)
 		    ))
 *)
-	| "define" optInline HLOpId HLOpDef ";"
-		=> (markBOMDefn(FULL_SPAN, HLOpDef(optInline, HLOpId)))
+	| "define" optAttrs HLOpId HLOpDef ";"
+		=> (markBOMDefn(FULL_SPAN, HLOpDef(optAttrs, HLOpId)))
+        | LabelOpt Pattern "==>" Pattern Benefit ";"               (* rewrite rule *)
+                => ( markBOMDefn(FULL_SPAN, 
+				 BPT.D_Rewrite {label = LabelOpt,
+                                    lhs = Pattern1,
+                                    rhs = Pattern2,
+                                    weight = Benefit}) )
 	;
 
 HLOpDef
 	: FunParams ReturnTy ("=" BOMExp)?
-		=> (fn (optInline, id) => let
+		=> (fn (optAttrs, id) => let
 			val (p1, p2) = FunParams
 			in
-			  BPT.D_Define(optInline, id, p1, p2, ReturnTy, SR)
+			  BPT.D_Define(optAttrs, id, p1, p2, ReturnTy, SR)
 			end)
 	| "=" QualifiedId
-		=> (fn (optInline, id) => BPT.D_ImportML(optInline, id, QualifiedId))
+		=> (fn (optAttrs, id) => BPT.D_ImportML(optAttrs, id, QualifiedId))
 	;
 
 CRetTy
@@ -183,9 +222,15 @@ ReturnTy
 	| ":" "(" TypeList ")"	=> (SOME TypeList)
 	;
 
-optInline
-	: (* empty *)	=> (false)
-	| "inline"	=> (true)
+optAttrs
+	: optAttr* => (optAttr)
+	;
+
+
+optAttr
+	: "inline"	=> (BPT.A_Inline)
+	| "pure"	=> (BPT.A_Pure)
+	| "constr"	=> (BPT.A_Constr)
 	;
 
 FunParams
@@ -207,6 +252,7 @@ BOMType
 						=> (markBOMTy(FULL_SPAN, BPT.T_Fun(TypeList1, TypeList2, TypeList3)))
 	| "cont" "(" TypeList ")"		=> (markBOMTy(FULL_SPAN, BPT.T_Cont TypeList))
 	| "vproc"				=> (markBOMTy(FULL_SPAN, BPT.T_VProc))
+	| "deque"				=> (markBOMTy(FULL_SPAN, BPT.T_Deque))
 	| QualifiedId				=> (markBOMTy(FULL_SPAN, BPT.T_TyCon QualifiedId))
 	;
 
@@ -233,6 +279,8 @@ BOMExp
 		=> (markBOMExp(FULL_SPAN, BPT.E_Fun(BOMLambda::SR, BOMExp)))
 	| "cont" CLambda BOMExp
 		=> (markBOMExp(FULL_SPAN, BPT.E_Cont(CLambda, BOMExp)))
+	| "if" "(" SimpleExp ")" "then" BOMExp "else" BOMExp
+		=> (markBOMExp(FULL_SPAN, BPT.E_If(Atom.atom "Equal", mkTrueCheck SimpleExp, BOMExp1, BOMExp2)))
 	| "if" ID "(" Args ")" "then" BOMExp "else" BOMExp
 		=> (markBOMExp(FULL_SPAN, BPT.E_If(ID, Args, BOMExp1, BOMExp2)))
         | "case" SimpleExp "of" Rules ("|" Default)? "end"
@@ -341,6 +389,8 @@ Literal
                  => (Literal.Tag (Atom.toString Name), BPT.T_Any)
 	| "$" POSINT
 		=> (Literal.StateVal(Word.fromLargeInt POSINT), BPT.T_Any)
+        | "nullVP"
+            => (Literal.StateVal(Word.fromLargeInt 0), BPT.T_VProc)
 	| Int (":" IntTy)?
 		=> (case SR
 		   of NONE => (Literal.Int Int, dfltIntTy)
@@ -373,3 +423,44 @@ HLOpQId : QHLOP		=> ({span=FULL_SPAN, tree=QHLOP})
 	| HLOP		=> ({span=FULL_SPAN, tree=([], HLOP)})
         ;
 
+(** rewrite rules **)
+
+LabelOpt
+        : (* empty *)
+                => ( new_label () )
+        | ID COLON
+                => ( ID )
+        ;
+
+Pattern
+        : HLOpQId LP PatternArgs RP
+                => ( BPT.RW_HLOpApply(HLOpQId, PatternArgs) )
+
+        | LB PatternArgs RB
+                => ( listToDConList(PatternArgs) )
+
+        | Literal
+                => ( BPT.RW_Const(Literal) )
+
+        | Name
+                => ( BPT.RW_Var Name )
+
+        | "alloc" "(" PatternArgs ")"		
+                => ( BPT.RW_Alloc PatternArgs )
+        ;
+
+PatternArgs
+        : (* empty *)
+                => ( [] )
+        | Pattern (COMMA Pattern)*
+                => ( Pattern :: SR )
+        ;
+
+Benefit
+        : "{" POSINT "}"
+                => ( POSINT )
+        | "{" "}"
+                => ( zero )
+        | (* Empty *)
+                => ( zero )
+        ;

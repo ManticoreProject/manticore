@@ -111,11 +111,12 @@ structure DataCon : sig
     fun isNullary (DCon{argTy = NONE, ...}) = true
       | isNullary _ = false
 
-    fun toString (DCon {id, name, owner, argTy}) = 
-      String.concat [Atom.toString name, 
-		     "(", Option.getOpt (Option.map TypeUtil.toString argTy, ""), ")",
-		     "[", Int.toString id, "]",
-		     ":", TyCon.toString owner]
+    fun toString (DCon {id, name, owner, argTy}) = String.concat [
+	    Atom.toString name, 
+	    "(", Option.getOpt (Option.map TypeUtil.toString argTy, ""), ")",
+	    "[", Int.toString id, "]",
+	    ":", TyCon.toString owner
+	  ]
 
     structure Tbl = HashTableFn (
       struct

@@ -9,6 +9,7 @@
 
 #include "manticore-rt.h"
 #include "vproc.h"
+#include "atomic-ops.h"
 #include "topology.h"
 
 /* size of a heap chunk */
@@ -41,7 +42,16 @@ STATIC_INLINE Addr_t LimitPtr (VProc_t *vp)
     return vp->heapBase + VP_HEAP_SZB - ALLOC_BUF_SZB;
 }
 
+STATIC_INLINE Addr_t SetLimitPtr (VProc_t *vp, Addr_t newLimitPtr)
+{
+    Value_t oldLimitPtr = AtomicExchangeValue((Value_t*)&(vp->limitPtr), AddrToValue(newLimitPtr));
+    return ValueToAddr(oldLimitPtr);
+}
+
 /* return true of the given address is within the given vproc heap */
+/* TODO: the check for heapBase is because there's a heapBase sneaking
+   into a data type. We need to find out what and why, then remove
+   this extra check. */
 STATIC_INLINE bool inVPHeap (Addr_t heapBase, Addr_t p)
 {
     return (heapBase == (p & ~VP_HEAP_MASK));

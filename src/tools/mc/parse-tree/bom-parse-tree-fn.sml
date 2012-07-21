@@ -43,9 +43,13 @@
       = D_Mark of defn mark
       | D_Extern of c_id CFunctions.c_fun          (* foreign function prototype *)
       | D_TypeDef of ty_def * ty                   (* type definition *)
-      | D_Define of (bool * hlop_bind * var_pat list * var_pat list * ty list option * exp option)
+      | D_Define of (opt_attr list * hlop_bind * var_pat list * var_pat list * ty list option * exp option)
 		                                   (* HLOp *)
-      | D_ImportML of (bool * hlop_bind * pml_var) (* form to import an ML function *)
+      | D_ImportML of (opt_attr list * hlop_bind * pml_var) (* form to import an ML function *)
+      | D_Rewrite of { label  : Atom.atom,         (* hlop rewrite rule *)
+                       lhs    : rw_pattern,
+                       rhs    : rw_pattern,
+                       weight : IntInf.int }
 
     and ty
       = T_Mark of ty mark
@@ -60,6 +64,7 @@
       | T_Cont of ty list		(* first-class continuation *)
       | T_CFun of CFunctions.c_proto	(* C functions *)
       | T_VProc				(* address of VProc runtime structure *)
+      | T_Deque				(* address of VProc deque *)
       | T_TyCon of ty_con		(* high-level type constructor *)
 
     and exp
@@ -109,6 +114,19 @@
       = P_VPMark of var_pat mark
       | P_Wild of ty option
       | P_Var of (var_bind * ty)
+
+    and opt_attr
+      = A_Constr
+      | A_Inline
+      | A_Pure
+
+  (* rewrite pattern *)
+    and rw_pattern = 
+	RW_HLOpApply of (hlop_use * rw_pattern list)     (* application of a hlop *)
+      | RW_Prim of (prim * rw_pattern list)              (* application of a prim-op or data constructor  *)
+      | RW_Const of (Literal.literal * ty)
+      | RW_Var of var_bind
+      | RW_Alloc of rw_pattern list                      (* allocation in the local heap *)
 
     withtype lambda = (var_bind * var_pat list * var_pat list * ty list * exp)
 

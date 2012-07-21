@@ -38,8 +38,10 @@ structure TyVar : sig
 
   (* return true if two type variables are the same (i.e., have the same stamp) *)
     fun same (TVar{stamp=a, ...}, TVar{stamp=b, ...}) = Stamp.same(a, b)
+(*    fun same (TVar{name=a, ...}, TVar{name=b, ...}) = Atom.same(a, b)*)
 
     fun compare (TVar{stamp = a, ...}, TVar{stamp = b, ...}) = Stamp.compare(a, b)
+(*    fun compare (TVar{name = a, ...}, TVar{name = b, ...}) = Atom.compare(a, b)*)
 
     structure Set = RedBlackSetFn (
       struct

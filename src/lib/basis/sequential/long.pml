@@ -18,7 +18,7 @@ structure Long =
       extern void *M_LongFromString (void *) __attribute__((alloc,pure));
 
       define inline @to-string (n : PT.ml_long / exh : PT.exh) : PT.ml_string =
-	  let res : PT.ml_string = ccall M_LongToString (unwrap(n))
+	  let res : PT.ml_string = ccall M_LongToString (#0(n))
 	    return (res)
       ;
 
@@ -27,9 +27,17 @@ structure Long =
 	    return (res)
       ;
 
+      define inline @to-int (n : ml_long / exh : exh) : ml_int =
+	  return(alloc(I64ToI32(#0(n))))
+	;
+
     )
 
     val toString : long -> string = _prim(@to-string)
     val fromString : string -> long Option.option = _prim(@from-string)
+    val toInt : long -> int = _prim(@to-int)
+
+    fun min (x:long, y) = if x < y then x else y
+    fun max (x:long, y) = if x > y then x else y
 
   end

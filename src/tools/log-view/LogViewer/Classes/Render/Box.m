@@ -16,7 +16,7 @@
     return b;
 }
 
-- (void)setValue:(void *)valueVal
+- (void)setValue:(id)valueVal
 {
     value = valueVal;
 }
@@ -31,5 +31,19 @@
 {
     return ([e unbox] == value);
 }
+
+@end
+
+@implementation EventGroupBox
+
++ (EventGroupBox *)box:(void *)valueVal withType:(enum EventGroupBoxT)type
+{
+    EventGroupBox *b = [[EventGroupBox alloc] init];
+    b.value = valueVal;
+    b.type = type;
+    return b;
+}
+
+@synthesize type;
 
 @end

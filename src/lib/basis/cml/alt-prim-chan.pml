@@ -246,7 +246,7 @@ structure PrimChan (*: sig
 
       (***** Channel operations *****)
 	
-	define inline @chan-new (arg : unit / exh : exh) : chan_rep =
+	define inline constr @chan-new (arg : unit / exh : exh) : chan_rep =
 	    let ch : chan_rep = alloc(0, (sendq_item)Q_NIL, (sendq_item)Q_NIL, (recvq_item)Q_NIL, (recvq_item)Q_NIL)
 	    let ch : chan_rep = promote (ch)
 	    return (ch)
@@ -330,7 +330,7 @@ structure PrimChan (*: sig
 					    cont sendK (_ : unit) = return (UNIT)
 					    (* in *)
 					      let fls : FLS.fls = FLS.@get-in-atomic(self)
-					      do VProcQueue.@enqueue-from-atomic (self, fls, sendK)
+					      do VProcQueue.@enqueue-in-atomic (self, fls, sendK)
 					      do FLS.@set-in-atomic(self, SELECT(RECVQ_FLS, item))
 					      do SchedulerAction.@atomic-end (self)
 					      let k : cont(any) = SELECT(RECVQ_CONT, item)
@@ -439,8 +439,9 @@ structure PrimChan (*: sig
 							SELECT(SENDQ_FLS, item),
 							SELECT(SENDQ_CONT, item))
 						    do SchedulerAction.@atomic-end (self)
+                                                    let wrapped : ![vproc] = alloc(#2(item))
 						    (* in *)
-						      throw recvK (#2(item))
+						      throw recvK (wrapped)
 						| PEvt.CLAIMED =>
 						  (* the owner is attempting to sync, so roll back
 						   * and check the matching event again.
@@ -502,7 +503,7 @@ structure PrimChan (*: sig
 					      if Equal(self, SELECT(RECVQ_VPROC, item))
 						then (* sending to a local thread *)
 						  let fls : FLS.fls = FLS.@get-in-atomic(self)
-						  do VProcQueue.@enqueue-from-atomic (self, fls, sendK)
+						  do VProcQueue.@enqueue-in-atomic (self, fls, sendK)
 						  do FLS.@set-in-atomic(self, SELECT(RECVQ_FLS, item))
 						  do SchedulerAction.@atomic-end (self)
 						  let k : cont(any) = SELECT(RECVQ_CONT, item)
@@ -552,7 +553,7 @@ structure PrimChan (*: sig
 						    if Equal(self, SELECT(RECVQ_VPROC, item))
 						      then (* sending to a local thread *)
 							let fls : FLS.fls = FLS.@get-in-atomic(self)
-							do VProcQueue.@enqueue-from-atomic (self, fls, sendK)
+							do VProcQueue.@enqueue-in-atomic (self, fls, sendK)
 							do FLS.@set-in-atomic(self, SELECT(RECVQ_FLS, item))
 							do SchedulerAction.@atomic-end (self)
 							let k : cont(any) = SELECT(RECVQ_CONT, item)

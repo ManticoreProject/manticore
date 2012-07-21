@@ -9,15 +9,16 @@ structure LookupInfixOps : sig
 
     val tr : AST.exp -> AST.exp
 
-  end = struct
+end = struct
+  
+  structure DV = DelayedBasis.Var
 
-    fun tr e = let
-       (* lookupInfixOp : AST.var -> AST.var *)
-	 fun lookupInfixOp (f : AST.var) : AST.var = 
-	     if Var.same (f, Basis.psub) then BasisEnv.getVarFromBasis ["PArray", "sub"]
-	     else f
-	 in
-	   SubstVar.exp lookupInfixOp e
-	 end
+  fun tr e = let
+  (* lookupInfixOp : AST.var -> AST.var *)
+    fun lookupInfixOp (f : AST.var) : AST.var = 
+      if Var.same (f, Basis.psub) then DV.parraySub () else f
+    in
+      SubstVar.exp lookupInfixOp e
+    end
 
-  end
+end

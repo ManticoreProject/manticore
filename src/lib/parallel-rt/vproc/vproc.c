@@ -8,10 +8,12 @@
 #include <stdio.h>
 #include <signal.h>
 #include <time.h>
+#include <sys/time.h>
 #if defined (TARGET_DARWIN)
 #  include <sys/sysctl.h>
 #endif
 #include <errno.h>
+#include <inttypes.h>
 #include "os-memory.h"
 #include "os-threads.h"
 #include "atomic-ops.h"
@@ -21,9 +23,11 @@
 #include "gc.h"
 #include "options.h"
 #include "value.h"
+#include "scheduler.h"
 #include "inline-log.h"
 #include "time.h"
 #include "perf.h"
+#include "work-stealing-deque.h"
 
 typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
@@ -49,24 +53,10 @@ int			NumVProcs;
 int			NumIdleVProcs;
 VProc_t			*VProcs[MAX_NUM_VPROCS];
 bool                    ShutdownFlg = false;
+int                     *NumVProcsPerNode;
+int                     *MinVProcPerNode;
 
 extern int ASM_VProcSleep;
-
-/* Macros for accessing the register fields in the ucontext */
-#if defined(TARGET_LINUX)
-#  define UC_R11(uc)	((uc)->uc_mcontext.gregs[REG_R11])
-#  define UC_RIP(uc)	((uc)->uc_mcontext.gregs[REG_RIP])
-#elif defined(TARGET_DARWIN)
-#  if defined(__DARWIN_UNIX03) && defined(_DARWIN_FEATURE_UNIX_CONFORMANCE)
-#    define UC_R11(uc)	((uc)->uc_mcontext->__ss.__r11)
-#    define UC_RIP(uc)	((uc)->uc_mcontext->__ss.__rip)
-#  else /* Tiger */
-#    define UC_R11(uc)	((uc)->uc_mcontext->ss.r11)
-#    define UC_RIP(uc)	((uc)->uc_mcontext->ss.rip)
-#  endif
-#else
-#  error unsupported OS
-#endif
 
 /*! \brief Items in the ready-queue lists and on the landing pad */
 typedef struct struct_queue_item QueueItem_t;
@@ -87,18 +77,25 @@ void VProcInit (bool isSequential, Options_t *opts)
 					// Otherwise, we spread the load
 					// around.
 
+    // Will point to a static non-null value if locations were specified.
+    int *procs = NULL;
+    
     NumIdleVProcs = 0;
-
+	
   /* get command-line options */
     if (isSequential) {
 	NumVProcs = 1;
     }
     else {
 	NumVProcs = ((NumHWThreads == 0) ? DFLT_NUM_VPROCS : NumHWThreads);
+    NumVProcs = GetVprocsOpt (opts, NumVProcs, &procs);
 	NumVProcs = GetIntOpt (opts, "-p", NumVProcs);
 	if ((NumHWThreads > 0) && (NumVProcs > NumHWThreads))
 	    Warning ("%d processors requested on a %d processor machine\n",
 		NumVProcs, NumHWThreads);
+    if (MAX_NUM_VPROCS < NumVProcs)
+        Die ("Runtime is only configured to support %d VProcs, but %d were requested.\n",
+             MAX_NUM_VPROCS, NumVProcs);
     }
 
 #ifdef TARGET_DARWIN
@@ -111,8 +108,8 @@ void VProcInit (bool isSequential, Options_t *opts)
 #endif
 
 #ifndef NDEBUG
-    SayDebug("%d/%d hardware threads allocated to vprocs (%s)\n",
-	NumVProcs, NumHWThreads,
+    SayDebug("%d/%d hardware threads on %d nodes allocated to vprocs (%s)\n",
+    NumVProcs, NumHWThreads, NumHWNodes,
 	denseLayout ? "dense layout" : "non-dense layout");
 #endif
 
@@ -125,6 +122,9 @@ void VProcInit (bool isSequential, Options_t *opts)
     if (pthread_key_create (&VProcInfoKey, 0) != 0) {
 	Die ("unable to create VProcInfoKey");
     }
+
+  /* Initialize the work stealing scheduler-local data */
+    M_InitWorkGroupList ();
 
   /* Initialize vprocs */
     BarrierInit (&InitBarrier, NumVProcs+1);
@@ -140,10 +140,24 @@ void VProcInit (bool isSequential, Options_t *opts)
 	initData[i].initArg = M_UNIT;
     }
 
+    NumVProcsPerNode = NEWVEC(int, NumHWNodes);
+    MinVProcPerNode = NEWVEC(int, NumHWNodes);
+    for (int i = 0; i < NumHWNodes; i++) {
+        NumVProcsPerNode[i] = 0;        
+        MinVProcPerNode[i] = MAX_NUM_VPROCS;        
+    }
+
   /* assign locations */
-    if (denseLayout) {
+    if (procs != NULL) {
+        for (int i = 0;  i < NumVProcs;  i++) {
+            int thread = procs[i] % NumHWThreads;
+            int package = procs[i] / (NumHWThreads*NumHWCores);
+            int core = (procs[i] % (NumHWThreads*NumHWCores)) / NumHWCores;
+            initData[i].loc = Location(package, core, thread);
+        }
+    } else if (denseLayout) {
 	for (int i = 0;  i < NumVProcs;  i++)
-	    initData[i].loc = Locations[i];
+	    initData[i].loc = Locations[i%NumHWThreads];
     }
     else if (NumVProcs <= NumHWNodes) {
       /* at most one vproc per node */
@@ -177,6 +191,15 @@ void VProcInit (bool isSequential, Options_t *opts)
 	    }
 	}
     }
+
+    for (int i = 0;  i < NumVProcs;  i++) {
+        int node = LocationNode(initData[i].loc);
+        NumVProcsPerNode[node]++;
+        if (MinVProcPerNode[node] > i) {
+            MinVProcPerNode[node] = i;
+        }
+    }
+
 
   /* create vprocs */
     for (int i = 0;  i < NumVProcs;  i++) {
@@ -227,7 +250,7 @@ void *NewVProc (void *arg)
    */
 #if defined(HAVE_POSIX_MEMALIGN)
     VProc_t *vproc = 0;
-    posix_memalign ((void **)&vproc, 64, sizeof(VProc_t));
+    int ignored = posix_memalign ((void **)&vproc, 64, sizeof(VProc_t));
 #elif defined(HAVE_MEMALIGN)
     VProc_t *vproc = (VProc_t *) memalign (64, sizeof(VProc_t));
 #elif defined(HAVE_VALLOC)
@@ -247,7 +270,6 @@ void *NewVProc (void *arg)
     vproc->oldTop = vprocHeap;
     InitVProcHeap (vproc);
 
-    vproc->inManticore = M_FALSE;
     vproc->atomic = M_TRUE;
     vproc->sigPending = M_FALSE;
     vproc->sleeping = M_FALSE;
@@ -259,6 +281,8 @@ void *NewVProc (void *arg)
     vproc->shutdownPending = M_FALSE;
     vproc->rdyQHd = M_NIL;
     vproc->rdyQTl = M_NIL;
+    vproc->sndQHd = M_NIL;
+    vproc->sndQTl = M_NIL;
     vproc->landingPad = M_NIL;
     vproc->stdArg = M_UNIT;
     vproc->stdEnvPtr = M_UNIT;
@@ -275,11 +299,10 @@ void *NewVProc (void *arg)
     InitLog (vproc);
 #endif
 
+    TIMER_Init (&(vproc->timer));
 #if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)
     InitPerfCounters (vproc);
 #endif 
-
-    TIMER_Init (&(vproc->timer));
 
 #ifndef NO_GC_STATS
     vproc->nPromotes = 0;
@@ -303,13 +326,6 @@ void *NewVProc (void *arg)
 
   /* store a pointer to the VProc info as thread-specific data */
     pthread_setspecific (VProcInfoKey, vproc);
-
-  /* initialize this pthread's handler. */
-    sa.sa_sigaction = SigHandler;
-    sa.sa_flags = SA_SIGINFO | SA_RESTART;
-    sigfillset (&(sa.sa_mask));
-    sigaction (SIGUSR1, &sa, 0);
-    sigaction (SIGUSR2, &sa, 0);
 
   /* Note that initData gets freed in VProcInit after the barrier, so we need
    * to cache the contents locally.
@@ -368,7 +384,7 @@ void VProcExit (VProc_t *vp)
 #ifndef NO_GC_STATS
 	ReportGCStats ();
 #endif
-
+		
 	exit (0);
     }
     else {
@@ -429,7 +445,8 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
 {
     Value_t landingPadOrig, landingPadNew, x;
 
-    Value_t dummyFLS = GlobalAllocNonUniform (self, 4, INT(-1), PTR(M_NONE), INT(0), PTR(M_NIL));
+    Value_t dummyBool = GlobalAllocNonUniform (self, 1, INT(3));
+    Value_t dummyFLS = GlobalAllocNonUniform (self, 5, INT(-1), PTR(M_NONE), INT(0), PTR(M_NIL), PTR(dummyBool));
 
     do {
 	landingPadOrig = vp->landingPad;
@@ -447,7 +464,18 @@ void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t fls, Value_t k)
  */
 void VProcPreempt (VProc_t *self, VProc_t *vp)
 {
-    VProcSendUnixSignal(vp, PreemptSignal);
+  /*
+#ifndef NDEBUG
+    if (DebugFlg) {
+	if (self == 0)
+	    SayDebug("Timer interrupt on vproc %d.\n", vp->id);
+	else
+	    SayDebug("[%2d] Signaling vproc %d.\n", self->id, vp->id);
+    }
+#endif
+  */
+    LogPreemptVProc (vp, vp->id);
+    SetLimitPtr (vp, 0);
 }
 
 /*! \brief interrupt a remote vproc to take part in a global collection.
@@ -459,30 +487,8 @@ void VProcGlobalGCInterrupt (VProc_t *self, VProc_t *vp)
     vp->globalGCPending = true;
     assert(vp->currentFLS != M_NIL);
     VProcSendSignal(self, vp, vp->currentFLS, vp->dummyK);
-    VProcSendUnixSignal(vp, GCSignal);
+    VProcPreempt (self, vp);
 }
-
-/*! \brief send an asynchronous signal to another VProc.
- *  \param vp the target VProc.
- *  \param sig the signal.
- */
-void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig)
-{
-#ifndef NDEBUG
-  if (DebugFlg) {
-      VProc_t *self = VProcSelf();
-      if (self != 0) 
-  	  SayDebug("[%2d] VProcSendUnixSignal: vp = %d, sig = %d\n", self->id, vp->id, sig);
-      else 
-	  SayDebug("VProcSendUnixSignal: vp = %d, sig = %d\n", vp->id, sig);
-  }
-#endif
-
-    if (sig == PreemptSignal) pthread_kill (vp->hostID, SIGUSR1); 
-    else if (sig == GCSignal) pthread_kill (vp->hostID, SIGUSR2);
-    else Die("bogus signal");
-
-} /* end of VProcSendUnixSignal */
 
 /*! \brief put the vproc to sleep until a signal arrives
  *  \param vp the vproc that is being put to sleep.
@@ -547,7 +553,7 @@ Value_t VProcNanosleep (VProc_t *vp, Time_t nsec)
 
 #ifndef NDEBUG
     if (DebugFlg)
-        SayDebug ("[%2d] VProcNanosleep for %llu seconds and %llu nanoseconds\n", 
+        SayDebug ("[%2d] VProcNanosleep for %" PRIu64 " seconds and %" PRIu64 " nanoseconds\n", 
 	    vp->id, (uint64_t)delta.tv_sec, (uint64_t)delta.tv_nsec);
 #endif
 
@@ -612,58 +618,7 @@ static void IdleVProc (VProc_t *vp, void *arg)
 
   /* should never get here! */
     assert (0);
-} /* end of IdleVProc */
-
-/* SigHandler:
- *
- * A per-vproc handler for SIGUSR1 and SIGUSR2 signals.
- */
-static void SigHandler (int sig, siginfo_t *si, void *_sc)
-{
-    ucontext_t	*uc = (ucontext_t *)_sc;
-    VProc_t	*self = VProcSelf();
-#ifdef ENABLE_LOGGING
-    extern uint64_t GlobalGCUId;
-#endif
-
-  /* WARNING:
-   * Enabling the following SayDebug can cause deadlock;
-   * if the signal arrives while the VProc/pthread is in the runtime,
-   * the PrintLock may already be acquired by this thread for debugging. 
-   * Attempting to re-acquire the PrintLock in the signal handler leads to deadlock
-   * (technically, undefined behavior, but deadlock in practice).
-   */
-/*
-#ifndef NDEBUG
-    if (DebugFlg)
-        SayDebug("[%2d] SigHandler; inManticore = %p, atomic = %p, pc = %p\n",
-                 self->id, self->inManticore, self->atomic, UC_RIP(uc));
-#endif
-*/
-
-    switch (sig) {
-      case SIGUSR1: /* Preemption signal */
-	LogPreemptSignal (self);
-	self->sigPending = M_TRUE;
-	break;
-      case SIGUSR2: /* Global GC signal */
-	LogGCSignal (self, GlobalGCUId);
-	self->sigPending = M_TRUE;
-	break;
-      default:
-	Die ("bogus signal %d\n", sig);
-	break;
-    }
-
-    if ((self->inManticore == M_TRUE) && (self->atomic == M_FALSE)) {
-      /* set the limit pointer to zero to force a context switch on
-       * the next GC test.
-       */
-	UC_R11(uc) = 0;
-    }
-
-} /* SigHandler */
-
+}
 
 static int GetNumCPUs ()
 {
@@ -747,5 +702,5 @@ VProc_t* GetNthVProc (int n)
  */
 Value_t SleepCont (VProc_t *self)
 {
-    return AllocUniform(self, 1, PtrToValue(&ASM_VProcSleep));
+    return WrapWord(self, (Word_t)&ASM_VProcSleep);
 }

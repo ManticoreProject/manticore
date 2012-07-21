@@ -8,40 +8,89 @@
 
 structure PArray = struct
 
-    _primcode (
-	define inline @to-rope (x : parray / _ : exh) : Rope.rope =
-	    return ((Rope.rope)x)
-	  ;
-	define inline @from-rope (x : Rope.rope / _ : exh) : parray =
-	    return ((parray)x)
-	  ;
-      )
+  fun failwith s = raise Fail s
 
-    type 'a parray = 'a parray
+  _primcode (
+    define inline @to-rope (x : parray / _ : exh) : Rope.rope =
+      return ((Rope.rope)x);
+    define inline @from-rope (x : Rope.rope / _ : exh) : parray =
+      return ((parray)x);
+    )
 
-    local
-      val toRope : 'a parray -> 'a Rope.rope = _prim(@to-rope)
-      val fromRope : 'a Rope.rope -> 'a parray = _prim(@from-rope)
+  type 'a parray = 'a parray
+
+  (* I would prefer these were local but I had to expose them to the compiler for the FT. *)
+  val toRope : 'a parray -> 'a Rope.rope = _prim(@to-rope)
+  val fromRope : 'a Rope.rope -> 'a parray = _prim(@from-rope)
+
+  (* in *)
+
+  (* Rope implementations are the default. *)
+  (* These functions are swapped out when the FT is turned on. *)
+  fun sub (pa, i) = Rope.sub (toRope pa, i)
+  fun length pa = Rope.length (toRope pa)
+  fun tab (n, f) = fromRope (Rope.tabulate (n, f))
+  fun tabFromToStep (a, b, step, f) = fromRope (Rope.tabFromToStep (a, b, step, f))
+  fun map f pa = fromRope (Rope.map f (toRope pa))
+  fun reduce rator init pa = Rope.reduce rator init (toRope pa)
+  fun segreduce (oper,init,pa) = let
+(*    val b = Time.now() *)
+    val res = map (reduce oper init) pa
+(*    val e = Time.now()
+    val _ = Print.printLn ("Time spent in PArray.segreduce: " ^ (Time.toStringMicrosec (e-b))) *)
     in
+      res
+    end
+  fun mapSP (f, paa) = let
+(*    val b = Time.now() *)
+    val res = map (map f) paa
+(*    val e = Time.now()
+    val _ = Print.printLn ("Time spent in PArray.mapSP: " ^ (Time.toStringMicrosec (e-b))) *)
+    in
+      res
+    end
+  fun range (from, to_, step) = fromRope (Rope.range (from, to_, step))
+  fun app f pa = Rope.app f (toRope pa)
 
-  (* FIXME too tightly coupled *)
-    fun sub (pa, i) = Rope.sub(toRope pa, i)
-    fun length pa = Rope.length(toRope pa)
-    fun reduce (rator, init, pa) = Rope.reduceP (rator, init, toRope pa)
-    fun filter (pred, pa) = fromRope(Rope.filterP (pred, toRope pa))
-    fun map (f, pa) = fromRope(Rope.mapP (f, toRope pa))
-    fun rev pa = fromRope(Rope.revP(toRope pa))
-    fun fromList l = fromRope(Rope.fromList l)
-    fun concat (pa1, pa2) = fromRope(Rope.concat(toRope pa1, toRope pa2))
-    fun tabulateWithPred (n, f) = fromRope(Rope.tabP(n, f))
+(* These higher-dimension regular tabs (tab2D, etc.) are spelled out since I 
+ * want them to be relatively fast for fair comparisons with flattened versions. 
+ *)
+  fun tab2D ((iFrom, iTo, iStep), (jFrom, jTo, jStep), f) = 
+    tabFromToStep (iFrom, iTo, iStep, fn i => 
+      tabFromToStep (jFrom, jTo, jStep, fn j => f (i, j)))
 
-  (* repP : int * 'a -> 'a parray *)
-  (* called "dist" in NESL and Keller *)
-  (* called "replicateP" in DPH impl *)
-    fun repP (n, x) = fromRope(Rope.tabP (n, fn _ => x))
+  fun tab3D ((iF, iT, iS), (jF, jT, jS), (kF, kT, kS), f) = 
+    tabFromToStep (iF, iT, iS, fn i => 
+      tabFromToStep (jF, jT, jS, fn j =>
+        tabFromToStep (kF, kT, kS, fn k => f (i, j, k))))
 
-  end (* local *)
+  fun tab4D ((iF, iT, iS), (jF, jT, jS), (kF, kT, kS), (lF, lT, lS), f) = 
+    tabFromToStep (iF, iT, iS, fn i => 
+      tabFromToStep (jF, jT, jS, fn j =>
+        tabFromToStep (kF, kT, kS, fn k => 
+          tabFromToStep (lF, lT, lS, fn l => f (i, j, k, l)))))
 
+  fun tab5D ((iF, iT, iS), (jF, jT, jS), (kF, kT, kS), (lF, lT, lS), (mF, mT, mS), f) = 
+    tabFromToStep (iF, iT, iS, fn i => 
+      tabFromToStep (jF, jT, jS, fn j =>
+        tabFromToStep (kF, kT, kS, fn k => 
+          tabFromToStep (lF, lT, lS, fn l => 
+            tabFromToStep (mF, mT, mS, fn m => f (i, j, k, l, m))))))
+
+(* higher dimensional regular tabbing *)
+  fun tabHD (triples, f) = failwith "tabHD-todo"
+
+  (* fun filter (pred, pa) = fromRope(Rope.filter pred (toRope pa)) *)
+  (* fun rev pa = fromRope(Rope.rev(toRope pa)) *)
+  (* fun fromList l = fromRope(Rope.fromList l) *)
+  fun concat (pa1, pa2) = fromRope(Rope.concat(toRope pa1, toRope pa2))
+  (* fun tabulateWithPred (n, f) = fromRope(Rope.tabulate(n, f)) *)
+  (* fun forP (n, f) = Rope.for (n,f) *)
+  (* fun repP (n, x) = fromRope(Rope.tabulate (n, fn _ => x)) *)
+
+  (* end (* local *) *)
+
+ (* I can't write polymorphic toString, unfortunately. Specific implementations below. *)
   (* toString : ('a -> string ) -> string -> 'a parray -> string *)
   (* FIXME: should we exploit the fact that we're dealing with a rope? *)
     fun toString eltToString sep parr = let
@@ -61,19 +110,167 @@ structure PArray = struct
 	    String.concat (lp (0, init))
 	  end
 
+  fun tos_int (parr : int parray) = let
+    fun tos i = Int.toString (parr ! i)
+    fun lp (i, acc) =
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::","::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        failwith "tos_int - BUG: negative length"
+      else if (n=0) then 
+        "[||]"
+      else let
+        val init = [tos(n-1),"|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
+  fun tos_intParr (parr : int parray parray) = let
+    fun tos i = tos_int (parr ! i)
+    fun lp (i, acc) = 
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::",\n"::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        failwith "tos_intParr - BUG: negative length"
+      else if (n=0) then
+        "[||]"
+      else let
+        val init = [tos(n-1), "\n|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
+  fun tos_intParrParr (parr : int parray parray parray) = let
+    fun tos i = tos_intParr (parr ! i)
+    fun lp (i, acc) = 
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::",\n"::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        failwith "tos_intParrParr - BUG: negative length"
+      else if (n=0) then
+        "[||]"
+      else let
+        val init = [tos(n-1), "\n|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
+  fun tos_intPair parr = let
+    val itos = Int.toString
+    fun tos i = let
+      val (m,n) = parr!i 
+      in
+        "(" ^ itos m ^ "," ^ itos n ^ ")"
+      end
+    fun lp (i, acc) =
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::","::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        failwith "tos_intPair - BUG: negative length"
+      else if (n=0) then "[||]"
+      else let
+        val init = [tos(n-1),"|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
+  fun tos_float (parr : float parray) = let
+    fun tos i = Float.toString (parr ! i)
+    fun lp (i, acc) =
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::","::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        failwith "tos_float - BUG: negative length"
+      else if (n=0) then 
+        "[||]"
+      else let
+        val init = [tos(n-1),"|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
+  fun tos_dbl (parr : double parray) = let
+    fun tos i = Double.toString (parr ! i)
+    fun lp (i, acc) =
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::","::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        failwith "tos_int - BUG: negative length"
+      else if (n=0) then 
+        "[||]"
+      else let
+        val init = [tos(n-1),"|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
+  fun tos_dblParr (parr : double parray parray) = let
+    fun tos i = tos_dbl (parr ! i)
+    fun lp (i, acc) = 
+      if (i<0) then
+        String.concat ("[|"::acc)
+      else
+        lp (i-1, tos(i)::",\n"::acc)
+    val n = length parr
+    in
+      if (n<0) then
+        failwith "tos_intParr - BUG: negative length"
+      else if (n=0) then
+        "[||]"
+      else let
+        val init = [tos(n-1), "\n|]"]
+        in
+          lp (n-2, init)
+        end
+    end
+
 end
 
-(* FIXME: the following definitions should be in a separate
- * file (a la sequential/pervasives.pml)
- *)
-(* below is the subset of the parallel array module that should bound at the top level. *)
-val reduceP = PArray.reduce
-val filterP = PArray.filter
-val subP = PArray.sub
-val revP = PArray.rev
-val lengthP = PArray.length
-val mapP = PArray.map
-val fromListP = PArray.fromList
-val concatP = PArray.concat
-val tabP = PArray.tabulateWithPred
+ val concatP = PArray.concat
+ val reduceP = PArray.reduce 
 
+(* (\* FIXME: the following definitions should be in a separate *)
+(*  * file (a la sequential/pervasives.pml) *)
+(*  *\) *)
+(* (\* Below is the subset of the parallel array module that should bound at the top level. *\) *)
+
+(* val filterP = PArray.filter *)
+(* val subP = PArray.sub *)
+(* val revP = PArray.rev *)
+(* val lengthP = PArray.length *)
+(* val mapP = PArray.map *)
+(* val fromListP = PArray.fromList *)
+
+(* val tabP = PArray.tabulateWithPred *)
+(* val forP = PArray.forP *)
+(* *\) *)

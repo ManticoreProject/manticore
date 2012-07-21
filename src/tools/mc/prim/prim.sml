@@ -28,6 +28,7 @@ structure Prim =
       | I64Neg of 'var
       | U64Mul of 'var * 'var
       | U64Div of 'var * 'var
+      | U64Rem of 'var * 'var
       | F32Add of 'var * 'var
       | F32Sub of 'var * 'var
       | F32Mul of 'var * 'var
@@ -45,6 +46,7 @@ structure Prim =
     (* conversions *)
       | I32ToI64X of 'var		(* int -> long conversion with sign extension *)
       | I32ToI64 of 'var		(* unsigned int -> long conversion *)
+      | I64ToI32 of 'var                (* int -> long conversion *)
       | I32ToF32 of 'var		(* int -> float conversion *)
       | I32ToF64 of 'var		(* int -> double conversion *)
       | I64ToF32 of 'var		(* long -> float conversion *)
@@ -96,6 +98,13 @@ structure Prim =
       | FenceRead			(* memory fence for reads *)
       | FenceWrite			(* memory fence for writes *)
       | FenceRW				(* memory fence for both reads and writes *)
+    (* allocation primitives *)
+      | AllocPolyVec of 'var * 'var     (* AllocPolyVec (n, xs): allocate in the local heap a vector 
+					 * v of length n s.t. v[i] := l[i] for 0 <= i < n *)
+      | AllocIntArray of 'var           (* allocates an array of ints in the local heap *)
+      | AllocLongArray of 'var          (* allocates an array of longs in the local heap *)
+      | AllocFloatArray of 'var         (* allocates an array of floats in the local heap *)
+      | AllocDoubleArray of 'var        (* allocates an array of doubles in the local heap *)
 
   (* primitive conditional tests *)
     datatype 'var cond

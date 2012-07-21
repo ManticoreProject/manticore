@@ -24,6 +24,7 @@ functor MainFn (
     structure BOMOpt = BOMOptFn (Spec)
     structure CPSOpt = CPSOptFn (Spec)
     structure CFGOpt = CFGOptFn (Spec)
+    structure Closure = ClosureFn (Spec)
     structure IB = InitialBasis
 
     fun err s = TextIO.output (TextIO.stdErr, s)
@@ -88,14 +89,21 @@ functor MainFn (
 	  end
 
   (* dead function elimination on the parse tree *)
+    fun printTrees ([]) = ()
+      | printTrees ({tree,span}::rest) = (
+        PrintPT.print tree;
+        printTrees rest)
     fun treeShake p2s =
 	  if Controls.get BasicControl.treeShake
 	     then (
+              if Controls.get BasicControl.treeShakeDebug
+              then printTrees p2s
+              else ();
 	      TreeShake.setDeadFuns (allDecls p2s);
 	      TreeShake.shakeProgram p2s)
 	  else p2s
 
-    fun getPArrImpl () = BasisEnv.getTyConFromBasis ["Rope", "rope"]
+    val getPArrImpl : unit -> Types.tycon = DelayedBasis.TyCon.rope
 
   (* load the AST specified by an MLB file *)
     fun mlbToAST (errStrm, bEnv, mEnv, file) = let
@@ -161,6 +169,7 @@ functor MainFn (
           val ast = mlbToAST (errStrm, bEnv0, mEnv0, srcFile)
           val _ = checkForErrors errStrm
           val ast = ASTOpt.optimize(glueAST(ast0, ast))
+	  val _ = MatchCheck.checkExp (errStrm, ast)
 	  val ast = MatchCompile.compile (errStrm, ast)
           val _ = checkForErrors errStrm
 	(* create the initial translation environment *)
@@ -206,7 +215,7 @@ functor MainFn (
           \    -h<level>        help listing with obscurity limit\n\
           \    -version         show version\n\
 	  \    -log             build an executable with logging enabled\n\
-	  \    -gcStats         build an executable with GC statistics enabled\n\
+	  \    -gcstats         build an executable with GC statistics enabled\n\
 	  \    -debug           build an executable with debugging enabled\n\
 	  \    -perf            build an executable with hw perf counters enabled\n\
 	  \    -sequential      compile a sequential-mode program\n\
@@ -257,7 +266,7 @@ functor MainFn (
 
     fun processArgs args = (case args
            of arg :: args =>
-		if String.size arg > 0 andalso String.sub (arg, 0) = #"-"
+		if String.isPrefix "-" arg
 		  then processOption (arg, args)
 		  else processFile (arg, args)
             | _ => usage ()

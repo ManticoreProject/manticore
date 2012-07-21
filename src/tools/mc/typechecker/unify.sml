@@ -77,8 +77,6 @@ structure Unify : sig
 		  | (Ty.TupleTy tys1, Ty.TupleTy tys2) =>
 		      ListPair.allEq uni (tys1, tys2)
 		  | (Ty.VarTy tv1, Ty.VarTy tv2) => TyVar.same(tv1, tv2)
-		  | (_, Ty.VarTy _) => raise Fail ""
-		  | (Ty.VarTy _, _) => raise Fail ""
 		  | _ =>
 (print (concat["unification failure:\n  ", TypeUtil.fmt {long=true} ty1,
 "\n  ", TypeUtil.fmt {long=true} ty2, "\n"]);
@@ -108,6 +106,7 @@ false)
 		    | _ => raise Fail "impossible"
 		  (* end case *)
 		end
+	(* unify two meta variables *)
 	  and unifyMV (mv1 as Ty.MVar{info=info1, ...}, mv2 as Ty.MVar{info=info2, ...}) = let
 		fun assign (info1, mv2) = (assignMV(info1, Ty.INSTANCE(Ty.MetaTy mv2)); true)
 		in

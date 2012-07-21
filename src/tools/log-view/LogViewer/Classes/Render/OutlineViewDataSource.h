@@ -17,7 +17,7 @@ struct Group;
  * The enabled state of a group g is either 0, 1, or -1 if the group is
  * disabled, enabled, mixed
  */
-@interface OutlineViewDataSource : GroupFilter {
+@interface OutlineViewDataSource : GroupFilter < NSOutlineViewDataSource, NSOutlineViewDelegate > {
     struct LogFileDesc *desc;
     struct Group *root;
 
@@ -59,6 +59,11 @@ struct Group;
      setObjectValue:(id)object
      forTableColumn:(NSTableColumn *)tableColumn
 	     byItem:(id)item;
+
+- (void)outlineView:(NSOutlineView *)outlineView
+    willDisplayCell:(id)cell
+     forTableColumn:(NSTableColumn *)tableColumn
+	       item:(id)item;
 
 
 @end

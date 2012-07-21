@@ -41,6 +41,7 @@ esac
 case $target_os in
   linux|linux-gnu) TARGET_OS=TARGET_LINUX; OS=linux; LDFLAGS="$LDFLAGS -lm" ;;
   darwin*) TARGET_OS=TARGET_DARWIN; OS=darwin ;;
+  cygwin) TARGET_OS=TARGET_CYGWIN; OS=cygwin ;;
   *) AC_MSG_ERROR([target os ${target_os} is not supported]) ;;
 esac
 
@@ -120,6 +121,24 @@ dnl
 dnl extra CFLAGS
 dnl
 CFLAGS="$CFLAGS -D_GNU_SOURCE -pedantic"
+CXXFLAGS="$CXXFLAGS -D_GNU_SOURCE -D__STDC_FORMAT_MACROS"
+
+dnl
+dnl check for whether we should use the no_pie argument. LLVM has a
+dnl new default that generates a warning for Manticore-compiled code.
+dnl
+save_LDFLAGS=$LDFLAGS
+LDFLAGS="$LDFLAGS -Wl,-no_pie"
+AC_MSG_CHECKING([Checking for -Wl,-no_pie])
+AC_LINK_IFELSE(
+  [AC_LANG_PROGRAM(
+    [[]])],
+  [ac_supports_no_pie=yes],
+  [ac_supports_no_pie=no])
+AC_MSG_RESULT($ac_supports_no_pie)
+if test "$ac_supports_no_pie" = "no" ; then
+  LDFLAGS=$save_LDFLAGS
+fi
 
 dnl
 dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for
@@ -156,9 +175,9 @@ save_LIBS=$LIBS
 LIBS="-lrt $LIBS"
 AC_MSG_CHECKING([for clock_gettime])
 AC_LINK_IFELSE(
-  AC_LANG_PROGRAM(
+  [AC_LANG_PROGRAM(
     [[#include <time.h>]],
-    [[struct timespec t; clock_gettime(CLOCK_REALTIME, &t); ]]),
+    [[struct timespec t; clock_gettime(CLOCK_REALTIME, &t); ]])],
   [ ac_cv_func_clock_gettime=yes;
     AC_DEFINE(HAVE_CLOCK_GETTIME, [1], [is clock_gettime available?])],
   [ac_cv_func_clock_gettime=no])
@@ -184,9 +203,9 @@ LIBS="$PTHREAD_LIBS $LIBS"
 CFLAGS="$PTHREAD_CFLAGS $CFLAGS"
 AC_MSG_CHECKING([for pthread_setaffinity_np])
 AC_LINK_IFELSE(
-  AC_LANG_PROGRAM(
+  [AC_LANG_PROGRAM(
     [[#include <pthread.h>]],
-    [[cpu_set_t s; pthread_setaffinity_np(pthread_self(), sizeof(s), &s); ]]),
+    [[cpu_set_t s; pthread_setaffinity_np(pthread_self(), sizeof(s), &s); ]])],
   [ ac_cv_func_pthread_setaffinity_np=yes;
     AC_DEFINE(HAVE_PTHREAD_SETAFFINITY_NP, [1], [is pthread_setaffinity_np available?])],
   [ac_cv_func_pthread_setaffinity_np=no])
@@ -318,7 +337,7 @@ AC_SUBST(DEFAULT_LOG_VIEW_PATH)
 
 dnl ******************** Runtime system parameters ********************
 
-AC_DEFINE([MAX_NUM_VPROCS], [16], [maximum number of virtual processors])
+AC_DEFINE([MAX_NUM_VPROCS], [64], [maximum number of virtual processors])
 dnl VP_HEAP_SZB
 dnl MEM_BLOCK_SZB
 
@@ -340,7 +359,7 @@ dnl check for gcc builtin atomic operations
 dnl
 AC_MSG_CHECKING([for builtin atomic operations])
 AC_LINK_IFELSE(
-   AC_LANG_PROGRAM([], [int foo1; int foo2 = __sync_fetch_and_add(&foo1, 1);]),
+   [AC_LANG_PROGRAM([], [int foo1; int foo2 = __sync_fetch_and_add(&foo1, 1);])],
    AC_MSG_RESULT(yes)
    AC_DEFINE(
     [HAVE_BUILTIN_ATOMIC_OPS], 1,
@@ -450,6 +469,7 @@ dnl ***** Makefiles *****
   src/lib/parallel-rt/build/config/Makefile
   src/lib/parallel-rt/build/mk/common.gmk:src/lib/parallel-rt/build/mk/common_gmk.in
   src/tools/log-dump/Makefile
+  src/tools/log-work-stealing/Makefile
   src/tools/log-view/build/Makefile
   src/tools/mc/Makefile
 dnl ***** SML source files *****

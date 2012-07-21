@@ -30,14 +30,6 @@
 #define TIME_VALUE_PADDING ( 14 )
 
 
-/// Exponentiation function
-uint64_t myExp(uint64_t a, uint n)
-{
-    uint64_t ret = 1;
-    while (n--) ret *=a;
-    return ret;
-}
-
 @implementation MessageView
 
 /// Determine how high a vproc should be based on its identifier
@@ -67,12 +59,54 @@ uint64_t myExp(uint64_t a, uint n)
 
     int32_t src_vpId = Detail_Dependent_src_VpId(d);
     int32_t dst_vpId = Detail_Dependent_Dst_VpId(dep_dst);
+    
+    uint64_t startT = Event_Time(*s);
+    uint64_t endT   = Event_Time(*r);
+    uint64_t span = endT - startT;
+    
+    if (startT > logDoc.logInterval->x + logDoc.logInterval->width ||
+	endT   < logDoc.logInterval->x)
+	return nil;
+    
+    if (startT >= logDoc.logInterval->x)
+    {
+	p1.x = [logDoc image:startT];
+	p1.y = [self heightForVp:src_vpId];
+    }
+    else
+    {
+	/* The start of the event is farther left than we can display. We must
+	   recalculate the y coordinate of the left start point. */
+	uint64_t diff = logDoc.logInterval->x - startT;
+	double ratio = (double)diff / span;
+	p1.x = 0;
+	p1.y = [self heightForVp:src_vpId];
+	if (p1.y > [self heightForVp:dst_vpId])
+	    p1.y -= (p1.y - [self heightForVp:dst_vpId]) * ratio;
+	else
+	    p1.y += ([self heightForVp:dst_vpId] - p1.y) * ratio;
 
-    p1.x = [logDoc image:Event_Time(*s)];
-    p1.y = [self heightForVp:src_vpId];
+    }
 
-    p2.x = [logDoc image:Event_Time(*r)];
-    p2.y = [self heightForVp:dst_vpId];
+    if (endT <= logDoc.logInterval->x + logDoc.logInterval->width)
+    {
+	p2.x = [logDoc image:endT];
+	p2.y = [self heightForVp:dst_vpId];
+    }
+    else
+    {
+	uint64_t diff = endT - (logDoc.logInterval->x + logDoc.logInterval->width);
+	double ratio = (double)diff / span;
+	p2.x = [logDoc image:logDoc.logInterval->x + logDoc.logInterval->width];
+	p2.y = [self heightForVp:dst_vpId];
+	if (p2.y > [self heightForVp:src_vpId])
+	    p2.y -= (p2.y - [self heightForVp:src_vpId]) * ratio;
+	else
+	    p2.y += ([self heightForVp:src_vpId] - p2.y) * ratio;
+
+    }
+    
+
 
  //   NSLog(@" message %x from vp %d to vp %d from %f, %f to %f, %f",
 	//    d,
@@ -81,22 +115,19 @@ uint64_t myExp(uint64_t a, uint n)
 	//    p1.x, p2.y);
 //
     Message *message = [[Message alloc] initArrowFromPoint:p1
-				       toPoint:p2
-					  color:[Utils colorFromFormatString:g->Color()]
-					 sender:s
-				      receiver:r];
-    NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
-    message.description = [NSString stringWithString:S];
+						   toPoint:p2
+						     color:[Utils colorFromFormatString:g->Color()]
+						    sender:s
+						  receiver:r];
+    message.description = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
 
     return message;
 }
 
 - (MessageView *)initWithFrame:(NSRect)frame
-			logDoc:(LogDoc *)logDocVal
-		    dependents:(NSArray *)dependentsVal
 {
     if (![super initWithFrame:frame]) return nil;
-    logDoc = logDocVal;
+
     timeValueAttributes = [[NSMutableDictionary alloc] init];
     [timeValueAttributes setObject:[NSFont fontWithName:TIME_VALUE_FONT_NAME
 						   size:TIME_VALUE_FONT_SIZE]
@@ -110,6 +141,13 @@ uint64_t myExp(uint64_t a, uint n)
     // dependents will contain one message for every dependent
     // in dependentsVal which is enabled
     dependents = [[NSMutableArray alloc] init];
+
+    return self;
+}
+
+- (void)updateDependents:(NSArray *)dependentsVal
+{
+    [dependents removeAllObjects];
     for (Box *b in dependentsVal)
     {
 	struct TaggedDetail_struct *d = (TaggedDetail_struct *) [b unbox];
@@ -117,32 +155,66 @@ uint64_t myExp(uint64_t a, uint n)
 	{
 	    Group *g = Detail_Type(d);
 	    if ([logDoc.filter enabled:g].intValue != 1) continue;
-
+	    
 	    Message *m = [self messageFromDependent:d dst:i];
-
+	    
 	    if (m == nil) continue;
 	    //NSLog(@"MessageView is adding a dependent event %@", m);
 	    [dependents addObject:m];
 	}
     }
-
-    return self;
 }
 
-
 - (void)drawRect:(NSRect)rect {
+
+    //[logDoc.logView needsDisplay];
+    //NSLog(@"MessageView going to draw %@", [Utils rectString:rect]);
+
+    NSRect bounds = [self bounds];
+    int a = 0;
+    NSColor *oldColor;
+    EventShape *selectedEvent = [[logDoc logView] selectedEvent];
     for (Message *m in dependents)
     {
-	//NSLog(@"messageview is drawing %@", m);
+	if (! NSIntersectsRect(rect, [[m path] bounds]))
+	{
+	    a++;
+	    continue;
+	}
+
+	if (m == selectedEvent)
+	{
+	    oldColor = m.color;
+	    m.color = [NSColor whiteColor];
+	}
+
 	[m drawShape];
+	
+	if (m == selectedEvent)
+	    m.color = oldColor;
+	
     }
+    //NSLog(@"Skipped drawing %d messages", a);
+    
+    // draw cursor line
+
+    NSBezierPath *verticalLine = [[NSBezierPath alloc] init];
+    NSPoint s, f;
+	    
+    verticalLine.lineWidth = 0.0;
+    [[NSColor whiteColor] set];
+    s.x = f.x = [[logDoc logView] mouseLoc].x + .5; // add .5 to remove anti-aliasing issue
+    s.y = 0;
+    f.y = bounds.size.height;
+    [verticalLine moveToPoint:s];
+    [verticalLine lineToPoint:f];
+    [verticalLine stroke];
 }
 
 /// Alerts the messageView that the mouse has been clicked
 /// Return: whether or not this click clicked on a message
 - (BOOL)bandReceivedEvent:(NSEvent *)e
 {
-    NSLog(@"MessageView is checking if a message was clicked on");
     for (Message *m in dependents)
     {
 	NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
@@ -150,7 +222,7 @@ uint64_t myExp(uint64_t a, uint n)
 	if ([m containsPoint:p])
 	{
 	    [logDoc displayDetail:m];
-	    NSLog(@"MessageView found a clicked message");
+	    [[logDoc logView] didSelectEvent:m fromBand:NULL];
 	    return YES;
 	}
     }
@@ -163,40 +235,4 @@ uint64_t myExp(uint64_t a, uint n)
 }
 
 
-
 @end
-
-
-// OLD CODE
-
-/*
-/// Store the given time as needing display
-- (void)displayTime:(uint64_t)t atPosition:(CGFloat)f
-{
-   // NSLog(@"messageview is adding a time to display, position %f, time %qu", f, t);
-    NSString *stringRep = [NSString stringWithFormat:@"%qu", (t / TIME_VALUE_ROUNDING) % myExp(10, TIME_VALUE_NUM_DIGITS)];
-    NSNumber *n = [NSNumber numberWithFloat:f];
-    [times addObject:n];
-    [timeValues addObject:stringRep];
-}
-
-
-/// draw a time.  It should have already been stored as needing display by @selector(displayTime:atPosition:)
-- (void)drawTimeValue:(NSString *)s atTime:(CGFloat)f
-{
-    NSRect bounds = self.visibleRect;
-    NSPoint p = NSMakePoint
-	(f, bounds.origin.y + bounds.size.height - TIME_VALUE_PADDING);
-    [s drawAtPoint:p withAttributes:timeValueAttributes];
-}
-*/
-
-
-
-/*
-- (void)mouseDown:(NSEvent *)event
-{
-    NSLog(@"Message view received a mouse down");
-    [self.superview mouseDown:event];
-}
- */

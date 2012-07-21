@@ -15,10 +15,9 @@ structure RuntimeConstants : RUNTIME_CONSTANTS =
   (* stack size and heap size info *)
     val spillAreaSzB : IntInf.int = 2096
     val spillAreaOffB : IntInf.int = 48
-    val maxObjectSzB : IntInf.int = 504
+    val maxObjectSzB : IntInf.int = 281474976710655
 
   (* offsets into the VProc_t structure *)
-    val inManticore : IntInf.int = 0
     val atomic : IntInf.int = 8
     val sigPending : IntInf.int = 16
     val currentTId : IntInf.int = 24

@@ -10,12 +10,12 @@
 
 #import "LogDoc.h"
 #import "LogData.h"
+#import "ViewController.h"
 #import "default-log-paths.h"
 #import "Exceptions.h"
 #import "LogView.h"
 #import "OutlineViewDataSource.h"
 #import "log-desc.hxx"
-#import "TimeDisplay.h"
 #import "DetailAccess.h"
 #import "DetailInfoController.h"
 #import "DetailInfoView.h"
@@ -24,6 +24,7 @@
 #import "Summary.h"
 #import "SummaryView.h"
 #import "Box.h"
+#import "Pie.h"
 
 /* keep a cache of the log-file description structure.  Note that this
  * code will have to be changed if we ever want to support multiple
@@ -47,6 +48,20 @@ static LogFileDesc *LFDCache = 0;
 
 @implementation LogDoc
 
+
+#pragma mark Synthesis
+@synthesize zoomFactor;
+@synthesize logView;
+@synthesize logData;
+@synthesize outlineView;
+@synthesize outlineViewDataSource;
+@synthesize logInterval;
+@synthesize maxLogInterval;
+@synthesize enabled;
+@synthesize viewController;
+
+
+
 - (GroupFilter *)filter
 {
     return outlineViewDataSource;
@@ -59,7 +74,7 @@ static LogFileDesc *LFDCache = 0;
 
 - (IBAction)drewTicks:(LogView *)sender
 {
-    [timeDisplay drewTicks:sender];
+    //[timeDisplay drewTicks:sender];
 }
 
 /// Cause logView to display logData according to currently set parameters
@@ -69,6 +84,13 @@ static LogFileDesc *LFDCache = 0;
 		 atZoomLevel:[self zoomLevelForInterval:logInterval]
 		 fromLogData:self.logData
 		  filteredBy:self.filter];
+    
+    [summaryView setHilightInterval:logInterval];
+    if (summaryView.summary)
+    {
+	[summaryView setNeedsDisplay:YES];
+	return;
+    }
 
     StateGroup *resourceState;
     {
@@ -89,35 +111,52 @@ static LogFileDesc *LFDCache = 0;
 #pragma mark Display Summary View
 
     CGFloat summary_view_column_width = DEFAULT_SUMMARY_VIEW_COLUMN_WIDTH;
-    // FIXME only looks at the first vproc, really this initialization should set summary
-    // to an average of all vprocs
     double viewWidth = scrollView.bounds.size.width;
     double scale = logInterval->width / viewWidth;
-    summary = [Summary coarseSummaryFromLogData:logData
-				       forState:resourceState
-				       forVProc:0
-				       withSize:scale *     summary_view_column_width
-				       andStart:logInterval->x
-				      andNumber:viewWidth / summary_view_column_width];
-    assert (summaryViewTarget != nil);
-    NSRect frame = summaryViewTarget.bounds;
+    
+    /* Construct a summary by averaging the summaries for all VProcs. */
+    Summary *tmpSummary;
+    for (unsigned int i = 0; i < [logData nVProcs]; i++)
+    {
+	tmpSummary = [Summary coarseSummaryFromLogData:logData
+					      forState:resourceState
+					      forVProc:i
+					      withSize:scale *     summary_view_column_width
+					   andInterval:*logInterval
+					     andNumber:viewWidth / summary_view_column_width];
+	if (i == 0)
+	{
+	    summary = tmpSummary;
+	}
+	else
+	{
+	    unsigned int nPies = [[tmpSummary pies] count];
+	    assert(nPies == [[summary pies] count]);
+	    Pie *curPie;
+	    for (unsigned int j = 0; j < nPies; j++)
+	    {
+		curPie = [[summary pies] objectAtIndex:j];
+		// it's OK to just add these pies together, since they're all
+		// already guaranteed to be stochastic.
+		[curPie increaseBy:[[tmpSummary pies] objectAtIndex:j]];
+	    }
+	}
+    }
+    for (unsigned int i = 0; i < [[summary pies] count]; i++)
+    {
+	[[[summary pies] objectAtIndex:i] divideBy:[logData nVProcs]];
+	[[[summary pies] objectAtIndex:i] assertStochastic];
+    }
+    [summaryView setSummary:summary];
+    [summaryView setWidth:summary_view_column_width];
+    [summaryView setLogDoc:self];
+    
+    NSRect frame = summaryView.bounds;
     frame.size.width = viewWidth;
 
+   // [summaryView setFrame:frame];
 
 
-    SummaryView *oldSummaryView = summaryView;
-    summaryView = [[SummaryView alloc] initWithFrame:frame
-					  andSummary:summary
-					 columnWidth:summary_view_column_width];
-
-    if (summaryViewTarget.subviews.count == 0)
-    {
-	[summaryViewTarget addSubview:summaryView];
-    }
-    else
-    {
-	[summaryViewTarget replaceSubview:oldSummaryView with:summaryView];
-    }
 
     summaryView.needsDisplay = true;
 
@@ -140,24 +179,12 @@ static LogFileDesc *LFDCache = 0;
 {
   //  NSLog(@"LogDoc is setting the horizontal position to %f", n);
     horizontalPosition = n;
-    timeDisplay.needsDisplay = true;
 }
 - (float)horizontalPosition
 {
  //   NSLog(@"LogDoc is returning the horizontal position");
     return horizontalPosition;
 }
-
-#pragma mark Synthesis
-@synthesize timeDisplay;
-@synthesize zoomFactor;
-@synthesize logView;
-@synthesize logData;
-@synthesize outlineView;
-@synthesize outlineViewDataSource;
-@synthesize logInterval;
-@synthesize enabled;
-
 
 #pragma mark Initializations
 + (void)initialize
@@ -193,8 +220,8 @@ static LogFileDesc *LFDCache = 0;
 - (struct LogInterval *)initialLogInterval:(LogData *)logDataVal
 {
     struct LogInterval *i = (LogInterval *) malloc(sizeof(struct LogInterval));
-    i->x = logDataVal.firstTime;
-    i->width = logDataVal.lastTime - i->x;
+    i->x = 0;
+    i->width = logDataVal.lastTime - logDataVal.firstTime;
     return i;
 }
 
@@ -222,11 +249,14 @@ static LogFileDesc *LFDCache = 0;
 				 andLogFileDesc:self.logDesc];
     // Initialize logInterval according to the initialLogInterval configuration function
     self.logInterval = [self initialLogInterval:logData];
+    maxLogInterval = (LogInterval *) malloc(sizeof(struct LogInterval));
+    *maxLogInterval = *self.logInterval;
 
 
     outlineViewDataSource = [[OutlineViewDataSource alloc]
 			     initWithLogDesc:self.logDesc
 			     logDoc:self];
+    
    // NSLog(@"LogDoc: setting enabled = true");
     enabled = true;
 
@@ -240,6 +270,7 @@ static LogFileDesc *LFDCache = 0;
 
     if (!logView) [Exceptions raise:@"LogDoc was not properly initialized with a logView"];
     if (!outlineView) [Exceptions raise:@"LogDoc was not properly initialized with a outlineView"];
+    
 
 #pragma mark tableColumns Initialization
     NSArray *columns = outlineView.tableColumns;
@@ -255,43 +286,13 @@ static LogFileDesc *LFDCache = 0;
 
     if (self.enabled)
     {
-	if (!detailInfoTarget)
-	{
-	    [Exceptions raise:@"LogDoc: did not have an initiailized detailInfoTarget"];
-	}
-	LogFileDesc *lfd = self.logDesc;
-
 
 	// Because some of the UI is created programmatically and some of the UI is created
 	// in interface builder, it is necessary to do a small dance here to get things into the right places
-	{
-	    // Load the nib into memory and get its controller
-	    detailInfoController = [[DetailInfoController alloc] initWithNibName:DETAIL_INFO_NIB_NAME
-	    							      bundle:(NSBundle *)nil
-								      logDesc:lfd];
-
-	    // Get the detailInfoView, but do not display it yet
-	    DetailInfoView *detailInfoView = detailInfoController.div;
-
-	    // detailInfoTarget is a placeholder view. it is used as follows
-	    // detailInfoTarget is created in interface builder as a custom view with nothing in it
-	    // the only important properties of detailInfoTarget are
-		    // 0. it is a view
-		    // 1. its frame is the frame we would like to use for the detailInfoView
-	    // as such, we now get rid of detailInfoTarget, and use its frame to initialize detailInfoView
-	    // so that detailInfoView takes up the same space tha detailInfoTarget used to take up
-	    NSRect newFrame = detailInfoTarget.frame;
-	    //NSLog(@"newFrame is %f %f %f %f'",
-	    //      newFrame.origin.x, newFrame.origin.y,
-	    //      newFrame.size.width, newFrame.size.height);
-
-	    [detailInfoView setFrame:newFrame];
-	    [detailInfoTarget.superview addSubview:detailInfoView];
-	    //NSLog(@"added view %@ to logView %@ in that frame", detailInfoView, logView);
-	    detailInfoView.needsDisplay = true;
-	    detailInfoView.autoresizingMask = NSViewHeightSizable | NSViewWidthSizable;
-	}
 	
+	detailInfoController = [[DetailInfoController alloc] initWithLogDesc:[self logDesc]];
+	//[detailInfoController showWindow:self];
+
 	
 	if (!outlineViewDataSource)
 	{
@@ -300,6 +301,8 @@ static LogFileDesc *LFDCache = 0;
 	    [Exceptions raise:@"Did not have an initialized outlineViewDataSource while enabled"];
 	}
 	outlineView.dataSource = outlineViewDataSource;
+	outlineView.delegate = outlineViewDataSource;
+	[outlineView expandItem:nil expandChildren:YES];
 		
 	[self flush];
 	
@@ -309,6 +312,7 @@ static LogFileDesc *LFDCache = 0;
 	
 	//NSLog(@"LogDoc is opening a drawer %@", drawer);
 	[drawer open];
+
     }
 }
 
@@ -336,7 +340,7 @@ static LogFileDesc *LFDCache = 0;
 #pragma mark Zooming
 
 /// The largest number of nanoseconds that can be displayed at deep zoom, given in uint64_t
-#define MAX_DEEP_ZOOM_WIDTH ( -1 )
+#define MAX_DEEP_ZOOM_WIDTH ( ULLONG_MAX )
 /// The largest number of nanoseconds that can be displayed at medium zoom
 #define MAX_MEDIUM_ZOOM_WIDTH ( 10000000 )
 - (enum ZoomLevel)zoomLevelForInterval:(struct LogInterval *)logIntervalVal
@@ -364,7 +368,7 @@ static LogFileDesc *LFDCache = 0;
 /// Take a point in the logData to the corresponding point in the logView
 - (CGFloat)image:(uint64_t)p
 {
-    NSRect shapeBounds = self.logView.splitView.shapeBounds;
+    NSRect shapeBounds = self.logView.splitView.bounds;
     double scale = shapeBounds.size.width / (logInterval->width);
     return shapeBounds.origin.x + scale * (p - logInterval->x);
 }
@@ -372,7 +376,7 @@ static LogFileDesc *LFDCache = 0;
 /// Take a point in the logView to the corresponding point in the logData
 - (uint64_t)preImage:(CGFloat)p
 {
-    NSRect shapeBounds = logView.splitView.shapeBounds;
+    NSRect shapeBounds = logView.splitView.bounds;
     double scale = logInterval->width / shapeBounds.size.width;
     return logInterval->x + scale * (p - shapeBounds.origin.x);
 }
@@ -386,10 +390,20 @@ static LogFileDesc *LFDCache = 0;
 
 - (void)zoomBy:(double)scale aboutPivot:(uint64_t)pivot
 {
-   // NSLog(@"pivot = %qu", pivot);
-    self.printLogInterval;
-    logInterval->x = pivot - scale * (pivot - logInterval->x);
+    /* Change the logInterval to reflect the zoom. Make sure we don't go past
+     * the left or right edge of the data. */
+    
+    if (pivot < scale * (pivot - logInterval->x))
+	logInterval->x = 0;
+    else
+	logInterval->x = pivot - scale * (pivot - logInterval->x);
+    
     logInterval->width = logInterval->width * scale;
+
+    if (logInterval->x + logInterval->width > maxLogInterval->x + maxLogInterval->width)
+    {
+	logInterval->width = maxLogInterval->x + maxLogInterval->width - logInterval->x;
+    }
     [self flush];
 }
 - (void)zoomBy:(double)scale
@@ -466,7 +480,8 @@ uint64_t g_counter = 0;
 	case INTERVAL_GROUP:
 	    c = Detail_Interval_start(d);
 	    b = Detail_Interval_end(d);
-	    if (c == NULL || b == NULL) return true;
+	    assert(c != NULL);
+	    if (b == NULL) return true;
 	    if ((Event_Time(*c) > lst) || (Event_Time(*b) < fst))
 		return false;
 	    else
@@ -475,14 +490,22 @@ uint64_t g_counter = 0;
 	case STATE_GROUP:
 	    c = Detail_State_start(d);
 	    b = Detail_State_end(d);
-	    if (c == NULL && b == NULL) return true;
-	    if (c == NULL) { // && b != NULL
+	    if (c == NULL && b == NULL) 
+	    {
+		NSLog(@"State group spans entire interval. including.");
+		return true;
+	    }
+	    if (c == NULL) {
+		//NSLog(@"State group begins before start of interval. Time %qx, first is %qx", b->timestamp, fst);
+		/*FIXME: below conditional is commented out, because it seems
+		  to break things. try zooming in with it commented in - you'll
+		  notice that there is empty space on the left side of the main
+		  display, because this conditional is returning false when it
+		  shouldn't be. */
 		return Event_Time(*b) >= fst;
 	    }
-	    if (b == NULL) {// && c != NULL
-		BOOL ret = Event_Time(*c) <= lst;
-		if (ret) NSLog(@"Found a stategroup in interval, whose start is not in the interval");
-		return ret;
+	    if (b == NULL) {
+		return Event_Time(*c) <= lst;
 	    }
 	    if ((Event_Time(*c) > lst) || (Event_Time(*b) < fst))
 		return false;
@@ -518,7 +541,7 @@ uint64_t g_counter = 0;
     NSPrintOperation *op = [NSPrintOperation
 			    printOperationWithView:scrollView
 			    printInfo:[self printInfo]];
-    op.showPanels = showPanels;
+    op.showsPrintPanel = showPanels;
 
     [self runModalPrintOperation:op
 			delegate:nil
@@ -527,6 +550,10 @@ uint64_t g_counter = 0;
 }
 
 
+- (IBAction)showDetailWindow:(id)sender
+{
+    [detailInfoController showWindow:self];
+}
 
 
 @end

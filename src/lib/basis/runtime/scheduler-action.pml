@@ -34,11 +34,18 @@ structure SchedulerAction (* :
       define inline @yield-from-atomic (vp : vproc) : ();
       define inline @yield () : ();
 
+    (* yeild control to the parent scheduler; indicate a voluntary release of the processor *)
+      define inline @block-in-atomic (vp : vproc) : vproc;  
+			                         (* returns the new host vproc *)
+      define inline @block-from-atomic (vp : vproc) : ();
+      define inline @block () : ();
+
     (* blocks the current fiber for a minimum of t nanoseconds *)
       define inline @sleep-in-atomic (vp : vproc, t : long) : ();  
 			                         (* returns the new host vproc *)
       define inline @sleep-from-atomic (vp : vproc, t : long) : ();
       define inline @sleep (t : long) : ();
+      define inline @sleepExport (t : [long]) : unit;
 
     (* create a fiber *)
       define inline @fiber (f : PT.fiber_fun / exh : exh) : PT.fiber;
@@ -146,6 +153,30 @@ structure SchedulerAction (* :
 	  return ()
 	;
 
+    (* yield control to the parent scheduler, masking signals upon return; indicate voluntary release *)
+      define inline @block-in-atomic (vp : vproc) : vproc =
+	  cont k (x : unit) = 
+	    let vp : vproc = @atomic-begin()         (* mask signals before resuming *)
+	    return(vp)
+	  do @forward-from-atomic (vp, PT.BLOCK(k))
+	  do assert_fail() (* control should never reach this point *)
+	  return(vp)
+	;
+
+    (* yield control to the parent scheduler; indicate voluntary release *)
+      define inline @block-from-atomic (vp : vproc) : () =
+	  cont k (x : unit) = return ()
+	  do @forward-from-atomic (vp, PT.BLOCK(k))
+	  return ()
+	;
+
+    (* yield control to the parent scheduler; indicate voluntary release *)
+	define inline @block () : () =
+	  cont k (x : unit) = return ()
+	  do @forward (PT.BLOCK(k))
+	  return ()
+	;
+
     (* blocks the current fiber for a minimum of t nanoseconds *)
       define inline @sleep-in-atomic (vp : vproc, t : long) : vproc =
 	  cont k (x : unit) = 
@@ -166,6 +197,13 @@ structure SchedulerAction (* :
 	  cont k (x : unit) = return ()
 	  do @forward (PT.SLEEP(k, t))
 	  return ()
+	;
+
+      define inline @sleepExport (t : [long] / _ : exh) : unit =
+          let t1 : long = #0(t)
+	  cont k (x : unit) = return (UNIT)
+	  do @forward (PT.SLEEP(k, t1))
+	  return (UNIT)
 	;
 
     (* unmask signals; if there is a signal pending, then yield to the scheduler. *)
@@ -202,5 +240,7 @@ structure SchedulerAction (* :
 	;
 
     )
+
+    val sleep : long -> unit = _prim (@sleepExport)
 
   end

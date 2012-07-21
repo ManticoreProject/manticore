@@ -29,9 +29,9 @@ typedef struct {	    //!< counters for a GC
 #endif
 
 #ifdef ENABLE_PERF_COUNTERS
-typedef struct {	    //!< a perf counter
-    uint64_t	nonGC;	//!< nonGC perf counter value
-    uint64_t	GC;	    //!< perf counter value during gc
+typedef struct {    //!< a perf counter
+    uint64_t    nonGC;//!< nonGC perf counter value
+    uint64_t    GC;    //!< perf counter value during gc
     uint64_t    last;   //!< previous value of the counter at last state change
     bool        inGC;   //!< true if we're currently recording GC-specific data
     int         fd;     //!< file descriptor associated with perf counter
@@ -44,7 +44,6 @@ typedef struct {	    //!< a perf counter
  */
 struct struct_vproc {
   /* the following fields are only accessed by the local vproc */
-    Value_t	inManticore;	//!< true, when executing Manticore code
     Value_t	atomic;		//!< true, when in a vproc-atomic region
     Value_t	sigPending;	//!< true, when there is a pending signal
     Value_t	sleeping;       //!< true, when the vproc is sleeping
@@ -57,6 +56,8 @@ struct struct_vproc {
     Value_t	shutdownPending; //!< true, when runtime shutdown is pending
     Value_t	rdyQHd;		//!< the head of the primary ready queue
     Value_t	rdyQTl;		//!< the tail of the primary ready queue
+    Value_t	sndQHd;		//!< the head of the secondary ready queue
+    Value_t	sndQTl;		//!< the tail of the secondary ready queue
 			      /* VProc registers */
     Value_t	stdArg;		//!< holds value of standard argument reg.
     Value_t	stdEnvPtr;	//!< holds value of standard environment-pointer reg.
@@ -79,12 +80,8 @@ struct struct_vproc {
     Addr_t	nurseryBase;	//!< Base address of current nursery area
     Addr_t	oldTop;		//!< Old objects live in the space from the
 				//! heap base to the oldTop.
-    MemChunk_t	*globToSpHd;	//!< pointer to the head of the list of global-heap
-				//! to-space memory chunks allocated by this vproc.
-    MemChunk_t	*globToSpTl;	//!< pointer to the tail of the list of global-heap
-				//! to-space memory chunks allocated by this vproc.
-				//! This chunk is the current allocation chunk for
-				//! the vproc.
+    MemChunk_t	*globAllocChunk;	//!< This chunk is the current vproc's
+                //! global allocation chunk
     Addr_t	globNextW;	//!< pointer to next word to allocate in
 				//! global heap
     Addr_t	globLimit;	//!< limit pointer for to-space chunk
@@ -98,7 +95,9 @@ struct struct_vproc {
     Value_t     landingPad __attribute__((aligned(64)));
                                 //!< the head of the landing pad (stack)
     Addr_t	limitPtr __attribute__((aligned(64)));
-                                //!< heap-limit pointer
+                                //!< heap-limit pointer. this field plays the
+                                //!< additional role of signaling asynchronous events,
+                                //!< which is the reason why the field is shared.
     bool	globalGCPending __attribute__((aligned(64)));
                                 //!< true when this vproc has been signaled that
 				//! global GC has started, but it has not
@@ -122,28 +121,24 @@ struct struct_vproc {
 
 #endif
 #ifdef ENABLE_PERF_COUNTERS
-    PerfCntrs_t		misses;		//!< L3 read miss perf counter
-    PerfCntrs_t		reads;		//!< L3 read perf counter
+    PerfCntrs_t misses;//!< L3 read miss perf counter
+    PerfCntrs_t reads;//!< L3 read perf counter
 #endif
 };
-
-typedef enum {
-    GCSignal,
-    PreemptSignal
-} VPSignal_t;
 
 /* the type of the initial function to run in a vproc */
 typedef void (*VProcFn_t) (VProc_t *vp, void *arg);
 
 /* the array of vprocs */
 extern int		NumVProcs;
+extern int		*NumVProcsPerNode;
+extern int		*MinVProcPerNode;
 extern VProc_t		*VProcs[MAX_NUM_VPROCS];
 extern bool		ShutdownFlg;
 
 extern void VProcInit (bool isSequential, Options_t *opts);
 extern VProc_t *VProcCreate (VProcFn_t f, void *arg);
 extern VProc_t *VProcSelf ();
-extern void VProcSendUnixSignal (VProc_t *vp, VPSignal_t sig);
 extern void VProcPreempt (VProc_t *self, VProc_t *vp);
 extern void VProcSendSignal (VProc_t *self, VProc_t *vp, Value_t k, Value_t fls);
 extern void VProcSleep (VProc_t *vp);

@@ -31,22 +31,22 @@ structure Cilk5Deque (* :
   (* create a deque *)
     define @new ( / exh : exh) : deque;
 
-  (* push an element on the new end of the deque.
+  (* push an element on the tail of the deque.
    * NOTE: this operation is single threaded.
    * PRECONDITION: assume that signals are masked
    *)
-    define @push-new-end-from-atomic (deq : deque, elt : any / exh : exh) : ();
+    define @push-tl-from-atomic (deq : deque, elt : any / exh : exh) : ();
 
-  (* pop an element from the new end of the deque.
+  (* pop an element from the tail of the deque.
    * NOTE: this operation is single threaded.
    * PRECONDITION: assume that signals are masked
    *)
-    define @pop-new-end-from-atomic (deq : deque / exh : exh) : Option.option;
+    define @pop-tl-from-atomic (deq : deque / exh : exh) : Option.option;
 
-  (* pop an element from the old end of the deque. 
+  (* pop an element from the head of the deque. 
    * PRECONDITION: assume that signals are masked
    *) 
-    define @pop-old-end-from-atomic (deq : deque / exh : exh) : Option.option;
+    define @pop-hd-from-atomic (deq : deque / exh : exh) : Option.option;
 
   end *) = struct
 
@@ -60,11 +60,11 @@ structure Cilk5Deque (* :
 #include "../include/spin-lock.def"
 
     structure O = Option
-    structure Arr = Array64
+    structure Arr = UnsafeArray
 
     _primcode(
 
-      typedef deque = ![
+      typedef cdeque = ![
 		  int,		(* tail *)
 		  int,		(* head *)
 		  Arr.array,	(* array of implicit threads *)
@@ -72,18 +72,18 @@ structure Cilk5Deque (* :
 	      ];
 
   (* create a deque *)
-      define @new ( / exh : exh) : deque =
-	let arr : Arr.array = Arr.@array(DEQUE_SZ, enum(0) / exh)
-	let deq : deque = alloc(0, 0, arr, 0)
-	let deq : deque = promote(deq)
+      define @new ( / exh : exh) : cdeque =
+	let arr : Arr.array = Arr.@create(DEQUE_SZ, enum(0) / exh)
+	let deq : cdeque = alloc(0, 0, arr, 0)
+	let deq : cdeque = promote(deq)
 	return(deq)
       ;
 
-   (* push an element on the new end of the deque.
+   (* push an element on the tail of the deque.
     * NOTE: this operation is single threaded.
     * PRECONDITION: signals are masked
     *)
-      define @push-new-end-from-atomic (deq : deque, elt : any / exh : exh) : () =
+      define @push-tl-from-atomic (deq : cdeque, elt : any / exh : exh) : () =
       (* copy the contents of the deque to a fresh array *)
 	fun copyDeque (arr : Arr.array, i : int / exh : exh) : () =
 	    if I32Lt(i, DEQUE_SZ)
@@ -115,11 +115,11 @@ structure Cilk5Deque (* :
 	return()
       ;
 
-   (* pop an element from the new end of the deque.
+   (* pop an element from the tail of the deque.
     * NOTE: this operation is single threaded.
     * PRECONDITION: signals are masked
     *)
-      define @pop-new-end-from-atomic (deq : deque / exh : exh) : O.option =
+      define @pop-tl-from-atomic (deq : cdeque / exh : exh) : O.option =
 	cont none () = return(O.NONE)
 	let t : int = I32FetchAndAdd(&TH_T_OFF(deq), ~1)
 	let t : int = I32Add(t, ~1)
@@ -156,10 +156,10 @@ structure Cilk5Deque (* :
 	return(O.SOME(frame))
       ;
 
-    (* pop an element from the old end of the deque. 
+    (* pop an element from the head of the deque. 
      * PRECONDITION: signals are masked
      *) 
-      define @pop-old-end-from-atomic (deq : deque / exh : exh) : O.option =
+      define @pop-hd-from-atomic (deq : cdeque / exh : exh) : O.option =
 	cont none () = return(O.NONE)
         SPIN_LOCK(deq, TH_LOCK_OFF)
 	let h : int = I32FetchAndAdd(&TH_H_OFF(deq), 1)
@@ -180,14 +180,6 @@ structure Cilk5Deque (* :
 	SPIN_UNLOCK(deq, TH_LOCK_OFF)
 	return(eltOpt)
       ;
-
-      define @add-list-from-atomic (deq : deque, thds : List.list / exh : exh) : () =
-	  fun f (thd : any / exh : exh) : () =
-	      do @push-new-end-from-atomic (deq, thd / exh)
-	      return ()
-	  do PrimList.@app (f, thds / exh)
-	  return ()
-	;
 
     )
 

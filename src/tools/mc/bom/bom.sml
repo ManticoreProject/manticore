@@ -72,6 +72,19 @@ structure BOM =
       | VK_Cont of lambda
       | VK_CFun of c_fun
 
+  (* rewrite pattern *)
+    and rw_pattern 
+      = RW_HLOpApply of (hlop * rw_pattern list)        (* application of a hlop *)
+      | RW_Prim of (var * rw_pattern list)              (* application of a prim-op or data constructor  *)
+      | RW_Const of (Literal.literal * ty)
+      | RW_Var of var
+      | RW_Alloc of rw_pattern list                     (* allocation in the local heap *)
+
+    and rewrite = Rewrite of { label  : Atom.atom,         (* hlop rewrite rule *)
+			       lhs    : rw_pattern,
+			       rhs    : rw_pattern,
+			       weight : IntInf.int }		         
+
     withtype var = (var_kind, ty) VarRep.var_rep
          and cond = var Prim.cond
          and prim = var Prim.prim
@@ -136,6 +149,7 @@ structure BOM =
 	externs : var CFunctions.c_fun list,
 	hlops : var list,		    (* the names of the functions that *)
 					    (* are define HLOps *)
+	rewrites : rewrite list,
 	body : lambda
       }
 
@@ -196,12 +210,12 @@ structure BOM =
 	    cf
 	  end
 
-  (* mkModule : Atom.atom * var CFunctions.c_fun list * lambda -> module *)
-    fun mkModule (name, externs, hlops, body as FB{params, exh, ...}) = (
+  (* mkModule : Atom.atom * var CFunctions.c_fun list * rewrite list * lambda -> module *)
+    fun mkModule (name, externs, hlops, rewrites, body as FB{params, exh, ...}) = (
 	  List.app (fn x => Var.setKind(x, VK_Param)) (params @ exh);
 	  List.app
 	    (fn (cf as CFunctions.CFun{var, ...}) => Var.setKind(var, VK_CFun cf))
 	      externs;
-	  MODULE{name = name, externs = externs, hlops = hlops, body = body})
+	  MODULE{name = name, externs = externs, hlops = hlops, rewrites = rewrites, body = body})
 
   end

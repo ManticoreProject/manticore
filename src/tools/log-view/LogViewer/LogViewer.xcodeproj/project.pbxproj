@@ -12,7 +12,6 @@
 		52A6E9C210309B0D00D803AD /* EventInfoView.m in Sources */ = {isa = PBXBuildFile; fileRef = 52A6E9C110309B0D00D803AD /* EventInfoView.m */; };
 		52AE52FE1028D6AB007AED7A /* VProc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C41028D6AA007AED7A /* VProc.mm */; };
 		52AE52FF1028D6AB007AED7A /* VProcMaps.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C61028D6AA007AED7A /* VProcMaps.mm */; };
-		52AE53001028D6AB007AED7A /* LogData.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52C81028D6AA007AED7A /* LogData.mm */; };
 		52AE53011028D6AB007AED7A /* LogDoc.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52CA1028D6AA007AED7A /* LogDoc.mm */; };
 		52AE53021028D6AB007AED7A /* LogView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52CC1028D6AA007AED7A /* LogView.mm */; };
 		52AE53031028D6AB007AED7A /* Box.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE52CF1028D6AA007AED7A /* Box.m */; };
@@ -32,7 +31,6 @@
 		52AE53341028D942007AED7A /* JSON_parser.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53311028D942007AED7A /* JSON_parser.c */; };
 		52AE53391028D97C007AED7A /* log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53371028D97C007AED7A /* log-desc.cxx */; };
 		52AE53511028DA8F007AED7A /* load-log-desc.cxx in Sources */ = {isa = PBXBuildFile; fileRef = 52AE53501028DA8F007AED7A /* load-log-desc.cxx */; };
-		52AE54481029DAFB007AED7A /* TimeDisplay.m in Sources */ = {isa = PBXBuildFile; fileRef = 52AE54471029DAFB007AED7A /* TimeDisplay.m */; };
 		52AE5DA6102C9F67007AED7A /* EventInfo.xib in Resources */ = {isa = PBXBuildFile; fileRef = 52AE5DA5102C9F67007AED7A /* EventInfo.xib */; };
 		52AE5DAA102C9FB5007AED7A /* EventInfoController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5DA9102C9FB5007AED7A /* EventInfoController.mm */; };
 		52AE5DB1102CA3ED007AED7A /* EventArg.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52AE5DB0102CA3ED007AED7A /* EventArg.mm */; };
@@ -46,11 +44,14 @@
 		52E4D60610346120003396BE /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D60510346120003396BE /* Utils.m */; };
 		52E4D6DC1034BD28003396BE /* Summary.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D6DB1034BD28003396BE /* Summary.mm */; };
 		52E4D6DF1034BD35003396BE /* Pie.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D6DE1034BD35003396BE /* Pie.mm */; };
-		52E4D6E21034BD40003396BE /* PieSlice.m in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D6E11034BD40003396BE /* PieSlice.m */; };
 		52E4D72B1035DA1B003396BE /* DetailEnumerator.mm in Sources */ = {isa = PBXBuildFile; fileRef = 52E4D72A1035DA1B003396BE /* DetailEnumerator.mm */; };
 		8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
+		D2648BCF11D538AB00342F30 /* log-events.json in Resources */ = {isa = PBXBuildFile; fileRef = D2648BCD11D538AB00342F30 /* log-events.json */; };
+		D2648BD011D538AB00342F30 /* log-view.json in Resources */ = {isa = PBXBuildFile; fileRef = D2648BCE11D538AB00342F30 /* log-view.json */; };
+		D287775A11DBE4CA0096F74A /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = D287775911DBE4CA0096F74A /* ViewController.m */; };
+		D2C9079A121082DA00D354F5 /* LogData.mm in Sources */ = {isa = PBXBuildFile; fileRef = D2C90799121082DA00D354F5 /* LogData.mm */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,20 +67,19 @@
 		52007216104327620075E884 /* LogDataUtils.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = LogDataUtils.c; sourceTree = "<group>"; };
 		52A6E9C010309B0D00D803AD /* EventInfoView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventInfoView.h; sourceTree = "<group>"; };
 		52A6E9C110309B0D00D803AD /* EventInfoView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = EventInfoView.m; sourceTree = "<group>"; };
-		52AE52BD1028D6AA007AED7A /* Detail.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Detail.h; sourceTree = "<group>"; };
-		52AE52BE1028D6AA007AED7A /* DetailAccess.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailAccess.h; sourceTree = "<group>"; };
-		52AE52C31028D6AA007AED7A /* VProc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VProc.h; sourceTree = "<group>"; };
-		52AE52C41028D6AA007AED7A /* VProc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = VProc.mm; sourceTree = "<group>"; };
-		52AE52C51028D6AA007AED7A /* VProcMaps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VProcMaps.h; sourceTree = "<group>"; };
-		52AE52C61028D6AA007AED7A /* VProcMaps.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = VProcMaps.mm; sourceTree = "<group>"; };
+		52AE52BD1028D6AA007AED7A /* Detail.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Detail.h; path = Representations/Detail.h; sourceTree = "<group>"; };
+		52AE52BE1028D6AA007AED7A /* DetailAccess.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DetailAccess.h; path = Representations/DetailAccess.h; sourceTree = "<group>"; };
+		52AE52C31028D6AA007AED7A /* VProc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = VProc.h; path = Representations/VProc.h; sourceTree = "<group>"; };
+		52AE52C41028D6AA007AED7A /* VProc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = VProc.mm; path = Representations/VProc.mm; sourceTree = "<group>"; };
+		52AE52C51028D6AA007AED7A /* VProcMaps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = VProcMaps.h; path = Representations/VProcMaps.h; sourceTree = "<group>"; };
+		52AE52C61028D6AA007AED7A /* VProcMaps.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = VProcMaps.mm; path = Representations/VProcMaps.mm; sourceTree = "<group>"; };
 		52AE52C71028D6AA007AED7A /* LogData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogData.h; sourceTree = "<group>"; };
-		52AE52C81028D6AA007AED7A /* LogData.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogData.mm; sourceTree = "<group>"; };
 		52AE52C91028D6AA007AED7A /* LogDoc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogDoc.h; sourceTree = "<group>"; };
 		52AE52CA1028D6AA007AED7A /* LogDoc.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogDoc.mm; sourceTree = "<group>"; };
 		52AE52CB1028D6AA007AED7A /* LogView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LogView.h; sourceTree = "<group>"; };
 		52AE52CC1028D6AA007AED7A /* LogView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogView.mm; sourceTree = "<group>"; };
-		52AE52CE1028D6AA007AED7A /* Box.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Box.h; sourceTree = "<group>"; };
-		52AE52CF1028D6AA007AED7A /* Box.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Box.m; sourceTree = "<group>"; };
+		52AE52CE1028D6AA007AED7A /* Box.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Box.h; path = ../Render/Box.h; sourceTree = "<group>"; };
+		52AE52CF1028D6AA007AED7A /* Box.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = Box.m; path = ../Render/Box.m; sourceTree = "<group>"; };
 		52AE52D01028D6AA007AED7A /* GroupFilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GroupFilter.h; sourceTree = "<group>"; };
 		52AE52D11028D6AB007AED7A /* GroupFilter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GroupFilter.m; sourceTree = "<group>"; };
 		52AE52D41028D6AB007AED7A /* CustomSplitView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CustomSplitView.h; sourceTree = "<group>"; };
@@ -115,8 +115,6 @@
 		52AE53371028D97C007AED7A /* log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "log-desc.cxx"; path = "../../log-common/log-desc.cxx"; sourceTree = SOURCE_ROOT; };
 		52AE53381028D97C007AED7A /* log-desc.hxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = "log-desc.hxx"; path = "../../log-common/log-desc.hxx"; sourceTree = SOURCE_ROOT; };
 		52AE53501028DA8F007AED7A /* load-log-desc.cxx */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "load-log-desc.cxx"; path = "../../log-common/load-log-desc.cxx"; sourceTree = SOURCE_ROOT; };
-		52AE54461029DAFB007AED7A /* TimeDisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TimeDisplay.h; path = ../TimeDisplay.h; sourceTree = "<group>"; };
-		52AE54471029DAFB007AED7A /* TimeDisplay.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = TimeDisplay.m; path = ../TimeDisplay.m; sourceTree = "<group>"; };
 		52AE5DA5102C9F67007AED7A /* EventInfo.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = EventInfo.xib; sourceTree = "<group>"; };
 		52AE5DA8102C9FB5007AED7A /* EventInfoController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = EventInfoController.h; sourceTree = "<group>"; };
 		52AE5DA9102C9FB5007AED7A /* EventInfoController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EventInfoController.mm; sourceTree = "<group>"; };
@@ -138,12 +136,15 @@
 		52E4D6DB1034BD28003396BE /* Summary.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = Summary.mm; sourceTree = "<group>"; };
 		52E4D6DD1034BD35003396BE /* Pie.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Pie.h; sourceTree = "<group>"; };
 		52E4D6DE1034BD35003396BE /* Pie.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = Pie.mm; sourceTree = "<group>"; };
-		52E4D6E01034BD40003396BE /* PieSlice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PieSlice.h; sourceTree = "<group>"; };
-		52E4D6E11034BD40003396BE /* PieSlice.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PieSlice.m; sourceTree = "<group>"; };
 		52E4D7291035DA1B003396BE /* DetailEnumerator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DetailEnumerator.h; sourceTree = "<group>"; };
 		52E4D72A1035DA1B003396BE /* DetailEnumerator.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DetailEnumerator.mm; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* LogViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LogViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2648BCD11D538AB00342F30 /* log-events.json */ = {isa = PBXFileReference; explicitFileType = sourcecode.javascript; fileEncoding = 4; name = "log-events.json"; path = "../../../../../../config/log-events.json"; sourceTree = "<group>"; };
+		D2648BCE11D538AB00342F30 /* log-view.json */ = {isa = PBXFileReference; explicitFileType = sourcecode.javascript; fileEncoding = 4; name = "log-view.json"; path = "../../../../../../config/log-view.json"; sourceTree = "<group>"; };
+		D287775811DBE4CA0096F74A /* ViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
+		D287775911DBE4CA0096F74A /* ViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ViewController.m; sourceTree = "<group>"; };
+		D2C90799121082DA00D354F5 /* LogData.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LogData.mm; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -232,7 +233,7 @@
 			isa = PBXGroup;
 			children = (
 				52AE52C71028D6AA007AED7A /* LogData.h */,
-				52AE52C81028D6AA007AED7A /* LogData.mm */,
+				D2C90799121082DA00D354F5 /* LogData.mm */,
 				52007215104327620075E884 /* LogDataUtils.h */,
 				52007216104327620075E884 /* LogDataUtils.c */,
 			);
@@ -271,14 +272,6 @@
 		52AE52BA1028D6AA007AED7A /* Dynamic */ = {
 			isa = PBXGroup;
 			children = (
-				52AE52BC1028D6AA007AED7A /* Representations */,
-			);
-			path = Dynamic;
-			sourceTree = "<group>";
-		};
-		52AE52BC1028D6AA007AED7A /* Representations */ = {
-			isa = PBXGroup;
-			children = (
 				52AE52BD1028D6AA007AED7A /* Detail.h */,
 				52AE52BE1028D6AA007AED7A /* DetailAccess.h */,
 				52AE52C31028D6AA007AED7A /* VProc.h */,
@@ -286,18 +279,18 @@
 				52AE52C51028D6AA007AED7A /* VProcMaps.h */,
 				52AE52C61028D6AA007AED7A /* VProcMaps.mm */,
 			);
-			path = Representations;
+			path = Dynamic;
 			sourceTree = "<group>";
 		};
 		52AE52CD1028D6AA007AED7A /* Render */ = {
 			isa = PBXGroup;
 			children = (
-				52AE52CE1028D6AA007AED7A /* Box.h */,
-				52AE52CF1028D6AA007AED7A /* Box.m */,
 				52AE52D01028D6AA007AED7A /* GroupFilter.h */,
 				52AE52D11028D6AB007AED7A /* GroupFilter.m */,
 				52AE52DD1028D6AB007AED7A /* OutlineViewDataSource.h */,
 				52AE52DE1028D6AB007AED7A /* OutlineViewDataSource.mm */,
+				D287775811DBE4CA0096F74A /* ViewController.h */,
+				D287775911DBE4CA0096F74A /* ViewController.m */,
 				52AE52D21028D6AB007AED7A /* LogViewComponents */,
 				52AE52DF1028D6AB007AED7A /* ShapeRep */,
 			);
@@ -328,10 +321,8 @@
 			children = (
 				52AE52D71028D6AB007AED7A /* BandView.h */,
 				52AE52D81028D6AB007AED7A /* BandView.mm */,
-				52AE54461029DAFB007AED7A /* TimeDisplay.h */,
 				52AE52D91028D6AB007AED7A /* MessageView.h */,
 				52AE52DA1028D6AB007AED7A /* MessageView.mm */,
-				52AE54471029DAFB007AED7A /* TimeDisplay.m */,
 			);
 			path = Foreground;
 			sourceTree = "<group>";
@@ -380,6 +371,8 @@
 		52AE52F71028D6AB007AED7A /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				52AE52CE1028D6AA007AED7A /* Box.h */,
+				52AE52CF1028D6AA007AED7A /* Box.m */,
 				52AE52F81028D6AB007AED7A /* Exceptions.h */,
 				52AE52F91028D6AB007AED7A /* Exceptions.m */,
 				52AE52FA1028D6AB007AED7A /* Utils.h */,
@@ -391,6 +384,8 @@
 		52AE53291028D8A9007AED7A /* Static */ = {
 			isa = PBXGroup;
 			children = (
+				D2648BCD11D538AB00342F30 /* log-events.json */,
+				D2648BCE11D538AB00342F30 /* log-view.json */,
 				52AE53501028DA8F007AED7A /* load-log-desc.cxx */,
 				52AE53371028D97C007AED7A /* log-desc.cxx */,
 				52AE53381028D97C007AED7A /* log-desc.hxx */,
@@ -447,8 +442,6 @@
 				52E4D6DB1034BD28003396BE /* Summary.mm */,
 				52E4D6DD1034BD35003396BE /* Pie.h */,
 				52E4D6DE1034BD35003396BE /* Pie.mm */,
-				52E4D6E01034BD40003396BE /* PieSlice.h */,
-				52E4D6E11034BD40003396BE /* PieSlice.m */,
 				52E4D7291035DA1B003396BE /* DetailEnumerator.h */,
 				52E4D72A1035DA1B003396BE /* DetailEnumerator.mm */,
 			);
@@ -481,6 +474,9 @@
 /* Begin PBXProject section */
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
+			attributes = {
+				ORGANIZATIONNAME = "The University of Chicago";
+			};
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "LogViewer" */;
 			compatibilityVersion = "Xcode 3.1";
 			hasScannedForEncodings = 1;
@@ -504,6 +500,8 @@
 				52AE5DA6102C9F67007AED7A /* EventInfo.xib in Resources */,
 				52AE5E26102CAA3A007AED7A /* DetailInfo.xib in Resources */,
 				52CAAC05105192C40003196F /* README in Resources */,
+				D2648BCF11D538AB00342F30 /* log-events.json in Resources */,
+				D2648BD011D538AB00342F30 /* log-view.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -517,7 +515,6 @@
 				8D11072D0486CEB800E47090 /* main.m in Sources */,
 				52AE52FE1028D6AB007AED7A /* VProc.mm in Sources */,
 				52AE52FF1028D6AB007AED7A /* VProcMaps.mm in Sources */,
-				52AE53001028D6AB007AED7A /* LogData.mm in Sources */,
 				52AE53011028D6AB007AED7A /* LogDoc.mm in Sources */,
 				52AE53021028D6AB007AED7A /* LogView.mm in Sources */,
 				52AE53031028D6AB007AED7A /* Box.m in Sources */,
@@ -537,7 +534,6 @@
 				52AE53341028D942007AED7A /* JSON_parser.c in Sources */,
 				52AE53391028D97C007AED7A /* log-desc.cxx in Sources */,
 				52AE53511028DA8F007AED7A /* load-log-desc.cxx in Sources */,
-				52AE54481029DAFB007AED7A /* TimeDisplay.m in Sources */,
 				52AE5DAA102C9FB5007AED7A /* EventInfoController.mm in Sources */,
 				52AE5DB1102CA3ED007AED7A /* EventArg.mm in Sources */,
 				52AE5E24102CAA21007AED7A /* DetailInfoController.mm in Sources */,
@@ -547,10 +543,11 @@
 				52E4D60610346120003396BE /* Utils.m in Sources */,
 				52E4D6DC1034BD28003396BE /* Summary.mm in Sources */,
 				52E4D6DF1034BD35003396BE /* Pie.mm in Sources */,
-				52E4D6E21034BD40003396BE /* PieSlice.m in Sources */,
 				52E4D72B1035DA1B003396BE /* DetailEnumerator.mm in Sources */,
 				52CC76041039BF69006A0DCD /* SummaryView.mm in Sources */,
 				52007217104327620075E884 /* LogDataUtils.c in Sources */,
+				D287775A11DBE4CA0096F74A /* ViewController.m in Sources */,
+				D2C9079A121082DA00D354F5 /* LogData.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -613,13 +610,28 @@
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_ENABLE_OBJC_GC = required;
-				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_NO_COMMON_BLOCKS = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_UNROLL_LOOPS = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_EFFECTIVE_CPLUSPLUS_VIOLATIONS = NO;
+				GCC_WARN_HIDDEN_VIRTUAL_FUNCTIONS = NO;
+				GCC_WARN_MISSING_PARENTHESES = YES;
+				GCC_WARN_PEDANTIC = NO;
+				GCC_WARN_SHADOW = YES;
+				GCC_WARN_SIGN_COMPARE = NO;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_LABEL = NO;
+				GCC_WARN_UNUSED_PARAMETER = NO;
+				GCC_WARN_UNUSED_VALUE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PREBINDING = NO;
-				SDKROOT = macosx10.5;
+				SDKROOT = macosx10.6;
+				WARNING_CFLAGS = "-Wno-long-long";
 			};
 			name = Debug;
 		};
@@ -628,10 +640,17 @@
 			buildSettings = {
 				ARCHS = "$(ARCHS_STANDARD_32_BIT)";
 				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_ENABLE_OBJC_GC = required;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_INHIBIT_ALL_WARNINGS = NO;
+				GCC_WARN_UNUSED_FUNCTION = NO;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				ONLY_ACTIVE_ARCH = NO;
 				PREBINDING = NO;
-				SDKROOT = macosx10.5;
+				SDKROOT = macosx10.6;
 			};
 			name = Release;
 		};

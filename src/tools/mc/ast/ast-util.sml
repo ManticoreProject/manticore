@@ -26,15 +26,31 @@ structure ASTUtil : sig
   (* create an AST list given a list of expressions and a type *)
     val mkList : AST.exp list * AST.ty -> AST.exp
 
-  (* create an AST int from an SML int *)
+  (* create various flavors of AST ints from an SML int *)
+    val mkIntLit   : int -> Literal.literal
     val mkIntConst : int -> AST.const
+    val mkIntPat   : int -> AST.pat
     val mkInt      : int -> AST.exp
+
+  (* build expressions for e+n and e+1 *)
+    val addInt : AST.exp * int -> AST.exp
+    val add1   : AST.exp -> AST.exp
 
   (* boolean constants *)
     val trueConst  : AST.const
     val falseConst : AST.const
     val trueExp    : AST.exp
     val falseExp   : AST.exp
+
+  (* exception constants *)
+    val exnMatchExp : AST.exp
+
+  (* unit *)
+    val unitConst : AST.const
+    val unitExp   : AST.exp
+
+  (* operations on boolean expressions *)
+    val boolEq     : AST.exp * AST.exp -> bool
 
   (* create an expression that applies a function *)
     val mkApplyExp : (AST.exp * AST.exp list) -> AST.exp
@@ -58,6 +74,8 @@ structure ASTUtil : sig
 
     structure A = AST
     structure B = Basis
+
+    structure TU = TypeUtil
 
     fun mkTupleExp [e] = e
       | mkTupleExp es = AST.TupleExp es
@@ -113,15 +131,33 @@ structure ASTUtil : sig
 	    List.foldr cons' nil' exps
 	  end
 
-    fun mkArray (exps, ty) = raise Fail "todo: ASTUtil.mkArray"
+    fun mkArray (es, ty) = raise Fail "todo: ASTUtil.mkArray"
 
-    fun mkIntConst n = A.LConst (Literal.Int (IntInf.fromInt n), Basis.intTy)
+    fun mkIntLit n = Literal.Int (IntInf.fromInt n)
+    fun mkIntConst n = A.LConst (mkIntLit n, Basis.intTy)
+    fun mkIntPat n = A.ConstPat (mkIntConst n)
     fun mkInt n = A.ConstExp (mkIntConst n)
 
     val trueConst  = A.LConst (Literal.trueLit, Basis.boolTy)
     val falseConst = A.LConst (Literal.falseLit, Basis.boolTy)
     val trueExp    = A.ConstExp trueConst
     val falseExp   = A.ConstExp falseConst
+
+    val exnMatchExp = A.ConstExp (A.DConst (Basis.exnMatch, []))
+
+(* FIXME: Should this be the empty tuple instead? *)
+    val unitConst = A.LConst (Literal.unitLit, Basis.unitTy)
+    val unitExp   = A.ConstExp unitConst
+
+    fun boolEq (A.ConstExp k1, A.ConstExp k2) =
+          (case (k1, k2)
+	     of (A.LConst (lit1, ty1), A.LConst (lit2, ty2)) =>
+                  if isBool ty1 andalso isBool ty2 
+		  then Literal.same (lit1, lit2)
+		  else false
+	      | _ => false)
+      | boolEq _ = false
+    and isBool ty = TypeUtil.same (ty, Basis.boolTy)
 
     fun mkApplyExp (e, es) = 
 	A.ApplyExp (e, mkTupleExp(es), TypeUtil.rangeType(TypeOf.exp(e)))
@@ -132,6 +168,17 @@ structure ASTUtil : sig
     fun mkIfExp (e1, e2, e3) = A.IfExp(e1, e2, e3, TypeOf.exp(e2))
 
     fun mkVarExp (v, tys) = A.VarExp (v, tys)
+
+    fun addInt (e : A.exp, n : int) : A.exp = let
+      val t = TypeOf.exp e
+      in
+        if TU.same (t, B.intTy) then
+          mkApplyExp (A.VarExp (B.int_plus, []), [e, mkInt n])
+        else
+          raise Fail ("unexpected ty " ^ TU.toString t)
+      end
+
+    fun add1 (e : A.exp) : A.exp = addInt (e, 1)
 
     fun copyPat s p =
 	let fun f (A.ConPat (c, ts, p)) = A.ConPat (c, ts, f p)
@@ -155,7 +202,7 @@ structure ASTUtil : sig
 	      | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, map match ms, t)
 	      | exp (A.PCaseExp (es, pms, t)) = A.PCaseExp (map exp es, map pmatch pms, t)
 	      | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, map match ms, t)
-	      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
+	      | exp (A.RaiseExp (l, e, t)) = A.RaiseExp (l, exp e, t)
 	      | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
 	      | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
 	      | exp (m as A.VarArityOpExp _) = m
@@ -184,7 +231,7 @@ structure ASTUtil : sig
 	      | binding (A.PValBind (p, e)) = A.PValBind (copyPat s p, exp e)
 	      | binding _ = raise Fail "todo"
 	    and pmatch (A.PMatch (ps, e)) = A.PMatch (map ppat ps, exp e)
-	      | pmatch (A.Otherwise e) = A.Otherwise (exp e)
+	      | pmatch (A.Otherwise (ts, e)) = A.Otherwise (ts, exp e)
 	    and ppat (w as A.NDWildPat _) = w
 	      | ppat (A.HandlePat (p, t)) = A.HandlePat (copyPat s p, t)
 	      | ppat (A.Pat p) = A.Pat (copyPat s p)

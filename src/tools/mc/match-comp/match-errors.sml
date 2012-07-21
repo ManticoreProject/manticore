@@ -13,7 +13,7 @@ structure MatchErrors : sig
 
     val errRedundantMatch : (err_stream * span) -> unit
     val warnNonexhaustiveMatch : (err_stream * span) -> unit
-    val warnNonexhaustiveBind : (err_stream * span) -> unit
+    val warnNonexhaustiveBind : (err_stream * span * string) -> unit
 
   end = struct
 
@@ -30,9 +30,9 @@ structure MatchErrors : sig
 	  errStrm, loc,
 	  ["nonexhaustive match"])
 
-    fun warnNonexhaustiveBind (errStrm, loc) = Error.warningAt (
+    fun warnNonexhaustiveBind (errStrm, loc, str) = Error.warningAt (
 	  errStrm, loc,
-	  ["nonexhaustive binding"])
+	  ["nonexhaustive binding: ", str])
 
   end
 

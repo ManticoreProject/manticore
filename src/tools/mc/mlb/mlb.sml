@@ -350,14 +350,34 @@ structure MLB : sig
 
     val emptyEnv = Env{loc=(0,0), pts=[], preprocs=[]}
 
+    fun chkExists filename = (OS.FileSys.isLink filename; true)
+      handle OS.SysErr ("No such file or directory", _) => let
+               val msg = String.concat ["Error: the file \"", filename, "\" does not exist."]
+               in
+                 raise Fail msg
+               end	       
+           | e => raise e
+
+    datatype ext = MLB | PML
+    fun chkExt file = (case OS.Path.splitBaseExt file
+      of {base, ext} => (case ext
+        of SOME "mlb" => MLB
+	 | SOME "pml" => PML
+	 | _ => raise Fail ("unknown extension in filename " ^ file)
+        (* end case *))
+      (* end case *))
+
   (* load a PML or root MLB file *)
     fun load file = let
+        (* first, check that file exists and is either .mlb or .pml *)
+	  val _	= chkExists file	  
+	  val e = chkExt file
+        (* now load the basis etc. *)
 	  val basis = loadBasisLib emptyEnv
-	  val pts = (case OS.Path.splitBaseExt file
-		 of {base, ext=SOME "mlb"} => loadMLB(file, emptyEnv)
-		  | {base, ext=SOME "pml"} => [Option.valOf(loadPML(file, emptyEnv))]
-		  | _ => raise Fail "unknown source file extension"
-		(* end case *))
+	  val pts = (case e
+            of MLB => loadMLB (file, emptyEnv)
+	     | PML => [Option.valOf (loadPML (file, emptyEnv))]
+            (* end case *))
           in {
 	    basis = List.rev basis,
 	    program = List.rev pts
@@ -367,3 +387,10 @@ structure MLB : sig
     fun loadMLBWithoutBasis file = List.rev (loadMLB(file, emptyEnv))
 
   end (* MLB *)
+
+(*            val pts = (case OS.Path.splitBaseExt file *)
+(* 		 of {base, ext=SOME "mlb"} => loadMLB(file, emptyEnv) *)
+(* 		  | {base, ext=SOME "pml"} => [Option.valOf(loadPML(file, emptyEnv))] *)
+(* 		  | _ => raise Fail "unknown source file extension" *)
+(* 		(\* end case *\)) *)
+

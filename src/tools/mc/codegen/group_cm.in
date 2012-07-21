@@ -15,6 +15,9 @@ Group
 
   structure AsmStream
   structure Label
+  
+  structure HeaderHash
+  structure HeaderTableStruct
 
   functor AMD64GenFn
 
@@ -74,6 +77,8 @@ is
   var-def-sig.sml
   var-def-fn.sml
   vproc-ops-fn.sml
+  header-tbl-struct.sml
+  header-tbl-fn.sml
 
   amd64/amd64-atomic-ops-fn.sml
   amd64/amd64-comp-ext-fn.sml

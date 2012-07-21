@@ -310,13 +310,13 @@ structure MatchCompile : sig
 
   (* create the AST to raise an exception (either MatchFail or BindFail) *)
     fun raiseExn exn (loc : Err.span, rootArg : AST.var, ty : AST.ty) =
-	  AST.RaiseExp(AST.ConstExp(AST.DConst(exn, [])), ty)
+	  AST.RaiseExp(Error.UNKNOWN, AST.ConstExp(AST.DConst(exn, [])), ty)
     val raiseMatchFail = raiseExn Basis.exnMatch
     val raiseBindFail = raiseExn Basis.exnBind
 
   (* create the AST to reraise an exception in a handle match *)
     fun reraiseExn (loc : Err.span, rootArg : AST.var, ty : AST.ty) =
-	  AST.RaiseExp(AST.VarExp(rootArg, []), ty)
+	  AST.RaiseExp(Error.UNKNOWN, AST.VarExp(rootArg, []), ty)
 
     fun rewrite (loc, env, exp : AST.exp) : AST.exp = let
 	  fun rewrite' e = rewrite (loc, env, e)
@@ -357,7 +357,7 @@ structure MatchCompile : sig
 		  if MatchUtil.areSimpleMatches mc
 		    then AST.HandleExp(rewrite' e, List.map rewriteSimplePatMatch mc, ty)
 		    else AST.HandleExp(rewrite' e, rewriteHandle(loc, env, mc, ty), ty)
-	      | AST.RaiseExp(e, ty) => AST.RaiseExp(rewrite' e, ty)
+	      | AST.RaiseExp(l, e, ty) => AST.RaiseExp(l, rewrite' e, ty)
 	      | AST.FunExp(x, e, ty) => AST.FunExp(x, rewrite' e, ty)
 	      | AST.ApplyExp(e1, e2, ty) => AST.ApplyExp(rewrite' e1, rewrite' e2, ty)
 	      | AST.VarArityOpExp _ => exp
@@ -420,10 +420,7 @@ structure MatchCompile : sig
 	  in
 	  (* check for nonexhaustive binding *)
 	    if (DFA.errorCount dfa <> 0)
-	      then (print "nonexhaustive binding warning: ";
-		    print (String.concatWith "," (List.map Var.nameOf bvs));
-		    print "\n";
-		    Err.warnNonexhaustiveBind(Env.errStrm env, loc))
+	      then Err.warnNonexhaustiveBind(Env.errStrm env, loc, (String.concatWith "," (List.map Var.nameOf bvs)))
 	      else ();
 	  (* return the rewritten binding and the extended environment *)
 	    (binds, env')
@@ -492,32 +489,6 @@ structure MatchCompile : sig
 	(* create a variable expression *)
 (* FIXME: what about type arguments?? *)
 	  fun mkVar x = AST.VarExp(x, [])
-	(* flatten applications of constructors to tuples *)
-	  fun flattenTree tr = let
-		fun flatten tr = (case tr
-		       of CALL _ => tr
-			| CASE(x, cases) => let
-			    fun flattenCase (pat as CON(dc, tys, [ARG_VAR y]), tr as CASE(z, [(TPL args, tr')])) =
-				  if (Var.same(y, z))
-				    then (CON(dc, tys, args), flatten tr')
-				    else (pat, flatten tr)
-			      | flattenCase (pat, tr) = (pat, flatten tr)
-			    in
-			      CASE(x, List.map flattenCase cases)
-			    end
-			| IF(env, e, tr1, tr2) => IF(env, e, flatten tr1, flatten tr2)
-			| ACTION _ => tr
-		      (* end case *))
-		val _ = if debug
-		      then (print "** Decision tree before flattening:\n"; prTree tr)
-		      else ()
-		val tr = flatten tr
-		val _ = if debug
-		      then (print "** Decision tree after flattening:\n"; prTree tr)
-		      else ()
-		in
-		  tr
-		end
 	(* convert a decision tree to TypedAST *)
 	  fun treeToAST (CALL(f, args)) =
 		AST.ApplyExp(mkVar f, ASTUtil.mkTupleExp(List.map mkVar args), resTy)
@@ -545,14 +516,20 @@ structure MatchCompile : sig
 	    | treeToAST (IF(env, cond, t, f)) =
 		AST.IfExp(rewrite(loc, env, cond), treeToAST t, treeToAST f, resTy)
 	    | treeToAST (ACTION(env, e)) = rewrite(loc, env, e)
+	(* print the tree when debugging is turned on *)
+	  fun debugPrintTree tr = (
+		if debug
+		  then (print "** Decision tree:\n"; prTree tr)
+		  else ();
+		tr)
 	  fun treeToFB (f, params, body) =
-		ASTUtil.mkFunWithParams(f, params, treeToAST (flattenTree body))
+		ASTUtil.mkFunWithParams(f, params, treeToAST (debugPrintTree body))
 	  val shared = (case fns
 		 of [] => NONE
 		  | _ => SOME(AST.FunBind(List.map treeToFB fns))
 		(* end case *))
 	  in
-	    { shared = shared, match = treeToAST (flattenTree tree) }
+	    { shared = shared, match = treeToAST (debugPrintTree tree) }
 	  end
 
     fun compile (errStrm, body : AST.exp) = let

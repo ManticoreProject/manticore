@@ -9,6 +9,7 @@
 
 #include <stdlib.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include "manticore-rt.h"
 #include <stdio.h>
 #include <string.h>
@@ -16,6 +17,7 @@
 #include "value.h"
 #include "log-file.h"
 #include "crc.h"
+#include <math.h>
 
 /* since LOGBUF_SZ is defined in log-file.h, we have to be tricky */
 static int LogBufSz = LOGBUF_SZ;
@@ -23,7 +25,7 @@ static int LogBufSz = LOGBUF_SZ;
 
 /* print the definition of a symbol */
 #define PR_DEFINE(symb, val)							\
-	printf("    val " #symb " : IntInf.int = %#0llx\n", (uint64_t)val)
+	printf("    val " #symb " : IntInf.int = %#0" PRIx64 "\n", (uint64_t)val)
 
 /* print a value definition and record it in the CRC buffer */
 #define PR_VALUE(tag, var, value)						\
@@ -62,7 +64,7 @@ int main ()
     printf ("\n  (* stack size and heap size info *)\n");
     PR_DEFINE(spillAreaSzB, SPILL_SZB);
     PR_DEFINE(spillAreaOffB, SAVE_AREA+PAD_SZB);
-    PR_DEFINE(maxObjectSzB, ((sizeof (Word_t)*8)-MIXED_TAG_BITS)*sizeof(Word_t));
+    PR_DEFINE(maxObjectSzB, (unsigned long long)(pow(2,64-TABLE_LEN_ID-TABLE_TAG_BITS)-1)*sizeof(Word_t));
 
     printf ("\n  (* offsets into the VProc_t structure *)\n");
 #include "vproc-offsets-ins.c"

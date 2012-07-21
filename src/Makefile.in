@@ -55,7 +55,6 @@ install:
 CLEAN_SUBDIRS =		$(SUBDIRS) gen/log-gen
 CLEAN_FILES =
 DISTCLEAN_FILES =	include/manticore-config.h \
-			include/log-events.h \
 			lib/basis/include/log-events.def \
 			lib/basis/include/runtime-offsets.def \
 			lib/basis/misc/logging.pml \

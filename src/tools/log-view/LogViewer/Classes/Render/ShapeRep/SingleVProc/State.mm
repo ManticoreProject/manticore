@@ -22,10 +22,10 @@
 
 #pragma mark Initializations
 
-- (State *)initWithRect:(NSRect)r
-		  color:(NSColor *)c
-		  start:(event *)startVal
-		    end:(event *)endVal;
+- (id)initWithRect:(NSRect)r
+	     color:(NSColor *)c
+	     start:(event *)startVal
+	       end:(event *)endVal;
 {
 	if (![super init])
 		return nil;
@@ -44,21 +44,19 @@
 
 - (void)drawShape
 {
-	[color set];
-	[NSBezierPath fillRect:rect];
+    [color set];
+    [NSBezierPath fillRect:rect];
 }
 
 
 - (BOOL)containsPoint:(NSPoint)p
 {
-	return
-		(
-		p.x >= rect.origin.x &&
-		p.x <= rect.origin.x + rect.size.width &&
-		p.y >= rect.origin.y &&
-		p.y <= rect.origin.y + rect.size.height
-		);
-		
+    return NSPointInRect(p, rect);
+}
+
+- (NSRect)bounds
+{
+    return rect;
 }
 
 - (shapeTag)kind

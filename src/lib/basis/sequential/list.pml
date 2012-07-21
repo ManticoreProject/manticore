@@ -219,4 +219,9 @@ structure List =
                    else loop(t, trueList, h::falseList))
           in loop (l,nil,nil) end
 
+    fun last xs = (case xs
+      of nil => (raise Fail "empty")
+       | x::nil => x
+       | x::xs => last xs)
+
   end

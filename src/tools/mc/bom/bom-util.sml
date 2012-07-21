@@ -354,8 +354,40 @@ structure BOMUtil : sig
     end (* local *)
 
   (* for debugging output *)
-    fun expToString _ = "<exp>"	(* FIXME *)
 
-    fun rhsToString _ = "<rhs>"	(* FIXME *)
+    fun v2s var = BV.toString var
+    fun vl2s vars = String.concatWith "," (List.map BV.toString vars)
+
+    (* TODO: still ugly, but good enough for most debugging. *)
+    fun lamToString (B.FB{f, params, exh, body}) =
+        concat["Lam(", v2s f,
+               " [", vl2s params, " @ ", vl2s exh, "]",
+               expToString body, ")"]
+    and expToString (B.E_Pt(_, t)) = (case t
+	   of (B.E_Let(vars, e1, e2)) => concat["Let(", vl2s vars, " = ", expToString e1, " in ", expToString e2, ")"]
+	    | (B.E_Stmt(vars, rhs, e)) => concat["Stmt(", vl2s vars, " = ", rhsToString rhs, " in ", expToString e, ")"]
+	    | (B.E_Fun(lams, e)) => concat["Fun(", String.concatWith "," (List.map lamToString lams), " in ", expToString e, ")"]
+	    | (B.E_Cont(lam, e)) => concat["Cont(", lamToString lam, " in ", expToString e, ")"]
+	    | (B.E_If(c, e1, e2)) => concat["If(", CondUtil.nameOf c, "[", vl2s (CondUtil.varsOf c),"] then ", expToString e1, " else ", expToString e2, ")"]
+	    | (B.E_Case(v, pats, dflt)) => "Case(<undone>)"
+	    | (B.E_Apply(f, args, rets)) => concat["Apply(", v2s f, "[", vl2s args, " @ ", vl2s rets, "])"]
+	    | (B.E_Throw (f, args)) => concat["Throw(", v2s f, "[", vl2s args, "])"]
+	    | (B.E_Ret xs) => concat["Ret(", vl2s xs, ")"]
+	    | (B.E_HLOp(oper, v1s, v2s)) => "HLOP(<undone>)"
+	  (* end case *))
+    and rhsToString (B.E_Const (lit, ty)) = concat["Const(", Literal.toString lit, ", ", BOMTyUtil.toString ty, ")"]
+      | rhsToString (B.E_Cast (ty, var)) = concat["Cast(", BOMTyUtil.toString ty, ", ", v2s var, ")"]
+      | rhsToString (B.E_Select (i, var)) = concat["Select(", Int.toString i, ", ", v2s var, ")"]
+      | rhsToString (B.E_Update (i, v1, v2)) = concat["Update(", Int.toString i, ", ", v2s v1, ", ", v2s v2, ")"]
+      | rhsToString (B.E_AddrOf (i, var)) = concat["AddrOf(", Int.toString i, ", ", v2s var, ")"]
+      | rhsToString (B.E_Alloc(ty,vars)) = concat["Alloc(", BOMTyUtil.toString ty, ", ", vl2s vars, ")"]
+      | rhsToString (B.E_Promote v) = concat["Promote(", v2s v, ")"]
+      | rhsToString (B.E_Prim p) = PrimUtil.fmt v2s p
+      | rhsToString (B.E_DCon (d, vars)) = concat["DataCon(", BOMTyUtil.toString (BOMTyUtil.typeOfDCon d), ", ", String.concatWith "," (List.map v2s vars), ")"]
+      | rhsToString (B.E_CCall (f, args)) = concat["CCall(", v2s f, ", [", vl2s args, "])"]
+      | rhsToString (B.E_HostVProc) = "HostVProc"
+      | rhsToString (B.E_VPLoad (n, x)) = concat["VPLoad(", IntInf.toString n, ", ", v2s x, ")"]
+      | rhsToString (B.E_VPStore (n, x, y)) = concat["VPStore(", IntInf.toString n, v2s x,  ", ", v2s y, ")"]
+      | rhsToString (B.E_VPAddr (n, x)) = concat["VPAddr(", IntInf.toString n, ", ", v2s x, ")"]
 
   end

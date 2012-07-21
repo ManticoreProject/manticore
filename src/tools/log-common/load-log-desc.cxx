@@ -183,7 +183,7 @@ bool LogFileDescLoader::GetLogEventsFile (JSON_Value_t *v)
 
   /* initialize the events array */
     eds->at(0) = new EventDesc ();  /* NoEvent */
-    for (int i = 1;  i < eds->size();  i++) {
+    for (unsigned int i = 1;  i < eds->size();  i++) {
 	EventDesc *ed = NewEvent (events->u.array.elems[i-1]);
 	if (ed == 0) return false;
 	eds->at(i) = ed;

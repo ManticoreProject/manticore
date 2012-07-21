@@ -19,7 +19,6 @@
 #include "inline-log.h"
 #include "os-threads.h"
 #include "vproc.h"
-#include "atomic-ops.h"
 
 static int	LogFD = -1;
 
@@ -101,27 +100,23 @@ void InitLog (VProc_t *vp)
  */
 void SwapLogBuffers (VProc_t *vp, LogBuffer_t *curBuf)
 {
-    LogBuffer_t	*nextBuf = vp->prevLog;
+  // set the current log buffer to be the prevLog buffer
+    vp->log = vp->prevLog;
+    vp->prevLog = curBuf;
+    vp->log->seqNum = curBuf->seqNum+1;
 
-  // atomically set the current log buffer to be nextBuf; if this operation
-  // fails, then we must have been preempted and the signal handler did the swap.
-    if (CompareAndSwapPtr(&(vp->log), curBuf, nextBuf) == curBuf) {
-	vp->prevLog = curBuf;
-	nextBuf->seqNum = curBuf->seqNum+1;
+  // write the buffer to a file
+    ssize_t nb;
+    do {
+	nb = write (LogFD, curBuf, LOGBLOCK_SZB);
+	if ((nb < 0) && (errno != EINTR)) {
+	    Error("Failure writing log data; errno = %d\n", errno);
+	    break;
+	}
+    } while (nb < 0);
 
-      // write the buffer to a file
-	ssize_t nb;
-	do {
-	    nb = write (LogFD, curBuf, LOGBLOCK_SZB);
-	    if ((nb < 0) && (errno != EINTR)) {
-		Error("Failure writing log data; errno = %d\n", errno);
-		break;
-	    }
-	} while (nb < 0);
-
-      // reset curBuf's next pointer for its next use
-	curBuf->next = 0;
-    }
+  // reset curBuf's next pointer for its next use
+    curBuf->next = 0;
 
 }
 
@@ -136,7 +131,7 @@ void FinishLog ()
     for (int i = 0;  i < NumVProcs;  i++) {
 	VProc_t *vp = VProcs[i];
 	if (vp->log->next != 0) {
-	    write (LogFD, vp->log, LOGBLOCK_SZB);
+	    int ignored = write (LogFD, (const void*)vp->log, LOGBLOCK_SZB);
 	    vp->log->next = 0;
 	}
     }

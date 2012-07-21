@@ -24,35 +24,12 @@ structure Future1 : sig
     structure A = AST
     structure T = Types
 
-    local 
+    structure DT = DelayedBasis.TyCon
+    structure DV = DelayedBasis.Var
+    structure DTy = DelayedBasis.Ty
 
-      val futureModuleName = "EagerFuture"
-
-      fun getTyc id = BasisEnv.getTyConFromBasis [futureModuleName, id]
-      fun getVar id = BasisEnv.getVarFromBasis [futureModuleName, id]
-
-      val memoFutureTyc : Types.tycon Memo.memo = Memo.new (fn _ =>
-        getTyc "future")
-
-      val memoFuture : AST.var Memo.memo = Memo.new (fn _ =>
-        getVar "future")
-  
-      val memoTouch1 : AST.var Memo.memo = Memo.new (fn _ =>
-        getVar "touch")
-
-      val memoCancel1 : AST.var Memo.memo = Memo.new (fn _ =>
-        getVar "cancel")
-
-    in
-
-      fun futureTyc () = Memo.get memoFutureTyc
-      fun future1   () = Memo.get memoFuture
-      fun touch1    () = Memo.get memoTouch1
-      fun cancel1   () = Memo.get memoCancel1
-
-    end (* local *)
-  
-    fun futureTy t = T.ConTy ([t], futureTyc())
+    val futureTyc = DT.future
+    val futureTy  = DTy.future
 
     (* mkThunk : A.exp -> A.exp *)
     (* Consumes e; produces (fn u => e) (for fresh u : unit). *)
@@ -119,13 +96,13 @@ structure Future1 : sig
 
     (* Precondition: The argument must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
-    val mkTouch = mkTch touch1
+    val mkTouch = mkTch DV.touch1
 
     (* Precondition: The argument e1 must be a future. *)
     (* The function raises Fail if the precondition is not met. *)
-    val mkCancel = mkCan cancel1
+    val mkCancel = mkCan DV.cancel1
 
-    val mkFuture = mkFut future1
+    val mkFuture = mkFut DV.future1
 
     (* isFutureCand : A.exp -> bool *)
     (* Determines whether a particular expression should be made a future or not. *)
@@ -136,7 +113,7 @@ structure Future1 : sig
 		| exp (A.CaseExp (e, ms, _)) = exp e orelse List.exists match ms
 		| exp (A.PCaseExp (es, pms, _)) = exp e orelse List.exists pmatch pms
 		| exp (A.HandleExp (e, ms, _)) = exp e orelse List.exists match ms
-		| exp (A.RaiseExp (e, _)) = exp e
+		| exp (A.RaiseExp (_, e, _)) = exp e
 		| exp (A.FunExp (x, e, _)) = false
 		| exp (A.ApplyExp (e1, e2, _)) = true
 		| exp (A.VarArityOpExp _) = false
@@ -165,7 +142,7 @@ structure Future1 : sig
 	      and match (A.PatMatch (_, e)) = exp e
 		| match (A.CondMatch (_, e1, e2)) = exp e1 orelse exp e2
 	      and pmatch (A.PMatch (_, e)) = exp e
-		| pmatch (A.Otherwise e) = exp e
+		| pmatch (A.Otherwise (ts, e)) = exp e
 	  in
 	      exp e
 	  end

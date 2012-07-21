@@ -9,9 +9,10 @@ structure AMD64TargetSpec = TargetSpecFn (
     val abiName = "SVID"
     val osName = "linux"
     structure ABI = RuntimeConstants
-    val maxGPRArgs = 7
+    val maxGPRArgs = 8
     val maxFPRArgs = 6
-    val maxVPRArgs = 0)
+    val maxVPRArgs = 0
+    val availRegs = 11)
 
 structure CodeGen = AMD64GenFn (structure Spec = AMD64TargetSpec)
 

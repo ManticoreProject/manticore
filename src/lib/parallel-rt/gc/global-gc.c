@@ -2,10 +2,12 @@
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
+ *
  */
 
 #include <strings.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 #include "manticore-rt.h"
 #include "gc.h"
@@ -17,14 +19,16 @@
 #include "atomic-ops.h"
 #include "bibop.h"
 #include "inline-log.h"
-#include "perf.h"
+#include "work-stealing-deque.h"
+#include "gc-scan.h"
 
 static Mutex_t		GCLock;		// Lock that protects the following variables:
 static Cond_t		LeaderWait;	// The leader waits on this for the followers
 static Cond_t		FollowerWait;	// followers block on this until the leader starts the GC
 static volatile int	NReadyForGC;	// number of vprocs that are ready for GC
-static volatile bool	GlobalGCInProgress; // true, when a global GC has been initiated
+static volatile bool    GlobalGCInProgress; // true, when a global GC has been initiated
 static volatile bool	AllReadyForGC;	// true when all vprocs are ready to start GC
+static Barrier_t        GCBarrier0;	// for synchronizing on completion of setup phase
 static Barrier_t        GCBarrier1;	// for synchronizing on completion of copying phase
 static Barrier_t	GCBarrier2;	// for synchronizing on completion of GC
 
@@ -43,59 +47,61 @@ static void ScanVProcHeap (VProc_t *vp);
 static void ScanGlobalToSpace (VProc_t *vp);
 #ifndef NDEBUG
 void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
+void CheckToSpacesAfterGlobalGC (VProc_t *self);
 #endif
 
-/*! \brief Return true if a value is a from-space pointer.
- *
- * Note that this function relies on the fact that unmapped addresses are
- * mapped to the "UnmappedChunk" by the BIBOP.
- */
-STATIC_INLINE bool isFromSpacePtr (Value_t p)
-{
-    return (isPtr(p) && (AddrToChunk(ValueToAddr(p))->sts == FROM_SP_CHUNK));
-
-}
-
 /* Forward an object into the global-heap chunk reserved for the current VP */
-STATIC_INLINE Value_t ForwardObj (VProc_t *vp, Value_t v)
+Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 {
-    Word_t	*p = ((Word_t *)ValueToPtr(v));
-    Word_t	oldHdr = p[-1];
-    if (isForwardPtr(oldHdr)) {
-	Value_t v = PtrToValue(GetForwardPtr(oldHdr));
-	assert (isPtr(v) && (AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK));
-	return v;
-    }
-    else {
-      // we need to atomically update the header to a forward pointer, so frst
-      // we allocate space for the object and then we try to install the forward
-      // pointer.
-	Word_t *nextW = (Word_t *)vp->globNextW;
-	int len = GetLength(oldHdr);
-	if (nextW+len >= (Word_t *)(vp->globLimit)) {
-	    AllocToSpaceChunk (vp);
-	    nextW = (Word_t *)vp->globNextW;
-	}
-     // try to install the forward pointer
-	Word_t fwdPtr = MakeForwardPtr(oldHdr, nextW);
-	Word_t hdr = CompareAndSwapWord(p-1, oldHdr, fwdPtr);
-	if (oldHdr == hdr) {
-	    Word_t *newObj = nextW;
-	    newObj[-1] = hdr;
-	    for (int i = 0;  i < len;  i++) {
-		newObj[i] = p[i];
-	    }
-	    vp->globNextW = (Addr_t)(newObj+len+1);
-	    return PtrToValue(newObj);
+	Word_t	*p = ((Word_t *)ValueToPtr(v));
+	Word_t	oldHdr = p[-1];
+	if (isForwardPtr(oldHdr)) {
+		Value_t v = PtrToValue(GetForwardPtr(oldHdr));
+		assert (isPtr(v));
+#ifndef NDEBUG
+        MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+        if (cq->sts != TO_SP_CHUNK) {
+            fprintf(stderr, "[%2d] Value %llx is not in to-space\n", vp->id, v);}
+#endif
+                assert (AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK);
+		return v;
 	}
 	else {
-	  // some other vproc forwarded the object, so return the forwarded
-	  // object.
-	    assert (isForwardPtr(hdr));
-	    return PtrToValue(GetForwardPtr(hdr));
+		// we need to atomically update the header to a forward pointer, so frst
+		// we allocate space for the object and then we try to install the forward
+		// pointer.
+		Word_t *nextW = (Word_t *)vp->globNextW;
+		int len = GetLength(oldHdr);
+		if (nextW+len >= (Word_t *)(vp->globLimit)) {
+			AllocToSpaceChunk (vp);
+			nextW = (Word_t *)vp->globNextW;
+		}
+		// try to install the forward pointer
+		Word_t fwdPtr = MakeForwardPtr(oldHdr, nextW);
+		Word_t hdr = CompareAndSwapWord(p-1, oldHdr, fwdPtr);
+		if (oldHdr == hdr) {
+			Word_t *newObj = nextW;
+			newObj[-1] = hdr;
+			for (int i = 0;  i < len;  i++) {
+				newObj[i] = p[i];
+			}
+			vp->globNextW = (Addr_t)(newObj+len+1);
+        
+            assert (AddrToChunk(ValueToAddr(v))->sts == FROM_SP_CHUNK ||
+                    IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts));
+            assert (AddrToChunk(newObj)->sts == TO_SP_CHUNK);
+        
+			return PtrToValue(newObj);
+		}
+		else {
+			// some other vproc forwarded the object, so return the forwarded
+			// object.
+			assert (isForwardPtr(hdr));
+            assert (AddrToChunk(GetForwardPtr(hdr))->sts == TO_SP_CHUNK);
+			return PtrToValue(GetForwardPtr(hdr));
+		}
 	}
-    }
-
+	
 }
 
 /* \brief initialize the data structures that support global GC
@@ -110,6 +116,46 @@ void InitGlobalGC ()
 
 }
 
+/* \brief Converts the tag for a tospace chunk to that of a fromspace
+ * chunk and handles all associated logging and stats.
+ */
+void ConvertToSpaceChunks (VProc_t *self, MemChunk_t *p) {
+    if (p == NULL)
+        return;
+
+    while (p != NULL) {
+#ifndef NDEBUG
+        if (p->sts != TO_SP_CHUNK) {
+            SayDebug("Invalid chunk not marked TO_SP %p\n", (void*)p->baseAddr);
+        }
+#endif
+        assert (p->sts == TO_SP_CHUNK);
+#ifndef NDEBUG
+        if (GCDebug >= GC_DEBUG_GLOBAL)
+            SayDebug("[%2d]   From-Space chunk %p..%p\n",
+                     self->id, (void *)(p->baseAddr),
+                     (void *)(p->baseAddr+p->szB));
+#endif
+        p->sts = FROM_SP_CHUNK;
+        p->scanProgress = 0;
+#ifndef NO_GC_STATS
+        uint32_t used = (p == self->globAllocChunk)
+            ? (self->globNextW - WORD_SZB) - p->baseAddr
+            : p->usedTop - p->baseAddr;
+        self->globalStats.nBytesCollected += used;
+#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
+        FetchAndAddU64 (&FromSpaceSzb, (uint64_t)used);
+#endif
+#endif /* !NO_GC_STATS */
+
+        MemChunk_t *next = p->next;
+        int node = LocationNode(self->location);
+        p->next = NodeHeaps[node].fromSpace;
+        NodeHeaps[node].fromSpace = p;
+        p = next;
+    }
+}
+
 /*! \brief attempt to start a global GC.
  *  \param vp the host vproc
  *  \param roots the array of root pointers for this vproc
@@ -121,6 +167,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #ifndef NO_GC_STATS
     TIMER_Start(&(self->globalStats.timer));
 #endif
+
 #ifdef ENABLE_PERF_COUNTERS
     PERF_StartGC(&self->misses);
     PERF_StartGC(&self->reads);
@@ -160,38 +207,6 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    leaderVProc = false;
 	}
 
-      /* add the vproc's pages to the from-space list */
-	MemChunk_t *p;
-	for (p = self->globToSpHd;  p != (MemChunk_t *)0;  p = p->next) {
-	    assert (p->sts == TO_SP_CHUNK);
-#ifndef NDEBUG
-	    if (GCDebug >= GC_DEBUG_GLOBAL)
-		SayDebug("[%2d]   From-Space chunk %p..%p\n",
-		    self->id, (void *)(p->baseAddr),
-		    (void *)(p->baseAddr+p->szB));
-#endif
-	    p->sts = FROM_SP_CHUNK;
-#ifndef NO_GC_STATS
-	    uint32_t used = (p == self->globToSpTl)
-		? (self->globNextW - WORD_SZB) - p->baseAddr
-		: p->usedTop - p->baseAddr;
-	    self->globalStats.nBytesCollected += used;
-#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
-	    FetchAndAdd64 (&FromSpaceSzb, (int64_t)used);
-#endif
-#endif /* !NO_GC_STATS */
-	}
-	p = self->globToSpTl;
-	if (p != (MemChunk_t *)0) {
-	    p->usedTop = self->globNextW - WORD_SZB;
-	    p->next = FromSpaceChunks;
-	    FromSpaceChunks = self->globToSpHd;
-	}
-
-      /* finish the GC setup for this vproc */
-	self->globToSpTl = (MemChunk_t *)0;
-	self->globToSpHd = (MemChunk_t *)0;
-
       // here the leader waits for the followers and the followers wait for the
       // leader to say "go"
 	if (leaderVProc) {
@@ -203,6 +218,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	  /* all followers are ready to do GC, so initialize the barriers
 	   * and then wake them up.
 	   */
+	    BarrierInit (&GCBarrier0, NumVProcs);
 	    BarrierInit (&GCBarrier1, NumVProcs);
 	    BarrierInit (&GCBarrier2, NumVProcs);
 	    AllReadyForGC = true;
@@ -215,6 +231,33 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	        CondWait (&FollowerWait, &GCLock);
 	}
     MutexUnlock (&GCLock);
+
+    /* Phase 1
+     * Each vproc places their current alloc chunk
+     * and any per-node unscannedTo space chunks into the
+     * per-node fromSpace list */
+    int		node = LocationNode(self->location);
+    MutexLock(&NodeHeaps[node].lock);
+    assert(NodeHeaps[node].scannedTo == NULL);
+    NodeHeaps[node].completed = false;
+    MemChunk_t *p;
+
+    if (self->globAllocChunk != NULL) {
+        self->globAllocChunk->usedTop = self->globNextW - WORD_SZB;
+        assert (self->globAllocChunk->next == NULL);
+    }
+
+    ConvertToSpaceChunks (self, self->globAllocChunk);
+    ConvertToSpaceChunks (self, NodeHeaps[node].unscannedTo);
+    NodeHeaps[node].unscannedTo = NULL;
+    MutexUnlock(&NodeHeaps[node].lock);
+
+    /* finish the GC setup for this vproc */
+	self->globAllocChunk = (MemChunk_t *)0;
+
+    /* synchronize on every vproc finishing setup (so we know all
+       from spaces are appropraitely tagged). */
+    BarrierWait (&GCBarrier0);
 
   /* allocate the initial chunk for the vproc */
     AllocToSpaceChunk (self);
@@ -230,45 +273,78 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     }
 #endif
 
-#ifndef NO_GC_STATS
-  // compute the number of bytes copied in this GC on this vproc
-    for (p = self->globToSpHd;  p != (MemChunk_t *)0;  p = p->next) {
-	uint32_t used = (p == self->globToSpTl)
-	    ? (self->globNextW - WORD_SZB) - p->baseAddr
-	    : p->usedTop - p->baseAddr;
-	self->globalStats.nBytesCopied += used;
-#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
-      // include in total for this GC
-	FetchAndAdd64 (&NBytesCopied, (int64_t)used);
-#endif
-    }
-#endif /* !NO_GC_STATS */
-
   /* synchronize on every vproc finishing GC */
     BarrierWait (&GCBarrier1);
 
-  /* the leader reclaims the from-space pages */
-    if (leaderVProc) {
-	MutexLock (&HeapLock);
-	    MemChunk_t *cp = FromSpaceChunks;
-	    FromSpaceChunks = (MemChunk_t *)0;
-	    while (cp != (MemChunk_t *)0) {
-		cp->sts = FREE_CHUNK;
-		cp->usedTop = cp->baseAddr;
-#ifndef NDEBUG
-		if (GCDebug >= GC_DEBUG_GLOBAL)
-		    SayDebug("[%2d]   Free-Space chunk %#tx..%#tx\n",
-			self->id, cp->baseAddr, cp->baseAddr+cp->szB);
+#ifndef NO_GC_STATS
+    // compute the number of bytes copied in this GC on this vproc
+    
+    uint32_t used = (self->globNextW - WORD_SZB) -
+        self->globAllocChunk->baseAddr;
+    self->globalStats.nBytesCopied += used;
+#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
+    // include in total for this GC
+    FetchAndAddU64 (&NBytesCopied, (uint64_t)used);
 #endif
-		MemChunk_t *cq = cp->next;
-		int nd = cp->where;
-		cp->next = FreeChunks[nd];
-		FreeChunks[nd] = cp;
-		cp = cq;
-	    }
+    if (leaderVProc) {
+        // The leader counts all of the bytes copied to chunks other than
+        // those still being used as global allocation chunks for each
+        // vproc
+        for (int i = 0; i < NumHWNodes; i++) {
+            for (p = NodeHeaps[i].scannedTo;  p != (MemChunk_t *)0;  p = p->next) {
+                uint32_t used = p->usedTop - p->baseAddr;
+                self->globalStats.nBytesCopied += used;
+#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
+                // include in total for this GC
+                FetchAndAddU64 (&NBytesCopied, (uint64_t)used);
+#endif
+            }
+        }
+    }
+#endif /* !NO_GC_STATS */
+
+    /* Phase 4
+     * the leader reclaims the from-space pages
+     * Technically, the locking is extraneous (since every other VProc
+     * will be waiting on the barrier below), but I may parallelize this
+     * in the future.
+     */
+    if (leaderVProc) {
+        MutexLock (&HeapLock);
+        for (int i = 0; i < NumHWNodes; i++) {
+            MutexLock(&NodeHeaps[i].lock);
+            assert(NodeHeaps[i].unscannedTo == NULL);
+            NodeHeaps[i].unscannedTo = NodeHeaps[i].scannedTo;
+            NodeHeaps[i].scannedTo = NULL;
+            MemChunk_t *cp = NodeHeaps[i].fromSpace;
+            NodeHeaps[i].fromSpace = (MemChunk_t *)0;
+            while (cp != (MemChunk_t *)0) {
+                cp->sts = FREE_CHUNK;
+                cp->usedTop = cp->baseAddr;
+#ifndef NDEBUG
+                
+                if (GCDebug >= GC_DEBUG_GLOBAL)
+                    SayDebug("[%2d]   Free-Space chunk %#tx..%#tx\n",
+                             self->id, cp->baseAddr, cp->baseAddr+cp->szB);
+#endif
+                MemChunk_t *cq = cp->next;
+                assert (i == cp->where);
+                cp->next = NodeHeaps[i].freeChunks;
+                NodeHeaps[i].freeChunks = cp;
+                cp = cq;
+            }
+            NodeHeaps[i].fromSpace = NULL;
+            MutexUnlock(&NodeHeaps[i].lock);
+        }
+        
+#ifndef NDEBUG
+        if (HeapCheck >= GC_DEBUG_GLOBAL)
+            CheckToSpacesAfterGlobalGC(self);
+#endif
+
 /* NOTE: at some point we may want to release memory back to the OS */
 	    GlobalGCInProgress = false;
-	MutexUnlock (&HeapLock);
+        MutexUnlock (&HeapLock);
       // recalculate the ToSpaceLimit
 	Addr_t baseLimit = (HeapScaleNum * ToSpaceSz) / HeapScaleDenom;
 	baseLimit = (baseLimit < ToSpaceSz) ? ToSpaceSz : baseLimit;
@@ -296,7 +372,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_GLOBAL) {
 	if (leaderVProc)
-	    SayDebug("[%2d] Completed global GC; %lld/%lld bytes copied\n",
+	    SayDebug("[%2d] Completed global GC; %"PRIu64"/%"PRIu64" bytes copied\n",
 		self->id, NBytesCopied, FromSpaceSzb);
 	else
 	    SayDebug("[%2d] Leaving global GC\n", self->id);
@@ -311,19 +387,26 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 {
     LogGlobalGCVPStart (vp);
 
-  /* scan the vproc's roots */
+    MemChunk_t *original = vp->globAllocChunk;
+
+  /* collect roots that were pruned away from the minor collector's root set */
+    M_AddDequeEltsToGlobalRoots(vp, roots);
+
+    /* Phase 2
+     * scan the vproc's roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];
 	if (isFromSpacePtr(p)) {
-	    *roots[i] = ForwardObj(vp, p);
+	    *roots[i] = ForwardObjGlobal(vp, p);
 	}
     }
 
     ScanVProcHeap (vp);
 
+    PushToSpaceChunks (vp, original, true);
+
   /* scan to-space chunks */
     ScanGlobalToSpace (vp);
-
     LogGlobalGCVPDone (vp, 0/*FIXME*/);
 
 #ifndef NDEBUG
@@ -342,102 +425,177 @@ static void ScanVProcHeap (VProc_t *vp)
     Word_t *scanPtr = (Word_t *)vp->heapBase;
 
     while (scanPtr < top) {
-	Word_t hdr = *scanPtr++;  // get object header
-	if (isMixedHdr(hdr)) {
-	  // a record
-	    Word_t tagBits = GetMixedBits(hdr);
-	    Word_t *scanP = scanPtr;
-	    while (tagBits != 0) {
-		if (tagBits & 0x1) {
-		    Value_t p = *(Value_t *)scanP;
-		    if (isFromSpacePtr(p)) {
-			*scanP = (Word_t)ForwardObj(vp, p);
-		    }
+		
+		Word_t hdr = *scanPtr++;	// get object header
+		
+		if (isVectorHdr(hdr)) {
+			//Word_t *nextScan = ptr;
+			int len = GetLength(hdr);
+			for (int i = 0;  i < len;  i++, scanPtr++) {
+				Value_t *scanP = (Value_t *)scanPtr;
+				Value_t v = *scanP;
+				if (isFromSpacePtr(v)) {
+                                    *scanP = ForwardObjGlobal(vp, v);
+				}
+			}
+			
+			
+		}else if (isRawHdr(hdr)) {
+			assert (isRawHdr(hdr));
+			scanPtr += GetLength(hdr);
+		}else {
+			
+			scanPtr = table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
+
 		}
-		tagBits >>= 1;
-		scanP++;
-	    }
-	    scanPtr += GetMixedSizeW(hdr);
-	}
-	else if (isVectorHdr(hdr)) {
-	  // an array of pointers
-	    int len = GetVectorLen(hdr);
-	    for (int i = 0;  i < len;  i++, scanPtr++) {
-		Value_t v = (Value_t)*scanPtr;
-		if (isFromSpacePtr(v)) {
-		    *scanPtr = (Word_t)ForwardObj(vp, v);
-		}
-	    }
-	}
-	else {
-	    assert (isRawHdr(hdr));
-	  // we can just skip raw objects
-	    scanPtr += GetRawSizeW(hdr);
-	}
+		
+
     }
     assert (scanPtr == top);
 
 } /* end of ScanVProcHeap */
 
+/* Returns a chunk of unscanned to-space. This function will wait
+ * for more per-node work to become available. If all vprocs in a
+ * node are waiting, then the per-node GC is complete and this
+ * function returns NULL
+ */
+MemChunk_t *GetNextScanChunk(VProc_t *vp, int node) {
+    MemChunk_t *chunk = NULL;
+
+    MutexLock(&NodeHeaps[node].lock);
+    while (true) {
+#ifdef SINGLE_THREAD_PER_PACKAGE
+        if (LogicalId(vp->location) == MinVProcPerNode[node]) {
+#endif
+        if (NodeHeaps[node].unscannedTo != NULL) {
+            chunk = NodeHeaps[node].unscannedTo;
+            NodeHeaps[node].unscannedTo = chunk->next;
+            MutexUnlock(&NodeHeaps[node].lock);
+            chunk->next = NULL;
+#ifndef NDEBUG
+            if (GCDebug >= GC_DEBUG_GLOBAL)
+                SayDebug("[%2d]   GetNextScanChunk %p..%p\n",
+                         vp->id, (void *)(chunk->baseAddr),
+                         (void *)(chunk->baseAddr+chunk->szB));
+#endif
+            return chunk;
+        }
+#ifdef SINGLE_THREAD_PER_PACKAGE
+        }
+#endif
+
+        if (vp->globAllocChunk->scanProgress < (vp->globNextW - WORD_SZB)) {
+            MutexUnlock(&NodeHeaps[node].lock);
+#ifndef NDEBUG
+    if (GCDebug >= GC_DEBUG_GLOBAL)
+	SayDebug("[%2d]   Returning allocation chunk for scan %p..%p at %p\n",
+                 vp->id, (void *)(vp->globAllocChunk->baseAddr),
+             (void*)vp->globAllocChunk->usedTop, (void*)vp->globAllocChunk->scanProgress);
+#endif
+            assert(vp->globAllocChunk->next == NULL);
+            return vp->globAllocChunk;
+        }
+
+        if (++NodeHeaps[node].numWaiting == NumVProcsPerNode[node]) {
+            NodeHeaps[node].completed = true;
+            NodeHeaps[node].numWaiting--;
+            MutexUnlock(&NodeHeaps[node].lock);
+            CondBroadcast(&NodeHeaps[node].scanWait);
+            return NULL;
+        }
+        
+        if (!NodeHeaps[node].completed) {
+            CondWait(&NodeHeaps[node].scanWait, &NodeHeaps[node].lock);
+        }
+        
+        NodeHeaps[node].numWaiting--;
+        if (NodeHeaps[node].completed) {
+            MutexUnlock(&NodeHeaps[node].lock);
+            return NULL;
+        }
+    }
+}
+
 /*! \brief Scan the to-space objects that have been copied by this vproc
  *  \param vp the vproc doing the scanning
+ * Phase 3
  */
 static void ScanGlobalToSpace (VProc_t *vp)
 {
-    MemChunk_t	*scanChunk = vp->globToSpHd;
-    Word_t	*scanPtr = (Word_t *)(scanChunk->baseAddr);
-    Word_t	*scanTop = UsedTopOfChunk(vp, scanChunk);
+    int node = LocationNode(vp->location);
+    MemChunk_t	*scanChunk = NULL;
 
-    do {
-	while (scanPtr < scanTop) {
-	    Word_t hdr = *scanPtr++;  // get object header
-	    if (isMixedHdr(hdr)) {
-	      // a record
-		Word_t tagBits = GetMixedBits(hdr);
-		Word_t *scanP = scanPtr;
-		while (tagBits != 0) {
-		    if (tagBits & 0x1) {
-			Value_t p = *(Value_t *)scanP;
-			if (isFromSpacePtr(p)) {
-			    *scanP = (Word_t)ForwardObj(vp, p);
-			}
-		    }
-		    tagBits >>= 1;
-		    scanP++;
-		}
-		scanPtr += GetMixedSizeW(hdr);
-	    }
-	    else if (isVectorHdr(hdr)) {
-	      // an array of pointers
-		int len = GetVectorLen(hdr);
-		for (int i = 0;  i < len;  i++, scanPtr++) {
-		    Value_t v = (Value_t)*scanPtr;
-		    if (isFromSpacePtr(v)) {
-		        *scanPtr = (Word_t)ForwardObj(vp, v);
-		    }
-		}
-	    }
-	    else {
-		assert (isRawHdr(hdr));
-	      // we can just skip raw objects
-		scanPtr += GetRawSizeW(hdr);
-	    }
-	}
+    while ((scanChunk = GetNextScanChunk(vp, node)) != NULL) {
+        Word_t	*scanPtr = (Word_t *)(scanChunk->baseAddr>scanChunk->scanProgress?
+                                      scanChunk->baseAddr:scanChunk->scanProgress);
+        Word_t	*scanTop = UsedTopOfChunk(vp, scanChunk);
+        MemChunk_t *origAlloc = vp->globAllocChunk;
+        bool handlingAlloc = scanChunk == vp->globAllocChunk;
 
-      /* recompute the scan top, switching chunks if necessary */
-	if (vp->globToSpTl == scanChunk)
-	    scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
-	else if (scanPtr == (Word_t *)scanChunk->usedTop) {
-	    scanChunk = scanChunk->next;
-	    assert (scanChunk != (MemChunk_t *)0);
-	    scanPtr = (Word_t *)(scanChunk->baseAddr);
-	    scanTop = UsedTopOfChunk(vp, scanChunk);
-	}
-	else
-	    scanTop = (Word_t *)(scanChunk->usedTop);
+        do {
+            while (scanPtr < scanTop) {
+                Word_t hdr = *scanPtr++;	// get object header
+		
+                if (isVectorHdr(hdr)) {
+                    //Word_t *nextScan = ptr;
+                    int len = GetLength(hdr);
+                    for (int i = 0;  i < len;  i++, scanPtr++) {
+                        Value_t *scanP = (Value_t *)scanPtr;
+                        Value_t v = *scanP;
+                        if (isFromSpacePtr(v)) {
+                            *scanP = ForwardObjGlobal(vp, v);
+                        }
+                        
+                        assert (!(isPtr(v) && IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts)));
+                    }
+                } else if (isRawHdr(hdr)) {
+                    assert (isRawHdr(hdr));
+                    scanPtr += GetLength(hdr);
+                } else {
+                    scanPtr = table[getID(hdr)].globalGCscanfunction(scanPtr,vp);
+                }
+            }
 
-    } while (scanPtr < scanTop);
+            if (vp->globAllocChunk == scanChunk) {
+                // Continue to iterate on the current data, if we are scanning
+                // the same block we are allocating into.
+                vp->globAllocChunk->scanProgress = (Addr_t)scanPtr;
+                scanTop = (Word_t *)(vp->globNextW - WORD_SZB);
+            } else if (handlingAlloc) {
+                // Ensure we finished the alloc chunk before moving on. In
+                // this case, we have changed the allocation chunk but are
+                // not guaranteed to have scanned any objects allocated
+                // between the previous scanTop value and the final usedTop.
+                scanTop = UsedTopOfChunk (vp, scanChunk);                
+            }
+        } while (scanPtr < scanTop);
 
+        if (handlingAlloc) {
+            if (origAlloc != vp->globAllocChunk) {
+                MemChunk_t *tmp = origAlloc->next;
+
+                MutexLock(&NodeHeaps[node].lock);
+                origAlloc->next = NodeHeaps[node].scannedTo;
+                NodeHeaps[node].scannedTo = origAlloc;
+                MutexUnlock(&NodeHeaps[node].lock);
+
+                PushToSpaceChunks (vp, tmp, true);
+            }
+        } else {
+            assert(scanChunk->next == NULL);
+
+            MutexLock(&NodeHeaps[node].lock);
+            scanChunk->next = NodeHeaps[node].scannedTo;
+            NodeHeaps[node].scannedTo = scanChunk;
+            MutexUnlock(&NodeHeaps[node].lock);
+
+            if (origAlloc != vp->globAllocChunk) {
+                PushToSpaceChunks (vp, origAlloc, true);
+            }
+        }
+
+    }
 }
 
 #ifndef NDEBUG
@@ -447,24 +605,24 @@ void CheckGlobalAddr (VProc_t *self, void *addr, char *where);
  */
 void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
 {
+  /*
     if (isHeapPtr(PtrToValue(addr))) {
 	Word_t *ptr = (Word_t*)addr;
 	Word_t hdr = ptr[-1];
 	if (isMixedHdr(hdr) || isVectorHdr(hdr) || isRawHdr(hdr)) {
 	  // the header word is valid
 	}
-/*
 	else if (isRawHdr(hdr)) {
 	    SayDebug("[%2d] CheckGlobalPtr: unexpected raw header for %p in %s \n",
 		self->id, addr, where);
 	}
-*/
 	else {
 	    MemChunk_t *cq = AddrToChunk((Addr_t)addr);
 	    SayDebug("[%2d] CheckGlobalPtr: unexpected bogus header %p for %p[%d] in %s\n",
 		self->id, (void *)hdr, addr, cq->sts, where);
 	}
     }
+  */
     CheckGlobalAddr (self, addr, where);
 }
 
@@ -486,14 +644,16 @@ void CheckGlobalAddr (VProc_t *self, void *addr, char *where)
 		       self->id, ValueToPtr(v), where);
 	  }
 	}
+    else if (isLimitPtr(v, cq))
+        return;
 	else if (IS_VPROC_CHUNK(cq->sts)) {
 	    if (inAddrRange(ValueToAddr(v) & ~VP_HEAP_MASK, sizeof(VProc_t), ValueToAddr(v))) {
 	      /* IMPORTANT: we make an exception for objects stored in the vproc structure */
 	        return;
 	    }
 	    else if (cq->sts != VPROC_CHUNK(self->id)) {
-		SayDebug("[%2d] CheckGlobalAddr: bogus remote pointer %p in %s\n",
-			 self->id, ValueToPtr(v), where);
+               SayDebug("[%2d] CheckGlobalAddr: bogus remote pointer %p in %s\n",
+                        self->id, ValueToPtr(v), where);
 	    } 
 	    else if (cq->sts == VPROC_CHUNK(self->id)) {
 		   SayDebug("[%2d] CheckGlobalAddr: bogus local pointer %p in %s\n",
@@ -516,7 +676,7 @@ void CheckGlobalAddr (VProc_t *self, void *addr, char *where)
  * the root set or the local heap. 
  * Precondition: this check should only occur just after a global collection.
  */
-static void CheckLocalPtr (VProc_t *self, void *addr, const char *where)
+void CheckLocalPtrGlobal (VProc_t *self, void *addr, const char *where)
 {
     Value_t v = *(Value_t *)addr;
     if (isPtr(v)) {
@@ -547,10 +707,10 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 {
   // check the roots
     for (int i = 0;  roots[i] != 0;  i++) {
-	char buf[16];
+	char buf[18];
 	sprintf(buf, "root[%d]", i);
 	Value_t v = *roots[i];
-	CheckLocalPtr (self, roots[i], buf);
+	CheckLocalPtrGlobal (self, roots[i], buf);
     }
 
   // check the local heap
@@ -559,230 +719,31 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 	Word_t *p = (Word_t *)self->heapBase;
 	while (p < top) {
 	    Word_t hdr = *p++;
-	    if (isMixedHdr(hdr)) {
-	      // a record
-		Word_t tagBits = GetMixedBits(hdr);
-		Word_t *scanP = p;
-		while (tagBits != 0) {
-		    if (tagBits & 0x1) {
-			CheckLocalPtr (self, scanP, "local mixed object");
-		    }
-		    else {
-		      /* check for possible pointers in non-pointer fields */
-			Value_t v = *(Value_t *)scanP;
-			if (isHeapPtr(v)) {
-			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			    switch (cq->sts) {
-			      case FREE_CHUNK:
-				SayDebug("[%2d] ** possible free-space pointer %p in mixed object %p+%d\n",
-				    self->id, (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case TO_SP_CHUNK:
-				SayDebug("[%2d] ** possible to-space pointer %p in mixed object %p+%d\n",
-				    self->id, (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case FROM_SP_CHUNK:
-				SayDebug("[%2d] ** possible from-space pointer %p in mixed object %p+%d\n",
-				    self->id, (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case UNMAPPED_CHUNK:
-				break;
-			      default:
-				if (IS_VPROC_CHUNK(cq->sts)) {
-				  /* the vproc pointer is pretty common, so filter it out */
-				    if (ValueToAddr(v) & ~VP_HEAP_MASK != ValueToAddr(v))
-					SayDebug("[%2d] ** possible local pointer %p in mixed object %p+%d\n",
-					    self->id, (void *)v, (void *)p, (int)(scanP-p));
-				}
-				else {
-				    SayDebug("[%2d] ** strange pointer %p in mixed object %p+%d\n",
-					self->id, (void *)v, (void *)p, (int)(scanP-p));
-				}
-				break;
-			    }
-			}
-		    }
-		    tagBits >>= 1;
-		    scanP++;
-		}
-		p += GetMixedSizeW(hdr);
-	    }
-	    else if (isVectorHdr(hdr)) {
-	      // an array of pointers
-		int len = GetVectorLen(hdr);
-		for (int i = 0;  i < len;  i++, p++) {
-		    CheckLocalPtr (self, p, "local vector");
-		}
-	    }
-	    else {
-		assert (isRawHdr(hdr));
-		int len = GetRawSizeW(hdr);
-	      // look for raw values that might be pointers
-		for (int i = 0; i < len; i++) {
-		    Value_t v = (Value_t)p[i];
-		    if (isPtr(v)) {
-		        if (isHeapPtr(v)) {
-			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			    if (cq->sts != TO_SP_CHUNK) {
-				if (cq->sts == FROM_SP_CHUNK)
-				    SayDebug("[%2d] ** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
-					     self->id, ValueToPtr(v), (void *)p, i, len);
-				else if (IS_VPROC_CHUNK(cq->sts))
-				  /* the vproc pointer is pretty common, so filter it out */
-				    if (ValueToAddr(v) & ~VP_HEAP_MASK != ValueToAddr(v))
-				        SayDebug("[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
-						 self->id, ValueToPtr(v), (void *)p, i, len);
-				else if (cq->sts == FREE_CHUNK)
-				    SayDebug("[%2d] ** suspicious looking free pointer %p at %p[%d] in raw object of length %d (in local heap)\n",
-					     self->id, ValueToPtr(v), (void *)p, i, len);
-			    }
-			} 
-		    }
-		}
-		p += len;
-	    }
+	    Word_t *scanptr = p;
+		tableDebug[getID(hdr)].globalGCdebug(self,scanptr);
+		
+		p += GetLength(hdr);
 	}
     }
 
-  // check to space
-    MemChunk_t	*cp = self->globToSpHd;
-    while (cp != (MemChunk_t *)0) {
-	assert (cp->sts = TO_SP_CHUNK);
-	Word_t *p = (Word_t *)(cp->baseAddr);
-	Word_t *top = UsedTopOfChunk(self, cp);
-	while (p < top) {
-	    Word_t hdr = *p++;
-	    if (isMixedHdr(hdr)) {
-	      // a record
-		Word_t tagBits = GetMixedBits(hdr);
-		Word_t *scanP = p;
-		while (tagBits != 0) {
-		    if (tagBits & 0x1) {
-			Value_t v = *(Value_t *)scanP;
-			if (isPtr(v)) {
-			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			    if (cq->sts != TO_SP_CHUNK) {
-				if (cq->sts == FROM_SP_CHUNK)
-				    SayDebug("[%2d] ** unexpected from-space pointer %p at %p in mixed object\n",
-					self->id, ValueToPtr(v), (void *)p);
-				else if (IS_VPROC_CHUNK(cq->sts))
-				    SayDebug("[%2d] ** unexpected local pointer %p at %p in mixed object\n",
-					self->id, ValueToPtr(v), (void *)p);
-				else if (cq->sts == FREE_CHUNK)
-				    SayDebug("[%2d] ** unexpected free pointer %p at %p in mixed object\n",
-					self->id, ValueToPtr(v), (void *)p);
-			    }
-			}
-		    }
-		    else {
-		      /* check for possible pointers in non-pointer fields */
-			Value_t v = *(Value_t *)scanP;
-			if (isHeapPtr(v)) {
-			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			    switch (cq->sts) {
-			      case FREE_CHUNK:
-				SayDebug("[%2d] ** possible free-space pointer %p in mixed object %p+%d\n",
-				    self->id, (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case TO_SP_CHUNK:
-				SayDebug("[%2d] ** possible to-space pointer %p in mixed object %p+%d\n",
-				    self->id, (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case FROM_SP_CHUNK:
-				SayDebug("[%2d] ** possible from-space pointer %p in mixed object %p+%d\n",
-				    self->id, (void *)v, (void *)p, (int)(scanP-p));
-				break;
-			      case UNMAPPED_CHUNK:
-				break;
-			      default:
-				if (IS_VPROC_CHUNK(cq->sts)) {
-				  /* the vproc pointer is pretty common, so filter it out */
-				    if (ValueToAddr(v) & ~VP_HEAP_MASK != ValueToAddr(v))
-					SayDebug("[%2d] ** possible local pointer %p in mixed object %p+%d\n",
-					    self->id, (void *)v, (void *)p, (int)(scanP-p));
-				}
-				else {
-				    SayDebug("[%2d] ** strange pointer %p in mixed object %p+%d\n",
-					self->id, (void *)v, (void *)p, (int)(scanP-p));
-				}
-				break;
-			    }
-			}
-		    }
-		    tagBits >>= 1;
-		    scanP++;
-		}
-		p += GetMixedSizeW(hdr);
-	    }
-	    else if (isVectorHdr(hdr)) {
-	      // an array of pointers
-		int len = GetVectorLen(hdr);
-		for (int i = 0;  i < len;  i++, p++) {
-		    Value_t v = (Value_t)*p;
-		    if (isPtr(v)) {
-			MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			if (cq->sts != TO_SP_CHUNK) {
-			    if (cq->sts == FROM_SP_CHUNK)
-				SayDebug("[%2d] ** unexpected from-space pointer %p at %p in vector\n",
-				    self->id, ValueToPtr(v), (void *)p);
-			    else if (IS_VPROC_CHUNK(cq->sts)) {
-			      if (cq->sts != VPROC_CHUNK(self->id)) {
-				SayDebug("[%2d] ** unexpected remote pointer %p at %p in vector\n",
-					 self->id, ValueToPtr(v), (void *)p);
-			      }
-			      else if (ValueToAddr(v) & ~VP_HEAP_MASK != ValueToAddr(v)) {
-				SayDebug("[%2d] ** unexpected vproc-structure pointer %p at %p in vector\n",
-					 self->id, ValueToPtr(v), (void *)p);
-			      }
-			      else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {
-				SayDebug("[%2d] ** unexpected local pointer %p at %p in vector[%d] is out of bounds\n",
-					 self->id, ValueToPtr(v), (void *)p, i);
-			      } else {
-				SayDebug("[%2d] ** unexpected local pointer %p at %p in vector\n",
-					 self->id, ValueToPtr(v), (void *)p);
-			      }
-			    } 
-			    else if (cq->sts == FREE_CHUNK)
-				SayDebug("[%2d] ** unexpected free pointer %p at %p in vector\n",
-				    self->id, ValueToPtr(v), (void *)p);
-			}
-		    }
-		}
-	    }
-	    else {
-		assert (isRawHdr(hdr));
-		int len = GetRawSizeW(hdr);
-	      // look for raw values that might be pointers
-		for (int i = 0; i < len; i++) {
-		    Value_t v = (Value_t)p[i];
-		    if (isPtr(v)) {
-		        if (isHeapPtr(v)) {
-			    MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-			    if (cq->sts != TO_SP_CHUNK) {
-				if (cq->sts == FROM_SP_CHUNK)
-				   SayDebug("[%2d] ** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d\n",
-					self->id, ValueToPtr(v), (void *)p, i, len);
-			       else if (IS_VPROC_CHUNK(cq->sts))
-				  /* the vproc pointer is pretty common, so filter it out */
-				    if (ValueToAddr(v) & ~VP_HEAP_MASK != ValueToAddr(v))
-				        SayDebug("[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d\n",
-						 self->id, ValueToPtr(v), (void *)p, i, len);
-			       else if (cq->sts == FREE_CHUNK)
-				   SayDebug("[%2d] ** suspicious looking free pointer %p at %p[%d] in raw object of length %d\n",
-					self->id, ValueToPtr(v), (void *)p, i, len);
-			    }
-			} 
-		    }
-		}
-		p += len;
-	    }
-	}
-	cp = cp->next;
-    }
+    // check the vproc's global allocation area
+    if (self->globAllocChunk != NULL) {
+        Word_t *p = (Word_t *)(self->globAllocChunk->baseAddr);
+        Word_t *top = UsedTopOfChunk(self, self->globAllocChunk);
 
+        assert(self->globAllocChunk->sts == TO_SP_CHUNK);
+
+        while (p < top) {
+            Word_t hdr = *p++;
+            Word_t *scanptr = p;
+            tableDebug[getID(hdr)].globalGCdebugGlobal(self,scanptr);
+		
+            p += GetLength(hdr);
+        }
+    }
+    
   // check the VProc structure
-#define CHECK_VP(fld)	CheckLocalPtr(self, &(self->fld), "self->" #fld)
-    CHECK_VP(inManticore);
+#define CHECK_VP(fld)	CheckLocalPtrGlobal(self, &(self->fld), "self->" #fld)
     CHECK_VP(atomic);
     CHECK_VP(sigPending);
     CHECK_VP(sleeping);
@@ -793,6 +754,8 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
     CHECK_VP(wakeupCont);
     CHECK_VP(rdyQHd);
     CHECK_VP(rdyQTl);
+    CHECK_VP(sndQHd);
+    CHECK_VP(sndQTl);
     CHECK_VP(stdArg);
     CHECK_VP(stdEnvPtr);
     CHECK_VP(stdCont);
@@ -800,5 +763,52 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
     CHECK_VP(landingPad);
 
 }
+
+void CheckToSpacesAfterGlobalGC (VProc_t *self)
+{
+    for (int i = 0; i < NumHWNodes; i++) {
+        assert (NodeHeaps[i].scannedTo == NULL);
+        assert (NodeHeaps[i].fromSpace == NULL);
+        MemChunk_t	*cp = NodeHeaps[i].unscannedTo;
+        
+        while (cp != (MemChunk_t *)0) {
+            assert (cp->sts = TO_SP_CHUNK);
+            Word_t *p = (Word_t *)(cp->baseAddr);
+            Word_t *top = UsedTopOfChunk(self, cp);
+            while (p < top) {
+                Word_t hdr = *p++;
+                Word_t *scanptr = p;
+                //assert (!isForwardPtr(hdr));
+                if (isForwardPtr(hdr)) {
+                    p++;
+                    continue;
+                }
+
+		tableDebug[getID(hdr)].globalGCdebugGlobal(self,scanptr);
+		
+		p += GetLength(hdr);
+            }
+            cp = cp->next;
+        }
+
+        cp = NodeHeaps[i].freeChunks;
+        while (cp != NULL) {
+            assert (cp->sts == FREE_CHUNK);
+            cp = cp->next;
+        }
+    }
+
+    for (int i = 0; i < NumVProcs; i++) {
+        int node = LocationNode (VProcs[i]->location);
+
+        MemChunk_t *cp = NodeHeaps[node].unscannedTo;
+
+        while (cp != NULL) {
+            assert (cp != VProcs[i]->globAllocChunk);
+            cp = cp->next;
+        }
+    }
+}
+
 #endif
 

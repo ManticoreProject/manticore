@@ -15,6 +15,7 @@ structure String =
 
       extern void *M_StringConcatList (void *) __attribute__((pure,alloc));
       extern void *M_StringTokenize (void *, void *) __attribute__((pure,alloc));
+      extern int M_StringSame (void *, void *) __attribute__((pure));
   
       define inline @data (s : ml_string / exh : PT.exh) : any =
 	  let res : any = #0(s)
@@ -42,6 +43,12 @@ structure String =
 	  return (ls)
 	;
 
+      define inline @same (arg : [ml_string, ml_string] / exh : exh) : bool =
+	  let res : int = ccall M_StringSame (#0(arg), #1(arg))
+	  if I32Eq (res, 1) then return (true)
+	  else return (false)
+	;
+
     )
 
     val concat : string list -> string = _prim(@string-concat-list)
@@ -51,6 +58,8 @@ structure String =
     in
     fun tokenize sep str = List.rev (tok (str, sep))
     end
+
+    val same : string * string -> bool = _prim (@same)
 
     fun concatWith s ss = let
 	  fun lp xs = (case xs

@@ -312,6 +312,7 @@ functor HeapTransferFn (
 	  | Ty.T_Tuple _ => CTy.C_PTR
 	  | Ty.T_OpenTuple _ => CTy.C_PTR
 	  | Ty.T_VProc => CTy.C_PTR
+	  | Ty.T_Deque => CTy.C_PTR
 	  | _ => raise Fail(concat["cfgTyToCTy(", CFGTyUtil.toString ty, ")"])
 	(* end case *))
 
@@ -345,9 +346,6 @@ functor HeapTransferFn (
       in
 	loop (registers, ([], []))
       end
-
-  (* generate a statement to store a value in the vproc inManticore flag *)
-    fun setInManticore (vpReg, value) = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.inManticore, vpReg, T.LI value)
   in
   
     fun ccall {lhs, name, retTy, paramTys, cArgs, saveAllocationPointer} = let
@@ -377,12 +375,10 @@ functor HeapTransferFn (
 	    else saveRegs dedicatedSaveRegs
 	val stms = setVP
 		   :: saveAP 
-		   @ [setInManticore(vpReg, Spec.falseRep)]
 		   @ [saves]
 		   @ callseq
 		   @ restores 
 		   :: restoreAP
-		   @ [setInManticore(vpReg, Spec.trueRep)]
 	fun convResult (T.GPR e, v) = MTy.EXP (szOfVar v, e)
 	  | convResult (T.FPR e, v) = MTy.FEXP (szOfVar v, e)
 	  | convResult _ = raise Fail "convResult"
@@ -422,6 +418,52 @@ functor HeapTransferFn (
 	     name=T.LABEL RuntimeLabels.promote,
 	     retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_PTR], 
 	     cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl arg], saveAllocationPointer=true}
+
+
+  fun genAllocPolyVec varDefTbl {lhs, arg} = 
+      (case ccall {lhs=[lhs], 
+		   name=T.LABEL RuntimeLabels.allocVector,
+		   retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_PTR], 
+		   cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl arg], saveAllocationPointer=true}
+	of {stms, result=[MTy.EXP (_, e)]} => {stms=stms, result=e}
+	 | _ => raise Fail "error"
+      (* end case *))
+
+  fun genAllocIntArray varDefTbl {lhs, n} = 
+      (case ccall {lhs=[lhs], 
+		   name=T.LABEL RuntimeLabels.allocIntArray,
+		   retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_signed CTy.I_int], 
+		   cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl n], saveAllocationPointer=true}
+	of {stms, result=[MTy.EXP (_, e)]} => {stms=stms, result=e}
+	 | _ => raise Fail "error"
+      (* end case *))
+
+  fun genAllocLongArray varDefTbl {lhs, n} = 
+      (case ccall {lhs=[lhs], 
+		   name=T.LABEL RuntimeLabels.allocLongArray,
+		   retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_signed CTy.I_int], 
+		   cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl n], saveAllocationPointer=true}
+	of {stms, result=[MTy.EXP (_, e)]} => {stms=stms, result=e}
+	 | _ => raise Fail "error"
+      (* end case *))
+
+  fun genAllocFloatArray varDefTbl {lhs, n} = 
+      (case ccall {lhs=[lhs], 
+		   name=T.LABEL RuntimeLabels.allocFloatArray,
+		   retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_signed CTy.I_int], 
+		   cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl n], saveAllocationPointer=true}
+	of {stms, result=[MTy.EXP (_, e)]} => {stms=stms, result=e}
+	 | _ => raise Fail "error"
+      (* end case *))
+
+  fun genAllocDoubleArray varDefTbl {lhs, n} = 
+      (case ccall {lhs=[lhs], 
+		   name=T.LABEL RuntimeLabels.allocDoubleArray,
+		   retTy=CTy.C_PTR, paramTys=[CTy.C_PTR, CTy.C_signed CTy.I_int], 
+		   cArgs=[CCall.ARG VProcOps.genHostVP', varToCArg varDefTbl n], saveAllocationPointer=true}
+	of {stms, result=[MTy.EXP (_, e)]} => {stms=stms, result=e}
+	 | _ => raise Fail "error"
+      (* end case *))
 
   (* Take the CFG variables for the GC roots and return MLRISC code that initializes and restores
    * the roots and also return the root pointer, register temps for the roots, and values for the roots
@@ -480,16 +522,14 @@ functor HeapTransferFn (
            (* store dedicated registers and the rootset pointer before entering the C call *)
 	    [ (* by convention we put the rootset pointer into stdEnvPtr *)
               VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.stdEnvPtr, vpReg, MTy.mlriscTreeToRexp rootPtr),
-	      VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.allocPtr, vpReg, regTree Regs.apReg),
-	      VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.limitPtr, vpReg, regTree Regs.limReg) 
+	      VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.allocPtr, vpReg, regTree Regs.apReg)
 	    ],
            (* call the C function *)
             stmsC,	    
 	   (* restore dedicated registers *) 
 	    [
 	     setVP',
-	     move (Regs.apReg, (VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.allocPtr, vpReg'))),
-	     move (Regs.limReg, (VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.limitPtr, vpReg')))
+	     move (Regs.apReg, (VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.allocPtr, vpReg')))
 	    ],
 	   (* jump to the return post-C-call function *)
 	    genJump (T.LABEL retLabel, [retLabel], retParams, resultC @ restoredRoots)
@@ -529,7 +569,7 @@ functor HeapTransferFn (
    * must do this step for the reason mentioned earlier: the heap might still have insufficient space
    * because of preemption.
    *)
-  fun genHeapCheck varDefTbl {hck=CFG.HCK_Local, szb, nogc=(noGCLab, roots)} = let
+  fun genHeapCheck varDefTbl {hck=CFG.HCK_Local, checkStms, allocCheck, nogc=(noGCLab, roots)} = let
       val {initRoots, restoredRoots, rootPtr, rootTemps, rootArgs } = 
 	      processGCRoots varDefTbl (roots, regTree Regs.closReg)
 								      
@@ -559,8 +599,9 @@ functor HeapTransferFn (
                  (* force the root set into registers *)
 		  Copy.copy {dst=rootTemps, src=rootArgs},
 		  [T.DEFINE gcTestLab],	      
+		  checkStms,
 		 (* branch on the heap limit test *)
-		  [T.BCC (Alloc.genAllocCheck szb, doGCLab)],
+		  [T.BCC (allocCheck, doGCLab)],
 		 (* GC is unnecessary *)
 		  genJump (T.LABEL noGCLab, [noGCLab], noGCParamRegs, List.map MTy.regToTree rootTemps),
 		 (* GC is necessary *)
@@ -579,7 +620,9 @@ functor HeapTransferFn (
     *  noGCRoots (roots)
     *
     *)
-    | genHeapCheck varDefTbl {hck=CFG.HCK_Global, szb, nogc} = let
+    | genHeapCheck varDefTbl {hck=CFG.HCK_Global, checkStms, allocCheck, nogc} = raise Fail "todo"
+(*
+let
       val getChunkLab = newLabel "getChunk"
       val {stms=getGlobalChunkStms, ...} = 
 	  ccall {lhs=[], name=T.LABEL RuntimeLabels.getGlobalChunk,
@@ -602,6 +645,7 @@ functor HeapTransferFn (
       in
 	  {stms=chkStms @ getChunkStms, return=NONE}
       end (* genHeapCheck *)
+*)
 
   (* bind a parameter *)
   fun bindParam (param, k) = (case (param, k)
@@ -642,18 +686,18 @@ functor HeapTransferFn (
 	assignStms)
 
  (* generate the entry code for a function *)
-  fun genFuncEntry varDefTbl (lab, conv as M.StdFunc{clos, args as [arg], ret, exh}) = let
-      val args = [clos, arg, ret, exh]
+  fun genFuncEntry varDefTbl (lab, conv as M.StdFunc{clos, ret, exh}, blk as M.BLK{args as [arg],...}) = let
+      val params = [clos, arg, ret, exh]
       (* make reqs for the parameters *)
-      val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
+      val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) params
       (* determine the destinations of parameters (all should be in gprs) *)
       val paramLocs = CallingConventions.stdApply paramReqs
-      val params = List.map natLocToExpr paramLocs
-      val {stms, regs} = Copy.fresh (treesToRegs params)
+      val params' = List.map natLocToExpr paramLocs
+      val {stms, regs} = Copy.fresh (treesToRegs params')
       in
-          setEntry varDefTbl (lab, regs, args, stms)
+          setEntry varDefTbl (lab, regs, params, stms)
       end
-    | genFuncEntry varDefTbl (lab, conv as M.StdCont {clos, args as [arg]}) = let
+    | genFuncEntry varDefTbl (lab, conv as M.StdCont {clos}, blk as M.BLK{args as [arg],...}) = let
       val args = [clos, arg]
       val paramReqs = List.map (fn _ => (MTy.wordTy, K_GPR, MTy.wordTy div 8)) args
       (* determine the destinations of parameters (all should be in gprs) *)
@@ -663,7 +707,7 @@ functor HeapTransferFn (
       in
           setEntry varDefTbl (lab, regs, args, stms)
       end
-    | genFuncEntry varDefTbl (lab, conv as M.KnownFunc {clos, args}) = let
+    | genFuncEntry varDefTbl (lab, conv as M.KnownFunc {clos}, blk as M.BLK{args,...}) = let
       val args = clos :: args
       val paramReqs = List.map (tyToReq o Var.typeOf) args
       (* finalize locations for the parameters *)
@@ -673,7 +717,8 @@ functor HeapTransferFn (
       in
 	  setEntry varDefTbl (lab, regs, args, stms)
       end
-    | genFuncEntry varDefTbl (lab, conv as M.Block {args}) = 
+
+  fun genBlockEntry varDefTbl (lab, blk as M.BLK{args,...}) = 
       setEntry varDefTbl (lab, List.map varToFreshReg args, args, [])
 
 end (* HeapTransferFn *)

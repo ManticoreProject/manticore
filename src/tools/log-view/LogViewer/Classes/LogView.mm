@@ -12,7 +12,7 @@
 #import "CustomSplitView.h"
 #import "LogDoc.h"
 #import "LogData.h"
-#import "TimeDisplay.h"
+#import "ViewController.h"
 
 
 
@@ -38,6 +38,16 @@
 /// Width of big tick lines
 #define BIG_TICK_LINE_WIDTH ( 2 )
 
+// Calculation of units to use at different scales
+// If logInterval->width is less than NANO, times are in nanoseconds
+#define NANO ( 10 )
+#define NANO_ROUNDING ( 1LLU )
+#define MICRO ( 100000000LLU )
+#define MICRO_ROUNDING ( 1000LLU )
+#define MILLI ( 10000000000LLU )
+#define MILLI_ROUNDING ( 1000000LLU )
+#define SEC_ROUNDING ( 1000000000LLU )
+
 @implementation LogView
 
 - (BOOL)isOpaque
@@ -52,70 +62,77 @@
 @synthesize scrollView;
 @synthesize timeTick;
 @synthesize splitView;
+@synthesize messageView;
+@synthesize mouseLoc;
+@synthesize selectedEvent;
 
 - (id)initWithFrame:(NSRect)frame
 {
-
-    if (![super initWithFrame:frame]) return nil;
-    NSRect f = [self frame];
-    f.size.width = DEFAULT_LOG_VIEW_WIDTH;
-    f.size.height = self.superview.bounds.size.height;
-    [self setFrame:f];
-    splitView = nil;//[CustomSplitView alloc];// initWithFrame:self.bounds];
-    messageView = nil;// [MessageView alloc];// initWithFrame:self.bounds];
-    //[self addSubview:splitView];
-    //NSRect splitViewBounds = splitView.bounds;
-    //splitViewBounds.size.height -= 2 * DIVIDER_THICKNESS;
-    //splitViewBounds.origin.y += DIVIDER_THICKNESS;
-    // splitView.bounds = splitViewBounds;
-    //[self addSubview:messageView];
-    timeTick = DEFAULT_TIME_TICK;
-    ticks = [[NSMutableArray alloc] init];
+    self = [super initWithFrame:frame];
+    if (self) {
+	/* Change our width from that defined in Interface Builder to the actual
+	 * width that we want. This width is the width of the background of the
+	 * document view of the scrollview that we're embedded in. So the
+	 * scrollview's width will still be that of the window - what we're
+	 * changing is the width of the view that it scrolls. */
 	
+	NSRect f = [self frame];
+	//f.size.width = DEFAULT_LOG_VIEW_WIDTH;
+	[self setFrame:f];
+	
+	bands = [[NSMutableArray alloc] init];
+	
+	timeTick = DEFAULT_TIME_TICK;
+	ticks = [[NSMutableArray alloc] init];
+
+	
+	trackingArea = [[NSTrackingArea alloc] initWithRect:[self bounds]
+						    options:(NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited| NSTrackingActiveAlways)
+						      owner:self
+						   userInfo:nil];
+	[self addTrackingArea:trackingArea];
+
+    }
     return self;
 }
 
 
-- (void)drawRect:(NSRect)rect
+- (void)drawRect:(NSRect)dirtyRect
 {
     // check if logDoc and self are in their enabled states
     if (!logDoc.enabled) return;
-    if (!self.enabled) return;
+    
+    NSRect bounds = [self bounds];
 
     // Draw Background
     [LOG_VIEW_BACKGROUND_COLOR set];
-    [NSBezierPath fillRect:[self bounds]];
-
-    NSBezierPath *verticalLine = [[NSBezierPath alloc] init];
-    NSRect bounds = self.bounds;
-
-
-    // Create the path for tick lines
-    // OPTIMIZE: cache the verticalline path
-    [TICK_LINE_COLOR set];
-    verticalLine.lineWidth = TICK_LINE_WIDTH;
-
-    NSPoint s;
-    NSPoint f;
+    [NSBezierPath fillRect:bounds];
+    
+    NSBezierPath *line = [[NSBezierPath alloc] init];
+    NSPoint s, f, test;
     s.y = bounds.origin.y;
     f.y = bounds.origin.y + bounds.size.height;
+    test.y = dirtyRect.origin.y;
+
+    int a = 0;
     for (NSNumber *x in ticks)
     {
-	assert( x != nil);
-	s.x = f.x = x.floatValue;
-	[verticalLine moveToPoint:s];
-	[verticalLine lineToPoint:f];
-
+	s.x = f.x = test.x = x.floatValue + .5;
+	if (!NSPointInRect(test, dirtyRect))
+	{
+	    a++;
+	    continue;
+	}
+	[line moveToPoint:s];
+	[line lineToPoint:f];
     }
 
+    //NSLog(@"Skipped %d tick lines", a);
     // Draw tick lines
-    [verticalLine stroke];
+    [TICK_LINE_COLOR set];
+    [line stroke];
 
-    //NSLog(@"number of ticks %d", ticks.count);
     [logDoc drewTicks:self];
-
-
-
 }
 
 /// Draw a bigTick
@@ -138,7 +155,45 @@
     [verticalLine stroke];
 }
 
+- (uint64_t)rounding
+{
+    if (rounding == 0)
+    {
+	uint64_t t = [logDoc logInterval]->width;
+	if (t < NANO)
+	    rounding = NANO_ROUNDING;
+	else if (t < MICRO)
+	    rounding = MICRO_ROUNDING;
+	else if (t < MILLI)
+	    rounding = MILLI_ROUNDING;
+	else // ticks are to be displayed as seconds
+	    rounding = SEC_ROUNDING;
+    }
 
+    return rounding;
+}
+
+- (NSString *)timeSuffix
+{
+    NSString *ret;
+    switch ([self rounding])
+    {
+	case NANO_ROUNDING:  ret = @"ns"; break;
+	case MICRO_ROUNDING: ret = @"\u03BCs";  break;
+	case MILLI_ROUNDING: ret = @"ms"; break;
+	case SEC_ROUNDING:   ret = @"sec"; break;
+	default: [Exceptions raise:@"Disallowed rounding time"];
+    }
+    return ret;
+}
+
+- (NSString *)stringFromTime:(uint64_t)t
+{
+    uint64_t r = t / [self rounding];
+    NSString *ret = [[NSString alloc] initWithFormat:@"%qu ", r];
+    ret = [ret stringByAppendingString:[self timeSuffix]];
+    return ret;
+}
 
 - (void)displayInterval:(struct LogInterval *)logInterval
 	    atZoomLevel:(enum ZoomLevel)zoomLevel
@@ -166,26 +221,18 @@
     self.bounds = bounds;
 
 
-    // The old subviews no longer have valid shapes on them
+    // The old subviews no longer have valid shapes on them, so we update them
+    // with the proper new values.
 
-    // Here we replace the old splitView with a fresh one
-    // We deal with the message view later
+    
     NSRect splitViewBounds = bounds;
     splitViewBounds.origin.y += DIVIDER_THICKNESS;
     splitViewBounds.size.height -= 2 * DIVIDER_THICKNESS;
-    CustomSplitView *newSplitView = [[CustomSplitView alloc] initWithFrame:splitViewBounds];
-
-
-    if (splitView) [self replaceSubview:splitView with:newSplitView];
-    else [self addSubview:newSplitView];
-
-
-    splitView = newSplitView;
-
+    [splitView setFrame:splitViewBounds];
 
 
     // Add tick lines
-    NSRect shapeBounds = splitView.shapeBounds;
+    NSRect shapeBounds = splitView.bounds;
 
     float x = shapeBounds.origin.x;
     ticks = [[NSMutableArray alloc] init];
@@ -194,10 +241,16 @@
 	[ticks addObject:[NSNumber numberWithFloat:x]];
 	x += timeTick;
     }
-
-
-    bands = [[NSMutableArray alloc] init];
-
+    
+    // Have to split this operation up, as objective-C's iterator construct
+    // cannot handle mutation of its target.
+    
+    for (NSView *view in bands)
+    {
+	[view removeFromSuperview];
+    }
+    [bands removeAllObjects];
+    
     int v = 0;
    // NSLog(@"LogView: must add %d bands, one for each vproc", logData.vProcs.count);
     for (VProc *vp in logData.vProcs)
@@ -212,279 +265,108 @@
 			       logDoc:logDoc
 			       vProc:vp
 			       filter:filter];
-	//NSLog(@"logView is adding band %@ to array %@", band, bands);
 	[bands addObject:band];
 	[splitView addSubview:band];
 	band.target = target;
-	 ++v;
+	v++;
     }
 
+    
+    [messageView updateDependents:logData.dependentDetails];
+    [messageView setFrame: splitViewBounds];
 
-    // Not it is time to replace the old messageView with a new message View
-    MessageView *newMessageView = [[MessageView alloc] initWithFrame:splitViewBounds
-							      logDoc:logDoc
-							  dependents:logData.dependentDetails];
-
-    if (messageView) [self replaceSubview:messageView with:newMessageView];
-    else [self addSubview:newMessageView];
- //   NSLog(@"Added messageView %@ with bounds : %f %f %f %f", newMessageView,
-	//  newMessageView.bounds.origin.x, newMessageView.bounds.origin.y,
-	//  newMessageView.bounds.size.width, newMessageView.bounds.size.height);
-    messageView = newMessageView;
 
     for (BandView *band in bands)
     {
 	band.messageView = messageView;
     }
+    
+    
+    // Set up RulerView
+    NSArray *upArray, *downArray;
+    double scale = shapeBounds.size.width / (logDoc.logInterval->width);
+    
+    upArray = [NSArray arrayWithObjects:[NSNumber numberWithFloat:5.0], nil];
+    downArray = [NSArray arrayWithObjects:[NSNumber numberWithFloat:0.5], [NSNumber numberWithFloat:0.2], nil];
+    [NSRulerView registerUnitWithName:@"milliseconds"
+			 abbreviation:@"ms"
+	 unitToPointsConversionFactor:scale * [self rounding]
+			  stepUpCycle:upArray
+			stepDownCycle:downArray];
+    
+    
+    [scrollView setRulersVisible:YES];
+    [scrollView setHasHorizontalRuler:YES];
+
+    [[scrollView horizontalRulerView] setOriginOffset:shapeBounds.origin.x - logInterval->x * scale];
+    [[scrollView horizontalRulerView] setMeasurementUnits:@"milliseconds"];
+    
+
+
+    self.enabled = true;
 
     // Manage the views a bit more
     [splitView adjustSubviews];
     [self setNeedsDisplay:YES];
     [messageView setNeedsDisplay:YES];
     [splitView setNeedsDisplay:YES];
-    self.enabled = true;
 }
 
 
-- (void)mouseDown:(NSEvent *)e
+- (void)mouseMoved:(NSEvent *)e
 {
-    NSLog(@"Mouse went down in LogView");
+    /* Update view with mouse cursor line. The messageView actually does the
+     * drawing, since it's the topmost view, but since we're handling the mouse
+     * updates, it's our responsibility to tell the messageView that it's 
+     * dirty where the line should be and where it used to be so it knows to
+     * redraw. */
+    NSPoint newMouseLoc = [self convertPoint:e.locationInWindow fromView:nil];
+    
+    // First clear the old line's location
+    NSRect invalid = self.bounds;
+    invalid.origin.x = mouseLoc.x - 1;
+    invalid.size.width = 3;
+    [self setNeedsDisplayInRect:invalid];
+    
+    
+    // Then redisplay the new line's location
+    mouseLoc = newMouseLoc;
+
+    uint64_t time = [logDoc preImage:mouseLoc.x];
+    
+    NSString *timeStr = [self stringFromTime:time];
+    [timeUnderMouse setStringValue:timeStr];
+    invalid.origin.x = mouseLoc.x - 1;
+
+    [self setNeedsDisplayInRect:invalid];
 }
+
+- (void)updateTrackingAreas
+{
+    /* This method is called when our visibleRect changes, on behalf of the
+     * tracking areas that we own. We are expected to update our tracking areas
+     * with our new bounds. */
+    [self removeTrackingArea:trackingArea];
+    trackingArea = [[NSTrackingArea alloc] initWithRect:[self bounds]
+						options:(NSTrackingMouseMoved | NSTrackingMouseEnteredAndExited| NSTrackingActiveAlways)
+						  owner:self
+					       userInfo:nil];
+    [self addTrackingArea:trackingArea];
+}
+
+- (void)didSelectEvent:(EventShape *)event fromBand:(BandView *)band
+{
+    if (band != NULL)
+	[band setNeedsDisplayInRect:[event bounds]];
+    if (selectedBand != NULL)
+	[selectedBand setNeedsDisplayInRect:[selectedEvent bounds]];
+    
+    [self setNeedsDisplayInRect:[event bounds]];
+    [self setNeedsDisplayInRect:[selectedEvent bounds]];
+    selectedEvent = event;
+    selectedBand = band;
+}
+
 
 @end
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-
- BandView *band = [[BandView alloc] initWithFrame:curFrame];
- band.selectedEvent = selectedEvent;
- NSRect bandBounds = band.shapeBounds;
-
- // Converts from intervals in log file to intervals in log view
- double scale = bandBounds.size.width / logWidth;
-
-
- NSRect splitViewFrame = [splitView frame];
- // NSLog(@"adding a band for VProc with vpId %d", v);
-
-
- for (int i = 0; i < vp.numEvents; ++i)
- {
- // NSLog(@"checking if event %d of %d is in timespan", i, vp.numEvents);
- EventDesc *eventDesc = description(events[i], nil);
- if (eventDesc)
- {
- // NSLog(@"Loaded eventDesc with description %s", eventDesc->Description());
- }
- else
- {
- NSLog(@"Could not load event desc");
- }
- if (events[i].timestamp >= logX &&
- events[i].timestamp <= logX + logWidth)
- {
- // NSLog(@"Found event in timespan, checking for shapes to draw");
-
-
-
-
-
-
-
- CGFloat drawingPosition =
- bandBounds.origin.x + scale * (events[i].timestamp - logX);		
- #pragma mark SINGLETONS
- /////////////// SINGLETONS ///////////////////
-
- // makes only singletons happen
- if (events[i].desc->isSimpleEvent())
- {
- // NSLog(@"adding singleton");
- // The event is a singleton
- // The event may also be in some groups
- [band addSingleton:&events[i]
- withColor:SINGLETON_COLOR
- andStart:drawingPosition];
- }
-
- // Convert this event into a shape, once for each group it is in
-
- /////////////// STATE GROUPS ///////////////////
- #pragma mark STATE GROUPS
-
- // For now, we set the stateGroup to be the one containing
- // the first event, if such a state exists
-
- if (!stateGroup)
- {
- // NSLog(@"stateGroup is uninitialized, checking event for groups to use");
- // NSLog(@"logFile.desc = 0x%x", logFile.desc);
- std::vector<StateGroup *> *states =
- logFile.desc->StateGroups(eventDesc);
- if (states)
- {
- if (states->size() >=1)
- {
- stateGroup = states->at(0);
- NSLog(@"Initializing stateGroup to %s", stateGroup->Desc());
- [band setStateStartColor:
- [self colorForState:stateGroup->StartState()]];
- }
- } calloc
- }
-
- // Warning, NOT an ELSE clause!! must be an if. see logic above.
- if (stateGroup && [filter enabled:stateGroup] != 0)
- {
- // This function returns -1 if this event does not mark
- // a transition in this state
- int next_state = stateGroup->NextState(cur_state, eventDesc);
- if (next_state != -1)
- {
- [band addState:&events[i]
- withColor:[self colorForState:next_state]
- andStart:drawingPosition];
- }
- else
- {
- // This event is not a transition in this state,
- // therefore it defines no shape.
- // Do nothing.
- }
- }
- #pragma mark INTERVAL GROUPS
- /////////////// INTERVAL GROUPS ///////////////////
- std::vector<IntervalGroup *> *intervals =
- logFile.desc->IntervalGroups(eventDesc);
- if (intervals)
- {
- for (int h = 0; h < intervals->size(); ++h)
- {
- // NSLog(@"checking interval %s", intervals->at(h)->Desc());
- IntervalGroup *intervalGroup = intervals->at(h);
- if ([filter enabled:intervalGroup].intValue == 0) continue;
-
- if (eventDesc == intervalGroup->Start())
- {
- [band addIntervalStart:&events[i]
- withColor:[self colorForIntervalGroup:intervalGroup]
- forIntervalGroup:intervalGroup
- andStart:drawingPosition];
- }
- else
- {
- assert (eventDesc == intervalGroup->End());
- [band addIntervalEnd:&events[i]
- forIntervalGroup:intervalGroup
- andStart:drawingPosition];
- }
- }
- }
-
-
- #pragma mark DEPENDENT GROUPS
- ///////////////// DEPENDENT GROUPS ////////////////
-
- std::vector<DependentGroup *> *dependents =
- logFile.desc->DependentGroups(eventDesc);
- if (dependents)
- {
- for (int h = 0; h < dependents->size(); ++h)
- {
- NSLog(@"checking dependents");
- DependentGroup *dependentGroup = dependents->at(h);
- if ([filter enabled:dependentGroup].intValue == 0) continue;
-
- if (eventDesc == dependentGroup->Src())
- {
- // 
- }
- else
- {
- assert (eventDesc == dependentGroup->Dst());
- }
- }
- }
-  NSLog(@"\tAdding event at time %qu, position %f to band", events[i].timestamp, drawingPosition);
- [band addState:&events[i] withColor:[self sillyNextColor]
- andStart:drawingPosition];
-
-	}
-	else {
-	    // The event is not part of the current timespan
-	    // NSLog(@"Skipping event at time %qu, because it is out of timespan", events[i].timestamp);
-	}
-	}
-	
-	//////////////////////// FINISH ///////////////////
-	[splitView addSubview:band];
-	[band setNeedsDisplay:YES];
-	++v;
-
-
-
-
-int sillyNumber = 0;
-/// For Testing, return a new interesting color
-- (NSColor *)sillyNextColor
-{
-    if (sillyNumber == 0)
-    {
-	sillyNumber = 1;
-	return [NSColor redColor];
-    }
-    else
-    {
-	sillyNumber = 0;
-	return [NSColor blackColor];
-    }
-}
-
-/// pick better colors
-- (NSColor *)colorForIntervalGroup:(IntervalGroup *)g
-{
-    return [NSColor blueColor];
-}
-
-
-
-
-/// Return the color that a state should be drawn in
-- (NSColor *)colorForState:(int)state
-{
-    switch (state)
-    {
-	case 0:
-	    return [NSColor greenColor];
-	case 1:
-	    return [NSColor redColor];
-	case 2:
-	    return [NSColor grayColor];
-	case 3:
-	    return [NSColor orangeColor];
-	case 4:
-	    return [NSColor purpleColor];
-	case 5:
-	    return [NSColor blueColor];
-	case 6:
-	    return [NSColor brownColor];
-	default:
-	    [Exceptions raise:@"Can't decide on a color for state"];
-    }
-    return nil;
-}
-
-	
- */
 

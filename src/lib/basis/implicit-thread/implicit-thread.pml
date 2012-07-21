@@ -18,6 +18,8 @@ structure ImplicitThread (* :
    *)
     type work_group
 
+    type thread
+
   (* Scoping rules and the work group stack
    *
    * We use a dynamic scoping discipline for work groups. At any instant, exactly one work group is in scope, which
@@ -56,7 +58,7 @@ structure ImplicitThread (* :
       define @new-work-group (workGroupId : Word64.word,
 			      spawnFn : fun (thread / exh -> unit),
 			      resumeFn : fun (thread / exh -> unit),
-			      removeFn : fun (thread / exh -> unit),
+			      removeFn : fun (thread / exh -> Option.option),
 			      schedulerState : scheduler_state,
 			      terminated : ![bool]
 			    / exh : exh) : work_group;
@@ -80,11 +82,7 @@ structure ImplicitThread (* :
      * given thread as if it is the continuation of an existing thread, e.g., the thread is the
      * resumption of a blocked thread. *)
       define inline @resume-thread (thd : thread / exh : exh) : ();
-    (* remove the given thread from the ready queue, supposing the thread is already on the ready queue. if 
-     * the return value is true, then the thread was both on the ready queue and successfully removed by
-     * the operation. otherwise, the return value must be false. note that this prescribed behavior provides
-     * some latitude to the scheduler, which may, for example, choose to always return false. *)
-      define inline @remove-thread (thd : thread / exh : exh) : bool;
+      define inline @remove-thread (thd : thread / exh : exh) : Option.option;
       define @terminated-flag () : ![bool];
     (* terminate the work group (the workers in the group cease to execute new work) *)
       define @terminate-work-group (workGroup : work_group) : ();
@@ -96,6 +94,8 @@ structure ImplicitThread (* :
       define inline @get-scheduler-state (/ exh : exh) : scheduler_state;
 
     )
+
+    val dispatch : unit -> 'a
 
   end *) = struct
 
@@ -115,7 +115,7 @@ structure ImplicitThread (* :
 #define THREAD_ITE_OFF     1
 
       structure PT = PrimTypes
-      structure Arr = Array64
+      structure Arr = UnsafeArray
 
       _primcode (
 
@@ -131,7 +131,7 @@ structure ImplicitThread (* :
 		   Word64.word,                   (* unique id *)
 		   fun (thread / exh -> unit),    (* spawn function *)
 		   fun (thread / exh -> unit),    (* resume function *)
-		   fun (thread / exh -> bool),    (* thread removal function *)
+		   fun (thread / exh -> Option.option),    (* thread removal function *)
 		   scheduler_state,               (* scheduler-specific state provided by the scheduler *)
 		   Arr.array,                     (* the ith entry is true, if the work group is suspended
 						   * on the ith vproc *)
@@ -142,34 +142,36 @@ structure ImplicitThread (* :
 
     type work_group = _prim (work_group)
 
+    type thread = _prim(thread)
+
   (** Implicit thread creation **)
 
     _primcode (
 
-      define (* inline *) @new-thread (k : PT.fiber / exh : exh) : thread =
+      define inline @new-thread (k : PT.fiber / exh : exh) : thread =
 	  let ite : FLS.ite = FLS.@get-ite ( / exh)
           let stk : List.list = SELECT(ITE_STACK_OFF, ite)
 	  let ite' : FLS.ite = FLS.@ite (stk, Option.NONE / exh)
 	  return (alloc (k, ite'))
 	;
 
-      define (* inline *) @new-cancelable-thread (k : PT.fiber, c : Cancelation.cancelable / exh : exh) : thread =
+      define inline @new-cancelable-thread (k : PT.fiber, c : Cancelation.cancelable / exh : exh) : thread =
 	  let ite : FLS.ite = FLS.@get-ite ( / exh)
           let stk : List.list = SELECT(ITE_STACK_OFF, ite)
 	  let ite' : FLS.ite = FLS.@ite (stk, Option.SOME(c) / exh)
-	  let k : PT.fiber = Cancelation.@wrap (c, k / exh)
+	  let k : PT.fiber = Cancelation.@wrap-fiber (c, k / exh)
 	  return (alloc (k, ite'))
 	;
 
     (* pairs the fiber with the current implicit-thread environment to create a new thread *)
-      define (* inline *) @capture (k : PT.fiber / exh : exh) : thread =
+      define inline @capture (k : PT.fiber / exh : exh) : thread =
 	  let ite : FLS.ite = FLS.@get-ite ( / exh)
 	  let c : Option.option = SELECT(ITE_CANCELABLE_OFF, ite)
 	  let k : PT.fiber = case c
 			      of Option.NONE => 
 				 return (k)
 			       | Option.SOME(c : Cancelation.cancelable) => 
-				 let k : PT.fiber = Cancelation.@wrap (c, k / exh)
+				 let k : PT.fiber = Cancelation.@wrap-fiber (c, k / exh)
 				 return (k)
 			     end
 	  return (alloc (k, ite))
@@ -184,7 +186,7 @@ structure ImplicitThread (* :
       _primcode (
 
 	(* seed the implicit-threading environment *)
-	  define (* inline *) @seed-ite ( / exh : exh) : () =
+	  define inline @seed-ite ( / exh : exh) : () =
 	      let iteOpt : Option.option = FLS.@find-ite (/ exh)
 	      case iteOpt
 	       of Option.NONE =>
@@ -198,7 +200,7 @@ structure ImplicitThread (* :
 	    ;
 
 	(* push the given work group on the top of the work-group stack *)
-	  define (* inline *) @push-work-group (group : work_group / exh : exh) : () =
+	  define inline @push-work-group (group : work_group / exh : exh) : () =
               do @seed-ite (/ exh)
 	      let ite : FLS.ite = FLS.@get-ite ( / exh)
 	      let newStk : List.list = CONS(group, SELECT(ITE_STACK_OFF, ite))
@@ -207,7 +209,7 @@ structure ImplicitThread (* :
 	    ;
 
 	(* pop from the top of the work-group stack *)
-	  define (* inline *) @pop-work-group ( / exh : exh) : Option.option =
+	  define inline @pop-work-group ( / exh : exh) : Option.option =
 	      let ite : FLS.ite = FLS.@get-ite ( / exh)
 	      let stk : List.list = SELECT(ITE_STACK_OFF, ite)
 	      case stk
@@ -220,7 +222,7 @@ structure ImplicitThread (* :
 	    ;
 
 	(* migrate the current thread to the top-level scheduler *)
-	  define (* inline *) @migrate-to-top-level-sched (/ exh : exh) : () = 
+	  define inline @migrate-to-top-level-sched (/ exh : exh) : () = 
 	      cont k (_ : unit) = return ()
 	      let fls : FLS.fls = FLS.@get ()
 	      do VProcQueue.@enqueue (fls, k)
@@ -237,13 +239,13 @@ structure ImplicitThread (* :
 	define @new-work-group (workGroupId : Word64.word,
 				spawnFn : fun(thread / exh -> unit),
 				resumeFn : fun(thread / exh -> unit),
-				removeFn : fun(thread / exh -> bool),
+				removeFn : fun(thread / exh -> Option.option),
 				schedulerState : scheduler_state,
 				terminated : ![bool]
 			      / exh : exh) : work_group =
 	    do @migrate-to-top-level-sched (/ exh)	    
             let nVProcs : int = VProc.@num-vprocs ()
-            let suspendResumeArr : Arr.array = Arr.@array (nVProcs, false / exh)
+            let suspendResumeArr : Arr.array = Arr.@create (nVProcs, false / exh)
             let group : work_group = promote (alloc (workGroupId,
 						     spawnFn, 
 						     resumeFn, 
@@ -270,13 +272,13 @@ structure ImplicitThread (* :
 	  return (worker)
         ;
 
-      define (* inline *) @work-group-id (group : work_group) : UID.uid =
+      define inline @work-group-id (group : work_group) : UID.uid =
 	  return (SELECT(WORK_GROUP_UID_OFF, group))
 	;
 
     (* return the work group at the  top of the work-group stack. an exception is raised
      * if the stack is empty. *)
-      define (* inline *) @current-work-group (_ : unit / exh : exh) : work_group =
+      define inline @current-work-group (_ : unit / exh : exh) : work_group =
 	  let ite : FLS.ite = FLS.@get-ite (/ exh)
 	  let stk : List.list = SELECT(ITE_STACK_OFF, ite)
 	  case stk
@@ -303,7 +305,7 @@ structure ImplicitThread (* :
 
     (* put the given thread on the ready queue of the current work group. the scheduler treats the
      * given thread as if it is newly created. *)
-      define (* inline *) @spawn-thread (thd : thread / exh : exh) : () =
+      define inline @spawn-thread (thd : thread / exh : exh) : () =
 	  let group : work_group = @current-work-group (UNIT / exh)
 	  let spawnFn : fun(thread / exh -> unit) = SELECT(WORK_GROUP_SPAWN_FUN_OFF, group)
 	  let _ : unit = apply spawnFn (thd / exh)
@@ -320,15 +322,21 @@ structure ImplicitThread (* :
 	  return ()
         ;
 
-    (* remove the given thread from the ready queue, supposing the thread is already on the ready queue. if 
-     * the return value is true, then the thread was both on the ready queue and successfully removed by
-     * the operation. otherwise, the return value must be false. note that this prescribed behavior provides
-     * some latitude to the scheduler, which may, for example, choose to always return false. *)
-      define (* inline *) @remove-thread (thd : thread / exh : exh) : bool =
+      define inline @remove-thread (thd : thread / exh : exh) : Option.option =
 	  let group : work_group = @current-work-group (UNIT / exh)
-	  let removeFn : fun(thread / exh -> bool) = SELECT(WORK_GROUP_REMOVE_FUN_OFF, group)
+	  let removeFn : fun(thread / exh -> Option.option) = SELECT(WORK_GROUP_REMOVE_FUN_OFF, group)
 	  apply removeFn (thd / exh)
 	;
+
+      define inline @remove-thread-b (thd : thread / exh : exh) : bool =
+          let t : Option.option = @remove-thread (thd / exh)
+          case t
+	   of Option.NONE =>
+	      return (false)
+	    | Option.SOME (_ : thread) =>
+	      return (true)
+          end
+        ;
 
       define @terminated-flag () : ![bool] =
 	  let terminated : ![bool] = alloc (false)
@@ -343,7 +351,7 @@ structure ImplicitThread (* :
 	;
 
     (* enter the dynamic scope of a work group *)
-      define (* inline *) @work-group-begin (group : work_group / exh : exh) : () =
+      define inline @work-group-begin (group : work_group / exh : exh) : () =
 	  do @migrate-to-top-level-sched (/ exh)
 	  do @push-work-group (group / exh)
 	(* migrate the current thread to the given work group *)
@@ -358,10 +366,12 @@ structure ImplicitThread (* :
       define @work-group-end (/ exh : exh) : () =
 	  let _ : Option.option = @pop-work-group (/ exh)
 	  do @migrate-to-top-level-sched (/ exh)
+          do SchedulerAction.@yield ()  (* give the scheduler a chance to clean up *)
+          do Logging.@log-WSTerminate (host_vproc, 0:long)
 	  return ()
 	;
 
-      define (* inline *) @run-on-work-group (group : work_group, f : fun(unit / exh -> any) / exh : exh) : any =
+      define inline @run-on-work-group (group : work_group, f : fun(unit / exh -> any) / exh : exh) : any =
 	  do @work-group-begin (group / exh)
 	  let x : any = apply f (UNIT / exh)
 	  do @work-group-end (/ exh)
@@ -373,14 +383,19 @@ structure ImplicitThread (* :
 	;
 
       define @default-work-group-begin (defaultGroup : work_group / exh : exh) : unit =
-	  do @push-work-group (defaultGroup / exh)
+          do @work-group-begin (defaultGroup / exh)
 	  return (UNIT)
+	;
+
+      define @dispatch (u : unit / exh : exh) : any =
+	  SchedulerAction.@stop ()
 	;
 
     )
 
     val runOnWorkGroup : work_group * (unit -> 'a) -> 'a = _prim (@run-on-work-group-w)
     val defaultWorkGroupBegin : work_group -> unit = _prim (@default-work-group-begin)
+    val dispatch : unit -> 'a = _prim (@dispatch)
 
     end (* local *)
 
@@ -388,18 +403,18 @@ structure ImplicitThread (* :
 
     _primcode (
 
-      define (* inline *) @throw-to (thd : thread / exh : exh) noreturn =
+      define inline @throw-to (thd : thread / exh : exh) noreturn =
 	  do FLS.@set-ite (SELECT(THREAD_ITE_OFF, thd) / exh)
 	  let k : PT.fiber = SELECT(THREAD_FIBER_OFF, thd)
 	  throw k (UNIT)
 	;
 
-      define (* inline *) @run-from-atomic (vp : vproc, act : PT.sched_act, thd : thread / exh : exh) noreturn =
+      define inline @run-from-atomic (vp : vproc, act : PT.sched_act, thd : thread / exh : exh) noreturn =
 	  do FLS.@set-ite (SELECT(THREAD_ITE_OFF, thd) / exh)
 	  SchedulerAction.@run (vp, act, SELECT(THREAD_FIBER_OFF, thd))
 	;
 
-      define (* inline *) @get-scheduler-state (/ exh : exh) : scheduler_state =
+      define inline @get-scheduler-state (/ exh : exh) : scheduler_state =
 	  let group : work_group = @current-work-group (UNIT / exh)
 	  return (SELECT(WORK_GROUP_SCHEDULER_STATE_OFF, group))
         ;

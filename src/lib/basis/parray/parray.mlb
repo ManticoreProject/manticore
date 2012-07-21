@@ -8,17 +8,27 @@
 
   ../sequential/sequential.mlb
   ../misc/debug.mlb
+  ../extras/fail.pml
 
 (* Ropes *)
 
   rope.mlb
 
+(* Flattened Arrays *)
+
+  shape.pml
+  farray.pml
+  segreduce.pml
+  int-farray.pml
+  double-farray.pml
+  farray-util.pml
+
 (* Parallel Arrays *)
 
   parray.pml
+  parray-pair.pml
+  parray-util.pml
 
 (* Scans *)
 
   scan.pml
-  float-scan.pml
-  int-scan.pml

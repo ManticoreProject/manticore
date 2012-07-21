@@ -59,3 +59,20 @@ script.  To do so, run the following two commands:
 
 Then proceed with the installation instructions from the previous
 section.
+
+------------------------------------------------------------------------
+BUILDING ON WINDOWS
+-----------------
+
+This does not quite work yet, as there is not yet a version of gcc in
+cygwin that is capable of targeting 64-bit. However, when there is, this 
+should be close:
+
+1) Rebuild SML/NJ from a clean checkout under CYGWIN. Note that you will 
+need to set:
+export SMLNJ_CYGWIN_RUNTIME=1
+
+2) From CYGWIN, run autoheader and autoconf as listed above, then:
+export SMLN_CMD=/home/USER/smlnj/bin/sml
+./configure --with-mlrisc=/home/USER/smlnj/MLRISC --target x86_64-pc-cygwin
+

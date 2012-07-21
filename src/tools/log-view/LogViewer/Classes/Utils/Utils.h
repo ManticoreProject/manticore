@@ -3,7 +3,6 @@
  \date 7/7/09
  */
 
-#import <Cocoa/Cocoa.h>
 
 /// Returns the euclidean distance between its arguments
 CGFloat euclideanDistance(NSPoint a, NSPoint b);
@@ -31,5 +30,6 @@ BOOL between(CGFloat a, CGFloat b, CGFloat c);
 + (NSColor *)colorFromFormatString:(const char *)s;
 + (void *)calloc:(size_t)a size:(size_t)b;
 + (void *)realloc:(void *)a size:(size_t)b;
++ (NSString *)rectString:(NSRect)rect;
 
 @end

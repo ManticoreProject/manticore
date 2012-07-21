@@ -10,6 +10,8 @@
 #include "value.h"
 #include "request-codes.h"
 #include "scheduler.h"
+#include "heap.h"
+#include "inline-log.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
@@ -46,16 +48,14 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
   /* allocate the return and exception continuation objects
    * in the VProc's heap.
    */
-    Value_t retCont = AllocUniform(vp, 1, PtrToValue(&ASM_Return));
-    Value_t exnCont = AllocUniform(vp, 1, PtrToValue(&ASM_UncaughtExn));
+    Value_t retCont = WrapWord(vp, (Word_t)&ASM_Return);
+    Value_t exnCont = WrapWord(vp, (Word_t)&ASM_UncaughtExn);
 
     while (1) {
 #ifndef NDEBUG
-      /*
 	if (DebugFlg)
 	    SayDebug("[%2d] ASM_Apply(%p, %p, %p, %p, %p, %p)\n",
-		vp->id, vp, codeP, arg, envP, retCont, exnCont);
-      */
+                 vp->id, (void*)vp, (void*)codeP, (void*)arg, (void*)envP, (void*)retCont, (void*)exnCont);
 #endif
 	if (ShutdownFlg && !(vp->shutdownPending == M_TRUE)) {
 	  /* schedule a continuation that will cleanly shut down the runtime */
@@ -64,28 +64,40 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    arg = M_UNIT;
 	    retCont = M_UNIT;
 	    exnCont = M_UNIT;
+	    vp->atomic = M_TRUE;
 	    vp->sigPending = M_FALSE;
 	    vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
 	}
 
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
 
+	Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
+
 	switch (req) {
 	  case REQ_GC:
 	  /* check to see if we actually need to do a GC, since this request
 	   * might be from a pending signal.
 	   */
-	    if ((vp->limitPtr < vp->allocPtr) || vp->globalGCPending) {
+	    if ((LimitPtr(vp) < vp->allocPtr) || vp->globalGCPending) {
 	      /* request a minor GC */
 		MinorGC (vp);
 	    }
+	  /* check for asynchronous signals */
+	    if (oldLimitPtr == 0) {
+#ifndef NDEBUG
+	      if (DebugFlg)
+		SayDebug("Asynchronous signal arrived at vproc %d\n", vp->id);
+#endif
+	      /* an asynchronous signal has arrived */
+	        vp->sigPending = M_TRUE;
+	    }
 
-	  /* check for pending signals */
+	  /* is there a pending signal that we can deliver? */
 	    if ((vp->sigPending == M_TRUE) && (vp->atomic == M_FALSE)) {
-		Value_t resumeK = AllocUniform (vp, 3,
-					       PtrToValue(&ASM_Resume),
-					       vp->stdCont,
-					       vp->stdEnvPtr);
+		Value_t resumeK = AllocNonUniform (vp, 3,
+                                           INT(PtrToValue(&ASM_Resume)),
+                                           INT(PtrToValue(vp->stdCont)),
+                                           PTR(vp->stdEnvPtr));
 	      /* pass the signal to scheduling code in the BOM runtime */
 		envP = vp->schedCont;
 		codeP = ValueToAddr(ValueToCont(envP)->cp);
@@ -94,6 +106,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 		exnCont = M_UNIT;
 		vp->atomic = M_TRUE;
 		vp->sigPending = M_FALSE;
+		LogPreemptSignal(vp);
 	    }
 	    else {
 	      /* setup the return from GC */

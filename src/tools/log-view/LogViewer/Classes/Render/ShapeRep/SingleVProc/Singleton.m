@@ -12,6 +12,7 @@
 @implementation Singleton
 
 @synthesize eventVal;
+@synthesize place;
 
 #pragma mark Initializations
 
@@ -19,7 +20,7 @@
 
 - (Singleton *)initWithPoint:(NSPoint)p
 		       color:(NSColor *)c
-		       event:(event *)eventValVal;
+		       event:(event *)eventValVal
 {
 	if (![super init])
 		return nil;
@@ -60,6 +61,11 @@
 - (BOOL)containsPoint:(NSPoint)p
 {
 	return [path containsPoint:p];
+}
+
+- (NSRect)bounds
+{
+    return [path bounds];
 }
 
 - (shapeTag)kind

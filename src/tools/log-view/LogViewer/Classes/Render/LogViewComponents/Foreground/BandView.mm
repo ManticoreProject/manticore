@@ -13,6 +13,7 @@
 #import "DetailAccess.h"
 #import "VProc.h"
 #import "LogDoc.h"
+#import "LogView.h"
 #import "GroupFilter.h"
 #import "MessageView.h"
 
@@ -66,20 +67,22 @@
     if (self) {
 	vProc = vp;
 	logDoc = logDocVal;
-	singletons = [[NSMutableArray alloc] init];
-	states = [[NSMutableArray alloc] init];
-	intervals = [[NSMutableArray alloc] init];
+	shapes = [[NSMutableArray alloc] init];
 	
 	NSRect bounds = self.shapeBounds;
 	cur_singleton_height = bounds.size.height / 2;
 	cur_interval_height = bounds.size.height / 2;
 
 	Detail *details = vp.details;
-	for (int i = 0; i < vp.numDetails; ++i)
+	int skipped = 0;
+	for (unsigned int i = 0; i < vp.numDetails; ++i)
 	{
+
 	    if (![logDoc isInInterval:details[i]])
 	    {
 		// Pass.  Only read in details which are in the interval
+		skipped++;
+		continue;
 	    }
 	    else
 	    {
@@ -89,6 +92,7 @@
 		    [self addDetail:details[i]];
 	    }
 	}
+	//NSLog(@"BandView for vProc %d skipped adding %d events", vp.vpId, skipped);
     }
     return self;
 }
@@ -96,37 +100,33 @@
 #pragma mark Drawing
 - (void)drawRect:(NSRect)rect {
 
-   // [[NSColor blueColor] set];
-   // [NSBezierPath fillRect:self.bounds];
+    [[NSColor purpleColor] set];
+    [NSBezierPath fillRect:self.bounds];
 
-    int a = 0;
-    for (State *e in states)
+    int q = 0;
+    EventShape *selected = [[logDoc logView] selectedEvent];
+    NSColor *oldColor;
+    for (EventShape *e in shapes)
     {
-	[e drawShape];
-	++a;
-    }
-   // NSLog(@"Drew %d state changes", a);
 
-    int b = 0;
-    for (Interval *e in intervals)
-    {
+	if (! NSIntersectsRect(rect, [e bounds]))
+	{
+	    q++;
+	    continue;
+	}
+	
+	if (e == selected)
+	{
+	    oldColor = e.color;
+	    e.color = [NSColor whiteColor];
+	}
 	[e drawShape];
-	++b;
+	if (e == selected)
+	    e.color = oldColor;
     }
-  //  NSLog(@"Drew %d intervals", b);
+    //NSLog(@"BandView for vProc %d skipped drawing %d shapes", [vProc vpId], q);
 
-    int c = 0;
-    for (EventShape *e in singletons)
-    {
-	[e drawShape];
-	++c;
-    }
-   // NSLog(@"Drew %d singletons", c);
-
-   // NSLog(@"BandView drew %d shapes", a + b + c);
 }
-
-
 
 
 #pragma mark Simples
@@ -185,10 +185,9 @@
 		       initWithPoint:NSMakePoint(s, self.singletonHeight)
 		       color:c
 			   event:Detail_Simple_value(d)];
-    NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
-    singleton.description = [NSString stringWithString:S];
+    singleton.description = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
 
-    [singletons addObject:singleton];
+    [shapes addObject:singleton];
 }
 
 
@@ -238,10 +237,27 @@ int color_int = 0;
     r.size.height = bounds.size.height;
     event *start = Detail_State_start(d);
     event *end = Detail_State_end(d);
+    
+
    //NSLog(@"BandView: state start %#x and end %#x", start, end);
 
-    r.origin.x = [logDoc image:start ? Event_Time(*start) : logDoc.logInterval->x];
-    r.size.width = [logDoc image:(end ? Event_Time(*end) : logDoc.logInterval->x + logDoc.logInterval->width)] - r.origin.x;
+    uint64_t time;
+    r.origin.x = 0;
+    if (start)
+    {
+	time = Event_Time(*start);
+	if (time >= logDoc.logInterval->x)
+	    r.origin.x = [logDoc image:time];
+    }
+    r.size.width = [logDoc image:logDoc.logInterval->x + logDoc.logInterval->width];
+    
+    if (end)
+    {
+	time = Event_Time(*end);
+	if (time <= logDoc.logInterval->x + logDoc.logInterval->width)
+	    r.size.width = [logDoc image:time];
+    }
+
 
     if (r.size.width <= TINY_WIDTH) ;//return;
     State *state = [[State alloc] initWithRect:r
@@ -249,9 +265,8 @@ int color_int = 0;
 					 start:start
 					   end:end];
 
-    NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
-    state.description = [NSString stringWithString:S];
-    [states addObject:state];
+    state.description = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
+    [shapes addObject:state];
 }
 
 #pragma mark Intervals
@@ -274,17 +289,6 @@ int color_int = 0;
 {
     assert (Detail_Type(d)->Kind() == INTERVAL_GROUP );
     return fmod (Detail_Interval_height(d), ( self.bounds.size.height - h - INTERVAL_PADDING ));
-
-/* CURRENTLY UNUSED
-
-     CGFloat height = self.bounds.size.height;
-     cur_interval_height += h + INTERVAL_PADDING;
-     if (cur_interval_height >= height - (h + INTERVAL_PADDING))
-     {
-	cur_interval_height -= height - 2 * (h + INTERVAL_PADDING);
-     }
-     return cur_interval_height;
-     */
 }
 
 - (void)addInterval:(IntervalGroup *)g forDetail:(Detail)d
@@ -298,8 +302,19 @@ int color_int = 0;
     }
     NSColor *c = [self colorForInterval:d withGroup:g];
     NSRect r;
-    r.origin.x = [logDoc image:Event_Time(*start)];
-    r.size.width = [logDoc image:Event_Time(*end)] - r.origin.x;
+    uint64_t time;
+    
+    time = Event_Time(*start);
+    r.origin.x = 0;
+    if (time >= logDoc.logInterval->x)
+	r.origin.x = [logDoc image:time];
+    
+    time = Event_Time(*end);
+    r.size.width = [logDoc image:logDoc.logInterval->x + logDoc.logInterval->width];
+    if (time <= logDoc.logInterval->x + logDoc.logInterval->width)
+	r.size.width = [logDoc image:time];
+
+    
     if (r.size.width <= TINY_WIDTH) return;
     r.size.height = DEFAULT_INTERVAL_HEIGHT;
     r.origin.y = [self intervalHeightForIntervalOfHeight:r.size.height forDetail:(Detail)d];
@@ -311,10 +326,9 @@ int color_int = 0;
 						  start:start
 						    end:end];
 
-    NSString *S = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
-    interval.description = [NSString stringWithString:S];
+    interval.description = [NSString stringWithCString:g->Desc() encoding:NSASCIIStringEncoding];
 
-    [intervals addObject:interval];
+    [shapes addObject:interval];
 
 }
 
@@ -346,20 +360,21 @@ int color_int = 0;
 
 - (void)mouseDown:(NSEvent *)e
 {
+    [super mouseDown:e];
+
     // If the user is holding down either the shift or the control key
     // Then we interpret the event as follows:
     // The user does not want the DetailInfoView to display information about the detail
     // he clicked on.  Instead the user is trying to zoom in/out if he pressed shift/control
     // respectively.
+    NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
     if (e.modifierFlags & NSShiftKeyMask)
     {
-	NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
 	[logDoc zoomInAboutPivot:[logDoc preImage:p.x]];
 	return;
     }
     else if (e.modifierFlags & NSControlKeyMask)
     {
-	NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
 	[logDoc zoomOutAboutPivot:[logDoc preImage:p.x]];
 	return;
     }
@@ -370,69 +385,45 @@ int color_int = 0;
     //	    If all dependent details are to far away from the click, then
     //	    the user was trying to click on some nearby state, interval, or simple event
 
-    NSLog(@"Bandview is sending a messageView %@ the mouse event %@", messageView, e);
     if ([messageView bandReceivedEvent:e]) return;
-    NSLog(@"Mouse was clicked on band for VProc %d", vProc.vpId);
-    NSPoint p = [self convertPoint:e.locationInWindow fromView:nil];
-    for (State *a in states)
+    
+    EventShape *first = NULL;
+    EventShape *newSelection = NULL;
+    BOOL foundOldSelection = NO;
+    for (EventShape *a in shapes)
     {
 	if ([a containsPoint:p])
 	{
-	    [logDoc displayDetail:a];
-	    [a nslog];
-	    NSLog(@"State clicked");
-	    return;
-	}
-    }
-    for (Interval *a in intervals)
-    {
-	if ([a containsPoint:p])
-	{
-	    [logDoc displayDetail:a];
-    	    NSLog(@"Interval clicked");
-	    return;
-	}
-    }
+	    /* We want clicking repeatedly on an area to cycle through all of
+	       the events that could be stacked on top of each other.
+	     */
+	    if (first == NULL)
+		first = a;
 
-    for (Singleton *a in singletons)
-    {
-	if ([a containsPoint:p])
-	{
-    	    [logDoc displayDetail:a];
-	    NSLog(@"Singleton clicked");	    
-	    return;
+	    if (foundOldSelection)
+	    {
+		newSelection = a;
+		break;
+	    }
+	    
+	    if (a == logDoc.logView.selectedEvent)
+		foundOldSelection = YES;
 	}
     }
+    /* At this point, there are three distinct possible circumstances:
+       1. we never found the old selection. Use the first event; the user has
+	  clicked on a new area of the screen.
+       2. we found the old selection, but newSelection is still NULL. we have
+          reached the last event under the cursor, so cycle back to first.
+       3. we found neither a first nor a newSelection. This means there weren't
+	  any events under the cursor.
+     */
 
-    //[self.superview mouseDown:e];
+    if (!foundOldSelection || newSelection == NULL)
+	newSelection = first;
+
+    [[logDoc logView] didSelectEvent:newSelection fromBand:self];
+    [logDoc displayDetail:newSelection];
 }
 
 @end
-    /*
-     - (CGFloat)intervalHeightForIntervalOfHeight:(CGFloat)h
-     {
-     CGFloat height = self.bounds.size.height;
-     cur_interval_height += h + INTERVAL_PADDING;
-     if (cur_interval_height >= height - (h + INTERVAL_PADDING))
-     {
-     cur_interval_height -= height - 2 * (h + INTERVAL_PADDING);
-     }
-     return cur_interval_height;
-     }
-     */
-    /*
-     /// XXX Warning: this method sets the first color to be used when displaying states
-     /// If you set it to the color for the start state of a vproc and have the BandView
-     /// display from somewhere in the middle of the log, then the color may be inaccurate.
-     - (void)setStateStartColor:(NSColor *)c
-     { color is
-     NSRect bounds = [self bounds];
-     lastState = [[State alloc]
-     initWithRect:NSMakeRect(bounds.origin.x,
-     bounds.origin.y,
-     0,
-     bounds.size.height)
-     color:c
-     start:nil];
-     }
-     */

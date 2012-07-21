@@ -13,6 +13,7 @@ structure AST =
     datatype dcon = datatype Types.dcon
 
     type info = Error.span   (* source file information *)
+    type location = Error.location
 
     type label = Atom.atom
 
@@ -58,10 +59,10 @@ structure AST =
       | CaseExp of (exp * match list * ty)		(* ty is result type *)
       | PCaseExp of (exp list * pmatch list * ty)       (* ty is result type *)
       | HandleExp of (exp * match list * ty)		(* ty is result type *)
-      | RaiseExp of (exp * ty)				(* ty is result type *)
+      | RaiseExp of (location * exp * ty)       	(* ty is result type *)
       | FunExp of (var * exp * ty)			(* ty is result type *)
       | ApplyExp of exp * exp * ty			(* ty is result type *)
-      | VarArityOpExp of var_arity_op * int * ty        (* ty is operator type *)                 
+      | VarArityOpExp of var_arity_op * int * ty        (* ty is operator type *)
       | TupleExp of exp list
       | RangeExp of (exp * exp * exp option * ty)	(* ty is element type *)
       | PTupleExp of exp list
@@ -93,7 +94,7 @@ structure AST =
 
     and pmatch
       = PMatch of ppat list * exp
-      | Otherwise of exp (* FIXME : This should have a type carried along with it, like WildPat *)
+      | Otherwise of ty list * exp (* ty list is the list of ppat types in the rest of the pmatch *)
 
     and pat
       = ConPat of dcon * ty list * pat	(* data-constructor application *)
@@ -104,6 +105,7 @@ structure AST =
 
     and ppat
       = NDWildPat of ty
+(* FIXME: we don't use this syntax anymore, so this constructor can be eliminated *)
       | HandlePat of pat * ty (* handle pats, like wild pats, need to be typed *)
       | Pat of pat 
 

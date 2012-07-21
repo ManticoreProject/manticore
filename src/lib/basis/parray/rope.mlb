@@ -9,18 +9,27 @@
   ../sequential/sequential.mlb
   ../misc/debug.mlb
 
-  list-seq.pml
-  array-seq.pml
+  parse-command-line.pml
+  progress.pml
+  chunking-policy.pml
+  leaf-size.pml
+ann "cpp" "" in
+  runtime.pml
+end
+
   vector-seq.pml
-  float-array-seq.pml
-  int-array-seq.pml
+  int-seq.pml
+  double-seq.pml
+  seq-util.pml
 
-  max-leaf-size.pml
+  range.pml
 
-  rope.pml 
-  rope2.pml
+  rope-ty.pml
+  rope.pml
   rope-pair.pml
-  float-rope.pml
   int-rope.pml
+  double-rope.pml
+  int-dbl-rope-pair.pml
 
-(*  test-rope.pml *)
+  rope-util.pml
+(*  test.pml*)

@@ -184,7 +184,7 @@ structure PrintBOM : sig
 	  fun prExtern cf = (indent 1; prl [CFunctions.cfunToString cf, "\n"])
 	  in
 	    case arg
-	     of MODULE(B.MODULE{name, externs, hlops, body}) => (
+	     of MODULE(B.MODULE{name, externs, hlops, rewrites, body}) => (
 		  prl ["module ", Atom.toString name, "\n"];
 		  List.app prExtern externs;
 		  List.app

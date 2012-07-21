@@ -4,8 +4,6 @@
  *
  */
 
-#import <Cocoa/Cocoa.h>
-
 /// Box and unbox pointers
 /// Terrible to use, this class allows c++ objects to be treated
 /// sort of like NSObjects.  Be warned however, the garbage collector
@@ -20,5 +18,20 @@
 
 + (Box *)box:(void *)valueVal;
 - (void *)unbox;
+
+@end
+
+enum EventGroupBoxT {
+    GROUP,
+    STATE
+};
+
+@interface EventGroupBox : Box {
+    enum EventGroupBoxT type;
+}
+
++ (EventGroupBox *)box:(void *)valueVal withType:(enum EventGroupBoxT)type;
+@property enum EventGroupBoxT type;
+
 
 @end

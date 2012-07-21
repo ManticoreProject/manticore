@@ -86,7 +86,14 @@ STATIC_INLINE Value_t GlobalSome (VProc_t *vp, Value_t a)
 #define RAW_FIELD	0
 #define PTR(p)		PTR_FIELD, (Value_t)(p)
 #define INT(i)		RAW_FIELD, (Value_t)((Word_t)(i))
+#define FLOAT(f)	RAW_FIELD, (Value_t)((f).w)
 #define DOUBLE(d)	RAW_FIELD, (Value_t)((d).w)
+
+/* use to coerce floats to Word_t's as is done in FLOAT(f) */
+typedef union {
+    Word_t w;
+    float f;
+} RawFloat_t;
 
 /* use to coerce doubles to Word_t's as is done in DOUBLE(d) */
 typedef union {

@@ -17,6 +17,7 @@ structure Translate : sig
     structure BTy = BOMTy
     structure Lit = Literal
     structure E = TranslateEnv
+    structure PTVar = ProgramParseTree.Var
 
     structure LambdaSet = RedBlackSetFn (
       struct
@@ -24,12 +25,29 @@ structure Translate : sig
 	fun compare (B.FB{f, ...}, B.FB{f=g, ...}) = BV.compare (f, g)
       end)
 
+    local
+	val rewrites = ref ([] : Rewrites.rewrite list)
+    in
+    fun addRewrites rs = rewrites := rs @ (!rewrites)
+    fun listRewrites () = let
+          val rewrites' = !rewrites
+          in
+	    rewrites := [];
+	    rewrites'
+          end
+    end
+
     val ropeMapSet = ref(LambdaSet.empty)
 
     val trTy = TranslateTypes.tr
 
     val rawIntTy = BTy.T_Raw BTy.T_Int
     fun rawInt(n) = B.E_Const(Literal.Int(IntInf.fromInt n), rawIntTy)
+
+    fun findCFun name = (case E.findBOMCFun name
+            of NONE => raise Fail(concat["Unknown C function ", PTVar.toString name])
+	     | SOME(cf as CFunctions.CFun{var, ...}) => var
+            (* end case *))
 
   (* prune out overload nodes.
    * NOTE: we should probably have a pass that does this before
@@ -193,8 +211,28 @@ structure Translate : sig
 		in
 		  EXP(B.mkCont(handler, trExpToExp(env', e)))
 		end
-	    | AST.RaiseExp(e, ty) =>
+	    | AST.RaiseExp(Error.UNKNOWN, e, ty) =>
 		EXP(trExpToV (env, e, fn exn => B.mkThrow(E.handlerOf env, [exn])))
+	    | AST.RaiseExp(Error.LOC {file, l1, c1, l2, c2}, e, ty) => let
+                  fun mkThrow exn =
+		      if not(Controls.get BasicControl.debug) then
+                          B.mkThrow(E.handlerOf env, [exn])
+                      else (let
+                                val msg = concat["Exception raised at: ", file, " ", Int.toString l1, ".",
+                                                 Int.toString c1, "-", Int.toString l2, ".",
+                                                 Int.toString c2]
+                                val msgVar = BV.new("exnLocStr", BTy.T_Any)
+	                        val self = BV.new("exnLocStr", BTy.T_VProc)
+                            in
+                                mkStmt ([msgVar], BOM.E_Const(Literal.String (msg), BTy.T_Any),
+                                        mkStmt([self], BOM.E_HostVProc,
+                                               mkStmt([],
+                                                      BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis ["DebugThrow"]), [self, msgVar]),
+                                                      B.mkThrow(E.handlerOf env, [exn]))))
+                            end)
+              in
+		EXP(trExpToV (env, e, mkThrow))
+              end
 	    | AST.FunExp(x, body, ty) => let
 		val ty' = trTy(env, ty)
 		val (x', env) = trVar(env, x)
@@ -378,10 +416,11 @@ structure Translate : sig
 		  | NONE => k env
 		(* end case *))
 	    | AST.PrimCodeBind code => let
-		val lambdas = TranslatePrim.cvtCode (env, code)
+		val (lambdas, rewrites) = TranslatePrim.cvtCode (env, code)
 		fun mk [] = k env
 		  | mk (fb::fbs) = B.mkFun([fb], mk fbs)
 		in
+		  addRewrites rewrites;
 		  mk lambdas
 		end
 	  (* end case *))
@@ -573,7 +612,8 @@ structure Translate : sig
 		}
 	  val imports = listImports env
 	  val hlops = HLOpEnv.listHLOps()
-	  val module = B.mkModule(Atom.atom "Main", imports, hlops, mainFun)
+	  val rewrites = listRewrites()
+	  val module = B.mkModule(Atom.atom "Main", imports, hlops, rewrites, mainFun)
 	  in
 	    if (Controls.get TranslateControls.keepEnv)
 	      then let

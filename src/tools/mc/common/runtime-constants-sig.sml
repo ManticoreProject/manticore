@@ -25,12 +25,13 @@ signature RUNTIME_CONSTANTS =
     val magic : IntInf.int
 
   (* offsets into the VProc_t structure *)
-    val inManticore : IntInf.int
     val atomic : IntInf.int
     val sigPending : IntInf.int
     val actionStk : IntInf.int
     val rdyQHd : IntInf.int
     val rdyQTl : IntInf.int
+    val sndQHd : IntInf.int
+    val sndQTl : IntInf.int
     val stdArg : IntInf.int 
     val stdEnvPtr : IntInf.int
     val stdCont : IntInf.int
@@ -39,6 +40,7 @@ signature RUNTIME_CONSTANTS =
     val limitPtr : IntInf.int
     val globNextW : IntInf.int
     val globLimit : IntInf.int
+    val eventId : IntInf.int
 
   (* mask to get address of VProc from allocation pointer *)
     val vpMask : IntInf.int

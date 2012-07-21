@@ -18,6 +18,9 @@ structure BuildExecutable : sig
 	  } -> OS.Process.status
 
   end = struct
+  
+    structure PrintTbl = PrintTable
+	structure PrintTblDbg = PrintTableDebug
 
     val cat = String.concatWith " "
 
@@ -41,8 +44,24 @@ structure BuildExecutable : sig
 	  val libDirs = List.map (fn path => "-L" ^ path) libDirs
 	  val rtLib = "-l" ^ libName
 	  in
-	    cat (libDirs @ ("@LDFLAGS@" ++ rtLib ++ "@LIBS@" ++ "-lpthread" ++ []))
+	    cat (libDirs @ (rtLib ++ "@LDFLAGS@" ++ "@LIBS@" ++ "-lpthread" ++ []))
 	  end
+
+    fun systemWithTiming (cmd, mustPrint) = let
+        val verbose = mustPrint orelse (Controls.get BasicControl.verbose > 0)
+        val inclusiveStart = Time.now()
+        val _ = (if verbose
+	         then TextIO.print(cmd ^ "\n")
+	         else ())
+        val result = OS.Process.system cmd;
+    in
+        if verbose
+        then TextIO.print(concat ["Compile finished in: ",
+                                  (Time.toString (Time.- (Time.now(), inclusiveStart))),
+                                  "\n"])
+        else ();
+        result
+    end
 
     fun cmd asmFile = let
 	  val gcStats = Controls.get BasicControl.gcStats
@@ -53,25 +72,52 @@ structure BuildExecutable : sig
 		 of (true, false, false, false) => (cFlags, "mcrt-stats")
 		  | (_, false, false, false) => (cFlags, "mcrt")
 		  | (_, true, false, false) => (cFlags, "mcrt-log")
-		  | (_, false, true, false) => ("-g "^cFlags, "mcrt-debug")
-		  | (_, true, true, false) => ("-g "^cFlags, "mcrt-log-debug")
+		  | (_, false, true, false) => ("-g "^cFlags^" -O0", "mcrt-debug")
+		  | (_, true, true, false) => ("-g "^cFlags^" -O0", "mcrt-log-debug")
 		  | (_, _, _, true) => (cFlags, "mcrt-perf")
 		(* end case *))
-	  in
-	    cat [ccCmd, cFlags, asmFile, ldFlags libName]
-	  end
+	  val filename = OS.FileSys.tmpName()
+          val filenamec = concat[filename,".c"]
+          val filenameo = concat[filename,".o"]  
+	  val gccfilename = concat ["gcc @CFLAGS@ -O1 -fregmove @LIBS@ @CFLAG_M64@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o ",filenameo," -std=c99 -c ",filenamec]
+	  val _ = PrintTbl.print filenamec
+	  val _ = systemWithTiming (gccfilename, false)
+	  
+	  fun tableFiles () =
+              if (debug) 
+              then let
+		      val filenamedebug = OS.FileSys.tmpName()
+		      val filenamedebugc = concat[filenamedebug,".c"]
+		      val filenamedebugo = concat[filenamedebug,".o"]  
+		      val gccfilenamedebug = concat ["gcc @CFLAGS@ -O0 @LIBS@ @CFLAG_M64@ -I @MANTICORE_SRCDIR@/lib/parallel-rt/gc -I @MANTICORE_SRCDIR@/lib/parallel-rt/include/ -I @MANTICORE_SRCDIR@/include -o ",filenamedebugo," -std=c99 -c ",filenamedebugc]
+		      val _ = PrintTblDbg.print filenamedebugc
+		      val _ = systemWithTiming (gccfilenamedebug, false)
+	          in
+                      (concat[filenameo," ",filenamedebugo],
+                       [filenamec, filenameo, filenamedebugc, filenamedebugo])
+                  end
+              else 
+                  (filenameo, [filenamec, filenameo])
+                  
+          val (files, temps) = tableFiles ()
+    in
+	(cat [ccCmd, cFlags, asmFile,files, ldFlags libName], temps)
+    end
 
     fun build {verbose, asmFile, outFile} = if isCrossCompiler
 	  then (
 	    TextIO.output(TextIO.stdErr, "cross compiler cannot produce executables\n");
 	    OS.Process.failure)
 	  else let
-	    val cmd' = cat[cmd asmFile, " -o ", outFile]
-	    in
-	      if verbose
-		then TextIO.print(cmd' ^ "\n")
-		else ();
-	      OS.Process.system cmd'
-	    end
+                  val (cmdline, temps) = cmd asmFile
+	          val cmd' = cat[cmdline, " -o ", outFile]
+                  val result = systemWithTiming (cmd', verbose);
+	          val debug = Controls.get BasicControl.debug
+	      in
+                  if not debug
+                  then (List.app OS.FileSys.remove temps)
+                  else ();
+                  result
+	      end
 
   end

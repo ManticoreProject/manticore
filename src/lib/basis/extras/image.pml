@@ -11,7 +11,7 @@ structure Image =
   struct
 
     _primcode (
-	extern void *M_NewImage (int, int);
+	extern void *M_NewImage (int, int) __attribute__((pure));
 	extern void M_FreeImage (void *);
 	extern void M_OutputImage (void *, void *);
 	extern void M_UpdateImage3f (void *, int, int, float, float, float);
@@ -46,7 +46,9 @@ structure Image =
 
     type image = _prim (any);
 
+(* new : width * height -> image *)
     val new : (int * int) -> image = _prim(@new)
+
     val free : image -> unit = _prim(@free)
     val output : (string * image) -> unit = _prim(@output)
     val update3f : (image * int * int * float * float * float) -> unit = _prim(@update3f)

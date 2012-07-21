@@ -23,7 +23,7 @@ structure SubstTy =
 	    | exp (A.CaseExp (e, ms, t)) = A.CaseExp (exp e, List.map (match s) ms, substTy(s, t))
 	    | exp (A.PCaseExp (es, pms, t)) = A.PCaseExp (List.map exp es, List.map (pmatch s) pms, substTy(s, t))
 	    | exp (A.HandleExp (e, ms, t)) = A.HandleExp (exp e, List.map (match s) ms, substTy(s, t))
-	    | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, substTy(s, t))
+	    | exp (A.RaiseExp (l, e, t)) = A.RaiseExp (l, exp e, substTy(s, t))
 	    | exp (A.FunExp (x, e, t)) = A.FunExp (substForVar(s, x), exp e, substTy(s, t))
 	    | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, substTy(s, t))
 	    | exp (m as A.VarArityOpExp _) = m
@@ -69,7 +69,8 @@ structure SubstTy =
     and lambda s (A.FB (f, x, e)) = A.FB(substForVar(s, f), substForVar(s, x), exp s e)
 		  
     and pmatch s (A.PMatch (ps, e)) = A.PMatch (List.map (ppat s) ps, exp s e)
-      | pmatch s (A.Otherwise e) = A.Otherwise (exp s e)
+      | pmatch s (A.Otherwise (ts, e)) =
+          A.Otherwise (List.map (fn t => substTy (s, t)) ts, exp s e)
 
     and ppat s (w as A.NDWildPat _) = w
       | ppat s (A.HandlePat (p, t)) = A.HandlePat (pat s p, substTy(s, t))

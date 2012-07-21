@@ -65,12 +65,12 @@ EventGroup::~EventGroup ()
 bool EventGroup::containsEvent (EventDesc *evt) const
 {
   /* check the list of events */
-    for (int i = 0;  i < this->_events.size();  i++) {
+    for (unsigned int i = 0;  i < this->_events.size();  i++) {
 	if (this->_events[i] == evt)
 	    return true;
     }
   /* recursively check sub-groups */
-    for (int i = 0;  i < this->_groups.size();  i++) {
+    for (unsigned int i = 0;  i < this->_groups.size();  i++) {
 	if (this->_groups[i]->containsEvent(evt))
 	    return true;
     }
@@ -103,7 +103,7 @@ StateGroup::StateGroup (const char *desc, int nStates, int nTransitions)
 
 StateGroup::~StateGroup ()
 {
-    for (int i = 0;  i < this->_stateNames.size();  i++) {
+    for (unsigned int i = 0;  i < this->_stateNames.size();  i++) {
 	delete this->_stateNames[i];
 	delete this->_stateColors[i];
     }
@@ -111,7 +111,7 @@ StateGroup::~StateGroup ()
 
 bool StateGroup::containsEvent (EventDesc *evt) const
 {
-    for (int i = 0;  i < this->_transitions.size();  i++) {
+    for (unsigned int i = 0;  i < this->_transitions.size();  i++) {
 	if (this->_transitions.at(i)._event == evt)
 	    return true;
     }
@@ -120,7 +120,7 @@ bool StateGroup::containsEvent (EventDesc *evt) const
 
 int StateGroup::NextState (int st, EventDesc *evt) const
 {
-    for (int i = 0;  i < this->_transitions.size();  i++) {
+    for (unsigned int i = 0;  i < this->_transitions.size();  i++) {
 	if (this->_transitions.at(i)._event == evt)
 	    return this->_transitions.at(i)._nextState;
     }
@@ -130,7 +130,7 @@ int StateGroup::NextState (int st, EventDesc *evt) const
 void StateGroup::SetStart (const char *st)
 {
   // first map the state name to an index
-    int state;
+    unsigned int state;
     for (state = 0;  state < this->_stateNames.size();  state++) {
 	if (strcmp(this->_stateNames.at(state), st) == 0)
 	    break;
@@ -153,7 +153,7 @@ void StateGroup::AddState (int i, const char *st, const char *color)
 void StateGroup::AddTransition (int i, EventDesc *evt, const char *st)
 {
   // first map the state name to an index
-    int state;
+    unsigned int state;
     for (state = 0;  state < this->_stateNames.size();  state++) {
 	if (strcmp(this->_stateNames.at(state), st) == 0)
 	    break;
@@ -235,7 +235,7 @@ LogFileDesc::~LogFileDesc ()
 
 EventDesc *LogFileDesc::FindEventByName (const char *name) const
 {
-    for (int i = 0;  i < this->_events->size();  i++) {
+    for (unsigned int i = 0;  i < this->_events->size();  i++) {
 	if (strcmp(name, this->_events->at(i)->Name()) == 0)
 	    return this->_events->at(i);
     }
@@ -287,7 +287,7 @@ void LogFileDesc::_InitEventInfo ()
 	{
 	    std::vector<EventDesc *>::iterator iter;
 	    std::vector<EventDesc *> evts = grp->Events();
-	    for (std::vector<EventDesc *>::iterator iter = evts.begin();  iter < evts.end();  iter++) {
+	    for (iter = evts.begin();  iter < evts.end();  iter++) {
 		EventDesc *ed = *iter;
 		assert (ed != 0);
 		AddGroup<StateGroup> (this->_info[ed->Id()]->stateGrps, grp);
@@ -314,7 +314,7 @@ void LogFileDesc::_InitEventInfo ()
     };
 
     this->_info = new EventGrpInfo*[this->_events->size()];
-    for (int i = 0;  i < this->_events->size();  i++) {
+    for (unsigned int i = 0;  i < this->_events->size();  i++) {
 	if (this->_events->at(i)->isSimpleEvent())
 	    this->_info[i] = 0;
 	else {

@@ -7,6 +7,8 @@
 #import <Cocoa/Cocoa.h>
 #import "LogDoc.h"
 
+@class Message;
+
 
 /// Draws message arrows and other foreground events
 /** The MessageView will be placed on top of the BandViews in a LogView.
@@ -19,14 +21,15 @@
     NSMutableArray *timeValues; // NSString *s that must be printed in accordance with tick lines
     NSMutableDictionary *timeValueAttributes;
 
-    LogDoc *logDoc;
+    IBOutlet LogDoc *logDoc;
 
     NSMutableArray *dependents;
 }
 
-- (MessageView *)initWithFrame:(NSRect)frame
-			logDoc:(LogDoc *)logDocVal
-		    dependents:(NSArray *)dependentsVal;
+- (MessageView *)initWithFrame:(NSRect)frame;
+
+
+- (void)updateDependents:(NSArray *)dependentsVal;
 
 
 - (BOOL)bandReceivedEvent:(NSEvent *)e;

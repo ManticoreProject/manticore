@@ -35,6 +35,7 @@ structure ASTOpt : sig
 			    in
 				exp
 			    end
+          val exp = Monomorphise.monomorphise exp
           in
             exp
           end

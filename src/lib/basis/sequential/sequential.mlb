@@ -23,19 +23,34 @@ in
   rand.pml
 end
 ../misc/debug.mlb
+result.pml
+ann "cpp" "../include/prim.def,../include/assert.def"
+in
+  prim-list.pml
+  prim-bool.pml
+end
+ann "cpp" ""
+in
+  ref.pml
+  float-ref.pml
+  int-ref.pml
+end
+ann "cpp" "" 
+in
+  unsafe-array.pml
+  unsafe-long-array.pml
+  unsafe-int-array.pml
+  unsafe-float-array.pml
+  unsafe-double-array.pml
+end
 ann "cpp" "../include/prim.def,../include/assert.def"
 in
   vector.pml
   array.pml
   float-array.pml
   int-array.pml
-  word64-array.pml
-end
-result.pml
-ann "cpp" "../include/prim.def,../include/assert.def"
-in
-  prim-list.pml
-  prim-bool.pml
+  long-array.pml
+  double-array.pml
 end
 time.pml
 prim-io.pml
@@ -55,5 +70,6 @@ in
 end
 
 command-line.pml
+parse-command-line.pml
 
 ../extras/extras.mlb

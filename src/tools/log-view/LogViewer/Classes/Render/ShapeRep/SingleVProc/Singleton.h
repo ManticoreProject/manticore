@@ -27,6 +27,7 @@
 }
 
 @property (readonly) event *eventVal;
+@property (readonly) NSPoint place;
 
 /// Initialize
 - (Singleton *)initWithPoint:(NSPoint)p

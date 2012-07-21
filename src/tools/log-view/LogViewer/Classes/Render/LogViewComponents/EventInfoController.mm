@@ -37,7 +37,6 @@
 #define COLUMN_NAME_VALUE ( @"Value" )
 
 
-@synthesize eiv;
 
 @synthesize time;
 
@@ -46,17 +45,15 @@
 @synthesize description;
 
 
-- (EventInfoController *)initWithNibName:(NSString *)n
-				    bundle:(NSBundle *)b
-				   logDesc:(LogFileDesc *)logDescVal
+- (id)initWithNibName:(NSString *)n
+	       bundle:(NSBundle *)b
+	      logDesc:(LogFileDesc *)logDescVal
 {
 
     if (![super initWithNibName:n bundle:b]) return nil;
- //   NSLog(@"EventInfoController %@ was just initialized with nib %@ and eiv %@", self, n, eiv);
+    NSLog(@"EventInfoController %@ was just initialized with nib %@ and view %@", self, n, [self view]);
 
     // Strangely, this log message is necessary, without it problems start to arise
-    NSLog(@"eiv and self.view %@ %@", eiv, self.view);
-    assert (eiv == self.view);
 
     self.name = NO_NAME;
     self.description = NO_DESCRIPTION;
@@ -65,7 +62,7 @@
     eventDesc = nil;
 
     logDesc = logDescVal;
-
+    
     return self;
 }
 
@@ -92,7 +89,6 @@
 
     self.description = [NSString stringWithCString:eventDesc->Description()
 					  encoding:NSASCIIStringEncoding];
-    self.description = [NSString stringWithString:description];
 
     // Initialize args
     args = [[NSMutableArray alloc] init];
@@ -119,7 +115,7 @@
     if (value == NULL)
     {
 	// Initialize value and show the table and box
-	NSTableView *tableView = eiv.table;
+	NSTableView *tableView = [(EventInfoView *)[self view] table];
 	[tableView setHidden:NO];
     }
 
@@ -133,14 +129,13 @@
 	self.args = nil;
 	self.time = @"";
 	
-	[eiv.table setHidden:YES];
+	[[(EventInfoView *)[self view] table] setHidden:YES];
     }
     else // Value is already set, and e is a new value
     {
 	[self setValueNotNull:e];
     }
-    NSString *S = e ? [NSString stringWithCString:eventDesc->Description() encoding:NSASCIIStringEncoding] : NO_NAME ;
-    self.name = [NSString stringWithString:S];
+    self.name = e ? [NSString stringWithCString:eventDesc->Description() encoding:NSASCIIStringEncoding] : NO_NAME ;
     [table reloadData];
  //   NSLog(@"table is %@", table);
     self.view.needsDisplay = YES;
@@ -151,17 +146,17 @@
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)t
 {
-    if (eiv == NULL)
+    if ([self view] == NULL)
     {
-//	NSLog(@"EventInfoController: asked for numberOfRowsInTableView before eiv was initialized");
+//	NSLog(@"EventInfoController: asked for numberOfRowsInTableView before view was initialized");
 	return 0; //< Is this okay, not okay???!?!?
     }
-    if (eiv.table == NULL)
+    if ([(EventInfoView *)[self view] table] == NULL)
     {
-//	NSLog(@"EventInfoController: asked for number of rows in table when eiv was initialized but one of its components was not");
+//	NSLog(@"EventInfoController: asked for number of rows in table when view was initialized but one of its components was not");
 	return 0; //< ??!??!?
     }
-    assert (t == eiv.table);
+    assert (t == [(EventInfoView *)[self view] table]);
     
     if (value == NULL) return 0;
     assert (value != nil);
@@ -177,7 +172,7 @@
 	objectValueForTableColumn:(NSTableColumn *)c
 	row:(NSInteger)i
 {
-    assert ( t == eiv.table );
+    assert (t == [(EventInfoView *)[self view] table]);
     assert (value != nil);
     assert (eventDesc != nil);
     assert (args != nil);
@@ -211,42 +206,4 @@
 
 }
 
-
-
-
 @end
-
-
-
-
-
-/*  // UNUSED CODE SECTION
-- (void)setEvent:(event *)valueVal withEventDesc:(EventDesc *)eventDesc
-{
-    assert (valueVal != nil);
-    
-    value = valueVal;
-    [self.representedObject setHidden:false];
-    
-    struct struct_log_event *v = &value->value;
-    
-    self.name = [NSString stringWithCString:eventDesc->Name()
-				   encoding:NSASCIIStringEncoding];
-    self.name = [NSString stringWithString:name];
-    self.description = [NSString stringWithCString:eventDesc->Description()
-					  encoding:NSASCIIStringEncoding];
-    self.description = [NSString stringWithString:description];
-    
-    self.arguments = [[NSMutableArray alloc] init];
-    for (int i = 0; i < eventDesc->NArgs(); ++i)
-    {
-	// ArgDesc *argDesc = eventDesc->GetArgDesc(i)
-	[arguments addObject:
-	 [[EventArg alloc] initWithArgDesc:*eventDesc->GetArgDesc(i)
-			       andArgValue:eventDesc->GetArg(v, i)]
-	 ];
-    }
-}
-
-
-*/

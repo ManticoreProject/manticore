@@ -26,8 +26,9 @@ struct LogFileDesc;
 
     struct LogFileDesc *desc; ///< The description of this file
 
+#ifdef GO_WAY_SLOW_TO_CHECK_FOR_DUPLICATE_BLOCK_PROBLEM
     NSMutableArray *first_event_times;
-
+#endif
 
     uint64_t start; ///< The start of the log, according to the log file
     uint64_t firstTime; ///< The time the first event in the log file was logged
@@ -52,9 +53,11 @@ struct LogFileDesc;
 - (LogData *)initWithFilename:(NSString *)filename
 	       andLogFileDesc:(struct LogFileDesc *)logDesc;
 
-- (uint64_t)start;
-- (uint64_t)firstTime;
-- (uint64_t)lastTime;
+
+@property (readonly) uint64_t start;
+@property (readonly) uint64_t firstTime;
+@property (readonly) uint64_t lastTime;
+
 
 @property (readonly) NSArray *allStates;
 @property (readonly) NSArray *dependentDetails;

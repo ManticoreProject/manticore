@@ -1,4 +1,4 @@
-structure A = Array64
+structure A = Array
 
 val sub = A.sub
 

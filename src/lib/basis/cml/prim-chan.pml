@@ -152,7 +152,7 @@ structure PrimChan (*: sig
 	    end
 	  ;
 
-	define inline @chan-new (arg : unit / exh : exh) : chan_rep =
+	define inline constr @chan-new (arg : unit / exh : exh) : chan_rep =
 	    let ch : chan_rep = alloc(0, nil, nil, nil, nil)
 	    let ch : chan_rep = promote (ch)
 	    return (ch)

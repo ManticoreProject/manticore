@@ -6,17 +6,16 @@
 
 #import <Cocoa/Cocoa.h>
 struct TaggedDetail_struct;
-//#import "LogView.h"
-//#import "LogData.h"
+
 @class LogView;
 @class LogData;
 @class OutlineViewDataSource;
-@class TimeDisplay;
 @class DetailInfoController;
 @class EventShape;
 @class GroupFilter;
 @class Summary;
 @class SummaryView;
+@class ViewController;
 struct LogFileDesc;
 
 /// Represents an interval of time in the log file
@@ -45,19 +44,21 @@ enum ZoomLevel {
 
     IBOutlet NSOutlineView *outlineView; ///< The view which allows the user to filter events.
     IBOutlet OutlineViewDataSource *outlineViewDataSource; ///< The model object for outlineView
+    
+    IBOutlet ViewController *viewController; ///<Controller for assorted view tasks
 
     DetailInfoController *detailInfoController; ///< A helper controller object to manage a DetailInfoView
-    IBOutlet NSView *detailInfoTarget; ///< A dummy view to act as a placeholder in InterfaceBuilder
 
     IBOutlet NSDrawer *drawer; ///< The drawer in which to place outlineView
 
     /// The time interval of the log file which will be displayed
     struct LogInterval *logInterval;
+    /// The total time interval of the log file
+    struct LogInterval *maxLogInterval;
 
     /// Property to be manipulated in InterfaceBuilder
     /// bound to the height of the horizontal scrollbar of scrollView
     float horizontalPosition;
-    IBOutlet TimeDisplay *timeDisplay; ///< View to print times on top of logView
 
     BOOL enabled; ///< Whether or not self is ready to display data, used in initializations
 
@@ -66,14 +67,12 @@ enum ZoomLevel {
     IBOutlet NSPanel *infoPanel; ///< Panel to contain the DetailInfoView
 
     Summary *summary; ///< Model object to hold summary data about the log file
-    SummaryView *summaryView; ///< View object to draw data held in summary
-    IBOutlet NSView *summaryViewTarget; ///< A dummy view to act as a placeholder in InterfaceBuilder
+    IBOutlet SummaryView *summaryView; ///< View object to draw data held in summary
 }
 
 
 - (struct LogFileDesc *)logDesc;
 
-@property (readonly) TimeDisplay *timeDisplay;
 @property (readwrite, assign) float horizontalPosition;
 @property (readonly) NSString *filename;
 @property (readwrite) double zoomFactor;
@@ -82,9 +81,11 @@ enum ZoomLevel {
 @property (readonly) NSOutlineView *outlineView;
 @property (readonly) OutlineViewDataSource *outlineViewDataSource;
 @property (readwrite, assign) struct LogInterval *logInterval;
+@property (readonly) struct LogInterval *maxLogInterval;
 @property (readonly) struct LogFileDesc *logDesc;
 @property (readonly) BOOL enabled;
 @property (readonly) GroupFilter *filter;
+@property (readonly) ViewController *viewController;
 
 /// Cause logView to render the data in LogData
 - (void)flush;
@@ -121,5 +122,6 @@ enum ZoomLevel {
 
 /// Have the DetailInfoView display d
 - (void)displayDetail:(EventShape *)d;
+- (IBAction)showDetailWindow:(id)sender;
 
 @end

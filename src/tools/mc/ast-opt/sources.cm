@@ -28,6 +28,7 @@ Library
   structure Unpar
   structure Future1
   structure ParrLitToRope
+  structure JFPTranslatePCase
 
 is
 
@@ -48,6 +49,7 @@ is
   pval-to-future.sml
   elaborate.sml
   hash.sml
+  monomorphise.sml
   nester.sml
   rope.sml
   test-utils.sml
@@ -59,3 +61,5 @@ is
   future1.sml
   parr-lit-to-rope.sml
   lookup-infix-ops.sml
+  jfp-translate-pcase.sml
+

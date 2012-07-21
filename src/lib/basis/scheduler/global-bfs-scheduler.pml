@@ -35,7 +35,7 @@ structure GlobalBFSScheduler (* :
 		    let reset : bool = apply waitFn ()
                     do case reset
 			of true =>
-			   do SchedulerAction.@sleep (300000000:long)
+			   do SchedulerAction.@sleep (1000000:long)
                            return ()
 			 | false =>
 			   return()
@@ -52,6 +52,10 @@ structure GlobalBFSScheduler (* :
 	       | PT.PREEMPT(k : PT.fiber) =>
 		 let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
 		 let _ : vproc = SchedulerAction.@yield-in-atomic (self)
+		 throw run (thd)
+	       | PT.BLOCK (k : PT.fiber) =>
+		 let thd : ImplicitThread.thread = ImplicitThread.@capture (k / exh)
+		 let _ : vproc = SchedulerAction.@block-in-atomic (self)
 		 throw run (thd)
 	       | _ => 
 		 throw exh (Match)
@@ -73,7 +77,7 @@ structure GlobalBFSScheduler (* :
 	    do LockedQueue.@enqueue-from-atomic (readyQ, thd)
             do SchedulerAction.@atomic-end (vp)
 	    return (UNIT)
-        fun removeFn (thd : ImplicitThread.thread / exh : exh) : bool = return (false)
+        fun removeFn (thd : ImplicitThread.thread / exh : exh) : Option.option = return (Option.NONE)
 	let group : ImplicitThread.work_group = 
 		ImplicitThread.@new-work-group (uid,
 						spawnFn,

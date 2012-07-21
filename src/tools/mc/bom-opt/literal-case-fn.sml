@@ -122,7 +122,13 @@ functor LiteralCaseFn (C : CASE_DOMAIN) :> sig
 	  in
 	    if ((nCases >= minBinSearchNum) andalso useBinarySearch) 
 (* NOTE: eventually, we need to check for using a jump table *)
-	      then genBinarySearch (arg, nCases, arcs, default)
+	      then let
+                    val dfltCont = BV.new ("kDflt", BTy.T_Cont([]))
+                    val fb = B.mkLambda {f=dfltCont, params=[], exh=[], body=default}
+                    val default' = B.mkThrow (dfltCont, [])
+                in
+                    B.mkCont(fb, genBinarySearch (arg, nCases, arcs, default'))
+                end
 	      else genLinearSearch (arg, arcs, default)
 	  end
 

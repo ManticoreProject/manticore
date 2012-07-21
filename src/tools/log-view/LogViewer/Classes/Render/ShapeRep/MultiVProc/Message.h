@@ -22,7 +22,8 @@
 }
 
 @property (readonly) event *sender;
-@property (readonly) event * receiver;
+@property (readonly) event *receiver;
+@property (readonly) NSBezierPath *path;
 
 
 ///Initialize
@@ -33,6 +34,14 @@
 			toPoint:(NSPoint)p2
 			 sender:(event *)s
 		       receiver:(event *)r;
+
+- (Message *)initArrowFromPoint:(NSPoint)p1
+			toPoint:(NSPoint)p2
+			  color:(NSColor *)c
+			 sender:(event *)s
+		       receiver:(event *)r;
+
+
 ///Initialize
 /*! initialize
  \param p1 the point where the arrow starts

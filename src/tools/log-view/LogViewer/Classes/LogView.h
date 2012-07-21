@@ -36,6 +36,13 @@
     IBOutlet CustomSplitView *splitView; ///< The background view, and the view that contains the BandViews
     IBOutlet MessageView *messageView; ///< The foreground view, and the view that displays dependent events
     IBOutlet NSScrollView *scrollView; ///< The scroll view containing this LogView
+    IBOutlet NSTextField *timeUnderMouse; ///< The text field displaying the time under the mouse
+    
+    NSTrackingArea *trackingArea; ///< Tracking area for picking up MouseMoved events'
+    NSPoint mouseLoc; ///< Where was the mouse last time we got a mouseMoved?
+    
+    EventShape *selectedEvent; ///< The last event that the user selected
+    BandView *selectedBand; ///< The band that the above event lives on, or NULL
 
     NSMutableArray *bands;
     CGFloat band_height;
@@ -47,6 +54,8 @@
     BOOL enabled;
 
     NSMutableArray *ticks; ///< Array of NSNumbers of times at which to draw tick marks
+    
+    uint64_t rounding; ///< rounding number for displaying time values
 
 }
 
@@ -57,7 +66,11 @@
 @property (readonly) NSArray *ticks;
 @property (readonly) CustomSplitView *splitView;
 @property (readwrite, assign) NSScrollView *scrollView;
+@property (readonly) MessageView *messageView;
 @property (readwrite, assign) CGFloat timeTick;
+@property (readonly) NSPoint mouseLoc;
+@property (readonly) uint64_t rounding;
+@property (readonly) EventShape *selectedEvent;
 
 /// Main shape creation function
 /**
@@ -78,6 +91,9 @@
 	    atZoomLevel:(enum ZoomLevel)zoomLevel
 	    fromLogData:(LogData *)logData
 	     filteredBy:(GroupFilter *)filter;
+
+///< Call when we've determined that the user has selected a new event.
+- (void)didSelectEvent:(EventShape *)event fromBand:(BandView *)band;
 
 - (void)bigTickAt:(CGFloat)t;
 
