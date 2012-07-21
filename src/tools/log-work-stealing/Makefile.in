@@ -1,0 +1,79 @@
+# Makefile
+#
+# COPYRIGHT (c) 2007 Manticore project. (http://manticore.cs.uchicago.edu)
+# All rights reserved.
+#
+# @configure_input@
+#
+
+#### Start of system configuration section. ####
+
+#
+# directories for the install target
+#
+PREFIX =		@prefix@
+INSTALL_BINDIR =	$(PREFIX)/bin
+INSTALL_HEAPDIR =	$(INSTALL_BINDIR)/.heap
+INSTALL_LIBDIR =	$(PREFIX)/lib
+INSTALL_INCDIR =	$(PREFIX)/include
+
+#
+# directories for the local-install target
+#
+SRCDIR =	@MANTICORE_ROOT@/src
+LIBDIR =	@MANTICORE_ROOT@/lib
+BINDIR =	@MANTICORE_ROOT@/bin
+HEAPDIR =	$(BINDIR)/.heap
+
+INSTALL =	@INSTALL@
+SHELL =		@SHELL@
+@SET_MAKE@
+
+CC =		@CC@
+CFLAGS =	@CFLAGS@
+CXX =		@CXX@
+CXXFLAGS =	@CXXFLAGS@
+LDFLAGS =	
+CPPFLAGS =	-I. -I../../include -I../log-common
+
+#### End of system configuration section. ####
+
+TARGET =	log-work-stealing
+
+VPATH =		../log-common
+
+C_SRCS =	json.c JSON_parser.c
+CXX_SRCS =	log-work-stealing.cxx load-log-desc.cxx event-desc.cxx log-desc.cxx
+OBJS =		$(patsubst %.c,%.o,$(C_SRCS)) $(patsubst %.cxx,%.o,$(CXX_SRCS))
+
+build:		$(TARGET)
+
+$(TARGET):	$(OBJS) ../../include/log-file.h ../../include/log-events.h
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJS)
+
+%.o: %.cxx
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+
+local-install: $(TARGET)
+
+install: $(TARGET)
+
+#################### Cleanup ####################
+
+CLEAN_SUBDIRS =		$(SUBDIRS)
+CLEAN_FILES =
+DISTCLEAN_FILES =	include/manticore-config.h
+DEVCLEAN_FILES =
+
+include @MANTICORE_MKDIR@/clean-rules.gmk
+
+.PHONY:		clean
+
+clean:
+	rm -rf $(OBJS) $(TARGET)
+	rm -rf *.dSYM
+
+local-install:
+
+install:
+
