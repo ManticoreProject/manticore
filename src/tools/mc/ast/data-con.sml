@@ -102,7 +102,7 @@ structure DataCon : sig
 
     fun argTypeOf' (DCon{owner as Types.Tyc{params, ...}, argTy, ...}, args) = (
 	  case argTy
-	   of NONE => NONE
+	   of NONE => NONE (* nullary constructor *)
 	    | SOME ty => SOME(TypeUtil.apply(AST.TyScheme(params, ty), args))
 	  (* end case *))
 
