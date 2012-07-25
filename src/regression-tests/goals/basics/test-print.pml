@@ -1,0 +1,11 @@
+fun prFmt (msg, fmt, x) = print(msg ^ (fmt x) ^ "\n");
+val _ = print "a printing test\n";
+val _ = prFmt("an integer: ", Int.toString, 42);
+val _ = prFmt("a negative integer: ", Int.toString, ~17);
+val _ = prFmt("a long: ", Long.toString, 9999999);
+val _ = prFmt("a negative long: ", Long.toString, ~133);
+val _ = prFmt("a float: ", Float.toString, 0.01);
+val _ = prFmt("a negative float: ", Float.toString, ~3.1415);
+val _ = prFmt("a double: ", Double.toString, 0.01);
+val _ = prFmt("a negative double: ", Double.toString, ~3.1415);
+val _ = print "done\n"

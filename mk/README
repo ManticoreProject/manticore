@@ -1,0 +1,3 @@
+This directory contains common makefile rules for inclusion in
+other makefiles.
+

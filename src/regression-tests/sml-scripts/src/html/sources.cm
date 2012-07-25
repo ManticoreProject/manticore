@@ -1,0 +1,14 @@
+Library 
+
+  signature MINI_HTML
+  structure MiniHTML
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+
+  doc.sml
+  tag-language.sml
+  mini-html.sig
+  mini-html.sml

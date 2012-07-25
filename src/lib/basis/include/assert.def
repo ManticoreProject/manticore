@@ -1,0 +1,34 @@
+(* assert.def
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * C-style assert.
+ *)
+
+#ifndef _ASSERT_DEF_
+#define _ASSERT_DEF_
+
+#ifdef NDEBUG
+#  define assert(check)	return()
+#  define assert_fail() return()
+#  define pml_assert(check) ()
+#else
+#define _QUOTE(x) #x
+#define QUOTE(x) _QUOTE(x)
+#  define assert(check)							        \
+	if check							        \
+	  then return ()				  		        \
+	  else do ccall M_AssertFail (QUOTE(check), QUOTE(PML_FILE), __LINE__)	\
+	    return ()                                                   
+
+#  define assert_fail()                                                         \
+               ccall M_AssertFail (QUOTE(check), QUOTE(PML_FILE), __LINE__)	\
+
+#  define pml_assert(check)						        \
+	if check							        \
+	  then ()  				  		                \
+	  else Debug.assertFail (QUOTE(check), QUOTE(PML_FILE), __LINE__)
+#endif
+
+#endif /*! _ASSERT_DEF_ */

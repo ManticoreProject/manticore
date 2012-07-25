@@ -1,0 +1,42 @@
+\documentclass[11pt]{article}
+
+\input{../common/common-defs}
+\usepackage{graphicx}
+
+\title{The Manticore GC}
+\author{The Manticore Group}
+\date{Draft of \today}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+This document describes the design and implementation of
+the Manticore garbage collector, as well as the representation
+of heap objects and the heap data structures.
+
+\section{Object layout}
+Heap objects consist of one or more pointer-sized words with
+a pointer-sized header.
+
+\section{Heap layout}
+Each vproc has a local heap and a dedicated chunk of memory in the
+global heap.
+
+\section{Minor GC}
+
+\begin{figure}[tp]
+  \begin{center}
+    \includegraphics[scale=0.5]{pictures/gc-minor-gc}
+  \end{center}%
+  \caption{Minor GC}
+  \label{fig:minor-gc}
+\end{figure}%
+
+\section{Major GC}
+
+\section{Object promotion}
+
+\section{Global GC}
+
+\end{document}  
