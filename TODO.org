@@ -1,0 +1,36 @@
+** Separate out the frontend
+X Remove everything after SXML
+
+** Combine frontends
+X Push the MLton frontend sources into the src/tools/mc directory
+X Get Manticore running the parse->Sxml chain
+X Bring the mlton/basis-library into lib/basis
+X Bring over the ML-ANTLR version of the grammar from the mlton-antlr branch
+
+** Tie the compilers together
+Convert SXML to BOM
+X Disable everything Manticore before BOM
+By SXML, the code has been wrapped with "return 1"; top-level exception handler; signals; threading. Remove.
+Inline BOM needs to be type-specialized at each of its monomorphic inline points.
+
+** Questions?
+Vectors (immutable) in MLton are actually arrays (mutable) cast in unsafe code.
+We may need to support returning ML types from C functions. Or wrap in _primcode.
+
+** Build more stuff
+Stub in the C functions required from mlton/runtime/basis
+Just importing the C code should be fine; skip export of ML code and Windows support
+
+** Initial test: basic SML
+Run simple SML programs through the the full compiler
+Maybe get the mlton/regression & mlton/benchmark directories running
+
+** Later
+Begin integrating Manticore language features into the MLton frontend
+Add Manticore basis extensions into the library (e.g. Image)
+Add Manticore regression tests to the regression library
+Generate constants from configure
+Merge the two different types of compiler controls
+
+** Much later
+Manticore benchmarks

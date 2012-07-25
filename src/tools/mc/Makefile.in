@@ -32,9 +32,16 @@ SHELL =		@SHELL@
 
 INSTALL_SMLNJ_WRAPPER =	@INSTALL_SMLNJ_WRAPPER@
 ML_BUILD =		@ML_BUILD@
-ML_BUILD_FLAGS =	-Ctdp.instrument=true \$$smlnj-tdp/back-trace.cm
+ML_BUILD_FLAGS =	
 ML_MAKEDEPEND =		@ML_MAKEDEPEND@
 ML_MAKEDEPEND_FLAGS =
+
+MLLEX = 	@MLLEX@
+ML_ULEX =	@ML_ULEX@
+ML_ANTLR = 	@ML_ANTLR@
+MLYACC =	@MLYACC@
+MLTON =		@MLTON@
+MLTON_FLAGS =	-verbose 1
 
 #### End of system configuration section. ####
 
@@ -42,6 +49,7 @@ PROGRAM =		pmlc
 TARGET =		@TARGET@
 HEAP_IMAGE =		$(PROGRAM).@SMLNJ_HEAP_SUFFIX@
 ROOT_CM =		driver/$(TARGET).cm
+ROOT_MLB =		driver/$(TARGET).mlb
 
 CM_FILES =		ast-opt/sources.cm \
 			ast/sources.cm \
@@ -68,7 +76,19 @@ CM_FILES =		ast-opt/sources.cm \
 			prim/sources.cm \
 			translate/sources.cm \
 			typechecker/sources.cm \
+			../../lib/mlton/sources.cm \
+			mlton/sources.cm \
 			$(ROOT_CM)
+
+PARSER_OUTPUT := \
+	mlb/mlb.lex.sml \
+	mlb/mlb.grm.sml \
+	parser/manticore.lex.sml \
+	parser/manticore.grm.sml \
+	mlton/front-end/ml.lex.sml \
+	mlton/front-end/ml.grm.sml \
+	mlton/front-end/mlb.lex.sml \
+	mlton/front-end/mlb.grm.sml
 
 .PHONY:		build
 build:		$(HEAP_IMAGE) test/$(PROGRAM)
@@ -79,6 +99,29 @@ test/$(PROGRAM):	$(HEAP_IMAGE)
 $(HEAP_IMAGE):
 	$(ML_BUILD) $(ML_BUILD_FLAGS) $(ROOT_CM) Main.main $(PROGRAM)
 	touch $(HEAP_IMAGE)
+
+mlb/%.lex.sml: mlb/%.lex
+	$(ML_ULEX) $<
+
+mlb/%.grm.sig mlb/%.grm.sml: mlb/%.grm
+	$(ML_ANTLR) $<
+
+parser/%.lex.sml: parser/%.lex
+	(cd parser ; $(ML_ULEX) $(<F))
+
+parser/%.grm.sig parser/%.grm.sml: parser/%.grm
+	(cd parser ; $(ML_ANTLR) $(<F))
+
+mlton/front-end/%.lex.sml: mlton/front-end/%.lex
+	$(MLLEX) $<
+
+mlton/front-end/%.grm.sig mlton/front-end/%.grm.sml: mlton/front-end/%.grm
+	$(MLYACC) $<
+
+
+.PHONY:		mlton
+mlton:	$(PARSER_OUTPUT)
+	$(MLTON) -output $(PROGRAM) $(MLTON_FLAGS) $(ROOT_MLB)
 
 # the following rule forces rerunning of ml-antlr if one of the inputs
 # changes.
@@ -93,7 +136,9 @@ parser/manticore.grm:	parser/bom.grm parser/sml.grm
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),devclean)
 ifneq ($(MAKECMDGOALS),distclean)
+ifneq ($(MAKECMDGOALS),mlton)
 sinclude .depend
+endif
 endif
 endif
 endif
@@ -113,6 +158,8 @@ CLEAN_SUBDIRS =
 CLEAN_FILES =		$(HEAP_IMAGE) \
 			*/*.grm.sml \
 			*/*.lex.sml \
+			mlton/*/*.grm.sml \
+			mlton/*/*.lex.sml \
 			.depend
 
 DISTCLEAN_FILES =	codegen/group.cm \

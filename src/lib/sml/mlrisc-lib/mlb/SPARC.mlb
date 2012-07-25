@@ -1,0 +1,538 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l38 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb $(SML_LIB)/basis/unsafe.mlb
+    end
+  basis l136 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l4 = 
+    bas
+      (* $MLRISC.cm(=(proxyLib.cm):.)/MLRISC.cm =??=> *) MLRISC.mlb
+    end
+  basis l46 = 
+    bas
+      (* $Control.cm(=(proxyLib.cm):.)/Control.cm =??=> *) Control.mlb
+    end
+  basis l30 = 
+    bas
+      (* $Lib.cm(=(proxyLib.cm):.)/Lib.cm =??=> *) Lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      signature gs_0 = CONTROL_FLOW_GRAPH
+   end
+   local
+      open l4
+   in
+      signature gs_1 = MLTREE_STREAM
+   end
+   local
+      open l4
+   in
+      signature gs_2 = MLTREE
+   end
+   local
+      open l4
+   in
+      signature gs_3 = REGION
+   end
+   local
+      open l4
+   in
+      signature gs_4 = CONSTANT
+   end
+   local
+      open l4
+   in
+      signature gs_5 = CELLS_BASIS
+   end
+   local
+      open l4
+   in
+      structure gs_6 = CellsBasis
+   end
+   local
+      open l4
+   in
+      structure gs_7 = Label
+   end
+   local
+      open l30
+   in
+      structure gs_8 = Annotations
+   end
+   local
+      open l4
+   in
+      functor gs_9 = Cells
+   end
+   local
+      open l38
+   in
+      structure gs_10 = Int
+   end
+   local
+      open l4
+   in
+      signature gs_11 = CELLS
+   end
+   local
+      open l46
+   in
+      signature gs_12 = MLRISC_ERROR_MSG
+      structure gs_13 = MLRiscErrorMsg
+   end
+   local
+      signature CELLS = gs_11
+      functor Cells = gs_9
+      structure CellsBasis = gs_6
+      structure Int = gs_10
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      ../sparc/instructions/sparcCells.sml
+   in
+      signature gs_14 = SPARCCELLS
+      structure gs_15 = SparcCells
+   end
+   local
+      structure Annotations = gs_8
+      signature CELLS_BASIS = gs_5
+      signature CONSTANT = gs_4
+      structure CellsBasis = gs_6
+      structure Label = gs_7
+      signature MLTREE = gs_2
+      signature REGION = gs_3
+      signature SPARCCELLS = gs_14
+      structure SparcCells = gs_15
+      ../sparc/instructions/sparcInstr.sml
+   in
+      signature gs_16 = SPARCINSTR
+      functor gs_17 = SparcInstr
+   end
+   local
+      ../sparc/instructions/sparcinstr-ext.sml
+   in
+      structure gs_18 = SparcInstrExt
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_0
+      signature MLTREE = gs_2
+      signature MLTREE_STREAM = gs_1
+      signature SPARCINSTR = gs_16
+      functor SparcInstr = gs_17
+      structure SparcInstrExt = gs_18
+      ../sparc/instructions/sparccomp-instr-ext.sml
+   in
+      signature gs_19 = SPARCCOMP_INSTR_EXT
+      functor gs_20 = SparcCompInstrExt
+   end
+   local
+      open l4
+   in
+      signature gs_21 = INSTRUCTION_EMITTER
+   end
+   local
+      open l38
+   in
+      structure gs_22 = Word8
+   end
+   local
+      open l38
+   in
+      structure gs_23 = Word32
+   end
+   local
+      open l4
+   in
+      signature gs_24 = CODE_STRING
+   end
+   local
+      open l4
+   in
+      signature gs_25 = INSTRUCTION_STREAM
+   end
+   local
+      open l4
+   in
+      signature gs_26 = MLTREE_EVAL
+   end
+   local
+      signature CODE_STRING = gs_24
+      structure CellsBasis = gs_6
+      signature INSTRUCTION_EMITTER = gs_21
+      signature INSTRUCTION_STREAM = gs_25
+      structure Label = gs_7
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE_EVAL = gs_26
+      signature SPARCINSTR = gs_16
+      functor SparcInstr = gs_17
+      structure Word32 = gs_23
+      structure Word8 = gs_22
+      ../sparc/emit/sparcMC.sml
+   in
+      functor gs_27 = SparcMCEmitter
+   end
+   local
+      open l4
+   in
+      functor gs_28 = Shuffle
+   end
+   local
+      open l38
+   in
+      structure gs_29 = Option
+   end
+   local
+      structure CellsBasis = gs_6
+      signature SPARCINSTR = gs_16
+      functor SparcInstr = gs_17
+      ../sparc/instructions/sparcShuffle.sig
+   in
+      signature gs_30 = SPARCSHUFFLE
+   end
+   local
+      structure CellsBasis = gs_6
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      structure Option = gs_29
+      signature SPARCINSTR = gs_16
+      signature SPARCSHUFFLE = gs_30
+      functor Shuffle = gs_28
+      functor SparcInstr = gs_17
+      structure Word32 = gs_23
+      ../sparc/instructions/sparcShuffle.sml
+   in
+      functor gs_31 = SparcShuffle
+   end
+   local
+      open l4
+   in
+      signature gs_32 = DELAY_SLOT_PROPERTIES
+   end
+   local
+      open l4
+   in
+      signature gs_33 = INSN_PROPERTIES
+   end
+   local
+      structure CellsBasis = gs_6
+      signature DELAY_SLOT_PROPERTIES = gs_32
+      signature INSN_PROPERTIES = gs_33
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      structure Option = gs_29
+      signature SPARCINSTR = gs_16
+      functor SparcInstr = gs_17
+      ../sparc/backpatch/sparcDelaySlotProps.sml
+   in
+      functor gs_34 = SparcDelaySlots
+   end
+   local
+      open l4
+   in
+      signature gs_35 = FREQUENCY_PROPERTIES
+   end
+   local
+      open l30
+   in
+      signature gs_36 = PROBABILITY
+      structure gs_37 = Probability
+   end
+   local
+      open l4
+   in
+      structure gs_38 = MLRiscAnnotations
+   end
+   local
+      signature FREQUENCY_PROPERTIES = gs_35
+      structure MLRiscAnnotations = gs_38
+      signature PROBABILITY = gs_36
+      structure Probability = gs_37
+      signature SPARCINSTR = gs_16
+      functor SparcInstr = gs_17
+      ../sparc/instructions/sparcFreqProps.sml
+   in
+      functor gs_39 = SparcFreqProps
+   end
+   local
+      open l4
+   in
+      signature gs_40 = PSEUDO_OPS_BASIS
+   end
+   local
+      open l4
+   in
+      functor gs_41 = GasPseudoOps
+   end
+   local
+      open l4
+   in
+      functor gs_42 = PseudoOpsBig
+   end
+   local
+      open l136
+   in
+      structure gs_43 = Format
+   end
+   local
+      open l4
+   in
+      structure gs_44 = PseudoOpsBasisTyp
+   end
+   local
+      structure Format = gs_43
+      functor GasPseudoOps = gs_41
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE = gs_2
+      signature MLTREE_EVAL = gs_26
+      signature PSEUDO_OPS_BASIS = gs_40
+      structure PseudoOpsBasisTyp = gs_44
+      functor PseudoOpsBig = gs_42
+      structure Word32 = gs_23
+      ../sparc/flowgraph/sparcGasPseudoOps.sml
+   in
+      functor gs_45 = SparcGasPseudoOps
+   end
+   local
+      open l4
+   in
+      functor gs_46 = MLTreeMult
+   end
+   local
+      open l4
+   in
+      functor gs_47 = MLTreeGen
+   end
+   local
+      open l4
+   in
+      signature gs_48 = MLTREECOMP
+      signature gs_49 = MLTREE_EXTENSION_COMP
+   end
+   local
+      structure CellsBasis = gs_6
+      signature SPARCINSTR = gs_16
+      functor SparcInstr = gs_17
+      ../sparc/mltree/sparcPseudoInstr.sig
+   in
+      signature gs_50 = SPARC_PSEUDO_INSTR
+   end
+   local
+      structure CellsBasis = gs_6
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscAnnotations = gs_38
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREECOMP = gs_48
+      signature MLTREE_EXTENSION_COMP = gs_49
+      functor MLTreeGen = gs_47
+      functor MLTreeMult = gs_46
+      signature SPARCINSTR = gs_16
+      signature SPARC_PSEUDO_INSTR = gs_50
+      functor SparcInstr = gs_17
+      structure Word32 = gs_23
+      ../sparc/mltree/sparc.sml
+   in
+      functor gs_51 = Sparc
+   end
+   local
+      open l38
+   in
+      structure gs_52 = IntInf
+   end
+   local
+      open l38
+   in
+      structure gs_53 = Word
+   end
+   local
+      open l4
+   in
+      signature gs_54 = MLTREE_HASH
+   end
+   local
+      structure CellsBasis = gs_6
+      signature INSN_PROPERTIES = gs_33
+      structure IntInf = gs_52
+      structure Label = gs_7
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE_EVAL = gs_26
+      signature MLTREE_HASH = gs_54
+      structure Option = gs_29
+      signature SPARCINSTR = gs_16
+      functor SparcInstr = gs_17
+      structure Word = gs_53
+      ../sparc/instructions/sparcProps.sml
+   in
+      functor gs_55 = SparcProps
+   end
+   local
+      open l4
+   in
+      signature gs_56 = SDI_JUMPS
+   end
+   local
+      structure CellsBasis = gs_6
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE_EVAL = gs_26
+      signature SDI_JUMPS = gs_56
+      signature SPARCINSTR = gs_16
+      signature SPARCSHUFFLE = gs_30
+      functor SparcInstr = gs_17
+      structure Word32 = gs_23
+      ../sparc/backpatch/sparcJumps.sml
+   in
+      functor gs_57 = SparcJumps
+   end
+   local
+      open l4
+   in
+      signature gs_58 = C_CALLS
+   end
+   local
+      open l4
+   in
+      structure gs_59 = CTypes
+   end
+   local
+      open l38
+   in
+      structure gs_60 = String
+   end
+   local
+      open l38
+   in
+      structure gs_61 = List
+   end
+   local
+      structure CTypes = gs_59
+      signature C_CALLS = gs_58
+      structure Int = gs_10
+      structure List = gs_61
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscAnnotations = gs_38
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE = gs_2
+      signature SPARCCELLS = gs_14
+      structure SparcCells = gs_15
+      structure SparcInstrExt = gs_18
+      structure String = gs_60
+      ../sparc/c-calls/sparc-c-calls.sml
+   in
+      functor gs_62 = Sparc_CCalls
+   end
+   local
+      open l4
+   in
+      signature gs_63 = ASM_FORMAT_UTIL
+      structure gs_64 = AsmFormatUtil
+   end
+   local
+      open l4
+   in
+      signature gs_65 = ASM_STREAM
+      structure gs_66 = AsmStream
+   end
+   local
+      open l38
+   in
+      structure gs_67 = TextIO
+   end
+   local
+      open l4
+   in
+      structure gs_68 = AsmFlags
+   end
+   local
+      signature ASM_FORMAT_UTIL = gs_63
+      signature ASM_STREAM = gs_65
+      structure Annotations = gs_8
+      structure AsmFlags = gs_68
+      structure AsmFormatUtil = gs_64
+      structure AsmStream = gs_66
+      structure CellsBasis = gs_6
+      signature INSTRUCTION_EMITTER = gs_21
+      signature INSTRUCTION_STREAM = gs_25
+      structure Int = gs_10
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature MLTREE_EVAL = gs_26
+      signature SPARCINSTR = gs_16
+      signature SPARCSHUFFLE = gs_30
+      functor SparcInstr = gs_17
+      structure String = gs_60
+      structure TextIO = gs_67
+      structure Word32 = gs_23
+      ../sparc/emit/sparcAsm.sml
+   in
+      functor gs_69 = SparcAsmEmitter
+   end
+   local
+      structure CellsBasis = gs_6
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature SPARCINSTR = gs_16
+      functor SparcInstr = gs_17
+      ../sparc/ra/sparcRewrite.sml
+   in
+      functor gs_70 = SparcRewrite
+   end
+   local
+      open l4
+   in
+      signature gs_71 = ARCH_SPILL_INSTR
+   end
+   local
+      signature ARCH_SPILL_INSTR = gs_71
+      structure CellsBasis = gs_6
+      signature MLRISC_ERROR_MSG = gs_12
+      structure MLRiscErrorMsg = gs_13
+      signature SPARCINSTR = gs_16
+      functor SparcInstr = gs_17
+      functor SparcRewrite = gs_70
+      ../sparc/ra/sparcSpillInstr.sml
+   in
+      functor gs_72 = SparcSpillInstr
+   end
+in
+   signature SPARCCELLS = gs_14
+   signature SPARCCOMP_INSTR_EXT = gs_19
+   signature SPARCINSTR = gs_16
+   signature SPARCSHUFFLE = gs_30
+   signature SPARC_PSEUDO_INSTR = gs_50
+   functor Sparc = gs_51
+   functor SparcAsmEmitter = gs_69
+   structure SparcCells = gs_15
+   functor SparcCompInstrExt = gs_20
+   functor SparcDelaySlots = gs_34
+   functor SparcFreqProps = gs_39
+   functor SparcGasPseudoOps = gs_45
+   functor SparcInstr = gs_17
+   structure SparcInstrExt = gs_18
+   functor SparcJumps = gs_57
+   functor SparcMCEmitter = gs_27
+   functor SparcProps = gs_55
+   functor SparcRewrite = gs_70
+   functor SparcShuffle = gs_31
+   functor SparcSpillInstr = gs_72
+   functor Sparc_CCalls = gs_62
+end
+end
+
+end

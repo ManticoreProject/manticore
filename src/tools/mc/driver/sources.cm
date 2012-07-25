@@ -9,7 +9,7 @@ Library
   functor MainFn
   functor TargetSpecFn
 
-  structure InitialBasis
+(*  structure InitialBasis *)
 
 is
   $/basis.cm
@@ -40,11 +40,12 @@ is
   ../env/sources.cm
   ../ast/sources.cm
   ../prim/sources.cm
-  ../translate/sources.cm
   ../typechecker/sources.cm
+  ../mlton/sources.cm
+  ../mlton/xml/sources.cm
 
   build-executable.sml		(* generated file *)
-  initial-basis.sml
+(*  initial-basis.sml *)
   main-fn.sml
   target-spec-fn.sml
   version-fn.sml

@@ -1,0 +1,235 @@
+
+ann
+  "nonexhaustiveMatch ignore" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l4 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb 
+    end
+  basis l16 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = StringCvt
+   end
+   local
+      open l4
+   in
+      structure gs_1 = List
+   end
+   local
+      structure List = gs_1
+      Glue/match-tree.sml
+   in
+      signature gs_2 = MATCH_TREE
+      structure gs_3 = MatchTree
+   end
+   local
+      open l16
+   in
+      functor gs_4 = ListSetFn
+   end
+   local
+      open l4
+   in
+      structure gs_5 = Char
+   end
+   local
+      open l16
+   in
+      signature gs_6 = ORD_SET
+   end
+   local
+      signature ORD_SET = gs_6
+      FrontEnd/syntax-sig.sml
+   in
+      signature gs_7 = REGEXP_SYNTAX
+   end
+   local
+      structure Char = gs_5
+      structure List = gs_1
+      functor ListSetFn = gs_4
+      signature REGEXP_SYNTAX = gs_7
+      FrontEnd/syntax.sml
+   in
+      structure gs_8 = RegExpSyntax
+   end
+   local
+      signature MATCH_TREE = gs_2
+      structure MatchTree = gs_3
+      structure RegExpSyntax = gs_8
+      structure StringCvt = gs_0
+      BackEnd/engine-sig.sml
+   in
+      signature gs_9 = REGEXP_ENGINE
+   end
+   local
+      open l4
+   in
+      structure gs_10 = Array
+   end
+   local
+      open l4
+   in
+      structure gs_11 = Vector
+   end
+   local
+      open l4
+   in
+      structure gs_12 = Int
+   end
+   local
+      structure Array = gs_10
+      structure Char = gs_5
+      structure Int = gs_12
+      structure List = gs_1
+      signature MATCH_TREE = gs_2
+      structure MatchTree = gs_3
+      signature REGEXP_ENGINE = gs_9
+      structure RegExpSyntax = gs_8
+      structure StringCvt = gs_0
+      structure Vector = gs_11
+      BackEnd/thompson-engine.sml
+   in
+      structure gs_13 = ThompsonEngine
+   end
+   local
+      open l16
+   in
+      functor gs_14 = ListMapFn
+   end
+   local
+      open l4
+   in
+      structure gs_15 = Array2
+   end
+   local
+      open l4
+   in
+      structure gs_16 = TextIO
+   end
+   local
+      open l4
+   in
+      structure gs_17 = ListPair
+   end
+   local
+      structure Array = gs_10
+      structure Array2 = gs_15
+      structure Char = gs_5
+      structure Int = gs_12
+      structure List = gs_1
+      functor ListMapFn = gs_14
+      structure ListPair = gs_17
+      functor ListSetFn = gs_4
+      signature ORD_SET = gs_6
+      structure RegExpSyntax = gs_8
+      structure TextIO = gs_16
+      BackEnd/fsm.sml
+   in
+      signature gs_18 = DFA
+      structure gs_19 = Dfa
+      signature gs_20 = NFA
+      structure gs_21 = Nfa
+   end
+   local
+      signature DFA = gs_18
+      structure Dfa = gs_19
+      signature MATCH_TREE = gs_2
+      structure MatchTree = gs_3
+      signature NFA = gs_20
+      structure Nfa = gs_21
+      signature REGEXP_ENGINE = gs_9
+      structure RegExpSyntax = gs_8
+      structure Vector = gs_11
+      BackEnd/dfa-engine.sml
+   in
+      structure gs_22 = DfaEngine
+   end
+   local
+      signature MATCH_TREE = gs_2
+      structure MatchTree = gs_3
+      structure StringCvt = gs_0
+      Glue/regexp-sig.sml
+   in
+      signature gs_23 = REGEXP
+   end
+   local
+      structure RegExpSyntax = gs_8
+      structure StringCvt = gs_0
+      FrontEnd/parser-sig.sml
+   in
+      signature gs_24 = REGEXP_PARSER
+   end
+   local
+      signature MATCH_TREE = gs_2
+      structure MatchTree = gs_3
+      signature REGEXP = gs_23
+      signature REGEXP_ENGINE = gs_9
+      signature REGEXP_PARSER = gs_24
+      structure RegExpSyntax = gs_8
+      structure StringCvt = gs_0
+      Glue/regexp-fn.sml
+   in
+      functor gs_25 = RegExpFn
+   end
+   local
+      open l4
+   in
+      structure gs_26 = Word8
+   end
+   local
+      structure Char = gs_5
+      structure Int = gs_12
+      structure List = gs_1
+      signature REGEXP_PARSER = gs_24
+      structure RegExpSyntax = gs_8
+      structure StringCvt = gs_0
+      structure Word8 = gs_26
+      FrontEnd/awk-syntax.sml
+   in
+      structure gs_27 = AwkSyntax
+   end
+   local
+      open l4
+   in
+      structure gs_28 = Option
+   end
+   local
+      structure List = gs_1
+      signature MATCH_TREE = gs_2
+      structure MatchTree = gs_3
+      structure Option = gs_28
+      signature REGEXP_ENGINE = gs_9
+      structure RegExpSyntax = gs_8
+      BackEnd/bt-engine.sml
+   in
+      structure gs_29 = BackTrackEngine
+   end
+in
+   structure AwkSyntax = gs_27
+   structure BackTrackEngine = gs_29
+   structure DfaEngine = gs_22
+   signature MATCH_TREE = gs_2
+   structure MatchTree = gs_3
+   signature REGEXP = gs_23
+   signature REGEXP_ENGINE = gs_9
+   signature REGEXP_PARSER = gs_24
+   signature REGEXP_SYNTAX = gs_7
+   functor RegExpFn = gs_25
+   structure RegExpSyntax = gs_8
+   structure ThompsonEngine = gs_13
+end
+end
+
+end

@@ -1,0 +1,24 @@
+(* DO NOT USE.  Only suitable for type-checking purposes. *)
+local
+mlb/ALPHA.mlb
+mlb/AMD64.mlb
+mlb/AMD64-Peephole.mlb
+mlb/CCall.mlb
+mlb/CCall-sparc.mlb
+mlb/CCall-x86-64.mlb
+mlb/CCall-x86.mlb
+mlb/Control.mlb
+mlb/Graphs.mlb
+mlb/HPPA.mlb
+mlb/IA32.mlb
+mlb/IA32-Peephole.mlb
+mlb/Lib.mlb
+mlb/MLRISC.mlb
+mlb/MLTREE.mlb
+mlb/Peephole.mlb
+mlb/PPC.mlb
+mlb/RA.mlb
+mlb/SPARC.mlb
+mlb/StagedAlloc.mlb
+mlb/Visual.mlb
+in end

@@ -15,6 +15,10 @@ structure LoadPaths =
   (* Manticore basis library *)
     val basisDir = "@MANTICORE_BASISDIR@"
 
+    val libDir = OS.Path.getParent basisDir
+
+    val srcDir = OS.Path.getParent libDir
+
     local
       fun join (dir, file) = OS.Path.joinDirFile {dir=dir, file=file}
     in

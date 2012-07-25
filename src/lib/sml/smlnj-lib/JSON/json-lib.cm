@@ -1,0 +1,30 @@
+(* json-lib.cm
+ *
+ * COPYRIGHT (c) 2008 The Fellowship of SML/NJ (http://www.smlnj.org)
+ * All rights reserved.
+ *)
+
+Library
+
+(* DOM-style API (tree based) *)
+  structure JSON
+  structure JSONParser
+  structure JSONPrinter
+
+(* SAX-style API (event based) *)
+  structure JSONStreamParser
+  structure JSONStreamPrinter
+
+is
+
+  $/basis.cm
+  $/smlnj-lib.cm
+  $/ml-lpt-lib.cm
+
+  json.lex : ml-ulex
+  json.sml
+  json-parser.sml
+  json-printer.sml
+  json-stream-parser.sml
+  json-stream-printer.sml
+  json-tokens.sml

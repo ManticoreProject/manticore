@@ -1,0 +1,10 @@
+Library
+
+library(../common/sources.cm) - (
+signature VAR
+structure Error
+)
+
+is
+
+../common/sources.cm

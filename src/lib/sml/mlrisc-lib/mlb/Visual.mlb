@@ -1,0 +1,252 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l23 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb $(SML_LIB)/basis/unsafe.mlb
+    end
+  basis l5 = 
+    bas
+      (* $Control.cm(=(proxyLib.cm):.)/Control.cm =??=> *) Control.mlb
+    end
+  basis l19 = 
+    bas
+      (* $Lib.cm(=(proxyLib.cm):.)/Lib.cm =??=> *) Lib.mlb
+    end
+  basis l12 = 
+    bas
+      (* $Graphs.cm(=(proxyLib.cm):.)/Graphs.cm =??=> *) Graphs.mlb
+    end
+  basis l66 = 
+    bas
+      (* $MLRISC.cm(=(proxyLib.cm):.)/MLRISC.cm =??=> *) MLRISC.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l5
+   in
+      signature gs_0 = MLRISC_CONTROL
+      structure gs_1 = MLRiscControl
+   end
+   local
+      open l12
+   in
+      signature gs_2 = ISOMORPHIC_GRAPH_VIEW
+      structure gs_3 = IsomorphicGraphView
+   end
+   local
+      open l12
+   in
+      structure gs_4 = Graph
+   end
+   local
+      open l19
+   in
+      structure gs_5 = Annotations
+   end
+   local
+      open l23
+   in
+      structure gs_6 = Int
+   end
+   local
+      structure Annotations = gs_5
+      structure Graph = gs_4
+      signature ISOMORPHIC_GRAPH_VIEW = gs_2
+      structure Int = gs_6
+      structure IsomorphicGraphView = gs_3
+      ../visualization/graphLayout.sml
+   in
+      structure gs_7 = GraphLayout
+   end
+   local
+      structure GraphLayout = gs_7
+      ../visualization/graphDisplay.sig
+   in
+      signature gs_8 = GRAPH_DISPLAY
+   end
+   local
+      open l23
+   in
+      structure gs_9 = String
+   end
+   local
+      open l23
+   in
+      structure gs_10 = List
+   end
+   local
+      signature GRAPH_DISPLAY = gs_8
+      structure Graph = gs_4
+      structure GraphLayout = gs_7
+      structure Int = gs_6
+      structure List = gs_10
+      structure String = gs_9
+      ../visualization/daVinci.sml
+   in
+      structure gs_11 = daVinci
+   end
+   local
+      signature GRAPH_DISPLAY = gs_8
+      structure Graph = gs_4
+      structure GraphLayout = gs_7
+      structure Int = gs_6
+      structure String = gs_9
+      ../visualization/vcg.sml
+   in
+      structure gs_12 = VCG
+   end
+   local
+      signature GRAPH_DISPLAY = gs_8
+      structure Graph = gs_4
+      structure GraphLayout = gs_7
+      structure Int = gs_6
+      structure String = gs_9
+      ../visualization/dot.sml
+   in
+      structure gs_13 = Dot
+   end
+   local
+      structure Dot = gs_13
+      signature GRAPH_DISPLAY = gs_8
+      signature MLRISC_CONTROL = gs_0
+      structure MLRiscControl = gs_1
+      structure VCG = gs_12
+      structure daVinci = gs_11
+      ../visualization/allDisplays.sml
+   in
+      structure gs_14 = AllDisplays
+   end
+   local
+      open l23
+   in
+      structure gs_15 = TextIO
+   end
+   local
+      open l23
+   in
+      structure gs_16 = OS
+   end
+   local
+      structure GraphLayout = gs_7
+      ../visualization/graphViewer.sig
+   in
+      signature gs_17 = GRAPH_VIEWER
+   end
+   local
+      signature GRAPH_DISPLAY = gs_8
+      signature GRAPH_VIEWER = gs_17
+      structure Graph = gs_4
+      structure GraphLayout = gs_7
+      structure Int = gs_6
+      signature MLRISC_CONTROL = gs_0
+      structure MLRiscControl = gs_1
+      structure OS = gs_16
+      structure TextIO = gs_15
+      ../visualization/graphViewer.sml
+   in
+      functor gs_18 = GraphViewer
+   end
+   local
+      open l66
+   in
+      structure gs_19 = Label
+   end
+   local
+      open l23
+   in
+      structure gs_20 = Array
+   end
+   local
+      open l23
+   in
+      structure gs_21 = Real
+   end
+   local
+      open l23
+   in
+      structure gs_22 = Math
+   end
+   local
+      open l66
+   in
+      signature gs_23 = INSTRUCTION_EMITTER
+   end
+   local
+      open l66
+   in
+      signature gs_24 = CONTROL_FLOW_GRAPH
+   end
+   local
+      open l19
+   in
+      structure gs_25 = StringOutStream
+   end
+   local
+      open l66
+   in
+      signature gs_26 = ASM_STREAM
+      structure gs_27 = AsmStream
+   end
+   local
+      open l66
+   in
+      signature gs_28 = INSTRUCTIONS
+   end
+   local
+      signature ASM_STREAM = gs_26
+      structure Annotations = gs_5
+      structure AsmStream = gs_27
+      signature INSTRUCTIONS = gs_28
+      signature INSTRUCTION_EMITTER = gs_23
+      structure String = gs_9
+      structure StringOutStream = gs_25
+      ../visualization/mlrisc-format-insn.sml
+   in
+      signature gs_29 = FORMAT_INSTRUCTION
+      functor gs_30 = FormatInstruction
+   end
+   local
+      structure Annotations = gs_5
+      structure Array = gs_20
+      signature CONTROL_FLOW_GRAPH = gs_24
+      signature FORMAT_INSTRUCTION = gs_29
+      functor FormatInstruction = gs_30
+      signature GRAPH_VIEWER = gs_17
+      structure Graph = gs_4
+      structure GraphLayout = gs_7
+      signature INSTRUCTION_EMITTER = gs_23
+      structure Int = gs_6
+      structure Label = gs_19
+      structure List = gs_10
+      signature MLRISC_CONTROL = gs_0
+      structure MLRiscControl = gs_1
+      structure Math = gs_22
+      structure Real = gs_21
+      structure String = gs_9
+      ../visualization/cfgViewer.sml
+   in
+      functor gs_31 = CFGViewer
+   end
+in
+   structure AllDisplays = gs_14
+   functor CFGViewer = gs_31
+   structure Dot = gs_13
+   functor FormatInstruction = gs_30
+   signature GRAPH_DISPLAY = gs_8
+   signature GRAPH_VIEWER = gs_17
+   structure GraphLayout = gs_7
+   functor GraphViewer = gs_18
+   structure VCG = gs_12
+   structure daVinci = gs_11
+end
+end
+
+end

@@ -1,0 +1,23 @@
+Group is
+
+        $/basis.cm
+        $/smlnj-lib.cm
+
+  ../cm/Control.cm
+  ../cm/Lib.cm
+  ../cm/MLRISC.cm
+  ../cm/Graphs.cm
+  ../cm/MLTREE.cm
+  ../cm/RA.cm
+  ../cm/SA.cm
+  ../cm/Visual.cm
+  ../cm/Peephole.cm
+  ../cm/AMD64.cm
+  ../cm/AMD64-Peephole.cm
+      
+	spill-table.sml
+
+	demo-types.sml
+
+	demo-amd64.sml
+	eg-amd64.sml

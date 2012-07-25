@@ -1,0 +1,209 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l18 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb $(SML_LIB)/basis/unsafe.mlb
+    end
+  basis l4 = 
+    bas
+      (* $MLRISC.cm(=(proxyLib.cm):.)/MLRISC.cm =??=> *) MLRISC.mlb
+    end
+  basis l41 = 
+    bas
+      (* $Control.cm(=(proxyLib.cm):.)/Control.cm =??=> *) Control.mlb
+    end
+  basis l67 = 
+    bas
+      (* $Lib.cm(=(proxyLib.cm):.)/Lib.cm =??=> *) Lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      signature gs_0 = MLTREE
+   end
+   local
+      signature MLTREE = gs_0
+      ../mltree/mltree-rewrite.sig
+   in
+      signature gs_1 = MLTREE_REWRITE
+   end
+   local
+      signature MLTREE = gs_0
+      signature MLTREE_REWRITE = gs_1
+      ../mltree/mltree-rewrite.sml
+   in
+      functor gs_2 = MLTreeRewrite
+   end
+   local
+      signature MLTREE = gs_0
+      ../mltree/mltree-fold.sig
+   in
+      signature gs_3 = MLTREE_FOLD
+   end
+   local
+      open l18
+   in
+      structure gs_4 = Word
+   end
+   local
+      open l4
+   in
+      structure gs_5 = CellsBasis
+   end
+   local
+      open l18
+   in
+      structure gs_6 = IntInf
+   end
+   local
+      open l4
+   in
+      structure gs_7 = Label
+   end
+   local
+      open l18
+   in
+      structure gs_8 = String
+   end
+   local
+      open l18
+   in
+      structure gs_9 = List
+   end
+   local
+      open l18
+   in
+      structure gs_10 = Char
+   end
+   local
+      open l41
+   in
+      signature gs_11 = MLRISC_ERROR_MSG
+      structure gs_12 = MLRiscErrorMsg
+   end
+   local
+      open l18
+   in
+      structure gs_13 = Int
+   end
+   local
+      signature MLTREE = gs_0
+      ../mltree/mltree-utils.sig
+   in
+      signature gs_14 = MLTREE_UTILS
+   end
+   local
+      structure CellsBasis = gs_5
+      structure Char = gs_10
+      structure Int = gs_13
+      structure IntInf = gs_6
+      structure Label = gs_7
+      structure List = gs_9
+      signature MLRISC_ERROR_MSG = gs_11
+      structure MLRiscErrorMsg = gs_12
+      signature MLTREE = gs_0
+      signature MLTREE_UTILS = gs_14
+      structure String = gs_8
+      structure Word = gs_4
+      ../mltree/mltree-utils.sml
+   in
+      functor gs_15 = MLTreeUtils
+   end
+   local
+      open l4
+   in
+      signature gs_16 = CONTROL_FLOW_GRAPH
+   end
+   local
+      open l4
+   in
+      signature gs_17 = INSTRUCTION_STREAM
+   end
+   local
+      open l4
+   in
+      signature gs_18 = INSTRUCTIONS
+   end
+   local
+      open l4
+   in
+      signature gs_19 = CELLS
+   end
+   local
+      open l67
+   in
+      structure gs_20 = Annotations
+   end
+   local
+      structure Annotations = gs_20
+      signature CELLS = gs_19
+      signature CONTROL_FLOW_GRAPH = gs_16
+      signature INSTRUCTIONS = gs_18
+      signature INSTRUCTION_STREAM = gs_17
+      ../mltree/instr-gen.sig
+   in
+      signature gs_21 = INSTR_GEN
+   end
+   local
+      signature MLTREE = gs_0
+      signature MLTREE_FOLD = gs_3
+      ../mltree/mltree-fold.sml
+   in
+      functor gs_22 = MLTreeFold
+   end
+   local
+      signature CONTROL_FLOW_GRAPH = gs_16
+      signature INSTRUCTIONS = gs_18
+      signature INSTRUCTION_STREAM = gs_17
+      signature INSTR_GEN = gs_21
+      signature MLRISC_ERROR_MSG = gs_11
+      structure MLRiscErrorMsg = gs_12
+      ../mltree/instr-gen.sml
+   in
+      functor gs_23 = InstrGen
+   end
+   local
+      signature MLTREE = gs_0
+      ../mltree/mltree-simplify.sig
+   in
+      signature gs_24 = MLTREE_SIMPLIFIER
+   end
+   local
+      open l4
+   in
+      signature gs_25 = MLTREE_SIZE
+   end
+   local
+      structure IntInf = gs_6
+      signature MLTREE = gs_0
+      signature MLTREE_SIMPLIFIER = gs_24
+      signature MLTREE_SIZE = gs_25
+      functor MLTreeRewrite = gs_2
+      ../mltree/mltree-simplify.sml
+   in
+      functor gs_26 = MLTreeSimplifier
+   end
+in
+   signature INSTR_GEN = gs_21
+   functor InstrGen = gs_23
+   signature MLTREE_FOLD = gs_3
+   signature MLTREE_REWRITE = gs_1
+   signature MLTREE_SIMPLIFIER = gs_24
+   signature MLTREE_UTILS = gs_14
+   functor MLTreeFold = gs_22
+   functor MLTreeRewrite = gs_2
+   functor MLTreeSimplifier = gs_26
+   functor MLTreeUtils = gs_15
+end
+end
+
+end

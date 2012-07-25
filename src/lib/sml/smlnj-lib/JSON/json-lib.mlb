@@ -1,0 +1,176 @@
+
+ann
+  "nonexhaustiveMatch warn" "redundantMatch warn"
+  "sequenceNonUnit ignore"
+  "warnUnused false" "forceUsed"
+in
+
+local
+  basis l4 = 
+    bas
+      (* $/basis.cm ====> *) $(SML_LIB)/basis/basis.mlb 
+    end
+  basis l19 = 
+    bas
+      (* $/smlnj-lib.cm ====> *) $(SML_LIB)/smlnj-lib/Util/smlnj-lib.mlb
+    end
+  basis l8 = 
+    bas
+      (* $/ml-lpt-lib.cm =??=> *) /Users/mtf/devel/smlnj/smlnj-110.72/lib/ml-lpt-lib.cm/ml-lpt-lib.mlb
+    end
+in
+local
+   $(SML_LIB)/basis/pervasive.mlb
+   local
+      open l4
+   in
+      structure gs_0 = IntInf
+   end
+   local
+      open l8
+   in
+      structure gs_1 = AntlrStreamPos
+   end
+   local
+      open l4
+   in
+      structure gs_2 = TextIO
+   end
+   local
+      open l4
+   in
+      structure gs_3 = String
+   end
+   local
+      open l19
+   in
+      structure gs_4 = UTF8
+   end
+   local
+      open l4
+   in
+      structure gs_5 = Real
+   end
+   local
+      open l4
+   in
+      structure gs_6 = List
+   end
+   local
+      structure IntInf = gs_0
+      structure List = gs_6
+      structure Real = gs_5
+      structure String = gs_3
+      structure UTF8 = gs_4
+      json-tokens.sml
+   in
+      structure gs_7 = JSONTokens
+   end
+   local
+      open l4
+   in
+      structure gs_8 = StringCvt
+   end
+   local
+      open l4
+   in
+      structure gs_9 = LargeReal
+   end
+   local
+      open l4
+   in
+      structure gs_10 = Substring
+   end
+   local
+      open l4
+   in
+      structure gs_11 = Vector
+   end
+   local
+      open l8
+   in
+      structure gs_12 = ULexBuffer
+   end
+   local
+      open l4
+   in
+      structure gs_13 = Word
+   end
+   local
+      structure AntlrStreamPos = gs_1
+      structure IntInf = gs_0
+      structure JSONTokens = gs_7
+      structure LargeReal = gs_9
+      structure List = gs_6
+      structure String = gs_3
+      structure StringCvt = gs_8
+      structure Substring = gs_10
+      structure TextIO = gs_2
+      structure ULexBuffer = gs_12
+      structure UTF8 = gs_4
+      structure Vector = gs_11
+      structure Word = gs_13
+      json.lex.sml
+   in
+      structure gs_14 = JSONLexer
+   end
+   local
+      structure AntlrStreamPos = gs_1
+      structure IntInf = gs_0
+      structure JSONLexer = gs_14
+      structure JSONTokens = gs_7
+      structure TextIO = gs_2
+      json-stream-parser.sml
+   in
+      structure gs_15 = JSONStreamParser
+   end
+   local
+      structure IntInf = gs_0
+      json.sml
+   in
+      structure gs_16 = JSON
+   end
+   local
+      structure AntlrStreamPos = gs_1
+      structure JSON = gs_16
+      structure JSONLexer = gs_14
+      structure JSONTokens = gs_7
+      structure List = gs_6
+      structure TextIO = gs_2
+      json-parser.sml
+   in
+      structure gs_17 = JSONParser
+   end
+   local
+      open l19
+   in
+      structure gs_18 = Format
+   end
+   local
+      structure Format = gs_18
+      structure IntInf = gs_0
+      structure String = gs_3
+      structure TextIO = gs_2
+      json-stream-printer.sml
+   in
+      structure gs_19 = JSONStreamPrinter
+   end
+   local
+      structure JSON = gs_16
+      structure JSONStreamPrinter = gs_19
+      structure List = gs_6
+      structure TextIO = gs_2
+      json-printer.sml
+   in
+      structure gs_20 = JSONPrinter
+   end
+in
+   structure JSON = gs_16
+   structure JSONParser = gs_17
+   structure JSONPrinter = gs_20
+   structure JSONStreamParser = gs_15
+   structure JSONStreamPrinter = gs_19
+end
+end
+
+end
