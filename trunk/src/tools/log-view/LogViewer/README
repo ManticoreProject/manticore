@@ -1,0 +1,231 @@
+LogViewer
+
+author: Korei Klein
+date: 9/4/2009
+
+LogViewer is a tool for displaying and manipulating images of manticore log files.
+Manticore log files end in ".mlg".
+
+The purpose of LogViewer is fivefold:
+    0) to load data from some log files
+    1) display that data
+    2) allow the user to indicate what information about the log files he is interested in
+    3) to display that information for him
+    4) to print log files.
+
+This readme
+    0) describes the overall structure of the source for LogViewer
+    1) explains the important objects which the LogViewer application manipulates
+    2) explains the important relationships between the objects mentioned in 1)
+    3) gives an overview of the functionality which LogViewer implements
+
+LOG FILE FORMAT:
+
+A log file is formatted according to log-file.h.
+A log file describes certain aspects of the execution of a manticore program.
+A manticore program executes on some number (usually 1 - 16) of processors.
+    These processors are called Virtual Processors, or VProcs or VPs.
+A log file contains header information and dynamic events (also called events).
+Each dynamic event belongs to a vproc, and occurs at a time.
+A set of dynamic events satisfying certain properties can define a detail; how this happens is described below.
+
+LOG FILE INTERPRETATION:
+
+A log file by itself is not meaningfull data.
+
+A triple (EventDescription, GroupDescription, LogFile) is meaningfull data
+when EventDescription is a log-events.json file, GroupDescription is a log-view.json file, and LogFile is a log file.
+
+The data in the log-events.json and log-view.json files can be accessed using the classes in the event-desc.hxx and log-desc.hxx header files.
+
+While the events in a log file are determined solely by the log file, the details
+defined by a log file are defined by the log file and by a log-view.json file and by log-events.json file.
+
+    LOG EVENT DESCRIPTIONS / STATIC EVENTS: (event-desc.hxx, log-events.json)
+
+    Each dynamic event in a log file has a unique description in a log-events.json file.
+    One description in a log-events.json file may describe many dynamic events.
+    The description of a dynamic event is also called a Static Event.
+    Using the functions in event-desc.hxx and log-desc.hxx, one can determine the EventDesc
+    which describes a given dynamic event.
+    The EventDesc allows you to find out some interesting information about events:
+	you can find out their arguments
+	you can find out their times
+	you can find out their identifiers ( THIS IS IMPORTANT FOR DEFINING DEPENDENT DETAILS [see below] )
+
+    LOG VIEW DESCRIPTIONS / STATIC GROUPS: (log-desc.hxx, log-view.json)
+
+    log-desc.hxx defines 4 static groups:
+	simple groups
+	interval groups
+	state groups
+	dependent groups
+    According to certain rules (presented below), a set of events may match a static group.
+    Every pair (dynamic-events, static-group) where dynamic-events is a set of dynamic events,
+					  and where static-group is a static-group
+					  and where dynamic-events matches static-group
+	defines a Detail (also called a dynamic group)
+
+	HOW TO DETERMINE IF A SET OF DYNAMIC EVENTS MATCHES A STATIC GROUP:
+
+	All simple, interval, and state details have a corresponding vproc and static group
+
+	dependent details an associated static group, but no associated vproc
+
+	SIMPLE STATIC GROUPS:
+	for each simple group Simp, Simp contains some number of Static-Events StaticEvents
+	    the singleton set {event} matches Simp iff its static event is a member of StaticEvents
+
+	INTERVAL STATIC GROUPS:
+	each interval group Inter, has one start Static Event (StartStatic) and one end Static Event (EndStatic)
+	    the doubleton set {event-a, event-b} matches Inter iff
+		event-a is described by StartStatic and event-b is described by EndStatic
+		and event-a occurs before event-b
+		and event-a and event-b occur in the some vproc
+		and there does not exist an event-c such that
+		    event-c is described by StartStatic or EndStatic
+		    AND
+		    event-a < event-c < event-b (where event are ordered by the time at which they occur)
+
+	STATE STATIC GROUPS:
+	a state static group State contains some number of transition Static Events (which we call transitions)
+	each static state group (along with the log file) defines a partition of all of time into
+	    a finite number of intervals ( (a0, a1), (a1, a2), (a2, a3) ... (an-1, an) )
+	    where each pair (ai, ai+1) defines a new detail
+	    and where a0 is the time at the beginning of the log file
+	    and where an is the time at the end of the log file
+	    and where the other ai are in 1-to-1 correspondence with events
+		which described by static events contained in transitions
+	at a0 the log file is in the start state of State
+	the state of the log file switches from state st to state i at time t when an event e occurs at t
+	    where e is described by a static event statEv which is an element of transitions
+	  the state switches to state i when i = State->NextState(st, statEv)
+	every maximal connected interval of time (mciot) which is all one state defines a detail
+	whichever events defined mciot constitiute a set matching State
+	    that set may contain 2 or 1 elements
+	    OR it may contain 0 elements if there were no events with descriptions in transitions
+	
+	DEPENDENT STATIC GROUPS:
+	a dependent static group Depen has a source static event src, and a destination static group dst
+	a doubleton set {event-a, event-b} matches Depen iff
+	    src is event-a's static event
+	    dst is event-b's static event
+	    event-a and event-b have the same id (id is an argument to of the event, [see above])
+	    NOTE: event-a and event-b may and only may or may not be in the same vproc
+	    ALSO NOTE: for each id of a dependent detail, only one dynamic event of that id may have a source static event
+		(each id has a single source, and some number [possibly 0] of destinations)
+
+    Every detail defined by log-view.json and the log file can potentially be drawn.
+
+
+THE FOLLOWING CLASSES ARE VERY IMPORTANT:
+
+LogDoc: the main controller class
+    0) interacts with the Document Architecture to open log files
+    1) interacts with the user
+    2) manages the interactions between all the various parts of LogViewer
+LogView: the most important view class
+    0) draws pictures of the log file
+    1) reads data from LogData
+    2) Uses BandViews to draw details which aren't dependent
+    3) Uses MessageView to draw details which are dependent
+LogData: the main model class
+    0) reads data from the log file
+    1) stores data in VProc objects (see VProc.h)
+    2) MUST BE EFFICIENT
+	most of the important functionality exported by LogData is implemented in c for efficiency
+	log file may often by BIG.
+	    where BIG could be something like 10GB
+	assume that an entire log file can fit in memory
+	also assume that LogViewer is running on a 64 bit machine when dealing with such big log files
+
+FILE LOADING:
+    the data in the log file, log-view.json, log-events.json flow through the application in the following manner:
+	0) first log-view.json and log-events.json are parsed and interpreted to create a LogFileDesc object (defined in log-desc.hxx)
+		BE CAREFULL not to modify the source for LogFileDesc! It is used by other code.
+	1) LogData (defined in LogData.mm) calls an extraordinary function which loads data from the log file into the
+	    instance variables of the LogData object based on the matching rules defined above
+	2) some of the data in LogData is converted into shapes (see ShapeRep.h) by LogView (defined in LogView.mm)
+	4) LogView and BandView (defined in BandView.mm) render the shapes
+	5) The user interacts with LogViewer according to the logic defined in LogDoc.mm
+	    a) shapes may be rendered many times during step 5
+	    b) no new shapes are created during step 5
+	6) For some reason shapes must be reconstructed, go back to step 2
+
+RENDERING:
+    when LogDoc calls flush, every detail in LogData which isn't filetered (see FILTERING)
+	must be turned into a shape and stored in LogView.
+    Every time LogView or BandView receives the message drawRect, the stored shapes must be renedered.
+
+    There is an affine transformation taking the times of details to the horizontal coordinates on the drawing surface
+    which they correspond to.
+    LogDoc.mm implements this transformation.
+
+    The LogView looks like a black background with vertical lines on it.
+    The left part of the logView represents the earlier times.
+    The right part of the logView represents later times.
+    On top of the logView are BandViews, they look like horizontal bands.
+    The color of the band at a point is determined by the state of the element of the partition defined by
+	one or all of the stategroups.
+	Ideally only one stateGroup should be active at a time, but a way to enforce this restriction has not yet been implemented.
+    Interval Details are drawn as rectangles spanning a certain area of time, their heights should be very different from each other maybe.
+    Simple details are drawn as diamonds at a certain point in time.
+
+    Dependent details are drawn by MessageView as a bunch of arrows which all start at the same spot on one BandView
+	and then branch out, all pointing at spots on different bandviews.
+
+DETAIL INFO:
+    if the user clicks on a shape the detail info panel should display some infomation about that detail (see DetailInfoController.h and friends)
+
+OULINEVIEW AND FILTERING:
+    see OutlineViewDataSource.mm
+    on a sidepanel attached to the main window of LogDoc, there should be an NSOutlineView of all the Static Groups in log-view.json.
+    if the user unchecks one of the checkboxes next to one of these groups, then shapes must be reconstructed, and the details corresponding
+    to the unchecked Static Group should not be displayed.
+
+    Also, the LogDoc has a logInterval instance variable which determines what portion of the LogData (by time) will be displayed.
+    LogView should only draw shapes in this interval.
+    Some of the controls on the logDoc's window allow the user to change the logInterval (by shift/control-clicking, pressing + or -, clicking the NSSegmentedCell)
+	when this happens the logInterval will change and the shapes need to be recomputed [logDoc must make a new call to flush].
+
+TICK MARKS AND TIMES:
+    above the LogView instance is a TimeDisplay object (see TimeDisplay.m)
+    a TimeDisplay is a View which displays times above the tick marks that LogView draws.
+    after LogView draws tick marks, TimeDisplay should draw times above them.
+    TimeDisplay should draw one time at the beginning, one time at the end, and some
+    evenly spaced times in the middle.
+    TimeDisplay dynamicly changes the units it uses to display times based on the
+    interval of time which it must reperesent.
+
+SUMMARY VIEW AND SUMMARY:
+    below the logView is a SummaryView instance which should display summary data
+    describing what happenend in the log.
+    SummaryView is a view object which should take its data from the Summary model object.
+    The Summary model object reads its data from logdata, and the LogDoc controller coordinates
+    the whole process (mostly by calling flush at the right times)
+
+    The implementation currenly displays summary data using a partition based averaging technique:
+	0) first an array of fine pies is created from LogData (see fineSummaryFromLogData in Summary.m)
+	1) then that array is transformed into an array of coarse pies (see coarseSummaryFromLogData in Summary.m)
+	2) the array of coarse pies can then be rendered by the SummaryView.
+
+    The array of pies represents a function f taking a time to to a function g
+	where g is a function taking a state s to something sort of like the proportion
+	    of time some processor had been spending in state s
+    the array of pies represents f, call f by indexing into it, each index i represents a time t
+    the pie at index i represents g, call g by indexing into its array of slices, each index i represents a slice c
+	c represents something sort of like the proportion of time some processor had been spending in a state s
+
+A NOTE ON LANGUAGE AND EXPRESSION:
+    much of the LogView source is expressed in objective-c++,
+    all 3 sublanguages of objective-c++ are used substantially for the following reasons:
+	0) Objective c is suitable for interfacing with the Cocoa libraries which are central to the application
+	1) The code which reads .json files and creates a LogFileDesc to represent static groups and events
+	    is already written is c and c++, and other tools depend on it being in those languages.
+	    The scope of that code is partially outside of this project, so it can't be changed.
+	2) For reasons of efficiency, NSObjects should not be used to to represent dynamic events and dynamic groups (a.k.a. details)
+	    therefore they are coded in c.  The implementation of dynamic events and dynamic groups should be considered highly flexible
+	    where implementations will all strive to be efficient and will probably be coded in c or c++.
+	   Dynamic events and dynamic groups should be implemented efficiently because when LogViewer is used to display log files
+	    of large size (10 GB, 20 GB ...), LogData should not take up to extraordinary an amount of memory, and View objects representing
+	    LogData should be able to quickly read their data from LogData.
