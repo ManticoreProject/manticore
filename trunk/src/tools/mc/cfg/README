@@ -1,3 +1,0 @@
-This directory contains the first-order CPS representation of
-Manticore programs.  This representation is essentially a control-flow
-graph, so we call it CFG.

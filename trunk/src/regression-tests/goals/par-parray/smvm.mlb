@@ -1,5 +1,0 @@
-(* FIXME -- testing infrastructure doesn't know to pick this up *)
-ann "expansion-opt" "pval.cilk5-work-stealing"
-in
-  smvm.pml
-end
