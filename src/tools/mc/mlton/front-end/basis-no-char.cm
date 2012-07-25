@@ -1,7 +1,0 @@
-Library
-
-library(../../../../lib/mlton/sources.cm) - (structure Char)
-
-is
-
-../../../../lib/mlton/sources.cm

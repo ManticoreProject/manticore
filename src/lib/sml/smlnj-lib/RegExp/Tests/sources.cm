@@ -1,8 +1,0 @@
-Group is
-  $/basis.cm
-  $/smlnj-lib.cm
-  ../regexp-lib.cm
-
-  test-fn.sml
-  engines.sml
-

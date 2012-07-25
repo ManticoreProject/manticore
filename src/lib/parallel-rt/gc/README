@@ -1,3 +1,0 @@
-This directory contains a "parallel" implementation of a GC for
-Manticore.  Each vproc has its own local heap, which is managed
-using Appel's "semi-generational" collector.

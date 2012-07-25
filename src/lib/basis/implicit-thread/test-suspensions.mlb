@@ -1,6 +1,0 @@
-
-
-  ann "cpp" "../include/debug.def,../include/assert.def"
-  in
-    test-suspensions.pml
-  end
