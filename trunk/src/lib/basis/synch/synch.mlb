@@ -1,0 +1,19 @@
+(* synch.mlb
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Synchronous operations.
+ *)
+
+  ../sequential/sequential.mlb
+  ../misc/debug.mlb
+  ../runtime/runtime.mlb
+
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  in
+    locked-queue.pml
+    barrier.pml
+    cilk-5-deque.pml
+    spin-wait.pml
+  end

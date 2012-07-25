@@ -1,0 +1,40 @@
+\documentclass[11pt]{article}
+
+\input{../common/common-defs}
+\usepackage{graphicx}
+\usepackage{../common/code}
+
+\title{Manticore Implementation Note \\ Set-once memory}
+\author{The Manticore Group}
+\date{Draft of \today}
+
+\begin{document}
+\maketitle
+
+Set-once memory is a special kind of synchronous memory with the following constraints.
+\begin{itemize}
+\item Multiple fibers can access the memory.
+\item We initialize the memory at most once, during the first <code>set</code> operation.
+\item We spin until the thunk has evaluated.
+\end{itemize}
+
+Our implementation has the following signature. The <code>new</code> operation creates a set-once cell. The <code>get</code> operation obtains the value of the cell. This operation spins if the thunk is already evaluating.
+\begin{centercode}
+  type 'a set_once_mem
+  type 'a thunk = unit -> 'a
+  val new : 'a thunk -> 'a set_once_mem
+  val get : 'a set_once_mem-> 'a
+\end{centercode}
+
+We can completely specify the behavior of set-once memory in terms of futures.
+\begin{centercode}
+  type 'a set_once_mem = 'a future
+  val new = future
+  fun set sm = (
+        case poll sm
+          of NONE => touch sm
+           | SOME v => v
+        (* end case *))
+\end{centercode}
+
+\end{document}

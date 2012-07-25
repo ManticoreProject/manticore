@@ -1,0 +1,42 @@
+(* debug.def
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Debug printing.  These macros are no-ops unless the compiler's debug flag is set.
+ *
+ * Printing for inline BOM
+ *
+ *	PRINT_DEBUG(msg)	-- prints message if "-d" runtime flag was given
+ *	PRINT_MSG(msg)		-- always prints message
+ *	PRINT_PPT()		-- prints file/line info
+ *
+ * Printing for ML code
+ *
+ *	DEBUG(msg)		-- unit-valued expression that prints the message
+ *)
+
+#ifndef _DEBUG_DEF_
+#define _DEBUG_DEF_
+
+#ifndef NDEBUG
+
+#  define _QUOTE(x) #x
+#  define QUOTE(x) _QUOTE(x)
+
+#  define PRINT_DEBUG(msg)	do ccall M_PrintDebugMsg(false, msg, QUOTE(PML_FILE), __LINE__)
+#  define PRINT_MSG(msg)	do ccall M_PrintDebugMsg(true, msg, QUOTE(PML_FILE), __LINE__)
+#  define PRINT_PPT()		do ccall M_PrintDebugMsg(true, "", QUOTE(PML_FILE), __LINE__)
+
+#  define DEBUG(msg)	(Debug.printMsg(msg, QUOTE(PML_FILE), __LINE__))
+
+#else
+
+#  define PRINT_DEBUG(msg)
+#  define PRINT_MSG(msg)
+#  define PRINT_PPT()
+
+#  define DEBUG(msg)	()
+
+#endif /* !NDEBUG */
+#endif /* !_DEBUG_DEF_ */

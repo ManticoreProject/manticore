@@ -1,0 +1,10 @@
+(* initial-basis.mlb
+ *
+ * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+ann "cpp" "../include/runtime-offsets.def"
+in
+  initial-basis.pml
+end
