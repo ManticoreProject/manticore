@@ -1546,10 +1546,6 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 		  val (CFG.E_Select(_,n,t0))::binds = List.foldl mkBinds [] ns
 		  val tmp = newVar x
 		  val binds = (CFG.mkSelect(tmp, n, t0))::binds
-	      (* I am not sure whether this is the correct order of the binds, *)
-	      (* or whether the list should be (not) reversed. *)
-	      (* I think  deeper things should be later in the list. *)
-	      (* No: The head of the list should be the binding for temp. *)
 	      in
 		  (binds, tmp)
 	      end		  
@@ -1602,224 +1598,6 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
                       | CPSTy.K_BOXED => true
                       | _ => false
 
-(*
- * this implements S&A. This will be replacing the mkFunClosure function.
- *)
-(* TODO: Figure out how to properly handle whatMap, whereMap, and baseRegs *)
-(*    fun makeCPS (CPS.MODULE{body, ...}, whatMap, whereMap, baseRegs) = let
-	val changed = ref false
-	fun mergeFVMaps (maps) = let
-	    fun mergeMaps ([], final) = final
-	      | mergeMaps (m::maps, final) =
-		mergeMaps (maps,
-			   (VMap.foldli (fn (v, p as (fut, lut), final) =>
-					    case VMap.find (final, v)
-     					      of NONE => (changed := true; VMap.insert (final, v, p))
-					       | SOME (fut', lut') => (
-						 if (fut < fut' orelse lut > lut')
-						 then (
-						 changed := true;
-						 VMap.insert (final, v, (Int.min (fut, fut'),
-									 Int.max (lut, lut'))))
-						 else final))
-			    final m))
-	in
-	    case maps
-	      of [] => VMap.empty
-	       | [m] => m
-	       | m::ms => mergeMaps(ms,m)
-	end
-	fun mergeRecCalls (recs, fMap) = (
-	    case recs
-	      of g::gs => (case VMap.find (fMap, g)
-			     of SOME (futg, lutg) => let
-				    val newMap = VMap.map (fn p => (futg, lutg)) (getFVMap g)
-				    val mergedMap = mergeFVMaps([fMap, newMap])
-				  in
-				    mergeRecCalls (gs, mergedMap)
-				  end
-			      | NONE => mergeRecCalls (gs, fMap))
-	       | [] => fMap)
-        fun transClos (fbs, recs) = (
-	    List.app (fn fb as C.FB{f, params, rets, body} => setFVMap (f, mergeRecCalls(recs, getFVMap f))) fbs;
-	    if (!changed)
-	    then (changed := false; transClos (fbs, recs))
-	    else ())
-        (* Note that we can remove not only the function itself (in the case that it is recursive),
-	 * but also any functions that are (potentially) mutually recursive with it, because all of
-         * their vars will already be available to us, since we have already calculated the transitive
-	 * closure.
-	 *)
-
-
-(*
- * Let's see. I want to merge the closure contents (from whatMap) for each function
- * definition variable in the FVMap of f, but I also want to remove these function
- * definition variables themselves...
-*)
-
-	fun getTrueFreeVars (f, recs) = let
-	    fun getClosures (v, p as (fut, lut), (cs, nonFuncs)) = (
-		case CV.typeOf v
-		  of CTy.T_Fun _ => ((if List.exists (fn x => CV.same(x,v)) recs
-				     then cs
-				     else
-				       (case VMap.find (whatMap, v)
-				         of SOME c => let val c0 = VMap.map (fn q => (fut, lut)) c in c0::cs end (* modulo implementation details of whatMap *)
-				          | NONE => cs)), nonFuncs) (* do i really want to remove (v,p) in this case? *)
-		   | _ => (cs, VMap.insert(nonFuncs, v, p)))
-	    val (closures, nonFuncs) = VMap.foldli getClosures ([], VMap.empty) (getFVMap f)
-	in
-	    mergeFVMaps (nonFuncs::closures)
-        end
-	(* For the time being I am going to assume the following about whatMap and whereMap:
-         * I am going to represent a closure as a pair (cr,clo) where cr is a new CV.Var I will
-	 * introduce, representing the pointer to the closure record. This is so I can stick a
-	 * closure in a varmap type-safely. clo will be the actual varmap that is the closure.
-	 * whatMap will be a mapping from function names to their (cr,clo) pair.
-	 * whereMap is just going to be a list of (cr,clo) pairs (i think).
-	 *)
-	fun shareClosures (f, whereMap) = let
-	    val map = getFVMap f (* this is now the true free vars *)
-	    val m = VMap.numItems map
-	    val n = getSlot f (* assumes setSlots already called *)
-		    (* TODO: Go through setSlot/getSlot and remove all the nCalleeSaveRegs stuff. *)
-	in
-	    if m > n
-	    then let
-		    (* this is the predicate that makes the sharing safe for space *)
-		    fun subset(submap) = let
-			fun subset0([]) = true
-			  | subset0((v,p)::xs) = (
-			    case VMap.find (map, v)
-			     of SOME _ => subset0(xs)
-			      | NONE => false)
-		    in
-			subset0 (VMap.listItemsi submap)
-		    end
-		    fun findBest(best, _, []) = best
-		      | findBest(best, n, (v,c)::xs) = let
-			val n0 = VMap.numItems c
-			in
-			    if n < n0
-			    then findBest((v,c), n0, xs)
-			    else findBest(best, n, xs)
-			end
-		    val safeClosures = List.filter (fn (v,c) => subset c) whereMap
-		    (* What exactly is the "best fit" heuristic?
-		     * In particular, do I want to choose only one closure from safeClosures,
-		     * or might I want to choose more than one to form a cover?
-		     * In that case it becomes much more complicated. *)
-		    val (bestV, bestC) = findBest((f,VMap.empty), 0, safeClosures)
-		    (* The above is really hackish, but I don't care what the initial
-		     * value of v is, so we may as well use f since we have it around. *)
-		in
-		    if VMap.numItems bestC > 1 (* rules out the empty case as well *)
-		    then let
-			    fun removeAll ([], p, map) = (p, map)
-			      | removeAll ((v,p)::rems, (fut, lut), map) = let
-				    val (map, (fut0, lut0)) = VMap.remove(map, v)
-				    val (fut, lut) = (Int.min(fut, fut0), Int.max(lut, lut0))
-				in
-				    removeAll (rems, (fut, lut), map)
-				end
-			    val bestList = VMap.listItemsi bestC
-			    val (v,q) = List.hd bestList
-			    val (p,map) = removeAll(bestList, q, map)
-			(* That looks hackish. Is there a better way to do it? *)
-			in
-			    (VMap.insert(map, bestV, p),
-			     removed,
-			     bestC)
-			end
-		    else (map, [], VMap.empty ) (* Don't waste my time. *)
-		end
-	    else map (* if |TFV(f)| < slots(f) there is nothing to do *)
-	end
-
-	fun alloc (slots, vars, f) = let
-	    (* This predicate is true iff p1 is "favored" over p2, according to S&A:
-	     * "First, we favor variables with the smaller lut number.
-	     * Second, we select those variables with the smaller fut number."
-	     * Favors p1 if both p1 and p2 have the same fut and lut numbers. *)
-	    fun favored(p1 as (v1, (futv1, lutv1)), p2 as (v2, (futv2, lutv2))) =
-		if (lutv1 < lutv2 orelse (lutv1 = lutv2 andalso futv1 <= futv2))
-		then true
-		else false
-
-	    val findWorst = VMap.foldli (fn (v, (futv, lutv), p) => if favored (p, (v, (futv, lutv))) then (v, (futv, lutv)) else p) (f, (~1, ~1))
-
-	    fun alloc0(count, regs, worst, heap, []) = (regs, heap)
-	      | alloc0(count, regs, worst, heap, v::vs) =
-		if (count < slots - 1)
-		then
-		    if favored(worst, v)
-		    then alloc0(count + 1, VMap.insert'(v, regs), v, heap, vs)
-		    else alloc0(count + 1, VMap.insert'(v, regs), worst, heap, vs)
-		else
-		    if favored(worst, v)
-		    then alloc0(count, regs, worst, VMap.insert'(v, heap), vs)
-		    else
-			let
-			    val regs = VMap.insert'(v, #1 (VMap.remove(regs, #1 worst)))
-			    val heap = VMap.insert'(worst, heap)
-			    val worst = findWorst regs
-			in
-			    alloc0(count, regs, worst, heap, vs)
-			end
-	in
-	    alloc0(0, VMap.empty, (f, (~1, ~1)), VMap.empty, vars)
-	end
-
-
-	fun doLambda (recs, fb as CPS.FB{f, params, body, rets}) = (
-	    (* By this point the transitive closure has already been calculated.
-	     * First we calculate the true free variables. *)
-	    setFVMap (f, getTrueFreeVars(f, recs));
-	    (* 4.4.3: Sharing w/ closures in cur. env. *)
-	    setFVMap (f, shareClosures(f, whereMap));
-	    (* 4.4.4: decide which vars go in regs and which go on the heap. *)
-	    let
-		val map = getFVMap f
-		val m = VMap.numItems map
-		val n = getSlot f
-		val (regs, heap) = if m > n then alloc (n, VMap.listItemsi map, f) else (map, VMap.empty)
-	    in
-		()
-	    end;
-	    
-
-
-	    (* other stuff in the algorithm goes here *)
-	    doExp body)
-	and doExp (CPS.Exp(_, e)) = (
-	    case e
-	      of CPS.Let(_, _, e) => (doExp e)
-	       | CPS.Fun(fbs, e) => let
-		     val recs = List.map (fn fb as CPS.FB{f,...} => f) fbs
-		 in
-		     transClos(fbs, recs);
-		     List.app (fn fb => doLambda (recs, fb)) fbs;
-		     doExp e
-		 end
-	       | CPS.Cont(fb, e) => (doExp e)
-	       | CPS.If(_, e1, e2) => (doExp e1 ; doExp e2)
-	       | CPS.Switch(_, cases, dflt) => (
-		 List.app (fn c => doExp (#2 c)) cases;
-		 Option.app doExp dflt)
-	       | CPS.Apply _ => ()
-	       | CPS.Throw _ => ()
-	(* end case *))
-(*	fun loop (fb) = (
-	    doLambda ([], fb);
-	    if (!changed)
-	    then (changed := false; loop (fb))
-	    else ()) *)
-    in
-	doLambda ([], body)
-    end
-*)
-
 (******
 * Here is my toolkit of Shao and Appel utilities.
 *******)
@@ -1866,7 +1644,10 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
     end
 
     (* yeah this is poor reuse of code, but I can refactor it later.
-     * this is just to get a prototype working. *)
+     * this is just to get a prototype working. 
+     * The reason I duplicated mergeFVMaps is because one version 
+     * uses a ref cell and the other doesn't, and I'm not immediately
+     * sure how to work around that. *)
 
 	fun mergeFVMaps (maps) = let
 	    fun mergeMaps ([], final) = final
@@ -1906,15 +1687,14 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 
 	fun shareClosures (f, whereMap) = let
 	    val emptyEP = newEP (CFGTy.T_Enum 0w0)
+	    val emptyBind = CFG.mkConst(emptyEP, Literal.Enum 0w0, CFGTy.T_Enum 0w0)
 	    val emptyEnv = newEnv VMap.empty emptyEP
 	    val map = getFVMap f (* this is now the true free vars *)
 	    val m = VMap.numItems map
-	    val n = getSlot f (* assumes setSlots already called *)
-		    (* TODO: Go through setSlot/getSlot and remove all the nCalleeSaveRegs stuff. *)
 	in
 	    if m > 0 (* we don't do callee-save regs, so f should have only one slot. *)
 	    then let
-		    (* this is the predicate that makes the sharing safe for space *)
+		    (* this is the predicate that makes the sharing safe-for-space: *)
 		    fun subset(submap) = let
 			fun subset0([]) = true
 			  | subset0((x,loc)::xs) = (
@@ -1924,24 +1704,22 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 		    in
 			subset0 (VMap.listItemsi submap)
 		    end
+		    fun isSubset (E{ep=ep, env=env}, b) = subset env
 		    fun findBest(best, _, []) = best
-		      | findBest(best, n, (E{ep=ep',env=env'})::xs) = let
+		      | findBest(best, n, (E{ep=ep',env=env'}, b')::xs) = let
 			val n0 = VMap.numItems env'
 			in
 			    if n < n0
-			    then findBest(E{ep=ep',env=env'}, n0, xs)
+			    then findBest((E{ep=ep',env=env'}, b'), n0, xs)
 			    else findBest(best, n, xs)
 			end
-		    val safeClosures =
-			List.filter (fn E{ep=ep,env=env} => subset env) whereMap
-		    (* in the following, bestV is the env pointer of the best closure, and bestC is *)
-		    (* the closure itself. This can be refactored. *)
-		    val E{ep=ep,env=env} = findBest(emptyEnv, 0, safeClosures)
-		    (* The above is really hackish, but I don't care what the initial
-		     * value of v is, so we may as well use f since we have it around. *)
+		    val safeClosures = List.filter isSubset whereMap
+		    val (E{ep=ep,env=env}, b) = findBest((emptyEnv, emptyBind), 0, safeClosures)
 		in
 		    if VMap.numItems env > 1 (* rules out the empty case as well *)
 		    then let
+			    (* removeAll removes a list of CPS vars from a varmap and returns
+			     * the maximum LUT of those removed *)
 			    fun removeAll ([], closLut, map) = (closLut, map)
 			      | removeAll ((x,loc)::rems, closLut, map) = let
 				    val (map, (fut, lut)) = VMap.remove(map, x)
@@ -1951,28 +1729,28 @@ functor ClosureConvertFn (Target : TARGET_SPEC) : sig
 				end
 			    val bestList = VMap.listItemsi env
 			    val (closLut,map) = removeAll(bestList, ~1, map)
-			(* That looks hackish. Is there a better way to do it? *)
 			in
-			    (map, E{ep=ep,env=env}, closLut)
+			    (map, E{ep=ep,env=env}, b, closLut)
 			end
-		    else (map, emptyEnv, ~1) (* Don't waste my time. *)
+		    else (map, emptyEnv, emptyBind, ~1) (* Don't waste my time if there are no reusable closures *)
 		end
-	    else (map, emptyEnv, ~1) (* if |TFV(f)| < slots(f) there is nothing to do *)
+	    else (map, emptyEnv, emptyBind, ~1) (* if |TFV(f)| < 0 there is nothing to do *)
 	end
 
 								       
-    (* note changed signature: *)
+	(* note changed signature: *)
+	(* TODO: get rid of whatMap argument; we have implemented whatMap as part of the
+	 * env. This may change however. *)
     fun mkFunClosure externEnv (env, recs, whatMap, whereMap) = let
 	val f = List.hd recs
 	(* + DEBUG *)
 	val _ = print (concat ["I think the raw free vars of ", CPS.Var.toString f, 
 			       " are: ", freeVarsToString(getFVMap f), " in other words, "])
-val _ = prSet (FreeVars.envOfFun f)
+	val _ = prSet (FreeVars.envOfFun f)
 
 	(* - DEBUG *)
 
 
-	(* + CARSEN *)
 	(* we assume that the transitive closure has already been calculated *)
 	(* first we calculate the true free variables *)
  (*	val f = List.hd recs *)
@@ -2000,7 +1778,7 @@ val _ = prSet (FreeVars.envOfFun f)
 	(* the shared closure is itself a pair whose first element is a CPS ep *)
 	(* and whose second element is an env. *)
 	(* closLUT will be -1 if no reusable closure was found. *)
-	val (fvMap, sharedClos as E{ep = closEP, env = closEnv}, closLut) = shareClosures(f, whereMap)
+	val (fvMap, sharedClos as E{ep = closEP, env = closEnv}, closBind, closLut) = shareClosures(f, whereMap)
 	val _ = setFVMap (f, fvMap)
 	(* + DEBUG *)
 	val _ = print (concat ["I think the true free vars of ", CPS.Var.toString f, 
@@ -2041,8 +1819,9 @@ val _ = prSet (FreeVars.envOfFun f)
 		 of Global is => Global (i::is)
 		  | Closure x' => Closure x'
 	    (* end case *))
+	    val _ = print (concat ["Copying ", CFG.Var.toString x', " from reused closure.\n"])
 	in
-	    (i, binds, VMap.insert(clos, x, location), xs)
+	    (i, b@binds, VMap.insert(clos, x, location), xs)
 	end
 
 	(* Actually, whatMap only needs to be a VMap of CPS function *)
@@ -2074,11 +1853,13 @@ val _ = prSet (FreeVars.envOfFun f)
 		    end
 	    (* end case *)) *)
 	    val (b, x') = lookupVar(env, x)
-	    val location = (
+(*	    val location = (
 		case CV.typeOf x
 		 of CTy.T_Fun _ => (Closure x')
 		  | _ => (Global [i])
-	    (* end case *))
+	    (* end case *))*)
+	    val location = Global [i]
+	    val _ = print (concat ["Adding binding for ", CFG.Var.toString x', "\n"])
 	in
 	    (i+1, b@binds, VMap.insert(clos, x, location), x'::xs)
 	end
@@ -2092,7 +1873,7 @@ val _ = prSet (FreeVars.envOfFun f)
 	    val (i, binds, clos, cfgArgs) =
 		if (lut = closLut)
 		then (foundClosure := true;
-		      VMap.foldli mkSharedArgs (0, [], VMap.empty, [closEP]) closEnv)
+		      VMap.foldli mkSharedArgs (0, [closBind], VMap.empty, [closEP]) closEnv)
 		else (0, [], VMap.empty, [])
 	    val (fvPtr, fvRaw) = List.partition isPtr fvs
 	    val (i, binds, clos, cfgArgs) =
@@ -2102,19 +1883,25 @@ val _ = prSet (FreeVars.envOfFun f)
             val cfgArgs = List.rev cfgArgs
 	    val epTy = envPtrType (List.map CFG.Var.typeOf cfgArgs)
             val ep = newEP epTy
+	    val _ = print (concat ["The ep is ", CFG.Var.toString ep, "\n"])
 	    val ep' = newEP epTy
+	    (* We must create the binding for the closure itself: *)
+	    val newClosBind = (case epTy
+			      of CFGTy.T_Enum _ => CFG.mkConst(ep, Literal.Enum 0w0, epTy)
+			       | _ => CFG.mkAlloc(ep, epTy, cfgArgs)
+			    (* end case *))
 	    val bindEP = (case epTy
 			   of CFGTy.T_Enum _ => CFG.mkConst(ep', Literal.Enum 0w0, epTy)
 			    | _ => CFG.mkAlloc(ep', epTy, cfgArgs)
 			 (* end case *))
         in
-            (bindEP::binds, ep', cfgArgs, E{ep = ep, env = clos})
+            (bindEP::binds, ep', cfgArgs, E{ep = ep, env = clos}, newClosBind)
         end
 
 	val closures = IntBinaryMap.mapi mkPartitionArgs parts
 	val closures = IntBinaryMap.listItems closures
 
-	fun addTowhereMap ((bs, ep, cfgs, clos), whereMap) = clos::whereMap
+	fun addTowhereMap ((bs, ep, cfgs, clos, closBind), whereMap) = (clos, closBind)::whereMap
 	val whereMap = List.foldl addTowhereMap whereMap closures
 
 	(* Make sure the shared closure gets added in, *)
@@ -2134,8 +1921,9 @@ val _ = prSet (FreeVars.envOfFun f)
 		    val binds = VMap.foldli mkClosBinds [] closEnv
 		    (* But see comment up above. I think in retrospect I don't even need to *)
 		    (* compute any binds here and I could just return the [] for binds. *) *)
+		    val _ = print (concat ["Entering closure if with closEP = ", CFG.Var.toString closEP, "\n"])
 		    val closurePart =
-			([], closEP, [], sharedClos)
+			([closBind], closEP, [], sharedClos, closBind)
 		in
 		    closurePart::closures
 		end
@@ -2163,7 +1951,7 @@ val _ = prSet (FreeVars.envOfFun f)
 	(* N.B. I'll have to watch the semantics of what I am doing *)
 	(* here closely to make sure I don't mess things up when *)
 	(* dealing with the externs in externEnv. *)
-	fun mkClosArgs ((bs, ep', cfgArgs', E{ep = ep, env = clos'}),
+	fun mkClosArgs ((bs, ep', cfgArgs', E{ep = ep, env = clos'}, closBind'),
 			(i, binds, clos, cfgClosureArgs)) = let
 	    fun mkClosArgs0 (x, Global is, clos) = VMap.insert(clos, x, Global (i::is))
 	      | mkClosArgs0 (x, Closure x', clos) = VMap.insert(clos, x, Closure x')
@@ -2188,7 +1976,8 @@ val _ = prSet (FreeVars.envOfFun f)
 		| _ => CFG.mkAlloc(ep', epTy, cfgClosureArgs)
 	  (* end case *))
     (* Now we update whatMap: *)
-	val clos = List.foldl (fn (x, clos) => VMap.insert(clos, x, Closure ep')) clos recs
+(*	val clos = List.foldl (fn (x, clos) => VMap.insert(clos, x, Closure ep')) clos recs *)
+	val _ = print ("Returning from mkFunCont.\n")
     in
 	(* NB: The cfgClosureArgs I am returning here might not be what is expected. *)
 	(* It is fine in this case since no caller ever uses that return value, *)
