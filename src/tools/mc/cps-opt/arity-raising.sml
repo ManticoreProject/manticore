@@ -1145,7 +1145,7 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
          * to any. The type being different is an indicator that it's not actually
          * used in the calling function, but is just passed along.
          *)
-        fun transformParam(param) = let
+        fun transformParam param = let
             fun getParamFunType (l) = let
                 val funs = CPS.Var.Set.listItems l
                 val lambdas = map CV.typeOf funs
@@ -1263,8 +1263,8 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
                     (* Need to transform the originals as well because they're used for the
                      * type coercions later in the flattened applications.
                      *)
-                    val _ = List.app transformParam params
-                    val _ = List.app transformParam rets
+                    val _ = List.app transformParam (List.filter getUseful params)
+                    val _ = List.app transformParam (List.filter getUseful rets)
                     val _ = List.app transformParam newParams
                     val _ = List.app transformParam newRets
                     val origType = CV.typeOf f

@@ -319,7 +319,7 @@ structure Inline : sig
     fun transform (m as C.MODULE{name, externs, body}) =
         if !inlineFlg
         then (let
-                 val _ = Reflow.analyze m
+(* TODO:                 val _ = Reflow.analyze m *)
 	         val C.FB{f, params, rets, body} = body
 	         val body = doExp(initEnv(), body)
 	         val fb = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=body}, false)
