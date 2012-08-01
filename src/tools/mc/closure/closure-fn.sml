@@ -78,7 +78,7 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
             postOutput = PrintCFG.output {counts=false, types=false},
             postExt = "cfg",
             passName = "closure",
-            pass = SafeForSpaceClosures.newConvert,
+            pass = doConvert,
             registry = ClosureControls.registry
 	  }
 
