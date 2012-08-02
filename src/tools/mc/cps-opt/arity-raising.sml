@@ -1106,7 +1106,7 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
             in
                 CPSTy.T_Fun(args, rets)
             end
-        else CPSTy.T_Any
+        else CPSTy.T_Fun([CPSTy.T_Any], [CPSTy.T_Any])
       | safeMergeTypes (CPSTy.T_Cont (p1), CPSTy.T_Cont (p2)) =
         if safeMergable(p1,p2)
         then let
@@ -1116,7 +1116,7 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
             in
                 CPSTy.T_Cont(args)
             end
-        else CPSTy.T_Any
+        else CPSTy.T_Cont([CPSTy.T_Any])
       | safeMergeTypes (CPSTy.T_Tuple (b, t1), CPSTy.T_Tuple(b2,t2)) =
         if (List.length t1 = List.length t2)
         then CPSTy.T_Tuple(b, ListPair.map safeMergeTypes (t1,t2))

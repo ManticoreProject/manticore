@@ -19,8 +19,6 @@
  * Undo disabling of the super-beta style inlining and reflow.
  *
  * BUGS:
- * When this pass is enabled, arity raising loops forever on the mandelbrot
- * benchmark.
  *
  * Skipping mutually recursive function inlining for now, unlike
  * the BOM version, which handles them.
@@ -46,7 +44,7 @@ structure Inline : sig
     structure Census = CPSCensus
 
   (* controls *)
-    val inlineFlg = ref false
+    val inlineFlg = ref true
     val inlineDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
