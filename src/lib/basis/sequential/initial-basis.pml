@@ -9,7 +9,7 @@
 
 _primcode (
 
-   #define RAISE_DIV(exh) let e : exn = Div (* in *) throw exh (e)
+#define RAISE_DIV(exh) let e : exn = Div (* in *) throw exh (e)
 
   typedef exh = cont(exn);
   typedef unit = enum(0);
