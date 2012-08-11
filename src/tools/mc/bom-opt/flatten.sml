@@ -124,8 +124,10 @@ end = struct
       if not(!BOMOptControls.flattenFlg) then m 
       else let
         val _ = TextIO.print "The compiler *would* be flattening now.\n"
+        val m = module m
+        val _ = Census.census m
         in
-          module m
+            m
         end
 
 end
