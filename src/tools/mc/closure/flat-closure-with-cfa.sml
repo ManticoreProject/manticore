@@ -51,6 +51,8 @@ structure FlatClosureWithCFA : sig
       | cvtTy (CPSTy.T_CFun cproto, _) = CFGTy.T_CFun cproto
       | cvtTy (CPSTy.T_VProc, CFA.TOP) = CFGTy.T_VProc
       | cvtTy (CPSTy.T_VProc, CFA.BOT) = CFGTy.T_VProc
+      | cvtTy (CPSTy.T_Deque, CFA.TOP) = CFGTy.T_Deque
+      | cvtTy (CPSTy.T_Deque, CFA.BOT) = CFGTy.T_Deque
       | cvtTy (ty, v) = raise Fail(concat[
            "bogus type ", CPSTyUtil.toString ty, " : ", CFA.valueToString v])
     and cvtTyTop ty = cvtTy (ty, CFA.TOP)

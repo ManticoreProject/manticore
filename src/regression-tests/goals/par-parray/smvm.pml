@@ -1,5 +1,3 @@
-(* cheating...these names are supposed to be bound already... *)
-
 (* real stuff *)
 
 val itos = Int.toString
@@ -13,7 +11,7 @@ type sparse_matrix = sparse_vector parray
 
 fun plus (x, y) = x + y
 
-fun sumP (id, xs) = reduceP (plus, id, xs)
+fun sumP (id, xs) = PArray.reduce plus id xs
 
 fun dotp (sv, v) = sumP (0.0, [| x * (v!i) | (i,x) in sv |])
 
@@ -39,6 +37,6 @@ val sm0 = [| sv0, sv1 |]
 
 val smvm0 = smvm (sm0, v0)
 
-val _ = Print.printLn ("smvm0 => " ^ (PArray.toString ftos "," smvm0))
+val _ = Print.printLn ("smvm0 => " ^ (PArray.tos_float smvm0))
 
 val _ = Print.printLn "Done."

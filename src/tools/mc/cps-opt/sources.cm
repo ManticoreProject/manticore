@@ -36,3 +36,5 @@ is
   elim-uncalled.sml
   eta-expand.sml
   free-vars.sml
+  inline.sml
+  sizes.sml

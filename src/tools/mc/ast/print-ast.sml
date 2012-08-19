@@ -99,6 +99,9 @@ structure PrintAST : sig
   (* FIXME: should have proper pretty printing for types *)
     fun tyScheme ts = pr(TypeUtil.schemeToString ts)
 
+(*    fun typeToString ty = TypeUtil.fmt {long=true} ty *)
+    fun typeToString ty = TypeUtil.toString ty
+
     fun exp (e as A.LetExp _) = let
 	  fun prBinds (A.LetExp(b, e)) = (
 		ln ();
@@ -176,7 +179,7 @@ structure PrintAST : sig
 	      pr "(* end handle *))";
 	    closeBox ();
 	 closeBox ())
-      | exp (A.RaiseExp(e, ty)) = (
+      | exp (A.RaiseExp(l, e, ty)) = (
 	  openHVBox (rel 2);
 	    pr "raise"; sp (); exp e;
 	  closeBox ())
@@ -250,7 +253,11 @@ structure PrintAST : sig
 	  exp e;
 	  closeBox ())
       | exp (A.ConstExp c) = const c
-      | exp (A.VarExp (v, ts)) = var v
+      | exp (A.VarExp (v, ts)) = (
+        var v ;
+        pr "[" ;
+        pr (String.concatWith "," (List.map typeToString ts));
+        pr "]")
       | exp (A.SeqExp (e1, e2)) = (
 	  pr "(";
 	  exp e1;

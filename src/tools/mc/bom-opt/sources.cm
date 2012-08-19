@@ -9,6 +9,7 @@
 Library
 
   functor BOMOptFn
+  structure BOMOptControls
 
 is
 
@@ -30,6 +31,7 @@ is
   contract.sml
   dead-funs.sml
   expand-hlops.sml
+  flatten.sml
   inline.sml
   group-funs.sml
   let-float.sml
@@ -38,4 +40,3 @@ is
   rewrite-hlops.sml
   sizes.sml
   uncurry.sml
-

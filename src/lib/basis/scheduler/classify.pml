@@ -19,7 +19,7 @@ structure Classify =
     (* check the doneComm flag, to see if the thread needs to be demoted in the case of an involuntary processor yield
        this must be called *before* update-done-comm *)
       define @demote-test-in-atomic ( / exh : exh) : bool =
-	let w : bool = FLS.@get-done-comm(/ exh)
+	let w : bool = FLS.@get-done-comm(/ exh) 
 	if (w) then return (false)
 	else return (true)
       ;
@@ -48,12 +48,11 @@ structure Classify =
     (* handles done-comm based on the type of processor yield, for all cases where the scheduler can safely reschedule the thread
        returns the results of the demote test *)
       define @done-comm-ops-in-atomic (self : vproc, voluntary : bool / exh : exh) : bool = 
-	let w : bool = FLS.@get-done-comm(/ exh)
-	if (voluntary) then
+	if (voluntary) then 
 		do @move-threads-in-atomic(self / exh)
 		do @update-done-comm-in-atomic(voluntary / exh)
 		return(false)
-	else
+	else 
 		let v : bool = @demote-test-in-atomic(/ exh)
 		do @update-done-comm-in-atomic(voluntary / exh)
 		return (v)

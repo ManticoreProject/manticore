@@ -23,6 +23,7 @@ structure CPSTy =
       | T_Cont of (ty list)             (* continuation types *)
       | T_CFun of CFunctions.c_proto	(* C functions *)
       | T_VProc				(* address of VProc runtime structure *)
+      | T_Deque				(* address of VProc deque *)
 
     val unitTy = T_Enum(0w0)
     val boolTy = T_Enum(0w1)	(* false = 0, true = 1 *)

@@ -61,6 +61,10 @@ void DiscoverTopology ()
     if (numa_available() == -1) {
         Die ("NUMA is not available on this machine");
     }
+#else
+#ifndef NDEBUG
+    SayDebug ("LIBNUMA is not installed on this machine\n");
+#endif
 #endif
 
 #ifndef NDEBUG
@@ -83,7 +87,7 @@ static void *InitWithLocation (void *arg)
     void *arg2 = locArg->arg;
     ThreadInitFn_t f = locArg->init;
 
-#ifdef HAVE_NUMA
+#ifdef HAVE_LIBNUMA
     int node = LocationNode(locArg->loc);
     if (numa_run_on_node (node) == -1) {
         Warning("unable to set affinity to virtual processor %d, node %d\n", LogicalId(locArg->loc), node);

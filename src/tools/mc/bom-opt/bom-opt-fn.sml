@@ -125,6 +125,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val rewriteAll = transform {passName = "rewrite-all", pass = rewriteAll}
     val expandAll = transform {passName = "expand-all", pass = expandAll}
     val cfa = analyze {passName = "cfa", pass = CFABOM.analyze}
+    val flatten = transform {passName = "flatten", pass = Flatten.transform}
 
     fun optimize module = let
 	  val _ = Census.census module
@@ -148,6 +149,8 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = contract module
 	  val module = caseSimplify module
 	  val module = contract module
+          val module = flatten module
+          val module = contract module
           val _ = checkBOM ("finalPostContract", module, true)
 	  in
 	    module

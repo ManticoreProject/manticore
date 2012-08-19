@@ -15,6 +15,7 @@ _primcode (
   define inline @length (a : array / exh : exh) : ml_int =
     return(alloc(#1(a)))
   ;
+
 )
 
 type 'a array = 'a U.array
@@ -26,10 +27,8 @@ val length : 'a array -> int = _prim (@length)
 fun isIxInBounds (a, i) = i >= 0 andalso i < length a
 
 fun update (a, i, x) = 
-  if isIxInBounds (a, i) then
     U.update (a, i, x)
-  else
-    Debug.failwith "Array.update: index i out of bounds"
+
 fun sub (a, i) =
   if isIxInBounds (a, i) then
     U.sub (a, i)
@@ -50,6 +49,24 @@ fun tabulate (n, f) =
       lp 1;
       a
     end
+
+fun fromList (l) = let
+    val n = List.length l
+in
+  if n <= 0 orelse n > maxLen then
+    raise Fail "Size"
+  else let
+    val a = U.create (n, List.hd l)
+    fun lp (i, l) =
+      if i < n then
+	(U.update (a, i, List.hd l); lp (i + 1, List.tl l))
+      else
+	()
+    in
+      lp (1, List.tl l);
+      a
+    end
+end
 
 fun array (n, init) = tabulate (n, fn _ => init)
 

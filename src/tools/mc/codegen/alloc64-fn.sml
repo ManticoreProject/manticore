@@ -47,6 +47,7 @@ functor Alloc64Fn (
 	  val offset = (case mty
 		 of CFG.T_Tuple(_, tys) => tupleOffset {tys=tys, i=i}
 		  | CFG.T_OpenTuple tys => tupleOffset {tys=tys, i=i}
+		  | CFG.T_Deque => wordSzB * i
 		  | _ => raise Fail ("cannot offset from type " ^ CFGTyUtil.toString mty)
 		(* end case *))
 	  in
@@ -58,6 +59,7 @@ functor Alloc64Fn (
           val (offset, lhsTyI) = (case mty
 		 of CFG.T_Tuple(_, tys) => (tupleOffset {tys=tys, i=i}, List.nth(tys, i))
 		  | CFG.T_OpenTuple tys => (tupleOffset {tys=tys, i=i}, List.nth(tys, i))
+		  | CFG.T_Deque => (wordSzB * i, CFG.T_Raw (RawTypes.T_Long))
 		  | _ => raise Fail ("cannot offset from type " ^ CFGTyUtil.toString mty)
 		(* end case *))
 	  val addr = T.ADD(MTy.wordTy, base, wordLit offset)

@@ -8,16 +8,18 @@
  *)
 
 structure LeafSize = struct
-local
-val dflt = 512
-val maxR = IntRef.new 1
-in
-fun getMax () = IntRef.get maxR
-fun setMax max' = 
-  if getMax () < 1 then 
-    (raise Fail "invalid max leaf size" )
-  else 
-    IntRef.set (maxR, max')
-val _ = setMax (ParseCommandLine.parse1 "-max-leaf-size" Int.fromString dflt)
-end
+
+  local
+    val dflt = 512
+    val maxR = IntRef.new 512
+  in
+    fun getMax () = IntRef.get maxR
+    fun setMax max' = 
+      if getMax () < 1 then 
+        (raise Fail "invalid max leaf size" )
+      else 
+        IntRef.set (maxR, max')
+    val _ = setMax (ParseCommandLine.parse1 "-max-leaf-size" Int.fromString dflt)
+  end
+
 end

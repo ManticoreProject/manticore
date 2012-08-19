@@ -13,6 +13,7 @@ structure AST =
     datatype dcon = datatype Types.dcon
 
     type info = Error.span   (* source file information *)
+    type location = Error.location
 
     type label = Atom.atom
 
@@ -58,7 +59,7 @@ structure AST =
       | CaseExp of (exp * match list * ty)		(* ty is result type *)
       | PCaseExp of (exp list * pmatch list * ty)       (* ty is result type *)
       | HandleExp of (exp * match list * ty)		(* ty is result type *)
-      | RaiseExp of (exp * ty)				(* ty is result type *)
+      | RaiseExp of (location * exp * ty)       	(* ty is result type *)
       | FunExp of (var * exp * ty)			(* ty is result type *)
       | ApplyExp of exp * exp * ty			(* ty is result type *)
       | VarArityOpExp of var_arity_op * int * ty        (* ty is operator type *)

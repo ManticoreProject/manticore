@@ -152,7 +152,7 @@ structure Contract : sig
                   | _ => false
                 (* end case *))
           fun mkCasts ([], [], fromVars', casts) = (List.rev fromVars', List.rev casts)
-            | mkCasts (_::_, [], _, _) = raise Fail "more fromVars than toVars"
+            | mkCasts (_::_, [], _, _) = raise Fail "more fromVars than toVars" 
             | mkCasts ([], _::_, _, _) = raise Fail "more toVars than fromVars"
             | mkCasts (fromVar::fromVars, toVar::toVars, fromVars', casts) = let
                 val fromTy = BV.typeOf fromVar
@@ -550,7 +550,7 @@ structure Contract : sig
 					      env = env, fromVars = args1, toVars = params1
 					    }
 				      val (env2, casts2) = extendWithCasts {
-					      env = env, fromVars = args2, toVars = params1
+					      env = env, fromVars = args2, toVars = params2
 					    }
 				      in
 					ST.tick cntCaseIfFold;

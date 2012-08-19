@@ -115,6 +115,7 @@ structure CFACFG : sig
             | CFGTy.T_Addr _ => TOP
             | CFGTy.T_CFun _ => TOP
             | CFGTy.T_VProc => TOP
+            | CFGTy.T_Deque => TOP
             | CFGTy.T_StdFun _ => LABELS(LSet.empty)
             | CFGTy.T_StdCont _ => LABELS(LSet.empty)
             | CFGTy.T_KnownFunc _ => LABELS(LSet.empty)

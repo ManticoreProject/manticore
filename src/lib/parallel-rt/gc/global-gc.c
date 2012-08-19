@@ -58,6 +58,11 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 	if (isForwardPtr(oldHdr)) {
 		Value_t v = PtrToValue(GetForwardPtr(oldHdr));
 		assert (isPtr(v));
+#ifndef NDEBUG
+        MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+        if (cq->sts != TO_SP_CHUNK) {
+            fprintf(stderr, "[%2d] Value %llx is not in to-space\n", vp->id, v);}
+#endif
                 assert (AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK);
 		return v;
 	}
@@ -81,12 +86,18 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 				newObj[i] = p[i];
 			}
 			vp->globNextW = (Addr_t)(newObj+len+1);
+        
+            assert (AddrToChunk(ValueToAddr(v))->sts == FROM_SP_CHUNK ||
+                    IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts));
+            assert (AddrToChunk(newObj)->sts == TO_SP_CHUNK);
+        
 			return PtrToValue(newObj);
 		}
 		else {
 			// some other vproc forwarded the object, so return the forwarded
 			// object.
 			assert (isForwardPtr(hdr));
+            assert (AddrToChunk(GetForwardPtr(hdr))->sts == TO_SP_CHUNK);
 			return PtrToValue(GetForwardPtr(hdr));
 		}
 	}
@@ -126,6 +137,7 @@ void ConvertToSpaceChunks (VProc_t *self, MemChunk_t *p) {
                      (void *)(p->baseAddr+p->szB));
 #endif
         p->sts = FROM_SP_CHUNK;
+        p->scanProgress = 0;
 #ifndef NO_GC_STATS
         uint32_t used = (p == self->globAllocChunk)
             ? (self->globNextW - WORD_SZB) - p->baseAddr
@@ -310,6 +322,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
                 cp->sts = FREE_CHUNK;
                 cp->usedTop = cp->baseAddr;
 #ifndef NDEBUG
+                
                 if (GCDebug >= GC_DEBUG_GLOBAL)
                     SayDebug("[%2d]   Free-Space chunk %#tx..%#tx\n",
                              self->id, cp->baseAddr, cp->baseAddr+cp->szB);
@@ -533,6 +546,8 @@ static void ScanGlobalToSpace (VProc_t *vp)
                         if (isFromSpacePtr(v)) {
                             *scanP = ForwardObjGlobal(vp, v);
                         }
+                        
+                        assert (!(isPtr(v) && IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts)));
                     }
                 } else if (isRawHdr(hdr)) {
                     assert (isRawHdr(hdr));
@@ -568,6 +583,8 @@ static void ScanGlobalToSpace (VProc_t *vp)
                 PushToSpaceChunks (vp, tmp, true);
             }
         } else {
+            assert(scanChunk->next == NULL);
+
             MutexLock(&NodeHeaps[node].lock);
             scanChunk->next = NodeHeaps[node].scannedTo;
             NodeHeaps[node].scannedTo = scanChunk;
@@ -690,7 +707,7 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 {
   // check the roots
     for (int i = 0;  roots[i] != 0;  i++) {
-	char buf[16];
+	char buf[18];
 	sprintf(buf, "root[%d]", i);
 	Value_t v = *roots[i];
 	CheckLocalPtrGlobal (self, roots[i], buf);
@@ -737,6 +754,8 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
     CHECK_VP(wakeupCont);
     CHECK_VP(rdyQHd);
     CHECK_VP(rdyQTl);
+    CHECK_VP(sndQHd);
+    CHECK_VP(sndQTl);
     CHECK_VP(stdArg);
     CHECK_VP(stdEnvPtr);
     CHECK_VP(stdCont);
@@ -755,10 +774,16 @@ void CheckToSpacesAfterGlobalGC (VProc_t *self)
         while (cp != (MemChunk_t *)0) {
             assert (cp->sts = TO_SP_CHUNK);
             Word_t *p = (Word_t *)(cp->baseAddr);
-            Word_t *top = (Word_t *)(cp->usedTop);
+            Word_t *top = UsedTopOfChunk(self, cp);
             while (p < top) {
                 Word_t hdr = *p++;
                 Word_t *scanptr = p;
+                //assert (!isForwardPtr(hdr));
+                if (isForwardPtr(hdr)) {
+                    p++;
+                    continue;
+                }
+
 		tableDebug[getID(hdr)].globalGCdebugGlobal(self,scanptr);
 		
 		p += GetLength(hdr);

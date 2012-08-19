@@ -24,6 +24,7 @@
         | KW_constr     ("constr")
 (*	| KW_datatype	("datatype")		*)
 	| KW_define	("define")
+	| KW_deque	("deque")
 	| KW_do		("do")   
 	| KW_double	("double")
 (*	| KW_else	("else")		*)
@@ -251,6 +252,7 @@ BOMType
 						=> (markBOMTy(FULL_SPAN, BPT.T_Fun(TypeList1, TypeList2, TypeList3)))
 	| "cont" "(" TypeList ")"		=> (markBOMTy(FULL_SPAN, BPT.T_Cont TypeList))
 	| "vproc"				=> (markBOMTy(FULL_SPAN, BPT.T_VProc))
+	| "deque"				=> (markBOMTy(FULL_SPAN, BPT.T_Deque))
 	| QualifiedId				=> (markBOMTy(FULL_SPAN, BPT.T_TyCon QualifiedId))
 	;
 

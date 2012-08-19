@@ -1,12 +1,9 @@
-val sub =PArray.sub
-val lenP =PArray.length
-
 val itos = Int.toString
 
 fun hmph (lo, hi) = let
   val r = [| lo to hi |]
   in
-    Print.printLn (PArray.toString itos "," r) 
+    Print.printLn (PArray.tos_int r) 
   end
 
 val _ = hmph (0, 2)

@@ -14,9 +14,26 @@ structure CPSUtil : sig
 
     val applyToBoundVars : (CPS.var -> unit) -> CPS.module -> unit
 
+  (* create a copy of a CPS term with fresh bound variables *)
+    val copyLambda : CPS.lambda -> CPS.lambda
+
+  (* create a copy of a list of mutually recursive functions *)
+    val copyLambdas : CPS.lambda list -> CPS.lambda list
+
+  (* substitutions from variables to variables *)
+    type subst = CPS.var CPS.Var.Map.map
+    val empty : subst
+
+  (* copy an expression creating fresh local variables and renaming global variables
+   * according to the given substitution.
+   *)
+    val copyExp : (subst * CPS.exp) -> CPS.exp
+
   end = struct
 
     structure C = CPS
+    structure CV = CPS.Var
+    structure VMap = CV.Map
 
     val v2s = C.Var.toString
     fun vl2s xs = String.concatWith ", " (List.map v2s xs)
@@ -87,6 +104,177 @@ structure CPSUtil : sig
       | rhsToString (C.VPLoad(n, x)) = concat["VPLoad(", IntInf.toString n, ", ", v2s x, ")"]
       | rhsToString (C.VPStore(n, x, y)) = concat["VPStore(", IntInf.toString n, v2s x,  ", ", v2s y, ")"]
       | rhsToString (C.VPAddr(n, x)) = concat["VPAddr(", IntInf.toString n, ", ", v2s x, ")"]
+
+  (* substitutions from variables to variables *)
+    type subst = C.var VMap.map
+
+    val empty : subst = VMap.empty
+    val singleton : (C.var * C.var) -> subst = VMap.singleton
+    fun subst s x = (case VMap.find(s, x)
+	   of NONE => x
+	    | SOME y => y
+	  (* end case *))
+    fun subst' (s, l) = List.map (subst s) l
+    val extend : (subst * CPS.var * CPS.var) -> subst = VMap.insert
+
+    fun extend' (s, [], []) = s
+      | extend' (s, x::xs, y::ys) = extend'(VMap.insert(s, x, y), xs, ys)
+      | extend' (s, _, _) = raise Fail "CPSUtil.extend': unequal lists"
+
+  (* apply a substitution to a RHS term *)
+    fun substRHS (s, rhs) = (case rhs
+	   of C.Var vs => C.Var (subst' (s, vs))
+	    | C.Cast(ty, x) => C.Cast(ty, subst s x)
+            | C.Const _ => rhs
+	    | C.Select(i, x) => C.Select(i, subst s x)
+	    | C.Update(i, x, y) => C.Update(i, subst s x, subst s y)
+	    | C.AddrOf(i, x) => C.AddrOf(i, subst s x)
+	    | C.Alloc(ty, args) => C.Alloc(ty, subst'(s, args))
+	    | C.Promote x => C.Promote(subst s x)
+	    | C.Prim p => C.Prim(PrimUtil.map (subst s) p)
+	    | C.CCall(f, args) => C.CCall(subst s f, subst'(s, args))
+	    | C.HostVProc => rhs
+	    | C.VPLoad(n, x) => C.VPLoad(n, subst s x)
+	    | C.VPStore(n, x, y) => C.VPStore(n, subst s x, subst s y)
+	    | C.VPAddr(n, x) => C.VPAddr(n, subst s x)
+	  (* end case *))
+
+  (* apply a substitution to an expression *)
+    fun substExp (s, e) = let
+	  fun substE (C.Exp(_, e)) = (case e
+		 of C.Let(xs, e1, e2) => C.mkLet(xs, substRHS (s,e1), substE e2)
+		  | C.Fun(fbs, e) => C.mkFun(List.map substFB fbs, substE e)
+		  | C.Cont(fb, e) => C.mkCont(substFB fb, substE e)
+		  | C.If(cond, e1, e2) =>
+		      C.mkIf(CondUtil.map (subst s) cond, substE e1, substE e2)
+                  | C.Switch (x, cases, dflt) =>
+		      C.mkSwitch(subst s x,
+			List.map (fn (p, e) => (p, substE e)) cases,
+			Option.map substE dflt)
+		  | C.Apply(f, args, rets) =>
+		      C.mkApply(subst s f, subst'(s, args), subst'(s, rets))
+		  | C.Throw(k, args) =>
+		      C.mkThrow(subst s k, subst'(s, args))
+		(* end case *))
+	  and substFB (C.FB{f, params, body, rets}) =
+		C.FB{f=f, params=params, body=substE body, rets=rets}
+	  in
+	    substE e
+	  end
+
+    fun freshVar (s, x) = let
+	  val x' = CPS.Var.copy x
+	  in
+	    CPS.Var.combineAppUseCnts (x', x);
+	    (extend(s, x, x'), x')
+	  end
+    fun freshVars (s, xs) = let
+	  fun fresh (x::xs, s, xs') = let
+		val x' = CPS.Var.copy x
+		in
+		  CPS.Var.combineAppUseCnts (x', x);
+		  fresh(xs, extend(s, x, x'), x'::xs')
+		end
+	    | fresh ([], s, xs') = (s, List.rev xs')
+	  in
+	    fresh (xs, s, [])
+	  end
+
+  (* copy a lambda term; this is done as a staged operation, since we must
+   * handle mutually recursive functions.
+   *)
+    fun copyLambda' (s, C.FB{f, params, rets, body}) = let
+	  val (s, f) = freshVar (s, f)
+	  fun doBody s = let
+		val (s, params) = freshVars (s, params)
+		val (s, rets) = freshVars (s, rets)
+		in
+		  C.FB{f=f, params=params, rets=rets, body=copyExp(s, body)}
+		end
+	  in
+	    (s, doBody)
+	  end
+
+    and copyOneLambda (s, fb) = let
+	  val (s, doBody) = copyLambda' (s, fb)
+	  in
+	    (s, doBody s)
+	  end
+
+    and copyFBs (s, fbs) = let
+	(* first pass creates fresh function names and gives a list of doBody
+	 * functions in reverse order.
+	 *)
+	  val (s, doBodies) = List.foldl
+		(fn (fb, (s, doBodies)) => let val (s, doBody) = copyLambda' (s, fb)
+		  in
+		    (s, doBody::doBodies)
+		  end)
+		  (s, []) fbs
+	(* second pass creates the copies and reverses the list back to its original
+	 * order.
+	 *)
+	  val fbs = List.foldl (fn (doBody, fbs) => doBody s :: fbs) [] doBodies
+	  in
+	    (s, fbs)
+	  end
+
+    and copyExp (s, C.Exp(_, t)) = (case t
+	   of C.Let(lhs, e1, e2) => let
+		val (s', lhs) = freshVars(s, lhs)
+		in
+		  C.mkLet(lhs, substRHS (s, e1), copyExp (s', e2))
+		end
+	    | C.Fun(fbs, e) => let
+		val (s, fbs) = copyFBs (s, fbs)
+		in
+		  C.mkFun(fbs, copyExp(s, e))
+		end
+	    | C.Cont(fb, e) => let
+		val (s, fb) = copyOneLambda(s, fb)
+		in
+		  C.mkCont(fb, copyExp(s, e))
+		end
+	    | C.If(cond, e1, e2) =>
+		C.mkIf(CondUtil.map (subst s) cond, copyExp(s, e1), copyExp(s, e2))
+	    | C.Switch(x, cases, dflt) => let
+		fun copyCase (tag, e) = (tag, copyExp (s,e))
+		in
+		  C.mkSwitch(subst s x,
+		    List.map copyCase cases,
+		    Option.map (fn e => copyExp (s, e)) dflt)
+		end
+	    | C.Apply(f, args, rets) =>
+		C.mkApply(subst s f, subst'(s, args), subst'(s, rets))
+	    | C.Throw(k, args) => C.mkThrow(subst s k, subst'(s, args))
+	  (* end case *))
+
+  (* beta-reduce a lambda application; the resulting term will have
+   * fresh bound variables.  This operation also correctly preserves the
+   * census counts of the parameters and arguments (but not the function
+   * name itself), assuming that the original counts are correct.
+   *)
+    fun applyLambda (C.FB{f, params, rets=rets', body}, args, rets) = let
+	  fun err msg = raise Fail(concat[
+		  msg, " mismatch in application of ", CV.toString f, ":",
+		  CPSTyUtil.toString(CV.typeOf f)
+		])
+	  val s = extend' (empty, params, args) handle _ => err "param/arg"
+	  val s = extend' (s, rets', rets) handle _ => err "rets'/rets"
+	  fun adjust (arg as VarRep.V{useCnt, ...}, param) = (
+		CV.combineAppUseCnts (arg, param);
+		useCnt := !useCnt - 1)
+	  in
+	    ListPair.app adjust (args, params);
+	    ListPair.app adjust (rets, rets');
+	    copyExp (s, body)
+	  end
+
+  (* create a copy of a BOM term with fresh bound variables *)
+    fun copyLambda fb = #2 (copyOneLambda (empty, fb))
+
+  (* create a copy of a list of mutually recursive functions *)
+    fun copyLambdas fbs = #2 (copyFBs (empty, fbs))
 
     fun applyToBoundVars func (C.MODULE{externs, body, ...}) = let
 	  fun applyToFBs fbs = (

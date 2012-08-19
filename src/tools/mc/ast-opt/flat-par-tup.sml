@@ -122,7 +122,7 @@ structure FlatParTup : sig
       | exp (A.CaseExp (e, ms, t)) = caseExp (e, ms, t)
       | exp (A.PCaseExp (es, ms, t)) = todo "PCaseExp"
       | exp (A.HandleExp (e, ms, t)) = todo "HandleExp"
-      | exp (A.RaiseExp (e, t)) = A.RaiseExp (exp e, t)
+      | exp (A.RaiseExp (l, e, t)) = A.RaiseExp (l, exp e, t)
       | exp (A.FunExp (x, e, t)) = A.FunExp (x, exp e, t)
       | exp (A.ApplyExp (e1, e2, t)) = A.ApplyExp (exp e1, exp e2, t)
       | exp (m as A.VarArityOpExp _) = m

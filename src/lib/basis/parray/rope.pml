@@ -318,28 +318,28 @@ fun seqSplitAtIx3 (s, i) = let
     (Seq.take (ls, Seq.length ls - 1), seqLast ls, rs)
   end
 
-fun cursorAtIx (rp, i) = let
-  fun nav ((rp, (ls, rs, ds)), i) = (case rp
-    of Leaf s =>
-         if Seq.length s = 1 then
-	   (leaf s, (ls, rs, ds))
-	 else let
-	   val (l, m, r) = seqSplitAtIx3 (s, i)
-	   val c' = (leaf l :: ls, leaf r :: rs, Right :: Left :: ds)
-	   in
-	     (leaf (Seq.singleton m), c')
-	   end
-    | Cat (_, _, l, r) =>
+fun nav ((rp, (ls, rs, ds)), i) = (
+    case rp
+     of Leaf s =>
+        if Seq.length s = 1 then
+	    (leaf s, (ls, rs, ds))
+	else let
+	        val (l, m, r) = seqSplitAtIx3 (s, i)
+	        val c' = (leaf l :: ls, leaf r :: rs, Right :: Left :: ds)
+	    in
+	        (leaf (Seq.singleton m), c')
+	    end
+      | Cat (_, _, l, r) =>
 	if i < length l then
-	  nav ((l, (ls, r :: rs, Left :: ds)), i)
+	    nav ((l, (ls, r :: rs, Left :: ds)), i)
 	else
-	  nav ((r, (l :: ls, rs, Right :: ds)), i - length l))
-  in
+	    nav ((r, (l :: ls, rs, Right :: ds)), i - length l))
+
+fun cursorAtIx (rp, i) = (
     if inBounds (rp, i) then
       nav ((rp, (nil, nil, nil)), i)
     else
-      subscript ()
-  end
+      subscript ())
 
 fun divide length (intvs, k) = let
   fun d (intvs, k) = (case intvs
@@ -364,7 +364,7 @@ fun splitAt length encode cursorAtIx unzipCursorL unzipCursorR cur n = let
   val (rps1, m, k, rps2) = divide length (rp :: rs, n)
   val (mn, (mls, mrs, mds)) = cursorAtIx (m, k - 1)
   val (n1, n2) = (List.length rps1, List.length mrs)
-  val (xs1, xs2) = (rps1 @ mls @ (mn::nil), mrs @ rps2)
+  val (xs1, xs2) = (rps1 @ List.rev mls @ (mn::nil), mrs @ rps2)
   val ((rp1, l1), (rp2, l2)) = (encode xs1, encode xs2)
   in
     (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2))
@@ -373,12 +373,14 @@ fun splitAt length encode cursorAtIx unzipCursorL unzipCursorR cur n = let
 fun join decode finish zipCursor (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2)) = let
   val (xs1, xs2) = (decode (rp1, l1), decode (rp2, l2))
   val (rps1, ms) = (List.take (xs1, n1), List.drop (xs1, n1))
-  val (mn, mls) = (List.last ms, List.take (ms, List.length ms - 1))
+  val (mn, mls) = (List.last ms, List.rev (List.take (ms, List.length ms - 1)))
   val (mrs, rps2) = (List.take (xs2, n2), List.drop (xs2, n2))
   val m = finish (zipCursor (mn, (mls, mrs, mds)))
-  val rp :: rs = rps1 @ (m::nil) @ rps2
+  val ropes = rps1 @ (m::nil) @ rps2
   in
-    zipCursor (rp, (ls, rs, ds))
+    case ropes
+     of rp::rs => zipCursor (rp, (ls, rs, ds))
+      | _ => failwith "join"
   end
 
 fun encodeRope rps = let
@@ -415,7 +417,7 @@ local
       range
 *)
 
-fun intervalLength (lo, hi) = hi - lo 
+fun intervalLength (lo, hi) = hi - lo
 
 fun tabulateSequence f (lo, hi) = 
   Seq.tabulate (intervalLength (lo, hi), fn i => f (lo + i))
@@ -443,7 +445,7 @@ fun tabulateSequential f intv = let
     t intv
   end
 
-fun tabulateETS SST (n, f) = let
+fun tabulateETS SST (intv, f) = let
   fun t intv = let
     val len = intervalLength intv 
     in
@@ -456,7 +458,7 @@ fun tabulateETS SST (n, f) = let
 	end
     end
   in
-    t (0, n)
+    t intv
   end
 
 fun numUnprocessedTab cur = numUnprocessed length intervalLength cur
@@ -478,7 +480,10 @@ fun tabulateUntil cond (cur, f) = let
            val us = (lo + Seq.length ps, hi)
 	   in
              if numUnprocessedTab (us, c) < 2 then let
-	       val Done us' = Seq.tabulateUntil (fn _ => false) (us, f)
+	       val us' = 
+                 (case Seq.tabulateUntil (fn _ => false) (us, f)
+		    of Done x => x
+		     | _ => failwith "expected Done")
 	       val ps' = Seq.cat2 (ps, us')
 	       in
 		 case nextTab (leaf ps', c)
@@ -551,7 +556,7 @@ fun rootU (rp, uc) = (case uc
    | (l :: ls, rs, Right :: ds) => rootU (nccat2 (l, rp), (ls, rs, ds))
    | _ => failwith "rootU")
 
-fun tabulateLTS PPT (n, f) = let
+fun tabulateLTS PPT (intv, f) = let
   fun t cur = (case tabulateUntil RT.hungryProcs (cur, f)
     of Done rp => rp
      | More cur' => let
@@ -564,7 +569,7 @@ fun tabulateLTS PPT (n, f) = let
 	   join decodeRopeTab id rootU (rp1, rp2, reb)
          end)
   in
-    t ((0, n), GCTop)
+    t (intv, GCTop)
   end
 in
 fun tabulate (n, f) = 
@@ -573,9 +578,24 @@ fun tabulate (n, f) =
     of ChunkingPolicy.Sequential => 
          tabulateSequential f (0, n)
      | ChunkingPolicy.ETS SST => 
-         tabulateETS SST (n, f)
+         tabulateETS SST ((0, n), f)
      | ChunkingPolicy.LTS PPT => 
-         tabulateLTS PPT (n, f))
+         tabulateLTS PPT ((0, n), f))
+
+(* tabFromToP : int * int * (int -> 'a) -> 'a rope *)
+(* lo inclusive, hi inclusive *)
+fun tabFromTo (lo, hi, f) =
+    if (lo > hi) then
+        empty ()
+    else
+        (case ChunkingPolicy.get ()
+          of ChunkingPolicy.Sequential => 
+             tabulateSequential f (lo, hi+1)
+           | ChunkingPolicy.ETS SST => 
+             tabulateETS SST ((lo, hi+1), f)
+           | ChunkingPolicy.LTS PPT => 
+             tabulateLTS PPT ((lo, hi+1), f))
+
 end (* local *)
 
 (*local*)
@@ -647,6 +667,91 @@ fun map f rp = (case ChunkingPolicy.get ()
    | ChunkingPolicy.LTS PPT => mapLTS PPT f rp)
 fun mapUncurried (f, rp) = map f rp
 (*end*)
+
+(*local*)
+
+fun ignore x = ()
+
+fun imperativePar2 (f, g) = let
+  val (x, y) = RT.par2 (f, g)
+  in
+    x + y
+  end
+
+fun foreachSequentialRec i f rp = (case rp
+  of Leaf s => 
+       (Seq.foreach i f s; 0)
+   | Cat(len, d, l, r) => 
+       (foreachSequentialRec i f l) + (foreachSequentialRec (i+length l) f r))
+
+fun foreachSequential f rp = foreachSequentialRec 0 f rp
+
+fun foreachETS SST f rp = let
+  fun fe (i, rp) =
+    if length rp <= SST then foreachSequentialRec i f rp
+    else let 
+      val (l, r) = split2 rp
+      in
+	imperativePar2 (fn () => fe (i, l), 
+	  	        fn () => fe (i+length l, r))
+      end
+  in
+    fe (0, rp)
+  end
+
+fun numUnprocessedForeach cur = numUnprocessed length length cur
+
+fun nextForeach cur = let
+  fun n (f, c) = (case c
+    of GCTop => 
+	 Done f
+     | GCLeft (c', r) =>
+	 More (leftmostLeaf (r, GCRight (f, c')))
+     | GCRight (l, c') =>
+	 n (nccat2 (l, f), c'))
+  in
+    n cur
+  end
+
+fun foreachUntil i cond f cur = let
+  fun m (i, s, c) = (case Seq.foreachUntil cond i f s
+     of More (us, ()) => 
+	  if numUnprocessedForeach (leaf us, c) < 2 then
+	    (Seq.foreach i f us; case nextForeach (empty(), c)
+	      of Done _ => Done ()
+	       | More (s', c') => m (i+Seq.length us, s', c'))
+	  else 
+	    More (leaf us, c)      
+      | Done () => (case nextForeach (empty (), c)
+	  of Done _ => Done ()
+	   | More (s', c') => m (i+Seq.length s, s', c')))
+  val (s, c) = leftmostLeaf cur
+  in
+    m (i, s, c)
+  end
+
+fun foreachLTS PPT f rp = let
+  fun m (i, cur) = (case foreachUntil i RT.hungryProcs f cur
+    of Done () => 0
+     | More cur' => let
+	 val mid = numUnprocessedForeach cur' div 2
+	 val (rp1, rp2, _) = 
+	       splitAt length encodeRope cursorAtIx unzipCursor unzipCursor cur' mid
+         in
+	   imperativePar2 (fn () => m (i, start rp1), fn () => m (i+length rp1, start rp2))
+         end)
+  in
+    if PPT <> 1 then failwith "PPT != 1 currently unsupported" else
+    m (0, start rp)
+  end
+(*in*)
+fun foreach f rp = ignore (case ChunkingPolicy.get ()
+  of ChunkingPolicy.Sequential => foreachSequential f rp
+   | ChunkingPolicy.ETS SST => foreachETS SST f rp
+   | ChunkingPolicy.LTS PPT => foreachLTS PPT f rp)
+fun foreachUncurried (f, rp) = foreach f rp
+(*end*)
+
 
 (*local*)
 fun reduceSequential f b rp =
@@ -942,7 +1047,10 @@ fun downsweepUntil cond f b acc cur = let
   fun d (s, c, acc) = (case Seq.scanUntil cond f acc s
     of (acc, More (us, ps)) => 
          if numUnprocessedDownsweep (mcleaf' (b, us), c) < 2 then let
-	    val (acc', Done us') = Seq.scanUntil (fn _ => false) f acc us
+	    val (acc', us') = 
+             (case Seq.scanUntil (fn _ => false) f acc us
+                of (acc', Done us') => (acc', us')
+		 | _ => failwith "downsweepUntil: expected Done")
             in
 	      case nextDownsweep (leaf (Seq.cat2 (ps, us')), c)
 	       of Done p' => Done p'
@@ -1111,24 +1219,6 @@ fun app f rp = let
 
     val concat = ccat2
 
-  (* tabFromToP : int * int * (int -> 'a) -> 'a rope *)
-  (* lo inclusive, hi inclusive *)
-    fun tabFromTo (lo, hi, f) =
-      if (lo > hi) then
-        empty ()
-      else let
-        val nElts = hi - lo + 1
-        in
-          if nElts <= LeafSize.getMax () then
-            leaf (Seq.tabulate (nElts, fn i => f (lo + i)))
-          else let
-            val m = (hi + lo) div 2
-            in
-              nccat2 (| tabFromTo (lo, m, f),
-		      tabFromTo (m+1, hi, f) |)
-            end
-        end
-
   (* tabFromToStepP : int * int * int * (int -> 'a) -> 'a rope *)
   (* lo inclusive, hi inclusive *)
     fun tabFromToStep (from, to_, step, f) = (case Int.compare (step, 0)
@@ -1195,4 +1285,9 @@ fun app f rp = let
 		 end
 	     end
         (* end case *))
+
+  (* fromSeq *)
+  (* FIXME slow implementation *)
+    fun fromSeq s = fromList (Seq.toList s)
 end
+

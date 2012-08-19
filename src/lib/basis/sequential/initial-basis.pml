@@ -9,7 +9,7 @@
 
 _primcode (
 
-   #define RAISE_DIV(exh) let e : exn = Div (* in *) throw exh (e)
+#define RAISE_DIV(exh) let e : exn = Div (* in *) throw exh (e)
 
   typedef exh = cont(exn);
   typedef unit = enum(0);
@@ -242,6 +242,7 @@ _primcode (
   extern void CheckGlobalPtr (void *, void *, void *);
   extern void CheckGlobalAddr (void *, void *, void *);
   extern void DebugPromote (void *, void *, void *, void *);
+  extern void DebugThrow (void *, void *);
 #endif
 
 #ifndef SEQUENTIAL

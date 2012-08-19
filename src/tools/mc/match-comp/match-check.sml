@@ -1026,7 +1026,7 @@ fun litsToString (s: LitSet.set) : string =
 	   List.app exp (matchesExps ms))
       | exp (AST.LetExp (b, e)) = (binding b; exp e)
       | exp (AST.IfExp (e1, e2, e3, _)) = (exp e1; exp e2; exp e3)
-      | exp (AST.RaiseExp (e, _)) = exp e
+      | exp (AST.RaiseExp (l, e, _)) = exp e
       | exp (AST.FunExp (_, e, _)) = exp e
       | exp (AST.ApplyExp (e1, e2, _)) = (exp e1; exp e2)
       | exp (AST.VarArityOpExp _) = ()

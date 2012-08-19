@@ -39,6 +39,13 @@ structure CPSOptControls =
                   pri = [0, 1],
                   obscurity = 0,
                   help = "use reference counted cfa"
+                },
+              Controls.control {
+                  ctl = Reflow.debugFlg,
+                  name = "reflow-debug",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "debug reflow"
                 }
             ]
 

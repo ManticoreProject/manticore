@@ -61,7 +61,7 @@ int main ()
     LogBuffer_t		logBuffer;
     LogEvent_t		logEvent;
     SchedActStkItem_t	actcons;
-    RdyQItem_t		rdyq;
+    RdyQItem_t		rdyq, sndq;
     unsigned char	buf[8*1024];
     char		*bp = (char *)buf;
 
@@ -92,13 +92,6 @@ int main ()
     PR_OFFSET_NOCRC(actcons, ACTCONS_ACT, act);
     PR_OFFSET_NOCRC(actcons, ACTCONS_LINK, link);
 
-    printf("\n/* constants for the ready queue elements */\n");
-    PR_DEFINE(RDYQ_HDR, VEC_HDR(3));
-    PR_DEFINE(RDYQ_SZB, sizeof(RdyQItem_t) + WORD_SZB);
-    PR_OFFSET_NOCRC(rdyq, RDYQ_FIBER, fiber);
-    PR_OFFSET_NOCRC(rdyq, RDYQ_TID, tid);
-    PR_OFFSET_NOCRC(rdyq, RDYQ_LINK, link);
-    
     printf("\n/* Stack-frame size */\n");
     PR_DEFINE(FRAME_SZB, FRAME_SZB);
 
