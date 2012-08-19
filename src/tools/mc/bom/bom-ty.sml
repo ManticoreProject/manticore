@@ -33,6 +33,16 @@ structure BOMTy =
       | T_Deque				(* address of VProc deque object *)
       | T_TyCon of tyc			(* high-level type constructor *)
       | T_Parr of parr
+      | T_Symbolic of symbolic_op
+
+    (* Symbols for Flattening operations *)
+    and symbolic_op
+      = ParrMap
+      | FarrMap
+      | ParrReduce
+      | FarrReduce
+      | ParrFilter
+      | FarrFilter
 
     and parr
       = IntParr
