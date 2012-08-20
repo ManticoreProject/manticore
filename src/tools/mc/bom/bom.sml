@@ -17,6 +17,29 @@ structure BOM =
 
     datatype exp = E_Pt of (ProgPt.ppt * term)
 
+    (* Symbols for Flattening operations *)
+    and symbolic_op
+      = P of parr_op
+      | F of farr_op
+
+    (* types refer to the types of the parrays consumed by these functions, except when noted otherwise *)
+    and parr_op
+      = Length of ty
+      | Sub of ty
+      | Tab of ty (* ty is the range type *)
+      | Map of ty (* ty is the type of the function being mapped *)
+      | Reduce of ty
+      | Range of ty (* currently only int? *)
+    and farr_op
+      = Length of ty
+      | Sub of ty
+      | Tab of ty
+      | Map of ty
+      | Reduce of ty
+      | Range of ty
+      | Unzip of ty
+      | TupleApply of farr_op list (* farr ops are expected to be the same *)
+
     and term
       = E_Let of (var list * exp * exp)
       | E_Stmt of (var list * rhs * exp)
@@ -28,6 +51,7 @@ structure BOM =
       | E_Throw of (var * var list)
       | E_Ret of var list
       | E_HLOp of (hlop * var list * var list)	(* application of high-level operator *)
+      | E_Symbolic of symbolic_op
 
     and rhs
       = E_Const of const
