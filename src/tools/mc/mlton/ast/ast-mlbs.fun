@@ -9,6 +9,9 @@
 functor AstMLBs (S: AST_MLBS_STRUCTS): AST_MLBS = 
 struct
 
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 
 structure AstPrograms = AstPrograms (S)
@@ -49,7 +52,7 @@ and layoutBasdec dec =
    case node dec of
       Ann (anns,_, dec) =>
          align [str "ann", 
-                indent (seq [str String.dquote, str anns, str String.dquote], 3),
+                indent (seq [str (*String.dquote*)"\"", str anns, str (*String.dquote*)"\""], 3),
                 str "in", 
                 indent (layoutBasdec dec, 3), 
                 str "end"]
@@ -101,7 +104,7 @@ fun sourceFiles (d: basdec): File.t vector =
       val sourceFiles : File.t Buffer.t =
          Buffer.new {dummy = "<dummy>"}
       val psi : File.t -> bool ref =
-         String.memoize (fn _ => ref false)
+         (*String.memoize*)Memoize.memoize (fn _ => ref false)
 
       fun sourceFilesBasexp (e: basexp): unit =
          case node e of

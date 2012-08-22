@@ -14,6 +14,11 @@
 functor Polyvariance (S: POLYVARIANCE_STRUCTS): POLYVARIANCE = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+fun Int_layout i = Layout.str(Int.toString i)
+
 open S
 datatype z = datatype Dec.t
 datatype z = datatype PrimExp.t
@@ -218,9 +223,9 @@ fun shouldDuplicate (program as Program.T {body, ...}, hofo, small, product)
           (sort (!costs), fn (x, size, numOcc, c) =>
            layout (let open Layout
                    in seq [Var.layout x,
-                           str " ", Int.layout size,
-                           str " ", Int.layout numOcc,
-                           str " ", Int.layout c]
+                           str " ", (*Int.layout*)Int_layout size,
+                           str " ", (*Int.layout*)Int_layout numOcc,
+                           str " ", (*Int.layout*)Int_layout c]
                    end)))
    in
       fn x =>

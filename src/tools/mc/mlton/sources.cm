@@ -4,7 +4,9 @@ structure Wrapper
 
 is
 
-../../../lib/mlton/sources.cm
+$/basis.cm
+
+lib/sources.cm
 ast/sources.cm
 atoms/sources.cm
 cm/sources.cm

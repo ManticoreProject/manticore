@@ -15,7 +15,7 @@ datatype t =
  | Nary
 
 val layout =
-   fn Arity n => Int.layout n
+   fn Arity n => (*Int.layout*)Layout.str(Int.toString n)
     | Nary => Layout.str "n-ary"
 
 val equals =
@@ -23,6 +23,6 @@ val equals =
     | (Nary, Nary) => true
     | _ => false
 
-val equals = Trace.trace2 ("TyconKind.equals", layout, layout, Bool.layout) equals
+val equals = Trace.trace2 ("TyconKind.equals", layout, layout, (*Bool.layout*)Layout.str o Bool.toString) equals
 
 end

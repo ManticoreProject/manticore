@@ -9,6 +9,8 @@
 functor Longid (S: LONGID_STRUCTS): LONGID =
 struct
 
+structure List = MLtonList
+
 open S
 
 datatype node = T of {strids: Strid.t list,
@@ -72,7 +74,7 @@ fun fromSymbols (ss: Symbol.t list, region: Region.t): t =
                 ((ss, SourcePos.column p),
                  fn (s::ss, cl) =>
                     let
-                       val cr = cl + String.length (Symbol.toString s)
+                       val cr = cl + (*String.length*)String.size (Symbol.toString s)
                     in
                        SOME
                        ((s, Region.make

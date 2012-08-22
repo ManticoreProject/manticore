@@ -9,6 +9,10 @@
 functor AstAtoms (S: AST_ATOMS_STRUCTS): AST_ATOMS = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 
 structure Wrap = Region.Wrap

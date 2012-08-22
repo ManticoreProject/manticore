@@ -10,6 +10,10 @@
 functor LookupConstant (S: LOOKUP_CONSTANT_STRUCTS): LOOKUP_CONSTANT = 
 struct
 
+structure List = MLtonList
+fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
+fun String_tokens (s, pred) = String.tokens pred s
+
 open S
 local
    open Const
@@ -125,7 +129,7 @@ fun load (ins: In.t, commandLineConstants)
          HashSet.new {hash = #hash}
       fun add {name, value} =
          let
-            val hash = String.hash name
+            val hash = (*String.hash*)String_hash name
             val _ = 
                HashSet.lookupOrInsert
                (table, hash,
@@ -147,7 +151,7 @@ fun load (ins: In.t, commandLineConstants)
       val _ = 
          In.foreachLine
          (ins, fn l =>
-          case String.tokens (l, Char.isSpace) of
+          case (*String.tokens*)String_tokens (l, Char.isSpace) of
              [name, "=", value] => add {name = name, value = value}
            | _ => Error.bug 
                   (concat ["LookupConstants.load: strange constants line: ", l]))
@@ -155,7 +159,7 @@ fun load (ins: In.t, commandLineConstants)
          let
             val {value, ...} =
                let
-                  val hash = String.hash name
+                  val hash = (*String.hash*)String_hash name
                in
                   HashSet.lookupOrInsert
                   (table, hash,

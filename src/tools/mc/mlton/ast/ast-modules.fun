@@ -9,6 +9,10 @@
 functor AstModules (S: AST_MODULES_STRUCTS): AST_MODULES = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 
 structure AstCore = AstCore (AstAtoms (S))

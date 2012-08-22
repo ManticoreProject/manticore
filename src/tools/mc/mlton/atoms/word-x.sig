@@ -25,7 +25,7 @@ signature WORD_X =
       val div: t * t * {signed: bool} -> t
       val equals: t * t -> bool
       val fromChar: char -> t (* returns a word of size 8 *)
-      val fromIntInf: IntInf.t * WordSize.t -> t
+      val fromIntInf: (*IntInf.t.*)IntInf.int * WordSize.t -> t
       val ge: t * t * {signed: bool} -> bool
       val gt: t * t * {signed: bool} -> bool
       val hash: t -> word
@@ -58,8 +58,8 @@ signature WORD_X =
       val sub: t * t -> t
       val toChar: t -> char
       val toInt: t -> int
-      val toIntInf: t -> IntInf.t
-      val toIntInfX: t -> IntInf.t
+      val toIntInf: t -> (*IntInf.t.*)IntInf.int
+      val toIntInfX: t -> (*IntInf.t.*)IntInf.int
       val toString: t -> string
       val xorb: t * t -> t
       val zero: WordSize.t -> t

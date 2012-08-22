@@ -9,6 +9,8 @@
 functor TypeCheck (S: TYPE_CHECK_STRUCTS): TYPE_CHECK = 
 struct
 
+structure Vector = MLtonVector
+
 open S
 open Dec PrimExp
 
@@ -142,7 +144,7 @@ fun typeCheck (program as Program.T {datatypes, body, overflow}): unit =
          traceCheckExp
          (fn (exp: Exp.t) =>
           let val {decs, result} = Exp.dest exp
-          in List.foreach (decs, checkDec)
+          in MLtonList.foreach (decs, checkDec)
              ; checkVarExp result
           end) arg
       and checkPrimExp arg: Type.t =
@@ -176,7 +178,7 @@ fun typeCheck (program as Program.T {datatypes, body, overflow}): unit =
                App {arg, func} => checkApp (checkVarExp func, arg)
              | Case {cases, default, test} =>
                   let
-                     val default = Option.map (default, checkExp o #1)
+                     val default = MLtonOption.map (default, checkExp o #1)
                      fun equalss v =
                         if Vector.isEmpty v
                            then Error.bug "Xml.TypeCheck.equalss"

@@ -10,6 +10,13 @@
 functor ElaborateEnv (S: ELABORATE_ENV_STRUCTS): ELABORATE_ENV =
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+structure Array = MLtonArray
+fun Int_layout i = Layout.str(Int.toString i)
+fun String_equals (a : string, b) = (a = b)
+
 open S
 
 local
@@ -610,7 +617,7 @@ structure Time:>
    struct
       type t = int
 
-      val layout = Int.layout
+      val layout = (*Int.layout*)Int_layout
 
       val op >= : t * t -> bool = op >=
 
@@ -1059,7 +1066,7 @@ structure FunctorClosure =
          Trace.trace3 ("ElaborateEnv.FunctorClosure.apply",
                        layout,
                        Structure.layout,
-                       List.layout String.layout,
+                       List.layout (*String.layout*)Layout.str,
                        (Option.layout Structure.layout) o #2)
          apply
    end
@@ -1235,10 +1242,10 @@ datatype t =
 
 fun sizeMessage (E: t): Layout.t =
    let
-      val size = MLton.size
+      (*val size = MLton.size*)
       open Layout
    in
-      record [("total", Int.layout (size E))]
+      record [("total", (*Int.layout (size E)*)str "??")]
    end
 (* quell unused warning *)
 val _ = sizeMessage
@@ -1757,7 +1764,7 @@ fun processDefUse (E as T f) =
                                                            toString)
                                              val uts =
                                                  List.map (List.equivalence
-                                                           (ts, String.equals),
+                                                           (ts, (*String.equals*)String_equals),
                                                            hd)
                                              val sts =
                                                  List.insertionSort

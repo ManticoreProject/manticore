@@ -9,13 +9,16 @@
 functor RealX (S: REAL_X_STRUCTS): REAL_X = 
 struct
 
+structure Real32 = Real64	(* no Real32 *)
+fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
+
 open S
 
 datatype z = datatype RealSize.t
 
 datatype t =
-   Real32 of Real32.t
- | Real64 of Real64.t
+   Real32 of (*Real32.t*)Real32.real
+ | Real64 of (*Real64.t*)Real64.real
 
 fun zero s =
    case s of
@@ -55,29 +58,29 @@ fun equals (r, r') =
          let
             open Real32
          in
-            (equals (r, r') andalso signBit r = signBit r')
+            ((*equals (r, r')*)Real32.==(r, r') andalso signBit r = signBit r')
             orelse (isNan r andalso isNan r')
          end
     | (Real64 r, Real64 r') =>
          let
             open Real64
          in
-            (equals (r, r') andalso signBit r = signBit r')
+            ((*equals (r, r')*)Real64.==(r, r') andalso signBit r = signBit r')
             orelse (isNan r andalso isNan r')
          end
     | _ => false
 
 fun toString r =
    case r of
-      Real32 r => Real32.format (r, Real32.Format.exact)
-    | Real64 r => Real64.format (r, Real64.Format.exact)
+      Real32 r => (*Real32.format (r, Real32.Format.exact)*)Real32.fmt StringCvt.EXACT r
+    | Real64 r => (*Real64.format (r, Real64.Format.exact)*)Real64.fmt StringCvt.EXACT r
 
 val layout = Layout.str o toString
 
-val hash = String.hash o toString
+val hash = (*String.hash*)String_hash o toString
 
 structure P = Pervasive
-structure PR32 = P.Real32
+structure PR32 = (*P.Real32*)P.Real64
 structure PR64 = P.Real64
 structure PIR = P.IEEEReal
 
@@ -115,20 +118,20 @@ val r32 =
        abs = PR32.abs, signBit = PR32.signBit, isNan = PR32.isNan,
        toManExp = PR32.toManExp, compareReal = PR32.compareReal,
        bits = Bits.inWord32,
-       subVec = P.PackWord32Little.subVec,
-       update = P.PackWord32Little.update,
-       toBytes = P.PackReal32Little.toBytes,
-       subArr = P.PackReal32Little.subArr,
+       subVec = (*P.PackWord32Little.subVec*)fn _ => raise Fail "PackWord32Little.subVec",
+       update = (*P.PackWord32Little.update*)fn _ => raise Fail "PackWord32Little.update",
+       toBytes = (*P.PackReal32Little.toBytes*)fn _ => raise Fail "PackReal32Little.toBytes",
+       subArr = (*P.PackReal32Little.subArr*)fn _ => raise Fail "PackReal32Little.subArr",
        tag = Real32}
 val r64 =
     R {zero = 0.0, half = 0.5, one = 1.0, inf = PR64.posInf,
        abs = PR64.abs, signBit = PR64.signBit, isNan = PR64.isNan,
        toManExp = PR64.toManExp, compareReal = PR64.compareReal,
        bits = Bits.inWord64,
-       subVec = P.PackWord64Little.subVec,
-       update = P.PackWord64Little.update,
-       toBytes = P.PackReal64Little.toBytes,
-       subArr = P.PackReal64Little.subArr,
+       subVec = (*P.PackWord64Little.subVec*)fn _ => raise Fail "PackWord64Little.subVec",
+       update = (*P.PackWord64Little.update*)fn _ => raise Fail "PackWord64Little.update",
+       toBytes = (*P.PackReal64Little.toBytes*)fn _ => raise Fail "PackReal64Little.toBytes",
+       subArr = (*P.PackReal64Little.subArr*)fn _ => raise Fail "PackReal64Little.subArr",
        tag = Real64}
 
 local
@@ -198,8 +201,8 @@ in
 
    fun fromIntInf (i, s) =
        case s of
-          R32 => doit r32 (Real32.fromIntInf, i)
-        | R64 => doit r64 (Real64.fromIntInf, i)
+          R32 => doit r32 ((*Real32.fromIntInf*)Real32.fromLargeInt, i)
+        | R64 => doit r64 ((*Real64.fromIntInf*)Real64.fromLargeInt, i)
 end
 
 local
@@ -222,8 +225,8 @@ datatype decon =
    NAN
  | ZERO of {signBit: bool}
  | ONE of {signBit: bool}
- | POW2 of {signBit: bool, exp: Int.t} (* man = 0.5 *)
- | FIN of {signBit: bool, exp: Int.t, man: t}
+ | POW2 of {signBit: bool, exp: (*Int.t*)int} (* man = 0.5 *)
+ | FIN of {signBit: bool, exp: (*Int.t*)int, man: t}
  | INF of {signBit: bool}
 
 local

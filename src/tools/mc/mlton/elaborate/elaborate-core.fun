@@ -10,6 +10,13 @@
 functor ElaborateCore (S: ELABORATE_CORE_STRUCTS): ELABORATE_CORE =
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+fun Bool_layout b = Layout.str(Bool.toString b)
+fun String_prefix (s, len) = String.substring (s, 0, len)
+fun String_suffix (s, len) = String.substring (s, len, size s - len)
+
 open S
 
 local
@@ -130,7 +137,7 @@ structure Apat =
           | _ => NONE
 
       val getName =
-         Trace.trace ("ElaborateCore.Apat.getName", layout, Option.layout String.layout)
+         Trace.trace ("ElaborateCore.Apat.getName", layout, Option.layout (*String.layout*)Layout.str)
          getName
    end
 
@@ -171,7 +178,7 @@ fun elaborateType (ty: Atype.t, lookup: Lookup.t): Type.t =
                                         seq [str "type ",
                                              Ast.Longtycon.layout c,
                                              str " given ",
-                                             Int.layout numArgs,
+                                             (*Int.layout numArgs*)Layout.str(Int.toString numArgs),
                                              str (if numArgs = 1
                                                      then " argument"
                                                   else " arguments"),
@@ -226,7 +233,7 @@ fun 'a elabConst (c: Aconst.t,
              seq [Type.layoutPretty ty, str " too big: ", Aconst.layout c],
              empty)
          end
-      fun ensureChar (cs: CharSize.t, ch: IntInf.t): unit =
+      fun ensureChar (cs: CharSize.t, ch: (*IntInf.t*)IntInf.int): unit =
          if CharSize.isInRange (cs, ch)
             then ()
          else
@@ -388,13 +395,13 @@ fun approximateN (l: Layout.t, prefixMax, suffixMax): Layout.t =
           NONE =>
              if n <= prefixMax
                 then s
-             else concat [String.prefix (s, prefixMax - 5), "  ..."]
+             else concat [(*String.prefix*)String_prefix (s, prefixMax - 5), "  ..."]
         | SOME suffixMax =>
              if n <= prefixMax + suffixMax
                 then s
-             else concat [String.prefix (s, prefixMax - 2),
+             else concat [(*String.prefix*)String_prefix (s, prefixMax - 2),
                           "  ...  ",
-                          String.suffix (s, suffixMax - 5)])
+                          (*String.suffix*)String_suffix (s, suffixMax - 5)])
    end
 fun approximate (l: Layout.t): Layout.t =
    approximateN (l, 35, SOME 25)
@@ -717,7 +724,7 @@ structure Nest =
    struct
       type t = string list
 
-      val layout = List.layout String.layout
+      val layout = List.layout (*String.layout*)Layout.str
    end
 
 val elabDecInfo = Trace.info "ElaborateCore.elabDec"
@@ -817,7 +824,7 @@ structure Type =
           Option.layout (fn {ctype, name} =>
                          Layout.record
                          [("ctype", CType.layout ctype),
-                          ("name", String.layout name)]))
+                          ("name", (*String.layout*)Layout.str name)]))
          toCType
 
       type z = {ctype: CType.t, name: string, ty: t}
@@ -1504,7 +1511,7 @@ fun export {attributes: ImportExportAttribute.t list,
 val export =
    Trace.trace
    ("ElaborateCore.export",
-    fn {name, ...} => String.layout name,
+    fn {name, ...} => (*String.layout*)Layout.str name,
     Aexp.layout)
    export
 
@@ -1745,7 +1752,7 @@ fun elaborateDec (d, {env = E, nest}) =
       fun elabDec arg : Decs.t =
          Trace.traceInfo
          (elabDecInfo,
-          Layout.tuple3 (Ast.Dec.layout, Nest.layout, Bool.layout),
+          Layout.tuple3 (Ast.Dec.layout, Nest.layout, (*Bool.layout*)Bool_layout),
           Decs.layout, Trace.assertTrue)
          (fn (d, nest, isTop) =>
           let

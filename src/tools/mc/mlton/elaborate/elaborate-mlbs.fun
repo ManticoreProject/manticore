@@ -10,6 +10,13 @@
 functor ElaborateMLBs (S: ELABORATE_MLBS_STRUCTS): ELABORATE_MLBS = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+fun String_split (s, c) = String.fields (fn c' => c = c') s
+fun String_equals (s1 : string, s2) = (s1 = s2)
+fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
+
 open S
 
 local
@@ -92,7 +99,7 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
       fun elabProg p = ElaboratePrograms.elaborateProgram (p, {env = E})
 
       val psi : (File.t * Env.Basis.t Promise.t) HashSet.t =
-         HashSet.new {hash = String.hash o #1}
+         HashSet.new {hash = (*String.hash*)String_hash o #1}
 
       val elabBasexpInfo = Trace.info "ElaborateMLBs.elabBasexp"
       val elabBasdecInfo = Trace.info "ElaborateMLBs.elabBasdec"
@@ -173,8 +180,8 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
                 let
                    val (_, B) =
                       HashSet.lookupOrInsert
-                      (psi, String.hash fileAbs, fn (fileAbs', _) => 
-                       String.equals (fileAbs, fileAbs'), fn () =>
+                      (psi, (*String.hash*)String_hash fileAbs, fn (fileAbs', _) => 
+                       (*String.equals*)String_equals (fileAbs, fileAbs'), fn () =>
                        let
                           val basdec = Promise.force basdec
                           val B =
@@ -251,7 +258,7 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
                                         val ffi = valOf (current ffiStr)
                                         val ffi = 
                                            Longstrid.fromSymbols 
-                                           (List.map (String.split (ffi, #"."), 
+                                           (List.map ((*String.split*)String_split (ffi, #"."), 
                                                       Longstrid.Symbol.fromString), 
                                             reg)
                                      in

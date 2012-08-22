@@ -6,6 +6,8 @@
 functor PrecedenceParse (S: PRECEDENCE_PARSE_STRUCTS): PRECEDENCE_PARSE =
 struct
 
+structure Vector = MLtonVector
+
 open S
 
 local open Ast

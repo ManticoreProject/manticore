@@ -21,8 +21,8 @@ fun elaborateProgram (program, {env = E: Env.t}) =
       val Ast.Program.T decs = Ast.Program.coalesce program 
       fun elabTopdec d = ElaborateModules.elaborateTopdec (d, {env = E})
    in
-      List.fold (decs, Decs.empty, fn (ds, decs) =>
-                 List.fold (ds, decs, fn (d, decs) =>
+      MLtonList.fold (decs, Decs.empty, fn (ds, decs) =>
+                 MLtonList.fold (ds, decs, fn (d, decs) =>
                             Decs.append (decs, elabTopdec d)))
    end
 

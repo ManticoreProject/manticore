@@ -10,6 +10,11 @@
 functor ElaborateSigexp (S: ELABORATE_SIGEXP_STRUCTS): ELABORATE_SIGEXP = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+fun Int_layout i = Layout.str(Int.toString i)
+
 open S
 
 local
@@ -84,7 +89,7 @@ fun elaborateType (ty: Atype.t, E: Env.t): Tyvar.t vector * Type.t =
                                         seq [str "type constructor ",
                                              Ast.Longtycon.layout c,
                                              str " given ",
-                                             Int.layout numArgs,
+                                             (*Int.layout*)Int_layout numArgs,
                                              str (if numArgs = 1
                                                      then " argument"
                                                   else " arguments"),
@@ -288,7 +293,7 @@ fun elaborateDatBind (datBind: DatBind.t, E): unit =
 val traceElaborateSigexp =
    Trace.trace2 ("ElaborateSigexp.elaborateSigexp",
                  Sigexp.layout,
-                 fn {isTop} => Layout.record [("isTop", Bool.layout isTop)],
+                 fn {isTop} => Layout.record [("isTop", (*Bool.layout isTop*)Layout.str(Bool.toString isTop))],
                  Option.layout Interface.layout)
 
 val info' = Trace.info "ElaborateSigexp.elaborateSpec"

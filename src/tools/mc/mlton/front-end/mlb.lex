@@ -26,7 +26,7 @@ fun lineDirective (source, file, yypos) =
                          {lineNum = !lineNum,
                           lineStart = yypos - !colNum})
 fun addString (s: string) = charlist := s :: (!charlist)
-fun addChar (c: char) = addString (String.fromChar c)
+fun addChar (c: char) = addString ((*String.fromChar*)String.str c)
 
 fun inc (ri as ref (i: int)) = (ri := i + 1)
 fun dec (ri as ref (i: int)) = (ri := i-1)

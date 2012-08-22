@@ -8,6 +8,12 @@
 functor CFunction (S: C_FUNCTION_STRUCTS): C_FUNCTION = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+fun Bool_layout b = Layout.str(Bool.toString b)
+fun Int_layout i = Layout.str(Int.toString i)
+
 open S
 
 structure Convention =
@@ -77,21 +83,21 @@ fun layout (T {args, bytesNeeded, convention, ensuresBytesFree, mayGC,
             layoutType) =
    Layout.record
    [("args", Vector.layout layoutType args),
-    ("bytesNeeded", Option.layout Int.layout bytesNeeded),
+    ("bytesNeeded", Option.layout (*Int.layout*)Int_layout bytesNeeded),
     ("convention", Convention.layout convention),
-    ("ensuresBytesFree", Bool.layout ensuresBytesFree),
-    ("mayGC", Bool.layout mayGC),
-    ("maySwitchThreads", Bool.layout maySwitchThreads),
-    ("modifiesFrontier", Bool.layout modifiesFrontier),
+    ("ensuresBytesFree", (*Bool.layout*)Bool_layout ensuresBytesFree),
+    ("mayGC", (*Bool.layout*)Bool_layout mayGC),
+    ("maySwitchThreads", (*Bool.layout*)Bool_layout maySwitchThreads),
+    ("modifiesFrontier", (*Bool.layout*)Bool_layout modifiesFrontier),
     ("prototype", (fn (args,ret) => 
                    Layout.record
                    [("args", Vector.layout CType.layout args),
                     ("res", Option.layout CType.layout ret)]) prototype),
-    ("readsStackTop", Bool.layout readsStackTop),
+    ("readsStackTop", (*Bool.layout*)Bool_layout readsStackTop),
     ("return", layoutType return),
     ("symbolScope", SymbolScope.layout symbolScope),
     ("target", Target.layout target),
-    ("writesStackTop", Bool.layout writesStackTop)]
+    ("writesStackTop", (*Bool.layout*)Bool_layout writesStackTop)]
 
 local
    fun make f (T r) = f r

@@ -9,6 +9,11 @@
 functor Defunctorize (S: DEFUNCTORIZE_STRUCTS): DEFUNCTORIZE = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+fun Int_inc (r : int ref) = r := !r + 1
+
 open S
 
 local
@@ -199,7 +204,7 @@ fun casee {caseType: Xtype.t,
                          mayInline = true})}
                    fun finish rename =
                       (if 0 = !numUses then List.push (decs, dec ()) else ()
-                       ; Int.inc numUses
+                       ; (*Int.inc*)Int_inc numUses
                        ; (Xexp.app
                           {func = Xexp.monoVar (func, funcType),
                            arg =
@@ -237,7 +242,7 @@ fun casee {caseType: Xtype.t,
          else
             let
                val {exp = e, pat = p, numUses, ...} = Vector.sub (cases, 0)
-               fun use () = Int.inc numUses 
+               fun use () = (*Int.inc*)Int_inc numUses 
             in
                case NestedPat.node p of
                   Wild => (use (); wild (e ()))

@@ -9,6 +9,10 @@
 functor SccFuns (S: SCC_FUNS_STRUCTS): SCC_FUNS = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 open Dec PrimExp
 

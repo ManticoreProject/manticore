@@ -9,6 +9,10 @@
 functor IntSize (S: INT_SIZE_STRUCTS): INT_SIZE =
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 
 datatype t = T of {bits: Bits.t}

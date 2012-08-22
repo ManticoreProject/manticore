@@ -10,6 +10,12 @@
 functor Interface (S: INTERFACE_STRUCTS): INTERFACE =
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+structure Array = MLtonArray
+fun Bool_layout b = Layout.str(Bool.toString b)
+
 open S
 
 local
@@ -77,7 +83,7 @@ structure Time:>
 
       val op < = Int.<
 
-      val layout = Int.layout
+      val layout = (*Int.layout*)Layout.str o Int.toString
 
       val min = Int.min
 
@@ -139,7 +145,7 @@ structure FlexibleTycon =
          in
             record [("admitsEquality", AdmitsEquality.layout (!admitsEquality)),
                     ("creationTime", Time.layout creationTime),
-                    ("hasCons", Bool.layout hasCons),
+                    ("hasCons", (*Bool.layout*)Bool_layout hasCons),
                     ("id", TyconId.layout id)]
          end
 
@@ -865,7 +871,7 @@ end
 fun equals (T s, T s') = Set.equals (s, s')
 
 val equals =
-   Trace.trace2 ("Interface.equals", layout, layout, Bool.layout) equals
+   Trace.trace2 ("Interface.equals", layout, layout, (*Bool.layout*)Bool_layout) equals
 
 fun sameShape (I, I') =
    case (#original (dest I), #original (dest I')) of

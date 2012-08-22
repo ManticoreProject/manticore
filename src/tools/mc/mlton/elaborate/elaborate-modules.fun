@@ -9,6 +9,10 @@
 functor ElaborateModules (S: ELABORATE_MODULES_STRUCTS): ELABORATE_MODULES = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 
 local
@@ -88,7 +92,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
       fun elabStrdec (arg: Strdec.t * string list): Decs.t =
          Trace.traceInfo' (elabStrdecInfo,
                            Layout.tuple2 (Strdec.layout,
-                                          List.layout String.layout),
+                                          List.layout (*String.layout*)Layout.str),
                            Decs.layout)
          (fn (d: Strdec.t, nest: string list) =>
           let
@@ -133,7 +137,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
       and elabStrexp (arg: Strexp.t * string list): Decs.t * Structure.t option =
          Trace.traceInfo' (elabStrexpInfo,
                            Layout.tuple2 (Strexp.layout,
-                                          List.layout String.layout),
+                                          List.layout (*String.layout*)Layout.str),
                            Layout.tuple2 (Decs.layout,
                                           Option.layout Structure.layout))
          (fn (e: Strexp.t, nest: string list) =>

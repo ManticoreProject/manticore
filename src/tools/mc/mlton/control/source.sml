@@ -23,7 +23,7 @@ fun lineStart (s as T {lineStart, ...}) = getPos (s, !lineStart)
 fun lineDirective (T {file, lineNum, lineStart},
                    f,
                    {lineNum = n, lineStart = s}) =
-   (Option.app (f, fn f => file := f)
+   (MLtonOption.app (f, fn f => file := f)
     ; lineNum := n
     ; lineStart := s)
 
@@ -37,7 +37,7 @@ fun new file = T {file = ref file,
                   lineStart = ref ~1}
 
 fun newline (T {lineStart, lineNum, ...}, n) =
-   (Int.inc lineNum
+   ((*Int.inc lineNum*)lineNum := !lineNum+1
     ; lineStart := n)
 
 end

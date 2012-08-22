@@ -9,6 +9,9 @@
 structure SourcePos: SOURCE_POS =
 struct
 
+fun String_hasPrefix (string, {prefix}) = String.isPrefix prefix string
+fun String_dropPrefix (s, n) = String.substring(s, n, size s - n)
+
 datatype t = T of {column: int,
                    file: File.t,
                    line: int}
@@ -41,7 +44,7 @@ fun getLib (T {file, ...}) =
    let 
       val libDir = concat [!ControlFlags.libDir, "/sml"]
    in 
-      if String.hasPrefix (file, {prefix = libDir})
+      if (*String.hasPrefix*)String_hasPrefix (file, {prefix = libDir})
          then SOME (String.size libDir)
          else NONE
    end
@@ -53,7 +56,7 @@ fun file (p as T {file, ...}) =
          case getLib p of
             NONE => file
           | SOME i =>
-               concat ["$(SML_LIB)", String.dropPrefix (file, i)]
+               concat ["$(SML_LIB)", (*String.dropPrefix*)String_dropPrefix (file, i)]
 
 val bogus = T {column = ~1,
                file = "<bogus>",

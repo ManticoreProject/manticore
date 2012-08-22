@@ -9,6 +9,10 @@
 functor Monomorphise (S: MONOMORPHISE_STRUCTS): MONOMORPHISE =
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 open Xml.Atoms
 local
@@ -46,10 +50,10 @@ structure Cache:
       val toList: 'a t -> (Stype.t vector * 'a) list
    end =
    struct
-      type 'a t = (Stype.t vector * Word.t * 'a) HashSet.t
+      type 'a t = (Stype.t vector * (*Word.t*)word * 'a) HashSet.t
 
       local
-         val generator: Word.t = 0wx5555
+         val generator: (*Word.t*)word = 0wx5555
          val base = Random.word ()
       in
          fun hash ts =

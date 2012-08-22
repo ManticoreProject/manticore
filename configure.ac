@@ -267,44 +267,34 @@ fi
 AC_SUBST(ML_BUILD)
 
 dnl
-dnl look for mllex
-dnl
-tmpPATH="$SMLNJ_PATH:$PATH"
-AC_PATH_PROG(MLLEX, mllex, none, $tmpPATH)
-if test $MLLEX = none ; then
-  AC_MSG_ERROR([mllex not found])
-fi
-AC_SUBST(MLLEX)
-
-dnl
-dnl look for ml-ulex
+dnl look for LPT stuff
 dnl
 tmpPATH="$SMLNJ_PATH:$PATH"
 AC_PATH_PROG(ML_ULEX, ml-ulex, none, $tmpPATH)
 if test $ML_ULEX = none ; then
   AC_MSG_ERROR([ml-ulex not found])
 fi
-AC_SUBST(ML_ULEX)
-
-dnl
-dnl look for ml-antlr
-dnl
-tmpPATH="$SMLNJ_PATH:$PATH"
 AC_PATH_PROG(ML_ANTLR, ml-antlr, none, $tmpPATH)
 if test $ML_ANTLR = none ; then
   AC_MSG_ERROR([ml-antlr not found])
 fi
+AC_SUBST(ML_ULEX)
 AC_SUBST(ML_ANTLR)
 
 dnl
-dnl look for mlyacc
+dnl look for old scanning/parsing tools
 dnl
 tmpPATH="$SMLNJ_PATH:$PATH"
-AC_PATH_PROG(MLYACC, mlyacc, none, $tmpPATH)
+AC_PATH_PROG(MLYACC, ml-yacc, none, $tmpPATH)
 if test $MLYACC = none ; then
-  AC_MSG_ERROR([mlyacc not found])
+  AC_MSG_ERROR([ml-yacc not found])
+fi
+AC_PATH_PROG(MLLEX, ml-lex, none, $tmpPATH)
+if test $MLLEX = none ; then
+  MLLEX="ml-ulex --ml-lex-mode"
 fi
 AC_SUBST(MLYACC)
+AC_SUBST(MLLEX)
 
 dnl
 dnl allow the user to override the location of the MLRisc library

@@ -8,11 +8,14 @@
 
 structure System: SYSTEM =
    struct
+      structure List = MLtonList
+      fun String_make (n, c) = CharVector.tabulate(n, fn _ => c)
+
       fun insertBackslashes (ss: string list,
                              width: int,
                              indent: int): string list =
          let
-            val indentation = String.make (indent, #" ")
+            val indentation = (*String.make*)String_make (indent, #" ")
             fun loop (ss, pos, line, lines) =
                (* pos + 2 < width (so the backslash can be inserted) *)
                case ss of
@@ -62,8 +65,13 @@ structure System: SYSTEM =
                                       Layout.str)))
                end
          in
+(*
             Process.wait (MLton.Process.spawnp {file = com, args = com :: args})
             handle e => Error.bug (concat ["call to system failed with ",
                                            Exn.toString e, ":\n", s])
+*)
+	    if OS.Process.isSuccess(OS.Process.system s)
+	      then ()
+	      else Error.bug (concat ["call to system failed:\n", s])
          end
    end

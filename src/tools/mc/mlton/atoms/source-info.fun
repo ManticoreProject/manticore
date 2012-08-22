@@ -8,6 +8,8 @@
 functor SourceInfo (S: SOURCE_INFO_STRUCTS): SOURCE_INFO =
 struct
 
+fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
+
 open S
 
 structure Pos =
@@ -56,7 +58,7 @@ in
                       plist = PropertyList.new ()}
          val () =
             if !Control.profile = Control.ProfileCount
-               then List.push (r, res)
+               then MLtonList.push (r, res)
             else ()
       in
          res
@@ -80,7 +82,7 @@ local
 in   
    fun fromC (name: string) =
       let
-         val hash = String.hash name
+         val hash = (*String.hash*)String_hash name
       in
          #sourceInfo
          (HashSet.lookupOrInsert
@@ -100,7 +102,7 @@ fun toString' (si, sep) =
       Anonymous pos => Pos.toString pos
     | C s => concat ["<", s, ">"]
     | Function {name, pos} =>
-         concat [concat (List.separate (List.rev name, ".")),
+         concat [concat (MLtonList.separate (List.rev name, ".")),
                  sep, Pos.toString pos]
 
 fun toString si = toString' (si, " ")
@@ -111,7 +113,7 @@ val equals: t * t -> bool =
    fn (s, s') => PropertyList.equals (plist s, plist s')
 
 val equals =
-   Trace.trace2 ("SourceInfo.equals", layout, layout, Bool.layout) equals
+   Trace.trace2 ("SourceInfo.equals", layout, layout, (*Bool.layout*)Layout.str o Bool.toString) equals
 
 fun file (s: t): File.t option =
    case info s of

@@ -9,6 +9,11 @@
 functor XmlTree (S: XML_TREE_STRUCTS): XML_TREE =
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+fun Int_layout i = Layout.str(Int.toString i)
+
 open S
 
 structure Type =
@@ -277,7 +282,7 @@ in
        | Profile e => ProfileExp.layout e
        | Raise {exn, ...} => seq [str "raise ", VarExp.layout exn]
        | Select {offset, tuple} =>
-            seq [str "#", Int.layout offset, str " ", VarExp.layout tuple]
+            seq [str "#", (*Int.layout*)Int_layout offset, str " ", VarExp.layout tuple]
        | Tuple xs => tuple (Vector.toListMap (xs, VarExp.layout))
        | Var x => VarExp.layout x
    and layoutLambda (Lam {arg, argType, body, ...}) =
@@ -486,7 +491,7 @@ structure Exp =
          in foreachPrimExp (e, fn _ => inc ());
             !n
          end
-      val size = Trace.trace ("XmlTree.Exp.size", Layout.ignore, Int.layout) size
+      val size = Trace.trace ("XmlTree.Exp.size", Layout.ignore, (*Int.layout*)Int_layout) size
       (* quell unused warning *)
       val _ = size
 
@@ -907,8 +912,8 @@ structure Program =
                 handleBoundVar = hom o #3,
                 handleExp = fn _ => ()})
             ; destroy ()
-            ; align [seq [str "num primexps in program = ", Int.layout (!numPrimExps)],
-                     seq [str "num types in program = ", Int.layout (!numTypes)],
+            ; align [seq [str "num primexps in program = ", (*Int.layout*)Int_layout (!numPrimExps)],
+                     seq [str "num types in program = ", (*Int.layout*)Int_layout (!numTypes)],
                      Type.stats ()]
          end
    end

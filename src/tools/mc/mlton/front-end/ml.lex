@@ -19,11 +19,13 @@
 %arg ({source});
 
 %defs(
+fun String_dropPrefix (s, n) = String.substring(s, n, size s - n)
+
       (* type pos = SourcePos.t *)
 type lex_arg = {source: Source.t}
 type lex_result = Tokens.token
 
-val charlist: IntInf.t list ref = ref []
+val charlist: IntInf.int list ref = ref []
 val colNum: int ref = ref 0
 val commentLevel: int ref = ref 0
 val commentStart = ref SourcePos.bogus
@@ -38,10 +40,9 @@ fun lineDirective (source, file, yypos) =
                                  lineStart = (Position.toInt yypos) - !colNum})
 
 fun addString (s: string) =
-   charlist :=
-   String.fold (s, !charlist, fn (c, ac) => Int.toIntInf (Char.ord c) :: ac)
+   charlist := CharVector.foldl (fn (c, ac) => Int.toLarge (Char.ord c) :: ac) (!charlist) s
 
-fun addChar (c: char) = addString (String.fromChar c)
+fun addChar (c: char) = charlist := Int.toLarge(Char.ord c) :: !charlist
 
 fun inc (ri as ref (i: int)) = ri := i + 1
 
@@ -57,7 +58,7 @@ fun stringError (source, right, msg) =
                                   right = Source.getPos (source, Position.toInt right)},
                      msg)
 
-fun addOrd (i: IntInf.t): unit = List.push (charlist, i)
+fun addOrd (i: IntInf.int): unit = MLtonList.push (charlist, i)
 
 fun addHexEscape (s: string, source, yypos): unit =
    case StringCvt.scanString (Pervasive.IntInf.scan StringCvt.HEX) s of
@@ -79,12 +80,12 @@ val size = String.size
 fun tok' (t, x, s, l) = t x
 
 fun int (yytext, drop, source, {negate: bool}, radix) =
-   Tokens.INT ({digits = String.dropPrefix (yytext, drop),
+   Tokens.INT ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
                 negate = negate,
                 radix = radix})
 
 fun word (yytext, drop, source, radix : StringCvt.radix) =
-   Tokens.WORD ({digits = String.dropPrefix (yytext, drop),
+   Tokens.WORD ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
                  radix = radix})
 );
 
@@ -248,7 +249,7 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 <A>.            => (continue ());
 
 <S>\"           => (let
-                       val s = Vector.fromListRev (!charlist)
+                       val s = MLtonVector.fromListRev (!charlist)
                        val _ = charlist := nil
                        fun make (t, v) =
                           t (v)

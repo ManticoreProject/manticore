@@ -9,6 +9,8 @@
 functor FrontEnd (S: FRONT_END_STRUCTS): FRONT_END = 
 struct
 
+fun String_concatWith (l, s) = String.concatWith s l
+
 structure SourceMap : SOURCE_MAP = struct
   val map : AntlrStreamPos.sourcemap option ref = ref NONE
   fun getMap() = valOf (!map)
@@ -52,7 +54,7 @@ in
 	    val _ = Out.outputl (Out.error, concat["FAILURE parsing file: ", file])
             val i = Source.lineStart source
 	    fun parseError (pos, repair) = let
-		fun toksToStr (toks) = String.concatWith((List.map (toks, Tokens.toString)), " ")
+		fun toksToStr (toks) = (*String.concatWith*)String_concatWith((MLtonList.map (toks, Tokens.toString)), " ")
 		val msg = (case repair
 			    of AntlrRepair.Insert toks => ["syntax error; try inserting \"", toksToStr toks, "\""]
 			     | AntlrRepair.Delete toks => ["syntax error; try deleting \"", toksToStr toks, "\""]
@@ -66,7 +68,7 @@ in
 		Out.outputl (Out.error, String.concat ("ERR: "::msg));		
 		Control.errorStr (posToReg(sm, pos), String.concat msg)
 	    end
-            val _ = List.map (errs, parseError)
+            val _ = MLtonList.map (errs, parseError)
         in
             Ast.Program.T []
         end)

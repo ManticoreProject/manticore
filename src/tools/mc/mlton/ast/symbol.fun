@@ -8,6 +8,8 @@
 functor Symbol (S: SYMBOL_STRUCTS): SYMBOL = 
 struct
 
+fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
+
 open S
 
 datatype t = T of {hash: word,
@@ -26,7 +28,7 @@ val table: t HashSet.t = HashSet.new {hash = hash}
 
 fun fromString s =
    let
-      val hash = String.hash s
+      val hash = (*String.hash*)String_hash s
    in
       HashSet.lookupOrInsert
       (table, hash, fn T {name, ...} => s = name,

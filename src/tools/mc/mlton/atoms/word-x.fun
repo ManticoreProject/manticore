@@ -9,6 +9,9 @@
 functor WordX (S: WORD_X_STRUCTS): WORD_X = 
 struct
 
+structure IntInf = MLtonIntInf
+fun Bool_layout b = Layout.str(Bool.toString b)
+
 open S
 
 val modulus: WordSize.t -> IntInf.t =
@@ -55,7 +58,7 @@ fun zero s = make (0, s)
 val hash = IntInf.hash o toIntInf
 
 local
-   val make: (IntInf.t * Word.t -> IntInf.t) -> t * t -> t =
+   val make: (IntInf.t * (*Word.t*)word -> IntInf.t) -> t * t -> t =
       fn f => fn (w, w') =>
       let
          val s = size w
@@ -63,7 +66,7 @@ local
       in
          if v' >= Bits.toIntInf (WordSize.bits s)
             then zero s
-         else make (f (value w, Word.fromIntInf v'), s)
+         else make (f (value w, (*Word.fromIntInf*)Word.fromLargeInt v'), s)
       end
 in
    val lshift = make IntInf.<<
@@ -72,7 +75,7 @@ end
 
 fun equals (w, w') = WordSize.equals (size w, size w') andalso value w = value w'
 
-fun fromChar (c: Char.t) = make (Int.toIntInf (Char.toInt c), WordSize.byte)
+fun fromChar (c: (*Char.t*)char) = make ((*Int.toIntInf*)IntInf.fromInt ((*Char.toInt*)Char.ord c), WordSize.byte)
 
 val fromIntInf = make
 
@@ -111,7 +114,7 @@ fun resize (w, s) = make (toIntInf w, s)
 
 fun resizeX (w, s) = make (toIntInfX w, s)
 
-fun toChar (w: t): char = Char.fromInt (Int.fromIntInf (value w))
+fun toChar (w: t): char = (*Char.fromInt*)Char.chr ((*Int.fromIntInf*)Int.fromLarge (value w))
 
 fun ~>> (w, w') =
    let
@@ -120,7 +123,7 @@ fun ~>> (w, w') =
       val b = WordSize.bits s
       val shift = if shift > Bits.toIntInf b
                      then Bits.toWord b
-                  else Word.fromIntInf shift
+                  else (*Word.fromIntInf*)Word.fromLargeInt shift
    in
       make (IntInf.~>> (toIntInfX w, shift), s)
    end
@@ -139,7 +142,7 @@ fun rol (w, w') =
    let
       val s = size w
       val b = WordSize.bits s
-      val shift = Word.fromIntInf (value w' mod Bits.toIntInf b)
+      val shift = (*Word.fromIntInf*)Word.fromLargeInt (value w' mod Bits.toIntInf b)
    in
       make (swap (value w, {hi = shift, lo = Bits.toWord b - shift}), s)
    end
@@ -148,7 +151,7 @@ fun ror (w, w') =
    let
       val s = size w
       val b = WordSize.bits s
-      val shift = Word.fromIntInf (value w' mod Bits.toIntInf b)
+      val shift = (*Word.fromIntInf*)Word.fromLargeInt (value w' mod Bits.toIntInf b)
    in
       make (swap (value w, {hi = Bits.toWord b - shift, lo = shift}), s)
    end
@@ -197,8 +200,8 @@ in
    val ge = make (IntInf.>=, "ge")
 end
 
-fun layoutSg {signed} = Layout.record [("signed", Bool.layout signed)]
+fun layoutSg {signed} = Layout.record [("signed", (*Bool.layout*)Bool_layout signed)]
 
-val lt = Trace.trace3 ("WordX.lt", layout, layout, layoutSg, Bool.layout) lt
+val lt = Trace.trace3 ("WordX.lt", layout, layout, layoutSg, (*Bool.layout*)Bool_layout) lt
 
 end

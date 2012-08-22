@@ -10,6 +10,10 @@ functor ImplementExceptions (S: IMPLEMENT_EXCEPTIONS_STRUCTS):
    IMPLEMENT_EXCEPTIONS = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 datatype z = datatype Dec.t
 datatype z = datatype PrimExp.t

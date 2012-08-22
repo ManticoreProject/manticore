@@ -9,6 +9,9 @@
 functor NestedPat (S: NESTED_PAT_STRUCTS): NESTED_PAT = 
 struct
 
+structure Option = MLtonOption
+structure Vector = MLtonVector
+
 open S
 
 datatype t = T of {pat: node, ty: Type.t}

@@ -9,6 +9,8 @@
  *)
 structure CMLexer: CM_LEXER = struct
 
+    fun String_contains (cs, c) = Char.contains cs c
+
     exception LexicalError of string * string
     exception UserError of string * string
     exception SyntaxError of string * string
@@ -155,7 +157,7 @@ structure CMLexer: CM_LEXER = struct
                     case getc () of
                         NONE => String.implode (rev accu)
                       | SOME c =>
-                            if Char.isSpace c orelse String.contains(delim, c)
+                            if Char.isSpace c orelse (*String.contains*)String_contains(delim, c)
                                then (ungetc c; String.implode (rev accu))
                             else loop (accu, c)
                 end

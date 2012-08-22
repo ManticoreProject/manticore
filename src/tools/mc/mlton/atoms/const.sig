@@ -25,20 +25,20 @@ signature CONST =
 
       structure SmallIntInf:
          sig
-            val fromWord: WordX.t -> IntInf.t
-            val isSmall: IntInf.t -> bool
-            val toWord: IntInf.t -> WordX.t option
+            val fromWord: WordX.t -> (*IntInf.t.*)IntInf.int
+            val isSmall: (*IntInf.t.*)IntInf.int -> bool
+            val toWord: (*IntInf.t.*)IntInf.int -> WordX.t option
          end
 
       datatype t =
-         IntInf of IntInf.t
+         IntInf of (*IntInf.t.*)IntInf.int
        | Null
        | Real of RealX.t
        | Word of WordX.t
        | WordVector of WordXVector.t
 
       val equals: t * t -> bool
-      val intInf: IntInf.t -> t
+      val intInf: (*IntInf.t.*)IntInf.int -> t
       val hash: t -> word
       val layout: t -> Layout.t
       (* lookup is for constants defined by _const, _build_const, and

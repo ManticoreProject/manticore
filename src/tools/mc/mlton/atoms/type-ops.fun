@@ -9,6 +9,8 @@
 functor TypeOps (S: TYPE_OPS_STRUCTS): TYPE_OPS =
 struct
 
+structure Vector = MLtonVector
+
 open S
 
 local

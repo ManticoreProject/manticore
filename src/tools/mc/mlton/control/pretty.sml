@@ -8,6 +8,8 @@
 structure Pretty: PRETTY =
 struct
 
+structure Vector = MLtonVector
+
 open Layout
 
 fun casee {default, rules, test} =

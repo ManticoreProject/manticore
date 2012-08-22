@@ -23,7 +23,7 @@ signature CASES =
       datatype 'a t =
          Char of (char * 'a) vector
        | Con of (con * 'a) vector
-       | Int of (IntInf.t * 'a) vector
+       | Int of ((*IntInf.t.*)IntInf.int * 'a) vector
        | Word of (word * 'a) vector
 
       val equals: 'a t * 'a t * ('a * 'a -> bool) -> bool

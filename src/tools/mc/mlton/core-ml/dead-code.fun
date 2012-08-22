@@ -9,6 +9,9 @@
 functor DeadCode (S: DEAD_CODE_STRUCTS): DEAD_CODE = 
 struct
 
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 open CoreML
 open Dec

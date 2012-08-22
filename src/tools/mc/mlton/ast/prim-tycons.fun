@@ -9,6 +9,9 @@
 functor PrimTycons (S: PRIM_TYCONS_STRUCTS): PRIM_TYCONS =
 struct
 
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 
 structure BindingStrength =

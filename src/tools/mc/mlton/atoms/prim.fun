@@ -14,6 +14,12 @@
 functor Prim (S: PRIM_STRUCTS): PRIM = 
 struct
 
+structure IntInf = MLtonIntInf
+structure List = MLtonList
+structure Vector = MLtonVector
+fun Bool_layout b = Layout.str(Bool.toString b)
+fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
+
 open S
 
 local
@@ -1101,7 +1107,7 @@ local
       List.foreach (all, fn prim =>
                     let
                        val string = toString prim
-                       val hash = String.hash string
+                       val hash = (*String.hash*)String_hash string
                        val _ =
                           HashSet.lookupOrInsert (table, hash,
                                                   fn _ => false,
@@ -1114,9 +1120,9 @@ local
 in
    val fromString: string -> 'a t option =
       fn name =>
-      Option.map
+      MLtonOption.map
       (HashSet.peek
-       (table, String.hash name, fn {string, ...} => name = string),
+       (table, (*String.hash*)String_hash name, fn {string, ...} => name = string),
        fn {prim, ...} => cast prim)
 end
 
@@ -1450,7 +1456,7 @@ structure ApplyArg =
       fun layout layoutX =
          fn Con {con, hasArg} =>
               Layout.record [("con", Con.layout con),
-                             ("hasArg", Bool.layout hasArg)]
+                             ("hasArg", (*Bool.layout*)Bool_layout hasArg)]
           | Const c => Const.layout c
           | Var x => layoutX x
    end
@@ -1474,7 +1480,7 @@ structure ApplyResult =
          in
             case ar of
                Apply (p, args) => seq [layoutPrim p, List.layout layoutX args]
-             | Bool b => Bool.layout b
+             | Bool b => (*Bool.layout*)Bool_layout b
              | Const c => Const.layout c
              | Overflow => str "Overflow"
              | Unknown => str "Unknown"
@@ -1532,7 +1538,7 @@ fun ('a, 'b) apply (p: 'a t,
       end
       val intInfTooBig =
          Trace.trace 
-         ("Prim.intInfTooBig", IntInf.layout, Bool.layout)
+         ("Prim.intInfTooBig", IntInf.layout, (*Bool.layout*)Bool_layout)
          intInfTooBig
       fun intInf (ii:  IntInf.t): ('a, 'b) ApplyResult.t =
          if intInfTooBig ii
@@ -1611,14 +1617,14 @@ fun ('a, 'b) apply (p: 'a t,
          else 
             case p of
                IntInf_arshift =>
-                  intInf (IntInf.~>> (i1, Word.fromIntInf (WordX.toIntInf w2)))
+                  intInf (IntInf.~>> (i1,(*Word.fromIntInf*)Word.fromLargeInt (WordX.toIntInf w2)))
              | IntInf_lshift =>
                   let
                      val maxShift =
                         WordX.fromIntInf (128, WordSize.shiftArg)
                   in
                      if WordX.lt (w2, maxShift, {signed = false})
-                        then intInf (IntInf.<< (i1, Word.fromIntInf (WordX.toIntInf w2)))
+                        then intInf (IntInf.<< (i1, (*Word.fromIntInf*)Word.fromLargeInt (WordX.toIntInf w2)))
                      else ApplyResult.Unknown
                   end
              | IntInf_toString =>

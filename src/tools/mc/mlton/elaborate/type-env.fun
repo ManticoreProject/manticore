@@ -10,6 +10,13 @@
 functor TypeEnv (S: TYPE_ENV_STRUCTS): TYPE_ENV =
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+fun Bool_layout b = Layout.str(Bool.toString b)
+fun Int_layout i = Layout.str(Int.toString i)
+fun Int_inc (r : int ref) = r := !r + 1
+
 open S
 
 structure AdmitsEquality = Tycon.AdmitsEquality
@@ -61,7 +68,7 @@ structure Time:>
 
       fun useBeforeDef (T {useBeforeDef = f, ...}, c) = f c
 
-      val layout = Int.layout o clock
+      val layout = (*Int.layout*)Int_layout o clock
 
       fun t <= t' = Int.<= (clock t, clock t')
 
@@ -293,8 +300,8 @@ structure Unknown =
             open Layout
          in
             seq [str "Unknown ",
-                 record [("canGeneralize", Bool.layout canGeneralize),
-                         ("id", Int.layout id)]]
+                 record [("canGeneralize", (*Bool.layout*)Bool_layout canGeneralize),
+                         ("id", (*Int.layout*)Int_layout id)]]
          end
 
       fun equals (u, u') = id u = id u'
@@ -302,7 +309,7 @@ structure Unknown =
       local
          val r: int ref = ref 0
       in
-         fun newId () = (Int.inc r; !r)
+         fun newId () = ((*Int.inc*)Int_inc r; !r)
       end
 
       fun new {canGeneralize} =
@@ -341,7 +348,7 @@ structure Spine:
       local
          val r: int ref = ref 0
       in
-         fun newId () = (Int.inc r; !r)
+         fun newId () = ((*Int.inc*)Int_inc r; !r)
       end
       
       fun new fields = T {id = newId (),
@@ -355,7 +362,7 @@ structure Spine:
             val {fields, more} = Set.! s
          in
             Layout.record [("fields", List.layout Field.layout (!fields)),
-                           ("more", Bool.layout (!more))]
+                           ("more", (*Bool.layout*)Bool_layout (!more))]
          end
 
       fun canAddFields (T {body = s,...}) = ! (#more (Set.! s))
@@ -551,7 +558,7 @@ structure Type =
 
       val admitsEquality =
          Trace.trace 
-         ("TypeEnv.Type.admitsEquality", layout, Bool.layout) 
+         ("TypeEnv.Type.admitsEquality", layout, (*Bool.layout*)Bool_layout) 
          admitsEquality
 
       val {get = opaqueTyconExpansion: Tycon.t -> (t vector -> t) option,
@@ -671,7 +678,7 @@ structure Type =
                              (Tyvar.plist,
                               Property.initFun
                               (let
-                                  val r = ref (Char.toInt #"a")
+                                  val r = ref ((*Char.toInt*)Char.ord #"a")
                                in
                                   fn _ =>
                                   let
@@ -680,9 +687,9 @@ structure Type =
                                         simple
                                         (str (concat
                                               ["'",
-                                               if n > Char.toInt #"z" 
-                                                  then concat ["a", Int.toString (n - Char.toInt #"z")]
-                                               else Char.toString (Char.fromInt n )]))
+                                               if n > (*Char.toInt*)Char.ord #"z" 
+                                                  then concat ["a", Int.toString (n - (*Char.toInt*)Char.ord #"z")]
+                                               else Char.toString ((*Char.fromInt*)Char.chr n )]))
                                      val _ = r := 1 + n
                                   in
                                      l
@@ -864,7 +871,7 @@ structure Type =
 
       val traceCanUnify =
          Trace.trace2 
-         ("TypeEnv.Type.canUnify", layout, layout, Bool.layout)
+         ("TypeEnv.Type.canUnify", layout, layout, (*Bool.layout*)Bool_layout)
 
       fun canUnify arg = 
          traceCanUnify
@@ -1351,7 +1358,7 @@ structure Type =
                      QuickSort.sortArray (a, fn ((f, _), (f', _)) =>
                                           Field.<= (f, f'))
                in
-                  Array.toVector a
+                  (*Array.toVector*)Array.vector a
                end
             fun unsorted (t, fields: (Field.t *  'a) list) =
                let
@@ -1421,7 +1428,7 @@ structure Scheme =
          case s of
             Type t => Type.layout t
           | General {canGeneralize, tyvars, ty, ...} =>
-               Layout.record [("canGeneralize", Bool.layout canGeneralize),
+               Layout.record [("canGeneralize", (*Bool.layout*)Bool_layout canGeneralize),
                               ("tyvars", Vector.layout Tyvar.layout tyvars),
                               ("ty", Type.layout ty)]
 
@@ -1609,7 +1616,7 @@ structure Scheme =
                           equality = Equality.truee})))
 
       val admitsEquality =
-         Trace.trace ("TypeEnv.Scheme.admitsEquality", layout, Bool.layout)
+         Trace.trace ("TypeEnv.Scheme.admitsEquality", layout, (*Bool.layout*)Bool_layout)
          admitsEquality
 
       fun haveFrees (v: t vector): bool vector =
@@ -1665,7 +1672,7 @@ fun close (ensure: Tyvar.t vector, ubd) =
        in
           Vector.layout
           (fn {isExpansive, ty} =>
-           Layout.record [("isExpansive", Bool.layout isExpansive),
+           Layout.record [("isExpansive", (*Bool.layout*)Bool_layout isExpansive),
                           ("ty", Type.layout ty)])
        end,
        Layout.ignore)

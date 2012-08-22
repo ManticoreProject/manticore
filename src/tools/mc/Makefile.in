@@ -76,8 +76,8 @@ CM_FILES =		ast-opt/sources.cm \
 			prim/sources.cm \
 			translate/sources.cm \
 			typechecker/sources.cm \
-			../../lib/mlton/sources.cm \
 			mlton/sources.cm \
+			mlton/lib/sources.cm \
 			$(ROOT_CM)
 
 PARSER_OUTPUT := \

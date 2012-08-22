@@ -41,7 +41,7 @@ signature REAL_X =
       val equal: t * t -> bool option
       val equals: t * t -> bool
       val exp: t -> t option
-      val fromIntInf: IntInf.t * RealSize.t -> t option
+      val fromIntInf: (*IntInf.t.*)IntInf.int * RealSize.t -> t option
       val hash: t -> word
       val layout: t -> Layout.t
       val le: t * t -> bool option

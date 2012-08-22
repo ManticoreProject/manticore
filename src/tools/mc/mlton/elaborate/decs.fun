@@ -25,7 +25,7 @@ fun layout ds =
    let
       open Layout
    in
-      align (Vector.toListMap (toVector ds, Dec.layout))
+      align (MLtonVector.toListMap (toVector ds, Dec.layout))
    end
 
 end

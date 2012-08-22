@@ -23,7 +23,8 @@ structure Version
 
 is
 
-../../../../lib/mlton/sources.cm
+$/basis.cm
+../lib/sources.cm
 
 bits.sml
 control-flags.sig

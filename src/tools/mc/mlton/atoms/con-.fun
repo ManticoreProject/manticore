@@ -9,6 +9,8 @@
 functor Con (S: CON_STRUCTS): CON = 
 struct
 
+fun Int_layout i = Layout.str(Int.toString i)
+
 open S
 
 structure C = Id (val noname = "C")
@@ -24,11 +26,14 @@ fun stats () =
       open Layout
    in
       align
-      (List.map (all, fn c =>
+      (MLtonList.map (all, fn c =>
                  seq [layout c, str " size is ",
+(*
                       Int.layout (MLton.size c),
+*)
+		      str "??",
                       str " plist length is ",
-                      Int.layout (PropertyList.length (plist c))]))
+                      (*Int.layout*)Int_layout (PropertyList.length (plist c))]))
    end
 (* quell unused warning *)
 val _ = stats

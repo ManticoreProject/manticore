@@ -22,7 +22,7 @@ signature WORD_SIZE =
       val bool: t
       val bytes: t -> Bytes.t
       val byte: t
-      val cardinality: t -> IntInf.t
+      val cardinality: t -> (*(*IntInf.t.*)IntInf.int.*)IntInf.int
       val cint: unit -> t
       val compare: t * t -> Relation.t
       val compareRes: t
@@ -31,9 +31,9 @@ signature WORD_SIZE =
       val csize: unit -> t
       val equals: t * t -> bool
       val fromBits: Bits.t -> t
-      val isInRange: t * IntInf.t * {signed: bool} -> bool
-      val max: t * {signed: bool} -> IntInf.t
-      val min: t * {signed: bool} -> IntInf.t
+      val isInRange: t * (*(*IntInf.t.*)IntInf.int.*)IntInf.int * {signed: bool} -> bool
+      val max: t * {signed: bool} -> (*(*IntInf.t.*)IntInf.int.*)IntInf.int
+      val min: t * {signed: bool} -> (*(*IntInf.t.*)IntInf.int.*)IntInf.int
       val memoize: (t -> 'a) -> t -> 'a
       val objptr: unit -> t
       val objptrHeader: unit -> t

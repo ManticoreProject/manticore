@@ -9,6 +9,9 @@
 functor AstPrograms (S: AST_PROGRAMS_STRUCTS): AST_PROGRAMS = 
 struct
 
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 
 structure AstModules = AstModules (S)

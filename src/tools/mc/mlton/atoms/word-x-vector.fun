@@ -8,6 +8,9 @@
 functor WordXVector (S: WORD_X_VECTOR_STRUCTS): WORD_X_VECTOR =
 struct
 
+structure Vector = MLtonVector
+fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
+
 open S
 
 datatype t = T of {elementSize: WordSize.t,
@@ -36,7 +39,7 @@ fun toString (T {elements, elementSize}): string =
                                  val (q, r) = IntInf.quotRem (w, 0x100)
                               in
                                  loop (i - 8, q,
-                                       Char.fromInt (IntInf.toInt r) :: ac)
+                                       (*Char.fromInt*)Char.chr (IntInf.toInt r) :: ac)
                               end
                      in
                         (* Control.Target.bigEndian is not always set, so
@@ -47,7 +50,7 @@ fun toString (T {elements, elementSize}): string =
                      end)))
    end
 
-val hash = String.hash o toString
+val hash = (*String.hash*)String_hash o toString
 
 val layout = Layout.str o toString
 

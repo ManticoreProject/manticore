@@ -17,7 +17,8 @@
 structure Parse: PARSE =
 struct
 
-val fail = Process.fail
+(*val fail = Process.fail*)
+fun fail msg = raise Fail msg
 
 structure Lexer = CMLexer
 

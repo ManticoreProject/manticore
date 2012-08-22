@@ -10,6 +10,32 @@
 structure ControlFlags: CONTROL_FLAGS =
 struct
 
+structure List = MLtonList
+structure Vector = MLtonVector
+structure Option = MLtonOption
+fun Int_layout i = Layout.str(Int.toString i)
+fun Bool_layout b = Layout.str(Bool.toString b)
+fun String_equals (a : string, b) = (a = b)
+fun String_tokens (s, pred) = String.tokens pred s
+fun String_concatWith (s, c) = String.concatWith c s
+fun String_toLower s = CharVector.map Char.toLower s
+fun String_peeki (v, f) = let
+      val n = String.size v
+      fun loop i = if i = n
+            then NONE
+	    else let
+	      val x = String.sub (v, i)
+              in
+		if f (i, x) then SOME(i, x) else loop (i + 1)
+              end
+      in
+	loop 0
+      end
+fun String_prefix (s, len) = String.substring (s, 0, len)
+fun String_dropPrefix (s, n) = String.substring(s, n, size s - n)
+fun String_deleteSurroundingWhitespace s =
+      Substring.string(Substring.dropl Char.isSpace (Substring.dropr Char.isSpace (Substring.full s)))
+
 structure C = Control ()
 open C
 
@@ -31,7 +57,7 @@ val align = control {name = "align",
 val atMLtons = control {name = "atMLtons",
                         default = Vector.new0 (),
                         toString = fn v => Layout.toString (Vector.layout
-                                                            String.layout v)}
+                                                            (*String.layout*)Layout.str v)}
 
 structure Chunk =
    struct
@@ -265,13 +291,13 @@ structure Elaborate =
                                 expert = expert,
                                 name = name}}
                val parseId = fn name' =>
-                  if String.equals (name', name) 
+                  if (*String.equals*)String_equals (name', name) 
                      then Good id 
                      else parseId name'
                val parseIdAndArgs = fn s =>
-                  case String.tokens (s, Char.isSpace) of
+                  case (*String.tokens*)String_tokens (s, Char.isSpace) of
                      name'::args' =>
-                        if String.equals (name', name)
+                        if (*String.equals*)String_equals (name', name)
                            then 
                               case parseArgs args' of
                                  SOME v => 
@@ -486,13 +512,13 @@ structure Elaborate =
                               parseIdAndArgs: string -> ((Id.t * Args.t) list, (Id.t * Args.t)) parseResult}) =
             let
                val parseId = fn name' =>
-                  if String.equals (name', name) 
+                  if (*String.equals*)String_equals (name', name) 
                      then Deprecated (List.map (alts, deGood o parseId))
                      else parseId name'
                val parseIdAndArgs = fn s =>
-                  case String.tokens (s, Char.isSpace) of
+                  case (*String.tokens*)String_tokens (s, Char.isSpace) of
                      name'::args' =>
-                        if String.equals (name', name)
+                        if (*String.equals*)String_equals (name', name)
                            then 
                               case parseArgs args' of
                                  SOME alts => 
@@ -513,7 +539,7 @@ structure Elaborate =
                   fun make b =
                      List.map2
                      (altIds, altArgs b, fn (altId, altArgs) =>
-                      String.concatWith (altId::altArgs, " "))
+                      (*String.concatWith*)String_concatWith (altId::altArgs, " "))
                in
                   val trueAltIdAndArgs = make true
                   val falseAltIdAndArgs = make false
@@ -539,15 +565,15 @@ structure Elaborate =
 
       local
          fun checkPrefix (s, f) =
-            case String.peeki (s, fn (_, c) => c = #":") of
+            case (*String.peeki*)String_peeki (s, fn (_, c) => c = #":") of
                NONE => f s
              | SOME (i, _) =>
                   let
-                     val comp = String.prefix (s, i)
-                     val comp = String.deleteSurroundingWhitespace comp
-                     val s = String.dropPrefix (s, i + 1)
+                     val comp = (*String.prefix*)String_prefix (s, i)
+                     val comp = (*String.deleteSurroundingWhitespace*)String_deleteSurroundingWhitespace comp
+                     val s = (*String.dropPrefix*)String_dropPrefix (s, i + 1)
                   in
-                     if String.equals (comp, "mlton")
+                     if (*String.equals*)String_equals (comp, "mlton")
                         then f s
                         else Other
                   end
@@ -679,9 +705,9 @@ val inlineLeafA =
             toString =
             fn {loops, repeat, size} =>
             Layout.toString
-            (Layout.record [("loops", Bool.layout loops),
-                            ("repeat", Bool.layout repeat),
-                            ("size", Option.layout Int.layout size)])}
+            (Layout.record [("loops", (*Bool.layout*)Bool_layout loops),
+                            ("repeat", (*Bool.layout*)Bool_layout repeat),
+                            ("size", Option.layout (*Int.layout*)Int_layout size)])}
 val inlineLeafB = 
    control {name = "inlineLeafB",
             default = {loops = true,
@@ -690,9 +716,9 @@ val inlineLeafB =
             toString =
             fn {loops, repeat, size} =>
             Layout.toString
-            (Layout.record [("loops", Bool.layout loops),
-                            ("repeat", Bool.layout repeat),
-                            ("size", Option.layout Int.layout size)])}
+            (Layout.record [("loops", (*Bool.layout*)Bool_layout loops),
+                            ("repeat", (*Bool.layout*)Bool_layout repeat),
+                            ("size", Option.layout (*Int.layout*)Int_layout size)])}
 
 val inlineNonRec =
    control {name = "inlineNonRec",
@@ -701,8 +727,8 @@ val inlineNonRec =
             toString =
             fn {small, product} =>
             Layout.toString
-            (Layout.record [("small", Int.layout small),
-                            ("product", Int.layout product)])}
+            (Layout.record [("small", (*Int.layout*)Int_layout small),
+                            ("product", (*Int.layout*)Int_layout product)])}
 
 val inputFile = control {name = "input file",
                          default = "<bogus>",
@@ -850,10 +876,10 @@ val polyvariance =
             Layout.toString
             (Option.layout
              (fn {hofo, rounds, small, product} =>
-              Layout.record [("hofo", Bool.layout hofo),
-                             ("rounds", Int.layout rounds),
-                             ("small", Int.layout small),
-                             ("product", Int.layout product)])
+              Layout.record [("hofo", (*Bool.layout*)Bool_layout hofo),
+                             ("rounds", (*Int.layout*)Int_layout rounds),
+                             ("small", (*Int.layout*)Int_layout small),
+                             ("product", (*Int.layout*)Int_layout product)])
              p)}
 
 val positionIndependent = ref false
@@ -930,7 +956,7 @@ val profileInclExcl =
             toString = List.toString
                        (Layout.toString o 
                         (Layout.tuple2 (Regexp.Compiled.layout, 
-                                        Bool.layout)))}
+                                        (*Bool.layout*)Bool_layout)))}
 
 val profileRaise = control {name = "profile raise",
                             default = false,
@@ -977,17 +1003,17 @@ structure Target =
    struct
       open Target
       
-      datatype arch = datatype MLton.Platform.Arch.t
+      datatype arch = datatype (*MLton.Platform*)MLtonPlatform.Arch.t
          
       val arch = control {name = "target arch",
                           default = X86,
-                          toString = MLton.Platform.Arch.toString}
+                          toString = (*MLton.Platform*)MLtonPlatform.Arch.toString}
 
-      datatype os = datatype MLton.Platform.OS.t
+      datatype os = datatype (*MLton.Platform*)MLtonPlatform.OS.t
 
       val os = control {name = "target OS",
                         default = Linux,
-                        toString = MLton.Platform.OS.toString}
+                        toString = (*MLton.Platform*)MLtonPlatform.OS.toString}
 
       fun make s =
          let
@@ -1033,10 +1059,10 @@ fun mlbPathMap () =
             {var = "TARGET",
              path = Target.toString (!target)},
             {var = "TARGET_ARCH",
-             path = String.toLower (MLton.Platform.Arch.toString
+             path = (*String.toLower*)String_toLower ((*MLton.Platform*)MLtonPlatform.Arch.toString
                                     (!Target.arch))},
             {var = "TARGET_OS",
-             path = String.toLower (MLton.Platform.OS.toString
+             path = (*String.toLower*)String_toLower ((*MLton.Platform*)MLtonPlatform.OS.toString
                                     (!Target.os))},
             {var = "OBJPTR_REP",
              path = (case Bits.toInt (Target.Size.objptr ()) of

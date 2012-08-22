@@ -43,7 +43,9 @@ functor UseName
 
 is
 
-../../../../lib/mlton/sources.cm
+$/basis.cm
+
+../lib/sources.cm
 ../ast/sources.cm
 ../control/sources.cm
 

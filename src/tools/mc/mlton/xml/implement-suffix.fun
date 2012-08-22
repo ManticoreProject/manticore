@@ -10,6 +10,8 @@ functor ImplementSuffix (S: IMPLEMENT_SUFFIX_STRUCTS):
    IMPLEMENT_SUFFIX = 
 struct
 
+structure Vector = MLtonVector
+
 open S
 datatype z = datatype Dec.t
 datatype z = datatype PrimExp.t
@@ -26,7 +28,7 @@ fun doit (Program.T {datatypes, body, overflow, ...}): Program.t =
       fun loop (e: Exp.t): Exp.t =
          let
             val {decs, result} = Exp.dest e
-            val decs = List.rev (List.fold (decs, [], fn (d, ds) =>
+            val decs = List.rev (MLtonList.fold (decs, [], fn (d, ds) =>
                                             loopDec d :: ds))
          in
             Exp.make {decs = decs,
@@ -51,7 +53,7 @@ fun doit (Program.T {datatypes, body, overflow, ...}): Program.t =
             case exp of
                Case {test, cases, default} =>
                   primExp (Case {cases = Cases.map (cases, loop),
-                                 default = (Option.map
+                                 default = (MLtonOption.map
                                             (default, fn (e, r) =>
                                              (loop e, r))),
                                  test = test})

@@ -328,13 +328,13 @@ signature CONTROL_FLAGS =
 
       structure Target:
          sig
-            datatype arch = datatype MLton.Platform.Arch.t
+            datatype arch = datatype (*MLton.Platform*)MLtonPlatform.Arch.t
             val arch: arch ref
 
             val bigEndian: unit -> bool
             val setBigEndian: bool -> unit
 
-            datatype os = datatype MLton.Platform.OS.t
+            datatype os = datatype (*MLton.Platform*)MLtonPlatform.OS.t
             val os: os ref
 
             structure Size:

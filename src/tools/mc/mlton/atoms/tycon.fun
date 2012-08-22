@@ -9,6 +9,8 @@
 functor Tycon (S: TYCON_STRUCTS): TYCON = 
 struct
 
+fun Int_layout i = Layout.str(Int.toString i)
+
 open S
 
 structure Id = Id (val noname = "t")
@@ -27,7 +29,7 @@ structure P = PrimTycons (structure AdmitsEquality = AdmitsEquality
 open P
 
 val setPrintName =
-   Trace.trace2 ("Tycon.setPrintName", layout, String.layout, Unit.layout)
+   Trace.trace2 ("Tycon.setPrintName", layout, (*String.layout*)Layout.str, Unit.layout)
    setPrintName
 
 fun stats () =
@@ -35,11 +37,14 @@ fun stats () =
       open Layout
    in
       align
-      (List.map (prims, fn {tycon = c, ...} =>
+      (MLtonList.map (prims, fn {tycon = c, ...} =>
                  seq [layout c, str " size is ",
-                      Int.layout (MLton.size c),
+(*
+                      (*Int.layout*)Int_layout (MLton.size c),
+*)
+		      str "??",
                       str " plist length is ",
-                      Int.layout (PropertyList.length (plist c))]))
+                      (*Int.layout*)Int_layout (PropertyList.length (plist c))]))
    end
 (* quell unused warning *)
 val _ = stats

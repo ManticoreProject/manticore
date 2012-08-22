@@ -36,7 +36,7 @@ signature HASH_TYPE =
       val equals: t * t -> bool
       (* for reporting type errors *)
       val error: string * Layout.t -> 'a
-      val hash: t -> Word.t
+      val hash: t -> (*Word.t*)word
       val hom: {ty: t,
                 var: Tyvar.t -> 'a,
                 con: Tycon.t * 'a vector -> 'a} -> 'a

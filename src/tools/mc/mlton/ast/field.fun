@@ -16,7 +16,7 @@ datatype t =
  | Symbol of Symbol.t
 
 val equals =
-   fn (Int n, Int n') => Int.equals (n, n')
+   fn (Int n, Int n') => (*Int.equals (n, n')*)(n = n')
     | (Symbol s, Symbol s') => Symbol.equals (s, s')
     | _ => false
 

@@ -9,6 +9,9 @@
 functor Scope (S: SCOPE_STRUCTS): SCOPE =
 struct
 
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 open Ast
 

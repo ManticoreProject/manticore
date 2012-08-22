@@ -9,6 +9,10 @@
 functor SimplifyTypes (S: SIMPLIFY_TYPES_STRUCTS): SIMPLIFY_TYPES = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 structure I = Input
 structure O = Output

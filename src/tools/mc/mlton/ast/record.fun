@@ -11,6 +11,8 @@
 functor Record (S: RECORD_STRUCTS): RECORD = 
 struct
 
+structure Vector = MLtonVector
+
 open S
 
 datatype 'a t =
@@ -38,7 +40,7 @@ fun fromVector v =
          Vector.foralli
          (v, fn (i, (f, _)) =>
           case f of
-             Field.Int i' => Int.equals (i, i')
+             Field.Int i' => (*Int.equals (i, i')*) (i = i')
            | _ => false)
       val v = if isSorted then sort v else v
    in

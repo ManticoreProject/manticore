@@ -14,6 +14,7 @@ functor MLBFrontEnd
 
 is
 
+$/basis.cm
 $/ml-lpt-lib.cm
 
 basis-no-char.cm

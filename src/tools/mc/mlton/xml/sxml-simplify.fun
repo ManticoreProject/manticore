@@ -9,6 +9,13 @@
 functor SxmlSimplify (S: SXML_SIMPLIFY_STRUCTS): SXML_SIMPLIFY = 
 struct
 
+structure List = MLtonList
+fun String_hasPrefix (string, {prefix}) = String.isPrefix prefix string
+fun String_split (s, c) = String.fields (fn c' => c = c') s
+fun String_dropPrefix (s, n) = String.substring(s, n, size s - n)
+fun String_dropFirst s = String.substring(s, 1, size s - 1)
+fun String_dropLast s = String.substring(s, 0, size s - 1)
+
 open S
 
 structure ImplementExceptions = ImplementExceptions (open S)
@@ -74,9 +81,9 @@ local
             else if String.sub (s, 0) = #"(" 
                     andalso String.sub (s, String.size s - 1)= #")"
                then let
-                       val s = String.dropFirst (String.dropLast s)
+                       val s = (*String.dropFirst*)String_dropFirst ((*String.dropLast*)String_dropLast s)
                     in
-                       case List.fold (String.split (s, #","), SOME [],
+                       case List.fold ((*String.split*)String_split (s, #","), SOME [],
                                        fn (s,SOME nums) => (case Int.fromString s of
                                                                SOME i => SOME (i::nums)
                                                              | NONE => NONE)
@@ -87,7 +94,7 @@ local
             else NONE
       in
          fn s =>
-         if String.hasPrefix (s, {prefix = "polyvariance"})
+         if (*String.hasPrefix*)String_hasPrefix (s, {prefix = "polyvariance"})
             then let
                     fun mk (hofo, rounds, small, product) =
                        SOME {name = concat ["polyvariance(", 
@@ -97,7 +104,7 @@ local
                                             Int.toString product, ")#",
                                             Int.toString (Counter.next count)],
                              doit = polyvariance (hofo, rounds, small, product)}
-                    val s = String.dropPrefix (s, String.size "polyvariance")
+                    val s = (*String.dropPrefix*)String_dropPrefix (s, String.size "polyvariance")
                  in
                     case nums s of
                        SOME [] => mk (true, 2, 30, 300)
@@ -118,7 +125,7 @@ in
    fun sxmlPassesSetCustom s =
       Exn.withEscape
       (fn esc =>
-       (let val ss = String.split (s, #":")
+       (let val ss = (*String.split*)String_split (s, #":")
         in
            sxmlPasses :=
            List.map(ss, fn s =>

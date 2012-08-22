@@ -10,6 +10,18 @@
 functor AstCore (S: AST_CORE_STRUCTS): AST_CORE = 
 struct
 
+structure Vector = MLtonVector
+structure Option = MLtonOption
+fun String_hasSuffix (string, {suffix}) = let
+      val n = String.size string
+      val n' = String.size suffix
+      fun loop (i: int, j: int): bool =
+         i >= n orelse ((String.sub (string, i) = String.sub (suffix, j))
+                        andalso loop (i + 1, j + 1))
+      in
+	n' <= n andalso loop (n - n', 0)
+      end
+
 open S Layout
 
 structure Field = Record.Field
@@ -52,7 +64,7 @@ fun maybeConstrain (e, tyo) =
 fun layoutLongvid x =
    str (let val s = Longvid.toString x
         in if s = "*" then " * "
-           else if String.hasSuffix (s, {suffix = "*"})
+           else if (*String.hasSuffix*)String_hasSuffix (s, {suffix = "*"})
                    then s ^ " "
                 else s
         end)
@@ -296,7 +308,7 @@ structure Priority =
       fun layout (T x) =
          case x of
             NONE => Layout.empty
-          | SOME x => Int.layout x
+          | SOME x => (*Int.layout x*)Layout.str(Int.toString x)
    end
 
 datatype expNode =

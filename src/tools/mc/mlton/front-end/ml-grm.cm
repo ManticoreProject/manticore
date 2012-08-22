@@ -5,6 +5,7 @@ structure Tokens
 signature SOURCE_MAP
 
 is
+  $/basis.cm
   $/ml-lpt-lib.cm
 
   basis-no-string.cm

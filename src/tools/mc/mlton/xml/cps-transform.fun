@@ -8,6 +8,10 @@
 functor CPSTransform (S: CPS_TRANSFORM_STRUCTS): CPS_TRANSFORM = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 datatype z = datatype Dec.t
 datatype z = datatype PrimExp.t

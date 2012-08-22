@@ -6,8 +6,8 @@
 
 Library
 
-library(../../../../lib/mlton/sources.cm) - (structure String)
+library(../lib/sources.cm) - (structure String)
 
 is
 
-../../../../lib/mlton/sources.cm
+../lib/sources.cm

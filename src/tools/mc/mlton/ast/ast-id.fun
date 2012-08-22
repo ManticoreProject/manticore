@@ -56,7 +56,7 @@ val isSymbolic = not o isAlphaNumeric
 
 val toString = Symbol.toString o name
 
-val layout = String.layout o toString
+val layout = (*String.layout*)Layout.str o toString
 
 (* val left = Region.left o region *)
 (* val right = Region.left o region *)
@@ -70,6 +70,6 @@ end
 
 fun equals (x, x') = Symbol.equals (name x, name x')
 
-val equals = Trace.trace2 ("AstId.equals", layout, layout, Bool.layout) equals
+val equals = Trace.trace2 ("AstId.equals", layout, layout, (*Bool.layout*)Layout.str o Bool.toString) equals
 
 end

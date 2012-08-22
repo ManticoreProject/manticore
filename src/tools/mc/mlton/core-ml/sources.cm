@@ -14,10 +14,12 @@ functor DeadCode
 
 is
 
+$/basis.cm
+
 ../ast/sources.cm
 ../atoms/sources.cm
 ../control/sources.cm
-../../../../lib/mlton/sources.cm
+../lib/sources.cm
 
 core-ml.sig
 core-ml.fun

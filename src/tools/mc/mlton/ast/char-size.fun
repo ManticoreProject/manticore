@@ -21,7 +21,7 @@ fun bits s =
      | C16 => 16
      | C32 => 32)
 
-val equals = op =
+val equals : t * t -> bool = op =
 
 fun fromBits b =
    case Bits.toInt b of

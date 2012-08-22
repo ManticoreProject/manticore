@@ -8,18 +8,22 @@
 functor Ffi (S: FFI_STRUCTS): FFI = 
 struct
 
+structure List = MLtonList
+structure Vector = MLtonVector
+fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
+
 open S
 
 structure Convention = CFunction.Convention
 structure SymbolScope = CFunction.SymbolScope
 
 local
-   val scopes: (Word.t * String.t * SymbolScope.t) HashSet.t = 
+   val scopes: ((*Word.t * String.t*)word * string * SymbolScope.t) HashSet.t = 
       HashSet.new {hash = #1}
 in
    fun checkScope {name, symbolScope} =
       let
-         val hash = String.hash name
+         val hash = (*String.hash*)String_hash name
       in
          (#3 o HashSet.lookupOrInsert)
          (scopes, hash,

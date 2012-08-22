@@ -17,14 +17,14 @@ signature AST_CONST =
       type t
       datatype node =
          Bool of bool
-       | Char of IntInf.t
-       | Int of IntInf.t
+       | Char of (*IntInf.t.*)IntInf.int
+       | Int of (*IntInf.t.*)IntInf.int
        | Real of string
-       | String of IntInf.t vector
-       | Word of IntInf.t
+       | String of (*IntInf.t.*)IntInf.int vector
+       | Word of (*IntInf.t.*)IntInf.int
       include WRAPPED sharing type node' = node
                       sharing type obj = t
 
       val layout: t -> Layout.t
-      val ordToString: IntInf.t -> string
+      val ordToString: (*IntInf.t.*)IntInf.int -> string
    end

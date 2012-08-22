@@ -27,7 +27,7 @@ val op <= =
     | (Always, _) => false
 
 val op <= =
-   Trace.trace2 ("AdmitsEquality.<=", layout, layout, Bool.layout) (op <=)
+   Trace.trace2 ("AdmitsEquality.<=", layout, layout, (*Bool.layout*)Layout.str o Bool.toString) (op <=)
 
 val or =
    fn (Always, _) => Always

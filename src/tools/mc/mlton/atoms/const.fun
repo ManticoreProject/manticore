@@ -9,6 +9,8 @@
 functor Const (S: CONST_STRUCTS): CONST =
 struct
 
+structure IntInf = MLtonIntInf
+
 open S
 
 structure ConstType = ConstType (struct
@@ -55,7 +57,7 @@ val string = wordVector o WordXVector.fromString
 
 local
    open Layout
-   fun wrap (pre, post, s) = seq [str pre, String.layout s, str post]
+   fun wrap (pre, post, s) = seq [str pre, (*String.layout*)str s, str post]
 in
    val layout =
       fn IntInf i => IntInf.layout i
@@ -84,7 +86,7 @@ fun equals (c, c') =
     | (WordVector v, WordVector v') => WordXVector.equals (v, v')
     | _ => false
 
-val equals = Trace.trace2 ("Const.equals", layout, layout, Bool.layout) equals
+val equals = Trace.trace2 ("Const.equals", layout, layout, (*Bool.layout*)Layout.str o Bool.toString) equals
 
 val lookup: ({default: string option, name: string} * ConstType.t -> t) ref =
    ref (fn _ => Error.bug "Const.lookup: not set")

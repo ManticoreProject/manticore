@@ -15,6 +15,10 @@
 functor Shrink (S: SHRINK_STRUCTS): SHRINK = 
 struct
 
+structure Option = MLtonOption
+structure Vector = MLtonVector
+fun Int_layout i = Layout.str(Int.toString i)
+
 open S
 open Dec PrimExp
 
@@ -54,7 +58,7 @@ structure VarInfo =
       in
          val rec layout =
             fn Mono {numOccurrences, value, varExp} =>
-                 record [("numOccurrences", Int.layout (!numOccurrences)),
+                 record [("numOccurrences", (*Int.layout*)Int_layout (!numOccurrences)),
                          ("value", Option.layout layoutValue (!value)),
                          ("varExp", VarExp.layout varExp)]
              | Poly x => seq [str "Poly ", VarExp.layout x]
@@ -66,7 +70,7 @@ structure VarInfo =
                        | SOME i => paren (layout i)]
              | Const c => Const.layout c
              | Lambda {isInlined, ...} =>
-                  seq [str "Lambda ", Bool.layout (!isInlined)]
+                  seq [str "Lambda ", (*Bool.layout (!isInlined)*)str(Bool.toString(!isInlined))]
              | Tuple is => Vector.layout layout is
       end
 
@@ -77,7 +81,7 @@ structure VarInfo =
           | Poly _ => ()
 
       val inc =
-         Trace.trace2 ("Xml.Shrink.VarInfo.inc", layout, Int.layout, Unit.layout) inc
+         Trace.trace2 ("Xml.Shrink.VarInfo.inc", layout, (*Int.layout*)Int_layout, Unit.layout) inc
 
       fun inc1 i = inc (i, 1)
 
@@ -234,7 +238,7 @@ fun shrinkOnce (Program.T {datatypes, body, overflow}) =
                 open Layout
              in
                 seq [Prim.layout p, str " ",
-                     List.layout (Prim.ApplyArg.layout
+                     MLtonList.layout (Prim.ApplyArg.layout
                                   (VarExp.layout o VarInfo.varExp)) args]
              end,
              Prim.ApplyResult.layout (VarExp.layout o VarInfo.varExp))

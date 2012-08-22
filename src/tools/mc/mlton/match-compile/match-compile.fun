@@ -9,6 +9,10 @@
 functor MatchCompile (S: MATCH_COMPILE_STRUCTS): MATCH_COMPILE =
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 
 local
@@ -355,7 +359,7 @@ val traceMatch =
                  Exp.layout)
 val traceConst =
    Trace.trace ("MatchCompile.const",
-                fn (vars, rules, facts, es, _: Int.t, _: Exp.t) =>
+                fn (vars, rules, facts, es, _: (*Int.t*)int, _: Exp.t) =>
                 Layout.tuple [Vars.layout vars,
                               Rules.layout rules,
                               Facts.layout facts,
@@ -363,7 +367,7 @@ val traceConst =
                 Exp.layout)
 val traceSum =
    Trace.trace ("MatchCompile.sum",
-                fn (vars, rules, facts, es, _: Int.t, _: Exp.t, _: Tycon.t) =>
+                fn (vars, rules, facts, es, _: (*Int.t*)int, _: Exp.t, _: Tycon.t) =>
                 Layout.tuple [Vars.layout vars,
                               Rules.layout rules,
                               Facts.layout facts,
@@ -371,7 +375,7 @@ val traceSum =
                 Exp.layout)
 val traceTuple =
    Trace.trace ("MatchCompile.tuple",
-                fn (vars, rules, facts, es, _: Int.t, _: Exp.t) =>
+                fn (vars, rules, facts, es, _: (*Int.t*)int, _: Exp.t) =>
                 Layout.tuple [Vars.layout vars,
                               Rules.layout rules,
                               Facts.layout facts,
@@ -456,8 +460,8 @@ fun matchCompile {caseType: Type.t,
                               open Layout
                            in
                               seq [str "#\"",
-                                   Char.layout (WordX.toChar w),
-                                   str String.dquote]
+                                   (*Char.layout*)str(Char.toString (WordX.toChar w)),
+                                   str (*String.dquote*)"\""]
                            end
                       | _ => Error.bug (concat
                                         ["MatchCompile.const.layoutConst: ",
@@ -466,9 +470,9 @@ fun matchCompile {caseType: Type.t,
                else if isInt
                   then
                      case c of
-                        Const.IntInf i => IntInf.layout i
+                        Const.IntInf i => MLtonIntInf.layout i
                       | Const.Word w =>
-                           IntInf.layout (WordX.toIntInfX w)
+                           MLtonIntInf.layout (WordX.toIntInfX w)
                       | _ => Error.bug (concat
                                         ["MatchCompile.const.layoutConst: ",
                                          "strange int: ", 

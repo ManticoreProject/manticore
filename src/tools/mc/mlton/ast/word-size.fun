@@ -8,6 +8,10 @@
 functor WordSize (S: WORD_SIZE_STRUCTS): WORD_SIZE =
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 
 datatype t = T of Bits.t

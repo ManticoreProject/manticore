@@ -9,6 +9,8 @@
 functor GenericScheme (S: GENERIC_SCHEME_STRUCTS): GENERIC_SCHEME =
 struct
 
+structure Vector = MLtonVector
+
 open S
 
 type ty = Type.t

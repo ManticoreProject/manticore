@@ -10,6 +10,27 @@
 functor Main (S: MAIN_STRUCTS): MAIN =
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+fun String_equals (s1 : string, s2) = (s1 = s2)
+fun String_hasPrefix (string, {prefix}) = String.isPrefix prefix string
+fun String_dropPrefix (s, n) = String.substring(s, n, size s - n)
+fun String_forall (s, f) = CharVector.all f s
+fun String_tokens (s, pred) = String.tokens pred s
+fun String_concatWith (l, s) = String.concatWith s l
+fun String_contains (cs, c) = Char.contains cs c
+fun String_toLower s = CharVector.map Char.toLower s
+fun String_hasSuffix (string, {suffix}) = let
+      val n = String.size string
+      val n' = String.size suffix
+      fun loop (i: int, j: int): bool =
+         i >= n orelse ((String.sub (string, i) = String.sub (suffix, j))
+                        andalso loop (i + 1, j + 1))
+      in
+	n' <= n andalso loop (n - n', 0)
+      end
+fun String_translate (s, f) = String.translate f s
+
 open S
 
 structure Compile = Compile ()
@@ -77,8 +98,8 @@ val runtimeArgs: string list ref = ref ["@MLton"]
 val show: Show.t option ref = ref NONE
 val stop = ref Place.OUT
 
-fun parseMlbPathVar (line: String.t) =
-   case String.tokens (line, Char.isSpace) of
+fun parseMlbPathVar (line: (*String.t*)string) =
+   case (*String.tokens*)String_tokens (line, Char.isSpace) of
       [var, path] => SOME {var = var, path = path}
     | _ => NONE
 
@@ -88,7 +109,7 @@ fun readMlbPathMap (file: File.t) =
    else
       List.keepAllMap
       (File.lines file, fn line =>
-       if String.forall (line, Char.isSpace)
+       if (*String.forall*)String_forall (line, Char.isSpace)
           then NONE
        else
           case parseMlbPathVar line of
@@ -96,8 +117,8 @@ fun readMlbPathMap (file: File.t) =
                                         file, ":: ", line])
            | SOME v => SOME v)
 
-val targetMap: unit -> {arch: MLton.Platform.Arch.t,
-                        os: MLton.Platform.OS.t,
+val targetMap: unit -> {arch: (*MLton.Platform*)MLtonPlatform.Arch.t,
+                        os: (*MLton.Platform*)MLtonPlatform.OS.t,
                         target: string} list =
    Promise.lazy
    (fn () =>
@@ -119,14 +140,14 @@ val targetMap: unit -> {arch: MLton.Platform.Arch.t,
                                       file = "arch" }
              val os   = File.contents osFile
              val arch = File.contents archFile
-             val os   = List.first (String.tokens (os,   Char.isSpace))
-             val arch = List.first (String.tokens (arch, Char.isSpace))
+             val os   = List.first ((*String.tokens*)String_tokens (os,   Char.isSpace))
+             val arch = List.first ((*String.tokens*)String_tokens (arch, Char.isSpace))
              val os =
-                case MLton.Platform.OS.fromString os of
+                case (*MLton.Platform*)MLtonPlatform.OS.fromString os of
                    NONE => Error.bug (concat ["strange os: ", os])
                  | SOME os => os
              val arch =
-                case MLton.Platform.Arch.fromString arch of
+                case (*MLton.Platform*)MLtonPlatform.Arch.fromString arch of
                    NONE => Error.bug (concat ["strange arch: ", arch])
                  | SOME a => a
           in
@@ -214,13 +235,13 @@ fun makeOptions {usage} =
           | Control.Elaborate.Other =>
                usage (concat ["invalid -", flag, " flag: ", s])
       open Control Popt
-      datatype z = datatype MLton.Platform.Arch.t
-      datatype z = datatype MLton.Platform.OS.t
+      datatype z = datatype (*MLton.Platform*)MLtonPlatform.Arch.t
+      datatype z = datatype (*MLton.Platform*)MLtonPlatform.OS.t
       fun tokenizeOpt f opts =
-         List.foreach (String.tokens (opts, Char.isSpace),
+         List.foreach ((*String.tokens*)String_tokens (opts, Char.isSpace),
                        fn opt => f opt)
       fun tokenizeTargetOpt f (target, opts) =
-         List.foreach (String.tokens (opts, Char.isSpace),
+         List.foreach ((*String.tokens*)String_tokens (opts, Char.isSpace),
                        fn opt => f (target, opt))
    in
       List.map
@@ -264,11 +285,11 @@ fun makeOptions {usage} =
                                          val usage = fn () =>
                                             usage (concat ["invalid -chunkify flag: ", s])
                                       in
-                                         if String.hasPrefix (s, {prefix = "coalesce"})
+                                         if (*String.hasPrefix*)String_hasPrefix (s, {prefix = "coalesce"})
                                             then let
-                                                    val s = String.dropPrefix (s, 8)
+                                                    val s = (*String.dropPrefix*)String_dropPrefix (s, 8)
                                                  in
-                                                    if String.forall (s, Char.isDigit)
+                                                    if (*String.forall*)String_forall (s, Char.isDigit)
                                                        then (case Int.fromString s of
                                                                 NONE => usage ()
                                                               | SOME n => Coalesce
@@ -285,7 +306,7 @@ fun makeOptions {usage} =
         Bool (fn b => (closureConvertShrink := b))),
        (Normal, "codegen",
         concat [" {",
-                String.concatWith
+                (*String.concatWith*)String_concatWith
                 (List.keepAllMap
                  (Native :: (List.map (Control.Codegen.all, Explicit)),
                   fn cg =>
@@ -309,7 +330,7 @@ fun makeOptions {usage} =
                                      | NONE => usage (concat ["invalid -codegen flag: ", s]))))),
        (Normal, "const", " '<name> <value>'", "set compile-time constant",
         SpaceString (fn s =>
-                     case String.tokens (s, Char.isSpace) of
+                     case (*String.tokens*)String_tokens (s, Char.isSpace) of
                         [name, value] =>
                            Compile.setCommandLineConstant {name = name,
                                                            value = value}
@@ -403,7 +424,7 @@ fun makeOptions {usage} =
         SpaceString (fn s => exportHeader := SOME s)),
        (Expert, "format",
         concat [" {",
-                String.concatWith
+                (*String.concatWith*)String_concatWith
                 (List.keepAllMap
                   (Control.Format.all, fn cg => SOME (Control.Format.toString cg)),
                  "|"),
@@ -454,7 +475,7 @@ fun makeOptions {usage} =
                            {loops = loops, repeat = repeat,
                             size = (if s = "inf"
                                        then NONE
-                                    else if String.forall (s, Char.isDigit)
+                                    else if (*String.forall*)String_forall (s, Char.isDigit)
                                        then Int.fromString s
                                     else (usage o concat)
                                          ["invalid -inline-leaf-size flag: ", s])})),
@@ -478,7 +499,7 @@ fun makeOptions {usage} =
                            {loops = loops, repeat = repeat,
                             size = (if s = "inf"
                                        then NONE
-                                    else if String.forall (s, Char.isDigit)
+                                    else if (*String.forall*)String_forall (s, Char.isDigit)
                                        then Int.fromString s
                                     else (usage o concat)
                                          ["invalid -inline-leaf-size flag: ", s])})),
@@ -721,7 +742,7 @@ fun makeOptions {usage} =
         SpaceString
         (fn s =>
          case List.peek (!Control.optimizationPasses,
-                         fn {il, ...} => String.equals ("ssa", il)) of
+                         fn {il, ...} => (*String.equals*)String_equals ("ssa", il)) of
             SOME {set, ...} =>
                (case set s of
                    Result.Yes () => ()
@@ -731,7 +752,7 @@ fun makeOptions {usage} =
         SpaceString
         (fn s =>
          case List.peek (!Control.optimizationPasses,
-                         fn {il, ...} => String.equals ("ssa2", il)) of
+                         fn {il, ...} => (*String.equals*)String_equals ("ssa2", il)) of
             SOME {set, ...} =>
                (case set s of
                    Result.Yes () => ()
@@ -750,7 +771,7 @@ fun makeOptions {usage} =
         SpaceString
         (fn s =>
          case List.peek (!Control.optimizationPasses,
-                         fn {il, ...} => String.equals ("sxml", il)) of
+                         fn {il, ...} => (*String.equals*)String_equals ("sxml", il)) of
             SOME {set, ...} =>
                (case set s of
                    Result.Yes () => ()
@@ -814,7 +835,7 @@ fun makeOptions {usage} =
         SpaceString
         (fn s =>
          case List.peek (!Control.optimizationPasses,
-                         fn {il, ...} => String.equals ("xml", il)) of
+                         fn {il, ...} => (*String.equals*)String_equals ("xml", il)) of
             SOME {set, ...} =>
                (case set s of
                    Result.Yes () => ()
@@ -840,8 +861,8 @@ val usage = fn s => (usage s; raise Fail "unreachable")
 fun commandLine (args: string list): unit =
    let
       open Control
-      datatype z = datatype MLton.Platform.Arch.t
-      datatype z = datatype MLton.Platform.OS.t
+      datatype z = datatype (*MLton.Platform*)MLtonPlatform.Arch.t
+      datatype z = datatype (*MLton.Platform*)MLtonPlatform.OS.t
       val args =
          case args of
             lib :: args =>
@@ -864,9 +885,9 @@ fun commandLine (args: string list): unit =
                               relativeTo = targetsDir }
       val () = libTargetDir := targetDir
       val targetArch = !Target.arch
-      val archStr = String.toLower (MLton.Platform.Arch.toString targetArch)
+      val archStr = (*String.toLower*)String_toLower ((*MLton.Platform*)MLtonPlatform.Arch.toString targetArch)
       val targetOS = !Target.os
-      val OSStr = String.toLower (MLton.Platform.OS.toString targetOS)
+      val OSStr = (*String.toLower*)String_toLower ((*MLton.Platform*)MLtonPlatform.OS.toString targetOS)
 
       (* Determine whether code should be PIC (position independent) or not.
        * This decision depends on the platform and output format.
@@ -910,10 +931,12 @@ fun commandLine (args: string list): unit =
                            else if hasCodegen (amd64Codegen)
                               then amd64Codegen
                            else usage (concat ["can't use native codegen on ",
-                                               MLton.Platform.Arch.toString targetArch,
+                                               (*MLton.Platform*)MLtonPlatform.Arch.toString targetArch,
                                                " target"])
                       | SOME (Explicit cg) => cg)
+(*
       val () = MLton.Rusage.measureGC (!verbosity <> Silent)
+*)
       val () = if !profileTimeSet
                   then (case !codegen of
                            x86Codegen => profile := ProfileTimeLabel
@@ -940,7 +963,7 @@ fun commandLine (args: string list): unit =
                (File.lines (OS.Path.joinDirFile {dir = !Control.libTargetDir,
                                                  file = "sizes"}),
                 fn line =>
-                case String.tokens (line, Char.isSpace) of
+                case (*String.tokens*)String_tokens (line, Char.isSpace) of
                    [ty, "=", size] =>
                       (case Int.fromString size of
                           NONE => Error.bug (concat ["strange size: ", size])
@@ -948,7 +971,7 @@ fun commandLine (args: string list): unit =
                              (ty, Bytes.toBits (Bytes.fromInt size)))
                  | _ => Error.bug (concat ["strange size mapping: ", line]))
             fun lookup ty' =
-               case List.peek (sizeMap, fn (ty, _) => String.equals (ty, ty')) of
+               case List.peek (sizeMap, fn (ty, _) => (*String.equals*)String_equals (ty, ty')) of
                   NONE => Error.bug (concat ["missing size mapping: ", ty'])
                 | SOME (_, size) => size
          in
@@ -964,7 +987,7 @@ fun commandLine (args: string list): unit =
          end
 
       fun tokenize l =
-         String.tokens (concat (List.separate (l, " ")), Char.isSpace)
+         (*String.tokens*)String_tokens (concat (List.separate (l, " ")), Char.isSpace)
 
       (* When cross-compiling, use the named cross compiler.
        * Older gcc versions used -b for multiple targets.
@@ -990,7 +1013,7 @@ fun commandLine (args: string list): unit =
           if (case pred of
                  OptPred.Target s =>
                     let
-                       val s = String.toLower s
+                       val s = (*String.toLower*)String_toLower s
                     in
                        s = archStr orelse s = OSStr
                     end
@@ -1027,7 +1050,7 @@ fun commandLine (args: string list): unit =
             then usage (concat ["can't use ",
                                 Control.Codegen.toString (!codegen),
                                 " codegen on ",
-                                MLton.Platform.Arch.toString targetArch,
+                                (*MLton.Platform*)MLtonPlatform.Arch.toString targetArch,
                                 " target"])
          else ()
       val _ =
@@ -1094,7 +1117,7 @@ fun commandLine (args: string list): unit =
                if !profile = ProfileTimeField
                   orelse !profile = ProfileTimeLabel
                   then usage (concat ["can't use -profile time on ",
-                                      MLton.Platform.OS.toString targetOS])
+                                      (*MLton.Platform*)MLtonPlatform.OS.toString targetOS])
                else ()
       fun printVersion (out: Out.t): unit =
          Out.output (out, concat [Version.banner, "\n"])
@@ -1138,7 +1161,7 @@ fun commandLine (args: string list): unit =
                   val rec loop =
                      fn [] => usage (concat ["invalid file suffix on ", input])
                       | (suf, start, hasNum) :: sufs =>
-                           if String.hasSuffix (input, {suffix = suf})
+                           if (*String.hasSuffix*)String_hasSuffix (input, {suffix = suf})
                               then (start,
                                     let
                                        val f = File.base input
@@ -1160,7 +1183,7 @@ fun commandLine (args: string list): unit =
                List.foreach
                (rest, fn f =>
                 if List.exists ([".c", ".o", ".s", ".S"], fn suffix =>
-                                String.hasSuffix (f, {suffix = suffix}))
+                                (*String.hasSuffix*)String_hasSuffix (f, {suffix = suffix}))
                    then File.withIn (f, fn _ => ())
                 else usage (concat ["invalid file suffix: ", f]))
             val csoFiles = rest
@@ -1179,11 +1202,11 @@ fun commandLine (args: string list): unit =
                      val tmpDir =
                         let
                            val (tmpVar, default) =
-                              case MLton.Platform.OS.host of
+                              case (*MLton.Platform*)MLtonPlatform.OS.host of
                                  MinGW => ("TEMP", "C:/WINDOWS/TEMP")
                                | _ => ("TMPDIR", "/tmp")
                         in
-                           case Process.getEnv tmpVar of
+                           case OS.Process.getEnv tmpVar of
                               NONE => default
                             | SOME d => d
                         end
@@ -1211,7 +1234,7 @@ fun commandLine (args: string list): unit =
                      val { file = defLibname, dir=_ } =
                         OS.Path.splitDirFile outputBase
                      val defLibname =
-                        if String.hasPrefix (defLibname, {prefix = "lib"})
+                        if (*String.hasPrefix*)String_hasPrefix (defLibname, {prefix = "lib"})
                         then String.extract (defLibname, 3, NONE)
                         else defLibname
                      fun toAlNum c = if Char.isAlphaNum c then c else #"_"
@@ -1294,9 +1317,9 @@ fun commandLine (args: string list): unit =
                             * We want to keep the .exe as is for MinGW/Win32.
                             *)
                            val _ =
-                              if MLton.Platform.OS.host = Cygwin
+                              if (*MLton.Platform*)MLtonPlatform.OS.host = Cygwin
                                  then
-                                    if String.contains (output, #".")
+                                    if (*String.contains*)String_contains (output, #".")
                                        then ()
                                     else
                                        File.move {from = concat [output, ".exe"],
@@ -1393,7 +1416,7 @@ fun commandLine (args: string list): unit =
                         fun make (style: style, suf: string) () =
                            let
                               val suf = concat [".", Int.toString (!r), suf]
-                              val _ = Int.inc r
+                              val _ = (*Int.inc r*)r := !r + 1
                               val file = (if !keepGenerated
                                              orelse stop = Place.Generated
                                              then maybeOutBase
@@ -1422,9 +1445,9 @@ fun commandLine (args: string list): unit =
                         val _ =
                            case stop of
                               Place.Files =>
-                                 Vector.foreach
+                                 MLtonVector.foreach
                                  (listFiles {input = input}, fn f =>
-                                  (print (String.translate
+                                  (print ((*String.translate*)String_translate
                                           (f, fn #"\\" => "/" | c => str c))
                                    ; print "\n"))
                             | Place.TypeCheck =>
@@ -1444,7 +1467,7 @@ fun commandLine (args: string list): unit =
                          | Place.Generated => ()
                          | _ =>
                               (* Shrink the heap before calling gcc. *)
-                              (MLton.GC.pack ()
+                              ((*MLton.GC.pack*) ()
                                ; compileCSO (List.concat [!outputs, csoFiles]))
                      end
                   val compileSML =
@@ -1514,8 +1537,22 @@ fun commandLine (args: string list): unit =
        ()
    end
 
+fun Process_makeCommandLine (commandLine: string list -> unit) args =
+   ((commandLine args; OS.Process.success)
+    handle e =>
+       let
+          val out = Out.error
+          open Layout
+       in
+          output (Exn.layout e, out)
+          ; List.foreach (Exn.history e, fn s =>
+                          (Out.output (out, "\n\t")
+                           ; Out.output (out, s)))
+          ; Out.newline out
+          ; OS.Process.failure
+       end)
 
-val commandLine = Process.makeCommandLine commandLine
+val commandLine = (*Process.makeCommandLine*)Process_makeCommandLine commandLine
 
 val main = fn (_, args) => commandLine args
 

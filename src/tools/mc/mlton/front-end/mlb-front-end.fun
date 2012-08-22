@@ -10,6 +10,12 @@
 functor MLBFrontEnd (S: MLB_FRONT_END_STRUCTS): MLB_FRONT_END = 
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+fun String_equals (s1 : string, s2) = (s1 = s2)
+fun String_fromListRev l = String.implode(List.rev l)
+fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
+
 open S
 
 (* The lexer recursively invokes the lexer/parser when it encounters a file
@@ -63,7 +69,7 @@ val lexAndParseFile =
     Trace.trace ("MLBFrontEnd.lexAndParseFile", File.layout, Ast.Basdec.layout)
     lexAndParseFile
 
-fun lexAndParseString (s: String.t) =
+fun lexAndParseString (s: (*String.t*)string) =
    let 
       val source = Source.new "<string>"
       val ins = In.openString s
@@ -72,7 +78,7 @@ fun lexAndParseString (s: String.t) =
    end
 
 val lexAndParseString =
-    Trace.trace ("MLBFrontEnd.lexAndParseString", String.layout,
+    Trace.trace ("MLBFrontEnd.lexAndParseString", (*String.layout*)Layout.str,
                  Ast.Basdec.layout)
     lexAndParseString
 
@@ -83,7 +89,7 @@ val lexAndParseString =
       val relativize = SOME cwd
       val state = {cwd = cwd, relativize = relativize, seen = []}
       val psi : (File.t * Ast.Basdec.t Promise.t) HashSet.t =
-         HashSet.new {hash = String.hash o #1}
+         HashSet.new {hash = (*String.hash*)String_hash o #1}
       local
          val pathMap =
              Control.mlbPathMap ()
@@ -95,7 +101,7 @@ val lexAndParseString =
       in
          val peekPathMap =
             Trace.trace ("MLBFrontEnd.peekPathMap", 
-                         String.layout,
+                         (*String.layout*)Layout.str,
                          Option.layout Dir.layout)
             peekPathMap
       end
@@ -104,14 +110,14 @@ val lexAndParseString =
             fun loop (s, acc, accs) =
                case s of
                   [] => String.concat (List.rev
-                                       (String.fromListRev acc :: accs))
+                                       ((*String.fromListRev*)String_fromListRev acc :: accs))
                 | #"$" :: #"(" :: s => 
                      let
-                        val accs = String.fromListRev acc :: accs
+                        val accs = (*String.fromListRev*)String_fromListRev acc :: accs
                         fun loopVar (s, acc) =
                            case s of
                               [] => Error.bug "MLBFrontEnd.lexAndParseString.expandPathVars"
-                            | #")" :: s => (s, String.fromListRev acc)
+                            | #")" :: s => (s, (*String.fromListRev*)String_fromListRev acc)
                             | c :: s => loopVar (s, c :: acc)
                         val (s, var) = loopVar (s, [])
                      in
@@ -180,7 +186,7 @@ val lexAndParseString =
                        ("relativize", Option.layout Dir.layout relativize)])
          regularize
       fun lexAndParseProg {fileAbs: File.t, fileOrig: File.t, fileUse: File.t, 
-                           fail: String.t -> Ast.Program.t} =
+                           fail: (*String.t*)string -> Ast.Program.t} =
          Ast.Basdec.Prog
          ({fileAbs = fileAbs, fileUse = fileUse},
           Promise.delay
@@ -192,7 +198,7 @@ val lexAndParseString =
       and lexAndParseMLB {relativize: Dir.t option,
                           seen: (File.t * File.t * Region.t) list,
                           fileAbs: File.t, fileOrig: File.t, fileUse: File.t,
-                          fail: String.t -> Ast.Basdec.t, reg: Region.t} =
+                          fail: (*String.t*)string -> Ast.Basdec.t, reg: Region.t} =
          Ast.Basdec.MLB
          ({fileAbs = fileAbs, fileUse = fileUse},
           Promise.delay
@@ -205,7 +211,7 @@ val lexAndParseString =
                 val seen' = (fileAbs, fileUse, reg) :: seen
              in
                 if List.exists (seen, fn (fileAbs', _, _) => 
-                                String.equals (fileAbs, fileAbs'))
+                                (*String.equals*)String_equals (fileAbs, fileAbs'))
                    then (let open Layout
                    in 
                             Control.error 
@@ -221,8 +227,8 @@ val lexAndParseString =
                    let
                       val (_, basdec) =
                          HashSet.lookupOrInsert
-                         (psi, String.hash fileAbs, fn (fileAbs', _) =>
-                          String.equals (fileAbs, fileAbs'), fn () =>
+                         (psi, (*String.hash*)String_hash fileAbs, fn (fileAbs', _) =>
+                          (*String.equals*)String_equals (fileAbs, fileAbs'), fn () =>
                           let
                              val cwd = OS.Path.dir fileAbs
                              val basdec =
@@ -266,7 +272,7 @@ val lexAndParseString =
              case File.extension fileUse of
                 NONE => errUnknownExt ()
               | SOME s =>
-                   if List.contains (mlbExts, s, String.equals) then
+                   if List.contains (mlbExts, s, (*String.equals*)String_equals) then
                       lexAndParseMLB {relativize = relativize,
                                       seen = seen,
                                       fileAbs = fileAbs,
@@ -274,7 +280,7 @@ val lexAndParseString =
                                       fileUse = fileUse,
                                       fail = fail Ast.Basdec.empty,
                                       reg = reg}
-                   else if List.contains (progExts, s, String.equals) then
+                   else if List.contains (progExts, s, (*String.equals*)String_equals) then
                       lexAndParseProg {fileAbs = fileAbs,
                                        fileOrig = fileOrig,
                                        fileUse = fileUse,

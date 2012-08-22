@@ -6,13 +6,13 @@
  *)
 
 %tokens
-    : CHAR of IntInf.t
+    : CHAR of (*IntInf.t*)IntInf.int
     | INT of {digits: string,
               negate: bool,
               radix: StringCvt.radix}
     | LONGID of string
     | REAL of string
-    | STRING of IntInf.t vector
+    | STRING of (*IntInf.t*)IntInf.int vector
     | TYVAR of string
     | WORD of {digits: string,
                radix: StringCvt.radix}
@@ -30,6 +30,8 @@
     ;
 
 %defs (
+
+structure MV = MLtonVector
 
 fun reg (left, right) = Region.make {left = left, right = right}
 
@@ -66,9 +68,9 @@ structure Type =
 
       val tuple = Record o Srecord.tuple
 
-      val unit = tuple (Vector.new0 ())
+      val unit = tuple (MV.new0 ())
 
-      fun arrow (t1, t2) = Con (Longtycon.arrow, Vector.new2 (t1, t2))
+      fun arrow (t1, t2) = Con (Longtycon.arrow, MV.new2 (t1, t2))
    end
 
 structure DatBind =
@@ -88,7 +90,7 @@ structure Pat =
             then node (Vector.sub (ps, 0))
          else Tuple ps
 
-      val unit = tuple (Vector.new0 ())
+      val unit = tuple (MV.new0 ())
 
       val bogus = unit
 
@@ -142,7 +144,7 @@ structure Exp =
             then node (Vector.sub (es, 0))
          else Record (Record.tuple es)
 
-      val unit = tuple (Vector.new0 ())
+      val unit = tuple (MV.new0 ())
    end
 
 structure Dec =
@@ -153,10 +155,10 @@ structure Dec =
          makeRegion (case (node d1, node d2) of
                         (SeqDec d1, SeqDec d2) => SeqDec (Vector.concat [d1, d2])
                       | (SeqDec d1, _) =>
-                           SeqDec (Vector.concat [d1, Vector.new1 d2])
+                           SeqDec (Vector.concat [d1, MV.new1 d2])
                       | (_, SeqDec d2) =>
-                           SeqDec (Vector.concat [Vector.new1 d1, d2])
-                      | _ => SeqDec (Vector.new2 (d1, d2)),
+                           SeqDec (Vector.concat [MV.new1 d1, d2])
+                      | _ => SeqDec (MV.new2 (d1, d2)),
                      Region.append (region d1, region d2))
    end
 
@@ -436,7 +438,7 @@ specnode : VAL valdescs         => (Spec.Val (Vector.fromList valdescs))
            => (Spec.IncludeSigids (Vector.fromList (sigid::SR)) )) => (SR)
          | sharespec
            => (Spec.Sharing {spec = Spec.makeRegion (Spec.Empty, posToReg (FULL_SPAN)),
-                          equations = (Vector.new1
+                          equations = (MV.new1
                                        (Equation.makeRegion (sharespec, posToReg (FULL_SPAN))))})
        ;
        
@@ -512,7 +514,7 @@ fctarg : strid COLON sigexp  => (FctArg.Structure (strid, sigexp))
 (*---------------------------------------------------*)
 
 decs : SEMICOLON* (dec SEMICOLON*)* => (case SR
-                                of [] => (Dec.makeRegion (Dec.SeqDec (Vector.new0 ()), posToReg (FULL_SPAN)))
+                                of [] => (Dec.makeRegion (Dec.SeqDec (MV.new0 ()), posToReg (FULL_SPAN)))
                                  | _ => (let
                                              fun seqFold ([x]) = x
                                                | seqFold (x::xs) = Dec.sequence(x, seqFold xs)
@@ -534,11 +536,11 @@ decnolocal
                                       in
 		                         case SR
 					  of NONE => 
-                                             Dec.Val {tyvars = Vector.new0 (), vbs=vbs, rvbs=rvbs}
+                                             Dec.Val {tyvars = MV.new0 (), vbs=vbs, rvbs=rvbs}
 					   | SOME tyvars =>
                                              Dec.Val {tyvars = tyvars, vbs=vbs, rvbs=rvbs}
 	                              end)
-        | FUN (funs              => (Dec.Fun (Vector.new0 (), Vector.fromList funs))
+        | FUN (funs              => (Dec.Fun (MV.new0 (), Vector.fromList funs))
              | tyvarseq funs     => (Dec.Fun (tyvarseq, Vector.fromList funs))) => (SR)
         | TYPE typBind          => (Dec.Type typBind)
         | DATATYPE datatypeRhs  => (Dec.Datatype datatypeRhs)
@@ -552,7 +554,7 @@ decnolocal
         | OVERLOAD (digit)? var COLON ty AS longvidands
                                 => (Dec.Overload (Priority.T SR, 
                                                var,
-                                               Vector.new0 (),
+                                               MV.new0 (),
                                                ty,
                                                Vector.fromList longvidands))
        ;
@@ -614,10 +616,10 @@ typBind''' : tyvars tycon EQUALOP ty => ({def = ty, tycon = tycon, tyvars = tyva
        ;
 
 tyvars  : tyvarseq => (tyvarseq)
-        |          => (Vector.new0 ())
+        |          => (MV.new0 ())
        ;
 
-tyvarseq: tyvar                   => (Vector.new1 tyvar)
+tyvarseq: tyvar                   => (MV.new1 tyvar)
         | LPAREN tyvar_pc RPAREN
           => (let
               val v = Vector.fromList tyvar_pc
@@ -627,7 +629,7 @@ tyvarseq: tyvar                   => (Vector.new1 tyvar)
                       layout = Tyvar.layout,
                       name = "type variable",
                       region = Tyvar.region,
-                      term = fn () => Layout.tuple (Vector.toListMap
+                      term = fn () => Layout.tuple (MV.toListMap
                                                     (v, Tyvar.layout))})
            in
               v
@@ -673,7 +675,7 @@ int : INT
    => (let
        val {digits, negate, radix} = INT
     in
-       case StringCvt.scanString (fn r => IntInf.scan (radix, r)) digits of
+       case StringCvt.scanString (fn r => IntInf.scan radix r) digits of
           NONE => Error.bug "parser saw invalid int"
         | SOME i => if negate then ~ i else i
     end)
@@ -683,7 +685,7 @@ word : WORD
    => (let
        val {digits, radix} = WORD
     in
-       case StringCvt.scanString (fn r => IntInf.scan (radix, r)) digits of
+       case StringCvt.scanString (fn r => IntInf.scan radix r) digits of
           NONE => Error.bug "parser saw invalid word"
         | SOME i => i
     end)
@@ -728,7 +730,7 @@ datatypeRhsnodeNoWithtype
        ;
 
 repl : tyvars tycon EQUALOP DATATYPE longtycon
-       => (if Vector.isEmpty tyvars
+       => (if (Vector.length tyvars = 0)
            then ()
         else error (posToReg (FULL_SPAN),
                     "nonempty tyvars in datatype repl")
@@ -936,7 +938,7 @@ aexp    : OP longvid            => (Exp.Var {name = longvid,
                      | (SEMICOLON exp)+ RPAREN  => (Exp.Seq (Vector.fromList ((Exp.makeRegion (expnode, posToReg (expnode_SPAN)))::SR)))
                      | (COMMA exp)+ RPAREN  => (Exp.tuple (Vector.fromList ((Exp.makeRegion (expnode, posToReg (expnode_SPAN)))::SR)))) => (SR)
         | LBRACKET (exp_list RBRACKET  => (Exp.List (Vector.fromList exp_list))
-        | RBRACKET           => (Exp.List (Vector.new0 ()))) => (SR)
+        | RBRACKET           => (Exp.List (MV.new0 ()))) => (SR)
         | LET decs IN exp ( (SEMICOLON exp)+ END
                        => (Exp.Let (decs, Exp.makeRegion (Exp.Seq (Vector.fromList (exp::SR)), posToReg (FULL_SPAN))))
                       | END   => (Exp.Let (decs, exp)))
@@ -1118,7 +1120,7 @@ ty  : ty1 (ARROW ty1)* => (case SR
 ty1 : ty2 (ASTERISK ty2)* => (case SR
                                of [] => (Type.makeRegion (ty2, posToReg (FULL_SPAN)))
                                 | _ => (let
-                                      val regioned = List.map ((ty2::SR), (fn n => Type.makeRegion (n, posToReg (FULL_SPAN))))
+                                      val regioned = List.map (fn n => Type.makeRegion (n, posToReg (FULL_SPAN))) (ty2::SR)
                                   in
                                       Type.makeRegion (Type.tuple (Vector.fromList regioned), posToReg (FULL_SPAN))
                                         end))
@@ -1128,8 +1130,8 @@ ty2 : ty3 longtycon* => (case longtycon
                           of [] => ty3
                            | _ => let
 			   fun tyfold ([x]) = Type.Con (x,
-                                                   Vector.new1 (Type.makeRegion (ty3, posToReg (ty3_SPAN))))
-                             | tyfold (x::xs) = Type.Con (x, Vector.new1 (Type.makeRegion (tyfold xs, posToReg (FULL_SPAN))))
+                                                   MV.new1 (Type.makeRegion (ty3, posToReg (ty3_SPAN))))
+                             | tyfold (x::xs) = Type.Con (x, MV.new1 (Type.makeRegion (tyfold xs, posToReg (FULL_SPAN))))
                              | tyfold ([]) = raise Fail "Invalid tyfold"
                            in
                               tyfold (rev longtycon)
@@ -1139,7 +1141,7 @@ ty2 : ty3 longtycon* => (case longtycon
 ty3 : tyvar						=> (Type.Var tyvar)
     | LBRACE (RBRACE					=> (Type.unit)
     | tyrow RBRACE					=> (Type.Record (Srecord.fromVector (Vector.fromList tyrow)))) => (SR)
-    | longtycon						=> (Type.Con (longtycon, Vector.new0 ()))
+    | longtycon						=> (Type.Con (longtycon, MV.new0 ()))
     | LPAREN ty ((COMMA ty)+ RPAREN longtycon	        => (Type.Con (longtycon, Vector.fromList (ty::SR)))
                 | RPAREN				=> (Type.node ty)) => (SR)
     ;
@@ -1181,7 +1183,7 @@ const'  : int                   => (Const.Int int)
 
 string : STRING  => (CharVector.tabulate
                   (Vector.length STRING, fn i =>
-                   Char.fromInt (Int.fromIntInf (Vector.sub (STRING, i)))))
+                   Char.chr (Int.fromLarge (Vector.sub (STRING, i)))))
        ;
 
 idNoAsterisk : longidNoAsterisk => (ensureNonqualified longidNoAsterisk)
@@ -1203,7 +1205,7 @@ longid
 longidNoAsterisk
    : LONGID
      => (let
-         val syms = List.map (split (LONGID, #"."), Symbol.fromString)
+         val syms = List.map Symbol.fromString (split (LONGID, #"."))
       in
          (syms, posToReg (FULL_SPAN))
       end)

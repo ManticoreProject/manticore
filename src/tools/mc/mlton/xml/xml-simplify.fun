@@ -9,6 +9,9 @@
 functor XmlSimplify (S: XML_SIMPLIFY_STRUCTS): XML_SIMPLIFY = 
 struct
 
+structure List = MLtonList
+fun String_split (s, c) = String.fields (fn c' => c = c') s
+
 open S
 
 structure SimplifyTypes = SimplifyTypes (structure Input = S
@@ -47,7 +50,7 @@ in
    fun xmlPassesSetCustom s =
       Exn.withEscape
       (fn esc =>
-       (let val ss = String.split (s, #":")
+       (let val ss = (*String.split*)String_split (s, #":")
         in
            xmlPasses :=
            List.map(ss, fn s =>

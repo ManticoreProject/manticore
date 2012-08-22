@@ -13,9 +13,11 @@ functor NestedPat
 
 is
 
+$/basis.cm
+
 ../atoms/sources.cm
 ../control/sources.cm
-../../../../lib/mlton/sources.cm
+../lib/sources.cm
 
 nested-pat.sig
 nested-pat.fun

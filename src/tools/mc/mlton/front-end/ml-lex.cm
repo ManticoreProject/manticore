@@ -4,8 +4,12 @@ structure MLLexer
 
 is
 
+(*
   basis-no-char.cm
+*)
+  $/basis.cm
   $/ml-lpt-lib.cm
+  ../lib/sources.cm
   ../ast/sources.cm
   ../control/sources.cm
 

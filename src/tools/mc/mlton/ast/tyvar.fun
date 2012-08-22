@@ -9,13 +9,15 @@
 functor Tyvar (S: TYVAR_STRUCTS): TYVAR = 
 struct
 
+fun String_dropPrefix (s, n) = String.substring(s, n, size s - n)
+
 open S
 
 structure Wrap = Region.Wrap
 open Wrap
 type node' = {name: string,
               equality: bool,
-              hash: Word.t,
+              hash: (*Word.t*)word,
               plist: PropertyList.t}
 type t = node' Wrap.t
 type obj = t
@@ -38,7 +40,7 @@ end
 
 val clear = PropertyList.clear o plist
 fun equals (a, a') = PropertyList.equals (plist a, plist a')
-fun sameName (a, a') = String.equals (name a, name a')
+fun sameName (a, a') = (*String.equals (name a, name a')*)(name a = name a')
 
 fun newRegion ({name, equality}, region) =
    makeRegion ({name = name,
@@ -55,10 +57,10 @@ fun newLike a = newRegion ({equality = isEquality a,
 
 fun newString (s, {left, right}) =
    newRegion (if String.size s > 1
-                 andalso Char.equals (#"'", String.sub (s, 1))
-                 then {name = String.dropPrefix (s, 2),
+                 andalso (*Char.equals (#"'", String.sub (s, 1))*)(#"'" = String.sub(s, 1))
+                 then {name = (*String.dropPrefix*)String_dropPrefix (s, 2),
                        equality = true}
-              else {name = String.dropPrefix (s, 1),
+              else {name = (*String.dropPrefix*)String_dropPrefix (s, 1),
                     equality = false},
               Region.make {left = left, right = right})
 
@@ -82,7 +84,7 @@ in
       case Vector.length ts of
          0 => empty
        | 1 => layout (Vector.sub (ts, 0))
-       | _ => Vector.layout layout ts
+       | _ => MLtonVector.layout layout ts
 end
 
 end

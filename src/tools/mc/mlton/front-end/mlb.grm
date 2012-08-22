@@ -135,9 +135,9 @@ basdecnode
         fun mkAnn' ((ann,reg), basdecs) = Basdec.Ann (ann, reg, basdecs)
         fun mkAnn ((ann,reg), basdecsnode) : Basdec.node =
           mkAnn' ((ann,reg), Basdec.makeRegion (basdecsnode, extendRight reg))
-        val (anns,ann) = List.splitLast annPlus
+        val (anns,ann) = MLtonList.splitLast annPlus
       in
-        List.fold(anns, mkAnn'(ann, basdecs), mkAnn)
+        MLtonList.fold(anns, mkAnn'(ann, basdecs), mkAnn)
       end)
 
 

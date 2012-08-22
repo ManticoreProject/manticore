@@ -11,6 +11,7 @@ structure UniqueString:
       val unique: string -> string
    end =
    struct
+      fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
       val set: {counter: Counter.t,
                 hash: word,
                 original: string} HashSet.t =
@@ -18,7 +19,7 @@ structure UniqueString:
 
       fun unique (s: string): string =
          let
-            val hash = String.hash s
+            val hash = (*String.hash*)String_hash s
             val {counter, ...} =
                HashSet.lookupOrInsert
                (set, hash, fn {original, ...} => s = original,
@@ -32,6 +33,9 @@ structure UniqueString:
 
 functor Id (S: ID_STRUCTS): ID =
 struct
+
+fun String_forall (s, f) = CharVector.all f s
+fun String_translate (s, f) = String.translate f s
 
 open S
 
@@ -52,7 +56,7 @@ in
 end
 
 fun isAlphaNum (s: string): bool =
-   String.forall (s, fn c => Char.isAlphaNum c orelse c = #"_")
+   (*String.forall*)String_forall (s, fn c => Char.isAlphaNum c orelse c = #"_")
 
 fun clearPrintName (T {originalName, printName, ...}): unit =
    if isAlphaNum originalName
@@ -72,7 +76,7 @@ fun toString (T {originalName, printName, ...}) =
                   orelse isAlphaNum originalName
                   then originalName
                else
-                  String.translate
+                  (*String.translate*)String_translate
                   (originalName,
                    fn #"!" => "Bang"
                     | #"#" => "Hash"
@@ -104,7 +108,7 @@ fun toString (T {originalName, printName, ...}) =
          end
     | SOME s => s
 
-val layout = String.layout o toString
+val layout = (*String.layout*)Layout.str o toString
 
 fun equals (id, id') = Plist.equals (plist id, plist id')
 

@@ -9,13 +9,15 @@
 structure CM: CM =
 struct
 
+structure List = MLtonList
+
 val maxAliasNesting: int = 32
 
 fun cm {cmfile: File.t} =
    let
       val files = ref []
       (* The files in seen are absolute. *)
-      val seen = String.memoize (fn _ => ref false)
+      val seen = (*String.memoize*)Memoize.memoize (fn _ => ref false)
       fun loop (cmfile: File.t,
                 nesting: int,
                 relativize: Dir.t option): unit =

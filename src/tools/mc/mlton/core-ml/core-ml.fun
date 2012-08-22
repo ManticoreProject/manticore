@@ -9,6 +9,8 @@
 functor CoreML (S: CORE_ML_STRUCTS): CORE_ML = 
 struct
 
+structure Vector = MLtonVector
+
 open S
 
 structure Field = Record.Field

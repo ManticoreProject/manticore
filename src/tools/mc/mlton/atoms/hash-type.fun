@@ -9,13 +9,15 @@
 functor HashType (S: HASH_TYPE_STRUCTS): HASH_TYPE = 
 struct
 
+structure Vector = MLtonVector
+
 open S
 
 structure Type =
    struct
       datatype t =
          T of {
-               hash: Word.t,
+               hash: (*Word.t*)word,
                plist: PropertyList.t,
                tree: tree
                }
@@ -96,7 +98,7 @@ structure Type =
                   andalso Vector.equals (ts, ts', equals)
              | _ => false
          val same =
-            Trace.trace2 ("HashType.Type.same", layoutTree, layoutTree, Bool.layout)
+            Trace.trace2 ("HashType.Type.same", layoutTree, layoutTree, (*Bool.layout*)Layout.str o Bool.toString)
             same
          val table: t HashSet.t = HashSet.new {hash = hash}
       in
@@ -110,7 +112,7 @@ structure Type =
          fun stats () =
             let open Layout
             in align [seq [str "num types in hash table = ",
-                           Int.layout (HashSet.size table)],
+                           (*Int.layout (HashSet.size table)*)str(Int.toString(HashSet.size table))],
                       Control.sizeMessage ("types hash table", table)]
             end
       end
@@ -118,7 +120,7 @@ structure Type =
       fun var a = lookup (Tyvar.hash a, Var a)
 
       local
-         val generator: Word.t = 0wx5555
+         val generator: (*Word.t*)word = 0wx5555
       in
          fun con (c, ts) =
             lookup (Vector.fold (ts, Tycon.hash c, fn (t, w) =>

@@ -17,7 +17,7 @@ signature TYVAR =
       include WRAPPED sharing type obj = t
 
       val clear: t -> unit
-      val hash: t -> Word.t
+      val hash: t -> (*Word.t*)word
       val isEquality: t -> bool
       val layouts: t vector -> Layout.t
       val name: t -> string

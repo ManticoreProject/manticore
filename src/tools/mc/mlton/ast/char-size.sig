@@ -19,6 +19,6 @@ signature CHAR_SIZE =
       val bits: t -> Bits.t
       val equals: t * t -> bool
       val fromBits: Bits.t -> t
-      val isInRange: t * IntInf.t -> bool
+      val isInRange: t * (*IntInf.t.*)IntInf.int -> bool
       val memoize: (t -> 'a) -> t -> 'a
    end

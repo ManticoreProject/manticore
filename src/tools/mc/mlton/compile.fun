@@ -9,6 +9,10 @@
 functor Compile (S: COMPILE_STRUCTS): COMPILE =
 struct
 
+structure Option = MLtonOption
+structure List = MLtonList
+structure Vector = MLtonVector
+
 open S
 
 (*---------------------------------------------------*)
@@ -323,7 +327,7 @@ end
 (*                 parseAndElaborateMLB              *)
 (* ------------------------------------------------- *)
 
-fun quoteFile s = concat ["\"", String.escapeSML s, "\""]
+fun quoteFile s = concat ["\"", (*String.escapeSML*)String.toString s, "\""]
 
 structure MLBString:>
    sig
@@ -366,7 +370,7 @@ val displayEnvDecs =
      ; Vector.foreach
        (decs, fn (dec, dc) =>
         (output o Layout.record)
-        [("deadCode", Bool.layout dc),
+        [("deadCode", (*Bool.layout dc*)Layout.str(Bool.toString dc)),
          ("decs", List.layout CoreML.Dec.layout dec)])))
 
 fun parseAndElaborateMLB (input: MLBString.t)

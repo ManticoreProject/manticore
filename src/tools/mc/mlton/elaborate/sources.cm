@@ -14,11 +14,13 @@ functor TypeEnv
 
 is
 
+$/basis.cm
+
 ../ast/sources.cm
 ../atoms/sources.cm
 ../control/sources.cm
 ../core-ml/sources.cm
-../../../../lib/mlton/sources.cm
+../lib/sources.cm
 
 decs.sig
 decs.fun

@@ -30,7 +30,7 @@ local
                val compare: t * t -> Relation.t
                val equals: t * t -> bool
                val fromInt: int -> t
-               val fromIntInf: IntInf.t -> t
+               val fromIntInf: (*IntInf.t.*)IntInf.int -> t
                val inByte: t
                val inWord8: t
                val inWord16: t
@@ -49,7 +49,7 @@ local
                val one: t
                val toBytes: t -> bytes
                val toInt: t -> int
-               val toIntInf: t -> IntInf.t
+               val toIntInf: t -> (*IntInf.t.*)IntInf.int
                val toString: t -> string
                val toWord: t -> word
                val zero: t
@@ -75,7 +75,7 @@ local
                val compare: t * t -> Relation.t
                val equals: t * t -> bool
                val fromInt: int -> t
-               val fromIntInf: IntInf.t -> t
+               val fromIntInf: (*IntInf.t.*)IntInf.int -> t
                (* val inWord8: t *)
                (* val inWord16: t *)
                val inWord32: t
@@ -90,7 +90,7 @@ local
                val one: t
                val toBits: t -> Bits.t
                val toInt: t -> int
-               val toIntInf: t -> IntInf.t
+               val toIntInf: t -> (*IntInf.t.*)IntInf.int
                val toString: t -> string
                val zero: t
             end
@@ -99,8 +99,10 @@ local
          sharing type bytes = Bytes.t
       end =
       struct
-         type bits = IntInf.t
-         type bytes = IntInf.t
+	 structure IntInf = MLtonIntInf
+
+         type bits = (*IntInf.t.*)IntInf.int
+         type bytes = (*IntInf.t.*)IntInf.int
 
          val rem = IntInf.rem
 
@@ -138,7 +140,7 @@ local
                      then quot (b, inByte)
                   else Error.bug "Bits.toBytes"
 
-               val toWord = Word.fromIntInf
+               val toWord = (*Word.fromIntInf*)Word.fromLargeInt
 
                (* val align = align *) 
                val alignDown = alignDown
