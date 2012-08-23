@@ -31,7 +31,11 @@ is
   contract.sml
   dead-funs.sml
   expand-hlops.sml
-  flatten.sml
+  ../flatten/flatten-utils.sml
+  ../flatten/abstract-flatten.sml
+  ../flatten/fusion.sml
+  ../flatten/concrete-flatten.sml
+  ../flatten/flatten.sml
   inline.sml
   group-funs.sml
   let-float.sml

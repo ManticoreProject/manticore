@@ -17,8 +17,6 @@ structure Flatten : sig
   val trLambdas : env -> BOM.lambda list -> BOM.lambda list
   val trExp     : env -> BOM.exp -> BOM.exp
   val trRHS     : env -> BOM.rhs -> BOM.rhs
-  val trVar     : env -> BOM.var -> BOM.var
-  val trVars    : env -> BOM.var list -> BOM.var list
 
   val replaceVar  : env -> BOM.var -> (env * BOM.var)
   val replaceVars : env -> BOM.var list -> (env * BOM.var list)
@@ -27,13 +25,15 @@ end = struct
 
   structure B  = BOM
   structure BV = BOM.Var
-  structure U  = BOMUtil
+  structure BU  = BOMUtil
+  structure FU = FlattenUtil
 
-  type env = U.subst
-  val trVar = U.subst : env -> B.var -> B.var
+  type env = BU.subst
+  val trVar = FU.trVar
+  val trVars = FU.trVars
+
   (* curry this for consistency *)
-  fun trVars (env : env) (vs : B.var list) = U.subst' (env, vs)
-  fun trRHS (env : env) (r) = U.substRHS (env,r)
+  fun trRHS (env : env) (r) = BU.substRHS (env,r)
 
   local
 (* needNew : var -> bool *)
@@ -47,7 +47,7 @@ end = struct
         else
           if needNew v then let
             val v' = BV.newWithKind (BV.nameOf v ^ "FLAT", BV.kindOf v, BV.typeOf v)
-            val env' = U.extend (env, v, v')
+            val env' = BU.extend (env, v, v')
             in
               SOME (env', v')
             end 
@@ -81,8 +81,11 @@ end = struct
             in
               B.mkLet(vs', e1', e2')
             end 
-          | B.E_Stmt(vs, rhs, e) =>
-              B.mkStmt(trVars env vs, trRHS env rhs, trExp env e)
+          | B.E_Stmt(vs, rhs, e) => let
+            val (env', vs') = replaceVars env vs
+            in
+              B.mkStmt(vs', trRHS env rhs, trExp env' e)
+            end
           | B.E_Fun(lams, e) =>
               B.mkFun (trLambdas env lams, trExp env e)
           | B.E_Cont(lam, e) =>
@@ -111,7 +114,7 @@ end = struct
   and trLambdas (env : env) lams = List.map (trLambda env) lams
 
   fun module (B.MODULE {name, externs, hlops, rewrites, body}) = let
-    val body' = trLambda U.empty body
+    val body' = trLambda BU.empty body
     in
       B.MODULE {name=name,
                 externs=externs,
@@ -124,7 +127,7 @@ end = struct
       if not(!BOMOptControls.flattenFlg) then m 
       else let
         val _ = TextIO.print "The compiler *would* be flattening now.\n"
-        val m = module m
+        val m = ConcreteFlatten.transform (Fusion.transform (AbstractFlatten.transform m))
         val _ = Census.census m
         in
             m
