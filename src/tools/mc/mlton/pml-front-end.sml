@@ -96,6 +96,54 @@ structure PMLFrontEnd : PML_FRONT_END =
 	structure Xml = Xml
 	structure Sxml = Sxml)
 
+
+  (* ------------------------------------------------- *)
+  (*                      compile                      *)
+  (* ------------------------------------------------- *)
+
+    exception Done
+
+    fun elaborate {input: MLBString.t} : Xml.Program.t = let
+	  val (E, decs) = parseAndElaborateMLB input
+	  val _ = (case !Ctl.showBasis
+		 of NONE => ()
+		  | SOME f => File.withOut
+		      (f, fn out => Layout.outputl (Env.layoutCurrentScope E, out))
+		(* end case *))
+	  val _ = Env.processDefUse E
+	  val _ = if !Ctl.elaborateOnly then raise Done else ()
+	  val decs = Ctl.pass {
+		  display = Ctl.Layouts (
+		      fn (decss, output) => (
+			  output (Layout.str "\n\n");
+			  Vector.app
+			    (fn decs => List.app (fn dec => output (CoreML.Dec.layout dec)) decs)
+			      decss)),
+		  name = "deadCode",
+		  suffix = "core-ml",
+		  style = Ctl.ML,
+		  stats = fn _ => Layout.empty,
+		  thunk = fn () => #prog (DeadCode.deadCode {prog = decs})
+		}
+	  val decs = Vector.concat (Vector.map Vector.fromList decs)
+	  val coreML = CoreML.Program.T{decs = decs}
+	  val _ = if !Ctl.keepCoreML
+		    then saveToFile (
+		      {suffix = "core-ml"}, Ctl.No, coreML, Ctl.Layouts CoreML.Program.layouts)
+		    else ()    
+	  val xml = Ctl.passTypeCheck {
+		  display = Ctl.Layouts Xml.Program.layouts,
+		  name = "defunctorize",
+		  stats = Xml.Program.layoutStats,
+		  style = Ctl.ML,
+		  suffix = "xml",
+		  thunk = fn () => Defunctorize.defunctorize coreML,
+		  typeCheck = Xml.typeCheck
+		}
+	  in
+	    xml
+	  end
+
     fun generateSXML {input: MLBString.t} = let
 	  val xml = elaborate {input = input}
 	  val xml = Ctl.passTypeCheck {
