@@ -9,6 +9,8 @@
 structure Layout: LAYOUT =
 struct
 
+fun String_make (n, c) = CharVector.tabulate(n, fn _ => c)
+
 structure Out = Outstream0   
 structure Int = Pervasive.Int
 val detailed = ref false
@@ -16,7 +18,7 @@ val detailed = ref false
 fun switch {detailed = d,normal = n} x =
    if !detailed then d x else n x
 
-structure String = String0
+(*structure String = String0*)
 
 datatype t = T of {length: int,
                    tree: tree}
@@ -75,8 +77,8 @@ fun indent (t, n) = T {length = length t, tree = Indent (t, n)}
 val tabSize: int = 8
 
 fun blanks (n: int): string =
-   concat [String.make (n div tabSize, #"\t"),
-           String.make (n mod tabSize, #" ")]
+   concat [(*String.make*)String_make (n div tabSize, #"\t"),
+           (*String.make*)String_make (n mod tabSize, #" ")]
 
 fun outputTree (t, out) =
    let val print = Out.outputc out

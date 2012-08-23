@@ -8,8 +8,18 @@
 structure Instream0 =
 struct
 
-structure String = String0
-structure Char = String.Char
+local
+fun String_rev s = let
+      val n = String.size s
+      val n1 = n - 1
+      in
+	CharVector.tabulate (n, fn i => String.sub (s, n1 - i))
+      end
+fun String_fold (s, b, f) = CharVector.foldl f b s
+fun Char_equals (c1 : char, c2) = (c1 = c2)
+in
+structure String = (*String0*)String
+structure Char = (*String.Char*)Char
 structure I = Pervasive.TextIO
 open I
 
@@ -26,7 +36,7 @@ fun foldChars (ins, a, f) =
       fun loop a =
          case inputLine ins of
             NONE => a
-          | SOME l => loop (String.fold (l, a, f))
+          | SOME l => loop ((*String.fold*)String_fold (l, a, f))
    in
       loop a
    end
@@ -45,7 +55,7 @@ fun foreachLine (ins, f) = foldLines (ins, (), f o #1)
 fun inputTo (i: t, p: char -> bool): string =
    let
       val maxListLength = 1000
-      fun finish chars = String.rev (String.implode chars)
+      fun finish chars = (*String.rev*)String_rev (String.implode chars)
       fun loop (n, chars, strings) =
          case peekChar i of
             NONE => (chars, strings)
@@ -73,13 +83,13 @@ fun sameContents (in1, in2) =
       fun loop () =
          case (input1 in1, input1 in2) of
             (NONE, NONE) => true
-          | (SOME c1, SOME c2) => Char.equals (c1, c2) andalso loop ()
+          | (SOME c1, SOME c2) => (*Char.equals*)Char_equals (c1, c2) andalso loop ()
           | _ => false
    in loop ()
    end
 
 fun inputToSpace i = inputTo (i, Char.isSpace)
-fun inputToChar (i, c) = inputTo (i, fn c' => Char.equals (c, c'))
+fun inputToChar (i, c) = inputTo (i, fn c' => (*Char.equals*)Char_equals (c, c'))
 fun ignoreSpaces i = ignore (inputTo (i,not o Char.isSpace))
 
 fun inputNothing _ = ()
@@ -88,6 +98,7 @@ fun layout _ = Layout.str "<instream>"
 
 (*val set = MLton.TextIO.setIn *)
 
+end (* local *)
 end
 
 structure In0 = Instream0
