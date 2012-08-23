@@ -1526,8 +1526,8 @@ fun commandLine (args: string list): unit =
                     mplimb = Bits64,
                     objptr = Bits64,
                     seqIndex = Bits64}
-       val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/sml"]
-       val libMltonDir= concat["LIB_MLTON_DIR ", LoadPaths.srcDir, "/mlton"]
+       val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/mlton-basis/sml"]
+       val libMltonDir= concat["LIB_MLTON_DIR ", LoadPaths.libDir, "/mlton-basis/mlton"]
        fun handlePath (p) = Control.mlbPathVars := !Control.mlbPathVars @
                               [case parseMlbPathVar p of
                                    NONE => Error.bug ("strange mlb path var: " ^ p)

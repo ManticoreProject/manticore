@@ -1,0 +1,4 @@
+This directory holds MLton basis code that is currently needed to get the MLton
+front-end to parse and typecheck code.  Once we migrate the front-end to use the
+PML basis, then this will go away.
+

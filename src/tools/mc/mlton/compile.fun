@@ -159,7 +159,7 @@ val amBuildingConstants: bool ref = ref false
 val lookupConstant =
    let
       val zero = Const.word (WordX.fromIntInf (0, WordSize.word32))
-      val constantsFile = concat[LoadPaths.srcDir, "/mlton/constants"]
+      val constantsFile = concat[LoadPaths.libDir, "/mlton-basis/mlton/constants"]
       val f =
          Promise.lazy
          (fn () =>

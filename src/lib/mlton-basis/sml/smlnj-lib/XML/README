@@ -1,0 +1,6 @@
+This directory contains a small library for parsing XML files.  It does
+not support validation (e.g., against a DTD or Schema).  It is inspired
+by the TimeXML C++ library (http://www.grinninglizard.com/tinyxml).
+
+For a more complete library for XML processing, use the fxp library.
+
