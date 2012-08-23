@@ -42,7 +42,6 @@ is
   ../prim/sources.cm
   ../typechecker/sources.cm
   ../mlton/sources.cm
-  ../mlton/xml/sources.cm
 
   build-executable.sml		(* generated file *)
 (*  initial-basis.sml *)

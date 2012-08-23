@@ -1,4 +1,17 @@
-Group
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2012 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+
+(*
+  signature SXML
+  signature PML_FRONT_END
+
+  structure PMLFrontEnd
+*)
 
 structure Wrapper
 
@@ -29,3 +42,9 @@ main.sig
 main.fun
 main.sml
 wrapper.sml
+
+(*
+pml-front-end.sig
+pml-front-end.sml
+*)
+
