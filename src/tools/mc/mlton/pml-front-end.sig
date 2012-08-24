@@ -9,7 +9,9 @@ signature PML_FRONT_END =
 
     structure Sxml : SXML
 
-    val compileMLB : {input : File.t} -> Sxml.prog
-    val compilePML : {input : File.t list} -> Sxml.prog
+    val init : unit -> unit
+
+    val compileMLB : {input : File.t} -> Sxml.Program.t
+    val compilePML : {input : File.t list} -> Sxml.Program.t
 
   end

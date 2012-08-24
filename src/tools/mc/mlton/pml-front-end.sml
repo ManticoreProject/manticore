@@ -11,6 +11,7 @@ structure PMLFrontEnd : PML_FRONT_END =
   struct
 
     structure Ctl = Control
+    structure MVec = MLtonVector
 
   (*---------------------------------------------------*)
   (*              Intermediate Languages               *)
@@ -87,7 +88,7 @@ structure PMLFrontEnd : PML_FRONT_END =
 	structure Ast = Ast
 	structure CoreML = CoreML
 	structure TypeEnv = TypeEnv)
-    structure Env = Env
+    structure Env = Elaborate.Env
     structure LookupConstant = LookupConstant (
 	structure Const = Const
 	structure ConstType = ConstType
@@ -95,6 +96,209 @@ structure PMLFrontEnd : PML_FRONT_END =
     structure Monomorphise = Monomorphise (
 	structure Xml = Xml
 	structure Sxml = Sxml)
+
+
+
+(* ------------------------------------------------- *)   
+(*                   Primitive Env                   *)
+(* ------------------------------------------------- *)
+
+    local
+      structure Con = TypeEnv.Con
+      structure Tycon = TypeEnv.Tycon
+      structure Type = TypeEnv.Type
+      structure Tyvar = TypeEnv.Tyvar
+
+      val primitiveDatatypes = let
+	    val boolTyc = {
+		    tycon = Tycon.bool,
+		    tyvars = MVec.new0 (),
+		    cons = MVec.new2 (
+		      {con = Con.falsee, arg = NONE},
+		      {con = Con.truee, arg = NONE})
+		  }
+	    val listTyc = let
+		  val a = Tyvar.newNoname {equality = false}
+		  in {
+		    tycon = Tycon.list,
+		    tyvars = MVec.new1 a,
+		    cons = MVec.new2 (
+		      {con = Con.nill, arg = NONE},
+		      {con = Con.cons,
+		       arg = SOME(Type.tuple(MVec.new2(Type.var a, Type.list (Type.var a))))
+		      })
+		  } end
+	    val refTyc = let
+		  val a = Tyvar.newNoname {equality = false}
+		  in {
+		    tycon = Tycon.reff,
+		    tyvars = MVec.new1 a,
+		    cons = MVec.new1 {con = Con.reff, arg = SOME(Type.var a)}
+		  } end
+	    in
+	      MVec.new3 (boolTyc, listTyc, refTyc)
+	    end
+
+      val primitiveExcons = [
+	      CoreML.Con.bind, CoreML.Con.match, CoreML.Con.overflow
+	    ]
+
+      structure Con = struct
+	  open Con
+
+	  fun toAst c = Ast.Con.fromSymbol (Symbol.fromString (Con.toString c), Region.bogus)
+	end
+
+      structure Env = struct
+	  open Env 
+  
+	  structure Tycon = struct
+	      open Tycon
+  
+	      fun toAst c = Ast.Tycon.fromSymbol (Symbol.fromString (Tycon.toString c), Region.bogus)
+	    end
+	  structure Type = TypeEnv.Type
+	  structure Scheme = TypeEnv.Scheme
+  
+	  fun addPrim (E: t): unit = let
+		val _ =
+		    MLtonList.foreach
+		    (Tycon.prims, fn {kind, name, tycon, ...} =>
+		     extendTycon
+		     (E, Ast.Tycon.fromSymbol (Symbol.fromString name,
+					       Region.bogus),
+		      TypeStr.tycon (tycon, kind),
+		      {forceUsed = false, isRebind = false}))
+		val _ =
+		    MVec.foreach
+		    (primitiveDatatypes, fn {tyvars, tycon, cons} =>
+		     let
+			val cons =
+			   Env.newCons
+			   (E, MVec.map (cons, fn {con, ...} =>
+					   {con = con, name = Con.toAst con}))
+			   (MVec.map
+			    (cons, fn {arg, ...} =>
+			     let
+				val resultType =
+				   Type.con (tycon, MVec.map (tyvars, Type.var))
+			     in
+				Scheme.make
+				{canGeneralize = true,
+				 ty = (case arg of
+					  NONE => resultType
+					| SOME t => Type.arrow (t, resultType)),
+				 tyvars = tyvars}
+			     end))
+		     in
+			extendTycon
+			(E, Tycon.toAst tycon,
+			 TypeStr.data (tycon,
+				       TypeStr.Kind.Arity (Vector.length tyvars),
+				       cons),
+			 {forceUsed = false, isRebind = false})
+		     end)
+		 val _ =
+		    extendTycon (E,
+				 Ast.Tycon.fromSymbol (Symbol.unit, Region.bogus),
+				 TypeStr.def (Scheme.fromType Type.unit,
+					      TypeStr.Kind.Arity 0),
+				 {forceUsed = false, isRebind = false})
+		 val scheme = Scheme.fromType Type.exn
+		 val _ = MLtonList.foreach (primitiveExcons, fn c =>
+				       extendExn (E, Con.toAst c, c, SOME scheme))
+	      in
+		()
+	      end
+	end (* Env *)
+
+      val primitiveDecs: CoreML.Dec.t list = let
+	    open CoreML.Dec
+	    in
+	      List.concat [
+		  [Datatype primitiveDatatypes],
+		  List.map (fn c => Exception{con = c, arg = NONE}) primitiveExcons
+		]
+	    end
+    in
+    fun addPrim E = (Env.addPrim E; primitiveDecs)
+    end (* local *)
+
+
+  (* ------------------------------------------------- *)
+  (*                 parseAndElaborateMLB              *)
+  (* ------------------------------------------------- *)
+
+    fun quoteFile s = concat ["\"", (*String.escapeSML*)String.toString s, "\""]
+
+    structure MLBString :> sig
+	  type t
+
+	  val fromFile: File.t -> t
+	  val fromString: string -> t
+	  val lexAndParseMLB: t -> Ast.Basdec.t
+       end = struct
+	  type t = string
+
+	  val fromFile = quoteFile
+
+	  val fromString = fn s => s
+
+	  val lexAndParseMLB = MLBFrontEnd.lexAndParseString
+       end
+
+    val lexAndParseMLB = MLBString.lexAndParseMLB
+
+    val lexAndParseMLB: MLBString.t -> Ast.Basdec.t = 
+	  fn input => let
+	      val ast = lexAndParseMLB input
+	      val _ = Ctl.checkForErrors "parse"
+	      in
+		ast
+	      end
+
+    fun sourceFilesMLB {input} =
+	  Ast.Basdec.sourceFiles (lexAndParseMLB (MLBString.fromFile input))
+
+    val elaborateMLB = Elaborate.elaborateMLB
+
+    val displayEnvDecs = Ctl.Layouts
+	  (fn ((_, decs),output) =>
+	   (output (Layout.str "\n\n")
+	    ; MLtonVector.foreach
+	      (decs, fn (dec, dc) =>
+	       (output o Layout.record)
+	       [("deadCode", (*Bool.layout dc*)Layout.str(Bool.toString dc)),
+		("decs", MLtonList.layout CoreML.Dec.layout dec)])))
+
+    fun parseAndElaborateMLB (input: MLBString.t) : Env.t * (CoreML.Dec.t list * bool) vector =
+	  Ctl.pass {
+	      display = displayEnvDecs,
+	      name = "parseAndElaborate",
+	      stats = fn _ => Layout.empty,
+	      style = Ctl.ML,
+	      suffix = "core-ml",
+	      thunk = (fn () =>
+		       (Const.lookup := lookupConstant
+			; elaborateMLB (lexAndParseMLB input, {addPrim = addPrim})))
+	    }
+
+
+  (* ------------------------------------------------- *)
+  (*                   Basis Library                   *)
+  (* ------------------------------------------------- *)
+
+    fun outputBasisConstants (out: Out.t): unit = let
+	  val _ = amBuildingConstants := true
+	  val (_, decs) = parseAndElaborateMLB (
+		MLBString.fromFile "$(SML_LIB)/basis/primitive/primitive.mlb")
+	  val decs = MVec.concatV (Vector.map (Vector.fromList o #1) decs)
+	(* Need to defunctorize so the constants are forced. *)
+	  val _ = Defunctorize.defunctorize (CoreML.Program.T {decs = decs})
+	  val _ = LookupConstant.build (!allConstants, out)
+	  in
+	    ()
+	  end
 
 
   (* ------------------------------------------------- *)
@@ -125,10 +329,10 @@ structure PMLFrontEnd : PML_FRONT_END =
 		  stats = fn _ => Layout.empty,
 		  thunk = fn () => #prog (DeadCode.deadCode {prog = decs})
 		}
-	  val decs = Vector.concat (Vector.map Vector.fromList decs)
+	  val decs = MVec.concatV (Vector.map Vector.fromList decs)
 	  val coreML = CoreML.Program.T{decs = decs}
 	  val _ = if !Ctl.keepCoreML
-		    then saveToFile (
+		    then Ctl.saveToFile (
 		      {suffix = "core-ml"}, Ctl.No, coreML, Ctl.Layouts CoreML.Program.layouts)
 		    else ()    
 	  val xml = Ctl.passTypeCheck {
@@ -156,7 +360,7 @@ structure PMLFrontEnd : PML_FRONT_END =
 		  typeCheck = Xml.typeCheck
 		}
 	  val _ = if !Ctl.keepXML
-		then saveToFile ({suffix = "xml"}, Ctl.No, xml, Ctl.Layouts Xml.Program.layouts)
+		then Ctl.saveToFile ({suffix = "xml"}, Ctl.No, xml, Ctl.Layouts Xml.Program.layouts)
 		else ()
 	  val sxml = Ctl.passTypeCheck {
 		  display = Ctl.Layouts Sxml.Program.layouts,
@@ -177,7 +381,7 @@ structure PMLFrontEnd : PML_FRONT_END =
 		  typeCheck = Sxml.typeCheck
 		}
 	  val _ = if !Ctl.keepSXML
-		then saveToFile ({suffix = "sxml"}, Ctl.No, sxml, Ctl.Layouts Sxml.Program.layouts)
+		then Ctl.saveToFile ({suffix = "sxml"}, Ctl.No, sxml, Ctl.Layouts Sxml.Program.layouts)
 		else ()
 	  in
 	    print "Completed generation of sxml\n";
@@ -199,7 +403,7 @@ structure PMLFrontEnd : PML_FRONT_END =
 			      "local\n",
 			       basis, "\n",
 			       "in\n",
-			       String.concatWith "\n" input, "\n"
+			       String.concatWith "\n" input, "\n",
 			       "end\n"
 			    ]
 			end
@@ -210,5 +414,30 @@ structure PMLFrontEnd : PML_FRONT_END =
     in
     fun compilePML {input: File.t list} = generateSXML {input = genMLB {input = input}}
     end
+
+
+  (* ------------------------------------------------- *)
+  (*                  initialization                   *)
+  (* ------------------------------------------------- *)
+
+   fun parseMlbPathVar line = (case String.tokens Char.isSpace line
+	  of [var, path] => SOME {var = var, path = path}
+	   | _ => NONE
+	 (* end case *))
+
+    fun init () = let
+	  val _ = Ctl.verbosity := Ctl.Pass
+	  val _ = Ctl.keepSXML := true
+	  val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/mlton-basis/sml"]
+	  val libMltonDir= concat["LIB_MLTON_DIR ", LoadPaths.libDir, "/mlton-basis/mlton"]
+	  fun handlePath p = Control.mlbPathVars := !Control.mlbPathVars @ [
+		  case parseMlbPathVar p
+		   of NONE => Error.bug ("strange mlb path var: " ^ p)
+		    | SOME v => v
+		]
+	  val _ = List.app handlePath [smlLibPath, libMltonDir]
+	  in
+	    ()
+	  end
 
   end
