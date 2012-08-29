@@ -26,7 +26,9 @@
 		do Pause()					\
 		apply spinLp ()					\
 	      else if I32TAS(ADDR_OF(OFFSET, name))		\
-		then apply spinLp ()				\
+		then                                            \			     
+		  do Pause()					\
+                  apply spinLp ()				\
 		else return ()					\
 	do apply spinLp ()
 
