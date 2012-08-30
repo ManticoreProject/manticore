@@ -71,10 +71,8 @@ Value_t AllocUniform (VProc_t *vp, int nElems, ...)
 Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
 {
     Word_t	*obj = (Word_t *)(vp->allocPtr);
-    char	bits[5];
     va_list	ap;
-	
-    bits[0]='\0';
+    int bits = 0;
 
     EnsureNurserySpace (vp, nElems);
 
@@ -82,21 +80,27 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     for (int i = 0;  i < nElems;  i++) {
 	int tag = va_arg(ap, int);
 	assert ((tag == RAW_FIELD) || (tag == PTR_FIELD));
-	if (tag == 0) strcat(bits,"0");
-	else strcat(bits,"1");
+    if (tag == 1)
+        bits |= (1<<i);
 	Value_t arg = va_arg(ap, Value_t);
 	obj[i] = (Word_t)arg;
     }
     va_end(ap);
-	
-    bits[strlen(bits)]='\0';
-    //compare strings are reversed due to strcat(dst,src)
-    if (strcmp(bits,"0") == 0) obj[-1] = MIXED_HDR(predefined, nElems);
-    else if (strcmp(bits,"10") == 0) obj[-1] = MIXED_HDR(predefined+1, nElems);
-    else if (strcmp(bits,"1") == 0) obj[-1] = MIXED_HDR(predefined+2, nElems);
-    else if (strcmp(bits,"01011") == 0) obj[-1] = MIXED_HDR(predefined+3, nElems);
-    else if (strcmp(bits,"001") == 0) obj[-1] = MIXED_HDR(predefined+4, nElems);
-    else { printf("Error AllocNonUniform: %s\n", bits); exit(5);}
+
+    if (nElems == 1 && bits == 0x0) {
+        obj[-1] = MIXED_HDR(predefined, nElems);
+    } else if (nElems == 2 && bits == 0x1) {
+        obj[-1] = MIXED_HDR(predefined+1, nElems);
+    } else if (nElems == 1 && bits == 0x1) {
+        obj[-1] = MIXED_HDR(predefined+2, nElems);
+    } else if (nElems == 5 && bits == 0x1A) { 
+        obj[-1] = MIXED_HDR(predefined+3, nElems);
+    } else if (nElems == 3 && bits == 0x4) {
+        obj[-1] = MIXED_HDR(predefined+4, nElems);
+    } else {
+        fprintf(stderr, "Error AllocNonUniform. Len: %d, Bits: %x\n", nElems, bits);
+        exit(5);
+    }
 
     vp->allocPtr += WORD_SZB * (nElems+1);
     return PtrToValue(obj);
