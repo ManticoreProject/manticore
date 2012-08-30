@@ -86,8 +86,11 @@ structure PIR = P.IEEEReal
 
 (* Disable constant folding when it might change the results. *)
 fun disableCF () =
+(* [PML] -- not required for PML --
    PR32.precision = PR64.precision
    orelse !Control.target <> Control.Self
+*)
+   false
 
 local
    fun make (o32, o64) arg =

@@ -134,6 +134,7 @@ fun casee {caseType: Xtype.t,
          let
             val e = Var.newNoname ()
             val exp = Xexp.raisee {exn = f e, extend = true, ty = caseType}
+(* [PML] -- no MLton profiling --
             val exp =
                fn () =>
                if let
@@ -152,6 +153,8 @@ fun casee {caseType: Xtype.t,
                               {name = (concat ["<raise ", kind, ">"]) :: nest,
                                region = region})
                else exp
+*)
+	    val exp = fn () => exp
          in
             Vector.concat
             [cases,

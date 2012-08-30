@@ -38,17 +38,23 @@ val buildConstants: (string * (unit -> string)) list =
                                                 | x86Codegen => 2
                                                 | amd64Codegen => 3)),
        ("MLton_FFI_numExports", fn () => int (Ffi.numExports ())),
+(* [PML] -- no MLton code generation --
        ("MLton_Platform_Format", fn () => case !format of
                                              Archive => "archive"
                                            | Executable => "executable"
                                            | LibArchive => "libarchive"
                                            | Library => "library"),
+*)
+       ("MLton_Platform_Format", fn () => "executable"),
+(* [PML] -- no MLton profiling --
        ("MLton_Profile_isOn", fn () => bool (case !profile of
                                                 ProfileNone => false
                                               | ProfileCallStack => false
                                               | ProfileDrop => false
                                               | ProfileLabel => false
                                               | _ => true))]
+*)
+       ("MLton_Profile_isOn", fn () => bool false)]
    end
 
 datatype z = datatype ConstType.t

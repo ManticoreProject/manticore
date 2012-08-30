@@ -136,6 +136,7 @@ signature CONTROL_FLAGS =
        *)
       val elaborateOnly: bool ref
 
+(*** OMIT ***
       val emitMain: bool ref
 
       val exportHeader: File.t option ref
@@ -163,31 +164,37 @@ signature CONTROL_FLAGS =
        | First
        | Every
       val gcCheck: gcCheck ref
+***)
 
       (* Indentation used in laying out ILs. *)
       val indentation: int ref
 
+(*** OMIT ***
       val inlineIntoMain: bool ref
 
       val inlineLeafA: {loops: bool, repeat: bool, size: int option} ref
       val inlineLeafB: {loops: bool, repeat: bool, size: int option} ref
 
       val inlineNonRec: {small: int, product: int} ref
+***)
 
       (* The input file on the command line, minus path and extension. *)
       val inputFile: File.t ref
 
       (* Whether or not the elaborator keeps def-use information. *)
       val keepDefUse: bool ref
-         
+
+(*** OMIT ***
       (* Keep dot files for whatever SSA files are produced. *)
       val keepDot: bool ref
+***)
 
       (* List of pass names to save the input/output. *)
       val keepPasses: Regexp.Compiled.t list ref
 
       (* Save the final CoreML to a file. *)
       val keepCoreML: bool ref
+(*** OMIT ***
       (* Save the final Machine to a file. *)
       val keepMachine: bool ref
       (* Save the final RSSA to a file. *)
@@ -196,19 +203,23 @@ signature CONTROL_FLAGS =
       val keepSSA: bool ref
       (* Save the final SSA2 to a file. *)
       val keepSSA2: bool ref
+***)
       (* Save the final SXML to a file. *)
       val keepSXML: bool ref
       (* Save the final XML to a file. *)
       val keepXML: bool ref
 
+(*** OMIT ***
       (* For the codegen -- do labels for gcc and assembler need an extra leading
        * underscore.
        *)
       val labelsHaveExtra_: bool ref
+***)
 
       (* lib/mlton directory *)
       val libDir: Dir.t ref
 
+(*** OMIT ***
       (* lib/mlton/target directory *)
       val libTargetDir: Dir.t ref
       
@@ -222,12 +233,14 @@ signature CONTROL_FLAGS =
       val markCards: bool ref
 
       val maxFunctionSize: int ref
+***)
 
       val mlbPathVars: {var: string,
                         path: string} list ref
       val mlbPathMap: unit -> {var: string,
                                path: string} list
 
+(*** OMIT ***
       structure Native:
          sig
             (* whether or not to use comments in native codegen *)
@@ -263,11 +276,14 @@ signature CONTROL_FLAGS =
             (* whether or not to split assembly file in native codegen *)
             val split: int option ref
          end
+***)
 
       val optimizationPasses:
          {il: string, set: string -> unit Result.t, get: unit -> string} list ref
       
+(*** OMIT ***
       val positionIndependent : bool ref
+***)
 
       (* Only duplicate big functions when
        * (size - small) * (number of occurrences - 1) <= product
@@ -282,6 +298,7 @@ signature CONTROL_FLAGS =
 
       val preferAbsPaths: bool ref
 
+(*** OMIT ***
       (* List of pass names to keep profiling info on. *)
       val profPasses: Regexp.Compiled.t list ref
 
@@ -311,6 +328,7 @@ signature CONTROL_FLAGS =
       val profileStack: bool ref
 
       val profileVal: bool ref
+*)
 
       (* Show the basis library. *)
       val showBasis: File.t option ref
@@ -321,11 +339,14 @@ signature CONTROL_FLAGS =
       (* Should types be printed in ILs. *)
       val showTypes: bool ref
 
+(*** OMIT ***
       datatype target =
          Cross of string
        | Self
       val target: target ref
+**)
 
+(*** The following substructure is required for the MLton basis ***)
       structure Target:
          sig
             datatype arch = datatype (*MLton.Platform*)MLtonPlatform.Arch.t
@@ -357,6 +378,7 @@ signature CONTROL_FLAGS =
                            objptr: Bits.t,
                            seqIndex: Bits.t} -> unit
          end
+(* *)
 
       (* Type check ILs. *)
       val typeCheck: bool ref
@@ -372,7 +394,9 @@ signature CONTROL_FLAGS =
 
       val warnDeprecated: bool ref
 
+(*** OMIT ***
       val zoneCutDepth: int ref
+*)
 
       (*------------------------------------*)
       (*             End Flags              *)

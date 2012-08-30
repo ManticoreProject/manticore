@@ -1553,8 +1553,10 @@ structure Cexp =
              * bad.
              *)
             orelse Env.amInsideFunctor ()
+(* [PML] -- no MLton profiling --
             (* Don't create the source info if we're profiling some IL. *)
             orelse !Control.profileIL <> Control.ProfileSource
+*)
             then e
          else make (EnterLeave (e, si ()), ty e)
    end
@@ -1588,11 +1590,14 @@ fun check (c: (bool,bool) ElabControl.t, keyword: string, region) =
 fun elaborateDec (d, {env = E, nest}) =
    let
       val profileBody =
+(* [PML] -- no MLton profiling --
          let
             open Control
          in
             !profile <> ProfileNone
          end
+*)
+	 false
       fun recursiveFun () =
          let
             val boundRef: (unit -> Tyvar.t vector) option ref = ref NONE
@@ -2067,7 +2072,9 @@ fun elaborateDec (d, {env = E, nest}) =
                                         Cexp.enterLeave
                                         (body,
                                          profileBody
+(* [PML] -- no MLton profiling --
                                          andalso !Control.profileBranch,
+*),
                                          fn () =>
                                          let
                                             open Layout
@@ -2340,8 +2347,10 @@ fun elaborateDec (d, {env = E, nest}) =
                                 Cexp.enterLeave
                                 (exp,
                                  profileBody
+(* [PML] -- no MLton profiling --
                                  andalso !Control.profileVal
                                  andalso Cexp.isExpansive exp, fn () =>
+*), fn () =>
                                  let
                                     val name =
                                        concat ["<val ",
@@ -2700,6 +2709,7 @@ fun elaborateDec (d, {env = E, nest}) =
                            str "then and else branches disagree",
                            align [seq [str "then: ", l1],
                                   seq [str "else: ", l2]]))
+(* [PML] -- no MLton profiling --
                       val (b', c') =
                          if not (!Control.profileBranch)
                             then (b', c')
@@ -2714,6 +2724,7 @@ fun elaborateDec (d, {env = E, nest}) =
                             in
                                (wrap (b, b', "<case true>"), wrap (c, c', "<case false>"))
                             end
+*)
                    in
                       Cexp.iff (a', b', c')
                    end
@@ -3140,7 +3151,9 @@ fun elaborateDec (d, {env = E, nest}) =
                    in
                       Cexp.enterLeave
                       (Cexp.make (Cexp.Raise exn, resultType),
+(* [PML] -- no MLton profiling --
                        profileBody andalso !Control.profileRaise,
+*)false,
                        fn () => SourceInfo.function {name = "<raise>" :: nest,
                                                      region = region})
                    end
@@ -3358,7 +3371,9 @@ fun elaborateDec (d, {env = E, nest}) =
                     val exp =
                        Cexp.enterLeave
                        (exp,
+(* [PML] -- no MLton profiling --
                         profileBody andalso !Control.profileBranch,
+*)false,
                         fn () =>
                         let
                            val name =

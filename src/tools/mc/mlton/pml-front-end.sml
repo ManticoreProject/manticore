@@ -99,6 +99,67 @@ structure PMLFrontEnd : PML_FRONT_END =
 
 
 
+  (* ------------------------------------------------- *)
+  (*                 Lookup Constant                   *)
+  (* ------------------------------------------------- *)
+
+    val commandLineConstants: {name: string, value: string} list ref = ref []
+    fun setCommandLineConstant (c as {name, value}) =
+       let
+	  fun make (fromString, control) =
+	     let
+		fun set () =
+		   case fromString value of
+		      NONE => Error.bug (concat ["bad value for ", name])
+		    | SOME v => control := v
+	     in
+		set
+	     end
+(* [PML] -- for now, we do not support exnHistory --
+	  val () =
+	     case List.peek ([("Exn.keepHistory", 
+			       make (Bool.fromString, Control.exnHistory))],
+			     fn (s, _) => s = name) of
+		NONE => ()
+	      | SOME (_,set) => set ()
+*)
+       in
+	  MLtonList.push (commandLineConstants, c)
+       end
+
+    val allConstants: (string * ConstType.t) list ref = ref []
+    val amBuildingConstants: bool ref = ref false
+
+    val lookupConstant =
+       let
+	  val zero = Const.word (WordX.fromIntInf (0, WordSize.word32))
+	  val constantsFile = concat[LoadPaths.libDir, "/mlton-basis/mlton/constants"]
+	  val f =
+	     Promise.lazy
+	     (fn () =>
+	      if !amBuildingConstants
+		 then (fn ({name, default}, t) =>
+		       let
+			  (* Don't keep constants that already have a default value.
+			   * These are defined by _command_line_const and set by
+			   * -const, and shouldn't be looked up.
+			   *)
+			  val () =
+			     if isSome default
+				then ()
+			     else MLtonList.push (allConstants, (name, t))
+		       in
+			  zero
+		       end)
+	      else (*(fn ({name:string, default: string option}, t) => zero)) *)
+		  File.withIn
+		      (constantsFile (*concat [!Control.libTargetDir, "/constants"]*), fn ins =>
+		  LookupConstant.load (ins, !commandLineConstants))) 
+       in
+	  fn z => f () z
+       end
+
+
 (* ------------------------------------------------- *)   
 (*                   Primitive Env                   *)
 (* ------------------------------------------------- *)
@@ -436,8 +497,19 @@ structure PMLFrontEnd : PML_FRONT_END =
 		    | SOME v => v
 		]
 	  val _ = List.app handlePath [smlLibPath, libMltonDir]
+	  fun cvtSz sz = Bytes.toBits(Bytes.fromInt sz)
 	  in
-	    ()
+	  (* the sizes for the x86-64 target *)
+	    Control.Target.setSizes {
+		cint = cvtSz 4,
+		cpointer = cvtSz 8,
+		cptrdiff = cvtSz 8,
+		csize = cvtSz 8,
+		header = cvtSz 8,
+		mplimb = cvtSz 8,
+		objptr = cvtSz 8,
+		seqIndex = cvtSz 8
+	      }
 	  end
 
   end

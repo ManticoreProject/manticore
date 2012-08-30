@@ -349,6 +349,7 @@ structure Exp =
                                       ty = ty,
                                       var = res}],
                      result = VarExp.mono res}
+(* [PML] -- no MLton profiling --
             val touch =
                if !Control.profile = Control.ProfileCount
                   then
@@ -366,6 +367,8 @@ structure Exp =
                           var = Var.newNoname ()}]
                      end
                else []
+*)
+	    val touch = []
             val {decs, result} = dest e
             val decs =
                List.concat [[prof ProfileExp.Enter],

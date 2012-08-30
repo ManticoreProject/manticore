@@ -21,10 +21,13 @@ structure Pos =
       fun toString p =
          case p of
             Known p =>
+(* [PML] -- no MLton profiling --
                if !Control.profile = Control.ProfileCallStack
                   then SourcePos.toString p
                else concat [SourcePos.file p, ": ",
                             Int.toString (SourcePos.line p)]
+*)
+	       String.concat[SourcePos.file p, ": ", Int.toString (SourcePos.line p)]
           | Unknown => "<unknown>"
 
       fun fromRegion r =
@@ -56,10 +59,12 @@ in
          val res = T {hash = Random.word (),
                       info = info,
                       plist = PropertyList.new ()}
+(* [PML] -- no MLton profiling --
          val () =
             if !Control.profile = Control.ProfileCount
                then MLtonList.push (r, res)
             else ()
+*)
       in
          res
       end

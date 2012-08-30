@@ -86,6 +86,7 @@ fun doit (Program.T {datatypes, body, ...}): Program.t =
            sumTycon,
            sumType
            } =
+(* [PML] -- for now, we do not support exnHistory --
          if not (!Control.exnHistory)
             then {extraDatatypes = Vector.new0 (),
                   injectSum = fn e => e,
@@ -98,6 +99,7 @@ fun doit (Program.T {datatypes, body, ...}): Program.t =
                   sumTycon = Tycon.exn,
                   sumType = Type.exn}
          else
+*)
             let
                val sumTycon = Tycon.newNoname ()
                val sumType = Type.con (sumTycon, Vector.new0 ())

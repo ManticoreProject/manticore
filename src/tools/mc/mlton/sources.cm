@@ -6,15 +6,12 @@
 
 Library
 
-(*
   signature SXML
   signature PML_FRONT_END
 
   structure PMLFrontEnd
-*)
 
-structure Wrapper
-
+  structure Wrapper
 is
 
 $/basis.cm
@@ -36,15 +33,9 @@ mcore-common.cm
 
 lookup-constant.sig
 lookup-constant.fun
-compile.sig
-compile.fun
-main.sig
-main.fun
-main.sml
-wrapper.sml
 
-(*
 pml-front-end.sig
 pml-front-end.sml
-*)
+
+wrapper.sml
 
