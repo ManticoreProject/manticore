@@ -14,19 +14,76 @@
     | REAL of string
     | STRING of (*IntInf.t*)IntInf.int vector
     | TYVAR of string
-    | WORD of {digits: string,
-               radix: StringCvt.radix}
-    | ABSTYPE | AND | ANDALSO | ARROW | AS | ASTERISK | BAR | CASE | COLON
-    | COLONGT | COMMA | DATATYPE | DOTDOTDOT | ELSE | END | EQUALOP
-    | EQTYPE | EXCEPTION | DO | DARROW | FN | FUN | FUNCTOR | HANDLE | HASH
-    | IF | IN | INCLUDE | INFIX | INFIXR | LBRACE | LBRACKET | LET | LOCAL
-    | LPAREN | NONFIX | ORELSE | OF | OP | OPEN | OVERLOAD | RAISE | RBRACE 
-    | RBRACKET | REC | RPAREN | SEMICOLON | SHARING | SIG | SIGNATURE | STRUCT
-    | STRUCTURE | THEN | TYPE | VAL | WHERE | WHILE | WILD | WITH | WITHTYPE
-      (* Extensions *)
-    | BUILD_CONST | COMMAND_LINE_CONST | CONST 
-    | ADDRESS | EXPORT | IMPORT | SYMBOL 
-    | PRIM
+    | WORD of {digits: string, radix: StringCvt.radix}
+    | ABSTYPE			("abstype")
+    | AND			("and")
+    | ANDALSO			("andalso")
+    | ARROW			("->")
+    | AS			("as")
+    | ASTERISK			("*")
+    | BAR			("|")
+    | CASE			("case")
+    | COLON			(":")
+    | COLONGT			(":>")
+    | COMMA			(",")
+    | DATATYPE			("datatype")
+    | DOTDOTDOT			("...")
+    | ELSE			("else")
+    | END			("end")
+    | EQUALOP			("=")
+    | EQTYPE			("eqtype")
+    | EXCEPTION			("exception")
+    | DO			("do")
+    | DARROW			("=>")
+    | FN			("fn")
+    | FUN			("fun")
+    | FUNCTOR			("functor")
+    | HANDLE			("handle")
+    | HASH			("#")
+    | IF			("if")
+    | IN			("in")
+    | INCLUDE			("include")
+    | INFIX			("infix")
+    | INFIXR			("infixr")
+    | LBRACE			("{")
+    | LBRACKET			("[")
+    | LET			("let")
+    | LOCAL			("local")
+    | LPAREN			("(")
+    | NONFIX			("nonfix")
+    | ORELSE			("orelse")
+    | OF			("of")
+    | OP			("op")
+    | OPEN			("open")
+    | OVERLOAD			("_overload")
+    | RAISE			("raise")
+    | RBRACE 			("}")
+    | RBRACKET			("]")
+    | REC			("rec")
+    | RPAREN			(")")
+    | SEMICOLON			(";")
+    | SHARING			("sharing")
+    | SIG			("sig")
+    | SIGNATURE			("signature")
+    | STRUCT			("struct")
+    | STRUCTURE			("structure")
+    | THEN			("then")
+    | TYPE			("type")
+    | VAL			("val")
+    | WHERE			("where")
+    | WHILE			("while")
+    | WILD			("_")
+    | WITH			("with")
+    | WITHTYPE			("withtype")
+  (* Extensions *)
+    | BUILD_CONST		("_build_const")
+    | COMMAND_LINE_CONST	("_command_line_const")
+    | CONST			("_const")
+    | ADDRESS			("_address")
+    | EXPORT			("_export")
+    | IMPORT			("_import")
+    | SYMBOL			("_symbol")
+    | PRIM			("_prim")
     ;
 
 %defs (
@@ -245,40 +302,41 @@ fun ensureNonqualified (ss: Symbol.t list, r: Region.t): Symbol.t * Region.t =
 program: expsAndTopdecs => (Program.T expsAndTopdecs)
        ;
 
-expsAndTopdecs: SEMICOLON* ( (*empty*)       => ([])
-		           | exp topexps     => ([Topdec.fromExp exp] :: topexps)
-                           | topdec topdecs  => (consTopdec (topdec, topdecs)))
-;
+expsAndTopdecs
+	: ";"* ((*empty*) => ([])
+		| exp topexps	=> ([Topdec.fromExp exp] :: topexps)
+		| topdec topdec	=> (consTopdec (topdec, topdecs)))
+	;
 
-topexps: (* empty *)                  => ([])
-        | SEMICOLON+ ((* empty *)     => ([])
-                    | exp topexps     => ([Topdec.fromExp exp] :: topexps)
-                    | topdec topdecs  => (consTopdec (topdec, topdecs)))
-;
+topexps
+	: (* empty *)		=> ([])
+        | ";"+ ((* empty *)     => ([])
+		| exp topexps	 => ([Topdec.fromExp exp] :: topexps)
+		| topdec topdecs => (consTopdec (topdec, topdecs)))
+	;
 
-topdecs: (*empty*)			=> ([])
-       | topdec topdecs			=> (consTopdec (topdec, topdecs))
-       | SEMICOLON+ ( (* empty *)	=> ([])
-                    | exp topexps	=> ([Topdec.fromExp exp] :: topexps)
-                    | topdec topdecs	=> (consTopdec (topdec, topdecs))) 
+topdecs
+	: (*empty*)		=> ([])
+	| topdec topdecs	=> (consTopdec (topdec, topdecs))
+	| ";"+ ( (* empty *)	 => ([])
+		| exp topexps	 => ([Topdec.fromExp exp] :: topexps)
+		| topdec topdecs => (consTopdec (topdec, topdecs))) 
 ;
 
 topdec : topdecnode => (Topdec.makeRegion (topdecnode, posToReg (FULL_SPAN)))
        ;
 
 topdecnode
-   : strdec
-     => (Topdec.Strdec strdec)
-   | SIGNATURE sigbinds
-     => (let
-         val sigbinds = Vector.fromList sigbinds
-         val d = Topdec.Signature sigbinds
-      in
-         d
-      end)
-   | FUNCTOR funbinds
-     => (Topdec.Functor (Vector.fromList funbinds))
-       ;
+	: strdec => (Topdec.Strdec strdec)
+	| "signature" sigbinds
+		=> (let
+		    val sigbinds = Vector.fromList sigbinds
+		    val d = Topdec.Signature sigbinds
+		    in
+		      d
+		    end)
+	| "functor" funbinds => (Topdec.Functor (Vector.fromList funbinds))
+	;
 
 (*---------------------------------------------------*)
 (*                    Structures                     *)
@@ -287,39 +345,36 @@ topdecnode
 strdecs : strdecsnode => (Strdec.makeRegion (strdecsnode, posToReg (FULL_SPAN)))
        ;
 
-strdecsnode : SEMICOLON* (strdec SEMICOLON*)*  => (Strdec.Seq SR)
+strdecsnode : ";"* (strdec ";"*)*  => (Strdec.Seq SR)
        ;
 
 strdec : strdecnode => (Strdec.makeRegion (strdecnode, posToReg (FULL_SPAN)))
        ;
 
 strdecnode
-   : STRUCTURE strbinds
+   : "structure" strbinds
      => (let
          val strbinds = Vector.fromList strbinds
          val d = Strdec.Structure strbinds
-
-
-
       in
          d
       end)
-   | LOCAL strdecs IN strdecs END  => (Strdec.Local (strdecs1, strdecs2))
+   | "local" strdecs "in" strdecs "end"  => (Strdec.Local (strdecs1, strdecs2))
    | decnolocal
      => (Strdec.Core (Dec.makeRegion (decnolocal, posToReg (FULL_SPAN))))
        ;
 
-strbind : strid sigconst EQUALOP strexp => ({name=strid, def=strexp, constraint=sigconst})
+strbind : strid sigconst "=" strexp => ({name=strid, def=strexp, constraint=sigconst})
        ;
 
-strbinds : strbind (AND strbind)* => (strbind::SR)
+strbinds : strbind ("and" strbind)* => (strbind::SR)
        ;
 
 strexp : strexpnode => (Strexp.makeRegion (strexpnode, posToReg (FULL_SPAN)))
        ;
 
 strexpnode
-  : strexp2node ( COLON sigexp' (wherespecs)?
+  : strexp2node ( ":" sigexp' (wherespecs)?
                   => (let
                           val strexp2 = Strexp.makeRegion (strexp2node, posToReg (strexp2node_SPAN))
                       in
@@ -332,7 +387,7 @@ strexpnode
                             | NONE => (Strexp.Constrained(strexp2,
                                                           SigConst.Transparent (sigexp')))
                       end)
-                | COLONGT sigexp' (wherespecs)?
+                | ":>" sigexp' (wherespecs)?
                   => (let
                           val strexp2 = Strexp.makeRegion (strexp2node, posToReg (strexp2node_SPAN))
                       in
@@ -350,15 +405,15 @@ strexpnode
        ;
 
 strexp2node
-        : longid (arg_fct)?          => (					 case SR
+        : longid (arg_fct)?          => (case SR
 					  of NONE => Strexp.Var (Longstrid.fromSymbols longid)
 					   | SOME arg_fct => Strexp.App (Fctid.fromSymbol (ensureNonqualified longid), arg_fct))
-        | STRUCT strdecs END         => (Strexp.Struct strdecs)
-        | LET strdecs IN strexp END  => (Strexp.Let (strdecs,strexp))
+        | "struct" strdecs "end"         => (Strexp.Struct strdecs)
+        | "let" strdecs "in" strexp "end"  => (Strexp.Let (strdecs,strexp))
        ;
 
-arg_fct : LPAREN (strexp RPAREN   => (strexp)
-                | strdecs RPAREN  => (Strexp.makeRegion (Strexp.Struct strdecs, posToReg (FULL_SPAN)))) => (SR)
+arg_fct : "(" (strexp ")"   => (strexp)
+                | strdecs ")"  => (Strexp.makeRegion (Strexp.Struct strdecs, posToReg (FULL_SPAN)))) => (SR)
        ;
 
 (*---------------------------------------------------*)
@@ -369,21 +424,20 @@ sigexp
   : sigexp' (wherespecs)?
     => (case SR
          of NONE => sigexp'
-          | SOME ws =>
-                (Sigexp.wheree (sigexp', ws, posToReg (FULL_SPAN))))
+          | SOME ws => (Sigexp.wheree (sigexp', ws, posToReg (FULL_SPAN))))
        ;
 
 wherespecs : wherespecs' => (Vector.fromList wherespecs')
        ;
 
 wherespecs'
-  : WHERE wherespec (              => ([wherespec])
+  : "where" wherespec (              => ([wherespec])
                     | wherespecs'  => (wherespec :: wherespecs')
                    |  andspecs     => (wherespec :: andspecs)) => (SR)
        ;
 
 andspecs
-  : AND wherespec (             => ([wherespec])
+  : "and" wherespec (             => ([wherespec])
                  | andspecs     => (wherespec :: andspecs)
                  | wherespecs'  => (wherespec :: wherespecs')) => (SR)
        ;
@@ -392,28 +446,28 @@ sigexp' : sigexp'node => (Sigexp.makeRegion (sigexp'node, posToReg (FULL_SPAN)))
        ;
 
 sigexp'node : sigid                      => (Sigexp.Var sigid)
-            | SIG specs END              => (Sigexp.Spec specs)
+            | "sig" specs "end"              => (Sigexp.Spec specs)
        ;
 
-sigbinds: sigbind (AND sigbind)* => ((sigbind::SR))
+sigbinds: sigbind ("and" sigbind)* => ((sigbind::SR))
        ;
 
-sigbind : sigid EQUALOP sigexp' (andwherespec)* => (
+sigbind : sigid "=" sigexp' (andwherespec)* => (
                  (sigid, Sigexp.wheree (sigexp', Vector.fromList SR, posToReg FULL_SPAN)))
        ;
 
-wherespec  : TYPE tyvars longtycon EQUALOP ty  => ({tyvars = tyvars,
+wherespec  : "type" tyvars longtycon "=" ty  => ({tyvars = tyvars,
                                                  longtycon = longtycon,
                                                  ty = ty} : wherespec)
        ;
 
 sigconst :                 => (SigConst.None)
-         | COLON sigexp    => (SigConst.Transparent sigexp)
-         | COLONGT sigexp  => (SigConst.Opaque sigexp)
+         | ":" sigexp    => (SigConst.Transparent sigexp)
+         | ":>" sigexp  => (SigConst.Opaque sigexp)
        ;
 
 
-specs  : SEMICOLON* (spec SEMICOLON*)* => (
+specs  : ";"* (spec ";"*)* => (
 				     let
 					 fun specfold ([spec]) = spec
 					   | specfold (x::xs) = Spec.seq(x, specfold xs)
@@ -426,14 +480,14 @@ specs  : SEMICOLON* (spec SEMICOLON*)* => (
 spec : specnode => (Spec.makeRegion (specnode, posToReg (FULL_SPAN)))
        ;
 
-specnode : VAL valdescs         => (Spec.Val (Vector.fromList valdescs))
-         | TYPE (%try typBind         => (Spec.TypeDefs typBind) 
+specnode : "val" valdescs         => (Spec.Val (Vector.fromList valdescs))
+         | "type" (%try typBind         => (Spec.TypeDefs typBind) 
          | %try typdescs        => (Spec.Type (Vector.fromList typdescs))) => (SR)
-         | EQTYPE typdescs      => (Spec.Eqtype (Vector.fromList typdescs))
-         | DATATYPE datatypeRhsNoWithtype => (Spec.Datatype datatypeRhsNoWithtype)
-         | EXCEPTION exndescs   => (Spec.Exception (Vector.fromList exndescs))
-         | STRUCTURE strdescs   => (Spec.Structure (Vector.fromList strdescs))
-         | INCLUDE (sigexp       => (Spec.IncludeSigexp sigexp)
+         | "eqtype" typdescs      => (Spec.Eqtype (Vector.fromList typdescs))
+         | "datatype" datatypeRhsNoWithtype => (Spec.Datatype datatypeRhsNoWithtype)
+         | "exception" exndescs   => (Spec.Exception (Vector.fromList exndescs))
+         | "structure" strdescs   => (Spec.Structure (Vector.fromList strdescs))
+         | "include" (sigexp       => (Spec.IncludeSigexp sigexp)
          | sigid (sigid)+ (* p. 59 *)
            => (Spec.IncludeSigids (Vector.fromList (sigid::SR)) )) => (SR)
          | sharespec
@@ -442,11 +496,11 @@ specnode : VAL valdescs         => (Spec.Val (Vector.fromList valdescs))
                                        (Equation.makeRegion (sharespec, posToReg (FULL_SPAN))))})
        ;
        
-sharespec : SHARING (TYPE longtyconeqns => (Equation.Type longtyconeqns)
+sharespec : "sharing" ("type" longtyconeqns => (Equation.Type longtyconeqns)
           | longstrideqns      => (Equation.Structure longstrideqns)) => (SR)
        ;
 
-longstrideqns : longstrid EQUALOP (longstrid => ((true, [longstrid,longstrid]))
+longstrideqns : longstrid "=" (longstrid => ((true, [longstrid,longstrid]))
               | longstrideqns => ((false, longstrid :: longstrideqns))) =>
 		(case SR
 		  of (true, [_, l]) => [longstrid, l]
@@ -454,7 +508,7 @@ longstrideqns : longstrid EQUALOP (longstrid => ((true, [longstrid,longstrid]))
 		   | _ => raise Fail "Impossible")
        ;
 
-longtyconeqns : longtycon EQUALOP (longtycon => ((true, [longtycon,longtycon]))
+longtyconeqns : longtycon "=" (longtycon => ((true, [longtycon,longtycon]))
               | longtyconeqns => ((false, longtycon :: longtyconeqns))) => 
 		(case SR
 		  of (true, [_, l]) => [longtycon, l]
@@ -462,50 +516,49 @@ longtyconeqns : longtycon EQUALOP (longtycon => ((true, [longtycon,longtycon]))
 		   | _ => raise Fail "Impossible")
        ;
 
-strdesc : strid COLON sigexp' (andwherespec)*  => ((strid, Sigexp.wheree (sigexp', Vector.fromList SR, posToReg (FULL_SPAN))))
+strdesc : strid ":" sigexp' (andwherespec)*  => ((strid, Sigexp.wheree (sigexp', Vector.fromList SR, posToReg (FULL_SPAN))))
        ;
 
-andwherespec : WHERE wherespec
-             | AND wherespec
+andwherespec : "where" wherespec
+             | "and" wherespec
        ;
 
-strdescs : strdesc (AND strdesc)*  => (strdesc::SR)
+strdescs : strdesc ("and" strdesc)*  => (strdesc::SR)
        ;
 
-typdescs : typdesc (AND typdesc)*  => (typdesc :: SR)
+typdescs : typdesc ("and" typdesc)*  => (typdesc :: SR)
        ;
 
-typdesc : tyvars tycon => ({tyvars = tyvars,
-                         tycon = tycon})
+typdesc : tyvars tycon => ({tyvars = tyvars, tycon = tycon})
        ;
-valdescs : valdesc (AND valdesc)*   => (valdesc :: SR)
+valdescs : valdesc ("and" valdesc)*   => (valdesc :: SR)
        ;
 
-valdesc : var COLON ty  => (Con.ensureSpecify (Vid.toCon (Vid.fromVar var))
+valdesc : var ":" ty  => (Con.ensureSpecify (Vid.toCon (Vid.fromVar var))
                          ; (var, ty))
        ;
 
-exndescs : exndesc (AND exndesc)*   => (exndesc :: SR)
+exndescs : exndesc ("and" exndesc)*   => (exndesc :: SR)
        ;
 
-exndesc : con (OF ty)?  => (Con.ensureSpecify con; (con, SR))
+exndesc : con ("of" ty)?  => (Con.ensureSpecify con; (con, SR))
        ;
 
 (*---------------------------------------------------*)
 (*                     Functors                      *)
 (*---------------------------------------------------*)
 
-funbinds : funbind (AND funbind)* => (funbind::SR)
+funbinds : funbind ("and" funbind)* => (funbind::SR)
        ;
 
-funbind : fctid LPAREN fctarg RPAREN sigconst EQUALOP strexp
+funbind : fctid "(" fctarg ")" sigconst "=" strexp
            => ({name = fctid,
                 arg = FctArg.makeRegion (fctarg, posToReg (FULL_SPAN)),
                 result = sigconst,
                 body = strexp})
        ;
 
-fctarg : strid COLON sigexp  => (FctArg.Structure (strid, sigexp))
+fctarg : strid ":" sigexp  => (FctArg.Structure (strid, sigexp))
        | specs               => (FctArg.Spec specs)
        ;
 
@@ -513,7 +566,7 @@ fctarg : strid COLON sigexp  => (FctArg.Structure (strid, sigexp))
 (*                   Declarations                    *)
 (*---------------------------------------------------*)
 
-decs : SEMICOLON* (dec SEMICOLON*)* => (case SR
+decs : ";"* (dec ";"*)* => (case SR
                                 of [] => (Dec.makeRegion (Dec.SeqDec (MV.new0 ()), posToReg (FULL_SPAN)))
                                  | _ => (let
                                              fun seqFold ([x]) = x
@@ -528,11 +581,11 @@ dec : decnode => (Dec.makeRegion (decnode, posToReg (FULL_SPAN)))
        ;
 
 decnode : decnolocal              => (decnolocal) 
-        | LOCAL decs IN decs END  => (Dec.Local (decs1,decs2))
+        | "local" decs "in" decs "end"  => (Dec.Local (decs1,decs2))
        ;
 
 decnolocal
-        : VAL (tyvarseq)? valbindTop  => (let val (vbs, rvbs) = valbindTop
+        : "val" (tyvarseq)? valbindTop  => (let val (vbs, rvbs) = valbindTop
                                       in
 		                         case SR
 					  of NONE => 
@@ -540,18 +593,18 @@ decnolocal
 					   | SOME tyvars =>
                                              Dec.Val {tyvars = tyvars, vbs=vbs, rvbs=rvbs}
 	                              end)
-        | FUN (funs              => (Dec.Fun (MV.new0 (), Vector.fromList funs))
+        | "fun" (funs              => (Dec.Fun (MV.new0 (), Vector.fromList funs))
              | tyvarseq funs     => (Dec.Fun (tyvarseq, Vector.fromList funs))) => (SR)
-        | TYPE typBind          => (Dec.Type typBind)
-        | DATATYPE datatypeRhs  => (Dec.Datatype datatypeRhs)
-        | ABSTYPE datBind WITH decs END   => (Dec.Abstype {datBind = datBind,
+        | "type" typBind          => (Dec.Type typBind)
+        | "datatype" datatypeRhs  => (Dec.Datatype datatypeRhs)
+        | "abstype" datBind "with" decs "end"   => (Dec.Abstype {datBind = datBind,
                                                         body = decs})
-        | EXCEPTION ebs
+        | "exception" ebs
           => (Dec.Exception (Vector.fromList ebs))
-        | OPEN (longstrid)+       => (Dec.Open (Vector.fromList SR))
+        | "open" (longstrid)+       => (Dec.Open (Vector.fromList SR))
         | fixity (vid)+           => (Dec.Fix {fixity = fixity,
                                           ops = Vector.fromList SR})
-        | OVERLOAD (digit)? var COLON ty AS longvidands
+        | "_overload" (digit)? var ":" ty "as" longvidands
                                 => (Dec.Overload (Priority.T SR, 
                                                var,
                                                MV.new0 (),
@@ -567,7 +620,7 @@ valbindTop : valbind => (let
                       end)
        ;
 
-valbind : pat EQUALOP exp (AND valbind)?
+valbind : pat "=" exp ("and" valbind)?
           => (let
               val valbindRest = case SR of SOME x => x | NONE => ([], [])
               val (vbs, rvbs) = valbindRest
@@ -575,25 +628,25 @@ valbind : pat EQUALOP exp (AND valbind)?
               ({pat = pat, exp = exp} :: vbs,
                rvbs)
            end)
-        | REC rvalbind                 => (([], rvalbind))
+        | "rec" rvalbind                 => (([], rvalbind))
        ;
 
 
-rvalbind : REC rvalbind                => (rvalbind)
-         | pat EQUALOP FN match (AND rvalbind)?
+rvalbind : "rec" rvalbind                => (rvalbind)
+         | pat "=" "fn" match ("and" rvalbind)?
             => ({pat = pat, match = match} :: (case SR of SOME x => x | NONE => []))
        ;
 
-funs    : clausesTop (AND clausesTop)*      => (clausesTop :: SR)
+funs    : clausesTop ("and" clausesTop)*      => (clausesTop :: SR)
        ;
 
 clausesTop: clauses => (Vector.fromList clauses)
        ;
 
-clauses : clause (BAR clause)*    => (clause :: SR)
+clauses : clause ("|" clause)*    => (clause :: SR)
        ;
 
-clause  : apats (COLON ty)? EQUALOP exp  => ({pats = Vector.fromList apats,
+clause  : apats (":" ty)? "=" exp  => ({pats = Vector.fromList apats,
                                           resultType = SR,
                                           body = exp})
        ;
@@ -609,10 +662,10 @@ typBind : typBind'
            end)
        ;
 
-typBind' : typBind''' (AND typBind''')* => (typBind'''::SR)
+typBind' : typBind''' ("and" typBind''')* => (typBind'''::SR)
        ;
 
-typBind''' : tyvars tycon EQUALOP ty => ({def = ty, tycon = tycon, tyvars = tyvars})
+typBind''' : tyvars tycon "=" ty => ({def = ty, tycon = tycon, tyvars = tyvars})
        ;
 
 tyvars  : tyvarseq => (tyvarseq)
@@ -620,7 +673,7 @@ tyvars  : tyvarseq => (tyvarseq)
        ;
 
 tyvarseq: tyvar                   => (MV.new1 tyvar)
-        | LPAREN tyvar_pc RPAREN
+        | "(" tyvar_pc ")"
           => (let
               val v = Vector.fromList tyvar_pc
               val () =
@@ -636,19 +689,19 @@ tyvarseq: tyvar                   => (MV.new1 tyvar)
            end)
        ;
 
-tyvar_pc: tyvar (COMMA tyvar)*	=> (tyvar :: SR)
+tyvar_pc: tyvar ("," tyvar)*	=> (tyvar :: SR)
        ;
 
-constrs : constr (BAR constr)*  => (constr :: SR)
+constrs : constr ("|" constr)*  => (constr :: SR)
        ;
 
-constr  : opcon (OF ty)?        => ((opcon, SR))
+constr  : opcon ("of" ty)?        => ((opcon, SR))
        ;
 
-opcon   : (OP)? con		=> (con)
+opcon   : ("op")? con		=> (con)
        ;
 
-ebs     : eb (AND eb)*		=> (eb::SR)
+ebs     : eb ("and" eb)*		=> (eb::SR)
        ;
 
 eb      : opcon ebrhs		=> (Con.ensureRedefine opcon; (opcon, ebrhs))
@@ -659,16 +712,16 @@ ebrhs : (ebrhsnode)? => (case SR
 			   | NONE => EbRhs.makeRegion (EbRhs.Gen NONE, posToReg FULL_SPAN))
        ;
 
-ebrhsnode   : OF ty              => (EbRhs.Gen (SOME ty))
-            | EQUALOP (longcon    => (EbRhs.Def longcon)
-            | OP longcon => (EbRhs.Def longcon)) => (SR)
+ebrhsnode   : "of" ty              => (EbRhs.Gen (SOME ty))
+            | "=" (longcon => (EbRhs.Def longcon)
+            | "op" longcon => (EbRhs.Def longcon)) => (SR)
        ;
 
-fixity  : INFIX (                => (Fixity.Infix NONE)
+fixity  : "infix" (                => (Fixity.Infix NONE)
         | digit           => (Fixity.Infix (SOME digit))) => (SR)
-        | INFIXR (                => (Fixity.Infixr NONE)
+        | "infixr" (                => (Fixity.Infixr NONE)
         | digit          => (Fixity.Infixr (SOME digit))) => (SR)
-        | NONFIX                => (Fixity.Nonfix)
+        | "nonfix"                => (Fixity.Nonfix)
        ;
 
 int : INT
@@ -750,7 +803,7 @@ datBindNoWithtype
 dbs : dbs' => (Vector.fromList dbs')
        ;
 
-dbs' : db (AND db)*  => (db :: SR)
+dbs' : db ("and" db)*  => (db :: SR)
        ;
 
 db : tyvars tycon EQUALOP constrs
@@ -762,25 +815,25 @@ db : tyvars tycon EQUALOP constrs
 withtypes
    :
      => (TypBind.empty)
-   | WITHTYPE typBind
+   | "withtype" typBind
      => (typBind)
        ;
 
 longvidands : longvid  => ([longvid])
-            | longvid AND longvidands => (longvid :: longvidands)
+            | longvid "and" longvidands => (longvid :: longvidands)
        ;
 
 match : rules           => (Match.makeRegion (Match.T (Vector.fromList rules), posToReg (FULL_SPAN)))
        ;
 
-rules : pat DARROW ( %try closedexp BAR rules => ((pat, closedexp)::rules)
+rules : pat "=>" ( %try closedexp BAR rules => ((pat, closedexp)::rules)
                    | %try exp => ([(pat, exp)])) => ((SR))
       ;
 
-elabel  : field EQUALOP exp     => ((field,exp))
+elabel  : field "=" exp     => ((field,exp))
        ;
 
-elabels : elabel (COMMA elabel)*  => ((elabel :: SR))
+elabels : elabel ("," elabel)*  => ((elabel :: SR))
        ;
 
 exp : expnode => (Exp.makeRegion (expnode, posToReg (FULL_SPAN)))
@@ -789,14 +842,14 @@ exp : expnode => (Exp.makeRegion (expnode, posToReg (FULL_SPAN)))
 base : app_exp
 ;
 
-primary : FN match			=> (Exp.Fn match)
-        | CASE exp OF match		=> (Exp.Case (exp, match))
-        | WHILE exp DO exp		=> (Exp.While {test = exp1, expr = exp2})
-        | IF exp THEN exp ELSE exp	=> (Exp.If (exp1, exp2, exp3))
-        | RAISE exp			=> (Exp.Raise exp)
+primary : "fn" match				=> (Exp.Fn match)
+        | "case" exp "of" match			=> (Exp.Case (exp, match))
+        | "while" exp "do" exp			=> (Exp.While {test = exp1, expr = exp2})
+        | "if" exp "then" exp "else" exp	=> (Exp.If (exp1, exp2, exp3))
+        | "raise" exp				=> (Exp.Raise exp)
        ;
 
-tyexp : base (COLON ty)*        => (let
+tyexp : base (":" ty)*        => (let
 					fun tyexpfold ([x]) = Exp.Constraint (Exp.makeRegion (base, posToReg base_SPAN), x)
 					  | tyexpfold (x::xs) = Exp.Constraint (Exp.makeRegion (tyexpfold xs, posToReg FULL_SPAN), x)
 					  | tyexpfold ([]) = base
@@ -805,24 +858,25 @@ tyexp : base (COLON ty)*        => (let
 				    end)
 ;
 
-andalsoexp : tyexp (ANDALSO andalsoexpnode')? => (					     case SR
+andalsoexp : tyexp ("andalso" andalsoexpnode')? => (					     case SR
 					      of NONE => tyexp
 					       | SOME exp => Exp.Andalso (Exp.makeRegion (tyexp, posToReg tyexp_SPAN), Exp.makeRegion (exp, posToReg FULL_SPAN)))
 ;
 
-orelseexp : andalsoexp (ORELSE orelseexpnode')? => (
+orelseexp : andalsoexp ("orelse" orelseexpnode')? => (
 					     case SR
 					      of NONE => andalsoexp
 					       | SOME exp => Exp.Orelse (Exp.makeRegion (andalsoexp, posToReg andalsoexp_SPAN), Exp.makeRegion (exp, posToReg FULL_SPAN)))
 ;
 
-handleexp : orelseexp (HANDLE handleexpmatch)* => (let
-					fun handleexpfold ([x]) = Exp.Handle (Exp.makeRegion (orelseexp, posToReg orelseexp_SPAN), x)
-					  | handleexpfold (x::xs) = Exp.Handle (Exp.makeRegion (handleexpfold xs, posToReg FULL_SPAN), x)
-					  | handleexpfold ([]) = orelseexp
-				    in
-					handleexpfold (rev SR)
-				    end)
+handleexp : orelseexp ("handle" handleexpmatch)*
+		=> (let
+		    fun handleexpfold ([x]) = Exp.Handle (Exp.makeRegion (orelseexp, posToReg orelseexp_SPAN), x)
+		      | handleexpfold (x::xs) = Exp.Handle (Exp.makeRegion (handleexpfold xs, posToReg FULL_SPAN), x)
+		      | handleexpfold ([]) = orelseexp
+		    in
+		      handleexpfold (rev SR)
+		    end)
 ; 
 
 expnode : handleexp
@@ -838,17 +892,17 @@ andalsoexpnode' : andalsoexp
 	      | andalsoprimary'
 	      ;
 
-andalsoprimary' : FN andalsoexpmatch            => (Exp.Fn andalsoexpmatch)
-        | CASE exp OF andalsoexpmatch		=> (Exp.Case (exp, andalsoexpmatch))
-        | WHILE exp DO andalsoexp''		=> (Exp.While {test = exp, expr = andalsoexp''})
-        | IF exp THEN exp ELSE andalsoexp''	=> (Exp.If (exp1, exp2, andalsoexp''))
-        | RAISE andalsoexp''			=> (Exp.Raise andalsoexp'')
+andalsoprimary' : "fn" andalsoexpmatch			=> (Exp.Fn andalsoexpmatch)
+        | "case" exp "of" andalsoexpmatch		=> (Exp.Case (exp, andalsoexpmatch))
+        | "while" exp "do" andalsoexp''			=> (Exp.While {test = exp, expr = andalsoexp''})
+        | "if" exp "then" exp "else" andalsoexp''	=> (Exp.If (exp1, exp2, andalsoexp''))
+        | "raise" andalsoexp''				=> (Exp.Raise andalsoexp'')
        ;
 
 andalsoexpmatch : andalsoexprules  => (Match.makeRegion (Match.T (Vector.fromList andalsoexprules), posToReg (FULL_SPAN)))
        ;
 
-andalsoexprules : pat DARROW ( %try closedexp BAR andalsoexprules => ((pat, closedexp)::andalsoexprules)
+andalsoexprules : pat "=>" ( %try closedexp "|" andalsoexprules => ((pat, closedexp)::andalsoexprules)
                    | %try andalsoexp'' => ([(pat, andalsoexp'')])) => ((SR))
       ;
 
@@ -861,17 +915,17 @@ orelseexpnode' : orelseexp
 	      | orelseprimary'
 	      ;
 
-orelseprimary' : FN orelseexpmatch              => (Exp.Fn orelseexpmatch)
-        | CASE exp OF orelseexpmatch     => (Exp.Case (exp, orelseexpmatch))
-        | WHILE exp DO orelseexp''      => (Exp.While {test = exp, expr = orelseexp''})
-        | IF exp THEN exp ELSE orelseexp'' => (Exp.If (exp1, exp2, orelseexp''))
-        | RAISE orelseexp''             => (Exp.Raise orelseexp'')
+orelseprimary' : "fn" orelseexpmatch			=> (Exp.Fn orelseexpmatch)
+        | "case" exp "of" orelseexpmatch		=> (Exp.Case (exp, orelseexpmatch))
+        | "while" exp "do" orelseexp''      		=> (Exp.While {test = exp, expr = orelseexp''})
+        | "if" exp "then" exp "else" orelseexp''	=> (Exp.If (exp1, exp2, orelseexp''))
+        | "raise" orelseexp''             		=> (Exp.Raise orelseexp'')
        ;
 
 orelseexpmatch : orelseexprules  => (Match.makeRegion (Match.T (Vector.fromList orelseexprules), posToReg (FULL_SPAN)))
        ;
 
-orelseexprules : pat DARROW ( %try closedexp BAR orelseexprules => ((pat, closedexp)::orelseexprules)
+orelseexprules : pat "=>" ( %try closedexp BAR orelseexprules => ((pat, closedexp)::orelseexprules)
                    | %try orelseexp'' => ([(pat, orelseexp'')])) => ((SR))
       ;
 
@@ -886,17 +940,17 @@ orelseexpnode : orelseexp
 	      | orelseprimary
 	      ;
 
-orelseprimary : FN handleexpmatch              => (Exp.Fn handleexpmatch)
-        | CASE exp OF handleexpmatch     => (Exp.Case (exp, handleexpmatch))
-        | WHILE exp DO orelseexp'      => (Exp.While {test = exp, expr = orelseexp'})
-        | IF exp THEN exp ELSE orelseexp' => (Exp.If (exp1, exp2, orelseexp'))
-        | RAISE orelseexp'             => (Exp.Raise orelseexp')
+orelseprimary : "fn" handleexpmatch		=> (Exp.Fn handleexpmatch)
+        | "case" exp "of" handleexpmatch	=> (Exp.Case (exp, handleexpmatch))
+        | "while" exp "do" orelseexp'      	=> (Exp.While {test = exp, expr = orelseexp'})
+        | "if" exp "then" exp "else" orelseexp' => (Exp.If (exp1, exp2, orelseexp'))
+        | "raise" orelseexp'			=> (Exp.Raise orelseexp')
        ;
 
 handleexpmatch : handleexprules  => (Match.makeRegion (Match.T (Vector.fromList handleexprules), posToReg (FULL_SPAN)))
        ;
 
-handleexprules : pat DARROW ( %try closedexp BAR handleexprules => ((pat, closedexp)::handleexprules)
+handleexprules : pat "=>" ( %try closedexp BAR handleexprules => ((pat, closedexp)::handleexprules)
                    | %try orelseexp' => ([(pat, orelseexp')])) => ((SR))
       ;
 
@@ -912,9 +966,9 @@ closedexpnode : handleexp
 	      | closedprimary
        ;
 
-closedprimary : WHILE exp DO closedexp      => (Exp.While {test = exp, expr = closedexp})
-        | IF exp THEN exp ELSE closedexp => (Exp.If (exp1, exp2, closedexp))
-        | RAISE closedexp             => (Exp.Raise closedexp)
+closedprimary : "while" exp "do" closedexp      => (Exp.While {test = exp, expr = closedexp})
+        | "if" exp "then" exp "else" closedexp	=> (Exp.If (exp1, exp2, closedexp))
+        | "raise" closedexp             	=> (Exp.Raise closedexp)
        ;
 
 app_exp : (aexp')+  => (Exp.FlatApp (Vector.fromList SR))
@@ -926,54 +980,54 @@ aexp' : aexp => (Exp.makeRegion (aexp, posToReg (FULL_SPAN)))
                                         posToReg (FULL_SPAN)))
       ;
 
-aexp    : OP longvid            => (Exp.Var {name = longvid,
+aexp    : "op" longvid            => (Exp.Var {name = longvid,
                                           fixop = Fixop.Op})
         | const                 => (Exp.Const const)
-        | HASH field            => (Exp.Selector field)
-        | LBRACE elabels RBRACE
+        | "#" field            => (Exp.Selector field)
+        | "{" elabels "}"
           => (Exp.Record (Record.fromVector (Vector.fromList elabels)))
-        | LBRACE RBRACE         => (Exp.unit)
-        | LPAREN RPAREN         => (Exp.unit)
-        | LPAREN expnode ( RPAREN                   => (expnode)
-                     | (SEMICOLON exp)+ RPAREN  => (Exp.Seq (Vector.fromList ((Exp.makeRegion (expnode, posToReg (expnode_SPAN)))::SR)))
-                     | (COMMA exp)+ RPAREN  => (Exp.tuple (Vector.fromList ((Exp.makeRegion (expnode, posToReg (expnode_SPAN)))::SR)))) => (SR)
-        | LBRACKET (exp_list RBRACKET  => (Exp.List (Vector.fromList exp_list))
-        | RBRACKET           => (Exp.List (MV.new0 ()))) => (SR)
-        | LET decs IN exp ( (SEMICOLON exp)+ END
+        | "{" "}"         => (Exp.unit)
+        | "(" ")"         => (Exp.unit)
+        | "(" expnode ( ")"                   => (expnode)
+	     | (";" exp)+ ")"  => (Exp.Seq (Vector.fromList ((Exp.makeRegion (expnode, posToReg (expnode_SPAN)))::SR)))
+	     | ("," exp)+ ")"  => (Exp.tuple (Vector.fromList ((Exp.makeRegion (expnode, posToReg (expnode_SPAN)))::SR)))) => (SR)
+        | "[" (exp_list "]"  => (Exp.List (Vector.fromList exp_list))
+        | "]"           => (Exp.List (MV.new0 ()))) => (SR)
+        | "let" decs "in" exp ( (";" exp)+ "end"
                        => (Exp.Let (decs, Exp.makeRegion (Exp.Seq (Vector.fromList (exp::SR)), posToReg (FULL_SPAN))))
-                      | END   => (Exp.Let (decs, exp)))
+                      | "end"   => (Exp.Let (decs, exp)))
           => (SR)
-        | ADDRESS string symattributes COLON ty SEMICOLON
+        | "_address" string symattributes ":" ty ";"
           => (Exp.Prim (PrimKind.Address {attributes = symattributes,
                                        name = string,
                                        ty = ty}))
-        | BUILD_CONST string COLON ty SEMICOLON
+        | "_build_const" string ":" ty ";"
           => (Exp.Prim (PrimKind.BuildConst {name = string, ty = ty}))
-        | COMMAND_LINE_CONST string COLON ty EQUALOP constOrBool SEMICOLON
+        | "_command_line_const" string ":" ty EQUALOP constOrBool ";"
           => (Exp.Prim (PrimKind.CommandLineConst {name = string,
                                                 ty = ty,
                                                 value = constOrBool}))
-        | CONST string COLON ty SEMICOLON
+        | "_const" string ":" ty ";"
           => (Exp.Prim (PrimKind.Const {name = string, ty = ty}))
-        | EXPORT string ieattributes COLON ty SEMICOLON
+        | "_export" string ieattributes ":" ty ";"
           => (Exp.Prim (PrimKind.Export {attributes = ieattributes,
                                       name = string,
                                       ty = ty}))
-        | IMPORT (string ieattributes COLON ty SEMICOLON
+        | "_import" (string ieattributes ":" ty ";"
           => (Exp.Prim (PrimKind.Import {attributes = ieattributes,
                                       name = string,
                                       ty = ty}))
-        | ASTERISK ieattributes COLON ty SEMICOLON
+        | "*" ieattributes ":" ty ";"
           => (Exp.Prim (PrimKind.IImport {attributes = ieattributes,
                                        ty = ty}))) => (SR)
-        | PRIM string COLON ty SEMICOLON
+        | "_prim" string ":" ty ";"
           => (Exp.Prim (PrimKind.Prim {name = string,
                                     ty = ty}))
-        | SYMBOL (string symattributes COLON ty SEMICOLON
+        | "_symbol" (string symattributes ":" ty ";"
           => (Exp.Prim (PrimKind.Symbol {attributes = symattributes,
                                       name = string,
                                       ty = ty}))
-        | ASTERISK COLON ty SEMICOLON
+        | "*" ":" ty ";"
           => (Exp.Prim (PrimKind.ISymbol {ty = ty}))) => (SR)
        ;
 
@@ -1014,7 +1068,7 @@ symattributes
       end)
        ;
 
-exp_list : exp (COMMA exp)*   => (exp :: SR)
+exp_list : exp ("," exp)*   => (exp :: SR)
        ;
 
 (*---------------------------------------------------*)
@@ -1024,7 +1078,7 @@ exp_list : exp (COMMA exp)*   => (exp :: SR)
 pat : patnode   => (Pat.makeRegion (patnode, posToReg FULL_SPAN))
        ;
 
-patnode : typedapats (AS typedapats)* 
+patnode : typedapats ("as" typedapats)* 
       => (let
 	      fun patfold ([x]) = x
 		| patfold (x::rest) = Pat.makeAs (Pat.makeRegion (x, posToReg FULL_SPAN), Pat.makeRegion (patfold rest, posToReg FULL_SPAN))
@@ -1034,7 +1088,7 @@ patnode : typedapats (AS typedapats)*
 	  end)
 ;
 
-typedapats : apats (COLON ty)* 
+typedapats : apats (":" ty)* 
       => (let
 	      fun typedfold (x::rest) = Pat.Constraint (Pat.makeRegion (typedfold rest, posToReg FULL_SPAN), x)
 		| typedfold ([]) = Pat.FlatApp (Vector.fromList apats)
@@ -1051,7 +1105,7 @@ apat : apatnode => (Pat.makeRegion (apatnode, posToReg (FULL_SPAN)))
 
 apatnode : longvidNoEqual        => (Pat.Var {name = longvidNoEqual,
                                            fixop = Fixop.None})
-        | OP longvid             => (Pat.Var {name = longvid,
+        | "op" longvid             => (Pat.Var {name = longvid,
                                            fixop = Fixop.Op})
         | const
           => (let
@@ -1071,11 +1125,11 @@ apatnode : longvidNoEqual        => (Pat.Var {name = longvidNoEqual,
            in
               Pat.Const const
            end)
-        | WILD                   => (Pat.Wild)
-        | LPAREN pats RPAREN     => (Pat.tuple (Vector.fromList pats))
-        | LBRACKET pats RBRACKET => (Pat.List (Vector.fromList pats))
-        | LBRACE (RBRACE          => (Pat.unit)
-        | patitems RBRACE
+        | "_"                   => (Pat.Wild)
+        | "(" pats ")"     => (Pat.tuple (Vector.fromList pats))
+        | "[" pats "]" => (Pat.List (Vector.fromList pats))
+        | "{" ("}"          => (Pat.unit)
+        | patitems "}"
           => (let
               val (items, flexible) = patitems
            in
@@ -1085,17 +1139,17 @@ apatnode : longvidNoEqual        => (Pat.Var {name = longvidNoEqual,
        ;
 
 pats : (* empty *)      => ([])
-     | pat (COMMA pat)* => (pat::SR)
+     | pat ("," pat)* => (pat::SR)
        ;
 
-patitems : patitem (COMMA patitem)* (COMMA DOTDOTDOT)? => ((patitem::SR1, (case SR2 of NONE => false | _ => true)))
-        | DOTDOTDOT => (([], true))
+patitems : patitem ("," patitem)* ("," "...")? => ((patitem::SR1, (case SR2 of NONE => false | _ => true)))
+        | "..." => (([], true))
         ;
 
 patitem
-   : field EQUALOP pat
+   : field "=" pat
      => ((field, Pat.Item.Field pat))
-   | vidNoEqual (COLON ty)? (AS pat)?
+   | vidNoEqual (":" ty)? ("as" pat)?
      => ((Field.Symbol (Vid.toSymbol vidNoEqual),
       Pat.Item.Vid (vidNoEqual, SR1, SR2)))
        ;
@@ -1104,7 +1158,7 @@ patitem
 (*                       Types                       *)
 (*---------------------------------------------------*)
 
-ty  : ty1 (ARROW ty1)* => (case SR
+ty  : ty1 ("->" ty1)* => (case SR
                             of [] => ty1
                              | _ => (
 			       let
@@ -1117,7 +1171,7 @@ ty  : ty1 (ARROW ty1)* => (case SR
 			       end))
     ;
 
-ty1 : ty2 (ASTERISK ty2)* => (case SR
+ty1 : ty2 ("*" ty2)* => (case SR
                                of [] => (Type.makeRegion (ty2, posToReg (FULL_SPAN)))
                                 | _ => (let
                                       val regioned = List.map (fn n => Type.makeRegion (n, posToReg (FULL_SPAN))) (ty2::SR)
@@ -1139,17 +1193,17 @@ ty2 : ty3 longtycon* => (case longtycon
     ;
 
 ty3 : tyvar						=> (Type.Var tyvar)
-    | LBRACE (RBRACE					=> (Type.unit)
-    | tyrow RBRACE					=> (Type.Record (Srecord.fromVector (Vector.fromList tyrow)))) => (SR)
+    | "{" ("}"					=> (Type.unit)
+    | tyrow "}"					=> (Type.Record (Srecord.fromVector (Vector.fromList tyrow)))) => (SR)
     | longtycon						=> (Type.Con (longtycon, MV.new0 ()))
-    | LPAREN ty ((COMMA ty)+ RPAREN longtycon	        => (Type.Con (longtycon, Vector.fromList (ty::SR)))
-                | RPAREN				=> (Type.node ty)) => (SR)
+    | "(" ty (("," ty)+ ")" longtycon	        => (Type.Con (longtycon, Vector.fromList (ty::SR)))
+                | ")"				=> (Type.node ty)) => (SR)
     ;
 
-tyrow' : field COLON ty => ((field, ty))
+tyrow' : field ":" ty => ((field, ty))
                                ;
 tyrow
-    : tyrow' (COMMA tyrow')* => (tyrow'::SR)
+    : tyrow' ("," tyrow')* => (tyrow'::SR)
     ;
 
 (*---------------------------------------------------*)
@@ -1190,16 +1244,16 @@ idNoAsterisk : longidNoAsterisk => (ensureNonqualified longidNoAsterisk)
        ;
 
 id : idNoAsterisk  => (idNoAsterisk)
-   | ASTERISK      => ((Symbol.asterisk, posToReg (FULL_SPAN)))
+   | "*"      => ((Symbol.asterisk, posToReg (FULL_SPAN)))
        ;
 
 idEqual : id      => (id)
-        | EQUALOP => ((Symbol.equal, posToReg (FULL_SPAN)))
+        | "=" => ((Symbol.equal, posToReg (FULL_SPAN)))
        ;
 
 longid
    : longidNoAsterisk => (longidNoAsterisk)
-   | ASTERISK  => (([Symbol.asterisk], posToReg (FULL_SPAN)))
+   | "*"  => (([Symbol.asterisk], posToReg (FULL_SPAN)))
        ;
 
 longidNoAsterisk
@@ -1212,7 +1266,7 @@ longidNoAsterisk
        ;
 
 longidEqual : longid   => (longid)
-            | EQUALOP  => (([Symbol.equal], posToReg (FULL_SPAN)))
+            | "="  => (([Symbol.equal], posToReg (FULL_SPAN)))
        ;
 
 vid : idEqual                  => (Vid.fromSymbol idEqual)
