@@ -4,20 +4,6 @@
  * free variables, using reflow analysis to verify environment
  * consonance.
  *
- * TODO:
- * Some of the program points do not appear in the Reflow representatives
- * map because we're using the .mk functions, which don't reuse the
- * program points, and therefore introduce new ones on us when we go to inline
- * a function whose body we have just remade. So, we will have to either
- * maintain a map (ugh!) or use alternate constructor forms that don't rebuild the
- * expression nodes and instead reuse the ppt inline.
- * But, what does that mean if I attempt to ask Reflow questions related to a
- * piece of code that only exists as a new inline target? Should that even
- * happen? Need to generate more debugging info to track where this ppt is coming
- * from better.
- *
- * Undo disabling of the super-beta style inlining and reflow.
- *
  * BUGS:
  *
  * Skipping mutually recursive function inlining for now, unlike
@@ -46,6 +32,7 @@ structure Inline : sig
   (* controls *)
     val inlineFlg = ref true
     val inlineDebug = ref false
+    val inlineHOFlg = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
@@ -57,6 +44,13 @@ structure Inline : sig
 		  pri = [0, 1],
 		  obscurity = 0,
 		  help = "enable expansive inlining"
+		},
+	      Controls.control {
+		  ctl = inlineFlg,
+		  name = "enable-ho-inline",
+		  pri = [0, 1],
+		  obscurity = 0,
+		  help = "enable higher-order extension to expansive inlining"
 		},
 	      Controls.control {
 		  ctl = inlineDebug,
@@ -176,22 +170,38 @@ structure Inline : sig
    * used scale the size of the application, while the set s contains those
    * functions that should not be inlined; either because we are inlining
    * them or we are in their body.
+   * We also need to track all of the bound variables to ensure they are
+   * available for functions about to be inlined.
    *)
-    datatype env = E of {k : int, s : VSet.set}
+    datatype env = E of {k : int, s : VSet.set, env : VSet.set}
 
   (* add the function f to the environment *)
-    fun addFun (E{k, s}, f) = E{k=k, s=VSet.add(s, f)}
+    fun addFun (E{k, s, env}, f) = E{k=k, s=VSet.add(s, f), env=env}
 
   (* add the function f and decrement the size factor *)
-    fun addAndDec (E{k, s}, f) = E{k=inldec k, s=VSet.add(s, f)}
+    fun addAndDec (E{k, s, env}, f) = E{k=inldec k, s=VSet.add(s, f), env=env}
+
+    (* Extend the environment with another bound variable *)
+    fun extend (E{k, s, env}, v) = E{k=k, s=s, env=VSet.add(env, v)}
+    fun extend' (e, vs) = List.foldl (fn (v, e) => extend (e, v)) e vs
 
   (* the initial envronment *)
-    fun initEnv () = E{k = initK, s = VSet.empty}
+    fun initEnv () = E{k = initK, s = VSet.empty, env = VSet.empty}
 
 
   (********** Inlining **********)
 
-    fun isSafe (pptInlineLocation, lambda) = let
+    (*
+     * Inlining is safe when either:
+     * a) there are no free variables
+     * b) there are free variables, but we have analyzed that point
+     * in the program and know that the proper reflow property holds.
+     * We may not know this property in the case where we are analyzing
+     * the body of a just-inlined function. This restriction means
+     * that this is not a "complete" inlining.
+     * 
+     *)
+    fun isSafe (pptInlineLocation, lambda, env) = let
         val CPS.FB{f,...} = lambda
         val fvs = FreeVars.envOfFun f
         fun unsafeFV fv = let
@@ -207,16 +217,27 @@ structure Inline : sig
                   result)
             else result
         end
+        val _ = if VSet.isSubset(fvs, env)
+                then ()
+                else (print (concat [CV.toString f, " could not be inlined due to missing FVs.\n"]);
+                      VSet.app (fn x => print (concat[" -- ", CV.toString x, "\n"]))
+                               (VSet.difference (fvs, env)))
     in
-        false (* TODO
-        not(VSet.exists unsafeFV fvs) *)
+        (* false *)
+        if !inlineHOFlg
+        then VSet.numItems fvs = 0
+        else (
+            VSet.numItems fvs = 0 orelse
+            (Reflow.pointAnalyzed pptInlineLocation andalso
+             VSet.isSubset(fvs, env) andalso
+             not(VSet.exists unsafeFV fvs)))
     end
 
   (* test to see if a function application ``f(args / rets)'' should be
    * inlined.  If so, return SOME(fb), where fb is the lambda
    * bound to f, otherwise return NONE.
    *)
-    fun shouldInlineApp (E{k, s}, ppt, f, args, rets) = (
+    fun shouldInlineApp (E{k, s, env}, ppt, f, args, rets) = (
         case CV.kindOf f
 	 of C.VK_Fun(fb as C.FB{body, ...}) =>
 	    if not(VSet.member (s, f)) andalso
@@ -231,7 +252,8 @@ structure Inline : sig
                             val C.VK_Fun (fb as C.FB{body,...}) = CV.kindOf f'
                         in
                             if not(VSet.member (s, f')) andalso
-                               isSafe (ppt, fb) andalso
+                               not(CFA.isProxy f') andalso
+                               isSafe (ppt, fb, env) andalso
                                Sizes.smallerThan(body, k * Sizes.sizeOfApply(f, args, rets))
                             then (ST.tick cntHOinline;
                                   SOME fb)
@@ -240,7 +262,7 @@ structure Inline : sig
                          | _ => NONE)
                     | _ => NONE))
 
-    fun shouldInlineThrow (E{k, s}, ppt, f, args) = (
+    fun shouldInlineThrow (E{k, s, env}, ppt, f, args) = (
         case CV.kindOf f
 	 of C.VK_Cont(fb as C.FB{body, ...}) => 
 	    if not(VSet.member (s, f)) andalso
@@ -255,7 +277,8 @@ structure Inline : sig
                             val C.VK_Cont (fb as C.FB{body,...}) = CV.kindOf f'
                         in
                             if not(VSet.member (s, f')) andalso
-                               isSafe (ppt, fb) andalso
+                               not(CFA.isProxy f') andalso
+                               isSafe (ppt, fb, env) andalso
                                Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args))
                             then (ST.tick cntHOinline;
                                   SOME fb)
@@ -266,20 +289,34 @@ structure Inline : sig
 
     fun doExp (env, exp as C.Exp(ppt, e)) = (case e
 	   of C.Let(lhs, rhs, e) =>
-              C.Exp (ppt, C.Let (lhs, rhs, doExp (env, e)))
+              C.Exp (ppt, C.Let (lhs, rhs, doExp (extend'(env, lhs), e)))
 	    | C.Fun(fbs, e) => let
+                val funs = List.map (fn (C.FB{f,...}) => f) fbs
+                val env = extend'(env, funs)
 		val e = doExp(env, e)
-		fun doFB (C.FB{f, params, rets, body}) =
+		fun doFB (C.FB{f, params, rets, body}) = let
+                    val env = extend' (env, params)
+                    val env = extend' (env, rets)
+                in
                     C.FB{f=f, params=params, rets=rets,
 			 body=doExp(env, body)}
+                end
 	      (* note that the mkLambda resets the kind info *)
 		val fbs = List.map (fn x => C.mkLambda (x,false)) (List.map doFB fbs)
 		in
                     C.Exp (ppt, C.Fun (fbs, e))
 		end
-	    | C.Cont(C.FB{f, params, rets, body}, e) => let
+	    | C.Cont(fb as C.FB{f, params, rets, body}, e) => let
+                  val env = extend(env, f)
 		  val e = doExp (env, e)
-		  val fb = C.FB{f=f, params=params, rets=rets, body=doExp(env, body)}
+		  fun doFB (C.FB{f, params, rets, body}) = let
+                      val env = extend' (env, params)
+                      val env = extend' (env, rets)
+                  in
+                      C.FB{f=f, params=params, rets=rets,
+			   body=doExp(env, body)}
+                  end
+		  val fb = doFB fb
 		  val _ = setBinding(f, C.VK_Cont fb)
 		  in
                       C.Exp (ppt, C.Cont (fb, e))
@@ -308,6 +345,11 @@ structure Inline : sig
     and doInline (env, f, args, params, body) = let
 	(* Extend the substitution to map the parameter to the argument and decrement
 	 * the argument use count.
+         *
+         * CONSIDER: we inline the old definition of the function, which could possibly
+         * have some of its own applications that have now been subject to inlining.
+         * Should we instead replace with the new definition? Or perform inlining
+         * iteratively, to cleanly handle the recursive function definitions case?
 	 *)
         val (argsForParams, casts) = extendWithCasts {env = U.empty, fromVars = args, toVars = params}
     in
@@ -317,7 +359,9 @@ structure Inline : sig
     fun transform (m as C.MODULE{name, externs, body}) =
         if !inlineFlg
         then (let
-(* TODO:                 val _ = Reflow.analyze m *)
+                 val _ = if !inlineHOFlg
+                         then Reflow.analyze m
+                         else ()
 	         val C.FB{f, params, rets, body} = body
 	         val body = doExp(initEnv(), body)
 	         val fb = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=body}, false)

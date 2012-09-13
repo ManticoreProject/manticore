@@ -15,6 +15,7 @@ structure Reflow : sig
     val bindingLocation : CPS.var -> ProgPt.ppt
 
     val pathExists : ProgPt.ppt * ProgPt.ppt -> bool
+    val pointAnalyzed : ProgPt.ppt -> bool
 
     val debugFlg : bool ref
 
@@ -300,6 +301,10 @@ structure Reflow : sig
                         of REACHES ps => PSet.member (ps, Option.valOf(PMap.find(!representative, p2)))
                          | TOP => true))
 
+    fun pointAnalyzed (p) =
+        case PMap.find (!representative, p)
+         of SOME _ => true
+          | NONE => false
 
     val analyze = BasicControl.mkTracePassSimple {
 	    passName = "reflow",
