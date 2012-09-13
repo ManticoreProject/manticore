@@ -46,7 +46,7 @@ structure Inline : sig
 		  help = "enable expansive inlining"
 		},
 	      Controls.control {
-		  ctl = inlineFlg,
+		  ctl = inlineHOFlg,
 		  name = "enable-ho-inline",
 		  pri = [0, 1],
 		  obscurity = 0,
@@ -217,13 +217,12 @@ structure Inline : sig
                   result)
             else result
         end
-        val _ = if VSet.isSubset(fvs, env)
-                then ()
-                else (print (concat [CV.toString f, " could not be inlined due to missing FVs.\n"]);
+        val _ = if !inlineHOFlg andalso not(VSet.isSubset(fvs, env))
+                then (print (concat [CV.toString f, " could not be inlined due to missing FVs.\n"]);
                       VSet.app (fn x => print (concat[" -- ", CV.toString x, "\n"]))
                                (VSet.difference (fvs, env)))
+		else ()
     in
-        (* false *)
         if !inlineHOFlg
         then VSet.numItems fvs = 0
         else (
