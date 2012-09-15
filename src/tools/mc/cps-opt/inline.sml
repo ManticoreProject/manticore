@@ -201,7 +201,7 @@ structure Inline : sig
      * that this is not a "complete" inlining.
      * 
      *)
-    fun isSafe (pptInlineLocation, lambda, env) = let
+    fun isSafe (pptInlineLocation, lambda, env, oldVar) = let
         val CPS.FB{f,...} = lambda
         val fvs = FreeVars.envOfFun f
         fun unsafeFV fv = let
@@ -218,7 +218,8 @@ structure Inline : sig
             else result
         end
         val _ = if !inlineHOFlg andalso not(VSet.isSubset(fvs, env))
-                then (print (concat [CV.toString f, " could not be inlined due to missing FVs.\n"]);
+                then (print (concat [CV.toString f, " could not be inlined due to missing FVs at throw/apply to:",
+                                     CV.toString oldVar,"\n"]);
                       VSet.app (fn x => print (concat[" -- ", CV.toString x, "\n"]))
                                (VSet.difference (fvs, env)))
 		else ()
@@ -252,7 +253,7 @@ structure Inline : sig
                         in
                             if not(VSet.member (s, f')) andalso
                                not(CFA.isProxy f') andalso
-                               isSafe (ppt, fb, env) andalso
+                               isSafe (ppt, fb, env, f) andalso
                                Sizes.smallerThan(body, k * Sizes.sizeOfApply(f, args, rets))
                             then (ST.tick cntHOinline;
                                   SOME fb)
@@ -277,7 +278,7 @@ structure Inline : sig
                         in
                             if not(VSet.member (s, f')) andalso
                                not(CFA.isProxy f') andalso
-                               isSafe (ppt, fb, env) andalso
+                               isSafe (ppt, fb, env, f) andalso
                                Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args))
                             then (ST.tick cntHOinline;
                                   SOME fb)

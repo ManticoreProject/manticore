@@ -181,6 +181,22 @@ structure Reflow : sig
            (not(cnt=PSet.numItems result), REACHES result)
         end
 
+    (*
+     * PROBLEM:
+     * Given an adjacency-list representation (vertex -> vertex list of neighbors),
+     * compute the transitive closure efficiently to get the set of accessible nodes.
+     *
+     * One idea:
+     * Transform into the NxN adjacency matrix, A
+     * Compute A^n
+     * Now, at each A[i,j] we have the # of n-step walks from i..j!
+     * BUT, that's n NxN matrix multiplications... could keep zero/one, if that
+     * speeds things up?
+     * NOTE: this operation should take less than n multiplications, because this
+     * graph is a forest of trees, since we've collapsed all SCCs into a single
+     * node.
+     *)
+
     (* FIXME: This implementation is far too slow. *)
     fun computeReachability map = let
         fun addEntry (ppt, reaches, (b, map)) = (
@@ -280,15 +296,26 @@ structure Reflow : sig
 
 
     fun analyze (module as CPS.MODULE{body, ...}) = let
+        val a = Time.now()
         val _ = setLocations module
+        val b = Time.now()
         val (neighbors, neighborlist) = addNeighbors module
+        val c = Time.now()
         val _ = if !debugFlg
                 then print (concat["Number of program points: ",
                                    Int.toString (PMap.numItems neighbors),
                                    "\n"])
                 else ()
         val SCCCompressed = compressSCC (neighbors, neighborlist)
+        val d = Time.now()
         val reachability = computeReachability SCCCompressed
+        val e = Time.now()
+        val _ = if !debugFlg
+                then print (concat["Set locations: ", Time.toString (Time.-(b,a)), "\n",
+                                   "Add neighbors: ", Time.toString (Time.-(c,b)), "\n",
+                                   "Compress SCC: ", Time.toString (Time.-(d,c)), "\n",
+                                   "Compute Reachability: ", Time.toString (Time.-(e,d)), "\n"])
+                else ()
     in
         graph := reachability
     end
