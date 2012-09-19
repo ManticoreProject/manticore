@@ -3,8 +3,6 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * TODO:
- *
  *)
 
 structure Reflow : sig
@@ -41,7 +39,7 @@ structure Reflow : sig
 
     (* This graph is used to answer the pathExists query above.
      * It is a reachability (closure of adjacency) map. *)
-    val graph : reaches PMap.map ref = ref PMap.empty
+    val graph : PSet.set PMap.map ref = ref PMap.empty
 
     (* This map goes from a program point to its path-compressed
      * representative.
@@ -186,63 +184,93 @@ structure Reflow : sig
      * Given an adjacency-list representation (vertex -> vertex list of neighbors),
      * compute the transitive closure efficiently to get the set of accessible nodes.
      *
-     * One idea:
-     * Transform into the NxN adjacency matrix, A
-     * Compute A^n
-     * Now, at each A[i,j] we have the # of n-step walks from i..j!
-     * BUT, that's n NxN matrix multiplications... could keep zero/one, if that
-     * speeds things up?
-     * NOTE: this operation should take less than n multiplications, because this
-     * graph is a forest of trees, since we've collapsed all SCCs into a single
-     * node.
+     * First, invert the adjacency-list representation to get a parent-list represenation.
+     * While doing that, also pick out the "leaves" (i.e., those vertices with no outgoing
+     * edges).
+     *
+     * Maintain two sets:
+     * - Black is empty
+     * - Grey is those leaves
+     *
+     * for-each v in Grey
+     *  Add v to Black
+     *  for-each p in parent(v)
+     *   R(p) = R(p) union R(v) union [v]
+     *   if all adjacents of p are Black, then mark p Grey
      *)
 
-    (* FIXME: This implementation is far too slow. *)
     fun computeReachability map = let
-        fun addEntry (ppt, reaches, (b, map)) = (
-            case reaches
-             of TOP => (b,map)
-              | r1 as REACHES ps => let
-                    fun extend (ppt', (b, map)) = (
-                        case (PMap.find (map, ppt'))
-                         of NONE => (b, map)
-                          | SOME reaches' => (
-                            case reaches'
-                             of TOP => (true, PMap.insert (map, ppt, TOP))
-                              | r2 as REACHES ps' => let
-                                    val (changed, new) = union (r1, r2)
-                                in
-                                    if changed
-                                    then let
-                                            (*
-                                             * Since we computed the closure w.r.t
-                                             * all reachable items, we might as well
-                                             * update those reachable items with the
-                                             * result as well.
-                                             *)
-                                            fun update (ppt, map) =
-                                                PMap.insert (map, ppt, new)
-                                            val map = PSet.foldl update map ps'
-                                        in
-                                            (changed, PMap.insert (map, ppt, new))
-                                        end
-                                    else (b, map)
-                                end))
-                in
-                    PSet.foldl extend (b, map) ps
-                end)
-        fun iterate map =
-            PMap.foldli addEntry (false, map) map
-        fun loop map = let
-            val _ = ST.tick cntPasses
-            val (b, map) = iterate map
+        fun invert map = let
+            fun addEntries (ppt, reaches, (m, inAll, leaves)) = let
+                fun addInfo (m, p1, p2) =
+                    case PMap.find (m, p1)
+                     of NONE => PMap.insert (m, p1, PSet.add (PSet.empty, p2))
+                      | SOME s => (
+                          PMap.insert (m, p1, PSet.add (s, p2)))
+            in
+                case reaches
+                 of TOP => (m, ppt::inAll, leaves)
+                  | REACHES s => (case PSet.isEmpty s
+                                   of true => (m, inAll, ppt::leaves)
+                                    | false => (PSet.foldl (fn (ppt', m) =>
+                                                               addInfo (m, ppt', ppt)) m s,
+                                                inAll, leaves))
+            end
         in
-            if b
-            then loop map
-            else map
+            PMap.foldli addEntries (PMap.empty, [], []) map
         end
+            
+        val (parentMap, inAll, leaves) = invert map
+        val inAll = PSet.fromList inAll
+
+        (* Add in the entries that are the parents of _all_ vertices *)
+        val parentMap = PMap.foldli (fn (ppt, s, m) =>
+                                        PMap.insert (m, ppt, PSet.union (s, inAll)))
+                                    parentMap
+                                    parentMap
+
+        val initialGrey = PSet.fromList leaves
+
+        fun compute (rmap, black, grey) = (
+            case PSet.isEmpty grey
+             of true => rmap
+              | false => let
+                  val next = Option.valOf (PSet.find (fn _ => true) grey)
+                  val grey' = PSet.delete (grey, next)
+                  val black' = PSet.add (black, next)
+              in
+                  case PMap.find (parentMap, next)
+                   of NONE => compute (rmap, black', grey')
+                    | SOME parents => (
+                               let
+                                   fun merge (m, p1, p2) = let
+                                       val newRs = (case PMap.find (m, p2)
+                                                     of NONE => PSet.add (PSet.empty, p2)
+                                                      | SOME s => PSet.add (s, p2))
+                                   in
+                                       case PMap.find (m, p1)
+                                        of NONE => PMap.insert (m, p1, newRs)
+                                         | SOME s => PMap.insert (m, p1, PSet.union (s, newRs))
+                                   end
+                                   fun doEntry (parent, (rmap, grey)) = let
+                                       val rmap = merge (rmap, parent, next)
+                                       val turnGrey = (case PMap.find (map, parent)
+                                                        of NONE => true
+                                                         | SOME reaches => (case reaches
+                                                                             of TOP => PSet.isEmpty grey' (* Works because there is only one TOP else cycle. *)
+                                                                              | REACHES s => not(PSet.exists (fn x => not(PSet.member (black', x))) s)))
+                                       val grey = if turnGrey then PSet.add (grey, parent) else grey
+                                   in
+                                       (rmap, grey)
+                                   end
+                                   val (rmap, grey') = PSet.foldl doEntry (rmap, grey') parents
+                                                                            
+                               in
+                                   compute (rmap, black', grey')
+                               end)
+              end)
     in
-        loop map
+        compute (PMap.empty, PSet.empty, initialGrey)
     end
 
     fun compressSCC (p, ptlist) = let
@@ -324,9 +352,7 @@ structure Reflow : sig
     fun pathExists (p1, p2) = (
         case PMap.find (!graph, Option.valOf(PMap.find(!representative, p1)))
          of NONE => false
-          | SOME r => (case r
-                        of REACHES ps => PSet.member (ps, Option.valOf(PMap.find(!representative, p2)))
-                         | TOP => true))
+          | SOME ps => (PSet.member (ps, Option.valOf(PMap.find(!representative, p2)))))
 
     fun pointAnalyzed (p) =
         case PMap.find (!representative, p)
