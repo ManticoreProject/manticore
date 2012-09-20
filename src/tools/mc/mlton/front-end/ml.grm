@@ -6,84 +6,95 @@
  *)
 
 %tokens
-    : CHAR of (*IntInf.t*)IntInf.int
-    | INT of {digits: string,
-              negate: bool,
-              radix: StringCvt.radix}
-    | LONGID of string
-    | REAL of string
-    | STRING of (*IntInf.t*)IntInf.int vector
-    | TYVAR of string
-    | WORD of {digits: string, radix: StringCvt.radix}
-    | ABSTYPE			("abstype")
-    | AND			("and")
-    | ANDALSO			("andalso")
-    | ARROW			("->")
-    | AS			("as")
+    : KW_abstype		("abstype")
+    | KW_and			("and")
+    | KW_andalso		("andalso")
+    | KW_as			("as")
+    | KW_case			("case")
+    | KW_datatype		("datatype")
+    | KW_do			("do")
+    | KW_else			("else")
+    | KW_end			("end")
+    | KW_eqtype			("eqtype")
+    | KW_exception		("exception")
+    | KW_fn			("fn")
+    | KW_fun			("fun")
+    | KW_functor		("functor")
+    | KW_handle			("handle")
+    | KW_if			("if")
+    | KW_in			("in")
+    | KW_include		("include")
+    | KW_infix			("infix")
+    | KW_infixr			("infixr")
+    | KW_let			("let")
+    | KW_local			("local")
+    | KW_nonfix			("nonfix")
+    | KW_orelse			("orelse")
+    | KW_of			("of")
+    | KW_op			("op")
+    | KW_open			("open")
+    | KW_raise			("raise")
+    | KW_rec			("rec")
+    | KW_sharing		("sharing")
+    | KW_sig			("sig")
+    | KW_signature		("signature")
+    | KW_struct			("struct")
+    | KW_structure		("structure")
+    | KW_then			("then")
+    | KW_type			("type")
+    | KW_val			("val")
+    | KW_where			("where")
+    | KW_while			("while")
+    | KW_with			("with")
+    | KW_withtype		("withtype")
+  (* special symbolic IDs *)
     | ASTERISK			("*")
+    | ASSIGN			(":=")
+    | AMPERSAND			("&")
+    | BANG			("!")
+    | SLASH			("/")
+  (* punctuation *)
+    | ARROW			("->")
     | BAR			("|")
-    | CASE			("case")
     | COLON			(":")
     | COLONGT			(":>")
     | COMMA			(",")
-    | DATATYPE			("datatype")
     | DOTDOTDOT			("...")
-    | ELSE			("else")
-    | END			("end")
     | EQUALOP			("=")
-    | EQTYPE			("eqtype")
-    | EXCEPTION			("exception")
-    | DO			("do")
     | DARROW			("=>")
-    | FN			("fn")
-    | FUN			("fun")
-    | FUNCTOR			("functor")
-    | HANDLE			("handle")
     | HASH			("#")
-    | IF			("if")
-    | IN			("in")
-    | INCLUDE			("include")
-    | INFIX			("infix")
-    | INFIXR			("infixr")
     | LBRACE			("{")
     | LBRACKET			("[")
-    | LET			("let")
-    | LOCAL			("local")
     | LPAREN			("(")
-    | NONFIX			("nonfix")
-    | ORELSE			("orelse")
-    | OF			("of")
-    | OP			("op")
-    | OPEN			("open")
-    | OVERLOAD			("_overload")
-    | RAISE			("raise")
     | RBRACE 			("}")
     | RBRACKET			("]")
-    | REC			("rec")
     | RPAREN			(")")
     | SEMICOLON			(";")
-    | SHARING			("sharing")
-    | SIG			("sig")
-    | SIGNATURE			("signature")
-    | STRUCT			("struct")
-    | STRUCTURE			("structure")
-    | THEN			("then")
-    | TYPE			("type")
-    | VAL			("val")
-    | WHERE			("where")
-    | WHILE			("while")
     | WILD			("_")
-    | WITH			("with")
-    | WITHTYPE			("withtype")
-  (* Extensions *)
-    | BUILD_CONST		("_build_const")
-    | COMMAND_LINE_CONST	("_command_line_const")
-    | CONST			("_const")
-    | ADDRESS			("_address")
-    | EXPORT			("_export")
-    | IMPORT			("_import")
-    | SYMBOL			("_symbol")
-    | PRIM			("_prim")
+  (* literals *)
+    | CHAR of IntInf.int
+    | INT of {
+	  digits: string,
+	  negate: bool,
+	  radix: StringCvt.radix
+	}
+    | ID of string
+    | SYMID of string
+    | LONGID of string
+    | REAL of string
+    | STRING of IntInf.int vector
+    | TYVAR of string
+    | WORD of {digits: string, radix: StringCvt.radix}
+  (* MLton extensions *)
+    | KW__build_const		("_build_const")
+    | KW__command_line_const	("_command_line_const")
+    | KW__const			("_const")
+    | KW__address		("_address")
+    | KW__export		("_export")
+    | KW__import		("_import")
+    | KW__overload		("_overload")
+    | KW__symbol		("_symbol")
+    | KW__prim			("_prim")
     ;
 
 %defs (
@@ -302,10 +313,11 @@ fun ensureNonqualified (ss: Symbol.t list, r: Region.t): Symbol.t * Region.t =
 program: expsAndTopdecs => (Program.T expsAndTopdecs)
        ;
 
+(* FIXME: this can be streamlined *)
 expsAndTopdecs
 	: ";"* ((*empty*) => ([])
 		| exp topexps	=> ([Topdec.fromExp exp] :: topexps)
-		| topdec topdec	=> (consTopdec (topdec, topdecs)))
+		| topdec topdecs => (consTopdec (topdec, topdecs)))
 	;
 
 topexps
@@ -412,9 +424,9 @@ strexp2node
         | "let" strdecs "in" strexp "end"  => (Strexp.Let (strdecs,strexp))
        ;
 
-arg_fct : "(" (strexp ")"   => (strexp)
-                | strdecs ")"  => (Strexp.makeRegion (Strexp.Struct strdecs, posToReg (FULL_SPAN)))) => (SR)
-       ;
+arg_fct	: "(" (strexp ")"   => (strexp)
+	    | strdecs ")"  => (Strexp.makeRegion (Strexp.Struct strdecs, posToReg (FULL_SPAN)))) => (SR)
+	;
 
 (*---------------------------------------------------*)
 (*                    Signatures                     *)
@@ -482,7 +494,7 @@ spec : specnode => (Spec.makeRegion (specnode, posToReg (FULL_SPAN)))
 
 specnode : "val" valdescs         => (Spec.Val (Vector.fromList valdescs))
          | "type" (%try typBind         => (Spec.TypeDefs typBind) 
-         | %try typdescs        => (Spec.Type (Vector.fromList typdescs))) => (SR)
+	     | %try typdescs		=> (Spec.Type (Vector.fromList typdescs))) => (SR)
          | "eqtype" typdescs      => (Spec.Eqtype (Vector.fromList typdescs))
          | "datatype" datatypeRhsNoWithtype => (Spec.Datatype datatypeRhsNoWithtype)
          | "exception" exndescs   => (Spec.Exception (Vector.fromList exndescs))
@@ -651,22 +663,18 @@ clause  : apats (":" ty)? "=" exp  => ({pats = Vector.fromList apats,
                                           body = exp})
        ;
 
-typBind : typBind'
-          => (let
-              val typBind = Vector.fromList typBind'
-              val b =
-                 TypBind.makeRegion
-                 (TypBind.T typBind, posToReg (FULL_SPAN))
-           in
-              b
-           end)
-       ;
+typBind : typBind' ("and" typBind')*
+	=> (let
+	    val typBind = Vector.fromList(typBind' :: SR)
+	    val b = TypBind.makeRegion (TypBind.T typBind, posToReg (FULL_SPAN))
+	    in
+	      b
+	    end)
+	;
 
-typBind' : typBind''' ("and" typBind''')* => (typBind'''::SR)
-       ;
+typBind' : tyvars tycon "=" typBindRHS => (typBindRHS(tyvars, tycon));
 
-typBind''' : tyvars tycon "=" ty => ({def = ty, tycon = tycon, tyvars = tyvars})
-       ;
+typBindRHS : ty => (fn (params, tyc) => {def = ty, tycon = tyc, tyvars = params});
 
 tyvars  : tyvarseq => (tyvarseq)
         |          => (MV.new0 ())
@@ -782,7 +790,7 @@ datatypeRhsnodeNoWithtype
    | %try datBindNoWithtype  => (DatatypeRhs.DatBind datBindNoWithtype)
        ;
 
-repl : tyvars tycon EQUALOP DATATYPE longtycon
+repl : tyvars tycon EQUALOP "datatype" longtycon
        => (if (Vector.length tyvars = 0)
            then ()
         else error (posToReg (FULL_SPAN),
@@ -1243,18 +1251,26 @@ string : STRING  => (CharVector.tabulate
 idNoAsterisk : longidNoAsterisk => (ensureNonqualified longidNoAsterisk)
        ;
 
-id : idNoAsterisk  => (idNoAsterisk)
-   | "*"      => ((Symbol.asterisk, posToReg (FULL_SPAN)))
-       ;
+id	: idNoAsterisk  	=> (idNoAsterisk)
+	| reservedSymbol	=> (reservedSymbol, posToReg FULL_SPAN)
+	;
 
 idEqual : id      => (id)
         | "=" => ((Symbol.equal, posToReg (FULL_SPAN)))
-       ;
+	;
 
 longid
-   : longidNoAsterisk => (longidNoAsterisk)
-   | "*"  => (([Symbol.asterisk], posToReg (FULL_SPAN)))
-       ;
+	: longidNoAsterisk	=> (longidNoAsterisk)
+	| reservedSymbol	=> ([reservedSymbol], posToReg FULL_SPAN)
+	;
+
+reservedSymbol
+	: "*"		=> (Symbol.asterisk)
+	| ":="		=> (Symbol.assign)
+	| "&"		=> (Symbol.ampersand)
+	| "!"		=> (Symbol.bang)
+	| "/"		=> (Symbol.slash)
+	;
 
 longidNoAsterisk
    : LONGID

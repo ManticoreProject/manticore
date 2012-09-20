@@ -1,7 +1,0 @@
-Library
-
-library(../lib/sources.cm) - (structure Char)
-
-is
-
-../lib/sources.cm

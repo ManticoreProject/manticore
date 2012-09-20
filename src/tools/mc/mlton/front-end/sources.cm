@@ -16,10 +16,9 @@ is
 
 $/basis.cm
 $/ml-lpt-lib.cm
+$/ml-yacc-lib.cm
 
-basis-no-char.cm
-stubs.cm
-ml-yacc-lib-proxy.cm
+../lib/sources.cm
 ../ast/sources.cm
 ../control/sources.cm
 

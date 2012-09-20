@@ -1,0 +1,31 @@
+
+%name PML;
+
+%tokens
+      : KW__primcode	("_primcode")
+      ;
+
+%import "ml.grm";
+%import "bom.grm";
+
+%start program;
+
+decnolocal
+        : "_primcode" "(" BOMDecls ")"
+		=> (PT.PrimCodeDecl BOMDecls)
+	;
+
+typBindRHS
+	: "_prim" "(" BOMType ")"
+		=> (fn (params, name) => PT.PrimTyDecl(params, name, BOMType))
+	;
+
+valbindTop
+	: "_prim" "(" "fun" BOMLambda ")"
+		=> (fn pat => PT.PrimVDecl(pat, BPT.LambdaPrimVal BOMLambda))
+(* Q: what is this form used for? *)
+	| "_prim" "(" longid ")"
+		=> (fn pat => PT.PrimVDecl(pat, BPT.VarPrimVal longid))
+	| "_prim" "(" HLOpQId ")"
+		=> (fn pat => PT.PrimVDecl(pat, BPT.HLOpPrimVal HLOpQId))
+	;
