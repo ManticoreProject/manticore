@@ -501,16 +501,16 @@ dnl ***** Makefiles *****
   src/tools/log-dump/Makefile
   src/tools/log-work-stealing/Makefile
   src/tools/log-view/build/Makefile
-  src/tools/mc/Makefile
+  src/tools/pmlc/Makefile
 dnl ***** SML source files *****
   src/gen/log-gen/main.sml:src/gen/log-gen/main_sml.in
-  src/tools/mc/common/run-cpp.sml:src/tools/mc/common/run-cpp_sml.in
-  src/tools/mc/common/load-paths.sml:src/tools/mc/common/load-paths_sml.in
-  src/tools/mc/driver/build-executable.sml:src/tools/mc/driver/build-executable_sml.in
-  src/tools/mc/driver/version-fn.sml:src/tools/mc/driver/version-fn_sml.in
+  src/tools/pmlc/common/run-cpp.sml:src/tools/pmlc/common/run-cpp_sml.in
+  src/tools/pmlc/common/load-paths.sml:src/tools/pmlc/common/load-paths_sml.in
+  src/tools/pmlc/driver/build-executable.sml:src/tools/pmlc/driver/build-executable_sml.in
+  src/tools/pmlc/driver/version-fn.sml:src/tools/pmlc/driver/version-fn_sml.in
 dnl ***** CM files *****
-  src/tools/mc/codegen/group.cm:src/tools/mc/codegen/group_cm.in
-  src/tools/mc/codegen/wrapper.cm:src/tools/mc/codegen/wrapper_cm.in
+  src/tools/pmlc/codegen/group.cm:src/tools/pmlc/codegen/group_cm.in
+  src/tools/pmlc/codegen/wrapper.cm:src/tools/pmlc/codegen/wrapper_cm.in
 dnl ***** header files *****
   src/tools/log-common/default-log-paths.h:src/tools/log-common/default-log-paths_h.in
 )

@@ -27,7 +27,7 @@ function gen {
   rm -f $BUILD_DIR/$PROG
 }
 
-gen gen-runtime-constants src/tools/mc/driver/runtime-constants.sml
+gen gen-runtime-constants src/tools/pmlc/driver/runtime-constants.sml
 gen gen-basis-offsets src/lib/basis/include/runtime-offsets.def
 
 exit 0
