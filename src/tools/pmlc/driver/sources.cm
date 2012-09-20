@@ -21,10 +21,13 @@ is
 
   $/controls-lib.cm
 
+(** unused in MLton branch **
   ../parse-tree/sources.cm
   ../parser/sources.cm
+  ../ast/sources.cm
   ../ast-opt/sources.cm
   ../binding/sources.cm
+**)
   ../bom-opt/sources.cm
   ../bom/sources.cm
   ../cfg-opt/sources.cm
@@ -35,12 +38,15 @@ is
   ../convert/sources.cm
   ../cps-opt/sources.cm
   ../cps/sources.cm
+(** unused in MLton branch **
   ../match-comp/sources.cm
   ../mlb/sources.cm
   ../env/sources.cm
-  ../ast/sources.cm
+**)
   ../prim/sources.cm
+(** unused in MLton branch **
   ../typechecker/sources.cm
+**)
   ../mlton/sources.cm
 
   build-executable.sml		(* generated file *)
