@@ -75,6 +75,7 @@ struct struct_vproc {
 #ifdef HAVE_AIO_RETURN
     struct aiocb *logCB;	//!< AIO control buffer for log file
 #endif
+    int	nodeID;	//!< package/node ID
 			      /* GC parameters */
     Addr_t      heapBase;       //!< Base address of the vproc heap
     Addr_t	nurseryBase;	//!< Base address of current nursery area

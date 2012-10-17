@@ -47,3 +47,4 @@
     VP_OFFSET(vp, VP_LANDING_PAD, landingPad, false);
     VP_OFFSET(vp, LIMIT_PTR, limitPtr, true);
     VP_OFFSET(vp, ALLOC_POLY_VEC_N, eventId, true);
+    VP_OFFSET(vp, NODE_ID, nodeID, true);

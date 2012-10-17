@@ -200,7 +200,6 @@ void VProcInit (bool isSequential, Options_t *opts)
         }
     }
 
-
   /* create vprocs */
     for (int i = 0;  i < NumVProcs;  i++) {
 	OSThread_t pid;
@@ -265,6 +264,7 @@ void *NewVProc (void *arg)
     vproc->id = initData->id;
     vproc->hostID = pthread_self();
     vproc->location = initData->loc;
+    vproc->nodeID = LocationNode(initData->loc); 
 
     vproc->heapBase =
     vproc->oldTop = vprocHeap;
@@ -666,6 +666,11 @@ static int GetNumCPUs ()
 int GetNumVProcs ()
 {
     return NumVProcs;
+}
+
+int GetNumHWNodes ()
+{
+    return NumHWNodes;
 }
 
 /*! \brief return a list of the vprocs in the system.
