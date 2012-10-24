@@ -14,7 +14,6 @@ Library
   structure CPSTy
   structure CPSTyUtil
   structure CPSUtil
-  structure Reflow
   structure PrintCPS
 
 is
@@ -34,5 +33,4 @@ is
   cps-ty.sml
   cps-ty-util.sml
   cps-util.sml
-  reflow.sml
   print-cps.sml

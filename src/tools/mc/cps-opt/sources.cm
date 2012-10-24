@@ -37,4 +37,5 @@ is
   eta-expand.sml
   free-vars.sml
   inline.sml
+  reflow.sml
   sizes.sml
