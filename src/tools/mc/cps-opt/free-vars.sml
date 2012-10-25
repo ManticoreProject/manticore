@@ -11,6 +11,7 @@ structure FreeVars : sig
    * the arms of conditionals and switches.
    *)
     val analyze : CPS.module -> unit
+    val analyzeIgnoringJoin : CPS.module -> unit
 
   (* return the free variables of a function or continuation variable *)
     val envOfFun : CPS.var -> CPS.Var.Set.set
@@ -38,6 +39,8 @@ structure FreeVars : sig
 	    ) true s;
 	  print "}")
 (* -DEBUG*)
+
+    val checkJoin = ref true
 
     val {getFn = getFV, setFn = setFV, clrFn=clearFV,  ...} = V.newProp (fn _ => VSet.empty)
     val {getFn = getFVOfPt, setFn = setFVOfPt, clrFn = clearFVOfPt, ...} = PPt.newProp (fn _ => VSet.empty)
@@ -126,7 +129,7 @@ structure FreeVars : sig
 		 * path from where k is defined to here.  Otherwise, we add
 		 * k in as a free variable.
 		 *)
-		  if ClassifyConts.isJoinCont k
+		  if !checkJoin andalso ClassifyConts.isJoinCont k
 		    then VSet.union(fv, getFV k)
 		    else addVar(fv, k)
 		end
@@ -148,6 +151,24 @@ structure FreeVars : sig
 	  addVars (addVars(VSet.empty, params), rets))
 
     fun analyze (CPS.MODULE{name, externs, body, ...}) = let
+          val _ = checkJoin := true
+	  val fv = analFB body
+	  in
+	    if VSet.isEmpty fv
+	      then ()
+	      else (
+		print(concat["FV(", Atom.toString name, ") = "]);
+		prSet fv; print "\n";
+		raise Fail "non-closed module")
+	  end
+
+    val analyze = BasicControl.mkTracePassSimple {
+	    passName = "free-vars",
+	    pass = analyze
+	  }
+
+    fun analyzeIgnoringJoin (CPS.MODULE{name, externs, body, ...}) = let
+          val _ = checkJoin := true
 	  val fv = analFB body
 	  in
 	    if VSet.isEmpty fv

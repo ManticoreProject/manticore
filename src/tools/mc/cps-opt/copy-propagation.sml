@@ -42,6 +42,7 @@ structure CopyPropagation : sig
     structure CFA = CFACPS
     structure ST = Stats
     structure Census = CPSCensus
+    structure PSet = PPt.Set
 
   (***** controls ******)
     val enableCopyPropagation = ref true
@@ -201,9 +202,10 @@ structure CopyPropagation : sig
         val fvs = FreeVars.envOfFun f
         fun unsafeFV fv = let
             val funLoc = Reflow.bindingLocation f
-            val fvLoc = Reflow.bindingLocation fv
-            val result = (Reflow.pathExists (funLoc, fvLoc)) andalso
-                         (Reflow.pathExists (fvLoc, pptInlineLocation))
+            val fvLocs = Reflow.rebindingLocations fv
+            val result = PSet.exists (fn (fvLoc) =>
+					 (Reflow.pathExists (funLoc, fvLoc)) andalso
+					 (Reflow.pathExists (fvLoc, pptInlineLocation))) fvLocs
         in
             if !propagationDebug
             then ((if result

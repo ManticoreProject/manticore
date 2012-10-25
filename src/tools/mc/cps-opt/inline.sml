@@ -28,6 +28,7 @@ structure Inline : sig
     structure ST = Stats
     structure CFA = CFACPS
     structure Census = CPSCensus
+    structure PSet = ProgPt.Set
 
   (* controls *)
     val inlineFlg = ref true
@@ -206,9 +207,10 @@ structure Inline : sig
         val fvs = FreeVars.envOfFun f
         fun unsafeFV fv = let
             val funLoc = Reflow.bindingLocation f
-            val fvLoc = Reflow.bindingLocation fv
-            val result = (Reflow.pathExists (funLoc, fvLoc)) andalso
-                         (Reflow.pathExists (fvLoc, pptInlineLocation))
+            val fvLocs = Reflow.rebindingLocations fv
+            val result = PSet.exists (fn (fvLoc) =>
+					 (Reflow.pathExists (funLoc, fvLoc)) andalso
+					 (Reflow.pathExists (fvLoc, pptInlineLocation))) fvLocs
         in
             if !inlineDebug
             then ((if result

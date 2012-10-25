@@ -11,6 +11,7 @@ structure Reflow : sig
     val clearInfo : CPS.module -> unit
 
     val bindingLocation : CPS.var -> ProgPt.ppt
+    val rebindingLocations : CPS.var -> ProgPt.Set.set
 
     val pathExists : ProgPt.ppt * ProgPt.ppt -> bool
     val pointAnalyzed : ProgPt.ppt -> bool
@@ -21,6 +22,20 @@ structure Reflow : sig
 
 
     val debugFlg = ref true
+
+    val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
+              ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
+              envName = NONE
+            }) [
+              Controls.control {
+                  ctl = debugFlg,
+                  name = "reflow-debug",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "debug reflow"
+                }
+             ]
+
     structure CV = CPS.Var
     structure VSet = CV.Set
     structure ST = Stats
@@ -46,9 +61,26 @@ structure Reflow : sig
      *)
     val representative : ProgPt.ppt PMap.map ref = ref PMap.empty
 
-    (* property mapping variables to binding locations *)
-    val {getFn=bindingLocation : CV.var -> ProgPt.ppt, clrFn=clrBindingLocation, setFn=setBindingLocation, ...} =
+    (* property mapping variables to rebinding locations, which includes both the original location and all
+     * points where closures they may have been captured in are invoked *)
+    val {getFn=rebindingLocations : CV.var -> PSet.set, clrFn=clrRebindingLocations, setFn=setRebindingLocationsInternal, peekFn=peekRebindingLocations, ...} =
+          CV.newProp (fn v => raise Fail (concat[CV.toString v, ": variable missing rebinding locations"]))
+
+    fun setRebindingLocation (v, loc) =
+	case peekRebindingLocations v
+	 of SOME s => setRebindingLocationsInternal (v, PSet.add (s, loc))
+	  | NONE => setRebindingLocationsInternal (v, PSet.singleton (loc))
+
+    (* property mapping variables to unique binding locations *)
+    val {getFn=bindingLocation : CV.var -> ProgPt.ppt, clrFn=clrBindingLocationInternal, setFn=setBindingLocationInternal, ...} =
           CV.newProp (fn v => raise Fail (concat[CV.toString v, ": variable missing binding location"]))
+
+    fun setBindingLocation (v, ppt) = (
+	setRebindingLocation (v, ppt);
+	setBindingLocationInternal (v, ppt))
+    fun clrBindingLocation v = (
+	clrRebindingLocations v;
+	clrBindingLocationInternal v)
 
     (* property mapping function variables to their body location *)
     val {getFn=bodyLocation : CV.var -> ProgPt.ppt, clrFn=clrBodyLocation, setFn=setBodyLocation, ...} =
@@ -101,6 +133,27 @@ structure Reflow : sig
     fun setTop (m, ppt) = PMap.insert (m, ppt, TOP)
 
     fun addNeighbors (CPS.MODULE{body as CPS.FB{f,...}, ...}) = let
+	(* If this target is an indirect call through a closure, then hook all of the free variables up
+	 * to a fabricated program point in the graph that sits between the invocation point and the
+	 * target function.
+	 * We need to add this pseudo point both to the list of points and as a
+	 * potential binding location for the variable *)
+	fun foldChainVars (map, sourcePPT, origVar, targetFuns, fvsOfTargetFuns, ptlist) = (
+	    case (targetFuns, fvsOfTargetFuns)
+	     of ([], _) => (map, ptlist)
+	      | (f::targetFuns', fvs::fvsOfTargetFuns') => (
+		if CV.same (f, origVar) orelse (VSet.isEmpty fvs)
+		then foldChainVars (addInfo (map, sourcePPT, bodyLocation f), sourcePPT,
+				    origVar, targetFuns', fvsOfTargetFuns', ptlist)
+		else (let
+			  val fvPPT = ProgPt.new()
+			  val map' = VSet.foldr (fn (fv, m) => (setRebindingLocation (fv, fvPPT);
+								  addInfo (m, sourcePPT, fvPPT))) map fvs
+			  val map'' = addInfo (map', fvPPT, bodyLocation f)
+		      in
+			  (map'', fvPPT::ptlist)
+		      end))
+	      | _ => raise Fail "Called with unbalanced TARGET and TARGET_FVS lists")
           fun doLambda (ppt, CPS.FB{f, params, rets, body}, (m, ptlist)) =
               doExp (body, (m, ptlist))
           and doExp (CPS.Exp(ppt, e), (m, ptlist)) = (case e 
@@ -147,9 +200,9 @@ structure Reflow : sig
                      of CFACPS.TOP => (print (concat["Apply TOP to var: ", CV.toString f, "\n"]); (setTop (m, ppt), ptlist))
                       | CFACPS.LAMBDAS ls => let
                             val ll = VSet.listItems ls
-                            val pl = List.map bodyLocation ll
+			    val freeVars = List.map FreeVars.envOfFun ll
                         in
-                            (List.foldr (fn (fppt, m) => addInfo (m, ppt, fppt)) m pl, ptlist)
+			    foldChainVars (m, ppt, f, ll, freeVars, ptlist)
                         end
                       | CFACPS.BOT => (m, ptlist)
                       | CFACPS.TUPLE _ => raise Fail (concat[CV.toString f, " is in an application position but is a tuple according to CFA."]))
@@ -158,9 +211,9 @@ structure Reflow : sig
                      of CFACPS.TOP => (print (concat["Throw TOP to var: ", CV.toString k, "\n"]); (setTop (m, ppt), ptlist))
                       | CFACPS.LAMBDAS ls => let
                             val ll = VSet.listItems ls
-                            val pl = List.map bodyLocation ll
+			    val freeVars = List.map FreeVars.envOfFun ll
                         in
-                            (List.foldr (fn (fppt, m) => addInfo (m, ppt, fppt)) m pl, ptlist)
+			    foldChainVars (m, ppt, k, ll, freeVars, ptlist)
                         end
                       | CFACPS.BOT => (m, ptlist)
                       | CFACPS.TUPLE _ => raise Fail (concat[CV.toString k, " is in an application position but is a tuple according to CFA."]))
@@ -324,6 +377,8 @@ structure Reflow : sig
 
 
     fun analyze (module as CPS.MODULE{body, ...}) = let
+	val _ = FreeVars.clear module
+	val _ = FreeVars.analyzeIgnoringJoin module
         val a = Time.now()
         val _ = setLocations module
         val b = Time.now()
