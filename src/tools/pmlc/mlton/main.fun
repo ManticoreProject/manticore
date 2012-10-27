@@ -20,15 +20,7 @@ fun String_tokens (s, pred) = String.tokens pred s
 fun String_concatWith (l, s) = String.concatWith s l
 fun String_contains (cs, c) = Char.contains cs c
 fun String_toLower s = CharVector.map Char.toLower s
-fun String_hasSuffix (string, {suffix}) = let
-      val n = String.size string
-      val n' = String.size suffix
-      fun loop (i: int, j: int): bool =
-         i >= n orelse ((String.sub (string, i) = String.sub (suffix, j))
-                        andalso loop (i + 1, j + 1))
-      in
-	n' <= n andalso loop (n - n', 0)
-      end
+fun String_hasSuffix (string, {suffix}) = String.isSuffix suffix string
 fun String_translate (s, f) = String.translate f s
 
 open S
