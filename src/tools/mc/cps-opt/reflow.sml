@@ -136,8 +136,7 @@ structure Reflow : sig
 	(* If this target is an indirect call through a closure, then hook all of the free variables up
 	 * to a fabricated program point in the graph that sits between the invocation point and the
 	 * target function.
-	 * We need to add this pseudo point both to the list of points and as a
-	 * potential binding location for the variable *)
+	 *)
 	fun foldChainVars (map, sourcePPT, origVar, targetFuns, fvsOfTargetFuns, ptlist) = (
 	    case (targetFuns, fvsOfTargetFuns)
 	     of ([], _) => (map, ptlist)
@@ -151,7 +150,7 @@ structure Reflow : sig
 								  addInfo (m, sourcePPT, fvPPT))) map fvs
 			  val map'' = addInfo (map', fvPPT, bodyLocation f)
 		      in
-			  (map'', fvPPT::ptlist)
+			  (map'', ptlist)
 		      end))
 	      | _ => raise Fail "Called with unbalanced TARGET and TARGET_FVS lists")
           fun doLambda (ppt, CPS.FB{f, params, rets, body}, (m, ptlist)) =
