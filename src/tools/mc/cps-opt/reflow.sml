@@ -253,20 +253,18 @@ structure Reflow : sig
 
     fun computeReachability (map, topList) = let
         fun invert map = let
-            fun addEntries (ppt, reaches, (m, inAll, leaves)) = let
+            fun addEntries (ppt, s, (m, inAll, leaves)) = let
                 fun addInfo (m, p1, p2) =
                     case PMap.find (m, p1)
                      of NONE => PMap.insert (m, p1, PSet.add (PSet.empty, p2))
                       | SOME s => (
                           PMap.insert (m, p1, PSet.add (s, p2)))
             in
-                case reaches
-                 of TOP => (m, ppt::inAll, leaves)
-                  | REACHES s => (case PSet.isEmpty s
-                                   of true => (m, inAll, ppt::leaves)
-                                    | false => (PSet.foldl (fn (ppt', m) =>
-                                                               addInfo (m, ppt', ppt)) m s,
-                                                inAll, leaves))
+		case PSet.isEmpty s
+                 of true => (m, inAll, ppt::leaves)
+                  | false => (PSet.foldl (fn (ppt', m) =>
+                                             addInfo (m, ppt', ppt)) m s,
+                              inAll, leaves)
             end
         in
             PMap.foldli addEntries (PMap.empty, [], []) map
@@ -318,9 +316,7 @@ structure Reflow : sig
                                        val rmap = merge (rmap, parent, next)
                                        val turnGrey = (case PMap.find (map, parent)
                                                         of NONE => true
-                                                         | SOME reaches => (case reaches
-                                                                             of TOP => PSet.isEmpty grey' (* Works because there is only one TOP else cycle. *)
-                                                                              | REACHES s => not(PSet.exists (fn x => not(PSet.member (black', x))) s)))
+                                                         | SOME s => (not(PSet.exists (fn x => not(PSet.member (black', x))) s)))
                                        val grey = if turnGrey then PSet.add (grey, parent) else grey
                                    in
                                        (rmap, grey)
@@ -395,17 +391,21 @@ structure Reflow : sig
 	 * Straightforward for simple. For RECURSIVE, need to add all the adjacent points
 	 * from each of the original points, but filtering out those that are not
 	 * reprentatives.
+	 *
 	 *)
+	val ptset = PSet.fromList ptlist
 	fun reachesFromPoint pt =
 	    case PMap.find (p, pt)
-	     of SOME reaches => reaches
-	      | NONE => REACHES (PSet.empty)
-	fun filterNonReps (TOP) = TOP
-	  | filterNonReps (REACHES s) = REACHES (PSet.filter (fn pt => not(Option.isSome (PMap.find (newreps, pt)))) s)
+	     of SOME reaches => (case reaches
+				  of TOP => ptset
+				   | REACHES s => s)
+	      | NONE => PSet.empty
+	fun filterNonReps s =
+	    PSet.filter (fn pt => not(Option.isSome (PMap.find (newreps, pt)))) s
 	fun findAdj (SCC.SIMPLE pt, map) = PMap.insert (map, pt, filterNonReps (reachesFromPoint pt))
 	  | findAdj (SCC.RECURSIVE pts, map) = (
 	    let
-		val adjacents = List.foldl (fn (pt, reaches) => #2(union(reaches, reachesFromPoint pt))) (REACHES(PSet.empty)) pts
+		val adjacents = List.foldl (fn (pt, reaches) => PSet.union(reaches, reachesFromPoint pt)) PSet.empty pts
 	    in
 		PMap.insert (map, hd(pts), filterNonReps adjacents)
 	    end)
