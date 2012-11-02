@@ -83,11 +83,6 @@ structure CopyPropagation : sig
       val {setFn, getFn, ...} = CV.newProp (fn f => (f, 0))
     in
     fun setParent (f : CV.var, (p : CV.var, l : int)) = (
-        if !propagationDebug
-        then print (concat ["Parent function of ", CV.toString f,
-                            " is ", CV.toString p, " at level ",
-                            Int.toString l, "\n"])
-        else ();
         setFn (f, (p, l)))
     fun getParent f = getFn f
     end
@@ -194,9 +189,14 @@ structure CopyPropagation : sig
         fun unsafeFV fv = let
             val funLoc = Reflow.bindingLocation f
             val fvLocs = Reflow.rebindingLocations fv
-            val result = PSet.exists (fn (fvLoc) =>
-					 (Reflow.pathExists (funLoc, fvLoc)) andalso
-					 (Reflow.pathExists (fvLoc, pptInlineLocation))) fvLocs
+	    val _ = print (concat["Number of rebinding locations: ", Int.toString (PSet.numItems fvLocs), "\n"])
+            val result = PSet.exists (fn (fvLoc) => (
+					 print (concat["fun to fv: ",
+						       (if Reflow.pathExists (funLoc, fvLoc) then "true; " else "false; "),
+						       " fvloc to inline: ",
+						       (if Reflow.pathExists (fvLoc, pptInlineLocation) then "true\n" else "false\n")]);
+					 ((Reflow.pathExists (funLoc, fvLoc)) andalso
+					 (Reflow.pathExists (fvLoc, pptInlineLocation))))) fvLocs
         in
             if !propagationDebug
             then ((if result
@@ -214,7 +214,9 @@ structure CopyPropagation : sig
 	      then ST.tick cntSafe
 	      else (ST.tick cntSafe ; ST.tick cntSafeReflowed))
         else ST.tick cntUnsafe;
-        result
+	if result andalso ST.count cntSafe = 1
+	then false
+	else result
     end
                                
     fun copyPropagate (C.MODULE{name,externs,
@@ -370,7 +372,7 @@ structure CopyPropagation : sig
 
     fun transform m =
         if !enableCopyPropagation
-	then (FreeVars.analyze m;
+	then (FreeVars.analyzeIgnoringJoin m;
               if !enableCopyPropagationReflow
               then ignore (Reflow.analyze m)
               else ();
