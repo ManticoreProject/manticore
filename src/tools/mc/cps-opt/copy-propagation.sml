@@ -37,7 +37,7 @@ structure CopyPropagation : sig
 
   (***** controls ******)
     val enableCopyPropagation = ref true
-    val enableCopyPropagationReflow = ref false
+    val enableCopyPropagationReflow = ref true
     val propagationDebug = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {

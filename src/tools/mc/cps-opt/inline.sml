@@ -33,7 +33,7 @@ structure Inline : sig
   (* controls *)
     val inlineFlg = ref true
     val inlineDebug = ref false
-    val inlineHOFlg = ref false
+    val inlineHOFlg = ref true
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
