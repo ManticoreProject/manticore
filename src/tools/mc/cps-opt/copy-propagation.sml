@@ -189,12 +189,7 @@ structure CopyPropagation : sig
         fun unsafeFV fv = let
             val funLoc = Reflow.bindingLocation f
             val fvLocs = Reflow.rebindingLocations fv
-	    val _ = print (concat["Number of rebinding locations: ", Int.toString (PSet.numItems fvLocs), "\n"])
             val result = PSet.exists (fn (fvLoc) => (
-					 print (concat["fun to fv: ",
-						       (if Reflow.pathExists (funLoc, fvLoc) then "true; " else "false; "),
-						       " fvloc to inline: ",
-						       (if Reflow.pathExists (fvLoc, pptInlineLocation) then "true\n" else "false\n")]);
 					 ((Reflow.pathExists (funLoc, fvLoc)) andalso
 					 (Reflow.pathExists (fvLoc, pptInlineLocation))))) fvLocs
         in

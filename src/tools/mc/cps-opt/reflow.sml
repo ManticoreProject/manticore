@@ -21,7 +21,7 @@ structure Reflow : sig
   end = struct
 
 
-    val debugFlg = ref true
+    val debugFlg = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,

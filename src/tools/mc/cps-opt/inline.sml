@@ -219,7 +219,7 @@ structure Inline : sig
                   result)
             else result
         end
-        val _ = if !inlineHOFlg andalso not(VSet.isSubset(fvs, env))
+        val _ = if !inlineHOFlg andalso !inlineDebug andalso not(VSet.isSubset(fvs, env))
                 then (print (concat [CV.toString f, " could not be inlined due to missing FVs at throw/apply to:",
                                      CV.toString oldVar,"\n"]);
                       VSet.app (fn x => print (concat[" -- ", CV.toString x, "\n"]))
