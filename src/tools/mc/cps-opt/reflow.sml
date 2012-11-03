@@ -233,8 +233,9 @@ structure Reflow : sig
 
     (*
      * PROBLEM:
-     * Given an adjacency-list representation (vertex -> vertex list of neighbors),
+     * Given an adjacency-list representation (vertex -> vertex set of neighbors),
      * compute the transitive closure efficiently to get the set of accessible nodes.
+     * The input is guaranteed acyclic (we have done SCC decomposition on the graph).
      *
      * First, invert the adjacency-list representation to get a parent-list represenation.
      * While doing that, also pick out the "leaves" (i.e., those vertices with no outgoing
@@ -251,42 +252,30 @@ structure Reflow : sig
      *   if all adjacents of p are Black, then mark p Grey
      *)
 
-    fun computeReachability (map, topList) = let
+    fun computeReachability (map) = let
         fun invert map = let
-            fun addEntries (ppt, s, (m, inAll, leaves)) = let
+            fun addEntries (ppt, s, (m, leaves)) = let
                 fun addInfo (m, p1, p2) =
                     case PMap.find (m, p1)
-                     of NONE => PMap.insert (m, p1, PSet.add (PSet.empty, p2))
+                     of NONE => PMap.insert (m, p1, PSet.singleton p2)
                       | SOME s => (
                           PMap.insert (m, p1, PSet.add (s, p2)))
             in
 		case PSet.isEmpty s
-                 of true => (m, inAll, ppt::leaves)
+                 of true => (m, ppt::leaves)
                   | false => (PSet.foldl (fn (ppt', m) =>
                                              addInfo (m, ppt', ppt)) m s,
-                              inAll, leaves)
+                              leaves)
             end
         in
-            PMap.foldli addEntries (PMap.empty, [], []) map
+            PMap.foldli addEntries (PMap.empty, []) map
         end
             
-        val (parentMap, inAll, leaves) = invert map
-        val inAll = PSet.fromList inAll
-
-        (* Add in the entries that are the parents of _all_ vertices by
-	 * walking through all of the entries in the adjacency map and
-	 * adding the inAll elements to their set of parents.
-	 *)
-        val parentMap = PMap.foldli (fn (ppt, _, m) => (
-				       case PMap.find (m, ppt)
-					of NONE => PMap.insert (m, ppt, inAll)
-					 | SOME s => PMap.insert (m, ppt, PSet.union (s, inAll))))
-                                    parentMap
-                                    map
+        val (parentMap, leaves) = invert map
 
 	val _ = if !debugFlg
 		then (print (concat["Number of leaves: ", Int.toString (List.length leaves), "\nNumber of parents:",
-		     Int.toString (PMap.numItems parentMap), "\nNumber inall: ", Int.toString (PSet.numItems inAll), "\n"]))
+		     Int.toString (PMap.numItems parentMap), "\n"]))
 		else ()
 
         val initialGrey = PSet.fromList leaves
@@ -330,7 +319,7 @@ structure Reflow : sig
 	val result = compute (PMap.empty, PSet.empty, initialGrey)
     in
 	if !debugFlg
-	then (print (concat["Number of keys in reachability graph (should match SCC components & compressed ): ", Int.toString(PMap.numItems(result)), "\n"]))
+	then (print (concat["Number of keys in reachability graph (should equal the number of parents): ", Int.toString(PMap.numItems(result)), "\n"]))
 	else ();
 	result
     end
@@ -371,18 +360,6 @@ structure Reflow : sig
 		if ProgPt.compare(pt, rep) = EQUAL
 		then true
 		else false
-
-
-	(* BUGBUG: PMap.numItems(compressed) from this code is always zero? *)
-(*	fun fixRH adjs = (* this assumes that ORD_SET just ignores duplicates, since it's a set *)
-	    case adjs
-	     of TOP => TOP
-	      | REACHES ns => let
-		    fun mapToRep pt = Option.valOf(PMap.find(!representative, pt))
-		in REACHES ((PSet.map mapToRep) ns)
-		end
-	val compressed = PMap.map fixRH (PMap.filteri fixLH p)
- *)
 
 	(*
 	 * Computing the compressed graph:
@@ -437,7 +414,7 @@ structure Reflow : sig
                 else ()
         val SCCCompressed = compressSCC (neighbors, neighborlist)
         val d = Time.now()
-        val reachability = computeReachability (SCCCompressed, neighborlist)
+        val reachability = computeReachability SCCCompressed
         val e = Time.now()
         val _ = if !debugFlg
                 then print (concat["Set locations: ", Time.toString (Time.-(b,a)), "\n",
@@ -450,10 +427,16 @@ structure Reflow : sig
     end
 
 
-    fun pathExists (p1, p2) = (
-        case PMap.find (!graph, Option.valOf(PMap.find(!representative, p1)))
-         of NONE => (print (concat["How are we missing: ", ProgPt.toString p1, "\n"]); false)
-          | SOME ps => (PSet.member (ps, Option.valOf(PMap.find(!representative, p2)))))
+    fun pathExists (p1, p2) = let
+	val rep1 = Option.valOf(PMap.find(!representative, p1))
+	val rep2 = Option.valOf(PMap.find(!representative, p2))
+    in
+	if (ProgPt.same (rep1, rep2))
+	then true
+	else (case PMap.find (!graph, rep1)
+	       of NONE => false
+		| SOME ps => (PSet.member (ps, rep2)))
+    end
 
     fun pointAnalyzed (p) =
         case PMap.find (!representative, p)

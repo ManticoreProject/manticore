@@ -214,9 +214,7 @@ structure CopyPropagation : sig
 	      then ST.tick cntSafe
 	      else (ST.tick cntSafe ; ST.tick cntSafeReflowed))
         else ST.tick cntUnsafe;
-	if result andalso ST.count cntSafe = 1
-	then false
-	else result
+	result
     end
                                
     fun copyPropagate (C.MODULE{name,externs,
