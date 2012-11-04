@@ -336,30 +336,27 @@ structure Reflow : sig
 	                    of TOP => ptlist
 	                     | REACHES l => PSet.listItems l)
               | NONE => [] (* points not appearing have no out edges *)
+        val a = Time.now()
 	val components = SCC.topOrder'{roots = map #1 (PMap.listItemsi p), follow = follow}
+        val b = Time.now()
         val _ = if !debugFlg
                 then print (concat["Number of SCC components: ",
                                    Int.toString (List.length components),
                                    "\n"])
                 else ()
-	fun updateReps (SCC.SIMPLE nd) = PMap.insert(PMap.empty, nd, nd) 
-	  | updateReps (SCC.RECURSIVE ndList) =
-	    let
-		val rep = hd(ndList)
+
+	(* The representatives are:
+	 * for a SCC.SIMPLE component, itself
+	 * for an SCC.RECURSIVE component, the first entry
+	 *)
+	fun addReps (SCC.SIMPLE nd, map) = PMap.insert (map, nd, nd)
+	  | addReps (SCC.RECURSIVE ndList, map) = let
+		val rep = hd (ndList)
 	    in
-		foldl (fn (n, mp) => PMap.insert(mp, n, rep)) PMap.empty ndList
+		foldl (fn (pt, map') => PMap.insert (map', pt, rep)) map ndList
 	    end
-	fun foldnewreps(c, mp) = PMap.unionWith (fn(a, b) => a) ((updateReps c), mp)
-	val newreps = foldl foldnewreps PMap.empty components
-	fun fixLH (pt, _) =
-	    case PMap.find(!representative, pt)
-	     of NONE => if !debugFlg
-			then (print ("Oops\n"); false)
-			else false
-	      | SOME rep =>
-		if ProgPt.compare(pt, rep) = EQUAL
-		then true
-		else false
+	val newreps = foldl addReps PMap.empty components
+        val c = Time.now()
 
 	(*
 	 * Computing the compressed graph:
@@ -387,6 +384,13 @@ structure Reflow : sig
 		PMap.insert (map, hd(pts), filterNonReps adjacents)
 	    end)
 	val compressed = List.foldl findAdj PMap.empty components
+        val d = Time.now()
+		
+        val _ = if !debugFlg
+                then print (concat["Compute SCC.topOrder': ", Time.toString (Time.-(b,a)), "\n",
+                                   "Creating representative map: ", Time.toString (Time.-(c,b)), "\n",
+                                   "Make compressed graph: ", Time.toString (Time.-(d,c)), "\n"])
+                else ()
 
     in
 	(representative := newreps;
