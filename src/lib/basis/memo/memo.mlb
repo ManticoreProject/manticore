@@ -3,4 +3,5 @@
     memo-table.pml
     vproc-utils.pml
     partitioned-memo-table.pml
+    distributed-memo-table.pml
   end
