@@ -9,7 +9,7 @@ structure DistributedMemoTable =
 
   type 'a table = int * int * 'a option Array.array option Array.array
 
-  fun mkTable max =
+  fun mkTable max = 
       (max, (max div VProcUtils.numNodes()) + 1, 
        Array.array (VProcUtils.numNodes (), NONE))
 
@@ -18,22 +18,22 @@ structure DistributedMemoTable =
       if (key >= max)
       then raise Fail "Index out of range"
       else ();
-      case Array.sub (arr, (*key mod*) (VProcUtils.node()))
+      case Array.sub (arr, key div leafSize)
        of NONE => (let
-                      val newarr = Array.array (leafSize , NONE)
-                      val _ = Array.update (newarr, key, SOME item)
+                      val newarr = Array.array (leafSize, NONE)
+                      val _ = Array.update (newarr, key mod leafSize, SOME item)
                   in
-                      Array.update (arr, VProcUtils.node (), SOME newarr)
+                      Array.update (arr, key div leafSize, SOME newarr)
                   end)
         | SOME internal => (
-            Array.update (internal, key, SOME item)))
+            Array.update (internal, key mod leafSize, SOME item)))
 
-  fun find ((max, _, arr), key) = (
+  fun find ((max, leafSize, arr), key) = (
       if (key >= max)
       then raise Fail "Index out of range"
       else ();
-      (case Array.sub (arr, (*key mod*) (VProcUtils.node()))
+      case Array.sub (arr, key div leafSize)
         of NONE => NONE
-         | SOME internal => Array.sub (internal, (key div VProcUtils.numNodes()))))
+         | SOME internal => (Array.sub (internal, key mod leafSize)))
 
   end
