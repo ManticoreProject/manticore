@@ -400,6 +400,7 @@ Value_t AllocBigPolyArray (VProc_t *vp, int nElems, Value_t init)
   if ((nElems+1) * WORD_SZB < HEAP_CHUNK_SZB)
     return GlobalAllocPolyArray (vp, nElems, init);
   else {
+      fprintf(stderr, "AllocBigPolyArray: array too large. %d is bigger than %d.\n", (nElems+1)*WORD_SZB, HEAP_CHUNK_SZB);
     // TODO
     assert(0);
     return 0;

@@ -20,7 +20,12 @@ _primcode (
 
 type 'a array = 'a U.array
 
-val maxLen = 16777215
+
+(*
+ * Max length is the size of a heap page, minus a bit.
+ * So (1024*1024*4)/8 - SLOP.
+ *)
+val maxLen = 500000
 
 val length : 'a array -> int = _prim (@length)
 
@@ -37,7 +42,7 @@ fun sub (a, i) =
 
 fun tabulate (n, f) = 
   if n <= 0 orelse n > maxLen then
-    raise Fail "Size"
+    Debug.failwith "Array.tabulate: array too large"
   else let
     val a = U.create (n, f 0)
     fun lp i =
