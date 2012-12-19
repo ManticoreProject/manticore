@@ -11,52 +11,46 @@ structure PartitionedFixedMemoTable =
 
   datatype 'a entry = ENTRY of long * int * 'a
 
-  val max = 256*1024
-  val nEntries = 5
+  val max = 1024
+  val nEntries = 1
 
-  fun mkTable () = 
-      ((max div VProcUtils.numNodes()) + 1, 
-       Array.array (VProcUtils.numNodes (), NONE))
+  fun mkTable () =
+      (VProcUtils.numNodes (),
+       (Array.array (VProcUtils.numNodes (), NONE)))
 
   (* TODO: will probably need to improve Time.now to not make a C call... *)
-  fun insert ((leafSize, arr), key, item) = (
-      if (key >= max)
-      then raise Fail "Index out of range"
-      else ();
+  fun insert ((buckets, arr), key, item) = (
       let
           val age = Time.now()
           val new = ENTRY (age, key, item)
-          val subarray = (case Array.sub (arr, key div leafSize)
+          val subarray = (case Array.sub (arr, key mod buckets)
                            of NONE => (let
-                                          val newarr = Array.array (leafSize, NONE)
-                                          val _ = Array.update (arr, key div leafSize, SOME newarr)
+                                          val newarr = Array.array (max * nEntries, NONE)
+                                          val _ = Array.update (arr, key mod buckets, SOME newarr)
                                       in
                                           newarr
                                       end)
                             | SOME arr => arr)
-          val startIndex = (key mod leafSize) * nEntries
-          fun insertEntry (i, oldestTime, oldestIndex) = (
+          val startIndex = (key mod max) * nEntries
+          fun insertEntry (i, oldestTime, oldestOffset) = (
               if i = nEntries
-              then Array.update (subarray, oldestIndex, SOME new)
+              then Array.update (subarray, startIndex + oldestOffset, SOME new)
               else (case Array.sub (subarray, startIndex + i)
                      of NONE => Array.update (subarray, startIndex + i, SOME new)
                       | SOME (ENTRY (t, _, _)) =>
                         if t < oldestTime
                         then insertEntry (i+1, t, i)
-                        else insertEntry (i+1, oldestTime, oldestIndex)))
+                        else insertEntry (i+1, oldestTime, oldestOffset)))
       in
           insertEntry (0, Int.toLong (Option.valOf Int.maxInt), 0)
       end)
 
-  fun find ((leafSize, arr), key) = (
-      if (key >= max)
-      then raise Fail "Index out of range"
-      else ();
-      case Array.sub (arr, key div leafSize)
+  fun find ((buckets, arr), key) = (
+      case Array.sub (arr, key mod buckets)
         of NONE => NONE
          | SOME internal => (
              let
-                 val startIndex = (key mod leafSize) * nEntries
+                 val startIndex = (key mod max) * nEntries
                  fun findEntry (i) = (
                      if (i = nEntries)
                      then NONE 
