@@ -39,10 +39,15 @@ structure Int =
 	return (alloc(res))
       ;
 
+      define inline @to-long (n : ml_int / exh : exh) : ml_long =
+	  return(alloc(I32ToI64(#0(n))))
+	;
     )
 
     val toString : int -> string = _prim(@to-string)
     val fromString : string -> int Option.option = _prim(@from-string)
+
+    val toLong : int -> long = _prim(@to-long)
 
 (* FIXME: why is this function here? It is not part of the INT API *)
     val ceilingLg : int -> int = _prim(@ceiling-lg)
