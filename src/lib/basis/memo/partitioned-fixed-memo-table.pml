@@ -11,8 +11,8 @@ structure PartitionedFixedMemoTable =
 
   datatype 'a entry = ENTRY of long * int * 'a
 
-  val max = 1024
-  val nEntries = 1
+  val max = 1024*32
+  val nEntries = 10
 
   fun mkTable () =
       (VProcUtils.numNodes (),
@@ -26,17 +26,18 @@ structure PartitionedFixedMemoTable =
           val subarray = (case Array.sub (arr, key mod buckets)
                            of NONE => (let
                                           val newarr = Array.array (max * nEntries, NONE)
+                                          val _ = print (String.concat["Array size: ", Int.toString (max *nEntries), "\n"])
                                           val _ = Array.update (arr, key mod buckets, SOME newarr)
                                       in
                                           newarr
                                       end)
                             | SOME arr => arr)
-          val startIndex = (key mod max) * nEntries
+          val startIndex = ((key div buckets) mod max) * nEntries
           fun insertEntry (i, oldestTime, oldestOffset) = (
               if i = nEntries
-              then Array.update (subarray, startIndex + oldestOffset, SOME new)
+              then (Array.update (subarray, startIndex + oldestOffset, SOME new))
               else (case Array.sub (subarray, startIndex + i)
-                     of NONE => Array.update (subarray, startIndex + i, SOME new)
+                     of NONE => (Array.update (subarray, startIndex + i, SOME new))
                       | SOME (ENTRY (t, _, _)) =>
                         if t < oldestTime
                         then insertEntry (i+1, t, i)
@@ -50,7 +51,7 @@ structure PartitionedFixedMemoTable =
         of NONE => NONE
          | SOME internal => (
              let
-                 val startIndex = (key mod max) * nEntries
+                 val startIndex = ((key div buckets) mod max) * nEntries
                  fun findEntry (i) = (
                      if (i = nEntries)
                      then NONE 
