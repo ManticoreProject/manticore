@@ -7,26 +7,28 @@
 structure PartitionedFixedMemoTable =
   struct
 
-  type 'a table = int * 'a option Array.array option Array.array
+  (* (Number of nodes, elements per node, buckets per element, array of arrays) *)
+  type 'a table = int * int * int * 'a option Array.array option Array.array
 
   datatype 'a entry = ENTRY of long * int * 'a
 
-  val max = 1024*32
-  val nEntries = 10
+(*  val max = 1024*32
+  val nEntries = 10 *)
 
-  fun mkTable () =
-      (VProcUtils.numNodes (),
+  fun mkTable (max, nEntries) =
+      (VProcUtils.numNodes (), max, nEntries,
        (Array.array (VProcUtils.numNodes (), NONE)))
 
   (* TODO: will probably need to improve Time.now to not make a C call... *)
-  fun insert ((buckets, arr), key, item) = (
+  fun insert ((buckets, max, nEntries, arr), key, item) = (
       let
           val age = Time.now()
           val new = ENTRY (age, key, item)
           val subarray = (case Array.sub (arr, key mod buckets)
                            of NONE => (let
                                           val newarr = Array.array (max * nEntries, NONE)
-                                          val _ = print (String.concat["Array size: ", Int.toString (max *nEntries), "\n"])
+(*                                          val _ = print (String.concat["Array size: ", Int.toString (max *nEntries), ", for node:", Int.toString (key mod buckets),
+								     " with bucket-count: ", Int.toString buckets, "\n"]) *)
                                           val _ = Array.update (arr, key mod buckets, SOME newarr)
                                       in
                                           newarr
@@ -46,7 +48,7 @@ structure PartitionedFixedMemoTable =
           insertEntry (0, Int.toLong (Option.valOf Int.maxInt), 0)
       end)
 
-  fun find ((buckets, arr), key) = (
+  fun find ((buckets, max, nEntries, arr), key) = (
       case Array.sub (arr, key mod buckets)
         of NONE => NONE
          | SOME internal => (
