@@ -24,17 +24,17 @@ structure PartitionedFixedMemoTable =
       let
           val age = Time.now()
           val new = ENTRY (age, key, item)
-          val subarray = (case Array.sub (arr, key div leafSize)
+          val subarray = (case Array.sub (arr, (key mod max) div leafSize)
                            of NONE => (let
-                                          val newarr = Array.array (max * nEntries, NONE)
+                                          val newarr = Array.array (leafSize * nEntries, NONE)
 (*                                          val _ = print (String.concat["Array size: ", Int.toString (max *nEntries), ", for node:", Int.toString (key mod nodes),
 								     " with bucket-count: ", Int.toString nodes, "\n"]) *)
-                                          val _ = Array.update (arr, key div leafSize, SOME newarr)
+                                          val _ = Array.update (arr, (key mod max) div leafSize, SOME newarr)
                                       in
                                           newarr
                                       end)
                             | SOME arr => arr)
-          val startIndex = (key mod leafSize) * nEntries
+          val startIndex = ((key mod max) mod leafSize) * nEntries
           fun insertEntry (i, oldestTime, oldestOffset) = (
               if i = nEntries
               then (Array.update (subarray, startIndex + oldestOffset, SOME new))
@@ -49,11 +49,11 @@ structure PartitionedFixedMemoTable =
       end)
 
   fun find ((leafSize, max, nEntries, arr), key) = (
-      case Array.sub (arr, key div leafSize)
+      case Array.sub (arr, (key mod max) div leafSize)
         of NONE => NONE
          | SOME internal => (
              let
-                 val startIndex = (key mod leafSize) * nEntries
+                 val startIndex = ((key mod max) mod leafSize) * nEntries
                  fun findEntry (i) = (
                      if (i = nEntries)
                      then NONE 
