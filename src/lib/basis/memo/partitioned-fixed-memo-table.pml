@@ -34,7 +34,7 @@ structure PartitionedFixedMemoTable =
                                           newarr
                                       end)
                             | SOME arr => arr)
-          val startIndex = ((key mod max) mod leafSize) * nEntries
+          val startIndex = (key mod leafSize) * nEntries
           fun insertEntry (i, oldestTime, oldestOffset) = (
               if i = nEntries
               then (Array.update (subarray, startIndex + oldestOffset, SOME new))
@@ -53,7 +53,7 @@ structure PartitionedFixedMemoTable =
         of NONE => NONE
          | SOME internal => (
              let
-                 val startIndex = ((key mod max) mod leafSize) * nEntries
+                 val startIndex = (key mod leafSize) * nEntries
                  fun findEntry (i) = (
                      if (i = nEntries)
                      then NONE 

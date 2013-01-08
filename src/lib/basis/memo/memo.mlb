@@ -5,4 +5,5 @@
     partitioned-memo-table.pml
     distributed-memo-table.pml
     partitioned-fixed-memo-table.pml
+    partitioned-fixed-hashed-memo-table.pml
   end
