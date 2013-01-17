@@ -2,8 +2,9 @@
   in
     memo-table.pml
     vproc-utils.pml
-    partitioned-memo-table.pml
     distributed-memo-table.pml
+    dynamic-memo-table.pml
+    partitioned-memo-table.pml
     partitioned-fixed-memo-table.pml
     partitioned-fixed-hashed-memo-table.pml
   end
