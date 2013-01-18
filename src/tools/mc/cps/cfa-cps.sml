@@ -33,6 +33,7 @@ structure CFACPS : sig
       = TOP
       | TUPLE of value list
       | LAMBDAS of CPS.Var.Set.set
+      | BOOL of bool
       | BOT
 
     val valueToString : value -> string
@@ -51,6 +52,7 @@ structure CFACPS : sig
   (* flags to control debugging *)
     val debugFlg : bool ref
     val resultsFlg : bool ref
+    val boolFlg : bool ref
 
   (* flags related to different CFA algorithms *)
     val rcCFAFlg  : bool ref
@@ -58,6 +60,7 @@ structure CFACPS : sig
 
     val debugFlg = ref false
     val resultsFlg = ref false
+    val boolFlg = ref false
     val rcCFAFlg = ref false
 
     structure CV = CPS.Var
@@ -88,6 +91,7 @@ structure CFACPS : sig
       = TOP
       | TUPLE of value list
       | LAMBDAS of VSet.set
+      | BOOL of bool
       | BOT
 
     fun valueToString v = let
@@ -103,6 +107,10 @@ structure CFACPS : sig
                 in
                   "{" :: f (VSet.listItems s)
                 end
+	    | v2s (BOOL t, l) =
+	      if t
+	      then "True" :: l
+	      else "False" :: l
             | v2s (BOT, l) = "#" :: l
           in
             concat (v2s(v, []))
@@ -147,7 +155,9 @@ structure CFACPS : sig
    *)
     fun valueFromType ty = (case ty
            of CPSTy.T_Any => BOT (* or should this be TOP? *)
-            | CPSTy.T_Enum _ => TOP
+            | CPSTy.T_Enum x => 
+	      if (x = 0w1 andalso !boolFlg) then BOT (* it's a boolean *)
+	      else TOP
             | CPSTy.T_Raw _ => TOP
             | CPSTy.T_Tuple(true, tys) => TUPLE(List.map (fn _ => TOP) tys)
             | CPSTy.T_Tuple(false, tys) => TUPLE(List.map valueFromType tys)
@@ -182,6 +192,10 @@ structure CFACPS : sig
             | (TOP, _) => true
             | (BOT, BOT) => false
             | (_, BOT) => true
+	    | (BOOL t1, BOOL t2) => 
+	      if (t1 = t2)
+	      then false
+	      else raise Fail "non-monotonic change"
             | (TUPLE vs1, TUPLE vs2) => let
                 fun changed ([], []) = false
                   | changed (x::xs, y::ys) = changedValue(x, y) orelse changed(xs, ys)
@@ -267,6 +281,10 @@ structure CFACPS : sig
             | kJoin (_, v, TOP) = (escapingValue v; TOP)
             | kJoin (_, BOT, v) = v
             | kJoin (_, v, BOT) = v
+	    | kJoin (_, v1 as BOOL t1, v2 as BOOL t2) = 
+	         if (!boolFlg andalso (t1 = t2))
+		 then v1
+		 else (escapingValue v1; escapingValue v2; TOP)
             | kJoin (k, TUPLE vs1, TUPLE vs2) = let
                 fun join ([], []) = []
                   | join (x::xs, y::ys) = kJoin(k-1, x, y) :: join(xs, ys)
@@ -556,7 +574,15 @@ structure CFACPS : sig
 		      (* end case *))
                 and doRhs (xs, CPS.Var ys) = ListPair.appEq eqInfo' (xs, ys)
                   | doRhs ([x], CPS.Cast (ty, y)) = eqInfo' (x, y)
-                  | doRhs ([x], CPS.Const _) = addInfo (x, TOP)
+		  (*T_Enum(0w1) indicates a bool*)
+                  | doRhs ([x], CPS.Const (Literal.Enum v, CPSTy.T_Enum(0w1))) = 
+		    if !boolFlg
+		    then
+			if v = 0w1 
+			then addInfo (x, BOOL(true)) 
+			else addInfo (x, BOOL(false))
+		    else addInfo (x, TOP)
+		  | doRhs ([x], CPS.Const _) = addInfo (x, TOP) 
                   | doRhs ([x], CPS.Select (i, y)) = (addInfo (x, select (i, y)); addInfo (y, update(i, y, getValue x)))
                   | doRhs ([], CPS.Update(i, y, z)) = (addInfo (z, select (i, y)); addInfo (y, update (i, y, getValue z)))
                   | doRhs ([x], CPS.AddrOf(i, y)) = (addInfo (y, update (i, y, TOP)); addInfo (x, TOP))

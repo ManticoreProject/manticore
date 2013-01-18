@@ -33,6 +33,13 @@ structure CPSOptControls =
                   obscurity = 0,
                   help = "print results of cfa"
                 },
+	      Controls.control { 
+	          ctl = CFACPS.boolFlg,
+	          name = "cfa-bool",
+		  pri = [0, 1],
+		  obscurity = 0,
+		  help = "track boolean values to remove dead branches"
+	      },
               Controls.control {
                   ctl = CFACPS.rcCFAFlg,
                   name = "cfa-rc",

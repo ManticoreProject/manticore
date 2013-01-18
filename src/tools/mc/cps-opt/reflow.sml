@@ -204,7 +204,8 @@ structure Reflow : sig
 			    foldChainVars (m, ppt, f, ll, freeVars, ptlist)
                         end
                       | CFACPS.BOT => (m, ptlist)
-                      | CFACPS.TUPLE _ => raise Fail (concat[CV.toString f, " is in an application position but is a tuple according to CFA."]))
+                      | CFACPS.TUPLE _ => raise Fail (concat[CV.toString f, " is in an application position but is a tuple according to CFA."])
+		      | CFACPS.BOOL _ => raise Fail (concat[CV.toString f, " is in an application position but is a boolean according to CFA."]))
                   | CPS.Throw (k, _) => (
                     case CFACPS.valueOf k
                      of CFACPS.TOP => (setTop (m, ppt), ptlist)
@@ -215,7 +216,8 @@ structure Reflow : sig
 			    foldChainVars (m, ppt, k, ll, freeVars, ptlist)
                         end
                       | CFACPS.BOT => (m, ptlist)
-                      | CFACPS.TUPLE _ => raise Fail (concat[CV.toString k, " is in an application position but is a tuple according to CFA."]))
+                      | CFACPS.TUPLE _ => raise Fail (concat[CV.toString k, " is in an application position but is a tuple according to CFA."])
+		      | CFACPS.BOOL _ => raise Fail (concat[CV.toString f, " is in an application position but is a boolean according to CFA."]))
                 (* end case *))
           in
             doLambda (bindingLocation f, body, (PMap.empty, nil))
