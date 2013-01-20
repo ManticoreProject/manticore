@@ -22,11 +22,11 @@ structure DynamicMemoTable =
   val maxSegments = 10000
   val maxSize = 18 (* We cannot allocate an array with > 2^18 elements *)
   val threshold = 7 (* 7 = 70% *)
-  val buckets = 1 (* TODO: need to change the array.array and some lookups for this to really work at > 1 *)
+  val buckets = 3 (* TODO: need to change the array.array and some lookups for this to really work at > 1 *)
 
   fun mkTable () = let
       val allSegments = Array.array (maxSegments, NONE)
-      val firstSegment = Array.array (1024, UNINIT)
+      val firstSegment = Array.array (1024 * buckets, UNINIT)
       val _ = Array.update (allSegments, 0, SOME firstSegment)
   in
       (Array.array (1, 1),
@@ -50,8 +50,7 @@ structure DynamicMemoTable =
         | 5 => (1024 + 2048 + 4096 + 8192 + 16384)
         | 6 => (1024 + 2048 + 4096 + 8192 + 16384 + 32768)
         | 7 => (1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536)
-        | 8 => (1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072)
-        | n => (1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + 131072 + (262144 * (n-8)))
+        | n => (1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + (131072 * (n-7)))
 
   fun growIfNeeded (segments, itemCount, allSegments) = let
       val segmentCount = Array.sub (segments, 0)
@@ -60,7 +59,8 @@ structure DynamicMemoTable =
           andalso segmentCount < maxSegments)
       then (let
                val segmentCount = segmentCount +1
-               val new = Array.array ((capacity segmentCount) - (capacity (segmentCount-1)), UNINIT)
+	       val newSize = ((capacity segmentCount) - (capacity (segmentCount-1))) * buckets
+               val new = Array.array (newSize, UNINIT)
                val _ = Array.update (allSegments, segmentCount-1, SOME new)
            in
                Array.update (segments, 0, segmentCount)
@@ -121,7 +121,7 @@ structure DynamicMemoTable =
                                 then (Array.update (segment, startIndex+next, ENTRY(t, key', value));
                                       maybeMoveItems (i+1, next+1))
                                 else (maybeMoveItems (i+1, next)))
-                              | UNINIT => raise Fail "initBucket encountered an uninitialized bucket"
+                              | UNINIT => (Array.update (segment, startIndex+next, INIT))
                         end))
            in
                maybeMoveItems (0, 0)
