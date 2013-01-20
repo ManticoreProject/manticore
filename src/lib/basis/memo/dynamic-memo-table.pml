@@ -91,7 +91,7 @@ structure DynamicMemoTable =
 (*      val _ = print (String.concat[Int.toString segmentIndex, " subindex: ",
                                   Int.toString subIndex, " hash: ",
                                   Int.toString hash, " idnex: ",
-                                  Int.toString index, "\n"]) *)
+                                  Int.toString index, "\n"])  *)
       val SOME(segment) = Array.sub (allSegments, segmentIndex)
   in
       case Array.sub (segment, startIndex)
@@ -151,7 +151,12 @@ structure DynamicMemoTable =
                     if t < oldestTime
                     then insertEntry (i+1, t, i)
                     else insertEntry (i+1, oldestTime, oldestOffset)
-                  | UNINIT => (raise Fail "insert encountered an uninitialized bucket")))
+                  | UNINIT => (Array.update (segment, startIndex + i, new)
+					    (*print (String.concat["INSERT-UNINIT: ", Int.toString segmentIndex,
+						     " segment, ", Int.toString startIndex,
+						     " startIndex, ", Int.toString i,
+						     " i\n"]); raise Fail "insert encountered an uninitialized bucket"*)
+			      )))
   in
       insertEntry (0, Int.toLong (Option.valOf Int.maxInt), 0)
   end
@@ -180,10 +185,11 @@ structure DynamicMemoTable =
                        then (Array.update (segment, startIndex+i, ENTRY(Time.now(), key', value));
                              SOME value)
                        else (findEntry (i+1))
-                     | UNINIT => (print (String.concat["UNINIT: ", Int.toString segmentIndex,
+                     | UNINIT => (NONE
+				      (*print (String.concat["FIND-UNINIT: ", Int.toString segmentIndex,
 						     " segment, ", Int.toString startIndex,
 						     " startIndex, ", Int.toString i,
-						     " i\n"]); raise Fail "find encountered an uninitialized bucket")
+						     " i\n"]); raise Fail "find encountered an uninitialized bucket"*))
                end))
   in
       findEntry 0 
