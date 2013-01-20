@@ -24,10 +24,15 @@ structure DynamicMemoTable =
   val threshold = 7 (* 7 = 70% *)
   val buckets = 1 (* TODO: need to change the array.array and some lookups for this to really work at > 1 *)
 
-  fun mkTable () =
+  fun mkTable () = let
+      val allSegments = Array.array (maxSegments, NONE)
+      val firstSegment = Array.array (1024, UNINIT)
+      val _ = Array.update (allSegments, 0, SOME firstSegment)
+  in
       (Array.array (1, 1),
        Array.array (1, 0),
-       Array.array (maxSegments, NONE))
+       allSegments)
+  end
 
   (* The capacity will be one of:
    * 2^10
@@ -66,9 +71,9 @@ structure DynamicMemoTable =
   (* returns the segment and segment-relative element index *) 
   fun findSegment i = let
       fun check (s,i) = 
-          if (capacity s > i)
+          if (i >= capacity s)
           then check (s+1, i)
-          else (s, (i - capacity (s-1)))
+          else (s-1, (i - capacity (s-1)))
   in
       check (1, i)
   end
@@ -82,37 +87,33 @@ structure DynamicMemoTable =
    * this process needs to continue recursively.
    *)
   fun initBucket (segmentIndex, subIndex, hash, index, segmentCount, allSegments) = let
-      val _ = print "K"
       val startIndex = subIndex * buckets
-      val _ = print (String.concat[Int.toString segmentIndex, " subindex: ",
+(*      val _ = print (String.concat[Int.toString segmentIndex, " subindex: ",
                                   Int.toString subIndex, " hash: ",
                                   Int.toString hash, " idnex: ",
-                                  Int.toString index, "\n"])
+                                  Int.toString index, "\n"]) *)
       val SOME(segment) = Array.sub (allSegments, segmentIndex)
-      val _ = print "L"
   in
       case Array.sub (segment, startIndex)
        of UNINIT => (
-           let
-      val _ = print "M"
-               val segmentCount' = segmentCount-1
-               val index' = hash mod (capacity segmentCount')
-               val (segmentIndex', subIndex') = findSegment index'                                        
-      val _ = print "N"
+	  if segmentCount = 1
+	  then (Array.update (segment, startIndex, INIT))
+	  else (let
+	    val segmentCount' = segmentCount-1
+		    val index' = hash mod (capacity segmentCount')
+		    val (segmentIndex', subIndex') = findSegment index'                                        
                val _ = initBucket (segmentIndex', subIndex', hash, index', segmentCount', allSegments)
                val startIndex' = subIndex' * buckets
                val M' = capacity segmentCount'
-      val _ = print "O"
                fun maybeMoveItems (i, next) = (
                    if (i = buckets)
-                   then ()
+                   then (Array.update (segment, startIndex, INIT))
                    else (let
                             val SOME(segment') = Array.sub (allSegments, segmentIndex')
                             val e = Array.sub (segment', startIndex' + i)
-      val _ = print "P"
                         in
                             case e
-                             of INIT => ()
+                             of INIT => (Array.update (segment, startIndex+next, INIT))
                               (* BUG: Have to re-create the value because we don't support 'as'
                                *)
                               | ENTRY(t, key', value) => (
@@ -124,12 +125,11 @@ structure DynamicMemoTable =
                         end))
            in
                maybeMoveItems (0, 0)
-           end)
+           end))
         | _ => ()
   end
 
   fun insert ((segments, itemCount, allSegments), key, item) = let
-      val _ = print "A"
       val age = Time.now()
       val new = ENTRY (age, key, item)
       val hash = Int.larsonHash key
@@ -138,12 +138,10 @@ structure DynamicMemoTable =
       val (segmentIndex, subIndex) = findSegment index
       val _ = initBucket (segmentIndex, subIndex, hash, index, segmentCount, allSegments)
 
-      val _ = print "B"
       val SOME(segment) = Array.sub (allSegments, segmentIndex)
       val startIndex = subIndex * buckets
       val _ = Array.update (itemCount, 0, Array.sub (itemCount, 0) + 1)
       val _ = growIfNeeded (segments, itemCount, allSegments)
-      val _ = print "C"
       fun insertEntry (i, oldestTime, oldestOffset) = (
           if i = buckets
           then (Array.update (segment, startIndex + oldestOffset, new))
@@ -153,29 +151,22 @@ structure DynamicMemoTable =
                     if t < oldestTime
                     then insertEntry (i+1, t, i)
                     else insertEntry (i+1, oldestTime, oldestOffset)
-                  | UNINIT => raise Fail "insert encountered an uninitialized bucket"))
+                  | UNINIT => (raise Fail "insert encountered an uninitialized bucket")))
   in
       insertEntry (0, Int.toLong (Option.valOf Int.maxInt), 0)
   end
 
   fun find ((segments, itemCount, allSegments), key) = let
 (*      val hash = (c * key') mod M *)
-      val _ = print "D"
       val age = Time.now()
       val hash = Int.larsonHash key
-      val _ = print "G"
       val segmentCount = Array.sub (segments, 0)
-      val _ = print "H"
       val index = hash mod (capacity segmentCount)
-      val _ = print "I"
       val (segmentIndex, subIndex) = findSegment index
-      val _ = print "J"
       val _ = initBucket (segmentIndex, subIndex, hash, index, segmentCount, allSegments)
                          
-      val _ = print "E"
       val SOME(segment) = Array.sub (allSegments, segmentIndex)
       val startIndex = subIndex * buckets
-      val _ = print "F"
       fun findEntry (i) = (
           if (i = buckets)
           then NONE 
@@ -189,7 +180,10 @@ structure DynamicMemoTable =
                        then (Array.update (segment, startIndex+i, ENTRY(Time.now(), key', value));
                              SOME value)
                        else (findEntry (i+1))
-                     | UNINIT => raise Fail "find encountered an uninitialized bucket"
+                     | UNINIT => (print (String.concat["UNINIT: ", Int.toString segmentIndex,
+						     " segment, ", Int.toString startIndex,
+						     " startIndex, ", Int.toString i,
+						     " i\n"]); raise Fail "find encountered an uninitialized bucket")
                end))
   in
       findEntry 0 
