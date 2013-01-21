@@ -26,7 +26,7 @@ structure DynamicMemoTable =
 
   fun mkTable () = let
       val allSegments = Array.array (maxSegments, NONE)
-      val firstSegment = Array.array (1024 * buckets, UNINIT)
+      val firstSegment = Array.array (4096 * buckets, UNINIT)
       val _ = Array.update (allSegments, 0, SOME firstSegment)
   in
       (Array.array (1, 1),
@@ -43,14 +43,12 @@ structure DynamicMemoTable =
   fun capacity i =
       case i
        of 0 => 0
-        | 1 => 1024
-        | 2 => (1024 + 2048)
-        | 3 => (1024 + 2048 + 4096)
-        | 4 => (1024 + 2048 + 4096 + 8192)
-        | 5 => (1024 + 2048 + 4096 + 8192 + 16384)
-        | 6 => (1024 + 2048 + 4096 + 8192 + 16384 + 32768)
-        | 7 => (1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536)
-        | n => (1024 + 2048 + 4096 + 8192 + 16384 + 32768 + 65536 + (131072 * (n-7)))
+        | 1 => (4096)
+        | 2 => (4096 + 8192)
+        | 3 => (4096 + 8192 + 16384)
+        | 4 => (4096 + 8192 + 16384 + 32768)
+        | 5 => (4096 + 8192 + 16384 + 32768 + 65536)
+        | n => (4096 + 8192 + 16384 + 32768 + 65536 + (131072 * (n-5)))
 
   fun growIfNeeded (segments, itemCount, allSegments) = let
       val segmentCount = Array.sub (segments, 0)
