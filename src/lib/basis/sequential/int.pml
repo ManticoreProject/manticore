@@ -15,7 +15,6 @@ structure Int =
     _primcode (
 
       extern void *M_IntToString (int) __attribute__((alloc,pure));
-      extern int M_IntLarsonHash (int) __attribute__((alloc,pure));
       extern void *M_IntFromString (void *) __attribute__((alloc,pure));
       extern int M_CeilingLg (int) __attribute__((pure));
       extern int M_FloorLg (int) __attribute__((pure));
@@ -23,11 +22,6 @@ structure Int =
       define inline @to-string (n : ml_int / exh : exh) : ml_string =
 	  let res : ml_string = ccall M_IntToString (#0(n))
 	    return (res)
-      ;
-
-      define inline @larson-hash (n : ml_int / exh : exh) : ml_int =
-	  let res : int = ccall M_IntLarsonHash (#0(n))
-	    return (alloc(res))
       ;
 
       define inline @from-string (s : ml_string / exh : exh) : Option.option =
@@ -54,9 +48,6 @@ structure Int =
     val fromString : string -> int Option.option = _prim(@from-string)
 
     val toLong : int -> long = _prim(@to-long)
-
-    (* HACK: Here because Long mod currently generates FP exception on large numbers *)
-    val larsonHash : int -> int = _prim(@larson-hash)
 
 (* FIXME: why is this function here? It is not part of the INT API *)
     val ceilingLg : int -> int = _prim(@ceiling-lg)

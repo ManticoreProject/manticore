@@ -51,14 +51,6 @@ Value_t M_IntToString (int32_t n)
     return AllocString (VProcSelf(), buf);
 }
 
-/* M_IntLarsonHash:
- */
-Value_t M_IntLarsonHash (int32_t n)
-{
-    long l = n;
-    return (314159*l)%1048583;
-}
-
 /* M_IntFromString : string -> int option
  */
 Value_t M_IntFromString (SequenceHdr_t *s)

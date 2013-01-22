@@ -28,8 +28,9 @@ structure PartitionedFixedHashedMemoTable =
       let
           val age = Time.now()
           val new = ENTRY (age, key, item)
-(*          val hash = (c * key') mod M *)
-          val hash = Int.larsonHash key
+          val key' = Int.toLong key
+          val hash = (c * key') mod M 
+          val hash = Long.toInt hash
           val subarray = (case Array.sub (arr, hash mod nProcs)
                            of NONE => (let
                                           val newarr = Array.array (elements * nEntries, NONE)
@@ -55,8 +56,9 @@ structure PartitionedFixedHashedMemoTable =
       end)
 
   fun find ((nProcs, elements, nEntries, arr), key) = let
-(*      val hash = (c * key') mod M *)
-      val hash = Int.larsonHash key
+      val key' = Int.toLong key
+      val hash = (c * key') mod M 
+      val hash = Long.toInt hash
   in
       case Array.sub (arr, hash mod nProcs)
         of NONE => NONE

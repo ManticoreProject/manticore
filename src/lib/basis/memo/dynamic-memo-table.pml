@@ -22,15 +22,20 @@ structure DynamicMemoTable =
   val maxSegments = 10000
   val maxSize = 18 (* We cannot allocate an array with > 2^18 elements *)
   val threshold = 7 (* 7 = 70% *)
-  val buckets = 3 (* TODO: need to change the array.array and some lookups for this to really work at > 1 *)
+  val buckets = 2 
+  val bucketSize = 200000
+
+  (* Larson's hash function constants *)
+  val c = 314159:long
+  val M = 1048583:long
 
   fun mkTable () = let
       val allSegments = Array.array (maxSegments, NONE)
-      val firstSegment = Array.array (4096 * buckets, UNINIT)
+      val firstSegment = Array.array (bucketSize * buckets, UNINIT)
       val _ = Array.update (allSegments, 0, SOME firstSegment)
   in
       (Array.array (1, 1),
-       Array.array (1, 0),
+       Array.tabulate (VProcUtils.numNodes(), fn _ => 0),
        allSegments)
   end
 
@@ -43,21 +48,24 @@ structure DynamicMemoTable =
   fun capacity i =
       case i
        of 0 => 0
-        | 1 => (4096)
+        | n => (bucketSize * n)
+
+(*        | 1 => (4096)
         | 2 => (4096 + 8192)
         | 3 => (4096 + 8192 + 16384)
         | 4 => (4096 + 8192 + 16384 + 32768)
         | 5 => (4096 + 8192 + 16384 + 32768 + 65536)
-        | n => (4096 + 8192 + 16384 + 32768 + 65536 + (131072 * (n-5)))
+        | n => (4096 + 8192 + 16384 + 32768 + 65536 + (131072 * (n-5))) *)
 
   fun growIfNeeded (segments, itemCount, allSegments) = let
       val segmentCount = Array.sub (segments, 0)
   in
-      if ((capacity (segmentCount) * threshold < (Array.sub (itemCount, 0) * 10))
+      if ((capacity (segmentCount) * buckets * 10 < (Array.sub (itemCount, VProcUtils.node()) * threshold * (VProcUtils.numNodes())))
           andalso segmentCount < maxSegments)
       then (let
                val segmentCount = segmentCount +1
 	       val newSize = ((capacity segmentCount) - (capacity (segmentCount-1))) * buckets
+(*               val _ = print (String.concat["Allocating: ", Int.toString newSize, "\n"]) *)
                val new = Array.array (newSize, UNINIT)
                val _ = Array.update (allSegments, segmentCount-1, SOME new)
            in
@@ -124,13 +132,15 @@ structure DynamicMemoTable =
            in
                maybeMoveItems (0, 0)
            end))
-        | _ => ()
+        | _ => () 
   end
 
   fun insert ((segments, itemCount, allSegments), key, item) = let
       val age = Time.now()
       val new = ENTRY (age, key, item)
-      val hash = Int.larsonHash key
+      val key' = Int.toLong key
+      val hash = (c * key') mod M 
+      val hash = Long.toInt hash
       val segmentCount = Array.sub (segments, 0)
       val index = hash mod (capacity segmentCount)
       val (segmentIndex, subIndex) = findSegment index
@@ -138,7 +148,9 @@ structure DynamicMemoTable =
 
       val SOME(segment) = Array.sub (allSegments, segmentIndex)
       val startIndex = subIndex * buckets
-      val _ = Array.update (itemCount, 0, Array.sub (itemCount, 0) + 1)
+(*      val _ = Array.update (itemCount, 0, Array.sub (itemCount, 0) + 1) *)
+      val node = VProcUtils.node()
+      val _ = Array.update (itemCount, node, Array.sub (itemCount, node) + 1)
       val _ = growIfNeeded (segments, itemCount, allSegments)
       fun insertEntry (i, oldestTime, oldestOffset) = (
           if i = buckets
@@ -160,9 +172,9 @@ structure DynamicMemoTable =
   end
 
   fun find ((segments, itemCount, allSegments), key) = let
-(*      val hash = (c * key') mod M *)
-      val age = Time.now()
-      val hash = Int.larsonHash key
+      val key' = Int.toLong key
+      val hash = (c * key') mod M
+      val hash = Long.toInt hash
       val segmentCount = Array.sub (segments, 0)
       val index = hash mod (capacity segmentCount)
       val (segmentIndex, subIndex) = findSegment index
