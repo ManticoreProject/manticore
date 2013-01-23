@@ -20,11 +20,11 @@ structure DynamicMemoTable =
   type 'a table  = int Array.array * int Array.array * 'a entry Array.array option Array.array
 
   val maxSegments = 10000
-  val maxSize = 18 (* We cannot allocate an array with > 2^18 elements *)
   val threshold = 7 (* 7 = 70% *)
   val buckets = 2 
   val bucketSize = 200000
   val padding = 8
+  val maxCollisions = 50000
 
   (* Larson's hash function constants *)
   val c = 314159:long
@@ -40,25 +40,11 @@ structure DynamicMemoTable =
        allSegments)
   end
 
-  (* The capacity will be one of:
-   * 2^10
-   * 2^10 + 2^11
-   * ...
-   * 2^10 +...+ 2^18 + 2^18*i (for i \in 0...\inf)
-   *)
   fun capacity i =
       case i
        of 0 => 0
         | n => (bucketSize * n)
 
-(*        | 1 => (4096)
-        | 2 => (4096 + 8192)
-        | 3 => (4096 + 8192 + 16384)
-        | 4 => (4096 + 8192 + 16384 + 32768)
-        | 5 => (4096 + 8192 + 16384 + 32768 + 65536)
-        | n => (4096 + 8192 + 16384 + 32768 + 65536 + (131072 * (n-5))) *)
-
-  val maxCollisions = 50000
   fun growIfNeeded (segments, itemCount, allSegments) = let
       val segmentCount = Array.sub (segments, 0)
   in
