@@ -24,6 +24,7 @@ structure DynamicMemoTable =
   val threshold = 7 (* 7 = 70% *)
   val buckets = 2 
   val bucketSize = 200000
+  val padding = 8
 
   (* Larson's hash function constants *)
   val c = 314159:long
@@ -35,7 +36,7 @@ structure DynamicMemoTable =
       val _ = Array.update (allSegments, 0, SOME firstSegment)
   in
       (Array.array (1, 1),
-       Array.tabulate (VProcUtils.numNodes(), fn _ => 0),
+       Array.tabulate (VProcUtils.numNodes() * padding, fn _ => 0),
        allSegments)
   end
 
@@ -57,17 +58,24 @@ structure DynamicMemoTable =
         | 5 => (4096 + 8192 + 16384 + 32768 + 65536)
         | n => (4096 + 8192 + 16384 + 32768 + 65536 + (131072 * (n-5))) *)
 
+  val maxCollisions = 50000
   fun growIfNeeded (segments, itemCount, allSegments) = let
       val segmentCount = Array.sub (segments, 0)
   in
-      if ((capacity (segmentCount) * buckets * 10 < (Array.sub (itemCount, VProcUtils.node()) * threshold * (VProcUtils.numNodes())))
+(*      if ((capacity (segmentCount) * buckets * 10 < (Array.sub (itemCount, VProcUtils.node() * padding) * threshold * (VProcUtils.numNodes()))) *)
+      if ((maxCollisions < (Array.sub (itemCount, VProcUtils.node() * padding)))
           andalso segmentCount < maxSegments)
       then (let
                val segmentCount = segmentCount +1
 	       val newSize = ((capacity segmentCount) - (capacity (segmentCount-1))) * buckets
-(*               val _ = print (String.concat["Allocating: ", Int.toString newSize, "\n"]) *)
                val new = Array.array (newSize, UNINIT)
                val _ = Array.update (allSegments, segmentCount-1, SOME new)
+               fun clearCollisions i =
+                   if i = ~1
+                   then ()
+                   else (Array.update (itemCount, i*padding, 0); clearCollisions (i-1))
+               val _ = clearCollisions (VProcUtils.numNodes() - 1)  
+               (* val _ = Array.update (itemCount, 0, 0)   *)
            in
                Array.update (segments, 0, segmentCount)
            end)
@@ -148,19 +156,25 @@ structure DynamicMemoTable =
 
       val SOME(segment) = Array.sub (allSegments, segmentIndex)
       val startIndex = subIndex * buckets
-(*      val _ = Array.update (itemCount, 0, Array.sub (itemCount, 0) + 1) *)
-      val node = VProcUtils.node()
-      val _ = Array.update (itemCount, node, Array.sub (itemCount, node) + 1)
+(*      val node = VProcUtils.node() * padding
+      val _ = Array.update (itemCount, node, Array.sub (itemCount, node) + 1)  *)
       val _ = growIfNeeded (segments, itemCount, allSegments)
-      fun insertEntry (i, oldestTime, oldestOffset) = (
+      fun insertEntry (i, oldestTime, oldestOffset, overwrite) = (
           if i = buckets
-          then (Array.update (segment, startIndex + oldestOffset, new))
+          then (if overwrite
+                then (let
+                          val node = VProcUtils.node() * padding 
+                      in
+                          Array.update (itemCount, node, Array.sub (itemCount, node) + 1)
+                      end)
+                else ();
+                Array.update (segment, startIndex + oldestOffset, new))
           else (case Array.sub (segment, startIndex + i)
                  of INIT => (Array.update (segment, startIndex + i, new))
                   | ENTRY (t, _, _) =>
                     if t < oldestTime
-                    then insertEntry (i+1, t, i)
-                    else insertEntry (i+1, oldestTime, oldestOffset)
+                    then insertEntry (i+1, t, i, overwrite)
+                    else insertEntry (i+1, oldestTime, oldestOffset, true)
                   | UNINIT => (Array.update (segment, startIndex + i, new)
 					    (*print (String.concat["INSERT-UNINIT: ", Int.toString segmentIndex,
 						     " segment, ", Int.toString startIndex,
@@ -168,7 +182,7 @@ structure DynamicMemoTable =
 						     " i\n"]); raise Fail "insert encountered an uninitialized bucket"*)
 			      )))
   in
-      insertEntry (0, Int.toLong (Option.valOf Int.maxInt), 0)
+      insertEntry (0, Int.toLong (Option.valOf Int.maxInt), 0, false)
   end
 
   fun find ((segments, itemCount, allSegments), key) = let
