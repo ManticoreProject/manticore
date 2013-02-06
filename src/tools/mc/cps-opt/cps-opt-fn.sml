@@ -49,6 +49,7 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
     val copy = transform {passName = "copy-propagation", pass = CopyPropagation.transform}
     val inline = transform {passName = "inline", pass = Inline.transform}
     val cse = transform {passName = "cse", pass = CommonSubexpressionElimination.transform}
+    val branch = transform {passName = "branch-elim", pass = BranchElim.transform}
 
     fun optimize module = let
 	  val _ = census module
@@ -56,8 +57,9 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 	  val module = contract module
           val _ = cfa module
           val module = elim module
-          val _ = CFACPS.clearInfo module 
-          val _ = cfa module
+	  val module = branch module
+	  val _ = CFACPS.clearInfo module
+	  val _ = cfa module
           val module = copy module 
           val module = inline module 
 	  val module = eta module

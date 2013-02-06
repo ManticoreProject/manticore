@@ -33,6 +33,7 @@ is
   copy-propagation.sml
   cps-opt-controls.sml
   cps-opt-fn.sml
+  dead-branch-elim.sml
   elim-uncalled.sml
   eta-expand.sml
   free-vars.sml
