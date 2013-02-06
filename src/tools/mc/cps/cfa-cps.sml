@@ -52,10 +52,11 @@ structure CFACPS : sig
   (* flags to control debugging *)
     val debugFlg : bool ref
     val resultsFlg : bool ref
-    val boolFlg : bool ref
 
   (* flags related to different CFA algorithms *)
     val rcCFAFlg  : bool ref
+    val boolFlg : bool ref
+
   end = struct
 
     val debugFlg = ref false
