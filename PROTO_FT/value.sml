@@ -5,9 +5,9 @@ structure Var :> sig
     type var
     type exp
 
-    structure IDTbl
+    structure IDTbl : MONO_HASH_TABLE where type Key.hash_key = var
 
-    val newVar : term * string -> var
+    val newVar : term * ty * string -> var
 
     end = struct
 
@@ -27,7 +27,7 @@ structure Var :> sig
             id : word,
             value : term,
             ty : ty,
-            name : Atom
+            name : Atom.atom
             }
 
         datatype exp = Let of (var * exp)
@@ -35,22 +35,21 @@ structure Var :> sig
                      | Apply of (var * exp)
                      | Statement of var
 
-        structure Key =
         structure IDTbl = HashTableFn(
             struct
                 type hash_key = var
                 val hashVal = fn (V{id, ...}) => id
-                val sameKey (V{id,...},V{id=id',...}) = (id = id')
+                fun sameKey (V{id,...},V{id=id',...}) = (id = id')
             end
         )
 
         val cnt = ref 0w0
-        fun nextID () = (cnt:=!cnt+0w1; !cnt)
+        fun nextID () = (cnt:=(!cnt)+0w1; !cnt)
 
-        fun newVar (t,name) = V{
+        fun newVar (t,ty,name) = V{
             id = nextID(),
             value = t,
-            ty = tyOf t,
+            ty = ty,
             name = Atom.atom name
             }
 
