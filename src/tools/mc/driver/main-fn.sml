@@ -164,6 +164,7 @@ functor MainFn (
   (* compile an MLB or PML file *)
     fun mlbC (verbose, errStrm, srcFile, asmFile) = let
 	  val _ = if verbose then print "initializing environment\n" else ()
+	  val inclusiveStart = Time.now()
 	  val (bEnv0, mEnv0, ast0, glueAST) = initialEnv()
 	  val _ = if verbose then print(concat["parsing \"", srcFile, "\"\n"]) else ()
           val ast = mlbToAST (errStrm, bEnv0, mEnv0, srcFile)
@@ -177,6 +178,11 @@ functor MainFn (
           val cfg = bomToCFG bom
 	  in
 	    codegen (verbose, asmFile, cfg);
+            if verbose
+            then TextIO.print(concat ["Full compilation finished in: ",
+                                      (Time.toString (Time.- (Time.now(), inclusiveStart))),
+                                      "\n"])
+            else ();
 	    Stats.report ()
 	  end
 
