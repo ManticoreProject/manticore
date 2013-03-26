@@ -12,6 +12,8 @@ structure CPSUtil : sig
 
     val rhsToString : CPS.rhs -> string
 
+    val countPoints : CPS.exp -> int
+
     val applyToBoundVars : (CPS.var -> unit) -> CPS.module -> unit
 
   (* create a copy of a CPS term with fresh bound variables *)
@@ -104,6 +106,26 @@ structure CPSUtil : sig
       | rhsToString (C.VPLoad(n, x)) = concat["VPLoad(", IntInf.toString n, ", ", v2s x, ")"]
       | rhsToString (C.VPStore(n, x, y)) = concat["VPStore(", IntInf.toString n, v2s x,  ", ", v2s y, ")"]
       | rhsToString (C.VPAddr(n, x)) = concat["VPAddr(", IntInf.toString n, ", ", v2s x, ")"]
+
+    fun countPoints e = let
+	fun doExp (C.Exp(_, e)) = (case e
+		 of C.Let(xs, e1, e2) => 2 + doExp e2
+		  | C.Fun(fbs, e) => 1 + (List.foldr (op +) 0 (List.map doFB fbs)) + doExp e
+		  | C.Cont(fb, e) => 1 + doFB fb + doExp e
+		  | C.If(cond, e1, e2) =>
+		    2 + doExp e1 + doExp e2
+                  | C.Switch (x, cases, dflt) =>
+		    2 + (List.foldr (op +) 0 (List.map (fn (_, e) => doExp e) cases)) +
+		    (case dflt of NONE => 0
+				| SOME e => doExp e)
+		  | C.Apply(f, args, rets) => 1
+		  | C.Throw(k, args) => 1
+		(* end case *))
+	  and doFB (C.FB{f, params, body, rets}) =
+	      1 + doExp body
+	  in
+	    doExp e
+	  end
 
   (* substitutions from variables to variables *)
     type subst = C.var VMap.map

@@ -661,7 +661,11 @@ structure CFACPS : sig
           (* compute additional information for functions *)
             computeFunInfo body;
           (* print results of cfa *)
-            if !resultsFlg then printResults body else ()
+            if !resultsFlg then printResults body else ();
+            if !debugFlg then
+		(case body
+		  of CPS.FB{body, ...} => 
+			 print (concat["Number of program points: ", Int.toString (CPSUtil.countPoints body), "\n"])) else ()
           end
 
     val analyze = BasicControl.mkTracePassSimple {
