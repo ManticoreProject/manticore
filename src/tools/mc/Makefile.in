@@ -32,7 +32,10 @@ SHELL =		@SHELL@
 
 INSTALL_SMLNJ_WRAPPER =	@INSTALL_SMLNJ_WRAPPER@
 ML_BUILD =		@ML_BUILD@
-ML_BUILD_FLAGS =	-Ctdp.instrument=true \$$smlnj-tdp/back-trace.cm
+# Uncomment the following line to get a 5x slower pmlc, but one that
+# also prints stack backtraces for unhandled exceptions.
+#ML_BUILD_FLAGS =	-Ctdp.instrument=true \$$smlnj-tdp/back-trace.cm
+ML_BUILD_FLAGS =	
 ML_MAKEDEPEND =		@ML_MAKEDEPEND@
 ML_MAKEDEPEND_FLAGS =
 
