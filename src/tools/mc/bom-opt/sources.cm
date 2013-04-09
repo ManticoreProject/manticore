@@ -37,6 +37,7 @@ is
   let-float.sml
   literal-case-fn.sml
   prim-contract.sml
+  remove-atomics.sml
   rewrite-hlops.sml
   sizes.sml
   uncurry.sml

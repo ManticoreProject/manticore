@@ -122,6 +122,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
     val deadFuns = transform {passName = "dead-funs", pass = DeadFuns.transform}
     val uncurry = transform {passName = "uncurry", pass = Uncurry.transform}
     val caseSimplify = transform {passName = "case-simplify", pass = CaseSimplify.transform}
+    val removeAtomics = transform {passName = "remove-atomics", pass = RemoveAtomics.transform}
     val rewriteAll = transform {passName = "rewrite-all", pass = rewriteAll}
     val expandAll = transform {passName = "expand-all", pass = expandAll}
     val cfa = analyze {passName = "cfa", pass = CFABOM.analyze}
@@ -134,6 +135,7 @@ functor BOMOptFn (Spec : TARGET_SPEC) : sig
 	  val module = inline false module  
 	  val module = contract module
           val _ = cfa module
+          val module = removeAtomics module
           val module = rewriteAll module
 	  val module = expandAll module
 	(* FIXME: rerun the census to get the counts for HLOp code right. *)
