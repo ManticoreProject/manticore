@@ -10,7 +10,7 @@
 
 %start program;
 
-decnolocal
+strdecnode
         : "_primcode" "(" BOMDecls ")"
 		=> (PT.PrimCodeDecl BOMDecls)
 	;
@@ -20,6 +20,7 @@ typBindRHS
 		=> (fn (params, name) => PT.PrimTyDecl(params, name, BOMType))
 	;
 
+(* should we just allow this in an expression context?  Possibly with a type annotation? *)
 valbindTop
 	: "_prim" "(" "fun" BOMLambda ")"
 		=> (fn pat => PT.PrimVDecl(pat, BPT.LambdaPrimVal BOMLambda))
