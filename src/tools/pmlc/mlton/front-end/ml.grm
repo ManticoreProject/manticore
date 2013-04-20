@@ -1,4 +1,6 @@
-(* Heavily modified from SML/NJ sources by sweeks@sweeks.com *)
+(* Heavily modified from SML/NJ sources by sweeks@sweeks.com;
+ * Converted to ml-antlr by Lars Bergstrom and John REppy
+ *)
 
 (* ml.grm
  *
@@ -109,20 +111,22 @@ fun translatePos (pos1, pos2) = let
     val map = SourceMap.getMap()
     val {fileName = file, lineNo, colNo} = AntlrStreamPos.sourceLoc map pos1
     val file = case file of SOME x => x | NONE => ""
-in
-    SourcePos.make({column=colNo, file=file, line=lineNo})
-end
+    in
+      SourcePos.make{column=colNo, file=file, line=lineNo}
+    end
 
 fun posToReg (left, right) = let
     val map = SourceMap.getMap()
     val {fileName = file1, lineNo=lineNo1, colNo=colNo1} = AntlrStreamPos.sourceLoc map left
     val {fileName = file2, lineNo=lineNo2, colNo=colNo2} = AntlrStreamPos.sourceLoc map right
-    val file1 = case file1 of SOME x => x | NONE => ""
-    val file2 = case file2 of SOME x => x | NONE => ""
-in
-    Region.make({left=SourcePos.make({column=colNo1, file=file1, line=lineNo1}),
-		 right=SourcePos.make({column=colNo2, file=file2, line=lineNo2})})
-end
+    val file1 = (case file1 of SOME x => x | NONE => "")
+    val file2 = (case file2 of SOME x => x | NONE => "")
+    in
+      Region.make {
+	  left = SourcePos.make{column=colNo1, file=file1, line=lineNo1},
+	  right = SourcePos.make{column=colNo2, file=file2, line=lineNo2}
+	}
+    end
 
 fun error (reg, msg) = (* Control.error (reg, Layout.str msg, Layout.empty) *) ()
 
