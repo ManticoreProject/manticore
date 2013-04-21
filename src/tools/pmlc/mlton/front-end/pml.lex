@@ -87,25 +87,35 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 %let hexDigit = [0-9a-fA-F];
 %let hexnum = {hexDigit}+;
 
-<INITIAL>{ws}			=> (skip ());
-<INITIAL>{eol}			=> (Source.newline(source, Position.toInt yypos); skip ());
-<INITIAL>"_"			=> (Tokens.WILD);
-<INITIAL>","			=> (Tokens.COMMA);
-<INITIAL>"{"			=> (Tokens.LBRACE);
-<INITIAL>"}"			=> (Tokens.RBRACE);
-<INITIAL>"["			=> (Tokens.LBRACKET);
-<INITIAL>"]"			=> (Tokens.RBRACKET);
-<INITIAL>";"			=> (Tokens.SEMICOLON);
-<INITIAL>"("			=> (Tokens.LPAREN);
-<INITIAL>")"			=> (Tokens.RPAREN);
-<INITIAL>"..."			=> (Tokens.DOTDOTDOT);
-<INITIAL>"|"			=> (Tokens.BAR);
-<INITIAL>":"			=> (Tokens.COLON);
-<INITIAL>":>"			=> (Tokens.COLONGT);
-<INITIAL>"="			=> (Tokens.EQUALOP);
-<INITIAL>"#"			=> (Tokens.HASH);
-<INITIAL>"->"			=> (Tokens.ARROW);
-<INITIAL>"=>"			=> (Tokens.DARROW);
+<INITIAL,BOM>{ws}		=> (skip ());
+<INITIAL,BOM>{eol}		=> (Source.newline(source, Position.toInt yypos); skip ());
+<INITIAL,BOM>"_"		=> (Tokens.WILD);
+<INITIAL,BOM>","		=> (Tokens.COMMA);
+<INITIAL,BOM>"{"		=> (Tokens.LBRACE);
+<INITIAL,BOM>"}"		=> (Tokens.RBRACE);
+<INITIAL,BOM>"["		=> (Tokens.LBRACKET);
+<INITIAL,BOM>"]"		=> (Tokens.RBRACKET);
+<INITIAL,BOM>";"		=> (Tokens.SEMICOLON);
+<INITIAL,BOM>"("		=> (Tokens.LPAREN);
+<INITIAL,BOM>")"		=> (Tokens.RPAREN);
+<INITIAL,BOM>"..."		=> (Tokens.DOTDOTDOT);
+<INITIAL,BOM>"|"		=> (Tokens.BAR);
+<INITIAL,BOM>":"		=> (Tokens.COLON);
+<INITIAL,BOM>":>"		=> (Tokens.COLONGT);
+<INITIAL,BOM>"="		=> (Tokens.EQUALOP);
+<INITIAL,BOM>"#"		=> (Tokens.HASH);
+<INITIAL,BOM>"->"		=> (Tokens.ARROW);
+<INITIAL,BOM>"=>"		=> (Tokens.DARROW);
+
+(* additional PML special symbols *)
+<INITIAL>"(|"  			=> (T.PLPAREN);
+<INITIAL>"|)"  			=> (T.PRPAREN);
+<INITIAL>"{|"  			=> (T.PLBRACE);
+<INITIAL>"|}"  			=> (T.PRBRACE);
+<INITIAL>"[|"  			=> (T.PLBRACKET);
+<INITIAL>"|]"  			=> (T.PRBRACKET);
+<INITIAL>"?"			=> (T.PWILD);
+<INITIAL,BOM>"&"		=> (T.AMP);
 
 <INITIAL>"and"			=> (Tokens.KW_and);
 <INITIAL>"abstype"		=> (Tokens.KW_abstype);
@@ -159,7 +169,14 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 <INITIAL>"_symbol"		=> (Tokens.KW__symbol);
 <INITIAL> "_primcode"		=> (YYBEGIN BOM; T.KW__primcode);
 <INITIAL> "_prim"		=> (YYBEGIN BOM; T.KW__prim);
+<BOM> "__attribute__"		=> (T.KW___attribute__);
 
+<BOM> "("			=> (bomPush()(); T.LP);
+<BOM> ")"			=> (if bomPop() then () else YYBEGIN INITIAL; T.RP);
+<BOM>":="			=> (T.ASSIGN);
+<BOM>"$"			=> (T.DS);
+<BOM>"#"			=> (T.HASH);
+<BOM>"&"			=> (T.AMP);
 
 <INITIAL>"'"{alphanum}?		=> (Tokens.TYVAR(yytext));
 (* FIXME: split LONGID into unqualified id and qualified id *)

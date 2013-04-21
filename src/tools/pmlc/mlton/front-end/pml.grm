@@ -1,3 +1,8 @@
+(* pml.grm
+ *
+ * COPYRIGHT (c) 2013 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
 
 %name PML;
 
