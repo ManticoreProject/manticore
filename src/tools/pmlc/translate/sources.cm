@@ -1,0 +1,22 @@
+(* sources.cm
+ *
+ * COPYRIGHT (c) 2013 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+Library
+
+structure Translate
+structure TranslateEnv
+
+is
+
+$/basis.cm
+$/smlnj-lib.cm
+
+../bom/sources.cm
+../mlton/sources.cm
+
+translate-env.sml
+translate-ty.sml
+translate.sml

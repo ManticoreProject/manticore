@@ -70,7 +70,7 @@ structure PMLFrontEnd : PML_FRONT_END =
 	   end)
     structure Xml = Xml (open Atoms)
     structure Sxml = Sxml (open Xml)
-
+    structure Tycon = Atoms.Tycon
 
   (*---------------------------------------------------*)
   (*                  Compiler Passes                  *)
@@ -481,10 +481,10 @@ structure PMLFrontEnd : PML_FRONT_END =
   (*                  initialization                   *)
   (* ------------------------------------------------- *)
 
-   fun parseMlbPathVar line = (case String.tokens Char.isSpace line
-	  of [var, path] => SOME {var = var, path = path}
-	   | _ => NONE
-	 (* end case *))
+    fun parseMlbPathVar line = (case String.tokens Char.isSpace line
+	   of [var, path] => SOME {var = var, path = path}
+	    | _ => NONE
+	  (* end case *))
 
     fun init () = let
 	  val _ = Ctl.verbosity := Ctl.Pass

@@ -10,6 +10,8 @@
 functor ElaboratePrograms (S: ELABORATE_PROGRAMS_STRUCTS): ELABORATE_PROGRAMS = 
 struct
 
+structure List = MLtonList
+
 open S
 
 local

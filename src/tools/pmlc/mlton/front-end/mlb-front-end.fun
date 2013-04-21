@@ -15,6 +15,14 @@ structure List = MLtonList
 fun String_equals (s1 : string, s2) = (s1 = s2)
 fun String_fromListRev l = String.implode(List.rev l)
 fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
+fun String_concatWith (l, s) = String.concatWith s l
+
+structure SourceMap : SOURCE_MAP =
+  struct
+    val map : AntlrStreamPos.sourcemap option ref = ref NONE
+    fun getMap() = valOf (!map)
+    fun setMap(m) = map := SOME(m)
+  end
 
 open S
 
@@ -28,59 +36,70 @@ val lexAndParseProgOrMLBRef: (File.t * Region.t -> Ast.Basdec.node) ref =
 
 val lexAndParseProgOrMLB = fn f => !lexAndParseProgOrMLBRef f
 
-structure LrVals = MLBLrValsFun (structure Token = LrParser.Token
-                                 structure Ast = Ast
-                                 val lexAndParseProgOrMLB = lexAndParseProgOrMLB)
-structure Lex = MLBLexFun (structure Tokens = LrVals.Tokens)
-structure Parse = JoinWithArg (structure ParserData = LrVals.ParserData
-                               structure Lex = Lex
-                               structure LrParser = LrParser)
+(* glue together the lexer and parser *)
+structure Parser = MLBParserFun (
+	structure Lex = MLBLexer
+	structure SourceMap = SourceMap
+	structure Ast = Ast
+	val lexAndParseProgOrMLB = lexAndParseProgOrMLB)
 
-fun lexAndParse (source: Source.t, ins: In.t) =
-   let
-      val stream =
-         Parse.makeLexer (fn n => In.inputN (ins, n))
-         {source = source}
-      val lookahead = 30
-      val result =
-         (#1 (Parse.parse (lookahead, stream, fn (s, left, right) =>
-                           Control.errorStr (Region.make {left = left,
-                                                          right = right},
-                                             s),
-                           ())))
-         handle _ =>
-            let
-               val i = Source.lineStart source
-               val _ = 
-                  Control.errorStr (Region.make {left = i, right = i},
-                                    "parse error")
-            in
-               Ast.Basdec.empty
-            end
-      val () = Ast.Basdec.checkSyntax result
-   in 
-      result
-   end
+fun posToReg (map, pos) = let
+      val {fileName = file, lineNo=lineNo, colNo=colNo} = AntlrStreamPos.sourceLoc map pos
+      val file = case file of SOME x => x | NONE => ""
+      val sp = SourcePos.make {column=colNo, file=file, line=lineNo}
+      in
+	Region.make {left=sp, right=sp}
+      end
 
-fun lexAndParseFile (f: File.t) =
-   File.withIn (f, fn ins => lexAndParse (Source.new f, ins))
+fun lexAndParse (source: Source.t, ins: In.t) = let
+      val sm = AntlrStreamPos.mkSourcemap()
+      val lexer = MLBLexer.lex sm {source=source}
+      val _ = SourceMap.setMap sm
+      in
+	case Parser.parse lexer (MLBLexer.streamifyInstream ins)
+	 of (SOME pt, _, []) => (Ast.Basdec.checkSyntax pt; pt)
+	  | (_, _, errs) => let
+	      val _ = Out.outputl (Out.error, concat["FAILURE parsing file: ", Source.file source])
+	      val i = Source.lineStart source
+	      fun parseError (pos, repair) = let
+		    fun toksToStr (toks) = (*String.concatWith*)String_concatWith((MLtonList.map (toks, MLBTokens.toString)), " ")
+		    val msg = (case repair
+			    of AntlrRepair.Insert toks => ["syntax error; try inserting \"", toksToStr toks, "\""]
+			     | AntlrRepair.Delete toks => ["syntax error; try deleting \"", toksToStr toks, "\""]
+			     | AntlrRepair.Subst{old, new} => [
+			       "syntax error; try substituting \"", toksToStr new, "\" for \"",
+			       toksToStr old, "\""
+			       ]
+			     | AntlrRepair.FailureAt tok => ["syntax error at ", MLBTokens.toString tok]
+			  (* end case *))
+		    in
+		      Out.outputl (Out.error, String.concat ("ERR: "::msg));		
+		      Control.errorStr (posToReg(sm, pos), String.concat msg)
+		    end
+	      val _ = MLtonList.map (errs, parseError)
+	      in
+		Ast.Basdec.empty
+	      end
+	(* end case *)
+      end
+
+fun lexAndParseFile (f: File.t) = File.withIn (f, fn ins => lexAndParse (Source.new f, ins))
 
 val lexAndParseFile =
-    Trace.trace ("MLBFrontEnd.lexAndParseFile", File.layout, Ast.Basdec.layout)
-    lexAndParseFile
+      Trace.trace ("MLBFrontEnd.lexAndParseFile", File.layout, Ast.Basdec.layout)
+        lexAndParseFile
 
-fun lexAndParseString (s: (*String.t*)string) =
-   let 
+fun lexAndParseString (s: (*String.t*)string) = let 
       val source = Source.new "<string>"
       val ins = In.openString s
-   in
-      lexAndParse (source, ins)
-   end
+      in
+	lexAndParse (source, ins)
+      end
 
 val lexAndParseString =
-    Trace.trace ("MLBFrontEnd.lexAndParseString", (*String.layout*)Layout.str,
-                 Ast.Basdec.layout)
-    lexAndParseString
+      Trace.trace
+	("MLBFrontEnd.lexAndParseString", Layout.str, Ast.Basdec.layout)
+	  lexAndParseString
 
 val lexAndParseString =
    fn (s: string) =>

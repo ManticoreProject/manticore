@@ -1,4 +1,4 @@
-(* Copyright (C) 2009-2010 Matthew Fluet.
+(* Copyright (C) 2009-2012 Matthew Fluet.
  * Copyright (C) 1999-2008 Henry Cejtin, Matthew Fluet, Suresh
  *    Jagannathan, and Stephen Weeks.
  * Copyright (C) 1997-2000 NEC Research Institute.
@@ -89,18 +89,16 @@ val closureConvertShrink = control {name = "closureConvertShrink",
 structure Codegen =
    struct
       datatype t =
-         amd64Codegen
-       | Bytecode
-       | CCodegen
+         CCodegen
        | x86Codegen
+       | amd64Codegen
 
-      val all = [x86Codegen,amd64Codegen,CCodegen,Bytecode]
+      val all = [x86Codegen,amd64Codegen,CCodegen]
 
       val toString: t -> string =
-         fn amd64Codegen => "amd64"
-          | Bytecode => "bytecode"
-          | CCodegen => "c"
+         fn CCodegen => "c"
           | x86Codegen => "x86"
+          | amd64Codegen => "amd64"
    end
 
 datatype codegen = datatype Codegen.t
@@ -182,6 +180,28 @@ structure Elaborate =
             val toString: t -> string = 
                fn Default => "default"
                 | Ignore => "ignore"
+         end
+
+      structure ResolveScope =
+         struct
+            datatype t =
+               Dec
+             | Strdec
+             | Topdec
+             | Program
+
+            val fromString: string -> t option =
+               fn "dec" => SOME Dec
+                | "strdec" => SOME Strdec
+                | "topdec" => SOME Topdec
+                | "program" => SOME Program
+                | _ => NONE
+
+            val toString: t -> string =
+               fn Dec => "dec"
+                | Strdec => "strdec"
+                | Topdec => "topdec"
+                | Program => "program"
          end
 
       structure Id =
@@ -494,6 +514,19 @@ structure Elaborate =
          val (redundantMatch, ac) =
              makeDiagEIW ({name = "redundantMatch", 
                            default = DiagEIW.Warn, expert = false}, ac)
+         val (resolveScope, ac) =
+            make ({choices = SOME [ResolveScope.Dec, ResolveScope.Strdec, ResolveScope.Topdec, ResolveScope.Program],
+                   default = ResolveScope.Strdec,
+                   expert = true,
+                   toString = ResolveScope.toString,
+                   name = "resolveScope",
+                   newCur = fn (_,rs) => rs,
+                   newDef = fn (_,rs) => rs,
+                   parseArgs = fn args' =>
+                               case args' of
+                                  [arg'] => ResolveScope.fromString arg'
+                                | _ => NONE},
+                  ac)
          val (sequenceNonUnit, ac) =
             makeDiagEIW ({name = "sequenceNonUnit", 
                           default = DiagEIW.Ignore, expert = false}, ac)

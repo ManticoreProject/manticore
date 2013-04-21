@@ -58,4 +58,10 @@ val equal = fromString "="
 val itt = fromString "it"
 val unit = fromString "unit"
 
+(* extra reserved symbols for PML *)
+val assign = fromString ":="
+val ampersand = fromString "&"
+val bang = fromString "!"
+val slash = fromString "/"
+
 end

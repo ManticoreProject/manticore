@@ -1,5 +1,5 @@
 (* Heavily modified from SML/NJ sources by sweeks@sweeks.com;
- * Converted to ml-antlr by Lars Bergstrom and John REppy
+ * Converted to ml-antlr by Lars Bergstrom and John Reppy
  *)
 
 (* ml.grm
@@ -262,46 +262,6 @@ fun consTopdec (d, dss) =
       [] => [[d]]
     | ds :: dss => (d :: ds) :: dss
 
-type rule = Pat.t * Exp.t
-type clause = {pats : Pat.t vector,
-               resultType : Type.t option,
-               body : Exp.t}
-type clauses = clause vector
-type eb = Con.t * EbRhs.t
-type db = {tyvars: Tyvar.t vector,
-           tycon: Tycon.t,
-           cons: (Con.t * Type.t option) vector}
-
-type strdesc = Strid.t * Sigexp.t
-
-type wherespec = {tyvars: Tyvar.t vector,
-                  longtycon: Longtycon.t,
-                  ty: Type.t}
-
-type typdesc =  {tyvars: Tyvar.t vector,
-                 tycon: Tycon.t}
-
-type valdesc = Var.t * Type.t
-
-type exndesc = Con.t * Type.t option
-
-type strbind = {name: Strid.t,
-                def: Strexp.t,
-                constraint: SigConst.t}
-
-type sigbind = Sigid.t * Sigexp.t
-
-type funbind = {name : Fctid.t,
-                arg : FctArg.t,
-                result : SigConst.t,
-                body : Strexp.t}
-
-type vb = {pat: Pat.t,
-           exp: Exp.t}
-
-type rvb = {pat: Pat.t,
-            match: Match.t}
-
 fun ensureNonqualified (ss: Symbol.t list, r: Region.t): Symbol.t * Region.t =
    case ss of
       [s] => (s, r)
@@ -474,7 +434,7 @@ sigbind : sigid "=" sigexp' (andwherespec)* => (
 
 wherespec  : "type" tyvars longtycon "=" ty  => ({tyvars = tyvars,
                                                  longtycon = longtycon,
-                                                 ty = ty} : wherespec)
+                                                 ty = ty})
        ;
 
 sigconst :                 => (SigConst.None)

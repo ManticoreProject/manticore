@@ -1,4 +1,6 @@
-(* Heavily modified from the SML/NJ sources by sweeks@sweeks.com. *)
+(* Heavily modified from the SML/NJ sources by sweeks@sweeks.com;
+ * Converted to ml-antlr by Lars Bergstrom and John Reppy
+ *)
 
 (* ml.lex
  *
@@ -66,18 +68,6 @@ fun addHexEscape (s: string, source, yypos): unit =
     | SOME i => addOrd i
 
 fun eof () = Tokens.EOF
-
-val size = String.size
-
-      fun tok (t) = (
-         if false
-            then ()
-         else
-	     print (concat [Tokens.toString t,
-			    ")\n"]);
-	 t)
-
-fun tok' (t, x, s, l) = t x
 
 fun int (yytext, drop, source, {negate: bool}, radix) =
    Tokens.INT ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),

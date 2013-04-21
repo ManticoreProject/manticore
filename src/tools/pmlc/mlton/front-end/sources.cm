@@ -16,20 +16,22 @@ is
 
 $/basis.cm
 $/ml-lpt-lib.cm
-$/ml-yacc-lib.cm
 
 ../lib/sources.cm
 ../ast/sources.cm
 ../control/sources.cm
 
-ml-lex.cm
-ml-grm.cm
+ml.lex : ml-ulex
+ml.grm : ml-antlr
 
-mlb.lex
-mlb.grm
+mlb.lex : ml-ulex
+mlb.grm : ml-antlr
 
 front-end.sig
 front-end.fun
 
 mlb-front-end.sig
 mlb-front-end.fun
+
+source-map.sig
+

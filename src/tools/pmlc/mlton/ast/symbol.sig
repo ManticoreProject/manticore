@@ -31,4 +31,11 @@ signature SYMBOL =
       val plist: t -> PropertyList.t
       val toString: t -> string
       val unit: t
+
+      (* extra reserved symbols for PML *)
+      val assign : t
+      val ampersand : t
+      val bang : t
+      val slash : t
+
    end

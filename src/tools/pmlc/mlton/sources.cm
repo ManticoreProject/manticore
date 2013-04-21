@@ -6,12 +6,10 @@
 
 Library
 
-  signature SXML
   signature PML_FRONT_END
 
   structure PMLFrontEnd
 
-  structure Wrapper
 is
 
 $/basis.cm
@@ -25,7 +23,6 @@ core-ml/sources.cm
 defunctorize/sources.cm
 elaborate/sources.cm
 front-end/sources.cm
-translate/sources.cm
 xml/sources.cm
 mcore-common.cm
 
@@ -36,6 +33,3 @@ lookup-constant.fun
 
 pml-front-end.sig
 pml-front-end.sml
-
-wrapper.sml
-

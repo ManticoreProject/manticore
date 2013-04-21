@@ -40,4 +40,6 @@ fun newline (T {lineStart, lineNum, ...}, n) =
    ((*Int.inc lineNum*)lineNum := !lineNum+1
     ; lineStart := n)
 
+fun file (T{file, ...}) = !file
+
 end

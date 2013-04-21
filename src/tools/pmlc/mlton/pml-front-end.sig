@@ -8,6 +8,7 @@ signature PML_FRONT_END =
   sig
 
     structure Sxml : SXML
+    structure Tycon : TYCON
 
     val init : unit -> unit
 
