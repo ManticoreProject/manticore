@@ -96,8 +96,8 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 <INITIAL,BOM>"["		=> (Tokens.LBRACKET);
 <INITIAL,BOM>"]"		=> (Tokens.RBRACKET);
 <INITIAL,BOM>";"		=> (Tokens.SEMICOLON);
-<INITIAL,BOM>"("		=> (Tokens.LPAREN);
-<INITIAL,BOM>")"		=> (Tokens.RPAREN);
+<INITIAL>"("			=> (Tokens.LPAREN);
+<INITIAL>")"			=> (Tokens.RPAREN);
 <INITIAL,BOM>"..."		=> (Tokens.DOTDOTDOT);
 <INITIAL,BOM>"|"		=> (Tokens.BAR);
 <INITIAL,BOM>":"		=> (Tokens.COLON);
@@ -182,41 +182,35 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 (* FIXME: split LONGID into unqualified id and qualified id *)
 <INITIAL>{longid}		=> (case yytext
 				     of "*" => Tokens.ASTERISK
-   				      | _ => Tokens.LONGID(yytext));
+   				      | _ => Tokens.LONGID(yytext)
+				    (* end case *));
 <INITIAL>{real}			=> (Tokens.REAL(yytext));
-<INITIAL>{num} => 
-   (int (yytext, 0, source, {negate = false}, StringCvt.DEC));
-<INITIAL>"~"{num} =>
-   (int (yytext, 1, source, {negate = true}, StringCvt.DEC));
-<INITIAL>"0x"{hexnum} =>
-   (int (yytext, 2, source, {negate = false}, StringCvt.HEX));
-<INITIAL>"~0x"{hexnum} =>
-   (int (yytext, 3, source, {negate = true}, StringCvt.HEX));
-<INITIAL>"0w"{num} =>
-   (word (yytext, 2, source, StringCvt.DEC));
-<INITIAL>"0wx"{hexnum} =>
-   (word (yytext, 3, source, StringCvt.HEX));
-<INITIAL>\"     => (charlist := []
-                    ; stringStart := Source.getPos (source, Position.toInt yypos)
-                    ; stringtype := true
-                    ; YYBEGIN S
-                    ; continue ());
-<INITIAL>\#\"   => (charlist := []
-                    ; stringStart := Source.getPos (source, Position.toInt yypos)
-                    ; stringtype := false
-                    ; YYBEGIN S
-                    ; continue ());
-<INITIAL>"(*#line"{nrws}
-                => (YYBEGIN L
-                    ; commentStart := Source.getPos (source, Position.toInt yypos)
-                    ; commentLevel := 1
-                    ; continue ());
-<INITIAL>"(*"   => (YYBEGIN A
-                    ; commentLevel := 1
-                    ; commentStart := Source.getPos (source, Position.toInt yypos)
-                    ; continue ());
-<INITIAL>.      => (error (source, yypos, yypos + 1, "illegal token") ;
-                    continue ());
+<INITIAL>{num}			=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));
+<INITIAL>"~"{num}		=> (int (yytext, 1, source, {negate = true}, StringCvt.DEC));
+<INITIAL>"0x"{hexnum}		=> (int (yytext, 2, source, {negate = false}, StringCvt.HEX));
+<INITIAL>"~0x"{hexnum}		=> (int (yytext, 3, source, {negate = true}, StringCvt.HEX));
+<INITIAL>"0w"{num}		=> (word (yytext, 2, source, StringCvt.DEC));
+<INITIAL>"0wx"{hexnum}		=> (word (yytext, 3, source, StringCvt.HEX));
+<INITIAL>\"     		=> (charlist := []
+				    ; stringStart := Source.getPos (source, Position.toInt yypos)
+				    ; stringtype := true
+				    ; YYBEGIN S
+				    ; continue ());
+<INITIAL>\#\"   		=> (charlist := []
+				    ; stringStart := Source.getPos (source, Position.toInt yypos)
+				    ; stringtype := false
+				    ; YYBEGIN S
+				    ; continue ());
+<INITIAL>"(*#line"{nrws}	=> (YYBEGIN L
+				    ; commentStart := Source.getPos (source, Position.toInt yypos)
+				    ; commentLevel := 1
+				    ; continue ());
+<INITIAL>"(*"   		=> (YYBEGIN A
+				    ; commentLevel := 1
+				    ; commentStart := Source.getPos (source, Position.toInt yypos)
+				    ; continue ());
+<INITIAL>.      		=> (error (source, yypos, yypos + 1, "illegal token")
+				    ; continue ());
 
 <L>[0-9]+       => (YYBEGIN LL
                     ; (lineNum := valOf (Int.fromString yytext)
@@ -315,4 +309,3 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
                     ; continue ());
 <F>.            => (stringError (source, yypos, "unclosed string")
                     ; continue ());
-
