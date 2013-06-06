@@ -1,0 +1,52 @@
+= Branches
+The trunk contains the primary sources, from which all recent benchmark data has
+been reported:
+https://smlnj-gforge.cs.uchicago.edu/svn/manticore/trunk
+
+The whole-program flattening transformation, implemented against the AST IR, is
+in the branch below. Though we attempted to keep it up to date with the trunk,
+after the PPoPP paper that effort was ceased.
+https://smlnj-gforge.cs.uchicago.edu/svn/manticore/branches/flattening-transformation
+
+The project that replaces the frontend parser of Manticore with the one from
+MLton is available in the branch below. This branch is somewhat out of date with
+the trunk, but since most of the changes being made in the trunk are to portions
+of the compiler apart from the frontend phases, they should be trivial to merge.
+https://smlnj-gforge.cs.uchicago.edu/svn/manticore/branches/mlton-frontend2
+
+It is not a branch, but the benchmarks are only linked into the branches and
+actually live in a separate SVN repository, named below. This becomes an issue
+at times because you need to remember to do a separate commit for changes that
+span Manticore and benchmarks and you need to be careful not to break benchmarks
+being used in another branch.
+https://smlnj-gforge.cs.uchicago.edu/svn/manti-bench/benchmarks
+
+= Known large issues
+The frontend does not support signatures, functors, record types, and a slew of
+corner cases in the language.
+
+PVal and PTuples cannot be used together. The "fast clone" translation breaks
+invariants relied on by the work-stealing scheduler with regards to the valid
+intermediate states of the work queues.
+
+Exception handling is not implemented.
+
+The inatomic/from-atomic/to-atomic naming convention used in inline BOM is still
+a bugfest and should really be replaced by a static annotation that is checked
+by the compiler.
+
+The basis library is a hodgepodge mess. The few structures that exist are
+typically dramatically different from the SML basis library due to the subset of
+the language implemented, which both makes existing code from another system
+hard to reuse and sometimes the interface cannot even be written.
+
+= Known smaller issues
+We cannot handle allocations larger than a single heap page size (minus some
+slop). These allocations result in an exception, which is tough to debug because
+there is no exception handling.
+
+The work-stealing scheduler cannot handle more than a stack of 32k tasks, and
+crashes quietly when that is exceeded.
+
+Memoization and mutable state exist only as hand-performed translations to call
+basis library functions.
