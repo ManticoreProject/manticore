@@ -49,7 +49,6 @@ is
   pval-to-future.sml
   elaborate.sml
   hash.sml
-  monomorphise.sml
   nester.sml
   rope.sml
   test-utils.sml

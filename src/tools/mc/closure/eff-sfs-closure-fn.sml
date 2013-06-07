@@ -17,6 +17,13 @@
  * Then, we rely on simple flat closure conversion to handle both unknown
  * functions (as in the SSCC work) and for known functions that have too
  * many FVs (different from the SSCC work, which uses linked closures).
+ *
+ * STATUS:
+ * This work was started by Carsen Berger, but has not been completed.
+ * At present, it handles basic cases, but fails to pass the full set of
+ * regression tests. It should be considered a reasonable starting point,
+ * but as we do not have a characterization of the failure cases, starting
+ * from scratch is also a reasonble strategy.
  *)
 
 functor ClosureConvertFn (Target : TARGET_SPEC) : sig

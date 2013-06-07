@@ -1,8 +1,12 @@
-(* case-simplify.sml
+(* remove-atomics.sml
  *
  * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
+ * This work was added as part of Lars Bergstrom's PhD dissertation.
+ * It statically determines when certain locks may be removed by detecting
+ * when those locks are either redundant or wrapped around a pure
+ * computation. 
  *)
 
 structure RemoveAtomics : sig
