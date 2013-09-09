@@ -254,6 +254,7 @@ structure Translate : sig
 		  in
 		    B.mkStmt([t], B.E_Alloc(ty, xs), B.mkRet [t])
 		  end))
+                (*Ranges should already be rewritten in terms of Rope.tabFromToP (see translate-range.sml for details)*)
 	    | AST.RangeExp (lo, hi, optStep, ty) => raise Fail "FIXME (range construction)"
 (*let
                 (* FIXME This assumes int ranges for the time being. *)

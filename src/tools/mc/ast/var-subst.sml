@@ -140,5 +140,4 @@ structure VarSubst =
       in
         exp
       end
-
   end

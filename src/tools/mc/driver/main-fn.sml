@@ -132,7 +132,7 @@ functor MainFn (
   (* the compiler's backend *)
     fun bomToCFG bom = let
 	  val bom = BOMOpt.optimize bom	
-          val cps = Convert.transform bom
+    val cps = Convert.transform bom
 	  val cps = CPSOpt.optimize cps
 	  val cfg = Closure.convert cps
 	  val cfg = CFGOpt.optimize cfg

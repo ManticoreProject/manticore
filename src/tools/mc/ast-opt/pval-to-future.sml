@@ -42,6 +42,8 @@ structure PValToFuture =
 	    VSet.fromList o vs
 	end
 
+    fun printSet s = (VSet.app (fn v => print (Var.nameOf(v) ^ ", ")) s; print "\n")
+
     (* trExp : A.exp * VSet.set -> A.exp * VSet.set *)
     (* Consumes an expression and the set of pval-bound variables *)
     (*   live in the expression. *)
@@ -191,14 +193,48 @@ structure PValToFuture =
 		      (A.LetExp (b', e2'), pliveOut)
 		  end
 	      else						  
-	      (case p
-		of A.ConPat (c, ts, p) => raise Fail "letExp | PValBind | ConPat"
+	      (let fun replacePats (pat::pats) i tys sels e v = 
+                                   let val selector = Hash.mkHash(i, tys)
+                                   in replacePats pats (i+1) tys sels (replacePat pat (selector::sels) e v) v
+                                   end
+                              |replacePats [] _ _ _ e _ = e
+                                (*val replacePat : A.pat -> [A.FunExp] -> A.exp -> A.exp*)
+                   and replacePat (A.VarPat pat) selectors e v = 
+                        let val replacement = List.foldr (fn (sel as A.FunExp(_, _, ty), e) =>
+                                A.ApplyExp(sel, e, ty)) (A.VarExp (v, [])) selectors
+                            val subst = VarSubst.singleton(pat, pat)
+                        in VarSubst.substForExp subst replacement e
+                        end
+                      |replacePat (A.TuplePat ps') selectors e v = 
+                        replacePats ps' 1 (List.map TypeOf.pat ps') selectors e v
+                      |replacePat (A.WildPat _) _ e _ = e
+                      |replacePat (A.ConstPat _) _ e _ = e
+                      |replacePat (A.ConPat(dcon, typeList, pat)) selectors e v = 
+                        let val resultTy = TypeOf.pat pat
+                            val Types.DCon{owner=owner, ...} = dcon
+                            val arg = Var.new("arg", A.ConTy(typeList, owner))
+                            val tup = Var.new("tup", TypeOf.pat pat)
+                            val branch = A.PatMatch(A.ConPat(dcon, typeList, A.VarPat tup), A.VarExp(tup, []))
+                            val theCase = A.CaseExp(A.VarExp(arg, []), [branch], TypeOf.pat pat)
+                            val theFn = A.FunExp(arg, theCase, resultTy)
+                        in replacePat pat (theFn::selectors) e v
+                        end
+	      in case p
+		of A.ConPat (_, _, _) => 
+                       let val (e1', live1) = trExp (e1, pLive)
+                           val e1Fut = F.mkFuture e1'
+                           val varFut = Var.new ("futVar", TypeOf.exp e1Fut) 
+                           val e2' = replacePat p [] e2 varFut
+                           val (e2t, pLive2) = trExp (e2', plus (pLive, varFut))
+                           val pLive' = grandUnion[VSet.singleton varFut, pLive, pLive2]
+                       in  (A.LetExp(A.ValBind(A.VarPat varFut, e1Fut), e2t), pLive')
+                       end
                        (*
                            let pval Foo(x,y) = f(z)
                            in
                                if somebool then
                                  19
-                               else
+                               else 
                                  min(x,y)
                            end
                          -->
@@ -207,11 +243,20 @@ structure PValToFuture =
                                if somebool then
                                  (cancel tf; 19)
                                else
-                                 (min(#1(touch(tf)),#2(touch(tf))))                       
+                                 (min(#1((fn x => case x of Foo x' => x')touch(tf)),#2((fn x => case x of Foo x' => x')touch(tf))))                       
                            end
                         *)
-		 | A.TuplePat ps => raise Fail "letExp | PValBind | TuplePat"
-		         (* let fun collectVars [] = []
+		 | A.TuplePat ps => 
+		       let val (e1', live1) = trExp (e1, pLive)
+                           val e1Fut = F.mkFuture e1'
+                           val varFut = Var.new ("tup", TypeOf.exp e1Fut) 
+                           val e2' = replacePat p [] e2 varFut
+                           val (e2t, pLive2) = trExp (e2', plus (pLive, varFut))
+                           val pLive' = grandUnion[VSet.singleton varFut, pLive, pLive2]
+                       in  (A.LetExp(A.ValBind(A.VarPat varFut, e1Fut), e2t), pLive')
+                       end
+		 (*
+		          let fun collectVars [] = []
 			       | collectVars (p::ps) = 
 				   (case p
 				      of A.VarPat x => x :: (collectVars ps)
@@ -280,7 +325,7 @@ structure PValToFuture =
  		 | A.ConstPat k => 
                    (* Similar to WildPat case. *)
                    (A.LetExp (A.ValBind (p, e1), e2), pLive)
-	      (* end case *))
+	      end) (*end case*)
 	    | A.FunBind lams => 
 	      let val lams' = List.map (lambda pLive) lams
 		  val (e2', live1) = trExp (e2, pLive)
