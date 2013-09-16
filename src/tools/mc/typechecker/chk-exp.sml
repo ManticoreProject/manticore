@@ -326,6 +326,7 @@ structure ChkExp :> sig
                         raise Fail "pcase contains only an Otherwise"
 		    | lp (PT.Otherwise(e)::t, _, _) =
                         raise Fail "Otherwise not last in pcase"
+                    | lp (PT.MarkPMatch{span, tree}::t, acc, ty) = lp(tree::t, acc, ty)
 		    | lp (h::t, acc, SOME ts) = lp (t, chk(h)::acc, SOME ts)
 		    | lp (h::t, acc, NONE) = 
                        (case chk(h)

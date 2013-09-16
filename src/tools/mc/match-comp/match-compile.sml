@@ -339,7 +339,7 @@ structure MatchCompile : sig
 	      | AST.LetExp(AST.PValBind (pat, rhs), e) => 
 		  if MatchUtil.isSimplePat pat
 		    then AST.LetExp(AST.PValBind(pat, rewrite' rhs), rewrite' e)
-		    else raise Fail "todo"
+		    else raise Fail "todo" (*This should be compiled away in pval-to-future.sml*)
 	      | AST.LetExp(AST.FunBind fbs, e) => let
 		  fun rewriteFB (AST.FB(f, x, e)) = AST.FB(f, x, rewrite' e)
 		  in

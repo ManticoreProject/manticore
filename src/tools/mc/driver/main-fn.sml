@@ -93,6 +93,7 @@ functor MainFn (
       | printTrees ({tree,span}::rest) = (
         PrintPT.print tree;
         printTrees rest)
+        
     fun treeShake p2s =
 	  if Controls.get BasicControl.treeShake
 	     then (

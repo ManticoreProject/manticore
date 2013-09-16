@@ -126,7 +126,6 @@ structure TreeShake =
 	  val es = Var.Set.listItems(UsedVars.usedOfValDecl vd)
 	  val _ = if debug() then print ("vd:"^String.concatWith "\n" (List.map (fn (m,v) => m ^ (Var.toString v)) (bindsOfValDecl (vd,"")))^":\n") else ()
 	  val _ = if debug() then print (String.concatWith "\n" (List.map Var.toString es)^"\n") else ()
-
           in
 	     List.app (fn (_,v) => setEdges (v, es)) (bindsOfValDecl (vd,""))
           end
@@ -215,7 +214,7 @@ structure TreeShake =
 
   (* mark function definitions for removal *)
     fun setDeadFuns ds = let
-	  val _ = setEdgesOfDecls ds
+	  val _ = setEdgesOfDecls ds (*FIXME: Seems to be nonterminating if the program contains a pcase*)
           val extraRootStrings = List.foldr (fn (l, s) => StringSet.add (s, String.concatWith "." l)) StringSet.empty
                                             (DelayedBasis.allVars() @ DelayedBasis.allTyCons() @ DelayedBasis.allDataCons() @ DelayedBasis.allHLOps())
           val _ = if debug() then print (concat["Extra Root Strings :", Int.toString (StringSet.numItems extraRootStrings), "\n"]) else ()
