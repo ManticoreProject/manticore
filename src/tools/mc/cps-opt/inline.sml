@@ -208,7 +208,9 @@ structure Inline : sig
         fun unsafeFV fv = let
             val funLoc = Reflow.bindingLocation f
             val fvLocs = Reflow.rebindingLocations fv
-            val result = PSet.exists (fn (fvLoc) =>
+            val result = Reflow.pointAnalyzed funLoc
+            val result = result andalso PSet.all Reflow.pointAnalyzed fvLocs
+            val result = result andalso PSet.exists (fn (fvLoc) =>
 					 (Reflow.pathExists (funLoc, fvLoc)) andalso
 					 (Reflow.pathExists (fvLoc, pptInlineLocation))) fvLocs
         in
@@ -226,7 +228,7 @@ structure Inline : sig
                                (VSet.difference (fvs, env)))
 		else ()
     in
-        if !inlineHOFlg
+        if not(!inlineHOFlg)
         then VSet.numItems fvs = 0
         else (
             VSet.numItems fvs = 0 orelse
