@@ -161,7 +161,7 @@ structure Inline : sig
   (********** The inlining environment **********)
 
     val scale = 2
-    val initK = 10
+    val initK = 20 
 
   (* two-step decimation function, but we never go below a scale of 1 *)
     (* TODO: won't this only ever be 10 or 5? *)
@@ -202,6 +202,7 @@ structure Inline : sig
      * that this is not a "complete" inlining.
      * 
      *)
+     (*lambda is the function to be inlined, oldVar is the function being applied in the application*)
     fun isSafe (pptInlineLocation, lambda, env, oldVar) = let
         val CPS.FB{f,...} = lambda
         val fvs = FreeVars.envOfFun f
@@ -230,18 +231,58 @@ structure Inline : sig
     in
         if not(!inlineHOFlg)
         then VSet.numItems fvs = 0
-        else (
+        else (if !inlineDebug then safeDebug(f, fvs, pptInlineLocation, env, unsafeFV) else ();
             VSet.numItems fvs = 0 orelse
             (Reflow.pointAnalyzed pptInlineLocation andalso
              VSet.isSubset(fvs, env) andalso
              not(VSet.exists unsafeFV fvs)))
     end
 
+    and safeDebug(f, fvs, pptInlineLoc, env, unsafeFV) = 
+        if VSet.numItems fvs = 0
+        then print (CV.toString f ^ " is safe to inline\n")
+        else if not(Reflow.pointAnalyzed pptInlineLoc)
+             then print (CV.toString f ^ " is unsafe because the point was never analyzed\n")
+             else if not(VSet.isSubset(fvs, env))
+                  then print (CV.toString f ^ " is not safe because free varaibles are not a subset of env\n")
+                  else if (VSet.exists unsafeFV fvs)
+                       then print (CV.toString f ^ " is not safe because it has unsafe free variables\n")
+                       else print (CV.toString f ^ " is safe to inline\n")       
+
+    fun inlineAppInfo (E{k, s, env}, ppt, f, args, rets) = 
+        case CV.kindOf f of
+        C.VK_Fun(fb as C.FB{body, ...}) =>
+	        if VSet.member (s, f)
+	        then print (CV.toString f ^ " was not inlined because it is a member of env\n")
+	        else if not(Sizes.smallerThan(body, k * Sizes.sizeOfApply(f, args, rets)))
+	             then print (CV.toString f ^ " was not inlined because its body is too large\n")
+	             else ()
+	  | _ => (case CFA.valueOf f
+                   of CFA.LAMBDAS (l) => (
+                       case CV.Set.listItems l
+                        of [f'] => let
+                            val C.VK_Fun (fb as C.FB{body,...}) = CV.kindOf f'
+                        in
+                            if VSet.member (s, f') 
+                            then print (CV.toString f ^ " was not inlined because its CFA value is a member of env\n")
+                            else if CFA.isProxy f'
+                                 then print (CV.toString f ^ " was not inlined because its CFA value is a proxy\n")
+                                 else if not(isSafe(ppt, fb, env, f))
+                                      then print(CV.toString f ^ " was not inlined because it's not safe\n")
+                                      else if not(Sizes.smallerThan(body, k * Sizes.sizeOfApply(f, args, rets)))
+                                           then print (CV.toString f ^ " was not inlined because its CFA value's body is too large\n")
+                                           else print (CV.toString f ^ " was inlined!\n")
+                        end
+                         | fs => print (CV.toString f ^ " was not inlined because its CFA values are: [" ^ 
+                                        String.concatWith ", " (List.map (CV.toString) fs) ^ "]\n"))
+                    | v => print (CV.toString f ^ " was not inlined because its CFA value is: " ^ 
+                                    CFA.valueToString v ^ "\n"))
+
   (* test to see if a function application ``f(args / rets)'' should be
    * inlined.  If so, return SOME(fb), where fb is the lambda
    * bound to f, otherwise return NONE.
    *)
-    fun shouldInlineApp (E{k, s, env}, ppt, f, args, rets) = (
+    fun shouldInlineApp (E{k, s, env}, ppt, f, args, rets) = (if !inlineDebug then inlineAppInfo(E{k=k,s=s,env=env}, ppt, f, args, rets) else ();
         case CV.kindOf f
 	 of C.VK_Fun(fb as C.FB{body, ...}) =>
 	    if not(VSet.member (s, f)) andalso
@@ -266,7 +307,36 @@ structure Inline : sig
                          | _ => NONE)
                     | _ => NONE))
 
-    fun shouldInlineThrow (E{k, s, env}, ppt, f, args) = (
+    fun inlineThrowInfo (E{k, s, env}, ppt, f, args) = 
+        case CV.kindOf f of
+        C.VK_Cont(fb as C.FB{body, ...}) =>
+	        if VSet.member (s, f)
+	        then print (CV.toString f ^ " was not inlined because it is a member of env\n")
+	        else if not(Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args)))
+	             then print (CV.toString f ^ " was not inlined because its body is too large\n")
+	             else ()
+	  | _ => (case CFA.valueOf f
+                   of CFA.LAMBDAS (l) => (
+                       case CV.Set.listItems l
+                        of [f'] => let
+                            val C.VK_Cont (fb as C.FB{body,...}) = CV.kindOf f'
+                        in
+                            if VSet.member (s, f') 
+                            then print (CV.toString f ^ " was not inlined because its CFA value is a member of env\n")
+                            else if CFA.isProxy f'
+                                 then print (CV.toString f ^ " was not inlined because its CFA value is a proxy\n")
+                                 else if not(isSafe(ppt, fb, env, f))
+                                      then print(CV.toString f ^ " was not inlined because it's not safe\n")
+                                      else if not(Sizes.smallerThan(body, k * Sizes.sizeOfThrow(f, args)))
+                                           then print (CV.toString f ^ " was not inlined because its CFA value's body is too large\n")
+                                           else print (CV.toString f ^ " was inlined!\n")
+                        end
+                         | fs => print (CV.toString f ^ " was not inlined because its CFA values are: [" ^ 
+                                        String.concatWith ", " (List.map (CV.toString) fs) ^ "]\n"))
+                    | v => print (CV.toString f ^ " was not inlined because its CFA value is: " ^ 
+                                    CFA.valueToString v ^ "\n"))
+
+    fun shouldInlineThrow (E{k, s, env}, ppt, f, args) = (if !inlineDebug then inlineThrowInfo(E{k=k,s=s,env=env}, ppt, f, args) else ();
         case CV.kindOf f
 	 of C.VK_Cont(fb as C.FB{body, ...}) => 
 	    if not(VSet.member (s, f)) andalso
@@ -301,6 +371,7 @@ structure Inline : sig
 		fun doFB (C.FB{f, params, rets, body}) = let
                     val env = extend' (env, params)
                     val env = extend' (env, rets)
+                    val env = addFun(env, f) (*Don't inline recursive calls*)
                 in
                     C.FB{f=f, params=params, rets=rets,
 			 body=doExp(env, body)}
@@ -314,11 +385,11 @@ structure Inline : sig
                   val env = extend(env, f)
 		  val e = doExp (env, e)
 		  fun doFB (C.FB{f, params, rets, body}) = let
-                      val env = extend' (env, params)
-                      val env = extend' (env, rets)
+                      val env' = extend' (env, params)
+                      val env'' = extend' (env, rets)
                   in
                       C.FB{f=f, params=params, rets=rets,
-			   body=doExp(env, body)}
+			   body=doExp(env'', body)}
                   end
 		  val fb = doFB fb
 		  val _ = setBinding(f, C.VK_Cont fb)
@@ -335,8 +406,8 @@ structure Inline : sig
 	    | C.Apply(f, args, conts) => (
                 case shouldInlineApp (env, ppt, f, args, conts)
                  of SOME (C.FB{f, params, rets, body}) => (
-                     ST.tick cntBeta;
-                     doInline (env, f, conts@args, rets@params, body))
+                     (ST.tick cntBeta;
+                     doInline (env, f, conts@args, rets@params, body)))
                   | NONE => C.Exp (ppt, C.Apply (f, args, conts)))
 	    | C.Throw(k, args) => (
                 case shouldInlineThrow (env, ppt, k, args)

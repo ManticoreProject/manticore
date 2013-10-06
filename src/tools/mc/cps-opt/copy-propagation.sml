@@ -134,10 +134,11 @@ structure CopyPropagation : sig
             isClosedRHS (rhs, env) andalso isClosedExp (body, env)
         end
           | isClosedTerm (C.Fun (lambdas, body), env) = let
-              val (b, env) = List.foldr (fn (f,(b,e)) => let val (b',e') = isClosedLambda (f,env) in
-                                                             (b andalso b', e') end) (true,env) lambdas
+              val (b, env) = List.foldr (fn (f,(b,e)) => let val (b',e') = isClosedLambda (f,env)
+                                                         in
+                                                             (b andalso b', e') end) (true,env) lambdas                                        
           in
-              b andalso isClosedExp (body, env)
+               b andalso isClosedExp(body, env)  
           end
           | isClosedTerm (C.Cont (lambda, body), env) = let
               val (b,env) = isClosedLambda (lambda, env)

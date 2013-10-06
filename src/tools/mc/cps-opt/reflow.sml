@@ -339,14 +339,18 @@ structure Reflow : sig
 	                     | REACHES l => PSet.listItems l)
               | NONE => [] (* points not appearing have no out edges *)
         val a = Time.now()
-	val components = SCC.topOrder'{roots = map #1 (PMap.listItemsi p), follow = follow}
+	val components : SCC.component list = SCC.topOrder'{roots = map #1 (PMap.listItemsi p), follow = follow}
         val b = Time.now()
         val _ = if !debugFlg
-                then print (concat["Number of SCC components: ",
-                                   Int.toString (List.length components),
-                                   "\n"])
-                else ()
-
+                then let val simpleComps = List.filter (fn x => case x of SCC.SIMPLE _ => true |_ => false) components
+                         val recComps = List.filter (fn x => case x of SCC.RECURSIVE _ => true |_ => false) components
+                     in print (concat["Number of SCC components: ", Int.toString (List.length components),
+                                      ", number of simple components: ", Int.toString (List.length simpleComps),
+                                      ", number of recursive components: ", Int.toString (List.length recComps), "\n"]);
+                        List.map (fn SCC.RECURSIVE(x) => print ("Found recursive component with " ^ Int.toString (List.length x) ^ " elements\n")) recComps;
+                        ()
+                     end
+                else()
 	(* The representatives are:
 	 * for a SCC.SIMPLE component, itself
 	 * for an SCC.RECURSIVE component, the first entry
@@ -404,6 +408,11 @@ structure Reflow : sig
 	 compressed)
     end
 
+    fun printMap m = 
+          let fun printVal node = print (ProgPt.toString node ^ "\n")
+              val keyVals = PMap.listItemsi m
+              in List.app (fn (k, v) => (print (ProgPt.toString k ^ " => "); printVal v)) keyVals
+              end
 
     fun analyze (module as CPS.MODULE{body, ...}) = let
 	val _ = FreeVars.clear module
@@ -419,6 +428,9 @@ structure Reflow : sig
                                    "\n"])
                 else ()
         val SCCCompressed = compressSCC (neighbors, neighborlist)
+        val _ = if !debugFlg
+                then (print ("--------------Map-----------------\n"); printMap (!representative); print("-----------------------------------\n\n"))
+                else ()
         val d = Time.now()
         val reachability = computeReachability SCCCompressed
         val e = Time.now()
@@ -433,15 +445,15 @@ structure Reflow : sig
     end
 
 
-    fun pathExists (p1, p2) = let
-	val rep1 = Option.valOf(PMap.find(!representative, p1))
-	val rep2 = Option.valOf(PMap.find(!representative, p2))
+    fun pathExists (p1 : ProgPt.ppt, p2 : ProgPt.ppt) = let
+	val rep1 : ProgPt.ppt = Option.valOf(PMap.find(!representative, p1))
+	val rep2 : ProgPt.ppt = Option.valOf(PMap.find(!representative, p2))
     in
 	if (ProgPt.same (rep1, rep2))
-	then true
+	then (if !debugFlg then print ("nodes " ^ ProgPt.toString rep1 ^ " and " ^ ProgPt.toString rep2 ^ " are a part of the same SCC (path exists)\n") else (); true)
 	else (case PMap.find (!graph, rep1)
 	       of NONE => false
-		| SOME ps => (PSet.member (ps, rep2)))
+		| SOME ps => PSet.member (ps, rep2))
     end
 
     fun pointAnalyzed (p) =

@@ -1793,10 +1793,20 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
      * to fix up the types all the way through the functions, which means yet another
      * pass)
      *)
-    fun skipParamCleanup (f) =
+    fun skipParamDebug f = 
+        if not(isFlat f)
+        then print ("Skipping param cleanup for " ^ CV.toString f ^ " because it is not flat\n")
+        else if isShared f
+             then print ("Skipping param cleanup for " ^ CV.toString f ^ " because it is shared\n")
+             else if CV.useCount f > CV.appCntOf f
+                  then print ("Skipping param cleanup for " ^ CV.toString f ^ " because its use count is greater than its app count\n")
+                  else print ("Performing param cleanup for " ^ CV.toString f)
+     
+     
+    fun skipParamCleanup (f) = (if !arityRaisingDebug then skipParamDebug f else ();
         not(isFlat f) orelse
         isShared f orelse
-        (CV.useCount f > CV.appCntOf f)
+        (CV.useCount f > CV.appCntOf f))
     fun cleanup (C.MODULE{name,externs,body=(C.FB{f=main,params=modParams,rets=modRets,body=modBody})}) = let
         fun decCountsRHS (rhs) = (
             case rhs

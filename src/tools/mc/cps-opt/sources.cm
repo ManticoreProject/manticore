@@ -40,3 +40,4 @@ is
   inline.sml
   reflow.sml
   sizes.sml
+  function-hoisting.sml
