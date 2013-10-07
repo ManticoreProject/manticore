@@ -207,13 +207,18 @@ structure Inline : sig
         val CPS.FB{f,...} = lambda
         val fvs = FreeVars.envOfFun f
         fun unsafeFV fv = let
-            val funLoc = Reflow.bindingLocation f
-            val fvLocs = Reflow.rebindingLocations fv
-            val result = Reflow.pointAnalyzed funLoc
-            val result = result andalso PSet.all Reflow.pointAnalyzed fvLocs
-            val result = result andalso PSet.exists (fn (fvLoc) =>
-					 (Reflow.pathExists (funLoc, fvLoc)) andalso
-					 (Reflow.pathExists (fvLoc, pptInlineLocation))) fvLocs
+            val result = if CV.useCount f = CV.appCntOf f
+                         then false
+                         else let 
+                            val funLoc = Reflow.bindingLocation f
+                            val fvLocs = Reflow.rebindingLocations fv
+                            val result = Reflow.pointAnalyzed funLoc
+                            val result = result andalso PSet.all Reflow.pointAnalyzed fvLocs
+                            val result = result andalso PSet.exists (fn (fvLoc) =>
+					                 (Reflow.pathExists (funLoc, fvLoc)) andalso
+					                 (Reflow.pathExists (fvLoc, pptInlineLocation))) fvLocs		
+                            in result
+                            end	 
         in
             if !inlineDebug
             then ((if result
@@ -405,7 +410,10 @@ structure Inline : sig
 		          Option.map (fn e => doExp(env, e)) dflt))
 	    | C.Apply(f, args, conts) => (
                 case shouldInlineApp (env, ppt, f, args, conts)
-                 of SOME (C.FB{f, params, rets, body}) => (
+                 of SOME (C.FB{f, params, rets, body}) => (*
+                      if InlineRecursive.isRecursive(f, body)
+                      then C.Exp(ppt, C.Apply(f, args, conts)) 
+                      else*)
                      (ST.tick cntBeta;
                      doInline (env, f, conts@args, rets@params, body)))
                   | NONE => C.Exp (ppt, C.Apply (f, args, conts)))

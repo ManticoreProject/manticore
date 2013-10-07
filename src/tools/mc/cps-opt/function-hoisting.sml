@@ -116,7 +116,7 @@ structure FunctionHoisting : sig
             val nonRecursiveCallers = VSet.filter (fn f' => not(CV.same(f, f'))) aboveCallers
             val _ = if !reorderDebug
                     then print ("Mapping " ^ CV.toString f ^ " to: " ^ String.concatWith ", " (List.map (fn x => CV.toString x) (VSet.listItems nonRecursiveCallers)) ^ "\n")
-                    else ()
+                    else ()     
         in insert(map, f, nonRecursiveCallers)
         end         
                       
@@ -191,12 +191,16 @@ structure FunctionHoisting : sig
                                             then print (concat [CV.toString f, " is being hoisted above ",
                                                                 CV.toString f', ".\n"])
                                             else ()
+                                    val ty = CV.typeOf f
+                                    val isCont = case ty of 
+                                                        CTy.T_Cont _ => true
+                                                       |_ => false        
                                 in
-                                    case rets
-                                     of r::rs => wrapFun (preds, (fn x => C.mkFun ([p], x)) o wrapper,
-                                                          map)
-                                      | [] => wrapFun (preds, (fn x => C.mkCont (p, x)) o wrapper,
+                                    if isCont
+                                    then wrapFun (preds, (fn x => C.mkCont (p, x)) o wrapper,
                                                        map)
+                                    else wrapFun (preds, (fn x => C.mkFun ([p], x)) o wrapper,
+                                                          map)
                                 end
                           | wrapFun ([], wrapper, map) = wrapWithNewPreds' (rest, wrapper, hoisted, map, continue)
                     in
