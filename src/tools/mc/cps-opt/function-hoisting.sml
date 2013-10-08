@@ -218,7 +218,7 @@ structure FunctionHoisting : sig
                 in (C.mkLet (vars, rhs, body), hoisted, map) 
                 end
               | C.Fun (lambdas, body) => 
-                wrapWithNewPreds(lambdas, hoisted, map, fn (wrapper, hoisted, map) => 
+                wrapWithNewPreds(List.filter (fn C.FB{f,...} => not(VSet.member(hoisted, f))) lambdas, hoisted, map, fn (wrapper, hoisted, map) => 
                                 (*Remove any lambdas that were already hoisted*)
                         let val lambdas = List.filter (fn C.FB{f,...} => not(VSet.member(hoisted, f))) lambdas
                             val (lambdas', hoisted', map') = List.foldr (fn (C.FB{f, params, rets, body}, (fbs, hoisted, map)) => 

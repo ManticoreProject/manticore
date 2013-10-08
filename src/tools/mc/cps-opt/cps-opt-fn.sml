@@ -75,6 +75,7 @@ functor CPSOptFn (Spec : TARGET_SPEC) : sig
 	  val _ = cfa module
 	  val module = inline module 
           val _ = CFACPS.clearInfo module
+          val _ = cfa module
           val module = cse module
           val module = contract module
 	  in
