@@ -410,7 +410,7 @@ structure Inline : sig
 		          Option.map (fn e => doExp(env, e)) dflt))
 	    | C.Apply(f, args, conts) => (
                 case shouldInlineApp (env, ppt, f, args, conts)
-                 of SOME (C.FB{f, params, rets, body}) => (*
+                 of SOME (C.FB{f, params, rets, body}) => ((*
                       if InlineRecursive.isRecursive(f, body)
                       then C.Exp(ppt, C.Apply(f, args, conts)) 
                       else*)
