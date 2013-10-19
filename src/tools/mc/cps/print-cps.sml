@@ -123,7 +123,9 @@ structure PrintCPS : sig
 		    | _ => (prParams params; pr " / "; prParams rets)
 		  (* end case *);
 		  pr ") =\n";
-		  prExp (i+2, body)
+		  prExp (i+2, body);
+		  prIndent i;
+		  prl ["(**** End ", varUseToString f, " ****)\n"]
 		end
 	  and prIf (i, cond, e1, CPS.Exp(_, CPS.If(cond', e2, e3))) = (
 		prl ["if ", condToString cond, " then\n"];

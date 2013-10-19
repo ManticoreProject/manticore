@@ -152,7 +152,7 @@ structure Contract : sig
 			  val (env, casts) = extendWithCasts {env = env, fromVars = [z], toVars = [y]}
 			  in
 			    ST.tick cntSelectConst;
-			    dec x; inc z;
+			    dec x; inc z; 
 			    C.mkLets (casts, doExp (env, e))
 			  end
 		      | _ => let

@@ -3,27 +3,6 @@
  * COPYRIGHT (c) 2008 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * This transformation replaces any variables that are not a function definition
- * but which CFA tells us can only be bound to a single function with that function's
- * literal name. Note that we need to respect lexical scoping (which the CFA analysis
- * does not require to be true).
- * We also need to be environmentally consonant (Shivers' term) - we can only replace
- * a function if we're replacing it with one that is from an environment guaranteed
- * to have the same bindings. This prevents replacing a call to a closure with a
- * variable bound to a value A from being replaced with a call to the known function
- * in an environment where the variable is bound to a value B.
- *
- * This pass also performs a hoisting of function definitions as high as they can
- * safely go. This transformation is performed in order to open up more copy-prop
- * opportunities, as we have a lot of code of the form:
- * fun f k = k 1
- *   cont k1 x = x
- *   f k1
- * Even though k is known to be k1, since k1 is not in scope, it can't be propagated
- * without hoisting.
- *
- * FIXME:
- * Split analysis from transformation. !pass is a horrible hack
  *)
 
 structure FunctionHoisting : sig

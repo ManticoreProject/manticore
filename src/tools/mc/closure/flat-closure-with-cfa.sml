@@ -112,8 +112,12 @@ structure FlatClosureWithCFA : sig
     and cvtStdContTy (ty, v) = CFG.T_OpenTuple[cvtStdContTyAux (ty, v)]
     and cvtStdContTyAux (ty, CFA.TOP) = cvtStdContTyAuxStd ty
       | cvtStdContTyAux (ty, CFA.BOT) = cvtStdContTyAuxStd ty
-      | cvtStdContTyAux (ty, CFA.LAMBDAS fs) = let
-          val SOME f = CPS.Var.Set.find (fn _ => true) fs
+      | cvtStdContTyAux (ty, CFA.LAMBDAS fs) = 
+        if CPS.Var.Set.numItems fs = 0
+        then cvtStdContTyAuxStd ty
+        else 
+        let
+          val SOME f = CPS.Var.Set.find (fn _ => true) fs (*If fs is empty, then this returns NONE and fails*)
           val CPS.VK_Cont (CPS.FB {params, rets = [], ...}) = CPS.Var.kindOf f
           in
              if CFA.isEscaping f
@@ -139,6 +143,7 @@ structure FlatClosureWithCFA : sig
     fun cvtTyOfVar x =
        ((cvtTy (CPS.Var.typeOf x, CFA.valueOf x))
         handle Fail s => raise Fail(concat["cvtTyOfVar(", CPS.Var.toString x, ") ==> ", s]))
+        
     val cvtTyOfVar = fn x => let
           val ty = CPS.Var.typeOf x
           val v = CFA.valueOf x
@@ -567,7 +572,7 @@ structure FlatClosureWithCFA : sig
                 end
         (* convert a CPS RHS to a list of CFG expressions, plus a new environment *)
           and cvtRHS (env, lhs, rhs) = (case (newLocals(env, lhs), rhs)
-                 of ((env, lhs), CPS.Var ys) => let
+                 of ((env, lhs), CPS.Var ys) => let                              
                       val (binds, ys) = lookupVars (env, ys)
                       in
                         ([CFG.mkVar(lhs, ys)] @ binds, env)
@@ -575,6 +580,13 @@ structure FlatClosureWithCFA : sig
                   | ((env, [x]), CPS.Const(lit, ty)) => ([CFG.mkConst(x, lit, cvtTyTop ty)], env)
                   | ((env, [x]), CPS.Cast(ty, y)) => let
                       val (binds, y') = lookupVar(env, y)
+                      val convertedTy = cvtTy(ty, CFA.valueOf y)
+                 (*     val _ = print("Making Cast: " ^ CFG.Var.toString(x) ^ " : " ^ CFGTyUtil.toString(CFG.Var.typeOf x) ^ " = (" ^ CFGTyUtil.toString(convertedTy) ^ ")" ^ CFG.Var.toString(y') ^ 
+                                " (its CFA value is: " ^ CFA.valueToString(CFA.valueOf y) ^ "), and the lhs CFA value is: " ^ CFA.valueToString(CFA.valueOf (List.hd lhs)) ^ "\n")*)
+                 (*     val _ = if CFGTyUtil.match(CFG.Var.typeOf x, convertedTy)
+                              then ()
+                              else raise Fail ("Types: " ^ CFGTyUtil.toString(CFG.Var.typeOf x) ^ " and " 
+                                ^ CFGTyUtil.toString(convertedTy) ^ " do not match in cast\n")*)
                       in
                         ([CFG.mkCast(x, cvtTy (ty, CFA.valueOf y), y')] @ binds, env)
                       end

@@ -11,7 +11,7 @@ structure CPSCensus : sig
     val census : CPS.module -> unit
 
   (* update variable counts *)
-    val clear : CPS.var -> unit		(* clear both use and application counts *)
+    val clear : CPS.var -> unit		(* clear both use and application counts *) 
     val incUseCnt : CPS.var -> unit	(* increment use count *)
     val incAppCnt : CPS.var -> unit	(* increment both use and application counts *)
     val decUseCnt : CPS.var -> unit	(* decrement use count *)

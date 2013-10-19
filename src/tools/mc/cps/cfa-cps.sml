@@ -303,10 +303,11 @@ structure CFACPS : sig
                 fun getParamsRets f = (case CV.kindOf f
                        of CPS.VK_Fun (CPS.FB {params, rets, ...}) => (params, rets)
                         | CPS.VK_Cont (CPS.FB {params, rets, ...}) => (params, rets)
-                        | vk => raise Fail(concat[
+                        | vk => (print ("CFA Values are: " ^ valueToString v1 ^ " and " ^ valueToString v2 ^ "\n" );
+                                raise Fail(concat[
                               "type error: kJoin.getParamsRets(", CV.toString f,
                               "); Var.kindOf(", CV.toString f, ") = ", CPS.varKindToString vk
-                            ])
+                            ]))
                      (* end case *))
                 val SOME f1 = VSet.find (fn _ => true) fs1
                 val SOME f2 = VSet.find (fn _ => true) fs2

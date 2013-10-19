@@ -23,14 +23,14 @@ struct
     _primcode (
         typedef cont_rep = cont(any);
 
-        define @callcc_impl (f: fun (cont_rep / exh -> any) / exh : exh) : any =
-           cont k (x : any) = return (x)
-           apply f (k / exh)
+        define inline @callcc_impl (callccFun: fun (cont_rep / exh -> any) / exh : exh) : any =
+           cont currentContinuation (ccArg : any) = return (ccArg)
+           apply callccFun (currentContinuation / exh)
         ;
 
-        define @throw_impl (arg: [cont_rep, any] / exh : exh) : any =
-           let k : cont_rep = #0(arg)
+        define inline @throw_impl (arg: [cont_rep, any] / exh : exh) : any =
            let x : any = #1(arg)
+           let k : cont_rep = #0(arg)
            throw k (x)
         ;
 
