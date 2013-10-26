@@ -1,5 +1,6 @@
 (* cheating...these names are supposed to be bound already... *)
 
+
 fun sumP_float a = let
   fun add (x, y) = x + y
   in
@@ -28,10 +29,13 @@ type vector = float parray
 type sparse_vector = (int * float) parray
 type sparse_matrix = sparse_vector parray
 *)
-
 val vtos = PArray.toString Int.toString ","
 
 fun pointwiseMul (v1, v2) = [| x * y | x in v1, y in v2 |]
+
+val _ = print "parallel array comprehension 1 to 10\n"
+val test = [|1 to 10|]
+val _ = print "done with parallel array comprehension\n"
 
 val _ = Print.printLn (vtos [| 1 to 10 |])
 

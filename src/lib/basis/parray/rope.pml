@@ -564,7 +564,7 @@ fun tabulateLTS PPT (intv, f) = let
 	 fun id x = x
 	 val (cur1, cur2, reb) = 
 	       splitAt intervalLength encodeCur cursorAtIxIntv id id (unzipCursor cur') mid
-	 val (rp1, rp2) = RT.par2 (fn () => t cur1, fn () => t cur2)
+	 val (rp1, rp2) = RT.par2 (fn () => t cur1, fn () => t cur2) (*FIXME: This seems to be raising an exception in dotp.pml*)
 	 in
 	   join decodeRopeTab id rootU (rp1, rp2, reb)
          end)

@@ -25,7 +25,7 @@ structure FunctionHoisting : sig
               
     val enableFunReordering = ref true          
     val reorderDebug = ref false
-              
+    val hoistFlag = ref true
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
               envName = NONE
@@ -34,15 +34,22 @@ structure FunctionHoisting : sig
                   ctl = enableFunReordering,
                   name = "fun-reorder",
                   pri = [0, 1],
-                  obscurity = 0,
+                  obscurity = 1,
                   help = "enable function reordering"
                 },
               Controls.control {
                   ctl = reorderDebug,
                   name = "fun-reorder-debug",
                   pri = [0, 1],
-                  obscurity = 0,
+                  obscurity = 1,
                   help = "enable function reordering debug"
+                },
+              Controls.control {
+                  ctl = hoistFlag,
+                  name = "enable-fun-reorder",
+                  pri = [0, 1],
+                  obscurity = 1,
+                  help = "enable function reordering"
                 }
             ]          
               
@@ -94,7 +101,7 @@ structure FunctionHoisting : sig
             val aboveCallers = VSet.filter (fn x => VSet.member(env, x)) callers
             val nonRecursiveCallers = VSet.filter (fn f' => not(CV.same(f, f'))) aboveCallers
             val _ = if !reorderDebug
-                    then print ("Mapping " ^ CV.toString f ^ " to: " ^ String.concatWith ", " (List.map (fn x => CV.toString x) (VSet.listItems nonRecursiveCallers)) ^ "\n")
+                    then (print ("Mapping " ^ CV.toString f ^ " to: " ^ String.concatWith ", " (List.map (fn x => CV.toString x) (VSet.listItems nonRecursiveCallers)) ^ "\n"); print (CV.toString f ^ "'s callers are: " ^ String.concatWith ", " (List.map (fn x => CV.toString x) (VSet.listItems callers)) ^ "\n") )
                     else ()     
         in insert(map, f, nonRecursiveCallers)
         end         
@@ -106,12 +113,13 @@ structure FunctionHoisting : sig
         let fun doExp (C.Exp(ppt, e), env, map) = case e
                 of C.Let(vars, rhs, e) => doExp(e, env, map)
                   |C.Fun(lambdas, body) => 
-                        let val (env', map') = List.foldr (fn (fb, (env, map)) => doLambda(fb, env, map))
+                        let val (_, map') = List.foldr (fn (fb,  (_, map)) => doLambda(fb, env, map, length lambdas > 1))
                                                         (env, map) lambdas
+                            val env' = List.foldr (fn (C.FB{f,...}, env) => VSet.add(env, f)) env lambdas                      
                         in doExp(body, env', map')
                         end
                   |C.Cont(lambda, body) => 
-                        let val (env', map') = doLambda(lambda, env, map)
+                        let val (env', map') = doLambda(lambda, env, map, false)
                         in doExp (body, env', map')
                         end
                   |C.If(v, e1, e2) => 
@@ -130,7 +138,7 @@ structure FunctionHoisting : sig
                             end
                   |C.Apply (f, args, rets) => (env, map)
                   |C.Throw (f, args) => (env, map)      
-            and doLambda (fb as C.FB{f,params,rets,body}, env, map) = 
+            and doLambda (fb as C.FB{f,params,rets,body}, env, map, mutRec) = 
                 let val _ = setFB(f, fb)
                     val env' = VSet.add(env, f)
                     (*If there are no free vars, then map this function to all its callers*)
@@ -140,10 +148,12 @@ structure FunctionHoisting : sig
                                  then print (CV.toString f ^ " is closed\n")
                                  else print (CV.toString f ^ " is not closed\n")
                             else ()
-                    val map' = if VSet.isEmpty fvs then mapToCallers(fb, env', map) else map
+                    val map' = if VSet.isEmpty fvs andalso not(mutRec) 
+                               then mapToCallers(fb, env', map) 
+                               else map
                 in doExp(body, env', map')
                 end
-        in doLambda (body, env, theMap)
+        in doLambda (body, env, theMap, false)
         end          
               
     fun getFbName(C.FB{f,...}) = f     
@@ -163,7 +173,9 @@ structure FunctionHoisting : sig
                                              (VMap.listItemsi
                                                   (VMap.filter
                                                        (fn a => VSet.member(a, f')) map))       
+                                                       
                         val map = List.foldr (fn (key, map) => #1(VMap.remove(map, key))) map (List.map getFbName preds)   
+                        (*Add preds to the list of functions being hoisted*)
                         val hoisted = VSet.addList(hoisted, (List.map getFbName preds))                  
                         fun wrapFun ((p as C.FB{f, rets,...})::preds, wrapper, map) =
                                 let val _ = if !reorderDebug
@@ -205,10 +217,10 @@ structure FunctionHoisting : sig
                                 in (C.FB{f=f, params=params, rets=rets, body=body'}::fbs, hoisted', map')
                                 end) ([], hoisted, map) lambdas
                             val lambdas'' = List.rev lambdas'
-                            val (body', hoisted', map') = doExp(body, hoisted, map)
+                            val (body', hoisted'', map'') = doExp(body, hoisted', map)
                         in if List.null lambdas''
-                           then (wrapper body', hoisted', map')
-                           else (wrapper(C.mkFun(lambdas'', body')), hoisted', map')
+                           then (wrapper body', hoisted'', map'')
+                           else (wrapper(C.mkFun(lambdas'', body')), hoisted'', map'')
                         end)
               | C.Cont(lambda as C.FB{f, params, rets, body=cBody}, body) => 
                 wrapWithNewPreds([lambda], hoisted, map, fn (wrapper, hoisted, map) => 
@@ -254,6 +266,8 @@ structure FunctionHoisting : sig
 	}
     end
 
-    fun transform m = (FreeVars.analyze m; reorderFuns m)
+    fun transform m = if !hoistFlag
+                      then (FreeVars.clear m; FreeVars.analyze m; reorderFuns m)
+                      else m
 
   end

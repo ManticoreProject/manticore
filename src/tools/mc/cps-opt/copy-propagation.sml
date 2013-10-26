@@ -115,6 +115,8 @@ structure CopyPropagation : sig
     fun getFB f = getFn f
     end
 
+    (*Determine if a function has any free variables (bound variables are kept
+    **track of using the env set*)
     fun isClosed (lambda as C.FB{f,params,rets,body}, env) = let
         val env = VSet.addList (env, params)
         val env = VSet.addList (env, rets)
