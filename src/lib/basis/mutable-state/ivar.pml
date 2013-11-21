@@ -7,11 +7,9 @@
  *)
 
 #include "spin-lock.def"
-#include "debug.def"
-
-#define EMPTY_VAL                  $0
 
 structure IVar = (*
+sig
     type 'a ivar
     val new : () -> 'a ivar
     val put : ('a ivar * 'a) -> ()
@@ -35,7 +33,7 @@ struct
             List.list      (*7: list of writers if this is spec full*)];
             
         define @iNew( x : unit / exh : exh) : ivar =
-            let x : ivar = alloc(0, false, EMPTY_VAL, false, nil, nil, $0, nil)
+            let x : ivar = alloc(0, false, $0, false, nil, nil, $0, nil)
             return (x);
 
         (*TODO: Use CAS instead of spin lock?*)
@@ -43,19 +41,20 @@ struct
             let self : vproc = SchedulerAction.@atomic-begin()
             SPIN_LOCK(i, 0)
             if Equal(#3(i), true) (*full*)
-            then if Equal(#1(i), true)
+            then if Equal(#1(i), true)  (*spec full*)
                  then cont getK (x : any) = return(x)
                       let fls : FLS.fls = FLS.@get-in-atomic(self)
                       let item : waiter = alloc(self, fls, getK)
-                      let l : list = CONS(item, #5(i))
+                      let l : List.list = CONS(item, #5(i))
+                      let l : List.list = promote(l)
                       do UPDATE(5, i, l)
                       SPIN_UNLOCK(i, 0)
                       do SchedulerAction.@atomic-end(self)
                       return(#2(i))
-                 else SPIN_UNLOCK(i, 0)
+                 else SPIN_UNLOCK(i, 0)   (*commit full*)
                       do SchedulerAction.@atomic-end(self)
                       return (#2(i)) 
-            else cont getK(x : any) = return(x)
+            else cont getK(x : any) = return(x)   (*empty*)
                  let fls : FLS.fls = FLS.@get-in-atomic(self)
                  let item : waiter = alloc(self, fls, getK)
                  let l : list = CONS(item, #4(i))
@@ -65,10 +64,10 @@ struct
                  SchedulerAction.@stop-from-atomic(self)
         ;
 
-        define @iPut(arg : [ivar, any, bool] / exh : exh) : unit = 
+        define @iPut(arg : [ivar, any] / exh : exh) : unit = 
             let i : ivar = #0(arg)
             let v : any = #1(arg)
-            let spec : bool = #2(arg)
+            let spec : bool = false (*TODO: get this from FLS*)
             let self : vproc = SchedulerAction.@atomic-begin()
             SPIN_LOCK(i, 0)
             if Equal(#3(i), true) (*already full*)
@@ -83,19 +82,17 @@ struct
                           let k : cont(any) = #2(hd)
                           cont takeK(_ : unit) = throw k (v)
                           do VProcQueue.@enqueue-on-vproc(#0(hd), #1(hd), takeK)
-                          apply restart(tl) 
+                          apply restart(tl)
                      end
                  apply restart (#4(i))
         ;
 
-        
     )
-
-
+    
     type 'a ivar = _prim(ivar)
     val newIVar : unit -> 'a ivar = _prim(@iNew)
     val getIVar : 'a ivar -> 'a = _prim(@iGet)
-    val putIVar : ('a ivar * 'a * bool) -> unit = _prim(@iPut)
+    val putIVar : ('a ivar * 'a) -> unit = _prim(@iPut)
 end
 
  
