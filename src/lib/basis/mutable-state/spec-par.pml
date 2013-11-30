@@ -7,59 +7,86 @@
  * rolling back ivars in the event an exception is raised
  *)
 
-
+#include "debug.def"
 
 structure SpecPar (*: sig
     val spec : (() -> 'a * () -> 'b) -> ('a, 'b)
     end*) = struct
 
     _primcode(
-        define @pSpec(arg : [fun(unit / exh -> any), fun(unit / exh -> any)] / exh:exh):[any,any] = 
+
+        define @get-key(k : any / exh : exh) : any = 
+            let k' : [int] = ([int])k
+            let key : int = (int)#0(k')
+            fun loop(dict : List.list) : any = case dict
+                of CONS(hd : [[int], any], tail : List.list) => 
+                    if I32Eq(#0(#0(hd)), key)
+                    then return(#1(hd))
+                    else apply loop(tail)
+                |nil => let e : exn = Fail(@"FLS key not found in SpecPar")
+                        do ccall M_Print("FLS key not found in SpecPar get-key\n")
+                        throw exh(e)
+                end
+            let dict : List.list = FLS.@get-dict(UNIT / exh)
+            apply loop(dict)
+        ;
+
+        define @set-key(arg : [[int], any] / exh : exh) : () = 
+            let k : [int] = #0(arg)
+            let value : any = #1(arg)
+            let key : int = #0(k)
+            let keyValPair : [[int], any] = ([[int], any])arg
+            fun loop(dict : List.list) : List.list = case dict
+                of CONS(hd : [[int], any], tail : List.list) => 
+                    if I32Eq(#0(#0(hd)), key)
+                    then do ccall M_Print("Successfully updated dictionary\n")
+                         return(CONS(keyValPair, tail))
+                    else let rest : List.list = apply loop(tail)
+                         return (CONS(hd, rest))
+                | nil => let e : exn = Fail(@"FLS key not found in SpecPar set-key")
+                         do ccall M_Print("FLS key not found in SpecPar set-key\n")
+                         throw exh(e)
+                end
+            let dict : List.list = FLS.@get-dict(UNIT / exh)
+            let newDict : List.list = apply loop(dict)
+            let _ : unit = FLS.@set-dict(newDict / exh)
+            return()
+        ;
+        
+        define @pSpec(arg : [fun(unit / exh -> any), fun(unit / exh -> any)] / exh : exh):[any,any] = 
             let a : fun(unit / exh -> any) = #0(arg)
             let b : fun(unit / exh -> any) = #1(arg)
             let dummy : any = enum(0) : any
             let res : ![any,any] = alloc(dummy, dummy)
+            let count : ![int] = alloc(0)
             cont slowClone(_ : unit) = (*work that can potentially be stolen*)
+                do ccall M_Print("Spawning new thread\n")
+                let keyValPair : [[int], bool] = alloc(alloc(SPEC_KEY), true)
+                do @set-key(keyValPair / exh)  (*Put in spec mode*)
                 let res : ![any,any] = promote(res)
                 let v_1 : any = apply b(UNIT / exh)
                 let v'_1 : any = promote(v_1)
-                do #1(res) := v'_1
-                return(res) 
-            (*24th byte offset gives the current fiber's local storage*)
-            let fls : [int,any,int,any,![enum(1)]] = vpload(24, host_vproc) 
-            let ite:[any,any] = if NotEqual(#1(fls), UNIT)
-                                then let t : [any,any] = ([any,any]) #1(fls)
-                                     return(#0(t))
-                                else let e : exn = Fail(@"non existent ITE")
-                                     throw exh(e)
-            let stack:any = #0(ite) (*work group stack*)
-            let con_NONE:enum(0) = enum(0):enum(0) (*Option.NONE*)
-            let ite:[any,any] = alloc(stack, con_NONE)
-            let group:[any,any] = if NotEqual(stack, UNIT)  (*work group*)
-                            then let stack:[[any,any],any] = ([[any,any],any]) stack
-                                 return (#0(stack))
-                            else let e : exn = Fail(@"non existent work group stack")
-                                 throw exh(e) 
-            let spawnFn:fun([cont(enum(0)),[any,any]] / cont(any) -> enum(0)) = 
-                   (fun([cont(enum(0)), [any,any]] / cont(any) -> enum(0))) #1(group) 
-            let t:[cont(enum(0)), [any,any]] = alloc(slowClone, ite)                                
-            let _:unit = apply spawnFn(t / exh)
-            let v_0:any = apply a(UNIT / exh)
-            let group:[any,any,any,any] = ([any,any,any,any])group
-            let removeFn:fun([cont(enum(0)),[any,any]]/cont(any) -> any) = #3(group)
-            let removed:any = apply removeFn(t / exh)
-            let notStolen:bool = if NotEqual(removed, UNIT)
-                                 then return(true)
-                                 else return(false)
-            case notStolen
-                of true => let v_1:any = apply b(UNIT / exh)
-                           let res:[any,any] = alloc(v_0, v_1)
-                           return(res)
-                | false => let res:![any,any] = promote(res)
-                           let v'_0 : any = promote(v_0)
-                           do #0(res) := v'_0
-                           return(res)
-            end
+                do #1(res) := v'_1 (*TODO: wait until #0(res) is filled and then commit*)
+                let updated : int = I32FetchAndAdd(&0(count), 1)
+                if I32Eq(updated, 1)
+                then return(res)
+                else SchedulerAction.@stop()
+            let thd : ImplicitThread.thread = ImplicitThread.@new-thread(slowClone/exh)
+            do ImplicitThread.@spawn-thread(thd/exh)
+            let v_0 : any = apply a(UNIT/exh)
+            let removed : Option.option = ImplicitThread.@remove-thread(thd/exh)
+            if NotEqual(removed, UNIT) (*not stolen*)
+            then let v_1 : any = apply b(UNIT/exh)
+                 let res : [any,any] = alloc(v_0, v_1)
+                 return(res)
+            else let res : ![any,any] = promote(res)
+                 let v'_0 : any = promote(v_0)
+                 do #0(res) := v'_0
+                 let updated : int = I32FetchAndAdd(&0(count), 1)
+                 if I32Eq(updated, 1)
+                 then return(res)
+                 else SchedulerAction.@stop()
+                 
         ;
         
     )
@@ -67,5 +94,8 @@ structure SpecPar (*: sig
     val spec : ((unit -> 'a) * (unit -> 'b)) -> ('a * 'b) = _prim(@pSpec)
 
 
+    
+
+    
 end
 

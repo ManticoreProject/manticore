@@ -46,6 +46,8 @@
  *     
  *)
 
+
+
 structure FLS :
   sig
 (*
@@ -113,8 +115,6 @@ structure FLS :
 #define DICT_OFF               3
 #define DONE_COMM_OFF          4
 
-(* default dictionary entries *)
-#define DICT_BUILTIN_TOPOLOGY          0
 
     _primcode (
 
@@ -143,6 +143,7 @@ structure FLS :
 	  ![bool]               (* is the fiber classified as interactive, or computationally intensive? -- Mutable *)
 	];
 
+      (*
       define @initial-dict () : [int, List.list] =
 
         let k : [int] = alloc(DICT_BUILTIN_TOPOLOGY)
@@ -151,6 +152,16 @@ structure FLS :
 
 	let ret : [int, List.list] = alloc(I32Add(DICT_BUILTIN_TOPOLOGY, 1), dict)
 	return(ret)
+      ;*)
+
+      define @initial-dict() : [int, List.list] = 
+        let k : [int] = alloc(2)
+        let k0 : [[int], any] = alloc(alloc(DICT_BUILTIN_TOPOLOGY), nil)
+        let k1 : [[int], any] = alloc(alloc(SPEC_KEY), false)
+        let k2 : [[int], any] = alloc(alloc(WRITES_KEY), nil)
+        let l : List.list = CONS(k2, CONS(k1, CONS(k0, nil)))
+        let ret : [int, List.list] = alloc(3, l)
+        return(ret)
       ;
 
     (* create fls *)

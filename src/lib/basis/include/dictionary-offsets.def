@@ -1,0 +1,10 @@
+#ifndef _DICT_OFFSETS_DEF_
+
+#define _DICT_OFFSETS_DEF_
+
+#define DICT_BUILTIN_TOPOLOGY  0
+#define SPEC_KEY               1
+#define WRITES_KEY             2   
+
+#endif _DICT_OFFSETS_DEF_
+
