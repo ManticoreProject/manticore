@@ -13,6 +13,7 @@
 #  define assert(check)	return()
 #  define assert_fail() return()
 #  define pml_assert(check) ()
+
 #else
 #define _QUOTE(x) #x
 #define QUOTE(x) _QUOTE(x)

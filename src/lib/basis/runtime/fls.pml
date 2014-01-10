@@ -173,7 +173,7 @@ structure FLS :
 
     (* set the fls on the host vproc *)
       define inline @set-in-atomic (self : vproc, fls : fls) : () =
-	  do assert (NotEqual(fls, nil))
+	  do assert(NotEqual(fls, nil))
 	  do vpstore (CURRENT_FLS, self, fls)
 	  return ()
 	;

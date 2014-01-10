@@ -37,7 +37,7 @@
 
 #define ASSERT_NONEMPTY_ACTION_STK(vp)                          \
     let tos : [PT.sched_act, any] = vpload(VP_ACTION_STK, vp)   \
-    assert (NotEqual(tos, nil))
+    assert(NotEqual(tos, nil))
 
 #define ASSERT_SIGNALS_MASKED(vp)                 \
     let mask : bool = vpload(ATOMIC, host_vproc)  \

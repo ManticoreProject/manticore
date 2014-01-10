@@ -308,12 +308,19 @@ structure MLB : sig
 	       end
 	     else raise Fail ("MLB file "^OS.FileSys.getDir()^"/"^path^" does not exist")
 
+    and printFile (file, preprocs) = 
+        let val errStrm = Error.mkErrStream file
+            val (inStrm, reap) = preprocess(List.rev preprocs, file)
+            val s = TextIO.inputAll inStrm
+        in print s
+        end
+
   (* load a PML file *)
     and loadPML (file, env as Env{loc, pts, preprocs}) = let 
 	  val errStrm = Error.mkErrStream file
-	  val (inStrm, reap) = preprocess(List.rev preprocs, file)
+	  val (inStrm : TextIO.instream, reap) = preprocess(List.rev preprocs, file)
 	  val ptOpt = Parser.parseFile (errStrm, inStrm)
-		     (*handle Fail s => raise Fail (file^": "^s)*)
+		     (*handle Fail s => raise Fail (file^": "^s)*)  
 	  in
 	    reap();
 	    case ptOpt

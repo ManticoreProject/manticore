@@ -68,7 +68,7 @@ structure SchedulerAction (* :
 	 * not executed atomically, i.e., if a heap-limit check is inserted
 	 * here. *)
 	  do vpstore (ATOMIC, vp, true)
-          do assert (Equal(vp, host_vproc))
+          do assert(Equal(vp, host_vproc))
 	  return(vp)
 	;
 
@@ -80,11 +80,11 @@ structure SchedulerAction (* :
     (* pop from the host vproc's scheduler action stack *)
       define inline @pop-act (vp : vproc) : PT.sched_act =
 	  let tos : [PT.sched_act, any] = vpload(VP_ACTION_STK, vp)
-	  do assert (NotEqual(tos, nil))
+	  do assert(NotEqual(tos, nil))
 	  let rest : any = #1(tos)
 	  do vpstore(VP_ACTION_STK, vp, rest)
 	  let act : PT.sched_act = #0(tos)
-	  do assert (Equal(vp, host_vproc))
+	  do assert(Equal(vp, host_vproc))
 	  return(act)
 	;
 
@@ -94,13 +94,13 @@ structure SchedulerAction (* :
 	  let stk : [PT.sched_act, any] = vpload (VP_ACTION_STK, vp)
 	  let item : [PT.sched_act, any] = alloc (act, (any)stk)
 	  do vpstore (VP_ACTION_STK, vp, item)
-	  do assert (Equal(vp, host_vproc))
+	  do assert(Equal(vp, host_vproc))
 	  return()
 	;
 
     (* run the fiber under the scheduler action *)
       define inline @run (self : vproc, act : PT.sched_act, fiber : PT.fiber) noreturn =
-	  do assert (Equal(self, host_vproc))
+	  do assert(Equal(self, host_vproc))
 	  do @push-act(self, act)
 	  do @atomic-end-no-check (self)
 	  throw fiber (UNIT)
@@ -234,7 +234,7 @@ structure SchedulerAction (* :
 
     (* run the fiber under the scheduler action and with the given fls *)
       define inline @dispatch-from-atomic (self : vproc, act : PT.sched_act, fiber : PT.fiber, fls : FLS.fls) noreturn =
-	  do assert (Equal(self, host_vproc))
+	  do assert(Equal(self, host_vproc))
 	  do FLS.@set-in-atomic(self, fls)
 	  @run (self, act, fiber)
 	;
