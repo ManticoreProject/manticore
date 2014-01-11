@@ -61,5 +61,9 @@ structure LoadPaths =
   (* parallel array library *)
     val parrayLib = join (parrayDir, "parray.mlb")
 
+     (*mutable state*)
+    val mutStateDir = join(basisDir, "mutable-state")
+    val mutState = join(mutStateDir, "mut-state.mlb")
+
     end (* local *)
   end
