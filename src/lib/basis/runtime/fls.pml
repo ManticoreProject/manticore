@@ -102,6 +102,8 @@ structure FLS :
   (* get the value associated with the key *)
     val getKey : 'a key -> 'a Option.option
 
+    val find :  (('a key * 'b) list * 'a key) -> 'b Option.option
+
   (** Built-in dictionary entries **)
 
     val getTopology : unit -> Topologies.topologies
@@ -155,12 +157,12 @@ structure FLS :
       ;*)
 
       define @initial-dict() : [int, List.list] = 
-        let k : [int] = alloc(2)
         let k0 : [[int], any] = alloc(alloc(DICT_BUILTIN_TOPOLOGY), nil)
         let k1 : [[int], any] = alloc(alloc(SPEC_KEY), false)
-        let k2 : [[int], any] = alloc(alloc(WRITES_KEY), nil)
-        let l : List.list = CONS(k2, CONS(k1, CONS(k0, nil)))
-        let ret : [int, List.list] = alloc(3, l)
+        let k2 : [[int], any] = alloc(alloc(WRITES_KEY), alloc(nil))
+        let k3 : [[int], any] = alloc(alloc(TID_KEY), alloc(1, nil))
+        let l : List.list = CONS(k3, CONS(k2, CONS(k1, CONS(k0, nil))))
+        let ret : [int, List.list] = alloc(4, l)
         return(ret)
       ;
 
@@ -310,6 +312,60 @@ structure FLS :
 	return(k)
       ;
 
+      define @get-key(k : [int] / exh : exh) : any = 
+            let k' : [int] = ([int])k
+            let key : int = #0(k')
+            fun loop(dict : List.list) : any = case dict
+                of CONS(hd : [[int], any], tail : List.list) => 
+                    if I32Eq(#0(#0(hd)), key)
+                    then return(#1(hd))
+                    else apply loop(tail)
+                |nil => let e : exn = Fail(@"FLS key not found in SpecPar")
+                        do ccall M_Print("FLS key not found in SpecPar get-key\n")
+                        throw exh(e)
+                end
+            let dict : List.list = @get-dict(UNIT / exh)
+            apply loop(dict)
+        ;
+
+        (*promote keys before comparing*)
+        define @get-key-global(dict : List.list, k : [int] / exh : exh) : any = 
+            let k' : [int] = ([int])k
+            let key : int = #0(k')
+            fun loop(dict : List.list) : any = 
+                let dict : List.list = promote(dict)
+                case dict
+                of CONS(hd : [[int], any], tail : List.list) => 
+                    let hd : [[int], any] = promote(hd)
+                    let key' : [int] = promote(#0(hd))
+                    if I32Eq(#0(key'), key)
+                    then return(#1(hd))
+                    else apply loop(tail)
+                |nil => let e : exn = Fail(@"FLS dictionary key not found")
+                        throw exh(e)
+                end
+            apply loop(dict)
+        ;
+
+        define @set-key(arg : [[int], any] / exh : exh) : () = 
+            let k : [int] = #0(arg)
+            let key : int = #0(k)
+            let keyValPair : [[int], any] = ([[int], any])arg
+            fun loop(dict : List.list) : List.list = case dict
+                of CONS(hd : [[int], any], tail : List.list) => 
+                    if I32Eq(#0(#0(hd)), key)
+                    then return(CONS(keyValPair, tail))
+                    else let rest : List.list = apply loop(tail)
+                         return (CONS(hd, rest))
+                | nil => let e : exn = Fail(@"FLS key not found in SpecPar set-key")
+                         do ccall M_Print("FLS key not found in SpecPar set-key\n")
+                         throw exh(e)
+                end
+            let dict : List.list = @get-dict(UNIT / exh)
+            let newDict : List.list = apply loop(dict)
+            let _ : unit = @set-dict(newDict / exh)
+            return()
+        ;
     )
 
     type 'a key = _prim(key)

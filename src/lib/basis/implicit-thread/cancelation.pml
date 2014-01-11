@@ -147,6 +147,23 @@ structure Cancelation (* : sig
 
     _primcode (
 
+        define @printTID(x : unit / exh : exh) : unit = 
+            let tid : any = FLS.@get-key(alloc(3) / exh)
+            let tid : [int, List.list] = ([int, List.list]) tid
+            do ccall M_Print("TID: ")
+            fun helper(tid : List.list) : () = 
+                case tid
+                    of CONS(hd : [int], tail : List.list) => 
+                        do ccall M_PrintInt(#0(hd))
+                        do ccall M_Print(", ")
+                        apply helper(tail)
+                    | nil => return()
+                end
+            do apply helper(#1(tid))
+            do ccall M_Print("\n")
+            return(UNIT)
+        ;
+
     (* @wrap-fiber (c, k / exh) *)
     (* returns new fiber k' where k' has similar behavior to k, except that canceling c *)
     (* causes k' to terminate *)
@@ -162,6 +179,8 @@ structure Cancelation (* : sig
 	       let canceledFlg : ![bool] = @get-canceled-flag(c)
 	       case #0(canceledFlg)
 		of true =>
+	(*	   do ccall M_Print("Canceling: ")
+	           let _ : unit = @printTID(UNIT/exh)   *)
 		   throw terminate()
 		 | false =>
 		   do SchedulerAction.@run(self, act, k)
@@ -235,7 +254,7 @@ structure Cancelation (* : sig
 		      let cs2 : L.list = PrimList.@rev(cs2 / exh)
 		      apply cancelAll(self, cs2, nil)
 		  end
-		| CONS(c : cancelable, cs1 : L.list) =>		
+		| CONS(c : cancelable, cs1 : L.list) =>	
 		  let canceled : ![bool] = @get-canceled-flag(c)
 		  let inactive : ![vproc] = @get-inactive-flag(c)
 		  let isCanceled : bool = CAS(&0(canceled), false, true)

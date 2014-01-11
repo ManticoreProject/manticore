@@ -263,7 +263,6 @@ Value_t M_StringConcat2 (Value_t a, Value_t b)
       // allocate the sequence-header object
 	return AllocNonUniform(vp, 2, PTR(data), INT((Word_t)len));
     }
-
 }
 
 /* M_StringConcatList:
@@ -428,7 +427,7 @@ void M_PrintLong (int64_t n)
  */
 void M_PrintInt (int32_t n)
 {
-    Say("%d\t", n);
+    Say("%d", n);
 }
 
 void M_PrintFloat (float f)

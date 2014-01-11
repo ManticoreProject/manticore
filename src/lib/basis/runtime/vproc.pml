@@ -161,7 +161,7 @@ structure VProc (* :
 	      let ldgPadOrig : queue_item = vpload(VP_LANDING_PAD, dst)
 	      let ldgPadNew : queue_item = alloc(fls, k, ldgPadOrig)
 	      let ldgPadNew : queue_item = promote(ldgPadNew)
-	      let x : queue_item = CAS((addr(queue_item))vpaddr(VP_LANDING_PAD,dst), ldgPadOrig, ldgPadNew)
+	      let x : queue_item = CAS((addr(queue_item))vpaddr(VP_LANDING_PAD,dst), ldgPadOrig, ldgPadNew) 
 	      if NotEqual(x, ldgPadOrig) then
 		  do Pause ()
 		  apply lp ()
