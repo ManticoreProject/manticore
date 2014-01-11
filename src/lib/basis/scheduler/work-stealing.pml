@@ -86,11 +86,11 @@ structure WorkStealing (* :
   (* Returns the deque assigned to the calling processor. *)
     define inline @get-my-deque-in-atomic (self : vproc / exh : exh) : deque =
 	let deques : any = ImplicitThread.@get-scheduler-state (/ exh)
-	do assert (NotEqual (deques, enum(0):any))
+	do assert(NotEqual (deques, enum(0):any))
 	let id : int = VProc.@vproc-id (self)
 	let bDeq : [deque] = Arr.@sub ((Arr.array)deques, id / exh)
 	let deq : deque = #0(bDeq)
-	do assert (NotEqual (deq, enum(0):any))
+	do assert(NotEqual (deq, enum(0):any))
 	return (deq)
       ;
 
@@ -207,14 +207,14 @@ structure WorkStealing (* :
 		  workGroupID : UID.uid, 
 		  logWID : long / exh : exh) 
 	    : (* task *) List.list =
-	do assert (NotEqual (self, victim))
+	do assert(NotEqual (self, victim))
         let logTID : long = Logging.@log-WSThiefSend (self, logWID)
 	let ch : ![(* task List.list *) Option.option] = alloc (Option.NONE)
 	let ch : ![(* task List.list *) Option.option] = promote (ch)
 	cont thief (_ : unit) =
 	  let self : vproc = SchedulerAction.@atomic-begin ()
 	  do Logging.@log-WSThiefBegin (self, logTID, logWID)
-	  do assert (Equal (self, victim))
+	  do assert(Equal (self, victim))
           let ts : (* task *) List.list = @try-pop-remote-in-atomic (self, workGroupID)
           case ts
 	   of List.nil =>

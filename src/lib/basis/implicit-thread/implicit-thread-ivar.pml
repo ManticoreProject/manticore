@@ -103,7 +103,7 @@ structure ImplicitThreadIVar (* :
 		  let blockedFibers : List.list = SELECT(BLOCKED_LIST_OFF, ivar)
 		  return (blockedFibers)
 	     else
-		 do assert (NotEqual(oldValue, EMPTY_VAL))
+		 do assert(NotEqual(oldValue, EMPTY_VAL))
 		 return (nil)
 	  fun resume (thd : ImplicitThread.thread / exh : exh) : () =
 	      ImplicitThread.@resume-thread (thd / exh)

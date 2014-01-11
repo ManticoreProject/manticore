@@ -134,21 +134,21 @@ structure WorkStealingDeque (* :
 	  ;
 
 	define @assert-in-bounds (deq : deque, i : int) : () =
-	    do assert (I32Gte (i, 0))
-	    do assert (I32Lt (i, LOAD_DEQUE_MAX_SIZE(deq)))
+	    do assert(I32Gte (i, 0))
+	    do assert(I32Lt (i, LOAD_DEQUE_MAX_SIZE(deq)))
 	    if I32Lte (LOAD_DEQUE_OLD(deq), LOAD_DEQUE_NEW(deq)) then
-		do assert (I32Gte (i, LOAD_DEQUE_OLD(deq)))
-		do assert (I32Lt (i, LOAD_DEQUE_NEW(deq)))
+		do assert(I32Gte (i, LOAD_DEQUE_OLD(deq)))
+		do assert(I32Lt (i, LOAD_DEQUE_NEW(deq)))
   	        return ()
 	    else
 		if I32Gt (i, LOAD_DEQUE_NEW(deq)) then
-		    do assert (I32Gte (i, LOAD_DEQUE_OLD(deq)))
+		    do assert(I32Gte (i, LOAD_DEQUE_OLD(deq)))
 		    return ()
 		else if I32Eq (i, LOAD_DEQUE_NEW(deq)) then
 		    do assert_fail()
 		    return ()
 		else
-		    do assert (I32Lt (i, LOAD_DEQUE_NEW(deq)))
+		    do assert(I32Lt (i, LOAD_DEQUE_NEW(deq)))
   	            return ()
 	  ;
 
@@ -183,10 +183,10 @@ structure WorkStealingDeque (* :
 	(* check the deque for consistency *)
 	define @check-deque (deq : deque) : () =
 	    do assert(NotEqual(deq, DEQUE_NIL_ELT))
-	    do assert (I32Gte (LOAD_DEQUE_NEW(deq), 0))
-	    do assert (I32Gte (LOAD_DEQUE_OLD(deq), 0))
-	    do assert (I32Lt (LOAD_DEQUE_NEW(deq), LOAD_DEQUE_MAX_SIZE(deq)))
-	    do assert (I32Lt (LOAD_DEQUE_OLD(deq), LOAD_DEQUE_MAX_SIZE(deq)))
+	    do assert(I32Gte (LOAD_DEQUE_NEW(deq), 0))
+	    do assert(I32Gte (LOAD_DEQUE_OLD(deq), 0))
+	    do assert(I32Lt (LOAD_DEQUE_NEW(deq), LOAD_DEQUE_MAX_SIZE(deq)))
+	    do assert(I32Lt (LOAD_DEQUE_OLD(deq), LOAD_DEQUE_MAX_SIZE(deq)))
 	    return ()
 	  ;
 
@@ -239,12 +239,12 @@ structure WorkStealingDeque (* :
 	;
 
        define inline @is-full-in-atomic (self : vproc, deq : deque) : bool =
-           do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
+           do assert(I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
 	   @is-full (deq)
 	 ;
 
        define inline @is-empty-in-atomic (self : vproc, deq : deque) : bool =
-           do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
+           do assert(I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
 	   @is-empty (deq)
 	 ;
       
@@ -257,12 +257,12 @@ structure WorkStealingDeque (* :
        
     (* precondition: the deque is not full *)
       define inline @push-new-end-in-atomic (self : vproc, deq : deque, elt : any) : () =
-	  do assert (NotEqual (deq, enum(0):any))
-	  do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
+	  do assert(NotEqual (deq, enum(0):any))
+	  do assert(I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
 	  do @check-deque (deq)
 	  do assert(NotEqual(elt, DEQUE_NIL_ELT))
 	  let isFull : bool = @is-full (deq)
-(*           do assert (BNot (isFull))*)
+(*           do assert(BNot (isFull))*)
 	  let new : int = LOAD_DEQUE_NEW(deq)
 	  let newR : int = @move-right (LOAD_DEQUE_NEW(deq), LOAD_DEQUE_MAX_SIZE(deq))
 	  do STORE_DEQUE_NEW(deq, newR)
@@ -272,8 +272,8 @@ structure WorkStealingDeque (* :
 	;
 
       define inline @pop-new-end-in-atomic (self : vproc, deq : deque) : Option.option =
-	  do assert (NotEqual (deq, enum(0):any))
-	  do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
+	  do assert(NotEqual (deq, enum(0):any))
+	  do assert(I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
 	  do @check-deque (deq)
 	  let isEmpty : bool = @is-empty (deq)
 	  case isEmpty
@@ -285,13 +285,13 @@ structure WorkStealingDeque (* :
 	      do @update (deq, newL, DEQUE_NIL_ELT)
 	      do STORE_DEQUE_NEW(deq, newL)
 	      do @check-deque (deq)
-	      do assert (NotEqual(elt, DEQUE_NIL_ELT))
+	      do assert(NotEqual(elt, DEQUE_NIL_ELT))
 	      return (Option.SOME (elt))
 	  end
 	;
 
       define inline @pop-old-end-in-atomic (self : vproc, deq : deque) : Option.option =
-	  do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
+	  do assert(I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
 	  do @check-deque (deq)
 	  let isEmpty : bool = @is-empty (deq)
 	  case isEmpty
@@ -338,7 +338,7 @@ structure WorkStealingDeque (* :
         ;
 
       define inline @release-in-atomic (self : vproc, deq : deque) : () =
-          do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
+          do assert(I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
           do STORE_DEQUE_NCLAIMED(deq, I32Sub (LOAD_DEQUE_NCLAIMED(deq), 1))
           return ()
         ;
@@ -351,7 +351,7 @@ structure WorkStealingDeque (* :
 
     (* double the size of the deque *)
       define @double-size-in-atomic (self : vproc, workGroupId : UID.uid, deq : deque) : deque =
-          do assert (I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
+          do assert(I32Gt (LOAD_DEQUE_NCLAIMED(deq), 0))
 	  let size : int = @size (deq)
 	  let newDeque : deque = @new-primary-deque-in-atomic (self, workGroupId, I32Mul (LOAD_DEQUE_MAX_SIZE(deq), 2))
         (* maintain the original order of the deque by popping from the old end of the original deque
