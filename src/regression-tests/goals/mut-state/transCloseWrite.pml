@@ -17,7 +17,7 @@ fun f x =
 
 fun g() = 
     let val _ = print "test g()\n"
-       val x = IVar.getIVar z
+        val x = IVar.getIVar z
     in print ("read " ^ Int.toString x ^ " from ivar z\n")
     end
 
@@ -26,7 +26,7 @@ val _ = SpecPar.spec(fn _ => SpecPar.spec( fn _ => (fib 40; print "done with fib
                      fn _ => SpecPar.spec(fn _ => f x, fn _ => g()))
 
 
-
+val _ = print "exiting...\n"
 
 (*
 fun f x = (print "calling fib\n"; fib x; print "done calling fib\n")

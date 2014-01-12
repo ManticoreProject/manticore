@@ -68,9 +68,7 @@ struct
             any,           (*6: thread id*)
             List.list      (*7: list of writers if this is spec full*)];
 
-        define @printTID(/exh : exh) : () = 
-            let tid : any = FLS.@get-key(alloc(TID_KEY) / exh)
-            let tid : tid = (tid) tid
+        define @printTID2(tid : tid / exh : exh) : () = 
             do ccall M_Print("TID: ")
             fun helper(tid : List.list) : () = 
                 case tid
@@ -83,6 +81,12 @@ struct
             do apply helper(#1(tid))
             do ccall M_Print("\n")
             return()
+        ;
+
+        define @printTID(/exh : exh) : () = 
+            let tid : any = FLS.@get-key(alloc(TID_KEY) / exh)
+            let tid : tid = (tid) tid
+            @printTID2(tid/exh)
         ;
 
         define @iNew( x : unit / exh : exh) : ivar =
@@ -126,7 +130,6 @@ struct
                       do ccall M_Print("Reading commit full ivar\n")
                       return (#2(i)) 
             else cont getK'(x : any, s : bool) = (*empty*)
-                    do ccall M_Print("getK called\n")
                     if Equal(s, true) (*previously read empty, check if its now spec full*)
                     then let self : vproc = SchedulerAction.@atomic-begin()
                          SPIN_LOCK(i, 0)
@@ -142,7 +145,6 @@ struct
                          do #5(i) := l
                          SPIN_UNLOCK(i, 0)
                          do SchedulerAction.@atomic-end(self)
-                         do ccall M_Print("exiting getK\n")
                          return(x)
                     else do ccall M_Print("restarting previously blocked thread\n") return(x)
                  do ccall M_Print("Reading from empty ivar\n")
@@ -274,9 +276,10 @@ struct
                      | CONS(waiter : waiter, tl : List.list) => 
                           do ccall M_Print("Restarting dependent reader\n")
                           let c : Cancelation.cancelable = #4(waiter)
-                          do ccall M_Print("Canceling illegal reader\n")
+                          do ccall M_Print("Trying to cancel: ")
+                          do @printTID2(#3(waiter) / exh)
                           let _ : unit = Cancelation.@cancel(c / exh)
-                          do ccall M_Print("Restarting dependent reader3\n")
+                          do ccall M_Print("Restarting dependent reader\n")
                           let k : cont(any, any) = #2(waiter)
                           cont takeK(_ : unit) = throw k (UNIT, UNIT)
                           do VProcQueue.@enqueue-on-vproc(#0(waiter), #1(waiter), takeK)
