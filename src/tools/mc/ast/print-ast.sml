@@ -359,17 +359,8 @@ structure PrintAST : sig
 	  openHBox ();
 	    pr "val"; sp(); var x; sp(); pr "="; sp(); pr"_prim(...)";
 	  closeBox())
-      | binding (A.PrimCodeBind b) = (*pr "_primcode(...)" *) List.app pDefn b
+      | binding (A.PrimCodeBind b) = pr "_primcode(...)" 
 
-(*Begin BOM Printing TODO: remove this*)
-    and pDefn(d : B.defn) = case d
-        of B.D_Mark{span, tree} => pDefn tree
-         | B.D_Extern(CFunctions.CFun{var, name, retTy, argTys, attrs, varArg}) => 
-            (pr ("extern " ^ name); ln())
-
-    and pAttr attr = () (*TODO*)
-    and pTy ty = (*TODO*)()
-(*End BOM Printing*)
   (* lambda : string -> A.lambda -> unit *)
     and lambda kw (A.FB (f, x, b)) =
 	  (openVBox (rel 0);

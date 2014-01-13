@@ -23,8 +23,10 @@ is
   ../parser/sources.cm
   ../ast/sources.cm
 
+  mlb-controls.sml
   mlb.lex : ml-ulex
   mlb.grm : ml-antlr
   mlb.sml
   mlb-parse-tree.sml
   mlb-parser.sml
+  

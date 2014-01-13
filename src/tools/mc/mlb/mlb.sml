@@ -24,6 +24,20 @@ structure MLB : sig
 
     exception Error
 
+    val dumpPreprocessed = ref false
+    val () = List.app (fn ctl => ControlRegistry.register MLBControls.registry {
+              ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
+              envName = NONE
+            }) [
+              Controls.control {
+                  ctl = dumpPreprocessed,
+                  name = "dump-preprocessed",
+                  pri = [0, 1],
+                  obscurity = 1,
+                  help = "output each file after it is preprocessed"
+                }
+            ] 
+
   (* information for applying a preprocessor to a PML file. *)
     type preprocessor_cmd = {
 	directive : string,	(* preprocessor directive, e.g., "preprocessor", for
@@ -315,15 +329,38 @@ structure MLB : sig
         in print s
         end
 
+    and outputPreprocessed(file, preprocs) = 
+        if !dumpPreprocessed
+        then let val errStrm = Error.mkErrStream file
+                 val filename = String.substring(file, 0, String.size file - 4)
+                 val filename = if String.substring(filename, 0, 3) = "../"
+                                then "../" ^ filename
+                                else filename
+                 val dir = OS.FileSys.getDir()
+                 val (inStrm, reap) = preprocess(List.rev preprocs, file)
+                 val s = TextIO.inputAll inStrm
+                 val d = OS.FileSys.isDir(dir ^ "/preprocessed")
+                                handle e => (OS.FileSys.mkDir(dir ^ "/preprocessed"); false)
+                 val _ = OS.FileSys.chDir(dir ^ "/preprocessed") handle e => (print "couldn't change into directory\n")
+                 val outStrm = TextIO.openOut (filename ^ "_preprocessed.sml")
+                 val _ = print ("Writing to file: " ^ filename ^ "_preprocessed.sml\n")
+                 val _ = TextIO.output(outStrm, s)
+                 val _ = TextIO.closeIn inStrm
+                 val _ = TextIO.closeOut outStrm
+                 val _ = OS.FileSys.chDir(dir)
+             in () end
+        else ()
+
   (* load a PML file *)
     and loadPML (file, env as Env{loc, pts, preprocs}) = let 
 	  val errStrm = Error.mkErrStream file
 	  val (inStrm : TextIO.instream, reap) = preprocess(List.rev preprocs, file)
 	  val ptOpt = Parser.parseFile (errStrm, inStrm)
 		     (*handle Fail s => raise Fail (file^": "^s)*)  
+          val _ = outputPreprocessed(file, preprocs)
 	  in
 	    reap();
-	    case ptOpt
+	   case ptOpt
 	     of SOME pt => SOME (errStrm, pt)
 	      | NONE => (checkForErrors[errStrm]; NONE)
 	  end

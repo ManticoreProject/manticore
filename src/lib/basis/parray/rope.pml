@@ -2,7 +2,7 @@ structure Rope = struct
 
 val C = 2
 
-fun failwith s = raise Fail s
+fun failwith s = (print ("Fail with " ^ s ^ "\n"); raise Fail s)
 fun subscript () = raise Fail "subscript"
 
 structure RT = Runtime
@@ -371,12 +371,12 @@ fun splitAt length encode cursorAtIx unzipCursorL unzipCursorR cur n = let
   end
 
 fun join decode finish zipCursor (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2)) = let
-  val (xs1, xs2) = (decode (rp1, l1), decode (rp2, l2))
-  val (rps1, ms) = (List.take (xs1, n1), List.drop (xs1, n1))
-  val (mn, mls) = (List.last ms, List.rev (List.take (ms, List.length ms - 1)))
-  val (mrs, rps2) = (List.take (xs2, n2), List.drop (xs2, n2))
-  val m = finish (zipCursor (mn, (mls, mrs, mds)))
-  val ropes = rps1 @ (m::nil) @ rps2
+  val (xs1, xs2) = (decode (rp1, l1), decode (rp2, l2)) 
+  val (rps1, ms) = (List.take (xs1, n1), List.drop (xs1, n1)) 
+  val (mn, mls) = (List.last ms, List.rev (List.take (ms, List.length ms - 1))) 
+  val (mrs, rps2) = (List.take (xs2, n2), List.drop (xs2, n2)) 
+  val m = finish (zipCursor (mn, (mls, mrs, mds))) 
+  val ropes = rps1 @ (m::nil) @ rps2 
   in
     case ropes
      of rp::rs => zipCursor (rp, (ls, rs, ds))
@@ -545,28 +545,29 @@ fun decodeRopeTab (rp, n) = let
     else (case rp
       of Cat (_, _, rp1, rp2) =>
            rp2 :: d (rp1, n - 1)
-       | _ => failwith "decodeRope")
+       | _ => (print "decodeRopeTab fail\n"; failwith "decodeRope"))
   in
     List.rev (d (rp, n))
   end
 
-fun rootU (rp, uc) = (case uc
+fun rootU (rp : 'a rope, uc) = (case uc
   of (nil, nil, nil) => rp
    | (ls, r :: rs, Left :: ds) => rootU (nccat2 (rp, r), (ls, rs, ds))
    | (l :: ls, rs, Right :: ds) => rootU (nccat2 (l, rp), (ls, rs, ds))
+   | (l::ls, nil, nil) => failwith "l::ls, nil, nil"
    | _ => failwith "rootU")
 
 fun tabulateLTS PPT (intv, f) = let
-  fun t cur = (case tabulateUntil RT.hungryProcs (cur, f)
+  fun t cur = (case tabulateUntil RT.hungryProcs (cur, f) 
     of Done rp => rp
      | More cur' => let
-	 val mid = numUnprocessedTab cur' div 2
-	 fun id x = x
+	 val mid = numUnprocessedTab cur' div 2 
+	 fun id x = x 
 	 val (cur1, cur2, reb) = 
-	       splitAt intervalLength encodeCur cursorAtIxIntv id id (unzipCursor cur') mid
-	 val (rp1, rp2) = RT.par2 (fn () => t cur1, fn () => t cur2) (*FIXME: This seems to be raising an exception in dotp.pml*)
+	       splitAt intervalLength encodeCur cursorAtIxIntv id id (unzipCursor cur') mid 
+	 val (rp1, rp2) = RT.par2 (fn () => t cur1, fn () => t cur2) 
 	 in
-	   join decodeRopeTab id rootU (rp1, rp2, reb)
+	   join decodeRopeTab id rootU (rp1, rp2, reb) handle e => (print "Caught exception in join\n"; raise e)
          end)
   in
     t (intv, GCTop)
