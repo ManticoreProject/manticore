@@ -581,14 +581,14 @@ structure FlatClosureWithCFA : sig
                   | ((env, [x]), CPS.Cast(ty, y)) => let
                       val (binds, y') = lookupVar(env, y)
                       val convertedTy = cvtTy(ty, CFA.valueOf y)
-                 (*     val _ = print("Making Cast: " ^ CFG.Var.toString(x) ^ " : " ^ CFGTyUtil.toString(CFG.Var.typeOf x) ^ " = (" ^ CFGTyUtil.toString(convertedTy) ^ ")" ^ CFG.Var.toString(y') ^ 
-                                " (its CFA value is: " ^ CFA.valueToString(CFA.valueOf y) ^ "), and the lhs CFA value is: " ^ CFA.valueToString(CFA.valueOf (List.hd lhs)) ^ "\n")*)
-                 (*     val _ = if CFGTyUtil.match(CFG.Var.typeOf x, convertedTy)
+                     (* val _ = print("Making Cast: " ^ CFG.Var.toString(x) ^ " : " ^ CFGTyUtil.toString(CFG.Var.typeOf x) ^ " = (" ^ CFGTyUtil.toString(convertedTy) ^ ")" ^ CFG.Var.toString(y') ^ 
+                                " (its CFA value is: " ^ CFA.valueToString(CFA.valueOf y) ^ "), and the lhs CFA value is: " ^ CFA.valueToString(CFA.valueOf (List.hd lhs)) ^ "\n")
+                      val _ = if CFGTyUtil.match(CFG.Var.typeOf x, convertedTy)
                               then ()
                               else raise Fail ("Types: " ^ CFGTyUtil.toString(CFG.Var.typeOf x) ^ " and " 
                                 ^ CFGTyUtil.toString(convertedTy) ^ " do not match in cast\n")*)
                       in
-                        ([CFG.mkCast(x, cvtTy (ty, CFA.valueOf y), y')] @ binds, env)
+                        ([CFG.mkCast(x, convertedTy, y')] @ binds, env)
                       end
                   | ((env, [x]), CPS.Select(i, y)) => let
                       val (binds, y) = lookupVar(env, y)

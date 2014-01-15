@@ -344,6 +344,8 @@ structure WorkStealing (* :
 
 #define DEFAULT_DEQUE_SZ            64000
 
+    extern void *M_Print_Int(void*, int);
+
   (* @create-worker (workGroupID, logWGID, isTerminated, setActive, deques, idleFlags) *)
   (* Creates a work stealing work group; we spawn one instance (worker) per processor. *)
     define @create-worker (workGroupID : UID.uid, 

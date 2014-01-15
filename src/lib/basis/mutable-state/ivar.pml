@@ -47,6 +47,8 @@ struct
         
 
     _primcode(
+        extern void *M_Print_Int(void *, int);
+
         typedef tid = ![
             int,           (*Size of the list*)
             List.list];    (*thread id*)  
@@ -104,6 +106,9 @@ struct
                                   throw exh(e)
             end
         ;
+
+      
+        
 
         define @iGet(i : ivar / exh : exh) : any = 
         fun restart() : any = 

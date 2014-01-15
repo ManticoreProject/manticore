@@ -40,8 +40,8 @@ structure Vector =
       define inline @sub (arg : [vector, ml_int] / exh : exh) : any =
           let vec : vector = #0(arg)
           let i : int = #0(#1(arg))
-	  do assert(I32Gte(i,0))
-	  do assert(I32Lt(i,#1(vec)))
+	      do assert(I32Gte(i, 0))
+	      do assert(I32Lt(i, #1(vec)))
           let data : any = #0(vec)
           let x : any = ArrLoad(data, i)
 	  return (x)

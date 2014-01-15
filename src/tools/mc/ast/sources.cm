@@ -37,6 +37,7 @@ is
 
   ../common/sources.cm
   ../parse-tree/sources.cm
+  ../bom/sources.cm
 
   ast.sml
   ast-util.sml

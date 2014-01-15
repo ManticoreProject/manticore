@@ -174,6 +174,17 @@ structure TranslatePrim : sig
 	    | _ => raise (fail["arity mismatch for conditional ", Atom.toString cond])
 	  (* end case *))
 
+    (*variables may contain single quotes, when we turn them into strings, they will not be 
+      properly escaped.  This function adds backslashes before all single quotes
+      TODO: get escape to work properly, now we are just removing the single quotes*)
+    fun escape (s : String.string) : String.string = 
+        let val l = String.explode s
+            fun lp l = case l
+                of x::xs => if x = #"'" then  lp xs else x::lp xs
+                 | [] => []
+        in String.implode (lp l)
+        end
+
   (* generate a dynamic check that the given variable is a valid pointer to the global heap *)
   (* the argument pointsToHeapObject must be false whenever the pointer might point into the middle
    * of a heap object.
@@ -185,7 +196,7 @@ structure TranslatePrim : sig
 	  val checkCFun = if pointsToHeapObject then "CheckGlobalPtr" else "CheckGlobalAddr"
 	  in [
 	    ([self], BOM.E_HostVProc),
-	    ([t], BOM.E_Const(Literal.String (locS ^ " at " ^ BOM.Var.toString v), BTy.T_Any)),
+	    ([t], BOM.E_Const(Literal.String (locS ^ " at " ^ (escape (BOM.Var.toString v))), BTy.T_Any)),
 	    ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis [checkCFun]), [self, v, t]))
 	  ] end
 
@@ -199,8 +210,8 @@ structure TranslatePrim : sig
 	  in [
 	    ([self], BOM.E_HostVProc),
 	    ([t], BOM.E_Const(Literal.String locS, BTy.T_Any)),
-	    ([lhsN], BOM.E_Const(Literal.String (BOM.Var.toString lhs), BTy.T_Any)),
-	    ([xN], BOM.E_Const(Literal.String (BOM.Var.toString x), BTy.T_Any)),
+	    ([lhsN], BOM.E_Const(Literal.String (escape (BOM.Var.toString lhs)), BTy.T_Any)),
+	    ([xN], BOM.E_Const(Literal.String (escape (BOM.Var.toString x)), BTy.T_Any)),
 	    ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis ["DebugPromote"]), [self, t, lhsN, xN]))
 	  ] end
 
@@ -492,7 +503,8 @@ structure TranslatePrim : sig
 		    end)
 	      | BPT.SE_Prim(p, args) => 
 		  cvtSimpleExps(loc, findCFun, args, fn xs => 
-		    let val lhs' = newTmp(tyOfPrim p)
+		    let val lhs' = newTmp(tyOfPrim p) handle e => 
+                    (List.app (fn a => print(BPT.simpleExpToString a ^ ", ")) args; raise e)
 		    in
 		      cvtPrim(loc, [lhs'], p, xs, k lhs')
 		    end)

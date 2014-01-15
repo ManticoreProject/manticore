@@ -20,6 +20,7 @@ structure PrintAST : sig
     structure A = AST
     structure T = Types
     structure S = TextIOPP
+    structure B = ProgramParseTree.PML2.BOMParseTree
 
     val str = ref (S.openOut {dst = TextIO.stdErr, wid = 85})
 
@@ -358,7 +359,7 @@ structure PrintAST : sig
 	  openHBox ();
 	    pr "val"; sp(); var x; sp(); pr "="; sp(); pr"_prim(...)";
 	  closeBox())
-      | binding (A.PrimCodeBind _) = pr "_primcode(...)"
+      | binding (A.PrimCodeBind b) = pr "_primcode(...)" 
 
   (* lambda : string -> A.lambda -> unit *)
     and lambda kw (A.FB (f, x, b)) =

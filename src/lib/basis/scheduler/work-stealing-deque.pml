@@ -112,15 +112,15 @@ structure WorkStealingDeque (* :
 #define DEQUE_NCLAIMED_OFFB   12
 #define DEQUE_ELTS_OFFB       16
 
-#define LOAD_DEQUE_OLD(deq)        AdrLoadI32 ((addr(int))&0(deq))
-#define LOAD_DEQUE_NEW(deq)        AdrLoadI32 ((addr(int))AdrAddI64 (&0(deq), DEQUE_NEW_OFFB:long))
-#define STORE_DEQUE_OLD(deq, i)    AdrStoreI32 ((addr(int))&0(deq), i)
-#define STORE_DEQUE_NEW(deq, i)    AdrStoreI32 ((addr(int))AdrAddI64 (&0(deq), DEQUE_NEW_OFFB:long), i)
+#define LOAD_DEQUE_OLD(deq)        AdrLoadI32((addr(int))&0(deq))
+#define LOAD_DEQUE_NEW(deq)        AdrLoadI32((addr(int))AdrAddI64 (&0(deq), DEQUE_NEW_OFFB:long))
+#define STORE_DEQUE_OLD(deq, i)    AdrStoreI32((addr(int))&0(deq), i)
+#define STORE_DEQUE_NEW(deq, i)    AdrStoreI32((addr(int))AdrAddI64 (&0(deq), DEQUE_NEW_OFFB:long), i)
 
-#define LOAD_DEQUE_MAX_SIZE(deq)   AdrLoadI32 ((addr(int))AdrAddI64 (&0(deq), DEQUE_MAXSZ_OFFB:long))
+#define LOAD_DEQUE_MAX_SIZE(deq)   AdrLoadI32((addr(int))AdrAddI64 (&0(deq), DEQUE_MAXSZ_OFFB:long))
 
-#define LOAD_DEQUE_NCLAIMED(deq)        AdrLoadI32 ((addr(int))AdrAddI64 (&0(deq), DEQUE_NCLAIMED_OFFB:long))
-#define STORE_DEQUE_NCLAIMED(deq, c)    AdrStoreI32 ((addr(int))AdrAddI64 (&0(deq), DEQUE_NCLAIMED_OFFB:long), c)
+#define LOAD_DEQUE_NCLAIMED(deq)        AdrLoadI32((addr(int))AdrAddI64 (&0(deq), DEQUE_NCLAIMED_OFFB:long))
+#define STORE_DEQUE_NCLAIMED(deq, c)    AdrStoreI32((addr(int))AdrAddI64 (&0(deq), DEQUE_NCLAIMED_OFFB:long), c)
 
       _primcode (
 
@@ -153,10 +153,12 @@ structure WorkStealingDeque (* :
 	  ;
 
 	define inline @assert-ptr (deq : deque, i : int) : () =
+
 #ifndef NDEBUG
+(*
 	    do ccall M_AssertDequeAddr (deq, i, AdrAddI64 (&0(deq), 
 				   I64Add (DEQUE_ELTS_OFFB:long,         (* the byte offset of elts *)
-					 I32ToI64X (I32LSh (i, 3)))))
+					 I32ToI64X (I32LSh (i, 3)))))  *)
 #endif
 	    return ()
 	  ;

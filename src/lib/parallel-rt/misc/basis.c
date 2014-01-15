@@ -199,6 +199,11 @@ Value_t M_DoubleFromString (Value_t str)
     }
 }
 
+void M_Print_Int(const char *s, int i){
+    Say(s, i);
+}
+
+
 /* M_Print:
  */
 void M_Print (const char *s)

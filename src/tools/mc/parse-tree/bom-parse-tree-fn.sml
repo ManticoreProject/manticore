@@ -150,7 +150,7 @@
 	  (* end case *))
 
     and simpleExpToString e = (case e
-	   of SE_Mark _ => "SE_Mark"
+	   of SE_Mark{tree, span} => simpleExpToString tree (* "SE_Mark"*)
 	    | SE_Var _ => "SE_Var"
 	    | SE_Alloc _ => "SE_Alloc"
 	    | SE_Wrap _ => "SE_Wrap"

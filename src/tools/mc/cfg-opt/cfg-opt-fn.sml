@@ -71,8 +71,9 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val allocVecChecks = transform {passName = "alloc-vec-checks", pass = AddAllocVecChecks.transform}
 
     fun optimize module = let
+      val _ = CheckCFG.check ("closure", module)
 	  val _ = census module
-	  val _ = CheckCFG.check ("closure", module)
+	  val _ = CheckCFG.check ("census", module)
 	  val module = contract module
           val _ = cfa module
           val module = unrollLoops module

@@ -23,6 +23,13 @@ structure SpecPar (*: sig
             int,           (*Size of the list*)
             List.list];    (*thread id*)        
 
+        define @printVP(x:unit/exh:exh) : unit = 
+            let vp : vproc = host_vproc
+            let vp : int = VProc.@vproc-id(vp)
+            do ccall M_Print_Int("Executing on vproc: %d\n", vp)
+            return(UNIT)
+        ;
+
         define @getKey = FLS.getKey;
         define @find = FLS.find;
 
@@ -31,22 +38,17 @@ structure SpecPar (*: sig
         define @printTID(x : unit / exh : exh) : unit = 
             let tid : any = FLS.@get-key(alloc(TID_KEY) / exh)
             let tid : tid = (tid) tid
-            (*let pLock : [int] = @getPrintLock(UNIT/exh)
-            let pLock : ![int] = (![int])pLock
-            SPIN_LOCK(pLock, 0)  *)
             do ccall M_Print("TID: ")
             fun helper(tid : List.list) : () = 
                 case tid
                     of CONS(hd : [int], tail : List.list) => 
                         do apply helper(tail)
-                        do ccall M_PrintInt(#0(hd))
-                        do ccall M_Print(", ")
+                        do ccall M_Print_Int("%d, ", #0(hd))
                         return()
                     | nil => return()
                 end
             do apply helper(#1(tid))
             do ccall M_Print("\n")
-            (*SPIN_UNLOCK(pLock, 0)*)
             return(UNIT)
         ;
 
@@ -62,7 +64,10 @@ structure SpecPar (*: sig
             let writeList : ![List.list] = promote(writeList)
             let parentTID : any = FLS.@get-key(alloc(TID_KEY) / exh)
             cont slowClone(_ : unit) = (*work that can potentially be stolen*)  
-                do ccall M_Print("Spawning new thread\n")
+                let vp : vproc = host_vproc
+                let vp : int = VProc.@vproc-id(vp)
+                do ccall M_Print_Int("Spawning new thread on vproc: %d\n", vp)
+               (* do ccall M_Print("Spawning new thread\n")  *)
                 do FLS.@set-key(alloc(alloc(WRITES_KEY), writeList) / exh)
                 let parentTID : tid = promote((tid)parentTID)
                 let myTID : tid = alloc(I32Add(#0(parentTID), 1), CONS((any)alloc(2), #1(parentTID)))
@@ -71,13 +76,13 @@ structure SpecPar (*: sig
                 do FLS.@set-key(keyValPair / exh)  (*Put in spec mode*)
                 let res : ![any,any] = promote(res)
                 let v_1 : any = apply b(UNIT / exh)
-                let v'_1 : any = promote(v_1)
-                do #1(res) := v'_1
+                let v_1' : any = promote(v_1)
+                do #1(res) := v_1'
                 do ccall M_Print("Thread entering finish loop: ") let _ : unit = @printTID(UNIT/exh)
                 fun finish() : [any,any] = 
                     if I32Eq(#0(count), 1)
                     then do IVar.@commit(#0(writeList) / exh)
-                         do ccall M_Print("Thread exiting: ") let _ : unit = @printTID(UNIT/exh)
+                  (*       do ccall M_Print("Thread exiting: ") let _ : unit = @printTID(UNIT/exh)  *)
                          return(res)
                     else do Pause()
                          apply finish()
@@ -101,7 +106,7 @@ structure SpecPar (*: sig
             let v_0 : any = apply a(UNIT/newExh)
             do FLS.@set-key(alloc(alloc(TID_KEY), parentTID) / exh) (*change tid back*)
             let removed : Option.option = ImplicitThread.@remove-thread(thd/exh)
-            fun finish(t : Option.option) : [any, any] = case t
+  (*          fun finish(t : Option.option) : [any, any] = case t
                 of Option.SOME(t : ImplicitThread.thread) => 
                     if Equal(t, thd)
                     then do ccall M_Print("Speculative computation was not stolen\n")
@@ -120,27 +125,30 @@ structure SpecPar (*: sig
                                  do ccall M_Print("Updating counter and exiting: ")
                                  SchedulerAction.@stop()
                end
-            apply finish(removed)                  
-    (*        case removed 
+            apply finish(removed)                 *)    
+            case removed 
                 of Option.SOME(t : ImplicitThread.thread) => 
-                    do ccall M_Print("Speculative computation was not stolen\n")
+                    let vp : vproc = host_vproc
+                    let vp : int = VProc.@vproc-id(vp)
+                    do ccall M_Print_Int("Speculative computation was not stolen (vp = %d)\n", vp)
                     let v_1 : any = apply b(UNIT/exh)
                     let res : [any, any] = alloc(v_0, v_1)
                     return(res)
-                  |Option.NONE => let res : ![any, any] = promote(res)   
-                                  let v'_0 : any = promote(v_0)
-                                  do #0(res) := v'_0
+                  |Option.NONE => let res : ![any, any] = promote(res) 
+                                  do ccall M_Print("Speculative computation was stolen\n")  
+                                  let v_0' : any = promote(v_0)
+                                  do #0(res) := v_0'
                                   let updated : int = I32FetchAndAdd(&0(count), 1)
                                   SchedulerAction.@stop()           
                  (*Stolen thread should always return the tuple after committing writes*)
-           end *)
+           end 
         ;
         
     )
 
     val spec : ((unit -> 'a) * (unit -> 'b)) -> ('a * 'b) = _prim(@pSpec)
     val printTID : unit -> unit = _prim(@printTID)
-    
+    val printVP : unit -> unit = _prim(@printVP)
 
     
 end
