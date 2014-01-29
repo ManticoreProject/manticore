@@ -20,7 +20,7 @@ val _ = SpecPar.spec(fn _ => SpecPar.spec( fn _ => (fib 35; raise E), fn _ => IV
 *)
 
 (*if the read inside of "f x" goes through before the write to x, then this deadlocks.*)
-val _ = SpecPar.spec(fn _ => SpecPar.spec(fn _ => (fib 35; ()), fn _ => IVar.putIVar(x, 10)),
+val _ = SpecPar.spec(fn _ => SpecPar.spec(fn _ => fib 35, fn _ => IVar.putIVar(x, 10)),
                      fn _ => SpecPar.spec(fn _ => f x 1, fn _ => f x 2))
 
 

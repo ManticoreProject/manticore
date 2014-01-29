@@ -67,7 +67,6 @@ structure SpecPar (*: sig
                 let vp : vproc = host_vproc
                 let vp : int = VProc.@vproc-id(vp)
                 do ccall M_Print_Int("Spawning new thread on vproc: %d\n", vp)
-               (* do ccall M_Print("Spawning new thread\n")  *)
                 do FLS.@set-key(alloc(alloc(WRITES_KEY), writeList) / exh)
                 let parentTID : tid = promote((tid)parentTID)
                 let myTID : tid = alloc(I32Add(#0(parentTID), 1), CONS((any)alloc(2), #1(parentTID)))
@@ -78,7 +77,7 @@ structure SpecPar (*: sig
                 let v_1 : any = apply b(UNIT / exh)
                 let v_1' : any = promote(v_1)
                 do #1(res) := v_1'
-                do ccall M_Print("Thread entering finish loop: ") let _ : unit = @printTID(UNIT/exh)
+                (*do ccall M_Print("Thread entering finish loop: ")*)
                 fun finish() : [any,any] = 
                     if I32Eq(#0(count), 1)
                     then do IVar.@commit(#0(writeList) / exh)
@@ -88,6 +87,7 @@ structure SpecPar (*: sig
                          apply finish()
                 apply finish()  (*wait until main thread is done and then commit*)
             let thd : ImplicitThread.thread = ImplicitThread.@new-cancelable-thread(slowClone, cbl / exh)
+            do ccall M_Print("Spawning new thread!!!\n")
             do ImplicitThread.@spawn-thread(thd / exh)
             cont newExh(e : exn) = 
                 let removed : Option.option = ImplicitThread.@remove-thread(thd/exh)
@@ -106,31 +106,12 @@ structure SpecPar (*: sig
             let v_0 : any = apply a(UNIT/newExh)
             do FLS.@set-key(alloc(alloc(TID_KEY), parentTID) / exh) (*change tid back*)
             let removed : Option.option = ImplicitThread.@remove-thread(thd/exh)
-  (*          fun finish(t : Option.option) : [any, any] = case t
-                of Option.SOME(t : ImplicitThread.thread) => 
-                    if Equal(t, thd)
-                    then do ccall M_Print("Speculative computation was not stolen\n")
-                         let v_1 : any = apply b(UNIT/exh)
-                         let res : [any, any] = alloc(v_0, v_1)
-                         return(res)
-                    else 
-                         do ImplicitThread.@spawn-thread(thd/exh)
-                         let t' : Option.option = ImplicitThread.@remove-thread(thd/exh)
-                         apply finish(t')
-                | Option.NONE => do ccall M_Print("Speculative computation was stolen\n")
-                                 let res : ![any, any] = promote(res)
-                                 let v'_0 : any = promote(v_0)
-                                 do #0(res) := v'_0
-                                 let updated : int = I32FetchAndAdd(&0(count), 1)
-                                 do ccall M_Print("Updating counter and exiting: ")
-                                 SchedulerAction.@stop()
-               end
-            apply finish(removed)                 *)    
             case removed 
                 of Option.SOME(t : ImplicitThread.thread) => 
                     let vp : vproc = host_vproc
                     let vp : int = VProc.@vproc-id(vp)
                     do ccall M_Print_Int("Speculative computation was not stolen (vp = %d)\n", vp)
+                    let t : PrimTypes.fiber = #0(t)
                     let v_1 : any = apply b(UNIT/exh)
                     let res : [any, any] = alloc(v_0, v_1)
                     return(res)
@@ -139,7 +120,7 @@ structure SpecPar (*: sig
                                   let v_0' : any = promote(v_0)
                                   do #0(res) := v_0'
                                   let updated : int = I32FetchAndAdd(&0(count), 1)
-                                  SchedulerAction.@stop()           
+                                  SchedulerAction.@stop()
                  (*Stolen thread should always return the tuple after committing writes*)
            end 
         ;
