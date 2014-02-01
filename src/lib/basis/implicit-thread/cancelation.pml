@@ -171,7 +171,7 @@ structure Cancelation (* : sig
 	  cont impossible () = throw exh(Fail(@"Cancelation.@wrap-fiber: impossible"))
 	  cont terminate () = 
 	       do @set-inactive(c / exh)
-               do ccall M_Print("Fiber exiting...\n\n")
+	       do ccall M_Print("Fiber exiting...\n")
 	       let _ : unit = SchedulerAction.@stop()
 	       throw impossible()
 	  cont dispatch (act : PT.sched_act, k : fiber) =
@@ -180,8 +180,6 @@ structure Cancelation (* : sig
 	       let canceledFlg : ![bool] = @get-canceled-flag(c)
 	       case #0(canceledFlg)
 		of true =>
-	(*	   do ccall M_Print("Canceling: ")
-	           let _ : unit = @printTID(UNIT/exh)   *)
 		   throw terminate()
 		 | false =>
 		   do SchedulerAction.@run(self, act, k)

@@ -160,7 +160,7 @@ structure FLS :
         let k0 : [[int], any] = alloc(alloc(DICT_BUILTIN_TOPOLOGY), nil)
         let k1 : [[int], any] = alloc(alloc(SPEC_KEY), false)
         let k2 : [[int], any] = alloc(alloc(WRITES_KEY), alloc(nil))
-        let k3 : [[int], any] = alloc(alloc(TID_KEY), alloc(1, nil))
+        let k3 : [[int], any] = alloc(alloc(TID_KEY), alloc(alloc(1), nil))
         let l : List.list = CONS(k3, CONS(k2, CONS(k1, CONS(k0, nil))))
         let ret : [int, List.list] = alloc(4, l)
         return(ret)
@@ -329,15 +329,14 @@ structure FLS :
         ;
 
         (*promote keys before comparing*)
-        define @get-key-global(dict : List.list, k : [int] / exh : exh) : any = 
+        define @get-key-dict(fls : fls, k : [int] / exh : exh) : any = 
+            let dict : List.list = SELECT(DICT_OFF, fls)
             let k' : [int] = ([int])k
             let key : int = #0(k')
             fun loop(dict : List.list) : any = 
-                let dict : List.list = promote(dict)
                 case dict
                 of CONS(hd : [[int], any], tail : List.list) => 
-                    let hd : [[int], any] = promote(hd)
-                    let key' : [int] = promote(#0(hd))
+                    let key' : [int] = #0(hd)
                     if I32Eq(#0(key'), key)
                     then return(#1(hd))
                     else apply loop(tail)

@@ -330,26 +330,25 @@ structure MLB : sig
         end
 
     and outputPreprocessed(file, preprocs) = 
-        if !dumpPreprocessed
-        then let val errStrm = Error.mkErrStream file
-                 val filename = String.substring(file, 0, String.size file - 4)
-                 val filename = if String.substring(filename, 0, 3) = "../"
-                                then "../" ^ filename
-                                else filename
-                 val dir = OS.FileSys.getDir()
-                 val (inStrm, reap) = preprocess(List.rev preprocs, file)
-                 val s = TextIO.inputAll inStrm
-                 val d = OS.FileSys.isDir(dir ^ "/preprocessed")
-                                handle e => (OS.FileSys.mkDir(dir ^ "/preprocessed"); false)
-                 val _ = OS.FileSys.chDir(dir ^ "/preprocessed") handle e => (print "couldn't change into directory\n")
-                 val outStrm = TextIO.openOut (filename ^ "_preprocessed.sml")
-                 val _ = print ("Writing to file: " ^ filename ^ "_preprocessed.sml\n")
-                 val _ = TextIO.output(outStrm, s)
-                 val _ = TextIO.closeIn inStrm
-                 val _ = TextIO.closeOut outStrm
-                 val _ = OS.FileSys.chDir(dir)
-             in () end
-        else ()
+        let val errStrm = Error.mkErrStream file
+        val filename = String.substring(file, 0, String.size file - 4)
+        val filename = if String.substring(filename, 0, 3) = "../"
+                       then "../" ^ filename
+                       else filename
+        val dir = OS.FileSys.getDir()
+        val (inStrm, reap) = preprocess(List.rev preprocs, file)
+        val s = TextIO.inputAll inStrm
+        val d = OS.FileSys.isDir(dir ^ "/preprocessed")
+                       handle e => (OS.FileSys.mkDir(dir ^ "/preprocessed"); false)
+        val _ = OS.FileSys.chDir(dir ^ "/preprocessed") handle e => (print "couldn't change into directory\n")
+        val outStrm = TextIO.openOut (filename ^ "_preprocessed.sml")
+        val _ = print ("Writing to file: " ^ filename ^ "_preprocessed.sml\n")
+        val _ = TextIO.output(outStrm, s)
+        val _ = TextIO.closeIn inStrm
+        val _ = TextIO.closeOut outStrm
+        val _ = OS.FileSys.chDir(dir)
+    in () end
+
 
   (* load a PML file *)
     and loadPML (file, env as Env{loc, pts, preprocs}) = let 
@@ -357,12 +356,12 @@ structure MLB : sig
 	  val (inStrm : TextIO.instream, reap) = preprocess(List.rev preprocs, file)
 	  val ptOpt = Parser.parseFile (errStrm, inStrm)
 		     (*handle Fail s => raise Fail (file^": "^s)*)  
-          val _ = outputPreprocessed(file, preprocs)
+          val _ = if !dumpPreprocessed then outputPreprocessed(file, preprocs) else ()
 	  in
 	    reap();
 	   case ptOpt
 	     of SOME pt => SOME (errStrm, pt)
-	      | NONE => (printFile(file, preprocs); checkForErrors[errStrm]; NONE)
+	      | NONE => (outputPreprocessed(file, preprocs); checkForErrors[errStrm]; NONE)
 	  end
 
   (* load the basis library *)

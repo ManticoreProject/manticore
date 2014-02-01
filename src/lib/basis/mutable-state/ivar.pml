@@ -18,34 +18,6 @@ sig
 end*)
 struct
 
-    (*determines if tid1 is a prefix of tid2*)
-    fun pmlPrefix((n1 : int, tid1 : int list), (n2 : int, tid2 : int list)) = case (tid1, tid2)
-        of (x::xs, y::ys) => if n1 = n2
-                             then if x <= y
-                                  then pmlPrefix((n1-1, xs), (n2-1, ys))
-                                  else false
-                             else if n2 > n1
-                                  then pmlPrefix((n1, tid1), (n2-1, ys))
-                                  else false
-         | ([], []) => true
-         | ([], y::ys) => true
-         | (x::xs, []) => false
-                                                                        
-    (*Check if an element is independent of a set of other elements.  If it is,
-      filter out any elements it is a previx of*)
-    fun pmlInd((v,f,c,tid,can), workingSet) = 
-        let fun helper workingSet = case workingSet
-                of (v',f',c',tid',can')::xs => 
-                    if pmlPrefix(tid, tid')
-                    then helper xs
-                    else if pmlPrefix(tid', tid)
-                         then workingSet
-                         else (v',f',c',tid',can') :: helper xs
-                 | [] => (v,f,c,tid,can) :: []      
-        in helper workingSet
-        end
-        
-
     _primcode(
         extern void *M_Print_Int(void *, int);
 
@@ -70,14 +42,57 @@ struct
             any,           (*6: thread id*)
             List.list      (*7: list of writers if this is spec full*)];
 
+        define @pmlInd(w : waiter, ws : List.list / exh : exh) : List.list = 
+            fun prefixEq(tid1 : List.list, tid2 : List.list) : bool = case tid1 
+                of CONS(hd1 : [int], tl1 : List.list) => case tid2
+                    of CONS(hd2 : [int], tl2 : List.list) => if I32Eq(#0(hd1), #0(hd2)) then apply prefixEq(tl1, tl2) else return(false)
+                     | nil => let e : exn = Fail(@"Impossible") throw exh(e)
+                    end
+                  |nil => case tid2
+                    of CONS(_ : [int], _ : List.list) => let e : exn = Fail(@"Impossible") throw exh(e)
+                     | nil => return(true)
+                  end
+                end
+            fun prefix(tid1 : tid, tid2 : tid) : bool = 
+                let n1 : int = #0(tid1)
+                let n2 : int = #0(tid2)
+                let l1 : List.list = #1(tid1)
+                let l2 : List.list = #1(tid2)
+                if I32Eq(n1, n2)
+                then apply prefixEq(l1, l2)
+                else if I32Gt(n1, n2) 
+                     then return(false)
+                     else case l2
+                        of CONS(hd1 : [int], tl1 : List.list) => let tid2' : ![int, List.list] = alloc(I32Sub(n2, 1), tl1)
+                            apply prefix(tid1, tid2')
+                          |nil => return(false)
+                        end
+            fun ind(ws : List.list) : List.list = case ws 
+                of CONS(w1 : waiter, tl : List.list) => 
+                    let prefixRes : bool = apply prefix(#3(w1), #3(w))
+                    if (prefixRes)
+                    then do ccall M_Print("Not adding item to working set!\n")
+                         return(ws)
+                    else let prefixRes2 : bool = apply prefix(#3(w), #3(w1))
+                         if (prefixRes2)
+                         then apply ind(tl)
+                         else let res : List.list = apply ind(tl)
+                              return(CONS(w1, res))
+                |nil => do ccall M_Print("Adding item to working set!\n")
+                        return(CONS(w, nil))
+                end
+           apply ind(ws)
+        ;
+
         define @printTID2(tid : tid / exh : exh) : () = 
             do ccall M_Print("TID: ")
             fun helper(tid : List.list) : () = 
                 case tid
                     of CONS(hd : [int], tail : List.list) => 
-                        do ccall M_PrintInt(#0(hd))
+                        do apply helper(tail)
                         do ccall M_Print(", ")
-                        apply helper(tail)
+                        do ccall M_PrintInt(#0(hd))
+                        return()
                     | nil => return()
                 end
             do apply helper(#1(tid))
@@ -107,9 +122,6 @@ struct
             end
         ;
 
-      
-        
-
         define @iGet(i : ivar / exh : exh) : any = 
         fun restart() : any = 
             let self : vproc = SchedulerAction.@atomic-begin()
@@ -123,7 +135,6 @@ struct
                       let affinity : vproc = host_vproc
                       let c : Cancelation.cancelable = @getCancelable(/exh)
                       let item : waiter = alloc(affinity, fls, getK, (tid) tid, c)
-                      let item : waiter = promote(item)
                       let l : List.list = CONS(item, #5(i))
                       let l : List.list = promote(l)
                       do #5(i) := l  
@@ -240,10 +251,6 @@ struct
             apply helper(writes)
        ;
 
-       define @prefix = pmlPrefix;
-       
-       define @independent = pmlInd;
-
        (*Takes a list of ivars that need to be rolled back, and a working set
          of computations to be restarted (initially nil)*)
        define @rollback(writes : List.list / exh : exh) : () = 
@@ -253,36 +260,38 @@ struct
                     do ccall M_Print("Rolling back IVar\n")
                     do #3(hd) := false (*set to empty*)
                     let dependents : List.list = #5(hd)
-                    let newWS : List.list = PrimList.@append(dependents, workingSet / exh)
-                    let newWS' : List.list = apply helper(tl, newWS)
-                    return(newWS')
+                    do #5(hd) := nil
+                    do #7(hd) := nil
+                    let newWS : List.list = apply procDependents(dependents, tl, (*workingSet*) CONS(dependents, nil) )
+                    return(newWS)
                  end
-            and procDependents(deps : List.list, ws : List.list) : List.list = case deps
-                of nil => return(ws)
+            and procDependents(deps : List.list, ivars : List.list, workingSet : List.list) : List.list = case deps
+                of nil => apply helper(ivars, workingSet)
                  | CONS(hd : waiter, tl : List.list) => 
-                    let fls : FLS.fls = #1(hd)
-                    let fls : FLS.fls = promote(fls)
-                    let writes : ![List.list] = FLS.@get-key(alloc(WRITES_KEY) / exh)
-                    let ws' : List.list = PrimList.@append(#0(writes), ws / exh)
-                    apply procDependents(tl, ws')
-                end
-            fun reduce(dependents : List.list, workingSet : List.list) : List.list = case dependents
-                of CONS(hd : waiter, tl : List.list) => 
                     let arg : [[any,any,any,[[int], List.list], any], List.list] = 
                             ([[any,any,any,[[int], List.list], any], List.list]) alloc(hd, workingSet)
-                    let res : List.list = @independent(arg / exh)
-                    apply reduce(tl, res)
-                | nil => return(workingSet)
+                    let tid : tid = #3(hd)
+                    do ccall M_Print("Computing independent set\n")
+                    let workingSet' : List.list = @pmlInd(hd, workingSet / exh)
+                    do ccall M_Print("Done computing independent set\n")
+                    let fls : FLS.fls = #1(hd)
+                    let fls : FLS.fls = promote(fls)
+                    let ws : ![List.list] = FLS.@get-key-dict(fls, alloc(WRITES_KEY) / exh)
+                    let wsLength : int = PrimList.@length(#0(ws)/exh)
+                    do ccall M_Print_Int("Found %d writes by dependent reader\n", wsLength)
+                    let ivars' : List.list = PrimList.@append(#0(ws), writes / exh)
+                    apply procDependents(tl, ivars', workingSet')
                 end
             let restarts : List.list = apply helper(writes, nil)
-            let restarts : List.list = apply reduce(restarts, nil)
             fun restart (waiters : List.list) : () = case waiters
                     of nil => return ()
                      | CONS(waiter : waiter, tl : List.list) => 
                           do ccall M_Print("Restarting dependent reader\n")
                           let c : Cancelation.cancelable = #4(waiter)
+                          do ccall M_Print("TID length is %d\n", #0(#3(waiter)))
                           do ccall M_Print("Trying to cancel: ")
                           do @printTID2(#3(waiter) / exh)
+                          do ccall M_Print("Entering cancel\n")
                           let _ : unit = Cancelation.@cancel(c / exh)
                           do ccall M_Print("Restarting dependent reader\n")
                           let k : cont(any, any) = #2(waiter)
@@ -302,6 +311,6 @@ struct
     
 end
 
- 
+
 
 
