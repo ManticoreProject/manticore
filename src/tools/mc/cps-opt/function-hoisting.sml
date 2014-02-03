@@ -23,20 +23,12 @@ structure FunctionHoisting : sig
     structure Census = CPSCensus
     structure PSet = PPt.Set
               
-    val enableFunReordering = ref true          
     val reorderDebug = ref false
     val hoistFlag = ref true
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
               envName = NONE
             }) [
-              Controls.control {
-                  ctl = enableFunReordering,
-                  name = "fun-reorder",
-                  pri = [0, 1],
-                  obscurity = 1,
-                  help = "enable function reordering"
-                },
               Controls.control {
                   ctl = reorderDebug,
                   name = "fun-reorder-debug",

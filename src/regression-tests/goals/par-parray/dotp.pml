@@ -1,6 +1,6 @@
 (* cheating...these names are supposed to be bound already... *)
 
-
+(*
 fun sumP_float a = let
   fun add (x, y) = x + y
   in
@@ -50,4 +50,12 @@ val dp = dotp ([| 1 to 100 |], [| 1 | _ in [| 1 to 100 |] |])
 val _ = Print.printLn ("expecting 5050 => " ^ Int.toString dp) 
 
 val _ = Print.printLn "Done."
+*)
+
+
+val vtos = PArray.toString Int.toString ","
+
+val test = [|1 to 10|]
+val _ = vtos test
+
 

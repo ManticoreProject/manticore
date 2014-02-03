@@ -140,7 +140,7 @@ structure FlatClosureWithCFA : sig
       | cvtStdContTyAuxKwn (ty, _) = raise Fail(concat[
           "bogus continuation type ", CPSTyUtil.toString ty])
 
-    fun cvtTyOfVar x =
+    fun cvtTyOfVar x = 
        ((cvtTy (CPS.Var.typeOf x, CFA.valueOf x))
         handle Fail s => raise Fail(concat["cvtTyOfVar(", CPS.Var.toString x, ") ==> ", s]))
         
@@ -261,7 +261,8 @@ structure FlatClosureWithCFA : sig
           in
             if Controls.get ClosureControls.debug
               then print(concat[
-                "newVar(", CPS.Var.toString x, ") => ", CFG.Var.toString x', "\n"])
+                "newVar(", CPS.Var.toString x, " : ", CPSTyUtil.toString (CPS.Var.typeOf x), ") => ", 
+                    CFG.Var.toString x', " : ", CFGTyUtil.toString (CFG.Var.typeOf x') , "\n"])
               else ();
             x'
           end
@@ -581,12 +582,6 @@ structure FlatClosureWithCFA : sig
                   | ((env, [x]), CPS.Cast(ty, y)) => let
                       val (binds, y') = lookupVar(env, y)
                       val convertedTy = cvtTy(ty, CFA.valueOf y)
-                     (* val _ = print("Making Cast: " ^ CFG.Var.toString(x) ^ " : " ^ CFGTyUtil.toString(CFG.Var.typeOf x) ^ " = (" ^ CFGTyUtil.toString(convertedTy) ^ ")" ^ CFG.Var.toString(y') ^ 
-                                " (its CFA value is: " ^ CFA.valueToString(CFA.valueOf y) ^ "), and the lhs CFA value is: " ^ CFA.valueToString(CFA.valueOf (List.hd lhs)) ^ "\n")
-                      val _ = if CFGTyUtil.match(CFG.Var.typeOf x, convertedTy)
-                              then ()
-                              else raise Fail ("Types: " ^ CFGTyUtil.toString(CFG.Var.typeOf x) ^ " and " 
-                                ^ CFGTyUtil.toString(convertedTy) ^ " do not match in cast\n")*)
                       in
                         ([CFG.mkCast(x, convertedTy, y')] @ binds, env)
                       end
@@ -965,7 +960,7 @@ structure FlatClosureWithCFA : sig
                * then we can refer directly to labelOf(g)
                *)
                 val bindCP = (case kTgt
-                       of SOME g => CFG.mkLabel(cp, labelOf g)
+                       of SOME g => CFG.mkLabel(cp, labelOf g)  
                         | NONE => CFG.mkSelect(cp, 0, k')
                       (* end case *))
                 val xfer = CFG.Apply {

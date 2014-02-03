@@ -24,11 +24,12 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
     structure Census = CPSCensus
 
   (***** controls ******)
-    val enableArityRaising = ref false
+    val enableArityRaising = ref true
     val argumentOnly = ref false
     val arityRaisingDebug = ref false
     val multiPass = ref true
     val maxParams = ref Spec.availRegs
+    val dumpArityRaising = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
@@ -61,6 +62,13 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
                   pri = [0, 1],
                   obscurity = 0,
                   help = "use multipass signature changes"
+                  },
+              Controls.control {
+                  ctl = dumpArityRaising,
+                  name = "dump-arity-raising",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "output the result of arity raising to a file"
                   }
              ]
              
@@ -513,9 +521,10 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
 
   (* the first part of the analysis is to gather all of the candidate functions and
    * their call sites.  We also compute the initial vmaps and pmaps based on the selects
-   * in the candidate-function bodies.
+   * in the candidate-function bodies.  vmap maps variables to selection paths and pmap maps
+   * selection paths to use counts.
    *)
-    fun gather (module as C.MODULE{body, ...}) = let
+    fun gather (module as C.MODULE{body, ...}) : C.var list = let
 	(* list of candidate functions *)
 	  val candidates = ref []
 	(* analyse a bound function or continuation *)
@@ -663,7 +672,8 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
 		  | (C.Throw(k, args)) => addCallSite (NONE, ppt, k, args)
 		(* end case *))
 	  in
-	  (* first we mark the candidate functions *)
+	  (* first we mark the candidate functions.  This uses setFn to create an entry mapping
+             the variable to an empty reference of call sites, which later gets filled in.*)
 	    U.applyToBoundVars markCandidate module;
 	  (* first analyse the module to determine the candidate functions, their
 	   * call sites, and their parameter access patterns.
@@ -1084,7 +1094,7 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
          of CFACPS.LAMBDAS(l) =>
             CPS.Var.Set.listItems l
           | _ => []
-        
+
     (* If they are equal, or if one of the types is ANY, we are fine.
      * Any arises in two cases: 1) polymorphic types 2) unused parameters that are put 
      * in to keep a uniform calling convention.
@@ -1092,7 +1102,8 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
     fun safeMergable ([],[]) = true
       | safeMergable (_,[]) = false
       | safeMergable ([],_) = false
-      | safeMergable (x::xs, y::ys) = CPSTyUtil.validCast (x,y) andalso safeMergable (xs,ys)
+     (* | safeMergable (x::xs, y::ys) = CPSTyUtil.validCast (x,y) andalso safeMergable (xs,ys)*)
+      | safeMergable (x::xs, y::ys) = CPSTyUtil.match (x,y) andalso safeMergable (xs,ys)
 
     fun safeMergeTypes (CPSTy.T_Fun (p1,r1), CPSTy.T_Fun (p2,r2)) =
         if safeMergable(p1,p2) andalso safeMergable(r1,r2)
@@ -1180,6 +1191,9 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
             case CFACPS.valueOf param
              of CFACPS.LAMBDAS(l) => let
                     val newType = getParamFunType l
+                    val _ = if !arityRaisingDebug
+                            then print(concat(["Merged signature is: ", CPSTyUtil.toString newType, "\n"]))
+                            else ()
                 in
                     if CPSTyUtil.equal (CV.typeOf param, newType)
                     then ()
@@ -1256,7 +1270,7 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
                     val _ = if !arityRaisingDebug
                             then print (concat["Flattening candidate params ",
                                                CV.toString f, " orig: ",
-                                               CPSTyUtil.toString (CV.typeOf f)])
+                                               CPSTyUtil.toString (CV.typeOf f), "\n"])
                             else ()
 		    val {vmap, pmap, params, rets, sign, 
                          newParams=SOME(newParams), newRets=SOME(newRets)} = getInfo f
@@ -1925,17 +1939,25 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
         else body'
     end
 
+    fun dump m prefix = 
+        if !dumpArityRaising
+        then let val file = TextIO.openOut(prefix ^ "ArityRaisingOutput.cps")
+             in PrintCPS.output(file, m)
+             end
+        else ()
   (***** Transformation *****)
 
     fun transform m = if !enableArityRaising
 	  then let
+	    val _ = dump m "pre"
 	    val candidates = analyse m
             val _ = scanUseful (m, 0)
             val _ = flattenSignatureInfo m
 	    val m' = flatten m
-            (* FIXME: should mainain census counts! *)
+            (* FIXME: should maintain census counts! *)
 	    val _ = Census.census m'
             val m' = cleanupLoop m'
+            val _ = dump m' "post"
 	    in
 	      if !arityRaisingDebug
 		then List.app printCandidate candidates

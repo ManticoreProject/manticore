@@ -102,7 +102,7 @@ structure CFGTyUtil : sig
 	  (* the following shouldn't be here, since it isn't really sound, but we need it
 	   * to handle surface-language polymorphism, which is translated to T_Any.
 	   *)
-	    | (CTy.T_Any, toTy) => isKind CTy.K_ANY (kindOf toTy)
+	    | (CTy.T_Any, toTy) => isKind CTy.K_ANY (kindOf toTy)  
 	    | (CTy.T_Enum w1, CTy.T_Enum w2) => (w1 <= w2)
 	    | (CTy.T_Enum _, CTy.T_Tuple _) => true
 	    | (CTy.T_Tuple(isMut1, tys1), CTy.T_Tuple(isMut2, tys2)) =>
@@ -135,10 +135,10 @@ structure CFGTyUtil : sig
                   (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
                   ListPair.allEq match (args2, args1)
             | (CTy.T_KnownFunc{clos = clos1, args = args1},
-               CTy.T_KnownFunc{clos = clos2, args = args2}) => 
+               CTy.T_KnownFunc{clos = clos2, args = args2}) => ((*if ListPair.allEq match (args2, args1) then print("arguments match!\n") else print("arguments don't match\n");*)
               (* Note contravariance for arguments! *)
                   (match (clos2, clos1) orelse validCast (clos2, clos1)) andalso
-                  ListPair.allEq match (args2, args1)
+                  ListPair.allEq match (args2, args1))
             | _ => equal (fromTy, toTy)
 	  (* end case *))
 

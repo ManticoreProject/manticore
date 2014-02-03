@@ -34,6 +34,7 @@ structure Inline : sig
     val inlineFlg = ref true
     val inlineDebug = ref false
     val inlineHOFlg = ref true
+    val dumpFlg = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
@@ -59,6 +60,13 @@ structure Inline : sig
 		  pri = [0, 1],
 		  obscurity = 0,
 		  help = "debug expansive inlining"
+		},
+		  Controls.control{
+		    ctl = dumpFlg,
+		    name = "dump-inline",
+		    pri = [0, 1],
+		    obscurity = 0,
+		    help = "output file before and after inlining"
 		}
 	    ]
 
@@ -439,17 +447,26 @@ structure Inline : sig
 	C.mkLets (casts, doExp (addAndDec (env, f), U.copyExp (argsForParams, body)))
     end
 
+    fun dump m prefix = 
+        if !dumpFlg
+        then let val file = TextIO.openOut(prefix ^ "InliningOutput.cps")
+             in PrintCPS.output(file, m)
+             end
+        else ()
+
     fun transform (m as C.MODULE{name, externs, body}) =
         if !inlineFlg
         then (let
                  val _ = if !inlineHOFlg
                          then Reflow.analyze m
                          else ()
+                 val _ = dump m "pre"
 	         val C.FB{f, params, rets, body} = body
 	         val body = doExp(initEnv(), body)
 	         val fb = C.mkLambda(C.FB{f=f, params=params, rets=rets, body=body}, false)
                  val m = C.MODULE{name=name, externs=externs, body=fb}
                  val _ = Census.census m
+                 val _ = dump m "post"
              in
                  m
              end)
