@@ -23,7 +23,7 @@ fun g() =
     end
 
 exception E
-val _ = SpecPar.spec(fn _ => SpecPar.spec( fn _ => (fib 40; print "done with fib\n"; raise E), fn _ => IVar.putIVar(x, 10)) handle e => (IVar.putIVar(x, 12), ()),
+val _ = SpecPar.spec(fn _ => SpecPar.spec( fn _ => (fib 40; raise E), fn _ => IVar.putIVar(x, 10)) handle e => (IVar.putIVar(x, 12), ()),
                      fn _ => SpecPar.spec(fn _ => f x, fn _ => g()))
 
 

@@ -147,23 +147,6 @@ structure Cancelation (* : sig
 
     _primcode (
 
-        define @printTID(x : unit / exh : exh) : unit = 
-            let tid : any = FLS.@get-key(alloc(3) / exh)
-            let tid : [int, List.list] = ([int, List.list]) tid
-            do ccall M_Print("TID: ")
-            fun helper(tid : List.list) : () = 
-                case tid
-                    of CONS(hd : [int], tail : List.list) => 
-                        do ccall M_PrintInt(#0(hd))
-                        do ccall M_Print(", ")
-                        apply helper(tail)
-                    | nil => return()
-                end
-            do apply helper(#1(tid))
-            do ccall M_Print("\n")
-            return(UNIT)
-        ;
-
     (* @wrap-fiber (c, k / exh) *)
     (* returns new fiber k' where k' has similar behavior to k, except that canceling c *)
     (* causes k' to terminate *)
@@ -171,7 +154,6 @@ structure Cancelation (* : sig
 	  cont impossible () = throw exh(Fail(@"Cancelation.@wrap-fiber: impossible"))
 	  cont terminate () = 
 	       do @set-inactive(c / exh)
-	       do ccall M_Print("Fiber exiting...\n")
 	       let _ : unit = SchedulerAction.@stop()
 	       throw impossible()
 	  cont dispatch (act : PT.sched_act, k : fiber) =
@@ -237,6 +219,7 @@ structure Cancelation (* : sig
 	  return(c)
 	;
 
+       extern void *M_Print_Int(void *, int);
     (* @cancel (c / exh) *)
     (* cancels implicit thread t corresponding to c and all implicit threads that are descendants of t *)
     (* postcondition: all canceled implicit threads have stopped executing *)
@@ -263,16 +246,27 @@ structure Cancelation (* : sig
 		     * is why we need the promotion below.
 		     *)
 		      let gChildren : ![L.list] = promote(SELECT(GCHILDREN_OFF, c))
+		      do case #0(gChildren)
+		        of CONS(hd : cancelable, tl:List.list) => 
+		                if Equal(hd, c)
+		                then do ccall M_Print("Cycle!!!!!!!\n\n\n\n")
+		                     do SchedulerAction.@stop()
+		                     return()
+		                else return()
+		         |nil => return()
+		         end
 		      let cs2 : L.list = PrimList.@append(#0(gChildren), cs2 / exh)
 		      apply cancelAll(self, cs1, cs2)
 		  else
 		      case isCanceled
 		       of true =>
 			  do Pause()
+			  do ccall M_Print("Waiting on thread to finish\n")
 			  apply cancelAll(self, cs1, CONS(c, cs2))
 			| false =>
 			  let dummyK : fiber = vpload(VP_DUMMYK, self)
 	                  let fls : FLS.fls = FLS.@get()
+	                  do ccall M_Print("Sending vproc cancel fiber\n")
 			  do VProc.@send-in-atomic(self, #0(inactive), fls, dummyK)
 			  apply cancelAll(self, cs1, CONS(c, cs2))
                       end

@@ -114,9 +114,7 @@ structure SpecPar (*: sig
                      throw exh(e)  (*simply propogate exception*)
                 else do ccall M_Print("Exception raised and speculative thread was stolen\n")
                      let _ : unit = Cancelation.@cancel(cbl / exh)
-                     do ccall M_Print("Done cancelling\n")
                      let writes : List.list = #0(writeList)
-                     do ccall M_Print("Entering rollback\n")
                      do IVar.@rollback(writes / exh)
                      throw exh(e)
             let parentTID : tid = (tid) parentTID
