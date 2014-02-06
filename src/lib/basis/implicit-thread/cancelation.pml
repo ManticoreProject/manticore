@@ -147,6 +147,17 @@ structure Cancelation (* : sig
 
     _primcode (
 
+      define @check-canceled(/exh : exh) : bool = 
+        let cancelable : Option.option = @get-current(/exh)
+        case cancelable
+            of Option.SOME(c : cancelable) => let c : ![bool] = @get-canceled-flag(c)
+                                              return(#0(c))
+             | Option.NONE => return(false)                               
+        end
+     ;
+
+     extern void * M_Print_Int(void*, int);
+
     (* @wrap-fiber (c, k / exh) *)
     (* returns new fiber k' where k' has similar behavior to k, except that canceling c *)
     (* causes k' to terminate *)
@@ -173,6 +184,8 @@ structure Cancelation (* : sig
 		   throw terminate()
 		 | PT.PREEMPT(k : fiber) =>
 		   do @set-inactive(c / exh)
+		   let vp : vproc = host_vproc let vp : int = VProc.@vproc-id(vp)
+		   do ccall M_Print_Int("Thread being preempted on vp %d\n", vp)
 		   do SchedulerAction.@yield()
 		   throw dispatch(act, k)
 		 | _ =>

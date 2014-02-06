@@ -13,17 +13,17 @@ fun f x i =
         val y = IVar.getIVar x
     in print ("read " ^ Int.toString(y) ^ " from ivar x (" ^ Int.toString i ^ ")\n")
     end
+
+
 (*
-exception E
-val _ = SpecPar.spec(fn _ => SpecPar.spec( fn _ => (fib 35; raise E), fn _ => IVar.putIVar(x, 10)) handle e => (IVar.putIVar(x, 12), ()),
-                     fn _ => f x)
+If we have something like (SpecPar.spec(fn _ => 1, fn _ => 1)), if the speculative thread finishes
+first, it will go into the finish loop and preempt itself, adding itself to the deque.  If the commit
+thread then comes through, it will try and pop something off the deque, if it gets the second thread's
+preempted state, then we will reexecute the speculative thread, which is wrong.
 *)
 
-(*if the read inside of "f x" goes through before the write to x, then this deadlocks.*)
-val _ = SpecPar.spec(fn _ => SpecPar.spec(fn _ => fib 35, fn _ => IVar.putIVar(x, 10)),
+val _ = SpecPar.spec(fn _ => (SpecPar.spec(fn _ => ("computing fib\n"; fib 35; print "done computing fib\n"; SpecPar.runningOn()), fn _ => (print "Writing to ivar\n"; IVar.putIVar(x, 10); print "done writing to ivar\n")); print "done with first spec\n"; SpecPar.runningOn()),
                      fn _ => SpecPar.spec(fn _ => f x 1, fn _ => f x 2))
-
-
 
 val _ = print "program exiting...\n"
 

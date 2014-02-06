@@ -145,7 +145,7 @@ struct
                       do SchedulerAction.@atomic-end(self)
                       do ccall M_Print("Reading commit full ivar\n")
                       return (#2(i)) 
-            else cont getK'(x : any, s : bool) = (*empty*)
+            else cont getK'(x : any, s : bool) = let vp : vproc = host_vproc let vp : int = VProc.@vproc-id(vp) do ccall M_Print_Int("Resuming on vproc: %d\n", vp)
                     if Equal(s, true) (*previously read empty, check if its now spec full*)
                     then let self : vproc = SchedulerAction.@atomic-begin()
                          SPIN_LOCK(i, 0)
