@@ -33,3 +33,4 @@ end
 
   rope-util.pml
 (*  test.pml*)
+  tabulate.pml

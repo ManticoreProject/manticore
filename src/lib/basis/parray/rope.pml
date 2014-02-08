@@ -359,6 +359,9 @@ fun divide length (intvs, k) = let
 type 'b rebuilder = 
   ('b rope list * dir list * dir list * int * int * int * int)
 
+(*val (cur1, cur2, reb) = 
+	       splitAt intervalLength encodeCur cursorAtIxIntv id id (unzipCursor cur') mid*)
+	       
 fun splitAt length encode cursorAtIx unzipCursorL unzipCursorR cur n = let
   val (rp, (ls, rs, ds)) = unzipCursorL cur
   val (rps1, m, k, rps2) = divide length (rp :: rs, n)
@@ -370,16 +373,21 @@ fun splitAt length encode cursorAtIx unzipCursorL unzipCursorR cur n = let
     (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2))
   end
 
+fun ok(xs, ys, zs) = if List.length xs + List.length ys = List.length zs
+                  then print "No list length mismatch\n"
+                  else print "List length mismatch\n"
+
 fun join decode finish zipCursor (rp1, rp2, (ls, ds, mds, n1, n2, l1, l2)) = let
   val (xs1, xs2) = (decode (rp1, l1), decode (rp2, l2)) 
   val (rps1, ms) = (List.take (xs1, n1), List.drop (xs1, n1)) 
-  val (mn, mls) = (List.last ms, List.rev (List.take (ms, List.length ms - 1))) 
+  val (mn, mls) = (List.last ms, List.rev (List.take (ms, List.length ms - 1)))
   val (mrs, rps2) = (List.take (xs2, n2), List.drop (xs2, n2)) 
+ (* val _ = ok(mls, mrs, mds)*)
   val m = finish (zipCursor (mn, (mls, mrs, mds))) 
   val ropes = rps1 @ (m::nil) @ rps2 
   in
     case ropes
-     of rp::rs => zipCursor (rp, (ls, rs, ds))
+     of rp::rs => ((*ok(ls, rs, ds);*) zipCursor (rp, (ls, rs, ds)))
       | _ => failwith "join"
   end
 
@@ -408,7 +416,7 @@ fun more length mkU mkP (us, ps, c) = let
     More (mkU us, c')
   end
 
-local
+(*local*) 
 
 (* The following implementation of tabulate uses index ranges of the
     form (lo, hi) where
@@ -461,6 +469,17 @@ fun tabulateETS SST (intv, f) = let
     t intv
   end
 
+fun numUnprocessedTab cur = numUnprocessed length intervalLength cur
+fun leftmostTab (intv, c) =
+  if intervalLength intv <= LeafSize.getMax () then
+    (intv, c)
+  else let
+    val (intv1, intv2) = splitInterval2 intv
+    in
+      leftmostTab (intv1, GCLeft (c, intv2))
+    end
+fun nextTab cur = next leftmostTab nccat2 cur
+
 (* pre: 0 <= i < cursorLength (intv, c) *)
 fun moveToIx ((intv, (ls, rs, ds)), i) = let
   val len = intervalLength intv
@@ -498,6 +517,7 @@ fun encodeCur intvs = let
     (e intvs, List.length intvs)
   end
 
+
 fun decodeRopeTab (rp, n) = let
   fun d (rp, n) =
     if n = 1 then
@@ -510,23 +530,13 @@ fun decodeRopeTab (rp, n) = let
     List.rev (d (rp, n))
   end
 
+
 fun rootU (rp : 'a rope, uc) = (case uc
   of (nil, nil, nil) => rp
    | (ls, r :: rs, Left :: ds) => rootU (nccat2 (rp, r), (ls, rs, ds))
    | (l :: ls, rs, Right :: ds) => rootU (nccat2 (l, rp), (ls, rs, ds))
-   | (l::ls, nil, nil) => failwith "l::ls, nil, nil"
-   | _ => failwith "rootU")
-
-fun numUnprocessedTab cur = numUnprocessed length intervalLength cur
-fun leftmostTab (intv, c) =
-  if intervalLength intv <= LeafSize.getMax () then
-    (intv, c)
-  else let
-    val (intv1, intv2) = splitInterval2 intv
-    in
-      leftmostTab (intv1, GCLeft (c, intv2))
-    end
-fun nextTab cur = next leftmostTab nccat2 cur
+   | (l::ls, nil, nil) => (failwith "l::ls, nil, nil")
+   | _ => failwith "rootU") 
 
 fun tabulateUntil cond (cur, f) = let
   fun t (intv, c) = 
@@ -554,28 +564,25 @@ fun tabulateUntil cond (cur, f) = let
 	    | More (intv', c') => t (intv', c')))
   val (intv, c) = leftmostTab cur
   in
-    t (intv, c) 
+    t (intv, c)
   end
-
+  
 fun tabulateLTS PPT (intv, f) = let
-  fun t cur = (case tabulateUntil RT.hungryProcs (cur, f) 
+  fun t cur = (case tabulateUntil RT.hungryProcs (cur, f)
     of Done rp => rp
      | More cur' => let
-	 val mid = numUnprocessedTab cur' div 2 
-	 fun id x = x 
-         val _ = print "splitting\n"
+	 val mid = numUnprocessedTab cur' div 2
+	 fun id x = x
 	 val (cur1, cur2, reb) = 
-	       splitAt intervalLength encodeCur cursorAtIxIntv id id (unzipCursor cur') mid 
-         val (((low1, high1), _), ((low2, high2), _)) = (cur1, cur2)
-         val _ = print(String.concat["low1 = ", Int.toString low1, " high1 = ", Int.toString high1, " low2 = ", Int.toString low2, " high2 = ", Int.toString high2])
-	 val (rp1, rp2) = RT.par2 (fn () => t cur1, fn () => t cur2) 
+	       splitAt intervalLength encodeCur cursorAtIxIntv id id (unzipCursor cur') mid
+	 val (rp1, rp2) = RT.par2 (fn () => t cur1, fn () => t cur2)
 	 in
 	   join decodeRopeTab id rootU (rp1, rp2, reb) handle e => (print "Caught exception in join\n"; raise e)
          end)
   in
     t (intv, GCTop)
   end
-in
+(*in *)
 fun tabulate (n, f) = 
   if n < 0 then failwith "Size" else
   (case ChunkingPolicy.get ()
@@ -600,7 +607,7 @@ fun tabFromTo (lo, hi, f) =
            | ChunkingPolicy.LTS PPT => 
              tabulateLTS PPT ((lo, hi+1), f))
 
-end (* local *)
+(*end (**) local *)
 
 (*local*)
 fun mapSequential f rp = (case rp
@@ -646,6 +653,22 @@ fun mapUntil cond f cur = let
   val (s, c) = leftmostLeaf cur
   in
     m (s, c)
+  end
+
+fun tabulateLTS PPT (intv, f) = let
+  fun t cur = (case tabulateUntil RT.hungryProcs (cur, f)
+    of Done rp => rp
+     | More cur' => let
+	 val mid = numUnprocessedTab cur' div 2
+	 fun id x = x
+	 val (cur1, cur2, reb) = 
+	       splitAt intervalLength encodeCur cursorAtIxIntv id id (unzipCursor cur') mid
+	 val (rp1, rp2) = RT.par2 (fn () => t cur1, fn () => t cur2)
+	 in
+	   join decodeRopeTab id rootU (rp1, rp2, reb) handle e => (print "Caught exception in join\n"; raise e)
+         end)
+  in
+    t (intv, GCTop)
   end
 
 fun mapLTS PPT f rp = let

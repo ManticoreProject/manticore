@@ -1,6 +1,6 @@
 (* cheating...these names are supposed to be bound already... *)
 
-(*
+
 fun sumP_float a = let
   fun add (x, y) = x + y
   in
@@ -33,10 +33,6 @@ val vtos = PArray.toString Int.toString ","
 
 fun pointwiseMul (v1, v2) = [| x * y | x in v1, y in v2 |]
 
-val _ = print "parallel array comprehension 1 to 10\n"
-val test = [|1 to 10|]
-val _ = print "done with parallel array comprehension\n"
-
 val _ = Print.printLn (vtos [| 1 to 10 |])
 
 val x = pointwiseMul ([| 1 to 10 |], [| 2, 2, 2 |])
@@ -50,12 +46,4 @@ val dp = dotp ([| 1 to 100 |], [| 1 | _ in [| 1 to 100 |] |])
 val _ = Print.printLn ("expecting 5050 => " ^ Int.toString dp) 
 
 val _ = Print.printLn "Done."
-*)
-
-
-val vtos = PArray.toString Int.toString ","
-
-val test = [|1 to 10|]
-val _ = vtos test
-
 
