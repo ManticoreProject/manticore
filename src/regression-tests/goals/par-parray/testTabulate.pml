@@ -21,12 +21,13 @@ fun testNccat2 (rp1, rp2) = let
   in
     Cat (l, d, rp1, rp2)
   end
-  
-fun testRootU(rp, uc) = (print "test\n"; case uc
+
+(*for some reason, removing the "print test\n" causes this to crash.*)  
+fun rootU(rp, uc) = (print "test\n"; case uc
       of (nil, nil, nil) => (rp)
-       | (ls, r :: rs, Left :: ds) => ( testRootU (testNccat2 (rp, r), (ls, rs, ds)))
-       | (l :: ls, rs, Right :: ds) =>(testRootU (testNccat2 (l, rp), (ls, rs, ds)))
-       | _ => failwith "testRootU")
+       | (ls, r :: rs, Left :: ds) => ( rootU (testNccat2 (rp, r), (ls, rs, ds)))
+       | (l :: ls, rs, Right :: ds) =>(rootU (testNccat2 (l, rp), (ls, rs, ds)))
+       | _ => failwith "rootU")
 
 
 fun makeLeaf n = Leaf (Seq.tabulate(10, fn i => i))
@@ -39,10 +40,10 @@ val _ = List.app (fn l => Tabulate.printRope l 0) (ls @ rs)
 
 val _ = fib 20        
 
-val _ = print "calling testRootU\n"
-val res = testRootU(makeLeaf 10, (ls, rs, ds))
+val _ = print "calling rootU\n"
+val res = rootU(makeLeaf 10, (ls, rs, ds))
 
-val _ = print "done with testRootU\n"
+val _ = print "done with rootU\n"
 
 val _ = Tabulate.printRope res 0
 val _ = print "\n"  
