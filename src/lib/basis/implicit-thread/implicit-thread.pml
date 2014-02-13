@@ -165,16 +165,11 @@ structure ImplicitThread (* :
 
     (* pairs the fiber with the current implicit-thread environment to create a new thread *)
       define inline @capture (k : PT.fiber / exh : exh) : thread =
+          let fls : FLS.fls = FLS.@get()
+          cont k'(x : unit) = do FLS.@set(fls) 
+                              throw k(x)
 	  let ite : FLS.ite = FLS.@get-ite ( / exh)
-	  let c : Option.option = SELECT(ITE_CANCELABLE_OFF, ite)
-	  let k : PT.fiber = case c
-			      of Option.NONE => 
-				 return (k)
-			       | Option.SOME(c : Cancelation.cancelable) => 
-				 let k : PT.fiber = Cancelation.@wrap-fiber (c, k / exh)
-				 return (k)
-			     end
-	  return (alloc (k, ite))
+	  return (alloc (k', ite))
 	;
 
     )

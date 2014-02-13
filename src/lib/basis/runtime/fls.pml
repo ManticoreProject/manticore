@@ -145,22 +145,11 @@ structure FLS :
 	  ![bool]               (* is the fiber classified as interactive, or computationally intensive? -- Mutable *)
 	];
 
-      (*
-      define @initial-dict () : [int, List.list] =
-
-        let k : [int] = alloc(DICT_BUILTIN_TOPOLOGY)
-        let elt : [[int], any] = alloc(k, List.nil)
-        let dict : List.list = CONS(elt, Topologies.EMPTY)
-
-	let ret : [int, List.list] = alloc(I32Add(DICT_BUILTIN_TOPOLOGY, 1), dict)
-	return(ret)
-      ;*)
-
       define @initial-dict() : [int, List.list] = 
         let k0 : [[int], any] = alloc(alloc(DICT_BUILTIN_TOPOLOGY), nil)
-        let k1 : [[int], any] = alloc(alloc(SPEC_KEY), false)
+        let k1 : [[int], any] = alloc(alloc(SPEC_KEY), alloc(false))
         let k2 : [[int], any] = alloc(alloc(WRITES_KEY), alloc(nil))
-        let k3 : [[int], any] = alloc(alloc(TID_KEY), alloc(alloc(1), nil))
+        let k3 : [[int], any] = alloc(alloc(TID_KEY), alloc(0, nil))
         let l : List.list = CONS(k3, CONS(k2, CONS(k1, CONS(k0, nil))))
         let ret : [int, List.list] = alloc(4, l)
         return(ret)

@@ -15,7 +15,6 @@ _primcode (
   define inline @length (a : array / exh : exh) : ml_int =
     return(alloc(#1(a)))
   ;
-
 )
 
 type 'a array = 'a U.array

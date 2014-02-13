@@ -7,33 +7,37 @@ fun fib x = if x <= 2
 val x = IVar.newIVar()
 val y = IVar.newIVar()
 val z = IVar.newIVar()
-
+val x1 = IVar.newIVar()
 fun f x = 
-    let val _ = print "Entering f x\n"
-        val y = IVar.getIVar x
+    let val y = IVar.getIVar x
         val _ = print ("read " ^ Int.toString(y) ^ " from ivar x\n")
         val _ = IVar.putIVar(z, y)
-    in (print "f(x) is exiting\n")
+        val _ = IVar.putIVar(x1, 2)
+    in ()
     end
 
 fun g() = 
-    let val _ = print "Entering g()\n"
-        val x = IVar.getIVar z
-    in print ("read " ^ Int.toString x ^ " from ivar z\n")
+    let val x = IVar.getIVar z
+        val _ = print ("read " ^ Int.toString x ^ " from ivar z\n")
+        val _ = IVar.putIVar(y, x)
+    in ()
     end
 
 exception E
-val _ = SpecPar.spec(fn _ => SpecPar.spec( fn _ => (fib 40; raise E), fn _ => IVar.putIVar(x, 10)) handle e => (IVar.putIVar(x, 12), ()),
+val _ = SpecPar.spec(fn _ => SpecPar.spec( fn _ => (fib 35; raise E), fn _ => IVar.putIVar(x, 10)) handle e => (IVar.putIVar(x, 12), ()),
                      fn _ => SpecPar.spec(fn _ => f x, fn _ => g()))
 
 
-fun fib x = if x <= 2
-            then 1
-            else fib(x-2) + fib(x-1)
+val res = IVar.getIVar y
+val _ = print("read " ^ Int.toString res ^ " from ivar y\n")
 
-val _ = fib 40
 
-val _ = print "exiting...\n"
+
+
+
+
+
+
 
 
 

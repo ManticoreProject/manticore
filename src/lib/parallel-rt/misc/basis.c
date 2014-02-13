@@ -203,6 +203,9 @@ void M_Print_Int(const char *s, int i){
     Say(s, i);
 }
 
+void M_Print_Int2(const char *s, int i, int j){
+    printf(s, i, j);
+}
 
 /* M_Print:
  */

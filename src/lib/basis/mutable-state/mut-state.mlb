@@ -3,4 +3,5 @@ ann "cpp" "../include/prim.def,../include/runtime-offsets.def,../include/diction
     ivar.pml
     spec-par.pml
     fork.pml
+    lvarSet.pml
 end

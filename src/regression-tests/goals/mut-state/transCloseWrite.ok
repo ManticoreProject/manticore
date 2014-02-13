@@ -1,0 +1,6 @@
+Started up vprocs without deadlocking
+read 10 from ivar x
+read 10 from ivar z
+read 12 from ivar x
+read 12 from ivar z
+read 12 from ivar y

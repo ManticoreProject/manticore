@@ -69,15 +69,32 @@ structure Cancelation (* : sig
 	  return(alloc(canceled, inactive, nil, gChildren, parent))
 	;
 
+      define @checkCycle2(p : cancelable, children : List.list) : () = 
+        fun lp (l : List.list) : () = case l
+                of CONS(hd : cancelable, tl:List.list) => 
+	                if Equal(hd, p)
+	                then do ccall M_Print("Cycle2!!!!!!!\n\n\n\n")
+	                     return()
+	                else apply lp(tl)
+	         |nil => return()
+	         end
+	apply lp(children)
+      ;
+
     (* @add-child (c, parent / exh) *)
     (* returns copy of parent where c is present in the list of children of parent *)
       define @add-child (c : cancelable, parent : cancelable / exh : exh) : cancelable =
+      do if Equal(c, parent)
+         then do ccall M_Print("Warning: creating cyclic dependency in cancelable!\n\n\n")
+              return()
+         else return()
 	  let children : L.list = CONS(c, SELECT(CHILDREN_OFF, parent))
 	  let parent : cancelable = alloc(SELECT(CANCELED_OFF, c), 
 			   	           SELECT(INACTIVE_OFF, c), 
 					   children, 
 					   SELECT(GCHILDREN_OFF, c), 
 					   SELECT(PARENT_OFF,c))
+         do @checkCycle2(parent, children)
 	  return(parent)
 	;
 
@@ -123,6 +140,7 @@ structure Cancelation (* : sig
 	  let children : List.list = promote(SELECT(CHILDREN_OFF, c))
 	  let gChildren : ![List.list] = promote(SELECT(GCHILDREN_OFF, c))
 	  do #0(gChildren) := children
+	  do @checkCycle2(c, children)
 	  let inactive : ![vproc] = @get-inactive-flag(c)
 	(* FIXME: an atomic write would suffice. *)
 	(* do AtomicWrite(inactive, INACTIVE) *)
@@ -147,6 +165,12 @@ structure Cancelation (* : sig
 
     _primcode (
 
+      define @uncancel(c : cancelable / exh : exh) : () = 
+        let flag : ![bool] = @get-canceled-flag(c)
+        do #0(flag) := false
+        return()
+      ;
+
       define @check-canceled(/exh : exh) : bool = 
         let cancelable : Option.option = @get-current(/exh)
         case cancelable
@@ -157,6 +181,18 @@ structure Cancelation (* : sig
      ;
 
      extern void * M_Print_Int(void*, int);
+
+       define @checkCycle(p : cancelable, children : List.list) : () = 
+        fun lp (l : List.list) : () = case l
+                of CONS(hd : cancelable, tl:List.list) => 
+	                if Equal(hd, p)
+	                then do ccall M_Print("Cycle!!!!!!!\n\n\n\n")
+	                     SchedulerAction.@stop()
+	                else apply lp(tl)
+	         |nil => return()
+	         end
+	apply lp(children)
+      ;
 
     (* @wrap-fiber (c, k / exh) *)
     (* returns new fiber k' where k' has similar behavior to k, except that canceling c *)
@@ -184,8 +220,6 @@ structure Cancelation (* : sig
 		   throw terminate()
 		 | PT.PREEMPT(k : fiber) =>
 		   do @set-inactive(c / exh)
-		   let vp : vproc = host_vproc let vp : int = VProc.@vproc-id(vp)
-		   do ccall M_Print_Int("Thread being preempted on vp %d\n", vp)
 		   do SchedulerAction.@yield()
 		   throw dispatch(act, k)
 		 | _ =>
@@ -259,15 +293,7 @@ structure Cancelation (* : sig
 		     * is why we need the promotion below.
 		     *)
 		      let gChildren : ![L.list] = promote(SELECT(GCHILDREN_OFF, c))
-		      do case #0(gChildren)
-		        of CONS(hd : cancelable, tl:List.list) => 
-		                if Equal(hd, c)
-		                then do ccall M_Print("Cycle!!!!!!!\n\n\n\n")
-		                     do SchedulerAction.@stop()
-		                     return()
-		                else return()
-		         |nil => return()
-		         end
+		      do @checkCycle(c, #0(gChildren))
 		      let cs2 : L.list = PrimList.@append(#0(gChildren), cs2 / exh)
 		      apply cancelAll(self, cs1, cs2)
 		  else

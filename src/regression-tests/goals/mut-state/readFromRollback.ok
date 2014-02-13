@@ -1,0 +1,4 @@
+started vprocs without deadlock
+About to read from IVar y
+
+Ans = -1
