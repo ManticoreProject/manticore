@@ -49,7 +49,7 @@ STATIC_INLINE bool isPtr (Value_t v)
 /*! \brief return true if the value is not a pointer */
 STATIC_INLINE bool isNoPtr(Word_t hdr) 
 {
-	return (hdr & 0x1 == TABLE_TAG);
+	return ((hdr & 0x1) == TABLE_TAG);
 }
 
 /*! \brief return true if the value is a pointer and is in the range covered
