@@ -300,12 +300,10 @@ structure Cancelation (* : sig
 		      case isCanceled
 		       of true =>
 			  do Pause()
-			  do ccall M_Print("Waiting on thread to finish\n")
 			  apply cancelAll(self, cs1, CONS(c, cs2))
 			| false =>
 			  let dummyK : fiber = vpload(VP_DUMMYK, self)
 	                  let fls : FLS.fls = FLS.@get()
-	                  do ccall M_Print("Sending vproc cancel fiber\n")
 			  do VProc.@send-in-atomic(self, #0(inactive), fls, dummyK)
 			  apply cancelAll(self, cs1, CONS(c, cs2))
                       end

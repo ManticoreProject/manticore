@@ -8,6 +8,8 @@ val x = IVar.newIVar()
 val y = IVar.newIVar()
 val z = IVar.newIVar()
 val x1 = IVar.newIVar()
+
+
 fun f x = 
     let val y = IVar.getIVar x
         val _ = print ("read " ^ Int.toString(y) ^ " from ivar x\n")

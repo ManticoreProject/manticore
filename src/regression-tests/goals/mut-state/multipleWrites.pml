@@ -8,7 +8,8 @@ val x = IVar.newIVar()
 
 
 exception E
-val _ = SpecPar.spec(fn _ => (IVar.putIVar(x, fib 30); raise E), fn _ => IVar.putIVar(x, 10)) handle e => ((), ())
+val _ = SpecPar.spec(fn _ => SpecPar.spec(fn _ => (IVar.putIVar(x, fib 30); raise E), fn _ => IVar.putIVar(x, 10)) handle e => ((), ()),
+                     fn _ => SpecPar.spec(fn _ => IVar.putIVar(x, 12), fn _ => IVar.putIVar(x, 15)))
 
 val res = IVar.getIVar x
 val _ = print ("x = " ^ Int.toString res ^ "\n")

@@ -3,9 +3,10 @@
 #define _DICT_OFFSETS_DEF_
 
 #define DICT_BUILTIN_TOPOLOGY  0
-#define SPEC_KEY               1
-#define WRITES_KEY             2   
-#define TID_KEY                3
+#define TID_KEY                1
+#define SPEC_KEY               2
+#define WRITES_KEY             3   
+#define SPEC_WRITES_KEY        4
 
 #endif _DICT_OFFSETS_DEF_
 
