@@ -47,7 +47,7 @@ structure FunctionHoisting : sig
               
     (* property for tracking bindings to function bodies*)
     local
-      val {setFn, getFn, ...} = CV.newProp (fn f => raise Fail "Undefined function binding during copy propagation.")
+      val {setFn, getFn, ...} = CV.newProp (fn f => raise Fail "Undefined function binding during function hoisting.")
     in
     fun setFB (f,b : C.lambda) = setFn (f, b)
     fun getFB f = getFn f
@@ -205,24 +205,27 @@ structure FunctionHoisting : sig
                                 (*Remove any lambdas that were already hoisted*)
                         let val lambdas = List.filter (fn C.FB{f,...} => not(VSet.member(hoisted, f))) lambdas
                             val (lambdas', hoisted', map') = List.foldr (fn (C.FB{f, params, rets, body}, (fbs, hoisted, map)) => 
-                                let val (body', hoisted', map') = doExp(body, hoisted, map)
+                                let val _ = print("Calling doExp1 with " ^ VSet.foldl(fn(f, s) => CV.toString f ^ ", " ^ s) "" hoisted ^ "\n")
+                                    val (body', hoisted', map') = doExp(body, hoisted, map)
                                 in (C.FB{f=f, params=params, rets=rets, body=body'}::fbs, hoisted', map')
                                 end) ([], hoisted, map) lambdas
                             val lambdas'' = List.rev lambdas'
+                            val _ = print ("calling doexp2 with " ^ VSet.foldl(fn(f, s) => CV.toString f ^ ", " ^ s) "" hoisted' ^ "\n")
                             val (body', hoisted'', map'') = doExp(body, hoisted', map)
                         in if List.null lambdas''
                            then (wrapper body', hoisted'', map'')
                            else (wrapper(C.mkFun(lambdas'', body')), hoisted'', map'')
                         end)
               | C.Cont(lambda as C.FB{f, params, rets, body=cBody}, body) => 
+                (print ("C.cont case with " ^ VSet.foldl(fn(f, s) => CV.toString f ^ ", " ^ s) "" hoisted ^ "\n");
                 wrapWithNewPreds([lambda], hoisted, map, fn (wrapper, hoisted, map) => 
                                 let val (cBody', hoisted', map') = doExp(cBody, hoisted, map)
                                     val lambda = C.FB{f=f,params=params, rets=rets, body=cBody'}
-                                    val (body', hoisted', map') = doExp(body, hoisted, map)
+                                    val (body', hoisted'', map'') = doExp(body, hoisted', map')
                                 in if VSet.member(hoisted', f)
-                                   then (wrapper body', hoisted', map')
-                                   else (wrapper(C.mkCont(lambda, body')), hoisted', map')
-                                end)
+                                   then (wrapper body', hoisted'', map'')
+                                   else (wrapper(C.mkCont(lambda, body')), hoisted'', map'')
+                                end))
               | C.If (v, e1, e2) => let
                     val (e1', hoisted', map') = doExp (e1, hoisted, map)
                     val (e2', hoisted'', map'') = doExp (e2, hoisted', map')
@@ -258,8 +261,26 @@ structure FunctionHoisting : sig
 	}
     end
 
-    fun transform m = if !hoistFlag
-                      then (FreeVars.clear m; FreeVars.analyze m; reorderFuns m)
-                      else m
+    fun dump m prefix = 
+        let val file = TextIO.openOut(prefix ^ "liftingOutput.cps")
+        in PrintCPS.output(file, m)
+        end
+
+    fun transform m = 
+        let val _ = dump m "pre"
+            val _ = FreeVars.clear m
+            val _ = FreeVars.analyze m
+            val m' = reorderFuns m
+            val _ = dump m' "post"
+        in m'
+        end
+
+
+
+
+
+
+
+
 
   end
