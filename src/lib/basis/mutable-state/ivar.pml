@@ -23,6 +23,15 @@ struct
     fun getIVarCount() = ivarCount
 
     _primcode(
+
+#ifndef NDEBUG
+#define PDebug(msg)  do ccall M_Print(msg)  
+#define PDebugInt(msg, v) do ccall M_Print_Int(msg, v) 
+#else
+#define PDebug(msg) 
+#define PDebugInt(msg, v) 
+#endif /* !NDEBUG */
+    
         extern void *M_Print_Int(void *, int);
         extern void *M_Print_Int2(void *, int, int);
 
@@ -47,11 +56,7 @@ struct
                                                 will be NONE if the ivar is unwritten*)
             List.list,     (*7: list of writers if this is spec full*)
             int];          (*8: Unique number assigned to each ivar*)
-
-        #define PDebug(msg)  do ccall M_Print(msg)  
-
-        #define PDebugInt(msg, v) do ccall M_Print_Int(msg, v)  
-
+            
         define @getCount = getIVarCount;
 
         define @bump(/exh : exh) : int = 
@@ -129,7 +134,7 @@ struct
             let c : Option.option = #1(ite)
             case c 
                 of Option.SOME(c' : Cancelation.cancelable) => return(c')
-                 | Option.NONE => PDebug("Error in ivar.pml: no cancelation!\n")
+                 | Option.NONE => do ccall M_Print("Error in ivar.pml: no cancelation!\n")
                                   let e : exn = Fail(@"Error: no cancelation in ivar.pml\n")
                                   throw exh(e)
             end
@@ -306,10 +311,22 @@ struct
                                          return(CONS(hd, rest))
                                  | nil => let e : exn = Fail(@"Impossible") throw exh(e)
                                end
-                           let specWriterInfo : [![List.list], Option.option] = #6(i)
+                           fun restartBlockedWriters(l : List.list) : () = case l
+                            of CONS(hd : ![Option.option], tl:List.list) => 
+                                case #0(hd)
+                                    of Option.SOME(arg : [any, ImplicitThread.thread]) => 
+                                        do ImplicitThread.@resume-thread(#1(arg) / exh)
+                                        apply restartBlockedWriters(tl)
+                                     | Option.NONE => apply restartBlockedWriters(tl)
+                                end
+                              |nil => return()
+                            end
+                           let specWriterInfo : [![List.list], Option.option] = #6(i)  (*write list and cancelable of writer*)
                            case #1(specWriterInfo) 
                             of Option.SOME(c : Cancelation.cancelable) => 
                                 let _ : unit = Cancelation.@cancel(c / exh)
+                                let blockedWriters : List.list = #7(i)
+                                do apply restartBlockedWriters(blockedWriters)
                                 do #7(i) := nil
                                 do @rollback(CONS(i, nil), nil / exh)
                                 do #2(i) := v
@@ -327,22 +344,25 @@ struct
                            end
                       else SPIN_UNLOCK(i, 0)
                            do SchedulerAction.@atomic-end(self)
-                           PDebug("Attempt to write to full IVar, exiting...\n")
+                           do ccall M_Print("Attempt to write to full IVar, exiting...\n")
                            let e : exn = Fail(@"Attempt to write to full IVar")
                            throw exh(e)
             else let blocked : List.list = #4(i)
-                 PDebug("Writing to empty ivar\n")
+                 PDebugInt("Writing to empty ivar %d\n", #8(i))
                  do #4(i) := nil
                  do #2(i) := v    (*value field*)
                  do #1(i) := spec (*spec field*)
                  do #3(i) := true (*full field*)
-                 let writes : ![List.list] = FLS.@get-key(alloc(WRITES_KEY) / exh)
-                 let c : Cancelation.cancelable = @getCancelable(/exh)
-                 let c : [![List.list], Option.option] = alloc(writes, Option.SOME(c))
-                 let c : [![List.list], Option.option] = promote(c)
-                 do #6(i) := c
-                 let newWrites : List.list = promote(CONS(i, #0(writes)))
-                 do #0(writes) := newWrites
+                 do if(spec)
+                    then let writes : ![List.list] = FLS.@get-key(alloc(WRITES_KEY) / exh)
+                         let c : Cancelation.cancelable = @getCancelable(/exh)
+                         let c : [![List.list], Option.option] = alloc(writes, Option.SOME(c))
+                         let c : [![List.list], Option.option] = promote(c)
+                         do #6(i) := c
+                         let newWrites : List.list = promote(CONS(i, #0(writes)))
+                         do #0(writes) := newWrites
+                         return()
+                    else return()
                  let id : int = #8(i)
                  SPIN_UNLOCK(i, 0)
                  apply restart (blocked)
@@ -357,8 +377,14 @@ struct
                 of nil => return()
                  | CONS(hd : ivar, tl : List.list) => 
                     SPIN_LOCK(hd, 0)
-                    PDebug("Committing ivar\n")
-                    do #1(hd) := false
+                    let id : int = #8(hd)
+                    PDebugInt("Committing ivar %d\n", id)
+                    do if (#1(hd))
+                       then do #1(hd) := false
+                            return()
+                       else let e : exn = Fail(@"Committing ivar that is already commit full\n")
+                            do ccall M_Print("Committing ivar that is already commit full!\n")
+                            throw exh(e)
                     SPIN_UNLOCK(hd, 0)
                     apply helper(tl)
                 end
