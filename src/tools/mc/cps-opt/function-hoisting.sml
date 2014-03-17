@@ -93,7 +93,10 @@ structure FunctionHoisting : sig
             val aboveCallers = VSet.filter (fn x => VSet.member(env, x)) callers
             val nonRecursiveCallers = VSet.filter (fn f' => not(CV.same(f, f'))) aboveCallers
             val _ = if !reorderDebug
-                    then (print ("Mapping " ^ CV.toString f ^ " to: " ^ String.concatWith ", " (List.map (fn x => CV.toString x) (VSet.listItems nonRecursiveCallers)) ^ "\n"); print (CV.toString f ^ "'s callers are: " ^ String.concatWith ", " (List.map (fn x => CV.toString x) (VSet.listItems callers)) ^ "\n") )
+                    then (print ("Mapping " ^ CV.toString f ^ " to: " ^ String.concatWith ", " 
+                        (List.map (fn x => CV.toString x) (VSet.listItems nonRecursiveCallers)) ^ "\n"); 
+                        print (CV.toString f ^ "'s callers are: " ^ String.concatWith ", " 
+                        (List.map (fn x => CV.toString x) (VSet.listItems callers)) ^ "\n") )
                     else ()     
         in insert(map, f, nonRecursiveCallers)
         end         
@@ -165,8 +168,10 @@ structure FunctionHoisting : sig
                                              (VMap.listItemsi
                                                   (VMap.filter
                                                        (fn a => VSet.member(a, f')) map))       
-                                                       
-                        val map = List.foldr (fn (key, map) => #1(VMap.remove(map, key))) map (List.map getFbName preds)   
+                        val preds = List.filter (fn C.FB{f,...} => not(VSet.member(hoisted, f))) preds                               
+                        (*Remove these function from the map, so we don't lift functions that we mapped
+                          to them above this point also*)                               
+                        val map = List.foldr (fn (key, map) => #1(VMap.remove(map, key))) map (List.map getFbName preds) 
                         (*Add preds to the list of functions being hoisted*)
                         val hoisted = VSet.addList(hoisted, (List.map getFbName preds))                  
                         fun wrapFun ((p as C.FB{f, rets,...})::preds, wrapper, map) =
@@ -205,19 +210,16 @@ structure FunctionHoisting : sig
                                 (*Remove any lambdas that were already hoisted*)
                         let val lambdas = List.filter (fn C.FB{f,...} => not(VSet.member(hoisted, f))) lambdas
                             val (lambdas', hoisted', map') = List.foldr (fn (C.FB{f, params, rets, body}, (fbs, hoisted, map)) => 
-                                let val _ = print("Calling doExp1 with " ^ VSet.foldl(fn(f, s) => CV.toString f ^ ", " ^ s) "" hoisted ^ "\n")
-                                    val (body', hoisted', map') = doExp(body, hoisted, map)
+                                let val (body', hoisted', map') = doExp(body, hoisted, map)
                                 in (C.FB{f=f, params=params, rets=rets, body=body'}::fbs, hoisted', map')
                                 end) ([], hoisted, map) lambdas
                             val lambdas'' = List.rev lambdas'
-                            val _ = print ("calling doexp2 with " ^ VSet.foldl(fn(f, s) => CV.toString f ^ ", " ^ s) "" hoisted' ^ "\n")
                             val (body', hoisted'', map'') = doExp(body, hoisted', map)
                         in if List.null lambdas''
                            then (wrapper body', hoisted'', map'')
                            else (wrapper(C.mkFun(lambdas'', body')), hoisted'', map'')
                         end)
               | C.Cont(lambda as C.FB{f, params, rets, body=cBody}, body) => 
-                (print ("C.cont case with " ^ VSet.foldl(fn(f, s) => CV.toString f ^ ", " ^ s) "" hoisted ^ "\n");
                 wrapWithNewPreds([lambda], hoisted, map, fn (wrapper, hoisted, map) => 
                                 let val (cBody', hoisted', map') = doExp(cBody, hoisted, map)
                                     val lambda = C.FB{f=f,params=params, rets=rets, body=cBody'}
@@ -225,7 +227,7 @@ structure FunctionHoisting : sig
                                 in if VSet.member(hoisted', f)
                                    then (wrapper body', hoisted'', map'')
                                    else (wrapper(C.mkCont(lambda, body')), hoisted'', map'')
-                                end))
+                                end)
               | C.If (v, e1, e2) => let
                     val (e1', hoisted', map') = doExp (e1, hoisted, map)
                     val (e2', hoisted'', map'') = doExp (e2, hoisted', map')

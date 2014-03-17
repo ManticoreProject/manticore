@@ -260,7 +260,7 @@ structure Inline : sig
                   then print (CV.toString f ^ " is not safe because free varaibles are not a subset of env\n")
                   else if (VSet.exists unsafeFV fvs)
                        then print (CV.toString f ^ " is not safe because it has unsafe free variables\n")
-                       else print (CV.toString f ^ " is safe to inline\n")       
+                       else print (CV.toString f ^ " is higher order with FV and is safe to inline\n")       
 
     fun inlineAppInfo (E{k, s, env}, ppt, f, args, rets) = 
         case CV.kindOf f of
