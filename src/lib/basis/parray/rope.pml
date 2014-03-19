@@ -455,6 +455,7 @@ fun tabulateSequential f intv = let
 
 fun tabulateETS SST (intv, f) = let
   fun t intv = let
+    val _ = print "inside tabulateETS\n"
     val len = intervalLength intv 
     in
       if len <= SST orelse len < 2 then

@@ -51,7 +51,10 @@ structure ChunkingPolicy = struct
       (* end case *))
     val policyR = Ref.new (ParseCommandLine.parse "-chunking-policy" cvt dflt)
   in
-    fun get () = Ref.get policyR
+    fun get () = case Ref.get policyR
+                    of Sequential => (print "Sequential policy\n"; Sequential)
+                     | LTS i => (print "LTS\n"; LTS i)
+                     | ETS i => (print "ETS\n"; ETS i)
     fun set policy' = Ref.set (policyR, policy')
   end (* local *)
 
