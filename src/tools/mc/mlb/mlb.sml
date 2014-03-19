@@ -373,8 +373,10 @@ structure MLB : sig
 	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib "no-op-scheduler", env)
 	  (* parallel array *)
 	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
+	  (* mutable state*)
+	    val mutStatePts = loadMLB(LoadPaths.mutState, env)
             in
-              parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
+              mutStatePts @ parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
             end
           else let
 	  (* implicit-threading library *)

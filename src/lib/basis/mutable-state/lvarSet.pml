@@ -17,7 +17,7 @@ sig
     val get : 'a ivar -> 'a
 end*)
 struct
-
+#ifndef SEQUENTIAL
     _primcode(
 
         extern void* M_Print_Int(void *, int);
@@ -132,5 +132,5 @@ struct
     val waitSize : (int * 'a lvar) -> unit = _prim(@waitSize)
     val forEach : ('a lvar * ('a -> unit)) -> unit = _prim(@foreach)
     val get : 'a lvar -> 'a list = _prim(@get)
-
+#endif
 end

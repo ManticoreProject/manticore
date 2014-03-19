@@ -11,7 +11,7 @@ structure Fork (*: sig
     val fork : (unit -> unit) -> unit
     end*) = 
 struct
-
+#ifndef SEQUENTIAL
     _primcode(
         define @init(_ : unit / exh : exh) : [int] = 
             let res : ![int] = alloc(2)
@@ -39,6 +39,7 @@ struct
         
 
     _primcode(
+     
          typedef tid = ![
             int,           (*Size of the list*)
             List.list];    (*thread id*)        
@@ -66,6 +67,7 @@ struct
 
     )
     val fork : (unit -> unit) -> unit = _prim(@fork)
+#endif
 end
 
 

@@ -18,11 +18,15 @@ structure SpecPar (*: sig
     fun printLock() = pLock
 
     _primcode(
-        
-        #define PDebug(msg)  do ccall M_Print(msg)  
-        
-        #define PDebugInt(msg, v) do ccall M_Print_Int(msg, v)  
+#ifndef SEQUENTIAL       
 
+#ifndef NDEBUG
+#define PDebug(msg)  do ccall M_Print(msg)  
+#define PDebugInt(msg, v) do ccall M_Print_Int(msg, v)  
+#else
+#define PDebug(msg)
+#define PDebugInt(msg, v)
+#endif
         typedef tid = ![
             int,           (*Size of the list*)
             List.list];    (*thread id*)
@@ -172,12 +176,21 @@ structure SpecPar (*: sig
                                        throw execContinuation(res)
            end
         ;
+#else
+        define @pSpec(arg : [fun(unit / exh -> any), fun(unit / exh -> any)] / exh : exh):[any,any] = 
+            let a : fun(unit / exh -> any) = #0(arg)
+            let b : fun(unit / exh -> any) = #0(arg)
+            let r1 : any = apply a (UNIT / exh)
+            let r2 : any = apply b (UNIT / exh)
+            let res : [any, any] = alloc(r1, r2)
+            return(res)
+        ;
+#endif
     )
 
-    val runningOn : unit -> unit = _prim(@runningOn)
+
     val spec : ((unit -> 'a) * (unit -> 'b)) -> ('a * 'b) = _prim(@pSpec)
-    val printTID : unit -> unit = _prim(@printTID)
-    val printVP : unit -> unit = _prim(@printVP)
+
 
     
 end

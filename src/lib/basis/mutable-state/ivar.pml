@@ -31,7 +31,8 @@ struct
 #define PDebug(msg) 
 #define PDebugInt(msg, v) 
 #endif /* !NDEBUG */
-    
+
+#ifndef SEQUENTIAL    
         extern void *M_Print_Int(void *, int);
         extern void *M_Print_Int2(void *, int, int);
 
@@ -134,9 +135,11 @@ struct
             let c : Option.option = #1(ite)
             case c 
                 of Option.SOME(c' : Cancelation.cancelable) => return(c')
-                 | Option.NONE => do ccall M_Print("Error in ivar.pml: no cancelation!\n")
-                                  let e : exn = Fail(@"Error: no cancelation in ivar.pml\n")
-                                  throw exh(e)
+                 | Option.NONE => let c : Cancelation.cancelable = Cancelation.@new(UNIT/exh)
+                                  cont k(x:unit) = return(c)
+                                  let k' : cont(unit) = Cancelation.@wrap-fiber(c, k / exh)
+                                  let x : unit = UNIT
+                                  throw k'(x)
             end
         ;
 
@@ -390,6 +393,61 @@ struct
                 end
             apply helper(writes)
        ;
+#else
+
+        typedef ivar = ![
+            any,           (*0: value*)
+            bool,          (*1: full?*)
+            List.list      (*2: list of waiters if this is empty*)
+        ];
+
+        typedef waiter = ![
+            vproc,
+            FLS.fls,
+            cont(unit)];      
+
+
+        define @iNew( x : unit / exh : exh) : ivar =
+            let x : ivar = alloc($0, false, nil)
+            let x : ivar = promote(x)
+            return (x)
+        ;
+
+        define @iGet(i : ivar / exh : exh) : any = 
+            do ccall M_Print("Reading ivar\n")
+            if (#1(i))
+            then return(#0(i))
+            else do ccall M_Print("Reading empty ivar1\n")
+                 cont k(x : unit) = return(#0(i))
+                 let vp : vproc = host_vproc
+                 do ccall M_Print("Reading empty ivar2\n")
+                 let fls : FLS.fls = FLS.@get()
+                 do ccall M_Print("Reading empty ivar3\n")
+                 let item : waiter = alloc(vp, fls, k)
+                 do ccall M_Print("Reading empty ivar4\n")
+                 let l : List.list = CONS(item, #2(i))
+                 do ccall M_Print("Reading empty ivar5\n")
+                 let l : List.list = promote(l)
+                 do ccall M_Print("Reading empty ivar6\n")
+                 do #2(i) := l
+                 do ccall M_Print("Reading empty ivar7\n")
+                 SchedulerAction.@stop()
+        ;
+
+        define @iPut(arg : [ivar, any] / exh : exh) : unit = 
+            do ccall M_Print("Writing ivar\n")
+            let i : ivar = #0(arg)
+            let v : any = #1(arg)
+            let v : any = promote(v)
+            if (#1(i))
+            then let e : exn = Fail(@"Putting to full ivar\n")
+                 throw exh(e)
+            else do #0(i) := v
+                 return(UNIT)
+        ;
+            
+#endif
+
     )
     
     type 'a ivar = _prim(ivar)

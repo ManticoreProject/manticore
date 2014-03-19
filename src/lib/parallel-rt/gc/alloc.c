@@ -174,7 +174,7 @@ Value_t AllocVector (VProc_t *vp, Value_t values)
 {
     Value_t retval;
     Word_t	*obj = (Word_t *)(vp->allocPtr);    
-	int i = 0;
+    int i = 0;
 
     EnsureNurserySpace(vp, i);
 
