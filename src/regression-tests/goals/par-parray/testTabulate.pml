@@ -1,7 +1,3 @@
-fun fib i = if i <= 2
-            then 1
-            else fib(i - 1) + fib(i-2)
-            
 fun failwith s = raise Fail(s)
 datatype dir = datatype Tabulate.dir
 datatype rope = datatype RopeTy.rope
@@ -23,27 +19,27 @@ fun testNccat2 (rp1, rp2) = let
   end
 
 (*for some reason, removing the "print test\n" causes this to crash.*)  
-fun rootU(rp, uc) = (print "test\n"; case uc
+fun rootU(rp, uc) = (case uc
       of (nil, nil, nil) => (rp)
-       | (ls, r :: rs, Left :: ds) => ( rootU (testNccat2 (rp, r), (ls, rs, ds)))
-       | (l :: ls, rs, Right :: ds) =>(rootU (testNccat2 (l, rp), (ls, rs, ds)))
-       | _ => failwith "rootU")
+       | (ls, r :: rs, Left :: ds) => (rootU (testNccat2 (rp, r), (ls, rs, ds)))
+       | (l :: ls, rs, Right :: ds) => (rootU (testNccat2 (l, rp), (ls, rs, ds)))
+       | _ => (print "Raising exception!\n"; failwith "rootU"))
 
 
-fun makeLeaf n = Leaf (Seq.tabulate(10, fn i => i))
+fun makeLeaf n = Leaf(Seq.fromList[99999999])
 
-val ls = List.tabulate(3, fn _ => makeLeaf 10)
-val rs = List.tabulate(3, fn _ => makeLeaf 10)
-val ds = [Left, Left, Right, Left, Right, Right]
 
-val _ = List.app (fn l => Tabulate.printRope l 0) (ls @ rs)
 
-val _ = fib 20        
+val ls = [makeLeaf(), makeLeaf ()]
+val rs = [makeLeaf (), makeLeaf ()]
+val ds = [Left, Right, Left, Right]
+
+val x = makeLeaf ()
 
 val _ = print "calling rootU\n"
-val res = rootU(makeLeaf 10, (ls, rs, ds))
+val resASDFJKL = rootU(x, (ls, rs, ds))
 
 val _ = print "done with rootU\n"
 
-val _ = Tabulate.printRope res 0
+val _ = Tabulate.printRope(resASDFJKL, 0)
 val _ = print "\n"  
