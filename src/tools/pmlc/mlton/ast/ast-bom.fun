@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM = 
+functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   struct
     open S
 
@@ -13,7 +13,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       = ??
     and varpat_node
       = Wild
-      | Var of ?? * ty option
+      | Var of BomId.t * ty option
     withtype ty = type_node Wrap.t
          and varpat = varpat_node Wrap.t
 	 and cases = cases_node Wrap.t
@@ -23,10 +23,40 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     local
       structure L = Layout
     in
-    fun layoutType _ = ??
+    fun layoutType ty = (case Type.node ty (* Wrap -> Type *)
+						  of Type.Param(tyParam) => TyParam.layout tyParam
+						   | Type.LongId(longId) => LongId.layout longId
+						   | Type.Record(field, fields) => let
+							   val fields' = Option.getOpt (fields, [])
+							   val asLayouts = (map layoutField field::fields')
+						   in
+							   asLayouts
+						   end
+						   |  Type.List(ty, tys) => let
+							   val tys' = Option.getOpt (tys, [])
+							   val asLayouts = map layoutType ty::tys'
+						   in
+							   asLayouts
+						   end
+						   | Type.Fun(tys, tys) =>
+							 L.seq [(layoutTypes tys), L.str " -> ", layoutTypes(tys)]
+						   | Type.Any => L.str "any"
+						   | Type.VProc => L.str "vproc"
+						   | Type.Cont(tyArgs) => let
+							   val asStrings = if (Option.isSome tyArgs) then
+												   (layout tyArgs)
+											   else
+												   ""
+						   in
+							   L.seq [L.str("cont "), asStrings]
+						   end
+						   | Type.Addr(t) => layoutType t
+						(* end case *))
+
     fun layoutVarPat v = (case Wrap.node v
 	   of Wild => L.str "_"
-	    | Var(x, optTy) => ??
+	    | Var(x, optTy) => L.seq [BomId.layout x, " : ",
+								  layoutType opTy]
 	  (* end case *))
     fun layoutCases _ = ??
     fun layoutExp _ = ??
