@@ -18,15 +18,15 @@ structure SpecPar (*: sig
     fun printLock() = pLock
 
     _primcode(
-#ifndef SEQUENTIAL       
-
 #ifndef NDEBUG
 #define PDebug(msg)  do ccall M_Print(msg)  
-#define PDebugInt(msg, v) do ccall M_Print_Int(msg, v)  
+#define PDebugInt(msg, v) do ccall M_Print_Int(msg, v) 
 #else
-#define PDebug(msg)
-#define PDebugInt(msg, v)
-#endif
+#define PDebug(msg) 
+#define PDebugInt(msg, v) 
+#endif /* !NDEBUG */
+
+#ifndef SEQUENTIAL       
         typedef tid = ![
             int,           (*Size of the list*)
             List.list];    (*thread id*)
@@ -87,12 +87,12 @@ structure SpecPar (*: sig
             let a : fun(unit / exh -> any) = #0(arg)
             let b : fun(unit / exh -> any) = #1(arg)
             let res : ![any,any] = alloc(UNIT, UNIT)
-            let count : ![int] = alloc(0)
+            let count : ![int] = alloc(0)  (*used to determine who continues after completed*)
             let count : ![int] = promote(count)
             let cbl : Cancelation.cancelable = Cancelation.@new(UNIT/exh)
-            let writeList : ![List.list] = alloc(nil)
+            let writeList : ![List.list] = alloc(nil)   (*write list of speculative thread*)
             let writeList : ![List.list] = promote(writeList)
-            let specWriteList : ![List.list] = alloc(nil)
+            let specWriteList : ![List.list] = alloc(nil) (*writes that did not actually go through (wrote to spec full ivar) *)
             let specWriteList : ![List.list] = promote(specWriteList)
             let parentTID : any = FLS.@get-key(alloc(TID_KEY) / exh)
             let parentTID : tid = (tid) parentTID
@@ -109,6 +109,7 @@ structure SpecPar (*: sig
                 do FLS.@set-key(alloc(alloc(WRITES_KEY), parentWriteList) / exh)
                 return(s)  
             cont slowClone(_ : unit) = (*work that can potentially be stolen*)
+                PDebug("slowClone was stolen\n")
                 let vp : vproc = host_vproc let vp : int = VProc.@vproc-id(vp)
                 do FLS.@set-key(alloc(alloc(WRITES_KEY), writeList) / exh)
                 do FLS.@set-key(alloc(alloc(SPEC_WRITES_KEY), specWriteList) / exh)
@@ -120,7 +121,7 @@ structure SpecPar (*: sig
                 do #1(res) := v_1'
                 let updated : int = I32FetchAndAdd(&0(count), 1)
                 if I32Eq(updated, 0)
-                then SchedulerAction.@stop()
+                then PDebug("Speculative thread exiting...\n") SchedulerAction.@stop()
                 else do IVar.@commit(#0(writeList)/exh)
                      PDebug("Speculative thread finished second, done committing writes\n")
                      do #0(specVal) := false
@@ -149,7 +150,7 @@ structure SpecPar (*: sig
             let removed : Option.option = ImplicitThread.@remove-thread(thd/exh)
             fun waitToCommit() : () = 
                 if (#0(parentSpecKey))
-                then apply waitToCommit()
+                then do Pause() apply waitToCommit()
                 else return()
             case removed 
                 of Option.SOME(t : ImplicitThread.thread) => 
@@ -161,15 +162,13 @@ structure SpecPar (*: sig
                          do IVar.@commit(#0(ws) / exh)
                          throw execContinuation(res)
                   |Option.NONE => let res : ![any, any] = promote(res) 
-                                  let vp : vproc = host_vproc let vp : int = VProc.@vproc-id(vp)
-                                  PDebugInt("Speculative computation was stolen on vp %d\n", vp)  
+                                  PDebug("Speculative computation was stolen\n")  
                                   let v_0' : any = promote(v_0)
                                   do #0(res) := v_0'
                                   let updated : int = I32FetchAndAdd(&0(count), 1)
                                   if I32Eq(updated, 0)
                                   then SchedulerAction.@stop()
-                                  else do IVar.@commit(#0(writeList)/exh)
-                                       PDebug("Commit thread finished Last, waiting for \n")
+                                  else PDebug("Commit thread finished Last\n")
                                        do apply waitToCommit()
                                        do IVar.@commit(#0(ws) / exh)
                                        do IVar.@commit(#0(writeList) / exh)

@@ -59,6 +59,10 @@ structure ImplicitThreadIVar (* :
 	  @ivar (EMPTY_VAL / exh)
 	;
 
+	 define @emptyIvar (x:unit/ exh : exh) : ivar =
+	  @ivar (EMPTY_VAL / exh)
+	;
+
       define @get (ivar : ivar / exh : exh) : any =
 	  let ivar : ivar = promote (ivar)
 	  let vp : vproc = SchedulerAction.@atomic-begin ()
@@ -112,6 +116,33 @@ structure ImplicitThreadIVar (* :
 	  return ()
 	;
 
+	define @put2 (arg : [ivar, any] / exh : exh) : unit = 
+	  let ivar : ivar = #0(arg)
+	  let x : any = #1(arg)
+	  let ivar : ivar = promote (ivar)
+	  let x : any = promote ((any)x)
+	  let vp : vproc = SchedulerAction.@atomic-begin ()
+	  let oldValue : any = CAS (&VALUE_OFF(ivar), EMPTY_VAL, x)
+	(* wait for any threads that have since blocked on the ivar *)
+	  let blocked : List.list = 
+	     if Equal(oldValue, EMPTY_VAL) then
+		 fun spin () : () =
+		     if I32Eq (SELECT(SPIN_LOCK_OFF,ivar), 0) then
+			 return ()
+		     else apply spin ()
+		  do apply spin ()
+		  let blockedFibers : List.list = SELECT(BLOCKED_LIST_OFF, ivar)
+		  return (blockedFibers)
+	     else
+		 do assert(NotEqual(oldValue, EMPTY_VAL))
+		 return (nil)
+	  fun resume (thd : ImplicitThread.thread / exh : exh) : () =
+	      ImplicitThread.@resume-thread (thd / exh)
+	  do PrimList.@app (resume, blocked / exh)
+	  do SchedulerAction.@atomic-end (vp)
+	  return (UNIT)
+	;
+
     (* returns the value of the ivar when the value has been put, but returns
      * NONE otherwise *)
       define @poll (ivar : ivar / exh : exh) : Option.option =
@@ -123,4 +154,16 @@ structure ImplicitThreadIVar (* :
 
     )
 
+    type 'a ivar = _prim(ivar)
+    val new : unit -> 'a ivar = _prim(@emptyIvar)
+    val get : 'a ivar -> 'a = _prim(@get)
+    val put : 'a ivar * 'a -> unit = _prim(@put2) 
+
   end
+
+
+
+
+
+
+  

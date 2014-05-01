@@ -57,6 +57,7 @@ structure String =
 	val tok : string * string -> string list = _prim(@tokenize)
     in
     fun tokenize sep str = List.rev (tok (str, sep))
+    fun tokenizeRev sep str = tok(str, sep)
     end
 
     val same : string * string -> bool = _prim (@same)

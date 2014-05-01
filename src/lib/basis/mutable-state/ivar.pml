@@ -31,7 +31,8 @@ struct
 #define PDebug(msg) 
 #define PDebugInt(msg, v) 
 #endif /* !NDEBUG */
-
+#define PDebug(msg)  do ccall M_Print(msg)  
+#define PDebugInt(msg, v) do ccall M_Print_Int(msg, v) 
 #ifndef SEQUENTIAL    
         extern void *M_Print_Int(void *, int);
         extern void *M_Print_Int2(void *, int, int);
@@ -342,12 +343,14 @@ struct
                                 do SchedulerAction.@atomic-end(self)
                                 return(UNIT)
                              | Option.NONE => SPIN_UNLOCK(i, 0)
+                                              PDebug("No cancelable object\n")
                                               let e : exn = Fail(@"no cancelable object\n")
                                               throw exh(e)
                            end
                       else SPIN_UNLOCK(i, 0)
                            do SchedulerAction.@atomic-end(self)
-                           do ccall M_Print("Attempt to write to full IVar, exiting...\n")
+                           let id : int = #8(i)
+                           do ccall M_Print_Int("Attempt to write to full IVar %d, exiting...\n", id)
                            let e : exn = Fail(@"Attempt to write to full IVar")
                            throw exh(e)
             else let blocked : List.list = #4(i)
@@ -358,6 +361,7 @@ struct
                  do #3(i) := true (*full field*)
                  do if(spec)
                     then let writes : ![List.list] = FLS.@get-key(alloc(WRITES_KEY) / exh)
+                         PDebug("Speculatively writing to empty ivar\n")
                          let c : Cancelation.cancelable = @getCancelable(/exh)
                          let c : [![List.list], Option.option] = alloc(writes, Option.SOME(c))
                          let c : [![List.list], Option.option] = promote(c)
@@ -376,6 +380,7 @@ struct
             2) ivar is spec full -> replace the value with this one and restart dependants
             3) ivar is empty -> not possible*)
         define @commit(writes : List.list/ exh:exh) : () = 
+            PDebug("Calling commit\n")
             fun helper(ws : List.list) : () = case ws
                 of nil => return()
                  | CONS(hd : ivar, tl : List.list) => 
