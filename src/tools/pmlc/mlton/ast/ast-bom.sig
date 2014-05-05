@@ -19,79 +19,92 @@ signature AST_BOM =
 	structure BomId : AST_ID
 	structure HLOpId : AST_ID
 	structure TyParam : AST_ID 	(* this is what i understand this to be *)
+	structure TyArg : AST_ID
+	(* tentative *)
+	structure Param : AST_ID
+	structure FunParam : AST_ID
+	(* structure DataConsDef : AST_ID *)
 
 
-	structure Attrs : sig (* TODO *) end
+	structure Attrs : sig
+	type t
+	datatype node
+	  = Attributes of string list
+	include WRAPPED
+	  sharing type node' = node
+	  sharing type obj = t
+	end
 
-	structure DataConsDef : sig (* TODO *) end
+
+	structure LongId : sig
+	type t
+	datatype node
+	  = Id of BomId.t * TyArg.t list option
+	  | QualifiedId of TyArg.t list option
+	include WRAPPED
+	  sharing type node' = node
+	  sharing type obj = t
+	end
+
+	(* structure DataConsDef : sig (* TODO *) end *)
 
 	structure DatatypeDef : sig
 		type t
 		datatype node
 		  = ConsDef of BomId.t * TyParam.t list option *
-					   DataConsDef.t list (* dropping option *)
+					   DataConsDef.t list
 		  | SimpleDef of BomId.t * TyParam.t list option * LongId.t
 		include WRAPPED
 		sharing type node' = node
 		sharing type obj = t
 	end
 
-	structure CReturnTy.t : sig
-				  ??
-	end
-
-	structure CArgTy : sig
-				  ??
-	end
-
-	structure Definition : sig
-		type t
-		datatype node
-		  = Extern of CReturnTy.t * BomId.t *
-					  (CArgTy.t * CArgTy.t list option) * Attrs.t
-		  | Datatype of DatatypeDef.t * DataTypeDef.t list option
-		  | Type of BomId.t * TyParams.t option * Type.t
-		  | DefineShortId of Attrs.t option * HLOpId.t * TyParams.t option *
-							 FunParams.t * ReturnTy.t option * Exp.t option
-		  | DefineLongId of HLOpId.t * TyParams.t option * LongId.t
-		  | Fun of FunDef.t * FunDef.t list option
-		include WRAPPED
-		sharing type node' = node
-		sharing type obj = t
-	end
-
-
-	structure TyParam : sig 	(* TODO *) end
-
-	structure TyArg : sig 		(* TODO *) end
-
-	structure LongId : sig
+	structure RawTy : sig
 	type t
 	datatype node
-	  = BomId.t * TyArg.t list option
-		| ?? * TyArg.t list option
+	  = Int8
+	  | Uint8
+	  | Int16
+	  | Uint16
+	  | Int32
+	  | Uint32
+	  | Int64
+	  | Uint64
+	  | Float32
+	  | Float64
 	include WRAPPED
 	  sharing type node' = node
 	  sharing type obj = t
 	end
 
-	(* skipping for now *)
-	structure Field : sig end
-	(* 	type t *)
-	(* 	datatype node *)
-	(* 	  = TypeConstraint of int * Type.t (* ?? not sure *) *)
-	(* 	  | Index of int * Type.t *)
-	(* 	include WRAPPED *)
-	(* 	sharing type node' = node *)
-	(* 	sharing type obj = obj *)
-	(* 	end *)
+	structure CArgTy : sig
+	type t
+	datatype node
+	  = Raw of RawTy.t
+	  | VoidPointer
+	include WRAPPED
+	  sharing type node' = node
+	  sharing type obj = t
+	end
+
+	structure CReturnTy.t : sig
+	type t
+	datatype node
+	  = CArg of CArgTy.t
+	  | Void
+	include WRAPPED
+	  sharing type node' = node
+	  sharing type obj = t
+	end
+
 
     structure Type : sig
 	type t
+	type field
 	datatype node
 	  = Param of TyParam.t
 	  | LongId of LongId.t
-	  | Record of Field.t * Field.t list option
+	  | Offset of field * field list option
 	  | List of t list
 	  | Fun of t list * t list
 	  | Any
@@ -103,14 +116,25 @@ signature AST_BOM =
 	  sharing type obj = t
 	end
 
-	structure Params : sig 		(* TODO *) end
+	structure Field : sig
+	  type t
+	  datatype node
+		= Immutable of int * Type.t
+		| Mutable of int * Type.t
+	  include WRAPPED
+		sharing type node' = node
+		sharing type obj = obj
+	end
+
+	(* structure Params : sig 		(* TODO *) end *)
 
 	structure FunDef : sig
 	  type t
+	  type exp
 	  datatype node
 		= Def of Attrs.t option * BomId.t * TyParam.t list option
-			* Param.t list option * Param.t list option * Type.t * Exp.t
-	  include WRAPPED  			(* can we factor this out? *)
+			* Param.t list option * Param.t list option * Type.t * exp
+	  include WRAPPED
 		sharing type node' = node
 		sharing type obj = t
 	end
@@ -121,30 +145,12 @@ signature AST_BOM =
 	  = PosInt of int
 	  | Float of real
 	  | String of string
-	  | nullVP
+	  | NullVP
 	include WRAPPED
 	  sharing type node' = node
 	  sharing type obj = t
 	end
 
-	structure SimpleExp : sig
-	  type t
-	  datatype node
-		= Primitive of t list
-		| AllocId of LongId.t * t list
-		| AtIndex of int * t * t option
-		| ?? of Type.t * t 		(* not sure what (Type) SimpleExp denotes *)
-		| HostVproc
-		| VpLoad of int * t
-		| VpAddr of int * t
-		| VpStore of int * t * t
-		| Id of LongId.t
-		| Lit of Literal.t
-		| String of MLString 	(* ?? *)
-	include WRAPPED
-	  sharing type node' = node
-	  sharing type obj =
-	end
 
     structure VarPat : sig
 	type t
@@ -158,11 +164,11 @@ signature AST_BOM =
 
     structure CaseRule : sig
 	type t
-	(* type exp *)
+	type exp
 	datatype node
-	  = LongRule of LongId.t * VarPat.t list * Exp.t
-	  | LiteralRule Literal.t * Exp.t
-	  | DefaultRule of VarPat.t * Exp.t 		(* collapsing CaseDefault *)
+	  = LongRule of LongId.t * VarPat.t list * exp
+	  | LiteralRule Literal.t * exp
+	  | DefaultRule of VarPat.t * exp		(* collapsing CaseDefault *)
 	include WRAPPED
 	  sharing type node' = node
 	  sharing type obj = t
@@ -170,18 +176,41 @@ signature AST_BOM =
 
 	structure TyCaseRule : sig
 	type t
+	type exp
 	datatype node
-	  = TyRule of Type.t * Exp.t
-	  | Default of Exp.t
+	  = TyRule of Type.t * exp
+	  | Default of exp
 	include WRAPPED
 	  sharing type node' = node
 	  sharing type obj = t
 	end
 
+	structure SimpleExp : sig
+	  type t
+	  datatype node
+		= PrimOp of string * t list (* ???? *)
+		| AllocId of LongId.t * t list
+		| AllocType of Type.t * t list
+		| AtIndex of int * t * t option
+		| ?? of Type.t * t 		(* not sure what (Type) SimpleExp denotes *)
+		| HostVproc
+		| VpLoad of int * t
+		| VpAddr of int * t
+		| VpStore of int * t * t
+		| Id of LongId.t
+		| Lit of Literal.t
+		| MLString of string
+	include WRAPPED
+	  sharing type node' = node
+	  sharing type obj =
+	end
+
+
     structure Exp : sig
 	type t
+	type rhs
 	datatype node
-	  = Let of VarPat.t list * RHS.t * t
+	  = Let of VarPat.t list * rhs * t
 	  | Do of SimpleExp.t * t
 	  | Fun of FunDef.t list * t
 	  | Cont of BomId.t * Param.t list option * t * t
@@ -194,12 +223,13 @@ signature AST_BOM =
 	include WRAPPED
 	  sharing type node' = node
 	  sharing type obj = t
-      end
+    end
 
-	structure RHS : sig 		(* not good *)
+	structure RHS : sig
 	  type t
+	  type exp
 	  datatype node
-		= Composite of Exp.t
+		= Composite of exp
 		| Simple of SimpleExp.t
 	  include WRAPPED
 		sharing type node' = node
@@ -207,4 +237,26 @@ signature AST_BOM =
 	end
 
 
+	structure Definition : sig
+	  type t
+	  datatype node
+		= Extern of CReturnTy.t * BomId.t * CArgTy.t list * Attrs.t
+		| Datatype of DatatypeDef.t * DataTypeDef.t list option
+		| Type of BomId.t * TyParam.t list option * Type.t
+		| DefineShortId of Attrs.t option * HLOpId.t * TyParam.t list option *
+						   FunParam.t list * ReturnTy.t option * Exp.t option
+		| DefineLongId of HLOpId.t * TyParam.t list option * LongId.t
+		| Fun of FunDef.t * FunDef.t list option
+	  include WRAPPED
+		sharing type node' = node
+		sharing type obj = t
+	end
+
+
+  sharing type RHS.exp = Exp.t
+  sharing type CaseRule.exp = Exp.t
+  sharing type TyCaseRule.exp = Exp.t
+  sharing type Exp.rhs = RHS.t
+  sharing type FunDef.exp = Exp.t
+  sharing type Type.field = Field.t
   end

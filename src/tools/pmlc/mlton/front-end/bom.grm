@@ -17,7 +17,7 @@
 (*	| KW_case	("case")		*)
 	| KW_ccall	("ccall")
 	| KW_cont	("cont")
-        | KW_constr     ("constr")
+    | KW_constr     ("constr")
 (*	| KW_datatype	("datatype")		*)
 	| KW_define	("define")
 	| KW_deque	("deque")
@@ -48,7 +48,7 @@
 	| KW_throw	("throw")
 	| KW_typedef	("typedef")
 	| KW_unwrap	("unwrap")
-        | KW_use_rw     ("use_rw")
+    | KW_use_rw     ("use_rw")
 	| KW_vec128	("vec128")
 	| KW_void	("void")
 	| KW_vpaddr	("vpaddr")
@@ -77,7 +77,7 @@
 (*	| ASSIGN	(":=")			*)
 (*	| DARROW	("=>")			*)
 (*	| ARROW		("->")			*)
-        | DDARROW       ("==>")
+    | DDARROW       ("==>")
 (*	| LONGID of Atom.atom			*)
 	| HLOP of Atom.atom
 	| QHLOP of (Atom.atom list) * Atom.atom
@@ -94,35 +94,18 @@ BOMDecls
 	;
 
 Definition
-	: "extern" CRetTy ID "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
-		=> (markBOMDefn(KW_extern_SPAN,
-		BPT.D_Extern(CF.CFun{
-			var = ID,
-			name = Atom.toString ID,
-			retTy = CRetTy,
-			argTys = flatten SR,
-			varArg = false,
-			attrs = Attrs
-		      })))
-	| "datatype" ID TypeParams? "=" ";"
-	| "typedef" ID TypeParams? "=" BOMType ";"
-		=> (markBOMDefn(KW_typedef_SPAN, BPT.D_TypeDef(ID, BOMType)))
-(*
-	| "define" optAttrs HLOpId TypeParams? FunParams ReturnTy ("=" BOMExp)? ";"
-		=> (markBOMDefn(FULL_SPAN, let val (p1, p2) = FunParams in
-		      BPT.D_Define(optAttrs, HLOpId, p1, p2, ReturnTy, SR)
-		    end))
-        | "define" HLOpId "=" longid ";"
-		=> (markBOMDefn(FULL_SPAN, BPT.D_ImportPML(HLOpId, longid)))
-*)
-	| "define" optAttrs HLOpId HLOpDef ";"
-		=> (markBOMDefn(FULL_SPAN, HLOpDef(optAttrs, HLOpId)))
-        | LabelOpt Pattern "==>" Pattern Benefit ";"               (* rewrite rule *)
-                => ( markBOMDefn(FULL_SPAN, 
-				 BPT.D_Rewrite {label = LabelOpt,
-                                    lhs = Pattern1,
-                                    rhs = Pattern2,
-                                    weight = Benefit}) )
+	: "extern" CRetTy BomId "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
+	  => (* TODO *)
+	| "datatype" DatatypeDef (KW_and DataTypeDef)*
+	  => (* TODO *)
+	| "type" ID TypeParam* "=" BOMType ";"
+	  => (* TODO *)
+	| "fun" FunDef (KW_and FunDef)* ";"
+	  => (* TODO *)
+	| "define" Attrs? HLOpId TyParam* FunParam* ReturnTy ("=" Exp)? ";"
+	  => (* TODO *)
+	| "define" HLOpId TyParams? "=" LongId ";"
+	  => 						(* TODO *)
 	;
 
 TypeParams
@@ -407,7 +390,7 @@ Pattern
         | ID
                 => ( BPT.RW_Var ID )
 
-        | "alloc" "(" PatternArgs ")"		
+        | "alloc" "(" PatternArgs ")"
                 => ( BPT.RW_Alloc PatternArgs )
         ;
 
