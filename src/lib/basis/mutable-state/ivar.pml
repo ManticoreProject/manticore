@@ -22,6 +22,12 @@ struct
 
     fun getIVarCount() = ivarCount
 
+    fun tidToString (l, msg) =
+    case l
+        of x::xs => (tidToString(xs, msg)) ^ " -> " ^ Int.toString x
+         | nil => msg ^ ": ROOT"
+
+
     _primcode(
 
 #ifndef NDEBUG
@@ -31,8 +37,6 @@ struct
 #define PDebug(msg) 
 #define PDebugInt(msg, v) 
 #endif /* !NDEBUG */
-#define PDebug(msg)  do ccall M_Print(msg)  
-#define PDebugInt(msg, v) do ccall M_Print_Int(msg, v) 
 #ifndef SEQUENTIAL    
         extern void *M_Print_Int(void *, int);
         extern void *M_Print_Int2(void *, int, int);
@@ -57,7 +61,8 @@ struct
             [![List.list], Option.option], (*6: write list and cancelable of writer (cancelable
                                                 will be NONE if the ivar is unwritten*)
             List.list,     (*7: list of writers if this is spec full*)
-            int];          (*8: Unique number assigned to each ivar*)
+            int,           (*8: Unique number assigned to each ivar*)
+            List.list];    (*9: List of threads who speculatively read and are now waiting for it to be committed*)
             
         define @getCount = getIVarCount;
 
@@ -68,20 +73,17 @@ struct
             return(old)
         ;
 
-        define @printTID(tid : tid) : () = 
-            fun lp (l : List.list) : () = case l
-                of CONS(hd : [int], tl : List.list) => 
-                    do apply lp(tl)
-                    PDebugInt("%d, ", #0(hd))
-                    return()
-                | nil => return()
-                 end
-            PDebug("TID: ")
-            do apply lp (#1(tid))
-            PDebug("\n")
-            return()
+        define @tid-to-string' = tidToString;
+
+        define @tid-to-string(tid:tid, msg:ml_string / exh:exh) : ml_string = 
+            let l : List.list = #1(tid)
+            let arg :[List.list, ml_string] = alloc(l, msg)
+            let s : ml_string = @tid-to-string'(arg / exh)
+            let newline : ml_string = alloc("\n", 1)
+            let s' : ml_string = String.@string-concat-list(CONS(s, CONS(newline, nil)) / exh)
+            return(s')
         ;
-        
+
         define @pmlInd(w : waiter, ws : List.list / exh : exh) : List.list = 
             fun prefixEq(tid1 : List.list, tid2 : List.list) : bool = case tid1 
                 of CONS(hd1 : [int], tl1 : List.list) => case tid2
@@ -127,7 +129,7 @@ struct
         define @iNew( x : unit / exh : exh) : ivar =
             let unique : int = @bump(/exh)
             let c : [![List.list], Option.option] = alloc((![List.list])alloc(nil), Option.NONE)
-            let x : ivar = alloc(0, false, $0, false, nil, nil, c, nil, unique)
+            let x : ivar = alloc(0, false, $0, false, nil, nil, c, nil, unique, nil)
             let x : ivar = promote(x)
             return (x);
 
@@ -215,21 +217,23 @@ struct
             cont readSpec(vp : vproc) = 
                 cont getK(x : unit) = PDebug("dependent reader restarting\n") apply restart()
                 let thd : ImplicitThread.thread = ImplicitThread.@capture(getK/exh)
-                PDebug("Reading speculatively full ivar\n")
+                PDebugInt("Reading speculatively full ivar %d\n", #8(i))
                 let tid : any = FLS.@get-key(alloc(TID_KEY)/exh)
                 let c : Cancelation.cancelable = @getCancelable(/exh)
                 let writeList : any = FLS.@get-key(alloc(WRITES_KEY) / exh)
                 let item : waiter = alloc((![List.list]) writeList, thd, (tid) tid, c)
                 let l : List.list = CONS(item, #5(i))
                 let l : List.list = promote(l)
-                let spec : any = FLS.@get-key(alloc(SPEC_KEY) / exh)
-                let spec : [bool] = ([bool]) spec
-                do if(#0(spec))
-                   then return()
-                   else do FLS.@set-key(alloc(alloc(SPEC_KEY), alloc(true)) / exh)
-                        return()
                 do #5(i) := l
-                let id : int = #8(i)
+                let reads : any = FLS.@get-key(alloc(READS_KEY) / exh)
+                let reads : ![List.list] = (![List.list]) reads
+                let temp : List.list = #0(reads)
+                let newReads : List.list = CONS(i, temp)
+                let newReads : List.list = promote(newReads)
+                do #0(reads) := newReads
+           (*     let spec : any = FLS.@get-key(alloc(SPEC_KEY) / exh)
+                let spec : ![bool] = (![bool]) spec
+                do #0(spec) := true  *)
                 SPIN_UNLOCK(i, 0)
                 do SchedulerAction.@atomic-end(vp)
                 return(#2(i))
@@ -247,7 +251,8 @@ struct
                          SPIN_LOCK(i, 0)
                          throw readSpec(self)
                     else return(#2(i))
-                 PDebug("Reading from empty ivar\n")
+                 let id : int = #8(i)
+                 PDebugInt("Reading from empty ivar %d\n", id)
                  let tid : any = FLS.@get-key(alloc(TID_KEY) / exh)
                  let c : Cancelation.cancelable = @getCancelable(/exh)
                  let thd : ImplicitThread.thread = ImplicitThread.@capture(getK'/exh)
@@ -263,12 +268,18 @@ struct
 
         define @iPut(arg : [ivar, any] / exh : exh) : unit = 
             let i : ivar = #0(arg)
+            let tid:tid = FLS.@get-key(alloc(TID_KEY) / exh)
+            let s : ml_string = alloc("Writing to ivar %d, with thread id", 34)
+            let s : ml_string = @tid-to-string(tid, s / exh)
+            PDebugInt(#0(s), #8(i))
             let v : any = #1(arg)
             let v : any = promote(v)
+            let b : [bool] = ([bool])v
+            do if(#0(b)) then PDebug("Writing true\n") return () else PDebug("Writing false\n") return()
             let spec : any = FLS.@get-key(alloc(SPEC_KEY) / exh)
             let spec : [bool] = ([bool]) spec
             let spec : bool = (bool)#0(spec)
-            let id : int = #8(i)     
+            let id : int = #8(i)
             fun restart (waiters : List.list) : unit = case waiters
                 of nil => return (UNIT)
                  | CONS(hd : waiter, tl : List.list) => 
@@ -280,7 +291,7 @@ struct
             SPIN_LOCK(i, 0)
             if Equal(#3(i), true) (*already full*)
             then if Equal(spec, true)
-                 then PDebug("*****Speculatively writing to full ivar\n")
+                 then PDebugInt("*****Speculatively writing to full ivar %d\n", #8(i))
                       let specWriteListPtr : ![List.list] = FLS.@get-key(alloc(SPEC_WRITES_KEY)/exh)
                       let specWriteList : List.list = #0(specWriteListPtr)
                       let writeListPtr : ![List.list] = FLS.@get-key(alloc(WRITES_KEY)/exh)
@@ -331,6 +342,8 @@ struct
                                 let _ : unit = Cancelation.@cancel(c / exh)
                                 let blockedWriters : List.list = #7(i)
                                 do apply restartBlockedWriters(blockedWriters)
+                                let waiters : List.list = #9(i)
+                                do apply restartBlockedWriters(waiters)
                                 do #7(i) := nil
                                 do @rollback(CONS(i, nil), nil / exh)
                                 do #2(i) := v
@@ -350,18 +363,17 @@ struct
                       else SPIN_UNLOCK(i, 0)
                            do SchedulerAction.@atomic-end(self)
                            let id : int = #8(i)
-                           do ccall M_Print_Int("Attempt to write to full IVar %d, exiting...\n", id)
+                           do ccall M_Print_Int("Attempt to write to commit full IVar %d, exiting...\n", id)
                            let e : exn = Fail(@"Attempt to write to full IVar")
                            throw exh(e)
             else let blocked : List.list = #4(i)
-                 PDebugInt("Writing to empty ivar %d\n", #8(i))
                  do #4(i) := nil
                  do #2(i) := v    (*value field*)
                  do #1(i) := spec (*spec field*)
                  do #3(i) := true (*full field*)
                  do if(spec)
                     then let writes : ![List.list] = FLS.@get-key(alloc(WRITES_KEY) / exh)
-                         PDebug("Speculatively writing to empty ivar\n")
+                         PDebugInt("Speculatively writing to empty ivar %d\n", #8(i))
                          let c : Cancelation.cancelable = @getCancelable(/exh)
                          let c : [![List.list], Option.option] = alloc(writes, Option.SOME(c))
                          let c : [![List.list], Option.option] = promote(c)
@@ -369,7 +381,7 @@ struct
                          let newWrites : List.list = promote(CONS(i, #0(writes)))
                          do #0(writes) := newWrites
                          return()
-                    else return()
+                    else PDebugInt("Commit writing to empty ivar %d\n", #8(i)) return()
                  let id : int = #8(i)
                  SPIN_UNLOCK(i, 0)
                  apply restart (blocked)
@@ -385,10 +397,15 @@ struct
                 of nil => return()
                  | CONS(hd : ivar, tl : List.list) => 
                     SPIN_LOCK(hd, 0)
-                    let id : int = #8(hd)
-                    PDebugInt("Committing ivar %d\n", id)
+                    PDebugInt("Committing ivar %d\n", #8(hd))
                     do if (#1(hd))
                        then do #1(hd) := false
+                            let waiters : List.list = #9(hd)
+                            let s : int = PrimList.@length(waiters / exh)
+                            PDebugInt("waiters list length = %d\n", s)
+                            fun resume (thd : ImplicitThread.thread / exh : exh) : () =
+	                             ImplicitThread.@resume-thread (thd / exh)
+	                        do PrimList.@app (resume, waiters / exh)
                             return()
                        else let e : exn = Fail(@"Committing ivar that is already commit full\n")
                             do ccall M_Print("Committing ivar that is already commit full!\n")
