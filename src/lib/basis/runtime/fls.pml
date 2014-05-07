@@ -151,8 +151,9 @@ structure FLS :
         let k2 : [[int], any] = alloc(alloc(SPEC_KEY), alloc(false))
         let k3 : [[int], any] = alloc(alloc(WRITES_KEY), alloc(nil))
         let k4 : [[int], any] = alloc(alloc(SPEC_WRITES_KEY), alloc(nil))
-        let l : List.list = CONS(k0, CONS(k1, CONS(k2, CONS(k3, CONS(k4, nil)))))
-        let ret : [int, List.list] = alloc(5, l)
+        let k5 : [[int], any] = alloc(alloc(READS_KEY), alloc(nil))
+        let l : List.list = CONS(k0, CONS(k1, CONS(k2, CONS(k3, CONS(k4, CONS(k5, nil))))))
+        let ret : [int, List.list] = alloc(6, l)
         return(ret)
       ;
 

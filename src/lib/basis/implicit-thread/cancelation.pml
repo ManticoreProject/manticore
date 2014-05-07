@@ -31,6 +31,12 @@ structure Cancelation (* : sig
     structure O = Option
     structure L = List
 
+    fun tidToString (l, msg) =
+        case l
+            of x::xs => (tidToString(xs, msg)) ^ " -> " ^ Int.toString x
+             | nil => msg ^ ": ROOT"
+
+
     _primcode (
 
 (* QUESTION: is it safe to store a state value in the inactive flag? *)
@@ -194,6 +200,23 @@ structure Cancelation (* : sig
 	apply lp(children)
       ;
 
+    typedef tid = ![
+            int,           (*Size of the list*)
+            List.list];    (*thread id*)  
+            
+
+    define @tid-to-string' = tidToString;
+
+    define @tid-to-string(tid:tid, msg:ml_string / exh:exh) : ml_string = 
+        let l : List.list = #1(tid)
+        let arg :[List.list, ml_string] = alloc(l, msg)
+        let s : ml_string = @tid-to-string'(arg / exh)
+        let newline : ml_string = alloc("\n", 1)
+        let s' : ml_string = String.@string-concat-list(CONS(s, CONS(newline, nil)) / exh)
+        return(s')
+    ;
+
+
     (* @wrap-fiber (c, k / exh) *)
     (* returns new fiber k' where k' has similar behavior to k, except that canceling c *)
     (* causes k' to terminate *)
@@ -209,6 +232,10 @@ structure Cancelation (* : sig
 	       let canceledFlg : ![bool] = @get-canceled-flag(c)
 	       case #0(canceledFlg)
 		of true =>
+		   let tid:tid = FLS.@get-key(alloc(TID_KEY) / exh)
+	       let s : ml_string = alloc("Thread canceled", 15)
+	       let s : ml_string = @tid-to-string(tid, s / exh)
+	       do ccall M_Print(#0(s))
 		   throw terminate()
 		 | false =>
 		   do SchedulerAction.@run(self, act, k)
@@ -266,6 +293,7 @@ structure Cancelation (* : sig
 	  return(c)
 	;
 
+	   
        extern void *M_Print_Int(void *, int);
     (* @cancel (c / exh) *)
     (* cancels implicit thread t corresponding to c and all implicit threads that are descendants of t *)

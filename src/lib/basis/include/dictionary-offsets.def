@@ -7,6 +7,6 @@
 #define SPEC_KEY               2
 #define WRITES_KEY             3   
 #define SPEC_WRITES_KEY        4
-
+#define READS_KEY              5
 #endif _DICT_OFFSETS_DEF_
 
