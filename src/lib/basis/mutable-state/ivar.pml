@@ -215,6 +215,7 @@ struct
         ;
 
        define @rollback(actions : List.list / exh : exh) : () = 
+            do ccall M_Print("Performing rollback\n")
             fun findWriter(l : List.list) : [Option.option, List.list] = case l
                     of CONS(hd : ![Option.option], tl : List.list) => case #0(hd)
                             of Option.SOME(w : [any, cont(unit)]) => return(alloc(#0(hd), tl))
