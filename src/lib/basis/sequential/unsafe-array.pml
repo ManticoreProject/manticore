@@ -19,6 +19,9 @@ _primcode (
     let data : any = ccall AllocBigPolyArray (host_vproc, n, init)
     return(alloc (data, n))
   ;
+  define inline @length(v : array / exh:exh) : int = 
+    return(#1(v))
+  ;
   define inline @create-w (arg : [ml_int, any] / exh : exh) : array =
     @create (#0(#0(arg)), #1(arg) / exh)
   ;

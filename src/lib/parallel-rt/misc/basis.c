@@ -200,11 +200,19 @@ Value_t M_DoubleFromString (Value_t str)
 }
 
 void M_Print_Int(const char *s, int i){
+#ifdef NDEBUG
     Say(s, i);
+#else
+    Say(s, i);
+#endif   
 }
 
 void M_Print_Int2(const char *s, int i, int j){
     printf(s, i, j);
+}
+
+void M_PrintAddr(const char *s, void * a){
+    printf(s, a);
 }
 
 /* M_Print:

@@ -5,8 +5,17 @@
 #define DICT_BUILTIN_TOPOLOGY  0
 #define TID_KEY                1
 #define SPEC_KEY               2
-#define WRITES_KEY             3   
-#define SPEC_WRITES_KEY        4
-#define READS_KEY              5
+#define ACTIONS_KEY            3
+#define BLOCKED_ON_KEY         4
+
+#define COMMIT                 0
+#define CREATED_SPEC           1
+#define TURNED_SPEC            2
+
+#define WACT 10   (*write action*)
+#define SWACT 11  (*speculative write action (did not actually go through)*)
+#define RACT 12   (*read action*)
+#define FACT 13   (*fork / spawn action*)
+
 #endif _DICT_OFFSETS_DEF_
 

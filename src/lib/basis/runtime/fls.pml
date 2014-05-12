@@ -147,13 +147,12 @@ structure FLS :
 
       define @initial-dict() : [int, List.list] = 
         let k0 : [[int], any] = alloc(alloc(DICT_BUILTIN_TOPOLOGY), nil)
-        let k1 : [[int], any] = alloc(alloc(TID_KEY), alloc(0, nil))
-        let k2 : [[int], any] = alloc(alloc(SPEC_KEY), alloc(false))
-        let k3 : [[int], any] = alloc(alloc(WRITES_KEY), alloc(nil))
-        let k4 : [[int], any] = alloc(alloc(SPEC_WRITES_KEY), alloc(nil))
-        let k5 : [[int], any] = alloc(alloc(READS_KEY), alloc(nil))
-        let l : List.list = CONS(k0, CONS(k1, CONS(k2, CONS(k3, CONS(k4, CONS(k5, nil))))))
-        let ret : [int, List.list] = alloc(6, l)
+        let k1 : [[int], any] = alloc(alloc(TID_KEY), alloc(1, CONS(alloc(1,1), nil)))
+        let k2 : [[int], any] = alloc(alloc(SPEC_KEY), alloc(COMMIT))
+        let k3 : [[int], any] = alloc(alloc(ACTIONS_KEY), alloc(nil))
+        let k4 : [[int], any] = alloc(alloc(BLOCKED_ON_KEY), alloc(Option.NONE))
+        let l : List.list = CONS(k0, CONS(k1, CONS(k2, CONS(k3, CONS(k4, nil)))))
+        let ret : [int, List.list] = alloc(5, l)
         return(ret)
       ;
 
@@ -237,6 +236,7 @@ structure FLS :
 	  case SELECT(ITE_OFF, fls)
 	   of Option.NONE =>
 	      let e : exn = Fail(@"FLS.ite: nonexistant implicit threading environment")
+	      do ccall M_Print("FLS.ite: nonexistant implicit threading environment\n")
 	      throw exh(e)
 	    | Option.SOME(ite : ite) =>
 	      return(ite)
@@ -332,6 +332,7 @@ structure FLS :
                     then return(#1(hd))
                     else apply loop(tail)
                 |nil => let e : exn = Fail(@"FLS dictionary key not found")
+                        do ccall M_Print("FLS dictionary key not found\n")
                         throw exh(e)
                 end
             apply loop(dict)

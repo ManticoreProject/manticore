@@ -24,6 +24,11 @@ structure Int =
 	    return (res)
       ;
 
+      define inline @raw-int-to-string(n : int / exh:exh) : ml_string = 
+        let res : ml_string = ccall M_IntToString(n)
+        return(res)
+      ;
+
       define inline @from-string (s : ml_string / exh : exh) : Option.option =
 	  let res : Option.option = ccall M_IntFromString (s)
 	    return (res)

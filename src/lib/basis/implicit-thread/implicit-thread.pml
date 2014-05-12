@@ -405,7 +405,7 @@ structure ImplicitThread (* :
 	;
 
       define inline @run-from-atomic (vp : vproc, act : PT.sched_act, thd : thread / exh : exh) noreturn =
-	  do FLS.@set-ite (SELECT(THREAD_ITE_OFF, thd) / exh)
+	  do FLS.@set-ite (SELECT(THREAD_ITE_OFF, thd) / exh)  (*seg fault here*)
 	  SchedulerAction.@run (vp, act, SELECT(THREAD_FIBER_OFF, thd))
 	;
 

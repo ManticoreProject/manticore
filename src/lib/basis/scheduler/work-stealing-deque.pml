@@ -256,6 +256,8 @@ structure WorkStealingDeque (* :
 	  else
 	      return (true)
         ;
+
+        extern void M_PrintAddr(void *, void *);
        
     (* precondition: the deque is not full *)
       define inline @push-new-end-in-atomic (self : vproc, deq : deque, elt : any) : () =

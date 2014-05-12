@@ -53,23 +53,21 @@ structure SpecPar (*: sig
             let count : ![int] = alloc(0)  (*used to determine who continues after completed*)
             let count : ![int] = promote(count)
             let cbl : Cancelation.cancelable = Cancelation.@new(UNIT/exh)
-            let writeList : ![List.list] = alloc(nil)   (*write list of speculative thread*)
-            let writeList : ![List.list] = promote(writeList)
-            let specWriteList : ![List.list] = alloc(nil) (*writes that did not actually go through (wrote to spec full ivar) *)
-            let specWriteList : ![List.list] = promote(specWriteList)
+            let actionList : ![List.list] = alloc(nil) (*action list of speculative thread*)
+            let actionList : ![List.list] = promote(actionList)
             let parentTID : any = FLS.@get-key(alloc(TID_KEY) / exh)
             let parentTID : tid = (tid) parentTID
-            let specTID : tid = alloc(I32Add(#0(parentTID), 1), CONS((any) alloc(2), #1(parentTID)))
+            let specTID : tid = alloc(I32Add(#0(parentTID), 1), CONS((any) alloc(2, 1), #1(parentTID)))
             let specTID : tid = promote(specTID)
             let parentSpecKey : ![bool] = FLS.@get-key(alloc(SPEC_KEY) / exh)
             let parentSpecKey : ![bool] = promote(parentSpecKey)
-            let specVal : ![bool] = alloc(true)
-            let specVal : ![bool] = promote(specVal)
-            let parentWriteList : any = FLS.@get-key(alloc(WRITES_KEY) / exh)
-            let parentWriteList : ![List.list] = promote((![List.list]) parentWriteList)
+            let specVal : ![int] = alloc(CREATED_SPEC)
+            let specVal : ![int] = promote(specVal)
+            let parentActionList : ![List.list] = FLS.@get-key(alloc(ACTIONS_KEY) / exh)
+            let parentActionList : ![List.list] = promote(parentActionList)
             cont execContinuation(s : ![any, any]) = 
                 do FLS.@set-key(alloc(alloc(TID_KEY), parentTID) / exh)
-                do FLS.@set-key(alloc(alloc(WRITES_KEY), parentWriteList) / exh)
+                do FLS.@set-key(alloc(alloc(ACTIONS_KEY), parentActionList) / exh)
                 return(s)  
             cont slowClone(_ : unit) = (*work that can potentially be stolen*)
                 let a : ml_string = alloc("Spawning slow clone on vp %d with tid", 37)
@@ -77,8 +75,7 @@ structure SpecPar (*: sig
                 let vp : vproc = host_vproc
                 let vp : int = VProc.@vproc-id(vp)
                 PDebugInt(#0(s), vp)
-                do FLS.@set-key(alloc(alloc(WRITES_KEY), writeList) / exh)
-                do FLS.@set-key(alloc(alloc(SPEC_WRITES_KEY), specWriteList) / exh)
+                do FLS.@set-key(alloc(alloc(ACTIONS_KEY), actionList) / exh)
                 do FLS.@set-key(alloc(alloc(TID_KEY), specTID) / exh)
                 do FLS.@set-key(alloc(alloc(SPEC_KEY), specVal) / exh)  (*Put in spec mode*)
                 let v_1 : any = apply b(UNIT / exh)
@@ -87,41 +84,45 @@ structure SpecPar (*: sig
                 let updated : int = I32FetchAndAdd(&0(count), 1)
                 if I32Eq(updated, 0)
                 then PDebug("Speculative thread exiting...\n") SchedulerAction.@stop()
-                else do IVar.@commit(#0(writeList)/exh)
+                else do IVar.@commit(#0(actionList)/exh)
                      PDebug("Speculative thread finished second, done committing writes\n")
-                     do #0(specVal) := false
+                     do #0(specVal) := COMMIT
                      throw execContinuation(res)
             let thd : ImplicitThread.thread = ImplicitThread.@new-cancelable-thread(slowClone, cbl / exh)
             do ImplicitThread.@spawn-thread(thd / exh)
             cont newExh(e : exn) = 
                 let removed : Option.option = ImplicitThread.@remove-thread(thd/exh)
-                let parentTID : tid = (tid) parentTID
-                let newTID : tid = alloc(I32Add(#0(parentTID), 1), CONS((any) alloc(1), #1(parentTID)))
+                let newTID : tid = FLS.@get-key(alloc(TID_KEY) / exh)
                 case removed
-                    of Option.SOME(t:ImplicitThread.thread) =>
-                        let s : ml_string = alloc("Exception raised1", 17)
+                    of Option.NONE =>
+                        let s : ml_string = alloc("Exception raised (stolen)", 25)
                         let s : ml_string = IVar.@tid-to-string(newTID, s / exh) 
                         PDebug(#0(s))
                         let _ : unit = Cancelation.@cancel(cbl / exh)
-                        PDebug("Done canceling thread\n")
-                        let writes : List.list = #0(writeList)
-                        let specWrites : List.list = #0(specWriteList)
-                        do IVar.@rollback(writes, specWrites / exh)
+                        do IVar.@rollback(#0(actionList) / exh)
+                        do FLS.@set-key(alloc(alloc(TID_KEY), parentTID) / exh)
+                        do FLS.@set-key(alloc(alloc(ACTIONS_KEY), parentActionList) / exh)
                         throw exh(e)
-                     | Option.NONE => 
-                        let s : ml_string = alloc("Exception raised2", 17)
+                     | Option.SOME(t:ImplicitThread.thread) => 
+                        let s : ml_string = alloc("Exception raised (not stolen)", 29)
                         let s : ml_string = IVar.@tid-to-string(newTID, s / exh)
                         PDebug(#0(s))
+                        do FLS.@set-key(alloc(alloc(TID_KEY), parentTID) / exh)
+                        do FLS.@set-key(alloc(alloc(ACTIONS_KEY), parentActionList) / exh)
                         throw exh(e)  (*simply propogate exception*)
                 end
-            let ws : ![List.list] = alloc(nil)
-            let ws : ![List.list] = promote(ws) 
-            do FLS.@set-key(alloc(alloc(WRITES_KEY), ws) / exh)
+            let newActions : List.list = CONS(alloc(FACT, alloc(cbl, actionList, specVal)), #0(parentActionList))
+            let newActions : List.list = promote(newActions)
+            do #0(parentActionList) := newActions
             let parentTID : tid = (tid) parentTID
-            let newTID : tid = alloc(I32Add(#0(parentTID), 1), CONS((any) alloc(1), #1(parentTID)))
+            let newTID : tid = parentTID (*alloc(I32Add(#0(parentTID), 1), CONS(alloc(1, 1), #1(parentTID)))  *)
             do FLS.@set-key(alloc(alloc(TID_KEY), newTID) / exh)    (*Now executing as "left child"*)
+            let s : ml_string = IVar.@tid-to-string(newTID, @"Before executing left child" / exh)
+            PDebug(#0(s))
             let v_0 : any = apply a(UNIT/newExh)
-            do #0(specVal) := false
+            let s : ml_string = IVar.@tid-to-string(newTID, @"After executing left child" / exh)
+            PDebug(#0(s))
+            do #0(specVal) := COMMIT
             let removed : Option.option = ImplicitThread.@remove-thread(thd/exh)
             fun waitToCommit() : () = 
                 if (#0(parentSpecKey))
@@ -133,7 +134,7 @@ structure SpecPar (*: sig
                          let v_1 : any = apply b(UNIT/exh)
                          let res : ![any, any] = alloc(v_0, v_1)
                          (*do apply waitToCommit()*)
-                         do IVar.@commit(#0(ws) / exh)
+                         do IVar.@commit(#0(parentActionList) / exh)
                          throw execContinuation(res)
                   |Option.NONE => PDebug("Speculative computation was stolen\n")  
                                   let v_0' : any = promote(v_0)
@@ -143,8 +144,8 @@ structure SpecPar (*: sig
                                   then PDebug("Commit thread finished first\n") SchedulerAction.@stop()
                                   else PDebug("Commit thread finished Last\n")
                                    (*    do apply waitToCommit()*)
-                                       do IVar.@commit(#0(ws) / exh)
-                                       do IVar.@commit(#0(writeList) / exh)
+                                       do IVar.@commit(#0(parentActionList) / exh)
+                                       do IVar.@commit(#0(actionList) / exh)
                                        throw execContinuation(res)
            end
         ;

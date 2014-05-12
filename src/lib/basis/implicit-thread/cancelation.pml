@@ -31,12 +31,6 @@ structure Cancelation (* : sig
     structure O = Option
     structure L = List
 
-    fun tidToString (l, msg) =
-        case l
-            of x::xs => (tidToString(xs, msg)) ^ " -> " ^ Int.toString x
-             | nil => msg ^ ": ROOT"
-
-
     _primcode (
 
 (* QUESTION: is it safe to store a state value in the inactive flag? *)
@@ -75,32 +69,15 @@ structure Cancelation (* : sig
 	  return(alloc(canceled, inactive, nil, gChildren, parent))
 	;
 
-      define @checkCycle2(p : cancelable, children : List.list) : () = 
-        fun lp (l : List.list) : () = case l
-                of CONS(hd : cancelable, tl:List.list) => 
-	                if Equal(hd, p)
-	                then do ccall M_Print("Cycle2!!!!!!!\n\n\n\n")
-	                     return()
-	                else apply lp(tl)
-	         |nil => return()
-	         end
-	apply lp(children)
-      ;
-
     (* @add-child (c, parent / exh) *)
     (* returns copy of parent where c is present in the list of children of parent *)
       define @add-child (c : cancelable, parent : cancelable / exh : exh) : cancelable =
-      do if Equal(c, parent)
-         then do ccall M_Print("Warning: creating cyclic dependency in cancelable!\n\n\n")
-              return()
-         else return()
 	  let children : L.list = CONS(c, SELECT(CHILDREN_OFF, parent))
 	  let parent : cancelable = alloc(SELECT(CANCELED_OFF, c), 
 			   	           SELECT(INACTIVE_OFF, c), 
 					   children, 
 					   SELECT(GCHILDREN_OFF, c), 
 					   SELECT(PARENT_OFF,c))
-         do @checkCycle2(parent, children)
 	  return(parent)
 	;
 
@@ -146,7 +123,6 @@ structure Cancelation (* : sig
 	  let children : List.list = promote(SELECT(CHILDREN_OFF, c))
 	  let gChildren : ![List.list] = promote(SELECT(GCHILDREN_OFF, c))
 	  do #0(gChildren) := children
-	  do @checkCycle2(c, children)
 	  let inactive : ![vproc] = @get-inactive-flag(c)
 	(* FIXME: an atomic write would suffice. *)
 	(* do AtomicWrite(inactive, INACTIVE) *)
@@ -186,37 +162,37 @@ structure Cancelation (* : sig
         end
      ;
 
-     extern void * M_Print_Int(void*, int);
-
-       define @checkCycle(p : cancelable, children : List.list) : () = 
-        fun lp (l : List.list) : () = case l
-                of CONS(hd : cancelable, tl:List.list) => 
-	                if Equal(hd, p)
-	                then do ccall M_Print("Cycle!!!!!!!\n\n\n\n")
-	                     SchedulerAction.@stop()
-	                else apply lp(tl)
-	         |nil => return()
-	         end
-	apply lp(children)
-      ;
-
     typedef tid = ![
             int,           (*Size of the list*)
             List.list];    (*thread id*)  
             
+    define @tid-to-string2(l : List.list, msg:ml_string / exh:exh) : ml_string = 
+            fun lp(l : List.list) : ml_string = 
+            case l
+                of CONS(hd:[int, int], tl:List.list) => 
+                    let maj : ml_string = Int.@raw-int-to-string(#0(hd) / exh)
+                    let min : ml_string = Int.@raw-int-to-string(#1(hd) / exh)
+                    let rest : ml_string = apply lp(tl)
+                    let l : List.list = CONS(rest, CONS(alloc("(", 1), CONS(maj, CONS(alloc(", ", 2), CONS(min, CONS(alloc(") -> ", 5), nil))))))
+                    let s : ml_string = String.@string-concat-list(l / exh)
+                    return(s)
+                 | nil => let s : ml_string = alloc(": ROOT -> ", 10)
+                          let l : List.list = CONS(msg, CONS(s, nil))
+                          let s : ml_string = String.@string-concat-list(l / exh)
+                          return(s)
+            end
+            apply lp(l)
+        ;              
 
-    define @tid-to-string' = tidToString;
+        define @tid-to-string(tid:tid, msg:ml_string / exh:exh) : ml_string = 
+            let l : List.list = #1(tid)
+            let s : ml_string = @tid-to-string2(l, msg / exh)
+            let newline : ml_string = alloc("\n", 1)
+            let s' : ml_string = String.@string-concat-list(CONS(s, CONS(newline, nil)) / exh)
+            return(s')
+        ;
 
-    define @tid-to-string(tid:tid, msg:ml_string / exh:exh) : ml_string = 
-        let l : List.list = #1(tid)
-        let arg :[List.list, ml_string] = alloc(l, msg)
-        let s : ml_string = @tid-to-string'(arg / exh)
-        let newline : ml_string = alloc("\n", 1)
-        let s' : ml_string = String.@string-concat-list(CONS(s, CONS(newline, nil)) / exh)
-        return(s')
-    ;
-
-
+    extern void M_PrintAddr(void *, void *);
     (* @wrap-fiber (c, k / exh) *)
     (* returns new fiber k' where k' has similar behavior to k, except that canceling c *)
     (* causes k' to terminate *)
@@ -227,30 +203,24 @@ structure Cancelation (* : sig
 	       let _ : unit = SchedulerAction.@stop()
 	       throw impossible()
 	  cont dispatch (act : PT.sched_act, k : fiber) =
-               let self : vproc = SchedulerAction.@atomic-begin()
+           let self : vproc = SchedulerAction.@atomic-begin()
 	       do @set-active-in-atomic(self, c / exh)
 	       let canceledFlg : ![bool] = @get-canceled-flag(c)
 	       case #0(canceledFlg)
 		of true =>
-		   let tid:tid = FLS.@get-key(alloc(TID_KEY) / exh)
-	       let s : ml_string = alloc("Thread canceled", 15)
-	       let s : ml_string = @tid-to-string(tid, s / exh)
-	       do ccall M_Print(#0(s))
-		   throw terminate()
+		   throw terminate() 
 		 | false =>
 		   do SchedulerAction.@run(self, act, k)
 		   throw impossible()
                end
 	  cont act (s : PT.signal) =
 	       case s
-		of PT.STOP => 
-		   throw terminate()
+		of PT.STOP => throw terminate()
 		 | PT.PREEMPT(k : fiber) =>
 		   do @set-inactive(c / exh)
 		   do SchedulerAction.@yield()
 		   throw dispatch(act, k)
-		 | _ =>
-		   throw exh (Match)
+		 | _ => throw exh (Match)
 	       end
 	  cont wrappedK (x : unit) = throw dispatch(act, k)
 	  return(wrappedK)
@@ -289,12 +259,36 @@ structure Cancelation (* : sig
 		 let parent : cancelable = @add-child(parent, c / exh)
 		 return(O.SOME(parent))
 	     end
-	  do @set-current(parent / exh)
+	  (*do @set-current(parent / exh)*)
 	  return(c)
 	;
 
-	   
-       extern void *M_Print_Int(void *, int);
+      extern void *M_Print_Int(void *, int);
+
+      (*cancel this thread, but leave it's children*)
+      define @cancelSingleThread(c:cancelable / exh:exh) : unit = 
+        let self : vproc = SchedulerAction.@atomic-begin()
+        let canceled : ![bool] = @get-canceled-flag(c)
+        let inactive : ![vproc] = @get-inactive-flag(c)
+        let temp : vproc = #0(inactive)
+        let isCanceled : bool = CAS(&0(canceled), false, true)
+        fun lp() : () = 
+             if Equal(#0(inactive), INACTIVE)
+             then return()
+             else case isCanceled
+                        of true => do Pause()
+                                   apply lp()
+                         | false => let dummyK : fiber = vpload(VP_DUMMYK, self)
+                                    let fls : FLS.fls = FLS.@get()
+                                    do VProc.@send-in-atomic(self, temp, fls, dummyK)
+                                    apply lp()
+                  end                 
+        do apply lp()
+        do SchedulerAction.@atomic-end(self)
+        return(UNIT)
+     ;
+
+        
     (* @cancel (c / exh) *)
     (* cancels implicit thread t corresponding to c and all implicit threads that are descendants of t *)
     (* postcondition: all canceled implicit threads have stopped executing *)
@@ -321,7 +315,6 @@ structure Cancelation (* : sig
 		     * is why we need the promotion below.
 		     *)
 		      let gChildren : ![L.list] = promote(SELECT(GCHILDREN_OFF, c))
-		      do @checkCycle(c, #0(gChildren))
 		      let cs2 : L.list = PrimList.@append(#0(gChildren), cs2 / exh)
 		      apply cancelAll(self, cs1, cs2)
 		  else

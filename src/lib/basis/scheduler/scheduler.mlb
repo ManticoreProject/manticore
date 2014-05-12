@@ -17,7 +17,7 @@
     ../misc/uid.pml
   end
 
-  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def"
+  ann "cpp" "../include/runtime-offsets.def,../include/prim.def,../include/debug.def,../include/assert.def,../include/dictionary-offsets.def"
   in
     global-bfs-scheduler.pml
     ticket-lock.pml

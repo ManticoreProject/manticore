@@ -78,7 +78,7 @@ structure Translate : sig
 	    end
 	| mkCasts ([], []) = ([], [])
 	| mkCasts ([], _::_) = raise Fail "rhs/lhs arity mismatch, more lhs than rhs"
-	| mkCasts (xs, []) = raise Fail "rhs/lhs arity mismatch, more rhs than lhs" 
+	| mkCasts (_::_, []) = raise Fail "rhs/lhs arity mismatch, more rhs than lhs" 
     in
     fun mkStmt (lhs, rhs, e) = let
 	  val (xs, casts) = mkCasts (lhs, BOMUtil.typeOfRHS rhs)
