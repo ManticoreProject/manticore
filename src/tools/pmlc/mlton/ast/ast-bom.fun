@@ -62,6 +62,16 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     fun layoutExp _ = ??
     end (* local *)
 
+	(* Structures *)
+
+	(* Atoms *)
+	structure BomId = AstId (structure Symbol = Symbol)
+	structure HLOpId = AstId (structure Symbol = Symbol)
+	structure TyParam = AstId (structure Symbol = Symbol)
+	structure TyArg = AstId (structure Symbol = Symbol)
+	structure Param = AstId (structure Symbol = Symbol)
+	structure FunParam = AstId (structure Symbol = Symbol)
+
     structure Type = struct
 	open Wrap
 	type t = ty

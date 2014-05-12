@@ -4,8 +4,6 @@
  * All rights reserved.
  *)
 
-(* TODO: really probably all the datatypes need to be pulled out of
-the signature, so we avoid having mutually-dependent structures.  *)
 
 signature AST_BOM_STRUCTS =
   sig
@@ -23,6 +21,7 @@ signature AST_BOM =
 	(* tentative *)
 	structure Param : AST_ID
 	structure FunParam : AST_ID
+	(* structure PrimOp : AST_ID *)
 	(* structure DataConsDef : AST_ID *)
 
 
@@ -46,12 +45,37 @@ signature AST_BOM =
 	  sharing type obj = t
 	end
 
-	(* structure DataConsDef : sig (* TODO *) end *)
+    structure Type : sig
+	type t
+	type field
+	datatype node
+	  = Param of TyParam.t
+	  | LongId of LongId.t
+	  | Offset of field * field list option
+	  | List of t list
+	  | Fun of t list * t list
+	  | Any
+	  | VProc
+	  | Cont of TyArg.t list option
+	  | Addr of t
+	include WRAPPED
+	  sharing type node' = node
+	  sharing type obj = t
+	end
+
+	structure DataConsDef : sig
+	  type t
+	  datatype node
+		= ConsDef of BomId.t * Type.t option
+	  include WRAPPED
+	  sharing type node' = node
+	  sharing type obj = t
+	end
 
 	structure DatatypeDef : sig
 		type t
 		datatype node
-		  = ConsDef of BomId.t * TyParam.t list option *
+		  = ConsDefs of BomId.t * TyParam.t list option *
 					   DataConsDef.t list
 		  | SimpleDef of BomId.t * TyParam.t list option * LongId.t
 		include WRAPPED
@@ -92,25 +116,6 @@ signature AST_BOM =
 	datatype node
 	  = CArg of CArgTy.t
 	  | Void
-	include WRAPPED
-	  sharing type node' = node
-	  sharing type obj = t
-	end
-
-
-    structure Type : sig
-	type t
-	type field
-	datatype node
-	  = Param of TyParam.t
-	  | LongId of LongId.t
-	  | Offset of field * field list option
-	  | List of t list
-	  | Fun of t list * t list
-	  | Any
-	  | VProc
-	  | Cont of TyArg.t list option
-	  | Addr of t
 	include WRAPPED
 	  sharing type node' = node
 	  sharing type obj = t
@@ -188,18 +193,18 @@ signature AST_BOM =
 	structure SimpleExp : sig
 	  type t
 	  datatype node
-		= PrimOp of string * t list (* ???? *)
+		= PrimOp of 'var Prim.prim * t list (* pulled from pmlc/prim/prim.sml *)
 		| AllocId of LongId.t * t list
 		| AllocType of Type.t * t list
 		| AtIndex of int * t * t option
-		| ?? of Type.t * t 		(* not sure what (Type) SimpleExp denotes *)
+		| TypeCast of Type.t * t
 		| HostVproc
 		| VpLoad of int * t
 		| VpAddr of int * t
 		| VpStore of int * t * t
 		| Id of LongId.t
 		| Lit of Literal.t
-		| MLString of string
+		| MLString of string 	(* TODO: replace from mlton/ast/ast-const.{fun, sig} *)
 	include WRAPPED
 	  sharing type node' = node
 	  sharing type obj =
