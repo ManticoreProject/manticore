@@ -128,7 +128,7 @@ signature AST_BOM =
 		| Mutable of int * Type.t
 	  include WRAPPED
 		sharing type node' = node
-		sharing type obj = obj
+		sharing type obj = t
 	end
 
 	(* structure Params : sig 		(* TODO *) end *)
