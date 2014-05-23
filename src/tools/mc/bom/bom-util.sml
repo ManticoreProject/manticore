@@ -346,7 +346,7 @@ structure BOMUtil : sig
 		in
 		  tys
 		end
-	    | (B.E_Throw _) => []
+	    | (B.E_Throw _) => [BTy.T_Any]  (*FIXME: is this right?*)
 	    | (B.E_Ret xs) => List.map BV.typeOf xs
 	    | (B.E_HLOp(HLOp.HLOp{sign={results, ...}, ...}, _, _)) => results
 	  (* end case *))

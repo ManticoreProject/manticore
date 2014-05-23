@@ -17,7 +17,7 @@ Library
   structure HLOp
   structure PrintBOM
   structure Rewrites
-
+  structure PrintBOMDebug
 is
 
   $/basis.cm
@@ -38,3 +38,4 @@ is
   hlop.sml
   rewrites.sml
   print-bom.sml
+  print-bom-debug.sml

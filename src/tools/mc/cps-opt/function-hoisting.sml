@@ -43,7 +43,7 @@ structure FunctionHoisting : sig
                   obscurity = 1,
                   help = "enable function reordering"
                 }
-            ]          
+            ]
               
     (* property for tracking bindings to function bodies*)
     local
@@ -52,8 +52,7 @@ structure FunctionHoisting : sig
     fun setFB (f,b : C.lambda) = setFn (f, b)
     fun getFB f = getFn f
     end          
-              
-              
+        
     fun getCallers f = 
     let exception UnknownCaller
         fun getCallers(C.FB{f, body,...}) = case CFA.callersOf f 
@@ -259,7 +258,7 @@ structure FunctionHoisting : sig
 	body = C.mkLambda(C.FB{
                           f=main,params=params,rets=rets,
                           body=body'
-		         }, false)
+		                }, false)
 	}
     end
 
@@ -269,20 +268,12 @@ structure FunctionHoisting : sig
         end
 
     fun transform m = 
-        let val _ = dump m "pre"
+        let (*val _ = dump m "pre"*)
             val _ = FreeVars.clear m
             val _ = FreeVars.analyze m
             val m' = reorderFuns m
-            val _ = dump m' "post"
+           (* val _ = dump m' "post"*)
         in m'
         end
-
-
-
-
-
-
-
-
 
   end

@@ -212,7 +212,7 @@ structure Translate : sig
 	    | AST.RaiseExp(Error.LOC {file, l1, c1, l2, c2}, e, ty) => let
                   fun mkThrow exn =
 		      if not(Controls.get BasicControl.debug) then
-                          B.mkThrow(E.handlerOf env, [exn])
+                         B.mkThrow(E.handlerOf env, [exn])
                       else (let
                                 val msg = concat["Exception raised at: ", file, " ", Int.toString l1, ".",
                                                  Int.toString c1, "-", Int.toString l2, ".",
@@ -428,6 +428,7 @@ structure Translate : sig
 	  fun trDConst (dc, exp) = (case TranslateTypes.trDataCon(env, dc)
 		 of E.Const dc' => (B.P_DCon(dc', []), trExpToExp(env, exp))
 		  | E.Lit lit => (B.P_Const lit, trExpToExp(env, exp))
+		  | E.ExnConst dc' => (B.P_DCon(dc', nil), trExpToExp(env, exp))
 		(* end case *))
 	(* translation of a constructor applied to a pattern *)
 	  fun trConPat (dc, tyArgs, pat, exp) = let
@@ -545,7 +546,7 @@ structure Translate : sig
     and trExpToV (env, AST.VarExp(x, tys), cxt : B.var -> B.exp) =
 	  trVtoV (env, x, tys, cxt)
       | trExpToV (env, exp, cxt : B.var -> B.exp) = (case trExp(env, exp)
-	   of BIND([x], rhs) => mkStmt([x], rhs, cxt x)
+	   of BIND([x], rhs) => mkStmt([x], rhs, cxt x) (*if rhs is a null exception constructor this breaks*)
 	    | EXP e => let
 		val t = BV.new ("_t", trTy(env, TypeOf.exp exp))
 		in
