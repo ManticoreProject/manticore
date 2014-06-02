@@ -72,7 +72,7 @@ signature AST_BOM =
 	  sharing type obj = t
 	end
 
-	structure DatatypeDef : sig
+	structure DataTypeDef : sig
 		type t
 		datatype node
 		  = ConsDefs of BomId.t * TyParam.t list option *
