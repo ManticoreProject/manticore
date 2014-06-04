@@ -24,7 +24,7 @@ functor ArityRaisingFn (Spec : TARGET_SPEC) : sig
     structure Census = CPSCensus
 
   (***** controls ******)
-    val enableArityRaising = ref true
+    val enableArityRaising = ref false 
     val argumentOnly = ref false
     val arityRaisingDebug = ref false
     val multiPass = ref true
