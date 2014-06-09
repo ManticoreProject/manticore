@@ -16,11 +16,12 @@ signature AST_BOM =
 
 	structure BomId : AST_ID
 	structure HLOpId : AST_ID
-	structure TyParam : AST_ID 	(* this is what i understand this to be *)
+	structure TyParam : AST_ID
 	structure TyArg : AST_ID
 	(* tentative *)
 	structure Param : AST_ID
 	structure FunParam : AST_ID
+	structure LongId : LONGID
 	(* structure PrimOp : AST_ID *)
 	(* structure DataConsDef : AST_ID *)
 
@@ -35,15 +36,15 @@ signature AST_BOM =
 	end
 
 
-	structure LongId : sig
-	type t
-	datatype node
-	  = Id of BomId.t * TyArg.t list option
-	  | QualifiedId of TyArg.t list option
-	include WRAPPED
-	  sharing type node' = node
-	  sharing type obj = t
-	end
+	(* structure LongId : sig *)
+	(* type t *)
+	(* datatype node *)
+	(*   = Id of BomId.t * TyArg.t list option *)
+	(*   | QualifiedId of TyArg.t list option *)
+	(* include WRAPPED *)
+	(*   sharing type node' = node *)
+	(*   sharing type obj = t *)
+	(* end *)
 
     structure Type : sig
 	type t
@@ -59,7 +60,7 @@ signature AST_BOM =
 	  | Cont of TyArg.t list option
 	  | Addr of t
 	include WRAPPED
-	  sharing type node' = node
+	sharing type node' = node
 	  sharing type obj = t
 	end
 
@@ -131,7 +132,6 @@ signature AST_BOM =
 		sharing type obj = t
 	end
 
-	(* structure Params : sig 		(* TODO *) end *)
 
 	structure FunDef : sig
 	  type t

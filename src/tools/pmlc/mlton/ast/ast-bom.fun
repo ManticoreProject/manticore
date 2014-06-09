@@ -63,6 +63,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 	structure TyArg = AstId (structure Symbol = Symbol)
 	structure Param = AstId (structure Symbol = Symbol)
 	structure FunParam = AstId (structure Symbol = Symbol)
+	structure LongId = Longid (structure Id = BomId)
 
 
 	(* Non-recursive types, part 1 -- types that do not depend on recursive types *)
@@ -81,22 +82,22 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 	end
 
 
-	structure LongId = struct
-	datatype node =
-			 Id of BomId.t * TyArg.t list option
-			 | QualifiedId of TyArg.t list option
+	(* structure LongId = struct *)
+	(* datatype node = *)
+	(* 		 Id of BomId.t * TyArg.t list option *)
+	(* 		 | QualifiedId of TyArg.t list option *)
 
-	local
-		structure Wrapped = DoWrap(type node = node)
-	in
-	open Wrapped
-	end
+	(* local *)
+	(* 	structure Wrapped = DoWrap(type node = node) *)
+	(* in *)
+	(* open Wrapped *)
+	(* end *)
 
-	fun layout (Id (bomId, maybeTyArgs)) =
-		Layout.seq [BomId.layout bomId, layoutListOption (maybeTyArgs, TyArg.layout)]
-	  | layout (QualifiedId (maybeTyArgs))  = layoutListOption maybeTyArgs
+	(* fun layout (Id (bomId, maybeTyArgs)) = *)
+	(* 	Layout.seq [BomId.layout bomId, layoutListOption (maybeTyArgs, TyArg.layout)] *)
+	(*   | layout (QualifiedId (maybeTyArgs))  = layoutListOption maybeTyArgs *)
 
-	end
+	(* end *)
 
 	structure RawTy = struct
 	datatype node
@@ -116,7 +117,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 	open Wrapped
 	end
 
-	fun toString (myNode) =
+	fun toString myNode =
 		case myNode of
 			Int8 => "Int8"
 		  | Uint8 => "Uint8"
@@ -144,7 +145,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 	end
 
 	fun layout (Raw rawTy) = RawTy.layout rawTy
-	  | layout (VoidPointer) = Layout.str "void*"
+	  | layout VoidPointer = Layout.str "void*"
 
 	end
 
@@ -161,7 +162,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 	end
 
 	fun layout (CArg cArgTy) = CArgTy.layout cArgTy
-	  | layout (Void) = Layout.str "void"
+	  | layout Void = Layout.str "void"
 	end
 
 
@@ -261,17 +262,20 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   and exp_t = exp_node Wrap.t
   and rhs_t = rhs_node wrap.t
 
-
-  fun layoutType ?? = ??
-  and layoutDataConsDef ?? = ??
-  and layoutField ?? = ??
-  and layoutFunDef ?? = ??
-  and layoutVarPat ?? = ??
-  and layoutCaseRule ?? = ??
-  and layoutTyCaseRule ?? = ??
-  and layoutSimpleExp ?? = ??
-  and layoutExp ?? = ??
-  and layoutRhs ?? = ??
+  local
+	  fun stubLayout s = Layout.str s
+  in
+  fun layoutType myNode = stubLayout "Type"
+  and layoutDataConsDef myNode = stubLayout "DataConsDef"
+  and layoutField myNode = stubLayout "Field"
+  and layoutFunDef myNode = stubLayout "FunDef"
+  and layoutVarPat myNode = stubLayout "VarPat"
+  and layoutCaseRule myNode = stubLayout "CaseRule"
+  and layoutTyCaseRule myNode = stubLayout "TyCaseRule"
+  and layoutSimpleExp myNode = stubLayout "SimpleExp"
+  and layoutExp myNode = stubLayout "Exp"
+  and layoutRhs myNode = stubLayout "RHS"
+  end
 
 
     structure Type = struct
@@ -291,8 +295,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
 	structure DataConsDef = struct
 	type t = dataconsdef_t
-
 	datatype node = datatype dataconsdef_node
+
 	local
 		structure Wrapped = DoPartialWrap(type node = node)
 	in
@@ -468,6 +472,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 	in
 	open Wrapped
 	end
+
+	fun layout myNode = Layout.str "Definition"
 
 	end
 
