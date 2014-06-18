@@ -63,7 +63,10 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     structure TyArg = AstId (structure Symbol = Symbol)
     structure Param = AstId (structure Symbol = Symbol)
     structure FunParam = AstId (structure Symbol = Symbol)
-    structure LongId = Longid (structure Id = BomId)
+    (* structure LongId = Longid (structure Id = BomId) *)
+	structure LongTyId = Longid(structure Id = BomId)
+	structure LongConId = Longid(structure Id = BomId)
+	structure LongValueId = Longid(structure Id = BomId)
 
 
     (* Non-recursive types, part 1 -- types that do not depend on recursive types *)
@@ -199,7 +202,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
     datatype type_node
       = Param of TyParam.t
-      | LongId of LongId.t
+      | LongId of LongTyId.t * TyArg.t list option
       | Offset of field_t * field list option
       | List of type_t list
       | Fun of type_t list * t list
@@ -219,7 +222,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
              = Wild
              | Var of BomId.t * type_t option
          and caserule_node
-             = LongRule of LongId.t * varpat_t list * exp_t
+             = LongRule of LongConId.t * varpat_t list * exp_t
            | LiteralRule Literal.t * exp_t
            | DefaultRule of varpat_t * exp_t
          and tycaserule_node
@@ -227,15 +230,15 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
              | Default of exp_t
          and simpleexp_node
              = PrimOp of 'var Prim.prim * simpleexp_t list
-             | AllocId of LongId.t * simpleexp_t list
+             | AllocId of LongValueId.t * simpleexp_t list
              | AllocType of Type.t * simpleexp_t list
              | AtIndex of int * simpleexp_t * simpleexp_t option
              | TypeCast of Type.t * simpleexp_t
              | HostVproc
              | VpLoad of int * simpleexp_t
              | VpAddr of int * simpleexp_t
-             | VpStore of int * simpleexp_t * t
-             | Id of LongId.t
+             | VpStore of int * simpleexp_t * simpleexp_t
+             | Id of LongValueId.t
              | Lit of Literal.t
              | MLString of string
          and exp_node
@@ -429,7 +432,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     structure DataTypeDef = struct
     datatype node
       = ConsDef of BomId.t * TyParam.t list option * DataConsDef.t list
-      | SimpleDef of BomId.t * TyParam.t list option * LongId.t
+      | SimpleDef of BomId.t * TyParam.t list option * LongTyId.t
 
     local
         structure Wrapped = DoWrap(type node = node)
@@ -462,11 +465,12 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | Datatype of DatatypeDef.t * DataTypeDef.t list option
       | Type of BomId.t * TyParam.t list option * Type.t
       | DefineShortId of Attrs.t option * HLOpId.t *
-                         TyParam.t list option *FunParam.t list *
-                         ReturnTy.t option * Exp.t option
-      | DefineLongId of HLOpId.t * TyParam.t list option * LongId.t
+                         TyParam.t list option * FunParam.t list *
+                         Type.t * Exp.t option
+      | DefineLongId of HLOpId.t * TyParam.t list option * LongValueId.t
       | Fun of FunDef.t * FunDef.t list option
-
+	  | InstanceType of LongTyId.t * TyArg.t list
+	  | Instance of LongValueId.t * TyArg.t list
     local
         structure Wrapped = DoWrap(type node = node)
     in
