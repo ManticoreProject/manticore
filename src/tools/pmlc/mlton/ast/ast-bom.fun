@@ -12,15 +12,31 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   (* Helper Functions *)
 
-  fun layoutListOption (maybeXs : 'a option, layoutXs : 'a -> Layout.t) =
+  fun layoutListOptionWithFun (maybeXs : 'a option, layoutXs : 'a -> Layout.t,
+	layoutFun : Layout.t list -> Layout.t) =
       let
           val toLayout = case maybeXs of
                              SOME xs => map layoutXs xs
-                           | NONE => Layout.seq []
+                           | NONE => [Layout.str "NONE"] (* ??? *)
       in
-          Layout.seq toLayout
-      end
+          layoutFun toLayout
+    end
 
+  fun layoutListOptionAlign (maybeXs, layoutXs) =
+	layoutListOptionWithFun (maybeXs, layoutXs, Layout.align)
+
+  fun layoutListOptionSeq (maybeXs, layoutXs) =
+	layoutListOptionWithFun (maybeXs, layoutXs. Layout.seq)
+
+  fun defaultIndent (toIndent : Layout.t) =
+	let
+		(* Following what I see in other files *)
+	  defaultIndent = 3
+	in
+	  Layout.indent (toIndent, defaultIndent)
+  end
+
+  val indentListOptionAlign = defaultIndent o layoutListOptionAlign
 
   (* Structures *)
 
@@ -43,14 +59,14 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     out node' and obj *)
 
     functor DoPartialWrap(type node) : sig
-                include WRAPPED
-                        sharing type node' = node
-                        sharing type obj = t
-            end = struct
-                                open Wrap
-                                type node' = node
-                                type obj = t
-            end
+          include WRAPPED
+                  sharing type node' = node
+                  sharing type obj = t
+          end = struct
+              open Wrap
+              type node' = node
+              type obj = t
+          end
 
 
 
@@ -252,9 +268,9 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
              | Apply of LongId.t * simpleexp_t list option * simpleexp_t list option
              | Throw of LongId.t * simpleexp_t list option
              | Return of simpleexp_t list option
-  and rhs_node
-      = Composite of exp
-    | Simple of simpleexp_t
+		  and rhs_node
+			= Composite of exp
+			| Simple of simpleexp_t
   withtype type_t = type_node Wrap.t
   and field_t = field_node  Wrap.t
   and fundef_t = fundef_node Wrap.t
@@ -268,7 +284,14 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   local
       fun stubLayout s = Layout.str s
   in
-  fun layoutType myNode = stubLayout "Type"
+  fun layoutType (myNode : type_node) =
+	case myNode of
+	  Param p  =>
+		TyParam.layout p
+	  LongId (longtyid, tyargs) => (* TODO *)
+
+
+
   and layoutDataConsDef myNode = stubLayout "DataConsDef"
   and layoutField myNode = stubLayout "Field"
   and layoutFunDef myNode = stubLayout "FunDef"
