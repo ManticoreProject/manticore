@@ -67,7 +67,7 @@ signature AST_BOM =
     datatype node
       = Param of TyParam.t
       | LongId of LongTyId.t * TyArg.t list option
-      | Offset of field * field list option
+      | Offset of field list
       | List of t list
       | Fun of t list * t list * t list
       | Any
@@ -277,9 +277,9 @@ signature AST_BOM =
         | DefineShortId of Attrs.t option * HLOpId.t * TyParam.t list option *
                            FunParam.t list * Type.t * Exp.t option
         | DefineLongId of HLOpId.t * TyParam.t list option * LongValueId.t
-        | Fun of FunDef.t * FunDef.t list option
-		| InstanceType of LongTyId.t * TyArg.t list
-		| Instance of LongValueId.t * TyArg.t list
+        | Fun of FunDef.t list
+		| InstanceType of LongTyId.t * TyArgs.t
+		| Instance of LongValueId.t * TyArgs.t
       include WRAPPED
         sharing type node' = node
         sharing type obj = t
