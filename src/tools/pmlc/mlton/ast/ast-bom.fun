@@ -30,13 +30,56 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   fun defaultIndent (toIndent : Layout.t) =
 	let
-		(* Following what I see in other files *)
+	  (* Following what I see in other files *)
 	  defaultIndent = 3
 	in
 	  Layout.indent (toIndent, defaultIndent)
-  end
+	end
 
   val indentListOptionAlign = defaultIndent o layoutListOptionAlign
+
+  fun layoutOption (opt : 'a option,
+	  doLayout : 'a -> Layout.t) Layout.t =
+	if (Option.isSome opt) then
+	  doLayout opt
+	else
+	  Layout.empty
+
+  fun layoutOptions (opts 'a list option,
+	  doLayouts : 'a list -> Layout.t list) : Layout.t list =
+	if (Option.isSome opts) then
+	  doLayouts opts
+	else
+	  [Layout.empty]
+
+  local
+	  fun separateDelimited (els : Layout.t list, sep : string,
+		  leftDelim : string option, rightDelim : string option,
+		  doIndent : Layout.t -> Layout.t) : Layout.t list =
+	  let
+	    val leftLayout = layoutOption leftDelim
+	    val rightLayout = layoutOption rightDelim
+	    val centerLayout = doIndent (Layout.separateRight (els, sep))
+	  in
+	    leftLayout::centerLayout@[rightLayout]
+	  end
+  in
+	  fun delimitWithIndent (els, sep, leftDelim, rightDelim) =
+	    separateDelimited (els, sep, SOME leftDelim, SOME rightDelim,
+		  defaultIndent)
+	  fun delimitNoIndent (els, sep, leftDelim, rightDelim) =
+	    separateDelimited (els, sep, SOME leftDelim, SOME rightDelim,
+		  fn x : Layout.t => x)
+	  fun indentedList els =
+	    delimitWithIndent (els, ",", SOME "[", SOME "]")
+	  fun indentedSchemeList els =
+	    delimitWithIndent (els, ",", SOME "(", SOME ")")
+	  fun indentedSlashList (leftEls, rightEls) =
+	    (delimitWithIndent
+		  (leftEls, ",", SOME "(", NONE))::
+	    (delimitWithIndent
+		  (rightEls, "," SOME "/", SOME ")"))
+  end
 
   (* Structures *)
 
@@ -62,21 +105,17 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
           include WRAPPED
                   sharing type node' = node
                   sharing type obj = t
-          end = struct
-              open Wrap
-              type node' = node
-              type obj = t
-          end
-
-
-
-
+    end = struct
+        open Wrap
+        type node' = node
+        type obj = t
+    end
 
     (* Atoms *)
     structure BomId = AstId (structure Symbol = Symbol)
     structure HLOpId = AstId (structure Symbol = Symbol)
     structure TyParam = AstId (structure Symbol = Symbol)
-    structure TyArg = AstId (structure Symbol = Symbol)
+    (* structure TyArg = AstId (structure Symbol = Symbol) *)
     structure Param = AstId (structure Symbol = Symbol)
     structure FunParam = AstId (structure Symbol = Symbol)
     (* structure LongId = Longid (structure Id = BomId) *)
@@ -93,12 +132,27 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     local
         structure Wrapped = DoWrap(type node = node)
     in
-    open Wrapped
+      open Wrapped
     end
 
     fun layout (Attributes ss) =
         Layout.seq (map Layout.str ss)
     end
+
+
+	structure TyParams = struct
+	datatype node
+	  = TyParameters of TyParam.t list
+
+	local
+	  structure Wrapped = DoWrap(type node = node)
+	in
+	  open Wrapped
+	end
+
+	fun layout (TyParameters tyParams) =
+	  delimitWithIndent (map TyParam.layout tyParams, ",", "<", ">")
+	end
 
 
     (* structure LongId = struct *)
@@ -218,60 +272,64 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
     datatype type_node
       = Param of TyParam.t
-      | LongId of LongTyId.t * TyArg.t list option
+      | LongId of LongTyId.t * type_t list option
       | Offset of field_t * field list option
       | List of type_t list
-      | Fun of type_t list * t list
+      | Fun of type_t list option * type_t list option * type_t list option
       | Any
       | VProc
-      | Cont of TyArg.t list option
+      | Cont of tyargs_t option
       | Addr of type_t
-         and dataconsdef_node
-             = ConsDef of BomId.t * type_t option
-         and field_node
-             = Immutable of int * type_t
-             | Mutable of int * type_t
-         and fundef_node
-             = Def of Attrs.t option * BomId.t * TyParam.t list option
-                      * Param.t list option * Param.t list option * type_t * exp_t
-         and varpat_node
-             = Wild
-             | Var of BomId.t * type_t option
-         and caserule_node
-             = LongRule of LongConId.t * varpat_t list * exp_t
-           | LiteralRule Literal.t * exp_t
-           | DefaultRule of varpat_t * exp_t
-         and tycaserule_node
-             = TyRule of type_t * exp_t
-             | Default of exp_t
-         and simpleexp_node
-             = PrimOp of 'var Prim.prim * simpleexp_t list
-             | AllocId of LongValueId.t * simpleexp_t list
-             | AllocType of Type.t * simpleexp_t list
-             | AtIndex of int * simpleexp_t * simpleexp_t option
-             | TypeCast of Type.t * simpleexp_t
-             | HostVproc
-             | VpLoad of int * simpleexp_t
-             | VpAddr of int * simpleexp_t
-             | VpStore of int * simpleexp_t * simpleexp_t
-             | Id of LongValueId.t
-             | Lit of Literal.t
-             | MLString of string
-         and exp_node
-             = Let of varpat_t list * rhs_t * exp_t
-             | Do of simpleexp_t * exp_t
-             | Fun of fundef_t list * exp_t
-             | Cont of BomId.t * Param.t list option * exp_t * exp_t
-             | If of simpleexp_t * exp_t * exp_t
-             | Case of simpleexp_t * caserule_t list
-             | Typecase of TyParam.t * tycaserule_t list
-             | Apply of LongId.t * simpleexp_t list option * simpleexp_t list option
-             | Throw of LongId.t * simpleexp_t list option
-             | Return of simpleexp_t list option
-		  and rhs_node
-			= Composite of exp
-			| Simple of simpleexp_t
+    and tyargs_node
+      = ArgTypes of type_t list
+    and dataconsdef_node
+      = ConsDef of BomId.t * type_t option
+    and field_node
+      = Immutable of int * type_t
+      | Mutable of int * type_t
+    and fundef_node
+      = Def of Attrs.t option * BomId.t * TyParams.t option
+        * Param.t list option * Param.t list option * type_t * exp_t
+    and varpat_node
+      = Wild
+      | Var of BomId.t * type_t option
+    and caserule_node
+      = LongRule of LongConId.t * varpat_t list * exp_t
+      | LiteralRule of Literal.t * exp_t
+      | DefaultRule of varpat_t * exp_t
+    and tycaserule_node
+      = TyRule of type_t * exp_t
+      | Default of exp_t
+    and simpleexp_node
+      = PrimOp of 'var Prim.prim * simpleexp_t list
+      | AllocId of LongValueId.t * simpleexp_t list
+      | AllocType of Type.t * simpleexp_t list
+      | AtIndex of int * simpleexp_t * simpleexp_t option
+      | TypeCast of Type.t * simpleexp_t
+      | HostVproc
+      | VpLoad of int * simpleexp_t
+      | VpAddr of int * simpleexp_t
+      | VpStore of int * simpleexp_t * simpleexp_t
+      | Id of LongValueId.t
+      | Lit of Literal.t
+      | MLString of string
+    and exp_node
+      = Let of varpat_t list * rhs_t * exp_t
+      | Do of simpleexp_t * exp_t
+      | Fun of fundef_t list * exp_t
+      | Cont of BomId.t * Param.t list option * exp_t * exp_t
+      | If of simpleexp_t * exp_t * exp_t
+      | Case of simpleexp_t * caserule_t list
+      | Typecase of TyParam.t * tycaserule_t list
+      | Apply of LongId.t * simpleexp_t list option * simpleexp_t list option
+      | Throw of LongId.t * simpleexp_t list option
+      | Return of simpleexp_t list option
+    and rhs_node
+      = Composite of exp_t
+      | Simple of simpleexp_t
+
   withtype type_t = type_node Wrap.t
+  and tyargs_t = tyargs_node Wrap.t
   and field_t = field_node  Wrap.t
   and fundef_t = fundef_node Wrap.t
   and varpat_t = varpat_node Wrap.t
@@ -284,21 +342,149 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   local
       fun stubLayout s = Layout.str s
   in
+
   fun layoutType (myNode : type_node) =
-	case myNode of
-	  Param p  =>
-		TyParam.layout p
-	  LongId (longtyid, tyargs) => (* TODO *)
+    let
+      fun layoutTypes (ts : type_node list) =
+        map layoutType ts
+      fun getDefault (types : type_t list option) = layoutOptions (types, layoutTypes)
+      fun layoutTyArgOpts (maybeTyArgs : type_t list option) =
+        Layout.align (delimitWithIndent (getDefault maybeTyArgs, ",", "<", ">"))
+    in
+      case myNode of
+        Param p  => TyParam.layout p
+        | LongId (longTyId, maybeTyArgs) => (* TODO *)
+        | Offset (field, maybeTyArgs)  =>   (* TODO *)
+        | List (types) =>
+          Layout.align (indentedList (layoutTypes types))
+        | Fun (inputTys, exnTys, rangeTys)  =>
+          let
+            val layoutDomainTys = Layout.align
+              (indentedSlashList (getDefault inputTys, getDefault exnTys))
+            val layoutRangeTys = Layout.align
+              (indentedSchemeList (getDefault rangeTs))
+          in
+            Layout.seq (Layout.separate ([layoutDomainTys, layoutRangeTys], "->"))
+          end
+        | Any => Layout.str "any"
+        | VProc => Layout.str "vproc"
+        | Cont (maybeTyArgs) =>
+          Layout.seq ["cont", layoutOption (maybeTyArgs, layoutTyArgs)]
+        | Addr (myType) => Layout.seq ["addr <", layoutType myType, ">"]
+    end
+
+  and layoutTyArgs (ArgTypes types) =
+    Layout.align (delimitWithIndent (map layoutType types, ",", "<", ">"))
+
+  and layoutDataConsDef (ConsDef (bomId, maybeMyType)) =
+    let
+      val ofType = if Option.isSome maybeMyType then
+        Layout.seq ["of ", layoutType (Option.getVal maybeMyType)]
+      else Layout.empty
+    in
+      Layout.seq [BomId.layout bomId, ofType]
+    end
+
+  and layoutField myNode =
+    let
+      fun fieldWithSep (offset, myType, sep) =
+        Layout.separate ([Int.toString offset, layoutType myType], sep)
+    in
+      case myNode of
+          Immutable (offset, myType) =>
+            fieldWithSep (offset, myType, " : ")
+          | Mutable (offset, myType) =>
+            fieldWithSep (offset, myType, " ! ")
+    end
+
+  and layoutFunDef (Def (attrs, bomId, maybeTyParams,
+      maybeInputParams, maybeExnParams,
+      returnTy, exp) : fundef_t) =
+    let
+      fun maybeLayoutParams (maybeParams) = layoutOptions (maybeParams, Param.layout)
+      val inputParamsLayout = maybeLayoutParams maybeInputParams
+      val exnParamsLayout = maybeLayoutParams maybeExnParams
+    in
+      Layout.mayAlign [
+        Attrs.layout attrs,
+        BomId.layout bomId,
+        layoutOption (maybeTyParams, TyParams.layout),
+        indentedSlashList (inputParamsLayout, exnParamsLayout),
+        layoutType returnTy,
+        Layout.str " = ",
+        layoutExp exp
+      ]
+    end
+
+  and layoutVarPat myNode =
+    case myNode of
+      Wild => Layout.str "_"
+      | Var (bomId, NONE) => BomId.layout bomId
+      | Var (bomId, SOME myType) =>
+        Layout.mayAlign [
+          BomId.layout bomId,
+          Layout.str " : ",
+          layoutType myType
+        ]
+
+  and layoutCaseRule myNode =
+    let
+      fun defaultFormat (leftEls, rightEl) =
+        Layout.mayAlign leftEls::[Layout.str " => ", rightEl]
+    in
+      case myNode of
+        LongRule (longConId, varPats, exp) =>
+          defaultFormat ([
+            LongConId.layout longConId,
+            indentedSchemeList (map layoutVarPat varPats)],
+            layoutExp exp)
+        | LiteralRule (lit, exp) =>
+          defaultFormat ([
+            Literal.layout lit],
+            layoutExp exp)
+        | DefaultRule (varpat, exp) =>
+          defaultFormat ([
+            layoutVarPat varpat],
+            layoutExp exp)
+    end
+
+  and layoutTyCaseRule myNode =
+    case myNode of
+      tyRule (myType, exp) =>
+        Layout.mayAlign [
+          layoutType myType,
+          Layout.str " => ",
+          layoutExp exp
+        ]
+      | Default exp =>
+        Layout.mayAlign [
+          Layout.str "_",
+          Layout.str " => ",
+          layoutExp exp
+        ]
+
+  and layoutSimpleExp myNode =
+    let
+      fun layoutSimpleExps simpleExps =
+        map layoutSimpleExp simpleExps
+    in
+      case myNode of
+        PrimOp ('var Prim.prim, simpleExps) =>
+          Layout.mayAlign [
+            Prim.layout 'var,
+            indentedSchemeList (layoutSimpleExps simpleExps)
+          ]
+      |  =>
+      |  =>
+      |  =>
+      |  =>
+      |  =>
+      |  =>
+      |  =>
+      |  =>
 
 
 
-  and layoutDataConsDef myNode = stubLayout "DataConsDef"
-  and layoutField myNode = stubLayout "Field"
-  and layoutFunDef myNode = stubLayout "FunDef"
-  and layoutVarPat myNode = stubLayout "VarPat"
-  and layoutCaseRule myNode = stubLayout "CaseRule"
-  and layoutTyCaseRule myNode = stubLayout "TyCaseRule"
-  and layoutSimpleExp myNode = stubLayout "SimpleExp"
   and layoutExp myNode = stubLayout "Exp"
   and layoutRhs myNode = stubLayout "RHS"
   end
@@ -307,7 +493,9 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     structure Type = struct
     type t = type_t
     type field  = field_t
+	  type tyArgs = tyargs_t
     datatype node = datatype type_node
+
     local
         structure Wrapped = DoPartialWrap(type node = node)
     in

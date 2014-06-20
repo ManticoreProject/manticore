@@ -40,6 +40,15 @@ signature AST_BOM =
     sharing type obj = t
     end
 
+	structure TyParams : sig
+	type t
+	datatype node
+	  = TyParameters of TyParam.t list
+	include WRAPPED
+	  sharing type node' = node
+	  sharing type obj = t
+	end
+
 
     (* structure LongId : sig *)
     (* type t *)
@@ -54,20 +63,32 @@ signature AST_BOM =
     structure Type : sig
     type t
     type field
+	type tyArgs
     datatype node
       = Param of TyParam.t
       | LongId of LongTyId.t * TyArg.t list option
       | Offset of field * field list option
       | List of t list
-      | Fun of t list * t list
+      | Fun of t list * t list * t list
       | Any
       | VProc
-      | Cont of TyArg.t list option
+      | Cont of tyArgs option
       | Addr of t
     include WRAPPED
-    sharing type node' = node
-      sharing type obj = t
+	  sharing type node' = node
+	  sharing type obj = t
     end
+
+
+	structure TyArgs : sig
+	type t
+	datatype node
+	  = ArgTypes of Type.t list
+	include WRAPPED
+	  sharing type node' = node
+	  sharing type obj = t
+	end
+
 
     structure DataConsDef : sig
       type t
@@ -271,4 +292,5 @@ signature AST_BOM =
   sharing type Exp.rhs = RHS.t
   sharing type FunDef.exp = Exp.t
   sharing type Type.field = Field.t
+  sharing type Type.tyArgs = TyArgs.t
   end
