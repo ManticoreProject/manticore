@@ -120,7 +120,7 @@ BOMDecls
 Definition
   : "datatype" DataTypeDef ("and" DataTypeDef)*
     => BOM.Definition.makeRegion
-      (BOM.Definition.Datatype (DataTypeDef, flattenToOption SR),
+      (BOM.Definition.Datatype (DataTypeDef1, flattenToOption SR),
       posToReg FULL_SPAN)
   | "type" BomId TyParams? "=" BOMType ";"
     => BOM.Definition.makeRegion
@@ -148,8 +148,32 @@ Definition
     => BOM.Definition.makeRegion
 	  (BOM.Definition.Fun (FunDef::(flattenToList SR)),
 	  posToReg FULL_SPAN)
-(* TODO instance types *)
+  | "instance type" LongTyId TyArgs ";"
+	=> BOM.Definition.makeRegion
+	  (BOM.Definition.InstanceType (LongTyId, TyArgs),
+	  posToReg FULL_SPAN)
+  | "instance" LongValueId TyArgs ";"
+	=> BOM.Definition.makeRegion
+	  (BOM.Definition.Instance (LongValueId, TyArgs),
+	  posToReg FULL_SPAN)
   ;
+
+DataTypeDef
+  : BomId TyParams? "=" DataConsDef ("|" DataConsDef)*
+	=> BOM.DataTypeDef.makeRegion
+	  (BOM.DataTypeDef.ConsDefs (BomId, TyParams,
+		DataConsDef1::(flattenToList SR)),
+	  posToReg FULL_SPAN)
+  | BomId TyParams? "=" "datatype" LongTyId
+	=> BOM.DataTypeDef.makeRegion
+	  (BOM.DataTypeDef.consDefs (BomId, TyParams, LongTyId),
+	  posToReg FULL_SPAN)
+
+DataConsDef
+  : BomId ("of" BOMType)?
+	=> BOM.DataConsDef.makeRegion
+	  (BOM.DataConsDef.ConsDef (BomId, SR),
+	  posToReg FULL_SPAN)
 
 
 TyParams

@@ -95,9 +95,9 @@ signature AST_BOM =
     structure DataTypeDef : sig
         type t
         datatype node
-          = ConsDefs of BomId.t * TyParam.t list option *
+          = ConsDefs of BomId.t * TyParams.t option *
                        DataConsDef.t list
-          | SimpleDef of BomId.t * TyParam.t list option * LongTyId.t
+          | SimpleDef of BomId.t * TyParams.t option * LongTyId.t
         include WRAPPED
         sharing type node' = node
         sharing type obj = t
@@ -156,7 +156,7 @@ signature AST_BOM =
       type t
       type exp
       datatype node
-        = Def of Attrs.t option * BomId.t * TyParam.t list option
+        = Def of Attrs.t option * BomId.t * TyParams.t option
             * Param.t list option * Param.t list option * Type.t * exp
       include WRAPPED
         sharing type node' = node
@@ -266,10 +266,10 @@ signature AST_BOM =
       datatype node
         = Extern of CReturnTy.t * BomId.t * CArgTy.t list * Attrs.t
         | Datatype of DatatypeDef.t * DataTypeDef.t list option
-        | TypeDefn of BomId.t * TyParam.t list option * Type.t
-        | DefineShortId of Attrs.t option * HLOpId.t * TyParam.t list option *
+        | TypeDefn of BomId.t * TyParams.t option * Type.t
+        | DefineShortId of Attrs.t option * HLOpId.t * TyParams.t option *
                            FunParam.t list * Type.t * Exp.t option
-        | DefineLongId of HLOpId.t * TyParam.t list option * LongValueId.t
+        | DefineLongId of HLOpId.t * TyParams.t option * LongValueId.t
         | Fun of FunDef.t list
 		| InstanceType of LongTyId.t * TyArgs.t
 		| Instance of LongValueId.t * TyArgs.t
