@@ -7,407 +7,418 @@
 %name BOM;
 
 %tokens
-	: KW_addr	("addr")
-	| KW_alloc	("alloc")
-(*	| KW_and	("and")			*)
-	| KW_any	("any")
-	| KW_apply	("apply")
-	| KW___attribute__ ("__attribute__")
-	| KW_byte	("byte")
-(*	| KW_case	("case")		*)
-	| KW_ccall	("ccall")
-	| KW_cont	("cont")
+  : KW_addr   ("addr")
+  | KW_alloc  ("alloc")
+(*  | KW_and  ("and")       *)
+  | KW_any  ("any")
+  | KW_apply  ("apply")
+  | KW___attribute__ ("__attribute__")
+  | KW_byte   ("byte")
+(*  | KW_case   ("case")    *)
+  | KW_ccall  ("ccall")
+  | KW_cont   ("cont")
     | KW_constr     ("constr")
-(*	| KW_datatype	("datatype")		*)
-	| KW_define	("define")
-	| KW_deque	("deque")
-(*	| KW_do		("do")   		*)
-	| KW_double	("double")
-(*	| KW_else	("else")		*)
-(*	| KW_end	("end")			*)
-	| KW_enum	("enum")
-	| KW_extern	("extern")
-	| KW_float	("float")
-(*	| KW_fun	("fun")			*)
-	| KW_host_vproc ("host_vproc")
-(*	| KW_if		("if")			*)
-	| KW_inline	("inline")
-	| KW_int	("int")
-(*	| KW_let	("let")			*)
-	| KW_long	("long")
-	| KW_module	("module")
-	| KW_noreturn	("noreturn")
-	| KW_nullVP	("nullVP")
-(*	| KW_of		("of")			*)
-	| KW_promote	("promote")
-	| KW_pure	("pure")
-        | KW_return	("return")
-	| KW_short	("short")
-	| KW_tag        ("tag")
-(*	| KW_then	("then")		*)
-	| KW_throw	("throw")
-	| KW_typedef	("typedef")
-	| KW_unwrap	("unwrap")
+(*  | KW_datatype   ("datatype")    *)
+  | KW_define   ("define")
+  | KW_deque  ("deque")
+(*  | KW_do     ("do")        *)
+  | KW_double   ("double")
+(*  | KW_else   ("else")    *)
+(*  | KW_end  ("end")       *)
+  | KW_enum   ("enum")
+  | KW_extern   ("extern")
+  | KW_float  ("float")
+(*  | KW_fun  ("fun")       *)
+  | KW_host_vproc ("host_vproc")
+(*  | KW_if     ("if")      *)
+  | KW_inline   ("inline")
+  | KW_int  ("int")
+(*  | KW_let  ("let")       *)
+  | KW_long   ("long")
+  | KW_module   ("module")
+  | KW_noreturn   ("noreturn")
+  | KW_nullVP   ("nullVP")
+(*  | KW_of     ("of")      *)
+  | KW_promote  ("promote")
+  | KW_pure   ("pure")
+        | KW_return   ("return")
+  | KW_short  ("short")
+  | KW_tag        ("tag")
+(*  | KW_then   ("then")    *)
+  | KW_throw  ("throw")
+  | KW_typedef  ("typedef")
+  | KW_unwrap   ("unwrap")
     | KW_use_rw     ("use_rw")
-	| KW_vec128	("vec128")
-	| KW_void	("void")
-	| KW_vpaddr	("vpaddr")
-	| KW_vproc	("vproc")
-	| KW_vpload	("vpload")
-	| KW_vpstore	("vpstore")
-	| KW_wrap	("wrap")
-(*	| LP		("(")			*)
-(*	| RP		(")")			*)
-(*	| LB		("[")			*)
-(*	| RB		("]")			*)
-(*      | LCB		("{")                   *)
-(*      | RCB		("}")                   *)
-(*	| HASH		("#")			*)
-(*	| STAR		("*")			*)
-(*	| COMMA		(",")			*)
-(*	| EQ		("=")			*)
-(*	| COLON		(":")			*)
-(*	| SLASH		("/")			*)
-(*	| SEMI		(";")			*)
-(*	| BAR		("|")			*)
-(*	| WILD		("_")			*)
-(*	| BANG		("!")			*)
-(*	| AMP		("&")			*)
-	| DS		("$")
-(*	| ASSIGN	(":=")			*)
-(*	| DARROW	("=>")			*)
-(*	| ARROW		("->")			*)
+  | KW_vec128   ("vec128")
+  | KW_void   ("void")
+  | KW_vpaddr   ("vpaddr")
+  | KW_vproc  ("vproc")
+  | KW_vpload   ("vpload")
+  | KW_vpstore  ("vpstore")
+  | KW_wrap   ("wrap")
+(*  | LP    ("(")       *)
+(*  | RP    (")")       *)
+(*  | LB    ("[")       *)
+(*  | RB    ("]")       *)
+(*      | LCB     ("{")                   *)
+(*      | RCB     ("}")                   *)
+(*  | HASH    ("#")       *)
+(*  | STAR    ("*")       *)
+(*  | COMMA     (",")       *)
+(*  | EQ    ("=")       *)
+(*  | COLON     (":")       *)
+(*  | SLASH     ("/")       *)
+(*  | SEMI    (";")       *)
+(*  | BAR     ("|")       *)
+(*  | WILD    ("_")       *)
+(*  | BANG    ("!")       *)
+(*  | AMP     ("&")       *)
+  | DS    ("$")
+(*  | ASSIGN  (":=")      *)
+(*  | DARROW  ("=>")      *)
+(*  | ARROW     ("->")      *)
     | DDARROW       ("==>")
-(*	| LONGID of Atom.atom			*)
-	| HLOP of Atom.atom
-	| QHLOP of (Atom.atom list) * Atom.atom
-(*	| CHAR of ... *)
-(*	| INT of ... *)
-(*	| REAL of FloatLit.float		*)
-(*	| STRING of string			*)
-	| ML_STRING of IntInf.int vector
-	;
+(*  | LONGID of Atom.atom       *)
+  | HLOP of Atom.atom
+  | QHLOP of (Atom.atom list) * Atom.atom
+(*  | CHAR of ... *)
+(*  | INT of ... *)
+(*  | REAL of FloatLit.float    *)
+(*  | STRING of string      *)
+  | ML_STRING of IntInf.int vector
+  ;
+
+%defs(
+    (* I'm not sure what name BomAst will be available as, so I'm
+    putting this here until I do *)
+    structure BOM = Ast.BomAst
+);
 
 BOMDecls
-	: Definition*
-		=> (Definition)
-	;
+  : Definition*
+    => (Definition)
+  ;
 
 Definition
-	: "extern" CRetTy BomId "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
-	  => (* TODO *)
-	| "datatype" DatatypeDef ("and" DataTypeDef)*
-	  => (* TODO *)
-	| "type" ID TypeParam* "=" BOMType ";"
-	  => (* TODO *)
-	| "fun" FunDef (KW_and FunDef)* ";"
-	  => (* TODO *)
-	| "define" Attrs? HLOpId TyParam* FunParam* ReturnTy ("=" Exp)? ";"
-	  => (* TODO *)
-	| "define" HLOpId TyParams? "=" LongId ";"
-	  => 						(* TODO *)
-	;
+  : "datatype" DataTypeDef ("and" DataTypeDef)*
+    => BOM.Definition.makeRegion(
+      BOM.Definition.Datatype (DataTypeDef, SR),
+      posToReg FULL_SPAN)
+  | "type" BomId TyParams? "=" BOMType ";"
+    => BOM.Definition.makeRegion(
+      BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
+      posToReg FULL_SPAN)
+  | "define" Attrs? HLOpId TyParams* FunParams+ ReturnTy ("=" Exp)? ";"
+    => BOM.Definition.makeRegion (
+      BOM.Definition.DefineShortId (Attrs, HLOpId, TyParams, FunParams,
+        ReturnTy, SR),
+      posToReg FULL_SPAN)
+  | "define" HLOpId TyParam* "=" LongValueId ";"
+    =>              (* TODO *)
+  | "extern" CRetTy BomId "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
+    => (* TODO *)
+  | "fun" FunDef (KW_and FunDef)* ";"
+    => (* TODO *)
+  ;
 
 TypeParams
-	: "[" TYVAR ("," TYVAR)* "]"
-		=> (TYVAR :: SR)
-	;
+  : "[" TYVAR ("," TYVAR)* "]"
+    => (TYVAR :: SR)
+  ;
 
 BOMType
-	: "addr" "(" BOMType ")"
-		=> (markBOMTy(FULL_SPAN, BPT.T_Addr(BOMType)))
-	| "any"
-		=> (markBOMTy(FULL_SPAN, BPT.T_Any))
-	| "enum" "(" PosInt ")"
-		=> (markBOMTy(FULL_SPAN, BPT.T_Enum(Word.fromLargeInt PosInt)))
-	| RawType
-		=> (markBOMTy(FULL_SPAN, BPT.T_Raw RawType))
-	| "!" "[" BOMType ("," BOMType)* "]"
-		=> (markBOMTy(FULL_SPAN, BPT.T_Tuple(true, BOMType :: SR)))
-	| "[" BOMType ("," BOMType)* "]"
-		=> (markBOMTy(FULL_SPAN, BPT.T_Tuple(false, BOMType :: SR)))
-	| "fun" "(" TypeList "/" TypeList "->" TypeList ")"
-		=> (markBOMTy(FULL_SPAN, BPT.T_Fun(TypeList1, TypeList2, TypeList3)))
+  : "addr" "(" BOMType ")"
+    =>
+  | "any"
+    =>
+  | "enum" "(" PosInt ")"
+    =>
+  | RawType
+    =>
+  | "!" "[" BOMType ("," BOMType)* "]"
+    =>
+  | "[" BOMType ("," BOMType)* "]"
+    =>
+  | "fun" "(" TypeList "/" TypeList "->" TypeList ")"
+    =>
 (* QUESTION: perhaps cont, vproc, and deque can be predefined type constructors? *)
-	| "cont" "(" TypeList ")"
-		=> (markBOMTy(FULL_SPAN, BPT.T_Cont TypeList))
-	| "vproc"
-		=> (markBOMTy(FULL_SPAN, BPT.T_VProc))
-	| "deque"
-		=> (markBOMTy(FULL_SPAN, BPT.T_Deque))
-	| LONGID TypeArgs?
-		=> (markBOMTy(FULL_SPAN, BPT.T_TyCon(LONGID, flatten TypeArgs)))
-	;
+  | "cont" "(" TypeList ")"
+    =>
+  | "vproc"
+    =>
+  | "deque"
+    =>
+  | LONGID TypeArgs?
+    =>
+  ;
 
 TypeArgs
-	: "[" BOMType ("," BOMType)* "]"
-		=> (BOMType :: SR)
-	;
+  : "[" BOMType ("," BOMType)* "]"
+    =>
+  ;
 
 TypeList
-	: (BOMType ("," BOMType)* )?  => (flatten SR)
-	;
+  : (BOMType ("," BOMType)* )?  => (flatten SR)
+  ;
 
 RawType
-	: IntTy		=> (IntTy)
-	| FloatTy	=> (FloatTy)
-	| "vec128"	=> (BPT.T_Vec128)	(* ?? *)
-	;
+  : IntTy     =>
+  | FloatTy   =>
+  | "vec128"  =>
+  ;
 
-IntTy	: "byte"	=> (BPT.T_Raw BPT.T_Byte)
-	| "short"	=> (BPT.T_Raw BPT.T_Short)
-	| "int"		=> (BPT.T_Raw BPT.T_Int)
-	| "long"	=> (BPT.T_Raw BPT.T_Long)
-	;
+IntTy   : "byte"  =>
+  | "short"   =>
+  | "int"     =>
+  | "long"  =>
+  ;
 
-FloatTy	: "float"	=> (BPT.T_Raw BPT.T_Float)
-	| "double"	=> (BPT.T_Raw BPT.T_Double)
-	;
+FloatTy   : "float"   =>
+  | "double"  =>
+  ;
 
 HLOpDef
-	: FunParams ReturnTy ("=" BOMExp)?
-		=> (fn (optAttrs, id) => let
-			val (p1, p2) = FunParams
-			in
-			  BPT.D_Define(optAttrs, id, p1, p2, ReturnTy, SR)
-			end)
-	| "=" longid TypeParams?
-		=> (fn (optAttrs, id) => BPT.D_ImportML(optAttrs, id, longid))
-	;
+  : FunParams ReturnTy ("=" BOMExp)?
+    =>
+  | "=" longid TypeParams?
+    =>
+  ;
 
 CRetTy
-	: "void"	=> (CF.VoidTy)
-	| CArgTy	=> (CArgTy)
-	;
+  : "void"  =>
+  | CArgTy  =>
+  ;
 
 CArgTy
-	: RawType	=> (CF.BaseTy RawType)
-	| "void" "*"	=> (CF.PointerTy)
-	;
+  : RawType   =>
+  | "void" "*"  =>
+  ;
 
 Attrs
-	: (* empty *)	=> ([])
-	| "__attribute__" "(" "(" Attr ("," Attr)* ")" ")"
-		=> (Attr :: SR)
-	;
+  : (* empty *)   => ([])
+  | "__attribute__" "(" "(" Attr ("," Attr)* ")" ")"
+    => (Attr :: SR)
+  ;
 
 Attr
-	: "pure"	=> (CF.A_pure)
-	| "alloc"	=> (CF.A_alloc)
-	| "noreturn"	=> (CF.A_noreturn)
-	;
+  : "pure"  =>
+  | "alloc"   =>
+  | "noreturn"  =>
+  ;
 
 ReturnTy
-	: "noreturn"		=> (NONE)
-	| ":" BOMType		=> (SOME[BOMType])
-	| ":" "(" TypeList ")"	=> (SOME TypeList)
-	;
+  : "noreturn"    =>
+  | ":" BOMType     =>
+  | ":" "(" TypeList ")"  =>
+  ;
 
 optAttrs
-	: optAttr* => (optAttr)
-	;
+  : optAttr* =>
+  ;
 
 
 optAttr
-	: "inline"	=> (BPT.A_Inline)
-	| "pure"	=> (BPT.A_Pure)
-	| "constr"	=> (BPT.A_Constr)
-	;
+  : "inline"  =>
+  | "pure"  =>
+  | "constr"  =>
+  ;
 
 FunParams
-	: "(" Params ("/" Params)? ")"		=> (Params, case SR of SOME l => l | _ => [])
-	;
+  : "(" Params ("/" Params)? ")"    =>
+  ;
 
 Params
-	: (VarPat ("," VarPat)* )?		=> (flatten SR)
-	;
+  : (VarPat ("," VarPat)* )?    =>
+  ;
 
 BOMExp
-	: "let" LHS "=" RHS BOMExp
-		=> (markBOMExp(FULL_SPAN, BPT.E_Let(LHS, RHS, BOMExp)))
-	| "do" RHS BOMExp
-		=> (markBOMExp(FULL_SPAN, BPT.E_Let([], RHS, BOMExp)))
-	| "fun" BOMLambda ("and" BOMLambda)* BOMExp
-		=> (markBOMExp(FULL_SPAN, BPT.E_Fun(BOMLambda::SR, BOMExp)))
-	| "cont" CLambda BOMExp
-		=> (markBOMExp(FULL_SPAN, BPT.E_Cont(CLambda, BOMExp)))
-	| "if" "(" SimpleExp ")" "then" BOMExp "else" BOMExp
-		=> (markBOMExp(FULL_SPAN, BPT.E_If(Atom.atom "Equal", mkTrueCheck SimpleExp, BOMExp1, BOMExp2)))
-	| "if" LONGID "(" Args ")" "then" BOMExp "else" BOMExp
-		=> (markBOMExp(FULL_SPAN, BPT.E_If(LONGID, Args, BOMExp1, BOMExp2)))
-        | "case" SimpleExp "of" Rules ("|" Default)? "end"
-		=> (markBOMExp(FULL_SPAN, BPT.E_Case(SimpleExp, Rules, SR)))
-	| "apply" longid "(" Args ("/" Args)? ")"
-		=> (markBOMExp(FULL_SPAN, BPT.E_Apply(longid, Args, Option.getOpt(SR, []))))
-(* Q: do we support cross-module throws? *)
-	| "throw" LONGID "(" Args ")"
-		=> (markBOMExp(FULL_SPAN, BPT.E_Throw(LONGID, Args)))
-	| "return" "(" Args ")"
-		=> (markBOMExp(FULL_SPAN, BPT.E_Return Args))
-	| HLOpQId "(" Args ("/" Args)? ")"
-		=> (markBOMExp(FULL_SPAN, BPT.E_HLOpApply(HLOpQId, Args, Option.getOpt(SR, []))))
-	;
+  : "let" LHS "=" RHS BOMExp
+    =>
+  | "do" RHS BOMExp
+    =>
+  | "fun" BOMLambda ("and" BOMLambda)* BOMExp
+    =>
+  | "cont" CLambda BOMExp
+    =>
+  | "if" "(" SimpleExp ")" "then" BOMExp "else" BOMExp
+    =>
+  | "if" LONGID "(" Args ")" "then" BOMExp "else" BOMExp
+    =>
+  | "apply" longid "(" Args ("/" Args)? ")"
+    =>
+  | "throw" LONGID "(" Args ")"
+    =>
+  | "return" "(" Args ")"
+    =>
+  | HLOpQId "(" Args ("/" Args)? ")"
+    =>
+  ;
 
 BOMLambda
-	: ID FunParams ":" FunReturnTy "=" BOMExp
-		=> (let val (p1, p2) = FunParams in (ID, p1, p2, FunReturnTy, BOMExp) end)
-	;
+  : ID FunParams ":" FunReturnTy "=" BOMExp
+    =>
+  ;
 
 FunReturnTy
-	: BOMType			=> ([BOMType])
-	| "(" TypeList ")"		=> (TypeList)
-	;
+  : BOMType
+    =>
+  | "(" TypeList ")"
+    =>
+  ;
 
 CLambda
-	: ID "(" Params ")" "=" BOMExp	=> (ID, Params, [], [], BOMExp)
-	;
+  : ID "(" Params ")" "=" BOMExp
+    =>
+  ;
 
 LHS
-	: VarPat			=> ([VarPat])
-	| "(" Params ")"		=> (Params)
-	;
+  : VarPat
+    =>
+  | "(" Params ")"
+    =>
+  ;
 
 RHS
-	: BOMExp			=> (markBOMRHS(FULL_SPAN, BPT.RHS_Exp BOMExp))
-	| NonSelectExp			=> (markBOMRHS(FULL_SPAN, BPT.RHS_SimpleExp NonSelectExp))
-	| "#" PosInt "(" SimpleExp ")" (":=" SimpleExp)?
-		=> (markBOMRHS(FULL_SPAN, case SR
-		     of SOME e => BPT.RHS_Update(Int.fromLarge PosInt, SimpleExp, e)
-		      | NONE => BPT.RHS_SimpleExp(BPT.SE_Select(Int.fromLarge PosInt, SimpleExp))
-		    (* end case *)))
-	| "promote" "(" SimpleExp ")"	=> (markBOMRHS(FULL_SPAN, BPT.RHS_Promote SimpleExp))
-	| "ccall" ID "(" Args ")"	=> (markBOMRHS(FULL_SPAN, BPT.RHS_CCall(ID, Args)))
-	| "vpstore" "(" PosInt "," SimpleExp "," SimpleExp ")"
-					=> (markBOMRHS(FULL_SPAN, BPT.RHS_VPStore(PosInt, SimpleExp1, SimpleExp2)))
-	;
+  : BOMExp
+    =>
+  | NonSelectExp
+    =>
+  | "#" PosInt "(" SimpleExp ")" (":=" SimpleExp)?
+    =>
+  | "promote" "(" SimpleExp ")"
+    =>
+  | "ccall" ID "(" Args ")"
+    =>
+  | "vpstore" "(" PosInt "," SimpleExp "," SimpleExp ")"
+    =>
+  ;
 
 NonSelectExp
-	: "alloc" "(" Args ")"		=> (markBOMSE(FULL_SPAN, BPT.SE_Alloc Args))
-	| "wrap" "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_Wrap SimpleExp))
-	| "&" PosInt "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_AddrOf(Int.fromLarge PosInt, SimpleExp)))
-	| "unwrap" "(" SimpleExp ")"	=> (markBOMSE(FULL_SPAN, BPT.SE_Unwrap SimpleExp))
-	| LONGID TypeArgs? ("(" Args ")")?
-		=> (case SR
-		     of NONE => markBOMSE(FULL_SPAN, BPT.SE_Var LONGID)
-		      | SOME args => markBOMSE(FULL_SPAN, BPT.SE_Prim(LONGID, args))
-		    (* end case *))
-	| "(" BOMType ")" SimpleExp	=> (markBOMSE(FULL_SPAN, BPT.SE_Cast(BOMType, SimpleExp)))
-	| Literal			=> (markBOMSE(FULL_SPAN, BPT.SE_Const(Literal)))
-	| ML_STRING			=> (markBOMSE(FULL_SPAN, BPT.SE_MLString(ML_STRING)))
-	| "host_vproc"			=> (markBOMSE(FULL_SPAN, BPT.SE_HostVProc))
-	| "vpload" "(" PosInt "," SimpleExp ")"
-					=> (markBOMSE(FULL_SPAN, BPT.SE_VPLoad(PosInt, SimpleExp)))
-	| "vpaddr" "(" PosInt "," SimpleExp ")"
-					=> (markBOMSE(FULL_SPAN, BPT.SE_VPAddr(PosInt, SimpleExp)))
-	;
+  : "alloc" "(" Args ")"
+    =>
+  | "wrap" "(" SimpleExp ")"
+    =>
+  | "&" PosInt "(" SimpleExp ")"
+    =>
+  | "unwrap" "(" SimpleExp ")"
+    =>
+  | LONGID TypeArgs? ("(" Args ")")?
+    =>
+  | "(" BOMType ")" SimpleExp
+    =>
+  | Literal
+    =>
+  | ML_STRING
+    =>
+  | "host_vproc"
+    =>
+  | "vpload" "(" PosInt "," SimpleExp ")"
+    =>
+  | "vpaddr" "(" PosInt "," SimpleExp ")"
+    =>
+  ;
 
 SimpleExp
-	: NonSelectExp			=> (NonSelectExp)
-	| "#" PosInt "(" SimpleExp ")"	=> (BPT.SE_Select(Int.fromLarge PosInt, SimpleExp))
-	;
+  : NonSelectExp
+    =>
+  | "#" PosInt "(" SimpleExp ")"
+    =>
+  ;
 
 Args
-	: (SimpleExp ("," SimpleExp)* )?	=> (flatten SR)
-	;
+  : (SimpleExp ("," SimpleExp)* )?
+    =>
+  ;
 
 Rules
-	: Rule ("|" Rule)*		=> (Rule :: SR)
-	;
+  : Rule ("|" Rule)*
+    =>
+  ;
 
 Rule
-	: longid "(" VarPat ("," VarPat)* ")" "=>" BOMExp
-					=> (markBOMPat(FULL_SPAN, BPT.P_DCon(longid, VarPat::SR)), BOMExp)
-        | longid "=>" BOMExp       => (markBOMPat(FULL_SPAN, BPT.P_DCon(longid, [])), BOMExp)
-	| Literal "=>" BOMExp		=> (markBOMPat(FULL_SPAN, BPT.P_Const Literal), BOMExp)
-	;
+  : longid "(" VarPat ("," VarPat)* ")" "=>" BOMExp
+    =>
+  | longid "=>" BOMExp
+    =>
+  | Literal "=>" BOMExp
+    =>
+  ;
 
 Default
-	: VarPat "=>" BOMExp		=> (VarPat, BOMExp)
-	;
+  : VarPat "=>" BOMExp
+     =>
+  ;
 
 VarPat
-	: "_" (":" BOMType)?		=> (markBOMVarPat(FULL_SPAN, BPT.P_Wild SR))
-	| ID ":" BOMType		=> (markBOMVarPat(FULL_SPAN, BPT.P_Var(ID, BOMType)))
-	;
+  : "_" (":" BOMType)?
+    =>
+  | ID ":" BOMType
+    =>
+  ;
 
 Literal
-	: "enum" "(" PosInt ")" (":" BOMType)?
-		=> (let
-		    val w = Word.fromLargeInt PosInt
-		    in
-		      case SR
-		       of NONE => (Literal.Enum w, BPT.T_Enum w)
-			| SOME ty => (Literal.Enum w, ty)
-		      (* end case *)
-		    end)
-        | "tag" "(" ID ")"
-                 => (Literal.Tag (Atom.toString ID), BPT.T_Any)
-	| "$" PosInt
-		=> (Literal.StateVal(Word.fromLargeInt PosInt), BPT.T_Any)
-        | "nullVP"
-            => (Literal.StateVal(Word.fromLargeInt 0), BPT.T_VProc)
-	| INT (":" IntTy)?
-		=> (case SR
-		   of NONE => (Literal.Int INT, dfltIntTy)
-		    | SOME ty => (Literal.Int INT, ty)
-		  (* end case *))
-	| REAL (":" FloatTy)?
-		=> (case SR
-		   of NONE => (Literal.Float REAL, dfltFloatTy)
-		    | SOME ty => (Literal.Float REAL, ty)
-		  (* end case *))
-	| STRING
-		=> (Literal.String STRING, dfltStringTy)
-	;
+  : "enum" "(" PosInt ")" (":" BOMType)?
+    =>
+  | "$" PosInt
+    =>
+  | INT (":" IntTy)?
+    =>
+  | REAL (":" FloatTy)?
+    =>
+  | STRING
+    =>
+  ;
 
-(* FIXME: shouldn't be raising an exception here!! *)
-HLOpId	: HLOP		=> (HLOP)
-	;
+HLOpId
+  : HLOP
+    =>
+  ;
 
-HLOpQId : QHLOP		=> ({span=FULL_SPAN, tree=QHLOP})
-	| HLOP		=> ({span=FULL_SPAN, tree=([], HLOP)})
-        ;
+HLOpQId
+  : QHLOP
+    =>
+  | HLOP
+    =>
+  ;
 
 (** rewrite rules **)
 
 LabelOpt
-        : (* empty *)
-                => ( new_label () )
-        | longid COLON
-                => ( longid )
-        ;
+  : (* empty *)
+    =>
+  | longid COLON
+    =>
+  ;
 
 Pattern
-        : HLOpQId "(" PatternArgs ")"
-                => ( BPT.RW_HLOpApply(HLOpQId, PatternArgs) )
-
-        | "[" PatternArgs "]"
-                => ( listToDConList(PatternArgs) )
-
-        | Literal
-                => ( BPT.RW_Const(Literal) )
-
-        | ID
-                => ( BPT.RW_Var ID )
-
-        | "alloc" "(" PatternArgs ")"
-                => ( BPT.RW_Alloc PatternArgs )
-        ;
+  : HLOpQId "(" PatternArgs ")"
+    =>
+  | "[" PatternArgs "]"
+    =>
+  | Literal
+    =>
+  | ID
+    =>
+  | "alloc" "(" PatternArgs ")"
+    =>
+   ;
 
 PatternArgs
-        : (* empty *)
-                => ( [] )
-        | Pattern ("," Pattern)*
-                => ( Pattern :: SR )
-        ;
+  : (* empty *)
+    =>
+  | Pattern ("," Pattern)*
+    =>
+  ;
 
 Benefit
-        : "{" PosInt "}"
-                => ( PosInt )
-        | "{" "}"
-                => ( zero )
-        | (* Empty *)
-                => ( zero )
-        ;
+  : "{" PosInt "}"
+    =>
+  | "{" "}"
+    =>
+  | (* empty *)
+    =>
+  ;
 
-PosInt	: INT => (INT) ;	(* FIXME: check sign! *)
+PosInt
+  : INT
+    => (INT) ;  (* FIXME: check sign! *)
