@@ -15,7 +15,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   fun defaultIndent (toIndent : Layout.t) =
     let
       (* Following what I see in other files *)
-      defaultIndent = 3
+      val defaultIndent = 3
     in
       Layout.indent (toIndent, defaultIndent)
     end
@@ -33,7 +33,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     else
       Layout.empty
 
-  fun layoutOptions (opts 'a list option,
+  fun layoutOptions (opts : 'a list option,
       doLayouts : 'a list -> Layout.t list) : Layout.t list =
     if (Option.isSome opts) then
       doLayouts opts
@@ -236,7 +236,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     local
         structure Wrapped = DoWrap(type node = node)
     in
-    open Wrapped
+      open Wrapped
     end
 
     fun layout node (CArg cArgTy) = CArgTy.layout cArgTy
@@ -488,9 +488,9 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
     in
       case simpleexp_node myNode of
-          PrimOp ('var Prim.prim, simpleExps) =>
+          PrimOp (Prim.prim var', simpleExps) =>
             Layout.mayAlign [
-              Prim.layout 'var,
+              Prim.layout var',
               indentedSchemeList (layoutSimpleExps simpleExps)
             ]
         | AllocId (longValueId, simpleExps) =>
@@ -531,6 +531,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         | Id longValueId => LongValueId.layout longValueId
         | Lit lit => Literal.layout lit
         | MLString s => Layout.str s
+    end
 
   and layoutExp myNode =
     case exp_node myNode of
@@ -546,8 +547,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | Do (simpleExp, exp) =>
           Layout.align [
             Layout.str "do",
-            defaultIndentAlign [layoutSimpleExp simpleExp layoutExp exp],
-            ]
+            defaultIndentAlign [layoutSimpleExp simpleExp, layoutExp exp]
+          ]
       | Fun (fundefs, exp) =>
           Layout.align [
             leftDelimitWithIdent (map layoutFunDef fundefs, "and", "fun"),
@@ -778,7 +779,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         Layout.align [
           Layout.mayAlign [
             BomId.layout bomId,
-            layoutOption (maybeTyParams, TyParams.layout),
+            layoutOption (maybeTyParams, TyParams.layout)
           ],
           leftDelimitWithIndent
             (map DataConsDeflayout dataConsDefs, "=", " | ")
@@ -869,7 +870,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         leftDelimitWithIdent ([
           Layout.seq [
             Layout.str "=",
-            layoutOption (maybeTyParams, TyParams.layout),
+            layoutOption (maybeTyParams, TyParams.layout)
           ],
           LongValueId.layout longValueId
         ],

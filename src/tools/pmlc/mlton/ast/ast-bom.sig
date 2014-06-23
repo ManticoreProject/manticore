@@ -138,7 +138,7 @@ signature AST_BOM =
       sharing type obj = t
     end
 
-    structure CReturnTy.t : sig
+    structure CReturnTy : sig
     type t
     datatype node
       = CArg of CArgTy.t
@@ -198,7 +198,7 @@ signature AST_BOM =
     type exp
     datatype node
       = LongRule of LongConId.t * VarPat.t list * exp
-      | LiteralRule Literal.t * exp
+      | LiteralRule of Literal.t * exp
       | DefaultRule of VarPat.t * exp       (* collapsing CaseDefault *)
     include WRAPPED
       sharing type node' = node
@@ -233,7 +233,7 @@ signature AST_BOM =
         | MLString of string    (* TODO: replace from mlton/ast/ast-const.{fun, sig} *)
     include WRAPPED
       sharing type node' = node
-      sharing type obj =
+      sharing type obj = t
     end
 
 
