@@ -17,24 +17,17 @@ signature AST_BOM =
     structure BomId : AST_ID
     structure HLOpId : AST_ID
     structure TyParam : AST_ID
-    structure TyArg : AST_ID
-    (* tentative *)
     structure Param : AST_ID
     structure FunParam : AST_ID
-	(* ?? *)
 	structure LongTyId : LONGID
 	structure LongConId : LONGID
 	structure LongValueId : LONGID
-
-	(* structure LongId : LONGID *)
-    (* structure PrimOp : AST_ID *)
-    (* structure DataConsDef : AST_ID *)
 
 
     structure Attrs : sig
     type t
     datatype node
-      = Attributes of string list
+      = T of string list
 	include WRAPPED
     sharing type node' = node
     sharing type obj = t
@@ -43,7 +36,7 @@ signature AST_BOM =
 	structure TyParams : sig
 	type t
 	datatype node
-	  = TyParameters of TyParam.t list
+	  = T of TyParam.t list
 	include WRAPPED
 	  sharing type node' = node
 	  sharing type obj = t
@@ -66,9 +59,9 @@ signature AST_BOM =
 	type tyArgs
     datatype node
       = Param of TyParam.t
-      | LongId of LongTyId.t * TyArg.t list option
-      | Offset of field list
-      | List of t list
+      | LongId of LongTyId.t * TyArgs.t option
+      | Record of field list
+      | Tuple of t list
       | Fun of t list * t list * t list
       | Any
       | VProc
@@ -228,7 +221,7 @@ signature AST_BOM =
         | VpLoad of int * t
         | VpAddr of int * t
         | VpStore of int * t * t
-        | Id of LongId.t
+        | Id of LongValueId.t
         | Lit of Literal.t
         | MLString of string    (* TODO: replace from mlton/ast/ast-const.{fun, sig} *)
     include WRAPPED
@@ -248,8 +241,8 @@ signature AST_BOM =
       | If of SimpleExp.t * t * t
       | Case of SimpleExp.t * CaseRule.t list
       | Typecase of TyParam.t * TyCaseRule.t list
-      | Apply of LongId.t * SimpleExp.t list option * SimpleExp.t list option
-      | Throw of LongId.t * SimpleExp.t list option
+      | Apply of LongValueId.t * SimpleExp.t list option * SimpleExp.t list option
+      | Throw of BomId.t * SimpleExp.t list option
       | Return of SimpleExp.t list option
     include WRAPPED
       sharing type node' = node
@@ -293,4 +286,6 @@ signature AST_BOM =
   sharing type FunDef.exp = Exp.t
   sharing type Type.field = Field.t
   sharing type Type.tyArgs = TyArgs.t
+  sharing type LongTyId.Strid =
+	LongConId.Strid = LongValueId.Strid
   end

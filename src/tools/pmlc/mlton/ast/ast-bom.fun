@@ -117,19 +117,17 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     structure BomId = AstId (structure Symbol = Symbol)
     structure HLOpId = AstId (structure Symbol = Symbol)
     structure TyParam = AstId (structure Symbol = Symbol)
-    (* structure TyArg = AstId (structure Symbol = Symbol) *)
     structure Param = AstId (structure Symbol = Symbol)
     structure FunParam = AstId (structure Symbol = Symbol)
-    (* structure LongId = Longid (structure Id = BomId) *)
-    structure LongTyId = Longid(structure Id = BomId)
-    structure LongConId = Longid(structure Id = BomId)
-    structure LongValueId = Longid(structure Id = BomId)
+    structure LongTyId = Longid (structure Id = BomId)
+    structure LongConId = Longid (structure Id = BomId)
+    structure LongValueId = Longid (structure Id = BomId)
 
 
     (* Non-recursive types, part 1 -- types that do not depend on recursive types *)
 
     structure Attrs = struct
-    datatype node = Attributes of string list
+    datatype node = T of string list
 
     local
         structure Wrapped = DoWrap(type node = node)
@@ -137,7 +135,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       open Wrapped
     end
 
-    fun layout node (Attributes ss) =
+    fun layout node (T ss) =
         Layout.mayAlign [
           Layout.str "__attributes__",
           unindentedSchemeList (map Layout.str ss)
@@ -147,7 +145,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   structure TyParams = struct
   datatype node
-    = TyParameters of TyParam.t list
+    = T of TyParam.t list
 
   local
     structure Wrapped = DoWrap(type node = node)
@@ -155,7 +153,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     open Wrapped
   end
 
-  fun layout (TyParameters tyParams) =
+  fun layout node (T tyParams) =
     delimitWithIndent (map TyParam.layout tyParams, ",", "<", ">")
   end
 
@@ -277,9 +275,9 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
     datatype type_node
       = Param of TyParam.t
-      | LongId of LongTyId.t * type_t list option
-      | Offset of field_t list
-      | List of type_t list
+      | LongId of LongTyId.t * tyargs_t option
+      | Record of field_t list
+      | Tuple of type_t list
       | Fun of type_t list option * type_t list option * type_t list option
       | Any
       | VProc
@@ -359,9 +357,9 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
             LongTyId.layout longTyId,
             layoutOption (maybeTyArgs, TyArgs.layout)
           ]
-        | Offset (fields) =>
+        | Record (fields) =>
           delimitWithIndent (map layoutField fields, ",", "{", "}")
-        | List (types) =>
+        | Tuple (types) =>
           indentedList (layoutTypes types)
         | Fun (inputTys, exnTys, rangeTys)  =>
           let
@@ -541,7 +539,6 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
             Layout.mayAlign
               rightDelimitWithIndent (map layoutVarPat varPats, ",", "="),
             doIndent (layoutRhs rhs),
-            Layout.str "in",       (* ??? Don't see this in doc, but I assume *)
             layoutExp exp
           ]
       | Do (simpleExp, exp) =>
@@ -765,7 +762,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   structure DataTypeDef = struct
   datatype node
     = ConsDef of BomId.t * TyParams.t option * DataConsDef.t list
-      | SimpleDef of BomId.t * TyParams.t  option * LongTyId.t
+    | SimpleDef of BomId.t * TyParams.t  option * LongTyId.t
 
   local
       structure Wrapped = DoWrap(type node = node)
@@ -893,4 +890,4 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     end
 
 
-  end
+end

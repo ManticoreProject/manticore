@@ -96,7 +96,7 @@ BOMDecls
 Definition
 	: "extern" CRetTy BomId "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
 	  => (* TODO *)
-	| "datatype" DatatypeDef (KW_and DataTypeDef)*
+	| "datatype" DatatypeDef ("and" DataTypeDef)*
 	  => (* TODO *)
 	| "type" ID TypeParam* "=" BOMType ";"
 	  => (* TODO *)
