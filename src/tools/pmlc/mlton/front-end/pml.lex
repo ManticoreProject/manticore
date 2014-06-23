@@ -38,7 +38,7 @@ fun inc (ri as ref (i: int)) = ri := i + 1
 
 fun dec (ri as ref (i: int)) = ri := i - 1
 
-fun error (source, left, right, msg) = 
+fun error (source, left, right, msg) =
    Control.errorStr (Region.make {left = Source.getPos (source, Position.toInt left),
                                   right = Source.getPos (source, Position.toInt right)},
                      msg)
@@ -74,7 +74,8 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 %let sym = [-!%&$+/:<=>?@~`\^|#*]|"\\";
 %let symId = {sym}+;
 %let id = {alphanumId}|{symId};
-%let longid = {id}("."{id})*;		(* Q: should this be ({alphanumId}.)*{id} ? *)
+%let longid = ({alphanumId}.)*{id};
+%let hlid = "@"{letter}({idchar}|"-")*;
 %let ws = ("\012"|[\t\ ])*;
 %let nrws = ("\012"|[\t\ ])+;
 %let cr = "\013";
@@ -170,7 +171,6 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 <INITIAL> "_primcode"		=> (YYBEGIN BOM; T.KW__primcode);
 <INITIAL> "_prim"		=> (YYBEGIN BOM; T.KW__prim);
 <BOM> "__attribute__"		=> (T.KW___attribute__);
-
 <BOM> "("			=> (bomPush()(); T.LP);
 <BOM> ")"			=> (if bomPop() then () else YYBEGIN INITIAL; T.RP);
 <BOM>":="			=> (T.ASSIGN);
@@ -178,12 +178,14 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 <BOM>"#"			=> (T.HASH);
 <BOM>"&"			=> (T.AMP);
 
-<INITIAL>"'"{alphanum}?		=> (Tokens.TYVAR(yytext));
+<INITIAL,BOM>"'"{alphanum}?	=> (Tokens.TYVAR(yytext));
 (* FIXME: split LONGID into unqualified id and qualified id *)
-<INITIAL>{longid}		=> (case yytext
+<INITIAL,BOM>{longid}		=> (case yytext
 				     of "*" => Tokens.ASTERISK
    				      | _ => Tokens.LONGID(yytext)
 				    (* end case *));
+<BOM>{hlid}			=> (Tokens.HLOPID(Atom.atom yytext))
+
 <INITIAL>{real}			=> (Tokens.REAL(yytext));
 <INITIAL>{num}			=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));
 <INITIAL>"~"{num}		=> (int (yytext, 1, source, {negate = true}, StringCvt.DEC));

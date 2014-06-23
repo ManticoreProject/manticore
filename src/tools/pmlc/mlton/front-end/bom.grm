@@ -99,6 +99,7 @@
     (* I'm not sure what name BomAst will be available as, so I'm
     putting this here until I do *)
     structure BOM = Ast.BomAst
+    structure Defn = BOM.Definition
 
 	(* modified from the old bom.grm, to reflect the fact that we deal
 	with "x list option" in a variety of places *)
@@ -113,15 +114,15 @@
 );
 
 BOMDecls
-  : Definition*
-    => (Definition)
-  ;
+	: Definition*
+		=> (Definition)
+	;
 
 Definition
-  : "datatype" DataTypeDef ("and" DataTypeDef)*
-    => BOM.Definition.makeRegion
-      (BOM.Definition.Datatype (DataTypeDef1, flattenToOption SR),
-      posToReg FULL_SPAN)
+	: "datatype" DataTypeDef ("and" DataTypeDef)*
+		=> (BOM.Definition.makeRegion (
+		      BOM.Definition.Datatype (DataTypeDef1, flattenToOption SR),
+		      posToReg FULL_SPAN))
   | "type" BomId TyParams? "=" BOMType ";"
     => BOM.Definition.makeRegion
       (BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
@@ -136,14 +137,9 @@ Definition
 	  (BOM.Definition.DefineLongId (HLopId, TyParams, LongValueId),
 	  posToReg FULL_SPAN)
   | "extern" CRetTy BomId "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
-    => BOM.Definition.makeRegion
-	  (BOM.Definition.Extern (CRetTy, BomId,
-		if Option.isSome SR1 then
-		  SOME(CArgTy1::(flattenToList SR2))
-		else
-		  NONE,
-		Attrs),
-	  posToReg FULL_SPAN)
+    => (BOM.Definition.makeRegion (
+	  BOM.Definition.Extern (CRetTy, BomId, flattenToList SR, Attrs),
+	  posToReg FULL_SPAN))
   | "fun" FunDef ("and" FunDef)* ";"
     => BOM.Definition.makeRegion
 	  (BOM.Definition.Fun (FunDef::(flattenToList SR)),
