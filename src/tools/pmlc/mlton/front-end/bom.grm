@@ -79,8 +79,15 @@
 (*  | ARROW     ("->")      *)
     | DDARROW       ("==>")
 (*  | LONGID of Atom.atom       *)
-  | HLOP of Atom.atom
-  | QHLOP of (Atom.atom list) * Atom.atom
+	(* Adding in new atoms *)
+  | BOMID of Atom.atom
+  | HLOPID of Atom.atom
+  | TYPARAM of Atom.atom
+  | PARAM of Atom.atom
+  | FUNPARAM of Atom.atom
+  | LONGTYID of ???
+  | LONGCONID of ???
+  | LONGVALUEID of ???
 (*  | CHAR of ... *)
 (*  | INT of ... *)
 (*  | REAL of FloatLit.float    *)
@@ -92,6 +99,17 @@
     (* I'm not sure what name BomAst will be available as, so I'm
     putting this here until I do *)
     structure BOM = Ast.BomAst
+
+	(* modified from the old bom.grm, to reflect the fact that we deal
+	with "x list option" in a variety of places *)
+	fun flattenToOption maybe =
+	  case maybe of
+		NONE => NONE
+	  | SOME(x, xs) => SOME(x::xs)
+	fun flattenToList maybe =
+	  case maybe of
+		NONE => []
+	  | SOME(x, xs) => x::xs
 );
 
 BOMDecls
@@ -101,30 +119,44 @@ BOMDecls
 
 Definition
   : "datatype" DataTypeDef ("and" DataTypeDef)*
-    => BOM.Definition.makeRegion(
-      BOM.Definition.Datatype (DataTypeDef, SR),
+    => BOM.Definition.makeRegion
+      (BOM.Definition.Datatype (DataTypeDef, flattenToOption SR),
       posToReg FULL_SPAN)
   | "type" BomId TyParams? "=" BOMType ";"
-    => BOM.Definition.makeRegion(
-      BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
+    => BOM.Definition.makeRegion
+      (BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
       posToReg FULL_SPAN)
-  | "define" Attrs? HLOpId TyParams* FunParams+ ReturnTy ("=" Exp)? ";"
-    => BOM.Definition.makeRegion (
-      BOM.Definition.DefineShortId (Attrs, HLOpId, TyParams, FunParams,
+  | "define" Attrs? HLOpId TyParams? FunParams ReturnTy ("=" Exp)? ";"
+    => BOM.Definition.makeRegion
+      (BOM.Definition.DefineShortId (Attrs, HLOpId, TyParams, FunParams,
         ReturnTy, SR),
       posToReg FULL_SPAN)
-  | "define" HLOpId TyParam* "=" LongValueId ";"
-    =>              (* TODO *)
+  | "define" HLOpId TyParams? "=" LongValueId ";"
+    => BOM.Definition.makeRegion
+	  (BOM.Definition.DefineLongId (HLopId, TyParams, LongValueId),
+	  posToReg FULL_SPAN)
   | "extern" CRetTy BomId "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
-    => (* TODO *)
-  | "fun" FunDef (KW_and FunDef)* ";"
-    => (* TODO *)
+    => BOM.Definition.makeRegion
+	  (BOM.Definition.Extern (CRetTy, BomId,
+		if Option.isSome SR1 then
+		  SOME(CArgTy1::(flattenToList SR2))
+		else
+		  NONE,
+		Attrs),
+	  posToReg FULL_SPAN)
+  | "fun" FunDef ("and" FunDef)* ";"
+    => BOM.Definition.makeRegion
+	  (BOM.Definition.Fun (FunDef::(flattenToList SR)),
+	  posToReg FULL_SPAN)
+(* TODO instance types *)
   ;
 
-TypeParams
-  : "[" TYVAR ("," TYVAR)* "]"
-    => (TYVAR :: SR)
+
+TyParams
+  : "<" TYPARAM ("," TYPARAM)* ">"
+	=> BOM.TyParams.T(TYPARAM::(flatten SR))
   ;
+
 
 BOMType
   : "addr" "(" BOMType ")"
