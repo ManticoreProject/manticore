@@ -178,13 +178,19 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 <BOM>"#"			=> (T.HASH);
 <BOM>"&"			=> (T.AMP);
 
-<INITIAL,BOM>"'"{alphanum}?	=> (Tokens.TYVAR(yytext));
+<INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
 (* FIXME: split LONGID into unqualified id and qualified id *)
-<INITIAL,BOM>{longid}		=> (case yytext
-				     of "*" => Tokens.ASTERISK
-   				      | _ => Tokens.LONGID(yytext)
+<INITIAL>{longid}		=> (case yytext
+				     of "*" => T.ASTERISK
+   				      | _ => Tokens.LONGID yytext
 				    (* end case *));
-<BOM>{hlid}			=> (Tokens.HLOPID(Atom.atom yytext))
+<BOM>{longid}			=> (case yytext
+				     of "*" => T.ASTERISK
+				      | "<" => T.LT
+				      | ">" => T.GT
+   				      | _ => Tokens.LONGID yytext
+				    (* end case *));
+<BOM>{hlid}			=> (Tokens.HLOPID yytext)
 
 <INITIAL>{real}			=> (Tokens.REAL(yytext));
 <INITIAL>{num}			=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));

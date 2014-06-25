@@ -27,10 +27,7 @@ typBindRHS
 
 (* should we just allow this in an expression context?  Possibly with a type annotation? *)
 valbindTop
-	: "_prim" "(" "fun" BOMLambda ")"
-		=> (fn pat => PT.PrimVDecl(pat, BPT.LambdaPrimVal BOMLambda))
-(* Q: what is this form used for? *)
-	| "_prim" "(" longid ")"
+	: "_prim" "(" longid ")"
 		=> (fn pat => PT.PrimVDecl(pat, BPT.VarPrimVal longid))
 	| "_prim" "(" HLOpQId ")"
 		=> (fn pat => PT.PrimVDecl(pat, BPT.HLOpPrimVal HLOpQId))

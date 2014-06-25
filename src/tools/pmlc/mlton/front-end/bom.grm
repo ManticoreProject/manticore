@@ -90,13 +90,14 @@
 (*  | DARROW  ("=>")      *)
 (*  | ARROW     ("->")      *)
     | DDARROW       ("==>")
-(*  | LONGID of Atom.atom       *)
+(*  | LONGID of string       *)
 
 (*  | char of ... *)
 (*  | INT of ... *)
 (*  | REAL of FloatLit.float    *)
 (*  | STRING of string      *)
   | ML_STRING of IntInf.int vector
+  | PRIMOP of string
   ;
 
 %defs(
@@ -384,9 +385,9 @@ RHS
   ;
 
 SimpleExp
-  : PrimOp "(" Args ")"
+  : PRIMOP "(" Args ")"
       => (BOM.SimpleExp.makeRegion (
-        BOM.SimpleExp.PrimOp (???, Args)),
+        BOM.SimpleExp.PrimOp (PRIMOP, Args)),
         posToReg FULL_SPAN)
   | "alloc" LongValueId "(" Args ")"
        => (BOM.SimpleExp.makeRegion (
@@ -531,7 +532,7 @@ RawTy
 ReturnTy
   : "noreturn"    => ()
   | ":" BOMType     => ()
-  | ":" "(" TypeList ")"  => ()
+  | ":" "(" BOMType ("," BOMType)* ")"  => ()
   ;
 
 
