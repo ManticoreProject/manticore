@@ -32,6 +32,7 @@
   | KW_host_vproc ("host_vproc")
 (*  | KW_if     ("if")      *)
   | KW_inline   ("inline")
+  | KW_instance ("instance")
   | KW_int  ("int")
 (*  | KW_let  ("let")       *)
   | KW_long   ("long")
@@ -46,9 +47,10 @@
   | KW_tag        ("tag")
 (*  | KW_then   ("then")    *)
   | KW_throw  ("throw")
+  | KW_typecase ("typecase")
   | KW_typedef  ("typedef")
   | KW_unwrap   ("unwrap")
-    | KW_use_rw     ("use_rw")
+  | KW_use_rw     ("use_rw")
   | KW_vec128   ("vec128")
   | KW_void   ("void")
   | KW_vpaddr   ("vpaddr")
@@ -56,6 +58,15 @@
   | KW_vpload   ("vpload")
   | KW_vpstore  ("vpstore")
   | KW_wrap   ("wrap")
+(* All of the new RawTy identifiers *)
+  | KW_int8 ("int8")
+  | KW_uint8 ("uint8")
+  | KW_int16 ("int16")
+  | KW_uint16 ("uint16")
+  | KW_int64 ("int64")
+  | KW_uint64 ("uint64")
+  | KW_float32 ("float32")
+  | KW_float64 ("float64")
 (*  | LP    ("(")       *)
 (*  | RP    (")")       *)
 (*  | LB    ("[")       *)
@@ -73,14 +84,15 @@
 (*  | WILD    ("_")       *)
 (*  | BANG    ("!")       *)
 (*  | AMP     ("&")       *)
-  | DS    ("$")
+  | LT ("<")
+  | GT (">")
 (*  | ASSIGN  (":=")      *)
 (*  | DARROW  ("=>")      *)
 (*  | ARROW     ("->")      *)
     | DDARROW       ("==>")
 (*  | LONGID of Atom.atom       *)
-                (* Atoms -- need more? *)
-(*  | CHAR of ... *)
+
+(*  | char of ... *)
 (*  | INT of ... *)
 (*  | REAL of FloatLit.float    *)
 (*  | STRING of string      *)
@@ -143,7 +155,7 @@ Definition
     => (BOM.Definition.makeRegion (
       BOM.Definition.Fun (FunDef::(flattenToList SR)),
       posToReg FULL_SPAN))
-  | "instance type" LongTyId TyArgs ";"
+  | "instance" "type" LongTyId TyArgs ";"
     => (BOM.Definition.makeRegion
       (BOM.Definition.InstanceType (LongTyId, TyArgs),
       posToReg FULL_SPAN))
@@ -459,10 +471,15 @@ TyCaseRule
   ;
 
 Literal
-(* TODO: how do I deal with the "-" here? *)
-  : "-"? PosInt
+  : INT
       => (BOM.Literal.makeRegion (
-        BOM.Literal.PosInt PosInt,
+        BOM.Literal.PosInt (    (* FIXME: don't handle diff bases *)
+          let
+            val myInt = Int.fromString (#digits INT)
+            val sign = if (#negate INT) then ~1 else 1
+          in
+            myInt * sign
+          end)
         posToReg FULL_SPAN))
   | REAL (* I assume that matching REAL will pull in the "-" *)
       => (BOM.Literal.makeRegion (
