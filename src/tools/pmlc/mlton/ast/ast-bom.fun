@@ -8,7 +8,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   struct
   open S
 
-  structure Wrap = Region.wrap
+  structure Wrap = Region.Wrap
 
   (* Helper Functions *)
 
@@ -29,14 +29,14 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   fun layoutOption (opt : 'a option,
       doLayout : 'a -> Layout.t) Layout.t =
     if (Option.isSome opt) then
-      doLayout opt
+      doLayout (Option.valOf opt)
     else
       Layout.empty
 
   fun layoutOptions (opts : 'a list option,
       doLayouts : 'a list -> Layout.t list) : Layout.t list =
     if (Option.isSome opts) then
-      doLayouts opts
+      doLayouts (Option.valOf opts)
     else
       [Layout.empty]
 
@@ -49,7 +49,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       val rightLayout = layoutOption rightDelim
       val centerLayout =  doIndent (Layout.separateRight (els, sep))
     in
-      leftLayout::centerLayout@[rightLayout]
+      [leftLayout, centerLayout, rightLayout]
     end
   in
     fun delimitWithIndent (els, sep, leftDelim, rightDelim) : Layout.t =
@@ -117,8 +117,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     structure BomId = AstId (structure Symbol = Symbol)
     structure HLOpId = AstId (structure Symbol = Symbol)
     structure TyParam = AstId (structure Symbol = Symbol)
-    structure Param = AstId (structure Symbol = Symbol)
-    structure FunParam = AstId (structure Symbol = Symbol)
+    (* structure Param = AstId (structure Symbol = Symbol) *)
+    (* structure FunParam = AstId (structure Symbol = Symbol) *)
     structure LongTyId = Longid (structure Id = BomId)
     structure LongConId = Longid (structure Id = BomId)
     structure LongValueId = Longid (structure Id = BomId)
@@ -292,21 +292,21 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | Mutable of int * type_t
     and fundef_node
       = Def of Attrs.t option * BomId.t * TyParams.t option
-        * Param.t list option * Param.t list option * type_t * exp_t
+        * VarPat.t list option * VarPat. list option * type_t list option * exp_t
     and varpat_node
-      = Wild
+      = Wild of BomType.t option
       | Var of BomId.t * type_t option
     and caserule_node
-      = LongRule of LongConId.t * varpat_t list * exp_t
+      = LongRule of LongConId.t * varpat_t list option * exp_t
       | LiteralRule of Literal.t * exp_t
       | DefaultRule of varpat_t * exp_t
     and tycaserule_node
       = TyRule of type_t * exp_t
       | Default of exp_t
     and simpleexp_node
-      = PrimOp of 'var Prim.prim * simpleexp_t list
+      = PrimOp of var' Prim.prim * simpleexp_t list
       | AllocId of LongValueId.t * simpleexp_t list
-      | AllocType of Type.t * simpleexp_t list
+      | AllocType of tyargs_t * simpleexp_t list
       | AtIndex of int * simpleexp_t * simpleexp_t option
       | TypeCast of Type.t * simpleexp_t
       | HostVproc
@@ -315,12 +315,12 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | VpStore of int * simpleexp_t * simpleexp_t
       | Id of LongValueId.t
       | Lit of Literal.t
-      | MLString of string
+      | MLString of IntInf.int vector
     and exp_node
       = Let of varpat_t list * rhs_t * exp_t
       | Do of simpleexp_t * exp_t
       | Fun of fundef_t list * exp_t
-      | Cont of BomId.t * Param.t list option * exp_t * exp_t
+      | Cont of BomId.t * VarPat.t list option * exp_t * exp_t
       | If of simpleexp_t * exp_t * exp_t
       | Case of simpleexp_t * caserule_t list
       | Typecase of TyParam.t * tycaserule_t list
@@ -808,7 +808,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     | Datatype of DatatypeDef.t * DataTypeDef.t list option
     | TypeDefn of BomId.t * TyParam.t list option * Type.t
     | DefineShortId of Attrs.t option * HLOpId.t *
-        TyParams.t option * FunParam.t list * Type.t * Exp.t option
+        TyParams.t option * VarPat.t list option * VarPat.t list option *
+        Type.t * Exp.t option
     | DefineLongId of HLOpId.t * TyParams.t option * LongValueId.t
     | Fun of FunDef.t list
     | InstanceType of LongTyId.t * TyArg.t list

@@ -17,11 +17,12 @@ signature AST_BOM =
   structure BomId : AST_ID
   structure HLOpId : AST_ID
   structure TyParam : AST_ID
-  structure Param : AST_ID
-  structure FunParam : AST_ID
+  (* structure Param : AST_ID *)
+  (* structure FunParam : AST_ID *)
 	structure LongTyId : LONGID
 	structure LongConId : LONGID
 	structure LongValueId : LONGID
+  structure PrimTycons : PRIM_TYCONS
 
 
   structure Attrs : sig
@@ -53,14 +54,15 @@ signature AST_BOM =
     (*   sharing type obj = t *)
     (* end *)
 
-    structure Type : sig
+    (* why does this error if I call it Type? *)
+    structure BOMType : sig
     type t
     type field
 	  type tyArgs
 
     datatype node
       = Param of TyParam.t
-      | LongId of LongTyId.t * TyArgs.t option
+      | LongId of LongTyId.t * tyArgs option
       | Record of field list
       | Tuple of t list
       | Fun of t list * t list option * t list
@@ -75,26 +77,26 @@ signature AST_BOM =
     end
 
 
-	structure TyArgs : sig
-	type t
-	datatype node
-	  = ArgTypes of Type.t list
-	include WRAPPED
-	  sharing type node' = node
-	  sharing type obj = t
-	end
+	  structure TyArgs : sig
+	  type t
+	  datatype node
+	    = ArgBOMTypes of BOMType.t list
+	  include WRAPPED
+	    sharing type node' = node
+	    sharing type obj = t
+	  end
 
 
-  structure DataConsDef : sig
+    structure DataConsDef : sig
     type t
     datatype node
-      = ConsDef of BomId.t * Type.t option
+      = ConsDef of BomId.t * BOMType.t option
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
-  end
+    end
 
-  structure DataTypeDef : sig
+    structure DataBOMTypeDef : sig
       type t
       datatype node
         = ConsDefs of BomId.t * TyParams.t option *
@@ -103,9 +105,9 @@ signature AST_BOM =
       include WRAPPED
       sharing type node' = node
       sharing type obj = t
-  end
+    end
 
-  structure RawTy : sig
+    structure RawTy : sig
     type t
     datatype node
       = Int8
@@ -121,7 +123,7 @@ signature AST_BOM =
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
-  end
+    end
 
   structure CArgTy : sig
     type t
@@ -146,20 +148,29 @@ signature AST_BOM =
     structure Field : sig
       type t
       datatype node
-        = Immutable of int * Type.t
-        | Mutable of int * Type.t
+        = Immutable of IntInf.int * BOMType.t
+        | Mutable of IntInf.int * BOMType.t
       include WRAPPED
         sharing type node' = node
         sharing type obj = t
   end
 
+  structure VarPat : sig
+    type t
+    datatype node
+      = Wild of BOMType.t option
+      | Var of BomId.t * BOMType.t option
+    include WRAPPED
+      sharing type node' = node
+      sharing type obj = t
+    end
 
   structure FunDef : sig
     type t
     type exp
     datatype node
       = Def of Attrs.t option * BomId.t * TyParams.t option
-        * Param.t list option * Param.t list option * Type.t * exp
+        * VarPat.t list option * VarPat.t list option * BOMType.t list option * exp
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -168,7 +179,7 @@ signature AST_BOM =
   structure Literal : sig
     type t
     datatype node
-      = PosInt of int
+      = PosInt of IntInf.int
       | Float of real
       | String of string
       | NullVP
@@ -178,21 +189,13 @@ signature AST_BOM =
   end
 
 
-  structure VarPat : sig
-    type t
-    datatype node
-      = Wild
-      | Var of BomId.t * Type.t option
-    include WRAPPED
-      sharing type node' = node
-      sharing type obj = t
-    end
+
 
     structure CaseRule : sig
     type t
     type exp
     datatype node
-      = LongRule of LongConId.t * VarPat.t list option * exp (* FIXME in .fun *)
+      = LongRule of LongConId.t * VarPat.t list option * exp (* FIXME in .fun layout *)
       | LiteralRule of Literal.t * exp
       | DefaultRule of VarPat.t * exp       (* collapsing CaseDefault *)
     include WRAPPED
@@ -204,7 +207,7 @@ signature AST_BOM =
     type t
     type exp
     datatype node
-      = TyRule of Type.t * exp
+      = TyRule of BOMType.t * exp
       | Default of exp
     include WRAPPED
       sharing type node' = node
@@ -214,15 +217,15 @@ signature AST_BOM =
   structure SimpleExp : sig
       type t
       datatype node
-        = PrimOp of 'var Prim.prim * t list (* pulled from pmlc/prim/prim.sml *)
+        = PrimOp of PrimTycons.tycon * t list (* pulled from ../ast-primtycons.sig *)
         | AllocId of LongValueId.t * t list
-        | AllocType of TyArgs.t * t list (* FIXME in .fun *)
-        | AtIndex of int * t * t option
-        | TypeCast of Type.t * t
+        | AllocBOMType of TyArgs.t * t list (* FIXME in .fun *)
+        | AtIndex of IntInf.int * t * t option
+        | BOMTypeCast of BOMType.t * t
         | HostVproc
-        | VpLoad of int * t
-        | VpAddr of int * t
-        | VpStore of int * t * t
+        | VpLoad of IntInf.int * t
+        | VpAddr of IntInf.int * t
+        | VpStore of IntInf.int * t * t
         | Id of LongValueId.t
         | Lit of Literal.t
         | MLString of IntInf.int vector    (* FIXME in .fun *)
@@ -239,12 +242,12 @@ signature AST_BOM =
       = Let of VarPat.t list * rhs * t
       | Do of SimpleExp.t * t
       | Fun of FunDef.t list * t
-      | Cont of BomId.t * Param.t list option * t * t
+      | Cont of BomId.t * VarPat.t list option * t * t
       | If of SimpleExp.t * t * t
       | Case of SimpleExp.t * CaseRule.t list
-      | Typecase of TyParam.t * TyCaseRule.t list
+      | BOMTypecase of TyParam.t * TyCaseRule.t list
       | Apply of LongValueId.t * SimpleExp.t list option * SimpleExp.t list option
-      | Throw of BomId.t * SimpleExp.t list option (* FIXME *)
+      | Throw of BomId.t * TyArgs.t option * SimpleExp.t list option (* FIXME *)
       | Return of SimpleExp.t list option
     include WRAPPED
       sharing type node' = node
@@ -267,13 +270,14 @@ signature AST_BOM =
       type t
       datatype node
         = Extern of CReturnTy.t * BomId.t * CArgTy.t list * Attrs.t
-        | Datatype of DataTypeDef.t * DataTypeDef.t list option
-        | TypeDefn of BomId.t * TyParams.t option * Type.t
+        | Datatype of DataBOMTypeDef.t * DataBOMTypeDef.t list option
+        | BOMTypeDefn of BomId.t * TyParams.t option * BOMType.t
         | DefineShortId of Attrs.t option * HLOpId.t * TyParams.t option *
-                           FunParam.t list * Type.t * Exp.t option
+            VarPat.t list option * VarPat.t list option *
+            BOMType.t list option * Exp.t option
         | DefineLongId of HLOpId.t * TyParams.t option * LongValueId.t
         | Fun of FunDef.t list
-		| InstanceType of LongTyId.t * TyArgs.t
+		| InstanceBOMType of LongTyId.t * TyArgs.t
 		| Instance of LongValueId.t * TyArgs.t
       include WRAPPED
         sharing type node' = node
@@ -286,8 +290,8 @@ signature AST_BOM =
   sharing type TyCaseRule.exp = Exp.t
   sharing type Exp.rhs = RHS.t
   sharing type FunDef.exp = Exp.t
-  sharing type Type.field = Field.t
-  sharing type Type.tyArgs = TyArgs.t
-  sharing type LongTyId.Strid =
-	LongConId.Strid = LongValueId.Strid
+  sharing type BOMType.field = Field.t
+  sharing type BOMType.tyArgs = TyArgs.t
+  (* why is this erroring? *)
+  (* sharing type LongTyId.Strid = LongConId.Strid = LongValueId.Strid *)
   end

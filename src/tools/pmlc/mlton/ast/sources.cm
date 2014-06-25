@@ -35,6 +35,9 @@ functor Symbol
 functor TyconKind
 functor Tyvar
 
+functor AstAtoms
+functor AstBOM
+
 is
 
 $/basis.cm
