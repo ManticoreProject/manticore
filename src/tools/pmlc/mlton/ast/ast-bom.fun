@@ -278,7 +278,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | LongId of LongTyId.t * tyargs_t option
       | Record of field_t list
       | Tuple of type_t list
-      | Fun of type_t list option * type_t list option * type_t list option
+      | Fun of type_t list * type_t list option * type_t list
       | Any
       | VProc
       | Cont of tyargs_t option
