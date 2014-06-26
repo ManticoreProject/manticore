@@ -21,8 +21,11 @@ $/ml-lpt-lib.cm
 ../ast/sources.cm
 ../control/sources.cm
 
-ml.lex : ml-ulex
-ml.grm : ml-antlr
+(* ml.lex : ml-ulex
+ml.grm : ml-antlr *)
+
+pml.lex : ml-ulex
+pml.grm : ml-antlr
 
 mlb.lex : ml-ulex
 mlb.grm : ml-antlr

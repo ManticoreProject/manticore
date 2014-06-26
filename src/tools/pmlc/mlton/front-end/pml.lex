@@ -75,7 +75,7 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 %let symId = {sym}+;
 %let id = {alphanumId}|{symId};
 %let longid = ({alphanumId}.)*{id};
-%let hlid = "@"{letter}({idchar}|"-")*;
+%let hlid = "@"{alphanumId}({id}|"-")*;
 %let ws = ("\012"|[\t\ ])*;
 %let nrws = ("\012"|[\t\ ])+;
 %let cr = "\013";
@@ -190,7 +190,7 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 				      | ">" => T.GT
    				      | _ => Tokens.LONGID yytext
 				    (* end case *));
-<BOM>{hlid}			=> (Tokens.HLOPID yytext)
+<BOM>{hlid}			=> (Tokens.HLOPID yytext);
 
 <INITIAL>{real}			=> (Tokens.REAL(yytext));
 <INITIAL>{num}			=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));

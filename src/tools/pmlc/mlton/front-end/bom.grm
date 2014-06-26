@@ -91,7 +91,7 @@
 (*  | ARROW     ("->")      *)
     | DDARROW       ("==>")
 (*  | LONGID of string       *)
-
+  | HLID of string            (* ??? *)
 (*  | char of ... *)
 (*  | INT of ... *)
 (*  | REAL of FloatLit.float    *)
@@ -123,6 +123,20 @@
     in
       (regionMaker (atomFromSymbol (symbol, thisRegion)), thisRegion)
     end
+
+  fun intInfFromINT ({digits = ds, negate = isNeg, radix = rad}):IntInf.int =
+    let
+      val scanned = IntInf.scan rad (explode ds)
+      val errorMsg = String.concat [
+        "Something went wrong. Input ", ds, " isn't a number."
+      ]
+    in
+      (case scanned of
+         NONE => raise Fail errorMsg
+       | SOME(n, []) => n
+       | SOME(n, xs) => raise Fail errorMsg)
+   end
+
 );
 
 BOMDecls
@@ -133,18 +147,22 @@ BOMDecls
 Definition
   : "datatype" DataTypeDef ("and" DataTypeDef)*
     => (BOM.Definition.makeRegion (
-          BOM.Definition.Datatype (DataTypeDef1, flattenToOption SR),
+          BOM.Definition.Datatype (DataTypeDef, flattenToOption SR),
           posToReg FULL_SPAN))
   | "type" BomId TyParams? "=" BOMType ";"
     => (BOM.Definition.makeRegion (
       BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
       posToReg FULL_SPAN))
-  | "define" Attrs? HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
-    => (BOM.Definition.makeRegion
-      (BOM.Definition.DefineShortId (Attrs, HLOpId, TyParams, FunParams,
-        ReturnTy, SR),
-      posToReg FULL_SPAN))
-  | "define" HLOpId TyParams? "=" LongValueId ";"
+  | %try "define" Attrs? HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
+    => (BOM.Definition.makeRegion (
+      let
+        val (inputTys, exnTys) = FunParams
+      in
+        (BOM.Definition.DefineShortId (
+          Attrs, HLOpId, TyParams, inputTys, exnTys, ReturnTy, SR),
+        posToReg FULL_SPAN)
+      end))
+  | %try "define" HLOpId TyParams? "=" LongValueId ";"
     => (BOM.Definition.makeRegion (
       BOM.Definition.DefineLongId (HLopId, TyParams, LongValueId),
       posToReg FULL_SPAN))
@@ -167,15 +185,17 @@ Definition
   ;
 
 DataTypeDef
-  : BomId TyParams? "=" DataConsDef ("|" DataConsDef)*
-  => (BOM.DataTypeDef.makeRegion (
-    BOM.DataTypeDef.ConsDefs (BomId, TyParams,
-    DataConsDef1::(flattenToList SR)),
-    posToReg FULL_SPAN))
-  | BomId TyParams? "=" "datatype" LongTyId
-  => BOM.DataTypeDef.makeRegion
-    (BOM.DataTypeDef.consDefs (BomId, TyParams, LongTyId),
-    posToReg FULL_SPAN)
+  : BomId TyParams? "=" (
+        DataConsDef ("|" DataConsDef)*
+          => (BOM.DataTypeDef.makeRegion (
+            BOM.DataTypeDef.ConsDefs (BomId, TyParams,
+            DataConsDef1::(flattenToList SR)),
+            posToReg FULL_SPAN))
+      | "datatype" LongTyId
+  (* | BomId TyParams? "=" "datatype" LongTyId *)
+          => (BOM.DataTypeDef.makeRegion
+            (BOM.DataTypeDef.consDefs (BomId, TyParams, LongTyId),
+            posToReg FULL_SPAN)))
   ;
 
 DataConsDef
@@ -202,9 +222,15 @@ BomId
   ;
 
 HLOpId
-  : LONGID
-    => (makeAtom (
-      BOM.HLOpId.makeRegion, BOM.HLOpId.fromSymbol, LONGID, FULL_SPAN))
+  : HLID
+      => (makeAtom (              (* FIXME, not fromSymbol anymore *)
+      BOM.HLOpId.makeRegion, BOM.HLOpId.fromSymbol, HLID, FULL_SPAN))
+  ;
+
+HLOpQId
+  : LONGID HLID
+      => (makeAtom (              (* FIXME, not fromSymbol anymore *)
+        BOM.HLOpId.makeRegion, BOM.HLOpId.fromSymbol, HLID, FULL_SPAN))
   ;
 
 TyParam
@@ -213,17 +239,20 @@ TyParam
       BOM.TyParam.makeRegion, BOM.TyParam.fromSymbol, LONGID, FULL_SPAN))
   ;
 
-Param
-  : LONGID
-    => (makeAtom (
-      BOM.Param.makeRegion, BOM.Param.fromSymbol, LONGID, FULL_SPAN))
-  ;
+(* Param *)
+(*   : LONGID *)
+(*     => (makeAtom ( *)
+(*       BOM.Param.makeRegion, BOM.Param.fromSymbol, LONGID, FULL_SPAN)) *)
+(*   ; *)
 
-FunParam
-  : LONGID
-    => (makeAtom (
-      BOM.FunParam.makeRegion, BOM.FunParam.fromSymbol, LONGID, FULL_SPAN))
-  ;
+(* FunParam *)
+(*   : LONGID *)
+(*     => (makeAtom ( *)
+(*       BOM.FunParam.makeRegion, BOM.FunParam.fromSymbol, LONGID, FULL_SPAN)) *)
+(*   ; *)
+
+(* TODO: it looks like this might already exist in ml.grm, should we
+    piggyback off that? *)
 
 LongTyId
   : LONGID
@@ -244,11 +273,11 @@ LongValueId
   ;
 
 BOMType
-  : TyParam
+  : %try TyParam
       => (BOM.Type.makeRegion (
         BOM.Definition.Param TyParam,
         posToReg FULL_SPAN))
-  | LongTyId TyArgs?
+  | %try LongTyId TyArgs?
       => (BOM.Type.makeRegion (
         BOM.Type.LongId (TyParam, TyArgs),
         posToReg FULL_SPAN))
@@ -256,7 +285,7 @@ BOMType
       => (BOM.Type.makeRegion (
         BOM.Type.Record Field1::(flattenToList SR),
         posToReg FULL_SPAN))
-  | "[" BOMType ("," BOMType)*
+  |  "[" BOMType ("," BOMType)* "]"
       => (BOM.Type.makeRegion (
         BOM.Type.Tuple BOMType1::(flattenToList SR),
         posToReg FULL_SPAN))
@@ -264,7 +293,7 @@ BOMType
       => (BOM.Type.makeRegion (
         BOM.Type.Fun (
           let
-            val inp, exn = DomainTy
+            val (inp, exn) = DomainTy
           in
             (inp, exn, RangeTy)
           end),
@@ -287,9 +316,9 @@ DomainTy
   ;
 
 RangeTy
-  : BOMType
+  : %try BOMType
       => (BOMType)
-  | "(" BOMType ("," BOMType)* ")"
+  | %try "(" BOMType ("," BOMType)* ")"
       => (BOMType::(flattenToList SR))
   ;
 
@@ -311,13 +340,11 @@ PosInt
         error (posToReg FULL_SPAN, String.concat [
           "Value -", #digits INT, " must be positive."])
       else
-        Int.fromString (#digits INT))
-  (* we're expecting an int when we come out of this, so let's convert
-  it. FIXME: not handing different bases properly here *)
+        intInfFromINT INT)
   ;
 
 FunDef
-  : Attrs? BomId TyParams? "(" Params? ("/" Params)? ")" BOMType "=" BOMExp
+  : Attrs? BomId TyParams? "(" Params? ("/" Params)? ")" ReturnTy "=" BOMExp
       => (BOM.FunDef.makeRegion (
         BOM.FunDef.Def (Attrs, BomId, TyParams, Params, SR, BOMType, BOMExp),
         posToReg FULL_SPAN))
@@ -436,7 +463,7 @@ SimpleExp
   ;
 
 CaseRule
-  : LongConId
+  : %try LongConId
         ("(" VarPat ("," VarPat)* => VarPat::(flattenToList SR))? "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
         BOM.CaseRule.LongRule (LongConId, SR, BOMExp),
@@ -445,19 +472,19 @@ CaseRule
       => (BOM.CaseRule.makeRegion (
         BOM.CaseRule.LiteralRule (Literal, BOMExp),
         posToReg FULL_SPAN))
-  | VarPat "=>" BOMExp
+  | %try VarPat "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
         BOM.CaseRule.DefaultRule (VarPat, BOMExp),
         posToReg FULL_SPAN))
   ;
 
 VarPat
-  : BomId (":" BOMType)
+  : BomId (":" BOMType)?
       => (BOM.VarPat.makeRegion (
         BOM.VarPat.Var (BomId, SR),
         posToReg FULL_SPAN))
-  | "_"
-      => (BOM.VarPat.makeRegion (BOM.VarPat.Wild, posToReg FULL_SPAN))
+  | "_" (":" BOMType)?
+      => (BOM.VarPat.makeRegion (BOM.VarPat.Wild SR, posToReg FULL_SPAN))
   ;
 
 TyCaseRule
@@ -465,7 +492,7 @@ TyCaseRule
       => (BOM.TyCaseRule.makeRegion (
         BOM.TyCaseRule.TyRule (BOMType, BOMExp),
         posToReg FULL_SPAN))
-  | "_" => BOMExp
+  | "_" "=>" BOMExp
       => (BOM.TyCaseRule.makeRegion (
         BOM.TyCaseRule.Default BOMExp,
         posToReg FULL_SPAN))
@@ -474,9 +501,9 @@ TyCaseRule
 Literal
   : INT
       => (BOM.Literal.makeRegion (
-        BOM.Literal.PosInt (    (* FIXME: don't handle diff bases *)
+        BOM.Literal.PosInt (    (* FIXME: Not sure if they leave the ~ in "digits"? *)
           let
-            val myInt = Int.fromString (#digits INT)
+            val myInt = intInfFromINT INT
             val sign = if (#negate INT) then ~1 else 1
           in
             myInt * sign
@@ -530,18 +557,25 @@ RawTy
   ;
 
 ReturnTy
-  : "noreturn"    => ()
-  | ":" BOMType     => ()
-  | ":" "(" BOMType ("," BOMType)* ")"  => ()
+  : "noreturn"
+      => (NONE)
+  (* | ":" ( BOMType => (SOME [BOMType]) *)
+  (*         | "(" BOMType ("," BOMType)* ")" *)
+  (*             => (SOME BOMType::(flattenToList SR)) *)
+  (*       ) *)
+  | %try ":" BOMType
+      => (SOME [BOMType])
+  | %try ":" "(" BOMType ("," BOMType)* ")"
+      => (SOME BOMType::(flattenToList SR))
   ;
 
 
-FunParams                       (* FIXME: Is this what we want? *)
-  : FunParam ("," FunParam)*
-       => FunParam::(flattenToList SR)
+FunParams
+  : "(" Params? ("/" Params?) ")"
+       => (Params, flattenToOption SR)
   ;
 
-Params                          (* FIXME: Is this what we ant? *)
-  : Param ("," Param)*
+Params
+  : VarPat ("," VarPat)*
       => VarPat::(flattenToList SR)
   ;

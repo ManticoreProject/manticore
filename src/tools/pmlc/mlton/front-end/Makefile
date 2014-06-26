@@ -32,7 +32,7 @@ MLYACC := no-mlyacc
 endif
 endif
 
-# Cannot use "mlulex" from mlton because it creates 64-bit word constants, which are too 
+# Cannot use "mlulex" from mlton because it creates 64-bit word constants, which are too
 # large for SML/NJ to compile.
 ifeq (ml-ulex, $(shell if ml-ulex >/dev/null 2>&1 || [ $$? != 127 ] ; then echo ml-ulex; fi))
 MLULEX := ml-ulex
@@ -56,6 +56,12 @@ all: ml.lex.sml ml.grm.sml mlb.lex.sml mlb.grm.sig mlb.grm.sml
 .PHONY: clean
 clean:
 	../../bin/clean
+
+.PHONY: cleanAll
+cleanAll:
+	rm -rf ./.cm
+	rm *.grm.sml
+	rm *.lex.sml
 
 mlb.lex.sml: mlb.lex
 	rm -f $@
