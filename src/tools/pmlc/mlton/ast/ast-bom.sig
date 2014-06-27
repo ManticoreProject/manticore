@@ -12,7 +12,7 @@ signature AST_BOM_STRUCTS =
 
 signature AST_BOM =
   sig
-    include AST_BOM_STRUCTS
+  include AST_BOM_STRUCTS
 
   structure BomId : AST_ID
   structure HLOpId : AST_ID
@@ -29,6 +29,9 @@ signature AST_BOM =
     type t
     datatype node
       = T of string list
+
+    val layout : t -> Layout.t
+
 	  include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -38,6 +41,9 @@ signature AST_BOM =
 	type t
 	datatype node
 	  = T of TyParam.t list
+
+  val layout : t -> Layout.t
+
 	include WRAPPED
 	  sharing type node' = node
 	  sharing type obj = t
@@ -54,8 +60,7 @@ signature AST_BOM =
     (*   sharing type obj = t *)
     (* end *)
 
-    (* why does this error if I call it Type? *)
-    structure BOMType : sig
+    structure BomType : sig
     type t
     type field
 	  type tyArgs
@@ -71,6 +76,8 @@ signature AST_BOM =
       | Cont of tyArgs option
       | Addr of t
 
+    val layout : t -> Layout.t
+
     include WRAPPED
 	    sharing type node' = node
 	    sharing type obj = t
@@ -80,8 +87,11 @@ signature AST_BOM =
 	  structure TyArgs : sig
 	  type t
 	  datatype node
-	    = ArgTypes of BOMType.t list
-	  include WRAPPED
+	    = ArgTypes of BomType.t list
+
+    val layout : t -> Layout.t
+
+    include WRAPPED
 	    sharing type node' = node
 	    sharing type obj = t
 	  end
@@ -90,7 +100,10 @@ signature AST_BOM =
     structure DataConsDef : sig
     type t
     datatype node
-      = ConsDef of BomId.t * BOMType.t option
+      = ConsDef of BomId.t * BomType.t option
+
+    val layout : t -> Layout.t
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -102,9 +115,12 @@ signature AST_BOM =
         = ConsDefs of BomId.t * TyParams.t option *
           DataConsDef.t list
         | SimpleDef of BomId.t * TyParams.t option * LongTyId.t
+
+      val layout : t -> Layout.t
+
       include WRAPPED
-      sharing type node' = node
-      sharing type obj = t
+        sharing type node' = node
+        sharing type obj = t
     end
 
     structure RawTy : sig
@@ -120,6 +136,9 @@ signature AST_BOM =
       | Uint64
       | Float32
       | Float64
+
+    val layout : t -> Layout.t
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -130,6 +149,9 @@ signature AST_BOM =
     datatype node
       = Raw of RawTy.t
       | VoidPointer
+
+    val layout : t -> Layout.t
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -140,6 +162,9 @@ signature AST_BOM =
     datatype node
       = CArg of CArgTy.t
       | Void
+
+    val layout : t -> Layout.t
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -148,8 +173,11 @@ signature AST_BOM =
     structure Field : sig
       type t
       datatype node
-        = Immutable of IntInf.int * BOMType.t
-        | Mutable of IntInf.int * BOMType.t
+        = Immutable of IntInf.int * BomType.t
+        | Mutable of IntInf.int * BomType.t
+
+      val layout : t -> Layout.t
+
       include WRAPPED
         sharing type node' = node
         sharing type obj = t
@@ -158,8 +186,11 @@ signature AST_BOM =
   structure VarPat : sig
     type t
     datatype node
-      = Wild of BOMType.t option
-      | Var of BomId.t * BOMType.t option
+      = Wild of BomType.t option
+      | Var of BomId.t * BomType.t option
+
+    val layout : t -> Layout.t
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -170,7 +201,7 @@ signature AST_BOM =
     type exp
     datatype node
       = Def of Attrs.t option * BomId.t * TyParams.t option
-        * VarPat.t list option * VarPat.t list option * BOMType.t list option * exp
+        * VarPat.t list option * VarPat.t list option * BomType.t list option * exp
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -183,6 +214,9 @@ signature AST_BOM =
       | Float of real
       | String of string
       | NullVP
+
+    val layout : t -> Layout.t
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -207,8 +241,11 @@ signature AST_BOM =
     type t
     type exp
     datatype node
-      = TyRule of BOMType.t * exp
+      = TyRule of BomType.t * exp
       | Default of exp
+
+    val layout : t -> Layout.t
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -221,7 +258,7 @@ signature AST_BOM =
         | AllocId of LongValueId.t * t list
         | AllocType of TyArgs.t * t list (* FIXME in .fun *)
         | AtIndex of IntInf.int * t * t option
-        | TypeCast of BOMType.t * t
+        | TypeCast of BomType.t * t
         | HostVproc
         | VpLoad of IntInf.int * t
         | VpAddr of IntInf.int * t
@@ -229,6 +266,9 @@ signature AST_BOM =
         | Id of LongValueId.t
         | Lit of Literal.t
         | MLString of IntInf.int vector    (* FIXME in .fun *)
+
+    val layout : t -> Layout.t
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -249,6 +289,9 @@ signature AST_BOM =
       | Apply of LongValueId.t * SimpleExp.t list option * SimpleExp.t list option
       | Throw of BomId.t * TyArgs.t option * SimpleExp.t list option (* FIXME *)
       | Return of SimpleExp.t list option
+
+    val layout : t -> Layout.t
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -260,6 +303,8 @@ signature AST_BOM =
       datatype node
         = Composite of exp
         | Simple of SimpleExp.t
+
+      val layout : t -> Layout.t
       include WRAPPED
         sharing type node' = node
         sharing type obj = t
@@ -271,14 +316,16 @@ signature AST_BOM =
       datatype node
         = Extern of CReturnTy.t * BomId.t * CArgTy.t list * Attrs.t
         | Datatype of DataTypeDef.t * DataTypeDef.t list option
-        | TypeDefn of BomId.t * TyParams.t option * BOMType.t
+        | TypeDefn of BomId.t * TyParams.t option * BomType.t
         | DefineShortId of Attrs.t option * HLOpId.t *
             TyParams.t option * VarPat.t list option * VarPat.t list option *
-            BOMType.t list option * Exp.t option
+            BomType.t list option * Exp.t option
         | DefineLongId of HLOpId.t * TyParams.t option * LongValueId.t
         | Fun of FunDef.t list
 		    | InstanceType of LongTyId.t * TyArgs.t
 		    | Instance of LongValueId.t * TyArgs.t
+
+      val layout : t -> Layout.t
       include WRAPPED
         sharing type node' = node
         sharing type obj = t
@@ -290,8 +337,8 @@ signature AST_BOM =
   sharing type TyCaseRule.exp = Exp.t
   sharing type Exp.rhs = RHS.t
   sharing type FunDef.exp = Exp.t
-  sharing type BOMType.field = Field.t
-  sharing type BOMType.tyArgs = TyArgs.t
+  sharing type BomType.field = Field.t
+  sharing type BomType.tyArgs = TyArgs.t
   (* why is this erroring? *)
   (* sharing type LongTyId.Strid = LongConId.Strid = LongValueId.Strid *)
   end

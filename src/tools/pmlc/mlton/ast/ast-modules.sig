@@ -14,6 +14,8 @@ signature AST_MODULES_STRUCTS =
 signature AST_MODULES =
    sig
       include AST_CORE
+      (* ??? *)
+      structure AstBOM : AST_BOM
 
       structure Sigexp:
          sig

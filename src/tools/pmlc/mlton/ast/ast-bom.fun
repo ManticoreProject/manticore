@@ -91,38 +91,6 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   (* Structures *)
 
-    (* Helper Structures *)
-    functor DoWrap(type node) : sig
-      (* type t = node'' Wrap.t *)
-
-      (* include WRAPPED *)
-      (*   sharing type node' = node *)
-      (*   sharing type obj = t *)
-    end = struct
-        open Wrap
-        type t = node Wrap.t
-        type node' = node
-        type obj = t
-    end
-
-
-    (* Suitable for mutually recursive structures, where the wrapped
-    type will already have been declared, but we still need to fill
-    out node' and obj *)
-
-    functor DoPartialWrap(
-        type node;
-        type t') : sig
-      (* include WRAPPED *)
-      (*   sharing type node' = node'' *)
-      (*   sharing type obj = t *)
-    end = struct
-        open Wrap
-
-        type node' = node
-        type obj = t'
-    end
-
     (* Atoms *)
     structure BomId = AstId (structure Symbol = Symbol)
     structure HLOpId = AstId (structure Symbol = Symbol)
@@ -158,31 +126,29 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     (* Non-recursive types, part 1 -- types that do not depend on recursive types *)
 
     structure Attrs = struct
+    open Wrap
     datatype node = T of string list
+    type t = node Wrap.t
 
-    local
-        structure Wrapped = DoWrap(type node = node)
-    in
-      open Wrapped
-    end
+    type node' = node
+    type obj = t
 
-    (* fun layout node (T ss) = *)
-    (*     Layout.mayAlign [ *)
-    (*       Layout.str "__attributes__", *)
-    (*       unindentedSchemeList (map Layout.str ss) *)
-    (*     ] *)
+    fun layout node (T ss)  =
+        Layout.mayAlign [
+          Layout.str "__attributes__",
+          unindentedSchemeList (map Layout.str ss)
+        ]
     end
 
 
   structure TyParams = struct
+  open Wrap
   datatype node
     = T of TyParam.t list
+  type t = node Wrap.t
 
-  local
-    structure Wrapped = DoWrap(type node = node)
-  in
-    open Wrapped
-  end
+  type node' = node
+  type obj = t
 
   fun layout node (T tyParams) =
     delimitWithIndent (map TyParam.layout tyParams, ",", SOME "<", SOME ">")
@@ -207,6 +173,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     (* end *)
 
     structure RawTy = struct
+    open Wrap
     datatype node
       = Int8
       | Uint8
@@ -218,21 +185,14 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | Uint64
       | Float32
       | Float64
-
-    open Wrap
-
     type t = node Wrap.t
+
     type node' = node
     type obj = t
 
-    (* local *)
-    (*   structure Wrapped = DoWrap(type node = node) *)
-    (* in *)
-    (*   open Wrapped *)
-    (* end *)
 
-    fun toString myNode =
-      case myNode of
+    fun toString (myNode : t) =
+      case node myNode of
         Int8 => "Int8"
       | Uint8 => "Uint8"
       | Int16 => "Int16"
@@ -244,7 +204,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | Float32 => "Float32"
       | Float64 => "Float64"
 
-    val layout = Layout.str o toString
+    fun layout myNode  =
+      (Layout.str o toString) myNode
 
     end
 
@@ -252,14 +213,16 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     datatype node
       = Raw of RawTy.t
       | VoidPointer
-    local
-        structure Wrapped = DoWrap(type node = node)
-    in
-    open Wrapped
-    end
 
-    (* fun layout node (Raw rawTy) = RawTy.layout rawTy *)
-    (*   | layout node VoidPointer = Layout.str "void*" *)
+    open Wrap
+    type t = node Wrap.t
+    type node' = node
+    type obj = t
+
+    fun layout myNode =
+      case node myNode of
+        ((Raw rawTy) : node) => (RawTy.layout rawTy)
+      | (VoidPointer : node) => Layout.str "void*"
 
     end
 
@@ -269,18 +232,15 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | Void
 
 
-    local
-        structure Wrapped = DoWrap(type node = node)
-    in
-      open Wrapped
-    end
+    open Wrap
+    type t = node Wrap.t
+    type node' = node
+    type obj = t
 
-    (* fun layout (CArg cArgTy) : Lay = CArgTy.layout cArgTy *)
-    (*   | layout Void = Layout.str "void" *)
-    (* fun layout (myNode : t) : Layout.t = *)
-    (*   case myNode of *)
-    (*     CArg (cArgTy) => (CArgTy.layout cArgTy ) *)
-    (*   | Void => (Layout.str "void") *)
+    fun layout myNode =
+      case node myNode of
+        CArg (cArgTy) => (CArgTy.layout cArgTy )
+      | Void => (Layout.str "void")
     end
 
 
@@ -291,11 +251,10 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | String of string
       | NullVP
 
-    local
-        structure Wrapped = DoWrap(type node = node)
-    in
-    open Wrapped
-    end
+    open Wrap
+    type t = node Wrap.t
+    type node' = node
+    type obj = t
 
     (* fun layout myNode = *)
     (*     let *)
@@ -350,7 +309,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | AllocId of LongValueId.t * simpleexp_t list
       | AllocType of tyargs_t * simpleexp_t list
       | AtIndex of IntInf.int * simpleexp_t * simpleexp_t option
-      | TypeCast of Type.t * simpleexp_t
+      | TypeCast of type_t * simpleexp_t
       | HostVproc
       | VpLoad of IntInf.int * simpleexp_t
       | VpAddr of IntInf.int * simpleexp_t
@@ -650,19 +609,18 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   (*     | Simple simpleExp => layoutSimpleExp simpleExp *)
 
 
-  structure BOMType = struct
-  type t = type_t
+  structure BomType = struct
+  open Wrap
+  datatype node = datatype type_node
+  type t = node Wrap.t
+
+  type node' = node
+  type obj = t
+
   type field  = field_t
   type tyArgs = tyargs_t
-  datatype node = datatype type_node
 
-  local
-      structure Wrapped = DoPartialWrap(
-        type node = node
-        type t' = t)
-  in
-    open Wrapped
-  end
+
 
   (* val layout = layoutType *)
 
@@ -670,116 +628,92 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
 
   structure TyArgs = struct
-  type t = tyargs_t
+  open Wrap
   datatype node = datatype tyargs_node
+  type t = node Wrap.t
 
-  local
-      structure Wrapped = DoPartialWrap(
-        type node = node
-        type t' = t)
-  in
-  open Wrapped
-  end
-
+  type node' = node
+  type obj = t
   (* val layout = layoutTyArgs *)
 
   end
 
   structure DataConsDef = struct
-  type t = dataconsdef_t
+  open Wrap
   datatype node = datatype dataconsdef_node
+  type t = node Wrap.t
 
-  local
-      structure Wrapped = DoPartialWrap(
-        type node = node
-        type t' = t)
-  in
-    open Wrapped
-  end
+  type node' = node
+  type obj = t
 
   (* val layout = layoutDataConsDef *)
 
   end
 
   structure Field = struct
-  type t = field_t
+  open Wrap
   datatype node = datatype field_node
+  type t = node Wrap.t
 
-  local
-    structure Wrapped = DoPartialWrap(
-      type node = node
-      type t' = t)
-  in
-    open Wrapped
-  end
+  type node' = node
+  type obj = t
 
   (* val layout = layoutField *)
 
   end
 
   structure FunDef = struct
-  type t = fundef_t
-  type exp = exp_t
+  open Wrap
   datatype node = datatype fundef_node
+  type t = node Wrap.t
 
-  local
-      structure Wrapped = DoPartialWrap(
-        type node = node
-        type t' = t)
-  in
-    open Wrapped
-  end
+  type node' = node
+  type obj = t
+
+
+  type exp = exp_t
+
+
 
   (* val layout = layoutFunDef *)
 
   end
 
   structure VarPat = struct
-  type t = varpat_t
-
+  open Wrap
   datatype node = datatype varpat_node
+  type t = node Wrap.t
 
-  local
-      structure Wrapped = DoPartialWrap(
-        type node = node
-        type t' = t)
-  in
-    open Wrapped
-  end
+  type node' = node
+  type obj = t
 
   (* val layout = layoutVarPat *)
 
   end
 
   structure CaseRule = struct
-  type t = caserule_t
-  type exp = exp_t
+  open Wrap
   datatype node = datatype caserule_node
+  type t = node Wrap.t
 
-  local
-    structure Wrapped = DoPartialWrap(
-      type node = node
-      type t' = t)
-  in
-  open Wrapped
-  end
+  type node' = node
+  type obj = t
+
+  type exp = exp_t
 
   (* val layout = layoutCaseRule *)
 
   end
 
   structure TyCaseRule = struct
-  type t = tycaserule_t
-  type exp = exp_t
+  open Wrap
   datatype node = datatype tycaserule_node
+  type t = node Wrap.t
 
-  local
-    structure Wrapped = DoPartialWrap(
-      type node = node
-      type t' = t)
-  in
-  open Wrapped
-  end
+  type node' = node
+  type obj = t
+
+  type exp = exp_t
 
   (* val layout = layoutTyCaseRule *)
 
@@ -787,33 +721,27 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
 
   structure SimpleExp = struct
-  type t = simpleexp_t
+  open Wrap
   datatype node = datatype simpleexp_node
+  type t = node Wrap.t
 
-  local
-      structure Wrapped = DoPartialWrap(
-        type node = node
-        type t' = t)
-  in
-  open Wrapped
-  end
+  type node' = node
+  type obj = t
 
   (* val layout = layoutSimpleExp *)
 
   end
 
   structure Exp = struct
-  type t = exp_t
-  type rhs = rhs_t
+  open Wrap
   datatype node = datatype exp_node
+  type t = node Wrap.t
 
-  local
-      structure Wrapped = DoPartialWrap(
-        type node = node
-        type t' = t)
-  in
-  open Wrapped
-  end
+  type node' = node
+  type obj = t
+
+
+  type rhs = rhs_t
 
   (* val layout = layoutExp *)
 
@@ -821,17 +749,14 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
 
   structure RHS = struct
-  type t = rhs_t
-  type exp = exp_t
+  open Wrap
   datatype node = datatype rhs_node
+  type t = node Wrap.t
 
-  local
-      structure Wrapped = DoPartialWrap(
-        type node = node
-        type t' = t)
-  in
-  open Wrapped
-  end
+  type node' = node
+  type obj = t
+
+  type exp = exp_t
 
   (* val layout = layoutRhs *)
 
@@ -844,11 +769,10 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     = ConsDefs of BomId.t * TyParams.t option * DataConsDef.t list
     | SimpleDef of BomId.t * TyParams.t  option * LongTyId.t
 
-  local
-      structure Wrapped = DoWrap(type node = node)
-  in
-    open Wrapped
-  end
+  open Wrap
+  type t = node Wrap.t
+  type node' = node
+  type obj = t
 
   (* fun layout myNode = *)
   (*   let *)
@@ -886,20 +810,19 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   datatype node
     = Extern of CReturnTy.t * BomId.t * CArgTy.t list * Attrs.t
     | Datatype of DataTypeDef.t * DataTypeDef.t list option
-    | TypeDefn of BomId.t * TyParam.t list option * Type.t
+    | TypeDefn of BomId.t * TyParams.t option * BomType.t
     | DefineShortId of Attrs.t option * HLOpId.t *
         TyParams.t option * VarPat.t list option * VarPat.t list option *
-        BOMType.t list option * Exp.t option
+        BomType.t list option * Exp.t option
     | DefineLongId of HLOpId.t * TyParams.t option * LongValueId.t
     | Fun of FunDef.t list
     | InstanceType of LongTyId.t * TyArgs.t
     | Instance of LongValueId.t * TyArgs.t
 
-  local
-      structure Wrapped = DoWrap(type node = node)
-  in
-    open Wrapped
-  end
+  open Wrap
+  type t = node Wrap.t
+  type node' = node
+  type obj = t
 
   (* fun layout myNode = *)
   (*   case node myNode of *)
