@@ -830,8 +830,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
             BomId.layout bomId,
             layoutOption (maybeTyParams, TyParams.layout)
           ],
-          leftDelimitWithIndent
-            (map DataConsDeflayout dataConsDefs, "=", " | ")
+          Layout.mayAlign (leftDelimitWithIndent
+            (map DataConsDef.layout dataConsDefs, "=", " | "))
         ]
 
         fun layoutSimpleDef (bomId, maybeTyParams, longId) =
@@ -842,12 +842,12 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
               ],
               Layout.mayAlign [
                 Layout.str "datatype",
-                LongId.layout longId
+                BomId.layout bomId
               ]
             ]
       in
           case node myNode of
-            ConsDef (bomId, maybeTyParams, dataConsDefs) =>
+            ConsDefs (bomId, maybeTyParams, dataConsDefs) =>
               layoutConsDef (bomId, maybeTyParams, dataConsDefs)
           | SimpleDef (bomId, maybeTyParams, longId) =>
               layoutSimpleDef (bomId, maybeTyParams, longId)
@@ -871,6 +871,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   type t = node Wrap.t
   type node' = node
   type obj = t
+
+  fun layout myNode = Layout.empty
 
   (* fun layout myNode = *)
   (*   case node myNode of *)
