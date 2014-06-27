@@ -6,7 +6,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor FrontEnd (S: FRONT_END_STRUCTS): FRONT_END = 
+functor FrontEnd (S: FRONT_END_STRUCTS): FRONT_END =
 struct
 
 fun String_concatWith (l, s) = String.concatWith s l
@@ -21,7 +21,7 @@ structure SourceMap : SOURCE_MAP =
 open S
 
 (* glue together the lexer and parser *)
-structure Parser = MLParserFun (structure Lex = MLLexer
+structure Parser = PMLParserFun (structure Lex = PMLLexer
                                 structure SourceMap = SourceMap
                                 structure Ast = Ast)
 
@@ -37,10 +37,10 @@ end
 fun lexAndParse (file: File.t, ins: In.t): Ast.Program.t = let
     val source = Source.new file
     val sm = AntlrStreamPos.mkSourcemap()
-    val lexer = MLLexer.lex sm {source=source}
+    val lexer = PMLLexerLexer.lex sm {source=source}
     val _ = SourceMap.setMap sm
     in
-      case Parser.parse lexer (MLLexer.streamifyInstream ins)
+      case Parser.parse lexer (PMLLexer.streamifyInstream ins)
        of (SOME pt, _, []) => (pt)
 	| (_, _, errs) => let
 	    val _ = Out.outputl (Out.error, concat["FAILURE parsing file: ", file])
@@ -57,7 +57,7 @@ fun lexAndParse (file: File.t, ins: In.t): Ast.Program.t = let
 			   | AntlrRepair.FailureAt tok => ["syntax error at ", Tokens.toString tok]
 			(* end case *))
 		  in
-		    Out.outputl (Out.error, String.concat ("ERR: "::msg));		
+		    Out.outputl (Out.error, String.concat ("ERR: "::msg));
 		    Control.errorStr (posToReg(sm, pos), String.concat msg)
 		  end
 	    val _ = MLtonList.map (errs, parseError)

@@ -103,7 +103,7 @@
 %defs(
   (* I'm not sure what name BomAst will be available as, so I'm
   putting this here until I do *)
-  structure BOM = Ast.AstBom
+  structure BOM = Ast.AstBOM
   (* structure Defn = BOM.Definition *)
 
   (* modified from the old bom.grm, to reflect the fact that we deal
@@ -153,6 +153,11 @@ Definition
     => (BOM.Definition.makeRegion (
       BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
       posToReg FULL_SPAN))
+	| "define" Attrs HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
+		=> ()
+	| "define" HLOpId TyParams? DefineRest
+		=> (DefineRest (Attrs, HLOpId, TyParams, FULL_SPAN))
+(*
   | %try "define" Attrs? HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
     => (BOM.Definition.makeRegion (
       let
@@ -166,6 +171,7 @@ Definition
     => (BOM.Definition.makeRegion (
       BOM.Definition.DefineLongId (HLopId, TyParams, LongValueId),
       posToReg FULL_SPAN))
+*)
   | "extern" CReturnTy BomId "(" (CArgTy ("," CArgTy)* )? ")" Attrs ";"
     => (BOM.Definition.makeRegion (
       BOM.Definition.Extern (CReturnTy, BomId, flattenToList SR, Attrs),
@@ -183,6 +189,12 @@ Definition
       (BOM.Definition.Instance (LongValueId, TyArgs),
       posToReg FULL_SPAN))
   ;
+
+DefineRest
+	: FunParams ReturnTy ("=" BOMExp)? ";"
+		=> ()
+	| "=" LongValueId ";"
+	;
 
 DataTypeDef
   : BomId TyParams? "=" (
@@ -234,9 +246,8 @@ HLOpQId
   ;
 
 TyParam
-  : LONGID
-    => (makeAtom (
-      BOM.TyParam.makeRegion, BOM.TyParam.fromSymbol, LONGID, FULL_SPAN))
+  : TYVAR
+    => (makeAtom (BOM.TyParam.makeRegion, BOM.TyParam.fromSymbol, TYVAR, FULL_SPAN))
   ;
 
 (* Param *)
@@ -273,11 +284,11 @@ LongValueId
   ;
 
 BOMType
-  : %try TyParam
+  : TyParam
       => (BOM.Type.makeRegion (
         BOM.Definition.Param TyParam,
         posToReg FULL_SPAN))
-  | %try LongTyId TyArgs?
+  | LongTyId TyArgs?
       => (BOM.Type.makeRegion (
         BOM.Type.LongId (TyParam, TyArgs),
         posToReg FULL_SPAN))
@@ -463,8 +474,7 @@ SimpleExp
   ;
 
 CaseRule
-  : %try LongConId
-        ("(" VarPat ("," VarPat)* => VarPat::(flattenToList SR))? "=>" BOMExp
+  : LongConId ( "(" VarPat ("," VarPat)* => VarPat::(flattenToList SR) ) "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
         BOM.CaseRule.LongRule (LongConId, SR, BOMExp),
         posToReg FULL_SPAN))
@@ -472,7 +482,7 @@ CaseRule
       => (BOM.CaseRule.makeRegion (
         BOM.CaseRule.LiteralRule (Literal, BOMExp),
         posToReg FULL_SPAN))
-  | %try VarPat "=>" BOMExp
+  | VarPat "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
         BOM.CaseRule.DefaultRule (VarPat, BOMExp),
         posToReg FULL_SPAN))

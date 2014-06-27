@@ -270,10 +270,6 @@ fun ensureNonqualified (ss: Symbol.t list, r: Region.t): Symbol.t * Region.t =
 
 );
 
-%header (functor MLParserFun (structure Lex : ANTLR_LEXER
-                              structure SourceMap : SOURCE_MAP
-                              structure Ast: AST));
-
 program: expsAndTopdecs => (Program.T expsAndTopdecs)
        ;
 
@@ -296,7 +292,7 @@ topdecs
 	| topdec topdecs	=> (consTopdec (topdec, topdecs))
 	| ";"+ ( (* empty *)	 => ([])
 		| exp topexps	 => ([Topdec.fromExp exp] :: topexps)
-		| topdec topdecs => (consTopdec (topdec, topdecs))) 
+		| topdec topdecs => (consTopdec (topdec, topdecs)))
 ;
 
 topdec : topdecnode => (Topdec.makeRegion (topdecnode, posToReg (FULL_SPAN)))
@@ -457,7 +453,7 @@ spec : specnode => (Spec.makeRegion (specnode, posToReg (FULL_SPAN)))
        ;
 
 specnode : "val" valdescs         => (Spec.Val (Vector.fromList valdescs))
-         | "type" (%try typBind         => (Spec.TypeDefs typBind) 
+         | "type" (%try typBind         => (Spec.TypeDefs typBind)
 	     | %try typdescs		=> (Spec.Type (Vector.fromList typdescs))) => (SR)
          | "eqtype" typdescs      => (Spec.Eqtype (Vector.fromList typdescs))
          | "datatype" datatypeRhsNoWithtype => (Spec.Datatype datatypeRhsNoWithtype)
@@ -471,7 +467,7 @@ specnode : "val" valdescs         => (Spec.Val (Vector.fromList valdescs))
                           equations = (MV.new1
                                        (Equation.makeRegion (sharespec, posToReg (FULL_SPAN))))})
        ;
-       
+
 sharespec : "sharing" ("type" longtyconeqns => (Equation.Type longtyconeqns)
           | longstrideqns      => (Equation.Structure longstrideqns)) => (SR)
        ;
@@ -485,7 +481,7 @@ longstrideqns : longstrid "=" (longstrid => ((true, [longstrid,longstrid]))
        ;
 
 longtyconeqns : longtycon "=" (longtycon => ((true, [longtycon,longtycon]))
-              | longtyconeqns => ((false, longtycon :: longtyconeqns))) => 
+              | longtyconeqns => ((false, longtycon :: longtyconeqns))) =>
 		(case SR
 		  of (true, [_, l]) => [longtycon, l]
 		   | (false, l) => l
@@ -556,7 +552,7 @@ decs : ";"* (dec ";"*)* => (case SR
 dec : decnode => (Dec.makeRegion (decnode, posToReg (FULL_SPAN)))
        ;
 
-decnode : decnolocal              => (decnolocal) 
+decnode : decnolocal              => (decnolocal)
         | "local" decs "in" decs "end"  => (Dec.Local (decs1,decs2))
        ;
 
@@ -564,7 +560,7 @@ decnolocal
         : "val" (tyvarseq)? valbindTop  => (let val (vbs, rvbs) = valbindTop
                                       in
 		                         case SR
-					  of NONE => 
+					  of NONE =>
                                              Dec.Val {tyvars = MV.new0 (), vbs=vbs, rvbs=rvbs}
 					   | SOME tyvars =>
                                              Dec.Val {tyvars = tyvars, vbs=vbs, rvbs=rvbs}
@@ -581,7 +577,7 @@ decnolocal
         | fixity (vid)+           => (Dec.Fix {fixity = fixity,
                                           ops = Vector.fromList SR})
         | "_overload" (digit)? var ":" ty "as" longvidands
-                                => (Dec.Overload (Priority.T SR, 
+                                => (Dec.Overload (Priority.T SR,
                                                var,
                                                MV.new0 (),
                                                ty,
@@ -724,7 +720,7 @@ digit : INT
           then valOf (Int.fromString digits)
        else let
                open Layout
-               val _ = 
+               val _ =
                   Control.error (posToReg (FULL_SPAN),
                                  str "invalid digit in infix declaration",
                                  empty)
@@ -849,7 +845,7 @@ handleexp : orelseexp ("handle" handleexpmatch)*
 		    in
 		      handleexpfold (rev SR)
 		    end)
-; 
+;
 
 expnode : handleexp
 	| primary
@@ -1050,7 +1046,7 @@ exp_list : exp ("," exp)*   => (exp :: SR)
 pat : patnode   => (Pat.makeRegion (patnode, posToReg FULL_SPAN))
        ;
 
-patnode : typedapats ("as" typedapats)* 
+patnode : typedapats ("as" typedapats)*
       => (let
 	      fun patfold ([x]) = x
 		| patfold (x::rest) = Pat.makeAs (Pat.makeRegion (x, posToReg FULL_SPAN), Pat.makeRegion (patfold rest, posToReg FULL_SPAN))
@@ -1060,7 +1056,7 @@ patnode : typedapats ("as" typedapats)*
 	  end)
 ;
 
-typedapats : apats (":" ty)* 
+typedapats : apats (":" ty)*
       => (let
 	      fun typedfold (x::rest) = Pat.Constraint (Pat.makeRegion (typedfold rest, posToReg FULL_SPAN), x)
 		| typedfold ([]) = Pat.FlatApp (Vector.fromList apats)
@@ -1187,7 +1183,7 @@ constOrBool
    | id => (let
             fun ok b = Const.makeRegion (Const.Bool b, posToReg (FULL_SPAN))
              val (sym, loc) = id
-         in            
+         in
             case Symbol.toString sym of
                "false" => ok false
              | "true" => ok true

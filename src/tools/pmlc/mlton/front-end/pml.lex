@@ -9,11 +9,12 @@
 %arg ({source});
 
 %defs(
+structure T = PMLTokens
 fun String_dropPrefix (s, n) = String.substring(s, n, size s - n)
 
       (* type pos = SourcePos.t *)
 type lex_arg = {source: Source.t}
-type lex_result = Tokens.token
+type lex_result = T.token
 
 val charlist: IntInf.int list ref = ref []
 val colNum: int ref = ref 0
@@ -55,15 +56,15 @@ fun addHexEscape (s: string, source, yypos): unit =
       NONE => stringError (source, yypos, "illegal unicode escape")
     | SOME i => addOrd i
 
-fun eof () = Tokens.EOF
+fun eof () = T.EOF
 
 fun int (yytext, drop, source, {negate: bool}, radix) =
-   Tokens.INT ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
+   T.INT ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
                 negate = negate,
                 radix = radix})
 
 fun word (yytext, drop, source, radix : StringCvt.radix) =
-   Tokens.WORD ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
+   T.WORD ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
                  radix = radix})
 );
 
@@ -90,23 +91,23 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 
 <INITIAL,BOM>{ws}		=> (skip ());
 <INITIAL,BOM>{eol}		=> (Source.newline(source, Position.toInt yypos); skip ());
-<INITIAL,BOM>"_"		=> (Tokens.WILD);
-<INITIAL,BOM>","		=> (Tokens.COMMA);
-<INITIAL,BOM>"{"		=> (Tokens.LBRACE);
-<INITIAL,BOM>"}"		=> (Tokens.RBRACE);
-<INITIAL,BOM>"["		=> (Tokens.LBRACKET);
-<INITIAL,BOM>"]"		=> (Tokens.RBRACKET);
-<INITIAL,BOM>";"		=> (Tokens.SEMICOLON);
-<INITIAL>"("			=> (Tokens.LPAREN);
-<INITIAL>")"			=> (Tokens.RPAREN);
-<INITIAL,BOM>"..."		=> (Tokens.DOTDOTDOT);
-<INITIAL,BOM>"|"		=> (Tokens.BAR);
-<INITIAL,BOM>":"		=> (Tokens.COLON);
-<INITIAL,BOM>":>"		=> (Tokens.COLONGT);
-<INITIAL,BOM>"="		=> (Tokens.EQUALOP);
-<INITIAL,BOM>"#"		=> (Tokens.HASH);
-<INITIAL,BOM>"->"		=> (Tokens.ARROW);
-<INITIAL,BOM>"=>"		=> (Tokens.DARROW);
+<INITIAL,BOM>"_"		=> (T.WILD);
+<INITIAL,BOM>","		=> (T.COMMA);
+<INITIAL,BOM>"{"		=> (T.LBRACE);
+<INITIAL,BOM>"}"		=> (T.RBRACE);
+<INITIAL,BOM>"["		=> (T.LBRACKET);
+<INITIAL,BOM>"]"		=> (T.RBRACKET);
+<INITIAL,BOM>";"		=> (T.SEMICOLON);
+<INITIAL>"("			=> (T.LPAREN);
+<INITIAL>")"			=> (T.RPAREN);
+<INITIAL,BOM>"..."		=> (T.DOTDOTDOT);
+<INITIAL,BOM>"|"		=> (T.BAR);
+<INITIAL,BOM>":"		=> (T.COLON);
+<INITIAL,BOM>":>"		=> (T.COLONGT);
+<INITIAL,BOM>"="		=> (T.EQUALOP);
+<INITIAL,BOM>"#"		=> (T.HASH);
+<INITIAL,BOM>"->"		=> (T.ARROW);
+<INITIAL,BOM>"=>"		=> (T.DARROW);
 
 (* additional PML special symbols *)
 <INITIAL>"(|"  			=> (T.PLPAREN);
@@ -118,56 +119,56 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 <INITIAL>"?"			=> (T.PWILD);
 <INITIAL,BOM>"&"		=> (T.AMP);
 
-<INITIAL>"and"			=> (Tokens.KW_and);
-<INITIAL>"abstype"		=> (Tokens.KW_abstype);
-<INITIAL>"as"			=> (Tokens.KW_as);
-<INITIAL>"case"			=> (Tokens.KW_case);
-<INITIAL>"datatype"		=> (Tokens.KW_datatype);
-<INITIAL>"else"			=> (Tokens.KW_else);
-<INITIAL>"end"			=> (Tokens.KW_end);
-<INITIAL>"eqtype"		=> (Tokens.KW_eqtype);
-<INITIAL>"exception"		=> (Tokens.KW_exception);
-<INITIAL>"do"			=> (Tokens.KW_do);
-<INITIAL>"fn"			=> (Tokens.KW_fn);
-<INITIAL>"fun"			=> (Tokens.KW_fun);
-<INITIAL>"functor"		=> (Tokens.KW_functor);
-<INITIAL>"handle"		=> (Tokens.KW_handle);
-<INITIAL>"if"			=> (Tokens.KW_if);
-<INITIAL>"in"			=> (Tokens.KW_in);
-<INITIAL>"include"		=> (Tokens.KW_include);
-<INITIAL>"infix"		=> (Tokens.KW_infix);
-<INITIAL>"infixr"		=> (Tokens.KW_infixr);
-<INITIAL>"let"			=> (Tokens.KW_let);
-<INITIAL>"local"		=> (Tokens.KW_local);
-<INITIAL>"nonfix"		=> (Tokens.KW_nonfix);
-<INITIAL>"of"			=> (Tokens.KW_of);
-<INITIAL>"op"			=> (Tokens.KW_op);
-<INITIAL>"open"			=> (Tokens.KW_open);
-<INITIAL>"raise"		=> (Tokens.KW_raise);
-<INITIAL>"rec"			=> (Tokens.KW_rec);
-<INITIAL>"sharing"		=> (Tokens.KW_sharing);
-<INITIAL>"sig"			=> (Tokens.KW_sig);
-<INITIAL>"signature"		=> (Tokens.KW_signature);
-<INITIAL>"struct"		=> (Tokens.KW_struct);
-<INITIAL>"structure"		=> (Tokens.KW_structure);
-<INITIAL>"then"			=> (Tokens.KW_then);
-<INITIAL>"type"			=> (Tokens.KW_type);
-<INITIAL>"val"			=> (Tokens.KW_val);
-<INITIAL>"where"		=> (Tokens.KW_where);
-<INITIAL>"while"		=> (Tokens.KW_while);
-<INITIAL>"with"			=> (Tokens.KW_with);
-<INITIAL>"withtype"		=> (Tokens.KW_withtype);
-<INITIAL>"orelse"		=> (Tokens.KW_orelse);
-<INITIAL>"andalso"		=> (Tokens.KW_andalso);
+<INITIAL>"and"			=> (T.KW_and);
+<INITIAL>"abstype"		=> (T.KW_abstype);
+<INITIAL>"as"			=> (T.KW_as);
+<INITIAL>"case"			=> (T.KW_case);
+<INITIAL>"datatype"		=> (T.KW_datatype);
+<INITIAL>"else"			=> (T.KW_else);
+<INITIAL>"end"			=> (T.KW_end);
+<INITIAL>"eqtype"		=> (T.KW_eqtype);
+<INITIAL>"exception"		=> (T.KW_exception);
+<INITIAL>"do"			=> (T.KW_do);
+<INITIAL>"fn"			=> (T.KW_fn);
+<INITIAL>"fun"			=> (T.KW_fun);
+<INITIAL>"functor"		=> (T.KW_functor);
+<INITIAL>"handle"		=> (T.KW_handle);
+<INITIAL>"if"			=> (T.KW_if);
+<INITIAL>"in"			=> (T.KW_in);
+<INITIAL>"include"		=> (T.KW_include);
+<INITIAL>"infix"		=> (T.KW_infix);
+<INITIAL>"infixr"		=> (T.KW_infixr);
+<INITIAL>"let"			=> (T.KW_let);
+<INITIAL>"local"		=> (T.KW_local);
+<INITIAL>"nonfix"		=> (T.KW_nonfix);
+<INITIAL>"of"			=> (T.KW_of);
+<INITIAL>"op"			=> (T.KW_op);
+<INITIAL>"open"			=> (T.KW_open);
+<INITIAL>"raise"		=> (T.KW_raise);
+<INITIAL>"rec"			=> (T.KW_rec);
+<INITIAL>"sharing"		=> (T.KW_sharing);
+<INITIAL>"sig"			=> (T.KW_sig);
+<INITIAL>"signature"		=> (T.KW_signature);
+<INITIAL>"struct"		=> (T.KW_struct);
+<INITIAL>"structure"		=> (T.KW_structure);
+<INITIAL>"then"			=> (T.KW_then);
+<INITIAL>"type"			=> (T.KW_type);
+<INITIAL>"val"			=> (T.KW_val);
+<INITIAL>"where"		=> (T.KW_where);
+<INITIAL>"while"		=> (T.KW_while);
+<INITIAL>"with"			=> (T.KW_with);
+<INITIAL>"withtype"		=> (T.KW_withtype);
+<INITIAL>"orelse"		=> (T.KW_orelse);
+<INITIAL>"andalso"		=> (T.KW_andalso);
 
-<INITIAL>"_address"		=> (Tokens.KW__address);
-<INITIAL>"_build_const"		=> (Tokens.KW__build_const);
-<INITIAL>"_command_line_const"	=> (Tokens.KW__command_line_const);
-<INITIAL>"_const"		=> (Tokens.KW__const);
-<INITIAL>"_export"		=> (Tokens.KW__export);
-<INITIAL>"_import"		=> (Tokens.KW__import);
-<INITIAL>"_overload"		=> (Tokens.KW__overload);
-<INITIAL>"_symbol"		=> (Tokens.KW__symbol);
+<INITIAL>"_address"		=> (T.KW__address);
+<INITIAL>"_build_const"		=> (T.KW__build_const);
+<INITIAL>"_command_line_const"	=> (T.KW__command_line_const);
+<INITIAL>"_const"		=> (T.KW__const);
+<INITIAL>"_export"		=> (T.KW__export);
+<INITIAL>"_import"		=> (T.KW__import);
+<INITIAL>"_overload"		=> (T.KW__overload);
+<INITIAL>"_symbol"		=> (T.KW__symbol);
 <INITIAL> "_primcode"		=> (YYBEGIN BOM; T.KW__primcode);
 <INITIAL> "_prim"		=> (YYBEGIN BOM; T.KW__prim);
 <BOM> "__attribute__"		=> (T.KW___attribute__);
@@ -182,17 +183,17 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 (* FIXME: split LONGID into unqualified id and qualified id *)
 <INITIAL>{longid}		=> (case yytext
 				     of "*" => T.ASTERISK
-   				      | _ => Tokens.LONGID yytext
+   				      | _ => T.LONGID yytext
 				    (* end case *));
 <BOM>{longid}			=> (case yytext
 				     of "*" => T.ASTERISK
 				      | "<" => T.LT
 				      | ">" => T.GT
-   				      | _ => Tokens.LONGID yytext
+   				      | _ => T.LONGID yytext
 				    (* end case *));
-<BOM>{hlid}			=> (Tokens.HLOPID yytext);
+<BOM>{hlid}			=> (T.HLOPID yytext);
 
-<INITIAL>{real}			=> (Tokens.REAL(yytext));
+<INITIAL>{real}			=> (T.REAL(yytext));
 <INITIAL>{num}			=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));
 <INITIAL>"~"{num}		=> (int (yytext, 1, source, {negate = true}, StringCvt.DEC));
 <INITIAL>"0x"{hexnum}		=> (int (yytext, 2, source, {negate = false}, StringCvt.HEX));
@@ -258,9 +259,9 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
                        val () = YYBEGIN INITIAL
                     in
                        if !stringtype
-                          then make (Tokens.STRING, s)
+                          then make (T.STRING, s)
                        else
-                          make (Tokens.CHAR,
+                          make (T.CHAR,
                                 if 1 <> Vector.length s
                                    then (error
                                          (source, yypos, yypos + 1,

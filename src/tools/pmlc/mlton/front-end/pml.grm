@@ -6,6 +6,10 @@
 
 %name PML;
 
+%header (functor MLParserFun (structure Lex : ANTLR_LEXER
+                              structure SourceMap : SOURCE_MAP
+                              structure Ast: AST));
+
 %tokens
       : KW__primcode	("_primcode")
       ;
