@@ -58,6 +58,9 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         rightDelim : string option) : Layout.t =
       Layout.align (separateDelimited (els, sep, leftDelim, rightDelim,
         defaultIndentMayAlign))
+    fun delimitWithIndent' (els, sep, leftDelim : string,
+      rightDelim : string) : Layout.t =
+        delimitWithIndent (els, sep, SOME leftDelim, SOME rightDelim)
     fun delimitNoIndent (els, sep,
         leftDelim : string option,
         rightDelim : string option) : Layout.t =
@@ -73,7 +76,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       delimitWithIndent (els, ",", SOME "(", SOME ")")
     fun unindentedSchemeList els =
       delimitNoIndent (els, ",", SOME "(", SOME ")")
-    fun indentedSlashList (leftEls : Layout.t list, rightEls : Layout.t list) =
+    fun indentedSlashList (leftEls : Layout.t list,
+        rightEls : Layout.t list) : Layout.t =
       Layout.align [
         (delimitWithIndent
           (leftEls, ",", SOME "(", NONE)),
@@ -133,11 +137,15 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     type node' = node
     type obj = t
 
-    fun layout node (T ss)  =
+    fun layout myNode  =
+      let
+        val T ss = node myNode
+      in
         Layout.mayAlign [
           Layout.str "__attributes__",
           unindentedSchemeList (map Layout.str ss)
         ]
+      end
     end
 
 
@@ -150,8 +158,12 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   type node' = node
   type obj = t
 
-  fun layout node (T tyParams) =
-    delimitWithIndent (map TyParam.layout tyParams, ",", SOME "<", SOME ">")
+  fun layout myNode =
+    let
+      val T typs = node myNode
+    in
+      delimitWithIndent (map TyParam.layout typs, ",", SOME "<", SOME ">")
+    end
   end
 
 
@@ -221,26 +233,25 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
     fun layout myNode =
       case node myNode of
-        ((Raw rawTy) : node) => (RawTy.layout rawTy)
-      | (VoidPointer : node) => Layout.str "void*"
+        Raw rawTy => RawTy.layout rawTy
+      | VoidPointer => Layout.str "void*"
 
     end
 
     structure CReturnTy = struct
+    open Wrap
     datatype node
       = CArg of CArgTy.t
       | Void
 
-
-    open Wrap
     type t = node Wrap.t
     type node' = node
     type obj = t
 
     fun layout myNode =
       case node myNode of
-        CArg (cArgTy) => (CArgTy.layout cArgTy )
-      | Void => (Layout.str "void")
+        CArg cArgTy => CArgTy.layout cArgTy
+      | Void => Layout.str "void"
     end
 
 
@@ -256,18 +267,16 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     type node' = node
     type obj = t
 
-    (* fun layout myNode = *)
-    (*     let *)
-    (*         val toLayout = case myNode *)
-    (*           of PosInt n => Int.toString n *)
-    (*           | Float x => Real.toString x *)
-    (*           | String s => s *)
-    (*           | NullVP => "nullVP" *)
-    (*     in *)
-    (*         Layout.str toLayout *)
-    (*     end *)
+    fun layout myNode =
+      Layout.str (
+         case node myNode of
+             PosInt n => IntInf.toString n
+           | Float x => Real.toString x
+           | String s => s
+           | NullVP => "nullVP")
 
     end
+
 
 
     (* Recursive types *)
@@ -344,269 +353,308 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   and exp_t = exp_node Wrap.t
   and rhs_t = rhs_node Wrap.t
 
-  (* fun layoutType myNode = *)
-  (*   let *)
-  (*     fun layoutTypes (ts : type_node list) = *)
-  (*       map layoutType ts *)
-  (*     fun getDefault (types : type_t list option) = layoutOptions (types, layoutTypes) *)
-  (*     fun layoutTyArgOpts (maybeTyArgs) = *)
-  (*       layoutOption (maybeTyArgs, layoutTyArgs) *)
-  (*   in *)
-  (*     case type_node myNode of *)
-  (*         Param p  => TyParam.layout p *)
-  (*       | LongId (longTyId, maybeTyArgs) => *)
-  (*         Layout.mayAlign [ *)
-  (*           LongTyId.layout longTyId, *)
-  (*           layoutOption (maybeTyArgs, TyArgs.layout) *)
-  (*         ] *)
-  (*       | Record (fields) => *)
-  (*         delimitWithIndent (map layoutField fields, ",", "{", "}") *)
-  (*       | Tuple (types) => *)
-  (*         indentedList (layoutTypes types) *)
-  (*       | Fun (inputTys, exnTys, rangeTys)  => *)
-  (*         let *)
-  (*           val layoutDomainTys = Layout.align *)
-  (*             (indentedSlashList (getDefault inputTys, getDefault exnTys)) *)
-  (*           val layoutRangeTys = Layout.align *)
-  (*             (indentedSchemeList (getDefault rangeTs)) *)
-  (*         in *)
-  (*           Layout.seq (Layout.separate ([layoutDomainTys, layoutRangeTys], "->")) *)
-  (*         end *)
-  (*       | Any => Layout.str "any" *)
-  (*       | VProc => Layout.str "vproc" *)
-  (*       | Cont (maybeTyArgs) => *)
-  (*         Layout.seq ["cont", layoutOption (maybeTyArgs, layoutTyArgs)] *)
-  (*       | Addr (myType) => Layout.seq ["addr <", layoutType myType, ">"] *)
-  (*   end *)
+  fun layoutType myNode =
+    let
+      fun layoutTypes (ts : type_t list) : Layout.t list =
+        map layoutType ts
+      fun getDefault (types : type_t list option) = layoutOptions (types, layoutTypes)
+      fun layoutTyArgOpts (maybeTyArgs : tyargs_t option) =
+        layoutOption (maybeTyArgs, layoutTyArgs)
+    in
+      case Wrap.node myNode of
+          Param p  => TyParam.layout p
+        | LongId (longTyId, maybeTyArgs) =>
+          Layout.mayAlign [
+            LongTyId.layout longTyId,
+            layoutOption (maybeTyArgs, layoutTyArgs)
+          ]
+        | Record (fields) =>
+          delimitWithIndent' (map layoutField fields, ",", "{", "}")
+        | Tuple (types) =>
+          indentedList (layoutTypes types)
+        | Fun (inputTys, exnTys, rangeTys)  =>
+          let
+            val layoutDomainTys = indentedSlashList (layoutTypes inputTys, getDefault exnTys)
+            val layoutRangeTys = indentedSchemeList (layoutTypes rangeTys)
+          in
+            Layout.seq (
+              Layout.separate ([layoutDomainTys, layoutRangeTys], "->"))
+          end
+        | Any => Layout.str "any"
+        | VProc => Layout.str "vproc"
+        | Cont (maybeTyArgs) =>
+          Layout.seq [
+            Layout.str "cont",
+            layoutOption (maybeTyArgs, layoutTyArgs)
+          ]
+        | Addr (myType) => Layout.seq [
+            Layout.str "addr",
+            Layout.str "<",
+            layoutType myType,
+            Layout.str ">"
+          ]
+    end
 
-  (* and layoutTyArgs tyargs_node (ArgTypes types) = *)
-  (*   delimitWithIndent (map layoutType types, ",", "<", ">") *)
+  and layoutTyArgs myNode =
+    let
+      val ArgTypes types = Wrap.node myNode
+    in
+      delimitWithIndent' (map layoutType types, ",", "<", ">")
+    end
 
-  (* and layoutDataConsDef dataconsdef_node (ConsDef (bomId, maybeMyType)) = *)
-  (*   let *)
-  (*     val ofType = if Option.isSome maybeMyType then *)
-  (*       Layout.seq ["of ", layoutType (Option.getVal maybeMyType)] *)
-  (*     else Layout.empty *)
-  (*   in *)
-  (*     Layout.seq [BomId.layout bomId, ofType] *)
-  (*   end *)
+  and layoutDataConsDef myNode =
+    let
+      val ConsDef (bomId, maybeMyType) = Wrap.node myNode
+      val ofType = if Option.isSome maybeMyType then
+        Layout.seq [
+          Layout.str "of ",
+          layoutType (Option.valOf maybeMyType)
+        ]
+      else Layout.empty
+    in
+      Layout.seq [BomId.layout bomId, ofType]
+    end
 
-  (* and layoutField myNode = *)
-  (*   let *)
-  (*     fun fieldWithSep (offset, myType, sep) = *)
-  (*       Layout.separate ([Int.toString offset, layoutType myType], sep) *)
-  (*   in *)
-  (*     case field_node myNode of *)
-  (*         Immutable (offset, myType) => *)
-  (*           fieldWithSep (offset, myType, " : ") *)
-  (*       | Mutable (offset, myType) => *)
-  (*           fieldWithSep (offset, myType, " ! ") *)
-  (*   end *)
+  and layoutField myNode : Layout.t =
+    let
+      fun fieldWithSep (offset, myType, sep) =
+        (Layout.mayAlign o Layout.separate) ([
+          Layout.str (IntInf.toString offset),
+          layoutType myType
+        ], sep)
+    in
+      case Wrap.node myNode of
+          Immutable (offset, myType) =>
+            fieldWithSep (offset, myType, " : ")
+        | Mutable (offset, myType) =>
+            fieldWithSep (offset, myType, " ! ")
+    end
 
-  (* and layoutFunDef fundef_node (Def (attrs, bomId, maybeTyParams, *)
-  (*     maybeInputParams, maybeExnParams, returnTy, exp)) = *)
-  (*   let *)
-  (*     fun maybeLayoutParams (maybeParams) = layoutOptions (maybeParams, Param.layout) *)
-  (*     val inputParamsLayout = maybeLayoutParams maybeInputParams *)
-  (*     val exnParamsLayout = maybeLayoutParams maybeExnParams *)
-  (*   in *)
-  (*     Layout.mayAlign [ *)
-  (*       Attrs.layout attrs, *)
-  (*       BomId.layout bomId, *)
-  (*       layoutOption (maybeTyParams, TyParams.layout), *)
-  (*       indentedSlashList (inputParamsLayout, exnParamsLayout), *)
-  (*       layoutType returnTy, *)
-  (*       Layout.str " = ", *)
-  (*       layoutExp exp *)
-  (*     ] *)
-  (*   end *)
+  and layoutFunDef myNode : Layout.t =
+    let
+      val Def (maybeAttrs, bomId, maybeTyParams,
+        maybeInputParams, maybeExnParams, returnTy, exp) = Wrap.node myNode
+      fun maybeLayoutParams maybeParams = layoutOptions (maybeParams, map layoutVarPat)
+      val inputParamsLayout = maybeLayoutParams maybeInputParams
+      val exnParamsLayout = maybeLayoutParams maybeExnParams
+    in
+      Layout.mayAlign [
+        layoutOption (maybeAttrs, Attrs.layout),
+        BomId.layout bomId,
+        layoutOption (maybeTyParams, TyParams.layout),
+        indentedSlashList (inputParamsLayout, exnParamsLayout),
+        indentedSchemeList (layoutOptions (returnTy, map layoutType)),
+        Layout.str " = ",
+        layoutExp exp
+      ]
+    end
 
-  (* and layoutVarPat myNode = *)
-  (*   case varpat_node myNode of *)
-  (*       Wild => Layout.str "_" *)
-  (*     | Var (bomId, NONE) => BomId.layout bomId *)
-  (*     | Var (bomId, SOME myType) => *)
-  (*         Layout.mayAlign [ *)
-  (*           BomId.layout bomId, *)
-  (*           Layout.str " : ", *)
-  (*           layoutType myType *)
-  (*         ] *)
+  and layoutVarPat (myNode : varpat_t) : Layout.t =
+    case Wrap.node myNode of
+        Wild maybeType =>
+          Layout.mayAlign [
+            Layout.str "_",
+            Layout.str "=>",
+            unindentedSchemeList [
+              Layout.str ":",
+              layoutOption (maybeType, layoutType)
+            ]
+          ]
+      | Var (bomId, NONE) => BomId.layout bomId
+      | Var (bomId, SOME myType) =>
+          Layout.mayAlign [
+            BomId.layout bomId,
+            Layout.str " : ",
+            layoutType myType
+          ]
 
-  (* and layoutCaseRule myNode = *)
-  (*   let *)
-  (*     fun defaultFormat (leftEls, rightEl) = *)
-  (*       Layout.mayAlign leftEls::[Layout.str " => ", rightEl] *)
-  (*   in *)
-  (*     case caserule_node myNode of *)
-  (*       LongRule (longConId, varPats, exp) => *)
-  (*           defaultFormat *)
-  (*             ([LongConId.layout longConId, *)
-  (*             indentedSchemeList (map layoutVarPat varPats)], *)
-  (*             layoutExp exp) *)
-  (*       | LiteralRule (lit, exp) => *)
-  (*           defaultFormat *)
-  (*             ([Literal.layout lit], *)
-  (*             layoutExp exp) *)
-  (*       | DefaultRule (varpat, exp) => *)
-  (*           defaultFormat *)
-  (*             ([layoutVarPat varpat], *)
-  (*             layoutExp exp) *)
-  (*   end *)
+  and layoutCaseRule (myNode : caserule_t) : Layout.t =
+    let
+      fun defaultFormat (leftEls : Layout.t list,
+          rightEl : Layout.t) : Layout.t =
+        Layout.mayAlign (leftEls@[Layout.str " => ", rightEl])
+    in
+      case Wrap.node myNode of
+        LongRule (longConId, varPats, exp) =>
+            defaultFormat ([
+               LongConId.layout longConId,
+               indentedSchemeList (layoutOptions (varPats, map layoutVarPat))
+            ], layoutExp exp)
+        | LiteralRule (lit, exp) =>
+            defaultFormat
+              ([Literal.layout lit],
+              layoutExp exp)
+        | DefaultRule (varpat, exp) =>
+            defaultFormat
+              ([layoutVarPat varpat],
+              layoutExp exp)
+    end
 
-  (* and layoutTyCaseRule myNode = *)
-  (*   case tycaserule_node myNode of *)
-  (*       tyRule (myType, exp) => *)
-  (*         Layout.mayAlign [ *)
-  (*           layoutType myType, *)
-  (*           Layout.str " => ", *)
-  (*           layoutExp exp *)
-  (*         ] *)
-  (*     | Default exp => *)
-  (*         Layout.mayAlign [ *)
-  (*           Layout.str "_", *)
-  (*           Layout.str " => ", *)
-  (*           layoutExp exp *)
-  (*         ] *)
+  and layoutTyCaseRule myNode =
+    case Wrap.node myNode of
+        TyRule (myType, exp) =>
+          Layout.mayAlign [
+            layoutType myType,
+            Layout.str " => ",
+            layoutExp exp
+          ]
+      | Default exp =>
+          Layout.mayAlign [
+            Layout.str "_",
+            Layout.str " => ",
+            layoutExp exp
+          ]
 
-  (* and layoutSimpleExp myNode = *)
-  (*   let *)
-  (*     fun layoutSimpleExps simpleExps = *)
-  (*       map layoutSimpleExp simpleExps *)
+  and layoutSimpleExp (myNode : simpleexp_t) : Layout.t =
+    let
+      fun layoutSimpleExps simpleExps =
+        map layoutSimpleExp simpleExps
 
-  (*     fun layoutVpOp (descStr, posInt, fromExp, maybeToExp) = *)
-  (*       Layout.mayAlign [ *)
-  (*         Layout.str descStr, *)
-  (*         unindentedSchemeList [ *)
-  (*           Layout.str (Int.toString posInt), *)
-  (*           layoutSimpleExp fromExp *)
-  (*           ]@(if Option.isSome maybeToExp then *)
-  (*             [layoutSimpleExp (Option.valOf maybeToExp)] *)
-  (*           else *)
-  (*             [] *)
-  (*           ) *)
-  (*         ] *)
+      fun layoutVpOp (descStr, posInt, fromExp, maybeToExp) =
+        Layout.mayAlign [
+          Layout.str descStr,
+          unindentedSchemeList ([
+            Layout.str (IntInf.toString posInt),
+            layoutSimpleExp fromExp
+            ]@(if Option.isSome maybeToExp then
+              [layoutSimpleExp (Option.valOf maybeToExp)]
+            else
+              []
+            ))
+          ]
 
-  (*   in *)
-  (*     case simpleexp_node myNode of *)
-  (*         PrimOp (Prim.prim var', simpleExps) => *)
-  (*           Layout.mayAlign [ *)
-  (*             Prim.layout var', *)
-  (*             indentedSchemeList (layoutSimpleExps simpleExps) *)
-  (*           ] *)
-  (*       | AllocId (longValueId, simpleExps) => *)
-  (*           Layout.mayAlign [ *)
-  (*             Layout.str "alloc", *)
-  (*             LongValueId.layout longValueId, *)
-  (*             indentedSchemeList (layoutSimpleExps simpleExps) *)
-  (*           ] *)
-  (*       | AllocType (myType, simpleExps) => *)
-  (*           Layout.mayAlign [ *)
-  (*             Layout.str "alloc", *)
-  (*             layoutType myType, *)
-  (*             indentedSchemeList (layoutSimpleExps simpleExps) *)
-  (*           ] *)
-  (*       | AtIndex (posInt, simpleExp, maybeSimpleExp) => *)
-  (*           Layout.mayAlign [ *)
-  (*             Layout.str ("#" ^ (Int.toString posInt)), *)
-  (*             unindentedSchemeList [layoutSimpleExp simpleExp], *)
-  (*             if Option.isSome maybeSimpleExp then *)
-  (*               Layout.seq [Layout.str " := ", *)
-  (*                 layoutSimpleExp (Option.valOf simpleExp) *)
-  (*               ] *)
-  (*             else *)
-  (*               Layout.empty *)
-  (*           ] *)
-  (*       | TypeCast (myType, simpleExp) => *)
-  (*           Layout.mayAlign [ *)
-  (*             unindentedSchemeList [layoutType myType], *)
-  (*             layoutSimpleExp simpleExp *)
-  (*           ] *)
-  (*       | HostVProc => Layout.str "host_vproc" *)
-  (*       | VPload (posInt, simpleExp) => *)
-  (*           layoutVpOp ("vpload", posInt, simpleExp, NONE) *)
-  (*       | VPAddr (posInt, simpleExp) => *)
-  (*           layoutVpOp ("vpaddr", posInt, simpleExp, NONE) *)
-  (*       | VPStore (posInt, fromExp, maybeToExp) => *)
-  (*           layoutVpOp ("vpstore", posInt, fromExp, maybeToExp) *)
-  (*       | Id longValueId => LongValueId.layout longValueId *)
-  (*       | Lit lit => Literal.layout lit *)
-  (*       | MLString s => Layout.str s *)
-  (*   end *)
+    in
+      case Wrap.node myNode of
+          (* PrimOp (prim, simpleExps) => *)
+          (*   Layout.mayAlign [ *)
+          (*     PrimTycons.layout prim, *)
+          (*     indentedSchemeList (layoutSimpleExps simpleExps) *)
+          (*   ] *)
+          AllocId (longValueId, simpleExps) =>
+            Layout.mayAlign [
+              Layout.str "alloc",
+              LongValueId.layout longValueId,
+              indentedSchemeList (layoutSimpleExps simpleExps)
+            ]
+        | AllocType (myTyArgs, simpleExps) =>
+            Layout.mayAlign [
+              Layout.str "alloc",
+              layoutTyArgs myTyArgs,
+              indentedSchemeList (layoutSimpleExps simpleExps)
+            ]
+        | AtIndex (posInt, simpleExp, maybeSimpleExp) =>
+            Layout.mayAlign [
+              Layout.str ("#" ^ (IntInf.toString posInt)),
+              unindentedSchemeList [layoutSimpleExp simpleExp],
+              if Option.isSome maybeSimpleExp then
+                Layout.seq [Layout.str " := ",
+                  layoutSimpleExp (Option.valOf maybeSimpleExp)
+                ]
+              else
+                Layout.empty
+            ]
+        | TypeCast (myType, simpleExp) =>
+            Layout.mayAlign [
+              unindentedSchemeList [layoutType myType],
+              layoutSimpleExp simpleExp
+            ]
+        | HostVproc => Layout.str "host_vproc"
+        | VpLoad (posInt, simpleExp) =>
+            layoutVpOp ("vpload", posInt, simpleExp, NONE)
+        | VpAddr (posInt, simpleExp) =>
+            layoutVpOp ("vpaddr", posInt, simpleExp, NONE)
+        | VpStore (posInt, fromExp, toExp) =>
+            layoutVpOp ("vpstore", posInt, fromExp, SOME toExp)
+        | Id longValueId => LongValueId.layout longValueId
+        | Lit lit => Literal.layout lit
+        | MLString s
+            => Layout.vector (
+              Vector.map (Layout.str o IntInf.toString) s)  (* ??? *)
+    end
 
-  (* and layoutExp myNode = *)
-  (*   case exp_node myNode of *)
-  (*       Let (varPats, rhs, exp) => *)
-  (*         Layout.align [ *)
-  (*           Layout.str "let", *)
-  (*           Layout.mayAlign *)
-  (*             rightDelimitWithIndent (map layoutVarPat varPats, ",", "="), *)
-  (*           doIndent (layoutRhs rhs), *)
-  (*           layoutExp exp *)
-  (*         ] *)
-  (*     | Do (simpleExp, exp) => *)
-  (*         Layout.align [ *)
-  (*           Layout.str "do", *)
-  (*           defaultIndentAlign [layoutSimpleExp simpleExp, layoutExp exp] *)
-  (*         ] *)
-  (*     | Fun (fundefs, exp) => *)
-  (*         Layout.align [ *)
-  (*           leftDelimitWithIdent (map layoutFunDef fundefs, "and", "fun"), *)
-  (*           layoutExp exp *)
-  (*         ] *)
-  (*     | If (simpleExp, exp, exp') => *)
-  (*         Layout.align [ *)
-  (*           Layout.mayAlign [Layout.str "if", layoutSimpleExp simpleExp, "then"], *)
-  (*           layoutExp exp, *)
-  (*           "else", *)
-  (*           layoutExp exp' *)
-  (*         ] *)
-  (*     | Case (simpleExp, caseRules) => *)
-  (*         Layout.align [ *)
-  (*           Layout.mayAlign [ *)
-  (*             Layout.str "case", *)
-  (*             layoutSimpleExp simpleExp, *)
-  (*             Layout.str "of" *)
-  (*           ], *)
-  (*           rightDelimitWithIndent (map layoutCaseRule caseRules, " | ", "end") *)
-  (*         ] *)
-  (*     | TypeCase (tyParam, tyCaseRules) => *)
-  (*         Layout.align [ *)
-  (*           Layout.mayAlign [ *)
-  (*             Layout.str "typecase", *)
-  (*             TyParam.layout tyParam, *)
-  (*             Layout.str "of" *)
-  (*           ], *)
-  (*           rightDelimitWithIndent (map layoutTyCaseRule tyCaseRules, " | ", "end") *)
-  (*         ] *)
-  (*     | Apply (longValueId, maybeLeftArgs, maybeRightArgs) => *)
-  (*         Layout.align [ *)
-  (*           Layout.mayAlign [ *)
-  (*             Layout.str "apply", *)
-  (*             LongValueId.layout longValueId *)
-  (*           ], *)
-  (*           indentedSlashList *)
-  (*             (layoutOptions (maybeLeftArgs, map layoutSimpleExp), *)
-  (*             layoutOptions (maybeRightArgs, map layoutSimpleExp)) *)
-  (*         ] *)
-  (*     | Throw (bomId, maybeTyArgs, maybeSimpleExps) => *)
-  (*         Layout.align [ *)
-  (*           Layout.mayAlign [ *)
-  (*             Layout.str "throw", *)
-  (*             BomId.layout bomId *)
-  (*           ], *)
-  (*           layoutOption (maybeTyArgs, layoutTyArgs), *)
-  (*           indentedSchemeList (layoutOptions (maybeSimpleExps, map layoutSimpleExp)) *)
-  (*         ] *)
-  (*     | return maybeSimpleExps => *)
-  (*         Layout.align [ *)
-  (*           Layout.str "return", *)
-  (*           indentedSchemeList (layoutOptions (maybeSimpleExps, map layoutSimpleExp)) *)
-  (*         ] *)
+  and layoutExp myNode =
+    case Wrap.node myNode of
+        Let (varPats, rhs, exp) =>
+          Layout.align [
+            Layout.str "let",
+            Layout.mayAlign (
+              rightDelimitWithIndent (map layoutVarPat varPats, ",", "=")),
+            defaultIndent (layoutRhs rhs),
+            layoutExp exp
+          ]
+      | Do (simpleExp, exp) =>
+          Layout.align [
+            Layout.str "do",
+            defaultIndentAlign [layoutSimpleExp simpleExp, layoutExp exp]
+          ]
+      | FunExp (fundefs, exp) =>
+          Layout.align [
+            Layout.mayAlign (
+              leftDelimitWithIndent (map layoutFunDef fundefs, "and", "fun")),
+            layoutExp exp
+          ]
+      | If (simpleExp, exp, exp') =>
+          Layout.align [
+            Layout.mayAlign [
+              Layout.str "if",
+              layoutSimpleExp simpleExp,
+              Layout.str "then"
+            ],
+            layoutExp exp,
+            Layout.str "else",
+            layoutExp exp'
+          ]
+      | Case (simpleExp, caseRules) =>
+          Layout.align [
+            Layout.mayAlign [
+              Layout.str "case",
+              layoutSimpleExp simpleExp,
+              Layout.str "of"
+            ],
+            Layout.mayAlign (
+              rightDelimitWithIndent (
+                map layoutCaseRule caseRules, " | ", "end"))
+          ]
+      | Typecase (tyParam, tyCaseRules) =>
+          Layout.align [
+            Layout.mayAlign [
+              Layout.str "typecase",
+              TyParam.layout tyParam,
+              Layout.str "of"
+            ],
+            Layout.mayAlign (
+              rightDelimitWithIndent (
+                map layoutTyCaseRule tyCaseRules, " | ", "end"))
+          ]
+      | Apply (longValueId, maybeLeftArgs, maybeRightArgs) =>
+          Layout.align [
+            Layout.mayAlign [
+              Layout.str "apply",
+              LongValueId.layout longValueId
+            ],
+            indentedSlashList
+              (layoutOptions (maybeLeftArgs, map layoutSimpleExp),
+              layoutOptions (maybeRightArgs, map layoutSimpleExp))
+          ]
+      | Throw (bomId, maybeTyArgs, maybeSimpleExps) =>
+          Layout.align [
+            Layout.mayAlign [
+              Layout.str "throw",
+              BomId.layout bomId
+            ],
+            layoutOption (maybeTyArgs, layoutTyArgs),
+            indentedSchemeList (layoutOptions (maybeSimpleExps, map layoutSimpleExp))
+          ]
+      | Return maybeSimpleExps =>
+          Layout.align [
+            Layout.str "return",
+            indentedSchemeList (layoutOptions (maybeSimpleExps, map layoutSimpleExp))
+          ]
 
-  (* and layoutRhs myNode = *)
-  (*   case rhs_node myNode of *)
-  (*       Composite exp => layoutExp exp *)
-  (*     | Simple simpleExp => layoutSimpleExp simpleExp *)
+  and layoutRhs myNode =
+    case Wrap.node myNode of
+        Composite exp => layoutExp exp
+      | Simple simpleExp => layoutSimpleExp simpleExp
 
 
   structure BomType = struct
@@ -622,7 +670,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
 
 
-  (* val layout = layoutType *)
+  val layout = layoutType
 
   end
 
@@ -634,7 +682,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   type node' = node
   type obj = t
-  (* val layout = layoutTyArgs *)
+  val layout = layoutTyArgs
 
   end
 
@@ -646,7 +694,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   type node' = node
   type obj = t
 
-  (* val layout = layoutDataConsDef *)
+  val layout = layoutDataConsDef
 
   end
 
@@ -658,7 +706,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   type node' = node
   type obj = t
 
-  (* val layout = layoutField *)
+  val layout = layoutField
 
   end
 
@@ -675,7 +723,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
 
 
-  (* val layout = layoutFunDef *)
+  val layout = layoutFunDef
 
   end
 
@@ -687,7 +735,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   type node' = node
   type obj = t
 
-  (* val layout = layoutVarPat *)
+  val layout = layoutVarPat
 
   end
 
@@ -701,7 +749,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   type exp = exp_t
 
-  (* val layout = layoutCaseRule *)
+  val layout = layoutCaseRule
 
   end
 
@@ -715,7 +763,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   type exp = exp_t
 
-  (* val layout = layoutTyCaseRule *)
+  val layout = layoutTyCaseRule
 
   end
 
@@ -728,7 +776,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   type node' = node
   type obj = t
 
-  (* val layout = layoutSimpleExp *)
+  val layout = layoutSimpleExp
 
   end
 
@@ -743,7 +791,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   type rhs = rhs_t
 
-  (* val layout = layoutExp *)
+  val layout = layoutExp
 
   end
 
@@ -758,7 +806,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   type exp = exp_t
 
-  (* val layout = layoutRhs *)
+  val layout = layoutRhs
 
   end
 
@@ -774,36 +822,36 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   type node' = node
   type obj = t
 
-  (* fun layout myNode = *)
-  (*   let *)
-  (*     fun layoutConsDef (bomId, maybeTyParams, dataConsDefs) = *)
-  (*       Layout.align [ *)
-  (*         Layout.mayAlign [ *)
-  (*           BomId.layout bomId, *)
-  (*           layoutOption (maybeTyParams, TyParams.layout) *)
-  (*         ], *)
-  (*         leftDelimitWithIndent *)
-  (*           (map DataConsDeflayout dataConsDefs, "=", " | ") *)
-  (*       ] *)
+  fun layout myNode =
+    let
+      fun layoutConsDef (bomId, maybeTyParams, dataConsDefs) =
+        Layout.align [
+          Layout.mayAlign [
+            BomId.layout bomId,
+            layoutOption (maybeTyParams, TyParams.layout)
+          ],
+          leftDelimitWithIndent
+            (map DataConsDeflayout dataConsDefs, "=", " | ")
+        ]
 
-  (*       fun layoutSimpleDef (bomId, maybeTyParams, longId) = *)
-  (*           Layout.align [ *)
-  (*             Layout.mayAlign [ *)
-  (*               BomId.layout bomId, *)
-  (*               layoutOption (maybeTyParams, TyParams.layout) *)
-  (*             ], *)
-  (*             Layout.mayAlign [ *)
-  (*               Layout.str "datatype", *)
-  (*               LongId.layout longId *)
-  (*             ] *)
-  (*           ] *)
-  (*     in *)
-  (*         case node myNode of *)
-  (*           ConsDef (bomId, maybeTyParams, dataConsDefs) => *)
-  (*             layoutConsDef (bomId, maybeTyParams, dataConsDefs) *)
-  (*         | SimpleDef (bomId, maybeTyParams, longId) => *)
-  (*             layoutSimpleDef (bomId, maybeTyParams, longId) *)
-  (*     end *)
+        fun layoutSimpleDef (bomId, maybeTyParams, longId) =
+            Layout.align [
+              Layout.mayAlign [
+                BomId.layout bomId,
+                layoutOption (maybeTyParams, TyParams.layout)
+              ],
+              Layout.mayAlign [
+                Layout.str "datatype",
+                LongId.layout longId
+              ]
+            ]
+      in
+          case node myNode of
+            ConsDef (bomId, maybeTyParams, dataConsDefs) =>
+              layoutConsDef (bomId, maybeTyParams, dataConsDefs)
+          | SimpleDef (bomId, maybeTyParams, longId) =>
+              layoutSimpleDef (bomId, maybeTyParams, longId)
+      end
   end
 
   structure Definition = struct

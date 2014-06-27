@@ -254,7 +254,7 @@ signature AST_BOM =
   structure SimpleExp : sig
       type t
       datatype node
-        = PrimOp of PrimTycons.tycon * t list (* pulled from ../ast-primtycons.sig *)
+        = PrimOp of PrimTycons.tycon * t list (* pulled from ./prim-tycons.sig *)
         | AllocId of LongValueId.t * t list
         | AllocType of TyArgs.t * t list (* FIXME in .fun *)
         | AtIndex of IntInf.int * t * t option
