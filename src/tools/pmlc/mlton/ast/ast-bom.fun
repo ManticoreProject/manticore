@@ -872,6 +872,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   type node' = node
   type obj = t
 
+  (* FIXME *)
   fun layout myNode = Layout.empty
 
   (* fun layout myNode = *)

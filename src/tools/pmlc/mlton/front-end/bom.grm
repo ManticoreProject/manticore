@@ -104,6 +104,7 @@
   (* I'm not sure what name BomAst will be available as, so I'm
   putting this here until I do *)
   structure BOM = Ast.AstBOM
+  structure S = Ast.Symbol
   (* structure Defn = BOM.Definition *)
 
   (* modified from the old bom.grm, to reflect the fact that we deal
@@ -117,24 +118,40 @@
       NONE => []
     | SOME(x, xs) => x::xs
 
-  fun makeAtom (regionMaker, atomFromSymbol, symbol, thisSpan) =
+
+  fun makeId (regionMaker : ('a * Region.t) -> 'b,
+        idFromSymbol : (Symbol.t * Region.t) -> 'a,
+        s : string,
+        thisSpan : Lex.pos * Lex.pos) : 'b =
     let
-      val thisRegion = posToReg thisSpan
+      val thisRegion : Region.t = posToReg thisSpan
+      val symbol = Symbol.fromString s
     in
-      (regionMaker (atomFromSymbol (symbol, thisRegion)), thisRegion)
+      regionMaker ((idFromSymbol (symbol, thisRegion)), thisRegion)
+    end
+
+  fun makeLongId (regionMaker : ('a * Region.t) -> 'b,
+        longIdFromSymbols : (Symbol.t list * Region.t) -> 'a,
+        s : string,
+        thisSpan : Lex.pos * Lex.pos) : 'b =
+    let
+      val thisRegion : Region.t = posToReg thisSpan
+      (* ??? not sure if this should be split on '.' or similar *)
+      val symbols = map Symbol.fromString [s]
+    in
+      regionMaker ((longIdFromSymbols (symbols, thisRegion)), thisRegion)
     end
 
   fun intInfFromINT ({digits = ds, negate = isNeg, radix = rad}):IntInf.int =
     let
-      val scanned = IntInf.scan rad (explode ds)
+      val scanned = StringCvt.scanString (fn x => IntInf.scan rad x) ds
       val errorMsg = String.concat [
         "Something went wrong. Input ", ds, " isn't a number."
       ]
     in
-      (case scanned of
+      case scanned of
          NONE => raise Fail errorMsg
-       | SOME(n, []) => n
-       | SOME(n, xs) => raise Fail errorMsg)
+       | SOME(s) => s
    end
 
 );
@@ -154,9 +171,16 @@ Definition
       BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
       posToReg FULL_SPAN))
 	| "define" Attrs HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
-		=> ()
+    => (BOM.Definition.makeRegion (
+      let
+        val (inputTys, exnTys) = FunParams
+      in
+        (BOM.Definition.DefineShortId (
+          SOME Attrs, HLOpId, TyParams, inputTys, exnTys, ReturnTy, SR),
+        posToReg FULL_SPAN)
+      end))
 	| "define" HLOpId TyParams? DefineRest
-		=> (DefineRest (Attrs, HLOpId, TyParams, FULL_SPAN))
+		=> (DefineRest (HLOpId, TyParams, FULL_SPAN))
 (*
   | %try "define" Attrs? HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
     => (BOM.Definition.makeRegion (
@@ -190,64 +214,84 @@ Definition
       posToReg FULL_SPAN))
   ;
 
+(* FIXME: this can be made to work better with DefineShortId above *)
 DefineRest
 	: FunParams ReturnTy ("=" BOMExp)? ";"
-		=> ()
+		=> (fn (hlOpId, tyParams, span) =>
+      (BOM.Definition.makeRegion (
+        let
+          val (inputTys, exnTys) = FunParams
+        in
+          (BOM.Definition.DefineShortId (
+            NONE, hlOpId, tyParams, inputTys, exnTys, ReturnTy, SR),
+          posToReg span)
+        end)))
 	| "=" LongValueId ";"
+     => (fn (hlOpId, tyParams, span) =>
+           BOM.Definition.makeRegion (
+             BOM.Definition.DefineLongId (hlOpId, tyParams, LongValueId),
+             posToReg FULL_SPAN))
 	;
 
 DataTypeDef
-  : BomId TyParams? "=" (
-        DataConsDef ("|" DataConsDef)*
-          => (BOM.DataTypeDef.makeRegion (
-            BOM.DataTypeDef.ConsDefs (BomId, TyParams,
-            DataConsDef1::(flattenToList SR)),
-            posToReg FULL_SPAN))
-      | "datatype" LongTyId
+  : BomId TyParams? "=" (DataConsDef ("|" DataConsDef)*
+      => (BOM.DataTypeDef.makeRegion (
+          BOM.DataTypeDef.ConsDefs (BomId, TyParams,
+          DataConsDef::(flattenToList SR)),
+          posToReg FULL_SPAN))
+     | "datatype" LongTyId
   (* | BomId TyParams? "=" "datatype" LongTyId *)
-          => (BOM.DataTypeDef.makeRegion
-            (BOM.DataTypeDef.consDefs (BomId, TyParams, LongTyId),
-            posToReg FULL_SPAN)))
+        => (BOM.DataTypeDef.makeRegion
+             (BOM.DataTypeDef.ConsDefs (BomId, TyParams, LongTyId),
+              posToReg FULL_SPAN)))
   ;
 
 DataConsDef
   : BomId ("of" BOMType)?
-    => BOM.DataConsDef.makeRegion
+    => (BOM.DataConsDef.makeRegion
       (BOM.DataConsDef.ConsDef (BomId, SR),
-      posToReg FULL_SPAN)
+      posToReg FULL_SPAN))
   ;
 
 TyParams                        (* FIXME: ??? *)
   : "<" TyParam ("," TyParam)* ">"
-    => BOM.TyParams.T(TyParam::(flatten SR))
+    => (BOM.TyParams.T(TyParam::(flattenToList SR)))
   ;
 
 TyArgs
   : "<" BOMType ("," BOMType)* ">"
-    => BOM.TyArgs.ArgTypes(BOMType::(flatten SR))
+    => (BOM.TyArgs.ArgTypes(BOMType::(flattenToList SR)))
   ;
 
 BomId
   : LONGID
-    => (makeAtom (
-      BOM.BomId.makeRegion, BOM.BomId.fromSymbol, LONGID, FULL_SPAN))
+      (* => ( *)
+      (* let *)
+      (*   val asSymb : S.t = S.fromString LONGID *)
+      (* in *)
+      (*   BOM.BomId.fromSymbol (asSymb, (posToReg FULL_SPAN)) *)
+      (* end) *)
+        => (BOM.BomId.makeRegion' (
+(*     => (makeId ( *)
+(*       BOM.BomId.makeRegion, BOM.BomId.fromSymbol, LONGID, FULL_SPAN)) *)
   ;
 
 HLOpId
   : HLID
-      => (makeAtom (              (* FIXME, not fromSymbol anymore *)
-      BOM.HLOpId.makeRegion, BOM.HLOpId.fromSymbol, HLID, FULL_SPAN))
+      => (BOM.HLOpId.fromSymbol (Symbol.fromString HLID, posToReg FULL_SPAN))
+      (* => (makeId ( *)
+      (* BOM.HLOpId.makeRegion, BOM.HLOpId.fromSymbol, HLID, FULL_SPAN)) *)
   ;
 
 HLOpQId
   : LONGID HLID
-      => (makeAtom (              (* FIXME, not fromSymbol anymore *)
+      => (makeLongId (          (* FIXME  -- not dealing with LONGID*)
         BOM.HLOpId.makeRegion, BOM.HLOpId.fromSymbol, HLID, FULL_SPAN))
   ;
 
 TyParam
   : TYVAR
-    => (makeAtom (BOM.TyParam.makeRegion, BOM.TyParam.fromSymbol, TYVAR, FULL_SPAN))
+    => (makeId (BOM.TyParam.makeRegion, BOM.TyParam.fromSymbol, TYVAR, FULL_SPAN))
   ;
 
 (* Param *)
@@ -267,42 +311,42 @@ TyParam
 
 LongTyId
   : LONGID
-    => (makeAtom (
+    => (makeLongId (
       BOM.LongTyId.makeRegion, BOM.LongTyId.fromSymbol, LONGID, FULL_SPAN))
   ;
 
 LongConId
   : LONGID
-    => (makeAtom (
+    => (makeLongId (
       BOM.LongConId.makeRegion, BOM.LongConId.fromSymbol, LONGID, FULL_SPAN))
   ;
 
 LongValueId
   : LONGID
-    => (makeAtom (
+    => (makeLongId (
       BOM.LongValueId.makeRegion, BOM.LongValueId.fromSymbol, LONGID, FULL_SPAN))
   ;
 
 BOMType
   : TyParam
-      => (BOM.Type.makeRegion (
-        BOM.Definition.Param TyParam,
+      => (BOM.BomType.makeRegion (
+        BOM.BomType.TyParam TyParam,
         posToReg FULL_SPAN))
   | LongTyId TyArgs?
-      => (BOM.Type.makeRegion (
-        BOM.Type.LongId (TyParam, TyArgs),
+      => (BOM.BomType.makeRegion (
+        BOM.BomType.LongId (TyParam, TyArgs),
         posToReg FULL_SPAN))
   | "{" Field ("," Field)* "}"
-      => (BOM.Type.makeRegion (
-        BOM.Type.Record Field1::(flattenToList SR),
+      => (BOM.BomType.makeRegion (
+        BOM.BomType.Record Field1::(flattenToList SR),
         posToReg FULL_SPAN))
   |  "[" BOMType ("," BOMType)* "]"
-      => (BOM.Type.makeRegion (
-        BOM.Type.Tuple BOMType1::(flattenToList SR),
+      => (BOM.BomType.makeRegion (
+        BOM.BomType.Tuple BOMType1::(flattenToList SR),
         posToReg FULL_SPAN))
   | DomainTy "->" RangeTy
-      => (BOM.Type.makeRegion (
-        BOM.Type.Fun (
+      => (BOM.BomType.makeRegion (
+        BOM.BomType.Fun (
           let
             val (inp, exn) = DomainTy
           in
@@ -310,13 +354,13 @@ BOMType
           end),
         posToReg FULL_SPAN))
   | "any"
-      => (BOM.Type.makeRegion (BOM.Type.Any, posToReg FULL_SPAN))
+      => (BOM.BomType.makeRegion (BOM.BomType.Any, posToReg FULL_SPAN))
   | "vproc"
-      => (BOM.Type.makeRegion (BOM.Type.VProc, posToReg FULL_SPAN))
+      => (BOM.BomType.makeRegion (BOM.BomType.VProc, posToReg FULL_SPAN))
   | "cont" TyArgs?
-      => (BOM.Type.makeRegion (BOM.Type.Cont TyArgs, posToReg FULL_SPAN))
+      => (BOM.BomType.makeRegion (BOM.BomType.Cont TyArgs, posToReg FULL_SPAN))
   | "addr" "<" BOMType ">"
-      => (BOM.Type.makeRegion (BOM.Type.Addr BOMType, posToReg FULL_SPAN))
+      => (BOM.BomType.makeRegion (BOM.BomType.Addr BOMType, posToReg FULL_SPAN))
   ;
 
 
