@@ -16,6 +16,7 @@ signature AST_MODULES =
       include AST_CORE
       (* ??? *)
       structure AstBOM : AST_BOM
+	sharing AstBOM.Symbol = Symbol
 
       structure Sigexp:
          sig

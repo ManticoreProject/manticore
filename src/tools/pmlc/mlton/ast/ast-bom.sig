@@ -19,11 +19,13 @@ signature AST_BOM =
   structure TyParam : AST_ID
   (* structure Param : AST_ID *)
   (* structure FunParam : AST_ID *)
-	structure LongTyId : LONGID
-	structure LongConId : LONGID
-	structure LongValueId : LONGID
+  structure LongTyId : LONGID sharing LongTyId.Id = BomId
+  structure LongConId : LONGID sharing LongConId.Id = BomId
+  structure LongValueId : LONGID sharing LongValueId.Id = BomId
   structure PrimTycons : PRIM_TYCONS
 
+  sharing Symbol = BomId.Symbol = HLOpId.Symbol = TyParam.Symbol
+    = LongTyId.Symbol = LongConId.Symbol = LongValueId.Symbol
 
   structure Attrs : sig
     type t

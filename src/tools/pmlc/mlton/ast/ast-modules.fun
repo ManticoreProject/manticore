@@ -15,8 +15,9 @@ structure Vector = MLtonVector
 
 open S
 
-structure AstCore = AstCore (AstAtoms (S))
-structure AstBOM = AstBOM (AstAtoms (S))
+structure Atoms = AstAtoms(S)
+structure AstCore = AstCore (Atoms)
+structure AstBOM = AstBOM (Atoms)
 
 open AstCore Layout
 
