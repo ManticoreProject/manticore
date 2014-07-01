@@ -156,9 +156,10 @@ BOMDecls
   ;
 
 Definition
-  : "datatype" DataTypeDef ("and" DataTypeDef)*
+  : "datatype" DataTypeDef ("and" DataTypeDef)* (* FIXME: shouldn't be an option *)
     => (BOM.Definition.makeRegion (
-          BOM.Definition.Datatype (DataTypeDef, flattenToOption SR),
+          BOM.Definition.Datatype (
+            DataTypeDef, if List.null SR then NONE else SOME SR),
           posToReg FULL_SPAN))
   | "type" BomId TyParams? "=" BOMType ";"
     => (BOM.Definition.makeRegion (
@@ -175,21 +176,6 @@ Definition
       end))
 	| "define" HLOpId TyParams? DefineRest
 		=> (DefineRest (HLOpId, TyParams, FULL_SPAN))
-(*
-  | %try "define" Attrs? HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
-    => (BOM.Definition.makeRegion (
-      let
-        val (inputTys, exnTys) = FunParams
-      in
-        (BOM.Definition.DefineShortId (
-          Attrs, HLOpId, TyParams, inputTys, exnTys, ReturnTy, SR),
-        posToReg FULL_SPAN)
-      end))
-  | %try "define" HLOpId TyParams? "=" LongValueId ";"
-    => (BOM.Definition.makeRegion (
-      BOM.Definition.DefineLongId (HLopId, TyParams, LongValueId),
-      posToReg FULL_SPAN))
-*)
   | "extern" CReturnTy BomId "(" (
       CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs ";"
     => (BOM.Definition.makeRegion (
@@ -237,7 +223,7 @@ DataTypeDef
      | "datatype" LongTyId
   (* | BomId TyParams? "=" "datatype" LongTyId *)
         => (BOM.DataTypeDef.makeRegion
-             (BOM.DataTypeDef.ConsDefs (BomId, TyParams, LongTyId),
+             (BOM.DataTypeDef.SimpleDef (BomId, TyParams, LongTyId),
               posToReg FULL_SPAN)))
   ;
 
