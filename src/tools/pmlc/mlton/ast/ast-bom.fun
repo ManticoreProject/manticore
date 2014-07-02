@@ -302,7 +302,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | Mutable of IntInf.int * type_t
     and fundef_node
       = Def of Attrs.t option * BomId.t * TyParams.t option
-        * varpat_t list option * varpat_t list option * type_t list option * exp_t
+        * varpat_t list option * varpat_t list option * type_t list * exp_t
     and varpat_node
       = Wild of type_t option
       | Var of BomId.t * type_t option
@@ -857,11 +857,11 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   structure Definition = struct
   datatype node
     = Extern of CReturnTy.t * BomId.t * CArgTy.t list * Attrs.t
-    | Datatype of DataTypeDef.t * DataTypeDef.t list option
+    | Datatype of DataTypeDef.t list
     | TypeDefn of BomId.t * TyParams.t option * BomType.t
     | DefineShortId of Attrs.t option * HLOpId.t *
         TyParams.t option * VarPat.t list option * VarPat.t list option *
-        BomType.t list option * Exp.t option
+        BomType.t list * Exp.t option
     | DefineLongId of HLOpId.t * TyParams.t option * LongValueId.t
     | Fun of FunDef.t list
     | InstanceType of LongTyId.t * TyArgs.t

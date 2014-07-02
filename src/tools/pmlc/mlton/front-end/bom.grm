@@ -156,10 +156,9 @@ BOMDecls
   ;
 
 Definition
-  : "datatype" DataTypeDef ("and" DataTypeDef)* (* FIXME: shouldn't be an option *)
+  : "datatype" DataTypeDef ("and" DataTypeDef)*
     => (BOM.Definition.makeRegion (
-          BOM.Definition.Datatype (
-            DataTypeDef, if List.null SR then NONE else SOME SR),
+          BOM.Definition.Datatype (DataTypeDef::SR),
           posToReg FULL_SPAN))
   | "type" BomId TyParams? "=" BOMType ";"
     => (BOM.Definition.makeRegion (
@@ -217,14 +216,13 @@ DefineRest
 DataTypeDef
   : BomId TyParams? "=" (DataConsDef ("|" DataConsDef)*
       => (BOM.DataTypeDef.makeRegion (
-          BOM.DataTypeDef.ConsDefs (BomId, TyParams,
-          DataConsDef::SR),
-          posToReg FULL_SPAN))
+        BOM.DataTypeDef.ConsDefs (BomId, TyParams, DataConsDef::SR),
+        posToReg FULL_SPAN))
      | "datatype" LongTyId
   (* | BomId TyParams? "=" "datatype" LongTyId *)
         => (BOM.DataTypeDef.makeRegion
              (BOM.DataTypeDef.SimpleDef (BomId, TyParams, LongTyId),
-              posToReg FULL_SPAN)))
+            posToReg FULL_SPAN))) => (SR)
   ;
 
 DataConsDef
@@ -590,15 +588,11 @@ RawTy
 
 ReturnTy
   : "noreturn"
-      => (NONE)
-  (* | ":" ( BOMType => (SOME [BOMType]) *)
-  (*         | "(" BOMType ("," BOMType)* ")" *)
-  (*             => (SOME BOMType::(flattenToList SR)) *)
-  (*       ) *)
+      => ([])
   | %try ":" BOMType
-      => (SOME [BOMType])
+      => ([BOMType])
   | %try ":" "(" BOMType ("," BOMType)* ")"
-      => (SOME (BOMType::SR))
+      => (BOMType::SR)
   ;
 
 FunParams
