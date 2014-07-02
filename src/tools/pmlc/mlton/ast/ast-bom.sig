@@ -341,6 +341,6 @@ signature AST_BOM =
   sharing type FunDef.exp = Exp.t
   sharing type BomType.field = Field.t
   sharing type BomType.tyArgs = TyArgs.t
-  (* why is this erroring? *)
-  (* sharing type LongTyId.Strid = LongConId.Strid = LongValueId.Strid *)
+  sharing type BomId.Symbol.t = HLOpId.Symbol.t = TyParam.Symbol.t = Symbol.t
+  sharing type LongTyId.Strid.t = LongConId.Strid.t = LongValueId.Strid.t
   end
