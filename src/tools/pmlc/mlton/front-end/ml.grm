@@ -96,7 +96,9 @@
     | KW__import		("_import")
     | KW__overload		("_overload")
     | KW__symbol		("_symbol")
+(* moved to pml.grm; will remove uses from ml.grm soon
     | KW__prim			("_prim")
+*)
     ;
 
 %defs (
@@ -557,7 +559,7 @@ decnode : decnolocal              => (decnolocal)
        ;
 
 decnolocal
-        : "val" (tyvarseq)? valbindTop  => (let val (vbs, rvbs) = valbindTop
+        : "val" tyvarseq? valbindTop  => (let val (vbs, rvbs) = valbindTop
                                       in
 		                         case SR
 					  of NONE =>

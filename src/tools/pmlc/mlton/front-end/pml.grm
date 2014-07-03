@@ -11,7 +11,11 @@
                               structure Ast: AST));
 
 %tokens
-      : KW__primcode	("_primcode")
+      : KW__prim	("_prim")
+      | KW__primcode	("_primcode")
+      | KW__datatype	("_datatype")
+      | KW__type	("_type")
+      | KW__val		("_val")
       ;
 
 %import "ml.grm";
@@ -21,18 +25,13 @@
 
 strdecnode
         : "_primcode" "(" BOMDecls ")"
-		=> (PT.PrimCodeDecl BOMDecls)
+		=> (Strdec.Prim(Vector.fromList BOMDecls))
+	| "_datatype" tyvars tycon "=" "_prim" "(" BomId TyParams? ")"
+	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
+	| "_val" (ID | "op" SYMID) ":" ty "=" "_prim" "(" BOMValueId ")"
 	;
 
-typBindRHS
-	: "_prim" "(" BOMType ")"
-		=> (fn (params, name) => PT.PrimTyDecl(params, name, BOMType))
-	;
-
-(* should we just allow this in an expression context?  Possibly with a type annotation? *)
-valbindTop
-	: "_prim" "(" longid ")"
-		=> (fn pat => PT.PrimVDecl(pat, BPT.VarPrimVal longid))
-	| "_prim" "(" HLOpQId ")"
-		=> (fn pat => PT.PrimVDecl(pat, BPT.HLOpPrimVal HLOpQId))
+BOMValueId
+	: longid
+	| HLOpQId
 	;
