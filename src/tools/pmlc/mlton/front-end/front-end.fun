@@ -21,7 +21,7 @@ structure SourceMap : SOURCE_MAP =
 open S
 
 (* glue together the lexer and parser *)
-structure Parser = PMLParserFun (structure Lex = PMLLexer
+structure Parser = MLParserFun (structure Lex = PMLLexer
                                 structure SourceMap = SourceMap
                                 structure Ast = Ast)
 
@@ -37,7 +37,7 @@ end
 fun lexAndParse (file: File.t, ins: In.t): Ast.Program.t = let
     val source = Source.new file
     val sm = AntlrStreamPos.mkSourcemap()
-    val lexer = PMLLexerLexer.lex sm {source=source}
+    val lexer = PMLLexer.lex sm {source=source}
     val _ = SourceMap.setMap sm
     in
       case Parser.parse lexer (PMLLexer.streamifyInstream ins)
@@ -46,7 +46,7 @@ fun lexAndParse (file: File.t, ins: In.t): Ast.Program.t = let
 	    val _ = Out.outputl (Out.error, concat["FAILURE parsing file: ", file])
 	    val i = Source.lineStart source
 	    fun parseError (pos, repair) = let
-		  fun toksToStr (toks) = (*String.concatWith*)String_concatWith((MLtonList.map (toks, Tokens.toString)), " ")
+		  fun toksToStr (toks) = (*String.concatWith*)String_concatWith((MLtonList.map (toks, PMLTokens.toString)), " ")
 		  val msg = (case repair
 			  of AntlrRepair.Insert toks => ["syntax error; try inserting \"", toksToStr toks, "\""]
 			   | AntlrRepair.Delete toks => ["syntax error; try deleting \"", toksToStr toks, "\""]
@@ -54,7 +54,7 @@ fun lexAndParse (file: File.t, ins: In.t): Ast.Program.t = let
 			     "syntax error; try substituting \"", toksToStr new, "\" for \"",
 			     toksToStr old, "\""
 			     ]
-			   | AntlrRepair.FailureAt tok => ["syntax error at ", Tokens.toString tok]
+			   | AntlrRepair.FailureAt tok => ["syntax error at ", PMLTokens.toString tok]
 			(* end case *))
 		  in
 		    Out.outputl (Out.error, String.concat ("ERR: "::msg));

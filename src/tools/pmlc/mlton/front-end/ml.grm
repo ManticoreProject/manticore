@@ -559,7 +559,7 @@ decnode : decnolocal              => (decnolocal)
        ;
 
 decnolocal
-        : "val" tyvarseq? valbindTop  => (let val (vbs, rvbs) = valbindTop
+        : "val" (tyvarseq)? valbindTop  => (let val (vbs, rvbs) = valbindTop
                                       in
 		                         case SR
 					  of NONE =>
@@ -1298,4 +1298,3 @@ longcon : longid		=> (Longcon.fromSymbols longid)
        ;
 longstrid : longid		=> (Longstrid.fromSymbols longid)
        ;
-

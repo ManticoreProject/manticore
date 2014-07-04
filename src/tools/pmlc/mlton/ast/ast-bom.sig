@@ -20,10 +20,13 @@ signature AST_BOM =
   structure LongTyId : LONGID sharing LongTyId.Id = BomId
   structure LongConId : LONGID sharing LongConId.Id = BomId
   structure LongValueId : LONGID sharing LongValueId.Id = BomId
-  structure PrimTycons : PRIM_TYCONS
+  structure HLOpQId : LONGID sharing HLOpQId.Id = HLOpId
+
+  structure SymbolicId : AST_ID (* FIXME: Not sure what this should be *)
 
   sharing Symbol = BomId.Symbol = HLOpId.Symbol = TyParam.Symbol
     = LongTyId.Symbol = LongConId.Symbol = LongValueId.Symbol
+    = HLOpQId.Symbol = SymbolicId.Symbol
 
   structure Attrs : sig
     type t
@@ -49,6 +52,34 @@ signature AST_BOM =
     sharing type obj = t
   end
 
+  structure PrimOp : sig
+    type t
+    datatype node
+      = T of CharVector.vector
+
+    val layout : t -> Layout.t
+
+    include WRAPPED
+      sharing type node' = node
+      sharing type obj = t
+  end
+
+
+  structure BomValueId : sig
+    type t
+    datatype node
+      (* pretty sure this needs to be LongTyId *)
+      = LongId of LongTyId.t
+      | HLOpQId of HLOpQId.t
+
+    val layout : t -> Layout.t
+
+    include WRAPPED
+      sharing type node' = node
+      sharing type obj = t
+
+    end
+
 
     (* structure LongId : sig *)
     (* type t *)
@@ -70,7 +101,7 @@ signature AST_BOM =
       | LongId of LongTyId.t * tyArgs option
       | Record of field list
       | Tuple of t list
-      | Fun of t list * t list option * t list
+      | Fun of t list * t list * t list
       | Any
       | VProc
       | Cont of tyArgs option
@@ -201,7 +232,7 @@ signature AST_BOM =
     type exp
     datatype node
       = Def of Attrs.t option * BomId.t * TyParams.t option
-        * VarPat.t list option * VarPat.t list option * BomType.t list * exp
+        * VarPat.t list * VarPat.t list * BomType.t list * exp
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -229,7 +260,7 @@ signature AST_BOM =
     type t
     type exp
     datatype node
-      = LongRule of LongConId.t * VarPat.t list option * exp (* FIXME in .fun layout *)
+      = LongRule of LongConId.t * VarPat.t list * exp (* FIXME in .fun layout *)
       | LiteralRule of Literal.t * exp
       | DefaultRule of VarPat.t * exp       (* collapsing CaseDefault *)
     include WRAPPED
@@ -254,7 +285,7 @@ signature AST_BOM =
   structure SimpleExp : sig
       type t
       datatype node
-        = PrimOp of PrimTycons.tycon * t list (* pulled from ./prim-tycons.sig *)
+        = PrimOp of PrimOp.t * t list (* pulled from ./prim-tycons.sig *)
         | AllocId of LongValueId.t * t list
         | AllocType of TyArgs.t * t list (* FIXME in .fun *)
         | AtIndex of IntInf.int * t * t option
@@ -282,13 +313,13 @@ signature AST_BOM =
       = Let of VarPat.t list * rhs * t
       | Do of SimpleExp.t * t
       | FunExp of FunDef.t list * t
-      | ContExp of BomId.t * VarPat.t list option * t * t
+      | ContExp of BomId.t * VarPat.t list * t * t
       | If of SimpleExp.t * t * t
       | Case of SimpleExp.t * CaseRule.t list
       | Typecase of TyParam.t * TyCaseRule.t list
-      | Apply of LongValueId.t * SimpleExp.t list option * SimpleExp.t list option
-      | Throw of BomId.t * TyArgs.t option * SimpleExp.t list option (* FIXME *)
-      | Return of SimpleExp.t list option
+      | Apply of LongValueId.t * SimpleExp.t list * SimpleExp.t list
+      | Throw of BomId.t * TyArgs.t option * SimpleExp.t list (* FIXME *)
+      | Return of SimpleExp.t list
 
     val layout : t -> Layout.t
 
@@ -318,7 +349,7 @@ signature AST_BOM =
         | Datatype of DataTypeDef.t list  (* FIXME in .fun *)
         | TypeDefn of BomId.t * TyParams.t option * BomType.t
         | DefineShortId of Attrs.t option * HLOpId.t *
-            TyParams.t option * VarPat.t list option * VarPat.t list option *
+            TyParams.t option * VarPat.t list * VarPat.t list *
             BomType.t list * Exp.t option
         | DefineLongId of HLOpId.t * TyParams.t option * LongValueId.t
         | Fun of FunDef.t list

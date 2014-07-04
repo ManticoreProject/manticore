@@ -83,7 +83,7 @@
 (*  | BAR     ("|")       *)
 (*  | WILD    ("_")       *)
 (*  | BANG    ("!")       *)
-(*  | AMP     ("&")       *)
+(*  | AMPERSAND     ("&")       *)
   | LT ("<")
   | GT (">")
 (*  | ASSIGN  (":=")      *)
@@ -97,17 +97,14 @@
 (*  | REAL of FloatLit.float    *)
 (*  | STRING of string      *)
   | ML_STRING of IntInf.int vector
-  | PRIMOP of string
+  | PRIMOP of CharVector.vector
   ;
 
 %defs(
   structure BOM = Ast.AstBOM
 
-  (* we can kill tihs *)
-  fun flattenToOption maybe =
-    case maybe of
-      [] => NONE
-    | xs => SOME(xs)
+  fun optToList maybe =
+    Option.getOpt (maybe, [])
 
   fun makeId (regionMaker : ('a * Region.t) -> 'b,
         idFromSymbol : (Symbol.t * Region.t) -> 'a,
@@ -120,14 +117,18 @@
       regionMaker ((idFromSymbol (symbol, thisRegion)), thisRegion)
     end
 
-  (* Not sure if I understand this correclty *)
-  fun splitQIdString (id : string) =
+  fun splitLongIdString (id : CharVector.vector) =
     let
-      fun doSplit (c::cs, elAcc, listAcc) =
-        if Char.compare (c, #".") = EQUAL then
-          doSplit (cs, [], elAcc::listAcc)
-        else
-          doSplit (cs, c::elAcc, listAcc)
+      fun doSplit (toSplit, elAcc, listAcc) =
+        case (toSplit, elAcc) of
+          (#"."::cs, elAcc) =>
+            doSplit (cs, [], elAcc::listAcc)
+        | (c::cs, elAcc) =>
+            doSplit (cs, c::elAcc, listAcc)
+        | ([], []) =>
+            listAcc
+        | ([], elAcc) =>
+            elAcc::listAcc
    in
      map String.implode (doSplit ((explode id), [], []))
    end
@@ -135,7 +136,7 @@
   fun makeLongId (longIdFromSymbols : (Symbol.t list * Region.t) -> 'a,
         s : string, thisSpan : Lex.pos * Lex.pos) : 'a =
     longIdFromSymbols (
-      map Symbol.fromString (splitQIdString s), posToReg thisSpan)
+      map Symbol.fromString (splitLongIdString s), posToReg thisSpan)
 
   fun intInfFromINT ({digits = ds, negate = isNeg, radix = rad}):IntInf.int =
     let
@@ -249,8 +250,8 @@ TyArgs
 (* HLOps are IDs, not LONGIDs, so we need to just ignore this for now *)
 qid
   : LONGID HLID
-      => (Symbol.fromString (String.concat [LONGID, ".", HLID]),
-        posToReg FULL_SPAN)
+      => (map Symbol.fromString ((splitLongIdString LONGID)@[HLID]),
+          posToReg FULL_SPAN)
   ;
 
 hlid
@@ -266,7 +267,7 @@ HLOpId
   ;
 
 HLOpQId
-  : qid => (BOM.HLOpId.fromSymbol qid)
+  : qid => (BOM.HLOpQId.fromSymbols qid)
   ;
 
 (* named so it doesn't conflict with tyvar in ml.grm *)
@@ -307,7 +308,7 @@ BOMType
       => (BOM.BomType.makeRegion (
         BOM.BomType.Fun (
           let
-            val (inp, exn) = DomainTy
+            val (inp : BOM.BomType.t list, exn : BOM.BomType.t list) = DomainTy
           in
             (inp, exn, RangeTy)
           end),
@@ -324,7 +325,7 @@ BOMType
 
 DomainTy
   : "(" BOMType ("," BOMType)* "/" (BOMType ("," BOMType)* => (BOMType::SR))? ")"
-      => (BOMType::SR1, SR2)
+      => (BOMType::SR1, Option.getOpt (SR2, []))
   ;
 
 RangeTy
@@ -345,8 +346,7 @@ Field
         posToReg FULL_SPAN))
   ;
 
-(* TODO: I need to return an IntInf from here for type checking, but we
-don't want that *)
+
 PosInt
   : INT
       => (if #negate INT then
@@ -360,7 +360,8 @@ PosInt
 FunDef
   : Attrs? BomId TyParams? "(" Params? ("/" Params)? ")" ReturnTy "=" BOMExp
       => (BOM.FunDef.makeRegion (
-        BOM.FunDef.Def (Attrs, BomId, TyParams, Params, SR, ReturnTy, BOMExp),
+        BOM.FunDef.Def (Attrs, BomId, TyParams, optToList Params, optToList SR,
+          ReturnTy, BOMExp),
         posToReg FULL_SPAN))
   ;
 
@@ -391,7 +392,7 @@ BOMExp
         posToReg FULL_SPAN))
   | "cont" BomId "(" Params? ")" "=" BOMExp BOMExp
       => (BOM.Exp.makeRegion (
-        BOM.Exp.ContExp (BomId, Params, BOMExp1, BOMExp2),
+        BOM.Exp.ContExp (BomId, Option.getOpt (Params, []), BOMExp1, BOMExp2),
         posToReg FULL_SPAN))
   | "if" SimpleExp "then" BOMExp "else" BOMExp
       => (BOM.Exp.makeRegion (
@@ -407,15 +408,16 @@ BOMExp
          posToReg FULL_SPAN))
   | "apply" LongValueId "(" Args? ("/" Args)? ")"
       => (BOM.Exp.makeRegion (
-        BOM.Exp.Apply (LongValueId, Args, SR),
+        BOM.Exp.Apply (
+          LongValueId, Option.getOpt (Args, []), Option.getOpt (SR, [])),
         posToReg FULL_SPAN))
   | "throw" BomId TyArgs? "(" Args? ")"
       => (BOM.Exp.makeRegion (
-        BOM.Exp.Throw (BomId, TyArgs, Args),
+        BOM.Exp.Throw (BomId, TyArgs, Option.getOpt (Args, [])),
         posToReg FULL_SPAN))
   | "return" "(" Args? ")"
       => (BOM.Exp.makeRegion (
-        BOM.Exp.Return Args,
+        BOM.Exp.Return (Option.getOpt (Args, [])),
         posToReg FULL_SPAN))
   ;
 
@@ -432,9 +434,12 @@ RHS
       => (BOM.RHS.makeRegion (BOM.RHS.Simple SimpleExp, posToReg FULL_SPAN))
   ;
 
+
 PrimTyCon
-(* FIXME: not what this should be *)
-  : PRIMOP => (BOM.PrimTycons.bool )
+  : PRIMOP
+    => (BOM.PrimTycon.makeRegion (
+      BOM.PrimTycon.T PRIMOP,
+      posToReg FULL_SPAN))
   ;
 
 SimpleExp
@@ -491,14 +496,8 @@ SimpleExp
 CaseRule
   : LongConId ("(" VarPat ("," VarPat)* => (VarPat::SR)) "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
-        let
-          val toOption = case SR of
-              [] => NONE
-            | x::xs => SOME(x::xs)
-          in
-            (BOM.CaseRule.LongRule (LongConId, toOption, BOMExp),
-            posToReg FULL_SPAN)
-          end))
+          (BOM.CaseRule.LongRule (LongConId, SR, BOMExp),
+          posToReg FULL_SPAN)))
   | Literal "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
         BOM.CaseRule.LiteralRule (Literal, BOMExp),
@@ -596,7 +595,8 @@ ReturnTy
   ;
 
 FunParams
-  : "(" Params? (")" => (NONE) | "/" Params ")" => (SOME Params)) => (Params, SR)
+  : "(" Params? (")" => ([]) | "/" Params ")" => (Params))
+      => (Option.getOpt (Params, []), SR)
   ;
 
 Params

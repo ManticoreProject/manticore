@@ -16,6 +16,15 @@
       | KW__datatype	("_datatype")
       | KW__type	("_type")
       | KW__val		("_val")
+      (* Getting errors in pml.lex, these seem not to have been pulled in *)
+      | PLPAREN ("(|")
+      | PRPAREN ("|)")
+      | PLBRACE ("{|")
+      | PRBRACE ("|}")
+      | PLBRACKET ("[|")
+      | PRBRACKET ("|]")
+      | PWILD ("?")
+      | SYMB of CharVector.vector
       ;
 
 %import "ml.grm";
@@ -24,14 +33,28 @@
 %start program;
 
 strdecnode
-        : "_primcode" "(" BOMDecls ")"
-		=> (Strdec.Prim(Vector.fromList BOMDecls))
-	| "_datatype" tyvars tycon "=" "_prim" "(" BomId TyParams? ")"
+  : "_primcode" "(" BOMDecls ")"
+		  => (Strdec.PrimCode (Vector.fromList BOMDecls))
+	| "_datatype" tyvarseq tycon "=" "_prim" "(" LongTyId TyArgs? ")"
+      => (Strdec.PrimDataType (tyvarseq, tycon, LongTyId, TyArgs))
 	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
-	| "_val" (ID | "op" SYMID) ":" ty "=" "_prim" "(" BOMValueId ")"
-	;
+      => (Strdec.PrimTycon (tyvars, tycon, BOMType))
+	| "_val" "op" idOrSymb ":" ty "=" "_prim" "(" BOMValueId ")"
+      => (idOrSymb (ty, BOMValueId))
+	;                             (* ty? *)
+
+idOrSymb
+  : BomId
+    => (fn (ty, BOMValueId) => Strdec.PrimValId (BomId, BOMValueId))
+  | SYMB
+    => (fn (ty, BOMValueId) => Strdec.PrimValSymb (
+      BOM.SymbolicId.fromSymbol (
+        Symbol.fromString SYMB, posToReg FULL_SPAN),
+      BOMValueId))
+  ;
 
 BOMValueId
-	: longid
-	| HLOpQId
+	: (LongTyId => (BOM.BomValueId.LongId LongTyId)
+	  | HLOpQId => (BOM.BomValueId.HLOpQId HLOpQId))
+        => (AstBOM.BomValueId.makeRegion (SR, posToReg FULL_SPAN))
 	;

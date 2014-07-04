@@ -17,6 +17,10 @@ is
 $/basis.cm
 $/ml-lpt-lib.cm
 
+(* I can't get this to compile otherwise *)
+../../../../../src/lib/mlton-basis/sml/smlnj-lib/Util/utf8-sig.sml
+../../../../../src/lib/mlton-basis/sml/smlnj-lib/Util/utf8.sml
+
 ../lib/sources.cm
 ../ast/sources.cm
 ../control/sources.cm

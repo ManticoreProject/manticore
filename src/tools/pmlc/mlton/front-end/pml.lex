@@ -25,6 +25,18 @@ val lineNum: int ref = ref 0
 val stringStart = ref SourcePos.bogus
 val stringtype = ref false
 
+local
+  val bomLevel = ref 0
+in
+  fun bomPush () =
+    bomLevel := !bomLevel + 1
+
+  fun bomPop () =
+    (bomLevel := !bomLevel - 1;
+     !bomLevel > 0)
+end
+
+
 fun lineDirective (source, file, yypos) =
    Source.lineDirective (source, file,
                          {lineNum = !lineNum,
@@ -117,7 +129,7 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 <INITIAL>"[|"  			=> (T.PLBRACKET);
 <INITIAL>"|]"  			=> (T.PRBRACKET);
 <INITIAL>"?"			=> (T.PWILD);
-<INITIAL,BOM>"&"		=> (T.AMP);
+<INITIAL,BOM>"&"		=> (T.AMPERSAND);
 
 <INITIAL>"and"			=> (T.KW_and);
 <INITIAL>"abstype"		=> (T.KW_abstype);
@@ -169,18 +181,18 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 <INITIAL>"_import"		=> (T.KW__import);
 <INITIAL>"_overload"		=> (T.KW__overload);
 <INITIAL>"_symbol"		=> (T.KW__symbol);
-<INITIAL> "_prim"		=> (YYBEGIN BOM; T.KW__prim);
-<INITIAL> "_primcode"		=> (YYBEGIN BOM; T.KW__primcode);
-<INITIAL> "_datatype"		=> (T.KW__datatype")
-<INITIAL> "_type"		=> (T.KW__type")
-<INITIAL> "_val"		=> (T.KW__val")
-<BOM> "__attribute__"		=> (T.KW___attribute__);
-<BOM> "("			=> (bomPush()(); T.LP);
-<BOM> ")"			=> (if bomPop() then () else YYBEGIN INITIAL; T.RP);
+<INITIAL>"_prim"		=> (YYBEGIN BOM; T.KW__prim);
+<INITIAL>"_primcode"		=> (YYBEGIN BOM; T.KW__primcode);
+<INITIAL>"_datatype"		=> (T.KW__datatype);
+<INITIAL>"_type"		=> (T.KW__type);
+<INITIAL>"_val"		=> (T.KW__val);
+<BOM> "__attributes__"		=> (T.KW___attributes__);
+<BOM> "("			=> (bomPush(); T.LPAREN);
+<BOM> ")"			=> (if bomPop() then () else YYBEGIN INITIAL; T.RPAREN);
 <BOM>":="			=> (T.ASSIGN);
-<BOM>"$"			=> (T.DS);
+(* <BOM>"$"			=> (T.DS); *)
 <BOM>"#"			=> (T.HASH);
-<BOM>"&"			=> (T.AMP);
+<BOM>"&"			=> (T.AMPERSAND);
 
 <INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
 (* FIXME: split LONGID into unqualified id and qualified id *)
@@ -194,7 +206,7 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 				      | ">" => T.GT
    				      | _ => T.LONGID yytext
 				    (* end case *));
-<BOM>{hlid}			=> (T.HLOPID yytext);
+<BOM>{hlid}			=> (T.HLID yytext);
 
 <INITIAL>{real}			=> (T.REAL(yytext));
 <INITIAL>{num}			=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));
