@@ -291,6 +291,12 @@ withtype strexp = strexpNode Wrap.t
 and strdec = strdecNode Wrap.t
 
 fun layoutStrdec d =
+  let fun layoutPrimVal (idLayout : Layout.t, bomValue) = mayAlign [
+    str "_val", str "op", idLayout, str "_prim", schemeList [
+      AstBOM.BomValueId.layout bomValue
+      ]
+    ]
+  in
    case node d of
       Core d => Dec.layout d
     | Local (d, d') => Pretty.locall (layoutStrdec d, layoutStrdec d')
@@ -303,6 +309,37 @@ fun layoutStrdec d =
                            | _ => Split 3,
                                 seq [Strid.layout name, SigConst.layout constraint],
                                 layoutStrexp def))
+    | PrimCode definitions => mayAlign [
+        str "_primcode",
+        schemeList (Vector.toListMap (definitions, AstBOM.Definition.layout))
+      ]
+    | PrimDataType (tyvars, tycon, longTyId, maybeTyArgs) => mayAlign [
+        str "_datatype",
+        mayAlign (Vector.toListMap (tyvars, Tyvar.layout)),
+        Tycon.layout tycon,
+        str "=",
+        str "_prim",
+        schemeList [
+          AstBOM.LongTyId.layout longTyId,
+          if Option.isSome maybeTyArgs then
+            AstBOM.TyArgs.layout (Option.valOf maybeTyArgs)
+          else
+            empty
+        ]
+      ]
+    | PrimTycon (tyvars, tycon, bomType) => mayAlign [
+        str "_type",
+        mayAlign (Vector.toListMap (tyvars, Tyvar.layout)),
+        Tycon.layout tycon,
+        str "=",
+        str "_prim",
+        schemeList [AstBOM.BomType.layout bomType]
+      ]
+    | PrimValSymb (symb, bomValueId) => layoutPrimVal (
+        AstBOM.SymbolicId.layout symb, bomValueId)
+    | PrimValId (bomId, bomValueId) => layoutPrimVal (
+        AstBOM.BomId.layout bomId, bomValueId)
+  end
 
 and layoutStrdecs ds = layouts (ds, layoutStrdec)
 

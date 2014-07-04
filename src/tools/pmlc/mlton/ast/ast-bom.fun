@@ -550,12 +550,12 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
     in
       case Wrap.node myNode of
-          (* PrimOp (prim, simpleExps) => *)
-          (*   Layout.mayAlign [ *)
-          (*     PrimOps.layout prim, *)
-          (*     indentedSchemeList (layoutSimpleExps simpleExps) *)
-          (*   ] *)
-          AllocId (longValueId, simpleExps) =>
+          PrimOp (prim, simpleExps) =>
+            Layout.mayAlign [
+              PrimOp.layout prim,
+              indentedSchemeList (layoutSimpleExps simpleExps)
+            ]
+        | AllocId (longValueId, simpleExps) =>
             Layout.mayAlign [
               Layout.str "alloc",
               LongValueId.layout longValueId,
@@ -618,6 +618,19 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
               leftDelimitWithIndent (map layoutFunDef fundefs, "and", "fun")),
             layoutExp exp
           ]
+      | ContExp (bomId, varPats, exp, exp') =>
+          Layout.align [
+            Layout.mayAlign [
+              Layout.str "cont",
+              BomId.layout bomId,
+              Layout.schemeList (map layoutVarPat varPats)
+            ],
+          Layout.mayAlign [
+            Layout.str "=",
+            layoutExp exp,
+            layoutExp exp'
+          ]
+        ]
       | If (simpleExp, exp, exp') =>
           Layout.align [
             Layout.mayAlign [
