@@ -468,7 +468,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         BomId.layout bomId,
         layoutOption (maybeTyParams, TyParams.layout),
         indentedSlashList (inputParamsLayout, exnParamsLayout),
-        indentedSchemeList (layoutOptions (returnTy, map layoutType)),
+        indentedSchemeList (map layoutType returnTy),
         Layout.str " = ",
         layoutExp exp
       ]
@@ -503,7 +503,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         LongRule (longConId, varPats, exp) =>
             defaultFormat ([
                LongConId.layout longConId,
-               indentedSchemeList (layoutOptions (varPats, map layoutVarPat))
+               indentedSchemeList (map layoutVarPat varPats)
             ], layoutExp exp)
         | LiteralRule (lit, exp) =>
             defaultFormat
@@ -657,9 +657,9 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
               Layout.str "apply",
               LongValueId.layout longValueId
             ],
-            indentedSlashList
-              (layoutOptions (maybeLeftArgs, map layoutSimpleExp),
-              layoutOptions (maybeRightArgs, map layoutSimpleExp))
+            indentedSlashList (
+              map layoutSimpleExp maybeLeftArgs,
+              map layoutSimpleExp maybeRightArgs)
           ]
       | Throw (bomId, maybeTyArgs, maybeSimpleExps) =>
           Layout.align [
@@ -668,12 +668,12 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
               BomId.layout bomId
             ],
             layoutOption (maybeTyArgs, layoutTyArgs),
-            indentedSchemeList (layoutOptions (maybeSimpleExps, map layoutSimpleExp))
+            indentedSchemeList (map layoutSimpleExp maybeSimpleExps)
           ]
       | Return maybeSimpleExps =>
           Layout.align [
             Layout.str "return",
-            indentedSchemeList (layoutOptions (maybeSimpleExps, map layoutSimpleExp))
+            indentedSchemeList (map layoutSimpleExp maybeSimpleExps)
           ]
 
   and layoutRhs myNode =

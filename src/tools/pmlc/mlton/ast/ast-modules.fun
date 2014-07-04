@@ -274,6 +274,12 @@ datatype strdecNode =
   | Structure of {constraint: SigConst.t,
                   def: strexp,
                   name: Strid.t} vector
+  | PrimCode of AstBOM.Definition.t vector
+  | PrimDataType of Tyvar.t vector * Tycon.t *
+      AstBOM.LongTyId.t * AstBOM.TyArgs.t option
+  | PrimTycon of Tyvar.t vector * Tycon.t * AstBOM.BomType.t
+  | PrimValSymb of AstBOM.SymbolicId.t * AstBOM.BomValueId.t
+  | PrimValId of AstBOM.BomId.t * AstBOM.BomValueId.t
 
 and strexpNode =
    App of Fctid.t * strexp

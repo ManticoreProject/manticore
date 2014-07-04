@@ -435,17 +435,15 @@ RHS
   ;
 
 
-PrimTyCon
+PrimOp
   : PRIMOP
-    => (BOM.PrimTycon.makeRegion (
-      BOM.PrimTycon.T PRIMOP,
-      posToReg FULL_SPAN))
+    => (BOM.PrimOp.makeRegion (BOM.PrimOp.T PRIMOP, posToReg FULL_SPAN))
   ;
 
 SimpleExp
-  : PrimTyCon "(" Args ")"
+  : PrimOp "(" Args ")"
       => (BOM.SimpleExp.makeRegion (
-        BOM.SimpleExp.PrimOp (PrimTyCon, Args),
+        BOM.SimpleExp.PrimOp (PrimOp, Args),
         posToReg FULL_SPAN))
   | "alloc" LongValueId "(" Args ")"
        => (BOM.SimpleExp.makeRegion (
