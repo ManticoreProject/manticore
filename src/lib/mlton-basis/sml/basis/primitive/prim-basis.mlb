@@ -5,7 +5,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-ann 
+ann
    "allowPrim true"
    "deadCode true"
    "nonexhaustiveMatch warn"

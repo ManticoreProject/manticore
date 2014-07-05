@@ -369,6 +369,8 @@ fun checkSyntaxStrdec (d: strdec): unit =
                   name = "structure definition",
                   region = Strid.region o #name,
                   term = fn () => layoutStrdec d})))
+    (* We don't syntax check the BOM code *)
+    | _ => ()
 and checkSyntaxStrexp (e: strexp): unit =
    case node e of
       App (_, e) => checkSyntaxStrexp e
@@ -470,7 +472,8 @@ structure Strdec =
                    | [d] => d
                    | ds => makeRegion (Seq (rev ds), r)
                end
-          | Structure _ => d) d
+          | Structure _ => d
+          | _ => d) d
    end
 
 structure FctArg =

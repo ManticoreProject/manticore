@@ -43,13 +43,17 @@ strdecnode
       => (idOrSymb (ty, BOMValueId))
 	;                             (* ty? *)
 
+symb
+  (* : reservedSymbol => (reservedSymbol, posToReg FULL_SPAN) *)
+  : SYMB => (Symbol.fromString SYMB, posToReg FULL_SPAN)
+  ;
+
 idOrSymb
   : BomId
     => (fn (ty, BOMValueId) => Strdec.PrimValId (BomId, BOMValueId))
-  | SYMB
+  | symb
     => (fn (ty, BOMValueId) => Strdec.PrimValSymb (
-      BOM.SymbolicId.fromSymbol (
-        Symbol.fromString SYMB, posToReg FULL_SPAN),
+      BOM.SymbolicId.fromSymbol symb,
       BOMValueId))
   ;
 

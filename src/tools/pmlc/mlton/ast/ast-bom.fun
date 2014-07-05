@@ -67,9 +67,9 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       Layout.mayAlign (separateDelimited (els, sep, leftDelim, rightDelim,
       Layout.mayAlign))
     fun rightDelimitWithIndent (els, sep, rightDelim) =
-      separateDelimited (els, sep, NONE, SOME rightDelim, defaultIndentMayAlign)
+      delimitWithIndent (els, sep, NONE, SOME rightDelim)
     fun leftDelimitWithIndent (els, sep, leftDelim) =
-      separateDelimited (els, sep, SOME leftDelim, NONE, defaultIndentMayAlign)
+      delimitWithIndent (els, sep, SOME leftDelim, NONE)
     fun indentedList els =
       delimitWithIndent (els, ",", SOME "[", SOME "]")
     fun indentedSchemeList els =
@@ -602,8 +602,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         Let (varPats, rhs, exp) =>
           Layout.align [
             Layout.str "let",
-            Layout.mayAlign (
-              rightDelimitWithIndent (map layoutVarPat varPats, ",", "=")),
+            rightDelimitWithIndent (map layoutVarPat varPats, ",", "="),
             defaultIndent (layoutRhs rhs),
             layoutExp exp
           ]
@@ -614,8 +613,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
           ]
       | FunExp (fundefs, exp) =>
           Layout.align [
-            Layout.mayAlign (
-              leftDelimitWithIndent (map layoutFunDef fundefs, "and", "fun")),
+            leftDelimitWithIndent (map layoutFunDef fundefs, "and", "fun"),
             layoutExp exp
           ]
       | ContExp (bomId, varPats, exp, exp') =>
@@ -649,9 +647,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
               layoutSimpleExp simpleExp,
               Layout.str "of"
             ],
-            Layout.mayAlign (
-              rightDelimitWithIndent (
-                map layoutCaseRule caseRules, " | ", "end"))
+            rightDelimitWithIndent (
+              map layoutCaseRule caseRules, " | ", "end")
           ]
       | Typecase (tyParam, tyCaseRules) =>
           Layout.align [
@@ -660,9 +657,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
               TyParam.layout tyParam,
               Layout.str "of"
             ],
-            Layout.mayAlign (
-              rightDelimitWithIndent (
-                map layoutTyCaseRule tyCaseRules, " | ", "end"))
+            rightDelimitWithIndent (
+              map layoutTyCaseRule tyCaseRules, " | ", "end")
           ]
       | Apply (longValueId, maybeLeftArgs, maybeRightArgs) =>
           Layout.align [
@@ -868,8 +864,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
             BomId.layout bomId,
             layoutOption (maybeTyParams, TyParams.layout)
           ],
-          Layout.mayAlign (leftDelimitWithIndent
-            (map DataConsDef.layout dataConsDefs, "=", " | "))
+          leftDelimitWithIndent (
+            map DataConsDef.layout dataConsDefs, "=", " | ")
         ]
 
         fun layoutSimpleDef (bomId, maybeTyParams, longId) =
@@ -910,76 +906,76 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   type node' = node
   type obj = t
 
-  (* FIXME *)
-  fun layout myNode = Layout.empty
-
-  (* fun layout myNode = *)
-  (*   case node myNode of *)
-  (*     Extern (cReturnTy, bomId, cArgTys, attrs) => *)
-  (*       Layout.align [ *)
-  (*         Layout.mayAlign [ *)
-  (*           Layout.str "extern", *)
-  (*           CReturnTy.layout cReturnTy, *)
-  (*           BomId.layout bomId *)
-  (*         ], *)
-  (*         indentedSchemeList (map CArgTy.layout cArgTys), *)
-  (*         Attrs.layout attrs *)
-  (*       ] *)
-  (*   | Datatype (datatypeDef, maybeDatatypeDefs) => *)
-  (*       leftDelimitWithIndent *)
-  (*         (map DatatypeDef.layout *)
-  (*           datatypeDef::(Option.getOpt (maybeDatatypeDefs, [])), *)
-  (*         "and", *)
-  (*         "datatype") *)
-  (*   | TypeDefn (bomId, maybeTyParams, myType) => *)
-  (*       Layout.align [ *)
-  (*         Layout.mayAlign [ *)
-  (*           Layout.str "type", *)
-  (*           BomId.layout bomId, *)
-  (*           layoutOption (maybeTyParams, TyParams.layout), *)
-  (*           Layout.str "=" *)
-  (*         ], *)
-  (*         Type.layout myType *)
-  (*       ] *)
-  (*   | DefineShortId (maybeAttrs, hlOpId, maybeTyParams, funParams, *)
-  (*         myType, maybeExp)  => *)
-  (*       Layout.align *)
-  (*           (Layout.mayAlign [ *)
-  (*             Layout.str "define", *)
-  (*             layoutOption (maybeAttrs, Attrs.layout), *)
-  (*             HLOpId.layout hlOpId, *)
-  (*             layoutOption (maybeTyParams, TyParams.layout), *)
-  (*             map FunParams.layout funParams, *)
-  (*             Type.layout myType *)
-  (*           ])::(if Option.isSome maybeExp then *)
-  (*             [leftDelimitWithIdent *)
-  (*               ([Exp.layout (Option.valOf maybeExp)], "", "=")] *)
-  (*           else *)
-  (*             []) *)
-  (*   | DefineLongId (hlOpId, maybeTyParams, longValueId) => *)
-  (*       leftDelimitWithIdent ([ *)
-  (*         Layout.seq [ *)
-  (*           Layout.str "=", *)
-  (*           layoutOption (maybeTyParams, TyParams.layout) *)
-  (*         ], *)
-  (*         LongValueId.layout longValueId *)
-  (*       ], *)
-  (*       "define", *)
-  (*       "") *)
-  (*   | Fun (fundefs) => *)
-  (*       leftDelimitWithIdent ([map FunDef.layout fundefs], "fun", "and") *)
-  (*   | InstanceType (longTyId, tyargs) => *)
-  (*       Layout.mayAlign [ *)
-  (*         Layout.str "instance type", *)
-  (*         LongTyId.layout longTyId, *)
-  (*         TyArgs.layout tyargs *)
-  (*       ] *)
-  (*   | Instance (longValueId, tyargs) => *)
-  (*       Layout.mayAlign [ *)
-  (*         Layout.str "instance", *)
-  (*         LongValueId.layout longValueId, *)
-  (*         TyArgs.layout tyargs *)
-  (*       ] *)
+  fun layout myNode =
+    case node myNode of
+      Extern (cReturnTy, bomId, cArgTys, attrs) =>
+        Layout.align [
+          Layout.mayAlign [
+            Layout.str "extern",
+            CReturnTy.layout cReturnTy,
+            BomId.layout bomId
+          ],
+          indentedSchemeList (map CArgTy.layout cArgTys),
+          Attrs.layout attrs
+        ]
+    | Datatype dataTypeDefs =>
+        leftDelimitWithIndent (
+          map DataTypeDef.layout dataTypeDefs,
+          "and",
+          "datatype")
+    | TypeDefn (bomId, maybeTyParams, myType) =>
+        Layout.align [
+          Layout.mayAlign [
+            Layout.str "type",
+            BomId.layout bomId,
+            layoutOption (maybeTyParams, TyParams.layout),
+            Layout.str "="
+          ],
+          BomType.layout myType
+        ]
+    | DefineShortId (maybeAttrs, hlOpId, maybeTyParams, inputPats, exnPats,
+          bomTypes, maybeExp)  =>
+        let
+          val layoutPats = map VarPat.layout
+        in
+            Layout.mayAlign ([
+                Layout.str "define",
+                layoutOption (maybeAttrs, Attrs.layout),
+                HLOpId.layout hlOpId,
+                layoutOption (maybeTyParams, TyParams.layout),
+                indentedSlashList (layoutPats inputPats, layoutPats exnPats),
+                unindentedSchemeList (map BomType.layout bomTypes)
+              ]@(if Option.isSome maybeExp then
+                [leftDelimitWithIndent (
+                  [Exp.layout (Option.valOf maybeExp)], "", "=")]
+              else
+                []))
+        end
+    | DefineLongId (hlOpId, maybeTyParams, longValueId) =>
+        leftDelimitWithIndent ([
+          Layout.seq [
+            Layout.str "=",
+            layoutOption (maybeTyParams, TyParams.layout)
+          ],
+          LongValueId.layout longValueId
+        ],
+        "define",
+        "")
+    | Fun (fundefs) =>
+        leftDelimitWithIndent (map FunDef.layout fundefs, "fun", "and")
+    | InstanceType (longTyId, tyargs) =>
+        Layout.mayAlign [
+          Layout.str "instance",
+          Layout.str "type",
+          LongTyId.layout longTyId,
+          TyArgs.layout tyargs
+        ]
+    | Instance (longValueId, tyargs) =>
+        Layout.mayAlign [
+          Layout.str "instance",
+          LongValueId.layout longValueId,
+          TyArgs.layout tyargs
+        ]
     end
 
 
