@@ -7,7 +7,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor MLBFrontEnd (S: MLB_FRONT_END_STRUCTS): MLB_FRONT_END = 
+functor MLBFrontEnd (S: MLB_FRONT_END_STRUCTS): MLB_FRONT_END =
 struct
 
 structure Option = MLtonOption
@@ -27,7 +27,7 @@ structure SourceMap : SOURCE_MAP =
 open S
 
 (* The lexer recursively invokes the lexer/parser when it encounters a file
- * reference.  So, we need a stub here to feed to the lexer.  The stub is 
+ * reference.  So, we need a stub here to feed to the lexer.  The stub is
  * overridden after the lexer is defined.
  *)
 
@@ -73,7 +73,7 @@ fun lexAndParse (source: Source.t, ins: In.t) = let
 			     | AntlrRepair.FailureAt tok => ["syntax error at ", MLBTokens.toString tok]
 			  (* end case *))
 		    in
-		      Out.outputl (Out.error, String.concat ("ERR: "::msg));		
+		      Out.outputl (Out.error, String.concat ("ERR: "::msg));
 		      Control.errorStr (posToReg(sm, pos), String.concat msg)
 		    end
 	      val _ = MLtonList.map (errs, parseError)
@@ -89,7 +89,7 @@ val lexAndParseFile =
       Trace.trace ("MLBFrontEnd.lexAndParseFile", File.layout, Ast.Basdec.layout)
         lexAndParseFile
 
-fun lexAndParseString (s: (*String.t*)string) = let 
+fun lexAndParseString (s: (*String.t*)string) = let
       val source = Source.new "<string>"
       val ins = In.openString s
       in
@@ -119,7 +119,7 @@ val lexAndParseString =
              | SOME {path, ...} => SOME path
       in
          val peekPathMap =
-            Trace.trace ("MLBFrontEnd.peekPathMap", 
+            Trace.trace ("MLBFrontEnd.peekPathMap",
                          (*String.layout*)Layout.str,
                          Option.layout Dir.layout)
             peekPathMap
@@ -130,7 +130,7 @@ val lexAndParseString =
                case s of
                   [] => String.concat (List.rev
                                        ((*String.fromListRev*)String_fromListRev acc :: accs))
-                | #"$" :: #"(" :: s => 
+                | #"$" :: #"(" :: s =>
                      let
                         val accs = (*String.fromListRev*)String_fromListRev acc :: accs
                         fun loopVar (s, acc) =
@@ -164,7 +164,7 @@ val lexAndParseString =
                                      empty)
                                     ; loop (s, [], accs)
                                  end
-                            | SOME path => 
+                            | SOME path =>
                                  loop (s, [],
                                        expandPathVars (path, var :: seen, region)
                                        :: accs)
@@ -192,7 +192,7 @@ val lexAndParseString =
              relativize = relativize}
          end
       val regularize =
-         Trace.trace ("MLBFrontEnd.lexAndParseString.regularize", 
+         Trace.trace ("MLBFrontEnd.lexAndParseString.regularize",
                       fn {fileOrig, cwd, relativize, ...} =>
                       Layout.record
                       [("fileOrig", File.layout fileOrig),
@@ -204,7 +204,7 @@ val lexAndParseString =
                        ("fileUse", File.layout fileUse),
                        ("relativize", Option.layout Dir.layout relativize)])
          regularize
-      fun lexAndParseProg {fileAbs: File.t, fileOrig: File.t, fileUse: File.t, 
+      fun lexAndParseProg {fileAbs: File.t, fileOrig: File.t, fileUse: File.t,
                            fail: (*String.t*)string -> Ast.Program.t} =
          Ast.Basdec.Prog
          ({fileAbs = fileAbs, fileUse = fileUse},
@@ -229,20 +229,20 @@ val lexAndParseString =
              ok = fn () => let
                 val seen' = (fileAbs, fileUse, reg) :: seen
              in
-                if List.exists (seen, fn (fileAbs', _, _) => 
+                if List.exists (seen, fn (fileAbs', _, _) =>
                                 (*String.equals*)String_equals (fileAbs, fileAbs'))
                    then (let open Layout
-                   in 
-                            Control.error 
-                            (reg, seq [str "Basis forms a cycle with ", 
+                   in
+                            Control.error
+                            (reg, seq [str "Basis forms a cycle with ",
                                        File.layout fileUse],
-                             align (List.map (seen', fn (_, f, r) => 
-                                              seq [Region.layout r, 
-                                                   str ": ", 
+                             align (List.map (seen', fn (_, f, r) =>
+                                              seq [Region.layout r,
+                                                   str ": ",
                                                    File.layout f])))
                             ; Ast.Basdec.empty
                    end)
-                else 
+                else
                    let
                       val (_, basdec) =
                          HashSet.lookupOrInsert
@@ -285,7 +285,7 @@ val lexAndParseString =
                             relativize = relativize}
                 handle _ => escape (err " could not be regularized")
              val mlbExts = ["mlb"]
-             val progExts = ["ML","fun","sig","sml"]
+             val progExts = ["ML","fun","sig","sml","pml"]
              fun errUnknownExt () = err " has an unknown extension"
           in
              case File.extension fileUse of

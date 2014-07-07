@@ -117,7 +117,7 @@ structure PMLFrontEnd : PML_FRONT_END =
 	     end
 (* [PML] -- for now, we do not support exnHistory --
 	  val () =
-	     case List.peek ([("Exn.keepHistory", 
+	     case List.peek ([("Exn.keepHistory",
 			       make (Bool.fromString, Control.exnHistory))],
 			     fn (s, _) => s = name) of
 		NONE => ()
@@ -154,13 +154,13 @@ structure PMLFrontEnd : PML_FRONT_END =
 	      else (*(fn ({name:string, default: string option}, t) => zero)) *)
 		  File.withIn
 		      (constantsFile (*concat [!Control.libTargetDir, "/constants"]*), fn ins =>
-		  LookupConstant.load (ins, !commandLineConstants))) 
+		  LookupConstant.load (ins, !commandLineConstants)))
        in
 	  fn z => f () z
        end
 
 
-(* ------------------------------------------------- *)   
+(* ------------------------------------------------- *)
 (*                   Primitive Env                   *)
 (* ------------------------------------------------- *)
 
@@ -211,16 +211,16 @@ structure PMLFrontEnd : PML_FRONT_END =
 	end
 
       structure Env = struct
-	  open Env 
-  
+	  open Env
+
 	  structure Tycon = struct
 	      open Tycon
-  
+
 	      fun toAst c = Ast.Tycon.fromSymbol (Symbol.fromString (Tycon.toString c), Region.bogus)
 	    end
 	  structure Type = TypeEnv.Type
 	  structure Scheme = TypeEnv.Scheme
-  
+
 	  fun addPrim (E: t): unit = let
 		val _ =
 		    MLtonList.foreach
@@ -310,9 +310,10 @@ structure PMLFrontEnd : PML_FRONT_END =
 
     val lexAndParseMLB = MLBString.lexAndParseMLB
 
-    val lexAndParseMLB: MLBString.t -> Ast.Basdec.t = 
+    val lexAndParseMLB: MLBString.t -> Ast.Basdec.t =
 	  fn input => let
 	      val ast = lexAndParseMLB input
+(*DEBUG*)val _ = print "parsing complete\n"
 	      val _ = Ctl.checkForErrors "parse"
 	      in
 		ast
@@ -395,7 +396,7 @@ structure PMLFrontEnd : PML_FRONT_END =
 	  val _ = if !Ctl.keepCoreML
 		    then Ctl.saveToFile (
 		      {suffix = "core-ml"}, Ctl.No, coreML, Ctl.Layouts CoreML.Program.layouts)
-		    else ()    
+		    else ()
 	  val xml = Ctl.passTypeCheck {
 		  display = Ctl.Layouts Xml.Program.layouts,
 		  name = "defunctorize",
@@ -489,14 +490,18 @@ structure PMLFrontEnd : PML_FRONT_END =
     fun init () = let
 	  val _ = Ctl.verbosity := Ctl.Pass
 	  val _ = Ctl.keepSXML := true
+(*
 	  val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/mlton-basis/sml"]
 	  val libMltonDir= concat["LIB_MLTON_DIR ", LoadPaths.libDir, "/mlton-basis/mlton"]
+*)
+	  val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/basis/sml"]
+(* DEBUG *)val _ = print(concat["SML_LIB=\"", String.toString(LoadPaths.libDir ^ "/basis/sml"), "\"\n"])
 	  fun handlePath p = Control.mlbPathVars := !Control.mlbPathVars @ [
 		  case parseMlbPathVar p
 		   of NONE => Error.bug ("strange mlb path var: " ^ p)
 		    | SOME v => v
 		]
-	  val _ = List.app handlePath [smlLibPath, libMltonDir]
+	  val _ = List.app handlePath [smlLibPath]
 	  fun cvtSz sz = Bytes.toBits(Bytes.fromInt sz)
 	  in
 	  (* the sizes for the x86-64 target *)
