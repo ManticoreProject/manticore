@@ -586,9 +586,9 @@ RawTy
 ReturnTy
   : "noreturn"
       => ([])
-  | %try ":" BOMType
+  | %try "->" BOMType
       => ([BOMType])
-  | %try ":" "(" BOMType ("," BOMType)* ")"
+  | %try "->" "(" BOMType ("," BOMType)* ")"
       => (BOMType::SR)
   ;
 
