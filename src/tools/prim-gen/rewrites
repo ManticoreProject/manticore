@@ -1,0 +1,14 @@
+add(Int 0, Var x) => Var x
+add(Var x, Int 0) => Var x
+add(Int a, Int b) => Int(a+b)
+add(Var x, neg(Var y)) => sub(Var x, Var y)
+sub(Int 0, Var x) => neg x
+sub(Var x, Int 0) => Var x
+sub(Int a, Int b) => Int(a-b)
+sub(Var x, neg(Var y)) => add(Var x, Var y)
+mul(Int 0, Var x) => Int 0
+mul(Var x, Int 0) => Int 0
+mul(Int 1, Var x) => Var x
+mul(Var x, Int 1) => Var x
+mul(Int a, Int b) => Int(a*b)
+neg(neg(Var a)) => Var a
