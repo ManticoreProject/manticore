@@ -9,75 +9,87 @@
 %arg ({source});
 
 %defs(
-structure T = PMLTokens
-fun String_dropPrefix (s, n) = String.substring(s, n, size s - n)
+  structure T = PMLTokens
+  fun String_dropPrefix (s, n) = String.substring(s, n, size s - n)
 
-      (* type pos = SourcePos.t *)
-type lex_arg = {source: Source.t}
-type lex_result = T.token
+  (* type pos = SourcePos.t *)
+  type lex_arg = {source: Source.t}
+  type lex_result = T.token
 
-val charlist: IntInf.int list ref = ref []
-val colNum: int ref = ref 0
-val commentLevel: int ref = ref 0
-val commentStart = ref SourcePos.bogus
-val lineFile: File.t ref = ref ""
-val lineNum: int ref = ref 0
-val stringStart = ref SourcePos.bogus
-val stringtype = ref false
+  val charlist: IntInf.int list ref = ref []
+  val colNum: int ref = ref 0
+  val commentLevel: int ref = ref 0
+  val commentStart = ref SourcePos.bogus
+  val lineFile: File.t ref = ref ""
+  val lineNum: int ref = ref 0
+  val stringStart = ref SourcePos.bogus
+  val stringtype = ref false
 
-local
-  val bomLevel = ref 0
-in
-  fun bomPush () =
-    bomLevel := !bomLevel + 1
+(* flag to mark ML string literals.  In BOM code a normal string literal
+ * is a BOM string and a string with a preceding "@" is treated as an
+ * ML string literal.
+ *)
+  val isMLString = ref false
 
-  fun bomPop () =
-    (bomLevel := !bomLevel - 1;
-     !bomLevel > 0)
-end
+  local
+    val bomLevel = ref 0
+  in
+
+  fun bomPush () = bomLevel := !bomLevel + 1
+
+  fun bomPop () = let
+	val lvl = !bomLevel - 1
+	in
+	  bomLevel := lvl;
+	  (lvl > 0)
+	end
+
+  fun inBOM () = (!bomLevel > 0)
+
+  end (* local *)
 
 
-fun lineDirective (source, file, yypos) =
-   Source.lineDirective (source, file,
-                         {lineNum = !lineNum,
-                                 lineStart = (Position.toInt yypos) - !colNum})
+  fun lineDirective (source, file, yypos) =
+     Source.lineDirective (source, file,
+			   {lineNum = !lineNum,
+				   lineStart = (Position.toInt yypos) - !colNum})
 
-fun addString (s: string) =
-   charlist := CharVector.foldl (fn (c, ac) => Int.toLarge (Char.ord c) :: ac) (!charlist) s
+  fun addString (s: string) =
+     charlist := CharVector.foldl (fn (c, ac) => Int.toLarge (Char.ord c) :: ac) (!charlist) s
 
-fun addChar (c: char) = charlist := Int.toLarge(Char.ord c) :: !charlist
+  fun addChar (c: char) = charlist := Int.toLarge(Char.ord c) :: !charlist
 
-fun inc (ri as ref (i: int)) = ri := i + 1
+  fun inc (ri as ref (i: int)) = ri := i + 1
 
-fun dec (ri as ref (i: int)) = ri := i - 1
+  fun dec (ri as ref (i: int)) = ri := i - 1
 
-fun error (source, left, right, msg) =
-   Control.errorStr (Region.make {left = Source.getPos (source, Position.toInt left),
-                                  right = Source.getPos (source, Position.toInt right)},
-                     msg)
+  fun error (source, left, right, msg) =
+     Control.errorStr (Region.make {left = Source.getPos (source, Position.toInt left),
+				    right = Source.getPos (source, Position.toInt right)},
+		       msg)
 
-fun stringError (source, right, msg) =
-   Control.errorStr (Region.make {left = !stringStart,
-                                  right = Source.getPos (source, Position.toInt right)},
-                     msg)
+  fun stringError (source, right, msg) =
+     Control.errorStr (Region.make {left = !stringStart,
+				    right = Source.getPos (source, Position.toInt right)},
+		       msg)
 
-fun addOrd (i: IntInf.int): unit = MLtonList.push (charlist, i)
+  fun addOrd (i: IntInf.int): unit = MLtonList.push (charlist, i)
 
-fun addHexEscape (s: string, source, yypos): unit =
-   case StringCvt.scanString (Pervasive.IntInf.scan StringCvt.HEX) s of
-      NONE => stringError (source, yypos, "illegal unicode escape")
-    | SOME i => addOrd i
+  fun addHexEscape (s: string, source, yypos): unit =
+     case StringCvt.scanString (Pervasive.IntInf.scan StringCvt.HEX) s of
+	NONE => stringError (source, yypos, "illegal unicode escape")
+      | SOME i => addOrd i
 
-fun eof () = T.EOF
+  fun eof () = T.EOF
 
-fun int (yytext, drop, source, {negate: bool}, radix) =
-   T.INT ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
-                negate = negate,
-                radix = radix})
+  fun int (yytext, drop, source, {negate: bool}, radix) =
+     T.INT ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
+		  negate = negate,
+		  radix = radix})
 
-fun word (yytext, drop, source, radix : StringCvt.radix) =
-   T.WORD ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
-                 radix = radix})
+  fun word (yytext, drop, source, radix : StringCvt.radix) =
+     T.WORD ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
+		   radix = radix})
 );
 
 %states INITIAL A S F L LL LLC LLCQ BOM;
@@ -200,13 +212,15 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 				     of "*" => T.ASTERISK
    				      | _ => T.LONGID yytext
 				    (* end case *));
-<BOM>{longid}			=> (case yytext
+<BOM>{alphanumId}		=> (T.ID yytext);
+<BOM>({alphanumId}.)+{id}	=> (case yytext
 				     of "*" => T.ASTERISK
 				      | "<" => T.LT
 				      | ">" => T.GT
    				      | _ => T.LONGID yytext
 				    (* end case *));
 <BOM>{hlid}			=> (T.HLID yytext);
+<BOM>({alphanumId}.)+{hlid}	=> (T.LONG_HLID yytext);
 
 <INITIAL>{real}			=> (T.REAL(yytext));
 <INITIAL>{num}			=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));
@@ -215,12 +229,12 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 <INITIAL>"~0x"{hexnum}		=> (int (yytext, 3, source, {negate = true}, StringCvt.HEX));
 <INITIAL>"0w"{num}		=> (word (yytext, 2, source, StringCvt.DEC));
 <INITIAL>"0wx"{hexnum}		=> (word (yytext, 3, source, StringCvt.HEX));
-<INITIAL>\"     		=> (charlist := []
+<INITIAL,BOM>\"     		=> (charlist := []
 				    ; stringStart := Source.getPos (source, Position.toInt yypos)
 				    ; stringtype := true
 				    ; YYBEGIN S
 				    ; continue ());
-<INITIAL>\#\"   		=> (charlist := []
+<INITIAL,BOM>\#\"   		=> (charlist := []
 				    ; stringStart := Source.getPos (source, Position.toInt yypos)
 				    ; stringtype := false
 				    ; YYBEGIN S
@@ -267,22 +281,19 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 <A>.            => (continue ());
 
 <S>\"           => (let
-                       val s = MLtonVector.fromListRev (!charlist)
-                       val _ = charlist := nil
-                       fun make (t, v) =
-                          t (v)
-                       val () = YYBEGIN INITIAL
+		    val s = MLtonVector.fromListRev (!charlist)
+		    val _ = charlist := nil
                     in
-                       if !stringtype
-                          then make (T.STRING, s)
-                       else
-                          make (T.CHAR,
-                                if 1 <> Vector.length s
-                                   then (error
-                                         (source, yypos, yypos + 1,
-                                          "character constant not length 1")
-                                         ; 0)
-                                else Vector.sub (s, 0))
+		      if inBOM() then YYBEGIN BOM else YYBEGIN INITIAL;
+		      if !isMLString
+			then T.ML_STRING s
+		      else if !stringtype
+			then T.STRING s
+		      else if (Vector.length s <> 1)
+			then (
+			  error (source, yypos, yypos + 1, "character literal not a single character");
+			  T.CHAR 0)
+			else T.CHAR(Vector.sub (s, 0))
                     end);
 <S>\\a          => (addChar #"\a"; continue ());
 <S>\\b          => (addChar #"\b"; continue ());

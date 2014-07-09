@@ -57,7 +57,7 @@ fun lexAndParse (file: File.t, ins: In.t): Ast.Program.t = let
 			   | AntlrRepair.FailureAt tok => ["syntax error at ", PMLTokens.toString tok]
 			(* end case *))
 		  in
-		    Out.outputl (Out.error, String.concat ("ERR: "::msg));
+		    Out.outputl (Out.error, String.concat msg);
 		    Control.errorStr (posToReg(sm, pos), String.concat msg)
 		  end
 	    val _ = MLtonList.map (errs, parseError)

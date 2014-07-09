@@ -33,29 +33,20 @@
 %start program;
 
 strdecnode
-  : "_primcode" "(" BOMDecls ")"
-		  => (Strdec.PrimCode (Vector.fromList BOMDecls))
+	: "_primcode" "(" BOMDecls ")"
+		=> (Strdec.PrimCode (Vector.fromList BOMDecls))
 	| "_datatype" tyvarseq tycon "=" "_prim" "(" LongTyId TyArgs? ")"
-      => (Strdec.PrimDataType (tyvarseq, tycon, LongTyId, TyArgs))
+		=> (Strdec.PrimDataType (tyvarseq, tycon, LongTyId, TyArgs))
 	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
-      => (Strdec.PrimTycon (tyvars, tycon, BOMType))
-	| "_val" "op" idOrSymb ":" ty "=" "_prim" "(" BOMValueId ")"
-      => (idOrSymb (ty, BOMValueId))
+		=> (Strdec.PrimTycon (tyvars, tycon, BOMType))
+	| "_val" MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"
+		=> (MLValueId (ty, BOMValueId))
 	;                             (* ty? *)
 
-symb
-  (* : reservedSymbol => (reservedSymbol, posToReg FULL_SPAN) *)
-  : SYMB => (Symbol.fromString SYMB, posToReg FULL_SPAN)
-  ;
-
-idOrSymb
-  : BomId
-    => (fn (ty, BOMValueId) => Strdec.PrimValId (BomId, BOMValueId))
-  | symb
-    => (fn (ty, BOMValueId) => Strdec.PrimValSymb (
-      BOM.SymbolicId.fromSymbol symb,
-      BOMValueId))
-  ;
+MLValueId
+	: "op" vid
+	| vidNoEqual
+	;
 
 BOMValueId
 	: (LongTyId => (BOM.BomValueId.LongId LongTyId)

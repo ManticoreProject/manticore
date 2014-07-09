@@ -91,7 +91,8 @@
 (*  | ARROW     ("->")      *)
     | DDARROW       ("==>")
 (*  | LONGID of string       *)
-  | HLID of string            (* ??? *)
+  | HLID of string		(* "@"ID *)
+  | LONG_HLID of string		(* qualified HLID *)
 (*  | char of ... *)
 (*  | INT of ... *)
 (*  | REAL of FloatLit.float    *)
@@ -157,43 +158,42 @@ BOMDecls
   ;
 
 Definition
-  : "datatype" DataTypeDef ("and" DataTypeDef)*
-    => (BOM.Definition.makeRegion (
-          BOM.Definition.Datatype (DataTypeDef::SR),
-          posToReg FULL_SPAN))
-  | "type" BomId TyParams? "=" BOMType ";"
-    => (BOM.Definition.makeRegion (
-      BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
-      posToReg FULL_SPAN))
+	: "datatype" DataTypeDef ("and" DataTypeDef)*
+	  => (BOM.Definition.makeRegion (
+		BOM.Definition.Datatype (DataTypeDef::SR),
+		posToReg FULL_SPAN))
+	| "type" BomId TyParams? "=" BOMType ";"
+	  => (BOM.Definition.makeRegion (
+	    BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
+	    posToReg FULL_SPAN))
 	| "define" Attrs HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
-    => (BOM.Definition.makeRegion (
-      let
-        val (inputTys, exnTys) = FunParams
-      in
-        (BOM.Definition.DefineShortId (
-          SOME Attrs, HLOpId, TyParams, inputTys, exnTys, ReturnTy, SR),
-        posToReg FULL_SPAN)
-      end))
+	    => (BOM.Definition.makeRegion (let
+		val (inputTys, exnTys) = FunParams
+		in (
+		  BOM.Definition.DefineShortId (
+		    SOME Attrs, HLOpId, TyParams, inputTys, exnTys, ReturnTy, SR),
+		  posToReg FULL_SPAN
+		) end))
 	| "define" HLOpId TyParams? DefineRest
 		=> (DefineRest (HLOpId, TyParams, FULL_SPAN))
-  | "extern" CReturnTy BomId "(" (
-      CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs ";"
-    => (BOM.Definition.makeRegion (
-      BOM.Definition.Extern (CReturnTy, BomId, Option.getOpt (SR, []), Attrs),
-      posToReg FULL_SPAN))
-  | "fun" FunDef ("and" FunDef)* ";"
-    => (BOM.Definition.makeRegion (
-      BOM.Definition.Fun (FunDef::SR),
-      posToReg FULL_SPAN))
-  | "instance" "type" LongTyId TyArgs ";"
-    => (BOM.Definition.makeRegion
-      (BOM.Definition.InstanceType (LongTyId, TyArgs),
-      posToReg FULL_SPAN))
-  | "instance" LongValueId TyArgs ";"
-    => (BOM.Definition.makeRegion
-      (BOM.Definition.Instance (LongValueId, TyArgs),
-      posToReg FULL_SPAN))
-  ;
+	| "extern" CReturnTy BomId "(" (
+	    CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs ";"
+	  => (BOM.Definition.makeRegion (
+	    BOM.Definition.Extern (CReturnTy, BomId, Option.getOpt (SR, []), Attrs),
+	    posToReg FULL_SPAN))
+	| "fun" FunDef ("and" FunDef)* ";"
+	  => (BOM.Definition.makeRegion (
+	    BOM.Definition.Fun (FunDef::SR),
+	    posToReg FULL_SPAN))
+	| "instance" "type" LongTyId TyArgs ";"
+	  => (BOM.Definition.makeRegion
+	    (BOM.Definition.InstanceType (LongTyId, TyArgs),
+	    posToReg FULL_SPAN))
+	| "instance" LongValueId TyArgs ";"
+	  => (BOM.Definition.makeRegion
+	    (BOM.Definition.Instance (LongValueId, TyArgs),
+	    posToReg FULL_SPAN))
+	;
 
 (* FIXME: this can be made to work better with DefineShortId above *)
 DefineRest
@@ -247,28 +247,18 @@ TyArgs
       posToReg FULL_SPAN))
   ;
 
-(* HLOps are IDs, not LONGIDs, so we need to just ignore this for now *)
-qid
-  : LONGID HLID
-      => (map Symbol.fromString ((splitLongIdString LONGID)@[HLID]),
-          posToReg FULL_SPAN)
-  ;
-
-hlid
-  : HLID => (Symbol.fromString HLID, posToReg FULL_SPAN)
-  ;
-
 BomId
-  : id => (BOM.BomId.fromSymbol id)
-  ;
+	: ID => (BOM.BomId.fromSymbol(Symbol.fromString ID, posToReg FULL_SPAN))
+	;
 
 HLOpId
-  : hlid => (BOM.HLOpId.fromSymbol hlid)
-  ;
+	: HLID => (BOM.HLOpId.fromSymbol(Symbol.fromString HLID, posToReg FULL_SPAN))
+	;
 
 HLOpQId
-  : qid => (BOM.HLOpQId.fromSymbols qid)
-  ;
+	: HLID => ()
+	| LONG_HLID => (BOM.HLOpQId.fromSymbol(Symbol.fromString LONG_HLID, posToReg FULL_SPAN))
+	;
 
 (* named so it doesn't conflict with tyvar in ml.grm *)
 tyVarForTyParam
@@ -365,15 +355,10 @@ FunDef
         posToReg FULL_SPAN))
   ;
 
-string'                         (* FIXME *)
-  : string => (String.implode (List.tabulate (
-      (CharVector.length string), (fn i => CharVector.sub (string, i)))))
-  ;
-
 Attrs
-  : "__attributes__" "(" string' ("," string')* ")"
+  : "__attributes__" "(" string ("," string)* ")"
       => (BOM.Attrs.makeRegion (
-        BOM.Attrs.T (string'::SR),
+        BOM.Attrs.T (string::SR),
         posToReg FULL_SPAN))
   ;
 
