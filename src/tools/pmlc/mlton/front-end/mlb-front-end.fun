@@ -55,6 +55,7 @@ fun lexAndParse (source: Source.t, ins: In.t) = let
       val sm = AntlrStreamPos.mkSourcemap()
       val lexer = MLBLexer.lex sm {source=source}
       val _ = SourceMap.setMap sm
+(* DEBUG *)      val _ = print "starting lexAndParse\n"
       in
 	case Parser.parse lexer (MLBLexer.streamifyInstream ins)
 	 of (SOME pt, _, []) => (Ast.Basdec.checkSyntax pt; pt)

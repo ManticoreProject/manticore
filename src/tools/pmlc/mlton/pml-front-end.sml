@@ -371,11 +371,13 @@ structure PMLFrontEnd : PML_FRONT_END =
 
     fun elaborate {input: MLBString.t} : Xml.Program.t = let
 	  val (E, decs) = parseAndElaborateMLB input
+    (* DEBUG *) val _ = print "finished parseAndElaborateMLB\n"
 	  val _ = (case !Ctl.showBasis
 		 of NONE => ()
 		  | SOME f => File.withOut
 		      (f, fn out => Layout.outputl (Env.layoutCurrentScope E, out))
 		(* end case *))
+    (* DEBUG *) val _ = print "finished showing basis\n"
 	  val _ = Env.processDefUse E
 	  val _ = if !Ctl.elaborateOnly then raise Done else ()
 	  val decs = Ctl.pass {
@@ -411,7 +413,9 @@ structure PMLFrontEnd : PML_FRONT_END =
 	  end
 
     fun generateSXML {input: MLBString.t} = let
+        (* DEBUG  val _ = print "starting to generate SXML\n" *)
 	  val xml = elaborate {input = input}
+    (* DEBUG *) val _ = print "finished elaborate\n"
 	  val xml = Ctl.passTypeCheck {
 		  display = Ctl.Layouts Xml.Program.layouts,
 		  name = "xmlSimplify",

@@ -7,7 +7,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor ElaborateMLBs (S: ELABORATE_MLBS_STRUCTS): ELABORATE_MLBS = 
+functor ElaborateMLBs (S: ELABORATE_MLBS_STRUCTS): ELABORATE_MLBS =
 struct
 
 structure Option = MLtonOption
@@ -34,11 +34,11 @@ fun check (c: (bool,bool) ElabControl.t, keyword: string, region) =
       let
          open Layout
       in
-         Control.error 
+         Control.error
          (region,
           str (concat (if ElabControl.expert c
                           then [keyword, " disallowed"]
-                          else [keyword, " disallowed, compile with -default-ann '", 
+                          else [keyword, " disallowed, compile with -default-ann '",
                                 ElabControl.name c, " true'"])),
           empty)
       end
@@ -72,17 +72,18 @@ end
 
 fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
    let
+       (* DEBUG *) val _ = print "starting elaborateMLB\n"
       val decs = Buffer.new {dummy = ([], false)}
 
       val E = Env.empty ()
       fun withDef f =
-         ElabControl.withDef 
+         ElabControl.withDef
          (fn () =>
           if ElabControl.default ElabControl.forceUsed
              then Env.forceUsedLocal (E, f)
              else f ())
 
-      val emptySnapshot : (unit -> Env.Basis.t) -> Env.Basis.t = 
+      val emptySnapshot : (unit -> Env.Basis.t) -> Env.Basis.t =
          Env.snapshot E
       val emptySnapshot = fn (f: unit -> Env.Basis.t) =>
          emptySnapshot (fn () => withDef f)
@@ -110,7 +111,7 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
                            Layout.ignore)
          (fn (basexp: Basexp.t) =>
           case Basexp.node basexp of
-             Basexp.Bas basdec => 
+             Basexp.Bas basdec =>
                 let
                    val ((), B) =
                       Env.makeBasis (E, fn () => elabBasdec basdec)
@@ -118,7 +119,7 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
                    SOME B
                 end
            | Basexp.Var basid => Env.lookupBasid (E, basid)
-           | Basexp.Let (basdec, basexp) => 
+           | Basexp.Let (basdec, basexp) =>
                 Env.scopeAll
                 (E, fn () =>
                  (elabBasdec basdec
@@ -134,19 +135,19 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
                    fun doit (lookup, extend, bnds) =
                       Vector.foreach
                       (Vector.map (bnds, fn {lhs, rhs} =>
-                                   {lhs = lhs, rhs = lookup (E, rhs)}), 
+                                   {lhs = lhs, rhs = lookup (E, rhs)}),
                        fn {lhs, rhs} =>
                        Option.app (rhs, fn z => extend (E, lhs, z)))
                 in
                    case ModIdBind.node def of
-                      ModIdBind.Fct bnds => 
+                      ModIdBind.Fct bnds =>
                          doit (Env.lookupFctid, Env.extendFctid, bnds)
-                    | ModIdBind.Sig bnds => 
+                    | ModIdBind.Sig bnds =>
                          doit (Env.lookupSigid, Env.extendSigid, bnds)
-                    | ModIdBind.Str bnds => 
+                    | ModIdBind.Str bnds =>
                          doit (Env.lookupStrid, Env.extendStrid, bnds)
                 end
-           | Basdec.Basis basbinds => 
+           | Basdec.Basis basbinds =>
                 let
                    val basbinds =
                       Vector.map
@@ -160,15 +161,15 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
                     Option.app (B, fn B => Env.extendBasid (E, name, B)))
                 end
            | Basdec.Local (basdec1, basdec2) =>
-                Env.localAll (E, fn () => 
-                              elabBasdec basdec1, fn () => 
+                Env.localAll (E, fn () =>
+                              elabBasdec basdec1, fn () =>
                               elabBasdec basdec2)
            | Basdec.Seq basdecs =>
                 List.foreach(basdecs, elabBasdec)
-           | Basdec.Open basids => 
+           | Basdec.Open basids =>
                 Vector.foreach
-                (Vector.map (basids, fn basid => 
-                             Env.lookupBasid (E, basid)), fn bo => 
+                (Vector.map (basids, fn basid =>
+                             Env.lookupBasid (E, basid)), fn bo =>
                  Option.app (bo, fn b => Env.openBasis (E, b)))
            | Basdec.Prog (_, prog) =>
                 let
@@ -180,7 +181,7 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
                 let
                    val (_, B) =
                       HashSet.lookupOrInsert
-                      (psi, (*String.hash*)String_hash fileAbs, fn (fileAbs', _) => 
+                      (psi, (*String.hash*)String_hash fileAbs, fn (fileAbs', _) =>
                        (*String.equals*)String_equals (fileAbs, fileAbs'), fn () =>
                        let
                           val basdec = Promise.force basdec
@@ -189,14 +190,14 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
                              (fn () =>
                               emptySnapshot
                               (fn () =>
-                               (#2 o Env.makeBasis) 
+                               (#2 o Env.makeBasis)
                                (E, fn () => elabBasdec basdec)))
                        in
                           (fileAbs, B)
                        end)
                    val B = Promise.force B
                            handle Promise.Force =>
-                           (* Basis forms a cycle; 
+                           (* Basis forms a cycle;
                             * force the AST to generate error message.
                             *)
                            (ignore (Promise.force basdec)
@@ -204,7 +205,7 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
                 in
                    Env.openBasis (E, B)
                 end
-           | Basdec.Prim => 
+           | Basdec.Prim =>
                 (check (ElabControl.allowPrim, "_prim", Basdec.region basdec)
                  ; Env.openBasis (E, primBasis))
            | Basdec.Ann (ann, reg, basdec) =>
@@ -221,7 +222,7 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
                          else ()
                 in
                    case parseIdAndArgs ann of
-                      Control.Elaborate.Bad => 
+                      Control.Elaborate.Bad =>
                          (warn ()
                           ; elabBasdec basdec)
                     | Control.Elaborate.Deprecated alts =>
@@ -256,20 +257,20 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
                              else if equalsId (ffiStr, id)
                                 then let
                                         val ffi = valOf (current ffiStr)
-                                        val ffi = 
-                                           Longstrid.fromSymbols 
-                                           (List.map ((*String.split*)String_split (ffi, #"."), 
-                                                      Longstrid.Symbol.fromString), 
+                                        val ffi =
+                                           Longstrid.fromSymbols
+                                           (List.map ((*String.split*)String_split (ffi, #"."),
+                                                      Longstrid.Symbol.fromString),
                                             reg)
                                      in
                                         elabBasdec basdec
                                         before
                                         Option.app
-                                        (Env.lookupLongstrid (E, ffi), 
+                                        (Env.lookupLongstrid (E, ffi),
                                          fn S => (Env.Structure.ffi := SOME S
                                                   ; Env.Structure.forceUsed S))
                                      end
-                             else elabBasdec basdec, 
+                             else elabBasdec basdec,
                              restore)
                          end
                     | Other => elabBasdec basdec

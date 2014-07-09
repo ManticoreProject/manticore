@@ -260,7 +260,7 @@ signature AST_BOM =
     type t
     type exp
     datatype node
-      = LongRule of LongConId.t * VarPat.t list * exp (* FIXME in .fun layout *)
+      = LongRule of LongConId.t * VarPat.t list * exp
       | LiteralRule of Literal.t * exp
       | DefaultRule of VarPat.t * exp       (* collapsing CaseDefault *)
     include WRAPPED
@@ -285,9 +285,9 @@ signature AST_BOM =
   structure SimpleExp : sig
       type t
       datatype node
-        = PrimOp of PrimOp.t * t list (* pulled from ./prim-tycons.sig *)
+        = PrimOp of PrimOp.t * t list
         | AllocId of LongValueId.t * t list
-        | AllocType of TyArgs.t * t list (* FIXME in .fun *)
+        | AllocType of TyArgs.t * t list
         | AtIndex of IntInf.int * t * t option
         | TypeCast of BomType.t * t
         | HostVproc
@@ -296,7 +296,7 @@ signature AST_BOM =
         | VpStore of IntInf.int * t * t
         | Id of LongValueId.t
         | Lit of Literal.t
-        | MLString of IntInf.int vector    (* FIXME in .fun *)
+        | MLString of IntInf.int vector
 
     val layout : t -> Layout.t
 
