@@ -94,14 +94,14 @@
      T.WORD ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
 		   radix = radix})
 
-  fun trace (s, token) = let
-    val _ = print (String.concat [
-      "DEBUG: about to emit token ", T.toString token, " for string \"", s,
-      "\".\n"
-    ])
-  in
-    token
-  end
+  fun trace (mark, s, token) = let
+	val _ = print (String.concat [
+		    mark, ": about to emit token ", T.toString token,
+		    " for string \"", String.toString s, "\".\n"
+		  ])
+	in
+	  token
+	end
 );
 
 %states INITIAL A S F L LL LLC LLCQ BOM;
@@ -134,12 +134,12 @@
 <INITIAL,BOM>"["		=> (T.LBRACKET);
 <INITIAL,BOM>"]"		=> (T.RBRACKET);
 <INITIAL,BOM>";"		=> (T.SEMICOLON);
-<INITIAL>"("			=> (T.LPAREN);
-<INITIAL>")"			=> (T.RPAREN);
-<INITIAL,BOM>"..."		=> (T.DOTDOTDOT);
+<INITIAL,BOM>"("		=> (T.LPAREN);
+<INITIAL,BOM>")"		=> (T.RPAREN);
+<INITIAL>"..."			=> (T.DOTDOTDOT);
 <INITIAL,BOM>"|"		=> (T.BAR);
 <INITIAL,BOM>":"		=> (T.COLON);
-<INITIAL,BOM>":>"		=> (T.COLONGT);
+<INITIAL>":>"			=> (T.COLONGT);
 <INITIAL,BOM>"="		=> (T.EQUALOP);
 <INITIAL,BOM>"#"		=> (T.HASH);
 <INITIAL,BOM>"->"		=> (T.ARROW);
@@ -165,7 +165,7 @@
 <INITIAL,BOM>"case"		=> (T.KW_case);
 <BOM>"ccall"			=> (T.KW_ccall);
 <BOM>"cont"			=> (T.KW_cont);
-<INITIAL,BOM>"datatype"		=> (trace (yytext, T.KW_datatype));
+<INITIAL,BOM>"datatype"		=> (trace ("1", yytext, T.KW_datatype));
 <BOM>"define"			=> (T.KW_define);
 <INITIAL,BOM>"do"		=> (T.KW_do);
 <INITIAL,BOM>"else"		=> (T.KW_else);
@@ -236,19 +236,19 @@
 <INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
 (* FIXME: split LONGID into unqualified id and qualified id *)
 <INITIAL>{longid}		=> (case yytext
-				     of "*" => trace (yytext, T.ASTERISK)
-   				      | _ => trace (yytext, T.LONGID yytext)
+				     of "*" => trace ("2", yytext, T.ASTERISK)
+   				      | _ => trace ("3", yytext, T.LONGID yytext)
 				    (* end case *));
 <INITIAL,BOM>{symId} => (T.SYMID yytext);
-<BOM>{alphanumId}		=> (trace (yytext, T.ID yytext));
-<BOM>({alphanumId}.)+{id}	=> (case yytext
-				     of "*" => trace (yytext, T.ASTERISK)
-				      | "<" => trace (yytext, T.LT)
-				      | ">" => trace (yytext, T.GT)
-   				      | _ => trace (yytext, T.LONGID yytext)
+<BOM>{alphanumId}		=> (trace ("4", yytext, T.ID yytext));
+<BOM>({alphanumId}\.)+{id}	=> (case yytext
+				     of "*" => trace ("5", yytext, T.ASTERISK)
+				      | "<" => trace ("6", yytext, T.LT)
+				      | ">" => trace ("7", yytext, T.GT)
+   				      | _ => trace ("8", yytext, T.LONGID yytext)
 				    (* end case *));
 <BOM>{hlid}			=> (T.HLID yytext);
-<BOM>({alphanumId}.)+{hlid}	=> (T.LONG_HLID yytext);
+<BOM>({alphanumId}\.)+{hlid}	=> (T.LONG_HLID yytext);
 
 <INITIAL>{real}			=> (T.REAL(yytext));
 <INITIAL>{num}			=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));
