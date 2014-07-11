@@ -134,8 +134,10 @@
 <INITIAL,BOM>"["		=> (T.LBRACKET);
 <INITIAL,BOM>"]"		=> (T.RBRACKET);
 <INITIAL,BOM>";"		=> (T.SEMICOLON);
-<INITIAL,BOM>"("		=> (T.LPAREN);
-<INITIAL,BOM>")"		=> (T.RPAREN);
+<INITIAL>"("			=> (T.LPAREN);
+<INITIAL>")"			=> (T.RPAREN);
+<BOM> "("			=> (bomPush(); T.LPAREN);
+<BOM> ")"			=> (if bomPop() then () else YYBEGIN INITIAL; T.RPAREN);
 <INITIAL>"..."			=> (T.DOTDOTDOT);
 <INITIAL,BOM>"|"		=> (T.BAR);
 <INITIAL,BOM>":"		=> (T.COLON);
@@ -238,8 +240,6 @@
 <INITIAL>"_type"		=> (T.KW__type);
 <INITIAL>"_val"		=> (T.KW__val);
 <BOM> "__attributes__"		=> (T.KW___attributes__);
-<BOM> "("			=> (bomPush(); T.LPAREN);
-<BOM> ")"			=> (if bomPop() then () else YYBEGIN INITIAL; T.RPAREN);
 <BOM>":="			=> (T.ASSIGN);
 (* <BOM>"$"			=> (T.DS); *)
 <BOM>"#"			=> (T.HASH);
