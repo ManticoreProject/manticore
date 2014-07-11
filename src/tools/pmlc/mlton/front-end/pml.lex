@@ -155,16 +155,23 @@
 <INITIAL>"?"			=> (T.PWILD);
 <INITIAL,BOM>"&"		=> (T.AMPERSAND);
 
-<INITIAL>"and"			=> (T.KW_and);
+<BOM>"addr"			=> (T.KW_addr);
+<BOM>"alloc"			=> (T.KW_alloc);
+<INITIAL,BOM>"and"		=> (T.KW_and);
 <INITIAL>"abstype"		=> (T.KW_abstype);
+<BOM>"any"			=> (T.KW_any);
+<BOM>"apply"			=> (T.KW_any);
 <INITIAL>"as"			=> (T.KW_as);
-<INITIAL>"case"			=> (T.KW_case);
+<INITIAL,BOM>"case"		=> (T.KW_case);
+<BOM>"ccall"			=> (T.KW_ccall);
+<BOM>"cont"			=> (T.KW_cont);
 <INITIAL,BOM>"datatype"		=> (trace (yytext, T.KW_datatype));
-<INITIAL>"else"			=> (T.KW_else);
-<INITIAL>"end"			=> (T.KW_end);
+<BOM>"define"			=> (T.KW_define);
+<INITIAL,BOM>"do"		=> (T.KW_do);
+<INITIAL,BOM>"else"		=> (T.KW_else);
+<INITIAL,BOM>"end"		=> (T.KW_end);
 <INITIAL>"eqtype"		=> (T.KW_eqtype);
 <INITIAL>"exception"		=> (T.KW_exception);
-<INITIAL>"do"			=> (T.KW_do);
 <INITIAL>"fn"			=> (T.KW_fn);
 <INITIAL>"fun"			=> (T.KW_fun);
 <INITIAL>"functor"		=> (T.KW_functor);
@@ -188,7 +195,7 @@
 <INITIAL>"struct"		=> (T.KW_struct);
 <INITIAL>"structure"		=> (T.KW_structure);
 <INITIAL>"then"			=> (T.KW_then);
-<INITIAL,BOM>"type"			=> (T.KW_type);
+<INITIAL,BOM>"type"		=> (T.KW_type);
 <INITIAL>"val"			=> (T.KW_val);
 <INITIAL>"where"		=> (T.KW_where);
 <INITIAL>"while"		=> (T.KW_while);
@@ -196,6 +203,14 @@
 <INITIAL>"withtype"		=> (T.KW_withtype);
 <INITIAL>"orelse"		=> (T.KW_orelse);
 <INITIAL>"andalso"		=> (T.KW_andalso);
+<BOM>"int8"			=> (T.KW_int8);
+<BOM>"uint8"			=> (T.KW_uint8);
+<BOM>"int16"			=> (T.KW_int16);
+<BOM>"uint16"			=> (T.KW_uint16);
+<BOM>"int64"			=> (T.KW_int64);
+<BOM>"uint64"			=> (T.KW_uint64);
+<BOM>"float32"			=> (T.KW_float32);
+<BOM>"float64"			=> (T.KW_float64);
 
 <INITIAL>"_address"		=> (T.KW__address);
 <INITIAL>"_build_const"		=> (T.KW__build_const);
