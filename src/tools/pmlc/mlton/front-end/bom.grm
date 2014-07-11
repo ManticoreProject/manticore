@@ -256,17 +256,23 @@ HLOpId
 	;
 
 HLOpQId
-	: HLID => ()
-	| LONG_HLID => (BOM.HLOpQId.fromSymbol(Symbol.fromString LONG_HLID, posToReg FULL_SPAN))
+	: HLID
+      => (BOM.HLOpQId.fromSymbols (
+        [Symbol.fromString HLID], posToReg FULL_SPAN))
+	| LONG_HLID
+      => (BOM.HLOpQId.fromSymbols (
+       map Symbol.fromString (splitLongIdString LONG_HLID),
+       posToReg FULL_SPAN))
 	;
 
 (* named so it doesn't conflict with tyvar in ml.grm *)
-tyVarForTyParam
-  : TYVAR => (Symbol.fromString TYVAR, posToReg FULL_SPAN)
-  ;
+(* tyVarForTyParam *)
+(*   : TYVAR => (Symbol.fromString TYVAR, posToReg FULL_SPAN) *)
+(*   ; *)
 
 TyParam
-  : tyVarForTyParam => (BOM.TyParam.fromSymbol tyVarForTyParam)
+  : TYVAR
+      => (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN))
   ;
 
 LongTyId

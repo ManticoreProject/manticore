@@ -35,10 +35,13 @@
     val bomLevel = ref 0
   in
 
-  fun bomPush () = bomLevel := !bomLevel + 1
+  fun bomPush () =
+(* DEBUG *)    ((print "bomPush called\n");
+    bomLevel := !bomLevel + 1)
 
   fun bomPop () = let
 	val lvl = !bomLevel - 1
+  (* DEBUG *) val _ = print "bomPop called\n"
 	in
 	  bomLevel := lvl;
 	  (lvl > 0)
@@ -90,6 +93,15 @@
   fun word (yytext, drop, source, radix : StringCvt.radix) =
      T.WORD ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
 		   radix = radix})
+
+  fun trace (s, token) = let
+    val _ = print (String.concat [
+      "DEBUG: about to emit token ", T.toString token, " for string \"", s,
+      "\".\n"
+    ])
+  in
+    token
+  end
 );
 
 %states INITIAL A S F L LL LLC LLCQ BOM;
@@ -147,7 +159,7 @@
 <INITIAL>"abstype"		=> (T.KW_abstype);
 <INITIAL>"as"			=> (T.KW_as);
 <INITIAL>"case"			=> (T.KW_case);
-<INITIAL>"datatype"		=> (T.KW_datatype);
+<INITIAL,BOM>"datatype"		=> (trace (yytext, T.KW_datatype));
 <INITIAL>"else"			=> (T.KW_else);
 <INITIAL>"end"			=> (T.KW_end);
 <INITIAL>"eqtype"		=> (T.KW_eqtype);
@@ -176,7 +188,7 @@
 <INITIAL>"struct"		=> (T.KW_struct);
 <INITIAL>"structure"		=> (T.KW_structure);
 <INITIAL>"then"			=> (T.KW_then);
-<INITIAL>"type"			=> (T.KW_type);
+<INITIAL,BOM>"type"			=> (T.KW_type);
 <INITIAL>"val"			=> (T.KW_val);
 <INITIAL>"where"		=> (T.KW_where);
 <INITIAL>"while"		=> (T.KW_while);
@@ -209,15 +221,16 @@
 <INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
 (* FIXME: split LONGID into unqualified id and qualified id *)
 <INITIAL>{longid}		=> (case yytext
-				     of "*" => T.ASTERISK
-   				      | _ => T.LONGID yytext
+				     of "*" => trace (yytext, T.ASTERISK)
+   				      | _ => trace (yytext, T.LONGID yytext)
 				    (* end case *));
-<BOM>{alphanumId}		=> (T.ID yytext);
+<INITIAL,BOM>{symId} => (T.SYMID yytext);
+<BOM>{alphanumId}		=> (trace (yytext, T.ID yytext));
 <BOM>({alphanumId}.)+{id}	=> (case yytext
-				     of "*" => T.ASTERISK
-				      | "<" => T.LT
-				      | ">" => T.GT
-   				      | _ => T.LONGID yytext
+				     of "*" => trace (yytext, T.ASTERISK)
+				      | "<" => trace (yytext, T.LT)
+				      | ">" => trace (yytext, T.GT)
+   				      | _ => trace (yytext, T.LONGID yytext)
 				    (* end case *));
 <BOM>{hlid}			=> (T.HLID yytext);
 <BOM>({alphanumId}.)+{hlid}	=> (T.LONG_HLID yytext);

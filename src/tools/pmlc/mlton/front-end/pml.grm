@@ -24,7 +24,7 @@
       | PLBRACKET ("[|")
       | PRBRACKET ("|]")
       | PWILD ("?")
-      | SYMB of CharVector.vector
+      (* | SYMB of CharVector.vector *)
       ;
 
 %import "ml.grm";
@@ -40,16 +40,22 @@ strdecnode
 	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
 		=> (Strdec.PrimTycon (tyvars, tycon, BOMType))
 	| "_val" MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"
-		=> (MLValueId (ty, BOMValueId))
-	;                             (* ty? *)
+		=> (Strdec.PrimVal (MLValueId, ty, BOMValueId))
+	;
 
 MLValueId
-	: "op" vid
-	| vidNoEqual
+	: "op" SYMID => (Vid.fromSymbol (Symbol.fromString SYMID, posToReg FULL_SPAN))
+	| idNoAsterisk => (Vid.fromSymbol idNoAsterisk)
 	;
 
 BOMValueId
-	: (LongTyId => (BOM.BomValueId.LongId LongTyId)
-	  | HLOpQId => (BOM.BomValueId.HLOpQId HLOpQId))
-        => (AstBOM.BomValueId.makeRegion (SR, posToReg FULL_SPAN))
+	: LongTyId
+     => (AstBOM.BomValueId.makeRegion (
+      BOM.BomValueId.LongId LongTyId,
+      posToReg FULL_SPAN))
+
+	| HLOpQId
+      => (AstBOM.BomValueId.makeRegion (
+       BOM.BomValueId.HLOpQId HLOpQId,
+       posToReg FULL_SPAN))
 	;

@@ -278,8 +278,7 @@ datatype strdecNode =
   | PrimDataType of Tyvar.t vector * Tycon.t *
       AstBOM.LongTyId.t * AstBOM.TyArgs.t option
   | PrimTycon of Tyvar.t vector * Tycon.t * AstBOM.BomType.t
-  | PrimValSymb of AstBOM.SymbolicId.t * AstBOM.BomValueId.t
-  | PrimValId of AstBOM.BomId.t * AstBOM.BomValueId.t
+  | PrimVal of Vid.t * Type.t * AstBOM.BomValueId.t
 
 and strexpNode =
    App of Fctid.t * strexp
@@ -291,55 +290,50 @@ withtype strexp = strexpNode Wrap.t
 and strdec = strdecNode Wrap.t
 
 fun layoutStrdec d =
-  let fun layoutPrimVal (idLayout : Layout.t, bomValue) = mayAlign [
-    str "_val", str "op", idLayout, str "_prim", schemeList [
-      AstBOM.BomValueId.layout bomValue
+  case node d of
+    Core d => Dec.layout d
+  | Local (d, d') => Pretty.locall (layoutStrdec d, layoutStrdec d')
+  | Seq ds => align (layoutStrdecs ds)
+  | Structure strbs =>
+       layoutAndsBind ("structure", "=", strbs,
+                       fn {name, def, constraint} =>
+                       (case node def of
+                         Var _ => OneLine
+                       | _ => Split 3,
+                          seq [Strid.layout name, SigConst.layout constraint],
+                          layoutStrexp def))
+  | PrimCode definitions => mayAlign [
+      str "_primcode",
+      schemeList (Vector.toListMap (definitions, AstBOM.Definition.layout))
+  ]
+  | PrimDataType (tyvars, tycon, longTyId, maybeTyArgs) => mayAlign [
+      str "_datatype",
+      mayAlign (Vector.toListMap (tyvars, Tyvar.layout)),
+      Tycon.layout tycon,
+      str "=",
+      str "_prim",
+      schemeList [
+        AstBOM.LongTyId.layout longTyId,
+        if Option.isSome maybeTyArgs then
+          AstBOM.TyArgs.layout (Option.valOf maybeTyArgs)
+        else
+          empty
       ]
     ]
-  in
-   case node d of
-      Core d => Dec.layout d
-    | Local (d, d') => Pretty.locall (layoutStrdec d, layoutStrdec d')
-    | Seq ds => align (layoutStrdecs ds)
-    | Structure strbs =>
-         layoutAndsBind ("structure", "=", strbs,
-                         fn {name, def, constraint} =>
-                         (case node def of
-                             Var _ => OneLine
-                           | _ => Split 3,
-                                seq [Strid.layout name, SigConst.layout constraint],
-                                layoutStrexp def))
-    | PrimCode definitions => mayAlign [
-        str "_primcode",
-        schemeList (Vector.toListMap (definitions, AstBOM.Definition.layout))
+  | PrimTycon (tyvars, tycon, bomType) => mayAlign [
+      str "_type",
+      mayAlign (Vector.toListMap (tyvars, Tyvar.layout)),
+      Tycon.layout tycon,
+      str "=",
+      str "_prim",
+      schemeList [AstBOM.BomType.layout bomType]
+    ]
+  | PrimVal (id, ty, bomValueId) => mayAlign [
+      str "_val", Vid.layout id, str ":", Type.layout ty, str "_prim",
+      schemeList [
+        AstBOM.BomValueId.layout bomValueId
       ]
-    | PrimDataType (tyvars, tycon, longTyId, maybeTyArgs) => mayAlign [
-        str "_datatype",
-        mayAlign (Vector.toListMap (tyvars, Tyvar.layout)),
-        Tycon.layout tycon,
-        str "=",
-        str "_prim",
-        schemeList [
-          AstBOM.LongTyId.layout longTyId,
-          if Option.isSome maybeTyArgs then
-            AstBOM.TyArgs.layout (Option.valOf maybeTyArgs)
-          else
-            empty
-        ]
-      ]
-    | PrimTycon (tyvars, tycon, bomType) => mayAlign [
-        str "_type",
-        mayAlign (Vector.toListMap (tyvars, Tyvar.layout)),
-        Tycon.layout tycon,
-        str "=",
-        str "_prim",
-        schemeList [AstBOM.BomType.layout bomType]
-      ]
-    | PrimValSymb (symb, bomValueId) => layoutPrimVal (
-        AstBOM.SymbolicId.layout symb, bomValueId)
-    | PrimValId (bomId, bomValueId) => layoutPrimVal (
-        AstBOM.BomId.layout bomId, bomValueId)
-  end
+    ]
 
 and layoutStrdecs ds = layouts (ds, layoutStrdec)
 

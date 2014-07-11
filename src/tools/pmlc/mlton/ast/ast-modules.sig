@@ -119,8 +119,7 @@ signature AST_MODULES =
              | PrimDataType of Tyvar.t vector * Tycon.t *
                  AstBOM.LongTyId.t * AstBOM.TyArgs.t option
              | PrimTycon of Tyvar.t vector * Tycon.t * AstBOM.BomType.t
-             | PrimValSymb of AstBOM.SymbolicId.t * AstBOM.BomValueId.t
-             | PrimValId of AstBOM.BomId.t * AstBOM.BomValueId.t
+             | PrimVal of Vid.t * Type.t * AstBOM.BomValueId.t
 
             include WRAPPED sharing type node' = node
                             sharing type obj = t
