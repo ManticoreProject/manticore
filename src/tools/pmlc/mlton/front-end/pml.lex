@@ -285,6 +285,12 @@ kill these cases *)
 				    ; stringtype := true
 				    ; YYBEGIN S
 				    ; continue ());
+<BOM>"@\""			=> (charlist := []
+            ; stringStart := Source.getPos (source, Position.toInt yypos)
+            ; stringtype := true
+            ; isMLString := true
+            ; YYBEGIN S
+            ; continue ());
 <INITIAL,BOM>\#\"   		=> (charlist := []
 				    ; stringStart := Source.getPos (source, Position.toInt yypos)
 				    ; stringtype := false
@@ -337,7 +343,7 @@ kill these cases *)
                     in
 		      if inBOM() then YYBEGIN BOM else YYBEGIN INITIAL;
 		      if !isMLString
-			then T.ML_STRING s
+			then (isMLString := false; T.ML_STRING s)
 		      else if !stringtype
 			then T.STRING s
 		      else if (Vector.length s <> 1)
