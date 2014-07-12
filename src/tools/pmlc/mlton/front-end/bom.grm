@@ -157,40 +157,39 @@ BOMDecls
 
 Definition
 	: "datatype" DataTypeDef ("and" DataTypeDef)* ";"
-	  => (BOM.Definition.makeRegion (
-		BOM.Definition.Datatype (DataTypeDef::SR),
-		posToReg FULL_SPAN))
+		=> (BOM.Definition.makeRegion (
+		      BOM.Definition.Datatype (DataTypeDef::SR),
+		      posToReg FULL_SPAN))
 	| "type" BomId TyParams? "=" BOMType ";"
-	  => (BOM.Definition.makeRegion (
-	    BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
-	    posToReg FULL_SPAN))
+		=> (BOM.Definition.makeRegion (
+		      BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
+		      posToReg FULL_SPAN))
 	| "define" Attrs HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
-	    => (BOM.Definition.makeRegion (let
-		val (inputTys, exnTys) = FunParams
-		in (
-		  BOM.Definition.DefineShortId (
-		    SOME Attrs, HLOpId, TyParams, inputTys, exnTys, ReturnTy, SR),
-		  posToReg FULL_SPAN
-		) end))
+		=> (BOM.Definition.makeRegion (let
+		      val (inputTys, exnTys) = FunParams
+		      in (
+			BOM.Definition.DefineShortId (
+			  SOME Attrs, HLOpId, TyParams, inputTys, exnTys, ReturnTy, SR),
+			posToReg FULL_SPAN
+		      ) end))
 	| "define" HLOpId TyParams? DefineRest
 		=> (DefineRest (HLOpId, TyParams, FULL_SPAN))
-	| "extern" CReturnTy BomId "(" (
-	    CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs ";"
-	  => (BOM.Definition.makeRegion (
-	    BOM.Definition.Extern (CReturnTy, BomId, Option.getOpt (SR, []), Attrs),
-	    posToReg FULL_SPAN))
+	| "extern" CReturnTy BomId "(" (CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs ";"
+		=> (BOM.Definition.makeRegion (
+		      BOM.Definition.Extern (CReturnTy, BomId, Option.getOpt (SR, []), Attrs),
+		      posToReg FULL_SPAN))
 	| "fun" FunDef ("and" FunDef)* ";"
-	  => (BOM.Definition.makeRegion (
+		=> (BOM.Definition.makeRegion (
 	    BOM.Definition.Fun (FunDef::SR),
 	    posToReg FULL_SPAN))
 	| "instance" "type" LongTyId TyArgs ";"
-	  => (BOM.Definition.makeRegion
-	    (BOM.Definition.InstanceType (LongTyId, TyArgs),
-	    posToReg FULL_SPAN))
+		=> (BOM.Definition.makeRegion (
+		      BOM.Definition.InstanceType (LongTyId, TyArgs),
+		      posToReg FULL_SPAN))
 	| "instance" LongValueId TyArgs ";"
-	  => (BOM.Definition.makeRegion
-	    (BOM.Definition.Instance (LongValueId, TyArgs),
-	    posToReg FULL_SPAN))
+		=> (BOM.Definition.makeRegion (
+		      BOM.Definition.Instance (LongValueId, TyArgs),
+		      posToReg FULL_SPAN))
 	;
 
 (* FIXME: this can be made to work better with DefineShortId above *)

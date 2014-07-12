@@ -17,13 +17,13 @@
       | KW__type	("_type")
       | KW__val		("_val")
       (* Getting errors in pml.lex, these seem not to have been pulled in *)
-      | PLPAREN ("(|")
-      | PRPAREN ("|)")
-      | PLBRACE ("{|")
-      | PRBRACE ("|}")
-      | PLBRACKET ("[|")
-      | PRBRACKET ("|]")
-      | PWILD ("?")
+      | PLPAREN		("(|")
+      | PRPAREN		("|)")
+      | PLBRACE		("{|")
+      | PRBRACE		("|}")
+      | PLBRACKET	("[|")
+      | PRBRACKET	("|]")
+      | PWILD		("?")
       (* | SYMB of CharVector.vector *)
       ;
 
@@ -39,23 +39,22 @@ strdecnode
 		=> (Strdec.PrimDataType (tyvarseq, tycon, LongTyId, TyArgs))
 	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
 		=> (Strdec.PrimTycon (tyvars, tycon, BOMType))
-	| "_val" MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"
+	| "_val" "op"? MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"
 		=> (Strdec.PrimVal (MLValueId, ty, BOMValueId))
 	;
 
 MLValueId
-	: "op" SYMID => (Vid.fromSymbol (Symbol.fromString SYMID, posToReg FULL_SPAN))
+	: SYMID => (Vid.fromSymbol (Symbol.fromString SYMID, posToReg FULL_SPAN))
 	| idNoAsterisk => (Vid.fromSymbol idNoAsterisk)
 	;
 
 BOMValueId
 	: LongTyId
-     => (AstBOM.BomValueId.makeRegion (
-      BOM.BomValueId.LongId LongTyId,
-      posToReg FULL_SPAN))
-
+		=> (AstBOM.BomValueId.makeRegion (
+		      BOM.BomValueId.LongId LongTyId,
+		      posToReg FULL_SPAN))
 	| HLOpQId
-      => (AstBOM.BomValueId.makeRegion (
-       BOM.BomValueId.HLOpQId HLOpQId,
-       posToReg FULL_SPAN))
+		=> (AstBOM.BomValueId.makeRegion (
+		      BOM.BomValueId.HLOpQId HLOpQId,
+		      posToReg FULL_SPAN))
 	;

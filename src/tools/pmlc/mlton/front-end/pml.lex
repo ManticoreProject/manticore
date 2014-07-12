@@ -146,8 +146,8 @@
 <INITIAL,BOM>"#"		=> (T.HASH);
 <INITIAL,BOM>"->"		=> (T.ARROW);
 <INITIAL,BOM>"=>"		=> (T.DARROW);
-<INITIAL,BOM>">"    => (T.GT);
-<INITIAL,BOM>"<"    => (T.LT);
+<INITIAL,BOM>">"		=> (T.GT);
+<INITIAL,BOM>"<"		=> (T.LT);
 (* Added to fix issue with void* matching void + SYMID *)
 <INITIAL,BOM>"*"		=> (T.ASTERISK);
 <INITIAL,BOM>"/"		=> (T.SLASH);
