@@ -1,3 +1,3 @@
 _primcode (
-  type id = bomtype
-)
+  type id = any;
+);

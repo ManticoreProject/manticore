@@ -1,1 +1,1 @@
-_primcode ( datatype foo = bar );
+_primcode ( datatype foo = bar )

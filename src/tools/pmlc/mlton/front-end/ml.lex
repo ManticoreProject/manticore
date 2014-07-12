@@ -50,7 +50,7 @@ fun inc (ri as ref (i: int)) = ri := i + 1
 
 fun dec (ri as ref (i: int)) = ri := i - 1
 
-fun error (source, left, right, msg) = 
+fun error (source, left, right, msg) =
    Control.errorStr (Region.make {left = Source.getPos (source, Position.toInt left),
                                   right = Source.getPos (source, Position.toInt right)},
                      msg)
@@ -174,7 +174,7 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
 				     of "*" => Tokens.ASTERISK
    				      | _ => Tokens.LONGID(yytext));
 <INITIAL>{real}			=> (Tokens.REAL(yytext));
-<INITIAL>{num} => 
+<INITIAL>{num} =>
    (int (yytext, 0, source, {negate = false}, StringCvt.DEC));
 <INITIAL>"~"{num} =>
    (int (yytext, 1, source, {negate = true}, StringCvt.DEC));
@@ -305,4 +305,3 @@ fun word (yytext, drop, source, radix : StringCvt.radix) =
                     ; continue ());
 <F>.            => (stringError (source, yypos, "unclosed string")
                     ; continue ());
-

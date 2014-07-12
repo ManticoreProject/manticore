@@ -111,7 +111,7 @@
 %let sym = [-!%&$+/:<=>?@~`\^|#*]|"\\";
 %let symId = {sym}+;
 %let id = {alphanumId}|{symId};
-%let longid = ({alphanumId}.)*{id};
+%let longid = ({alphanumId}\.)*{id};
 %let hlid = "@"{alphanumId}({id}|"-")*;
 %let ws = ("\012"|[\t\ ])*;
 %let nrws = ("\012"|[\t\ ])+;
@@ -142,10 +142,15 @@
 <INITIAL,BOM>"|"		=> (T.BAR);
 <INITIAL,BOM>":"		=> (T.COLON);
 <INITIAL>":>"			=> (T.COLONGT);
-<INITIAL,BOM>"="		=> (T.EQUALOP);
+<INITIAL,BOM>"="		=> (trace ("146", yytext, T.EQUALOP));
 <INITIAL,BOM>"#"		=> (T.HASH);
 <INITIAL,BOM>"->"		=> (T.ARROW);
 <INITIAL,BOM>"=>"		=> (T.DARROW);
+<INITIAL,BOM>">"    => (T.GT);
+<INITIAL,BOM>"<"    => (T.LT);
+(* Added to fix issue with void* matching void + SYMID *)
+<INITIAL,BOM>"*"		=> (T.ASTERISK);
+<INITIAL,BOM>"/"		=> (T.SLASH);
 
 (* additional PML special symbols *)
 <INITIAL>"(|"  			=> (T.PLPAREN);
@@ -158,11 +163,11 @@
 <INITIAL,BOM>"&"		=> (T.AMPERSAND);
 
 <BOM>"addr"			=> (T.KW_addr);
-<BOM>"alloc"			=> (T.KW_alloc);
+<BOM>"alloc"			=> (trace ("166", yytext, T.KW_alloc));
 <INITIAL,BOM>"and"		=> (T.KW_and);
 <INITIAL>"abstype"		=> (T.KW_abstype);
 <BOM>"any"			=> (T.KW_any);
-<BOM>"apply"			=> (T.KW_any);
+<BOM>"apply"			=> (T.KW_apply);
 <INITIAL>"as"			=> (T.KW_as);
 <INITIAL,BOM>"case"		=> (T.KW_case);
 <BOM>"ccall"			=> (T.KW_ccall);
@@ -190,7 +195,7 @@
 <INITIAL>"local"		=> (T.KW_local);
 <INITIAL>"nonfix"		=> (T.KW_nonfix);
 <BOM>"noreturn"			=> (T.KW_noreturn);
-<BOM>"nullVP"			=> (T.KW_nullVP);
+<BOM>"nullVP"			=> (trace ("198", yytext, T.KW_nullVP));
 <INITIAL,BOM>"of"		=> (T.KW_of);
 <INITIAL>"op"			=> (T.KW_op);
 <INITIAL>"open"			=> (T.KW_open);
@@ -202,11 +207,13 @@
 <INITIAL>"signature"		=> (T.KW_signature);
 <INITIAL>"struct"		=> (T.KW_struct);
 <INITIAL>"structure"		=> (T.KW_structure);
-<INITIA,BOML>"then"		=> (T.KW_then);
-<INITIAL,BOM>"type"		=> (T.KW_type);
+<INITIAL,BOM>"then"		=> (T.KW_then);
+<BOM>"throw"		=> (T.KW_throw);
+<INITIAL,BOM>"type"		=> (trace ("209", yytext, T.KW_type));
 <BOM>"typecase"			=> (T.KW_typecase);
 <INITIAL>"val"			=> (T.KW_val);
-<BOM>"void"			=> (T.KW_void);
+<BOM>"void"			=> (trace ("211", yytext, T.KW_void));
+(* <BOM>"void*"			=> (trace ("212", yytext, T.KW_voidp)); *)
 <BOM>"vpaddr"			=> (T.KW_vpaddr);
 <BOM>"vproc"			=> (T.KW_vproc);
 <BOM>"vpload"			=> (T.KW_vpload);
@@ -217,10 +224,12 @@
 <INITIAL>"withtype"		=> (T.KW_withtype);
 <INITIAL>"orelse"		=> (T.KW_orelse);
 <INITIAL>"andalso"		=> (T.KW_andalso);
-<BOM>"int8"			=> (T.KW_int8);
+<BOM>"int8"			=> (trace ("222", yytext, T.KW_int8));
 <BOM>"uint8"			=> (T.KW_uint8);
 <BOM>"int16"			=> (T.KW_int16);
 <BOM>"uint16"			=> (T.KW_uint16);
+<BOM>"int32"			=> (T.KW_int32);
+<BOM>"uint32"			=> (T.KW_uint32);
 <BOM>"int64"			=> (T.KW_int64);
 <BOM>"uint64"			=> (T.KW_uint64);
 <BOM>"float32"			=> (T.KW_float32);
@@ -245,13 +254,15 @@
 <BOM>"#"			=> (T.HASH);
 <BOM>"&"			=> (T.AMPERSAND);
 
+<INITIAL,BOM>{symId} => (T.SYMID yytext);
 <INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
 (* FIXME: split LONGID into unqualified id and qualified id *)
+(* FIXME: now that we have a distinct "T.ASTERISK" rule I think we can
+kill these cases *)
 <INITIAL>{longid}		=> (case yytext
 				     of "*" => trace ("2", yytext, T.ASTERISK)
    				      | _ => trace ("3", yytext, T.LONGID yytext)
 				    (* end case *));
-<INITIAL,BOM>{symId} => (T.SYMID yytext);
 <BOM>{alphanumId}		=> (trace ("4", yytext, T.ID yytext));
 <BOM>({alphanumId}\.)+{id}	=> (case yytext
 				     of "*" => trace ("5", yytext, T.ASTERISK)

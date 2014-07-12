@@ -47,6 +47,8 @@
   | KW_int8 ("int8")
   | KW_uint8 ("uint8")
   | KW_int16 ("int16")
+  | KW_int32 ("int32")
+  | KW_uint32 ("uint32")
   | KW_uint16 ("uint16")
   | KW_int64 ("int64")
   | KW_uint64 ("uint64")
@@ -59,7 +61,7 @@
 (*      | LCB     ("{")                   *)
 (*      | RCB     ("}")                   *)
 (*  | HASH    ("#")       *)
-(*  | STAR    ("*")       *)
+ (* | ASTERISK    ("*") *)
 (*  | COMMA     (",")       *)
 (*  | EQ    ("=")       *)
 (*  | COLON     (":")       *)
@@ -91,6 +93,17 @@
 
   fun optToList maybe =
     Option.getOpt (maybe, [])
+
+  fun flatten maybe =
+    case maybe of
+      NONE => []
+    | SOME(x, xs) => x::xs
+
+  fun optToEl maybe =
+    if Option.isSome maybe then
+      [Option.valOf maybe]
+    else
+      []
 
   fun makeId (regionMaker : ('a * Region.t) -> 'b,
         idFromSymbol : (Symbol.t * Region.t) -> 'a,
@@ -143,7 +156,7 @@ BOMDecls
   ;
 
 Definition
-	: "datatype" DataTypeDef ("and" DataTypeDef)*
+	: "datatype" DataTypeDef ("and" DataTypeDef)* ";"
 	  => (BOM.Definition.makeRegion (
 		BOM.Definition.Datatype (DataTypeDef::SR),
 		posToReg FULL_SPAN))
@@ -218,7 +231,7 @@ DataConsDef
       posToReg FULL_SPAN))
   ;
 
-TyParams                        (* FIXME: ??? *)
+TyParams
   : "<" TyParam ("," TyParam)* ">"
     => (BOM.TyParams.makeRegion (
       BOM.TyParams.T (TyParam::SR),
@@ -250,11 +263,6 @@ HLOpQId
        posToReg FULL_SPAN))
 	;
 
-(* named so it doesn't conflict with tyvar in ml.grm *)
-(* tyVarForTyParam *)
-(*   : TYVAR => (Symbol.fromString TYVAR, posToReg FULL_SPAN) *)
-(*   ; *)
-
 TyParam
   : TYVAR
       => (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN))
@@ -273,7 +281,11 @@ LongValueId
   ;
 
 BOMType
-  : LongTyId TyArgs?
+  : TyParam
+      => (BOM.BomType.makeRegion (
+        BOM.BomType.Param TyParam,
+        posToReg FULL_SPAN))
+  | LongTyId TyArgs?
       => (BOM.BomType.makeRegion (
         BOM.BomType.LongId (LongTyId, TyArgs),
         posToReg FULL_SPAN))
@@ -318,7 +330,7 @@ RangeTy
 
 Field
   : PosInt ":" BOMType
-      => (BOM.Field.makeRegion (
+      => (print "in field->immutable\n"; BOM.Field.makeRegion (
         BOM.Field.Immutable (PosInt, BOMType),
         posToReg FULL_SPAN))
   | PosInt "!" BOMType
@@ -330,7 +342,7 @@ Field
 
 PosInt
   : INT
-      => (if #negate INT then
+      => (print "in PosInt\n"; if #negate INT then
         ((error (posToReg FULL_SPAN, "Value  must be positive."));
         IntInf.fromInt 0)
       else
@@ -374,13 +386,13 @@ BOMExp
       => (BOM.Exp.makeRegion (
         BOM.Exp.If (SimpleExp, BOMExp1, BOMExp2),
         posToReg FULL_SPAN))
-  | "case" SimpleExp "of" CaseRule ("|" CaseRule)* "end"
+  | "case" SimpleExp "of" CaseRule ("|" CaseRule)* ("|" CaseDefault)?  "end"
        => (BOM.Exp.makeRegion (
-         BOM.Exp.Case (SimpleExp, CaseRule::SR),
+         BOM.Exp.Case (SimpleExp, CaseRule::SR1@(optToEl SR2)),
          posToReg FULL_SPAN))
-   | "typecase" TyParam "of" TyCaseRule ("|" TyCaseRule)* "end"
+   | "typecase" TyParam "of" TyCaseRule ("|" TyCaseRule)* ("|" TyCaseDefault)? "end"
        => (BOM.Exp.makeRegion (
-         BOM.Exp.Typecase (TyParam, TyCaseRule::SR),
+         BOM.Exp.Typecase (TyParam, TyCaseRule::SR1@(optToEl SR2)),
          posToReg FULL_SPAN))
   | "apply" LongValueId "(" Args? ("/" Args)? ")"
       => (BOM.Exp.makeRegion (
@@ -468,15 +480,18 @@ SimpleExp
   ;
 
 CaseRule
-  : LongConId ("(" VarPat ("," VarPat)* => (VarPat::SR)) "=>" BOMExp
+  : LongConId ("(" VarPat ("," VarPat)* ")")? "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
-          (BOM.CaseRule.LongRule (LongConId, SR, BOMExp),
+          (BOM.CaseRule.LongRule (LongConId, flatten SR, BOMExp),
           posToReg FULL_SPAN)))
   | Literal "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
         BOM.CaseRule.LiteralRule (Literal, BOMExp),
         posToReg FULL_SPAN))
-  | VarPat "=>" BOMExp
+  ;
+
+CaseDefault
+  : VarPat "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
         BOM.CaseRule.DefaultRule (VarPat, BOMExp),
         posToReg FULL_SPAN))
@@ -496,7 +511,10 @@ TyCaseRule
       => (BOM.TyCaseRule.makeRegion (
         BOM.TyCaseRule.TyRule (BOMType, BOMExp),
         posToReg FULL_SPAN))
-  | "_" "=>" BOMExp
+  ;
+
+TyCaseDefault
+  : "_" "=>" BOMExp
       => (BOM.TyCaseRule.makeRegion (
         BOM.TyCaseRule.Default BOMExp,
         posToReg FULL_SPAN))
@@ -549,6 +567,10 @@ RawTy
     => (BOM.RawTy.makeRegion (BOM.RawTy.Int16, posToReg FULL_SPAN))
   | "uint16"
     => (BOM.RawTy.makeRegion (BOM.RawTy.Uint16, posToReg FULL_SPAN))
+  | "int32"
+    => (BOM.RawTy.makeRegion (BOM.RawTy.Int32, posToReg FULL_SPAN))
+  | "uint32"
+    => (BOM.RawTy.makeRegion (BOM.RawTy.Uint32, posToReg FULL_SPAN))
   | "int64"
     => (BOM.RawTy.makeRegion (BOM.RawTy.Int64, posToReg FULL_SPAN))
   | "uint64"
