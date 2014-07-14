@@ -181,8 +181,8 @@ Definition
 		      posToReg FULL_SPAN))
 	| "fun" FunDef ("and" FunDef)* ";"
 		=> (BOM.Definition.makeRegion (
-	    BOM.Definition.Fun (FunDef::SR),
-	    posToReg FULL_SPAN))
+		    BOM.Definition.Fun (FunDef::SR),
+		    posToReg FULL_SPAN))
 	| "instance" "type" LongTyId TyArgs ";"
 		=> (BOM.Definition.makeRegion (
 		      BOM.Definition.InstanceType (LongTyId, TyArgs),
@@ -277,8 +277,9 @@ LongConId
   ;
 
 LongValueId
-  : longid => (BOM.LongValueId.fromSymbols longid)
-  ;
+	: ID => ()
+	| LONGID => ()
+	;
 
 BOMType
   : TyParam
@@ -314,6 +315,10 @@ BOMType
       => (BOM.BomType.makeRegion (BOM.BomType.Cont TyArgs, posToReg FULL_SPAN))
   | "addr" "<" BOMType ">"
       => (BOM.BomType.makeRegion (BOM.BomType.Addr BOMType, posToReg FULL_SPAN))
+(*
+  | RawTy
+      => (BOM.BomType.makeRegion ())
+*)
   ;
 
 DomainTy
@@ -424,8 +429,8 @@ RHS
 
 
 PrimOp
-  : PRIMOP
-    => (BOM.PrimOp.makeRegion (BOM.PrimOp.T PRIMOP, posToReg FULL_SPAN))
+  : ID
+    => (BOM.PrimOp.makeRegion (BOM.PrimOp.T ID, posToReg FULL_SPAN))
   ;
 
 SimpleExp

@@ -16,6 +16,12 @@
   type lex_arg = {source: Source.t}
   type lex_result = T.token
 
+(* Different kinds of string literals.  In BOM code a normal string literal
+ * is a BOM string and a string with a preceding "@" is treated as an
+ * ML string literal.
+ *)
+  datatype string_type = CharLit | StringLit | MLStringLit
+
   val charlist: IntInf.int list ref = ref []
   val colNum: int ref = ref 0
   val commentLevel: int ref = ref 0
@@ -23,13 +29,7 @@
   val lineFile: File.t ref = ref ""
   val lineNum: int ref = ref 0
   val stringStart = ref SourcePos.bogus
-  val stringtype = ref false
-
-(* flag to mark ML string literals.  In BOM code a normal string literal
- * is a BOM string and a string with a preceding "@" is treated as an
- * ML string literal.
- *)
-  val isMLString = ref false
+  val stringtype = ref CharLit
 
   local
     val bomLevel = ref 0
@@ -116,8 +116,8 @@
 %let sym = [-!%&$+/:<=>?@~`\^|#*]|"\\";
 %let symId = {sym}+;
 %let id = {alphanumId}|{symId};
-%let longid = ({alphanumId}\.)*{id};
-%let hlid = "@"{alphanumId}({id}|"-")*;
+%let longid = ({alphanumId}\.)+{id};
+%let hlid = "@"{alphanumId};
 %let ws = ("\012"|[\t\ ])*;
 %let nrws = ("\012"|[\t\ ])+;
 %let cr = "\013";
@@ -153,7 +153,6 @@
 <INITIAL,BOM>"=>"		=> (T.DARROW);
 <INITIAL,BOM>">"		=> (T.GT);
 <INITIAL,BOM>"<"		=> (T.LT);
-(* Added to fix issue with void* matching void + SYMID *)
 <INITIAL,BOM>"*"		=> (T.ASTERISK);
 <INITIAL,BOM>"/"		=> (T.SLASH);
 
@@ -213,7 +212,7 @@
 <INITIAL>"struct"		=> (T.KW_struct);
 <INITIAL>"structure"		=> (T.KW_structure);
 <INITIAL,BOM>"then"		=> (T.KW_then);
-<BOM>"throw"		=> (T.KW_throw);
+<BOM>"throw"			=> (T.KW_throw);
 <INITIAL,BOM>"type"		=> (trace ("209", yytext, T.KW_type));
 <BOM>"typecase"			=> (T.KW_typecase);
 <INITIAL>"val"			=> (T.KW_val);
@@ -252,53 +251,45 @@
 <INITIAL>"_primcode"		=> (YYBEGIN BOM; T.KW__primcode);
 <INITIAL>"_datatype"		=> (T.KW__datatype);
 <INITIAL>"_type"		=> (T.KW__type);
-<INITIAL>"_val"		=> (T.KW__val);
+<INITIAL>"_val"			=> (T.KW__val);
 <BOM> "__attributes__"		=> (T.KW___attributes__);
 <BOM>":="			=> (T.ASSIGN);
 (* <BOM>"$"			=> (T.DS); *)
 <BOM>"#"			=> (T.HASH);
 <BOM>"&"			=> (T.AMPERSAND);
 
-<INITIAL,BOM>{symId} => (T.SYMID yytext);
+<INITIAL,BOM>{symId}		=> (T.SYMID yytext);
 <INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
 (* FIXME: split LONGID into unqualified id and qualified id *)
 (* FIXME: now that we have a distinct "T.ASTERISK" rule I think we can
 kill these cases *)
-<INITIAL>{longid}		=> (case yytext
-				     of "*" => trace ("2", yytext, T.ASTERISK)
-   				      | _ => trace ("3", yytext, T.LONGID yytext)
-				    (* end case *));
+<INITIAL>{id}			=> (trace ("266", yytext, T.LONGID yytext));
+<INITIAL,BOM>{longid}		=> (trace ("3", yytext, T.LONGID yytext));
 <BOM>{alphanumId}		=> (trace ("4", yytext, T.ID yytext));
-<BOM>({alphanumId}\.)+{id}	=> (case yytext
-				     of "*" => trace ("5", yytext, T.ASTERISK)
-				      | "<" => trace ("6", yytext, T.LT)
-				      | ">" => trace ("7", yytext, T.GT)
-   				      | _ => trace ("8", yytext, T.LONGID yytext)
-				    (* end case *));
+<BOM>({alphanumId}\.)+{id}	=> (trace ("8", yytext, T.LONGID yytext));
 <BOM>{hlid}			=> (T.HLID yytext);
 <BOM>({alphanumId}\.)+{hlid}	=> (T.LONG_HLID yytext);
 
-<INITIAL>{real}			=> (T.REAL(yytext));
-<INITIAL>{num}			=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));
-<INITIAL>"~"{num}		=> (int (yytext, 1, source, {negate = true}, StringCvt.DEC));
-<INITIAL>"0x"{hexnum}		=> (int (yytext, 2, source, {negate = false}, StringCvt.HEX));
-<INITIAL>"~0x"{hexnum}		=> (int (yytext, 3, source, {negate = true}, StringCvt.HEX));
-<INITIAL>"0w"{num}		=> (word (yytext, 2, source, StringCvt.DEC));
-<INITIAL>"0wx"{hexnum}		=> (word (yytext, 3, source, StringCvt.HEX));
+<INITIAL,BOM>{real}		=> (T.REAL(yytext));
+<INITIAL,BOM>{num}		=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));
+<INITIAL,BOM>"~"{num}		=> (int (yytext, 1, source, {negate = true}, StringCvt.DEC));
+<INITIAL,BOM>"0x"{hexnum}	=> (int (yytext, 2, source, {negate = false}, StringCvt.HEX));
+<INITIAL,BOM>"~0x"{hexnum}	=> (int (yytext, 3, source, {negate = true}, StringCvt.HEX));
+<INITIAL,BOM>"0w"{num}		=> (word (yytext, 2, source, StringCvt.DEC));
+<INITIAL,BOM>"0wx"{hexnum}	=> (word (yytext, 3, source, StringCvt.HEX));
 <INITIAL,BOM>\"     		=> (charlist := []
 				    ; stringStart := Source.getPos (source, Position.toInt yypos)
-				    ; stringtype := true
+				    ; stringtype := StringLit
 				    ; YYBEGIN S
 				    ; continue ());
 <BOM>"@\""			=> (charlist := []
-            ; stringStart := Source.getPos (source, Position.toInt yypos)
-            ; stringtype := true
-            ; isMLString := true
-            ; YYBEGIN S
-            ; continue ());
+				    ; stringStart := Source.getPos (source, Position.toInt yypos)
+				    ; stringtype := MLStringLit
+				    ; YYBEGIN S
+				    ; continue ());
 <INITIAL,BOM>\#\"   		=> (charlist := []
 				    ; stringStart := Source.getPos (source, Position.toInt yypos)
-				    ; stringtype := false
+				    ; stringtype := CharLit
 				    ; YYBEGIN S
 				    ; continue ());
 <INITIAL>"(*#line"{nrws}	=> (YYBEGIN L
@@ -347,15 +338,16 @@ kill these cases *)
 		    val _ = charlist := nil
                     in
 		      if inBOM() then YYBEGIN BOM else YYBEGIN INITIAL;
-		      if !isMLString
-			then (isMLString := false; T.ML_STRING s)
-		      else if !stringtype
-			then T.STRING s
-		      else if (Vector.length s <> 1)
-			then (
-			  error (source, yypos, yypos + 1, "character literal not a single character");
-			  T.CHAR 0)
-			else T.CHAR(Vector.sub (s, 0))
+		      case !stringtype
+		       of CharLit => if (Vector.length s <> 1)
+			    then (
+			      error (source, yypos, yypos + 1,
+				"character literal not a single character");
+			      T.CHAR 0)
+			    else T.CHAR(Vector.sub (s, 0))
+			| StringLit => T.STRING s
+			| MLStringLit => T.ML_STRING s
+		      (* end case *)
                     end);
 <S>\\a          => (addChar #"\a"; continue ());
 <S>\\b          => (addChar #"\b"; continue ());
