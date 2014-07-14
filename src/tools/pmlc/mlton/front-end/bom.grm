@@ -139,6 +139,7 @@
 
   fun intInfFromINT ({digits = ds, negate = isNeg, radix = rad}):IntInf.int =
     let
+      val _ = print (String.concat ["parsing int. digits: ", ds, "\n"])
       val scanned = StringCvt.scanString (fn x => IntInf.scan rad x) ds
       val errorMsg = String.concat [
         "Something went wrong. Input ", ds, " isn't a number."
@@ -266,7 +267,6 @@ TyParam
   : TYVAR
       => (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN))
   ;
-
 
 LongTyId
   : longid => (BOM.LongTyId.fromSymbols longid)

@@ -86,9 +86,14 @@
   fun eof () = T.EOF
 
   fun int (yytext, drop, source, {negate: bool}, radix) =
+    let
+        (* DEBUG *)
+      val _ = print (String.concat ["building int for text: ", yytext, "\n"])
+    in
      T.INT ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
 		  negate = negate,
 		  radix = radix})
+    end
 
   fun word (yytext, drop, source, radix : StringCvt.radix) =
      T.WORD ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
