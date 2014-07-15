@@ -1,7 +1,6 @@
 _primcode (
   define __attributes__ ("inline") @add (a : any, b : any / _ : cont) -> any =
-    let result = apply this.I32ADD (this.a, this.b)
-    return (this.result);
+    return (I32ADD (a, b)) ;
 )
 
 _type int = _prim (any);

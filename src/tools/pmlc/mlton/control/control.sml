@@ -132,8 +132,8 @@ fun trace (verb, name: string) (f: 'a -> 'b) (a: 'a): 'b =
    else
       f a
 
-type traceAccum = {verb: verbosity, 
-                   total: Time.t ref, 
+type traceAccum = {verb: verbosity,
+                   total: Time.t ref,
                    totalGC: Time.t ref}
 
 val traceAccum: (verbosity * string) -> (traceAccum * (unit -> unit)) =
@@ -144,7 +144,7 @@ val traceAccum: (verbosity * string) -> (traceAccum * (unit -> unit)) =
    in
      ({verb = verb, total = total, totalGC = totalGC},
       fn () => messageStr (verb,
-                           concat [name, 
+                           concat [name,
                                    " totals ",
                                    timeToString
                                    {total = !total,
@@ -158,7 +158,7 @@ val ('a, 'b) traceAdd: (traceAccum * string) -> ('a -> 'b) -> 'a -> 'b =
    if Verbosity.<= (verb, !verbosity)
      then let
             val (t, gc) = time ()
-            fun done () 
+            fun done ()
               = let
                   val (t', gc') = time ()
                 in
@@ -168,7 +168,7 @@ val ('a, 'b) traceAdd: (traceAccum * string) -> ('a -> 'b) -> 'a -> 'b =
           in
             (f a
              before done ())
-            handle e => 
+            handle e =>
                (messageStr (verb, concat [name, " raised"])
                 ; (case Exn.history e of
                       [] => ()
@@ -197,7 +197,8 @@ val ('a, 'b) traceBatch: (verbosity * string) -> ('a -> 'b) ->
 
 val numErrors: int ref = ref 0
 
-val errorThreshhold: int ref = ref 20
+(* val errorThreshhold: int ref = ref 20 *)
+val errorThreshhold: int ref = ref 1
 
 (*val die = Process.fail*)
 fun die _ = OS.Process.exit OS.Process.failure

@@ -36,12 +36,10 @@
   in
 
   fun bomPush () =
-(* DEBUG *)    ((print "bomPush called\n");
-    bomLevel := !bomLevel + 1)
+    bomLevel := !bomLevel + 1
 
   fun bomPop () = let
-	val lvl = !bomLevel - 1
-  (* DEBUG *) val _ = print "bomPop called\n"
+	  val lvl = !bomLevel - 1
 	in
 	  bomLevel := lvl;
 	  (lvl > 0)
@@ -88,7 +86,7 @@
   fun int (yytext, drop, source, {negate: bool}, radix) =
     let
         (* DEBUG *)
-      val _ = print (String.concat ["building int for text: ", yytext, "\n"])
+      (* val _ = print (String.concat ["building int for text: ", yytext, "\n"]) *)
     in
      T.INT ({digits = (*String.dropPrefix*)String_dropPrefix (yytext, drop),
 		  negate = negate,
@@ -258,17 +256,15 @@
 <BOM>"#"			=> (T.HASH);
 <BOM>"&"			=> (T.AMPERSAND);
 
-<INITIAL,BOM>{symId}		=> (T.SYMID yytext);
-<INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
+<INITIAL,BOM>{symId}		=> (trace ("259", yytext, T.SYMID yytext));
+<INITIAL,BOM>"'"{alphanum}?	=> (trace ("260", yytext, T.TYVAR yytext));
 (* FIXME: split LONGID into unqualified id and qualified id *)
-(* FIXME: now that we have a distinct "T.ASTERISK" rule I think we can
-kill these cases *)
-<INITIAL>{id}			=> (trace ("266", yytext, T.LONGID yytext));
-<INITIAL,BOM>{longid}		=> (trace ("3", yytext, T.LONGID yytext));
-<BOM>{alphanumId}		=> (trace ("4", yytext, T.ID yytext));
-<BOM>({alphanumId}\.)+{id}	=> (trace ("8", yytext, T.LONGID yytext));
-<BOM>{hlid}			=> (T.HLID yytext);
-<BOM>({alphanumId}\.)+{hlid}	=> (T.LONG_HLID yytext);
+<INITIAL>{id}			=> (trace ("262", yytext, T.LONGID yytext));
+<INITIAL,BOM>{longid}		=> (trace ("263", yytext, T.LONGID yytext));
+<BOM>{alphanumId}		=> (trace ("264", yytext, T.ID yytext));
+<BOM>({alphanumId}\.)+{id}	=> (trace ("265", yytext, T.LONGID yytext));
+<BOM>{hlid}			=> (trace ("266", yytext, T.HLID yytext));
+<BOM>({alphanumId}\.)+{hlid}	=> (trace ("267", yytext, T.LONG_HLID yytext));
 
 <INITIAL,BOM>{real}		=> (T.REAL(yytext));
 <INITIAL,BOM>{num}		=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));

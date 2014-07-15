@@ -100,6 +100,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   structure HLOpId = AstId (structure Symbol = Symbol)
   structure TyParam = AstId (structure Symbol = Symbol)
   structure SymbolicId = AstId (structure Symbol = Symbol)
+  structure PrimOp = AstId(structure Symbol = Symbol)
 
   structure LongTyId = Longid (
     structure Id = BomId
@@ -158,23 +159,23 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     end
   end
 
-  structure PrimOp = struct
-    open Wrap
-    datatype node
-      = T of CharVector.vector
-    type t = node Wrap.t
+  (* structure PrimOp = struct *)
+  (*   open Wrap *)
+  (*   datatype node *)
+  (*     = T of CharVector.vector *)
+  (*   type t = node Wrap.t *)
 
-    type node' = node
-    type obj = t
+  (*   type node' = node *)
+  (*   type obj = t *)
 
-    fun layout (myNode : t) =
-      let
-        val T s = node myNode
-      in
-        Layout.str s
-      end
+  (*   fun layout (myNode : t) = *)
+  (*     let *)
+  (*       val T s = node myNode *)
+  (*     in *)
+  (*       Layout.str s *)
+  (*     end *)
 
-  end
+  (* end *)
 
   structure BomValueId = struct
     open Wrap
@@ -319,6 +320,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | VProc
       | Cont of tyargs_t option
       | Addr of type_t
+      | Raw of RawTy.t
     and tyargs_node
       = ArgTypes of type_t list
     and dataconsdef_node
@@ -345,6 +347,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | AllocType of tyargs_t * simpleexp_t list
       | AtIndex of IntInf.int * simpleexp_t * simpleexp_t option
       | TypeCast of type_t * simpleexp_t
+      | Promote of simpleexp_t
       | HostVproc
       | VpLoad of IntInf.int * simpleexp_t
       | VpAddr of IntInf.int * simpleexp_t
@@ -418,6 +421,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
             layoutType myType,
             Layout.str ">"
           ]
+       | Raw (raw) => RawTy.layout raw
     end
 
   and layoutTyArgs myNode =
@@ -582,6 +586,11 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
             Layout.mayAlign [
               unindentedSchemeList [layoutType myType],
               layoutSimpleExp simpleExp
+            ]
+        | Promote (simpleExp) =>
+            Layout.mayAlign [
+              Layout.str "promote",
+              unindentedSchemeList([layoutSimpleExp simpleExp])
             ]
         | HostVproc => Layout.str "host_vproc"
         | VpLoad (posInt, simpleExp) =>
@@ -785,6 +794,11 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   val layout = layoutCaseRule
 
+  fun isDefault c =
+    case node c of
+      DefaultRule c => true
+    | _ => false
+
   end
 
   structure TyCaseRule = struct
@@ -798,6 +812,11 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   type exp = exp_t
 
   val layout = layoutTyCaseRule
+
+  fun isDefault c =
+    case Region.Wrap.node c of
+      Default c => true
+    | _ => false
 
   end
 

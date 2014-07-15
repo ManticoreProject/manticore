@@ -130,7 +130,7 @@ fun posToReg (left, right) = let
 	}
     end
 
-fun error (reg, msg) = (* Control.error (reg, Layout.str msg, Layout.empty) *) ()
+fun error (reg, msg) = Control.error (reg, Layout.str msg, Layout.empty) (* () *)
 
 open Ast
 structure Field = Record.Field

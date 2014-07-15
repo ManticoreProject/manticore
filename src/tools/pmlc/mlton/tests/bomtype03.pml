@@ -1,3 +1,3 @@
 _primcode (
-  type id = {5 : 'a};
+  type id = {5 : 'a, 2 ! 'b};
 )

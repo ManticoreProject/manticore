@@ -17,6 +17,8 @@ signature AST_BOM =
   structure BomId : AST_ID
   structure HLOpId : AST_ID
   structure TyParam : AST_ID
+  structure PrimOp : AST_ID
+
   structure LongTyId : LONGID sharing LongTyId.Id = BomId
   structure LongConId : LONGID sharing LongConId.Id = BomId
   structure LongValueId : LONGID sharing LongValueId.Id = BomId
@@ -26,7 +28,7 @@ signature AST_BOM =
 
   sharing Symbol = BomId.Symbol = HLOpId.Symbol = TyParam.Symbol
     = LongTyId.Symbol = LongConId.Symbol = LongValueId.Symbol
-    = HLOpQId.Symbol = SymbolicId.Symbol
+    = HLOpQId.Symbol = SymbolicId.Symbol = PrimOp.Symbol
 
   structure Attrs : sig
     type t
@@ -39,6 +41,26 @@ signature AST_BOM =
       sharing type node' = node
       sharing type obj = t
   end
+    structure RawTy : sig
+    type t
+    datatype node
+      = Int8
+      | Uint8
+      | Int16
+      | Uint16
+      | Int32
+      | Uint32
+      | Int64
+      | Uint64
+      | Float32
+      | Float64
+
+    val layout : t -> Layout.t
+
+    include WRAPPED
+      sharing type node' = node
+      sharing type obj = t
+    end
 
   structure TyParams : sig
   type t
@@ -52,17 +74,17 @@ signature AST_BOM =
     sharing type obj = t
   end
 
-  structure PrimOp : sig
-    type t
-    datatype node
-      = T of CharVector.vector
+  (* structure PrimOp : sig *)
+  (*   type t *)
+  (*   datatype node *)
+  (*     = T of CharVector.vector *)
 
-    val layout : t -> Layout.t
+  (*   val layout : t -> Layout.t *)
 
-    include WRAPPED
-      sharing type node' = node
-      sharing type obj = t
-  end
+  (*   include WRAPPED *)
+  (*     sharing type node' = node *)
+  (*     sharing type obj = t *)
+  (* end *)
 
 
   structure BomValueId : sig
@@ -106,6 +128,7 @@ signature AST_BOM =
       | VProc
       | Cont of tyArgs option
       | Addr of t
+      | Raw of RawTy.t
 
     val layout : t -> Layout.t
 
@@ -152,27 +175,6 @@ signature AST_BOM =
       include WRAPPED
         sharing type node' = node
         sharing type obj = t
-    end
-
-    structure RawTy : sig
-    type t
-    datatype node
-      = Int8
-      | Uint8
-      | Int16
-      | Uint16
-      | Int32
-      | Uint32
-      | Int64
-      | Uint64
-      | Float32
-      | Float64
-
-    val layout : t -> Layout.t
-
-    include WRAPPED
-      sharing type node' = node
-      sharing type obj = t
     end
 
   structure CArgTy : sig
@@ -256,13 +258,17 @@ signature AST_BOM =
 
 
 
-    structure CaseRule : sig
+  structure CaseRule : sig
     type t
     type exp
     datatype node
       = LongRule of LongConId.t * VarPat.t list * exp
       | LiteralRule of Literal.t * exp
       | DefaultRule of VarPat.t * exp       (* collapsing CaseDefault *)
+
+    val layout : t -> Layout.t
+    val isDefault : t -> bool
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -277,6 +283,8 @@ signature AST_BOM =
 
     val layout : t -> Layout.t
 
+    val isDefault : t -> bool
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
@@ -290,6 +298,7 @@ signature AST_BOM =
         | AllocType of TyArgs.t * t list
         | AtIndex of IntInf.int * t * t option
         | TypeCast of BomType.t * t
+        | Promote of t
         | HostVproc
         | VpLoad of IntInf.int * t
         | VpAddr of IntInf.int * t
@@ -372,4 +381,5 @@ signature AST_BOM =
   sharing type BomType.tyArgs = TyArgs.t
   sharing type BomId.Symbol.t = HLOpId.Symbol.t = TyParam.Symbol.t = Symbol.t
   sharing type LongTyId.Strid.t = LongConId.Strid.t = LongValueId.Strid.t
+
   end

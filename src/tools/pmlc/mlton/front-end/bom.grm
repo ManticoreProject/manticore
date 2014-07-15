@@ -149,6 +149,32 @@
          NONE => raise Fail errorMsg
        | SOME(s) => s
    end
+
+  local
+    (* fun checkCaseRuleFn (c : BOM.CaseRule.t) : bool = *)
+    (*   case Region.Wrap.node c of *)
+    (*     BOM.CaseRule.CaseDefault c => false *)
+    (*   | _ => true *)
+
+    (* fun checkTyCaseRuleFn (c : BOM.TyCaseRule.t) : bool = *)
+
+
+    fun assertDefaultLast (cases : 'a list,
+        checkFn : 'a -> bool,
+        thisSpan : AntlrStreamPos.pos * AntlrStreamPos.pos) : 'a list =
+      if (List.all checkFn (tl (rev cases))) then
+        cases
+      else
+        ((error (posToReg thisSpan,
+          "The default case can only come last"));
+        [])
+   in
+     fun checkCaseRule (cases, thisSpan : (AntlrStreamPos.pos * AntlrStreamPos.pos)) =
+       assertDefaultLast (cases, BOM.CaseRule.isDefault, thisSpan)
+     fun checkTyCaseRule (cases, thisSpan : (AntlrStreamPos.pos * AntlrStreamPos.pos)) =
+       assertDefaultLast (cases, BOM.TyCaseRule.isDefault, thisSpan)
+   end
+
 );
 
 BOMDecls
@@ -245,8 +271,19 @@ TyArgs
       posToReg FULL_SPAN))
   ;
 
+(* We need to do this because the "id" nonterminal in ml.grm is
+actually a LONGID that's been forced to be nonqualified. ID does not
+match LONGID in BOM now, so it fails. *)
+shortId
+  : ID => (Symbol.fromString ID, posToReg FULL_SPAN)
+  ;
+
+idForLongid
+  : ID => ([Symbol.fromString ID], posToReg FULL_SPAN)
+  ;
+
 BomId
-	: ID => (BOM.BomId.fromSymbol(Symbol.fromString ID, posToReg FULL_SPAN))
+	: shortId => (BOM.BomId.fromSymbol shortId)
 	;
 
 HLOpId
@@ -270,15 +307,17 @@ TyParam
 
 LongTyId
   : longid => (BOM.LongTyId.fromSymbols longid)
+  | idForLongid => (BOM.LongTyId.fromSymbols idForLongid)
   ;
 
 LongConId
   : longid => (BOM.LongConId.fromSymbols longid)
+  | idForLongid => (BOM.LongConId.fromSymbols idForLongid)
   ;
 
 LongValueId
-	: ID => ()
-	| LONGID => ()
+	: longid => (BOM.LongValueId.fromSymbols longid)
+	| idForLongid => (BOM.LongValueId.fromSymbols idForLongid)
 	;
 
 BOMType
@@ -315,10 +354,8 @@ BOMType
       => (BOM.BomType.makeRegion (BOM.BomType.Cont TyArgs, posToReg FULL_SPAN))
   | "addr" "<" BOMType ">"
       => (BOM.BomType.makeRegion (BOM.BomType.Addr BOMType, posToReg FULL_SPAN))
-(*
   | RawTy
-      => (BOM.BomType.makeRegion ())
-*)
+      => (BOM.BomType.makeRegion (BOM.BomType.Raw RawTy, posToReg FULL_SPAN))
   ;
 
 DomainTy
@@ -335,7 +372,7 @@ RangeTy
 
 Field
   : PosInt ":" BOMType
-      => (print "in field->immutable\n"; BOM.Field.makeRegion (
+      => (BOM.Field.makeRegion (
         BOM.Field.Immutable (PosInt, BOMType),
         posToReg FULL_SPAN))
   | PosInt "!" BOMType
@@ -347,8 +384,8 @@ Field
 
 PosInt
   : INT
-      => (print "in PosInt\n"; if #negate INT then
-        ((error (posToReg FULL_SPAN, "Value  must be positive."));
+      => (if #negate INT then
+        ((error (posToReg FULL_SPAN, "Value must be positive"));
         IntInf.fromInt 0)
       else
         intInfFromINT INT)
@@ -391,19 +428,21 @@ BOMExp
       => (BOM.Exp.makeRegion (
         BOM.Exp.If (SimpleExp, BOMExp1, BOMExp2),
         posToReg FULL_SPAN))
-  | "case" SimpleExp "of" CaseRule ("|" CaseRule)* ("|" CaseDefault)?  "end"
-       => (BOM.Exp.makeRegion (
-         BOM.Exp.Case (SimpleExp, CaseRule::SR1@(optToEl SR2)),
-         posToReg FULL_SPAN))
-   | "typecase" TyParam "of" TyCaseRule ("|" TyCaseRule)* ("|" TyCaseDefault)? "end"
-       => (BOM.Exp.makeRegion (
-         BOM.Exp.Typecase (TyParam, TyCaseRule::SR1@(optToEl SR2)),
-         posToReg FULL_SPAN))
-  | "apply" LongValueId "(" Args? ("/" Args)? ")"
+  | "case" SimpleExp "of" CaseRule ("|" CaseRule)*  "end"
       => (BOM.Exp.makeRegion (
-        BOM.Exp.Apply (
-          LongValueId, Option.getOpt (Args, []), Option.getOpt (SR, [])),
+        BOM.Exp.Case (SimpleExp,
+          CaseRule::(checkCaseRule (SR, FULL_SPAN))),
         posToReg FULL_SPAN))
+  | "typecase" TyParam "of" TyCaseRule ("|" TyCaseRule)* "end"
+      => (BOM.Exp.makeRegion (
+        BOM.Exp.Typecase (TyParam,
+          TyCaseRule::(checkTyCaseRule (SR, FULL_SPAN))),
+        posToReg FULL_SPAN))
+  (* | "apply" LongValueId "(" Args? ("/" Args)? ")" *)
+  (*     => (BOM.Exp.makeRegion ( *)
+  (*       BOM.Exp.Apply ( *)
+  (*         LongValueId, Option.getOpt (Args, []), Option.getOpt (SR, [])), *)
+  (*       posToReg FULL_SPAN)) *)
   | "throw" BomId TyArgs? "(" Args? ")"
       => (BOM.Exp.makeRegion (
         BOM.Exp.Throw (BomId, TyArgs, Option.getOpt (Args, [])),
@@ -429,8 +468,7 @@ RHS
 
 
 PrimOp
-  : ID
-    => (BOM.PrimOp.makeRegion (BOM.PrimOp.T ID, posToReg FULL_SPAN))
+  : shortId => (BOM.PrimOp.fromSymbol shortId)
   ;
 
 SimpleExp
@@ -439,21 +477,25 @@ SimpleExp
         BOM.SimpleExp.PrimOp (PrimOp, Args),
         posToReg FULL_SPAN))
   | "alloc" LongValueId "(" Args ")"
-       => (BOM.SimpleExp.makeRegion (
-         BOM.SimpleExp.AllocId (LongValueId, Args),
-         posToReg FULL_SPAN))
+      => (BOM.SimpleExp.makeRegion (
+        BOM.SimpleExp.AllocId (LongValueId, Args),
+        posToReg FULL_SPAN))
   | "alloc" TyArgs "(" Args ")"
-       => (BOM.SimpleExp.makeRegion (
-         BOM.SimpleExp.AllocType (TyArgs, Args),
-         posToReg FULL_SPAN))
+      => (BOM.SimpleExp.makeRegion (
+        BOM.SimpleExp.AllocType (TyArgs, Args),
+        posToReg FULL_SPAN))
   | "#" PosInt "(" SimpleExp ")" (":=" SimpleExp)?
-       => (BOM.SimpleExp.makeRegion (
-         BOM.SimpleExp.AtIndex (PosInt, SimpleExp, SR),
-         posToReg FULL_SPAN))
+      => (BOM.SimpleExp.makeRegion (
+        BOM.SimpleExp.AtIndex (PosInt, SimpleExp, SR),
+        posToReg FULL_SPAN))
   | "(" BOMType ")" SimpleExp
-       => (BOM.SimpleExp.makeRegion (
-         BOM.SimpleExp.TypeCast (BOMType, SimpleExp),
-         posToReg FULL_SPAN))
+      => (BOM.SimpleExp.makeRegion (
+        BOM.SimpleExp.TypeCast (BOMType, SimpleExp),
+        posToReg FULL_SPAN))
+  | "promote" "(" SimpleExp ")"
+      => (BOM.SimpleExp.makeRegion (
+        BOM.SimpleExp.Promote SimpleExp,
+        posToReg FULL_SPAN))
   | "host_vproc"
       => (BOM.SimpleExp.makeRegion (
         BOM.SimpleExp.HostVproc,
@@ -485,22 +527,36 @@ SimpleExp
   ;
 
 CaseRule
-  : LongConId ("(" VarPat ("," VarPat)* ")")? "=>" BOMExp
+  : LongConId "(" VarPat ("," VarPat)* ")" "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
-          (BOM.CaseRule.LongRule (LongConId, flatten SR, BOMExp),
-          posToReg FULL_SPAN)))
+          BOM.CaseRule.LongRule (LongConId, VarPat::SR, BOMExp),
+          posToReg FULL_SPAN))
+  | %try LongConId "=>" BOMExp
+      => (BOM.CaseRule.makeRegion (
+          BOM.CaseRule.LongRule (LongConId, [], BOMExp),
+          posToReg FULL_SPAN))
+
+  (* : LongConId ("(" VarPat ("," VarPat)* ")")? "=>" BOMExp *)
+  (*     => (BOM.CaseRule.makeRegion ( *)
+  (*         (BOM.CaseRule.LongRule (LongConId, flatten SR, BOMExp), *)
+  (*         posToReg FULL_SPAN))) *)
   | Literal "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
         BOM.CaseRule.LiteralRule (Literal, BOMExp),
         posToReg FULL_SPAN))
-  ;
-
-CaseDefault
-  : VarPat "=>" BOMExp
+  | %try VarPat "=>" BOMExp
       => (BOM.CaseRule.makeRegion (
         BOM.CaseRule.DefaultRule (VarPat, BOMExp),
         posToReg FULL_SPAN))
+
   ;
+
+(* CaseDefault *)
+(*   : VarPat "=>" BOMExp *)
+(*       => (BOM.CaseRule.makeRegion ( *)
+(*         BOM.CaseRule.DefaultRule (VarPat, BOMExp), *)
+(*         posToReg FULL_SPAN)) *)
+(*   ; *)
 
 VarPat
   : BomId (":" BOMType)?
@@ -516,14 +572,19 @@ TyCaseRule
       => (BOM.TyCaseRule.makeRegion (
         BOM.TyCaseRule.TyRule (BOMType, BOMExp),
         posToReg FULL_SPAN))
-  ;
-
-TyCaseDefault
-  : "_" "=>" BOMExp
+  | "_" "=>" BOMExp
       => (BOM.TyCaseRule.makeRegion (
         BOM.TyCaseRule.Default BOMExp,
         posToReg FULL_SPAN))
+
   ;
+
+(* TyCaseDefault *)
+(*   : "_" "=>" BOMExp *)
+(*       => (BOM.TyCaseRule.makeRegion ( *)
+(*         BOM.TyCaseRule.Default BOMExp, *)
+(*         posToReg FULL_SPAN)) *)
+(*   ; *)
 
 Literal
   : INT
