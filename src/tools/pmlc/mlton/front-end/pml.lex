@@ -153,15 +153,17 @@
 <INITIAL,BOM>"<"		=> (T.LT);
 <INITIAL,BOM>"*"		=> (T.ASTERISK);
 <INITIAL,BOM>"/"		=> (T.SLASH);
+(* FIXME: will this break a SYMID? *)
+<BOM>"!"			=> (T.BANG);
 
 (* additional PML special symbols *)
-<INITIAL>"(|"  			=> (T.PLPAREN);
-<INITIAL>"|)"  			=> (T.PRPAREN);
-<INITIAL>"{|"  			=> (T.PLBRACE);
-<INITIAL>"|}"  			=> (T.PRBRACE);
-<INITIAL>"[|"  			=> (T.PLBRACKET);
-<INITIAL>"|]"  			=> (T.PRBRACKET);
-<INITIAL>"?"			=> (T.PWILD);
+<BOM>"(|"  			=> (T.PLPAREN);
+<BOM>"|)"  			=> (T.PRPAREN);
+<BOM>"{|"  			=> (T.PLBRACE);
+<BOM>"|}"  			=> (T.PRBRACE);
+<BOM>"[|"  			=> (T.PLBRACKET);
+<BOM>"|]"  			=> (T.PRBRACKET);
+<BOM>"?"			=> (T.PWILD);
 <INITIAL,BOM>"&"		=> (T.AMPERSAND);
 
 <BOM>"addr"			=> (T.KW_addr);
