@@ -1,1 +1,1 @@
-_val op foo = _prim (bar)
+_val op id1 : 'a = _prim (id2)

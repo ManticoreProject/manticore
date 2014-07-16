@@ -3,6 +3,6 @@ _primcode (
   return ();
   fun id2 () -> 'a = do vpaddr(0, nullVP)
   return ();
-  fun id3 () -> 'a = do vpstore(0, nullVP)
+  fun id3 () -> 'a = do vpstore(0, nullVP, nullVP)
   return ();
 )
