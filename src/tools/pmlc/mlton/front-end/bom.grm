@@ -529,6 +529,13 @@ SimpleExp
   ;
 
 CaseRule
+	: LongId ( "(" VarPat ("," VarPat)* ")" )? "=>" BOMExp
+	| Literal "=>" BOMExp
+	| BomId ( "(" VarPat ("," VarPat)* ")" )? "=>" BOMExp
+	| BomId ":" BOMType "=>" BOMExp
+	;
+
+CaseRule
   : LongConId "(" VarPat ("," VarPat)* ")" "=>" BOMExp
       => (print "emitting LongConId\n"; BOM.CaseRule.makeRegion (
           BOM.CaseRule.LongRule (LongConId, VarPat::SR, BOMExp),
