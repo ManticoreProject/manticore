@@ -1,3 +1,3 @@
 _primcode (
-  define < typaram1, typaram2 >  @hlopid = long.value.id;
+  define @hlopid <'a, 'b> = long.value.id;
 )

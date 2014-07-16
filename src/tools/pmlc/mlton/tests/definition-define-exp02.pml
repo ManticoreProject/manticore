@@ -1,4 +1,4 @@
 _primcode (
-  define __attributes__ ("inline") @hlopid < typaram1, typaram2 > ( ) noreturn
+  define __attributes__ ("inline") @hlopid < 'a, 'b> ( ) noreturn
     = return ( );
 )

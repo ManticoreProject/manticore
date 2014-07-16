@@ -162,7 +162,9 @@
     fun assertDefaultLast (cases : 'a list,
         checkFn : 'a -> bool,
         thisSpan : AntlrStreamPos.pos * AntlrStreamPos.pos) : 'a list =
-      if (List.all checkFn (tl (rev cases))) then
+      if List.null cases then
+        []
+      else if (List.all checkFn (tl (rev cases))) then
         cases
       else
         ((error (posToReg thisSpan,
@@ -170,9 +172,9 @@
         [])
    in
      fun checkCaseRule (cases, thisSpan : (AntlrStreamPos.pos * AntlrStreamPos.pos)) =
-       assertDefaultLast (cases, BOM.CaseRule.isDefault, thisSpan)
+       assertDefaultLast (cases, not o BOM.CaseRule.isDefault, thisSpan)
      fun checkTyCaseRule (cases, thisSpan : (AntlrStreamPos.pos * AntlrStreamPos.pos)) =
-       assertDefaultLast (cases, BOM.TyCaseRule.isDefault, thisSpan)
+       assertDefaultLast (cases, not o BOM.TyCaseRule.isDefault, thisSpan)
    end
 
 );
@@ -438,11 +440,11 @@ BOMExp
         BOM.Exp.Typecase (TyParam,
           TyCaseRule::(checkTyCaseRule (SR, FULL_SPAN))),
         posToReg FULL_SPAN))
-  (* | "apply" LongValueId "(" Args? ("/" Args)? ")" *)
-  (*     => (BOM.Exp.makeRegion ( *)
-  (*       BOM.Exp.Apply ( *)
-  (*         LongValueId, Option.getOpt (Args, []), Option.getOpt (SR, [])), *)
-  (*       posToReg FULL_SPAN)) *)
+  | "apply" LongValueId "(" Args? ("/" Args)? ")"
+      => (BOM.Exp.makeRegion (
+        BOM.Exp.Apply (
+          LongValueId, Option.getOpt (Args, []), Option.getOpt (SR, [])),
+        posToReg FULL_SPAN))
   | "throw" BomId TyArgs? "(" Args? ")"
       => (BOM.Exp.makeRegion (
         BOM.Exp.Throw (BomId, TyArgs, Option.getOpt (Args, [])),
@@ -528,11 +530,11 @@ SimpleExp
 
 CaseRule
   : LongConId "(" VarPat ("," VarPat)* ")" "=>" BOMExp
-      => (BOM.CaseRule.makeRegion (
+      => (print "emitting LongConId\n"; BOM.CaseRule.makeRegion (
           BOM.CaseRule.LongRule (LongConId, VarPat::SR, BOMExp),
           posToReg FULL_SPAN))
   | %try LongConId "=>" BOMExp
-      => (BOM.CaseRule.makeRegion (
+      => (print "emitting LongRule\n"; BOM.CaseRule.makeRegion (
           BOM.CaseRule.LongRule (LongConId, [], BOMExp),
           posToReg FULL_SPAN))
 
@@ -541,11 +543,11 @@ CaseRule
   (*         (BOM.CaseRule.LongRule (LongConId, flatten SR, BOMExp), *)
   (*         posToReg FULL_SPAN))) *)
   | Literal "=>" BOMExp
-      => (BOM.CaseRule.makeRegion (
+      => (print "emitting LiteralRule\n";BOM.CaseRule.makeRegion (
         BOM.CaseRule.LiteralRule (Literal, BOMExp),
         posToReg FULL_SPAN))
   | %try VarPat "=>" BOMExp
-      => (BOM.CaseRule.makeRegion (
+      => (print "emitting DefaultRule\n"; BOM.CaseRule.makeRegion (
         BOM.CaseRule.DefaultRule (VarPat, BOMExp),
         posToReg FULL_SPAN))
 

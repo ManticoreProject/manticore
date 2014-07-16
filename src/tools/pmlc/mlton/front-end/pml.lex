@@ -294,7 +294,7 @@
 				    ; commentStart := Source.getPos (source, Position.toInt yypos)
 				    ; commentLevel := 1
 				    ; continue ());
-<INITIAL>"(*"   		=> (YYBEGIN A
+<INITIAL,BOM>"(*"   		=> (YYBEGIN A
 				    ; commentLevel := 1
 				    ; commentStart := Source.getPos (source, Position.toInt yypos)
 				    ; continue ());
@@ -327,7 +327,12 @@
 <A>"(*"         => (inc commentLevel; continue ());
 <A>\n           => (Source.newline (source, Position.toInt yypos) ; continue ());
 <A>"*)"         => (dec commentLevel
-                    ; if 0 = !commentLevel then YYBEGIN INITIAL else ()
+                    ; if 0 = !commentLevel then
+                        if inBOM() then
+                          YYBEGIN BOM
+                        else
+                          YYBEGIN INITIAL
+                      else ()
                     ; continue ());
 <A>.            => (continue ());
 

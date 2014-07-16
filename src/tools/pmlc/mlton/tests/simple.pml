@@ -1,1 +1,1 @@
-_val op foo = _prim ( bar )
+_val op foo = _prim (bar)
