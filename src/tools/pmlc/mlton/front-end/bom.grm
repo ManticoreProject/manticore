@@ -160,7 +160,7 @@
 
     fun applyThunks (caseThunks, acc) =
       case caseThunks of
-        thunk::[] => rev ((thunk true)::acc)
+        thunk::[] => applyThunks ([], (thunk true)::acc)
       | [] => rev acc
       | thunk::thunks => applyThunks (thunks, (thunk false)::acc)
 
@@ -220,6 +220,7 @@
          val bomId = BOM.BomId.fromSymbol id (* (Symbol.fromString ID, thisRegion) *)
          val varPat = BOM.VarPat.makeRegion (BOM.VarPat.Var (bomId, NONE),
            thisRegion)
+         val _ = print "longOrDefaultRuleThunk: emitting default\n" (* DEBUG *)
        in
          defaultRuleThunk(varPat, bomExp, thisSpan)(true)
        end
@@ -227,6 +228,7 @@
        let
          val (singleId, idSpan) = id
          val longConId = BOM.LongConId.fromSymbols ([singleId], idSpan)
+         val _ = print "longOrDefaultRuleThunk: emitting long\n" (* DEBUG *)
        in
          longRuleThunk(longConId, []: BOM.VarPat.t list, bomExp, thisSpan)(true)
        end)
