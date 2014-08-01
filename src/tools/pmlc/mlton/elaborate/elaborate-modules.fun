@@ -140,6 +140,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
                        in
                           Decs.appendsV (Vector.map (strbinds, #decs))
                        end
+(* TODO: add cases for _datatype, _type, and _val *)
              val () =
                 case resolveScope () of
                    Control.Elaborate.ResolveScope.Strdec =>
@@ -286,6 +287,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
                       in
                          Decs.empty
                       end
+(* TODO: add case for _module *)
             val () =
                case resolveScope () of
                   Control.Elaborate.ResolveScope.Topdec =>
