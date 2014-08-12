@@ -2,7 +2,9 @@ signature ELABORATE_BOMENV_STRUCTS =
   sig
     structure Ast: AST
     structure CoreBOM: CORE_BOM
-    structure Env: ELABORATE_ENV
+    structure ElaborateEnv: ELABORATE_ENV
+    (* from atoms/tyvar.sig *)
+    structure Tyvar: TYVAR
   end
 
 signature ELABORATE_BOMENV =
@@ -19,15 +21,26 @@ signature ELABORATE_BOMENV =
     | Con                       (* constructor *)
     | Ext                       (* extern *)
 
-    structure Scheme : sig
+
+    (* structure Type: sig *)
+    (*   type t *)
+    (*   (* TODO: figure out how much of this needs to be re-implemented *) *)
+    (* end *)
+
+    structure Scheme: sig
+      type t
+
+      val getTyvars: t -> Tyvar.t list
+      val getTy: t -> Type.t
+      val new: Tyvar.t list * Type.t -> t
+      val generalizes: t * Type.t -> bool
+    end
+
+    structure TyFun: sig
       type t
     end
 
-    structure TyFun : sig
-      type t
-    end
-
-    structure TyStr : sig
+    structure TyStr: sig
       type t
 
       val tyFun : t -> TyFun.t
@@ -35,14 +48,24 @@ signature ELABORATE_BOMENV =
       val def : TyFun.t * ValEnv.t -> t
     end
 
-    structure HLOPEnv : sig
+    structure HLOPEnv: sig
+      type env
+      type t
+
       val extend: t * CoreBOM.HLOpId.t * Scheme.t -> unit
       val lookup: t * CoreBOM.HLOpId.t -> Scheme.t option
     end
 
     structure TypeEnv : sig
-      val extend: t * CoreBOM.TyCon.t * TyStr.t -> unit
-      val lookup: t * CoreBOM.TyCon.t -> TyStr.t option
+      type env
+      type t
+
+      val extend: env * CoreBOM.TyCon.t * TyStr.t -> unit
+      val lookup: env * CoreBOM.TyCon.t -> TyStr.t option
+
+      val extendThis: t * CoreBOM.TyCon.t * TyStr.t -> unit
+      val lookupThis: t * CoreBOM.TyCon.t -> TyStr.t option
+
     end
 
     structure ValEnv : sig
@@ -56,5 +79,5 @@ signature ELABORATE_BOMENV =
     end
 
 
-  sharing type ValEnv.env = t
+  sharing type ValEnv.env = TypeEnv.t = HLOpEnv.t = t
   end

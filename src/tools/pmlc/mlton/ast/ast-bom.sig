@@ -41,7 +41,7 @@ signature AST_BOM =
       sharing type node' = node
       sharing type obj = t
   end
-    structure RawTy : sig
+  structure RawTy : sig
     type t
     datatype node
       = Int8
@@ -90,7 +90,6 @@ signature AST_BOM =
   structure BomValueId : sig
     type t
     datatype node
-      (* pretty sure this needs to be LongTyId *)
       = LongId of LongTyId.t
       | HLOpQId of HLOpQId.t
 
