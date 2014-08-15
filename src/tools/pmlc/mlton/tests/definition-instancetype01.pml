@@ -1,3 +1,3 @@
-_primcode (
+_module myId (
   instance type long.ty.id <'a, 'b>;
 )

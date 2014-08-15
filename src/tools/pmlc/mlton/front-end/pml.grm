@@ -34,9 +34,9 @@
 %start program;
 
 strdecnode
-	: "_primcode" "(" BOMDecls ")"
-		=> (Strdec.PrimCode (Vector.fromList BOMDecls))
-	| "_datatype" tyvarseq tycon "=" "_prim" "(" LongTyId TyArgs? ")"
+	(* : "_primcode" "(" BOMDecls ")" *)
+	(* 	=> (Strdec.PrimCode (Vector.fromList BOMDecls)) *)
+	: "_datatype" tyvarseq tycon "=" "_prim" "(" LongTyId TyArgs? ")"
 		=> (Strdec.PrimDataType (tyvarseq, tycon, LongTyId, TyArgs))
 	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
 		=> (Strdec.PrimTycon (tyvars, tycon, BOMType))
@@ -46,7 +46,7 @@ strdecnode
 
 topdecnode
   : "_module" BomId "(" BOMDecls ")"
-    => (Topdec.PrimModule (BomId, Vector.fromList BomId))
+    => (Topdec.PrimModule (BomId, Vector.fromList BOMDecls))
   ;
 
 MLValueId

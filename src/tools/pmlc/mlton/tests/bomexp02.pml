@@ -1,3 +1,3 @@
-_primcode (
+_module myId (
   fun id1 () -> 'a = do nullVP return ();
 )

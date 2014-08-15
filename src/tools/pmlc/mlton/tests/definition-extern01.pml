@@ -1,3 +1,3 @@
-_primcode (
+_module myId (
   extern void id ( ) __attributes__ ("inline");
 )

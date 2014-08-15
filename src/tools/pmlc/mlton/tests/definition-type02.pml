@@ -1,3 +1,3 @@
-_primcode (
+_module myId (
   type id <'a, 'b> = bomtype;
 )

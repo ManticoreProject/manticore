@@ -1,2 +1,2 @@
-_primcode (
+_module myId (
 )

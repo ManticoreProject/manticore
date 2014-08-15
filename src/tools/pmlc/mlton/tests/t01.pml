@@ -1,4 +1,4 @@
-_primcode (
+_module myId (
   define __attributes__ ("inline") @add (a : int32, b : int32 / _ : cont) -> int32 =
     return (I32ADD(a, b)) ;
 )

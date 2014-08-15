@@ -1,1 +1,1 @@
-_primcode ( datatype foo = bar; )
+_module myId ( datatype foo = bar; )

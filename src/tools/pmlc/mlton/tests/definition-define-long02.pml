@@ -1,3 +1,3 @@
-_primcode (
+_module myId (
   define @hlopid <'a, 'b> = long.value.id;
 )

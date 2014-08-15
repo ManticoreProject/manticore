@@ -1,4 +1,4 @@
-_primcode (
+_module myId (
   fun id1 () -> 'a = do vpload(0, nullVP)
   return ();
   fun id2 () -> 'a = do vpaddr(0, nullVP)
