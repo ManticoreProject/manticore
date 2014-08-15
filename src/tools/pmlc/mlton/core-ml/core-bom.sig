@@ -1,17 +1,23 @@
 signature CORE_BOM_STRUCTS =
   sig
-    structure Ast: AST
+    structure Region: REGION
+    structure Ast: AST sharing Ast.AstBOM.Region = Region
+
+    (* sharing Region = Ast.AstBOM.Region *)
   end
 
 signature CORE_BOM =
   sig
     include CORE_BOM_STRUCTS
 
+    structure AstBOM: AST_BOM
+
     (* For now, we copy over the structures we had from ast-bom, but
     leave their signatures blank. They can be filled in as needed,
     reducing cruft *)
 
     structure BomId: sig
+      type t
     end
 
     structure HLOpId: sig
@@ -19,19 +25,22 @@ signature CORE_BOM =
 
     structure TyParam: sig
       include TYVAR
-      val fromAst: AstBOM.TyParam.t
+
+      val fromAst: AstBOM.TyParam.t -> t
     end
 
     structure PrimOp: sig
     end
 
     structure LongTyId: sig
+      type t
     end
 
     structure LongConId: sig
     end
 
     structure LongValueId: sig
+      type t
     end
 
     structure HLOpQId: sig
@@ -44,6 +53,9 @@ signature CORE_BOM =
     end
 
     structure RawTy: sig
+      type t
+
+      val fromAst: AstBOM.RawTy.t -> t
     end
 
     structure TyParams: sig
@@ -57,16 +69,20 @@ signature CORE_BOM =
 
       val fromAst: AstBOM.BomType.t -> t
       val arity: t -> int
-
     end
 
     structure TyArgs: sig
+      type t
+
+      val getTypes: t -> BomType.t list
     end
 
     structure DataConsDef: sig
+      type t
     end
 
     structure DataTypeDef: sig
+      type t
     end
 
     structure CArgTy: sig
@@ -76,6 +92,9 @@ signature CORE_BOM =
     end
 
     structure Field: sig
+      type t
+
+      val fromAst: AstBOM.Field.t -> t
     end
 
     structure VarPat: sig
@@ -114,23 +133,23 @@ signature CORE_BOM =
     (* end *)
 
     structure TyCon : sig
-      type t
+      (* type t *)
 
-      val fromBomType: BomType.t -> t
-      val fromLongTyId: LongTyId.t -> t
-      val fromDataConsDef: DataConsDef.t -> t
-      val fromDataTypeDef: DataTypeDef.t -> t
+      (* val fromBomType: BomType.t -> t *)
+      (* val fromLongTyId: LongTyId.t -> t *)
+      (* val fromDataConsDef: DataConsDef.t -> t *)
+      (* val fromDataTypeDef: DataTypeDef.t -> t *)
     end
 
     structure ValId : sig
-      type t
+      (* type t *)
 
-      val fromLongValueId: LongValueId.t -> t
-      val fromBomId: BomId.t -> t
+      (* val fromLongValueId: LongValueId.t -> t *)
+      (* val fromBomId: BomId.t -> t *)
     end
 
     structure Decs : sig
-      type t
+      (* type t *)
     end
 
     (* structure Type: *)

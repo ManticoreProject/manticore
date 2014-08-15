@@ -17,11 +17,11 @@ functor ElaborateBOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
   (* end *)
 
   structure Scheme = struct
-    datatype t = T of {tyvars: Tyvar.t list, ty: CoreBOM.BOMType.t}
+    datatype t = T of {typarams: CoreBOM.TyParam.t list, ty: CoreBOM.BOMType.t}
 
-    fun getTyvars (T {tyvars=tyvars', ...}) = tyvars'
+    fun getCoreBOM.TyParams (T {typarams=typarams', ...}) = typarams'
     fun getTy (T {ty=ty',...}) = ty'
-    fun new (tyvars: Tyvar.t list, ty: CoreBOM.BomType.t)
+    fun new (typarams: CoreBOM.TyParam.t list, ty: CoreBOM.BomType.t)
     fun generalizes (scheme: t, ty: CoreBOM.BomType.t): bool =
   end
 

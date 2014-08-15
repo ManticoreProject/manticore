@@ -8,11 +8,14 @@
 signature AST_BOM_STRUCTS =
   sig
     include AST_ATOMS
+    (* include REGION  *)
    end
 
 signature AST_BOM =
   sig
   include AST_BOM_STRUCTS
+
+  structure Region: REGION
 
   structure BomId : AST_ID
   structure HLOpId : AST_ID

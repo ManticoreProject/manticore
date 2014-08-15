@@ -9,8 +9,11 @@
 Group
 
 signature CORE_ML
+signature CORE_BOM
 functor CoreML
 functor DeadCode
+functor CoreBOM
+
 
 is
 
@@ -25,3 +28,5 @@ core-ml.sig
 core-ml.fun
 dead-code.sig
 dead-code.fun
+core-bom.sig
+core-bom.fun

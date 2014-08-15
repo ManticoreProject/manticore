@@ -8,6 +8,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   struct
   open S
 
+  structure Region = Region
   structure Wrap = Region.Wrap
 
   (* Helper Functions *)

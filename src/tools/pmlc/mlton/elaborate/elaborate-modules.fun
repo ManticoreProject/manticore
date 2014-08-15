@@ -7,7 +7,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor ElaborateModules (S: ELABORATE_MODULES_STRUCTS): ELABORATE_MODULES = 
+functor ElaborateModules (S: ELABORATE_MODULES_STRUCTS): ELABORATE_MODULES =
 struct
 
 structure Option = MLtonOption
@@ -15,6 +15,12 @@ structure List = MLtonList
 structure Vector = MLtonVector
 
 open S
+
+(* TODO: figure out where the best place to instantiate this is *)
+structure CoreBOM = CoreBOM (
+  structure Ast = Ast
+  structure Region = Region)
+
 
 local
    open Control.Elaborate
@@ -75,12 +81,12 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
                in
                   case S of
                      NONE => (Decs.empty, NONE)
-                   | SOME S => 
+                   | SOME S =>
                         let
                            val (S, decs) =
                               case elabSigexp sigexp of
                                  NONE => (S, Decs.empty)
-                               | SOME I => 
+                               | SOME I =>
                                     Env.cut (E, S, I,
                                              {isFunctor = false,
                                               opaque = opaque,
@@ -95,7 +101,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
                SigConst.None => (Decs.empty, S)
              | SigConst.Opaque sigexp => s (sigexp, true)
              | SigConst.Transparent sigexp => s (sigexp, false)
-         end     
+         end
       fun elabStrdec (arg: Strdec.t * string list): Decs.t =
          Trace.traceInfo' (elabStrdecInfo,
                            Layout.tuple2 (Strdec.layout,
@@ -243,8 +249,8 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
                                      ; elabStrexp (body, nest)))))
          end
       fun elabTopdec arg: Decs.t =
-         Trace.traceInfo' (elabTopdecInfo, 
-                           Topdec.layout, 
+         Trace.traceInfo' (elabTopdecInfo,
+                           Topdec.layout,
                            Decs.layout)
          (fn (d: Topdec.t) =>
           let
