@@ -9,7 +9,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     open Region
   in
   (* need this to unwrap regions since they're opaque *)
-    fun regionToRecord (region: Region.t):
+    fun regionToRecord (region: t):
         {left: SourcePos.t, right: SourcePos.t} = let
       fun fromOpt maybeRegion =
         Option.getOpt (maybeRegion, SourcePos.bogus)
@@ -18,8 +18,10 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       right = fromOpt (right region)}
     end
 
-    fun keepRegion (f: 'a -> 'b, wrapped: 'a Wrap.t): 'b Wrap.t =
-      Wrap.makeRegion ((f o Wrap.node) wrapped, Wrap.region wrapped)
+    (* fun keepRegion (f: 'a -> 'b, wrapped: 'a Wrap.t): 'b Wrap.t = *)
+    (*   Wrap.makeRegion ((f o Wrap.node) wrapped, Wrap.region wrapped) *)
+    fun keepRegion (f: 'a -> 'b, (node, region): 'a * Region.t): 'b Wrap.t =
+      Wrap.makeRegion (f node, region)
   end
 
 
@@ -101,61 +103,79 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       (* define some synonyms so we don't end up with painfully long
       datatype names *)
     structure AstTy = AstBOM.BomType
+    structure AstField = AstBOM.Field
+    structure AstTyArgs = AstBOM.TyArgs
+    fun app3 (f, (x, y, z)) = (f x, f y, f z)
   in
   fun typeFromAst (astType: AstBOM.BomType.t) =
     let
-      fun app3 (f, (x, y, z)) = (f x, f y, f z)
       fun maybe f x =
-        case x of
-          SOME y => f y
+        case (x: 'a option) of
+          SOME (y: 'a) => (f: 'a -> 'b list) y
         | NONE => []
       fun convertNode (oldNode: AstBOM.BomType.node) : type_node =
         case oldNode of
           AstTy.Param param => Param (TyParam.fromAst param)
-        (* | LongId (longid, tyargs) => *)
-        (*     resolveLongTyId (longid, tyargs) *)
+        | AstTy.LongId (longid, tyargs) =>
+            resolveLongTyId (longid, tyargs)
         | AstTy.Record records => Record (map fieldFromAst records)
         | AstTy.Tuple els => Tuple (map typeFromAst els)
         | AstTy.Fun funTuple => Fun (app3 (map typeFromAst, funTuple))
         | AstTy.Any => Any
         | AstTy.VProc => VProc
-        | AstTy.Cont maybeTyArgs => maybe typesOfTyArgs maybeTyArgs
+        | AstTy.Cont maybeTyArgs =>
+            Cont (maybe (typesOfTyArgs o tyArgsFromAst) maybeTyArgs)
+            (* case maybeTyArgs of *)
+            (*   SOME tyArgs => typesOfTyArgs tyArgs *)
+            (* | NONE => [] *)
     in
-      keepRegion (convertNode, astType)
+      keepRegion (convertNode, AstTy.dest astType)
     end
   and arityOfType (ty: type_t): int =
     let
       fun sumArity toSums = foldl (fn (x, y) => (arityOfType x) + y) 0 toSums
     in
-        case Region.Wrap.node ty of
-            Param param => 1
+      case Region.Wrap.node ty of
+        Param param => 1
       | MLType mlTy => arityOfType mlTy
       | Record fields => sumArity (map typeOfField fields)
       | Tuple els  => sumArity els
-      | Fun (domTy, contTy, rangeTy) =>
-            (arityOfType domTy) + (arityOfType contTy) + (arityOfType rangeTy)
+      | Fun tys =>
+        let
+          val (bomAr, conAr, rangeAr) = app3 (sumArity, tys)
+        in
+          bomAr + conAr + rangeAr
+        end
       | Cont conts => sumArity conts
       | Addr addrTy => arityOfType addrTy
       | _ => 0
     end
   and resolveLongTyId (longid: AstBOM.LongTyId.t,
-      tyargs: tyargs_t option) : type_t =
-        Region.Wrap.makeRegion (Any, Region.bogus) (* TODO *)
+      tyargs: AstTyArgs.t option) : type_node =
+        Any (* TODO *)
   and fieldFromAst (astField: AstBOM.Field.t): field_t =
     let
       fun doConvert (offset: IntInf.int, ty: AstBOM.BomType.t) =
         (offset, typeFromAst ty)
-      fun convertNode (oldNode: AstBOM.Field.node) =
+      fun convertNode (oldNode: AstField.node) =
         case oldNode of
-          Immutable myNode => Immutable (doConvert myNode)
-        | Mutable myNode => Mutable (doConvert myNode)
+          AstField.Immutable myNode => Immutable (doConvert myNode)
+        | AstField.Mutable myNode => Mutable (doConvert myNode)
     in
-      keepRegion (convertNode, astField)
+      keepRegion (convertNode, AstField.dest astField)
     end
   and typeOfField (myField: field_t): type_t =
     case Region.Wrap.node myField of
         Immutable (offset, ty) => ty
       | Mutable (offset, ty) => ty
+  and tyArgsFromAst (tyArgs: AstTyArgs.t): tyargs_t =
+    let
+      fun convertNode (AstTyArgs.ArgTypes tys) =
+        ArgTypes (map typeFromAst tys)
+    in
+      keepRegion (convertNode, AstTyArgs.dest tyArgs)
+    end
+
   and typesOfTyArgs (argTys: tyargs_t): type_t list =
     let
       val (ArgTypes tys) = Region.Wrap.node argTys
@@ -169,8 +189,9 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     datatype node = tyargs_node
     type t = tyargs_t
 
-    fun getTypes argTys =
-      Region.Wrap.node argTys
+    val getTypes = typesOfTyArgs
+    val fromAst = tyArgsFromAst
+
   end
 
   structure BomType = struct
@@ -194,10 +215,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     (* datatype node = datatype field_node *)
     type t = field_t
 
-    val fromASt = fieldFromAst
+    val fromAst = fieldFromAst
     val getType = typeOfField
-
-
   end
 
 

@@ -1,7 +1,7 @@
 signature CORE_BOM_STRUCTS =
   sig
-    structure Region: REGION
-    structure Ast: AST sharing Ast.AstBOM.Region = Region
+    (* structure Region: REGION (* sharing type Region.t = Region.Wrap.region *) *)
+    structure Ast: AST (* sharing Ast.AstBOM.Region = Region *)
 
     (* sharing Region = Ast.AstBOM.Region *)
   end
@@ -58,8 +58,8 @@ signature CORE_BOM =
       val fromAst: AstBOM.RawTy.t -> t
     end
 
-    structure TyParams: sig
-    end
+    (* structure TyParams: sig *)
+    (* end *)
 
     structure BomValueId: sig
     end

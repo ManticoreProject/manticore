@@ -18,8 +18,7 @@ open S
 
 (* TODO: figure out where the best place to instantiate this is *)
 structure CoreBOM = CoreBOM (
-  structure Ast = Ast
-  structure Region = Region)
+  structure Ast = Ast)
 
 
 local
