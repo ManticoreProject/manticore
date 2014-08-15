@@ -45,7 +45,7 @@ signature ELABORATE_BOMENV =
 
       val tyFun : t -> TyFun.t
       val valEnv : t -> ValEnv.t
-      val def : TyFun.t * ValEnv.t -> t
+      val new : TyFun.t * ValEnv.t -> t
     end
 
     structure HLOPEnv: sig

@@ -6,7 +6,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-signature CORE_ML_STRUCTS = 
+signature CORE_ML_STRUCTS =
    sig
       include ATOMS
       structure Type:
@@ -28,7 +28,7 @@ signature CORE_ML_STRUCTS =
          end
    end
 
-signature CORE_ML = 
+signature CORE_ML =
    sig
       include CORE_ML_STRUCTS
 
@@ -164,10 +164,10 @@ signature CORE_ML =
                        tyvars: unit -> Tyvar.t vector}
              | Val of {nonexhaustiveExnMatch: Control.Elaborate.DiagDI.t,
                        nonexhaustiveMatch: Control.Elaborate.DiagEIW.t,
-                       rvbs: {lambda: Lambda.t,
+                       rvbs: {lambda: Lambda.t, (* recursive value bindings *)
                               var: Var.t} vector,
                        tyvars: unit -> Tyvar.t vector,
-                       vbs: {exp: Exp.t,
+                       vbs: {exp: Exp.t, (* value bindings *)
                              lay: unit -> Layout.t,
                              nest: string list,
                              pat: Pat.t,

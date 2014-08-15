@@ -502,7 +502,7 @@ structure Topdec =
                      result: SigConst.t} vector
        | Signature of (Sigid.t * Sigexp.t) vector
        | Strdec of Strdec.t
-       | PrimModule of AstBOM.BomId.t * (AstBOM.Definition.t vector)
+       | PrimModule of AstBOM.BomId.t * AstBOM.Definition.t vector
       type t = node Wrap.t
       type node' = node
       type obj = t
