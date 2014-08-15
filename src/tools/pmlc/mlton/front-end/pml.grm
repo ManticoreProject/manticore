@@ -16,6 +16,7 @@
       | KW__datatype	("_datatype")
       | KW__type	("_type")
       | KW__val		("_val")
+      | KW__module ("_module")
       (* Getting errors in pml.lex, these seem not to have been pulled in *)
       | PLPAREN		("(|")
       | PRPAREN		("|)")
@@ -42,6 +43,11 @@ strdecnode
 	| "_val" "op"? MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"
 		=> (Strdec.PrimVal (MLValueId, ty, BOMValueId))
 	;
+
+topdecnode
+  : "_module" BomId "(" BOMDecls ")"
+    => (Topdec.PrimModule (BomId, Vector.fromList BomId))
+  ;
 
 MLValueId
 	: SYMID => (Vid.fromSymbol (Symbol.fromString SYMID, posToReg FULL_SPAN))

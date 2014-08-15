@@ -247,6 +247,7 @@
 <INITIAL>"_import"		=> (T.KW__import);
 <INITIAL>"_overload"		=> (T.KW__overload);
 <INITIAL>"_symbol"		=> (T.KW__symbol);
+<INITIAL>"_module"	=> (YYBEGIN BOM; T.KW__module);
 <INITIAL>"_prim"		=> (YYBEGIN BOM; T.KW__prim);
 <INITIAL>"_primcode"		=> (YYBEGIN BOM; T.KW__primcode);
 <INITIAL>"_datatype"		=> (T.KW__datatype);

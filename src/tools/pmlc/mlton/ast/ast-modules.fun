@@ -274,7 +274,7 @@ datatype strdecNode =
   | Structure of {constraint: SigConst.t,
                   def: strexp,
                   name: Strid.t} vector
-  | PrimCode of AstBOM.Definition.t vector
+  (* | PrimCode of AstBOM.Definition.t vector *)
   | PrimDataType of Tyvar.t vector * Tycon.t *
       AstBOM.LongTyId.t * AstBOM.TyArgs.t option
   | PrimTycon of Tyvar.t vector * Tycon.t * AstBOM.BomType.t
@@ -302,10 +302,10 @@ fun layoutStrdec d =
                        | _ => Split 3,
                           seq [Strid.layout name, SigConst.layout constraint],
                           layoutStrexp def))
-  | PrimCode definitions => mayAlign [
-      str "_primcode",
-      schemeList (Vector.toListMap (definitions, AstBOM.Definition.layout))
-  ]
+  (* | PrimCode definitions => mayAlign [ *)
+  (*     str "_primcode", *)
+  (*     schemeList (Vector.toListMap (definitions, AstBOM.Definition.layout)) *)
+  (* ] *)
   | PrimDataType (tyvars, tycon, longTyId, maybeTyArgs) => mayAlign [
       str "_datatype",
       mayAlign (Vector.toListMap (tyvars, Tyvar.layout)),
@@ -502,6 +502,7 @@ structure Topdec =
                      result: SigConst.t} vector
        | Signature of (Sigid.t * Sigexp.t) vector
        | Strdec of Strdec.t
+       | PrimModule of AstBOM.BomId.t * AstBOM.Definition.t vector
       type t = node Wrap.t
       type node' = node
       type obj = t
@@ -525,6 +526,19 @@ structure Topdec =
                                       Sigid.layout name,
                                       Sigexp.layout def))
           | Strdec d => Strdec.layout d
+          | PrimModule (bomId, bomDefns) =>
+              mayAlign [
+                mayAlign [
+                  str "_module",
+                  AstBOM.BomId.layout bomId,
+                  str "="
+                ],
+                align ([
+                str "("
+                ]@(Vector.toListMap (bomDefns, AstBOM.Definition.layout))@[
+                str ")"
+                ])
+              ]
 
 
       fun make n = makeRegion (n, Region.bogus)
