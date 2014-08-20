@@ -24,6 +24,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       Wrap.makeRegion (f node, region)
   end
 
+  fun flatten f maybeEls =
+    case maybeEls of
+      SOME els => f els
+    | NONE => []
+
 
   structure BomId = struct
     open AstBOM.BomId
@@ -48,15 +53,21 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         newString (AstBOM.TyParam.toString tyParam, asRegion)
     end
 
-    fun flattenAstTyParams (maybeTyParams: AstBOM.TyParams.t option) =
-      case maybeTyParams of
-        SOME tyParams =>
-          let
-            val AstBOM.TyParams.T tyPs = AstBOM.TyParams.node tyParams
-          in
-            tyPs
-          end
-      | NONE => []
+    fun flattenFromAst (maybeTyParams: AstBOM.TyParams.t option) =
+      flatten (fn els =>
+        let
+          val AstBOM.TyParams.T tyPs = AstBOM.TyParams.node els
+        in
+          tyPs
+        end) maybeTyParams
+      (* case maybeTyParams of *)
+      (*   SOME tyParams => *)
+      (*     let *)
+      (*       val AstBOM.TyParams.T tyPs = AstBOM.TyParams.node tyParams *)
+      (*     in *)
+      (*       tyPs *)
+      (*     end *)
+      (* | NONE => [] *)
   end
 
   structure RawTy = struct
@@ -141,6 +152,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
             (* case maybeTyArgs of *)
             (*   SOME tyArgs => typesOfTyArgs tyArgs *)
             (* | NONE => [] *)
+        | AstTy.Raw ty => Raw ty
+        | AstTy.Addr ty => Addr (typeFromAst ty)
     in
       keepRegion (convertNode, AstTy.dest astType)
     end
@@ -205,6 +218,13 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     val getTypes = typesOfTyArgs
     val fromAst = tyArgsFromAst
 
+    fun flattenFromAst maybeTyArgs =
+      flatten (fn els =>
+        let
+          val AstBOM.TyArgs.ArgTypes tyArgs = AstBOM.TyArgs.node els
+        in
+          tyArgs
+        end) maybeTyArgs
   end
 
   structure BomType = struct
