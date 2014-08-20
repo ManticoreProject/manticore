@@ -197,8 +197,8 @@ val ('a, 'b) traceBatch: (verbosity * string) -> ('a -> 'b) ->
 
 val numErrors: int ref = ref 0
 
-(* val errorThreshhold: int ref = ref 20 *)
-val errorThreshhold: int ref = ref 1
+val errorThreshhold: int ref = ref 20
+(* val errorThreshhold: int ref = ref 1 *)
 
 (*val die = Process.fail*)
 fun die _ = OS.Process.exit OS.Process.failure

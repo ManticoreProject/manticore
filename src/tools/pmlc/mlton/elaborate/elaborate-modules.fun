@@ -319,6 +319,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
                           loop (index + 1, newEnv, newDec::acc)
                         end
                     val res = loop (0, BOMEnv.empty, [])
+                    val () = Control.checkForErrors "elaborate"
                   in
                     Decs.empty
                   end

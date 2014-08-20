@@ -134,4 +134,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
   val empty = T {tyParamE = TyParamEnv.empty, tyE = TyEnv.empty}
 
+  fun extendTyParamEnv (T {tyParamE = tyParamE', tyE = tyE'}, newParam) =
+    T {tyParamE = TyParamEnv.extend (tyParamE', newParam), tyE = tyE'}
+
 end

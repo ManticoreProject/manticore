@@ -90,6 +90,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Cont of type_t list
     | Addr of type_t
     | Raw of RawTy.t
+    | Error
   and field_node
     = Immutable of IntInf.int * type_t
     | Mutable of IntInf.int * type_t

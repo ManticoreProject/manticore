@@ -1,0 +1,16 @@
+(* Need to break this  *)
+
+Group
+
+signature ELABORATE_BOMENV
+functor BOMEnv
+
+is
+
+
+$/smlnj-lib.cm
+../ast/sources.cm
+../core-ml/sources.cm
+
+elaborate-bomenv.sig
+elaborate-bomenv.fun

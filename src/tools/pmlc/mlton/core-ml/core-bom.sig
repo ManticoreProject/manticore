@@ -66,8 +66,27 @@ signature CORE_BOM =
     structure BomValueId: sig
     end
 
+    structure Field: sig
+      type t
+
+      val fromAst: AstBOM.Field.t -> t
+    end
+
     structure BomType: sig
       type t
+
+    datatype node
+      = Param of TyParam.t
+      | MLType of t        (* FIXME *)
+      | Record of Field.t list
+      | Tuple of t list
+      | Fun of t list * t list * t list
+      | Any
+      | VProc
+      | Cont of t list
+      | Addr of t
+      | Raw of RawTy.t
+      | Error
 
       val fromAst: AstBOM.BomType.t -> t
       val arity: t -> int
@@ -93,11 +112,7 @@ signature CORE_BOM =
     structure CReturnTy: sig
     end
 
-    structure Field: sig
-      type t
 
-      val fromAst: AstBOM.Field.t -> t
-    end
 
     structure VarPat: sig
     end
