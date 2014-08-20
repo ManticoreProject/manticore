@@ -29,7 +29,7 @@ signature CORE_BOM =
       include TYVAR
 
       val fromAst: AstBOM.TyParam.t -> t
-      val flattenAstTyParams: AstBOM.TyParams.t option -> t list
+      val flattenAstTyParams: AstBOM.TyParams.t option -> AstBOM.TyParam.t list
     end
 
     structure PrimOp: sig

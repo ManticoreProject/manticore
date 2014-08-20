@@ -32,11 +32,11 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       AstBOM.Definition.TypeDefn (bomId, maybeTyParams, bomTy) =>
         let
           val tyParams = CoreBOM.TyParam.flattenAstTyParams maybeTyParams
-          val newBomEnv = foldr
-            (fn (tyP, bEnv) => BOMEnv.extendTyParamEnv (bEnv, tyP))
+          val newBomEnv: BOMEnv.t = foldr
+            (fn (tyP: AstBOM.TyParam.t, bEnv) => BOMEnv.extendTyParamEnv (bEnv, tyP))
             bomEnv'
             tyParams
-          val newTy = elaborateBomType (bomTy, newBomEnv)
+          val newTy = elaborateBomType (bomTy, {env = env', bomEnv = newBomEnv})
         in
           (CoreML.Dec.BomDec, bomEnv')
         end

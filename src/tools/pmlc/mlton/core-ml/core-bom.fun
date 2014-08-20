@@ -48,9 +48,14 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         newString (AstBOM.TyParam.toString tyParam, asRegion)
     end
 
-    fun flattenAstTyParams maybeTyParams =
+    fun flattenAstTyParams (maybeTyParams: AstBOM.TyParams.t option) =
       case maybeTyParams of
-        SOME tyParams => tyParams
+        SOME tyParams =>
+          let
+            val AstBOM.TyParams.T tyPs = AstBOM.TyParams.node tyParams
+          in
+            tyPs
+          end
       | NONE => []
   end
 
