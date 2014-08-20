@@ -172,6 +172,7 @@ signature CORE_ML =
                              nest: string list,
                              pat: Pat.t,
                              patRegion: Region.t} vector}
+             | BomDec           (* TODO *)
 
             val layout: t -> Layout.t
          end

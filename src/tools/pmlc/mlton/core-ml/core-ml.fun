@@ -6,7 +6,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor CoreML (S: CORE_ML_STRUCTS): CORE_ML = 
+functor CoreML (S: CORE_ML_STRUCTS): CORE_ML =
 struct
 
 structure Vector = MLtonVector
@@ -164,6 +164,7 @@ datatype dec =
                  nest: string list,
                  pat: Pat.t,
                  patRegion: Region.t} vector}
+ | BomDec                       (* TODO *)
 and exp = Exp of {node: expNode,
                   ty: Type.t}
 and expNode =
@@ -275,9 +276,9 @@ in
              record = r,
              separator = " = "}
        | Seq es => Pretty.seq (Vector.map (es, layoutExp))
-       | Var (var, targs) => 
+       | Var (var, targs) =>
             if !Control.showTypes
-               then let 
+               then let
                        open Layout
                        val targs = targs ()
                     in
@@ -298,7 +299,7 @@ in
                                        indent (layoutLambda lambda, 3)])),
                         3)]
    and layoutLambda (Lam {arg, argType, body, ...}) =
-      paren (align [seq [str "fn ", 
+      paren (align [seq [str "fn ",
                          maybeConstrain (Var.layout arg, argType),
                          str " =>"],
                     layoutExp body])
@@ -505,7 +506,7 @@ structure Program =
  *          fun checkExp (e: Exp.t): Ty.t =
  *             let
  *                val (n, t) = Exp.dest e
- *                val 
+ *                val
  *                datatype z = datatype Exp.t
  *                val t' =
  *                   case n of
@@ -527,10 +528,10 @@ structure Program =
  *                         in
  *                            Vector.foreach (rules, fn {pat, exp} =>
  *                                            Type.equals
- *                                            (checkPat pat, 
+ *                                            (checkPat pat,
  *                         end
  *             in
- *                                   
+ *
  *             end
  *       in
  *       end

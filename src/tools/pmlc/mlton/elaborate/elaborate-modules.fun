@@ -19,7 +19,17 @@ open S
 (* TODO: figure out where the best place to instantiate this is *)
 structure CoreBOM = CoreBOM (
   structure Ast = Ast)
-
+structure BOMEnv = BOMEnv (
+  structure Ast = Ast
+  structure CoreBOM = CoreBOM)
+structure ElaborateBOMCore = ElaborateBOMCore (
+  structure Ast = Ast
+  structure CoreBOM = CoreBOM
+  structure Decs = Decs
+  structure BOMEnv = BOMEnv
+  structure Env = Env
+  structure CoreML = CoreML)
+structure AstBOM = Ast.AstBOM
 
 local
    open Control.Elaborate
@@ -292,7 +302,27 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
                       in
                          Decs.empty
                       end
-(* TODO: add case for _module *)
+                | Topdec.PrimModule (id, bomDecs) =>
+                  let
+                    fun loop (index,
+                        currentEnv: BOMEnv.t,
+                        acc: Decs.dec list): Decs.t =
+                      if index >= (Vector.length bomDecs) then
+                        Decs.fromList (rev acc)
+                      else
+                        let
+                          val (newDec: Decs.dec, newEnv: BOMEnv.t) =
+                            ElaborateBOMCore.elaborateBomDec (
+                              Vector.sub (bomDecs, index),
+                              {env = E, bomEnv = currentEnv})
+                        in
+                          loop (index + 1, newEnv, newDec::acc)
+                        end
+                    val res = loop (0, BOMEnv.empty, [])
+                  in
+                    Decs.empty
+                  end
+          (* TODO: add case for _module *)
             val () =
                case resolveScope () of
                   Control.Elaborate.ResolveScope.Topdec =>

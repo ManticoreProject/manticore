@@ -75,9 +75,9 @@ structure Popt
 structure Promise
 structure Property
 structure PropertyList
-structure Queue
+structure Queue (* conflicts with SMLNJ library *)
 structure QuickSort
-structure Random
+structure Random (* conflicts with the SMLNJ library *)
 structure Reader
 structure Ref
 structure Regexp

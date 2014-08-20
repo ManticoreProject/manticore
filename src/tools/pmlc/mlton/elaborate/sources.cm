@@ -16,11 +16,13 @@ is
 
 $/basis.cm
 
+
 ../ast/sources.cm
 ../atoms/sources.cm
 ../control/sources.cm
 ../core-ml/sources.cm
 ../lib/sources.cm
+./elaborate-bomenv-sources.cm
 
 decs.sig
 decs.fun
@@ -36,6 +38,8 @@ scope.sig
 scope.fun
 elaborate-core.sig
 elaborate-core.fun
+elaborate-bomcore.sig
+elaborate-bomcore.fun
 elaborate-sigexp.sig
 elaborate-sigexp.fun
 elaborate-modules.sig

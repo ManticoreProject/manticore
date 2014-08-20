@@ -18,6 +18,8 @@ signature CORE_BOM =
 
     structure BomId: sig
       type t
+
+      val fromAst: AstBOM.BomId.t -> t
     end
 
     structure HLOpId: sig

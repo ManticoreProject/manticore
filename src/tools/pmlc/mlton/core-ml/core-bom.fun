@@ -27,6 +27,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   structure BomId = struct
     open AstBOM.BomId
+
+    fun fromAst (oldId) = oldId
   end
 
   structure HLOpId = struct

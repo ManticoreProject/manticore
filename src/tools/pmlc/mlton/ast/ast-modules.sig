@@ -150,6 +150,7 @@ signature AST_MODULES =
                            result: SigConst.t} vector
              | Signature of (Sigid.t * Sigexp.t) vector
              | Strdec of Strdec.t
+             (* TODO: this should probably be a regular ID *)
              | PrimModule of AstBOM.BomId.t * AstBOM.Definition.t vector
 
             include WRAPPED sharing type node' = node
