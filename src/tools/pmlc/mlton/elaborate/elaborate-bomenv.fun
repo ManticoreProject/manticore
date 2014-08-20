@@ -137,4 +137,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
   fun extendTyParamEnv (T {tyParamE = tyParamE', tyE = tyE'}, newParam) =
     T {tyParamE = TyParamEnv.extend (tyParamE', newParam), tyE = tyE'}
 
+  fun lookupTyParam (env: t, tyParam) =
+    TyParamEnv.lookup ((getTyParamEnv env), tyParam)
+
 end

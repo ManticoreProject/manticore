@@ -42,11 +42,17 @@ signature ELABORATE_BOMENV =
     end
 
 
+    (* TODO: refactor these to be a part of the structures above *)
     val getTyParamEnv: t -> TyParamEnv.t
     val getTyEnv: t -> TyEnv.t
 
     val setTyParamEnv: t * TyParamEnv.t -> t
     val setTyEnv: t * TyEnv.t -> t
+
+    val extendTyParamEnv: t * AstBOM.TyParam.t -> t
+    (* val extendTyEnv: t * AstBOM.BomId.t * CoreBOM.BomType.t -> t *)
+
+    val lookupTyParam: t * AstBOM.TyParam.t -> CoreBOM.TyParam.t option
 
     val empty: t
 

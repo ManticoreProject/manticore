@@ -10,6 +10,7 @@ signature ELABORATE_BOMCORE_STRUCTS =
     sharing Ast.Tyvar = CoreML.Tyvar
     sharing CoreML = Decs.CoreML = Env.CoreML
     sharing Decs = Env.Decs
+    sharing CoreBOM.AstBOM = Ast.AstBOM = BOMEnv.AstBOM
   end
 
 signature ELABORATE_BOMCORE =

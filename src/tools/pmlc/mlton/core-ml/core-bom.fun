@@ -47,6 +47,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     in
         newString (AstBOM.TyParam.toString tyParam, asRegion)
     end
+
+    fun flattenAstTyParams maybeTyParams =
+      case maybeTyParams of
+        SOME tyParams => tyParams
+      | NONE => []
   end
 
   structure RawTy = struct
@@ -210,7 +215,9 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     val arity = arityOfType
     val fromAst = typeFromAst
     (* val resolveLongTyId = resolveLongTyId *)
-
+    val keepRegion = keepRegion
+    fun errorFromAst astTy =
+      keepRegion (fn x => Error, AstBOM.BomType.dest astTy)
   end
 
 
