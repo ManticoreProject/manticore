@@ -50,7 +50,7 @@ signature ELABORATE_BOMENV =
     val setTyEnv: t * TyEnv.t -> t
 
     val extendTyParamEnv: t * AstBOM.TyParam.t -> t
-    (* val extendTyEnv: t * AstBOM.BomId.t * CoreBOM.BomType.t -> t *)
+    val extendTyEnv: t * AstBOM.BomId.t * CoreBOM.BomType.t -> t
 
     val lookupTyParam: t * AstBOM.TyParam.t -> CoreBOM.TyParam.t option
 

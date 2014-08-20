@@ -54,6 +54,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             bomEnv'
             tyParams
           val newTy = elaborateBomType (bomTy, {env = env', bomEnv = newBomEnv})
+          val newEnv = BOMEnv.extendTyEnv (bomEnv', bomId, newTy)
         in
           (CoreML.Dec.BomDec, bomEnv')
         end
