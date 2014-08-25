@@ -15,60 +15,59 @@ signature ELABORATE_BOMENV =
     structure AstBOM: AST_BOM
     type t
 
-    (* type t *)
-
     (* datatype IdStatus = *)
     (*   Val                       (* value *) *)
     (* | Exn                       (* exception *) *)
     (* | Con                       (* constructor *) *)
-    (* | Ext                       (* extern *) *)
 
 
     structure TyParamEnv: sig
       type t
+      type env
 
-      val lookup: t * AstBOM.TyParam.t -> CoreBOM.TyParam.t option
-      val extend: t * AstBOM.TyParam.t -> t
+      val lookup: env * AstBOM.TyParam.t -> CoreBOM.TyParam.t option
+      val extend: env * AstBOM.TyParam.t -> env
+
+
+      val lookupThis: t * AstBOM.TyParam.t -> CoreBOM.TyParam.t option
+      val extendThis: t * AstBOM.TyParam.t -> t
+
       val empty: t
     end
 
-    structure TyEnv: sig
+    (* structure TyEnv: sig *)
 
-      type t
-
-      val lookup: t * AstBOM.BomId.t -> CoreBOM.BomType.t option
-      val extend: t * AstBOM.BomId.t * CoreBOM.BomType.t -> t
-      val empty: t
-    end
-
-
-    (* TODO: refactor these to be a part of the structures above *)
-    val getTyParamEnv: t -> TyParamEnv.t
-    val getTyEnv: t -> TyEnv.t
-
-    val setTyParamEnv: t * TyParamEnv.t -> t
-    val setTyEnv: t * TyEnv.t -> t
-
-    val extendTyParamEnv: t * AstBOM.TyParam.t -> t
-    val extendTyEnv: t * AstBOM.BomId.t * CoreBOM.BomType.t -> t
-
-    val lookupTyParam: t * AstBOM.TyParam.t -> CoreBOM.TyParam.t option
-
-    val empty: t
-
-
-    (* structure Type: sig *)
     (*   type t *)
-    (*   (* TODO: figure out how much of this needs to be re-implemented *) *)
+
+    (*   val lookup: t * AstBOM.BomId.t -> CoreBOM.BomType.t option *)
+    (*   val extend: t * AstBOM.BomId.t * CoreBOM.BomType.t -> t *)
+    (*   val empty: t *)
     (* end *)
+
+
+    (* (* TODO: refactor these to be a part of the structures above *) *)
+    (* val getTyParamEnv: t -> TyParamEnv.t *)
+    (* val getTyEnv: t -> TyEnv.t *)
+
+    (* val setTyParamEnv: t * TyParamEnv.t -> t *)
+    (* val setTyEnv: t * TyEnv.t -> t *)
+
+    (* val extendTyParamEnv: t * AstBOM.TyParam.t -> t *)
+    (* val extendTyEnv: t * AstBOM.BomId.t * CoreBOM.BomType.t -> t *)
+
+    (* val lookupTyParam: t * AstBOM.TyParam.t -> CoreBOM.TyParam.t option *)
+
+    (* val empty: t *)
+
 
     (* structure Scheme: sig *)
     (*   type t *)
 
-    (*   val getTyvars: t -> Tyvar.t list *)
-    (*   val getTy: t -> Type.t *)
-    (*   val new: Tyvar.t list * Type.t -> t *)
-    (*   val generalizes: t * Type.t -> bool *)
+    (*   val getTyParams: t -> TyParam.t list *)
+    (*   val getTy: t -> CoreBOM.BomType.t *)
+    (*   val generalizes: t * CoreBOM.BomType.t -> bool *)
+
+    (*   val empty: TyParam.t list * CoreBOM.BomType.t -> t *)
     (* end *)
 
     (* structure TyFun: sig *)
@@ -83,7 +82,7 @@ signature ELABORATE_BOMENV =
     (*   val new : TyFun.t * ValEnv.t -> t *)
     (* end *)
 
-    (* structure HLOPEnv: sig *)
+    (* (* structure HLOPEnv: sig *) *)
     (*   type env *)
     (*   type t *)
 
@@ -91,28 +90,44 @@ signature ELABORATE_BOMENV =
     (*   val lookup: t * CoreBOM.HLOpId.t -> Scheme.t option *)
     (* end *)
 
-    (* structure TypeEnv : sig *)
+
+    structure TypeDefn: sig
+      (* type t *)
+
+      (* TODO: make this opaque? *)
+      datatype t
+        = TyAlias of {
+          params: CoreBOM.TyParam.t list,
+          ty: CoreBOM.BomType.t
+        }
+        | TyCon of CoreBOM.TyCon.t
+
+    end
+
+    structure TypeEnv : sig
+      type env
+      type t
+
+      val extend: env * AstBOM.BomType.t -> env
+      val lookup: env * AstBOM.BomType.t -> TypeDefn.t option
+
+      val extendThis: t * AstBOM.BomType.t -> env
+      val lookupThis: t * AstBOM.BomType.t -> TypeDefn.t option
+
+      val empty: t
+    end
+
+    (* structure ValEnv : sig *)
     (*   type env *)
     (*   type t *)
+    (*   val extend: env * CoreBOM.ValId.t * Scheme.t * IdStatus -> unit *)
+    (*   val lookup: env * CoreBOM.Valid -> (Scheme.t * IdStatus) option *)
 
-    (*   val extend: env * CoreBOM.TyCon.t * TyStr.t -> unit *)
-    (*   val lookup: env * CoreBOM.TyCon.t -> TyStr.t option *)
-
-    (*   val extendThis: t * CoreBOM.TyCon.t * TyStr.t -> unit *)
-    (*   val lookupThis: t * CoreBOM.TyCon.t -> TyStr.t option *)
-
+    (*   val extendThis: t * CoreBOM.ValId.t * Scheme.t * IdStatus -> unit *)
+    (*   val lookupThis: t * CoreBOM.ValId.t -> (Scheme.t * IdStatus) option *)
     (* end *)
 
-  (*   structure ValEnv : sig *)
-  (*     type env *)
-  (*     type t *)
-  (*     val extend: env * CoreBOM.ValId.t * Scheme.t * IdStatus -> unit *)
-  (*     val lookup: env * CoreBOM.Valid -> (Scheme.t * IdStatus) option *)
 
-  (*     val extendThis: t * CoreBOM.ValId.t * Scheme.t * IdStatus -> unit *)
-  (*     val lookupThis: t * CoreBOM.ValId.t -> (Scheme.t * Idstatus) option *)
-  (*   end *)
-
-
+  sharing type TypeEnv.env = TyParamEnv.env = t
   (* sharing type ValEnv.env = TypeEnv.t = HLOpEnv.t = t *)
   end

@@ -1,4 +1,5 @@
-(* Need to break this  *)
+(* Need to break this off into a separate file so that smlnj-lib.cm
+can be pulled in *)
 
 Group
 

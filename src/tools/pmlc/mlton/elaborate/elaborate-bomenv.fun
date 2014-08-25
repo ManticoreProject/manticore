@@ -2,6 +2,7 @@ signature ENV_MAP_PARAMS = sig
   type key
   type value
   val compare: key * key -> order
+  val make: key -> value
 end
 
 
@@ -21,12 +22,10 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
       type t = value Map.map
 
-      val lookup: value Map.map * key -> value option
-      val extend: value Map.map * key * value -> value Map.map
+      val lookupThis: value Map.map * key -> value option
+      val extendThis: value Map.map * key -> value Map.map
       val empty: value Map.map
 
-      (* Why is this a syntax error? *)
-      (* sharing type t = value Map.map *)
     end = struct
       open S
 
@@ -39,10 +38,40 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
       type t = value Map.map
 
-      val lookup = Map.find
-      val extend = Map.insert
+      val lookupThis = Map.find
+      val extendThis = Map.insert
       val empty = Map.empty
     end
+
+
+
+  structure TypeDefn = struct
+    datatype t
+      = TyAlias of {
+          params: CoreBOM.TyParam.t list,
+          ty: CoreBOM.BomType.t
+      }
+      | TyCon of CoreBOM.TyCon.t
+  end
+
+
+  structure TyEnvMap = EnvMap (struct
+    type key = AstBOM.BomId.t
+    type value = TypeDefn.t
+    val compare = AstBOM.BomId.compare
+  end)
+
+  type tyEnv = typeDefn TyEnvMap.map
+
+  structure TyParamEnvMap = EnvMap (struct
+    type key = AstBOM.TyParam.t
+    type value = CoreBOM.TyParam.t
+    val compare = AstBOM.TyParam.compare
+  end)
+
+  type tyParamEnv = CoreBOM.TyParam.t TyParamEnvMap.map
+
+  datatype env = T of {tyEnv: tyEnv, tyParamEnv: tyParamEnv}
 
   structure TyParamEnv = struct
     (* structure Key: ORD_KEY = struct *)
@@ -58,46 +87,46 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     (* val new = fn () => Map.empty *)
 
     local
-      structure EnvMap = EnvMap (struct
-        type key = AstBOM.TyParam.t
-        type value = CoreBOM.TyParam.t
-        val compare = AstBOM.TyParam.compare
-      end)
+      structure EnvMap = TyParamEnvMap
     in
       open EnvMap
     end
 
-    fun extend (self: t, newEl: Key.ord_key) =
+    fun extendThis (self: t, newEl: Key.ord_key) =
       let
         val key = newEl
         val value = CoreBOM.TyParam.fromAst (newEl: AstBOM.TyParam.t)
       in
         Map.insert (self, key, value)
       end
+
+    local
+      fun getTyParamEnv (env: env) = #tyParamEnv env
+    in
+      val lookup = lookupThis o getTyParamEnv
+
+      fun extend({tyEnv = tyEnv', tyParamEnv = tyParamEnv'}, newParam) =
+        {tyEnv = tyEnv', tyParamEnv = extendThis (tyParamEnv', newParam)}
+
     end
+  end
 
   structure TyEnv = struct
+    type t = tyEnv
+
   (* TODO: make this handle other kinds of IDs *)
-    (* structure Key: ORD_KEY = struct *)
-    (*   type ord_key = AstBOM.BomId.t *)
-    (*   val compare = AstBOM.BomId.compare *)
-    (* end *)
-
-    (* structure Map = RedBlackMapFn (Key) *)
-
-    (* type t = CoreBOM.BomType.t Map.map *)
-
-    (* val lookup = Map.find *)
-    (* val new = fn () => Map.empty *)
-    (* val extend = Map.insert *)
     local
-      structure EnvMap = EnvMap (struct
-        type key = AstBOM.BomId.t
-        type value = CoreBOM.BomType.t
-        val compare = AstBOM.BomId.compare
-      end)
+      structure EnvMap = TyEnvMap
     in
       open EnvMap
+    end
+
+    local
+      fun getTyEnv (env: env) = #tyEnv env
+    in
+      val lookup  = lookupThis o getTyEnv
+      fun extend ({tyEnv = tyEnv', tyParamEnv = tyParamEnv'}, newTy): env =
+        {tyEnv = extendThis (tyEnv', newTy), tyParamEnv = tyParamEnv'}
     end
   end
 
@@ -122,26 +151,26 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
   (*   fun generalizes (scheme: t, ty: CoreBOM.BomType.t): bool = *)
   (* end *)
 
-  datatype t = T of {tyParamE: TyParamEnv.t, tyE: TyEnv.t}
+  (* datatype t = T of {tyParamE: TyParamEnv.t, tyE: TyEnv.t} *)
 
-  fun getTyParamEnv (T {tyParamE = tyParamE', tyE = tyE'}) = tyParamE'
-  fun getTyEnv (T {tyParamE = tyParamE', tyE = tyE'}) = tyE'
+  (* fun getTyParamEnv (T {tyParamE = tyParamE', tyE = tyE'}) = tyParamE' *)
+  (* fun getTyEnv (T {tyParamE = tyParamE', tyE = tyE'}) = tyE' *)
 
-  fun setTyParamEnv (T {tyParamE = tyParamE', tyE = tyE'}, newEnv) =
-    T {tyParamE = newEnv, tyE = tyE'}
-  fun setTyEnv (T {tyParamE = tyParamE', tyE = tyE'}, newEnv) =
-    T {tyParamE = tyParamE', tyE = newEnv}
+  (* fun setTyParamEnv (T {tyParamE = tyParamE', tyE = tyE'}, newEnv) = *)
+  (*   T {tyParamE = newEnv, tyE = tyE'} *)
+  (* fun setTyEnv (T {tyParamE = tyParamE', tyE = tyE'}, newEnv) = *)
+  (*   T {tyParamE = tyParamE', tyE = newEnv} *)
 
-  val empty = T {tyParamE = TyParamEnv.empty, tyE = TyEnv.empty}
+  (* val empty = T {tyParamE = TyParamEnv.empty, tyE = TyEnv.empty} *)
 
-  fun extendTyParamEnv (T {tyParamE = tyParamE', tyE = tyE'}, newParam) =
-    T {tyParamE = TyParamEnv.extend (tyParamE', newParam), tyE = tyE'}
+  (* fun extendTyParamEnv (T {tyParamE = tyParamE', tyE = tyE'}, newParam) = *)
+  (*   T {tyParamE = TyParamEnv.extend (tyParamE', newParam), tyE = tyE'} *)
 
-  fun extendTyEnv (T {tyParamE = tyParamE', tyE = tyE'}, newId, newTy) =
-    T {tyParamE = tyParamE', tyE = TyEnv.extend (tyE', newId, newTy)}
+  (* fun extendTyEnv (T {tyParamE = tyParamE', tyE = tyE'}, newId, newTy) = *)
+  (*   T {tyParamE = tyParamE', tyE = TyEnv.extend (tyE', newId, newTy)} *)
 
 
-  fun lookupTyParam (env: t, tyParam) =
-    TyParamEnv.lookup ((getTyParamEnv env), tyParam)
-
+  (* fun lookupTyParam (env: t, tyParam) = *)
+  (*   TyParamEnv.lookup ((getTyParamEnv env), tyParam) *)
+  type t = env
 end
