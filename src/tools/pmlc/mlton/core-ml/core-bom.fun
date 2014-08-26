@@ -363,6 +363,35 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     (*   fun swap (t  *)
     (* in *)
 
+    local
+      structure TyParamSet = RedBlackSetFn (struct
+        type ord_key = TyParam.t
+        val compare = TyParam.compare
+      end)
+    in
+      fun allTyParams (ty, acc) =
+        let
+          fun foldTyList (tys, acc') =
+            foldr
+              (fn (ty', acc') => (allTyParams (ty', []))@acc')
+              acc'
+              tys
+        in
+          case node ty of
+            Param p => p::acc
+          | Tuple tys =>
+              foldTyList (tys, acc)
+          | Fun {dom, cont, rng} =>
+              List.concat (map (fn x => foldTyList (x, [])) [dom, cont, rng])
+          | Cont tys => foldTyList (tys, acc)
+          | Addr ty' => allTyParams (ty', acc)
+          (* TODO: record, tycon *)
+        end
+      fun uniqueTyParams ty =
+        TyParamSet.addList (TyParamSet.empty, allTyParams (ty, []))
+      val arity = TyParamSet.numItems o uniqueTyParams
+    end
+
     (* swap out the named TyParam for the given type *)
     fun applyArg (ty: t, toSwap: TyParam.t, swapFor: t): t =
       let
@@ -381,7 +410,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         (* | Record fields =>    (* TODO: deal with fields *) *)
         (*     Record (map applyArg fields) *)
         | Tuple ts => Tuple (doApplys ts)
-        | Fun {dom = dom, cont = cont, rng = rng} => Fun {
+        | Fun {dom, cont, rng} => Fun {
             dom = doApplys dom,
             cont = doApplys cont,
             rng = doApplys rng

@@ -32,8 +32,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       case AstBOM.BomType.node astTy of
         AstBOM.BomType.Param tyParam =>
           check
-            (* (fn x => CoreBOM.BomType.keepRegion ((fn _ => AstBOM.BomType.Param x), *)
-            (*   AstBOM.BomType.dest astTy)) *)
             (fn _ => CoreBOM.BomType.fromAst astTy)
             (BOMEnv.TyParamEnv.lookup (bomEnv, tyParam), "typaram not found")
       | AstBOM.BomType.Tuple tys =>
