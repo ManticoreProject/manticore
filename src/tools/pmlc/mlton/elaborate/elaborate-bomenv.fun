@@ -42,18 +42,46 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     end
 
 
+  structure TyAlias = struct
+    type t = {
+      params: CoreBOM.TyParam.t list,
+      ty: CoreBOM.BomType.t
+    }
+
+    fun arity ({params = params, ...}: t) = length params
+
+    fun applyToArgs ({params = params, ty = ty}: t, args) =
+      ListPair.foldr
+        (fn (toSwap, swapFor, ty') =>
+          CoreBOM.BomType.applyArg (ty', toSwap, swapFor))
+        ty
+        (params, args)
+
+    val error: t = {
+      params = [],
+      ty = CoreBOM.BomType.makeRegion (
+        CoreBOM.BomType.Error,
+        Region.bogus)
+    }
+  end
+
 
   structure TypeDefn = struct
     datatype t
-      = TyAlias of {
-          params: CoreBOM.TyParam.t list,
-          ty: CoreBOM.BomType.t
-      }
-      | TyCon of CoreBOM.TyCon.t
+      = Alias of TyAlias.t
+      | Con of CoreBOM.TyCon.t
 
-    fun arity typeDefn =
-      case typeDefn of
-        TyAlias {params = params, ty = ty} => List.length params
+    fun arity defn =
+      case defn of
+        Alias alias => TyAlias.arity alias
+    (* TODO: other case *)
+
+    fun applyToArgs (defn, args) =
+      case defn of
+        Alias alias => TyAlias.applyToArgs (alias, args)
+    (* TODO: other case *)
+
+    val error = Alias TyAlias.error
   end
 
 
@@ -121,8 +149,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
       fun extend (T {tyEnv = tyEnv, tyParamEnv = tyParamEnv}: env,
           bomId,
           newTy): env =
-        ((print ("Made a new binding."));
-        T {tyEnv = extendThis (tyEnv, bomId, newTy), tyParamEnv = tyParamEnv})
+        T {tyEnv = extendThis (tyEnv, bomId, newTy), tyParamEnv = tyParamEnv}
     end
   end
 

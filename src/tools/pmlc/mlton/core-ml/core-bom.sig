@@ -103,9 +103,9 @@ signature CORE_BOM =
       type t
       datatype node
         = TyC of {
-          id: BomId.t,
-          definition: DataConsDef.t list ref,
-          params: TyParam.t list
+            id: BomId.t,
+            definition: DataConsDef.t list ref,
+            params: TyParam.t list
         }
 
       include WRAPPED
@@ -119,16 +119,16 @@ signature CORE_BOM =
       datatype node
         = Param of TyParam.t
         | TyCon of {
-              cons: TyCon.t,
-              args: t list
-            }
+            con: TyCon.t,
+            args: t list
+          }
         | Record of Field.t list
         | Tuple of t list
         | Fun of {
-              dom: t list,
-              cont: t list,
-              rng: t list
-            }
+            dom: t list,
+            cont: t list,
+            rng: t list
+          }
         | Any
         | VProc
         | Cont of t list
@@ -141,6 +141,7 @@ signature CORE_BOM =
       val errorFromAst: AstBOM.BomType.t -> t
       val keepRegion: ('a -> node) * ('a * Region.t) -> t
 
+      val applyArg: t * TyParam.t * t -> t
 
       include WRAPPED
         sharing type node' = node

@@ -12,6 +12,7 @@ $/basis.cm
 $/smlnj-lib.cm
 ../ast/sources.cm
 ../core-ml/sources.cm
+../control/sources.cm
 
 elaborate-bomenv.sig
 elaborate-bomenv.fun

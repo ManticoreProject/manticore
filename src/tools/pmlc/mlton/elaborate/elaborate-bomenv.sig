@@ -17,15 +17,26 @@ signature ELABORATE_BOMENV =
     (* | Exn                       (* exception *) *)
     (* | Con                       (* constructor *) *)
 
+    structure TyAlias: sig
+      type t = {
+        params: CoreBOM.TyParam.t list,
+        ty: CoreBOM.BomType.t
+      }
+
+      val applyToArgs: t * CoreBOM.BomType.t list -> CoreBOM.BomType.t
+      val arity: t -> int
+      val error: t
+    end
+
     structure TypeDefn: sig
       (* TODO: make this opaque? *)
       datatype t
-        = TyAlias of {
-          params: CoreBOM.TyParam.t list,
-          ty: CoreBOM.BomType.t
-        }
-        | TyCon of CoreBOM.TyCon.t
+        = Alias of TyAlias.t
+        | Con of CoreBOM.TyCon.t
 
+      val applyToArgs: t * CoreBOM.BomType.t list -> CoreBOM.BomType.t
+      val arity: t -> int
+      val error: t
     end
 
 

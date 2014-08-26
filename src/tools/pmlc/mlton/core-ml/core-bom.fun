@@ -168,7 +168,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   and type_node
     = Param of TyParam.t
     | TyCon of {
-        cons: tycon_t,
+        con: tycon_t,
         args: type_t list
       }
     | Record of field_t list
@@ -345,6 +345,55 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     val keepRegion = keepRegion
     fun errorFromAst astTy =
       keepRegion (fn x => Error, AstBOM.BomType.dest astTy)
+
+
+    (* local  *)
+    (*   fun walk (ty: t, applyTo: t -> 'a) =  *)
+    (*     case node ty of  *)
+    (*       Param p => applyTo p *)
+    (*     | TyCon con => applyTo con *)
+    (*     | Record fields => applyTo fields *)
+    (*     | Tuple ts => applyTo ts *)
+    (*     | Fun f => applyTo f *)
+    (*     | Cont ts => applyTo ts *)
+    (*     | Addr t => applyTo t *)
+    (*     | Raw raw => applyTo raw *)
+    (*     | _ => _ *)
+
+    (*   fun swap (t  *)
+    (* in *)
+
+    (* swap out the named TyParam for the given type *)
+    fun applyArg (ty: t, toSwap: TyParam.t, swapFor: t): t =
+      let
+        fun swap (param: TyParam.t): node =
+          case TyParam.compare (param, toSwap) of
+            EQUAL => node swapFor
+          | _ => Param param
+        fun doApply ty' = applyArg (ty', toSwap, swapFor)
+        fun doApplys tys = map doApply tys
+      in
+        makeRegion (case node ty of
+          Param p => swap p
+        (* | TyCon {con = con, args = args} => *)
+        (*     TyCon {con = doApply con, args = doApplys args} *)
+         (* TODO: deal with tycons *)
+        (* | Record fields =>    (* TODO: deal with fields *) *)
+        (*     Record (map applyArg fields) *)
+        | Tuple ts => Tuple (doApplys ts)
+        | Fun {dom = dom, cont = cont, rng = rng} => Fun {
+            dom = doApplys dom,
+            cont = doApplys cont,
+            rng = doApplys rng
+          }
+        | Cont tys => Cont (doApplys tys)
+        | Addr t => Addr (doApply t)
+        (* | Raw raw => applyArg raw *)
+        | x => x,
+        region ty)
+      end
+
+
   end
 
 
