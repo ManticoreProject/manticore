@@ -1,3 +1,3 @@
 _module myId (
-  type myType <'a, 'b> = any;
+  type myType = any;
 )

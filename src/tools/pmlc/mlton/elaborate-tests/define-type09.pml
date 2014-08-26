@@ -1,3 +1,3 @@
 _module myId (
-  type myType <'a, 'b> = addr<'a>;
+  type myType <'a> = addr<'a>;
 )
