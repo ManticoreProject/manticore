@@ -20,17 +20,20 @@ signature CORE_BOM =
     end
 
     structure TyParam: sig
-      include TYVAR
+      type t
 
-      (* val fromAst: AstBOM.TyParam.t -> t *)
-      (* val flattenFromAst: AstBOM.TyParams.t option -> AstBOM.TyParam.t list *)
+      val fromAst: AstBOM.TyParam.t -> t
+      val flattenFromAst: AstBOM.TyParams.t option -> AstBOM.TyParam.t list
+      val hash: t -> int
+      val name: t -> string
+      val compare: t * t -> order
+
+      include WRAPPED
+        sharing type obj = t
+        (* sharing type node' = node *)
     end
 
     structure PrimOp: sig
-    end
-
-    structure LongTyId: sig
-      type t
     end
 
     structure LongConId: sig
@@ -46,12 +49,20 @@ signature CORE_BOM =
     structure SymbolicId: sig
     end
 
-    (* we're going to collapse everything to a BomId now. *)
     structure BomId: sig
       type t
 
-      (* val fromAst: AstBOM.BomId.t -> t *)
-      (* TODO: convert from other identifier types to this *)
+      val fromAst: AstBOM.BomId.t -> t
+      val toString: t -> string
+    end
+
+    structure LongTyId: sig
+      type t
+
+      val fromAst: AstBOM.LongTyId.t -> t
+      val toString: t -> string
+      val hasQualifier: t -> bool
+      val truncate: t -> BomId.t
     end
 
 
@@ -125,10 +136,10 @@ signature CORE_BOM =
         | Raw of RawTy.t
         | Error
 
-      (* val fromAst: AstBOM.BomType.t -> t *)
-      (* val arity: t -> int *)
-      (* val errorFromAst: AstBOM.BomType.t -> t *)
-      (* val keepRegion: ('a -> node) * ('a * Region.t) -> t *)
+      val fromAst: AstBOM.BomType.t -> t
+      val arity: t -> int
+      val errorFromAst: AstBOM.BomType.t -> t
+      val keepRegion: ('a -> node) * ('a * Region.t) -> t
 
 
       include WRAPPED
@@ -139,8 +150,8 @@ signature CORE_BOM =
     structure TyArgs: sig
       type t
 
-      (* val getTypes: t -> BomType.t list *)
-      (* val flattenFromAst: AstBOM.TyArgs.t option -> AstBOM.BomType.t list *)
+      val getTypes: t -> BomType.t list
+      val flattenFromAst: AstBOM.TyArgs.t option -> AstBOM.BomType.t list
     end
 
     structure DataTypeDef: sig
@@ -198,6 +209,20 @@ signature CORE_BOM =
     (*   (* val fromDataConsDef: DataConsDef.t -> t *) *)
     (*   (* val fromDataTypeDef: DataTypeDef.t -> t *) *)
     (* end *)
+
+    structure TyId: sig
+      datatype t
+        = BomTy of BomId.t
+        | QBomTy of LongTyId.t
+        (* | MLTy *)
+
+      val fromAstBomId: AstBOM.BomId.t -> t
+      val fromLongTyId: AstBOM.LongTyId.t -> t
+
+      val toString: t -> string
+      val compare: t * t -> order
+    end
+
 
     structure ValId : sig
       (* type t *)
