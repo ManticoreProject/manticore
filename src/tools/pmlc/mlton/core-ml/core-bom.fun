@@ -385,6 +385,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
               List.concat (map (fn x => foldTyList (x, [])) [dom, cont, rng])
           | Cont tys => foldTyList (tys, acc)
           | Addr ty' => allTyParams (ty', acc)
+          | _ => acc
           (* TODO: record, tycon *)
         end
       fun uniqueTyParams ty =
