@@ -4,10 +4,12 @@ import subprocess
 import re
 import logging
 import glob
+import argparse
+import os
 
 from sys import argv
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 LOG = logging.getLogger(__name__)
 
 class SMLFailure(Exception):
@@ -59,6 +61,9 @@ class SMLOutput:
         LOG.debug("Index: {}".format(self.out.find(reason)))
         LOG.debug("Failed correctly? {}".format(reason in self.out))
         return reason in self.out
+
+    def short_output(self):
+        return self.out.split("[New bindings added.]")[1]
 
 class SMLProgram:
     SML_CMD = "sml"
@@ -175,6 +180,7 @@ class Directory:
     def test_file(self, path):
         file_ = SMLFile(path)
         out = self._output_for_path(path)
+        LOG.info("Output: {}".format(out.short_output()))
         self._log_result(file_.passes_on_output(out), path)
 
     def _output_for_path(self, path):
@@ -208,8 +214,35 @@ class Directory:
 
 
 if __name__ == '__main__':
-    test_dir = Directory(argv[1])
-    if len(argv) > 2:
-        test_dir.test_file(argv[2])
-    else:
+    arg_parser = argparse.ArgumentParser(description="Run Manticore tests.")
+    arg_parser.add_argument(
+        "-d", "--directory",
+        dest="dir_",
+        action="store",
+        default=None,
+        help="Directory containing test files.")
+    arg_parser.add_argument(
+        "-f", "--file",
+        dest="file_",
+        action="store",
+        default=None,
+        help="Single file to test.")
+    arg_parser.add_argument(
+        "-v", "--verbose",
+        dest="verbose",
+        action="store_true",
+        default=False,
+        help="Enable verbose output.")
+
+    args = arg_parser.parse_args()
+
+    if args.verbose:
+        LOG.setLevel(logging.INFO)
+
+    if args.dir_:
+        test_dir = Directory(args.dir_)
         test_dir.test()
+    elif args.file_:
+        # file_, dir_ = os.path.split(args.file_) *)
+        test_dir = Directory(None)
+        test_dir.test_file(args.file_)
