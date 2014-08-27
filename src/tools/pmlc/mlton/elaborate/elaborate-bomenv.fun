@@ -153,7 +153,6 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     end
   end
 
-
   val empty = T {tyEnv = TyEnv.empty, tyParamEnv = TyParamEnv.empty}
 
 end
