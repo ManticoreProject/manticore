@@ -6,7 +6,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor Elaborate (S: ELABORATE_STRUCTS): ELABORATE = 
+functor Elaborate (S: ELABORATE_STRUCTS): ELABORATE =
 struct
 
 open S
@@ -21,10 +21,20 @@ in
    structure Decs = Decs
 end
 
+structure CoreBOM = CoreBOM (
+  structure Ast = Ast)
+structure BOMEnv = BOMEnv (
+  structure Ast = Ast
+  structure CoreBOM = CoreBOM)
+
+
+
 structure ElaborateMLBs = ElaborateMLBs (structure Ast = Ast
                                          structure CoreML = CoreML
+                                         structure CoreBOM = CoreBOM
                                          structure Decs = Decs
-                                         structure Env = Env)
+                                         structure Env = Env
+                                         structure BOMEnv = BOMEnv)
 
 open ElaborateMLBs
 end

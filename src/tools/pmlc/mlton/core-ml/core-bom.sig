@@ -1,7 +1,9 @@
 signature CORE_BOM_STRUCTS =
   sig
     (* structure Region: REGION (* sharing type Region.t = Region.Wrap.region *) *)
-    structure Ast: AST (* sharing Ast.AstBOM.Region = Region *)
+    structure Ast: AST
+
+
 
     (* sharing Region = Ast.AstBOM.Region *)
   end
@@ -10,7 +12,7 @@ signature CORE_BOM =
   sig
     include CORE_BOM_STRUCTS
 
-    structure AstBOM: AST_BOM
+    structure AstBOM: AST_BOM sharing AstBOM = Ast.AstBOM
 
     (* For now, we copy over the structures we had from ast-bom, but
     leave their signatures blank. They can be filled in as needed,
@@ -53,7 +55,12 @@ signature CORE_BOM =
       type t
 
       val fromAst: AstBOM.BomId.t -> t
+      (* val fromStrid: AstBOM.Strid.t * Region.t -> t *)
       val toString: t -> string
+      val bogus: t
+
+      include WRAPPED
+        sharing type obj = t
     end
 
     structure LongTyId: sig
@@ -136,7 +143,7 @@ signature CORE_BOM =
         | Raw of RawTy.t
         | Error
 
-      val fromAst: AstBOM.BomType.t -> t
+      val fromAst: AstBOM.BomType.t -> t (* TOOD: KILL THIS *)
       val arity: t -> int
       val errorFromAst: AstBOM.BomType.t -> t
       val keepRegion: ('a -> node) * ('a * Region.t) -> t
@@ -165,8 +172,6 @@ signature CORE_BOM =
     structure CReturnTy: sig
     end
 
-
-
     structure VarPat: sig
     end
 
@@ -194,36 +199,37 @@ signature CORE_BOM =
     structure Definition: sig
     end
 
-    structure HLOp : sig
+    structure HLOp: sig
       (* collapse HLOp(Q)Id together here *)
     end
 
-    (* structure TyVar : sig *)
-    (*   type t *)
-    (* end *)
+    structure ModuleId: sig
+      type t
 
-    (* structure TyCon : sig *)
-    (*   (* type t *) *)
+      val compare: t * t -> order
+      val fromLongTyId: AstBOM.LongTyId.t -> t
+      val fromLongTyId': AstBOM.LongTyId.t -> t * BomId.t
+      val fromBomId: AstBOM.BomId.t -> t
+      val toString: t -> string
+      val bogus: t
+    end
 
-    (*   (* val fromBomType: BomType.t -> t *) *)
-    (*   (* val fromLongTyId: LongTyId.t -> t *) *)
-    (*   (* val fromDataConsDef: DataConsDef.t -> t *) *)
-    (*   (* val fromDataTypeDef: DataTypeDef.t -> t *) *)
-    (* end *)
 
     structure TyId: sig
       datatype t
         = BomTy of BomId.t
-        | QBomTy of LongTyId.t
+        | QBomTy of ModuleId.t * BomId.t
         (* | MLTy *)
 
       val fromAstBomId: AstBOM.BomId.t -> t
       val fromLongTyId: AstBOM.LongTyId.t -> t
 
+      (* Add the given qualifier only if it doesn't yet have one *)
+      val maybeQualify: t * ModuleId.t -> t
+
       val toString: t -> string
       val compare: t * t -> order
     end
-
 
     structure ValId : sig
       (* type t *)

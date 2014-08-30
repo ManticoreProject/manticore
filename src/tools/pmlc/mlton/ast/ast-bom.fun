@@ -105,20 +105,20 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   structure LongTyId = Longid (
     structure Id = BomId
-    structure Strid = Strid
+    structure Strid = BomId
     structure Symbol = Symbol)
   structure LongConId = Longid (
     structure Id = BomId
-    structure Strid = Strid
+    structure Strid = BomId
     structure Symbol = Symbol)
   structure LongValueId = Longid (
     structure Id = BomId
-    structure Strid = Strid
+    structure Strid = BomId
     structure Symbol = Symbol)
 
   structure HLOpQId = Longid (
     structure Id = HLOpId
-    structure Strid = Strid
+    structure Strid = BomId
     structure Symbol = Symbol)
 
     (* Non-recursive types, part 1 -- types that do not depend on recursive types *)

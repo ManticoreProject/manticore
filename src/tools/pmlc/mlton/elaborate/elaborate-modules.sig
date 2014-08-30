@@ -7,24 +7,21 @@
  * See the file MLton-LICENSE for details.
  *)
 
-signature ELABORATE_MODULES_STRUCTS = 
+signature ELABORATE_MODULES_STRUCTS =
    sig
-      structure Ast: AST
-      structure CoreML: CORE_ML
-      structure Decs: DECS
-      structure Env: ELABORATE_ENV
-      sharing Ast = Env.Ast
-      sharing Ast.Tyvar = CoreML.Tyvar
-      sharing CoreML = Decs.CoreML = Env.CoreML
-      sharing Decs = Env.Decs
+     include ELABORATE_COMMON
    end
 
-signature ELABORATE_MODULES = 
+signature ELABORATE_MODULES =
    sig
       include ELABORATE_MODULES_STRUCTS
 
-      (* Elaborate Topdec in env, returning Core ML decs. *)
-      val elaborateTopdec: Ast.Topdec.t * {env: Env.t} -> Decs.t
+      (* Elaborate Topdec in env, returning Core ML decs and a
+      BOMEnv. While Env.t is mutable, BOMEnv.t is not, and so it needs
+      to be kept and passed to the next iteration. *)
+
+      val elaborateTopdec:
+        Ast.Topdec.t * {env: Env.t, bomEnv: BOMEnv.t} -> (Decs.t * BOMEnv.t)
       val reportSequenceNonUnit: unit -> unit
       val reportUndeterminedTypes: unit -> unit
       val reportUnresolvedFlexRecords: unit -> unit

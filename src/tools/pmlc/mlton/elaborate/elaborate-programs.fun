@@ -7,7 +7,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor ElaboratePrograms (S: ELABORATE_PROGRAMS_STRUCTS): ELABORATE_PROGRAMS = 
+functor ElaboratePrograms (S: ELABORATE_PROGRAMS_STRUCTS): ELABORATE_PROGRAMS =
 struct
 
 structure List = MLtonList
@@ -20,19 +20,27 @@ in
    val resolveScope = fn () => current resolveScope
 end
 
-structure ElaborateModules = ElaborateModules (structure Ast = Ast
-                                               structure CoreML = CoreML
-                                               structure Decs = Decs
-                                               structure Env = Env)
+structure ElaborateModules = ElaborateModules (S)
 
-fun elaborateProgram (program, {env = E: Env.t}) =
+
+
+fun elaborateProgram (program, {env = E: Env.t, bomEnv: BOMEnv.t}) =
    let
-      val Ast.Program.T decs = Ast.Program.coalesce program 
-      fun elabTopdec d = ElaborateModules.elaborateTopdec (d, {env = E})
-      val decs =
-         List.fold (decs, Decs.empty, fn (ds, decs) =>
-                    List.fold (ds, decs, fn (d, decs) =>
-                               Decs.append (decs, elabTopdec d)))
+      val Ast.Program.T decs = Ast.Program.coalesce program
+      fun elabTopdec (d, bEnv) = ElaborateModules.elaborateTopdec (
+        d, {env = E, bomEnv = bEnv})
+      (* fun elabDecAndEnrichEnv (dec, bEnv) =  *)
+      (*   let  *)
+      (*     val (newDecs, newEnv) =  *)
+      (* we throw away the BOMEnv after this, since we no longer need it *)
+      val (decs, _) =
+         List.fold (decs, (Decs.empty, bomEnv), fn (ds, (decs, bEnv)) =>
+                    List.fold (ds, (decs, bEnv), fn (d, (decs, bEnv')) =>
+                      let
+                        val (newDecs, newEnv) = elabTopdec (d, bEnv')
+                      in
+                        (Decs.append (decs, newDecs), newEnv)
+                      end))
       val () =
          case resolveScope () of
             Control.Elaborate.ResolveScope.Program =>

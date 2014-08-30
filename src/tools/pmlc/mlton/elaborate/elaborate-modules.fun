@@ -17,19 +17,7 @@ structure Vector = MLtonVector
 open S
 
 (* TODO: figure out where the best place to instantiate this is *)
-structure CoreBOM = CoreBOM (
-  structure Ast = Ast)
-structure BOMEnv = BOMEnv (
-  structure Ast = Ast
-  structure CoreBOM = CoreBOM)
-structure ElaborateBOMCore = ElaborateBOMCore (
-  structure Ast = Ast
-  structure CoreBOM = CoreBOM
-  structure Decs = Decs
-  structure BOMEnv = BOMEnv
-  structure Env = Env
-  structure CoreML = CoreML)
-structure AstBOM = Ast.AstBOM
+
 
 local
    open Control.Elaborate
@@ -68,11 +56,21 @@ structure ElaborateCore = ElaborateCore (structure Ast = Ast
                                          structure Decs = Decs
                                          structure Env = Env)
 
+structure ElaborateBOMCore = ElaborateBOMCore (
+  structure Ast = Ast
+  structure CoreBOM = CoreBOM
+  structure Decs = Decs
+  structure BOMEnv = BOMEnv
+  structure Env = Env
+  structure CoreML = CoreML)
+
+structure AstBOM = Ast.AstBOM
+
 val elabStrdecInfo = Trace.info "ElaborateModules.elabStrdec"
 val elabStrexpInfo = Trace.info "ElaborateModules.elabStrexp"
 val elabTopdecInfo = Trace.info "ElaborateModules.elabTopdec"
 
-fun elaborateTopdec (topdec, {env = E: Env.t}) =
+fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
    let
       fun elabSigexp s = ElaborateSigexp.elaborateSigexp (s, {env = E})
       fun elabSigexpConstraint (cons: SigConst.t,
@@ -257,10 +255,11 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
                                     (Env.extendStrid (E, arg, formal)
                                      ; elabStrexp (body, nest)))))
          end
-      fun elabTopdec arg: Decs.t =
-         Trace.traceInfo' (elabTopdecInfo,
-                           Topdec.layout,
-                           Decs.layout)
+      fun elabTopdec arg: (Decs.t * BOMEnv.t) =
+         (* TODO: I had to disable this to add in the BOMEnv, fix it later *)
+         (* Trace.traceInfo' (elabTopdecInfo, *)
+         (*                   Topdec.layout, *)
+         (*                   Decs.layout) *)
          (fn (d: Topdec.t) =>
           let
              val decs =
@@ -276,9 +275,9 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
                             (sigbinds, fn (sigid, I) =>
                              Option.app (I, fn I => Env.extendSigid (E, sigid, I)))
                       in
-                         Decs.empty
+                         (Decs.empty, bomEnv)
                       end
-                 | Topdec.Strdec d => elabStrdec (d, [])
+                 | Topdec.Strdec d => (elabStrdec (d, []), bomEnv)
                  | Topdec.Functor funbinds =>
                       (* Rules 85, 86. Appendix A, p.58 *)
                       let
@@ -300,15 +299,15 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
                           *)
                          val () = Control.checkForErrors "elaborate"
                       in
-                         Decs.empty
+                         (Decs.empty, bomEnv)
                       end
                 | Topdec.PrimModule (id, bomDecs) =>
                   let
                     fun loop (index,
                         currentEnv: BOMEnv.t,
-                        acc: Decs.dec list): Decs.t =
+                        acc: Decs.dec list): (Decs.t * BOMEnv.t) =
                       if index >= (Vector.length bomDecs) then
-                        Decs.fromList (rev acc)
+                        (Decs.fromList (rev acc), currentEnv)
                       else
                         let
                           val (newDec: Decs.dec, newEnv: BOMEnv.t) =
@@ -318,12 +317,13 @@ fun elaborateTopdec (topdec, {env = E: Env.t}) =
                         in
                           loop (index + 1, newEnv, newDec::acc)
                         end
-                    val res = loop (0, BOMEnv.empty, [])
+                    val namedEnv = BOMEnv.setName' (bomEnv, id)
+                    val (newDecs, newEnv) = loop (0, namedEnv, [])
                     val () = Control.checkForErrors "elaborate"
                   in
-                    Decs.empty
+                  (* TODO: return something real here *)
+                    (Decs.empty, newEnv)
                   end
-          (* TODO: add case for _module *)
             val () =
                case resolveScope () of
                   Control.Elaborate.ResolveScope.Topdec =>

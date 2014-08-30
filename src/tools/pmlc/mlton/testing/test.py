@@ -9,8 +9,11 @@ import os
 
 from sys import argv
 
-logging.basicConfig(level=logging.WARNING)
+FORMAT = "%(levelname)s: %(message)s"
+logging.basicConfig(level=logging.WARN, format=FORMAT)
 LOG = logging.getLogger(__name__)
+verbose_logger = logging.getLogger("verbose")
+veryverbose_logger = logging.getLogger("veryverbose")
 
 class SMLFailure(Exception):
     pass
@@ -26,7 +29,8 @@ class SMLOutput:
     EXPECTED_FAILURE = "FAIL"
 
     def __init__(self, out_errs):
-        self.out, self.errs = out_errs
+        self._partial_out, self.errs = out_errs
+        self.out = "\n".join(out_errs)
         self.exn_re = re.compile(self.EXN)
         self.error_re = re.compile(self.ERROR)
         self.fail_re = re.compile(self.EXPECTED_FAILURE)
@@ -57,6 +61,7 @@ class SMLOutput:
     # Note that false positives are possible
     def failed_because(self, reason):
         LOG.debug("in output: {}".format(self.out))
+        LOG.debug("with errors: {}".format(self.errs))
         LOG.debug("Checking for reason: {}".format(reason))
         LOG.debug("Index: {}".format(self.out.find(reason)))
         LOG.debug("Failed correctly? {}".format(reason in self.out))
@@ -134,7 +139,7 @@ class Directory:
     PRECOMPILE_ATTEMPTS = 3
     SML_COMPILE = 'CM.make "../sources.cm";'
 
-    RUN_TIMEOUT = 1.5
+    RUN_TIMEOUT = 2
     SML_RUN_FMT = '''CM.make "../sources.cm";
     PMLFrontEnd.init();
     PMLFrontEnd.compilePML {{input=["{}"]}};'''
@@ -180,7 +185,9 @@ class Directory:
     def test_file(self, path):
         file_ = SMLFile(path)
         out = self._output_for_path(path)
-        LOG.info("Output: {}".format(out.short_output()))
+        verbose_logger.info(format(out.short_output()))
+        veryverbose_logger.info(format(out.out))
+
         self._log_result(file_.passes_on_output(out), path)
 
     def _output_for_path(self, path):
@@ -233,11 +240,20 @@ if __name__ == '__main__':
         action="store_true",
         default=False,
         help="Enable verbose output.")
+    arg_parser.add_argument(
+        "-vv", "--veryverbose",
+        dest="veryverbose",
+        action="store_true",
+        default=False,
+        help="Enable very verbose output.")
+
 
     args = arg_parser.parse_args()
 
     if args.verbose:
-        LOG.setLevel(logging.INFO)
+        verbose_logger.setLevel(logging.INFO)
+    if args.veryverbose:
+        veryverbose_logger.setLevel(logging.INFO)
 
     if args.dir_:
         test_dir = Directory(args.dir_)

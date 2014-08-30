@@ -17,6 +17,10 @@ signature ENV_MAP = sig
   val extendThis: t * key * value -> t
   val empty: t
 
+  (* TODO: for easier debugging *)
+  (* val keyToString: key -> string *)
+  (* val valToString: value -> string *)
+
 end
 
 functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
@@ -39,6 +43,10 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
       val lookupThis = Map.find
       val extendThis = Map.insert
       val empty = Map.empty
+
+      (* fun toString (map: t) =  *)
+      (*   let  *)
+      (*     val elements =  *)
     end
 
 
@@ -50,10 +58,10 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
     fun arity ({params = params, ...}: t) = length params
 
-    fun applyToArgs ({params = params, ty = ty}: t, args) =
+    fun applyToArgs ({params, ty}: t, args) =
       ListPair.foldr
-        (fn (toSwap, swapFor, ty') =>
-          CoreBOM.BomType.applyArg (ty', toSwap, swapFor))
+        (fn (toSwap, swapFor, ty) =>
+          CoreBOM.BomType.applyArg (ty, toSwap, swapFor))
         ty
         (params, args)
 
@@ -98,7 +106,12 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     val compare = AstBOM.TyParam.compare
   end)
 
-  datatype t = T of {tyEnv: TyEnvMap.t, tyParamEnv: TyParamEnvMap.t}
+
+  datatype t = T of {
+    tyEnv: TyEnvMap.t,
+    tyParamEnv: TyParamEnvMap.t,
+    currentModule: CoreBOM.ModuleId.t
+  }
 
 
   structure TyParamEnv = struct
@@ -118,10 +131,14 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     local
       fun getTyParamEnv (T env: env): t = #tyParamEnv env
     in
-      val lookup = lookupThis o (fn (env, param) => (getTyParamEnv env, param))
+      fun lookup (env, param) = lookupThis (getTyParamEnv env, param)
 
-      fun extend(T {tyEnv = tyEnv', tyParamEnv = tyParamEnv'}, newParam) =
-        T {tyEnv = tyEnv', tyParamEnv = extendThis (tyParamEnv', newParam)}
+      fun extend(T {tyEnv, tyParamEnv, currentModule}, newParam) =
+        T {
+          tyEnv = tyEnv,
+          tyParamEnv = extendThis (tyParamEnv, newParam),
+          currentModule = currentModule
+        }
 
       fun getParams (env: env) =
          let
@@ -144,15 +161,56 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
     local
       fun getTyEnv (T env: env): t = #tyEnv env
+      fun maybeQualify (ty: CoreBOM.TyId.t, T env: env) =
+        CoreBOM.TyId.maybeQualify(ty, #currentModule env)
     in
-      val lookup  = lookupThis o (fn (env, ty) => (getTyEnv env, ty))
-      fun extend (T {tyEnv = tyEnv, tyParamEnv = tyParamEnv}: env,
+      fun lookup (env, ty) =
+        (print (String.concat [
+          "Looking up ",
+          CoreBOM.TyId.toString ty,
+          "\n"
+        ])
+        ; lookupThis (getTyEnv env, maybeQualify (ty, env)))
+      fun extend (env as T {tyEnv, tyParamEnv, currentModule}: env,
           bomId,
           newTy): env =
-        T {tyEnv = extendThis (tyEnv, bomId, newTy), tyParamEnv = tyParamEnv}
+        let
+          val qualifiedId = maybeQualify (bomId, env)
+        in
+          (print (String.concat [
+            "Extending env for bomid: ",
+            CoreBOM.TyId.toString qualifiedId,
+            "\n"
+          ])
+            ; T {
+              tyEnv = extendThis (tyEnv, qualifiedId, newTy),
+              tyParamEnv = tyParamEnv,
+              currentModule = currentModule
+            })
+        end
     end
   end
 
-  val empty = T {tyEnv = TyEnv.empty, tyParamEnv = TyParamEnv.empty}
+  val empty = T {
+    tyEnv = TyEnv.empty,
+    tyParamEnv = TyParamEnv.empty,
+    currentModule = CoreBOM.ModuleId.bogus
+  }
+
+  fun emptyNamed name = T {
+    tyEnv = TyEnv.empty,
+    tyParamEnv = TyParamEnv.empty,
+    currentModule = name
+  }
+
+  fun setName (T {tyEnv, tyParamEnv, currentModule}, name) =
+    T {
+      tyEnv = tyEnv,
+      tyParamEnv = tyParamEnv,
+      currentModule = name
+    }
+
+  fun setName' (env, name) =
+    setName (env, CoreBOM.ModuleId.fromBomId name)
 
 end

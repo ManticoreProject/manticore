@@ -5,18 +5,18 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
 
   fun app3 f (x, y, z) = (f x, f y, f z)
 
-
   fun elaborateBomType (astTy: AstBOM.BomType.t,
       tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}): CoreBOM.BomType.t =
     let
-      fun check (f: 'a -> CoreBOM.BomType.t) (x: 'a option, msg: string) =
+      fun error (msg: string) = (Control.error (
+        AstBOM.BomType.region astTy,
+        AstBOM.BomType.layout astTy,
+        Layout.str ("Error checking BomType: " ^ msg))
+        ; CoreBOM.BomType.errorFromAst astTy)
+      fun check (x: 'a option, msg: string) (f: 'a -> CoreBOM.BomType.t) =
         case x of
           SOME y => f y
-        | NONE => ((Control.error (
-              AstBOM.BomType.region astTy,
-              AstBOM.BomType.layout astTy,
-              Layout.str ("Error checking BomType: " ^ msg)));
-            CoreBOM.BomType.errorFromAst astTy)
+        | NONE => error msg
       fun doElaborate ty = elaborateBomType (ty, tyEnvs)
       fun keepRegion newNode = CoreBOM.BomType.keepRegion (
         (fn _ => newNode), AstBOM.BomType.dest astTy)
@@ -32,8 +32,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       case AstBOM.BomType.node astTy of
         AstBOM.BomType.Param tyParam =>
           check
-            (fn _ => CoreBOM.BomType.fromAst astTy)
             (BOMEnv.TyParamEnv.lookup (bomEnv, tyParam), "typaram not found")
+            (fn _ => CoreBOM.BomType.fromAst astTy)
       | AstBOM.BomType.Tuple tys =>
           keepRegion (CoreBOM.BomType.Tuple (map doElaborate tys))
       | AstBOM.BomType.Fun funTys =>
@@ -53,71 +53,39 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       | AstBOM.BomType.LongId (longTyId, maybeTyArgs) =>
           let
             val tyArgs = map doElaborate (CoreBOM.TyArgs.flattenFromAst maybeTyArgs)
+            val tyId = CoreBOM.TyId.fromLongTyId longTyId
           in
-            case (CoreBOM.TyId.fromLongTyId longTyId) of
-              (tyId as CoreBOM.TyId.BomTy bomTy) =>
+            check
+             (BOMEnv.TyEnv.lookup (bomEnv, tyId), "type not found")
+             (fn defn =>
                check
-                 (fn defn =>
-                   check
-                     BOMEnv.TypeDefn.applyToArgs
-                     (defnArityMatches (defn, tyArgs), "arity mismatch"))
-                 (BOMEnv.TyEnv.lookup (bomEnv, tyId), "type not found")
-            | _ => CoreBOM.BomType.errorFromAst astTy (* FIXME *)
+                 (defnArityMatches (defn, tyArgs), "arity mismatch")
+                  BOMEnv.TypeDefn.applyToArgs)
+
+            (* case (CoreBOM.TyId.fromLongTyId longTyId) of *)
+            (*   (tyId as CoreBOM.TyId.BomTy bomTy) => *)
+            (*    check *)
+            (*      (BOMEnv.TyEnv.lookup (bomEnv, tyId), "type not found") *)
+            (*      (fn defn => *)
+            (*        check *)
+            (*          (defnArityMatches (defn, tyArgs), "arity mismatch") *)
+            (*           BOMEnv.TypeDefn.applyToArgs) *)
+            (* | _ => error "not implemented" (* FIXME *) *)
           end
-      |  _ => CoreBOM.BomType.errorFromAst astTy (* FIXME *)
+      |  _ => error "not implemented" (* FIXME *)
     end
 
-  (* fun elaborateBomType (astTy: AstBOM.BomType.t, *)
-  (*     tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}): BOMEnv.TypeDefn.t = *)
-  (*   let *)
-  (*     (* fun check (f: a -> CoreBOM.BomType.t) (x: a option) = *) *)
-  (*     (*   case x of *) *)
-  (*     (*     SOME y => f y *) *)
-  (*     (*   | NONE => ((Control.error ( *) *)
-  (*     (*         AstBOM.BomType.region astTy, *) *)
-  (*     (*         AstBOM.BomType.layout astTy, *) *)
-  (*     (*         Layout.str "Error checking BomType.")); *) *)
-  (*     (*       CoreBOM.BomType.errorFromAst astTy) *) *)
-  (*     (* fun doElaborate ty = elaborateBomType (ty, tyEnvs) *) *)
-  (*     (* fun keepRegion newNode = CoreBOM.BomType.keepRegion ( *) *)
-  (*     (*   (fn _ => newNode), AstBOM.BomType.dest astTy) *) *)
-  (*     (* val passThrough = fn () => CoreBOM.BomType.fromAst astTy *) *)
-  (*     (* val newTy = CoreBOM.BomType.fromAst astTy *) *)
-
-  (*     fun aliasOverParams tyParams = BOMEnv.TypeDefn.TyAlias ({ *)
-  (*       params = tyParams, *)
-  (*       ty = CoreBOM.BomType.fromAst astTy *)
-  (*     }) *)
-
-  (*     fun flattenToError maybeResult = *)
-  (*       case maybeResult of *)
-  (*         SOME result => result *)
-  (*       | NONE => BOMEnv.TypeDefn.error *)
-
-  (*     fun ifTyParamFound (tyParam, resultFn) = *)
-  (*       case BOMEnv.TyParamEnv.lookup tyParam of *)
-  (*         SOME tyParam' => SOME (resultFn tyParam') *)
-  (*       | NONE => NONE *)
-  (*   in *)
-  (*     flattenToError (case AstBOM.BomType.node astTy of *)
-  (*       AstBOM.BomType.Param tyParam => *)
-  (*         ifTyParamFound (tyParam, fn tyParam' => aliasOverParams [tyParam']) *)
-  (*     (* | AstBOM.BomType.Tuple tys =>  *) *)
-  (*     (* | AstBOM.BomType.Fun funTys => *) *)
-  (*     (* | AstBOM.BomType.Any => passThrough () *) *)
-  (*     (* | AstBOM.BomType.VProc => passThrough () *) *)
-  (*     (* | AstBOM.BomType.Cont maybeTyArgs => *) *)
-  (*     (* | AstBOM.BomType.Addr ty => *) *)
-  (*     (* | AstBOM.BomType.Raw ty => passThrough () *) *)
-  (*     (* | AstBOM.BomType.LongId (longTyId, maybeTyArgs) => *) *)
-  (*     |  _ => NONE (* FIXME *)) *)
-  (*   end *)
 
   fun elaborateBomDec (dec: AstBOM.Definition.t,
       {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}) =
     case AstBOM.Definition.node dec of
       AstBOM.Definition.TypeDefn (bomId, maybeTyParams, bomTy) =>
         let
+          fun error msg = (Control.error (
+            AstBOM.BomType.region bomTy,
+            AstBOM.BomType.layout bomTy,
+            Layout.str msg)
+            ; BOMEnv.TypeDefn.error)
           fun checkArityMatches (typeDefn, ty) =
             let
               val defnArity = BOMEnv.TypeDefn.arity typeDefn
@@ -126,29 +94,21 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               if defnArity = tyArity then
                 typeDefn
               else
-                ((Control.error (
-                  AstBOM.BomType.region bomTy,
-                  AstBOM.BomType.layout bomTy,
-                  Layout.str (String.concat [
-                    "Arity mismatch: ",
-                    Int.toString defnArity,
-                    " vs ",
-                    Int.toString tyArity
-                  ])));         (* TODO: make this conform with other errors *)
-                BOMEnv.TypeDefn.error)
+                error "arity mismatch"
             end
 
           val tyParams = CoreBOM.TyParam.flattenFromAst maybeTyParams
-          val newBomEnv: BOMEnv.t = foldr
+          val envWithTyParams: BOMEnv.t = foldr
             (fn (tyP: AstBOM.TyParam.t, bEnv)
               => BOMEnv.TyParamEnv.extend (bEnv, tyP))
             bomEnv
             tyParams
-          val newTy = elaborateBomType (bomTy, {env = env, bomEnv = newBomEnv})
+          val newTy = elaborateBomType (
+            bomTy, {env = env, bomEnv = envWithTyParams})
           (* alias is the only kind we can get from this *)
           val newTyAlias = checkArityMatches (
             BOMEnv.TypeDefn.Alias ({
-              params = BOMEnv.TyParamEnv.getParams newBomEnv,
+              params = BOMEnv.TyParamEnv.getParams envWithTyParams,
               ty = newTy
              }),
              newTy)

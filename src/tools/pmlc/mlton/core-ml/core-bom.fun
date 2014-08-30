@@ -34,6 +34,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     open AstBOM.BomId
 
     fun fromAst (oldId) = oldId
+    fun fromStrid (strid, region) = fromSymbol (
+      Ast.Strid.toSymbol strid, region)
   end
 
   structure HLOpId = struct
@@ -483,10 +485,38 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   (* end *)
 
 
+  structure ModuleId = struct
+    type t = BomId.t list
+
+    val compare = List.collate BomId.compare
+
+    fun fromLongTyId' longTyId =
+      let
+        val (qualifiers: AstBOM.BomId.t list, id: AstBOM.BomId.t) =
+          AstBOM.LongTyId.split longTyId
+        val region = AstBOM.LongTyId.region longTyId
+
+        (* val modId: t = map *)
+        (*   (fn strid => BomId.fromStrid (strid, region)) *)
+        (*   qualifiers *)
+      in
+        (qualifiers, id): (t * BomId.t)
+      end
+
+    val fromLongTyId = #1 o fromLongTyId'
+
+    val toString = String.concatWith "." o (map BomId.toString)
+
+    fun fromBomId bomId = [bomId]
+
+    val bogus = [BomId.bogus]
+  end
+
+
   structure TyId = struct
     datatype t
       = BomTy of BomId.t
-      | QBomTy of LongTyId.t
+      | QBomTy of ModuleId.t * BomId.t
       (* | MLTy *)
 
     val fromAstBomId = BomTy o BomId.fromAst
@@ -496,10 +526,15 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         val longTyId' = LongTyId.fromAst longTyId
       in
         if LongTyId.hasQualifier longTyId' then
-          QBomTy longTyId'
+          QBomTy (ModuleId.fromLongTyId' longTyId')
         else
           BomTy (LongTyId.truncate longTyId')
       end
+
+    fun maybeQualify (tyId, defaultId) =
+      case tyId of
+        BomTy ty => QBomTy (defaultId, ty)
+      | _ => tyId
 
     local
       fun app2 f (x, y) = (f x, f y)
@@ -507,7 +542,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       fun toString id =
         case id of
           BomTy id' => BomId.toString id'
-        | QBomTy id' => LongTyId.toString id'
+        | QBomTy (module, id) =>
+            String.concatWith "." [ModuleId.toString module, BomId.toString id]
 
       val compare = String.compare o (app2 toString)
     end

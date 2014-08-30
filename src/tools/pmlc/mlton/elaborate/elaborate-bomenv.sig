@@ -81,6 +81,9 @@ signature ELABORATE_BOMENV =
 
 
   val empty: t
+  val emptyNamed: CoreBOM.ModuleId.t -> t
+  val setName: t * CoreBOM.ModuleId.t -> t
+  val setName': t * AstBOM.BomId.t -> t
 
   sharing type TyEnv.env = TyParamEnv.env = t
   (* sharing type ValEnv.env = TyEnv.t = HLOpEnv.t = t *)

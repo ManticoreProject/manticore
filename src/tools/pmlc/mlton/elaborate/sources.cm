@@ -38,6 +38,7 @@ scope.sig
 scope.fun
 elaborate-core.sig
 elaborate-core.fun
+elaborate-common.sig
 elaborate-bomcore.sig
 elaborate-bomcore.fun
 elaborate-sigexp.sig

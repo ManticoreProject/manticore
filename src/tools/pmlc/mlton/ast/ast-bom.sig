@@ -32,6 +32,9 @@ signature AST_BOM =
   sharing Symbol = BomId.Symbol = HLOpId.Symbol = TyParam.Symbol
     = LongTyId.Symbol = LongConId.Symbol = LongValueId.Symbol
     = HLOpQId.Symbol = SymbolicId.Symbol = PrimOp.Symbol
+  (* sharing LongTyId.Id = LongTyId.Strid = BomId *)
+  (* sharing LongTyId.Strid = LongConId.Strid = LongValueId.Strid = Strid *)
+  sharing LongTyId.Strid = LongConId.Strid = LongValueId.Strid = BomId
 
   structure Attrs : sig
     type t
@@ -381,7 +384,5 @@ signature AST_BOM =
   sharing type FunDef.exp = Exp.t
   sharing type BomType.field = Field.t
   sharing type BomType.tyArgs = TyArgs.t
-  sharing type BomId.Symbol.t = HLOpId.Symbol.t = TyParam.Symbol.t = Symbol.t
-  sharing type LongTyId.Strid.t = LongConId.Strid.t = LongValueId.Strid.t
 
   end

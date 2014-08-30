@@ -58,16 +58,17 @@ in
    structure Decs = Decs
 end
 
-structure ElaboratePrograms = ElaboratePrograms (structure Ast = Ast
-                                                 structure CoreML = CoreML
-                                                 structure Decs = Decs
-                                                 structure Env = Env)
+structure ElaboratePrograms = ElaboratePrograms (S)(* structure Ast = Ast *)
+                                                 (* structure CoreML = CoreML *)
+                                                 (* structure Decs = Decs *)
+                                                 (* structure Env = Env) *)
 
 local
    open ElaboratePrograms
 in
    structure Decs = Decs
    structure Env = Env
+   structure BOMEnv = BOMEnv
 end
 
 fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
@@ -76,6 +77,8 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
       val decs = Buffer.new {dummy = ([], false)}
 
       val E = Env.empty ()
+      val bomEnv = BOMEnv.empty
+
       fun withDef f =
          ElabControl.withDef
          (fn () =>
@@ -97,7 +100,8 @@ fun elaborateMLB (mlb : Basdec.t, {addPrim}) =
            in Buffer.add (decs, (primDecs, false))
            end))
 
-      fun elabProg p = ElaboratePrograms.elaborateProgram (p, {env = E})
+      fun elabProg p = ElaboratePrograms.elaborateProgram (
+        p, {env = E, bomEnv = bomEnv})
 
       val psi : (File.t * Env.Basis.t Promise.t) HashSet.t =
          HashSet.new {hash = (*String.hash*)String_hash o #1}
