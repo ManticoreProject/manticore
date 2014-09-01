@@ -1,5 +1,5 @@
-(* FAIL *)
+(* FAIL [undefined type] *)
 _module myId (
-  type myType <'a, 'b> = int32;
+  type myType <'a, 'b> = ['a, 'b];
   type myType' = anUndefinedType<int32, int32>;
 )
