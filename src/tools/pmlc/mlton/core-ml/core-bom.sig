@@ -3,8 +3,6 @@ signature CORE_BOM_STRUCTS =
     (* structure Region: REGION (* sharing type Region.t = Region.Wrap.region *) *)
     structure Ast: AST
 
-
-
     (* sharing Region = Ast.AstBOM.Region *)
   end
 
@@ -41,9 +39,6 @@ signature CORE_BOM =
     structure LongConId: sig
     end
 
-    structure LongValueId: sig
-      type t
-    end
 
     structure HLOpQId: sig
     end
@@ -64,9 +59,21 @@ signature CORE_BOM =
     end
 
     structure LongTyId: sig
+      (* structure AstLongId: LONGID *)
+
       type t
 
       val fromAst: AstBOM.LongTyId.t -> t
+      val toString: t -> string
+      val hasQualifier: t -> bool
+      val truncate: t -> BomId.t
+    end
+
+
+    structure LongValueId: sig
+      type t
+
+      val fromAst: AstBOM.LongValueId.t -> t
       val toString: t -> string
       val hasQualifier: t -> bool
       val truncate: t -> BomId.t
@@ -79,7 +86,7 @@ signature CORE_BOM =
     structure RawTy: sig
       type t
 
-      (* val fromAst: AstBOM.RawTy.t -> t *)
+      val fromAst: AstBOM.RawTy.t -> t
     end
 
     (* structure TyParams: sig *)
@@ -90,7 +97,17 @@ signature CORE_BOM =
 
     structure Field: sig
       type t
+      type ty
 
+      datatype node
+        = Immutable of IntInf.int * ty
+        | Mutable of IntInf.int * ty
+
+      val keepRegion: ('a -> node) * ('a * Region.t) -> t
+
+      include WRAPPED
+        sharing type obj = t
+        sharing type node' = node
       (* val fromAst: AstBOM.Field.t -> t *)
     end
 
@@ -143,7 +160,7 @@ signature CORE_BOM =
         | Raw of RawTy.t
         | Error
 
-      val fromAst: AstBOM.BomType.t -> t (* TOOD: KILL THIS *)
+      (* val fromAst: AstBOM.BomType.t -> t *)
       val arity: t -> int
       val errorFromAst: AstBOM.BomType.t -> t
       val keepRegion: ('a -> node) * ('a * Region.t) -> t
@@ -232,10 +249,19 @@ signature CORE_BOM =
     end
 
     structure ValId : sig
-      (* type t *)
+      datatype t
+        = BomVal of BomId.t
+        | QBomVal of ModuleId.t * BomId.t
 
-      (* val fromLongValueId: LongValueId.t -> t *)
-      (* val fromBomId: BomId.t -> t *)
+
+      val fromAstBomId: AstBOM.BomId.t -> t
+      (* val fromLongValueId: AstBOM.LongTyId.t -> t *)
+
+      (* Add the given qualifier only if it doesn't yet have one *)
+      val maybeQualify: t * ModuleId.t -> t
+
+      (* val toString: t -> string *)
+      (* val compare: t * t -> order *)
     end
 
     structure Decs : sig
@@ -243,5 +269,6 @@ signature CORE_BOM =
     end
 
     (* structure Type: *)
-    sharing type DataConsDef.ty = BomType.t
+    sharing type DataConsDef.ty = Field.ty = BomType.t
+
   end

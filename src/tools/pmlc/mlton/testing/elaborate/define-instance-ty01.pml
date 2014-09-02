@@ -3,5 +3,5 @@ _module aModule (
 )
 
 _module myId (
-  instance type myType<int32>;
+  instance type aModule.myType<int32>;
 )

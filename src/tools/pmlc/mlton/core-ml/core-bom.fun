@@ -1,9 +1,31 @@
+signature CORE_LONGID_STRUCTS = sig
+  structure AstId: LONGID
+end
+
+functor LongId (S: CORE_LONGID_STRUCTS) = struct
+  open S.AstId
+
+  fun fromAst (astId: S.AstId.t) = astId
+
+  local
+    fun make (myId) =
+      let
+        val T idBody = node myId
+      in
+        idBody
+      end
+    val strids = #strids o make
+    val id = #id o make
+  in
+    val hasQualifier = not o null o strids
+    val truncate = id
+  end
+end
+
 functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   open S
 
   structure AstBOM = Ast.AstBOM
-
-
 
   local
     open Region
@@ -120,32 +142,35 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure PrimOp = struct
   end
 
-  structure LongTyId = struct
-    open AstBOM.LongTyId
+  structure LongTyId = LongId (structure AstId = AstBOM.LongTyId)
+  structure LongValueId = LongId (structure AstId = AstBOM.LongValueId)
 
-    fun fromAst (myLongTy: AstBOM.LongTyId.t) = myLongTy
+  (* structure LongTyId = struct *)
+  (*   open AstBOM.LongTyId *)
 
-    local
-      fun make (myTy) =
-        let
-          val T tyBody = node myTy
-        in
-          tyBody
-        end
-      val strids = #strids o make
-      val id = #id o make
-    in
-      val hasQualifier = not o null o strids
-      val truncate = id
-    end
-  end
+  (*   fun fromAst (myLongTy: AstBOM.LongTyId.t) = myLongTy *)
+
+  (*   local *)
+  (*     fun make (myTy) = *)
+  (*       let *)
+  (*         val T tyBody = node myTy *)
+  (*       in *)
+  (*         tyBody *)
+  (*       end *)
+  (*     val strids = #strids o make *)
+  (*     val id = #id o make *)
+  (*   in *)
+  (*     val hasQualifier = not o null o strids *)
+  (*     val truncate = id *)
+  (*   end *)
+  (* end *)
 
   structure LongConId = struct
   end
 
-  structure LongValueId = struct
-    open AstBOM.LongValueId
-  end
+  (* structure LongValueId = struct *)
+  (*   open AstBOM.LongValueId *)
+  (* end *)
 
   structure HLOpQId = struct
   end
@@ -430,11 +455,18 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
 
   structure Field = struct
+    open Region.Wrap
     (* datatype node = datatype field_node *)
     type t = field_t
+    type ty = type_t
+    datatype node = datatype field_node
+
+    type node' = node
+    type obj = t
 
     val fromAst = fieldFromAst
     val getType = typeOfField
+    val keepRegion = keepRegion
   end
 
 
@@ -490,20 +522,38 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
     val compare = List.collate BomId.compare
 
-    fun fromLongTyId' longTyId =
+    fun fromLong' (splitFn, regionFn) longId  =
       let
         val (qualifiers: AstBOM.BomId.t list, id: AstBOM.BomId.t) =
-          AstBOM.LongTyId.split longTyId
-        val region = AstBOM.LongTyId.region longTyId
-
-        (* val modId: t = map *)
-        (*   (fn strid => BomId.fromStrid (strid, region)) *)
-        (*   qualifiers *)
+          splitFn longId
+        val region = regionFn longId
       in
         (qualifiers, id): (t * BomId.t)
       end
 
+
+    val fromLongTyId' = fromLong' (AstBOM.LongTyId.split,
+      AstBOM.LongTyId.region)
+
+    (* fun fromLongTyId' longTyId = *)
+    (*   let *)
+    (*     val (qualifiers: AstBOM.BomId.t list, id: AstBOM.BomId.t) = *)
+    (*       AstBOM.LongTyId.split longTyId *)
+    (*     val region = AstBOM.LongTyId.region longTyId *)
+
+    (*     (* val modId: t = map *) *)
+    (*     (*   (fn strid => BomId.fromStrid (strid, region)) *) *)
+    (*     (*   qualifiers *) *)
+    (*   in *)
+    (*     (qualifiers, id): (t * BomId.t) *)
+    (*   end *)
+
     val fromLongTyId = #1 o fromLongTyId'
+
+    val fromLongValueId' = fromLong' (AstBOM.LongValueId.split,
+      AstBOM.LongValueId.region)
+
+    val fromLongValueId = #1 o fromLongValueId'
 
     val toString = String.concatWith "." o (map BomId.toString)
 
@@ -551,7 +601,27 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
 
   structure ValId = struct
-  (* TODO *)
+    datatype t
+      = BomVal of BomId.t
+      | QBomVal of ModuleId.t * BomId.t
+
+    val fromAstBomId = BomVal o BomId.fromAst
+
+    fun fromLongValueId (longValId: AstBOM.LongValueId.t) =
+      let
+        val longValId': LongValueId.t = LongValueId.fromAst longValId
+      in
+        if LongValueId.hasQualifier longValId' then
+          QBomVal (ModuleId.fromLongValueId' longValId')
+        else
+          BomVal (LongValueId.truncate longValId')
+      end
+
+    fun maybeQualify (valId, defaultId) =
+      case valId of
+        BomVal id => QBomVal (defaultId, id)
+      | _ => valId
+
   end
 
   structure Decs = struct

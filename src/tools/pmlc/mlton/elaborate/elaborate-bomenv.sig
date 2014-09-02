@@ -69,16 +69,13 @@ signature ELABORATE_BOMENV =
       val empty: t
     end
 
-    (* structure ValEnv : sig *)
+    (* structure ValEnv: sig *)
     (*   type env *)
     (*   type t *)
-    (*   val extend: env * CoreBOM.ValId.t * Scheme.t * IdStatus -> unit *)
-    (*   val lookup: env * CoreBOM.Valid -> (Scheme.t * IdStatus) option *)
 
-    (*   val extendThis: t * CoreBOM.ValId.t * Scheme.t * IdStatus -> unit *)
-    (*   val lookupThis: t * CoreBOM.ValId.t -> (Scheme.t * IdStatus) option *)
+    (*   val extend: env * CoreBOM.ValId.t * TyAlias.t -> env *)
+    (*   val lookup: env * CoreBOM.ValId.t -> TyAlias.t option *)
     (* end *)
-
 
   val empty: t
   val emptyNamed: CoreBOM.ModuleId.t -> t
