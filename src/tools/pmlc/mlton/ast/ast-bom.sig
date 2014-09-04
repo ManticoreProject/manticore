@@ -240,6 +240,9 @@ signature AST_BOM =
     datatype node
       = Def of Attrs.t option * BomId.t * TyParams.t option
         * VarPat.t list * VarPat.t list * BomType.t list * exp
+
+    val layout: t -> Layout.t
+
     include WRAPPED
       sharing type node' = node
       sharing type obj = t

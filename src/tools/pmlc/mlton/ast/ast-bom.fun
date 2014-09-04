@@ -765,8 +765,6 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   type exp = exp_t
 
-
-
   val layout = layoutFunDef
 
   end

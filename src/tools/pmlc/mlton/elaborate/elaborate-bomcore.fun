@@ -4,19 +4,35 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
   structure AstBOM = Ast.AstBOM
 
   fun app3 f (x, y, z) = (f x, f y, f z)
+  fun error (getRegion, getLayout, errorVal, element) msg =
+    (Control.error (getRegion element, getLayout element, Layout.str msg)
+    ; errorVal)
+  fun check (error: string -> 'b) (x: 'a option, msg: string) (f: 'a -> 'b) =
+    case x of
+      SOME y => f y
+    | NONE => error msg
+
 
   fun elaborateBomType (astTy: AstBOM.BomType.t,
       tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}): CoreBOM.BomType.t =
     let
-      fun error (msg: string) = (Control.error (
-        AstBOM.BomType.region astTy,
-        AstBOM.BomType.layout astTy,
-        Layout.str ("Error checking BomType: " ^ msg))
-        ; CoreBOM.BomType.errorFromAst astTy)
+      val error: string -> CoreBOM.BomType.t =
+        error (AstBOM.BomType.region,
+          AstBOM.BomType.layout,
+          CoreBOM.BomType.errorFromAst astTy,
+          astTy)
+
+      (* Need to put whole body here to get around value restriction *)
       fun check (x: 'a option, msg: string) (f: 'a -> CoreBOM.BomType.t) =
         case x of
           SOME y => f y
-        | NONE => error msg
+        | NONE => error  msg
+
+      (* Control.error ( *)
+        (* AstBOM.BomType.region astTy, *)
+        (* AstBOM.BomType.layout astTy, *)
+        (* Layout.str ("Error checking BomType: " ^ msg)) *)
+        (* ; CoreBOM.BomType.errorFromAst astTy) *)
       fun doElaborate ty = elaborateBomType (ty, tyEnvs)
       fun keepRegion newNode = CoreBOM.BomType.keepRegion (
         (fn _ => newNode), AstBOM.BomType.dest astTy)
@@ -97,11 +113,9 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             (recordLabelsOkay fields, "labels must be strictly increasing")
             (fn fields => keepRegion (CoreBOM.BomType.Record (map
               (fn field' => elaborateField (field', tyEnvs)) fields)))
-      (* |  _ => error "not implemented" (* FIXME *) *)
     end
   and elaborateField (astField: AstBOM.Field.t,
      tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}): CoreBOM.Field.t =
-  (* TODO: do field ids need to be unique? mix mutable and immutable? *)
     let
       val (constructor, index, astTy) =
         case AstBOM.Field.node astField of
@@ -127,17 +141,129 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         wholeRegion)
     end
 
+  fun extendEnvForTyParams (bomEnv: BOMEnv.t, tyParams: AstBOM.TyParam.t list) =
+    foldr
+      (fn (tyP: AstBOM.TyParam.t, bEnv)
+        => BOMEnv.TyParamEnv.extend (bEnv, tyP))
+      bomEnv
+      tyParams
+
+  fun extendEnvForTyParams' (bomEnv, maybeTyParams: AstBOM.TyParams.t option) =
+    extendEnvForTyParams (bomEnv, CoreBOM.TyParam.flattenFromAst maybeTyParams)
+
+  fun checkTyAliasArity (ty, params, error): BOMEnv.TyAlias.t =
+    if (CoreBOM.BomType.arity ty) = (length params) then
+      {ty = ty, params = params}
+    else
+      error "arity mismatch"
+
+
+  fun varPatToTy (pat, tyEnvs) =
+    let
+      val error = error (
+        AstBOM.VarPat.region,
+        AstBOM.VarPat.layout,
+        CoreBOM.BomType.makeRegion (
+          CoreBOM.BomType.Error,
+          AstBOM.VarPat.region pat),
+        pat)
+      val check = check error
+      val maybeTy =
+        case AstBOM.VarPat.node pat of
+          AstBOM.VarPat.Var (id, maybeTy) => maybeTy
+        | AstBOM.VarPat.Wild maybeTy => maybeTy
+    in
+      check
+        (maybeTy, "varpat missing type annotation")
+        (fn ty => elaborateBomType (ty, tyEnvs))
+    end
+
+
+  fun extendEnvForFun (fundef: AstBOM.FunDef.t,
+      tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}) =
+    let
+      val AstBOM.FunDef.Def (
+          _, id, maybeTyParams, domPats, contPats, rngTys, _) =
+        AstBOM.FunDef.node fundef
+      val envWithTyParams = extendEnvForTyParams' (bomEnv, maybeTyParams)
+      val tyEnvs' = {env = env, bomEnv = envWithTyParams}
+      fun patsToTys pats = map
+        (fn pat => varPatToTy (pat, tyEnvs'))
+        pats
+      val domTys = patsToTys domPats
+      val contTys = patsToTys contPats
+      val rngTys' = map (fn ty => elaborateBomType (ty, tyEnvs')) rngTys
+      val funTy = CoreBOM.BomType.makeRegion (
+        CoreBOM.BomType.Fun {
+          dom = domTys,
+          cont = contTys,
+          rng = rngTys'
+        }, AstBOM.FunDef.region fundef)
+      val newTyAlias = checkTyAliasArity (funTy,
+        BOMEnv.TyParamEnv.getParams envWithTyParams,
+        error (AstBOM.FunDef.region,
+        AstBOM.FunDef.layout,
+        {ty = CoreBOM.BomType.keepRegion (
+            fn _ => CoreBOM.BomType.Error,
+            CoreBOM.BomType.dest funTy),
+          params = []},
+        fundef))
+    in
+      {
+        env = env,
+        bomEnv = BOMEnv.ValEnv.extend (bomEnv, CoreBOM.ValId.fromAstBomId id,
+          newTyAlias)
+      }
+    end
+
+  fun extendEnvForDtDef (dtDef: AstBOM.DataTypeDef.t,
+      tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}) =
+      let
+        val (bomId, tyParams) =
+          (fn (astId, maybeTyParams) =>
+            (CoreBOM.TyId.fromAstBomId astId,
+              CoreBOM.TyParam.flattenFromAst' maybeTyParams))
+            (case AstBOM.DataTypeDef.node dtDef of
+              AstBOM.DataTypeDef.ConsDefs (bomId, maybeTyParams, _) =>
+                (bomId, maybeTyParams)
+            | AstBOM.DataTypeDef.SimpleDef (bomId, maybeTyParams, _) =>
+                (bomId, maybeTyParams))
+      in
+        {
+          env = env,
+          bomEnv = BOMEnv.TyEnv.extend (bomEnv,
+            bomId,
+            BOMEnv.TypeDefn.Con (CoreBOM.TyCon.makeRegion (
+              CoreBOM.TyCon.TyC {
+                id = bomId,
+                definition = ref [],
+                params = tyParams
+              }, AstBOM.DataTypeDef.region dtDef)))
+        }
+      end
+
+  (* fun elaborateFunDef (fundef: AstBOM.FunDef.t, *)
+  (*     tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}) = *)
+  (*   let *)
+
 
   fun elaborateBomDec (dec: AstBOM.Definition.t,
       tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}) =
     case AstBOM.Definition.node dec of
-      AstBOM.Definition.TypeDefn (bomId, maybeTyParams, bomTy) =>
+      AstBOM.Definition.Datatype dtdefs =>
         let
-          fun error msg = (Control.error (
-            AstBOM.BomType.region bomTy,
-            AstBOM.BomType.layout bomTy,
-            Layout.str msg)
-            ; BOMEnv.TypeDefn.error)
+          val newEnv = foldr extendEnvForDtDef tyEnvs dtdefs
+        in
+          (CoreML.Dec.BomDec, bomEnv)
+        end
+
+    | AstBOM.Definition.TypeDefn (bomId, maybeTyParams, bomTy) =>
+        let
+          val error = error (
+            AstBOM.BomType.region,
+            AstBOM.BomType.layout,
+            BOMEnv.TypeDefn.error,
+            bomTy)
           fun checkArityMatches (typeDefn, ty) =
             let
               val defnArity = BOMEnv.TypeDefn.arity typeDefn
@@ -149,12 +275,9 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
                 error "arity mismatch"
             end
 
-          val tyParams = CoreBOM.TyParam.flattenFromAst maybeTyParams
-          val envWithTyParams: BOMEnv.t = foldr
-            (fn (tyP: AstBOM.TyParam.t, bEnv)
-              => BOMEnv.TyParamEnv.extend (bEnv, tyP))
-            bomEnv
-            tyParams
+          (* val tyParams = CoreBOM.TyParam.flattenFromAst maybeTyParams *)
+          val envWithTyParams: BOMEnv.t = extendEnvForTyParams' (
+            bomEnv, maybeTyParams)
           val newTy = elaborateBomType (
             bomTy, {env = env, bomEnv = envWithTyParams})
           (* alias is the only kind we can get from this *)
@@ -170,6 +293,13 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           val newEnv = BOMEnv.TyEnv.extend (bomEnv, newId, newTyAlias)
         in
           (CoreML.Dec.BomDec, newEnv)
+        end
+    | AstBOM.Definition.Fun fundefs =>
+        let
+          val envWithFns = foldr extendEnvForFun tyEnvs fundefs
+        (* TODO: check the body *)
+        in
+          (CoreML.Dec.BomDec, #bomEnv envWithFns)
         end
     | AstBOM.Definition.InstanceType instanceTy =>
         let

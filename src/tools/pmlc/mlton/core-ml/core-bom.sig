@@ -24,6 +24,7 @@ signature CORE_BOM =
 
       val fromAst: AstBOM.TyParam.t -> t
       val flattenFromAst: AstBOM.TyParams.t option -> AstBOM.TyParam.t list
+      val flattenFromAst': AstBOM.TyParams.t option -> t list
       val hash: t -> int
       val name: t -> string
       val compare: t * t -> order
@@ -80,6 +81,51 @@ signature CORE_BOM =
     end
 
 
+    structure ModuleId: sig
+      type t
+
+      val compare: t * t -> order
+      val fromLongTyId: AstBOM.LongTyId.t -> t
+      val fromLongTyId': AstBOM.LongTyId.t -> t * BomId.t
+      val fromBomId: AstBOM.BomId.t -> t
+      val toString: t -> string
+      val bogus: t
+    end
+
+
+    structure TyId: sig
+      datatype t
+        = BomTy of BomId.t
+        | QBomTy of ModuleId.t * BomId.t
+        (* | MLTy *)
+
+      val fromAstBomId: AstBOM.BomId.t -> t
+      val fromLongTyId: AstBOM.LongTyId.t -> t
+
+      (* Add the given qualifier only if it doesn't yet have one *)
+      val maybeQualify: t * ModuleId.t -> t
+
+      val toString: t -> string
+      val compare: t * t -> order
+    end
+
+    structure ValId : sig
+      datatype t
+        = BomVal of BomId.t
+        | QBomVal of ModuleId.t * BomId.t
+
+      val fromAstBomId: AstBOM.BomId.t -> t
+      val fromLongValueId: AstBOM.LongValueId.t -> t
+
+      (* Add the given qualifier only if it doesn't yet have one *)
+      val maybeQualify: t * ModuleId.t -> t
+
+      val toString: t -> string
+      val compare: t * t -> order
+    end
+
+
+
     structure Attrs: sig
     end
 
@@ -127,7 +173,7 @@ signature CORE_BOM =
       type t
       datatype node
         = TyC of {
-            id: BomId.t,
+            id: TyId.t,
             definition: DataConsDef.t list ref,
             params: TyParam.t list
         }
@@ -218,50 +264,6 @@ signature CORE_BOM =
 
     structure HLOp: sig
       (* collapse HLOp(Q)Id together here *)
-    end
-
-    structure ModuleId: sig
-      type t
-
-      val compare: t * t -> order
-      val fromLongTyId: AstBOM.LongTyId.t -> t
-      val fromLongTyId': AstBOM.LongTyId.t -> t * BomId.t
-      val fromBomId: AstBOM.BomId.t -> t
-      val toString: t -> string
-      val bogus: t
-    end
-
-
-    structure TyId: sig
-      datatype t
-        = BomTy of BomId.t
-        | QBomTy of ModuleId.t * BomId.t
-        (* | MLTy *)
-
-      val fromAstBomId: AstBOM.BomId.t -> t
-      val fromLongTyId: AstBOM.LongTyId.t -> t
-
-      (* Add the given qualifier only if it doesn't yet have one *)
-      val maybeQualify: t * ModuleId.t -> t
-
-      val toString: t -> string
-      val compare: t * t -> order
-    end
-
-    structure ValId : sig
-      datatype t
-        = BomVal of BomId.t
-        | QBomVal of ModuleId.t * BomId.t
-
-
-      val fromAstBomId: AstBOM.BomId.t -> t
-      (* val fromLongValueId: AstBOM.LongTyId.t -> t *)
-
-      (* Add the given qualifier only if it doesn't yet have one *)
-      val maybeQualify: t * ModuleId.t -> t
-
-      (* val toString: t -> string *)
-      (* val compare: t * t -> order *)
     end
 
     structure Decs : sig

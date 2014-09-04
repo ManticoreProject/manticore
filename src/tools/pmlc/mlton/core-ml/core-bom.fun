@@ -120,6 +120,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         in
           tyPs
         end) maybeTyParams
+    fun flattenFromAst' maybeTyParams =
+      map fromAst (flattenFromAst maybeTyParams)
       (* case maybeTyParams of *)
       (*   SOME tyParams => *)
       (*     let *)
@@ -144,6 +146,127 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   structure LongTyId = LongId (structure AstId = AstBOM.LongTyId)
   structure LongValueId = LongId (structure AstId = AstBOM.LongValueId)
+
+  structure ModuleId = struct
+    type t = BomId.t list
+
+    val compare = List.collate BomId.compare
+
+    fun fromLong' (splitFn, regionFn) longId  =
+      let
+        val (qualifiers: AstBOM.BomId.t list, id: AstBOM.BomId.t) =
+          splitFn longId
+        val region = regionFn longId
+      in
+        (qualifiers, id): (t * BomId.t)
+      end
+
+
+    val fromLongTyId' = fromLong' (AstBOM.LongTyId.split,
+      AstBOM.LongTyId.region)
+
+    (* fun fromLongTyId' longTyId = *)
+    (*   let *)
+    (*     val (qualifiers: AstBOM.BomId.t list, id: AstBOM.BomId.t) = *)
+    (*       AstBOM.LongTyId.split longTyId *)
+    (*     val region = AstBOM.LongTyId.region longTyId *)
+
+    (*     (* val modId: t = map *) *)
+    (*     (*   (fn strid => BomId.fromStrid (strid, region)) *) *)
+    (*     (*   qualifiers *) *)
+    (*   in *)
+    (*     (qualifiers, id): (t * BomId.t) *)
+    (*   end *)
+
+    val fromLongTyId = #1 o fromLongTyId'
+
+    val fromLongValueId' = fromLong' (AstBOM.LongValueId.split,
+      AstBOM.LongValueId.region)
+
+    val fromLongValueId = #1 o fromLongValueId'
+
+    val toString = String.concatWith "." o (map BomId.toString)
+
+    fun fromBomId bomId = [bomId]
+
+    val bogus = [BomId.bogus]
+  end
+
+
+
+  (* TODO: refactor these to be cleaner. I don't want to collapse them
+  into a functor because TyId.t will be changing in the future and it
+  won't be easy to extend *)
+
+  fun app2 f (x, y) = (f x, f y)
+
+  structure TyId = struct
+    datatype t
+      = BomTy of BomId.t
+      | QBomTy of ModuleId.t * BomId.t
+      (* | MLTy *)
+
+    val fromAstBomId = BomTy o BomId.fromAst
+
+    fun fromLongTyId (longTyId: AstBOM.LongTyId.t): t =
+      let
+        val longTyId' = LongTyId.fromAst longTyId
+      in
+        if LongTyId.hasQualifier longTyId' then
+          QBomTy (ModuleId.fromLongTyId' longTyId')
+        else
+          BomTy (LongTyId.truncate longTyId')
+      end
+
+    fun maybeQualify (tyId, defaultId) =
+      case tyId of
+        BomTy ty => QBomTy (defaultId, ty)
+      | _ => tyId
+
+
+    fun toString id =
+      case id of
+        BomTy id' => BomId.toString id'
+      | QBomTy (module, id) =>
+          String.concatWith "." [ModuleId.toString module, BomId.toString id]
+
+    val compare = String.compare o (app2 toString)
+  end
+
+
+  structure ValId = struct
+    datatype t
+      = BomVal of BomId.t
+      | QBomVal of ModuleId.t * BomId.t
+
+    val fromAstBomId = BomVal o BomId.fromAst
+
+    fun fromLongValueId (longValId: AstBOM.LongValueId.t): t =
+      let
+        val longValId': LongValueId.t = LongValueId.fromAst longValId
+      in
+        if LongValueId.hasQualifier longValId' then
+          QBomVal (ModuleId.fromLongValueId' longValId')
+        else
+          BomVal (LongValueId.truncate longValId')
+      end
+
+    fun maybeQualify (valId, defaultId) =
+      case valId of
+        BomVal id => QBomVal (defaultId, id)
+      | _ => valId
+
+
+    fun toString (id: t) =
+      case id of
+        BomVal id => BomId.toString id
+      | QBomVal (module, id) =>
+          String.concatWith "." [ModuleId.toString module, BomId.toString id]
+
+    val compare = String.compare o (app2 toString)
+
+  end
+
 
   (* structure LongTyId = struct *)
   (*   open AstBOM.LongTyId *)
@@ -184,7 +307,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   (* Mutually recursive types *)
    datatype tycon_node
     = TyC of {
-      id: BomId.t,
+      id: TyId.t,
       definition: dataconsdef_t list ref,
       params: TyParam.t list
     }
@@ -336,7 +459,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       type t = tycon_t
       type node' = node
       type obj = t
-
   end
 
 
@@ -516,113 +638,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   (* (* TODO *) *)
   (* end *)
 
-
-  structure ModuleId = struct
-    type t = BomId.t list
-
-    val compare = List.collate BomId.compare
-
-    fun fromLong' (splitFn, regionFn) longId  =
-      let
-        val (qualifiers: AstBOM.BomId.t list, id: AstBOM.BomId.t) =
-          splitFn longId
-        val region = regionFn longId
-      in
-        (qualifiers, id): (t * BomId.t)
-      end
-
-
-    val fromLongTyId' = fromLong' (AstBOM.LongTyId.split,
-      AstBOM.LongTyId.region)
-
-    (* fun fromLongTyId' longTyId = *)
-    (*   let *)
-    (*     val (qualifiers: AstBOM.BomId.t list, id: AstBOM.BomId.t) = *)
-    (*       AstBOM.LongTyId.split longTyId *)
-    (*     val region = AstBOM.LongTyId.region longTyId *)
-
-    (*     (* val modId: t = map *) *)
-    (*     (*   (fn strid => BomId.fromStrid (strid, region)) *) *)
-    (*     (*   qualifiers *) *)
-    (*   in *)
-    (*     (qualifiers, id): (t * BomId.t) *)
-    (*   end *)
-
-    val fromLongTyId = #1 o fromLongTyId'
-
-    val fromLongValueId' = fromLong' (AstBOM.LongValueId.split,
-      AstBOM.LongValueId.region)
-
-    val fromLongValueId = #1 o fromLongValueId'
-
-    val toString = String.concatWith "." o (map BomId.toString)
-
-    fun fromBomId bomId = [bomId]
-
-    val bogus = [BomId.bogus]
-  end
-
-
-  structure TyId = struct
-    datatype t
-      = BomTy of BomId.t
-      | QBomTy of ModuleId.t * BomId.t
-      (* | MLTy *)
-
-    val fromAstBomId = BomTy o BomId.fromAst
-
-    fun fromLongTyId longTyId =
-      let
-        val longTyId' = LongTyId.fromAst longTyId
-      in
-        if LongTyId.hasQualifier longTyId' then
-          QBomTy (ModuleId.fromLongTyId' longTyId')
-        else
-          BomTy (LongTyId.truncate longTyId')
-      end
-
-    fun maybeQualify (tyId, defaultId) =
-      case tyId of
-        BomTy ty => QBomTy (defaultId, ty)
-      | _ => tyId
-
-    local
-      fun app2 f (x, y) = (f x, f y)
-    in
-      fun toString id =
-        case id of
-          BomTy id' => BomId.toString id'
-        | QBomTy (module, id) =>
-            String.concatWith "." [ModuleId.toString module, BomId.toString id]
-
-      val compare = String.compare o (app2 toString)
-    end
-  end
-
-
-  structure ValId = struct
-    datatype t
-      = BomVal of BomId.t
-      | QBomVal of ModuleId.t * BomId.t
-
-    val fromAstBomId = BomVal o BomId.fromAst
-
-    fun fromLongValueId (longValId: AstBOM.LongValueId.t) =
-      let
-        val longValId': LongValueId.t = LongValueId.fromAst longValId
-      in
-        if LongValueId.hasQualifier longValId' then
-          QBomVal (ModuleId.fromLongValueId' longValId')
-        else
-          BomVal (LongValueId.truncate longValId')
-      end
-
-    fun maybeQualify (valId, defaultId) =
-      case valId of
-        BomVal id => QBomVal (defaultId, id)
-      | _ => valId
-
-  end
 
   structure Decs = struct
   (* TODO *)
