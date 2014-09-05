@@ -16,26 +16,18 @@ structure BOMTy =
       | K_TYPE		(* type (any of the above kinds) *)
 
     datatype raw_ty = datatype RawTypes.raw_ty
-	
-    datatype ty
-      = T_Any				(* unknown type; uniform representation *)
-      | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
-      | T_Raw of raw_ty			(* raw machine type *)
-      | T_Tuple of bool * ty list	(* heap-allocated tuple; the boolean is true for *)
-					(* mutable tuples *)
-      | T_Addr of ty			(* address of a tuple's field *)
-      | T_Fun of (ty list * ty list * ty list)
-					(* function type; the second argument is the type of *)
-					(* the exception continuation(s) *)
-      | T_Cont of ty list		(* first-class continuation *)
-      | T_CFun of CFunctions.c_proto	(* C functions *)
-      | T_VProc				(* address of VProc runtime structure *)
-      | T_Deque				(* address of VProc deque object *)
-      | T_TyCon of tyc			(* high-level type constructor *)
-      | T_Parr of parr
 
-    and parr
-      = IntParr
+    datatype ty
+      = T_Con of tyc * ty list
+      | T_Record of (bool * ty) list
+      | T_Cont of ty list
+      | T_Fun of (ty list * ty list * ty list)
+      | T_Raw of raw_ty			(* raw machine type *)
+      | T_VProc				(* address of VProc runtime structure *)
+      | T_Addr of ty			(* address of a tuple's field *)
+      | T_Any				(* unknown type; uniform representation *)
+      | T_CFun of CFunctions.c_proto	(* C functions *)
+      | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
 
     and tyc			      (* high-level type constructor *)
       = DataTyc of {
@@ -46,11 +38,6 @@ structure BOMTy =
 	  rep : ty ref,			(* type of the representation *)
 	  kind : kind ref		(* kind of the representation: either UNBOXED, BOXED, *)
 					(* or UNIFORM *)
-	}
-      | AbsTyc of {
-	  name : string,
-	  stamp : Stamp.stamp,
-	  arity : int
 	}
 
     and data_con = DCon of {	      (* a data-constructor function *)
