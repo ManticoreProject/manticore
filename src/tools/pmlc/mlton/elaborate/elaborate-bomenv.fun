@@ -72,6 +72,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
         CoreBOM.BomType.Error,
         Region.bogus)
     }
+
   end
 
 

@@ -142,7 +142,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     end
 
   fun extendEnvForTyParams (bomEnv: BOMEnv.t, tyParams: AstBOM.TyParam.t list) =
-    foldr
+    foldl
       (fn (tyP: AstBOM.TyParam.t, bEnv)
         => BOMEnv.TyParamEnv.extend (bEnv, tyP))
       bomEnv
@@ -216,31 +216,123 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       }
     end
 
-  fun extendEnvForDtDef (dtDef: AstBOM.DataTypeDef.t,
-      tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}) =
-      let
-        val (bomId, tyParams) =
-          (fn (astId, maybeTyParams) =>
-            (CoreBOM.TyId.fromAstBomId astId,
-              CoreBOM.TyParam.flattenFromAst' maybeTyParams))
-            (case AstBOM.DataTypeDef.node dtDef of
-              AstBOM.DataTypeDef.ConsDefs (bomId, maybeTyParams, _) =>
-                (bomId, maybeTyParams)
-            | AstBOM.DataTypeDef.SimpleDef (bomId, maybeTyParams, _) =>
-                (bomId, maybeTyParams))
-      in
-        {
-          env = env,
-          bomEnv = BOMEnv.TyEnv.extend (bomEnv,
-            bomId,
-            BOMEnv.TypeDefn.Con (CoreBOM.TyCon.makeRegion (
-              CoreBOM.TyCon.TyC {
-                id = bomId,
-                definition = ref [],
-                params = tyParams
-              }, AstBOM.DataTypeDef.region dtDef)))
-        }
-      end
+  fun dataTypeDefToTyIdAndParams dtDef =
+    (fn (astId, maybeTyParams) => (CoreBOM.TyId.fromAstBomId astId,
+        CoreBOM.TyParam.flattenFromAst maybeTyParams))
+    (case AstBOM.DataTypeDef.node dtDef of
+        AstBOM.DataTypeDef.ConsDefs (bomId, maybeTyParams, _) =>
+          (bomId, maybeTyParams)
+     | AstBOM.DataTypeDef.SimpleDef (bomId, maybeTyParams, _) =>
+          (bomId, maybeTyParams))
+
+  fun extendEnvForDataTypeDef (dtDef: AstBOM.DataTypeDef.t,
+      tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}) =
+    let
+      val (tyId, tyParams) = dataTypeDefToTyIdAndParams dtDef
+    in
+      {
+        env = env,
+        bomEnv = BOMEnv.TyEnv.extend (bomEnv,
+          tyId,
+          BOMEnv.TypeDefn.Con (CoreBOM.TyCon.makeRegion (
+            CoreBOM.TyCon.TyC {
+              id = tyId,
+              definition = ref [],
+              params = map CoreBOM.TyParam.fromAst tyParams
+            }, AstBOM.DataTypeDef.region dtDef)))
+      }
+    end
+
+  fun elaborateDataConsDef (dtCon: AstBOM.DataConsDef.t,
+      datatypeTy: CoreBOM.BomType.t,
+      tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}):
+      (CoreBOM.DataConsDef.t * BOMEnv.t) =
+    let
+      val AstBOM.DataConsDef.ConsDef (astId, maybeTy) =
+        AstBOM.DataConsDef.node dtCon
+      val params = CoreBOM.BomType.uniqueTyParams datatypeTy
+      (* val valId = CoreBOM.ValId.fromAstBomId astId *)
+      val (maybeArgTy: CoreBOM.BomType.t option, valTy: BOMEnv.TyAlias.t) =
+      (* TODO: handle it correctly when the con isn't parameterized *)
+        case (maybeTy: AstBOM.BomType.t option) of
+          SOME (argTy: AstBOM.BomType.t) =>
+            let
+              val argTy' = elaborateBomType (argTy, tyEnvs)
+            in
+              (SOME argTy', {
+                params = datatypeTy,
+                ty = CoreBOM.BomType.makeRegion (
+                  CoreBOM.BomType.Fun {
+                    dom = [argTy'],
+                    cont = [],
+                    rng = [datatypeTy]
+                  }, AstBOM.DataConsDef.region dtCon)
+                })
+            end
+        | NONE =>
+            (NONE, {params = params, ty = datatypeTy})
+    in
+      (CoreBOM.DataConsDef.makeRegion (CoreBOM.DataConsDef.ConsDef (
+        CoreBOM.BomId.fromAst astId, maybeArgTy),
+        AstBOM.DataConsDef.region dtCon),
+      BOMEnv.ValEnv.extend (bomEnv,
+        CoreBOM.ValId.fromAstBomId astId, valTy))
+    end
+
+
+
+  fun elaborateDataConsDefs (dtCons: AstBOM.DataConsDef.t list,
+      datatypeTy: CoreBOM.BomType.t,
+      tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}) =
+    let
+      fun loop (bomEnv: BOMEnv.t, dtCons: AstBOM.DataConsDef.t list,
+          acc: CoreBOM.DataConsDef.t list) =
+        case dtCons of
+          dtCon::dtCons =>
+            let
+              val (newCon, newEnv) = elaborateDataConsDef (
+                dtCon, datatypeTy, {env=env, bomEnv=bomEnv})
+            in
+              loop (newEnv, dtCons, newCon::acc)
+            end
+        | [] => (bomEnv, rev acc)
+    in
+      loop (bomEnv, dtCons, [])
+    end
+
+
+
+
+
+  fun elaborateDataTypeDef (dtDef: AstBOM.DataTypeDef.t,
+      tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}) =
+    let
+      val (tyId, tyParams) = dataTypeDefToTyIdAndParams dtDef
+      (* TODO: restructure so we don't risk throwing an exception here
+      (even though it should never happen *)
+      val BOMEnv.TypeDefn.Con tyOfDatatype =
+        Option.valOf (BOMEnv.TyEnv.lookup (bomEnv, tyId))
+      val envWithTyParams = extendEnvForTyParams (bomEnv, tyParams)
+    in
+      case AstBOM.DataTypeDef.node dtDef of
+        AstBOM.DataTypeDef.ConsDefs (_, _, consDefs) =>
+          let
+            val (newEnv, dtCons) = elaborateDataConsDefs (consDefs,
+              tyOfDatatype,
+              {env = env, bomEnv = envWithTyParams})
+            val CoreBOM.TyCon.TyC {id=id, definition=definition, params=params} =
+              CoreBOM.TyCon.node tyOfDatatype
+          in
+            (definition := dtCons
+            ; {
+              env = env,
+              bomEnv = newEnv
+            })
+          end
+      | AstBOM.DataTypeDef.SimpleDef (_, _, longTyId) =>
+        (* TODO *)
+          tyEnvs
+    end
 
   (* fun elaborateFunDef (fundef: AstBOM.FunDef.t, *)
   (*     tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}) = *)
@@ -252,7 +344,9 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     case AstBOM.Definition.node dec of
       AstBOM.Definition.Datatype dtdefs =>
         let
-          val newEnv = foldr extendEnvForDtDef tyEnvs dtdefs
+          val envWithTys = foldl extendEnvForDataTypeDef tyEnvs dtdefs
+          val envWithDefs = foldl elaborateDataTypeDef envWithTys dtdefs
+        (* TODO: add value constructors *)
         in
           (CoreML.Dec.BomDec, bomEnv)
         end
@@ -296,7 +390,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         end
     | AstBOM.Definition.Fun fundefs =>
         let
-          val envWithFns = foldr extendEnvForFun tyEnvs fundefs
+          val envWithFns = foldl extendEnvForFun tyEnvs fundefs
         (* TODO: check the body *)
         in
           (CoreML.Dec.BomDec, #bomEnv envWithFns)

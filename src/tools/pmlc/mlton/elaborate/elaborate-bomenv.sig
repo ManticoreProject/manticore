@@ -24,6 +24,7 @@ signature ELABORATE_BOMENV =
       }
 
       val applyToArgs: t * CoreBOM.BomType.t list -> CoreBOM.BomType.t
+      (* val fromConsDef: CoreBOM.DataConsDef.t -> TyAlias.t *)
       val arity: t -> int
       val error: t
     end

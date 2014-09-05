@@ -89,6 +89,7 @@ signature CORE_BOM =
       val fromLongTyId': AstBOM.LongTyId.t -> t * BomId.t
       val fromBomId: AstBOM.BomId.t -> t
       val toString: t -> string
+      val toBomId: t -> BomId.t
       val bogus: t
     end
 
@@ -210,8 +211,8 @@ signature CORE_BOM =
       val arity: t -> int
       val errorFromAst: AstBOM.BomType.t -> t
       val keepRegion: ('a -> node) * ('a * Region.t) -> t
-
       val applyArg: t * TyParam.t * t -> t
+      val uniqueTyParams: t -> TyParam.t list
 
       include WRAPPED
         sharing type node' = node

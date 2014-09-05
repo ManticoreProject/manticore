@@ -190,6 +190,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     fun fromBomId bomId = [bomId]
 
     val bogus = [BomId.bogus]
+
+    fun toBomId moduleId = last moduleId
   end
 
 
@@ -537,8 +539,9 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
           | _ => acc
           (* TODO: record, tycon *)
         end
-      fun uniqueTyParams ty =
+      fun uniqueTyParamsSet ty =
         TyParamSet.addList (TyParamSet.empty, allTyParams (ty, []))
+      val uniqueTyParams = TyParamSet.listItems o uniqueTyParamSet
       val arity = TyParamSet.numItems o uniqueTyParams
     end
 
