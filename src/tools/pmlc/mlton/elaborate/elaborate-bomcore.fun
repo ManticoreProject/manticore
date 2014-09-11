@@ -105,8 +105,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
              (BOMEnv.TyEnv.lookup (bomEnv, tyId), "undefined type")
              (fn defn =>
                check
-                 (defnArityMatches (defn, tyArgs), "arity mismatch")
-                  BOMEnv.TypeDefn.applyToArgs)
+                 (BOMEnv.TypeDefn.applyToArgs (defn, tyArgs), "arity mismatch")
+                  (fn x => x))
           end
       | AstBOM.BomType.Record fields =>
           check
@@ -312,10 +312,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       val check = check error
 
       val (tyId, tyParams) = dataTypeDefToTyIdAndParams dtDef
-      (* TODO: restructure so we don't risk throwing an exception here
-      (even though it should never happen *)
-      val BOMEnv.TypeDefn.Con tyConOfDatatype =
-        Option.valOf (BOMEnv.TyEnv.lookup (bomEnv, tyId))
+      val SOME (BOMEnv.TypeDefn.Con tyConOfDatatype) =
+        BOMEnv.TyEnv.lookup (bomEnv, tyId)
       val envWithTyParams = extendEnvForTyParams (bomEnv, tyParams)
       val newEnvs =
         case AstBOM.DataTypeDef.node dtDef of
@@ -326,26 +324,9 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
                 {env = env, bomEnv = envWithTyParams})
               val CoreBOM.TyCon.TyC {definition=definition,params=params,...} =
                 CoreBOM.TyCon.node tyConOfDatatype
-
-              fun checkArityMatches () =
-                let
-                  val consArity = (foldl (
-                    fn (newCons, acc) => acc + (CoreBOM.DataConsDef.arity newCons))
-                    0 (!definition))
-                  val tyArity = length params
-                in
-                  if consArity = tyArity then
-                    SOME tyEnvs
-                  else
-                    NONE
-                end
-              val _ =
-                check
-                  ((definition := dtCons
-                  ; checkArityMatches ()), "arity mismatch")
-                  (fn x => x)
             in
-              {
+              definition := dtCons
+              ; {
                 env = env,
                 bomEnv = newEnv
               }

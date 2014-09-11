@@ -60,11 +60,14 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     fun arity ({params = params, ...}: t) = length params
 
     fun applyToArgs ({params, ty}: t, args) =
-      ListPair.foldr
-        (fn (toSwap, swapFor, ty) =>
-          CoreBOM.BomType.applyArg (ty, toSwap, swapFor))
-        ty
-        (params, args)
+      if length params = length args then
+        SOME (ListPair.foldr
+          (fn (toSwap, swapFor, ty) =>
+            CoreBOM.BomType.applyArg (ty, toSwap, swapFor))
+          ty
+          (params, args))
+      else
+        NONE
 
     val error: t = {
       params = [],
@@ -89,7 +92,15 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     fun applyToArgs (defn, args) =
       case defn of
         Alias alias => TyAlias.applyToArgs (alias, args)
-      | _ => raise Fail "not implemented"
+       (* TODO: check arity *)
+      | Con con => CoreBOM.TyCon.applyToArgs (con, args)
+        (* let *)
+        (*   val CoreBOM.TyCon.TyC {id,...} = CoreBOM.TyCon.node con *)
+        (* in *)
+        (*   print (CoreBOM.TyId.toString id) *)
+        (*   ; raise Fail "not implemented" *)
+        (* end *)
+
     (* TODO: other case *)
 
     val error = Alias TyAlias.error

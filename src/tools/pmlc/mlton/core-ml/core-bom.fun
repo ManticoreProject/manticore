@@ -560,8 +560,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       in
         makeRegion (case node ty of
           Param p => swap p
-        (* | TyCon {con = con, args = args} => *)
-        (*     TyCon {con = doApply con, args = doApplys args} *)
+        | TyCon {con = con, args = args} =>
+            TyCon {con = con, args = doApplys args}
          (* TODO: deal with tycons *)
         (* | Record fields =>    (* TODO: deal with fields *) *)
         (*     Record (map applyArg fields) *)
@@ -607,6 +607,18 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         in
           length params
         end
+
+      fun applyToArgs (tyCon, tys) =
+        if length tys = arity tyCon then
+          SOME (BomType.makeRegion (
+            BomType.TyCon {
+              con = tyCon,
+              args = tys
+            }, region tyCon))
+        else
+          NONE
+
+
   end
 
   structure Field = struct

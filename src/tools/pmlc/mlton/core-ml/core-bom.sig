@@ -165,10 +165,8 @@ signature CORE_BOM =
       datatype node
         = ConsDef of BomId.t * ty option
 
-
       val arity: t -> int
       val error: t
-
 
       include WRAPPED
         sharing type node' = node
@@ -188,6 +186,7 @@ signature CORE_BOM =
 
       val toBomTy: t -> ty
       val arity: t -> int
+      val applyToArgs: t * ty list -> ty option
 
       include WRAPPED
         sharing type node' = node

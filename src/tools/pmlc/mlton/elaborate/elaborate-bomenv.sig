@@ -23,7 +23,7 @@ signature ELABORATE_BOMENV =
         ty: CoreBOM.BomType.t
       }
 
-      val applyToArgs: t * CoreBOM.BomType.t list -> CoreBOM.BomType.t
+      val applyToArgs: t * CoreBOM.BomType.t list -> CoreBOM.BomType.t option
       (* val fromConsDef: CoreBOM.DataConsDef.t -> TyAlias.t *)
       val arity: t -> int
       val error: t
@@ -35,7 +35,7 @@ signature ELABORATE_BOMENV =
         = Alias of TyAlias.t
         | Con of CoreBOM.TyCon.t
 
-      val applyToArgs: t * CoreBOM.BomType.t list -> CoreBOM.BomType.t
+      val applyToArgs: t * CoreBOM.BomType.t list -> CoreBOM.BomType.t option
       val arity: t -> int
       val error: t
     end
