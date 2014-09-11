@@ -260,7 +260,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               val argTy' = elaborateBomType (argTy, tyEnvs)
             in
               (SOME argTy', {
-                params = datatypeTy,
+                params = params,
                 ty = CoreBOM.BomType.makeRegion (
                   CoreBOM.BomType.Fun {
                     dom = [argTy'],
@@ -301,38 +301,62 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     end
 
 
-
-
-
   fun elaborateDataTypeDef (dtDef: AstBOM.DataTypeDef.t,
       tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}) =
     let
+      val error = error (
+        AstBOM.DataTypeDef.region,
+        AstBOM.DataTypeDef.layout,
+        tyEnvs,
+        dtDef)
+      val check = check error
+
       val (tyId, tyParams) = dataTypeDefToTyIdAndParams dtDef
       (* TODO: restructure so we don't risk throwing an exception here
       (even though it should never happen *)
-      val BOMEnv.TypeDefn.Con tyOfDatatype =
+      val BOMEnv.TypeDefn.Con tyConOfDatatype =
         Option.valOf (BOMEnv.TyEnv.lookup (bomEnv, tyId))
       val envWithTyParams = extendEnvForTyParams (bomEnv, tyParams)
+      val newEnvs =
+        case AstBOM.DataTypeDef.node dtDef of
+          AstBOM.DataTypeDef.ConsDefs (_, _, consDefs) =>
+            let
+              val (newEnv, dtCons) = elaborateDataConsDefs (consDefs,
+                CoreBOM.TyCon.toBomTy tyConOfDatatype,
+                {env = env, bomEnv = envWithTyParams})
+              val CoreBOM.TyCon.TyC {definition=definition,params=params,...} =
+                CoreBOM.TyCon.node tyConOfDatatype
+
+              fun checkArityMatches () =
+                let
+                  val consArity = (foldl (
+                    fn (newCons, acc) => acc + (CoreBOM.DataConsDef.arity newCons))
+                    0 (!definition))
+                  val tyArity = length params
+                in
+                  if consArity = tyArity then
+                    SOME tyEnvs
+                  else
+                    NONE
+                end
+              val _ =
+                check
+                  ((definition := dtCons
+                  ; checkArityMatches ()), "arity mismatch")
+                  (fn x => x)
+            in
+              {
+                env = env,
+                bomEnv = newEnv
+              }
+            end
+        | AstBOM.DataTypeDef.SimpleDef (_, _, longTyId) =>
+          (* TODO *)
+            tyEnvs
     in
-      case AstBOM.DataTypeDef.node dtDef of
-        AstBOM.DataTypeDef.ConsDefs (_, _, consDefs) =>
-          let
-            val (newEnv, dtCons) = elaborateDataConsDefs (consDefs,
-              tyOfDatatype,
-              {env = env, bomEnv = envWithTyParams})
-            val CoreBOM.TyCon.TyC {id=id, definition=definition, params=params} =
-              CoreBOM.TyCon.node tyOfDatatype
-          in
-            (definition := dtCons
-            ; {
-              env = env,
-              bomEnv = newEnv
-            })
-          end
-      | AstBOM.DataTypeDef.SimpleDef (_, _, longTyId) =>
-        (* TODO *)
-          tyEnvs
+      newEnvs
     end
+
 
   (* fun elaborateFunDef (fundef: AstBOM.FunDef.t, *)
   (*     tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}) = *)

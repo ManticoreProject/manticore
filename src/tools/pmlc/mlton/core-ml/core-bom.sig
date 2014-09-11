@@ -165,19 +165,29 @@ signature CORE_BOM =
       datatype node
         = ConsDef of BomId.t * ty option
 
+
+      val arity: t -> int
+      val error: t
+
+
       include WRAPPED
         sharing type node' = node
         sharing type obj = t
     end
 
+
     structure TyCon: sig
       type t
+      type ty
       datatype node
         = TyC of {
             id: TyId.t,
             definition: DataConsDef.t list ref,
             params: TyParam.t list
         }
+
+      val toBomTy: t -> ty
+      val arity: t -> int
 
       include WRAPPED
         sharing type node' = node
@@ -213,11 +223,13 @@ signature CORE_BOM =
       val keepRegion: ('a -> node) * ('a * Region.t) -> t
       val applyArg: t * TyParam.t * t -> t
       val uniqueTyParams: t -> TyParam.t list
+      val error: t
 
       include WRAPPED
         sharing type node' = node
         sharing type obj = t
     end
+
 
     structure TyArgs: sig
       type t
@@ -272,6 +284,6 @@ signature CORE_BOM =
     end
 
     (* structure Type: *)
-    sharing type DataConsDef.ty = Field.ty = BomType.t
+    sharing type DataConsDef.ty = Field.ty = TyCon.ty = BomType.t
 
   end

@@ -191,7 +191,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
     val bogus = [BomId.bogus]
 
-    fun toBomId moduleId = last moduleId
+    fun toBomId moduleId = List.last moduleId
   end
 
 
@@ -440,6 +440,15 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     in
       tys
     end
+
+  and arityOfDataCons (dtCons: dataconsdef_t): int =
+    let
+      val ConsDef (id, maybeTy) = Region.Wrap.node dtCons
+    in
+      case maybeTy of
+        SOME ty => arityOfType ty
+      | NONE => 0
+    end
   end
 
   structure DataConsDef = struct
@@ -452,15 +461,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     type node' = node
     type obj = t
 
-  end
-
-  structure TyCon = struct
-      open Region.Wrap
-
-      datatype node = datatype tycon_node
-      type t = tycon_t
-      type node' = node
-      type obj = t
+    val arity = arityOfDataCons
+    val error = makeRegion (ConsDef (BomId.bogus, NONE), Region.bogus)
   end
 
 
@@ -496,6 +498,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     val keepRegion = keepRegion
     fun errorFromAst astTy =
       keepRegion (fn x => Error, AstBOM.BomType.dest astTy)
+    val error = makeRegion (Error, Region.bogus)
 
 
     (* local  *)
@@ -541,8 +544,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         end
       fun uniqueTyParamsSet ty =
         TyParamSet.addList (TyParamSet.empty, allTyParams (ty, []))
-      val uniqueTyParams = TyParamSet.listItems o uniqueTyParamSet
-      val arity = TyParamSet.numItems o uniqueTyParams
+      val uniqueTyParams = TyParamSet.listItems o uniqueTyParamsSet
+      val arity = TyParamSet.numItems o uniqueTyParamsSet
     end
 
     (* swap out the named TyParam for the given type *)
@@ -578,6 +581,33 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   end
 
+  structure TyCon = struct
+      open Region.Wrap
+
+      datatype node = datatype tycon_node
+      type t = tycon_t
+      type ty = BomType.t
+      type node' = node
+      type obj = t
+
+      fun toBomTy tyCon =
+        let
+          val TyC {params=params,...} = node tyCon
+        in
+          BomType.makeRegion (
+            BomType.TyCon {
+              con = tyCon,
+              args = []         (* TODO: is this what should go here? *)
+            }, region tyCon)
+        end
+
+      fun arity tyCon =
+        let
+          val TyC {params,...} = node tyCon
+        in
+          length params
+        end
+  end
 
   structure Field = struct
     open Region.Wrap

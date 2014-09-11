@@ -84,11 +84,12 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     fun arity defn =
       case defn of
         Alias alias => TyAlias.arity alias
-    (* TODO: other case *)
+      | Con con => CoreBOM.TyCon.arity con
 
     fun applyToArgs (defn, args) =
       case defn of
         Alias alias => TyAlias.applyToArgs (alias, args)
+      | _ => raise Fail "not implemented"
     (* TODO: other case *)
 
     val error = Alias TyAlias.error
