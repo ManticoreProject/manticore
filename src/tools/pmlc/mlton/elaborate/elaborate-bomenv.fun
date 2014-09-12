@@ -85,9 +85,14 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
 
   structure TypeDefn = struct
-    datatype t
+    datatype node
       = Alias of TyAlias.t
       | Con of CoreBOM.TyCon.t
+
+    type t = {node: node, uid: int}
+
+    fun node tyDefn = #node tyDefn
+    fun uid tyDefn = #uid tyDefn
 
     fun arity defn =
       case defn of

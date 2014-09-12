@@ -31,9 +31,10 @@ signature ELABORATE_BOMENV =
 
     structure TypeDefn: sig
       (* TODO: make this opaque? *)
-      datatype t
-        = Alias of TyAlias.t
-        | Con of CoreBOM.TyCon.t
+      type t
+      (* datatype t *)
+        (* = Alias of TyAlias.t *)
+        (* | Con of CoreBOM.TyCon.t *)
 
       val applyToArgs: t * CoreBOM.BomType.t list -> CoreBOM.BomType.t option
       val arity: t -> int

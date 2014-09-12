@@ -240,6 +240,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       }
     end
 
+
   fun elaborateDataConsDef (dtCon: AstBOM.DataConsDef.t,
       datatypeTy: CoreBOM.BomType.t,
       tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}):
@@ -275,7 +276,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     end
 
 
-
   fun elaborateDataConsDefs (dtCons: AstBOM.DataConsDef.t list,
       datatypeTy: CoreBOM.BomType.t, tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}) =
     foldr (fn (newAstCon, (oldEnv, oldCons)) =>
@@ -285,7 +285,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       in
         (newEnv, newCon::oldCons)
       end) (bomEnv, []) dtCons
-
 
 
   fun elaborateDataTypeDef (dtDef: AstBOM.DataTypeDef.t,
