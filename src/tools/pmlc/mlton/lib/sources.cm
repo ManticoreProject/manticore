@@ -29,6 +29,9 @@ signature ENV
 signature ERROR
 signature MONO_ENV
 signature ORDER
+signature ORD_KEY
+signature ORD_MAP
+signature ORD_SET
 signature POLY_CACHE
 signature PROMISE
 signature SET
@@ -48,8 +51,8 @@ structure Dir
 structure DirectedGraph
 structure DirectedSubGraph
 structure DisjointSet
-structure DotColor
 structure Dot
+structure DotColor
 structure Error
 structure Escape
 structure Exn
@@ -63,8 +66,9 @@ structure In
 structure InsertionSort
 structure Iterate
 structure Justify
-structure Lines
 structure Layout
+structure Lines
+structure ListMergeSort
 structure OS
 structure Out
 structure Parse
@@ -100,8 +104,8 @@ functor Env
 functor HashedUniqueSet
 functor IntUniqueId
 functor MakeMonoEnv
-functor MonoList
 functor MonoEnv
+functor MonoList
 functor MonoList
 functor MonoOption
 functor MonoVector
@@ -109,6 +113,8 @@ functor MoveToFrontEnv
 functor OrderedUniqueSet
 functor Pair
 functor PolyEnv
+functor RedBlackMapFn
+functor RedBlackSetFn
 functor Sum
 functor Tree
 functor UniqueId
@@ -121,8 +127,10 @@ $/basis.cm
 basic/sources.cm
 set/sources.cm
 env/sources.cm
+./smlnj-lib-sources.cm 			(* workaround for name clash *)
 
 mlton-platform.sml
+
 
 #if (defined (SMLNJ_VERSION))
 directed-graph/sources.cm

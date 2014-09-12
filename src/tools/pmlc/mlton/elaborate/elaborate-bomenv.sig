@@ -29,12 +29,20 @@ signature ELABORATE_BOMENV =
       val error: t
     end
 
+    (* A TypeDefn is either an alias or a constructor plus a unique
+    identifier *)
     structure TypeDefn: sig
-      (* TODO: make this opaque? *)
       type t
       (* datatype t *)
         (* = Alias of TyAlias.t *)
         (* | Con of CoreBOM.TyCon.t *)
+
+      (* These increment the internal uid counter as a side effect *)
+      val newCon: CoreBOM.TyCon.t -> t
+      val newAlias: TyAlias.t -> t
+
+      val getCon: t -> CoreBOM.TyCon.t option
+      (* val getAlias: t -> TyAlias.t option *)
 
       val applyToArgs: t * CoreBOM.BomType.t list -> CoreBOM.BomType.t option
       val arity: t -> int
@@ -64,6 +72,7 @@ signature ELABORATE_BOMENV =
 
       val extend: env * CoreBOM.TyId.t * TypeDefn.t -> env
       val lookup: env * CoreBOM.TyId.t -> TypeDefn.t option
+      val lookupCon: env * CoreBOM.TyId.t -> CoreBOM.TyCon.t option
       val printKeys: env -> unit
 
       (* ??? can't get this to compile *)

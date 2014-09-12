@@ -231,7 +231,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         env = env,
         bomEnv = BOMEnv.TyEnv.extend (bomEnv,
           tyId,
-          BOMEnv.TypeDefn.Con (CoreBOM.TyCon.makeRegion (
+          BOMEnv.TypeDefn.newCon (CoreBOM.TyCon.makeRegion (
             CoreBOM.TyCon.TyC {
               id = tyId,
               definition = ref [],
@@ -298,8 +298,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       val check = check error
 
       val (tyId, tyParams) = dataTypeDefToTyIdAndParams dtDef
-      val SOME (BOMEnv.TypeDefn.Con tyConOfDatatype) =
-        BOMEnv.TyEnv.lookup (bomEnv, tyId)
+      val SOME (tyConOfDatatype) = BOMEnv.TyEnv.lookupCon (bomEnv, tyId)
       val envWithTyParams = extendEnvForTyParams (bomEnv, tyParams)
       val newEnvs =
         case AstBOM.DataTypeDef.node dtDef of
@@ -382,7 +381,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             bomTy, {env = env, bomEnv = envWithTyParams})
           (* alias is the only kind we can get from this *)
           val newTyAlias = checkArityMatches (
-            BOMEnv.TypeDefn.Alias ({
+            BOMEnv.TypeDefn.newAlias ({
               params = BOMEnv.TyParamEnv.getParams envWithTyParams,
               ty = newTy
              }),

@@ -85,31 +85,50 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
 
   structure TypeDefn = struct
-    datatype node
+    datatype def
       = Alias of TyAlias.t
       | Con of CoreBOM.TyCon.t
 
-    type t = {node: node, uid: int}
+    type t = {def: def, uid: int}
 
-    fun node tyDefn = #node tyDefn
-    fun uid tyDefn = #uid tyDefn
+    local
+      val counter = Counter.new 0
 
-    fun arity defn =
-      case defn of
-        Alias alias => TyAlias.arity alias
-      | Con con => CoreBOM.TyCon.arity con
+      fun def (tyDefn: t) = #def tyDefn
+      fun uid (tyDefn: t) = #uid tyDefn
+      fun new def = {
+        def = def,
+        uid = Counter.next counter
+      }
+    in
+      fun arity defn =
+        case def defn of
+          Alias alias => TyAlias.arity alias
+        | Con con => CoreBOM.TyCon.arity con
 
-    fun applyToArgs (defn, args) =
-      case defn of
-        Alias alias => TyAlias.applyToArgs (alias, args)
-      | Con con => CoreBOM.TyCon.applyToArgs (con, args)
+      fun applyToArgs (defn, args) =
+        case def defn of
+          Alias alias => TyAlias.applyToArgs (alias, args)
+        | Con con => CoreBOM.TyCon.applyToArgs (con, args)
 
-    fun isCon defn =
-      case defn of
-        Con con => SOME defn
-      | _ => NONE
+      fun isCon defn =
+        case def defn of
+          Con con => SOME defn
+        | _ => NONE
 
-    val error = Alias TyAlias.error
+      fun getCon defn =
+        case def defn of
+          Con con => SOME con
+        | _ => NONE
+
+      val newCon = new
+      val newAlias = new
+    end
+
+    val error = {
+      def = Alias TyAlias.error,
+      uid = ~1
+    }
   end
 
 
@@ -230,9 +249,14 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
       in
         val lookup =
           lookup (lookupThis, getEnv, maybeQualify, CoreBOM.TyId.toString)
-          val extend =
-            extend (maybeQualify, extendThis, CoreBOM.TyId.toString,
-              modifyTyEnv)
+        val extend =
+          extend (maybeQualify, extendThis, CoreBOM.TyId.toString,
+            modifyTyEnv)
+
+        fun lookupCon (env, tyId) =
+          case lookup (env, tyId) of
+            SOME tyDefn => TypeDefn.getCon tyDefn
+          | NONE => NONE
 
         fun printKeys env =
           print (

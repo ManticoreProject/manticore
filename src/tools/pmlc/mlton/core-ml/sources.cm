@@ -18,14 +18,11 @@ functor CoreBOM
 is
 
 $/basis.cm
-(* $/smlnj-lib.cm *)
 
 ../ast/sources.cm
 ../atoms/sources.cm
 ../control/sources.cm
 ../lib/sources.cm
-(* ../lib/sources-safe.cm *)
-./core-bom-deps.cm
 
 core-ml.sig
 core-ml.fun
