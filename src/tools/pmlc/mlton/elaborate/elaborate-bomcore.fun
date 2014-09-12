@@ -248,9 +248,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       val AstBOM.DataConsDef.ConsDef (astId, maybeTy) =
         AstBOM.DataConsDef.node dtCon
       val params = CoreBOM.BomType.uniqueTyParams datatypeTy
-      (* val valId = CoreBOM.ValId.fromAstBomId astId *)
       val (maybeArgTy: CoreBOM.BomType.t option, valTy: BOMEnv.TyAlias.t) =
-      (* TODO: handle it correctly when the con isn't parameterized *)
         case (maybeTy: AstBOM.BomType.t option) of
           SOME (argTy: AstBOM.BomType.t) =>
             let
