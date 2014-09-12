@@ -76,9 +76,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
     val error: t = {
       params = [],
-      ty = CoreBOM.BomType.makeRegion (
-        CoreBOM.BomType.Error,
-        Region.bogus)
+      ty = CoreBOM.BomType.Error
     }
 
   end

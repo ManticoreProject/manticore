@@ -18,7 +18,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     let
       val error: string -> CoreBOM.BomType.t =
         error (AstBOM.BomType.region, AstBOM.BomType.layout,
-          CoreBOM.BomType.errorFromAst astTy,
+          CoreBOM.BomType.Error,
           astTy)
 
       (* Need to put whole body here to get around value restriction *)
@@ -27,8 +27,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           SOME y => f y
         | NONE => error  msg
       fun doElaborate ty = elaborateBomType (ty, tyEnvs)
-      fun keepRegion newNode = CoreBOM.BomType.keepRegion (
-        (fn _ => newNode), AstBOM.BomType.dest astTy)
+      (* fun keepRegion newNode = CoreBOM.BomType.keepRegion ( *)
+      (*   (fn _ => newNode), AstBOM.BomType.dest astTy) *)
 
       fun defnArityMatches (input as (defn, tyArgs)) =
         if (BOMEnv.TypeDefn.arity defn) = (length tyArgs) then
@@ -71,24 +71,24 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         AstBOM.BomType.Param tyParam =>
           check
             (BOMEnv.TyParamEnv.lookup (bomEnv, tyParam), "unbound typaram")
-            (fn tyParam => keepRegion (CoreBOM.BomType.Param tyParam))
+            (fn tyParam => CoreBOM.BomType.Param tyParam)
       | AstBOM.BomType.Tuple tys =>
-          keepRegion (CoreBOM.BomType.Tuple (map doElaborate tys))
+          CoreBOM.BomType.Tuple (map doElaborate tys)
       | AstBOM.BomType.Fun funTys =>
-          keepRegion (CoreBOM.BomType.Fun (let
+          CoreBOM.BomType.Fun (let
             val (dom, cont, rng) = app3 (map doElaborate) funTys
           in
             {dom=dom, cont=cont, rng=rng}
-          end))
-      | AstBOM.BomType.Any => keepRegion (CoreBOM.BomType.Any)
-      | AstBOM.BomType.VProc => keepRegion (CoreBOM.BomType.VProc)
+          end)
+      | AstBOM.BomType.Any => CoreBOM.BomType.Any
+      | AstBOM.BomType.VProc => CoreBOM.BomType.VProc
       | AstBOM.BomType.Cont maybeTyArgs =>
-          keepRegion (CoreBOM.BomType.Cont (map doElaborate (
-            CoreBOM.TyArgs.flattenFromAst maybeTyArgs)))
+          CoreBOM.BomType.Cont (map doElaborate (
+            CoreBOM.TyArgs.flattenFromAst maybeTyArgs))
       | AstBOM.BomType.Addr ty =>
-          keepRegion (CoreBOM.BomType.Addr (doElaborate ty))
-      | AstBOM.BomType.Raw ty => keepRegion (CoreBOM.BomType.Raw (
-          CoreBOM.RawTy.fromAst ty))
+          CoreBOM.BomType.Addr (doElaborate ty)
+      | AstBOM.BomType.Raw ty => CoreBOM.BomType.Raw (
+          CoreBOM.RawTy.fromAst ty)
       | AstBOM.BomType.LongId (longTyId, maybeTyArgs) =>
           let
             val tyArgs = map doElaborate (CoreBOM.TyArgs.flattenFromAst maybeTyArgs)
@@ -104,8 +104,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       | AstBOM.BomType.Record fields =>
           check
             (recordLabelsOkay fields, "labels must be strictly increasing")
-            (fn fields => keepRegion (CoreBOM.BomType.Record (map
-              (fn field' => elaborateField (field', tyEnvs)) fields)))
+            (fn fields => CoreBOM.BomType.Record (map (fn field' =>
+              elaborateField (field', tyEnvs)) fields))
     end
   and elaborateField (astField: AstBOM.Field.t,
      tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}): CoreBOM.Field.t =
@@ -154,10 +154,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
   fun varPatToTy (pat, tyEnvs) =
     let
       val error = error (AstBOM.VarPat.region, AstBOM.VarPat.layout,
-        CoreBOM.BomType.makeRegion (
-          CoreBOM.BomType.Error,
-          AstBOM.VarPat.region pat),
-        pat)
+        CoreBOM.BomType.Error, pat)
       val check = check error
       val maybeTy =
         case AstBOM.VarPat.node pat of
@@ -184,20 +181,15 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       val domTys = patsToTys domPats
       val contTys = patsToTys contPats
       val rngTys' = map (fn ty => elaborateBomType (ty, tyEnvs')) rngTys
-      val funTy = CoreBOM.BomType.makeRegion (
-        CoreBOM.BomType.Fun {
+      val funTy = CoreBOM.BomType.Fun {
           dom = domTys,
           cont = contTys,
           rng = rngTys'
-        }, AstBOM.FunDef.region funDef)
+        }
       val newTyAlias = checkTyAliasArity (funTy,
         BOMEnv.TyParamEnv.getParams envWithTyParams,
         error (AstBOM.FunDef.region, AstBOM.FunDef.layout,
-        {ty = CoreBOM.BomType.keepRegion (
-            fn _ => CoreBOM.BomType.Error,
-            CoreBOM.BomType.dest funTy),
-          params = []},
-        funDef))
+          {ty = CoreBOM.BomType.Error, params = []}, funDef))
     in
       ({
         env = env,
@@ -227,12 +219,11 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         env = env,
         bomEnv = BOMEnv.TyEnv.extend (bomEnv,
           tyId,
-          BOMEnv.TypeDefn.newCon (CoreBOM.TyCon.makeRegion (
-            CoreBOM.TyCon.TyC {
+          BOMEnv.TypeDefn.newCon (CoreBOM.TyCon.TyC {
               id = tyId,
               definition = ref [],
               params = map CoreBOM.TyParam.fromAst tyParams
-            }, AstBOM.DataTypeDef.region dtDef)))
+            }))
       }
     end
 
@@ -253,12 +244,11 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             in
               (SOME argTy', {
                 params = params,
-                ty = CoreBOM.BomType.makeRegion (
-                  CoreBOM.BomType.Fun {
+                ty = CoreBOM.BomType.Fun {
                     dom = [argTy'],
                     cont = [],
                     rng = [datatypeTy]
-                  }, AstBOM.DataConsDef.region dtCon)
+                  }
                 })
             end
         | NONE =>
@@ -301,7 +291,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
                 CoreBOM.TyCon.toBomTy tyConOfDatatype,
                 {env = env, bomEnv = envWithTyParams})
               val CoreBOM.TyCon.TyC {definition=definition,params=params,...} =
-                CoreBOM.TyCon.node tyConOfDatatype
+                tyConOfDatatype
             in
               definition := dtCons
               ; {
@@ -320,6 +310,9 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       val error = error (AstBOM.FunDef.region, AstBOM.FunDef.layout,
         (), funDef)
       val check = check error
+    (* TODO: extend the val env to hold the function parameters *)
+    (* TODO: typecheck the body with the params in scope *)
+    (* TODO: check the body has the same type as the range type *)
     in
       ()
     end

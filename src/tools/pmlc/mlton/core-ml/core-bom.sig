@@ -152,9 +152,9 @@ signature CORE_BOM =
 
       val keepRegion: ('a -> node) * ('a * Region.t) -> t
 
-      include WRAPPED
-        sharing type obj = t
-        sharing type node' = node
+      (* include WRAPPED *)
+      (*   sharing type obj = t *)
+      (*   sharing type node' = node *)
       (* val fromAst: AstBOM.Field.t -> t *)
     end
 
@@ -175,9 +175,9 @@ signature CORE_BOM =
 
 
     structure TyCon: sig
-      type t
+      (* type t *)
       type ty
-      datatype node
+      datatype t
         = TyC of {
             id: TyId.t,
             definition: DataConsDef.t list ref,
@@ -188,15 +188,15 @@ signature CORE_BOM =
       val arity: t -> int
       val applyToArgs: t * ty list -> ty option
 
-      include WRAPPED
-        sharing type node' = node
-        sharing type obj = t
+      (* include WRAPPED *)
+      (*   sharing type node' = node *)
+      (*   sharing type obj = t *)
     end
 
     structure BomType: sig
-      type t
+      (* type t *)
 
-      datatype node
+      datatype t
         = Param of TyParam.t
         | TyCon of {
             con: TyCon.t,
@@ -218,15 +218,15 @@ signature CORE_BOM =
 
       (* val fromAst: AstBOM.BomType.t -> t *)
       val arity: t -> int
-      val errorFromAst: AstBOM.BomType.t -> t
-      val keepRegion: ('a -> node) * ('a * Region.t) -> t
+      (* val errorFromAst: AstBOM.BomType.t -> t *)
+      (* val keepRegion: ('a -> node) * ('a * Region.t) -> t *)
       val applyArg: t * TyParam.t * t -> t
       val uniqueTyParams: t -> TyParam.t list
-      val error: t
+      (* val error: t *)
 
-      include WRAPPED
-        sharing type node' = node
-        sharing type obj = t
+      (* include WRAPPED *)
+      (*   sharing type node' = node *)
+      (*   sharing type obj = t *)
     end
 
 
