@@ -220,44 +220,20 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
       open TyEnvMap
 
       local
-        (* fun getTyEnv (T env: env): t = #tyEnv env *)
-        (* fun maybeQualify (ty: CoreBOM.TyId.t, T env: env) = *)
-        (*   CoreBOM.TyId.maybeQualify (ty, #currentModule env) *)
         val getEnv = getEnv #tyEnv
         val maybeQualify = maybeQualify CoreBOM.TyId.maybeQualify
       in
         val lookup =
-          (* (print (String.concat [ *)
-          (*   "Looking up ", *)
-          (*   CoreBOM.TyId.toString ty, *)
-          (*   "\n" *)
-          (* ]) *)
-          (*   ; lookupThis (getTyEnv env, maybeQualify (ty, env))) *)
           lookup (lookupThis, getEnv, maybeQualify, CoreBOM.TyId.toString)
-        (* fun extend (env as T {tyEnv, tyParamEnv, valEnv, currentModule}: env, *)
-        (*     bomId, newTy): env = *)
-        (*   let *)
-        (*     val qualifiedId = maybeQualify (bomId, env) *)
-        (*   in *)
-        (*     (trace [ *)
-        (*       "Extending env for bomid: ", *)
-        (*       CoreBOM.TyId.toString qualifiedId *)
-        (*     ] *)
-        (*     ; T { *)
-        (*       tyEnv = extendThis (tyEnv, qualifiedId, newTy), *)
-        (*       tyParamEnv = tyParamEnv, *)
-        (*       valEnv = valEnv, *)
-        (*       currentModule = currentModule *)
-        (*     }) *)
           val extend =
             extend (maybeQualify, extendThis, CoreBOM.TyId.toString,
               modifyTyEnv)
-          (* end *)
+
         fun printKeys env =
           print (
             String.concat ["[", (
             String.concatWith ", "
-              (map CoreBOM.TyId.toString (listKeys (getEnv env)))), "]"])
+              (map CoreBOM.TyId.toString (listKeys (getEnv env)))), "]\n"])
 
       end
     end
@@ -277,22 +253,6 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
         val extend =
           extend (maybeQualify, extendThis, CoreBOM.ValId.toString,
             modifyValEnv)
-        (* fun extend (env as T {tyEnv, tyParamEnv, valEnv, currentModule}: env, *)
-        (*     bomId, newVal): env = *)
-        (*   let *)
-        (*     val qualifiedId = maybeQualify (bomId, env) *)
-        (*   in *)
-        (*     (trace [ *)
-        (*       "Extending env for bomid: ", *)
-        (*       CoreBOM.ValId.toString qualifiedId *)
-        (*     ] *)
-        (*     ; T { *)
-        (*       valEnv = extendThis (valEnv, qualifiedId, newVal), *)
-        (*       tyEnv = tyEnv, *)
-        (*       tyParamEnv = tyParamEnv, *)
-        (*       currentModule = currentModule *)
-        (*     }) *)
-          (* end *)
       end
     end
 

@@ -867,7 +867,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   structure DataTypeDef = struct
   datatype node
     = ConsDefs of BomId.t * TyParams.t option * DataConsDef.t list
-    | SimpleDef of BomId.t * TyParams.t  option * LongTyId.t
+    (* | SimpleDef of BomId.t * TyParams.t  option * LongTyId.t *)
 
   open Wrap
   type t = node Wrap.t
@@ -885,24 +885,10 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
           leftDelimitWithIndent (
             map DataConsDef.layout dataConsDefs, "=", " | ")
         ]
-
-        fun layoutSimpleDef (bomId, maybeTyParams, longId) =
-            Layout.align [
-              Layout.mayAlign [
-                BomId.layout bomId,
-                layoutOption (maybeTyParams, TyParams.layout)
-              ],
-              Layout.mayAlign [
-                Layout.str "datatype",
-                BomId.layout bomId
-              ]
-            ]
       in
           case node myNode of
             ConsDefs (bomId, maybeTyParams, dataConsDefs) =>
               layoutConsDef (bomId, maybeTyParams, dataConsDefs)
-          | SimpleDef (bomId, maybeTyParams, longId) =>
-              layoutSimpleDef (bomId, maybeTyParams, longId)
       end
   end
 
@@ -910,6 +896,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   datatype node
     = Extern of CReturnTy.t * BomId.t * CArgTy.t list * Attrs.t
     | Datatype of DataTypeDef.t list
+    | DatatypeAlias of BomId.t * TyParams.t option * LongTyId.t
     | TypeDefn of BomId.t * TyParams.t option * BomType.t
     | DefineShortId of Attrs.t option * HLOpId.t *
         TyParams.t option * VarPat.t list * VarPat.t list *
@@ -941,6 +928,17 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
           map DataTypeDef.layout dataTypeDefs,
           "and",
           "datatype")
+    | DatatypeAlias (bomId, maybeTyParams, longId) =>
+        Layout.align [
+          Layout.mayAlign [
+            BomId.layout bomId,
+            layoutOption (maybeTyParams, TyParams.layout)
+          ],
+          Layout.mayAlign [
+            Layout.str "datatype",
+            BomId.layout bomId
+          ]
+        ]
     | TypeDefn (bomId, maybeTyParams, myType) =>
         Layout.align [
           Layout.mayAlign [

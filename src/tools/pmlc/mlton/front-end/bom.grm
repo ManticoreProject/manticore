@@ -241,10 +241,20 @@ BOMDecls
   ;
 
 Definition
-	: "datatype" DataTypeDef ("and" DataTypeDef)* ";"
-		=> (BOM.Definition.makeRegion (
-		      BOM.Definition.Datatype (DataTypeDef::SR),
-		      posToReg FULL_SPAN))
+	(* : "datatype" DataTypeDef ("and" DataTypeDef)* ";" *)
+	(* 	=> (BOM.Definition.makeRegion ( *)
+	(* 	      BOM.Definition.Datatype (DataTypeDef::SR), *)
+	(* 	      posToReg FULL_SPAN)) *)
+  : "datatype" BomId TyParams? "=" (
+      DataTypeDefLHS ("and" DataTypeDef)*
+        => (BOM.Definition.makeRegion (
+          BOM.Definition.Datatype ((DataTypeDefLHS (
+            BomId, TyParams, FULL_SPAN)::SR)),
+          posToReg FULL_SPAN))
+      | "datatype" LongTyId
+      => (BOM.Definition.makeRegion (
+          BOM.Definition.DatatypeAlias (BomId, TyParams, LongTyId),
+          posToReg FULL_SPAN))) ";" => (SR)
 	| "type" BomId TyParams? "=" BOMType ";"
 		=> (BOM.Definition.makeRegion (
 		      BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
@@ -296,17 +306,30 @@ DefineRest
              posToReg FULL_SPAN))
 	;
 
-DataTypeDef
-  : BomId TyParams? "=" (DataConsDef ("|" DataConsDef)*
-      => (BOM.DataTypeDef.makeRegion (
-        BOM.DataTypeDef.ConsDefs (BomId, TyParams, DataConsDef::SR),
-        posToReg FULL_SPAN))
-     | "datatype" LongTyId
-  (* | BomId TyParams? "=" "datatype" LongTyId *)
-        => (BOM.DataTypeDef.makeRegion
-             (BOM.DataTypeDef.SimpleDef (BomId, TyParams, LongTyId),
-            posToReg FULL_SPAN))) => (SR)
+DataTypeDefLHS
+  : DataConsDef ("|" DataConsDef)*
+   => (fn (bomId, tyParams, thisSpan) =>
+     BOM.DataTypeDef.makeRegion (
+       BOM.DataTypeDef.ConsDefs (bomId, tyParams, DataConsDef::SR),
+       posToReg thisSpan))
   ;
+
+DataTypeDef
+  (* : BomId TyParams? "=" DataConsDef ("|" DataConsDef)* *)
+  (*     => (BOM.DataTypeDef.makeRegion ( *)
+  (*       BOM.DataTypeDef.ConsDefs (BomId, TyParams, DataConsDef::SR), *)
+  (*       posToReg FULL_SPAN)) *)
+  : BomId TyParams? "=" DataTypeDefLHS
+      => (DataTypeDefLHS (BomId, TyParams, FULL_SPAN))
+  ;
+
+(* DataTypeDef *)
+(*   : BomId TyParams? "=" "datatype" LongTyId *)
+(*   (* | BomId TyParams? "=" "datatype" LongTyId *) *)
+(*         => (BOM.DataTypeDef.makeRegion *)
+(*              (BOM.DataTypeDef.SimpleDef (BomId, TyParams, LongTyId), *)
+(*             posToReg FULL_SPAN)) *)
+  (* ; *)
 
 DataConsDef
   : BomId ("of" BOMType)?

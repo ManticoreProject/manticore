@@ -211,13 +211,16 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     end
 
   fun dataTypeDefToTyIdAndParams dtDef =
-    (fn (astId, maybeTyParams) => (CoreBOM.TyId.fromAstBomId astId,
-        CoreBOM.TyParam.flattenFromAst maybeTyParams))
-    (case AstBOM.DataTypeDef.node dtDef of
-        AstBOM.DataTypeDef.ConsDefs (bomId, maybeTyParams, _) =>
-          (bomId, maybeTyParams)
-     | AstBOM.DataTypeDef.SimpleDef (bomId, maybeTyParams, _) =>
-          (bomId, maybeTyParams))
+    let
+      val (tyId, tyParams) =
+        (fn AstBOM.DataTypeDef.ConsDefs (astId, maybeTyParams, _) =>
+          (CoreBOM.TyId.fromAstBomId astId,
+          CoreBOM.TyParam.flattenFromAst maybeTyParams)) (
+          AstBOM.DataTypeDef.node dtDef)
+    in
+      (tyId, tyParams)
+    end
+
 
   fun extendEnvForDataTypeDef (dtDef: AstBOM.DataTypeDef.t,
       tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}) =
@@ -317,25 +320,9 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
                 bomEnv = newEnv
               }
             end
-        | AstBOM.DataTypeDef.SimpleDef (_, _, longTyId) =>
-          (* TODO: make this type equal to the type of the longTyId *)
-            check
-              (BOMEnv.TyEnv.lookup (bomEnv,
-                CoreBOM.TyId.fromLongTyId longTyId), "undefined type")
-                (fn tyDefn => check
-                  (BOMEnv.TypeDefn.isCon tyDefn, "not a datatype")
-                  (fn tyDefn => {
-                  env = env,
-                  bomEnv = BOMEnv.TyEnv.extend (bomEnv, tyId, tyDefn)
-                }))
     in
       newEnvs
     end
-
-
-  (* fun elaborateFunDef (fundef: AstBOM.FunDef.t, *)
-  (*     tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}) = *)
-  (*   let *)
 
 
   fun elaborateBomDec (dec: AstBOM.Definition.t,
@@ -345,9 +332,33 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         let
           val envWithTys = foldl extendEnvForDataTypeDef tyEnvs dtdefs
           val envWithDefs = foldl elaborateDataTypeDef envWithTys dtdefs
-        (* TODO: add value constructors *)
         in
           (CoreML.Dec.BomDec, #bomEnv envWithDefs)
+        end
+    | AstBOM.Definition.DatatypeAlias (bomId, maybeTyParams, longTyId) =>
+        let
+          val error = error (
+            AstBOM.LongTyId.region,
+            AstBOM.LongTyId.layout,
+            BOMEnv.TypeDefn.error,
+            longTyId)
+
+          val check = check error
+          val tyId = CoreBOM.TyId.fromAstBomId bomId
+
+          val tyConDefn =
+            (* TODO: make this type equal to the type of the longTyId *)
+            (* TODO: can't get this to compile if the last line extends env *)
+            check
+              (BOMEnv.TyEnv.lookup (bomEnv,
+                CoreBOM.TyId.fromLongTyId longTyId): BOMEnv.TypeDefn.t option,
+                  "undefined type")
+                (fn tyDefn: BOMEnv.TypeDefn.t => check
+                  ((BOMEnv.TypeDefn.isCon tyDefn): BOMEnv.TypeDefn.t option,
+                    "not a datatype")
+                  (fn x => x))
+        in
+          (CoreML.Dec.BomDec, BOMEnv.TyEnv.extend (bomEnv, tyId, tyConDefn))
         end
 
     | AstBOM.Definition.TypeDefn (bomId, maybeTyParams, bomTy) =>

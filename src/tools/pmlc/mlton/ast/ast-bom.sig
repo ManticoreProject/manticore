@@ -173,7 +173,7 @@ signature AST_BOM =
       datatype node
         = ConsDefs of BomId.t * TyParams.t option *
           DataConsDef.t list
-        | SimpleDef of BomId.t * TyParams.t option * LongTyId.t
+        (* | SimpleDef of BomId.t * TyParams.t option * LongTyId.t *)
 
       val layout : t -> Layout.t
 
@@ -364,6 +364,7 @@ signature AST_BOM =
       datatype node
         = Extern of CReturnTy.t * BomId.t * CArgTy.t list * Attrs.t
         | Datatype of DataTypeDef.t list
+        | DatatypeAlias of BomId.t * TyParams.t option * LongTyId.t
         | TypeDefn of BomId.t * TyParams.t option * BomType.t
         | DefineShortId of Attrs.t option * HLOpId.t *
             TyParams.t option * VarPat.t list * VarPat.t list *
