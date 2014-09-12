@@ -37,6 +37,7 @@ signature ELABORATE_BOMENV =
 
       val applyToArgs: t * CoreBOM.BomType.t list -> CoreBOM.BomType.t option
       val arity: t -> int
+      val isCon: t -> t option
       val error: t
     end
 
@@ -62,6 +63,7 @@ signature ELABORATE_BOMENV =
 
       val extend: env * CoreBOM.TyId.t * TypeDefn.t -> env
       val lookup: env * CoreBOM.TyId.t -> TypeDefn.t option
+      val printKeys: env -> unit
 
       (* ??? can't get this to compile *)
       (* val extendThis: t * AstBOM.BomType.t * TypeDefn.t -> t *)

@@ -27,12 +27,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         case x of
           SOME y => f y
         | NONE => error  msg
-
-      (* Control.error ( *)
-        (* AstBOM.BomType.region astTy, *)
-        (* AstBOM.BomType.layout astTy, *)
-        (* Layout.str ("Error checking BomType: " ^ msg)) *)
-        (* ; CoreBOM.BomType.errorFromAst astTy) *)
       fun doElaborate ty = elaborateBomType (ty, tyEnvs)
       fun keepRegion newNode = CoreBOM.BomType.keepRegion (
         (fn _ => newNode), AstBOM.BomType.dest astTy)
@@ -282,23 +276,15 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
 
 
   fun elaborateDataConsDefs (dtCons: AstBOM.DataConsDef.t list,
-      datatypeTy: CoreBOM.BomType.t,
-      tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}) =
-    let
-      fun loop (bomEnv: BOMEnv.t, dtCons: AstBOM.DataConsDef.t list,
-          acc: CoreBOM.DataConsDef.t list) =
-        case dtCons of
-          dtCon::dtCons =>
-            let
-              val (newCon, newEnv) = elaborateDataConsDef (
-                dtCon, datatypeTy, {env=env, bomEnv=bomEnv})
-            in
-              loop (newEnv, dtCons, newCon::acc)
-            end
-        | [] => (bomEnv, rev acc)
-    in
-      loop (bomEnv, dtCons, [])
-    end
+      datatypeTy: CoreBOM.BomType.t, tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}) =
+    foldr (fn (newAstCon, (oldEnv, oldCons)) =>
+      let
+        val (newCon, newEnv) = elaborateDataConsDef (
+          newAstCon, datatypeTy, {env=env, bomEnv=oldEnv})
+      in
+        (newEnv, newCon::oldCons)
+      end) (bomEnv, []) dtCons
+
 
 
   fun elaborateDataTypeDef (dtDef: AstBOM.DataTypeDef.t,
@@ -332,8 +318,16 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               }
             end
         | AstBOM.DataTypeDef.SimpleDef (_, _, longTyId) =>
-          (* TODO *)
-            tyEnvs
+          (* TODO: make this type equal to the type of the longTyId *)
+            check
+              (BOMEnv.TyEnv.lookup (bomEnv,
+                CoreBOM.TyId.fromLongTyId longTyId), "undefined type")
+                (fn tyDefn => check
+                  (BOMEnv.TypeDefn.isCon tyDefn, "not a datatype")
+                  (fn tyDefn => {
+                  env = env,
+                  bomEnv = BOMEnv.TyEnv.extend (bomEnv, tyId, tyDefn)
+                }))
     in
       newEnvs
     end
@@ -353,7 +347,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           val envWithDefs = foldl elaborateDataTypeDef envWithTys dtdefs
         (* TODO: add value constructors *)
         in
-          (CoreML.Dec.BomDec, bomEnv)
+          (CoreML.Dec.BomDec, #bomEnv envWithDefs)
         end
 
     | AstBOM.Definition.TypeDefn (bomId, maybeTyParams, bomTy) =>
@@ -374,7 +368,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
                 error "arity mismatch"
             end
 
-          (* val tyParams = CoreBOM.TyParam.flattenFromAst maybeTyParams *)
           val envWithTyParams: BOMEnv.t = extendEnvForTyParams' (
             bomEnv, maybeTyParams)
           val newTy = elaborateBomType (

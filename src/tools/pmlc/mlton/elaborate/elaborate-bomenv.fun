@@ -15,6 +15,7 @@ signature ENV_MAP = sig
 
   val lookupThis: t * key -> value option
   val extendThis: t * key * value -> t
+  val listKeys: t -> key list
   val empty: t
 
   (* TODO: for easier debugging *)
@@ -43,7 +44,11 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
       val lookupThis = Map.find
       val extendThis = Map.insert
+      (* val listItems = Map.listItems *)
       val empty = Map.empty
+
+      fun listKeys envMap =
+        map (fn (k, _) => k) (Map.listItemsi envMap)
 
       (* fun toString (map: t) =  *)
       (*   let  *)
@@ -92,16 +97,12 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     fun applyToArgs (defn, args) =
       case defn of
         Alias alias => TyAlias.applyToArgs (alias, args)
-       (* TODO: check arity *)
       | Con con => CoreBOM.TyCon.applyToArgs (con, args)
-        (* let *)
-        (*   val CoreBOM.TyCon.TyC {id,...} = CoreBOM.TyCon.node con *)
-        (* in *)
-        (*   print (CoreBOM.TyId.toString id) *)
-        (*   ; raise Fail "not implemented" *)
-        (* end *)
 
-    (* TODO: other case *)
+    fun isCon defn =
+      case defn of
+        Con con => SOME defn
+      | _ => NONE
 
     val error = Alias TyAlias.error
   end
@@ -187,8 +188,6 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
              (fn (x, y) => (getHash x) < (getHash y))
              items
          end
-
-
     end
   end
 
@@ -254,6 +253,12 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
             extend (maybeQualify, extendThis, CoreBOM.TyId.toString,
               modifyTyEnv)
           (* end *)
+        fun printKeys env =
+          print (
+            String.concat ["[", (
+            String.concatWith ", "
+              (map CoreBOM.TyId.toString (listKeys (getEnv env)))), "]"])
+
       end
     end
 

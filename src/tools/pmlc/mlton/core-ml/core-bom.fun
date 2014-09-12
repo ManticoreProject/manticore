@@ -220,17 +220,19 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
           BomTy (LongTyId.truncate longTyId')
       end
 
-    fun maybeQualify (tyId, defaultId) =
-      case tyId of
-        BomTy ty => QBomTy (defaultId, ty)
-      | _ => tyId
-
-
     fun toString id =
       case id of
         BomTy id' => BomId.toString id'
       | QBomTy (module, id) =>
           String.concatWith "." [ModuleId.toString module, BomId.toString id]
+
+    fun maybeQualify (tyId, defaultId) =
+      case tyId of
+        BomTy ty => (print ("qualifying with " ^ (ModuleId.toString defaultId) ^ "\n")
+        ;  QBomTy (defaultId, ty))
+      | _ => (print "not qualifying\n"; tyId)
+
+
 
     val compare = String.compare o (app2 toString)
   end
