@@ -17,8 +17,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}): CoreBOM.BomType.t =
     let
       val error: string -> CoreBOM.BomType.t =
-        error (AstBOM.BomType.region,
-          AstBOM.BomType.layout,
+        error (AstBOM.BomType.region, AstBOM.BomType.layout,
           CoreBOM.BomType.errorFromAst astTy,
           astTy)
 
@@ -154,9 +153,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
 
   fun varPatToTy (pat, tyEnvs) =
     let
-      val error = error (
-        AstBOM.VarPat.region,
-        AstBOM.VarPat.layout,
+      val error = error (AstBOM.VarPat.region, AstBOM.VarPat.layout,
         CoreBOM.BomType.makeRegion (
           CoreBOM.BomType.Error,
           AstBOM.VarPat.region pat),
@@ -173,12 +170,12 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     end
 
 
-  fun extendEnvForFun (fundef: AstBOM.FunDef.t,
+  fun extendEnvForFun (funDef: AstBOM.FunDef.t,
       tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}) =
     let
       val AstBOM.FunDef.Def (
           _, id, maybeTyParams, domPats, contPats, rngTys, _) =
-        AstBOM.FunDef.node fundef
+        AstBOM.FunDef.node funDef
       val envWithTyParams = extendEnvForTyParams' (bomEnv, maybeTyParams)
       val tyEnvs' = {env = env, bomEnv = envWithTyParams}
       fun patsToTys pats = map
@@ -192,22 +189,21 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           dom = domTys,
           cont = contTys,
           rng = rngTys'
-        }, AstBOM.FunDef.region fundef)
+        }, AstBOM.FunDef.region funDef)
       val newTyAlias = checkTyAliasArity (funTy,
         BOMEnv.TyParamEnv.getParams envWithTyParams,
-        error (AstBOM.FunDef.region,
-        AstBOM.FunDef.layout,
+        error (AstBOM.FunDef.region, AstBOM.FunDef.layout,
         {ty = CoreBOM.BomType.keepRegion (
             fn _ => CoreBOM.BomType.Error,
             CoreBOM.BomType.dest funTy),
           params = []},
-        fundef))
+        funDef))
     in
-      {
+      ({
         env = env,
         bomEnv = BOMEnv.ValEnv.extend (bomEnv, CoreBOM.ValId.fromAstBomId id,
           newTyAlias)
-      }
+      }, funTy)
     end
 
   fun dataTypeDefToTyIdAndParams dtDef =
@@ -290,11 +286,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
   fun elaborateDataTypeDef (dtDef: AstBOM.DataTypeDef.t,
       tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}) =
     let
-      val error = error (
-        AstBOM.DataTypeDef.region,
-        AstBOM.DataTypeDef.layout,
-        tyEnvs,
-        dtDef)
+      val error = error (AstBOM.DataTypeDef.region, AstBOM.DataTypeDef.layout,
+        tyEnvs, dtDef)
       val check = check error
 
       val (tyId, tyParams) = dataTypeDefToTyIdAndParams dtDef
@@ -320,6 +313,16 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       newEnvs
     end
 
+  fun elaborateFunDef (funDef: AstBOM.FunDef.t, funTy: CoreBOM.BomType.t,
+      tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}) =
+    let
+        (* TODO: find the appropriate error value here *)
+      val error = error (AstBOM.FunDef.region, AstBOM.FunDef.layout,
+        (), funDef)
+      val check = check error
+    in
+      ()
+    end
 
   fun elaborateBomDec (dec: AstBOM.Definition.t,
       tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}) =
@@ -333,17 +336,12 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         end
     | AstBOM.Definition.DatatypeAlias (bomId, maybeTyParams, longTyId) =>
         let
-          val error = error (
-            AstBOM.LongTyId.region,
-            AstBOM.LongTyId.layout,
-            BOMEnv.TypeDefn.error,
-            longTyId)
-
+          val error = error (AstBOM.LongTyId.region, AstBOM.LongTyId.layout,
+            BOMEnv.TypeDefn.error, longTyId)
           val check = check error
           val tyId = CoreBOM.TyId.fromAstBomId bomId
 
           val tyConDefn =
-            (* TODO: make this type equal to the type of the longTyId *)
             (* TODO: can't get this to compile if the last line extends env *)
             check
               (BOMEnv.TyEnv.lookup (bomEnv,
@@ -359,11 +357,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
 
     | AstBOM.Definition.TypeDefn (bomId, maybeTyParams, bomTy) =>
         let
-          val error = error (
-            AstBOM.BomType.region,
-            AstBOM.BomType.layout,
-            BOMEnv.TypeDefn.error,
-            bomTy)
+          val error = error (AstBOM.BomType.region, AstBOM.BomType.layout,
+            BOMEnv.TypeDefn.error, bomTy)
           fun checkArityMatches (typeDefn, ty) =
             let
               val defnArity = BOMEnv.TypeDefn.arity typeDefn
@@ -393,9 +388,22 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         in
           (CoreML.Dec.BomDec, newEnv)
         end
-    | AstBOM.Definition.Fun fundefs =>
+    | AstBOM.Definition.Fun funDefs =>
         let
-          val envWithFns = foldl extendEnvForFun tyEnvs fundefs
+        (* TODO: add a distinct FunTy.t in CoreBOM that we can return
+        from this function. it doesn't need to be wrapped *)
+
+          val (envWithFns, funTys) =
+            foldr (fn (funDef, (oldEnv, oldTys)) =>
+                let
+                  val (newEnv, newTy) = extendEnvForFun (funDef, oldEnv)
+                in
+                  (newEnv, newTy::oldTys)
+                end) (tyEnvs, []) funDefs
+
+          val _ = ListPair.map
+            (fn (funDef, funTy) => elaborateFunDef (funDef, funTy, envWithFns))
+            (funDefs, funTys)
         (* TODO: check the body *)
         in
           (CoreML.Dec.BomDec, #bomEnv envWithFns)
@@ -409,8 +417,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         end
     | _ => raise Fail "not implemented"
     (* TODO: the other cases *)
-
-
 
     (* (CoreML.Dec.BomDec, bomEnv) *)
 end

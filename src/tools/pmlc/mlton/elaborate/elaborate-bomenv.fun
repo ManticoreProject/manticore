@@ -96,6 +96,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
       fun def (tyDefn: t) = #def tyDefn
       fun uid (tyDefn: t) = #uid tyDefn
+      fun app2 f (x, y) = (f x, f y)
       fun new def = {
         def = def,
         uid = Counter.next counter
@@ -121,8 +122,10 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
           Con con => SOME con
         | _ => NONE
 
-      val newCon = new
-      val newAlias = new
+      (* TODO: handle typarams correctly *)
+      val compare = Int.compare o (app2 uid)
+      val newCon = new o Con
+      val newAlias = new o Alias
     end
 
     val error = {

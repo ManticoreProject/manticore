@@ -42,11 +42,14 @@ signature ELABORATE_BOMENV =
       val newAlias: TyAlias.t -> t
 
       val getCon: t -> CoreBOM.TyCon.t option
+      val isCon: t -> t option
       (* val getAlias: t -> TyAlias.t option *)
 
       val applyToArgs: t * CoreBOM.BomType.t list -> CoreBOM.BomType.t option
       val arity: t -> int
-      val isCon: t -> t option
+
+      val compare: t * t -> order
+
       val error: t
     end
 
