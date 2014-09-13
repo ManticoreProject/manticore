@@ -148,8 +148,9 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   structure RawTy = struct
     open AstBOM.RawTy
+    datatype t = datatype node
 
-    fun fromAst myRawTy = myRawTy
+    fun fromAst myRawTy = AstBOM.RawTy.node myRawTy
   end
 
   structure PrimOp = struct
@@ -334,20 +335,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   and tyargs_t
     = ArgTypes of type_t list
 
-  (* withtype tycon_t = tycon_node *)
-  (* and tycdef_t = tycdef_node Region.Wrap.t *)
-  (* and dataconsdef_t = dataconsdef_node Region.Wrap.t *)
-  (* and type_t = type_node *)
-  (* and field_t = field_node Region.Wrap.t *)
-  (* and tyargs_t = tyargs_node Region.Wrap.t *)
-
   (* Functions over mutually recursive types *)
   local
-      (* define some synonyms so we don't end up with painfully long
-      datatype names *)
-    structure AstTy = AstBOM.BomType
-    structure AstField = AstBOM.Field
-    structure AstTyArgs = AstBOM.TyArgs
     fun app3 (f, (x, y, z)) = (f x, f y, f z)
   in
   (* TODO: only count unique typarams *)
@@ -374,38 +363,56 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     case myField of
       Immutable (offset, ty) => ty
     | Mutable (offset, ty) => ty
-
-
-  (* and resolveLongTyId (longid: AstBOM.LongTyId.t, *)
-  (*     tyargs: AstTyArgs.t option) : type_t = *)
-  (*       Any (* TODO *) *)
-  (* and fieldFromAst (astField: AstBOM.Field.t): field_t = *)
-  (*   let *)
-  (*     fun doConvert (offset: IntInf.int, ty: AstBOM.BomType.t) = *)
-  (*       (offset, typeFromAst ty) *)
-  (*     fun convertNode (oldNode: AstField.node) = *)
-  (*       case oldNode of *)
-  (*         AstField.Immutable myNode => Immutable (doConvert myNode) *)
-  (*       | AstField.Mutable myNode => Mutable (doConvert myNode) *)
-  (*   in *)
-  (*     keepRegion (convertNode, AstField.dest astField) *)
-  (*   end *)
-  (* and tyArgsFromAst (tyArgs: AstTyArgs.t): tyargs_t = *)
-  (*   let *)
-  (*     fun convertNode (AstTyArgs.ArgTypes tys) = *)
-  (*       ArgTypes (map typeFromAst tys) *)
-  (*   in *)
-  (*     keepRegion (convertNode, AstTyArgs.dest tyArgs) *)
-  (*   end *)
-
   and typesOfTyArgs (ArgTypes tys): type_t list =
     tys
-
-
   and arityOfDataCons (ConsDef (id, maybeTy)): int =
     case maybeTy of
       SOME ty => arityOfType ty
     | NONE => 0
+  and tyEqual (ty, ty'): bool =
+    case (ty, ty') of
+      (Param p, Param p') => TyParam.compare (p, p') = EQUAL
+     (* TODO: tyConEquals needs to check that the arity is the same *)
+    | (TyCon {con, args}, TyCon {con=con', args=args'}) =>
+        tyConEquals (con, con') andalso tysEqual (args, args')
+    (* TODO: make sure fields are sorted so we can compare them pairwise *)
+    | (Record fields, Record fields') => false
+    | (Tuple tys, Tuple tys') => tysEqual (tys, tys')
+    | (Fun funTy, Fun funTy') =>
+        List.all (fn x => x) (
+        List.map (fn select => tysEqual (select funTy, select funTy'))
+        [(fn fTy => #dom fTy), (fn fTy => #cont fTy), (fn fTy => #rng fTy)])
+    | (VProc, VProc) => true
+    | (Cont tys, Cont tys') => tysEqual (tys, tys')
+    | (Addr ty, Addr ty') => tyEqual (ty, ty')
+    | (Raw raw, Raw raw') => rawEquals (raw, raw')
+    | (Error, _) => false
+    | (_, Error) => false
+    | (Any, _) => true
+    | (_, Any) => true
+    | _ => false
+  and tysEqual (tys, tys') =
+    (length tys = length tys') andalso (ListPair.allEq tyEqual (tys, tys'))
+  and rawEquals (raw: RawTy.t, raw': RawTy.t): bool =
+    case (raw, raw') of
+      (RawTy.Int8, RawTy.Int8) => true
+    | (RawTy.Uint8, RawTy.Uint8) => true
+    | (RawTy.Int16, RawTy.Int16) => true
+    | (RawTy.Uint16, RawTy.Uint16) => true
+    | (RawTy.Int32, RawTy.Int32) => true
+    | (RawTy.Uint32, RawTy.Uint32) => true
+    | (RawTy.Int64, RawTy.Int64) => true
+    | (RawTy.Uint64, RawTy.Uint64) => true
+    | (RawTy.Float32, RawTy.Float32) => true
+    | (RawTy.Float64, RawTy.Float64) => true
+    | (_, _) => false
+  (* TODO: MAKE THIS ROBUST, ADD A UID *)
+  and tyConEquals (TyC tyC, TyC tyC') =
+    let
+      val toString = TyId.toString o #id
+    in
+      String.compare (toString tyC, toString tyC') = EQUAL
+    end
   end
 
   structure DataConsDef = struct
@@ -458,29 +465,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     (* type obj = t *)
 
     val arity = arityOfType
-    (* val fromAst = typeFromAst *)
-    (* val resolveLongTyId = resolveLongTyId *)
-    (* val keepRegion = keepRegion *)
-    (* fun errorFromAst astTy = *)
-    (*   keepRegion (fn x => Error, AstBOM.BomType.dest astTy) *)
-    (* val error = Error, Region.bogus) *)
 
-
-    (* local  *)
-    (*   fun walk (ty: t, applyTo: t -> 'a) =  *)
-    (*     case node ty of  *)
-    (*       Param p => applyTo p *)
-    (*     | TyCon con => applyTo con *)
-    (*     | Record fields => applyTo fields *)
-    (*     | Tuple ts => applyTo ts *)
-    (*     | Fun f => applyTo f *)
-    (*     | Cont ts => applyTo ts *)
-    (*     | Addr t => applyTo t *)
-    (*     | Raw raw => applyTo raw *)
-    (*     | _ => _ *)
-
-    (*   fun swap (t  *)
-    (* in *)
 
     local
       structure TyParamSet = RedBlackSetFn (struct
@@ -542,6 +527,19 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         | x => x
       end
 
+    val equal = tyEqual
+    val equals = tysEqual
+
+    local
+      fun boolToOpt (comparison: ('a * 'a) -> bool) (left, right) =
+        if comparison (left, right) then
+          SOME left
+        else
+          NONE
+    in
+      val equal' = boolToOpt equal
+      val equals' = boolToOpt equals
+    end
 
   end
 
@@ -590,12 +588,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       open Wrapper
     end
 
-
-    (* type node' = node *)
-    (* type obj = t *)
     val getType = typeOfField
-    (* val fromAst = fieldFromAst *)
-    (* val keepRegion = keepRegion *)
   end
 
 

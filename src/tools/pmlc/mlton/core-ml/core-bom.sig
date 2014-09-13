@@ -142,7 +142,17 @@ signature CORE_BOM =
     end
 
     structure RawTy: sig
-      type t
+      datatype t
+        = Int8
+        | Uint8
+        | Int16
+        | Uint16
+        | Int32
+        | Uint32
+        | Int64
+        | Uint64
+        | Float32
+        | Float64
 
       val fromAst: AstBOM.RawTy.t -> t
     end
@@ -157,9 +167,9 @@ signature CORE_BOM =
         = Immutable of IntInf.int * ty
         | Mutable of IntInf.int * ty
 
-
       include DEPENDENCY_WRAPPER
         sharing type node' = node
+
     end
 
     structure DataConsDef: sig
@@ -177,6 +187,7 @@ signature CORE_BOM =
 
 
     structure TyCon: sig
+      (* TODO: this should have a uid *)
       type ty
       datatype t
         = TyC of {
@@ -214,6 +225,11 @@ signature CORE_BOM =
       val arity: t -> int
       val applyArg: t * TyParam.t * t -> t
       val uniqueTyParams: t -> TyParam.t list
+      val equal: t * t -> bool
+      val equals: t list * t list -> bool
+      val equal': t * t -> t option
+      val equals': t list * t list -> t list option
+
     end
 
 

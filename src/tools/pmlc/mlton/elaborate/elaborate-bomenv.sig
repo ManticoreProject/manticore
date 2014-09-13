@@ -27,6 +27,9 @@ signature ELABORATE_BOMENV =
       (* val fromConsDef: CoreBOM.DataConsDef.t -> TyAlias.t *)
       val arity: t -> int
       val error: t
+      val equal: t * t -> bool
+      val equals: t list * t list -> bool
+      val equals': t list * t list -> t list option
     end
 
     (* A TypeDefn is either an alias or a constructor plus a unique

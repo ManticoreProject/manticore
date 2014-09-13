@@ -79,6 +79,23 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
       ty = CoreBOM.BomType.Error
     }
 
+    fun equal (alias, alias') =
+      (arity alias = arity alias') andalso
+        CoreBOM.BomType.equal (#ty alias, #ty alias')
+    fun equals (aliass, aliass') =
+      (length aliass = length aliass') andalso
+        ListPair.allEq equal (aliass, aliass')
+
+    local
+      fun boolToOpt (comparison: ('a * 'a) -> bool) (left, right) =
+        if comparison (left, right) then
+          SOME left
+        else
+          NONE
+    in
+      val equal' = boolToOpt equal
+      val equals' = boolToOpt equals
+    end
   end
 
 
