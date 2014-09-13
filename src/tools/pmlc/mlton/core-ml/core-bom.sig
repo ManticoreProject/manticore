@@ -31,7 +31,6 @@ signature CORE_BOM =
 
       include WRAPPED
         sharing type obj = t
-        (* sharing type node' = node *)
     end
 
     structure PrimOp: sig
@@ -143,19 +142,11 @@ signature CORE_BOM =
     end
 
     structure Field: sig
-      type t
       type ty
 
-      datatype node
+      datatype t
         = Immutable of IntInf.int * ty
         | Mutable of IntInf.int * ty
-
-      val keepRegion: ('a -> node) * ('a * Region.t) -> t
-
-      (* include WRAPPED *)
-      (*   sharing type obj = t *)
-      (*   sharing type node' = node *)
-      (* val fromAst: AstBOM.Field.t -> t *)
     end
 
     structure DataConsDef: sig
@@ -168,9 +159,9 @@ signature CORE_BOM =
       val arity: t -> int
       val error: t
 
-      include WRAPPED
-        sharing type node' = node
-        sharing type obj = t
+      (* include WRAPPED *)
+      (*   sharing type node' = node *)
+      (*   sharing type obj = t *)
     end
 
 

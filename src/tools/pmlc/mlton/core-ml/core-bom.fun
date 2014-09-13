@@ -288,17 +288,17 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   (* Mutually recursive types *)
-   datatype tycon_node
+   datatype tycon_t
     = TyC of {
       id: TyId.t,
       definition: dataconsdef_t list ref,
       params: TyParam.t list
     }
-  (* and tycdef_node *)
+  (* and tycdef_t *)
   (*   = TycDef of dataconsdef_t list ref *)
-  and dataconsdef_node
+  and dataconsdef_t
     = ConsDef of BomId.t * type_t option
-  and type_node
+  and type_t
     = Param of TyParam.t
     | TyCon of {
         con: tycon_t,
@@ -317,18 +317,18 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Addr of type_t
     | Raw of RawTy.t
     | Error
-  and field_node
+  and field_t
     = Immutable of IntInf.int * type_t
     | Mutable of IntInf.int * type_t
-  and tyargs_node
+  and tyargs_t
     = ArgTypes of type_t list
 
-  withtype tycon_t = tycon_node
+  (* withtype tycon_t = tycon_node *)
   (* and tycdef_t = tycdef_node Region.Wrap.t *)
-  and dataconsdef_t = dataconsdef_node Region.Wrap.t
-  and type_t = type_node
-  and field_t = field_node Region.Wrap.t
-  and tyargs_t = tyargs_node Region.Wrap.t
+  (* and dataconsdef_t = dataconsdef_node Region.Wrap.t *)
+  (* and type_t = type_node *)
+  (* and field_t = field_node Region.Wrap.t *)
+  (* and tyargs_t = tyargs_node Region.Wrap.t *)
 
   (* Functions over mutually recursive types *)
   local
@@ -434,17 +434,17 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   structure DataConsDef = struct
-    open Region.Wrap
+    (* open Region.Wrap *)
 
-    datatype node = datatype dataconsdef_node
-    type t = dataconsdef_t
+    datatype t = datatype dataconsdef_t
+    (* type t = dataconsdef_t *)
     type ty = type_t
 
-    type node' = node
-    type obj = t
+    (* type node' = node *)
+    (* type obj = t *)
 
     val arity = arityOfDataCons
-    val error = makeRegion (ConsDef (BomId.bogus, NONE), Region.bogus)
+    val error = ConsDef (BomId.bogus, NONE)
   end
 
 
@@ -594,14 +594,14 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   structure Field = struct
-    open Region.Wrap
+    (* open Region.Wrap *)
     (* datatype node = datatype field_node *)
     type t = field_t
     type ty = type_t
-    datatype node = datatype field_node
+    datatype node = datatype field_t
 
-    type node' = node
-    type obj = t
+    (* type node' = node *)
+    (* type obj = t *)
 
     (* val fromAst = fieldFromAst *)
     val getType = typeOfField
