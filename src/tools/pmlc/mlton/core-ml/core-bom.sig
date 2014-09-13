@@ -6,6 +6,23 @@ signature CORE_BOM_STRUCTS =
     (* sharing Region = Ast.AstBOM.Region *)
   end
 
+signature DEPENDENCY_WRAPPER_STRUCTS =
+  sig
+    type node'
+    (* type t *)
+  end
+
+(* need to get around cyclic dependency *)
+signature DEPENDENCY_WRAPPER =
+  sig
+    include DEPENDENCY_WRAPPER_STRUCTS
+
+    type t
+
+    val wrap: node' -> t
+    val node: t -> node'
+  end
+
 signature CORE_BOM =
   sig
     include CORE_BOM_STRUCTS
@@ -144,20 +161,31 @@ signature CORE_BOM =
     structure Field: sig
       type ty
 
-      datatype t
+      datatype node
         = Immutable of IntInf.int * ty
         | Mutable of IntInf.int * ty
+
+
+      include DEPENDENCY_WRAPPER
+        sharing type node' = node
+      (* val wrap: node -> t *)
+      (* val node: t -> node *)
     end
 
     structure DataConsDef: sig
-      type t
+      (* type t *)
       type ty
 
       datatype node
         = ConsDef of BomId.t * ty option
 
+      include DEPENDENCY_WRAPPER
+        sharing type node' = node
+
       val arity: t -> int
       val error: t
+
+
 
       (* include WRAPPED *)
       (*   sharing type node' = node *)

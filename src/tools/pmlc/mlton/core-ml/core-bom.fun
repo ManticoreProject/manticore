@@ -2,6 +2,17 @@ signature CORE_LONGID_STRUCTS = sig
   structure AstId: LONGID
 end
 
+functor DependencyWrapper (S: DEPENDENCY_WRAPPER_STRUCTS) = struct
+  open S
+
+  type t = node'
+
+  fun identity x = x
+
+  val wrap = identity
+  val node = identity
+end
+
 functor LongId (S: CORE_LONGID_STRUCTS) = struct
   open S.AstId
 
@@ -339,37 +350,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     structure AstTyArgs = AstBOM.TyArgs
     fun app3 (f, (x, y, z)) = (f x, f y, f z)
   in
-  (* fun typeFromAst (astType: AstBOM.BomType.t) = *)
-  (*   let *)
-  (*     fun maybe f x = *)
-  (*       case (x: 'a option) of *)
-  (*         SOME (y: 'a) => (f: 'a -> 'b list) y *)
-  (*       | NONE => [] *)
-  (*     fun convertNode (oldNode: AstBOM.BomType.node) : type_node = *)
-  (*       case oldNode of *)
-  (*         AstTy.Param param => Param (TyParam.fromAst param) *)
-  (*       | AstTy.LongId (longid, tyargs) => *)
-  (*           resolveLongTyId (longid, tyargs) *)
-  (*       | AstTy.Record records => Record (map fieldFromAst records) *)
-  (*       | AstTy.Tuple els => Tuple (map typeFromAst els) *)
-  (*       | AstTy.Fun funTuple => *)
-  (*           let *)
-  (*             val (dom, cont, rng) = app3 (map typeFromAst, funTuple) *)
-  (*           in *)
-  (*              Fun ({dom = dom, cont = cont, rng = rng}) *)
-  (*           end *)
-  (*       | AstTy.Any => Any *)
-  (*       | AstTy.VProc => VProc *)
-  (*       | AstTy.Cont maybeTyArgs => *)
-  (*           Cont (maybe (typesOfTyArgs o tyArgsFromAst) maybeTyArgs) *)
-  (*           (* case maybeTyArgs of *) *)
-  (*           (*   SOME tyArgs => typesOfTyArgs tyArgs *) *)
-  (*           (* | NONE => [] *) *)
-  (*       | AstTy.Raw ty => Raw ty *)
-  (*       | AstTy.Addr ty => Addr (typeFromAst ty) *)
-  (*   in *)
-  (*     keepRegion (convertNode, AstTy.dest astType) *)
-  (*   end *)
   (* TODO: only count unique typarams *)
   fun arityOfType (ty: type_t): int =
     let
@@ -390,9 +370,15 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | Addr addrTy => arityOfType addrTy
       | _ => 0
     end
-  and resolveLongTyId (longid: AstBOM.LongTyId.t,
-      tyargs: AstTyArgs.t option) : type_node =
-        Any (* TODO *)
+  and typeOfField (myField: field_t): type_t =
+    case myField of
+      Immutable (offset, ty) => ty
+    | Mutable (offset, ty) => ty
+
+
+  (* and resolveLongTyId (longid: AstBOM.LongTyId.t, *)
+  (*     tyargs: AstTyArgs.t option) : type_t = *)
+  (*       Any (* TODO *) *)
   (* and fieldFromAst (astField: AstBOM.Field.t): field_t = *)
   (*   let *)
   (*     fun doConvert (offset: IntInf.int, ty: AstBOM.BomType.t) = *)
@@ -404,10 +390,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   (*   in *)
   (*     keepRegion (convertNode, AstField.dest astField) *)
   (*   end *)
-  and typeOfField (myField: field_t): type_t =
-    case Region.Wrap.node myField of
-        Immutable (offset, ty) => ty
-      | Mutable (offset, ty) => ty
   (* and tyArgsFromAst (tyArgs: AstTyArgs.t): tyargs_t = *)
   (*   let *)
   (*     fun convertNode (AstTyArgs.ArgTypes tys) = *)
@@ -416,29 +398,30 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   (*     keepRegion (convertNode, AstTyArgs.dest tyArgs) *)
   (*   end *)
 
-  and typesOfTyArgs (argTys: tyargs_t): type_t list =
-    let
-      val (ArgTypes tys) = Region.Wrap.node argTys
-    in
-      tys
-    end
+  and typesOfTyArgs (ArgTypes tys): type_t list =
+    tys
 
-  and arityOfDataCons (dtCons: dataconsdef_t): int =
-    let
-      val ConsDef (id, maybeTy) = Region.Wrap.node dtCons
-    in
-      case maybeTy of
-        SOME ty => arityOfType ty
-      | NONE => 0
-    end
+
+  and arityOfDataCons (ConsDef (id, maybeTy)): int =
+    case maybeTy of
+      SOME ty => arityOfType ty
+    | NONE => 0
   end
 
   structure DataConsDef = struct
     (* open Region.Wrap *)
 
-    datatype t = datatype dataconsdef_t
+    datatype node = datatype dataconsdef_t
     (* type t = dataconsdef_t *)
     type ty = type_t
+
+    local
+      structure Wrapper = DependencyWrapper (struct
+        datatype node' = datatype node
+      end)
+    in
+      open Wrapper
+    end
 
     (* type node' = node *)
     (* type obj = t *)
@@ -449,8 +432,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
 
   structure TyArgs = struct
-    datatype node = datatype tyargs_node
-    type t = tyargs_t
+    datatype t = datatype tyargs_t
+    (* type t = tyargs_t *)
 
     val getTypes = typesOfTyArgs
     (* val fromAst = tyArgsFromAst *)
@@ -468,7 +451,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     (* open AstBOM.BomType *)
     (* open Region.Wrap *)
 
-    datatype t = datatype type_node
+    datatype t = datatype type_t
     (* type t = type_t *)
 
     (* type node' = node *)
@@ -567,7 +550,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
       (* datatype node = datatype tycon_node *)
       (* type t = tycon_t *)
-      datatype t = datatype tycon_node
+      datatype t = datatype tycon_t
       type ty = BomType.t
       (* type node' = node *)
       (* type obj = t *)
@@ -596,16 +579,23 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure Field = struct
     (* open Region.Wrap *)
     (* datatype node = datatype field_node *)
-    type t = field_t
     type ty = type_t
     datatype node = datatype field_t
 
+    local
+      structure Wrapper = DependencyWrapper(struct
+        datatype node' = datatype node
+      end)
+    in
+      open Wrapper
+    end
+
+
     (* type node' = node *)
     (* type obj = t *)
-
-    (* val fromAst = fieldFromAst *)
     val getType = typeOfField
-    val keepRegion = keepRegion
+    (* val fromAst = fieldFromAst *)
+    (* val keepRegion = keepRegion *)
   end
 
 

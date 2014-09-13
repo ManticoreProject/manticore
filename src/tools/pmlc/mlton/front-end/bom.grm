@@ -246,9 +246,9 @@ Definition
 	(* 	      BOM.Definition.Datatype (DataTypeDef::SR), *)
 	(* 	      posToReg FULL_SPAN)) *)
   : "datatype" BomId TyParams? "=" (
-      DataTypeDefLHS ("and" DataTypeDef)*
+      DataTypeDefRHS ("and" DataTypeDef)*
         => (BOM.Definition.makeRegion (
-          BOM.Definition.Datatype ((DataTypeDefLHS (
+          BOM.Definition.Datatype ((DataTypeDefRHS (
             BomId, TyParams, FULL_SPAN)::SR)),
           posToReg FULL_SPAN))
       | "datatype" LongTyId
@@ -306,7 +306,7 @@ DefineRest
              posToReg FULL_SPAN))
 	;
 
-DataTypeDefLHS
+DataTypeDefRHS
   : DataConsDef ("|" DataConsDef)*
    => (fn (bomId, tyParams, thisSpan) =>
      BOM.DataTypeDef.makeRegion (
@@ -319,8 +319,8 @@ DataTypeDef
   (*     => (BOM.DataTypeDef.makeRegion ( *)
   (*       BOM.DataTypeDef.ConsDefs (BomId, TyParams, DataConsDef::SR), *)
   (*       posToReg FULL_SPAN)) *)
-  : BomId TyParams? "=" DataTypeDefLHS
-      => (DataTypeDefLHS (BomId, TyParams, FULL_SPAN))
+  : BomId TyParams? "=" DataTypeDefRHS
+      => (DataTypeDefRHS (BomId, TyParams, FULL_SPAN))
   ;
 
 (* DataTypeDef *)

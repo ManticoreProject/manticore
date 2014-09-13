@@ -117,7 +117,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         | AstBOM.Field.Mutable (index, astTy) =>
             (CoreBOM.Field.Mutable, index, astTy)
     in
-      constructor (index, elaborateBomType (astTy, tyEnvs))
+      CoreBOM.Field.wrap (constructor (index, elaborateBomType (astTy, tyEnvs)))
     end
 
   fun instanceTyToTy (tyId: AstBOM.LongTyId.t, tyArgs: AstBOM.TyArgs.t):
@@ -252,8 +252,9 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         | NONE =>
             (NONE, {params = params, ty = datatypeTy})
     in
-      (CoreBOM.DataConsDef.ConsDef (CoreBOM.BomId.fromAst astId, maybeArgTy),
-        BOMEnv.ValEnv.extend (bomEnv, CoreBOM.ValId.fromAstBomId astId, valTy))
+      (CoreBOM.DataConsDef.wrap (CoreBOM.DataConsDef.ConsDef (
+        CoreBOM.BomId.fromAst astId, maybeArgTy)),
+      BOMEnv.ValEnv.extend (bomEnv, CoreBOM.ValId.fromAstBomId astId, valTy))
     end
 
 
