@@ -313,4 +313,14 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
   fun setName' (env, name) =
     setName (env, CoreBOM.ModuleId.fromBomId name)
 
+  (* fun setValEnv (T {tyEnv, tyParamEnv, valEnv, currentModule}, valEnv') = *)
+  (*   T { *)
+  (*     tyEnv = tyEnv, *)
+  (*     tyParamEnv = tyParamEnv, *)
+  (*     valEnv = valEnv' *)
+  (*     currentModule = currentModule *)
+  (*   } *)
+
+  (* fun getValEnv T {valEnv,...} = valEnv *)
+
 end

@@ -33,9 +33,6 @@ signature ELABORATE_BOMENV =
     identifier *)
     structure TypeDefn: sig
       type t
-      (* datatype t *)
-        (* = Alias of TyAlias.t *)
-        (* | Con of CoreBOM.TyCon.t *)
 
       (* These increment the internal uid counter as a side effect *)
       val newCon: CoreBOM.TyCon.t -> t
@@ -97,6 +94,9 @@ signature ELABORATE_BOMENV =
   val emptyNamed: CoreBOM.ModuleId.t -> t
   val setName: t * CoreBOM.ModuleId.t -> t
   val setName': t * AstBOM.BomId.t -> t
+
+  (* val setValEnv: t * ValEnv.t -> t *)
+  (* val getValEnv: t -> ValEnv.t *)
 
   sharing type TyEnv.env = TyParamEnv.env = ValEnv.env = t
   (* sharing type ValEnv.env = TyEnv.t = HLOpEnv.t = t *)

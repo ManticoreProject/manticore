@@ -45,9 +45,6 @@ signature CORE_BOM =
       val hash: t -> int
       val name: t -> string
       val compare: t * t -> order
-
-      include WRAPPED
-        sharing type obj = t
     end
 
     structure PrimOp: sig
@@ -70,9 +67,6 @@ signature CORE_BOM =
       (* val fromStrid: AstBOM.Strid.t * Region.t -> t *)
       val toString: t -> string
       val bogus: t
-
-      include WRAPPED
-        sharing type obj = t
     end
 
     structure LongTyId: sig
@@ -114,6 +108,7 @@ signature CORE_BOM =
       datatype t
         = BomTy of BomId.t
         | QBomTy of ModuleId.t * BomId.t
+      (* TODO: MLTy *)
         (* | MLTy *)
 
       val fromAstBomId: AstBOM.BomId.t -> t
@@ -152,9 +147,6 @@ signature CORE_BOM =
       val fromAst: AstBOM.RawTy.t -> t
     end
 
-    (* structure TyParams: sig *)
-    (* end *)
-
     structure BomValueId: sig
     end
 
@@ -168,12 +160,9 @@ signature CORE_BOM =
 
       include DEPENDENCY_WRAPPER
         sharing type node' = node
-      (* val wrap: node -> t *)
-      (* val node: t -> node *)
     end
 
     structure DataConsDef: sig
-      (* type t *)
       type ty
 
       datatype node
@@ -184,17 +173,10 @@ signature CORE_BOM =
 
       val arity: t -> int
       val error: t
-
-
-
-      (* include WRAPPED *)
-      (*   sharing type node' = node *)
-      (*   sharing type obj = t *)
     end
 
 
     structure TyCon: sig
-      (* type t *)
       type ty
       datatype t
         = TyC of {
@@ -206,15 +188,9 @@ signature CORE_BOM =
       val toBomTy: t -> ty
       val arity: t -> int
       val applyToArgs: t * ty list -> ty option
-
-      (* include WRAPPED *)
-      (*   sharing type node' = node *)
-      (*   sharing type obj = t *)
     end
 
     structure BomType: sig
-      (* type t *)
-
       datatype t
         = Param of TyParam.t
         | TyCon of {
@@ -235,17 +211,9 @@ signature CORE_BOM =
         | Raw of RawTy.t
         | Error
 
-      (* val fromAst: AstBOM.BomType.t -> t *)
       val arity: t -> int
-      (* val errorFromAst: AstBOM.BomType.t -> t *)
-      (* val keepRegion: ('a -> node) * ('a * Region.t) -> t *)
       val applyArg: t * TyParam.t * t -> t
       val uniqueTyParams: t -> TyParam.t list
-      (* val error: t *)
-
-      (* include WRAPPED *)
-      (*   sharing type node' = node *)
-      (*   sharing type obj = t *)
     end
 
 
@@ -301,7 +269,6 @@ signature CORE_BOM =
       (* type t *)
     end
 
-    (* structure Type: *)
     sharing type DataConsDef.ty = Field.ty = TyCon.ty = BomType.t
 
   end
