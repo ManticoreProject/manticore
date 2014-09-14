@@ -245,15 +245,15 @@ Definition
 	(* 	=> (BOM.Definition.makeRegion ( *)
 	(* 	      BOM.Definition.Datatype (DataTypeDef::SR), *)
 	(* 	      posToReg FULL_SPAN)) *)
-  : "datatype" BomId TyParams? "=" (
+  : "datatype" BomId (TyParams? "="
       DataTypeDefRHS ("and" DataTypeDef)*
         => (BOM.Definition.makeRegion (
           BOM.Definition.Datatype ((DataTypeDefRHS (
             BomId, optToList TyParams, FULL_SPAN)::SR)),
           posToReg FULL_SPAN))
-      | "datatype" LongTyId
+      | "=" "datatype" LongTyId
       => (BOM.Definition.makeRegion (
-          BOM.Definition.DatatypeAlias (BomId, optToList TyParams, LongTyId),
+          BOM.Definition.DatatypeAlias (BomId, LongTyId),
           posToReg FULL_SPAN))) ";" => (SR)
 	| "type" BomId TyParams? "=" BOMType ";"
 		=> (BOM.Definition.makeRegion (

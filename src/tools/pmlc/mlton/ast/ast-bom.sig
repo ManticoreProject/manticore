@@ -363,7 +363,7 @@ signature AST_BOM =
       datatype node
         = Extern of CReturnTy.t * BomId.t * CArgTy.t list * Attrs.t
         | Datatype of DataTypeDef.t list
-        | DatatypeAlias of BomId.t * TyParam.t list * LongTyId.t
+        | DatatypeAlias of BomId.t * LongTyId.t
         | TypeDefn of BomId.t * TyParam.t list * BomType.t
         | DefineShortId of Attrs.t option * HLOpId.t *
             TyParam.t list * VarPat.t list * VarPat.t list *

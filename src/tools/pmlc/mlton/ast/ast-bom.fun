@@ -897,7 +897,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   datatype node
     = Extern of CReturnTy.t * BomId.t * CArgTy.t list * Attrs.t
     | Datatype of DataTypeDef.t list
-    | DatatypeAlias of BomId.t * TyParam.t list * LongTyId.t
+    | DatatypeAlias of BomId.t * LongTyId.t
     | TypeDefn of BomId.t * TyParam.t list * BomType.t
     | DefineShortId of Attrs.t option * HLOpId.t * TyParam.t list *
         VarPat.t list * VarPat.t list * BomType.t list * Exp.t option
@@ -928,12 +928,9 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
           map DataTypeDef.layout dataTypeDefs,
           "and",
           "datatype")
-    | DatatypeAlias (bomId, maybeTyParams, longId) =>
+    | DatatypeAlias (bomId, longId) =>
         Layout.align [
-          Layout.mayAlign [
-            BomId.layout bomId,
-            TyParams.layout maybeTyParams
-          ],
+          BomId.layout bomId,
           Layout.mayAlign [
             Layout.str "datatype",
             BomId.layout bomId
