@@ -276,7 +276,7 @@ datatype strdecNode =
                   name: Strid.t} vector
   (* | PrimCode of AstBOM.Definition.t vector *)
   | PrimDataType of Tyvar.t vector * Tycon.t *
-      AstBOM.LongTyId.t * AstBOM.TyArgs.t option
+      AstBOM.LongTyId.t * AstBOM.BomType.t list
   | PrimTycon of Tyvar.t vector * Tycon.t * AstBOM.BomType.t
   | PrimVal of Vid.t * Type.t * AstBOM.BomValueId.t
 
@@ -314,10 +314,7 @@ fun layoutStrdec d =
       str "_prim",
       schemeList [
         AstBOM.LongTyId.layout longTyId,
-        if Option.isSome maybeTyArgs then
-          AstBOM.TyArgs.layout (Option.valOf maybeTyArgs)
-        else
-          empty
+        mayAlign (map AstBOM.BomType.layout maybeTyArgs)
       ]
     ]
   | PrimTycon (tyvars, tycon, bomType) => mayAlign [

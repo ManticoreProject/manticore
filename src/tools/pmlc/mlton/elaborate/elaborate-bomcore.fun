@@ -25,15 +25,12 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         error (AstBOM.BomType.region, AstBOM.BomType.layout,
           CoreBOM.BomType.Error,
           astTy)
-
       (* Need to put whole body here to get around value restriction *)
       fun check (x: 'a option, msg: string) (f: 'a -> CoreBOM.BomType.t) =
         case x of
           SOME y => f y
         | NONE => error  msg
       fun doElaborate ty = elaborateBomType (ty, tyEnvs)
-      (* fun keepRegion newNode = CoreBOM.BomType.keepRegion ( *)
-      (*   (fn _ => newNode), AstBOM.BomType.dest astTy) *)
 
       fun defnArityMatches (input as (defn, tyArgs)) =
         if (BOMEnv.TypeDefn.arity defn) = (length tyArgs) then
@@ -88,15 +85,14 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       | AstBOM.BomType.Any => CoreBOM.BomType.Any
       | AstBOM.BomType.VProc => CoreBOM.BomType.VProc
       | AstBOM.BomType.Cont maybeTyArgs =>
-          CoreBOM.BomType.Cont (map doElaborate (
-            CoreBOM.TyArgs.flattenFromAst maybeTyArgs))
+          CoreBOM.BomType.Cont (map doElaborate maybeTyArgs)
       | AstBOM.BomType.Addr ty =>
           CoreBOM.BomType.Addr (doElaborate ty)
       | AstBOM.BomType.Raw ty => CoreBOM.BomType.Raw (
           CoreBOM.RawTy.fromAst ty)
       | AstBOM.BomType.LongId (longTyId, maybeTyArgs) =>
           let
-            val tyArgs = map doElaborate (CoreBOM.TyArgs.flattenFromAst maybeTyArgs)
+            val tyArgs = map doElaborate maybeTyArgs
             val tyId = CoreBOM.TyId.fromLongTyId longTyId
           in
             check
@@ -125,15 +121,15 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       CoreBOM.Field.wrap (constructor (index, elaborateBomType (astTy, tyEnvs)))
     end
 
-  fun instanceTyToTy (tyId: AstBOM.LongTyId.t, tyArgs: AstBOM.TyArgs.t):
+  fun instanceTyToTy (tyId: AstBOM.LongTyId.t, tyArgs):
       AstBOM.BomType.t =
     let
-      val wholeRegion = Region.append (
-        AstBOM.LongTyId.region tyId,
-        AstBOM.TyArgs.region tyArgs)
+      val wholeRegion = foldr Region.append
+        (AstBOM.LongTyId.region tyId)
+        (map AstBOM.BomType.region tyArgs)
     in
       AstBOM.BomType.makeRegion (
-        AstBOM.BomType.LongId (tyId, SOME tyArgs),
+        AstBOM.BomType.LongId (tyId, tyArgs),
         wholeRegion)
     end
 
@@ -144,8 +140,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       bomEnv
       tyParams
 
-  fun extendEnvForTyParams' (bomEnv, maybeTyParams: AstBOM.TyParams.t option) =
-    extendEnvForTyParams (bomEnv, CoreBOM.TyParam.flattenFromAst maybeTyParams)
+  (* fun extendEnvForTyParams (bomEnv, maybeTyParams) = *)
+  (*   extendEnvForTyParams (bomEnv, CoreBOM.TyParam.flattenFromAst maybeTyParams) *)
 
   fun checkTyAliasArity (ty, params, error): BOMEnv.TyAlias.t =
     if (CoreBOM.BomType.arity ty) = (length params) then
@@ -176,7 +172,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       val AstBOM.FunDef.Def (
           _, id, maybeTyParams, domPats, contPats, rngTys, _) =
         AstBOM.FunDef.node funDef
-      val envWithTyParams = extendEnvForTyParams' (bomEnv, maybeTyParams)
+      val envWithTyParams = extendEnvForTyParams (bomEnv, maybeTyParams)
       val tyEnvs' = {env = env, bomEnv = envWithTyParams}
       fun patsToTys pats = map
         (fn pat => varPatToTy (pat, tyEnvs'))
@@ -283,6 +279,10 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           in
             elaborateExp (exp, newEnv)
           end
+      | AstBOM.Exp.Do (sExp, exp) =>
+          (elaborateSimpleExp (sExp, tyEnvs)
+          ; elaborateExp (exp, tyEnvs))
+      (* | AstBOM.Exp.Throw  *)
       | _ => raise Fail "not implemented"
     end
 
@@ -317,10 +317,9 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
   fun dataTypeDefToTyIdAndParams dtDef =
     let
       val (tyId, tyParams) =
-        (fn AstBOM.DataTypeDef.ConsDefs (astId, maybeTyParams, _) =>
-          (CoreBOM.TyId.fromAstBomId astId,
-          CoreBOM.TyParam.flattenFromAst maybeTyParams)) (
-          AstBOM.DataTypeDef.node dtDef)
+        ((fn AstBOM.DataTypeDef.ConsDefs (astId, maybeTyParams, _) =>
+          (CoreBOM.TyId.fromAstBomId astId, maybeTyParams))
+          (AstBOM.DataTypeDef.node dtDef))
     in
       (tyId, tyParams)
     end
@@ -342,7 +341,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             }))
       }
     end
-
 
   fun elaborateDataConsDef (dtCon: AstBOM.DataConsDef.t,
       datatypeTy: CoreBOM.BomType.t,
@@ -463,7 +461,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
                 error "arity mismatch"
             end
 
-          val envWithTyParams: BOMEnv.t = extendEnvForTyParams' (
+          val envWithTyParams: BOMEnv.t = extendEnvForTyParams (
             bomEnv, maybeTyParams)
           val newTy = elaborateBomType (
             bomTy, {env = env, bomEnv = envWithTyParams})
@@ -483,9 +481,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         end
     | AstBOM.Definition.Fun funDefs =>
         let
-        (* TODO: add a distinct FunTy.t in CoreBOM that we can return
-        from this function. it doesn't need to be wrapped *)
-
           val (envWithFns, funTys) =
             foldr (fn (funDef, (oldEnv, oldTys: funtype list)) =>
                 let
@@ -497,7 +492,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           val _ = ListPair.map
             (fn (funDef, funTy) => elaborateFunDef (funDef, funTy, envWithFns))
             (funDefs, funTys)
-        (* TODO: check the body *)
         in
           (CoreML.Dec.BomDec, #bomEnv envWithFns)
         end

@@ -249,26 +249,26 @@ Definition
       DataTypeDefRHS ("and" DataTypeDef)*
         => (BOM.Definition.makeRegion (
           BOM.Definition.Datatype ((DataTypeDefRHS (
-            BomId, TyParams, FULL_SPAN)::SR)),
+            BomId, optToList TyParams, FULL_SPAN)::SR)),
           posToReg FULL_SPAN))
       | "datatype" LongTyId
       => (BOM.Definition.makeRegion (
-          BOM.Definition.DatatypeAlias (BomId, TyParams, LongTyId),
+          BOM.Definition.DatatypeAlias (BomId, optToList TyParams, LongTyId),
           posToReg FULL_SPAN))) ";" => (SR)
 	| "type" BomId TyParams? "=" BOMType ";"
 		=> (BOM.Definition.makeRegion (
-		      BOM.Definition.TypeDefn (BomId, TyParams, BOMType),
+		      BOM.Definition.TypeDefn (BomId, optToList TyParams, BOMType),
 		      posToReg FULL_SPAN))
 	| "define" Attrs HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
 		=> (BOM.Definition.makeRegion (let
 		      val (inputTys, exnTys) = FunParams
 		      in (
 			BOM.Definition.DefineShortId (
-			  SOME Attrs, HLOpId, TyParams, inputTys, exnTys, ReturnTy, SR),
+			  SOME Attrs, HLOpId, optToList TyParams, inputTys, exnTys, ReturnTy, SR),
 			posToReg FULL_SPAN
 		      ) end))
 	| "define" HLOpId TyParams? DefineRest
-		=> (DefineRest (HLOpId, TyParams, FULL_SPAN))
+		=> (DefineRest (HLOpId, optToList TyParams, FULL_SPAN))
 	| "extern" CReturnTy BomId "(" (CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs ";"
 		=> (BOM.Definition.makeRegion (
 		      BOM.Definition.Extern (CReturnTy, BomId, Option.getOpt (SR, []), Attrs),
@@ -290,7 +290,7 @@ Definition
 (* FIXME: this can be made to work better with DefineShortId above *)
 DefineRest
 	: FunParams ReturnTy ("=" BOMExp)? ";"
-		=> (fn (hlOpId : BOM.HLOpId.t, tyParams : BOM.TyParams.t option, span) =>
+		=> (fn (hlOpId : BOM.HLOpId.t, tyParams, span) =>
       (BOM.Definition.makeRegion (
         let
           val (inputTys, exnTys) = FunParams
@@ -320,7 +320,7 @@ DataTypeDef
   (*       BOM.DataTypeDef.ConsDefs (BomId, TyParams, DataConsDef::SR), *)
   (*       posToReg FULL_SPAN)) *)
   : BomId TyParams? "=" DataTypeDefRHS
-      => (DataTypeDefRHS (BomId, TyParams, FULL_SPAN))
+      => (DataTypeDefRHS (BomId, optToList TyParams, FULL_SPAN))
   ;
 
 (* DataTypeDef *)
@@ -340,16 +340,12 @@ DataConsDef
 
 TyParams
   : "<" TyParam ("," TyParam)* ">"
-    => (BOM.TyParams.makeRegion (
-      BOM.TyParams.T (TyParam::SR),
-      posToReg FULL_SPAN))
+    => (TyParam::SR)
   ;
 
 TyArgs
   : "<" BOMType ("," BOMType)* ">"
-    => (BOM.TyArgs.makeRegion (
-      BOM.TyArgs.ArgTypes (BOMType::SR),
-      posToReg FULL_SPAN))
+    => (BOMType::SR)
   ;
 
 (* We need to do this because the "id" nonterminal in ml.grm is
@@ -408,7 +404,7 @@ BOMType
         posToReg FULL_SPAN))
   | LongTyId TyArgs?
       => (BOM.BomType.makeRegion (
-        BOM.BomType.LongId (LongTyId, TyArgs),
+        BOM.BomType.LongId (LongTyId, optToList TyArgs),
         posToReg FULL_SPAN))
   | "{" Field ("," Field)* "}"
       => (BOM.BomType.makeRegion (
@@ -432,7 +428,8 @@ BOMType
   | "vproc"
       => (BOM.BomType.makeRegion (BOM.BomType.VProc, posToReg FULL_SPAN))
   | "cont" TyArgs?
-      => (BOM.BomType.makeRegion (BOM.BomType.Cont TyArgs, posToReg FULL_SPAN))
+      => (BOM.BomType.makeRegion (BOM.BomType.Cont (optToList TyArgs),
+        posToReg FULL_SPAN))
   | "addr" "<" BOMType ">"
       => (BOM.BomType.makeRegion (BOM.BomType.Addr BOMType, posToReg FULL_SPAN))
   | RawTy
@@ -476,9 +473,8 @@ PosInt
 FunDef
   : Attrs? BomId TyParams? "(" Params? ("/" Params)? ")" ReturnTy "=" BOMExp
       => (BOM.FunDef.makeRegion (
-        BOM.FunDef.Def (Attrs, BomId, TyParams, optToList Params, optToList SR,
-          ReturnTy, BOMExp),
-        posToReg FULL_SPAN))
+        BOM.FunDef.Def (Attrs, BomId, optToList TyParams, optToList Params,
+          optToList SR, ReturnTy, BOMExp), posToReg FULL_SPAN))
   ;
 
 Attrs
@@ -524,9 +520,9 @@ BOMExp
         BOM.Exp.Apply (
           LongValueId, Option.getOpt (Args, []), Option.getOpt (SR, [])),
         posToReg FULL_SPAN))
-  | "throw" BomId TyArgs? "(" Args? ")"
+  | "throw" BomId "(" Args? ")"
       => (BOM.Exp.makeRegion (
-        BOM.Exp.Throw (BomId, TyArgs, Option.getOpt (Args, [])),
+        BOM.Exp.Throw (BomId, Option.getOpt (Args, [])),
         posToReg FULL_SPAN))
   | "return" "(" Args? ")"
       => (BOM.Exp.makeRegion (

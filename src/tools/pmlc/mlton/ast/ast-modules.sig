@@ -116,7 +116,7 @@ signature AST_MODULES =
                              def: Strexp.t,
                              name: Strid.t} vector
              | PrimDataType of Tyvar.t vector * Tycon.t *
-                 AstBOM.LongTyId.t * AstBOM.TyArgs.t option
+                 AstBOM.LongTyId.t * AstBOM.BomType.t list
              | PrimTycon of Tyvar.t vector * Tycon.t * AstBOM.BomType.t
              | PrimVal of Vid.t * Type.t * AstBOM.BomValueId.t
 

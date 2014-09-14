@@ -37,7 +37,8 @@ strdecnode
 	(* : "_primcode" "(" BOMDecls ")" *)
 	(* 	=> (Strdec.PrimCode (Vector.fromList BOMDecls)) *)
 	: "_datatype" tyvarseq tycon "=" "_prim" "(" LongTyId TyArgs? ")"
-		=> (Strdec.PrimDataType (tyvarseq, tycon, LongTyId, TyArgs))
+		=> (Strdec.PrimDataType (tyvarseq, tycon, LongTyId,
+     Option.getOpt (TyArgs, [])))
 	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
 		=> (Strdec.PrimTycon (tyvars, tycon, BOMType))
 	| "_val" "op"? MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"

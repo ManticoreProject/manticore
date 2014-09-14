@@ -40,8 +40,8 @@ signature CORE_BOM =
       type t
 
       val fromAst: AstBOM.TyParam.t -> t
-      val flattenFromAst: AstBOM.TyParams.t option -> AstBOM.TyParam.t list
-      val flattenFromAst': AstBOM.TyParams.t option -> t list
+      (* val flattenFromAst: AstBOM.TyParams.t option -> AstBOM.TyParam.t list *)
+      (* val flattenFromAst': AstBOM.TyParams.t option -> t list *)
       val hash: t -> int
       val name: t -> string
       val compare: t * t -> order
@@ -233,12 +233,12 @@ signature CORE_BOM =
     end
 
 
-    structure TyArgs: sig
-      type t
+    (* structure TyArgs: sig *)
+    (*   type t *)
 
-      val getTypes: t -> BomType.t list
-      val flattenFromAst: AstBOM.TyArgs.t option -> AstBOM.BomType.t list
-    end
+    (*   val getTypes: t -> BomType.t list *)
+      (* val flattenFromAst: AstBOM.TyArgs.t option -> AstBOM.BomType.t list *)
+    (* end  *)
 
     structure DataTypeDef: sig
       type t

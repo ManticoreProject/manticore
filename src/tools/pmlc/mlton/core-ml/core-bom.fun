@@ -124,15 +124,15 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
 
 
-    fun flattenFromAst (maybeTyParams: AstBOM.TyParams.t option) =
-      flatten (fn els =>
-        let
-          val AstBOM.TyParams.T tyPs = AstBOM.TyParams.node els
-        in
-          tyPs
-        end) maybeTyParams
-    fun flattenFromAst' maybeTyParams =
-      map fromAst (flattenFromAst maybeTyParams)
+    (* fun flattenFromAst (maybeTyParams: AstBOM.TyParams.t option) = *)
+    (*   flatten (fn els => *)
+    (*     let *)
+    (*       val AstBOM.TyParams.T tyPs = AstBOM.TyParams.node els *)
+    (*     in *)
+    (*       tyPs *)
+    (*     end) maybeTyParams *)
+    (* fun flattenFromAst' maybeTyParams = *)
+    (*   map fromAst (flattenFromAst maybeTyParams) *)
       (* case maybeTyParams of *)
       (*   SOME tyParams => *)
       (*     let *)
@@ -438,21 +438,21 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
 
-  structure TyArgs = struct
-    datatype t = datatype tyargs_t
-    (* type t = tyargs_t *)
+  (* structure TyArgs = struct *)
+  (*   datatype t = datatype tyargs_t *)
+  (*   (* type t = tyargs_t *) *)
 
-    val getTypes = typesOfTyArgs
-    (* val fromAst = tyArgsFromAst *)
+  (*   val getTypes = typesOfTyArgs *)
+  (*   (* val fromAst = tyArgsFromAst *) *)
 
-    fun flattenFromAst maybeTyArgs =
-      flatten (fn els =>
-        let
-          val AstBOM.TyArgs.ArgTypes tyArgs = AstBOM.TyArgs.node els
-        in
-          tyArgs
-        end) maybeTyArgs
-  end
+  (*   fun flattenFromAst maybeTyArgs = *)
+  (*     flatten (fn els => *)
+  (*       let *)
+  (*         val AstBOM.TyArgs.ArgTypes tyArgs = AstBOM.TyArgs.node els *)
+  (*       in *)
+  (*         tyArgs *)
+  (*       end) maybeTyArgs *)
+  (* end *)
 
   structure BomType = struct
     (* open AstBOM.BomType *)
