@@ -244,16 +244,16 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
   and elaborateExp (exp: AstBOM.Exp.t,
       tyEnvs as {env:Env.t, bomEnv: BOMEnv.t}): BOMEnv.TyAlias.t list =
     let
-      fun errorForErrorVal errorVal = error (AstBOM.Exp.region, AstBOM.Exp.layout,
-            errorVal, exp)
+      fun errorForErrorVal errorVal = error (AstBOM.Exp.region,
+        AstBOM.Exp.layout, errorVal, exp)
+      fun checkForErrorVal errorVal = check (errorForErrorVal errorVal)
     in
       case AstBOM.Exp.node exp of
         AstBOM.Exp.Return sExps => map (fn sExp =>
             elaborateSimpleExp (sExp, tyEnvs)) sExps
       | AstBOM.Exp.If (sExp, left, right) =>
           let
-           val error = errorForErrorVal [BOMEnv.TyAlias.error]
-           val check = check error
+           val check = checkForErrorVal [BOMEnv.TyAlias.error]
           (* TODO: figure out where bool is, check that this is bool *)
             val condTy = elaborateSimpleExp (sExp, tyEnvs)
             fun doElaborate exp = elaborateExp (exp, tyEnvs)
@@ -265,8 +265,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           end
       | AstBOM.Exp.Let (varPats, rhs, exp) =>
           let
-            val error = errorForErrorVal tyEnvs
-            val check = check error
+            val check  = checkForErrorVal tyEnvs
             val rhsTys = elaborateRHS (rhs, tyEnvs)
             val newEnv =
               check (if length rhsTys = length varPats then
@@ -282,7 +281,19 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       | AstBOM.Exp.Do (sExp, exp) =>
           (elaborateSimpleExp (sExp, tyEnvs)
           ; elaborateExp (exp, tyEnvs))
-      (* | AstBOM.Exp.Throw  *)
+      | AstBOM.Exp.Throw (bomId, sExps) =>
+          (* TODO: this will give an unhelpful message if bomId isn't a cont *)
+          (* check arguments match the type of the cont. to be thrown *)
+          checkForErrorVal [] (CoreBOM.BomType.equal' (
+            (* find the type of the cont. to throw *)
+            (checkForErrorVal CoreBOM.BomType.Error (BOMEnv.ValEnv.lookup
+              (bomEnv, CoreBOM.ValId.fromAstBomId bomId),
+              "unbound value identifier") (fn tyAlias => #ty tyAlias),
+            (* find the type of the arguments, wrap in a cont. *)
+            CoreBOM.BomType.Cont (map (fn sExp =>
+                #ty (elaborateSimpleExp (sExp, tyEnvs))) sExps))),
+            (* throw elaborates to noreturn *)
+          "throw arguments do not match continuation type") (fn _ => [])
       | _ => raise Fail "not implemented"
     end
 

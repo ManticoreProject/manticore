@@ -334,7 +334,7 @@ signature AST_BOM =
       | Case of SimpleExp.t * CaseRule.t list
       | Typecase of TyParam.t * TyCaseRule.t list
       | Apply of LongValueId.t * SimpleExp.t list * SimpleExp.t list
-      | Throw of BomId.t * SimpleExp.t list (* FIXME *)
+      | Throw of BomId.t * SimpleExp.t list
       | Return of SimpleExp.t list
 
     val layout : t -> Layout.t
