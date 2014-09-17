@@ -172,29 +172,28 @@ signature CORE_BOM =
       = Immutable of IntInf.int * type_t
       | Mutable of IntInf.int * type_t
     and type_t
-              = Param of TyParam.t
-        | TyCon of {
-            con: tycon_t,
-            args: type_t list
-          }
-        | Con of {
-            dom: type_t,
-            rng: type_t
-          }
-        | Record of field_t list
-        | Tuple of type_t list
-        | Fun of {
-            dom: type_t list,
-            cont: type_t list,
-            rng: type_t list
-          }
-        | Any
-        | VProc
-        | Cont of type_t list
-        | Addr of type_t
-        | Raw of RawTy.t
-        (* | NoReturn *)
-        | Error
+      = Param of TyParam.t
+      | TyCon of {
+          con: tycon_t,
+          args: type_t list
+        }
+      | Con of {
+          dom: type_t,
+          rng: type_t
+        }
+      | Record of field_t list
+      | Tuple of type_t list
+      | Fun of {
+          dom: type_t list,
+          cont: type_t list,
+          rng: type_t list
+        }
+      | Any
+      | VProc
+      | Cont of type_t list
+      | Addr of type_t
+      | Raw of RawTy.t
+      | Error
     and dataconsdef_t
       = ConsDef of BomId.t * type_t option
     and tycon_t
