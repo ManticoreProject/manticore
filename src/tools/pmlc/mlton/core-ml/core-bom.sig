@@ -50,10 +50,6 @@ signature CORE_BOM =
     structure PrimOp: sig
     end
 
-    structure LongConId: sig
-    end
-
-
     structure HLOpQId: sig
     end
 
@@ -90,6 +86,16 @@ signature CORE_BOM =
       val truncate: t -> BomId.t
     end
 
+    structure LongConId: sig
+      type t
+
+      val fromAst: AstBOM.LongConId.t -> t
+      val toString: t -> string
+      val hasQualifier: t -> bool
+      val truncate: t -> BomId.t
+    end
+
+
 
     structure ModuleId: sig
       type t
@@ -97,6 +103,10 @@ signature CORE_BOM =
       val compare: t * t -> order
       val fromLongTyId: AstBOM.LongTyId.t -> t
       val fromLongTyId': AstBOM.LongTyId.t -> t * BomId.t
+      val fromLongValueId: AstBOM.LongValueId.t -> t
+      val fromLongValueId': AstBOM.LongValueId.t -> t * BomId.t
+      val fromLongConId: AstBOM.LongConId.t -> t
+      val fromLongConId': AstBOM.LongConId.t -> t * BomId.t
       val fromBomId: AstBOM.BomId.t -> t
       val toString: t -> string
       val toBomId: t -> BomId.t
@@ -128,6 +138,7 @@ signature CORE_BOM =
 
       val fromAstBomId: AstBOM.BomId.t -> t
       val fromLongValueId: AstBOM.LongValueId.t -> t
+      val fromLongConId: AstBOM.LongConId.t -> t
 
       (* Add the given qualifier only if it doesn't yet have one *)
       val maybeQualify: t * ModuleId.t -> t
@@ -170,6 +181,8 @@ signature CORE_BOM =
       include DEPENDENCY_WRAPPER
         sharing type node' = node
 
+      val index: t -> IntInf.int
+      val bogus: t
     end
 
     structure DataConsDef: sig
@@ -208,6 +221,10 @@ signature CORE_BOM =
             con: TyCon.t,
             args: t list
           }
+        | Con of {
+            dom: t,
+            rng: t
+          }
         | Record of Field.t list
         | Tuple of t list
         | Fun of {
@@ -229,6 +246,8 @@ signature CORE_BOM =
       val equals: t list * t list -> bool
       val equal': t * t -> t option
       val equals': t list * t list -> t list option
+      val isCon: t -> t option
+      val unit: t
 
     end
 
@@ -284,6 +303,8 @@ signature CORE_BOM =
     structure Decs : sig
       (* type t *)
     end
+
+    structure Prim
 
     sharing type DataConsDef.ty = Field.ty = TyCon.ty = BomType.t
 
