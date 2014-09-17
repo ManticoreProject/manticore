@@ -158,44 +158,35 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   structure LongTyId = LongId (structure AstId = AstBOM.LongTyId)
   structure LongValueId = LongId (structure AstId = AstBOM.LongValueId)
+  structure LongConId = LongId (structure AstId = AstBOM.LongConId)
 
   structure ModuleId = struct
     type t = BomId.t list
 
     val compare = List.collate BomId.compare
 
-    fun fromLong' (splitFn, regionFn) longId  =
-      let
-        val (qualifiers: AstBOM.BomId.t list, id: AstBOM.BomId.t) =
-          splitFn longId
-        val region = regionFn longId
-      in
-        (qualifiers, id): (t * BomId.t)
-      end
+    local
+      fun fromLong' (splitFn, regionFn) longId  =
+        let
+          val (qualifiers: AstBOM.BomId.t list, id: AstBOM.BomId.t) =
+            splitFn longId
+          val region = regionFn longId
+        in
+          (qualifiers, id): (t * BomId.t)
+        end
+    in
+      val fromLongTyId' = fromLong' (AstBOM.LongTyId.split,
+        AstBOM.LongTyId.region)
+      val fromLongTyId = #1 o fromLongTyId'
 
+      val fromLongValueId' = fromLong' (AstBOM.LongValueId.split,
+        AstBOM.LongValueId.region)
+      val fromLongValueId = #1 o fromLongValueId'
 
-    val fromLongTyId' = fromLong' (AstBOM.LongTyId.split,
-      AstBOM.LongTyId.region)
-
-    (* fun fromLongTyId' longTyId = *)
-    (*   let *)
-    (*     val (qualifiers: AstBOM.BomId.t list, id: AstBOM.BomId.t) = *)
-    (*       AstBOM.LongTyId.split longTyId *)
-    (*     val region = AstBOM.LongTyId.region longTyId *)
-
-    (*     (* val modId: t = map *) *)
-    (*     (*   (fn strid => BomId.fromStrid (strid, region)) *) *)
-    (*     (*   qualifiers *) *)
-    (*   in *)
-    (*     (qualifiers, id): (t * BomId.t) *)
-    (*   end *)
-
-    val fromLongTyId = #1 o fromLongTyId'
-
-    val fromLongValueId' = fromLong' (AstBOM.LongValueId.split,
-      AstBOM.LongValueId.region)
-
-    val fromLongValueId = #1 o fromLongValueId'
+      val fromLongConId' = fromLong' (AstBOM.LongConId.split,
+        AstBOM.LongConId.region)
+      val fromLongConId = #1 o fromLongConId'
+  end
 
     val toString = String.concatWith "." o (map BomId.toString)
 
@@ -257,15 +248,25 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
     val fromAstBomId = BomVal o BomId.fromAst
 
-    fun fromLongValueId (longValId: AstBOM.LongValueId.t): t =
-      let
-        val longValId': LongValueId.t = LongValueId.fromAst longValId
-      in
-        if LongValueId.hasQualifier longValId' then
-          QBomVal (ModuleId.fromLongValueId' longValId')
-        else
-          BomVal (LongValueId.truncate longValId')
-      end
+    local
+      fun fromLongId (fromAst, hasQual, toModId, truncate) longId =
+        let
+          val longId' = fromAst longId
+        in
+          if hasQual longId' then
+            QBomVal (toModId longId')
+          else
+            BomVal (truncate longId')
+        end
+    in
+       val fromLongValueId = fromLongId (LongValueId.fromAst,
+         LongValueId.hasQualifier, ModuleId.fromLongValueId',
+         LongValueId.truncate)
+       val fromLongConId = fromLongId (LongConId.fromAst,
+         LongConId.hasQualifier, ModuleId.fromLongConId',
+         LongConId.truncate)
+    end
+
 
     fun maybeQualify (valId, defaultId) =
       case valId of
@@ -281,9 +282,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
     val compare = String.compare o (app2 toString)
 
-  end
-
-  structure LongConId = struct
   end
 
   (* structure LongValueId = struct *)
@@ -315,6 +313,10 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | TyCon of {
         con: tycon_t,
         args: type_t list
+      }
+    | Con of {
+        dom: type_t,
+        rng: type_t
       }
     | Record of field_t list
     | Tuple of type_t list
@@ -530,6 +532,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     val equal = tyEqual
     val equals = tysEqual
 
+    fun isCon ty =
+      case ty of
+        Con con => SOME ty
+      | _ => NONE
+
     local
       fun boolToOpt (comparison: ('a * 'a) -> bool) (left, right) =
         if comparison (left, right) then
@@ -541,6 +548,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       val equals' = boolToOpt equals
     end
 
+    val unit = Tuple []
   end
 
   structure TyCon = struct
@@ -589,6 +597,12 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     end
 
     val getType = typeOfField
+    fun index field =
+      case node field of
+        Immutable (index, _) => index
+      | Mutable (index, _) => index
+
+    val bogus = Immutable (~1, Error)
   end
 
 
@@ -637,6 +651,42 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   (* structure TyCon = struct *)
   (* (* TODO *) *)
   (* end *)
+
+  structure PrimTy = struct
+    type arg = BomType.t
+    type result = BomType.t Prim.prim
+
+    local
+      structure PrimTyFn = PrimTyFn (struct
+        type var = arg
+        type ty = BomType.t
+
+        fun typeOf x = x
+
+        val noTy = BomType.unit
+        val anyTy = BomType.Any
+        fun raw rawType =
+          BomType.Raw (
+            case rawType of
+              RawTypes.T_Byte => RawTy.Int8
+            | RawTypes.T_Short => RawTy.Int16
+            | RawTypes.T_Int => RawTy.Int32
+            | RawTypes.T_Long => RawTy.Int64
+            | RawTypes.T_Float => RawTy.Float32
+            | RawTypes.T_Double => RawTy.Float64)
+          (* TODO: vec128 *)
+        val addr = BomType.Addr
+      end)
+    in
+      open PrimTyFn
+    end
+
+    fun nullaryCon primOp =
+      case AstBOM.PrimOp.toString primOp of
+        "Pause" => SOME Prim.Pause
+
+
+  end
 
 
   structure Decs = struct

@@ -6,8 +6,8 @@
  * Determine the return type of primitive operators.
  *)
 
-functor PrimTyFn (Ty : sig
-
+signature PRIM_TY_STRUCTS =
+  sig
     type var
     type ty
 
@@ -17,11 +17,12 @@ functor PrimTyFn (Ty : sig
     val anyTy   : ty
     val raw     : RawTypes.raw_ty -> ty
     val addr    : ty -> ty
+end
 
-  end) : sig
-
-    type var
-    type ty
+signature PRIM_TY =
+  sig
+   type var
+   type ty
 
   (* the result type of a primop *)
     val typeOf : var Prim.prim -> ty
@@ -31,8 +32,9 @@ functor PrimTyFn (Ty : sig
 
   (* the types of a condition's arguments *)
     val condArgTys : var Prim.cond -> ty list
+  end
 
-  end = struct
+functor PrimTyFn (Ty: PRIM_TY_STRUCTS): PRIM_TY = struct
 
     structure P = Prim
 

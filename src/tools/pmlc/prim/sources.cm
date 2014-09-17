@@ -8,9 +8,14 @@
 
 Library
 
+	signature PRIM_TY
+  signature PRIM_TY_STRUCTS
+
   structure CondUtil
   structure Prim
   structure PrimUtil
+  structure RawTypes
+
   functor MakePrimFn
   functor PrimTyFn
 

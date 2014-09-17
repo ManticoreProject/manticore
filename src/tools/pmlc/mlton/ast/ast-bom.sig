@@ -322,7 +322,7 @@ signature AST_BOM =
   end
 
 
-    structure Exp : sig
+  structure Exp : sig
     type t
     type rhs
     datatype node

@@ -1,5 +1,5 @@
 (* Needed to avoid naming conflicts *)
-Group
+Library
 
   structure RawTypes
 

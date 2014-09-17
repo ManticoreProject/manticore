@@ -237,6 +237,7 @@ signature CORE_BOM =
         | Cont of t list
         | Addr of t
         | Raw of RawTy.t
+        (* | NoReturn *)
         | Error
 
       val arity: t -> int
@@ -304,8 +305,22 @@ signature CORE_BOM =
       (* type t *)
     end
 
-    structure Prim
+
+    structure PrimTy: sig
+      include PRIM_TY
+      type arg = BomType.t
+      type result = BomType.t Prim.prim
+
+      val nullaryCon: AstBOM.PrimOp.t -> result option
+      (* val unaryCon: AstBOM.PrimOp.t -> (arg -> result) option *)
+      (* val binaryCon: AstBOM.PrimOp.t -> (arg * arg -> result) option *)
+      (* val ternaryCon: AstBOM.PrimOp.t -> (arg * arg * arg -> result) option *)
+
+      (* (* SOME (return type) if the application is good (correct number *)
+      (* of args of the correct type), otherwise, NONE *) *)
+      (* val applyOp: AstBOM.PrimOp.t * BomType.t list -> BomType.t option *)
+    end
+
 
     sharing type DataConsDef.ty = Field.ty = TyCon.ty = BomType.t
-
   end
