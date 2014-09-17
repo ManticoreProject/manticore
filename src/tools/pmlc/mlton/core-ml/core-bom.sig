@@ -47,9 +47,6 @@ signature CORE_BOM =
       val compare: t * t -> order
     end
 
-    structure PrimOp: sig
-    end
-
     structure HLOpQId: sig
     end
 
@@ -171,28 +168,67 @@ signature CORE_BOM =
     structure BomValueId: sig
     end
 
+    datatype field_t
+      = Immutable of IntInf.int * type_t
+      | Mutable of IntInf.int * type_t
+    and type_t
+              = Param of TyParam.t
+        | TyCon of {
+            con: tycon_t,
+            args: type_t list
+          }
+        | Con of {
+            dom: type_t,
+            rng: type_t
+          }
+        | Record of field_t list
+        | Tuple of type_t list
+        | Fun of {
+            dom: type_t list,
+            cont: type_t list,
+            rng: type_t list
+          }
+        | Any
+        | VProc
+        | Cont of type_t list
+        | Addr of type_t
+        | Raw of RawTy.t
+        (* | NoReturn *)
+        | Error
+    and dataconsdef_t
+      = ConsDef of BomId.t * type_t option
+    and tycon_t
+      = TyC of {
+          id: TyId.t,
+          definition: dataconsdef_t list ref,
+          params: TyParam.t list
+      }
+
     structure Field: sig
-      type ty
+      (* type ty *)
 
-      datatype node
-        = Immutable of IntInf.int * ty
-        | Mutable of IntInf.int * ty
+      datatype t = datatype field_t
+      (* datatype node *)
+      (*   = Immutable of IntInf.int * ty *)
+      (*   | Mutable of IntInf.int * ty *)
 
-      include DEPENDENCY_WRAPPER
-        sharing type node' = node
+      (* include DEPENDENCY_WRAPPER *)
+      (*   sharing type node' = node *)
 
       val index: t -> IntInf.int
       val bogus: t
     end
 
     structure DataConsDef: sig
-      type ty
+      (* type ty *)
 
-      datatype node
-        = ConsDef of BomId.t * ty option
+      datatype t = datatype dataconsdef_t
 
-      include DEPENDENCY_WRAPPER
-        sharing type node' = node
+      (* datatype node *)
+      (*   = ConsDef of BomId.t * ty option  *)
+
+      (* include DEPENDENCY_WRAPPER *)
+      (*   sharing type node' = node *)
 
       val arity: t -> int
       val error: t
@@ -202,12 +238,14 @@ signature CORE_BOM =
     structure TyCon: sig
       (* TODO: this should have a uid *)
       type ty
-      datatype t
-        = TyC of {
-            id: TyId.t,
-            definition: DataConsDef.t list ref,
-            params: TyParam.t list
-        }
+      (* datatype t *)
+      (*   = TyC of { *)
+      (*       id: TyId.t, *)
+      (*       definition: DataConsDef.t list ref, *)
+      (*       params: TyParam.t list *)
+      (*   } *)
+
+      datatype t = datatype tycon_t
 
       val toBomTy: t -> ty
       val arity: t -> int
@@ -215,30 +253,31 @@ signature CORE_BOM =
     end
 
     structure BomType: sig
-      datatype t
-        = Param of TyParam.t
-        | TyCon of {
-            con: TyCon.t,
-            args: t list
-          }
-        | Con of {
-            dom: t,
-            rng: t
-          }
-        | Record of Field.t list
-        | Tuple of t list
-        | Fun of {
-            dom: t list,
-            cont: t list,
-            rng: t list
-          }
-        | Any
-        | VProc
-        | Cont of t list
-        | Addr of t
-        | Raw of RawTy.t
-        (* | NoReturn *)
-        | Error
+      datatype t = datatype type_t
+      (* datatype t *)
+      (*   = Param of TyParam.t *)
+      (*   | TyCon of { *)
+      (*       con: TyCon.t, *)
+      (*       args: t list *)
+      (*     } *)
+      (*   | Con of { *)
+      (*       dom: t, *)
+      (*       rng: t *)
+      (*     } *)
+      (*   | Record of Field.t list *)
+      (*   | Tuple of t list *)
+      (*   | Fun of { *)
+      (*       dom: t list, *)
+      (*       cont: t list, *)
+      (*       rng: t list *)
+      (*     } *)
+      (*   | Any *)
+      (*   | VProc *)
+      (*   | Cont of t list *)
+      (*   | Addr of t *)
+      (*   | Raw of RawTy.t *)
+      (*   (* | NoReturn *) *)
+      (*   | Error *)
 
       val arity: t -> int
       val applyArg: t * TyParam.t * t -> t
@@ -322,5 +361,5 @@ signature CORE_BOM =
     end
 
 
-    sharing type DataConsDef.ty = Field.ty = TyCon.ty = BomType.t
+    sharing type TyCon.ty = BomType.t
   end
