@@ -684,6 +684,101 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     fun nullaryCon primOp =
       case AstBOM.PrimOp.toString primOp of
         "Pause" => SOME Prim.Pause
+      | "FenceRead" => SOME Prim.FenceRead
+      | "FenceWrite" => SOME Prim.FenceWrite
+      | "FenceRW" => SOME Prim.FenceRW
+      | _ => NONE
+
+    fun unaryCon primOp =
+      case AstBOM.PrimOp.toString primOp of
+        "I32Neg" => SOME Prim.I32Neg
+      | "I64Neg" => SOME Prim.I64Neg
+      | "F32Neg" => SOME Prim.F32Neg
+      | "F32Sqrt" => SOME Prim.F32Sqrt
+      | "F32Abs" => SOME Prim.F32Abs
+      | "F64Neg" => SOME Prim.F64Neg
+      | "F64Sqrt" => SOME Prim.F64Sqrt
+      | "F64Abs" => SOME Prim.F64Abs
+      | "I32ToI64X" => SOME Prim.I32ToI64X
+      | "I32ToI64" => SOME Prim.I32ToI64
+      | "I64ToI32" => SOME Prim.I64ToI32
+      | "I32ToF32" => SOME Prim.I32ToF32
+      | "I32ToF64" => SOME Prim.I32ToF64
+      | "I64ToF32" => SOME Prim.I64ToF32
+      | "I64ToF64" => SOME Prim.I64ToF64
+      | "F64ToI32" => SOME Prim.F64ToI32
+      | "AdrLoadI8" => SOME Prim.AdrLoadI8
+      | "AdrLoadU8" => SOME Prim.AdrLoadU8
+      | "AdrLoadI16" => SOME Prim.AdrLoadI16
+      | "AdrLoadU16" => SOME Prim.AdrLoadU16
+      | "AdrLoadI32" => SOME Prim.AdrLoadI32
+      | "AdrLoadI64" => SOME Prim.AdrLoadI64
+      | "AdrLoadF32" => SOME Prim.AdrLoadF32
+      | "AdrLoadF64" => SOME Prim.AdrLoadF64
+      | "AdrLoadAdr" => SOME Prim.AdrLoadAdr
+      | "AdrLoad" => SOME Prim.AdrLoad
+      | "AllocIntArray" => SOME Prim.AllocIntArray
+      | "AllocLongArray" => SOME Prim.AllocLongArray
+      | "AllocFloatArray" => SOME Prim.AllocFloatArray
+      | "AllocDoubleArray" => SOME Prim.AllocDoubleArray
+      | _ => NONE
+
+    fun binaryCon primOp =
+      case AstBOM.PrimOp.toString primOp of
+        "I32Add" => SOME Prim.I32Add
+      | "I32Sub" => SOME Prim.I32Sub
+      | "I32Mul" => SOME Prim.I32Mul
+      | "I32Div" => SOME Prim.I32Div
+      | "I32Mod" => SOME Prim.I32Mod
+      | "I32LSh" => SOME Prim.I32LSh
+      | "I64Add" => SOME Prim.I64Add
+      | "I64Sub" => SOME Prim.I64Sub
+      | "I64Mul" => SOME Prim.I64Mul
+      | "I64Div" => SOME Prim.I64Div
+      | "I64Mod" => SOME Prim.I64Mod
+      | "I64LSh" => SOME Prim.I64LSh
+      | "U64Mul" => SOME Prim.U64Mul
+      | "U64Div" => SOME Prim.U64Div
+      | "U64Rem" => SOME Prim.U64Rem
+      | "F32Add" => SOME Prim.F32Add
+      | "F32Sub" => SOME Prim.F32Sub
+      | "F32Mul" => SOME Prim.F32Mul
+      | "F32Div" => SOME Prim.F32Div
+      | "F64Add" => SOME Prim.F64Add
+      | "F64Sub" => SOME Prim.F64Sub
+      | "F64Mul" => SOME Prim.F64Mul
+      | "F64Div" => SOME Prim.F64Div
+      | "AdrAddI32" => SOME Prim.AdrAddI32
+      | "AdrAddI64" => SOME Prim.AdrAddI64
+      | "AdrSubI32" => SOME Prim.AdrSubI32
+      | "AdrSubI64" => SOME Prim.AdrSubI64
+      | "AdrStoreI8" => SOME Prim.AdrStoreI8
+      | "AdrStoreI16" => SOME Prim.AdrStoreI16
+      | "AdrStoreI32" => SOME Prim.AdrStoreI32
+      | "AdrStoreI64" => SOME Prim.AdrStoreI64
+      | "AdrStoreF32" => SOME Prim.AdrStoreF32
+      | "AdrStoreF64" => SOME Prim.AdrStoreF64
+      | "AdrStoreAdr" => SOME Prim.AdrStoreAdr
+      | "AdrStore" => SOME Prim.AdrStore
+      | "ArrLoadI32" => SOME Prim.ArrLoadI32
+      | "ArrLoadI64" => SOME Prim.ArrLoadI64
+      | "ArrLoadF32" => SOME Prim.ArrLoadF32
+      | "ArrLoadF64" => SOME Prim.ArrLoadF64
+      | "ArrLoad" => SOME Prim.ArrLoad
+      | "I32FetchAndAdd" => SOME Prim.I32FetchAndAdd
+      | "I64FetchAndAdd" => SOME Prim.I64FetchAndAdd
+      | "AllocPolyVec " => SOME Prim.AllocPolyVec
+      | _ => NONE
+
+    fun ternaryCon primOp =
+      case AstBOM.PrimOp.toString primOp of
+        "ArrStoreI32" => SOME Prim.ArrStoreI32
+      | "ArrStoreI64" => SOME Prim.ArrStoreI64
+      | "ArrStoreF32" => SOME Prim.ArrStoreF32
+      | "ArrStoreF64" => SOME Prim.ArrStoreF64
+      | "ArrStore" => SOME Prim.ArrStore
+      | "CAS" => SOME Prim.CAS
+      | _ => NONE
 
 
   end

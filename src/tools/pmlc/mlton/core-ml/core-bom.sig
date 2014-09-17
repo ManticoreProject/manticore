@@ -312,9 +312,9 @@ signature CORE_BOM =
       type result = BomType.t Prim.prim
 
       val nullaryCon: AstBOM.PrimOp.t -> result option
-      (* val unaryCon: AstBOM.PrimOp.t -> (arg -> result) option *)
-      (* val binaryCon: AstBOM.PrimOp.t -> (arg * arg -> result) option *)
-      (* val ternaryCon: AstBOM.PrimOp.t -> (arg * arg * arg -> result) option *)
+      val unaryCon: AstBOM.PrimOp.t -> (arg -> result) option
+      val binaryCon: AstBOM.PrimOp.t -> (arg * arg -> result) option
+      val ternaryCon: AstBOM.PrimOp.t -> (arg * arg * arg -> result) option
 
       (* (* SOME (return type) if the application is good (correct number *)
       (* of args of the correct type), otherwise, NONE *) *)
