@@ -1,0 +1,8 @@
+(* Needed to avoid naming conflicts *)
+Group
+
+  structure RawTypes
+
+is
+
+  raw-types.sml
