@@ -23,6 +23,7 @@ $/basis.cm
 ../atoms/sources.cm
 ../control/sources.cm
 ../lib/sources.cm
+../../prim/sources.cm
 
 core-ml.sig
 core-ml.fun
