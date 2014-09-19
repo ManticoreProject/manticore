@@ -6,23 +6,6 @@ signature CORE_BOM_STRUCTS =
     (* sharing Region = Ast.AstBOM.Region *)
   end
 
-signature DEPENDENCY_WRAPPER_STRUCTS =
-  sig
-    type node'
-    (* type t *)
-  end
-
-(* need to get around cyclic dependency *)
-signature DEPENDENCY_WRAPPER =
-  sig
-    include DEPENDENCY_WRAPPER_STRUCTS
-
-    type t
-
-    val wrap: node' -> t
-    val node: t -> node'
-  end
-
 signature CORE_BOM =
   sig
     include CORE_BOM_STRUCTS
@@ -36,12 +19,16 @@ signature CORE_BOM =
     structure HLOpId: sig
     end
 
+    structure Attr: sig
+      type t
+
+      val flattenFromAst: AstBOM.Attrs.t option -> t list
+    end
+
     structure TyParam: sig
       type t
 
       val fromAst: AstBOM.TyParam.t -> t
-      (* val flattenFromAst: AstBOM.TyParams.t option -> AstBOM.TyParam.t list *)
-      (* val flattenFromAst': AstBOM.TyParams.t option -> t list *)
       val hash: t -> int
       val name: t -> string
       val compare: t * t -> order
@@ -57,14 +44,11 @@ signature CORE_BOM =
       type t
 
       val fromAst: AstBOM.BomId.t -> t
-      (* val fromStrid: AstBOM.Strid.t * Region.t -> t *)
       val toString: t -> string
       val bogus: t
     end
 
     structure LongTyId: sig
-      (* structure AstLongId: LONGID *)
-
       type t
 
       val fromAst: AstBOM.LongTyId.t -> t
@@ -92,8 +76,6 @@ signature CORE_BOM =
       val truncate: t -> BomId.t
     end
 
-
-
     structure ModuleId: sig
       type t
 
@@ -115,13 +97,10 @@ signature CORE_BOM =
       datatype t
         = BomTy of BomId.t
         | QBomTy of ModuleId.t * BomId.t
-      (* TODO: MLTy *)
-        (* | MLTy *)
 
       val fromAstBomId: AstBOM.BomId.t -> t
       val fromLongTyId: AstBOM.LongTyId.t -> t
 
-      (* Add the given qualifier only if it doesn't yet have one *)
       val maybeQualify: t * ModuleId.t -> t
 
       val toString: t -> string
@@ -142,6 +121,8 @@ signature CORE_BOM =
 
       val toString: t -> string
       val compare: t * t -> order
+
+      val error: t
     end
 
 
@@ -163,9 +144,6 @@ signature CORE_BOM =
         | Float64
 
       val fromAst: AstBOM.RawTy.t -> t
-    end
-
-    structure BomValueId: sig
     end
 
     datatype field_t
@@ -193,6 +171,7 @@ signature CORE_BOM =
       | Cont of type_t list
       | Addr of type_t
       | Raw of RawTy.t
+      | NoReturn
       | Error
     and dataconsdef_t
       = ConsDef of BomId.t * type_t option
@@ -204,82 +183,26 @@ signature CORE_BOM =
       }
 
     structure Field: sig
-      (* type ty *)
-
       datatype t = datatype field_t
-      (* datatype node *)
-      (*   = Immutable of IntInf.int * ty *)
-      (*   | Mutable of IntInf.int * ty *)
-
-      (* include DEPENDENCY_WRAPPER *)
-      (*   sharing type node' = node *)
 
       val index: t -> IntInf.int
       val bogus: t
     end
 
     structure DataConsDef: sig
-      (* type ty *)
-
       datatype t = datatype dataconsdef_t
-
-      (* datatype node *)
-      (*   = ConsDef of BomId.t * ty option  *)
-
-      (* include DEPENDENCY_WRAPPER *)
-      (*   sharing type node' = node *)
 
       val arity: t -> int
       val error: t
     end
 
-
-    structure TyCon: sig
-      (* TODO: this should have a uid *)
-      type ty
-      (* datatype t *)
-      (*   = TyC of { *)
-      (*       id: TyId.t, *)
-      (*       definition: DataConsDef.t list ref, *)
-      (*       params: TyParam.t list *)
-      (*   } *)
-
-      datatype t = datatype tycon_t
-
-      val toBomTy: t -> ty
-      val arity: t -> int
-      val applyToArgs: t * ty list -> ty option
-    end
-
     structure BomType: sig
       datatype t = datatype type_t
-      (* datatype t *)
-      (*   = Param of TyParam.t *)
-      (*   | TyCon of { *)
-      (*       con: TyCon.t, *)
-      (*       args: t list *)
-      (*     } *)
-      (*   | Con of { *)
-      (*       dom: t, *)
-      (*       rng: t *)
-      (*     } *)
-      (*   | Record of Field.t list *)
-      (*   | Tuple of t list *)
-      (*   | Fun of { *)
-      (*       dom: t list, *)
-      (*       cont: t list, *)
-      (*       rng: t list *)
-      (*     } *)
-      (*   | Any *)
-      (*   | VProc *)
-      (*   | Cont of t list *)
-      (*   | Addr of t *)
-      (*   | Raw of RawTy.t *)
-      (*   (* | NoReturn *) *)
-      (*   | Error *)
 
       val arity: t -> int
       val applyArg: t * TyParam.t * t -> t
+      val applyArgs: t * (TyParam.t * t) list -> t
+      val applyArgs': t * TyParam.t list * t list -> t option
       val uniqueTyParams: t -> TyParam.t list
       val equal: t * t -> bool
       val equals: t list * t list -> bool
@@ -290,13 +213,14 @@ signature CORE_BOM =
 
     end
 
+    structure TyCon: sig
+      (* TODO: this should have a uid *)
+      datatype t = datatype tycon_t
 
-    (* structure TyArgs: sig *)
-    (*   type t *)
-
-    (*   val getTypes: t -> BomType.t list *)
-      (* val flattenFromAst: AstBOM.TyArgs.t option -> AstBOM.BomType.t list *)
-    (* end  *)
+      val toBomTy: t -> BomType.t
+      val arity: t -> int
+      val applyToArgs: t * BomType.t list -> BomType.t option
+    end
 
     structure DataTypeDef: sig
       type t
@@ -323,42 +247,88 @@ signature CORE_BOM =
     structure TyCaseRule: sig
     end
 
-    structure SimpleExp: sig
+    structure Val: sig
+      type t
+
+      val typeOf: t -> BomType.t
+      val idOf: t -> ValId.t
+      val stampOf: t -> Stamp.stamp
+
+      val compare: t * t -> order
+      val same: t * t -> bool
+
+      val hasId: t * ValId.t -> bool
+
+      val new: ValId.t * BomType.t * TyParam.t list -> t
+
+      val applyToArgs: t * BomType.t list -> t option
+
+      val error: t
     end
 
     structure Exp: sig
-    end
+      type t
 
-    structure RHS: sig
-    end
+      datatype node
+        (* let takes over FunExp and ConExp, plus Do, treating Do exp
+        exp' as let _ = exp exp', plus TypeCast *)
+        = Let of Val.t list * t * t
+        | If of t * t * t
+        | Case                  (* TODO *)
+        | TyCase                (* TODO *)
+        | Apply of Val.t * t list * t list
+        | Throw of Val.t * t list
+        | Return of t list
+        | PrimOp of Val.t * t list
+        | Alloc of Val.t * t list
+        | RecAccess of IntInf.int * t * t
+        | Promote of t
+        | HostVproc
+        | VpLoad of IntInf.int * t
+        | VpAddr of IntInf.int * t
+        | VpStore of IntInf.int * t * t
+        | Val of Val.t
+        (* | Lit of Literal.t *)
+        (* | MLString of BomType.Tuple [BomType.Raw RawTy.Int64,  *)
 
-    structure Definition: sig
+        val new: node * BomType.t -> t
+        val typeOf: t -> BomType.t
+        val node: t -> node
     end
 
     structure HLOp: sig
       (* collapse HLOp(Q)Id together here *)
     end
 
-    structure Decs : sig
-      (* type t *)
-    end
-
-
-    structure PrimTy: sig
+    structure PrimOp: sig
       include PRIM_TY
-      type arg = BomType.t
+      type arg = Val.t
       type result = BomType.t Prim.prim
 
       val nullaryCon: AstBOM.PrimOp.t -> result option
-      val unaryCon: AstBOM.PrimOp.t -> (arg -> result) option
-      val binaryCon: AstBOM.PrimOp.t -> (arg * arg -> result) option
-      val ternaryCon: AstBOM.PrimOp.t -> (arg * arg * arg -> result) option
+      val unaryCon: AstBOM.PrimOp.t -> (BomType.t -> result) option
+      val binaryCon: AstBOM.PrimOp.t -> (BomType.t * BomType.t -> result) option
+      val ternaryCon: AstBOM.PrimOp.t -> (
+        BomType.t * BomType.t * BomType.t -> result) option
 
       (* (* SOME (return type) if the application is good (correct number *)
       (* of args of the correct type), otherwise, NONE *) *)
       (* val applyOp: AstBOM.PrimOp.t * BomType.t list -> BomType.t option *)
     end
 
+    structure Definition: sig
+      datatype t
+        = Fun of Attr.t list * ValId.t * Exp.t
+        | HLOp of Attr.t list * ValId.t * Exp.t
+        | Import of BomType.t
+              (* TODO: datatypes *)
+    end
 
-    sharing type TyCon.ty = BomType.t
+    (* structure Decs : sig *)
+    (*   datatype t = T of Definition.t list *)
+
+    (*   val empty: t *)
+    (* end *)
+
+
   end

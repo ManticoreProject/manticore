@@ -57,6 +57,8 @@ structure PMLFrontEnd : PML_FRONT_END =
     structure WordX = WordX
     end
     structure TypeEnv = TypeEnv (Atoms)
+    structure CoreBOM = CoreBOM (
+      structure Ast = Ast)
     structure CoreML = CoreML (
 	open Atoms
 	structure Type =
@@ -67,7 +69,8 @@ structure PMLFrontEnd : PML_FRONT_END =
 		 fn {con, var} => makeHom {con = con, expandOpaque = true, var = var}
 
 	    fun layout t = layoutPrettyAux (t, {expandOpaque = true, localTyvarNames = false})
-	   end)
+	   end
+  structure CoreBOM = CoreBOM)
     structure Xml = Xml (open Atoms)
     structure Sxml = Sxml (open Xml)
     structure Tycon = Atoms.Tycon
@@ -87,6 +90,7 @@ structure PMLFrontEnd : PML_FRONT_END =
     structure Elaborate = Elaborate (
 	structure Ast = Ast
 	structure CoreML = CoreML
+  structure CoreBOM = CoreBOM
 	structure TypeEnv = TypeEnv)
     structure Env = Elaborate.Env
     structure LookupConstant = LookupConstant (

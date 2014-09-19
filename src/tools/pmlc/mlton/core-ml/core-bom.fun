@@ -2,17 +2,6 @@ signature CORE_LONGID_STRUCTS = sig
   structure AstId: LONGID
 end
 
-functor DependencyWrapper (S: DEPENDENCY_WRAPPER_STRUCTS) = struct
-  open S
-
-  type t = node'
-
-  fun identity x = x
-
-  val wrap = identity
-  val node = identity
-end
-
 functor LongId (S: CORE_LONGID_STRUCTS) = struct
   open S.AstId
 
@@ -31,6 +20,8 @@ functor LongId (S: CORE_LONGID_STRUCTS) = struct
     val hasQualifier = not o null o strids
     val truncate = id
   end
+
+  (* val error = long ([], Id.bogus) *)
 end
 
 functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
@@ -71,6 +62,20 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       Ast.Strid.toSymbol strid, region)
   end
 
+  structure Attr = struct
+    type t = string
+
+    fun flattenFromAst attrs =
+      case attrs of
+        SOME attrs =>
+          let
+            val AstBOM.Attrs.T unwrapped = AstBOM.Attrs.node attrs
+          in
+            unwrapped
+          end
+      | _ => []
+  end
+
   structure HLOpId = struct
   end
 
@@ -79,12 +84,12 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
 
   structure TyParam = struct
+  (* TODO: remove wrapping *)
     open Region.Wrap
 
     datatype node' = T of {
       name: string,
       hash: int          (* keeps track of insertion order *)
-      (* plist: PropertyList.t *)
     }
 
     type t = node' Region.Wrap.t
@@ -121,26 +126,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       fun compare (param, param') =
         String.compare (name param, name param')
     end
-
-
-
-    (* fun flattenFromAst (maybeTyParams: AstBOM.TyParams.t option) = *)
-    (*   flatten (fn els => *)
-    (*     let *)
-    (*       val AstBOM.TyParams.T tyPs = AstBOM.TyParams.node els *)
-    (*     in *)
-    (*       tyPs *)
-    (*     end) maybeTyParams *)
-    (* fun flattenFromAst' maybeTyParams = *)
-    (*   map fromAst (flattenFromAst maybeTyParams) *)
-      (* case maybeTyParams of *)
-      (*   SOME tyParams => *)
-      (*     let *)
-      (*       val AstBOM.TyParams.T tyPs = AstBOM.TyParams.node tyParams *)
-      (*     in *)
-      (*       tyPs *)
-      (*     end *)
-      (* | NONE => [] *)
   end
 
 
@@ -282,6 +267,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
     val compare = String.compare o (app2 toString)
 
+    val error = BomVal BomId.bogus
   end
 
   (* structure LongValueId = struct *)
@@ -330,6 +316,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Cont of type_t list
     | Addr of type_t
     | Raw of RawTy.t
+    | NoReturn
     | Error
   and field_t
     = Immutable of IntInf.int * type_t
@@ -418,22 +405,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   structure DataConsDef = struct
-    (* open Region.Wrap *)
-
-    datatype node = datatype dataconsdef_t
-    (* type t = dataconsdef_t *)
-    type ty = type_t
-
-    local
-      structure Wrapper = DependencyWrapper (struct
-        datatype node' = datatype node
-      end)
-    in
-      open Wrapper
-    end
-
-    (* type node' = node *)
-    (* type obj = t *)
+    datatype t = datatype dataconsdef_t
 
     val arity = arityOfDataCons
     val error = ConsDef (BomId.bogus, NONE)
@@ -457,14 +429,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   (* end *)
 
   structure BomType = struct
-    (* open AstBOM.BomType *)
-    (* open Region.Wrap *)
-
     datatype t = datatype type_t
-    (* type t = type_t *)
-
-    (* type node' = node *)
-    (* type obj = t *)
 
     val arity = arityOfType
 
@@ -529,6 +494,14 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         | x => x
       end
 
+    fun applyArgs (ty, paramsAndArgs) = foldr (fn ((toSwap, swapFor), ty) =>
+      applyArg (ty, toSwap, swapFor)) ty paramsAndArgs
+
+    fun applyArgs' (ty, params, args) =
+      SOME (applyArgs (ty, ListPair.zipEq (params, args)))
+        handle ListPair.UnequalLengths => NONE
+
+
     val equal = tyEqual
     val equals = tysEqual
 
@@ -552,14 +525,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   structure TyCon = struct
-      (* open Region.Wrap *)
-
-      (* datatype node = datatype tycon_node *)
-      (* type t = tycon_t *)
       datatype t = datatype tycon_t
-      type ty = BomType.t
-      (* type node' = node *)
-      (* type obj = t *)
 
       fun toBomTy (tyCon as TyC {params,...}) =
         BomType.TyCon {
@@ -583,22 +549,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   structure Field = struct
-    (* open Region.Wrap *)
-    (* datatype node = datatype field_node *)
-    type ty = type_t
-    datatype node = datatype field_t
-
-    local
-      structure Wrapper = DependencyWrapper(struct
-        datatype node' = datatype node
-      end)
-    in
-      open Wrapper
-    end
+    datatype t = datatype field_t
 
     val getType = typeOfField
     fun index field =
-      case node field of
+      case field of
         Immutable (index, _) => index
       | Mutable (index, _) => index
 
@@ -635,25 +590,84 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure SimpleExp = struct
   end
 
-  structure Exp = struct
-  end
-
   structure RHS = struct
-  end
-
-  structure Definition = struct
   end
 
   structure HLOp = struct
   end
 
+  structure Val = struct
+    datatype t = T of {
+      id: ValId.t,
+      ty: BomType.t,
+      params: TyParam.t list,
+      stamp: Stamp.stamp
+    }
 
-  (* structure TyCon = struct *)
-  (* (* TODO *) *)
-  (* end *)
+    fun typeOf (T {ty, ...}) = ty
+    fun idOf (T {id, ...}) = id
+    fun stampOf (T {stamp, ...}) = stamp
 
-  structure PrimTy = struct
-    type arg = BomType.t
+    local
+      fun stampsOf (lhs, rhs) = (stampOf lhs, stampOf rhs)
+    in
+      val compare = Stamp.compare o stampsOf
+      val same = Stamp.same o stampsOf
+    end
+
+    fun hasId (thisVal, valId) =
+      ValId.compare (idOf thisVal, valId) = EQUAL
+
+    fun new (valId, ty, params) = T {
+      id = valId,
+      ty = ty,
+      params = params,
+      stamp = Stamp.new()
+    }
+
+    fun applyToArgs (T {ty, params, id, stamp}, args) =
+      case BomType.applyArgs' (ty, params, args) of
+        SOME ty => SOME (T {ty = ty, params = params, id = id, stamp = stamp})
+      | NONE => NONE
+
+    val error = new (ValId.error, BomType.Error, [])
+  end
+
+  structure Exp = struct
+    datatype t = T of {node: node, ty: BomType.t}
+    and node
+      = Let of Val.t list * t * t
+      | If of t * t * t
+      | Case              (* TODO *)
+      | TyCase            (* TODO *)
+      | Apply of Val.t * t list * t list
+      | Throw of Val.t * t list
+      | Return of t list
+      | PrimOp of Val.t * t list
+      | Alloc of Val.t * t list
+      | RecAccess of IntInf.int * t * t
+      | Promote of t
+      | HostVproc
+      | VpLoad of IntInf.int * t
+      | VpAddr of IntInf.int * t
+      | VpStore of IntInf.int * t * t
+      | Val of Val.t
+
+    fun new (node, ty) = T {node = node, ty = ty}
+
+    local
+      fun unwrap (T exp) = exp
+    in
+      val typeOf = #ty o unwrap
+      val node = #node o unwrap
+    end
+
+  end
+
+
+
+  structure PrimOp = struct
+    type arg = Val.t
     type result = BomType.t Prim.prim
 
     local
@@ -661,7 +675,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         type var = arg
         type ty = BomType.t
 
-        fun typeOf x = x
+        val typeOf = Val.typeOf
 
         val noTy = BomType.unit
         val anyTy = BomType.Any
@@ -674,7 +688,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
             | RawTypes.T_Long => RawTy.Int64
             | RawTypes.T_Float => RawTy.Float32
             | RawTypes.T_Double => RawTy.Float64)
-          (* TODO: vec128 *)
+
         val addr = BomType.Addr
       end)
     in
@@ -784,14 +798,17 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
 
-  structure Decs = struct
-  (* TODO *)
+  structure Definition = struct
+    datatype t
+      = Fun of Attr.t list * ValId.t * Exp.t
+      | HLOp of Attr.t list * ValId.t * Exp.t
+      | Import of BomType.t
   end
 
-  (* structure BomId = struct  *)
-  (*   open AstBOM.BomId *)
-  (* end  *)
+  (* structure Decs = struct *)
+  (*   datatype t = T of Definition.t list *)
 
-  (* ... *)
+  (*   val empty = T [] *)
+  (* end *)
 
   end

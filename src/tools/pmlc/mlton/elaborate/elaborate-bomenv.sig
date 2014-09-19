@@ -89,8 +89,8 @@ signature ELABORATE_BOMENV =
       type env
       type t
 
-      val extend: env * CoreBOM.ValId.t * TyAlias.t -> env
-      val lookup: env * CoreBOM.ValId.t -> TyAlias.t option
+      val extend: env * CoreBOM.ValId.t * CoreBOM.Val.t -> env
+      val lookup: env * CoreBOM.ValId.t -> CoreBOM.Val.t option
     end
 
   val empty: t

@@ -21,8 +21,8 @@ in
    structure Decs = Decs
 end
 
-structure CoreBOM = CoreBOM (
-  structure Ast = Ast)
+(* structure CoreBOM = CoreBOM ( *)
+(*   structure Ast = Ast) *)
 structure BOMEnv = BOMEnv (
   structure Ast = Ast
   structure CoreBOM = CoreBOM)

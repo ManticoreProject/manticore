@@ -6,19 +6,21 @@
  * See the file MLton-LICENSE for details.
  *)
 
-signature ELABORATE_STRUCTS = 
+signature ELABORATE_STRUCTS =
    sig
       structure Ast: AST
       structure CoreML: CORE_ML
+      structure CoreBOM: CORE_BOM
       structure TypeEnv: TYPE_ENV
       sharing Ast.Record = CoreML.Record
       sharing Ast.SortedRecord = CoreML.SortedRecord
       sharing Ast.Tyvar = CoreML.Tyvar
       sharing CoreML.Atoms = TypeEnv.Atoms
       sharing CoreML.Type = TypeEnv.Type
+      sharing CoreBOM.AstBOM = Ast.AstBOM
    end
 
-signature ELABORATE = 
+signature ELABORATE =
    sig
       include ELABORATE_STRUCTS
 

@@ -26,6 +26,7 @@ signature CORE_ML_STRUCTS =
             val tuple: t vector -> t
             val unit: t
          end
+       structure CoreBOM: CORE_BOM
    end
 
 signature CORE_ML =
@@ -172,7 +173,7 @@ signature CORE_ML =
                              nest: string list,
                              pat: Pat.t,
                              patRegion: Region.t} vector}
-             | BomDec           (* TODO *)
+             | BomDecs of CoreBOM.Definition.t list
 
             val layout: t -> Layout.t
          end

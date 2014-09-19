@@ -30,6 +30,10 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
   structure AstBOM = Ast.AstBOM
 
+  fun printEnvKeys (toString, listKeys, getEnv) env = print (
+    String.concat ["[", (String.concatWith ", " (map toString (listKeys (
+      getEnv env)))), "]\n"])
+
   functor EnvMap (S: ENV_MAP_PARAMS): ENV_MAP = struct
       open S
 
@@ -65,14 +69,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     fun arity ({params = params, ...}: t) = length params
 
     fun applyToArgs ({params, ty}: t, args) =
-      if length params = length args then
-        SOME (ListPair.foldr
-          (fn (toSwap, swapFor, ty) =>
-            CoreBOM.BomType.applyArg (ty, toSwap, swapFor))
-          ty
-          (params, args))
-      else
-        NONE
+      CoreBOM.BomType.applyArgs' (ty, params, args)
 
     val error: t = {
       params = [],
@@ -165,7 +162,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
   structure ValEnvMap = EnvMap (struct
     type key = CoreBOM.ValId.t
-    type value = TyAlias.t
+    type value = CoreBOM.Val.t
     val compare = CoreBOM.ValId.compare
   end)
 
@@ -230,6 +227,9 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
              (fn (x, y) => (getHash x) < (getHash y))
              items
          end
+
+      val printKeys = printEnvKeys (AstBOM.TyParam.toString, listKeys,
+        getTyParamEnv)
     end
   end
 
@@ -276,11 +276,13 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
             SOME tyDefn => TypeDefn.getCon tyDefn
           | NONE => NONE
 
-        fun printKeys env =
-          print (
-            String.concat ["[", (
-            String.concatWith ", "
-              (map CoreBOM.TyId.toString (listKeys (getEnv env)))), "]\n"])
+        val printKeys = printEnvKeys (CoreBOM.TyId.toString, listKeys, getEnv)
+
+        (* fun printKeys env = *)
+        (*   print ( *)
+        (*     String.concat ["[", ( *)
+        (*     String.concatWith ", " *)
+        (*       (map CoreBOM.TyId.toString (listKeys (getEnv env)))), "]\n"]) *)
 
       end
     end
