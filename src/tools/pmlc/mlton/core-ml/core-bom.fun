@@ -307,13 +307,13 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Record of field_t list
     | Tuple of type_t list
     | Fun of {
-        dom: type_t list,
-        cont: type_t list,
-        rng: type_t list
+        dom: type_t,
+        cont: type_t,
+        rng: type_t
       }
     | Any
     | VProc
-    | Cont of type_t list
+    | Cont of type_t
     | Addr of type_t
     | Raw of RawTy.t
     | NoReturn
@@ -344,7 +344,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       (*   in *)
       (*     bomAr + conAr + rangeAr *)
       (*   end *)
-      | Cont conts => sumArity conts
+      | Cont conts => arityOfType conts
       | Addr addrTy => arityOfType addrTy
       | _ => 0
     end
@@ -358,6 +358,12 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     case maybeTy of
       SOME ty => arityOfType ty
     | NONE => 0
+  and strictTyEqual (ty, ty'): bool =
+	case (ty, ty') of
+	  (Any, Any) => true
+	| (Any, _) => false
+	| (_, Any) => false
+	| tys => tyEqual tys
   and tyEqual (ty, ty'): bool =
     case (ty, ty') of
       (Param p, Param p') => TyParam.compare (p, p') = EQUAL
@@ -368,11 +374,10 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | (Record fields, Record fields') => false
     | (Tuple tys, Tuple tys') => tysEqual (tys, tys')
     | (Fun funTy, Fun funTy') =>
-        List.all (fn x => x) (
-        List.map (fn select => tysEqual (select funTy, select funTy'))
-        [(fn fTy => #dom fTy), (fn fTy => #cont fTy), (fn fTy => #rng fTy)])
+        List.all (fn select => tyEqual (select funTy, select funTy')) (
+          [#dom, #cont, #rng])
     | (VProc, VProc) => true
-    | (Cont tys, Cont tys') => tysEqual (tys, tys')
+    | (Cont tys, Cont tys') => tyEqual (tys, tys')
     | (Addr ty, Addr ty') => tyEqual (ty, ty')
     | (Raw raw, Raw raw') => rawEquals (raw, raw')
     | (Error, _) => false
@@ -453,8 +458,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
           | Tuple tys =>
               foldTyList (tys, acc)
           | Fun {dom, cont, rng} =>
-              List.concat (map (fn x => foldTyList (x, [])) [dom, cont, rng])
-          | Cont tys => foldTyList (tys, acc)
+              List.concat (map (fn x => allTyParams (x, [])) [dom, cont, rng])
+          | Cont ty' => allTyParams (ty', acc)
           | Addr ty' => allTyParams (ty', acc)
           | _ => acc
           (* TODO: record, tycon *)
@@ -484,11 +489,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         (*     Record (map applyArg fields) *)
         | Tuple ts => Tuple (doApplys ts)
         | Fun {dom, cont, rng} => Fun {
-            dom = doApplys dom,
-            cont = doApplys cont,
-            rng = doApplys rng
+            dom = doApply dom,
+            cont = doApply cont,
+            rng = doApply rng
           }
-        | Cont tys => Cont (doApplys tys)
+        | Cont tys => Cont (doApply tys)
         | Addr t => Addr (doApply t)
         (* | Raw raw => applyArg raw *)
         | x => x
@@ -505,6 +510,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     val equal = tyEqual
     val equals = tysEqual
 
+	val strictEqual = strictTyEqual
+
     fun isCon ty =
       case ty of
         Con con => SOME ty
@@ -519,9 +526,17 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     in
       val equal' = boolToOpt equal
       val equals' = boolToOpt equals
+
+	  val strictEqual' = boolToOpt strictEqual
     end
 
     val unit = Tuple []
+
+	fun wrapTuple tys =
+	  case tys of
+		[] => NoReturn
+	  | [ty] => ty
+	  | tys => Tuple tys
   end
 
   structure TyCon = struct
@@ -660,8 +675,18 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     in
       val typeOf = #ty o unwrap
       val node = #node o unwrap
+	  fun dest exp =
+		let
+		  val {node, ty} = unwrap exp
+		in
+		  (node, ty)
+		end
     end
 
+	fun newWithType (con, exp) =
+	  new (con exp, typeOf exp)
+
+	val error = new (Val Val.error, Error)
   end
 
 

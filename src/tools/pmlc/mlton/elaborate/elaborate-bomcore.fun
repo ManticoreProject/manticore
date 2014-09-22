@@ -19,7 +19,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     | NONE => error msg
 
   fun elaborateBomType (astTy: AstBOM.BomType.t,
-      tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}): CoreBOM.BomType.t =
+						tyEnvs as {env, bomEnv}): CoreBOM.BomType.t =
     let
       val error: string -> CoreBOM.BomType.t =
         error (AstBOM.BomType.region, AstBOM.BomType.layout,
@@ -31,6 +31,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           SOME y => f y
         | NONE => error  msg
       fun doElaborate ty = elaborateBomType (ty, tyEnvs)
+	  val wrappedElaborate = CoreBOM.BomType.wrapTuple o map (fn ty =>
+		elaborateBomType (ty, tyEnvs))
 
       fun defnArityMatches (input as (defn, tyArgs)) =
         if (BOMEnv.TypeDefn.arity defn) = (length tyArgs) then
@@ -78,14 +80,14 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           CoreBOM.BomType.Tuple (map doElaborate tys)
       | AstBOM.BomType.Fun funTys =>
           CoreBOM.BomType.Fun (let
-            val (dom, cont, rng) = app3 (map doElaborate) funTys
+            val (dom, cont, rng) = app3 wrappedElaborate funTys
           in
             {dom=dom, cont=cont, rng=rng}
           end)
       | AstBOM.BomType.Any => CoreBOM.BomType.Any
       | AstBOM.BomType.VProc => CoreBOM.BomType.VProc
       | AstBOM.BomType.Cont maybeTyArgs =>
-          CoreBOM.BomType.Cont (map doElaborate maybeTyArgs)
+          CoreBOM.BomType.Cont (wrappedElaborate maybeTyArgs)
       | AstBOM.BomType.Addr ty =>
           CoreBOM.BomType.Addr (doElaborate ty)
       | AstBOM.BomType.Raw ty => CoreBOM.BomType.Raw (
@@ -173,12 +175,13 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         AstBOM.FunDef.node funDef
       val envWithTyParams = extendEnvForTyParams (bomEnv, maybeTyParams)
       val tyEnvs' = {env = env, bomEnv = envWithTyParams}
-      fun patsToTys pats = map
+      fun patsToTys pats = CoreBOM.BomType.wrapTuple (map
         (fn pat => varPatToTy (pat, tyEnvs'))
-        pats
+        pats)
       val domTys = patsToTys domPats
       val contTys = patsToTys contPats
-      val rngTys' = map (fn ty => elaborateBomType (ty, tyEnvs')) rngTys
+      val rngTys' = CoreBOM.BomType.wrapTuple (map (fn ty => elaborateBomType (
+		ty, tyEnvs')) rngTys)
       val funTy = {
           dom = domTys,
           cont = contTys,
@@ -224,7 +227,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         AstBOM.FunDef.node funDef
       val envForBody = ListPair.foldrEq (fn (pat, ty, bomEnv) =>
         bindVarPat (pat, ty, {env = env, bomEnv = bomEnv})) bomEnv (
-          domPats@contPats, dom@cont)
+          [domPats, contPats], [dom, cont])
       val bodyExp = elaborateExp (exp, {env=env, bomEnv=envForBody})
     in
      (* TODO: handle noreturn *)
@@ -232,22 +235,23 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         "function body doesn't agree with range type")
         (fn _ => ())
     end
-  and wrapTuple tys =
-    case tys of
-      [] => CoreBOM.BomType.NoReturn
-    | [ty] => ty
-    | tys => CoreBOM.BomType.Tuple tys
+  (* and wrapTuple tys = *)
+  (*   case tys of *)
+  (*     [] => CoreBOM.BomType.NoReturn *)
+  (*   | [ty] => ty *)
+  (*   | tys => CoreBOM.BomType.Tuple tys *)
   and elaborateSimpleExp (sExp, tyEnvs as {env, bomEnv}): CoreBOM.Exp.t =
     let
       fun checkForErrorVal errorVal = check (error (AstBOM.SimpleExp.region,
         AstBOM.SimpleExp.layout, errorVal, sExp))
       val checkVal = checkForErrorVal CoreBOM.Val.error
       val checkTy = checkForErrorVal CoreBOM.BomType.Error
+	  val checkExp = checkForErrorVal CoreBOM.Exp.error
       fun elaborateTupleExp (dom, rng, sExps) =
         let
           (* TODO: handle noreturn correctly *)
-          val argumentTy = wrapTuple (map (fn sExp => CoreBOM.Exp.typeOf (
-            elaborateSimpleExp (sExp, tyEnvs)) sExps))
+          val argumentTy = CoreBOM.BomType.wrapTuple (map (fn sExp =>
+			CoreBOM.Exp.typeOf (elaborateSimpleExp (sExp, tyEnvs))) sExps)
         in
         (* check that the argument matches the range of the constructor *)
           checkForErrorVal CoreBOM.BomType.Error (
@@ -256,22 +260,34 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         end
       fun elaborateVpExp (index, procExp) =
         (* TODO: do something useful with the index *)
-        checkTy (CoreBOM.BomType.equal' (elaborateSimpleExp (procExp,
-          tyEnvs), CoreBOM.BomType.VProc),
+        checkTy (CoreBOM.BomType.equal' (CoreBOM.Exp.typeOf (
+		  elaborateSimpleExp (procExp, tyEnvs)), CoreBOM.BomType.VProc),
         "argument to vproc operation must be a vproc") (fn x => x)
     in
       case AstBOM.SimpleExp.node sExp of
-        AstBOM.SimpleExp.Id longValId => CoreBOM.Exp.Val (checkVal (
-          BOMEnv.ValEnv.lookup (bomEnv, CoreBOM.ValId.fromLongValueId
-          longValId), "undefined value identifier") (fn x => x))
-      | AstBOM.SimpleExp.HostVproc => CoreBOM.BomType.VProc
-      | AstBOM.SimpleExp.Promote sExp' => elaborateSimpleExp (sExp', tyEnvs)
+        AstBOM.SimpleExp.Id longValId => checkExp (BOMEnv.ValEnv.lookup (
+		  bomEnv, CoreBOM.ValId.fromLongValueId longValId),
+		  "undefined value identifier") (fn value => CoreBOM.Exp.new (
+		    CoreBOM.Exp.Val value, CoreBOM.Val.typeOf value))
+      | AstBOM.SimpleExp.HostVproc =>  CoreBOM.Exp.new (CoreBOM.Exp.HostVproc,
+		  CoreBOM.BomType.VProc)
+      | AstBOM.SimpleExp.Promote sExp' =>
+		  CoreBOM.Exp.newWithType (CoreBOM.Exp.Promote, elaborateSimpleExp (
+			sExp', tyEnvs))
       | AstBOM.SimpleExp.TypeCast (ty, sExp) =>
           (* make sure we only typecast Any *)
-          checkTy (CoreBOM.BomType.equal' (CoreBOM.BomType.Any, (
-            elaborateSimpleExp (sExp, tyEnvs))),
-          "only 'any' can be typecast")
-          (fn _ => elaborateBomType (ty, tyEnvs))
+          checkExp (
+			let
+			  val (expNode, expTy) = CoreBOM.Exp.dest (elaborateSimpleExp (sExp,
+				tyEnvs))
+			in
+		      if CoreBOM.BomType.strictEqual (CoreBOM.BomType.Any, expTy) then
+				SOME expNode
+			  else
+				NONE
+			end, "only 'any' can be typecast")
+          (fn expNode => CoreBOM.Exp.new (expNode, elaborateBomType (
+			ty, tyEnvs)))
       (* | AstBOM.SimpleExp.Literal (* TODO: what do these become?*) *)
       | AstBOM.SimpleExp.AllocId (longValId, sExps) =>
           let
@@ -390,8 +406,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       in
         #bomEnv (bind (checkTyBinding (maybeTy, rhsTy)))
       end
-  and elaborateExp (exp: AstBOM.Exp.t,
-      tyEnvs as {env, bomEnv}): (CoreBOM.BomType.t list * CoreBOM.Exp.t) =
+  and elaborateExp (exp: AstBOM.Exp.t, tyEnvs as {env, bomEnv}): CoreBOM.Exp.t =
     let
       fun errorForErrorVal errorVal = error (AstBOM.Exp.region,
         AstBOM.Exp.layout, errorVal, exp)

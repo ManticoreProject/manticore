@@ -162,13 +162,13 @@ signature CORE_BOM =
       | Record of field_t list
       | Tuple of type_t list
       | Fun of {
-          dom: type_t list,
-          cont: type_t list,
-          rng: type_t list
+          dom: type_t,
+          cont: type_t,
+          rng: type_t
         }
       | Any
       | VProc
-      | Cont of type_t list
+      | Cont of type_t
       | Addr of type_t
       | Raw of RawTy.t
       | NoReturn
@@ -204,12 +204,20 @@ signature CORE_BOM =
       val applyArgs: t * (TyParam.t * t) list -> t
       val applyArgs': t * TyParam.t list * t list -> t option
       val uniqueTyParams: t -> TyParam.t list
+
+	  (* equality that considers Any to be equal to anything *)
       val equal: t * t -> bool
       val equals: t list * t list -> bool
       val equal': t * t -> t option
       val equals': t list * t list -> t list option
+
+	  (* equality that holds iff two types are identical *)
+	  val strictEqual: t * t -> bool
+	  val strictEqual': t * t -> t option
+
       val isCon: t -> t option
       val unit: t
+	  val wrapTuple: t list -> t
 
     end
 
@@ -294,6 +302,11 @@ signature CORE_BOM =
         val new: node * BomType.t -> t
         val typeOf: t -> BomType.t
         val node: t -> node
+		val dest: t -> node * BomType.t
+
+		val newWithType: (t -> node) * t -> t
+
+		val error: t
     end
 
     structure HLOp: sig
