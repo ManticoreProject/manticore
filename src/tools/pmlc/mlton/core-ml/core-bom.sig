@@ -259,15 +259,16 @@ signature CORE_BOM =
       type t
 
       val typeOf: t -> BomType.t
-      val idOf: t -> ValId.t
+      (* val idOf: t -> ValId.t *)
       val stampOf: t -> Stamp.stamp
 
       val compare: t * t -> order
       val same: t * t -> bool
 
-      val hasId: t * ValId.t -> bool
+      (* val hasId: t * ValId.t -> bool *)
 
-      val new: ValId.t * BomType.t * TyParam.t list -> t
+      (* val new: ValId.t * BomType.t * TyParam.t list -> t *)
+      val new: BomType.t * TyParam.t list -> t
 
       val applyToArgs: t * BomType.t list -> t option
 
@@ -289,7 +290,7 @@ signature CORE_BOM =
         | Return of t list
         | PrimOp of Val.t * t list
         | Alloc of Val.t * t list
-        | RecAccess of IntInf.int * t * t
+        | RecAccess of IntInf.int * t * t option
         | Promote of t
         | HostVproc
         | VpLoad of IntInf.int * t
@@ -302,11 +303,11 @@ signature CORE_BOM =
         val new: node * BomType.t -> t
         val typeOf: t -> BomType.t
         val node: t -> node
-		val dest: t -> node * BomType.t
+		    val dest: t -> node * BomType.t
 
-		val newWithType: (t -> node) * t -> t
+		    val newWithType: (t -> node) * t -> t
 
-		val error: t
+		    val error: t
     end
 
     structure HLOp: sig

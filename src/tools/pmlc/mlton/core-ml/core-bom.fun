@@ -613,14 +613,14 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   structure Val = struct
     datatype t = T of {
-      id: ValId.t,
+      (* id: ValId.t, *)
       ty: BomType.t,
       params: TyParam.t list,
       stamp: Stamp.stamp
     }
 
     fun typeOf (T {ty, ...}) = ty
-    fun idOf (T {id, ...}) = id
+    (* fun idOf (T {id, ...}) = id *)
     fun stampOf (T {stamp, ...}) = stamp
 
     local
@@ -630,22 +630,22 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       val same = Stamp.same o stampsOf
     end
 
-    fun hasId (thisVal, valId) =
-      ValId.compare (idOf thisVal, valId) = EQUAL
+    (* fun hasId (thisVal, valId) = *)
+    (*   ValId.compare (idOf thisVal, valId) = EQUAL *)
 
-    fun new (valId, ty, params) = T {
-      id = valId,
+    fun new (ty, params) = T {
+      (* id = valId, *)
       ty = ty,
       params = params,
       stamp = Stamp.new()
     }
 
-    fun applyToArgs (T {ty, params, id, stamp}, args) =
+    fun applyToArgs (T {ty, params, stamp}, args) =
       case BomType.applyArgs' (ty, params, args) of
-        SOME ty => SOME (T {ty = ty, params = params, id = id, stamp = stamp})
+        SOME ty => SOME (T {ty = ty, params = params, stamp = stamp})
       | NONE => NONE
 
-    val error = new (ValId.error, BomType.Error, [])
+    val error = new (BomType.Error, [])
   end
 
   structure Exp = struct
@@ -660,7 +660,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | Return of t list
       | PrimOp of Val.t * t list
       | Alloc of Val.t * t list
-      | RecAccess of IntInf.int * t * t
+      | RecAccess of IntInf.int * t * t option
       | Promote of t
       | HostVproc
       | VpLoad of IntInf.int * t
