@@ -226,12 +226,18 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       val AstBOM.FunDef.Def (maybeAttrs, _, _, domPats, contPats, _, exp) =
         AstBOM.FunDef.node funDef
 
+      fun unwrap ty =
+        case ty of
+          CoreBOM.BomType.Tuple tys => tys
+        | ty => [ty]
+
       (* elaborate the arguments and put them in the environment *)
-      fun extendEnvForVarPats (pats, CoreBOM.BomType.Tuple tys, bomEnv) =
+      fun extendEnvForVarPats (pats, tys, bomEnv) =
         bindVarPats (pats, tys, {env = env, bomEnv = bomEnv})
 
-      val (newEnv, domVals) = extendEnvForVarPats (domPats, dom, bomEnv)
-      val (newEnv', contVals) = extendEnvForVarPats (contPats, cont, newEnv)
+      val (newEnv, domVals) = extendEnvForVarPats (domPats, unwrap dom, bomEnv)
+      val (newEnv', contVals) = extendEnvForVarPats (contPats, unwrap cont,
+        newEnv)
 
       (* val envForBody = extendEnvForVarPats (domPats, dom, *)
       (*   {env = env, bomEnv = extendEnvForVarPats (contPats, cont, tyEnvs)}) *)
@@ -282,22 +288,22 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           val exp = elaborateSimpleExp (procExp, tyEnvs)
         in
           checkExp (CoreBOM.BomType.equal' (CoreBOM.Exp.typeOf exp,
-          CoreBOM.BomType.VProc),
-          "argument to vproc operation must be a vproc")
+            CoreBOM.BomType.VProc),
+            "argument to vproc operation must be a vproc")
           (fn _ => exp)
         end
     in
       case AstBOM.SimpleExp.node sExp of
         AstBOM.SimpleExp.Id longValId =>
           checkForErrorVal CoreBOM.Exp.error (BOMEnv.ValEnv.lookup (
-      bomEnv, CoreBOM.ValId.fromLongValueId longValId),
-      "undefined value identifier") (fn value => CoreBOM.Exp.new (
-        CoreBOM.Exp.Val value, CoreBOM.Val.typeOf value))
+            bomEnv, CoreBOM.ValId.fromLongValueId longValId),
+            "undefined value identifier")
+          (fn value => CoreBOM.Exp.new (CoreBOM.Exp.Val value,
+            CoreBOM.Val.typeOf value))
       | AstBOM.SimpleExp.HostVproc =>  CoreBOM.Exp.new (CoreBOM.Exp.HostVproc,
-      CoreBOM.BomType.VProc)
-      | AstBOM.SimpleExp.Promote sExp' =>
-      CoreBOM.Exp.newWithType (CoreBOM.Exp.Promote, elaborateSimpleExp (
-        sExp', tyEnvs))
+          CoreBOM.BomType.VProc)
+      | AstBOM.SimpleExp.Promote sExp' => CoreBOM.Exp.newWithType (
+          CoreBOM.Exp.Promote, elaborateSimpleExp (sExp', tyEnvs))
       | AstBOM.SimpleExp.TypeCast (ty, sExp) =>
           (* make sure we only typecast Any *)
           checkForErrorVal CoreBOM.Exp.error (
@@ -348,7 +354,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       | AstBOM.SimpleExp.VpLoad (index, procExp) =>
           (* for now, we return Any *)
           CoreBOM.Exp.new (CoreBOM.Exp.VpLoad (index,
-           elaborateVpExp (index, procExp)), CoreBOM.BomType.Any)
+            elaborateVpExp (index, procExp)), CoreBOM.BomType.Any)
 
       | AstBOM.SimpleExp.VpStore (index, procExp, valExp) =>
           CoreBOM.Exp.new (CoreBOM.Exp.VpStore (index,
