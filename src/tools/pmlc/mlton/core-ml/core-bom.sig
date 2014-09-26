@@ -249,9 +249,6 @@ signature CORE_BOM =
     structure Literal: sig
     end
 
-    structure CaseRule: sig
-    end
-
     structure TyCaseRule: sig
     end
 
@@ -275,6 +272,15 @@ signature CORE_BOM =
       val error: t
     end
 
+    structure CaseRule: sig
+    type exp
+
+    datatype t
+      = LongRule of Val.t * Val.t list * exp
+      (* | LiteralRule of Literal.t * exp *)
+      | DefaultRule of Val.t * exp
+    end
+
     structure Exp: sig
       type t
 
@@ -282,13 +288,16 @@ signature CORE_BOM =
         (* let takes over FunExp and ConExp, plus Do, treating Do exp
         exp' as let _ = exp exp', plus TypeCast *)
         = Let of Val.t list * t * t
+        (* | Fun of FunDef.t list * t *)
+        (* | Cont of Val.t * VarPat.t list * t * t *)
         | If of t * t * t
-        | Case                  (* TODO *)
+        | Do of t * t
+        | Case of t * CaseRule.t list
         | TyCase                (* TODO *)
         | Apply of Val.t * t list * t list
         | Throw of Val.t * t list
         | Return of t list
-        | PrimOp of Val.t * t list
+        | PrimOp of t Prim.prim
         | Alloc of Val.t * t list
         | RecAccess of IntInf.int * t * t option
         | Promote of t
@@ -310,24 +319,28 @@ signature CORE_BOM =
 		    val error: t
     end
 
-    structure HLOp: sig
-      (* collapse HLOp(Q)Id together here *)
-    end
-
     structure PrimOp: sig
       include PRIM_TY
-      type arg = Val.t
-      type result = BomType.t Prim.prim
 
-      val nullaryCon: AstBOM.PrimOp.t -> result option
-      val unaryCon: AstBOM.PrimOp.t -> (BomType.t -> result) option
-      val binaryCon: AstBOM.PrimOp.t -> (BomType.t * BomType.t -> result) option
-      val ternaryCon: AstBOM.PrimOp.t -> (
-        BomType.t * BomType.t * BomType.t -> result) option
+      type arg = Exp.t
+      type t = arg Prim.prim
+
+      (* val nullaryCon: AstBOM.PrimOp.t -> t option *)
+      (* val unaryCon: AstBOM.PrimOp.t -> (BomType.t -> t) option *)
+      (* val binaryCon: AstBOM.PrimOp.t -> (BomType.t * BomType.t -> t) option *)
+      (* val ternaryCon: AstBOM.PrimOp.t -> ( *)
+      (*   BomType.t * BomType.t * BomType.t -> t) option *)
+
+      val returnTy: t -> BomType.t
+      val applyOp: AstBOM.PrimOp.t * arg list -> t option
 
       (* (* SOME (return type) if the application is good (correct number *)
       (* of args of the correct type), otherwise, NONE *) *)
       (* val applyOp: AstBOM.PrimOp.t * BomType.t list -> BomType.t option *)
+    end
+
+    structure HLOp: sig
+      (* collapse HLOp(Q)Id together here *)
     end
 
     structure Definition: sig
@@ -343,6 +356,6 @@ signature CORE_BOM =
 
     (*   val empty: t *)
     (* end *)
-
-
-  end
+    (* sharing type Exp.primOp = PrimOp.t *)
+    sharing type CaseRule.exp = Exp.t
+end

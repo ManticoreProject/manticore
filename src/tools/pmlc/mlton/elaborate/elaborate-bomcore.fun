@@ -300,6 +300,16 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             "undefined value identifier")
           (fn value => CoreBOM.Exp.new (CoreBOM.Exp.Val value,
             CoreBOM.Val.typeOf value))
+      | AstBOM.SimpleExp.PrimOp (primOp, argSExps) =>
+          let
+            val primArgs = map (fn sExp => elaborateSimpleExp (
+              sExp, tyEnvs)) argSExps
+          in
+            checkForErrorVal CoreBOM.Exp.error (CoreBOM.PrimOp.applyOp (
+                primOp, primArgs), "invalid primop application")
+            (fn primCon => CoreBOM.Exp.new (CoreBOM.Exp.PrimOp primCon,
+              CoreBOM.PrimOp.returnTy primCon))
+          end
       | AstBOM.SimpleExp.HostVproc =>  CoreBOM.Exp.new (CoreBOM.Exp.HostVproc,
           CoreBOM.BomType.VProc)
       | AstBOM.SimpleExp.Promote sExp' => CoreBOM.Exp.newWithType (
@@ -324,15 +334,17 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           let
             (* make sure longValId is bound to a con, find its domain
             and range *)
-            val conVal = checkVal (BOMEnv.ValEnv.lookup (bomEnv,
-              CoreBOM.ValId.fromLongValueId longValId),
-              "undefined value identifier") (fn x => x)
-            val CoreBOM.BomType.Con {dom, rng} = checkForErrorVal
-              (CoreBOM.BomType.Con {
-                dom = CoreBOM.BomType.Error,
-                rng = CoreBOM.BomType.Error
-              }) (CoreBOM.BomType.isCon (CoreBOM.Val.typeOf conVal),
-                "value identifier is not a constructor") (fn x => x)
+            val (conVal, CoreBOM.BomType.Con {dom, rng}) =
+              lookupCon (CoreBOM.ValId.fromLongValueId longValId, tyEnvs)
+            (* val conVal = checkVal (BOMEnv.ValEnv.lookup (bomEnv, *)
+            (*   CoreBOM.ValId.fromLongValueId longValId), *)
+            (*   "undefined value identifier") (fn x => x) *)
+            (* val CoreBOM.BomType.Con {dom, rng} = checkForErrorVal *)
+            (*   (CoreBOM.BomType.Con { *)
+            (*     dom = CoreBOM.BomType.Error, *)
+            (*     rng = CoreBOM.BomType.Error *)
+            (*   }) (CoreBOM.BomType.isCon (CoreBOM.Val.typeOf conVal), *)
+            (*     "value identifier is not a constructor") (fn x => x) *)
           in
             elaborateTupleExp (dom, rng, sExps, conVal)
           end
@@ -454,6 +466,47 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       in
         bind (checkTyBinding (maybeTy, rhsTy))
       end
+  and lookupCon (valId, tyEnvs) =
+    let
+      val conVal = checkVal (BOMEnv.ValEnv.lookup (bomEnv, longValId),
+        "undefined value identifier") (fn x => x)
+      val dataCon = checkForErrorVal
+        (CoreBOM.BomType.Con {
+          dom = CoreBOM.BomType.Error,
+          rng = CoreBOM.BomType.Error
+        }) (CoreBOM.BomType.isCon (CoreBOM.Val.typeOf conVal),
+          "value identifier is not a constructor") (fn x => x)
+    in
+      (conVal, dataCon)
+    end
+  and elaborateCaseRule (caseRule, ruleExp, tyEnvs as {env, bomEnv}) =
+    let
+      val ruleTy = CoreBOM.Exp.typeOf ruleExp
+      val (newBomEnv, ruleCon, exp) =
+        case AstBOM.CaseRule.node caseRule of
+          AstBOM.CaseRule.LongRule (longCon, varPats, exp) =>
+            let
+              val (conVal, CoreBOM.BomType.Con {dom, rng}) =
+                lookupCon (CoreBOM.ValId.fromLongConId longCon, tyEnvs)
+              val (newBomEnv, varPats) = bindVarPats (varPats,
+                CoreBOM.Exp.typeOf
+            in
+
+            end
+
+        (* | AstBOM.CaseRule.LiteralRule  *)
+        | AstBOM.CaseRule.DefaultRule (varPat, exp) =>
+           let
+             val (newBomEnv, [newVal]) =
+               bindVarPats ([varPat], [ruleTy], tyEnvs)
+           in
+             (newBomEnv, fn exp => CoreBOM.CaseRule.DefaultRule (newVal,
+               exp), exp)
+           end
+     val newExp = elaborateExp (exp, {env = env, bomEnv = newBomEnv})
+    in
+      ruleCon newExp
+    end
   and elaborateExp (exp: AstBOM.Exp.t, tyEnvs as {env, bomEnv}): CoreBOM.Exp.t =
     let
       fun errorForErrorVal errorVal = error (AstBOM.Exp.region,
@@ -484,6 +537,16 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             (fn resultTy => CoreBOM.Exp.new (CoreBOM.Exp.If (condTy,
               left', right'), resultTy))
           end
+      | AstBOM.Exp.Case (exp, caseRules) =>
+          let
+            val caseExp = elaborateSimpleExp (exp, tyEnvs)
+            val caseRules' = map (fn caseRule => elaborateCaseRule (caseRule,
+              caseExp, tyEnvs)) caseRules
+          in
+            CoreBOM.Exp.new (CoreBOM.Exp.Case (caseExp, caseRules'),
+              CoreBOM.Exp.typeOf caseExp)
+          end
+
       | AstBOM.Exp.Let (varPats, rhs, exp) =>
           let
             val rhsExp = elaborateRHS (rhs, tyEnvs)
@@ -510,8 +573,12 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               rhsExp, resultExp), CoreBOM.Exp.typeOf resultExp)
           end
       | AstBOM.Exp.Do (sExp, exp) =>
-          (elaborateSimpleExp (sExp, tyEnvs)
-          ; elaborateExp (exp, tyEnvs))
+          let
+            val returnExp = elaborateExp (exp, tyEnvs)
+          in
+            CoreBOM.Exp.new (CoreBOM.Exp.Do (elaborateSimpleExp (sExp, tyEnvs),
+             returnExp), CoreBOM.Exp.typeOf returnExp)
+          end
       | AstBOM.Exp.Throw (bomId, sExps) =>
           (* TODO: this will give an unhelpful message if bomId isn't a cont *)
           checkForErrorVal CoreBOM.Exp.error (BOMEnv.ValEnv.lookup (bomEnv,

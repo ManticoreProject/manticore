@@ -596,9 +596,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure Literal = struct
   end
 
-  structure CaseRule = struct
-  end
-
   structure TyCaseRule = struct
   end
 
@@ -648,25 +645,34 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     val error = new (BomType.Error, [])
   end
 
+  datatype exp_node
+    = Let of Val.t list * exp_t * exp_t
+    | If of exp_t * exp_t * exp_t
+    | Do of exp_t * exp_t
+    | Case of exp_t * caserule_node list
+    | TyCase        (* exp_tODO *)
+    | Apply of Val.t * exp_t list * exp_t list
+    | Throw of Val.t * exp_t list
+    | Return of exp_t list
+    | PrimOp of exp_t Prim.prim
+    | Alloc of Val.t * exp_t list
+    | RecAccess of IntInf.int * exp_t * exp_t option
+    | Promote of exp_t
+    | HostVproc
+    | VpLoad of IntInf.int * exp_t
+    | VpAddr of IntInf.int * exp_t
+    | VpStore of IntInf.int * exp_t * exp_t
+    | Val of Val.t
+  and exp_t = T of {node: exp_node, ty: BomType.t}
+  and caserule_node
+    = LongRule of Val.t * Val.t list * exp_t
+    | DefaultRule of Val.t * exp_t
+
   structure Exp = struct
-    datatype t = T of {node: node, ty: BomType.t}
-    and node
-      = Let of Val.t list * t * t
-      | If of t * t * t
-      | Case              (* TODO *)
-      | TyCase            (* TODO *)
-      | Apply of Val.t * t list * t list
-      | Throw of Val.t * t list
-      | Return of t list
-      | PrimOp of Val.t * t list
-      | Alloc of Val.t * t list
-      | RecAccess of IntInf.int * t * t option
-      | Promote of t
-      | HostVproc
-      | VpLoad of IntInf.int * t
-      | VpAddr of IntInf.int * t
-      | VpStore of IntInf.int * t * t
-      | Val of Val.t
+    datatype node = datatype exp_node
+    datatype t = datatype exp_t
+
+
 
     fun new (node, ty) = T {node = node, ty = ty}
 
@@ -689,18 +695,24 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 	val error = new (Val Val.error, Error)
   end
 
-
+  structure CaseRule = struct
+    type exp = Exp.t
+    datatype t = datatype caserule_node
+  end
 
   structure PrimOp = struct
-    type arg = Val.t
-    type result = BomType.t Prim.prim
+    type exp = Exp.t
+    type arg = exp
+    type t = arg Prim.prim
+
+    val typeOfArg = Exp.typeOf
 
     local
       structure PrimTyFn = PrimTyFn (struct
         type var = arg
         type ty = BomType.t
 
-        val typeOf = Val.typeOf
+        val typeOf = typeOfArg
 
         val noTy = BomType.unit
         val anyTy = BomType.Any
@@ -819,9 +831,43 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | "CAS" => SOME Prim.CAS
       | _ => NONE
 
+    fun returnTy primOp =
+      let
+        val (_, resultTy) = signOf primOp
+      in
+        resultTy
+      end
+
+    fun applyOp (astPrimOp, primArgs) =
+      let
+        fun maybeApply (maybeOp, args) =
+          case maybeOp of
+            SOME operator => SOME (operator args)
+          | _ => NONE
+        val con =
+          case primArgs of
+            [] => nullaryCon astPrimOp
+          | [primArg] => maybeApply (unaryCon astPrimOp, primArg)
+          | [primArg, primArg'] => maybeApply (binaryCon astPrimOp,
+              (primArg, primArg'))
+          | [primArg, primArg', primArg''] => maybeApply (ternaryCon astPrimOp,
+              (primArg, primArg', primArg''))
+          | _ => NONE
+      in
+        case con of
+          SOME con =>
+            let
+              val (argTys, _) = signOf con
+            in
+              if BomType.equals (map typeOfArg primArgs, argTys) then
+                SOME con
+              else
+                NONE
+            end
+        | _ => NONE
+      end
 
   end
-
 
   structure Definition = struct
     datatype t
@@ -835,5 +881,4 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   (*   val empty = T [] *)
   (* end *)
-
   end
