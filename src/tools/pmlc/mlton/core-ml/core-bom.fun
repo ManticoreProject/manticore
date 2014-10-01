@@ -307,13 +307,13 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Record of field_t list
     | Tuple of type_t list
     | Fun of {
-        dom: type_t,
-        cont: type_t,
-        rng: type_t
+        dom: type_t list,
+        cont: type_t list,
+        rng: type_t list
       }
     | Any
     | VProc
-    | Cont of type_t
+    | Cont of type_t list
     | Addr of type_t
     | Raw of RawTy.t
     | NoReturn
@@ -344,7 +344,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       (*   in *)
       (*     bomAr + conAr + rangeAr *)
       (*   end *)
-      | Cont conts => arityOfType conts
+      | Cont conts => sumArity conts
       | Addr addrTy => arityOfType addrTy
       | _ => 0
     end
@@ -374,10 +374,10 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | (Record fields, Record fields') => false
     | (Tuple tys, Tuple tys') => tysEqual (tys, tys')
     | (Fun funTy, Fun funTy') =>
-        List.all (fn select => tyEqual (select funTy, select funTy')) (
+        List.all (fn select => tysEqual (select funTy, select funTy')) (
           [#dom, #cont, #rng])
     | (VProc, VProc) => true
-    | (Cont tys, Cont tys') => tyEqual (tys, tys')
+    | (Cont tys, Cont tys') => tysEqual (tys, tys')
     | (Addr ty, Addr ty') => tyEqual (ty, ty')
     | (Raw raw, Raw raw') => rawEquals (raw, raw')
     | (Error, _) => false
@@ -448,18 +448,17 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       fun allTyParams (ty, acc) =
         let
           fun foldTyList (tys, acc') =
-            foldr
-              (fn (ty', acc') => (allTyParams (ty', []))@acc')
-              acc'
-              tys
+            foldr (fn (ty', acc') => (allTyParams (ty', []))@acc') acc' tys
+          fun paramsForTys tys =
+            List.concat (map (fn x => allTyParams (x, [])) tys)
         in
           case ty of
             Param p => p::acc
           | Tuple tys =>
               foldTyList (tys, acc)
           | Fun {dom, cont, rng} =>
-              List.concat (map (fn x => allTyParams (x, [])) [dom, cont, rng])
-          | Cont ty' => allTyParams (ty', acc)
+              acc@(List.concat (map paramsForTys [dom, cont, rng]))
+          | Cont tys => acc@(paramsForTys (tys))
           | Addr ty' => allTyParams (ty', acc)
           | _ => acc
           (* TODO: record, tycon *)
@@ -489,11 +488,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         (*     Record (map applyArg fields) *)
         | Tuple ts => Tuple (doApplys ts)
         | Fun {dom, cont, rng} => Fun {
-            dom = doApply dom,
-            cont = doApply cont,
-            rng = doApply rng
+            dom = doApplys dom,
+            cont = doApplys cont,
+            rng = doApplys rng
           }
-        | Cont tys => Cont (doApply tys)
+        | Cont tys => Cont (doApplys tys)
         | Addr t => Addr (doApply t)
         (* | Raw raw => applyArg raw *)
         | x => x
@@ -646,38 +645,74 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   datatype exp_node
-    = Let of Val.t list * exp_t * exp_t
-    | If of exp_t * exp_t * exp_t
-    | Do of exp_t * exp_t
-    | Case of exp_t * caserule_node list
+    = Let of Val.t list * rhs * exp_t
+    | If of simpleexp_t * exp_t * exp_t
+    | Do of simpleexp_t * exp_t
+    | Case of simpleexp_t * caserule_node list
     | TyCase        (* exp_tODO *)
-    | Apply of Val.t * exp_t list * exp_t list
-    | Throw of Val.t * exp_t list
-    | Return of exp_t list
-    | PrimOp of exp_t Prim.prim
-    | Alloc of Val.t * exp_t list
-    | RecAccess of IntInf.int * exp_t * exp_t option
-    | Promote of exp_t
+    | Apply of Val.t * simpleexp_t list * simpleexp_t list
+    | Throw of Val.t * simpleexp_t list
+    | Return of simpleexp_t list
+    (* | PrimOp of exp_t Prim.prim *)
+    (* | Alloc of Val.t * exp_t list *)
+    (* | RecAccess of IntInf.int * exp_t * exp_t option *)
+    (* | Promote of exp_t *)
+    (* | HostVproc *)
+    (* | VpLoad of IntInf.int * exp_t *)
+    (* | VpAddr of IntInf.int * exp_t *)
+    (* | VpStore of IntInf.int * exp_t * exp_t *)
+    (* | Val of Val.t *)
+  and exp_t = Exp of {node: exp_node, ty: BomType.t list}
+  and simpleexp_node
+    = PrimOp of simpleexp_t Prim.prim
     | HostVproc
-    | VpLoad of IntInf.int * exp_t
-    | VpAddr of IntInf.int * exp_t
-    | VpStore of IntInf.int * exp_t * exp_t
+    | VpLoad of IntInf.int * simpleexp_t
+    | VpAddr of IntInf.int * simpleexp_t
+    | VpStore of IntInf.int * simpleexp_t * simpleexp_t
+    | Alloc of Val.t * simpleexp_t list
+    | RecAccess of IntInf.int * simpleexp_t * simpleexp_t option
+    | Promote of simpleexp_t
+    | TypeCast of BomType.t * simpleexp_t
     | Val of Val.t
-  and exp_t = T of {node: exp_node, ty: BomType.t}
+  and simpleexp_t = SExp of {node: simpleexp_node, ty: BomType.t}
+  and rhs
+    = Composite of exp_t
+    | Simple of simpleexp_t
   and caserule_node
     = LongRule of Val.t * Val.t list * exp_t
     | DefaultRule of Val.t * exp_t
 
+  structure SimpleExp = struct
+    datatype node = datatype simpleexp_node
+    datatype t = datatype simpleexp_t
+
+    fun new (node, ty) = SExp {node = node, ty = ty}
+
+      local
+        fun unwrap (SExp exp) = exp
+      in
+        val typeOf = #ty o unwrap
+        val node = #node o unwrap
+	    fun dest exp =
+		  let
+		    val {node, ty} = unwrap exp
+		  in
+		    (node, ty)
+		  end
+      end
+
+	    val error = new (Val Val.error, BomType.Error)
+  end
+
   structure Exp = struct
     datatype node = datatype exp_node
+    datatype rhs = datatype rhs
     datatype t = datatype exp_t
 
-
-
-    fun new (node, ty) = T {node = node, ty = ty}
+    fun new (node, ty) = Exp {node = node, ty = ty}
 
     local
-      fun unwrap (T exp) = exp
+      fun unwrap (Exp exp) = exp
     in
       val typeOf = #ty o unwrap
       val node = #node o unwrap
@@ -689,23 +724,30 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 		end
     end
 
-	fun newWithType (con, exp) =
-	  new (con exp, typeOf exp)
+	  fun newWithType (con, exp) =
+	    new (con exp, typeOf exp)
 
-	val error = new (Val Val.error, Error)
+	  val error = new (Return [], [BomType.Error])
   end
 
   structure CaseRule = struct
     type exp = Exp.t
     datatype t = datatype caserule_node
+
+    fun returnTy rule =
+      Exp.typeOf
+        (case rule of
+          LongRule (_, _, exp) => exp
+        (* | LiteralRule (_, exp) => exp *)
+        | DefaultRule (_, exp) => exp)
   end
 
   structure PrimOp = struct
-    type exp = Exp.t
+    type exp = SimpleExp.t
     type arg = exp
     type t = arg Prim.prim
 
-    val typeOfArg = Exp.typeOf
+    val typeOfArg = SimpleExp.typeOf
 
     local
       structure PrimTyFn = PrimTyFn (struct

@@ -162,13 +162,13 @@ signature CORE_BOM =
       | Record of field_t list
       | Tuple of type_t list
       | Fun of {
-          dom: type_t,
-          cont: type_t,
-          rng: type_t
+          dom: type_t list,
+          cont: type_t list,
+          rng: type_t list
         }
       | Any
       | VProc
-      | Cont of type_t
+      | Cont of type_t list
       | Addr of type_t
       | Raw of RawTy.t
       | NoReturn
@@ -273,56 +273,73 @@ signature CORE_BOM =
     end
 
     structure CaseRule: sig
-    type exp
+      type exp
 
-    datatype t
-      = LongRule of Val.t * Val.t list * exp
-      (* | LiteralRule of Literal.t * exp *)
-      | DefaultRule of Val.t * exp
+      datatype t
+        = LongRule of Val.t * Val.t list * exp
+        (* | LiteralRule of Literal.t * exp *)
+        | DefaultRule of Val.t * exp
+
+      val returnTy: t -> BomType.t list
     end
 
-    structure Exp: sig
+    structure SimpleExp: sig
       type t
 
       datatype node
-        (* let takes over FunExp and ConExp, plus Do, treating Do exp
-        exp' as let _ = exp exp', plus TypeCast *)
-        = Let of Val.t list * t * t
-        (* | Fun of FunDef.t list * t *)
-        (* | Cont of Val.t * VarPat.t list * t * t *)
-        | If of t * t * t
-        | Do of t * t
-        | Case of t * CaseRule.t list
-        | TyCase                (* TODO *)
-        | Apply of Val.t * t list * t list
-        | Throw of Val.t * t list
-        | Return of t list
-        | PrimOp of t Prim.prim
-        | Alloc of Val.t * t list
-        | RecAccess of IntInf.int * t * t option
-        | Promote of t
+        = PrimOp of t Prim.prim
         | HostVproc
         | VpLoad of IntInf.int * t
         | VpAddr of IntInf.int * t
         | VpStore of IntInf.int * t * t
+        | Alloc of Val.t * t list
+        | RecAccess of IntInf.int * t * t option
+        | Promote of t
+        | TypeCast of BomType.t * t
         | Val of Val.t
-        (* | Lit of Literal.t *)
-        (* | MLString of BomType.Tuple [BomType.Raw RawTy.Int64,  *)
 
         val new: node * BomType.t -> t
         val typeOf: t -> BomType.t
         val node: t -> node
 		    val dest: t -> node * BomType.t
 
-		    val newWithType: (t -> node) * t -> t
+		    (* val newWithType: (t -> node) * t -> t *)
 
 		    val error: t
+    end
+
+    structure Exp: sig
+      type t
+
+      datatype node
+        = Let of Val.t list * rhs * t
+        (* | Fun of FunDef.t list * t *)
+        (* | Cont of Val.t * VarPat.t list * t * t *)
+        | If of SimpleExp.t * t * t
+        | Do of SimpleExp.t * t
+        | Case of SimpleExp.t * CaseRule.t list
+        | TyCase                (* TODO *)
+        | Apply of Val.t * SimpleExp.t list * SimpleExp.t list
+        | Throw of Val.t * SimpleExp.t list
+        | Return of SimpleExp.t list
+        (* | Lit of Literal.t *)
+        (* | MLString of BomType.Tuple [BomType.Raw RawTy.Int64,  *)
+      and rhs
+        = Composite of t
+        | Simple of SimpleExp.t
+
+      val new: node * BomType.t list -> t
+      val typeOf: t -> BomType.t list
+      val node: t -> node
+		  val dest: t -> node * BomType.t list
+
+		  val error: t
     end
 
     structure PrimOp: sig
       include PRIM_TY
 
-      type arg = Exp.t
+      type arg = SimpleExp.t
       type t = arg Prim.prim
 
       (* val nullaryCon: AstBOM.PrimOp.t -> t option *)
