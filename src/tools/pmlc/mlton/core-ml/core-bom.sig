@@ -1,9 +1,9 @@
+(* This module corresponds to CoreML -- it is a typed counterpart to
+AstBOM, like CoreML is a typed counterpart to Ast. *)
+
 signature CORE_BOM_STRUCTS =
   sig
-    (* structure Region: REGION (* sharing type Region.t = Region.Wrap.region *) *)
     structure Ast: AST
-
-    (* sharing Region = Ast.AstBOM.Region *)
   end
 
 signature CORE_BOM =
@@ -308,6 +308,25 @@ signature CORE_BOM =
 		    val error: t
     end
 
+    structure PrimOp: sig
+      include PRIM_TY
+
+      type arg = SimpleExp.t
+
+      (* primitive operators *)
+      type t = arg Prim.prim
+
+      (* primitive conditionals *)
+      type cond = arg Prim.cond
+
+      val returnTy: t -> BomType.t
+
+      (* SOME if the application is good (correct number of args of
+       the correct type to a real primop), otherwise, NONE *)
+      val applyOp: AstBOM.PrimOp.t * arg list -> t option
+      val applyCond: AstBOM.PrimOp.t * arg list -> cond option
+    end
+
     structure Exp: sig
       type t
 
@@ -315,7 +334,7 @@ signature CORE_BOM =
         = Let of Val.t list * rhs * t
         (* | Fun of FunDef.t list * t *)
         (* | Cont of Val.t * VarPat.t list * t * t *)
-        | If of SimpleExp.t * t * t
+        | If of PrimOp.cond * t * t
         | Do of SimpleExp.t * t
         | Case of SimpleExp.t * CaseRule.t list
         | TyCase                (* TODO *)
@@ -334,26 +353,6 @@ signature CORE_BOM =
 		  val dest: t -> node * BomType.t list
 
 		  val error: t
-    end
-
-    structure PrimOp: sig
-      include PRIM_TY
-
-      type arg = SimpleExp.t
-      type t = arg Prim.prim
-
-      (* val nullaryCon: AstBOM.PrimOp.t -> t option *)
-      (* val unaryCon: AstBOM.PrimOp.t -> (BomType.t -> t) option *)
-      (* val binaryCon: AstBOM.PrimOp.t -> (BomType.t * BomType.t -> t) option *)
-      (* val ternaryCon: AstBOM.PrimOp.t -> ( *)
-      (*   BomType.t * BomType.t * BomType.t -> t) option *)
-
-      val returnTy: t -> BomType.t
-      val applyOp: AstBOM.PrimOp.t * arg list -> t option
-
-      (* (* SOME (return type) if the application is good (correct number *)
-      (* of args of the correct type), otherwise, NONE *) *)
-      (* val applyOp: AstBOM.PrimOp.t * BomType.t list -> BomType.t option *)
     end
 
     structure HLOp: sig

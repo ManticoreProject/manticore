@@ -524,6 +524,28 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     in
       ruleCon newExp
     end
+  (* and elaborateTestSExp (sExp, *)
+  (*     tyEnvs as {env, bomEnv}): CoreBOM.PrimOp.cond option = *)
+  (*   let *)
+  (*     fun checkForErrorVal errorVal = check (error (AstBOM.SimpleExp.region, *)
+  (*       AstBOM.SimpleExp.layout, errorVal, sExp)) *)
+  (*     fun checkTestExpression sExp': (AstBOM.PrimOp.t *)
+  (*         * CoreBOM.SimpleExp.t list) option = *)
+  (*       case AstBOM.SimpleExp.node sExp' of *)
+  (*         AstBOM.SimpleExp.PrimOp (primOp, args) => *)
+  (*           SOME (primOp, map (fn sExp => elaborateSimpleExp (sExp, *)
+  (*             tyEnvs)) args) *)
+  (*       | _ => NONE *)
+  (*   in *)
+  (*     (* check that we've gotten a primitive conditional *) *)
+  (*     checkForErrorVal NONE (checkTestExpression sExp, *)
+  (*       "test expression is not a primitive conditional") *)
+  (*       (* if we have, try to apply it to the given arguments *) *)
+  (*       (fn (primOp, argExps) => checkForErrorVal NONE *)
+  (*         (CoreBOM.PrimOp.applyCond (primOp, argExps), *)
+  (*         "invalid primitive conditional") *)
+  (*         (fn primCond => SOME primCond)) *)
+  (*   end *)
   and elaborateExp (exp: AstBOM.Exp.t, tyEnvs as {env, bomEnv}): CoreBOM.Exp.t =
     let
       fun errorForErrorVal errorVal = error (AstBOM.Exp.region,
@@ -543,16 +565,31 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             val check = checkForErrorVal [CoreBOM.BomType.Error]
             fun doElaborate exp = elaborateExp (exp, tyEnvs)
             (* TODO: make sure this is a boolean primop *)
-            val condTy = elaborateSimpleExp (sExp, tyEnvs)
+            fun checkArgument sExp' =
+              case AstBOM.SimpleExp.node sExp' of
+                AstBOM.SimpleExp.PrimOp (primOp, args) =>
+                  SOME (primOp, map (fn sExp => elaborateSimpleExp (sExp,
+                    tyEnvs)) args)
+              | _ => NONE
 
             val [left', right'] = map (fn exp => elaborateExp (
               exp, tyEnvs)) [left, right]
             val [leftTy, rightTy] = map CoreBOM.Exp.typeOf [left', right']
           in
-            checkForErrorVal CoreBOM.Exp.error (CoreBOM.BomType.equals' (
-              leftTy, rightTy), "types of if branches do not agree")
-            (fn resultTy => CoreBOM.Exp.new (CoreBOM.Exp.If (condTy,
-              left', right'), resultTy))
+            (* check that we've gotten a primitive conditional *)
+            checkForErrorVal CoreBOM.Exp.error (checkArgument sExp,
+              "test expression in if is not a primitive conditional")
+              (* if we have, try to apply it to the arguments *)
+              (fn (primOp, sExps) => checkForErrorVal CoreBOM.Exp.error (
+                CoreBOM.PrimOp.applyCond (primOp, sExps),
+                "invalid primitive conditional")
+                (* if we have a valid test expression, check the branch types agree *)
+                (fn primCond => checkForErrorVal CoreBOM.Exp.error (
+                  CoreBOM.BomType.equals' (leftTy, rightTy),
+                  "types of if branches do not agree")
+                  (* if they do, return the appropriate expression *)
+                  (fn resultTy => CoreBOM.Exp.new (CoreBOM.Exp.If (primCond,
+                    left', right'), resultTy))))
           end
       | AstBOM.Exp.Case (exp, caseRules) =>
           let

@@ -56,6 +56,10 @@ structure ElaborateCore = ElaborateCore (structure Ast = Ast
                                          structure Decs = Decs
                                          structure Env = Env)
 
+(* structure PrimBOM = PrimBOM ( *)
+(*   structure Ast = Ast *)
+(*   structure CoreBOM = CoreBOM) *)
+
 structure ElaborateBOMCore = ElaborateBOMCore (
   structure Ast = Ast
   structure CoreBOM = CoreBOM

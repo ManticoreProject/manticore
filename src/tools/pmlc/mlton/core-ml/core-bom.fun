@@ -359,11 +359,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       SOME ty => arityOfType ty
     | NONE => 0
   and strictTyEqual (ty, ty'): bool =
-	case (ty, ty') of
-	  (Any, Any) => true
-	| (Any, _) => false
-	| (_, Any) => false
-	| tys => tyEqual tys
+  	case (ty, ty') of
+  	  (Any, Any) => true
+  	| (Any, _) => false
+  	| (_, Any) => false
+  	| tys => tyEqual tys
   and tyEqual (ty, ty'): bool =
     case (ty, ty') of
       (Param p, Param p') => TyParam.compare (p, p') = EQUAL
@@ -533,7 +533,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
 	fun wrapTuple tys =
 	  case tys of
-		[] => NoReturn
+		  [] => NoReturn
 	  | [ty] => ty
 	  | tys => Tuple tys
   end
@@ -646,7 +646,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   datatype exp_node
     = Let of Val.t list * rhs * exp_t
-    | If of simpleexp_t * exp_t * exp_t
+    | If of primcond_t * exp_t * exp_t
     | Do of simpleexp_t * exp_t
     | Case of simpleexp_t * caserule_node list
     | TyCase        (* exp_tODO *)
@@ -681,6 +681,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   and caserule_node
     = LongRule of Val.t * Val.t list * exp_t
     | DefaultRule of Val.t * exp_t
+
+  withtype primcond_t = simpleexp_t Prim.cond
 
   structure SimpleExp = struct
     datatype node = datatype simpleexp_node
@@ -746,6 +748,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     type exp = SimpleExp.t
     type arg = exp
     type t = arg Prim.prim
+    type cond = primcond_t
 
     val typeOfArg = SimpleExp.typeOf
 
@@ -880,34 +883,100 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         resultTy
       end
 
-    fun applyOp (astPrimOp, primArgs) =
-      let
-        fun maybeApply (maybeOp, args) =
-          case maybeOp of
-            SOME operator => SOME (operator args)
-          | _ => NONE
-        val con =
-          case primArgs of
-            [] => nullaryCon astPrimOp
-          | [primArg] => maybeApply (unaryCon astPrimOp, primArg)
-          | [primArg, primArg'] => maybeApply (binaryCon astPrimOp,
-              (primArg, primArg'))
-          | [primArg, primArg', primArg''] => maybeApply (ternaryCon astPrimOp,
-              (primArg, primArg', primArg''))
-          | _ => NONE
-      in
-        case con of
-          SOME con =>
-            let
-              val (argTys, _) = signOf con
-            in
-              if BomType.equals (map typeOfArg primArgs, argTys) then
-                SOME con
-              else
-                NONE
-            end
-        | _ => NONE
-      end
+
+    fun nullaryCond primOp = NONE
+
+    fun unaryCond primOp =
+      case AstBOM.PrimOp.toString primOp of
+        "isBoxed" => SOME Prim.isBoxed
+      | "isUnboxed" => SOME Prim.isUnboxed
+      | "I32isSet" => SOME Prim.I32isSet
+      | "I32TAS" => SOME Prim.I32TAS
+      | _ => NONE
+
+    fun binaryCond primOp =
+      case AstBOM.PrimOp.toString primOp of
+        "Equal" => SOME Prim.Equal
+      | "NotEqual" => SOME Prim.NotEqual
+      | "EnumEq" => SOME Prim.EnumEq
+      | "EnumNEq" => SOME Prim.EnumNEq
+      | "I32Eq" => SOME Prim.I32Eq
+      | "I32NEq" => SOME Prim.I32NEq
+      | "I32Lt" => SOME Prim.I32Lt
+      | "I32Lte" => SOME Prim.I32Lte
+      | "I32Gt" => SOME Prim.I32Gt
+      | "I32Gte" => SOME Prim.I32Gte
+      | "U32Lt" => SOME Prim.U32Lt
+      | "I64Eq" => SOME Prim.I64Eq
+      | "I64NEq" => SOME Prim.I64NEq
+      | "I64Lt" => SOME Prim.I64Lt
+      | "I64Lte" => SOME Prim.I64Lte
+      | "I64Gt" => SOME Prim.I64Gt
+      | "I64Gte" => SOME Prim.I64Gte
+      | "U64Lt" => SOME Prim.U64Lt
+      | "F32Eq" => SOME Prim.F32Eq
+      | "F32NEq" => SOME Prim.F32NEq
+      | "F32Lt" => SOME Prim.F32Lt
+      | "F32Lte" => SOME Prim.F32Lte
+      | "F32Gt" => SOME Prim.F32Gt
+      | "F32Gte" => SOME Prim.F32Gte
+      | "F64Eq" => SOME Prim.F64Eq
+      | "F64NEq" => SOME Prim.F64NEq
+      | "F64Lt" => SOME Prim.F64Lt
+      | "F64Lte" => SOME Prim.F64Lte
+      | "F64Gt" => SOME Prim.F64Gt
+      | "F64Gte" => SOME Prim.F64Gte
+      | "AdrEq" => SOME Prim.AdrEq
+      | "AdrNEq" => SOME Prim.AdrNEq
+      | _ => NONE
+
+    fun ternaryCond primOp =
+      case AstBOM.PrimOp.toString primOp of
+       "BCAS" => SOME Prim.BCAS
+      | _ => NONE
+
+    local
+      fun apply (nullaryCon, unaryCon, binaryCon, ternaryCon, getTy) (
+          astPrimOp, primArgs)  =
+        let
+            fun maybeApply (maybeOp, args) =
+              case maybeOp of
+                SOME operator => SOME (operator args)
+              | _ => NONE
+            val con =
+              case primArgs of
+                [] => nullaryCon astPrimOp
+              | [primArg] => maybeApply (unaryCon astPrimOp, primArg)
+              | [primArg, primArg'] => maybeApply (binaryCon astPrimOp, (
+                  primArg, primArg'))
+              | [primArg, primArg', primArg''] => maybeApply (
+                  ternaryCon astPrimOp, (primArg, primArg', primArg''))
+              | _ => NONE
+        in
+            case con of
+              SOME con =>
+                if BomType.equals (map typeOfArg primArgs, getTy con) then
+                    SOME con
+                else
+                    NONE
+            | _ => NONE
+        end
+
+      fun getPrimType prim =
+        let
+          val (tys, _) = signOf prim
+        in
+          tys
+        end
+
+    in
+      val applyOp = apply (nullaryCon, unaryCon, binaryCon, ternaryCon,
+        getPrimType)
+
+      val applyCond = apply (nullaryCond, unaryCond, binaryCond, ternaryCond,
+        condArgTys)
+    end
+
 
   end
 
