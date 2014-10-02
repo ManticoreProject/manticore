@@ -298,6 +298,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             "undefined value identifier")
           (fn value => CoreBOM.SimpleExp.new (CoreBOM.SimpleExp.Val value,
             CoreBOM.Val.typeOf value))
+
       | AstBOM.SimpleExp.PrimOp (primOp, argSExps) =>
           let
             val primArgs = map (fn sExp => elaborateSimpleExp (
@@ -310,6 +311,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           end
       | AstBOM.SimpleExp.HostVproc =>  CoreBOM.SimpleExp.new (
         CoreBOM.SimpleExp.HostVproc, CoreBOM.BomType.VProc)
+
       | AstBOM.SimpleExp.Promote sExp' =>
           let
             val newExp = elaborateSimpleExp (sExp', tyEnvs)
@@ -423,6 +425,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
 
       | _ => raise Fail "not implemented"
     end
+
   and elaborateRHS (rhs, tyEnvs) =
     case AstBOM.RHS.node rhs of
       AstBOM.RHS.Composite exp =>
@@ -473,6 +476,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       in
         bind (checkTyBinding (maybeTy, rhsTy))
       end
+
   and lookupCon (valId, tyEnvs as {env, bomEnv}, checkForErrorVal,
     checkForErrorVal') =
     (* Given a ValId, make sure that it's bound to a constructor. We
@@ -490,6 +494,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     in
       (conVal, dataCon)
     end
+
   and elaborateCaseRule (caseRule, ruleExp, tyEnvs as {env, bomEnv}) =
     let
       fun checkForErrorVal errorVal = check (error (AstBOM.CaseRule.region,
@@ -524,28 +529,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     in
       ruleCon newExp
     end
-  (* and elaborateTestSExp (sExp, *)
-  (*     tyEnvs as {env, bomEnv}): CoreBOM.PrimOp.cond option = *)
-  (*   let *)
-  (*     fun checkForErrorVal errorVal = check (error (AstBOM.SimpleExp.region, *)
-  (*       AstBOM.SimpleExp.layout, errorVal, sExp)) *)
-  (*     fun checkTestExpression sExp': (AstBOM.PrimOp.t *)
-  (*         * CoreBOM.SimpleExp.t list) option = *)
-  (*       case AstBOM.SimpleExp.node sExp' of *)
-  (*         AstBOM.SimpleExp.PrimOp (primOp, args) => *)
-  (*           SOME (primOp, map (fn sExp => elaborateSimpleExp (sExp, *)
-  (*             tyEnvs)) args) *)
-  (*       | _ => NONE *)
-  (*   in *)
-  (*     (* check that we've gotten a primitive conditional *) *)
-  (*     checkForErrorVal NONE (checkTestExpression sExp, *)
-  (*       "test expression is not a primitive conditional") *)
-  (*       (* if we have, try to apply it to the given arguments *) *)
-  (*       (fn (primOp, argExps) => checkForErrorVal NONE *)
-  (*         (CoreBOM.PrimOp.applyCond (primOp, argExps), *)
-  (*         "invalid primitive conditional") *)
-  (*         (fn primCond => SOME primCond)) *)
-  (*   end *)
+
   and elaborateExp (exp: AstBOM.Exp.t, tyEnvs as {env, bomEnv}): CoreBOM.Exp.t =
     let
       fun errorForErrorVal errorVal = error (AstBOM.Exp.region,

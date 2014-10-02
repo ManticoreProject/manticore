@@ -217,23 +217,13 @@ class Directory:
         else:
             self._terminal.print_failure(path)
 
-
-
-
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description="Run Manticore tests.")
     arg_parser.add_argument(
-        "-d", "--directory",
-        dest="dir_",
-        action="store",
-        default=None,
-        help="Directory containing test files.")
-    arg_parser.add_argument(
-        "-f", "--file",
-        dest="file_",
-        action="store",
-        default=None,
-        help="Single file to test.")
+        "input_paths",
+        metavar="PATH",
+        nargs="+",
+        help="Directory or files containing tests.")
     arg_parser.add_argument(
         "-v", "--verbose",
         dest="verbose",
@@ -255,10 +245,12 @@ if __name__ == '__main__':
     if args.veryverbose:
         veryverbose_logger.setLevel(logging.INFO)
 
-    if args.dir_:
-        test_dir = Directory(args.dir_)
-        test_dir.test()
-    elif args.file_:
-        # file_, dir_ = os.path.split(args.file_) *)
-        test_dir = Directory(None)
-        test_dir.test_file(args.file_)
+    for path in args.input_paths:
+        empty_dir = Directory(None)
+        if os.path.isfile(path):
+            empty_dir.test_file(path)
+        elif os.path.isdir(path):
+            test_dir = Directory(path)
+            test_dir.test()
+        else:
+            LOG.error("Unrecognized path: {}".format(path))
