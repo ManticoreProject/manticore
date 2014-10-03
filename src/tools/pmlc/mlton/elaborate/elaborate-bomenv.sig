@@ -93,14 +93,26 @@ signature ELABORATE_BOMENV =
       val lookup: env * CoreBOM.ValId.t -> CoreBOM.Val.t option
     end
 
-  val empty: t
-  val emptyNamed: CoreBOM.ModuleId.t -> t
-  val setName: t * CoreBOM.ModuleId.t -> t
-  val setName': t * AstBOM.BomId.t -> t
 
-  (* val setValEnv: t * ValEnv.t -> t *)
-  (* val getValEnv: t -> ValEnv.t *)
+    structure Context: sig
+      type t
 
-  sharing type TyEnv.env = TyParamEnv.env = ValEnv.env = t
-  (* sharing type ValEnv.env = TyEnv.t = HLOpEnv.t = t *)
+      val newInt: t * IntInf.int -> CoreBOM.SimpleExp.t
+      val newFloat: t * real -> CoreBOM.SimpleExp.t
+
+      val setTy: t * CoreBOM.RawTy.t -> t
+      (* val setFloatTy: t * CoreBOM.RawTy.t -> t *)
+
+      val empty: t
+    end
+
+    val empty: t
+    val emptyNamed: CoreBOM.ModuleId.t -> t
+    val setName: t * CoreBOM.ModuleId.t -> t
+    val setName': t * AstBOM.BomId.t -> t
+
+    (* val setValEnv: t * ValEnv.t -> t *)
+    (* val getValEnv: t -> ValEnv.t *)
+
+    sharing type TyEnv.env = TyParamEnv.env = ValEnv.env = t
   end

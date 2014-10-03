@@ -593,6 +593,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   structure Literal = struct
+    datatype t
+      = Int of IntInf.int
+      | Float of real
+      | String of string
+      | NullVP
   end
 
   structure TyCaseRule = struct
@@ -673,6 +678,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | RecAccess of IntInf.int * simpleexp_t * simpleexp_t option
     | Promote of simpleexp_t
     | TypeCast of BomType.t * simpleexp_t
+    | Lit of Literal.t
     | Val of Val.t
   and simpleexp_t = SExp of {node: simpleexp_node, ty: BomType.t}
   and rhs
@@ -680,6 +686,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Simple of simpleexp_t
   and caserule_node
     = LongRule of Val.t * Val.t list * exp_t
+    | LiteralRule of simpleexp_t * exp_t
     | DefaultRule of Val.t * exp_t
 
   withtype primcond_t = simpleexp_t Prim.cond
@@ -690,20 +697,20 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
     fun new (node, ty) = SExp {node = node, ty = ty}
 
-      local
-        fun unwrap (SExp exp) = exp
-      in
-        val typeOf = #ty o unwrap
-        val node = #node o unwrap
-	    fun dest exp =
+    local
+      fun unwrap (SExp exp) = exp
+    in
+      val typeOf = #ty o unwrap
+      val node = #node o unwrap
+	  fun dest exp =
 		  let
 		    val {node, ty} = unwrap exp
 		  in
 		    (node, ty)
 		  end
-      end
+    end
 
-	    val error = new (Val Val.error, BomType.Error)
+	  val error = new (Val Val.error, BomType.Error)
   end
 
   structure Exp = struct
@@ -718,12 +725,12 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     in
       val typeOf = #ty o unwrap
       val node = #node o unwrap
-	  fun dest exp =
-		let
-		  val {node, ty} = unwrap exp
-		in
-		  (node, ty)
-		end
+	    fun dest exp =
+		    let
+		      val {node, ty} = unwrap exp
+		    in
+		      (node, ty)
+		    end
     end
 
 	  fun newWithType (con, exp) =
@@ -740,7 +747,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       Exp.typeOf
         (case rule of
           LongRule (_, _, exp) => exp
-        (* | LiteralRule (_, exp) => exp *)
+        | LiteralRule (_, exp) => exp
         | DefaultRule (_, exp) => exp)
   end
 

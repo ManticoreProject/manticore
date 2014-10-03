@@ -197,6 +197,11 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       }, newVal)
     end
 
+  fun elaborateLiteral (literal, ctx): CoreBOM.SimpleExp.t =
+    case AstBOM.Literal.node literal of
+      AstBOM.Literal.PosInt int => BOMEnv.Context.newInt (ctx, int)
+    | AstBOM.Literal.Float float => BOMEnv.Context.newFloat (ctx, float)
+    | _ => raise Fail "not implemented"
 
   fun elaborateFunDefs (funDefs, tyEnvs as {env, bomEnv}) =
     let
@@ -214,6 +219,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     in
       envWithFns
     end
+
   and elaborateFunDef (funDef: AstBOM.FunDef.t, funVal: CoreBOM.Val.t,
       tyEnvs as {env, bomEnv}) =
     let
@@ -249,6 +255,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         "function body doesn't agree with range type")
         (fn _ => ())
     end
+
   (* and wrapTuple tys = *)
   (*   case tys of *)
   (*     [] => CoreBOM.BomType.NoReturn *)
@@ -516,7 +523,19 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               (newBomEnv, fn exp' => CoreBOM.CaseRule.LongRule (conVal, varPats,
                 exp'), exp)
             end
-        (* | AstBOM.CaseRule.LiteralRule  *)
+        | AstBOM.CaseRule.LiteralRule (literal, exp) =>
+            let
+              val ctx = checkForErrorVal BOMEnv.Context.empty (
+                (* ruleExp must be a rawTy to set the context *)
+                case CoreBOM.SimpleExp.typeOf ruleExp of
+                  CoreBOM.BomType.Raw rawTy => SOME rawTy
+                | _ => NONE, "case object and rules don't agree")
+                (fn rawTy => BOMEnv.Context.setTy (BOMEnv.Context.empty, rawTy))
+              val litExp = checkForErrorVal CoreBOM.SimpleExp.error
+            in
+              (bomEnv, fn exp' => CoreBOM.CaseRule.LiteralRule (
+                elaborateLiteral (literal, ctx), exp'), exp)
+            end
         | AstBOM.CaseRule.DefaultRule (varPat, exp) =>
            let
              val (newBomEnv, [newVal]) =

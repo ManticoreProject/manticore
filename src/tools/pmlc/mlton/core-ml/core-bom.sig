@@ -215,8 +215,8 @@ signature CORE_BOM =
 	  val strictEqual: t * t -> bool
 	  val strictEqual': t * t -> t option
 
-      val isCon: t -> t option
-      val unit: t
+    val isCon: t -> t option
+    val unit: t
 	  val wrapTuple: t list -> t
 
     end
@@ -247,6 +247,11 @@ signature CORE_BOM =
     end
 
     structure Literal: sig
+      datatype t
+        = Int of IntInf.int
+        | Float of real
+        | String of string
+        | NullVP
     end
 
     structure TyCaseRule: sig
@@ -272,17 +277,6 @@ signature CORE_BOM =
       val error: t
     end
 
-    structure CaseRule: sig
-      type exp
-
-      datatype t
-        = LongRule of Val.t * Val.t list * exp
-        (* | LiteralRule of Literal.t * exp *)
-        | DefaultRule of Val.t * exp
-
-      val returnTy: t -> BomType.t list
-    end
-
     structure SimpleExp: sig
       type t
 
@@ -296,6 +290,8 @@ signature CORE_BOM =
         | RecAccess of IntInf.int * t * t option
         | Promote of t
         | TypeCast of BomType.t * t
+        | Lit of Literal.t
+        (* | MLString *)
         | Val of Val.t
 
         val new: node * BomType.t -> t
@@ -306,6 +302,17 @@ signature CORE_BOM =
 		    (* val newWithType: (t -> node) * t -> t *)
 
 		    val error: t
+    end
+
+    structure CaseRule: sig
+      type exp
+
+      datatype t
+        = LongRule of Val.t * Val.t list * exp
+        | LiteralRule of SimpleExp.t * exp
+        | DefaultRule of Val.t * exp
+
+      val returnTy: t -> BomType.t list
     end
 
     structure PrimOp: sig

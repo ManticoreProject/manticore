@@ -98,12 +98,12 @@
 		   radix = radix})
 
   fun trace (mark, s, token) = let
-	val _ = print (String.concat [
-		    mark, ": about to emit token ", T.toString token,
-		    " for string \"", String.toString s, "\".\n"
-		  ])
-	in
-	  token
+	  val _ = print (String.concat [
+		      mark, ": about to emit token ", T.toString token,
+		      " for string \"", String.toString s, "\".\n"
+		    ])
+	  in
+	    token
 	end
 );
 
@@ -145,7 +145,8 @@
 <INITIAL,BOM>"|"		=> (T.BAR);
 <INITIAL,BOM>":"		=> (T.COLON);
 <INITIAL>":>"			=> (T.COLONGT);
-<INITIAL,BOM>"="		=> (trace ("146", yytext, T.EQUALOP));
+(* <INITIAL,BOM>"="		=> (trace ("146", yytext, T.EQUALOP)); *)
+<INITIAL,BOM>"="		=> (T.EQUALOP);
 <INITIAL,BOM>"#"		=> (T.HASH);
 <INITIAL,BOM>"->"		=> (T.ARROW);
 <INITIAL,BOM>"=>"		=> (T.DARROW);
@@ -167,7 +168,8 @@
 <INITIAL,BOM>"&"		=> (T.AMPERSAND);
 
 <BOM>"addr"			=> (T.KW_addr);
-<BOM>"alloc"			=> (trace ("166", yytext, T.KW_alloc));
+(* <BOM>"alloc"			=> (trace ("166", yytext, T.KW_alloc)); *)
+<BOM>"alloc"			=> (T.KW_alloc);
 <INITIAL,BOM>"and"		=> (T.KW_and);
 <INITIAL>"abstype"		=> (T.KW_abstype);
 <BOM>"any"			=> (T.KW_any);
@@ -176,7 +178,8 @@
 <INITIAL,BOM>"case"		=> (T.KW_case);
 <BOM>"ccall"			=> (T.KW_ccall);
 <BOM>"cont"			=> (T.KW_cont);
-<INITIAL,BOM>"datatype"		=> (trace ("1", yytext, T.KW_datatype));
+(* <INITIAL,BOM>"datatype"		=> (trace ("1", yytext, T.KW_datatype)); *)
+<INITIAL,BOM>"datatype"		=> (T.KW_datatype);
 <BOM>"define"			=> (T.KW_define);
 <INITIAL,BOM>"do"		=> (T.KW_do);
 <INITIAL,BOM>"else"		=> (T.KW_else);
@@ -199,7 +202,8 @@
 <INITIAL>"local"		=> (T.KW_local);
 <INITIAL>"nonfix"		=> (T.KW_nonfix);
 <BOM>"noreturn"			=> (T.KW_noreturn);
-<BOM>"nullVP"			=> (trace ("198", yytext, T.KW_nullVP));
+(* <BOM>"nullVP"			=> (trace ("198", yytext, T.KW_nullVP)); *)
+<BOM>"nullVP"			=> (T.KW_nullVP);
 <INITIAL,BOM>"of"		=> (T.KW_of);
 <INITIAL>"op"			=> (T.KW_op);
 <INITIAL>"open"			=> (T.KW_open);
@@ -213,10 +217,12 @@
 <INITIAL>"structure"		=> (T.KW_structure);
 <INITIAL,BOM>"then"		=> (T.KW_then);
 <BOM>"throw"			=> (T.KW_throw);
-<INITIAL,BOM>"type"		=> (trace ("209", yytext, T.KW_type));
+(* <INITIAL,BOM>"type"		=> (trace ("209", yytext, T.KW_type)); *)
+<INITIAL,BOM>"type"		=> (T.KW_type);
 <BOM>"typecase"			=> (T.KW_typecase);
 <INITIAL>"val"			=> (T.KW_val);
-<BOM>"void"			=> (trace ("211", yytext, T.KW_void));
+(* <BOM>"void"			=> (trace ("211", yytext, T.KW_void)); *)
+<BOM>"void"			=> (T.KW_void);
 (* <BOM>"void*"			=> (trace ("212", yytext, T.KW_voidp)); *)
 <BOM>"vpaddr"			=> (T.KW_vpaddr);
 <BOM>"vproc"			=> (T.KW_vproc);
@@ -228,7 +234,8 @@
 <INITIAL>"withtype"		=> (T.KW_withtype);
 <INITIAL>"orelse"		=> (T.KW_orelse);
 <INITIAL>"andalso"		=> (T.KW_andalso);
-<BOM>"int8"			=> (trace ("222", yytext, T.KW_int8));
+(* <BOM>"int8"			=> (trace ("222", yytext, T.KW_int8)); *)
+<BOM>"int8"			=> (T.KW_int8);
 <BOM>"uint8"			=> (T.KW_uint8);
 <BOM>"int16"			=> (T.KW_int16);
 <BOM>"uint16"			=> (T.KW_uint16);
@@ -259,15 +266,17 @@
 <BOM>"#"			=> (T.HASH);
 <BOM>"&"			=> (T.AMPERSAND);
 
-<INITIAL,BOM>{symId}		=> (trace ("259", yytext, T.SYMID yytext));
-<INITIAL,BOM>"'"{alphanum}?	=> (trace ("260", yytext, T.TYVAR yytext));
-(* FIXME: split LONGID into unqualified id and qualified id *)
-<INITIAL>{id}			=> (trace ("262", yytext, T.LONGID yytext));
-<INITIAL,BOM>{longid}		=> (trace ("263", yytext, T.LONGID yytext));
-<BOM>{alphanumId}		=> (trace ("264", yytext, T.ID yytext));
-<BOM>({alphanumId}\.)+{id}	=> (trace ("265", yytext, T.LONGID yytext));
-<BOM>{hlid}			=> (trace ("266", yytext, T.HLID yytext));
-<BOM>({alphanumId}\.)+{hlid}	=> (trace ("267", yytext, T.LONG_HLID yytext));
+(* <INITIAL,BOM>{symId}		=> (trace ("259", yytext, T.SYMID yytext)); *)
+<INITIAL,BOM>{symId}		=> (T.SYMID yytext);
+(* <INITIAL,BOM>"'"{alphanum}?	=> (trace ("260", yytext, T.TYVAR yytext)); *)
+<INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
+(* <INITIAL>{id}			=> (trace ("262", yytext, T.LONGID yytext)); *)
+<INITIAL>{id}			=> (T.LONGID yytext);
+<INITIAL,BOM>{longid}		=> (T.LONGID yytext);
+<BOM>{alphanumId}		=> (T.ID yytext);
+<BOM>({alphanumId}\.)+{id}	=> (T.LONGID yytext);
+<BOM>{hlid}			=> (T.HLID yytext);
+<BOM>({alphanumId}\.)+{hlid}	=> (T.LONG_HLID yytext);
 
 <INITIAL,BOM>{real}		=> (T.REAL(yytext));
 <INITIAL,BOM>{num}		=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));

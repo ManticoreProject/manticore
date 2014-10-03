@@ -304,8 +304,39 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
             modifyValEnv)
       end
     end
-
   end
+
+  structure Context = struct
+    datatype t
+      = T of {
+        intTy: CoreBOM.RawTy.t,
+        floatTy: CoreBOM.RawTy.t
+    }
+
+    local
+      fun new (getTy, con) (T ctx, value) =
+        CoreBOM.SimpleExp.new (CoreBOM.SimpleExp.Lit (con value),
+          CoreBOM.BomType.Raw (getTy ctx))
+    in
+      val newInt = new (#intTy, CoreBOM.Literal.Int)
+      val newFloat = new (#floatTy, CoreBOM.Literal.Float)
+    end
+
+    fun setIntTy (T {intTy, floatTy}, newTy) = T {intTy = newTy, floatTy = floatTy}
+    fun setFloatTy (T {intTy, floatTy}, newTy) = T {intTy = intTy, floatTy = floatTy}
+
+    fun setTy (ctx, newTy) =
+      case newTy of
+        CoreBOM.RawTy.Float32 => setFloatTy (ctx, newTy)
+      | CoreBOM.RawTy.Float64 => setFloatTy (ctx, newTy)
+      (* all of the other types are integral *)
+      | _ => setIntTy (ctx, newTy)
+
+
+    (* Defaults *)
+    val empty = T {intTy = CoreBOM.RawTy.Int32, floatTy = CoreBOM.RawTy.Float32}
+  end
+
 
   val empty = T {
     tyEnv = TyEnv.empty,
