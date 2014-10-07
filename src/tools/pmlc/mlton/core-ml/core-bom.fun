@@ -589,9 +589,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure VarPat = struct
   end
 
-  structure FunDef = struct
-  end
-
   structure Literal = struct
     datatype t
       = Int of IntInf.int
@@ -600,29 +597,21 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | NullVP
   end
 
-  structure TyCaseRule = struct
-  end
-
-  structure SimpleExp = struct
-  end
-
-  structure RHS = struct
-  end
-
   structure HLOp = struct
   end
 
   structure Val = struct
     datatype t = T of {
-      (* id: ValId.t, *)
+      id: ValId.t,
       ty: BomType.t,
       params: TyParam.t list,
       stamp: Stamp.stamp
     }
 
     fun typeOf (T {ty, ...}) = ty
-    (* fun idOf (T {id, ...}) = id *)
+    fun idOf (T {id, ...}) = id
     fun stampOf (T {stamp, ...}) = stamp
+    fun paramsOf (T {params, ...}) = params
 
     local
       fun stampsOf (lhs, rhs) = (stampOf lhs, stampOf rhs)
@@ -634,27 +623,28 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     (* fun hasId (thisVal, valId) = *)
     (*   ValId.compare (idOf thisVal, valId) = EQUAL *)
 
-    fun new (ty, params) = T {
-      (* id = valId, *)
+    fun new (valId, ty, params) = T {
+      id = valId,
       ty = ty,
       params = params,
       stamp = Stamp.new()
     }
 
-    fun applyToArgs (T {ty, params, stamp}, args) =
+    fun applyToArgs (T {id, ty, params, stamp}, args) =
       case BomType.applyArgs' (ty, params, args) of
-        SOME ty => SOME (T {ty = ty, params = params, stamp = stamp})
+        SOME ty => SOME (T {id = id, ty = ty, params = params, stamp = stamp})
       | NONE => NONE
 
-    val error = new (BomType.Error, [])
+    val error = new (ValId.error, BomType.Error, [])
   end
 
   datatype exp_node
     = Let of Val.t list * rhs * exp_t
+    | FunExp of fundef_node list * exp_t
     | If of primcond_t * exp_t * exp_t
     | Do of simpleexp_t * exp_t
     | Case of simpleexp_t * caserule_node list
-    | TyCase        (* exp_tODO *)
+    | Typecase of TyParam.t * tycaserule_node list
     | Apply of Val.t * simpleexp_t list * simpleexp_t list
     | Throw of Val.t * simpleexp_t list
     | Return of simpleexp_t list
@@ -688,8 +678,20 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     = LongRule of Val.t * Val.t list * exp_t
     | LiteralRule of simpleexp_t * exp_t
     | DefaultRule of Val.t * exp_t
+  and tycaserule_node
+    = TyRule of BomType.t * exp_t
+    | Default of exp_t
+  and fundef_node
+    = Def of Attr.t list * Val.t * Val.t list * Val.t list * BomType.t list
+        * exp_t
 
   withtype primcond_t = simpleexp_t Prim.cond
+
+  structure FunDef = struct
+    type exp = exp_t
+
+    datatype t = datatype fundef_node
+  end
 
   structure SimpleExp = struct
     datatype node = datatype simpleexp_node
@@ -749,6 +751,17 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
           LongRule (_, _, exp) => exp
         | LiteralRule (_, exp) => exp
         | DefaultRule (_, exp) => exp)
+  end
+
+  structure TyCaseRule = struct
+    type exp = Exp.t
+    datatype t = datatype tycaserule_node
+
+    fun returnTy rule =
+      Exp.typeOf (
+        case rule of
+          TyRule (_, exp) => exp
+        | Default exp => exp)
   end
 
   structure PrimOp = struct
@@ -989,7 +1002,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   structure Definition = struct
     datatype t
-      = Fun of Attr.t list * ValId.t * Exp.t
+      = Fun of FunDef.t list
       | HLOp of Attr.t list * ValId.t * Exp.t
       | Import of BomType.t
   end

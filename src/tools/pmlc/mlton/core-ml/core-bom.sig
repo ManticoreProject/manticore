@@ -125,11 +125,6 @@ signature CORE_BOM =
       val error: t
     end
 
-
-
-    structure Attrs: sig
-    end
-
     structure RawTy: sig
       datatype t
         = Int8
@@ -205,19 +200,19 @@ signature CORE_BOM =
       val applyArgs': t * TyParam.t list * t list -> t option
       val uniqueTyParams: t -> TyParam.t list
 
-	  (* equality that considers Any to be equal to anything *)
+	    (* equality that considers Any to be equal to anything *)
       val equal: t * t -> bool
       val equals: t list * t list -> bool
       val equal': t * t -> t option
       val equals': t list * t list -> t list option
 
-	  (* equality that holds iff two types are identical *)
-	  val strictEqual: t * t -> bool
-	  val strictEqual': t * t -> t option
+	    (* equality that holds iff two types are identical *)
+	    val strictEqual: t * t -> bool
+	    val strictEqual': t * t -> t option
 
-    val isCon: t -> t option
-    val unit: t
-	  val wrapTuple: t list -> t
+      val isCon: t -> t option
+      val unit: t
+	    val wrapTuple: t list -> t
 
     end
 
@@ -243,9 +238,6 @@ signature CORE_BOM =
     structure VarPat: sig
     end
 
-    structure FunDef: sig
-    end
-
     structure Literal: sig
       datatype t
         = Int of IntInf.int
@@ -254,14 +246,11 @@ signature CORE_BOM =
         | NullVP
     end
 
-    structure TyCaseRule: sig
-    end
-
     structure Val: sig
       type t
 
       val typeOf: t -> BomType.t
-      (* val idOf: t -> ValId.t *)
+      val idOf: t -> ValId.t
       val stampOf: t -> Stamp.stamp
 
       val compare: t * t -> order
@@ -269,12 +258,20 @@ signature CORE_BOM =
 
       (* val hasId: t * ValId.t -> bool *)
 
-      (* val new: ValId.t * BomType.t * TyParam.t list -> t *)
-      val new: BomType.t * TyParam.t list -> t
+      val new: ValId.t * BomType.t * TyParam.t list -> t
+      (* val new: BomType.t * TyParam.t list -> t *)
 
       val applyToArgs: t * BomType.t list -> t option
 
       val error: t
+    end
+
+    structure FunDef: sig
+      type exp
+
+      datatype t
+        = Def of Attr.t list * Val.t * Val.t list * Val.t list * BomType.t list
+            * exp
     end
 
     structure SimpleExp: sig
@@ -315,6 +312,18 @@ signature CORE_BOM =
       val returnTy: t -> BomType.t list
     end
 
+    structure TyCaseRule: sig
+      type exp
+
+      datatype t
+        = TyRule of BomType.t * exp
+        | Default of exp
+
+      val returnTy: t -> BomType.t list
+    end
+
+
+
     structure PrimOp: sig
       include PRIM_TY
 
@@ -339,17 +348,15 @@ signature CORE_BOM =
 
       datatype node
         = Let of Val.t list * rhs * t
-        (* | Fun of FunDef.t list * t *)
-        (* | Cont of Val.t * VarPat.t list * t * t *)
+        | FunExp of FunDef.t list * t
+        (* | Cont of Val.t * Val.t list * t * t *)
         | If of PrimOp.cond * t * t
         | Do of SimpleExp.t * t
         | Case of SimpleExp.t * CaseRule.t list
-        | TyCase                (* TODO *)
+        | Typecase of TyParam.t * TyCaseRule.t list
         | Apply of Val.t * SimpleExp.t list * SimpleExp.t list
         | Throw of Val.t * SimpleExp.t list
         | Return of SimpleExp.t list
-        (* | Lit of Literal.t *)
-        (* | MLString of BomType.Tuple [BomType.Raw RawTy.Int64,  *)
       and rhs
         = Composite of t
         | Simple of SimpleExp.t
@@ -368,7 +375,7 @@ signature CORE_BOM =
 
     structure Definition: sig
       datatype t
-        = Fun of Attr.t list * ValId.t * Exp.t
+        = Fun of FunDef.t list
         | HLOp of Attr.t list * ValId.t * Exp.t
         | Import of BomType.t
               (* TODO: datatypes *)
@@ -380,5 +387,5 @@ signature CORE_BOM =
     (*   val empty: t *)
     (* end *)
     (* sharing type Exp.primOp = PrimOp.t *)
-    sharing type CaseRule.exp = Exp.t
+    sharing type CaseRule.exp = TyCaseRule.exp = FunDef.exp = Exp.t
 end

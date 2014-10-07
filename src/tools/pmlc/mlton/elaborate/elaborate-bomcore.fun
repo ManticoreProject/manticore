@@ -145,9 +145,9 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
   (* fun extendEnvForTyParams (bomEnv, maybeTyParams) = *)
   (*   extendEnvForTyParams (bomEnv, CoreBOM.TyParam.flattenFromAst maybeTyParams) *)
 
-  fun checkValArity (ty, params, error): CoreBOM.Val.t =
+  fun checkValArity (valId, ty, params, error): CoreBOM.Val.t =
     if (CoreBOM.BomType.arity ty) = (length params) then
-      CoreBOM.Val.new (ty, params)
+      CoreBOM.Val.new (valId, ty, params)
     else
       error "arity mismatch"
 
@@ -186,7 +186,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           rng = rngTys'
         }
       val valId = CoreBOM.ValId.fromAstBomId id
-      val newVal = checkValArity (CoreBOM.BomType.Fun funTy,
+      val newVal = checkValArity (valId, CoreBOM.BomType.Fun funTy,
         BOMEnv.TyParamEnv.getParams envWithTyParams, error (
           AstBOM.FunDef.region, AstBOM.FunDef.layout, CoreBOM.Val.error,
           funDef))
@@ -213,11 +213,11 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               (newEnv, newVal::oldVals)
             end) (tyEnvs, []) funDefs
 
-      val _ = ListPair.map
+      val funDefs' = ListPair.map
         (fn (funDef, funVal) => elaborateFunDef (funDef, funVal, envWithFns))
         (funDefs, funVals)
     in
-      envWithFns
+      (envWithFns, funDefs')
     end
 
   and elaborateFunDef (funDef: AstBOM.FunDef.t, funVal: CoreBOM.Val.t,
@@ -225,35 +225,23 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     let
         (* TODO: find the appropriate error value here *)
       val check = check (error (AstBOM.FunDef.region, AstBOM.FunDef.layout,
-        (), funDef))
+        [CoreBOM.BomType.Error], funDef))
       val CoreBOM.BomType.Fun {dom, cont, rng} = CoreBOM.Val.typeOf funVal
       val AstBOM.FunDef.Def (maybeAttrs, _, _, domPats, contPats, _, exp) =
         AstBOM.FunDef.node funDef
-
-      fun unwrap ty =
-        case ty of
-          CoreBOM.BomType.Tuple tys => tys
-        | ty => [ty]
-
       (* elaborate the arguments and put them in the environment *)
       fun extendEnvForVarPats (pats, tys, bomEnv) =
         bindVarPats (pats, tys, {env = env, bomEnv = bomEnv})
 
       val (newEnv, domVals) = extendEnvForVarPats (domPats, dom, bomEnv)
       val (newEnv', contVals) = extendEnvForVarPats (contPats, cont, newEnv)
-
-      (* val envForBody = extendEnvForVarPats (domPats, dom, *)
-      (*   {env = env, bomEnv = extendEnvForVarPats (contPats, cont, tyEnvs)}) *)
-
-       (* ListPair.foldrEq (fn (pat, ty, bomEnv) => *)
-        (* bindVarPat (pat, ty, {env = env, bomEnv = bomEnv})) bomEnv ( *)
-        (*   [domPats, contPats], [dom, cont]) *)
       val bodyExp = elaborateExp (exp, {env = env, bomEnv = newEnv'})
+      val returnTy = check (CoreBOM.BomType.equals' (CoreBOM.Exp.typeOf bodyExp,
+         rng), "function body doesn't agree with range type") (fn x => x)
     in
      (* TODO: handle noreturn *)
-      check (CoreBOM.BomType.equals' (CoreBOM.Exp.typeOf bodyExp, rng),
-        "function body doesn't agree with range type")
-        (fn _ => ())
+     CoreBOM.FunDef.Def (CoreBOM.Attr.flattenFromAst maybeAttrs, funVal,
+       domVals, contVals, returnTy, bodyExp)
     end
 
   (* and wrapTuple tys = *)
@@ -475,10 +463,10 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           AstBOM.VarPat.Wild maybeTy => ((fn _ => (bomEnv, valAcc)), maybeTy)
         | AstBOM.VarPat.Var (bomId, maybeTy) => (fn rhsTy =>
             let
-              val newVal = CoreBOM.Val.new (rhsTy, [])
+              val newId = CoreBOM.ValId.fromAstBomId bomId
+              val newVal = CoreBOM.Val.new (newId, rhsTy, [])
             in
-              (BOMEnv.ValEnv.extend (bomEnv, CoreBOM.ValId.fromAstBomId bomId,
-                newVal), newVal::valAcc)
+              (BOMEnv.ValEnv.extend (bomEnv, newId, newVal), newVal::valAcc)
             end, maybeTy)
       in
         bind (checkTyBinding (maybeTy, rhsTy))
@@ -549,11 +537,39 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       ruleCon newExp
     end
 
+  and elaborateTyCaseRule (tyCaseRule, tyEnvs) =
+    let
+      val (con, exp) =
+        case AstBOM.TyCaseRule.node tyCaseRule of
+          AstBOM.TyCaseRule.TyRule (bomTy, exp) => (fn exp' =>
+            CoreBOM.TyCaseRule.TyRule (elaborateBomType (bomTy, tyEnvs), exp'),
+            exp)
+        | AstBOM.TyCaseRule.Default exp => (fn exp' =>
+            CoreBOM.TyCaseRule.Default exp', exp)
+    in
+      con (elaborateExp (exp, tyEnvs))
+    end
+
   and elaborateExp (exp: AstBOM.Exp.t, tyEnvs as {env, bomEnv}): CoreBOM.Exp.t =
     let
       fun errorForErrorVal errorVal = error (AstBOM.Exp.region,
         AstBOM.Exp.layout, errorVal, exp)
       fun checkForErrorVal errorVal = check (errorForErrorVal errorVal)
+      fun checkRuleTys (getTy, caseRules) =
+        case caseRules of
+          firstRule::rules =>
+            let
+              (* make sure all (ty)case rules have same return type *)
+              val firstTy = getTy firstRule
+              val _ =
+                if List.all (fn rule =>
+                  CoreBOM.BomType.equals (firstTy, getTy rule)) caseRules
+              then ()
+              else errorForErrorVal () "types of rules don't agree"
+            in
+              firstTy
+            end
+        | _ => []
     in
       case AstBOM.Exp.node exp of
         AstBOM.Exp.Return sExps =>
@@ -601,34 +617,39 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               caseExp, tyEnvs)) caseRules
             fun tyOfPair (left, right) = (CoreBOM.CaseRule.returnTy left,
               CoreBOM.CaseRule.returnTy right)
-            val maybeFirstRuleTy =
-              case caseRules' of
-                firstRule::rules =>
-                  let
-                    (* make sure all case rules have same return type *)
-                    val _ =
-                      if List.all (fn rule =>
-                        CoreBOM.BomType.equals (tyOfPair (firstRule, rule)))
-                      caseRules'
-                    then ()
-                    else errorForErrorVal () "types of rules don't agree"
-                  in
-                    SOME (CoreBOM.CaseRule.returnTy firstRule)
-                  end
-              | _ => NONE
+            val rulesTy = checkRuleTys (CoreBOM.CaseRule.returnTy, caseRules')
+            (* val maybeFirstRuleTy = *)
+            (*   case caseRules' of *)
+            (*     firstRule::rules => *)
+            (*       let *)
+            (*         (* make sure all case rules have same return type *) *)
+            (*         val _ = *)
+            (*           if List.all (fn rule => *)
+            (*             CoreBOM.BomType.equals (tyOfPair (firstRule, rule))) *)
+            (*           caseRules' *)
+            (*         then () *)
+            (*         else errorForErrorVal () "types of rules don't agree" *)
+            (*       in *)
+            (*         SOME (CoreBOM.CaseRule.returnTy firstRule) *)
+            (*       end *)
+            (*   | _ => NONE *)
           in
-            CoreBOM.Exp.new (CoreBOM.Exp.Case (caseExp, caseRules'),
-              Option.getOpt (maybeFirstRuleTy, []))
+            CoreBOM.Exp.new (CoreBOM.Exp.Case (caseExp, caseRules'), rulesTy)
           end
-
+      | AstBOM.Exp.Typecase (tyParam, tyCaseRules) =>
+          checkForErrorVal CoreBOM.Exp.error (BOMEnv.TyParamEnv.lookup (bomEnv,
+            tyParam), "unbound typaram")
+          (fn tyParam' =>
+            let
+              val tyCaseRules' = map (fn tyCaseRule => elaborateTyCaseRule (
+                tyCaseRule, tyEnvs)) tyCaseRules
+            in
+              CoreBOM.Exp.new (CoreBOM.Exp.Typecase (tyParam', tyCaseRules'),
+                checkRuleTys (CoreBOM.TyCaseRule.returnTy, tyCaseRules'))
+            end)
       | AstBOM.Exp.Let (varPats, rhs, exp) =>
           let
             val (rhsExp, rhsTys) = elaborateRHS (rhs, tyEnvs)
-            (* val rhsTys = *)
-            (*   case CoreBOM.Exp.typeOf rhsExp of *)
-            (*     CoreBOM.BomType.Tuple tys => tys *)
-            (*   | ty => [ty] *)
-
             val (newBomEnv, patVals) =
               checkForErrorVal (bomEnv, []) (
                 if length rhsTys = length varPats
@@ -636,11 +657,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
                 else NONE,
               "left and right side of let binding are of different lengths")
                 (fn bomEnv => bindVarPats (varPats, rhsTys, tyEnvs))
-              (*   (fn bomEnv => ListPair.foldrEq (fn (varPat, rhsTy, oldEnv) => *)
-              (*     bindVarPat (varPat, rhsTy, {env = env, bomEnv = oldEnv})) *)
-              (*     bomEnv (varPats, rhsTys)) *)
-              (* } *)
-
             val resultExp = elaborateExp (exp, {env = env, bomEnv = newBomEnv})
           in
             CoreBOM.Exp.new (CoreBOM.Exp.Let (patVals,
@@ -675,9 +691,12 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               end)
       | AstBOM.Exp.FunExp (funDefs, exp) =>
           let
-            val envWithFns = elaborateFunDefs (funDefs, tyEnvs)
+            val (envWithFns, funDefs') = elaborateFunDefs (funDefs, tyEnvs)
+            val bodyExp = elaborateExp (exp, envWithFns)
           in
-            elaborateExp (exp, envWithFns)
+              (* FIXME: this should return a CoreBOM.Exp.Fun *)
+            CoreBOM.Exp.new (CoreBOM.Exp.FunExp (funDefs', bodyExp),
+              CoreBOM.Exp.typeOf bodyExp)
           end
       | _ => raise Fail "not implemented"
     end
@@ -731,7 +750,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     in
       (CoreBOM.DataConsDef.ConsDef (
         CoreBOM.BomId.fromAst astId, maybeArgTy),
-      BOMEnv.ValEnv.extend (bomEnv, valId, CoreBOM.Val.new (valTy, params)))
+      BOMEnv.ValEnv.extend (bomEnv, valId, CoreBOM.Val.new (valId, valTy,
+        params)))
     end
 
 
@@ -841,7 +861,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         end
     | AstBOM.Definition.Fun funDefs =>
         let
-          val envWithFns = elaborateFunDefs (funDefs, tyEnvs)
+          val (envWithFns, funDefs) = elaborateFunDefs (funDefs, tyEnvs)
         in
           (CoreML.Dec.BomDecs [], #bomEnv envWithFns)
         end
