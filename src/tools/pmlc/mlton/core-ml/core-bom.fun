@@ -590,11 +590,23 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   structure Literal = struct
-    datatype t
+    datatype node
       = Int of IntInf.int
       | Float of real
       | String of string
       | NullVP
+
+    datatype t = T of {node: node, ty: BomType.t}
+
+    fun new (node, ty) = T {node=node, ty=ty}
+
+    local
+      fun make (T lit) = lit
+    in
+      val typeOf = #ty o make
+      val valOf = #node o make
+    end
+
   end
 
   structure HLOp = struct
@@ -676,7 +688,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Simple of simpleexp_t
   and caserule_node
     = LongRule of Val.t * Val.t list * exp_t
-    | LiteralRule of simpleexp_t * exp_t
+    | LiteralRule of Literal.t * exp_t
     | DefaultRule of Val.t * exp_t
   and tycaserule_node
     = TyRule of BomType.t * exp_t

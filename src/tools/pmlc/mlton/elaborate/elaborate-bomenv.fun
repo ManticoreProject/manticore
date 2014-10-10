@@ -315,8 +315,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
     local
       fun new (getTy, con) (T ctx, value) =
-        CoreBOM.SimpleExp.new (CoreBOM.SimpleExp.Lit (con value),
-          CoreBOM.BomType.Raw (getTy ctx))
+        CoreBOM.Literal.new (con value, CoreBOM.BomType.Raw (getTy ctx))
     in
       val newInt = new (#intTy, CoreBOM.Literal.Int)
       val newFloat = new (#floatTy, CoreBOM.Literal.Float)

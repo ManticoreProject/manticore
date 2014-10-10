@@ -249,7 +249,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
   (*     [] => CoreBOM.BomType.NoReturn *)
   (*   | [ty] => ty *)
   (*   | tys => CoreBOM.BomType.Tuple tys *)
-  and elaborateSimpleExp (sExp, tyEnvs as {env, bomEnv}): CoreBOM.SimpleExp.t =
+  and elaborateSimpleExp (sExp, ctx, tyEnvs as {env, bomEnv}) =
     let
       fun checkForErrorVal errorVal = check (error (AstBOM.SimpleExp.region,
         AstBOM.SimpleExp.layout, errorVal, sExp))
@@ -618,21 +618,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             fun tyOfPair (left, right) = (CoreBOM.CaseRule.returnTy left,
               CoreBOM.CaseRule.returnTy right)
             val rulesTy = checkRuleTys (CoreBOM.CaseRule.returnTy, caseRules')
-            (* val maybeFirstRuleTy = *)
-            (*   case caseRules' of *)
-            (*     firstRule::rules => *)
-            (*       let *)
-            (*         (* make sure all case rules have same return type *) *)
-            (*         val _ = *)
-            (*           if List.all (fn rule => *)
-            (*             CoreBOM.BomType.equals (tyOfPair (firstRule, rule))) *)
-            (*           caseRules' *)
-            (*         then () *)
-            (*         else errorForErrorVal () "types of rules don't agree" *)
-            (*       in *)
-            (*         SOME (CoreBOM.CaseRule.returnTy firstRule) *)
-            (*       end *)
-            (*   | _ => NONE *)
           in
             CoreBOM.Exp.new (CoreBOM.Exp.Case (caseExp, caseRules'), rulesTy)
           end
@@ -694,7 +679,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             val (envWithFns, funDefs') = elaborateFunDefs (funDefs, tyEnvs)
             val bodyExp = elaborateExp (exp, envWithFns)
           in
-              (* FIXME: this should return a CoreBOM.Exp.Fun *)
             CoreBOM.Exp.new (CoreBOM.Exp.FunExp (funDefs', bodyExp),
               CoreBOM.Exp.typeOf bodyExp)
           end

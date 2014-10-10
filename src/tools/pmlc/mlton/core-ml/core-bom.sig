@@ -239,11 +239,16 @@ signature CORE_BOM =
     end
 
     structure Literal: sig
-      datatype t
+      type t
+      datatype node
         = Int of IntInf.int
         | Float of real
         | String of string
         | NullVP
+
+      val new: node * BomType.t -> t
+      val typeOf: t -> BomType.t
+      val valOf: t -> node
     end
 
     structure Val: sig
@@ -306,7 +311,7 @@ signature CORE_BOM =
 
       datatype t
         = LongRule of Val.t * Val.t list * exp
-        | LiteralRule of SimpleExp.t * exp
+        | LiteralRule of Literal.t * exp
         | DefaultRule of Val.t * exp
 
       val returnTy: t -> BomType.t list

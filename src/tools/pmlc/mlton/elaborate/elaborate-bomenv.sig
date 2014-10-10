@@ -97,8 +97,8 @@ signature ELABORATE_BOMENV =
     structure Context: sig
       type t
 
-      val newInt: t * IntInf.int -> CoreBOM.SimpleExp.t
-      val newFloat: t * real -> CoreBOM.SimpleExp.t
+      val newInt: t * IntInf.int -> CoreBOM.Literal.t
+      val newFloat: t * real -> CoreBOM.Literal.t
 
       val setTy: t * CoreBOM.RawTy.t -> t
       (* val setFloatTy: t * CoreBOM.RawTy.t -> t *)
