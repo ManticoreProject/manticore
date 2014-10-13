@@ -241,7 +241,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     fun trace (ss: string list) =
       print (String.concat (ss@["\n"]))
     fun lookup (lookupThis, getEnv, maybeQualify, idToString) (env, id) =
-      (trace ["Looking up ", idToString id]
+      (trace ["Looking up ", idToString (maybeQualify (id, env))]
       ; lookupThis (getEnv env, maybeQualify (id, env)))
     fun extend (maybeQualify, extendThis, idToString, modifyEnv) (
         env, id, newVal) =

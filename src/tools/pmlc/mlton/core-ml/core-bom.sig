@@ -166,7 +166,7 @@ signature CORE_BOM =
       | Cont of type_t list
       | Addr of type_t
       | Raw of RawTy.t
-      | NoReturn
+      | NoReturn                (* FIXME: delete this *)
       | Error
     and dataconsdef_t
       = ConsDef of BomId.t * type_t option

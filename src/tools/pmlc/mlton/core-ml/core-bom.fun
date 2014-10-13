@@ -512,9 +512,30 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 	val strictEqual = strictTyEqual
 
     fun isCon ty =
-      case ty of
-        Con con => SOME ty
-      | _ => NONE
+      let
+        fun debug s = (print (s ^ "\n"); NONE)
+      in
+        case ty of
+          (* Nullary constructors have type TyCon (the type of the
+          datatype they're declared in), constructors with an argument
+          have type Con (a mapping from a type to a TyCon type) *)
+          Con _ => SOME ty
+        | TyCon _ => SOME ty
+        | _ => NONE
+        (* | Param _ => debug "param" *)
+        (* | TyCon _ => debug "tycon" *)
+        (* | Record _ => debug "rec" *)
+        (* | Tuple _ => debug "tuple" *)
+        (* | Fun _ => debug "fun" *)
+        (* | Any => debug "any" *)
+        (* | VProc => debug "vproc" *)
+        (* | Cont _ => debug "cont" *)
+        (* | Addr _ => debug "addr" *)
+        (* | Raw _ => debug "raw" *)
+        (* | NoReturn => debug "noret" *)
+        (* | Error => debug "error" *)
+      end
+      (* | _ => NONE *)
 
     local
       fun boolToOpt (comparison: ('a * 'a) -> bool) (left, right) =

@@ -1,6 +1,6 @@
 _module myId (
   datatype myDatatype = A | B;
-  fun myFun (x: int32) -> int32 =
+  fun myFun (x: int32) -> myDatatype =
     let y = A
     let z = B
       case y of
