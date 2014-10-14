@@ -24,7 +24,7 @@ structure MLB : sig
 
     exception Error
 
-    val dumpPreprocessed = ref false
+    val dumpPreprocessed = ref true
     val () = List.app (fn ctl => ControlRegistry.register MLBControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
               envName = NONE
@@ -356,13 +356,14 @@ structure MLB : sig
 	  val errStrm = Error.mkErrStream file
 	  val (inStrm : TextIO.instream, reap) = preprocess(List.rev preprocs, file)
 	  val ptOpt = Parser.parseFile (errStrm, inStrm)
+	                handle ex => (print "handling exn\n"; outputPreprocessed(file, preprocs); raise ex)
 		     (*handle Fail s => raise Fail (file^": "^s)*)  
-          val _ = outputPreprocessed(file, preprocs)
+          
 	  in
 	    reap();
 	   case ptOpt
 	     of SOME pt => SOME (errStrm, pt)
-	      | NONE => (checkForErrors[errStrm]; NONE)
+	      | NONE => (checkForErrors[errStrm]; outputPreprocessed(file, preprocs); NONE)
 	  end
 
   (* load the basis library *)
@@ -374,8 +375,9 @@ structure MLB : sig
 	    val topLevelSchedPts = loadMLB(LoadPaths.topLevelSchedLib "no-op-scheduler", env)
 	  (* parallel array *)
 	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
+	    val stm = loadMLB(LoadPaths.stmLib, env)
             in
-              parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
+              stm @ parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
             end
           else let
 	  (* implicit-threading library *)
@@ -388,8 +390,10 @@ structure MLB : sig
 	    val cmlPts = loadMLB(LoadPaths.cmlLib, env)
 	  (* parallel array *)
 	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
+	  (* partial abort software transactional memory*)
+	    val stm = loadMLB(LoadPaths.stmLib, env)
             in
-	       parrayPts @ cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts
+	       stm @ parrayPts @ cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts
 	    end
 
     val emptyEnv = Env{loc=(0,0), pts=[], preprocs=[]}

@@ -253,7 +253,7 @@ structure CheckCFG : sig
                   | CFG.E_AddrOf(x, i, y) => let
                       fun err () = error [
                              "type mismatch in AddrOf: ", v2s' x, " = ",
-                             "&(", v2s' y, ")\n"]
+                             "&", Int.toString i, "(", v2s' y, ")\n"]
                       in
 			chkVar (env, y, "AddrOf");
 			case V.typeOf y

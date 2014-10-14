@@ -61,5 +61,9 @@ structure LoadPaths =
   (* parallel array library *)
     val parrayLib = join (parrayDir, "parray.mlb")
 
+    val stmDir = join (basisDir, "stm")
+
+    val stmLib = join (stmDir, "stm.mlb")
+
     end (* local *)
   end

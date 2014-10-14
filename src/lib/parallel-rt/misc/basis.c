@@ -210,6 +210,10 @@ void M_Print (const char *s)
 #endif
 }
 
+void M_Print_Int(const char * s, int n){
+    printf(s, n);
+}
+
 /* M_PrintOrd:
  */
 void M_PrintOrd (const int i)
