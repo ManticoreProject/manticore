@@ -15,7 +15,17 @@ structure VClock = (* :
 *)
 struct
 
-    val counter = 1
+    _primcode(
+        (*makes sure the version counter is in the global heap*)
+        define @init-count(_:unit / exh:exh) : ml_int = 
+            let c : [int] = alloc(1)
+            let c : [int] = promote(c)
+            return(c);
+    )
+
+    val initCounter : unit -> int = _prim(@init-count)
+
+    val counter = initCounter()
     fun getCount() = counter
     
     _primcode(
@@ -30,10 +40,6 @@ struct
             return(old)
         ;
 
-        define @get(/ exh:exh) : stamp = 
-            let counter : ml_int = @getCount(UNIT / exh)
-            return(#0(counter))
-        ;
     )
 
 end
