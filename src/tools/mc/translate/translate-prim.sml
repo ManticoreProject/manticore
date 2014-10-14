@@ -189,6 +189,8 @@ structure TranslatePrim : sig
 	    ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis [checkCFun]), [self, v, t]))
 	  ] end
 
+    fun removePrime s = String.implode(List.filter (fn x => x <> #"'") (String.explode s))
+
   (* generate debugging messages for object promotions *)
     fun debugPromote (loc, [lhs], x) = let
 	  val self = newTmp BTy.T_VProc
@@ -199,8 +201,8 @@ structure TranslatePrim : sig
 	  in [
 	    ([self], BOM.E_HostVProc),
 	    ([t], BOM.E_Const(Literal.String locS, BTy.T_Any)),
-	    ([lhsN], BOM.E_Const(Literal.String (BOM.Var.toString lhs), BTy.T_Any)),
-	    ([xN], BOM.E_Const(Literal.String (BOM.Var.toString x), BTy.T_Any)),
+	    ([lhsN], BOM.E_Const(Literal.String (removePrime(BOM.Var.toString lhs)), BTy.T_Any)),
+	    ([xN], BOM.E_Const(Literal.String (removePrime(BOM.Var.toString x)), BTy.T_Any)),
 	    ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis ["DebugPromote"]), [self, t, lhsN, xN]))
 	  ] end
 

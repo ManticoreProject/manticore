@@ -24,7 +24,7 @@ structure FunctionHoisting : sig
     structure PSet = PPt.Set
               
     val reorderDebug = ref false
-    val hoistFlag = ref true
+    val hoistFlag = ref false
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
               envName = NONE
