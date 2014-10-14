@@ -113,9 +113,6 @@ structure FLS :
 #define DICT_OFF               3
 #define DONE_COMM_OFF          4
 
-(* default dictionary entries *)
-#define DICT_BUILTIN_TOPOLOGY          0
-
     _primcode (
 
       typedef key = [int];
@@ -143,14 +140,13 @@ structure FLS :
 	  ![bool]               (* is the fiber classified as interactive, or computationally intensive? -- Mutable *)
 	];
 
-      define @initial-dict () : [int, List.list] =
-
-        let k : [int] = alloc(DICT_BUILTIN_TOPOLOGY)
-        let elt : [[int], any] = alloc(k, List.nil)
-        let dict : List.list = CONS(elt, Topologies.EMPTY)
-
-	let ret : [int, List.list] = alloc(I32Add(DICT_BUILTIN_TOPOLOGY, 1), dict)
-	return(ret)
+        define @initial-dict() : [int, List.list] = 
+        let k0 : [[int], any] = alloc(alloc(DICT_BUILTIN_TOPOLOGY), nil)
+        let k1 : [[int], any] = alloc(alloc(LOG_KEY), nil)
+        let k2 : [[int], any] = alloc(alloc(IN_TRANS), alloc(false))
+        let l : List.list = CONS(k0, CONS(k1, CONS(k2, nil)))
+        let ret : [int, List.list] = alloc(3, l)
+        return(ret)
       ;
 
     (* create fls *)
@@ -179,7 +175,7 @@ structure FLS :
 	;
 
       define inline @set (fls : fls) : () =
-(* FIXME: there is an cyclic dependency between this module and SchedulerAction
+(* FIXME: there is a cyclic dependency between this module and SchedulerAction
 	  let vp
 	  let vp : vproc = SchedulerAction.@atomic-begin()
 	  do @set-in-atomic (vp, fls)
@@ -224,7 +220,7 @@ structure FLS :
     (* find the ITE environment *)
 
       define @find-ite (/ exh : exh) : Option.option =
-	  let fls : fls = @get()
+	  let fls : fls = @get() 
 	  return (SELECT(ITE_OFF, fls))
 	;
 
@@ -298,6 +294,37 @@ structure FLS :
 	let k : [int] = alloc(DICT_BUILTIN_TOPOLOGY)
 	return(k)
       ;
+
+      define @get-key(k : int / exh : exh) : any = 
+            fun loop(dict : List.list) : any = case dict
+                of CONS(hd : [[int], any], tail : List.list) => 
+                    if I32Eq(#0(#0(hd)), k)
+                    then return(#1(hd))
+                    else apply loop(tail)
+                |nil => let e : exn = Fail(@"FLS key not found in SpecPar")
+                        do ccall M_Print("FLS key not found in SpecPar get-key\n")
+                        throw exh(e)
+                end
+            let dict : List.list = @get-dict(UNIT / exh)
+            apply loop(dict)
+        ;
+
+      define @set-key(key : int, v : any / exh : exh) : () = 
+            fun loop(dict : List.list) : List.list = case dict
+                of CONS(hd : [[int], any], tail : List.list) => 
+                    if I32Eq(#0(#0(hd)), key)
+                    then return(CONS(alloc(alloc(key), v), tail))
+                    else let rest : List.list = apply loop(tail)
+                         return (CONS(hd, rest))
+                | nil => let e : exn = Fail(@"FLS key not found in set-key")
+                         do ccall M_Print("FLS key not found in set-key\n")
+                         throw exh(e)
+                end
+            let dict : List.list = @get-dict(UNIT / exh)
+            let newDict : List.list = apply loop(dict)
+            let _ : unit = @set-dict(newDict / exh)
+            return()
+        ;
 
     )
 
