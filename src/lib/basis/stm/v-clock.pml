@@ -10,33 +10,32 @@
 structure VClock = (* :
     sig
 	    val bump : unit -> int
-	    val get : unit -> int
-	end
+	  end
 *)
 struct
 
     _primcode(
         (*makes sure the version counter is in the global heap*)
-        define @init-count(_:unit / exh:exh) : ml_int = 
-            let c : [int] = alloc(1)
-            let c : [int] = promote(c)
+        define @init-count(_:unit / exh:exh) : ml_long = 
+            let c : [long] = alloc(1:long)
+            let c : [long] = promote(c)
             return(c);
     )
 
-    val initCounter : unit -> int = _prim(@init-count)
+    val initCounter : unit -> long = _prim(@init-count)
 
     val counter = initCounter()
     fun getCount() = counter
     
     _primcode(
-        typedef stamp = int;
+        typedef stamp = long;
     
         define @getCount = getCount;
 
         define @bump(/ exh:exh) : stamp =
-            let counter : ml_int = @getCount(UNIT / exh)
-            let counter : ![int] = (![int]) counter
-            let old : int = I32FetchAndAdd(&0(counter), 1)
+            let counter : ml_long = @getCount(UNIT / exh)
+            let counter : ![long] = (![long]) counter
+            let old : long = I64FetchAndAdd(&0(counter), 1:long)
             return(old)
         ;
 

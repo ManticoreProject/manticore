@@ -112,6 +112,17 @@ structure FLS :
 #define DICT_COUNTER_OFF       2
 #define DICT_OFF               3
 #define DONE_COMM_OFF          4
+#define ID_OFF                 5
+    _primcode (
+        define @initCounter(_:unit / exh:exh) : ml_long = 
+                let x : ml_long = alloc(1:long)
+                let x : ml_long = promote(x)
+                return(x);
+    )
+
+    val initCounter : unit -> long = _prim(@initCounter)
+    val counter = initCounter()
+    fun getCounter() = counter
 
     _primcode (
 
@@ -137,13 +148,24 @@ structure FLS :
 	  Option.option,	(* optional implicit-thread environment (ITE) *)
 	  int,                  (* dictionary counter *)
 	  List.list,            (* dictionary *)
-	  ![bool]               (* is the fiber classified as interactive, or computationally intensive? -- Mutable *)
+	  ![bool],              (* is the fiber classified as interactive, or computationally intensive? -- Mutable *)
+	  long (*unique ID*)
 	];
+
+        define @get-counter = getCounter;
+
+        define @bump(/exh:exh) : long = 
+                let x:ml_long = @get-counter(UNIT/exh)
+                let x:![long] = (![long]) x
+                let x : long = I64FetchAndAdd(&0(x), 1:long)
+                return(x)
+        ;
 
         define @initial-dict() : [int, List.list] = 
         let k0 : [[int], any] = alloc(alloc(DICT_BUILTIN_TOPOLOGY), nil)
         let k1 : [[int], any] = alloc(alloc(LOG_KEY), nil)
-        let k2 : [[int], any] = alloc(alloc(IN_TRANS), alloc(false))
+        let flg : ![bool] = alloc(false)
+        let k2 : [[int], any] = alloc(alloc(IN_TRANS), flg)
         let l : List.list = CONS(k0, CONS(k1, CONS(k2, nil)))
         let ret : [int, List.list] = alloc(3, l)
         return(ret)
@@ -154,7 +176,8 @@ structure FLS :
           let dict : [int, List.list] = @initial-dict()
 	  let dc : ![bool] = alloc(true)
 	  let dc : ![bool] = promote(dc)
-	  let fls : fls = alloc(~1, Option.NONE, #0(dict), #1(dict), dc)
+	  let x : long = @bump(/exh)
+	  let fls : fls = alloc(~1, Option.NONE, #0(dict), #1(dict), dc, x)
 	  return (fls)
 	;
 
@@ -163,7 +186,9 @@ structure FLS :
           let dict : [int, List.list] = @initial-dict()
 	  let dc : ![bool] = alloc(true)
 	  let dc : ![bool] = promote(dc)
-	  let fls : fls = alloc(vprocId, Option.NONE, #0(dict), #1(dict), dc)
+	  cont exh(x:exn) = return()
+	  let x : long = @bump(/exh)
+	  let fls : fls = alloc(vprocId, Option.NONE, #0(dict), #1(dict), dc, x)
 	  return (fls)
 	;
 
@@ -205,7 +230,8 @@ structure FLS :
 
     (* set the fls as pinned to the given vproc *)
       define inline @pin-to (fls : fls, vprocId : int / exh : exh) : fls =
-	  let fls : fls = alloc(vprocId, SELECT(ITE_OFF, fls), SELECT(DICT_COUNTER_OFF, fls), SELECT(DICT_OFF, fls), SELECT(DONE_COMM_OFF, fls))
+	  let fls : fls = alloc(vprocId, SELECT(ITE_OFF, fls), SELECT(DICT_COUNTER_OFF, fls), 
+	                SELECT(DICT_OFF, fls), SELECT(DONE_COMM_OFF, fls), SELECT(ID_OFF, fls))
 	  return(fls)
 	;
 
@@ -239,7 +265,7 @@ structure FLS :
       define @set-ite (ite : ite / exh : exh) : () =
 	  let fls : fls = @get()
 	  let vprocId : int = @pin-info(fls / exh)
-	   let fls : fls = alloc(vprocId, Option.SOME(ite), SELECT(DICT_COUNTER_OFF, fls), SELECT(DICT_OFF, fls), SELECT(DONE_COMM_OFF, fls))
+	   let fls : fls = alloc(vprocId, Option.SOME(ite), SELECT(DICT_COUNTER_OFF, fls), SELECT(DICT_OFF, fls), SELECT(DONE_COMM_OFF, fls), SELECT(ID_OFF, fls))
 	  do @set(fls)  
 	  return()
 	;
@@ -263,7 +289,7 @@ structure FLS :
 
       define @set-dict (dict : List.list / exh : exh) : unit =
 	let fls : fls = @get()
-	let fls : fls = alloc(SELECT(VPROC_OFF, fls), SELECT(ITE_OFF, fls), SELECT(DICT_COUNTER_OFF, fls), dict, SELECT(DONE_COMM_OFF, fls))
+	let fls : fls = alloc(SELECT(VPROC_OFF, fls), SELECT(ITE_OFF, fls), SELECT(DICT_COUNTER_OFF, fls), dict, SELECT(DONE_COMM_OFF, fls), SELECT(ID_OFF, fls))
 	do @set(fls)
 	return(UNIT)
       ;
@@ -276,7 +302,7 @@ structure FLS :
       define @increment-dict-counter () : int =
 	let fls : fls = @get()
 	let counter : int = SELECT(DICT_COUNTER_OFF, fls)
-	let fls : fls = alloc(SELECT(VPROC_OFF, fls), SELECT(ITE_OFF, fls), I32Add(counter, 1), SELECT(DICT_OFF, fls), SELECT(DONE_COMM_OFF, fls))
+	let fls : fls = alloc(SELECT(VPROC_OFF, fls), SELECT(ITE_OFF, fls), I32Add(counter, 1), SELECT(DICT_OFF, fls), SELECT(DONE_COMM_OFF, fls), SELECT(ID_OFF, fls))
 	do @set(fls)
         return(counter)
       ;
@@ -301,8 +327,8 @@ structure FLS :
                     if I32Eq(#0(#0(hd)), k)
                     then return(#1(hd))
                     else apply loop(tail)
-                |nil => let e : exn = Fail(@"FLS key not found in SpecPar")
-                        do ccall M_Print("FLS key not found in SpecPar get-key\n")
+                |nil => let e : exn = Fail(@"FLS key not found in get-key")
+                        do ccall M_Print("FLS key not found in get-key\n")
                         throw exh(e)
                 end
             let dict : List.list = @get-dict(UNIT / exh)

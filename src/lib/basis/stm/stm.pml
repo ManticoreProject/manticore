@@ -30,9 +30,9 @@ struct
 
         typedef itemType = int; (*correponds to the above #define's*)
         typedef stamp = VClock.stamp;
-        typedef tvar = ![any, int, ![stamp]]; (*contents, lock, version stamp*)
+        typedef tvar = ![any, long, ![stamp]]; (*contents, lock, version stamp*)
 
-        typedef logItem = [tvar,      (*0: address of the tvar*)
+        typedef logItem = [tvar,      (*0: tvar operated on*)
                            itemType,  (*1: type of action performed (read or write)*)
                            stamp,     (*2: time stamp taken when action was performed*)
                            ![stamp],  (*3: pointer to current time stamp*)
@@ -41,7 +41,7 @@ struct
 
         define @new(x:any / exh:exh) : tvar = 
             let stamp : stamp = VClock.@bump(/exh)
-            let tv : tvar = alloc(x, 0, (![int])alloc(stamp))
+            let tv : tvar = alloc(x, 0:long, (![long])alloc(stamp))
             let tv : tvar = promote(tv)
             return(tv)
         ;
@@ -53,7 +53,7 @@ struct
                     case log
                         of CONS(hd:logItem, tl:List.list) =>
                             if Equal(#0(hd), tv)
-                            then if I32Lt(#0(#3(hd)), #2(hd))
+                            then if I64Lt(#0(#3(hd)), #2(hd))
                                  then let res : Option.option = Option.SOME(#4(hd))
                                       return(res)
                                  else let k : cont() = #5(hd)
@@ -111,7 +111,7 @@ struct
                 case locks 
                     of CONS(hd:logItem, tl:List.list) =>
                         let tv:tvar = #0(hd)
-                        do #1(tv) := 0
+                        do #1(tv) := 0:long
                         apply release(tl)
                      | nil => return()
                 end
@@ -122,13 +122,13 @@ struct
                         let abortK : cont() = #5(hd)
                         if I32Eq(#1(hd), Read)
                         then let currentStamp : ![stamp] = #3(hd)
-                             if I32Lt(#0(currentStamp), #2(hd))
+                             if I64Lt(#0(currentStamp), #2(hd))
                              then return(res)
                              else do apply release(res)
                                   throw abortK()
                         else let tv : tvar = #0(hd)
-                             let lockRes : int = CAS(&1(tv), 0, stamp) (*lock it*)
-                             if I32Eq(#1(tv), stamp)
+                             let lockRes : long = CAS(&1(tv), 0:long, stamp) (*lock it*)
+                             if I64Eq(#1(tv), stamp)
                              then return(CONS(hd, res))
                              else do apply release(res)
                                   throw abortK()
@@ -137,7 +137,7 @@ struct
             fun update(writes:List.list) : () = 
                 case writes
                     of CONS(hd:logItem, tl:List.list) =>
-                        if I32Eq(#0(#3(hd)), stamp)
+                        if I64Eq(#0(#3(hd)), stamp)
                         then return()
                         else let tv : tvar = #0(hd)
                              let newContents : any = #4(hd)
@@ -145,7 +145,7 @@ struct
                              do #0(tv) := newContents         (*update contents*)
                              do #0(#2(tv)) := stamp           (*update version stamp*)
                              do apply update(tl)              (*update remaining*)
-                             do #1(tv) := 0                   (*unlock*)
+                             do #1(tv) := 0:long                   (*unlock*)
                              return()
                      | nil => return()
                 end
@@ -157,57 +157,33 @@ struct
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
             let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
             if (#0(in_trans))
-            then apply f(UNIT/exh)
-            else do FLS.@set-key(LOG_KEY, nil / exh)
-                 do #0(in_trans) := true
+            then PDebug("entering nested transactions\n") apply f(UNIT/exh)
+            else do FLS.@set-key(LOG_KEY, nil / exh)  (*initialize STM log*)
+                 do #0(in_trans) := true    
+                 PDebug("Starting transaction\n")          
                  let res : any = apply f(UNIT/exh)
-                 PDebug("About to commit transaction\n")
                  do @commit(/exh)
-                 PDebug("Successfully committed transaction\n")
+                 PDebug("Done Committing\n")
                  do #0(in_trans) := false
                  return(res)
         ;
 
-        define @test2(x:unit / exh:exh) : unit = 
-            fun cmpnswap(loc:![int], old:int, new:int) : int = 
-                let res : int = CAS(&0(loc), old, new)
-                if I32Eq(#0(loc), old)
-                then let res : int = apply cmpnswap(loc, old, new)
-                     return(res)
-                else return (res)
-            let x : ![int] = alloc(12)
-            PDebugInt("x0 = %d (should be 12)\n", #0(x))
-            let a : int = apply cmpnswap(x, 12, 15)  
-            PDebugInt("x1 = %d (should be 15)\n", #0(x))
-            let b : int = apply cmpnswap(x, 15, 0)
-            PDebugInt("x2 = %d (should be 0)\n", #0(x))
-            let c : int = apply cmpnswap(x, 12, 156) 
-            PDebugInt("x3 = %d (should be 0)\n", #0(x))
-            return(UNIT)
-        ;
-
-        define @test(x:unit / exh:exh) : unit = 
-            let x : ![int] = alloc(12)
-            PDebugInt("x0 = %d (should be 12)\n", #0(x))
-            let a : int = CAS(&0(x), 12, 15)
-            PDebugInt("x1 = %d (should be 15)\n", #0(x))
-            let b : int = CAS(&0(x), 15, 0)
-            PDebugInt("x2 = %d (should be 0)\n", #0(x))
-            let c : int = CAS(&0(x), 12, 156)
-            PDebugInt("x3 = %d (should be 0)\n", #0(x))
-            return(UNIT)
-        ;
+        define @chkFlg(_:unit / exh:exh) : unit = 
+            let fls : FLS.fls = FLS.@get()
+            let flg:![bool] = FLS.@get-key(IN_TRANS / exh)
+            if (#0(flg))
+            then PDebug("STM flag is true\n") return(UNIT)
+            else PDebug("STM flag is false\n") return(UNIT);
+            
 
     )
 
-    val dummy : unit -> unit = _prim(@test)
-    val dummy2 : unit -> unit = _prim(@test2)
-    
     	type 'a tvar = _prim(tvar)
     	val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val get : 'a tvar -> 'a = _prim(@get)
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
+    val chkFlg : unit -> unit = _prim(@chkFlg)
 end
 
 

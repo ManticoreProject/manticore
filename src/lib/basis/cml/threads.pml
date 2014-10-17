@@ -27,7 +27,7 @@ structure Threads (*: sig
 	    cont fiber (x : PT.unit) = 
 	      let x : PT.unit =
 	      (* in case of an exception, just terminate the fiber *)
-		cont exh (exn : PT.exn) = do ccall M_Print("CML thread terminating because of raised exception\n") return (UNIT)
+		cont exh (exn : PT.exn) = return (UNIT)
 		(* in *)
 		  let defaultImplicitThreadSched : ImplicitThread.work_group = 
 						   @get-default-implicit-thread-sched (UNIT / exh)

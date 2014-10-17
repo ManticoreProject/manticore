@@ -418,7 +418,7 @@ void M_PrintTestingMsg (const char *msg, char *file, int line)
 
 void M_PrintPtr (const char *name, void *ptr)
 {
-    Say("[%2d] &%s=%p\n", VProcSelf()->id, name, ptr);
+    Say("[%2d] &%s = %p\n", VProcSelf()->id, name, ptr);
 }
 
 /* M_PrintLong:
