@@ -57,6 +57,7 @@ struct
                                  then let res : Option.option = Option.SOME(#4(hd))
                                       return(res)
                                  else let k : cont() = #5(hd)
+                                      PDebug("Aborting via eager conflict detection\n")
                                       throw k()
                             else apply chkLog(tl)
                         | nil => return (Option.NONE)
@@ -125,27 +126,31 @@ struct
                              if I64Lt(#0(currentStamp), #2(hd))
                              then return(res)
                              else do apply release(res)
+                                  PDebug("Aborting because read is out of date\n")
                                   throw abortK()
                         else let tv : tvar = #0(hd)
-                             let lockRes : long = CAS(&1(tv), 0:long, stamp) (*lock it*)
+                             let _ : long = CAS(&1(tv), 0:long, stamp) (*lock it*)
                              if I64Eq(#1(tv), stamp)
                              then return(CONS(hd, res))
                              else do apply release(res)
+                                  PDebug("Aborting because lock is already taken\n")
                                   throw abortK()
                      |nil => return(nil)
-                end               
+                end
             fun update(writes:List.list) : () = 
                 case writes
                     of CONS(hd:logItem, tl:List.list) =>
-                        if I64Eq(#0(#3(hd)), stamp)
+                        if I64Eq(#0(#3(hd)), stamp)           (*already updated this one, do nothing...*)
                         then return()
-                        else let tv : tvar = #0(hd)
-                             let newContents : any = #4(hd)
+                        else let tv : tvar = #0(hd)           (*pull out the tvar*)
+                             let newContents : any = #4(hd)   (*get the local contents*)
                              let newContents : any = promote(newContents)
                              do #0(tv) := newContents         (*update contents*)
                              do #0(#2(tv)) := stamp           (*update version stamp*)
+                             (*note that if we try and update this tvar again (corresponding
+                             **to an earlier write, then we simply do nothing)*)
                              do apply update(tl)              (*update remaining*)
-                             do #1(tv) := 0:long                   (*unlock*)
+                             do #1(tv) := 0:long              (*unlock*)
                              return()
                      | nil => return()
                 end
