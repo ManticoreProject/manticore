@@ -509,33 +509,26 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     val equal = tyEqual
     val equals = tysEqual
 
-	val strictEqual = strictTyEqual
+	  val strictEqual = strictTyEqual
 
     fun isCon ty =
-      let
-        fun debug s = (print (s ^ "\n"); NONE)
-      in
-        case ty of
-          (* Nullary constructors have type TyCon (the type of the
-          datatype they're declared in), constructors with an argument
-          have type Con (a mapping from a type to a TyCon type) *)
-          Con _ => SOME ty
-        | TyCon _ => SOME ty
-        | _ => NONE
-        (* | Param _ => debug "param" *)
-        (* | TyCon _ => debug "tycon" *)
-        (* | Record _ => debug "rec" *)
-        (* | Tuple _ => debug "tuple" *)
-        (* | Fun _ => debug "fun" *)
-        (* | Any => debug "any" *)
-        (* | VProc => debug "vproc" *)
-        (* | Cont _ => debug "cont" *)
-        (* | Addr _ => debug "addr" *)
-        (* | Raw _ => debug "raw" *)
-        (* | NoReturn => debug "noret" *)
-        (* | Error => debug "error" *)
-      end
-      (* | _ => NONE *)
+      (* Nullary constructors have type TyCon (the type of the
+      datatype they're declared in), constructors with an argument
+      have type Con (a mapping from a type to a TyCon type) *)
+      case ty of
+        Con _ => SOME ty
+      | TyCon _ => SOME ty
+      | _ => NONE
+
+    fun isFun ty =
+      case ty of
+        Fun _ => SOME ty
+      | _ => NONE
+
+    fun isCont ty =
+      case ty of
+        Cont _ => SOME ty
+      | _ => NONE
 
     local
       fun boolToOpt (comparison: ('a * 'a) -> bool) (left, right) =
@@ -674,6 +667,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   datatype exp_node
     = Let of Val.t list * rhs * exp_t
     | FunExp of fundef_node list * exp_t
+    | ContExp of Val.t * Val.t list * exp_t * exp_t
     | If of primcond_t * exp_t * exp_t
     | Do of simpleexp_t * exp_t
     | Case of simpleexp_t * caserule_node list

@@ -211,6 +211,9 @@ signature CORE_BOM =
 	    val strictEqual': t * t -> t option
 
       val isCon: t -> t option
+      val isFun: t -> t option
+      val isCont: t -> t option
+
       val unit: t
 	    val wrapTuple: t list -> t
 
@@ -354,7 +357,7 @@ signature CORE_BOM =
       datatype node
         = Let of Val.t list * rhs * t
         | FunExp of FunDef.t list * t
-        (* | Cont of Val.t * Val.t list * t * t *)
+        | ContExp of Val.t * Val.t list * t * t
         | If of PrimOp.cond * t * t
         | Do of SimpleExp.t * t
         | Case of SimpleExp.t * CaseRule.t list

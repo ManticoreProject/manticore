@@ -9,6 +9,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     rng: CoreBOM.BomType.t list
   }
 
+  val badValId = "unbound value identifier"
+
   fun app3 f (x, y, z) = (f x, f y, f z)
   fun error (getRegion, getLayout, errorVal, element) msg =
     (Control.error (getRegion element, getLayout element, Layout.str msg)
@@ -203,6 +205,10 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     | AstBOM.Literal.Float float => BOMEnv.Context.newFloat (ctx, float)
     | _ => raise Fail "not implemented"
 
+  fun lookupValId (checkForErrorVal, bomEnv, valId) =
+    checkForErrorVal CoreBOM.Exp.error (BOMEnv.ValEnv.lookup (bomEnv, valId),
+    "unbound value identifier")
+
   fun elaborateFunDefs (funDefs, tyEnvs as {env, bomEnv}) =
     let
       val (envWithFns, funVals) =
@@ -290,7 +296,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         AstBOM.SimpleExp.Id longValId =>
           checkForErrorVal CoreBOM.SimpleExp.error (BOMEnv.ValEnv.lookup (
             bomEnv, CoreBOM.ValId.fromLongValueId longValId),
-            "undefined value identifier")
+            badValId)
           (fn value => CoreBOM.SimpleExp.new (CoreBOM.SimpleExp.Val value,
             CoreBOM.Val.typeOf value))
 
@@ -481,14 +487,17 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         bind (checkTyBinding (maybeTy, rhsTy))
       end
 
+  and lookupVal (valId, bomEnv, checkForErrorVal) = checkForErrorVal
+    CoreBOM.Val.error (BOMEnv.ValEnv.lookup (bomEnv, valId),
+    badValId) (fn x => x)
+
   and lookupCon (valId, tyEnvs as {env, bomEnv}, checkForErrorVal,
     checkForErrorVal') =
     (* Given a ValId, make sure that it's bound to a constructor. We
     need to pass in checkForErrorVal twice since it needs to be
     instantiated at two types in the body of the function *)
     let
-      val conVal = checkForErrorVal CoreBOM.Val.error (BOMEnv.ValEnv.lookup (
-        bomEnv, valId), "undefined value identifier") (fn x => x)
+      val conVal = lookupVal (valId, bomEnv, checkForErrorVal)
       val dataCon: CoreBOM.BomType.t = checkForErrorVal'
         (CoreBOM.BomType.Con {
           dom = CoreBOM.BomType.Error,
@@ -568,10 +577,10 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
                    else elabToSimple()
                  end
            end
-     val newExp = elaborateExp (exp, {env = env, bomEnv = newBomEnv})
-    in
-      ruleCon newExp
-    end
+        val newExp = elaborateExp (exp, {env = env, bomEnv = newBomEnv})
+      in
+        ruleCon newExp
+      end
 
   and elaborateTyCaseRule (tyCaseRule, tyEnvs) =
     let
@@ -697,7 +706,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           (* TODO: this will give an unhelpful message if bomId isn't a cont *)
           (* make sure the value identifier is bound *)
           checkForErrorVal CoreBOM.Exp.error (BOMEnv.ValEnv.lookup (bomEnv,
-            CoreBOM.ValId.fromAstBomId bomId), "unbound value identifier")
+            CoreBOM.ValId.fromAstBomId bomId), badValId)
             (fn contVal =>
               let
                 val arguments = map (fn sExp => elaborateSimpleExp (sExp, ctx,
@@ -721,7 +730,60 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             CoreBOM.Exp.new (CoreBOM.Exp.FunExp (funDefs', bodyExp),
               CoreBOM.Exp.typeOf bodyExp)
           end
-      | _ => raise Fail "not implemented"
+      | AstBOM.Exp.Apply (longId, domExps, contExps) =>
+          let
+            (* FIXME: deal with typarams *)
+            (* make sure longId is bound *)
+            val funVal = lookupVal (CoreBOM.ValId.fromLongValueId longId,
+              bomEnv, checkForErrorVal)
+            (* make sure it's bound to a function type *)
+            val CoreBOM.BomType.Fun {dom, cont, rng} = checkForErrorVal
+              (CoreBOM.BomType.Fun {dom = [CoreBOM.BomType.Error],
+               cont = [CoreBOM.BomType.Error],
+               rng = [CoreBOM.BomType.Error]}) (CoreBOM.BomType.isFun (
+                 CoreBOM.Val.typeOf funVal),
+                 "value identifier is not a function") (fn x => x)
+            val emptyCtx = BOMEnv.Context.empty
+            fun doSElaborate (sExp, ty) =
+              let
+                val sExp' =
+                  case ty of
+                    CoreBOM.BomType.Raw raw =>
+                      elaborateSimpleExp (sExp, BOMEnv.Context.setTy (emptyCtx,
+                        raw), tyEnvs)
+                    | _ => elaborateSimpleExp (sExp, emptyCtx, tyEnvs)
+              in
+                checkForErrorVal CoreBOM.SimpleExp.error (
+                  CoreBOM.BomType.equal' (ty, CoreBOM.SimpleExp.typeOf sExp'),
+                  "operator and operand don't agree") (fn _ => sExp')
+              end
+            fun elabWithTyConstraints (sExps, tys) =
+              ListPair.mapEq doSElaborate (sExps, tys)
+                handle ListPair.UnequalLengths => errorForErrorVal []
+                  "operator and operand don't agree"
+            val [domExps', contExps'] = map elabWithTyConstraints [(domExps,
+              dom), (contExps, cont)]
+         in
+           CoreBOM.Exp.new (CoreBOM.Exp.Apply (funVal, domExps', contExps'),
+             rng)
+         end
+      | AstBOM.Exp.ContExp (bomId, args, contExp, bodyExp) =>
+          let
+            val contVal = checkForErrorVal CoreBOM.Val.error (
+              BOMEnv.ValEnv.lookup (bomEnv, CoreBOM.ValId.fromAstBomId bomId),
+              badValId) (fn x => x)
+            val CoreBOM.BomType.Cont contTys = checkForErrorVal
+              (CoreBOM.BomType.Cont []) (CoreBOM.BomType.isCont
+                (CoreBOM.Val.typeOf contVal),
+                "value identifier is not a continuation") (fn x => x)
+            val (newEnv, contArgs) = bindVarPats (args, contTys, tyEnvs)
+            (* FIXME: contExp' needs to have continuation type? *)
+            val contExp' = elaborateExp (contExp, {env = env, bomEnv = newEnv})
+            val bodyExp' = elaborateExp (bodyExp, {env = env, bomEnv = newEnv})
+          in
+            CoreBOM.Exp.new (CoreBOM.Exp.ContExp (contVal, contArgs, contExp',
+              bodyExp'), CoreBOM.Exp.typeOf bodyExp')
+          end
     end
 
   fun dataTypeDefToTyIdAndParams dtDef =
