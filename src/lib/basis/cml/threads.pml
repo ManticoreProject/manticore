@@ -20,6 +20,8 @@ structure Threads (*: sig
 
     _primcode (
 
+        extern void * M_Print_Int(void *, int);
+
         define @get-default-implicit-thread-sched = getDefaultImplicitThreadSched;
 
       (* create a thread *)

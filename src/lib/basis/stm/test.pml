@@ -14,7 +14,7 @@ fun start n k =
     if n = 0 
     then nil
     else let val ch = PrimChan.new()
-             val _ = spawn (STM.chkFlg();(* bumpN k; print "done with bumpN\n" ;*)PrimChan.send(ch, n))
+             val _ = spawn (bumpN k; PrimChan.send(ch, n))
          in ch::start (n-1) k
          end
 

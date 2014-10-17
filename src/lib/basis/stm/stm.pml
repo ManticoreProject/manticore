@@ -155,26 +155,17 @@ struct
         ;
         
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
+            let fls : FLS.fls = FLS.@get()
             let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
             if (#0(in_trans))
             then PDebug("entering nested transactions\n") apply f(UNIT/exh)
             else do FLS.@set-key(LOG_KEY, nil / exh)  (*initialize STM log*)
-                 do #0(in_trans) := true    
-                 PDebug("Starting transaction\n")          
+                 do #0(in_trans) := true           
                  let res : any = apply f(UNIT/exh)
                  do @commit(/exh)
-                 PDebug("Done Committing\n")
                  do #0(in_trans) := false
                  return(res)
-        ;
-
-        define @chkFlg(_:unit / exh:exh) : unit = 
-            let fls : FLS.fls = FLS.@get()
-            let flg:![bool] = FLS.@get-key(IN_TRANS / exh)
-            if (#0(flg))
-            then PDebug("STM flag is true\n") return(UNIT)
-            else PDebug("STM flag is false\n") return(UNIT);
-            
+        ;            
 
     )
 
@@ -183,7 +174,6 @@ struct
     val get : 'a tvar -> 'a = _prim(@get)
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
-    val chkFlg : unit -> unit = _prim(@chkFlg)
 end
 
 

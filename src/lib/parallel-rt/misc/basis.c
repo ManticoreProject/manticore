@@ -211,7 +211,16 @@ void M_Print (const char *s)
 }
 
 void M_Print_Int(const char * s, int n){
+#ifdef NDEBUG
     printf(s, n);
+#else
+    const char * s2 = "[%2d] "; 
+    int len = strlen(s2) + strlen(s) + 1;
+    char * newStr = (char*)malloc(sizeof(char) * len);
+    strcpy(newStr, s2);
+    strcat(newStr, s);
+    printf(newStr, VProcSelf()->id, n);
+#endif
 }
 
 /* M_PrintOrd:

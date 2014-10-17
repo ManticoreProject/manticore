@@ -14,6 +14,8 @@ structure RoundRobin =
 
     _primcode(
 
+        extern void * M_Print_Int(void *, int);
+
     (* top-level thread scheduler that uses a round robin policy *)
       define @round-robin (x : unit / exh : exh) : unit = 
 

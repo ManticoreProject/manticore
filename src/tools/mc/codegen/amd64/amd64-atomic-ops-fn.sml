@@ -34,6 +34,7 @@ functor AMD64AtomicOpsFn (
 	    (oldVal', stms)
 	  end
 
+  (*this doesn't seem to generate 32 bit compare and swap for integers*)
   (* atomic compare and swap operation *)
     fun genCompareAndSwap {ty, addr, cmpVal, newVal} = let
 	  val oldVal = Cells.newReg()
