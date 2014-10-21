@@ -20,11 +20,13 @@ struct
 #define PDebugInt(msg, v)  do ccall M_Print_Int(msg, v)  
 #define PDebugInt2(msg, v1, v2)  do ccall M_Print_Int2(msg, v1, v2)  
 #define PDebugLong(msg, v) do ccall M_Print_Long(msg, v)
+#define PDebugID(msg) let id : int = FLS.@get-id() do ccall M_Print_Int(msg, id)
 #else
 #define PDebug(msg) 
 #define PDebugInt(msg, v)   
 #define PDebugInt2(msg, v1, v2) 
 #define PDebugLong(msg, v) 
+#define PDebugID(msg) 
 #endif
 
     _primcode(
@@ -35,22 +37,10 @@ struct
     )
 
     val initCounter : unit -> int = _prim(@init-counter)
-    val counter = initCounter()
-    fun getCounter() = counter
-    
     val abortCounter = initCounter()
     fun getAbortCounter() = abortCounter
     
     _primcode(
-
-        define @get-counter = getCounter;
-
-        define @bump-commits() : () = 
-            cont dummy(e:exn) = return()
-            let x : ml_int = @get-counter(UNIT / dummy)
-            let x : ![int] = (![int]) x
-            let v : int = I32FetchAndAdd(&0(x), 1)
-            return();
 
         define @get-aborts = getAbortCounter;
 
@@ -106,8 +96,7 @@ struct
                      | Option.NONE =>
                         cont k() =
                             do FLS.@set-key(LOG_KEY, log / exh) (*reset log*)
-                            let id : int = FLS.@get-id()
-                            PDebugInt("Inside abort continuation with ID: %d\n", id)
+                            PDebugID("Inside abort continuation with ID: %d\n")
                             apply enter()
                         let stamp : stamp = VClock.@bump(/exh)
                         let current : any = #0(tv)
@@ -133,8 +122,7 @@ struct
                          | nil => let stamp : stamp = VClock.@bump(/exh)
                                  cont k () = 
                                     do FLS.@set-key(LOG_KEY, log / exh)
-                                    let id : int = FLS.@get-id()
-                                    PDebugInt("Inside abort continuation with ID: %d\n", id)
+                                    PDebugID("Inside abort continuation with ID: %d\n")
                                     apply enter()
                                  let item : logItem = alloc(tv, Write, stamp, v, k)
                                  return(item)
@@ -219,15 +207,12 @@ struct
             do apply validate(readSet)
             do apply update(locks)
             do SchedulerAction.@atomic-end(vp)
-            let id : int = FLS.@get-id()
-            PDebugInt("Successfully committed with ID: %d\n", id)
-            (*do @bump-commits()*)
+            PDebugID("Successfully committed with ID: %d\n")
             return()
         ;
         
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
-            let id : int = FLS.@get-id()
-            PDebugInt("Entering transaction with ID: %d\n", id)
+            PDebugID("Entering transaction with ID: %d\n")
             let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
             if (#0(in_trans))
             then PDebug("entering nested transactions\n") apply f(UNIT/exh)
@@ -236,8 +221,7 @@ struct
                  let res : any = apply f(UNIT/exh)
                  do @commit(/exh)
                  do #0(in_trans) := false
-                 let id : int = FLS.@get-id()
-                 PDebugInt("Finished transaction with ID: %d\n", id)
+                 PDebugID("Finished transaction with ID: %d\n")
                  return(res)
         ;            
 
@@ -247,10 +231,8 @@ struct
         return(id)
       ;
 
-      define @print-commits(x:unit / exh:exh) : unit = 
+      define @print-stats(x:unit / exh:exh) : unit = 
         let aborts : ml_int = @get-aborts(x/exh)
-        let x : ml_int = @get-counter(x / exh)
-     (*   do ccall M_Print_Int("Total number of commited transations is %d\n", #0(x))  *)
         do ccall M_Print_Int("Total number of aborted transactions is %d\n", #0(aborts))
         return(UNIT);
 
@@ -262,7 +244,7 @@ struct
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val getID : unit -> int = _prim(@getID)
-    val printCommits : unit -> unit = _prim(@print-commits)
+    val printStats : unit -> unit = _prim(@print-stats)
 end
 
 

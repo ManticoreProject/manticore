@@ -28,4 +28,4 @@ val _ = join (start 4 100)
 
 val res = STM.atomic(fn () => STM.get tv)
 val _ = print ("Result is " ^ (Int.toString res) ^ "\n")
-val _ = STM.printCommits()
+val _ = STM.printStats()
