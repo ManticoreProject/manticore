@@ -21,13 +21,13 @@ fun start n k =
     if n = 0 
     then nil
     else let val ch = PrimChan.new()
-             val _ = spawn (STM.atomic(fn _ => trans k); print (Int.toString(STM.getID()) ^ " finished in sequential position: " ^ Int.toString n ^ "\n"); PrimChan.send(ch, STM.getID()))
+             val _ = spawn (STM.atomic(fn _ => trans k); PrimChan.send(ch, STM.getID()))
          in ch::start (n-1) k
          end
 
 fun join chs = 
     case chs 
-        of ch::chs' => (print ("Received on channel " ^ Int.toString(PrimChan.recv ch) ^ "\n"); join chs')
+        of ch::chs' => (PrimChan.recv ch; join chs')
          | nil => ()
 
 val chs = start 10 n

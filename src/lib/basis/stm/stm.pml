@@ -18,15 +18,51 @@ struct
 #ifndef NDEBUG
 #define PDebug(msg)  do ccall M_Print(msg)  
 #define PDebugInt(msg, v)  do ccall M_Print_Int(msg, v)  
+#define PDebugInt2(msg, v1, v2)  do ccall M_Print_Int2(msg, v1, v2)  
 #define PDebugLong(msg, v) do ccall M_Print_Long(msg, v)
 #else
 #define PDebug(msg) 
 #define PDebugInt(msg, v)   
+#define PDebugInt2(msg, v1, v2) 
 #define PDebugLong(msg, v) 
 #endif
+
+    _primcode(
+        define @init-counter(_:unit / exh:exh) : ml_int = 
+            let x : ml_int = alloc(0)
+            let x : ml_int = promote(x)
+            return(x);
+    )
+
+    val initCounter : unit -> int = _prim(@init-counter)
+    val counter = initCounter()
+    fun getCounter() = counter
+    
+    val abortCounter = initCounter()
+    fun getAbortCounter() = abortCounter
+    
     _primcode(
 
+        define @get-counter = getCounter;
+
+        define @bump-commits() : () = 
+            cont dummy(e:exn) = return()
+            let x : ml_int = @get-counter(UNIT / dummy)
+            let x : ![int] = (![int]) x
+            let v : int = I32FetchAndAdd(&0(x), 1)
+            return();
+
+        define @get-aborts = getAbortCounter;
+
+        define @bump-aborts() : () = 
+            cont dummy(e:exn) = return()
+            let x : ml_int = @get-aborts(UNIT/dummy)
+            let x : ![int] = (![int]) x
+            let v : int = I32FetchAndAdd(&0(x), 1)
+            return();
+        
         extern void * M_Print_Int(void *, int);
+        extern void * M_Print_Int2(void *, int, int);
         extern void M_Print_Long (void *, long);
         typedef itemType = int; (*correponds to the above #define's*)
         typedef stamp = VClock.stamp;
@@ -57,6 +93,7 @@ struct
                                       return(res)
                                  else let k : cont() = #4(hd)
                                       let id : int = FLS.@get-id()
+                                      do @bump-aborts()
                                       PDebugInt("Aborting via eager conflict detection with ID: %d\n", id)
                                       throw k()
                             else apply chkLog(tl)
@@ -93,7 +130,7 @@ struct
                             then let item : logItem = alloc(tv, Write, #2(hd), v, #4(hd))
                                  return(item)
                             else apply mkItem(tl)
-                         |nil => let stamp : stamp = VClock.@bump(/exh)
+                         | nil => let stamp : stamp = VClock.@bump(/exh)
                                  cont k () = 
                                     do FLS.@set-key(LOG_KEY, log / exh)
                                     let id : int = FLS.@get-id()
@@ -122,22 +159,21 @@ struct
                      | nil => return()
                 end
             fun acquire(log:List.list, acquired : List.list, readSet : List.list) : (List.list, List.list) = 
-                let id : int = FLS.@get-id()
                 case log 
                     of CONS(hd:logItem, tl:List.list) =>
                         let tv : tvar = #0(hd)
-                        let abortK : cont() = #4(hd)
                         if I32Eq(#1(hd), Read)
                         then apply acquire(tl, acquired, CONS(hd, readSet))
                         else let casRes : long = CAS(&1(tv), 0:long, stamp) (*lock it*)
                              if I64Eq(casRes, 0)
-                             then apply acquire(tl, CONS(hd, acquired), readSet)
+                             then apply acquire(tl, CONS(hd, acquired), readSet)  (*acquired for the first time*)
                              else if I64Eq(casRes, stamp)
                                   then apply acquire(tl, acquired, readSet)  (*already acquired this lock*)
                                   else do apply release(acquired)
-                                       PDebugInt("Aborting because lock is already taken with ID: %d\n", id)
-                                       PDebugLong("Lock value is %ld\n", casRes)
+                                       PDebug("Aborting because lock is already taken\n")
+                                       do @bump-aborts()
                                        do SchedulerAction.@atomic-end(vp)
+                                       let abortK : cont() = #4(hd)
                                        throw abortK()
                      |nil => return(acquired, readSet)
                 end
@@ -147,10 +183,11 @@ struct
                         let tv : tvar = #0(hd)           (*pull out the tvar*)
                         let newContents : any = #3(hd)   (*get the local contents*)
                         let newContents : any = promote(newContents)
+                        let old : ml_int = (ml_int) #0(tv)   
                         do #0(tv) := newContents         (*update contents*)
                         do #2(tv) := stamp               (*update version stamp*)
                         let intInterp : ml_int = (ml_int) newContents
-                        PDebugInt("Updating contents to %d\n", #0(intInterp))
+                        do ccall M_Print_Int2("Updating contents from %d to %d\n", #0(old), #0(intInterp))
                         do #1(tv) := 0:long              (*unlock*)
                         apply update(tl)                 (*update remaining*)
                      | nil => return()
@@ -167,11 +204,13 @@ struct
                              then apply validate(tl)
                              else do apply release(locks)
                                   do SchedulerAction.@atomic-end(vp)
+                                  do @bump-aborts()
                                   throw abortK()
                         else if I64Eq(#1(tv), stamp)   (*we locked it*)
                              then apply validate(tl)
                              else do apply release(locks)
                                   do SchedulerAction.@atomic-end(vp)
+                                  do @bump-aborts()
                                   throw abortK()
                      |nil => return()
               end            
@@ -180,6 +219,7 @@ struct
             do SchedulerAction.@atomic-end(vp)
             let id : int = FLS.@get-id()
             PDebugInt("Successfully committed with ID: %d\n", id)
+            (*do @bump-commits()*)
             return()
         ;
         
@@ -205,6 +245,13 @@ struct
         return(id)
       ;
 
+      define @print-commits(x:unit / exh:exh) : unit = 
+        let aborts : ml_int = @get-aborts(x/exh)
+        let x : ml_int = @get-counter(x / exh)
+     (*   do ccall M_Print_Int("Total number of commited transations is %d\n", #0(x))  *)
+        do ccall M_Print_Int("Total number of aborted transactions is %d\n", #0(aborts))
+        return(UNIT);
+
     )
 
     	type 'a tvar = _prim(tvar)
@@ -213,6 +260,7 @@ struct
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val getID : unit -> int = _prim(@getID)
+    val printCommits : unit -> unit = _prim(@print-commits)
 end
 
 

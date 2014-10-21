@@ -34,12 +34,8 @@ structure Threads (*: sig
 		let defaultImplicitThreadSched : ImplicitThread.work_group = 
 						   @get-default-implicit-thread-sched (UNIT / exh)
                 let _ : unit = ImplicitThread.@default-work-group-begin (defaultImplicitThreadSched / exh)
-                let id : int = FLS.@get-id()
-	        do ccall M_Print_Int("Thread being spawned with ID: %d\n", id)
                 apply f (UNIT / exh)
 	      (* in *)
-	        let id : int = FLS.@get-id()
-	        do ccall M_Print_Int("Thread terminating with ID: %d\n", id)
 		SchedulerAction.@stop ()
 	    (* in *)
 	    return (fiber)

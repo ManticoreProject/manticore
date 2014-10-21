@@ -21,11 +21,11 @@ fun start n k =
 
 fun join chs = 
     case chs 
-        of ch::chs' => (print ("Received val: " ^ Int.toString (PrimChan.recv ch) ^ "\n"); join chs')
+        of ch::chs' => (PrimChan.recv ch; join chs')
          | nil => ()
          
 val _ = join (start 4 100)
 
 val res = STM.atomic(fn () => STM.get tv)
 val _ = print ("Result is " ^ (Int.toString res) ^ "\n")
-
+val _ = STM.printCommits()
