@@ -163,10 +163,13 @@ structure ImplicitThread (* :
 	  return (alloc (k, ite'))
 	;
 
-    (* pairs the fiber with the current implicit-thread environment to create a new thread *)
-      define inline @capture (k : PT.fiber / exh : exh) : thread =
+    (* pairs the fiber with the current implicit-thread environment to create a new thread 
+    ** and also gets the current FLS*)
+      define inline @capture (kArg : PT.fiber / exh : exh) : thread =
 	  let ite : FLS.ite = FLS.@get-ite ( / exh)
 	  let c : Option.option = SELECT(ITE_CANCELABLE_OFF, ite)
+	  let fls : FLS.fls = FLS.@get()
+	  cont k(x:unit) = do FLS.@set(fls) throw kArg(x)
 	  let k : PT.fiber = case c
 			      of Option.NONE => 
 				 return (k)
@@ -356,7 +359,7 @@ structure ImplicitThread (* :
 	  do @push-work-group (group / exh)
 	(* migrate the current thread to the given work group *)
 	  let fls : FLS.fls = FLS.@get()
-	  let fls : FLS.fls = promote(fls)  (*maybe there is a more elegant way of doing this?*)
+	  let fls : FLS.fls = promote(fls)  
 	  cont k (x : unit) = do FLS.@set(fls) return ()  (*careful not to lose FLS*)
 	  let thd : thread = @new-thread (k / exh)
 	  do @spawn-thread (thd / exh)

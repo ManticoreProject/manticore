@@ -20,14 +20,19 @@ struct
 #ifdef STMDebug
 #define PDebug(msg)  do ccall M_Print(msg)  
 #define PDebugInt(msg, v)  do ccall M_Print_Int(msg, v)  
+#define PDebugLong(msg, v) do ccall M_Print_Long(msg, v)
 #else
 #define PDebug(msg) 
 #define PDebugInt(msg, v)   
+#define PDebugLong(msg, v) do ccall M_Print_Long(msg, v)
 #endif
     _primcode(
 
+(*TODO: update this to support seperate read/write sets instead of a single log.
+**when committing, first lock the entire write set, and then validate the read set*)
+(*Or figure out a better way to aqcuire locks on the write set before verifying the read set*)
         extern void * M_Print_Int(void *, int);
-
+        extern void M_Print_Long (void *, long);
         typedef itemType = int; (*correponds to the above #define's*)
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, ![stamp]]; (*contents, lock, version stamp*)
@@ -57,7 +62,8 @@ struct
                                  then let res : Option.option = Option.SOME(#4(hd))
                                       return(res)
                                  else let k : cont() = #5(hd)
-                                      PDebug("Aborting via eager conflict detection\n")
+                                      let id : int = FLS.@get-id()
+                                      PDebugInt("Aborting via eager conflict detection with ID: %d\n", id)
                                       throw k()
                             else apply chkLog(tl)
                         | nil => return (Option.NONE)
@@ -69,6 +75,8 @@ struct
                      | Option.NONE => 
                         cont k() =
                             do FLS.@set-key(LOG_KEY, log / exh) (*reset log*)
+                            let id : int = FLS.@get-id()
+                            PDebugInt("Inside abort continuation with ID: %d\n", id)
                             apply enter()
                         let stamp : stamp = VClock.@bump(/exh)
                         let current : any = #0(tv)
@@ -94,6 +102,8 @@ struct
                          |nil => let stamp : stamp = VClock.@bump(/exh)
                                  cont k () = 
                                     do FLS.@set-key(LOG_KEY, log / exh)
+                                    let id : int = FLS.@get-id()
+                                    PDebugInt("Inside abort continuation with ID: %d\n", id)
                                     apply enter()
                                  let item : logItem = alloc(tv, Write, stamp, #2(tv), v, k)
                                  return(item)
@@ -117,23 +127,24 @@ struct
                      | nil => return()
                 end
             fun acquire(log:List.list) : List.list = 
+                let id : int = FLS.@get-id()
                 case log 
                     of CONS(hd:logItem, tl:List.list) =>
                         let res : List.list = apply acquire(tl)
+                        let tv : tvar = #0(hd)
                         let abortK : cont() = #5(hd)
                         if I32Eq(#1(hd), Read)
                         then let currentStamp : ![stamp] = #3(hd)
                              if I64Lt(#0(currentStamp), #2(hd))
                              then return(res)
                              else do apply release(res)
-                                  PDebug("Aborting because read is out of date\n")
                                   throw abortK()
-                        else let tv : tvar = #0(hd)
-                             let _ : long = CAS(&1(tv), 0:long, stamp) (*lock it*)
+                        else let casRes : long = CAS(&1(tv), 0:long, stamp) (*lock it*)
                              if I64Eq(#1(tv), stamp)
                              then return(CONS(hd, res))
                              else do apply release(res)
-                                  PDebug("Aborting because lock is already taken\n")
+                                  PDebugInt("Aborting because lock is already taken with ID: %d\n", id)
+                                  PDebugLong("Lock value is %ld\n", casRes)
                                   throw abortK()
                      |nil => return(nil)
                 end
@@ -147,6 +158,8 @@ struct
                              let newContents : any = promote(newContents)
                              do #0(tv) := newContents         (*update contents*)
                              do #0(#2(tv)) := stamp           (*update version stamp*)
+                             let intInterp : ml_int = (ml_int) newContents
+                             PDebugInt("Updating contents to %d\n", #0(intInterp))
                              (*note that if we try and update this tvar again (corresponding
                              **to an earlier write, then we simply do nothing)*)
                              do apply update(tl)              (*update remaining*)
@@ -156,11 +169,15 @@ struct
                 end
             let log : List.list = FLS.@get-key(LOG_KEY / exh)
             let writes : List.list = apply acquire(log)
-            apply update(writes)
+            do apply update(writes)
+            let id : int = FLS.@get-id()
+            PDebugInt("Successfully committed with ID: %d\n", id)
+            return()
         ;
         
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
-            let fls : FLS.fls = FLS.@get()
+            let id : int = FLS.@get-id()
+            PDebugInt("Entering transaction with ID: %d\n", id)
             let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
             if (#0(in_trans))
             then PDebug("entering nested transactions\n") apply f(UNIT/exh)
@@ -169,8 +186,16 @@ struct
                  let res : any = apply f(UNIT/exh)
                  do @commit(/exh)
                  do #0(in_trans) := false
+                 let id : int = FLS.@get-id()
+                 PDebugInt("Finished transaction with ID: %d\n", id)
                  return(res)
         ;            
+
+       define @getID(x:unit / exh:exh) : ml_int =
+        let id : int = FLS.@get-id()
+        let id : [int] = alloc(id)
+        return(id)
+      ;
 
     )
 
@@ -179,6 +204,7 @@ struct
     val get : 'a tvar -> 'a = _prim(@get)
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
+    val getID : unit -> int = _prim(@getID)
 end
 
 

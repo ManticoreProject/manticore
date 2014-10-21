@@ -31,11 +31,15 @@ structure Threads (*: sig
 	      (* in case of an exception, just terminate the fiber *)
 		cont exh (exn : PT.exn) = return (UNIT)
 		(* in *)
-		  let defaultImplicitThreadSched : ImplicitThread.work_group = 
+		let defaultImplicitThreadSched : ImplicitThread.work_group = 
 						   @get-default-implicit-thread-sched (UNIT / exh)
-                  let _ : unit = ImplicitThread.@default-work-group-begin (defaultImplicitThreadSched / exh)
-                  apply f (UNIT / exh)
+                let _ : unit = ImplicitThread.@default-work-group-begin (defaultImplicitThreadSched / exh)
+                let id : int = FLS.@get-id()
+	        do ccall M_Print_Int("Thread being spawned with ID: %d\n", id)
+                apply f (UNIT / exh)
 	      (* in *)
+	        let id : int = FLS.@get-id()
+	        do ccall M_Print_Int("Thread terminating with ID: %d\n", id)
 		SchedulerAction.@stop ()
 	    (* in *)
 	    return (fiber)
