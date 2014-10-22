@@ -3,13 +3,13 @@
  * COPYRIGHT (c) 2014 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Software Transactional Memory with partial aborts.
+ * Software Transactional Memory with FULL aborts.
  *)
 
 #define Read 0
 #define Write 1
 
-structure STM = (* :
+structure FullAbortSTM = (* :
     sig
 	
 *)
