@@ -1,0 +1,1 @@
+This uses two versions of a function that deletes an item from a linked list (using STM).  The first version has a function called delete2 that is curried and doesn't seem to work.  However, if you uncurry the delete2 function (inside delete), then it works fine
