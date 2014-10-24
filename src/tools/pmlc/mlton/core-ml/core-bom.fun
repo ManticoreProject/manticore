@@ -691,7 +691,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | VpLoad of IntInf.int * simpleexp_t
     | VpAddr of IntInf.int * simpleexp_t
     | VpStore of IntInf.int * simpleexp_t * simpleexp_t
-    | Alloc of Val.t * simpleexp_t list
+    | AllocId of Val.t * simpleexp_t list
     | RecAccess of IntInf.int * simpleexp_t * simpleexp_t option
     | Promote of simpleexp_t
     | TypeCast of BomType.t * simpleexp_t
@@ -1032,6 +1032,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       = Fun of FunDef.t list
       | HLOp of Attr.t list * ValId.t * Exp.t
       | Import of BomType.t
+      | Extern of CReturnTy.t * Val.t * CArgTy.t list * Attr.t list
   end
 
   (* structure Decs = struct *)

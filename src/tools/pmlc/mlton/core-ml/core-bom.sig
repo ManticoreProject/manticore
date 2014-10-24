@@ -291,7 +291,7 @@ signature CORE_BOM =
         | VpLoad of IntInf.int * t
         | VpAddr of IntInf.int * t
         | VpStore of IntInf.int * t * t
-        | Alloc of Val.t * t list
+        | AllocId of Val.t * t list
         | RecAccess of IntInf.int * t * t option
         | Promote of t
         | TypeCast of BomType.t * t
@@ -386,6 +386,7 @@ signature CORE_BOM =
         = Fun of FunDef.t list
         | HLOp of Attr.t list * ValId.t * Exp.t
         | Import of BomType.t
+        | Extern of CReturnTy.t * Val.t * CArgTy.t list * Attr.t list
               (* TODO: datatypes *)
     end
 

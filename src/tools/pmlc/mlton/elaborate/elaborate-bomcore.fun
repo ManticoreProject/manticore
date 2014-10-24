@@ -278,7 +278,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           checkSExp (CoreBOM.BomType.equal' (dom, argumentTy),
             "invalid constructor argument")
          (* todo: typarams? *)
-          (fn _  => CoreBOM.SimpleExp.new (CoreBOM.SimpleExp.Alloc (conVal,
+          (fn _  => CoreBOM.SimpleExp.new (CoreBOM.SimpleExp.AllocId (conVal,
             argumentExps), argumentTy))
         end
       fun elaborateVpExp (index, procExp) =
@@ -353,7 +353,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       (*       (* the range is always a tuple *) *)
       (*       val rng = CoreBOM.BomType.Tuple tyArgs' *)
       (*       (* if we only have one tyarg, then the domain is that *)
-      (*       type, otherwise, we wrap it in a tuple *) *)
+      (*          type, otherwise, we wrap it in a tuple *) *)
       (*       val dom = *)
       (*         case tyArgs' of *)
       (*           [tyArg] => tyArg *)
@@ -586,6 +586,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     let
       val (con, exp) =
         case AstBOM.TyCaseRule.node tyCaseRule of
+            (* FIXME: the typaram of this case statement needs to be
+            bound to bomTy within exp *)
           AstBOM.TyCaseRule.TyRule (bomTy, exp) => (fn exp' =>
             CoreBOM.TyCaseRule.TyRule (elaborateBomType (bomTy, tyEnvs), exp'),
             exp)
