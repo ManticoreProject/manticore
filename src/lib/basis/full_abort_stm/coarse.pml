@@ -1,4 +1,9 @@
-val tv = STM.new 0
+val atomic = FullAbortSTM.atomic
+val get = FullAbortSTM.get
+val put = FullAbortSTM.put
+val new = FullAbortSTM.new
+
+val tv = new 0
 
 fun fib n = 
     if n <= 1
@@ -8,8 +13,8 @@ fun fib n =
 fun trans n = 
     if n = 0
     then ()
-    else let val x = STM.get tv
-             val _ = STM.put(tv, x+1)
+    else let val x = get tv
+             val _ = put(tv, x+1)
          in trans (n-1) end
          
 val ch1 = PrimChan.new()
@@ -21,7 +26,7 @@ fun start n k =
     if n = 0 
     then nil
     else let val ch = PrimChan.new()
-             val _ = spawn (STM.atomic(fn _ => trans k); PrimChan.send(ch, STM.getID()))
+             val _ = spawn (atomic(fn _ => trans k); PrimChan.send(ch, n))
          in ch::start (n-1) k
          end
 
@@ -33,5 +38,5 @@ fun join chs =
 val chs = start 10 n
 val _ = join chs
 
-val x = STM.get tv
+val x = get tv
 val _ = print ("Result is " ^ Int.toString x ^ "\n")

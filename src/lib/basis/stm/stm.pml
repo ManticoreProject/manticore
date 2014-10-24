@@ -29,201 +29,211 @@ struct
 #define PDebugID(msg) 
 #endif
 
+#define COUNT
+
+#ifdef COUNT
+#define BUMP_ABORT do ccall M_BumpCounter(0)
+#define PRINT_ABORT_COUNT let counter : int = ccall M_GetCounter(0) \
+                          do ccall M_Print_Int("Aborted %d transactions\n", counter)
+#define BUMP_ALLOC do ccall M_BumpCounter(1)
+#define PRINT_ALLOC_COUNT  let counter : int = ccall M_GetCounter(1) \
+                           do ccall M_Print_Int("Allocated %d abort continuations\n", counter)
+#else
+#define BUMP_ABORT
+#define PRINT_ABORT_COUNT
+#define BUMP_ALLOC
+#define PRINT_ALLOC_COUNT
+#endif
+
     _primcode(
-        define @init-counter(_:unit / exh:exh) : ml_int = 
-            let x : ml_int = alloc(0)
-            let x : ml_int = promote(x)
-            return(x);
-    )
 
-    val initCounter : unit -> int = _prim(@init-counter)
-    val abortCounter = initCounter()
-    fun getAbortCounter() = abortCounter
-    
-    _primcode(
-
-        define @get-aborts = getAbortCounter;
-
-        define @bump-aborts() : () = 
-            cont dummy(e:exn) = return()
-            let x : ml_int = @get-aborts(UNIT/dummy)
-            let x : ![int] = (![int]) x
-            let v : int = I32FetchAndAdd(&0(x), 1)
-            return();
-        
         extern void * M_Print_Int(void *, int);
         extern void * M_Print_Int2(void *, int, int);
         extern void M_Print_Long (void *, long);
-        typedef itemType = int; (*correponds to the above #define's*)
+        extern void M_BumpCounter(int);
+        extern int M_GetCounter(int);
+
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
 
-        typedef logItem = [tvar,      (*0: tvar operated on*)
-                           itemType,  (*1: type of action performed (read or write)*)
-                           stamp,     (*2: time stamp taken when action was performed*)
-                           any,       (*3: contents of local copy*)
-                           cont()];   (*4: abort continuation*)
+        typedef readItem = [tvar,     (*0: tvar operated on*)
+                            cont()];  (*abort continuation*)
+
+        typedef writeItem = [tvar,    (*0: tvar operated on*)
+                             any];    (*1: contents of local copy*)
 
         define @new(x:any / exh:exh) : tvar = 
-            let stamp : stamp = VClock.@bump(/exh)
-            let tv : tvar = alloc(x, 0:long, stamp)
+            let tv : tvar = alloc(x, 0:long, 0:long)
             let tv : tvar = promote(tv)
             return(tv)
         ;
 
         define @get(tv : tvar / exh:exh) : any = 
-            fun enter() : any = 
+            let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
+            cont enter() = 
                 let v : any = #0(tv)
-                fun chkLog(log : List.list) : Option.option = (*use local copy if available*)
-                    case log
-                        of CONS(hd:logItem, tl:List.list) =>
+                (*figure out where to abort to*)
+                fun abort(readSet : List.list, newStamp : stamp) : () = 
+                    case readSet 
+                        of CONS(hd:readItem, tl:List.list) =>
+                            do apply abort(tl, newStamp)
+                            if I64Lt(#2(#0(hd)), #0(myStamp))
+                            then return()
+                            else let abortK : cont() = #1(hd)
+                                 do #0(myStamp) := newStamp
+                                 throw abortK()
+                         |nil => return()
+                   end
+                let readSet : List.list = FLS.@get-key(READ_SET / exh)
+                let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
+                fun chkLog(writeSet : List.list) : Option.option = (*use local copy if available*)
+                    case writeSet
+                        of CONS(hd:writeItem, tl:List.list) =>
                             if Equal(#0(hd), tv)
-                            then if I64Lt(#2(#0(hd)), #2(hd))
-                                 then let res : Option.option = Option.SOME(#3(hd))
+                            then if I64Lt(#2(#0(hd)), #0(myStamp))
+                                 then let res : Option.option = Option.SOME(#1(hd))
                                       return(res)
-                                 else let k : cont() = #4(hd)
-                                      let id : int = FLS.@get-id()
-                                      do @bump-aborts()
-                                      PDebugInt("Aborting via eager conflict detection with ID: %d\n", id)
-                                      throw k()
+                                 else BUMP_ABORT
+                                      PDebugID("Aborting via eager conflict detection with ID: %d\n")
+                                      let newStamp : stamp = VClock.@bump(/exh)
+                                      do apply abort(readSet, newStamp)
+                                      do ccall M_Print("Error: we should never get here\n")
+                                      return(Option.NONE)
                             else apply chkLog(tl)
                         | nil => return (Option.NONE)
                     end
-                let log : List.list = FLS.@get-key(LOG_KEY / exh)
-                let localRes : Option.option = apply chkLog(log)
+                let localRes : Option.option = apply chkLog(writeSet)
                 case localRes
                     of Option.SOME(v:any) => return(v)
                      | Option.NONE =>
-                        cont k() =
-                            do FLS.@set-key(LOG_KEY, log / exh) (*reset log*)
+                        BUMP_ALLOC
+                        cont theAbortContinuation() =
+                            do FLS.@set-key(READ_SET, readSet / exh) (*reset log*)
+                            do FLS.@set-key(WRITE_SET, writeSet / exh) 
                             PDebugID("Inside abort continuation with ID: %d\n")
-                            apply enter()
-                        let stamp : stamp = VClock.@bump(/exh)
-                        let current : any = #0(tv)
-                        let item : logItem = alloc(tv, Read, stamp, current, k)
-                        let newLog : List.list = CONS(item, log)
-                        do FLS.@set-key(LOG_KEY, newLog / exh)
+                            throw enter()
+                        fun lp() : any = (*must have exclusive access to read*)
+                            if I64Eq(#1(tv), 0:long)
+                            then return(#0(tv))
+                            else do Pause() apply lp()
+                        let current : any = apply lp()
+                        let item : readItem = alloc(tv, theAbortContinuation)
+                        let newReadSet : List.list = CONS(item, readSet)
+                        do FLS.@set-key(READ_SET, newReadSet / exh)
                         return(current)
                 end
-            apply enter()
+            throw enter()
         ;
 
         define @put(arg:[tvar, any] / exh:exh) : unit =
-            fun enter() : unit = 
-                let tv : tvar = #0(arg)
-                let v : any = #1(arg)
-                fun mkItem(log:List.list) : logItem = 
-                    case log 
-                        of CONS(hd:logItem, tl:List.list) =>
-                            if Equal(#0(hd), tv)
-                            then let item : logItem = alloc(tv, Write, #2(hd), v, #4(hd))
-                                 return(item)
-                            else apply mkItem(tl)
-                         | nil => let stamp : stamp = VClock.@bump(/exh)
-                                 cont k () = 
-                                    do FLS.@set-key(LOG_KEY, log / exh)
-                                    PDebugID("Inside abort continuation with ID: %d\n")
-                                    apply enter()
-                                 let item : logItem = alloc(tv, Write, stamp, v, k)
-                                 return(item)
-                    end
-                let log : List.list = FLS.@get-key(LOG_KEY / exh)
-                let item : logItem = apply mkItem(log)
-                let newLog : List.list = CONS(item, log)
-                do FLS.@set-key(LOG_KEY, newLog / exh)
-                return(UNIT)
-            apply enter()
+            let tv : tvar = #0(arg)
+            let v : any = #1(arg)
+            let item : writeItem = alloc(tv, v)
+            let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
+            let newWriteSet : List.list = CONS(item, writeSet)
+            do FLS.@set-key(WRITE_SET, newWriteSet / exh)
+            return(UNIT)
         ;
 
         define @commit(/exh:exh) : () = 
-            let stamp : stamp = VClock.@bump(/exh)
-            let vp : vproc = SchedulerAction.@atomic-begin()
-            fun release(locks : List.list) : () = 
-                case locks 
-                    of CONS(hd:logItem, tl:List.list) =>
-                        let tv:tvar = #0(hd)
-                        do #1(tv) := 0:long
-                        apply release(tl)
-                     | nil => return()
-                end
-            fun acquire(log:List.list, acquired : List.list, readSet : List.list) : (List.list, List.list) = 
-                case log 
-                    of CONS(hd:logItem, tl:List.list) =>
-                        let tv : tvar = #0(hd)
-                        if I32Eq(#1(hd), Read)
-                        then apply acquire(tl, acquired, CONS(hd, readSet))
-                        else let casRes : long = CAS(&1(tv), 0:long, stamp) (*lock it*)
-                             if I64Eq(casRes, 0)
-                             then apply acquire(tl, CONS(hd, acquired), readSet)  (*acquired for the first time*)
-                             else if I64Eq(casRes, stamp)
-                                  then apply acquire(tl, acquired, readSet)  (*already acquired this lock*)
-                                  else do apply release(acquired)
-                                       PDebug("Aborting because lock is already taken\n")
-                                       do @bump-aborts()
-                                       do SchedulerAction.@atomic-end(vp)
-                                       let abortK : cont() = #4(hd)
-                                       throw abortK()
-                     |nil => return(acquired, readSet)
-                end
-            fun update(writes:List.list) : () = 
-                case writes
-                    of CONS(hd:logItem, tl:List.list) =>
-                        let tv : tvar = #0(hd)           (*pull out the tvar*)
-                        let newContents : any = #3(hd)   (*get the local contents*)
-                        let newContents : any = promote(newContents)
-                        do #0(tv) := newContents         (*update contents*)
-                        do #2(tv) := stamp               (*update version stamp*)
-                        do #1(tv) := 0:long              (*unlock*)
-                        apply update(tl)                 (*update remaining*)
-                     | nil => return()
-                end
-            let log : List.list = FLS.@get-key(LOG_KEY / exh)
-            let (locks : List.list, readSet : List.list) = apply acquire(log, nil, nil)
-            fun validate(readSet : List.list) : () = 
-                case readSet 
-                    of CONS(hd:logItem, tl:List.list) =>
-                        let tv : tvar = #0(hd)
-                        let abortK : cont() = #4(hd)
-                        if I64Eq(#1(tv), 0)  (*check that it is unlocked*)
-                        then if I64Lt(#2(tv), #2(hd))
-                             then apply validate(tl)
-                             else do apply release(locks)
-                                  do SchedulerAction.@atomic-end(vp)
-                                  do @bump-aborts()
-                                  throw abortK()
-                        else if I64Eq(#1(tv), stamp)   (*we locked it*)
-                             then if Equal(#0(tv), #3(hd))  (*I64Lt(#2(tv), #2(hd)) *)
-                                  then apply validate(tl)
-                                  else do apply release(locks)
-                                       do SchedulerAction.@atomic-end(vp)
-                                       do @bump-aborts()
-                                       throw abortK()
-                             else do apply release(locks)
-                                  do SchedulerAction.@atomic-end(vp)
-                                  do @bump-aborts()
-                                  throw abortK()
-                     |nil => return()
-              end            
-            do apply validate(readSet)
-            do apply update(locks)
-            do SchedulerAction.@atomic-end(vp)
-            PDebugID("Successfully committed with ID: %d\n")
-            return()
+            cont enter() = 
+                let startStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
+                let vp : vproc = SchedulerAction.@atomic-begin()
+                fun release(locks : List.list) : () = 
+                    case locks 
+                        of CONS(hd:writeItem, tl:List.list) =>
+                            let tv:tvar = #0(hd)
+                            do #1(tv) := 0:long         (*unlock*)
+                            apply release(tl)
+                         | nil => return()
+                    end
+                let readSet : List.list = FLS.@get-key(READ_SET / exh)
+                let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
+                let rawStamp: long = #0(startStamp)
+                fun validate(readSet : List.list, locks : List.list, newStamp : stamp) : () = 
+                    case readSet 
+                        of CONS(hd:readItem, tl:List.list) =>
+                            do apply validate(tl, locks, newStamp)  (*validate in order*)
+                            let tv : tvar = #0(hd)
+                            let abortK : cont() = #1(hd)
+                            if I64Lt(#2(tv), rawStamp)  (*still valid*)
+                            then if I64Eq(#1(tv), rawStamp)  (*check that we already locked it*)
+                                 then return()
+                                 else if I64Eq(#1(tv), 0:long)   (*unlocked*)
+                                      then return()
+                                      else do apply release(locks)
+                                           do SchedulerAction.@atomic-end(vp)
+                                           BUMP_ABORT
+                                           do #0(startStamp) := newStamp (*update stamp to now*)
+                                           fun spin() : () = if I64Eq(#1(tv), 0:long)
+                                                             then return()
+                                                             else do Pause() apply spin()
+                                           do apply spin()
+                                           throw abortK()
+                            else do apply release(locks)
+                                 do SchedulerAction.@atomic-end(vp)
+                                 BUMP_ABORT
+                                 do #0(startStamp) := newStamp  (*update stamp to now*)
+                                 throw abortK()
+                         |nil => return()
+                    end
+                fun acquire(writeSet:List.list, acquired : List.list) : List.list = 
+                    case writeSet
+                        of CONS(hd:writeItem, tl:List.list) =>
+                            let tv : tvar = #0(hd)
+                            let casRes : long = CAS(&1(tv), 0:long, rawStamp) (*lock it*)
+                            if I64Eq(casRes, 0:long)  (*locked for first time*)
+                            then apply acquire(tl, CONS(hd, acquired))
+                            else if I64Eq(casRes, rawStamp)    (*already locked it*)
+                                 then apply acquire(tl, acquired)
+                                 else BUMP_ABORT    (*someone else locked it*)
+                                      let newStamp : stamp = VClock.@bump(/exh)
+                                      do apply validate(readSet, acquired, newStamp)  (*figure out where to abort to*)
+                                      do apply release(acquired)
+                                      do SchedulerAction.@atomic-end(vp)
+                                      throw enter()  (*if all reads are still valid, try and commit again*)
+                         |nil => return(acquired)
+                    end
+                fun update(writes:List.list, newStamp : stamp) : () = 
+                    case writes
+                        of CONS(hd:writeItem, tl:List.list) =>
+                            let tv : tvar = #0(hd)           (*pull out the tvar*)
+                            let newContents : any = #1(hd)   (*get the local contents*)
+                            let newContents : any = promote(newContents)
+                            do #2(tv) := newStamp            (*update version stamp*)
+                            do #0(tv) := newContents         (*update contents*)
+                            do #1(tv) := 0:long              (*unlock*)
+                            apply update(tl, newStamp)       (*update remaining*)
+                         | nil => return()
+                    end
+                let locks : List.list = apply acquire(writeSet, nil)   
+                let newStamp : stamp = VClock.@bump(/exh)
+                let plusOne : stamp = I64Add(rawStamp, 1:long)
+                do apply validate(readSet, locks, newStamp)
+                do apply update(locks, newStamp)
+                do SchedulerAction.@atomic-end(vp)
+                return()
+            throw enter()
         ;
-        
+
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
-            PDebugID("Entering transaction with ID: %d\n")
             let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
             if (#0(in_trans))
-            then PDebug("entering nested transactions\n") apply f(UNIT/exh)
-            else do FLS.@set-key(LOG_KEY, nil / exh)  (*initialize STM log*)
+            then do ccall M_Print ("WARNING: entering nested transaction\n") apply f(UNIT/exh)
+            else do FLS.@set-key(READ_SET, nil / exh)  (*initialize STM log*)
+                 do FLS.@set-key(WRITE_SET, nil / exh)
+                 let stamp : stamp = VClock.@bump(/exh)
+                 let stamp : [stamp] = alloc(stamp)
+                 let stamp : [stamp] = promote(stamp)
+                 do FLS.@set-key(STAMP_KEY, stamp / exh)
                  do #0(in_trans) := true           
                  let res : any = apply f(UNIT/exh)
                  do @commit(/exh)
                  do #0(in_trans) := false
-                 PDebugID("Finished transaction with ID: %d\n")
-                 return(res)
-        ;            
+                 do FLS.@set-key(READ_SET, nil / exh)
+                 do FLS.@set-key(WRITE_SET, nil / exh)
+                 return(res)          
+        ;
 
        define @getID(x:unit / exh:exh) : ml_int =
         let id : int = FLS.@get-id()
@@ -232,10 +242,9 @@ struct
       ;
 
       define @print-stats(x:unit / exh:exh) : unit = 
-        let aborts : ml_int = @get-aborts(x/exh)
-        do ccall M_Print_Int("Total number of aborted transactions is %d\n", #0(aborts))
+        PRINT_ABORT_COUNT
+        PRINT_ALLOC_COUNT
         return(UNIT);
-
     )
 
     	type 'a tvar = _prim(tvar)

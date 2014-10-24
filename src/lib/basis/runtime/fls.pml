@@ -166,11 +166,13 @@ structure FLS :
 
         define @initial-dict() : [int, List.list] = 
         let k0 : [[int], any] = alloc(alloc(DICT_BUILTIN_TOPOLOGY), nil)
-        let k1 : [[int], any] = alloc(alloc(LOG_KEY), nil)
         let flg : ![bool] = alloc(false)
-        let k2 : [[int], any] = alloc(alloc(IN_TRANS), flg)
-        let l : List.list = CONS(k0, CONS(k1, CONS(k2, nil)))
-        let ret : [int, List.list] = alloc(3, l)
+        let k1 : [[int], any] = alloc(alloc(IN_TRANS), flg)
+        let k2 : [[int], any] = alloc(alloc(READ_SET), nil)
+        let k3 : [[int], any] = alloc(alloc(WRITE_SET), nil)
+        let k4 : [[int], any] = alloc(alloc(STAMP_KEY), alloc(0:long))
+        let l : List.list = CONS(k4, CONS(k3, CONS(k2, CONS(k1, CONS(k0, nil)))))
+        let ret : [int, List.list] = alloc(4, l)
         return(ret)
       ;
 

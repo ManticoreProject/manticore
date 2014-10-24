@@ -23,7 +23,7 @@ type ListHandle = (List tvar) tvar * (List tvar) tvar
 fun getHead ((h, t) : ListHandle) = h
 fun getTail ((h, t) : ListHandle) = t
 
-fun newList (): ListHandle = 
+fun newList () : ListHandle = 
     let val null = STM.new Null
         val hd = STM.new (Head null)
         val hdPtr = STM.new hd
@@ -41,14 +41,10 @@ fun addToTail ((_, tailPtrPtr) : ListHandle) (v : int) : List tvar =
 
 fun find (ptrPtr, _) i = 
     let fun find2 curNodePtr i = 
-            let val curNode = STM.get curNodePtr
-            in case curNode
+            case STM.get curNodePtr
                 of Null => false
-                 | Node(curval, curnext) => 
-                    if curval = i
-                    then true
-                    else find2 curnext i
-            end
+                 | Node(curval, curnext) =>
+                    if curval = i then true else find2 curnext i
         fun trans() = 
             let val ptr = STM.get ptrPtr
                 val Head startPtr = STM.get ptr
@@ -59,42 +55,90 @@ fun next l = case l
                 of Node(_, n) => n
                  | Head n => n
 
-fun valOf l = case l 
-                of Node(v, _) => v
-                 
 fun delete(ptrPtr, _) i =
-    let fun delete2 prevPtr i = 
+    let fun delete2(prevPtr, i) = 
             let val prevNode = STM.get prevPtr
                 val curNodePtr = next prevNode
-                val curNode = STM.get curNodePtr
-            in case curNode
+            in case STM.get curNodePtr
                 of Null => false
-                 | Node(curval, nextNode) =>
+                 | Node(curval, nextNode) => 
                     if curval <> i
-                    then delete2 curNodePtr i
+                    then delete2(curNodePtr, i)
                     else (case prevNode
                             of Head _ => (STM.put(prevPtr, Head nextNode); true)
-                             | Node _ => (STM.put(prevPtr, Node(valOf prevNode, nextNode)); true))
+                             | Node(v, _) => (STM.put(prevPtr, Node(v, nextNode)); true))
             end
-        fun trans() = 
-            let val startPtr = STM.get ptrPtr
-            in delete2 startPtr i end
+        fun trans() = delete2(STM.get ptrPtr, i)
     in STM.atomic trans end
-                 
-val head = newList()
-val l = addToTail head 12
 
-val b = find head 12
+fun printList (ptrPtr, _) = 
+    let fun lp curPtr = 
+            case STM.get curPtr
+                of Null => print "\n"
+                 | Head n => lp n
+                 | Node(v, n) => (print (Int.toString v ^ ", "); lp n)
+    in lp (STM.get ptrPtr) end
 
-val _ = if b then print "true\n" else print "false\n"
+fun add head i = 
+    if i = 0
+    then ()
+    else (addToTail head i; add head (i-1))
 
-val b = delete head 12
+fun remove head i = 
+    if i = 0
+    then ()
+    else (delete head i; remove head (i-1))
 
-val _ = if b then print "true\n" else print "false\n"
+val l = newList()
 
-val b = find head 12
+fun start i n k = 
+    if i = 0
+    then nil
+    else let val ch = PrimChan.new()
+             val _ = spawn(add l n; remove l k; PrimChan.send(ch, i))
+         in ch::start (i-1) n k
+         end
 
-val _ = if b then print "true\n" else print "false\n"
+fun join chs = 
+    case chs 
+        of ch::chs' => (PrimChan.recv ch; join chs')
+         | nil => ()
+
+val _ = join(start 4 10 5)
+val _ = (STM.atomic (fn _ => printList l))
+val _ = STM.printStats()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

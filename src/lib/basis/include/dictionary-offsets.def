@@ -3,8 +3,11 @@
 #define _DICT_OFFSETS_DEF_
 
 #define DICT_BUILTIN_TOPOLOGY  0
-#define LOG_KEY                1
-#define IN_TRANS               2
+#define IN_TRANS               1
+#define STAMP_KEY              2
+#define READ_SET               3
+#define WRITE_SET              4
+
 
 #endif _DICT_OFFSETS_DEF_
 

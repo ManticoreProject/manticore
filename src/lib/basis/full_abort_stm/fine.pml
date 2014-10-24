@@ -1,15 +1,21 @@
-(*Finer transactions*)
-val tv = STM.new 0
+
+val new = FullAbortSTM.new
+val put = FullAbortSTM.put
+val get = FullAbortSTM.get
+val atomic = FullAbortSTM.atomic
+val printStats = FullAbortSTM.printStats
+
+val tv = new 0
 
 fun bump () =
-    let val old = STM.get tv
-        val _ = STM.put(tv, old+1)
+    let val old = get tv
+        val _ = put(tv, old+1)
     in () end
 
 fun bumpN n =
     if n = 0
     then ()
-    else (STM.atomic bump; bumpN (n-1))
+    else (atomic bump; bumpN (n-1))
 
 fun start n k = 
     if n = 0 
@@ -26,6 +32,6 @@ fun join chs =
          
 val _ = join (start 4 100)
 
-val res = STM.atomic(fn () => STM.get tv)
+val res = atomic(fn () => get tv)
 val _ = print ("Result is " ^ (Int.toString res) ^ "\n")
-val _ = STM.printCommits()
+val _ = printStats()
