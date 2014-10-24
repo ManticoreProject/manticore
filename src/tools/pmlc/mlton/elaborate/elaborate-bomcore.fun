@@ -883,15 +883,28 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       newEnvs
     end
 
+  (* FIXME: these should be returning bomdecs *)
   fun elaborateBomDec (dec: AstBOM.Definition.t, tyEnvs as {env, bomEnv}) =
     case AstBOM.Definition.node dec of
-      AstBOM.Definition.Datatype dtdefs =>
-        let
-          val envWithTys = foldl extendEnvForDataTypeDef tyEnvs dtdefs
-          val envWithDefs = foldl elaborateDataTypeDef envWithTys dtdefs
-        in
-          (CoreML.Dec.BomDecs [], #bomEnv envWithDefs)
-        end
+       AstBOM.Definition.Extern (cReturnTy, bomId, cArgTys, attrs) =>
+         let
+           val cReturnTy' = CoreBOM.CReturnTy.fromAst cReturnTy
+           val cArgTys' = map CoreBOM.CArgTy.fromAst cArgTys
+           val attrs' = CoreBOM.Attr.fromAst attrs
+           (* TODO: what type should this value have? does it go in VE? *)
+           val valId = CoreBOM.Val.error
+           val dec = CoreBOM.Definition.Extern (cReturnTy', valId,
+             cArgTys', attrs')
+         in
+           (CoreML.Dec.BomDecs [], bomEnv)
+         end
+    |  AstBOM.Definition.Datatype dtdefs =>
+         let
+           val envWithTys = foldl extendEnvForDataTypeDef tyEnvs dtdefs
+           val envWithDefs = foldl elaborateDataTypeDef envWithTys dtdefs
+         in
+           (CoreML.Dec.BomDecs [], #bomEnv envWithDefs)
+         end
     | AstBOM.Definition.DatatypeAlias (bomId, longTyId) =>
         let
           val error = error (AstBOM.LongTyId.region, AstBOM.LongTyId.layout,

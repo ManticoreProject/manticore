@@ -22,6 +22,7 @@ signature CORE_BOM =
     structure Attr: sig
       type t
 
+      val fromAst: AstBOM.Attrs.t -> t list
       val flattenFromAst: AstBOM.Attrs.t option -> t list
     end
 
@@ -233,9 +234,19 @@ signature CORE_BOM =
     end
 
     structure CArgTy: sig
+      datatype t
+        = Raw of RawTy.t
+        | VoidPointer
+
+      val fromAst: AstBOM.CArgTy.t -> t
     end
 
     structure CReturnTy: sig
+      datatype t
+        = CArg of CArgTy.t
+        | Void
+
+      val fromAst: AstBOM.CReturnTy.t -> t
     end
 
     structure VarPat: sig

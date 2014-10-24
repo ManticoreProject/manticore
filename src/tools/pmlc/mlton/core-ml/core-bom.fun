@@ -65,14 +65,16 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure Attr = struct
     type t = string
 
+    fun fromAst attrs =
+      let
+        val AstBOM.Attrs.T unwrapped = AstBOM.Attrs.node attrs
+      in
+        unwrapped
+      end
+
     fun flattenFromAst attrs =
       case attrs of
-        SOME attrs =>
-          let
-            val AstBOM.Attrs.T unwrapped = AstBOM.Attrs.node attrs
-          in
-            unwrapped
-          end
+        SOME attrs => fromAst attrs
       | _ => []
   end
 
@@ -595,9 +597,25 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   structure CArgTy = struct
+    datatype t
+      = Raw of RawTy.t
+      | VoidPointer
+
+    fun fromAst astArgTy =
+      case AstBOM.CArgTy.node astArgTy of
+        AstBOM.CArgTy.Raw rawTy => Raw (RawTy.fromAst rawTy)
+      | AstBOM.CArgTy.VoidPointer => VoidPointer
   end
 
   structure CReturnTy = struct
+    datatype t
+      = CArg of CArgTy.t
+      | Void
+
+    fun fromAst astReturnTy =
+      case AstBOM.CReturnTy.node astReturnTy of
+        AstBOM.CReturnTy.CArg cArgTy => CArg (CArgTy.fromAst cArgTy)
+      | AstBOM.CReturnTy.Void => Void
   end
 
   structure VarPat = struct
