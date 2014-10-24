@@ -68,7 +68,7 @@ fun delete (l:ListHandle) (i:int) =
             end
     in atomic(fn () => lp l) end            
 
-val ITERS = 500
+val ITERS = 400
 val THREADS = 10
 val MAXVAL = 1000
 
@@ -116,7 +116,9 @@ fun remove l v =
 
 fun check (l:ListHandle) (remaining:int list) = 
     case STM.get l
-        of Null => print "List is correct\n"
+        of Null => (case remaining
+                      of _::_ => (print "List is incorrect!\n"; raise Fail "test failed")
+                       | nil => print "List is correct\n")
          | Node(v, next) => check next (remove remaining v)
          | Head n => check n remaining
 

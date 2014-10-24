@@ -467,6 +467,7 @@ structure Inline : sig
                  val m = C.MODULE{name=name, externs=externs, body=fb}
                  val _ = Census.census m
                  val _ = dump m "post"
+                 val _ = print ("Total number of inlines is: " ^ Int.toString((ST.count cntFOInline ) + (ST.count cntFOInline )) ^ "\n")
              in
                  m
              end)

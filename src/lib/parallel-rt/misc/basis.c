@@ -17,6 +17,16 @@
 #include "heap.h"
 #include "options.h"
 
+int counters[5];
+
+void M_BumpCounter(int index){
+    FetchAndInc(counters+index);
+}
+
+int M_GetCounter(int index){
+    return(counters[index]);
+}
+
 /* is a string in hex format? */
 STATIC_INLINE bool isHex (const char *s, int len)
 {

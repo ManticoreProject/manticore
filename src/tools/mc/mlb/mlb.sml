@@ -356,14 +356,11 @@ structure MLB : sig
 	  val errStrm = Error.mkErrStream file
 	  val (inStrm : TextIO.instream, reap) = preprocess(List.rev preprocs, file)
 	  val ptOpt = Parser.parseFile (errStrm, inStrm)
-	                handle ex => (print "handling exn\n"; outputPreprocessed(file, preprocs); raise ex)
-		     (*handle Fail s => raise Fail (file^": "^s)*)  
-          
 	  in
 	    reap();
 	   case ptOpt
 	     of SOME pt => SOME (errStrm, pt)
-	      | NONE => (checkForErrors[errStrm]; outputPreprocessed(file, preprocs); NONE)
+	      | NONE => (outputPreprocessed(file, preprocs); checkForErrors[errStrm]; NONE)
 	  end
 
   (* load the basis library *)
@@ -392,8 +389,9 @@ structure MLB : sig
 	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
 	  (* partial abort software transactional memory*)
 	    val stm = loadMLB(LoadPaths.stmLib, env)
+	    val fullAbortSTM = loadMLB(LoadPaths.fullAbortSTM, env)
             in
-	       stm @ parrayPts @ cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts
+	       fullAbortSTM @ stm @ parrayPts @ cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts
 	    end
 
     val emptyEnv = Env{loc=(0,0), pts=[], preprocs=[]}
