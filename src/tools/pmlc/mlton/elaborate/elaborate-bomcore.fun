@@ -432,6 +432,15 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               CoreBOM.Literal.typeOf lit')
           end
 
+      (* FIXME: intinf vector? should this be something else? *)
+      | AstBOM.SimpleExp.MLString mlString =>
+          let
+            val sExp = CoreBOM.SimpleExp.MLString mlString
+          (* FIXME: what type should this be? tuple? *)
+          in
+            CoreBOM.SimpleExp.new (sExp, CoreBOM.BomType.Error)
+          end
+
       | _ => raise Fail "not implemented"
     end
 

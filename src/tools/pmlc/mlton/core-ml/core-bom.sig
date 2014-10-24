@@ -307,7 +307,7 @@ signature CORE_BOM =
         | Promote of t
         | TypeCast of BomType.t * t
         | Lit of Literal.t
-        (* | MLString *)
+        | MLString of IntInf.int vector
         | Val of Val.t
 
         val new: node * BomType.t -> t

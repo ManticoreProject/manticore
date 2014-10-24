@@ -713,6 +713,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | RecAccess of IntInf.int * simpleexp_t * simpleexp_t option
     | Promote of simpleexp_t
     | TypeCast of BomType.t * simpleexp_t
+    | MLString of IntInf.int vector
     | Lit of Literal.t
     | Val of Val.t
   and simpleexp_t = SExp of {node: simpleexp_node, ty: BomType.t}
