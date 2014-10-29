@@ -109,9 +109,10 @@ AC_SUBST(BUILD_DATE)
 dnl
 dnl check for standard programs
 dnl
-AC_GNU_SOURCE
+AC_PROG_CC([clang gcc cc])
 AC_PROG_CC_C99
 AC_PROG_CXX
+AC_GNU_SOURCE
 AC_CHECK_PROG(AR, ar, ar)
 AC_PROG_RANLIB
 AC_PROG_INSTALL
