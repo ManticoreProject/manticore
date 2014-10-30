@@ -109,7 +109,7 @@ struct
                                          throw abortK(current)
                                     else apply abort(readSet, newStamp, Option.NONE, nil)
                                 | Option.NONE => return()
-                             end    
+                             end
                 end
 #endif                
            fun chkLog(writeSet : List.list) : Option.option = (*use local copy if available*)

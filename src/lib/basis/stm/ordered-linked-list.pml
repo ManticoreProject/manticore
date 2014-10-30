@@ -107,7 +107,7 @@ fun initialize n =
              val _ = add l randNum
          in initialize (n-1) end
 
-val _ = initialize 1000
+val _ = initialize 2000
 val startTime = Time.now()
 val _ = join(start l THREADS)
 val endTime = Time.now()
