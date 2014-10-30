@@ -45,7 +45,6 @@ struct
 #define PRINT_ALLOC_COUNT
 #endif
 
-#define TIME
 
 #ifdef TIME
 #define START do ccall M_StartTimer()
@@ -139,8 +138,8 @@ struct
                of Option.SOME(v:any) => STOP return(v)
                 | Option.NONE =>
                    (*must have exclusive access when reading for first time*)
-                   let oldVal : long = CAS(&1(tv), 0:long, #0(myStamp))
-                   if I64Eq(oldVal, 0:long)
+                   let swapRes : long = CAS(&1(tv), 0:long, #0(myStamp))
+                   if I64Eq(swapRes, 0:long)
                    then let current : any = #0(tv)
                         do #1(tv) := 0:long
                         let item : readItem = alloc(tv, retK, writeSet)
