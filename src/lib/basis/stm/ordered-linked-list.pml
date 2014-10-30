@@ -6,59 +6,7 @@
  * Linked list implementation based on Software Transactional Memory with partial aborts.
  *)
 
-(*
-------partial abort version-----  (inlined 854)
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 387
-Total was: 1.974 seconds
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 498
-Total was: 1.899 seconds
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 290
-Total was: 1.903 seconds
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 323
-Total was: 1.861 seconds
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 330
-Total was: 1.952 seconds
-
-
------Full abort with capturing continuations----(inlined 882)
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 285
-Total was: 2.053 seconds
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 282
-Total was: 2.041 seconds
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 190
-Total was: 2.042 seconds
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 194
-Total was: 2.045 seconds
-
-
------Full abort without capturing continuations----(inlined 874)
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 1
-Total was: 0.815 seconds
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 0
-Total was: 0.825 seconds
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 0
-Total was: 0.804 seconds
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 0
-Total was: 0.798 seconds
-gol3571-02:stm ml9951$ ./a.out
-Total number of aborted transactions is 0
-Total was: 0.822 seconds
-*)
-
-structure WhichSTM = FullAbortSTM
+structure WhichSTM = STM
 
 val put = WhichSTM.put
 val get = WhichSTM.get
@@ -75,7 +23,7 @@ type ListHandle = List tvar
 
 fun newList() : ListHandle = new (Head(new Null))
 
-fun add (l:ListHandle) (v:int)  = 
+fun add (l:ListHandle) (v:int) = 
     let fun lp l = 
             case get l 
                 of Head n => lp n
@@ -120,26 +68,22 @@ fun delete (l:ListHandle) (i:int) =
             end
     in atomic(fn () => lp l) end            
 
-val FINDS = 2
-val DELETES = 1
-val INSERTS = 4
-val ITERS = 150
+val ITERS = 1200
 val THREADS = 4
-val MAXVAL = 1000
+val MAXVAL = 100000
 
-fun workLoop l i f = 
-    if i = 0
-    then ()
-    else let val randNum = Rand.inRangeInt(0, MAXVAL)
-             val _ = f l randNum
-         in workLoop l (i-1) f end
-         
+fun ignore _ = ()
+
 fun threadLoop l i = 
     if i = 0
     then ()
-    else let val _ = workLoop l INSERTS add
-             val _ = workLoop l FINDS find
-             val _ = workLoop l DELETES delete
+    else let val randNum = Rand.inRangeInt(0, MAXVAL)
+             val prob = Rand.inRangeInt(0, 7)
+             val _ = case prob
+                        of 0 => ignore(delete l randNum)
+                         | 1 => ignore(find l randNum)
+                         | 2 => ignore(find l randNum )
+                         | _ => ignore(add l randNum)
          in threadLoop l (i-1) end
          
 fun start l i =

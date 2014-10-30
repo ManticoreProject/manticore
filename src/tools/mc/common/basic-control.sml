@@ -47,6 +47,8 @@ structure BasicControl :  sig
   (* perform dead function elimination on the parse tree *)
     val treeShakeDebug : bool Controls.control
 
+    val eagerConflict : bool Controls.control
+
   (* wrap a 'pre -> 'post pass with a tracing diagnostic, controled by the
    * "verbose" control.
    *)
@@ -162,6 +164,15 @@ structure BasicControl :  sig
 	    pri = [0, 1, 2],
 	    obscurity = 0,
 	    help = "include debugging support",
+	    default = false
+	  }
+
+  (* enable eager STM conflict detection *)
+    val eagerConflict : bool Controls.control = Controls.genControl {
+	    name = "eagerConflict",
+	    pri = [0, 1, 2],
+	    obscurity = 0,
+	    help = "enable eager STM conflict deterction",
 	    default = false
 	  }
 

@@ -6,6 +6,7 @@
  * Software Transactional Memory with partial aborts.
  *)
 
+
 #define Read 0
 #define Write 1
 
@@ -31,7 +32,6 @@ struct
 
 (*Turn on/off continuation capturing*)
 
-#define CAPTURE_CONTS
 
 #ifndef CAPTURE_CONTS
 #define CC(arg)
@@ -69,7 +69,7 @@ struct
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
 
-        typedef readItem = [tvar CC(cont())]; 
+        typedef readItem = [tvar]; 
 
         typedef writeItem = [tvar,    (*0: tvar operated on*)
                              any];    (*1: contents of local copy*)
@@ -82,58 +82,47 @@ struct
 
         define @get(tv : tvar / exh:exh) : any = 
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
-            cont enter() = 
-                let v : any = #0(tv)
-                (*figure out where to abort to*)
-                fun abort(readSet : List.list, newStamp : stamp) : () = 
-                    case readSet 
-                        of CONS(hd:readItem, tl:List.list) =>
-                            do apply abort(tl, newStamp)
-                            if I64Lt(#2(#0(hd)), #0(myStamp))
-                            then return()
-                            else let e : exn = Fail("Aborting transaction")
-                                 throw exh(e)
-                         |nil => return()
-                   end
-                let readSet : List.list = FLS.@get-key(READ_SET / exh)
-                let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
-                fun chkLog(writeSet : List.list) : Option.option = (*use local copy if available*)
-                    case writeSet
-                        of CONS(hd:writeItem, tl:List.list) =>
-                            if Equal(#0(hd), tv)
-                            then if I64Lt(#2(#0(hd)), #0(myStamp))
-                                 then let res : Option.option = Option.SOME(#1(hd))
-                                      return(res)
-                                 else BUMP_ABORT
-                                      PDebugID("Aborting via eager conflict detection with ID: %d\n")
-                                      let newStamp : stamp = VClock.@bump(/exh)
-                                      do apply abort(readSet, newStamp)
-                                      do ccall M_Print("Error: we should never get here\n")
-                                      return(Option.NONE)
-                            else apply chkLog(tl)
-                        | nil => return (Option.NONE)
-                    end
-                let localRes : Option.option = apply chkLog(writeSet)
-                case localRes
-                    of Option.SOME(v:any) => return(v)
-                     | Option.NONE =>
-                        CCNC(cont theAbortContinuation() =
-                      (*      do FLS.@set-key(READ_SET, readSet / exh) (*reset log*)
-                            do FLS.@set-key(WRITE_SET, writeSet / exh) 
-                            PDebugID("Inside abort continuation with ID: %d\n")   *)
-                            let e : exn = Fail(@"dummy")
-                            throw exh(e))
-                        fun lp() : any = (*must have exclusive access to read*)
-                            if I64Eq(#1(tv), 0:long)
-                            then return(#0(tv))
-                            else do Pause() apply lp()
-                        let current : any = apply lp()
-                        let item : readItem = alloc(tv CC(theAbortContinuation))
-                        let newReadSet : List.list = CONS(item, readSet)
-                        do FLS.@set-key(READ_SET, newReadSet / exh)
-                        return(current)
+            let v : any = #0(tv)
+            let readSet : List.list = FLS.@get-key(READ_SET / exh)
+            let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
+            fun chkLog(writeSet : List.list) : Option.option = (*use local copy if available*)
+                case writeSet
+                    of CONS(hd:writeItem, tl:List.list) =>
+#ifdef EAGER_CONFLICT                    
+                        if Equal(#0(hd), tv)
+                        then if I64Lt(#2(#0(hd)), #0(myStamp))
+                             then let res : Option.option = Option.SOME(#1(hd))
+                                  return(res)
+                             else BUMP_ABORT
+                                  PDebugID("Aborting via eager conflict detection with ID: %d\n")
+                                  let newStamp : stamp = VClock.@bump(/exh)
+                                  let e : exn = Fail("Aborting transaction")
+                                  throw exh(e)
+                        else apply chkLog(tl)
+#else
+                        if Equal(#0(hd), tv)
+                        then let res : Option.option = Option.SOME(#1(hd))
+                             return(res)
+                        else apply chkLog(tl)
+#endif                        
+                    | nil => return (Option.NONE)
                 end
-            throw enter()
+            let localRes : Option.option = apply chkLog(writeSet)
+            case localRes
+                of Option.SOME(v:any) => return(v)
+                 | Option.NONE =>
+                    let swapRes : long = CAS(&1(tv), 0:long, #0(myStamp))
+                    do if I64Eq(swapRes, 0:long)
+                       then return()
+                       else let e : exn = Fail("Aborting transaction")
+                            throw exh(e)
+                    let current : any = #0(tv)
+                    do #1(tv) := 0:long
+                    let item : readItem = alloc(tv)
+                    let newReadSet : List.list = CONS(item, readSet)
+                    do FLS.@set-key(READ_SET, newReadSet / exh)
+                    return(current)
+            end
         ;
 
         define @put(arg:[tvar, any] / exh:exh) : unit =
@@ -164,27 +153,20 @@ struct
                 fun validate(readSet : List.list, locks : List.list, newStamp : stamp) : () = 
                     case readSet 
                         of CONS(hd:readItem, tl:List.list) =>
-                            do apply validate(tl, locks, newStamp)  (*validate in order*)
                             let tv : tvar = #0(hd)
                             let e : exn = Fail("Aborting transaction")
                             if I64Lt(#2(tv), rawStamp)  (*still valid*)
                             then if I64Eq(#1(tv), rawStamp)  (*check that we already locked it*)
-                                 then return()
+                                 then apply validate(tl, locks, newStamp)
                                  else if I64Eq(#1(tv), 0:long)   (*unlocked*)
-                                      then return()
+                                      then apply validate(tl, locks, newStamp)
                                       else do apply release(locks)
                                            do SchedulerAction.@atomic-end(vp)
                                            BUMP_ABORT
-                                           do #0(startStamp) := newStamp (*update stamp to now*)
-                                           fun spin() : () = if I64Eq(#1(tv), 0:long)
-                                                             then return()
-                                                             else do Pause() apply spin()
-                                           do apply spin()
                                            throw exh(e)
                             else do apply release(locks)
                                  do SchedulerAction.@atomic-end(vp)
                                  BUMP_ABORT
-                                 do #0(startStamp) := newStamp  (*update stamp to now*)
                                  throw exh(e)
                          |nil => return()
                     end
@@ -198,11 +180,10 @@ struct
                             else if I64Eq(casRes, rawStamp)    (*already locked it*)
                                  then apply acquire(tl, acquired)
                                  else BUMP_ABORT     (*someone else locked it*)
-                                      let newStamp : stamp = VClock.@bump(/exh)
-                                      do apply validate(readSet, acquired, newStamp)  (*figure out where to abort to*)
                                       do apply release(acquired)
                                       do SchedulerAction.@atomic-end(vp)
-                                      throw enter()  (*if all reads are still valid, try and commit again*)
+                                      let e : exn = Fail("Aborting transaction")
+                                      throw exh(e)
                          |nil => return(acquired)
                     end
                 fun update(writes:List.list, newStamp : stamp) : () = 
@@ -245,8 +226,8 @@ struct
                      do #0(in_trans) := false
                      do FLS.@set-key(READ_SET, nil / exh)
                      do FLS.@set-key(WRITE_SET, nil / exh)
-                     return(res)        
-            throw enter()  
+                     return(res)
+            throw enter()
         ;
 
        define @getID(x:unit / exh:exh) : ml_int =

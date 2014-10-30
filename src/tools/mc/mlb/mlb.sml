@@ -139,7 +139,8 @@ structure MLB : sig
 	    add (Controls.get BasicControl.sequential, "SEQUENTIAL",
 	    add (Controls.get BasicControl.logging, "ENABLE_LOGGING",
 	    add (not(Controls.get BasicControl.debug), "NDEBUG",
-	      [])))
+	    add (Controls.get BasicControl.eagerConflict, "EAGER_CONFLICT",
+	      []))))
 	  end
 
   (* pass the file through a sequence of preprocessors *)

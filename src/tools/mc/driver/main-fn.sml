@@ -227,6 +227,7 @@ functor MainFn (
 	  \    -perf            build an executable with hw perf counters enabled\n\
 	  \    -sequential      compile a sequential-mode program\n\
 	  \    -verbose         compile in verbose mode\n\
+	  \    -eager           enable eager STM conflict detection\n\
 	  \"
 
     fun message (level, b) = (
@@ -313,6 +314,7 @@ functor MainFn (
 		| "-gcstats" => set BasicControl.gcStats
 		| "-debug" => set BasicControl.debug
 		| "-perf" => set BasicControl.perf
+		| "-eager" => set BasicControl.eagerConflict
 		| _ => badopt ()
 	      (* end case *))
 	  end

@@ -30,7 +30,7 @@ structure CPSUtil : sig
    * according to the given substitution.
    *)
     val copyExp : (subst * CPS.exp) -> CPS.exp
-
+    val substExp : (subst * CPS.exp) -> CPS.exp
   end = struct
 
     structure C = CPS

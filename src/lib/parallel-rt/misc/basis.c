@@ -382,6 +382,44 @@ Time_t M_GetTime ()
     return 1000000 * t.tv_sec + t.tv_usec;
 }
 
+Time_t timeAccumulator = 0;
+Time_t startTime = 0;
+/*Accumulate timer*/
+void M_StartTimer (){
+    struct timeval t;
+
+#if HAVE_CLOCK_GETTIME
+    struct timespec time;
+    clock_gettime (CLOCK_REALTIME, &time);
+    t.tv_sec = time.tv_sec;
+    t.tv_usec = time.tv_nsec / 1000;
+#else
+    gettimeofday (&t, 0);
+#endif
+
+    startTime = 1000000 * t.tv_sec + t.tv_usec;
+}
+
+/*Accumulate timer*/
+void M_StopTimer (){
+    struct timeval t;
+
+#if HAVE_CLOCK_GETTIME
+    struct timespec time;
+    clock_gettime (CLOCK_REALTIME, &time);
+    t.tv_sec = time.tv_sec;
+    t.tv_usec = time.tv_nsec / 1000;
+#else
+    gettimeofday (&t, 0);
+#endif
+
+    timeAccumulator += (1000000 * t.tv_sec + t.tv_usec) - startTime;
+}
+
+Time_t M_GetTimeAccum(){
+    return timeAccumulator;
+}
+
 double M_GetCPUTime ()
 {
   return ((double)clock ()) / CLOCKS_PER_SEC;
