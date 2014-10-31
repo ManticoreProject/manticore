@@ -151,8 +151,9 @@ struct
                         let newStamp : stamp = VClock.@bump(/exh)
                         do apply abort(readSet, newStamp, Option.NONE, nil)
 #endif                        
-                        let e : exn = Fail("Aborting transaction")
+                        let e : exn = Fail(@"__ABORT_EXCEPTION__")
                         STOP
+                        do ccall M_Print_Long("swapRes was %ld\n", swapRes)
                         throw exh(e)
            end
        ;
@@ -264,7 +265,19 @@ struct
                      let stamp : [stamp] = promote(stamp)
                      do FLS.@set-key(STAMP_KEY, stamp / exh)
                      do #0(in_trans) := true           
-                     cont abortK(e:exn) = BUMP_ABORT do #0(in_trans) := false throw enter()
+                     cont abortK(e:exn) = 
+                        case e  (*Check that the exception received was because of an aborted TX*)
+                            of Fail(s:ml_string) => 
+                                 let arg : [ml_string, ml_string] = alloc(@"__ABORT_EXCEPTION__", s)
+                                 let res : bool = String.@same(arg / exh)
+                                 if(res) 
+                                 then do ccall M_Print("Inside abortK\n") 
+                                      BUMP_ABORT 
+                                      do #0(in_trans) := false 
+                                      throw enter()
+                                 else throw exh(e)
+                             | _ => throw exh(e)
+                        end
                      let res : any = apply f(UNIT/abortK)
                      do @commit(/abortK)
                      do #0(in_trans) := false

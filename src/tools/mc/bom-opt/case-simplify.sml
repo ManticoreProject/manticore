@@ -552,13 +552,26 @@ DEBUG*)
 		  end
 	      | LitCase{rules, ...} => literalCase (s, tys, argument, rules, dflt)
 	      | ExnCase{rules, hasDflt=true} => let
-(*
-		fun exnCase [] = Option.valOf dflt
-		  | exnCase ((dc, ys, e)::r) = ??
-*)
-		in
-		  raise Fail "exception cases not implemented yet" (* FIXME *)
-		end
+	                val tag = BV.new("_tag", BTy.T_Any)
+                        val hdr = BV.new("_hdr", BTy.T_Tuple(false, [BTy.T_Any, BTy.T_Any]))
+                        fun exnCase l = case l
+                                of [] => Option.valOf dflt
+                                 | (dc:BTy.data_con, ys:B.var list, e : B.exp)::r =>  let
+			                val (s, argument') = retype(s, argument, dconToRepTy dc)   
+			                val (s, ys) = xformVars(s, ys)
+			                fun sel ([], _) = xformE(s, tys, e)
+			                  | sel (x::xs, i) = B.mkStmt([x], B.E_Select(i, argument'), sel(xs, i+1))                          
+			                val action = B.mkStmts([
+				         ([argument'], B.E_Cast(BV.typeOf argument', hdr))],
+				          sel (ys, 1))
+				        val thisTag = BV.new("_thisTag", BTy.T_Any)
+                                        val cond = Prim.Equal(tag, thisTag)
+		                        in B.mkStmt([thisTag], B.E_Const (Literal.Tag(BOMTyCon.dconName dc), BTy.T_Any), 
+		                                B.mkIf(cond, action, exnCase r)) end        
+                        val s = B.mkStmts([([hdr], B.E_Cast(BTy.T_Tuple(false,[BTy.T_Any, BTy.T_Any]), argument)),
+                                           ([tag], B.E_Select(0, hdr))], 
+                                exnCase rules)           
+		in s end
 	      | ExnCase _ => raise Fail "exception case w/o default"
 	    (* end case *)
 	  end

@@ -6,7 +6,7 @@
  * Linked list implementation based on Software Transactional Memory with partial aborts.
  *)
 
-structure WhichSTM = STM
+structure WhichSTM = FullAbortSTM
 
 val put = WhichSTM.put
 val get = WhichSTM.get
@@ -68,22 +68,26 @@ fun delete (l:ListHandle) (i:int) =
             end
     in atomic(fn () => lp l) end            
 
-val ITERS = 1200
+val ITERS = 2000
 val THREADS = 4
-val MAXVAL = 100000
+val MAXVAL = 10000
 
 fun ignore _ = ()
+
+val READS = 2
+val WRITES = 2
+val DELETES = 2
 
 fun threadLoop l i = 
     if i = 0
     then ()
     else let val randNum = Rand.inRangeInt(0, MAXVAL)
-             val prob = Rand.inRangeInt(0, 7)
-             val _ = case prob
-                        of 0 => ignore(delete l randNum)
-                         | 1 => ignore(find l randNum)
-                         | 2 => ignore(find l randNum )
-                         | _ => ignore(add l randNum)
+             val prob = Rand.inRangeInt(0, READS+WRITES+DELETES)
+             val _ = if prob < READS
+                     then ignore(find l randNum)
+                     else if prob < READS + WRITES
+                          then ignore(add l randNum)
+                          else ignore(delete l randNum)
          in threadLoop l (i-1) end
          
 fun start l i =
