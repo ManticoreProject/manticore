@@ -93,16 +93,14 @@ struct
                         then if I64Lt(#2(#0(hd)), #0(myStamp))
                              then let res : Option.option = Option.SOME(#1(hd))
                                   return(res)
-                             else BUMP_ABORT
-                                  PDebugID("Aborting via eager conflict detection with ID: %d\n")
+                             else PDebugID("Aborting via eager conflict detection with ID: %d\n")
                                   let newStamp : stamp = VClock.@bump(/exh)
                                   let e : exn = Fail("Aborting transaction")
                                   throw exh(e)
                         else apply chkLog(tl)
 #else
                         if Equal(#0(hd), tv)
-                        then let res : Option.option = Option.SOME(#1(hd))
-                             return(res)
+                        then return(Option.SOME(#1(hd)))
                         else apply chkLog(tl)
 #endif                        
                     | nil => return (Option.NONE)
@@ -162,11 +160,9 @@ struct
                                       then apply validate(tl, locks, newStamp)
                                       else do apply release(locks)
                                            do SchedulerAction.@atomic-end(vp)
-                                           BUMP_ABORT
                                            throw exh(e)
                             else do apply release(locks)
                                  do SchedulerAction.@atomic-end(vp)
-                                 BUMP_ABORT
                                  throw exh(e)
                          |nil => return()
                     end
@@ -179,8 +175,7 @@ struct
                             then apply acquire(tl, CONS(hd, acquired))
                             else if I64Eq(casRes, rawStamp)    (*already locked it*)
                                  then apply acquire(tl, acquired)
-                                 else BUMP_ABORT     (*someone else locked it*)
-                                      do apply release(acquired)
+                                 else do apply release(acquired)
                                       do SchedulerAction.@atomic-end(vp)
                                       let e : exn = Fail("Aborting transaction")
                                       throw exh(e)
@@ -220,7 +215,7 @@ struct
                      let stamp : [stamp] = promote(stamp)
                      do FLS.@set-key(STAMP_KEY, stamp / exh)
                      do #0(in_trans) := true           
-                     cont abortK(e:exn) = do #0(in_trans) := false throw enter()
+                     cont abortK(e:exn) = BUMP_ABORT do #0(in_trans) := false throw enter()
                      let res : any = apply f(UNIT/abortK)
                      do @commit(/abortK)
                      do #0(in_trans) := false

@@ -76,6 +76,19 @@ structure Threads (*: sig
 	    return (fls)
 	  ;
 
+        define @spawn-on(arg : [[int],fun(unit / exh -> unit)] / exh:exh) : unit = 
+                let vp : [int] = #0(arg)
+                let f : fun(unit / exh -> unit) = #1(arg)
+                cont fiber(x:PT.unit) = 
+                        cont threadExh(e:PT.exn) = return(UNIT)
+                        let _ : unit = apply f(UNIT / threadExh)
+                        SchedulerAction.@stop()
+                let fls : FLS.fls = FLS.@new-pinned(#0(vp))
+                let self : vproc = host_vproc
+                let dst : vproc = VProc.@vproc-by-id(#0(vp))
+                do @enqueue-ready(self, dst, fls, fiber)
+                return(UNIT);
+
 	define inline @yield (_ : unit / _ : exh) : unit =
 	    do SchedulerAction.@yield ()
 	    return (UNIT)
@@ -88,7 +101,7 @@ structure Threads (*: sig
       )
 
     val yield : unit -> unit = _prim(@yield)
-
+    val spawnOn : int * (unit -> unit) -> unit = _prim(@spawn-on)
     val exit : unit -> 'a = _prim(@thread-exit)
 
   end

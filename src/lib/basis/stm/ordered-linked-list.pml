@@ -6,7 +6,7 @@
  * Linked list implementation based on Software Transactional Memory with partial aborts.
  *)
 
-structure WhichSTM = FullAbortSTM
+structure WhichSTM = STM
 
 val put = WhichSTM.put
 val get = WhichSTM.get
@@ -90,8 +90,8 @@ fun start l i =
     if i = 0
     then nil
     else let val ch = PrimChan.new()
-             val _ = spawn(threadLoop l ITERS; PrimChan.send(ch, i))
-         in ch::start l (i-1) end         
+             val _ = Threads.spawnOn(i-1, fn _ => (threadLoop l ITERS; PrimChan.send(ch, i)))
+         in ch::start l (i-1) end
 
 fun join chs = 
     case chs
@@ -107,7 +107,7 @@ fun initialize n =
              val _ = add l randNum
          in initialize (n-1) end
 
-val _ = initialize 2000
+val _ = initialize 1000
 val startTime = Time.now()
 val _ = join(start l THREADS)
 val endTime = Time.now()

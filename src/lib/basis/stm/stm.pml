@@ -35,14 +35,9 @@ struct
 #define BUMP_ABORT do ccall M_BumpCounter(0)
 #define PRINT_ABORT_COUNT let counter : int = ccall M_GetCounter(0) \
                           do ccall M_Print_Int("Aborted %d transactions\n", counter)
-#define BUMP_ALLOC do ccall M_BumpCounter(1)
-#define PRINT_ALLOC_COUNT  let counter : int = ccall M_GetCounter(1) \
-                           do ccall M_Print_Int("Allocated %d abort continuations\n", counter)
 #else
 #define BUMP_ABORT
 #define PRINT_ABORT_COUNT
-#define BUMP_ALLOC
-#define PRINT_ALLOC_COUNT
 #endif
 
 
@@ -83,6 +78,10 @@ struct
 
         define @get(tv:tvar / exh:exh) : any = 
             START
+            let vp :vproc = host_vproc
+            let vp : int = VProc.@vproc-id(vp)
+            let vp : int = I32Add(vp, 1)
+            do ccall M_BumpCounter(vp)
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : List.list = FLS.@get-key(READ_SET / exh)
             let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
@@ -284,8 +283,15 @@ struct
       define @timeToString = Time.toString;
         
       define @print-stats(x:unit / exh:exh) : unit = 
+        let vp1 : int = ccall M_GetCounter(1)
+        let vp2 : int = ccall M_GetCounter(2)
+        let vp3 : int = ccall M_GetCounter(3)
+        let vp4 : int = ccall M_GetCounter(4)
+        do ccall M_Print_Int("vp1 = %d\n", vp1)
+        do ccall M_Print_Int("vp2 = %d\n", vp2)
+        do ccall M_Print_Int("vp3 = %d\n", vp3)
+        do ccall M_Print_Int("vp4 = %d\n", vp4)
         PRINT_ABORT_COUNT
-        PRINT_ALLOC_COUNT
         let t : long = ccall M_GetTimeAccum()
         let s : ml_string = @timeToString(alloc(t) / exh)
         do ccall M_Print("Total time spent reading was ")
