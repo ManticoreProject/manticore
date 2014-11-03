@@ -1,11 +1,13 @@
 (* bom-ty.sml
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2014 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *)
 
 structure BOMTy =
   struct
+
+    datatype raw_ty = datatype RawTypes.raw_ty
 
   (* kinds for BOM types *)
     datatype kind
@@ -15,21 +17,30 @@ structure BOMTy =
       | K_UNIFORM	(* either K_BOXED or K_UNBOXED *)
       | K_TYPE		(* type (any of the above kinds) *)
 
+    datatype ty_var = ??
+
+    datatype ty_con = ??
+
     datatype raw_ty = datatype RawTypes.raw_ty
 
     datatype ty
-      = T_Con of tyc * ty list
-      | T_Record of (bool * ty) list
+      = T_Param of ty_var
+      | T_Con of ty_con * ty list
+      | T_Record of (int * bool * ty) list
+      | T_Tuple of ty list
+      | T_Fun of ty list * ty list * ty list
       | T_Cont of ty list
-      | T_Fun of (ty list * ty list * ty list)
-      | T_Raw of raw_ty			(* raw machine type *)
-      | T_VProc				(* address of VProc runtime structure *)
-      | T_Addr of ty			(* address of a tuple's field *)
-      | T_Any				(* unknown type; uniform representation *)
-      | T_CFun of CFunctions.c_proto	(* C functions *)
-      | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
+      | T_Array of ty
+      | T_Vector of ty
+      | T_Addr of ty
+      | T_Bignum
+      | T_Any
+      | T_VProc
+      | T_Raw of raw_ty
 
-    and tyc			      (* high-level type constructor *)
+(* QUESTION: should we fold Array, Vector, Addr, Bignum, etc into ty_con? *)
+
+    and ty_con			      (* high-level type constructor *)
       = DataTyc of {
 	  name : string,
 	  stamp : Stamp.stamp,		(* a unique stamp *)
@@ -79,10 +90,12 @@ structure BOMTy =
    *)
     fun tupleTy [] = unitTy
       | tupleTy [ty] = ty
-      | tupleTy tys = T_Tuple(false, tys)
+      | tupleTy tys = T_Tuple tys
 
-    val thunkTy = T_Fun([unitTy], [exhTy], [T_Any])
-    val futureTy = T_Tuple(true, [T_Any, thunkTy, T_Any, T_Any])
+    fun thunkTy rngTy = T_Fun([unitTy], [exhTy], [rngTy])
+(* FIXME
+    val futureTy rngTy = T_Tuple(true, [T_Any, thunkTy rngTy, T_Any, T_Any])
+*)
 
   (* standard function types tuple their arguments and results *)
     fun stdFunTy (argTy, resTy) = T_Fun([tupleTy argTy], [exhTy], [tupleTy resTy])
