@@ -19,8 +19,6 @@ structure BOMTy =
 
     datatype ty_var = ??
 
-    datatype ty_con = ??
-
     datatype raw_ty = datatype RawTypes.raw_ty
 
     datatype ty
@@ -33,10 +31,12 @@ structure BOMTy =
       | T_Array of ty
       | T_Vector of ty
       | T_Addr of ty
+      | T_Exn
       | T_Bignum
       | T_Any
       | T_VProc
       | T_Raw of raw_ty
+      | T_Enum of Word.word		(* unsigned tagged integer; word is max value <= 2^31-1 *)
 
 (* QUESTION: should we fold Array, Vector, Addr, Bignum, etc into ty_con? *)
 
@@ -54,22 +54,9 @@ structure BOMTy =
     and data_con = DCon of {	      (* a data-constructor function *)
 	  name : string,		(* the name of the constructor *)
 	  stamp : Stamp.stamp,		(* a unique stamp *)
-	  rep : dcon_rep,		(* the representation of values constructed by this *)
-					(* constructor *)
 	  argTy : ty list,		(* type(s) of argument(s) to this constructor *)
 	  myTyc : tyc			(* the datatype that this constructor belongs to *)
 	}
-
-    and dcon_rep		      (* representation of data-constructor functions; note: *)
-				      (* this type does not include constants. *)
-      = Enum of word			(* nullary constructor *)
-      | Transparent			(* for "CON of ty"; the data-constructor is represented *)
-					(* directly by its argument *)
-      | Tuple				(* for "CON of (ty * ... * ty)", where CON is the only *)
-					(* constructor; represented as heap-allocated tuple of values *)
-      | TaggedTuple of word		(* for when there are multiple constructors: the constructor *)
-					(* is represented as heap-allocated tag/value pair *)
-      | ExnRep				(* exception constructors *)
 
     val unitTy = T_Enum 0w0
 
