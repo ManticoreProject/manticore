@@ -1,65 +1,67 @@
+structure STM = STM
 
 type 'a tvar = 'a STM.tvar
 
 datatype color = Red | Black | DBlack  (*double black used for deletion*)
-datatype 'a tree = E 
-                 | T of color * 'a tree tvar * 'a * 'a tree tvar
+datatype tree = E 
+              | T of color * tree tvar * int * tree tvar
 
 fun intComp(x:int,y:int) : order = if x < y then LESS else if x > y then GREATER else EQUAL
 
-fun member (x:'a) (t:'a tree tvar) (compare: ('a * 'a) -> order) : bool = 
-    case STM.get t 
-        of E => false
-         | T(c, l, v, r) =>
-            (case compare(x, v)
-                of LESS => member x l compare
-                 | GREATER => member x r compare
-                 | EQUAL => true)
+fun member (x:int) (t:tree tvar) (compare: (int*int) -> order) : bool = 
+    let fun lp t = 
+            case STM.get t 
+                of E => false
+                 | T(c, l, v, r) =>
+                    (case compare(x, v)
+                        of LESS => lp l
+                         | GREATER => lp r
+                         | EQUAL => true)
+    in STM.atomic(fn () => lp t) end
 
 fun balance tv = 
     case STM.get tv
         of T(Red,t1,k,t2) => ()
-         | T(_,t1,k,t2) =>
-            case STM.get t1
+         | T(Black,t1,k,t2) =>
+            if (case STM.get t1
                 of T(Red,l',y,r') =>
                     (case (STM.get l', STM.get r')
-                        of (T(Red,a,x,b), _) =>  (*rotate right*)
+                        of (T(Red,a,x,b), _) => 
                             let val _ = STM.put(l', T(Black,a,x,b))
                                 val r = STM.new(T(Black, r', k, t2))
                                 val _ = STM.put(tv, T(Red, l', y, r))
-                                val _ = print "Rotating\n"
-                            in () end
+                            in true end
                          | (_,T(Red,b,z,c)) => 
-                            let val _ = STM.put(r', T(Black, l', z, b))
+                            let val _ = STM.put(r', T(Black, l', y, b))
                                 val r = STM.new(T(Black,c,k,t2))
-                                val _ = STM.put(tv, T(Red,r',y,r))
-                                val _ = print "Rotating\n"
-                            in () end
-                         | _ => 
-                            case STM.get t2 
-                                of T(Red,l',y,r') =>
-                                    case (STM.get l', STM.get r') 
-                                        of (T(Red,b,z,c),_) =>
-                                            let val _ = STM.put(l', T(Black,c,z,r'))
-                                                val l = STM.new(T(Black,t1,k,b))
-                                                val _ = STM.put(tv, T(Red,l,y,l'))
-                                                val _ = print "Rotating\n"
-                                            in () end
-                                        | (_,T(Red,c,z,d)) =>
-                                            let val _ = STM.put(r', T(Black,c,z,d))
-                                                val l = STM.new(T(Black,t1,k,l'))
-                                                val _ = STM.put(tv, T(Red,l,y,r'))
-                                                val _ = print "Rotating\n"
-                                            in () end
-                                        | _ => ())
-                 |_ => ()                         
-
+                                val _ = STM.put(tv, T(Red,r',z,r))
+                            in true end
+                         | _ => false)
+                  | _ => false)
+             then ()
+             else (case STM.get t2 
+                    of T(Red,l',y,r') =>
+                        (case (STM.get l', STM.get r')
+                            of (T(Red,b,z,c),_) =>
+                                let val _ = STM.put(l', T(Black,c,y,r'))
+                                    val l = STM.new(T(Black,t1,k,b))
+                                    val _ = STM.put(tv, T(Red,l,z,l'))
+                                in () end
+                            | (_,T(Red,c,z,d)) =>
+                                let val _ = STM.put(r', T(Black,c,z,d))
+                                    val l = STM.new(T(Black,t1,k,l'))
+                                    val _ = STM.put(tv, T(Red,l,y,r'))
+                                in () end
+                            | _ => ())
+                    | _ => ())
+                    
 fun makeBlack t = 
     case STM.get t
         of E => ()
          | T(c, l, v, r) => STM.put(t, T(Black, l, v, r))
 
-fun insert (x:'a) (t:'a tree tvar) (compare : 'a*'a -> order) =
+exception NoChange
+fun insert (x:int) (t:tree tvar) (compare : int*int -> order) : unit =
     let fun lp t = 
             case STM.get t
                 of E => STM.put(t, T(Red, STM.new E, x, STM.new E))
@@ -68,36 +70,105 @@ fun insert (x:'a) (t:'a tree tvar) (compare : 'a*'a -> order) =
                         of LESS => (lp l; balance t)
                          | GREATER => (lp r; balance t)
                          | EQUAL => ()
-    in lp t; makeBlack t end
-         
-val _ = print "test\n"
-val t = STM.new (T(Red, STM.new E, 12, STM.new E))
-val _ = print "test\n"
-val _ = STM.atomic (fn _ => balance t)
-val _ = print "test\n"
-val _ = STM.atomic (fn _ => makeBlack t)
-val _ = STM.atomic (fn _ => insert 12  t intComp)
+    in STM.atomic(fn () => (lp t; makeBlack t)) end
 
-val _ = if STM.atomic(fn _ => member 12 t intComp) then print "Correct\n" else print "Incorrect\n"
+fun remove (x:int) (t:tree tvar) (compare:int*int-> order) = 
+    let (*returns true if the result needs to be fixed up as well*)                        
+        fun fixup (t : tree tvar) : bool = 
+            case STM.get t
+                of E => false
+                 | T(c,l,v,r) => 
+                    (case (STM.get l, STM.get r)
+                        of (T(DBlack,l1,v1,r1),T(Red,l2,v2,r2)) =>  (*case 1a*)
+                            let val _ = STM.put(r, STM.get r2)
+                                val lNew = STM.new (T(Red,l,v,l2))
+                                val _ = STM.put(t, T(c,lNew,v2,r))
+                            in fixup lNew end  (*this should always return false*)
+                         | (T(DBlack,l1,v1,r1),T(Black,l2,v2,r2)) =>
+                            (case (STM.get l2, STM.get r2)
+                                of (T(Black,_,_,_),T(Black,_,_,_)) =>   (*case 2a*)
+                                    let val _ = STM.put(l,T(Black,l1,v1,r1))
+                                        val _ = STM.put(r, T(Red,l2,v2,r2))
+                                    in case c
+                                        of Red => (STM.put(t,T(Black,l,v,r)); false)
+                                         | Black => (STM.put(t,T(DBlack,l,v,r)); true)
+                                    end     
+                                 | (T(Red,l21,v21,r21),T(Black,l22,v22,r22)) => (*case 3a*)
+                                    let val r' = STM.new(T(Red,r21,v2,r2))
+                                        val _ = STM.put(r, T(Black,l21,v21,r'))
+                                        val _ = STM.put(t, T(c,l,v,r))
+                                    in fixup t end  
+                                 | (_,T(Red,l22,v22,r22)) =>                        (*case 4a*)
+                                    let val l' = STM.new(T(Black,l1,v,l2))
+                                        val _ = STM.put(r2, T(Black,l22,v22,r22))
+                                        val _ = STM.put(t, T(c,l',v2,r2))
+                                    in false end
+                                 | _ => false
+                                  )
+                         | (T(Red,l1,v1,r1),T(DBlack,l2,v2,r2)) =>  (*case 1b*)
+                            let val _ = STM.put(l, STM.get l2)
+                                val r' = STM.new (T(Red,r,v,r2))
+                                val _ = STM.put(t, T(c,r',v2,l))
+                            in fixup r' end  (*this should always return false*)                                  
+                        | (T(Black,l1,v1,r1),T(DBlack,l2,v2,r2)) =>  
+                            (case (STM.get l1, STM.get r1)
+                                of (T(Black,_,_,_),T(Black,_,_,_)) => (*case 2b*)
+                                    let val _ = STM.put(l,T(Red,l1,v1,r1))
+                                        val _ = STM.put(r, T(Black,l2,v2,r2))
+                                    in case c
+                                        of Red => (STM.put(t,T(Black,l,v,r)); false)
+                                         | Black => (STM.put(t,T(DBlack,l,v,r)); true)
+                                    end     
+                                 | (T(Red,l21,v21,r21),T(Black,l22,v22,r22)) => (*case 3b*)
+                                    let val l' = STM.new(T(Red,r21,v2,r2))
+                                        val _ = STM.put(l, T(Black,l21,v21,l'))
+                                        val _ = STM.put(t, T(c,l,v,r))
+                                    in fixup t end  
+                                 | (_,T(Red,l22,v22,r22)) =>                  (*case 4b*)
+                                    let val r' = STM.new(T(Black,l1,v,l2))
+                                        val _ = STM.put(r2, T(Black,l22,v22,r22))
+                                        val _ = STM.put(t, T(c,r',v2,r2))
+                                    in false end 
+                                | _ => false)
+                       | _ => false    )      
+                    
+        fun removeLeftmost (t : tree tvar) : (bool * int) = 
+            case STM.get t
+                of T(c,l,v,r) =>
+                    (case (STM.get l, STM.get r)
+                        of (E, E) => (STM.put(t, E); (false, v))
+                         | (E, T(Red,l',v',r')) => (STM.put(t, T(Red,l',v',r')); (false, v))
+                         | (E, T(Black,l',v',r')) => (STM.put(t, T(DBlack,l',v',r')); (true, v))
+                         | (T(c',l',v',r'), _) => 
+                            let val (b, v) = removeLeftmost l 
+                            in if b then (fixup t, v) else (false, v) end)
+                 | _ => (print "IMPOSSIBLE: removeLeftmost\n"; raise Fail "impossible")          
+        fun lp (t: tree tvar) : bool = 
+            case STM.get t
+                of E => false
+                 | T(c,l,v,r) =>
+                    (case compare(x, v)
+                        of GREATER => (if lp r then fixup t else false)
+                         | LESS => (if lp l then fixup t else false)
+                         | EQUAL => 
+                            (case (STM.get l, STM.get r)
+                                of (E, E) => (STM.put(t, E); false)
+                                 | (E, T(Red,l',v',r')) => (STM.put(t, T(Black,l',v',r')); false)
+                                 | (E, T(Black,l',v',r')) => (STM.put(t, T(DBlack,l',v',r')); true)
+                                 | (T(Red,l',v',r'), E) => (STM.put(t, T(Black,l',v',r')); false)
+                                 | (T(Black,l',v',r'),E) => (STM.put(t, T(DBlack,l',v',r')); true)
+                                 | (T(c1,l1,v1,r1),T(c2,l2,v2,r2)) =>
+                                    let val (b, nextV) = removeLeftmost r
+                                        val _ = STM.put(t, T(c,l,nextV,r))
+                                    in if b then fixup t else false end))
+    in STM.atomic(fn () => (lp t; makeBlack t)) end                                   
 
-val t = STM.new E
-
-fun addNums i t =
-    if i = 0
-    then ()
-    else let val randNum = Rand.inRangeInt(0, 1000)
-             val _ = STM.atomic(fn _ => insert randNum t intComp)
-         in addNums (i-1) t end
-         
-val _ = print "test\n"         
-val _ = addNums 10 t
-
-
+(*Verify red-black tree properties*)         
 fun chkOrder t = 
     let fun lp(t, lower, upper) = 
             case STM.get t
                 of E => true
-                 | T(c,l,v,r) => 
+                 | T(c,l,v,r) =>   
                     let val b1 = lp(l, lower, SOME v)
                         val b2 = lp(r, SOME v, upper)
                     in case (lower, upper)
@@ -106,99 +177,104 @@ fun chkOrder t =
                          | (SOME l, NONE) => v > l
                          | (SOME l, SOME u) => v > l andalso v < u
                     end
-    in lp(t, NONE, NONE) end
-    
-fun chkBlackPaths t = 
-    let fun lp(t, c) =
-            case (c, STM.get t)
-                of (false, T(Red, l, v, r)) =>
-                    let val n : int = lp(l, true)
-                        val n' : int = lp(r, true)
-                        val _ = if n <> n' then (print "INCORRECT\n"; raise Fail "Incorrect\n") else ()
-                    in n end       
-                 | (true, T(Red, _, _, _)) => (print "INCORRECT\n"; raise Fail "Incorrect\n")        
-                 | (_, T(Black, l, v, r)) =>
-                    let val n : int = lp(l, false)
-                        val n' : int = lp(r, false)
-                        val _ = if n <> n' then (print "INCORRECT\n"; raise Fail "Incorrect\n") else ()
-                    in n end                 
-                 | (_, E) => 0
-   in lp(t, true); print "Red-Black property holds\n" end              
-
-(*
-fun mkE() = STM.new E                 
-val t = STM.new (T(Black, STM.new (T(Red,STM.new (T(Black, mkE(), 1, mkE())), 2, STM.new(T(Black, STM.new (T(Red, mkE(), 5, mkE())), 7, STM.new (T(Red, mkE(), 8, mkE())))))), 11, STM.new(T(Black, mkE(), 14, STM.new(T(Red, mkE(), 15, mkE()))))))
-val _ = chkBlackPaths t
-
-val _ = insert 4 t intComp
-val _ = chkBlackPaths t
-*)
-
-
-val _ = if chkOrder t then print "Order is correct\n" else print "Order is incorrect\n"
-val _ = chkBlackPaths t 
-val _ = print "Red black property is correct\n" 
-
-
-(*
-fun balance rb t1 k t2 = 
-    case rb
-        of Red => T(Red, t1, k, t2)
-         | Black => 
-             case t1 
-                of T(Red, T(Red, a, x, b), y, c) => T(Red,T(Black, a, x, b),y,T(Black, c, k, t2))
-                 | T(Red,a,x,T(Red,b,y,c)) => T(Red,T(Black,a,x,b),y,T(Black,c,k,t2))
-                 | a => 
-                    case t2
-                        of T(Red,T(Red,b,y,c),z,d) => T(Red,T(Black,t1,k,b),y,T(Black,c,z,d))
-                         | T(Red,b,y,T(Red,c,z,d)) => T(Red,T(Black,t1,k,b),y,T(Black,c,z,d))
-                         | _ => T(Black, t1, k, t2)
-                        
-fun makeBlack t =
-    case t 
-        of E => E
-         | T(_, l, v, r) => T(Black,l,v,r)
-
-fun ins (x:'a) (t:'a tree) (compare : 'a * 'a -> order) = 
-    let fun lp t = 
-            case t 
-                of E => T(Red, E, x, E)
-                 | T(c,l,v,r) => 
-                    case compare(x, v)
-                        of LESS => balance c (lp l) v r
-                         | GREATER => balance c l v (lp r)
-                         | EQUAL => t
-    in makeBlack (lp t) 
+    in if lp(t, NONE, NONE) 
+       then print "Red black tree order is correct\n" 
+       else print "Red black tree order is incorrect\n"
     end
 
-fun delete (x:'a) (t:'a tree) (compare : 'a * 'a -> order) = 
-    let fun getLeast t = 
-            case t
-                of T(c, E, v, r) => (c, v, r)
-                 | T(c, l, v, r) => 
-                    let (c',v',r') = getLeast l
-                    in (c',v', T(c, l, v, r')) end
-        fun lp t = 
-            case t
-                of E => E
-                 | T(c,l,v,r) =>
-                    case compare(x, v)
-                        of LESS => balance c (lp t) v r         (*delete in left*)
-                         | GREATER => balance c l v (lp r)      (*delete in right*)
-                         | Equal =>                             (*delete this node*)
-                            case (c, l, r)
-                                of (c, E, E) => E                 
-                                 | (Red, E, r') => r'    
-                                 | (Black, E, T(Red,l',v',r')) => T(Black,l',v',r')
-                                 | (Black, E, T(Black,l',v',r')) => T(DBlack,l',v',r')         
-                                 | (Red, l', E) => l'  
-                                 | (Black, T(Red,l',v',r'), E) => T(Black,l',v',r')            
-                                 | (Black, T(Black,l',v',r'), E) => T(DBlack,l',v',r')     
+datatype expected = MustBeBlack | Any
 
-val t : int tree = makeBlack(balance Red E 1 E)
-val b:bool = member 1 t intComp
-val t = ins 12 t intComp
-*)
+fun chkBlackPaths t = 
+    let fun lp(t, exp, d) =
+            case (exp, STM.get t)
+                of (Any, T(Red, l, v, r)) =>
+                    let val n : int = lp(l, MustBeBlack, d+1) 
+                        val n' : int = lp(r, MustBeBlack, d+1) 
+                        val _ = if n <> n' then raise Fail "Incorrect number of nodes (red)\n" else ()
+                    in n end       
+                 | (MustBeBlack, T(Red, _, _, _)) => (raise Fail ("Incorrect: found red, when expected black at depth " ^ Int.toString d))
+                 | (_, T(Black, l, v, r)) =>
+                    let val n : int = lp(l, Any, d+1)
+                        val n' : int = lp(r, Any, d+1)
+                        val _ = if n <> n' then raise Fail "Incorrect number of nodes (black)\n" else ()
+                    in n end                 
+                 | (_, E) => 0
+   in lp(t, Any, 0); print "Red-Black property holds\n" end              
+
+val t : tree tvar = STM.new E
+
+fun printTree t = 
+    case STM.get t
+        of E => "E"
+         | T(Red,l,v,r) =>
+            ("T(Red, " ^ printTree l ^ ", " ^ Int.toString v ^ ", " ^ printTree r ^ ")")
+        | T(Black,l,v,r) =>
+            ("T(Black, " ^ printTree l ^ ", " ^ Int.toString v ^ ", " ^ printTree r ^ ")")
+            
+fun addNums i t =
+    if i = 0
+    then nil
+    else let val randNum = Rand.inRangeInt(0, 10000000)
+             val _ = insert randNum t intComp
+             val coin = Rand.inRangeInt(0, 2)
+         in if coin = 0 then randNum::addNums (i-1) t else addNums (i-1) t end
+
+
+fun removeNums ns t =  
+    case ns
+        of nil => ()
+         | n::ns => 
+            let val _ = remove n t intComp
+                val _ = if member n t intComp then print "Was not removed\n" else ()
+            in removeNums ns t end
+         
+val toBeRemoved = addNums 1000 t
+
+val _ = chkOrder t
+val _ = chkBlackPaths t handle Fail s => print s
+
+fun height t = 
+    case STM.get t 
+        of E => 0
+         | T(_,l,_,r) => 1 + Int.max(height l, height r)
+
+val _ = print ("Height of tree is " ^ Int.toString (height t) ^ "\n")     
+
+val _ = print ("Removing " ^ Int.toString(List.length toBeRemoved) ^ " nodes\n")
+
+val _ = removeNums toBeRemoved t
+
+val _ = chkOrder t
+val _ = chkBlackPaths t handle Fail s => print s
+
+val _ = print ("Height of tree is " ^ Int.toString (height t) ^ "\n")       
+
+
+fun mkE() = STM.new E
+fun mkSingle(c, v) = STM.new(T(c, mkE(), v, mkE()))
+fun mkT(c,l,v,r) = STM.new(T(c,l,v,r))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
