@@ -78,10 +78,6 @@ struct
 
         define @get(tv:tvar / exh:exh) : any = 
             START
-            let vp :vproc = host_vproc
-            let vp : int = VProc.@vproc-id(vp)
-            let vp : int = I32Add(vp, 1)
-            do ccall M_BumpCounter(vp)
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : List.list = FLS.@get-key(READ_SET / exh)
             let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
@@ -153,7 +149,6 @@ struct
 #endif                        
                         let e : exn = Fail(@"__ABORT_EXCEPTION__")
                         STOP
-                        do ccall M_Print_Long("swapRes was %ld\n", swapRes)
                         throw exh(e)
            end
        ;
@@ -271,8 +266,7 @@ struct
                                  let arg : [ml_string, ml_string] = alloc(@"__ABORT_EXCEPTION__", s)
                                  let res : bool = String.@same(arg / exh)
                                  if(res) 
-                                 then do ccall M_Print("Inside abortK\n") 
-                                      BUMP_ABORT 
+                                 then BUMP_ABORT 
                                       do #0(in_trans) := false 
                                       throw enter()
                                  else throw exh(e)
@@ -296,14 +290,6 @@ struct
       define @timeToString = Time.toString;
         
       define @print-stats(x:unit / exh:exh) : unit = 
-        let vp1 : int = ccall M_GetCounter(1)
-        let vp2 : int = ccall M_GetCounter(2)
-        let vp3 : int = ccall M_GetCounter(3)
-        let vp4 : int = ccall M_GetCounter(4)
-        do ccall M_Print_Int("vp1 = %d\n", vp1)
-        do ccall M_Print_Int("vp2 = %d\n", vp2)
-        do ccall M_Print_Int("vp3 = %d\n", vp3)
-        do ccall M_Print_Int("vp4 = %d\n", vp4)
         PRINT_ABORT_COUNT
         let t : long = ccall M_GetTimeAccum()
         let s : ml_string = @timeToString(alloc(t) / exh)
@@ -311,7 +297,29 @@ struct
         do ccall M_Print(#0(s))
         do ccall M_Print(" seconds\n")
         return(UNIT);
+
+      define @whichException(e:exn / exh:exh) : unit = 
+        case e
+            of Fail(s:ml_string) => 
+                do ccall M_Print("Fail exception: ")
+                do ccall M_Print(#0(s))
+                return(UNIT)
+            | _ => do ccall M_Print("Unkown exception\n")
+                   throw exh(e)
+                (*
+            | Bind => 
+                do ccall M_Print("Bind exception\n")
+                return(UNIT)
+            | Div =>
+                do ccall M_Print("Div exception\n")
+                return(UNIT)
+            | Match =>
+                do ccall M_Print("Match exception\n")
+                return(UNIT) *)
+       end;
+        
     )
+    val whichException : exn -> unit = _prim(@whichException)
 
     	type 'a tvar = _prim(tvar)
     	val atomic : (unit -> 'a) -> 'a = _prim(@atomic)

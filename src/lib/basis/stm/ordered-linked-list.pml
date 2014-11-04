@@ -6,7 +6,7 @@
  * Linked list implementation based on Software Transactional Memory with partial aborts.
  *)
 
-structure WhichSTM = FullAbortSTM
+structure WhichSTM = STM
 
 val put = WhichSTM.put
 val get = WhichSTM.get
