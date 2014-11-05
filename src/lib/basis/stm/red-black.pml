@@ -3,7 +3,8 @@ structure STM = STM
 type 'a tvar = 'a STM.tvar
 
 datatype color = Red | Black | DBlack  (*double black used for deletion*)
-datatype tree = E 
+datatype tree = L        (*leaf*)
+              | DBL      (*double black *)
               | T of color * tree tvar * int * tree tvar
 
 fun intComp(x:int,y:int) : order = if x < y then LESS else if x > y then GREATER else EQUAL
@@ -11,7 +12,7 @@ fun intComp(x:int,y:int) : order = if x < y then LESS else if x > y then GREATER
 fun member (x:int) (t:tree tvar) (compare: (int*int) -> order) : bool = 
     let fun lp t = 
             case STM.get t 
-                of E => false
+                of L => false
                  | T(c, l, v, r) =>
                     (case compare(x, v)
                         of LESS => lp l
@@ -57,14 +58,14 @@ fun balance tv =
                     
 fun makeBlack t = 
     case STM.get t
-        of E => ()
+        of L => ()
          | T(c, l, v, r) => STM.put(t, T(Black, l, v, r))
 
 exception NoChange
 fun insert (x:int) (t:tree tvar) (compare : int*int -> order) : unit =
     let fun lp t = 
             case STM.get t
-                of E => STM.put(t, T(Red, STM.new E, x, STM.new E))
+                of L => STM.put(t, T(Red, STM.new L, x, STM.new L))
                  | T(c,l,v,r) =>
                     case compare(x, v)
                         of LESS => (lp l; balance t)
@@ -76,7 +77,7 @@ fun remove (x:int) (t:tree tvar) (compare:int*int-> order) =
     let (*returns true if the result needs to be fixed up as well*)                        
         fun fixup (t : tree tvar) : bool = 
             case STM.get t
-                of E => false
+                of L => false
                  | T(c,l,v,r) => 
                     (case (STM.get l, STM.get r)
                         of (T(DBlack,l1,v1,r1),T(Red,l2,v2,r2)) =>  (*case 1a*)
@@ -136,27 +137,27 @@ fun remove (x:int) (t:tree tvar) (compare:int*int-> order) =
             case STM.get t
                 of T(c,l,v,r) =>
                     (case (STM.get l, STM.get r)
-                        of (E, E) => (STM.put(t, E); (false, v))
-                         | (E, T(Red,l',v',r')) => (STM.put(t, T(Red,l',v',r')); (false, v))
-                         | (E, T(Black,l',v',r')) => (STM.put(t, T(DBlack,l',v',r')); (true, v))
+                        of (L, L) => (STM.put(t, L); (false, v))
+                         | (L, T(Red,l',v',r')) => (STM.put(t, T(Red,l',v',r')); (false, v))
+                         | (L, T(Black,l',v',r')) => (STM.put(t, T(DBlack,l',v',r')); (true, v))
                          | (T(c',l',v',r'), _) => 
                             let val (b, v) = removeLeftmost l 
                             in if b then (fixup t, v) else (false, v) end)
                  | _ => (print "IMPOSSIBLE: removeLeftmost\n"; raise Fail "impossible")          
         fun lp (t: tree tvar) : bool = 
             case STM.get t
-                of E => false
+                of L => false
                  | T(c,l,v,r) =>
                     (case compare(x, v)
                         of GREATER => (if lp r then fixup t else false)
                          | LESS => (if lp l then fixup t else false)
                          | EQUAL => 
                             (case (STM.get l, STM.get r)
-                                of (E, E) => (STM.put(t, E); false)
-                                 | (E, T(Red,l',v',r')) => (STM.put(t, T(Black,l',v',r')); false)
-                                 | (E, T(Black,l',v',r')) => (STM.put(t, T(DBlack,l',v',r')); true)
-                                 | (T(Red,l',v',r'), E) => (STM.put(t, T(Black,l',v',r')); false)
-                                 | (T(Black,l',v',r'),E) => (STM.put(t, T(DBlack,l',v',r')); true)
+                                of (L, L) => (STM.put(t, L); false)
+                                 | (L, T(Red,l',v',r')) => (STM.put(t, T(Black,l',v',r')); false)
+                                 | (L, T(Black,l',v',r')) => (STM.put(t, T(DBlack,l',v',r')); true)
+                                 | (T(Red,l',v',r'), L) => (STM.put(t, T(Black,l',v',r')); false)
+                                 | (T(Black,l',v',r'),L) => (STM.put(t, T(DBlack,l',v',r')); true)
                                  | (T(c1,l1,v1,r1),T(c2,l2,v2,r2)) =>
                                     let val (b, nextV) = removeLeftmost r
                                         val _ = STM.put(t, T(c,l,nextV,r))
@@ -167,7 +168,7 @@ fun remove (x:int) (t:tree tvar) (compare:int*int-> order) =
 fun chkOrder t = 
     let fun lp(t, lower, upper) = 
             case STM.get t
-                of E => true
+                of L => true
                  | T(c,l,v,r) =>   
                     let val b1 = lp(l, lower, SOME v)
                         val b2 = lp(r, SOME v, upper)
@@ -198,14 +199,14 @@ fun chkBlackPaths t =
                         val n' : int = lp(r, Any, d+1)
                         val _ = if n <> n' then raise Fail "Incorrect number of nodes (black)\n" else ()
                     in n end                 
-                 | (_, E) => 0
+                 | (_, L) => 0
    in lp(t, Any, 0); print "Red-Black property holds\n" end              
 
-val t : tree tvar = STM.new E
+val t : tree tvar = STM.new L
 
 fun printTree t = 
     case STM.get t
-        of E => "E"
+        of L => "L"
          | T(Red,l,v,r) =>
             ("T(Red, " ^ printTree l ^ ", " ^ Int.toString v ^ ", " ^ printTree r ^ ")")
         | T(Black,l,v,r) =>
@@ -235,7 +236,7 @@ val _ = chkBlackPaths t handle Fail s => print s
 
 fun height t = 
     case STM.get t 
-        of E => 0
+        of L => 0
          | T(_,l,_,r) => 1 + Int.max(height l, height r)
 
 val _ = print ("Height of tree is " ^ Int.toString (height t) ^ "\n")     
@@ -250,8 +251,8 @@ val _ = chkBlackPaths t handle Fail s => print s
 val _ = print ("Height of tree is " ^ Int.toString (height t) ^ "\n")       
 
 
-fun mkE() = STM.new E
-fun mkSingle(c, v) = STM.new(T(c, mkE(), v, mkE()))
+fun mkL() = STM.new L
+fun mkSingle(c, v) = STM.new(T(c, mkL(), v, mkL()))
 fun mkT(c,l,v,r) = STM.new(T(c,l,v,r))
 
 
