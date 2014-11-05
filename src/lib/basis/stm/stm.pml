@@ -41,6 +41,7 @@ struct
 #endif
 
 
+#define TIME
 #ifdef TIME
 #define START do ccall M_StartTimer()
 #define STOP do ccall M_StopTimer()
@@ -331,7 +332,11 @@ struct
 end
 
 
-
+(*
+Notes:
+    -record restarts in transactional log
+    -if lock is held when acquiring, spin until lock is released and abort
+*)
 
 
 

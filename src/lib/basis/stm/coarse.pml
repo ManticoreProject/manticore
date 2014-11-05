@@ -35,3 +35,4 @@ val _ = join chs
 
 val x = STM.get tv
 val _ = print ("Result is " ^ Int.toString x ^ "\n")
+val _ = STM.printStats()

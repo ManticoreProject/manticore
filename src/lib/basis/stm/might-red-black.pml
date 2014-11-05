@@ -182,7 +182,7 @@ fun bubble t =
             if isBB l orelse isBB r
             then (STM.put(t, T(blacker c, l, x, r)); redder' l; redder' r; balance t; ())
             else (balance t; ())
-         | _ => raise Fail "Impossible: bubble"            
+         | _ => ()       
 
 (*Precondition: t has only one child. *)
 fun remove' t : unit = 
@@ -201,7 +201,7 @@ fun remove (x:int) (t:tree tvar) (compare:int*int-> order) =
             case STM.get t
                 of T(c,l,v,r) => 
                     (case STM.get r
-                        of L => (remove' t; (*balance t;*) v)
+                        of L => (remove' t; bubble t; v)
                          | _ => removeMax r)
                  | _ => raise Fail "Impossible: remove"
         fun lp t = 
@@ -254,7 +254,7 @@ fun chkBlackPaths t =
                     let val n : int = lp(l, Any, d+1)
                         val n' : int = lp(r, Any, d+1)
                         val _ = if n <> n' then raise Fail "Incorrect number of nodes (black)\n" else ()
-                    in n end                 
+                    in n+1 end                 
                  | (_, L) => 0
    in lp(t, Any, 0); print "Red-Black property holds\n" end              
 
@@ -317,13 +317,18 @@ fun mkSingle(c, v) = STM.new(T(c, mkL(), v, mkL()))
 fun mkT(c,l,v,r) = STM.new(T(c,l,v,r))
 
 
-val t = mkT(Black, mkT(Black, mkSingle(Red, 2), 5, mkSingle(Red, 6)), 8, mkT(Black, mkL(), 9, mkSingle(Red, 11)))
+val t = mkT(Black, mkT(Black, mkSingle(Black, 2), 5, mkSingle(Black, 6)), 8, mkT(Black, mkSingle(Black,9), 10, mkSingle(Black, 11)))
 
-val _ = remove 5 t intComp
+val _ = chkOrder t
+val _ = chkBlackPaths t handle Fail s => print s
+
+
+val _ = remove 5 t intComp handle Fail s => print(s ^ "\n")
 
 val _ = print(printTree t ^ "\n")
 
-
+val _ = chkOrder t
+val _ = chkBlackPaths t handle Fail s => print s
 
 
 
