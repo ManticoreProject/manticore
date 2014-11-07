@@ -1,0 +1,8 @@
+f=$1
+y=${f%.dot}
+
+if [ "$#" -ne 1 ]; then
+    echo "incorrect number of arguments"
+else
+    dot -Tpdf $f -o $y.pdf
+fi

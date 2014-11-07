@@ -7,6 +7,46 @@ datatype tree = L        (*leaf*)
               | DBL      (*double black *)
               | T of color * tree tvar * int * tree tvar
 
+fun write(t, f) = 
+    let val stream = TextIO.openOut f
+        val _ = TextIO.outputLine("digraph G {\n", stream)
+        fun cToStr c = case c of Red => "red" | Black => "black"
+        fun lp t i = 
+            case STM.get t
+                of L => i
+                 | DBL => i
+                 | T(c, l, v, r) => 
+                    case (STM.get l, STM.get r)
+                        of (T(c1,l1,v1,r1),T(c2,l2,v2,r2)) =>
+                            let val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ Int.toString v1 ^ ";\n", stream)
+                                val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ Int.toString v2 ^ ";\n", stream)
+                                val _ = TextIO.outputLine(Int.toString v ^ " [color = " ^ cToStr c ^ "];\n", stream)
+                            in lp r (lp l i) end
+                         |(_, T(c',l',v',r')) => 
+                            let val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ Int.toString v' ^ ";\n", stream)
+                            val _ = TextIO.outputLine(Int.toString v ^ " [color = " ^ cToStr c ^ "];\n", stream)
+                            val n = lp r i
+                            val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ "L" ^ Int.toString n ^ ";\n", stream)
+                            in n+1 end
+                         |(T(c',l',v',r'), _) => 
+                            let val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ Int.toString v' ^ ";\n", stream)
+                            val _ = TextIO.outputLine(Int.toString v ^ " [color = " ^ cToStr c ^ "];\n", stream)
+                            val n = lp r i
+                            val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ "L" ^ Int.toString n ^ ";\n", stream)
+                            in n+1 end
+                         |_ => 
+                            let val _ = TextIO.outputLine(Int.toString v ^ " [color = " ^ cToStr c ^ "];\n", stream)
+                                val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ "L" ^ Int.toString i ^ ";\n", stream)
+                                val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ "L" ^ Int.toString (i+1) ^ ";\n", stream)
+                            in i+2 end
+        val _ = lp t 0
+        val _ = TextIO.outputLine("}\n", stream)
+        val _ = TextIO.closeOut stream          
+    in () end
+
+
+
+
 fun intComp(x:int,y:int) : order = if x < y then LESS else if x > y then GREATER else EQUAL
 
 fun redden t = 
@@ -182,7 +222,7 @@ fun bubble t =
             if isBB l orelse isBB r
             then (STM.put(t, T(blacker c, l, x, r)); redder' l; redder' r; balance t; ())
             else (balance t; ())
-         | _ => ()       
+         | _ => ()
 
 (*Precondition: t has only one child. *)
 fun remove' t : unit = 
@@ -201,8 +241,10 @@ fun remove (x:int) (t:tree tvar) (compare:int*int-> order) =
             case STM.get t
                 of T(c,l,v,r) => 
                     (case STM.get r
-                        of L => (remove' t; bubble t; v)
-                         | _ => removeMax r)
+                        of L => (remove' t; v)
+                         | _ => let val v = removeMax r
+                                    val _ = bubble t
+                                in v end)
                  | _ => raise Fail "Impossible: remove"
         fun lp t = 
             case STM.get t
@@ -287,6 +329,7 @@ fun removeNums ns t =
                 val _ = chkBlackPaths t handle Fail s => print s
             in removeNums ns t end
 
+
 val _ = print "Adding numbers\n"
 val toBeRemoved = addNums 1000 t
 val _ = print "done adding numbers\n"
@@ -299,7 +342,7 @@ fun height t =
         of L => 0
          | T(_,l,_,r) => 1 + Int.max(height l, height r)
 
-val _ = print ("Height of tree is " ^ Int.toString (height t) ^ "\n")     
+val _ = print ("Height of tree is " ^ Int.toString (height t) ^ "\n")
 
 (*
 val _ = print ("Removing " ^ Int.toString(List.length toBeRemoved) ^ " nodes\n")
@@ -308,9 +351,10 @@ val _ = removeNums toBeRemoved t handle Fail s => print s
 
 val _ = chkOrder t
 val _ = chkBlackPaths t handle Fail s => print s
-
-val _ = print ("Height of tree is " ^ Int.toString (height t) ^ "\n")       
 *)
+
+val _ = print ("Height of tree is " ^ Int.toString (height t) ^ "\n")
+
 
 fun mkL() = STM.new L
 fun mkSingle(c, v) = STM.new(T(c, mkL(), v, mkL()))
@@ -322,6 +366,8 @@ val t = mkT(Black, mkT(Black, mkSingle(Black, 2), 5, mkSingle(Black, 6)), 8, mkT
 val _ = chkOrder t
 val _ = chkBlackPaths t handle Fail s => print s
 
+val _ = remove 5 t intComp
+
 
 val _ = remove 5 t intComp handle Fail s => print(s ^ "\n")
 
@@ -329,6 +375,15 @@ val _ = print(printTree t ^ "\n")
 
 val _ = chkOrder t
 val _ = chkBlackPaths t handle Fail s => print s
+
+
+val _ = remove 8 t intComp
+
+val _ = print(printTree t ^ "\n")
+
+val _ = print "writing\n"
+val _ = write(t, "rb.dot")
+
 
 
 

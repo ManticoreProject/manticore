@@ -104,8 +104,7 @@ fun remove (x:int) (t:tree tvar) (compare:int*int-> order) =
                                         val _ = STM.put(r2, T(Black,l22,v22,r22))
                                         val _ = STM.put(t, T(c,l',v2,r2))
                                     in false end
-                                 | _ => false
-                                  )
+                                 | _ => false)
                          | (T(Red,l1,v1,r1),T(DBlack,l2,v2,r2)) =>  (*case 1b*)
                             let val _ = STM.put(l, STM.get l2)
                                 val r' = STM.new (T(Red,r,v,r2))
@@ -131,8 +130,8 @@ fun remove (x:int) (t:tree tvar) (compare:int*int-> order) =
                                         val _ = STM.put(t, T(c,r',v2,r2))
                                     in false end 
                                 | _ => false)
-                       | _ => false    )      
-                    
+                       | _ => false)
+
         fun removeLeftmost (t : tree tvar) : (bool * int) = 
             case STM.get t
                 of T(c,l,v,r) =>
@@ -254,6 +253,18 @@ val _ = print ("Height of tree is " ^ Int.toString (height t) ^ "\n")
 fun mkL() = STM.new L
 fun mkSingle(c, v) = STM.new(T(c, mkL(), v, mkL()))
 fun mkT(c,l,v,r) = STM.new(T(c,l,v,r))
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
