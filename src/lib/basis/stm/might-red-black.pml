@@ -316,58 +316,58 @@ fun chkBlackPaths t =
                  | _ => raise Fail "Impossible: chkPlackPaths\n"
    in lp(t, Any, 0); print "Red-Black property holds\n" end              
 
-val t : tree tvar = STM.new L
+val ITERS = 40000
+val THREADS = 4
+val MAXVAL = 10000000
 
-fun printTree t = 
-    case STM.get t
-        of L => "L"
-         | DBL => "DBL"
-         | T(Red,l,v,r) =>
-            ("T(Red, " ^ printTree l ^ ", " ^ Int.toString v ^ ", " ^ printTree r ^ ")")
-         | T(Black,l,v,r) =>
-            ("T(Black, " ^ printTree l ^ ", " ^ Int.toString v ^ ", " ^ printTree r ^ ")")
-         | T(DBlack, l,v,r) => 
-            ("T(DBlack, " ^ printTree l ^ ", " ^ Int.toString v ^ ", " ^ printTree r ^ ")")
-         | T(NBlack, l,v,r) => 
-            ("T(NBlack, " ^ printTree l ^ ", " ^ Int.toString v ^ ", " ^ printTree r ^ ")")
+fun ignore _ = ()
 
-                        
-fun addNums i t =
+val READS = 2
+val WRITES = 2
+val DELETES = 2
+
+fun threadLoop t i = 
+    if i = 0
+    then ()
+    else let val randNum = Rand.inRangeInt(0, MAXVAL)
+             val prob = Rand.inRangeInt(0, READS+WRITES+DELETES)
+             val _ = if prob < READS
+                     then ignore(member randNum t intComp)
+                     else if prob < READS + WRITES
+                          then ignore(insert randNum t intComp)
+                          else ignore(remove randNum t intComp)
+         in threadLoop t (i-1) end
+         
+fun start t i =
     if i = 0
     then nil
-    else let val randNum = Rand.inRangeInt(0, 10000000)
+    else let val ch = PrimChan.new()
+             val _ = Threads.spawnOn(i-1, fn _ => (threadLoop t ITERS; PrimChan.send(ch, i)))
+         in ch::start t (i-1) end
+
+fun join chs = 
+    case chs
+        of ch::chs' => (PrimChan.recv ch; join chs')
+         | nil => ()
+
+val t = STM.new L
+
+fun initialize n = 
+    if n = 0
+    then ()
+    else let val randNum = Rand.inRangeInt(0, MAXVAL)
              val _ = insert randNum t intComp
-             val coin = Rand.inRangeInt(0, 2)
-         in if coin = 0 then randNum::addNums (i-1) t else addNums (i-1) t end
+         in initialize (n-1) end
 
-
-fun removeNums ns t =  
-    case ns
-        of nil => ()
-         | n::ns => 
-            let val _ = remove n t intComp
-            in removeNums ns t end
-
-
-val _ = print "Adding numbers\n"
-val toBeRemoved = addNums 1000 t
-val _ = print "done adding numbers\n"
+val _ = initialize 1000
+val startTime = Time.now()
+val _ = join(start t THREADS)
+val endTime = Time.now()
+val _ = STM.printStats()
+val _ = print ("Total was: " ^ Time.toString (endTime - startTime) ^ " seconds\n")
 
 val _ = chkOrder t
 val _ = chkBlackPaths t handle Fail s => print s
-
-val _ = removeNums toBeRemoved t handle Fail s => print s
-
-val _ = chkOrder t
-val _ = chkBlackPaths t handle Fail s => print s
-
-fun mkL() = STM.new L
-fun mkSingle(c, v) = STM.new(T(c, mkL(), v, mkL()))
-fun mkT(c,l,v,r) = STM.new(T(c,l,v,r))
-
-
-
-
 
 
 
