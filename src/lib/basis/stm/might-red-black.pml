@@ -159,10 +159,10 @@ fun insert (x:int) (t:tree tvar) (compare : int*int -> order) : unit =
             case STM.get t
                 of L => STM.put(t, T(Red, STM.new L, x, STM.new L))
                  | T(c,l,v,r) =>
-                    case compare(x, v)
+                    (case compare(x, v)
                         of LESS => (lp l; balance t; ())
                          | GREATER => (lp r; balance t; ())
-                         | EQUAL => ()
+                         | EQUAL => ())
                  | DBL => raise Fail "found double black leaf in insert\n"
     in STM.atomic(fn () => (lp t; makeBlack t)) end
 
@@ -176,58 +176,58 @@ fun delBalance tv =
     if balance tv
     then true
     else case STM.get tv
-        of T(Red,t1,k,t2) => false
-         | T(DBlack,t1,k,t2) =>
-            if (case STM.get t1
-                of T(Red,l',y,r') =>
-                    (case (STM.get l', STM.get r')
-                        of (T(Red,a,x,b), _) => 
-                            let val _ = STM.put(l', T(Black,a,x,b))
-                                val r = STM.new(T(Black, r', k, t2))
-                                val _ = STM.put(tv, T(Black, l', y, r))
-                            in true end
-                         | (_,T(Red,b,z,c)) => 
-                            let val _ = STM.put(r', T(Black, l', y, b))
-                                val r = STM.new(T(Black,c,k,t2))
-                                val _ = STM.put(tv, T(Black,r',z,r))
-                            in true end
-                         | _ => false)
-                 | T(NBlack,l',y,r') =>  (*T(DBlack, T(NBlack,l' as T(Black,_,_,_),y,T(Black,b,y,c)), k, t2)*)
-                    (case (STM.get l', STM.get r')
-                        of (T(Black,ll,vv,rr), T(Black,b,z,c)) =>
-                            let val _ = STM.put(l', T(Red, ll, vv, rr))
-                                val _ = print "test\n\n"
-                                val _ = STM.put(t1, T(Black,l',y, b))
-                                val newR = STM.new(T(Black, c, k, t2))
-                                val _ = STM.put(tv, T(Black, t1, z, newR))
-                            in delBalance t1 end
-                         | _ => false)
-                  | _ => false)
-             then true
-             else (case STM.get t2 
+            of T(Red,t1,k,t2) => false
+             | T(DBlack,t1,k,t2) =>
+                if (case STM.get t1
                     of T(Red,l',y,r') =>
                         (case (STM.get l', STM.get r')
-                            of (T(Red,b,z,c),_) =>
-                                let val _ = STM.put(l', T(Black,c,y,r'))
-                                    val l = STM.new(T(Black,t1,k,b))
-                                    val _ = STM.put(tv, T(Black,l,z,l'))
+                            of (T(Red,a,x,b), _) => 
+                                let val _ = STM.put(l', T(Black,a,x,b))
+                                    val r = STM.new(T(Black, r', k, t2))
+                                    val _ = STM.put(tv, T(Black, l', y, r))
                                 in true end
-                            | (_,T(Red,c,z,d)) =>
-                                let val _ = STM.put(r', T(Black,c,z,d))
-                                    val l = STM.new(T(Black,t1,k,l'))
-                                    val _ = STM.put(tv, T(Black,l,y,r'))
+                             | (_,T(Red,b,z,c)) => 
+                                let val _ = STM.put(r', T(Black, l', y, b))
+                                    val r = STM.new(T(Black,c,k,t2))
+                                    val _ = STM.put(tv, T(Black,r',z,r))
                                 in true end
-                            | _ => false)
-                    | T(NBlack,l',y,r') => (*T(DBlack,t1,k,T(NBlack,l',y,r'))*)
-                            (case (STM.get l', STM.get r') 
-                                of (T(Black,b,z,c), T(Black,_,_,_)) => (*T(Dblack, t1, k, T(NBlack, T(Black, b, z, c), y, r' as T(Black, _, _, _))) *)
-                                    let val _ = redden r'
-                                        val _ = STM.put(t2, T(Black, c, y, r'))
-                                        val newL = STM.new(T(Black, t1, k, b))
-                                        val _ = STM.put(tv, T(Black, newL, z, t2))
-                                    in delBalance t2 end
-                                 | _ => false)
-                    | _ => false)    
+                             | _ => false)
+                     | T(NBlack,l',y,r') =>  (*T(DBlack, T(NBlack,l' as T(Black,_,_,_),y,T(Black,b,y,c)), k, t2)*)
+                        (case (STM.get l', STM.get r')
+                            of (T(Black,ll,vv,rr), T(Black,b,z,c)) =>
+                                let val _ = STM.put(l', T(Red, ll, vv, rr))
+                                    val _ = STM.put(t1, T(Black,l',y, b))
+                                    val newR = STM.new(T(Black, c, k, t2))
+                                    val _ = STM.put(tv, T(Black, t1, z, newR))
+                                in delBalance t1 end
+                             | _ => false)
+                      | _ => false)
+                 then true
+                 else (case STM.get t2 
+                        of T(Red,l',y,r') =>
+                            (case (STM.get l', STM.get r')
+                                of (T(Red,b,z,c),_) =>
+                                    let val _ = STM.put(l', T(Black,c,y,r'))
+                                        val l = STM.new(T(Black,t1,k,b))
+                                        val _ = STM.put(tv, T(Black,l,z,l'))
+                                    in true end
+                                | (_,T(Red,c,z,d)) =>
+                                    let val _ = STM.put(r', T(Black,c,z,d))
+                                        val l = STM.new(T(Black,t1,k,l'))
+                                        val _ = STM.put(tv, T(Black,l,y,r'))
+                                    in true end
+                                | _ => false)
+                        | T(NBlack,l',y,r') => (*T(DBlack,t1,k,T(NBlack,l',y,r'))*)
+                                (case (STM.get l', STM.get r') 
+                                    of (T(Black,b,z,c), T(Black,_,_,_)) => (*T(Dblack, t1, k, T(NBlack, T(Black, b, z, c), y, r' as T(Black, _, _, _))) *)
+                                        let val _ = redden r'
+                                            val _ = STM.put(t2, T(Black, c, y, r'))
+                                            val newL = STM.new(T(Black, t1, k, b))
+                                            val _ = STM.put(tv, T(Black, newL, z, t2))
+                                        in delBalance t2 end
+                                     | _ => false)
+                        | _ => false)
+             | _ => false            
 
 fun bubble t = 
     case STM.get t
@@ -273,7 +273,7 @@ fun remove (x:int) (t:tree tvar) (compare:int*int-> order) =
                                             of L => remove' t
                                              | _ => (STM.put(t, T(c, l, removeMax l, r)); bubble t))))
                  | DBL => raise Fail "found double black leaf in remove:lp\n"                            
-    in STM.atomic(fn _ => (lp t (*; makeBlack t*))); ()
+    in STM.atomic(fn _ => (lp t ; makeBlack t)); ()
     end
 
 (*Verify red-black tree properties*)         
@@ -290,6 +290,7 @@ fun chkOrder t =
                          | (SOME l, NONE) => v > l
                          | (SOME l, SOME u) => v > l andalso v < u
                     end
+                 | DBL => raise Fail "found double black leaf in chkOrder\n"
     in if lp(t, NONE, NONE) 
        then print "Red black tree order is correct\n" 
        else print "Red black tree order is incorrect\n"
@@ -312,6 +313,7 @@ fun chkBlackPaths t =
                         val _ = if n <> n' then raise Fail "Incorrect number of nodes (black)\n" else ()
                     in n+1 end                 
                  | (_, L) => 0
+                 | _ => raise Fail "Impossible: chkPlackPaths\n"
    in lp(t, Any, 0); print "Red-Black property holds\n" end              
 
 val t : tree tvar = STM.new L
@@ -344,12 +346,9 @@ fun removeNums ns t =
         of nil => ()
          | n::ns => 
             let val _ = remove n t intComp
-                val _ = if member n t intComp then print "Was not removed\n" else ()
-                val _ = chkOrder t
-                val _ = chkBlackPaths t handle Fail s => print s
             in removeNums ns t end
 
-(*
+
 val _ = print "Adding numbers\n"
 val toBeRemoved = addNums 1000 t
 val _ = print "done adding numbers\n"
@@ -357,40 +356,14 @@ val _ = print "done adding numbers\n"
 val _ = chkOrder t
 val _ = chkBlackPaths t handle Fail s => print s
 
-fun height t = 
-    case STM.get t 
-        of L => 0
-         | T(_,l,_,r) => 1 + Int.max(height l, height r)
-
-val _ = print ("Height of tree is " ^ Int.toString (height t) ^ "\n")
-
-
-val _ = print ("Removing " ^ Int.toString(List.length toBeRemoved) ^ " nodes\n")
-
 val _ = removeNums toBeRemoved t handle Fail s => print s
 
 val _ = chkOrder t
 val _ = chkBlackPaths t handle Fail s => print s
 
-val _ = print ("Height of tree is " ^ Int.toString (height t) ^ "\n")
-*)
-
 fun mkL() = STM.new L
 fun mkSingle(c, v) = STM.new(T(c, mkL(), v, mkL()))
 fun mkT(c,l,v,r) = STM.new(T(c,l,v,r))
-
-
-val t = mkT(Black, mkT(Red, mkSingle(Black, 2), 5, mkSingle(Black, 6)), 10, mkSingle(Black, 15))
-
-val _ = chkOrder t
-val _ = chkBlackPaths t handle Fail s => print s
-
-val _ = remove 15 t intComp handle Fail s => print s | e => print "handled a non-Fail exception (remove)\n"
-
-val _ = chkOrder t
-val _ = chkBlackPaths t handle Fail s => print s | e => print "handled a non-Fail exception\n"
-
-val _ = print (printTree t ^ "\n")
 
 
 
