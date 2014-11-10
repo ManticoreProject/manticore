@@ -90,7 +90,7 @@ procs:\n\
 int main (int argc, const char **argv)
 {
     Options_t *opts = InitOptions (argc, argv);
-
+    InitConfiguration(opts);
     if (GetFlagOpt (opts, "-h") || GetFlagOpt (opts, "-?")) {
         Say (usage, argv[0]);
         return 0;
