@@ -1,4 +1,14 @@
-structure STM = STM
+(* might-red-black.pml
+ *
+ * COPYRIGHT (c) 2014 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Concurrent red black tree based on Matt Might's delete algorithm:
+        -http://matt.might.net/articles/red-black-delete/
+        -https://github.com/sweirich/dth/tree/master/examples/red-black
+ *)
+ 
+structure STM = PartialSTM
 
 type 'a tvar = 'a STM.tvar
 
@@ -7,6 +17,7 @@ datatype tree = L        (*leaf*)
               | DBL      (*double black *)
               | T of color * tree tvar * int * tree tvar
 
+(*create a DOT file out of a red-black tree*)
 fun write(t, f) = 
     let val stream = TextIO.openOut f
         val _ = TextIO.outputLine("digraph G {\n", stream)
@@ -43,9 +54,6 @@ fun write(t, f) =
         val _ = TextIO.outputLine("}\n", stream)
         val _ = TextIO.closeOut stream          
     in () end
-
-
-
 
 fun intComp(x:int,y:int) : order = if x < y then LESS else if x > y then GREATER else EQUAL
 
@@ -324,7 +332,7 @@ fun ignore _ = ()
 
 val READS = 2
 val WRITES = 2
-val DELETES = 2
+val DELETES = 4
 
 fun threadLoop t i = 
     if i = 0
@@ -368,6 +376,7 @@ val _ = print ("Total was: " ^ Time.toString (endTime - startTime) ^ " seconds\n
 
 val _ = chkOrder t
 val _ = chkBlackPaths t handle Fail s => print s
+
 
 
 

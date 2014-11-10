@@ -1,4 +1,7 @@
 (*Finer transactions*)
+
+structure STM = PartialSTM
+
 val tv = STM.new 0
 
 fun bump () =

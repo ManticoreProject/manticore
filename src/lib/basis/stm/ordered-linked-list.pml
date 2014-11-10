@@ -6,7 +6,7 @@
  * Linked list implementation based on Software Transactional Memory with partial aborts.
  *)
 
-structure WhichSTM = FullAbortSTM
+structure WhichSTM = PartialSTM
 
 val put = WhichSTM.put
 val get = WhichSTM.get
@@ -68,7 +68,7 @@ fun delete (l:ListHandle) (i:int) =
             end
     in atomic(fn () => lp l) end            
 
-val ITERS = 2000
+val ITERS = 3000
 val THREADS = 4
 val MAXVAL = 10000
 

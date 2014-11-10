@@ -9,7 +9,7 @@
 #define Read 0
 #define Write 1
 
-structure STM = (* :
+structure PartialSTM = (* :
     sig
 	
 *)
@@ -78,11 +78,9 @@ struct
         ;
 
         define @get(tv:tvar / exh:exh) : any = 
-            START
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : List.list = FLS.@get-key(READ_SET / exh)
             let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
-            let v : any = #0(tv)
             cont retK(x:any) = return(x)
 #ifdef EAGER_CONFLICT            
             fun abort(rs : List.list, newStamp : stamp, abortItem:Option.option, newRS : List.list) : () = 
@@ -131,26 +129,21 @@ struct
                 end
            let localRes : Option.option = apply chkLog(writeSet)
            case localRes
-               of Option.SOME(v:any) => STOP return(v)
+               of Option.SOME(v:any) => return(v)
                 | Option.NONE =>
                    (*must have exclusive access when reading for first time*)
-                   let swapRes : long = CAS(&1(tv), 0:long, #0(myStamp))
-                   if I64Eq(swapRes, 0:long)
-                   then let current : any = #0(tv)
-                        do #1(tv) := 0:long
-                        let item : readItem = alloc(tv, retK, writeSet)
-                        let newReadSet : List.list = CONS(item, readSet)
-                        do FLS.@set-key(READ_SET, newReadSet / exh)
-                        STOP
-                        return(current)
-                   else 
-#ifdef EAGER_CONFLICT                   
-                        let newStamp : stamp = VClock.@bump(/exh)
-                        do apply abort(readSet, newStamp, Option.NONE, nil)
-#endif                        
-                        let e : exn = Fail(@"__ABORT_EXCEPTION__")
-                        STOP
-                        throw exh(e)
+                    fun lk() : () = 
+                        let swapRes : long = CAS(&1(tv), 0:long, #0(myStamp))
+                        if I64Eq(swapRes, 0:long)
+                        then return()
+                        else do Pause() apply lk()
+                    do apply lk()
+                    let current : any = #0(tv)
+                    do #1(tv) := 0:long
+                    let item : readItem = alloc(tv, retK, writeSet)
+                    let newReadSet : List.list = CONS(item, readSet)
+                    do FLS.@set-key(READ_SET, newReadSet / exh)
+                    return(current)
            end
        ;
 
@@ -184,11 +177,7 @@ struct
                         of CONS(hd : readItem, tl:List.list) =>
                             let tv : tvar = #0(hd)
                             if I64Lt(#2(tv), rawStamp)    (*stamp still valid*)
-                            then if I64Eq(#1(tv), 0:long)     (*hasn't been locked*)
-                                 then apply validate(tl, locks, newStamp, abortItem, newRS)
-                                 else if I64Eq(#1(tv), rawStamp)   (*we locked it*)
-                                      then apply validate(tl, locks, newStamp, abortItem, newRS)
-                                      else apply validate(tl, locks, newStamp, Option.SOME(hd), tl)
+                            then apply validate(tl, locks, newStamp, abortItem, newRS)
                             else apply validate(tl, locks, newStamp, Option.SOME(hd), tl)
                         | nil => case abortItem
                                     of Option.SOME(item:readItem) =>
@@ -289,7 +278,7 @@ struct
       ;
 
       define @timeToString = Time.toString;
-        
+      
       define @print-stats(x:unit / exh:exh) : unit = 
         PRINT_ABORT_COUNT
         let t : long = ccall M_GetTimeAccum()
@@ -298,29 +287,8 @@ struct
         do ccall M_Print(#0(s))
         do ccall M_Print(" seconds\n")
         return(UNIT);
-
-      define @whichException(e:exn / exh:exh) : unit = 
-        case e
-            of Fail(s:ml_string) => 
-                do ccall M_Print("Fail exception: ")
-                do ccall M_Print(#0(s))
-                return(UNIT)
-            | _ => do ccall M_Print("Unkown exception\n")
-                   throw exh(e)
-                (*
-            | Bind => 
-                do ccall M_Print("Bind exception\n")
-                return(UNIT)
-            | Div =>
-                do ccall M_Print("Div exception\n")
-                return(UNIT)
-            | Match =>
-                do ccall M_Print("Match exception\n")
-                return(UNIT) *)
-       end;
         
     )
-    val whichException : exn -> unit = _prim(@whichException)
 
     	type 'a tvar = _prim(tvar)
     	val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
