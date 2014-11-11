@@ -195,6 +195,7 @@ local
    structure Type = TypeEnv.Type
    structure Tyvar = TypeEnv.Tyvar
 
+  (* define primitive datattypes bool, list, and ref *)
    val primitiveDatatypes =
       Vector.new3
       ({tycon = Tycon.bool,
