@@ -1,0 +1,26 @@
+
+f=$1 
+
+base=${f%.pml}
+
+shift
+
+sed -i '.bak' "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = FullAbortSTM/g" $f
+
+pmlc -Ccodegen.annotate-instrs=true -Cclos.keep-closure=true $@ -o fullAbort $f 
+
+mv $base.closure0.pre.cps $base.fullAbort.closure0.pre.cps
+mv $base.closure0.post.cfg $base.fullAbort.closure0.post.cfg
+mv $base.s $base.fullAbort.s
+
+sed -i '.bak' "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = PartialSTM/g" $f
+
+pmlc -Ccodegen.annotate-instrs=true -Cclos.keep-closure=true $@ -o partialAbort $f
+
+mv $base.closure0.pre.cps $base.partialAbort.closure0.pre.cps
+mv $base.closure0.post.cfg $base.partialAbort.closure0.post.cfg
+mv $base.s $base.partialAbort.s
+
+mv $f.bak $f
+
+
