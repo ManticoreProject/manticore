@@ -2,8 +2,9 @@
 
 file=$1
 
-sed -i '.bak' "s/<[0-9A-Z]*>#[0-9]\.[0-9]//g" $file
-sed -i '.bak.bak' "s/<[0-9A-Z]*>#[0-9]*//g" $file
+sed -i '.bak' 's/<[0-9A-Z]*>#[0-9]\.[0-9]//g' $file
+sed -i '' 's/<[0-9A-Z]*>#[0-9]//g' $file
+sed -i '' 's/<[0-9A-Z]*>//g' $file
+
 mv $file $file.noUniqueness
 mv $file.bak $file
-rm $file.bak.bak

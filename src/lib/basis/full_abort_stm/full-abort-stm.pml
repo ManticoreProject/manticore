@@ -82,7 +82,6 @@ struct
 
         define @get(tv : tvar / exh:exh) : any = 
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
-            let v : any = #0(tv)
             let readSet : List.list = FLS.@get-key(READ_SET / exh)
             let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
             fun chkLog(writeSet : List.list) : Option.option = (*use local copy if available*)
@@ -109,11 +108,12 @@ struct
             case localRes
                 of Option.SOME(v:any) => return(v)
                  | Option.NONE =>
-                    let swapRes : long = CAS(&1(tv), 0:long, #0(myStamp))
-                    do if I64Eq(swapRes, 0:long)
-                       then return()
-                       else let e : exn = Fail("Aborting transaction")
-                            throw exh(e)
+                    fun lk() : () = 
+                        let swapRes : long = CAS(&1(tv), 0:long, #0(myStamp))
+                        if I64Eq(swapRes, 0:long)
+                        then return()
+                        else do Pause() apply lk()
+                    do apply lk()
                     let current : any = #0(tv)
                     do #1(tv) := 0:long
                     let item : readItem = alloc(tv)
@@ -154,13 +154,7 @@ struct
                             let tv : tvar = #0(hd)
                             let e : exn = Fail("Aborting transaction")
                             if I64Lt(#2(tv), rawStamp)  (*still valid*)
-                            then if I64Eq(#1(tv), rawStamp)  (*check that we already locked it*)
-                                 then apply validate(tl, locks, newStamp)
-                                 else if I64Eq(#1(tv), 0:long)   (*unlocked*)
-                                      then apply validate(tl, locks, newStamp)
-                                      else do apply release(locks)
-                                           do SchedulerAction.@atomic-end(vp)
-                                           throw exh(e)
+                            then apply validate(tl, locks, newStamp)
                             else do apply release(locks)
                                  do SchedulerAction.@atomic-end(vp)
                                  throw exh(e)

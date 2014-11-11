@@ -134,7 +134,6 @@ void MinorGC (VProc_t *vp)
 				}
 			}
 			
-			
 		}else if (isRawHdr(hdr)) {
 			assert (isRawHdr(hdr));
 			nextScan += GetLength(hdr);
@@ -183,9 +182,10 @@ bzero(nextScan, avail); /* clear unused part of local heap */
     }
 #endif
 
+
+
   /* reset the allocation pointer */
     SetAllocPtr (vp);
-
 }
 
 #ifndef NDEBUG

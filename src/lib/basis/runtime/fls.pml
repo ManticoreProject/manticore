@@ -332,32 +332,32 @@ structure FLS :
       ;
 
       define @get-key(k : int / exh : exh) : any = 
-            fun loop(dict : List.list) : any = case dict
+            fun getKeyLoop(dict : List.list) : any = case dict
                 of CONS(hd : [[int], any], tail : List.list) => 
                     if I32Eq(#0(#0(hd)), k)
                     then return(#1(hd))
-                    else apply loop(tail)
+                    else apply getKeyLoop(tail)
                 |nil => let e : exn = Fail(@"FLS key not found in get-key")
                         do ccall M_Print("FLS key not found in get-key\n")
                         throw exh(e)
                 end
             let dict : List.list = @get-dict(UNIT / exh)
-            apply loop(dict)
+            apply getKeyLoop(dict)
         ;
 
       define @set-key(key : int, v : any / exh : exh) : () = 
-            fun loop(dict : List.list) : List.list = case dict
+            fun setKeyLoop(dict : List.list) : List.list = case dict
                 of CONS(hd : [[int], any], tail : List.list) => 
                     if I32Eq(#0(#0(hd)), key)
                     then return(CONS(alloc(alloc(key), v), tail))
-                    else let rest : List.list = apply loop(tail)
+                    else let rest : List.list = apply setKeyLoop(tail)
                          return (CONS(hd, rest))
                 | nil => let e : exn = Fail(@"FLS key not found in set-key")
                          do ccall M_Print("FLS key not found in set-key\n")
                          throw exh(e)
                 end
             let dict : List.list = @get-dict(UNIT / exh)
-            let newDict : List.list = apply loop(dict)
+            let newDict : List.list = apply setKeyLoop(dict)
             let _ : unit = @set-dict(newDict / exh)
             return()
         ;

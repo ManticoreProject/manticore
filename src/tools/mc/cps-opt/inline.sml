@@ -374,6 +374,28 @@ structure Inline : sig
                          | _ => NONE)
                     | _ => NONE))
 
+    fun isRecursive (f:C.var) (C.Exp(ppt, e)) =  
+        let fun funsRecursive fs = 
+                case fs 
+                    of nil => false
+                     | C.FB{body=body,...}::fs' => 
+                        isRecursive f body orelse funsRecursive fs'
+        in case e
+            of C.Let(lhs,rhs, e) => isRecursive f e
+             | C.Fun(fbs, e) => funsRecursive fbs orelse isRecursive f e
+             | C.Cont(fb, e) => funsRecursive [fb] orelse isRecursive f e
+             | C.If(cond, e1, e2) => isRecursive f e1 orelse isRecursive f e2
+             | C.Switch(x, cases, dflt) => 
+                let val casesRec = List.foldl (fn ((_, e),b) => b orelse isRecursive f e) false cases
+                    val dfltRec = case dflt
+                                    of NONE => false
+                                     | SOME e => isRecursive f e
+                in casesRec orelse dfltRec end
+             | C.Apply(f',args,conts) => C.Var.same(f, f')
+             | C.Throw(k, args) => C.Var.same(f, k)  
+        end
+    
+
     fun doExp (env, exp as C.Exp(ppt, e)) = (case e
 	   of C.Let(lhs, rhs, e) =>
               C.Exp (ppt, C.Let (lhs, rhs, doExp (extend'(env, lhs), e)))
@@ -418,10 +440,10 @@ structure Inline : sig
 		          Option.map (fn e => doExp(env, e)) dflt))
 	    | C.Apply(f, args, conts) => (
                 case shouldInlineApp (env, ppt, f, args, conts)
-                 of SOME (C.FB{f, params, rets, body}) => ((*
-                      if InlineRecursive.isRecursive(f, body)
-                      then C.Exp(ppt, C.Apply(f, args, conts)) 
-                      else*)
+                 of SOME (C.FB{f, params, rets, body}) => (
+                      if isRecursive f body
+                      then C.Exp(ppt, C.Apply(f, args, conts))
+                      else
                      (ST.tick cntBeta;
                      doInline (env, f, conts@args, rets@params, body)))
                   | NONE => C.Exp (ppt, C.Apply (f, args, conts)))

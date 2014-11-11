@@ -1,0 +1,14 @@
+
+f1=$1
+f2=$2
+
+./../removeUniqueness $f1
+./../removeUniqueness $f2
+
+diff $f1.noUniqueness $f2.noUniqueness
+
+rm $f1.noUniqueness $f2.noUniqueness
+
+
+
+

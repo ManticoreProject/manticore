@@ -60,7 +60,7 @@ struct
         extern void M_StartTimer();
         extern void M_StopTimer();
         extern long M_GetTimeAccum();
-
+        
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
 
@@ -287,7 +287,6 @@ struct
         do ccall M_Print(#0(s))
         do ccall M_Print(" seconds\n")
         return(UNIT);
-        
     )
 
     	type 'a tvar = _prim(tvar)
