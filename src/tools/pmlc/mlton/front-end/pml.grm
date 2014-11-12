@@ -11,13 +11,13 @@
                               structure Ast: AST));
 
 %tokens
-      : KW__prim	("_prim")
-      | KW__primcode	("_primcode")
+      : KW__con		("_con")
       | KW__datatype	("_datatype")
+      | KW__module 	("_module")
+      | KW__prim	("_prim")
       | KW__type	("_type")
       | KW__val		("_val")
-      | KW__module ("_module")
-      (* Getting errors in pml.lex, these seem not to have been pulled in *)
+  (* Getting errors in pml.lex, these seem not to have been pulled in *)
       | PLPAREN		("(|")
       | PRPAREN		("|)")
       | PLBRACE		("{|")
@@ -33,22 +33,38 @@
 
 %start program;
 
+topdecnode
+	: "_module" BomId Import* "_prim" "(" BOMDecls ")"
+		=> (Topdec.PrimModule (BomId, Vector.fromList BOMDecls))
+	;
+
+Import
+	: "_import" "datatype" tyvarseq longtycon ("as" BomId)? "with" ImportCon+ "end"
+		=> ()
+	| "_import" "exception" longid ("as" BomId)? ("of" ty)?
+		=> ()
+	| "_import" "val" longvid ":" ty ("as" BomId)?
+		=> ()
+	;
+
+ImportCon
+	: "_con" vid ("of" ty)? ("as" BomId)?
+		=> ()
+	;
+
 strdecnode
-	(* : "_primcode" "(" BOMDecls ")" *)
-	(* 	=> (Strdec.PrimCode (Vector.fromList BOMDecls)) *)
-	: "_datatype" tyvarseq tycon "=" "_prim" "(" LongTyId TyArgs? ")"
-		=> (Strdec.PrimDataType (tyvarseq, tycon, LongTyId,
-     Option.getOpt (TyArgs, [])))
+	: "_datatype" tyvarseq tycon "=" "_prim" "(" LongTyId TyArgs? ")" "with" PrimConDef+ "end"
+		=> (Strdec.PrimDataType (tyvarseq, tycon, LongTyId, Option.getOpt (TyArgs, [])))
 	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
 		=> (Strdec.PrimTycon (tyvars, tycon, BOMType))
 	| "_val" "op"? MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"
 		=> (Strdec.PrimVal (MLValueId, ty, BOMValueId))
 	;
 
-topdecnode
-  : "_module" BomId "(" BOMDecls ")"
-    => (Topdec.PrimModule (BomId, Vector.fromList BOMDecls))
-  ;
+PrimConDef
+	: "_con" vid ("of" ty)? = "_prim" "(" BomId ")"
+		=> ()
+	;
 
 MLValueId
 	: SYMID => (Vid.fromSymbol (Symbol.fromString SYMID, posToReg FULL_SPAN))

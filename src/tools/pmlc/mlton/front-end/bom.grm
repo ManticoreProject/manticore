@@ -7,59 +7,62 @@
 %name BOM;
 
 %tokens
-  : KW_addr   ("addr")
-  | KW_alloc  ("alloc")
-(*  | KW_and  ("and")       *)
-  | KW_any  ("any")
-  | KW_apply  ("apply")
+  : KW_alloc	("alloc")
+(*  | KW_and	("and")       *)
+  | KW_apply	("apply")
   | KW___attributes__ ("__attributes__")
-(*  | KW_case   ("case")    *)
-  | KW_ccall  ("ccall")		(* should use this! *)
-  | KW_cont   ("cont")
-(*  | KW_datatype   ("datatype")    *)
-  | KW_define   ("define")
-(*  | KW_do     ("do")        *)
-(*  | KW_else   ("else")    *)
-(*  | KW_end  ("end")       *)
-  | KW_extern   ("extern")
-(*  | KW_fun  ("fun")       *)
+(*  | KW_case	("case")    *)
+  | KW_ccall	("ccall")		(* should use this! *)
+  | KW_cont	("cont")
+(*  | KW_datatype ("datatype")    *)
+  | KW_define	("define")
+(*  | KW_do	("do")        *)
+(*  | KW_else	("else")    *)
+(*  | KW_end    ("end")       *)
+(*  | KW_exception ("exception") *)
+  | KW_extern	("extern")
+(*  | KW_fun	("fun")       *)
   | KW_host_vproc ("host_vproc")
 (*  | KW_if     ("if")      *)
-  | KW_inline   ("inline")		(* maybe we should use this! *)
-  | KW_instance ("instance")
-  | KW_int  ("int")
-(*  | KW_let  ("let")       *)
-  | KW_noreturn   ("noreturn")
+(*  | KW_let	("let")       *)
+  | KW_noreturn	("noreturn")
   | KW_nullVP   ("nullVP")
 (*  | KW_of     ("of")      *)
-  | KW_promote  ("promote")		(* should use this! *)
+  | KW_promote  ("promote")
   | KW_return   ("return")
 (*  | KW_then   ("then")    *)
-  | KW_throw  ("throw")
-(*  | KW_type ("type") *)
+  | KW_throw	("throw")
+(*  | KW_type (	) *)
   | KW_typecase ("typecase")
-  | KW_void   ("void")
   | KW_vpaddr   ("vpaddr")
-  | KW_vproc  ("vproc")
   | KW_vpload   ("vpload")
   | KW_vpstore  ("vpstore")
-(* All of the new RawTy identifiers *)
-  | KW_int8 ("int8")
-  | KW_uint8 ("uint8")
-  | KW_int16 ("int16")
-  | KW_int32 ("int32")
-  | KW_uint32 ("uint32")
-  | KW_uint16 ("uint16")
-  | KW_int64 ("int64")
-  | KW_uint64 ("uint64")
-  | KW_float32 ("float32")
-  | KW_float64 ("float64")
+(* BOM type identifiers *)
+  | KW_addr	("addr")
+  | KW_any	("any")
+  | KW_array	("array")
+  | KW_bignum	("bignum")
+  | KW_exn	("exn")
+  | KW_int8	("int8")
+  | KW_int16	("int16")
+  | KW_int32	("int32")
+  | KW_int64	("int64")
+  | KW_float32	("float32")
+  | KW_float64	("float64")
+  | KW_uint8	("uint8")
+  | KW_uint16	("uint16")
+  | KW_uint32	("uint32")
+  | KW_uint64	("uint64")
+  | KW_vector	("vector")
+  | KW_void	("void")
+  | KW_vproc	("vproc")
+(* puntuation *)
 (*  | LP    ("(")       *)
 (*  | RP    (")")       *)
 (*  | LB    ("[")       *)
 (*  | RB    ("]")       *)
-(*      | LCB     ("{")                   *)
-(*      | RCB     ("}")                   *)
+(*  | LCB     ("{")                   *)
+(*  | RCB     ("}")                   *)
 (*  | HASH    ("#")       *)
  (* | ASTERISK    ("*") *)
 (*  | COMMA     (",")       *)
@@ -76,7 +79,6 @@
 (*  | ASSIGN  (":=")      *)
 (*  | DARROW  ("=>")      *)
 (*  | ARROW     ("->")      *)
-    | DDARROW       ("==>")
 (*  | LONGID of string       *)
   | HLID of string		(* "@"ID *)
   | LONG_HLID of string		(* qualified HLID *)
@@ -91,46 +93,30 @@
 %defs(
   structure BOM = Ast.AstBOM
 
-  fun optToList maybe =
-    Option.getOpt (maybe, [])
+  fun optToList NONE = []
+    | optToList (SOME xs) = xs
 
-  fun flatten maybe =
-    case maybe of
-      NONE => []
-    | SOME(x, xs) => x::xs
+  fun flatten NONE = []
+    | flatten (SOME(x, xs)) = x::xs
 
-  fun optToEl maybe =
-    if Option.isSome maybe then
-      [Option.valOf maybe]
-    else
-      []
+  fun optToEl (SOME x) = [x]
+    | optToEl NONE = []
 
   fun makeId (regionMaker : ('a * Region.t) -> 'b,
         idFromSymbol : (Symbol.t * Region.t) -> 'a,
         s : string,
-        thisSpan : Lex.pos * Lex.pos) : 'b =
-    let
-      val thisRegion : Region.t = posToReg thisSpan
-      val symbol = Symbol.fromString s
-    in
-      regionMaker ((idFromSymbol (symbol, thisRegion)), thisRegion)
-    end
+        thisSpan : Lex.pos * Lex.pos
+      ) : 'b = let
+	val thisRegion : Region.t = posToReg thisSpan
+	val symbol = Symbol.fromString s
+	in
+	  regionMaker ((idFromSymbol (symbol, thisRegion)), thisRegion)
+	end
+
+  fun mkBomExp (exp, span) = BOM.Exp.makeRegion (exp, posToReg span)
 
   fun splitLongIdString (id : CharVector.vector) =
-    let
-      fun doSplit (toSplit, elAcc, listAcc) =
-        case (toSplit, elAcc) of
-          (#"."::cs, elAcc) =>
-            doSplit (cs, [], elAcc::listAcc)
-        | (c::cs, elAcc) =>
-            doSplit (cs, c::elAcc, listAcc)
-        | ([], []) =>
-            listAcc
-        | ([], elAcc) =>
-            elAcc::listAcc
-   in
-     map String.implode (doSplit ((explode id), [], []))
-   end
+	String.fields (fn #"." => true | _ => false) id
 
   fun makeLongId (longIdFromSymbols : (Symbol.t list * Region.t) -> 'a,
         s : string, thisSpan : Lex.pos * Lex.pos) : 'a =
@@ -236,9 +222,9 @@
 );
 
 BOMDecls
-  : Definition*
-    => (Definition)
-  ;
+	: Definition*
+		=> (Definition)
+	;
 
 Definition
 	(* : "datatype" DataTypeDef ("and" DataTypeDef)* ";" *)
@@ -277,6 +263,8 @@ Definition
 		=> (BOM.Definition.makeRegion (
 		    BOM.Definition.Fun (FunDef::SR),
 		    posToReg FULL_SPAN))
+(* FIXME: need to add exception definition *)
+(* not used anymore
 	| "instance" "type" LongTyId TyArgs ";"
 		=> (BOM.Definition.makeRegion (
 		      BOM.Definition.InstanceType (LongTyId, TyArgs),
@@ -285,6 +273,7 @@ Definition
 		=> (BOM.Definition.makeRegion (
 		      BOM.Definition.Instance (LongValueId, TyArgs),
 		      posToReg FULL_SPAN))
+*)
 	;
 
 (* FIXME: this can be made to work better with DefineShortId above *)
@@ -351,7 +340,7 @@ TyArgs
 (* We need to do this because the "id" nonterminal in ml.grm is
 actually a LONGID that's been forced to be nonqualified. ID does not
 match LONGID in BOM now, so it fails. *)
-shortId
+ShortId
   : ID => (Symbol.fromString ID, posToReg FULL_SPAN)
   ;
 
@@ -360,7 +349,7 @@ idForLongid
   ;
 
 BomId
-	: shortId => (BOM.BomId.fromSymbol shortId)
+	: ShortId => (BOM.BomId.fromSymbol ShortId)
 	;
 
 HLOpId
@@ -387,10 +376,12 @@ LongTyId
   | idForLongid => (BOM.LongTyId.fromSymbols idForLongid)
   ;
 
+(* not reachable!
 LongConId
   : longid => (BOM.LongConId.fromSymbols longid)
   | idForLongid => (BOM.LongConId.fromSymbols idForLongid)
   ;
+*)
 
 LongValueId
 	: longid => (BOM.LongValueId.fromSymbols longid)
@@ -485,68 +476,49 @@ Attrs
   ;
 
 BOMExp
-  : "let" VarPat ("," VarPat)* "=" RHS BOMExp
-      => (BOM.Exp.makeRegion (
-        BOM.Exp.Let (VarPat::SR, RHS, BOMExp),
-        posToReg FULL_SPAN))
-  | "do" SimpleExp BOMExp
-      => (BOM.Exp.makeRegion (
-        BOM.Exp.Do (SimpleExp, BOMExp),
-        posToReg FULL_SPAN))
-  | "fun" FunDef ("and" FunDef)* BOMExp
-      => (BOM.Exp.makeRegion (
-        BOM.Exp.FunExp (FunDef::SR, BOMExp),
-        posToReg FULL_SPAN))
-  | "cont" BomId "(" Params? ")" "=" BOMExp BOMExp
-      => (BOM.Exp.makeRegion (
-        BOM.Exp.ContExp (BomId, Option.getOpt (Params, []), BOMExp1, BOMExp2),
-        posToReg FULL_SPAN))
-  | "if" SimpleExp "then" BOMExp "else" BOMExp
-      => (BOM.Exp.makeRegion (
-        BOM.Exp.If (SimpleExp, BOMExp1, BOMExp2),
-        posToReg FULL_SPAN))
-  | "case" SimpleExp "of" CaseRule ("|" CaseRule)*  "end"
-      => (BOM.Exp.makeRegion (
-        BOM.Exp.Case (SimpleExp,
-          (checkCaseRule (CaseRule::SR, FULL_SPAN))),
-        posToReg FULL_SPAN))
-  | "typecase" TyParam "of" TyCaseRule ("|" TyCaseRule)* "end"
-      => (BOM.Exp.makeRegion (
-        BOM.Exp.Typecase (TyParam,
-          TyCaseRule::(checkTyCaseRule (SR, FULL_SPAN))),
-        posToReg FULL_SPAN))
-  | "apply" LongValueId "(" Args? ("/" Args)? ")"
-      => (BOM.Exp.makeRegion (
-        BOM.Exp.Apply (
-          LongValueId, Option.getOpt (Args, []), Option.getOpt (SR, [])),
-        posToReg FULL_SPAN))
-  | "throw" BomId "(" Args? ")"
-      => (BOM.Exp.makeRegion (
-        BOM.Exp.Throw (BomId, Option.getOpt (Args, [])),
-        posToReg FULL_SPAN))
-  | "return" "(" Args? ")"
-      => (BOM.Exp.makeRegion (
-        BOM.Exp.Return (Option.getOpt (Args, [])),
-        posToReg FULL_SPAN))
-  ;
+	: "let" VarPat ("," VarPat)* "=" RHS BOMExp
+		=> (mkBomExp (BOM.Exp.Let (VarPat::SR, RHS, BOMExp), FULL_SPAN))
+	| "do" SimpleExp BOMExp
+	    => (mkBomExp (BOM.Exp.Do (SimpleExp, BOMExp), FULL_SPAN))
+	| "fun" FunDef ("and" FunDef)* BOMExp
+	    => (mkBomExp (BOM.Exp.FunExp (FunDef::SR, BOMExp), FULL_SPAN))
+	| "cont" BomId "(" Params? ")" "=" BOMExp BOMExp
+	    => (mkBomExp (BOM.Exp.ContExp (BomId, optToList Params, BOMExp1, BOMExp2), FULL_SPAN))
+	| "if" SimpleExp "then" BOMExp "else" BOMExp
+	    => (mkBomExp (BOM.Exp.If (SimpleExp, BOMExp1, BOMExp2), FULL_SPAN))
+	| "case" SimpleExp "of" CaseRule ("|" CaseRule)*  "end"
+	    => (mkBomExp (
+		BOM.Exp.Case (SimpleExp, checkCaseRule (CaseRule::SR, posToReg FULL_SPAN)),
+		FULL_SPAN))
+	| "typecase" TyParam "of" TyCaseRule ("|" TyCaseRule)* "end"
+	    => (mkBomExp (
+		BOM.Exp.Typecase (TyParam, TyCaseRule::(checkTyCaseRule (SR, posToReg FULL_SPAN))),
+		FULL_SPAN))
+	| "apply" LongValueId "(" Args? ("/" Args)? ")"
+	    => (mkBomExp (BOM.Exp.Apply (LongValueId, optToList Args, optToList SR), FULL_SPAN))
+	| "throw" BomId "(" Args? ")"
+	    => (mkBomExp (BOM.Exp.Throw (BomId, optToList Args, FULL_SPAN)))
+	| "return" "(" Args? ")"
+	    => (mkBomExp (BOM.Exp.Return (optToList Args), FULL_SPAN))
+	;
 
 Args
-  : SimpleExp ("," SimpleExp)*
-      => (SimpleExp::SR)
-  ;
+	: SimpleExp ("," SimpleExp)*
+		=> (SimpleExp::SR)
+	;
 
 
 RHS
-  : BOMExp
-      => (BOM.RHS.makeRegion (BOM.RHS.Composite BOMExp, posToReg FULL_SPAN))
-  | SimpleExp
-      => (BOM.RHS.makeRegion (BOM.RHS.Simple SimpleExp, posToReg FULL_SPAN))
-  ;
+	: BOMExp
+		=> (BOM.RHS.makeRegion (BOM.RHS.Composite BOMExp, posToReg FULL_SPAN))
+	| SimpleExp
+		=> (BOM.RHS.makeRegion (BOM.RHS.Simple SimpleExp, posToReg FULL_SPAN))
+	;
 
 
 PrimOp
-  : shortId => (BOM.PrimOp.fromSymbol shortId)
-  ;
+	: ShortId => (BOM.PrimOp.fromSymbol ShortId)
+	;
 
 SimpleExp
   : PrimOp "(" Args ")"
@@ -625,8 +597,8 @@ CaseRule
   | "_" (":" BOMType)? "=>" BOMExp
       => (defaultRuleThunk (BOM.VarPat.makeRegion (BOM.VarPat.Wild SR,
         posToReg FULL_SPAN), BOMExp, FULL_SPAN))
-  | shortId "=>" BOMExp
-      => (longOrDefaultRuleThunk (shortId, BOMExp, FULL_SPAN))
+  | ShortId "=>" BOMExp
+      => (longOrDefaultRuleThunk (ShortId, BOMExp, FULL_SPAN))
 	;
 
 (* CaseRule *)
