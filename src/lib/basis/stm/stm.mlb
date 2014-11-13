@@ -1,4 +1,5 @@
 ann "cpp" "../include/prim.def,../include/runtime-offsets.def,../include/dictionary-offsets.def" in
     v-clock.pml
     stm.pml
+    hybridPartialSTM.pml
 end

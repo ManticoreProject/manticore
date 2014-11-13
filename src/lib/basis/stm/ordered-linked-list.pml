@@ -6,7 +6,7 @@
  * Linked list implementation based on Software Transactional Memory with partial aborts.
  *)
 
-structure WhichSTM = PartialSTM
+structure WhichSTM = HybridPartialSTM
 
 val put = WhichSTM.put
 val get = WhichSTM.get
@@ -23,6 +23,21 @@ type ListHandle = List tvar
 
 fun newList() : ListHandle = new (Head(new Null))
 
+fun spin n = if n = 1 then 1 else spin (n-1)
+
+fun getArg f args = 
+    case args 
+        of arg::arg'::args => 
+            if String.same(f, arg) then SOME arg'
+            else getArg f (arg'::args)
+         |_ => NONE
+
+val args = CommandLine.arguments ()
+
+val c = case getArg "-spin" args
+        of SOME n => (case Int.fromString n of SOME n => n | NONE => 200)
+         | NONE => 200
+
 fun add (l:ListHandle) (v:int) = 
     let fun lp l = 
             case get l 
@@ -31,7 +46,7 @@ fun add (l:ListHandle) (v:int) =
                  | Node(v', n) => 
                     if v' > v
                     then put(l, Node(v, new (Node(v', n))))
-                    else lp n 
+                    else (spin c; lp n)
     in atomic (fn () => lp l) end
 
 fun printList (l:ListHandle) = 
@@ -45,7 +60,7 @@ fun find (l:ListHandle) v =
             case get l
                 of Null => false
                  | Head n => lp n
-                 | Node(v', n) => if v = v' then true else lp n
+                 | Node(v', n) => if v = v' then true else (spin c; lp n)
     in atomic (fn () => lp l) end
 
 fun next l = 
@@ -111,7 +126,7 @@ fun initialize n =
              val _ = add l randNum
          in initialize (n-1) end
 
-val _ = initialize 1000
+val _ = initialize 2000
 val startTime = Time.now()
 val _ = join(start l THREADS)
 val endTime = Time.now()

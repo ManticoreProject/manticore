@@ -40,16 +40,6 @@ struct
 #define PRINT_ABORT_COUNT
 #endif
 
-
-#define TIME
-#ifdef TIME
-#define START do ccall M_StartTimer()
-#define STOP do ccall M_StopTimer()
-#else
-#define START
-#define STOP
-#endif
-
     _primcode(
 
         extern void * M_Print_Int(void *, int);
@@ -214,7 +204,7 @@ struct
                                       do apply validate(readSet, acquired, newStamp, Option.NONE, nil)  (*figure out where to abort to*)
                                       do apply release(acquired)
                                       do SchedulerAction.@atomic-end(vp)
-                                      throw enter()  (*if all reads are still valid, try and commit again*)
+                                      apply acquire(writeSet, acquired) (*try and acquire again*)
                          |nil => return(acquired)
                     end
                 fun update(writes:List.list, newStamp : stamp) : () = 
@@ -281,11 +271,6 @@ struct
       
       define @print-stats(x:unit / exh:exh) : unit = 
         PRINT_ABORT_COUNT
-        let t : long = ccall M_GetTimeAccum()
-        let s : ml_string = @timeToString(alloc(t) / exh)
-        do ccall M_Print("Total time spent reading was ")
-        do ccall M_Print(#0(s))
-        do ccall M_Print(" seconds\n")
         return(UNIT);
     )
 
@@ -297,13 +282,6 @@ struct
     val getID : unit -> int = _prim(@getID)
     val printStats : unit -> unit = _prim(@print-stats)
 end
-
-
-(*
-Notes:
-    -record restarts in transactional log
-    -if lock is held when acquiring, spin until lock is released and abort
-*)
 
 
 
