@@ -13,20 +13,18 @@ structure HybridPartialSTM = (* :
     sig
 	
 *)
-struct
+struct 
 
 #ifndef NDEBUG
 #define PDebug(msg)  do ccall M_Print(msg)  
 #define PDebugInt(msg, v)  do ccall M_Print_Int(msg, v)  
 #define PDebugInt2(msg, v1, v2)  do ccall M_Print_Int2(msg, v1, v2)  
 #define PDebugLong(msg, v) do ccall M_Print_Long(msg, v)
-#define PDebugID(msg) let id : int = FLS.@get-id() do ccall M_Print_Int(msg, id)
 #else
 #define PDebug(msg) 
 #define PDebugInt(msg, v)   
 #define PDebugInt2(msg, v1, v2) 
 #define PDebugLong(msg, v) 
-#define PDebugID(msg) 
 #endif
 
 #define COUNT
@@ -267,12 +265,6 @@ struct
             throw enter()    
         ;
 
-       define @getID(x:unit / exh:exh) : ml_int =
-        let id : int = FLS.@get-id()
-        let id : [int] = alloc(id)
-        return(id)
-      ;
-
       define @timeToString = Time.toString;
       
       define @print-stats(x:unit / exh:exh) : unit = 
@@ -286,7 +278,6 @@ struct
     val nonCPGet : 'a tvar -> 'a = _prim(@nonCPRead)
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
-    val getID : unit -> int = _prim(@getID)
     val printStats : unit -> unit = _prim(@print-stats)
 end
 

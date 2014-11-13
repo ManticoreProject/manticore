@@ -21,24 +21,11 @@ struct
 #define PDebugInt(msg, v)  do ccall M_Print_Int(msg, v)  
 #define PDebugInt2(msg, v1, v2)  do ccall M_Print_Int2(msg, v1, v2)  
 #define PDebugLong(msg, v) do ccall M_Print_Long(msg, v)
-#define PDebugID(msg) let id : int = FLS.@get-id() do ccall M_Print_Int(msg, id)
 #else
 #define PDebug(msg) 
 #define PDebugInt(msg, v)   
 #define PDebugInt2(msg, v1, v2) 
 #define PDebugLong(msg, v) 
-#define PDebugID(msg) 
-#endif
-
-(*Turn on/off continuation capturing*)
-
-
-#ifndef CAPTURE_CONTS
-#define CC(arg)
-#define CCNC(arg)
-#else
-#define CC(arg) , arg
-#define CCNC(arg) arg
 #endif
 
 #define COUNT
@@ -92,9 +79,8 @@ struct
                         then if I64Lt(#2(#0(hd)), #0(myStamp))
                              then let res : Option.option = Option.SOME(#1(hd))
                                   return(res)
-                             else PDebugID("Aborting via eager conflict detection with ID: %d\n")
-                                  let newStamp : stamp = VClock.@bump(/exh)
-                                  let e : exn = Fail("Aborting transaction")
+                             else let newStamp : stamp = VClock.@bump(/exh)
+                                  let e : exn = Fail(@"__ABORT_EXCEPTION__")
                                   throw exh(e)
                         else apply chkLog(tl)
 #else
@@ -116,7 +102,7 @@ struct
                     do apply lk()
                     let current : any = #0(tv)
                     do #1(tv) := 0:long
-                    let item : readItem = alloc(tv)
+                    let item : [tvar] = alloc(tv)
                     let newReadSet : List.list = CONS(item, readSet)
                     do FLS.@set-key(READ_SET, newReadSet / exh)
                     return(current)
@@ -152,7 +138,7 @@ struct
                     case readSet 
                         of CONS(hd:readItem, tl:List.list) =>
                             let tv : tvar = #0(hd)
-                            let e : exn = Fail("Aborting transaction")
+                            let e : exn = Fail(@"__ABORT_EXCEPTION__")
                             if I64Lt(#2(tv), rawStamp)  (*still valid*)
                             then apply validate(tl, locks, newStamp)
                             else do apply release(locks)
@@ -171,8 +157,7 @@ struct
                                  then apply acquire(tl, acquired)
                                  else do apply release(acquired)
                                       do SchedulerAction.@atomic-end(vp)
-                                      let e : exn = Fail("Aborting transaction")
-                                      throw exh(e)
+                                      apply acquire(writeSet, acquired)
                          |nil => return(acquired)
                     end
                 fun update(writes:List.list, newStamp : stamp) : () = 
@@ -208,8 +193,19 @@ struct
                      let stamp : [stamp] = alloc(stamp)
                      let stamp : [stamp] = promote(stamp)
                      do FLS.@set-key(STAMP_KEY, stamp / exh)
-                     do #0(in_trans) := true           
-                     cont abortK(e:exn) = BUMP_ABORT do #0(in_trans) := false throw enter()
+                     do #0(in_trans) := true            
+                     cont abortK(e:exn) = 
+                        case e  (*Check that the exception received was because of an aborted TX*)
+                            of Fail(s:ml_string) => 
+                                 let arg : [ml_string, ml_string] = alloc(@"__ABORT_EXCEPTION__", s)
+                                 let res : bool = String.@same(arg / exh)
+                                 if(res) 
+                                 then BUMP_ABORT 
+                                      do #0(in_trans) := false 
+                                      throw enter()
+                                 else throw exh(e)
+                             | _ => throw exh(e)
+                        end
                      let res : any = apply f(UNIT/abortK)
                      do @commit(/abortK)
                      do #0(in_trans) := false
@@ -218,12 +214,6 @@ struct
                      return(res)
             throw enter()
         ;
-
-       define @getID(x:unit / exh:exh) : ml_int =
-        let id : int = FLS.@get-id()
-        let id : [int] = alloc(id)
-        return(id)
-      ;
 
       define @print-stats(x:unit / exh:exh) : unit = 
         PRINT_ABORT_COUNT
@@ -235,7 +225,6 @@ struct
     val get : 'a tvar -> 'a = _prim(@get)
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
-    val getID : unit -> int = _prim(@getID)
     val printStats : unit -> unit = _prim(@print-stats)
 end
 
