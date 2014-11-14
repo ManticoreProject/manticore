@@ -6,7 +6,7 @@
  * Linked list implementation based on Software Transactional Memory with partial aborts.
  *)
 
-structure WhichSTM = STM
+structure WhichSTM = BoundedHybridPartialSTM
 
 val put = WhichSTM.put
 val get = WhichSTM.get
@@ -69,7 +69,7 @@ fun delete (l:ListHandle) (i:int) =
     in atomic(fn () => lp l) end            
 
 val ITERS = 400
-val THREADS = 10
+val THREADS = 4
 val MAXVAL = 1000
 
 fun insertLoop (l:ListHandle) (i:int) = 
@@ -97,7 +97,7 @@ fun start l i =
     if i = 0
     then nil
     else let val ch = PrimChan.new()
-             val _ = spawn(thread ch ITERS l)
+             val _ = Threads.spawnOn(i-1, fn _ => (thread ch ITERS l))
          in ch::start l (i-1) end         
 
 fun join chs = 
@@ -115,7 +115,7 @@ fun remove l v =
          | nil => (print "List is incorrect!\n"; raise Fail "test failed")
 
 fun check (l:ListHandle) (remaining:int list) = 
-    case STM.get l
+    case WhichSTM.get l
         of Null => (case remaining
                       of _::_ => (print "List is incorrect!\n"; raise Fail "test failed")
                        | nil => print "List is correct\n")
@@ -128,7 +128,7 @@ fun nextList l =
          | nil => NONE
 
 fun nextLinkedList l =
-    case STM.get l
+    case WhichSTM.get l
         of Null => NONE
          | Node(v, next) => SOME(v, next)
          | Head n => nextLinkedList n
@@ -146,7 +146,7 @@ val remaining = join(start l THREADS)
 
 val _ = print "Done with linked list operations\n"
 
-val _ = STM.atomic(fn () => check l remaining)
+val _ = WhichSTM.atomic(fn () => check l remaining)
 
 
 
