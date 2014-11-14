@@ -115,14 +115,6 @@
 
   fun mkBomExp (exp, span) = BOM.Exp.makeRegion (exp, posToReg span)
 
-  fun splitLongIdString (id : CharVector.vector) =
-	String.fields (fn #"." => true | _ => false) id
-
-  fun makeLongId (longIdFromSymbols : (Symbol.t list * Region.t) -> 'a,
-        s : string, thisSpan : Lex.pos * Lex.pos) : 'a =
-    longIdFromSymbols (
-      map Symbol.fromString (splitLongIdString s), posToReg thisSpan)
-
   fun intInfFromINT ({digits = ds, negate = isNeg, radix = rad}):IntInf.int =
     let
       val _ = print (String.concat ["parsing int. digits: ", ds, "\n"])
@@ -337,56 +329,6 @@ TyArgs
     => (BOMType::SR)
   ;
 
-(* We need to do this because the "id" nonterminal in ml.grm is
-actually a LONGID that's been forced to be nonqualified. ID does not
-match LONGID in BOM now, so it fails. *)
-ShortId
-  : ID => (Symbol.fromString ID, posToReg FULL_SPAN)
-  ;
-
-idForLongid
-  : ID => ([Symbol.fromString ID], posToReg FULL_SPAN)
-  ;
-
-BomId
-	: ShortId => (BOM.BomId.fromSymbol ShortId)
-	;
-
-HLOpId
-	: HLID => (BOM.HLOpId.fromSymbol(Symbol.fromString HLID, posToReg FULL_SPAN))
-	;
-
-HLOpQId
-	: HLID
-      => (BOM.HLOpQId.fromSymbols (
-        [Symbol.fromString HLID], posToReg FULL_SPAN))
-	| LONG_HLID
-      => (BOM.HLOpQId.fromSymbols (
-       map Symbol.fromString (splitLongIdString LONG_HLID),
-       posToReg FULL_SPAN))
-	;
-
-TyParam
-  : TYVAR
-      => (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN))
-  ;
-
-LongTyId
-  : longid => (BOM.LongTyId.fromSymbols longid)
-  | idForLongid => (BOM.LongTyId.fromSymbols idForLongid)
-  ;
-
-(* not reachable!
-LongConId
-  : longid => (BOM.LongConId.fromSymbols longid)
-  | idForLongid => (BOM.LongConId.fromSymbols idForLongid)
-  ;
-*)
-
-LongValueId
-	: longid => (BOM.LongValueId.fromSymbols longid)
-	| idForLongid => (BOM.LongValueId.fromSymbols idForLongid)
-	;
 
 BOMType
   : TyParam
@@ -517,7 +459,7 @@ RHS
 
 
 PrimOp
-	: ShortId => (BOM.PrimOp.fromSymbol ShortId)
+	: ID => (BOM.PrimOp.fromSymbol ID)
 	;
 
 SimpleExp
@@ -684,59 +626,93 @@ Literal
 
 
 CReturnTy
-  : "void"
-      => (BOM.CReturnTy.makeRegion (BOM.CReturnTy.Void, posToReg FULL_SPAN))
-  | CArgTy
-      => (BOM.CReturnTy.makeRegion (
-        BOM.CReturnTy.CArg CArgTy,
-        posToReg FULL_SPAN))
-  ;
+	: "void"
+		=> (BOM.CReturnTy.makeRegion (BOM.CReturnTy.Void, posToReg FULL_SPAN))
+	| CArgTy
+		=> (BOM.CReturnTy.makeRegion (
+			BOM.CReturnTy.CArg CArgTy,
+			posToReg FULL_SPAN))
+	;
 
 CArgTy
-  : RawTy
-      => (BOM.CArgTy.makeRegion (BOM.CArgTy.Raw RawTy, posToReg FULL_SPAN))
-  | "void" "*"
-      => (BOM.CArgTy.makeRegion (BOM.CArgTy.VoidPointer, posToReg FULL_SPAN))
-  ;
+	: RawTy
+		=> (BOM.CArgTy.makeRegion (BOM.CArgTy.Raw RawTy, posToReg FULL_SPAN))
+	| "void" "*"
+		=> (BOM.CArgTy.makeRegion (BOM.CArgTy.VoidPointer, posToReg FULL_SPAN))
+	;
 
 RawTy
-  : "int8"
-    => (BOM.RawTy.makeRegion (BOM.RawTy.Int8, posToReg FULL_SPAN))
-  | "uint8"
-    => (BOM.RawTy.makeRegion (BOM.RawTy.Uint8, posToReg FULL_SPAN))
-  | "int16"
-    => (BOM.RawTy.makeRegion (BOM.RawTy.Int16, posToReg FULL_SPAN))
-  | "uint16"
-    => (BOM.RawTy.makeRegion (BOM.RawTy.Uint16, posToReg FULL_SPAN))
-  | "int32"
-    => (BOM.RawTy.makeRegion (BOM.RawTy.Int32, posToReg FULL_SPAN))
-  | "uint32"
-    => (BOM.RawTy.makeRegion (BOM.RawTy.Uint32, posToReg FULL_SPAN))
-  | "int64"
-    => (BOM.RawTy.makeRegion (BOM.RawTy.Int64, posToReg FULL_SPAN))
-  | "uint64"
-    => (BOM.RawTy.makeRegion (BOM.RawTy.Uint64, posToReg FULL_SPAN))
-  | "float32"
-    => (BOM.RawTy.makeRegion (BOM.RawTy.Float32, posToReg FULL_SPAN))
-  | "float64"
-    => (BOM.RawTy.makeRegion (BOM.RawTy.Float64, posToReg FULL_SPAN))
-  ;
+	: "int8"
+		=> (BOM.RawTy.makeRegion (BOM.RawTy.Int8, posToReg FULL_SPAN))
+	| "uint8"
+		=> (BOM.RawTy.makeRegion (BOM.RawTy.Uint8, posToReg FULL_SPAN))
+	| "int16"
+		=> (BOM.RawTy.makeRegion (BOM.RawTy.Int16, posToReg FULL_SPAN))
+	| "uint16"
+		=> (BOM.RawTy.makeRegion (BOM.RawTy.Uint16, posToReg FULL_SPAN))
+	| "int32"
+		=> (BOM.RawTy.makeRegion (BOM.RawTy.Int32, posToReg FULL_SPAN))
+	| "uint32"
+		=> (BOM.RawTy.makeRegion (BOM.RawTy.Uint32, posToReg FULL_SPAN))
+	| "int64"
+		=> (BOM.RawTy.makeRegion (BOM.RawTy.Int64, posToReg FULL_SPAN))
+	| "uint64"
+		=> (BOM.RawTy.makeRegion (BOM.RawTy.Uint64, posToReg FULL_SPAN))
+	| "float32"
+		=> (BOM.RawTy.makeRegion (BOM.RawTy.Float32, posToReg FULL_SPAN))
+	| "float64"
+		=> (BOM.RawTy.makeRegion (BOM.RawTy.Float64, posToReg FULL_SPAN))
+	;
 
 ReturnTy
-  : "noreturn"
-      => ([])
-  | %try "->" BOMType
-      => ([BOMType])
-  | %try "->" "(" BOMType ("," BOMType)* ")"
-      => (BOMType::SR)
-  ;
+	: "noreturn"
+		=> ([])
+	| "->" BOMType
+		=> ([BOMType])
+	| "->" "(" BOMType ("," BOMType)* ")"
+		=> (BOMType::SR)
+	;
 
 FunParams
-  : "(" Params? (")" => ([]) | "/" Params ")" => (Params))
-      => (Option.getOpt (Params, []), SR)
-  ;
+	: "(" Params? (")" => ([]) | "/" Params ")" => (Params))
+		=> (Option.getOpt (Params, []), SR)
+	;
 
 Params
-  : VarPat ("," VarPat)*
-      => (VarPat::SR)
-  ;
+	: VarPat ("," VarPat)*
+		=> (VarPat::SR)
+	;
+
+BomId	: ID
+		=> (BOM.BomId.fromSymbol (Symbol.fromString ID, posToReg FULL_SPAN))
+	;
+
+BomLongId
+	: ID
+		=> (BOM.LongTyId.fromSymbols ([Symbol.fromString ID], posToReg FULL_SPAN))
+	| LONGID
+		=> (let
+		    val syms = List.map Symbol.fromString (split (LONGID, #"."))
+		    in
+		      BOM.LongTyId.fromSymbols (syms, posToReg FULL_SPAN)
+		    end)
+	;
+
+HLOpId
+	: HLID
+		=> (BOM.HLOpId.fromSymbol(Symbol.fromString HLID, posToReg FULL_SPAN))
+	;
+
+HLOpQId
+	: HLID
+		=> (BOM.HLOpQId.fromSymbols ([Symbol.fromString HLID], posToReg FULL_SPAN))
+	| LONG_HLID
+		=> (BOM.HLOpQId.fromSymbols (
+		      List.map Symbol.fromString (split(LONG_HLID, #".")),
+		      posToReg FULL_SPAN))
+	;
+
+TyParam
+	: TYVAR
+		=> (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN))
+	;

@@ -53,8 +53,8 @@ ImportCon
 	;
 
 strdecnode
-	: "_datatype" tyvarseq tycon "=" "_prim" "(" LongTyId TyArgs? ")" "with" PrimConDef+ "end"
-		=> (Strdec.PrimDataType (tyvarseq, tycon, LongTyId, Option.getOpt (TyArgs, [])))
+	: "_datatype" tyvarseq tycon "=" "_prim" "(" BomLongId TyArgs? ")" "with" PrimConDef+ "end"
+		=> (Strdec.PrimDataType (tyvarseq, tycon, BomLongId, Option.getOpt (TyArgs, [])))
 	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
 		=> (Strdec.PrimTycon (tyvars, tycon, BOMType))
 	| "_val" "op"? MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"
@@ -68,7 +68,8 @@ PrimConDef
 
 MLValueId
 	: SYMID => (Vid.fromSymbol (Symbol.fromString SYMID, posToReg FULL_SPAN))
-	| idNoAsterisk => (Vid.fromSymbol idNoAsterisk)
+	| ID => (Vid.fromSymbol (Symbol.fromString ID, posToReg FULL_SPAN))
+	| "*" => (Vid.fromSymbol (Symbol.fromString "*", posToReg FULL_SPAN))
 	;
 
 BOMValueId

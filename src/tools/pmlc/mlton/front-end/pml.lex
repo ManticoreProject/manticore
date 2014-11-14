@@ -110,12 +110,10 @@
 %states INITIAL A S F L LL LLC LLCQ BOM;
 
 %let alphanum = [A-Za-z'_0-9]*;
-%let alphanumId = [A-Za-z]{alphanum};
+%let id = [A-Za-z]{alphanum};
 %let sym = [-!%&$+/:<=>?@~`\^|#*]|"\\";
 %let symId = {sym}+;
-%let id = {alphanumId}|{symId};
-%let longid = ({alphanumId}\.)+{id};
-%let hlid = "@"{alphanumId};
+%let hlid = "@"{id};
 %let ws = ("\012"|[\t\ ])*;
 %let nrws = ("\012"|[\t\ ])+;
 %let cr = "\013";
@@ -262,17 +260,19 @@
 <BOM>"#"			=> (T.HASH);
 <BOM>"&"			=> (T.AMPERSAND);
 
-(* <INITIAL,BOM>{symId}		=> (trace ("259", yytext, T.SYMID yytext)); *)
-<INITIAL,BOM>{symId}		=> (T.SYMID yytext);
-(* <INITIAL,BOM>"'"{alphanum}?	=> (trace ("260", yytext, T.TYVAR yytext)); *)
-<INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
-(* <INITIAL>{id}			=> (trace ("262", yytext, T.LONGID yytext)); *)
-<INITIAL>{id}			=> (T.LONGID yytext);
-<INITIAL,BOM>{longid}		=> (T.LONGID yytext);
-<BOM>{alphanumId}		=> (T.ID yytext);
-<BOM>({alphanumId}\.)+{id}	=> (T.LONGID yytext);
+(* identifiers and qualified identifiers.  We distinguish between symbolic and non-symbolic
+ * IDs, since the definition states that structure IDs (and presumably signature IDs) must
+ * be alphanumeric.  Qualified IDs in BOM code have a single level of qualification, since
+ * BOM modules do not nest.
+ *)
+<INITIAL>{symId}		=> (T.SYMID yytext);
+<INITIAL,BOM>{id}		=> (T.ID yytext);
+<INITIAL>({id}\.)+{id}		=> (T.LONG_ID yytext);
+<INITIAL>({id}\.)+{symid}	=> (T.LONG_ID yytext);
+<BOM>{id}\.{id}			=> (T.LONG_ID yytext); (* LONGID in BOM *)
 <BOM>{hlid}			=> (T.HLID yytext);
-<BOM>({alphanumId}\.)+{hlid}	=> (T.LONG_HLID yytext);
+<BOM>{id}\.{hlid}		=> (T.LONG_HLID yytext);
+<INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
 
 <INITIAL,BOM>{real}		=> (T.REAL(yytext));
 <INITIAL,BOM>{num}		=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));
