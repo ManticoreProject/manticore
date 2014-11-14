@@ -1,16 +1,11 @@
 (*Finer transactions*)
 
-structure STM = HybridPartialSTM
+structure STM = BoundedHybridPartialSTM
 
 val tv = STM.new 0
 
 fun bump () =
     let val old = STM.get tv
-        val _ = STM.put(tv, old+1)
-    in () end
-
-fun bump'() =
-    let val old = STM.nonCPGet tv
         val _ = STM.put(tv, old+1)
     in () end
 

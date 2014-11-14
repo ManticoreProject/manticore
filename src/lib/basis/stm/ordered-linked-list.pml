@@ -23,7 +23,7 @@ type ListHandle = List tvar
 
 fun newList() : ListHandle = new (Head(new Null))
 
-fun spin n = if n = 1 then 1 else spin (n-1)
+fun spin n = if n = 0 then 1 else spin (n-1)
 
 fun getArg f args = 
     case args 
@@ -36,7 +36,7 @@ val args = CommandLine.arguments ()
 
 val c = case getArg "-spin" args
         of SOME n => (case Int.fromString n of SOME n => n | NONE => 200)
-         | NONE => 200
+         | NONE => 0
 
 fun add (l:ListHandle) (v:int) = 
     let fun lp l = 
@@ -126,7 +126,7 @@ fun initialize n =
              val _ = add l randNum
          in initialize (n-1) end
 
-val _ = initialize 2000
+val _ = initialize 3000
 val startTime = Time.now()
 val _ = join(start l THREADS)
 val endTime = Time.now()

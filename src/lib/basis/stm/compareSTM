@@ -7,33 +7,17 @@ shift
 
 sed -i '.bak' "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = FullAbortSTM/g" $f
 
-pmlc -Ccodegen.annotate-instrs=true -Cclos.keep-closure=true $@ -o fullAbort $f 
-
-mv $base.closure0.pre.cps $base.fullAbort.closure0.pre.cps
-mv $base.closure0.post.cfg $base.fullAbort.closure0.post.cfg
-mv $base.s $base.fullAbort.s
+pmlc $@ -o fullAbort $f 
 
 sed -i '.bak' "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = PartialSTM/g" $f
 
-pmlc -Ccodegen.annotate-instrs=true -Cclos.keep-closure=true $@ -o partialAbort $f
-
-mv $base.closure0.pre.cps $base.partialAbort.closure0.pre.cps
-mv $base.closure0.post.cfg $base.partialAbort.closure0.post.cfg
-mv $base.s $base.partialAbort.s
+pmlc $@ -o partialAbort $f
 
 sed -i '.bak' "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = HybridPartialSTM/g" $f
 
-pmlc -Ccodegen.annotate-instrs=true -Cclos.keep-closure=true $@ -o hybridPartialAbort $f
-
-mv $base.closure0.pre.cps $base.hybridPartialAbort.closure0.pre.cps
-mv $base.closure0.post.cfg $base.hybridPartialAbort.closure0.post.cfg
-mv $base.s $base.hybridPartialAbort.s
-
+pmlc $@ -o hybridPartialAbort $f
 
 sed -i '.bak' "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = BoundedHybridPartialSTM/g" $f
 
-pmlc -Ccodegen.annotate-instrs=true -Cclos.keep-closure=true $@ -o boundedHybridPartialAbort $f
+pmlc $@ -o boundedHybridPartialAbort $f
 
-mv $base.closure0.pre.cps $base.boundedHybridPartialAbort.closure0.pre.cps
-mv $base.closure0.post.cfg $base.boundedHybridPartialAbort.closure0.post.cfg
-mv $base.s $base.boundedHybridPartialAbort.s
