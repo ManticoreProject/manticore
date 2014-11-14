@@ -58,7 +58,9 @@ struct
         typedef writeItem = [tvar,    (*0: tvar operated on*)
                              any];    (*1: contents of local copy*)
 
-        typedef skipList = [any, any, any];  (*head, tail, skipTail*)
+        typedef skipCons = [any, any, any];  (*head, tail, skipTail*)
+
+        typedef skipList = any;
 
         define @new(x:any / exh:exh) : tvar = 
             let tv : tvar = alloc(x, 0:long, 0:long)
@@ -68,7 +70,7 @@ struct
 
         define @get(tv:tvar / exh:exh) : any = 
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
-            let readSet : List.list = FLS.@get-key(READ_SET / exh)
+            let readSet : [int, skipList] = FLS.@get-key(READ_SET / exh)
             let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
             cont retK(x:any) = return(x)
             fun chkLog(writeSet : List.list) : Option.option = (*use local copy if available*)
@@ -94,6 +96,9 @@ struct
                      do #1(tv) := 0:long
                      let numReads : ![int] = FLS.@get-key(NUM_READS_KEY / exh)
                      let item : readItem = alloc(tv, (any) retK, writeSet)
+                     
+
+                     
                      let newReadSet : List.list = CONS(item, readSet)
                      do FLS.@set-key(READ_SET, newReadSet / exh)
                      let kreadSet : [int,List.list] = FLS.@get-key(KREAD_SET / exh)
