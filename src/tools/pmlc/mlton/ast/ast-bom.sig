@@ -327,8 +327,7 @@ signature AST_BOM =
         sharing type obj = t
     end
 
-    (* Structures for the new import mechanism *)
-
+  (* Structures for the new import mechanism *)
   structure PrimConDef : sig
     type t
     datatype node

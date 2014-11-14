@@ -115,6 +115,14 @@
 
   fun mkBomExp (exp, span) = BOM.Exp.makeRegion (exp, posToReg span)
 
+  fun splitLongIdString (id : CharVector.vector) =
+    String.fields (fn #"." => true | _ => false) id
+
+	   (* fun makeLongId (longIdFromSymbols : (Symbol.t list * Region.t) -> 'a, 	  *)
+	   (*       s : string, thisSpan : Lex.pos * Lex.pos) : 'a = 	  *)
+	   (*   longIdFromSymbols ( 	  *)
+	   (*     map Symbol.fromString (splitLongIdString s), posToReg thisSpan)  *)
+
   fun intInfFromINT ({digits = ds, negate = isNeg, radix = rad}):IntInf.int =
     let
       val _ = print (String.concat ["parsing int. digits: ", ds, "\n"])
@@ -430,7 +438,7 @@ BOMExp
 	    => (mkBomExp (BOM.Exp.If (SimpleExp, BOMExp1, BOMExp2), FULL_SPAN))
 	| "case" SimpleExp "of" CaseRule ("|" CaseRule)*  "end"
 	    => (mkBomExp (
-		BOM.Exp.Case (SimpleExp, checkCaseRule (CaseRule::SR, posToReg FULL_SPAN)),
+		BOM.Exp.Case (SimpleExp, checkCaseRule (CaseRule::SR, FULL_SPAN)),
 		FULL_SPAN))
 	| "typecase" TyParam "of" TyCaseRule ("|" TyCaseRule)* "end"
 	    => (mkBomExp (
@@ -439,7 +447,7 @@ BOMExp
 	| "apply" LongValueId "(" Args? ("/" Args)? ")"
 	    => (mkBomExp (BOM.Exp.Apply (LongValueId, optToList Args, optToList SR), FULL_SPAN))
 	| "throw" BomId "(" Args? ")"
-	    => (mkBomExp (BOM.Exp.Throw (BomId, optToList Args, FULL_SPAN)))
+	    => (mkBomExp (BOM.Exp.Throw (BomId, optToList Args), FULL_SPAN))
 	| "return" "(" Args? ")"
 	    => (mkBomExp (BOM.Exp.Return (optToList Args), FULL_SPAN))
 	;

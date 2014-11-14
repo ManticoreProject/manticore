@@ -990,6 +990,38 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
           TyArgs.layout tyargs
         ]
     end
+  structure PrimConDef = struct
+    datatype node
+      = T of Vid.t * Type.t option * LongConId.t
+
+    open Wrap
+    type t = node Wrap.t
+    type node' = node
+    type obj = t
+  end
+
+  structure ImportCon = struct
+    datatype node
+      = T of Vid.t * Type.t option * BomId.t option
+
+    open Wrap
+    type t = node Wrap.t
+    type node' = node
+    type obj = t
+  end
+
+  structure Import = struct
+    datatype node
+      = Datatype of Type.t list * Longtycon.t
+      | Exn of Type.t option
+      | Val of Longvid.t * Type.t * BomId.t option
+
+   open Wrap
+   type t = node Wrap.t
+   type node' = node
+   type obj = t
+
+  end
 
 
 end
