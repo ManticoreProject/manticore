@@ -58,7 +58,7 @@ struct
         typedef writeItem = [tvar,    (*0: tvar operated on*)
                              any];    (*1: contents of local copy*)
 
-        typedef skipCons = [any, any, any];  (*head, tail, skipTail*)
+        typedef skipCons = ![any, any, any];  (*head, tail, skipTail*)
 
         typedef skipList = any;
 
@@ -96,31 +96,29 @@ struct
                      do #1(tv) := 0:long
                      let numReads : ![int] = FLS.@get-key(NUM_READS_KEY / exh)
                      let item : readItem = alloc(tv, (any) retK, writeSet)
-                     
-
-                     
-                     let newReadSet : List.list = CONS(item, readSet)
-                     do FLS.@set-key(READ_SET, newReadSet / exh)
-                     let kreadSet : [int,List.list] = FLS.@get-key(KREAD_SET / exh)
-                     do if I32Eq(#0(kreadSet), READ_SET_BOUND)
-                        then fun rsFilter(rs : List.list, newRS : List.list) : List.list = 
-                                case rs
-                                    of CONS(hd:readItem, tl:List.list) =>
-                                        case tl
-                                            of CONS(hd':readItem, tl:List.list) =>
-                                                do #1(hd') := enum(0):any
-                                                apply rsFilter(tl, CONS(hd, newRS))
-                                             | nil => return(newRS)
-                                        end
-                                    | nil => return(newRS)
-                                end
-                             let shortened : List.list = apply rsFilter(#1(kreadSet), nil)
-                             let new : List.list = CONS(item, shortened)
-                             let new : [int,List.list] = alloc(HALF, new)
-                             FLS.@set-key(KREAD_SET, new / exh)
-                        else let newKReadSet : [int,List.list] = 
-                                    alloc(I32Add(#0(kreadSet), 1), CONS(item, #1(kreadSet)))
-                             FLS.@set-key(KREAD_SET, newKReadSet / exh)
+                     let sl : skipList = #1(readSet)
+                     do if I32Lt(#0(readSet), READ_SET_BOUND)
+                        then let n : int = I32Add(#0(readSet), 1)
+                             let newSL : skipList = (any) alloc(item, sl, sl)
+                             let newRS : [int,skipList] = alloc(n, newSL)
+                             FLS.@set-key(READ_SET, newRS / exh)
+                        else fun dropKs(l:skipList, n:int) : int =
+                                if Equal(l, nil)
+                                then return(n)
+                                else let l : skipCons = (skipCons) l
+                                     let next : skipList = #2(l)
+                                     if Equal(next, nil)
+                                     then return(n)
+                                     else let next : skipCons = (skipCons) next
+                                          let nextNext : skipList = #2(next)
+                                          let item : readItem = (readItem) #0(next)
+                                          do #1(item) := enum(0):any (*null out continuation*)
+                                          do #2(l) := nextNext
+                                          apply dropKs(nextNext, I32Sub(n, 1))
+                             let n : int = apply dropKs(sl, #0(readSet))
+                             let newSL : skipList = (any) alloc(item, sl, sl)
+                             let newRS : [int, skipList] = alloc(n, newSL)
+                             FLS.@set-key(READ_SET, newRS / exh)
                      return(current)
             end
         ;
@@ -145,13 +143,37 @@ struct
                         apply release(tl)
                      | nil => return()
                 end
-            let readSet : List.list = FLS.@get-key(READ_SET / exh)
+            let readSet : skipList = FLS.@get-key(READ_SET / exh)
             let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
             let rawStamp: long = #0(startStamp)
-            fun validate(readSet:List.list, locks:List.list, newStamp : stamp, abortInfo : [any,any,any], newRS : List.list) : () = 
-                case readSet
-                    of CONS(hd:readItem, tl:List.list) =>
-                        let tv : tvar = #0(hd)
+            fun validate(readSet:skipList, locks:List.list, newStamp : stamp, abortInfo : [any,any,any], newRS : skipList) : () = 
+                if Equal(readSet, nil)
+                then if Equal(#1(abortInfo), enum(1))
+                     then return() (*no violations detected*)
+                     else if Equal(#1(abortInfo), enum(0))  (*no abort continuation, restart...*)
+                          then do apply release(locks)
+                               let e : exn = Fail(@"__ABORT_EXCEPTION__") (*no checkpoint info*)
+                               throw exh(e)
+                          else do apply release(locks)  
+                               let tv : tvar = (tvar) #0(abortInfo)
+                               fun lk() : () = 
+                                 let old : long = CAS(&1(tv), 0:long, newStamp)
+                                 if I64Eq(old, 0:long)
+                                 then let current : any = #0(tv)
+                                      do #1(tv) := 0:long
+                                      let newRS : List.list = CONS(abortInfo, newRS)
+                                      do FLS.@set-key(READ_SET, newRS / exh)
+                                      do FLS.@set-key(WRITE_SET, #2(abortInfo) / exh)
+                                      do #0(startStamp) := newStamp
+                                      BUMP_ABORT 
+                                      let abortK : cont(any) = (cont(any)) #1(abortInfo)
+                                      throw abortK(current)
+                                 else do Pause() apply lk()
+                               apply lk()
+                else let readSet : skipCons = (skipCons) readSet
+                     let hd : readItem = (readItem) #0(readSet)
+                     let tl : skipList = #1(readSet)
+                     let tv : tvar = #0(hd)
                         if I64Lt(#2(tv), rawStamp)  (*still valid*)
                         then if Equal(#1(abortInfo), enum(0))           (*need chkpoint info*)
                              then if Equal(#1(hd), enum(0))         (*dont' have chkpoint info*)
@@ -159,30 +181,6 @@ struct
                                   else apply validate(tl, locks, newStamp, hd, tl)  (*this is the nearest valid read with chkpoint info*)
                              else apply validate(tl, locks, newStamp, abortInfo, newRS)
                         else apply validate(tl, locks, newStamp, hd, tl)
-                    | nil => 
-                        if Equal(#1(abortInfo), enum(1))
-                        then return() (*no violations detected*)
-                        else if Equal(#1(abortInfo), enum(0))  (*no abort continuation, restart...*)
-                             then do apply release(locks)
-                                  let e : exn = Fail(@"__ABORT_EXCEPTION__") (*no checkpoint info*)
-                                  throw exh(e)
-                             else do apply release(locks)  
-                                  let tv : tvar = (tvar) #0(abortInfo)
-                                  fun lk() : () = 
-                                    let old : long = CAS(&1(tv), 0:long, newStamp)
-                                    if I64Eq(old, 0:long)
-                                    then let current : any = #0(tv)
-                                         do #1(tv) := 0:long
-                                         let newRS : List.list = CONS(abortInfo, newRS)
-                                         do FLS.@set-key(READ_SET, newRS / exh)
-                                         do FLS.@set-key(WRITE_SET, #2(abortInfo) / exh)
-                                         do #0(startStamp) := newStamp
-                                         BUMP_ABORT 
-                                         let abortK : cont(any) = (cont(any)) #1(abortInfo)
-                                         throw abortK(current)
-                                    else do Pause() apply lk()
-                                  apply lk()
-                end        
             fun acquire(writeSet:List.list, acquired : List.list) : List.list = 
                 case writeSet
                     of CONS(hd:writeItem, tl:List.list) =>
@@ -223,7 +221,6 @@ struct
                 then do ccall M_Print ("WARNING: entering nested transaction\n") apply f(UNIT/exh)
                 else do FLS.@set-key(READ_SET, nil / exh)  (*initialize STM log*)
                      do FLS.@set-key(WRITE_SET, nil / exh)
-                     do FLS.@set-key(KREAD_SET, alloc(0, nil) / exh)
                      let stamp : stamp = VClock.@bump(/exh)
                      let stamp : [stamp] = alloc(stamp)
                      let stamp : [stamp] = promote(stamp)
@@ -246,7 +243,6 @@ struct
                      do #0(in_trans) := false
                      do FLS.@set-key(READ_SET, nil / exh)
                      do FLS.@set-key(WRITE_SET, nil / exh)
-                     do FLS.@set-key(KREAD_SET, alloc(0, nil) / exh)
                      return(res)  
             throw enter()    
         ;
