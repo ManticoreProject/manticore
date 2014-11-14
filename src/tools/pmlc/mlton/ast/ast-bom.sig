@@ -1,6 +1,6 @@
 (* ast-bom.sig
  *
- * COPYRIGHT (c) 2013 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2013 The Manticore Project (http://manticore.cs.uchica go.edu)
  * All rights reserved.
  *)
 
@@ -32,8 +32,6 @@ signature AST_BOM =
   sharing Symbol = BomId.Symbol = HLOpId.Symbol = TyParam.Symbol
     = LongTyId.Symbol = LongConId.Symbol = LongValueId.Symbol
     = HLOpQId.Symbol = SymbolicId.Symbol = PrimOp.Symbol
-  (* sharing LongTyId.Id = LongTyId.Strid = BomId *)
-  (* sharing LongTyId.Strid = LongConId.Strid = LongValueId.Strid = Strid *)
   sharing LongTyId.Strid = LongConId.Strid = LongValueId.Strid = BomId
 
   structure Attrs : sig
@@ -68,31 +66,6 @@ signature AST_BOM =
       sharing type obj = t
     end
 
-  (* structure TyParams : sig *)
-  (* type t *)
-  (* datatype node *)
-  (*   = T of TyParam.t list *)
-
-  (* val layout : t -> Layout.t *)
-
-  (* include WRAPPED *)
-  (*   sharing type node' = node *)
-  (*   sharing type obj = t *)
-  (* end *)
-
-  (* structure PrimOp : sig *)
-  (*   type t *)
-  (*   datatype node *)
-  (*     = T of CharVector.vector *)
-
-  (*   val layout : t -> Layout.t *)
-
-  (*   include WRAPPED *)
-  (*     sharing type node' = node *)
-  (*     sharing type obj = t *)
-  (* end *)
-
-
   structure BomValueId : sig
     type t
     datatype node
@@ -104,19 +77,8 @@ signature AST_BOM =
     include WRAPPED
       sharing type node' = node
       sharing type obj = t
+  end
 
-    end
-
-
-    (* structure LongId : sig *)
-    (* type t *)
-    (* datatype node *)
-    (*   = Id of BomId.t * TyArg.t list option *)
-    (*   | QualifiedId of TyArg.t list option *)
-    (* include WRAPPED *)
-    (*   sharing type node' = node *)
-    (*   sharing type obj = t *)
-    (* end *)
 
     structure BomType : sig
     type t
@@ -142,21 +104,7 @@ signature AST_BOM =
       sharing type obj = t
     end
 
-
-    (* structure TyArgs : sig *)
-    (* type t *)
-    (* datatype node *)
-    (*   = ArgTypes of BomType.t list *)
-
-    (* val layout : t -> Layout.t *)
-
-    (* include WRAPPED *)
-    (*   sharing type node' = node *)
-    (*   sharing type obj = t *)
-    (* end *)
-
-
-    structure DataConsDef : sig
+  structure DataConsDef : sig
     type t
     datatype node
       = ConsDef of BomId.t * BomType.t option
@@ -379,6 +327,39 @@ signature AST_BOM =
         sharing type obj = t
     end
 
+    (* Structures for the new import mechanism *)
+
+  structure PrimConDef : sig
+    type t
+    datatype node
+      = T of Vid.t * Type.t option * LongConId.t
+
+    include WRAPPED
+      sharing type node' = node
+      sharing type obj = t
+  end
+
+  structure ImportCon : sig
+    type t
+    datatype node
+      = T of Vid.t * Type.t option * BomId.t option
+
+    include WRAPPED
+      sharing type node' = node
+      sharing type obj = t
+  end
+
+  structure Import : sig
+    type t
+    datatype node
+      = Datatype of Type.t list * Longtycon.t
+      | Exn of Type.t option
+      | Val of Longvid.t * Type.t * BomId.t option
+
+    include WRAPPED
+      sharing type node' = node
+      sharing type obj = t
+  end
 
   sharing type RHS.exp = Exp.t
   sharing type CaseRule.exp = Exp.t

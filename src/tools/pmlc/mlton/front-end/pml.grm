@@ -62,7 +62,7 @@ strdecnode
 	;
 
 PrimConDef
-	: "_con" vid ("of" ty)? = "_prim" "(" BomId ")"
+	: "_con" vid ("of" ty)? "=" "_prim" "(" BomId ")"
 		=> ()
 	;
 

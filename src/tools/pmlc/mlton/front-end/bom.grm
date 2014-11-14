@@ -716,3 +716,52 @@ TyParam
 	: TYVAR
 		=> (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN))
 	;
+
+ (* We need to do this because the "id" nonterminal in ml.grm is
+actually a LONGID that's been forced to be nonqualified. ID does not
+match LONGID in BOM now, so it fails. *)
+ShortId
+  : ID => (Symbol.fromString ID, posToReg FULL_SPAN)
+  ;
+
+idForLongid
+  : ID => ([Symbol.fromString ID], posToReg FULL_SPAN)
+  ;
+
+BomId
+        : ShortId => (BOM.BomId.fromSymbol ShortId)
+        ;
+
+HLOpId
+        : HLID => (BOM.HLOpId.fromSymbol(Symbol.fromString HLID, posToReg FULL_SPAN))
+        ;
+
+HLOpQId
+  : HLID
+    => (BOM.HLOpQId.fromSymbols ([Symbol.fromString HLID], posToReg FULL_SPAN))
+  | LONG_HLID
+    => (BOM.HLOpQId.fromSymbols (map Symbol.fromString (splitLongIdString
+      LONG_HLID), posToReg FULL_SPAN))
+  ;
+
+TyParam
+  : TYVAR
+      => (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN))
+  ;
+
+LongTyId
+  : longid => (BOM.LongTyId.fromSymbols longid)
+  | idForLongid => (BOM.LongTyId.fromSymbols idForLongid)
+  ;
+
+ (* not reachable!
+ LongConId
+   : longid => (BOM.LongConId.fromSymbols longid)
+   | idForLongid => (BOM.LongConId.fromSymbols idForLongid)
+   ;
+ *)
+
+ LongValueId
+ : longid => (BOM.LongValueId.fromSymbols longid)
+  | idForLongid => (BOM.LongValueId.fromSymbols idForLongid)
+  ;
