@@ -1,0 +1,1113 @@
+%tokens
+    : KW_abstype		("abstype")
+    | KW_and			("and")
+    | KW_andalso		("andalso")
+    | KW_as			("as")
+    | KW_case			("case")
+    | KW_datatype		("datatype")
+    | KW_do			("do")
+    | KW_else			("else")
+    | KW_end			("end")
+    | KW_eqtype			("eqtype")
+    | KW_exception		("exception")
+    | KW_fn			("fn")
+    | KW_fun			("fun")
+    | KW_functor		("functor")
+    | KW_handle			("handle")
+    | KW_if			("if")
+    | KW_in			("in")
+    | KW_include		("include")
+    | KW_infix			("infix")
+    | KW_infixr			("infixr")
+    | KW_let			("let")
+    | KW_local			("local")
+    | KW_nonfix			("nonfix")
+    | KW_orelse			("orelse")
+    | KW_of			("of")
+    | KW_op			("op")
+    | KW_open			("open")
+    | KW_raise			("raise")
+    | KW_rec			("rec")
+    | KW_sharing		("sharing")
+    | KW_sig			("sig")
+    | KW_signature		("signature")
+    | KW_struct			("struct")
+    | KW_structure		("structure")
+    | KW_then			("then")
+    | KW_type			("type")
+    | KW_val			("val")
+    | KW_where			("where")
+    | KW_while			("while")
+    | KW_with			("with")
+    | KW_withtype		("withtype")
+  (* special symbolic IDs *)
+    | ASTERISK			("*")
+    | ASSIGN			(":=")
+    | AMPERSAND			("&")
+    | BANG			("!")
+    | SLASH			("/")
+  (* punctuation *)
+    | ARROW			("->")
+    | BAR			("|")
+    | COLON			(":")
+    | COLONGT			(":>")
+    | COMMA			(",")
+    | DOTDOTDOT			("...")
+    | EQUALOP			("=")
+    | DARROW			("=>")
+    | HASH			("#")
+    | LBRACE			("{")
+    | LBRACKET			("[")
+    | LPAREN			("(")
+    | RBRACE 			("}")
+    | RBRACKET			("]")
+    | RPAREN			(")")
+    | SEMICOLON			(";")
+    | WILD			("_")
+  (* literals *)
+    | CHAR of IntInf.int
+    | INT of {
+	  digits: string,
+	  negate: bool,
+	  radix: StringCvt.radix
+	}
+    | ID of string		(* unqualified alphanumeric identifiers *)
+    | SYMID of string		(* unqualified symbolic identifiers *)
+    | LONGID of string		(* qualified alphanumeric identifiers *)
+    | LONGSYMID of string	(* qualified symbolic identifiers *)
+    | TYVAR of string		(* type variable identifiers *)
+    | REAL of string
+    | STRING of IntInf.int vector
+    | WORD of {digits: string, radix: StringCvt.radix}
+  (* MLton extensions *)
+    | KW__build_const		("_build_const")
+    | KW__command_line_const	("_command_line_const")
+    | KW__const			("_const")
+    | KW__address		("_address")
+    | KW__export		("_export")
+    | KW__import		("_import")
+    | KW__overload		("_overload")
+    | KW__symbol		("_symbol")
+    ;
+
+program
+	: ";"* expsOrTopDec*
+		=> (Program.T expsAndTopdecs)
+	;
+
+expsOrTopDec
+	: exp ";"+
+		=> (Topdec.fromExp exp)
+	| topdec (";")*
+		=> (Topdec.makeRegion (topdec, posToReg FULL_SPAN))
+	;
+
+topdec
+	: strdec
+		=> (Topdec.Strdec strdec)
+	| "signature" sigbinds
+		=> (let
+		    val sigbinds = Vector.fromList sigbinds
+		    val d = Topdec.Signature sigbinds
+		    in
+		      d
+		    end)
+	| "functor" funbinds
+		=> (Topdec.Functor (Vector.fromList funbinds))
+	;
+
+(*---------------------------------------------------*)
+(*                    Structures                     *)
+(*---------------------------------------------------*)
+
+strdec
+	: "structure" strbinds
+	| "local" strdecs "in" strdecs "end"
+	| 
+strdecs	: strdecsnode
+		=> (Strdec.makeRegion (strdecsnode, posToReg (FULL_SPAN)))
+       ;
+
+strdecsnode : ";"* (strdec ";"*)*  => (Strdec.Seq SR)
+       ;
+
+strdec : strdecnode => (Strdec.makeRegion (strdecnode, posToReg (FULL_SPAN)))
+       ;
+
+strdecnode
+	: "structure" strbinds
+		=> (let
+		    val strbinds = Vector.fromList strbinds
+		    val d = Strdec.Structure strbinds
+		    in
+		      d
+		    end)
+	| "local" strdecs "in" strdecs "end"
+		=> (Strdec.Local (strdecs1, strdecs2))
+	| decnolocal
+		=> (Strdec.Core (Dec.makeRegion (decnolocal, posToReg (FULL_SPAN))))
+	;
+
+strbind
+	: strid sigconst "=" strexp => ({name=strid, def=strexp, constraint=sigconst})
+	;
+
+strbinds
+	: strbind ("and" strbind)* => (strbind::SR)
+	;
+
+strexp
+	: strexpnode => (Strexp.makeRegion (strexpnode, posToReg (FULL_SPAN)))
+	;
+
+strexpnode
+  : strexp2node ( ":" sigexp' (wherespecs)?
+                  => (let
+                          val strexp2 = Strexp.makeRegion (strexp2node, posToReg (strexp2node_SPAN))
+                      in
+                          case SR
+                           of SOME(ws) => (Strexp.Constrained
+                                               (strexp2,
+                                                SigConst.Transparent (
+                                                Sigexp.wheree
+                                                    (sigexp', ws, posToReg (FULL_SPAN)))))
+                            | NONE => (Strexp.Constrained(strexp2,
+                                                          SigConst.Transparent (sigexp')))
+                      end)
+                | ":>" sigexp' (wherespecs)?
+                  => (let
+                          val strexp2 = Strexp.makeRegion (strexp2node, posToReg (strexp2node_SPAN))
+                      in
+                          case SR
+                           of SOME(ws) => (Strexp.Constrained
+                                               (strexp2,
+                                                SigConst.Opaque (
+                                                Sigexp.wheree
+                                                    (sigexp', ws, posToReg (FULL_SPAN)))))
+                            | NONE => (Strexp.Constrained(strexp2,
+                                                          SigConst.Opaque (sigexp')))
+                      end))? => (case SR
+				  of NONE => strexp2node
+				   | SOME ans => ans)
+       ;
+
+strexp2node
+        : longid (arg_fct)?          => (case SR
+					  of NONE => Strexp.Var (Longstrid.fromSymbols longid)
+					   | SOME arg_fct => Strexp.App (Fctid.fromSymbol (ensureNonqualified longid), arg_fct))
+        | "struct" strdecs "end"         => (Strexp.Struct strdecs)
+        | "let" strdecs "in" strexp "end"  => (Strexp.Let (strdecs,strexp))
+       ;
+
+arg_fct	: "(" (strexp ")"   => (strexp)
+	    | strdecs ")"  => (Strexp.makeRegion (Strexp.Struct strdecs, posToReg (FULL_SPAN)))) => (SR)
+	;
+
+(*---------------------------------------------------*)
+(*                    Signatures                     *)
+(*---------------------------------------------------*)
+
+sigexp
+  : sigexp' (wherespecs)?
+    => (case SR
+         of NONE => sigexp'
+          | SOME ws => (Sigexp.wheree (sigexp', ws, posToReg (FULL_SPAN))))
+       ;
+
+wherespecs : wherespecs' => (Vector.fromList wherespecs')
+       ;
+
+wherespecs'
+  : "where" wherespec (              => ([wherespec])
+                    | wherespecs'  => (wherespec :: wherespecs')
+                   |  andspecs     => (wherespec :: andspecs)) => (SR)
+       ;
+
+andspecs
+  : "and" wherespec (             => ([wherespec])
+                 | andspecs     => (wherespec :: andspecs)
+                 | wherespecs'  => (wherespec :: wherespecs')) => (SR)
+       ;
+
+sigexp' : sigexp'node => (Sigexp.makeRegion (sigexp'node, posToReg (FULL_SPAN)))
+       ;
+
+sigexp'node : sigid                      => (Sigexp.Var sigid)
+            | "sig" specs "end"              => (Sigexp.Spec specs)
+       ;
+
+sigbinds: sigbind ("and" sigbind)* => ((sigbind::SR))
+       ;
+
+sigbind : sigid "=" sigexp' (andwherespec)* => (
+                 (sigid, Sigexp.wheree (sigexp', Vector.fromList SR, posToReg FULL_SPAN)))
+       ;
+
+wherespec  : "type" tyvars longtycon "=" ty  => ({tyvars = tyvars,
+                                                 longtycon = longtycon,
+                                                 ty = ty})
+       ;
+
+sigconst :                 => (SigConst.None)
+         | ":" sigexp    => (SigConst.Transparent sigexp)
+         | ":>" sigexp  => (SigConst.Opaque sigexp)
+       ;
+
+
+specs  : ";"* (spec ";"*)* => (
+				     let
+					 fun specfold ([spec]) = spec
+					   | specfold (x::xs) = Spec.seq(x, specfold xs)
+                                           | specfold ([]) = Spec.makeRegion (Spec.Empty, Region.bogus)
+				     in
+					 specfold (SR)
+				     end)
+       ;
+
+spec : specnode => (Spec.makeRegion (specnode, posToReg (FULL_SPAN)))
+       ;
+
+specnode : "val" valdescs         => (Spec.Val (Vector.fromList valdescs))
+         | "type" (%try typBind         => (Spec.TypeDefs typBind)
+	     | %try typdescs		=> (Spec.Type (Vector.fromList typdescs))) => (SR)
+         | "eqtype" typdescs      => (Spec.Eqtype (Vector.fromList typdescs))
+         | "datatype" datatypeRhsNoWithtype => (Spec.Datatype datatypeRhsNoWithtype)
+         | "exception" exndescs   => (Spec.Exception (Vector.fromList exndescs))
+         | "structure" strdescs   => (Spec.Structure (Vector.fromList strdescs))
+         | "include" (sigexp       => (Spec.IncludeSigexp sigexp)
+         | sigid (sigid)+ (* p. 59 *)
+           => (Spec.IncludeSigids (Vector.fromList (sigid::SR)) )) => (SR)
+         | sharespec
+           => (Spec.Sharing {spec = Spec.makeRegion (Spec.Empty, posToReg (FULL_SPAN)),
+                          equations = (MV.new1
+                                       (Equation.makeRegion (sharespec, posToReg (FULL_SPAN))))})
+       ;
+
+sharespec : "sharing" ("type" longtyconeqns => (Equation.Type longtyconeqns)
+          | longstrideqns      => (Equation.Structure longstrideqns)) => (SR)
+       ;
+
+longstrideqns : longstrid "=" (longstrid => ((true, [longstrid,longstrid]))
+              | longstrideqns => ((false, longstrid :: longstrideqns))) =>
+		(case SR
+		  of (true, [_, l]) => [longstrid, l]
+		   | (false, l) => l
+		   | _ => raise Fail "Impossible")
+       ;
+
+longtyconeqns : longtycon "=" (longtycon => ((true, [longtycon,longtycon]))
+              | longtyconeqns => ((false, longtycon :: longtyconeqns))) =>
+		(case SR
+		  of (true, [_, l]) => [longtycon, l]
+		   | (false, l) => l
+		   | _ => raise Fail "Impossible")
+       ;
+
+strdesc : strid ":" sigexp' (andwherespec)*  => ((strid, Sigexp.wheree (sigexp', Vector.fromList SR, posToReg (FULL_SPAN))))
+       ;
+
+andwherespec : "where" wherespec
+             | "and" wherespec
+       ;
+
+strdescs : strdesc ("and" strdesc)*  => (strdesc::SR)
+       ;
+
+typdescs : typdesc ("and" typdesc)*  => (typdesc :: SR)
+       ;
+
+typdesc : tyvars tycon => ({tyvars = tyvars, tycon = tycon})
+       ;
+valdescs : valdesc ("and" valdesc)*   => (valdesc :: SR)
+       ;
+
+valdesc : var ":" ty  => (Con.ensureSpecify (Vid.toCon (Vid.fromVar var))
+                         ; (var, ty))
+       ;
+
+exndescs : exndesc ("and" exndesc)*   => (exndesc :: SR)
+       ;
+
+exndesc : con ("of" ty)?  => (Con.ensureSpecify con; (con, SR))
+       ;
+
+(*---------------------------------------------------*)
+(*                     Functors                      *)
+(*---------------------------------------------------*)
+
+funbinds : funbind ("and" funbind)* => (funbind::SR)
+       ;
+
+funbind : fctid "(" fctarg ")" sigconst "=" strexp
+           => ({name = fctid,
+                arg = FctArg.makeRegion (fctarg, posToReg (FULL_SPAN)),
+                result = sigconst,
+                body = strexp})
+       ;
+
+fctarg : strid ":" sigexp  => (FctArg.Structure (strid, sigexp))
+       | specs               => (FctArg.Spec specs)
+       ;
+
+(*---------------------------------------------------*)
+(*                   Declarations                    *)
+(*---------------------------------------------------*)
+
+decs : ";"* (dec ";"*)* => (case SR
+                                of [] => (Dec.makeRegion (Dec.SeqDec (MV.new0 ()), posToReg (FULL_SPAN)))
+                                 | _ => (let
+                                             fun seqFold ([x]) = x
+                                               | seqFold (x::xs) = Dec.sequence(x, seqFold xs)
+                                               | seqFold _ = raise Fail "Cannot happen."
+                                         in
+                                             seqFold SR
+                                         end))
+      ;
+
+dec : decnode => (Dec.makeRegion (decnode, posToReg (FULL_SPAN)))
+       ;
+
+decnode : decnolocal              => (decnolocal)
+        | "local" decs "in" decs "end"  => (Dec.Local (decs1,decs2))
+       ;
+
+decnolocal
+        : "val" (tyvarseq)? valbindTop  => (let val (vbs, rvbs) = valbindTop
+                                      in
+		                         case SR
+					  of NONE =>
+                                             Dec.Val {tyvars = MV.new0 (), vbs=vbs, rvbs=rvbs}
+					   | SOME tyvars =>
+                                             Dec.Val {tyvars = tyvars, vbs=vbs, rvbs=rvbs}
+	                              end)
+        | "fun" (funs              => (Dec.Fun (MV.new0 (), Vector.fromList funs))
+             | tyvarseq funs     => (Dec.Fun (tyvarseq, Vector.fromList funs))) => (SR)
+        | "type" typBind          => (Dec.Type typBind)
+        | "datatype" datatypeRhs  => (Dec.Datatype datatypeRhs)
+        | "abstype" datBind "with" decs "end"   => (Dec.Abstype {datBind = datBind,
+                                                        body = decs})
+        | "exception" ebs
+          => (Dec.Exception (Vector.fromList ebs))
+        | "open" (longstrid)+       => (Dec.Open (Vector.fromList SR))
+        | fixity (vid)+           => (Dec.Fix {fixity = fixity,
+                                          ops = Vector.fromList SR})
+        | "_overload" (digit)? var ":" ty "as" longvidands
+                                => (Dec.Overload (Priority.T SR,
+                                               var,
+                                               MV.new0 (),
+                                               ty,
+                                               Vector.fromList longvidands))
+       ;
+
+valbindTop : valbind => (let
+                         val (vbs, rvbs) = valbind
+                      in
+                         (Vector.fromList vbs,
+                          Vector.fromList rvbs)
+                      end)
+       ;
+
+valbind : pat "=" exp ("and" valbind)?
+          => (let
+              val valbindRest = case SR of SOME x => x | NONE => ([], [])
+              val (vbs, rvbs) = valbindRest
+           in
+              ({pat = pat, exp = exp} :: vbs,
+               rvbs)
+           end)
+        | "rec" rvalbind                 => (([], rvalbind))
+       ;
+
+
+rvalbind : "rec" rvalbind                => (rvalbind)
+         | pat "=" "fn" match ("and" rvalbind)?
+            => ({pat = pat, match = match} :: (case SR of SOME x => x | NONE => []))
+       ;
+
+funs    : clausesTop ("and" clausesTop)*      => (clausesTop :: SR)
+       ;
+
+clausesTop: clauses => (Vector.fromList clauses)
+       ;
+
+clauses : clause ("|" clause)*    => (clause :: SR)
+       ;
+
+clause  : apats (":" ty)? "=" exp  => ({pats = Vector.fromList apats,
+                                          resultType = SR,
+                                          body = exp})
+       ;
+
+typBind : typBind' ("and" typBind')*
+	=> (let
+	    val typBind = Vector.fromList(typBind' :: SR)
+	    val b = TypBind.makeRegion (TypBind.T typBind, posToReg (FULL_SPAN))
+	    in
+	      b
+	    end)
+	;
+
+typBind' : tyvars tycon "=" typBindRHS => (typBindRHS(tyvars, tycon));
+
+typBindRHS : ty => (fn (params, tyc) => {def = ty, tycon = tyc, tyvars = params});
+
+tyvars  : tyvarseq => (tyvarseq)
+        |          => (MV.new0 ())
+       ;
+
+tyvarseq: tyvar                   => (MV.new1 tyvar)
+        | "(" tyvar_pc ")"
+          => (let
+              val v = Vector.fromList tyvar_pc
+              val () =
+                 reportDuplicates
+                 (v, {equals = Tyvar.sameName,
+                      layout = Tyvar.layout,
+                      name = "type variable",
+                      region = Tyvar.region,
+                      term = fn () => Layout.tuple (MV.toListMap
+                                                    (v, Tyvar.layout))})
+           in
+              v
+           end)
+       ;
+
+tyvar_pc: tyvar ("," tyvar)*	=> (tyvar :: SR)
+       ;
+
+constrs : constr ("|" constr)*  => (constr :: SR)
+       ;
+
+constr  : opcon ("of" ty)?        => ((opcon, SR))
+       ;
+
+opcon   : ("op")? con		=> (con)
+       ;
+
+ebs     : eb ("and" eb)*		=> (eb::SR)
+       ;
+
+eb      : opcon ebrhs		=> (Con.ensureRedefine opcon; (opcon, ebrhs))
+       ;
+
+ebrhs : (ebrhsnode)? => (case SR
+			  of SOME n => EbRhs.makeRegion (n, posToReg (FULL_SPAN))
+			   | NONE => EbRhs.makeRegion (EbRhs.Gen NONE, posToReg FULL_SPAN))
+       ;
+
+ebrhsnode   : "of" ty              => (EbRhs.Gen (SOME ty))
+            | "=" (longcon => (EbRhs.Def longcon)
+            | "op" longcon => (EbRhs.Def longcon)) => (SR)
+       ;
+
+fixity  : "infix" (                => (Fixity.Infix NONE)
+        | digit           => (Fixity.Infix (SOME digit))) => (SR)
+        | "infixr" (                => (Fixity.Infixr NONE)
+        | digit          => (Fixity.Infixr (SOME digit))) => (SR)
+        | "nonfix"                => (Fixity.Nonfix)
+       ;
+
+int : INT
+   => (let
+       val {digits, negate, radix} = INT
+    in
+       case StringCvt.scanString (fn r => IntInf.scan radix r) digits of
+          NONE => Error.bug "parser saw invalid int"
+        | SOME i => if negate then ~ i else i
+    end)
+       ;
+
+word : WORD
+   => (let
+       val {digits, radix} = WORD
+    in
+       case StringCvt.scanString (fn r => IntInf.scan radix r) digits of
+          NONE => Error.bug "parser saw invalid word"
+        | SOME i => i
+    end)
+       ;
+
+digit : INT
+   => (let
+       val {digits, negate, radix} = INT
+    in
+       if 1 = String.size digits andalso not negate andalso radix = StringCvt.DEC
+          then valOf (Int.fromString digits)
+       else let
+               open Layout
+               val _ =
+                  Control.error (posToReg (FULL_SPAN),
+                                 str "invalid digit in infix declaration",
+                                 empty)
+            in
+               0
+            end
+    end)
+       ;
+
+datatypeRhs
+   : datatypeRhsnode
+     => (DatatypeRhs.makeRegion (datatypeRhsnode, posToReg (FULL_SPAN)))
+       ;
+
+datatypeRhsNoWithtype
+   : datatypeRhsnodeNoWithtype
+     => (DatatypeRhs.makeRegion (datatypeRhsnodeNoWithtype, posToReg (FULL_SPAN)))
+       ;
+
+datatypeRhsnode
+   : %try repl              => (repl)
+   | %try datBind           => (DatatypeRhs.DatBind datBind)
+       ;
+
+datatypeRhsnodeNoWithtype
+   : %try repl               => (repl)
+   | %try datBindNoWithtype  => (DatatypeRhs.DatBind datBindNoWithtype)
+       ;
+
+repl : tyvars tycon EQUALOP "datatype" longtycon
+       => (if (Vector.length tyvars = 0)
+           then ()
+        else error (posToReg (FULL_SPAN),
+                    "nonempty tyvars in datatype repl")
+        ; DatatypeRhs.Repl {lhs = tycon, rhs = longtycon})
+       ;
+
+datBind
+   : dbs withtypes
+     => (DatBind.make (dbs, withtypes, posToReg (FULL_SPAN)))
+       ;
+
+datBindNoWithtype
+   : dbs
+     => (DatBind.make (dbs, TypBind.empty, posToReg (FULL_SPAN)))
+       ;
+
+dbs : dbs' => (Vector.fromList dbs')
+       ;
+
+dbs' : db ("and" db)*  => (db :: SR)
+       ;
+
+db : tyvars tycon EQUALOP constrs
+     => ({cons = Vector.fromList constrs,
+       tycon = tycon,
+       tyvars = tyvars})
+       ;
+
+withtypes
+   :
+     => (TypBind.empty)
+   | "withtype" typBind
+     => (typBind)
+       ;
+
+longvidands : longvid  => ([longvid])
+            | longvid "and" longvidands => (longvid :: longvidands)
+       ;
+
+match : rules           => (Match.makeRegion (Match.T (Vector.fromList rules), posToReg (FULL_SPAN)))
+       ;
+
+rules : pat "=>" ( %try closedexp BAR rules => ((pat, closedexp)::rules)
+                   | %try exp => ([(pat, exp)])) => ((SR))
+      ;
+
+elabel  : field "=" exp     => ((field,exp))
+       ;
+
+elabels : elabel ("," elabel)*  => ((elabel :: SR))
+       ;
+
+exp : expnode => (Exp.makeRegion (expnode, posToReg (FULL_SPAN)))
+       ;
+
+base : app_exp
+;
+
+primary : "fn" match				=> (Exp.Fn match)
+        | "case" exp "of" match			=> (Exp.Case (exp, match))
+        | "while" exp "do" exp			=> (Exp.While {test = exp1, expr = exp2})
+        | "if" exp "then" exp "else" exp	=> (Exp.If (exp1, exp2, exp3))
+        | "raise" exp				=> (Exp.Raise exp)
+       ;
+
+tyexp : base (":" ty)*        => (let
+					fun tyexpfold ([x]) = Exp.Constraint (Exp.makeRegion (base, posToReg base_SPAN), x)
+					  | tyexpfold (x::xs) = Exp.Constraint (Exp.makeRegion (tyexpfold xs, posToReg FULL_SPAN), x)
+					  | tyexpfold ([]) = base
+				    in
+					tyexpfold (rev SR)
+				    end)
+;
+
+andalsoexp : tyexp ("andalso" andalsoexpnode')? => (					     case SR
+					      of NONE => tyexp
+					       | SOME exp => Exp.Andalso (Exp.makeRegion (tyexp, posToReg tyexp_SPAN), Exp.makeRegion (exp, posToReg FULL_SPAN)))
+;
+
+orelseexp : andalsoexp ("orelse" orelseexpnode')? => (
+					     case SR
+					      of NONE => andalsoexp
+					       | SOME exp => Exp.Orelse (Exp.makeRegion (andalsoexp, posToReg andalsoexp_SPAN), Exp.makeRegion (exp, posToReg FULL_SPAN)))
+;
+
+handleexp : orelseexp ("handle" handleexpmatch)*
+		=> (let
+		    fun handleexpfold ([x]) = Exp.Handle (Exp.makeRegion (orelseexp, posToReg orelseexp_SPAN), x)
+		      | handleexpfold (x::xs) = Exp.Handle (Exp.makeRegion (handleexpfold xs, posToReg FULL_SPAN), x)
+		      | handleexpfold ([]) = orelseexp
+		    in
+		      handleexpfold (rev SR)
+		    end)
+;
+
+expnode : handleexp
+	| primary
+;
+
+(* This production occurs in the _exp_ slot of the terminal _orelseexp_ production.
+ *)
+andalsoexp'' : andalsoexpnode' => (Exp.makeRegion (andalsoexpnode', posToReg (FULL_SPAN)))
+       ;
+
+andalsoexpnode' : andalsoexp
+	      | andalsoprimary'
+	      ;
+
+andalsoprimary' : "fn" andalsoexpmatch			=> (Exp.Fn andalsoexpmatch)
+        | "case" exp "of" andalsoexpmatch		=> (Exp.Case (exp, andalsoexpmatch))
+        | "while" exp "do" andalsoexp''			=> (Exp.While {test = exp, expr = andalsoexp''})
+        | "if" exp "then" exp "else" andalsoexp''	=> (Exp.If (exp1, exp2, andalsoexp''))
+        | "raise" andalsoexp''				=> (Exp.Raise andalsoexp'')
+       ;
+
+andalsoexpmatch : andalsoexprules  => (Match.makeRegion (Match.T (Vector.fromList andalsoexprules), posToReg (FULL_SPAN)))
+       ;
+
+andalsoexprules : pat "=>" ( %try closedexp "|" andalsoexprules => ((pat, closedexp)::andalsoexprules)
+                   | %try andalsoexp'' => ([(pat, andalsoexp'')])) => ((SR))
+      ;
+
+(* This production occurs in the _exp_ slot of the terminal _orelseexp_ production.
+ *)
+orelseexp'' : orelseexpnode' => (Exp.makeRegion (orelseexpnode', posToReg (FULL_SPAN)))
+       ;
+
+orelseexpnode' : orelseexp
+	      | orelseprimary'
+	      ;
+
+orelseprimary' : "fn" orelseexpmatch			=> (Exp.Fn orelseexpmatch)
+        | "case" exp "of" orelseexpmatch		=> (Exp.Case (exp, orelseexpmatch))
+        | "while" exp "do" orelseexp''      		=> (Exp.While {test = exp, expr = orelseexp''})
+        | "if" exp "then" exp "else" orelseexp''	=> (Exp.If (exp1, exp2, orelseexp''))
+        | "raise" orelseexp''             		=> (Exp.Raise orelseexp'')
+       ;
+
+orelseexpmatch : orelseexprules  => (Match.makeRegion (Match.T (Vector.fromList orelseexprules), posToReg (FULL_SPAN)))
+       ;
+
+orelseexprules : pat "=>" ( %try closedexp BAR orelseexprules => ((pat, closedexp)::orelseexprules)
+                   | %try orelseexp'' => ([(pat, orelseexp'')])) => ((SR))
+      ;
+
+(* This production occurs in the _exp_ slot of the terminal _rules_ production
+ * when included via the match node in the _handleexp_ case. It removes the HANDLE
+ * expression from recursive inclusion in its RHS.
+ *)
+orelseexp' : orelseexpnode => (Exp.makeRegion (orelseexpnode, posToReg (FULL_SPAN)))
+       ;
+
+orelseexpnode : orelseexp
+	      | orelseprimary
+	      ;
+
+orelseprimary : "fn" handleexpmatch		=> (Exp.Fn handleexpmatch)
+        | "case" exp "of" handleexpmatch	=> (Exp.Case (exp, handleexpmatch))
+        | "while" exp "do" orelseexp'      	=> (Exp.While {test = exp, expr = orelseexp'})
+        | "if" exp "then" exp "else" orelseexp' => (Exp.If (exp1, exp2, orelseexp'))
+        | "raise" orelseexp'			=> (Exp.Raise orelseexp')
+       ;
+
+handleexpmatch : handleexprules  => (Match.makeRegion (Match.T (Vector.fromList handleexprules), posToReg (FULL_SPAN)))
+       ;
+
+handleexprules : pat "=>" ( %try closedexp BAR handleexprules => ((pat, closedexp)::handleexprules)
+                   | %try orelseexp' => ([(pat, orelseexp')])) => ((SR))
+      ;
+
+(* The _closed_ expressions are for use inside of a match expression
+ * where we need to make sure that there are no additional recursive
+ * terminal-match productions.
+ *)
+
+closedexp : closedexpnode => (Exp.makeRegion (closedexpnode, posToReg (FULL_SPAN)))
+       ;
+
+closedexpnode : handleexp
+	      | closedprimary
+       ;
+
+closedprimary : "while" exp "do" closedexp      => (Exp.While {test = exp, expr = closedexp})
+        | "if" exp "then" exp "else" closedexp	=> (Exp.If (exp1, exp2, closedexp))
+        | "raise" closedexp             	=> (Exp.Raise closedexp)
+       ;
+
+app_exp : (aexp')+  => (Exp.FlatApp (Vector.fromList SR))
+      ;
+
+aexp' : aexp => (Exp.makeRegion (aexp, posToReg (FULL_SPAN)))
+      | longvid => (Exp.makeRegion (Exp.Var {name = longvid,
+                                                 fixop = Fixop.None},
+                                        posToReg (FULL_SPAN)))
+      ;
+
+aexp    : "op" longvid            => (Exp.Var {name = longvid,
+                                          fixop = Fixop.Op})
+        | const                 => (Exp.Const const)
+        | "#" field            => (Exp.Selector field)
+        | "{" elabels "}"
+          => (Exp.Record (Record.fromVector (Vector.fromList elabels)))
+        | "{" "}"         => (Exp.unit)
+        | "(" ")"         => (Exp.unit)
+        | "(" expnode ( ")"                   => (expnode)
+	     | (";" exp)+ ")"  => (Exp.Seq (Vector.fromList ((Exp.makeRegion (expnode, posToReg (expnode_SPAN)))::SR)))
+	     | ("," exp)+ ")"  => (Exp.tuple (Vector.fromList ((Exp.makeRegion (expnode, posToReg (expnode_SPAN)))::SR)))) => (SR)
+        | "[" (exp_list "]"  => (Exp.List (Vector.fromList exp_list))
+        | "]"           => (Exp.List (MV.new0 ()))) => (SR)
+        | "let" decs "in" exp ( (";" exp)+ "end"
+                       => (Exp.Let (decs, Exp.makeRegion (Exp.Seq (Vector.fromList (exp::SR)), posToReg (FULL_SPAN))))
+                      | "end"   => (Exp.Let (decs, exp)))
+          => (SR)
+        | "_address" string symattributes ":" ty ";"
+          => (Exp.Prim (PrimKind.Address {attributes = symattributes,
+                                       name = string,
+                                       ty = ty}))
+        | "_build_const" string ":" ty ";"
+          => (Exp.Prim (PrimKind.BuildConst {name = string, ty = ty}))
+        | "_command_line_const" string ":" ty EQUALOP constOrBool ";"
+          => (Exp.Prim (PrimKind.CommandLineConst {name = string,
+                                                ty = ty,
+                                                value = constOrBool}))
+        | "_const" string ":" ty ";"
+          => (Exp.Prim (PrimKind.Const {name = string, ty = ty}))
+        | "_export" string ieattributes ":" ty ";"
+          => (Exp.Prim (PrimKind.Export {attributes = ieattributes,
+                                      name = string,
+                                      ty = ty}))
+        | "_import" (string ieattributes ":" ty ";"
+          => (Exp.Prim (PrimKind.Import {attributes = ieattributes,
+                                      name = string,
+                                      ty = ty}))
+        | "*" ieattributes ":" ty ";"
+          => (Exp.Prim (PrimKind.IImport {attributes = ieattributes,
+                                       ty = ty}))) => (SR)
+        | "_prim" string ":" ty ";"
+          => (Exp.Prim (PrimKind.Prim {name = string,
+                                    ty = ty}))
+        | "_symbol" (string symattributes ":" ty ";"
+          => (Exp.Prim (PrimKind.Symbol {attributes = symattributes,
+                                      name = string,
+                                      ty = ty}))
+        | "*" ":" ty ";"
+          => (Exp.Prim (PrimKind.ISymbol {ty = ty}))) => (SR)
+       ;
+
+ieattributes
+   :
+     => ([])
+   | id ieattributes
+     => (let
+             val (sym, _) = id
+             val id = Symbol.toString sym
+      in
+         case id of
+            "cdecl" => PrimKind.ImportExportAttribute.Cdecl :: ieattributes
+          | "external" => PrimKind.ImportExportAttribute.External :: ieattributes
+          | "private" => PrimKind.ImportExportAttribute.Private :: ieattributes
+          | "public" => PrimKind.ImportExportAttribute.Public :: ieattributes
+          | "stdcall" => PrimKind.ImportExportAttribute.Stdcall :: ieattributes
+          | _ => (error (posToReg (FULL_SPAN), concat ["invalid attribute: ", id])
+                  ; ieattributes)
+      end)
+       ;
+
+symattributes
+   :
+     => ([])
+   | id symattributes
+     => (let
+             val (sym, _) = id
+             val id = Symbol.toString (sym)
+      in
+         case id of
+            "alloc" => PrimKind.SymbolAttribute.Alloc :: symattributes
+          | "external" => PrimKind.SymbolAttribute.External :: symattributes
+          | "private" => PrimKind.SymbolAttribute.Private :: symattributes
+          | "public" => PrimKind.SymbolAttribute.Public :: symattributes
+          | _ => (error (posToReg (FULL_SPAN), concat ["invalid attribute: ", id])
+                  ; symattributes)
+      end)
+       ;
+
+exp_list : exp ("," exp)*   => (exp :: SR)
+       ;
+
+(*---------------------------------------------------*)
+(*                     Patterns                      *)
+(*---------------------------------------------------*)
+
+pat : patnode   => (Pat.makeRegion (patnode, posToReg FULL_SPAN))
+       ;
+
+patnode : typedapats ("as" typedapats)*
+      => (let
+	      fun patfold ([x]) = x
+		| patfold (x::rest) = Pat.makeAs (Pat.makeRegion (x, posToReg FULL_SPAN), Pat.makeRegion (patfold rest, posToReg FULL_SPAN))
+		| patfold _ = raise Fail "impossible"
+	  in
+	      patfold (typedapats::SR)
+	  end)
+;
+
+typedapats : apats (":" ty)*
+      => (let
+	      fun typedfold (x::rest) = Pat.Constraint (Pat.makeRegion (typedfold rest, posToReg FULL_SPAN), x)
+		| typedfold ([]) = Pat.FlatApp (Vector.fromList apats)
+	  in
+	      typedfold SR
+	  end)
+;
+
+apats   : (apat)+                  => (SR)
+       ;
+
+apat : apatnode => (Pat.makeRegion (apatnode, posToReg (FULL_SPAN)))
+       ;
+
+apatnode : longvidNoEqual        => (Pat.Var {name = longvidNoEqual,
+                                           fixop = Fixop.None})
+        | "op" longvid             => (Pat.Var {name = longvid,
+                                           fixop = Fixop.Op})
+        | const
+          => (let
+              val _ =
+                 case Const.node const of
+                    Const.Real r =>
+                       let
+                          open Layout
+                       in
+                          Control.error
+                          (Const.region const,
+                           seq [str "real constants are not allowed in patterns: ",
+                                Const.layout const],
+                           empty)
+                       end
+                    | _ => (())
+           in
+              Pat.Const const
+           end)
+        | "_"                   => (Pat.Wild)
+        | "(" pats ")"     => (Pat.tuple (Vector.fromList pats))
+        | "[" pats "]" => (Pat.List (Vector.fromList pats))
+        | "{" ("}"          => (Pat.unit)
+        | patitems "}"
+          => (let
+              val (items, flexible) = patitems
+           in
+              Pat.Record {flexible = flexible,
+                          items = Vector.fromList items}
+           end)) => (SR)
+       ;
+
+pats : (* empty *)      => ([])
+     | pat ("," pat)* => (pat::SR)
+       ;
+
+patitems : patitem ("," patitem)* ("," "...")? => ((patitem::SR1, (case SR2 of NONE => false | _ => true)))
+        | "..." => (([], true))
+        ;
+
+patitem
+   : field "=" pat
+     => ((field, Pat.Item.Field pat))
+   | vidNoEqual (":" ty)? ("as" pat)?
+     => ((Field.Symbol (Vid.toSymbol vidNoEqual),
+      Pat.Item.Vid (vidNoEqual, SR1, SR2)))
+       ;
+
+(*---------------------------------------------------*)
+(*                       Types                       *)
+(*---------------------------------------------------*)
+
+ty  : ty1 ("->" ty1)* => (case SR
+                            of [] => ty1
+                             | _ => (
+			       let
+				   (* FIXME: foldArrow has the wrong region *)
+				   fun foldArrow ([x]) = x
+				     | foldArrow (x::xs) = Type.makeRegion (Type.arrow (x, foldArrow(xs)), posToReg SR_SPAN)
+				     | foldArrow ([]) = raise Fail "Invalid fold"
+			       in
+				   foldArrow (ty1::SR)
+			       end))
+    ;
+
+ty1 : ty2 ("*" ty2)* => (case SR
+                               of [] => (Type.makeRegion (ty2, posToReg (FULL_SPAN)))
+                                | _ => (let
+                                      val regioned = List.map (fn n => Type.makeRegion (n, posToReg (FULL_SPAN))) (ty2::SR)
+                                  in
+                                      Type.makeRegion (Type.tuple (Vector.fromList regioned), posToReg (FULL_SPAN))
+                                        end))
+    ;
+
+ty2 : ty3 longtycon* => (case longtycon
+                          of [] => ty3
+                           | _ => let
+			   fun tyfold ([x]) = Type.Con (x,
+                                                   MV.new1 (Type.makeRegion (ty3, posToReg (ty3_SPAN))))
+                             | tyfold (x::xs) = Type.Con (x, MV.new1 (Type.makeRegion (tyfold xs, posToReg (FULL_SPAN))))
+                             | tyfold ([]) = raise Fail "Invalid tyfold"
+                           in
+                              tyfold (rev longtycon)
+                           end)
+    ;
+
+ty3 : tyvar						=> (Type.Var tyvar)
+    | "{" ("}"					=> (Type.unit)
+    | tyrow "}"					=> (Type.Record (Srecord.fromVector (Vector.fromList tyrow)))) => (SR)
+    | longtycon						=> (Type.Con (longtycon, MV.new0 ()))
+    | "(" ty (("," ty)+ ")" longtycon	        => (Type.Con (longtycon, Vector.fromList (ty::SR)))
+                | ")"				=> (Type.node ty)) => (SR)
+    ;
+
+tyrow' : field ":" ty => ((field, ty))
+                               ;
+tyrow
+    : tyrow' ("," tyrow')* => (tyrow'::SR)
+    ;
+
+(*---------------------------------------------------*)
+(*                       Atoms                       *)
+(*---------------------------------------------------*)
+
+constOrBool
+   : const => (const)
+   | id => (let
+            fun ok b = Const.makeRegion (Const.Bool b, posToReg (FULL_SPAN))
+             val (sym, loc) = id
+         in
+            case Symbol.toString sym of
+               "false" => ok false
+             | "true" => ok true
+             | s => (error (loc, concat ["unknown boolean constant: ", s])
+                     ; ok false)
+         end)
+       ;
+
+const   : const'                => (Const.makeRegion
+                                     (const', posToReg (FULL_SPAN)))
+       ;
+
+const'  : int                   => (Const.Int int)
+        | word                  => (Const.Word word)
+        | REAL                  => (Const.Real REAL)
+        | STRING                => (Const.String STRING)
+        | CHAR                  => (Const.Char CHAR)
+       ;
+
+string : STRING  => (CharVector.tabulate
+                  (Vector.length STRING, fn i =>
+                   Char.chr (Int.fromLarge (Vector.sub (STRING, i)))))
+       ;
+
+idNoAsterisk : longidNoAsterisk => (ensureNonqualified longidNoAsterisk)
+       ;
+
+id	: idNoAsterisk  	=> (idNoAsterisk)
+	| reservedSymbol	=> (reservedSymbol, posToReg FULL_SPAN)
+	;
+
+idEqual : id      => (id)
+        | "=" => ((Symbol.equal, posToReg (FULL_SPAN)))
+	;
+
+longid
+	: longidNoAsterisk	=> (longidNoAsterisk)
+	| reservedSymbol	=> ([reservedSymbol], posToReg FULL_SPAN)
+	;
+
+reservedSymbol
+	: "*"		=> (Symbol.asterisk)
+	| ":="		=> (Symbol.assign)
+	| "&"		=> (Symbol.ampersand)
+	| "!"		=> (Symbol.bang)
+	| "/"		=> (Symbol.slash)
+	;
+
+longidNoAsterisk
+   : LONGID
+     => (let
+         val syms = List.map Symbol.fromString (split (LONGID, #"."))
+      in
+         (syms, posToReg (FULL_SPAN))
+      end)
+       ;
+
+longidEqual : longid   => (longid)
+            | "="  => (([Symbol.equal], posToReg (FULL_SPAN)))
+       ;
+
+vid : idEqual                  => (Vid.fromSymbol idEqual)
+       ;
+vidNoEqual : id                => (Vid.fromSymbol id)
+       ;
+var : idEqual                  => (Var.fromSymbol idEqual)
+       ;
+con : id                       => (Con.fromSymbol id)
+       ;
+tycon : idNoAsterisk           => (Tycon.fromSymbol idNoAsterisk)
+       ;
+tyvar : TYVAR                  => (let val reg = posToReg (FULL_SPAN)
+                                   in
+                                       Tyvar.newString (TYVAR, {left=valOf(Region.left reg), right=valOf(Region.right reg)})
+                                   end)
+       ;
+field : id                     => (let val (sym,_) = id in Field.Symbol (sym) end)
+      | int                    => (let
+                                   val int =
+                                      IntInf.toInt int
+                                      handle Exn.Overflow =>
+                                         (error (posToReg (FULL_SPAN),
+                                                 "field too huge")
+                                          ; 0)
+                                in
+                                   Field.Int
+                                   (if int <= 0
+                                       then (error (posToReg (FULL_SPAN),
+                                                    "nonpositive field")
+                                             ; ~1)
+                                    else
+                                       int - 1)
+                                end) (* int - 1 because fields are 0-based *)
+       ;
+
+strid : id			=> (Strid.fromSymbol id)
+       ;
+sigid : id			=> (Sigid.fromSymbol id)
+       ;
+fctid : id			=> (Fctid.fromSymbol id)
+       ;
+
+longtycon : longidNoAsterisk	=> (Longtycon.fromSymbols longidNoAsterisk)
+       ;
+longvid : longidEqual		=> (Longvid.fromSymbols longidEqual)
+       ;
+longvidNoEqual : longid		=> (Longvid.fromSymbols longid)
+       ;
+longcon : longid		=> (Longcon.fromSymbols longid)
+       ;
+longstrid : longid		=> (Longstrid.fromSymbols longid)
+       ;
