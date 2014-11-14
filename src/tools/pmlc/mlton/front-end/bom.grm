@@ -667,8 +667,8 @@ RawTy
 ReturnTy
 	: "noreturn"
 		=> ([])
-	| "->" BOMType
-		=> ([BOMType])
+	(* | "->" BOMType *)
+	(* 	=> ([BOMType]) *)
 	| "->" "(" BOMType ("," BOMType)* ")"
 		=> (BOMType::SR)
 	;
@@ -683,9 +683,9 @@ Params
 		=> (VarPat::SR)
 	;
 
-BomId	: ID
-		=> (BOM.BomId.fromSymbol (Symbol.fromString ID, posToReg FULL_SPAN))
-	;
+(* BomId	: ID *)
+(* 		=> (BOM.BomId.fromSymbol (Symbol.fromString ID, posToReg FULL_SPAN)) *)
+(* 	; *)
 
 BomLongId
 	: ID
@@ -698,24 +698,24 @@ BomLongId
 		    end)
 	;
 
-HLOpId
-	: HLID
-		=> (BOM.HLOpId.fromSymbol(Symbol.fromString HLID, posToReg FULL_SPAN))
-	;
+(* HLOpId *)
+(* 	: HLID *)
+(* 		=> (BOM.HLOpId.fromSymbol(Symbol.fromString HLID, posToReg FULL_SPAN)) *)
+(* 	; *)
 
-HLOpQId
-	: HLID
-		=> (BOM.HLOpQId.fromSymbols ([Symbol.fromString HLID], posToReg FULL_SPAN))
-	| LONG_HLID
-		=> (BOM.HLOpQId.fromSymbols (
-		      List.map Symbol.fromString (split(LONG_HLID, #".")),
-		      posToReg FULL_SPAN))
-	;
+(* HLOpQId *)
+(* 	: HLID *)
+(* 		=> (BOM.HLOpQId.fromSymbols ([Symbol.fromString HLID], posToReg FULL_SPAN)) *)
+(* 	| LONG_HLID *)
+(* 		=> (BOM.HLOpQId.fromSymbols ( *)
+(* 		      List.map Symbol.fromString (split(LONG_HLID, #".")), *)
+(* 		      posToReg FULL_SPAN)) *)
+(* 	; *)
 
-TyParam
-	: TYVAR
-		=> (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN))
-	;
+(* TyParam *)
+(* 	: TYVAR *)
+(* 		=> (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN)) *)
+(* 	; *)
 
  (* We need to do this because the "id" nonterminal in ml.grm is
 actually a LONGID that's been forced to be nonqualified. ID does not
@@ -729,12 +729,12 @@ idForLongid
   ;
 
 BomId
-        : ShortId => (BOM.BomId.fromSymbol ShortId)
-        ;
+  : ShortId => (BOM.BomId.fromSymbol ShortId)
+  ;
 
 HLOpId
-        : HLID => (BOM.HLOpId.fromSymbol(Symbol.fromString HLID, posToReg FULL_SPAN))
-        ;
+  : HLID => (BOM.HLOpId.fromSymbol(Symbol.fromString HLID, posToReg FULL_SPAN))
+  ;
 
 HLOpQId
   : HLID
@@ -761,7 +761,7 @@ LongTyId
    ;
  *)
 
- LongValueId
- : longid => (BOM.LongValueId.fromSymbols longid)
+LongValueId
+  : longid => (BOM.LongValueId.fromSymbols longid)
   | idForLongid => (BOM.LongValueId.fromSymbols idForLongid)
   ;
