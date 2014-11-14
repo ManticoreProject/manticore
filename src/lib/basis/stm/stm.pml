@@ -227,16 +227,14 @@ struct
 
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
             cont enter() = 
-                let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
+                let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
                 if (#0(in_trans))
                 then do ccall M_Print ("WARNING: entering nested transaction\n") apply f(UNIT/exh)
                 else do FLS.@set-key(READ_SET, nil / exh)  (*initialize STM log*)
                      do FLS.@set-key(WRITE_SET, nil / exh)
                      let stamp : stamp = VClock.@bump(/exh)
-                     let stamp : [stamp] = alloc(stamp)
-                     let stamp : [stamp] = promote(stamp)
-                     do FLS.@set-key(STAMP_KEY, stamp / exh)
-                     do #0(in_trans) := true           
+                     do FLS.@set-key(STAMP_KEY, alloc(stamp) / exh)
+                     do FLS.@set-key(IN_TRANS, alloc(true) / exh)
                      cont abortK(e:exn) = 
                         case e  (*Check that the exception received was because of an aborted TX*)
                             of Fail(s:ml_string) => 
@@ -244,14 +242,14 @@ struct
                                  let res : bool = String.@same(arg / exh)
                                  if(res) 
                                  then BUMP_ABORT 
-                                      do #0(in_trans) := false 
+                                      do FLS.@set-key(IN_TRANS, alloc(false) / exh)
                                       throw enter()
                                  else throw exh(e)
                              | _ => throw exh(e)
                         end
                      let res : any = apply f(UNIT/abortK)
                      do @commit(/abortK)
-                     do #0(in_trans) := false
+                     do FLS.@set-key(IN_TRANS, alloc(false) / exh)
                      do FLS.@set-key(READ_SET, nil / exh)
                      do FLS.@set-key(WRITE_SET, nil / exh)
                      return(res)  
