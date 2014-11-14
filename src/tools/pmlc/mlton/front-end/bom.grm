@@ -115,14 +115,6 @@
 
   fun mkBomExp (exp, span) = BOM.Exp.makeRegion (exp, posToReg span)
 
-  fun splitLongIdString (id : CharVector.vector) =
-    String.fields (fn #"." => true | _ => false) id
-
-	   (* fun makeLongId (longIdFromSymbols : (Symbol.t list * Region.t) -> 'a, 	  *)
-	   (*       s : string, thisSpan : Lex.pos * Lex.pos) : 'a = 	  *)
-	   (*   longIdFromSymbols ( 	  *)
-	   (*     map Symbol.fromString (splitLongIdString s), posToReg thisSpan)  *)
-
   fun intInfFromINT ({digits = ds, negate = isNeg, radix = rad}):IntInf.int =
     let
       val _ = print (String.concat ["parsing int. digits: ", ds, "\n"])
@@ -227,11 +219,51 @@ BOMDecls
 	;
 
 Definition
-	(* : "datatype" DataTypeDef ("and" DataTypeDef)* ";" *)
-	(* 	=> (BOM.Definition.makeRegion ( *)
-	(* 	      BOM.Definition.Datatype (DataTypeDef::SR), *)
-	(* 	      posToReg FULL_SPAN)) *)
-  : "datatype" BomId (TyParams? "="
+	: "datatype" DatatypeDef ("and" DatatypeDef)* ";"
+	| "type" BomId TyParams? "=" BOMType ";"
+		=> (BOM.Definition.makeRegion (
+		      BOM.Definition.TypeDefn (BomId, optToList TyParams, BOMType),
+		      posToReg FULL_SPAN))
+	| "exception" DataConsDef
+		=> ()
+	| "define" Attrs HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
+		=> (BOM.Definition.makeRegion (let
+		      val (inputTys, exnTys) = FunParams
+		      in (
+			BOM.Definition.DefineShortId (
+			  SOME Attrs, HLOpId, optToList TyParams, inputTys, exnTys, ReturnTy, SR),
+			posToReg FULL_SPAN
+		      ) end))
+	| "define" HLOpId TyParams? HLOpDefinition
+	| "fun" FunDef ("and" FunDef)* ";"
+	| "extern" CReturnTy BomId "(" (CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs ";"
+		=> (BOM.Definition.makeRegion (
+		      BOM.Definition.Extern (CReturnTy, BomId, Option.getOpt (SR, []), Attrs),
+		      posToReg FULL_SPAN))
+	;
+
+DatatypeDef
+	: BomId TyParams? "=" DataConsDef ("|" DataConsDef)*
+	;
+
+DataConsDef
+	: BomId ("of" BOMType)?
+	;
+
+HLOpDef
+	: FunParams ReturnTy ("=" BOMExp)? ";"
+	| "=" LongBomId ";"
+		=> (fn (hlOpId : BOM.HLOpId.t, tyParams, span) =>
+		    (BOM.Definition.makeRegion (let
+		      val (inputTys, exnTys) = FunParams
+		      in
+			(BOM.Definition.DefineShortId (
+			  NONE, hlOpId, tyParams, inputTys, exnTys, ReturnTy, SR),
+			posToReg span)
+		      end)))
+	;
+
+
       DataTypeDefRHS ("and" DataTypeDef)*
         => (BOM.Definition.makeRegion (
           BOM.Definition.Datatype ((DataTypeDefRHS (
@@ -675,8 +707,8 @@ RawTy
 ReturnTy
 	: "noreturn"
 		=> ([])
-	(* | "->" BOMType *)
-	(* 	=> ([BOMType]) *)
+	| "->" BOMType
+		=> ([BOMType])
 	| "->" "(" BOMType ("," BOMType)* ")"
 		=> (BOMType::SR)
 	;
@@ -691,9 +723,9 @@ Params
 		=> (VarPat::SR)
 	;
 
-(* BomId	: ID *)
-(* 		=> (BOM.BomId.fromSymbol (Symbol.fromString ID, posToReg FULL_SPAN)) *)
-(* 	; *)
+BomId	: ID
+		=> (BOM.BomId.fromSymbol (Symbol.fromString ID, posToReg FULL_SPAN))
+	;
 
 BomLongId
 	: ID
@@ -706,70 +738,21 @@ BomLongId
 		    end)
 	;
 
-(* HLOpId *)
-(* 	: HLID *)
-(* 		=> (BOM.HLOpId.fromSymbol(Symbol.fromString HLID, posToReg FULL_SPAN)) *)
-(* 	; *)
-
-(* HLOpQId *)
-(* 	: HLID *)
-(* 		=> (BOM.HLOpQId.fromSymbols ([Symbol.fromString HLID], posToReg FULL_SPAN)) *)
-(* 	| LONG_HLID *)
-(* 		=> (BOM.HLOpQId.fromSymbols ( *)
-(* 		      List.map Symbol.fromString (split(LONG_HLID, #".")), *)
-(* 		      posToReg FULL_SPAN)) *)
-(* 	; *)
-
-(* TyParam *)
-(* 	: TYVAR *)
-(* 		=> (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN)) *)
-(* 	; *)
-
- (* We need to do this because the "id" nonterminal in ml.grm is
-actually a LONGID that's been forced to be nonqualified. ID does not
-match LONGID in BOM now, so it fails. *)
-ShortId
-  : ID => (Symbol.fromString ID, posToReg FULL_SPAN)
-  ;
-
-idForLongid
-  : ID => ([Symbol.fromString ID], posToReg FULL_SPAN)
-  ;
-
-BomId
-  : ShortId => (BOM.BomId.fromSymbol ShortId)
-  ;
-
 HLOpId
-  : HLID => (BOM.HLOpId.fromSymbol(Symbol.fromString HLID, posToReg FULL_SPAN))
-  ;
+	: HLID
+		=> (BOM.HLOpId.fromSymbol(Symbol.fromString HLID, posToReg FULL_SPAN))
+	;
 
 HLOpQId
-  : HLID
-    => (BOM.HLOpQId.fromSymbols ([Symbol.fromString HLID], posToReg FULL_SPAN))
-  | LONG_HLID
-    => (BOM.HLOpQId.fromSymbols (map Symbol.fromString (splitLongIdString
-      LONG_HLID), posToReg FULL_SPAN))
-  ;
+	: HLID
+		=> (BOM.HLOpQId.fromSymbols ([Symbol.fromString HLID], posToReg FULL_SPAN))
+	| LONG_HLID
+		=> (BOM.HLOpQId.fromSymbols (
+		      List.map Symbol.fromString (split(LONG_HLID, #".")),
+		      posToReg FULL_SPAN))
+	;
 
 TyParam
-  : TYVAR
-      => (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN))
-  ;
-
-LongTyId
-  : longid => (BOM.LongTyId.fromSymbols longid)
-  | idForLongid => (BOM.LongTyId.fromSymbols idForLongid)
-  ;
-
- (* not reachable!
- LongConId
-   : longid => (BOM.LongConId.fromSymbols longid)
-   | idForLongid => (BOM.LongConId.fromSymbols idForLongid)
-   ;
- *)
-
-LongValueId
-  : longid => (BOM.LongValueId.fromSymbols longid)
-  | idForLongid => (BOM.LongValueId.fromSymbols idForLongid)
-  ;
+	: TYVAR
+		=> (BOM.TyParam.fromSymbol (Symbol.fromString TYVAR, posToReg FULL_SPAN))
+	;
