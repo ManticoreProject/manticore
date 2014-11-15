@@ -103,7 +103,7 @@ struct
                                   let newRS : [int, skipList, skipList] = alloc(n, newSL, newSL)
                                   FLS.@set-key(READ_SET, newRS / exh)
                              else let n : int = #0(readSet)          (*don't capture cont*)
-                                  let item : readItem = alloc(tv, enum(0):any, writeSet)
+                                  let item : readItem = alloc(tv, enum(0):any, nil)
                                   let nextCont : skipList = #2(readSet)
                                   let newSL : skipList = (any) alloc(item, sl, nextCont)
                                   let newRS : [int,skipList,skipList] = alloc(n, newSL, nextCont)
