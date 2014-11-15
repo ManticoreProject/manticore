@@ -38,6 +38,12 @@ val c = case getArg "-spin" args
         of SOME n => (case Int.fromString n of SOME n => n | NONE => 200)
          | NONE => 0
 
+val THREADS = 
+    case getArg "-threads" args
+        of SOME n => (case Int.fromString n of SOME n => n | NONE => 4)
+         | NONE => 4
+
+
 fun add (l:ListHandle) (v:int) = 
     let fun lp l = 
             case get l 
@@ -84,7 +90,6 @@ fun delete (l:ListHandle) (i:int) =
     in atomic(fn () => lp l) end            
 
 val ITERS = 3000
-val THREADS = 4
 val MAXVAL = 10000
 
 fun ignore _ = ()
@@ -125,6 +130,8 @@ fun initialize n =
     else let val randNum = Rand.inRangeInt(0, MAXVAL)
              val _ = add l randNum
          in initialize (n-1) end
+
+val _ = print ("Running with " ^ Int.toString THREADS ^ " threads\n")
 
 val _ = initialize 3000
 val startTime = Time.now()
