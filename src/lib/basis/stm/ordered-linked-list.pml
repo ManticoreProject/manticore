@@ -73,6 +73,7 @@ fun next l =
     case l 
         of Head n => n
          | Node(_, n) => n
+         | Null => raise Fail("trying to take next of null")
 
 fun delete (l:ListHandle) (i:int) = 
     let fun lp prevPtr = 
@@ -86,6 +87,7 @@ fun delete (l:ListHandle) (i:int) =
                                 of Head _ => (put(prevPtr, Head nextPtr); true)
                                  | Node(v, _) => (put(prevPtr, Node(v, nextPtr)); true))
                         else lp curNodePtr
+                     | Head n => raise Fail "found head node as next\n"
             end
     in atomic(fn () => lp l) end            
 

@@ -32,7 +32,7 @@ struct
 #define PRINT_ABORT_COUNT
 #endif
 
-#define READ_SET_BOUND 100
+#define READ_SET_BOUND 20
 
     _primcode(
 
