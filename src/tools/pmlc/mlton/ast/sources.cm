@@ -45,6 +45,7 @@ $/basis.cm
 
 ../lib/sources.cm
 ../control/sources.cm
+../../common/sources.cm		(* for RawTypes *)
 
 admits-equality.sig
 admits-equality.fun

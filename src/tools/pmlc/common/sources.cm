@@ -18,7 +18,9 @@ Library
   structure ExpansionOpts
   structure CFunctions
   structure ConstArith
+(* deprecated
   structure Error
+*)
   structure ExnName
   structure FloatLit
   structure IntegerLit
@@ -51,7 +53,9 @@ is
   c-functions.sml
   check-var-counts-fn.sml
   const-arith.sml
+(* deprecated
   error.sml
+*)
   exn-name.sml
   float-lit.sml
   integer-lit.sml

@@ -47,23 +47,13 @@ signature AST_BOM =
   end
   structure RawTy : sig
     type t
-    datatype node
-      = Int8
-      | Uint8
-      | Int16
-      | Uint16
-      | Int32
-      | Uint32
-      | Int64
-      | Uint64
-      | Float32
-      | Float64
+    datatype node = datatype RawTypes.raw_ty
 
     val layout : t -> Layout.t
 
     include WRAPPED
-      sharing type node' = node
-      sharing type obj = t
+      where type node' = node
+      where type obj = t
     end
 
   structure BomValueId : sig

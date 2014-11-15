@@ -112,7 +112,7 @@
 %let alphanum = [A-Za-z'_0-9]*;
 %let id = [A-Za-z]{alphanum};
 %let sym = [-!%&$+/:<=>?@~`\^|#*]|"\\";
-%let symId = {sym}+;
+%let symid = {sym}+;
 %let hlid = "@"{id};
 %let ws = ("\012"|[\t\ ])*;
 %let nrws = ("\012"|[\t\ ])+;
@@ -265,7 +265,7 @@
  * be alphanumeric.  Qualified IDs in BOM code have a single level of qualification, since
  * BOM modules do not nest.
  *)
-<INITIAL>{symId}		=> (T.SYMID yytext);
+<INITIAL>{symid}		=> (T.SYMID yytext);
 <INITIAL,BOM>{id}		=> (T.ID yytext);
 <INITIAL>({id}\.)+{id}		=> (T.LONG_ID yytext);
 <INITIAL>({id}\.)+{symid}	=> (T.LONG_ID yytext);

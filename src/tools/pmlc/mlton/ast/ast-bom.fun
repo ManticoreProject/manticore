@@ -214,41 +214,18 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     (* end *)
 
     structure RawTy = struct
-    open Wrap
-    datatype node
-      = Int8
-      | Uint8
-      | Int16
-      | Uint16
-      | Int32
-      | Uint32
-      | Int64
-      | Uint64
-      | Float32
-      | Float64
-    type t = node Wrap.t
+        open Wrap
+	datatype node = datatype RawTypes.raw_ty
+	type t = node Wrap.t
 
-    type node' = node
-    type obj = t
+	type node' = node
+	type obj = t
 
+	fun toString (myNode : t) = RawTypes.toString (node myNode)
 
-    fun toString (myNode : t) =
-      case node myNode of
-        Int8 => "Int8"
-      | Uint8 => "Uint8"
-      | Int16 => "Int16"
-      | Uint16 => "Uint16"
-      | Int32 => "Int32"
-      | Uint32 => "Uint32"
-      | Int64 => "Int64"
-      | Uint64 => "Uint64"
-      | Float32 => "Float32"
-      | Float64 => "Float64"
+	fun layout myNode  = (Layout.str o toString) myNode
 
-    fun layout myNode  =
-      (Layout.str o toString) myNode
-
-    end
+      end
 
     structure CArgTy = struct
     datatype node

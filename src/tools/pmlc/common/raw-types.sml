@@ -10,24 +10,40 @@ structure RawTypes =
   struct
 
     datatype raw_ty
-      = T_Byte | T_Short | T_Int | T_Long
-      | T_Float | T_Double
-      | T_Vec128
+      = Int8
+      | UInt8
+      | Int16
+      | UInt16
+      | Int32
+      | UInt32
+      | Int64
+      | UInt64
+      | Float32
+      | Float64
+      | Vec128
 
-    fun sizeOf T_Byte = 1
-      | sizeOf T_Short = 2
-      | sizeOf T_Int = 4
-      | sizeOf T_Long = 8
-      | sizeOf T_Float = 4
-      | sizeOf T_Double = 8
-      | sizeOf T_Vec128 = 16
+    fun sizeOf Int8 = 1
+      | sizeOf UInt8 = 1
+      | sizeOf Int16 = 2
+      | sizeOf UInt16 = 2
+      | sizeOf Int32 = 4
+      | sizeOf UInt32 = 4
+      | sizeOf Int64 = 8
+      | sizeOf UInt64 = 8
+      | sizeOf Float32 = 4
+      | sizeOf Float64 = 8
+      | sizeOf Vec128 = 16
 
-    fun toString T_Byte = "byte"
-      | toString T_Short = "short"
-      | toString T_Int = "int"
-      | toString T_Long = "long"
-      | toString T_Float = "float"
-      | toString T_Double = "double"
-      | toString T_Vec128 = "vec128"
+    fun toString Int8 = "int8"
+      | toString UInt8 = "uint8"
+      | toString Int16 = "int16"
+      | toString UInt16 = "uint16"
+      | toString Int32 = "int32"
+      | toString UInt32 = "uint32"
+      | toString Int64 = "int64"
+      | toString UInt64 = "uint64"
+      | toString Float32 = "float32"
+      | toString Float64 = "float64"
+      | toString Vec128 = "vec128"
 
   end
