@@ -3,7 +3,8 @@
  * COPYRIGHT (c) 2014 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Software Transactional Memory with partial aborts.
+ * Software Transactional Memory with partial aborts and a bounded number of continuations
+ * held in the log.
  *)
 
 structure BoundedHybridPartialSTM = 
@@ -24,15 +25,20 @@ struct
 #define COUNT
 
 #ifdef COUNT
-#define BUMP_ABORT do ccall M_BumpCounter(0)
-#define PRINT_ABORT_COUNT let counter : int = ccall M_GetCounter(0) \
-                          do ccall M_Print_Int("Aborted %d transactions\n", counter)
+#define BUMP_PABORT do ccall M_BumpCounter(0)
+#define PRINT_PABORT_COUNT let counter : int = ccall M_GetCounter(0) \
+                          do ccall M_Print_Int("Partially aborted %d transactions\n", counter)
+#define BUMP_FABORT do ccall M_BumpCounter(1)
+#define PRINT_FABORT_COUNT let counter : int = ccall M_GetCounter(1) \
+                           do ccall M_Print_Int("Fully aborted %d transactions\n", counter)           
 #else
-#define BUMP_ABORT
-#define PRINT_ABORT_COUNT
+#define BUMP_PABORT
+#define PRINT_PABORT_COUNT
+#define BUMP_FABORT
+#define PRINT_FABORT_COUNT
 #endif
 
-#define READ_SET_BOUND 20
+#define READ_SET_BOUND 30
 
     _primcode(
 
@@ -102,6 +108,7 @@ struct
                                   let newRS : [int, skipList, skipList] = alloc(n, newSL, newSL)
                                   FLS.@set-key(READ_SET, newRS / exh)
                              else let n : int = #0(readSet)          (*don't capture cont*)
+                                  do FLS.@set-counter(I32Sub(captureCount, 1))
                                   let nextCont : skipList = #2(readSet)
                                   let newSL : skipList = (skipList) alloc(tv, enum(0):any, nil, sl, nextCont)
                                   let newRS : [int,skipList,skipList] = alloc(n, newSL, nextCont)
@@ -120,7 +127,7 @@ struct
                                           apply dropKs(nextNext, I32Sub(n, 1))
                              let n : int = apply dropKs(sl, #0(readSet))
                              let nextCont : skipList = #2(readSet)
-                             let newSL : skipList = (skipList) alloc(tv, enum(0):any, writeSet, sl, nextCont)
+                             let newSL : skipList = (skipList) alloc(tv, enum(0):any, nil, sl, nextCont)
                              let newRS : [int, skipList, skipList] = alloc(n, newSL, nextCont)
                              let captureFreq : int = FLS.@get-counter2()
                              let newFreq : int = I32Mul(captureFreq, 2)
@@ -166,6 +173,8 @@ struct
                      else let abortInfo : readItem = (readItem) abortInfo
                           if Equal(#1(abortInfo), enum(0))  (*no abort continuation, restart...*)
                           then do apply release(locks)
+                               let captureFreq : int = FLS.@get-counter2()
+                               do FLS.@set-counter(captureFreq)
                                let e : exn = Fail(@"__ABORT_EXCEPTION__") (*no checkpoint info*)
                                throw exh(e)
                           else do apply release(locks)  
@@ -178,7 +187,7 @@ struct
                                do FLS.@set-key(STAMP_KEY, alloc(newStamp) / exh)
                                let captureFreq : int = FLS.@get-counter2()
                                do FLS.@set-counter(captureFreq)
-                               BUMP_ABORT
+                               BUMP_PABORT
                                let _ = @get-aux(tv, abortK / exh)
                                do ccall M_Print("Impossible\n")
                                return()
@@ -186,14 +195,12 @@ struct
                      let tl : skipList = #3(readSet)
                      let tv : tvar = #0(readSet)
                         if I64Lt(#2(tv), rawStamp)  (*still valid*)
-                        then if Equal(abortInfo, enum(1))           (*don't need chkpoint info*)
-                             then if Equal(#1(readSet), enum(0))    (*no checkpoint here*)
-                                  then apply validate(tl, locks, newStamp, abortInfo, i)
-                                  else apply validate(tl, locks, newStamp, abortInfo, I32Add(i, 1))
-                             else if Equal(#1(readSet), enum(0))  
-                                  then apply validate(tl, locks, newStamp, abortInfo, i)
-                                  else apply validate(tl, locks, newStamp, readSet, 0)
-                        else apply validate(tl, locks, newStamp, readSet, 0)  
+                        then if Equal(#1(readSet), enum(0))    (*no checkpoint here*)
+                             then apply validate(tl, locks, newStamp, abortInfo, i)
+                             else if Equal(abortInfo, enum(1))           (*don't need chkpoint info*)
+                                  then apply validate(tl, locks, newStamp, abortInfo, I32Add(i, 1))
+                                  else apply validate(tl, locks, newStamp, readSet, 0)  (*use this continuation*)
+                        else apply validate(tl, locks, newStamp, readSet, 0)  (*read is out of date*)
             fun acquire(writeSet:List.list, acquired : List.list) : List.list = 
                 case writeSet
                     of CONS(hd:writeItem, tl:List.list) =>
@@ -244,7 +251,7 @@ struct
                                  let arg : [ml_string, ml_string] = alloc(@"__ABORT_EXCEPTION__", s)
                                  let res : bool = String.@same(arg / exh)
                                  if(res)
-                                 then BUMP_ABORT 
+                                 then BUMP_FABORT 
                                       do #0(in_trans) := false
                                       throw enter()
                                  else throw exh(e)
@@ -262,7 +269,8 @@ struct
       define @timeToString = Time.toString;
       
       define @print-stats(x:unit / exh:exh) : unit = 
-        PRINT_ABORT_COUNT
+        PRINT_PABORT_COUNT
+        PRINT_FABORT_COUNT
         return(UNIT);
     )
 

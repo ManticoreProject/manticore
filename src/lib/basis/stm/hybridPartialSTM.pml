@@ -30,18 +30,23 @@ struct
 #define COUNT
 
 #ifdef COUNT
-#define BUMP_ABORT do ccall M_BumpCounter(0)
-#define PRINT_ABORT_COUNT let counter : int = ccall M_GetCounter(0) \
-                          do ccall M_Print_Int("Aborted %d transactions\n", counter)
+#define BUMP_PABORT do ccall M_BumpCounter(0)
+#define PRINT_PABORT_COUNT let counter : int = ccall M_GetCounter(0) \
+                          do ccall M_Print_Int("Partially aborted %d transactions\n", counter)
+#define BUMP_FABORT do ccall M_BumpCounter(1)
+#define PRINT_FABORT_COUNT let counter : int = ccall M_GetCounter(1) \
+                           do ccall M_Print_Int("Fully aborted %d transactions\n", counter)                          
 #else
-#define BUMP_ABORT
-#define PRINT_ABORT_COUNT
+#define BUMP_PABORT
+#define PRINT_PABORT_COUNT
+#define BUMP_FABORT
+#define PRINT_FABORT_COUNT
 #endif
 
 #define CHKPT 0
 #define NOCHKPT 1
 
-#define READ_THRESH 100
+#define READ_THRESH 512
 
     _primcode(
 
@@ -134,7 +139,7 @@ struct
                         then do FLS.@set-counter(I32Add(numReads, 1))
                              return(alloc(tv, enum(0):any , writeSet))
                         else do FLS.@set-counter(0)
-                             return(alloc(tv, (any) retK, writeSet))
+                             return(alloc(tv, (any) retK, nil))
                      let newReadSet : List.list = CONS(item, readSet)
                      do FLS.@set-key(READ_SET, newReadSet / exh)
                      return(current)
@@ -193,7 +198,7 @@ struct
                                          do FLS.@set-key(READ_SET, newRS / exh)
                                          do FLS.@set-key(WRITE_SET, #2(abortInfo) / exh)
                                          do #0(startStamp) := newStamp
-                                         BUMP_ABORT 
+                                         BUMP_PABORT 
                                          let abortK : cont(any) = (cont(any)) #1(abortInfo)
                                          throw abortK(current)
                                     else do Pause() apply lk()
@@ -250,7 +255,7 @@ struct
                                  let arg : [ml_string, ml_string] = alloc(@"__ABORT_EXCEPTION__", s)
                                  let res : bool = String.@same(arg / exh)
                                  if(res) 
-                                 then BUMP_ABORT 
+                                 then BUMP_FABORT 
                                       do #0(in_trans) := false 
                                       throw enter()
                                  else throw exh(e)
@@ -268,7 +273,8 @@ struct
       define @timeToString = Time.toString;
       
       define @print-stats(x:unit / exh:exh) : unit = 
-        PRINT_ABORT_COUNT
+        PRINT_PABORT_COUNT
+        PRINT_FABORT_COUNT
         return(UNIT);
     )
 

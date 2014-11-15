@@ -91,25 +91,41 @@ fun delete (l:ListHandle) (i:int) =
             end
     in atomic(fn () => lp l) end            
 
+fun deleteIndex (l:ListHandle) (i:int) = 
+    let fun lp(prevPtr, i) = 
+            let val prevNode = get prevPtr
+                val curNodePtr = next prevNode
+            in case get curNodePtr
+                    of Null => false
+                     | Node(curVal, nextPtr) =>
+                        if i = 0
+                        then (case prevNode
+                                of Head _ => (put(prevPtr, Head nextPtr); true)
+                                 | Node(v, _) => (put(prevPtr, Node(v, nextPtr)); true))
+                        else lp(curNodePtr, i-1)
+                     | Head n => raise Fail "found head node as next\n"
+            end
+    in atomic(fn () => lp(l, i)) end            
+
+
 val ITERS = 3000
 val MAXVAL = 10000
-
+val INITSIZE = 4000
 fun ignore _ = ()
 
-val READS = 2
-val WRITES = 2
-val DELETES = 2
+val READS = 1
+val WRITES = 1
+val DELETES = 1
 
 fun threadLoop l i = 
     if i = 0
     then ()
-    else let val randNum = Rand.inRangeInt(0, MAXVAL)
-             val prob = Rand.inRangeInt(0, READS+WRITES+DELETES)
+    else let val prob = Rand.inRangeInt(0, READS+WRITES+DELETES)
              val _ = if prob < READS
-                     then ignore(find l randNum)
+                     then ignore(find l (Rand.inRangeInt(0, MAXVAL)))
                      else if prob < READS + WRITES
-                          then ignore(add l randNum)
-                          else ignore(delete l randNum)
+                          then ignore(add l (Rand.inRangeInt(0, MAXVAL)))
+                          else ignore(deleteIndex l (Rand.inRangeInt(0, INITSIZE)))
          in threadLoop l (i-1) end
          
 fun start l i =
@@ -135,7 +151,7 @@ fun initialize n =
 
 val _ = print ("Running with " ^ Int.toString THREADS ^ " threads\n")
 
-val _ = initialize 3000
+val _ = initialize INITSIZE
 val startTime = Time.now()
 val _ = join(start l THREADS)
 val endTime = Time.now()
