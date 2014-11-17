@@ -4,7 +4,6 @@
  * All rights reserved.
  *)
 
-
 signature AST_BOM_STRUCTS =
   sig
     include AST_ATOMS
@@ -13,86 +12,86 @@ signature AST_BOM_STRUCTS =
 
 signature AST_BOM =
   sig
-  include AST_BOM_STRUCTS
+   include AST_BOM_STRUCTS
 
-  structure Region: REGION
+    structure Region: REGION
 
-  structure BomId : AST_ID
-  structure HLOpId : AST_ID
-  structure TyParam : AST_ID
-  structure PrimOp : AST_ID
+    structure BomId : AST_ID
+    structure HLOpId : AST_ID
+    structure TyParam : AST_ID
+    structure PrimOp : AST_ID
 
-  structure LongTyId : LONGID sharing LongTyId.Id = BomId
-  structure LongConId : LONGID sharing LongConId.Id = BomId
-  structure LongValueId : LONGID sharing LongValueId.Id = BomId
-  structure HLOpQId : LONGID sharing HLOpQId.Id = HLOpId
+    structure LongTyId : LONGID sharing LongTyId.Id = BomId
+    structure LongConId : LONGID sharing LongConId.Id = BomId
+    structure LongValueId : LONGID sharing LongValueId.Id = BomId
+    structure HLOpQId : LONGID sharing HLOpQId.Id = HLOpId
 
-  structure SymbolicId : AST_ID (* FIXME: Not sure what this should be *)
+    structure SymbolicId : AST_ID (* FIXME: Not sure what this should be *)
 
-  sharing Symbol = BomId.Symbol = HLOpId.Symbol = TyParam.Symbol
-    = LongTyId.Symbol = LongConId.Symbol = LongValueId.Symbol
-    = HLOpQId.Symbol = SymbolicId.Symbol = PrimOp.Symbol
-  sharing LongTyId.Strid = LongConId.Strid = LongValueId.Strid = BomId
+    sharing Symbol = BomId.Symbol = HLOpId.Symbol = TyParam.Symbol
+      = LongTyId.Symbol = LongConId.Symbol = LongValueId.Symbol
+      = HLOpQId.Symbol = SymbolicId.Symbol = PrimOp.Symbol
+    sharing LongTyId.Strid = LongConId.Strid = LongValueId.Strid = BomId
 
-  structure Attrs : sig
-    type t
-    datatype node
-      = T of string list
+    structure Attrs : sig
+	type t
+	datatype node
+	  = T of string list
 
-    val layout : t -> Layout.t
+	val layout : t -> Layout.t
 
-    include WRAPPED
-      sharing type node' = node
-      sharing type obj = t
-  end
-  structure RawTy : sig
-    type t
-    datatype node = datatype RawTypes.raw_ty
+	include WRAPPED
+	  sharing type node' = node
+	  sharing type obj = t
+      end
+    structure RawTy : sig
+	type t
+	datatype node = datatype RawTypes.raw_ty
 
-    val layout : t -> Layout.t
+	val layout : t -> Layout.t
 
-    include WRAPPED
-      where type node' = node
-      where type obj = t
-    end
+	include WRAPPED
+	  where type node' = node
+	  where type obj = t
+      end
 
-  structure BomValueId : sig
-    type t
-    datatype node
-      = LongId of LongTyId.t
-      | HLOpQId of HLOpQId.t
+    structure BomValueId : sig
+	type t
+	datatype node
+	  = LongId of LongTyId.t
+	  | HLOpQId of HLOpQId.t
 
-    val layout : t -> Layout.t
+	val layout : t -> Layout.t
 
-    include WRAPPED
-      sharing type node' = node
-      sharing type obj = t
-  end
+	include WRAPPED
+	  sharing type node' = node
+	  sharing type obj = t
+      end
 
 
     structure BomType : sig
-    type t
-    type field
-    (* type tyArgs *)
+	  type t
+	  type field
+	  (* type tyArgs *)
 
-    datatype node
-      = Param of TyParam.t
-      | LongId of LongTyId.t * t list
-      | Record of field list
-      | Tuple of t list
-      | Fun of t list * t list * t list
-      | Any
-      | VProc
-      | Cont of t list
-      | Addr of t
-      | Raw of RawTy.t
+	  datatype node
+	    = Param of TyParam.t		(* type variables *)
+	    | LongId of LongTyId.t * t list	(* type constructors *)
+	    | Record of field list		(* records *)
+	    | Tuple of t list			(* tuples (special case of records) *)
+	    | Fun of t list * t list * t list	(* functions: params/conts -> result *)
+	    | Cont of t list			(* continuation *)
+	    | Any				(* any type represented as one machine word *)
+	    | VProc				(* virtual processor handle *)
+	    | Addr of t				(* address (used for atomic memory operations) *)
+	    | Raw of RawTy.t			(* raw machine types *)
 
-    val layout : t -> Layout.t
+	  val layout : t -> Layout.t
 
-    include WRAPPED
-      sharing type node' = node
-      sharing type obj = t
-    end
+	  include WRAPPED
+	    sharing type node' = node
+	    sharing type obj = t
+      end
 
   structure DataConsDef : sig
     type t
