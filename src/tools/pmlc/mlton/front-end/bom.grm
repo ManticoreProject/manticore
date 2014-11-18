@@ -163,26 +163,26 @@
        assertDefaultLast (cases, not o BOM.TyCaseRule.isDefault, thisSpan)
    end
 
-   fun longRuleThunk(longConId : BOM.LongConId.t,
+   fun longRuleThunk (longConId : BOM.LongConId.t,
        varPats: BOM.VarPat.t list,
        bomExp : BOM.Exp.t,
        thisSpan) : bool -> BOM.CaseRule.t =
      fn isLast : bool => BOM.CaseRule.makeRegion (BOM.CaseRule.LongRule (
        longConId, varPats, bomExp), posToReg thisSpan)
 
-   fun literalRuleThunk(literal : BOM.Literal.t,
+   fun literalRuleThunk (literal : BOM.Literal.t,
        bomExp : BOM.Exp.t,
        thisSpan) : bool -> BOM.CaseRule.t =
      fn isLast : bool => BOM.CaseRule.makeRegion (BOM.CaseRule.LiteralRule (
        literal, bomExp), posToReg thisSpan)
 
-   fun defaultRuleThunk(varPat : BOM.VarPat.t,
+   fun defaultRuleThunk (varPat : BOM.VarPat.t,
        bomExp : BOM.Exp.t,
        thisSpan) : bool -> BOM.CaseRule.t =
      fn isLast : bool => BOM.CaseRule.makeRegion (BOM.CaseRule.DefaultRule (
        varPat, bomExp), posToReg thisSpan)
 
-   fun longOrDefaultRuleThunk(id,
+   fun longOrDefaultRuleThunk (id,
        bomExp : BOM.Exp.t,
        thisSpan) : bool -> BOM.CaseRule.t =
      fn isLast : bool => (if isLast then
@@ -230,7 +230,7 @@ Definition
 			  SOME Attrs, HLOpId, optToList TyParams, inputTys, exnTys, ReturnTy, SR),
 			posToReg FULL_SPAN
 		      ) end))
-	| "define" HLOpId TyParams? HLOpDefinition
+	| "define" HLOpId TyParams? HLOpDef
 	| "fun" FunDef ("and" FunDef)* ";"
 	| "extern" CReturnTy BomId "(" (CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs ";"
 		=> (BOM.Definition.makeRegion (
@@ -254,7 +254,7 @@ DataConsDef
 
 HLOpDef
 	: FunParams ReturnTy ("=" BOMExp)? ";"
-	| "=" LongBomId ";"
+	| "=" BomLongId ";"
 		=> (fn (hlOpId : BOM.HLOpId.t, tyParams, span) =>
 		    (BOM.Definition.makeRegion (let
 		      val (inputTys, exnTys) = FunParams
@@ -265,26 +265,26 @@ HLOpDef
 		      end)))
 	;
 
-	| "define" Attrs HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";"
-		=> (BOM.Definition.makeRegion (let
-		      val (inputTys, exnTys) = FunParams
-		      in (
-			BOM.Definition.DefineShortId (
-			  SOME Attrs, HLOpId, optToList TyParams, inputTys, exnTys, ReturnTy, SR),
-			posToReg FULL_SPAN
-		      ) end))
-	| "define" HLOpId TyParams? DefineRest
-		=> (DefineRest (HLOpId, optToList TyParams, FULL_SPAN))
-	| "extern" CReturnTy BomId "(" (CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs ";"
-		=> (BOM.Definition.makeRegion (
-		      BOM.Definition.Extern (CReturnTy, BomId, Option.getOpt (SR, []), Attrs),
-		      posToReg FULL_SPAN))
-	| "fun" FunDef ("and" FunDef)* ";"
-		=> (BOM.Definition.makeRegion (
-		    BOM.Definition.Fun (FunDef::SR),
-		    posToReg FULL_SPAN))
-(* FIXME: need to add exception definition *)
-	;
+(* 	| "define" Attrs HLOpId TyParams? FunParams ReturnTy ("=" BOMExp)? ";" *)
+(* 		=> (BOM.Definition.makeRegion (let *)
+(* 		      val (inputTys, exnTys) = FunParams *)
+(* 		      in ( *)
+(* 			BOM.Definition.DefineShortId ( *)
+(* 			  SOME Attrs, HLOpId, optToList TyParams, inputTys, exnTys, ReturnTy, SR), *)
+(* 			posToReg FULL_SPAN *)
+(* 		      ) end)) *)
+(* 	| "define" HLOpId TyParams? DefineRest *)
+(* 		=> (DefineRest (HLOpId, optToList TyParams, FULL_SPAN)) *)
+(* 	| "extern" CReturnTy BomId "(" (CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs ";" *)
+(* 		=> (BOM.Definition.makeRegion ( *)
+(* 		      BOM.Definition.Extern (CReturnTy, BomId, Option.getOpt (SR, []), Attrs), *)
+(* 		      posToReg FULL_SPAN)) *)
+(* 	| "fun" FunDef ("and" FunDef)* ";" *)
+(* 		=> (BOM.Definition.makeRegion ( *)
+(* 		    BOM.Definition.Fun (FunDef::SR), *)
+(* 		    posToReg FULL_SPAN)) *)
+(* (* FIXME: need to add exception definition *) *)
+(* 	; *)
 
 (* FIXME: this can be made to work better with DefineShortId above *)
 DefineRest
@@ -313,6 +313,36 @@ TyParams
 
 TyArgs
 	: "<" BOMType ("," BOMType)* ">"
+		=> (BOMType::SR)
+	;
+
+
+RangeTy
+  : BOMType
+    => ([BOMType])
+  | "(" BOMType ("," BOMType)* ")"
+    => (BOMType::SR)
+  ;
+
+TypeList
+  : (* empty *)
+    => ([])
+  | RangeTy
+  ;
+
+(* ReturnTy *)
+(*   : "noreturn" *)
+(*     => ([]) *)
+(*   | "->" RangeTy *)
+(*   ; *)
+
+
+ReturnTy
+	: "noreturn"
+		=> ([])
+	| "->" BOMType
+		=> ([BOMType])
+	| "->" "(" BOMType ("," BOMType)* ")"
 		=> (BOMType::SR)
 	;
 
@@ -372,20 +402,19 @@ TupleFieldTy
 	| BOMType	=> (false, BOMType)
 	;
 
-TypeList
-	: (* empty *)
-		=> []
-	| BOMType ("," BOMType)*
-		=> (BOMType::SR1)
-	;
+(* TypeList *)
+(* 	: (* empty *) *)
+(* 		=> [] *)
+(* 	| BOMType ("," BOMType)* *)
+(* 		=> (BOMType::SR1) *)
+(* 	; *)
 
-RangeTy
-	: TypeList
-		=> (TypeList)
-	| "noreturn"
-		=> ([])		(* FIXME: need an explicit representation here *)
-	;
-
+(* RangeTy *)
+(* 	: TypeList *)
+(* 		=> (TypeList) *)
+(* 	| "noreturn" *)
+(* 		=> ([])		(* FIXME: need an explicit representation here *) *)
+(* 	; *)
 
 FunDef
 	: Attrs? BomId TyParams? "(" Params? ("/" Params)? ")" ReturnTy "=" BOMExp
@@ -468,7 +497,7 @@ SimpleExp
 		=> (mkSimpleExp (BOM.SimpleExp.VpAddr (PosInt, SimpleExp), FULL_SPAN))
 	| "vpstore" "(" PosInt "," SimpleExp "," SimpleExp ")"
 		=> (mkSimpleExp (BOM.SimpleExp.VpStore (PosInt, SimpleExp1, SimpleExp2), FULL_SPAN))
-	| BOMLongId
+	| LongValueId
 		=> (mkSimpleExp (BOM.SimpleExp.Id BOMLongId, FULL_SPAN))
 	| Literal
 		=> (mkSimpleExp (BOM.SimpleExp.Lit Literal, FULL_SPAN))
@@ -478,11 +507,11 @@ SimpleExp
 
 (* We don't keep track of quite the right regions here *)
 CaseRule
-	: BOMPat "=>" BOMExp
-		=> ()
-	;
+	(* : BOMPat "=>" BOMExp *)
+	(* 	=> () *)
+	(* ; *)
 
-	: BomLongId ( "(" VarPat ("," VarPat)* ")" )? "=>" BOMExp
+	: longid ( "(" VarPat ("," VarPat)* ")" )? "=>" BOMExp
       => (longRuleThunk (
         BOM.LongConId.fromSymbols longid,
         flatten SR,
@@ -490,20 +519,21 @@ CaseRule
         FULL_SPAN))
 	| Literal "=>" BOMExp
       => (literalRuleThunk (Literal, BOMExp, FULL_SPAN))
-	| idForLongid "(" VarPat ("," VarPat)* ")" "=>" BOMExp
-      => (longRuleThunk (
-        BOM.LongConId.fromSymbols idForLongid,
-        VarPat::SR,
-        BOMExp,
-        FULL_SPAN))
+	(* | idForLongid "(" VarPat ("," VarPat)* ")" "=>" BOMExp *)
+  (*     => (longRuleThunk ( *)
+  (*       BOM.LongConId.fromSymbols idForLongid, *)
+  (*       VarPat::SR, *)
+  (*       BOMExp, *)
+  (*       FULL_SPAN)) *)
 	| BomId ":" BOMType "=>" BOMExp
       => (defaultRuleThunk (BOM.VarPat.makeRegion (BOM.VarPat.Var (
         BomId, SOME BOMType), posToReg FULL_SPAN), BOMExp, FULL_SPAN))
   | "_" (":" BOMType)? "=>" BOMExp
       => (defaultRuleThunk (BOM.VarPat.makeRegion (BOM.VarPat.Wild SR,
         posToReg FULL_SPAN), BOMExp, FULL_SPAN))
-  | ShortId "=>" BOMExp
-      => (longOrDefaultRuleThunk (ShortId, BOMExp, FULL_SPAN))
+  | ID "=>" BOMExp
+      => (longOrDefaultRuleThunk ((Symbol.fromString ID, posToReg FULL_SPAN),
+        BOMExp, FULL_SPAN))
 	;
 
 BOMPat
@@ -585,14 +615,7 @@ RawTy
 	| "float64"	=> (mkRawTy (BOM.RawTy.Float64, FULL_SPAN))
 	;
 
-ReturnTy
-	: "noreturn"
-		=> ([])
-	| "->" BOMType
-		=> ([BOMType])
-	| "->" "(" BOMType ("," BOMType)* ")"
-		=> (BOMType::SR)
-	;
+
 
 FunParams
 	: "(" Params? (")" => ([]) | "/" Params ")" => (Params))
@@ -620,6 +643,24 @@ BomLongId
 		      BOM.LongTyId.fromSymbols (syms, posToReg FULL_SPAN)
 		    end)
 	;
+
+(* FIXME: temporary change so it compiles *)
+idForLongId
+  : ID
+    => ([Symbol.fromString ID], posToReg FULL_SPAN)
+  | LONGID
+    => (List.map Symbol.fromString (split (LONGID, #".")), posToReg FULL_SPAN)
+  ;
+
+LongValueId
+  : idForLongId
+    => (BOM.LongValueId.fromSymbols idForLongId)
+  ;
+
+LongTyId
+  : idForLongId
+    => (BOM.LongTyId.fromSymbols idForLongId)
+  ;
 
 HLOpId
 	: HLID

@@ -53,6 +53,7 @@ class SMLOutput:
     def check_compile(self):
         failure = self.raised_exn() or self.raised_error()
         if failure:
+            print("Failed with output: {}".format(self.out))
             raise SMLFailure(failure)
 
     def succeeded(self):

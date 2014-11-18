@@ -40,16 +40,20 @@ topdecnode
 
 Import
 	: "_import" "datatype" tyvarseq longtycon ("as" BomId)? "with" ImportCon+ "end"
-		=> ()
-	| "_import" "exception" longid ("as" BomId)? ("of" ty)?
-		=> ()
+		=> (AstBOM.Import.makeRegion (AstBOM.Import.Datatype (tyseq, longtycon,
+      SR, ImportCon), posToReg FULL_SPAN))
+	| "_import" "exception" longvid ("as" BomId)? ("of" ty)?
+		=> (AstBOM.Import.makeRegion (AstBOM.Import.Exn (longvid, SR1, SR2),
+      posToReg FULL_SPAN))
 	| "_import" "val" longvid ":" ty ("as" BomId)?
-		=> ()
+		=> (AstBOM.Import.makeRegion (AstBOM.Import.Val (longid, ty, SR), posToReg
+      FULL_SPAN))
 	;
 
 ImportCon
 	: "_con" vid ("of" ty)? ("as" BomId)?
-		=> ()
+		=> (AstBOM.ImportCon.makeRegion (AstBOM.ImportCon.T (vid, SR1, SR2),
+      posToReg FULL_SPAN))
 	;
 
 strdecnode
@@ -63,7 +67,8 @@ strdecnode
 
 PrimConDef
 	: "_con" vid ("of" ty)? "=" "_prim" "(" BomId ")"
-		=> ()
+		=> (AstBOM.PrimConDef.makeRegion (AstBOM.PrimConDef.T (vid, SR1, BomId),
+      posToReg FULL_SPAN))
 	;
 
 MLValueId

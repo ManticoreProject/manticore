@@ -46,7 +46,18 @@ signature AST_BOM =
       end
     structure RawTy : sig
 	type t
-	datatype node = datatype RawTypes.raw_ty
+	(* datatype node = datatype RawTypes.raw_ty *)
+  datatype node
+    = Int8
+    | Uint8
+    | Int16
+    | Uint16
+    | Int32
+    | Uint32
+    | Int64
+    | Uint64
+    | Float32
+    | Float64
 
 	val layout : t -> Layout.t
 
@@ -79,12 +90,16 @@ signature AST_BOM =
 	    | LongId of LongTyId.t * t list	(* type constructors *)
 	    | Record of field list		(* records *)
 	    | Tuple of t list			(* tuples (special case of records) *)
+      | Array of t          (* array *)
+      | Vector of t         (* vector (immutable array) *)
 	    | Fun of t list * t list * t list	(* functions: params/conts -> result *)
 	    | Cont of t list			(* continuation *)
 	    | Any				(* any type represented as one machine word *)
 	    | VProc				(* virtual processor handle *)
 	    | Addr of t				(* address (used for atomic memory operations) *)
 	    | Raw of RawTy.t			(* raw machine types *)
+      | Exn                 (* exception, from ML code *)
+      | BigNum
 
 	  val layout : t -> Layout.t
 
@@ -340,8 +355,8 @@ signature AST_BOM =
   structure Import : sig
     type t
     datatype node
-      = Datatype of Type.t list * Longtycon.t
-      | Exn of Type.t option
+      = Datatype of Type.t list * Longtycon.t * BomId.t option * ImportCon.t list
+      | Exn of Longvid.t * BomId.t option * Type.t option
       | Val of Longvid.t * Type.t * BomId.t option
 
     include WRAPPED

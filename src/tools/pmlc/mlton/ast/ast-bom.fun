@@ -213,15 +213,28 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
     (* end *)
 
+    (* FIXME: this should use RawTypes.raw_ty *)
     structure RawTy = struct
         open Wrap
-	datatype node = datatype RawTypes.raw_ty
+	(* datatype node = datatype RawTypes.raw_ty *)
+      datatype node
+        = Int8
+        | Uint8
+        | Int16
+        | Uint16
+        | Int32
+        | Uint32
+        | Int64
+        | Uint64
+        | Float32
+        | Float64
 	type t = node Wrap.t
 
 	type node' = node
 	type obj = t
 
-	fun toString (myNode : t) = RawTypes.toString (node myNode)
+	(* fun toString (myNode : t) = RawTypes.toString (node myNode) *)
+  fun toString myNode = ""
 
 	fun layout myNode  = (Layout.str o toString) myNode
 
@@ -294,12 +307,16 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | LongId of LongTyId.t * type_t list
       | Record of field_t list
       | Tuple of type_t list
+      | Array of type_t
+      | Vector of type_t
       | Fun of type_t list * type_t list * type_t list
       | Any
       | VProc
       | Cont of type_t list
       | Addr of type_t
       | Raw of RawTy.t
+      | Exn
+      | BigNum
     and tyargs_node
       = ArgTypes of type_t list
     and dataconsdef_node
@@ -989,8 +1006,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   structure Import = struct
     datatype node
-      = Datatype of Type.t list * Longtycon.t
-      | Exn of Type.t option
+      = Datatype of Type.t list * Longtycon.t * BomId.t option * ImportCon.t list
+      | Exn of Longvid.t * BomId.t option * Type.t option
       | Val of Longvid.t * Type.t * BomId.t option
 
    open Wrap
