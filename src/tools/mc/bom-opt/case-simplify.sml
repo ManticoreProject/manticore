@@ -186,6 +186,7 @@ structure CaseSimplify : sig
 	  | ty => (
 	    case BTU.asTyc ty
 	     of BTy.DataTyc{nNullary, ...} => nNullary
+	      | BTy.AbsTyc {arity,...} => if arity = 0 then 1 else 0
 	    (* end case *))
         (* end case *))
 
@@ -491,6 +492,7 @@ DEBUG*)
 		in
 		  (B.P_Const(Lit.Enum w, ty), xformE(s, tys, e))
 		end
+            | enumCase (dc as BTy.DCon{rep=BTy.ExnRep, argTy = [], ...}, e) = raise Fail "exn case\n"
 	    | enumCase _ = raise Fail "expected nullary constructor"
          in
 	    case classifyCaseRules (BV.typeOf x, rules, dflt)

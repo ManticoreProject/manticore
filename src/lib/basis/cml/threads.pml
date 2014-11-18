@@ -80,7 +80,7 @@ structure Threads (*: sig
                 let vp : [int] = #0(arg)
                 let f : fun(unit / exh -> unit) = #1(arg)
                 cont fiber(x:PT.unit) = 
-                        cont threadExh(e:PT.exn) = return(UNIT)
+                        cont threadExh(e:PT.exn) = do ccall M_Print("Thread exiting because of uncaught exception\n") return(UNIT)
                         let _ : unit = apply f(UNIT / threadExh)
                         SchedulerAction.@stop()
                 let fls : FLS.fls = FLS.@new-pinned(#0(vp))

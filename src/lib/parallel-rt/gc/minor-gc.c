@@ -66,8 +66,6 @@ void MinorGC (VProc_t *vp)
 #ifndef NO_GC_STATS
     TIMER_Start(&(vp->minorStats.timer));
 #endif
-	
-	
 
     assert (vp->heapBase <= (Addr_t)nextScan);
     assert ((Addr_t)nextScan < vp->nurseryBase);
@@ -186,6 +184,11 @@ bzero(nextScan, avail); /* clear unused part of local heap */
 
   /* reset the allocation pointer */
     SetAllocPtr (vp);
+}
+
+/*force a minor garbage collection*/
+void ForceGC(VProc_t * vp){
+    MinorGC(vp);
 }
 
 #ifndef NDEBUG

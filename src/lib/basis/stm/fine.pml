@@ -1,6 +1,6 @@
 (*Finer transactions*)
 
-structure STM = BoundedHybridPartialSTM
+structure STM = HybridPartialSTM
 
 val tv = STM.new 0
 

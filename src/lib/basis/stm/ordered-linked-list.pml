@@ -35,7 +35,7 @@ fun getArg f args =
 val args = CommandLine.arguments ()
 
 val c = case getArg "-spin" args
-        of SOME n => (case Int.fromString n of SOME n => n | NONE => 200)
+        of SOME n => (case Int.fromString n of SOME n => n | NONE => 0)
          | NONE => 0
 
 val THREADS = 
@@ -110,11 +110,11 @@ fun deleteIndex (l:ListHandle) (i:int) =
 
 val ITERS = 3000
 val MAXVAL = 10000
-val INITSIZE = 5000
+val INITSIZE = 4000
 fun ignore _ = ()
 
-val READS = 1
-val WRITES = 1
+val READS = 2
+val WRITES = 4
 val DELETES = 1
 
 fun threadLoop l i = 

@@ -8,7 +8,7 @@
         -https://github.com/sweirich/dth/tree/master/examples/red-black
  *)
  
-structure WhichSTM = BoundedHybridPartialSTM
+structure WhichSTM = FullAbortSTM
 
 type 'a tvar = 'a WhichSTM.tvar
 
@@ -123,6 +123,7 @@ fun makeBlack t =
          | T(c, l, v, r) => WhichSTM.put(t, T(Black, l, v, r))
          | DBL => raise Fail "Found double black leaf in make black\n"
 
+
 fun insert (x:int) (t:tree tvar) (compare : int*int -> order) : unit =
     let fun lp (t:tree tvar) : bool = 
             case WhichSTM.get t
@@ -131,7 +132,7 @@ fun insert (x:int) (t:tree tvar) (compare : int*int -> order) : unit =
                     (case compare(x, v)
                         of LESS => if lp l then balance t else false
                          | GREATER => if lp r then balance t else false
-                         | EQUAL => false)
+                         | EQUAL => if lp r then balance t else false)
                  | DBL => raise Fail "found double black leaf in insert\n"
     in WhichSTM.atomic(fn () => (lp t; makeBlack t)) end
 
@@ -148,7 +149,7 @@ fun delBalance tv =
     else case WhichSTM.get tv
             of T(Red,t1,k,t2) => false
              | T(DBlack,t1,k,t2) =>
-                if (case WhichSTM.get t1
+                (case WhichSTM.get t1
                     of T(Red,l',y,r') =>
                         (case (WhichSTM.get l', WhichSTM.get r')
                             of (T(Red,a,x,b), _) => 
@@ -161,7 +162,7 @@ fun delBalance tv =
                                     val r = WhichSTM.new(T(Black,c,k,t2))
                                     val _ = WhichSTM.put(tv, T(Black,r',z,r))
                                 in true end
-                             | _ => false)
+                             | _ => true)
                      | T(NBlack,l',y,r') =>  (*T(DBlack, T(NBlack,l' as T(Black,_,_,_),y,T(Black,b,y,c)), k, t2)*)
                         (case (WhichSTM.get l', WhichSTM.get r')
                             of (T(Black,ll,vv,rr), T(Black,b,z,c)) =>
@@ -170,35 +171,34 @@ fun delBalance tv =
                                     val newR = WhichSTM.new(T(Black, c, k, t2))
                                     val _ = WhichSTM.put(tv, T(Black, t1, z, newR))
                                 in delBalance t1 end
-                             | _ => false)
-                      | _ => false)
-                 then true
-                 else (case WhichSTM.get t2 
-                        of T(Red,l',y,r') =>
-                            (case (WhichSTM.get l', WhichSTM.get r')
-                                of (T(Red,b,z,c),_) =>
-                                    let val _ = WhichSTM.put(l', T(Black,c,y,r'))
-                                        val l = WhichSTM.new(T(Black,t1,k,b))
-                                        val _ = WhichSTM.put(tv, T(Black,l,z,l'))
-                                    in true end
-                                | (_,T(Red,c,z,d)) =>
-                                    let val _ = WhichSTM.put(r', T(Black,c,z,d))
-                                        val l = WhichSTM.new(T(Black,t1,k,l'))
-                                        val _ = WhichSTM.put(tv, T(Black,l,y,r'))
-                                    in true end
-                                | _ => false)
-                        | T(NBlack,l',y,r') => (*T(DBlack,t1,k,T(NBlack,l',y,r'))*)
-                                (case (WhichSTM.get l', WhichSTM.get r') 
-                                    of (T(Black,b,z,c), T(Black,_,_,_)) => (*T(Dblack, t1, k, T(NBlack, T(Black, b, z, c), y, r' as T(Black, _, _, _))) *)
-                                        let val _ = redden r'
-                                            val _ = WhichSTM.put(t2, T(Black, c, y, r'))
-                                            val newL = WhichSTM.new(T(Black, t1, k, b))
-                                            val _ = WhichSTM.put(tv, T(Black, newL, z, t2))
-                                        in delBalance t2 end
-                                     | _ => false)
-                        | _ => false)
-             | _ => false            
+                             | _ => raise Fail "Impossible: delBalance\n")
+                      | _ => (case WhichSTM.get t2 
+                                of T(Red,l',y,r') =>
+                                    (case (WhichSTM.get l', WhichSTM.get r')
+                                        of (T(Red,b,z,c),_) =>
+                                            let val _ = WhichSTM.put(l', T(Black,c,y,r'))
+                                                val l = WhichSTM.new(T(Black,t1,k,b))
+                                                val _ = WhichSTM.put(tv, T(Black,l,z,l'))
+                                            in true end
+                                        | (_,T(Red,c,z,d)) =>
+                                            let val _ = WhichSTM.put(r', T(Black,c,z,d))
+                                                val l = WhichSTM.new(T(Black,t1,k,l'))
+                                                val _ = WhichSTM.put(tv, T(Black,l,y,r'))
+                                            in true end
+                                        | _ => true)
+                                | T(NBlack,l',y,r') => (*T(DBlack,t1,k,T(NBlack,l',y,r'))*)
+                                        (case (WhichSTM.get l', WhichSTM.get r') 
+                                            of (T(Black,b,z,c), T(Black,_,_,_)) => (*T(Dblack, t1, k, T(NBlack, T(Black, b, z, c), y, r' as T(Black, _, _, _))) *)
+                                                let val _ = redden r'
+                                                    val _ = WhichSTM.put(t2, T(Black, c, y, r'))
+                                                    val newL = WhichSTM.new(T(Black, t1, k, b))
+                                                    val _ = WhichSTM.put(tv, T(Black, newL, z, t2))
+                                                in delBalance t2 end
+                                             | _ => raise Fail "Impossible: delBalance\n")
+                                | _ => true))
+             | _ => false
 
+(*
 fun bubble t = 
     case WhichSTM.get t
         of T(c,l,x,r) =>
@@ -245,8 +245,59 @@ fun remove (x:int) (t:tree tvar) (compare:int*int-> order) =
                  | DBL => raise Fail "found double black leaf in remove:lp\n"                            
     in WhichSTM.atomic(fn _ => (lp t ; makeBlack t)); ()
     end
+*)
 
-(*Verify red-black tree properties*)         
+fun bubble t = 
+    case WhichSTM.get t
+        of T(c,l,x,r) =>
+            if isBB l orelse isBB r
+            then (WhichSTM.put(t, T(blacker c, l, x, r)); redder' l; redder' r; delBalance t)
+            else delBalance t
+         | _ => false
+
+(*Precondition: t has only one child. *)
+fun remove' t : bool = 
+    case WhichSTM.get t
+        of T(Red,l,v,r) => (WhichSTM.put(t, L); false)    (*l anv v are necessarily L*)
+         | T(Black,l,v,r) =>    
+            (case WhichSTM.get l
+                of T(Red,a,x,b) => (WhichSTM.put(t, T(Black,a,x,b)); false)
+                 | _ => case WhichSTM.get r
+                            of T(Red, a, x, b) => (WhichSTM.put(t, T(Black, a, x, b)); false)
+                             | _ => (WhichSTM.put(t, DBL); true))
+         | _ => raise Fail "Impossible: removePrime"
+
+fun remove (x:int) (t:tree tvar) (compare:int*int-> order) = 
+    let fun removeMax t = 
+            case WhichSTM.get t
+                of T(c,l,v,r) => 
+                    (case WhichSTM.get r
+                        of L => if remove' t then (true, v) else (false, v)
+                         | _ => let val (b, v) = removeMax r
+                                    val b = if b then bubble t else false
+                                in (b, v) end)
+                 | _ => raise Fail "Impossible: remove"
+        fun lp t = 
+            case WhichSTM.get t
+                of L => false
+                 | T(c,l,v,r) => 
+                    (case compare(x, v)
+                        of GREATER => if lp r then bubble t else true
+                         | LESS => if lp l then bubble t else true
+                         | EQUAL => 
+                            (case WhichSTM.get l
+                                of L => remove' t
+                                 | _ => (case WhichSTM.get r
+                                            of L => remove' t
+                                             | _ => let val (b, v) = removeMax l
+                                                        val _ = WhichSTM.put(t, T(c,l,v,r))
+                                                    in if b then bubble t else true end)))
+                 | DBL => raise Fail "found double black leaf in remove:lp\n"                            
+    in WhichSTM.atomic(fn _ => (lp t ; makeBlack t)); ()
+    end
+
+
+(*Verify red-black tree properties*)
 fun chkOrder t = 
     let fun lp(t, lower, upper) = 
             case WhichSTM.get t
@@ -257,8 +308,8 @@ fun chkOrder t =
                     in case (lower, upper)
                         of (NONE, NONE) => true
                          | (NONE, SOME u) => v < u
-                         | (SOME l, NONE) => v > l
-                         | (SOME l, SOME u) => v > l andalso v < u
+                         | (SOME l, NONE) => v >= l
+                         | (SOME l, SOME u) => v >= l andalso v < u
                     end
                  | DBL => raise Fail "found double black leaf in chkOrder\n"
     in if lp(t, NONE, NONE) 
@@ -294,7 +345,7 @@ fun ignore _ = ()
 
 val READS = 2
 val WRITES = 4
-val DELETES = 2
+val DELETES = 1
 
 fun threadLoop t i = 
     if i = 0
@@ -329,7 +380,7 @@ fun initialize n =
              val _ = insert randNum t intComp
          in initialize (n-1) end
 
-val _ = initialize 1000
+val _ = initialize 30000
 val startTime = Time.now()
 val _ = join(start t THREADS)
 val endTime = Time.now()

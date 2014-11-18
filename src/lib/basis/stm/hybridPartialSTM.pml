@@ -6,9 +6,6 @@
  * Software Transactional Memory with partial aborts.
  *)
 
-#define Read 0
-#define Write 1
-
 structure HybridPartialSTM = 
 struct 
 
@@ -28,17 +25,18 @@ struct
 
 #ifdef COUNT
 #define BUMP_PABORT do ccall M_BumpCounter(0)
-#define PRINT_PABORT_COUNT let counter : int = ccall M_GetCounter(0) \
-                          do ccall M_Print_Int("Partially aborted %d transactions\n", counter)
+#define PRINT_PABORT_COUNT let counter1 : int = ccall M_GetCounter(0) \
+                          do ccall M_Print_Int("Partially aborted %d transactions\n", counter1)
 #define BUMP_FABORT do ccall M_BumpCounter(1)
-#define PRINT_FABORT_COUNT let counter : int = ccall M_GetCounter(1) \
-                           do ccall M_Print_Int("Fully aborted %d transactions\n", counter)         
+#define PRINT_FABORT_COUNT let counter2 : int = ccall M_GetCounter(1) \
+                           do ccall M_Print_Int("Fully aborted %d transactions\n", counter2)         
 #define BUMP_NOK do ccall M_BumpCounter(2)
-#define PRINT_NOK_COUNT let counter : int = ccall M_GetCounter(2) \
-                           do ccall M_Print_Int("Allocated %d read items without continuations\n", counter)     
+#define PRINT_NOK_COUNT let counter3 : int = ccall M_GetCounter(2) \
+                           do ccall M_Print_Int("Allocated %d read items without continuations\n", counter3)     
 #define BUMP_K do ccall M_BumpCounter(3)
-#define PRINT_K_COUNT let counter : int = ccall M_GetCounter(3) \
-                           do ccall M_Print_Int("Allocated %d read items with continuations\n", counter)                                                    
+#define PRINT_K_COUNT let counter4 : int = ccall M_GetCounter(3) \
+                           do ccall M_Print_Int("Allocated %d read items with continuations\n", counter4)         
+#define PRINT_COMBINED do ccall M_Print_Int("Aborted %d transactions in total\n", I32Add(counter1, counter2))                                                                      
 #else
 #define BUMP_PABORT
 #define PRINT_PABORT_COUNT
@@ -48,12 +46,12 @@ struct
 #define PRINT_NOK_COUNT   
 #define BUMP_K
 #define PRINT_K_COUNT 
+#define PRINT_COMBINED
 #endif
 
-#define CHKPT 0
-#define NOCHKPT 1
-
 #define READ_THRESH 512
+
+    datatype 'a item = Read of 'a * 'a * 'a * 'a | Write of 'a * 'a * 'a | NilItem
 
     _primcode(
 
@@ -84,16 +82,16 @@ struct
 
         define @get(tv:tvar / exh:exh) : any = 
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
-            let readSet : List.list = FLS.@get-key(READ_SET / exh)
-            let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
+            let readSet : item = FLS.@get-key(READ_SET / exh)
+            let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             cont retK(x:any) = return(x)
-            fun chkLog(writeSet : List.list) : Option.option = (*use local copy if available*)
+            fun chkLog(writeSet : item) : Option.option = (*use local copy if available*)
                  case writeSet
-                     of CONS(hd:writeItem, tl:List.list) =>
-                         if Equal(#0(hd), tv)
-                         then return(Option.SOME(#1(hd)))
+                     of Write(tv':tvar, contents:any, tl:item) =>
+                         if Equal(tv', tv)
+                         then return(Option.SOME(contents))
                          else apply chkLog(tl)
-                     | nil => return (Option.NONE)
+                     | NilItem => return (Option.NONE)
                  end
             let localRes : Option.option = apply chkLog(writeSet)
             case localRes
@@ -109,13 +107,12 @@ struct
                      let current : any = #0(tv)
                      do #1(tv) := 0:long
                      let numReads : int = FLS.@get-counter()
-                     let item : readItem = 
+                     let newReadSet : item = 
                         if I32Lt(numReads, READ_THRESH) 
                         then do FLS.@set-counter(I32Add(numReads, 1))
-                             return(alloc(tv, enum(0):any, nil))
+                             return(Read(tv, enum(0):any, NilItem, readSet))
                         else do FLS.@set-counter(0)
-                             return(alloc(tv, (any) retK, writeSet))
-                     let newReadSet : List.list = CONS(item, readSet)
+                             return(Read(tv, (any) retK, writeSet, readSet))
                      do FLS.@set-key(READ_SET, newReadSet / exh)
                      return(current)
             end
@@ -124,90 +121,88 @@ struct
         define @put(arg:[tvar, any] / exh:exh) : unit =
             let tv : tvar = #0(arg)
             let v : any = #1(arg)
-            let item : writeItem = alloc(tv, v)
-            let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
-            let newWriteSet : List.list = CONS(item, writeSet)
+            let writeSet : item = FLS.@get-key(WRITE_SET / exh)
+            let newWriteSet : item = Write(tv, v, writeSet)
             do FLS.@set-key(WRITE_SET, newWriteSet / exh)
             return(UNIT)
         ;
 
         define @commit(/exh:exh) : () = 
             let startStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
-            fun release(locks : List.list) : () = 
+            fun release(locks : item) : () = 
                 case locks 
-                    of CONS(hd:writeItem, tl:List.list) =>
-                        let tv:tvar = #0(hd)
+                    of Write(tv:tvar, contents:any, tl:item) =>
                         do #1(tv) := 0:long         (*unlock*)
                         apply release(tl)
-                     | nil => return()
+                     | NilItem => return()
                 end
-            let readSet : List.list = FLS.@get-key(READ_SET / exh)
-            let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
+            let readSet : item = FLS.@get-key(READ_SET / exh)
+            let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             let rawStamp: long = #0(startStamp)
-            fun validate(readSet:List.list, locks:List.list, newStamp : stamp, abortInfo : [any,any,any], newRS : List.list) : () = 
+            fun validate(readSet:item, locks:item, newStamp : stamp, abortInfo : item) : () = 
                 case readSet
-                    of CONS(hd:readItem, tl:List.list) =>
-                        let tv : tvar = #0(hd)
+                    of Read(tv:tvar, abortK:any, ws:item, tl:item) =>
                         if I64Lt(#2(tv), rawStamp)  (*still valid*)
-                        then if Equal(#1(abortInfo), enum(0))           (*need chkpoint info*)
-                             then if Equal(#1(hd), enum(0))         (*dont' have chkpoint info*)
-                                  then apply validate(tl, locks, newStamp, abortInfo, newRS)
-                                  else apply validate(tl, locks, newStamp, hd, tl)  (*this is the nearest valid read with chkpoint info*)
-                             else apply validate(tl, locks, newStamp, abortInfo, newRS)
-                        else apply validate(tl, locks, newStamp, hd, tl)
-                    | nil => 
-                        if Equal(#1(abortInfo), enum(1))
-                        then return() (*no violations detected*)
-                        else if Equal(#1(abortInfo), enum(0)) 
-                             then do apply release(locks)
-                                  let abortK : cont() = FLS.@get-key(ABORT_KEY / exh) (*no checkpoint info*)
-                                  throw abortK()
-                             else do apply release(locks)  
-                                  let tv : tvar = (tvar) #0(abortInfo)
-                                  fun lk() : () = 
-                                    let old : long = CAS(&1(tv), 0:long, newStamp)
-                                    if I64Eq(old, 0:long)
-                                    then let current : any = #0(tv)
-                                         do #1(tv) := 0:long
-                                         let newRS : List.list = CONS(abortInfo, newRS)
-                                         do FLS.@set-key(READ_SET, newRS / exh)
-                                         do FLS.@set-key(WRITE_SET, #2(abortInfo) / exh)
-                                         do #0(startStamp) := newStamp
-                                         BUMP_PABORT 
-                                         let abortK : cont(any) = (cont(any)) #1(abortInfo)
-                                         throw abortK(current)
-                                    else do Pause() apply lk()
-                                  apply lk()
+                        then if Equal(abortK, enum(0))    (*no checkpoint here*)
+                             then apply validate(tl, locks, newStamp, abortInfo)
+                             else case abortInfo
+                                    of NilItem => apply validate(tl, locks, newStamp, abortInfo)
+                                     | Read(tv:tvar,abortK:any,ws:item,_:item) =>
+                                        if Equal(abortK, enum(0))
+                                        then apply validate(tl, locks, newStamp, readSet)  (*use this continuation*)
+                                        else apply validate(tl, locks, newStamp, abortInfo)
+                                 end
+                        else apply validate(tl, locks, newStamp, readSet)  (*read is out of date*)
+                    | NilItem => 
+                        case abortInfo
+                            of NilItem => return() (*no violations detected*)
+                             | Read(tv:tvar,abortK:any,ws:item,tl:item) => 
+                                 if Equal(abortK, enum(0)) 
+                                 then do apply release(locks)
+                                      let abortK : cont() = FLS.@get-key(ABORT_KEY / exh) (*no checkpoint info*)
+                                      throw abortK()
+                                 else do apply release(locks)
+                                      fun lk() : () = 
+                                        let old : long = CAS(&1(tv), 0:long, newStamp)
+                                        if I64Eq(old, 0:long)
+                                        then let current : any = #0(tv)
+                                             do #1(tv) := 0:long
+                                             do FLS.@set-key(READ_SET, abortInfo / exh)
+                                             do FLS.@set-key(WRITE_SET, ws / exh)
+                                             do #0(startStamp) := newStamp
+                                             BUMP_PABORT 
+                                             let abortK : cont(any) = (cont(any)) abortK
+                                             throw abortK(current)
+                                        else do Pause() apply lk()
+                                      apply lk()
+                      end
                 end        
-            fun acquire(writeSet:List.list, acquired : List.list) : List.list = 
+            fun acquire(writeSet:item, acquired : item) : item = 
                 case writeSet
-                    of CONS(hd:writeItem, tl:List.list) =>
-                        let tv : tvar = #0(hd)
+                    of Write(tv:tvar, contents:any, tl:item) =>
                         let casRes : long = CAS(&1(tv), 0:long, rawStamp) (*lock it*)
                         if I64Eq(casRes, 0:long)  (*locked for first time*)
-                        then apply acquire(tl, CONS(hd, acquired))
+                        then apply acquire(tl, Write(tv, contents, acquired))
                         else if I64Eq(casRes, rawStamp)    (*already locked it*)
                              then apply acquire(tl, acquired)
                              else let newStamp : stamp = VClock.@bump(/exh)
-                                  do apply validate(readSet, acquired, newStamp, alloc(enum(1),enum(1),enum(1)), nil)  (*figure out where to abort to*)
+                                  do apply validate(readSet, acquired, newStamp, NilItem)  (*figure out where to abort to*)
                                   apply acquire(writeSet, acquired)
-                     |nil => return(acquired)
+                     |NilItem => return(acquired)
                 end
-            fun update(writes:List.list, newStamp : stamp) : () = 
+            fun update(writes:item, newStamp : stamp) : () = 
                 case writes
-                    of CONS(hd:writeItem, tl:List.list) =>
-                        let tv : tvar = #0(hd)           (*pull out the tvar*)
-                        let newContents : any = #1(hd)   (*get the local contents*)
+                    of Write(tv:tvar, newContents:any, tl:item) =>
                         let newContents : any = promote(newContents)
                         do #2(tv) := newStamp            (*update version stamp*)
                         do #0(tv) := newContents         (*update contents*)
                         do #1(tv) := 0:long              (*unlock*)
-                        apply update(tl, newStamp)       (*update remaining*)
-                     | nil => return()
+                        apply update(tl, newStamp)      
+                     | NilItem => return()
                 end
-            let locks : List.list = apply acquire(writeSet, nil)
+            let locks : item = apply acquire(writeSet, NilItem)
             let newStamp : stamp = VClock.@bump(/exh)
-            do apply validate(readSet, locks, newStamp, alloc(enum(1),enum(1),enum(1)), nil)
+            do apply validate(readSet, locks, newStamp, NilItem)
             do apply update(locks, newStamp)
             return()
         ;
@@ -217,8 +212,8 @@ struct
                 let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
                 if (#0(in_trans))
                 then do ccall M_Print ("WARNING: entering nested transaction\n") apply f(UNIT/exh)
-                else do FLS.@set-key(READ_SET, nil / exh)  (*initialize STM log*)
-                     do FLS.@set-key(WRITE_SET, nil / exh)
+                else do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
+                     do FLS.@set-key(WRITE_SET, NilItem / exh)
                      let stamp : stamp = VClock.@bump(/exh)
                      let stamp : [stamp] = alloc(stamp)
                      let stamp : [stamp] = promote(stamp)
@@ -229,8 +224,8 @@ struct
                      let res : any = apply f(UNIT/exh)
                      do @commit(/exh)
                      do #0(in_trans) := false
-                     do FLS.@set-key(READ_SET, nil / exh)
-                     do FLS.@set-key(WRITE_SET, nil / exh)
+                     do FLS.@set-key(READ_SET, NilItem / exh)
+                     do FLS.@set-key(WRITE_SET, NilItem / exh)
                      return(res)  
             throw enter()    
         ;
@@ -240,6 +235,7 @@ struct
       define @print-stats(x:unit / exh:exh) : unit = 
         PRINT_PABORT_COUNT
         PRINT_FABORT_COUNT
+        PRINT_COMBINED
         return(UNIT);
     )
 
