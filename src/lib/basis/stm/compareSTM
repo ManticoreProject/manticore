@@ -6,19 +6,27 @@ base=${f%.pml}
 shift
 
 
-sed -i '.bak' "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = FullAbortSTM/g" $f
+sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = FullAbortSTM/g" $f > modified.pml
 
-pmlc $@ -o fullAbort $f 
+pmlc $@ -o fullAbort modified.pml
 
-sed -i '.bak' "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = PartialSTM/g" $f
+rm modified.pml modified.s
 
-pmlc $@ -o partialAbort $f
+sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = PartialSTM/g" $f > modified.pml
 
-sed -i '.bak' "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = HybridPartialSTM/g" $f
+pmlc $@ -o partialAbort modified.pml
 
-pmlc $@ -o hybridPartialAbort $f
+rm modified.pml modified.s
 
-sed -i '.bak' "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = BoundedHybridPartialSTM/g" $f
+sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = HybridPartialSTM/g" $f > modified.pml
 
-pmlc $@ -o boundedHybridPartialAbort $f
+pmlc $@ -o hybridPartialAbort modified.pml
+
+rm modified.pml modified.s
+
+sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = BoundedHybridPartialSTM/g" $f > modified.pml
+
+pmlc $@ -o boundedHybridPartialAbort modified.pml
+
+rm modified.pml modified.s
 

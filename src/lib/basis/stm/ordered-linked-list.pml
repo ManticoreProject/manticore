@@ -110,7 +110,12 @@ fun deleteIndex (l:ListHandle) (i:int) =
 
 val ITERS = 3000
 val MAXVAL = 10000
-val INITSIZE = 4000
+
+val INITSIZE = 
+    case getArg "-threads" args
+        of SOME n => (case Int.fromString n of SOME n => n | NONE => 4000)
+         | NONE => 4000
+         
 fun ignore _ = ()
 
 val READS = 2
