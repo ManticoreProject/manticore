@@ -8,7 +8,7 @@
         -https://github.com/sweirich/dth/tree/master/examples/red-black
  *)
  
-structure WhichSTM = FullAbortSTM
+structure WhichSTM = BoundedHybridPartialSTM
 
 type 'a tvar = 'a WhichSTM.tvar
 
@@ -16,44 +16,6 @@ datatype color = Red | Black | DBlack | NBlack  (*double black and negative blac
 datatype tree = L        (*leaf*)
               | DBL      (*double black *)
               | T of color * tree tvar * int * tree tvar
-
-(*create a DOT file out of a red-black tree*)
-fun write(t, f) = 
-    let val stream = TextIO.openOut f
-        val _ = TextIO.outputLine("digraph G {\n", stream)
-        fun cToStr c = case c of Red => "red" | Black => "black"
-        fun lp t i = 
-            case WhichSTM.get t
-                of L => i
-                 | DBL => i
-                 | T(c, l, v, r) => 
-                    case (WhichSTM.get l, WhichSTM.get r)
-                        of (T(c1,l1,v1,r1),T(c2,l2,v2,r2)) =>
-                            let val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ Int.toString v1 ^ ";\n", stream)
-                                val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ Int.toString v2 ^ ";\n", stream)
-                                val _ = TextIO.outputLine(Int.toString v ^ " [color = " ^ cToStr c ^ "];\n", stream)
-                            in lp r (lp l i) end
-                         |(_, T(c',l',v',r')) => 
-                            let val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ Int.toString v' ^ ";\n", stream)
-                            val _ = TextIO.outputLine(Int.toString v ^ " [color = " ^ cToStr c ^ "];\n", stream)
-                            val n = lp r i
-                            val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ "L" ^ Int.toString n ^ ";\n", stream)
-                            in n+1 end
-                         |(T(c',l',v',r'), _) => 
-                            let val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ Int.toString v' ^ ";\n", stream)
-                            val _ = TextIO.outputLine(Int.toString v ^ " [color = " ^ cToStr c ^ "];\n", stream)
-                            val n = lp r i
-                            val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ "L" ^ Int.toString n ^ ";\n", stream)
-                            in n+1 end
-                         |_ => 
-                            let val _ = TextIO.outputLine(Int.toString v ^ " [color = " ^ cToStr c ^ "];\n", stream)
-                                val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ "L" ^ Int.toString i ^ ";\n", stream)
-                                val _ = TextIO.outputLine(Int.toString v ^ " -> " ^ "L" ^ Int.toString (i+1) ^ ";\n", stream)
-                            in i+2 end
-        val _ = lp t 0
-        val _ = TextIO.outputLine("}\n", stream)
-        val _ = TextIO.closeOut stream          
-    in () end
 
 fun intComp(x:int,y:int) : order = if x < y then LESS else if x > y then GREATER else EQUAL
 
@@ -120,7 +82,7 @@ fun member (x:int) (t:tree tvar) (compare: (int*int) -> order) : bool =
 
 fun balance tv = 
     case WhichSTM.get tv
-        of T(Red,t1,k,t2) => false
+        of T(Red,t1,k,t2) => true
          | T(Black,t1,k,t2) =>
             if (case WhichSTM.get t1
                 of T(Red,l',y,r') =>
@@ -161,18 +123,18 @@ fun makeBlack t =
          | T(c, l, v, r) => WhichSTM.put(t, T(Black, l, v, r))
          | DBL => raise Fail "Found double black leaf in make black\n"
 
-exception NoChange
 fun insert (x:int) (t:tree tvar) (compare : int*int -> order) : unit =
-    let fun lp t = 
+    let fun lp (t:tree tvar) : bool = 
             case WhichSTM.get t
-                of L => WhichSTM.put(t, T(Red, WhichSTM.new L, x, WhichSTM.new L))
+                of L => (WhichSTM.put(t, T(Red, WhichSTM.new L, x, WhichSTM.new L)); true)
                  | T(c,l,v,r) =>
                     (case compare(x, v)
-                        of LESS => (lp l; balance t; ())
-                         | GREATER => (lp r; balance t; ())
-                         | EQUAL => ())
+                        of LESS => if lp l then balance t else false
+                         | GREATER => if lp r then balance t else false
+                         | EQUAL => false)
                  | DBL => raise Fail "found double black leaf in insert\n"
     in WhichSTM.atomic(fn () => (lp t; makeBlack t)) end
+
 
 fun isBlack t = 
     case WhichSTM.get t
@@ -374,8 +336,8 @@ val endTime = Time.now()
 val _ = WhichSTM.printStats()
 val _ = print ("Total was: " ^ Time.toString (endTime - startTime) ^ " seconds\n")
 
-val _ = chkOrder t
-val _ = chkBlackPaths t handle Fail s => print s
+val _ = WhichSTM.atomic(fn _ => chkOrder t)
+val _ = WhichSTM.atomic(fn _ => chkBlackPaths t handle Fail s => print s)
 
 
 

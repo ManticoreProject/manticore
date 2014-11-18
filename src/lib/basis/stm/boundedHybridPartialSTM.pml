@@ -30,15 +30,30 @@ struct
                           do ccall M_Print_Int("Partially aborted %d transactions\n", counter)
 #define BUMP_FABORT do ccall M_BumpCounter(1)
 #define PRINT_FABORT_COUNT let counter : int = ccall M_GetCounter(1) \
-                           do ccall M_Print_Int("Fully aborted %d transactions\n", counter)           
+                           do ccall M_Print_Int("Fully aborted %d transactions\n", counter)    
+#define BUMP_NOK do ccall M_BumpCounter(2)
+#define PRINT_NOK_COUNT let counter : int = ccall M_GetCounter(2) \
+                           do ccall M_Print_Int("Allocated %d read items without continuations\n", counter)     
+#define BUMP_K do ccall M_BumpCounter(3)
+#define PRINT_K_COUNT let counter : int = ccall M_GetCounter(3) \
+                           do ccall M_Print_Int("Allocated %d read items with continuations\n", counter)              
+#define BUMP_DROP do ccall M_BumpCounter(4)
+#define PRINT_DROP_COUNT let counter : int = ccall M_GetCounter(4) \
+                           do ccall M_Print_Int("Filtered read set %d times\n", counter)                                                                                 
 #else
 #define BUMP_PABORT
 #define PRINT_PABORT_COUNT
 #define BUMP_FABORT
 #define PRINT_FABORT_COUNT
+#define BUMP_NOK 
+#define PRINT_NOK_COUNT  
+#define BUMP_K
+#define PRINT_K_COUNT            
+#define BUMP_DROP 
+#define PRINT_DROP_COUNT 
 #endif
 
-#define READ_SET_BOUND 30
+#define READ_SET_BOUND 1000
 
     _primcode(
 
@@ -71,7 +86,7 @@ struct
             return(tv)
         ;
 
-        define @get-aux(tv:tvar, retK : cont(any) / exh:exh) : any = 
+        define @get(tv:tvar / exh:exh) : any = 
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : [int, skipList, skipList] = FLS.@get-key(READ_SET / exh)
             let writeSet : List.list = FLS.@get-key(WRITE_SET / exh)
@@ -83,9 +98,10 @@ struct
                          else apply chkLog(tl)
                      | nil => return (Option.NONE)
                  end
+            cont retK(x:any) = return(x)
             let localRes : Option.option = apply chkLog(writeSet)
             case localRes
-                of Option.SOME(v:any) => throw retK(v)
+                of Option.SOME(v:any) => return(v)
                  | Option.NONE =>
                     (*must have exclusive access when reading for first time*)
                      fun lk() : () = 
@@ -134,13 +150,9 @@ struct
                              do FLS.@set-counter(I32Sub(newFreq, 1))
                              do FLS.@set-counter2(newFreq)
                              FLS.@set-key(READ_SET, newRS / exh)
-                     throw retK(current)
+                     return(current)
             end
         ;
-
-        define @get(tv:tvar / exh:exh) : any = 
-            cont retK(x:any) = return(x)
-            @get-aux(tv, retK / exh);
 
         define @put(arg:[tvar, any] / exh:exh) : unit =
             let tv : tvar = #0(arg)
@@ -175,22 +187,28 @@ struct
                           then do apply release(locks)
                                let captureFreq : int = FLS.@get-counter2()
                                do FLS.@set-counter(captureFreq)
-                               let e : exn = Fail(@"__ABORT_EXCEPTION__") (*no checkpoint info*)
-                               throw exh(e)
+                               let abortK : cont() = FLS.@get-key(ABORT_KEY / exh) (*no checkpoint info*)
+                               throw abortK()
                           else do apply release(locks)  
                                let abortInfo : readItem = (readItem) abortInfo
                                let abortK : cont(any) = (cont(any)) #1(abortInfo)
                                let tv : tvar = (tvar) #0(abortInfo)
-                               let newRS : [int,skipList,skipList] = alloc(i, #3(abortInfo), #4(abortInfo))
+                               fun lk() : () = 
+                                   let swapRes : long = CAS(&1(tv), 0:long, rawStamp)
+                                   if I64Eq(swapRes, 0:long)
+                                   then return()
+                                   else do Pause() apply lk()
+                               do apply lk()
+                               let current : any = #0(tv)
+                               do #1(tv) := 0:long
+                               let newRS : [int,skipList,skipList] = alloc(i, abortInfo, abortInfo)
                                do FLS.@set-key(READ_SET, newRS / exh)
                                do FLS.@set-key(WRITE_SET, #2(abortInfo) / exh)
-                               do FLS.@set-key(STAMP_KEY, alloc(newStamp) / exh)
+                               do #0(startStamp) := newStamp
                                let captureFreq : int = FLS.@get-counter2()
                                do FLS.@set-counter(captureFreq)
                                BUMP_PABORT
-                               let _ = @get-aux(tv, abortK / exh)
-                               do ccall M_Print("Impossible\n")
-                               return()
+                               throw abortK(current)
                 else let readSet : readItem = (readItem) readSet
                      let tl : skipList = #3(readSet)
                      let tv : tvar = #0(readSet)
@@ -199,7 +217,10 @@ struct
                              then apply validate(tl, locks, newStamp, abortInfo, i)
                              else if Equal(abortInfo, enum(1))           (*don't need chkpoint info*)
                                   then apply validate(tl, locks, newStamp, abortInfo, I32Add(i, 1))
-                                  else apply validate(tl, locks, newStamp, readSet, 0)  (*use this continuation*)
+                                  else let abortInfo : readItem = (readItem) abortInfo
+                                       if Equal(#1(abortInfo), enum(0))  
+                                       then apply validate(tl, locks, newStamp, readSet, 0)  (*use this continuation*)
+                                       else apply validate(tl, locks, newStamp, abortInfo, I32Add(i, 1))
                         else apply validate(tl, locks, newStamp, readSet, 0)  (*read is out of date*)
             fun acquire(writeSet:List.list, acquired : List.list) : List.list = 
                 case writeSet
@@ -242,23 +263,13 @@ struct
                 else do FLS.@set-key(READ_SET, alloc(0, nil, nil) / exh)  (*initialize STM log*)
                      do FLS.@set-key(WRITE_SET, nil / exh)
                      let stamp : stamp = VClock.@bump(/exh)
-                     let stamp : [stamp] = alloc(stamp)
-                     do FLS.@set-key(STAMP_KEY, stamp / exh)
+                     let stampPtr : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
+                     do #0(stampPtr) := stamp
                      do #0(in_trans) := true
-                     cont abortK(e:exn) = 
-                        case e  (*Check that the exception received was because of an aborted TX*)
-                            of Fail(s:ml_string) => 
-                                 let arg : [ml_string, ml_string] = alloc(@"__ABORT_EXCEPTION__", s)
-                                 let res : bool = String.@same(arg / exh)
-                                 if(res)
-                                 then BUMP_FABORT 
-                                      do #0(in_trans) := false
-                                      throw enter()
-                                 else throw exh(e)
-                             | _ => throw exh(e)
-                        end
-                     let res : any = apply f(UNIT/abortK)
-                     do @commit(/abortK)
+                     cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()
+                     do FLS.@set-key(ABORT_KEY, abortK / exh)
+                     let res : any = apply f(UNIT/exh)
+                     do @commit(/exh)
                      do #0(in_trans) := false
                      do FLS.@set-key(READ_SET, nil / exh)
                      do FLS.@set-key(WRITE_SET, nil / exh)

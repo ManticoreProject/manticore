@@ -1,6 +1,6 @@
 
 
-structure WhichSTM = HybridPartialSTM
+structure WhichSTM = BoundedHybridPartialSTM
 
 val tv = WhichSTM.new 1
 
@@ -18,7 +18,35 @@ fun outterLoop n x =
          in outterLoop (n-1) res
          end
 
-val x = outterLoop 1000000 0
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
+val x = WhichSTM.atomic (fn _ => innerLoop 1000000 0)
 
 
 

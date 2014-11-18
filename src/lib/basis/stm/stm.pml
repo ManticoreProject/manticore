@@ -235,20 +235,8 @@ struct
                      let stamp : stamp = VClock.@bump(/exh)
                      do FLS.@set-key(STAMP_KEY, alloc(stamp) / exh)
                      do FLS.@set-key(IN_TRANS, alloc(true) / exh)
-                     cont abortK(e:exn) = 
-                        case e  (*Check that the exception received was because of an aborted TX*)
-                            of Fail(s:ml_string) => 
-                                 let arg : [ml_string, ml_string] = alloc(@"__ABORT_EXCEPTION__", s)
-                                 let res : bool = String.@same(arg / exh)
-                                 if(res) 
-                                 then BUMP_ABORT 
-                                      do FLS.@set-key(IN_TRANS, alloc(false) / exh)
-                                      throw enter()
-                                 else throw exh(e)
-                             | _ => throw exh(e)
-                        end
-                     let res : any = apply f(UNIT/abortK)
-                     do @commit(/abortK)
+                     let res : any = apply f(UNIT/exh)
+                     do @commit(/exh)
                      do FLS.@set-key(IN_TRANS, alloc(false) / exh)
                      do FLS.@set-key(READ_SET, nil / exh)
                      do FLS.@set-key(WRITE_SET, nil / exh)

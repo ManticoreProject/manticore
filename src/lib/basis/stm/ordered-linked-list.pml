@@ -110,7 +110,7 @@ fun deleteIndex (l:ListHandle) (i:int) =
 
 val ITERS = 3000
 val MAXVAL = 10000
-val INITSIZE = 4000
+val INITSIZE = 5000
 fun ignore _ = ()
 
 val READS = 1

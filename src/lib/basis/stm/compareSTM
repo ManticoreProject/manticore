@@ -5,6 +5,7 @@ base=${f%.pml}
 
 shift
 
+
 sed -i '.bak' "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = FullAbortSTM/g" $f
 
 pmlc $@ -o fullAbort $f 
