@@ -30,3 +30,8 @@ pmlc $@ -o boundedHybridPartialAbort modified.pml
 
 rm modified.pml modified.s
 
+sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = BoundedHybridPartialSTMLowMem/g" $f > modified.pml
+
+pmlc $@ -o lowMemBoundedHybridPartialAbort modified.pml
+
+rm modified.pml modified.s
