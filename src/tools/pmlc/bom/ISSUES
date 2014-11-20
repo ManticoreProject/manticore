@@ -1,0 +1,24 @@
+New BOM issues
+
+1) it looks like we need to have some sort of “polymorphic” datatype
+   to deal with HLOps before they have been instantiated.  Unclear how
+   those will connect to ML datatypes.
+
+2) should “noreturn” be part of the type system (we could introduce
+   a T_Void to model this in BOM), or should it just be an attribute
+   of specific functions that have a “()” return type?
+
+3) Should data constructor arguments be flattened when translating from
+   SXML to BOM?  What about Data constructors in the BOM EL?
+
+4) Do we need the type kinds?  They depend on choosing representations
+   for datatypes, which will happen later.
+
+5) Do we need to have unsigned raw types?  The old version of Manticore
+   did not, but it may be useful for representing SML Word types (or we
+   could keep the distinction to the operators as before).
+
+6) The MLton frontend gathers all exceptions into a single datatype
+   in the ImplementExceptions phase (see mlton/xml/implement-exceptions.fun).
+   We need to make sure that this datatype is mapped to the BOMExn.tyc
+   datatype.
