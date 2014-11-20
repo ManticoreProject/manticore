@@ -47,9 +47,6 @@ structure BOMUtil : sig
   (* make a raw int expression from an int *)
     val rawInt : int -> BOM.rhs
 
-  (* make a case for testing booleans (i.e., an if-the-else) *)
-    val mkBoolCase : (BOM.var * BOM.exp * BOM.exp) -> BOM.exp
-
   (* return the type of a BOM term *)
     val typeOfExp : BOM.exp -> BOM.ty list
     val typeOfRHS : BOM.rhs -> BOM.ty list
@@ -276,12 +273,6 @@ structure BOMUtil : sig
   (* create a copy of a list of mutually recursive functions *)
     fun copyLambdas fbs = #2 (copyFBs (empty, fbs))
 
-  (* make a case for testing booleans (i.e., an if-the-else) *)
-    fun mkBoolCase (arg, trueE, falseE) = B.mkCase(arg, [
-	    (B.P_DCon(BOMTyUtil.trueDC, []), trueE),
-	    (B.P_DCon(BOMTyUtil.falseDC, []), falseE)
-	  ], NONE)
-
     local
       structure PTy = PrimTyFn (
 	struct
@@ -289,19 +280,19 @@ structure BOMUtil : sig
 	  type var = B.var
 	  val typeOf = B.Var.typeOf
 	  val anyTy = BTy.T_Any
-	  val noTy = BTy.unitTy
+	  val noTy = BTy.T_Tuple[]
 	  val raw = BTy.T_Raw
 	  val addr = BTy.T_Addr
 	end)
     in
   (* return the type of a BOM term *)
     fun typeOfPrim prim = (case PTy.typeOf prim
-	   of BTy.T_Enum(0w0) => NONE (* unitTy *)
+	   of BTy.T_Tuple[] => NONE (* unitTy *)
 	    | ty => SOME ty
 	  (* end case *))
 
     fun signOfPrim p = (case PTy.signOf p
-	   of (tys, BTy.T_Enum(0w0)) => (tys, NONE)
+	   of (tys, BTy.T_Tuple[]) => (tys, NONE)
 	    | (tys, ty) => (tys, SOME ty)
 	  (* end case *))
 
@@ -315,7 +306,7 @@ structure BOMUtil : sig
       | typeOfRHS (B.E_Alloc(ty, _)) = [ty]
       | typeOfRHS (B.E_Promote x) = [BV.typeOf x]
       | typeOfRHS (B.E_Prim p) = (case PTy.typeOf p
-	   of BTy.T_Enum(0w0) => [] (* unitTy *)
+	   of BTy.T_Tuple[] => [] (* unitTy *)
 	    | ty => [ty]
 	  (* end case *))
       | typeOfRHS (B.E_DCon(dc, _)) = [BOMTyUtil.typeOfDCon dc]
@@ -330,7 +321,7 @@ structure BOMUtil : sig
       | typeOfRHS (B.E_VPAddr _) = [BTy.T_Addr BTy.T_Any]
 
   (* rawInt : int -> B.rhs *)
-    fun rawInt(n) = B.E_Const(Literal.Int (IntInf.fromInt n), BTy.T_Raw BTy.T_Int)
+    fun rawInt(n) = B.E_Const(Literal.Int (IntInf.fromInt n), BTy.T_Raw BTy.Int32)
 
     fun typeOfExp (B.E_Pt(_, t)) = (case t
 	   of (B.E_Let(_, _, e)) => typeOfExp e

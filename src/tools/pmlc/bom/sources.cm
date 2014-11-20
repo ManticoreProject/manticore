@@ -7,16 +7,21 @@
 Library
 
   structure BOM
+  structure BOMExn
   structure BOMTy
   structure BOMTyCon
   structure BOMTyUtil
   structure BOMUtil
   structure Census
+(*
   structure CFABOM
+*)
   structure CheckBOM
   structure HLOp
   structure PrintBOM
+(*
   structure Rewrites
+*)
 
 is
 
@@ -30,13 +35,18 @@ is
 **)
 
   bom.sml
+  bom-exn.sml
   bom-ty.sml
   bom-tycon.sml
   bom-ty-util.sml
   bom-util.sml
   census.sml
-  cfa-bom.sml
+(*
+  cfa-bom.sml	(* FIXME: needs rewrite for new BOM IR *)
+*)
   check-bom.sml
   hlop.sml
+(*
   rewrites.sml
+*)
   print-bom.sml

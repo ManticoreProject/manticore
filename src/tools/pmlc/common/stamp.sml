@@ -46,8 +46,7 @@ structure Stamp :> sig
     fun compare (STAMP{id, ...}, STAMP{id=id', ...}) = W.compare(id, id')
     fun hash (STAMP{id, ...}) = id
 
-    fun toString (STAMP{id, ...}) =
-	  concat["<", StringCvt.padLeft #"0" 4 (W.toString id), ">"]
+    fun toString (STAMP{id, ...}) = StringCvt.padLeft #"0" 4 (W.toString id)
 
     structure Key =
       struct

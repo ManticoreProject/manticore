@@ -9,8 +9,8 @@
 
 structure CFABOM : sig
 
-    val analyze : BOM.module -> unit
-    val clearInfo : BOM.module -> unit
+    val analyze : BOM.program -> unit
+    val clearInfo : BOM.program -> unit
 
   (* the callers of a function or continuation is the set of functions and
    * and continuations that call it.
@@ -553,7 +553,7 @@ structure CFABOM : sig
             doLambda body
           end
 
-    fun analyze (BOM.MODULE{body, ...}) = let
+    fun analyze (BOM.PROGRAM{body, ...}) = let
           fun onePass () = let
                 val _ = ST.tick cntPasses
                 val addInfo = if !debugFlg
@@ -691,7 +691,7 @@ structure CFABOM : sig
                 end
           fun iterate () = if onePass() then iterate() else ()
           in
-          (* initialize the arguments to the module entry to top *)
+          (* initialize the arguments to the program entry to top *)
             case body
              of BOM.FB{f, params, exh, ...} => (
                   setCallers (f, Unknown);
@@ -717,10 +717,10 @@ structure CFABOM : sig
 	    pass = analyze
 	  }
 
-  (* clear CFA annotations from the variables of a module.  Note that we can
+  (* clear CFA annotations from the variables of a program.  Note that we can
    * restrict the traversal to binding instances.
    *)
-    fun clearInfo (BOM.MODULE{body, ...}) = let
+    fun clearInfo (BOM.PROGRAM{body, ...}) = let
           fun doLambda (BOM.FB{f, params, exh, body}) = (
                 clrCallers f;
                 clrValue f;

@@ -8,7 +8,7 @@
 
 structure Census : sig
 
-    val census : BOM.module -> unit
+    val census : BOM.program -> unit
 
     val initLambda  : BOM.lambda -> unit
     val initLambdas : BOM.lambda list -> unit
@@ -73,7 +73,7 @@ structure Census : sig
 
     and funBind (B.FB{f, ...}) = f
 
-    fun census (B.MODULE{externs, hlops, body, ...}) = let
+    fun census (B.PROGRAM{externs, hlops, body, ...}) = let
 	  fun clrCFun cf = clear(CFunctions.varOf cf)
 	  in
 	    List.app clrCFun externs;

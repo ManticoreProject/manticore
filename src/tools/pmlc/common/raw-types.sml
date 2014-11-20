@@ -46,4 +46,13 @@ structure RawTypes =
       | toString Float64 = "float64"
       | toString Vec128 = "vec128"
 
+    fun isInt Float32 = false
+      | isInt Float64 = false
+      | isInt Vec128 = false
+      | isInt _ = true
+
+    fun isFloat Float32 = true
+      | isFloat Float64 = true
+      | isFloat _ = false
+
   end

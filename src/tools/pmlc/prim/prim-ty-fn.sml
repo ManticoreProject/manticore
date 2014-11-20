@@ -42,12 +42,12 @@ functor PrimTyFn (Ty: PRIM_TY_STRUCTS): PRIM_TY = struct
     type ty = Ty.ty
 
     val anyTy = Ty.anyTy
-    val i8Ty  = Ty.raw RawTypes.T_Byte
-    val i16Ty = Ty.raw RawTypes.T_Short
-    val i32Ty = Ty.raw RawTypes.T_Int
-    val i64Ty = Ty.raw RawTypes.T_Long
-    val f32Ty = Ty.raw RawTypes.T_Float
-    val f64Ty = Ty.raw RawTypes.T_Double
+    val i8Ty  = Ty.raw RawTypes.Int8
+    val i16Ty = Ty.raw RawTypes.Int16
+    val i32Ty = Ty.raw RawTypes.Int32
+    val i64Ty = Ty.raw RawTypes.Int64
+    val f32Ty = Ty.raw RawTypes.Float32
+    val f64Ty = Ty.raw RawTypes.Float64
     val addrTy = Ty.addr anyTy
 
   (* the result type of a primop *)

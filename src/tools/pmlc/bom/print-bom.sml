@@ -6,8 +6,8 @@
 
 structure PrintBOM : sig
 
-    val output : TextIO.outstream * BOM.module -> unit
-    val print : BOM.module -> unit
+    val output : TextIO.outstream * BOM.program -> unit
+    val print : BOM.program -> unit
     val printExp : BOM.exp -> unit
 
   end = struct
@@ -16,7 +16,7 @@ structure PrintBOM : sig
     structure BV = B.Var
     structure Ty = BOMTy
 
-    datatype arg = MODULE of B.module | EXP of B.exp
+    datatype arg = PROGRAM of B.program | EXP of B.exp
 
     fun output' (outS, arg) = let
 	  fun pr s = TextIO.output(outS, s)
@@ -125,11 +125,8 @@ structure PrintBOM : sig
 		  "#", Int.toString i, "(", varUseToString y, ") := ", varUseToString z
 		]
 	    | prRHS (B.E_AddrOf(i, y)) = prl ["&", Int.toString i, "(", varUseToString y, ")"]
-	    | prRHS (B.E_Alloc(ty, ys)) = let
-		val mut = (case ty of BOMTy.T_Tuple(true, _) => "!" | _ => "")
-		in
-		  pr(concat["alloc ", mut, "("]); prList' varUseToString ys; pr ")"
-		end
+	    | prRHS (B.E_Alloc(ty, ys)) = (
+		pr(concat["alloc<", BOMTyUtil.toString ty, ">("]); prList' varUseToString ys; pr ")")
 	    | prRHS (B.E_Promote y) = (pr "promote "; pr (varUseToString y))
 	    | prRHS (B.E_Prim p) = pr (PrimUtil.fmt varUseToString p)
 	    | prRHS (B.E_DCon(dc, args)) = (
@@ -184,8 +181,8 @@ structure PrintBOM : sig
 	  fun prExtern cf = (indent 1; prl [CFunctions.cfunToString cf, "\n"])
 	  in
 	    case arg
-	     of MODULE(B.MODULE{name, externs, hlops, rewrites, body}) => (
-		  prl ["module ", Atom.toString name, "\n"];
+	     of PROGRAM(B.PROGRAM{name, externs, hlops, body}) => (
+		  prl ["program ", name, "\n"];
 		  List.app prExtern externs;
 		  List.app
 		    (fn hlop => (indent 1; prl["define @", BV.nameOf hlop, " = ", varUseToString hlop, "\n"]))
@@ -195,7 +192,7 @@ structure PrintBOM : sig
 	    (* end case *)
 	  end
 
-    fun output (strm, m) = output' (strm, MODULE m)
+    fun output (strm, p) = output' (strm, PROGRAM p)
     fun print m = output (TextIO.stdErr, m)
     fun printExp e = output' (TextIO.stdErr, EXP e)
 

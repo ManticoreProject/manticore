@@ -8,7 +8,7 @@
 
 structure CheckBOM : sig
 
-    val check : string * BOM.module -> bool
+    val check : string * BOM.program -> bool
 
   end = struct
 
@@ -97,6 +97,7 @@ structure CheckBOM : sig
    * - VK_None. Default var kind, and commonly comes up for language constructs like
    * pattern-bound variables in case statements where we don't have an appropriate VK.
    *)
+(* FIXME: we should do promotion checking as a separate pass that uses flow analysis
     fun checkAssign (ty, x) = let
 	  val k = BTU.kindOf ty
 	  in
@@ -113,22 +114,23 @@ structure CheckBOM : sig
 		(* end case *))
 	      else true
 	  end
+*)
 
-    fun check (phase, module) = let
-	  val B.MODULE{name, externs, hlops, rewrites, body} = module
+    fun check (phase, program) = let
+	  val B.PROGRAM{name, externs, hlops, body} = program
 	  val anyErrors = ref false
 	  val anyWarnings = ref false
 	(* report an error *)
 	  fun error msg = (
 		if !anyErrors orelse !anyWarnings then ()
 		else (
-		  pr ["***** Bogus BOM in ", Atom.toString name, " after ", phase, " *****\n"];
+		  pr ["***** Bogus BOM after ", phase, " *****\n"];
 		  anyErrors := true);
 		pr ("** " :: msg))
 	  fun warning msg = (
 		if !anyErrors orelse !anyWarnings then ()
 		else (
-		  pr ["***** Possibly Bogus BOM in ", Atom.toString name, " after ", phase, " *****\n"];
+		  pr ["***** Possibly Bogus BOM after ", phase, " *****\n"];
 		  anyWarnings := true);
 		pr ("?? " :: msg))
 	  fun cerror msg = pr ("== "::msg)
@@ -315,38 +317,30 @@ structure CheckBOM : sig
 		      end
 		(* end case *))
 	  and chkRHS (lhs, rhs) = (case (typesOf lhs, rhs)
-		 of ([ty], B.E_Const(lit, ty')) => (
-		    (* first, check the literal against ty' *)
-		      case (lit, ty')
-		       of (Literal.Enum _, BTy.T_Enum _) => ()
-			| (Literal.Enum _, BTy.T_TyCon _) => ()
-(* NOTE: the following shouldn't be necessary, but case-simplify doesn't put in enum types! *)
-			| (Literal.Enum _, BTy.T_Any) => ()
-                        | (Literal.Enum _, BTy.T_VProc) => ()
-                        | (Literal.Enum _, BTy.T_Deque) => ()
-			| (Literal.StateVal w, _) => () (* what is the type of StateVals? *)
-			| (Literal.Tag s, _) => () (* what is the type of Tags? *)
-			| (Literal.Int _, BTy.T_Raw BTy.T_Byte) => ()
-			| (Literal.Int _, BTy.T_Raw BTy.T_Short) => ()
-			| (Literal.Int _, BTy.T_Raw BTy.T_Int) => ()
-			| (Literal.Int _, BTy.T_Raw BTy.T_Long) => ()
-			| (Literal.Float _, BTy.T_Raw BTy.T_Float) => ()
-			| (Literal.Float _, BTy.T_Raw BTy.T_Double) => ()
-			| (Literal.Char _, BTy.T_Raw BTy.T_Int) => ()
-			| (Literal.String _, BTy.T_Any) => ()
-			| _ => error[
-			    "literal has bogus type: ",  vl2s lhs, " = ", 
-			    Literal.toString lit, ":", BTU.toString ty', "\n"
+		 of ([ty], B.E_Const(lit, ty')) => let
+		      fun err () = error[
+			      "literal has bogus type: ", vl2s lhs, " = ", 
+			      Literal.toString lit, ":", BTU.toString ty', "\n"
 			    ]
-		      (* end case *);
-		    (* then check ty' against ty *)
-		      if BTU.equal(ty', ty)
-			then ()
-			else error[
-			    "type mismatch in Const: ",  vl2s lhs, " = ", 
-			    Literal.toString lit, ":", BTU.toString ty', 
-			    "; expected ", BTU.toString ty, "\n"
-			  ])
+		      in
+		      (* first, check the literal against ty' *)
+			case (lit, ty')
+			 of (Literal.Int _, BTy.T_Raw rty) =>
+			      if RawTypes.isInt rty then () else err()
+			  | (Literal.Float _, BTy.T_Raw rty) =>
+			      if RawTypes.isFloat rty then () else err()
+			  | (Literal.String _, BTy.T_Vector(BTy.T_Raw RawTypes.UInt8)) => ()
+			  | _ => err()
+			(* end case *);
+		      (* then check ty' against ty *)
+			if BTU.equal(ty', ty)
+			  then ()
+			  else error[
+			      "type mismatch in Const: ",  vl2s lhs, " = ", 
+			      Literal.toString lit, ":", BTU.toString ty', 
+			      "; expected ", BTU.toString ty, "\n"
+			    ]
+		      end
 		  | ([ty], B.E_Cast(ty', x)) => (
 		      chkVar (x, "Cast");
 		      if BTU.match(ty', ty)
@@ -364,58 +358,67 @@ structure CheckBOM : sig
 		  | ([ty], B.E_Select(i, x)) => (
                       chkVar(x, "Select");
                       case BV.typeOf x
-                       of BTy.T_Tuple(_, tys) =>
+                       of BTy.T_Tuple tys =>
 			    if (i < List.length tys) andalso BTU.match(List.nth (tys, i), ty)
 			      then ()
 			      else error[
 				  "type mismatch in Select: ",
 				   vl2s' lhs, " = #", Int.toString i, "(", v2s' x, ")\n"
 				]
-                        | BTy.T_Deque => ()
-			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple: ",
+			| BTy.T_Record flds =>
+			    if (i < List.length flds) andalso BTU.match(#3(List.nth (flds, i)), ty)
+			      then ()
+			      else error[
+				  "type mismatch in Select: ",
+				   vl2s' lhs, " = #", Int.toString i, "(", v2s' x, ")\n"
+				]
+			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple/record: ",
                                     vl2s lhs, " = #", Int.toString i, "(", v2s x, ")\n"]
 		      (* end case *))
 		  | ([], B.E_Update(i, x, y)) => (
                       chkVar(x, "Update");
                       chkVar(y, "Update");
                       case BV.typeOf x
-                       of BTy.T_Tuple(true, tys) =>
-			    if (i < List.length tys)
-			      then let
-				val ty = List.nth(tys, i)
-				val k = BTU.kindOf ty
-				in
-				  if BTU.equal(BV.typeOf y, ty)
-				    then ()
-				    else error[
-					"type mismatch in #", Int.toString i,
-					"(", v2s x, ") := ", v2s y, "\n"
-				      ];
-				  if checkAssign (ty, y)
-				    then ()
-				    else warning[
-					"possible unpromoted update in #", Int.toString i,
+                       of BTy.T_Record flds =>
+			    if (i < List.length flds)
+			      then (case List.nth(flds, i)
+				 of (_, true, ty) =>
+				      if BTU.equal(BV.typeOf y, ty)
+					then ()
+					else error[
+					    "type mismatch in #", Int.toString i,
+					    "(", v2s x, ") := ", v2s y, "\n"
+					  ]
+				  | (_, false, _) => error[
+					"update of non-mutable field in #",
 					"(", v2s x, ") := ", v2s y, "\n"
 				      ]
-				end
+				(* end case *))
 			      else error [
 				  "index out of bounds in #", Int.toString i,
 				  "(", v2s x, ") := ", v2s y, "\n"
 				]
-			| ty => error[v2s x, ":", BTU.toString ty, " is not a mutable tuple",
+			| ty => error[v2s x, ":", BTU.toString ty, " is not a mutable record",
                                     "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]
 		      (* end case *))
 		  | ([ty], B.E_AddrOf(i, x)) => (
                       chkVar(x, "AddrOf");
                       case BV.typeOf x
-                       of BTy.T_Tuple(_, tys) => 
+                       of BTy.T_Tuple tys => 
 			    if (i < List.length tys) andalso BTU.match(BTy.T_Addr(List.nth (tys, i)), ty)
 			      then ()
                               else error["type mismatch in AddrOf: ", vl2s lhs, " = &(", v2s x, ")\n"]
-                        | BTy.T_Deque => ()
-			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple",
+			| BTy.T_Record flds =>
+			    if (i < List.length flds) andalso BTU.match(#3(List.nth (flds, i)), ty)
+			      then ()
+			      else error[
+				  "type mismatch in Select: ",
+				   vl2s' lhs, " = #", Int.toString i, "(", v2s' x, ")\n"
+				]
+			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple/record",
                                     vl2s lhs, " = &(", v2s x, ")\n"]
 		      (* end case *))
+(* FIXME: record allocation *)
 		  | ([ty], B.E_Alloc(allocTy, xs)) => (
                       chkVars(xs, "Alloc");
                       if BTU.match (allocTy, ty)
@@ -423,8 +426,8 @@ structure CheckBOM : sig
 			else (error  ["type mismatch in: ", vl2s lhs, " = Alloc ", vl2s xs, "\n"];
 			      cerror ["  lhs type ", t2s ty, "\n"];
 			      cerror ["  rhs type ", t2s allocTy, "\n"]);
-		      if (BTU.match(BTy.T_Tuple(true, typesOf xs), allocTy)
-			orelse BTU.match(BTy.T_Tuple(false, typesOf xs), allocTy))
+		      if (BTU.match(BTy.T_Tuple(typesOf xs), allocTy)
+			orelse BTU.match(BTy.T_Tuple(typesOf xs), allocTy))
                         then ()
                         else (error  ["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
 			      cerror ["  expected ", t2s allocTy, "\n"];
@@ -497,23 +500,7 @@ structure CheckBOM : sig
 			  "arity mismatch in ", vl2s lhs, " = ", PrimUtil.nameOf p, vl2s args, "\n"
 			]
 		  (* end case *);
-		  ListPair.appEq chkParamArg (paramTys, args);
-		(* check polymorphic array updates for missing promotions *)
-		  case p
-		   of Prim.ArrStore(a, i, x) => if checkAssign(BTy.T_Any, x)
-			then ()
-			else warning[
-			    "possible unpromoted update in ArrStore(", v2s a, ",",
-			    v2s i, ",", v2s x, ")\n"
-			  ]
-		    | Prim.CAS(loc, old, new) => if checkAssign(BV.typeOf new, new)
-			then ()
-			else warning[
-			    "possible unpromoted update in CAS(", v2s loc, ",",
-			    v2s old, ",", v2s new, ")\n"
-			  ]
-		    | _ => ()
-		  (* end case *)
+		  ListPair.appEq chkParamArg (paramTys, args)
 		end
 	(* check an external function *)
 	  fun chkExtern (CFunctions.CFun{var, name, ...}) = (
@@ -539,7 +526,7 @@ structure CheckBOM : sig
 		val outS = TextIO.openOut outFile
 		in
 		  pr ["broken BOM dumped to ", outFile, "\n"];
-		  PrintBOM.output (outS, module);
+		  PrintBOM.output (outS, program);
 		  TextIO.closeOut outS;
 		  raise Fail "broken BOM"
 		end
