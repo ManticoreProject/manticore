@@ -9,7 +9,8 @@ New BOM issues
    of specific functions that have a “()” return type?
 
 3) Should data constructor arguments be flattened when translating from
-   SXML to BOM?  What about Data constructors in the BOM EL?
+   SXML to BOM?  What about Data constructors in the BOM EL?  Or should
+   this be left to an arity-raising phase?
 
 4) Do we need the type kinds?  They depend on choosing representations
    for datatypes, which will happen later.
