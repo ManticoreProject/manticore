@@ -325,7 +325,7 @@ signature AST_BOM =
     structure PrimConDef : sig
 	type t
 	datatype node
-	  = T of Vid.t * Type.t option * LongId.t
+	  = T of Vid.t * Type.t option * BOMId.t
 
 	include WRAPPED
 	  sharing type node' = node
@@ -346,7 +346,7 @@ signature AST_BOM =
 	type t
 	datatype node
 	  = Datatype of Type.t vector * Longtycon.t * BOMId.t option * ImportCon.t list
-	  | Exn of Longvid.t * BOMId.t option * Type.t option
+	  | Exn of Longvid.t * Type.t option * BOMId.t option
 	  | Val of Longvid.t * Type.t * BOMId.t option
 
 	include WRAPPED
