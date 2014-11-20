@@ -17,7 +17,7 @@ open S
 
 structure Atoms = AstAtoms(S)
 structure AstCore = AstCore (Atoms)
-structure AstBOM = AstBOM (Atoms)
+structure BOM = AstBOM (Atoms)
 
 open AstCore Layout
 
@@ -274,11 +274,11 @@ datatype strdecNode =
   | Structure of {constraint: SigConst.t,
                   def: strexp,
                   name: Strid.t} vector
-  (* | PrimCode of AstBOM.Definition.t vector *)
+  (* | PrimCode of BOM.Definition.t vector *)
   | PrimDataType of Tyvar.t vector * Tycon.t *
-      AstBOM.LongTyId.t * AstBOM.BomType.t list
-  | PrimTycon of Tyvar.t vector * Tycon.t * AstBOM.BomType.t
-  | PrimVal of Vid.t * Type.t * AstBOM.BomValueId.t
+      BOM.LongId.t * BOM.BOMType.t list
+  | PrimTycon of Tyvar.t vector * Tycon.t * BOM.BOMType.t
+  | PrimVal of Vid.t * Type.t * BOM.BOMValueId.t
 
 and strexpNode =
    App of Fctid.t * strexp
@@ -304,7 +304,7 @@ fun layoutStrdec d =
                           layoutStrexp def))
   (* | PrimCode definitions => mayAlign [ *)
   (*     str "_primcode", *)
-  (*     schemeList (Vector.toListMap (definitions, AstBOM.Definition.layout)) *)
+  (*     schemeList (Vector.toListMap (definitions, BOM.Definition.layout)) *)
   (* ] *)
   | PrimDataType (tyvars, tycon, longTyId, maybeTyArgs) => mayAlign [
       str "_datatype",
@@ -313,8 +313,8 @@ fun layoutStrdec d =
       str "=",
       str "_prim",
       schemeList [
-        AstBOM.LongTyId.layout longTyId,
-        mayAlign (map AstBOM.BomType.layout maybeTyArgs)
+        BOM.LongId.layout longTyId,
+        mayAlign (map BOM.BOMType.layout maybeTyArgs)
       ]
     ]
   | PrimTycon (tyvars, tycon, bomType) => mayAlign [
@@ -323,12 +323,12 @@ fun layoutStrdec d =
       Tycon.layout tycon,
       str "=",
       str "_prim",
-      schemeList [AstBOM.BomType.layout bomType]
+      schemeList [BOM.BOMType.layout bomType]
     ]
   | PrimVal (id, ty, bomValueId) => mayAlign [
       str "_val", Vid.layout id, str ":", Type.layout ty, str "_prim",
       schemeList [
-        AstBOM.BomValueId.layout bomValueId
+        BOM.BOMValueId.layout bomValueId
       ]
     ]
 
@@ -499,7 +499,7 @@ structure Topdec =
                      result: SigConst.t} vector
        | Signature of (Sigid.t * Sigexp.t) vector
        | Strdec of Strdec.t
-       | PrimModule of AstBOM.BomId.t * AstBOM.Definition.t vector
+       | PrimModule of BOM.BOMId.t * BOM.Import.t vector * BOM.Definition.t vector
       type t = node Wrap.t
       type node' = node
       type obj = t
@@ -523,16 +523,17 @@ structure Topdec =
                                       Sigid.layout name,
                                       Sigexp.layout def))
           | Strdec d => Strdec.layout d
-          | PrimModule (bomId, bomDefns) =>
+          | PrimModule (bomId, imports, bomDefns) =>
               mayAlign [
                 mayAlign [
                   str "_module",
-                  AstBOM.BomId.layout bomId,
+                  BOM.BOMId.layout bomId,
                   str "="
                 ],
+(* FIXME: print imports *)
                 align ([
                 str "("
-                ]@(Vector.toListMap (bomDefns, AstBOM.Definition.layout))@[
+                ]@(Vector.toListMap (bomDefns, BOM.Definition.layout))@[
                 str ")"
                 ])
               ]
