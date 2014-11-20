@@ -267,9 +267,9 @@
  *)
 <INITIAL>{symid}		=> (T.SYMID yytext);
 <INITIAL,BOM>{id}		=> (T.ID yytext);
-<INITIAL>({id}\.)+{id}		=> (T.LONG_ID yytext);
-<INITIAL>({id}\.)+{symid}	=> (T.LONG_ID yytext);
-<BOM>{id}\.{id}			=> (T.LONG_ID yytext); (* LONGID in BOM *)
+<INITIAL>({id}\.)+{id}		=> (T.LONGID yytext);
+<INITIAL>({id}\.)+{symid}	=> (T.LONGID yytext);
+<BOM>{id}\.{id}			=> (T.LONGID yytext); (* LONGID in BOM *)
 <BOM>{hlid}			=> (T.HLID yytext);
 <BOM>{id}\.{hlid}		=> (T.LONG_HLID yytext);
 <INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
