@@ -14,7 +14,7 @@ signature AST_MODULES_STRUCTS =
 signature AST_MODULES =
    sig
       include AST_CORE
-      structure AstBOM : AST_BOM sharing AstBOM.Symbol = Symbol
+      structure BOM : AST_BOM sharing BOM.Symbol = Symbol
 
       structure Sigexp:
          sig
@@ -115,10 +115,9 @@ signature AST_MODULES =
              | Structure of {constraint: SigConst.t,
                              def: Strexp.t,
                              name: Strid.t} vector
-             | PrimDataType of Tyvar.t vector * Tycon.t *
-                 AstBOM.LongTyId.t * AstBOM.BomType.t list
-             | PrimTycon of Tyvar.t vector * Tycon.t * AstBOM.BomType.t
-             | PrimVal of Vid.t * Type.t * AstBOM.BomValueId.t
+             | PrimDataType of Tyvar.t vector * Tycon.t * BOM.LongId.t * BOM.BOMType.t list
+             | PrimTycon of Tyvar.t vector * Tycon.t * BOM.BOMType.t
+             | PrimVal of Vid.t * Type.t * BOM.BOMValueId.t
 
             include WRAPPED sharing type node' = node
                             sharing type obj = t
@@ -150,8 +149,7 @@ signature AST_MODULES =
                            result: SigConst.t} vector
              | Signature of (Sigid.t * Sigexp.t) vector
              | Strdec of Strdec.t
-             (* TODO: this should probably be a regular ID *)
-             | PrimModule of AstBOM.BomId.t * AstBOM.Definition.t vector
+             | PrimModule of BOM.BOMId.t * BOM.Import.t vector * BOM.Definition.t vector
 
             include WRAPPED sharing type node' = node
                             sharing type obj = t

@@ -11,20 +11,20 @@
                               structure Ast: AST));
 
 %tokens
-      : KW__con		("_con")
-      | KW__datatype	("_datatype")
-      | KW__module 	("_module")
-      | KW__prim	("_prim")
-      | KW__type	("_type")
-      | KW__val		("_val")
+      : KW__con         ("_con")
+      | KW__datatype    ("_datatype")
+      | KW__module      ("_module")
+      | KW__prim        ("_prim")
+      | KW__type        ("_type")
+      | KW__val         ("_val")
   (* Getting errors in pml.lex, these seem not to have been pulled in *)
-      | PLPAREN		("(|")
-      | PRPAREN		("|)")
-      | PLBRACE		("{|")
-      | PRBRACE		("|}")
-      | PLBRACKET	("[|")
-      | PRBRACKET	("|]")
-      | PWILD		("?")
+      | PLPAREN         ("(|")
+      | PRPAREN         ("|)")
+      | PLBRACE         ("{|")
+      | PRBRACE         ("|}")
+      | PLBRACKET       ("[|")
+      | PRBRACKET       ("|]")
+      | PWILD           ("?")
       (* | SYMB of CharVector.vector *)
       ;
 
@@ -34,56 +34,56 @@
 %start program;
 
 topdecnode
-	: "_module" BomId Import* "_prim" "(" BOMDecls ")"
-		=> (Topdec.PrimModule (BomId, Vector.fromList BOMDecls))
-	;
+        : "_module" BOMId Import* "_prim" "(" BOMDecls ")"
+                => (Topdec.PrimModule (BOMId, Vector.fromList Import, Vector.fromList BOMDecls))
+        ;
 
 Import
-	: "_import" "datatype" tyvarseq longtycon ("as" BomId)? "with" ImportCon+ "end"
-		=> (AstBOM.Import.makeRegion (AstBOM.Import.Datatype (tyseq, longtycon,
-      SR, ImportCon), posToReg FULL_SPAN))
-	| "_import" "exception" longvid ("as" BomId)? ("of" ty)?
-		=> (AstBOM.Import.makeRegion (AstBOM.Import.Exn (longvid, SR1, SR2),
-      posToReg FULL_SPAN))
-	| "_import" "val" longvid ":" ty ("as" BomId)?
-		=> (AstBOM.Import.makeRegion (AstBOM.Import.Val (longid, ty, SR), posToReg
-      FULL_SPAN))
-	;
+        : "_import" "datatype" ty ("as" BOMId)? "with" ImportCon+ "end"
+                => (case Type.node ty
+		     of Type.Con(longtycon, tvs) => BOM.Import.makeRegion (
+			  BOM.Import.Datatype (tvs, longtycon, SR, ImportCon),
+			  posToReg FULL_SPAN)
+		      | _ => raise Fail "FIXME"
+		    (* end case *))
+        | "_import" "exception" longvid ("as" BOMId)? ("of" ty)?
+                => (BOM.Import.makeRegion (BOM.Import.Exn (longvid, SR1, SR2), posToReg FULL_SPAN))
+        | "_import" "val" longvid ":" ty ("as" BOMId)?
+                => (BOM.Import.makeRegion (BOM.Import.Val (longvid, ty, SR), posToReg FULL_SPAN))
+        ;
 
 ImportCon
-	: "_con" vid ("of" ty)? ("as" BomId)?
-		=> (AstBOM.ImportCon.makeRegion (AstBOM.ImportCon.T (vid, SR1, SR2),
-      posToReg FULL_SPAN))
-	;
+        : "_con" vid ("of" ty)? ("as" BOMId)?
+                => (BOM.ImportCon.makeRegion (BOM.ImportCon.T (vid, SR1, SR2), posToReg FULL_SPAN))
+        ;
 
 strdecnode
-	: "_datatype" tyvarseq tycon "=" "_prim" "(" BomLongId TyArgs? ")" "with" PrimConDef+ "end"
-		=> (Strdec.PrimDataType (tyvarseq, tycon, BomLongId, Option.getOpt (TyArgs, [])))
-	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
-		=> (Strdec.PrimTycon (tyvars, tycon, BOMType))
-	| "_val" "op"? MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"
-		=> (Strdec.PrimVal (MLValueId, ty, BOMValueId))
-	;
+        : "_datatype" tyvarseq tycon "=" "_prim" "(" BOMLongId TyArgs? ")" "with" PrimConDef+ "end"
+                => (Strdec.PrimDataType (tyvarseq, tycon, BOMLongId, Option.getOpt (TyArgs, [])))
+        | "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
+                => (Strdec.PrimTycon (tyvars, tycon, BOMType))
+        | "_val" "op"? MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"
+                => (Strdec.PrimVal (MLValueId, ty, BOMValueId))
+        ;
 
 PrimConDef
-	: "_con" vid ("of" ty)? "=" "_prim" "(" BomId ")"
-		=> (AstBOM.PrimConDef.makeRegion (AstBOM.PrimConDef.T (vid, SR1, BomId),
-      posToReg FULL_SPAN))
-	;
+        : "_con" vid ("of" ty)? "=" "_prim" "(" BOMId ")"
+                => (BOM.PrimConDef.makeRegion (BOM.PrimConDef.T (vid, SR, BOMId), posToReg FULL_SPAN))
+        ;
 
 MLValueId
-	: SYMID => (Vid.fromSymbol (Symbol.fromString SYMID, posToReg FULL_SPAN))
-	| ID => (Vid.fromSymbol (Symbol.fromString ID, posToReg FULL_SPAN))
-	| "*" => (Vid.fromSymbol (Symbol.fromString "*", posToReg FULL_SPAN))
-	;
+        : SYMID => (Vid.fromSymbol (Symbol.fromString SYMID, posToReg FULL_SPAN))
+        | ID => (Vid.fromSymbol (Symbol.fromString ID, posToReg FULL_SPAN))
+        | "*" => (Vid.fromSymbol (Symbol.fromString "*", posToReg FULL_SPAN))
+        ;
 
 BOMValueId
-	: LongTyId
-		=> (AstBOM.BomValueId.makeRegion (
-		      BOM.BomValueId.LongId LongTyId,
-		      posToReg FULL_SPAN))
-	| HLOpQId
-		=> (AstBOM.BomValueId.makeRegion (
-		      BOM.BomValueId.HLOpQId HLOpQId,
-		      posToReg FULL_SPAN))
-	;
+        : BOMLongId
+                => (BOM.BOMValueId.makeRegion (
+                      BOM.BOMValueId.LongId BOMLongId,
+                      posToReg FULL_SPAN))
+        | HLOpQId
+                => (BOM.BOMValueId.makeRegion (
+                      BOM.BOMValueId.HLOpQId HLOpQId,
+                      posToReg FULL_SPAN))
+        ;

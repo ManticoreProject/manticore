@@ -97,28 +97,28 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   (* Structures *)
 
   (* Atoms *)
-  structure BomId = AstId (structure Symbol = Symbol)
+  structure BOMId = AstId (structure Symbol = Symbol)
   structure HLOpId = AstId (structure Symbol = Symbol)
   structure TyParam = AstId (structure Symbol = Symbol)
   structure SymbolicId = AstId (structure Symbol = Symbol)
   structure PrimOp = AstId(structure Symbol = Symbol)
 
   structure LongTyId = Longid (
-    structure Id = BomId
-    structure Strid = BomId
+    structure Id = BOMId
+    structure Strid = BOMId
     structure Symbol = Symbol)
   structure LongConId = Longid (
-    structure Id = BomId
-    structure Strid = BomId
+    structure Id = BOMId
+    structure Strid = BOMId
     structure Symbol = Symbol)
   structure LongValueId = Longid (
-    structure Id = BomId
-    structure Strid = BomId
+    structure Id = BOMId
+    structure Strid = BOMId
     structure Symbol = Symbol)
 
   structure HLOpQId = Longid (
     structure Id = HLOpId
-    structure Strid = BomId
+    structure Strid = BOMId
     structure Symbol = Symbol)
 
     (* Non-recursive types, part 1 -- types that do not depend on recursive types *)
@@ -179,7 +179,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   (* end *)
 
-  structure BomValueId = struct
+  structure BOMValueId = struct
     open Wrap
     datatype node
       = LongId of LongTyId.t
@@ -198,7 +198,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
     (* structure LongId = struct *)
     (* datatype node = *)
-    (*       Id of BomId.t * TyArg.t list option *)
+    (*       Id of BOMId.t * TyArg.t list option *)
     (*       | QualifiedId of TyArg.t list option *)
 
     (* local *)
@@ -208,7 +208,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     (* end *)
 
     (* fun layout (Id (bomId, maybeTyArgs)) = *)
-    (*  Layout.seq [BomId.layout bomId, layoutListOption (maybeTyArgs, TyArg.layout)] *)
+    (*  Layout.seq [BOMId.layout bomId, layoutListOption (maybeTyArgs, TyArg.layout)] *)
     (*   | layout (QualifiedId (maybeTyArgs))  = layoutListOption maybeTyArgs *)
 
     (* end *)
@@ -320,16 +320,16 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     and tyargs_node
       = ArgTypes of type_t list
     and dataconsdef_node
-      = ConsDef of BomId.t * type_t option
+      = ConsDef of BOMId.t * type_t option
     and field_node
       = Immutable of IntInf.int * type_t
       | Mutable of IntInf.int * type_t
     and fundef_node
-      = Def of Attrs.t option * BomId.t * TyParam.t list
+      = Def of Attrs.t option * BOMId.t * TyParam.t list
         * varpat_t list * varpat_t list * type_t list * exp_t
     and varpat_node
       = Wild of type_t option
-      | Var of BomId.t * type_t option
+      | Var of BOMId.t * type_t option
     and caserule_node
       = LongRule of LongConId.t * varpat_t list * exp_t
       | LiteralRule of Literal.t * exp_t
@@ -355,12 +355,12 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       = Let of varpat_t list * rhs_t * exp_t
       | Do of simpleexp_t * exp_t
       | FunExp of fundef_t list * exp_t
-      | ContExp of BomId.t * varpat_t list * exp_t * exp_t
+      | ContExp of BOMId.t * varpat_t list * exp_t * exp_t
       | If of simpleexp_t * exp_t * exp_t
       | Case of simpleexp_t * caserule_t list
       | Typecase of TyParam.t * tycaserule_t list
       | Apply of LongValueId.t * simpleexp_t list * simpleexp_t list
-      | Throw of BomId.t * simpleexp_t list
+      | Throw of BOMId.t * simpleexp_t list
       | Return of simpleexp_t list
     and rhs_node
       = Composite of exp_t
@@ -437,7 +437,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         ]
       else Layout.empty
     in
-      Layout.seq [BomId.layout bomId, ofType]
+      Layout.seq [BOMId.layout bomId, ofType]
     end
 
   and layoutField myNode : Layout.t =
@@ -465,7 +465,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     in
       Layout.mayAlign [
         layoutOption (maybeAttrs, Attrs.layout),
-        BomId.layout bomId,
+        BOMId.layout bomId,
         TyParams.layout maybeTyParams,
         indentedSlashList (inputParamsLayout, exnParamsLayout),
         indentedSchemeList (map layoutType returnTy),
@@ -485,10 +485,10 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
               layoutOption (maybeType, layoutType)
             ]
           ]
-      | Var (bomId, NONE) => BomId.layout bomId
+      | Var (bomId, NONE) => BOMId.layout bomId
       | Var (bomId, SOME myType) =>
           Layout.mayAlign [
-            BomId.layout bomId,
+            BOMId.layout bomId,
             Layout.str " : ",
             layoutType myType
           ]
@@ -625,7 +625,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
           Layout.align [
             Layout.mayAlign [
               Layout.str "cont",
-              BomId.layout bomId,
+              BOMId.layout bomId,
               Layout.schemeList (map layoutVarPat varPats)
             ],
           Layout.mayAlign [
@@ -679,7 +679,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
           Layout.align [
             Layout.mayAlign [
               Layout.str "throw",
-              BomId.layout bomId
+              BOMId.layout bomId
             ],
             (* layoutOption (maybeTyArgs, layoutTyArgs), *)
             indentedSchemeList (map layoutSimpleExp maybeSimpleExps)
@@ -696,7 +696,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | Simple simpleExp => layoutSimpleExp simpleExp
 
 
-  structure BomType = struct
+  structure BOMType = struct
   open Wrap
   datatype node = datatype type_node
   type t = node Wrap.t
@@ -861,8 +861,8 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   (* Non-recursive types, part 2 -- types that depend on recursive types *)
   structure DataTypeDef = struct
   datatype node
-    = ConsDefs of BomId.t * TyParam.t list * DataConsDef.t list
-    (* | SimpleDef of BomId.t * TyParams.t  option * LongTyId.t *)
+    = ConsDefs of BOMId.t * TyParam.t list * DataConsDef.t list
+    (* | SimpleDef of BOMId.t * TyParams.t  option * LongTyId.t *)
 
   open Wrap
   type t = node Wrap.t
@@ -874,7 +874,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       fun layoutConsDef (bomId, maybeTyParams, dataConsDefs) =
         Layout.align [
           Layout.mayAlign [
-            BomId.layout bomId,
+            BOMId.layout bomId,
             TyParams.layout maybeTyParams
           ],
           leftDelimitWithIndent (
@@ -889,16 +889,16 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   structure Definition = struct
   datatype node
-    = Extern of CReturnTy.t * BomId.t * CArgTy.t list * Attrs.t
+    = Extern of CReturnTy.t * BOMId.t * CArgTy.t list * Attrs.t
     | Datatype of DataTypeDef.t list
-    | DatatypeAlias of BomId.t * LongTyId.t
-    | TypeDefn of BomId.t * TyParam.t list * BomType.t
+    | DatatypeAlias of BOMId.t * LongTyId.t
+    | TypeDefn of BOMId.t * TyParam.t list * BOMType.t
     | DefineShortId of Attrs.t option * HLOpId.t * TyParam.t list *
-        VarPat.t list * VarPat.t list * BomType.t list * Exp.t option
+        VarPat.t list * VarPat.t list * BOMType.t list * Exp.t option
     | DefineLongId of HLOpId.t * TyParam.t list * LongValueId.t
     | Fun of FunDef.t list
-    | InstanceType of LongTyId.t * BomType.t list
-    | Instance of LongValueId.t * BomType.t list
+    | InstanceType of LongTyId.t * BOMType.t list
+    | Instance of LongValueId.t * BOMType.t list
 
   open Wrap
   type t = node Wrap.t
@@ -912,7 +912,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
           Layout.mayAlign [
             Layout.str "extern",
             CReturnTy.layout cReturnTy,
-            BomId.layout bomId
+            BOMId.layout bomId
           ],
           indentedSchemeList (map CArgTy.layout cArgTys),
           Attrs.layout attrs
@@ -924,21 +924,21 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
           "datatype")
     | DatatypeAlias (bomId, longId) =>
         Layout.align [
-          BomId.layout bomId,
+          BOMId.layout bomId,
           Layout.mayAlign [
             Layout.str "datatype",
-            BomId.layout bomId
+            BOMId.layout bomId
           ]
         ]
     | TypeDefn (bomId, maybeTyParams, myType) =>
         Layout.align [
           Layout.mayAlign [
             Layout.str "type",
-            BomId.layout bomId,
+            BOMId.layout bomId,
             TyParams.layout maybeTyParams,
             Layout.str "="
           ],
-          BomType.layout myType
+          BOMType.layout myType
         ]
     | DefineShortId (maybeAttrs, hlOpId, maybeTyParams, inputPats, exnPats,
           bomTypes, maybeExp)  =>
@@ -951,7 +951,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
                 HLOpId.layout hlOpId,
                 TyParams.layout maybeTyParams,
                 indentedSlashList (layoutPats inputPats, layoutPats exnPats),
-                unindentedSchemeList (map BomType.layout bomTypes)
+                unindentedSchemeList (map BOMType.layout bomTypes)
               ]@(if Option.isSome maybeExp then
                 [leftDelimitWithIndent (
                   [Exp.layout (Option.valOf maybeExp)], "", "=")]
@@ -996,7 +996,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   structure ImportCon = struct
     datatype node
-      = T of Vid.t * Type.t option * BomId.t option
+      = T of Vid.t * Type.t option * BOMId.t option
 
     open Wrap
     type t = node Wrap.t
@@ -1006,9 +1006,9 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   structure Import = struct
     datatype node
-      = Datatype of Type.t list * Longtycon.t * BomId.t option * ImportCon.t list
-      | Exn of Longvid.t * BomId.t option * Type.t option
-      | Val of Longvid.t * Type.t * BomId.t option
+      = Datatype of Type.t list * Longtycon.t * BOMId.t option * ImportCon.t list
+      | Exn of Longvid.t * BOMId.t option * Type.t option
+      | Val of Longvid.t * Type.t * BOMId.t option
 
    open Wrap
    type t = node Wrap.t
