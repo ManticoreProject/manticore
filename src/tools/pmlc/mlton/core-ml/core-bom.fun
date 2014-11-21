@@ -27,7 +27,7 @@ end
 functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   open S
 
-  structure AstBOM = Ast.AstBOM
+  structure BOM = Ast.BOM
 
   local
     open Region
@@ -54,8 +54,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | NONE => []
 
 
-  structure BomId = struct
-    open AstBOM.BomId
+  structure BOMId = struct
+    open BOM.BOMId
 
     fun fromAst (oldId) = oldId
     fun fromStrid (strid, region) = fromSymbol (
@@ -67,7 +67,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
     fun fromAst attrs =
       let
-        val AstBOM.Attrs.T unwrapped = AstBOM.Attrs.node attrs
+        val BOM.Attrs.T unwrapped = BOM.Attrs.node attrs
       in
         unwrapped
       end
@@ -81,7 +81,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure HLOpId = struct
   end
 
-  structure BomValueId = struct
+  structure BOMValueId = struct
   end
 
 
@@ -101,13 +101,13 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     local
       val counter = Counter.new 0
     in
-      fun fromAst (tyParam : AstBOM.TyParam.t) = let
-          (* val asNode = AstBOM.TyParam.node tyParam *)
-          val asRegion = AstBOM.TyParam.region tyParam
+      fun fromAst (tyParam : BOM.TyParam.t) = let
+          (* val asNode = BOM.TyParam.node tyParam *)
+          val asRegion = BOM.TyParam.region tyParam
       in
-          (* newString (AstBOM.TyParam.toString tyParam, asRegion) *)
+          (* newString (BOM.TyParam.toString tyParam, asRegion) *)
           makeRegion (T {
-            name = AstBOM.TyParam.toString tyParam,
+            name = BOM.TyParam.toString tyParam,
             hash = Counter.next counter
           }, asRegion): t
       end
@@ -134,54 +134,54 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
 
   structure RawTy = struct
-    open AstBOM.RawTy
+    open BOM.RawTy
     datatype t = datatype node
 
-    fun fromAst myRawTy = AstBOM.RawTy.node myRawTy
+    fun fromAst myRawTy = BOM.RawTy.node myRawTy
   end
 
   structure PrimOp = struct
   end
 
-  structure LongTyId = LongId (structure AstId = AstBOM.LongTyId)
-  structure LongValueId = LongId (structure AstId = AstBOM.LongValueId)
-  structure LongConId = LongId (structure AstId = AstBOM.LongConId)
+  (* structure LongTyId = LongId (structure AstId = BOM.LongTyId) *)
+  (* structure LongValueId = LongId (structure AstId = BOM.LongValueId) *)
+  (* structure LongConId = LongId (structure AstId = BOM.LongConId) *)
 
   structure ModuleId = struct
-    type t = BomId.t list
+    type t = BOMId.t list
 
-    val compare = List.collate BomId.compare
+    val compare = List.collate BOMId.compare
 
     local
       fun fromLong' (splitFn, regionFn) longId  =
         let
-          val (qualifiers: AstBOM.BomId.t list, id: AstBOM.BomId.t) =
+          val (qualifiers: BOM.BOMId.t list, id: BOM.BOMId.t) =
             splitFn longId
           val region = regionFn longId
         in
-          (qualifiers, id): (t * BomId.t)
+          (qualifiers, id): (t * BOMId.t)
         end
     in
-      val fromLongTyId' = fromLong' (AstBOM.LongTyId.split,
-        AstBOM.LongTyId.region)
-      val fromLongTyId = #1 o fromLongTyId'
+      (* val fromLongTyId' = fromLong' (BOM.LongTyId.split, *)
+      (*   BOM.LongTyId.region) *)
+      (* val fromLongTyId = #1 o fromLongTyId' *)
 
-      val fromLongValueId' = fromLong' (AstBOM.LongValueId.split,
-        AstBOM.LongValueId.region)
-      val fromLongValueId = #1 o fromLongValueId'
+      (* val fromLongValueId' = fromLong' (BOM.LongValueId.split, *)
+      (*   BOM.LongValueId.region) *)
+      (* val fromLongValueId = #1 o fromLongValueId' *)
 
-      val fromLongConId' = fromLong' (AstBOM.LongConId.split,
-        AstBOM.LongConId.region)
-      val fromLongConId = #1 o fromLongConId'
+      (* val fromLongConId' = fromLong' (BOM.LongConId.split, *)
+      (*   BOM.LongConId.region) *)
+      (* val fromLongConId = #1 o fromLongConId' *)
   end
 
-    val toString = String.concatWith "." o (map BomId.toString)
+    val toString = String.concatWith "." o (map BOMId.toString)
 
-    fun fromBomId bomId = [bomId]
+    fun fromBOMId bomId = [bomId]
 
-    val bogus = [BomId.bogus]
+    val bogus = [BOMId.bogus]
 
-    fun toBomId moduleId = List.last moduleId
+    fun toBOMId moduleId = List.last moduleId
   end
 
 
@@ -194,32 +194,32 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   structure TyId = struct
     datatype t
-      = BomTy of BomId.t
-      | QBomTy of ModuleId.t * BomId.t
+      = BOMTy of BOMId.t
+      | QBOMTy of ModuleId.t * BOMId.t
       (* | MLTy *)
 
-    val fromAstBomId = BomTy o BomId.fromAst
+    val fromAstBOMId = BOMTy o BOMId.fromAst
 
-    fun fromLongTyId (longTyId: AstBOM.LongTyId.t): t =
-      let
-        val longTyId' = LongTyId.fromAst longTyId
-      in
-        if LongTyId.hasQualifier longTyId' then
-          QBomTy (ModuleId.fromLongTyId' longTyId')
-        else
-          BomTy (LongTyId.truncate longTyId')
-      end
+    (* fun fromLongTyId (longTyId: BOM.LongTyId.t): t = *)
+    (*   let *)
+    (*     val longTyId' = LongTyId.fromAst longTyId *)
+    (*   in *)
+    (*     if LongTyId.hasQualifier longTyId' then *)
+    (*       QBOMTy (ModuleId.fromLongTyId' longTyId') *)
+    (*     else *)
+    (*       BOMTy (LongTyId.truncate longTyId') *)
+    (*   end *)
 
     fun toString id =
       case id of
-        BomTy id' => BomId.toString id'
-      | QBomTy (module, id) =>
-          String.concatWith "." [ModuleId.toString module, BomId.toString id]
+        BOMTy id' => BOMId.toString id'
+      | QBOMTy (module, id) =>
+          String.concatWith "." [ModuleId.toString module, BOMId.toString id]
 
     fun maybeQualify (tyId, defaultId) =
       case tyId of
-        BomTy ty => (print ("qualifying with " ^ (ModuleId.toString defaultId) ^ "\n")
-        ;  QBomTy (defaultId, ty))
+        BOMTy ty => (print ("qualifying with " ^ (ModuleId.toString defaultId) ^ "\n")
+        ;  QBOMTy (defaultId, ty))
       | _ => (print "not qualifying\n"; tyId)
 
 
@@ -230,10 +230,10 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   structure ValId = struct
     datatype t
-      = BomVal of BomId.t
-      | QBomVal of ModuleId.t * BomId.t
+      = BOMVal of BOMId.t
+      | QBOMVal of ModuleId.t * BOMId.t
 
-    val fromAstBomId = BomVal o BomId.fromAst
+    val fromAstBOMId = BOMVal o BOMId.fromAst
 
     local
       fun fromLongId (fromAst, hasQual, toModId, truncate) longId =
@@ -241,39 +241,39 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
           val longId' = fromAst longId
         in
           if hasQual longId' then
-            QBomVal (toModId longId')
+            QBOMVal (toModId longId')
           else
-            BomVal (truncate longId')
+            BOMVal (truncate longId')
         end
     in
-       val fromLongValueId = fromLongId (LongValueId.fromAst,
-         LongValueId.hasQualifier, ModuleId.fromLongValueId',
-         LongValueId.truncate)
-       val fromLongConId = fromLongId (LongConId.fromAst,
-         LongConId.hasQualifier, ModuleId.fromLongConId',
-         LongConId.truncate)
+       (* val fromLongValueId = fromLongId (LongValueId.fromAst, *)
+       (*   LongValueId.hasQualifier, ModuleId.fromLongValueId', *)
+       (*   LongValueId.truncate) *)
+       (* val fromLongConId = fromLongId (LongConId.fromAst, *)
+       (*   LongConId.hasQualifier, ModuleId.fromLongConId', *)
+       (*   LongConId.truncate) *)
     end
 
 
     fun maybeQualify (valId, defaultId) =
       case valId of
-        BomVal id => QBomVal (defaultId, id)
+        BOMVal id => QBOMVal (defaultId, id)
       | _ => valId
 
 
     fun toString (id: t) =
       case id of
-        BomVal id => BomId.toString id
-      | QBomVal (module, id) =>
-          String.concatWith "." [ModuleId.toString module, BomId.toString id]
+        BOMVal id => BOMId.toString id
+      | QBOMVal (module, id) =>
+          String.concatWith "." [ModuleId.toString module, BOMId.toString id]
 
     val compare = String.compare o (app2 toString)
 
-    val error = BomVal BomId.bogus
+    val error = BOMVal BOMId.bogus
   end
 
   (* structure LongValueId = struct *)
-  (*   open AstBOM.LongValueId *)
+  (*   open BOM.LongValueId *)
   (* end *)
 
   structure HLOpQId = struct
@@ -295,7 +295,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   (* and tycdef_t *)
   (*   = TycDef of dataconsdef_t list ref *)
   and dataconsdef_t
-    = ConsDef of BomId.t * type_t option
+    = ConsDef of BOMId.t * type_t option
   and type_t
     = Param of TyParam.t
     | TyCon of {
@@ -392,13 +392,13 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   and rawEquals (raw: RawTy.t, raw': RawTy.t): bool =
     case (raw, raw') of
       (RawTy.Int8, RawTy.Int8) => true
-    | (RawTy.Uint8, RawTy.Uint8) => true
+    | (RawTy.UInt8, RawTy.UInt8) => true
     | (RawTy.Int16, RawTy.Int16) => true
-    | (RawTy.Uint16, RawTy.Uint16) => true
+    | (RawTy.UInt16, RawTy.UInt16) => true
     | (RawTy.Int32, RawTy.Int32) => true
-    | (RawTy.Uint32, RawTy.Uint32) => true
+    | (RawTy.UInt32, RawTy.UInt32) => true
     | (RawTy.Int64, RawTy.Int64) => true
-    | (RawTy.Uint64, RawTy.Uint64) => true
+    | (RawTy.UInt64, RawTy.UInt64) => true
     | (RawTy.Float32, RawTy.Float32) => true
     | (RawTy.Float64, RawTy.Float64) => true
     | (_, _) => false
@@ -415,7 +415,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     datatype t = datatype dataconsdef_t
 
     val arity = arityOfDataCons
-    val error = ConsDef (BomId.bogus, NONE)
+    val error = ConsDef (BOMId.bogus, NONE)
   end
 
 
@@ -429,13 +429,13 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   (*   fun flattenFromAst maybeTyArgs = *)
   (*     flatten (fn els => *)
   (*       let *)
-  (*         val AstBOM.TyArgs.ArgTypes tyArgs = AstBOM.TyArgs.node els *)
+  (*         val BOM.TyArgs.ArgTypes tyArgs = BOM.TyArgs.node els *)
   (*       in *)
   (*         tyArgs *)
   (*       end) maybeTyArgs *)
   (* end *)
 
-  structure BomType = struct
+  structure BOMType = struct
     datatype t = datatype type_t
 
     val arity = arityOfType
@@ -557,8 +557,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure TyCon = struct
       datatype t = datatype tycon_t
 
-      fun toBomTy (tyCon as TyC {params,...}) =
-        BomType.TyCon {
+      fun toBOMTy (tyCon as TyC {params,...}) =
+        BOMType.TyCon {
           con = tyCon,
           args = []         (* TODO: is this what should go here? *)
         }
@@ -568,7 +568,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
       fun applyToArgs (tyCon, tys) =
         if length tys = arity tyCon then
-          SOME (BomType.TyCon {
+          SOME (BOMType.TyCon {
             con = tyCon,
             args = tys
           })
@@ -593,7 +593,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
 
   structure DataTypeDef = struct
-    open AstBOM.DataTypeDef
+    open BOM.DataTypeDef
   end
 
   structure CArgTy = struct
@@ -602,9 +602,9 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | VoidPointer
 
     fun fromAst astArgTy =
-      case AstBOM.CArgTy.node astArgTy of
-        AstBOM.CArgTy.Raw rawTy => Raw (RawTy.fromAst rawTy)
-      | AstBOM.CArgTy.VoidPointer => VoidPointer
+      case BOM.CArgTy.node astArgTy of
+        BOM.CArgTy.Raw rawTy => Raw (RawTy.fromAst rawTy)
+      | BOM.CArgTy.VoidPointer => VoidPointer
   end
 
   structure CReturnTy = struct
@@ -613,9 +613,9 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | Void
 
     fun fromAst astReturnTy =
-      case AstBOM.CReturnTy.node astReturnTy of
-        AstBOM.CReturnTy.CArg cArgTy => CArg (CArgTy.fromAst cArgTy)
-      | AstBOM.CReturnTy.Void => Void
+      case BOM.CReturnTy.node astReturnTy of
+        BOM.CReturnTy.CArg cArgTy => CArg (CArgTy.fromAst cArgTy)
+      | BOM.CReturnTy.Void => Void
   end
 
   structure VarPat = struct
@@ -628,7 +628,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | String of string
       | NullVP
 
-    datatype t = T of {node: node, ty: BomType.t}
+    datatype t = T of {node: node, ty: BOMType.t}
 
     fun new (node, ty) = T {node=node, ty=ty}
 
@@ -647,7 +647,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure Val = struct
     datatype t = T of {
       id: ValId.t,
-      ty: BomType.t,
+      ty: BOMType.t,
       params: TyParam.t list,
       stamp: Stamp.stamp
     }
@@ -675,11 +675,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     }
 
     fun applyToArgs (T {id, ty, params, stamp}, args) =
-      case BomType.applyArgs' (ty, params, args) of
+      case BOMType.applyArgs' (ty, params, args) of
         SOME ty => SOME (T {id = id, ty = ty, params = params, stamp = stamp})
       | NONE => NONE
 
-    val error = new (ValId.error, BomType.Error, [])
+    val error = new (ValId.error, BOMType.Error, [])
   end
 
   datatype exp_node
@@ -702,7 +702,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     (* | VpAddr of IntInf.int * exp_t *)
     (* | VpStore of IntInf.int * exp_t * exp_t *)
     (* | Val of Val.t *)
-  and exp_t = Exp of {node: exp_node, ty: BomType.t list}
+  and exp_t = Exp of {node: exp_node, ty: BOMType.t list}
   and simpleexp_node
     = PrimOp of simpleexp_t Prim.prim
     | HostVproc
@@ -712,11 +712,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | AllocId of Val.t * simpleexp_t list
     | RecAccess of IntInf.int * simpleexp_t * simpleexp_t option
     | Promote of simpleexp_t
-    | TypeCast of BomType.t * simpleexp_t
+    | TypeCast of BOMType.t * simpleexp_t
     | MLString of IntInf.int vector
     | Lit of Literal.t
     | Val of Val.t
-  and simpleexp_t = SExp of {node: simpleexp_node, ty: BomType.t}
+  and simpleexp_t = SExp of {node: simpleexp_node, ty: BOMType.t}
   and rhs
     = Composite of exp_t
     | Simple of simpleexp_t
@@ -725,10 +725,10 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | LiteralRule of Literal.t * exp_t
     | DefaultRule of Val.t * exp_t
   and tycaserule_node
-    = TyRule of BomType.t * exp_t
+    = TyRule of BOMType.t * exp_t
     | Default of exp_t
   and fundef_node
-    = Def of Attr.t list * Val.t * Val.t list * Val.t list * BomType.t list
+    = Def of Attr.t list * Val.t * Val.t list * Val.t list * BOMType.t list
         * exp_t
 
   withtype primcond_t = simpleexp_t Prim.cond
@@ -758,7 +758,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 		  end
     end
 
-	  val error = new (Val Val.error, BomType.Error)
+	  val error = new (Val Val.error, BOMType.Error)
   end
 
   structure Exp = struct
@@ -784,7 +784,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 	  fun newWithType (con, exp) =
 	    new (con exp, typeOf exp)
 
-	  val error = new (Return [], [BomType.Error])
+	  val error = new (Return [], [BOMType.Error])
   end
 
   structure CaseRule = struct
@@ -821,30 +821,31 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     local
       structure PrimTyFn = PrimTyFn (struct
         type var = arg
-        type ty = BomType.t
+        type ty = BOMType.t
 
         val typeOf = typeOfArg
 
-        val noTy = BomType.unit
-        val anyTy = BomType.Any
+        val noTy = BOMType.unit
+        val anyTy = BOMType.Any
+        (* FIXME: is there a nicer way to do this? *)
         fun raw rawType =
-          BomType.Raw (
+          BOMType.Raw (
             case rawType of
-              RawTypes.T_Byte => RawTy.Int8
-            | RawTypes.T_Short => RawTy.Int16
-            | RawTypes.T_Int => RawTy.Int32
-            | RawTypes.T_Long => RawTy.Int64
-            | RawTypes.T_Float => RawTy.Float32
-            | RawTypes.T_Double => RawTy.Float64)
+              RawTypes.Int8 => RawTy.Int8
+            | RawTypes.Int16 => RawTy.Int16
+            | RawTypes.Int32 => RawTy.Int32
+            | RawTypes.Int64 => RawTy.Int64
+            | RawTypes.Float32 => RawTy.Float32
+            | RawTypes.Float64 => RawTy.Float64)
 
-        val addr = BomType.Addr
+        val addr = BOMType.Addr
       end)
     in
       open PrimTyFn
     end
 
     fun nullaryCon primOp =
-      case AstBOM.PrimOp.toString primOp of
+      case BOM.PrimOp.toString primOp of
         "Pause" => SOME Prim.Pause
       | "FenceRead" => SOME Prim.FenceRead
       | "FenceWrite" => SOME Prim.FenceWrite
@@ -852,7 +853,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | _ => NONE
 
     fun unaryCon primOp =
-      case AstBOM.PrimOp.toString primOp of
+      case BOM.PrimOp.toString primOp of
         "I32Neg" => SOME Prim.I32Neg
       | "I64Neg" => SOME Prim.I64Neg
       | "F32Neg" => SOME Prim.F32Neg
@@ -886,7 +887,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | _ => NONE
 
     fun binaryCon primOp =
-      case AstBOM.PrimOp.toString primOp of
+      case BOM.PrimOp.toString primOp of
         "I32Add" => SOME Prim.I32Add
       | "I32Sub" => SOME Prim.I32Sub
       | "I32Mul" => SOME Prim.I32Mul
@@ -933,7 +934,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | _ => NONE
 
     fun ternaryCon primOp =
-      case AstBOM.PrimOp.toString primOp of
+      case BOM.PrimOp.toString primOp of
         "ArrStoreI32" => SOME Prim.ArrStoreI32
       | "ArrStoreI64" => SOME Prim.ArrStoreI64
       | "ArrStoreF32" => SOME Prim.ArrStoreF32
@@ -953,7 +954,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     fun nullaryCond primOp = NONE
 
     fun unaryCond primOp =
-      case AstBOM.PrimOp.toString primOp of
+      case BOM.PrimOp.toString primOp of
         "isBoxed" => SOME Prim.isBoxed
       | "isUnboxed" => SOME Prim.isUnboxed
       | "I32isSet" => SOME Prim.I32isSet
@@ -961,7 +962,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | _ => NONE
 
     fun binaryCond primOp =
-      case AstBOM.PrimOp.toString primOp of
+      case BOM.PrimOp.toString primOp of
         "Equal" => SOME Prim.Equal
       | "NotEqual" => SOME Prim.NotEqual
       | "EnumEq" => SOME Prim.EnumEq
@@ -997,7 +998,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | _ => NONE
 
     fun ternaryCond primOp =
-      case AstBOM.PrimOp.toString primOp of
+      case BOM.PrimOp.toString primOp of
        "BCAS" => SOME Prim.BCAS
       | _ => NONE
 
@@ -1021,7 +1022,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         in
             case con of
               SOME con =>
-                if BomType.equals (map typeOfArg primArgs, getTy con) then
+                if BOMType.equals (map typeOfArg primArgs, getTy con) then
                     SOME con
                 else
                     NONE
@@ -1050,7 +1051,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     datatype t
       = Fun of FunDef.t list
       | HLOp of Attr.t list * ValId.t * Exp.t
-      | Import of BomType.t
+      | Import of BOMType.t
       | Extern of CReturnTy.t * Val.t * CArgTy.t list * Attr.t list
   end
 

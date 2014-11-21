@@ -12,7 +12,8 @@ Library
   signature TARGET_SPEC
   signature RUNTIME_CONSTANTS
   signature VAR_PARAMS
-  signature VAR
+  (* Clashes with MLTon names *)
+  (* signature VAR  *)
 
   structure BasicControl
   structure ExpansionOpts
