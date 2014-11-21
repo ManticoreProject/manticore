@@ -10,19 +10,19 @@ signature ELABORATE_BOMCORE_STRUCTS =
     sharing Ast.Tyvar = CoreML.Tyvar
     sharing CoreML = Decs.CoreML = Env.CoreML
     sharing Decs = Env.Decs
-    sharing CoreBOM.AstBOM = Ast.AstBOM = BOMEnv.AstBOM
+    sharing CoreBOM.BOM = Ast.BOM = BOMEnv.BOM
     sharing BOMEnv.CoreBOM = CoreBOM
   end
 
 signature ELABORATE_BOMCORE =
   sig
     include ELABORATE_BOMCORE_STRUCTS
-    structure AstBOM: AST_BOM
+    structure BOM: AST_BOM
 
 
     (* need to return a Decs.t for elaborate-modules.fun  *)
     val elaborateBomDec:
-      (AstBOM.Definition.t * {env: Env.t, bomEnv: BOMEnv.t})
+      (BOM.Definition.t * {env: Env.t, bomEnv: BOMEnv.t})
         -> (Decs.dec * BOMEnv.t)
 
   end

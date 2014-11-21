@@ -173,7 +173,7 @@ signature CORE_ML =
                              nest: string list,
                              pat: Pat.t,
                              patRegion: Region.t} vector}
-             | BomDecs of CoreBOM.Definition.t list
+             | BOMDecs of CoreBOM.Definition.t list
 
             val layout: t -> Layout.t
          end

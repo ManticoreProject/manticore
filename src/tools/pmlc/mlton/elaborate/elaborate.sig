@@ -17,7 +17,7 @@ signature ELABORATE_STRUCTS =
       sharing Ast.Tyvar = CoreML.Tyvar
       sharing CoreML.Atoms = TypeEnv.Atoms
       sharing CoreML.Type = TypeEnv.Type
-      sharing CoreBOM.AstBOM = Ast.AstBOM
+      sharing CoreBOM.BOM = Ast.BOM
    end
 
 signature ELABORATE =

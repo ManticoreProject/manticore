@@ -164,7 +164,7 @@ datatype dec =
                  nest: string list,
                  pat: Pat.t,
                  patRegion: Region.t} vector}
- | BomDecs of CoreBOM.Definition.t list
+ | BOMDecs of CoreBOM.Definition.t list
 and exp = Exp of {node: expNode,
                   ty: Type.t}
 and expNode =

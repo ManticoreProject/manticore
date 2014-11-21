@@ -198,7 +198,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | QBOMTy of ModuleId.t * BOMId.t
       (* | MLTy *)
 
-    val fromAstBOMId = BOMTy o BOMId.fromAst
+    val fromBOMId = BOMTy o BOMId.fromAst
 
     (* fun fromLongTyId (longTyId: BOM.LongTyId.t): t = *)
     (*   let *)
@@ -233,7 +233,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       = BOMVal of BOMId.t
       | QBOMVal of ModuleId.t * BOMId.t
 
-    val fromAstBOMId = BOMVal o BOMId.fromAst
+    val fromBOMId = BOMVal o BOMId.fromAst
 
     local
       fun fromLongId (fromAst, hasQual, toModId, truncate) longId =

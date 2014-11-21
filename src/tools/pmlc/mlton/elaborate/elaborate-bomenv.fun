@@ -28,7 +28,7 @@ end
 functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
   open S
 
-  structure AstBOM = Ast.AstBOM
+  structure BOM = Ast.BOM
 
   fun printEnvKeys (toString, listKeys, getEnv) env = print (
     String.concat ["[", (String.concatWith ", " (map toString (listKeys (
@@ -63,22 +63,22 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
   structure TyAlias = struct
     type t = {
       params: CoreBOM.TyParam.t list,
-      ty: CoreBOM.BomType.t
+      ty: CoreBOM.BOMType.t
     }
 
     fun arity ({params = params, ...}: t) = length params
 
     fun applyToArgs ({params, ty}: t, args) =
-      CoreBOM.BomType.applyArgs' (ty, params, args)
+      CoreBOM.BOMType.applyArgs' (ty, params, args)
 
     val error: t = {
       params = [],
-      ty = CoreBOM.BomType.Error
+      ty = CoreBOM.BOMType.Error
     }
 
     fun equal (alias, alias') =
       (arity alias = arity alias') andalso
-        CoreBOM.BomType.equal (#ty alias, #ty alias')
+        CoreBOM.BOMType.equal (#ty alias, #ty alias')
     fun equals (aliass, aliass') =
       (length aliass = length aliass') andalso
         ListPair.allEq equal (aliass, aliass')
@@ -155,9 +155,9 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
 
   structure TyParamEnvMap = EnvMap (struct
-    type key = AstBOM.TyParam.t
+    type key = BOM.TyParam.t
     type value = CoreBOM.TyParam.t
-    val compare = AstBOM.TyParam.compare
+    val compare = BOM.TyParam.compare
   end)
 
   structure ValEnvMap = EnvMap (struct
@@ -200,7 +200,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     fun extendThis (self: t, newEl: Key.ord_key) =
       let
         val key = newEl
-        val value = CoreBOM.TyParam.fromAst (newEl: AstBOM.TyParam.t)
+        val value = CoreBOM.TyParam.fromAst (newEl: BOM.TyParam.t)
       in
         Map.insert (self, key, value)
       end
@@ -228,7 +228,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
              items
          end
 
-      val printKeys = printEnvKeys (AstBOM.TyParam.toString, listKeys,
+      val printKeys = printEnvKeys (BOM.TyParam.toString, listKeys,
         getTyParamEnv)
     end
   end
@@ -315,7 +315,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
     local
       fun new (getTy, con) (T ctx, value) =
-        CoreBOM.Literal.new (con value, CoreBOM.BomType.Raw (getTy ctx))
+        CoreBOM.Literal.new (con value, CoreBOM.BOMType.Raw (getTy ctx))
     in
       val newInt = new (#intTy, CoreBOM.Literal.Int)
       val newFloat = new (#floatTy, CoreBOM.Literal.Float)
@@ -360,7 +360,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     }
 
   fun setName' (env, name) =
-    setName (env, CoreBOM.ModuleId.fromBomId name)
+    setName (env, CoreBOM.ModuleId.fromBOMId name)
 
   (* fun setValEnv (T {tyEnv, tyParamEnv, valEnv, currentModule}, valEnv') = *)
   (*   T { *)
