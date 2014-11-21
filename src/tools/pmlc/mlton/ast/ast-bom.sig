@@ -347,7 +347,7 @@ signature AST_BOM =
 	datatype node
 	  = Datatype of Type.t vector * Longtycon.t * BOMId.t option * ImportCon.t list
 	  | Exn of Longcon.t * Type.t option * BOMId.t option
-	  | Val of Longvar.t * Type.t * BOMId.t option
+	  | Val of Longvid.t * Type.t * BOMId.t option
 
 	include WRAPPED
 	  sharing type node' = node

@@ -40,33 +40,21 @@ topdecnode
 
 Import
         : "_import" "datatype" ty ("as" BOMId)? "with" ImportCon+ "end"
-=> (raise Fail "help")
-(*
                 => (case Type.node ty
                      of Type.Con(tyc, tvs) => BOM.Import.makeRegion (
                           BOM.Import.Datatype (tvs, tyc, SR, ImportCon),
                           posToReg FULL_SPAN)
                       | _ => raise Fail "FIXME"
                     (* end case *))
-*)
         | "_import" "exception" longvid ("of" ty)? ("as" BOMId)?
-=> (raise Fail "help")
-(*
                 => (BOM.Import.makeRegion (BOM.Import.Exn (Longvid.toLongcon longvid, SR1, SR2), posToReg FULL_SPAN))
-*)
         | "_import" "val" longvid ":" ty ("as" BOMId)?
-=> (raise Fail "help")
-(*
                 => (BOM.Import.makeRegion (BOM.Import.Val (longvid, ty, SR), posToReg FULL_SPAN))
-*)
         ;
 
 ImportCon
         : "_con" vid ("of" ty)? ("as" BOMId)?
-=> (raise Fail "help")
-(*
-                => (BOM.ImportCon.makeRegion (BOM.ImportCon.T (vid, SR1, SR2), posToReg FULL_SPAN))
-*)
+                => (BOM.ImportCon.makeRegion (BOM.ImportCon.T (Vid.toCon vid, SR1, SR2), posToReg FULL_SPAN))
         ;
 
 strdecnode
@@ -80,10 +68,7 @@ strdecnode
 
 PrimConDef
         : "_con" vid ("of" ty)? "=" "_prim" "(" BOMId ")"
-=> (raise Fail "help")
-(*
-                => (BOM.PrimConDef.makeRegion (BOM.PrimConDef.T (vid, SR, BOMId), posToReg FULL_SPAN))
-*)
+                => (BOM.PrimConDef.makeRegion (BOM.PrimConDef.T (Vid.toCon vid, SR, BOMId), posToReg FULL_SPAN))
         ;
 
 MLValueId

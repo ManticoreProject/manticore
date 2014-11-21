@@ -14,7 +14,12 @@ signature AST_MODULES_STRUCTS =
 signature AST_MODULES =
    sig
       include AST_CORE
-      structure BOM : AST_BOM sharing BOM.Symbol = Symbol
+      structure BOM : AST_BOM
+	sharing BOM.Symbol = Symbol
+	sharing BOM.Type = Type
+        sharing BOM.Longvid = Longvid
+        sharing BOM.Longtycon = Longtycon
+        sharing BOM.Longcon = Longcon
 
       structure Sigexp:
          sig

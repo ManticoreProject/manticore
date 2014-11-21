@@ -369,9 +369,12 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         map layoutType ts
       fun layoutTyArgOpts (maybeTyArgs : tyargs_t option) =
         layoutOption (maybeTyArgs, layoutTyArgs)
+      fun layoutTyApp (tyc, ty) = Layout.seq [
+	       Layout.str tyc, Layout.str "<", layoutType ty, Layout.str ">"
+	    ]
     in
-      case Wrap.node myNode of
-          Param p  => TyParam.layout p
+      case Wrap.node myNode
+       of Param p => TyParam.layout p
         | TyCon (longId, maybeTyArgs) =>
           Layout.mayAlign [
             LongId.layout longId,
@@ -388,20 +391,19 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
             Layout.seq (
               Layout.separate ([layoutDomainTys, layoutRangeTys], "->"))
           end
-        | Any => Layout.str "any"
-        | VProc => Layout.str "vproc"
         | Cont (maybeTyArgs) =>
           Layout.seq [
             Layout.str "cont",
             layoutTyArgs maybeTyArgs
           ]
-        | Addr (myType) => Layout.seq [
-            Layout.str "addr",
-            Layout.str "<",
-            layoutType myType,
-            Layout.str ">"
-          ]
-       | Raw (raw) => RawTy.layout raw
+        | Array myType => layoutTyApp ("array", myType)
+        | Vector myType => layoutTyApp ("vector", myType)
+        | Addr myType => layoutTyApp ("addr", myType)
+        | BigNum => Layout.str "any"
+        | Exn => Layout.str "bignum"
+        | Any => Layout.str "exn"
+        | VProc => Layout.str "vproc"
+        | Raw (raw) => RawTy.layout raw
     end
 
   and layoutTyArgs types =
@@ -936,38 +938,38 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
           Attrs.layout attrs
         ]
     end
-  structure PrimConDef = struct
-    datatype node
-      = T of Vid.t * Type.t option * LongId.t
 
-    open Wrap
-    type t = node Wrap.t
-    type node' = node
-    type obj = t
-  end
+  structure PrimConDef = struct
+      datatype node
+	= T of Con.t * Type.t option * BOMId.t
+
+      open Wrap
+      type t = node Wrap.t
+      type node' = node
+      type obj = t
+    end
 
   structure ImportCon = struct
-    datatype node
-      = T of Vid.t * Type.t option * BOMId.t option
+      datatype node
+	= T of Con.t * Type.t option * BOMId.t option
 
-    open Wrap
-    type t = node Wrap.t
-    type node' = node
-    type obj = t
-  end
+      open Wrap
+      type t = node Wrap.t
+      type node' = node
+      type obj = t
+    end
 
   structure Import = struct
-    datatype node
-      = Datatype of Type.t vector * Longtycon.t * BOMId.t option * ImportCon.t list
-      | Exn of Longvid.t * Type.t option * BOMId.t option
-      | Val of Longvid.t * Type.t * BOMId.t option
+      datatype node
+	= Datatype of Type.t vector * Longtycon.t * BOMId.t option * ImportCon.t list
+	| Exn of Longcon.t * Type.t option * BOMId.t option
+	| Val of Longvid.t * Type.t * BOMId.t option
 
-   open Wrap
-   type t = node Wrap.t
-   type node' = node
-   type obj = t
+     open Wrap
+     type t = node Wrap.t
+     type node' = node
+     type obj = t
 
-  end
-
+    end
 
 end
