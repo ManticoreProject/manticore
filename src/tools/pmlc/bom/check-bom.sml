@@ -1,6 +1,6 @@
 (* check-bom.sml
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2014 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * Check various invariants in BOM representation.
@@ -19,13 +19,40 @@ structure CheckBOM : sig
     structure BTy = BOMTy
     structure BTU = BOMTyUtil
 
+(* TODO: switch to new error printing *)
     val v2s = BV.toString
     fun vl2s xs = String.concat["(", String.concatWith "," (List.map v2s xs), ")"]
-    fun v2s' x = concat[v2s x, ":", BTU.toString(BV.typeOf x)]
-    fun vl2s' xs = String.concat["(", String.concatWith "," (List.map v2s' xs), ")"]
 
-    val t2s = BTU.toString
-    fun tl2s ts = concat["(", String.concatWith "," (map t2s ts), ")"]
+    fun pr s = TextIO.output(TextIO.stdErr, concat s)
+
+  (* infrastructure for printing error messages *)
+    datatype token
+      = S of string | NL | A of Atom.atom
+      | V of BV.var | VS of BV.var list
+      | VTY of BV.var | VTYS of BV.var list
+      | TY of BTy.ty | TYS of BTy.ty list
+
+    fun err toks = let
+	  fun vty (x, l) = BV.toString x :: ":" :: BTU.toString(BV.typeOf x) :: l
+	  fun tok2str (tok, l) = (case tok
+		 of S s => s :: l
+		  | NL => (case l of [] => ["\n"] | _ => "\n== " :: l)
+		  | A a => Atom.toString a :: l
+		  | V x => BV.toString x :: l
+		  | VS[] => "()" :: l
+		  | VS xs => List.foldr (fn (x, l) => BV.toString x :: l) l xs
+		  | VTY x => vty (x, l)
+		  | VTYS[] => "()" :: l
+		  | VTYS xs => List.foldr vty l xs
+		  | TY ty => BTU.toString ty :: l
+		  | TYS [] => "()" :: l
+		  | TYS[ty] => BTU.toString ty :: l
+		  | TYS(ty::tys) => "(" :: BTU.toString ty ::
+			List.foldr (fn (ty, l) => ", " :: BTU.toString ty :: l) (")" :: l) tys
+		(* end case *))
+	  in
+	    pr ("** " :: List.foldr tok2str [] toks)
+	  end
 
     val debug = false
 
@@ -57,8 +84,6 @@ structure CheckBOM : sig
     datatype context
       = TAIL of (B.var * B.ty list)
       | BIND of (B.var list * B.exp)
-
-    fun pr s = TextIO.output(TextIO.stdErr, concat s)
 
     fun typesOf xs = List.map BV.typeOf xs
 
@@ -126,16 +151,18 @@ structure CheckBOM : sig
 		else (
 		  pr ["***** Bogus BOM after ", phase, " *****\n"];
 		  anyErrors := true);
-		pr ("** " :: msg))
+		err  msg)
 	  fun warning msg = (
 		if !anyErrors orelse !anyWarnings then ()
 		else (
 		  pr ["***** Possibly Bogus BOM after ", phase, " *****\n"];
 		  anyWarnings := true);
-		pr ("?? " :: msg))
+		err msg)
+(*
 	  fun cerror msg = pr ("== "::msg)
+*)
 	(* for tracking census counts *)
-	  val counts = ChkVC.init error
+	  val counts = ChkVC.init (error o List.map S)
 	  val bindVar = ChkVC.bind counts
 	  val useVar = ChkVC.use counts
 	  val appVar = ChkVC.appUse counts
@@ -145,21 +172,19 @@ structure CheckBOM : sig
 	        fun chk1 (pty, aty) =
 		      if (cmp (aty, pty))
                         then ()
-		        else (
-			  error  ["type mismatch in ", ctx, "\n"];
-			  cerror ["  expected  ", BTU.toString pty, "\n"];
-			  cerror ["  but found ", BTU.toString aty, "\n"])
+		        else error [
+			    S "type mismatch in ", S ctx, NL,
+			    S "  expected  ", TY pty, NL,
+			    S "  but found ", TY aty, NL
+			  ]
 	        in 
 	          if (length paramTys = length argTys)
                     then ListPair.app chk1 (paramTys, argTys)
-                    else let
-	            (* str : ty list -> string *)
-                      fun str ts = String.concatWith "," (map BTU.toString ts)
-                      in 
-                        error  ["wrong number of arguments in ", ctx, "\n"];
-			cerror ["  expected (", str paramTys, ")\n"];
-			cerror ["  found    (", str argTys, ")\n"]
-                      end
+                    else error [
+			S "wrong number of arguments in ", S ctx, NL,
+			S "  expected (", TYS paramTys, S ")", NL,
+			S "  found    (", TYS argTys, S ")", NL
+		      ]
 	        end
 	(* match a list of variables to a context *)
 	  fun chkContext (cxt, xs) = (case cxt
@@ -183,9 +208,9 @@ structure CheckBOM : sig
 		if eqVK(BV.kindOf x, binding)
 		  then ()
 		  else error[
-		      "binding of ", v2s x, " is ",
-		      vkToString(BV.kindOf x), " (expected ",
-		      vkToString binding, ")\n"
+		      S "binding of ", V x, S " is ",
+		      S (vkToString(BV.kindOf x)), S " (expected ",
+		      S (vkToString binding), S ")\n"
 		    ])
 	  fun chkBindings (lhs, binding) =
 		List.app (fn x => chkBinding(x, binding)) lhs
@@ -208,8 +233,7 @@ structure CheckBOM : sig
 			    (argTys, exhTys, retTys)
                         | BTy.T_Cont(argTys) => (argTys, [], [])
                         | ty => (error[
-			      "expected function/continuation type for ",
-			      v2s f, ":", BTU.toString(BV.typeOf f)
+			      S "expected function/continuation type for ", VTY f, NL
 			    ];
 			    ([],[],[]))
                       (* end case *)
@@ -241,7 +265,7 @@ structure CheckBOM : sig
 		      chkE(cxt, e);
 		      if not(null exh)
 			then error[
-			    "continuation ", v2s f, " has non-empty return list"
+			    S "continuation ", V f, S " has non-empty return list"
 			  ]
 			else ();
 		      chkE(cxt, body))
@@ -250,10 +274,11 @@ structure CheckBOM : sig
 		      val paramTys = BOMUtil.condArgTys cond
 		      fun chkParamArg (paramTy, arg) = if BTU.match(BV.typeOf arg, paramTy)
 			    then ()
-			    else (
-			      error  ["type mismatch in ", CondUtil.nameOf cond, "(... ", v2s arg, " ...)\n"];
-			      cerror ["  expected  ", BTU.toString paramTy, "\n"];
-			      cerror ["  but found ", BTU.toString(BV.typeOf arg), "\n"])
+			    else error [
+				S "type mismatch in ", S(CondUtil.nameOf cond), S "(... ", V arg, S " ...)", NL,
+			        S "  expected  ", TY paramTy, NL,
+			        S "  but found ", TY(BV.typeOf arg), NL
+			      ]
 		      in
 			chkVars (args, "If");
 			chkE(cxt, e1); chkE(cxt, e2)
@@ -283,7 +308,7 @@ structure CheckBOM : sig
 				    concat["binding ", vl2s ys, " to Apply ", v2s f],
 				    typesOf ys, retTys)
 			    (* end case *))
-			| ty => error[v2s f, " : ", BTU.toString ty, " is not a function\n"]
+			| ty => error[VTY f, S " is not a function\n"]
 		      (* end case *))
 		  | B.E_Throw(k, args) => (
 		      chkApplyVar (k, "Throw");
@@ -291,7 +316,7 @@ structure CheckBOM : sig
 		       of BTy.T_Cont(argTys) => (
 			    chkVars (args, "Throw args");
 			    checkArgTypes (BTU.match, concat["Throw ", v2s k, " args"], argTys, typesOf args))
-			| ty => error[v2s k, ":", BTU.toString ty, " is not a continuation\n"]
+			| ty => error[VTY k, S " is not a continuation\n"]
 		      (* end case *))
 		  | B.E_Ret args => (
 		      chkVars(args, "Return");
@@ -318,9 +343,9 @@ structure CheckBOM : sig
 		(* end case *))
 	  and chkRHS (lhs, rhs) = (case (typesOf lhs, rhs)
 		 of ([ty], B.E_Const(lit, ty')) => let
-		      fun err () = error[
-			      "literal has bogus type: ", vl2s lhs, " = ", 
-			      Literal.toString lit, ":", BTU.toString ty', "\n"
+		      fun err () = error [
+			      S "literal has bogus type: ", VS lhs, S" = ", 
+			      S(Literal.toString lit), S":", TY ty', NL
 			    ]
 		      in
 		      (* first, check the literal against ty' *)
@@ -335,10 +360,10 @@ structure CheckBOM : sig
 		      (* then check ty' against ty *)
 			if BTU.equal(ty', ty)
 			  then ()
-			  else error[
-			      "type mismatch in Const: ",  vl2s lhs, " = ", 
-			      Literal.toString lit, ":", BTU.toString ty', 
-			      "; expected ", BTU.toString ty, "\n"
+			  else error [
+			      S "type mismatch in Const: ",  VS lhs, S " = ", 
+			      S(Literal.toString lit), S ":", TY ty', 
+			      S "; expected ", TY ty, NL
 			    ]
 		      end
 		  | ([ty], B.E_Cast(ty', x)) => (
@@ -346,14 +371,12 @@ structure CheckBOM : sig
 		      if BTU.match(ty', ty)
 			then ()
 			else error [
-			    "type mismatch:", vl2s' lhs, " = (", BTU.toString ty',
-			    ")", v2s' x, "\n"
+			    S "type mismatch:", VTYS lhs, S " = (", TY ty', S ")", VTY x, NL
 			  ];
 		      if BTU.validCast(BV.typeOf x, ty')
 			then ()
 			else error [
-			    "invalid cast:", vl2s' lhs, " = (", BTU.toString ty',
-			    ")", v2s' x, "\n"
+			    S "invalid cast:", VTYS lhs, S" = (", TY ty', S ")", VTY x, NL
 			  ])
 		  | ([ty], B.E_Select(i, x)) => (
                       chkVar(x, "Select");
@@ -362,18 +385,20 @@ structure CheckBOM : sig
 			    if (i < List.length tys) andalso BTU.match(List.nth (tys, i), ty)
 			      then ()
 			      else error[
-				  "type mismatch in Select: ",
-				   vl2s' lhs, " = #", Int.toString i, "(", v2s' x, ")\n"
+				  S "type mismatch in Select: ",
+				  VTYS lhs, S " = #", S(Int.toString i), S "(", VTY x, S ")", NL
 				]
 			| BTy.T_Record flds =>
 			    if (i < List.length flds) andalso BTU.match(#3(List.nth (flds, i)), ty)
 			      then ()
 			      else error[
-				  "type mismatch in Select: ",
-				   vl2s' lhs, " = #", Int.toString i, "(", v2s' x, ")\n"
+				  S "type mismatch in Select: ",
+				  VTYS lhs, S " = #", S(Int.toString i), S "(", VTY x, S ")", NL
 				]
-			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple/record: ",
-                                    vl2s lhs, " = #", Int.toString i, "(", v2s x, ")\n"]
+			| ty => error[
+			      VTY x, S " is not a tuple/record: ",
+			      VS lhs, S " = #", S(Int.toString i), S "(", V  x, S ")", NL
+			    ]
 		      (* end case *))
 		  | ([], B.E_Update(i, x, y)) => (
                       chkVar(x, "Update");
@@ -386,20 +411,22 @@ structure CheckBOM : sig
 				      if BTU.equal(BV.typeOf y, ty)
 					then ()
 					else error[
-					    "type mismatch in #", Int.toString i,
-					    "(", v2s x, ") := ", v2s y, "\n"
+					    S "type mismatch in #", S(Int.toString i),
+					    S "(", V x, S ") := ", V y, NL
 					  ]
 				  | (_, false, _) => error[
-					"update of non-mutable field in #",
-					"(", v2s x, ") := ", v2s y, "\n"
+					S "update of non-mutable field in #",
+					S "(", V x, S ") := ", V y, NL
 				      ]
 				(* end case *))
 			      else error [
-				  "index out of bounds in #", Int.toString i,
-				  "(", v2s x, ") := ", v2s y, "\n"
+				  S "index out of bounds in #", S(Int.toString i),
+				  S "(", V x, S ") := ", V y, NL
 				]
-			| ty => error[v2s x, ":", BTU.toString ty, " is not a mutable record",
-                                    "#", Int.toString i, "(", v2s x, ") := ", v2s y, "\n"]
+			| ty => error[
+			      VTY x, S " is not a mutable record",
+			      S "#", S(Int.toString i), S "(", V x, S ") := ", V y, NL
+			    ]
 		      (* end case *))
 		  | ([ty], B.E_AddrOf(i, x)) => (
                       chkVar(x, "AddrOf");
@@ -407,35 +434,40 @@ structure CheckBOM : sig
                        of BTy.T_Tuple tys => 
 			    if (i < List.length tys) andalso BTU.match(BTy.T_Addr(List.nth (tys, i)), ty)
 			      then ()
-                              else error["type mismatch in AddrOf: ", vl2s lhs, " = &(", v2s x, ")\n"]
+                              else error[S "type mismatch in AddrOf: ", VS lhs, S " = &(", V x, S ")", NL]
 			| BTy.T_Record flds =>
 			    if (i < List.length flds) andalso BTU.match(#3(List.nth (flds, i)), ty)
 			      then ()
 			      else error[
-				  "type mismatch in Select: ",
-				   vl2s' lhs, " = #", Int.toString i, "(", v2s' x, ")\n"
+				  S "type mismatch in Select: ",
+				  VTYS lhs, S " = &", S(Int.toString i), S "(", VTY x, S ")", NL
 				]
-			| ty => error[v2s x, ":", BTU.toString ty, " is not a tuple/record",
-                                    vl2s lhs, " = &(", v2s x, ")\n"]
+			| ty => error[
+			      VTY x, S " is not a tuple/record ", VS lhs, S " = &(", V x, S ")", NL
+			    ]
 		      (* end case *))
 (* FIXME: record allocation *)
 		  | ([ty], B.E_Alloc(allocTy, xs)) => (
                       chkVars(xs, "Alloc");
                       if BTU.match (allocTy, ty)
 			then ()
-			else (error  ["type mismatch in: ", vl2s lhs, " = Alloc ", vl2s xs, "\n"];
-			      cerror ["  lhs type ", t2s ty, "\n"];
-			      cerror ["  rhs type ", t2s allocTy, "\n"]);
+			else error [
+			    S "type mismatch in: ", VS lhs, S " = Alloc ", VS xs, NL,
+			    S "  lhs type ", TY ty, NL,
+			    S "  rhs type ", TY allocTy, NL
+			  ];
 		      if (BTU.match(BTy.T_Tuple(typesOf xs), allocTy)
 			orelse BTU.match(BTy.T_Tuple(typesOf xs), allocTy))
                         then ()
-                        else (error  ["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
-			      cerror ["  expected ", t2s allocTy, "\n"];
-			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
+                        else error [
+			    S "type mismatch in Alloc: ", VS lhs, S " = ", VS xs, NL,
+			    S "  expected ", TY allocTy, NL,
+			    S "  found    ", TYS (typesOf xs), NL
+			  ])
 		  | ([ty], B.E_Promote y) => (
 		      chkVar (y, "Promote");
 		      if BTU.equal(ty, BV.typeOf y) orelse BTU.equal(ty, BTy.T_Any) then ()
-			else error ["type mismatch in Promote: ", vl2s lhs, " = ", v2s y, "\n"])
+			else error [S "type mismatch in Promote: ", VS lhs, S " = ", V y, NL])
 		  | (lhsTys, B.E_Prim p) => chkPrim (lhs, lhsTys, p)
                   | ([ty], B.E_DCon(BTy.DCon{name, argTy, myTyc, ...}, args)) => (
                       chkVars(args, name);
@@ -450,54 +482,57 @@ structure CheckBOM : sig
 		  | ([ty], B.E_HostVProc) => (
                       if BTU.match(BTy.T_VProc, ty)
                          then ()
-                         else error["type mismatch in HostVProc: ", vl2s lhs, " = host_vproc()\n"])
+                         else error[S "type mismatch in HostVProc: ", VS lhs, S " = host_vproc()\n"])
 		  | ([ty], B.E_VPLoad(n, vp)) => (
                       chkVar(vp, "VPLoad");
                       if BTU.equal(BV.typeOf vp, BTy.T_VProc)
                         then ()
                         else error[
-			    "type mismatch in VPLoad: ", vl2s lhs, " = vpload(", 
-			    IntInf.toString n, ", ", v2s vp, ")\n"
+			    S "type mismatch in VPLoad: ", VS lhs, S " = vpload(", 
+			    S(IntInf.toString n), S ", ", V vp, S ")", NL
 			  ])
 		  | ([], B.E_VPStore(n, vp, x)) => (
 		      chkVar(vp, "VPStore"); 
                       chkVar(x, "VPStore");
                       if BTU.equal(BV.typeOf vp, BTy.T_VProc)
-                         then ()
-                         else error["type mismatch in VPStore: ",
-                                  vl2s lhs, " = vpstore(", 
-                                  IntInf.toString n, ", ", v2s vp, ", ", v2s x, ")\n"])
+			then ()
+			else error[
+			    S "type mismatch in VPStore: ", VS lhs, S " = vpstore(", 
+			    S(IntInf.toString n), S ", ", V vp, S ", ", V x, S ")", NL
+			  ])
 		  | ([ty], B.E_VPAddr(n, vp)) => (
                       chkVar(vp, "VPAddr");
                       if BTU.equal(BV.typeOf vp, BTy.T_VProc)
                         then ()
                         else error[
-			    "type mismatch in VPAddr: ", vl2s lhs, " = vpaddr(", 
-			    IntInf.toString n, ", ", v2s vp, ")\n"
+			    S "type mismatch in VPAddr: ", VS lhs, S " = vpaddr(", 
+			    S(IntInf.toString n), S ", ", V vp, S ")", NL
 			  ])
-		  | _ => error["bogus rhs for ", vl2s lhs, "\n"]
+		  | _ => error[S "bogus rhs for ", VS lhs, NL]
 		(* end case *))
 	  and chkPrim (lhs, lhsTys, p) = let
 		val args = PrimUtil.varsOf p
 		val (paramTys, resTy) = BOMUtil.signOfPrim p
 		fun chkParamArg (paramTy, arg) = if BTU.match(BV.typeOf arg, paramTy)
 		      then ()
-		      else (
-			error  ["type mismatch in ", PrimUtil.nameOf p, "(... ", v2s arg, " ...)\n"];
-			cerror ["  expected  ", BTU.toString paramTy, "\n"];
-			cerror ["  but found ", BTU.toString(BV.typeOf arg), "\n"])
+		      else error [
+			  S "type mismatch in ", S(PrimUtil.nameOf p), S "(... ", V arg, S " ...)", NL,
+			  S "  expected  ", TY paramTy, NL, 
+			  S "  but found ", TY(BV.typeOf arg), NL
+			]
 		in
 		  chkVars (args, PrimUtil.nameOf p);
 		  case (lhsTys, resTy)
 		   of ([], NONE) => ()
 		    | ([lhsTy], SOME rhsTy) => if BTU.match (rhsTy, lhsTy)
 			then ()
-			else (
-			  error  ["type mismatch in: ", vl2s lhs, " = ", PrimUtil.nameOf p, vl2s args, "\n"];
-			  cerror ["  lhs type ", t2s lhsTy, "\n"];
-			  cerror ["  rhs type ", t2s rhsTy, "\n"])
+			else err [
+			    S "type mismatch in: ", VTYS lhs, S " = ", S(PrimUtil.nameOf p), VS args, NL,
+			    S "  lhs type ", TY lhsTy, NL,
+			    S "  rhs type ", TY rhsTy, NL
+			  ]
 		    | _ => error[
-			  "arity mismatch in ", vl2s lhs, " = ", PrimUtil.nameOf p, vl2s args, "\n"
+			  S "arity mismatch in ", VS lhs, S " = ", S(PrimUtil.nameOf p), VS args, NL
 			]
 		  (* end case *);
 		  ListPair.appEq chkParamArg (paramTys, args)
@@ -508,7 +543,7 @@ structure CheckBOM : sig
 		case BV.kindOf var
 		 of B.VK_CFun _ => ()
 		  | vk => error[
-			"extern ", v2s var, " has kind ", vkToString vk
+			S "extern ", V var, S " has kind ", S(vkToString vk), NL
 		      ]
 		(* end case *))
 	  in
