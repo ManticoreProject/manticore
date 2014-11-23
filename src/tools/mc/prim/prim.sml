@@ -26,6 +26,8 @@ structure Prim =
       | I64Mod of 'var * 'var
       | I64LSh of 'var * 'var
       | I64Neg of 'var
+      | I64OrB of 'var * 'var    (*bitwise or*)
+      | I64AndB of 'var * 'var   (*bitwise and*)
       | U64Mul of 'var * 'var
       | U64Div of 'var * 'var
       | U64Rem of 'var * 'var

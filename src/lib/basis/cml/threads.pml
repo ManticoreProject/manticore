@@ -80,9 +80,17 @@ structure Threads (*: sig
                 let vp : [int] = #0(arg)
                 let f : fun(unit / exh -> unit) = #1(arg)
                 cont fiber(x:PT.unit) = 
-                        cont threadExh(e:PT.exn) = do ccall M_Print("Thread exiting because of uncaught exception\n") return(UNIT)
-                        let _ : unit = apply f(UNIT / threadExh)
-                        SchedulerAction.@stop()
+                    cont threadExh(e:PT.exn) = 
+                        case e
+                            of Fail(s:ml_string) => 
+                                do ccall M_Print("Thread exiting because of uncaught exception: ")
+                                do ccall M_Print(#0(s))
+                                return(UNIT)
+                            | _ => do ccall M_Print("Thread exiting because of uncaught exception\n")
+                                   return(UNIT)
+                       end                 
+                    let _ : unit = apply f(UNIT / threadExh)
+                    SchedulerAction.@stop()
                 let fls : FLS.fls = FLS.@new-pinned(#0(vp))
                 let self : vproc = host_vproc
                 let dst : vproc = VProc.@vproc-by-id(#0(vp))

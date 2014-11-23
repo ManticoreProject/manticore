@@ -172,8 +172,11 @@ struct
                      do #0(in_trans) := true   
                      cont abortK() = BUMP_ABORT do #0(in_trans) := false throw enter()      
                      do FLS.@set-key(ABORT_KEY, (any) abortK / exh)   
-                     let res : any = apply f(UNIT/exh)
-                     do @commit(/exh)
+                     cont transExh(e:exn) = 
+                        do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
+                        throw exh(e)
+                     let res : any = apply f(UNIT/transExh)
+                     do @commit(/transExh)
                      do #0(in_trans) := false
                      do FLS.@set-key(READ_SET, NilItem / exh)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)

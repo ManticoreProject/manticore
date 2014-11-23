@@ -182,8 +182,11 @@ struct
                      let stamp : stamp = VClock.@bump(/exh)
                      do FLS.@set-key(STAMP_KEY, alloc(stamp) / exh)
                      do FLS.@set-key(IN_TRANS, alloc(true) / exh)
-                     let res : any = apply f(UNIT/exh)
-                     do @commit(/exh)
+                     cont transExh(e:exn) = 
+                        do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
+                        throw exh(e)
+                     let res : any = apply f(UNIT/transExh)
+                     do @commit(/transExh)
                      do FLS.@set-key(IN_TRANS, alloc(false) / exh)
                      do FLS.@set-key(READ_SET, NilItem / exh)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)

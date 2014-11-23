@@ -57,7 +57,7 @@ struct
 
 #define AVOID_DUP
 
-#define READ_SET_BOUND 51
+#define READ_SET_BOUND 20
 
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a
                      | WithoutK of 'a * 'a
@@ -289,8 +289,11 @@ struct
                      do #0(in_trans) := true
                      cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()
                      do FLS.@set-key(ABORT_KEY, abortK / exh)
-                     let res : any = apply f(UNIT/exh)
-                     do @commit(/exh)
+                     cont transExh(e:exn) = 
+                        do @commit(/exh)  (*exception may have been raised because of inconsistent state*)
+                        throw exh(e)
+                     let res : any = apply f(UNIT/transExh)
+                     do @commit(/transExh)
                      do #0(in_trans) := false
                      do FLS.@set-key(READ_SET, nil / exh)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
