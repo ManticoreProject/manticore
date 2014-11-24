@@ -30,9 +30,6 @@ struct
 #define BUMP_ABORT do ccall M_BumpCounter(0)
 #define PRINT_ABORT_COUNT let counter : int = ccall M_GetCounter(0) \
                           do ccall M_Print_Int("Aborted %d transactions\n", counter)
-#define BUMP_ALLOC do ccall M_BumpCounter(1)
-#define PRINT_ALLOC_COUNT  let counter : int = ccall M_GetCounter(1) \
-                           do ccall M_Print_Int("Allocated %d abort continuations\n", counter)
 #else
 #define BUMP_ABORT
 #define PRINT_ABORT_COUNT
