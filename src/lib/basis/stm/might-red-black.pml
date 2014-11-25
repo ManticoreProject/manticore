@@ -8,7 +8,7 @@
         -https://github.com/sweirich/dth/tree/master/examples/red-black
  *)
  
-structure WhichSTM = FullAbortSTM
+structure WhichSTM = BoundedHybridPartialSTMLowMem
 
 type 'a tvar = 'a WhichSTM.tvar
 
@@ -16,6 +16,8 @@ datatype color = Red | Black | DBlack | NBlack  (*double black and negative blac
 datatype tree = L        (*leaf*)
               | DBL      (*double black *)
               | T of color * tree tvar * int * tree tvar
+
+datatype pureTree = PL | PDBL | PT of color * pureTree * int * pureTree 
 
 fun intComp(x:int,y:int) : order = if x < y then LESS else if x > y then GREATER else EQUAL
 
@@ -84,76 +86,85 @@ fun balance tv : unit =
     case WhichSTM.get tv
         of T(Red,t1,k,t2) => ()
          | T(Black,t1,k,t2) =>
-             (case WhichSTM.get t1
-                of T(Red,l',y,r') =>
-                    (case (WhichSTM.get l', WhichSTM.get r')
-                        of (T(Red,a,x,b), _) => 
-                            let val _ = WhichSTM.put(l', T(Black,a,x,b))
-                                val r = WhichSTM.new(T(Black, r', k, t2))
-                            in WhichSTM.put(tv, T(Red, l', y, r)) end
-                         | (_,T(Red,b,z,c)) => 
-                            let val _ = WhichSTM.put(r', T(Black, l', y, b))
-                                val r = WhichSTM.new(T(Black,c,k,t2))
-                            in WhichSTM.put(tv, T(Red,r',z,r)) end
-                         | _ => ())
-                  | _ => (case WhichSTM.get t2 
+             if case WhichSTM.get t1
+                 of T(Red,l',y,r') =>
+                     (case (WhichSTM.get l', WhichSTM.get r')
+                         of (T(Red,a,x,b), _) => 
+                             let val _ = WhichSTM.put(l', T(Black,a,x,b))
+                                 val r = WhichSTM.new(T(Black, r', k, t2))
+                                 val _ = WhichSTM.put(tv, T(Red, l', y, r)) 
+                             in true end
+                          | (_,T(Red,b,z,c)) => 
+                             let val _ = WhichSTM.put(r', T(Black, l', y, b))
+                                 val r = WhichSTM.new(T(Black,c,k,t2))
+                                 val _ = WhichSTM.put(tv, T(Red,r',z,r)) 
+                             in true end
+                          | _ => false)
+                 | _ => false
+              then ()
+              else (case WhichSTM.get t2 
+                        of T(Red,l',y,r') =>
+                            (case (WhichSTM.get l', WhichSTM.get r')
+                                of (T(Red,b,z,c),_) =>
+                                    let val _ = WhichSTM.put(l', T(Black,c,y,r'))
+                                        val l = WhichSTM.new(T(Black,t1,k,b))
+                                    in WhichSTM.put(tv, T(Red,l,z,l')) end
+                                | (_,T(Red,c,z,d)) =>
+                                    let val _ = WhichSTM.put(r', T(Black,c,z,d))
+                                        val l = WhichSTM.new(T(Black,t1,k,l'))
+                                    in WhichSTM.put(tv, T(Red,l,y,r')) end
+                                | _ => ())
+                        | _ => ())
+          | T(DBlack,t1,k,t2) =>
+                (if (case WhichSTM.get t1
+                        of T(Red,l',y,r') =>
+                            (case (WhichSTM.get l', WhichSTM.get r')
+                                of (T(Red,a,x,b), _) => 
+                                    let val _ = WhichSTM.put(l', T(Black,a,x,b))
+                                        val r = WhichSTM.new(T(Black, r', k, t2))
+                                        val _ = WhichSTM.put(tv, T(Black, l', y, r)) 
+                                    in true end
+                                 | (_,T(Red,b,z,c)) => 
+                                    let val _ = WhichSTM.put(r', T(Black, l', y, b))
+                                        val r = WhichSTM.new(T(Black,c,k,t2))
+                                        val _ = WhichSTM.put(tv, T(Black,r',z,r)) 
+                                    in true end
+                                 | _ => false)
+                         | T(NBlack,l',y,r') =>  (*T(DBlack, T(NBlack,l' as T(Black,_,_,_),y,T(Black,b,y,c)), k, t2)*)
+                            (case (WhichSTM.get l', WhichSTM.get r')
+                                of (T(Black,ll,vv,rr), T(Black,b,z,c)) =>
+                                    let val _ = WhichSTM.put(l', T(Red, ll, vv, rr))
+                                        val _ = WhichSTM.put(t1, T(Black,l',y, b))
+                                        val newR = WhichSTM.new(T(Black, c, k, t2))
+                                        val _ = WhichSTM.put(tv, T(Black, t1, z, newR))
+                                        val _ = balance t1
+                                    in true end
+                                 | _ => false)
+                         | _ => false)
+                 then ()
+                 else case WhichSTM.get t2 
                             of T(Red,l',y,r') =>
                                 (case (WhichSTM.get l', WhichSTM.get r')
                                     of (T(Red,b,z,c),_) =>
                                         let val _ = WhichSTM.put(l', T(Black,c,y,r'))
                                             val l = WhichSTM.new(T(Black,t1,k,b))
-                                        in WhichSTM.put(tv, T(Red,l,z,l')) end
+                                        in WhichSTM.put(tv, T(Black,l,z,l')) end
                                     | (_,T(Red,c,z,d)) =>
                                         let val _ = WhichSTM.put(r', T(Black,c,z,d))
                                             val l = WhichSTM.new(T(Black,t1,k,l'))
-                                        in WhichSTM.put(tv, T(Red,l,y,r')) end
+                                        in WhichSTM.put(tv, T(Black,l,y,r')) end
                                     | _ => ())
-                            | _ => ()))
-          | T(DBlack,t1,k,t2) =>
-                (case WhichSTM.get t1
-                    of T(Red,l',y,r') =>
-                        (case (WhichSTM.get l', WhichSTM.get r')
-                            of (T(Red,a,x,b), _) => 
-                                let val _ = WhichSTM.put(l', T(Black,a,x,b))
-                                    val r = WhichSTM.new(T(Black, r', k, t2))
-                                in WhichSTM.put(tv, T(Black, l', y, r)) end
-                             | (_,T(Red,b,z,c)) => 
-                                let val _ = WhichSTM.put(r', T(Black, l', y, b))
-                                    val r = WhichSTM.new(T(Black,c,k,t2))
-                                in WhichSTM.put(tv, T(Black,r',z,r)) end
-                             | _ => ())
-                     | T(NBlack,l',y,r') =>  (*T(DBlack, T(NBlack,l' as T(Black,_,_,_),y,T(Black,b,y,c)), k, t2)*)
-                        (case (WhichSTM.get l', WhichSTM.get r')
-                            of (T(Black,ll,vv,rr), T(Black,b,z,c)) =>
-                                let val _ = WhichSTM.put(l', T(Red, ll, vv, rr))
-                                    val _ = WhichSTM.put(t1, T(Black,l',y, b))
-                                    val newR = WhichSTM.new(T(Black, c, k, t2))
-                                    val _ = WhichSTM.put(tv, T(Black, t1, z, newR))
-                                in balance t1 end
-                             | _ => ())
-                      | _ => (case WhichSTM.get t2 
-                                of T(Red,l',y,r') =>
-                                    (case (WhichSTM.get l', WhichSTM.get r')
-                                        of (T(Red,b,z,c),_) =>
-                                            let val _ = WhichSTM.put(l', T(Black,c,y,r'))
-                                                val l = WhichSTM.new(T(Black,t1,k,b))
-                                            in WhichSTM.put(tv, T(Black,l,z,l')) end
-                                        | (_,T(Red,c,z,d)) =>
-                                            let val _ = WhichSTM.put(r', T(Black,c,z,d))
-                                                val l = WhichSTM.new(T(Black,t1,k,l'))
-                                            in WhichSTM.put(tv, T(Black,l,y,r')) end
-                                        | _ => ())
-                                | T(NBlack,l',y,r') => (*T(DBlack,t1,k,T(NBlack,l',y,r'))*)
-                                        (case (WhichSTM.get l', WhichSTM.get r') 
-                                            of (T(Black,b,z,c), T(Black,_,_,_)) => (*T(Dblack, t1, k, T(NBlack, T(Black, b, z, c), y, r' as T(Black, _, _, _))) *)
-                                                let val _ = redden r'
-                                                    val _ = WhichSTM.put(t2, T(Black, c, y, r'))
-                                                    val newL = WhichSTM.new(T(Black, t1, k, b))
-                                                    val _ = WhichSTM.put(tv, T(Black, newL, z, t2))
-                                                in balance t2 end
-                                             | _ => ())
-                                | _ => ()))
-          | _ => ()
+                            | T(NBlack,l',y,r') => (*T(DBlack,t1,k,T(NBlack,l',y,r'))*)
+                                    (case (WhichSTM.get l', WhichSTM.get r') 
+                                        of (T(Black,b,z,c), T(Black,_,_,_)) => (*T(Dblack, t1, k, T(NBlack, T(Black, b, z, c), y, r' as T(Black, _, _, _))) *)
+                                            let val _ = redden r'
+                                                val _ = WhichSTM.put(t2, T(Black, c, y, r'))
+                                                val newL = WhichSTM.new(T(Black, t1, k, b))
+                                                val _ = WhichSTM.put(tv, T(Black, newL, z, t2))
+                                            in balance t2 end
+                                         | _ => ())
+                           | _ => ())
+          | _ => () 
 
 fun makeBlack t = 
     case WhichSTM.get t
@@ -267,8 +278,19 @@ fun chkBlackPaths t =
                  | _ => raise Fail "Impossible: chkPlackPaths\n"
    in lp(t, Any, 0); print "Red-Black property holds\n" end              
 
+fun getArg f args = 
+    case args 
+        of arg::arg'::args => 
+            if String.same(f, arg) then SOME arg'
+            else getArg f (arg'::args)
+         |_ => NONE
+
+val args = CommandLine.arguments ()
+
+val THREADS = case getArg "-threads" args
+        of SOME n => (case Int.fromString n of SOME n => n | NONE => 4)
+         | NONE => 4
 val ITERS = 50000
-val THREADS = 1
 val MAXVAL = 10000000
 
 fun ignore _ = ()
@@ -310,7 +332,7 @@ fun initialize n =
              val _ = insert randNum t intComp
          in initialize (n-1) end
 
-val _ = initialize 50000
+val _ = initialize 100000
 val startTime = Time.now()
 val _ = join(start t THREADS)
 val endTime = Time.now()
@@ -319,6 +341,7 @@ val _ = print ("Total was: " ^ Time.toString (endTime - startTime) ^ " seconds\n
 
 val _ = WhichSTM.atomic(fn _ => chkOrder t)
 val _ = WhichSTM.atomic(fn _ => chkBlackPaths t handle Fail s => print s)
+
 
 
 

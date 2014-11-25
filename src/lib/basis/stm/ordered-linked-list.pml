@@ -112,7 +112,7 @@ val ITERS = 3000
 val MAXVAL = 10000
 
 val INITSIZE = 
-    case getArg "-threads" args
+    case getArg "-size" args
         of SOME n => (case Int.fromString n of SOME n => n | NONE => 4000)
          | NONE => 4000
          

@@ -106,12 +106,13 @@ struct
                      do apply lk()
                      let current : any = #0(tv)
                      do #1(tv) := 0:long
-                     let numReads : int = FLS.@get-counter()
+                     let fls : FLS.fls = FLS.@get()
+                     let numReads : int = FLS.@get-counter(fls)
                      let newReadSet : item = 
                         if I32Lt(numReads, READ_THRESH) 
-                        then do FLS.@set-counter(I32Add(numReads, 1))
+                        then do FLS.@set-counter(I32Add(numReads, 1), fls)
                              return(Read(tv, enum(0):any, NilItem, readSet))
-                        else do FLS.@set-counter(0)
+                        else do FLS.@set-counter(0, fls)
                              return(Read(tv, (any) retK, writeSet, readSet))
                      do FLS.@set-key(READ_SET, newReadSet / exh)
                      return(current)

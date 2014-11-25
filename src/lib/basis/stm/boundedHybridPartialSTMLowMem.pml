@@ -55,8 +55,6 @@ struct
 #define PRINT_COMBINED 
 #endif
 
-#define AVOID_DUP
-
 #define READ_SET_BOUND 20
 
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a
@@ -117,19 +115,20 @@ struct
                      let current : any = #0(tv)
                      do #1(tv) := 0:long
                      let sl : item = #1(readSet)
+                     let fls : FLS.fls = FLS.@get()
                      if I32Lt(#0(readSet), READ_SET_BOUND)    (*still have room for more*)
-                     then let captureCount : int = FLS.@get-counter()
+                     then let captureCount : int = FLS.@get-counter(fls)
                           if I32Eq(captureCount, 0)  (*capture a continuation*)
                           then let nextCont : item = #2(readSet)
                                let newSL : item = WithK(tv, retK, writeSet, sl, nextCont)
-                               let captureFreq : int = FLS.@get-counter2()
-                               do FLS.@set-counter(captureFreq)
+                               let captureFreq : int = FLS.@get-counter2(fls)
+                               do FLS.@set-counter(captureFreq, fls)
                                let n : int = I32Add(#0(readSet), 1)  (*update number of conts*)
                                let newRS : [int, item, item] = alloc(n, newSL, newSL)
                                do FLS.@set-key(READ_SET, newRS / exh)
                                return(current)
                           else let n : int = #0(readSet)          (*don't capture cont*)
-                               do FLS.@set-counter(I32Sub(captureCount, 1))
+                               do FLS.@set-counter(I32Sub(captureCount, 1), fls)
                                let nextCont : item = #2(readSet)
                                let newSL : item = WithoutK(tv, sl) 
                                let newRS : [int,item,item] = alloc(n, newSL, nextCont)
@@ -153,10 +152,10 @@ struct
                           let n : int = apply dropKs(nextCont, #0(readSet))
                           let newSL : item = WithoutK(tv, sl)
                           let newRS : [int, item, item] = alloc(n, newSL, nextCont)
-                          let captureFreq : int = FLS.@get-counter2()
+                          let captureFreq : int = FLS.@get-counter2(fls)
                           let newFreq : int = I32Mul(captureFreq, 2)
-                          do FLS.@set-counter(I32Sub(newFreq, 1))
-                          do FLS.@set-counter2(newFreq)
+                          do FLS.@set-counter(I32Sub(newFreq, 1), fls)
+                          do FLS.@set-counter2(newFreq, fls)
                           do FLS.@set-key(READ_SET, newRS / exh)
                           return(current)
             end
@@ -190,10 +189,11 @@ struct
                         case abortInfo
                             of NilItem => return() (*no violations detected*)
                              | WithK(tv:tvar,abortK:any,ws:item,_:item,_:item) =>
+                                let fls : FLS.fls = FLS.@get()
                                 if Equal(abortK, enum(0))
                                 then do apply release(locks)
-                                     let captureFreq : int = FLS.@get-counter2()
-                                     do FLS.@set-counter(captureFreq)
+                                     let captureFreq : int = FLS.@get-counter2(fls)
+                                     do FLS.@set-counter(captureFreq, fls)
                                      let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
                                      throw abortK()  (*no checkpoint found*)
                                 else do apply release(locks)
@@ -210,14 +210,15 @@ struct
                                      do FLS.@set-key(READ_SET, newRS / exh)
                                      do FLS.@set-key(WRITE_SET, ws / exh)
                                      do #0(startStamp) := newStamp
-                                     let captureFreq : int = FLS.@get-counter2()
-                                     do FLS.@set-counter(captureFreq)
+                                     let captureFreq : int = FLS.@get-counter2(fls)
+                                     do FLS.@set-counter(captureFreq, fls)
                                      BUMP_PABORT
                                      throw abortK(current)
                              | WithoutK(tv:tvar,_:item) =>
                                 do apply release(locks)
-                                let captureFreq : int = FLS.@get-counter2()
-                                do FLS.@set-counter(captureFreq)
+                                let fls : FLS.fls = FLS.@get()  
+                                let captureFreq : int = FLS.@get-counter2(fls)
+                                do FLS.@set-counter(captureFreq, fls)
                                 let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
                                 throw abortK()  (*no checkpoint found*)
                         end                          
@@ -277,6 +278,9 @@ struct
         ;
 
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
+            let fls : FLS.fls = FLS.@get()
+            do FLS.@set-counter(0, fls)  (*initialize frequency counters*)
+            do FLS.@set-counter2(1, fls)
             cont enter() = 
                 let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
                 if (#0(in_trans))
