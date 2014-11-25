@@ -2,7 +2,7 @@ signature CORE_LONGID_STRUCTS = sig
   structure AstId: LONGID
 end
 
-functor LongId (S: CORE_LONGID_STRUCTS) = struct
+functor LongIdFun (S: CORE_LONGID_STRUCTS) = struct
   open S.AstId
 
   fun fromAst (astId: S.AstId.t) = astId
@@ -87,16 +87,12 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   structure TyParam = struct
   (* TODO: remove wrapping *)
-    open Region.Wrap
 
-    datatype node' = T of {
+    datatype t = T of {
       name: string,
       hash: int          (* keeps track of insertion order *)
     }
 
-    type t = node' Region.Wrap.t
-    type obj = t
-    (* type node' = node *)
 
     local
       val counter = Counter.new 0
@@ -106,28 +102,19 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
           val asRegion = BOM.TyParam.region tyParam
       in
           (* newString (BOM.TyParam.toString tyParam, asRegion) *)
-          makeRegion (T {
+          T {
             name = BOM.TyParam.toString tyParam,
             hash = Counter.next counter
-          }, asRegion): t
+          }
       end
     end
 
-    local
-      fun unwrap myParam =
-        let
-          val T param = node myParam
-        in
-          param
-        end
-    in
-      fun name myParam = #name (unwrap myParam)
-      fun hash myParam = #hash (unwrap myParam)
+    fun name (T myParam) = #name myParam
+    fun hash (T myParam) = #hash myParam
 
-      (* for map *)
-      fun compare (param, param') =
-        String.compare (name param, name param')
-    end
+    (* for map *)
+    fun compare (param, param') = String.compare (name param, name param')
+
   end
 
 
@@ -143,7 +130,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure PrimOp = struct
   end
 
-  (* structure LongTyId = LongId (structure AstId = BOM.LongTyId) *)
+  structure LongId = LongIdFun (structure AstId = BOM.LongId)
   (* structure LongValueId = LongId (structure AstId = BOM.LongValueId) *)
   (* structure LongConId = LongId (structure AstId = BOM.LongConId) *)
 
@@ -162,9 +149,9 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
           (qualifiers, id): (t * BOMId.t)
         end
     in
-      (* val fromLongTyId' = fromLong' (BOM.LongTyId.split, *)
-      (*   BOM.LongTyId.region) *)
-      (* val fromLongTyId = #1 o fromLongTyId' *)
+      val fromLongId' = fromLong' (BOM.LongId.split,
+        BOM.LongId.region)
+      val fromLongId = #1 o fromLongId'
 
       (* val fromLongValueId' = fromLong' (BOM.LongValueId.split, *)
       (*   BOM.LongValueId.region) *)
@@ -185,7 +172,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
 
-
   (* TODO: refactor these to be cleaner. I don't want to collapse them
   into a functor because TyId.t will be changing in the future and it
   won't be easy to extend *)
@@ -196,19 +182,18 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     datatype t
       = BOMTy of BOMId.t
       | QBOMTy of ModuleId.t * BOMId.t
-      (* | MLTy *)
 
     val fromBOMId = BOMTy o BOMId.fromAst
 
-    (* fun fromLongTyId (longTyId: BOM.LongTyId.t): t = *)
-    (*   let *)
-    (*     val longTyId' = LongTyId.fromAst longTyId *)
-    (*   in *)
-    (*     if LongTyId.hasQualifier longTyId' then *)
-    (*       QBOMTy (ModuleId.fromLongTyId' longTyId') *)
-    (*     else *)
-    (*       BOMTy (LongTyId.truncate longTyId') *)
-    (*   end *)
+    fun fromLongId (longId: BOM.LongId.t): t =
+      let
+        val longId' = LongId.fromAst longId
+      in
+        if LongId.hasQualifier longId' then
+          QBOMTy (ModuleId.fromLongId' longId')
+        else
+          BOMTy (LongId.truncate longId')
+      end
 
     fun toString id =
       case id of
@@ -235,24 +220,16 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
     val fromBOMId = BOMVal o BOMId.fromAst
 
-    local
-      fun fromLongId (fromAst, hasQual, toModId, truncate) longId =
-        let
-          val longId' = fromAst longId
-        in
-          if hasQual longId' then
-            QBOMVal (toModId longId')
-          else
-            BOMVal (truncate longId')
-        end
-    in
-       (* val fromLongValueId = fromLongId (LongValueId.fromAst, *)
-       (*   LongValueId.hasQualifier, ModuleId.fromLongValueId', *)
-       (*   LongValueId.truncate) *)
-       (* val fromLongConId = fromLongId (LongConId.fromAst, *)
-       (*   LongConId.hasQualifier, ModuleId.fromLongConId', *)
-       (*   LongConId.truncate) *)
-    end
+    fun fromLongId longId =
+      let
+        val longId' = LongId.fromAst longId
+      in
+        if LongId.hasQualifier longId' then
+          QBOMVal (ModuleId.fromLongId' longId')
+        else
+          BOMVal (LongId.truncate longId')
+      end
+
 
 
     fun maybeQualify (valId, defaultId) =
@@ -292,8 +269,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       definition: dataconsdef_t list ref,
       params: TyParam.t list
     }
-  (* and tycdef_t *)
-  (*   = TycDef of dataconsdef_t list ref *)
   and dataconsdef_t
     = ConsDef of BOMId.t * type_t option
   and type_t
@@ -307,7 +282,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         rng: type_t
       }
     | Record of field_t list
-    | Tuple of type_t list
+    | Tuple of (bool * type_t) list
     | Fun of {
         dom: type_t list,
         cont: type_t list,
@@ -318,7 +293,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Cont of type_t list
     | Addr of type_t
     | Raw of RawTy.t
-    | NoReturn
     | Error
   and field_t
     = Immutable of IntInf.int * type_t
@@ -339,7 +313,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         Param param => 1
       (* | MLType mlTy => arityOfType mlTy *)
       | Record fields => sumArity (map typeOfField fields)
-      | Tuple els  => sumArity els
+      | Tuple els  => sumArity (map #2 els)
       (* | Fun tys => *)
       (*   let *)
       (*     val (bomAr, conAr, rangeAr) = app3 (sumArity, tys) *)
@@ -374,7 +348,16 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         tyConEquals (con, con') andalso tysEqual (args, args')
     (* TODO: make sure fields are sorted so we can compare them pairwise *)
     | (Record fields, Record fields') => false
-    | (Tuple tys, Tuple tys') => tysEqual (tys, tys')
+    | (Tuple fields, Tuple fields') =>
+        let
+          val (mutables, tys) = ListPair.unzip fields
+          val (mutables', tys') = ListPair.unzip fields'
+          val allTrue = List.all (fn x => x)
+        in
+          allTrue (ListPair.mapEq (fn (l, r) => l = r) (mutables, mutables'))
+          andalso tysEqual (tys, tys')
+          handle ListPair.UnequalLengths => false
+        end
     | (Fun funTy, Fun funTy') =>
         List.all (fn select => tysEqual (select funTy, select funTy')) (
           [#dom, #cont, #rng])
@@ -457,7 +440,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
           case ty of
             Param p => p::acc
           | Tuple tys =>
-              foldTyList (tys, acc)
+              foldTyList (map #2 tys, acc)
           | Fun {dom, cont, rng} =>
               acc@(List.concat (map paramsForTys [dom, cont, rng]))
           | Cont tys => acc@(paramsForTys (tys))
@@ -488,7 +471,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
          (* TODO: deal with tycons *)
         (* | Record fields =>    (* TODO: deal with fields *) *)
         (*     Record (map applyArg fields) *)
-        | Tuple ts => Tuple (doApplys ts)
+        | Tuple ts => Tuple (map (fn (mut, ty) => (mut, doApply ty)) ts)
         | Fun {dom, cont, rng} => Fun {
             dom = doApplys dom,
             cont = doApplys cont,
@@ -547,11 +530,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
     val unit = Tuple []
 
-	fun wrapTuple tys =
-	  case tys of
-		  [] => NoReturn
-	  | [ty] => ty
-	  | tys => Tuple tys
+	(* fun wrapTuple tys = *)
+	(*   case tys of *)
+	(* 	  [] => NoReturn *)
+	(*   | [ty] => ty *)
+	(*   | tys => Tuple tys *)
   end
 
   structure TyCon = struct
@@ -693,15 +676,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Apply of Val.t * simpleexp_t list * simpleexp_t list
     | Throw of Val.t * simpleexp_t list
     | Return of simpleexp_t list
-    (* | PrimOp of exp_t Prim.prim *)
-    (* | Alloc of Val.t * exp_t list *)
-    (* | RecAccess of IntInf.int * exp_t * exp_t option *)
-    (* | Promote of exp_t *)
-    (* | HostVproc *)
-    (* | VpLoad of IntInf.int * exp_t *)
-    (* | VpAddr of IntInf.int * exp_t *)
-    (* | VpStore of IntInf.int * exp_t * exp_t *)
-    (* | Val of Val.t *)
   and exp_t = Exp of {node: exp_node, ty: BOMType.t list}
   and simpleexp_node
     = PrimOp of simpleexp_t Prim.prim

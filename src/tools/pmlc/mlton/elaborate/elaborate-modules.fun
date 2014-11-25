@@ -68,7 +68,7 @@ structure ElaborateBOMCore = ElaborateBOMCore (
   structure Env = Env
   structure CoreML = CoreML)
 
-structure AstBOM = Ast.AstBOM
+structure AstBOM = Ast.BOM
 
 val elabStrdecInfo = Trace.info "ElaborateModules.elabStrdec"
 val elabStrexpInfo = Trace.info "ElaborateModules.elabStrexp"
@@ -305,7 +305,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                       in
                          (Decs.empty, bomEnv)
                       end
-                | Topdec.PrimModule (id, bomDecs) =>
+                | Topdec.PrimModule (id, imports, bomDecs) =>
                   let
                     fun loop (index,
                         currentEnv: BOMEnv.t,
@@ -315,7 +315,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                       else
                         let
                           val (newDec: Decs.dec, newEnv: BOMEnv.t) =
-                            ElaborateBOMCore.elaborateBomDec (
+                            ElaborateBOMCore.elaborateBOMDec (
                               Vector.sub (bomDecs, index),
                               {env = E, bomEnv = currentEnv})
                         in

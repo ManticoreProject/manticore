@@ -100,6 +100,7 @@ signature CORE_BOM =
         | QBOMTy of ModuleId.t * BOMId.t
 
       val fromBOMId: BOM.BOMId.t -> t
+      val fromLongId: BOM.LongId.t -> t
       (* val fromLongTyId: BOM.LongTyId.t -> t *)
 
       val maybeQualify: t * ModuleId.t -> t
@@ -114,7 +115,7 @@ signature CORE_BOM =
         | QBOMVal of ModuleId.t * BOMId.t
 
       val fromBOMId: BOM.BOMId.t -> t
-      (* val fromLongValueId: BOM.LongValueId.t -> t *)
+      val fromLongId: BOM.LongId.t -> t
       (* val fromLongConId: BOM.LongConId.t -> t *)
 
       (* Add the given qualifier only if it doesn't yet have one *)
@@ -157,7 +158,7 @@ signature CORE_BOM =
           rng: type_t
         }
       | Record of field_t list
-      | Tuple of type_t list
+      | Tuple of (bool * type_t) list
       | Fun of {
           dom: type_t list,
           cont: type_t list,
@@ -168,7 +169,6 @@ signature CORE_BOM =
       | Cont of type_t list
       | Addr of type_t
       | Raw of RawTy.t
-      | NoReturn                (* FIXME: delete this *)
       | Error
     and dataconsdef_t
       = ConsDef of BOMId.t * type_t option
@@ -217,7 +217,7 @@ signature CORE_BOM =
       val isCont: t -> t option
 
       val unit: t
-	    val wrapTuple: t list -> t
+	    (* val wrapTuple: t list -> t *)
 
     end
 
