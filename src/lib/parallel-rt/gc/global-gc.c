@@ -407,6 +407,15 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
 
   /* scan to-space chunks */
     ScanGlobalToSpace (vp);
+         
+  /* process the proxy table */
+  for (int i=0; i < vp->proxyTableentries;i++) {
+        Value_t p = vp->proxyTable[i].proxyObj;
+        assert(isFromSpacePtr(p));
+        vp->proxyTable[i].proxyObj = ForwardObjGlobal(vp, p);
+        
+  }	
+        
     LogGlobalGCVPDone (vp, 0/*FIXME*/);
 
 #ifndef NDEBUG
@@ -711,6 +720,25 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 	sprintf(buf, "root[%d]", i);
 	Value_t v = *roots[i];
 	CheckLocalPtrGlobal (self, roots[i], buf);
+    }
+
+  // check the proxy table
+    for (int i = 0;  i < self->proxyTableentries;  i++) {
+	CheckLocalPtrGlobal (
+	    self, ValueToPtr(self->proxyTable[i].localObj), "proxy-table local pointer");
+	CheckGlobalPtr (
+	    self, ValueToPtr(self->proxyTable[i].proxyObj), "proxy-table global pointer");
+    }
+        
+  //check consistency of the proxy table
+
+    for (int i=0; i < self->proxyTableentries;i++) {
+        Value_t p = self->proxyTable[i].proxyObj;
+        
+        Word_t	*p2 = ((Word_t *)ValueToPtr(p));
+        
+        assert(p2[1] == i);
+        
     }
 
   // check the local heap

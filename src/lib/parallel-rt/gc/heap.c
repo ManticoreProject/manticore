@@ -244,6 +244,7 @@ void AllocToSpaceChunk (VProc_t *vp)
 
 }
 
+
 /*! \brief Allocate a VProc's local memory object.
  */
 Addr_t AllocVProcMemory (int id, Location_t loc)

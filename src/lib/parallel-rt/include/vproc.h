@@ -39,6 +39,12 @@ typedef struct {    //!< a perf counter
 } PerfCntrs_t;
 #endif
 
+//Proxy Table
+typedef struct {
+    Value_t	proxyObj;	// proxy object in the global heap
+    Value_t	localObj;	// local-heap object that the proxy represents.
+} ProxyTblEntry_t;
+
 /* WARNING:
  * Changing the vproc struct might require modifying ../config/vproc-offsets-ins.c.
  */
@@ -64,6 +70,10 @@ struct struct_vproc {
     Value_t	stdCont;	//!< holds value of standard return-cont. reg.
     Value_t	stdExnCont;	//!< holds value of standard exception-cont. reg.
     Addr_t	allocPtr;	//!< allocation pointer
+			     /* Proxy Table variables */
+    int proxyTableentries;
+    int maxProxy;
+    ProxyTblEntry_t * proxyTable;
 			      /* logging support */
 /* NOTE: these volatile annotations are not required for the SWP branch */
     volatile uint64_t

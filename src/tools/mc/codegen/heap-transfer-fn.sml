@@ -620,7 +620,7 @@ functor HeapTransferFn (
     *  noGCRoots (roots)
     *
     *)
-    | genHeapCheck varDefTbl {hck=CFG.HCK_Global, checkStms, allocCheck, nogc} = raise Fail "todo"
+    | genHeapCheck varDefTbl {hck=CFG.HCK_Global, checkStms, allocCheck, nogc} = raise Fail "TODO: Generate a global heap check."
 (*
 let
       val getChunkLab = newLabel "getChunk"

@@ -15,6 +15,7 @@
     fls.pml
     scheduler-action.pml
     vproc.pml
+    proxy.pml
     vproc-queue.pml
     vproc-init.pml
   end

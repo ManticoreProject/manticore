@@ -81,6 +81,23 @@ STATIC_INLINE bool isRawHdr (Word_t hdr)
     return ((getID(hdr) == RAW_TAG_BITS)  && (isNoPtr(hdr)));
 }
 
+STATIC_INLINE bool isProxyHdr (Word_t hdr)
+{
+	return (getID(hdr) == 2);
+}
+
+STATIC_INLINE int GetMixedSizeW (Word_t hdr)
+{
+    return (hdr >> 16);
+}
+
+/*
+STATIC_INLINE Word_t GetMixedBits (Word_t hdr)
+{
+     return (tagstable[getID(hdr)]);
+}
+*/
+
 /* Return the length field of a header */
 STATIC_INLINE int GetLength (Word_t hdr)
 {
@@ -115,6 +132,7 @@ STATIC_INLINE bool isFromSpacePtr (Value_t p)
 	
 }
 
+extern Value_t PromoteObj (VProc_t *vp, Value_t root);
 extern Value_t ForwardObjMinor (Value_t v, Word_t **nextW);
 extern Value_t ForwardObjMajor (VProc_t *vp, Value_t v);
 extern Value_t ForwardObjGlobal (VProc_t *vp, Value_t v);

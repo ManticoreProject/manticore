@@ -155,6 +155,30 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	}
     }
 
+    int beg = 0;
+    for (int i=0; i < vp->proxyTableentries;i++) {
+	Value_t p = vp->proxyTable[i].localObj;
+	if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
+	  // p points to an old object
+	    p = ForwardObjMajor(vp, p);
+	    Word_t *proxyObj = (Word_t *)(vp->proxyTable[i].proxyObj);
+	    proxyObj[1] = (Word_t)p;
+	}
+	else if (inVPHeap(heapBase, ValueToAddr(p))) {
+	  // p points to another object in the "young" region, so adjust it.
+	    p = AddrToValue(ValueToAddr(p) - oldSzB);
+	  // rearrange the element so it is at the beginning of the table
+	    Word_t *proxyObj = (Word_t *)(vp->proxyTable[i].proxyObj);
+	    proxyObj[1] = (Word_t)beg;
+	    vp->proxyTable[beg].proxyObj = PtrToValue(proxyObj);
+	    vp->proxyTable[beg].localObj = p;
+	    beg++;
+	}
+    }
+
+  //reset the proxy table
+   vp->proxyTableentries = beg;
+
   /* we also treat the data between vproc->oldTop and top as roots, since
    * it is known to be both young and live.  While scanning it, we also
    * do pointer translation on the internal pointers in preparation for

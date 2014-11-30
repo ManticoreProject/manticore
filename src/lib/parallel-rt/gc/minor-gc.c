@@ -31,8 +31,9 @@ Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
 	Word_t	*p = (Word_t *)ValueToPtr(v);
 	Word_t	hdr = p[-1];
 	
-	if (isForwardPtr(hdr))
+	if (isForwardPtr(hdr)) {
 		return PtrToValue(GetForwardPtr(hdr));
+	}
 	else {
 		int len = GetLength(hdr);
 		Word_t *newObj = *nextW;
@@ -115,7 +116,15 @@ void MinorGC (VProc_t *vp)
 	    }
 	}
     }
-
+	
+   /* process the proxy table */
+    for (int i=0; i < vp->proxyTableentries; i++) {
+	Value_t p = vp->proxyTable[i].localObj;
+	if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {  
+	    vp->proxyTable[i].localObj = ForwardObjMinor(p, &nextW);
+	}
+    }
+	
   /* scan to space */
     while (nextScan < nextW-1) {
 		assert ((Addr_t)(nextW-1) <= vp->nurseryBase);
