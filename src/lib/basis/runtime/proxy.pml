@@ -126,7 +126,7 @@ structure Proxy (* :
 	      
 	  (* send the thief fiber to the victim vproc *)
 	    let fls : FLS.fls = FLS.@get()
-	    do VProc.@send-from-atomic (thiefVP, victimVP, fls, thief)
+	    do VProc.@send-in-atomic (thiefVP, victimVP, fls, thief)
 	    
 	    fun wait () : cont(any) =
 		case #0(ch)
