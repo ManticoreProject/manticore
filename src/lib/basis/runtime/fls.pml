@@ -340,38 +340,32 @@ structure FLS :
         ;
 
       (*increment lower 32 bits of thread local counter by n*)
-      define inline @inc-counter(n:int) : () = 
-        let fls : fls = @get()
+      define inline @inc-counter(n:int, fls : fls) : () = 
         let n' : int = #5(fls)
         do SELECT(COUNTER_OFF, fls) := I32Add(n', n)
         return ();
 
       (*decrement lower 32 bits of thread local counter by n*)
-      define inline @dec-counter(n:int) : () = 
-        let fls : fls = @get()
+      define inline @dec-counter(n:int, fls : fls) : () = 
         let n' : int = #5(fls)
         do SELECT(COUNTER_OFF, fls) := I32Sub(n', n)
         return ();
 
       (*get lower 32 bits of thread local counter by n*)
-      define inline @get-counter() : int = 
-        let fls : fls = @get()
+      define inline @get-counter(fls : fls) : int = 
         let n' : int = #5(fls)
         return(n');
 
       (*set lower 32 bits of thread local counter by n*)
-      define inline @set-counter(n:int) : () = 
-        let fls : fls = @get()
+      define inline @set-counter(n:int, fls : fls) : () = 
         do SELECT(COUNTER_OFF, fls) := n
         return ();
 
-      define inline @set-counter2(n:int) : () = 
-        let fls : fls = @get()
+      define inline @set-counter2(n:int, fls : fls) : () = 
         do #6(fls) := n
         return();
 
-      define inline @get-counter2() : int = 
-        let fls : fls = @get()
+      define inline @get-counter2(fls : fls) : int = 
         return(#6(fls));
 
         

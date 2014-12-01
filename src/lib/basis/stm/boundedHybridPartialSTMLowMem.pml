@@ -30,32 +30,20 @@ struct
                           do ccall M_Print_Int("Partially aborted %d transactions\n", counter1)
 #define BUMP_FABORT do ccall M_BumpCounter(1)
 #define PRINT_FABORT_COUNT let counter2 : int = ccall M_GetCounter(1) \
-                           do ccall M_Print_Int("Fully aborted %d transactions\n", counter2)    
-#define BUMP_NOK do ccall M_BumpCounter(2)
-#define PRINT_NOK_COUNT let counter3 : int = ccall M_GetCounter(2) \
-                           do ccall M_Print_Int("Allocated %d read items without continuations\n", counter3)     
-#define BUMP_K do ccall M_BumpCounter(3)
-#define PRINT_K_COUNT let counter4 : int = ccall M_GetCounter(3) \
-                           do ccall M_Print_Int("Allocated %d read items with continuations\n", counter4)              
-#define BUMP_DROP do ccall M_BumpCounter(4)
-#define PRINT_DROP_COUNT let counter5 : int = ccall M_GetCounter(4) \
-                           do ccall M_Print_Int("Filtered read set %d times\n", counter5)    
+                           do ccall M_Print_Int("Fully aborted %d transactions\n", counter2)                     
 #define PRINT_COMBINED do ccall M_Print_Int("Aborted %d transactions in total\n", I32Add(counter1, counter2))                                                                                                          
 #else
 #define BUMP_PABORT
 #define PRINT_PABORT_COUNT
 #define BUMP_FABORT
 #define PRINT_FABORT_COUNT
-#define BUMP_NOK 
-#define PRINT_NOK_COUNT  
-#define BUMP_K
-#define PRINT_K_COUNT            
-#define BUMP_DROP 
-#define PRINT_DROP_COUNT 
 #define PRINT_COMBINED 
 #endif
 
 #define READ_SET_BOUND 20
+
+#define START_TIMER let vp : vproc = host_vproc do ccall GenTimerStart(vp)
+#define STOP_TIMER let vp : vproc = host_vproc do ccall GenTimerStop(vp)
 
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a
                      | WithoutK of 'a * 'a
@@ -70,6 +58,9 @@ struct
         extern void M_StartTimer();
         extern void M_StopTimer();
         extern long M_GetTimeAccum();
+        extern void GenTimerStart(void *);
+        extern void GenTimerStop(void *);
+        extern void GenTimerPrint();
 
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
@@ -79,7 +70,7 @@ struct
                             any,              (*2: write list*)
                             any,                    (*3: next read item*)
                             item,item];                   (*4: next read item with a continuation*)
-                            
+
         typedef skipList = any;
 
         define @new(x:any / exh:exh) : tvar = 
@@ -171,6 +162,7 @@ struct
         ;
 
         define @commit(/exh:exh) : () = 
+            START_TIMER
             let startStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : item) : () = 
                 case locks 
@@ -195,6 +187,7 @@ struct
                                      let captureFreq : int = FLS.@get-counter2(fls)
                                      do FLS.@set-counter(captureFreq, fls)
                                      let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
+                                     STOP_TIMER
                                      throw abortK()  (*no checkpoint found*)
                                 else do apply release(locks)
                                      let abortK : cont(any) = (cont(any)) abortK
@@ -213,6 +206,7 @@ struct
                                      let captureFreq : int = FLS.@get-counter2(fls)
                                      do FLS.@set-counter(captureFreq, fls)
                                      BUMP_PABORT
+                                     STOP_TIMER
                                      throw abortK(current)
                              | WithoutK(tv:tvar,_:item) =>
                                 do apply release(locks)
@@ -220,6 +214,7 @@ struct
                                 let captureFreq : int = FLS.@get-counter2(fls)
                                 do FLS.@set-counter(captureFreq, fls)
                                 let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
+                                STOP_TIMER
                                 throw abortK()  (*no checkpoint found*)
                         end                          
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
@@ -258,6 +253,8 @@ struct
                              else let newStamp : stamp = VClock.@bump(/exh)
                                   do apply validate(readSet, acquired, newStamp, NilItem,  0)  (*figure out where to abort to*)
                                   apply acquire(writeSet, acquired)
+                                 (* let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                  throw abortK() *)
                      |NilItem => return(acquired)
                 end
             fun update(writes:item, newStamp : stamp) : () = 
@@ -274,6 +271,7 @@ struct
             let newStamp : stamp = VClock.@bump(/exh)
             do apply validate(readSet, locks, newStamp, NilItem, 0)
             do apply update(locks, newStamp)
+            STOP_TIMER
             return()
         ;
 
@@ -311,6 +309,9 @@ struct
         PRINT_PABORT_COUNT
         PRINT_FABORT_COUNT
         PRINT_COMBINED 
+#ifdef GEN_TIMER        
+        do ccall GenTimerPrint()
+#endif        
         return(UNIT);
     )
 

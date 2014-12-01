@@ -8,7 +8,7 @@
         -https://github.com/sweirich/dth/tree/master/examples/red-black
  *)
  
-structure WhichSTM = BoundedHybridPartialSTMLowMem
+structure WhichSTM = FullAbortSTM
 
 type 'a tvar = 'a WhichSTM.tvar
 
@@ -336,7 +336,6 @@ val _ = initialize 100000
 val startTime = Time.now()
 val _ = join(start t THREADS)
 val endTime = Time.now()
-val _ = WhichSTM.printStats()
 val _ = print ("Total was: " ^ Time.toString (endTime - startTime) ^ " seconds\n")
 
 val _ = WhichSTM.atomic(fn _ => chkOrder t)
@@ -344,7 +343,7 @@ val _ = WhichSTM.atomic(fn _ => chkBlackPaths t handle Fail s => print s)
 
 
 
-
+val _ = WhichSTM.printStats()
 
 
 

@@ -12,23 +12,15 @@ pmlc $@ -o fullAbort modified.pml
 
 rm modified.pml modified.s
 
-sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = PartialSTM/g" $f > modified.pml
-
-pmlc $@ -o partialAbort modified.pml
-
-rm modified.pml modified.s
-
-sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = HybridPartialSTM/g" $f > modified.pml
-
-pmlc $@ -o hybridPartialAbort modified.pml
-
-rm modified.pml modified.s
-
-sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = BoundedHybridPartialSTM/g" $f > modified.pml
-
-pmlc $@ -o boundedHybridPartialAbort modified.pml
-
-rm modified.pml modified.s
+#sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = PartialSTM/g" $f > modified.pml
+#pmlc $@ -o partialAbort modified.pml
+#rm modified.pml modified.s
+#sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = HybridPartialSTM/g" $f > modified.pml
+#pmlc $@ -o hybridPartialAbort modified.pml
+#rm modified.pml modified.s
+#sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = BoundedHybridPartialSTM/g" $f > modified.pml
+#pmlc $@ -o boundedHybridPartialAbort modified.pml
+#rm modified.pml modified.s
 
 sed "s/structure WhichSTM = [a-z|A-Z]*/structure WhichSTM = BoundedHybridPartialSTMLowMem/g" $f > modified.pml
 
