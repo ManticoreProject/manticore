@@ -88,7 +88,7 @@ void VProcInit (bool isSequential, Options_t *opts)
     }
     else {
 	NumVProcs = ((NumHWThreads == 0) ? DFLT_NUM_VPROCS : NumHWThreads);
-    NumVProcs = GetVprocsOpt (opts, NumVProcs, &procs);
+        NumVProcs = GetVprocsOpt (opts, NumVProcs, &procs);
 	NumVProcs = GetIntOpt (opts, "-p", NumVProcs);
 	if ((NumHWThreads > 0) && (NumVProcs > NumHWThreads))
 	    Warning ("%d processors requested on a %d processor machine\n",
@@ -323,6 +323,10 @@ void *NewVProc (void *arg)
     vproc->nBytesPromoted = 0;
     TIMER_Init (&(vproc->promoteTimer));
 #endif
+
+
+    TIMER_Init(&(vproc->genTimer));
+
 
   /* store a pointer to the VProc info as thread-specific data */
     pthread_setspecific (VProcInfoKey, vproc);

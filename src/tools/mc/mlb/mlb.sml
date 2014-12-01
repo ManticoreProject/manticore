@@ -140,7 +140,8 @@ structure MLB : sig
 	    add (Controls.get BasicControl.logging, "ENABLE_LOGGING",
 	    add (not(Controls.get BasicControl.debug), "NDEBUG",
 	    add (Controls.get BasicControl.eagerConflict, "EAGER_CONFLICT",
-	      []))))
+	    add (Controls.get BasicControl.timer, "GEN_TIMER",
+	      [])))))
 	  end
 
   (* pass the file through a sequence of preprocessors *)
@@ -374,9 +375,8 @@ structure MLB : sig
 	  (* parallel array *)
 	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
 	    val stm = loadMLB(LoadPaths.stmLib, env)
-	    val fullAbortSTM = loadMLB(LoadPaths.fullAbortSTM, env)
             in
-              fullAbortSTM @ stm @ parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
+              stm @ parrayPts @ topLevelSchedPts @ runtimeBasisLibPts
             end
           else let
 	  (* implicit-threading library *)
@@ -391,9 +391,8 @@ structure MLB : sig
 	    val parrayPts = loadMLB(LoadPaths.parrayLib, env)
 	  (* partial abort software transactional memory*)
 	    val stm = loadMLB(LoadPaths.stmLib, env)
-	    val fullAbortSTM = loadMLB(LoadPaths.fullAbortSTM, env)
             in
-	       fullAbortSTM @ stm @ parrayPts @ cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts
+	       stm @ parrayPts @ cmlPts @ defImplicitThreadSchedPts @ topLevelSchedPts @ implicitThreadingPts
 	    end
 
     val emptyEnv = Env{loc=(0,0), pts=[], preprocs=[]}

@@ -125,6 +125,9 @@ struct struct_vproc {
     PerfCntrs_t misses;//!< L3 read miss perf counter
     PerfCntrs_t reads;//!< L3 read perf counter
 #endif
+
+    Timer_t	genTimer;		//!< general purpose timer  
+
 };
 
 /* the type of the initial function to run in a vproc */

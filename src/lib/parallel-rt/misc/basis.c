@@ -740,3 +740,39 @@ void DebugThrow (VProc_t *vp, char *loc)
     SayDebug("[%2d] %s\n", vp->id, loc);
 #endif
 }
+
+char * PrintTime (double t)
+{
+    char buffer [50];
+    if (t < 0.001)
+	sprintf (buffer, "   0.0  ");
+    else if (t < 1.0)
+	sprintf (buffer, "   %5.3f", t);
+    else if (t < 10.0)
+	sprintf (buffer, "  %5.2f ", t);
+    else if (t < 100.0)
+	sprintf (buffer, " %5.1f  ", t);
+    else
+	sprintf (buffer, " %3.0f  ", t);
+	return buffer;
+}
+
+
+void GenTimerStart(VProc_t *vp){
+    TIMER_Start(&(vp->genTimer));
+}   
+
+void GenTimerStop(VProc_t *vp){
+    TIMER_Stop(&(vp->genTimer));
+}   
+
+void GenTimerPrint(){
+    for (int i = 0;  i < NumVProcs;  i++) {
+	    VProc_t *vp = VProcs[i];
+	    double time = TIMER_GetTime (&(vp->genTimer));
+	    char * timeStr = PrintTime(time);
+	    printf("VProc[%d] timer = %s\n", i, timeStr);
+	}
+}
+
+

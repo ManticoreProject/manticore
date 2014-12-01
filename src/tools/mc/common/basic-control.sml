@@ -29,6 +29,9 @@ structure BasicControl :  sig
   (* link with debug version of runtime mode *)
     val debug : bool Controls.control
 
+  (* general purpose timer*)
+    val timer : bool Controls.control
+
   (* enable collection of GC and memory statistics *)
     val gcStats : bool Controls.control
 
@@ -165,6 +168,15 @@ structure BasicControl :  sig
 	    obscurity = 0,
 	    help = "include debugging support",
 	    default = false
+	  }
+
+  (* link with debug version of runtime mode *)
+    val timer : bool Controls.control = Controls.genControl {
+	    name = "timer",
+	    pri = [0, 1, 2],
+	    obscurity = 0,
+	    help = "include general purpose timer",
+	    default = true
 	  }
 
   (* enable eager STM conflict detection *)

@@ -65,9 +65,5 @@ structure LoadPaths =
 
     val stmLib = join (stmDir, "stm.mlb")
 
-    val fullAbortDir = join(basisDir, "full_abort_stm")
-
-    val fullAbortSTM = join(fullAbortDir, "full-abort-stm.mlb")
-
     end (* local *)
   end

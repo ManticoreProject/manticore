@@ -228,6 +228,7 @@ functor MainFn (
 	  \    -sequential      compile a sequential-mode program\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \    -eager           enable eager STM conflict detection\n\
+	  \    -timer           enable general purpose timer\n\
 	  \"
 
     fun message (level, b) = (
@@ -315,6 +316,7 @@ functor MainFn (
 		| "-debug" => set BasicControl.debug
 		| "-perf" => set BasicControl.perf
 		| "-eager" => set BasicControl.eagerConflict
+		| "-timer" => set BasicControl.timer
 		| _ => badopt ()
 	      (* end case *))
 	  end
