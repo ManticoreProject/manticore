@@ -148,7 +148,7 @@ structure Proxy (* :
         let max : int = vpload (MAXPROXY, self)
         if I32NEq(id, max) then
           let myAddr : addr(any) = vpload(PROXYTABLE, self)
-          let myProxy : proxy = alloc (self, I32ToI64(id)) (* XXX: was "alloc_special", trying just "alloc" *)
+          let myProxy : proxy = alloc_special (self, I32ToI64(id))
         (* store the proxy and continuation at the offside position *)
           do AdrStore(AdrAddI32(myAddr, TABLE_POS(id)), myProxy)
           do AdrStore(AdrAddI32(myAddr, I32Add(TABLE_POS(id), TABLE_ENTRY_OFFB)), fiber)

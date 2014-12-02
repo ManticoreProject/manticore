@@ -286,6 +286,13 @@ structure TranslatePrim : sig
 				    fn xs => BOM.mkStmt(lhs', BOM.E_Alloc(ty, xs),
 				      body'))
 				end
+			    | BPT.SE_AllocSpecial args => let
+				val ty = BV.typeOf(hd lhs')
+				in
+				  cvtSimpleExps(loc, findCFun, args,
+				    fn xs => BOM.mkStmt(lhs', BOM.E_AllocSpecial(ty, xs),
+				      body'))
+				end
 			    | BPT.SE_Wrap e =>
 				cvtSimpleExp (loc, findCFun, e,
 				  fn x => BOM.mkStmt(lhs', BOM.E_Alloc(BOMTyUtil.wrap(BV.typeOf x), [x]), body'))
@@ -439,6 +446,15 @@ structure TranslatePrim : sig
 		     val tmp = newTmp(BTy.T_Tuple(mut, tys))
 		     in
 			BOM.mkStmt([tmp], BOM.E_Alloc(BTy.T_Tuple(mut, tys), xs), k tmp)
+		     end)
+	      | BPT.SE_AllocSpecial args => 
+		(* NOTE: nested tuples are always immutable *)
+		  cvtSimpleExps(loc, findCFun, args, fn xs => let
+		     val mut = false
+		     val tys = List.map BV.typeOf xs
+		     val tmp = newTmp(BTy.T_Tuple(mut, tys))
+		     in
+			BOM.mkStmt([tmp], BOM.E_AllocSpecial(BTy.T_Tuple(mut, tys), xs), k tmp)
 		     end)
 	      | BPT.SE_Wrap e =>
 		  cvt (loc, e, fn x => let

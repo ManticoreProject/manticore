@@ -36,6 +36,11 @@ signature ALLOC =
 	    tys : CFG.ty list,
 	    args : MTy.mlrisc_tree list
 	  } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
+	  
+    val genGlobalAllocSpecial : {
+	    tys : CFG.ty list,
+	    args : MTy.mlrisc_tree list
+          } -> {ptr : MTy.mlrisc_tree, stms : MTy.T.stm list}
 
   (* genAllocCheck szb *)
   (* generates MLRISC code that checks if there are at least szb bytes free *)

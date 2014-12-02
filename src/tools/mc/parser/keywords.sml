@@ -58,6 +58,7 @@ structure Keywords : sig
     val bomKeywords = [
 	    ("addr",		T.KW_addr),
 	    ("alloc",		T.KW_alloc),
+	    ("alloc_special",	T.KW_alloc_special),
 	    ("and",		T.KW_and),
 	    ("any",		T.KW_any),
 	    ("apply",		T.KW_apply),

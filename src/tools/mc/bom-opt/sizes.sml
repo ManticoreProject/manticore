@@ -21,6 +21,7 @@ structure Sizes : sig
       | sizeOfRHS (B.E_Update _) = 1
       | sizeOfRHS (B.E_AddrOf _) = 1
       | sizeOfRHS (B.E_Alloc(_, args)) = 1 + List.length args
+      | sizeOfRHS (B.E_AllocSpecial(_, args)) = 1 + List.length args
       | sizeOfRHS (B.E_Promote _) = 2
       | sizeOfRHS (B.E_Prim _) = 1
       | sizeOfRHS (B.E_DCon(_, args)) = 2 + List.length args

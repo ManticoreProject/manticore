@@ -297,6 +297,8 @@ structure CheckCPS : sig
                         else (error  ["type mismatch in Alloc: ", vl2s lhs, " = ", vl2s xs, "\n"];
 			      cerror ["  lhs type ", t2s ty, "\n"];
 			      cerror ["  found    ", tl2s (typesOf xs), "\n"]))
+		  | ([ty], C.AllocSpecial(ty', xs)) => (
+                      chkVars(env, xs, "AllocSpecial"))
 		  | ([ty], C.Promote x) => (
                       chkVar(env, x, "Promote");
 		      if (CTU.soundMatch(CV.typeOf x, ty))

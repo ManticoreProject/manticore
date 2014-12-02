@@ -21,6 +21,47 @@
 //predefined table entries, important for AllocUniform and GlobalAllocUniform
 int predefined = 3;
 
+Value_t AllocProxy (VProc_t *vp,int nElems, ...)
+{
+        Value_t elems[nElems];
+        va_list ap;
+        
+        printf("Proxy Memory Check, global alloc ptr is %p, the limit is %p\n",(void *)vp->globNextW,(void*)vp->globLimit);
+        
+        if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {
+                
+        GetChunkForVProc(vp);
+        }
+    
+    //printf("Global alloc before = %llu\n",(long long int)vp->globNextW);
+    
+        assert (AddrToChunk(vp->globNextW)->sts == TO_SP_CHUNK);
+    
+        /* first we must ensure that the elements are in the global heap */
+        va_start(ap, nElems);
+        for (int i = 0;  i < nElems;  i++) {
+                elems[i] = va_arg(ap, Value_t);
+        }
+        va_end(ap);
+    
+        Word_t *obj = (Word_t *)(vp->globNextW);
+        /* FIXME: what if there isn't enough space!!! */
+        obj[-1] = PXY_HDR(nElems);
+        for (int i = 0;  i < nElems;  i++) {
+                obj[i] = (Word_t)elems[i];
+        }
+    
+        vp->globNextW += WORD_SZB * (nElems+1);
+    
+    //printf("Global alloc after = %llu\n",(long long int)vp->globNextW);
+    
+#ifndef NO_GC_STATS
+        vp->globalStats.nBytesAlloc += WORD_SZB * (nElems+1);
+#endif  
+    
+        return PtrToValue(obj);
+}
+
 void EnsureGlobalSpace(VProc_t *vp, int nElems) {
     //check if we have enough global memory in the current chunk, if not we have to allocate a new one
     if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {     

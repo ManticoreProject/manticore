@@ -244,6 +244,21 @@ void AllocToSpaceChunk (VProc_t *vp)
 
 }
 
+/* Allocates a new to space chunk   (for the vproc)
+ and adds the old chunk to the unscanned list of the global GC
+This function can't be called within a global GC function!
+ */
+
+void GetChunkForVProc(VProc_t * vp) {
+
+        //save the old global allocation pointer 
+        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
+        //allocate a new chunk of global memory
+        AllocToSpaceChunk(vp);
+        //add the old global memory chunk to the unscanned to space list for the global GC
+        PushToSpaceChunks (vp, oldGlobalChunk, false);
+        
+}
 
 /*! \brief Allocate a VProc's local memory object.
  */

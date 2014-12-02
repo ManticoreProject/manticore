@@ -223,7 +223,9 @@ if MChkTy.check stm
 		  List.app emitExit(List.rev(exits))
 		end
 	    | genTransfer (M.HeapCheck {hck, szb, nogc}) = let
-		val {stms=checkStms, allocCheck} = BE.Alloc.genAllocCheck szb
+		val {stms=checkStms, allocCheck} = (case hck
+                                                     of CFG.HCK_Local => BE.Alloc.genAllocCheck szb
+                                                      | CFG.HCK_Global => BE.Alloc.genGlobalAllocCheck szb)
 		val {stms, return} = BE.Transfer.genHeapCheck varDefTbl 
 				      {hck=hck, nogc=nogc, checkStms=checkStms, allocCheck=allocCheck}
 		in 
@@ -320,6 +322,16 @@ if MChkTy.check stm
 		      in 
 			emitStms stms;
 			bindExp ([lhs], [ptr], ["alloc ", v2s lhs, " = ", String.concat (List.map v2s vs)])
+		      end
+		  | gen (M.E_AllocSpecial(lhs, Ty.T_Tuple(_, tys), vs)) = let
+		      val {ptr, stms} = BE.Alloc.genGlobalAllocSpecial {
+			      tys = tys,
+                              args = List.map getDefOf vs
+			    }
+		      in 
+			emitStms (annotateStms (
+			  stms, String.concat("alloc_special " :: v2s lhs :: " = " :: List.map v2s vs)));
+			bindExp ([lhs], [ptr], [])
 		      end
 		  | gen (M.E_GAlloc(lhs, Ty.T_Tuple(isMut, tys), vs)) = let 
 		      val {ptr, stms} = BE.Alloc.genGlobalAlloc {

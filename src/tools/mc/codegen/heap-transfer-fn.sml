@@ -620,32 +620,42 @@ functor HeapTransferFn (
     *  noGCRoots (roots)
     *
     *)
-    | genHeapCheck varDefTbl {hck=CFG.HCK_Global, checkStms, allocCheck, nogc} = raise Fail "TODO: Generate a global heap check."
-(*
-let
+    | genHeapCheck varDefTbl {hck=CFG.HCK_Global, checkStms, allocCheck, nogc} = 
+      (* raise Fail "TODO: Generate a global heap check." *)
+      let
       val getChunkLab = newLabel "getChunk"
+    (*  val oldGlobalAllocPtr = IntInf.toInt Spec.ABI.globAllocChunk *)
+
       val {stms=getGlobalChunkStms, ...} = 
-	  ccall {lhs=[], name=T.LABEL RuntimeLabels.getGlobalChunk,
-	     retTy=CTy.C_void, paramTys=[CTy.C_PTR], 
-	     cArgs=[CCall.ARG VProcOps.genHostVP'], saveAllocationPointer=true}
+    ccall {lhs=[], name=T.LABEL RuntimeLabels.getGlobalChunk,
+       retTy=CTy.C_void, paramTys=[CTy.C_PTR], 
+       cArgs=[CCall.ARG VProcOps.genHostVP'], saveAllocationPointer=true}
+(*
+      val {stms=addOldChunkToScanToSpace, ...} = 
+          ccall {lhs=[], 
+                 name=T.LABEL RuntimeLabels.addOldChunkToScanToSpace,
+                 retTy=CTy.C_void, 
+                 paramTys=[CTy.C_PTR, CTy.C_PTR, CTy.C_signed CTy.I_int], 
+                 cArgs=[CCall.ARG VProcOps.genHostVP',CCall.ARG  (MTy.T.LI(MachineInt.fromInt(64,oldGlobalAllocPtr))),CCall.ARG (MTy.T.LI(MachineInt.fromInt(32,0)))], 
+                 saveAllocationPointer=true}
+*)
       val continueStms = genGoto varDefTbl nogc
      (* Call into the runtime system to allocate a global heap chunk. *)
       val getChunkStms = List.concat [
-			 [T.DEFINE getChunkLab],
-			 getGlobalChunkStms,
-			 continueStms
-	  ]
-      val {stms=allocCheckStms, allocCheck} = Alloc.genGlobalAllocCheck szb
+       [T.DEFINE getChunkLab],
+       getGlobalChunkStms,
+       continueStms
+    ]
      (* Check that there is sufficient space in the global heap. *)
       val chkStms = List.concat [
-		    allocCheckStms,
-		    [T.BCC (allocCheck, getChunkLab)],
-		    continueStms
+        checkStms,
+        [T.BCC (allocCheck, getChunkLab)],
+        continueStms
           ]
       in
-	  {stms=chkStms @ getChunkStms, return=NONE}
+    {stms=chkStms @ getChunkStms, return=NONE}
       end (* genHeapCheck *)
-*)
+
 
   (* bind a parameter *)
   fun bindParam (param, k) = (case (param, k)

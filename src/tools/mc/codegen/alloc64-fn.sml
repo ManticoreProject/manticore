@@ -124,6 +124,20 @@ functor Alloc64Fn (
 	  in
 	    (totalSize, hdrWord, stms)
 	  end (* allocRawObj *)
+	  
+	  (* alloc function for the special object with fixed header/table entry *)
+    fun allocSpecialObj offAp args = let
+	val {i=nWords, stms, totalSize, ptrMask} = 
+	    List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=""} args
+	(* create the mixed-object header word *)
+        val id = 2
+        val hdrWord = W.toLargeInt (
+		      W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+		                    W.<< (W.fromInt id, 0w1)), 0w1) )
+        val _ = if Controls.get CodegenControls.debug then print (" special\n") else ()
+    in	  
+	(totalSize, hdrWord, stms)
+    end (* allocSpecialObj *)
 
     fun offAp i = T.ADD(MTy.wordTy, T.REG(MTy.wordTy, Regs.apReg), i)
 
@@ -186,6 +200,13 @@ functor Alloc64Fn (
 	  in
 	    (totSz, hdr, List.rev stms)
 	  end
+	  
+	  
+   fun allocspecial (offAp : T.rexp -> T.rexp) args = let
+	  val (totSz, hdr, stms) = allocSpecialObj offAp args
+	  in
+	    (totSz, hdr, List.rev stms)
+	  end	  
 
 
     (* FIXME: this value should come from the runtime constants *)
@@ -271,6 +292,69 @@ functor Alloc64Fn (
 	  in
 	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: stms @ [bumpAp] }
 	  end
+	  
+	  fun annotate (stm, "") = stm
+      | annotate (stm, msg) = T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT msg)
+
+ (* This expression checks that there are at least szB bytes available in the
+   * global heap.
+   *
+   *  if (globNextW + szB > globLimit)
+   *     then continue;
+   *     else doGC ();
+   *)
+(* FIXME: untested *)
+    fun genGlobalAllocCheck szB = let
+	val (vpReg, setVP) = let
+	      val r = Cells.newReg()
+	      val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+	      in
+		 (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
+	      end
+	val globalAP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg)
+	val globalLP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globLimit, vpReg)
+	in            
+	   {stms=[ setVP ],
+	      allocCheck=T.CMP (MTy.wordTy, T.Basis.LE,
+	   T.SUB (MTy.wordTy, globalLP, globalAP),
+	  		       T.LI (Word.toLargeInt szB))}
+	end
+
+
+    fun genGlobalAllocSpecial {tys=[], ...} = raise Fail "AllocSpecial[]"
+      (* | genGlobalAllocSpecial {tys, args} = raise Fail "TODO: AllocSpecial" *)
+      | genGlobalAllocSpecial {tys, args} = let
+	  val args = ListPair.zipEq (tys, args)
+	  val (vpReg, setVP) = let
+		val r = Cells.newReg()
+		val MTy.EXP(_, hostVP) = VProcOps.genHostVP
+		in
+		  (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
+		end
+	  val (globalApReg, globalAp, setGAp, globalApAddr) = let
+		val r = Cells.newReg()
+		val MTy.EXP(_, gap) = MTy.EXP (64, VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg))
+		in
+		  (r, T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, gap), gap)
+		end
+	  fun offAp i = T.ADD (MTy.wordTy, globalAp, i)
+	  val (totalSize, hdrWord, stms) = allocspecial offAp args
+	(* store the header word *)
+	  val stms = MTy.store (offAp (wordLit (~wordSzB)), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) 
+		:: stms
+	(* bump up the allocation pointer *)
+	  val bumpAp = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.globNextW, vpReg, 
+			T.ADD (64, globalApAddr, wordLit (totalSize+wordSzB)))
+	  in
+	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: stms @ [bumpAp] }
+	  end
+	  
+	  fun annotate (stm, "") = stm
+      | annotate (stm, msg) = T.ANNOTATION(stm, #create MLRiscAnnotations.COMMENT msg)
+
+
+(* FIXME: this value should come from the runtime constants *)
+    val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
 
   (* This expression evaluates to true when the heap has enough space for szB
    * bytes.  There are 4kbytes of heap slop presubtracted from the limit pointer
@@ -319,29 +403,5 @@ functor Alloc64Fn (
 		T.MULU (64, wordLit (Word.toInt szb), T.ADD (64, wordLit 4, T.ZX (64, 32, n))))
 	}
       end
-
-  (* This expression checks that there are at least szB bytes available in the
-   * global heap.
-   *
-   *  if (globNextW + szB > globLimit)
-   *     then continue;
-   *     else doGC ();
-   *)
-(* FIXME: untested *)
-    fun genGlobalAllocCheck szB = let
-	val (vpReg, setVP) = let
-	      val r = Cells.newReg()
-	      val MTy.EXP(_, hostVP) = VProcOps.genHostVP
-	      in
-		 (T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, hostVP))
-	      end
-	val globalAP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globNextW, vpReg)
-	val globalLP = VProcOps.genVPLoad' (MTy.wordTy, Spec.ABI.globLimit, vpReg)
-	in
-	    {stms=[ setVP ],
-	     allocCheck=T.CMP (MTy.wordTy, T.Basis.LE,
-			       T.SUB (MTy.wordTy, globalLP, globalAP),
-			       T.LI (Word.toLargeInt szB))}
-	end
 
   end (* Alloc64Fn *)

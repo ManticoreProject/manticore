@@ -116,6 +116,11 @@ structure PrintCFG : sig
 		      in
 			pr mut; prList varUseToString args
 		      end
+		  | (CFG.E_AllocSpecial(_, ty, args)) => let
+		      val mut = (case ty of CFGTy.T_Tuple(true, _) => "alloc_special !" | _ => "alloc_special ")
+		      in
+			pr mut; prList varUseToString args
+		      end
 		  | (CFG.E_GAlloc(_, ty, args)) => let
 		      val mut = (case ty of CFGTy.T_Tuple(true, _) => "galloc !" | _ => "galloc ")
 		      in

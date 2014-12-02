@@ -95,6 +95,11 @@ structure PrintCPS : sig
 		in
 		  pr(concat["alloc ", mut, "("]); prList' varUseToString ys; pr ")"
 		end
+	    | prRHS (CPS.AllocSpecial(ty, ys)) = let
+		val mut = (case ty of CPSTy.T_Tuple(true, _) => "!" | _ => "")
+		in
+		  pr(concat["alloc_special ", mut, "("]); prList' varUseToString ys; pr ")"
+		end
 	    | prRHS (CPS.Promote y) = prl["promote(", varUseToString y, ")"]
 	    | prRHS (CPS.Prim p) = pr (PrimUtil.fmt varUseToString p)
 	    | prRHS (CPS.CCall(f, args)) = (

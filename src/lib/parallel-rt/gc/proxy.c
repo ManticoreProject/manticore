@@ -47,14 +47,7 @@ void globalCheck (VProc_t *vp) {
 	//printf("Proxy Memory Check, global alloc ptr is %p, the limit is %p\n",(void *)vp->globNextW,(void*)vp->globLimit);
 	
 	if ((vp->globNextW + WORD_SZB * 3) >= vp->globLimit) {
-		
-		//save the old global allocation pointer 
-        MemChunk_t *oldGlobalChunk = vp->globAllocChunk;
-        //allocate a new chunk of global memory
-        AllocToSpaceChunk(vp);
-        //add the old global memory chunk to the unscanned to space list for the global GC
-        PushToSpaceChunks (vp, oldGlobalChunk, false);
-
+		GetChunkForVProc(vp);
 		printf("AllocProxy need more space\n");
 	}
 }
