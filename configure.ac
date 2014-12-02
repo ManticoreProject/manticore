@@ -145,10 +145,18 @@ dnl
 dnl For various reasons, "gcc -E" doesn't work as a cpp command, so we look for
 dnl the old cpp.
 dnl
-AC_PATH_PROGS(CPP, cpp-4.2 cpp-4.0 cpp, NONE, $PATH:/lib:/usr/lib)
-if test x$CPP = x ; then
-  AC_MSG_ERROR([no cpp found])
-fi
+AC_PROG_CPP
+#AC_PATH_PROGS(CPP, cpp-4.2 cpp-4.0 cpp, NONE, $PATH:/lib:/usr/lib)
+#
+# if we are using the C compiler as CPP (e.g., "clang -E"), then we add the
+# "-x assembler-with-cpp" to improve robustness
+#
+case x$CPP in
+  x) C_MSG_ERROR([no cpp found]) ;;
+  *cpp*) ;;
+  *gcc*) CPP="$CPP -x assembler-with-cpp" ;;
+  *clang*) CPP="$CPP -x assembler-with-cpp" ;;
+esac
 
 dnl
 dnl check for pthreads
