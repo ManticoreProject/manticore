@@ -30,9 +30,7 @@ structure Proxy (* :
     structure PT = PrimTypes
     
 #define TABLE_ENTRY_OFFB     8
-
 #define TABLE_OFFB           16
-
 #define TABLE_POS(i)    I32Mul(i,TABLE_OFFB)
     
     _primcode (
