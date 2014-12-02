@@ -268,12 +268,12 @@ structure FunctionHoisting : sig
         end
 
     fun transform m = 
-        let (*val _ = dump m "pre"*)
-            val _ = FreeVars.clear m
-            val _ = FreeVars.analyze m
-            val m' = reorderFuns m
-           (* val _ = dump m' "post"*)
-        in m'
-        end
+        if !hoistFlag
+        then let val _ = FreeVars.clear m
+                 val _ = FreeVars.analyze m
+                 val m' = reorderFuns m
+             in m'
+             end
+        else m
 
   end

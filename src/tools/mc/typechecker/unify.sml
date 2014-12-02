@@ -67,8 +67,8 @@ structure Unify : sig
 		 of (Ty.ErrorTy, ty2) => true
 		  | (ty1, Ty.ErrorTy) => true
 		  | (ty1 as Ty.MetaTy mv1, ty2 as Ty.MetaTy mv2) =>
-		       MetaVar.same(mv1, mv2) orelse unifyMV(mv1, mv2) 
-		  | (Ty.MetaTy mv1, ty2) => unifyWithMV (ty2, mv1) 
+                                MetaVar.same(mv1, mv2) orelse unifyMV(mv1, mv2)
+		  | (Ty.MetaTy mv1, ty2) => unifyWithMV (ty2, mv1)
 		  | (ty1, Ty.MetaTy mv2) => unifyWithMV (ty1, mv2)
 		  | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) =>
 		    (TyCon.same(tyc1, tyc2)) andalso ListPair.allEq uni (tys1, tys2)
@@ -77,10 +77,9 @@ structure Unify : sig
 		  | (Ty.TupleTy tys1, Ty.TupleTy tys2) =>
 		      ListPair.allEq uni (tys1, tys2)
 		  | (Ty.VarTy tv1, Ty.VarTy tv2) => TyVar.same(tv1, tv2)
-		  | _ =>
-(print (concat["unification failure:\n  ", TypeUtil.fmt {long=true} ty1,
-"\n  ", TypeUtil.fmt {long=true} ty2, "\n"]);
-false)
+		  | _ => (print (concat["unification failure:\n  ", TypeUtil.fmt {long=true} ty1,
+                          "\n  ", TypeUtil.fmt {long=true} ty2, "\n"]);
+                          false)
 	       (* end case *))
 	(* unify a type with an uninstantiated meta-variable *)
 	  and unifyWithMV (ty, mv as Ty.MVar{info, ...}) = let
@@ -103,7 +102,7 @@ false)
 				then (assignMV(info, Ty.INSTANCE ty); true)
 				else false
 			  (* end case *))
-		    | _ => raise Fail "impossible"
+		    | _ =>  raise Fail "impossible"
 		  (* end case *)
 		end
 	(* unify two meta variables *)

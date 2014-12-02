@@ -127,7 +127,6 @@ struct struct_vproc {
 #endif
 
     Timer_t	genTimer;		//!< general purpose timer  
-
 };
 
 /* the type of the initial function to run in a vproc */

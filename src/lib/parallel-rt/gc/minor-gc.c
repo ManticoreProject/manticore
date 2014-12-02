@@ -186,11 +186,6 @@ bzero(nextScan, avail); /* clear unused part of local heap */
     SetAllocPtr (vp);
 }
 
-/*force a minor garbage collection*/
-void ForceGC(VProc_t * vp){
-    MinorGC(vp);
-}
-
 #ifndef NDEBUG
 void CheckLocalPtrMinor (VProc_t *self, void *addr, const char *where)
 {

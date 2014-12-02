@@ -61,7 +61,7 @@ struct
         extern void GenTimerStart(void *);
         extern void GenTimerStop(void *);
         extern void GenTimerPrint();
-
+        
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
 
@@ -162,7 +162,6 @@ struct
         ;
 
         define @commit(/exh:exh) : () = 
-            START_TIMER
             let startStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : item) : () = 
                 case locks 
@@ -187,7 +186,6 @@ struct
                                      let captureFreq : int = FLS.@get-counter2(fls)
                                      do FLS.@set-counter(captureFreq, fls)
                                      let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
-                                     STOP_TIMER
                                      throw abortK()  (*no checkpoint found*)
                                 else do apply release(locks)
                                      let abortK : cont(any) = (cont(any)) abortK
@@ -206,7 +204,6 @@ struct
                                      let captureFreq : int = FLS.@get-counter2(fls)
                                      do FLS.@set-counter(captureFreq, fls)
                                      BUMP_PABORT
-                                     STOP_TIMER
                                      throw abortK(current)
                              | WithoutK(tv:tvar,_:item) =>
                                 do apply release(locks)
@@ -214,7 +211,6 @@ struct
                                 let captureFreq : int = FLS.@get-counter2(fls)
                                 do FLS.@set-counter(captureFreq, fls)
                                 let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
-                                STOP_TIMER
                                 throw abortK()  (*no checkpoint found*)
                         end                          
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
@@ -271,10 +267,16 @@ struct
             let newStamp : stamp = VClock.@bump(/exh)
             do apply validate(readSet, locks, newStamp, NilItem, 0)
             do apply update(locks, newStamp)
-            STOP_TIMER
             return()
         ;
 
+        define inline @force-gc() : () = 
+            let vp : vproc = host_vproc
+            let limitPtr : any = vpload(LIMIT_PTR, vp)
+            do vpstore(ALLOC_PTR, vp, limitPtr)
+            return()   
+        ;
+        
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
             let fls : FLS.fls = FLS.@get()
             do FLS.@set-counter(0, fls)  (*initialize frequency counters*)
@@ -282,7 +284,7 @@ struct
             cont enter() = 
                 let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
                 if (#0(in_trans))
-                then do ccall M_Print ("WARNING: entering nested transaction\n") apply f(UNIT/exh)
+                then apply f(UNIT/exh)
                 else do FLS.@set-key(READ_SET, alloc(0, NilItem, NilItem) / exh)  (*initialize STM log*)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
                      let stamp : stamp = VClock.@bump(/exh)
@@ -308,14 +310,11 @@ struct
       define @print-stats(x:unit / exh:exh) : unit = 
         PRINT_PABORT_COUNT
         PRINT_FABORT_COUNT
-        PRINT_COMBINED 
-#ifdef GEN_TIMER        
-        do ccall GenTimerPrint()
-#endif        
+        PRINT_COMBINED        
         return(UNIT);
     )
 
-    	type 'a tvar = _prim(tvar)
+    	type 'a tvar = 'a PartialSTM.tvar
     	val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val get : 'a tvar -> 'a = _prim(@get)
     val new : 'a -> 'a tvar = _prim(@new)
