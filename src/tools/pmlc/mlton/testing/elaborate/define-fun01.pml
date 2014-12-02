@@ -1,3 +1,3 @@
-_module myId (
+_module myId _prim (
  fun myFun<'a> (x: 'a) -> 'a = return(x);
 )
