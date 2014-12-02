@@ -43,19 +43,6 @@ signature AST_BOM =
     structure RawTy : sig
 	type t
 	datatype node = datatype RawTypes.raw_ty
-(*
-  datatype node
-    = Int8
-    | Uint8
-    | Int16
-    | Uint16
-    | Int32
-    | Uint32
-    | Int64
-    | Uint64
-    | Float32
-    | Float64
-*)
 
 	val layout : t -> Layout.t
 
@@ -215,12 +202,11 @@ signature AST_BOM =
 	type t
 	type exp
 	datatype node
-	  = LongRule of LongId.t * VarPat.t list * exp
+	  = PatRule of LongId.t * VarPat.t list * exp
 	  | LiteralRule of Literal.t * exp
-	  | DefaultRule of VarPat.t * exp       (* collapsing CaseDefault *)
 
 	val layout : t -> Layout.t
-	val isDefault : t -> bool
+	(* val isDefault : t -> bool *)
 
 	include WRAPPED
 	  sharing type node' = node
@@ -248,7 +234,7 @@ signature AST_BOM =
 	datatype node
 	  = PrimOp of PrimOp.t * t list
 	  | AllocId of LongId.t * t list
-	  | AllocType of BOMType.t * t list
+	  | AllocType of BOMType.t * t
 	  | Select of IntInf.int * t
 	  | Assign of IntInf.int * t * t
 	  | TypeCast of BOMType.t * t
@@ -345,7 +331,8 @@ signature AST_BOM =
     structure Import : sig
 	type t
 	datatype node
-	  = Datatype of Type.t vector * Longtycon.t * BOMId.t option * ImportCon.t list
+	  = Datatype of Type.t vector * Longtycon.t * BOMId.t option
+        * ImportCon.t list
 	  | Exn of Longcon.t * Type.t option * BOMId.t option
 	  | Val of Longvid.t * Type.t * BOMId.t option
 

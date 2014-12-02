@@ -313,16 +313,15 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       = Wild of type_t option
       | Var of BOMId.t * type_t option
     and caserule_node
-      = LongRule of LongId.t * varpat_t list * exp_t
+      = PatRule of LongId.t * varpat_t list * exp_t
       | LiteralRule of Literal.t * exp_t
-      | DefaultRule of varpat_t * exp_t
     and tycaserule_node
       = TyRule of type_t * exp_t
       | Default of exp_t
     and simpleexp_node
       = PrimOp of PrimOp.t * simpleexp_t list
       | AllocId of LongId.t * simpleexp_t list
-      | AllocType of type_t * simpleexp_t list  (* type will be tuple or record *)
+      | AllocType of type_t * simpleexp_t
       | Select of IntInf.int * simpleexp_t
       | Assign of IntInf.int * simpleexp_t * simpleexp_t
       | TypeCast of type_t * simpleexp_t
@@ -486,7 +485,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         Layout.mayAlign (leftEls@[Layout.str " => ", rightEl])
     in
       case Wrap.node myNode of
-        LongRule (longId, varPats, exp) =>
+        PatRule (longId, varPats, exp) =>
             defaultFormat ([
                LongId.layout longId,
                indentedSchemeList (map layoutVarPat varPats)
@@ -495,10 +494,10 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
             defaultFormat
               ([Literal.layout lit],
               layoutExp exp)
-        | DefaultRule (varpat, exp) =>
-            defaultFormat
-              ([layoutVarPat varpat],
-              layoutExp exp)
+        (* | DefaultRule (varpat, exp) => *)
+        (*     defaultFormat *)
+        (*       ([layoutVarPat varpat], *)
+        (*       layoutExp exp) *)
     end
 
   and layoutTyCaseRule myNode =
@@ -551,7 +550,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
             Layout.mayAlign [
               Layout.str "alloc",
               layoutType myTy,
-              indentedSchemeList (layoutSimpleExps simpleExps)
+              unindentedSchemeList ([layoutSimpleExp simpleExps])
             ]
         | Select (posInt, simpleExp) =>
             Layout.mayAlign [
@@ -774,10 +773,10 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   val layout = layoutCaseRule
 
-  fun isDefault c =
-    case node c of
-      DefaultRule c => true
-    | _ => false
+  (* fun isDefault c = *)
+  (*   case node c of *)
+  (*     DefaultRule c => true *)
+  (*   | _ => false *)
 
   end
 

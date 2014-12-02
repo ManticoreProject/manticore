@@ -336,13 +336,16 @@ SimpleExp
         : PrimOp "(" Args ")"
                 => (mkSimpleExp (BOM.SimpleExp.PrimOp (PrimOp, Args), FULL_SPAN))
         | "alloc" BOMLongId "(" Args ")"
-                => (mkSimpleExp (BOM.SimpleExp.AllocId(BOMLongId, Args), FULL_SPAN))
-        | "alloc" BOMTupleOrRecordType "(" Args ")"
-                => (mkSimpleExp (BOM.SimpleExp.AllocType(BOMTupleOrRecordType, Args), FULL_SPAN))
+                => (mkSimpleExp (BOM.SimpleExp.AllocId (BOMLongId, Args), FULL_SPAN))
+        | "alloc" BOMTupleOrRecordType "(" SimpleExp ")"
+                => (mkSimpleExp (BOM.SimpleExp.AllocType (BOMTupleOrRecordType,
+                  SimpleExp), FULL_SPAN))
         | "#" PosInt "(" SimpleExp ")" (":=" SimpleExp)?
                 => (case SR
-                     of NONE => mkSimpleExp (BOM.SimpleExp.Select (PosInt, SimpleExp), FULL_SPAN)
-                      | SOME exp => mkSimpleExp (BOM.SimpleExp.Assign (PosInt, SimpleExp, exp), FULL_SPAN)
+                     of NONE => mkSimpleExp (BOM.SimpleExp.Select (PosInt,
+                       SimpleExp), FULL_SPAN)
+                      | SOME exp => mkSimpleExp (BOM.SimpleExp.Assign (PosInt,
+                          SimpleExp, exp), FULL_SPAN)
                     (* end case *))
         | "(" BOMType ")" SimpleExp
                 => (mkSimpleExp (BOM.SimpleExp.TypeCast (BOMType, SimpleExp), FULL_SPAN))
@@ -369,25 +372,25 @@ SimpleExp
 CaseRules
         : CaseRule ("|" CaseRules)?
                 => (case SR of NONE => [CaseRule] | SOME rules => CaseRule :: rules)
-        | BOMId ":" BOMType "=>" BOMExp
-                => ([BOM.CaseRule.makeRegion (
-                      BOM.CaseRule.DefaultRule(
-                        BOM.VarPat.makeRegion (
-                          BOM.VarPat.Var(BOMId, SOME BOMType), mergeSpans(BOMId_SPAN, BOMType_SPAN)),
-                        BOMExp),
-                      posToReg FULL_SPAN)])
-        | "_" (":" BOMType)? "=>" BOMExp
-                => ([BOM.CaseRule.makeRegion (
-                      BOM.CaseRule.DefaultRule(
-                        BOM.VarPat.makeRegion (BOM.VarPat.Wild SR, mergeSpans(WILD_SPAN, SR_SPAN)),
-                        BOMExp),
-                      posToReg FULL_SPAN)])
+        (* | BOMId ":" BOMType "=>" BOMExp *)
+        (*         => ([BOM.CaseRule.makeRegion ( *)
+        (*               BOM.CaseRule.DefaultRule( *)
+        (*                 BOM.VarPat.makeRegion ( *)
+        (*                   BOM.VarPat.Var(BOMId, SOME BOMType), mergeSpans(BOMId_SPAN, BOMType_SPAN)), *)
+        (*                 BOMExp), *)
+        (*               posToReg FULL_SPAN)]) *)
+        (* | "_" (":" BOMType)? "=>" BOMExp *)
+        (*         => ([BOM.CaseRule.makeRegion ( *)
+        (*               BOM.CaseRule.DefaultRule( *)
+        (*                 BOM.VarPat.makeRegion (BOM.VarPat.Wild SR, mergeSpans(WILD_SPAN, SR_SPAN)), *)
+        (*                 BOMExp), *)
+        (*               posToReg FULL_SPAN)]) *)
         ;
 
 CaseRule
         : BOMLongId ( "(" VarPat ("," VarPat)* ")" => (VarPat :: SR) )? "=>" BOMExp
                 => (BOM.CaseRule.makeRegion (
-                      BOM.CaseRule.LongRule(BOMLongId, optToList SR, BOMExp),
+                      BOM.CaseRule.PatRule(BOMLongId, optToList SR, BOMExp),
                       posToReg FULL_SPAN))
         | Literal "=>" BOMExp
                 => (BOM.CaseRule.makeRegion (

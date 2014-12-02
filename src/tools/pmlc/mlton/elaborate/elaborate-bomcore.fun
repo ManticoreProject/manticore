@@ -509,13 +509,14 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
 
   and elaborateCaseRule (caseRule, ruleExp, tyEnvs as {env, bomEnv}) =
     let
-      fun checkForErrorVal errorVal = check (error (BOM.CaseRule.region,
+      fun errorForErrorVal errorVal = (error (BOM.CaseRule.region,
         BOM.CaseRule.layout, errorVal, caseRule))
+      fun checkForErrorVal errorVal = check (errorForErrorVal errorVal)
       val ruleTy = CoreBOM.SimpleExp.typeOf ruleExp
-      fun elaborateLongRule (valId, varPats, exp) =
+      fun elaborateLongRule (value, varPats) =
          let
-            val (conVal, conTy) = lookupCon (valId, tyEnvs, checkForErrorVal,
-              checkForErrorVal)
+            val (conVal, conTy) = lookupCon (CoreBOM.Val.idOf value, tyEnvs,
+              checkForErrorVal, checkForErrorVal)
             val (dom, rng) =
               case conTy of
                 (* A unary constructor constrains the domain to its own domain *)
@@ -530,56 +531,50 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               "case object and rules don't agree")
           in
             (newBOMEnv, fn exp' => CoreBOM.CaseRule.LongRule (conVal, varPats,
-              exp'), exp)
+              exp'))
           end
-      val (newBOMEnv, ruleCon, exp) =
-        case BOM.CaseRule.node caseRule of
-          BOM.CaseRule.LongRule (longCon, varPats, exp) =>
-            elaborateLongRule (CoreBOM.ValId.fromLongId longCon, varPats,
-              exp)
-        | BOM.CaseRule.LiteralRule (literal, exp) =>
-            let
-              val ctx = checkForErrorVal BOMEnv.Context.empty (
-                (* ruleExp must be a rawTy to set the context *)
-                case CoreBOM.SimpleExp.typeOf ruleExp of
-                  CoreBOM.BOMType.Raw rawTy => SOME rawTy
-                | _ => NONE, "case object and rules don't agree")
-                (fn rawTy => BOMEnv.Context.setTy (BOMEnv.Context.empty, rawTy))
-              val litExp = checkForErrorVal CoreBOM.SimpleExp.error
-            in
-              (bomEnv, fn exp' => CoreBOM.CaseRule.LiteralRule (
-                elaborateLiteral (literal, ctx), exp'), exp)
-            end
-        | BOM.CaseRule.DefaultRule (varPat, exp) =>
-           (* It's possible that this VarPat is actually a Long
-           because we can't tell until elaboration.  *)
+      fun elaboratePatRule (longId, varPats) =
+        case (BOMEnv.ValEnv.lookup (bomEnv, CoreBOM.ValId.fromLongId longId),
+            varPats) of
+          (* either we've got a constructor *)
+          (SOME value, _) => elaborateLongRule (value, varPats)
+          (* It's just varPat to be bound for the default case  *)
+        | (NONE, []) =>
            let
-             fun elabToSimple () =
-               let
-                 val (newBOMEnv, [newVal]) = bindVarPats ([varPat],
-                   [ruleTy], tyEnvs)
-               in
-                 (newBOMEnv, fn exp' => CoreBOM.CaseRule.DefaultRule (
-                   newVal, exp'), exp)
-               end
-           in
-             case BOM.VarPat.node varPat of
-               (* A wild can't be a con *)
-               BOM.VarPat.Wild _ => elabToSimple ()
-              (* FIXME: deal with the type constraint *)
-             | BOM.VarPat.Var (bomId, _) =>
-                 let
-                   val valId = CoreBOM.ValId.fromBOMId bomId
-                 in
-                   if Option.isSome (BOMEnv.ValEnv.lookup (bomEnv, valId)) then
-                     elaborateLongRule (valId, [], exp)
-                   else elabToSimple()
-                 end
+             val newValId = CoreBOM.ValId.fromLongId longId
+             val newVal = CoreBOM.Val.new (newValId, ruleTy, [])
+            in
+              (BOMEnv.ValEnv.extend (bomEnv, newValId, newVal),
+                fn exp' => CoreBOM.CaseRule.DefaultRule (newVal, exp'))
            end
-        val newExp = elaborateExp (exp, {env = env, bomEnv = newBOMEnv})
-      in
-        ruleCon newExp
-      end
+           (* or we tried to apply a non-existent constructor to
+        arguments, an error *)
+        | _ => errorForErrorVal (bomEnv, fn exp' =>
+            CoreBOM.CaseRule.DefaultRule (CoreBOM.Val.error, exp'))
+            "value identifier is not a constructor"
+      fun elaborateLiteralRule literal =
+        let
+          val ctx = checkForErrorVal BOMEnv.Context.empty (
+            (* ruleExp must be a rawTy to set the context *)
+            case CoreBOM.SimpleExp.typeOf ruleExp of
+              CoreBOM.BOMType.Raw rawTy => SOME rawTy
+            | _ => NONE, "case object and rules don't agree")
+              (fn rawTy => BOMEnv.Context.setTy (BOMEnv.Context.empty, rawTy))
+          val litExp = checkForErrorVal CoreBOM.SimpleExp.error
+        in
+          (bomEnv, fn exp' => CoreBOM.CaseRule.LiteralRule (
+            elaborateLiteral (literal, ctx), exp'))
+        end
+      val ((newBOMEnv, ruleCon), exp) =
+        case BOM.CaseRule.node caseRule of
+          BOM.CaseRule.PatRule (longId, varPats, exp) =>
+            (elaboratePatRule (longId, varPats), exp)
+        | BOM.CaseRule.LiteralRule (literal, exp) =>
+            (elaborateLiteralRule literal, exp)
+      val newExp = elaborateExp (exp, {env = env, bomEnv = newBOMEnv})
+    in
+      ruleCon newExp
+    end
 
   and elaborateTyCaseRule (tyCaseRule, tyEnvs) =
     let
