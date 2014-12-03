@@ -152,7 +152,7 @@ AC_PROG_CPP
 # "-x assembler-with-cpp" to improve robustness
 #
 case x$CPP in
-  x) C_MSG_ERROR([no cpp found]) ;;
+  x) AC_MSG_ERROR([no cpp found]) ;;
   *cpp*) ;;
   *gcc*) CPP="$CPP -x assembler-with-cpp" ;;
   *clang*) CPP="$CPP -x assembler-with-cpp" ;;
