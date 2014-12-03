@@ -25,7 +25,7 @@ const int predefined = 3;
  * Checks if there is enough global heap space in the current chunk,
  * if not, it will allocate a new one.
  */
-inline void EnsureGlobalSpace(VProc_t *vp, int nElems) {
+void EnsureGlobalSpace(VProc_t *vp, int nElems) {
     //check if we have enough global memory in the current chunk, if not we have to allocate a new one
     if (vp->globNextW + WORD_SZB * (nElems+1) >= vp->globLimit) {     
         //save the old global allocation pointer 
@@ -42,7 +42,7 @@ inline void EnsureGlobalSpace(VProc_t *vp, int nElems) {
 /**
  * Allocate a proxy directly in the global heap.
  */
- 
+
 Value_t AllocProxy (VProc_t *vp, int nElems, ...)
 {
     EnsureGlobalSpace (vp, nElems);
@@ -73,7 +73,7 @@ Value_t AllocProxy (VProc_t *vp, int nElems, ...)
 /**
  * Simply adds an assert statement that checks whether there is enough space. 
  */
-inline void EnsureNurserySpace(VProc_t *vp, int nElems) {
+void EnsureNurserySpace(VProc_t *vp, int nElems) {
     /* 4KB is the slop size */
     assert((vp->allocPtr + WORD_SZB * (nElems+1) < (vp->limitPtr + 4096)) || (vp->limitPtr == 0));
 }
