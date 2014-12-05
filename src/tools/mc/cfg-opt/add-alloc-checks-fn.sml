@@ -121,8 +121,14 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 		val _ = List.app funcAlloc code
 	      (* add allocation checks as needed *)
 		fun rewrite (f as CFG.FUNC{lab, entry, start as CFG.BLK{args, body, exit, ...}, body=bodyBlocks}, fs) = let
-		      fun needsCheck lab = (FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab)
-					   (* andalso (getAlloc lab > 0w0) *)
+
+              (* If we don't allocate any data, we still emit local checks, but not global checks. *)
+		      fun needsCheck lab = (case hcKind
+                                        of CFG.HCK_Local => (FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab)
+                                        | CFG.HCK_Global => (getAlloc lab > 0w0)
+                                        (* end case *))
+                
+
 		      val (freeVars, args', orig, entry') = (case entry (* rename parameters *)
 			     of CFG.StdFunc{clos, ret, exh} => let
 				  val clos' = CFG.Var.copy clos
@@ -148,6 +154,8 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 				    (clos' :: args', args', clos :: args, CFG.KnownFunc{clos=clos'})
 				  end
 			   (* end case *))
+
+
 		      fun convertBlock (block as CFG.BLK{body, args, exit, lab}, freeVars, renamedArgs, allArgs) = let
 			    val lab' = CFG.Label.new(
 				       CFG.Label.nameOf lab ^ checkLabel,
@@ -162,13 +170,19 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 			    in
 			      (heapBodyBlock, [newBlock])
 			    end
+
+
 		      val export = (case CFG.Label.kindOf lab
 				     of CFG.LK_Func{export, ...} => export
 				      | _ => raise Fail "bogus label kind"
 				   (* end case *))
+
+
 		      val ((start, other), entry) = if needsCheck lab
 					   then (convertBlock (start, freeVars, args', orig), entry')
 					   else ((start, []), entry)
+
+
 		      val body = List.foldl (fn (b as CFG.BLK{lab, args, ...}, rr) =>
 						if needsCheck lab
 						then let
@@ -178,7 +192,11 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 							a::(b@rr)
 						    end
 						else b::rr) other bodyBlocks
+
+
 		      val f' = CFG.mkFunc(lab, entry, start, body, export)
+
+
 		      in
 			f' :: fs
 		      end (* rewrite *)
