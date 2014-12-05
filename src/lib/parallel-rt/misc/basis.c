@@ -636,6 +636,10 @@ double M_Atan2 (double x, double y)
   return atan2(x,y);
 }
 
+double M_Acos(double x){
+    return acos(x);
+}
+
 int64_t M_Lround (double x)
 {
   return lround(x);
