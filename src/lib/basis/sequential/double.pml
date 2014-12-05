@@ -19,6 +19,7 @@ structure Double =
 	extern double M_Tan (double) __attribute__((pure));
 	extern double M_Atan (double) __attribute__((pure));
 	extern double M_Atan2 (double, double) __attribute__((pure));
+	extern double M_Acos (double) __attribute__((pure));
         extern long M_Lround (double) __attribute__((pure));
 	extern void *M_DoubleToString (double) __attribute__((alloc,pure));
 	extern void *M_DoubleFromString (void*) __attribute__((alloc,pure));
@@ -48,6 +49,9 @@ structure Double =
 	define inline @double-atan2 (arg : [ml_double, ml_double] / exh : exh) : ml_double =
 	    let res : double = ccall M_Atan2 (#0(#0(arg)), #0(#1(arg)))
 	      return (alloc(res));
+	define inline @double-acos (x : ml_double / exh : exh) : ml_double = 
+	        let res : double = ccall M_Acos(#0(x))
+	        return(alloc(res));
         define inline @double-lround (x : ml_double / exh : exh) : ml_long =
             let res : long = ccall M_Lround (#0(x))
               return (alloc(res));
@@ -79,6 +83,7 @@ structure Double =
     val tan : double -> double = _prim (@double-tan)
     val atan : double -> double = _prim (@double-atan)
     val atan2 : double * double -> double = _prim (@double-atan2)
+    val acos : double -> double = _prim(@double-acos)
     val round : double -> long = _prim (@double-lround)
     val sqrt : double -> double = _prim (@double-sqrt)
     val pow : (double * double) -> double = _prim (@double-pow)
