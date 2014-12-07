@@ -16,8 +16,8 @@ structure IntRef =
 
       define inline @new (x : ml_int / exh: exh) : ref =
         let cell : ref = alloc(#0(x))
-        let cell' : ref = promote(cell)
-        return(cell')
+        let cell2 : ref = promote(cell)
+        return(cell2)
         ;
 
       define inline @set (args : [ref, ml_int] / exh: exh) : unit =

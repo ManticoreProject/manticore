@@ -103,7 +103,7 @@ STATIC_INLINE Value_t AtomicWriteValue (volatile Value_t *ptr, Value_t new)
     *ptr = new;
     __sync_synchronize();  // FIXME: does this work? 
   */
-  AtomicExchangeValue(ptr, new);
+  return AtomicExchangeValue(ptr, new);
 }
 
 STATIC_INLINE int FetchAndInc (volatile int *ptr)
