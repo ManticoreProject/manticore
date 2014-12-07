@@ -52,12 +52,12 @@ struct
         TextIO.output (MyoutStrm, "                     /* the vproc pointer is pretty common, so filter it out */\n");
         TextIO.output (MyoutStrm, "                     //global or minor; maybe the if clauses are the same??\n"); 
         TextIO.output (MyoutStrm, "                     if (tag == 1) {   \n");           
-        TextIO.output (MyoutStrm, "                         if ((Addr_t)v & ~VP_HEAP_MASK != (Addr_t)v)\n");
+        TextIO.output (MyoutStrm, "                         if (((Addr_t)v & ~VP_HEAP_MASK) != (Addr_t)v)\n");
         TextIO.output (MyoutStrm, "                             SayDebug(\"[%2d] ** possible local pointer %p in mixed object %p+%d\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, (void *)v, (void *)p, (int)(scanP-p));\n");
         TextIO.output (MyoutStrm, "                          }\n");
         TextIO.output (MyoutStrm, "                          else {\n");
-        TextIO.output (MyoutStrm, "                              if (ValueToAddr(v) & ~VP_HEAP_MASK != ValueToAddr(v))\n");
+        TextIO.output (MyoutStrm, "                              if ((ValueToAddr(v) & ~VP_HEAP_MASK) != ValueToAddr(v))\n");
         TextIO.output (MyoutStrm, "                                   SayDebug(\"[%2d] ** possible local pointer %p in mixed object %p+%d\\n\",\n");
         TextIO.output (MyoutStrm, "                                              self->id, (void *)v, (void *)p, (int)(scanP-p));\n");
         TextIO.output (MyoutStrm, "                          }\n");
@@ -329,7 +329,7 @@ struct
         TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
         TextIO.output (MyoutStrm, "                     else if (IS_VPROC_CHUNK(cq->sts))\n");
         TextIO.output (MyoutStrm, "                          /* the vproc pointer is pretty common, so filter it out */\n");
-        TextIO.output (MyoutStrm, "                          if (ValueToAddr(v) & ~VP_HEAP_MASK != ValueToAddr(v))\n");
+        TextIO.output (MyoutStrm, "                          if ((ValueToAddr(v) & ~VP_HEAP_MASK) != ValueToAddr(v))\n");
         TextIO.output (MyoutStrm, "                              SayDebug(\"[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
         TextIO.output (MyoutStrm, "                     else if (cq->sts == FREE_CHUNK)\n");
@@ -422,7 +422,7 @@ struct
         TextIO.output (MyoutStrm, "                                   self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
         TextIO.output (MyoutStrm, "                     /* the vproc pointer is pretty common, so filter it out */\n"); 
         TextIO.output (MyoutStrm, "                     else if (IS_VPROC_CHUNK(cq->sts))\n");
-        TextIO.output (MyoutStrm, "                          if (ValueToAddr(v) & ~VP_HEAP_MASK != ValueToAddr(v))\n"); 
+        TextIO.output (MyoutStrm, "                          if ((ValueToAddr(v) & ~VP_HEAP_MASK) != ValueToAddr(v))\n"); 
         TextIO.output (MyoutStrm, "                              SayDebug(\"[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len);\n");
         TextIO.output (MyoutStrm, "                     else if (cq->sts == FREE_CHUNK)\n");
@@ -451,7 +451,7 @@ struct
         TextIO.output (MyoutStrm, "                         SayDebug(\"[%2d] ** unexpected remote pointer %p at %p in vector\\n\",\n");
         TextIO.output (MyoutStrm, "                                   self->id, ValueToPtr(v), (void *)ptr);\n");
         TextIO.output (MyoutStrm, "                      }\n");
-        TextIO.output (MyoutStrm, "                      else if (ValueToAddr(v) & ~VP_HEAP_MASK != ValueToAddr(v)) {\n");
+        TextIO.output (MyoutStrm, "                      else if ((ValueToAddr(v) & ~VP_HEAP_MASK) != ValueToAddr(v)) {\n");
         TextIO.output (MyoutStrm, "                           SayDebug(\"[%2d] ** unexpected vproc-structure pointer %p at %p in vector\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr);\n");
         TextIO.output (MyoutStrm, "                      }\n");
