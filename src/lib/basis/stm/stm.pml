@@ -12,27 +12,22 @@ structure PartialSTM = (* :
 *)
 struct
 
-#ifndef NDEBUG
-#define PDebug(msg)  do ccall M_Print(msg)  
-#define PDebugInt(msg, v)  do ccall M_Print_Int(msg, v)  
-#define PDebugInt2(msg, v1, v2)  do ccall M_Print_Int2(msg, v1, v2)  
-#define PDebugLong(msg, v) do ccall M_Print_Long(msg, v)
-#else
-#define PDebug(msg) 
-#define PDebugInt(msg, v)   
-#define PDebugInt2(msg, v1, v2) 
-#define PDebugLong(msg, v) 
-#endif
-
 #define COUNT
 
 #ifdef COUNT
-#define BUMP_ABORT do ccall M_BumpCounter(0)
-#define PRINT_ABORT_COUNT let counter : int = ccall M_GetCounter(0) \
-                          do ccall M_Print_Int("Aborted %d transactions\n", counter)
+#define BUMP_PABORT do ccall M_BumpCounter(0)
+#define PRINT_PABORT_COUNT let counter1 : int = ccall M_GetCounter(0) \
+                          do ccall M_Print_Int("Partially aborted %d transactions\n", counter1)
+#define BUMP_FABORT do ccall M_BumpCounter(1)
+#define PRINT_FABORT_COUNT let counter2 : int = ccall M_GetCounter(1) \
+                           do ccall M_Print_Int("Fully aborted %d transactions\n", counter2)                     
+#define PRINT_COMBINED do ccall M_Print_Int("Aborted %d transactions in total\n", I32Add(counter1, counter2))                                                                                                          
 #else
-#define BUMP_ABORT
-#define PRINT_ABORT_COUNT
+#define BUMP_PABORT
+#define PRINT_PABORT_COUNT
+#define BUMP_FABORT
+#define PRINT_FABORT_COUNT
+#define PRINT_COMBINED 
 #endif
 
     (*flat representation for read and write sets*)
@@ -45,11 +40,6 @@ struct
         extern void M_Print_Long (void *, long);
         extern void M_BumpCounter(int);
         extern int M_GetCounter(int);
-        extern void M_StartTimer();
-        extern void M_StopTimer();
-        extern long M_GetTimeAccum();
-        extern void ForceGC (void *); (*vproc*)
-
         
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
@@ -59,6 +49,9 @@ struct
             let tv : tvar = promote(tv)
             return(tv)
         ;
+
+        define @unsafe-get(tv : tvar / exh:exh) : any = 
+            return(#0(tv));
 
         define @get(tv:tvar / exh:exh) : any = 
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
@@ -103,7 +96,6 @@ struct
 
         define @commit(/exh:exh) : () = 
             let startStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
-            let vp : vproc = SchedulerAction.@atomic-begin()
             fun release(locks : item) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:item) =>
@@ -127,12 +119,11 @@ struct
                                         let old : long = CAS(&1(tv), 0:long, newStamp)
                                         if I64Eq(old, 0:long)
                                         then let current : any = #0(tv)
-                                             do #1(tv) := 0:long
-                                             do SchedulerAction.@atomic-end(vp)
+                                             do #1(tv) := 0:long   (*unlock*)
                                              do FLS.@set-key(READ_SET, abortItem / exh)
                                              do FLS.@set-key(WRITE_SET, ws / exh)
                                              do #0(startStamp) := newStamp
-                                             BUMP_ABORT 
+                                             BUMP_PABORT 
                                              throw abortK(current)
                                         else do Pause() apply lk()
                                     apply lk()
@@ -147,9 +138,11 @@ struct
                         then apply acquire(tl, Write(tv, contents, acquired))
                         else if I64Eq(casRes, rawStamp)    (*already locked it*)
                              then apply acquire(tl, acquired)
-                             else let newStamp : stamp = VClock.@bump(/exh)
-                                  do apply validate(readSet, acquired, newStamp, NilItem)  (*figure out where to abort to*)
-                                  apply acquire(writeSet, acquired) (*try and acquire again*)
+                             else (*let newStamp : stamp = VClock.@bump(/exh)
+                                  do apply validate(readSet, acquired, newStamp, NilItem)  (*figure out where to abort to*)  *)
+                                  do apply release(acquired)                               (*read set is valid, abort to beginning*)
+                                  let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                  throw abortK()
                      |NilItem => return(acquired)
                 end
             fun update(writes:item, newStamp : stamp) : () = 
@@ -166,34 +159,40 @@ struct
             let newStamp : stamp = VClock.@bump(/exh)
             do apply validate(readSet, locks, newStamp, NilItem)
             do apply update(locks, newStamp)
-            do SchedulerAction.@atomic-end(vp)
             return()
         ;
 
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
-            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
-            if (#0(in_trans))
-            then apply f(UNIT/exh)
-            else do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
-                 do FLS.@set-key(WRITE_SET, NilItem / exh)
-                 let stamp : stamp = VClock.@bump(/exh)
-                 do FLS.@set-key(STAMP_KEY, alloc(stamp) / exh)
-                 do FLS.@set-key(IN_TRANS, alloc(true) / exh)
-                 cont transExh(e:exn) = 
-                    do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
-                    throw exh(e)
-                 let res : any = apply f(UNIT/transExh)
-                 do @commit(/transExh)
-                 do FLS.@set-key(IN_TRANS, alloc(false) / exh)
-                 do FLS.@set-key(READ_SET, NilItem / exh)
-                 do FLS.@set-key(WRITE_SET, NilItem / exh)
-                 return(res)  
+            cont enter() = 
+                let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
+                if (#0(in_trans))
+                then apply f(UNIT/exh)
+                else do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
+                     do FLS.@set-key(WRITE_SET, NilItem / exh)
+                     let newStamp : stamp = VClock.@bump(/exh)
+                     let stamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
+                     do #0(stamp) := newStamp
+                     do #0(in_trans) := true
+                     cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()
+                     do FLS.@set-key(ABORT_KEY, abortK / exh)
+                     cont transExh(e:exn) = 
+                        do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
+                        throw exh(e)
+                     let res : any = apply f(UNIT/transExh)
+                     do @commit(/transExh)
+                     do #0(in_trans) := false
+                     do FLS.@set-key(READ_SET, NilItem / exh)
+                     do FLS.@set-key(WRITE_SET, NilItem / exh)
+                     return(res)  
+            throw enter()         
         ;
 
       define @timeToString = Time.toString;
       
       define @print-stats(x:unit / exh:exh) : unit = 
-        PRINT_ABORT_COUNT
+        PRINT_PABORT_COUNT
+        PRINT_FABORT_COUNT
+        PRINT_COMBINED
         return(UNIT);
 
       define @abort(x : unit / exh : exh) : any = 
@@ -209,6 +208,7 @@ struct
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
+    val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
 end
 
 

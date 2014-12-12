@@ -11,19 +11,6 @@ structure FullAbortSTM = (* :
 	
 *)
 struct
-
-#ifndef NDEBUG
-#define PDebug(msg)  do ccall M_Print(msg)  
-#define PDebugInt(msg, v)  do ccall M_Print_Int(msg, v)  
-#define PDebugInt2(msg, v1, v2)  do ccall M_Print_Int2(msg, v1, v2)  
-#define PDebugLong(msg, v) do ccall M_Print_Long(msg, v)
-#else
-#define PDebug(msg) 
-#define PDebugInt(msg, v)   
-#define PDebugInt2(msg, v1, v2) 
-#define PDebugLong(msg, v) 
-#endif 
-
 #define COUNT
 
 #ifdef COUNT
@@ -37,9 +24,6 @@ struct
 #define PRINT_ALLOC_COUNT
 #endif
 
-#define START_TIMER let vp : vproc = host_vproc do ccall GenTimerStart(vp)
-#define STOP_TIMER let vp : vproc = host_vproc do ccall GenTimerStop(vp)
-
     (*flat representation for read and write sets*)
     datatype 'a item = Read of 'a * 'a | Write of 'a * 'a * 'a | NilItem
 
@@ -50,9 +34,6 @@ struct
         extern void M_Print_Long (void *, long);
         extern void M_BumpCounter(int);
         extern int M_GetCounter(int);
-        extern void GenTimerStart(void *);
-        extern void GenTimerStop(void *);
-        extern void GenTimerPrint();
         
         typedef itemType = int; (*correponds to the above #define's*)
         typedef stamp = VClock.stamp;
@@ -68,6 +49,9 @@ struct
             let tv : tvar = promote(tv)
             return(tv)
         ;
+
+        define @unsafe-get(tv : tvar / exh:exh) : any = 
+            return(#0(tv));
 
         define @get(tv : tvar / exh:exh) : any = 
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
@@ -85,14 +69,31 @@ struct
             case localRes
                 of Option.SOME(v:any) => return(v)
                  | Option.NONE =>
+                    (*
                     fun lk() : () = 
                         let swapRes : long = CAS(&1(tv), 0:long, #0(myStamp))
                         if I64Eq(swapRes, 0:long)
                         then return()
                         else do Pause() apply lk()
                     do apply lk()
+                    let current : any = #0(tv)  *)(*
+                    let swapRes : long = CAS(&1(tv), 0:long, #0(myStamp))
+                    let current : any = 
+                        if I64Eq(swapRes, 0:long)
+                        then return(#0(tv))
+                        else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                             throw abortK()
+                    do #1(tv) := 0:long *)
                     let current : any = #0(tv)
-                    do #1(tv) := 0:long
+                    let stamp : stamp = #1(tv)
+                    do if I64Eq(#1(tv), 0:long)
+                       then return()
+                       else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                            throw abortK()
+                    do if I64Lt(#0(myStamp), stamp)
+                       then let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                            throw abortK()
+                       else return()
                     let newReadSet : item = Read(tv, readSet)
                     do FLS.@set-key(READ_SET, newReadSet / exh)
                     return(current)
@@ -203,6 +204,7 @@ struct
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
+    val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
 end
 
 
