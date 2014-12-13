@@ -193,6 +193,7 @@ structure VProc (* :
 
     (* returns threads that have been placed on the given vproc's landing pad *)
       define @recv-in-atomic (self : vproc) : queue_item =
+          do assert(Equal(self, host_vproc))
           let ldgPadOrig : queue_item = vpload(VP_LANDING_PAD, self)
           if Equal (ldgPadOrig, Q_EMPTY) then
 	      return (Q_EMPTY)
