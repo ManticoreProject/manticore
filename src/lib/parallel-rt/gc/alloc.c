@@ -104,23 +104,6 @@ Value_t AllocUniform (VProc_t *vp, int nElems, ...)
     return PtrToValue(obj);
 }
 
-inline Word_t createMixedHeader(int nElems, int bits) {
-    if (nElems == 1 && bits == 0x0) {
-        return MIXED_HDR(predefined, nElems);
-    } else if (nElems == 2 && bits == 0x1) {
-        return MIXED_HDR(predefined+1, nElems);
-    } else if (nElems == 1 && bits == 0x1) {
-        return MIXED_HDR(predefined+2, nElems);
-    } else if (nElems == 5 && bits == 0x1A) { 
-        return MIXED_HDR(predefined+3, nElems);
-    } else if (nElems == 3 && bits == 0x4) {
-        return MIXED_HDR(predefined+4, nElems);
-    } else {
-        fprintf(stderr, "Error AllocNonUniform or GlobalAllocNonUniform. Len: %d, Bits: %x\n", nElems, bits);
-        exit(5);
-    }
-}
-
 /*! \brief allocate a non-uniform tuple of values in the nursery.
  *  \param vp the host vproc
  *  \param nElems the number of tuple elements.
@@ -148,8 +131,21 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
     }
     va_end(ap);
 
-    obj[-1] = createMixedHeader(nElems, bits);
-
+    if (nElems == 1 && bits == 0x0) {
+        obj[-1] = MIXED_HDR(predefined, nElems);
+    } else if (nElems == 2 && bits == 0x1) {
+        obj[-1] = MIXED_HDR(predefined+1, nElems);
+    } else if (nElems == 1 && bits == 0x1) {
+        obj[-1] = MIXED_HDR(predefined+2, nElems);
+    } else if (nElems == 5 && bits == 0x1A) { 
+        obj[-1] = MIXED_HDR(predefined+3, nElems);
+    } else if (nElems == 3 && bits == 0x4) {
+        obj[-1] = MIXED_HDR(predefined+4, nElems);
+    } else {
+        fprintf(stderr, "Error AllocNonUniform. Len: %d, Bits: %x\n", nElems, bits);
+        exit(5);
+    }
+    
     vp->allocPtr += WORD_SZB * (nElems+1);
 
     return PtrToValue(obj);
@@ -367,7 +363,20 @@ Value_t GlobalAllocNonUniform (VProc_t *vp, int nElems, ...)
     }
     va_end(ap);
 
-    obj[-1] = createMixedHeader(nElems, bits);
+    if (nElems == 1 && bits == 0x0) {
+        obj[-1] = MIXED_HDR(predefined, nElems);
+    } else if (nElems == 2 && bits == 0x1) {
+        obj[-1] = MIXED_HDR(predefined+1, nElems);
+    } else if (nElems == 1 && bits == 0x1) {
+        obj[-1] = MIXED_HDR(predefined+2, nElems);
+    } else if (nElems == 5 && bits == 0x1A) { 
+        obj[-1] = MIXED_HDR(predefined+3, nElems);
+    } else if (nElems == 3 && bits == 0x4) {
+        obj[-1] = MIXED_HDR(predefined+4, nElems);
+    } else {
+        fprintf(stderr, "Error AllocNonUniform or GlobalAllocNonUniform. Len: %d, Bits: %x\n", nElems, bits);
+        exit(5);
+    }
 
     vp->globNextW += WORD_SZB * (nElems+1);
 

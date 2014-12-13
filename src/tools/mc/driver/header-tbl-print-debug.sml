@@ -131,7 +131,14 @@ struct
         
         TextIO.output (MyoutStrm, "void minorGCPROXYdebug (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "  \n");
-        TextIO.output (MyoutStrm, "  printf(\"Error This is MinorGC Debug proxyscan, should never be called!\");\n");
+        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"    CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
         ()
@@ -252,7 +259,14 @@ struct
         
         TextIO.output (MyoutStrm, "void minorGCPROXYdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm, "  printf(\"Error This is MinorGlobal proxydebugscan, should never be called!\");\n");
+        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
         TextIO.output (MyoutStrm, "}\n");
     ()
     )
@@ -340,10 +354,12 @@ struct
         TextIO.output (MyoutStrm, "void globalGCPROXYdebug (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
         TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm,"    CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
-        TextIO.output (MyoutStrm,"    scanP++;\n");
-        TextIO.output (MyoutStrm,"    CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
-        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"possiblePointer(self,ptr,scanP,0);\n");
+        TextIO.output (MyoutStrm,"scanP++;\n");
+        TextIO.output (MyoutStrm,"CheckLocalPtrGlobal (self, scanP, \"local mixed object\");\n");
+        TextIO.output (MyoutStrm,"scanP++;\n");
+        TextIO.output (MyoutStrm,"possiblePointer(self,ptr,scanP,0);\n");
+        TextIO.output (MyoutStrm,"scanP++;\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
         ()
@@ -460,9 +476,11 @@ struct
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
         TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm,"    CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,0);\n");
         TextIO.output (MyoutStrm,"    scanP++;\n");
-        TextIO.output (MyoutStrm,"    CheckLocalPtrMinor (self, scanP, \"local proxy object\");\n");
+        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP);\n");
+        TextIO.output (MyoutStrm,"    scanP++;\n");
+        TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,0);\n");
         TextIO.output (MyoutStrm,"    scanP++;\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
