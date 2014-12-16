@@ -53,20 +53,8 @@ structure Proxy (* :
 
      extern void promoteProxy(void *, int);
      
-     (* Grabs the address of the object represented by the proxy. *)
-      define inline @getFiberFromTable (myProxy : proxy) : cont(any) =
-        (* get address of the proxy table *)
-    let myAddr : addr(any) = vpload(PROXYTABLE, host_vproc)
-(* this does not typecheck!
-    let pos : int = (int)#1(myProxy)
-*)
-    let pos : int = I64ToI32(AdrLoadI64((addr(long))&1(myProxy)))
-    let myFiber : cont(any) = AdrLoad(AdrAddI32(myAddr,I32Add(TABLE_POS(pos),TABLE_ENTRY_OFFB)))
-    return(myFiber) 
-     ;
-     
-    (* FIXME: Are we guarenteed to not have a minor GC occur here? because that would mess up this function,
-       it modifies the proxy table, and GCs scan the table!! *)
+    (* QUESTION: Are we guarenteed to not have a minor GC occur here? because that could mess up this function,
+       it modifies the proxy table, and GCs scan the table! *)
 
      define inline @deleteProxy (myProxy : proxy) : () =
       let nextfree : int = vpload (PROXYTABLEENTRIES,#0(myProxy))
@@ -94,6 +82,7 @@ structure Proxy (* :
      
      (* Get the fiber out of the proxy table, which we know is in the local heap *)
      define inline @getProxyFiberInLH (myProxy : proxy) : cont(any) =
+     (* get address of the proxy table *)
      let myAddr : addr(any) = vpload(PROXYTABLE, host_vproc)
       let pos : int = I64ToI32(AdrLoadI64((addr(long))&1(myProxy)))
         let myFiber : cont(any) = AdrLoad(AdrAddI32(myAddr,I32Add(TABLE_POS(pos),TABLE_ENTRY_OFFB)))
@@ -178,9 +167,6 @@ structure Proxy (* :
             (* if not we have to send a thief *)
             let myFiber : cont(any) = @thief-from-atomic-proxy (host_vproc,myProxy)
             throw myFiber(x)
-  (*             let myFiber : cont(any) = ccall returnCont(myProxy)
-                throw myFiber(x)
-*)
           (* in *)
         return(Proxy)   
     else
