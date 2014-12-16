@@ -64,6 +64,9 @@ structure Proxy (* :
     return(myFiber) 
      ;
      
+    (* FIXME: Are we guarenteed to not have a minor GC occur here? because that would mess up this function,
+       it modifies the proxy table, and GCs scan the table!! *)
+
      define inline @deleteProxy (myProxy : proxy) : () =
     let nextfree : int = vpload (PROXYTABLEENTRIES,#0(myProxy))
     let last : int = I32Sub(nextfree,1)

@@ -50,6 +50,7 @@ STATIC_INLINE ContClosure_t *ValueToCont (Value_t v)	{ return (ContClosure_t *)V
 /* heap allocate a tuple of uniformly represented values in the local heap */
 extern Value_t AllocUniform (VProc_t *vp, int nItems, ...);
 extern Value_t AllocNonUniform (VProc_t *vp, int nItems, ...);
+extern Value_t AllocProxy (VProc_t *vp, int nElems, ...);
 extern Value_t WrapWord (VProc_t *vp, Word_t i);
 extern Value_t AllocString (VProc_t *vp, const char *s);
 extern Value_t AllocRaw (VProc_t *vp, uint32_t sz);
