@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 
-inline void deleteProxy (VProc_t *vp, const int id) {
+STATIC_INLINE void deleteProxy (VProc_t *vp, const int id) {
     const int last = vp->proxyTableentries - 1;
     vp->proxyTableentries = last;
 
