@@ -8,6 +8,7 @@
  * All rights reserved.
  */
 
+#include "manticore-config.h"
 #include "manticore-rt.h"
 #include "value.h"
 #include "vproc.h"
@@ -20,20 +21,23 @@
 #include <string.h>
 
 inline void deleteProxy (VProc_t *vp, const int id) {
-    assert(vp->proxyTableentries > 1);
-
     const int last = vp->proxyTableentries - 1;
+    vp->proxyTableentries = last;
 
-    assert(id <= last);
+    if(id == last) {
+        // we have already truncated table, so we're done.
+        return;
+    }
 
-    // update proxy object in the global heap
-    Word_t *proxyObj = (Word_t *)(vp->proxyTable[last].proxyObj);
-    proxyObj[1] = (Word_t)id;
+    // we're going to overwrite the id'th proxy with the last one.
 
-    // copy the last value in the table in place of the deleted proxy.
-    vp->proxyTable[id].proxyObj = vp->proxyTable[last].proxyObj;
-    vp->proxyTable[id].localObj = vp->proxyTable[last].localObj;
-    vp->proxyTableentries = last;   
+    ProxyTblEntry_t lastEntry = vp->proxyTable[last];
+
+    // first, update proxy object in the global heap
+    ((Word_t*)lastEntry.proxyObj)[1] = (Word_t)id;
+
+    // copy the last value in the table in place of the promoted proxy.
+    vp->proxyTable[id] = lastEntry;
 }
 
 /**
@@ -42,12 +46,12 @@ inline void deleteProxy (VProc_t *vp, const int id) {
  */
 void promoteProxy (VProc_t *vp, int id) {
     assert(id >= 0 && id <= vp->maxProxy);
+    assert(vp->proxyTableentries > 1);
+    assert(id < vp->proxyTableentries);
 
-    vp->proxyTable[id].localObj = PromoteObj(vp,vp->proxyTable[id].localObj);
-    
-    Word_t *proxyObj = (Word_t *)(vp->proxyTable[id].proxyObj);
-    
-    proxyObj[1] = (Word_t)vp->proxyTable[id].localObj;
+    ProxyTblEntry_t toBePromoted = vp->proxyTable[id];
+
+    ((Word_t*)toBePromoted.proxyObj)[1] = (Word_t) PromoteObj(vp, toBePromoted.localObj);
     
     deleteProxy(vp, id);
 }
