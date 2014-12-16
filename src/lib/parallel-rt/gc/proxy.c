@@ -46,7 +46,7 @@ inline void deleteProxy (VProc_t *vp, const int id) {
  */
 void promoteProxy (VProc_t *vp, int id) {
     assert(id >= 0 && id <= vp->maxProxy);
-    assert(vp->proxyTableentries > 1);
+    assert(vp->proxyTableentries >= 1);
     assert(id < vp->proxyTableentries);
 
     ProxyTblEntry_t toBePromoted = vp->proxyTable[id];
