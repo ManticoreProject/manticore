@@ -53,9 +53,10 @@ structure Proxy (* :
 
      extern void promoteProxy(void *, int);
      
+     (* Grabs the address of the object represented by the proxy. *)
       define inline @getFiberFromTable (myProxy : proxy) : cont(any) =
         (* get address of the proxy table *)
-    let myAddr : addr(any) = vpload(PROXYTABLE,host_vproc)
+    let myAddr : addr(any) = vpload(PROXYTABLE, host_vproc)
 (* this does not typecheck!
     let pos : int = (int)#1(myProxy)
 *)
@@ -68,35 +69,37 @@ structure Proxy (* :
        it modifies the proxy table, and GCs scan the table!! *)
 
      define inline @deleteProxy (myProxy : proxy) : () =
-    let nextfree : int = vpload (PROXYTABLEENTRIES,#0(myProxy))
-    let last : int = I32Sub(nextfree,1)
-    (* get address of the proxy table *)
-    let myAddr : addr(any) = vpload(PROXYTABLE,#0(myProxy))
-    (* position of the proxy in the table *)
-    let pos : int = AdrLoadI32((addr(int))&1(myProxy))
-    (* if the proxy isn't the last element *)
-    if I32NEq(last,pos) then
-    (* move last entry to the empty entry and free it *)
-    let lastProxy : proxy = AdrLoad(AdrAddI32(myAddr,TABLE_POS(last)))
-    let lastFiber : cont(any) = AdrLoad(AdrAddI32(myAddr,I32Add(TABLE_POS(last),TABLE_ENTRY_OFFB)))
-    (* change position in last proxy *)
-    do AdrStoreI64((addr(long))&1(lastProxy),I32ToI64(pos))
-    (* save in the new table position *)
-    do AdrStore(AdrAddI32(myAddr,TABLE_POS(pos)),lastProxy)
-    do AdrStore(AdrAddI32(myAddr,I32Add(TABLE_POS(pos),TABLE_ENTRY_OFFB)),lastFiber)
-        do vpstore (PROXYTABLEENTRIES,#0(myProxy),last)
-    return() 
-    else
-    do vpstore (PROXYTABLEENTRIES,#0(myProxy),last)
-    return() 
-     ;
+      let nextfree : int = vpload (PROXYTABLEENTRIES,#0(myProxy))
+      let last : int = I32Sub(nextfree,1)
+      (* get address of the proxy table *)
+      let myAddr : addr(any) = vpload(PROXYTABLE,#0(myProxy))
+      (* position of the proxy in the table *)
+      let pos : int = AdrLoadI32((addr(int))&1(myProxy))
+      (* if the proxy isn't the last element *)
+      if I32NEq(last,pos) then
+      (* move last entry to the empty entry and free it *)
+      let lastProxy : proxy = AdrLoad(AdrAddI32(myAddr,TABLE_POS(last)))
+      let lastFiber : cont(any) = AdrLoad(AdrAddI32(myAddr,I32Add(TABLE_POS(last),TABLE_ENTRY_OFFB)))
+      (* change position in last proxy *)
+      do AdrStoreI64((addr(long))&1(lastProxy),I32ToI64(pos))
+      (* save in the new table position *)
+      do AdrStore(AdrAddI32(myAddr,TABLE_POS(pos)),lastProxy)
+      do AdrStore(AdrAddI32(myAddr,I32Add(TABLE_POS(pos),TABLE_ENTRY_OFFB)),lastFiber)
+          do vpstore (PROXYTABLEENTRIES,#0(myProxy),last)
+      return() 
+      else
+      do vpstore (PROXYTABLEENTRIES,#0(myProxy),last)
+      return() 
+       ;
      
-     (* Get the fiber out of the proxy table *)
-     define inline @getProxyFiber (myProxy : proxy) : cont(any) =
-      let myFiber : cont(any) = @getFiberFromTable(myProxy)
-      do @deleteProxy(myProxy)
-      return (myFiber)
-     ;  
+     (* Get the fiber out of the proxy table, which we know is in the local heap *)
+     define inline @getProxyFiberInLH (myProxy : proxy) : cont(any) =
+     let myAddr : addr(any) = vpload(PROXYTABLE, host_vproc)
+      let pos : int = I64ToI32(AdrLoadI64((addr(long))&1(myProxy)))
+        let myFiber : cont(any) = AdrLoad(AdrAddI32(myAddr,I32Add(TABLE_POS(pos),TABLE_ENTRY_OFFB)))
+          do @deleteProxy(myProxy)
+          return (myFiber)
+          ;  
      
       (* is the Fiber associated with the proxy already promoted *)
       define inline @promotedProxy (myProxy : proxy) : bool =
@@ -119,6 +122,10 @@ structure Proxy (* :
         let ch : ![Option.option] = promote (ch)
       (* the thief fiber executes on the victim vproc *)
         cont thief (_ : unit) =
+              (* The thief should not itself been stolen out of the scheduling queue of
+                  the vproc that needs to promote this proxy! *)
+              do assert(Equal(host_vproc, #0(myProxy)))
+
               (* promote the proxy on the vproc so we can access the promoted continuation *)  
               do ccall promoteProxy(#0(myProxy),#1(myProxy))
           let myFiber : cont(any) = #1(myProxy)     
@@ -165,7 +172,7 @@ structure Proxy (* :
         (* check if the vproc is the same as the creator *)
             if Equal(#0(myProxy),host_vproc) then 
             (* if yes then get the fiber out of the local proxy table *)
-            let myFiber : cont(any) = @getProxyFiber(myProxy)
+            let myFiber : cont(any) = @getProxyFiberInLH(myProxy)
             throw myFiber(x)
             else
             (* if not we have to send a thief *)
