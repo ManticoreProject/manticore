@@ -344,6 +344,7 @@ void *NewVProc (void *arg)
         default: break;
     };
 
+    vproc->maxProxy = pxyTableSize;
     vproc->proxyTableentries = 0;
     vproc->proxyTable = (ProxyTblEntry_t *)malloc(sizeof(ProxyTblEntry_t) * vproc->maxProxy);
 
