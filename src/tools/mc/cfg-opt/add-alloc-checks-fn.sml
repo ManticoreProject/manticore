@@ -125,7 +125,8 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
               (* If we don't allocate any data, we still emit local checks, but not global checks. *)
 		      fun needsCheck lab = (case hcKind
                                         of CFG.HCK_Local => (FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab)
-                                        | CFG.HCK_Global => (getAlloc lab > 0w0)
+                                        | CFG.HCK_Global => ((getAlloc lab > 0w0) andalso 
+                                                             (FB.Set.member(fbSet, lab) orelse CFA.isEscaping lab))
                                         (* end case *))
                 
 
