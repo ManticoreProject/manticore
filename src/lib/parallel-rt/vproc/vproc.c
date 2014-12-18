@@ -325,9 +325,27 @@ void *NewVProc (void *arg)
 #endif
 	
     //Proxy table
-    vproc->proxyTableentries=0;
-    vproc->maxProxy=512;
-    vproc->proxyTable=(ProxyTblEntry_t *)malloc(sizeof(ProxyTblEntry_t) * vproc->maxProxy);
+
+    int pxyTableSize = 1024;
+    switch(NumVProcs) {
+        // 8192
+        case 1: case 2:           
+        pxyTableSize *= 2; 
+
+        // 4096
+        case 3: case 4:
+        pxyTableSize *= 2;
+
+        // 2048
+        case 5: case 6: case 7: case 8:
+        pxyTableSize *= 2;
+
+        // 1024
+        default: break;
+    };
+
+    vproc->proxyTableentries = 0;
+    vproc->proxyTable = (ProxyTblEntry_t *)malloc(sizeof(ProxyTblEntry_t) * vproc->maxProxy);
 
   /* store a pointer to the VProc info as thread-specific data */
     pthread_setspecific (VProcInfoKey, vproc);

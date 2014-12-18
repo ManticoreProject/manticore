@@ -90,12 +90,11 @@ structure Proxy (* :
           return (myFiber)
           ;  
      
-      (* is the Fiber associated with the proxy already promoted *)
-      define inline @promotedProxy (myProxy : proxy) : bool =
-    let max : int = vpload (MAXPROXY,host_vproc)
-    let pos : long = AdrLoadI64((addr(long))&1(myProxy))
-    if I64Gte(pos,I32ToI64(max)) then return(true)
-    else return(false)
+      (* is the Fiber associated with the proxy already promoted? *)
+      define inline @isPromoted (myProxy : proxy) : bool =
+        let max : int = vpload (MAXPROXY,host_vproc)
+        let pos : long = AdrLoadI64((addr(long))&1(myProxy))
+        if I64Gte(pos, I32ToI64(max)) then return (true) else return (false)
       ;
       
        (* send a thief from thiefVP to steal from victimVP. the result is a continuation stored in the proxy table *)
@@ -115,10 +114,24 @@ structure Proxy (* :
                   the vproc that needs to promote this proxy! *)
               do assert(Equal(host_vproc, #0(myProxy)))
 
-              (* promote the proxy on the vproc so we can access the promoted continuation *)  
-              do ccall promoteProxy(#0(myProxy),#1(myProxy))
-          let myFiber : cont(any) = #1(myProxy)     
-          (* successfully stole multiple threads *)
+                (* By the time this thief is thrown by the vproc, it may have
+                   run a major GC and promoted it, so we have to make sure this
+                   proxy still requires promotion. *)
+
+                let alreadyPromoted : bool = @isPromoted(myProxy)
+                do case alreadyPromoted
+                  of true => 
+                            return ()
+                  | false => 
+                          (* promote the proxy on the vproc so we can access the promoted continuation *)  
+                          do ccall promoteProxy(#0(myProxy),#1(myProxy))
+                          return ()
+                  
+                end
+
+          let myFiber : cont(any) = #1(myProxy) 
+
+          (* write back the location of the now promoted proxy. *)
           let x : Option.option = Option.SOME(myFiber)
           do #0(ch) := x
           SchedulerAction.@stop ()
@@ -143,7 +156,7 @@ structure Proxy (* :
       define inline @createProxy (self : vproc, fiber : cont(any)) : cont() =
         let id : int = vpload (PROXYTABLEENTRIES, self)
         let max : int = vpload (MAXPROXY, self)
-        if I32NEq(id, max) then
+        if I32Lt(id, max) then
           let myAddr : addr(any) = vpload(PROXYTABLE, self)
           let myProxy : proxy = alloc_special (self, I32ToI64(id))
         (* store the proxy and continuation at the offside position *)
@@ -153,20 +166,20 @@ structure Proxy (* :
         (* create the continuation that runs the code *)
           cont Proxy (x : any) =
         (* if promoted then we can just execute the fiber stored in the proxy *)
-        let prom : bool = @promotedProxy(myProxy)
+        let prom : bool = @isPromoted(myProxy)
         if Equal(prom,true) then
-        let myFiber : cont(any) = #1(myProxy)
-        throw myFiber(x)
+          let myFiber : cont(any) = #1(myProxy)
+          throw myFiber(x)
         else
         (* check if the vproc is the same as the creator *)
             if Equal(#0(myProxy),host_vproc) then 
-            (* if yes then get the fiber out of the local proxy table *)
-            let myFiber : cont(any) = @getProxyFiberInLH(myProxy)
-            throw myFiber(x)
+              (* if yes then get the fiber out of the local proxy table *)
+              let myFiber : cont(any) = @getProxyFiberInLH(myProxy)
+              throw myFiber(x)
             else
-            (* if not we have to send a thief *)
-            let myFiber : cont(any) = @thief-from-atomic-proxy (host_vproc,myProxy)
-            throw myFiber(x)
+              (* if not we have to send a thief *)
+              let myFiber : cont(any) = @thief-from-atomic-proxy (host_vproc,myProxy)
+              throw myFiber(x)
           (* in *)
         return(Proxy)   
     else

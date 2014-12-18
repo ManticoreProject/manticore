@@ -71,7 +71,8 @@ struct struct_vproc {
     Value_t	stdExnCont;	//!< holds value of standard exception-cont. reg.
     Addr_t	allocPtr;	//!< allocation pointer
 			     /* Proxy Table variables */
-    int proxyTableentries;
+    
+    int proxyTableentries; // FIXME: make sure the vproc's offsets use sizeof(int) and not assume 4.
     int maxProxy;
     ProxyTblEntry_t * proxyTable;
 			      /* logging support */

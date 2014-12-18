@@ -122,6 +122,10 @@ Value_t createProxy (VProc_t *vp, Word_t * fls) {
     
 }
 
+/*
+FIXME: THE BELOW CODE, IF YOU WANT TO USE, ASSUMES 512 TABLE SIZE!
+*/
+
 /**
  * if no entries left return 1 else 0
  */

@@ -276,6 +276,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
   /* synchronize on every vproc finishing GC */
     BarrierWait (&GCBarrier1);
 
+
 #ifndef NO_GC_STATS
     // compute the number of bytes copied in this GC on this vproc
     
@@ -395,26 +396,46 @@ static void GlobalGC (VProc_t *vp, Value_t **roots)
     /* Phase 2
      * scan the vproc's roots */
     for (int i = 0;  roots[i] != 0;  i++) {
-	Value_t p = *roots[i];
-	if (isFromSpacePtr(p)) {
-	    *roots[i] = ForwardObjGlobal(vp, p);
-	}
+    	Value_t p = *roots[i];
+    	if (isFromSpacePtr(p)) {
+    	    *roots[i] = ForwardObjGlobal(vp, p);
+    	}
     }
 
     ScanVProcHeap (vp);
 
     PushToSpaceChunks (vp, original, true);
 
-  /* scan to-space chunks */
-    ScanGlobalToSpace (vp);
-         
-  /* process the proxy table */
-  for (int i=0; i < vp->proxyTableentries;i++) {
+    /* scan to-space chunks */
+    ScanGlobalToSpace (vp);	
+
+    /** 
+     *  Update the proxy table after scanning the to space.
+     */
+    const int NUM_PROXY_ENTRIES = vp->proxyTableentries;
+    for (int i = 0; i < NUM_PROXY_ENTRIES; ++i) {
         Value_t p = vp->proxyTable[i].proxyObj;
         assert(isFromSpacePtr(p));
-        vp->proxyTable[i].proxyObj = ForwardObjGlobal(vp, p);
-        
-  }	
+
+        // A proxy is live iff from some vproc's root set, excluding the proxy table, we can reach the proxy.
+        // So, if there was a barrier sync before this loop, the branch below would _always_ take the
+        // true side. Instead of a nasty sync, if by this point some vproc hasn't forwarded it
+        // by now, we'll try to race them there in the false case. The odds of a vproc
+        // that created the proxy not being the one to forward it is very low.
+
+        Word_t hdr = ((Word_t *)ValueToPtr(p))[-1];
+        // NOTE: The compiler hint that this branch is likely goes agianst all coding standards,
+        //       but in this case it's provable, see comment above, and this loop is tight,
+        //       so calling ForwardObjGlobal just to return with the forward pointer is pointless.
+        if( __builtin_expect((isForwardPtr(hdr)), 1) ) {  
+            vp->proxyTable[i].proxyObj = PtrToValue(GetForwardPtr(hdr));
+        } else {
+            vp->proxyTable[i].proxyObj = ForwardObjGlobal(vp, p);
+        }
+
+        assert(isPtr(vp->proxyTable[i].proxyObj));
+        assert(AddrToChunk(ValueToAddr(vp->proxyTable[i].proxyObj))->sts == TO_SP_CHUNK);
+    }
         
     LogGlobalGCVPDone (vp, 0/*FIXME*/);
 

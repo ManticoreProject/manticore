@@ -8,7 +8,7 @@
  * case where the amount of free space falls below some threshold.  
  *
  * TODO:
- *	update ToSpaceSize
+ *  update ToSpaceSize
  */
 
 #include "manticore-rt.h"
@@ -34,37 +34,37 @@
  */
 Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
 {
-	Word_t	*p = ((Word_t *)ValueToPtr(v));
-	Word_t	hdr = p[-1];
-	if (isForwardPtr(hdr))
-		return PtrToValue(GetForwardPtr(hdr));
-	else {
-		/* forward object to global heap. */
-		Word_t *nextW = (Word_t *)vp->globNextW;
-		int len = GetLength(hdr);
-		if (nextW+len >= (Word_t *)(vp->globLimit)) {
-			AllocToSpaceChunk (vp);
-			nextW = (Word_t *)vp->globNextW;
-		}
-		Word_t *newObj = nextW;
-		newObj[-1] = hdr;
-		for (int i = 0;  i < len;  i++) {
-			newObj[i] = p[i];
-		}
-		vp->globNextW = (Addr_t)(newObj+len+1);
-		p[-1] = MakeForwardPtr(hdr, newObj);
+    Word_t  *p = ((Word_t *)ValueToPtr(v));
+    Word_t  hdr = p[-1];
+    if (isForwardPtr(hdr))
+        return PtrToValue(GetForwardPtr(hdr));
+    else {
+        /* forward object to global heap. */
+        Word_t *nextW = (Word_t *)vp->globNextW;
+        int len = GetLength(hdr);
+        if (nextW+len >= (Word_t *)(vp->globLimit)) {
+            AllocToSpaceChunk (vp);
+            nextW = (Word_t *)vp->globNextW;
+        }
+        Word_t *newObj = nextW;
+        newObj[-1] = hdr;
+        for (int i = 0;  i < len;  i++) {
+            newObj[i] = p[i];
+        }
+        vp->globNextW = (Addr_t)(newObj+len+1);
+        p[-1] = MakeForwardPtr(hdr, newObj);
 
                 assert (AddrToChunk(ValueToAddr(v))->sts == FROM_SP_CHUNK ||
                         IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts));
                 assert (AddrToChunk(newObj)->sts == TO_SP_CHUNK);
         
-		return PtrToValue(newObj);
-	}
-	
+        return PtrToValue(newObj);
+    }
+    
 }
 
 static void ScanGlobalToSpace (
-	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
+    VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
 #ifndef NDEBUG
 void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
 void CheckToSpacesAfterGlobalGC (VProc_t *vp);
@@ -114,18 +114,18 @@ MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
-    Addr_t	heapBase = vp->heapBase;	
-    Addr_t	oldSzB = vp->oldTop - heapBase;
+    Addr_t  heapBase = vp->heapBase;    
+    Addr_t  oldSzB = vp->oldTop - heapBase;
   /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
    * data word of the next object (not the header word)!
    */
-    Word_t	*globScan = (Word_t *)(vp->globNextW - WORD_SZB);
-    MemChunk_t	*scanChunk = vp->globAllocChunk;
+    Word_t  *globScan = (Word_t *)(vp->globNextW - WORD_SZB);
+    MemChunk_t  *scanChunk = vp->globAllocChunk;
 
     LogMajorGCStart (vp, (uint32_t)(top - vp->oldTop), (uint32_t)oldSzB);
 
-	
-	
+    
+    
 #ifndef NO_GC_STATS
     vp->nMajorGCs++;
     vp->majorStats.nBytesCollected += top - heapBase;
@@ -137,47 +137,39 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MAJOR)
-	SayDebug("[%2d] Major GC starting\n", vp->id);
+    SayDebug("[%2d] Major GC starting\n", vp->id);
 #endif
 
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
-	Value_t p = *roots[i];
-	if (isPtr(p)) {
-	    if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
-		*roots[i] = ForwardObjMajor(vp, p);
-	    }
-	    else if (inVPHeap(heapBase, ValueToAddr(p))) {
-	      // p points to another object in the "young" region,
-	      // so adjust it.
-		*roots[i] = AddrToValue(ValueToAddr(p) - oldSzB);
-	    }
-	}
+    Value_t p = *roots[i];
+    if (isPtr(p)) {
+        if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
+            *roots[i] = ForwardObjMajor(vp, p);
+        }
+        else if (inVPHeap(heapBase, ValueToAddr(p))) {
+          // p points to another object in the "young" region,
+          // so adjust it.
+            *roots[i] = AddrToValue(ValueToAddr(p) - oldSzB);
+        }
+    }
     }
 
-    int beg = 0;
-    for (int i=0; i < vp->proxyTableentries;i++) {
-	Value_t p = vp->proxyTable[i].localObj;
-	if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
-	  // p points to an old object
-	    p = ForwardObjMajor(vp, p);
-	    Word_t *proxyObj = (Word_t *)(vp->proxyTable[i].proxyObj);
-	    proxyObj[1] = (Word_t)p;
-	}
-	else if (inVPHeap(heapBase, ValueToAddr(p))) {
-	  // p points to another object in the "young" region, so adjust it.
-	    p = AddrToValue(ValueToAddr(p) - oldSzB);
-	  // rearrange the element so it is at the beginning of the table
-	    Word_t *proxyObj = (Word_t *)(vp->proxyTable[i].proxyObj);
-	    proxyObj[1] = (Word_t)beg;
-	    vp->proxyTable[beg].proxyObj = PtrToValue(proxyObj);
-	    vp->proxyTable[beg].localObj = p;
-	    beg++;
-	}
-    }
-
-  //reset the proxy table
-   vp->proxyTableentries = beg;
+    /**
+     *  Perform the first pass over the proxy table, forwarding 
+     *  the _roots_ of objects in the old region to the global heap,
+     *  saving their new locations back in the table. We can't 
+     *  write this value back to the proxy yet because only the root exists
+     *  in the global heap, not the rest of its data!
+     */
+     const int NUM_PROXY_ENTRIES = vp->proxyTableentries;
+     for(int i = 0; i < NUM_PROXY_ENTRIES; ++i) {
+        Value_t p = vp->proxyTable[i].localObj; 
+        // if p points to an old object, forward the root to the global heap.
+        if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
+            vp->proxyTable[i].localObj = ForwardObjMajor(vp, p);   
+        }
+     }
 
   /* we also treat the data between vproc->oldTop and top as roots, since
    * it is known to be both young and live.  While scanning it, we also
@@ -186,36 +178,70 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
    */
     Word_t *nextScan = (Word_t *)(vp->oldTop);
     while (nextScan < (Word_t *)top) {
-		
-		Word_t hdr = *nextScan++;	// get object header
-		
-	    if (isVectorHdr(hdr)) {
-		    int len = GetLength(hdr);
-		    for (int i = 0;  i < len;  i++, nextScan++) {
-			    Value_t v = *(Value_t *)nextScan;
-			    if (isPtr(v)) {
-				    if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {
-					    *nextScan =(Word_t)ForwardObjMajor(vp, v);
-				    }
-				    else if (inVPHeap(heapBase, (Addr_t)v)) {
-					    // p points to another object in the "young" region,
-					    // so adjust it.
-					    *nextScan = (Word_t)((Addr_t)v - oldSzB);
-				    }
+        
+        Word_t hdr = *nextScan++;   // get object header
+        
+        if (isVectorHdr(hdr)) {
+            int len = GetLength(hdr);
+            for (int i = 0;  i < len;  i++, nextScan++) {
+                Value_t v = *(Value_t *)nextScan;
+                if (isPtr(v)) {
+                    if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {
+                        *nextScan =(Word_t)ForwardObjMajor(vp, v);
+                    }
+                    else if (inVPHeap(heapBase, (Addr_t)v)) {
+                        // p points to another object in the "young" region,
+                        // so adjust it.
+                        *nextScan = (Word_t)((Addr_t)v - oldSzB);
+                    }
                 }
             }
-		} else if (isRawHdr(hdr)) {
-			assert (isRawHdr(hdr));
-			nextScan += GetLength(hdr);
-		} else {
-			
-			nextScan = table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
-			
-		}
+        } else if (isRawHdr(hdr)) {
+            assert (isRawHdr(hdr));
+            nextScan += GetLength(hdr);
+        } else {
+            
+            nextScan = table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
+            
+        }
     }
 
-  /* scan to-space objects */
+    /* scan to-space objects */
     ScanGlobalToSpace (vp, heapBase, scanChunk, globScan);
+
+    /**
+     *  Perform the second pass over the proxy table to compact it and update
+     *  all of the proxy objects, now that the forwarded object _and everything reachable from it_
+     *  have been promoted to the global heap.
+     */
+     if(NUM_PROXY_ENTRIES > 0) {
+        int beg = 0;
+        for (int i = 0; i < NUM_PROXY_ENTRIES; ++i) {
+            
+            ProxyTblEntry_t p = vp->proxyTable[i];
+
+            if (inVPHeap(heapBase, ValueToAddr(p.localObj))) {
+
+                // p points to another object in the live "young" region, so adjust it.
+                p.localObj = AddrToValue(ValueToAddr(p.localObj) - oldSzB);
+
+                vp->proxyTable[beg] = p;
+
+                ((Value_t*)p.proxyObj)[1] = (Value_t)beg;
+
+                ++beg;
+
+            } else {
+                assert(isHeapPtr(p.localObj));
+
+                // if it's not in the VP's heap, it must have been promoted, so we update
+                // the proxy and leave it out of the table.
+                ((Value_t*)p.proxyObj)[1] = p.localObj;
+            }
+        }
+       // and finally, write back the number of entries leftover in the table.
+       vp->proxyTableentries = beg;
+   }
 
   /* copy the live data between vp->oldTop and top to the base of the heap */
     Addr_t youngSzB = top - vp->oldTop;
@@ -226,17 +252,17 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
   // compute the number of bytes copied into the global heap
     uint32_t nBytesCopied = 0;
     for (MemChunk_t *p = scanChunk; p != (MemChunk_t *)0;  p = p->next) {
-	Addr_t base = (p == scanChunk) ? (Addr_t)globScan - WORD_SZB : p->baseAddr;
-	Addr_t tp = (p->next == 0) ? vp->globNextW : p->usedTop;
-	nBytesCopied += (tp - base);
+    Addr_t base = (p == scanChunk) ? (Addr_t)globScan - WORD_SZB : p->baseAddr;
+    Addr_t tp = (p->next == 0) ? vp->globNextW : p->usedTop;
+    nBytesCopied += (tp - base);
     }
     vp->majorStats.nBytesCopied += nBytesCopied + youngSzB;
     vp->globalStats.nBytesAlloc += nBytesCopied;
     TIMER_Stop(&(vp->majorStats.timer));
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MAJOR) {
-	SayDebug("[%2d] Major GC finished: %d/%" PRIu64 " old bytes copied\n",
-	    vp->id, nBytesCopied, (uint64_t)oldSzB);
+    SayDebug("[%2d] Major GC finished: %d/%" PRIu64 " old bytes copied\n",
+        vp->id, nBytesCopied, (uint64_t)oldSzB);
     }
 #endif /* !NDEBUG */
 #endif /* !NO_GC_STATS */
@@ -245,18 +271,19 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
 #ifndef NDEBUG
     if (HeapCheck >= GC_DEBUG_MAJOR) {
-	if (GCDebug >= GC_DEBUG_MAJOR)
-	    SayDebug ("[%2d] Checking heap consistency\n", vp->id);
-	bzero ((void *)(vp->oldTop), VP_HEAP_SZB - youngSzB);
-	CheckAfterGlobalGC (vp, roots);
+    if (GCDebug >= GC_DEBUG_MAJOR)
+        SayDebug ("[%2d] Checking heap consistency\n", vp->id);
+    bzero ((void *)(vp->oldTop), VP_HEAP_SZB - youngSzB);
+    CheckAfterGlobalGC (vp, roots);
         CheckToSpacesAfterGlobalGC (vp);
     }
 #endif
 
     LogMajorGCEnd (vp, nBytesCopied, 0); /* FIXME: nCopiedBytes, nAvailBytes */
 
-    if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit))
-	StartGlobalGC (vp, roots);
+    if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit)) {
+        StartGlobalGC (vp, roots);
+    }
 
 } /* end of MajorGC */
 
@@ -267,7 +294,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
  */
 Value_t PromoteObj (VProc_t *vp, Value_t root)
 {
-    Addr_t	heapBase = (Addr_t)vp->heapBase;
+    Addr_t  heapBase = (Addr_t)vp->heapBase;
 
 #ifndef NO_GC_STATS
     vp->nPromotes++;
@@ -277,7 +304,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
     assert ((vp->globNextW % WORD_SZB) == 0);
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_ALL)
-	SayDebug("[%2d] PromoteObj(%p, %p)\n", vp->id, (void *)vp, (void *)root);
+    SayDebug("[%2d] PromoteObj(%p, %p)\n", vp->id, (void *)vp, (void *)root);
 #endif
 
   /* NOTE: the following test probably ought to happen before the runtime
@@ -287,52 +314,52 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
         assert (AddrToChunk(ValueToAddr(root))->sts == FROM_SP_CHUNK ||
                 IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(root))->sts));
 
-	MemChunk_t	*scanChunk = vp->globAllocChunk;
-	Word_t		*scanPtr = (Word_t *)(vp->globNextW - WORD_SZB);
+    MemChunk_t  *scanChunk = vp->globAllocChunk;
+    Word_t      *scanPtr = (Word_t *)(vp->globNextW - WORD_SZB);
 
-	assert ((Word_t *)(scanChunk->baseAddr) <= scanPtr);
-	assert (scanPtr < (Word_t *)(scanChunk->baseAddr + scanChunk->szB));
+    assert ((Word_t *)(scanChunk->baseAddr) <= scanPtr);
+    assert (scanPtr < (Word_t *)(scanChunk->baseAddr + scanChunk->szB));
 
       /* promote the root to the global heap */
-	root = ForwardObjMajor (vp, root);
+    root = ForwardObjMajor (vp, root);
 
       /* promote any reachable values */
-	ScanGlobalToSpace (vp, heapBase, scanChunk, scanPtr);
+    ScanGlobalToSpace (vp, heapBase, scanChunk, scanPtr);
 
 #ifndef NO_GC_STATS
-	uint64_t nBytesCopied = 0;
-	for (MemChunk_t *p = scanChunk; p != (MemChunk_t *)0;  p = p->next) {
-	    Addr_t base = (p == scanChunk) ? (Addr_t)scanPtr - WORD_SZB : p->baseAddr;
-	    Addr_t tp = (p->next == 0) ? vp->globNextW : p->usedTop;
-	    nBytesCopied += (tp - base);
-	}
-	vp->nBytesPromoted += nBytesCopied;
+    uint64_t nBytesCopied = 0;
+    for (MemChunk_t *p = scanChunk; p != (MemChunk_t *)0;  p = p->next) {
+        Addr_t base = (p == scanChunk) ? (Addr_t)scanPtr - WORD_SZB : p->baseAddr;
+        Addr_t tp = (p->next == 0) ? vp->globNextW : p->usedTop;
+        nBytesCopied += (tp - base);
+    }
+    vp->nBytesPromoted += nBytesCopied;
 #endif
 
     PushToSpaceChunks (vp, scanChunk, false);
     
 #ifndef NDEBUG
-	if (GCDebug >= GC_DEBUG_ALL)
-	    SayDebug("[%2d]  ==> %p; %"PRIu64" bytes\n", vp->id, (void *)root, nBytesCopied);
+    if (GCDebug >= GC_DEBUG_ALL)
+        SayDebug("[%2d]  ==> %p; %"PRIu64" bytes\n", vp->id, (void *)root, nBytesCopied);
 #endif
     }
 #ifndef NDEBUG
     else if (isPtr(root)) {
       /* check for a bogus pointer */
-	MemChunk_t *cq = AddrToChunk(ValueToAddr(root));
-	if (cq->sts == TO_SP_CHUNK) {
+    MemChunk_t *cq = AddrToChunk(ValueToAddr(root));
+    if (cq->sts == TO_SP_CHUNK) {
         /* fall through, returning root later */
     }
 /* 
-	else if ((cq->sts == FROM_SP_CHUNK) && (! GlobalGCInProgress))
-	    Die("PromoteObj: unexpected from-space pointer %p\n", ValueToPtr(root));
+    else if ((cq->sts == FROM_SP_CHUNK) && (! GlobalGCInProgress))
+        Die("PromoteObj: unexpected from-space pointer %p\n", ValueToPtr(root));
 */
-	else if (IS_VPROC_CHUNK(cq->sts)) {
-	    Die("PromoteObj: unexpected remote pointer %p\n", ValueToPtr(root));
-	}
-	else if (cq->sts == FREE_CHUNK) {
-	    Die("PromoteObj: unexpected free-space pointer %p\n", ValueToPtr(root));
-	}
+    else if (IS_VPROC_CHUNK(cq->sts)) {
+        Die("PromoteObj: unexpected remote pointer %p\n", ValueToPtr(root));
+    }
+    else if (cq->sts == FREE_CHUNK) {
+        Die("PromoteObj: unexpected free-space pointer %p\n", ValueToPtr(root));
+    }
     }
 #endif
 
@@ -351,7 +378,7 @@ static void ScanGlobalToSpace (
     MemChunk_t *scanChunk,
     Word_t *scanPtr)
 {
-    Word_t	*scanTop = UsedTopOfChunk (vp, scanChunk);
+    Word_t  *scanTop = UsedTopOfChunk (vp, scanChunk);
 
     do {
     
@@ -359,8 +386,8 @@ static void ScanGlobalToSpace (
 
         do {
             while (scanPtr < scanTop) {
-                Word_t hdr = *scanPtr++;	// get object header
-		
+                Word_t hdr = *scanPtr++;    // get object header
+        
                 if (isVectorHdr(hdr)) {
                     int len = GetLength(hdr);
                     for (int i = 0;  i < len;  i++, scanPtr++) {
