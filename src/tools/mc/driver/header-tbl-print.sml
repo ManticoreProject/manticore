@@ -51,8 +51,8 @@ struct
 		
 		TextIO.output (MyoutStrm, "Word_t * minorGCscanPROXYpointer (Word_t* ptr, Word_t **nextW, Addr_t allocSzB, Addr_t nurseryBase) {\n");
         TextIO.output (MyoutStrm, "  \n");
-        TextIO.output (MyoutStrm, "  printf(\"Error This is MinorGC proxyscan, should never be called!\");\n");
-        TextIO.output (MyoutStrm, "return (ptr+2);\n");
+        TextIO.output (MyoutStrm, "     assert(false && \"MinorGCScan: Proxies cannot exist in the local heap!\");\n");
+        TextIO.output (MyoutStrm, "     return (ptr+2);\n");
         TextIO.output (MyoutStrm, "  }\n");
 		
 		()
@@ -133,8 +133,8 @@ struct
         TextIO.output (MyoutStrm, "\n");
 		
 		TextIO.output (MyoutStrm, "Word_t * majorGCscanPROXYpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
-        TextIO.output (MyoutStrm, "  printf(\"Error This is MajorGC proxyscan, should never be called!\");\n");
-        TextIO.output (MyoutStrm, "return (ptr+2);\n");
+        TextIO.output (MyoutStrm, "    assert(false && \"MajorGCScan: Proxies cannot exist in the local heap!\");\n");
+        TextIO.output (MyoutStrm, "    return (ptr+2);\n");
         TextIO.output (MyoutStrm, "  }\n");
         ()
         )
@@ -213,15 +213,14 @@ struct
 		
 		TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpacePROXYfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {\n");
         TextIO.output (MyoutStrm, "  \n");
-        TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
-        TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
-        TextIO.output (MyoutStrm,concat["    v = *(Value_t *)(scanP+",Int.toString 0,");\n"]);
-        TextIO.output (MyoutStrm,"   if (inVPHeap(heapBase, ValueToAddr(v))) {\n");
-        TextIO.output (MyoutStrm,concat["     *(scanP+",Int.toString 0,") = (Word_t)ForwardObjMajor(vp, v);\n"]);
-        TextIO.output (MyoutStrm,"  } \n");
-        TextIO.output (MyoutStrm, "  printf(\"Test Proxy ScanGlobalSpace!\");\n");
-        TextIO.output (MyoutStrm, "return (ptr+2);\n");
-        TextIO.output (MyoutStrm, "  }\n");
+        TextIO.output (MyoutStrm, "   assert (isProxyHdr(ptr[-1]));\n");
+        TextIO.output (MyoutStrm, "   Value_t v = (Value_t)ptr[1];\n");
+        TextIO.output (MyoutStrm, "   if((unsigned long)v >= vp->maxProxy) {\n");
+        TextIO.output (MyoutStrm, "     assert (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v)));\n");
+        TextIO.output (MyoutStrm, "     ptr[1] = (Word_t)ForwardObjGlobal(vp, v);\n");
+        TextIO.output (MyoutStrm, "   }\n");
+        TextIO.output (MyoutStrm, "   return (ptr+2);\n");
+        TextIO.output (MyoutStrm, "}\n");
         ()
         )
 
@@ -295,13 +294,11 @@ struct
 		
         TextIO.output (MyoutStrm, "Word_t * globalGCscanPROXYpointer (Word_t* ptr, VProc_t *vp) {\n");
         TextIO.output (MyoutStrm, "  \n");
-        TextIO.output (MyoutStrm, "   Value_t v = (Value_t )ptr[1];\n");
-        TextIO.output (MyoutStrm, "  //printf(\"This is GlobalGC proxyscan begin scanptr is %p!, value of v is %lu\\n\",(void*)ptr,(unsigned long)v);\n");
-        TextIO.output (MyoutStrm, "   if( (unsigned long)v >= vp->maxProxy ) {\n");
-        TextIO.output (MyoutStrm, "  //printf(\"Forward the proxyobj 2 %p!\\n\",(void*)ptr[1]);\n");
-        TextIO.output (MyoutStrm, "     assert (isFromSpacePtr( v ));\n");
-        TextIO.output (MyoutStrm, "     Value_t p = ForwardObjGlobal(vp, v);\n");
-        TextIO.output (MyoutStrm, "     ptr[1]=(Word_t)p;\n");
+        TextIO.output (MyoutStrm, "   assert (isProxyHdr(ptr[-1]));\n");
+        TextIO.output (MyoutStrm, "   Value_t v = (Value_t)ptr[1];\n");
+        TextIO.output (MyoutStrm, "   if((unsigned long)v >= vp->maxProxy) {\n");
+        TextIO.output (MyoutStrm, "     assert (isFromSpacePtr(v));\n");
+        TextIO.output (MyoutStrm, "     ptr[1] = (Word_t)ForwardObjGlobal(vp, v);\n");
         TextIO.output (MyoutStrm, "   }\n");
         TextIO.output (MyoutStrm, "   return (ptr+2);\n");
         TextIO.output (MyoutStrm, "}\n");

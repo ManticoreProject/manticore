@@ -83,7 +83,7 @@ STATIC_INLINE bool isRawHdr (Word_t hdr)
 
 STATIC_INLINE bool isProxyHdr (Word_t hdr)
 {
-	return (getID(hdr) == 2);
+	return (getID(hdr) == PROXY_TAG_BITS);
 }
 
 STATIC_INLINE int GetMixedSizeW (Word_t hdr)
