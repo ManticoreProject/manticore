@@ -4,5 +4,4 @@ ann "cpp" "../include/prim.def,../include/runtime-offsets.def,../include/diction
     hybridPartialSTM.pml
     boundedHybridPartialSTM.pml
     full-abort-stm.pml
-    dl-stm.pml
 end
