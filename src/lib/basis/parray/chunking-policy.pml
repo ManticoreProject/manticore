@@ -27,7 +27,7 @@ structure ChunkingPolicy = struct
      | LTS n => "LTS " ^ Int.toString n)
 
   local
-    val dflt = LTS 1
+    val dflt = (*LTS 1*) Sequential
     fun cvt args = (case args
       of a1 :: a2 :: _ =>
            if ParseCommandLine.stringSame (a1, "ETS") then

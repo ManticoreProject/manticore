@@ -201,6 +201,8 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		      fbind (fty, v, oper (fty, fdefOf v'))
 		fun genFArith2 (fty, oper, (v1, v2)) = 
 		      fbind (fty, v, oper (fty, fdefOf v1, fdefOf v2))
+		fun genBool(ty,oper,(v1,v2)) =
+		        cbind(v,oper (cdefOf v1, cdefOf v2))
 		fun divs (ty, a, b) = T.DIVS(T.DIV_TO_ZERO, ty, a, b)
 		fun rems (ty, a, b) = T.REMS(T.DIV_TO_ZERO, ty, a, b)
 		fun genLoad (sz, bind, ld) (base, i) = let

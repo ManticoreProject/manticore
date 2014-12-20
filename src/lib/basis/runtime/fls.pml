@@ -156,7 +156,7 @@ structure FLS :
         let stamp : ![long] = promote(stamp)
         let k4 : [[int], any] = alloc(alloc(STAMP_KEY), stamp)
         let k5 : [[int], any] = alloc(alloc(ABORT_KEY), Option.NONE)
-        let l : List.list = CONS(k4, CONS(k3, CONS(k2, CONS(k1, CONS(k0, CONS(k5, nil))))))
+        let l : List.list = CONS(k4, CONS(k3, CONS(k2, CONS(k5, CONS(k0, CONS(k1, nil))))))
         let ret : [int, List.list] = alloc(6, l)
         return(ret)
       ;
@@ -166,7 +166,7 @@ structure FLS :
           let dict : [int, List.list] = @initial-dict()
 	  let dc : ![bool] = alloc(true)
 	  let dc : ![bool] = promote(dc)
-	  let fls : fls = alloc(~1, Option.NONE, #0(dict), #1(dict), dc, 1, 1)
+	  let fls : fls = alloc(~1, Option.NONE, #0(dict), #1(dict), dc, 1, 2)
 	  return (fls)
 	;
 
@@ -175,7 +175,7 @@ structure FLS :
           let dict : [int, List.list] = @initial-dict()
 	  let dc : ![bool] = alloc(true)
 	  let dc : ![bool] = promote(dc)
-	  let fls : fls = alloc(vprocId, Option.NONE, #0(dict), #1(dict), dc, 1, 1)
+	  let fls : fls = alloc(vprocId, Option.NONE, #0(dict), #1(dict), dc, 1, 2)
 	  return (fls)
 	;
 
@@ -340,32 +340,38 @@ structure FLS :
         ;
 
       (*increment lower 32 bits of thread local counter by n*)
-      define inline @inc-counter(n:int, fls : fls) : () = 
+      define inline @inc-counter(n:int) : () = 
+        let fls : fls = @get()
         let n' : int = #5(fls)
         do SELECT(COUNTER_OFF, fls) := I32Add(n', n)
         return ();
 
       (*decrement lower 32 bits of thread local counter by n*)
-      define inline @dec-counter(n:int, fls : fls) : () = 
+      define inline @dec-counter(n:int) : () =  
+        let fls : fls = @get()
         let n' : int = #5(fls)
         do SELECT(COUNTER_OFF, fls) := I32Sub(n', n)
         return ();
 
       (*get lower 32 bits of thread local counter by n*)
-      define inline @get-counter(fls : fls) : int = 
+      define inline @get-counter() : int = 
+        let fls : fls = @get()
         let n' : int = #5(fls)
         return(n');
 
       (*set lower 32 bits of thread local counter by n*)
-      define inline @set-counter(n:int, fls : fls) : () = 
+      define inline @set-counter(n:int) : () = 
+        let fls : fls = @get()
         do SELECT(COUNTER_OFF, fls) := n
         return ();
 
-      define inline @set-counter2(n:int, fls : fls) : () = 
+      define inline @set-counter2(n:int) : () = 
+        let fls : fls = @get()
         do #6(fls) := n
         return();
 
-      define inline @get-counter2(fls : fls) : int = 
+      define inline @get-counter2() : int = 
+        let fls : fls = @get()
         return(#6(fls));
 
         

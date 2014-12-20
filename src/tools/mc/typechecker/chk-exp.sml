@@ -440,7 +440,7 @@ structure ChkExp :> sig
 		val (e2', ty2) = chkExp (loc, depth, e2)
 		val resTy = AST.MetaTy(MetaVar.new depth)
 		in
-		  if (not(U.unify(ty1, AST.FunTy(ty2, resTy))) handle Fail _ => true)
+		  if (not(U.unify(ty1, AST.FunTy(ty2, resTy))) handle Fail _ => (print "handled exn\n"; true))
 		    then error(loc, ["type mismatch in application\n",
 				     "* expected ", TypeUtil.toString ty1, "\n",
 				     "* found    ", TypeUtil.toString (Ty.FunTy(ty2, resTy))])

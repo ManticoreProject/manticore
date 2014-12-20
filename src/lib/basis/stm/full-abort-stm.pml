@@ -54,6 +54,12 @@ struct
             return(#0(tv));
 
         define @get(tv : tvar / exh:exh) : any = 
+            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
+            do if(#0(in_trans))
+               then return()
+               else do ccall M_Print("Trying to read outside a transaction!\n")
+                    let e : exn = Fail(@"Reading outside transaction\n")
+                    throw exh(e)
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : item = FLS.@get-key(READ_SET / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
@@ -69,21 +75,6 @@ struct
             case localRes
                 of Option.SOME(v:any) => return(v)
                  | Option.NONE =>
-                    (*
-                    fun lk() : () = 
-                        let swapRes : long = CAS(&1(tv), 0:long, #0(myStamp))
-                        if I64Eq(swapRes, 0:long)
-                        then return()
-                        else do Pause() apply lk()
-                    do apply lk()
-                    let current : any = #0(tv)  *)(*
-                    let swapRes : long = CAS(&1(tv), 0:long, #0(myStamp))
-                    let current : any = 
-                        if I64Eq(swapRes, 0:long)
-                        then return(#0(tv))
-                        else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                             throw abortK()
-                    do #1(tv) := 0:long *)
                     let current : any = #0(tv)
                     let stamp : stamp = #1(tv)
                     do if I64Eq(#1(tv), 0:long)
@@ -101,6 +92,12 @@ struct
         ;
 
         define @put(arg:[tvar, any] / exh:exh) : unit =
+            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
+            do if(#0(in_trans))
+               then return()
+               else do ccall M_Print("Trying to write outside a transaction!\n")
+                    let e : exn = Fail(@"Writing outside transaction\n")
+                    throw exh(e)
             let tv : tvar = #0(arg)
             let v : any = #1(arg)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
@@ -124,11 +121,21 @@ struct
             fun validate(readSet : item, locks : item, newStamp : stamp) : () = 
                 case readSet 
                     of Read(tv:tvar, tl:item) =>
-                        if I64Lt(#2(tv), rawStamp)  (*still valid*)
-                        then apply validate(tl, locks, newStamp)
-                        else do apply release(locks)
-                             let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                             throw abortK()
+                        if I64Eq(#1(tv), 0:long)
+                        then if I64Lt(#2(tv), rawStamp)  (*still valid*)
+                             then apply validate(tl, locks, newStamp)
+                             else do apply release(locks)
+                                  let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                  throw abortK()
+                        else if I64Eq(#1(tv), rawStamp)
+                             then if I64Lt(#2(tv), rawStamp)
+                                  then apply validate(tl,locks,newStamp)
+                                  else do apply release(locks)
+                                       let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                       throw abortK()
+                             else do apply release(locks)
+                                  let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                  throw abortK()         
                      |NilItem => return()
                 end
             fun acquire(writeSet:item, acquired : item) : item = 
@@ -194,7 +201,11 @@ struct
       define @abort(x : unit / exh : exh) : any = 
          let e : cont() = FLS.@get-key(ABORT_KEY / exh)
          throw e();
-        
+         
+      define @tvar-eq(arg : [tvar, tvar] / exh : exh) : bool = 
+         if Equal(#0(arg), #1(arg))
+         then return(true)
+         else return(false);        
     )
 
     	type 'a tvar = 'a PartialSTM.tvar 
@@ -205,6 +216,7 @@ struct
     val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
+    val tvarEq : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
 end
 
 

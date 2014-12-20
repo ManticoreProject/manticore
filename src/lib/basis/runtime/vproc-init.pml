@@ -35,7 +35,8 @@ structure VProcInit (* :
       define @bootstrap-sequential ( / exh : exh) : () =
           let vp : vproc = host_vproc
         (**** vp->schedCont ****)
-	  cont schedCont (k : PT.fiber) = throw k(UNIT)
+	  cont schedCont (k : PT.fiber) = 
+	    do ccall M_Print("Inside schedCont\n") throw k(UNIT)
 	  do vpstore(VP_SCHED_CONT, vp, schedCont)
           let fls : FLS.fls = FLS.@new(UNIT / exh)
           do vpstore(CURRENT_FLS, vp, fls)

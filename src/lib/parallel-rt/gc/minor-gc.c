@@ -24,6 +24,10 @@
 extern Addr_t	MajorGCThreshold;	/* when the size of the nursery goes below */
 					/* this limit it is time to do a GC. */
 
+int isInGlobalHeap(Value_t v){
+    return AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK;
+}
+
 //ForwardObject of MinorGC
 /* Copy an object to the old region */
 Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
@@ -131,7 +135,6 @@ void MinorGC (VProc_t *vp)
 					}
 				}
 			}
-			
 		}else if (isRawHdr(hdr)) {
 			assert (isRawHdr(hdr));
 			nextScan += GetLength(hdr);
@@ -179,8 +182,6 @@ bzero(nextScan, avail); /* clear unused part of local heap */
 	CheckMinorGC (vp, roots);
     }
 #endif
-
-
 
   /* reset the allocation pointer */
     SetAllocPtr (vp);

@@ -67,16 +67,16 @@ structure Unify : sig
 		 of (Ty.ErrorTy, ty2) => true
 		  | (ty1, Ty.ErrorTy) => true
 		  | (ty1 as Ty.MetaTy mv1, ty2 as Ty.MetaTy mv2) =>
-                                MetaVar.same(mv1, mv2) orelse unifyMV(mv1, mv2)
-		  | (Ty.MetaTy mv1, ty2) => unifyWithMV (ty2, mv1)
-		  | (ty1, Ty.MetaTy mv2) => unifyWithMV (ty1, mv2)
+                                 MetaVar.same(mv1, mv2) orelse unifyMV(mv1, mv2) 
+		  | (Ty.MetaTy mv1, ty2) => unifyWithMV (ty2, mv1) 
+		  | (ty1, Ty.MetaTy mv2) => unifyWithMV (ty1, mv2) 
 		  | (Ty.ConTy(tys1, tyc1), Ty.ConTy(tys2, tyc2)) =>
 		    (TyCon.same(tyc1, tyc2)) andalso ListPair.allEq uni (tys1, tys2)
 		  | (Ty.FunTy(ty11, ty12), Ty.FunTy(ty21, ty22)) => 
 		      uni(ty11, ty21) andalso uni(ty12, ty22)
 		  | (Ty.TupleTy tys1, Ty.TupleTy tys2) =>
 		      ListPair.allEq uni (tys1, tys2)
-		  | (Ty.VarTy tv1, Ty.VarTy tv2) => TyVar.same(tv1, tv2)
+		  | (Ty.VarTy tv1, Ty.VarTy tv2) => TyVar.same(tv1, tv2) 
 		  | _ => (print (concat["unification failure:\n  ", TypeUtil.fmt {long=true} ty1,
                           "\n  ", TypeUtil.fmt {long=true} ty2, "\n"]);
                           false)
@@ -89,7 +89,7 @@ structure Unify : sig
 		in
 		  case !info
 		   of Ty.UNIV d => if (occursIn(mv, ty))
-			then false
+			then  false
 			else (adjustDepth(ty, d); assignMV(info, Ty.INSTANCE ty); true)
 		    | Ty.CLASS cls => if occursIn(mv, ty)
 			then false
@@ -102,7 +102,7 @@ structure Unify : sig
 				then (assignMV(info, Ty.INSTANCE ty); true)
 				else false
 			  (* end case *))
-		    | _ =>  raise Fail "impossible"
+		    | _ =>  (print "test4\n"; raise Fail "impossible")
 		  (* end case *)
 		end
 	(* unify two meta variables *)

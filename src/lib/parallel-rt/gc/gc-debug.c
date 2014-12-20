@@ -21,6 +21,8 @@ bool isGlobalHeapPtr (Value_t v)
   assert(AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK);
 }
 
+
+
 /*! \brief check for obviously corrupt objects in the local heap
  *  \param vp host vproc
  *  \param beginHeap low address of the heap

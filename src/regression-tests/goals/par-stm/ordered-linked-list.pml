@@ -6,15 +6,39 @@
  * Linked list implementation based on Software Transactional Memory with partial aborts.
  *)
 
-structure WhichSTM = BoundedHybridPartialSTM
+fun getArg f args = 
+    case args 
+        of arg::arg'::args => 
+            if String.same(f, arg) then SOME arg'
+            else getArg f (arg'::args)
+         |_ => NONE
 
-val put = WhichSTM.put
-val get = WhichSTM.get
-val new = WhichSTM.new
-val atomic = WhichSTM.atomic
-type 'a tvar = 'a WhichSTM.tvar
-val printStats = WhichSTM.printStats
+val args = CommandLine.arguments ()
 
+val whichSTM = case getArg "-stm" args of SOME s => s | NONE => "bounded"
+
+type 'a tvar = 'a PartialSTM.tvar 
+
+val (get,put,atomic,new,printStats,abort,unsafeGet) = 
+    if String.same(whichSTM, "bounded")
+    then (BoundedHybridPartialSTM.get,BoundedHybridPartialSTM.put,      
+          BoundedHybridPartialSTM.atomic,BoundedHybridPartialSTM.new,
+          BoundedHybridPartialSTM.printStats,BoundedHybridPartialSTM.abort,
+          BoundedHybridPartialSTM.unsafeGet)
+    else if String.same(whichSTM, "full")
+         then (FullAbortSTM.get,FullAbortSTM.put,FullAbortSTM.atomic,FullAbortSTM.new,FullAbortSTM.printStats,FullAbortSTM.abort,FullAbortSTM.unsafeGet)
+         else if String.same(whichSTM, "dlstm")
+              then (DLSTM.get,DLSTM.put,DLSTM.atomic,DLSTM.new,DLSTM.printStats,DLSTM.abort,DLSTM.unsafeGet)
+              else (PartialSTM.get,PartialSTM.put,PartialSTM.atomic,PartialSTM.new,PartialSTM.printStats,PartialSTM.abort,PartialSTM.unsafeGet)
+
+(*won't typecheck without these nonsense bindings*)
+val get : 'a tvar -> 'a = get
+val put : 'a tvar * 'a -> unit = put
+val atomic : (unit -> 'a) -> 'a = atomic
+val new : 'a -> 'a tvar = new
+val printStats : unit -> unit = printStats
+
+    
 datatype List = Node of int * List tvar
               | Null
               | Head of List tvar
@@ -68,7 +92,7 @@ fun delete (l:ListHandle) (i:int) =
             end
     in atomic(fn () => lp l) end            
 
-val ITERS = 400
+val ITERS = 1000
 val THREADS = 4
 val MAXVAL = 1000
 
@@ -112,12 +136,12 @@ val l = newList()
 fun remove l v = 
     case l 
         of hd::tl => if hd = v then tl else hd::remove tl v
-         | nil => (print "List is incorrect!\n"; raise Fail "test failed")
+         | nil => (print "List is incorrect!\n"; raise Fail "test failed\n")
 
 fun check (l:ListHandle) (remaining:int list) = 
-    case WhichSTM.get l
+    case get l
         of Null => (case remaining
-                      of _::_ => (print "List is incorrect!\n"; raise Fail "test failed")
+                      of _::_ => (print "List is incorrect!\n"; raise Fail "test failed\n")
                        | nil => print "List is correct\n")
          | Node(v, next) => check next (remove remaining v)
          | Head n => check n remaining
@@ -128,7 +152,7 @@ fun nextList l =
          | nil => NONE
 
 fun nextLinkedList l =
-    case WhichSTM.get l
+    case get l
         of Null => NONE
          | Node(v, next) => SOME(v, next)
          | Head n => nextLinkedList n
@@ -146,13 +170,9 @@ val remaining = join(start l THREADS)
 
 val _ = print "Done with linked list operations\n"
 
-val _ = WhichSTM.atomic(fn () => check l remaining)
+val _ = atomic(fn () => check l remaining handle Fail s => print s)
 
-
-
-
-
-
+val _ = printStats()
 
 
 

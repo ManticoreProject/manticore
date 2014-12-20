@@ -70,18 +70,16 @@ struct
             case localRes
                 of Option.SOME(v:any) => return(v)
                  | Option.NONE =>
-                    (*must have exclusive access when reading for first time*)
-                     fun lk() : () = 
-                         let swapRes : long = CAS(&1(tv), 0:long, #0(myStamp))
-                         if I64Eq(swapRes, 0:long)
-                         then return()
-                         else do Pause() apply lk()
-                     do apply lk()
                      let current : any = #0(tv)
-                     do #1(tv) := 0:long
-                     let newReadSet : item = Read(tv, retK, writeSet, readSet)
-                     do FLS.@set-key(READ_SET, newReadSet / exh)
-                     return(current)
+		             if I64Eq(#1(tv), 0:long)
+		             then if I64Lt(#2(tv), #0(myStamp))
+		                  then let newReadSet : item = Read(tv, retK, writeSet, readSet)
+		                       do FLS.@set-key(READ_SET, newReadSet / exh)
+		                       return(current)
+		                  else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                               throw abortK()
+		             else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                          throw abortK()
             end
         ;
 
@@ -109,24 +107,33 @@ struct
             fun validate(readSet:item, locks:item, newStamp : stamp, abortItem : item) : () =
                 case readSet
                     of Read(tv:tvar, k:cont(any), ws:item, tl:item) =>
-                        if I64Lt(#2(tv), rawStamp)    (*stamp still valid*)
-                        then apply validate(tl, locks, newStamp, abortItem)
-                        else apply validate(tl, locks, newStamp, readSet)
+                        if I64Eq(#1(tv), 0:long)
+                        then if I64Lt(#2(tv), rawStamp)
+                             then apply validate(tl, locks, newStamp, abortItem)
+                             else apply validate(tl, locks, newStamp, readSet)
+                        else if I64Eq(#1(tv), rawStamp)
+                             then if I64Lt(#2(tv), rawStamp)
+                                  then apply validate(tl, locks, newStamp, abortItem)
+                                  else apply validate(tl, locks, newStamp, readSet)
+                             else apply validate(tl, locks, newStamp, readSet) 
                     | NilItem => case abortItem
                                 of Read(tv:tvar, abortK:cont(any), ws:item, tl:item) => 
                                     do apply release(locks)
-                                    fun lk() : () = 
-                                        let old : long = CAS(&1(tv), 0:long, newStamp)
-                                        if I64Eq(old, 0:long)
-                                        then let current : any = #0(tv)
-                                             do #1(tv) := 0:long   (*unlock*)
-                                             do FLS.@set-key(READ_SET, abortItem / exh)
-                                             do FLS.@set-key(WRITE_SET, ws / exh)
-                                             do #0(startStamp) := newStamp
-                                             BUMP_PABORT 
-                                             throw abortK(current)
-                                        else do Pause() apply lk()
-                                    apply lk()
+				                    let current : any = #0(tv)
+				                    let stamp : stamp = #2(tv)
+                                    do if I64Eq(#1(tv), 0:long) 
+                                       then return()
+                                       else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                            throw abortK()
+                                    do if I64Lt(newStamp, stamp)
+                                       then let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                            throw abortK()
+                                       else return()
+                                    do FLS.@set-key(READ_SET, abortItem / exh)
+                                    do FLS.@set-key(WRITE_SET, ws / exh)
+                                    do #0(startStamp) := newStamp
+                                    BUMP_PABORT 
+                                    throw abortK(current)
                                 | NilItem => return()
                              end
                end
@@ -138,8 +145,8 @@ struct
                         then apply acquire(tl, Write(tv, contents, acquired))
                         else if I64Eq(casRes, rawStamp)    (*already locked it*)
                              then apply acquire(tl, acquired)
-                             else (*let newStamp : stamp = VClock.@bump(/exh)
-                                  do apply validate(readSet, acquired, newStamp, NilItem)  (*figure out where to abort to*)  *)
+                             else let newStamp : stamp = VClock.@bump(/exh)
+                                  do apply validate(readSet, acquired, newStamp, NilItem)  (*figure out where to abort to*)  
                                   do apply release(acquired)                               (*read set is valid, abort to beginning*)
                                   let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
                                   throw abortK()
@@ -163,11 +170,11 @@ struct
         ;
 
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
-            cont enter() = 
-                let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
-                if (#0(in_trans))
-                then apply f(UNIT/exh)
-                else do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
+            let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
+            if (#0(in_trans))
+            then apply f(UNIT/exh)
+            else cont enter() = 
+	                 do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
                      let newStamp : stamp = VClock.@bump(/exh)
                      let stamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
@@ -184,7 +191,7 @@ struct
                      do FLS.@set-key(READ_SET, NilItem / exh)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
                      return(res)  
-            throw enter()         
+                 throw enter()         
         ;
 
       define @timeToString = Time.toString;
@@ -198,7 +205,11 @@ struct
       define @abort(x : unit / exh : exh) : any = 
          let e : cont() = FLS.@get-key(ABORT_KEY / exh)
          throw e();
-        
+         
+      define @tvar-eq(arg : [tvar, tvar] / exh : exh) : bool = 
+         if Equal(#0(arg), #1(arg))
+         then return(true)
+         else return(false);       
     )
 
     	type 'a tvar = _prim(tvar)
@@ -209,6 +220,7 @@ struct
     val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
+    val tvarEq : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
 end
 
 

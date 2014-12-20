@@ -154,7 +154,7 @@ Value_t GlobalAllocRawArray (VProc_t *vp, int nElems, int szBOfElt)
     assert(nArrayBytes < HEAP_CHUNK_SZB); /* the array has to fit inside a heap chunk */
 
     EnsureGlobalSpace (vp, nElems);
-            
+        
     obj = (Word_t*)(vp->globNextW);
     obj[-1] = RAW_HDR(BYTES_TO_WORDS(nArrayBytes));
     vp->globNextW += nObjBytes;
@@ -396,7 +396,7 @@ Value_t GlobalAllocPolyArray (VProc_t *vp, int nElems, Value_t init)
  */
 Value_t AllocBigPolyArray (VProc_t *vp, int nElems, Value_t init)
 {
-
+  
   if ((nElems+1) * WORD_SZB < HEAP_CHUNK_SZB)
     return GlobalAllocPolyArray (vp, nElems, init);
   else {
