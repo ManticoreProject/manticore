@@ -204,6 +204,8 @@
 <BOM>"int32"			=> (T.KW_int32);
 <BOM>"int64"			=> (T.KW_int64);
 <INITIAL,BOM>"let"		=> (T.KW_let);
+(* <BOM>"let"		=> (trace ("207-BOM", yytext, T.KW_let)); *)
+(* <INITIAL>"let"		=> (trace ("207-ML", yytext, T.KW_let)); *)
 <INITIAL>"local"		=> (T.KW_local);
 <INITIAL>"nonfix"		=> (T.KW_nonfix);
 <BOM>"noreturn"			=> (T.KW_noreturn);
@@ -230,6 +232,7 @@
 <BOM>"uint32"			=> (T.KW_uint32);
 <BOM>"uint64"			=> (T.KW_uint64);
 <INITIAL>"val"			=> (T.KW_val);
+(* <INITIAL>"val"			=> (trace ("235-ML", yytext, T.KW_val)); *)
 <BOM>"vector"			=> (T.KW_vector);
 <BOM>"void"			=> (T.KW_void);
 <BOM>"vpaddr"			=> (T.KW_vpaddr);
@@ -266,7 +269,12 @@
  * BOM modules do not nest.
  *)
 <INITIAL>{symid}		=> (T.SYMID yytext);
-<INITIAL,BOM>{id}		=> (T.ID yytext);
+(* <INITIAL,BOM>{id}		=> (T.ID yytext); *)
+(* <INITIAL>{id}		=> (trace ("273-MLID", yytext, T.LONGID yytext)); *)
+(* ml.grm relies on this behavior *)
+<INITIAL>{id}		=> (T.LONGID yytext);
+(* <BOM>{id}		=> (trace ("273-BOMID", yytext, T.ID yytext)) *)
+<BOM>{id}		=> (T.ID yytext);
 <INITIAL>({id}\.)+{id}		=> (T.LONGID yytext);
 <INITIAL>({id}\.)+{symid}	=> (T.LONGID yytext);
 <BOM>{id}\.{id}			=> (T.LONGID yytext); (* LONGID in BOM *)

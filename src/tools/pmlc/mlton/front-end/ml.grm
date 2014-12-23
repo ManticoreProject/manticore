@@ -93,7 +93,7 @@
     | KW__const			("_const")
     | KW__address		("_address")
     | KW__export		("_export")
-    | KW__import		("_import")
+    (* | KW__import		("_import") *)
     | KW__overload		("_overload")
     | KW__symbol		("_symbol")
 (* moved to pml.grm; will remove uses from ml.grm soon
@@ -983,13 +983,13 @@ aexp    : "op" longvid            => (Exp.Var {name = longvid,
           => (Exp.Prim (PrimKind.Export {attributes = ieattributes,
                                       name = string,
                                       ty = ty}))
-        | "_import" (string ieattributes ":" ty ";"
-          => (Exp.Prim (PrimKind.Import {attributes = ieattributes,
-                                      name = string,
-                                      ty = ty}))
-        | "*" ieattributes ":" ty ";"
-          => (Exp.Prim (PrimKind.IImport {attributes = ieattributes,
-                                       ty = ty}))) => (SR)
+        (* | "_import" (string ieattributes ":" ty ";" *)
+        (*   => (Exp.Prim (PrimKind.Import {attributes = ieattributes, *)
+        (*                               name = string, *)
+        (*                               ty = ty})) *)
+        (* | "*" ieattributes ":" ty ";" *)
+        (*   => (Exp.Prim (PrimKind.IImport {attributes = ieattributes, *)
+        (*                                ty = ty}))) => (SR) *)
         | "_prim" string ":" ty ";"
           => (Exp.Prim (PrimKind.Prim {name = string,
                                     ty = ty}))
@@ -1015,7 +1015,8 @@ ieattributes
           | "private" => PrimKind.ImportExportAttribute.Private :: ieattributes
           | "public" => PrimKind.ImportExportAttribute.Public :: ieattributes
           | "stdcall" => PrimKind.ImportExportAttribute.Stdcall :: ieattributes
-          | _ => (error (posToReg (FULL_SPAN), concat ["invalid attribute: ", id])
+          | _ => (error (posToReg (FULL_SPAN),
+              concat ["invalid import/export attribute: ", id])
                   ; ieattributes)
       end)
        ;
@@ -1033,7 +1034,8 @@ symattributes
           | "external" => PrimKind.SymbolAttribute.External :: symattributes
           | "private" => PrimKind.SymbolAttribute.Private :: symattributes
           | "public" => PrimKind.SymbolAttribute.Public :: symattributes
-          | _ => (error (posToReg (FULL_SPAN), concat ["invalid attribute: ", id])
+          | _ => (error (posToReg (FULL_SPAN),
+              concat ["invalid symbol attribute: ", id])
                   ; symattributes)
       end)
        ;

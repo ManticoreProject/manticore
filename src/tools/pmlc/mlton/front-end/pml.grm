@@ -17,6 +17,7 @@
       | KW__prim        ("_prim")
       | KW__type        ("_type")
       | KW__val         ("_val")
+      | KW__import		("_import")
   (* Getting errors in pml.lex, these seem not to have been pulled in *)
       | PLPAREN         ("(|")
       | PRPAREN         ("|)")
@@ -29,13 +30,20 @@
       ;
 
 %import "ml.grm";
+(* %import "new-ml.grm"; *)
 %import "bom.grm";
 
 %start program;
 
+(* Needed because ml.grm handles non-qualified ids differently *)
+BOMIdForMLCode
+        : id => (BOM.BOMId.fromSymbol id)
+        ;
+
 topdecnode
-        : "_module" BOMId Import* "_prim" "(" BOMDecls ")"
-                => (Topdec.PrimModule (BOMId, Vector.fromList Import, Vector.fromList BOMDecls))
+        : "_module" BOMIdForMLCode Import* "_prim" "(" BOMDecls ")"
+                => (Topdec.PrimModule (BOMIdForMLCode,
+                  Vector.fromList Import, Vector.fromList BOMDecls))
         ;
 
 Import

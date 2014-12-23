@@ -21,6 +21,7 @@ signature AST_BOM =
     structure TyParam : AST_ID
     structure PrimOp : AST_ID
 
+    (* why have we retained LongId? *)
     structure LongId : LONGID sharing LongId.Id = BOMId
     structure HLOpQId : LONGID sharing HLOpQId.Id = HLOpId
 
@@ -68,6 +69,7 @@ signature AST_BOM =
 	  type t
 	  type field
 	  (* type tyArgs *)
+    (* FIXME: why bool*t list? *)
 
 	  datatype node
 	    = Param of TyParam.t		(* type variables *)
