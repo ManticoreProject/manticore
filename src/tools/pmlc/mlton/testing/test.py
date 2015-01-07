@@ -140,7 +140,8 @@ class Directory:
     PRECOMPILE_ATTEMPTS = 3
     SML_COMPILE = 'CM.make "../sources.cm";'
 
-    RUN_TIMEOUT = 2
+	# Timing out on my (slow) laptop
+    RUN_TIMEOUT = 2.5
     SML_RUN_FMT = '''CM.make "../sources.cm";
     PMLFrontEnd.init();
     PMLFrontEnd.compilePML {{input=["{}"]}};'''

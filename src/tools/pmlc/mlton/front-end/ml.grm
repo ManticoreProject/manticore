@@ -267,8 +267,15 @@ fun consTopdec (d, dss) =
 fun ensureNonqualified (ss: Symbol.t list, r: Region.t): Symbol.t * Region.t =
    case ss of
       [s] => (s, r)
-    | _ => (error (r, "expected nonqualified id")
-            ; (Symbol.bogus, r))
+    | _ =>
+      let
+        val ss' = String.concatWith "." (map Symbol.toString ss)
+        val _ = error (r, "expected nonqualified id, got: " ^ ss')
+        (* DEBUG -- need a stack trace *)
+        (* val _ = raise Fail "bad identifier" *)
+      in
+        (Symbol.bogus, r)
+      end
 
 );
 
@@ -752,7 +759,7 @@ datatypeRhsnodeNoWithtype
    | %try datBindNoWithtype  => (DatatypeRhs.DatBind datBindNoWithtype)
        ;
 
-repl : tyvars tycon EQUALOP "datatype" longtycon
+repl : tyvars tycon "=" "datatype" longtycon
        => (if (Vector.length tyvars = 0)
            then ()
         else error (posToReg (FULL_SPAN),

@@ -307,22 +307,19 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                       end
                 | Topdec.PrimModule (id, imports, bomDecs) =>
                   let
-                    fun loop (index,
-                        currentEnv: BOMEnv.t,
-                        acc: Decs.dec list): (Decs.t * BOMEnv.t) =
-                      if index >= (Vector.length bomDecs) then
-                        (Decs.fromList (rev acc), currentEnv)
-                      else
-                        let
-                          val (newDec: Decs.dec, newEnv: BOMEnv.t) =
-                            ElaborateBOMCore.elaborateBOMDec (
-                              Vector.sub (bomDecs, index),
-                              {env = E, bomEnv = currentEnv})
-                        in
-                          loop (index + 1, newEnv, newDec::acc)
-                        end
                     val namedEnv = BOMEnv.setName' (bomEnv, id)
-                    val (newDecs, newEnv) = loop (0, namedEnv, [])
+                    fun doElab (bomDec, bomDecs, bomEnv) =
+                      let
+                        val (newDec, newEnv) =
+                          ElaborateBOMCore.elaborateBOMDec (bomDec, {
+                            env = E, bomEnv = bomEnv})
+                      in
+                        (newDec::bomDecs, newEnv)
+                      end
+                    val (newDecs, newEnv) = (fn (decs, newEnv) =>
+                      (Decs.fromList (rev decs), newEnv)) (Vector.fold (
+                      bomDecs, ([], namedEnv), fn (bomDec, (newDecs, newEnv))
+                        => doElab (bomDec, newDecs, newEnv)))
                     val () = Control.checkForErrors "elaborate"
                   in
                   (* TODO: return something real here *)

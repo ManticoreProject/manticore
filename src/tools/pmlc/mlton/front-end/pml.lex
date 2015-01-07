@@ -178,7 +178,8 @@
 <INITIAL,BOM>"case"		=> (T.KW_case);
 <BOM>"ccall"			=> (T.KW_ccall);
 <BOM>"cont"			=> (T.KW_cont);
-<INITIAL,BOM>"datatype"		=> (T.KW_datatype);
+(* <INITIAL,BOM>"datatype"		=> (T.KW_datatype); *)
+<INITIAL,BOM>"datatype"		=> (trace ("182", yytext, T.KW_datatype));
 <BOM>"define"			=> (T.KW_define);
 <INITIAL,BOM>"do"		=> (T.KW_do);
 <INITIAL,BOM>"else"		=> (T.KW_else);
@@ -269,18 +270,20 @@
  * BOM modules do not nest.
  *)
 <INITIAL>{symid}		=> (T.SYMID yytext);
-(* <INITIAL,BOM>{id}		=> (T.ID yytext); *)
-(* <INITIAL>{id}		=> (trace ("273-MLID", yytext, T.LONGID yytext)); *)
-(* ml.grm relies on this behavior *)
+(* ml.grm relies on this behavior (unfortunately) *)
 <INITIAL>{id}		=> (T.LONGID yytext);
-(* <BOM>{id}		=> (trace ("273-BOMID", yytext, T.ID yytext)) *)
 <BOM>{id}		=> (T.ID yytext);
-<INITIAL>({id}\.)+{id}		=> (T.LONGID yytext);
 <INITIAL>({id}\.)+{symid}	=> (T.LONGID yytext);
 <BOM>{id}\.{id}			=> (T.LONGID yytext); (* LONGID in BOM *)
 <BOM>{hlid}			=> (T.HLID yytext);
 <BOM>{id}\.{hlid}		=> (T.LONG_HLID yytext);
 <INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
+(* DEBUG *)
+(* <INITIAL>{id}		=> (trace ("273", yytext, T.LONGID yytext)); *)
+(* <BOM>{id}		=> (trace ("273-BOMID", yytext, T.ID yytext)) *)
+(* <INITIAL>({id}\.)+{id}		=> (T.LONGID yytext); *)
+(* <INITIAL>({id}\.)+{id}		=> (trace ("279", yytext, T.LONGID yytext)); *)
+
 
 <INITIAL,BOM>{real}		=> (T.REAL(yytext));
 <INITIAL,BOM>{num}		=> (int (yytext, 0, source, {negate = false}, StringCvt.DEC));

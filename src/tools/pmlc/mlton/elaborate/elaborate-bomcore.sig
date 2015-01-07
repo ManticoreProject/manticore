@@ -24,5 +24,4 @@ signature ELABORATE_BOMCORE =
     val elaborateBomDec:
       (BOM.Definition.t * {env: Env.t, bomEnv: BOMEnv.t})
         -> (Decs.dec * BOMEnv.t)
-
   end

@@ -27,6 +27,8 @@ decs.fun
 decs.sig
 elaborate-bomcore.fun
 elaborate-bomcore.sig
+elaborate-bomimports.fun
+elaborate-bomimports.sig
 elaborate-bomenv.fun
 elaborate-bomenv.sig
 elaborate-common.sig
