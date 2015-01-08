@@ -53,18 +53,20 @@ structure EtaReduce : sig
             ]
 
 
-    fun reducable(C.Exp(_, t), args: C.var list, rets : C.var list) = 
+    datatype functionSort = Fun | Cont
+
+    fun reducable(C.Exp(_, t), args: C.var list, rets : C.var list, sort : functionSort) = 
         let fun argsSame x =
                     case x
                         of (a1::args1, a2::args2) => CV.same(a1, a2) andalso argsSame(args1, args2)
                          | (nil, nil) => true
                          | _ => false 
-        in case t
-            of C.Apply(f', args', rets') =>
+        in case (t, sort)
+            of (C.Apply(f', args', rets'), Fun) =>
                    if argsSame(args, args') andalso argsSame(rets, rets')
                    then SOME f'
                    else NONE
-            | C.Throw(f', args') => if argsSame(args, args') then SOME f' else NONE
+            | (C.Throw(f', args'), Cont) => if argsSame(args, args') then SOME f' else NONE
             | _ => NONE
         end
 
@@ -99,7 +101,7 @@ structure EtaReduce : sig
 	                 | C.VPStore(n, x, y) => C.VPStore(n, subst s x, subst s y)
 	                 | C.VPAddr(n, x) => C.VPAddr(n, subst s x)
             fun doLambda (l as C.FB{f=f,params=params,rets=rets,body=body}, (subst, ls)) = 
-                case reducable(body, params, rets)
+                case reducable(body, params, rets, Fun)
                     of SOME f' =>
                         let val subst = CV.Map.insert(subst, f, f')
                             val _ = dec f
@@ -113,7 +115,7 @@ structure EtaReduce : sig
                 let val (s', lambdas) = List.foldl doLambda (s, nil) lambdas
                 in C.mkFun(List.rev lambdas, doExp(s', e)) end
             and doCont (s, cont as C.FB{f=f,params=params,rets=rets,body=body}, e) = 
-                case reducable(body, params, rets)
+                case reducable(body, params, rets, Cont)
                    of SOME f' => 
                         let val subst = CV.Map.insert(s, f, f')
                             val _ = dec f
