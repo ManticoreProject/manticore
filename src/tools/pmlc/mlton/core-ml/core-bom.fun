@@ -58,8 +58,12 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     open BOM.BOMId
 
     fun fromAst (oldId) = oldId
-    fun fromStrid (strid, region) = fromSymbol (
-      Ast.Strid.toSymbol strid, region)
+    fun fromVid id =
+      let
+        val var = (Ast.Vid.toVar id)
+      in
+        BOM.BOMId.fromSymbol (Ast.Var.toSymbol var, Ast.Var.region var)
+      end
   end
 
   structure Attr = struct
@@ -97,16 +101,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     local
       val counter = Counter.new 0
     in
-      fun fromAst (tyParam : BOM.TyParam.t) = let
-          (* val asNode = BOM.TyParam.node tyParam *)
-          val asRegion = BOM.TyParam.region tyParam
-      in
-          (* newString (BOM.TyParam.toString tyParam, asRegion) *)
-          T {
-            name = BOM.TyParam.toString tyParam,
-            hash = Counter.next counter
-          }
-      end
+      fun fromAst (tyParam : BOM.TyParam.t) =
+        T {
+          name = BOM.TyParam.toString tyParam,
+          hash = Counter.next counter
+        }
     end
 
     fun name (T myParam) = #name myParam
@@ -601,8 +600,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | BOM.CReturnTy.Void => Void
   end
 
-  structure VarPat = struct
-  end
+  (* structure VarPat = struct *)
+  (* end *)
 
   structure Literal = struct
     datatype node
@@ -683,7 +682,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | VpLoad of IntInf.int * simpleexp_t
     | VpAddr of IntInf.int * simpleexp_t
     | VpStore of IntInf.int * simpleexp_t * simpleexp_t
-    | AllocId of Val.t * simpleexp_t list
+    | AllocId of Val.t * simpleexp_t
     | RecAccess of IntInf.int * simpleexp_t * simpleexp_t option
     | Promote of simpleexp_t
     | TypeCast of BOMType.t * simpleexp_t

@@ -45,6 +45,7 @@ signature CORE_BOM =
       type t
 
       val fromAst: BOM.BOMId.t -> t
+      val fromVid: Ast.Vid.t -> t
       val toString: t -> string
       val bogus: t
     end
@@ -81,12 +82,6 @@ signature CORE_BOM =
       type t
 
       val compare: t * t -> order
-      (* val fromLongTyId: BOM.LongTyId.t -> t *)
-      (* val fromLongTyId': BOM.LongTyId.t -> t * BOMId.t *)
-      (* val fromLongValueId: BOM.LongValueId.t -> t *)
-      (* val fromLongValueId': BOM.LongValueId.t -> t * BOMId.t *)
-      (* val fromLongConId: BOM.LongConId.t -> t *)
-      (* val fromLongConId': BOM.LongConId.t -> t * BOMId.t *)
       val fromBOMId: BOM.BOMId.t -> t
       val toString: t -> string
       val toBOMId: t -> BOMId.t
@@ -129,17 +124,6 @@ signature CORE_BOM =
 
     structure RawTy: sig
       datatype t = datatype RawTypes.raw_ty
-      (* datatype t *)
-      (*   = Int8 *)
-      (*   | Uint8 *)
-      (*   | Int16 *)
-      (*   | Uint16 *)
-      (*   | Int32 *)
-      (*   | Uint32 *)
-      (*   | Int64 *)
-      (*   | Uint64 *)
-      (*   | Float32 *)
-      (*   | Float64 *)
 
       val fromAst: BOM.RawTy.t -> t
     end
@@ -250,8 +234,8 @@ signature CORE_BOM =
       val fromAst: BOM.CReturnTy.t -> t
     end
 
-    structure VarPat: sig
-    end
+    (* structure VarPat: sig *)
+    (* end *)
 
     structure Literal: sig
       type t
@@ -303,7 +287,8 @@ signature CORE_BOM =
         | VpLoad of IntInf.int * t
         | VpAddr of IntInf.int * t
         | VpStore of IntInf.int * t * t
-        | AllocId of Val.t * t list
+        | AllocId of Val.t * t
+        (* FIXME: alloc <type> form *)
         | RecAccess of IntInf.int * t * t option
         | Promote of t
         | TypeCast of BOMType.t * t

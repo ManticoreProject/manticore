@@ -7,7 +7,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-signature ELABORATE_CORE_STRUCTS = 
+signature ELABORATE_CORE_STRUCTS =
    sig
       structure Ast: AST
       structure CoreML: CORE_ML
@@ -19,9 +19,17 @@ signature ELABORATE_CORE_STRUCTS =
       sharing Decs = Env.Decs
    end
 
-signature ELABORATE_CORE = 
+signature ELABORATE_CORE =
    sig
       include ELABORATE_CORE_STRUCTS
+
+      (* need to pull this out to use it in ElaborateBOMImports *)
+      (* FIXME: cleaner way to do this? *)
+      structure Lookup : sig
+        type t
+        val fromEnv: Env.t -> t
+      end
+      val elaborateType: Ast.Type.t * Lookup.t -> Env.Type.t
 
       (* Elaborate dec in env, returning Core ML decs. *)
       val elaborateDec: Ast.Dec.t * {env: Env.t, nest: string list} -> Decs.t

@@ -1,3 +1,7 @@
+(* This module handles the elaboration of _import statements --- given
+an _import statement, it enriches the BOM environment with type
+information from the ML-side values and returns the new environment. *)
+
 signature ELABORATE_BOMIMPORTS_STRUCTS =
   sig
     structure Ast: AST
@@ -18,6 +22,6 @@ signature ELABORATE_BOMIMPORTS =
     structure BOM: AST_BOM
 
     (* TODO: do we need to keep any of this? *)
-    val elaborateBomImports:
-      (BOM.Import.t * {env: Env.t * bomEnv: BOMEnv.t}) -> BOMEnv.t
+    val elaborateBomImport:
+      (BOM.Import.t * {env: Env.t, bomEnv: BOMEnv.t}) -> BOMEnv.t
   end

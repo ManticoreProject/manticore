@@ -320,7 +320,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | Default of exp_t
     and simpleexp_node
       = PrimOp of PrimOp.t * simpleexp_t list
-      | AllocId of LongId.t * simpleexp_t list
+      | AllocId of LongId.t * simpleexp_t
       | AllocType of type_t * simpleexp_t
       | Select of IntInf.int * simpleexp_t
       | Assign of IntInf.int * simpleexp_t * simpleexp_t
@@ -540,11 +540,11 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
               PrimOp.layout prim,
               indentedSchemeList (layoutSimpleExps simpleExps)
             ]
-        | AllocId (longId, simpleExps) =>
+        | AllocId (longId, simpleExp) =>
             Layout.mayAlign [
               Layout.str "alloc",
               LongId.layout longId,
-              indentedSchemeList (layoutSimpleExps simpleExps)
+              unindentedSchemeList ([layoutSimpleExp simpleExp])
             ]
         | AllocType (myTy, simpleExps) =>
             Layout.mayAlign [

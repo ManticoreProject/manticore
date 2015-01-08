@@ -237,13 +237,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
        domVals, contVals, returnTy, bodyExp)
     end
 
-  and wrapTuple tys =
-    case tys of
-        (* FIXME: WRONG, JUST CHANGING SO IT COMPILES *)
-      [] => CoreBOM.BOMType.Error
-    | [ty] => ty
-    | tys => CoreBOM.BOMType.Tuple (map (fn ty => (true, ty)) tys)
-
   and elaborateSimpleExp (sExp, ctx, tyEnvs as {env, bomEnv}) =
     let
       fun checkForErrorVal errorVal = check (error (BOM.SimpleExp.region,
@@ -255,20 +248,17 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
 
       (* check that the argument simple exps match the domain ty and
       return an Alloc exp node with type rng if they do *)
-      fun elaborateTupleExp (dom, rng, arguments, conVal) =
+      fun elaborateTupleExp (dom, rng, argument, conVal) =
         let
           (* TODO: handle noreturn correctly *)
-          val argumentExps = map (fn argument => elaborateSimpleExp (argument,
-            ctx, tyEnvs)) arguments
-          val argumentTy = wrapTuple (map (fn argument =>
-            CoreBOM.SimpleExp.typeOf (elaborateSimpleExp (argument, ctx,
-            tyEnvs))) arguments)
+          val argumentExp = elaborateSimpleExp (argument, ctx, tyEnvs)
+          val argumentTy = CoreBOM.SimpleExp.typeOf argumentExp
         in
           checkSExp (CoreBOM.BOMType.equal' (dom, argumentTy),
             "invalid constructor argument")
          (* todo: typarams? *)
           (fn _  => CoreBOM.SimpleExp.new (CoreBOM.SimpleExp.AllocId (conVal,
-            argumentExps), argumentTy))
+            argumentExp), argumentTy))
         end
       fun elaborateVpExp (index, procExp) =
         (* TODO: do something useful with the index *)

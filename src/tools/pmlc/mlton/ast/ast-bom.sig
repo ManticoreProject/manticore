@@ -235,7 +235,7 @@ signature AST_BOM =
 	type t
 	datatype node
 	  = PrimOp of PrimOp.t * t list
-	  | AllocId of LongId.t * t list
+	  | AllocId of LongId.t * t
 	  | AllocType of BOMType.t * t
 	  | Select of IntInf.int * t
 	  | Assign of IntInf.int * t * t
