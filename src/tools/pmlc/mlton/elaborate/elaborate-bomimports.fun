@@ -6,15 +6,15 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
 
   fun elaborateBomImport (import, {env: Env.t, bomEnv: BOMEnv.t}) =
     let
-      fun elaborateType (ty, lookup) = Env.elaborateType (ty,
-        Lookup.fromEnv env)
+      fun elaborateType (ty, lookup) = ElaborateCore.elaborateType (ty,
+        ElaborateCore.Lookup.fromEnv env)
       fun resolveId doResolve (mlId, maybeId) =
         CoreBOM.ValId.fromBOMId (case maybeId of
           SOME bomId => bomId
         | NONE => doResolve mlId)
       (* remove qualifying module, make a BOMId *)
       fun resolveVid vid =
-        BOM.BomId.fromId o Longvid.short vid
+        BOM.BOMId.fromId o Ast.Longvid.short vid
     in
       case import of
         BOM.Import.Val (vid, ty, maybeId) =>
@@ -31,6 +31,7 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
                 SOME scheme => MLType.unify (ty', MLScheme.ty scheme, {
                   error = fn (l, r) => Control.error (Layout.seq [l, r]),
                   preError = fn () => success := false})
+               (* FIXME: error message *)
               | NONE => success := false
             val newTy = CoreBOM.BOMType.MLType ty'
             val newId = resolve (resolveVid vid')
@@ -40,6 +41,7 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
               unify with ty), put the new ty into our env and bind our
               new valId to it *)
               BOMEnv.ValEnv.extend (BOMEnv.TyEnv.extend (bomEnv, newTy),
+                (* FIXME: can we have typarams? *)
                 (* we never have typarams on a val from ML code *)
                 newId, CoreBOM.Val.new (newId, newTy, []))
             else

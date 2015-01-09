@@ -6,6 +6,7 @@ signature ELABORATE_BOMIMPORTS_STRUCTS =
   sig
     structure Ast: AST
     structure CoreBOM: CORE_BOM
+    structure ElaborateCore: ELABORATE_CORE
     structure Env: ELABORATE_ENV
     structure BOMEnv: ELABORATE_BOMENV
     structure CoreML: CORE_ML

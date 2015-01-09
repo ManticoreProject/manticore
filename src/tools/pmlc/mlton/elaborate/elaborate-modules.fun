@@ -68,6 +68,14 @@ structure ElaborateBOMCore = ElaborateBOMCore (
   structure Env = Env
   structure CoreML = CoreML)
 
+structure ElaborateBOMImports = ElaborateBOMImports (
+  structure Ast = Ast
+  structure CoreBOM = CoreBOM
+  structure ElaborateCore = ElaborateCore
+  structure BOMEnv = BOMEnv
+  structure Env = Env
+  structure CoreML = CoreML)
+
 structure AstBOM = Ast.BOM
 
 val elabStrdecInfo = Trace.info "ElaborateModules.elabStrdec"
