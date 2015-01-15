@@ -171,7 +171,7 @@ struct
 
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
             cont enter() = 
-                let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
+                let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
                 if (#0(in_trans))
                 then apply f(UNIT/exh)
                 else do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
@@ -179,7 +179,7 @@ struct
                      let stamp : stamp = VClock.@bump(/exh)
                      let stampPtr : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
                      do #0(stampPtr) := stamp
-                     do FLS.@set-key(IN_TRANS, alloc(true) / exh)
+                     do #0(in_trans) := true
                      cont abortK() = BUMP_ABORT do FLS.@set-key(IN_TRANS, alloc(false) / exh) throw enter()      
                      do FLS.@set-key(ABORT_KEY, (any) abortK / exh)   
                      cont transExh(e:exn) = 
@@ -187,7 +187,7 @@ struct
                         throw exh(e)
                      let res : any = apply f(UNIT/transExh)
                      do @commit(/transExh)
-                     do FLS.@set-key(IN_TRANS, alloc(false) / exh)
+                     do #0(in_trans) := false
                      do FLS.@set-key(READ_SET, NilItem / exh)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
                      return(res)

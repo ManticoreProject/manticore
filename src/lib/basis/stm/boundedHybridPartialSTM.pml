@@ -50,6 +50,7 @@ struct
         extern void GenTimerStop(void *);
         extern void GenTimerPrint();
 
+
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
 	
@@ -72,6 +73,69 @@ struct
 
         define @force-abort(rs : [int,item,item], startStamp:![stamp] / exh:exh) : () = 
             let rawStamp : stamp = #0(startStamp)
+            fun validate3(readSet:item, newStamp : stamp, abortInfo : item, i:int, j:int, n:int) : () = 
+                case readSet
+                    of NilItem => 
+                        case abortInfo
+                            of NilItem => 
+                                let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                throw abortK()
+                             | WithK(tv:tvar,abortK:any,ws:item,_:item,_:item) =>
+                                do ccall M_Print_Int2("Aborting to position %d of %d\n", n, j)
+                                let abortK : cont(any) = (cont(any)) abortK
+                                let current : any = #0(tv)
+                                let stamp : stamp = #2(tv)
+                                do if I64Eq(#1(tv), 0:long)
+                                   then return()
+                                   else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                        throw abortK()
+                                do if I64Lt(rawStamp, stamp)
+                                   then let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                        throw abortK()
+                                   else return()
+                                let newRS : [int,item,item] = alloc(i, abortInfo, abortInfo)
+                                do FLS.@set-key(READ_SET, newRS / exh)
+                                do FLS.@set-key(WRITE_SET, ws / exh)
+                                do #0(startStamp) := newStamp
+                                let captureFreq : int = FLS.@get-counter2()
+                                do FLS.@set-counter(captureFreq)
+                                BUMP_PABORT
+                                throw abortK(current)
+                        end                          
+                    | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
+                        let lock : stamp = #1(tv)
+                        let stamp : stamp = #2(tv)
+                        let shouldAbort : bool = if I64Eq(lock, 0:long) 
+                                                 then if I64Lt(stamp, rawStamp) then return(false) else return(true)
+                                                 else if I64Eq(lock, rawStamp) 
+                                                      then if I64Lt(stamp, rawStamp) then return(false) else return(true)
+                                                      else return(true)
+                        if(shouldAbort)
+                        then apply validate3(next,newStamp,NilItem,0,I32Add(j, 1), 0)
+                        else case abortInfo
+                                of NilItem => 
+                                    if Equal(k, enum(0))
+                                    then apply validate3(next,newStamp,abortInfo,i, I32Add(j, 1),0)
+                                    else apply validate3(next,newStamp,readSet,0, I32Add(j, 1),1)
+                                 | _ => if Equal(k, enum(0)) (*necessarily a checkpointed item*)
+                                        then apply validate3(next,newStamp,abortInfo,i, I32Add(j, 1), I32Add(n, 1))
+                                        else apply validate3(next,newStamp,abortInfo,I32Add(i,1), I32Add(j, 1), I32Add(n, 1))
+                             end
+                    | WithoutK(tv:tvar,rest:item) => 
+                        let lock : stamp = #1(tv)
+                        let stamp : stamp = #2(tv)
+                        let shouldAbort : bool = if I64Eq(lock, 0:long) 
+                                                 then if I64Lt(stamp, rawStamp) then return(false) else return(true)
+                                                 else if I64Eq(lock, rawStamp) 
+                                                      then if I64Lt(stamp, rawStamp) then return(false) else return(true)
+                                                      else return(true)
+                        if(shouldAbort)
+                        then apply validate3(rest,newStamp,NilItem,0,I32Add(j, 1), 0)
+                        else case abortInfo
+                                of NilItem => apply validate3(rest,newStamp,abortInfo,i, I32Add(j, 1), 0)
+                                 | _ => apply validate3(rest,newStamp,abortInfo,i, I32Add(j, 1), I32Add(n, 1))
+                             end
+                end            
             fun validate2(readSet:item, newStamp : stamp, abortInfo : item, i:int) : () = 
                 case readSet
                     of NilItem => 
@@ -115,7 +179,7 @@ struct
                                     if Equal(k, enum(0))
                                     then apply validate2(next,newStamp,abortInfo,i)
                                     else apply validate2(next,newStamp,readSet,0)
-                                 | _ => if Equal(k, enum(0))
+                                 | _ => if Equal(k, enum(0)) (*necessarily a checkpointed item*)
                                         then apply validate2(next,newStamp,abortInfo,i)
                                         else apply validate2(next,newStamp,abortInfo,I32Add(i,1))
                              end
@@ -165,11 +229,9 @@ struct
                      let stamp : stamp = #2(tv)
                      do if I64Eq(#1(tv), 0:long)
                         then return()
-                        else (*let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                             throw abortK() *) @force-abort(readSet, myStamp / exh)
+                        else @force-abort(readSet, myStamp / exh)
                      do if I64Lt(#0(myStamp), stamp)
-                        then (*let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                             throw abortK() *) @force-abort(readSet, myStamp / exh)
+                        then @force-abort(readSet, myStamp / exh)
                         else return()
                      let sl : item = #1(readSet)
                      if I32Lt(#0(readSet), READ_SET_BOUND)    (*still have room for more*)
@@ -245,6 +307,87 @@ struct
             let readSet : item = #1(rs)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             let rawStamp: long = #0(startStamp)
+            fun validate2(readSet:item, locks:item, newStamp : stamp, abortInfo : item, i:int, j:int, n:int) : () = 
+                case readSet
+                    of NilItem => 
+                        case abortInfo
+                            of NilItem => return() (*no violations detected*)
+                             | WithK(tv:tvar,abortK:any,ws:item,_:item,_:item) =>
+                                do ccall M_Print_Int2("Aborting to postion %d of %d\n", n, j)
+                                if Equal(abortK, enum(0))
+                                then do apply release(locks)
+                                     let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
+                                     let captureFreq : int = FLS.@get-counter2()
+                                     let newFreq : int = I32Div(captureFreq, 2)
+                                     do FLS.@set-counter2(newFreq)
+                                     throw abortK()  (*no checkpoint found*)
+                                else do apply release(locks)
+                                     let abortK : cont(any) = (cont(any)) abortK
+                                     let current : any = #0(tv)
+                                     let stamp : stamp = #2(tv)
+                                     do if I64Eq(#1(tv), 0:long)
+                                        then return()
+                                        else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                            throw abortK()
+                                     do if I64Lt(rawStamp, stamp)
+                                        then let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                             throw abortK()
+                                        else return()
+                                     let newRS : [int,item,item] = alloc(i, abortInfo, abortInfo)
+                                     do FLS.@set-key(READ_SET, newRS / exh)
+                                     do FLS.@set-key(WRITE_SET, ws / exh)
+                                     do #0(startStamp) := newStamp
+                                     let captureFreq : int = FLS.@get-counter2()
+                                     do FLS.@set-counter(captureFreq)
+                                     BUMP_PABORT
+                                     throw abortK(current)
+                             | WithoutK(tv:tvar,_:item) =>
+                                do ccall M_Print_Int2("Aborting to postion %d of %d\n", n, j)
+                                do apply release(locks)
+                                let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
+                                let captureFreq : int = FLS.@get-counter2()
+                                let newFreq : int = I32Div(captureFreq, 2)
+                                do FLS.@set-counter2(newFreq)
+                                throw abortK()  (*no checkpoint found*)
+                        end                          
+                    | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
+                        let lock : stamp = #1(tv)
+                        let stamp : stamp = #2(tv)
+                        let shouldAbort : bool = if I64Eq(lock, 0:long) 
+                                                 then if I64Lt(stamp, rawStamp) then return(false) else return(true)
+                                                 else if I64Eq(lock, rawStamp) 
+                                                      then if I64Lt(stamp, rawStamp) then return(false) else return(true)
+                                                      else return(true)
+                        if(shouldAbort)
+                        then apply validate2(next,locks,newStamp,readSet,0,I32Add(j, 1), 0)
+                        else case abortInfo
+                               of NilItem => 
+                                    if Equal(k, enum(0))            (*continuation was dropped*)
+                                    then apply validate2(next, locks,newStamp,abortInfo,i,I32Add(j, 1), I32Add(n,1))
+                                    else apply validate2(next, locks,newStamp, abortInfo, I32Add(i, 1),I32Add(j, 1), I32Add(n, 1))
+                                | WithK(_:tvar,k':any,_:List.list,_:item,_:item) =>  (*already going to abort*)
+                                    if Equal(k', enum(0))   (*don't have checkpoint*)
+                                    then if Equal(k,enum(0))        (*don't have one here either*)
+                                         then apply validate2(next,locks,newStamp,abortInfo,i,I32Add(j, 1), 0) 
+                                         else apply validate2(next,locks,newStamp,readSet,0,I32Add(j, 1), 0) (*use this checkpoint*)
+                                    else if Equal(k,enum(0))
+                                         then apply validate2(next,locks,newStamp,abortInfo,i,I32Add(j, 1), I32Add(n, 1))
+                                         else apply validate2(next,locks,newStamp,abortInfo,I32Add(i,1),I32Add(j, 1), I32Add(n, 1))
+                               | _ => if Equal(k,enum(0))
+                                      then apply validate2(next,locks,newStamp,abortInfo,i,I32Add(j, 1), 0)
+                                      else apply validate2(next,locks,newStamp,readSet, 0,I32Add(j, 1),0)
+                             end
+                    | WithoutK(tv:tvar,rest:item) => 
+                        if I64Eq(#1(tv), 0:long)
+                        then if I64Lt(#2(tv), rawStamp)
+                             then apply validate2(rest, locks,newStamp,abortInfo,i,I32Add(j, 1), I32Add(n, 1))
+                             else apply validate2(rest,locks,newStamp,readSet,0,I32Add(j, 1), 0)
+                        else if I64Eq(#1(tv), rawStamp)
+                             then if I64Lt(#2(tv), rawStamp)
+                                  then apply validate2(rest, locks,newStamp,abortInfo,i,I32Add(j, 1), I32Add(n, 1))
+                                  else apply validate2(rest,locks,newStamp,readSet,0,I32Add(j, 1), 0)
+                             else apply validate2(rest,locks,newStamp,readSet,0,I32Add(j, 1), 0)
+                end
             fun validate(readSet:item, locks:item, newStamp : stamp, abortInfo : item, i:int) : () = 
                 case readSet
                     of NilItem => 

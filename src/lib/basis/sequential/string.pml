@@ -16,6 +16,20 @@ structure String =
       extern void *M_StringConcatList (void *) __attribute__((pure,alloc));
       extern void *M_StringTokenize (void *, void *) __attribute__((pure,alloc));
       extern int M_StringSame (void *, void *) __attribute__((pure));
+      extern int strcmp (void *, void *);
+      extern void * M_StringExplode(void *) __attribute__((pure,alloc));
+
+      define @string-explode(arg : ml_string / exh : exh) : List.list = 
+        let res : List.list = ccall M_StringExplode(arg)
+        return(res);
+
+      define @string-compare(arg : [ml_string, ml_string] / exh:exh) : order = 
+        let res : int = ccall strcmp(#0(#0(arg)), #0(#1(arg)))
+        if I32Lt(res, 0)
+        then return(LESS)
+        else if I32Gt(res, 0)
+             then return(GREATER)
+             else return(EQUAL);
   
       define inline @data (s : ml_string / exh : PT.exh) : any =
 	  let res : any = #0(s)
@@ -48,7 +62,6 @@ structure String =
 	  if I32Eq (res, 1) then return (true)
 	  else return (false)
 	;
-
     )
 
     val concat : string list -> string = _prim(@string-concat-list)
@@ -60,6 +73,10 @@ structure String =
     end
 
     val same : string * string -> bool = _prim (@same)
+
+    val compare : string * string -> order = _prim(@string-compare)
+
+    val explode : string -> string list = _prim(@string-explode)
 
     fun concatWith s ss = let
 	  fun lp xs = (case xs

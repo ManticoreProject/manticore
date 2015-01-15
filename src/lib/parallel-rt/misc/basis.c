@@ -313,6 +313,7 @@ Value_t M_StringConcat2 (Value_t a, Value_t b)
     SequenceHdr_t	*s1 = (SequenceHdr_t *)ValueToPtr(a);
     SequenceHdr_t	*s2 = (SequenceHdr_t *)ValueToPtr(b);
 
+
     if (s1->len == 0) return b;
     else if (s2->len == 0) return a;
     else {
@@ -750,6 +751,30 @@ Value_t M_StringTokenize (Value_t str, Value_t sep)
 	token = strtok(NULL, sepData);
     }
     return l;
+}
+
+bool f(){
+    for(int i = 0; i < 10; i++){
+        i++;
+    }
+    return false;
+}
+
+Value_t M_StringExplode(Value_t str){
+    VProc_t * vp = VProcSelf();
+    SequenceHdr_t	*strS = (SequenceHdr_t *)ValueToPtr(str);
+    char                *strData = (char*)strS->data;
+    Value_t             l = M_NIL;
+
+    int n = strS->len;
+    for(int i = n-1; i >= 0; i--){
+        char buf[2];
+        int x = sprintf(buf, "%c", strData[i]);
+        Value_t s = AllocString(vp, buf);  
+        l = Cons(vp, s, l);  
+    }
+    return l;  
+    
 }
 
 void DebugThrow (VProc_t *vp, char *loc)
