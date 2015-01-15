@@ -1,6 +1,5 @@
 (* proxy.pml
  *
- *
  * COPYRIGHT (c) 2010 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
