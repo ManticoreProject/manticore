@@ -541,7 +541,6 @@ struct
         return(UNIT);
         
       define @abort(x : unit / exh : exh) : any = 
-        do ccall M_Print("Aborting transaction\n")
          let e : cont() = FLS.@get-key(ABORT_KEY / exh)
          throw e();        
 
@@ -600,7 +599,7 @@ struct
     val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
-    val tvarEq : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
+    val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
     val rsLength : unit -> unit = _prim(@rs-length)
 
 

@@ -220,7 +220,7 @@ struct
     val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
-    val tvarEq : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
+    val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
 end
 
 
