@@ -18,6 +18,17 @@ structure Threads (*: sig
     type thread_id = _prim(FLS.fls)
     type vproc = _prim(vproc)
 
+    _primcode(
+        define @init-counter(x : unit / exh : exh) : any = 
+            let x : ![int] = alloc(0)
+            let x : ![int] = promote(x)
+            return(x);
+    )
+
+    val init : unit -> 'a = _prim(@init-counter)
+    val counter = init()
+    fun getCounter() = counter
+
     _primcode (
 
         extern void * M_Print_Int(void *, int);
@@ -76,6 +87,32 @@ structure Threads (*: sig
 	    return (fls)
 	  ;
 
+        define @getCounter = getCounter;
+
+        define @spawn-eq(f : fun(unit / exh -> unit) / exh:exh) : unit = 
+                let counter : ![int] = @getCounter(UNIT / exh)
+                let i : int = I32FetchAndAdd(&0(counter), 1)
+                let numVPs : int = VProc.@num-vprocs()
+                let vp : int = I32Mod(i, numVPs)
+                cont fiber(x:PT.unit) = 
+                    cont threadExh(e:PT.exn) = 
+                        case e
+                            of Fail(s:ml_string) => 
+                                do ccall M_Print("Thread exiting because of uncaught exception: ")
+                                do ccall M_Print(#0(s))
+                                return(UNIT)
+                            | _ => do ccall M_Print("Thread exiting because of uncaught exception\n")
+                                   return(UNIT)
+                       end                 
+                    let _ : unit = apply f(UNIT / threadExh)
+                    SchedulerAction.@stop()
+                let fls : FLS.fls = FLS.@new-pinned(vp)
+                let self : vproc = host_vproc
+                let dst : vproc = VProc.@vproc-by-id(vp)
+                do @enqueue-ready(self, dst, fls, fiber)
+                return(UNIT);
+
+
         define @spawn-on(arg : [[int],fun(unit / exh -> unit)] / exh:exh) : unit = 
                 let vp : [int] = #0(arg)
                 let f : fun(unit / exh -> unit) = #1(arg)
@@ -111,6 +148,7 @@ structure Threads (*: sig
     val yield : unit -> unit = _prim(@yield)
     val spawnOn : int * (unit -> unit) -> unit = _prim(@spawn-on)
     val exit : unit -> 'a = _prim(@thread-exit)
+    val spawnEq : (unit -> unit) -> unit = _prim(@spawn-eq)
 
   end
 

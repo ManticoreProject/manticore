@@ -106,14 +106,16 @@ struct
             return(UNIT)
         ;
 
-        define @commit(/exh:exh) : () = 
+        define @commit(/exh:exh) : () =     
+            let vp : vproc = SchedulerAction.@atomic-begin()
             let startStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : item) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:item) =>
                         do #1(tv) := 0:long         (*unlock*)
                         apply release(tl)
-                     | NilItem => return()
+                     | NilItem => do SchedulerAction.@atomic-end(vp)
+                                  return()
                 end
             let readSet : item = FLS.@get-key(READ_SET / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
