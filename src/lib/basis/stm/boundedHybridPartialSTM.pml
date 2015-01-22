@@ -15,11 +15,11 @@ struct
 #ifdef COUNT
 #define BUMP_PABORT do ccall M_BumpCounter(0)
 #define PRINT_PABORT_COUNT let counter1 : int = ccall M_GetCounter(0) \
-                          do ccall M_Print_Int("Partially aborted %d transactions\n", counter1)
+                          do ccall M_Print_Int("Partial-Aborts = %d\n", counter1)
 #define BUMP_FABORT do ccall M_BumpCounter(1)
 #define PRINT_FABORT_COUNT let counter2 : int = ccall M_GetCounter(1) \
-                           do ccall M_Print_Int("Fully aborted %d transactions\n", counter2)                     
-#define PRINT_COMBINED do ccall M_Print_Int("Aborted %d transactions in total\n", I32Add(counter1, counter2))                                                                                                          
+                           do ccall M_Print_Int("Full-Aborts = %d\n", counter2)                     
+#define PRINT_COMBINED do ccall M_Print_Int("Total-Aborts = %d\n", I32Add(counter1, counter2))                                                                                                          
 #else
 #define BUMP_PABORT
 #define PRINT_PABORT_COUNT
@@ -34,7 +34,7 @@ struct
 #define STOP_TIMER let vp : vproc = host_vproc do ccall GenTimerStop(vp)
 
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a
-                     | WithoutK of 'a * 'a
+                     | WithoutK of 'a * 'a | Abort of unit
 
     _primcode(
 
@@ -163,7 +163,7 @@ struct
                                 do FLS.@set-counter(captureFreq)
                                 BUMP_PABORT
                                 throw abortK(current)
-                        end                          
+                        end
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
                         let lock : stamp = #1(tv)
                         let stamp : stamp = #2(tv)
@@ -229,7 +229,11 @@ struct
                      let stamp : stamp = #2(tv)
                      do if I64Eq(#1(tv), 0:long)
                         then return()
-                        else @force-abort(readSet, myStamp / exh)
+                        else fun lp() : () =
+                             if I64Eq(#1(tv), 0:long)
+                             then return()
+                             else do Pause() apply lp()
+                             @force-abort(readSet, myStamp / exh)
                      do if I64Lt(#0(myStamp), stamp)
                         then @force-abort(readSet, myStamp / exh)
                         else return()
@@ -440,34 +444,32 @@ struct
                                                       then if I64Lt(stamp, rawStamp) then return(false) else return(true)
                                                       else return(true)
                         if(shouldAbort)
-                        then apply validate(next,locks,newStamp,readSet,0)
+                        then if Equal(k, enum(0))
+                             then apply validate(next,locks,newStamp,Abort(UNIT),0)
+                             else apply validate(next,locks,newStamp,readSet,0)
                         else case abortInfo
-                               of NilItem => 
-                                    if Equal(k, enum(0))            (*continuation was dropped*)
-                                    then apply validate(next, locks,newStamp,abortInfo,i)
-                                    else apply validate(next, locks,newStamp, abortInfo, I32Add(i, 1))
-                                | WithK(_:tvar,k':any,_:List.list,_:item,_:item) =>  (*already going to abort*)
-                                    if Equal(k', enum(0))   (*don't have checkpoint*)
-                                    then if Equal(k,enum(0))        (*don't have one here either*)
-                                         then apply validate(next,locks,newStamp,abortInfo,i) 
-                                         else apply validate(next,locks,newStamp,readSet,0) (*use this checkpoint*)
-                                    else if Equal(k,enum(0))
-                                         then apply validate(next,locks,newStamp,abortInfo,i)
-                                         else apply validate(next,locks,newStamp,abortInfo,I32Add(i,1))
-                               | _ => if Equal(k,enum(0))
-                                      then apply validate(next,locks,newStamp,abortInfo,i)
-                                      else apply validate(next,locks,newStamp,readSet, 0)
+                               of NilItem => apply validate(next, locks,newStamp,abortInfo,i) 
+                                | WithK(_:tvar,k':any,_:List.list,_:item,_:item) =>  (*k is necessarily non-null*)
+                                    if Equal(k,enum(0))
+                                    then apply validate(next,locks,newStamp,abortInfo,i)
+                                    else apply validate(next,locks,newStamp,abortInfo,I32Add(i,1)) 
+                               | Abort(_ : unit) => 
+                                    if Equal(k,enum(0))
+                                    then apply validate(next,locks,newStamp,abortInfo,i)
+                                    else apply validate(next,locks,newStamp,readSet,0) (*use this continuation*)
+                               | _ => let e : exn = Fail(@"Impossible: validate\n")
+                                      throw exh(e)
                              end
                     | WithoutK(tv:tvar,rest:item) => 
                         if I64Eq(#1(tv), 0:long)
                         then if I64Lt(#2(tv), rawStamp)
                              then apply validate(rest, locks,newStamp,abortInfo,i)
-                             else apply validate(rest,locks,newStamp,readSet,0)
+                             else apply validate(rest,locks,newStamp,Abort(UNIT),0)
                         else if I64Eq(#1(tv), rawStamp)
                              then if I64Lt(#2(tv), rawStamp)
                                   then apply validate(rest, locks,newStamp,abortInfo,i)
-                                  else apply validate(rest,locks,newStamp,readSet,0)
-                             else apply validate(rest,locks,newStamp,readSet,0)
+                                  else apply validate(rest,locks,newStamp,Abort(UNIT),0)
+                             else apply validate(rest,locks,newStamp,Abort(UNIT),0)
                 end
             fun acquire(writeSet:item, acquired : item) : item = 
                 case writeSet

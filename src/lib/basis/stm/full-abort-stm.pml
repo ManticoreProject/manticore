@@ -11,12 +11,13 @@ structure FullAbortSTM = (* :
 	
 *)
 struct
+
 #define COUNT
 
 #ifdef COUNT
 #define BUMP_ABORT do ccall M_BumpCounter(0)
 #define PRINT_ABORT_COUNT let counter : int = ccall M_GetCounter(0) \
-                          do ccall M_Print_Int("Aborted %d transactions\n", counter)
+                          do ccall M_Print_Int("Total-Aborts = %d\n", counter)
 #else
 #define BUMP_ABORT
 #define PRINT_ABORT_COUNT
@@ -183,7 +184,7 @@ struct
                      do #0(stampPtr) := stamp
                      do #0(in_trans) := true
                      cont abortK() = BUMP_ABORT do FLS.@set-key(IN_TRANS, alloc(false) / exh) throw enter()      
-                     do FLS.@set-key(ABORT_KEY, (any) abortK / exh)   
+                     do FLS.@set-key(ABORT_KEY, (any) abortK / exh)
                      cont transExh(e:exn) = 
                         do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
                         throw exh(e)
