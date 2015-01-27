@@ -19,6 +19,59 @@
 #define R14_OFF		(-5*8)	/* offset off %rbp for saving %r14 */
 #define R15_OFF		(-6*8)	/* offset off %rbp for saving %r15 */
 
+/* ASM_ProxyCont
+ *
+ * Code for the proxy continuation. It will check if the proxied continuation
+ * is in the local or global heap. In the prior case we retrieve the object's
+ * location in the local heap from the table and then zero out the entry before
+ * throwing it.
+ *
+ * NOTES: The vproc throwing this continuation must be the same as its creator, so
+ * we do not check this. Additionally, the offsets on r11 are lifted from an auto-
+ * generated file of vproc data structure offsets, so right now these are fragile!
+ */
+ 	.text
+	.p2align 3
+	.globl	_GSYM(ASM_ProxyCont)
+_GSYM(ASM_ProxyCont):
+	movq	8(%rdi), %rdx		/* place ptr to proxy in rdx */
+	movslq	156(%r11), %r10		/* place vproc->maxproxy in r10 */
+	movq	8(%rdx), %rdx		/* rdx = rdx[1], now is 2nd field of proxy */
+
+	/* if rdx >= r10, thus proxy was promoted, throw continuation */
+	cmpq	%r10, %rdx
+	movq	%rdx, %r12			/* save ptr to proxy in r12 */
+	jge	throwContinuation
+
+	/* fetch proxy from table */
+	movl	152(%r11), %r13d
+	leaq	(%rdx,%rdx), %rbx
+	movq	160(%r11), %r10
+	subl	$1, %r13d
+	leal	(%r13,%r13), %ecx
+	leaq	8(%r10,%rbx,8), %r14
+	movslq	%ecx, %rcx
+
+	/* if it was the last entry, we don't move an entry in the table */
+	cmpq	%rbx, %rcx
+	movq	(%r14), %r12		
+	movl	%r13d, 152(%r11)	/* update proxy table entry count in vproc. */
+	je	throwContinuation
+
+	/* relocate the last entry and update its proxy */
+	movq	(%r10,%rcx,8), %r13
+	movq	%rdx, 8(%r13)
+	movq	%r13, (%r10,%rbx,8)
+	movq	8(%r10,%rcx,8), %rdx
+	movq	%rdx, (%r14)
+
+throwContinuation:
+	/* throw the proxied continuation's closure pointer currently in r12 */
+	movq	(%r12), %rcx	/* get code pointer from closure and put in rcx */
+	movq	%r12, %rdi		/* set environment to be that closure */
+	jmp	*%rcx
+
+
 
 /* ASM_Apply:
  *

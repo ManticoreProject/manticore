@@ -163,25 +163,12 @@ structure Proxy (* :
           do AdrStore(AdrAddI32(myAddr, TABLE_POS(id)), myProxy)
           do AdrStore(AdrAddI32(myAddr, I32Add(TABLE_POS(id), TABLE_ENTRY_OFFB)), fiber)
           do vpstore (PROXYTABLEENTRIES,host_vproc,I32Add(id,1))
-        (* create the continuation that runs the code *)
-          cont Proxy (x : any) =
-        (* if promoted then we can just execute the fiber stored in the proxy *)
-        let prom : bool = @isPromoted(myProxy)
-        if Equal(prom,true) then
-          let myFiber : cont(any) = #1(myProxy)
-          throw myFiber(x)
-        else
-        (* check if the vproc is the same as the creator *)
-            if Equal(#0(myProxy),host_vproc) then 
-              (* if yes then get the fiber out of the local proxy table *)
-              let myFiber : cont(any) = @getProxyFiberInLH(myProxy)
-              throw myFiber(x)
-            else
-              (* if not we have to send a thief *)
-              let myFiber : cont(any) = @thief-from-atomic-proxy (host_vproc,myProxy)
-              throw myFiber(x)
-          (* in *)
-        return(Proxy)   
+
+        (* get the proxy continuation created as a side-effect of alloc_special *)
+        let newAddr : addr(any) = AdrAddI32((addr(any))&0(myProxy), 72) (* 24 + 48 *)
+        let proxyCont : cont(any) = (cont(any))newAddr
+        
+        return(proxyCont)   
     else
         (*if no free entries return the original fiber *)
         return (fiber)

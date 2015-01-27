@@ -139,6 +139,22 @@ functor Alloc64Fn (
 	(totalSize, hdrWord, stms)
     end (* allocSpecialObj *)
 
+     (* function returning the the header for a closure of a continuation. 
+        [code pointer | environment pointer]
+        *)
+    fun contHeader () = let
+      val nWords = 2
+      (* val ptrMask = "01" (* FIXME: first is not a pointer, but 2nd is. not sure if it's the reverse! *) *)
+
+      val id = 1 (* HeaderTableStruct.HeaderTable.addHdr (HeaderTableStruct.header,ptrMask) *)
+      val hdrWord = W.toLargeInt (
+          W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+          W.<< (W.fromInt id, 0w1)), 0w1) )
+    in    
+        (* number of bytes, header, and statements, of which there are none *)
+        (nWords * wordSzB, hdrWord, [])
+    end (* contHeader *)
+
     fun offAp i = T.ADD(MTy.wordTy, T.REG(MTy.wordTy, Regs.apReg), i)
 
   (* generate code to allocate a polymorphic vector in the local heap *)
@@ -337,16 +353,39 @@ functor Alloc64Fn (
 		in
 		  (r, T.REG(MTy.wordTy, r), T.MV(MTy.wordTy, r, gap), gap)
 		end
+
+     (* 64 byte alignment. We want the header on the line too so we add 8 to whatever padding is needed. *)
+      val ap_realignment = T.MV(MTy.wordTy, globalApReg, T.ADD(64, globalAp, T.ADD(64, (wordLit 8), T.ANDB(64, T.NEG(64, globalAp), (wordLit 63)))))
+      val afterProxyPadding = 48 (* to place the proxy on its own cache line. *)
+
 	  fun offAp i = T.ADD (MTy.wordTy, globalAp, i)
 	  val (totalSize, hdrWord, stms) = allocspecial offAp args
-	(* store the header word *)
-	  val stms = MTy.store (offAp (wordLit (~wordSzB)), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) 
-		:: stms
+
+      val (totalSize_closure, hdrWord_closure, _) = contHeader ()
+	(* store the header words *)
+
+                (* header word for the proxy object *)
+	  val stms = MTy.store (offAp (wordLit (~wordSzB)), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory)
+
+                (* header word for the proxy continuation's closure *)
+                :: MTy.store (offAp (wordLit (totalSize + afterProxyPadding)), MTy.EXP (MTy.wordTy, T.LI hdrWord_closure), ManticoreRegion.memory)
+
+                (**** initialize the closure ****)
+
+                (* store location of the code *)
+                :: MTy.store (offAp (wordLit (totalSize+(1*wordSzB) + afterProxyPadding)), 
+                    MTy.EXP (MTy.wordTy, T.LABEL(Label.global "ASM_ProxyCont")), ManticoreRegion.memory)
+
+                (* store the location of the proxy into the 2nd field of the closure's word, aka the environment pointer *)
+                :: MTy.store (offAp (wordLit (totalSize+(2*wordSzB) + afterProxyPadding)), 
+                    MTy.EXP (MTy.wordTy, offAp (wordLit 0)), ManticoreRegion.memory)                
+		        
+                :: stms
 	(* bump up the allocation pointer *)
 	  val bumpAp = VProcOps.genVPStore' (MTy.wordTy, Spec.ABI.globNextW, vpReg, 
-			T.ADD (64, globalApAddr, wordLit (totalSize+wordSzB)))
+			T.ADD (64, globalAp, wordLit (totalSize+wordSzB + afterProxyPadding + totalSize_closure + wordSzB)))
 	  in
-	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: stms @ [bumpAp] }
+	    { ptr=MTy.GPR (MTy.wordTy, globalApReg), stms=setVP :: setGAp :: ap_realignment :: stms @ [bumpAp] }
 	  end
 	  
 	  fun annotate (stm, "") = stm

@@ -70,7 +70,12 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 
   (* the amount of storage allocated by an expression *)
     fun gExpAlloc (CFG.E_GAlloc(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
-	  | gExpAlloc (CFG.E_AllocSpecial(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1)
+	  | gExpAlloc (CFG.E_AllocSpecial(_, _, xs)) = Word.fromLargeInt ABI.wordSzB * Word.fromInt(length xs + 1) 
+                    + Word.fromInt 24 (* This is the size of the proxy continuation's closure (with header), which is also
+                            allocated in the global heap by alloc_special. *)
+                    + Word.fromInt (63 + 8)  (* the maximum possible realignment of the allocation pointer *)
+                    + Word.fromInt 48  (* the fixed amount of padding after the proxy. *)
+
       | gExpAlloc _ = 0w0
 
     fun transform (CFG.MODULE{name, externs, code}) = let
