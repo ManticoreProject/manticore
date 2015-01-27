@@ -16,10 +16,10 @@ struct
 
 #ifdef COUNT
 #define BUMP_PABORT do ccall M_BumpCounter(0)
-#define PRINT_PABORT_COUNT let counter1 : int = ccall M_GetCounter(0) \
+#define PRINT_PABORT_COUNT let counter1 : int = ccall M_SumCounter(0) \
                           do ccall M_Print_Int("Partially aborted %d transactions\n", counter1)
 #define BUMP_FABORT do ccall M_BumpCounter(1)
-#define PRINT_FABORT_COUNT let counter2 : int = ccall M_GetCounter(1) \
+#define PRINT_FABORT_COUNT let counter2 : int = ccall M_SumCounter(1) \
                            do ccall M_Print_Int("Fully aborted %d transactions\n", counter2)                     
 #define PRINT_COMBINED do ccall M_Print_Int("Aborted %d transactions in total\n", I32Add(counter1, counter2))                                                                                                          
 #else
@@ -39,7 +39,7 @@ struct
         extern void * M_Print_Int2(void *, int, int);
         extern void M_Print_Long (void *, long);
         extern void M_BumpCounter(int);
-        extern int M_GetCounter(int);
+        extern int M_SumCounter(int);
         
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)

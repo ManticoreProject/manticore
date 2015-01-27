@@ -16,7 +16,7 @@ struct
 
 #ifdef COUNT
 #define BUMP_ABORT do ccall M_BumpCounter(0)
-#define PRINT_ABORT_COUNT let counter : int = ccall M_GetCounter(0) \
+#define PRINT_ABORT_COUNT let counter : int = ccall M_SumCounter(0) \
                           do ccall M_Print_Int("Total-Aborts = %d\n", counter)
 #else
 #define BUMP_ABORT
@@ -34,7 +34,7 @@ struct
         extern void * M_Print_Int2(void *, int, int);
         extern void M_Print_Long (void *, long);
         extern void M_BumpCounter(int);
-        extern int M_GetCounter(int);
+        extern int M_SumCounter(int);
         
         typedef itemType = int; (*correponds to the above #define's*)
         typedef stamp = VClock.stamp;
@@ -173,28 +173,31 @@ struct
         ;
 
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
-            cont enter() = 
+            
                 let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
                 if (#0(in_trans))
                 then apply f(UNIT/exh)
-                else do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
+                else let stampPtr : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
+                     do #1(stampPtr) := 0
+                     cont enter() = 
+                     do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
                      let stamp : stamp = VClock.@bump(/exh)
-                     let stampPtr : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
                      do #0(stampPtr) := stamp
                      do #0(in_trans) := true
-                     cont abortK() = BUMP_ABORT do FLS.@set-key(IN_TRANS, alloc(false) / exh) throw enter()      
+                     cont abortK() = BUMP_ABORT do #0(in_trans) := false do #1(stampPtr) := I32Add(#1(stampPtr), 1) throw enter()      
                      do FLS.@set-key(ABORT_KEY, (any) abortK / exh)
                      cont transExh(e:exn) = 
                         do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
                         throw exh(e)
                      let res : any = apply f(UNIT/transExh)
                      do @commit(/transExh)
+                   (*  do ccall M_Print_Int("Aborted this transaction %d times\n", #1(stampPtr)) *)
                      do #0(in_trans) := false
                      do FLS.@set-key(READ_SET, NilItem / exh)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
                      return(res)
-            throw enter()
+                     throw enter()
         ;
 
       define @print-stats(x:unit / exh:exh) : unit = 

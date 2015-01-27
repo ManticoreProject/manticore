@@ -10,14 +10,14 @@
 structure BoundedHybridPartialSTM = 
 struct 
 
-#define COUNT
+#define COUNT 
 
 #ifdef COUNT
 #define BUMP_PABORT do ccall M_BumpCounter(0)
-#define PRINT_PABORT_COUNT let counter1 : int = ccall M_GetCounter(0) \
-                          do ccall M_Print_Int("Partial-Aborts = %d\n", counter1)
+#define PRINT_PABORT_COUNT let counter1 : int = ccall M_SumCounter(0) \
+                           do ccall M_Print_Int("Partial-Aborts = %d\n", counter1)
 #define BUMP_FABORT do ccall M_BumpCounter(1)
-#define PRINT_FABORT_COUNT let counter2 : int = ccall M_GetCounter(1) \
+#define PRINT_FABORT_COUNT let counter2 : int = ccall M_SumCounter(1) \
                            do ccall M_Print_Int("Full-Aborts = %d\n", counter2)                     
 #define PRINT_COMBINED do ccall M_Print_Int("Total-Aborts = %d\n", I32Add(counter1, counter2))                                                                                                          
 #else
@@ -30,6 +30,8 @@ struct
 
 #define READ_SET_BOUND 20
 
+(*#define STATS 1
+*)
 #define START_TIMER let vp : vproc = host_vproc do ccall GenTimerStart(vp)
 #define STOP_TIMER let vp : vproc = host_vproc do ccall GenTimerStop(vp)
 
@@ -42,7 +44,7 @@ struct
         extern void * M_Print_Int2(void *, int, int);
         extern void M_Print_Long (void *, long);
         extern void M_BumpCounter(int);
-        extern int M_GetCounter(int);
+        extern int M_SumCounter(int);
         extern void M_StartTimer();
         extern void M_StopTimer();
         extern long M_GetTimeAccum();
@@ -71,9 +73,10 @@ struct
         define @unsafe-get(tv : tvar / exh:exh) : any = 
             return(#0(tv));
 
-        define @force-abort(rs : [int,item,item], startStamp:![stamp] / exh:exh) : () = 
+        define @force-abort(rs : [int,item,item], startStamp:![stamp, int] / exh:exh) : () = 
+            do #1(startStamp) := I32Add(#1(startStamp), 1)
             let rawStamp : stamp = #0(startStamp)
-            fun validate3(readSet:item, newStamp : stamp, abortInfo : item, i:int, j:int, n:int) : () = 
+            fun validate3(readSet:item, newStamp : stamp, abortInfo : item, i:int, j:int, n:int, b:bool) : () = 
                 case readSet
                     of NilItem => 
                         case abortInfo
@@ -81,7 +84,8 @@ struct
                                 let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
                                 throw abortK()
                              | WithK(tv:tvar,abortK:any,ws:item,_:item,_:item) =>
-                                do ccall M_Print_Int2("Eagerly Aborting to position %d of %d\n", n, j)
+                                (*do ccall M_Print_Int2("Eagerly Aborting to position %d of %d\n", n, j) *)
+                                do if(b) then do ccall M_Print_Int2("Eagerly Aborting to position %d of %d\n", n, j) return() else do ccall M_Print_Int2("Read set still valid, eagerly Aborting to position %d of %d\n", n, j)  return()
                                 let abortK : cont(any) = (cont(any)) abortK
                                 let current : any = #0(tv)
                                 let stamp : stamp = #2(tv)
@@ -101,7 +105,7 @@ struct
                                 do FLS.@set-counter(captureFreq)
                                 BUMP_PABORT
                                 throw abortK(current)
-                        end                          
+                        end
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
                         let lock : stamp = #1(tv)
                         let stamp : stamp = #2(tv)
@@ -111,15 +115,15 @@ struct
                                                       then if I64Lt(stamp, rawStamp) then return(false) else return(true)
                                                       else return(true)
                         if(shouldAbort)
-                        then apply validate3(next,newStamp,NilItem,0,I32Add(j, 1), 0)
+                        then apply validate3(next,newStamp,NilItem,0,I32Add(j, 1), 0,true)
                         else case abortInfo
                                 of NilItem => 
                                     if Equal(k, enum(0))
-                                    then apply validate3(next,newStamp,abortInfo,i, I32Add(j, 1),0)
-                                    else apply validate3(next,newStamp,readSet,0, I32Add(j, 1),1)
+                                    then apply validate3(next,newStamp,abortInfo,i, I32Add(j, 1),0,b)
+                                    else apply validate3(next,newStamp,readSet,0, I32Add(j, 1),1,b)
                                  | _ => if Equal(k, enum(0)) (*necessarily a checkpointed item*)
-                                        then apply validate3(next,newStamp,abortInfo,i, I32Add(j, 1), I32Add(n, 1))
-                                        else apply validate3(next,newStamp,abortInfo,I32Add(i,1), I32Add(j, 1), I32Add(n, 1))
+                                        then apply validate3(next,newStamp,abortInfo,i, I32Add(j, 1), I32Add(n, 1),b)
+                                        else apply validate3(next,newStamp,abortInfo,I32Add(i,1), I32Add(j, 1), I32Add(n, 1),b)
                              end
                     | WithoutK(tv:tvar,rest:item) => 
                         let lock : stamp = #1(tv)
@@ -130,10 +134,10 @@ struct
                                                       then if I64Lt(stamp, rawStamp) then return(false) else return(true)
                                                       else return(true)
                         if(shouldAbort)
-                        then apply validate3(rest,newStamp,NilItem,0,I32Add(j, 1), 0)
+                        then apply validate3(rest,newStamp,NilItem,0,I32Add(j, 1), 0,true)
                         else case abortInfo
-                                of NilItem => apply validate3(rest,newStamp,abortInfo,i, I32Add(j, 1), 0)
-                                 | _ => apply validate3(rest,newStamp,abortInfo,i, I32Add(j, 1), I32Add(n, 1))
+                                of NilItem => apply validate3(rest,newStamp,abortInfo,i, I32Add(j, 1), 0,b)
+                                 | _ => apply validate3(rest,newStamp,abortInfo,i, I32Add(j, 1), I32Add(n, 1),b)
                              end
                 end            
             fun validate2(readSet:item, newStamp : stamp, abortInfo : item, i:int) : () = 
@@ -196,7 +200,11 @@ struct
                         else apply validate2(rest,newStamp,abortInfo,i)
                 end
             let stamp : stamp = VClock.@bump(/exh)
+#ifdef STATS
+            do apply validate3(#1(rs),stamp,NilItem,0,0,0,false)
+#else            
             do apply validate2(#1(rs),stamp,NilItem,0)
+#endif            
             do ccall M_Print("Impossible!\n")
             return()
        ;
@@ -209,7 +217,7 @@ struct
                else do ccall M_Print("Trying to read outside a transaction!\n")
                     let e : exn = Fail(@"Reading outside transaction\n")
                     throw exh(e)
-            let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
+            let myStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : [int, item, item] = FLS.@get-key(READ_SET / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             fun chkLog(writeSet : item) : Option.option = (*use local copy if available*)
@@ -233,9 +241,10 @@ struct
                              if I64Eq(#1(tv), 0:long)
                              then return()
                              else do Pause() apply lp()
-                             @force-abort(readSet, myStamp / exh)
+                             do apply lp() 
+                             @force-abort(readSet, myStamp / exh) 
                      do if I64Lt(#0(myStamp), stamp)
-                        then @force-abort(readSet, myStamp / exh)
+                        then @force-abort(readSet, myStamp / exh) 
                         else return()
                      let sl : item = #1(readSet)
                      if I32Lt(#0(readSet), READ_SET_BOUND)    (*still have room for more*)
@@ -300,7 +309,8 @@ struct
 
         define @commit(/exh:exh) : () = 
             let vp : vproc = SchedulerAction.@atomic-begin()
-            let startStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
+            let startStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
+            do #1(startStamp) := I32Add(#1(startStamp), 1)
             fun release(locks : item) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:item) =>
@@ -325,7 +335,7 @@ struct
                                      let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
                                      let captureFreq : int = FLS.@get-counter2()
                                      let newFreq : int = I32Div(captureFreq, 2)
-                                     do FLS.@set-counter2(newFreq)
+                                     do FLS.@set-counter2(newFreq) 
                                      throw abortK()  (*no checkpoint found*)
                                 else do apply release(locks)
                                      let abortK : cont(any) = (cont(any)) abortK
@@ -348,12 +358,11 @@ struct
                                      BUMP_PABORT
                                      throw abortK(current)
                              | WithoutK(tv:tvar,_:item) =>
-                                do ccall M_Print_Int2("Aborting to postion %d of %d\n", n, j)
                                 do apply release(locks)
                                 let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
                                 let captureFreq : int = FLS.@get-counter2()
                                 let newFreq : int = I32Div(captureFreq, 2)
-                                do FLS.@set-counter2(newFreq)
+                                do FLS.@set-counter2(newFreq) 
                                 throw abortK()  (*no checkpoint found*)
                         end                          
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
@@ -405,7 +414,7 @@ struct
                                      let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
                                      let captureFreq : int = FLS.@get-counter2()
                                      let newFreq : int = I32Div(captureFreq, 2)
-                                     do FLS.@set-counter2(newFreq)
+                                     do FLS.@set-counter2(newFreq) 
                                      throw abortK()  (*no checkpoint found*)
                                 else do apply release(locks)
                                      let abortK : cont(any) = (cont(any)) abortK
@@ -426,13 +435,13 @@ struct
                                      let captureFreq : int = FLS.@get-counter2()
                                      do FLS.@set-counter(captureFreq)
                                      BUMP_PABORT
-                                     throw abortK(current)
+                                     throw abortK(current) 
                              | WithoutK(tv:tvar,_:item) =>
                                 do apply release(locks)
                                 let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
                                 let captureFreq : int = FLS.@get-counter2()
                                 let newFreq : int = I32Div(captureFreq, 2)
-                                do FLS.@set-counter2(newFreq)
+                                do FLS.@set-counter2(newFreq) 
                                 throw abortK()  (*no checkpoint found*)
                         end                          
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
@@ -480,6 +489,11 @@ struct
                         else if I64Eq(casRes, rawStamp)    (*already locked it*)
                              then apply acquire(tl, acquired)
                              else do apply release(acquired)
+                                  fun lp() : () =
+                                  if I64Eq(#1(tv), 0:long)
+                                  then return()
+                                  else do Pause() apply lp()
+                                  do apply lp()
                                   do @force-abort(rs, startStamp / exh)
                                   let e : exn = Fail(@"Impossible: acquire\n")
                                   throw exh(e)
@@ -497,8 +511,13 @@ struct
                 end
             let locks : item = apply acquire(writeSet, NilItem)
             let newStamp : stamp = VClock.@bump(/exh)
-            do apply validate(readSet, locks, newStamp, NilItem, 0)
+#ifdef STATS
+            do apply validate2(#1(rs),locks,newStamp,NilItem,0,0,0)
+#else            
+            do apply validate(#1(rs),locks,newStamp,NilItem,0)
+#endif    
             do apply update(locks, newStamp)
+            do #1(startStamp) := I32Sub(#1(startStamp), 1)
             return()
         ;
 
@@ -513,12 +532,13 @@ struct
             let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
             if (#0(in_trans))
             then apply f(UNIT/exh)
-            else cont enter() = 
+            else let stampPtr : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
+                 do #1(stampPtr) := 0
+                 cont enter() = 
                      do FLS.@set-counter(0)
                      do FLS.@set-key(READ_SET, alloc(0, NilItem, NilItem) / exh)  (*initialize STM log*)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
                      let stamp : stamp = VClock.@bump(/exh)
-                     let stampPtr : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
                      do #0(stampPtr) := stamp
                      do #0(in_trans) := true
                      cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()
@@ -529,6 +549,7 @@ struct
                         throw exh(e)
                      let res : any = apply f(UNIT/transExh)
                      do @commit(/transExh)
+                     (*do ccall M_Print_Int("Aborted this transaction %d times\n", #1(stampPtr))  *)
                      do #0(in_trans) := false
                      do FLS.@set-key(READ_SET, nil / exh)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
@@ -541,7 +562,7 @@ struct
       define @print-stats(x:unit / exh:exh) : unit = 
         PRINT_PABORT_COUNT
         PRINT_FABORT_COUNT
-        PRINT_COMBINED        
+        PRINT_COMBINED
         return(UNIT);
         
       define @abort(x : unit / exh : exh) : any = 
