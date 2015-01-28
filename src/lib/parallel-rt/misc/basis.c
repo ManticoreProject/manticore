@@ -17,15 +17,18 @@
 #include "heap.h"
 #include "options.h"
 
-int counters[5];
-
 void M_BumpCounter(int index){
-    FetchAndInc(counters+index);
+    VProc_t * vp = VProcSelf();
+    FetchAndInc((int*) ((vp->counter)+index));
 }
 
-int M_GetCounter(int index){
-    return(counters[index]);
-}
+int M_SumCounter(int index){
+    u_int64_t total = 0;
+    for(int i = 0; i < NumVProcs; i++){
+        total += VProcs[i]->counter[index];
+    }
+    return total;
+}   
 
 /* is a string in hex format? */
 STATIC_INLINE bool isHex (const char *s, int len)

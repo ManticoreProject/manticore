@@ -27,9 +27,7 @@ val (get,put,atomic,new,printStats,abort,unsafeGet) =
           BoundedHybridPartialSTM.unsafeGet)
     else if String.same(whichSTM, "full")
          then (FullAbortSTM.get,FullAbortSTM.put,FullAbortSTM.atomic,FullAbortSTM.new,FullAbortSTM.printStats,FullAbortSTM.abort,FullAbortSTM.unsafeGet)
-         else if String.same(whichSTM, "dlstm")
-              then (DLSTM.get,DLSTM.put,DLSTM.atomic,DLSTM.new,DLSTM.printStats,DLSTM.abort,DLSTM.unsafeGet)
-              else (PartialSTM.get,PartialSTM.put,PartialSTM.atomic,PartialSTM.new,PartialSTM.printStats,PartialSTM.abort,PartialSTM.unsafeGet)
+         else (PartialSTM.get,PartialSTM.put,PartialSTM.atomic,PartialSTM.new,PartialSTM.printStats,PartialSTM.abort,PartialSTM.unsafeGet)
 
 (*won't typecheck without these nonsense bindings*)
 val get : 'a tvar -> 'a = get

@@ -124,21 +124,11 @@ struct
             fun validate(readSet : item, locks : item, newStamp : stamp) : () = 
                 case readSet 
                     of Read(tv:tvar, tl:item) =>
-                        if I64Eq(#1(tv), 0:long)
-                        then if I64Lt(#2(tv), rawStamp)  (*still valid*)
-                             then apply validate(tl, locks, newStamp)
-                             else do apply release(locks)
-                                  let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                                  throw abortK()
-                        else if I64Eq(#1(tv), rawStamp)
-                             then if I64Lt(#2(tv), rawStamp)
-                                  then apply validate(tl,locks,newStamp)
-                                  else do apply release(locks)
-                                       let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                                       throw abortK()
-                             else do apply release(locks)
-                                  let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                                  throw abortK()         
+                        if I64Lt(#2(tv), rawStamp)  (*still valid*)
+                        then apply validate(tl, locks, newStamp)
+                        else do apply release(locks)
+                             let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                             throw abortK()     
                      |NilItem => return()
                 end
             fun acquire(writeSet:item, acquired : item) : item = 

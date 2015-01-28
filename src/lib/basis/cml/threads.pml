@@ -122,7 +122,7 @@ structure Threads (*: sig
                             of Fail(s:ml_string) => 
                                 do ccall M_Print("Thread exiting because of uncaught exception: ")
                                 do ccall M_Print(#0(s))
-                                return(UNIT)
+                                SchedulerAction.@stop()
                             | _ => do ccall M_Print("Thread exiting because of uncaught exception\n")
                                    return(UNIT)
                        end                 

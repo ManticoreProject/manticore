@@ -366,14 +366,8 @@ struct
                                 throw abortK()  (*no checkpoint found*)
                         end                          
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
-                        let lock : stamp = #1(tv)
                         let stamp : stamp = #2(tv)
-                        let shouldAbort : bool = if I64Eq(lock, 0:long) 
-                                                 then if I64Lt(stamp, rawStamp) then return(false) else return(true)
-                                                 else if I64Eq(lock, rawStamp) 
-                                                      then if I64Lt(stamp, rawStamp) then return(false) else return(true)
-                                                      else return(true)
-                        if(shouldAbort)
+                        if I64Lt(rawStamp, stamp)
                         then apply validate2(next,locks,newStamp,readSet,0,I32Add(j, 1), 0)
                         else case abortInfo
                                of NilItem => 
@@ -393,15 +387,9 @@ struct
                                       else apply validate2(next,locks,newStamp,readSet, 0,I32Add(j, 1),0)
                              end
                     | WithoutK(tv:tvar,rest:item) => 
-                        if I64Eq(#1(tv), 0:long)
-                        then if I64Lt(#2(tv), rawStamp)
-                             then apply validate2(rest, locks,newStamp,abortInfo,i,I32Add(j, 1), I32Add(n, 1))
-                             else apply validate2(rest,locks,newStamp,readSet,0,I32Add(j, 1), 0)
-                        else if I64Eq(#1(tv), rawStamp)
-                             then if I64Lt(#2(tv), rawStamp)
-                                  then apply validate2(rest, locks,newStamp,abortInfo,i,I32Add(j, 1), I32Add(n, 1))
-                                  else apply validate2(rest,locks,newStamp,readSet,0,I32Add(j, 1), 0)
-                             else apply validate2(rest,locks,newStamp,readSet,0,I32Add(j, 1), 0)
+                        if I64Lt(#2(tv), rawStamp)
+                        then apply validate2(rest, locks,newStamp,abortInfo,i,I32Add(j, 1), I32Add(n, 1))
+                        else apply validate2(rest,locks,newStamp,readSet,0,I32Add(j, 1), 0)
                 end
             fun validate(readSet:item, locks:item, newStamp : stamp, abortInfo : item, i:int) : () = 
                 case readSet
@@ -432,7 +420,7 @@ struct
                                      do FLS.@set-key(READ_SET, newRS / exh)
                                      do FLS.@set-key(WRITE_SET, ws / exh)
                                      do #0(startStamp) := newStamp
-                                     let captureFreq : int = FLS.@get-counter2()
+                                     let captureFreq : int = FLS.@get-counter2() 
                                      do FLS.@set-counter(captureFreq)
                                      BUMP_PABORT
                                      throw abortK(current) 
@@ -445,14 +433,8 @@ struct
                                 throw abortK()  (*no checkpoint found*)
                         end                          
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
-                        let lock : stamp = #1(tv)
                         let stamp : stamp = #2(tv)
-                        let shouldAbort : bool = if I64Eq(lock, 0:long) 
-                                                 then if I64Lt(stamp, rawStamp) then return(false) else return(true)
-                                                 else if I64Eq(lock, rawStamp) 
-                                                      then if I64Lt(stamp, rawStamp) then return(false) else return(true)
-                                                      else return(true)
-                        if(shouldAbort)
+                        if I64Lt(rawStamp, stamp)
                         then if Equal(k, enum(0))
                              then apply validate(next,locks,newStamp,Abort(UNIT),0)
                              else apply validate(next,locks,newStamp,readSet,0)
@@ -470,15 +452,9 @@ struct
                                       throw exh(e)
                              end
                     | WithoutK(tv:tvar,rest:item) => 
-                        if I64Eq(#1(tv), 0:long)
-                        then if I64Lt(#2(tv), rawStamp)
-                             then apply validate(rest, locks,newStamp,abortInfo,i)
-                             else apply validate(rest,locks,newStamp,Abort(UNIT),0)
-                        else if I64Eq(#1(tv), rawStamp)
-                             then if I64Lt(#2(tv), rawStamp)
-                                  then apply validate(rest, locks,newStamp,abortInfo,i)
-                                  else apply validate(rest,locks,newStamp,Abort(UNIT),0)
-                             else apply validate(rest,locks,newStamp,Abort(UNIT),0)
+                        if I64Lt(#2(tv), rawStamp)
+                        then apply validate(rest, locks,newStamp,abortInfo,i)
+                        else apply validate(rest,locks,newStamp,Abort(UNIT),0)
                 end
             fun acquire(writeSet:item, acquired : item) : item = 
                 case writeSet
