@@ -588,6 +588,10 @@ void M_SeedRand ()
     srand(time(NULL));
 }
 
+int32_t M_ThreadSafeRandomInt(int32_t lo, int32_t hi, unsigned int * seed){
+    return (int) (rand_r(seed) % (hi-lo)) + lo;
+}
+
 /*! \brief allocate an array in the global heap
  *  \param vp the host vproc
  *  \param nElems the size of the array

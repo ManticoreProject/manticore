@@ -21,6 +21,7 @@ end
 ann "cpp" "../include/prim.def,../include/assert.def"
 in
   rand.pml
+  thread-safe-rand.pml
 end
 ../misc/debug.mlb
 result.pml
