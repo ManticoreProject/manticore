@@ -49,6 +49,12 @@ structure MVar (*: sig
 	    return (mv)
 	  ;
 
+        define inline @mNewEmpty (_ : unit / _ : exh) : mvar = 
+            let mv : mvar = alloc(0, false, enum(0):any, nil)
+            let mv : mvar = promote(mv)
+            return(mv)
+        ;
+
       (* put operation on M-variable *)
 	define @mPut (arg :[mvar, any] / exh : exh) : unit = 
 	    let mv : mvar = #0(arg)
@@ -118,7 +124,8 @@ structure MVar (*: sig
       )
 
     type 'a mvar = _prim (mvar)
-
+    
+    val newEmpty : unit -> 'a mvar = _prim(@mNewEmpty)
     val new	: 'a -> 'a mvar = _prim(@mNew)
     val put	: 'a mvar * 'a -> unit = _prim(@mPut)
     val take	: 'a mvar -> 'a = _prim(@mTake)
