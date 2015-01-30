@@ -14,13 +14,13 @@ structure List =
 
     fun hd xs = (
 	  case xs
-	   of nil => (raise Fail "List.hd")
+	   of nil => (raise Fail "List.hd\n")
 	    | x :: xs => x
           (* end case *))
 
     fun tl xs = (
 	  case xs
-	   of nil => (raise Fail "List.tl")
+	   of nil => (raise Fail "List.tl\n")
 	    | x :: xs => xs
           (* end case *))
 
@@ -85,7 +85,7 @@ structure List =
 	    if n = 0 then hd es
 	    else loop(tl es, n-1)          
          in
-            if n >= 0 then loop (l,n) else raise Fail "subscript"
+            if n >= 0 then loop (l,n) else raise Fail "nth: subscript"
          end
 
     fun rev ls = let
@@ -185,26 +185,26 @@ structure List =
           fun loop (l, n) = (
 	        case (l, n)
 		 of (l, 0) => nil
-		  | (nil, _) => (raise Fail "subscript")
+		  | (nil, _) => (raise Fail("take: subscript, n = " ^ Int.toString n ^ "\n"))
 		  | ((x::t), n) => x :: loop (t, n-1)
     	        (* end case *))
           in
-            if n >= 0 then loop (l, n) else (raise Fail "subscript")
+            if n >= 0 then loop (l, n) else (raise Fail "take: subscript, less than 0\n")
           end
 
     fun drop (l, n) = let
           fun loop (l,n) = (
 	        case (l, n)
 		 of (l, 0) => l
-		  | (nil, _) => (raise Fail "subscript")
+		  | (nil, _) => (raise Fail "drop: subscript\n")
 		  | ((_ :: t), n) => loop(t,n-1)
  	        (* end case *))
           in
-            if n >= 0 then loop (l,n) else (raise Fail "subscript")
+            if n >= 0 then loop (l,n) else (raise Fail "drop: subscript\n")
           end
 
     fun tabulate (len, genfn) = 
-          if len < 0 then raise Fail "size"
+          if len < 0 then raise Fail "tabulate: size"
           else let
             fun loop n = if n = len then nil
                          else (genfn n)::(loop(n+1))
@@ -220,7 +220,7 @@ structure List =
           in loop (l,nil,nil) end
 
     fun last xs = (case xs
-      of nil => (raise Fail "empty")
+      of nil => (raise Fail "last: empty\n")
        | x::nil => x
        | x::xs => last xs)
 

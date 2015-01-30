@@ -332,11 +332,12 @@ structure TranslatePrim : sig
 			  cvtSimpleExp(loc, findCFun, rhs, fn y =>
 			    if not(Controls.get BasicControl.debug) then 
 				BOM.mkStmt(lhs', BOM.E_Update(i, x, y), body')
-			    else
-				BOM.mkStmts(checkGlobalPtr(loc, x, true) @
-					    checkGlobalPtr(loc, y, false) @
-					    [(lhs', BOM.E_Update(i, x, y))],
-					    body')))
+			    else (case BOMTyUtil.kindOf (BV.typeOf y)
+			                of BTy.K_RAW => BOM.mkStmt(lhs', BOM.E_Update(i, x, y), body')
+			                 | _ => BOM.mkStmts(checkGlobalPtr(loc, x, true) @
+					            checkGlobalPtr(loc, y, false) @
+					            [(lhs', BOM.E_Update(i, x, y))],
+					            body') ) ))
 		      | BPT.RHS_VPStore(offset, vp, arg) =>
 			  cvtSimpleExp(loc, findCFun, vp, fn vp =>
 				  cvtSimpleExp(loc, findCFun, arg, fn x =>

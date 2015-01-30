@@ -589,6 +589,7 @@ void M_SeedRand ()
 }
 
 int32_t M_ThreadSafeRandomInt(int32_t lo, int32_t hi, unsigned int * seed){
+    
     return (int) (rand_r(seed) % (hi-lo)) + lo;
 }
 

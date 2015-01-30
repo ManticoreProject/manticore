@@ -107,6 +107,7 @@ structure Threads (*: sig
                     let _ : unit = apply f(UNIT / threadExh)
                     SchedulerAction.@stop()
                 let fls : FLS.fls = FLS.@new-pinned(vp)
+                let fls : FLS.fls = promote(fls)
                 let self : vproc = host_vproc
                 let dst : vproc = VProc.@vproc-by-id(vp)
                 do @enqueue-ready(self, dst, fls, fiber)

@@ -82,7 +82,7 @@ structure VProc (* :
 	;
 
       define inline @num-vprocs-w (_ : unit / exh : exh) : ml_int =
-	  let n : int = @num-vprocs ()
+	  let n : int = @num-vprocs()
           return (alloc (n))
 	;
 

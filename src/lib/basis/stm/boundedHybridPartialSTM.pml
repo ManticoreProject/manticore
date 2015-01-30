@@ -272,6 +272,9 @@ struct
                                     case next
                                         of NilItem => return(n)
                                          | WithK(_:tvar,_:cont(any),_:List.list,_:item,nextNext:item) =>
+                                            (*NOTE: if compiled with -debug, this will generate warnings
+                                             * that we are updating a bogus local pointer, however, given the
+                                             * nature of the data structure, we do preserve the heap invariants*)
                                             let l : readItem = (readItem) l
                                             let next : readItem = (readItem) next
                                             do #2(next) := enum(0):any

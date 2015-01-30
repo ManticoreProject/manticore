@@ -59,6 +59,7 @@ structure MVar (*: sig
 	define @mPut (arg :[mvar, any] / exh : exh) : unit = 
 	    let mv : mvar = #0(arg)
 	    let mval : any = (any)#1(arg) 
+	    let mval : any = promote(mval)
 	    let self : vproc = SchedulerAction.@atomic-begin () 
 	    SPIN_LOCK(mv, MV_LOCK) 
 	      case SELECT(MV_STATE, mv)

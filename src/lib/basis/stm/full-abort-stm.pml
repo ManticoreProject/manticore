@@ -55,6 +55,7 @@ struct
             return(#0(tv));
 
         define @get(tv : tvar / exh:exh) : any = 
+            do FLS.@set-counter(0)
             let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do if(#0(in_trans))
                then return()
