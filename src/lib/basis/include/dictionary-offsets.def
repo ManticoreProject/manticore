@@ -8,5 +8,6 @@
 #define READ_SET               3
 #define WRITE_SET              4
 #define ABORT_KEY              5
+#define STATS_KEY              6
 #endif _DICT_OFFSETS_DEF_
 

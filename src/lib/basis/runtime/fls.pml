@@ -156,7 +156,12 @@ structure FLS :
         let stamp : ![long, int] = promote(stamp)
         let k4 : [[int], any] = alloc(alloc(STAMP_KEY), stamp)
         let k5 : [[int], any] = alloc(alloc(ABORT_KEY), Option.NONE)
+#ifdef COLLECT_STATS        
+        let k6 : [[int], any] = alloc(alloc(STATS_KEY), nil)
+        let l : List.list = CONS(k6, CONS(k4, CONS(k3, CONS(k2, CONS(k5, CONS(k0, CONS(k1, nil)))))))
+#else
         let l : List.list = CONS(k4, CONS(k3, CONS(k2, CONS(k5, CONS(k0, CONS(k1, nil))))))
+#endif        
         let ret : [int, List.list] = alloc(6, l)
         return(ret)
       ;

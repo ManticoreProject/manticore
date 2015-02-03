@@ -22,10 +22,9 @@
 
 
 
+
+
 #ifndef NDEBUG
-
-
-
 
 # define _QUOTE(x) #x
 # define QUOTE(x) _QUOTE(x)
