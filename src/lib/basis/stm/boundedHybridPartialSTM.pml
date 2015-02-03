@@ -30,8 +30,6 @@ struct
 
 #define READ_SET_BOUND 20
 
-(*#define STATS 1
-*)
 #define START_TIMER let vp : vproc = host_vproc do ccall GenTimerStart(vp)
 #define STOP_TIMER let vp : vproc = host_vproc do ccall GenTimerStop(vp)
 
@@ -76,7 +74,7 @@ struct
         define @force-abort(rs : [int,item,item], startStamp:![stamp, int] / exh:exh) : () = 
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             let rawStamp : stamp = #0(startStamp)
-            fun validate3(readSet:item, newStamp : stamp, abortInfo : item, i:int, j:int, n:int, b:bool) : () = 
+            fun validate3(readSet:item, newStamp : stamp, abortInfo : item, i:int, j:int, n:int,b:bool) : () = 
                 case readSet
                     of NilItem => 
                         case abortInfo
@@ -85,7 +83,10 @@ struct
                                 throw abortK()
                              | WithK(tv:tvar,abortK:any,ws:item,_:item,_:item) =>
                                 (*do ccall M_Print_Int2("Eagerly Aborting to position %d of %d\n", n, j) *)
-                                do if(b) then do ccall M_Print_Int2("Eagerly Aborting to position %d of %d\n", n, j) return() else do ccall M_Print_Int2("Read set still valid, eagerly Aborting to position %d of %d\n", n, j)  return()
+                                let stats : list = FLS.@get-key(STATS_KEY / exh)
+                                let newStat : [int,int,int] = if(b) then return(alloc(0, n, j)) else return(alloc(1, j, j))
+                                let stats : list = CONS(newStat, stats)
+                                do FLS.@set-key(STATS_KEY, stats / exh)
                                 let abortK : cont(any) = (cont(any)) abortK
                                 let current : any = #0(tv)
                                 let stamp : stamp = #2(tv)
@@ -115,7 +116,7 @@ struct
                                                       then if I64Lt(stamp, rawStamp) then return(false) else return(true)
                                                       else return(true)
                         if(shouldAbort)
-                        then apply validate3(next,newStamp,NilItem,0,I32Add(j, 1), 0,true)
+                        then apply validate3(next,newStamp,NilItem,0,I32Add(j, 1), 0, true)
                         else case abortInfo
                                 of NilItem => 
                                     if Equal(k, enum(0))
@@ -200,7 +201,7 @@ struct
                         else apply validate2(rest,newStamp,abortInfo,i)
                 end
             let stamp : stamp = VClock.@bump(/exh)
-#ifdef STATS
+#ifdef COLLECT_STATS
             do apply validate3(#1(rs),stamp,NilItem,0,0,0,false)
 #else            
             do apply validate2(#1(rs),stamp,NilItem,0)
@@ -238,9 +239,9 @@ struct
                      do if I64Eq(#1(tv), 0:long)
                         then return()
                         else fun lp() : () =
-                             if I64Eq(#1(tv), 0:long)
-                             then return()
-                             else do Pause() apply lp()
+                                 if I64Eq(#1(tv), 0:long)
+                                 then return()
+                                 else do Pause() apply lp()
                              do apply lp() 
                              @force-abort(readSet, myStamp / exh) 
                      do if I64Lt(#0(myStamp), stamp)
@@ -331,8 +332,12 @@ struct
                     of NilItem => 
                         case abortInfo
                             of NilItem => return() (*no violations detected*)
-                             | WithK(tv:tvar,abortK:any,ws:item,_:item,_:item) =>
-                                do ccall M_Print_Int2("Aborting to postion %d of %d\n", n, j)
+                             | WithK(tv:tvar,abortK:any,ws:item,_:item,_:item) =>(*
+                                do ccall M_Print_Int2("Aborting to postion %d of %d\n", n, j) *)
+                                let stats : list = FLS.@get-key(STATS_KEY / exh)
+                                let newStat : [int,int,int] = alloc(2, n, j)
+                                let stats : list = CONS(newStat, stats)
+                                do FLS.@set-key(STATS_KEY, stats / exh)
                                 if Equal(abortK, enum(0))
                                 then do apply release(locks)
                                      let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
@@ -490,7 +495,7 @@ struct
                 end
             let locks : item = apply acquire(writeSet, NilItem)
             let newStamp : stamp = VClock.@bump(/exh)
-#ifdef STATS
+#ifdef COLLECT_STATS
             do apply validate2(#1(rs),locks,newStamp,NilItem,0,0,0)
 #else            
             do apply validate(#1(rs),locks,newStamp,NilItem,0)
@@ -589,9 +594,33 @@ struct
         
         return(UNIT);
 
-        
-        
-         
+        define @get-stats(x:unit / exh:exh) : list = 
+#ifdef COLLECT_STATS        
+            let stats : list = FLS.@get-key(STATS_KEY / exh)
+            return(stats);
+#else
+            return(nil);
+#endif
+
+        define @dump-stats(x : [ml_string, list] / exh:exh) : unit = 
+#ifdef COLLECT_STATS
+            let f : ml_string = #0(x)
+            let data : list = #1(x)
+            let stream : TextIO.outstream = TextIO.@open-out(f / exh)
+            fun outLine(x : [int,int,int] / exh:exh) : () = 
+                let i1 : ml_string = Int.@to-string(alloc(#0(x)) / exh)
+                let i2 : ml_string = Int.@to-string(alloc(#1(x)) / exh)
+                let i3 : ml_string = Int.@to-string(alloc(#2(x)) / exh)
+                let sList : list = CONS(i1, CONS(@", ", CONS(i2, CONS(@", ", CONS(i3, CONS(@"\n", nil))))))
+                let str : ml_string = String.@string-concat-list(sList / exh)
+                let _ : unit = TextIO.@output-line(alloc(str, stream) / exh)
+                return ()
+            do PrimList.@app(outLine, data / exh)
+            let x : unit = TextIO.@close-out(stream / exh)
+            return(UNIT);
+#else
+            return(UNIT);
+#endif            
          
     )
 
@@ -606,8 +635,8 @@ struct
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
     val rsLength : unit -> unit = _prim(@rs-length)
 
-
-    
+    val getStats : unit -> 'a list = _prim(@get-stats)
+    val dumpStats : string * 'a list -> unit = _prim(@dump-stats)
 end
 
 
