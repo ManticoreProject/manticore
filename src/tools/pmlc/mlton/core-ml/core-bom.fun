@@ -58,12 +58,16 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     open BOM.BOMId
 
     fun fromAst (oldId) = oldId
-    fun fromVid id =
-      let
-        val var = (Ast.Vid.toVar id)
-      in
-        BOM.BOMId.fromSymbol (Ast.Var.toSymbol var, Ast.Var.region var)
-      end
+
+    local
+      fun fromMLAst toSymbol id =
+        BOM.BOMId.fromSymbol (toSymbol id, Region.bogus)
+    in
+      val fromVid = fromMLAst Ast.Vid.toSymbol
+      (* Strip out the module IDs *)
+      val fromLongvid = fromMLAst (Ast.Longvid.Id.toSymbol o
+        #2 o Ast.Longvid.split)
+    end
   end
 
   structure Attr = struct

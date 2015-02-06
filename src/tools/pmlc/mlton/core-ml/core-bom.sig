@@ -46,6 +46,7 @@ signature CORE_BOM =
 
       val fromAst: BOM.BOMId.t -> t
       val fromVid: Ast.Vid.t -> t
+      val fromLongvid: Ast.Longvid.t -> t
       val toString: t -> string
       val bogus: t
     end

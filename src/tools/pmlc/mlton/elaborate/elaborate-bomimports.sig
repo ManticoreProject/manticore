@@ -15,6 +15,7 @@ signature ELABORATE_BOMIMPORTS_STRUCTS =
     sharing CoreML = Env.CoreML
     sharing CoreBOM.BOM = Ast.BOM = BOMEnv.BOM
     sharing BOMEnv.CoreBOM = CoreBOM
+    sharing ElaborateCore.Env = Env
   end
 
 signature ELABORATE_BOMIMPORTS =
