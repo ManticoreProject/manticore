@@ -222,6 +222,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | QBOMVal of ModuleId.t * BOMId.t
 
     val fromBOMId = BOMVal o BOMId.fromAst
+    val fromBOMId' = BOMVal
 
     fun fromLongId longId =
       let

@@ -20,13 +20,13 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
       fun elaborateMLType (ty, lookup) = ElaborateCore.elaborateType (ty,
         ElaborateCore.Lookup.fromEnv env)
       local
-        fun resolve doResolve (mlId, maybeId) =
+        fun resolve doResolve (mlId, maybeId): CoreBOM.BOMId.t =
           case maybeId of
-            SOME bomId => bomId
+            SOME bomId => CoreBOM.BOMId.fromAst bomId
           | NONE => doResolve mlId
       in
         fun resolveValId (doResolve) (idPair): CoreBOM.ValId.t  =
-          CoreBOM.ValId.fromBOMId (resolve doResolve idPair)
+          CoreBOM.ValId.fromBOMId' (resolve doResolve idPair)
         (* fun resolveTyId = resolve() CoreBOM.TyId.fromBOMId *)
       end
     in
@@ -51,12 +51,10 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
               | NONE => success := false
             (* FIXME: PUT A REAL TYPE HERE *)
             val newTy = CoreBOM.BOMType.Error
-            (* FIXME: where do we get our ID? *)
             (* QUESTION: Will we ever create a new type via a val0
-            import? *)
-            (* val newTyId =  *)
+             import? *)
             (* remove qualifying module, make a BOMId *)
-            val newValId = resolveValId CoreBOM.BOMId.fromLongvid vid
+            val newValId = resolveValId CoreBOM.BOMId.fromLongvid (vid, maybeId)
           in
             if !success then
               (* If it worked (vid was bound to a type that could

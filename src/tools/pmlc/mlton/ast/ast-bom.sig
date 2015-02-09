@@ -69,7 +69,6 @@ signature AST_BOM =
 	  type t
 	  type field
 	  (* type tyArgs *)
-    (* FIXME: why bool*t list? *)
 
 	  datatype node
 	    = Param of TyParam.t		(* type variables *)

@@ -111,6 +111,7 @@ signature CORE_BOM =
         | QBOMVal of ModuleId.t * BOMId.t
 
       val fromBOMId: BOM.BOMId.t -> t
+      val fromBOMId': BOMId.t -> t
       val fromLongId: BOM.LongId.t -> t
       (* val fromLongConId: BOM.LongConId.t -> t *)
 
