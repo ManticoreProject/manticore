@@ -53,6 +53,48 @@ struct
         define @unsafe-get(tv : tvar / exh:exh) : any = 
             return(#0(tv));
 
+        define @force-abort(rs : item, startStamp : ![stamp] / exh:exh) : () = 
+            let rawStamp : stamp = #0(startStamp)
+            cont done(newStamp:stamp) = do #0(startStamp) := newStamp return()
+            fun validate(readSet:item, newStamp : stamp, abortItem : item) : () =
+                case readSet
+                    of Read(tv:tvar, k:cont(any), ws:item, tl:item) =>
+                        if I64Eq(#1(tv), 0:long)
+                        then if I64Lt(#2(tv), rawStamp)
+                             then apply validate(tl, newStamp, abortItem)
+                             else apply validate(tl, newStamp, readSet)
+                        else if I64Eq(#1(tv), rawStamp)
+                             then if I64Lt(#2(tv), rawStamp)
+                                  then apply validate(tl, newStamp, abortItem)
+                                  else apply validate(tl, newStamp, readSet)
+                             else apply validate(tl, newStamp, readSet) 
+                    | NilItem => case abortItem
+                                of Read(tv:tvar, abortK:cont(any), ws:item, tl:item) => 
+				                    let current : any = #0(tv)
+				                    let stamp : stamp = #2(tv)
+                                    do if I64Eq(#1(tv), 0:long) 
+                                       then return()
+                                       else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                            throw abortK()
+                                    do if I64Lt(newStamp, stamp)
+                                       then let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                            throw abortK()
+                                       else return()
+                                    do FLS.@set-key(READ_SET, abortItem / exh)
+                                    do FLS.@set-key(WRITE_SET, ws / exh)
+                                    do #0(startStamp) := newStamp
+                                    BUMP_PABORT 
+                                    throw abortK(current)
+                                | NilItem => throw done(newStamp)
+                             end
+                end             
+            let newStamp : stamp = VClock.@bump(/exh)
+            do apply validate(rs, newStamp, NilItem)
+            do #0(startStamp) := newStamp
+            return();
+
+                             
+
         define @get(tv:tvar / exh:exh) : any = 
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : item = FLS.@get-key(READ_SET / exh)
@@ -70,16 +112,20 @@ struct
             case localRes
                 of Option.SOME(v:any) => return(v)
                  | Option.NONE =>
-                     let current : any = #0(tv)
-		             if I64Eq(#1(tv), 0:long)
-		             then if I64Lt(#2(tv), #0(myStamp))
-		                  then let newReadSet : item = Read(tv, retK, writeSet, readSet)
-		                       do FLS.@set-key(READ_SET, newReadSet / exh)
-		                       return(current)
-		                  else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                               throw abortK()
-		             else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                          throw abortK()
+                    let current : any = 
+                        fun getCurrentLoop() : any = 
+                            let c : any = #0(tv)
+                            let stamp : stamp = #2(tv)
+                            if I64Eq(#1(tv), 0:long)
+                            then if I64Lt(stamp, #0(myStamp))
+                                 then return(c)
+                                 else do @force-abort(readSet, myStamp / exh) (*if this returns, it updates myStamp*)
+                                      apply getCurrentLoop()
+                            else do Pause() apply getCurrentLoop()
+                        apply getCurrentLoop()
+                    let newRS : item = Read(tv, retK, writeSet, readSet)
+                    do FLS.@set-key(READ_SET, newRS / exh)
+                    return(current)
             end
         ;
 
@@ -93,13 +139,14 @@ struct
         ;
 
         define @commit(/exh:exh) : () = 
+            let vp : vproc = SchedulerAction.@atomic-begin()
             let startStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : item) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:item) =>
                         do #1(tv) := 0:long         (*unlock*)
                         apply release(tl)
-                     | NilItem => return()
+                     | NilItem => do SchedulerAction.@atomic-end(vp) return()
                 end
             let readSet : item = FLS.@get-key(READ_SET / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
@@ -119,16 +166,17 @@ struct
                     | NilItem => case abortItem
                                 of Read(tv:tvar, abortK:cont(any), ws:item, tl:item) => 
                                     do apply release(locks)
-				                    let current : any = #0(tv)
-				                    let stamp : stamp = #2(tv)
-                                    do if I64Eq(#1(tv), 0:long) 
-                                       then return()
-                                       else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                                            throw abortK()
-                                    do if I64Lt(newStamp, stamp)
-                                       then let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                                            throw abortK()
-                                       else return()
+                                    let current : any = 
+                                        fun getCurrentLoop() : any = 
+                                            let c : any = #0(tv)
+                                            let stamp : stamp = #2(tv)
+                                            if I64Eq(#1(tv), 0:long)
+                                            then if I64Lt(stamp, #0(startStamp))
+                                                 then return(c)
+                                                 else do @force-abort(readSet, startStamp / exh) (*if this returns, it updates myStamp*)
+                                                      apply getCurrentLoop()
+                                            else do Pause() apply getCurrentLoop()
+                                        apply getCurrentLoop()
                                     do FLS.@set-key(READ_SET, abortItem / exh)
                                     do FLS.@set-key(WRITE_SET, ws / exh)
                                     do #0(startStamp) := newStamp
@@ -137,19 +185,24 @@ struct
                                 | NilItem => return()
                              end
                end
-            fun acquire(writeSet:item, acquired : item) : item = 
-                case writeSet
+            fun acquire(ws:item, acquired : item) : item = 
+                case ws
                     of Write(tv:tvar, contents:any, tl:item) =>
                         let casRes : long = CAS(&1(tv), 0:long, rawStamp) (*lock it*)
                         if I64Eq(casRes, 0:long)  (*locked for first time*)
                         then apply acquire(tl, Write(tv, contents, acquired))
                         else if I64Eq(casRes, rawStamp)    (*already locked it*)
                              then apply acquire(tl, acquired)
-                             else let newStamp : stamp = VClock.@bump(/exh)
-                                  do apply validate(readSet, acquired, newStamp, NilItem)  (*figure out where to abort to*)  
-                                  do apply release(acquired)                               (*read set is valid, abort to beginning*)
-                                  let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                                  throw abortK()
+                             else (*release, but don't end atomic*)
+                                  fun release(locks : item) : () = 
+                                    case locks 
+                                        of Write(tv:tvar, contents:any, tl:item) =>
+                                            do #1(tv) := 0:long         (*unlock*)
+                                            apply release(tl)
+                                         | NilItem => return()
+                                    end
+                                  do apply release(acquired) 
+                                  apply acquire(writeSet, NilItem)
                      |NilItem => return(acquired)
                 end
             fun update(writes:item, newStamp : stamp) : () = 
@@ -166,6 +219,7 @@ struct
             let newStamp : stamp = VClock.@bump(/exh)
             do apply validate(readSet, locks, newStamp, NilItem)
             do apply update(locks, newStamp)
+            do SchedulerAction.@atomic-end(vp)
             return()
         ;
 
