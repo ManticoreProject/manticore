@@ -40,6 +40,12 @@ struct
         extern void M_Print_Long (void *, long);
         extern void M_BumpCounter(int);
         extern int M_SumCounter(int);
+
+        extern void M_ZeroCounters();
+
+        define @zero-counters(x:unit / e : exh) : unit = 
+            do ccall M_ZeroCounters()
+            return(UNIT);
         
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
@@ -275,6 +281,8 @@ struct
     val abort : unit -> 'a = _prim(@abort)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
+    val zeroCounters : unit -> unit = _prim(@zero-counters)
+    val _ = zeroCounters()
 end
 
 

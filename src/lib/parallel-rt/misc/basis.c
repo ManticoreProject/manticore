@@ -30,6 +30,13 @@ int M_SumCounter(int index){
     return total;
 }   
 
+void M_ZeroCounters(){
+    for(int i = 0; i < NumVProcs; i++){
+        VProcs[i]->counter[0] = 0;
+        VProcs[i]->counter[1] = 0;
+    }
+}
+
 /* is a string in hex format? */
 STATIC_INLINE bool isHex (const char *s, int len)
 {
