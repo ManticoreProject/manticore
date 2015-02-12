@@ -18,7 +18,23 @@ structure String =
       extern int M_StringSame (void *, void *) __attribute__((pure));
       extern int strcmp (void *, void *);
       extern void * M_StringExplode(void *) __attribute__((pure,alloc));
+      extern int M_StringCountOccurrences(void*, void*);
+      extern int M_StringFirstLastSame(void*);
+      extern void M_ReplaceChar(void *, void *, void*);
 
+      
+      define @first-last-same(arg : ml_string / exh:exh) : bool = 
+        let x : int = ccall M_StringFirstLastSame(arg)
+        if I32Eq(x, 1)
+        then return(true)
+        else return(false)
+      ;
+      
+      define @count-occurrences(arg : [ml_string, ml_string] / exh:exh) : ml_int = 
+        let count : int = ccall M_StringCountOccurrences(#0(arg), #1(arg))
+        let count : [int] = alloc(count)
+        return(count);
+      
       define @string-explode(arg : ml_string / exh : exh) : List.list = 
         let res : List.list = ccall M_StringExplode(arg)
         return(res);
@@ -77,6 +93,10 @@ structure String =
     val compare : string * string -> order = _prim(@string-compare)
 
     val explode : string -> string list = _prim(@string-explode)
+
+    val countOccurrences : string * string -> int = _prim(@count-occurrences)
+
+    val firstLastSame : string -> bool = _prim(@first-last-same)
 
     fun concatWith s ss = let
 	  fun lp xs = (case xs

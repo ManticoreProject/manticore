@@ -768,13 +768,60 @@ Value_t M_StringTokenize (Value_t str, Value_t sep)
     return l;
 }
 
-bool f(){
-    for(int i = 0; i < 10; i++){
+void M_ReplaceChar(Value_t str, Value_t old, Value_t new){
+    SequenceHdr_t * strS = (SequenceHdr_t *) ValueToPtr(str);
+    SequenceHdr_t * oldS = (SequenceHdr_t *) ValueToPtr(old);
+    SequenceHdr_t * newS = (SequenceHdr_t *) ValueToPtr(new);
+
+    char * strData = (char *) strS->data;
+    char oldChar = ((char*) oldS->data)[0];
+    char newChar = ((char*) newS->data)[0];
+
+    int i = 0;
+    while(strData[i] != '\0'){
+        if(strData[i] == oldChar){
+            strData[i] = newChar;
+        }
         i++;
     }
-    return false;
 }
 
+uint32_t M_StringFirstLastSame(Value_t str){
+    SequenceHdr_t *strS = (SequenceHdr_t *)ValueToPtr(str);
+    char * strData = (char*) strS->data;
+
+    char first = strData[0];
+
+    int i = 0; 
+    while(strData[i] != '\0'){i++; }
+    if(strData[i-1] == first){
+        return 1;
+    }
+    else{return 0; }
+
+}
+
+
+uint32_t M_StringCountOccurrences(Value_t str, Value_t pat){
+    SequenceHdr_t *strS = (SequenceHdr_t *)ValueToPtr(str);
+    SequenceHdr_t *patS = (SequenceHdr_t *) ValueToPtr(pat);
+    char * strData = (char*) strS->data;
+    char * patData = patS->data;
+
+    char patChar = patData[0];
+    int i = 0;
+    int count = 0;
+    while(strData[i] != '\0'){
+        if(strData[i] == patChar){
+            count++;
+        }
+        i++;
+    }
+
+    return count;    
+}
+
+/*UNSAFE*/
 Value_t M_StringExplode(Value_t str){
     VProc_t * vp = VProcSelf();
     SequenceHdr_t	*strS = (SequenceHdr_t *)ValueToPtr(str);

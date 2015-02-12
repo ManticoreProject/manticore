@@ -531,7 +531,7 @@ struct
             else let stampPtr : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
                  do #1(stampPtr) := 0
                  cont enter() = 
-                     do FLS.@set-counter(0)
+                    (* do FLS.@set-counter(0) *)
                      do FLS.@set-key(READ_SET, alloc(0, NilItem, NilItem) / exh)  (*initialize STM log*)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
                      let stamp : stamp = VClock.@bump(/exh)
@@ -633,6 +633,21 @@ struct
 #else
             return(UNIT);
 #endif            
+
+        define @checkpoint(x:tvar / exh:exh) : unit = 
+            let readSet : [int, item, item] = FLS.@get-key(READ_SET / exh)
+            let writeSet : item = FLS.@get-key(WRITE_SET / exh)
+            cont k(x:any) = return(UNIT)
+            let newSL : item = WithK(x,k,writeSet,#1(readSet),#2(readSet))
+            let newReadSet : [int, item, item] = alloc(I32Add(#0(readSet), 1), newSL, newSL)
+            do FLS.@set-key(READ_SET, newReadSet / exh)
+            return(UNIT);
+
+        define @turn-off-checkpoints(x:unit / exh:exh) : unit = 
+            do FLS.@set-counter2(10000000)
+            return(UNIT);
+
+            
          
     )
 
@@ -649,6 +664,17 @@ struct
 
     val getStats : unit -> 'a list = _prim(@get-stats)
     val dumpStats : string * 'a list -> unit = _prim(@dump-stats)
+    val turnOffCheckpointing : unit -> unit = _prim(@turn-off-checkpoints)
+    val checkpoint' : 'a tvar -> unit = _prim(@checkpoint)
+
+    val checkpointTRef  = new 0
+
+    
+
+    fun checkpoint() = checkpoint' checkpointTRef
+
+
+    
 end
 
 
