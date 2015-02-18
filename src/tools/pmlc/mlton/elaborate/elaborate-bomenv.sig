@@ -2,6 +2,7 @@ signature ELABORATE_BOMENV_STRUCTS =
   sig
     structure Ast: AST
     structure CoreBOM: CORE_BOM
+    structure Env: ELABORATE_ENV
     sharing CoreBOM.BOM = Ast.BOM
   end
 
@@ -10,6 +11,7 @@ signature ELABORATE_BOMENV =
     include ELABORATE_BOMENV_STRUCTS
 
     structure BOM: AST_BOM
+
     type t
 
     (* datatype IdStatus = *)
@@ -93,6 +95,15 @@ signature ELABORATE_BOMENV =
       val lookup: env * CoreBOM.ValId.t -> CoreBOM.Val.t option
     end
 
+    structure MLTyEnv: sig
+      (* type env *)
+      type t
+
+      val extendThis: t * Env.TypeEnv.Tycon.t * CoreBOM.TyCon.t -> t
+      val lookupThis: t * Env.TypeEnv.Tycon.t -> CoreBOM.TyCon.t option
+
+      val empty: t
+    end
 
     structure Context: sig
       type t
@@ -107,7 +118,7 @@ signature ELABORATE_BOMENV =
     end
 
     val empty: t
-    val emptyNamed: CoreBOM.ModuleId.t -> t
+    (* val emptyNamed: CoreBOM.ModuleId.t -> t *)
     val setName: t * CoreBOM.ModuleId.t -> t
     val setName': t * BOM.BOMId.t -> t
 

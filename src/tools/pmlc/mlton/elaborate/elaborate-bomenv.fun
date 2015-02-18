@@ -28,6 +28,9 @@ end
 functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
   open S
 
+  structure MLType = Env.TypeEnv.Type
+  structure MLTycon = Env.TypeEnv.Tycon
+
   structure BOM = Ast.BOM
 
   fun printEnvKeys (toString, listKeys, getEnv) env = print (
@@ -306,6 +309,37 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     end
   end
 
+
+  structure MLTyEnv = struct
+    type t = (MLTycon.t * CoreBOM.TyCon.t) vector
+    (* We can only compare ML types for equality, so we need to just use
+      a list to keep track of what maps to what *)
+
+    fun lookupThis (mlTyEnv, mlTy) =
+      case Vector.find (fn (ty, _) => MLTycon.equals (ty, mlTy)) mlTyEnv of
+        SOME (_, bomTyc) => SOME bomTyc
+      | NONE => NONE
+
+    (* We overwrite existing elements with the same key to match ORD_MAP *)
+    fun extendThis (mlTyEnv, mlTy, bomTy) =
+      case (Vector.findi (fn (_, (key, value)) => MLTycon.equals (key, mlTy))
+          mlTyEnv) of
+        SOME (idx, _) => Vector.update (mlTyEnv, idx, (mlTy, bomTy))
+      (* FIXME: nicer way to append to vector? *)
+      | NONE =>
+          let
+            val oldLen = Vector.length mlTyEnv
+          in
+            Vector.tabulate (oldLen + 1, fn i =>
+              if i = oldLen then
+                (mlTy, bomTy)
+              else
+                Vector.sub (mlTyEnv, i))
+          end
+
+    val empty = Vector.fromList ([]: (MLTycon.t * CoreBOM.TyCon.t) list)
+  end
+
   structure Context = struct
     datatype t
       = T of {
@@ -337,7 +371,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
   end
 
 
-  val empty = T {
+  val empty =  T {
     tyEnv = TyEnv.empty,
     tyParamEnv = TyParamEnv.empty,
     valEnv = ValEnv.empty,

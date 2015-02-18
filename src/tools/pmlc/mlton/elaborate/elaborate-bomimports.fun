@@ -8,11 +8,15 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
 
 
   fun translateType (mlType: MLType.t): CoreBOM.BOMType.t =
-    (* We map tycons to recursive calls *)
-    case (MLType.deConOpt mlType) of
-      (* SOME (Tycon.bool, tyvec) => (* FIXME *) *)
-      NONE => raise Fail "Bad type."
-    | _ => raise Fail "Not implemented."
+    let
+      fun translateCon mlType =
+          case (MLType.deConOpt mlType) of
+          (* SOME (Tycon.bool, tyvec) => (* FIXME *) *)
+            NONE => raise Fail "Bad type."
+          | _ => raise Fail "Not implemented."
+    in
+      CoreBOM.BOMType.Error
+    end
 
 
   fun elaborateBomImport (import, {env: Env.t, bomEnv: BOMEnv.t}) =

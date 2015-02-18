@@ -25,7 +25,8 @@ end
 (*   structure Ast = Ast) *)
 structure BOMEnv = BOMEnv (
   structure Ast = Ast
-  structure CoreBOM = CoreBOM)
+  structure CoreBOM = CoreBOM
+  structure Env = Env)
 
 
 structure ElaborateMLBs = ElaborateMLBs (structure Ast = Ast
