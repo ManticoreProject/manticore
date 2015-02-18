@@ -15,15 +15,17 @@ signature ELABORATE_BOMIMPORTS_STRUCTS =
     sharing CoreML = Env.CoreML
     sharing CoreBOM.BOM = Ast.BOM = BOMEnv.BOM
     sharing BOMEnv.CoreBOM = CoreBOM
-    sharing ElaborateCore.Env = Env
+    sharing ElaborateCore.Env = BOMEnv.Env = Env
+    sharing ElaborateCore.Ast = Ast
   end
 
 signature ELABORATE_BOMIMPORTS =
   sig
     include ELABORATE_BOMIMPORTS_STRUCTS
-    structure BOM: AST_BOM
+    (* structure BOM =  CoreBOM.BOM *)
 
     (* TODO: do we need to keep any of this? *)
     val elaborateBomImport:
-      (BOM.Import.t * {env: Env.t, bomEnv: BOMEnv.t}) -> BOMEnv.t
+      (CoreBOM.BOM.Import.t * {env: Env.t, bomEnv: BOMEnv.t} *  BOMEnv.MLTyEnv.t)
+           -> BOMEnv.t
   end

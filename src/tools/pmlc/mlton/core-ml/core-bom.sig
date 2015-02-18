@@ -47,6 +47,7 @@ signature CORE_BOM =
       val fromAst: BOM.BOMId.t -> t
       val fromVid: Ast.Vid.t -> t
       val fromLongvid: Ast.Longvid.t -> t
+      val fromLongtycon: Ast.Longtycon.t -> t
       val toString: t -> string
       val bogus: t
     end
@@ -96,6 +97,7 @@ signature CORE_BOM =
         | QBOMTy of ModuleId.t * BOMId.t
 
       val fromBOMId: BOM.BOMId.t -> t
+      val fromBOMId': BOMId.t -> t
       val fromLongId: BOM.LongId.t -> t
       (* val fromLongTyId: BOM.LongTyId.t -> t *)
 
@@ -214,6 +216,7 @@ signature CORE_BOM =
       val toBOMTy: t -> BOMType.t
       val arity: t -> int
       val applyToArgs: t * BOMType.t list -> BOMType.t option
+      val applyToArgs': t * BOMType.t vector -> BOMType.t option
     end
 
     structure DataTypeDef: sig

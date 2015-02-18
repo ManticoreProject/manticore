@@ -65,8 +65,10 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     in
       val fromVid = fromMLAst Ast.Vid.toSymbol
       (* Strip out the module IDs *)
-      val fromLongvid = fromMLAst (Ast.Longvid.Id.toSymbol o
-        #2 o Ast.Longvid.split)
+      val fromLongvid = fromMLAst (Ast.Longvid.Id.toSymbol o #2 o
+        Ast.Longvid.split)
+     val fromLongtycon = fromMLAst (Ast.Longtycon.Id.toSymbol o #2 o
+       Ast.Longtycon.split)
     end
   end
 
@@ -187,6 +189,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | QBOMTy of ModuleId.t * BOMId.t
 
     val fromBOMId = BOMTy o BOMId.fromAst
+    val fromBOMId' = BOMTy
 
     fun fromLongId (longId: BOM.LongId.t): t =
       let
@@ -561,6 +564,10 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
           })
         else
           NONE
+
+      fun applyToArgs' (tyCon, tys) =
+        applyToArgs (tyCon, List.tabulate (Vector.length tys,
+          fn (i) => Vector.sub (tys, i)))
 
 
   end

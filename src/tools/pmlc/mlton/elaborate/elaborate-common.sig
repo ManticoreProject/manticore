@@ -12,4 +12,5 @@ signature ELABORATE_COMMON =
     sharing Decs = Env.Decs
     sharing Ast.BOM = CoreBOM.BOM = BOMEnv.BOM
     sharing BOMEnv.CoreBOM = CoreBOM
+    sharing BOMEnv.Env = Env
   end
