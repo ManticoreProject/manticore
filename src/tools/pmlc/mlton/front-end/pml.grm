@@ -61,8 +61,8 @@ Import
         ;
 
 ImportCon
-        : "_con" vid ("of" ty)? ("as" BOMId)?
-                => (BOM.ImportCon.makeRegion (BOM.ImportCon.T (Vid.toCon vid, SR1, SR2), posToReg FULL_SPAN))
+        : "_con" longcon ("of" ty)? ("as" BOMId)?
+                => (BOM.ImportCon.makeRegion (BOM.ImportCon.T (longcon, SR1, SR2), posToReg FULL_SPAN))
         ;
 
 strdecnode

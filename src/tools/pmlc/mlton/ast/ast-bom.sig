@@ -322,7 +322,7 @@ signature AST_BOM =
     structure ImportCon : sig
 	type t
 	datatype node
-	  = T of Con.t * Type.t option * BOMId.t option
+	  = T of Longcon.t * Type.t option * BOMId.t option
 
 	include WRAPPED
 	  sharing type node' = node
