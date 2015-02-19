@@ -48,6 +48,7 @@ signature CORE_BOM =
       val fromVid: Ast.Vid.t -> t
       val fromLongvid: Ast.Longvid.t -> t
       val fromLongtycon: Ast.Longtycon.t -> t
+      val fromLongcon: Ast.Longcon.t -> t
       val toString: t -> string
       val bogus: t
     end
@@ -116,6 +117,7 @@ signature CORE_BOM =
       val fromBOMId': BOMId.t -> t
       val fromLongId: BOM.LongId.t -> t
       (* val fromLongConId: BOM.LongConId.t -> t *)
+      val truncateToBOMId: t -> BOMId.t
 
       (* Add the given qualifier only if it doesn't yet have one *)
       val maybeQualify: t * ModuleId.t -> t

@@ -67,8 +67,10 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       (* Strip out the module IDs *)
       val fromLongvid = fromMLAst (Ast.Longvid.Id.toSymbol o #2 o
         Ast.Longvid.split)
-     val fromLongtycon = fromMLAst (Ast.Longtycon.Id.toSymbol o #2 o
+      val fromLongtycon = fromMLAst (Ast.Longtycon.Id.toSymbol o #2 o
        Ast.Longtycon.split)
+      val fromLongcon = fromMLAst (Ast.Longcon.Id.toSymbol o #2 o
+       Ast.Longcon.split)
     end
   end
 
@@ -226,6 +228,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
     val fromBOMId = BOMVal o BOMId.fromAst
     val fromBOMId' = BOMVal
+
+    fun truncateToBOMId valId =
+      case valId of
+        BOMVal bomId => bomId
+      | QBOMVal (_, bomId) => bomId
 
     fun fromLongId longId =
       let

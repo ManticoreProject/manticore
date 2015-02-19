@@ -22,10 +22,10 @@ signature ELABORATE_BOMIMPORTS_STRUCTS =
 signature ELABORATE_BOMIMPORTS =
   sig
     include ELABORATE_BOMIMPORTS_STRUCTS
-    (* structure BOM =  CoreBOM.BOM *)
+    (* structure BOM: AST_BOM *)
 
     (* TODO: do we need to keep any of this? *)
-    val elaborateBomImport:
-      (CoreBOM.BOM.Import.t * {env: Env.t, bomEnv: BOMEnv.t} *  BOMEnv.MLTyEnv.t)
+    val elaborateBOMImport:
+      (Ast.BOM.Import.t * {env: Env.t, bomEnv: BOMEnv.t} *  BOMEnv.MLTyEnv.t)
            -> (BOMEnv.t * BOMEnv.MLTyEnv.t)
   end

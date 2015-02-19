@@ -315,6 +315,9 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     (* We can only compare ML types for equality, so we need to just use
       a list to keep track of what maps to what *)
 
+    fun trace (fnName, mlTy) =
+      print (fnName ^ (Layout.toString (MLTycon.layout mlTy)) ^ "\n")
+
     fun lookupThis (mlTyEnv, mlTy) =
       case Vector.find (fn (ty, _) => MLTycon.equals (ty, mlTy)) mlTyEnv of
         SOME (_, bomTyc) => SOME bomTyc
@@ -336,6 +339,14 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
               else
                 Vector.sub (mlTyEnv, i))
           end
+
+    (* DEBUG *)
+    val lookupThis = fn (args as (_: t, mlTy: MLTycon.t)) =>
+      (trace ("lookupThis: ", mlTy); lookupThis args)
+    val extendThis = fn (args as (_, mlTy, _)) =>
+      (trace ("extendThis: ", mlTy) ; extendThis args)
+
+
 
     val empty = Vector.fromList ([]: (MLTycon.t * CoreBOM.TyCon.t) list)
   end

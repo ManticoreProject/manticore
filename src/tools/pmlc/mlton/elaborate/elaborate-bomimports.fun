@@ -1,4 +1,5 @@
-functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
+functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPORTS
+  = struct
   open S
   structure BOM = Ast.BOM
   structure MLType = Env.TypeEnv.Type
@@ -25,11 +26,11 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
           | NONE => raise Fail "Bad type."
     in
         (* FIXME: return the right thing *)
-      CoreBOM.BOMType.Error
+      translateCon mlType
     end
 
 
-  fun elaborateBomImport (import, {env: Env.t, bomEnv: BOMEnv.t}, mlTyEnv) =
+  fun elaborateBOMImport (import, {env: Env.t, bomEnv: BOMEnv.t}, mlTyEnv) =
     let
       fun elaborateMLType ty = ElaborateCore.elaborateType (ty,
         ElaborateCore.Lookup.fromEnv env)
@@ -95,10 +96,45 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
         end
       end
 
-      fun translateCon (BOM.ImportCon.T (con, maybeTy, maybeId)) =
-        ()
+      fun translateCon (mlTyEnv, bomResultTy) importCon =
+        let
+            (* FIXME: let's ignore the maybeTy for now *)
+          val BOM.ImportCon.T (longcon, maybeTy, maybeId) =
+            BOM.ImportCon.node importCon
+
+          (* DEBUG *)
+          (* val _ = print ("Env: " ^ (Layout.toString (Env.layout env ))) *)
+          (* val _ = print ("\nCon: " ^ (Layout.toString (Ast.Longcon.layout longcon))) *)
+
+
+          val (con, maybeScheme) = Env.lookupLongcon (env, longcon)
+
+          val newValId = resolveValId CoreBOM.BOMId.fromLongcon (longcon, maybeId)
+          val bomConTy =
+            case maybeScheme of
+              SOME scheme =>
+                (* FIXME: do I need the args here? *)
+                translateType mlTyEnv (#instance (MLScheme.instantiate scheme))
+            | NONE => CoreBOM.BOMType.Error
+
+          (* FIXME: we're never going to get BOMType.Con out of this,
+          only TyCon. Figure out how to deal with non-nullary
+          constructors. *)
+          val _ =
+            if CoreBOM.BOMType.equal (bomResultTy,
+              case bomConTy of
+                CoreBOM.BOMType.Con {rng,...} => rng
+              | tycon as (CoreBOM.BOMType.TyCon tycon') => tycon
+              | CoreBOM.BOMType.Error => raise Fail "Con wasn't found in env."
+              | _ => raise Fail "Type is not a con.")
+            then ()
+            else raise Fail "Bad con application."
+        in
+            (* FIXME: never any params in imports? *)
+          (newValId, CoreBOM.Val.new (newValId, bomConTy, []))
+        end
     in
-      case import of
+      case BOM.Import.node import of
         BOM.Import.Val (vid, ty, maybeId) =>
           let
             val ty' = elaborateMLType ty
@@ -138,14 +174,23 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
           end
       | BOM.Import.Datatype (tyargs, tyc, maybeId, cons) =>
           let
+            fun extendBOMEnv ((valId, bomVal), bomEnv) =
+              BOMEnv.ValEnv.extend (bomEnv, valId, bomVal)
+
              (* FIXME: error handling *)
             val SOME (bomEnv', mlTyEnv', bomTyc, bomTy) =
               extendEnvs (tyargs, tyc, maybeId)
+            val cons' = map (translateCon (mlTyEnv', bomTy)) cons
 
+            (* Add the constructors to the tycon *)
+            val _ = (fn (CoreBOM.TyCon.TyC {definition,...}) =>
+              definition := map (fn (valId, bomVal) =>  CoreBOM.ConsDef (
+                CoreBOM.ValId.truncateToBOMId valId,
+                SOME (CoreBOM.Val.typeOf bomVal))) cons') bomTyc
 
+            val bomEnv' = foldl (fn ((valId, bomVal), bomEnv) =>
+             BOMEnv.ValEnv.extend (bomEnv, valId, bomVal)) bomEnv' cons'
 
-
-          (* FIXME: deal with the constructors *)
           in
             (bomEnv', mlTyEnv')
           end

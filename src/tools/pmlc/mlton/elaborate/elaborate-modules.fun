@@ -12,6 +12,8 @@ struct
 
 structure Option = MLtonOption
 structure List = MLtonList
+(* Save this so we can use the normal vector operations later *)
+structure MLVector = Vector
 structure Vector = MLtonVector
 
 open S
@@ -316,6 +318,16 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                 | Topdec.PrimModule (id, imports, bomDecs) =>
                   let
                     val namedEnv = BOMEnv.setName' (bomEnv, id)
+                    (* FIXME: pull in the basis  *)
+                    val mlTyEnv = BOMEnv.MLTyEnv.empty
+
+                    (* Process the imports. We throw away the MLTyEnv
+                    after this because we don't need it anymore.*)
+                    val (namedEnv, _) =
+                     MLVector.foldl (fn (import: Ast.BOM.Import.t, (namedEnv, mlTyEnv)) =>
+                       ElaborateBOMImports.elaborateBOMImport (import, {env = E,
+                       bomEnv = namedEnv}, mlTyEnv)) (namedEnv, mlTyEnv) imports
+
                     fun doElab (bomDec, bomDecs, bomEnv) =
                       let
                         val (newDec, newEnv) =
