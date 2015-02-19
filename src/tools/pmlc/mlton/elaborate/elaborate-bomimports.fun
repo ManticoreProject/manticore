@@ -76,7 +76,7 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
             (* remove qualifying module, make a BOMId *)
             val newValId = resolveValId CoreBOM.BOMId.fromLongvid (vid, maybeId)
           in
-            if !success then
+            (if !success then
               (* If it worked (vid was bound to a type that could
               unify with ty), put the new ty into our env and bind our
               new valId to it *)
@@ -86,20 +86,59 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS) = struct
             else
               (* Otherwise, return the env unchanged (errors have
               already been logged above) *)
-              bomEnv
+              bomEnv, mlTyEnv)
           end
       | BOM.Import.Datatype (tyargs, tyc, maybeId, cons) =>
           let
             (* Translate the ML types from the AST representation *)
             val tyargs' = Vector.map elaborateMLType tyargs
-            val maybeTyStr = Env.lookupLongtycon (env, tyc)
+            val maybeTyStr =
+              case Env.lookupLongtycon (env, tyc) of
+                SOME tyStr => SOME (tyStr)
+              | NONE => NONE
             val tyId =
               CoreBOM.TyId.fromBOMId' (case maybeId of
                 SOME astId => CoreBOM.BOMId.fromAst astId
               | NONE => CoreBOM.BOMId.fromLongtycon tyc)
+
+            val maybeTycs =
+              case maybeTyStr of
+                (* Only datatypes can be imported, and we ignore their
+                constructors since they must be explicitly imported *)
+                SOME (tyStr) =>
+                  (* Apply the tycon to the provided arguments *)
+                  SOME (tyStr, CoreBOM.TyCon.TyC {
+                    (* FIXME: how do I get typarams out of this? *)
+                    id = tyId, definition = ref [], params = []})
+               (* FIXME: better error handling *)
+              | _ => NONE
+
+          (* FIXME: deal with the constructors *)
           in
-              (* FIXME: make this a real return statement *)
-            bomEnv
+            case maybeTycs of
+              SOME (tyStr, bomTyc) =>
+                let
+                    (* FIXME: error handling *)
+                  val (Env.TypeStr.Datatype {tycon,...}) =
+                    Env.TypeStr.node tyStr
+                  (* First, we put the new tyc into the mapping *)
+                  val mlTyEnv' = BOMEnv.MLTyEnv.extendThis (mlTyEnv,
+                    tycon, bomTyc)
+                  val bomEnv' = BOMEnv.TyEnv.extend (bomEnv, tyId,
+                    BOMEnv.TypeDefn.newCon bomTyc)
+
+                  (* Apply it to the constructors we were given *)
+                  val mlTy = Env.TypeStr.apply (tyStr, tyargs')
+                  (* No params by this point *)
+                  val bomTy = {params = [], ty = translateType mlTyEnv' mlTy}
+
+                  (* THEN translate it back to a BOM type *)
+                  val bomEnv' = BOMEnv.TyEnv.extend (bomEnv', tyId,
+                    BOMEnv.TypeDefn.newAlias bomTy)
+                in
+                  (bomEnv', mlTyEnv')
+                end
+            | NONE => (bomEnv, mlTyEnv)
           end
 
             (* NOTE: do we want to reject all but the datatype type strs? *)

@@ -27,5 +27,5 @@ signature ELABORATE_BOMIMPORTS =
     (* TODO: do we need to keep any of this? *)
     val elaborateBomImport:
       (CoreBOM.BOM.Import.t * {env: Env.t, bomEnv: BOMEnv.t} *  BOMEnv.MLTyEnv.t)
-           -> BOMEnv.t
+           -> (BOMEnv.t * BOMEnv.MLTyEnv.t)
   end
