@@ -81,7 +81,7 @@ struct
                             of NilItem => 
                                 (*Extend stamp*)
                                 let stats : list = FLS.@get-key(STATS_KEY / exh)
-                                let newStat : [int,int,int] = alloc(1, j, j)
+                                let newStat : [int,int,int,int] = alloc(1, j, j, #1(startStamp))
                                 let stats : list = CONS(newStat, stats)
                                 do FLS.@set-key(STATS_KEY, stats / exh)
                                 do #0(startStamp) := newStamp
@@ -92,7 +92,7 @@ struct
                              | WithK(tv:tvar,abortK:any,ws:item,_:item,_:item) =>
                                 (*do ccall M_Print_Int2("Eagerly Aborting to position %d of %d\n", n, j) *)
                                 let stats : list = FLS.@get-key(STATS_KEY / exh)
-                                let newStat : [int,int,int] = alloc(0, n, j) 
+                                let newStat : [int,int,int,int] = alloc(0, n, j, #1(startStamp)) 
                                 let stats : list = CONS(newStat, stats)
                                 do FLS.@set-key(STATS_KEY, stats / exh)
                                 let abortK : cont(any) = (cont(any)) abortK
@@ -346,7 +346,7 @@ struct
                              | WithK(tv:tvar,abortK:any,ws:item,_:item,_:item) =>(*
                                 do ccall M_Print_Int2("Aborting to postion %d of %d\n", n, j) *)
                                 let stats : list = FLS.@get-key(STATS_KEY / exh)
-                                let newStat : [int,int,int] = alloc(2, n, j)
+                                let newStat : [int,int,int,int] = alloc(2, n, j, #1(startStamp))
                                 let stats : list = CONS(newStat, stats)
                                 do FLS.@set-key(STATS_KEY, stats / exh)
                                 if Equal(abortK, enum(0))
@@ -513,6 +513,7 @@ struct
             do apply validate(#1(rs),locks,newStamp,NilItem,0)
 #endif    
             do apply update(locks, newStamp)
+            do SchedulerAction.@atomic-end(vp)
             do #1(startStamp) := I32Sub(#1(startStamp), 1)
             return()
         ;
@@ -619,11 +620,12 @@ struct
             let f : ml_string = #0(x)
             let data : list = #1(x)
             let stream : TextIO.outstream = TextIO.@open-out(f / exh)
-            fun outLine(x : [int,int,int] / exh:exh) : () = 
+            fun outLine(x : [int,int,int,int] / exh:exh) : () = 
                 let i1 : ml_string = Int.@to-string(alloc(#0(x)) / exh)
                 let i2 : ml_string = Int.@to-string(alloc(#1(x)) / exh)
                 let i3 : ml_string = Int.@to-string(alloc(#2(x)) / exh)
-                let sList : list = CONS(i1, CONS(@", ", CONS(i2, CONS(@", ", CONS(i3, CONS(@"\n", nil))))))
+                let i4 : ml_string = Int.@to-string(alloc(#3(x)) / exh)
+                let sList : list = CONS(i1, CONS(@", ", CONS(i2, CONS(@", ", CONS(i3, CONS(@", ", CONS(i4, CONS(@"\n", nil))))))))
                 let str : ml_string = String.@string-concat-list(sList / exh)
                 let _ : unit = TextIO.@output-line(alloc(str, stream) / exh)
                 return ()

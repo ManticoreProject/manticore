@@ -77,6 +77,11 @@ structure SchedulerAction (* :
 	  return ()
 	;
 
+      define inline @in-atomic(vp:vproc) : bool = 
+        let inAtomic : bool = vpload(ATOMIC, vp)
+        return(inAtomic);
+	
+
     (* pop from the host vproc's scheduler action stack *)
       define inline @pop-act (vp : vproc) : PT.sched_act =
 	  let tos : [PT.sched_act, any] = vpload(VP_ACTION_STK, vp)

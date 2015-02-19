@@ -62,7 +62,7 @@ struct
                else do ccall M_Print("Trying to read outside a transaction!\n")
                     let e : exn = Fail(@"Reading outside transaction\n")
                     throw exh(e)
-            let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
+            let myStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : item = FLS.@get-key(READ_SET / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             fun chkLog(writeSet : item) : Option.option = (*use local copy if available*)
@@ -81,7 +81,12 @@ struct
                     let stamp : stamp = #1(tv)
                     do if I64Eq(#1(tv), 0:long)
                        then return()
-                       else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                       else fun lp() : () = 
+                                if I64Eq(#1(tv), 0:long)
+                                then return()
+                                else do Pause() apply lp()
+                            do apply lp()
+                            let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
                             throw abortK()
                     do if I64Lt(#0(myStamp), stamp)
                        then let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
@@ -110,7 +115,7 @@ struct
 
         define @commit(/exh:exh) : () =     
             let vp : vproc = SchedulerAction.@atomic-begin()
-            let startStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
+            let startStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : item) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:item) =>
@@ -140,7 +145,7 @@ struct
                         then apply acquire(tl, Write(tv, contents, acquired))
                         else if I64Eq(casRes, rawStamp)    (*already locked it*)
                              then apply acquire(tl, acquired)
-                             else do apply release(acquired)
+                             else do apply release(acquired)    
                                   let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
                                   throw abortK()
                      |NilItem => return(acquired)
@@ -160,34 +165,34 @@ struct
             let plusOne : stamp = I64Add(rawStamp, 1:long)
             do apply validate(readSet, locks, newStamp)
             do apply update(locks, newStamp)
+            do SchedulerAction.@atomic-end(vp)
             return()
         ;
 
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
-            
                 let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
                 if (#0(in_trans))
                 then apply f(UNIT/exh)
                 else let stampPtr : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
                      do #1(stampPtr) := 0
                      cont enter() = 
-                     do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
-                     do FLS.@set-key(WRITE_SET, NilItem / exh)
-                     let stamp : stamp = VClock.@bump(/exh)
-                     do #0(stampPtr) := stamp
-                     do #0(in_trans) := true
-                     cont abortK() = BUMP_ABORT do #0(in_trans) := false do #1(stampPtr) := I32Add(#1(stampPtr), 1) throw enter()      
-                     do FLS.@set-key(ABORT_KEY, (any) abortK / exh)
-                     cont transExh(e:exn) = 
-                        do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
-                        throw exh(e)
-                     let res : any = apply f(UNIT/transExh)
-                     do @commit(/transExh)
-                   (*  do ccall M_Print_Int("Aborted this transaction %d times\n", #1(stampPtr)) *)
-                     do #0(in_trans) := false
-                     do FLS.@set-key(READ_SET, NilItem / exh)
-                     do FLS.@set-key(WRITE_SET, NilItem / exh)
-                     return(res)
+                         do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
+                         do FLS.@set-key(WRITE_SET, NilItem / exh)
+                         let stamp : stamp = VClock.@bump(/exh)
+                         do #0(stampPtr) := stamp
+                         do #0(in_trans) := true
+                         cont abortK() = do #1(stampPtr) := I32Add(#1(stampPtr), 1) BUMP_ABORT do #0(in_trans) := false do #1(stampPtr) := I32Add(#1(stampPtr), 1) throw enter()      
+                         do FLS.@set-key(ABORT_KEY, (any) abortK / exh)
+                         cont transExh(e:exn) = 
+                            do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
+                            throw exh(e)
+                         let res : any = apply f(UNIT/transExh)
+                         do @commit(/transExh)
+                       (*  do ccall M_Print_Int("Aborted this transaction %d times\n", #1(stampPtr)) *)
+                         do #0(in_trans) := false
+                         do FLS.@set-key(READ_SET, NilItem / exh)
+                         do FLS.@set-key(WRITE_SET, NilItem / exh)
+                         return(res)
                      throw enter()
         ;
 
