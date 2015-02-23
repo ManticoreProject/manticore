@@ -258,7 +258,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             "invalid constructor argument")
          (* todo: typarams? *)
           (fn _  => CoreBOM.SimpleExp.new (CoreBOM.SimpleExp.AllocId (conVal,
-            argumentExp), argumentTy))
+            argumentExp), rng))
         end
       fun elaborateVpExp (index, procExp) =
         (* TODO: do something useful with the index *)

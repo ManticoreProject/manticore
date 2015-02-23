@@ -4,18 +4,27 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
   structure BOM = Ast.BOM
   structure MLType = Env.TypeEnv.Type
   structure MLScheme = Env.TypeEnv.Scheme
-  structure Tycon = Env.TypeEnv.Tycon
+  structure MLTycon = Env.TypeEnv.Tycon
   (* structure TypeOps = Env.TypeEnv.Type.Ops *)
+
+  local
+    fun printMLObj toLayout (obj, msg) =
+      print (msg ^ (Layout.toString (MLTycon.layout obj)) ^ "\n")
+  in
+    val printMLTy = printMLObj MLType.layout
+  end
+
 
 
   fun translateType (mlTyEnv: BOMEnv.MLTyEnv.t)
       (mlType: MLType.t): CoreBOM.BOMType.t =
     let
-      fun applyCon (tyc: Tycon.t, tyvec: MLType.t vector): CoreBOM.BOMType.t =
+      fun applyCon (tyc: MLTycon.t, tyvec: MLType.t vector): CoreBOM.BOMType.t =
         case BOMEnv.MLTyEnv.lookupThis (mlTyEnv, tyc) of
           SOME bomTyc =>
-            (case (CoreBOM.TyCon.applyToArgs' (bomTyc, Vector.map
-              (translateType mlTyEnv) tyvec)) of
+            (* case (CoreBOM.TyCon.applyToArgs' (bomTyc, Vector.map *)
+             (*  (translateType mlTyEnv) tyvec)) of *)
+            (case (bomTyc (Vector.map (translateType mlTyEnv) tyvec)) of
               SOME bomTy => bomTy
             | NONE => raise Fail "Bad application.")
         | NONE => raise Fail "Unmapped type."
@@ -77,7 +86,7 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
                   Env.TypeStr.node tyStr
                 (* First, we put the new tyc into the mapping *)
                 val mlTyEnv' = BOMEnv.MLTyEnv.extendThis (mlTyEnv,
-                  tycon, bomTyc)
+                  tycon, fn tyArgs => CoreBOM.TyCon.applyToArgs' (bomTyc, tyArgs))
                 val bomEnv' = BOMEnv.TyEnv.extend (bomEnv, tyId,
                   BOMEnv.TypeDefn.newCon bomTyc)
 
@@ -101,20 +110,37 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
           val BOM.ImportCon.T (longcon, maybeTy, maybeId) =
             BOM.ImportCon.node importCon
 
+          val (con, maybeScheme) = Env.lookupLongcon (env, longcon)
+          (* FIXME: better error handling *)
+          val SOME tyScheme = maybeScheme
+          val {instance,...} = MLScheme.instantiate tyScheme
+
           (* DEBUG *)
           (* val _ = print ("Env: " ^ (Layout.toString (Env.layout env ))) *)
           (* val _ = print ("\nCon: " ^ (Layout.toString (Ast.Longcon.layout longcon))) *)
+          (* val _ = print ("\nScheme: " ^ (Layout.toString (MLScheme.layout ( *)
+          (*   Option.valOf maybeScheme)))) *)
 
-
-          val (con, maybeScheme) = Env.lookupLongcon (env, longcon)
 
           val newValId = resolveValId CoreBOM.BOMId.fromLongcon (longcon, maybeId)
           val bomConTy =
-            case maybeScheme of
-              SOME scheme =>
-                (* FIXME: do I need the args here? *)
-                translateType mlTyEnv (#instance (MLScheme.instantiate scheme))
-            | NONE => CoreBOM.BOMType.Error
+            case MLType.deArrowOpt instance of
+              (* MLton doesn't distinguish between arrow and
+              constructors here, so we have to handle this as a
+              special case *)
+              SOME (dom, rng) => CoreBOM.BOMType.Con {
+                dom = translateType mlTyEnv dom,
+                rng = translateType mlTyEnv rng
+              }
+           | NONE => translateType mlTyEnv instance
+
+
+          (* val bomConTy = *)
+          (*   case maybeScheme of *)
+          (*     SOME scheme => *)
+          (*       (* FIXME: do I need the args here? *) *)
+          (*       translateType mlTyEnv (#instance (MLScheme.instantiate scheme)) *)
+          (*   | NONE => CoreBOM.BOMType.Error *)
 
           (* FIXME: we're never going to get BOMType.Con out of this,
           only TyCon. Figure out how to deal with non-nullary

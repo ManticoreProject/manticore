@@ -311,7 +311,10 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
 
   structure MLTyEnv = struct
-    type t = (MLTycon.t * CoreBOM.TyCon.t) vector
+    type key = MLTycon.t
+    type value = CoreBOM.BOMType.t vector -> CoreBOM.BOMType.t option
+
+    type t = (key * value) vector
     (* We can only compare ML types for equality, so we need to just use
       a list to keep track of what maps to what *)
 
@@ -348,7 +351,13 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
 
 
-    val empty = Vector.fromList ([]: (MLTycon.t * CoreBOM.TyCon.t) list)
+    (* val empty = Vector.fromList ([]: (key * value) list) *)
+    val empty = Vector.fromList [
+      (MLTycon.arrow, fn args =>
+        case args of
+          #[dom, rng] => SOME (
+             CoreBOM.BOMType.Fun {dom=[dom], rng=[rng], cont=[]})
+       | _ => NONE)]
   end
 
   structure Context = struct

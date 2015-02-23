@@ -96,11 +96,12 @@ signature ELABORATE_BOMENV =
     end
 
     structure MLTyEnv: sig
-      (* type env *)
       type t
+      type key = Env.TypeEnv.Tycon.t
+      type value = CoreBOM.BOMType.t vector -> CoreBOM.BOMType.t option
 
-      val extendThis: t * Env.TypeEnv.Tycon.t * CoreBOM.TyCon.t -> t
-      val lookupThis: t * Env.TypeEnv.Tycon.t -> CoreBOM.TyCon.t option
+      val extendThis: t * key * value -> t
+      val lookupThis: t * key -> value option
 
       val empty: t
     end
