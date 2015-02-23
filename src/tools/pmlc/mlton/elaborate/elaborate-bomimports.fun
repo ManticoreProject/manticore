@@ -25,7 +25,6 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
             SOME (tyc, tyvec) => applyCon (tyc, tyvec)
           | NONE => raise Fail "Bad type."
     in
-        (* FIXME: return the right thing *)
       translateCon mlType
     end
 
@@ -139,7 +138,6 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
           let
             val ty' = elaborateMLType ty
             (* FIXME: not sure what to do with this scheme *)
-            (* FIXME *)
             val (vid', maybeScheme) = Env.lookupLongvid (env, vid)
             val success = ref true
             val _ =
@@ -154,8 +152,8 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
                (* FIXME: error message *)
               | NONE => success := false
             (* FIXME: PUT A REAL TYPE HERE *)
-            val newTy = CoreBOM.BOMType.Error
-            (* QUESTION: Will we ever create a new type via a val0
+            val newTy = translateType mlTyEnv ty'
+            (* QUESTION: Will we ever create a new type via a val
              import? *)
             (* remove qualifying module, make a BOMId *)
             val newValId = resolveValId CoreBOM.BOMId.fromLongvid (vid, maybeId)

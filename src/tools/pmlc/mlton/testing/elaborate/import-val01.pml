@@ -1,9 +1,12 @@
-let
-  val myMLVal : int = 5
-in
-  _module myId
-    _import val myMLVal : int as myMLVal'
-    _prim (
-      fun myFun () -> int32 = return(myMLVal');
-    )
-end
+datatype myDatatype = A | B
+val myVal = A
+
+_module myId
+  _import datatype myDatatype with
+    _con A
+    _con B
+    end
+  _import val myVal : myDatatype
+  _prim (
+    fun myFun () -> myDatatype = return(myVal);
+  )
