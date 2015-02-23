@@ -12,7 +12,9 @@ is
 
   $/basis.cm
 
+(*
   ../codegen/sources.cm
+*)
   ../common/sources.cm
   sources.cm
 

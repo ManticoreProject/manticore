@@ -7,7 +7,9 @@
 functor MainFn (
 
     structure Spec : TARGET_SPEC
+(* NEW-BOM *
     structure CG : CODE_GEN
+*)
 
   ) : sig
 
@@ -21,10 +23,12 @@ functor MainFn (
         BackTrace.install ())
 
     structure Version = VersionFn (Spec)
+(* NEW-BOM *
     structure BOMOpt = BOMOptFn (Spec)
     structure CPSOpt = CPSOptFn (Spec)
     structure CFGOpt = CFGOptFn (Spec)
     structure Closure = ClosureFn (Spec)
+*)
 (*    structure IB = InitialBasis *)
 
     fun err s = TextIO.output (TextIO.stdErr, s)
@@ -34,13 +38,16 @@ functor MainFn (
     val exeFile = ref "a.out"
 
   (* check for errors and report them if there are any *)
+(*
     fun checkForErrors errStrm = (
 	  Error.report (TextIO.stdErr, errStrm);
 	  if Error.anyErrors errStrm
 	    then OS.Process.exit OS.Process.failure
 	    else ())
+*)
 
   (* check a list of error streams for errors *)
+(*
     fun checkListForErrors l = let
 	  fun chk (errStrm, anyErrors) = (
 		Error.report (TextIO.stdErr, errStrm);
@@ -50,6 +57,7 @@ functor MainFn (
 	      then OS.Process.exit OS.Process.failure
 	      else ()
 	  end
+*)
 
     fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
 
@@ -130,6 +138,7 @@ functor MainFn (
 	  end
 
   (* the compiler's backend *)
+(* NEW-BOM *
     fun bomToCFG bom = let
 	  val bom = BOMOpt.optimize bom	
           val cps = Convert.transform bom
@@ -160,19 +169,23 @@ functor MainFn (
 	    TextIO.closeOut outStrm;
 	    buildExe (verbose, outFile)
 	  end (* compile *)
+*)
 
   (* compile an MLB or PML file *)
-    fun mlbC (verbose, errStrm, srcFile, asmFile) = let
+    fun mlbC (verbose, srcFile, asmFile) = let
 	  val _ = if verbose then print "initializing environment\n" else ()
 (* 	  val (bEnv0, mEnv0, ast0, glueAST) = initialEnv() *)
           val _ = if verbose then print(concat["mlton parsing \"", srcFile, "\"\n"]) else ()
           (* FIXME: detect file type *)
 (*          val sxml = Wrapper.compileSML (srcFile, asmFile) *)
           val bom = Wrapper.compileMLB (srcFile, asmFile)
-	  val _ = if verbose then print(concat["parsing \"", srcFile, "\"\n"]) else ()
+(* NEW-BOM *
           val cfg = bomToCFG bom
+*)
 	  in
+(* NEW-BOM *
 	    codegen (verbose, asmFile, cfg);
+*)
 	    Stats.report ()
 	  end
 
@@ -184,7 +197,7 @@ functor MainFn (
 	     of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
 	      | SOME _ => ()
 	    (* end case *);
-	    mlbC (verbose, Error.mkErrStream file, file, OS.Path.joinBaseExt{base = base, ext = SOME "s"})
+	    mlbC (verbose, file, OS.Path.joinBaseExt{base = base, ext = SOME "s"})
 	  end)
 
     fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)

@@ -28,16 +28,20 @@ is
   ../ast-opt/sources.cm
   ../binding/sources.cm
 **)
+(** needs to be converted to new BOM IR **
   ../bom-opt/sources.cm
   ../bom/sources.cm
   ../cfg-opt/sources.cm
   ../cfg/sources.cm
   ../closure/sources.cm
   ../codegen/sources.cm
+*)
   ../common/sources.cm
+(** needs to be converted to new BOM IR **
   ../convert/sources.cm
   ../cps-opt/sources.cm
   ../cps/sources.cm
+*)
 (** unused in MLton branch **
   ../match-comp/sources.cm
   ../mlb/sources.cm
