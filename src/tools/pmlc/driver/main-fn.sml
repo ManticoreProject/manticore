@@ -1,6 +1,6 @@
 (* main-fn.sml
  *
- * COPYRIGHT (c) 2007 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2015 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *)
 
@@ -29,7 +29,6 @@ functor MainFn (
     structure CFGOpt = CFGOptFn (Spec)
     structure Closure = ClosureFn (Spec)
 *)
-(*    structure IB = InitialBasis *)
 
     fun err s = TextIO.output (TextIO.stdErr, s)
     fun err1 c =  TextIO.output1 (TextIO.stdErr, c)
@@ -37,148 +36,21 @@ functor MainFn (
 
     val exeFile = ref "a.out"
 
-  (* check for errors and report them if there are any *)
-(*
-    fun checkForErrors errStrm = (
-	  Error.report (TextIO.stdErr, errStrm);
-	  if Error.anyErrors errStrm
-	    then OS.Process.exit OS.Process.failure
-	    else ())
-*)
-
-  (* check a list of error streams for errors *)
-(*
-    fun checkListForErrors l = let
-	  fun chk (errStrm, anyErrors) = (
-		Error.report (TextIO.stdErr, errStrm);
-		anyErrors orelse Error.anyErrors errStrm)
-	  in
-	    if (List.foldl chk false l)
-	      then OS.Process.exit OS.Process.failure
-	      else ()
-	  end
-*)
-
-    fun prHdr msg = print(concat["******************** ", msg,  " ********************\n"])
-
-    fun boundVarChks (errStrms, bEnv, pts) = let
-	  fun chk (errStrm, p1, (p2s, env)) =let
-		val (p2, env) = BoundVariableCheck.check (errStrm, p1, env)
-		in
-		  (p2 :: p2s, env)
-		end
-	  val (pts, _) = ListPair.foldl chk ([], bEnv) (errStrms, pts)
-	  in
-	    List.rev pts
-	  end
-
-    fun tree {tree, span} = tree
-    fun allDecls pts = List.concat(List.map tree pts)
-
-  (* environment bootstrapping *)
-(*    fun initialEnv () = let
-	(* load the initial-basis.pml file *)
-	  val initialBasisPath = OS.Path.joinDirFile{
-		  dir = LoadPaths.sequentialBasisDir,
-		  file = "initial-basis.mlb"
-		}
-	  val errStrm = Error.mkErrStream initialBasisPath
-	  val [(_, initialPT)] = MLB.loadMLBWithoutBasis initialBasisPath
-	(* bind variables and typecheck *)
-	  val (initialPT, bEnv) = BoundVariableCheck.check (errStrm, initialPT, IB.primBindingEnv)
-	  val _ = checkForErrors errStrm
-	  val (mEnv, _, initialAST) = ChkModule.checkTopDecls errStrm
-		((0, 0), tree initialPT, IB.primEnv, ModuleEnv.ModuleMap.empty)
-	  val _ = checkForErrors errStrm
-	(* set up the initial basis environments *)
-	  val {bEnv, mEnv, glueAST} = IB.extendInitialEnv(bEnv, mEnv)
-	  in
-	    (bEnv, mEnv, initialAST, glueAST)
-	  end *)
-
-  (* dead function elimination on the parse tree *)
-    fun printTrees ([]) = ()
-      | printTrees ({tree,span}::rest) = (
-        PrintPT.print tree;
-        printTrees rest)
-    fun treeShake p2s =
-	  if Controls.get BasicControl.treeShake
-	     then (
-              if Controls.get BasicControl.treeShakeDebug
-              then printTrees p2s
-              else ();
-	      TreeShake.setDeadFuns (allDecls p2s);
-	      TreeShake.shakeProgram p2s)
-	  else p2s
-
-    val getPArrImpl : unit -> Types.tycon = DelayedBasis.TyCon.rope
-
-  (* load the AST specified by an MLB file *)
-    fun mlbToAST (errStrm, bEnv, mEnv, file) = let
-        (* load the MLB file *)
-	  val {basis, program} = MLB.load file
-	  val _ = checkForErrors errStrm
-        (* bound-variable check *)
-	  fun chk ((errStrm, pt), (bEnv, errStrms, pts)) = let
-		val (pt, bEnv) = BoundVariableCheck.check (errStrm, pt, bEnv)
-		in
-		  checkForErrors errStrm;
-		  (bEnv, errStrm::errStrms, pt::pts)
-		end
-	  val (bEnv, errStrms, basis) = List.foldl chk (bEnv, [], []) basis
-	(* record the basis binding environment *)
-	  val _ = BasisEnv.saveBasisEnv bEnv
-	  val (bEnv, errStrms, program) = List.foldl chk (bEnv, errStrms, basis) program
-	  val p2s = treeShake (List.rev program)
-        (* module and type checking *)
-	  val ast = ChkProgram.check (mEnv, ListPair.zip(List.rev errStrms, p2s))
-	  in
-	    checkListForErrors errStrms;
-	    ast
-	  end
-
-  (* the compiler's backend *)
-(* NEW-BOM *
-    fun bomToCFG bom = let
-	  val bom = BOMOpt.optimize bom	
-          val cps = Convert.transform bom
-	  val cps = CPSOpt.optimize cps
-	  val cfg = Closure.convert cps
-	  val cfg = CFGOpt.optimize cfg
-	  in
-	    cfg
-	  end
-
-    fun buildExe (verbose, asmFile) = let
-	  val sts = BuildExecutable.build{
-		  verbose = verbose,
-		  asmFile = asmFile,
-		  outFile = !exeFile
-		}
-	  in
-	    if OS.Process.isSuccess sts
-	      then ()
-	      else err "error compiling generated assembly code\n"
-	  end
-
-    fun codegen (verbose, outFile, cfg) = let
-	  val outStrm = TextIO.openOut outFile
-	  fun doit () = CG.codeGen {dst=outStrm, code=cfg}
-	  in	  
-	    AsmStream.withStream outStrm doit ();
-	    TextIO.closeOut outStrm;
-	    buildExe (verbose, outFile)
-	  end (* compile *)
-*)
+    fun frontEnd srcFile = (case OS.Path.ext srcFile
+	   of SOME "mlb" => PMLFrontEnd.compileMLB {input = srcFile}
+	    | SOME "pml" => PMLFrontEnd.compilePML {input = [srcFile]}
+	    | SOME "sml" => PMLFrontEnd.compilePML {input = [srcFile]}
+	    | SOME "sig" => PMLFrontEnd.compilePML {input = [srcFile]}
+	    | SOME "fun" => PMLFrontEnd.compilePML {input = [srcFile]}
+	    | _ => raise Fail "unknown file type"
+	  (* end case *))
 
   (* compile an MLB or PML file *)
     fun mlbC (verbose, srcFile, asmFile) = let
 	  val _ = if verbose then print "initializing environment\n" else ()
-(* 	  val (bEnv0, mEnv0, ast0, glueAST) = initialEnv() *)
+	  val _ = PMLFrontEnd.init ()
           val _ = if verbose then print(concat["mlton parsing \"", srcFile, "\"\n"]) else ()
-          (* FIXME: detect file type *)
-(*          val sxml = Wrapper.compileSML (srcFile, asmFile) *)
-          val bom = Wrapper.compileMLB (srcFile, asmFile)
+          val sxml = frontEnd srcFile
 (* NEW-BOM *
           val cfg = bomToCFG bom
 *)
@@ -322,3 +194,4 @@ functor MainFn (
     fun main (_, args) = processArgs args
  
   end
+

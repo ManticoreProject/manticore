@@ -14,8 +14,10 @@ structure AMD64TargetSpec = TargetSpecFn (
     val maxVPRArgs = 0
     val availRegs = 11)
 
+(** NEW-BOM **
 structure CodeGen = AMD64GenFn (structure Spec = AMD64TargetSpec)
+**)
 
 structure Main = MainFn(
     structure Spec = AMD64TargetSpec
-    structure CG = CodeGen.Gen)
+    (*structure CG = CodeGen.Gen*))
