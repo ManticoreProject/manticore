@@ -508,15 +508,19 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             val (conVal, conTy) = lookupCon (CoreBOM.Val.idOf value, tyEnvs,
               checkForErrorVal, checkForErrorVal)
             val (dom, rng) =
-              case conTy of
-                (* A unary constructor constrains the domain to its own domain *)
+              (case conTy of
+                (* A unary constructor constrains the domain and range
+                to its own *)
                 CoreBOM.BOMType.Con {dom, rng} => (dom, rng)
+                (* FIXME: does this make sense? *)
                 (* If we have a nullary constructor, the domain is unconstrained *)
               | CoreBOM.BOMType.TyCon _ => (CoreBOM.BOMType.Any, conTy)
-                (* lookupCon can't return anything else *)
+                (* lookupCon can't return anything else *))
+            (* The varpat must be in the domain of the constructor *)
             val (newBOMEnv, varPats) = bindVarPats (varPats,
-              [ruleTy], tyEnvs)
-            val _ = checkForErrorVal () (CoreBOM.BOMType.equal' (dom,
+              [dom], tyEnvs)
+            (* And the range must be the type of the rule *)
+            val _ = checkForErrorVal () (CoreBOM.BOMType.equal' (rng,
               CoreBOM.SimpleExp.typeOf ruleExp),
               "case object and rules don't agree")
           in
@@ -528,7 +532,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             varPats) of
           (* either we've got a constructor *)
           (SOME value, _) => elaborateLongRule (value, varPats)
-          (* It's just varPat to be bound for the default case  *)
+          (* or it's just varPat to be bound for the default case  *)
         | (NONE, []) =>
            let
              val newValId = CoreBOM.ValId.fromLongId longId
