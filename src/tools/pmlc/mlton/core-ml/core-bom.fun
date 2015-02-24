@@ -108,12 +108,13 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
     local
       val counter = Counter.new 0
+      fun newWithName name = T {name = name, hash = Counter.next counter}
     in
       fun fromAst (tyParam : BOM.TyParam.t) =
-        T {
-          name = BOM.TyParam.toString tyParam,
-          hash = Counter.next counter
-        }
+        newWithName (BOM.TyParam.toString tyParam)
+
+      fun new () =
+        newWithName "'unnamed'"
     end
 
     fun name (T myParam) = #name myParam

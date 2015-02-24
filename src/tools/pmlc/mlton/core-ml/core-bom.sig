@@ -30,6 +30,8 @@ signature CORE_BOM =
       type t
 
       val fromAst: BOM.TyParam.t -> t
+      val new: unit -> t
+
       val hash: t -> int
       val name: t -> string
       val compare: t * t -> order

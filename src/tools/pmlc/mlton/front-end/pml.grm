@@ -47,21 +47,21 @@ topdecnode
         ;
 
 Import
-        : "_import" "datatype" ty ("as" BOMId)? "with" ImportCon+ "end"
+        : "_import" "datatype" ty ("as" BOMIdForMLCode)? "with" ImportCon+ "end"
                 => (case Type.node ty
                      of Type.Con(tyc, tvs) => BOM.Import.makeRegion (
                           BOM.Import.Datatype (tvs, tyc, SR, ImportCon),
                           posToReg FULL_SPAN)
                       | _ => raise Fail "FIXME"
                     (* end case *))
-        | "_import" "exception" longvid ("of" ty)? ("as" BOMId)?
+        | "_import" "exception" longvid ("of" ty)? ("as" BOMIdForMLCode)?
                 => (BOM.Import.makeRegion (BOM.Import.Exn (Longvid.toLongcon longvid, SR1, SR2), posToReg FULL_SPAN))
         | "_import" "val" longvid ":" ty ("as" BOMId)?
                 => (BOM.Import.makeRegion (BOM.Import.Val (longvid, ty, SR), posToReg FULL_SPAN))
         ;
 
 ImportCon
-        : "_con" longcon ("of" ty)? ("as" BOMId)?
+        : "_con" longcon ("of" ty)? ("as" BOMIdForMLCode)?
                 => (BOM.ImportCon.makeRegion (BOM.ImportCon.T (longcon, SR1, SR2), posToReg FULL_SPAN))
         ;
 

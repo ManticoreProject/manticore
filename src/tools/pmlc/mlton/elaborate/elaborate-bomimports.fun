@@ -8,8 +8,8 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
   (* structure TypeOps = Env.TypeEnv.Type.Ops *)
 
   local
-    fun printMLObj toLayout (obj, msg) =
-      print (msg ^ (Layout.toString (MLTycon.layout obj)) ^ "\n")
+    fun printMLObj doLayout (obj, msg) =
+      print (msg ^ (Layout.toString (doLayout obj)) ^ "\n")
   in
     val printMLTy = printMLObj MLType.layout
   end
@@ -22,17 +22,20 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
       fun applyCon (tyc: MLTycon.t, tyvec: MLType.t vector): CoreBOM.BOMType.t =
         case BOMEnv.MLTyEnv.lookupThis (mlTyEnv, tyc) of
           SOME bomTyc =>
-            (* case (CoreBOM.TyCon.applyToArgs' (bomTyc, Vector.map *)
-             (*  (translateType mlTyEnv) tyvec)) of *)
             (case (bomTyc (Vector.map (translateType mlTyEnv) tyvec)) of
               SOME bomTy => bomTy
             | NONE => raise Fail "Bad application.")
         | NONE => raise Fail "Unmapped type."
 
       and translateCon (mlType: MLType.t): CoreBOM.BOMType.t =
+        let
+            (* DEBUG *)
+          val _ = printMLTy (mlType, "unwrapping ty: ")
+        in
           case (MLType.deConOpt mlType) of
             SOME (tyc, tyvec) => applyCon (tyc, tyvec)
           | NONE => raise Fail "Bad type."
+        end
     in
       translateCon mlType
     end
@@ -56,7 +59,6 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
       fun extendEnvs (tyargs, tyc, maybeId) =
         let
           (* Translate the ML types from the AST representation *)
-          val tyargs' = Vector.map elaborateMLType tyargs
           val maybeTyStr =
             case Env.lookupLongtycon (env, tyc) of
               SOME tyStr => SOME (tyStr)
@@ -73,8 +75,9 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
               SOME (tyStr) =>
                 (* Apply the tycon to the provided arguments *)
                 SOME (tyStr, CoreBOM.TyCon.TyC {
-                  (* FIXME: how do I get typarams out of this? *)
-                  id = tyId, definition = ref [], params = []})
+                  (* FIXME: this is probably WRONG for typarams *)
+                  id = tyId, definition = ref [], params = (List.tabulate (
+                    Vector.length tyargs, fn _ => CoreBOM.TyParam.new ()))})
              (* FIXME: better error handling *)
               | _ => NONE
         in
@@ -86,12 +89,12 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
                   Env.TypeStr.node tyStr
                 (* First, we put the new tyc into the mapping *)
                 val mlTyEnv' = BOMEnv.MLTyEnv.extendThis (mlTyEnv,
-                  tycon, fn tyArgs => CoreBOM.TyCon.applyToArgs' (bomTyc, tyArgs))
+                  tycon, fn args => CoreBOM.TyCon.applyToArgs' (bomTyc, args))
                 val bomEnv' = BOMEnv.TyEnv.extend (bomEnv, tyId,
                   BOMEnv.TypeDefn.newCon bomTyc)
 
                 (* Apply it to the constructors we were given *)
-                val mlTy = Env.TypeStr.apply (tyStr, tyargs')
+                val mlTy = Env.TypeStr.apply (tyStr, tyargs)
                 (* No params by this point *)
                 val bomTy = translateType mlTyEnv' mlTy
 
@@ -104,7 +107,7 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
         end
       end
 
-      fun translateCon (mlTyEnv, bomResultTy) importCon =
+      fun translateCon (mlTyEnv, bomResultTy, tyargs) importCon =
         let
             (* FIXME: let's ignore the maybeTy for now *)
           val BOM.ImportCon.T (longcon, maybeTy, maybeId) =
@@ -113,18 +116,19 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
           val (con, maybeScheme) = Env.lookupLongcon (env, longcon)
           (* FIXME: better error handling *)
           val SOME tyScheme = maybeScheme
-          val {instance,...} = MLScheme.instantiate tyScheme
+          val mlTy = MLScheme.apply (tyScheme, tyargs)
 
           (* DEBUG *)
-          (* val _ = print ("Env: " ^ (Layout.toString (Env.layout env ))) *)
-          (* val _ = print ("\nCon: " ^ (Layout.toString (Ast.Longcon.layout longcon))) *)
-          (* val _ = print ("\nScheme: " ^ (Layout.toString (MLScheme.layout ( *)
-          (*   Option.valOf maybeScheme)))) *)
+          val _ = print ("Env: " ^ (Layout.toString (Env.layout env )) ^ "\n")
+          val _ = print ("Con: " ^
+            (Layout.toString (Ast.Longcon.layout longcon)) ^ "\n")
+          val _ = print ("Scheme: " ^ (Layout.toString (MLScheme.layout (
+            Option.valOf maybeScheme))) ^ "\n")
 
 
           val newValId = resolveValId CoreBOM.BOMId.fromLongcon (longcon, maybeId)
           val bomConTy =
-            case MLType.deArrowOpt instance of
+            case MLType.deArrowOpt mlTy of
               (* MLton doesn't distinguish between arrow and
               constructors here, so we have to handle this as a
               special case *)
@@ -132,19 +136,8 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
                 dom = translateType mlTyEnv dom,
                 rng = translateType mlTyEnv rng
               }
-           | NONE => translateType mlTyEnv instance
+           | NONE => translateType mlTyEnv mlTy
 
-
-          (* val bomConTy = *)
-          (*   case maybeScheme of *)
-          (*     SOME scheme => *)
-          (*       (* FIXME: do I need the args here? *) *)
-          (*       translateType mlTyEnv (#instance (MLScheme.instantiate scheme)) *)
-          (*   | NONE => CoreBOM.BOMType.Error *)
-
-          (* FIXME: we're never going to get BOMType.Con out of this,
-          only TyCon. Figure out how to deal with non-nullary
-          constructors. *)
           val _ =
             if CoreBOM.BOMType.equal (bomResultTy,
               case bomConTy of
@@ -177,7 +170,6 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
                   preError = fn () => success := false})
                (* FIXME: error message *)
               | NONE => success := false
-            (* FIXME: PUT A REAL TYPE HERE *)
             val newTy = translateType mlTyEnv ty'
             (* QUESTION: Will we ever create a new type via a val
              import? *)
@@ -201,10 +193,12 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
             fun extendBOMEnv ((valId, bomVal), bomEnv) =
               BOMEnv.ValEnv.extend (bomEnv, valId, bomVal)
 
+            val tyargs' = Vector.map elaborateMLType tyargs
+
              (* FIXME: error handling *)
             val SOME (bomEnv', mlTyEnv', bomTyc, bomTy) =
-              extendEnvs (tyargs, tyc, maybeId)
-            val cons' = map (translateCon (mlTyEnv', bomTy)) cons
+              extendEnvs (tyargs', tyc, maybeId)
+            val cons' = map (translateCon (mlTyEnv', bomTy, tyargs')) cons
 
             (* Add the constructors to the tycon *)
             val _ = (fn (CoreBOM.TyCon.TyC {definition,...}) =>

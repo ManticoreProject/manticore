@@ -173,7 +173,8 @@
 <BOM>"any"			=> (T.KW_any);
 <BOM>"apply"			=> (T.KW_apply);
 <BOM>"array"			=> (T.KW_array);
-<INITIAL>"as"			=> (T.KW_as);
+(* <INITIAL,BOM>"as"			=> (T.KW_as); *)
+<INITIAL>"as"			=> (trace ("177", yytext, T.KW_as));
 <BOM>"bignum"			=> (T.KW_bignum);
 <INITIAL,BOM>"case"		=> (T.KW_case);
 <BOM>"ccall"			=> (T.KW_ccall);
