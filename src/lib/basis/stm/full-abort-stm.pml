@@ -146,6 +146,11 @@ struct
                         else if I64Eq(casRes, rawStamp)    (*already locked it*)
                              then apply acquire(tl, acquired)
                              else do apply release(acquired)    
+                                  fun lp() : () = 
+                                    if I64Eq(#1(tv), 0:long)
+                                    then return()
+                                    else do Pause() apply lp()
+                                  do apply lp()
                                   let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
                                   throw abortK()
                      |NilItem => return(acquired)
