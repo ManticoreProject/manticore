@@ -349,15 +349,77 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     val extendThis = fn (args as (_, mlTy, _)) =>
       (trace ("extendThis: ", mlTy) ; extendThis args)
 
+    (* FIXME: reduce duplication *)
+  local
+    fun printMLObj doLayout (obj, msg) =
+      print (msg ^ (Layout.toString (doLayout obj)) ^ "\n")
+  in
+    val printMLTy = printMLObj MLType.layout
+  end
 
+   fun translateType' (mlTyEnv: t)
+      (mlType: MLType.t): CoreBOM.BOMType.t =
+    let
+      fun applyCon (tyc: MLTycon.t, tyvec: MLType.t vector): CoreBOM.BOMType.t =
+        case lookupThis (mlTyEnv, tyc) of
+          SOME bomTyc =>
+            (case (bomTyc (Vector.map (translateType' mlTyEnv) tyvec)) of
+              SOME bomTy => bomTy
+            | NONE => raise Fail "Bad application.")
+        | NONE => raise Fail "Unmapped type."
+
+      and translateCon (mlType: MLType.t): CoreBOM.BOMType.t =
+        let
+            (* DEBUG *)
+          (* val _ = printMLTy (mlType, "unwrapping ty: ") *)
+        in
+          case (MLType.deConOpt mlType) of
+            SOME (tyc, tyvec) => applyCon (tyc, tyvec)
+          | NONE => raise Fail "Bad type."
+        end
+    in
+      translateCon mlType
+    end
+
+    fun translateType (mlTyEnv, mlType) = translateType' mlTyEnv mlType
 
     (* val empty = Vector.fromList ([]: (key * value) list) *)
-    val empty = Vector.fromList [
-      (MLTycon.arrow, fn args =>
-        case args of
-          #[dom, rng] => SOME (
-             CoreBOM.BOMType.Fun {dom=[dom], rng=[rng], cont=[]})
-       | _ => NONE)]
+      local
+        fun translateInt intSize =
+            case (Bits.toInt (MLTycon.IntSize.bits intSize)) of
+              8 => SOME CoreBOM.RawTy.Int8
+            | 16 => SOME CoreBOM.RawTy.Int16
+            | 32 => SOME CoreBOM.RawTy.Int32
+            | 64 => SOME CoreBOM.RawTy.Int64
+            | _ => NONE
+            (* | n => raise Fail (String.concatWith " " [ *)
+            (*     "Compiler bug: unexpected int size:", Int.toString n, "\n"])) *)
+
+        fun deIntXMLTycon (tyc, size) =
+            case translateInt size of
+              SOME rawTy => SOME (tyc, CoreBOM.BOMType.Raw rawTy)
+            | NONE => NONE
+
+        (* NOTE: THIS WILL NOT BEHAVE WELL IF WE REBIND INT TYPES *)
+        (* FIXME: do we want to give a name to their "default int size" ? *)
+        (* FIXME: fail correctly when we are given a wrong-size int tycon *)
+        val intTycons = List.mapPartial deIntXMLTycon (MLtonVector.toList
+          MLTycon.ints)
+        val intTyconMappings = map (fn (tyc, rawTy) => (tyc, fn _ => SOME rawTy))
+          intTycons
+
+      in
+      (* FIXME: this is no longer "empty" *)
+        val empty = Vector.fromList ([
+          (MLTycon.arrow, fn args =>
+           (* FIXME: no vector literals *)
+            case args of
+              #[dom, rng] => SOME (
+                 CoreBOM.BOMType.Fun {dom=[dom], rng=[rng], cont=[]})
+            | _ => NONE),
+          (MLTycon.exn, fn _ => SOME CoreBOM.BOMType.Exn)
+         ] @ intTyconMappings)
+     end
   end
 
   structure Context = struct

@@ -303,6 +303,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         cont: type_t list,
         rng: type_t list
       }
+    | BigNum
+    | Exn
     | Any
     | VProc
     | Cont of type_t list

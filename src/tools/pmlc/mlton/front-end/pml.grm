@@ -56,7 +56,7 @@ Import
                     (* end case *))
         | "_import" "exception" longvid ("of" ty)? ("as" BOMIdForMLCode)?
                 => (BOM.Import.makeRegion (BOM.Import.Exn (Longvid.toLongcon longvid, SR1, SR2), posToReg FULL_SPAN))
-        | "_import" "val" longvid ":" ty ("as" BOMId)?
+        | "_import" "val" longvid ":" ty ("as" BOMIdForMLCode)?
                 => (BOM.Import.makeRegion (BOM.Import.Val (longvid, ty, SR), posToReg FULL_SPAN))
         ;
 

@@ -7,6 +7,7 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
   structure MLTycon = Env.TypeEnv.Tycon
   (* structure TypeOps = Env.TypeEnv.Type.Ops *)
 
+
   local
     fun printMLObj doLayout (obj, msg) =
       print (msg ^ (Layout.toString (doLayout obj)) ^ "\n")
@@ -15,6 +16,15 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
   end
 
 
+  fun translateInt intSize =
+    Vector.fromList [
+      CoreBOM.BOMType.Raw (case (Bits.toInt (MLTycon.IntSize.bits intSize)) of
+        8 => CoreBOM.RawTy.Int8
+      | 16 => CoreBOM.RawTy.Int16
+      | 32 => CoreBOM.RawTy.Int32
+      | 64 => CoreBOM.RawTy.Int64
+      | n => raise Fail (String.concatWith " " [
+          "Compiler bug: unexpected int size:", Int.toString n, "\n"]))]
 
   fun translateType (mlTyEnv: BOMEnv.MLTyEnv.t)
       (mlType: MLType.t): CoreBOM.BOMType.t =
@@ -107,42 +117,37 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
         end
       end
 
-      fun translateCon (mlTyEnv, bomResultTy, tyargs) importCon =
+      fun unwrapMLArrow (mlTyEnv, mlTy) =
+        case MLType.deArrowOpt mlTy of
+          (* MLton doesn't distinguish between arrow and constructors
+            here, so we have to handle this as a special case *)
+          SOME (dom, rng) => CoreBOM.BOMType.Con {
+            dom = translateType mlTyEnv dom,
+            rng = translateType mlTyEnv rng
+          }
+        | NONE => translateType mlTyEnv mlTy
+
+      (* FIXME: note that we pull from the env in scope *)
+      (* FIXME: better error handling *)
+      fun unwrapMLCon (longcon, tyargs) =
+        case Env.lookupLongcon (env, longcon) of
+          (con, SOME tyScheme) => MLScheme.apply (tyScheme, tyargs)
+        | _  => raise Fail "Unmapped longcon"
+
+      fun translateCon (mlTyEnv, bomResultTy, tyargs, longcon, maybeTy, maybeId) =
         let
-            (* FIXME: let's ignore the maybeTy for now *)
-          val BOM.ImportCon.T (longcon, maybeTy, maybeId) =
-            BOM.ImportCon.node importCon
-
-          val (con, maybeScheme) = Env.lookupLongcon (env, longcon)
-          (* FIXME: better error handling *)
-          val SOME tyScheme = maybeScheme
-          val mlTy = MLScheme.apply (tyScheme, tyargs)
-
-          (* DEBUG *)
-          val _ = print ("Env: " ^ (Layout.toString (Env.layout env )) ^ "\n")
-          val _ = print ("Con: " ^
-            (Layout.toString (Ast.Longcon.layout longcon)) ^ "\n")
-          val _ = print ("Scheme: " ^ (Layout.toString (MLScheme.layout (
-            Option.valOf maybeScheme))) ^ "\n")
-
-
+          val mlTy = unwrapMLCon (longcon, tyargs)
           val newValId = resolveValId CoreBOM.BOMId.fromLongcon (longcon, maybeId)
-          val bomConTy =
-            case MLType.deArrowOpt mlTy of
-              (* MLton doesn't distinguish between arrow and
-              constructors here, so we have to handle this as a
-              special case *)
-              SOME (dom, rng) => CoreBOM.BOMType.Con {
-                dom = translateType mlTyEnv dom,
-                rng = translateType mlTyEnv rng
-              }
-           | NONE => translateType mlTyEnv mlTy
+          val bomConTy = unwrapMLArrow (mlTyEnv, mlTy)
 
           val _ =
             if CoreBOM.BOMType.equal (bomResultTy,
               case bomConTy of
                 CoreBOM.BOMType.Con {rng,...} => rng
               | tycon as (CoreBOM.BOMType.TyCon tycon') => tycon
+              (* Special case for exns because it's not worth
+              factoring them out *)
+              | CoreBOM.BOMType.Exn => CoreBOM.BOMType.Exn
               | CoreBOM.BOMType.Error => raise Fail "Con wasn't found in env."
               | _ => raise Fail "Type is not a con.")
             then ()
@@ -151,12 +156,21 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
             (* FIXME: never any params in imports? *)
           (newValId, CoreBOM.Val.new (newValId, bomConTy, []))
         end
+
+      fun translateImportCon (mlTyEnv, bomResultTy, tyargs) importCon =
+        let
+            (* FIXME: let's ignore the maybeTy for now *)
+          val BOM.ImportCon.T (longcon, maybeTy, maybeId) =
+            BOM.ImportCon.node importCon
+        in
+          translateCon (mlTyEnv, bomResultTy, tyargs, longcon, maybeTy, maybeId)
+        end
+
     in
       case BOM.Import.node import of
         BOM.Import.Val (vid, ty, maybeId) =>
           let
             val ty' = elaborateMLType ty
-            (* FIXME: not sure what to do with this scheme *)
             val (vid', maybeScheme) = Env.lookupLongvid (env, vid)
             val success = ref true
             val _ =
@@ -188,6 +202,7 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
               already been logged above) *)
               bomEnv, mlTyEnv)
           end
+
       | BOM.Import.Datatype (tyargs, tyc, maybeId, cons) =>
           let
             fun extendBOMEnv ((valId, bomVal), bomEnv) =
@@ -198,7 +213,7 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
              (* FIXME: error handling *)
             val SOME (bomEnv', mlTyEnv', bomTyc, bomTy) =
               extendEnvs (tyargs', tyc, maybeId)
-            val cons' = map (translateCon (mlTyEnv', bomTy, tyargs')) cons
+            val cons' = map (translateImportCon (mlTyEnv', bomTy, tyargs')) cons
 
             (* Add the constructors to the tycon *)
             val _ = (fn (CoreBOM.TyCon.TyC {definition,...}) =>
@@ -213,7 +228,15 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
             (bomEnv', mlTyEnv')
           end
 
-            (* NOTE: do we want to reject all but the datatype type strs? *)
-      | BOM.Import.Exn (tyc, maybeTy, maybeId) => raise Fail "not implemented"
+      | BOM.Import.Exn (longcon, maybeTy, maybeId) =>
+          let
+            (* FIXME: this is broken b/c of the way tycons are handled *)
+            val (newValId, newVal) = translateCon (mlTyEnv,
+              CoreBOM.BOMType.Exn, Vector.fromList [], longcon, maybeTy,
+                maybeId)
+          in
+            (BOMEnv.ValEnv.extend (bomEnv, newValId, newVal), mlTyEnv)
+          end
+
     end
 end

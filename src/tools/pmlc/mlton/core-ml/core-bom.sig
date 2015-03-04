@@ -139,6 +139,8 @@ signature CORE_BOM =
     datatype field_t
       = Immutable of IntInf.int * type_t
       | Mutable of IntInf.int * type_t
+    (* FIXME: translation from AST for BigNum, Exn, add Array + Vector
+    *)
     and type_t
       = Param of TyParam.t
       | TyCon of {
@@ -156,6 +158,8 @@ signature CORE_BOM =
           cont: type_t list,
           rng: type_t list
         }
+      | BigNum
+      | Exn
       | Any
       | VProc
       | Cont of type_t list

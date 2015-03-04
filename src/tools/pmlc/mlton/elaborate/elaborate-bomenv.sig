@@ -103,6 +103,9 @@ signature ELABORATE_BOMENV =
       val extendThis: t * key * value -> t
       val lookupThis: t * key -> value option
 
+      val translateType: t * Env.TypeEnv.Type.t -> CoreBOM.BOMType.t
+      val translateType': t -> Env.TypeEnv.Type.t -> CoreBOM.BOMType.t
+
       val empty: t
     end
 
