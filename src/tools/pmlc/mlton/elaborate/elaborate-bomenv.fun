@@ -371,7 +371,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
       and translateCon (mlType: MLType.t): CoreBOM.BOMType.t =
         let
             (* DEBUG *)
-          (* val _ = printMLTy (mlType, "unwrapping ty: ") *)
+          val _ = printMLTy (mlType, "unwrapping ty: ")
         in
           case (MLType.deConOpt mlType) of
             SOME (tyc, tyvec) => applyCon (tyc, tyvec)
@@ -401,7 +401,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
             | NONE => NONE
 
         (* NOTE: THIS WILL NOT BEHAVE WELL IF WE REBIND INT TYPES *)
-        (* FIXME: do we want to give a name to their "default int size" ? *)
+        (* FIXME: do we want to give a name to their "default int size"? *)
         (* FIXME: fail correctly when we are given a wrong-size int tycon *)
         val intTycons = List.mapPartial deIntXMLTycon (MLtonVector.toList
           MLTycon.ints)

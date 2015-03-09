@@ -110,6 +110,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             (recordLabelsOkay fields, "labels must be strictly increasing")
             (fn fields => CoreBOM.BOMType.Record (map (fn field' =>
               elaborateField (field', tyEnvs)) fields))
+      | BOM.BOMType.Exn => CoreBOM.BOMType.Exn
+    (* FIXME: need to add exn, others *)
     end
   and elaborateField (astField: BOM.Field.t,
      tyEnvs as {env = env:Env.t, bomEnv = bomEnv: BOMEnv.t}): CoreBOM.Field.t =

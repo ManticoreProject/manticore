@@ -15,40 +15,41 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
     val printMLTy = printMLObj MLType.layout
   end
 
+  val translateType = BOMEnv.MLTyEnv.translateType'
 
-  fun translateInt intSize =
-    Vector.fromList [
-      CoreBOM.BOMType.Raw (case (Bits.toInt (MLTycon.IntSize.bits intSize)) of
-        8 => CoreBOM.RawTy.Int8
-      | 16 => CoreBOM.RawTy.Int16
-      | 32 => CoreBOM.RawTy.Int32
-      | 64 => CoreBOM.RawTy.Int64
-      | n => raise Fail (String.concatWith " " [
-          "Compiler bug: unexpected int size:", Int.toString n, "\n"]))]
+  (* fun translateInt intSize = *)
+  (*   Vector.fromList [ *)
+  (*     CoreBOM.BOMType.Raw (case (Bits.toInt (MLTycon.IntSize.bits intSize)) of *)
+  (*       8 => CoreBOM.RawTy.Int8 *)
+  (*     | 16 => CoreBOM.RawTy.Int16 *)
+  (*     | 32 => CoreBOM.RawTy.Int32 *)
+  (*     | 64 => CoreBOM.RawTy.Int64 *)
+  (*     | n => raise Fail (String.concatWith " " [ *)
+  (*         "Compiler bug: unexpected int size:", Int.toString n, "\n"]))] *)
 
-  fun translateType (mlTyEnv: BOMEnv.MLTyEnv.t)
-      (mlType: MLType.t): CoreBOM.BOMType.t =
-    let
-      fun applyCon (tyc: MLTycon.t, tyvec: MLType.t vector): CoreBOM.BOMType.t =
-        case BOMEnv.MLTyEnv.lookupThis (mlTyEnv, tyc) of
-          SOME bomTyc =>
-            (case (bomTyc (Vector.map (translateType mlTyEnv) tyvec)) of
-              SOME bomTy => bomTy
-            | NONE => raise Fail "Bad application.")
-        | NONE => raise Fail "Unmapped type."
+  (* fun translateType (mlTyEnv: BOMEnv.MLTyEnv.t) *)
+  (*     (mlType: MLType.t): CoreBOM.BOMType.t = *)
+  (*   let *)
+  (*     fun applyCon (tyc: MLTycon.t, tyvec: MLType.t vector): CoreBOM.BOMType.t = *)
+  (*       case BOMEnv.MLTyEnv.lookupThis (mlTyEnv, tyc) of *)
+  (*         SOME bomTyc => *)
+  (*           (case (bomTyc (Vector.map (translateType mlTyEnv) tyvec)) of *)
+  (*             SOME bomTy => bomTy *)
+  (*           | NONE => raise Fail "Bad application.") *)
+  (*       | NONE => raise Fail "Unmapped type." *)
 
-      and translateCon (mlType: MLType.t): CoreBOM.BOMType.t =
-        let
-            (* DEBUG *)
-          val _ = printMLTy (mlType, "unwrapping ty: ")
-        in
-          case (MLType.deConOpt mlType) of
-            SOME (tyc, tyvec) => applyCon (tyc, tyvec)
-          | NONE => raise Fail "Bad type."
-        end
-    in
-      translateCon mlType
-    end
+  (*     and translateCon (mlType: MLType.t): CoreBOM.BOMType.t = *)
+  (*       let *)
+  (*           (* DEBUG *) *)
+  (*         val _ = printMLTy (mlType, "unwrapping ty: ") *)
+  (*       in *)
+  (*         case (MLType.deConOpt mlType) of *)
+  (*           SOME (tyc, tyvec) => applyCon (tyc, tyvec) *)
+  (*         | NONE => raise Fail "Bad type." *)
+  (*       end *)
+  (*   in *)
+  (*     translateCon mlType *)
+  (*   end *)
 
 
   fun elaborateBOMImport (import, {env: Env.t, bomEnv: BOMEnv.t}, mlTyEnv) =
@@ -139,6 +140,9 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
           val mlTy = unwrapMLCon (longcon, tyargs)
           val newValId = resolveValId CoreBOM.BOMId.fromLongcon (longcon, maybeId)
           val bomConTy = unwrapMLArrow (mlTyEnv, mlTy)
+
+          (* DEBUG *)
+          val _ = printMLTy (mlTy, "translating: ")
 
           val _ =
             if CoreBOM.BOMType.equal (bomResultTy,

@@ -1,4 +1,4 @@
-val myVal : int = 15
+val myVal = 15
 
 _module myId
   _import val myVal : int
