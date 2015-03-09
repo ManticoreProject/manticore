@@ -387,7 +387,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
       they're valid BOM field labels *)
       and translateRecord (fields: (MLField.t * MLType.t) vector): CoreBOM.BOMType.t =
         CoreBOM.BOMType.Record (MLtonVector.toList (Vector.mapi (fn (i, (_, ty)) =>
-          CoreBOM.Field.Immutable (IntInf.fromInt i, translateCon ty)) fields))
+          CoreBOM.Field.Immutable (IntInf.fromInt (1 + i), translateCon ty)) fields))
     in
       translateCon mlType
     end

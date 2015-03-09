@@ -1,3 +1,4 @@
+(* FAIL [immutable record in assignment expression] *)
 datatype inner = A
 type recTy = {foo: inner, bar: inner, 1: inner}
 
@@ -9,12 +10,6 @@ _module myId
   end  _import val baz: recTy
   _prim (
     fun myFun () -> inner =
-      let inner1: inner = #1 (baz)
-      let inner2: inner = #2 (baz)
-      let inner3: inner = #3 (baz)
-      case 15 of
-        1 => return(inner1)
-      | 2 => return(inner2)
-      | 15 => return(inner3)
-      end;
+      let inner1: inner = #1 (baz) := A
+      return (inner1);
   )
