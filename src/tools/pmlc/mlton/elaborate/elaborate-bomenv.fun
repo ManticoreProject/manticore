@@ -30,6 +30,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
   structure MLType = Env.TypeEnv.Type
   structure MLTycon = Env.TypeEnv.Tycon
+  structure MLField = Env.TypeEnv.Atoms.Record.Field
 
   structure BOM = Ast.BOM
 
@@ -375,8 +376,18 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
         in
           case (MLType.deConOpt mlType) of
             SOME (tyc, tyvec) => applyCon (tyc, tyvec)
-          | NONE => raise Fail "Bad type."
+          | NONE => translateRecord (MLType.deRecord mlType)
+              (* FIXME: what does this do when it fails? raise an exception? *)
+              (* (case (MLType.deRecord mlType) of *)
+              (*   fields =>  *)
+              (* | _ => raise Fail "Bad type.") *)
         end
+
+      (* Note that we're going to throw away field labels, even if
+      they're valid BOM field labels *)
+      and translateRecord (fields: (MLField.t * MLType.t) vector): CoreBOM.BOMType.t =
+        CoreBOM.BOMType.Record (MLtonVector.toList (Vector.mapi (fn (i, (_, ty)) =>
+          CoreBOM.Field.Immutable (IntInf.fromInt i, translateCon ty)) fields))
     in
       translateCon mlType
     end
