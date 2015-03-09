@@ -7,11 +7,12 @@ _module myId
   end
   _import datatype outer with
     _con Wrap
+    _con B
   end
   _prim (
     fun myFun () -> inner =
       let myInner : inner = A
-      let toReturn : outer = alloc Wrap (myInner, myInner, myInner)
+      let toReturn : outer = alloc Wrap (myInner)
       case toReturn of
         Wrap (x) => return (x)
       | B => return (myInner)

@@ -272,6 +272,55 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             "argument to vproc operation must be a vproc")
           (fn _ => exp)
         end
+
+      (* FIXME: refactor this to split out cases cleanly *)
+      fun elaborateRecordSExp (index, recordSExp, maybeStoreSExp) =
+        let
+        (* make sure recordSExp evaluates to a record *)
+          val recordSExp' = elaborateSimpleExp (recordSExp, ctx, tyEnvs)
+
+          val fieldTys = checkForErrorVal []
+            ((case CoreBOM.SimpleExp.typeOf recordSExp' of
+              CoreBOM.BOMType.Record fields => SOME fields
+            | _ => NONE),
+           (* TODO: phrase this better *)
+            "argument to index access expression is not a record") (fn x => x)
+
+          (* make sure the record is defined at the specified index *)
+          val fieldTy = checkForErrorVal CoreBOM.Field.bogus
+            (List.find (fn fieldTy => CoreBOM.Field.index fieldTy = index)
+              fieldTys, "no such index") (fn x => x)
+
+          (* if the rhs is a store expression, find out the type *)
+          val maybeStoreSExp' =
+            case maybeStoreSExp of
+              SOME sExp => SOME (elaborateSimpleExp (sExp, ctx, tyEnvs))
+            | NONE => NONE
+
+          fun maybeTypeOf maybeExp =
+            case maybeExp of
+              SOME maybeExp => SOME (CoreBOM.SimpleExp.typeOf maybeExp)
+            | NONE => NONE
+        in
+          checkForErrorVal CoreBOM.SimpleExp.error (
+            case (fieldTy, maybeTypeOf maybeStoreSExp') of
+                (* make sure only mutable fields are mutated *)
+              (CoreBOM.Field.Immutable (_, ty), NONE) => SOME ty
+            | (CoreBOM.Field.Immutable (_, _), SOME ty) => NONE
+            | (CoreBOM.Field.Mutable (_, ty), NONE) => SOME ty
+            | (CoreBOM.Field.Mutable (_, ty), SOME ty') =>
+                (* if a field is mutated, rhs and lhs types must match *)
+                checkForErrorVal (SOME CoreBOM.BOMType.Error) (
+                  CoreBOM.BOMType.equal' (ty, ty'),
+                "assignment type does not match field type")
+                (* and assignments always evaluate to unit *)
+                (fn _ => SOME CoreBOM.BOMType.unit),
+            "immutable record in assignment expression")
+            (fn resultTy => CoreBOM.SimpleExp.new (
+              CoreBOM.SimpleExp.RecAccess (index, recordSExp',
+              maybeStoreSExp'), resultTy))
+        end
+
     in
       case BOM.SimpleExp.node sExp of
         BOM.SimpleExp.Id longValId =>
@@ -357,6 +406,12 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           CoreBOM.SimpleExp.new (CoreBOM.SimpleExp.VpAddr (index,
            elaborateVpExp (index, procExp)),
            CoreBOM.BOMType.Addr CoreBOM.BOMType.Any)
+
+      | BOM.SimpleExp.Select (index, recordSExp) =>
+          elaborateRecordSExp (index, recordSExp, NONE)
+
+      | BOM.SimpleExp.Assign (index, recordSExp, storeSExp) =>
+          elaborateRecordSExp (index, recordSExp, SOME storeSExp)
 
       (* FIXME: need to split this up in to two cases *)
       (* | BOM.SimpleExp.AtIndex (index, recordSExp, maybeStoreSExp) => *)

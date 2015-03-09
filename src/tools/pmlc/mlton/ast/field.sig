@@ -7,12 +7,12 @@
  * See the file MLton-LICENSE for details.
  *)
 
-signature FIELD_STRUCTS = 
+signature FIELD_STRUCTS =
    sig
       structure Symbol: SYMBOL
    end
 
-signature FIELD = 
+signature FIELD =
    sig
       include FIELD_STRUCTS
 

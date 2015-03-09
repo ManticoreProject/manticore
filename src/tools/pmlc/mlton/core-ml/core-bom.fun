@@ -387,7 +387,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | (Any, _) => true
     | (_, Any) => true
     | (Exn, Exn) => true
-    | _ => raise Fail "Type comparison not implemented."
+    (* DEBUG *)
+    | _ => (print "WARNING: Type comparison fallthrough. Not implemented?\n"; false)
   and tysEqual (tys, tys') =
     (length tys = length tys') andalso (ListPair.allEq tyEqual (tys, tys'))
   and rawEquals (raw: RawTy.t, raw': RawTy.t): bool =
