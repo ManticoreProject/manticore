@@ -110,9 +110,13 @@
 %states INITIAL A S F L LL LLC LLCQ BOM;
 
 %let alphanum = [A-Za-z'_0-9]*;
-%let id = [A-Za-z]{alphanum};
+(* %let id = [A-Za-z]{alphanum}; *)
+%let alphanumid = [A-Za-z]{alphanum};
 %let sym = [-!%&$+/:<=>?@~`\^|#*]|"\\";
+     (* FIXME: this deviates from what we have in ml.lex *)
+     (* FIXME: "eq" needs to be separate *)
 %let symid = {sym}+;
+%let id = {alphanumid}|{symid};
 %let hlid = "@"{id};
 %let ws = ("\012"|[\t\ ])*;
 %let nrws = ("\012"|[\t\ ])+;
@@ -272,9 +276,10 @@
  *)
 <INITIAL>{symid}		=> (T.SYMID yytext);
 (* ml.grm relies on this behavior (unfortunately) *)
-<INITIAL>{id}		=> (T.LONGID yytext);
+<INITIAL>({id}\.)*{id}	=> (T.LONGID yytext);
+(* <INITIAL>{id}		=> (T.LONGID yytext); *)
 <BOM>{id}		=> (T.ID yytext);
-<INITIAL>({id}\.)+{symid}	=> (T.LONGID yytext);
+
 <BOM>{id}\.{id}			=> (T.LONGID yytext); (* LONGID in BOM *)
 <BOM>{hlid}			=> (T.HLID yytext);
 <BOM>{id}\.{hlid}		=> (T.LONG_HLID yytext);

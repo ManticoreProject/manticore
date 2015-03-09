@@ -675,6 +675,9 @@ constrs : constr ("|" constr)*  => (constr :: SR)
 constr  : opcon ("of" ty)?        => ((opcon, SR))
        ;
 
+ (* FIXME: This because is forbidding "datatype
+ foo = A.Bar", which it should not do *)
+
 opcon   : ("op")? con		=> (con)
        ;
 
