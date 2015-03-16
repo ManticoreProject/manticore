@@ -137,7 +137,10 @@ structure PMLFrontEnd : PML_FRONT_END =
     val lookupConstant =
        let
 	  val zero = Const.word (WordX.fromIntInf (0, WordSize.word32))
+(*
 	  val constantsFile = concat[LoadPaths.libDir, "/mlton-basis/mlton/constants"]
+*)
+	  val constantsFile = concat[LoadPaths.basisDir, "constants"]
 	  val f =
 	     Promise.lazy
 	     (fn () =>
