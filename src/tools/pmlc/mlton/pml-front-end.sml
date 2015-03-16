@@ -505,8 +505,8 @@ structure PMLFrontEnd : PML_FRONT_END =
 	  val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/mlton-basis/sml"]
 	  val libMltonDir= concat["LIB_MLTON_DIR ", LoadPaths.libDir, "/mlton-basis/mlton"]
 *)
-	  val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/basis/sml"]
-(* DEBUG *)val _ = print(concat["SML_LIB=\"", String.toString(LoadPaths.libDir ^ "/basis/sml"), "\"\n"])
+	  val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/basis/sequential"]
+(* DEBUG *)val _ = print(concat["SML_LIB=\"", String.toString(LoadPaths.libDir ^ "/basis/sequential"), "\"\n"])
 	  fun handlePath p = Control.mlbPathVars := !Control.mlbPathVars @ [
 		  case parseMlbPathVar p
 		   of NONE => Error.bug ("strange mlb path var: " ^ p)
