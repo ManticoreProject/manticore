@@ -9,7 +9,7 @@
 
 structure GroupFuns : sig
 
-    val transform : BOM.module -> BOM.module
+    val transform : BOM.program -> BOM.program
 
   end = struct
 
@@ -23,7 +23,6 @@ structure GroupFuns : sig
   (********** Counters for statistics **********)
     val cntGroup	= ST.newCounter "group-fns:group"
     val cntSplit	= ST.newCounter "group-fns:split"
-
 
   (* We compute strongly connected components to group functions *)
     structure SCC = GraphSCCFn (VSet.Key)
@@ -109,14 +108,13 @@ structure GroupFuns : sig
 		e0)
 	  (* end case *))
 
-    fun transform (B.MODULE{name, externs, hlops, rewrites, body}) = let
+    fun transform (B.PROGRAM{name, externs, hlops, body}) = let
 	  val body = doLambda (VMap.empty, body)
 	  in
-	    B.MODULE{
+	    B.PROGRAM{
 		name = name,
 		externs = externs,
 		hlops = hlops,
-		rewrites = rewrites,
 		body = body
 	      }
 	  end

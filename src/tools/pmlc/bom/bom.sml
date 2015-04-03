@@ -90,7 +90,7 @@ structure BOM =
 	  structure V = VarFn (
 	    struct
 	      type kind = var_kind
-	      type ty=ty
+	      type ty = ty
 	      val defaultKind = VK_None
 	      val kindToString = varKindToString
 	      val tyToString = BOMTyUtil.toString

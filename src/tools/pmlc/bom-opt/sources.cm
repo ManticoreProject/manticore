@@ -8,8 +8,13 @@
 
 Library
 
+(*
   functor BOMOptFn
+*)
   structure BOMOptControls
+
+  structure GroupFuns
+  structure LetFloat
 
 is
 
@@ -22,9 +27,9 @@ is
   ../common/sources.cm
   ../prim/sources.cm
   ../bom/sources.cm
-  ../env/sources.cm
 
   bom-opt-controls.sml
+(*
   bom-opt-fn.sml
   case-simplify.sml
   cond-contract.sml
@@ -33,10 +38,13 @@ is
   expand-hlops.sml
   flatten.sml
   inline.sml
+*)
   group-funs.sml
   let-float.sml
+(*
   literal-case-fn.sml
   prim-contract.sml
   rewrite-hlops.sml
   sizes.sml
   uncurry.sml
+*)

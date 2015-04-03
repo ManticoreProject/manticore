@@ -23,6 +23,7 @@ structure BOMOptControls =
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
               envName = NONE
             }) [
+(*
               Controls.control {
                   ctl = CFABOM.debugFlg,
                   name = "cfa-debug",
@@ -37,6 +38,7 @@ structure BOMOptControls =
                   obscurity = 0,
                   help = "print results of cfa"
                 },
+*)
               Controls.control {
                   ctl = checkAll,
                   name = "check-all",
