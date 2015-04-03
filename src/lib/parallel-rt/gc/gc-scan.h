@@ -9,6 +9,7 @@ typedef struct{
 	Word_t * (*majorGCscanfunction) (Word_t *,  VProc_t *, Addr_t,Addr_t);
 	Word_t * (*globalGCscanfunction) (Word_t *,  VProc_t *);
 	Word_t * (*ScanGlobalToSpacefunction) (Word_t *,  VProc_t *,Addr_t);
+	bool (*polyEq) (Word_t *, Word_t *);
 } tableentry;
 
 //table array to match the tagbits with the entries
