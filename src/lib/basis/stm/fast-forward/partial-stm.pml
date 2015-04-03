@@ -31,7 +31,7 @@ struct
 #define READ_SET_BOUND 20
 
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a
-                     | WithoutK of 'a * 'a | Abort of unit
+                     | WithoutK of 'a * 'a | Abort of unit 
 
     _primcode(
 
@@ -41,7 +41,7 @@ struct
         extern void M_BumpCounter(int);
         extern int M_SumCounter(int);
         extern long M_GetTimeAccum();
-        extern bool M_ContEq(void * , void *);
+        extern int M_ContEq(void * , void *);
 
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
@@ -66,16 +66,18 @@ struct
         define @force-abort(rs : [int,item,item], startStamp:![stamp, int] / exh:exh) : () = 
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             let rawStamp : stamp = #0(startStamp)
-            fun fa-validate(readSet:item, newStamp : stamp, abortInfo : item, i:int) : () = 
+            fun faValidate(readSet:item, newStamp : stamp, abortInfo : item, i:int) : () = 
                 case readSet
                     of NilItem => 
                         case abortInfo
                             of NilItem => 
                                 (*Extend stamp*)
                                 do #0(startStamp) := newStamp
+                                do FLS.@set-key(FF_KEY, enum(0):any / exh)
                                 return()
                              | Abort(x : unit) => 
                                 let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
+                                do FLS.@set-key(FF_KEY, enum(0):any / exh)
                                 throw abortK()
                              | WithK(tv:tvar,abortK:any,ws:item,_:item,_:item) =>
                                 let abortK : cont(any) = (cont(any)) abortK
@@ -96,6 +98,8 @@ struct
                                 let captureFreq : int = FLS.@get-counter2()
                                 do FLS.@set-counter(captureFreq)
                                 BUMP_PABORT
+                                let ffInfo : [item,item] = alloc(#1(rs), abortInfo)
+                                do FLS.@set-key(FF_KEY, ffInfo / exh)
                                 throw abortK(current)
                         end
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
@@ -107,15 +111,15 @@ struct
                                                       then if I64Lt(stamp, rawStamp) then return(false) else return(true)
                                                       else return(true)
                         if(shouldAbort)
-                        then apply fa-validate(next,newStamp,Abort(UNIT),0)
+                        then apply faValidate(next,newStamp,Abort(UNIT),0)
                         else case abortInfo
                                 of Abort(x : unit) => 
-                                    if Equal(k, enum(0))
-                                    then apply fa-validate(next,newStamp,abortInfo,i)
-                                    else apply fa-validate(next,newStamp,readSet,0)
+                                    if Equal(k, enum(0))  (*we dropped this continuation*)
+                                    then apply faValidate(next,newStamp,abortInfo,i)
+                                    else apply faValidate(next,newStamp,readSet,0)
                                  | _ => if Equal(k, enum(0)) (*either a checkpointed item or not aborting*)
-                                        then apply fa-validate(next,newStamp,abortInfo,i)
-                                        else apply fa-validate(next,newStamp,abortInfo,I32Add(i,1))
+                                        then apply faValidate(next,newStamp,abortInfo,i)
+                                        else apply faValidate(next,newStamp,abortInfo,I32Add(i,1))
                              end
                     | WithoutK(tv:tvar,rest:item) => 
                         let lock : stamp = #1(tv)
@@ -126,16 +130,16 @@ struct
                                                       then if I64Lt(stamp, rawStamp) then return(false) else return(true)
                                                       else return(true)
                         if(shouldAbort)
-                        then apply fa-validate(rest,newStamp,Abort(UNIT),0)
-                        else apply fa-validate(rest,newStamp,abortInfo,i)
+                        then apply faValidate(rest,newStamp,Abort(UNIT),0)
+                        else apply faValidate(rest,newStamp,abortInfo,i)
                 end
             let stamp : stamp = VClock.@bump(/exh)         
-            do apply fa-validate(#1(rs),stamp,NilItem,0)
+            do apply faValidate(#1(rs),stamp,NilItem,0)
             return()
        ;
 
 
-        define @get(tv:tvar / exh:exh) : any = 
+        define @getABCDEFG(tv:tvar / exh:exh) : any = 
             let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do if(#0(in_trans))
                then return()
@@ -155,7 +159,23 @@ struct
                  end
             cont retK(x:any) = return(x)
             let localRes : Option.option = apply chkLog(writeSet)
-            
+            let ffInfo : any = FLS.@get-key(FF_KEY / exh)
+            fun checkFF(rs:item, sentinel : item) : () = 
+                if Equal(rs, sentinel)
+                then return()
+                else case rs
+                        of WithK(_:tvar,k:cont(any),_:List.list,_:item,next:item) =>
+                            let res : int = ccall M_ContEq(k, retK)
+                            if I32Eq(res, 1)
+                            then do ccall M_Print("Continuations are the same!\n")
+                                 return()
+                            else apply checkFF(next, sentinel)
+                         | _ => return()
+                     end
+            do if Equal(ffInfo, enum(0))
+               then return()
+               else let ffInfo : [item,item] = ([item,item]) ffInfo
+                    apply checkFF(#0(ffInfo), #1(ffInfo))
             case localRes
                 of Option.SOME(v:any) => return(v)
                  | Option.NONE => 
@@ -255,7 +275,8 @@ struct
                 case readSet
                     of NilItem => 
                         case abortInfo
-                            of NilItem => return() (*no violations detected*)
+                            of NilItem => do FLS.@set-key(FF_KEY, enum(0):any / exh)
+                                          return() (*no violations detected*)
                              | WithK(tv:tvar,abortK:any,ws:item,_:item,_:item) =>
                                 if Equal(abortK, enum(0))
                                 then do apply release(locks)
@@ -263,6 +284,7 @@ struct
                                      let captureFreq : int = FLS.@get-counter2()
                                      let newFreq : int = I32Div(captureFreq, 2)
                                      do FLS.@set-counter2(newFreq) 
+                                     do FLS.@set-key(FF_KEY, enum(0):any / exh)
                                      throw abortK()  (*no checkpoint found*)
                                 else do apply release(locks)
                                      let abortK : cont(any) = (cont(any)) abortK
@@ -283,6 +305,8 @@ struct
                                      let captureFreq : int = FLS.@get-counter2() 
                                      do FLS.@set-counter(captureFreq)
                                      BUMP_PABORT
+                                     let ffInfo : [item,item] = alloc(#1(rs), abortInfo)
+                                     do FLS.@set-key(FF_KEY, ffInfo / exh)
                                      throw abortK(current) 
                              | WithoutK(tv:tvar,_:item) =>
                                 do apply release(locks)
@@ -290,6 +314,7 @@ struct
                                 let captureFreq : int = FLS.@get-counter2()
                                 let newFreq : int = I32Div(captureFreq, 2)
                                 do FLS.@set-counter2(newFreq) 
+                                do FLS.@set-key(FF_KEY, enum(0):any / exh)
                                 throw abortK()  (*no checkpoint found*)
                         end                          
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
@@ -354,13 +379,6 @@ struct
             do #1(startStamp) := I32Sub(#1(startStamp), 1)
             return()
         ;
-
-        define inline @force-gc() : () = 
-            let vp : vproc = host_vproc
-            let limitPtr : any = vpload(LIMIT_PTR, vp)
-            do vpstore(ALLOC_PTR, vp, limitPtr)
-            return()   
-        ;
         
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
             let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
@@ -411,7 +429,7 @@ struct
 
     	type 'a tvar = 'a PartialSTM.tvar
     	val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
-    val get : 'a tvar -> 'a = _prim(@get)
+    val get : 'a tvar -> 'a = _prim(@getABCDEFG)
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val printStats : unit -> unit = _prim(@print-stats)

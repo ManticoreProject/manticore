@@ -339,17 +339,16 @@ structure MLB : sig
                                 then "../" ^ filename
                                 else filename
                  val dir = OS.FileSys.getDir()
+                 val _ = print("Dir = " ^ dir ^ "\n")
+                 val _ = print("file = " ^ filename ^ "\n");
                  val (inStrm, reap) = preprocess(List.rev preprocs, file)
                  val s = TextIO.inputAll inStrm
-                 val d = OS.FileSys.isDir(dir ^ "/preprocessed")
-                                handle e => (OS.FileSys.mkDir(dir ^ "/preprocessed"); false)
-                 val _ = OS.FileSys.chDir(dir ^ "/preprocessed") handle e => (print "couldn't change into directory\n")
-                 val outStrm = TextIO.openOut (filename ^ "_preprocessed.sml")
+                 val outStrm = TextIO.openOut (dir ^ "/" ^ filename ^ "_preprocessed.sml")
                  val _ = print ("Writing to file: " ^ filename ^ "_preprocessed.sml\n")
                  val _ = TextIO.output(outStrm, s)
                  val _ = TextIO.closeIn inStrm
                  val _ = TextIO.closeOut outStrm
-                 val _ = OS.FileSys.chDir(dir)
+             (*    val _ = OS.FileSys.chDir(dir) *)
              in () end
         else ()
 

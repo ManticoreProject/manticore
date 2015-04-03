@@ -4,9 +4,9 @@ ann "cpp" "../include/debug.def,../include/prim.def,../include/runtime-offsets.d
     pabort/hybridPartialSTM.pml
     pabort/boundedHybridPartialSTM.pml
     pabort/full-abort-stm.pml
-    pabort/stm.pml
-
 
     fast-forward/partial-stm.pml
+
+    stm.pml
 
 end

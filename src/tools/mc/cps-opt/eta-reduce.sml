@@ -52,7 +52,7 @@ structure EtaReduce : sig
                   }
             ]
 
-
+    (*is this a function or a continuation*)
     datatype functionSort = Fun | Cont
 
     fun reducable(C.Exp(_, t), args: C.var list, rets : C.var list, sort : functionSort) = 

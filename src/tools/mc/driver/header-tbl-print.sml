@@ -62,7 +62,7 @@ struct
     fun minor (MyoutStrm) = let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         fun printmystring [] = ()
-            | printmystring ((a,b)::t) = (let
+          | printmystring ((a,b)::t) = (let
                 
 				val size = String.size a
                 fun lp(0,bites,pos) = ()
@@ -101,6 +101,43 @@ struct
     end
     
     
+    fun polyEq(MyoutStrm) = let
+	val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
+	fun printMyString [] = ()
+	  | printMyString ((a,b)::t) = let
+	      val size = String.size a
+	      fun lp(0, bites, pos) = TextIO.output(MyoutStrm, "true")
+		| lp(strlen, bites, pos) = 
+		  if String.compare(substring(bites, strlen-1, 1), "1") = EQUAL
+		  then 
+		      let
+			  val p = Int.toString pos
+		      in
+			  TextIO.output(MyoutStrm, concat["polyEq",Int.toString b,"pointer(ptr1[",p,"], ptr2[",p,"]) && "]);
+			  lp(strlen-1,bites,pos+1)
+		      end
+                  else 
+		      let val p = Int.toString pos
+		      in TextIO.output (MyoutStrm, concat["ptr1[", p, "] == ptr2[", p, "] && "]);
+			 lp(strlen-1,bites,pos+1)
+		      end
+              
+	  in
+	      TextIO.output (MyoutStrm, concat["Word_t * polyEq",Int.toString b,"pointer (Word_t* ptr1, Word_t* ptr2) {\n"]);
+	      TextIO.output (MyoutStrm, "if(");
+	      lp(size,a,0);
+	      TextIO.output (MyoutStrm, "){\n");
+	      TextIO.output (MyoutStrm, concat["        return true;\n"]);
+	      TextIO.output (MyoutStrm, concat["    else{return false;}\n"]);
+              TextIO.output (MyoutStrm, "}\n");
+              TextIO.output (MyoutStrm, "\n");   
+              printMyString t
+          end
+    in
+        printMyString s;
+        ()
+    end
+		  
     (*Major GC Functions *)
     fun majorpre (MyoutStrm) = (
         TextIO.output (MyoutStrm, "Word_t * majorGCscanRAWpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");

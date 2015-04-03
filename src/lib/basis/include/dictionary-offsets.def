@@ -9,5 +9,6 @@
 #define WRITE_SET              4
 #define ABORT_KEY              5
 #define STATS_KEY              6
+#define FF_KEY                 7
 #endif _DICT_OFFSETS_DEF_
 
