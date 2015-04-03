@@ -99,36 +99,62 @@ struct
         printmystring s;
         ()
     end
-    
-    
+
+    (*Polymorphic Equality functions *)
+    fun polyEqPre (MyoutStrm) = (
+        TextIO.output (MyoutStrm, "bool polyEqRAWpointer (Word_t * ptr1, Word_t * ptr2) {\n");
+	TextIO.output (MyoutStrm, "    if(ptr1[-1] != ptr2[-1])\n        return false;\n");
+	TextIO.output (MyoutStrm, "    int len = GetLength(ptr1[-1]);\n");
+	TextIO.output (MyoutStrm, "    for(int i = 0; i < len; i++){\n");
+	TextIO.output (MyoutStrm, "        if(ptr1[i] != ptr2[i])\n            return false;\n");
+	TextIO.output (MyoutStrm, "    }\n");
+	TextIO.output (MyoutStrm, "    return true;\n");
+        TextIO.output (MyoutStrm, "\n");
+        TextIO.output (MyoutStrm, "}\n");
+        
+        TextIO.output (MyoutStrm, "bool polyEqVECTORpointer (Word_t* ptr1, Word_t * ptr2) {\n");
+        TextIO.output (MyoutStrm, "    if(ptr1[-1] != ptr2[-1])\n        return false;\n");
+	TextIO.output (MyoutStrm, "    int len = GetLength(ptr1[-1]);\n");
+	TextIO.output (MyoutStrm, "    for(int i = 0; i < len; i++){\n");
+	TextIO.output (MyoutStrm, "        if(ptr1[i] != ptr2[i] && !table[getID(ptr1[i])].polyEq((Word_t*)ptr1[i], (Word_t*)ptr2[i]))\n");
+	TextIO.output (MyoutStrm, "            return false;\n");
+	TextIO.output (MyoutStrm, "    }\n");
+	TextIO.output (MyoutStrm, "    return true;\n");
+        TextIO.output (MyoutStrm, "}\n");
+		
+	TextIO.output (MyoutStrm, "bool polyEqPROXYpointer (Word_t* ptr1, Word_t * ptr2) {\n");
+	TextIO.output (MyoutStrm, "    return false;\n");
+        TextIO.output (MyoutStrm, "}\n")
+        )
+
     fun polyEq(MyoutStrm) = let
 	val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
 	fun printMyString [] = ()
 	  | printMyString ((a,b)::t) = let
 	      val size = String.size a
-	      fun lp(0, bites, pos) = TextIO.output(MyoutStrm, "true")
+	      fun lp(0, bites, pos) = ()
 		| lp(strlen, bites, pos) = 
 		  if String.compare(substring(bites, strlen-1, 1), "1") = EQUAL
 		  then 
 		      let
 			  val p = Int.toString pos
 		      in
-			  TextIO.output(MyoutStrm, concat["polyEq",Int.toString b,"pointer(ptr1[",p,"], ptr2[",p,"]) && "]);
+			  TextIO.output(MyoutStrm, concat["    if(ptr1[", p, "] != ptr2[", p, "] && !table[getID(ptr1[", p, "])].polyEq((Word_t*)ptr1[", p, "], (Word_t*)ptr2[", p, "]))\n"]);
+			  TextIO.output(MyoutStrm, "        return false;\n");
 			  lp(strlen-1,bites,pos+1)
 		      end
-                  else 
+                  else
 		      let val p = Int.toString pos
-		      in TextIO.output (MyoutStrm, concat["ptr1[", p, "] == ptr2[", p, "] && "]);
+		      in TextIO.output (MyoutStrm, concat["    if(ptr1[", p, "] != ptr2[", p, "])\n"]);
+			 TextIO.output (MyoutStrm, "        return false;\n");
 			 lp(strlen-1,bites,pos+1)
 		      end
               
 	  in
-	      TextIO.output (MyoutStrm, concat["Word_t * polyEq",Int.toString b,"pointer (Word_t* ptr1, Word_t* ptr2) {\n"]);
-	      TextIO.output (MyoutStrm, "if(");
-	      lp(size,a,0);
-	      TextIO.output (MyoutStrm, "){\n");
-	      TextIO.output (MyoutStrm, concat["        return true;\n"]);
-	      TextIO.output (MyoutStrm, concat["    else{return false;}\n"]);
+	      TextIO.output (MyoutStrm, concat["bool polyEq",Int.toString b,"pointer (Word_t* ptr1, Word_t* ptr2) {\n"]);
+	      TextIO.output (MyoutStrm, "    if(ptr1[-1] != ptr2[-1])\n        return false;\n");
+	      lp(size, a, 0);
+	      TextIO.output (MyoutStrm, "    return true;\n");
               TextIO.output (MyoutStrm, "}\n");
               TextIO.output (MyoutStrm, "\n");   
               printMyString t
@@ -380,15 +406,15 @@ struct
             if (listlength = i)
             then ()
             else (
-                TextIO.output (MyoutStrm, concat[",{minorGCscan",Int.toString i,"pointer,majorGCscan",Int.toString i,"pointer,globalGCscan",Int.toString i,"pointer,ScanGlobalToSpace",Int.toString i,"function}\n"]);
+                TextIO.output (MyoutStrm, concat[",{minorGCscan",Int.toString i,"pointer,majorGCscan",Int.toString i,"pointer,globalGCscan",Int.toString i,"pointer,ScanGlobalToSpace",Int.toString i,"function, polyEq", Int.toString i, "pointer}\n"]);
                 printtable(listlength,i+1)
                 )
             )
             
         in
-        TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString (length+predefined),"] = { {minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction},\n"]);
-        TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction},\n");
-		TextIO.output (MyoutStrm, "{minorGCscanPROXYpointer,majorGCscanPROXYpointer,globalGCscanPROXYpointer,ScanGlobalToSpacePROXYfunction}\n");
+        TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString (length+predefined),"] = { {minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction, polyEqRAWpointer},\n"]);
+        TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction, polyEqVECTORpointer},\n");
+		TextIO.output (MyoutStrm, "{minorGCscanPROXYpointer,majorGCscanPROXYpointer,globalGCscanPROXYpointer,ScanGlobalToSpacePROXYfunction, polyEqPROXYpointer}\n");
         
         printtable (length+predefined,predefined);
         
@@ -416,6 +442,9 @@ struct
             globalpre Myout;
             global Myout;
             
+	    polyEqPre Myout;
+	    polyEq Myout;
+
             createtable Myout;
             
             TextIO.closeOut(Myout)
