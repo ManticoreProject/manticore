@@ -19,13 +19,18 @@ struct
 #define BUMP_FABORT do ccall M_BumpCounter(1)
 #define PRINT_FABORT_COUNT let counter2 : int = ccall M_SumCounter(1) \
                            do ccall M_Print_Int("Full-Aborts = %d\n", counter2)                     
-#define PRINT_COMBINED do ccall M_Print_Int("Total-Aborts = %d\n", I32Add(counter1, counter2))                                                                                                          
+#define PRINT_COMBINED do ccall M_Print_Int("Total-Aborts = %d\n", I32Add(counter1, counter2))     
+#define BUMP_KCOUNT do ccall M_BumpCounter(2)
+#define PRINT_KCOUNT let counter1 : int = ccall M_SumCounter(2) \
+                     do ccall M_Print_Int("Fast Forward Continuation Hits = %d\n", counter1)                                                                                                 
 #else
 #define BUMP_PABORT
 #define PRINT_PABORT_COUNT
 #define BUMP_FABORT
 #define PRINT_FABORT_COUNT
 #define PRINT_COMBINED 
+#define BUMP_KCOUNT
+#define PRINT_KCOUNT 
 #endif
 
 #define READ_SET_BOUND 20
@@ -98,7 +103,7 @@ struct
                                 let captureFreq : int = FLS.@get-counter2()
                                 do FLS.@set-counter(captureFreq)
                                 BUMP_PABORT
-                                let ffInfo : [item,item] = alloc(#1(rs), abortInfo)
+                                let ffInfo : [item,item] = alloc(#2(rs), abortInfo)
                                 do FLS.@set-key(FF_KEY, ffInfo / exh)
                                 throw abortK(current)
                         end
@@ -160,15 +165,18 @@ struct
             cont retK(x:any) = return(x)
             let localRes : Option.option = apply chkLog(writeSet)
             let ffInfo : any = FLS.@get-key(FF_KEY / exh)
+            
             fun checkFF(rs:item, sentinel : item) : () = 
                 if Equal(rs, sentinel)
                 then return()
                 else case rs
-                        of WithK(_:tvar,k:cont(any),_:List.list,_:item,next:item) =>
-                            let res : int = ccall M_ContEq(k, retK)
-                            if I32Eq(res, 1)
-                            then do ccall M_Print("Continuations are the same!\n")
-                                 return()
+                        of WithK(tv':tvar,k:cont(any),_:List.list,_:item,next:item) =>
+                            if Equal(tv, tv')
+                            then let res : int = ccall M_ContEq(k, retK)
+                                 if I32Eq(res, 1)
+                                 then BUMP_KCOUNT
+                                      apply fastForward(#0(ffInfo), rs, #0(ffInfo))
+                                 else apply checkFF(next, sentinel)
                             else apply checkFF(next, sentinel)
                          | _ => return()
                      end
@@ -305,7 +313,7 @@ struct
                                      let captureFreq : int = FLS.@get-counter2() 
                                      do FLS.@set-counter(captureFreq)
                                      BUMP_PABORT
-                                     let ffInfo : [item,item] = alloc(#1(rs), abortInfo)
+                                     let ffInfo : [item,item] = alloc(#2(rs), abortInfo)
                                      do FLS.@set-key(FF_KEY, ffInfo / exh)
                                      throw abortK(current) 
                              | WithoutK(tv:tvar,_:item) =>
@@ -413,6 +421,7 @@ struct
         PRINT_PABORT_COUNT
         PRINT_FABORT_COUNT
         PRINT_COMBINED
+        PRINT_KCOUNT
         return(UNIT);
         
       define @abort(x : unit / exh : exh) : any = 

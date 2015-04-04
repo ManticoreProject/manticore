@@ -116,7 +116,7 @@ struct
         TextIO.output (MyoutStrm, "    if(ptr1[-1] != ptr2[-1])\n        return false;\n");
 	TextIO.output (MyoutStrm, "    int len = GetLength(ptr1[-1]);\n");
 	TextIO.output (MyoutStrm, "    for(int i = 0; i < len; i++){\n");
-	TextIO.output (MyoutStrm, "        if(ptr1[i] != ptr2[i] && !table[getID(ptr1[i])].polyEq((Word_t*)ptr1[i], (Word_t*)ptr2[i]))\n");
+	TextIO.output (MyoutStrm, "        if(ptr1[i] != ptr2[i] && !table[getID(((Word_t*)ptr1[i])[-1])].polyEq((Word_t*)ptr1[i], (Word_t*)ptr2[i]))\n");
 	TextIO.output (MyoutStrm, "            return false;\n");
 	TextIO.output (MyoutStrm, "    }\n");
 	TextIO.output (MyoutStrm, "    return true;\n");
@@ -139,7 +139,7 @@ struct
 		      let
 			  val p = Int.toString pos
 		      in
-			  TextIO.output(MyoutStrm, concat["    if(ptr1[", p, "] != ptr2[", p, "] && !table[getID(ptr1[", p, "])].polyEq((Word_t*)ptr1[", p, "], (Word_t*)ptr2[", p, "]))\n"]);
+			  TextIO.output(MyoutStrm, concat["    if(ptr1[", p, "] != ptr2[", p, "] && !table[getID(((Word_t*)ptr1[", p, "])[-1])].polyEq((Word_t*)ptr1[", p, "], (Word_t*)ptr2[", p, "]))\n"]);
 			  TextIO.output(MyoutStrm, "        return false;\n");
 			  lp(strlen-1,bites,pos+1)
 		      end
@@ -414,10 +414,8 @@ struct
         in
         TextIO.output (MyoutStrm, concat["tableentry table[",Int.toString (length+predefined),"] = { {minorGCscanRAWpointer,majorGCscanRAWpointer,globalGCscanRAWpointer,ScanGlobalToSpaceRAWfunction, polyEqRAWpointer},\n"]);
         TextIO.output (MyoutStrm, "{minorGCscanVECTORpointer,majorGCscanVECTORpointer,globalGCscanVECTORpointer,ScanGlobalToSpaceVECTORfunction, polyEqVECTORpointer},\n");
-		TextIO.output (MyoutStrm, "{minorGCscanPROXYpointer,majorGCscanPROXYpointer,globalGCscanPROXYpointer,ScanGlobalToSpacePROXYfunction, polyEqPROXYpointer}\n");
-        
-        printtable (length+predefined,predefined);
-        
+	TextIO.output (MyoutStrm, "{minorGCscanPROXYpointer,majorGCscanPROXYpointer,globalGCscanPROXYpointer,ScanGlobalToSpacePROXYfunction, polyEqPROXYpointer}\n");
+        printtable (length+predefined,predefined);        
         TextIO.output (MyoutStrm," };\n"); 
         TextIO.output (MyoutStrm,"\n");
         

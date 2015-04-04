@@ -19,7 +19,7 @@
 
 void M_BumpCounter(int index){
     VProc_t * vp = VProcSelf();
-    FetchAndInc((int*) ((vp->counter)+index));
+    vp->counter[index]++;
 }
 
 int M_SumCounter(int index){
@@ -34,6 +34,7 @@ void M_ZeroCounters(){
     for(int i = 0; i < NumVProcs; i++){
         VProcs[i]->counter[0] = 0;
         VProcs[i]->counter[1] = 0;
+        VProcs[i]->counter[2] = 0;
     }
 }
 

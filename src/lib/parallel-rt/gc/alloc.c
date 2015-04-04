@@ -537,30 +537,7 @@ bool M_ValEq(Word_t *w1, Word_t *w2){
 }
 
 /*continuation equality*/
-int M_ContEq(ContClosure_t *s1, ContClosure_t *s2){
-    if(s1 == s2)
-        return 1; //trivially equal
-        
-    Word_t	*p1 = (Word_t *)ValueToPtr(s1);
-    Word_t	*p2 = (Word_t *)ValueToPtr(s2);
-
-    if(p1[-1] != p2[-1]){
-       // printf("Different Headers! (%p and %p)\n", p1[-1], p2[-1]);
-        return 0; //different headers
-    }
-  //  printf("Same headers\n");
-    int len = GetLength(p1[-1]);
-    int id = getID(p1[-1]);
-    for(int i = 0; i < len; i++){
-        if(id & (1 << i - 1))
-            printf("Item %d is a pointer\n", i);
-        if(p1[i] == p2[i])
-            continue;
-        if(id & (1 << i - 1) && M_ValEq(p1[i], p2[i]))
-            continue;
-        printf("Differed on element %d (%p, %p, length is %d, header is %p)\n", i, p1[i], p2[i], len, p1[-1]);
-        return 0;
-    }
-    printf("SAME!!!!!!\n");
-    return 1;
+int M_ContEq(Word_t *s1, Word_t *s2){
+   bool res = table[getID(s1[-1])].polyEq(s1, s2);
+   return res ? 1 : 0;
 }
