@@ -38,6 +38,8 @@ struct
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a
                      | WithoutK of 'a * 'a | Abort of unit 
 
+    datatype 'a ffRes = FF of 'a | Done of 'a
+
     _primcode(
 
         extern void * M_Print_Int(void *, int);
@@ -166,18 +168,26 @@ struct
             let localRes : Option.option = apply chkLog(writeSet)
             let ffInfo : any = FLS.@get-key(FF_KEY / exh)
             
-            fun checkFF(rs:item, sentinel : item) : () = 
+            fun checkFF(rs:item, sentinel : item) : ffRes = 
                 if Equal(rs, sentinel)
-                then return()
+                then return(Done(#1(readSet)))
                 else case rs
                         of WithK(tv':tvar,k:cont(any),_:List.list,_:item,next:item) =>
                             if Equal(tv, tv')
                             then let res : int = ccall M_ContEq(k, retK)
                                  if I32Eq(res, 1)
                                  then BUMP_KCOUNT
-                                      apply fastForward(#0(ffInfo), rs, #0(ffInfo))
-                                 else apply checkFF(next, sentinel)
-                            else apply checkFF(next, sentinel)
+                                      return(FF(#1(readSet)))
+                                 else let res : ffRes = apply checkFF(next, sentinel)
+                                      case res
+                                        of FF(currentRS) => 
+                                         | _ => return(res)
+                                      end
+                            else let res : ffRes = apply checkFF(next, sentinel)
+                                 case res
+                                    of FF(currentRS) => 
+                                     | _ => return(res)
+                                 end
                          | _ => return()
                      end
             do if Equal(ffInfo, enum(0))
