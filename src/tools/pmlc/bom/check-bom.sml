@@ -3,11 +3,15 @@
  * COPYRIGHT (c) 2014 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Check various invariants in BOM representation.
+ * Check various invariants in the BOM representation.
  *)
 
 structure CheckBOM : sig
 
+  (* check the program and return true if there were any errors discovered.
+   * The string argument is the name of the compiler phase that preceeds this
+   * call to check.
+   *)
     val check : string * BOM.program -> bool
 
   end = struct

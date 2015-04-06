@@ -23,24 +23,23 @@ structure BOM =
       | E_Cont of (lambda * exp)
       | E_If of (cond * exp * exp)
       | E_Case of (var * (pat * exp) list * exp option)
+      | E_Typecase of (BOMTy.ty_var * (ty * exp) list * exp option)  (* only inside HLOp definitions *)
       | E_Apply of (var * var list * var list)
       | E_Throw of (var * var list)
       | E_Ret of var list
       | E_HLOp of (hlop * var list * var list)	(* application of high-level operator *)
 
     and rhs
-      = E_Const of const
-      | E_Cast of (ty * var)
-      | E_Select of (int * var)
-      | E_Update of (int * var * var)		(* update i'th field (zero-based) *)
-      | E_AddrOf of (int * var)			(* return address of i'th field (zero-based) *)
+      = E_Prim of prim
       | E_Alloc of (ty * var list)		(* allocation in local heap *)
-      | E_Promote of var			(* promotion of object to global heap *)
-      | E_Prim of prim
       | E_DCon of (data_con * var list)		(* data constructor; the argument list is empty for *)
 						(* nullary constructors *)
+      | E_Select of (int * var)			(* select i'th field (zero-based) *)
+      | E_Update of (int * var * var)		(* update i'th field (zero-based) *)
+      | E_AddrOf of (int * var)			(* return address of i'th field (zero-based) *)
+      | E_Cast of (ty * var)			(* deprecated *)
+      | E_Promote of var			(* promotion of object to global heap *)
       | E_CCall of (var * var list)		(* foreign-function calls *)
-    (* VProc operations *)
       | E_HostVProc				(* gets the hosting VProc *)
       | E_VPLoad of (offset * var)		(* load a value from the given byte *)
 						(* offset in the vproc structure *)
@@ -48,6 +47,7 @@ structure BOM =
 						(* offset in the vproc structure *)
       | E_VPAddr of (offset * var)		(* address of given byte offset *)
 						(* in the vproc structure *)
+      | E_Const of const
 
     and lambda = FB of {	  	    (* function/continuation abstraction *)
 	  f : var,				(* function name *)
