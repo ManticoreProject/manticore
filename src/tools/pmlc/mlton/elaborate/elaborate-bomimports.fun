@@ -1,10 +1,15 @@
 functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPORTS
   = struct
   open S
+  (* structure Ast = ElaborateCore.Ast *)
+  (* structure Env = ElaborateCore.Env *)
+  (* structure BOMEnv = ElaborateBOMCore.BOMEnv *)
+  (* structure CoreBOM = ElaborateBOMCore.CoreBOM *)
   structure BOM = Ast.BOM
   structure MLType = Env.TypeEnv.Type
   structure MLScheme = Env.TypeEnv.Scheme
   structure MLTycon = Env.TypeEnv.Tycon
+  structure BOMExport = Ast.BOMExport
   (* structure TypeOps = Env.TypeEnv.Type.Ops *)
 
 
@@ -16,6 +21,8 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
   end
 
   val translateType = BOMEnv.MLTyEnv.translateType'
+  fun elaborateMLType' env ty = ElaborateCore.elaborateType (ty,
+    ElaborateCore.Lookup.fromEnv env)
 
   (* fun translateInt intSize = *)
   (*   Vector.fromList [ *)
@@ -52,10 +59,33 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
   (*   end *)
 
 
+  fun elaborateBOMExport (export, tyEnvs as {env: Env.t, bomEnv: BOMEnv.t},
+      mlTyEnv) =
+    let
+      val elaborateMLType = elaborateMLType' env
+    in
+      case BOMExport.node export of
+        BOMExport.Datatype (tyvars, tycon, bomLongId, bomTys) =>
+          raise Fail "Not implemented"
+      | BOMExport.TypBind (tyvars, tycon, bomTy) =>
+          let
+            (* This is all of the "elaboration" they do on tyvars *)
+            val tyvars' = Vector.map MLType.var tyvars
+            val bomTy' = ElaborateBOMCore.elaborateBOMType (bomTy, tyEnvs)
+          in
+            raise Fail "Not implemented"
+          end
+      | BOMExport.Val (valId, mlTy, bomTy) =>
+      (* FIXME: placeholder *)
+        (bomEnv, mlTyEnv)
+    end
+
+
   fun elaborateBOMImport (import, {env: Env.t, bomEnv: BOMEnv.t}, mlTyEnv) =
     let
-      fun elaborateMLType ty = ElaborateCore.elaborateType (ty,
-        ElaborateCore.Lookup.fromEnv env)
+      (* fun elaborateLType ty = ElaborateCore.elaborateType (ty, *)
+      (*   ElaborateCore.Lookup.fromEnv env) *)
+      val elaborateMLType = elaborateMLType' env
       local
           (* FIXME: this can probably be removed *)
         fun resolve doResolve (mlId, maybeId): CoreBOM.BOMId.t =

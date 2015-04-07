@@ -74,6 +74,7 @@ structure ElaborateBOMImports = ElaborateBOMImports (
   structure Ast = Ast
   structure CoreBOM = CoreBOM
   structure ElaborateCore = ElaborateCore
+  structure ElaborateBOMCore = ElaborateBOMCore
   structure BOMEnv = BOMEnv
   structure Env = Env
   structure CoreML = CoreML)

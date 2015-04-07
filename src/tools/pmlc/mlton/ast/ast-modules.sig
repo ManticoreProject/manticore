@@ -110,6 +110,19 @@ signature AST_MODULES =
             val layout: t -> Layout.t
          end
 
+      structure BOMExport:
+        sig
+          type t
+          datatype node =
+            Datatype of Tyvar.t vector * Tycon.t * BOM.LongId.t * BOM.BOMType.t list
+          | TypBind of Tyvar.t vector * Tycon.t * BOM.BOMType.t
+          | Val of Vid.t * Type.t * BOM.BOMValueId.t
+
+          include WRAPPED
+            sharing type node' = node
+            sharing type obj = t
+        end
+
       structure Strdec:
          sig
             type t
@@ -120,9 +133,10 @@ signature AST_MODULES =
              | Structure of {constraint: SigConst.t,
                              def: Strexp.t,
                              name: Strid.t} vector
-             | PrimDataType of Tyvar.t vector * Tycon.t * BOM.LongId.t * BOM.BOMType.t list
-             | PrimTycon of Tyvar.t vector * Tycon.t * BOM.BOMType.t
-             | PrimVal of Vid.t * Type.t * BOM.BOMValueId.t
+             | BOMExportDec of BOMExport.t
+             (* | PrimDataType of Tyvar.t vector * Tycon.t * BOM.LongId.t * BOM.BOMType.t list *)
+             (* | PrimTycon of Tyvar.t vector * Tycon.t * BOM.BOMType.t *)
+             (* | PrimVal of Vid.t * Type.t * BOM.BOMValueId.t *)
 
             include WRAPPED sharing type node' = node
                             sharing type obj = t

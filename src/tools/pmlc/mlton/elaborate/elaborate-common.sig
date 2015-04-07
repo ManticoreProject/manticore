@@ -10,7 +10,7 @@ signature ELABORATE_COMMON =
     sharing Ast.Tyvar = CoreML.Tyvar
     sharing CoreML = Decs.CoreML = Env.CoreML
     sharing Decs = Env.Decs
-    sharing Ast.BOM = CoreBOM.BOM = BOMEnv.BOM
+    sharing CoreBOM.Ast = Ast
     sharing BOMEnv.CoreBOM = CoreBOM
     sharing BOMEnv.Env = Env
   end

@@ -66,13 +66,22 @@ ImportCon
         ;
 
 strdecnode
-        : "_datatype" tyvarseq tycon "=" "_prim" "(" BOMLongId TyArgs? ")" "with" PrimConDef+ "end"
-                => (Strdec.PrimDataType (tyvarseq, tycon, BOMLongId, Option.getOpt (TyArgs, [])))
-        | "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
-                => (Strdec.PrimTycon (tyvars, tycon, BOMType))
-        | "_val" "op"? MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"
-                => (Strdec.PrimVal (MLValueId, ty, BOMValueId))
+        : BOMExportDec => (Strdec.BOMExportDec BOMExportDec)
         ;
+
+BOMExportDec
+        : BOMExportDecNode => (BOMExport.makeRegion (BOMExportDecNode, posToReg FULL_SPAN))
+        ;
+
+BOMExportDecNode
+  : "_datatype" tyvarseq tycon "=" "_prim" "(" BOMLongId TyArgs? ")" "with" PrimConDef+ "end"
+    => (BOMExport.Datatype (tyvarseq, tycon, BOMLongId, Option.getOpt (TyArgs, [])))
+  | "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
+    => (BOMExport.TypBind (tyvars, tycon, BOMType))
+  | "_val" "op"? MLValueId ":" ty "=" "_prim" "(" BOMValueId ")"
+    => (BOMExport.Val (MLValueId, ty, BOMValueId))
+  ;
+
 
 PrimConDef
         : "_con" vid ("of" ty)? "=" "_prim" "(" BOMId ")"

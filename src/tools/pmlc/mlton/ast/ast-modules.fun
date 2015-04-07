@@ -266,6 +266,20 @@ structure Spec =
 (*---------------------------------------------------*)
 (*                Strdecs and Strexps                *)
 (*---------------------------------------------------*)
+structure BOMExport =
+  struct
+    open Wrap
+
+    datatype node =
+      Datatype of Tyvar.t vector * Tycon.t * BOM.LongId.t * BOM.BOMType.t list
+    | TypBind of Tyvar.t vector * Tycon.t * BOM.BOMType.t
+    | Val of Vid.t * Type.t * BOM.BOMValueId.t
+
+    type t = node Wrap.t
+    type node' = node
+    type obj = t
+  end
+
 
 datatype strdecNode =
    Core of Dec.t
@@ -275,10 +289,11 @@ datatype strdecNode =
                   def: strexp,
                   name: Strid.t} vector
   (* | PrimCode of BOM.Definition.t vector *)
-  | PrimDataType of Tyvar.t vector * Tycon.t *
-      BOM.LongId.t * BOM.BOMType.t list
-  | PrimTycon of Tyvar.t vector * Tycon.t * BOM.BOMType.t
-  | PrimVal of Vid.t * Type.t * BOM.BOMValueId.t
+  | BOMExportDec of BOMExport.t
+  (* | PrimDataType of Tyvar.t vector * Tycon.t * *)
+  (*     BOM.LongId.t * BOM.BOMType.t list *)
+  (* | PrimTycon of Tyvar.t vector * Tycon.t * BOM.BOMType.t *)
+  (* | PrimVal of Vid.t * Type.t * BOM.BOMValueId.t *)
 
 and strexpNode =
    App of Fctid.t * strexp
@@ -306,31 +321,31 @@ fun layoutStrdec d =
   (*     str "_primcode", *)
   (*     schemeList (Vector.toListMap (definitions, BOM.Definition.layout)) *)
   (* ] *)
-  | PrimDataType (tyvars, tycon, longTyId, maybeTyArgs) => mayAlign [
-      str "_datatype",
-      mayAlign (Vector.toListMap (tyvars, Tyvar.layout)),
-      Tycon.layout tycon,
-      str "=",
-      str "_prim",
-      schemeList [
-        BOM.LongId.layout longTyId,
-        mayAlign (map BOM.BOMType.layout maybeTyArgs)
-      ]
-    ]
-  | PrimTycon (tyvars, tycon, bomType) => mayAlign [
-      str "_type",
-      mayAlign (Vector.toListMap (tyvars, Tyvar.layout)),
-      Tycon.layout tycon,
-      str "=",
-      str "_prim",
-      schemeList [BOM.BOMType.layout bomType]
-    ]
-  | PrimVal (id, ty, bomValueId) => mayAlign [
-      str "_val", Vid.layout id, str ":", Type.layout ty, str "_prim",
-      schemeList [
-        BOM.BOMValueId.layout bomValueId
-      ]
-    ]
+  (* | PrimDataType (tyvars, tycon, longTyId, maybeTyArgs) => mayAlign [ *)
+  (*     str "_datatype", *)
+  (*     mayAlign (Vector.toListMap (tyvars, Tyvar.layout)), *)
+  (*     Tycon.layout tycon, *)
+  (*     str "=", *)
+  (*     str "_prim", *)
+  (*     schemeList [ *)
+  (*       BOM.LongId.layout longTyId, *)
+  (*       mayAlign (map BOM.BOMType.layout maybeTyArgs) *)
+  (*     ] *)
+  (*   ] *)
+  (* | PrimTycon (tyvars, tycon, bomType) => mayAlign [ *)
+  (*     str "_type", *)
+  (*     mayAlign (Vector.toListMap (tyvars, Tyvar.layout)), *)
+  (*     Tycon.layout tycon, *)
+  (*     str "=", *)
+  (*     str "_prim", *)
+  (*     schemeList [BOM.BOMType.layout bomType] *)
+  (*   ] *)
+  (* | PrimVal (id, ty, bomValueId) => mayAlign [ *)
+  (*     str "_val", Vid.layout id, str ":", Type.layout ty, str "_prim", *)
+  (*     schemeList [ *)
+  (*       BOM.BOMValueId.layout bomValueId *)
+  (*     ] *)
+  (*   ] *)
 
 and layoutStrdecs ds = layouts (ds, layoutStrdec)
 

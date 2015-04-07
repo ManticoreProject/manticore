@@ -3,14 +3,14 @@ signature ELABORATE_BOMENV_STRUCTS =
     structure Ast: AST
     structure CoreBOM: CORE_BOM
     structure Env: ELABORATE_ENV
-    sharing CoreBOM.BOM = Ast.BOM
+    sharing CoreBOM.Ast = Ast
   end
 
 signature ELABORATE_BOMENV =
   sig
     include ELABORATE_BOMENV_STRUCTS
 
-    structure BOM: AST_BOM
+    (* structure BOM: AST_BOM *)
 
     type t
 
@@ -60,13 +60,13 @@ signature ELABORATE_BOMENV =
       type t
       type env
 
-      val lookup: env * BOM.TyParam.t -> CoreBOM.TyParam.t option
-      val extend: env * BOM.TyParam.t -> env
+      val lookup: env * Ast.BOM.TyParam.t -> CoreBOM.TyParam.t option
+      val extend: env * Ast.BOM.TyParam.t -> env
       val getParams: env  -> CoreBOM.TyParam.t list
 
 
-      val lookupThis: t * BOM.TyParam.t -> CoreBOM.TyParam.t option
-      val extendThis: t * BOM.TyParam.t -> t
+      val lookupThis: t * Ast.BOM.TyParam.t -> CoreBOM.TyParam.t option
+      val extendThis: t * Ast.BOM.TyParam.t -> t
 
       val empty: t
     end
@@ -81,8 +81,8 @@ signature ELABORATE_BOMENV =
       val printKeys: env -> unit
 
       (* ??? can't get this to compile *)
-      (* val extendThis: t * BOM.BOMType.t * TypeDefn.t -> t *)
-      (* val lookupThis: t * BOM.BOMType.t -> TypeDefn.t option *)
+      (* val extendThis: t * Ast.BOM.BOMType.t * TypeDefn.t -> t *)
+      (* val lookupThis: t * Ast.BOM.BOMType.t -> TypeDefn.t option *)
 
       val empty: t
     end
@@ -124,7 +124,7 @@ signature ELABORATE_BOMENV =
     val empty: t
     (* val emptyNamed: CoreBOM.ModuleId.t -> t *)
     val setName: t * CoreBOM.ModuleId.t -> t
-    val setName': t * BOM.BOMId.t -> t
+    val setName': t * Ast.BOM.BOMId.t -> t
 
     (* val setValEnv: t * ValEnv.t -> t *)
     (* val getValEnv: t -> ValEnv.t *)
