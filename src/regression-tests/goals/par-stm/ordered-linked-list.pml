@@ -15,60 +15,38 @@ fun getArg f args =
 
 val args = CommandLine.arguments ()
 
-val whichSTM = case getArg "-stm" args of SOME s => s | NONE => "bounded"
-
-type 'a tvar = 'a PartialSTM.tvar 
-
-val (get,put,atomic,new,printStats,abort,unsafeGet) = 
-    if String.same(whichSTM, "bounded")
-    then (BoundedHybridPartialSTM.get,BoundedHybridPartialSTM.put,      
-          BoundedHybridPartialSTM.atomic,BoundedHybridPartialSTM.new,
-          BoundedHybridPartialSTM.printStats,BoundedHybridPartialSTM.abort,
-          BoundedHybridPartialSTM.unsafeGet)
-    else if String.same(whichSTM, "full")
-         then (FullAbortSTM.get,FullAbortSTM.put,FullAbortSTM.atomic,FullAbortSTM.new,FullAbortSTM.printStats,FullAbortSTM.abort,FullAbortSTM.unsafeGet)
-         else (PartialSTM.get,PartialSTM.put,PartialSTM.atomic,PartialSTM.new,PartialSTM.printStats,PartialSTM.abort,PartialSTM.unsafeGet)
-
-(*won't typecheck without these nonsense bindings*)
-val get : 'a tvar -> 'a = get
-val put : 'a tvar * 'a -> unit = put
-val atomic : (unit -> 'a) -> 'a = atomic
-val new : 'a -> 'a tvar = new
-val printStats : unit -> unit = printStats
-
-    
-datatype List = Node of int * List tvar
+datatype List = Node of int * List STM.tvar
               | Null
-              | Head of List tvar
+              | Head of List STM.tvar
 
-type ListHandle = List tvar
+type ListHandle = List STM.tvar
 
-fun newList() : ListHandle = new (Head(new Null))
+fun newList() : ListHandle = STM.new (Head(STM.new Null))
 
 fun add (l:ListHandle) (v:int)  = 
     let fun lp l = 
-            case get l 
+            case STM.get l 
                 of Head n => lp n
-                 | Null => put(l, Node(v, new Null))
+                 | Null => STM.put(l, Node(v, STM.new Null))
                  | Node(v', n) => 
                     if v' > v
-                    then put(l, Node(v, new (Node(v', n))))
+                    then STM.put(l, Node(v, STM.new (Node(v', n))))
                     else lp n 
-    in atomic (fn () => lp l) end
+    in STM.atomic (fn () => lp l) end
 
 fun printList (l:ListHandle) = 
-    case get l
+    case STM.get l
         of Null => print "\n"
          | Head n => printList n
          | Node(v, n) => (print (Int.toString v ^ ", "); printList n)
 
 fun find (l:ListHandle) v = 
     let fun lp l = 
-            case get l
+            case STM.get l
                 of Null => false
                  | Head n => lp n
                  | Node(v', n) => if v = v' then true else lp n
-    in atomic (fn () => lp l) end
+    in STM.atomic (fn () => lp l) end
 
 fun next l = 
     case l 
@@ -77,18 +55,18 @@ fun next l =
 
 fun delete (l:ListHandle) (i:int) = 
     let fun lp prevPtr = 
-            let val prevNode = get prevPtr
+            let val prevNode = STM.get prevPtr
                 val curNodePtr = next prevNode
-            in case get curNodePtr
+            in case STM.get curNodePtr
                     of Null => false
                      | Node(curVal, nextPtr) =>
                         if curVal = i
                         then (case prevNode
-                                of Head _ => (put(prevPtr, Head nextPtr); true)
-                                 | Node(v, _) => (put(prevPtr, Node(v, nextPtr)); true))
+                                of Head _ => (STM.put(prevPtr, Head nextPtr); true)
+                                 | Node(v, _) => (STM.put(prevPtr, Node(v, nextPtr)); true))
                         else lp curNodePtr
             end
-    in atomic(fn () => lp l) end            
+    in STM.atomic(fn () => lp l) end            
 
 val ITERS = 1000
 val THREADS = 4
@@ -137,7 +115,7 @@ fun remove l v =
          | nil => (print "List is incorrect!\n"; raise Fail "test failed\n")
 
 fun check (l:ListHandle) (remaining:int list) = 
-    case get l
+    case STM.get l
         of Null => (case remaining
                       of _::_ => (print "List is incorrect!\n"; raise Fail "test failed\n")
                        | nil => print "List is correct\n")
@@ -150,7 +128,7 @@ fun nextList l =
          | nil => NONE
 
 fun nextLinkedList l =
-    case get l
+    case STM.get l
         of Null => NONE
          | Node(v, next) => SOME(v, next)
          | Head n => nextLinkedList n
@@ -168,9 +146,9 @@ val remaining = join(start l THREADS)
 
 val _ = print "Done with linked list operations\n"
 
-val _ = atomic(fn () => check l remaining handle Fail s => print s)
+val _ = STM.atomic(fn () => check l remaining handle Fail s => print s)
 
-val _ = printStats()
+val _ = STM.printStats()
 
 
 
