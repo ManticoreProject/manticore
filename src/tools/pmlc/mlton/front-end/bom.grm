@@ -343,11 +343,11 @@ SimpleExp
                   SimpleExp), FULL_SPAN))
         | "#" PosInt "(" SimpleExp ")" (":=" SimpleExp)?
                 => (case SR
-                     of NONE => mkSimpleExp (BOM.SimpleExp.Select (PosInt,
-                       SimpleExp), FULL_SPAN)
-                      | SOME exp => mkSimpleExp (BOM.SimpleExp.Assign (PosInt,
-                          SimpleExp, exp), FULL_SPAN)
+                     of NONE => mkSimpleExp (BOM.SimpleExp.Select (PosInt, SimpleExp), FULL_SPAN)
+                      | SOME exp => mkSimpleExp (BOM.SimpleExp.Assign (PosInt, SimpleExp, exp), FULL_SPAN)
                     (* end case *))
+	| "&" PosInt "(" SimpleExp ")"
+		=> (mkSimpleExp (BOM.SimpleExp.AddrOf (PosInt, SimpleExp), FULL_SPAN))
         | "(" BOMType ")" SimpleExp
                 => (mkSimpleExp (BOM.SimpleExp.TypeCast (BOMType, SimpleExp), FULL_SPAN))
         | "promote" "(" SimpleExp ")"

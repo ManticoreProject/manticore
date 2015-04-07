@@ -324,6 +324,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       | AllocType of type_t * simpleexp_t
       | Select of IntInf.int * simpleexp_t
       | Assign of IntInf.int * simpleexp_t * simpleexp_t
+      | AddrOf of IntInf.int * simpleexp_t
       | TypeCast of type_t * simpleexp_t
       | Promote of simpleexp_t
       | HostVproc
@@ -562,6 +563,11 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
               Layout.str ("#" ^ (IntInf.toString posInt)),
               unindentedSchemeList [layoutSimpleExp simpleExp1],
               Layout.seq [Layout.str " := ", layoutSimpleExp simpleExp2]
+            ]
+        | AddrOf (posInt, simpleExp) =>
+            Layout.mayAlign [
+              Layout.str ("&" ^ (IntInf.toString posInt)),
+              unindentedSchemeList [layoutSimpleExp simpleExp]
             ]
         | TypeCast (myType, simpleExp) =>
             Layout.mayAlign [

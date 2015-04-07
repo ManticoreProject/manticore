@@ -238,6 +238,7 @@ signature AST_BOM =
 	  | AllocType of BOMType.t * t
 	  | Select of IntInf.int * t
 	  | Assign of IntInf.int * t * t
+	  | AddrOf of IntInf.int * t
 	  | TypeCast of BOMType.t * t
 	  | Promote of t
 	  | HostVproc

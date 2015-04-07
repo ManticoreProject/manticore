@@ -267,7 +267,6 @@
 <BOM> "__attributes__"		=> (T.KW___attributes__);
 <BOM>":="			=> (T.ASSIGN);
 <BOM>"#"			=> (T.HASH);
-<BOM>"&"			=> (T.AMPERSAND);
 
 (* identifiers and qualified identifiers.  We distinguish between symbolic and non-symbolic
  * IDs, since the definition states that structure IDs (and presumably signature IDs) must
