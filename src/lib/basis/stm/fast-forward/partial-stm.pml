@@ -33,12 +33,18 @@ struct
 #define PRINT_KCOUNT 
 #endif
 
+(*TODO:
+    -add a 64-bit bloom filter to FLS that can be used for determining if a given
+     tref is on the short path of the fast-forward read set
+    -64 bits is sufficient given that we will never have more than 20 item on the short path
+*)
+
 #define READ_SET_BOUND 20
 
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a
                      | WithoutK of 'a * 'a | Abort of unit 
 
-    datatype 'a ffRes = FF of 'a | Done of 'a
+    datatype 'a ffRes = FF of 'a * int | Done of 'a * int | NoFF
 
     _primcode(
 
@@ -48,16 +54,16 @@ struct
         extern void M_BumpCounter(int);
         extern int M_SumCounter(int);
         extern long M_GetTimeAccum();
-        extern int M_ContEq(void * , void *);
+        extern int M_PolyEq(void * , void *);
 
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
 	
         typedef readItem = ![tvar,                  (*0: tvar operated on*)
                             (*cont(any)*) any,      (*1: abort continuation (enum(0) if no continuation)*)
-                            any,              (*2: write list*)
+                            any,                    (*2: write list*)
                             any,                    (*3: next read item*)
-                            item,item];                   (*4: next read item with a continuation*)
+                            item,item];             (*4: next read item with a continuation*)
 
         typedef skipList = any;
 
@@ -105,7 +111,7 @@ struct
                                 let captureFreq : int = FLS.@get-counter2()
                                 do FLS.@set-counter(captureFreq)
                                 BUMP_PABORT
-                                let ffInfo : [item,item] = alloc(#2(rs), abortInfo)
+                                let ffInfo : [item,item,stamp] = alloc(#2(rs), abortInfo, rawStamp)
                                 do FLS.@set-key(FF_KEY, ffInfo / exh)
                                 throw abortK(current)
                         end
@@ -114,9 +120,7 @@ struct
                         let stamp : stamp = #2(tv)
                         let shouldAbort : bool = if I64Eq(lock, 0:long) 
                                                  then if I64Lt(stamp, rawStamp) then return(false) else return(true)
-                                                 else if I64Eq(lock, rawStamp) 
-                                                      then if I64Lt(stamp, rawStamp) then return(false) else return(true)
-                                                      else return(true)
+                                                 else return(true)
                         if(shouldAbort)
                         then apply faValidate(next,newStamp,Abort(UNIT),0)
                         else case abortInfo
@@ -133,9 +137,7 @@ struct
                         let stamp : stamp = #2(tv)
                         let shouldAbort : bool = if I64Eq(lock, 0:long) 
                                                  then if I64Lt(stamp, rawStamp) then return(false) else return(true)
-                                                 else if I64Eq(lock, rawStamp) 
-                                                      then if I64Lt(stamp, rawStamp) then return(false) else return(true)
-                                                      else return(true)
+                                                 else return(true)
                         if(shouldAbort)
                         then apply faValidate(rest,newStamp,Abort(UNIT),0)
                         else apply faValidate(rest,newStamp,abortInfo,i)
@@ -145,6 +147,127 @@ struct
             return()
        ;
 
+        define inline @fast-forward(tv : tvar, myStamp : ![stamp,int], readSet : [int, item, item], retK : cont(any), writeSet : item / exh:exh) : () = 
+            let ffInfo : any = FLS.@get-key(FF_KEY / exh)
+            let ffInfo : [item,item,stamp] = ([item,item,stamp]) ffInfo
+            fun validate(rs:item, sentinel : item, bail:cont(), currentRS:item) : item = 
+                if Equal(rs, sentinel)
+                then return(currentRS)
+                else case rs
+                        of WithK(tv':tvar,k:cont(any),ws:List.list,next:item,_:item) =>
+                            let stamp : stamp = #2(tv')
+                            let lock : stamp = #1(tv')
+                            if I64Eq(lock, 0:long) 
+                            then if I64Lt(stamp, #2(ffInfo)) 
+                                 then let res : item = apply validate(next, sentinel, bail, currentRS)
+                                      if Equal(k, enum(0))
+                                      then return(WithoutK(tv', res))
+                                      else return(WithK(tv', k, ws, res, currentRS))
+                                 else throw bail()
+                            else throw bail()
+                         | WithoutK(tv':tvar, next:item) =>
+                            let stamp : stamp = #2(tv')
+                            let lock : stamp = #1(tv')
+                            if I64Eq(lock, 0:long)
+                            then if I64Lt(stamp, #2(ffInfo))
+                                 then let res : item = apply validate(next, sentinel, bail, currentRS)
+                                      return(WithoutK(tv', res))
+                                 else throw bail()
+                            else throw bail()
+                         | _ => let e : exn = Fail(@"fast-forward:validate:Impossible!\n")
+                                throw exh(e)
+                     end
+            fun checkFF(rs:item, sentinel : item) : ffRes = 
+                if Equal(rs, sentinel)
+                then return(NoFF)
+                else case rs
+                        of WithK(tv':tvar,k:cont(any),ws:List.list,next:item,nextC:item) =>
+                            if Equal(tv, tv')
+                            then let res : int = ccall M_PolyEq(k, retK)
+                                 if I32Eq(res, 1)
+                                 then (*let res : int = ccall M_PolyEq(ws, writeSet) *)  (*polymorphic equality is probably overkill here*)
+                                      BUMP_KCOUNT
+                                      if Equal(ws, writeSet) (*I32Eq(res, 1) *)
+                                      then let stamp : stamp = #2(tv')
+                                           if I64Eq(#1(tv'), 0:long)
+                                           then if I64Lt(stamp, #2(ffInfo))
+                                                then 
+                                                     return(FF(WithK(tv',k,ws,#1(readSet),#2(readSet)), 1))
+                                                else return(NoFF)
+                                           else return(NoFF)
+                                      else let res : ffRes = apply checkFF(nextC, sentinel)  (*write sets don't match*)
+                                           do ccall M_Print("Write sets do not match\n")
+                                           case res
+                                             of FF(currentRS:item,i:int) => 
+                                                 cont bail() = return(Done(currentRS, i))
+                                                 let newRS : item = apply validate(rs, nextC, bail, currentRS)
+                                                 return(FF(newRS, I32Add(i, 1)))
+                                              | _ => return(res)
+                                           end
+                                 else let res : ffRes = apply checkFF(nextC, sentinel)
+                                      case res
+                                        of FF(currentRS:item,i:int) => 
+                                            cont bail() = return(Done(currentRS, i))
+                                            let newRS : item = apply validate(rs, nextC, bail, currentRS)
+                                            return(FF(newRS, I32Add(i, 1)))
+                                         | _ => return(res)
+                                      end
+                            else let res : ffRes = apply checkFF(nextC, sentinel)
+                                 case res
+                                    of FF(currentRS:item, i:int) => 
+                                        cont bail() = return(Done(currentRS, i))
+                                        let newRS : item = apply validate(rs, nextC, bail, currentRS)
+                                        return(FF(newRS, I32Add(i, 1)))
+                                     | _ => return(res)
+                                 end
+                         | NilItem => return(NoFF)
+                         | _ => throw exh(Fail(@"fast-forward:checkFF:Impossible!\n"))
+                     end
+            if Equal(ffInfo, enum(0))
+            then return()
+            else let x : ffRes = apply checkFF(#0(ffInfo), #1(ffInfo))
+                 case x
+                     of Done(newRS:item, i:int) =>
+                        case newRS
+                            of WithK(tv':tvar,k:cont(any),ws:item,_:item,_:item) =>
+                                 let current : any = #0(tv')
+                                 let stamp : stamp = #2(tv')
+                                 if I64Eq(#1(tv'), 0:long)
+                                 then if I64Lt(stamp, #0(myStamp))
+                                      then let newRS : [int,item,item] = alloc(I32Add(#0(readSet), i), newRS, newRS)
+                                           do FLS.@set-key(READ_SET, newRS / exh)
+                                           do FLS.@set-key(WRITE_SET, ws / exh)
+                                           let captureFreq : int = FLS.@get-counter2()
+                                           do FLS.@set-counter(captureFreq)
+                                           do FLS.@set-key(FF_KEY, enum(0) / exh)
+                                      (*     do ccall M_Print_Int("Done: Fast forwarding through %d checkpoints\n", i) *)
+                                           throw k(current)
+                                      else return()
+                                 else return()
+                             | _ => let e : exn = Fail(@"fast forward: Impossible\n") throw exh(e)
+                        end
+                      | FF(newRS:item, i:int) =>
+                         case newRS
+                            of WithK(tv':tvar,k:cont(any),ws:item,_:item,_:item) =>
+                                 let current : any = #0(tv')
+                                 let stamp : stamp = #2(tv')
+                                 if I64Eq(#1(tv'), 0:long)
+                                 then if I64Lt(stamp, #0(myStamp))
+                                      then let newRS : [int,item,item] = alloc(I32Add(#0(readSet), i), newRS, newRS)
+                                           do FLS.@set-key(READ_SET, newRS / exh)
+                                           do FLS.@set-key(WRITE_SET, ws / exh)
+                                           let captureFreq : int = FLS.@get-counter2()
+                                           do FLS.@set-counter(captureFreq)
+                                           do FLS.@set-key(FF_KEY, enum(0) / exh)
+                                      (*     do ccall M_Print_Int("FF: Fast forwarding through %d checkpoints\n", i) *)
+                                           throw k(current)
+                                      else return()
+                                 else return()
+                             | _ => let e : exn = Fail(@"fast forward: Impossible\n") throw exh(e)
+                        end
+                      | NoFF => return()
+                 end 
+        ;
 
         define @getABCDEFG(tv:tvar / exh:exh) : any = 
             let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
@@ -166,34 +289,7 @@ struct
                  end
             cont retK(x:any) = return(x)
             let localRes : Option.option = apply chkLog(writeSet)
-            let ffInfo : any = FLS.@get-key(FF_KEY / exh)
-            
-            fun checkFF(rs:item, sentinel : item) : ffRes = 
-                if Equal(rs, sentinel)
-                then return(Done(#1(readSet)))
-                else case rs
-                        of WithK(tv':tvar,k:cont(any),_:List.list,_:item,next:item) =>
-                            if Equal(tv, tv')
-                            then let res : int = ccall M_ContEq(k, retK)
-                                 if I32Eq(res, 1)
-                                 then BUMP_KCOUNT
-                                      return(FF(#1(readSet)))
-                                 else let res : ffRes = apply checkFF(next, sentinel)
-                                      case res
-                                        of FF(currentRS) => 
-                                         | _ => return(res)
-                                      end
-                            else let res : ffRes = apply checkFF(next, sentinel)
-                                 case res
-                                    of FF(currentRS) => 
-                                     | _ => return(res)
-                                 end
-                         | _ => return()
-                     end
-            do if Equal(ffInfo, enum(0))
-               then return()
-               else let ffInfo : [item,item] = ([item,item]) ffInfo
-                    apply checkFF(#0(ffInfo), #1(ffInfo))
+            do @fast-forward(tv, myStamp, readSet, retK, writeSet / exh)
             case localRes
                 of Option.SOME(v:any) => return(v)
                  | Option.NONE => 
@@ -284,7 +380,6 @@ struct
                      | NilItem => do SchedulerAction.@atomic-end(vp)
                                   return()
                 end
-                
             let rs : [int, item, item] = FLS.@get-key(READ_SET / exh)
             let readSet : item = #1(rs)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
@@ -301,7 +396,9 @@ struct
                                      let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
                                      let captureFreq : int = FLS.@get-counter2()
                                      let newFreq : int = I32Div(captureFreq, 2)
-                                     do FLS.@set-counter2(newFreq) 
+                                     do if I32Eq(newFreq, 0)
+                                        then return()
+                                        else FLS.@set-counter2(1) 
                                      do FLS.@set-key(FF_KEY, enum(0):any / exh)
                                      throw abortK()  (*no checkpoint found*)
                                 else do apply release(locks)
@@ -323,7 +420,7 @@ struct
                                      let captureFreq : int = FLS.@get-counter2() 
                                      do FLS.@set-counter(captureFreq)
                                      BUMP_PABORT
-                                     let ffInfo : [item,item] = alloc(#2(rs), abortInfo)
+                                     let ffInfo : [item,item,stamp] = alloc(#2(rs), abortInfo,rawStamp)
                                      do FLS.@set-key(FF_KEY, ffInfo / exh)
                                      throw abortK(current) 
                              | WithoutK(tv:tvar,_:item) =>
@@ -331,7 +428,9 @@ struct
                                 let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
                                 let captureFreq : int = FLS.@get-counter2()
                                 let newFreq : int = I32Div(captureFreq, 2)
-                                do FLS.@set-counter2(newFreq) 
+                                do if I32Eq(newFreq, 0)
+                                   then return()
+                                   else FLS.@set-counter2(newFreq) 
                                 do FLS.@set-key(FF_KEY, enum(0):any / exh)
                                 throw abortK()  (*no checkpoint found*)
                         end                          
