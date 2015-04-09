@@ -282,7 +282,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     = TyC of {
       id: TyId.t,
       definition: dataconsdef_t list ref,
-      params: TyParam.t list
+      params: TyParam.t list,
+      uid: int
     }
   and dataconsdef_t
     = ConsDef of BOMId.t * type_t option
@@ -544,7 +545,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       val equal' = boolToOpt equal
       val equals' = boolToOpt equals
 
-	  val strictEqual' = boolToOpt strictEqual
+	    val strictEqual' = boolToOpt strictEqual
     end
 
     val unit = Tuple []
@@ -557,31 +558,40 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   structure TyCon = struct
-      datatype t = datatype tycon_t
+    datatype t = datatype tycon_t
 
-      fun toBOMTy (tyCon as TyC {params,...}) =
-        BOMType.TyCon {
+    local
+      val counter = Counter.new 0
+    in
+      fun new (id, params) =
+        TyC {id = id, definition = ref ([]: DataConsDef.t list), params = params,
+          uid = Counter.next counter}
+    end
+
+    fun toBOMTy (tyCon as TyC {params,...}) =
+      BOMType.TyCon {
+        con = tyCon,
+        args = []         (* TODO: is this what should go here? *)
+      }
+
+    fun arity (TyC {params,...}) =
+      length params
+
+    fun applyToArgs (tyCon, tys) =
+      if length tys = arity tyCon then
+        SOME (BOMType.TyCon {
           con = tyCon,
-          args = []         (* TODO: is this what should go here? *)
-        }
+          args = tys
+        })
+      else
+        NONE
 
-      fun arity (TyC {params,...}) =
-        length params
+    fun applyToArgs' (tyCon, tys) =
+      applyToArgs (tyCon, List.tabulate (Vector.length tys,
+        fn (i) => Vector.sub (tys, i)))
 
-      fun applyToArgs (tyCon, tys) =
-        if length tys = arity tyCon then
-          SOME (BOMType.TyCon {
-            con = tyCon,
-            args = tys
-          })
-        else
-          NONE
-
-      fun applyToArgs' (tyCon, tys) =
-        applyToArgs (tyCon, List.tabulate (Vector.length tys,
-          fn (i) => Vector.sub (tys, i)))
-
-
+    fun equal (tyc, tyc'): bool =
+      raise Fail "Not implemented."
   end
 
   structure Field = struct

@@ -72,6 +72,11 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
             (* This is all of the "elaboration" they do on tyvars *)
             val tyvars' = Vector.map MLType.var tyvars
             val bomTy' = ElaborateBOMCore.elaborateBOMType (bomTy, tyEnvs)
+            (* val mlTy = ??? *)
+            (* TODO: check kind matches *)
+            (* We follow the lead of ElaborateCore.elabTypBind *)
+            (* val mlTyStr = Env.TypeStr.def (Env.Scheme.make { *)
+            (*   canGeneralize = true, ty =  *)
           in
             raise Fail "Not implemented"
           end
@@ -115,11 +120,9 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
               constructors since they must be explicitly imported *)
               SOME (tyStr) =>
                 (* Apply the tycon to the provided arguments *)
-                SOME (tyStr, CoreBOM.TyCon.TyC {
-                  (* FIXME: this is probably WRONG for typarams *)
-                  id = tyId, definition = ref [], params = (List.tabulate (
-                    Vector.length tyargs, fn _ => CoreBOM.TyParam.new ()))})
-             (* FIXME: better error handling *)
+                (* FIXME: this is probably WRONG for typarams *)
+                SOME (tyStr, CoreBOM.TyCon.new (tyId, List.tabulate (
+                    Vector.length tyargs, fn _ => CoreBOM.TyParam.new ())))
               | _ => NONE
         in
           case maybeTycs of

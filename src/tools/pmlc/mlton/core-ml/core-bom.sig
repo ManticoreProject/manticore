@@ -172,7 +172,8 @@ signature CORE_BOM =
       = TyC of {
           id: TyId.t,
           definition: dataconsdef_t list ref,
-          params: TyParam.t list
+          params: TyParam.t list,
+          uid: int
       }
 
     structure Field: sig
@@ -221,10 +222,14 @@ signature CORE_BOM =
       (* TODO: this should have a uid *)
       datatype t = datatype tycon_t
 
+      val new: TyId.t * TyParam.t list -> t
+
       val toBOMTy: t -> BOMType.t
       val arity: t -> int
       val applyToArgs: t * BOMType.t list -> BOMType.t option
       val applyToArgs': t * BOMType.t vector -> BOMType.t option
+
+      val equal: t * t -> bool
     end
 
     structure DataTypeDef: sig

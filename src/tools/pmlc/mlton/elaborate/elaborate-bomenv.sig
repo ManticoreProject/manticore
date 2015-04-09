@@ -95,6 +95,14 @@ signature ELABORATE_BOMENV =
       val lookup: env * CoreBOM.ValId.t -> CoreBOM.Val.t option
     end
 
+    structure PrimTyEnv : sig
+      type t
+
+      (* Don't need any functions for extending this because it's fixed *)
+      val lookupML: t * Env.Tycon.t -> CoreBOM.TyCon.t option
+      val lookupBOM: t * CoreBOM.TyCon.t -> Env.Tycon.t option
+    end
+
     structure MLTyEnv: sig
       type t
       type key = Env.TypeEnv.Tycon.t
@@ -126,8 +134,7 @@ signature ELABORATE_BOMENV =
     val setName: t * CoreBOM.ModuleId.t -> t
     val setName': t * Ast.BOM.BOMId.t -> t
 
-    (* val setValEnv: t * ValEnv.t -> t *)
-    (* val getValEnv: t -> ValEnv.t *)
+    (* val primTyEnv: PrimTyEnv.t *)
 
     sharing type TyEnv.env = TyParamEnv.env = ValEnv.env = t
   end

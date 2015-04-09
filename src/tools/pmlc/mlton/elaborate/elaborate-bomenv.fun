@@ -310,6 +310,25 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     end
   end
 
+  structure PrimTyEnv = struct
+    type el = (MLTycon.t * CoreBOM.TyCon.t)
+    type t = el list
+
+    (* FIXME: write mapping *)
+    val mapping = []
+
+    local
+      fun lookup (selectIn: el -> 'a,
+          selectOut: el -> 'b, eq: 'a * 'a -> bool) (env: t, tyc: 'a): 'b option =
+        case List.find (fn tycs => eq (selectIn tycs, tyc)) env of
+          SOME tycs' => SOME (selectOut tycs')
+        | NONE => NONE
+    in
+      val lookupML = lookup (#1, #2, MLTycon.equals)
+      val lookupBOM = lookup (#2, #1, CoreBOM.TyCon.equal)
+    end
+
+  end
 
   structure MLTyEnv = struct
     type key = MLTycon.t

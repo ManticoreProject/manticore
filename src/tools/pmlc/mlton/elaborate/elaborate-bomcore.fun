@@ -851,13 +851,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     in
       {
         env = env,
-        bomEnv = BOMEnv.TyEnv.extend (bomEnv,
-          tyId,
-          BOMEnv.TypeDefn.newCon (CoreBOM.TyCon.TyC {
-              id = tyId,
-              definition = ref [],
-              params = map CoreBOM.TyParam.fromAst tyParams
-            }))
+        bomEnv = BOMEnv.TyEnv.extend (bomEnv, tyId, BOMEnv.TypeDefn.newCon (
+          CoreBOM.TyCon.new (tyId, map CoreBOM.TyParam.fromAst tyParams)))
       }
     end
 
