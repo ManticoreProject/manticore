@@ -99,8 +99,8 @@ signature ELABORATE_BOMENV =
       type t
 
       (* Don't need any functions for extending this because it's fixed *)
-      val lookupML: t * Env.Tycon.t -> CoreBOM.TyCon.t option
-      val lookupBOM: t * CoreBOM.TyCon.t -> Env.Tycon.t option
+      val lookupML: t * Env.Tycon.t -> CoreBOM.BOMType.t option
+      val lookupBOM: t * CoreBOM.BOMType.t -> Env.Tycon.t option
     end
 
     structure MLTyEnv: sig
