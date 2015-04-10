@@ -873,39 +873,71 @@ structure Type =
          Trace.trace2
          ("TypeEnv.Type.canUnify", layout, layout, (*Bool.layout*)Bool_layout)
 
-      fun canUnify arg =
-         traceCanUnify
-         (fn (t, t') =>
-          case (toType t, toType t') of
-             (Unknown _,  _) => true
-           | (_, Unknown _) => true
-           | (Con (c, ts), t') => conAnd (c, ts, t')
-           | (t', Con (c, ts)) => conAnd (c, ts, t')
-           | (Overload o1, Overload o2) => Overload.equals (o1, o2)
-           | (Record r, Record r') =>
+      local
+        fun compareTypes compareUnknown (t, t') =
+          let
+            val compareThese = compareTypes compareUnknown
+            fun conAnd (c, ts, t') =
+              case t' of
+                Con (c', ts') => Tycon.equals (c, c') andalso Vector.forall2 (
+                  ts, ts', compareThese)
+              | Overload ov =>
+               0 = Vector.length ts andalso Overload.matchesTycon (ov, c)
+              | _ => false
+          in
+            case (toType t, toType t') of
+               (Unknown u,  Unknown u') => compareUnknown (u, u')
+            | (Con (c, ts), t') => conAnd (c, ts, t')
+            | (t', Con (c, ts)) => conAnd (c, ts, t')
+            | (Overload o1, Overload o2) => Overload.equals (o1, o2)
+            | (Record r, Record r') =>
                 let
                    val fs = Srecord.toVector r
                    val fs' = Srecord.toVector r'
                 in Vector.length fs = Vector.length fs'
                    andalso Vector.forall2 (fs, fs', fn ((f, t), (f', t')) =>
-                                           Field.equals (f, f')
-                                           andalso canUnify (t, t'))
+                     Field.equals (f, f') andalso compareThese (t, t'))
                 end
-           | (Var a, Var a') => Tyvar.equals (a, a')
-           | _ => false) arg
-      and conAnd (c, ts, t') =
-         case t' of
-            Con (c', ts') =>
-               Tycon.equals (c, c')
-               andalso Vector.forall2 (ts, ts', canUnify)
-          | Overload ov =>
-               0 = Vector.length ts andalso Overload.matchesTycon (ov, c)
-          | _ => false
+             | (Var a, Var a') => Tyvar.equals (a, a')
+             | _ => false
+          end
+      in
+        val canUnify = compareTypes (fn _ => true)
+        val equals = compareTypes Unknown.equals
+      end
+(* fun canUnify arg = *)
+(*          traceCanUnify *)
+(*          (fn (t, t') => *)
+(*           case (toType t, toType t') of *)
+(*              (Unknown _,  _) => true *)
+(*            | (_, Unknown _) => true *)
+(*            | (Con (c, ts), t') => conAnd (c, ts, t') *)
+(*            | (t', Con (c, ts)) => conAnd (c, ts, t') *)
+(*            | (Overload o1, Overload o2) => Overload.equals (o1, o2) *)
+(*            | (Record r, Record r') => *)
+(*                 let *)
+(*                    val fs = Srecord.toVector r *)
+(*                    val fs' = Srecord.toVector r' *)
+(*                 in Vector.length fs = Vector.length fs' *)
+(*                    andalso Vector.forall2 (fs, fs', fn ((f, t), (f', t')) => *)
+(*                                            Field.equals (f, f') *)
+(*                                            andalso canUnify (t, t')) *)
+(*                 end *)
+(*            | (Var a, Var a') => Tyvar.equals (a, a') *)
+(*            | _ => false) arg *)
+(*       and conAnd (c, ts, t') = *)
+(*          case t' of *)
+(*             Con (c', ts') => *)
+(*                Tycon.equals (c, c') *)
+(*                andalso Vector.forall2 (ts, ts', canUnify) *)
+(*           | Overload ov => *)
+(*                0 = Vector.length ts andalso Overload.matchesTycon (ov, c) *)
+(*           | _ => false *)
 
 
-      fun equals (ty, ty') =
-        case (ty, ty') of
-          _ => ()
+(*       fun equals (ty, ty') = *)
+(*         case (ty, ty') of *)
+(*           _ => () *)
 
       (* minTime (t, bound) ensures that all components of t have times no larger
        * than bound.  It calls the appropriate error function when it encounters

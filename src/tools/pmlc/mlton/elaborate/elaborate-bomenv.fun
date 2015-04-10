@@ -311,7 +311,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
   end
 
   structure PrimTyEnv = struct
-    type el = (MLTycon.t * CoreBOM.BOMType.t)
+    type el = (MLType.t * CoreBOM.BOMType.t)
     type t = el list
 
     (* FIXME: write mapping *)
@@ -326,7 +326,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
           SOME tycs' => SOME (selectOut tycs')
         | NONE => NONE
     in
-      val lookupML = lookup (#1, #2, MLTycon.equals)
+      val lookupML = lookup (#1, #2, MLType.equals)
       val lookupBOM = lookup (#2, #1, CoreBOM.BOMType.equal)
     end
 
