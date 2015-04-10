@@ -316,6 +316,7 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
     (* FIXME: write mapping *)
     val mapping = [
+      (MLType.word32, CoreBOM.RawTy.Int32)
       (* (MLTycon.int (IntSize.fromBits (Bits.fromInt 32)), CoreBOM.BOMType.Raw *)
       (*   CoreBOM.RawTy.Int32) *)
     ]
