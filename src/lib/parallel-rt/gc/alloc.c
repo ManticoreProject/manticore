@@ -536,8 +536,22 @@ bool M_ValEq(Word_t *w1, Word_t *w2){
     return true;
 }
 
+volatile int lock = 0;
+
 /*continuation equality*/
-int M_ContEq(Word_t *s1, Word_t *s2){
+int M_PolyEq(Word_t *s1, Word_t *s2){
+  
+  while(CompareAndSwapValue(&lock, 0, 1) != 0);
+
+   if(s1 == s2)
+    return 1;
+   if(!isPtr((Value_t)s1) || !isPtr((Value_t)s2))
+    return 0;
+   if(s1[-1] != s2[-1])
+    return 0;
+   printf("Comparing equality of %d-tuple\n", GetLength(s1[-1])); 
    bool res = table[getID(s1[-1])].polyEq(s1, s2);
+   if(res) printf("Values are equal\n\n\n"); else printf("Values are not equal\n\n\n");
+   lock = 0;
    return res ? 1 : 0;
 }

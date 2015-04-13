@@ -50,6 +50,8 @@ structure List =
 	       lp(xs, id)
 	    end
 
+    fun foldrCurried(f, id, xs) = foldr f id xs
+
     fun rev xs = foldl CONS nil xs
 
     fun l2s f ls = (

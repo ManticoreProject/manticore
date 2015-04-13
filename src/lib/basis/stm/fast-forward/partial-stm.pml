@@ -64,9 +64,7 @@ struct
                             any,                    (*2: write list*)
                             any,                    (*3: next read item*)
                             item,item];             (*4: next read item with a continuation*)
-
-        typedef skipList = any;
-
+        
         define @new(x:any / exh:exh) : tvar = 
             let tv : tvar = alloc(x, 0:long, 0:long)
             let tv : tvar = promote(tv)
@@ -86,7 +84,6 @@ struct
                             of NilItem => 
                                 (*Extend stamp*)
                                 do #0(startStamp) := newStamp
-                                do FLS.@set-key(FF_KEY, enum(0):any / exh)
                                 return()
                              | Abort(x : unit) => 
                                 let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
@@ -183,7 +180,8 @@ struct
                 else case rs
                         of WithK(tv':tvar,k:cont(any),ws:List.list,next:item,nextC:item) =>
                             if Equal(tv, tv')
-                            then let res : int = ccall M_PolyEq(k, retK)
+                            then do ccall M_Print("TVars are equal\n")
+                                 let res : int = ccall M_PolyEq(k, retK)
                                  if I32Eq(res, 1)
                                  then (*let res : int = ccall M_PolyEq(ws, writeSet) *)  (*polymorphic equality is probably overkill here*)
                                       BUMP_KCOUNT
@@ -399,7 +397,8 @@ struct
                                      do if I32Eq(newFreq, 0)
                                         then return()
                                         else FLS.@set-counter2(1) 
-                                     do FLS.@set-key(FF_KEY, enum(0):any / exh)
+                                     let ffInfo : [item, item, stamp] = alloc(#2(rs), NilItem, rawStamp)
+                                     do FLS.@set-key(FF_KEY, ffInfo / exh)
                                      throw abortK()  (*no checkpoint found*)
                                 else do apply release(locks)
                                      let abortK : cont(any) = (cont(any)) abortK
@@ -431,7 +430,8 @@ struct
                                 do if I32Eq(newFreq, 0)
                                    then return()
                                    else FLS.@set-counter2(newFreq) 
-                                do FLS.@set-key(FF_KEY, enum(0):any / exh)
+                                let ffInfo : [item, item, stamp] = alloc(#2(rs), NilItem, rawStamp)
+                                do FLS.@set-key(FF_KEY, ffInfo / exh)
                                 throw abortK()  (*no checkpoint found*)
                         end                          
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
@@ -535,12 +535,25 @@ struct
         
       define @abort(x : unit / exh : exh) : any = 
          let e : cont() = FLS.@get-key(ABORT_KEY / exh)
+         let stamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
+         let readSet : [int, item, item] = FLS.@get-key(READ_SET / exh)
+         let ffInfo : [item,item,stamp] = alloc(#2(readSet), NilItem, #0(stamp))
+         do FLS.@set-key(FF_KEY, ffInfo / exh)
          throw e();        
 
       define @tvar-eq(arg : [tvar, tvar] / exh : exh) : bool = 
          if Equal(#0(arg), #1(arg))
          then return(true)
          else return(false);
+
+    define @print2(x : ml_string / exh:exh) : unit =
+    do ccall M_Print(#0(x)) return (UNIT)
+ (*       let ffInfo : any = FLS.@get-key(FF_KEY / exh)
+        if Equal(ffInfo, enum(0))
+        then return(UNIT)
+        else do ccall M_Print(#0(x))
+             return(UNIT)
+   *) ;
 
          
     )
@@ -554,11 +567,8 @@ struct
     val abort : unit -> 'a = _prim(@abort)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
-  
 
-
-
-
+    val print2 : string -> unit = _prim(@print2)
     
 end
 
