@@ -9,7 +9,9 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
   structure MLType = Env.TypeEnv.Type
   structure MLScheme = Env.TypeEnv.Scheme
   structure MLTycon = Env.TypeEnv.Tycon
+  structure MLKind = Env.TypeStr.Kind
   structure BOMExport = Ast.BOMExport
+
   (* structure TypeOps = Env.TypeEnv.Type.Ops *)
 
 
@@ -72,17 +74,24 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
             (* This is all of the "elaboration" they do on tyvars *)
             val tyvars' = Vector.map MLType.var tyvars
             val bomTy' = ElaborateBOMCore.elaborateBOMType (bomTy, tyEnvs)
-            (* val mlTy = ??? *)
+            (* FIXME: error handling *)
+            (* FIXME: we'll need a second env here *)
+            val (SOME mlTy): MLType.t option = BOMEnv.PrimTyEnv.lookupBOM bomTy'
+            val kind = Vector.length tyvars
             (* TODO: check kind matches *)
             (* We follow the lead of ElaborateCore.elabTypBind *)
-            (* val mlTyStr = Env.TypeStr.def (Env.Scheme.make { *)
-            (*   canGeneralize = true, ty =  *)
+            val mlTyStr = Env.TypeStr.def (MLScheme.make {canGeneralize = true,
+               ty = mlTy, tyvars = tyvars}, MLKind.Arity kind)
+            (* Extend ML Type environment in place *)
+            val _ = Env.extendTycon (env, tycon, mlTyStr, {forceUsed = false,
+              isRebind = false})
           in
-            raise Fail "Not implemented"
+            (bomEnv, mlTyEnv)
           end
       | BOMExport.Val (valId, mlTy, bomTy) =>
+          raise Fail "Not implemented."
       (* FIXME: placeholder *)
-        (bomEnv, mlTyEnv)
+        (* (bomEnv, mlTyEnv) *)
     end
 
 

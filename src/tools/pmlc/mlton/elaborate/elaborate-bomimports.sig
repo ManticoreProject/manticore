@@ -16,7 +16,7 @@ signature ELABORATE_BOMIMPORTS_STRUCTS =
     sharing Ast.Tyvar = CoreML.Tyvar
     sharing CoreML = Env.CoreML
     sharing ElaborateBOMCore.Ast = BOMEnv.Ast = CoreBOM.Ast = Env.Ast = Ast
-    sharing ElaborateBOMCore.CoreBOM = CoreBOM
+    sharing ElaborateBOMCore.CoreBOM = BOMEnv.CoreBOM = CoreBOM
     sharing ElaborateBOMCore.BOMEnv = BOMEnv
     sharing ElaborateCore.Env = ElaborateBOMCore.Env = BOMEnv.Env = Env
     sharing ElaborateCore.Ast = ElaborateBOMCore.Ast = Ast

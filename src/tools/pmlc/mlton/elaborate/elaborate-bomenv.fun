@@ -314,16 +314,18 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     type el = (MLType.t * CoreBOM.BOMType.t)
     type t = el list
 
-    (* FIXME: write mapping *)
-    val mapping = [
-      (MLType.word32, CoreBOM.RawTy.Int32)
+    (* Note: ORDER IS SIGNIFICANT, since we have many-to-one mappings *)
+    val mapping: t = [
+      (MLType.word32, CoreBOM.BOMType.Raw CoreBOM.RawTy.Int32),
+      (MLType.con (MLTycon.int (MLTycon.IntSize.fromBits (Bits.fromInt 32)),
+        Vector.fromList []), CoreBOM.BOMType.Raw CoreBOM.RawTy.Int32)
       (* (MLTycon.int (IntSize.fromBits (Bits.fromInt 32)), CoreBOM.BOMType.Raw *)
       (*   CoreBOM.RawTy.Int32) *)
     ]
 
     local
-      fun lookup (selectIn, selectOut, eq) (env: t, tyc) =
-        case List.find (fn tycs => eq (selectIn tycs, tyc)) env of
+      fun lookup (selectIn, selectOut, eq) (tyc) =
+        case List.find (fn tycs => eq (selectIn tycs, tyc)) mapping of
           SOME tycs' => SOME (selectOut tycs')
         | NONE => NONE
     in
