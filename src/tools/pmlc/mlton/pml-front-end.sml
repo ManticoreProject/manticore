@@ -360,7 +360,7 @@ structure PMLFrontEnd : PML_FRONT_END =
     fun outputBasisConstants (out: Out.t): unit = let
 	  val _ = amBuildingConstants := true
 	  val (_, decs) = parseAndElaborateMLB (
-		MLBString.fromFile "$(SML_LIB)/basis/primitive/primitive.mlb")
+		MLBString.fromFile "$(SML_LIB)/sequential/primitive/primitive.mlb")
 	  val decs = MVec.concatV (Vector.map (Vector.fromList o #1) decs)
 	(* Need to defunctorize so the constants are forced. *)
 	  val _ = Defunctorize.defunctorize (CoreML.Program.T {decs = decs})
@@ -465,7 +465,7 @@ structure PMLFrontEnd : PML_FRONT_END =
 
     local
       fun genMLB {input: File.t list} : MLBString.t = let
-	    val basis = "$(SML_LIB)/basis/default.mlb"
+	    val basis = "$(SML_LIB)/default.mlb"
 	  (* create an MLB string that compiles the files *)
 	    val mlbS = (case input
 		   of [] => basis
@@ -505,8 +505,8 @@ structure PMLFrontEnd : PML_FRONT_END =
 	  val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/mlton-basis/sml"]
 	  val libMltonDir= concat["LIB_MLTON_DIR ", LoadPaths.libDir, "/mlton-basis/mlton"]
 *)
-	  val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/basis/sequential"]
-(* DEBUG *)val _ = print(concat["SML_LIB=\"", String.toString(LoadPaths.libDir ^ "/basis/sequential"), "\"\n"])
+	  val smlLibPath = concat["SML_LIB ", LoadPaths.basisDir]
+(* DEBUG *)val _ = print(concat["SML_LIB=\"", String.toString LoadPaths.basisDir, "\"\n"])
 	  fun handlePath p = Control.mlbPathVars := !Control.mlbPathVars @ [
 		  case parseMlbPathVar p
 		   of NONE => Error.bug ("strange mlb path var: " ^ p)

@@ -1,0 +1,12 @@
+(* default.mlb
+ *
+ * COPYRIGHT (c) 2015 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * A default MLB file for compiling standalone PML programs.
+ *)
+
+sequential/basis.mlb
+(*
+TODO: parallel and CML support
+*)
