@@ -75,7 +75,7 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
     val convert' = BasicControl.mkKeepPass {
 	    preOutput = PrintCPS.output,
             preExt = "cps",
-            postOutput = PrintCFG.output {counts=false, types=true},
+            postOutput = PrintCFG.output {counts=false, types=false},
             postExt = "cfg",
             passName = "closure",
             pass = doConvert,

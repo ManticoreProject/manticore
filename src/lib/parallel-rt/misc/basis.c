@@ -20,6 +20,7 @@
 void M_BumpCounter(int index){
     VProc_t * vp = VProcSelf();
     vp->counter[index]++;
+    
 }
 
 int M_SumCounter(int index){

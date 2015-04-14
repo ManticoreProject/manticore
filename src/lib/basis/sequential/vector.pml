@@ -28,6 +28,10 @@ structure Vector =
 	  return (v)
 	;
 
+	  define inline @from-list-n-bom(n : int, values : list / exh:exh) : vector = 
+		let v : vector = AllocPolyVec(n, values)
+		return(v);
+
       define inline @from-list-rev (arg : [List.list, ml_int] / exh : exh) : vector =
 	  let vec : vector = ccall AllocVectorRev (host_vproc,  #0(#1(arg)), #0(arg))
 	  return (vec)

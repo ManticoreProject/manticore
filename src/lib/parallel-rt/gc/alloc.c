@@ -174,15 +174,15 @@ Value_t AllocVector (VProc_t *vp, Value_t values)
 {
     Value_t retval;
     Word_t	*obj = (Word_t *)(vp->allocPtr);    
-	int i = 0;
+    int i = 0;
 
     EnsureNurserySpace(vp, i);
 
     while (values != M_NIL) {
-	ListCons_t *valueList = (ListCons_t*)ValueToPtr(values);
-	obj[i] = (Word_t)valueList->hd;
-	values = valueList->tl;
-	i++;
+      ListCons_t *valueList = (ListCons_t*)ValueToPtr(values);
+      obj[i] = (Word_t)valueList->hd;
+      values = valueList->tl;
+      i++;
     }
 
     obj[-1] = VEC_HDR(i);
@@ -539,6 +539,7 @@ bool M_ValEq(Word_t *w1, Word_t *w2){
 volatile int lock = 0;
 
 /*continuation equality*/
+/*
 int M_PolyEq(Word_t *s1, Word_t *s2){
   
   while(CompareAndSwapValue(&lock, 0, 1) != 0);
@@ -553,5 +554,18 @@ int M_PolyEq(Word_t *s1, Word_t *s2){
    bool res = table[getID(s1[-1])].polyEq(s1, s2);
    if(res) printf("Values are equal\n\n\n"); else printf("Values are not equal\n\n\n");
    lock = 0;
+   return res ? 1 : 0;
+}
+*/
+/*continuation equality*/
+int M_PolyEq(Word_t *s1, Word_t *s2){
+   if(s1 == s2)
+    return 1;
+   if(!isPtr((Value_t)s1) || !isPtr((Value_t)s2))
+    return 0;
+   if(s1[-1] != s2[-1])
+    return 0;
+   printf("\n\nComparing equality of %d-tuple\n", GetLength(s1[-1])); 
+   bool res = table[getID(s1[-1])].polyEq(s1, s2);
    return res ? 1 : 0;
 }
