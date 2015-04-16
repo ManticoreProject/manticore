@@ -44,6 +44,8 @@ struct
 
 #define READ_SET_BOUND 20
 
+    (*Careful, if this changes, we could possibly be indexing a "WithoutK" item 
+     *incorrectly when filtering the read set*)
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a
                      | WithoutK of 'a * 'a | Abort of unit 
 
@@ -313,6 +315,7 @@ struct
 
 
         define @getABCDEFG(tv:tvar / exh:exh) : any = 
+            do #0(tv) := (any)x
             let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do if(#0(in_trans))
                then return()

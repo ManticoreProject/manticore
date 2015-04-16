@@ -76,7 +76,25 @@ functor Alloc64Fn (
       | isHeapPointer (CFG.T_OpenTuple _) = true
       | isHeapPointer _ = false
 
-    fun setBit (w, ty) = if (isHeapPointer ty) then (concat["1",w]) else (concat["0",w])
+
+    fun getRawBit rt = 
+    	case rt
+		  of Ty.T_Byte => "0"    (*1 byte*)
+		   | Ty.T_Short => "2"   (*2 bytes*)
+		   | Ty.T_Int => "3"     (*4 bytes*)
+		   | Ty.T_Long => "4"    (*8 bytes*)
+		   | Ty.T_Float => "3"   (*4 bytes*)
+		   | Ty.T_Double => "4"  (*8 bytes*)
+		   | Ty.T_Vec128 => "5"  (*16 bytes*)
+
+    fun getBit ty =
+	case ty
+	  of M.T_Raw rt => getRawBit rt
+	   | _ => "1"  
+
+	fun setBit (w, ty) = concat[getBit ty, w]
+
+    (*fun setBit (w, ty) = if (isHeapPointer ty) then (concat["1",w]) else (concat["0",w])*)
 
     fun initObj offAp ((ty, mltree), {i, stms, totalSize, ptrMask}) = let
 	  val store = MTy.store (offAp (wordLit totalSize), mltree, ManticoreRegion.memory)

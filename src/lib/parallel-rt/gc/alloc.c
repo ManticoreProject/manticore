@@ -565,7 +565,6 @@ int M_PolyEq(Word_t *s1, Word_t *s2){
     return 0;
    if(s1[-1] != s2[-1])
     return 0;
-   printf("\n\nComparing equality of %d-tuple\n", GetLength(s1[-1])); 
    bool res = table[getID(s1[-1])].polyEq(s1, s2);
    return res ? 1 : 0;
 }
