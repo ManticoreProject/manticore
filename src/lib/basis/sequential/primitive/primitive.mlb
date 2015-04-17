@@ -5,7 +5,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-ann 
+ann
    "allowConstant true"
    "allowFFI true"
    "allowPrim true"
@@ -16,20 +16,22 @@ ann
    "warnUnused false"
 in
    prim-basis.mlb
-   ann "allowRebindEquals true" in
+(* TODO: Get this to compile. *)
+(*   ann "allowRebindEquals true" in
       prim1.sml
    end
+*)
 (*
    ../util/integral-comparisons.sml
    ../util/string-comparisons.sml
    ../util/real-comparisons.sml
-   local 
-      ../config/bind/char-prim.sml 
-      ../config/bind/int-prim.sml 
-      ../config/bind/int-inf-prim.sml 
-      ../config/bind/real-prim.sml 
-      ../config/bind/string-prim.sml 
-      ../config/bind/word-prim.sml 
+   local
+      ../config/bind/char-prim.sml
+      ../config/bind/int-prim.sml
+      ../config/bind/int-inf-prim.sml
+      ../config/bind/real-prim.sml
+      ../config/bind/string-prim.sml
+      ../config/bind/word-prim.sml
    in ann "forceUsed" in
       ../config/choose-char.sml
       ../config/choose-int.sml
@@ -43,11 +45,11 @@ in
    prim-word.sml
    prim-int.sml
 
-   local 
-      ../config/bind/int-prim.sml 
+   local
+      ../config/bind/int-prim.sml
       ../config/bind/pointer-prim.sml
-      ../config/bind/real-prim.sml 
-      ../config/bind/word-prim.sml 
+      ../config/bind/real-prim.sml
+      ../config/bind/word-prim.sml
    in ann "forceUsed" in
       ../config/objptr/objptr-$(OBJPTR_REP).sml
       ../config/header/header-$(HEADER_WORD).sml

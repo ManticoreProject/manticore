@@ -168,6 +168,16 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                        in
                           Decs.appendsV (Vector.map (strbinds, #decs))
                        end
+                 | Strdec.BOMExportDec export =>
+                     let
+                         (* FIXME: we need to save these envs *)
+                         (* FIXME: pass in a real mltyenv *)
+                       val (newEnv, newMLTyEnv) =
+                         ElaborateBOMImports.elaborateBOMExport (export, {env =
+                         E, bomEnv = bomEnv}, BOMEnv.MLTyEnv.empty)
+                     in
+                       Decs.empty
+                     end
 (* TODO: add cases for _datatype, _type, and _val *)
              val () =
                 case resolveScope () of

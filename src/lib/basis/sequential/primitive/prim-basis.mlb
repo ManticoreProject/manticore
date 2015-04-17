@@ -16,6 +16,7 @@ in
    local
       _prim
    in
-      prim-basis.sml
+     prim-basis-temp.sml
+      (* prim-basis.sml *)
    end
 end

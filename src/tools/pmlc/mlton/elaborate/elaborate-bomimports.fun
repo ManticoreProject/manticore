@@ -26,40 +26,6 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
   fun elaborateMLType' env ty = ElaborateCore.elaborateType (ty,
     ElaborateCore.Lookup.fromEnv env)
 
-  (* fun translateInt intSize = *)
-  (*   Vector.fromList [ *)
-  (*     CoreBOM.BOMType.Raw (case (Bits.toInt (MLTycon.IntSize.bits intSize)) of *)
-  (*       8 => CoreBOM.RawTy.Int8 *)
-  (*     | 16 => CoreBOM.RawTy.Int16 *)
-  (*     | 32 => CoreBOM.RawTy.Int32 *)
-  (*     | 64 => CoreBOM.RawTy.Int64 *)
-  (*     | n => raise Fail (String.concatWith " " [ *)
-  (*         "Compiler bug: unexpected int size:", Int.toString n, "\n"]))] *)
-
-  (* fun translateType (mlTyEnv: BOMEnv.MLTyEnv.t) *)
-  (*     (mlType: MLType.t): CoreBOM.BOMType.t = *)
-  (*   let *)
-  (*     fun applyCon (tyc: MLTycon.t, tyvec: MLType.t vector): CoreBOM.BOMType.t = *)
-  (*       case BOMEnv.MLTyEnv.lookupThis (mlTyEnv, tyc) of *)
-  (*         SOME bomTyc => *)
-  (*           (case (bomTyc (Vector.map (translateType mlTyEnv) tyvec)) of *)
-  (*             SOME bomTy => bomTy *)
-  (*           | NONE => raise Fail "Bad application.") *)
-  (*       | NONE => raise Fail "Unmapped type." *)
-
-  (*     and translateCon (mlType: MLType.t): CoreBOM.BOMType.t = *)
-  (*       let *)
-  (*           (* DEBUG *) *)
-  (*         val _ = printMLTy (mlType, "unwrapping ty: ") *)
-  (*       in *)
-  (*         case (MLType.deConOpt mlType) of *)
-  (*           SOME (tyc, tyvec) => applyCon (tyc, tyvec) *)
-  (*         | NONE => raise Fail "Bad type." *)
-  (*       end *)
-  (*   in *)
-  (*     translateCon mlType *)
-  (*   end *)
-
 
   fun elaborateBOMExport (export, tyEnvs as {env: Env.t, bomEnv: BOMEnv.t},
       mlTyEnv) =
