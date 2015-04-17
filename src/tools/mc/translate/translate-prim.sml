@@ -178,6 +178,18 @@ structure TranslatePrim : sig
   (* the argument pointsToHeapObject must be false whenever the pointer might point into the middle
    * of a heap object.
    *)
+	fun checkGlobalPtr2(loc, s, d) = let
+	  val self = newTmp BTy.T_VProc
+	  val t = newTmp BTy.T_Any
+	  val locS = Error.locToString(Error.location(!errStrm, loc))
+	  val checkCFun = "CheckGlobalAddr2"
+	  in [
+	    ([self], BOM.E_HostVProc),
+	    ([t], BOM.E_Const(Literal.String (locS ^ " at " ^ BOM.Var.toString d), BTy.T_Any)),
+	    ([], BOM.E_CCall(findCFun(BasisEnv.getCFunFromBasis [checkCFun]), [self, s, d, t]))
+	  ] end
+
+
     fun checkGlobalPtr (loc, v, pointsToHeapObject) = let
 	  val self = newTmp BTy.T_VProc
 	  val t = newTmp BTy.T_Any
@@ -190,6 +202,7 @@ structure TranslatePrim : sig
 	  ] end
 
     fun removePrime s = String.implode(List.filter (fn x => x <> #"'") (String.explode s))
+	
 
   (* generate debugging messages for object promotions *)
     fun debugPromote (loc, [lhs], x) = let
@@ -334,8 +347,7 @@ structure TranslatePrim : sig
 				BOM.mkStmt(lhs', BOM.E_Update(i, x, y), body')
 			    else (case BOMTyUtil.kindOf (BV.typeOf y)
 			                of BTy.K_RAW => BOM.mkStmt(lhs', BOM.E_Update(i, x, y), body')
-			                 | _ => BOM.mkStmts(checkGlobalPtr(loc, x, true) @
-					            checkGlobalPtr(loc, y, false) @
+			                 | _ => BOM.mkStmts(checkGlobalPtr2(loc, x, y) @
 					            [(lhs', BOM.E_Update(i, x, y))],
 					            body') ) ))
 		      | BPT.RHS_VPStore(offset, vp, arg) =>

@@ -76,10 +76,9 @@ void MinorGC (VProc_t *vp)
     assert (vp->nurseryBase < vp->allocPtr);
 
 #ifndef NDEBUG
-    if (GCDebug >= GC_DEBUG_MINOR)
+    //if (GCDebug >= GC_DEBUG_MINOR)
 	SayDebug("[%2d] Minor GC starting\n", vp->id);
 #endif
-
   /* gather the roots.  The protocol is that the stdCont register holds
    * the return address (which is not in the heap) and that the stdEnvPtr
    * holds the GC root.

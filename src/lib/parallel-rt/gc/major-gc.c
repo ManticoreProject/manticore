@@ -123,7 +123,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     MemChunk_t	*scanChunk = vp->globAllocChunk;
 
     LogMajorGCStart (vp, (uint32_t)(top - vp->oldTop), (uint32_t)oldSzB);
-
+    printf("Staring Major GC\n");
 	
 	
 #ifndef NO_GC_STATS

@@ -315,7 +315,6 @@ struct
 
 
         define @getABCDEFG(tv:tvar / exh:exh) : any = 
-            do #0(tv) := (any)x
             let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do if(#0(in_trans))
                then return()

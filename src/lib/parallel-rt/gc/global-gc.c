@@ -627,6 +627,53 @@ void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
     CheckGlobalAddr (self, addr, where);
 }
 
+void CheckGlobalAddr2 (VProc_t *self, void *source, void * dest, char *where)
+{
+    assert(VProcSelf() == self);
+    Value_t s = (Value_t)source;
+    Value_t d = (Value_t) dest;
+    if (isHeapPtr(dest)) {
+        MemChunk_t *cqs = AddrToChunk(ValueToAddr(s));
+        MemChunk_t *cqd = AddrToChunk(ValueToAddr(d));
+        if (cqd->sts == TO_SP_CHUNK)
+            return;
+        else if (cqd->sts == FROM_SP_CHUNK) {
+          if (!GlobalGCInProgress) {
+            /* it is safe to point to from-space pages just before performing a global gc */
+              SayDebug("[%2d] CheckGlobalAddr: unexpected from-space pointer %p in %s\n",
+                   self->id, ValueToPtr(d), where);
+          }
+        }
+        else if (isLimitPtr(d, cqd))
+            return;
+        else if (IS_VPROC_CHUNK(cqd->sts)) {
+            if (inAddrRange(ValueToAddr(d) & ~VP_HEAP_MASK, sizeof(VProc_t), ValueToAddr(d))) {
+              /* IMPORTANT: we make an exception for objects stored in the vproc structure */
+                return;
+            }
+            if(IS_VPROC_CHUNK(cqs->sts)){//source and destination are in local heap
+                return;
+            }
+            else if (cqd->sts != VPROC_CHUNK(self->id)) {
+                   SayDebug("[%2d] CheckGlobalAddr: bogus remote pointer %p in %s\n",
+                            self->id, ValueToPtr(d), where);
+            } 
+            else if (cqd->sts == VPROC_CHUNK(self->id)) {
+               SayDebug("[%2d] CheckGlobalAddr: bogus local pointer %p in %s\n",
+                    self->id, ValueToPtr(d), where);
+            }         
+            else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(d))) {
+            SayDebug("[%2d] CheckGlobalAddr: bogus local pointer %p is out of bounds in %s\n",
+                 self->id, ValueToPtr(d), where);
+            }
+        }
+        else if (cqd->sts == FREE_CHUNK) {
+            SayDebug("[%2d] CheckGlobalAddr: unexpected free-space pointer %p at %p from %s\n",
+                 self->id, ValueToPtr(d), dest, where);
+        }
+    }
+}
+
 /* Check that the given address points *into* an object in the global heap. That is,
  * addr might point into the middle of a heap object.
  */

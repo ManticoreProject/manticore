@@ -568,3 +568,10 @@ int M_PolyEq(Word_t *s1, Word_t *s2){
    bool res = table[getID(s1[-1])].polyEq(s1, s2);
    return res ? 1 : 0;
 }
+
+int M_InLocal(VProc_t *vp, Word_t * w){
+    
+
+
+
+}
