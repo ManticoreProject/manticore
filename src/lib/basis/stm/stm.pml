@@ -23,7 +23,9 @@ struct
              then (FullAbortSTM.get,FullAbortSTM.put,FullAbortSTM.atomic,FullAbortSTM.new,FullAbortSTM.printStats,FullAbortSTM.abort,FullAbortSTM.unsafeGet, FullAbortSTM.same)
              else if String.same(whichSTM, "ff")
                   then (FFSTM.get, FFSTM.put, FFSTM.atomic, FFSTM.new, FFSTM.printStats, FFSTM.abort, FFSTM.unsafeGet, FFSTM.same)
-                  else (PartialSTM.get,PartialSTM.put,PartialSTM.atomic,PartialSTM.new,PartialSTM.printStats,PartialSTM.abort,PartialSTM.unsafeGet, PartialSTM.same)
+                  else if String.same(whichSTM, "ordered")
+                       then (OrderedSTM.get,OrderedSTM.put,OrderedSTM.atomic,OrderedSTM.new,OrderedSTM.printStats,OrderedSTM.abort,OrderedSTM.unsafeGet,OrderedSTM.same)
+                       else (PartialSTM.get,PartialSTM.put,PartialSTM.atomic,PartialSTM.new,PartialSTM.printStats,PartialSTM.abort,PartialSTM.unsafeGet, PartialSTM.same)
 
     (*won't typecheck without these nonsense bindings*)
     val get : 'a tvar -> 'a = get

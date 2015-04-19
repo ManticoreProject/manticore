@@ -64,7 +64,7 @@ fun chk i =
 fun populate hist = 
     case hist
         of x::xs => 
-            let val tv = STM.atomic(fn () => Vector.sub(actual, x))
+            let val tv = Vector.sub(actual, x)
                 val _ = STM.atomic(fn () => STM.put(tv, STM.get tv + 1))
             in populate xs end
         | nil => chk(TVARS - 1)

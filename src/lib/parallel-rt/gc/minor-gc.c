@@ -45,7 +45,6 @@ Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
 			newObj[i] = p[i];
 		}
 		*nextW = newObj+len+1;
-		
 		p[-1] = MakeForwardPtr(hdr, newObj);
 		return PtrToValue(newObj);
 	}
@@ -109,12 +108,12 @@ void MinorGC (VProc_t *vp)
 
   /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
-	Value_t p = *roots[i];
-	if (isPtr(p)) {
-	    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
-		*roots[i] = ForwardObjMinor(p, &nextW);
-	    }
-	}
+		Value_t p = *roots[i];
+		if (isPtr(p)) {
+		    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
+			*roots[i] = ForwardObjMinor(p, &nextW);
+		    }
+		}
     }
 
   /* scan to space */
@@ -143,7 +142,7 @@ void MinorGC (VProc_t *vp)
 			//printf("scan after = %p\n",(void *)nextScan);
 		}
 
-	    }
+    }
 
     assert ((Addr_t)nextScan >= vp->heapBase);
     Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - vp->heapBase);
@@ -156,13 +155,13 @@ void MinorGC (VProc_t *vp)
     TIMER_Stop(&(vp->minorStats.timer));
 #endif
 #ifndef NDEBUG
-    if (GCDebug >= GC_DEBUG_MINOR) {
-bzero(nextScan, avail); /* clear unused part of local heap */
+    //if (GCDebug >= GC_DEBUG_MINOR) {
+	bzero(nextScan, avail); /* clear unused part of local heap */
 	SayDebug("[%2d] Minor GC finished: %ld/%ld bytes live; %d available\n",
 	    vp->id, (Addr_t)nextScan - vp->oldTop,
 	    vp->allocPtr - vp->nurseryBase - WORD_SZB,
 	    (int)avail);
-    }
+   // }
 #endif /* !NDEBUG */
 
     LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);

@@ -122,9 +122,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     Word_t	*globScan = (Word_t *)(vp->globNextW - WORD_SZB);
     MemChunk_t	*scanChunk = vp->globAllocChunk;
 
-    LogMajorGCStart (vp, (uint32_t)(top - vp->oldTop), (uint32_t)oldSzB);
-    printf("Staring Major GC\n");
-	
+    LogMajorGCStart (vp, (uint32_t)(top - vp->oldTop), (uint32_t)oldSzB);	
 	
 #ifndef NO_GC_STATS
     vp->nMajorGCs++;
