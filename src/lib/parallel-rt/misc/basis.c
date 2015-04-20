@@ -848,20 +848,19 @@ void DebugThrow (VProc_t *vp, char *loc)
 #endif
 }
 
-char * PrintTime (double t)
+void PrintTime (double t, int i)
 {
     char buffer [50];
     if (t < 0.001)
-	sprintf (buffer, "   0.0  ");
+	printf ("VProc[%d] timer =   0.0  \n", i);
     else if (t < 1.0)
-	sprintf (buffer, "   %5.3f", t);
+	printf ("VProc[%d] timer =   %5.3f\n", i, t);
     else if (t < 10.0)
-	sprintf (buffer, "  %5.2f ", t);
+	printf ("VProc[%d] timer =   %5.2f\n", i, t);
     else if (t < 100.0)
-	sprintf (buffer, " %5.1f  ", t);
+	printf ("VProc[%d] timer =   %5.1f\n", i, t);
     else
-	sprintf (buffer, " %3.0f  ", t);
-	return buffer;
+	printf ("VProc[%d] timer =   %3.0f\n", i, t);
 }
 
 
@@ -877,8 +876,7 @@ void GenTimerPrint(){
     for (int i = 0;  i < NumVProcs;  i++) {
 	    VProc_t *vp = VProcs[i];
 	    double time = TIMER_GetTime (&(vp->genTimer));
-	    char * timeStr = PrintTime(time);
-	    printf("VProc[%d] timer = %s\n", i, timeStr);
+	    PrintTime(time, i);
 	}
 }
 
