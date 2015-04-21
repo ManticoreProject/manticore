@@ -1,6 +1,6 @@
 (* spin-lock.def
  *
- * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2015 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
  * Spin lock operations. The lock variable can be part of an arbitrary type, e.g., suppose
@@ -20,19 +20,27 @@
 #ifndef _SPIN_LOCK_DEF_
 #define _SPIN_LOCK_DEF_
 
-#define SPIN_LOCK(name, OFFSET)					\
-	fun spinLp () : () = if I32isSet(ADDR_OF(OFFSET, name))	\
-	       then						\
-		do Pause()					\
-		apply spinLp ()					\
-	      else if I32TAS(ADDR_OF(OFFSET, name))		\
-		then                                            \			     
-		  do Pause()					\
-                  apply spinLp ()				\
-		else return ()					\
-	do apply spinLp ()
+#define SPIN_LOCK(name, OFFSET)												\
+	fun spinLp (i : long) : () =											\
+		fun doBackoff (i : long) : () =										\
+			if I64Gt(i, 0 : long) then										\
+				do Pause()													\
+				apply doBackoff (I64Sub(i, 1 : long))						\
+			else															\
+				return ()													\
+																			\
+	 if I32isSet(ADDR_OF(OFFSET, name))										\
+		   then																\
+		do Pause()															\
+		apply spinLp (i)													\
+		  else if I32TAS(ADDR_OF(OFFSET, name))								\
+		then																\
+		  	do apply doBackoff (i)											\
+			apply spinLp (I64Add(i, i))										\
+		else return ()														\
+	do apply spinLp (1 : long)
 
-#define SPIN_UNLOCK(name, OFFSET)				\
+#define SPIN_UNLOCK(name, OFFSET)											\
 	do UPDATE(OFFSET, name, 0)
 
 #endif /*! _SPIN_LOCK_DEF_ */
