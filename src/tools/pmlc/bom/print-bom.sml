@@ -91,6 +91,23 @@ structure PrintBOM : sig
 			(* end case *);
                         (indent (i+1); pr "end\n")
 		      end
+		  | B.E_Typecase(tv, cases, dflt) => let
+		      fun prCase ((ty, e), isFirst) = (
+			    indent i;
+			    if isFirst then pr " of " else pr "  | ";
+			    pr (BOMTyUtil.toString ty);
+			    pr " =>\n";
+			    prExp (i+2, e);
+			    false)
+		      in
+			prl ["typecase ", BOMTyUtil.tyvarToString tv, "\n"];
+			ignore (List.foldl prCase true cases);
+			case dflt
+			 of NONE => ()
+			  | SOME e => (indent(i+1); pr "default:\n"; prExp(i+2, e))
+			(* end case *);
+                        (indent (i+1); pr "end\n")
+		      end
 		  | B.E_Apply(f, args, []) => (
 		      prl["apply ", varUseToString f, " ("];
 		      prList' varUseToString args;

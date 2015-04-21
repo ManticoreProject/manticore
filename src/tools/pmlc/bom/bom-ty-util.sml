@@ -13,6 +13,7 @@ structure BOMTyUtil : sig
     val match : (BOMTy.ty * BOMTy.ty) -> bool
     val validCast : (BOMTy.ty * BOMTy.ty) -> bool
 
+    val tyvarToString : BOMTy.ty_var -> string
     val toString : BOMTy.ty -> string
 
   (* view a type as a function type *)
@@ -94,6 +95,8 @@ structure BOMTyUtil : sig
       | validCast (_, BTy.T_Any) = true
       | validCast (ty1, ty2) = match (ty1, ty2)
 
+    fun tyvarToString (BTy.TV id) = "'tv" ^ Stamp.toString id
+
     fun toString ty = let
 	  fun xs2l toS (xs, l) = (case xs
 		 of [] => l
@@ -104,7 +107,7 @@ structure BOMTyUtil : sig
 	  fun app2s (tyfn, tys) = concat(tyfn :: "<" :: tys2l (tys, [">"]))
 	  in
 	    case ty
-	     of BTy.T_Param(BTy.TV s) => "'tv" ^ Stamp.toString s
+	     of BTy.T_Param tv => tyvarToString tv
 	      | BTy.T_Raw ty => RawTypes.toString ty
 	      | BTy.T_Con(tyc, []) => BOMTyCon.tycName tyc
 	      | BTy.T_Con(tyc, tys) => app2s(BOMTyCon.tycName tyc, tys)

@@ -295,6 +295,7 @@ structure CheckBOM : sig
 			List.app chk' cases;
 			Option.app (fn e => chkE(cxt, e)) dflt
 		      end
+		  | B.E_Typecase(tv, cases, dflt) => raise Fail "Typecase"
 		  | B.E_Apply(f, args, rets) => (
 		      chkApplyVar (f, "Apply");
 		      case BV.typeOf f
@@ -346,42 +347,28 @@ structure CheckBOM : sig
 		      end
 		(* end case *))
 	  and chkRHS (lhs, rhs) = (case (typesOf lhs, rhs)
-		 of ([ty], B.E_Const(lit, ty')) => let
-		      fun err () = error [
-			      S "literal has bogus type: ", VS lhs, S" = ", 
-			      S(Literal.toString lit), S":", TY ty', NL
-			    ]
-		      in
-		      (* first, check the literal against ty' *)
-			case (lit, ty')
-			 of (Literal.Int _, BTy.T_Raw rty) =>
-			      if RawTypes.isInt rty then () else err()
-			  | (Literal.Float _, BTy.T_Raw rty) =>
-			      if RawTypes.isFloat rty then () else err()
-			  | (Literal.String _, BTy.T_Vector(BTy.T_Raw RawTypes.UInt8)) => ()
-			  | _ => err()
-			(* end case *);
-		      (* then check ty' against ty *)
-			if BTU.equal(ty', ty)
-			  then ()
-			  else error [
-			      S "type mismatch in Const: ",  VS lhs, S " = ", 
-			      S(Literal.toString lit), S ":", TY ty', 
-			      S "; expected ", TY ty, NL
-			    ]
-		      end
-		  | ([ty], B.E_Cast(ty', x)) => (
-		      chkVar (x, "Cast");
-		      if BTU.match(ty', ty)
+		 of (lhsTys, B.E_Prim p) => chkPrim (lhs, lhsTys, p)
+(* FIXME: record allocation *)
+		  | ([ty], B.E_Alloc(allocTy, xs)) => (
+                      chkVars(xs, "Alloc");
+                      if BTU.match (allocTy, ty)
 			then ()
 			else error [
-			    S "type mismatch:", VTYS lhs, S " = (", TY ty', S ")", VTY x, NL
+			    S "type mismatch in: ", VS lhs, S " = Alloc ", VS xs, NL,
+			    S "  lhs type ", TY ty, NL,
+			    S "  rhs type ", TY allocTy, NL
 			  ];
-		      if BTU.validCast(BV.typeOf x, ty')
-			then ()
-			else error [
-			    S "invalid cast:", VTYS lhs, S" = (", TY ty', S ")", VTY x, NL
+		      if (BTU.match(BTy.T_Tuple(typesOf xs), allocTy)
+			orelse BTU.match(BTy.T_Tuple(typesOf xs), allocTy))
+                        then ()
+                        else error [
+			    S "type mismatch in Alloc: ", VS lhs, S " = ", VS xs, NL,
+			    S "  expected ", TY allocTy, NL,
+			    S "  found    ", TYS (typesOf xs), NL
 			  ])
+                  | ([ty], B.E_DCon(BTy.DCon{name, argTy, myTyc, ...}, args)) => (
+                      chkVars(args, name);
+		      checkArgTypes (BTU.match, name ^ vl2s args, argTy, typesOf args))
 		  | ([ty], B.E_Select(i, x)) => (
                       chkVar(x, "Select");
                       case BV.typeOf x
@@ -450,32 +437,22 @@ structure CheckBOM : sig
 			      VTY x, S " is not a tuple/record ", VS lhs, S " = &(", V x, S ")", NL
 			    ]
 		      (* end case *))
-(* FIXME: record allocation *)
-		  | ([ty], B.E_Alloc(allocTy, xs)) => (
-                      chkVars(xs, "Alloc");
-                      if BTU.match (allocTy, ty)
+		  | ([ty], B.E_Cast(ty', x)) => (
+		      chkVar (x, "Cast");
+		      if BTU.match(ty', ty)
 			then ()
 			else error [
-			    S "type mismatch in: ", VS lhs, S " = Alloc ", VS xs, NL,
-			    S "  lhs type ", TY ty, NL,
-			    S "  rhs type ", TY allocTy, NL
+			    S "type mismatch:", VTYS lhs, S " = (", TY ty', S ")", VTY x, NL
 			  ];
-		      if (BTU.match(BTy.T_Tuple(typesOf xs), allocTy)
-			orelse BTU.match(BTy.T_Tuple(typesOf xs), allocTy))
-                        then ()
-                        else error [
-			    S "type mismatch in Alloc: ", VS lhs, S " = ", VS xs, NL,
-			    S "  expected ", TY allocTy, NL,
-			    S "  found    ", TYS (typesOf xs), NL
+		      if BTU.validCast(BV.typeOf x, ty')
+			then ()
+			else error [
+			    S "invalid cast:", VTYS lhs, S" = (", TY ty', S ")", VTY x, NL
 			  ])
 		  | ([ty], B.E_Promote y) => (
 		      chkVar (y, "Promote");
 		      if BTU.equal(ty, BV.typeOf y) orelse BTU.equal(ty, BTy.T_Any) then ()
 			else error [S "type mismatch in Promote: ", VS lhs, S " = ", V y, NL])
-		  | (lhsTys, B.E_Prim p) => chkPrim (lhs, lhsTys, p)
-                  | ([ty], B.E_DCon(BTy.DCon{name, argTy, myTyc, ...}, args)) => (
-                      chkVars(args, name);
-		      checkArgTypes (BTU.match, name ^ vl2s args, argTy, typesOf args))
 		  | ([ty], B.E_CCall(cf, args)) => (
 (* FIXME: check that the return type matches *)
 		      chkApplyVar (cf, "CCall"); 
@@ -512,6 +489,30 @@ structure CheckBOM : sig
 			    S "type mismatch in VPAddr: ", VS lhs, S " = vpaddr(", 
 			    S(IntInf.toString n), S ", ", V vp, S ")", NL
 			  ])
+		  | ([ty], B.E_Const(lit, ty')) => let
+		      fun err () = error [
+			      S "literal has bogus type: ", VS lhs, S" = ", 
+			      S(Literal.toString lit), S":", TY ty', NL
+			    ]
+		      in
+		      (* first, check the literal against ty' *)
+			case (lit, ty')
+			 of (Literal.Int _, BTy.T_Raw rty) =>
+			      if RawTypes.isInt rty then () else err()
+			  | (Literal.Float _, BTy.T_Raw rty) =>
+			      if RawTypes.isFloat rty then () else err()
+			  | (Literal.String _, BTy.T_Vector(BTy.T_Raw RawTypes.UInt8)) => ()
+			  | _ => err()
+			(* end case *);
+		      (* then check ty' against ty *)
+			if BTU.equal(ty', ty)
+			  then ()
+			  else error [
+			      S "type mismatch in Const: ",  VS lhs, S " = ", 
+			      S(Literal.toString lit), S ":", TY ty', 
+			      S "; expected ", TY ty, NL
+			    ]
+		      end
 		  | _ => error[S "bogus rhs for ", VS lhs, NL]
 		(* end case *))
 	  and chkPrim (lhs, lhsTys, p) = let

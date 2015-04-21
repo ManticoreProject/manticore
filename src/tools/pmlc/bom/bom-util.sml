@@ -84,37 +84,37 @@ structure BOMUtil : sig
       | extend' (s, _, _) = raise Fail "BOMUtil.extend': unequal lists"
 
   (* return the variables used in a RHS term *)
-    fun varsOfRHS (B.E_Const _) = []
-      | varsOfRHS (B.E_Cast(_, x)) = [x]
+    fun varsOfRHS (B.E_Prim p) = PrimUtil.varsOf p
+      | varsOfRHS (B.E_Alloc(_, args)) = args
+      | varsOfRHS (B.E_DCon(_, args)) = args
       | varsOfRHS (B.E_Select(_, x)) = [x]
       | varsOfRHS (B.E_Update(_, x, y)) = [x, y]
       | varsOfRHS (B.E_AddrOf(_, x)) = [x]
-      | varsOfRHS (B.E_Alloc(_, args)) = args
+      | varsOfRHS (B.E_Cast(_, x)) = [x]
       | varsOfRHS (B.E_Promote x) = [x]
-      | varsOfRHS (B.E_Prim p) = PrimUtil.varsOf p
-      | varsOfRHS (B.E_DCon(_, args)) = args
       | varsOfRHS (B.E_CCall(f, args)) = f :: args
       | varsOfRHS (B.E_HostVProc) = []
       | varsOfRHS (B.E_VPLoad(n, x)) = [x]
       | varsOfRHS (B.E_VPStore(n, x, y)) = [x, y]
       | varsOfRHS (B.E_VPAddr(n, x)) = [x]
+      | varsOfRHS (B.E_Const _) = []
 
   (* apply a substitution to a RHS term *)
     fun substRHS (s, rhs) = (case rhs
-	   of B.E_Const _ => rhs
-	    | B.E_Cast(ty, x) => B.E_Cast(ty, subst s x)
+	   of B.E_Prim p => B.E_Prim(PrimUtil.map (subst s) p)
+	    | B.E_Alloc(ty, args) => B.E_Alloc(ty, subst'(s, args))
+	    | B.E_DCon(dc, args) => B.E_DCon(dc, subst'(s, args))
 	    | B.E_Select(i, x) => B.E_Select(i, subst s x)
 	    | B.E_Update(i, x, y) => B.E_Update(i, subst s x, subst s y)
 	    | B.E_AddrOf(i, x) => B.E_AddrOf(i, subst s x)
-	    | B.E_Alloc(ty, args) => B.E_Alloc(ty, subst'(s, args))
+	    | B.E_Cast(ty, x) => B.E_Cast(ty, subst s x)
 	    | B.E_Promote x => B.E_Promote(subst s x)
-	    | B.E_Prim p => B.E_Prim(PrimUtil.map (subst s) p)
-	    | B.E_DCon(dc, args) => B.E_DCon(dc, subst'(s, args))
 	    | B.E_CCall(f, args) => B.E_CCall(subst s f, subst'(s, args))
 	    | B.E_HostVProc => rhs
 	    | B.E_VPLoad(n, x) => B.E_VPLoad(n, subst s x)
 	    | B.E_VPStore(n, x, y) => B.E_VPStore(n, subst s x, subst s y)
 	    | B.E_VPAddr(n, x) => B.E_VPAddr(n, subst s x)
+	    | B.E_Const _ => rhs
 	  (* end case *))
 
   (* apply a substitution to an expression *)
@@ -129,6 +129,10 @@ structure BOMUtil : sig
 		  | B.E_Case(x, cases, dflt) =>
 		      B.mkCase(subst s x,
 			List.map (fn (p, e) => (p, substE e)) cases,
+			Option.map substE dflt)
+		  | B.E_Typecase(tv, cases, dflt) =>
+		      B.mkTypecase(tv,
+			List.map (fn (ty, e) => (ty, substE e)) cases,
 			Option.map substE dflt)
 		  | B.E_Apply(f, args, rets) =>
 		      B.mkApply(subst s f, subst'(s, args), subst'(s, rets))
@@ -239,6 +243,10 @@ structure BOMUtil : sig
 		    List.map copyCase cases,
 		    Option.map (fn e => copyExp (s, e)) dflt)
 		end
+	    | B.E_Typecase(tv, cases, dflt) =>
+		B.mkTypecase(tv,
+		  List.map (fn (ty, e) => (ty, copyExp(s, e))) cases,
+		  Option.map (fn e => copyExp (s, e)) dflt)
 	    | B.E_Apply(f, args, rets) =>
 		B.mkApply(subst s f, subst'(s, args), subst'(s, rets))
 	    | B.E_Throw(k, args) => B.mkThrow(subst s k, subst'(s, args))
@@ -298,18 +306,17 @@ structure BOMUtil : sig
 
     val condArgTys = PTy.condArgTys
 
-    fun typeOfRHS (B.E_Const(_, ty)) = [ty]
-      | typeOfRHS (B.E_Cast(ty, _)) = [ty]
-      | typeOfRHS (B.E_Select(i, x)) = [BOMTyUtil.select(BV.typeOf x, i)]
-      | typeOfRHS (B.E_Update _) = []
-      | typeOfRHS (B.E_AddrOf(i, x)) = [BTy.T_Addr(BOMTyUtil.select(BV.typeOf x, i))]
-      | typeOfRHS (B.E_Alloc(ty, _)) = [ty]
-      | typeOfRHS (B.E_Promote x) = [BV.typeOf x]
-      | typeOfRHS (B.E_Prim p) = (case PTy.typeOf p
+    fun typeOfRHS (B.E_Prim p) = (case PTy.typeOf p
 	   of BTy.T_Tuple[] => [] (* unitTy *)
 	    | ty => [ty]
 	  (* end case *))
+      | typeOfRHS (B.E_Alloc(ty, _)) = [ty]
       | typeOfRHS (B.E_DCon(dc, _)) = [BOMTyUtil.typeOfDCon dc]
+      | typeOfRHS (B.E_Select(i, x)) = [BOMTyUtil.select(BV.typeOf x, i)]
+      | typeOfRHS (B.E_Update _) = []
+      | typeOfRHS (B.E_AddrOf(i, x)) = [BTy.T_Addr(BOMTyUtil.select(BV.typeOf x, i))]
+      | typeOfRHS (B.E_Cast(ty, _)) = [ty]
+      | typeOfRHS (B.E_Promote x) = [BV.typeOf x]
       | typeOfRHS (B.E_CCall(cf, _)) = let
 	  val BTy.T_CFun(CFunctions.CProto(cty, _, _)) = BV.typeOf cf
 	  in
@@ -319,6 +326,7 @@ structure BOMUtil : sig
       | typeOfRHS (B.E_VPLoad _) = [BTy.T_Any]
       | typeOfRHS (B.E_VPStore _) = []
       | typeOfRHS (B.E_VPAddr _) = [BTy.T_Addr BTy.T_Any]
+      | typeOfRHS (B.E_Const(_, ty)) = [ty]
 
   (* rawInt : int -> B.rhs *)
     fun rawInt(n) = B.E_Const(Literal.Int (IntInf.fromInt n), BTy.T_Raw BTy.Int32)
@@ -332,6 +340,7 @@ structure BOMUtil : sig
 	    | (B.E_Case(_, [], SOME dflt)) => typeOfExp dflt
 	    | (B.E_Case(_, (_, e)::_, _)) => typeOfExp e
 	    | (B.E_Case _) => raise Fail "bogus empty case"
+	    | (B.E_Typecase _) => raise Fail "Typecase"
 	    | (B.E_Apply(f, _, _)) => let
 		val BTy.T_Fun(_, _, tys) = BV.typeOf f
 		in
@@ -354,6 +363,7 @@ structure BOMUtil : sig
         concat["Lam(", v2s f,
                " [", vl2s params, " @ ", vl2s exh, "]",
                expToString body, ")"]
+
     and expToString (B.E_Pt(_, t)) = (case t
 	   of (B.E_Let(vars, e1, e2)) => concat["Let(", vl2s vars, " = ", expToString e1, " in ", expToString e2, ")"]
 	    | (B.E_Stmt(vars, rhs, e)) => concat["Stmt(", vl2s vars, " = ", rhsToString rhs, " in ", expToString e, ")"]
@@ -361,24 +371,26 @@ structure BOMUtil : sig
 	    | (B.E_Cont(lam, e)) => concat["Cont(", lamToString lam, " in ", expToString e, ")"]
 	    | (B.E_If(c, e1, e2)) => concat["If(", CondUtil.nameOf c, "[", vl2s (CondUtil.varsOf c),"] then ", expToString e1, " else ", expToString e2, ")"]
 	    | (B.E_Case(v, pats, dflt)) => "Case(<undone>)"
+	    | (B.E_Typecase(v, pats, dflt)) => "Typecase(<undone>)"
 	    | (B.E_Apply(f, args, rets)) => concat["Apply(", v2s f, "[", vl2s args, " @ ", vl2s rets, "])"]
 	    | (B.E_Throw (f, args)) => concat["Throw(", v2s f, "[", vl2s args, "])"]
 	    | (B.E_Ret xs) => concat["Ret(", vl2s xs, ")"]
 	    | (B.E_HLOp(oper, v1s, v2s)) => "HLOP(<undone>)"
 	  (* end case *))
-    and rhsToString (B.E_Const (lit, ty)) = concat["Const(", Literal.toString lit, ", ", BOMTyUtil.toString ty, ")"]
-      | rhsToString (B.E_Cast (ty, var)) = concat["Cast(", BOMTyUtil.toString ty, ", ", v2s var, ")"]
+
+    and rhsToString (B.E_Prim p) = PrimUtil.fmt v2s p
+      | rhsToString (B.E_Alloc(ty,vars)) = concat["Alloc(", BOMTyUtil.toString ty, ", ", vl2s vars, ")"]
+      | rhsToString (B.E_DCon (d, vars)) = concat["DataCon(", BOMTyUtil.toString (BOMTyUtil.typeOfDCon d), ", ", String.concatWith "," (List.map v2s vars), ")"]
       | rhsToString (B.E_Select (i, var)) = concat["Select(", Int.toString i, ", ", v2s var, ")"]
       | rhsToString (B.E_Update (i, v1, v2)) = concat["Update(", Int.toString i, ", ", v2s v1, ", ", v2s v2, ")"]
       | rhsToString (B.E_AddrOf (i, var)) = concat["AddrOf(", Int.toString i, ", ", v2s var, ")"]
-      | rhsToString (B.E_Alloc(ty,vars)) = concat["Alloc(", BOMTyUtil.toString ty, ", ", vl2s vars, ")"]
+      | rhsToString (B.E_Cast (ty, var)) = concat["Cast(", BOMTyUtil.toString ty, ", ", v2s var, ")"]
       | rhsToString (B.E_Promote v) = concat["Promote(", v2s v, ")"]
-      | rhsToString (B.E_Prim p) = PrimUtil.fmt v2s p
-      | rhsToString (B.E_DCon (d, vars)) = concat["DataCon(", BOMTyUtil.toString (BOMTyUtil.typeOfDCon d), ", ", String.concatWith "," (List.map v2s vars), ")"]
       | rhsToString (B.E_CCall (f, args)) = concat["CCall(", v2s f, ", [", vl2s args, "])"]
       | rhsToString (B.E_HostVProc) = "HostVProc"
       | rhsToString (B.E_VPLoad (n, x)) = concat["VPLoad(", IntInf.toString n, ", ", v2s x, ")"]
       | rhsToString (B.E_VPStore (n, x, y)) = concat["VPStore(", IntInf.toString n, v2s x,  ", ", v2s y, ")"]
       | rhsToString (B.E_VPAddr (n, x)) = concat["VPAddr(", IntInf.toString n, ", ", v2s x, ")"]
+      | rhsToString (B.E_Const (lit, ty)) = concat["Const(", Literal.toString lit, ", ", BOMTyUtil.toString ty, ")"]
 
   end

@@ -168,17 +168,15 @@ structure BOM =
     fun mkFun (fbs, e) = (
 	  List.app setLambdaKind fbs;
 	  mkExp(E_Fun(fbs, e)))
-    end
+    end (* local *)
 
     fun mkCont (lambda as FB{f, params, ...},e) = (
           Var.setKind (f, VK_Cont lambda);
 	  List.app (fn x=> Var.setKind(x, VK_Param)) params;
 	  mkExp(E_Cont(lambda, e)))
     fun mkIf arg = mkExp(E_If arg)
-
-  (* mkCase : var * (pat * exp) list * exp option -> exp *)
     fun mkCase arg = mkExp(E_Case arg)
-
+    fun mkTypecase arg = mkExp(E_Typecase arg)
     fun mkApply arg = mkExp(E_Apply arg)
     fun mkThrow arg = mkExp(E_Throw arg)
     fun mkRet arg = mkExp(E_Ret arg)

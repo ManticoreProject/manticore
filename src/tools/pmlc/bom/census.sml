@@ -58,6 +58,9 @@ structure Census : sig
 		  List.app doCase cases;
 		  Option.app doE dflt
 		end
+	    | B.E_Typecase(_, cases, dflt) => (
+		List.app (fn (_, e) => doE e) cases;
+		Option.app doE dflt)
 	    | B.E_Apply(f, xs, ys) => (appUse f; List.app inc xs; List.app inc ys)
 	    | B.E_Throw(k, xs) => (appUse k; List.app inc xs)
 	    | B.E_Ret xs => List.app inc xs
@@ -110,6 +113,9 @@ structure Census : sig
 		      dec x;
 		      List.app (fn (_, e) => del e) cases;
 		      Option.app del dflt)
+		  | B.E_Typecase(_, cases, dflt) => (
+		      List.app (fn (_, e) => del e) cases;
+		      Option.app del dflt)
 		  | B.E_Apply(f, args, rets) => (decApp f; dec' args; dec' rets)
 		  | B.E_Throw(k, args) => (decApp k; dec' args)
 		  | B.E_Ret xs => dec' xs
@@ -139,6 +145,9 @@ structure Census : sig
 		  | B.E_If(cond, e1, e2) => (CondUtil.app dec cond; del e1; del e2)
 		  | B.E_Case(x, cases, dflt) => (
 		      dec x;
+		      List.app (fn (_, e) => del e) cases;
+		      Option.app del dflt)
+		  | B.E_Typecase(_, cases, dflt) => (
 		      List.app (fn (_, e) => del e) cases;
 		      Option.app del dflt)
 		  | B.E_Apply(f, args, rets) => (decApp f; dec' args; dec' rets)
