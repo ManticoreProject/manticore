@@ -116,6 +116,7 @@ struct
                             else do Pause() apply getCurrentLoop()
                         apply getCurrentLoop()
                      let numK : int = RS.@getNumK(readSet)
+
                      if I32Lt(numK, READ_SET_BOUND)
                      then
                         let captureCount : int = FLS.@get-counter()
@@ -123,6 +124,8 @@ struct
                         then 
                             let newRS : RS.read_set = RS.@insert-with-k(tv, retK, writeSet, readSet / exh)
                             do FLS.@set-key(READ_SET, newRS / exh)
+                            let freq : int = FLS.@get-counter2()
+                            do FLS.@set-counter(freq)
                             STOP_TIMER
                             return(current)
                         else

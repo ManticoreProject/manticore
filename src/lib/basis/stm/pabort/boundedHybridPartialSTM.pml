@@ -223,7 +223,6 @@ struct
 
 
         define @get(tv:tvar / exh:exh) : any = 
-            START_TIMER
             let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do if(#0(in_trans))
                then return()
@@ -244,7 +243,7 @@ struct
             cont retK(x:any) = return(x)
             let localRes : Option.option = apply chkLog(writeSet)
             case localRes
-                of Option.SOME(v:any) => STOP_TIMER return(v)
+                of Option.SOME(v:any) => return(v)
                  | Option.NONE => 
                      let current : any = 
                         fun getCurrentLoop() : any = 
@@ -268,7 +267,6 @@ struct
                                let n : int = I32Add(#0(readSet), 1)  (*update number of conts*)
                                let newRS : [int, item, item] = alloc(n, newSL, newSL)
                                do FLS.@set-key(READ_SET, newRS / exh)
-                               STOP_TIMER
                                return(current)
                           else let n : int = #0(readSet)          (*don't capture cont*)
                                do FLS.@set-counter(I32Sub(captureCount, 1))
@@ -276,7 +274,6 @@ struct
                                let newSL : item = WithoutK(tv, sl)
                                let newRS : [int,item,item] = alloc(n, newSL, nextCont)
                                do FLS.@set-key(READ_SET, newRS / exh)
-                               STOP_TIMER
                                return(current)
                      else fun dropKs(l:item, n:int) : int =   (*drop every other continuation*)
                               case l
@@ -304,7 +301,6 @@ struct
                           do FLS.@set-counter(I32Sub(newFreq, 1))
                           do FLS.@set-counter2(newFreq)
                           do FLS.@set-key(READ_SET, newRS / exh)
-                          STOP_TIMER
                           return(current)
             end
         ;
