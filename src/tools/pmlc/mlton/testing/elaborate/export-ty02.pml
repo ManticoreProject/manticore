@@ -5,4 +5,4 @@ _module myId _prim (
 )
 
 _type myInt = _prim(int32)
-_val myFun = _prim (myFun)
+_val myFun : myInt = _prim (myFun)
