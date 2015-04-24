@@ -10,6 +10,7 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
   structure MLScheme = Env.TypeEnv.Scheme
   structure MLTycon = Env.TypeEnv.Tycon
   structure MLKind = Env.TypeStr.Kind
+  structure CoreML = Env.CoreML
   structure BOMExport = Ast.BOMExport
 
   (* structure TypeOps = Env.TypeEnv.Type.Ops *)
@@ -54,8 +55,24 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
           in
             (bomEnv, mlTyEnv)
           end
-      | BOMExport.Val (valId, mlTy, bomTy) =>
-          raise Fail "Not implemented."
+      | BOMExport.Val (valId, mlTy, bomValId) =>
+          let
+            (* FIXME: error handling *)
+            val mlTy' = ElaborateCore.elaborateType (mlTy,
+              ElaborateCore.Lookup.fromEnv env)
+            val (SOME bomVal') = BOMEnv.ValEnv.lookup (bomEnv,
+              CoreBOM.ValId.fromBOMId bomValId)
+            (* FIXME: handle non-primitive types *)
+            val (SOME tyOfVal) = BOMEnv.PrimTyEnv.lookupBOM (CoreBOM.Val.typeOf
+               bomVal')
+            val True = MLType.canUnify (mlTy', tyOfVal)
+            val mlVar = Ast.Vid.toVar valId
+            (* FIXME: rebind? *)
+            val _ = Env.extendVar (env, mlVar, ElaborateCore.Var.fromAst mlVar,
+              MLScheme.fromType mlTy', {isRebind = false})
+          in
+            (bomEnv, mlTyEnv)
+          end
       (* FIXME: placeholder *)
         (* (bomEnv, mlTyEnv) *)
     end

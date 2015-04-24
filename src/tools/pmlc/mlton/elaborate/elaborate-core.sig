@@ -29,6 +29,14 @@ signature ELABORATE_CORE =
         type t
         val fromEnv: Env.t -> t
       end
+
+      structure Var : sig
+        type t
+
+        val fromAst: Ast.Var.t -> t
+        include VAR
+      end sharing type Var.t = CoreML.Var.t
+
       val elaborateType: Ast.Type.t * Lookup.t -> Env.Type.t
 
       (* Elaborate dec in env, returning Core ML decs. *)

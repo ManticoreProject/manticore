@@ -52,18 +52,18 @@ signature AST_BOM =
 	  where type obj = t
       end
 
-    structure BOMValueId : sig
-	type t
-	datatype node
-	  = LongId of LongId.t
-	  | HLOpQId of HLOpQId.t
+  (*   structure BOMValueId : sig *)
+	(* type t *)
+	(* datatype node *)
+	(*   = LongId of LongId.t *)
+	(*   | HLOpQId of HLOpQId.t *)
 
-	val layout : t -> Layout.t
+	(* val layout : t -> Layout.t *)
 
-	include WRAPPED
-	  sharing type node' = node
-	  sharing type obj = t
-      end
+	(* include WRAPPED *)
+	(*   sharing type node' = node *)
+	(*   sharing type obj = t *)
+  (*     end *)
 
     structure BOMType : sig
 	  type t

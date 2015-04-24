@@ -116,7 +116,7 @@ signature AST_MODULES =
           datatype node =
             Datatype of Tyvar.t vector * Tycon.t * BOM.LongId.t * BOM.BOMType.t list
           | TypBind of Tyvar.t vector * Tycon.t * BOM.BOMType.t
-          | Val of Vid.t * Type.t * BOM.BOMValueId.t
+          | Val of Vid.t * Type.t * BOM.BOMId.t
 
           include WRAPPED
             sharing type node' = node
