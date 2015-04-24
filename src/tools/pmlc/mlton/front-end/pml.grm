@@ -78,8 +78,8 @@ BOMExportDecNode
     => (BOMExport.Datatype (tyvarseq, tycon, BOMLongId, Option.getOpt (TyArgs, [])))
   | "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
     => (BOMExport.TypBind (tyvars, tycon, BOMType))
-  | "_val" "op"? MLValueId ":" ty "=" "_prim" "(" BOMId ")"
-    => (BOMExport.Val (MLValueId, ty, BOMId))
+  | "_val" "op"? vid ":" ty "=" "_prim" "(" BOMId ")"
+    => (BOMExport.Val (vid, ty, BOMId))
   ;
 
 
@@ -90,8 +90,8 @@ PrimConDef
 
 MLValueId
         : SYMID => (Vid.fromSymbol (Symbol.fromString SYMID, posToReg FULL_SPAN))
-        | ID => (Vid.fromSymbol (Symbol.fromString ID, posToReg FULL_SPAN))
-        | "*" => (Vid.fromSymbol (Symbol.fromString "*", posToReg FULL_SPAN))
+        | vid
+        (* | "*" => (Vid.fromSymbol (Symbol.fromString "*", posToReg FULL_SPAN)) *)
         ;
 
 (* BOMValueId *)
