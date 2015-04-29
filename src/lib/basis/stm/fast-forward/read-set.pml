@@ -33,13 +33,29 @@ struct
 #define BUMP_KCOUNT
 #define PRINT_KCOUNT 
 #endif
-
     
+#define START_TIMER let vp : vproc = host_vproc do ccall GenTimerStart(vp)
+#define STOP_TIMER let vp : vproc = host_vproc do ccall GenTimerStop(vp)
+   
+
+
 	(*Careful, if this changes, we could possibly be indexing a "WithoutK" item 
      *incorrectly when filtering the read set*)
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a
                      | WithoutK of 'a * 'a | Abort of unit 
 
+
+    _primcode(
+        define @allocPrintFun(x:unit / exh:exh) : any = 
+            fun f(x:any / exh:exh) : unit = return(UNIT)
+            let box : ![fun(any / exh -> unit)] = alloc(f)
+            let box : ![fun(any / exh -> unit)] = promote(box)
+            return(box);
+    )
+    
+    val allocPrintFun : unit -> 'a = _prim(@allocPrintFun)
+    val printFunPtr = allocPrintFun()
+    fun getPrintFunPtr() = printFunPtr
 
     _primcode(
 
@@ -60,10 +76,30 @@ struct
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
 
+        define @getPrintFunPtr = getPrintFunPtr;
+
+        define @registerPrintFun(f : fun(any / exh -> unit) / exh:exh) : unit = 
+            let funBox : ![fun(any / exh -> unit)] = @getPrintFunPtr(UNIT / exh)
+            let f : fun(any / exh -> unit) = promote(f)
+            do #0(funBox) := f
+            return(UNIT);
+
     	define @new() : read_set = 
-    		let rs : read_set = alloc(nil, NilItem, NilItem, 0)
+            let dummyTRef : ![any,long,long] = alloc(enum(0), 0:long, 0:long)
+            let dummy : item = WithoutK(dummyTRef, NilItem)
+    		let rs : read_set = alloc(CONS(dummy, nil), dummy, NilItem, 0)
     		return(rs)
     	;
+
+        define inline @logStat(x:any / exh:exh) : () = 
+#ifdef COLLECT_STATS                            
+            let stats : list = FLS.@get-key(STATS_KEY / exh)
+            let stats : list = CONS(x, stats)
+            FLS.@set-key(STATS_KEY, stats / exh)
+#else
+            return()
+#endif          
+        ;
 
         define inline @abort(readSet : read_set, stamp : ![stamp]/ exh:exh) : () = 
             case #2(readSet)
@@ -78,6 +114,7 @@ struct
                             do FLS.@set-counter(captureFreq)
                             do FLS.@set-key(READ_SET, readSet / exh)
                             BUMP_PABORT
+                            do @logStat(alloc(#3(readSet)) / exh)
                             throw abortK(current)
                         else
                             let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
@@ -91,10 +128,11 @@ struct
                  | _ => throw exh(Fail(@"abort: impossible!\n"))
             end;
 
-        define @validate(readSet : read_set, stamp : ![stamp], newStamp : stamp, unlock : fun(unit / exh -> unit) / exh:exh) : () = 
+        define @validate(readSet : read_set, stamp : ![stamp], newStamp : stamp/ exh:exh) : () = 
             let rev : List.list = PrimList.@rev(#0(readSet) / exh)
             let rawStamp : stamp = #0(stamp)
-            fun validateLoop(i : item, rest:List.list, checkpoint : item, newStamp : stamp, current : List.list, count:int) : () = 
+            let count : ![int] = alloc(0)
+            fun validateLoop(i : item, rest:List.list, checkpoint : item, newStamp : stamp, current : List.list) : () = 
                 case i
                    of WithK(tv:tvar, next:item, ws:item, k:cont(any), _:item) =>
                         let casted : mutWithK = (mutWithK) i
@@ -104,33 +142,26 @@ struct
                                 if I64Lt(#2(tv), rawStamp)
                                 then return(true)
                                 else return(false)
-                            else 
-                                if I64Eq(#1(tv), rawStamp)
-                                then
-                                    if I64Lt(#2(tv), rawStamp)
-                                    then return(true)
-                                    else return(false)
-                                else return(false)
+                            else return(false)
                         if(valid)
                         then
                             if Equal(k, enum(0))
                             then
-                                apply validateLoop(next, rest, checkpoint, newStamp, current, count)
+                                apply validateLoop(next, rest, checkpoint, newStamp, current)
                             else
-                                apply validateLoop(next, rest, i, newStamp, current, I32Add(count, 1))
+                                do #0(count) := I32Add(#0(count), 1)
+                                apply validateLoop(next, rest, i, newStamp, current)
                         else
                             if Equal(k, enum(0))
                             then 
-                                let _ : unit = apply unlock(UNIT / exh)
                                 do #2(casted) := NilItem
                                 do #0(stamp) := newStamp
-                                let newRS : read_set = alloc(current, checkpoint, checkpoint, count)
+                                let newRS : read_set = alloc(current, checkpoint, checkpoint, #0(count))
                                 @abort(newRS, stamp / exh)
                             else 
-                                let _ : unit = apply unlock(UNIT / exh)
                                 do #2(casted) := NilItem
                                 do #0(stamp) := newStamp
-                                let newRS : read_set = alloc(current, i, i, I32Add(count, 1))
+                                let newRS : read_set = alloc(current, i, i, I32Add(#0(count), 1))
                                 @abort(newRS, stamp / exh)
                     | WithoutK(tv:tvar, next:item) =>
                         let casted : ![any, any, item] = (![any,any,item]) i
@@ -140,28 +171,71 @@ struct
                                 if I64Lt(#2(tv), rawStamp)
                                 then return(true)
                                 else return(false)
-                            else 
-                                if I64Eq(#1(tv), rawStamp)
-                                then
-                                    if I64Lt(#2(tv), rawStamp)
-                                    then return(true)
-                                    else return(false)
-                                else return(false)
+                            else return(false)
                         if(valid)
-                        then apply validateLoop(next, rest, checkpoint, newStamp, current, count)
+                        then apply validateLoop(next, rest, checkpoint, newStamp, current)
+                        else 
+                            do #2(casted) := NilItem
+                            do #0(stamp) := newStamp
+                            let newRS : read_set = alloc(current, checkpoint, checkpoint, #0(count))
+                            @abort(newRS, stamp / exh)
+                    | NilItem => 
+                        case rest
+                           of CONS(hd:item, tl:List.list) => apply validateLoop(hd, tl, checkpoint, newStamp, CONS(hd, current))
+                            | nil => return()
+                        end
+                end
+            do apply validateLoop(NilItem, rev, NilItem, newStamp, nil)
+            return()
+        ;
+
+        define @validate-commit(readSet : read_set, stamp : ![stamp], newStamp : stamp, unlock : fun(unit / exh -> unit) / exh:exh) : () = 
+            let rev : List.list = PrimList.@rev(#0(readSet) / exh)
+            let rawStamp : stamp = #0(stamp)
+            let count : ![int] = alloc(0)
+            fun validateLoop(i : item, rest:List.list, checkpoint : item, newStamp : stamp, current : List.list) : () = 
+                case i
+                   of WithK(tv:tvar, next:item, ws:item, k:cont(any), _:item) =>
+                        let casted : mutWithK = (mutWithK) i
+                        if I64Lt(#2(tv), rawStamp)
+                        then
+                            if Equal(k, enum(0))
+                            then
+                                apply validateLoop(next, rest, checkpoint, newStamp, current)
+                            else
+                                do #0(count) := I32Add(#0(count), 1)
+                                apply validateLoop(next, rest, i, newStamp, current)
+                        else
+                            if Equal(k, enum(0))
+                            then 
+                                let _ : unit = apply unlock(UNIT / exh)
+                                do #2(casted) := NilItem
+                                do #0(stamp) := newStamp
+                                let newRS : read_set = alloc(current, checkpoint, checkpoint, #0(count))
+                                @abort(newRS, stamp / exh)
+                            else 
+                                let _ : unit = apply unlock(UNIT / exh)
+                                do #2(casted) := NilItem
+                                do #0(stamp) := newStamp
+                                let newRS : read_set = alloc(current, i, i, I32Add(#0(count), 1))
+                                @abort(newRS, stamp / exh)
+                    | WithoutK(tv:tvar, next:item) =>
+                        let casted : ![any, any, item] = (![any,any,item]) i
+                        if I64Lt(#2(tv), rawStamp)
+                        then apply validateLoop(next, rest, checkpoint, newStamp, current)
                         else 
                             let _ : unit = apply unlock(UNIT / exh)
                             do #2(casted) := NilItem
                             do #0(stamp) := newStamp
-                            let newRS : read_set = alloc(current, checkpoint, checkpoint, count)
+                            let newRS : read_set = alloc(current, checkpoint, checkpoint, #0(count))
                             @abort(newRS, stamp / exh)
                     | NilItem => 
                         case rest
-                           of CONS(hd:item, tl:List.list) => apply validateLoop(hd, tl, checkpoint, newStamp, CONS(hd, current), count)
+                           of CONS(hd:item, tl:List.list) => apply validateLoop(hd, tl, checkpoint, newStamp, CONS(hd, current))
                             | nil => return()
                         end
                 end
-            do apply validateLoop(NilItem, rev, NilItem, newStamp, nil, 0)
+            do apply validateLoop(NilItem, rev, NilItem, newStamp, nil)
             return()
         ;
 
@@ -241,6 +315,7 @@ struct
         ;
 
     )
+    val registerPrintFun : ('a -> unit) -> unit = _prim(@registerPrintFun)
 
 end
 

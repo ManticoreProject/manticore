@@ -77,7 +77,6 @@ struct
             return(#0(tv));
 
         define @getABCDEFG(tv:tvar / exh:exh) : any = 
-            START_TIMER
             let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do if(#0(in_trans))
                then return()
@@ -98,7 +97,7 @@ struct
             cont retK(x:any) = return(x)
             let localRes : Option.option = apply chkLog(writeSet)
             case localRes
-                of Option.SOME(v:any) => STOP_TIMER return(v)
+                of Option.SOME(v:any) => return(v)
                  | Option.NONE => 
                      let current : any = 
                         fun getCurrentLoop() : any = 
@@ -109,14 +108,12 @@ struct
                                  then return(c)
                                  else 
                                     let newStamp : stamp = VClock.@bump(/exh)
-                                    fun dummy(x:unit / exh:exh) : unit = return(UNIT)
-                                    do RS.@validate(readSet, myStamp, newStamp, dummy / exh)
+                                    do RS.@validate(readSet, myStamp, newStamp/ exh)
                                     do #0(myStamp) := newStamp
                                     apply getCurrentLoop()
                             else do Pause() apply getCurrentLoop()
                         apply getCurrentLoop()
                      let numK : int = RS.@getNumK(readSet)
-
                      if I32Lt(numK, READ_SET_BOUND)
                      then
                         let captureCount : int = FLS.@get-counter()
@@ -126,13 +123,11 @@ struct
                             do FLS.@set-key(READ_SET, newRS / exh)
                             let freq : int = FLS.@get-counter2()
                             do FLS.@set-counter(freq)
-                            STOP_TIMER
                             return(current)
                         else
                             do FLS.@set-counter(I32Sub(captureCount, 1))
                             let newRS : RS.read_set = RS.@insert-without-k(tv, readSet / exh)
                             do FLS.@set-key(READ_SET, newRS / exh)
-                            STOP_TIMER
                             return(current)
                      else 
                         do RS.@filterRS(readSet)
@@ -142,7 +137,6 @@ struct
                         do FLS.@set-counter2(newFreq)
                         let newRS : RS.read_set = RS.@insert-without-k(tv, readSet / exh)
                         do FLS.@set-key(READ_SET, newRS / exh)
-                        STOP_TIMER
                         return(current)
                             
             end
@@ -164,15 +158,13 @@ struct
         ;
 
         define @commit(/exh:exh) : () = 
-            let vp : vproc = SchedulerAction.@atomic-begin()
             let startStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : RS.item) : () = 
                 case locks 
                     of RS.Write(tv:tvar, contents:any, tl:RS.item) =>
                         do #1(tv) := 0:long         (*unlock*)
                         apply release(tl)
-                     | RS.NilItem => do SchedulerAction.@atomic-end(vp)
-                                  return()
+                     | RS.NilItem => return()
                 end
             let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
             let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
@@ -209,10 +201,9 @@ struct
                 end
             let locks : RS.item = apply acquire(writeSet, RS.NilItem)
             fun unlock(x:unit / exh:exh) : unit = do apply release(locks) return(UNIT)
-            let newStamp : stamp = VClock.@bump(/exh)     
-            do RS.@validate(readSet, startStamp, newStamp, unlock / exh)
+            let newStamp : stamp = VClock.@bump(/exh)  
+            do RS.@validate-commit(readSet, startStamp, newStamp, unlock / exh)
             do apply update(locks, newStamp)
-            do SchedulerAction.@atomic-end(vp)
             return()
         ;
         
@@ -288,6 +279,8 @@ struct
 
     val print2 : string -> unit = _prim(@print2)
     
+    
+
 end
 
 

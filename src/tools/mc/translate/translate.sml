@@ -612,6 +612,7 @@ structure Translate : sig
 	  val hlops = HLOpEnv.listHLOps()
 	  val rewrites = listRewrites()
 	  val module = B.mkModule(Atom.atom "Main", imports, hlops, rewrites, mainFun)
+	  val _ = CheckBOM.check("translate", module)
 	  in
 	    if (Controls.get TranslateControls.keepEnv)
 	      then let

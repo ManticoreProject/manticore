@@ -70,6 +70,16 @@ struct
         define @unsafe-get(tv : tvar / exh:exh) : any = 
             return(#0(tv));
 
+        define inline @logStat(x:any / exh:exh) : () = 
+#ifdef COLLECT_STATS                            
+            let stats : list = FLS.@get-key(STATS_KEY / exh)
+            let stats : list = CONS(x, stats)
+            FLS.@set-key(STATS_KEY, stats / exh)
+#else
+            return()
+#endif          
+        ;
+
         define @force-abort(rs : [int,item,item], startStamp:![stamp, int] / exh:exh) : () = 
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             let rawStamp : stamp = #0(startStamp)
@@ -321,7 +331,6 @@ struct
         ;
 
         define @commit(/exh:exh) : () = 
-            let vp : vproc = SchedulerAction.@atomic-begin()
             let startStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             fun release(locks : item) : () = 
@@ -329,8 +338,7 @@ struct
                     of Write(tv:tvar, contents:any, tl:item) =>
                         do #1(tv) := 0:long         (*unlock*)
                         apply release(tl)
-                     | NilItem => do SchedulerAction.@atomic-end(vp)
-                                  return()
+                     | NilItem => return()
                 end
                 
             let rs : [int, item, item] = FLS.@get-key(READ_SET / exh)
@@ -512,7 +520,6 @@ struct
             do apply validate(#1(rs),locks,newStamp,NilItem,0)
 #endif    
             do apply update(locks, newStamp)
-            do SchedulerAction.@atomic-end(vp)
             do #1(startStamp) := I32Sub(#1(startStamp), 1)
             return()
         ;
@@ -619,12 +626,12 @@ struct
             let f : ml_string = #0(x)
             let data : list = #1(x)
             let stream : TextIO.outstream = TextIO.@open-out(f / exh)
-            fun outLine(x : [int,int,int,int] / exh:exh) : () = 
-                let i1 : ml_string = Int.@to-string(alloc(#0(x)) / exh)
+            fun outLine(x : [int] / exh:exh) : () = 
+                let i1 : ml_string = Int.@to-string(x / exh) (*
                 let i2 : ml_string = Int.@to-string(alloc(#1(x)) / exh)
                 let i3 : ml_string = Int.@to-string(alloc(#2(x)) / exh)
-                let i4 : ml_string = Int.@to-string(alloc(#3(x)) / exh)
-                let sList : list = CONS(i1, CONS(@", ", CONS(i2, CONS(@", ", CONS(i3, CONS(@", ", CONS(i4, CONS(@"\n", nil))))))))
+                let i4 : ml_string = Int.@to-string(alloc(#3(x)) / exh)*)
+                let sList : list = CONS(i1, CONS(@", ", nil))
                 let str : ml_string = String.@string-concat-list(sList / exh)
                 let _ : unit = TextIO.@output-line(alloc(str, stream) / exh)
                 return ()

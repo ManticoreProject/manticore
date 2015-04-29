@@ -16,6 +16,22 @@ structure FlatClosureWithCFA : sig
 
   end = struct
 
+    (***** controls ******)
+    val varMap = ref false
+
+    val () = List.app (fn ctl => ControlRegistry.register ClosureControls.registry {
+              ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
+              envName = NONE
+            }) [
+              Controls.control {
+                  ctl = varMap,
+                  name = "var-map",
+                  pri = [0, 1],
+                  obscurity = 0,
+                  help = "output a mapping of CPS variables to CFG variables"
+                }
+            ]
+
     structure CFA = CFACPS
     structure FV = FreeVars
     structure VMap = CPS.Var.Map
@@ -359,7 +375,7 @@ structure FlatClosureWithCFA : sig
     val lookupVar = fn (env, x) => let
           val (binds, x') = lookupVar (env, x)
           in
-            if Controls.get ClosureControls.debug
+            if Controls.get ClosureControls.debug orelse !varMap
               then print(concat[
                 "lookupVar(_,", CPS.Var.toString x, ") => ", CFG.Var.toString x', "\n"])
               else ();

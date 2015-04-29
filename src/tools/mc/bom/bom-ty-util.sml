@@ -216,7 +216,8 @@ structure BOMTyUtil : sig
       | asTyc ty = raise Fail("expected tyc, but found " ^ toString ty)
 
   (* select i'th type component from a tuple *)
-    fun select (BTy.T_Tuple(_, tys), i) = List.nth(tys, i)
+    fun select (BTy.T_Tuple(_, tys), i) = (List.nth(tys, i) handle Subscript => 
+        (print ("Trying to select element " ^ Int.toString i ^ " from tuple: " ^ toString(BTy.T_Tuple(false, tys)) ^ "\n"); raise Subscript))
       | select (BTy.T_VProc, _) = BTy.T_Any
       | select (BTy.T_Deque, _) = BTy.T_Any
       | select (ty, _) = raise Fail("expected tuple type, but found " ^ toString ty)
