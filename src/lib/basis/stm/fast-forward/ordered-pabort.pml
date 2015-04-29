@@ -185,7 +185,7 @@ struct
                                             apply release(tl)
                                          | RS.NilItem => return()
                                     end
-                                  do apply release(acquired) 
+                                  do apply release(acquired)
                                   apply acquire(writeSet, RS.NilItem)
                      |RS.NilItem => return(acquired)
                 end
@@ -201,7 +201,7 @@ struct
                 end
             let locks : RS.item = apply acquire(writeSet, RS.NilItem)
             fun unlock(x:unit / exh:exh) : unit = do apply release(locks) return(UNIT)
-            let newStamp : stamp = VClock.@bump(/exh)  
+            let newStamp : stamp = VClock.@bump(/exh)
             do RS.@validate-commit(readSet, startStamp, newStamp, unlock / exh)
             do apply update(locks, newStamp)
             return()
@@ -255,16 +255,6 @@ struct
          then return(true)
          else return(false);
 
-    define @print2(x : ml_string / exh:exh) : unit =
-    do ccall M_Print(#0(x)) return (UNIT)
- (*       let ffInfo : any = FLS.@get-key(FF_KEY / exh)
-        if Equal(ffInfo, enum(0))
-        then return(UNIT)
-        else do ccall M_Print(#0(x))
-             return(UNIT)
-   *) ;
-
-         
     )
 
     type 'a tvar = 'a PartialSTM.tvar
@@ -276,9 +266,6 @@ struct
     val abort : unit -> 'a = _prim(@abort)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
-
-    val print2 : string -> unit = _prim(@print2)
-    
     
 
 end

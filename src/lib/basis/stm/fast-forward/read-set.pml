@@ -314,8 +314,10 @@ struct
                 return(newRS)
         ;
 
+
     )
     val registerPrintFun : ('a -> unit) -> unit = _prim(@registerPrintFun)
+
 
 end
 
