@@ -101,6 +101,13 @@ struct
 #endif          
         ;
 
+        define @printTV(tv : any / exh:exh) : () = 
+            let tv : [any] = ([any]) tv
+            let f : ![fun(any / exh -> unit)] = @getPrintFunPtr(UNIT / exh)
+            let f : fun(any / exh -> unit) = #0(f)
+            let _ : unit = apply f(#0(tv) / exh)
+            return();
+
         define inline @abort(readSet : read_set, stamp : ![stamp]/ exh:exh) : () = 
             case #2(readSet)
                 of WithK(tv:tvar,_:item,ws:item,abortK:cont(any),_:item) =>

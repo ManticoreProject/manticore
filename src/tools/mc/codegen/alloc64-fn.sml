@@ -104,6 +104,11 @@ functor Alloc64Fn (
 	    {i=i+1, stms=store :: stms, totalSize=totalSize', ptrMask=ptrMask'}
 	  end (* initObj *)
 
+	fun allSame(str, i, c) = 
+		if i = 0
+		then String.sub(str, i) = c
+		else String.sub(str, i) = c andalso allSame(str, i-1, c)
+
     fun allocMixedObj offAp args = let
 	  val {i=nWords, stms, totalSize, ptrMask} = 
 		List.foldl (initObj offAp) {i=0, stms=[], totalSize=0, ptrMask=""} args

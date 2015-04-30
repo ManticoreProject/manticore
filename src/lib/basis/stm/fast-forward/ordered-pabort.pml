@@ -224,7 +224,6 @@ struct
                      do FLS.@set-key(ABORT_KEY, abortK / exh)
                      cont transExh(e:exn) = 
                         do ccall M_Print("Warning: exception raised in transaction\n")
-                        do @commit(/exh)  (*exception may have been raised because of inconsistent state*)
                         throw exh(e)
                      let res : any = apply f(UNIT/transExh)
                      do @commit(/transExh)
@@ -269,9 +268,6 @@ struct
     
 
 end
-
-
-
 
 
 

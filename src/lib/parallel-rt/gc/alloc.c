@@ -561,10 +561,15 @@ int M_PolyEq(Word_t *s1, Word_t *s2){
 int M_PolyEq(Word_t *s1, Word_t *s2){
    if(s1 == s2)
     return 1;
-   if(!isPtr((Value_t)s1) || !isPtr((Value_t)s2))
+   if(!isPtr((Value_t)s1) || !isPtr((Value_t)s2)){
+    printf("M_PolyEq failed because one arg is a pointer and the other is not\n");
     return 0;
-   if(s1[-1] != s2[-1])
+    }   
+   if(s1[-1] != s2[-1]){
+    printf("M_PolyEq failed because headers are not equal (%lu, %lu)\n", s1[-1], s2[-1]);
     return 0;
+    }   
+    printf("\n\nChecking equality\n");
    bool res = table[getID(s1[-1])].polyEq(s1, s2);
    return res ? 1 : 0;
 }
