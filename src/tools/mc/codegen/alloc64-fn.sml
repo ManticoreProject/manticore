@@ -76,7 +76,6 @@ functor Alloc64Fn (
       | isHeapPointer (CFG.T_OpenTuple _) = true
       | isHeapPointer _ = false
 
-
     fun getRawBit rt = 
     	case rt
 		  of Ty.T_Byte => "0"    (*1 byte*)
@@ -90,7 +89,13 @@ functor Alloc64Fn (
     fun getBit ty =
 	case ty
 	  of M.T_Raw rt => getRawBit rt
-	   | _ => "1"  
+	   | M.T_Any => "1"
+	   | M.T_Tuple _ => "1"
+	   | M.T_OpenTuple _ => "1"
+	   | _ => "4"  
+
+
+
 
 	fun setBit (w, ty) = concat[getBit ty, w]
 

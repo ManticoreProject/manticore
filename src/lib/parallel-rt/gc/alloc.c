@@ -536,7 +536,7 @@ bool M_ValEq(Word_t *w1, Word_t *w2){
     return true;
 }
 
-volatile int lock = 0;
+volatile unsigned long lock = 0;
 
 /*continuation equality*/
 /*
@@ -559,19 +559,27 @@ int M_PolyEq(Word_t *s1, Word_t *s2){
 */
 /*continuation equality*/
 int M_PolyEq(Word_t *s1, Word_t *s2){
-   if(s1 == s2)
-    return 1;
-   if(!isPtr((Value_t)s1) || !isPtr((Value_t)s2)){
-    printf("M_PolyEq failed because one arg is a pointer and the other is not\n");
-    return 0;
+    while(CompareAndSwapValue(&lock, 0, 1) != 0);
+    printf("\n\nChecking equality of %d element tuple\n", GetLength(s1[-1]));
+    if(s1 == s2){
+        lock = 0;
+        return 1;
+    }
+    if(!isPtr((Value_t)s1) || !isPtr((Value_t)s2)){
+        printf("M_PolyEq failed because one arg is a pointer and the other is not\n");
+        lock = 0;
+        return 0;
     }   
-   if(s1[-1] != s2[-1]){
-    printf("M_PolyEq failed because headers are not equal (%lu, %lu)\n", s1[-1], s2[-1]);
-    return 0;
+    if(s1[-1] != s2[-1]){
+        printf("M_PolyEq failed because headers are not equal (%lu, %lu)\n", s1[-1], s2[-1]);
+        lock = 0;
+        return 0;
     }   
-    printf("\n\nChecking equality\n");
-   bool res = table[getID(s1[-1])].polyEq(s1, s2);
-   return res ? 1 : 0;
+
+    
+    bool res = table[getID(s1[-1])].polyEq(s1, s2);
+    lock = 0;
+    return res ? 1 : 0;
 }
 
 int M_InLocal(VProc_t *vp, Word_t * w){

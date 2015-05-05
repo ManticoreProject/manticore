@@ -33,7 +33,6 @@ struct
 #define PRINT_KCOUNT 
 #endif
 
-
 (*TODO:
     -add a 64-bit bloom filter to FLS that can be used for determining if a given
      tref is on the short path of the fast-forward read set
@@ -54,6 +53,35 @@ struct
 #define FastForward
 
     _primcode(
+        define @mkLock(x:unit / exh:exh) : any = 
+            let x : ![long] = alloc(0:long)
+            let x : ![long] = promote(x)
+            let x : any = (any) x
+            return(x);
+    )
+
+    val mkLock : unit -> 'a = _prim(@mkLock)
+    val lock = mkLock()
+    fun getLock() = lock
+
+    _primcode(
+
+        define @getLock = getLock;
+        define @lock(/exh:exh) : () =
+            let lock : ![long] = @getLock(UNIT / exh)
+            fun lp() : () = 
+                let old : long = CAS(&0(lock), 0:long, 1:long)
+                if I64Eq(old, 0)
+                then
+                    return()
+                else
+                    do Pause()
+                    apply lp()
+            apply lp();
+        define @unlock(/exh:exh) : () =
+            let lock : ![long] = @getLock(UNIT / exh)
+            do #0(lock) := 0:long
+            return();
 
         extern void * M_Print_Int(void *, int);
         extern void * M_Print_Int2(void *, int, int);
@@ -189,125 +217,137 @@ struct
             fun validate(rs:item, sentinel : item, bail:cont(), currentRS:item) : item = 
                 if Equal(rs, sentinel)
                 then return(currentRS)
-                else case rs
-                        of WithK(tv':tvar,k:cont(any),ws:List.list,next:item,_:item) =>
+                else 
+                    case rs
+                       of WithK(tv':tvar,k:cont(any),ws:List.list,next:item,_:item) =>
                             let stamp : stamp = #2(tv')
                             let lock : stamp = #1(tv')
                             if I64Eq(lock, 0:long) 
-                            then if I64Lt(stamp, #2(ffInfo)) 
-                                 then let res : item = apply validate(next, sentinel, bail, currentRS)
-                                      if Equal(k, enum(0))
-                                      then return(WithoutK(tv', res))
-                                      else return(WithK(tv', k, ws, res, currentRS))
-                                 else throw bail()
+                            then 
+                                if I64Lt(stamp, #2(ffInfo)) 
+                                then let res : item = apply validate(next, sentinel, bail, currentRS)
+                                    if Equal(k, enum(0))
+                                    then return(WithoutK(tv', res))
+                                    else return(WithK(tv', k, ws, res, currentRS))
+                                else throw bail()
                             else throw bail()
-                         | WithoutK(tv':tvar, next:item) =>
+                        | WithoutK(tv':tvar, next:item) =>
                             let stamp : stamp = #2(tv')
                             let lock : stamp = #1(tv')
                             if I64Eq(lock, 0:long)
-                            then if I64Lt(stamp, #2(ffInfo))
-                                 then let res : item = apply validate(next, sentinel, bail, currentRS)
-                                      return(WithoutK(tv', res))
-                                 else throw bail()
+                            then 
+                                if I64Lt(stamp, #2(ffInfo))
+                                then 
+                                    let res : item = apply validate(next, sentinel, bail, currentRS)
+                                    return(WithoutK(tv', res))
+                                else throw bail()
                             else throw bail()
-                         | _ => let e : exn = Fail(@"fast-forward:validate:Impossible!\n")
-                                throw exh(e)
-                     end
+                        | _ => 
+                            let e : exn = Fail(@"fast-forward:validate:Impossible!\n")
+                            throw exh(e)
+                    end
             fun checkFF(rs:item, sentinel : item) : ffRes = 
                 if Equal(rs, sentinel)
                 then return(NoFF)
-                else case rs
-                        of WithK(tv':tvar,k:cont(any),ws:List.list,next:item,nextC:item) =>
+                else 
+                    case rs
+                       of WithK(tv':tvar,k:cont(any),ws:List.list,next:item,nextC:item) =>
                             if Equal(tv, tv')
-                            then (*do ccall M_Print("TVars are equal\n") *)
-                                 let res : int = ccall M_PolyEq(k, retK)
-                                 if I32Eq(res, 1)
-                                 then (*let res : int = ccall M_PolyEq(ws, writeSet) *)  (*polymorphic equality is probably overkill here*)
-                                      BUMP_KCOUNT
-                                      if Equal(ws, writeSet) (*I32Eq(res, 1) *)
-                                      then let stamp : stamp = #2(tv')
-                                           if I64Eq(#1(tv'), 0:long)
-                                           then if I64Lt(stamp, #2(ffInfo))
-                                                then 
-                                                     return(FF(WithK(tv',k,ws,#1(readSet),#2(readSet)), 1))
-                                                else return(NoFF)
-                                           else return(NoFF)
-                                      else let res : ffRes = apply checkFF(nextC, sentinel)  (*write sets don't match*)
-                                           do ccall M_Print("Write sets do not match\n")
-                                           case res
-                                             of FF(currentRS:item,i:int) => 
-                                                 cont bail() = return(Done(currentRS, i))
-                                                 let newRS : item = apply validate(rs, nextC, bail, currentRS)
-                                                 return(FF(newRS, I32Add(i, 1)))
-                                              | _ => return(res)
-                                           end
-                                 else do ccall M_Print("Should be impossible!\n")
-									  let res : ffRes = apply checkFF(nextC, sentinel)
-                                      case res
-                                        of FF(currentRS:item,i:int) => 
+                            then 
+                                do ccall M_Print("TVars are equal\n") 
+                                let res : int = ccall M_PolyEq(k, retK)
+                                if I32Eq(res, 1)
+                                then (*let res : int = ccall M_PolyEq(ws, writeSet) *)  (*polymorphic equality is probably overkill here*)
+                                    if Equal(ws, writeSet) (*I32Eq(res, 1) *)
+                                    then BUMP_KCOUNT
+                                        let stamp : stamp = #2(tv')
+                                        if I64Eq(#1(tv'), 0:long)
+                                        then 
+                                            if I64Lt(stamp, #2(ffInfo))
+                                            then return(FF(WithK(tv',k,ws,#1(readSet),#2(readSet)), 1))
+                                            else return(NoFF)
+                                        else return(NoFF)
+                                    else 
+                                        let res : ffRes = apply checkFF(nextC, sentinel)  (*write sets don't match*)
+                                        do ccall M_Print("Write sets do not match\n")
+                                        case res
+                                           of FF(currentRS:item,i:int) => 
+                                                cont bail() = return(Done(currentRS, i))
+                                                let newRS : item = apply validate(rs, nextC, bail, currentRS)
+                                                return(FF(newRS, I32Add(i, 1)))
+                                            | _ => return(res)
+                                        end
+                                else (*do ccall M_Print("Should be impossible!\n")*)
+									let res : ffRes = apply checkFF(nextC, sentinel)
+                                    case res
+                                       of FF(currentRS:item,i:int) => 
                                             cont bail() = return(Done(currentRS, i))
                                             let newRS : item = apply validate(rs, nextC, bail, currentRS)
                                             return(FF(newRS, I32Add(i, 1)))
-                                         | _ => return(res)
-                                      end
+                                        | _ => return(res)
+                                    end
                             else let res : ffRes = apply checkFF(nextC, sentinel)
-                                 case res
-                                    of FF(currentRS:item, i:int) => 
-                                        cont bail() = return(Done(currentRS, i))
-                                        let newRS : item = apply validate(rs, nextC, bail, currentRS)
-                                        return(FF(newRS, I32Add(i, 1)))
-                                     | _ => return(res)
-                                 end
-                         | NilItem => return(NoFF)
-                         | _ => throw exh(Fail(@"fast-forward:checkFF:Impossible!\n"))
-                     end
+                            case res
+                               of FF(currentRS:item, i:int) => 
+                                    cont bail() = return(Done(currentRS, i))
+                                    let newRS : item = apply validate(rs, nextC, bail, currentRS)
+                                    return(FF(newRS, I32Add(i, 1)))
+                                | _ => return(res)
+                            end
+                        | NilItem => return(NoFF)
+                        | _ => throw exh(Fail(@"fast-forward:checkFF:Impossible!\n"))
+                    end
             if Equal(ffInfo, enum(0))
             then return()
-            else (*let res : bool = @checkVec(#3(ffInfo), tv)	
-				 if(res)
-				 then *)let x : ffRes = apply checkFF(#0(ffInfo), #1(ffInfo))
-                      case x
-                       of Done(newRS:item, i:int) =>
-                             case newRS
-                                 of WithK(tv':tvar,k:cont(any),ws:item,_:item,_:item) =>
-                                      let current : any = #0(tv')
-                                         let stamp : stamp = #2(tv')
-                                      if I64Eq(#1(tv'), 0:long)
-                                      then if I64Lt(stamp, #0(myStamp))
-                                           then let newRS : [int,item,item] = alloc(I32Add(#0(readSet), i), newRS, newRS)
-                                                do FLS.@set-key(READ_SET, newRS / exh)
-                                                do FLS.@set-key(WRITE_SET, ws / exh)
-                                                let captureFreq : int = FLS.@get-counter2()
-                                                do FLS.@set-counter(captureFreq)
-                                                do FLS.@set-key(FF_KEY, enum(0) / exh)
-                                           (*     do ccall M_Print_Int("Done: Fast forwarding through %d checkpoints\n", i) *)
-                                                throw k(current)
-                                           else return()
-                                      else return()
-                                  | _ => let e : exn = Fail(@"fast forward: Impossible\n") throw exh(e)
-                             end
-                           | FF(newRS:item, i:int) =>
-                              case newRS
-                                 of WithK(tv':tvar,k:cont(any),ws:item,_:item,_:item) =>
-                                      let current : any = #0(tv')
-                                      let stamp : stamp = #2(tv')
-                                      if I64Eq(#1(tv'), 0:long)
-                                      then if I64Lt(stamp, #0(myStamp))
-                                           then let newRS : [int,item,item] = alloc(I32Add(#0(readSet), i), newRS, newRS)
-                                                do FLS.@set-key(READ_SET, newRS / exh)
-                                                do FLS.@set-key(WRITE_SET, ws / exh)
-                                                let captureFreq : int = FLS.@get-counter2()
-                                                do FLS.@set-counter(captureFreq)
-                                                do FLS.@set-key(FF_KEY, enum(0) / exh)
-                                           (*     do ccall M_Print_Int("FF: Fast forwarding through %d checkpoints\n", i) *)
-                                                throw k(current)
-                                           else return()
-                                      else return()
-                                  | _ => let e : exn = Fail(@"fast forward: Impossible\n") throw exh(e)
-                             end
-                           | NoFF => return()
-                      end  
-				 (*else return() *)
+            else 
+                do @lock(/exh)
+                let x : ffRes = apply checkFF(#0(ffInfo), #1(ffInfo))
+                do @unlock(/exh)
+                case x
+                   of Done(newRS:item, i:int) =>
+                        case newRS
+                           of WithK(tv':tvar,k:cont(any),ws:item,_:item,_:item) =>
+                                let current : any = #0(tv')
+                                let stamp : stamp = #2(tv')
+                                if I64Eq(#1(tv'), 0:long)
+                                then 
+                                    if I64Lt(stamp, #0(myStamp))
+                                    then 
+                                        let newRS : [int,item,item] = alloc(I32Add(#0(readSet), i), newRS, newRS)
+                                        do FLS.@set-key(READ_SET, newRS / exh)
+                                        do FLS.@set-key(WRITE_SET, ws / exh)
+                                        let captureFreq : int = FLS.@get-counter2()
+                                        do FLS.@set-counter(captureFreq)
+                                        do FLS.@set-key(FF_KEY, enum(0) / exh)
+                                        (*     do ccall M_Print_Int("Done: Fast forwarding through %d checkpoints\n", i) *)
+                                        throw k(current)
+                                    else return()
+                                else return()
+                            | _ => let e : exn = Fail(@"fast forward: Impossible\n") throw exh(e)
+                        end
+                    | FF(newRS:item, i:int) =>
+                        case newRS
+                           of WithK(tv':tvar,k:cont(any),ws:item,_:item,_:item) =>
+                                let current : any = #0(tv')
+                                let stamp : stamp = #2(tv')
+                                if I64Eq(#1(tv'), 0:long)
+                                then 
+                                    if I64Lt(stamp, #0(myStamp))
+                                    then 
+                                        let newRS : [int,item,item] = alloc(I32Add(#0(readSet), i), newRS, newRS)
+                                        do FLS.@set-key(READ_SET, newRS / exh)
+                                        do FLS.@set-key(WRITE_SET, ws / exh)
+                                        let captureFreq : int = FLS.@get-counter2()
+                                        do FLS.@set-counter(captureFreq)
+                                        do FLS.@set-key(FF_KEY, enum(0) / exh)
+                                        (*     do ccall M_Print_Int("FF: Fast forwarding through %d checkpoints\n", i) *)
+                                        throw k(current)
+                                    else return()
+                                else return()
+                            | _ => let e : exn = Fail(@"fast forward: Impossible\n") throw exh(e)
+                        end
+                    | NoFF => return()
+                end  
         ;
 
 

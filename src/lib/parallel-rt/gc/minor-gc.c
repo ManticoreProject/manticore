@@ -75,7 +75,7 @@ void MinorGC (VProc_t *vp)
     assert (vp->nurseryBase < vp->allocPtr);
 
 #ifndef NDEBUG
-    //if (GCDebug >= GC_DEBUG_MINOR)
+    if (GCDebug >= GC_DEBUG_MINOR)
 	SayDebug("[%2d] Minor GC starting\n", vp->id);
 #endif
   /* gather the roots.  The protocol is that the stdCont register holds
@@ -155,13 +155,13 @@ void MinorGC (VProc_t *vp)
     TIMER_Stop(&(vp->minorStats.timer));
 #endif
 #ifndef NDEBUG
-    //if (GCDebug >= GC_DEBUG_MINOR) {
+    if (GCDebug >= GC_DEBUG_MINOR) {
 	bzero(nextScan, avail); /* clear unused part of local heap */
 	SayDebug("[%2d] Minor GC finished: %ld/%ld bytes live; %d available\n",
 	    vp->id, (Addr_t)nextScan - vp->oldTop,
 	    vp->allocPtr - vp->nurseryBase - WORD_SZB,
 	    (int)avail);
-   // }
+    }
 #endif /* !NDEBUG */
 
     LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
