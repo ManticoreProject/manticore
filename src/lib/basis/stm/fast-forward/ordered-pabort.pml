@@ -234,6 +234,10 @@ struct
                  throw enter()
       ;
 
+      define @commit-wrapper(x:unit / exh:exh) : unit = 
+        do @commit(/exh)
+        return(UNIT);
+
       define @timeToString = Time.toString;
       
       define @print-stats(x:unit / exh:exh) : unit = 
@@ -266,6 +270,7 @@ struct
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
     
+    val commit : unit -> unit = _prim(@commit-wrapper)    
 
 end
 

@@ -81,6 +81,7 @@ struct
         ;
 
         define @force-abort(rs : [int,item,item], startStamp:![stamp, int] / exh:exh) : () = 
+            START_TIMER
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             let rawStamp : stamp = #0(startStamp)
             fun validate3(readSet:item, newStamp : stamp, abortInfo : item, i:int, j:int, n:int) : () = 
@@ -194,7 +195,7 @@ struct
                     | WithK(tv:tvar,k:any,ws:List.list,next:item,nextK:item) => 
                         let lock : stamp = #1(tv)
                         let stamp : stamp = #2(tv)
-                        let shouldAbort : bool = if I64Eq(lock, 0:long) 
+                        let shouldAbort : bool = if I64Eq(lock, 0:long)
                                                  then if I64Lt(stamp, rawStamp) then return(false) else return(true)
                                                  else if I64Eq(lock, rawStamp) 
                                                       then if I64Lt(stamp, rawStamp) then return(false) else return(true)
@@ -213,7 +214,7 @@ struct
                     | WithoutK(tv:tvar,rest:item) => 
                         let lock : stamp = #1(tv)
                         let stamp : stamp = #2(tv)
-                        let shouldAbort : bool = if I64Eq(lock, 0:long) 
+                        let shouldAbort : bool = if I64Eq(lock, 0:long)
                                                  then if I64Lt(stamp, rawStamp) then return(false) else return(true)
                                                  else if I64Eq(lock, rawStamp) 
                                                       then if I64Lt(stamp, rawStamp) then return(false) else return(true)
@@ -228,6 +229,7 @@ struct
 #else            
             do apply validate2(#1(rs),stamp,NilItem,0)
 #endif            
+            STOP_TIMER
             return()
        ;
 
@@ -659,6 +661,11 @@ struct
             do ccall GenTimerPrint()
             return(UNIT);      
          
+        define @commit-wrapper(x:unit / exh:exh) : unit = 
+            do @commit(/exh)
+            return(UNIT);
+
+
     )
 
     type 'a tvar = 'a PartialSTM.tvar
@@ -680,6 +687,7 @@ struct
     val checkpointTRef  = new 0
 
     
+    val commit : unit -> unit = _prim(@commit-wrapper)
 
     fun checkpoint() = checkpoint' checkpointTRef
 

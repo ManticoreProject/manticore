@@ -101,7 +101,7 @@ struct
     end
 
     (*Polymorphic Equality functions *)
-    
+    (*)
     fun polyEqPre (MyoutStrm) = (
         TextIO.output (MyoutStrm, "bool polyEqRAWpointer (Word_t * ptr1, Word_t * ptr2) {\n");
     	TextIO.output (MyoutStrm, "\tif(!isPtr((Value_t)ptr2)){\n\t\tprintf(\"polyEqRAW: failed because ptr2 is not a pointer\\n\");\n\t\treturn false;\n\t}\n");
@@ -199,7 +199,8 @@ struct
             printMyString s;
             ()
         end
-    (*
+    *)
+    
     fun polyEqPre (MyoutStrm) = (
         TextIO.output (MyoutStrm, "bool polyEqRAWpointer (Word_t * ptr1, Word_t * ptr2) {\n");
         TextIO.output (MyoutStrm, "\tif(!isPtr((Value_t)ptr2)){\n\t\treturn false;\n\t}\n");
@@ -285,7 +286,7 @@ struct
             printMyString s;
             ()
         end
-        *)
+        
 		  
     (*Major GC Functions *)
     fun majorpre (MyoutStrm) = (

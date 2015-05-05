@@ -246,6 +246,11 @@ struct
                             let e : exn = Fail(@"fast-forward:validate:Impossible!\n")
                             throw exh(e)
                     end
+            fun itemLength(i : item, count:int) : int = 
+                case i 
+                   of Write(x:tvar, y:any, next:item) => apply itemLength(next, I32Add(count, 1))
+                    | NilItem => return(count)
+                end
             fun checkFF(rs:item, sentinel : item) : ffRes = 
                 if Equal(rs, sentinel)
                 then return(NoFF)
@@ -254,7 +259,6 @@ struct
                        of WithK(tv':tvar,k:cont(any),ws:List.list,next:item,nextC:item) =>
                             if Equal(tv, tv')
                             then 
-                                do ccall M_Print("TVars are equal\n") 
                                 let res : int = ccall M_PolyEq(k, retK)
                                 if I32Eq(res, 1)
                                 then (*let res : int = ccall M_PolyEq(ws, writeSet) *)  (*polymorphic equality is probably overkill here*)
@@ -269,7 +273,9 @@ struct
                                         else return(NoFF)
                                     else 
                                         let res : ffRes = apply checkFF(nextC, sentinel)  (*write sets don't match*)
-                                        do ccall M_Print("Write sets do not match\n")
+                                      (*)  let l1 : int = apply itemLength(ws, 0)
+                                        let l2 : int = apply itemLength(writeSet, 0)
+                                        do ccall M_Print_Int2("Write sets do not match, log length = %d, current length = %d\n", l1, l2) *)
                                         case res
                                            of FF(currentRS:item,i:int) => 
                                                 cont bail() = return(Done(currentRS, i))

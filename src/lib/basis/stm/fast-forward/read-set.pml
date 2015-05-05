@@ -121,7 +121,7 @@ struct
                             do FLS.@set-counter(captureFreq)
                             do FLS.@set-key(READ_SET, readSet / exh)
                             BUMP_PABORT
-                            do @logStat(alloc(#3(readSet)) / exh)
+                            (*do @logStat(alloc(#3(readSet)) / exh)*)
                             throw abortK(current)
                         else
                             let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
@@ -136,10 +136,10 @@ struct
             end;
 
         define @validate(readSet : read_set, stamp : ![stamp], newStamp : stamp/ exh:exh) : () = 
+            START_TIMER
             let rev : List.list = PrimList.@rev(#0(readSet) / exh)
             let rawStamp : stamp = #0(stamp)
-            let count : ![int] = alloc(0)
-            fun validateLoop(i : item, rest:List.list, checkpoint : item, newStamp : stamp, current : List.list) : () = 
+            fun validateLoop(i : item, rest:List.list, checkpoint : item, newStamp : stamp, current : List.list, count:int) : () = 
                 case i
                    of WithK(tv:tvar, next:item, ws:item, k:cont(any), _:item) =>
                         let casted : mutWithK = (mutWithK) i
@@ -153,22 +153,19 @@ struct
                         if(valid)
                         then
                             if Equal(k, enum(0))
-                            then
-                                apply validateLoop(next, rest, checkpoint, newStamp, current)
-                            else
-                                do #0(count) := I32Add(#0(count), 1)
-                                apply validateLoop(next, rest, i, newStamp, current)
+                            then apply validateLoop(next, rest, checkpoint, newStamp, current, count)
+                            else apply validateLoop(next, rest, i, newStamp, current, I32Add(count, 1))
                         else
                             if Equal(k, enum(0))
                             then 
                                 do #2(casted) := NilItem
                                 do #0(stamp) := newStamp
-                                let newRS : read_set = alloc(current, checkpoint, checkpoint, #0(count))
+                                let newRS : read_set = alloc(current, checkpoint, checkpoint, count)
                                 @abort(newRS, stamp / exh)
                             else 
                                 do #2(casted) := NilItem
                                 do #0(stamp) := newStamp
-                                let newRS : read_set = alloc(current, i, i, I32Add(#0(count), 1))
+                                let newRS : read_set = alloc(current, i, i, I32Add(count, 1))
                                 @abort(newRS, stamp / exh)
                     | WithoutK(tv:tvar, next:item) =>
                         let casted : ![any, any, item] = (![any,any,item]) i
@@ -180,19 +177,20 @@ struct
                                 else return(false)
                             else return(false)
                         if(valid)
-                        then apply validateLoop(next, rest, checkpoint, newStamp, current)
+                        then apply validateLoop(next, rest, checkpoint, newStamp, current, count)
                         else 
                             do #2(casted) := NilItem
                             do #0(stamp) := newStamp
-                            let newRS : read_set = alloc(current, checkpoint, checkpoint, #0(count))
+                            let newRS : read_set = alloc(current, checkpoint, checkpoint, count)
                             @abort(newRS, stamp / exh)
                     | NilItem => 
                         case rest
-                           of CONS(hd:item, tl:List.list) => apply validateLoop(hd, tl, checkpoint, newStamp, CONS(hd, current))
+                           of CONS(hd:item, tl:List.list) => apply validateLoop(hd, tl, checkpoint, newStamp, CONS(hd, current), count)
                             | nil => return()
                         end
                 end
-            do apply validateLoop(NilItem, rev, NilItem, newStamp, nil)
+            do apply validateLoop(NilItem, rev, NilItem, newStamp, nil, 0)
+            STOP_TIMER
             return()
         ;
 
