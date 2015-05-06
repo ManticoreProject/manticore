@@ -105,6 +105,8 @@ structure Prim =
       | AllocLongArray of 'var          (* allocates an array of longs in the local heap *)
       | AllocFloatArray of 'var         (* allocates an array of floats in the local heap *)
       | AllocDoubleArray of 'var        (* allocates an array of doubles in the local heap *)
+    (* time-stamp counter *)
+      | TimeStampCounter                (* returns the number of processor ticks counted by the TSC register *)
 
   (* primitive conditional tests *)
     datatype 'var cond

@@ -206,7 +206,8 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("AllocIntArray", mk Prim1 (P.AllocIntArray,        i32,                aTy)),
 		("AllocLongArray", mk Prim1 (P.AllocLongArray,      i32,                aTy)),
 		("AllocFloatArray", mk Prim1 (P.AllocFloatArray,    i32,                aTy)),
-		("AllocDoubleArray", mk Prim1 (P.AllocDoubleArray,  i32,                aTy))
+		("AllocDoubleArray", mk Prim1 (P.AllocDoubleArray,  i32,                aTy)),
+		("TimeStampCounter",	mk0 (P.TimeStampCounter,			i64))
 	      ];
 	    AtomTable.find tbl
 	  end

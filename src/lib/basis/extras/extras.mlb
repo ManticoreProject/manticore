@@ -2,4 +2,5 @@
   in
     image.pml
     image-sock.pml
+    cycle-counter.pml
   end

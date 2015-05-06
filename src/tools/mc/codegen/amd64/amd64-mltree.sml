@@ -93,6 +93,8 @@ functor AMD64MLTreeFn (structure AMD64Constant : CONSTANT) =
 		    | IX.MFENCE => "MFENCE"
 		    | IX.LFENCE => "LFENCE"
 		    | IX.SFENCE => "SFENCE"
+		    | IX.RDTSC => "RDTSC"
+		    | IX.RDTSCP => "RDTSCP"
 		  (* end case *))
 	    fun showRext _ _ = raise Fail "showRext"
 	    fun showFext _ _ = raise Fail "showFext"
