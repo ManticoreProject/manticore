@@ -261,8 +261,8 @@ struct
                             then 
                                 let res : int = ccall M_PolyEq(k, retK)
                                 if I32Eq(res, 1)
-                                then (*let res : int = ccall M_PolyEq(ws, writeSet) *)  (*polymorphic equality is probably overkill here*)
-                                    if Equal(ws, writeSet) (*I32Eq(res, 1) *)
+                                then 
+                                    if Equal(ws, writeSet) 
                                     then BUMP_KCOUNT
                                         let stamp : stamp = #2(tv')
                                         if I64Eq(#1(tv'), 0:long)
@@ -273,9 +273,6 @@ struct
                                         else return(NoFF)
                                     else 
                                         let res : ffRes = apply checkFF(nextC, sentinel)  (*write sets don't match*)
-                                      (*)  let l1 : int = apply itemLength(ws, 0)
-                                        let l2 : int = apply itemLength(writeSet, 0)
-                                        do ccall M_Print_Int2("Write sets do not match, log length = %d, current length = %d\n", l1, l2) *)
                                         case res
                                            of FF(currentRS:item,i:int) => 
                                                 cont bail() = return(Done(currentRS, i))
@@ -283,7 +280,7 @@ struct
                                                 return(FF(newRS, I32Add(i, 1)))
                                             | _ => return(res)
                                         end
-                                else (*do ccall M_Print("Should be impossible!\n")*)
+                                else 
 									let res : ffRes = apply checkFF(nextC, sentinel)
                                     case res
                                        of FF(currentRS:item,i:int) => 

@@ -318,8 +318,7 @@ struct
                 let newRS : read_set = alloc(newList, newItem, #2(readSet), #3(readSet))
                 return(newRS)
         ;
-
-
+        
     )
     val registerPrintFun : ('a -> unit) -> unit = _prim(@registerPrintFun)
 
