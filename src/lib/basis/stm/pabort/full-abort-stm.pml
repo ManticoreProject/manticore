@@ -55,7 +55,6 @@ struct
             return(#0(tv));
 
         define @get(tv : tvar / exh:exh) : any = 
-            do FLS.@set-counter(0)
             let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do if(#0(in_trans))
                then return()
@@ -224,6 +223,8 @@ struct
     val abort : unit -> 'a = _prim(@abort)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
+
+    val _ = Ref.set(STMs.stms, ("full", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
 end
 
 

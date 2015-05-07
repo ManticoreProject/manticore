@@ -19,7 +19,7 @@ val tv = STM.new 0
 fun lp i = 
     if i = 0
     then ()
-    else (STM.atomic(fn () => STM.put(tv, STM.get tv + 1)); lp (i-1))
+    else (STM.atomic(fn () => (STM.put(tv, STM.get tv + 1);STM.put(tv, STM.get tv + 1))); lp (i-1))
 
 fun start i =
     if i = 0
@@ -39,9 +39,9 @@ fun join chs =
 
 val _ = join (start (VProc.numVProcs()))
 
-val _ = if (STM.unsafeGet tv = VProc.numVProcs() * ITERS) 
+val _ = if (STM.unsafeGet tv = VProc.numVProcs() * ITERS * 2) 
         then print "Correct\n"
-        else print "Incorrect\n"
+        else print("Incorrect, should be " ^ Int.toString (VProc.numVProcs() * ITERS * 2) ^ ", but got " ^ Int.toString (STM.unsafeGet tv) ^ "\n")
 
 val _ = STM.printStats()
 

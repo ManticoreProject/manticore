@@ -283,6 +283,9 @@ struct
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
     val zeroCounters : unit -> unit = _prim(@zero-counters)
     val _ = zeroCounters()
+
+    val _ = Ref.set(STMs.stms, ("partial", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
+
 end
 
 

@@ -674,6 +674,7 @@ struct
 
     val print2 : string -> unit = _prim(@print2)
     
+    val _ = Ref.set(STMs.stms, ("ff", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
 end
 
 

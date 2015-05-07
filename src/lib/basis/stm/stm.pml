@@ -1,6 +1,7 @@
 structure STM = 
 struct
-    type 'a tvar = 'a PartialSTM.tvar 
+
+    type 'a tvar = 'a PartialSTM.tvar
 
     fun getArg f args = 
         case args 
@@ -11,8 +12,16 @@ struct
 
     val args = CommandLine.arguments ()
 
-    val whichSTM = case getArg "-stm" args of SOME s => s | NONE => "bounded"
+    val whichSTM = case getArg "-stm" args of SOME s => s | NONE => "bounded" (*use bounded partial abort by default*)
 
+    fun getSTMFuns l =
+        case l 
+           of (str, funs)::tl => if String.same(str, whichSTM) then funs else getSTMFuns tl
+            | nil => (print "STM implementation not recognized\n"; raise Fail(""))
+
+    val (get,put,atomic,new,printStats,abort,unsafeGet, same) = getSTMFuns(Ref.get STMs.stms)
+
+(*
     val (get,put,atomic,new,printStats,abort,unsafeGet, same) = 
         if String.same(whichSTM, "bounded")
         then (BoundedHybridPartialSTM.get,BoundedHybridPartialSTM.put,      
@@ -25,8 +34,10 @@ struct
                   then (FFSTM.get, FFSTM.put, FFSTM.atomic, FFSTM.new, FFSTM.printStats, FFSTM.abort, FFSTM.unsafeGet, FFSTM.same)
                   else if String.same(whichSTM, "ordered")
                        then (OrderedSTM.get,OrderedSTM.put,OrderedSTM.atomic,OrderedSTM.new,OrderedSTM.printStats,OrderedSTM.abort,OrderedSTM.unsafeGet,OrderedSTM.same)
-                       else (PartialSTM.get,PartialSTM.put,PartialSTM.atomic,PartialSTM.new,PartialSTM.printStats,PartialSTM.abort,PartialSTM.unsafeGet, PartialSTM.same)
-
+                       else if String.same(whichSTM, "ordered")
+                            then (ConcatFFSTM.get, ConcatFFSTM.put, ConcatFFSTM.atomic, ConcatFFSTM.new, ConcatFFSTM.printStats, ConcatFFSTM.abort,ConcatFFSTM.unsafeGet, ConcatFFSTM.same)
+                            else (PartialSTM.get,PartialSTM.put,PartialSTM.atomic,PartialSTM.new,PartialSTM.printStats,PartialSTM.abort,PartialSTM.unsafeGet, PartialSTM.same)
+*)
     (*won't typecheck without these nonsense bindings*)
     val get : 'a tvar -> 'a = get
     val put : 'a tvar * 'a -> unit = put

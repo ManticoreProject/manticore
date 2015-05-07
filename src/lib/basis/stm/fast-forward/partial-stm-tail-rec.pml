@@ -7,7 +7,7 @@
  * held in the log and fast forwarding.
  *)
 
-structure FFSTM = 
+structure TailRecFFSTM = 
 struct 
 
 #define COUNT 
@@ -690,7 +690,9 @@ struct
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
 
     val print2 : string -> unit = _prim(@print2)
-    
+   
+    val _ = Ref.set(STMs.stms, ("tailff", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
+
 end
 
 
