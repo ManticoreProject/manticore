@@ -63,7 +63,7 @@ struct
 
         extern int inLocalHeap(void *, void *);
 
-    	typedef read_set = ![item,      (*0: spine of the read set*) 
+    	typedef read_set = ![item,      (*0: first element of the read set*) 
     						 item, 	    (*1: last element of the read set*)
     						 item, 	    (*2: last checkpoint (element on short path)*)
     						 int];	    (*3: number of checkpoints in read set*)
@@ -285,7 +285,7 @@ struct
                     let newRemSet : List.list = RSCONS(address, newItem, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #2(casted) := newItem
-                    let newRS : read_set = alloc(#1(readSet), newItem, newItem, I32Add(#3(readSet), 1))
+                    let newRS : read_set = alloc(#0(readSet), newItem, newItem, I32Add(#3(readSet), 1))
                     return(newRS)
             else (*not in nursery, add last item to remember set*)
                 let rs : List.list = vpload(REMEMBER_SET, vp)
@@ -293,13 +293,19 @@ struct
                 let newRemSet : List.list = RSCONS(address, newItem, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #2(casted) := newItem
-                let newRS : read_set = alloc(#1(readSet), newItem, newItem, I32Add(#3(readSet), 1))
+                let newRS : read_set = alloc(#0(readSet), newItem, newItem, I32Add(#3(readSet), 1))
                 return(newRS)
         ;
+
+        define @printHeader(tv:any) : () = 
+            let header : any = ArrLoad(tv, ~1)
+            do ccall M_Print_Long("Header is %lu\n", header)
+            return();
 
         (*add a non checkpointed read to the read set*)
     	define @insert-without-k(tv:any, readSet : read_set / exh:exh) : read_set =
     		let newItem : item = WithoutK(tv, NilItem)
+            do ccall M_Print_Long("New element address is %lu\n", newItem)
     		let vp : vproc = host_vproc
     		let nurseryBase : long = vpload(NURSERY_BASE, vp)
             let limitPtr : long = vpload(LIMIT_PTR, vp)
@@ -311,28 +317,60 @@ struct
                 then (*last item is still in nursery*)
                     do #2(casted) := newItem
                     do #1(readSet) := newItem
+                    do  if I64Gte(readSet, nurseryBase)
+                        then
+                            if I64Lt(readSet, limitPtr)
+                            then return()
+                            else do ccall M_Print("ERROR!\n") return()
+                        else do ccall M_Print("ERROR!\n") return()
                     return(readSet)
                 else (*not in nursery, add last item to remember set*)
+                    do #2(casted) := newItem
+                    let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
                     let rs : List.list = vpload(REMEMBER_SET, vp)
                     let address : any = (any) &2(casted)
-                    let newRemSet : List.list = RSCONS(address, newItem, rs)
+                    let newRemSet : List.list = RSCONS((any)&1(newRS), enum(0), RSCONS(address, newItem, rs))
                     do vpstore(REMEMBER_SET, vp, newRemSet)
-                    do #2(casted) := newItem
-                    let newRS : read_set = alloc(#1(readSet), newItem, #2(readSet), #3(readSet))
                     return(newRS)
             else (*not in nursery, add last item to remember set*)
+                do #2(casted) := newItem
+                let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
                 let rs : List.list = vpload(REMEMBER_SET, vp)
                 let address : any = (any) &2(casted)
-                let newRemSet : List.list = RSCONS(address, newItem, rs)
+                let newRemSet : List.list = RSCONS((any)&1(newRS), enum(0), RSCONS(address, newItem, rs))
                 do vpstore(REMEMBER_SET, vp, newRemSet)
-                do #2(casted) := newItem
-                let newRS : read_set = alloc(#1(readSet), newItem, #2(readSet), #3(readSet))
                 return(newRS)
         ;
         
+        define @new-w(x:unit / exh:exh) : read_set = 
+            let firstElem : item = WithoutK(alloc(~1), NilItem)
+            let rs : read_set = alloc(firstElem, firstElem, firstElem, 0)
+            return(rs);
+
+        define @insert-w(arg : [any, read_set] / exh:exh) : read_set = 
+            let new : read_set = @insert-without-k(#0(arg), #1(arg) / exh)
+            return(new);
+
+        define @printRS(arg : [read_set, fun(any / exh -> unit)] / exh:exh) : unit =
+            let rs : read_set = #0(arg)
+            let f : fun(any / exh -> unit) = #1(arg)
+            do ccall M_Print_Long("Last element address is %lu\n", #1(rs))
+            fun printLoop(i:item) : unit = 
+                case i 
+                   of NilItem => return(UNIT)
+                    | WithoutK(hd:any, tl:item) => 
+                        do ccall M_Print_Long("Current element address is %lu\n", i)
+                        let _ : unit = apply f(hd / exh)
+                        apply printLoop(tl)
+                end
+            apply printLoop(#0(rs));
     )
     val registerPrintFun : ('a -> unit) -> unit = _prim(@registerPrintFun)
 
+    type 'a read_set = _prim(read_set)
+    val new : unit -> 'a read_set = _prim(@new-w)
+    val insert : 'a * 'a read_set -> 'a read_set = _prim(@insert-w)
+    val printRS : 'a read_set * ('a -> unit) -> unit = _prim(@printRS)
 
 end
 

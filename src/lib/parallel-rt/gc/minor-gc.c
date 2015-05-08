@@ -22,6 +22,7 @@
 #include "gc-scan.h"
 #include "remember-set.h"
 
+
 extern Addr_t	MajorGCThreshold;	/* when the size of the nursery goes below */
 					/* this limit it is time to do a GC. */
 
@@ -132,6 +133,8 @@ void MinorGC (VProc_t *vp)
     			*trailer = rememberSet->next;									//remove node from remember set
     			rememberSet = (RS_t*) rememberSet->next;
     			continue;
+    		}else{
+    			printf("Source is in global heap, dest is in nursery\n");
     		}
     	}
 		trailer = &(rememberSet->next);
@@ -175,6 +178,7 @@ void MinorGC (VProc_t *vp)
     vp->majorStats.nBytesAlloc += (Addr_t)nextScan - vp->oldTop;
     TIMER_Stop(&(vp->minorStats.timer));
 #endif
+
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MINOR) {
 	bzero(nextScan, avail); /* clear unused part of local heap */
@@ -201,6 +205,32 @@ void MinorGC (VProc_t *vp)
 	CheckMinorGC (vp, roots);
     }
 #endif
+
+
+    oldSize = vp->oldTop - heapBase;  //recompute oldSize using the new oldTop ptr
+    //prune remember set
+    trailer = &(vp->rememberSet);
+    rememberSet = (RS_t*)vp->rememberSet;
+    while (rememberSet != (RS_t *)M_NIL) {
+    	if(inAddrRange(heapBase, oldSize, ValueToAddr(rememberSet->dest)) && 
+    	   !inAddrRange(heapBase, oldSize, ValueToAddr(rememberSet->source))){ //destination is in local heap, but source is not
+    		trailer = &(rememberSet->next);
+    		rememberSet = (RS_t*) rememberSet->next;
+    	}else if (rememberSet->dest == 1){
+    		Word_t hdr = ((Word_t*)rememberSet->source)[-1];
+    		printf("pointing to something with header: %lu\n", hdr);
+    		*trailer = rememberSet->next;
+    		rememberSet = (RS_t*)rememberSet->next;
+
+//    		*(rememberSet->src) = GetForwardPtr(hdr);
+    	}else{//source and dest are in old space drop it from the remember set
+    		  //Note that if both were in global heap, this item would have been dropped in major-gc
+    		*trailer = rememberSet->next;
+    		rememberSet = (RS_t*)rememberSet->next;
+    	}
+    }
+
+
 
   /* reset the allocation pointer */
     SetAllocPtr (vp);

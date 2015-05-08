@@ -19,12 +19,16 @@
 #include "gc-inline.h"
 #include "internal-heap.h"
 #include "inline-log.h"
+#include "remember-set.h"
 #ifndef NDEBUG
 #include "bibop.h"
 #endif
 #include "gc-scan.h"
 #include <stdio.h>
 #include <inttypes.h>
+
+RS_t * rememberSet;
+
 
 //ForwardObject of MajorGC
 /*! \brief Forward an object into the global-heap chunk reserved for the given vp.
@@ -114,6 +118,7 @@ MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
+    printf("Staring major GC\n");
     Addr_t	heapBase = vp->heapBase;	
     Addr_t	oldSzB = vp->oldTop - heapBase;
   /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
@@ -151,6 +156,25 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 		*roots[i] = AddrToValue(ValueToAddr(p) - oldSzB);
 	    }
 	}
+    }
+
+    Value_t * trailer = &(vp->rememberSet);
+    rememberSet = (RS_t*)vp->rememberSet;
+    while (rememberSet != (RS_t *)M_NIL) {
+        printf("rememberSet = %lu, vp->rememberSet = %lu\n", rememberSet, vp->rememberSet);
+        if(inAddrRange(heapBase, oldSzB, ValueToAddr(rememberSet->dest))){ //destination is in old space
+            rememberSet->dest = ForwardObjMajor(vp, rememberSet->dest);     //forward destination
+            *((Value_t*)rememberSet->source) = rememberSet->dest;               //update source
+            *trailer = rememberSet->next;                                   //remove item from remember set
+            rememberSet = (RS_t*)rememberSet->next;
+            printf("Case: Global points to Old Space\n");
+            continue;
+        }else if(inVPHeap(heapBase, ValueToAddr(rememberSet->dest))){
+            printf("Patching up pointer to first generation old data\n");
+            *((Value_t*)rememberSet->source) = AddrToValue(ValueToAddr(rememberSet->dest) - oldSzB);
+        }
+        rememberSet = (RS_t *) rememberSet->next;
+        trailer = &(rememberSet->next);
     }
 
   /* we also treat the data between vproc->oldTop and top as roots, since
