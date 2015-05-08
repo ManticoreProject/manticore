@@ -124,8 +124,6 @@ struct
 			apply lp(readSet, nil, 0)
 		;
 
-				
-
         define @force-abort(rs : [int,item,item], startStamp:![stamp, int] / exh:exh) : () = 
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             let rawStamp : stamp = #0(startStamp)
@@ -211,7 +209,7 @@ struct
 			return(x)
 		;
 
-        define inline @fast-forward(tv : tvar, myStamp : ![stamp,int], readSet : [int, item, item], retK : cont(any), writeSet : item / exh:exh) : () = 
+        define @fast-forward(tv : tvar, myStamp : ![stamp,int], readSet : [int, item, item], retK : cont(any), writeSet : item / exh:exh) : () = 
             let ffInfo : any = FLS.@get-key(FF_KEY / exh)
             let ffInfo : [item,item,stamp,V.vector] = ([item,item,stamp,V.vector]) ffInfo
             fun validate(rs:item, sentinel : item, bail:cont(), currentRS:item) : item = 

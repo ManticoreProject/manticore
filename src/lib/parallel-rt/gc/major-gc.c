@@ -134,7 +134,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     assert (vp->oldTop <= top);
 
 #ifndef NDEBUG
-    if (GCDebug >= GC_DEBUG_MAJOR)
+    //if (GCDebug >= GC_DEBUG_MAJOR)
 	SayDebug("[%2d] Major GC starting\n", vp->id);
 #endif
 

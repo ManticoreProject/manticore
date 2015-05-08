@@ -65,6 +65,9 @@ void MinorGC (VProc_t *vp)
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to-space */
     Word_t	*nextW = nextScan + 1;		/* next object address in to-space */
 
+    Addr_t heapBase = vp->heapBase;
+    Addr_t oldSize = vp->oldTop - heapBase;
+
     LogMinorGCStart (vp, (uint32_t)allocSzB);
 
 #ifndef NO_GC_STATS
@@ -119,7 +122,21 @@ void MinorGC (VProc_t *vp)
 		}
     }
 
-
+    Value_t * trailer = &(vp->rememberSet);
+    RS_t * rememberSet = ValueToPtr(vp->rememberSet);
+    while (rememberSet != (RS_t *)M_NIL) {
+    	if(inAddrRange(nurseryBase, allocSzB, ValueToAddr(rememberSet->dest))){ 
+    		rememberSet->source = ForwardObjMinor(rememberSet->dest, &nextW);
+    		if(inAddrRange(heapBase, oldSize, rememberSet->source)){
+    			*trailer = rememberSet->next;
+    		}else{
+    			trailer = &(rememberSet->next);
+    		}
+    	}else{
+    		trailer = &(rememberSet->next);
+    		rememberSet = (RS_t *) rememberSet->next;
+    	}
+    }
 
   /* scan to space */
     while (nextScan < nextW-1) {

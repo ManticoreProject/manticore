@@ -31,10 +31,7 @@ struct
             return(alloc(r))
         ;
         
-
-
     )
-      
 
     type seed = _prim(seed)
     val newSeed : int -> seed = _prim(@alloc-seed)
