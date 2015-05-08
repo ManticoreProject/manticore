@@ -13,7 +13,14 @@
 #include "vproc.h"
 #include "value.h"
 
-
+/* remember set element structure
+ */
+struct RS_s {
+	Value_t source;		//source pointer 
+	Value_t dest;		//destination object (lives in a different region than the source)
+	Value_t next;		//next element of the remember set
+};
+typedef struct RS_s RS_t;
 
 /* \brief determine the number of root elements in the remember set
  * \param self the host vproc

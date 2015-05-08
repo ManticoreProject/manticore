@@ -85,7 +85,7 @@ void MinorGC (VProc_t *vp)
    */
     int nWorkStealingRoots = M_NumDequeRoots (vp);
     int nRSRoots = M_NumRSRoots(vp);
-    Value_t *roots[18 + nWorkStealingRoots], **rp;
+    Value_t *roots[18 + nWorkStealingRoots + nRSRoots], **rp;
     rp = roots;
     *rp++ = &(vp->currentFLS);
     *rp++ = &(vp->actionStk);
