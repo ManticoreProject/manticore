@@ -106,6 +106,7 @@ struct struct_vproc {
 
   /* additional optional fields used for stats etc. */
     Timer_t	timer;		//!< tracks the execution time of this vproc
+    Value_t rememberSet;  //pointers that are updated that could violate the heap invariants
 			      /* GC stats */
 #ifndef NO_GC_STATS
     uint32_t	nPromotes;	//!< number of promotions

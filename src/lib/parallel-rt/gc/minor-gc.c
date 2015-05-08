@@ -20,6 +20,7 @@
 #include "work-stealing-deque.h"
 #include "bibop.h"
 #include "gc-scan.h"
+#include "remember-set.h"
 
 extern Addr_t	MajorGCThreshold;	/* when the size of the nursery goes below */
 					/* this limit it is time to do a GC. */
@@ -83,6 +84,7 @@ void MinorGC (VProc_t *vp)
    * holds the GC root.
    */
     int nWorkStealingRoots = M_NumDequeRoots (vp);
+    int nRSRoots = M_NumRSRoots(vp);
     Value_t *roots[18 + nWorkStealingRoots], **rp;
     rp = roots;
     *rp++ = &(vp->currentFLS);
@@ -97,6 +99,7 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->sndQTl);
     *rp++ = &(vp->landingPad);
     *rp++ = &(vp->stdEnvPtr);
+    *rp++ = &(vp->rememberSet);		//add remember set to roots
     rp = M_AddDequeEltsToLocalRoots(vp, rp);
     *rp++ = 0;
 
@@ -115,6 +118,8 @@ void MinorGC (VProc_t *vp)
 		    }
 		}
     }
+
+
 
   /* scan to space */
     while (nextScan < nextW-1) {
@@ -141,7 +146,6 @@ void MinorGC (VProc_t *vp)
 			nextScan = table[getID(hdr)].minorGCscanfunction(nextScan,&nextW, allocSzB,nurseryBase);
 			//printf("scan after = %p\n",(void *)nextScan);
 		}
-
     }
 
     assert ((Addr_t)nextScan >= vp->heapBase);
