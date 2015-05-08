@@ -129,13 +129,12 @@ void MinorGC (VProc_t *vp)
     		rememberSet->source = ForwardObjMinor(rememberSet->dest, &nextW);
     		if(inAddrRange(heapBase, oldSize, rememberSet->source)){
     			*trailer = rememberSet->next;
-    		}else{
-    			trailer = &(rememberSet->next);
+    			rememberSet = (RS_t*) rememberSet->next;
+    			continue;
     		}
-    	}else{
-    		trailer = &(rememberSet->next);
-    		rememberSet = (RS_t *) rememberSet->next;
     	}
+		trailer = &(rememberSet->next);
+		rememberSet = (RS_t *) rememberSet->next;
     }
 
   /* scan to space */
