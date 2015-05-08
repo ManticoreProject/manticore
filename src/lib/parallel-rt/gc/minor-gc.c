@@ -123,12 +123,13 @@ void MinorGC (VProc_t *vp)
     }
 
     Value_t * trailer = &(vp->rememberSet);
-    RS_t * rememberSet = ValueToPtr(vp->rememberSet);
+    RS_t * rememberSet = (RS_t*)vp->rememberSet;
     while (rememberSet != (RS_t *)M_NIL) {
-    	if(inAddrRange(nurseryBase, allocSzB, ValueToAddr(rememberSet->dest))){ 
-    		rememberSet->source = ForwardObjMinor(rememberSet->dest, &nextW);
-    		if(inAddrRange(heapBase, oldSize, rememberSet->source)){
-    			*trailer = rememberSet->next;
+    	if(inAddrRange(nurseryBase, allocSzB, ValueToAddr(rememberSet->dest))){ //destination is in nursery
+    		rememberSet->dest = ForwardObjMinor(rememberSet->dest, &nextW);		//forward destination
+    		*((Value_t*)rememberSet->source) = rememberSet->dest;				//update source
+    		if(inAddrRange(heapBase, oldSize, rememberSet->source)){			//source and dest are in same region
+    			*trailer = rememberSet->next;									//remove node from remember set
     			rememberSet = (RS_t*) rememberSet->next;
     			continue;
     		}
