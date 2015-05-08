@@ -44,7 +44,7 @@ struct
 
 #define READ_SET_BOUND 20
 
-    structure RS = ReadSet
+    structure RS = ReadSet2
 
     
 

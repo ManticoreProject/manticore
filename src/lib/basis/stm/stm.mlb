@@ -8,6 +8,8 @@ ann "cpp" "../include/debug.def,../include/prim.def,../include/runtime-offsets.d
     pabort/boundedHybridPartialSTM.pml
     pabort/full-abort-stm.pml
 
+    fast-forward/read-set2.pml
+
     fast-forward/read-set.pml
     fast-forward/ordered-pabort.pml
     fast-forward/partial-stm.pml
