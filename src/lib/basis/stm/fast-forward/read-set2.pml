@@ -305,7 +305,6 @@ struct
         (*add a non checkpointed read to the read set*)
     	define @insert-without-k(tv:any, readSet : read_set / exh:exh) : read_set =
     		let newItem : item = WithoutK(tv, NilItem)
-            do ccall M_Print_Long("New element address is %lu\n", newItem)
     		let vp : vproc = host_vproc
     		let nurseryBase : long = vpload(NURSERY_BASE, vp)
             let limitPtr : long = vpload(LIMIT_PTR, vp)
@@ -317,19 +316,13 @@ struct
                 then (*last item is still in nursery*)
                     do #2(casted) := newItem
                     do #1(readSet) := newItem
-                    do  if I64Gte(readSet, nurseryBase)
-                        then
-                            if I64Lt(readSet, limitPtr)
-                            then return()
-                            else do ccall M_Print("ERROR!\n") return()
-                        else do ccall M_Print("ERROR!\n") return()
                     return(readSet)
                 else (*not in nursery, add last item to remember set*)
                     do #2(casted) := newItem
                     let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
                     let rs : List.list = vpload(REMEMBER_SET, vp)
                     let address : any = (any) &2(casted)
-                    let newRemSet : List.list = RSCONS((any)&1(newRS), enum(0), RSCONS(address, newItem, rs))
+                    let newRemSet : List.list = RSCONS(address, newItem, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     return(newRS)
             else (*not in nursery, add last item to remember set*)
@@ -337,7 +330,7 @@ struct
                 let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
                 let rs : List.list = vpload(REMEMBER_SET, vp)
                 let address : any = (any) &2(casted)
-                let newRemSet : List.list = RSCONS((any)&1(newRS), enum(0), RSCONS(address, newItem, rs))
+                let newRemSet : List.list = RSCONS(address, newItem, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 return(newRS)
         ;
@@ -354,12 +347,10 @@ struct
         define @printRS(arg : [read_set, fun(any / exh -> unit)] / exh:exh) : unit =
             let rs : read_set = #0(arg)
             let f : fun(any / exh -> unit) = #1(arg)
-            do ccall M_Print_Long("Last element address is %lu\n", #1(rs))
             fun printLoop(i:item) : unit = 
                 case i 
                    of NilItem => return(UNIT)
                     | WithoutK(hd:any, tl:item) => 
-                        do ccall M_Print_Long("Current element address is %lu\n", i)
                         let _ : unit = apply f(hd / exh)
                         apply printLoop(tl)
                 end
