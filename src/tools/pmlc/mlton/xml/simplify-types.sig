@@ -12,6 +12,7 @@ signature SIMPLIFY_TYPES_STRUCTS =
       structure Input: XML_TREE
       structure Output: XML_TREE
       sharing Input.Atoms = Output.Atoms
+      sharing Input.CoreBOM = Output.CoreBOM (* [PML] *)
    end
 
 signature SIMPLIFY_TYPES = 

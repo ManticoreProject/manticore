@@ -420,6 +420,7 @@ fun monomorphise (Xprogram.T {datatypes, body, ...}): Sprogram.t =
                                       lambda = lambda}
                                   end))})))
                 end
+           | Xdec.BOM {bom} => (fn () => [Sdec.BOM{bom = bom}]) (* [PML] *)
            | Xdec.Exception {con, arg} =>
                 let
                    val con' =

@@ -56,7 +56,8 @@ fun lambdaSize (Program.T {body, ...}): Lambda.t -> int =
            | PolyVal {exp, ...} => loopExp (exp, n + 1)
            | Fun {decs, ...} => Vector.fold (decs, n, fn ({lambda, ...}, n) =>
                                              loopLambda (lambda, n))
-           | Exception _ => n + 1)
+           | Exception _ => n + 1
+	   | BOM _ => Error.bug "Polyvariance.lambdaSzie: BOM") (* [PML] *)
       and loopLambda (l: Lambda.t, n): int =
          let val m = loopExp (Lambda.body l, 0)
          in set (l, m); m + n

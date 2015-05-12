@@ -136,7 +136,7 @@ signature XML_TREE =
                            tyvars: Tyvar.t vector,
                            var: Var.t}
 	    (* [PML] BOM declarations *)
-	     | BOM of {exp: exp, bom: CoreBOM.Definition.t vector}
+	     | BOM of {bom: CoreBOM.Definition.t vector}
 
             val layout: t -> Layout.t
          end

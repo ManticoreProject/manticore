@@ -123,7 +123,8 @@ fun sccFuns (Program.T {datatypes, body, overflow}) =
                            Fun {tyvars = tyvars,
                                 decs = Vector.fromListMap (nodes, nodeLambda)})
                           @ decs
-                       end))
+                       end
+	          | BOM _ => dec :: decs)) (* [PML] *)
             val _ = loopVarExp result
          in
             Exp.make {decs = decs, result = result}

@@ -11,6 +11,7 @@ signature MONOMORPHISE_STRUCTS =
       structure Xml: XML
       structure Sxml: SXML_EXNS
       sharing Xml.Atoms = Sxml.Atoms
+      sharing Xml.CoreBOM = Sxml.CoreBOM (* [PML] *)
    end
 
 signature MONOMORPHISE = 

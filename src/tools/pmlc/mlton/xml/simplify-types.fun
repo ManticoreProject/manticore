@@ -234,6 +234,7 @@ fun simplifyTypes (I.Program.T {body, datatypes, overflow}) =
                                  tyvars = keep (tyvars, bv),
                                  var = var}
                end
+          | I.Dec.BOM{bom} => O.Dec.BOM{bom=bom} (* [PML] *)
       and fixExp (e: I.Exp.t): O.Exp.t =
          let
             val {decs, result} = I.Exp.dest e

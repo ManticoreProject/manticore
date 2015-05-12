@@ -47,6 +47,7 @@ fun deadCode {prog} =
                Vector.exists (rvbs, varIsUsed o #var)
                orelse Vector.exists (vbs, patVarIsUsed o #pat)
                orelse decIsWild d
+	  | BOMDecs _ => true (* [PML] *)
       fun useVar x = setVarIsUsed (x, true)
       fun useExp (e: Exp.t): unit = Exp.foreachVar (e, useVar)
       fun useLambda (l: Lambda.t): unit =
@@ -59,6 +60,7 @@ fun deadCode {prog} =
           | Val {rvbs, vbs, ...} =>
                (Vector.foreach (rvbs, useLambda o #lambda)
                 ; Vector.foreach (vbs, useExp o #exp))
+	  | BOMDecs _ => () (* [PML] *)
 
       val n = Vector.length prog
       val m = n - 1

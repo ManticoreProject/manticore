@@ -509,6 +509,7 @@ fun doit (prog: Program.t): Program.t =
                      transPrimExp (exp, expTy, k'Var, k'Ty, hVar, hTy)}
                   end
              | PolyVal _ => Error.bug "CPSTransform.transDec: PolyVal"
+             | BOM _ => Error.bug "CPSTransform.transDec: BOM"
          end
       and transExp (e: Exp.t, 
                     kVar: Var.t, kTy: Type.t, 

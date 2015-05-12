@@ -202,7 +202,7 @@ and dec =
                 tyvars: Tyvar.t vector,
                 var: Var.t}
  (* [PML] BOM declarations *)
-  | BOM of {exp: exp, bom: CoreBOM.Definition.t vector}
+  | BOM of {bom: CoreBOM.Definition.t vector}
 and lambda = Lam of {arg: Var.t,
                      argType: Type.t,
                      body: exp,
@@ -246,6 +246,7 @@ in
                         maybeConstrain (Var.layout var, ty),
                         str " = "],
                    indent (layoutExp exp, 3)]
+       | BOM{bom} => seq [str "_module (...)"] (* [PML] *)
    and layoutExp (Exp {decs, result}) =
       align [str "let",
              indent (align (List.map (decs, layoutDec)), 3),
@@ -443,6 +444,7 @@ structure Exp =
                                       handleBoundVar (var, tyvars, ty))
                       ; Vector.foreach (decs, fn {lambda, ...} =>
                                         loopLambda lambda))
+		| BOM _ => () (* [PML] *)
             and loopLambda (Lam {arg, argType, body, ...}): unit =
                (monoVar (arg, argType); loopExp body)
          in loopExp exp
@@ -522,6 +524,7 @@ structure Exp =
                                         (Var.clear var
                                          ; clearLambda lambda)))
                 | Exception {con, ...} => Con.clear con
+		| BOM _ => () (* [PML] *)
             and clearPrimExp e =
                case e of
                   Lambda l => clearLambda l

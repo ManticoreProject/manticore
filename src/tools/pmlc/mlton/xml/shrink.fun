@@ -331,6 +331,7 @@ fun shrinkOnce (Program.T {datatypes, body, overflow}) =
                         :: shrinkDecs decs
                 | MonoVal b =>
                      shrinkMonoVal (b, fn () => shrinkDecs decs)
+                | BOM _ => dec :: shrinkDecs decs (* [PML] *)
       and shrinkMonoVal ({var, ty, exp},
                          rest: unit -> Dec.t list) =
          let
