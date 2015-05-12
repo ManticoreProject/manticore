@@ -201,6 +201,8 @@ and dec =
                 ty: Type.t,
                 tyvars: Tyvar.t vector,
                 var: Var.t}
+ (* [PML] BOM declarations *)
+  | BOM of {exp: exp, bom: CoreBOM.Definition.t vector}
 and lambda = Lam of {arg: Var.t,
                      argType: Type.t,
                      body: exp,

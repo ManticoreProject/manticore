@@ -19,6 +19,7 @@
 signature XML_TREE_STRUCTS =
    sig
       include ATOMS
+      structure CoreBOM: CORE_BOM
    end
 
 signature XML_TREE =
@@ -134,6 +135,8 @@ signature XML_TREE =
                            ty: Type.t,
                            tyvars: Tyvar.t vector,
                            var: Var.t}
+	    (* [PML] BOM declarations *)
+	     | BOM of {exp: exp, bom: CoreBOM.Definition.t vector}
 
             val layout: t -> Layout.t
          end

@@ -637,6 +637,8 @@ fun defunctorize (CoreML.Program.T {decs}) =
              | Val {rvbs, vbs, ...} =>
                   (Vector.foreach (rvbs, loopLambda o #lambda)
                    ; Vector.foreach (vbs, loopExp o #exp))
+             (* [PML] process top-level BOM definitions *)
+	     | BOMDecs defs => raise Fail "BOMDecs unimplemented"
          end
       and loopExp (e: Cexp.t): unit =
          let
@@ -918,6 +920,8 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                                   tyvars = tyvars}],
                                 body = e}
                end
+             (* [PML] process top-level BOM definitions *)
+	     | BOMDecs defs => raise Fail "BOMDecs unimplemented"
          end
       and loopDecs (ds: Cdec.t vector, (e: Xexp.t, t: Xtype.t)): Xexp.t =
          loopDecsList (Vector.toList ds, (e, t))

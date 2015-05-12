@@ -6,7 +6,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-Group
+Library
 
 signature SXML
 signature SXML_STRUCTS
@@ -24,6 +24,7 @@ $/basis.cm
 ../atoms/sources.cm
 ../control/sources.cm
 ../lib/sources.cm
+../core-bom/sources.cm
 
 xml-type.sig
 xml-tree.sig

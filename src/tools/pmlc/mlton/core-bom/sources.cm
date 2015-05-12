@@ -8,12 +8,9 @@
 
 Library
 
-(*signature CORE_BOM*)
-signature CORE_ML
+signature CORE_BOM
 
-(*functor CoreBOM*)
-functor CoreML
-functor DeadCode
+functor CoreBOM
 
 is
 
@@ -26,10 +23,5 @@ $/basis.cm
 ../../prim/sources.cm
 ../../common/sources.cm		(* for RawTypes *)
 
-../core-bom/sources.cm
-
-core-ml.fun
-core-ml.sig
-dead-code.fun
-dead-code.sig
-
+core-bom.fun
+core-bom.sig

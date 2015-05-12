@@ -70,8 +70,10 @@ structure PMLFrontEnd : PML_FRONT_END =
 
 	    fun layout t = layoutPrettyAux (t, {expandOpaque = true, localTyvarNames = false})
 	   end
-  structure CoreBOM = CoreBOM)
-    structure Xml = Xml (open Atoms)
+        structure CoreBOM = CoreBOM)
+    structure Xml = Xml (
+        open Atoms
+        structure CoreBOM = CoreBOM)
     structure Sxml = Sxml (open Xml)
     structure Tycon = Atoms.Tycon
 

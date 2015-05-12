@@ -26,7 +26,7 @@ structure BindingStrength =
 
 datatype z = datatype RealSize.t
 
-type tycon = t
+type tycon = t (* [PML] = Id.t *)
 
 local
    fun make s = (s, fromString s)

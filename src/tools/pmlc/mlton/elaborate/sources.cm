@@ -6,7 +6,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-Group
+Library
 
 signature ELABORATE
 functor Elaborate
@@ -21,6 +21,7 @@ $/basis.cm
 ../atoms/sources.cm
 ../control/sources.cm
 ../core-ml/sources.cm
+../core-bom/sources.cm
 ../lib/sources.cm
 
 decs.fun

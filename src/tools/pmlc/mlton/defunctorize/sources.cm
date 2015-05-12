@@ -6,7 +6,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-Group
+Library
 
 functor Defunctorize
 
@@ -16,6 +16,7 @@ $/basis.cm
 
 ../lib/sources.cm
 ../control/sources.cm
+../core-bom/sources.cm
 ../core-ml/sources.cm
 ../match-compile/sources.cm
 ../xml/sources.cm

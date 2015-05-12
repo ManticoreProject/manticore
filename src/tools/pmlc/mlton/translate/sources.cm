@@ -4,7 +4,7 @@
  * All rights reserved.
  *)
 
-Group
+Library
 
   functor Translate
 
@@ -22,6 +22,7 @@ is
   ../../bom-opt/sources.cm
 
   ../xml/sources.cm
+  ../core-bom/sources.cm
 
   translate.fun
   translate-controls.sml
