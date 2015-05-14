@@ -61,6 +61,14 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots);
  */
 void MinorGC (VProc_t *vp)
 {
+	int count = 0;
+	RS_t * rs = (RS_t*)vp->rememberSet;
+    while (rs != (RS_t *)M_NIL) {
+    	count++;
+    	rs = rs->next;
+    }
+    printf("Remember set has %d elements\n", count);
+
     Addr_t	nurseryBase = vp->nurseryBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to-space */
@@ -119,7 +127,7 @@ void MinorGC (VProc_t *vp)
 		Value_t p = *roots[i];
 		if (isPtr(p)) {
 		    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
-			*roots[i] = ForwardObjMinor(p, &nextW);
+				*roots[i] = ForwardObjMinor(p, &nextW);
 		    }
 		}
     }

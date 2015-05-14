@@ -318,18 +318,18 @@ struct
                     do #3(readSet) := I32Add(#3(readSet), 1)
                     return(readSet)
                 else (*not in nursery, add last item to remember set*)
-                    let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,item,item], int, any] = alloc(casted, 2, rs)
-                    do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #2(casted) := newItem
                     let newRS : read_set = alloc(#0(readSet), newItem, newItem, I32Add(#3(readSet), 1))
+                    let rs : any = vpload(REMEMBER_SET, vp)
+                    let newRemSet : [read_set, int, [read_set, int, [![any,item,item], int, any]]] = alloc(newRS, ~2, alloc(newRS, ~1, alloc(casted, 2, rs)))
+                    do vpstore(REMEMBER_SET, vp, newRemSet)
                     return(newRS)
             else (*not in nursery, add last item to remember set*)
-                let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,item,item], int, any] = alloc(casted, 2, rs)
-                do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #2(casted) := newItem
                 let newRS : read_set = alloc(#0(readSet), newItem, newItem, I32Add(#3(readSet), 1))
+                let rs : any = vpload(REMEMBER_SET, vp)
+                let newRemSet : [read_set, int, [read_set, int, [![any,item,item], int, any]]] = alloc(newRS, ~2, alloc(newRS, ~1, alloc(casted, 2, rs)))
+                do vpstore(REMEMBER_SET, vp, newRemSet)
                 return(newRS)
         ;
 
@@ -354,7 +354,6 @@ struct
                     do #1(readSet) := newItem
                     return(readSet)
                 else (*not in nursery, add last item to remember set*)
-                    let temp : [int] = ([int])#1(casted)
                     do #2(casted) := newItem
                     let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
                     let rs : any = vpload(REMEMBER_SET, vp)
@@ -362,7 +361,6 @@ struct
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     return(newRS)
             else (*not in nursery, add last item to remember set*)
-                let temp : [int] = ([int])#1(casted)
                 do #2(casted) := newItem
                 let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
                 let rs : any = vpload(REMEMBER_SET, vp)

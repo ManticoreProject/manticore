@@ -13,7 +13,7 @@ val args = CommandLine.arguments ()
 val K = 
 	case getArg "-size" args 
 	   of SOME arg => Option.valOf(Int.fromString arg)
-		| NONE => 50
+		| NONE => 10
 
 
 fun lpABCDE(i, rs, l) = 

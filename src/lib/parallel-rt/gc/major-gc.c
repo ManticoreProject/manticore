@@ -150,6 +150,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	        else if (inVPHeap(heapBase, ValueToAddr(p))) {
 	            //RememberSet: pointer from old to young, adjust pointer after scanning
                 if(inAddrRange(heapBase, oldSzB, roots[i])){
+                    printf("Skipping translation\n");
                     continue;
                 }
                 // p points to another object in the "young" region,
@@ -359,7 +360,7 @@ static void ScanGlobalToSpace (
                     for (int i = 0;  i < len;  i++, scanPtr++) {
                         Value_t *scanP = (Value_t *)scanPtr;
                         Value_t v = *scanP;
-                        if (isPtr(v) && inAddrRange(heapBase, oldSzB, v)/*inVPHeap(heapBase, ValueToAddr(v))*/) {
+                        if (isPtr(v) && /*inAddrRange(heapBase, oldSzB, v)*/inVPHeap(heapBase, ValueToAddr(v))) {
                             *scanP = ForwardObjMajor(vp, v);
                         }
                     }
@@ -367,7 +368,7 @@ static void ScanGlobalToSpace (
                     assert (isRawHdr(hdr));
                     scanPtr += GetLength(hdr);
                 } else {
-                    scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase,oldSzB);
+                    scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
                 }
             }
 
