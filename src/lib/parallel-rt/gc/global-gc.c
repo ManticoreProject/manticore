@@ -162,7 +162,7 @@ void ConvertToSpaceChunks (VProc_t *self, MemChunk_t *p) {
  */
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
-
+    printf("Starting global GC\n");
     bool	leaderVProc;
 
 #ifndef NO_GC_STATS

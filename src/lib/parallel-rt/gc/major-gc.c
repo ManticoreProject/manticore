@@ -27,9 +27,6 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-RS_t * rememberSet;
-
-
 //ForwardObject of MajorGC
 /*! \brief Forward an object into the global-heap chunk reserved for the given vp.
  *  \param vp the vproc
@@ -118,7 +115,6 @@ MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
-    printf("Staring major GC\n");
     Addr_t	heapBase = vp->heapBase;	
     Addr_t	oldSzB = vp->oldTop - heapBase;
   /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
@@ -143,38 +139,24 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	SayDebug("[%2d] Major GC starting\n", vp->id);
 #endif
 
-  /* process the roots */
-    for (int i = 0;  roots[i] != 0;  i++) {
-	Value_t p = *roots[i];
-	if (isPtr(p)) {
-	    if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
-		*roots[i] = ForwardObjMajor(vp, p);
-	    }
-	    else if (inVPHeap(heapBase, ValueToAddr(p))) {
-	      // p points to another object in the "young" region,
-	      // so adjust it.
-		*roots[i] = AddrToValue(ValueToAddr(p) - oldSzB);
-	    }
-	}
-    }
 
-    Value_t * trailer = &(vp->rememberSet);
-    rememberSet = (RS_t*)vp->rememberSet;
-    while (rememberSet != (RS_t *)M_NIL) {
-        printf("rememberSet = %lu, vp->rememberSet = %lu\n", rememberSet, vp->rememberSet);
-        if(inAddrRange(heapBase, oldSzB, ValueToAddr(rememberSet->dest))){ //destination is in old space
-            rememberSet->dest = ForwardObjMajor(vp, rememberSet->dest);     //forward destination
-            *((Value_t*)rememberSet->source) = rememberSet->dest;               //update source
-            *trailer = rememberSet->next;                                   //remove item from remember set
-            rememberSet = (RS_t*)rememberSet->next;
-            printf("Case: Global points to Old Space\n");
-            continue;
-        }else if(inVPHeap(heapBase, ValueToAddr(rememberSet->dest))){
-            printf("Patching up pointer to first generation old data\n");
-            *((Value_t*)rememberSet->source) = AddrToValue(ValueToAddr(rememberSet->dest) - oldSzB);
-        }
-        rememberSet = (RS_t *) rememberSet->next;
-        trailer = &(rememberSet->next);
+    /* process the roots */
+    for (int i = 0;  roots[i] != 0;  i++) {
+	    Value_t p = *roots[i];
+	    if (isPtr(p)) {
+	        if (inAddrRange(heapBase, oldSzB, ValueToAddr(p))) {
+		        *roots[i] = ForwardObjMajor(vp, p);
+	        }
+	        else if (inVPHeap(heapBase, ValueToAddr(p))) {
+	            //RememberSet: pointer from old to young, adjust pointer after scanning
+                if(inAddrRange(heapBase, oldSzB, roots[i])){
+                    continue;
+                }
+                // p points to another object in the "young" region,
+                // so adjust it.
+		        *roots[i] = AddrToValue(ValueToAddr(p) - oldSzB);
+	        }
+	    }
     }
 
   /* we also treat the data between vproc->oldTop and top as roots, since
@@ -186,7 +168,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     while (nextScan < (Word_t *)top) {
 		
 		Word_t hdr = *nextScan++;	// get object header
-		
+
 	    if (isVectorHdr(hdr)) {
 		    int len = GetLength(hdr);
 		    for (int i = 0;  i < len;  i++, nextScan++) {
@@ -205,10 +187,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 		} else if (isRawHdr(hdr)) {
 			assert (isRawHdr(hdr));
 			nextScan += GetLength(hdr);
-		} else {
-			
+		} else {			
 			nextScan = table[getID(hdr)].majorGCscanfunction(nextScan,vp, oldSzB,heapBase);
-			
 		}
     }
 
@@ -216,9 +196,22 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     ScanGlobalToSpace (vp, heapBase, scanChunk, globScan);
 
   /* copy the live data between vp->oldTop and top to the base of the heap */
-    Addr_t youngSzB = top - vp->oldTop;
+    Addr_t youngSzB = top - vp->oldTop; 
     memmove ((void *)heapBase, (void *)(vp->oldTop), youngSzB);
     vp->oldTop = vp->heapBase + youngSzB;
+
+    //RememberSet: translate pointers for source that just got promoted to global heap and dest still in local heap
+    RS_t* rememberSet = (RS_t*)vp->rememberSet;
+    while(rememberSet != (RS_t*)M_NIL){
+        if(rememberSet->offset >= 0){
+            Value_t dest = rememberSet->source[rememberSet->offset];
+            if(inVPHeap(heapBase, (Addr_t)dest)){
+                rememberSet->source[rememberSet->offset] = (Word_t)((Addr_t)dest - oldSzB);
+            }
+        }
+        rememberSet = rememberSet->next;
+    }
+
 
 #ifndef NO_GC_STATS
   // compute the number of bytes copied into the global heap
@@ -228,7 +221,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	Addr_t tp = (p->next == 0) ? vp->globNextW : p->usedTop;
 	nBytesCopied += (tp - base);
     }
-    vp->majorStats.nBytesCopied += nBytesCopied + youngSzB;
+    vp->majorStats.nBytesCopied += nBytesCopied + youngSzB; 
     vp->globalStats.nBytesAlloc += nBytesCopied;
     TIMER_Stop(&(vp->majorStats.timer));
 #ifndef NDEBUG
@@ -351,6 +344,8 @@ static void ScanGlobalToSpace (
 {
     Word_t	*scanTop = UsedTopOfChunk (vp, scanChunk);
 
+    Addr_t oldSzB = vp->oldTop - vp->heapBase;
+
     do {
     
         bool handlingAlloc = scanChunk == vp->globAllocChunk;
@@ -364,7 +359,7 @@ static void ScanGlobalToSpace (
                     for (int i = 0;  i < len;  i++, scanPtr++) {
                         Value_t *scanP = (Value_t *)scanPtr;
                         Value_t v = *scanP;
-                        if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {
+                        if (isPtr(v) && inAddrRange(heapBase, oldSzB, v)/*inVPHeap(heapBase, ValueToAddr(v))*/) {
                             *scanP = ForwardObjMajor(vp, v);
                         }
                     }
@@ -372,7 +367,7 @@ static void ScanGlobalToSpace (
                     assert (isRawHdr(hdr));
                     scanPtr += GetLength(hdr);
                 } else {
-                    scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
+                    scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase,oldSzB);
                 }
             }
 

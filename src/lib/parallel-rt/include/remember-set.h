@@ -1,9 +1,9 @@
-/* work-stealing-deque.h
+/* remember-set.h
  *
  * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Deque structure used by the Work Stealing scheduler.
+ * remember set structure
  */
 
 #ifndef _REMEMBER_SET_H_
@@ -16,9 +16,9 @@
 /* remember set element structure
  */
 struct RS_s {
-	Value_t source;		//source pointer 
-	Value_t dest;		//destination object (lives in a different region than the source)
-	Value_t next;		//next element of the remember set
+	Value_t * source;		//source pointer 
+	int offset;			//offset of source pointer to remember
+	struct RS_s * next;		//next element of the remember set
 };
 typedef struct RS_s RS_t;
 
@@ -27,5 +27,7 @@ typedef struct RS_s RS_t;
  * \return the number of root elements
  */
 int M_NumRSRoots(VProc_t *self);
+
+Value_t ** M_AddRSElts(VProc_t * vp, Value_t ** rootPtr);
 
 #endif /*! _REMEMBER_SET_H_ */

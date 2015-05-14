@@ -89,7 +89,7 @@ void MinorGC (VProc_t *vp)
    */
     int nWorkStealingRoots = M_NumDequeRoots (vp);
     int nRSRoots = M_NumRSRoots(vp);
-    Value_t *roots[18 + nWorkStealingRoots + nRSRoots], **rp;
+    Value_t *roots[19 + nWorkStealingRoots + nRSRoots], **rp;
     rp = roots;
     *rp++ = &(vp->currentFLS);
     *rp++ = &(vp->actionStk);
@@ -105,6 +105,7 @@ void MinorGC (VProc_t *vp)
     *rp++ = &(vp->stdEnvPtr);
     *rp++ = &(vp->rememberSet);		//add remember set to roots
     rp = M_AddDequeEltsToLocalRoots(vp, rp);
+    rp = M_AddRSElts(vp, rp);
     *rp++ = 0;
 
 #ifndef NDEBUG
@@ -121,24 +122,6 @@ void MinorGC (VProc_t *vp)
 			*roots[i] = ForwardObjMinor(p, &nextW);
 		    }
 		}
-    }
-
-    Value_t * trailer = &(vp->rememberSet);
-    RS_t * rememberSet = (RS_t*)vp->rememberSet;
-    while (rememberSet != (RS_t *)M_NIL) {
-    	if(inAddrRange(nurseryBase, allocSzB, ValueToAddr(rememberSet->dest))){ //destination is in nursery
-    		rememberSet->dest = ForwardObjMinor(rememberSet->dest, &nextW);		//forward destination
-    		*((Value_t*)rememberSet->source) = rememberSet->dest;				//update source
-    		if(inAddrRange(heapBase, oldSize, rememberSet->source)){			//source and dest are in same region
-    			*trailer = rememberSet->next;									//remove node from remember set
-    			rememberSet = (RS_t*) rememberSet->next;
-    			continue;
-    		}else{
-    			printf("Source is in global heap, dest is in nursery\n");
-    		}
-    	}
-		trailer = &(rememberSet->next);
-		rememberSet = (RS_t *) rememberSet->next;
     }
 
   /* scan to space */
@@ -206,31 +189,29 @@ void MinorGC (VProc_t *vp)
     }
 #endif
 
-
-    oldSize = vp->oldTop - heapBase;  //recompute oldSize using the new oldTop ptr
     //prune remember set
-    trailer = &(vp->rememberSet);
-    rememberSet = (RS_t*)vp->rememberSet;
+    oldSize = vp->oldTop - heapBase;  //recompute oldSize using the new oldTop ptr
+    Value_t * trailer = &(vp->rememberSet);
+    RS_t * rememberSet = (RS_t*)vp->rememberSet;
     while (rememberSet != (RS_t *)M_NIL) {
-    	if(inAddrRange(heapBase, oldSize, ValueToAddr(rememberSet->dest)) && 
+    	if(rememberSet->offset < 0){//patch up potential forwarding pointer
+    		Value_t header = ((Value_t*)rememberSet->source[-rememberSet->offset])[-1];
+    		if(isForwardPtr(header)){
+    			rememberSet->source[-rememberSet->offset] = PtrToValue(GetForwardPtr(header));
+    		}
+    		*trailer = rememberSet->next;
+    		rememberSet = rememberSet->next;
+    	}
+    	Value_t dest = rememberSet->source[rememberSet->offset];
+    	if(inAddrRange(heapBase, oldSize, ValueToAddr(dest)) && 
     	   !inAddrRange(heapBase, oldSize, ValueToAddr(rememberSet->source))){ //destination is in local heap, but source is not
     		trailer = &(rememberSet->next);
     		rememberSet = (RS_t*) rememberSet->next;
-    	}else if (rememberSet->dest == 1){
-    		Word_t hdr = ((Word_t*)rememberSet->source)[-1];
-    		printf("pointing to something with header: %lu\n", hdr);
-    		*trailer = rememberSet->next;
-    		rememberSet = (RS_t*)rememberSet->next;
-
-//    		*(rememberSet->src) = GetForwardPtr(hdr);
-    	}else{//source and dest are in old space drop it from the remember set
-    		  //Note that if both were in global heap, this item would have been dropped in major-gc
+    	}else{//source and dest are in same region, drop it from the remember set
     		*trailer = rememberSet->next;
     		rememberSet = (RS_t*)rememberSet->next;
     	}
     }
-
-
 
   /* reset the allocation pointer */
     SetAllocPtr (vp);

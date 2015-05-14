@@ -45,8 +45,6 @@ struct
                      | WithoutK of 'a * 'a | Abort of unit 
 
 
-    datatype 'a rsCons = RSCONS of 'a * 'a * 'a | RSNil
-
     _primcode(
         define @allocPrintFun(x:unit / exh:exh) : any = 
             fun f(x:any / exh:exh) : unit = return(UNIT)
@@ -199,17 +197,23 @@ struct
         define @validate-commit(readSet : read_set, stamp : ![stamp], newStamp : stamp, unlock : fun(unit / exh -> unit) / exh:exh) : () = 
             let rawStamp : stamp = #0(stamp)
             let count : ![int] = alloc(0)
-            fun validateLoop(i : item, checkpoint : item, newStamp : stamp) : () = 
+            fun commitLoop(i : item, checkpoint : item, newStamp : stamp) : () = 
                 case i
                    of WithK(tv:tvar, next:item, ws:item, k:cont(any), _:item) =>
+                        let header : any = ArrLoad(i, ~1)
+                        do  if I64Gt(header, 1048576)
+                            then
+                                do ccall M_Print_Long("Current element is a forwarding pointer! %lu\n", header) return() 
+                            else return()
+                        do ccall M_Print_Long("Validating WithK, header is %lu\n", header)
                         if I64Lt(#2(tv), rawStamp)
                         then
                             if Equal(k, enum(0))
                             then
-                                apply validateLoop(next, checkpoint, newStamp)
+                                apply commitLoop(next, checkpoint, newStamp)
                             else
                                 do #0(count) := I32Add(#0(count), 1)
-                                apply validateLoop(next, i, newStamp)
+                                apply commitLoop(next, i, newStamp)
                         else
                             if Equal(k, enum(0))
                             then 
@@ -223,17 +227,26 @@ struct
                                 let newRS : read_set = alloc(#0(readSet), i, i, I32Add(#0(count), 1))
                                 @abort(newRS, stamp / exh)
                     | WithoutK(tv:tvar, next:item) =>
+                        let header : any = ArrLoad(i, ~1)
+                        do  if I64Gt(header, 1048576)
+                            then
+                                do ccall M_Print_Long("Current element is a forwarding pointer! %lu\n", header) return() 
+                            else return()
+                        do ccall M_Print_Long("Validating WithoutK, header is %lu\n", header)
                         let casted : ![any, any, item] = (![any,any,item]) i
                         if I64Lt(#2(tv), rawStamp)
-                        then apply validateLoop(next, checkpoint, newStamp)
+                        then apply commitLoop(next, checkpoint, newStamp)
                         else 
                             let _ : unit = apply unlock(UNIT / exh)
                             do #0(stamp) := newStamp
                             let newRS : read_set = alloc(#0(readSet), checkpoint, checkpoint, #0(count))
                             @abort(newRS, stamp / exh)
                     | NilItem => return()
+                    | _ => let x : [any] = ([any]) i
+                           do ccall M_Print_Long("Error: commitLoop, tag is %lu\n", x) throw exh(Fail(@"Error in commitLoop\n"))
                 end
-            do apply validateLoop(#0(readSet), NilItem, newStamp)
+            do apply commitLoop(#0(readSet), NilItem, newStamp)
+            do ccall M_Print("Committing transaction\n")
             return()
         ;
 
@@ -261,6 +274,31 @@ struct
             do #3(readSet) := x
             return();
 
+        define @checkHeader(tv:any) : () = 
+            if I64Lt(tv, 50:long)
+            then return()
+            else
+                let header : any = ArrLoad(tv, ~1)
+                if I64Gt(header, 1048576)
+                then
+                    do ccall M_Print_Long("pointing to a forwarding pointer: %lu\n", header)
+                    return()
+                else return()
+        ;            
+
+        define @rs-len(readSet : read_set / exh:exh) : unit =
+            fun lenLoop(i:item, count:int) : int = 
+                case i 
+                   of NilItem => return(count)
+                    | WithK(tv:tvar, next:item, ws:item, k:cont(any), _:item) => 
+                        apply lenLoop(next, I32Add(count, 1))
+                    | WithoutK(tv:tvar, next:item) => 
+                        apply lenLoop(next, I32Add(count, 1))
+                end
+            let l : int = apply lenLoop(#0(readSet), 0)
+            do ccall M_Print_Int("Read set length is %d\n", l)
+            return(UNIT);
+
         (*Note that these next two defines, rely on the fact that a heap limit check will not get
          *inserted within the body*)
         (*Add a checkpointed read to the read set*)
@@ -280,17 +318,15 @@ struct
                     do #3(readSet) := I32Add(#3(readSet), 1)
                     return(readSet)
                 else (*not in nursery, add last item to remember set*)
-                    let rs : List.list = vpload(REMEMBER_SET, vp)
-                    let address : any = (any) &2(casted)
-                    let newRemSet : List.list = RSCONS(address, newItem, rs)
+                    let rs : any = vpload(REMEMBER_SET, vp)
+                    let newRemSet : [![any,item,item], int, any] = alloc(casted, 2, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #2(casted) := newItem
                     let newRS : read_set = alloc(#0(readSet), newItem, newItem, I32Add(#3(readSet), 1))
                     return(newRS)
             else (*not in nursery, add last item to remember set*)
-                let rs : List.list = vpload(REMEMBER_SET, vp)
-                let address : any = (any) &2(casted)
-                let newRemSet : List.list = RSCONS(address, newItem, rs)
+                let rs : any = vpload(REMEMBER_SET, vp)
+                let newRemSet : [![any,item,item], int, any] = alloc(casted, 2, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #2(casted) := newItem
                 let newRS : read_set = alloc(#0(readSet), newItem, newItem, I32Add(#3(readSet), 1))
@@ -318,19 +354,19 @@ struct
                     do #1(readSet) := newItem
                     return(readSet)
                 else (*not in nursery, add last item to remember set*)
+                    let temp : [int] = ([int])#1(casted)
                     do #2(casted) := newItem
                     let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
-                    let rs : List.list = vpload(REMEMBER_SET, vp)
-                    let address : any = (any) &2(casted)
-                    let newRemSet : List.list = RSCONS(address, newItem, rs)
+                    let rs : any = vpload(REMEMBER_SET, vp)
+                    let newRemSet : [read_set, int, [![any,item,item], int, any]] = alloc(newRS, ~1, alloc(casted, 2, rs))
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     return(newRS)
             else (*not in nursery, add last item to remember set*)
+                let temp : [int] = ([int])#1(casted)
                 do #2(casted) := newItem
                 let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
-                let rs : List.list = vpload(REMEMBER_SET, vp)
-                let address : any = (any) &2(casted)
-                let newRemSet : List.list = RSCONS(address, newItem, rs)
+                let rs : any = vpload(REMEMBER_SET, vp)
+                let newRemSet : [read_set, int, [![any,item,item], int, any]] = alloc(newRS, ~1, alloc(casted, 2, rs))
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 return(newRS)
         ;
@@ -362,7 +398,7 @@ struct
     val new : unit -> 'a read_set = _prim(@new-w)
     val insert : 'a * 'a read_set -> 'a read_set = _prim(@insert-w)
     val printRS : 'a read_set * ('a -> unit) -> unit = _prim(@printRS)
-
+    val length : 'a read_set -> unit = _prim(@rs-len)
 end
 
 
