@@ -31,7 +31,7 @@ functor IntUniqueId():> UNIQUE_ID =
    struct
       open Int
 
-      type t = int
+      type t = int (* [PML] *)
 
       val cur: t ref = ref 0
 

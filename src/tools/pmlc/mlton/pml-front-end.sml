@@ -17,65 +17,42 @@ structure PMLFrontEnd : PML_FRONT_END =
   (*              Intermediate Languages               *)
   (*---------------------------------------------------*)
 
-    structure Symbol = Symbol ()
-    structure Field = Field (structure Symbol = Symbol)
-    structure Record = Record (
-	val isSorted = false
-	structure Field = Field)
-    structure SortedRecord = Record (
-	val isSorted = true
-	structure Field = Field)
-    structure Tyvar = Tyvar ()
-    structure Ast = Ast (
-	structure Record = Record
-	structure SortedRecord = SortedRecord
-	structure Symbol = Symbol
-	structure Tyvar = Tyvar)
-    local
-      open Ast.Tycon
-    in
-    structure CharSize = CharSize
-    structure IntSize = IntSize
-    structure RealSize = RealSize
-    structure WordSize = WordSize
-    end (* local open Ast.Tycon *)
-    structure Atoms = Atoms (
-	structure CharSize = CharSize
-	structure Field = Field
-	structure IntSize = IntSize
-	structure RealSize = RealSize
-	structure Record = Record
-	structure SortedRecord = SortedRecord
-	structure Tyvar = Tyvar
-	structure WordSize = WordSize)
+    structure Atoms = Atoms ()
     local
       open Atoms
     in
     structure Const = Const
     structure ConstType = Const.ConstType
     structure Ffi = Ffi
+    structure Symbol = Symbol
+    structure WordSize = WordSize
     structure WordX = WordX
+    structure Tycon =  Tycon
     end
-    structure TypeEnv = TypeEnv (Atoms)
-    structure CoreBOM = CoreBOM (
-      structure Ast = Ast)
-    structure CoreML = CoreML (
-	open Atoms
-	structure Type =
-	  struct
-	    open TypeEnv.Type
+    structure Ast = Ast (open Atoms)
+    structure TypeEnv = TypeEnv (open Atoms)
+    structure CoreBOM = CoreBOM (structure Ast = Ast)
+    structure CoreML = CoreML (open Atoms
+			       structure Type =
+				  struct
+				     open TypeEnv.Type
 
-	    val makeHom =
-		 fn {con, var} => makeHom {con = con, expandOpaque = true, var = var}
+				     val makeHom =
+					fn {con, var} =>
+					makeHom {con = con,
+						 expandOpaque = true,
+						 var = var}
 
-	    fun layout t = layoutPrettyAux (t, {expandOpaque = true, localTyvarNames = false})
-	   end
-        structure CoreBOM = CoreBOM)
+				     fun layout t = 
+					layoutPrettyAux 
+					(t, {expandOpaque = true,
+					     localTyvarNames = false})
+				  end
+			       structure CoreBOM = CoreBOM)
     structure Xml = Xml (
         open Atoms
         structure CoreBOM = CoreBOM)
     structure Sxml = Sxml (open Xml)
-    structure Tycon = Atoms.Tycon
 
   (*---------------------------------------------------*)
   (*                  Compiler Passes                  *)
@@ -102,8 +79,6 @@ structure PMLFrontEnd : PML_FRONT_END =
     structure Monomorphise = Monomorphise (
 	structure Xml = Xml
 	structure Sxml = Sxml)
-
-
 
   (* ------------------------------------------------- *)
   (*                 Lookup Constant                   *)

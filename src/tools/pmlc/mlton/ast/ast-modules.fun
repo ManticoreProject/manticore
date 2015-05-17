@@ -6,7 +6,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor AstModules (S: AST_MODULES_STRUCTS): AST_MODULES =
+functor AstModules (S: AST_MODULES_STRUCTS): AST_MODULES = 
 struct
 
 structure Option = MLtonOption
@@ -100,7 +100,7 @@ fun layoutSigexp (e: sigexp): Layout.t =
             if 0 = Vector.length ws
                then e
             else
-               seq [e,
+               seq [e, 
                     layoutAndsBind
                     (" where", "=", ws, fn {tyvars, longtycon, ty} =>
                      (OneLine,
@@ -305,18 +305,18 @@ withtype strexp = strexpNode Wrap.t
 and strdec = strdecNode Wrap.t
 
 fun layoutStrdec d =
-  case node d of
-    Core d => Dec.layout d
-  | Local (d, d') => Pretty.locall (layoutStrdec d, layoutStrdec d')
-  | Seq ds => align (layoutStrdecs ds)
-  | Structure strbs =>
-       layoutAndsBind ("structure", "=", strbs,
-                       fn {name, def, constraint} =>
-                       (case node def of
-                         Var _ => OneLine
-                       | _ => Split 3,
-                          seq [Strid.layout name, SigConst.layout constraint],
-                          layoutStrexp def))
+   case node d of
+      Core d => Dec.layout d
+    | Local (d, d') => Pretty.locall (layoutStrdec d, layoutStrdec d')
+    | Seq ds => align (layoutStrdecs ds)
+    | Structure strbs =>
+         layoutAndsBind ("structure", "=", strbs,
+                         fn {name, def, constraint} =>
+                         (case node def of
+                             Var _ => OneLine
+                           | _ => Split 3,
+                                seq [Strid.layout name, SigConst.layout constraint],
+                                layoutStrexp def))
   (* | PrimCode definitions => mayAlign [ *)
   (*     str "_primcode", *)
   (*     schemeList (Vector.toListMap (definitions, BOM.Definition.layout)) *)
@@ -432,7 +432,7 @@ structure Strdec =
                let
                   val d1 = coalesce d1
                   val d2 = coalesce d2
-                  val node =
+                  val node = 
                      case (node d1, node d2) of
                         (Core d1', Core d2') =>
                            Core (Dec.makeRegion

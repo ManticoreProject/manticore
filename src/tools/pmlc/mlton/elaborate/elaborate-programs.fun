@@ -7,7 +7,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor ElaboratePrograms (S: ELABORATE_PROGRAMS_STRUCTS): ELABORATE_PROGRAMS =
+functor ElaboratePrograms (S: ELABORATE_PROGRAMS_STRUCTS): ELABORATE_PROGRAMS = 
 struct
 
 structure List = MLtonList
@@ -20,15 +20,17 @@ in
    val resolveScope = fn () => current resolveScope
 end
 
-structure ElaborateModules = ElaborateModules (S)
-
-
+structure ElaborateModules = ElaborateModules (structure Ast = Ast
+                                               structure CoreML = CoreML
+					       structure CoreBOM = CoreBOM (* [PML] *)
+                                               structure Decs = Decs
+                                               structure Env = Env
+					       structure BOMEnv = BOMEnv) (* [PML] *)
 
 fun elaborateProgram (program, {env = E: Env.t, bomEnv: BOMEnv.t}) =
    let
-      val Ast.Program.T decs = Ast.Program.coalesce program
-      fun elabTopdec (d, bEnv) = ElaborateModules.elaborateTopdec (
-        d, {env = E, bomEnv = bEnv})
+      val Ast.Program.T decs = Ast.Program.coalesce program 
+      fun elabTopdec (d, bEnv) = ElaborateModules.elaborateTopdec (d, {env = E, bomEnv = bEnv})
       (* fun elabDecAndEnrichEnv (dec, bEnv) =  *)
       (*   let  *)
       (*     val (newDecs, newEnv) =  *)

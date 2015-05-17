@@ -1,4 +1,5 @@
-(* Copyright (C) 2004-2007 Henry Cejtin, Matthew Fluet, Suresh
+(* Copyright (C) 2014 Matthew Fluet.
+ * Copyright (C) 2004-2007 Henry Cejtin, Matthew Fluet, Suresh
  *    Jagannathan, and Stephen Weeks.
  *
  * MLton is released under a BSD-style license.
@@ -10,6 +11,7 @@ struct
 
 structure Vector = MLtonVector
 fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
+fun String_implodeV cs = CharVector.tabulate (Vector.length cs, fn i => Vector.sub (cs, i))
 
 open S
 
@@ -23,42 +25,57 @@ in
    val elements = make #elements
 end
 
-fun toString (T {elements, elementSize}): string =
+fun layout (T {elements, elementSize}) =
    let
-      val n = Bits.toInt (WordSize.bits elementSize)
+      fun vector () =
+         Layout.seq
+         [Layout.str "#[",
+          Layout.fill (Layout.separateRight
+                       (Vector.toListMap
+                        (elements, WordX.layout),
+                        ",")),
+          Layout.str "]"]
+      fun string cs =
+         Layout.seq
+         [Layout.str "\"",
+(*
+          Layout.str (String.escapeSML (String.implodeV cs)),
+*)
+          Layout.str (String.toString (String_implodeV cs)), (* [PML] *)
+          Layout.str "\""]
    in
-      implode
-      (rev
-       (Vector.fold (elements, [], fn (w, ac) =>
-                     let
-                        fun loop (i, w, ac) =
-                           if i = 0
-                              then ac
-                           else
-                              let
-                                 val (q, r) = IntInf.quotRem (w, 0x100)
-                              in
-                                 loop (i - 8, q,
-                                       (*Char.fromInt*)Char.chr (IntInf.toInt r) :: ac)
-                              end
-                     in
-                        (* Control.Target.bigEndian is not always set, so
-                         * only use it if we really need to know the value. *)
-                        if n > 8 andalso Control.Target.bigEndian ()
-                        then rev (loop (n, WordX.toIntInf w, [])) @ ac
-                        else loop (n, WordX.toIntInf w, []) @ ac
-                     end)))
+      if WordSize.equals (elementSize, WordSize.word8)
+         then let
+                 val cs = Vector.map (elements, WordX.toChar)
+                 val l = Vector.length cs
+                 val n = Vector.fold (cs, 0, fn (c, n) =>
+                                      if Char.isGraph c
+                                         orelse Char.isSpace c
+                                         then n + 1
+                                         else n)
+              in
+                 if l = 0 orelse (10 * n) div l > 9
+                    then string cs
+                    else vector ()
+              end
+         else vector ()
    end
 
-val hash = (*String.hash*)String_hash o toString
+val toString = Layout.toString o layout
 
-val layout = Layout.str o toString
+val hash = (*String.hash*)String_hash o toString
 
 fun equals (v, v') =
     WordSize.equals (elementSize v, elementSize v')
     andalso Vector.equals (elements v, elements v', WordX.equals)
 
+fun foldFrom (v, start, b, f) = Vector.foldFrom (elements v, start, b, f)
+
 fun forall (v, f) = Vector.forall (elements v, f)
+
+fun fromListRev ({elementSize}, l) =
+   T {elementSize = elementSize,
+      elements = Vector.fromListRev l}
 
 fun fromString s =
    T {elementSize = WordSize.byte,
@@ -72,5 +89,7 @@ fun sub (v, i) = Vector.sub (elements v, i)
 fun tabulate ({elementSize}, n, f) =
    T {elementSize = elementSize,
       elements = Vector.tabulate (n, f)}
+
+fun toListMap (v, f) = Vector.toListMap (elements v, f)
 
 end

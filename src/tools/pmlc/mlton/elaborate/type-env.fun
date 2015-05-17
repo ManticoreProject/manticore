@@ -350,7 +350,7 @@ structure Spine:
       in
          fun newId () = ((*Int.inc*)Int_inc r; !r)
       end
-
+      
       fun new fields = T {id = newId (),
                           body = Set.singleton {fields = ref fields,
                                                 more = ref true}}
@@ -413,7 +413,7 @@ in
    fun layoutRecord (ds: (Field.t * bool * z) list, flexible: bool) =
       simple (case ds of
                  [] => if flexible then str "{...}" else str "{}"
-               | _ =>
+               | _ => 
                     seq [str "{",
                          mayAlign
                          (separateRight
@@ -526,7 +526,7 @@ structure Type =
                                     ("spine", Spine.layout spine)]]
                   | GenFlexRecord {extra, fields, spine} =>
                        seq [str "GenFlex ",
-                            record [("extra",
+                            record [("extra", 
                                      List.layout
                                      (fn {field, tyvar} =>
                                       record [("field", Field.layout field),
@@ -566,7 +566,7 @@ structure Type =
          Property.getSet (Tycon.plist, Property.initConst NONE)
 
       val opaqueTyconExpansion =
-         Trace.trace
+         Trace.trace 
          ("TypeEnv.Type.opaqueTyconExpansion", Tycon.layout, Layout.ignore)
          opaqueTyconExpansion
 
@@ -592,7 +592,7 @@ structure Type =
                              val _ = r := Processing
                              fun loopFields fields =
                                 List.revMap (fields, fn (f, t) => (f, get t))
-                             val res =
+                             val res = 
                                 case toType t of
                                    Con (c, ts) =>
                                       let
@@ -636,7 +636,7 @@ structure Type =
             Exn.finally (fn () => hom ty, destroy)
          end
 
-      fun makeLayoutPretty {expandOpaque, localTyvarNames} :
+      fun makeLayoutPretty {expandOpaque, localTyvarNames} : 
          {destroy: unit -> unit,
           lay: t -> Layout.t * ({isChar: bool} * Tycon.BindingStrength.t)} =
          let
@@ -717,7 +717,7 @@ structure Type =
 
       fun layoutPrettyAux (t, {expandOpaque, localTyvarNames}) =
          let
-            val {destroy, lay} =
+            val {destroy, lay} = 
                makeLayoutPretty {expandOpaque = expandOpaque,
                                  localTyvarNames = localTyvarNames}
             val res = #1 (lay t)
@@ -725,7 +725,7 @@ structure Type =
          in
             res
          end
-      fun layoutPretty t =
+      fun layoutPretty t = 
          layoutPrettyAux (t, {expandOpaque = false,
                               localTyvarNames = true})
 
@@ -870,9 +870,10 @@ structure Type =
       fun unresolvedString () = vector (unresolvedChar ())
 
       val traceCanUnify =
-         Trace.trace2
+         Trace.trace2 
          ("TypeEnv.Type.canUnify", layout, layout, (*Bool.layout*)Bool_layout)
 
+(* PML needs the following code *)
       local
         fun compareTypes compareUnknown (t, t') =
           let
@@ -902,42 +903,37 @@ structure Type =
              | _ => false
           end
       in
-        val canUnify = compareTypes (fn _ => true)
         val equals = compareTypes Unknown.equals
       end
-(* fun canUnify arg = *)
-(*          traceCanUnify *)
-(*          (fn (t, t') => *)
-(*           case (toType t, toType t') of *)
-(*              (Unknown _,  _) => true *)
-(*            | (_, Unknown _) => true *)
-(*            | (Con (c, ts), t') => conAnd (c, ts, t') *)
-(*            | (t', Con (c, ts)) => conAnd (c, ts, t') *)
-(*            | (Overload o1, Overload o2) => Overload.equals (o1, o2) *)
-(*            | (Record r, Record r') => *)
-(*                 let *)
-(*                    val fs = Srecord.toVector r *)
-(*                    val fs' = Srecord.toVector r' *)
-(*                 in Vector.length fs = Vector.length fs' *)
-(*                    andalso Vector.forall2 (fs, fs', fn ((f, t), (f', t')) => *)
-(*                                            Field.equals (f, f') *)
-(*                                            andalso canUnify (t, t')) *)
-(*                 end *)
-(*            | (Var a, Var a') => Tyvar.equals (a, a') *)
-(*            | _ => false) arg *)
-(*       and conAnd (c, ts, t') = *)
-(*          case t' of *)
-(*             Con (c', ts') => *)
-(*                Tycon.equals (c, c') *)
-(*                andalso Vector.forall2 (ts, ts', canUnify) *)
-(*           | Overload ov => *)
-(*                0 = Vector.length ts andalso Overload.matchesTycon (ov, c) *)
-(*           | _ => false *)
 
-
-(*       fun equals (ty, ty') = *)
-(*         case (ty, ty') of *)
-(*           _ => () *)
+      fun canUnify arg = 
+         traceCanUnify
+         (fn (t, t') =>
+          case (toType t, toType t') of
+             (Unknown _,  _) => true
+           | (_, Unknown _) => true
+           | (Con (c, ts), t') => conAnd (c, ts, t')
+           | (t', Con (c, ts)) => conAnd (c, ts, t')
+           | (Overload o1, Overload o2) => Overload.equals (o1, o2)
+           | (Record r, Record r') =>
+                let
+                   val fs = Srecord.toVector r
+                   val fs' = Srecord.toVector r'
+                in Vector.length fs = Vector.length fs'
+                   andalso Vector.forall2 (fs, fs', fn ((f, t), (f', t')) =>
+                                           Field.equals (f, f')
+                                           andalso canUnify (t, t'))
+                end
+           | (Var a, Var a') => Tyvar.equals (a, a')
+           | _ => false) arg
+      and conAnd (c, ts, t') =
+         case t' of
+            Con (c', ts') =>
+               Tycon.equals (c, c')
+               andalso Vector.forall2 (ts, ts', canUnify)
+          | Overload ov =>
+               0 = Vector.length ts andalso Overload.matchesTycon (ov, c)
+          | _ => false
 
       (* minTime (t, bound) ensures that all components of t have times no larger
        * than bound.  It calls the appropriate error function when it encounters
@@ -996,19 +992,19 @@ structure Type =
          end
 
       val minTime =
-         Trace.trace2
-         ("TypeEnv.Type.minTime", layout, Time.layout, Unit.layout)
+         Trace.trace2 
+         ("TypeEnv.Type.minTime", layout, Time.layout, Unit.layout) 
          minTime
 
       datatype z = datatype UnifyResult.t
 
-      val traceUnify =
-         Trace.trace2
+      val traceUnify = 
+         Trace.trace2 
          ("TypeEnv.Type.unify", layout, layout, UnifyResult.layout)
 
       fun unify (t, t', {preError: unit -> unit}): UnifyResult.t =
          let
-            val {destroy, lay = layoutPretty} =
+            val {destroy, lay = layoutPretty} = 
                makeLayoutPretty {expandOpaque = false, localTyvarNames = true}
             val dontCare' = fn _ => dontCare
             val layoutRecord = fn z => layoutRecord (z, true)
@@ -1118,7 +1114,7 @@ structure Type =
                                            (ts, ts',
                                             fn () => (Unified, t),
                                             fn (ls, ls') =>
-                                            let
+                                            let 
                                                fun lay ls =
                                                   Tycon.layoutApp (c, ls)
                                             in
@@ -1160,7 +1156,7 @@ structure Type =
                                      genFlexRecord = genFlexRecord,
                                      overload = no,
                                      record = record,
-                                     recursive = fn _ =>
+                                     recursive = fn _ => 
                                      Error.bug "TypeEnv.Type.unify.oneUnknown: recursive",
                                      unknown = unknown,
                                      var = no})
@@ -1362,7 +1358,7 @@ structure Type =
          (CharSize.all, fn s =>
           setSynonym (Tycon.char s,
                       Tycon.word (WordSize.fromBits (CharSize.bits s))))
-
+         
       val () =
          List.foreach
          (IntSize.all, fn s =>
@@ -1433,7 +1429,7 @@ structure Type =
                let
                   val t = Overload.defaultType ov
                   val _ = unify (t, t',
-                                 {preError = fn _ =>
+                                 {preError = fn _ => 
                                   Error.bug "TypeEnv.Type.simpleHom.overload"})
                in
                   con (t, Overload.defaultTycon ov, Vector.new0 ())
@@ -1471,13 +1467,13 @@ structure Scheme =
 
       fun layoutPrettyAux (s, {expandOpaque, localTyvarNames}) =
          case s of
-            Type ty =>
-               Type.layoutPrettyAux
-               (ty, {expandOpaque = expandOpaque,
+            Type ty => 
+               Type.layoutPrettyAux 
+               (ty, {expandOpaque = expandOpaque, 
                      localTyvarNames = localTyvarNames})
-          | General {ty, ...} =>
-               Type.layoutPrettyAux
-               (ty, {expandOpaque = expandOpaque,
+          | General {ty, ...} => 
+               Type.layoutPrettyAux 
+               (ty, {expandOpaque = expandOpaque, 
                      localTyvarNames = localTyvarNames})
       fun layoutPretty s =
          layoutPrettyAux (s, {expandOpaque = false, localTyvarNames = true})
@@ -1760,15 +1756,15 @@ fun close (ensure: Tyvar.t vector, ubd) =
                             val extra =
                                let
                                   val all = ref []
-                                  val fields =
+                                  val fields = 
                                      List.map (fields, fn (f, _) => (f, ()))
                                in
                                   fn () =>
                                   let
                                      val old = !all
                                      val fields =
-                                        List.fold
-                                        (old, fields, fn ({field, ...}, ac) =>
+                                        List.fold 
+                                        (old, fields, fn ({field, ...}, ac) => 
                                          (field, ()) :: ac)
                                      val new =
                                         Spine.foldOverNew
@@ -1783,7 +1779,7 @@ fun close (ensure: Tyvar.t vector, ubd) =
                                        fields = fields,
                                        spine = spine}
                             val _ = List.push (flexes, gfr)
-                            val _ =
+                            val _ = 
                                Set.:=
                                (s, {equality = equality,
                                     plist = plist,

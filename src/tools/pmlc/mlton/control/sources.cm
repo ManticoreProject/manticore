@@ -10,6 +10,7 @@
 Library
 
 signature REGION
+signature WRAPPED
 
 structure Bits
 structure Bytes
@@ -33,6 +34,7 @@ source-pos.sig
 source-pos.sml
 region.sig
 region.sml
+wrapped.sig
 source.sig
 source.sml
 version.sml

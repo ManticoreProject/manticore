@@ -6,12 +6,24 @@
  * See the file MLton-LICENSE for details.
  *)
 
-signature ELABORATE_MLBS_STRUCTS =
+signature ELABORATE_MLBS_STRUCTS = 
    sig
-     include ELABORATE_COMMON
+      structure Ast: AST
+      structure CoreML: CORE_ML
+      structure CoreBOM: CORE_BOM (* [PML] *)
+      structure Decs: DECS
+      structure Env: ELABORATE_ENV
+      structure BOMEnv: ELABORATE_BOMENV (* [PML] *)
+      sharing Ast = Env.Ast
+      sharing Ast.Tyvar = CoreML.Tyvar
+      sharing CoreML = Decs.CoreML = Env.CoreML
+      sharing Decs = Env.Decs
+      sharing CoreBOM.Ast = Ast (* [PML] *)
+      sharing BOMEnv.CoreBOM = CoreBOM (* [PML] *)
+      sharing BOMEnv.Env = Env (* [PML] *)
    end
 
-signature ELABORATE_MLBS =
+signature ELABORATE_MLBS = 
    sig
       include ELABORATE_MLBS_STRUCTS
 

@@ -205,9 +205,9 @@ signature ELABORATE_ENV =
                     -> TypeStr.Cons.t)
       val newTycon:
          string * Tycon.Kind.t * AdmitsEquality.t * Region.t -> Tycon.t
-      (* openStructure (E, S) opens S in the environment E. *)
+      (* openStructure (E, S) opens S in the environment E. *) 
       val openStructure: t * Structure.t -> unit
-      (* openBasis (E, B) opens B in the environment E. *)
+      (* openBasis (E, B) opens B in the environment E. *) 
       val openBasis: t * Basis.t -> unit
       val peekFix: t * Ast.Vid.t -> Ast.Fixity.t option
       val peekLongcon:

@@ -7,7 +7,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-signature ELABORATE_CORE_STRUCTS =
+signature ELABORATE_CORE_STRUCTS = 
    sig
       structure Ast: AST
       structure CoreML: CORE_ML
@@ -19,7 +19,7 @@ signature ELABORATE_CORE_STRUCTS =
       sharing Decs = Env.Decs
    end
 
-signature ELABORATE_CORE =
+signature ELABORATE_CORE = 
    sig
       include ELABORATE_CORE_STRUCTS
 

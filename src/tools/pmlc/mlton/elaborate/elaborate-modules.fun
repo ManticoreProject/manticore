@@ -7,7 +7,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor ElaborateModules (S: ELABORATE_MODULES_STRUCTS): ELABORATE_MODULES =
+functor ElaborateModules (S: ELABORATE_MODULES_STRUCTS): ELABORATE_MODULES = 
 struct
 
 structure Option = MLtonOption
@@ -18,9 +18,7 @@ structure Vector = MLtonVector
 
 open S
 
-(* TODO: figure out where the best place to instantiate this is *)
-
-
+(* [PML] TODO: figure out where the best place to instantiate this is *)
 local
    open Control.Elaborate
 in
@@ -103,12 +101,12 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                in
                   case S of
                      NONE => (Decs.empty, NONE)
-                   | SOME S =>
+                   | SOME S => 
                         let
                            val (S, decs) =
                               case elabSigexp sigexp of
                                  NONE => (S, Decs.empty)
-                               | SOME I =>
+                               | SOME I => 
                                     Env.cut (E, S, I,
                                              {isFunctor = false,
                                               opaque = opaque,
@@ -123,7 +121,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                SigConst.None => (Decs.empty, S)
              | SigConst.Opaque sigexp => s (sigexp, true)
              | SigConst.Transparent sigexp => s (sigexp, false)
-         end
+         end     
       fun elabStrdec (arg: Strdec.t * string list): Decs.t =
          Trace.traceInfo' (elabStrdecInfo,
                            Layout.tuple2 (Strdec.layout,

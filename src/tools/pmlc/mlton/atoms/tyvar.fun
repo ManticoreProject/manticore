@@ -1,4 +1,5 @@
-(* Copyright (C) 1999-2007 Henry Cejtin, Matthew Fluet, Suresh
+(* Copyright (C) 2012 Matthew Fluet.
+ * Copyright (C) 1999-2007 Henry Cejtin, Matthew Fluet, Suresh
  *    Jagannathan, and Stephen Weeks.
  * Copyright (C) 1997-2000 NEC Research Institute.
  *
@@ -22,13 +23,6 @@ type node' = {name: string,
 type t = node' Wrap.t
 type obj = t
 
-fun toString (tyvar: t) =
-   let val {name, equality, ...} = node tyvar
-   in (if equality then "''" else "'") ^ name
-   end
-
-val layout = Layout.str o toString
-
 local
    fun make sel (tyvar:t) = sel (node tyvar)
 in
@@ -37,6 +31,9 @@ in
    val plist = make #plist
    val isEquality = make #equality
 end
+
+val toString = name
+val layout = Layout.str o toString
 
 val clear = PropertyList.clear o plist
 fun equals (a, a') = PropertyList.equals (plist a, plist a')
@@ -74,8 +71,12 @@ in
    (* quell unused warning *)
    val _ = reset
    fun newNoname {equality} =
-      new {name = "a_" ^ Int.toString (Counter.next c),
-           equality = equality}
+      let
+         val name = (if equality then "''" else "'") ^
+                    "a_" ^ Int.toString (Counter.next c)
+      in
+         new {name = name, equality = equality}
+      end
 end
 
 local open Layout

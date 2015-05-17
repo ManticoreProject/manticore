@@ -1,4 +1,4 @@
-(* Copyright (C) 2009,2011 Matthew Fluet.
+(* Copyright (C) 2009,2011-2012 Matthew Fluet.
  * Copyright (C) 2004-2006 Henry Cejtin, Matthew Fluet, Suresh
  *    Jagannathan, and Stephen Weeks.
  *
@@ -13,6 +13,11 @@ structure Real32 = Real64	(* no Real32 *)
 fun String_hash s = CharVector.foldl (fn (c, h) => Word.fromInt(Char.ord c) + Word.* (h, 0w31)) 0w0 s
 
 open S
+
+structure P = Pervasive
+structure PR32 = (*P.Real32*)P.Real64
+structure PR64 = P.Real64
+structure PIR = P.IEEEReal
 
 datatype z = datatype RealSize.t
 
@@ -49,8 +54,13 @@ fun make (r: string, s: RealSize.t): t option =
  * Must check the sign bit, since Real{32,64}.== ignores the sign of
  * zeros; the difference between 0.0 and ~0.0 is observable by
  * programs that examine the sign bit.
- * Must check for nan, since Real{32,64}.== returns false for any
- * comparison with nan values.
+ * Should check for nan, since Real{32,64}.== returns false for any
+ * comparison with nan values.  Ideally, should use bit-wise equality
+ * since there are multiple representations for nan.  However, SML/NJ
+ * doesn't support the PackReal structures that would be required to
+ * compare real values as bit patterns.  Conservatively return
+ * 'false'; constant-propagation and common-subexpression elimination
+ * will not combine nan values.
  *)
 fun equals (r, r') =
    case (r, r') of
@@ -78,11 +88,6 @@ fun toString r =
 val layout = Layout.str o toString
 
 val hash = (*String.hash*)String_hash o toString
-
-structure P = Pervasive
-structure PR32 = (*P.Real32*)P.Real64
-structure PR64 = P.Real64
-structure PIR = P.IEEEReal
 
 (* Disable constant folding when it might change the results. *)
 fun disableCF () =
@@ -138,7 +143,7 @@ val r64 =
        tag = Real64}
 
 local
-   fun doit (R {compareReal, signBit, isNan, tag, ...}) (f, arg) =
+   fun doit (R {compareReal, signBit, tag, ...}) (f, arg) =
        if disableCF ()
           then NONE
        else
@@ -155,9 +160,8 @@ local
                 val max = f arg
                 val () = PIR.setRoundingMode old
              in
-                if PIR.EQUAL = compareReal (min, max)
-                   andalso signBit min = signBit max
-                   orelse isNan min andalso isNan max
+                if (PIR.EQUAL = compareReal (min, max)
+                    andalso signBit min = signBit max)
                    then SOME (tag min)
                 else NONE
              end
@@ -283,11 +287,14 @@ in
 end
 
 local
-   fun doit (R {bits, update, subArr, tag, ...}) w = let
+   fun doit (R {bits, update, subArr, tag, isNan, ...}) w = let
       val a = P.Word8Array.array (Bytes.toInt (Bits.toBytes bits), 0w0)
+      val () = update (a, 0, P.LargeWord.fromLargeInt (WordX.toIntInf w))
+      val r = subArr (a, 0)
    in
-      update (a, 0, P.LargeWord.fromLargeInt (WordX.toIntInf w))
-    ; SOME (tag (subArr (a, 0)))
+      if isNan r
+         then NONE
+      else SOME (tag r)
    end handle _ => NONE
 in
    fun castFromWord w =

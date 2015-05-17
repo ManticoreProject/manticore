@@ -6,12 +6,12 @@
  * See the file MLton-LICENSE for details.
  *)
 
-signature TYPE_ENV_STRUCTS =
+signature TYPE_ENV_STRUCTS = 
    sig
       include ATOMS
    end
 
-signature TYPE_ENV =
+signature TYPE_ENV = 
    sig
       include TYPE_ENV_STRUCTS
 
@@ -31,7 +31,7 @@ signature TYPE_ENV =
             val canUnify: t * t -> bool
             val deEta: t * Tyvar.t vector -> Tycon.t option
             val deRecord: t -> (Record.Field.t * t) vector
-            (* We need to add this so that we can search inside our
+            (* [PML] We need to add this so that we can search inside our
             primitives table *)
             val equals: t * t -> bool
             val flexRecord: t SortedRecord.t -> t * (unit -> bool)
@@ -93,8 +93,8 @@ signature TYPE_ENV =
             val instantiate: t -> {args: unit -> Type.t vector,
                                    instance: Type.t}
             val layout: t -> Layout.t
-            val layoutPrettyAux:
-               t * {expandOpaque: bool,
+            val layoutPrettyAux: 
+               t * {expandOpaque: bool, 
                     localTyvarNames: bool} -> Layout.t
             val layoutPretty: t -> Layout.t
             val make: {canGeneralize: bool,
