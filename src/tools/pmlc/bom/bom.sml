@@ -77,6 +77,16 @@ structure BOM =
 	 and const = (Literal.literal * ty)
 	 and c_fun = var CFunctions.c_fun
 
+    datatype program = PROGRAM of {
+	name : string,
+	externs : var CFunctions.c_fun list,
+	hlops : var list,		    (* the names of the HLOps *)
+(*
+	rewrites : rewrite list,
+*)
+	body : lambda
+      }
+
     fun varKindToString VK_None = "None"
       | varKindToString (VK_Let _) = "Let"
       | varKindToString (VK_RHS _) = "RHS"
@@ -129,16 +139,6 @@ structure BOM =
 	fun isHLOp f = Option.isSome(hlop f)
 	end (* local structure V = ... *)
       end 
-
-    datatype program = PROGRAM of {
-	name : string,
-	externs : var CFunctions.c_fun list,
-	hlops : var list,		    (* the names of the HLOps *)
-(*
-	rewrites : rewrite list,
-*)
-	body : lambda
-      }
 
 (* FIXME: need constructor functions *)
 

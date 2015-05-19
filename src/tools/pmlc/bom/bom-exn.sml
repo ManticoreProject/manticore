@@ -27,7 +27,5 @@ structure BOMExn : sig
   (* is a BOM data constructor an exception constructor *)
     fun isExnCon (BOMTy.DCon{myTyc, ...}) = BOMTyCon.sameTyc(myTyc, tyc)
 
-
   end
-
 

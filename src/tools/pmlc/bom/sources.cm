@@ -7,17 +7,21 @@
 Library
 
   structure BOM
+  structure BOMDataCon
   structure BOMExn
   structure BOMTy
-  structure BOMTyCon
-  structure BOMTyUtil
+  structure BOMTyc
+  structure BOMTyVar
+  structure BOMVar
   structure BOMUtil
   structure Census
 (*
   structure CFABOM
 *)
   structure CheckBOM
+(* to add
   structure HLOp
+*)
   structure PrintBOM
 (*
   structure Rewrites
@@ -30,23 +34,26 @@ is
 
   ../common/sources.cm
   ../prim/sources.cm
-(** unused in MLton branch **
-  ../parse-tree/sources.cm
-**)
 
   bom.sml
   bom-exn.sml
+  bom-data-con.sml
   bom-ty.sml
-  bom-tycon.sml
-  bom-ty-util.sml
+  bom-tyc.sml
+  bom-ty-var.sml
+  bom-rep.sml
   bom-util.sml
+  bom-var.sml
   census.sml
 (*
   cfa-bom.sml	(* FIXME: needs rewrite for new BOM IR *)
 *)
   check-bom.sml
+(* to-add
   hlop.sml
+*)
 (*
   rewrites.sml
 *)
   print-bom.sml
+
