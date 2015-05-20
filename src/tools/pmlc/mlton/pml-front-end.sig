@@ -14,5 +14,8 @@ signature PML_FRONT_END =
 
     val compileMLB : {input : File.t} -> Sxml.Program.t
     val compilePML : {input : File.t list} -> Sxml.Program.t
+    val conTycon : Sxml.Con.t -> Sxml.Tycon.t
+    val tyconCons : Sxml.Tycon.t -> {con: Sxml.Con.t,
+                                        hasArg: bool} vector
 
   end

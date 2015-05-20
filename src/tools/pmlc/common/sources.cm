@@ -38,6 +38,7 @@ Library
   functor VarFn
 
   structure Memo
+  functor RedBlackMapFn
 
 is
 

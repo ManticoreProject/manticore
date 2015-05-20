@@ -10,6 +10,9 @@ structure BOMTyc : sig
 
     type t
 
+  (* create a new tyc *)
+    val new : string * int -> t
+
   (* the tyc's name *)
     val nameOf : t -> string
 

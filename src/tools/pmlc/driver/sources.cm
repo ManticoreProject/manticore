@@ -52,6 +52,7 @@ is
   ../typechecker/sources.cm
 **)
   ../mlton/sources.cm
+  ../translate/sources.cm
 
   build-executable.sml		(* generated file *)
 (*  initial-basis.sml *)

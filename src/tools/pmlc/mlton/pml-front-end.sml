@@ -348,6 +348,20 @@ structure PMLFrontEnd : PML_FRONT_END =
 
 
   (* ------------------------------------------------- *)
+  (*          tycon/con getters for translate          *)
+  (* ------------------------------------------------- *)
+ 
+    val {get = conTycon : Sxml.Con.t -> Sxml.Tycon.t, set = setConTycon, ...} =
+       Property.getSetOnce (Sxml.Con.plist,
+                            Property.initRaise ("conTycon", Sxml.Con.layout))
+      val {get = tyconCons: Sxml.Tycon.t -> {con: Sxml.Con.t,
+                                        hasArg: bool} vector,
+           set = setTyconCons, ...} =
+         Property.getSetOnce (Sxml.Tycon.plist,
+                              Property.initRaise ("tyconCons", Sxml.Tycon.layout))
+
+
+  (* ------------------------------------------------- *)
   (*                      compile                      *)
   (* ------------------------------------------------- *)
 

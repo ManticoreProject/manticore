@@ -23,6 +23,7 @@ functor MainFn (
         BackTrace.install ())
 
     structure Version = VersionFn (Spec)
+    structure Translate = Translate
 (* NEW-BOM *
     structure BOMOpt = BOMOptFn (Spec)
     structure CPSOpt = CPSOptFn (Spec)
@@ -51,6 +52,7 @@ functor MainFn (
 	  val _ = PMLFrontEnd.init ()
           val _ = if verbose then print(concat["mlton parsing \"", srcFile, "\"\n"]) else ()
           val sxml = frontEnd srcFile
+          val bom = Translate.translate sxml
 (* NEW-BOM *
           val cfg = bomToCFG bom
 *)
