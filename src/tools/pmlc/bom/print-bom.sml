@@ -13,7 +13,8 @@ structure PrintBOM : sig
   end = struct
 
     structure B = BOM
-    structure BV = B.Var
+    structure BV = BOMVar
+    structure DC = BOMDataCon
     structure Ty = BOMTy
 
     datatype arg = PROGRAM of B.program | EXP of B.exp
@@ -43,7 +44,7 @@ structure PrintBOM : sig
 		  pr "("; prL l; pr ")"
 		end
 	  fun varBindToString x = String.concat[
-		  BV.toString x, ":", BOMTyUtil.toString(BV.typeOf x)
+		  BV.toString x, ":", Ty.toString(BV.typeOf x)
 		]
 	  fun varUseToString x = BV.toString x
 	  fun prLHS [] = pr "do "
@@ -72,10 +73,10 @@ structure PrintBOM : sig
 			    indent i;
 			    if isFirst then pr " of " else pr "  | ";
 			    case pat
-			     of B.P_DCon(B.DCon{name, ...}, [arg]) => (
-				  pr name; pr "("; pr(varBindToString arg); pr ")")
-			      | B.P_DCon(B.DCon{name, ...}, args) => (
-				  pr name;
+			     of B.P_DCon(dc, [arg]) => (
+				  pr(DC.nameOf dc); pr "("; pr(varBindToString arg); pr ")")
+			      | B.P_DCon(dc, args) => (
+				  pr(DC.nameOf dc);
 				  prList varBindToString args)
 			      | B.P_Const const => prConst const
 			    (* end case *);
@@ -95,12 +96,12 @@ structure PrintBOM : sig
 		      fun prCase ((ty, e), isFirst) = (
 			    indent i;
 			    if isFirst then pr " of " else pr "  | ";
-			    pr (BOMTyUtil.toString ty);
+			    pr (Ty.toString ty);
 			    pr " =>\n";
 			    prExp (i+2, e);
 			    false)
 		      in
-			prl ["typecase ", BOMTyUtil.tyvarToString tv, "\n"];
+			prl ["typecase ", BOMTyVar.toString tv, "\n"];
 			ignore (List.foldl prCase true cases);
 			case dflt
 			 of NONE => ()
@@ -136,18 +137,18 @@ structure PrintBOM : sig
 		      prList' varUseToString rets; pr ")\n")
 		(* end case *))
 	  and prRHS (B.E_Const c) = prConst c
-	    | prRHS (B.E_Cast(ty, y)) = prl["(", BOMTyUtil.toString ty, ")", varUseToString y]
+	    | prRHS (B.E_Cast(ty, y)) = prl["(", Ty.toString ty, ")", varUseToString y]
 	    | prRHS (B.E_Select(i, y)) = prl ["#", Int.toString i, "(", varUseToString y, ")"]
 	    | prRHS (B.E_Update(i, y, z)) = prl [
 		  "#", Int.toString i, "(", varUseToString y, ") := ", varUseToString z
 		]
 	    | prRHS (B.E_AddrOf(i, y)) = prl ["&", Int.toString i, "(", varUseToString y, ")"]
 	    | prRHS (B.E_Alloc(ty, ys)) = (
-		pr(concat["alloc<", BOMTyUtil.toString ty, ">("]); prList' varUseToString ys; pr ")")
+		pr(concat["alloc<", Ty.toString ty, ">("]); prList' varUseToString ys; pr ")")
 	    | prRHS (B.E_Promote y) = (pr "promote "; pr (varUseToString y))
 	    | prRHS (B.E_Prim p) = pr (PrimUtil.fmt varUseToString p)
 	    | prRHS (B.E_DCon(dc, args)) = (
-		pr(BOMTyCon.dconName dc); pr "("; prList' varUseToString args; pr ")")
+		pr(DC.nameOf dc); pr "("; prList' varUseToString args; pr ")")
 	    | prRHS (B.E_CCall(f, args)) = (
 		prl ["ccall ", varUseToString f, " "];
 		prList varUseToString args)
@@ -163,7 +164,7 @@ structure PrintBOM : sig
 		  "vpaddr(", IntInf.toString offset, ", ", varUseToString vp, ")"
 		]
 	  and prConst (lit, ty) = prl [
-		  Literal.toString lit, ":", BOMTyUtil.toString ty
+		  Literal.toString lit, ":", Ty.toString ty
 		]
 	  and prLambda (i, prefix, B.FB{f, params, exh, body}) = let
 		fun prParams params = prList' varBindToString params
@@ -177,10 +178,10 @@ structure PrintBOM : sig
 		    | _ => (prParams params; pr " / "; prParams exh)
 		  (* end case *);
 		  case BV.typeOf f
-		   of Ty.T_Fun(_, _, [ty]) => (pr ") : "; pr(BOMTyUtil.toString ty); pr " =\n")
+		   of Ty.T_Fun(_, _, [ty]) => (pr ") : "; pr(Ty.toString ty); pr " =\n")
 		    | Ty.T_Fun(_, _, tys) => (
 			pr ") -> (";
-			pr (String.concatWith "," (List.map BOMTyUtil.toString tys));
+			pr (String.concatWith "," (List.map Ty.toString tys));
 			pr ") = \n")
 		    | _ => pr ") =\n"
 		  (* end case *);
@@ -196,15 +197,35 @@ structure PrintBOM : sig
 		indent (i); pr "else\n"; prExp(i+1, e2))
 	  and condToString cond = CondUtil.fmt varUseToString cond
 	  fun prExtern cf = (indent 1; prl [CFunctions.cfunToString cf, "\n"])
+	  fun prDataTyc tyc = let
+		fun prCon (dc, isFirst) = (
+		      indent 2;
+		      if isFirst then pr "= " else pr "| ";
+		      pr (DC.toString dc);
+		      case DC.domainOf dc
+		       of [] => pr "\n"
+			| [ty] => prl[" of ", Ty.toString ty, "\n"]
+			| tys => prl[" of (", String.concatWith ", " (List.map Ty.toString tys), ")\n"]
+		      (* end case *);
+		      false)
+		in
+		  indent 1; prl ["datatype ", BOMTyc.toString tyc, "\n"];
+		  ignore (List.foldl prCon true (BOMTyc.consOf tyc))
+		end
 	  in
 	    case arg
-	     of PROGRAM(B.PROGRAM{name, externs, hlops, body}) => (
-		  prl ["program ", name, "\n"];
+	     of PROGRAM(B.PROGRAM{exnTyc, dataTycs, hlops, externs, body}) => (
+		  pr "program {\n";
+		  prDataTyc exnTyc;
+		  List.app prDataTyc dataTycs;
 		  List.app prExtern externs;
+(* FIXME:
 		  List.app
-		    (fn hlop => (indent 1; prl["define @", BV.nameOf hlop, " = ", varUseToString hlop, "\n"]))
+		    (fn hlop => (indent 1; prl["define @", HLOp.nameOf hlop, " = ", varUseToString hlop, "\n"]))
 		      hlops;
-		  prLambda (2, "fun ", body))
+*)
+		  prLambda (2, "fun ", body);
+		  pr "}\n")
 	      | EXP e => prExp(0, e)
 	    (* end case *)
 	  end

@@ -15,7 +15,7 @@ is
   $/smlnj-lib.cm
   $/controls-lib.cm
 
-  ../../common/sources.cm
+  ../mcore-common.cm
   ../../prim/sources.cm
   ../../env/sources.cm
   ../../bom/sources.cm

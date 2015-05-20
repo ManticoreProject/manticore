@@ -30,15 +30,16 @@ structure Census : sig
   end = struct
 
     structure B = BOM
+    structure BV = BOMVar
     structure U = BOMUtil
 
-    fun clear x = (B.Var.clrCount x; B.Var.appCntRmv x)
-    fun inc x = B.Var.addToCount(x, 1)
-    fun dec x = B.Var.addToCount(x, ~1)
+    fun clear x = (BV.clrCount x; BV.appCntRmv x)
+    fun inc x = BV.addToCount(x, 1)
+    fun dec x = BV.addToCount(x, ~1)
 
   (* record an application use *)
     fun appUse x = let
-	  val appCnt = B.Var.appCntRef x
+	  val appCnt = BV.appCntRef x
 	  in
 	    inc x;
 	    appCnt := !appCnt + 1
@@ -80,12 +81,9 @@ structure Census : sig
 	  fun clrCFun cf = clear(CFunctions.varOf cf)
 	  in
 	    List.app clrCFun externs;
-	    List.app clear hlops;
 	    clrFB body;
 	  (* compute counts *)
-	    doFB body;
-	  (* We bump the count of HLOps by one to avoid prematurely deleting them *)
-	    List.app inc hlops
+	    doFB body
 	  end
 
     fun initLambda fb = (clrFB fb; doFB fb)
@@ -95,9 +93,9 @@ structure Census : sig
     fun initExp e = doE e
 
     fun delete e = let
-	  fun dec x = B.Var.addToCount(x, ~1)
+	  fun dec x = BV.addToCount(x, ~1)
 	  fun decApp f = let
-		val appCnt = B.Var.appCntRef f
+		val appCnt = BV.appCntRef f
 		in
 		  dec f;
 		  appCnt := !appCnt - 1
@@ -128,12 +126,12 @@ structure Census : sig
 
     fun deleteWithRenaming (env, e) = let
 	  val subst = U.subst env
-	  fun dec x = B.Var.addToCount(subst x, ~1)
+	  fun dec x = BV.addToCount(subst x, ~1)
 	  fun decApp f = let
 		val f = subst f
-		val appCnt = B.Var.appCntRef f
+		val appCnt = BV.appCntRef f
 		in
-		  B.Var.addToCount(f, ~1);
+		  BV.addToCount(f, ~1);
 		  appCnt := !appCnt - 1
 		end
 	  fun dec' xs = List.app dec xs
@@ -162,9 +160,9 @@ structure Census : sig
 
     val incUseCnt = inc
     val incAppCnt = appUse
-    fun decUseCnt x = B.Var.addToCount(x, ~1)
+    fun decUseCnt x = BV.addToCount(x, ~1)
     fun decAppCnt x = let
-	  val appCnt = B.Var.appCntRef x
+	  val appCnt = BV.appCntRef x
 	  in
 	    dec x;
 	    appCnt := !appCnt - 1

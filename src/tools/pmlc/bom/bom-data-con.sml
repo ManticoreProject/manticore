@@ -11,7 +11,7 @@ structure BOMDataCon : sig
     type tyc = BOMRep.tyc
 
   (* create a new data constructor for the tyc *)
-    val new : tyc -> (string * BOMRep.ty list) -> data_con
+    val new : tyc -> (string * BOMRep.ty list) -> t
 
   (* the constructor's name *)
     val nameOf : t -> string
@@ -56,7 +56,7 @@ structure BOMDataCon : sig
     datatype tyc = datatype BOMRep.tyc
 
   (* create a new data constructor for the tyc *)
-    fun new (tyc as DataTyc{cons, ...}) (name, argTy) = let
+    fun new (tyc as Tyc{cons, ...}) (name, argTy) = let
 	  val dc = DCon{
 		  name = name,
 		  stamp = Stamp.new(),

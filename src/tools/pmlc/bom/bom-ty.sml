@@ -71,6 +71,7 @@ structure BOMTy : sig
     val addrTy : t -> t
     val vprocTy : t
     val unitTy : t
+    val charVecTy : t
 
   end = struct
 
@@ -155,6 +156,7 @@ structure BOMTy : sig
 		  in
 		    concat tys
 		  end
+	      | T_Cont paramTys => app2s ("cont", paramTys)
 	      | T_Any => "any"
 	      | T_CFun cp => CFunctions.protoToString cp
 	    (* end case *)
@@ -195,5 +197,6 @@ structure BOMTy : sig
     fun addrTy ty = T_Con(BOMTyc.addrTyc, [])
     val vprocTy = T_Con(BOMTyc.vprocTyc, [])
     val unitTy = T_Record[]
+    val charVecTy = vectorTy(T_Raw UInt8)
 
   end

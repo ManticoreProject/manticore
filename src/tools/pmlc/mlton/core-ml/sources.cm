@@ -8,28 +8,27 @@
 
 Library
 
-(*signature CORE_BOM*)
-signature CORE_ML
+  (*signature CORE_BOM*)
+  signature CORE_ML
 
-(*functor CoreBOM*)
-functor CoreML
-functor DeadCode
+  (*functor CoreBOM*)
+  functor CoreML
+  functor DeadCode
 
 is
 
-$/basis.cm
+  $/basis.cm
 
-../ast/sources.cm
-../atoms/sources.cm
-../control/sources.cm
-../lib/sources.cm
-../../prim/sources.cm
-../../common/sources.cm		(* for RawTypes *)
+  ../ast/sources.cm
+  ../atoms/sources.cm
+  ../control/sources.cm
+  ../lib/sources.cm
+  ../../prim/sources.cm
+  ../mcore-common.cm	(* for RawTypes *)
 
-../core-bom/sources.cm
+  ../core-bom/sources.cm
 
-core-ml.fun
-core-ml.sig
-dead-code.fun
-dead-code.sig
-
+  core-ml.fun
+  core-ml.sig
+  dead-code.fun
+  dead-code.sig

@@ -115,7 +115,7 @@ structure BOMRep =
 
     and hlop = HLOp of {
 	name : string,
-	id : Stamp.stamp,
+	stamp : Stamp.stamp,
 	sign : hlop_sig,
 	returns : bool,				(* true, if the operation returns *)
         pure : bool,                    	(* is the HLOp guaranteed to be pure? *)

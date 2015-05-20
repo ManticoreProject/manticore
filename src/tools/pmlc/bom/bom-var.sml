@@ -6,22 +6,60 @@
 
 structure BOMVar : sig
 
+    type t (* = (var_kind, BOMTy.t) VarRep.var_rep *)
+
+    type ty = BOMTy.t
+
     datatype kind
       = VK_None
-      | VK_Let of exp
-      | VK_RHS of rhs
+      | VK_Let of BOMRep.exp
+      | VK_RHS of BOMRep.rhs
       | VK_Param
-      | VK_Fun of lambda
-      | VK_Cont of lambda
-      | VK_CFun of c_fun
+      | VK_Fun of BOMRep.lambda
+      | VK_Cont of BOMRep.lambda
+      | VK_CFun of BOMRep.c_fun
 
     val kindToString : kind -> string
 
-    include VAR
-      where kind = var_kind
-      where type ty = BOMTy.t
+    val new : (string * ty) -> t
+    val newWithKind : (string * kind * ty) -> t
+    val copy : t -> t
+    val alias : (t * string option * ty) -> t
 
-    type t = var (* = (var_kind, BOMTy.t) VarRep.var_rep *)
+    val nameOf : t -> string
+    val kindOf : t -> kind
+    val setKind : (t * kind) -> unit
+    val typeOf : t -> ty
+    val setType : (t * ty) -> unit
+
+  (* operations of use counts *)
+    val useCount : t -> int
+    val clrCount : t -> unit
+    val setCount : (t * int) -> unit
+    val addToCount : (t * int) -> unit
+
+    val same : (t * t) -> bool
+    val compare : (t * t) -> order
+    val hash : t -> word
+
+    val toString : t -> string
+    val varsToString : t list -> string
+
+  (* per-variable properties *)
+    val newProp : (t -> 'a) -> {
+	    clrFn : t -> unit,
+	    getFn : t -> 'a,
+	    peekFn : t -> 'a option,
+	    setFn : (t * 'a) -> unit
+	  }
+    val newFlag : unit -> {
+	    getFn : t -> bool,
+	    setFn : t * bool -> unit
+	  }
+
+    structure Set : ORD_SET where type Key.ord_key = t
+    structure Map : ORD_MAP where type Key.ord_key = t
+    structure Tbl : MONO_HASH_TABLE where type Key.hash_key = t
 
   (* return the application count reference for a function *)
     val appCntRef : t -> int ref
@@ -40,26 +78,28 @@ structure BOMVar : sig
 
   end = struct
 
-    datatype kind = datatype BOMRep.var_kind
-
-    fun kindToString VK_None = "None"
-      | kindToString (VK_Let _) = "Let"
-      | kindToString (VK_RHS _) = "RHS"
-      | kindToString VK_Param = "Param"
-      | kindToString (VK_Fun _) = "Fun"
-      | kindToString (VK_Cont _) = "Cont"
-      | kindToString (VK_CFun _) = "CFun"
+    fun kindToString BOMRep.VK_None = "None"
+      | kindToString (BOMRep.VK_Let _) = "Let"
+      | kindToString (BOMRep.VK_RHS _) = "RHS"
+      | kindToString BOMRep.VK_Param = "Param"
+      | kindToString (BOMRep.VK_Fun _) = "Fun"
+      | kindToString (BOMRep.VK_Cont _) = "Cont"
+      | kindToString (BOMRep.VK_CFun _) = "CFun"
 
     structure V = VarFn (
       struct
-	type kind = kind
+	type kind = BOMRep.var_kind
 	type ty = BOMTy.t
-	val defaultKind = VK_None
+	val defaultKind = BOMRep.VK_None
 	val kindToString = kindToString
-	val tyToString = BOMTyUtil.toString
+	val tyToString = BOMTy.toString
       end)
 
     open V
+
+    type t = var
+
+    datatype kind = datatype BOMRep.var_kind
 
   (* application counts for functions *)
     local
@@ -87,11 +127,5 @@ structure BOMVar : sig
 		]
 	  (* end case *))
     end (* local val ... *)
-
-  (* mapping from functions to the HLOp that they define *)
-    val {clrFn = clrHLOp, peekFn = hlop, setFn = setHLOp, ...} =
-	  newProp (fn _ => ((raise Fail "no HLOp") : hlop))
-
-    fun isHLOp f = Option.isSome(hlop f)
 
   end
