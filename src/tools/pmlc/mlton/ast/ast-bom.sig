@@ -301,7 +301,7 @@ signature AST_BOM =
 		TyParam.t list * VarPat.t list * VarPat.t list *
 		BOMType.t list * Exp.t
 	    | Fun of FunDef.t list
-	    | Extern of CReturnTy.t * BOMId.t * CArgTy.t list * Attrs.t
+	    | Extern of CReturnTy.t * BOMId.t * CArgTy.t list * Attrs.t option
 
 	  val layout : t -> Layout.t
 	  include WRAPPED

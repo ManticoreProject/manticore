@@ -886,7 +886,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
     | DefineHLOp of Attrs.t option * HLOpId.t * TyParam.t list *
         VarPat.t list * VarPat.t list * BOMType.t list * Exp.t
     | Fun of FunDef.t list
-    | Extern of CReturnTy.t * BOMId.t * CArgTy.t list * Attrs.t
+    | Extern of CReturnTy.t * BOMId.t * CArgTy.t list * Attrs.t option
 
   open Wrap
   type t = node Wrap.t
@@ -932,7 +932,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         end
     | Fun (fundefs) =>
         leftDelimitWithIndent (map FunDef.layout fundefs, "fun", "and")
-    | Extern (cReturnTy, bomId, cArgTys, attrs) =>
+    | Extern (cReturnTy, bomId, cArgTys, maybeAttrs) =>
         Layout.align [
           Layout.mayAlign [
             Layout.str "extern",
@@ -940,7 +940,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
             BOMId.layout bomId
           ],
           indentedSchemeList (map CArgTy.layout cArgTys),
-          Attrs.layout attrs
+          layoutOption (maybeAttrs, Attrs.layout)
         ]
     end
 

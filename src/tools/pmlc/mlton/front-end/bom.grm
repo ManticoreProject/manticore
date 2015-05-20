@@ -152,7 +152,7 @@ Definition
                     end)
         | "fun" FunDef ("and" FunDef)* ";"
                 => (BOM.Definition.makeRegion (BOM.Definition.Fun(FunDef :: SR), posToReg FULL_SPAN))
-        | "extern" CReturnTy BOMId "(" (CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs ";"
+        | "extern" CReturnTy BOMId "(" (CArgTy ("," CArgTy)* => (CArgTy::SR))? ")" Attrs? ";"
                 => (BOM.Definition.makeRegion (
                       BOM.Definition.Extern (CReturnTy, BOMId, Option.getOpt (SR, []), Attrs),
                       posToReg FULL_SPAN))

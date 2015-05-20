@@ -926,15 +926,14 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
   (* FIXME: these should be returning bomdecs *)
   fun elaborateBOMDec (dec: BOM.Definition.t, tyEnvs as {env, bomEnv}) =
     case BOM.Definition.node dec of
-       BOM.Definition.Extern (cReturnTy, bomId, cArgTys, attrs) =>
+       BOM.Definition.Extern (cReturnTy, bomId, cArgTys, maybeAttrs) =>
          let
            val cReturnTy' = CoreBOM.CReturnTy.fromAst cReturnTy
            val cArgTys' = map CoreBOM.CArgTy.fromAst cArgTys
-           val attrs' = CoreBOM.Attr.fromAst attrs
+           val attrs' = CoreBOM.Attr.flattenFromAst maybeAttrs
            (* TODO: what type should this value have? does it go in VE? *)
            val valId = CoreBOM.Val.error
-           val dec = CoreBOM.Definition.Extern (cReturnTy', valId,
-             cArgTys', attrs')
+           val dec = CoreBOM.Definition.Extern (cReturnTy', valId, cArgTys', attrs')
          in
            (CoreML.Dec.BOMDecs [], bomEnv)
          end
