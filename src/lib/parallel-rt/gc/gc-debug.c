@@ -17,8 +17,9 @@
 bool isGlobalHeapPtr (Value_t v)
 {
   assert(isPtr(v));
-  assert(AddrToChunk(ValueToAddr(v)) != 0);
-  assert(AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK);
+  MemChunk_t *tmp = AddrToChunk(ValueToAddr(v));
+  assert(tmp != 0);
+  assert(tmp->sts == TO_SP_CHUNK);
 }
 
 

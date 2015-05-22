@@ -37,9 +37,9 @@ Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
 {
 	Word_t	*p = ((Word_t *)ValueToPtr(v));
 	Word_t	hdr = p[-1];
-	if (isForwardPtr(hdr))
+	if (isForwardPtr(hdr)){
 		return PtrToValue(GetForwardPtr(hdr));
-	else {
+    }else {
 		/* forward object to global heap. */
 		Word_t *nextW = (Word_t *)vp->globNextW;
 		int len = GetLength(hdr);
@@ -65,7 +65,7 @@ Value_t ForwardObjMajor (VProc_t *vp, Value_t v)
 }
 
 static void ScanGlobalToSpace (
-	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr);
+	VProc_t *vp, Addr_t heapBase, MemChunk_t *scanChunk, Word_t *scanPtr, bool promotion);
 #ifndef NDEBUG
 void CheckAfterGlobalGC (VProc_t *self, Value_t **roots);
 void CheckToSpacesAfterGlobalGC (VProc_t *vp);
@@ -136,9 +136,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
 #ifndef NDEBUG
     //if (GCDebug >= GC_DEBUG_MAJOR)
-	SayDebug("[%2d] Major GC starting\n", vp->id);
+	//SayDebug("[%2d] Major GC starting\n", vp->id);
 #endif
-
 
     /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
@@ -150,7 +149,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	        else if (inVPHeap(heapBase, ValueToAddr(p))) {
 	            //RememberSet: pointer from old to young, adjust pointer after scanning
                 if(inAddrRange(heapBase, oldSzB, roots[i])){
-                    printf("Skipping translation\n");
                     continue;
                 }
                 // p points to another object in the "young" region,
@@ -194,7 +192,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     }
 
   /* scan to-space objects */
-    ScanGlobalToSpace (vp, heapBase, scanChunk, globScan);
+    ScanGlobalToSpace (vp, heapBase, scanChunk, globScan, false);
 
   /* copy the live data between vp->oldTop and top to the base of the heap */
     Addr_t youngSzB = top - vp->oldTop; 
@@ -204,11 +202,9 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     //RememberSet: translate pointers for source that just got promoted to global heap and dest still in local heap
     RS_t* rememberSet = (RS_t*)vp->rememberSet;
     while(rememberSet != (RS_t*)M_NIL){
-        if(rememberSet->offset >= 0){
-            Value_t dest = rememberSet->source[rememberSet->offset];
-            if(inVPHeap(heapBase, (Addr_t)dest)){
-                rememberSet->source[rememberSet->offset] = (Word_t)((Addr_t)dest - oldSzB);
-            }
+        Value_t dest = rememberSet->source[rememberSet->offset];
+        if(inVPHeap(heapBase, (Addr_t)dest)){
+            rememberSet->source[rememberSet->offset] = (Word_t)((Addr_t)dest - oldSzB);
         }
         rememberSet = rememberSet->next;
     }
@@ -289,7 +285,7 @@ Value_t PromoteObj (VProc_t *vp, Value_t root)
 	root = ForwardObjMajor (vp, root);
 
       /* promote any reachable values */
-	ScanGlobalToSpace (vp, heapBase, scanChunk, scanPtr);
+	ScanGlobalToSpace (vp, heapBase, scanChunk, scanPtr, true);
 
 #ifndef NO_GC_STATS
 	uint64_t nBytesCopied = 0;
@@ -341,7 +337,8 @@ static void ScanGlobalToSpace (
     VProc_t *vp,
     Addr_t heapBase,
     MemChunk_t *scanChunk,
-    Word_t *scanPtr)
+    Word_t *scanPtr, 
+    bool promotion) //if promoting, then promote regardless of where in local heap, otherwise only promote if its in old space
 {
     Word_t	*scanTop = UsedTopOfChunk (vp, scanChunk);
 
@@ -360,7 +357,9 @@ static void ScanGlobalToSpace (
                     for (int i = 0;  i < len;  i++, scanPtr++) {
                         Value_t *scanP = (Value_t *)scanPtr;
                         Value_t v = *scanP;
-                        if (isPtr(v) && /*inAddrRange(heapBase, oldSzB, v)*/inVPHeap(heapBase, ValueToAddr(v))) {
+                        if (isPtr(v) && inAddrRange(heapBase, oldSzB, v) /*inVPHeap(heapBase, ValueToAddr(v))*/) {
+                            *scanP = ForwardObjMajor(vp, v);
+                        }else if(promotion && inVPHeap(heapBase, ValueToAddr(v))){
                             *scanP = ForwardObjMajor(vp, v);
                         }
                     }
@@ -368,7 +367,7 @@ static void ScanGlobalToSpace (
                     assert (isRawHdr(hdr));
                     scanPtr += GetLength(hdr);
                 } else {
-                    scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase);
+                    scanPtr = table[getID(hdr)].ScanGlobalToSpacefunction(scanPtr,vp,heapBase,oldSzB,promotion);
                 }
             }
 

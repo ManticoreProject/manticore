@@ -18,7 +18,7 @@
 /********** VProc local heaps **********/
 
 /* VP_HEAP_SZB */		/* defined in machine/sizes.h */
-#define VP_HEAP_MASK		((Addr_t)(VP_HEAP_SZB-1))
+#define VP_HEAP_MASK		((Addr_t)(VP_HEAP_SZB-1)) //1048575
 
 #define MAJOR_GC_THRESHOLD	((Addr_t)(VP_HEAP_SZB >> 1))
 

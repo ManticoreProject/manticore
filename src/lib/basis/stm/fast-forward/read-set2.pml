@@ -194,18 +194,12 @@ struct
             return()
         ;
 
-        define @validate-commit(readSet : read_set, stamp : ![stamp], newStamp : stamp, unlock : fun(unit / exh -> unit) / exh:exh) : () = 
+        define inline @validate-commit(readSet : read_set, stamp : ![stamp], newStamp : stamp, unlock : fun(unit / exh -> unit) / exh:exh) : () = 
             let rawStamp : stamp = #0(stamp)
             let count : ![int] = alloc(0)
             fun commitLoop(i : item, checkpoint : item, newStamp : stamp) : () = 
                 case i
                    of WithK(tv:tvar, next:item, ws:item, k:cont(any), _:item) =>
-                        let header : any = ArrLoad(i, ~1)
-                        do  if I64Gt(header, 1048576)
-                            then
-                                do ccall M_Print_Long("Current element is a forwarding pointer! %lu\n", header) return() 
-                            else return()
-                        do ccall M_Print_Long("Validating WithK, header is %lu\n", header)
                         if I64Lt(#2(tv), rawStamp)
                         then
                             if Equal(k, enum(0))
@@ -227,12 +221,6 @@ struct
                                 let newRS : read_set = alloc(#0(readSet), i, i, I32Add(#0(count), 1))
                                 @abort(newRS, stamp / exh)
                     | WithoutK(tv:tvar, next:item) =>
-                        let header : any = ArrLoad(i, ~1)
-                        do  if I64Gt(header, 1048576)
-                            then
-                                do ccall M_Print_Long("Current element is a forwarding pointer! %lu\n", header) return() 
-                            else return()
-                        do ccall M_Print_Long("Validating WithoutK, header is %lu\n", header)
                         let casted : ![any, any, item] = (![any,any,item]) i
                         if I64Lt(#2(tv), rawStamp)
                         then apply commitLoop(next, checkpoint, newStamp)
@@ -243,16 +231,15 @@ struct
                             @abort(newRS, stamp / exh)
                     | NilItem => return()
                     | _ => let x : [any] = ([any]) i
-                           do ccall M_Print_Long("Error: commitLoop, tag is %lu\n", x) throw exh(Fail(@"Error in commitLoop\n"))
+                           do ccall M_Print_Long("Error: commitLoop, tag is %lu\n", #0(x)) throw exh(Fail(@"Error in commitLoop\n"))
                 end
             do apply commitLoop(#0(readSet), NilItem, newStamp)
-            do ccall M_Print("Committing transaction\n")
             return()
         ;
 
         define inline @getNumK(rs : read_set) : int = return(#3(rs));
 
-        define @filterRS(readSet : read_set) : () = 
+        define inline @filterRS(readSet : read_set) : () = 
             fun dropKs(l:item, n:int) : int =   (*drop every other continuation*)
                 case l
                    of NilItem => return(n)
@@ -269,6 +256,7 @@ struct
                                 do #5(l) := nextNext
                                 apply dropKs(nextNext, I32Sub(n, 1))
                         end
+                    | _ => do ccall M_Print("filterRS: Impossible\n") return(~1)
                 end
             let x :int = apply dropKs(#2(readSet), #3(readSet))
             do #3(readSet) := x
@@ -294,15 +282,29 @@ struct
                         apply lenLoop(next, I32Add(count, 1))
                     | WithoutK(tv:tvar, next:item) => 
                         apply lenLoop(next, I32Add(count, 1))
+                    | _ => do ccall M_Print("lenLoop: impossible!\n") throw exh(Fail(@"lenLoop: impossible\n"))
                 end
             let l : int = apply lenLoop(#0(readSet), 0)
             do ccall M_Print_Int("Read set length is %d\n", l)
             return(UNIT);
 
+        define @short-path-len(readSet : read_set / exh:exh) : () = 
+            fun lenLoop(i:item, count:int) : int = 
+                case i 
+                   of NilItem => return(count)
+                    | WithK(tv:tvar, _:item, ws:item, k:cont(any), next:item) => 
+                        apply lenLoop(next, I32Add(count, 1))
+                    | WithoutK(tv:tvar, next:item) => 
+                        do ccall M_Print("short-path-len: Impossible\n") return(~1)
+                end
+            let l : int = apply lenLoop(#2(readSet), 0)
+            do ccall M_Print_Int("Short path length is %d\n", l)
+            return();
+
         (*Note that these next two defines, rely on the fact that a heap limit check will not get
          *inserted within the body*)
         (*Add a checkpointed read to the read set*)
-        define @insert-with-k(tv:any, k:cont(any), ws:item, readSet : read_set / exh:exh) : read_set = 
+        define @insert-with-k(tv:any, k:cont(any), ws:item, readSet : read_set / exh:exh) : () = 
             let newItem : item = WithK(tv, NilItem, ws, k, #2(readSet))
             let vp : vproc = host_vproc
             let nurseryBase : long = vpload(NURSERY_BASE, vp)
@@ -315,22 +317,25 @@ struct
                 then (*last item is still in nursery*)
                     do #2(casted) := newItem
                     do #1(readSet) := newItem
+                    do #2(readSet) := newItem
                     do #3(readSet) := I32Add(#3(readSet), 1)
-                    return(readSet)
+                    return()
                 else (*not in nursery, add last item to remember set*)
                     do #2(casted) := newItem
                     let newRS : read_set = alloc(#0(readSet), newItem, newItem, I32Add(#3(readSet), 1))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [read_set, int, [read_set, int, [![any,item,item], int, any]]] = alloc(newRS, ~2, alloc(newRS, ~1, alloc(casted, 2, rs)))
+                    let newRemSet : [![any,item,item], int, any] = alloc(casted, 2, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
-                    return(newRS)
+                    do FLS.@set-key(READ_SET, newRS / exh)
+                    return()
             else (*not in nursery, add last item to remember set*)
                 do #2(casted) := newItem
                 let newRS : read_set = alloc(#0(readSet), newItem, newItem, I32Add(#3(readSet), 1))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [read_set, int, [read_set, int, [![any,item,item], int, any]]] = alloc(newRS, ~2, alloc(newRS, ~1, alloc(casted, 2, rs)))
+                let newRemSet : [![any,item,item], int, any] = alloc(casted, 2, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
-                return(newRS)
+                do FLS.@set-key(READ_SET, newRS / exh)
+                return()
         ;
 
         define @printHeader(tv:any) : () = 
@@ -339,7 +344,7 @@ struct
             return();
 
         (*add a non checkpointed read to the read set*)
-    	define @insert-without-k(tv:any, readSet : read_set / exh:exh) : read_set =
+    	define @insert-without-k(tv:any, readSet : read_set / exh:exh) : () =
     		let newItem : item = WithoutK(tv, NilItem)
     		let vp : vproc = host_vproc
     		let nurseryBase : long = vpload(NURSERY_BASE, vp)
@@ -352,30 +357,34 @@ struct
                 then (*last item is still in nursery*)
                     do #2(casted) := newItem
                     do #1(readSet) := newItem
-                    return(readSet)
+                    return()
                 else (*not in nursery, add last item to remember set*)
-                    do #2(casted) := newItem
                     let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [read_set, int, [![any,item,item], int, any]] = alloc(newRS, ~1, alloc(casted, 2, rs))
+                    let newRemSet : [![any,[any],item], int, any] = alloc(casted, 2, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
-                    return(newRS)
+                    do #2(casted) := newItem
+                    do FLS.@set-key(READ_SET, newRS / exh)
+                    return()
             else (*not in nursery, add last item to remember set*)
-                do #2(casted) := newItem
                 let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [read_set, int, [![any,item,item], int, any]] = alloc(newRS, ~1, alloc(casted, 2, rs))
+                let newRemSet : [![any,[any],item], int, any] = alloc(casted, 2, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
-                return(newRS)
+                do #2(casted) := newItem
+                do FLS.@set-key(READ_SET, newRS / exh)
+                return()
         ;
         
         define @new-w(x:unit / exh:exh) : read_set = 
             let firstElem : item = WithoutK(alloc(~1), NilItem)
             let rs : read_set = alloc(firstElem, firstElem, firstElem, 0)
+            do FLS.@set-key(READ_SET, rs / exh)
             return(rs);
 
         define @insert-w(arg : [any, read_set] / exh:exh) : read_set = 
-            let new : read_set = @insert-without-k(#0(arg), #1(arg) / exh)
+            do @insert-without-k(#0(arg), #1(arg) / exh)
+            let new : read_set = FLS.@get-key(READ_SET / exh)
             return(new);
 
         define @printRS(arg : [read_set, fun(any / exh -> unit)] / exh:exh) : unit =

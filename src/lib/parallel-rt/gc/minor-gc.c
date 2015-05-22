@@ -61,14 +61,6 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots);
  */
 void MinorGC (VProc_t *vp)
 {
-	int count = 0;
-	RS_t * rs = (RS_t*)vp->rememberSet;
-    while (rs != (RS_t *)M_NIL) {
-    	count++;
-    	rs = rs->next;
-    }
-    printf("Remember set has %d elements\n", count);
-
     Addr_t	nurseryBase = vp->nurseryBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to-space */
@@ -78,7 +70,13 @@ void MinorGC (VProc_t *vp)
     Addr_t oldSize = vp->oldTop - heapBase;
 
     LogMinorGCStart (vp, (uint32_t)allocSzB);
-
+/*
+    RS_t* rs = (RS_t*)vp->rememberSet;
+    while(rs != (RS_t*)M_NIL){
+    	printf("source: %p, offset: %d\n", rs->source, rs->offset);
+    	rs = rs->next;
+    }
+*/
 #ifndef NO_GC_STATS
     TIMER_Start(&(vp->minorStats.timer));
 #endif
@@ -86,10 +84,9 @@ void MinorGC (VProc_t *vp)
     assert (vp->heapBase <= (Addr_t)nextScan);
     assert ((Addr_t)nextScan < vp->nurseryBase);
     assert (vp->nurseryBase < vp->allocPtr);
-
 #ifndef NDEBUG
-    if (GCDebug >= GC_DEBUG_MINOR)
-	SayDebug("[%2d] Minor GC starting\n", vp->id);
+    //if (GCDebug >= GC_DEBUG_MINOR)
+	//SayDebug("[%2d] Minor GC starting\n", vp->id);
 #endif
   /* gather the roots.  The protocol is that the stdCont register holds
    * the return address (which is not in the heap) and that the stdEnvPtr
@@ -193,6 +190,7 @@ void MinorGC (VProc_t *vp)
 
 #ifndef NDEBUG
     if (HeapCheck >= GC_DEBUG_MINOR) {
+    	//printf("Checking heap\n");
 	CheckMinorGC (vp, roots);
     }
 #endif
@@ -202,14 +200,6 @@ void MinorGC (VProc_t *vp)
     Value_t * trailer = &(vp->rememberSet);
     RS_t * rememberSet = (RS_t*)vp->rememberSet;
     while (rememberSet != (RS_t *)M_NIL) {
-    	if(rememberSet->offset < 0){//patch up potential forwarding pointer
-    		Value_t header = ((Value_t*)rememberSet->source[-rememberSet->offset])[-1];
-    		if(isForwardPtr(header)){
-    			rememberSet->source[-rememberSet->offset] = PtrToValue(GetForwardPtr(header));
-    		}
-    		*trailer = rememberSet->next;
-    		rememberSet = rememberSet->next;
-    	}
     	Value_t dest = rememberSet->source[rememberSet->offset];
     	if(inAddrRange(heapBase, oldSize, ValueToAddr(dest)) && 
     	   !inAddrRange(heapBase, oldSize, ValueToAddr(rememberSet->source))){ //destination is in local heap, but source is not
@@ -226,32 +216,47 @@ void MinorGC (VProc_t *vp)
 }
 
 #ifndef NDEBUG
-void CheckLocalPtrMinor (VProc_t *self, void *addr, const char *where)
-{
+void CheckLocalPtrMinor (VProc_t *self, void *addr, const char *where){
     Value_t v = *(Value_t *)addr;
     if (isPtr(v)) {
-	MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-	if (cq->sts == TO_SP_CHUNK)
-	    return;
-	else if (cq->sts == FROM_SP_CHUNK)
-	    SayDebug("CheckLocalPtrMinor: unexpected from-space pointer %p at %p in %s\n",
-		ValueToPtr(v), addr, where);
-	else if (IS_VPROC_CHUNK(cq->sts)) {
-	    if (cq->sts != VPROC_CHUNK(self->id)) {
-		SayDebug("CheckLocalPtrMinor: unexpected remote pointer %p at %p in %s\n",
-		    ValueToPtr(v), addr, where);
-	    }
-	    else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {
-		SayDebug("CheckLocalPtrMinor: local pointer %p at %p in %s is out of bounds\n",
-		    ValueToPtr(v), addr, where);
-	    }
-	}
-	else if (cq->sts == FREE_CHUNK) {
-	    SayDebug("CheckLocalPtrMinor: unexpected free-space pointer %p at %p in %s\n",
-		ValueToPtr(v), addr, where);
-	}
+
+		MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+		if (cq->sts == TO_SP_CHUNK)
+		    return;
+		else if (cq->sts == FROM_SP_CHUNK)
+		    	SayDebug("CheckLocalPtrMinor: unexpected from-space pointer %p at %p in %s\n", ValueToPtr(v), addr, where);
+		else if (IS_VPROC_CHUNK(cq->sts)) {
+			    if (cq->sts != VPROC_CHUNK(self->id)) {
+					SayDebug("CheckLocalPtrMinor: unexpected remote pointer %p at %p in %s\n", ValueToPtr(v), addr, where);
+			    }
+			    else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {
+					SayDebug("CheckLocalPtrMinor: local pointer %p at %p in %s is out of bounds\n", ValueToPtr(v), addr, where);
+			    }
+			}
+		else if (cq->sts == FREE_CHUNK) {
+		    SayDebug("CheckLocalPtrMinor: unexpected free-space pointer %p at %p in %s\n",
+			ValueToPtr(v), addr, where);
+		}
     }
 }
+
+/*
+static void CheckMinorGC (VProc_t *self, Value_t **roots){
+
+    char buf[32];
+
+  	//check the roots
+    for (int i = 0;  roots[i] != 0;  i++) {
+    	Value_t *p = (Value_t*)*roots[i];
+    	if(isPtr(p) && isForwardPtr(p[-1])){
+
+    	}else if (isPtr(p)){
+	    	Word_t header = p[-1];
+	    	tableDebug[getID(header)].trace(p);
+    	}
+    }
+}
+*/
 
 static void CheckMinorGC (VProc_t *self, Value_t **roots)
 {
@@ -274,7 +279,12 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 	    Word_t hdr = *p++;
 	    Word_t *scanptr = p;
 		
-	    if (isForwardPtr(hdr)) {
+	    MemChunk_t * cq = AddrToChunk(scanptr);
+	    if(cq->baseAddr != self->heapBase){
+	    	printf("Chunk is unmapped!\n");
+	    }
+
+	    if (isForwardPtr(hdr)) { //in case something was explicitly promoted
 	      // forward pointer
 			Word_t *forwardPtr = GetForwardPtr(hdr);
 			CheckLocalPtrMinor(self, forwardPtr, "forward pointer");
@@ -303,4 +313,8 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 		p += GetLength(hdr);
 	}
 }
+
+
+
+
 #endif /* NDEBUG */

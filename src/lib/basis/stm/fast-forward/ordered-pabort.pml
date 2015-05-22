@@ -119,15 +119,13 @@ struct
                         let captureCount : int = FLS.@get-counter()
                         if I32Eq(captureCount, 0)  (*capture a continuation*)
                         then 
-                            let newRS : RS.read_set = RS.@insert-with-k(tv, retK, writeSet, readSet / exh)
-                            do FLS.@set-key(READ_SET, newRS / exh)
+                            do RS.@insert-with-k(tv, retK, writeSet, readSet / exh)
                             let freq : int = FLS.@get-counter2()
                             do FLS.@set-counter(freq)
                             return(current)
                         else
                             do FLS.@set-counter(I32Sub(captureCount, 1))
-                            let newRS : RS.read_set = RS.@insert-without-k(tv, readSet / exh)
-                            do FLS.@set-key(READ_SET, newRS / exh)
+                            do RS.@insert-without-k(tv, readSet / exh)
                             return(current)
                      else 
                         do RS.@filterRS(readSet)
@@ -135,8 +133,7 @@ struct
                         let newFreq : int = I32Mul(captureFreq, 2)
                         do FLS.@set-counter(I32Sub(newFreq, 1))
                         do FLS.@set-counter2(newFreq)
-                        let newRS : RS.read_set = RS.@insert-without-k(tv, readSet / exh)
-                        do FLS.@set-key(READ_SET, newRS / exh)
+                        do RS.@insert-without-k(tv, readSet / exh)  (*this updates FLS if necessary*)
                         return(current)
                             
             end
@@ -208,7 +205,7 @@ struct
         ;
         
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
-            let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
+            let in_trans : ![bool, int] = FLS.@get-key(IN_TRANS / exh)
             if (#0(in_trans))
             then apply f(UNIT/exh)
             else let stampPtr : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
@@ -228,7 +225,7 @@ struct
                      let res : any = apply f(UNIT/transExh)
                      do @commit(/transExh)
                      do #0(in_trans) := false
-                     do FLS.@set-key(READ_SET, nil / exh)
+                     do FLS.@set-key(READ_SET, RS.NilItem / exh)
                      do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
                      return(res)
                  throw enter()

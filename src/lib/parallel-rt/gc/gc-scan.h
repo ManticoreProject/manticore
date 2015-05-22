@@ -8,7 +8,7 @@ typedef struct{
 	Word_t * (*minorGCscanfunction) (Word_t *,  Word_t**, Addr_t,Addr_t);
 	Word_t * (*majorGCscanfunction) (Word_t *,  VProc_t *, Addr_t,Addr_t);
 	Word_t * (*globalGCscanfunction) (Word_t *,  VProc_t *);
-	Word_t * (*ScanGlobalToSpacefunction) (Word_t *,  VProc_t *,Addr_t);
+	Word_t * (*ScanGlobalToSpacefunction) (Word_t *,  VProc_t *,Addr_t,Addr_t,bool);
 	bool (*polyEq) (Word_t *, Word_t *);
 } tableentry;
 
@@ -29,6 +29,7 @@ typedef struct{
 	void (*globalGCdebugGlobal) (VProc_t *, Word_t *);
 	
 	void (*gc_debug)(Word_t * , Addr_t , Addr_t );
+	void (*trace)(Word_t *);
 } tableentryDebug;
 
 //table array to match the tagbits with the entries

@@ -16,6 +16,7 @@ struct
     fun header (MyoutStrm) = (  
         TextIO.output (MyoutStrm, "#include <stdint.h>\n");
         TextIO.output (MyoutStrm, "#include <stdio.h>\n");
+        TextIO.output (MyoutStrm, "#include \"remember-set.h\"\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "#include \"gc-scan.h\"\n");
         TextIO.output (MyoutStrm, "#include \"gc-inline.h\"\n");
@@ -187,21 +188,21 @@ struct
     
     
     fun minorglobalpre (MyoutStrm) = (
-        TextIO.output (MyoutStrm, "void checkMixedPointer (VProc_t *self,Word_t *p,Word_t *scanP) {\n");
+        TextIO.output (MyoutStrm, "void checkMixedPointer (VProc_t *self,Word_t *p,Word_t *scanP,char*str) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "   Value_t v = *(Value_t *)scanP;\n");
         TextIO.output (MyoutStrm, "   if (isPtr(v)) {\n");
         TextIO.output (MyoutStrm, "     MemChunk_t *cq = AddrToChunk(ValueToAddr(v));\n");
         TextIO.output (MyoutStrm, "     if (cq->sts != TO_SP_CHUNK) {\n");
         TextIO.output (MyoutStrm, "        if (cq->sts == FROM_SP_CHUNK)\n");
-        TextIO.output (MyoutStrm, "            SayDebug(\"[%2d] ** unexpected from-space pointer %p at %p in mixed object\\n\",\n");
-        TextIO.output (MyoutStrm, "                      self->id, ValueToPtr(v), (void *)p);\n");
+        TextIO.output (MyoutStrm, "            SayDebug(\"%s: [%2d] ** unexpected from-space pointer %p at %p in mixed object\\n\",\n");
+        TextIO.output (MyoutStrm, "                      str, self->id, ValueToPtr(v), (void *)p);\n");
         TextIO.output (MyoutStrm, "        else if (IS_VPROC_CHUNK(cq->sts))\n");
-        TextIO.output (MyoutStrm, "            SayDebug(\"[%2d] ** unexpected local pointer %p at %p in mixed object\\n\",\n");
-        TextIO.output (MyoutStrm, "                    self->id, ValueToPtr(v), (void *)p);\n");
+        TextIO.output (MyoutStrm, "            SayDebug(\"%s: [%2d] ** unexpected local pointer %p at %p in mixed object\\n\",\n");
+        TextIO.output (MyoutStrm, "                    str, self->id, ValueToPtr(v), (void *)p);\n");
         TextIO.output (MyoutStrm, "        else if (cq->sts == FREE_CHUNK)\n");
-        TextIO.output (MyoutStrm, "            SayDebug(\"[%2d] ** unexpected free pointer %p at %p in mixed object\\n\",\n");
-        TextIO.output (MyoutStrm, "                     self->id, ValueToPtr(v), (void *)p);\n");
+        TextIO.output (MyoutStrm, "            SayDebug(\"%s: [%2d] ** unexpected free pointer %p at %p in mixed object\\n\",\n");
+        TextIO.output (MyoutStrm, "                     str, self->id, ValueToPtr(v), (void *)p);\n");
         TextIO.output (MyoutStrm, "     }\n");
         TextIO.output (MyoutStrm, "   }\n");
         TextIO.output (MyoutStrm, "}\n");
@@ -237,6 +238,7 @@ struct
         TextIO.output (MyoutStrm, "void minorGCVECTORdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "    int len = GetLength(ptr[-1]);\n");
+        TextIO.output (MyoutStrm, "    Word_t * origPtr = ptr;\n");
         TextIO.output (MyoutStrm, "    // an array of pointers\n");
         TextIO.output (MyoutStrm, "    for (int i = 0;  i < len;  i++, ptr++) {\n");
         TextIO.output (MyoutStrm, "          Value_t v = (Value_t)*ptr;\n");
@@ -246,9 +248,18 @@ struct
         TextIO.output (MyoutStrm, "                  if (cq->sts == FROM_SP_CHUNK)\n");
         TextIO.output (MyoutStrm, "                      SayDebug(\"** unexpected from-space pointer %p at %p in vector\\n\",\n");
         TextIO.output (MyoutStrm, "                               ValueToPtr(v), (void *)ptr);\n");
-        TextIO.output (MyoutStrm, "                  else if (IS_VPROC_CHUNK(cq->sts))\n");
-        TextIO.output (MyoutStrm, "                      SayDebug(\"** minor unexpected local pointer %p at %p in vector\\n\",\n");
-        TextIO.output (MyoutStrm, "                               ValueToPtr(v), (void *)ptr);\n");
+        TextIO.output (MyoutStrm, "                  else if (IS_VPROC_CHUNK(cq->sts)){\n");
+        TextIO.output (MyoutStrm, "                           bool skip = false;\n");
+        TextIO.output (MyoutStrm, "                           RS_t* rs = (RS_t*)self->rememberSet;\n");
+        TextIO.output (MyoutStrm, "                           while(rs != (RS_t*)M_NIL){\n");
+        TextIO.output (MyoutStrm, "                               if(origPtr == (Word_t*)rs->source)\n");
+        TextIO.output (MyoutStrm, "                                   skip = true;\n");
+        TextIO.output (MyoutStrm, "                               rs = rs->next;\n");
+        TextIO.output (MyoutStrm, "                          }\n");
+        TextIO.output (MyoutStrm, "                          if(skip) continue;\n");
+        TextIO.output (MyoutStrm, "                          SayDebug(\"** minor unexpected local pointer %p at %p in vector\\n\",\n");
+        TextIO.output (MyoutStrm, "                                   ValueToPtr(v), (void *)ptr);\n");
+        TextIO.output (MyoutStrm, "                      }\n");
         TextIO.output (MyoutStrm, "                  else if (cq->sts == FREE_CHUNK)\n");
         TextIO.output (MyoutStrm, "                      SayDebug(\"** unexpected free pointer %p at %p in vector\\n\",\n");
         TextIO.output (MyoutStrm, "                                ValueToPtr(v), (void *)ptr);\n");
@@ -263,7 +274,7 @@ struct
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
         TextIO.output (MyoutStrm,"    scanP++;\n");
-        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP);\n");
+        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP, \"minorGCPROXYdebugGlobal\");\n");
         TextIO.output (MyoutStrm,"    scanP++;\n");
         TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,1);\n");
         TextIO.output (MyoutStrm,"    scanP++;\n");
@@ -281,7 +292,7 @@ struct
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
                     then (
-                        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP);\n");
+                        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP, \"minorGC" ^ Int.toString b ^ "DebugGlobal\");\n");
                         TextIO.output (MyoutStrm,"    scanP++;\n");
                         lp(strlen-1,bites,pos+1)
                         )
@@ -418,15 +429,15 @@ struct
         TextIO.output (MyoutStrm, "                 MemChunk_t *cq = AddrToChunk(ValueToAddr(v));\n");
         TextIO.output (MyoutStrm, "                 if (cq->sts != TO_SP_CHUNK) {\n");
         TextIO.output (MyoutStrm, "                     if (cq->sts == FROM_SP_CHUNK){\n");
-        TextIO.output (MyoutStrm, "                          SayDebug(\"[%2d] ** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
+        TextIO.output (MyoutStrm, "                          SayDebug(\"RAW: [%2d] ** suspicious looking from-space pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                   self->id, ValueToPtr(v), (void *)ptr, i, len); }\n");
         TextIO.output (MyoutStrm, "                     /* the vproc pointer is pretty common, so filter it out */\n"); 
         TextIO.output (MyoutStrm, "                     else if (IS_VPROC_CHUNK(cq->sts)){\n");
         TextIO.output (MyoutStrm, "                          if ((ValueToAddr(v) & ~VP_HEAP_MASK) != ValueToAddr(v))\n"); 
-        TextIO.output (MyoutStrm, "                              SayDebug(\"[%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
+        TextIO.output (MyoutStrm, "                              SayDebug(\"RAW: [%2d] ** suspicious looking local pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len); }\n");
         TextIO.output (MyoutStrm, "                     else if (cq->sts == FREE_CHUNK){\n");
-        TextIO.output (MyoutStrm, "                          SayDebug(\"[%2d] ** suspicious looking free pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
+        TextIO.output (MyoutStrm, "                          SayDebug(\"RAW: [%2d] ** suspicious looking free pointer %p at %p[%d] in raw object of length %d (in local heap)\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr, i, len); }\n");
         TextIO.output (MyoutStrm, "                 }\n");
         TextIO.output (MyoutStrm, "             }\n");
@@ -438,33 +449,44 @@ struct
         TextIO.output (MyoutStrm, "void globalGCVECTORdebugGlobal (VProc_t *self, Word_t *ptr) {\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "    int len = GetLength(ptr[-1]);\n");
+        TextIO.output (MyoutStrm, "    Word_t * origPtr = ptr;\n");
         TextIO.output (MyoutStrm, "    for (int i = 0;  i < len;  i++, ptr++) {\n");
         TextIO.output (MyoutStrm, "        Value_t v = (Value_t)*ptr;\n");
         TextIO.output (MyoutStrm, "        if (isPtr(v)) {\n");
         TextIO.output (MyoutStrm, "           MemChunk_t *cq = AddrToChunk(ValueToAddr(v));\n");
         TextIO.output (MyoutStrm, "           if (cq->sts != TO_SP_CHUNK) {\n");
         TextIO.output (MyoutStrm, "                if (cq->sts == FROM_SP_CHUNK)\n");
-        TextIO.output (MyoutStrm, "                SayDebug(\"[%2d] ** unexpected from-space pointer %p at %p in vector\\n\",\n");
+        TextIO.output (MyoutStrm, "                SayDebug(\"VECTOR: [%2d] ** unexpected from-space pointer %p at %p in vector\\n\",\n");
         TextIO.output (MyoutStrm, "                        self->id, ValueToPtr(v), (void *)ptr);\n");
         TextIO.output (MyoutStrm, "                else if (IS_VPROC_CHUNK(cq->sts)) {\n");
+        TextIO.output (MyoutStrm, "                     bool skip = false;\n");
+        TextIO.output (MyoutStrm, "                     for(int i = 0; i < NumVProcs; i++){\n");
+        TextIO.output (MyoutStrm, "                         RS_t * rs = (RS_t*)VProcs[i]->rememberSet;\n");
+        TextIO.output (MyoutStrm, "                         while(rs != (RS_t*) M_NIL){\n");
+        TextIO.output (MyoutStrm, "                             if(rs->source == (Value_t*)origPtr)\n");
+        TextIO.output (MyoutStrm, "                                 skip = true;  //in remember set, so its OK to have a pointer from global to local\n"); 
+        TextIO.output (MyoutStrm, "                             rs = rs->next;\n");
+        TextIO.output (MyoutStrm, "                         }\n");
+        TextIO.output (MyoutStrm, "                     }\n");
+        TextIO.output (MyoutStrm, "                     if(skip) continue;\n");
         TextIO.output (MyoutStrm, "                     if (cq->sts != VPROC_CHUNK(self->id)) {\n");
-        TextIO.output (MyoutStrm, "                         SayDebug(\"[%2d] ** unexpected remote pointer %p at %p in vector\\n\",\n");
+        TextIO.output (MyoutStrm, "                         SayDebug(\"VECTOR: [%2d] ** unexpected remote pointer %p at %p in vector\\n\",\n");
         TextIO.output (MyoutStrm, "                                   self->id, ValueToPtr(v), (void *)ptr);\n");
         TextIO.output (MyoutStrm, "                      }\n");
         TextIO.output (MyoutStrm, "                      else if ((ValueToAddr(v) & ~VP_HEAP_MASK) != ValueToAddr(v)) {\n");
-        TextIO.output (MyoutStrm, "                           SayDebug(\"[%2d] ** unexpected vproc-structure pointer %p at %p in vector\\n\",\n");
+        TextIO.output (MyoutStrm, "                           SayDebug(\"VECTOR: [%2d] ** unexpected vproc-structure pointer %p at %p in vector\\n\",\n");
         TextIO.output (MyoutStrm, "                                    self->id, ValueToPtr(v), (void *)ptr);\n");
         TextIO.output (MyoutStrm, "                      }\n");
         TextIO.output (MyoutStrm, "                      else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {\n");
-        TextIO.output (MyoutStrm, "                           SayDebug(\"[%2d] ** global unexpected local pointer %p at %p in vector[%d] is out of bounds\\n\",\n");
+        TextIO.output (MyoutStrm, "                           SayDebug(\"VECTOR: [%2d] ** global unexpected local pointer %p at %p in vector[%d] is out of bounds\\n\",\n");
         TextIO.output (MyoutStrm, "                                     self->id, ValueToPtr(v), (void *)ptr, i);\n");
         TextIO.output (MyoutStrm, "                      } else {\n");
-        TextIO.output (MyoutStrm, "                           SayDebug(\"[%2d] ** global unexpected local pointer %p at %p in vector\\n\",\n");
+        TextIO.output (MyoutStrm, "                           SayDebug(\"VECTOR: [%2d] ** global unexpected local pointer %p at %p in vector\\n\",\n");
         TextIO.output (MyoutStrm, "                                     self->id, ValueToPtr(v), (void *)ptr);\n");
         TextIO.output (MyoutStrm, "                      }\n");
         TextIO.output (MyoutStrm, "                }\n");
         TextIO.output (MyoutStrm, "                else if (cq->sts == FREE_CHUNK)\n");
-        TextIO.output (MyoutStrm, "                    SayDebug(\"[%2d] ** unexpected free pointer %p at %p in vector\\n\",\n");
+        TextIO.output (MyoutStrm, "                    SayDebug(\"VECTOR: [%2d] ** unexpected free pointer %p at %p in vector\\n\",\n");
         TextIO.output (MyoutStrm, "                             self->id, ValueToPtr(v), (void *)ptr);\n");
         TextIO.output (MyoutStrm, "             }\n");
         TextIO.output (MyoutStrm, "          }\n");
@@ -478,7 +500,7 @@ struct
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,0);\n");
         TextIO.output (MyoutStrm,"    scanP++;\n");
-        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP);\n");
+        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP, \"globalGCPROXYdebugGlobal\");\n");
         TextIO.output (MyoutStrm,"    scanP++;\n");
         TextIO.output (MyoutStrm,"    possiblePointer(self,ptr,scanP,0);\n");
         TextIO.output (MyoutStrm,"    scanP++;\n");
@@ -496,7 +518,7 @@ struct
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
                     then (
-                        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP);\n");
+                        TextIO.output (MyoutStrm,"    checkMixedPointer (self,ptr, scanP,\"globalGC" ^ Int.toString b ^ "DebugGlobal\");\n");
                         TextIO.output (MyoutStrm,"    scanP++;\n");
                         lp(strlen-1,bites,pos+1)
                         )
@@ -612,8 +634,61 @@ struct
         ()
     end
     
+    fun traceNext MyoutStrm = (
+        TextIO.output(MyoutStrm, "void traceNext(Word_t * p, int offset){\n");
+        TextIO.output(MyoutStrm, "    if(isPtr((Value_t)p[offset])){\n");
+        TextIO.output(MyoutStrm, "        Word_t nextHeader = ((Word_t**)p)[offset][-1];\n");
+        TextIO.output(MyoutStrm, "        tableDebug[getID(nextHeader)].trace((Word_t*)p[offset]);\n");
+        TextIO.output(MyoutStrm, "    }\n");
+        TextIO.output(MyoutStrm, "}\n\n")
+    )
+
+    (*Functions for tracing through the roots looking for forwarding pointers*)
+    fun traceRAW (MyoutStrm) = TextIO.output (MyoutStrm, "void traceRAW (Word_t *p) {}\n\n");
+
+    fun traceVEC (MyoutStrm) = (
+        TextIO.output (MyoutStrm, "void traceVEC (Word_t *p) {\n");
+        TextIO.output (MyoutStrm, "    int len = GetLength(p[-1]);\n");
+        TextIO.output (MyoutStrm, "    for (int i = 0;  i < len;  i++) {\n");
+        TextIO.output (MyoutStrm, "        if(isPtr((Value_t)p[i]) && isForwardPtr(((Word_t**)p)[i][-1])){\n");
+        TextIO.output (MyoutStrm, "            printf(\"%p is pointing to a forwarding pointer (%p)\\n\", p, (Word_t*)p[i]);\n");
+        TextIO.output (MyoutStrm, "        }else{\n");
+        TextIO.output (MyoutStrm, "            traceNext(p, i);\n");
+        TextIO.output (MyoutStrm, "        }\n");
+        TextIO.output (MyoutStrm, "    }\n");
+        TextIO.output (MyoutStrm, "}\n\n")
+    )
+
+    fun tracePROXY(MyoutStrm) = TextIO.output (MyoutStrm, "void tracePROXY(Word_t * p){}\n\n")
     
-    
+    fun trace MyoutStrm = 
+        let val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
+            fun printStr bits = 
+                case bits 
+                   of nil => ()
+                    | (a,b)::t => (*a is the bit vector, and b is the index into the hash table*)
+                        let fun lp(strlen, bytes, pos) = 
+                                if strlen = 0
+                                then ()
+                                else 
+                                    if (String.compare(substring(bytes, strlen-1,1), "1") = EQUAL)
+                                    then
+                                        (TextIO.output(MyoutStrm, concat["    if(isPtr((Value_t)p[",Int.toString pos,"]) && isForwardPtr(((Word_t**)p)[", Int.toString pos, "][-1])){\n"]);
+                                         TextIO.output(MyoutStrm, "        printf(\"%p is pointing to a forwarding pointer (%p)\\n\", p, (Word_t*)p[" ^ Int.toString pos ^ "]);\n");
+                                         TextIO.output(MyoutStrm, "    }else{\n");
+                                         TextIO.output(MyoutStrm, concat["        traceNext(p, ", Int.toString pos, ");\n"]);
+                                         TextIO.output(MyoutStrm, "    }\n"); 
+                                         lp(strlen-1, bytes, pos+1)
+                                        )
+                                    else ()
+                            val _ = TextIO.output(MyoutStrm, "void trace" ^ Int.toString b ^ "(Word_t * p){\n")
+                            val _ = lp(String.size a, a, 0)
+                            val _ = TextIO.output(MyoutStrm, "}\n\n")
+                        in printStr t end
+        in printStr s end
+
+
+
     fun createtable (MyoutStrm) = (let
         val s = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
         val length = List.length s
@@ -622,15 +697,15 @@ struct
             if (listlength = i)
             then ()
             else (
-                TextIO.output (MyoutStrm, concat[",{minorGC",Int.toString i,"Debug,minorGC",Int.toString i,"DebugGlobal,globalGC",Int.toString i,"Debug,globalGC",Int.toString i,"DebugGlobal,gc_debug",Int.toString i,"mix}\n"]);
+                TextIO.output (MyoutStrm, concat[",{minorGC",Int.toString i,"Debug,minorGC",Int.toString i,"DebugGlobal,globalGC",Int.toString i,"Debug,globalGC",Int.toString i,"DebugGlobal,gc_debug",Int.toString i,"mix, trace", Int.toString i, "}\n"]);
                 printtable(listlength,i+1)
                 )
             )
             
         in
-        TextIO.output (MyoutStrm, concat["tableentryDebug tableDebug[",Int.toString (length+predefined),"] = { {minorGCRAWdebug,minorGCRAWdebugGlobal,globalGCRAWdebug,globalGCRAWdebugGlobal,gc_debugRAW},\n"]);
-        TextIO.output (MyoutStrm, "{minorGCVECTORdebug,minorGCVECTORdebugGlobal,globalGCVECTORdebug,globalGCVECTORdebugGlobal,gc_debugVECTOR},\n");
-        TextIO.output (MyoutStrm, "{minorGCPROXYdebug,minorGCPROXYdebugGlobal,globalGCPROXYdebug,globalGCPROXYdebugGlobal,gc_debugPROXY}\n");
+        TextIO.output (MyoutStrm, concat["tableentryDebug tableDebug[",Int.toString (length+predefined),"] = { {minorGCRAWdebug,minorGCRAWdebugGlobal,globalGCRAWdebug,globalGCRAWdebugGlobal,gc_debugRAW, traceRAW},\n"]);
+        TextIO.output (MyoutStrm, "{minorGCVECTORdebug,minorGCVECTORdebugGlobal,globalGCVECTORdebug,globalGCVECTORdebugGlobal,gc_debugVECTOR, traceVEC},\n");
+        TextIO.output (MyoutStrm, "{minorGCPROXYdebug,minorGCPROXYdebugGlobal,globalGCPROXYdebug,globalGCPROXYdebugGlobal,gc_debugPROXY, tracePROXY}\n");
         
         printtable (length+predefined,predefined);
         
@@ -660,6 +735,13 @@ struct
             
             gcdebugpre Myout;
             gcdebug Myout;
+
+            traceNext Myout; 
+
+            traceRAW Myout; 
+            traceVEC Myout;
+            tracePROXY Myout;
+            trace Myout;
             
             createtable Myout;
             

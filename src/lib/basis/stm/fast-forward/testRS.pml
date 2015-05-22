@@ -20,9 +20,7 @@ fun lpABCDE(i, rs, l) =
 	if i = 0
 	then rs
 	else let val vs = List.tabulate(K, fn _ => Vector.tabulate(10, fn i => i))
-			 val _ = ReadSet2.length rs
-			 val _ = print ("About to insert element " ^ Int.toString i ^ "\n")
-			 val _ = print "\n"
+			 (*val _ = ReadSet2.length rs*)
 		 in lpABCDE(i-1, ReadSet2.insert(i, rs), vs @ l)
 		 end
 

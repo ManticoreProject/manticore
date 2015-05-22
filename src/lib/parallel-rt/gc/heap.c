@@ -407,8 +407,8 @@ void ReportGCStats ()
 {
     char buffer[256], *bp;
 
-    if (! ReportStatsFlg)
-	return;
+    //if (! ReportStatsFlg)
+	//return;
 
     FILE *outF = StatsOutFile;
 

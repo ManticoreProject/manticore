@@ -21,6 +21,7 @@
 #include "inline-log.h"
 #include "work-stealing-deque.h"
 #include "gc-scan.h"
+#include "remember-set.h"
 
 static Mutex_t		GCLock;		// Lock that protects the following variables:
 static Cond_t		LeaderWait;	// The leader waits on this for the followers
@@ -162,7 +163,6 @@ void ConvertToSpaceChunks (VProc_t *self, MemChunk_t *p) {
  */
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
-    printf("Starting global GC\n");
     bool	leaderVProc;
 
 #ifndef NO_GC_STATS
@@ -189,7 +189,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    GlobalGCUId = LogGlobalGCInit (self, NumGlobalGCs);
 #endif
 #ifndef NDEBUG
-	    if (GCDebug >= GC_DEBUG_GLOBAL)
+	  //  if (GCDebug >= GC_DEBUG_GLOBAL)
 	        SayDebug("[%2d] Initiating global GC %d (%d processors)\n",
 		    self->id, NumGlobalGCs, NumVProcs);
 #endif
@@ -548,7 +548,7 @@ static void ScanGlobalToSpace (VProc_t *vp)
                             *scanP = ForwardObjGlobal(vp, v);
                         }
                         
-                        assert (!(isPtr(v) && IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts)));
+                        //assert (!(isPtr(v) && IS_VPROC_CHUNK(AddrToChunk(ValueToAddr(v))->sts)));
                     }
                 } else if (isRawHdr(hdr)) {
                     assert (isRawHdr(hdr));
@@ -627,6 +627,14 @@ void CheckGlobalPtr (VProc_t *self, void *addr, char *where)
     CheckGlobalAddr (self, addr, where);
 }
 
+void printRS(VProc_t * vp){
+    RS_t * rs = (RS_t*)vp->rememberSet;
+    while(rs != (RS_t*)M_NIL){
+        printf("source = %p, dest = %p, offset = %d\n", rs->source, rs->source[rs->offset], rs->offset);
+        rs = rs->next;
+    }
+}
+
 void CheckGlobalAddr2 (VProc_t *self, void *source, void * dest, char *where)
 {
     assert(VProcSelf() == self);
@@ -647,6 +655,13 @@ void CheckGlobalAddr2 (VProc_t *self, void *source, void * dest, char *where)
         else if (isLimitPtr(d, cqd))
             return;
         else if (IS_VPROC_CHUNK(cqd->sts)) {
+            RS_t *  rs = (RS_t*)self->rememberSet;
+            while(rs != (RS_t*)M_NIL){
+                if((Value_t*) source == rs->source){
+                    return;
+                }
+                rs = rs->next;
+            }
             if (inAddrRange(ValueToAddr(d) & ~VP_HEAP_MASK, sizeof(VProc_t), ValueToAddr(d))) {
               /* IMPORTANT: we make an exception for objects stored in the vproc structure */
                 return;
@@ -728,26 +743,26 @@ void CheckLocalPtrGlobal (VProc_t *self, void *addr, const char *where)
 {
     Value_t v = *(Value_t *)addr;
     if (isPtr(v)) {
-	MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-	if (cq->sts == TO_SP_CHUNK)
-	    return;
-	else if (cq->sts == FROM_SP_CHUNK)
-	    SayDebug("[%2d] ** unexpected from-space pointer %p at %p in %s\n",
-		self->id, ValueToPtr(v), addr, where);
-	else if (IS_VPROC_CHUNK(cq->sts)) {
-	    if (cq->sts != VPROC_CHUNK(self->id)) {
-		SayDebug("[%2d] ** unexpected remote pointer %p at %p in %s\n",
-		    self->id, ValueToPtr(v), addr, where);
-	    }
-	    else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {
-		SayDebug("[%2d] ** local pointer %p at %p in %s is out of bounds\n",
-		    self->id, ValueToPtr(v), addr, where);
-	    }
-	}
-	else if (cq->sts == FREE_CHUNK) {
-	    SayDebug("[%2d] ** unexpected free-space pointer %p at %p in %s\n",
-		self->id, ValueToPtr(v), addr, where);
-	}
+    	MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+    	if (cq->sts == TO_SP_CHUNK)
+    	    return;
+    	else if (cq->sts == FROM_SP_CHUNK)
+    	    SayDebug("[%2d] ** unexpected from-space pointer %p at %p in %s\n",
+    		self->id, ValueToPtr(v), addr, where);
+    	else if (IS_VPROC_CHUNK(cq->sts)) {
+    	    if (cq->sts != VPROC_CHUNK(self->id)) {
+    		SayDebug("[%2d] ** unexpected remote pointer %p at %p in %s\n",
+    		    self->id, ValueToPtr(v), addr, where);
+    	    }
+    	    else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {
+    		SayDebug("[%2d] ** local pointer %p at %p in %s is out of bounds\n",
+    		    self->id, ValueToPtr(v), addr, where);
+    	    }
+    	}
+    	else if (cq->sts == FREE_CHUNK) {
+    	    SayDebug("[%2d] ** unexpected free-space pointer %p at %p in %s\n",
+    		self->id, ValueToPtr(v), addr, where);
+    	}
     }
 }
 
@@ -755,23 +770,23 @@ void CheckAfterGlobalGC (VProc_t *self, Value_t **roots)
 {
   // check the roots
     for (int i = 0;  roots[i] != 0;  i++) {
-	char buf[18];
-	sprintf(buf, "root[%d]", i);
-	Value_t v = *roots[i];
-	CheckLocalPtrGlobal (self, roots[i], buf);
+    	char buf[18];
+    	sprintf(buf, "root[%d]", i);
+    	Value_t v = *roots[i];
+    	CheckLocalPtrGlobal (self, roots[i], buf);
     }
 
-  // check the local heap
+    //check the local heap
     {
-	Word_t *top = (Word_t *)(self->oldTop);
-	Word_t *p = (Word_t *)self->heapBase;
-	while (p < top) {
-	    Word_t hdr = *p++;
-	    Word_t *scanptr = p;
-		tableDebug[getID(hdr)].globalGCdebug(self,scanptr);
-		
-		p += GetLength(hdr);
-	}
+    	Word_t *top = (Word_t *)(self->oldTop);
+    	Word_t *p = (Word_t *)self->heapBase;
+    	while (p < top) {
+    	    Word_t hdr = *p++;
+    	    Word_t *scanptr = p;
+    		tableDebug[getID(hdr)].globalGCdebug(self,scanptr);
+    		
+    		p += GetLength(hdr);
+    	}
     }
 
     // check the vproc's global allocation area

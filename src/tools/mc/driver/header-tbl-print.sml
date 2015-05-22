@@ -375,28 +375,30 @@ struct
         
     (*Globaltospace GC Functions *)
     fun globaltospacepre (MyoutStrm) = (
-        TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpaceRAWfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {\n");
+        TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpaceRAWfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase, Addr_t oldSzB, bool promotion)  {\n");
         TextIO.output (MyoutStrm, "\n" );
         TextIO.output (MyoutStrm, "assert (isRawHdr(ptr[-1]));\n");
         TextIO.output (MyoutStrm, "\n");
 		TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
         TextIO.output (MyoutStrm, "  }\n");
         
-        TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpaceVECTORfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase) {\n");
+        TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpaceVECTORfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase, Addr_t oldSzB, bool promotion) {\n");
         TextIO.output (MyoutStrm, "\n");
-        TextIO.output (MyoutStrm, "Word_t *nextScan = ptr;\n");
-        TextIO.output (MyoutStrm, "  int len = GetLength(ptr[-1]);\n" );
-        TextIO.output (MyoutStrm, "  for (int i = 0;  i < len;  i++, nextScan++) {\n");
-        TextIO.output (MyoutStrm, "   Value_t v = *(Value_t *)nextScan;\n");
-        TextIO.output (MyoutStrm, "     if (isPtr(v) && inVPHeap(heapBase, ValueToAddr(v))) {\n");
-        TextIO.output (MyoutStrm, "          *nextScan = (Word_t)ForwardObjGlobal(vp, v);\n");
-        TextIO.output (MyoutStrm, "      }\n");
-        TextIO.output (MyoutStrm, "    }\n");
-		TextIO.output (MyoutStrm, "return (ptr+len);\n");
+        TextIO.output (MyoutStrm, "\tWord_t *nextScan = ptr;\n");
+        TextIO.output (MyoutStrm, "\tint len = GetLength(ptr[-1]);\n" );
+        TextIO.output (MyoutStrm, "\tfor (int i = 0;  i < len;  i++, nextScan++) {\n");
+        TextIO.output (MyoutStrm, "\t\tValue_t v = *(Value_t *)nextScan;\n");
+        TextIO.output (MyoutStrm, "\t\tif (isPtr(v) && inAddrRange(heapBase, oldSzB, ValueToAddr(v)) /*inVPHeap(heapBase, ValueToAddr(v))*/) {\n");
+        TextIO.output (MyoutStrm, "\t\t\t*nextScan = (Word_t)ForwardObjGlobal(vp, v);\n");
+        TextIO.output (MyoutStrm, "\t\t}else if (promotion && inVPHeap(heapBase, ValueToAddr(v))){\n");
+        TextIO.output (MyoutStrm, "\t\t\t*nextScan = (Word_t)ForwardObjGlobal(vp, v);\n");
+        TextIO.output (MyoutStrm, "\t\t}\n"); 
+        TextIO.output (MyoutStrm, "\t}\n");
+		TextIO.output (MyoutStrm, "\treturn (ptr+len);\n");
         TextIO.output (MyoutStrm, "}\n");
         TextIO.output (MyoutStrm, "\n");
 		
-		TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpacePROXYfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase)  {\n");
+		TextIO.output (MyoutStrm, "Word_t * ScanGlobalToSpacePROXYfunction (Word_t* ptr, VProc_t *vp, Addr_t heapBase, Addr_t oldSzB, bool promotion)  {\n");
         TextIO.output (MyoutStrm, "//assert (isProxyHdr(ptr[-1]));\n");
 		TextIO.output (MyoutStrm, "return (ptr+GetLength(ptr[-1]));\n");
         TextIO.output (MyoutStrm, "  }\n");
@@ -415,10 +417,12 @@ struct
                 | lp(strlen,bites,pos) =(
                     if (String.compare (substring(bites,strlen-1,1),"1") = EQUAL)
                     then (
-                        TextIO.output (MyoutStrm,concat["    v = *(Value_t *)(scanP+",Int.toString pos,");\n"]);
-                        TextIO.output (MyoutStrm,"   if (inVPHeap(heapBase, ValueToAddr(v))) {\n");
-                        TextIO.output (MyoutStrm,concat["     *(scanP+",Int.toString pos,") = (Word_t)ForwardObjGlobal(vp, v);\n"]);
-                        TextIO.output (MyoutStrm,"  }\n");
+                        TextIO.output (MyoutStrm,concat["\tv = *(Value_t *)(scanP+",Int.toString pos,");\n"]);
+                        TextIO.output (MyoutStrm,"\tif (inAddrRange(heapBase, oldSzB, ValueToAddr(v)) /*inVPHeap(heapBase, ValueToAddr(v))*/) {\n");
+                        TextIO.output (MyoutStrm,concat["\t\t*(scanP+",Int.toString pos,") = (Word_t)ForwardObjGlobal(vp, v);\n"]);
+                        TextIO.output (MyoutStrm,"\t}else if(promotion && inVPHeap(heapBase, ValueToAddr(v))){\n");
+                        TextIO.output (MyoutStrm,concat["\t\t*(scanP+",Int.toString pos,") = (Word_t)ForwardObjGlobal(vp, v);\n"]);
+                        TextIO.output (MyoutStrm,"\t}\n"); 
                         
                         lp(strlen-1,bites,pos+1)
                         )
@@ -426,15 +430,15 @@ struct
                         lp(strlen-1,bites,pos+1)
                     )
                 in
-                TextIO.output (MyoutStrm, concat["Word_t * ScanGlobalToSpace",Int.toString b,"function (Word_t* ptr, VProc_t *vp, Addr_t heapBase) {\n"]);
+                TextIO.output (MyoutStrm, concat["Word_t * ScanGlobalToSpace",Int.toString b,"function (Word_t* ptr, VProc_t *vp, Addr_t heapBase, Addr_t oldSzB, bool promotion) {\n"]);
                 TextIO.output (MyoutStrm, "  \n");
-                TextIO.output (MyoutStrm, "  Word_t *scanP = ptr;\n");
-                TextIO.output (MyoutStrm, "  Value_t v = *(Value_t *)scanP;\n");
+                TextIO.output (MyoutStrm, "\tWord_t *scanP = ptr;\n");
+                TextIO.output (MyoutStrm, "\tValue_t v = *(Value_t *)scanP;\n");
                 TextIO.output (MyoutStrm, "\n");
                 
                 lp(size,a,0);
                 
-				TextIO.output (MyoutStrm, concat["return (ptr+",Int.toString size,");\n"]);
+				TextIO.output (MyoutStrm, concat["\treturn (ptr+",Int.toString size,");\n"]);
                 TextIO.output (MyoutStrm, "}\n");
                 TextIO.output (MyoutStrm, "\n"); 
                 

@@ -19,6 +19,11 @@ ann "cpp" "../include/debug.def,../include/prim.def,../include/runtime-offsets.d
     norec/norec.pml
     norec/partial-norec.pml
     
+    norec/read-set-ordered.pml
+    norec/ff-read-set.pml
+    norec/fast-forward-norec.pml
+    norec/ordered-norec.pml
+
     stm.pml
 
 end 
