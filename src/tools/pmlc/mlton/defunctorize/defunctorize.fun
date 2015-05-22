@@ -6,7 +6,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor Defunctorize (S: DEFUNCTORIZE_STRUCTS): DEFUNCTORIZE = 
+functor Defunctorize (S: DEFUNCTORIZE_STRUCTS): DEFUNCTORIZE =
 struct
 
 structure Option = MLtonOption
@@ -140,16 +140,16 @@ fun casee {caseType: Xtype.t,
                if let
                      open Control
                   in
-                     !profile <> ProfileNone 
+                     !profile <> ProfileNone
                      andalso !profileIL = ProfileSource
                      andalso !profileRaise
                   end
                   then case mayWrap of
                           NONE => exp
-                        | SOME kind => 
-                             enterLeave 
+                        | SOME kind =>
+                             enterLeave
                              (exp, caseType,
-                              SourceInfo.function 
+                              SourceInfo.function
                               {name = (concat ["<raise ", kind, ">"]) :: nest,
                                region = region})
                else exp
@@ -176,7 +176,7 @@ fun casee {caseType: Xtype.t,
              | RaiseMatch => raiseExn (fn _ => Xexp.match, SOME "Match")
          end
       val examples = ref (fn () => Vector.new0 ())
-      fun matchCompile () =                                  
+      fun matchCompile () =
          let
             val testVar = Var.newNoname ()
             val decs = ref []
@@ -245,7 +245,7 @@ fun casee {caseType: Xtype.t,
          else
             let
                val {exp = e, pat = p, numUses, ...} = Vector.sub (cases, 0)
-               fun use () = (*Int.inc*)Int_inc numUses 
+               fun use () = (*Int.inc*)Int_inc numUses
             in
                case NestedPat.node p of
                   Wild => (use (); wild (e ()))
@@ -329,7 +329,7 @@ fun casee {caseType: Xtype.t,
          in
             if 0 = Vector.length redundant
                then ()
-            else 
+            else
                let
                   open Layout
                in
@@ -543,8 +543,8 @@ fun defunctorize (CoreML.Program.T {decs}) =
          Property.getSetOnce (Tycon.plist,
                               Property.initRaise ("tyconCons", Tycon.layout))
       val setConTycon =
-         Trace.trace2 
-         ("Defunctorize.setConTycon", 
+         Trace.trace2
+         ("Defunctorize.setConTycon",
           Con.layout, Tycon.layout, Unit.layout)
          setConTycon
       val datatypes = ref []
@@ -621,7 +621,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                               ; {arg = Option.map (arg, loopTy),
                                  con = con}))
 
-                         val _ = 
+                         val _ =
                             if Tycon.equals (tycon, Tycon.reff)
                                then ()
                             else
@@ -638,7 +638,8 @@ fun defunctorize (CoreML.Program.T {decs}) =
                   (Vector.foreach (rvbs, loopLambda o #lambda)
                    ; Vector.foreach (vbs, loopExp o #exp))
              (* [PML] process top-level BOM definitions *)
-	     | BOMDecs defs => raise Fail "BOMDecs unimplemented"
+             | BOMExport _ => raise Fail "BOMExport unimplemented"
+	           | BOMModule _ => raise Fail "BOMDecs unimplemented"
          end
       and loopExp (e: Cexp.t): unit =
          let
@@ -669,7 +670,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
             val (p, t) = Cpat.dest p
             val t' = loopTy t
             datatype z = datatype Cpat.node
-            val p = 
+            val p =
                case p of
                   Con {arg, con, targs} =>
                      NestedPat.Con {arg = Option.map (arg, loopPat),
@@ -817,7 +818,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                                 var = x},
                                                ty = subst expType}
                                            val decs =
-                                              [Xdec.PolyVal {exp = thunk, 
+                                              [Xdec.PolyVal {exp = thunk,
                                                              ty = thunkTy,
                                                              tyvars = tyvars,
                                                              var = x}]
@@ -921,7 +922,8 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                 body = e}
                end
              (* [PML] process top-level BOM definitions *)
-	     | BOMDecs defs => raise Fail "BOMDecs unimplemented"
+             | BOMExport _ => raise Fail "BOMExport unimplemented"
+             | BOMModule _ => raise Fail "BOMModule unimplemented"
          end
       and loopDecs (ds: Cdec.t vector, (e: Xexp.t, t: Xtype.t)): Xexp.t =
          loopDecsList (Vector.toList ds, (e, t))
@@ -955,13 +957,13 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                       con = con,
                                       targs = conTargs (con, targs),
                                       ty = ty}
-                         | _ => 
+                         | _ =>
                               Xexp.app {arg = e2,
                                         func = #1 (loopExp e1),
                                         ty = ty}
                      end
                 | Case {kind, lay, nest, noMatch,
-                        nonexhaustiveExnMatch, nonexhaustiveMatch, redundantMatch, 
+                        nonexhaustiveExnMatch, nonexhaustiveMatch, redundantMatch,
                         region, rules, test, ...} =>
                      casee {caseType = ty,
                             cases = Vector.map (rules, fn {exp, lay, pat} =>
@@ -1053,7 +1055,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                Real_rndToReal (s1, s2) =>
                                   RealSize.equals (s1, s2)
                              | String_toWord8Vector => true
-                             | Word_extdToWord (s1, s2, _) => 
+                             | Word_extdToWord (s1, s2, _) =>
                                   WordSize.equals (s1, s2)
                              | Word8Vector_toString => true
                              | _ => false)
@@ -1067,7 +1069,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                      end
                 | Raise e => Xexp.raisee {exn = #1 (loopExp e), extend = true, ty = ty}
                 | Record r =>
-                     (* The components of the record have to be evaluated left to 
+                     (* The components of the record have to be evaluated left to
                       * right as they appeared in the source program, but then
                       * ordered according to sorted field name within the tuple.
                       *)

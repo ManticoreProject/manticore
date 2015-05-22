@@ -10,14 +10,7 @@ signature ELABORATE_BOMENV =
   sig
     include ELABORATE_BOMENV_STRUCTS
 
-    (* structure BOM: AST_BOM *)
-
     type t
-
-    (* datatype IdStatus = *)
-    (*   Val                       (* value *) *)
-    (* | Exn                       (* exception *) *)
-    (* | Con                       (* constructor *) *)
 
     structure TyAlias: sig
       type t = {
@@ -95,24 +88,17 @@ signature ELABORATE_BOMENV =
       val lookup: env * CoreBOM.ValId.t -> CoreBOM.Val.t option
     end
 
-    structure PrimTyEnv : sig
-      type t
-
-      (* Don't need any functions for extending this because it's fixed *)
-      val lookupML: Env.Type.t -> CoreBOM.BOMType.t option
-      val lookupBOM: CoreBOM.BOMType.t -> Env.Type.t option
-    end
-
     structure MLTyEnv: sig
       type t
+      type env
       type key = Env.TypeEnv.Tycon.t
       type value = CoreBOM.BOMType.t vector -> CoreBOM.BOMType.t option
 
-      val extendThis: t * key * value -> t
-      val lookupThis: t * key -> value option
+      val extend: env * key * value -> env
+      val lookup: env * key -> value option
 
-      val translateType: t * Env.TypeEnv.Type.t -> CoreBOM.BOMType.t
-      val translateType': t -> Env.TypeEnv.Type.t -> CoreBOM.BOMType.t
+      val translateType: env * Env.TypeEnv.Type.t -> CoreBOM.BOMType.t
+      val translateType': env -> Env.TypeEnv.Type.t -> CoreBOM.BOMType.t
 
       val empty: t
     end
@@ -136,5 +122,5 @@ signature ELABORATE_BOMENV =
 
     (* val primTyEnv: PrimTyEnv.t *)
 
-    sharing type TyEnv.env = TyParamEnv.env = ValEnv.env = t
+    sharing type TyEnv.env = TyParamEnv.env = ValEnv.env = MLTyEnv.env =  t
   end

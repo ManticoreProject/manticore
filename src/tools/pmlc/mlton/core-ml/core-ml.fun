@@ -15,6 +15,8 @@ open S
 
 structure Field = Record.Field
 
+
+
 fun maybeConstrain (x, t) =
    let
       open Layout
@@ -142,6 +144,23 @@ structure NoMatch =
       datatype t = Impossible | RaiseAgain | RaiseBind | RaiseMatch
    end
 
+
+structure BOMExport = struct
+  datatype t
+    = TypBind of Tycon.t * CoreBOM.TyCon.t
+end
+
+structure BOMImport = struct
+  datatype t
+    = Datatype of CoreBOM.TyCon.t
+  end
+
+structure BOMModule = struct
+  datatype t
+    = T of {imports: BOMImport.t list,
+      defs: CoreBOM.Definition.t list}
+end
+
 datatype noMatch = datatype NoMatch.t
 
 datatype dec =
@@ -164,7 +183,8 @@ datatype dec =
                  nest: string list,
                  pat: Pat.t,
                  patRegion: Region.t} vector}
- | BOMDecs of CoreBOM.Definition.t list
+ | BOMExport of BOMExport.t list
+ | BOMModule of BOMModule.t
 and exp = Exp of {node: expNode,
                   ty: Type.t}
 and expNode =
@@ -537,5 +557,6 @@ structure Program =
  *       end
  *)
    end
+
 
 end

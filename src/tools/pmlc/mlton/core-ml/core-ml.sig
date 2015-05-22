@@ -151,6 +151,30 @@ signature CORE_ML =
          end
       sharing type Exp.lambda = Lambda.t
 
+      (* This needs to live here, rather than in CoreBOM, because
+      CoreBOM doesn't know anything about ML types, which we need here *)
+      structure BOMExport:
+        sig
+          datatype t
+            = TypBind of Tycon.t * CoreBOM.TyCon.t
+          (* FIXME: fill in the rest *)
+        end
+
+      structure BOMImport:
+        sig
+          datatype t
+            = Datatype of CoreBOM.TyCon.t
+            (* FIXME: Fill in the rest *)
+        end
+
+      structure BOMModule:
+        sig
+          datatype t
+            = T of {imports: BOMImport.t list,
+              defs: CoreBOM.Definition.t list}
+        end
+
+
       structure Dec:
          sig
             datatype t =
@@ -173,7 +197,8 @@ signature CORE_ML =
                              nest: string list,
                              pat: Pat.t,
                              patRegion: Region.t} vector}
-             | BOMDecs of CoreBOM.Definition.t list
+             | BOMExport of BOMExport.t list
+             | BOMModule of BOMModule.t
 
             val layout: t -> Layout.t
          end

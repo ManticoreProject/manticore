@@ -19,7 +19,7 @@ signature ELABORATE_BOMMODULES =
     val elaboratePrimDataType:
       AstBOM.PrimDataType.t * {env: Env.t, bomEnv: BOMEnv.t} -> Decs.t
     val elaboratePrimTycon:
-      AstBom.PrimTycon.t * {env: Env.t, bomEnv: BOMEnv.t} -> Decs.t
+      AstBOM.PrimTycon.t * {env: Env.t, bomEnv: BOMEnv.t} -> Decs.t
     val elaboratePrimVal:
       AstBOM.PrimVal.t * {env: Env.t, bomEnv: BOMEnv.t} -> Decs.t
   end

@@ -219,7 +219,6 @@ signature CORE_BOM =
     end
 
     structure TyCon: sig
-      (* TODO: this should have a uid *)
       datatype t = datatype tycon_t
 
       val new: TyId.t * TyParam.t list -> t
@@ -400,7 +399,7 @@ signature CORE_BOM =
       datatype t
         = Fun of FunDef.t list
         | HLOp of Attr.t list * ValId.t * Exp.t
-        | Import of BOMType.t
+        (* | Import of Longcon.t * Type.t option * BOMType.t *)
         | Extern of CReturnTy.t * Val.t * CArgTy.t list * Attr.t list
               (* TODO: datatypes *)
     end

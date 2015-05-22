@@ -6,7 +6,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-signature ELABORATE_PROGRAMS_STRUCTS = 
+signature ELABORATE_PROGRAMS_STRUCTS =
    sig
       structure Ast: AST
       structure CoreML: CORE_ML
@@ -19,11 +19,11 @@ signature ELABORATE_PROGRAMS_STRUCTS =
       sharing CoreML = Decs.CoreML = Env.CoreML
       sharing Decs = Env.Decs
       sharing CoreBOM.Ast = Ast (* [PML] *)
-      sharing BOMEnv.CoreBOM = CoreBOM (* [PML] *)
+      sharing BOMEnv.CoreBOM = CoreML.CoreBOM = CoreBOM (* [PML] *)
       sharing BOMEnv.Env = Env (* [PML] *)
    end
 
-signature ELABORATE_PROGRAMS = 
+signature ELABORATE_PROGRAMS =
    sig
       include ELABORATE_PROGRAMS_STRUCTS
 

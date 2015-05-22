@@ -17,17 +17,14 @@ signature ELABORATE_BOMCORE_STRUCTS =
 signature ELABORATE_BOMCORE =
   sig
     include ELABORATE_BOMCORE_STRUCTS
-    (* structure BOM: AST_BOM sharing Ast.BOM = BOM *)
 
 
     (* need to return a Decs.t for elaborate-modules.fun  *)
     val elaborateBOMDec:
-      (Ast.BOM.Definition.t * {env: Env.t, bomEnv: BOMEnv.t})
-        -> (Decs.dec * BOMEnv.t)
+      Ast.BOM.Definition.t * BOMEnv.t -> CoreBOM.Definition.t option * BOMEnv.t
 
     (* Elaborate a BOM type. Needs to be exposed so that
     exports can be elaborated *)
-    val elaborateBOMType: Ast.BOM.BOMType.t * {env: Env.t, bomEnv: BOMEnv.t}
-        -> CoreBOM.BOMType.t
+    val elaborateBOMType: Ast.BOM.BOMType.t * BOMEnv.t -> CoreBOM.BOMType.t
 
   end

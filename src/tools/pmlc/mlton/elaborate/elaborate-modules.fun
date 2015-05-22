@@ -7,7 +7,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor ElaborateModules (S: ELABORATE_MODULES_STRUCTS): ELABORATE_MODULES = 
+functor ElaborateModules (S: ELABORATE_MODULES_STRUCTS): ELABORATE_MODULES =
 struct
 
 structure Option = MLtonOption
@@ -101,12 +101,12 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                in
                   case S of
                      NONE => (Decs.empty, NONE)
-                   | SOME S => 
+                   | SOME S =>
                         let
                            val (S, decs) =
                               case elabSigexp sigexp of
                                  NONE => (S, Decs.empty)
-                               | SOME I => 
+                               | SOME I =>
                                     Env.cut (E, S, I,
                                              {isFunctor = false,
                                               opaque = opaque,
@@ -121,7 +121,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                SigConst.None => (Decs.empty, S)
              | SigConst.Opaque sigexp => s (sigexp, true)
              | SigConst.Transparent sigexp => s (sigexp, false)
-         end     
+         end
       fun elabStrdec (arg: Strdec.t * string list): Decs.t =
          Trace.traceInfo' (elabStrdecInfo,
                            Layout.tuple2 (Strdec.layout,
@@ -172,7 +172,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                          (* FIXME: pass in a real mltyenv *)
                        val (newEnv, newMLTyEnv) =
                          ElaborateBOMImports.elaborateBOMExport (export, {env =
-                         E, bomEnv = bomEnv}, BOMEnv.MLTyEnv.empty)
+                         E, bomEnv = bomEnv})
                      in
                        Decs.empty
                      end
@@ -330,29 +330,31 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                     (* FIXME: pull in the basis  *)
                     val mlTyEnv = BOMEnv.MLTyEnv.empty
 
-                    (* Process the imports. We throw away the MLTyEnv
-                    after this because we don't need it anymore.*)
-                    val (namedEnv, _) =
-                     MLVector.foldl (fn (import: Ast.BOM.Import.t, (namedEnv, mlTyEnv)) =>
-                       ElaborateBOMImports.elaborateBOMImport (import, {env = E,
-                       bomEnv = namedEnv}, mlTyEnv)) (namedEnv, mlTyEnv) imports
+                    fun appendMaybe (xs: 'a list, x: 'a option) =
+                      case x of
+                        SOME x => x::xs
+                      | NONE => xs
 
-                    fun doElab (bomDec, bomDecs, bomEnv) =
-                      let
-                        val (newDec, newEnv) =
-                          ElaborateBOMCore.elaborateBOMDec (bomDec, {
-                            env = E, bomEnv = bomEnv})
-                      in
-                        (newDec::bomDecs, newEnv)
-                      end
-                    val (newDecs, newEnv) = (fn (decs, newEnv) =>
-                      (Decs.fromList (rev decs), newEnv)) (Vector.fold (
-                      bomDecs, ([], namedEnv), fn (bomDec, (newDecs, newEnv))
-                        => doElab (bomDec, newDecs, newEnv)))
+                    fun foldOverEnv (elabStmt: 'a * 'b -> 'g option * 'b)
+                        (stmt: 'a, (oldStmts: 'g list, oldEnv: 'b)) =
+                      (fn (maybeNewStmt, newEnv) =>
+                        (appendMaybe (oldStmts, maybeNewStmt), newEnv)) (
+                        elabStmt (stmt, oldEnv))
+
+                    val (imports, {env, bomEnv}) =
+                     MLVector.foldl (foldOverEnv
+                       ElaborateBOMImports.elaborateBOMImport) ([], {env = E,
+                       bomEnv = namedEnv}) imports
+
+                    val (bomModule, bomEnv') =
+                      (fn (defs, bomEnv') => (CoreML.BOMModule.T {
+                        imports = imports, defs = rev defs}, bomEnv))
+                        (MLVector.foldl (foldOverEnv ElaborateBOMCore.elaborateBOMDec)
+                        ([], bomEnv) bomDecs)
+
                     val () = Control.checkForErrors "elaborate"
                   in
-                  (* TODO: return something real here *)
-                    (Decs.empty, newEnv)
+                    (Decs.single (CoreML.Dec.BOMModule bomModule), bomEnv')
                   end
             val () =
                case resolveScope () of

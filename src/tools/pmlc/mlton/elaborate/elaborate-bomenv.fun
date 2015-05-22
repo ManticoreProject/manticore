@@ -170,36 +170,97 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     val compare = CoreBOM.ValId.compare
   end)
 
+  structure MLTyEnvMap = struct
+    type key = MLTycon.t
+    type value = CoreBOM.BOMType.t vector -> CoreBOM.BOMType.t option
+
+    type t = (key * value) list
+        (* We can only compare ML types for equality, so we need to just use
+      a list to keep track of what maps to what *)
+
+    fun trace (fnName, mlTy) =
+      print (fnName ^ (Layout.toString (MLTycon.layout mlTy)) ^ "\n")
+
+    fun lookupThis (mlTyEnv, mlTy) =
+      case List.find (fn (ty, _) => MLTycon.equals (ty, mlTy)) mlTyEnv of
+        SOME (_, bomTyc) => SOME bomTyc
+      | NONE => NONE
+
+    (* We overwrite existing elements with the same key to match ORD_MAP *)
+    fun extendThis (mlTyEnv, mlTyc, bomTy): t =
+      let
+        fun doExtend (mlTyEnv: t) =
+          case mlTyEnv of
+            ((m as (key, value))::ms) =>
+              if MLTycon.equals (key, mlTyc) then
+                (mlTyc, bomTy)::ms
+              else
+                m::(doExtend ms)
+          | [] => [(mlTyc, bomTy)]
+      in
+        doExtend mlTyEnv
+      end
+
+    (* DEBUG *)
+    val lookupThis = fn (args as (_: t, mlTy: MLTycon.t)) =>
+      (trace ("lookupThis: ", mlTy); lookupThis args)
+    val extendThis = fn (args as (_, mlTy, _)) =>
+      (trace ("extendThis: ", mlTy) ; extendThis args)
+
+  end
 
   datatype t = T of {
     tyEnv: TyEnvMap.t,
     tyParamEnv: TyParamEnvMap.t,
     valEnv: ValEnvMap.t,
-    currentModule: CoreBOM.ModuleId.t
+    currentModule: CoreBOM.ModuleId.t,
+    mlTyEnv: MLTyEnvMap.t
   }
 
-  fun modifyTyEnv (T {tyEnv, tyParamEnv, valEnv, currentModule}, f) =
+  fun modifyTyEnv (T {tyEnv, tyParamEnv, valEnv, currentModule,
+      mlTyEnv}, f) =
     T {
       tyEnv = f tyEnv,
       valEnv = valEnv,
       tyParamEnv = tyParamEnv,
-      currentModule = currentModule
+      currentModule = currentModule,
+      mlTyEnv = mlTyEnv
     }
 
-  fun modifyValEnv (T {tyEnv, tyParamEnv, valEnv, currentModule}, f) =
+  fun modifyValEnv (T {tyEnv, tyParamEnv, valEnv, currentModule,
+      mlTyEnv}, f) =
     T {
       valEnv = f valEnv,
       tyEnv = tyEnv,
       tyParamEnv = tyParamEnv,
-      currentModule = currentModule
+      currentModule = currentModule,
+      mlTyEnv = mlTyEnv
     }
 
+  fun modifyMLTyEnv (T {tyEnv, tyParamEnv, valEnv, currentModule,
+      mlTyEnv}, f) =
+    T {
+      tyEnv = tyEnv,
+      valEnv = valEnv,
+      tyParamEnv = tyParamEnv,
+      currentModule = currentModule,
+      mlTyEnv = f mlTyEnv
+    }
+
+  fun modifyTyParamEnv (T {tyEnv, tyParamEnv, valEnv, currentModule,
+      mlTyEnv}, f) =
+    T {
+      tyEnv = tyEnv,
+      valEnv = valEnv,
+      tyParamEnv = f tyParamEnv,
+      currentModule = currentModule,
+      mlTyEnv = mlTyEnv
+    }
 
   structure TyParamEnv = struct
     type env = t
 
     open TyParamEnvMap
-
 
     fun extendThis (self: t, newEl: Key.ord_key) =
       let
@@ -213,14 +274,15 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
       fun getTyParamEnv (T env: env): t = #tyParamEnv env
     in
       fun lookup (env, param) = lookupThis (getTyParamEnv env, param)
-
-      fun extend(T {tyEnv, tyParamEnv, valEnv, currentModule}, newParam) =
-        T {
-          tyEnv = tyEnv,
-          tyParamEnv = extendThis (tyParamEnv, newParam),
-          valEnv = valEnv,
-          currentModule = currentModule
-        }
+      fun extend (env, newParam) = modifyTyParamEnv (env, fn tyParamEnv =>
+        extendThis (tyParamEnv, newParam))
+      (* fun extend(T {tyEnv, tyParamEnv, valEnv, currentModule}, newParam) = *)
+      (*   T { *)
+      (*     tyEnv = tyEnv, *)
+      (*     tyParamEnv = extendThis (tyParamEnv, newParam), *)
+      (*     valEnv = valEnv, *)
+      (*     currentModule = currentModule *)
+      (*   } *)
 
       fun getParams (env: env) =
          let
@@ -282,12 +344,6 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
 
         val printKeys = printEnvKeys (CoreBOM.TyId.toString, listKeys, getEnv)
 
-        (* fun printKeys env = *)
-        (*   print ( *)
-        (*     String.concat ["[", ( *)
-        (*     String.concatWith ", " *)
-        (*       (map CoreBOM.TyId.toString (listKeys (getEnv env)))), "]\n"]) *)
-
       end
     end
 
@@ -308,153 +364,109 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
             modifyValEnv)
       end
     end
-  end
 
-  structure PrimTyEnv = struct
-    type el = (MLType.t * CoreBOM.BOMType.t)
-    type t = el list
+    structure MLTyEnv = struct
+      type env = t
+      open MLTyEnvMap
 
-    (* Note: ORDER IS SIGNIFICANT, since we have many-to-one mappings *)
-    val mapping: t = [
-      (MLType.word32, CoreBOM.BOMType.Raw CoreBOM.RawTy.Int32),
-      (MLType.con (MLTycon.int (MLTycon.IntSize.fromBits (Bits.fromInt 32)),
-        Vector.fromList []), CoreBOM.BOMType.Raw CoreBOM.RawTy.Int32)
-      (* (MLTycon.int (IntSize.fromBits (Bits.fromInt 32)), CoreBOM.BOMType.Raw *)
-      (*   CoreBOM.RawTy.Int32) *)
-    ]
+      (* DEBUG *)
+      val lookupThis = fn (args as (_: t, mlTy: MLTycon.t)) =>
+        (trace ("lookupThis: ", mlTy); lookupThis args)
+      val extendThis = fn (args as (_, mlTy, _)) =>
+        (trace ("extendThis: ", mlTy) ; extendThis args)
 
+
+      local
+        val getEnv = getEnv #mlTyEnv
+      in
+        fun lookup (env: env, key) = lookupThis (getEnv env, key)
+        fun extend (env: env, key: key, value) = modifyMLTyEnv (env,
+          (fn mlTyEnv => extendThis (mlTyEnv, key, value)))
+      end
+
+
+      (* FIXME: reduce duplication *)
     local
-      fun lookup (selectIn, selectOut, eq) (tyc) =
-        case List.find (fn tycs => eq (selectIn tycs, tyc)) mapping of
-          SOME tycs' => SOME (selectOut tycs')
-        | NONE => NONE
+      fun printMLObj doLayout (obj, msg) =
+        print (msg ^ (Layout.toString (doLayout obj)) ^ "\n")
     in
-      val lookupML = lookup (#1, #2, MLType.equals)
-      val lookupBOM = lookup (#2, #1, CoreBOM.BOMType.equal)
+      val printMLTy = printMLObj MLType.layout
     end
 
-  end
+     fun translateType' (env: env)
+        (mlType: MLType.t): CoreBOM.BOMType.t =
+      let
+        fun applyCon (tyc: MLTycon.t, tyvec: MLType.t vector): CoreBOM.BOMType.t =
+          case lookup (env, tyc) of
+            SOME bomTyc =>
+              (case (bomTyc (Vector.map (translateType' env) tyvec)) of
+                SOME bomTy => bomTy
+              | NONE => raise Fail "Bad application.")
+          | NONE => raise Fail "Unmapped type."
 
-  structure MLTyEnv = struct
-    type key = MLTycon.t
-    type value = CoreBOM.BOMType.t vector -> CoreBOM.BOMType.t option
-
-    type t = (key * value) vector
-    (* We can only compare ML types for equality, so we need to just use
-      a list to keep track of what maps to what *)
-
-    fun trace (fnName, mlTy) =
-      print (fnName ^ (Layout.toString (MLTycon.layout mlTy)) ^ "\n")
-
-    fun lookupThis (mlTyEnv, mlTy) =
-      case Vector.find (fn (ty, _) => MLTycon.equals (ty, mlTy)) mlTyEnv of
-        SOME (_, bomTyc) => SOME bomTyc
-      | NONE => NONE
-
-    (* We overwrite existing elements with the same key to match ORD_MAP *)
-    fun extendThis (mlTyEnv, mlTy, bomTy) =
-      case (Vector.findi (fn (_, (key, value)) => MLTycon.equals (key, mlTy))
-          mlTyEnv) of
-        SOME (idx, _) => Vector.update (mlTyEnv, idx, (mlTy, bomTy))
-      (* FIXME: nicer way to append to vector? *)
-      | NONE =>
+        and translateCon (mlType: MLType.t): CoreBOM.BOMType.t =
           let
-            val oldLen = Vector.length mlTyEnv
+              (* DEBUG *)
+            val _ = printMLTy (mlType, "unwrapping ty: ")
           in
-            Vector.tabulate (oldLen + 1, fn i =>
-              if i = oldLen then
-                (mlTy, bomTy)
-              else
-                Vector.sub (mlTyEnv, i))
+            case (MLType.deConOpt mlType) of
+              SOME (tyc, tyvec) => applyCon (tyc, tyvec)
+            | NONE => translateRecord (MLType.deRecord mlType)
+                (* FIXME: what does this do when it fails? raise an exception? *)
+                (* (case (MLType.deRecord mlType) of *)
+                (*   fields =>  *)
+                (* | _ => raise Fail "Bad type.") *)
           end
 
-    (* DEBUG *)
-    val lookupThis = fn (args as (_: t, mlTy: MLTycon.t)) =>
-      (trace ("lookupThis: ", mlTy); lookupThis args)
-    val extendThis = fn (args as (_, mlTy, _)) =>
-      (trace ("extendThis: ", mlTy) ; extendThis args)
-
-    (* FIXME: reduce duplication *)
-  local
-    fun printMLObj doLayout (obj, msg) =
-      print (msg ^ (Layout.toString (doLayout obj)) ^ "\n")
-  in
-    val printMLTy = printMLObj MLType.layout
-  end
-
-   fun translateType' (mlTyEnv: t)
-      (mlType: MLType.t): CoreBOM.BOMType.t =
-    let
-      fun applyCon (tyc: MLTycon.t, tyvec: MLType.t vector): CoreBOM.BOMType.t =
-        case lookupThis (mlTyEnv, tyc) of
-          SOME bomTyc =>
-            (case (bomTyc (Vector.map (translateType' mlTyEnv) tyvec)) of
-              SOME bomTy => bomTy
-            | NONE => raise Fail "Bad application.")
-        | NONE => raise Fail "Unmapped type."
-
-      and translateCon (mlType: MLType.t): CoreBOM.BOMType.t =
-        let
-            (* DEBUG *)
-          val _ = printMLTy (mlType, "unwrapping ty: ")
-        in
-          case (MLType.deConOpt mlType) of
-            SOME (tyc, tyvec) => applyCon (tyc, tyvec)
-          | NONE => translateRecord (MLType.deRecord mlType)
-              (* FIXME: what does this do when it fails? raise an exception? *)
-              (* (case (MLType.deRecord mlType) of *)
-              (*   fields =>  *)
-              (* | _ => raise Fail "Bad type.") *)
-        end
-
-      (* Note that we're going to throw away field labels, even if
-      they're valid BOM field labels *)
-      and translateRecord (fields: (MLField.t * MLType.t) vector): CoreBOM.BOMType.t =
-        CoreBOM.BOMType.Record (MLtonVector.toList (Vector.mapi (fn (i, (_, ty)) =>
-          CoreBOM.Field.Immutable (IntInf.fromInt (1 + i), translateCon ty)) fields))
-    in
-      translateCon mlType
-    end
-
-    fun translateType (mlTyEnv, mlType) = translateType' mlTyEnv mlType
-
-    (* val empty = Vector.fromList ([]: (key * value) list) *)
-      local
-        fun translateInt intSize =
-            case (Bits.toInt (MLTycon.IntSize.bits intSize)) of
-              8 => SOME CoreBOM.RawTy.Int8
-            | 16 => SOME CoreBOM.RawTy.Int16
-            | 32 => SOME CoreBOM.RawTy.Int32
-            | 64 => SOME CoreBOM.RawTy.Int64
-            | _ => NONE
-            (* | n => raise Fail (String.concatWith " " [ *)
-            (*     "Compiler bug: unexpected int size:", Int.toString n, "\n"])) *)
-
-        fun deIntXMLTycon (tyc, size) =
-            case translateInt size of
-              SOME rawTy => SOME (tyc, CoreBOM.BOMType.Raw rawTy)
-            | NONE => NONE
-
-        (* NOTE: THIS WILL NOT BEHAVE WELL IF WE REBIND INT TYPES *)
-        (* FIXME: do we want to give a name to their "default int size"? *)
-        (* FIXME: fail correctly when we are given a wrong-size int tycon *)
-        val intTycons = List.mapPartial deIntXMLTycon (MLtonVector.toList
-          MLTycon.ints)
-        val intTyconMappings = map (fn (tyc, rawTy) => (tyc, fn _ => SOME rawTy))
-          intTycons
-
+        (* Note that we're going to throw away field labels, even if
+        they're valid BOM field labels *)
+        and translateRecord (fields: (MLField.t * MLType.t) vector): CoreBOM.BOMType.t =
+          CoreBOM.BOMType.Record (MLtonVector.toList (Vector.mapi (fn (i, (_, ty)) =>
+            CoreBOM.Field.Immutable (IntInf.fromInt (1 + i), translateCon ty)) fields))
       in
-      (* FIXME: this is no longer "empty" *)
-        val empty = Vector.fromList ([
-          (MLTycon.arrow, fn args =>
-           (* FIXME: no vector literals *)
-            case args of
-              #[dom, rng] => SOME (
-                 CoreBOM.BOMType.Fun {dom=[dom], rng=[rng], cont=[]})
-            | _ => NONE),
-          (MLTycon.exn, fn _ => SOME CoreBOM.BOMType.Exn)
-         ] @ intTyconMappings)
-     end
+        translateCon mlType
+      end
+
+      fun translateType (mlTyEnv, mlType) = translateType' mlTyEnv mlType
+
+      (* val empty = Vector.fromList ([]: (key * value) list) *)
+        local
+          fun translateInt intSize =
+              case (Bits.toInt (MLTycon.IntSize.bits intSize)) of
+                8 => SOME CoreBOM.RawTy.Int8
+              | 16 => SOME CoreBOM.RawTy.Int16
+              | 32 => SOME CoreBOM.RawTy.Int32
+              | 64 => SOME CoreBOM.RawTy.Int64
+              | _ => NONE
+              (* | n => raise Fail (String.concatWith " " [ *)
+              (*     "Compiler bug: unexpected int size:", Int.toString n, "\n"])) *)
+
+          fun deIntXMLTycon (tyc, size) =
+              case translateInt size of
+                SOME rawTy => SOME (tyc, CoreBOM.BOMType.Raw rawTy)
+              | NONE => NONE
+
+          (* NOTE: THIS WILL NOT BEHAVE WELL IF WE REBIND INT TYPES *)
+          (* FIXME: do we want to give a name to their "default int size"? *)
+          (* FIXME: fail correctly when we are given a wrong-size int tycon *)
+          val intTycons = List.mapPartial deIntXMLTycon (MLtonVector.toList
+            MLTycon.ints)
+          val intTyconMappings = map (fn (tyc, rawTy) => (tyc, fn _ => SOME rawTy))
+            intTycons
+
+        in
+        (* FIXME: this is no longer "empty" *)
+          val empty = [
+            (MLTycon.arrow, fn args =>
+             (* FIXME: no vector literals *)
+              case args of
+                #[dom, rng] => SOME (
+                   CoreBOM.BOMType.Fun {dom=[dom], rng=[rng], cont=[]})
+              | _ => NONE),
+            (MLTycon.exn, fn _ => SOME CoreBOM.BOMType.Exn)
+           ] @ intTyconMappings
+       end
+    end
   end
 
   structure Context = struct
@@ -492,22 +504,25 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
     tyEnv = TyEnv.empty,
     tyParamEnv = TyParamEnv.empty,
     valEnv = ValEnv.empty,
-    currentModule = CoreBOM.ModuleId.bogus
+    currentModule = CoreBOM.ModuleId.bogus,
+    mlTyEnv = MLTyEnv.empty
   }
 
   fun emptyNamed name = T {
     tyEnv = TyEnv.empty,
     tyParamEnv = TyParamEnv.empty,
     valEnv = ValEnv.empty,
-    currentModule = name
+    currentModule = name,
+    mlTyEnv = MLTyEnv.empty
   }
 
-  fun setName (T {tyEnv, tyParamEnv, valEnv, currentModule}, name) =
+  fun setName (T {tyEnv, tyParamEnv, valEnv, currentModule, mlTyEnv}, name) =
     T {
       tyEnv = tyEnv,
       tyParamEnv = tyParamEnv,
       valEnv = ValEnv.empty,
-      currentModule = name
+      currentModule = name,
+      mlTyEnv = MLTyEnv.empty
     }
 
   fun setName' (env, name) =

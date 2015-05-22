@@ -1058,7 +1058,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     datatype t
       = Fun of FunDef.t list
       | HLOp of Attr.t list * ValId.t * Exp.t
-      | Import of BOMType.t
+      (* | Import of BOMType.t *)
       | Extern of CReturnTy.t * Val.t * CArgTy.t list * Attr.t list
   end
 

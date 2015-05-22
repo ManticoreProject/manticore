@@ -28,7 +28,7 @@ is
 
   ../core-bom/sources.cm
 
-  core-ml.fun
-  core-ml.sig
-  dead-code.fun
-  dead-code.sig
+core-ml.fun
+core-ml.sig
+dead-code.fun
+dead-code.sig

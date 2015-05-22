@@ -6,7 +6,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-functor DeadCode (S: DEAD_CODE_STRUCTS): DEAD_CODE = 
+functor DeadCode (S: DEAD_CODE_STRUCTS): DEAD_CODE =
 struct
 
 structure List = MLtonList
@@ -47,12 +47,13 @@ fun deadCode {prog} =
                Vector.exists (rvbs, varIsUsed o #var)
                orelse Vector.exists (vbs, patVarIsUsed o #pat)
                orelse decIsWild d
-	  | BOMDecs _ => true (* [PML] *)
+          | BOMModule _ => true (* [PML] *)
+          | BOMExport _ => true (* [PML] *)
       fun useVar x = setVarIsUsed (x, true)
       fun useExp (e: Exp.t): unit = Exp.foreachVar (e, useVar)
       fun useLambda (l: Lambda.t): unit =
          useExp (#body (Lambda.dest l))
-      fun useDec (d: Dec.t): unit = 
+      fun useDec (d: Dec.t): unit =
          case d of
             Datatype _ => ()
           | Exception _ => ()
@@ -60,7 +61,8 @@ fun deadCode {prog} =
           | Val {rvbs, vbs, ...} =>
                (Vector.foreach (rvbs, useLambda o #lambda)
                 ; Vector.foreach (vbs, useExp o #exp))
-	  | BOMDecs _ => () (* [PML] *)
+          | BOMExport _ => () (* [PML] *)
+          | BOMModule _ => () (* [PML] *)
 
       val n = Vector.length prog
       val m = n - 1
