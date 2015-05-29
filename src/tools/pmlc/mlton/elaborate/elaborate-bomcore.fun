@@ -918,7 +918,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
            (* TODO: what type should this value have? does it go in VE? *)
            val valId = CoreBOM.Val.error
          in
-         in
            (SOME (CoreBOM.Definition.Extern (cReturnTy', valId,
              cArgTys', attrs')), bomEnv)
          end
