@@ -490,7 +490,7 @@ structure PMLFrontEnd : PML_FRONT_END =
 	  (* end case *))
 
     fun init () = let
-	  val _ = Ctl.verbosity := Ctl.Pass
+	  val _ = Ctl.verbosity := Ctl.Detail
 	  val _ = Ctl.keepSXML := true
 (*
 	  val smlLibPath = concat["SML_LIB ", LoadPaths.libDir, "/mlton-basis/sml"]

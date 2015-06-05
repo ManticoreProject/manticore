@@ -35,6 +35,7 @@ in
 end
 
 fun lexAndParse (file: File.t, ins: In.t): Ast.Program.t = let
+(* DEBUG [PML] *)val _ = print(concat["lexAndParse (", file, ", _)\n"])
     val source = Source.new file
     val sm = AntlrStreamPos.mkSourcemap()
     val lexer = PMLLexer.lex sm {source=source}
