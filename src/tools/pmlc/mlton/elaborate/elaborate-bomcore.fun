@@ -71,45 +71,49 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         end
 
     in
-      case BOM.BOMType.node astTy of
-        BOM.BOMType.Param tyParam =>
-          check
-            (BOMEnv.TyParamEnv.lookup (bomEnv, tyParam), "unbound typaram")
-            (fn tyParam => CoreBOM.BOMType.Param tyParam)
-      | BOM.BOMType.Tuple tys =>
-          CoreBOM.BOMType.Tuple (map (fn (m, ty) => (m, doElaborate ty)) tys)
-      | BOM.BOMType.Fun funTys =>
-          CoreBOM.BOMType.Fun (let
-            val (dom, cont, rng) = app3 (map doElaborate) funTys
-          in
-            {dom=dom, cont=cont, rng=rng}
-          end)
-      | BOM.BOMType.Any => CoreBOM.BOMType.Any
-      | BOM.BOMType.VProc => CoreBOM.BOMType.VProc
-      | BOM.BOMType.Cont maybeTyArgs =>
-          CoreBOM.BOMType.Cont (map doElaborate maybeTyArgs)
-      | BOM.BOMType.Addr ty =>
-          CoreBOM.BOMType.Addr (doElaborate ty)
-      | BOM.BOMType.Raw ty => CoreBOM.BOMType.Raw (
-          CoreBOM.RawTy.fromAst ty)
-      | BOM.BOMType.TyCon (longTyId, maybeTyArgs) =>
-          let
-            val tyArgs = map doElaborate maybeTyArgs
-            val tyId = CoreBOM.TyId.fromLongId longTyId
-          in
-            check
-             (BOMEnv.TyEnv.lookup (bomEnv, tyId), "undefined type")
-             (fn defn =>
-               check
-                 (BOMEnv.TypeDefn.applyToArgs (defn, tyArgs), "arity mismatch")
-                  (fn x => x))
-          end
-      | BOM.BOMType.Record fields =>
-          check
-            (recordLabelsOkay fields, "labels must be strictly increasing")
-            (fn fields => CoreBOM.BOMType.Record (map (fn field' =>
-              elaborateField (field', bomEnv)) fields))
-      | BOM.BOMType.Exn => CoreBOM.BOMType.Exn
+      case BOM.BOMType.node astTy
+       of BOM.BOMType.Param tyParam =>
+	    check
+	      (BOMEnv.TyParamEnv.lookup (bomEnv, tyParam), "unbound typaram")
+	      (fn tyParam => CoreBOM.BOMType.Param tyParam)
+	| BOM.BOMType.TyCon (longTyId, maybeTyArgs) =>
+	    let
+	      val tyArgs = map doElaborate maybeTyArgs
+	      val tyId = CoreBOM.TyId.fromLongId longTyId
+	    in
+	      check
+	       (BOMEnv.TyEnv.lookup (bomEnv, tyId), "undefined type")
+	       (fn defn =>
+		 check
+		   (BOMEnv.TypeDefn.applyToArgs (defn, tyArgs), "arity mismatch")
+		    (fn x => x))
+	    end
+	| BOM.BOMType.Record fields =>
+	    check
+	      (recordLabelsOkay fields, "labels must be strictly increasing")
+	      (fn fields => CoreBOM.BOMType.Record (map (fn field' =>
+		elaborateField (field', bomEnv)) fields))
+	| BOM.BOMType.Tuple tys =>
+	    CoreBOM.BOMType.Tuple (map (fn (m, ty) => (m, doElaborate ty)) tys)
+	| BOM.BOMType.Fun funTys =>
+	    CoreBOM.BOMType.Fun (let
+	      val (dom, cont, rng) = app3 (map doElaborate) funTys
+	    in
+	      {dom=dom, cont=cont, rng=rng}
+	    end)
+	| BOM.BOMType.Cont maybeTyArgs =>
+	    CoreBOM.BOMType.Cont (map doElaborate maybeTyArgs)
+	| BOM.BOMType.Array ty => raise Fail "FIXME: BOMType.Array"
+	| BOM.BOMType.Vector ty => raise Fail "FIXME: BOMType.Vector"
+	| BOM.BOMType.Addr ty =>
+	    CoreBOM.BOMType.Addr (doElaborate ty)
+	| BOM.BOMType.BigNum => CoreBOM.BOMType.BigNum
+	| BOM.BOMType.Exn => CoreBOM.BOMType.Exn
+	| BOM.BOMType.Any => CoreBOM.BOMType.Any
+	| BOM.BOMType.VProc => CoreBOM.BOMType.VProc
+	| BOM.BOMType.Raw ty => CoreBOM.BOMType.Raw (
+	    CoreBOM.RawTy.fromAst ty)
+      (* end case *)
     (* FIXME: need to add exn, others *)
     end
   and elaborateField (astField: BOM.Field.t, bomEnv): CoreBOM.Field.t =
@@ -557,15 +561,15 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
          let
             val (conVal, conTy) = lookupCon (CoreBOM.Val.idOf value, bomEnv,
               checkForErrorVal, checkForErrorVal)
-            val (dom, rng) =
-              (case conTy of
-                (* A unary constructor constrains the domain and range
-                to its own *)
-                CoreBOM.BOMType.Con {dom, rng} => (dom, rng)
-                (* FIXME: does this make sense? *)
-                (* If we have a nullary constructor, the domain is unconstrained *)
-              | CoreBOM.BOMType.TyCon _ => (CoreBOM.BOMType.Any, conTy)
-                (* lookupCon can't return anything else *))
+            val (dom, rng) = (case conTy
+		  (* A unary constructor constrains the domain and range to its own *)
+		   of CoreBOM.BOMType.Con{dom, rng} => (dom, rng)
+		  (* FIXME: does this make sense? *)
+		  (* If we have a nullary constructor, the domain is unconstrained *)
+		    | CoreBOM.BOMType.TyCon _ => (CoreBOM.BOMType.Any, conTy)
+		  (* lookupCon can't return anything else *)
+		    | _ => raise Fail "elaborateLongRule: expected Con or TyCon"
+		  (* end case *))
             (* The varpat must be in the domain of the constructor *)
             val (newBOMEnv, varPats) = bindVarPats (varPats,
               [dom], bomEnv)
