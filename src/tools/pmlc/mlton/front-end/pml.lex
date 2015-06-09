@@ -275,11 +275,11 @@
  *)
 <INITIAL>{symid}		=> (T.SYMID yytext);
 (* ml.grm relies on this behavior (unfortunately) *)
-<INITIAL>({id}\.)*{id}	=> (T.LONGID yytext);
+<INITIAL>({alphanumid}\.)*{id}	=> (T.LONGID yytext);
 (* <INITIAL>{id}		=> (T.LONGID yytext); *)
-<BOM>{id}		=> (T.ID yytext);
+<BOM>{id}			=> (T.ID yytext);
 
-<BOM>{id}\.{id}			=> (T.LONGID yytext); (* LONGID in BOM *)
+<BOM>{alphanumid}\.{id}		=> (T.LONGID yytext); (* LONGID in BOM *)
 <BOM>{hlid}			=> (T.HLID yytext);
 <BOM>{id}\.{hlid}		=> (T.LONG_HLID yytext);
 <INITIAL,BOM>"'"{alphanum}?	=> (T.TYVAR yytext);
