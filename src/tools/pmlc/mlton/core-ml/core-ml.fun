@@ -148,6 +148,7 @@ structure NoMatch =
 structure BOMExport = struct
   datatype t
     = TypBind of Tycon.t * CoreBOM.TyCon.t
+    | ValBind of Var.t * Type.t * CoreBOM.Val.t
 end
 
 structure BOMImport = struct

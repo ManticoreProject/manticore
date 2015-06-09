@@ -157,6 +157,7 @@ signature CORE_ML =
         sig
           datatype t
             = TypBind of Tycon.t * CoreBOM.TyCon.t
+            | ValBind of Var.t * Type.t * CoreBOM.Val.t
           (* FIXME: fill in the rest *)
         end
 

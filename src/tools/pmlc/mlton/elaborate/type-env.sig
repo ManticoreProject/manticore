@@ -6,12 +6,12 @@
  * See the file MLton-LICENSE for details.
  *)
 
-signature TYPE_ENV_STRUCTS = 
+signature TYPE_ENV_STRUCTS =
    sig
       include ATOMS
    end
 
-signature TYPE_ENV = 
+signature TYPE_ENV =
    sig
       include TYPE_ENV_STRUCTS
 
@@ -93,8 +93,8 @@ signature TYPE_ENV =
             val instantiate: t -> {args: unit -> Type.t vector,
                                    instance: Type.t}
             val layout: t -> Layout.t
-            val layoutPrettyAux: 
-               t * {expandOpaque: bool, 
+            val layoutPrettyAux:
+               t * {expandOpaque: bool,
                     localTyvarNames: bool} -> Layout.t
             val layoutPretty: t -> Layout.t
             val make: {canGeneralize: bool,
