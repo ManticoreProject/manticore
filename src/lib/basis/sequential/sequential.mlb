@@ -73,6 +73,8 @@ end
 command-line.pml
 parse-command-line.pml
 
+atomic-counter.pml
+
 ../extras/extras.mlb
 ../memo/memo.mlb
 ../cont/cont.mlb

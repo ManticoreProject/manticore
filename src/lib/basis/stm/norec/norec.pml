@@ -1,16 +1,5 @@
 structure NoRecFull = 
 struct
-	
-#define COUNT 
-
-#ifdef COUNT
-#define BUMP_FABORT do ccall M_BumpCounter(1)
-#define PRINT_FABORT_COUNT let counter2 : int = ccall M_SumCounter(1) \
-                           do ccall M_Print_Int("Full-Aborts = %d\n", counter2)                     
-#else
-#define BUMP_FABORT
-#define PRINT_FABORT_COUNT
-#endif
 
 	(*flat representation for read and write sets*)
     datatype 'a item = Read of 'a * 'a * 'a | Write of 'a * 'a * 'a | NilItem
@@ -64,7 +53,7 @@ struct
 			apply validateLoop(readSet)
 		;
 
-		define @get(tv : tvar / exh:exh) : any = 
+		define @getFullAbortNoRec(tv : tvar / exh:exh) : any = 
 			let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do 	
             	if(#0(in_trans))
@@ -177,7 +166,7 @@ struct
       	;
 
       	define @print-stats(x:unit / exh:exh) : unit = 
-	        PRINT_FABORT_COUNT
+	        PRINT_COMBINED
 	        return(UNIT);
 
 	    define @abort(x : unit / exh : exh) : any = 
@@ -195,7 +184,7 @@ struct
 	)
 
 	type 'a tvar = 'a PartialSTM.tvar
-    val get : 'a tvar -> 'a = _prim(@get)
+    val get : 'a tvar -> 'a = _prim(@getFullAbortNoRec)
     val new : 'a -> 'a tvar = _prim(@new)
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val put : 'a tvar * 'a -> unit = _prim(@put)

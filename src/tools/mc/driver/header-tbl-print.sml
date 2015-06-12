@@ -290,6 +290,7 @@ struct
 		  
     (*Major GC Functions *)
     fun majorpre (MyoutStrm) = (
+        TextIO.output (MyoutStrm, "void problem(){printf(\"Problem!\\n\");}\n\n");
         TextIO.output (MyoutStrm, "Word_t * majorGCscanRAWpointer (Word_t* ptr, VProc_t *vp, Addr_t oldSzB, Addr_t heapBase) {\n");
         TextIO.output (MyoutStrm, "\n" );
         TextIO.output (MyoutStrm, "assert (isRawHdr(ptr[-1]));\n");
@@ -306,11 +307,14 @@ struct
         TextIO.output (MyoutStrm, "   if (isPtr(v)) {\n");
         TextIO.output (MyoutStrm, "     if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {\n");
         TextIO.output (MyoutStrm, "          *nextScan = (Word_t)ForwardObjMajor(vp, v);\n");
+        TextIO.output (MyoutStrm, "          if( *nextScan == 262147) problem();\n");
         TextIO.output (MyoutStrm, "      }\n");
         TextIO.output (MyoutStrm, "      else if (inVPHeap(heapBase, (Addr_t)v)) {\n");
         TextIO.output (MyoutStrm, "          // p points to another object in the \"young\" region,\n");
         TextIO.output (MyoutStrm, "          // so adjust it.\n");
         TextIO.output (MyoutStrm, "          *nextScan = (Word_t)((Addr_t)v - oldSzB);\n");
+        TextIO.output (MyoutStrm, "          if( *nextScan == 262147) problem();\n");
+        (*TextIO.output (MyoutStrm, "          if(AddrToChunk((Addr_t)v - oldSzB)->sts == UNMAPPED_CHUNK || (Addr_t)v - oldSzB < heapBase) printf(\"Translating into unampped chunk\\n\");\n");*)
         TextIO.output (MyoutStrm, "       }\n");
         TextIO.output (MyoutStrm, "    }\n");
         TextIO.output (MyoutStrm, "   }\n");
@@ -340,9 +344,12 @@ struct
                         TextIO.output (MyoutStrm,concat["    v = *(Value_t *)(scanP+",Int.toString pos,");\n"]);
                         TextIO.output (MyoutStrm,"   if (inAddrRange(heapBase, oldSzB, ValueToAddr(v))) {\n");
                         TextIO.output (MyoutStrm,concat["     *(scanP+",Int.toString pos,") = (Word_t)ForwardObjMajor(vp, v);\n"]);
+                        TextIO.output (MyoutStrm,concat["     if( *(scanP+", Int.toString pos, ") == 262147) problem();\n"]);
                         TextIO.output (MyoutStrm,"  }\n");
                         TextIO.output (MyoutStrm,"  else if (inVPHeap(heapBase, ValueToAddr(v))) {\n");
                         TextIO.output (MyoutStrm,concat["      *(scanP+",Int.toString pos,") = (Word_t)AddrToValue(ValueToAddr(v) - oldSzB);\n"]);
+                        TextIO.output (MyoutStrm,concat["     if( *(scanP+", Int.toString pos, ") == 262147) problem();\n"]);
+                        (*TextIO.output (MyoutStrm, "          if(AddrToChunk((Addr_t)v - oldSzB)->sts == UNMAPPED_CHUNK || (Addr_t)v - oldSzB < heapBase) printf(\"Translating into unampped chunk\\n\");\n");*)
                         TextIO.output (MyoutStrm,"   }\n");
                         
                         lp(strlen-1,bites,pos+1)

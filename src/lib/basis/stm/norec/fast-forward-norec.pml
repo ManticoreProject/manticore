@@ -1,26 +1,5 @@
 structure NoRecFF = 
 struct
-	
-#define COUNT 
-
-#ifdef COUNT
-#define BUMP_PABORT do ccall M_BumpCounter(0)
-#define PRINT_PABORT_COUNT let counter1 : int = ccall M_SumCounter(0) \
-                           do ccall M_Print_Int("Partial-Aborts = %d\n", counter1)
-#define BUMP_FABORT do ccall M_BumpCounter(1)
-#define PRINT_FABORT_COUNT let counter2 : int = ccall M_SumCounter(1) \
-                           do ccall M_Print_Int("Full-Aborts = %d\n", counter2)                     
-#define PRINT_COMBINED do ccall M_Print_Int("Total-Aborts = %d\n", I32Add(counter1, counter2))         
-#define PRINT_KCOUNT let counter1 : int = ccall M_SumCounter(2) \
-                     do ccall M_Print_Int("Fast Forward Continuation Hits = %d\n", counter1)                                                                                                    
-#else
-#define BUMP_PABORT
-#define PRINT_PABORT_COUNT
-#define BUMP_FABORT
-#define PRINT_FABORT_COUNT
-#define PRINT_COMBINED 
-#define PRINT_KCOUNT
-#endif
 
 #define READ_SET_BOUND 20
 
@@ -73,15 +52,16 @@ struct
                     | RS.NilItem => return (Option.NONE)
                 end
             cont retK(x:any) = return(x)
-            do RS.@fast-forward(readSet, writeSet, tv, retK / exh)
+            do RS.@fast-forward(readSet, writeSet, tv, retK, myStamp / exh)
             let localRes : Option.option = apply chkLog(writeSet)
             case localRes
                of Option.SOME(v:any) => return(v)
                 | Option.NONE =>
                 	fun getLoop() : any = 
+                        let v : any = #0(tv)
                 		let t : long = VClock.@get(/exh)
                 		if I64Eq(t, #0(myStamp))
-                		then return(#0(tv))
+                		then return(v)
                 		else
                 			do RS.@validate(readSet, myStamp / exh)
                 			apply getLoop()
@@ -165,7 +145,9 @@ struct
             if (#0(in_trans))
             then apply f(UNIT/exh)
             else 
-            	let stampPtr : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
+            	let stampPtr : ![stamp, int, int] = FLS.@get-key(STAMP_KEY / exh)
+                do #1(stampPtr) := 0
+                do FLS.@set-key(FF_KEY, enum(0) / exh)
                 cont enter() = 
                     let rs : RS.read_set = RS.@new()
                     do FLS.@set-key(READ_SET, rs / exh)  (*initialize STM log*)
@@ -183,6 +165,7 @@ struct
                     do #0(in_trans) := false
                     do FLS.@set-key(READ_SET, RS.NilItem / exh)
                     do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
+                    do FLS.@set-key(FF_KEY, enum(0) / exh)
                     return(res)
                 throw enter()
       	;
@@ -192,6 +175,7 @@ struct
 	        PRINT_FABORT_COUNT
             PRINT_COMBINED
             PRINT_KCOUNT
+            PRINT_FF
 	        return(UNIT);
 
 	    define @abort(x : unit / exh : exh) : any = 

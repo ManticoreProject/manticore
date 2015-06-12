@@ -9,36 +9,7 @@
 
 structure TailRecFFSTM = 
 struct 
-
-#define COUNT 
-
-#ifdef COUNT
-#define BUMP_PABORT do ccall M_BumpCounter(0)
-#define PRINT_PABORT_COUNT let counter1 : int = ccall M_SumCounter(0) \
-                           do ccall M_Print_Int("Partial-Aborts = %d\n", counter1)
-#define BUMP_FABORT do ccall M_BumpCounter(1)
-#define PRINT_FABORT_COUNT let counter2 : int = ccall M_SumCounter(1) \
-                           do ccall M_Print_Int("Full-Aborts = %d\n", counter2)                     
-#define PRINT_COMBINED do ccall M_Print_Int("Total-Aborts = %d\n", I32Add(counter1, counter2))     
-#define BUMP_KCOUNT do ccall M_BumpCounter(2)
-#define PRINT_KCOUNT let counter1 : int = ccall M_SumCounter(2) \
-                     do ccall M_Print_Int("Fast Forward Continuation Hits = %d\n", counter1)                                                                                                 
-#else
-#define BUMP_PABORT
-#define PRINT_PABORT_COUNT
-#define BUMP_FABORT
-#define PRINT_FABORT_COUNT
-#define PRINT_COMBINED 
-#define BUMP_KCOUNT
-#define PRINT_KCOUNT 
-#endif
-
-(*TODO:
-    -add a 64-bit bloom filter to FLS that can be used for determining if a given
-     tref is on the short path of the fast-forward read set
-    -64 bits is sufficient given that we will never have more than 20 item on the short path
-*)
-
+    
 	structure V = Vector
 
 #define READ_SET_BOUND 20
@@ -88,8 +59,6 @@ struct
         extern void * M_Print_Int(void *, int);
         extern void * M_Print_Int2(void *, int, int);
         extern void M_Print_Long (void *, long);
-        extern void M_BumpCounter(int);
-        extern int M_SumCounter(int);
         extern long M_GetTimeAccum();
         extern int M_PolyEq(void * , void *);
 

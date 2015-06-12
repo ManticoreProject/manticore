@@ -270,12 +270,12 @@ if MChkTy.check stm
 			emitStms stms
 		      end
 		in
-		  ListPair.appEq f (lhs, rhs)
+		  ListPair.appEq f (lhs, rhs) handle e => (print "codegen-fn line 273 raised exception\n"; raise e)
 		end                 
 	(* Construct an MLRISC tree from a CFG expression. *)
 	  fun genExp frame = let
 		fun gen (M.E_Var(lhs, rhs)) = 
-		      ListPair.app setDefOf (lhs, List.map getDefOf rhs)
+		      (ListPair.app setDefOf (lhs, List.map getDefOf rhs) handle e => (print "codegen-fn line 278 raised exception\n"; raise e))
 		  | gen (M.E_Const(lhs, lit, _)) = 
 		      bindExp ([lhs], [genLit (szOfVar lhs, lit)], [])
 		  | gen (M.E_Label(lhs, l)) = 
@@ -429,7 +429,7 @@ if MChkTy.check stm
 			 emitStms stms;
 			 List.app (genExp frame) startBody;
 			 genTransfer exit;
-                         ListPair.app emitBlock (body, bodyStms)
+                         ListPair.app emitBlock (body, bodyStms) handle e => (print "codegen-fn line 432 raised exception\n"; raise e)
 		      end (* finish *)
 		in
 		  finish

@@ -10,29 +10,6 @@
 
 structure ReadSet = 
 struct
-	
-#define COUNT 
-
-#ifdef COUNT
-#define BUMP_PABORT do ccall M_BumpCounter(0)
-#define PRINT_PABORT_COUNT let counter1 : int = ccall M_SumCounter(0) \
-                           do ccall M_Print_Int("Partial-Aborts = %d\n", counter1)
-#define BUMP_FABORT do ccall M_BumpCounter(1)
-#define PRINT_FABORT_COUNT let counter2 : int = ccall M_SumCounter(1) \
-                           do ccall M_Print_Int("Full-Aborts = %d\n", counter2)                     
-#define PRINT_COMBINED do ccall M_Print_Int("Total-Aborts = %d\n", I32Add(counter1, counter2))     
-#define BUMP_KCOUNT do ccall M_BumpCounter(2)
-#define PRINT_KCOUNT let counter1 : int = ccall M_SumCounter(2) \
-                     do ccall M_Print_Int("Fast Forward Continuation Hits = %d\n", counter1)                                                                                                 
-#else
-#define BUMP_PABORT
-#define PRINT_PABORT_COUNT
-#define BUMP_FABORT
-#define PRINT_FABORT_COUNT
-#define PRINT_COMBINED 
-#define BUMP_KCOUNT
-#define PRINT_KCOUNT 
-#endif
     
 #define START_TIMER let vp : vproc = host_vproc do ccall GenTimerStart(vp)
 #define STOP_TIMER let vp : vproc = host_vproc do ccall GenTimerStop(vp)

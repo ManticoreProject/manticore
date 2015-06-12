@@ -50,3 +50,4 @@
     VP_OFFSET(vp, ALLOC_POLY_VEC_N, eventId, true);
     VP_OFFSET(vp, NODE_ID, nodeID, true);
     VP_OFFSET(vp, REMEMBER_SET, rememberSet, false);
+    VP_OFFSET(vp, COUNTER, counter, false);

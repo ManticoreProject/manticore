@@ -114,6 +114,10 @@ structure FLS :
 #define DONE_COMM_OFF          4
 #define COUNTER_OFF            5
 
+    val counter = AtomicCounter.new()
+
+    fun getCounter() = counter
+
     _primcode (
 
       extern void * M_Print_Int(void *, int);
@@ -145,15 +149,22 @@ structure FLS :
 	  int
 	];
 
+        extern void M_Print_Long(void * , void *);
+
+        define @get-counter = getCounter;
+
         define @initial-dict() : [int, List.list] = 
+        cont dummy(e:exn) = return(alloc(0, nil))
+        let counter : AtomicCounter.counter = @get-counter(UNIT / dummy)
+        let id : long = AtomicCounter.@bump(counter)
+        let id : long = I64LSh(1:long, id)
         let k0 : [[int], any] = alloc(alloc(DICT_BUILTIN_TOPOLOGY), nil)
         let flg : ![bool] = alloc(false)
         let flg : ![bool] = promote(flg)  
         let k1 : [[int], any] = alloc(alloc(IN_TRANS), flg)
         let k2 : [[int], any] = alloc(alloc(READ_SET), nil)
         let k3 : [[int], any] = alloc(alloc(WRITE_SET), nil)
-        let stamp : ![long, int] = alloc(0:long, 0)
-        let stamp : ![long, int] = promote(stamp)
+        let stamp : ![long, int, int, long] = alloc(0:long, 0, 0, id)
         let k4 : [[int], any] = alloc(alloc(STAMP_KEY), stamp)
         let k5 : [[int], any] = alloc(alloc(ABORT_KEY), Option.NONE)
         let k6 : [[int],any] = alloc(alloc(FF_KEY), enum(0):any)

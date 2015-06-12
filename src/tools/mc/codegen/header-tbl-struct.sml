@@ -19,6 +19,8 @@ struct
 	val _ = HeaderTable.addHdr (header, "1")
     val _ = HeaderTable.addHdr (header, "11010")
     val _ = HeaderTable.addHdr (header, "100")
+    val _ = HeaderTable.addHdr (header, "101")
+    val _ = HeaderTable.addHdr (header, "0111")
     
     (* new Header Table END *)
 end

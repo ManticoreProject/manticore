@@ -66,6 +66,7 @@ functor PrimTyFn (Ty : sig
 	    | P.I64Neg _ => i64Ty
 	    | P.I64OrB _ => i64Ty
 	    | P.I64AndB _ => i64Ty
+	    | P.I64NotB _ => i64Ty
 	    | P.U64Mul _ => i64Ty
 	    | P.U64Div _ => i64Ty
 	    | P.U64Rem _ => i64Ty
@@ -156,6 +157,7 @@ functor PrimTyFn (Ty : sig
 	    | P.I64Neg _ => ([i64Ty], i64Ty)
 	    | P.I64OrB _ => ([i64Ty, i64Ty], i64Ty)
 	    | P.I64AndB _ => ([i64Ty, i64Ty], i64Ty)
+	    | P.I64NotB _ => ([i64Ty], i64Ty)
 	    | P.U64Mul _ => ([i64Ty, i64Ty], i64Ty)
 	    | P.U64Div _ => ([i64Ty, i64Ty], i64Ty)
 	    | P.U64Rem _ => ([i64Ty, i64Ty], i64Ty)

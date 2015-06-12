@@ -258,7 +258,7 @@ functor Alloc64Fn (
 (* FIXME: this only happens because the closure-conversion doesn't deal with empty closures correctly *)
 	  { ptr=MTy.EXP (MTy.wordTy, wordLit 1), stms=[] }
       | genAlloc {isMut, tys, args} = let
-	  val args = ListPair.zipEq (tys, args)	  
+	  val args = ListPair.zipEq (tys, args)	handle e => (print "genAlloc: raised exception\n"; raise e)
 	  val (totalSize, hdrWord, stms) = alloc offAp args
 	(* store the header word *)
 	  val stms = MTy.store (offAp (wordLit (~wordSzB)), MTy.EXP (MTy.wordTy, T.LI hdrWord), ManticoreRegion.memory) :: stms
@@ -275,7 +275,7 @@ functor Alloc64Fn (
   (* allocate arguments in the global heap *)
     fun genGlobalAlloc {tys=[], ...} = raise Fail "GAlloc[]"
       | genGlobalAlloc {isMut, tys, args} = let
-	  val args = ListPair.zipEq (tys, args)
+	  val args = ListPair.zipEq (tys, args) handle e => (print "genGlobalAlloc: raised exception\n"; raise e)
 	  val (vpReg, setVP) = let
 		val r = Cells.newReg()
 		val MTy.EXP(_, hostVP) = VProcOps.genHostVP

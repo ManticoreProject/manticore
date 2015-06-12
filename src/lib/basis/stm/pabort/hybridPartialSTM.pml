@@ -21,34 +21,6 @@ struct
 #define PDebugLong(msg, v) 
 #endif
 
-#define COUNT
-
-#ifdef COUNT
-#define BUMP_PABORT do ccall M_BumpCounter(0)
-#define PRINT_PABORT_COUNT let counter1 : int = ccall M_GetCounter(0) \
-                          do ccall M_Print_Int("Partially aborted %d transactions\n", counter1)
-#define BUMP_FABORT do ccall M_BumpCounter(1)
-#define PRINT_FABORT_COUNT let counter2 : int = ccall M_GetCounter(1) \
-                           do ccall M_Print_Int("Fully aborted %d transactions\n", counter2)         
-#define BUMP_NOK do ccall M_BumpCounter(2)
-#define PRINT_NOK_COUNT let counter3 : int = ccall M_GetCounter(2) \
-                           do ccall M_Print_Int("Allocated %d read items without continuations\n", counter3)     
-#define BUMP_K do ccall M_BumpCounter(3)
-#define PRINT_K_COUNT let counter4 : int = ccall M_GetCounter(3) \
-                           do ccall M_Print_Int("Allocated %d read items with continuations\n", counter4)         
-#define PRINT_COMBINED do ccall M_Print_Int("Aborted %d transactions in total\n", I32Add(counter1, counter2))                                                                      
-#else
-#define BUMP_PABORT
-#define PRINT_PABORT_COUNT
-#define BUMP_FABORT
-#define PRINT_FABORT_COUNT
-#define BUMP_NOK
-#define PRINT_NOK_COUNT   
-#define BUMP_K
-#define PRINT_K_COUNT 
-#define PRINT_COMBINED
-#endif
-
 #define READ_THRESH 512
 
     datatype 'a item = Read of 'a * 'a * 'a * 'a | Write of 'a * 'a * 'a | NilItem
@@ -58,8 +30,6 @@ struct
         extern void * M_Print_Int(void *, int);
         extern void * M_Print_Int2(void *, int, int);
         extern void M_Print_Long (void *, long);
-        extern void M_BumpCounter(int);
-        extern int M_GetCounter(int);
         extern void M_StartTimer();
         extern void M_StopTimer();
         extern long M_GetTimeAccum();

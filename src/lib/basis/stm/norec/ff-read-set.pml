@@ -10,30 +10,7 @@
 
 structure FFReadSet = 
 struct
-	
-#define COUNT 
 
-#ifdef COUNT
-#define BUMP_PABORT do ccall M_BumpCounter(0)
-#define PRINT_PABORT_COUNT let counter1 : int = ccall M_SumCounter(0) \
-                           do ccall M_Print_Int("Partial-Aborts = %d\n", counter1)
-#define BUMP_FABORT do ccall M_BumpCounter(1)
-#define PRINT_FABORT_COUNT let counter2 : int = ccall M_SumCounter(1) \
-                           do ccall M_Print_Int("Full-Aborts = %d\n", counter2)                     
-#define PRINT_COMBINED do ccall M_Print_Int("Total-Aborts = %d\n", I32Add(counter1, counter2))     
-#define BUMP_KCOUNT do ccall M_BumpCounter(2)
-#define PRINT_KCOUNT let counter1 : int = ccall M_SumCounter(2) \
-                     do ccall M_Print_Int("Fast Forward Continuation Hits = %d\n", counter1)                                                                                                 
-#else
-#define BUMP_PABORT
-#define PRINT_PABORT_COUNT
-#define BUMP_FABORT
-#define PRINT_FABORT_COUNT
-#define PRINT_COMBINED 
-#define BUMP_KCOUNT
-#define PRINT_KCOUNT 
-#endif
-    
 #define NEXT 3
 #define NEXTK 6
 #define KPOINTER 5
@@ -69,6 +46,10 @@ struct
 
         extern int inLocalHeap(void *, void *);
         extern void M_Print_Long2(void *, void *, void *);
+        extern void M_IncCounter(void *, int , long);
+        extern void checkInvariant(void *, void *, void*, void*) __attribute__((alloc));
+        extern void checkReadSet(void *, void *) __attribute__((alloc));
+        extern void printShortPath(void *, void*) __attribute__((alloc));
 
     	typedef read_set = ![item,      (*0: first element of the read set*) 
     						 item, 	    (*1: last element of the read set*)
@@ -122,7 +103,8 @@ struct
 #endif          
         ;
 
-        define inline @abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int], count:int, revalidate : fun(item, item, int, int / -> ) / exh:exh) : () = 
+        define inline @abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int], count:int, revalidate : fun(item, item, int / -> ) / exh:exh) : () = 
+            do #1(startStamp) := I32Add(#1(startStamp), 1)
             case checkpoint 
                of NilItem => (*no checkpoint available*)
                     (*<FF>*)
@@ -134,13 +116,14 @@ struct
                     let casted : ![any, any, any, item] = (![any, any, any, item]) checkpoint
                     do #NEXT(casted) := NilItem
                     fun getLoop() : any = 
+                        let v : any = #0(tv)
                         let t : long = VClock.@get(/exh)
                         if I64Eq(t, #0(startStamp))
-                        then return(#0(tv))
+                        then return(v)
                         else
                             let currentTime : stamp = @get-stamp(/exh)
                             do #0(startStamp) := currentTime
-                            do apply revalidate(#HEAD(readSet), NilItem, 0, 0)
+                            do apply revalidate(#HEAD(readSet), NilItem, 0)
                             apply getLoop()
                     let current : any = apply getLoop()
                     let newRS : read_set = alloc(#HEAD(readSet), checkpoint, checkpoint, count)
@@ -150,6 +133,8 @@ struct
                     do #NUMK(readSet) := I32Sub(#NUMK(readSet), count)
                     do #HEAD(readSet) := next
                     do FLS.@set-key(FF_KEY, readSet / exh) (*try and use this portion of the read set on our second run through*)
+                    let vp : vproc = host_vproc
+                    do ccall checkReadSet(vp, "abort")
                     (*</FF>*)
                     let captureFreq : int = FLS.@get-counter2()
                     do FLS.@set-counter(captureFreq)
@@ -159,7 +144,7 @@ struct
         ;
 
         define @validate(readSet : read_set, startStamp:![stamp, int] / exh:exh) : () = 
-            fun validateLoopABCD(rs : item, abortInfo : item, count:int, i:int) : () =
+            fun validateLoopABCD(rs : item, abortInfo : item, count:int) : () =
                 case rs 
                    of NilItem => (*finished validating*)
                         let currentTime : stamp = VClock.@get(/exh)
@@ -168,17 +153,17 @@ struct
                         else  (*someone else committed, so revalidate*)
                             let currentTime : stamp = @get-stamp(/exh)
                             do #0(startStamp) := currentTime
-                            apply validateLoopABCD(#HEAD(readSet), NilItem, 0, I32Add(i, 1))
+                            apply validateLoopABCD(#HEAD(readSet), NilItem, 0)
                     | WithoutK(tv:tvar, x:any, next:item) =>
                         if Equal(#0(tv), x)
-                        then apply validateLoopABCD(next, abortInfo, count, I32Add(i, 1))
+                        then apply validateLoopABCD(next, abortInfo, count)
                         else @abort(readSet, abortInfo, startStamp, count, validateLoopABCD / exh)
                     | WithK(tv:tvar,x:any,next:item,ws:item,abortK:any,_:item) =>
                         if Equal(#0(tv), x)
                         then 
                             if Equal(abortK, enum(0))
-                            then apply validateLoopABCD(next, abortInfo, count, I32Add(i, 1))            (*update checkpoint*)
-                            else apply validateLoopABCD(next, rs, I32Add(count, 1), I32Add(i, 1))
+                            then apply validateLoopABCD(next, abortInfo, count)            (*update checkpoint*)
+                            else apply validateLoopABCD(next, rs, I32Add(count, 1))
                         else
                             if Equal(abortK, enum(0))
                             then @abort(readSet, abortInfo, startStamp, count, validateLoopABCD / exh)
@@ -186,50 +171,107 @@ struct
                 end
             let currentTime : stamp = @get-stamp(/exh)
             do #0(startStamp) := currentTime
-            apply validateLoopABCD(#HEAD(readSet), NilItem, 0, 0)
+            apply validateLoopABCD(#HEAD(readSet), NilItem, 0)
         ;
 
-        define @fast-forward(readSet : read_set, writeSet : item, tv:tvar, retK:cont(any) / exh:exh) : () = 
-            let ffInfo : read_set = FLS.@get-key(FF_KEY / exh)
-            fun checkRS(rs:item) : () = 
-                case rs 
-                   of NilItem => return()
-                    | WithK(tv':tvar,_:any,_:item,ws:item,k:cont(any),next:item) => 
-                        if Equal(tv, tv')
+        define @ff-finish(readSet : read_set, checkpoint : item, i:int / exh:exh) : () =
+            case checkpoint 
+               of WithK(tv:tvar,x:any,_:item,ws:item,k:cont(any),next:item) => 
+                    let casted : mutWithK = (mutWithK) checkpoint
+                    do #NEXT(casted) := NilItem
+                    let newRS : read_set = alloc(#0(readSet), checkpoint, checkpoint, i)
+                    do FLS.@set-key(READ_SET, newRS / exh)
+                    do FLS.@set-key(WRITE_SET, ws / exh)
+                    let vp : vproc = host_vproc
+                    do ccall checkReadSet(vp, "ff-finish")
+                    (*do ccall printShortPath(checkpoint, vp)*)
+                    BUMP_KCOUNT
+                    throw k(x)
+                | _ => do ccall M_Print("Impossible: ff-finish\n") throw exh(Fail(@"Impossible: ff-finish\n"))
+            end
+        ;
+
+        define @ff-validate(readSet : read_set, oldRS : item, myStamp : ![long,int] / exh:exh) : () = 
+            fun ffLoop(rs:item, i:int, checkpoint : item) : () = 
+                case rs
+                   of NilItem => @ff-finish(readSet, checkpoint, i / exh)
+                    | WithoutK(tv:tvar, x:any, next:item) => 
+                        if Equal(#0(tv), x)
+                        then apply ffLoop(next, i, checkpoint)
+                        else @ff-finish(readSet, checkpoint, i / exh)
+                    | WithK(tv:tvar,x:any,next:item,ws:item,k:cont(any),_:item) => 
+                        if Equal(#0(tv), x)
                         then
-                            let res : int = ccall M_PolyEq(k, retK)
-                            if I32Eq(res, 1)
-                            then 
-                                if Equal(ws, writeSet) 
-                                then (*continuations, write sets, and tvars are equal, fast forward...*)
-                                    let currentLast : item = #TAIL(readSet)
-                                    let casted : mutWithK = (mutWithK) currentLast
-                                    do #NEXT(casted) := #HEAD(ffInfo)
-                                    (*Is this neccessary? the fast forward info must be older than our current read set*)
-                                    let vp : vproc = host_vproc
-                                    let rememberSet : any = vpload(REMEMBER_SET, vp)
-                                    let newRemSet : [mutWithK, int, any] = alloc(casted, NEXT, rememberSet)
-                                    do vpstore(REMEMBER_SET, vp, newRemSet)
-                                    let lastK : item = #LASTK(ffInfo)
-                                    let newRS : read_set = alloc(#HEAD(readSet), #TAIL(ffInfo), lastK, I32Add(#NUMK(readSet), #NUMK(ffInfo)))
-                                    do FLS.@set-key(READ_SET, newRS / exh)
-                                    case lastK 
-                                       of WithK(tv'':tvar,x:any,_:item,ws':item,k':cont(any),_:item) => 
-                                            do FLS.@set-key(WRITE_SET, ws' / exh)
-                                            BUMP_KCOUNT
-                                            throw k'(x)
-                                        | _ => throw exh(Fail(@"fast-forward:impossible!\n"))
-                                    end
-                                else apply checkRS(next)
-                            else apply checkRS(next)
-                        else apply checkRS(next)
-                    | _ => throw exh(Fail("checkRS: impossible\n"))
+                            if Equal(k, enum(0))
+                            then apply ffLoop(next, i, checkpoint)
+                            else apply ffLoop(next, I32Add(i, 1), rs)
+                        else 
+                            if Equal(k, enum(0))
+                            then @ff-finish(readSet, checkpoint, i / exh)
+                            else
+                                let casted : mutWithK = (mutWithK) rs
+                                do #NEXT(casted) := NilItem
+                                let newRS : read_set = alloc(#0(readSet), rs, rs, I32Add(i, 1))
+                                do FLS.@set-key(READ_SET, newRS / exh)
+                                do FLS.@set-key(WRITE_SET, ws / exh)
+                                let vp : vproc = host_vproc
+                                do ccall checkReadSet(vp, "ff-validate")
+                                fun getLoop() : any = 
+                                    let v : any = #0(tv)
+                                    let t : long = VClock.@get(/exh)
+                                    if I64Eq(t, #0(myStamp))
+                                    then return(v)
+                                    else
+                                        do @validate(newRS, myStamp / exh)
+                                        apply getLoop()
+                                
+                                let current : any = apply getLoop()
+                                throw k(current)
                 end
+            apply ffLoop(oldRS, #NUMK(readSet), oldRS)
+        ;
+
+        define @fast-forward(readSet : read_set, writeSet : item, tv:tvar, retK:cont(any), myStamp : ![long, int] / exh:exh) : () = 
+            let ffInfo : read_set = FLS.@get-key(FF_KEY / exh)
             if Equal(ffInfo, enum(0))
             then return()
-            else apply checkRS(#2(ffInfo))
+            else (*we should only allocate the checkRS closure if we are going to actually use it*)
+                fun checkRS(rs:item, i:int) : () = 
+                    case rs 
+                       of NilItem =>  return()
+                        | WithK(tv':tvar,_:any,_:item,ws:item,k:cont(any),next:item) => 
+                            INC_FF(1:long)
+                            if Equal(tv, tv')
+                            then (*tvars are equal*)
+                                let res : int = ccall M_PolyEq(k, retK)
+                                if I32Eq(res, 1)
+                                then (*continuations are equal*)
+                                    if Equal(ws, writeSet) 
+                                    then (*continuations, write sets, and tvars are equal, fast forward...*)
+                                        do FLS.@set-key(FF_KEY, enum(0) / exh)  (*null out fast forward info*)
+                                        (*hook the two read sets together*)
+                                        let ffFirstK : mutWithK = (mutWithK) rs
+                                        let vp : vproc = host_vproc
+                                        let rememberSet : any = vpload(REMEMBER_SET, vp)
+                                        do ccall checkInvariant(ffFirstK, #LASTK(readSet), vp, "fast-forward")
+                                        let newRemSet : [mutWithK, int, long, [mutWithK, int, long, any]] = alloc(ffFirstK, NEXTK, 0:long, rememberSet)
+                                        do vpstore(REMEMBER_SET, vp, newRemSet)
+                                        do #NEXTK(ffFirstK) := #LASTK(readSet) 
+                                        let currentLast : item = #TAIL(readSet)
+                                        let currentLast : mutWithK = (mutWithK) currentLast
+                                        do #NEXT(currentLast) := rs
+                                        (*add to remember set*)
+                                        @ff-validate(readSet, rs, myStamp / exh)
+                                    else apply checkRS(next, I32Add(i, 1))
+                                else apply checkRS(next, I32Add(i, 1))
+                            else apply checkRS(next, I32Add(i, 1))
+                        | _ => 
+                            let casted : [any] = ([any]) rs
+                            do ccall M_Print_Long("checkRS: impossible, tag is %lu\n\n", #0(casted)) 
+                            throw exh(Fail("checkRS: impossible\n"))
+                    end
+                apply checkRS(#LASTK(ffInfo), 1)
         ;
-
 
         define inline @getNumK(rs : read_set) : int = return(#NUMK(rs));
 
@@ -247,6 +289,7 @@ struct
             return();
 
         define inline @filterRS(readSet : read_set / exh : exh) : () = 
+            let vp : vproc = host_vproc
             fun dropKs(l:item, n:int) : int =   (*drop every other continuation*)
                 case l
                    of NilItem => return(n)
@@ -257,14 +300,17 @@ struct
                                 (* NOTE: if compiled with -debug, this will generate warnings
                                  * that we are updating a bogus local pointer, however, given the
                                  * nature of the data structure, we do preserve the heap invariants*)
+                                let rs : any = vpload(REMEMBER_SET, vp)
+                                let newRemSet : [item, int, long, any] = alloc(l, NEXTK, 0:long, rs)
+                                do vpstore(REMEMBER_SET, vp, newRemSet)
                                 let l : mutWithK = (mutWithK) l
                                 let next : mutWithK = (mutWithK) next
                                 do #KPOINTER(next) := enum(0):any
                                 do #NEXTK(l) := nextNext
                                 apply dropKs(nextNext, I32Sub(n, 1))
                             | _ => 
-                                let casted : [any, any, any] = ([any, any, any])l
-                                do ccall M_Print_Long("filterRS (inner case): Impossible, tag is %lu\n", #0(casted)) 
+                                let casted : [any, any, any] = ([any, any, any])next
+                                do ccall M_Print_Long("filterRS (inner case): Impossible, tag is %lu\n", #0(casted))
                                 throw exh(Fail(@"filterRS: impossible"))
                         end
                     | _ => 
@@ -331,18 +377,24 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
+                    let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
+                    do ccall checkInvariant(casted, newItem, vp, "insert-with-k, above limitPtr")
+                    let vp : vproc = host_vproc
+                    do ccall checkReadSet(vp, "insert-with-k, above limitPtr")
                     return()
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
+                let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
+                do ccall checkInvariant(casted, newItem, vp, "insert-with-k, below nursery base")
+                let vp : vproc = host_vproc
+                do ccall checkReadSet(vp, "insert-with-k, below nursery base")
                 return()
         ;
 
@@ -369,18 +421,24 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
+                    let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
+                    do ccall checkInvariant(casted, newItem, vp, "insert-without-k, above limit ptr")
+                    let vp : vproc = host_vproc
+                    do ccall checkReadSet(vp, "insert-without-k, above limit ptr")
                     return()
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
+                let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
+                do ccall checkInvariant(casted, newItem, vp, "insert-without-k, below nursery base")
+                let vp : vproc = host_vproc
+                do ccall checkReadSet(vp, "insert-without-k, below nursery base")
                 return()
         ;
         

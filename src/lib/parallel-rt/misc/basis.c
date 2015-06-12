@@ -17,9 +17,13 @@
 #include "heap.h"
 #include "options.h"
 
-void M_BumpCounter(int index){
-    VProc_t * vp = VProcSelf();
+void M_BumpCounter(VProc_t * vp, int index){
     vp->counter[index]++;
+    
+}
+
+void M_IncCounter(VProc_t * vp, int index, u_int64_t v){
+    vp->counter[index] += v;
     
 }
 
@@ -36,6 +40,7 @@ void M_ZeroCounters(){
         VProcs[i]->counter[0] = 0;
         VProcs[i]->counter[1] = 0;
         VProcs[i]->counter[2] = 0;
+        VProcs[i]->counter[3] = 0;
     }
 }
 

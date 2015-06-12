@@ -138,8 +138,9 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("I64RShL",	mk Prim2 (P.I64RShL,		(i64, i64),		i64)),
 *)
 		("I64Neg",	mk Prim1 (P.I64Neg,		i64,			i64)),
-		("I64OrB",  mk Prim2 (P.I64OrB,     (i64, i64), i64)),
-		("I64AndB", mk Prim2 (P.I64AndB,    (i64, i64), i64)),
+		("I64OrB",      mk Prim2 (P.I64OrB,     (i64, i64), i64)),
+		("I64AndB",     mk Prim2 (P.I64AndB,    (i64, i64), i64)),
+		("I64NotB",     mk Prim1 (P.I64NotB,            i64,                    i64)),
 		("U64Mul",      mk Prim2 (P.U64Mul,     	(i64, i64),     	i64)),
 		("U64Div",      mk Prim2 (P.U64Div,     	(i64, i64),     	i64)),
 		("U64Rem",      mk Prim2 (P.U64Rem,     	(i64, i64),     	i64)),

@@ -66,7 +66,7 @@ functor AMD64CopyFn (
                                   ",src=", MTy.treeToString src, "}"])
 
 	  val (regs, exprs, fregs, fexprs) = 
-	      ListPair.foldl mkCopies ([], [], [], []) (dst, src)
+	      ListPair.foldl mkCopies ([], [], [], []) (dst, src) handle e => (print "amd64-copy-fn.sml line 69: raised exception\n"; raise e)
 
 	  val (pc32, pc64) = 
 	      foldl rcopy (T.COPY (32, [], []), T.COPY (64, [], [])) regs

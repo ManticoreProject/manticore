@@ -12,19 +12,6 @@ structure FullAbortSTM = (* :
 *)
 struct
 
-#define COUNT
-
-#ifdef COUNT
-#define BUMP_ABORT do ccall M_BumpCounter(0)
-#define PRINT_ABORT_COUNT let counter : int = ccall M_SumCounter(0) \
-                          do ccall M_Print_Int("Total-Aborts = %d\n", counter)
-#else
-#define BUMP_ABORT
-#define PRINT_ABORT_COUNT
-#define BUMP_ALLOC
-#define PRINT_ALLOC_COUNT
-#endif
-
     (*flat representation for read and write sets*)
     datatype 'a item = Read of 'a * 'a | Write of 'a * 'a * 'a | NilItem
 
@@ -33,8 +20,6 @@ struct
         extern void * M_Print_Int(void *, int);
         extern void * M_Print_Int2(void *, int, int);
         extern void M_Print_Long (void *, long);
-        extern void M_BumpCounter(int);
-        extern int M_SumCounter(int);
         
         typedef itemType = int; (*correponds to the above #define's*)
         typedef stamp = VClock.stamp;
@@ -185,7 +170,7 @@ struct
                          let stamp : stamp = VClock.@bump(/exh)
                          do #0(stampPtr) := stamp
                          do #0(in_trans) := true
-                         cont abortK() = do #1(stampPtr) := I32Add(#1(stampPtr), 1) BUMP_ABORT do #0(in_trans) := false do #1(stampPtr) := I32Add(#1(stampPtr), 1) throw enter()      
+                         cont abortK() = do #1(stampPtr) := I32Add(#1(stampPtr), 1) BUMP_FABORT do #0(in_trans) := false do #1(stampPtr) := I32Add(#1(stampPtr), 1) throw enter()      
                          do FLS.@set-key(ABORT_KEY, (any) abortK / exh)
                          cont transExh(e:exn) = 
                             do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
@@ -201,7 +186,9 @@ struct
         ;
 
       define @print-stats(x:unit / exh:exh) : unit = 
-        PRINT_ABORT_COUNT       
+        PRINT_PABORT_COUNT
+        PRINT_FABORT_COUNT
+        PRINT_COMBINED    
         return(UNIT);
 
       define @abort(x : unit / exh : exh) : any = 

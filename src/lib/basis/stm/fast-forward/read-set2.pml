@@ -10,29 +10,6 @@
 
 structure ReadSet2 = 
 struct
-	
-#define COUNT 
-
-#ifdef COUNT
-#define BUMP_PABORT do ccall M_BumpCounter(0)
-#define PRINT_PABORT_COUNT let counter1 : int = ccall M_SumCounter(0) \
-                           do ccall M_Print_Int("Partial-Aborts = %d\n", counter1)
-#define BUMP_FABORT do ccall M_BumpCounter(1)
-#define PRINT_FABORT_COUNT let counter2 : int = ccall M_SumCounter(1) \
-                           do ccall M_Print_Int("Full-Aborts = %d\n", counter2)                     
-#define PRINT_COMBINED do ccall M_Print_Int("Total-Aborts = %d\n", I32Add(counter1, counter2))     
-#define BUMP_KCOUNT do ccall M_BumpCounter(2)
-#define PRINT_KCOUNT let counter1 : int = ccall M_SumCounter(2) \
-                     do ccall M_Print_Int("Fast Forward Continuation Hits = %d\n", counter1)                                                                                                 
-#else
-#define BUMP_PABORT
-#define PRINT_PABORT_COUNT
-#define BUMP_FABORT
-#define PRINT_FABORT_COUNT
-#define PRINT_COMBINED 
-#define BUMP_KCOUNT
-#define PRINT_KCOUNT 
-#endif
     
 #define START_TIMER let vp : vproc = host_vproc do ccall GenTimerStart(vp)
 #define STOP_TIMER let vp : vproc = host_vproc do ccall GenTimerStop(vp)
@@ -60,6 +37,7 @@ struct
     _primcode(
 
         extern int inLocalHeap(void *, void *);
+        extern void M_Print_Long2(void *, void *, void *);
 
     	typedef read_set = ![item,      (*0: first element of the read set*) 
     						 item, 	    (*1: last element of the read set*)
@@ -231,7 +209,8 @@ struct
                             @abort(newRS, stamp / exh)
                     | NilItem => return()
                     | _ => let x : [any] = ([any]) i
-                           do ccall M_Print_Long("Error: commitLoop, tag is %lu\n", #0(x)) throw exh(Fail(@"Error in commitLoop\n"))
+                           do ccall M_Print_Long("Error: commitLoop, tag is %lu\n", #0(x)) 
+                           throw exh(Fail(@"Error in commitLoop\n"))
                 end
             do apply commitLoop(#0(readSet), NilItem, newStamp)
             return()
@@ -309,11 +288,10 @@ struct
             let vp : vproc = host_vproc
             let nurseryBase : long = vpload(NURSERY_BASE, vp)
             let limitPtr : long = vpload(LIMIT_PTR, vp)
-            let lastAddr : any = (any) #1(readSet)
-            let casted : ![any,item,item] = (![any,item,item])lastAddr
-            if I64Gte(lastAddr, nurseryBase)
+            let casted : ![any,item,item] = (![any,item,item])#1(readSet)
+            if I64Gte(casted, nurseryBase)
             then
-                if I64Lt(lastAddr, limitPtr)
+                if I64Lt(casted, limitPtr)
                 then (*last item is still in nursery*)
                     do #2(casted) := newItem
                     do #1(readSet) := newItem
@@ -321,19 +299,19 @@ struct
                     do #3(readSet) := I32Add(#3(readSet), 1)
                     return()
                 else (*not in nursery, add last item to remember set*)
-                    do #2(casted) := newItem
                     let newRS : read_set = alloc(#0(readSet), newItem, newItem, I32Add(#3(readSet), 1))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,item,item], int, any] = alloc(casted, 2, rs)
+                    let newRemSet : [![any,item,item], int, long, any] = alloc(casted, 2, 0:long, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
+                    do #2(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
                     return()
             else (*not in nursery, add last item to remember set*)
-                do #2(casted) := newItem
                 let newRS : read_set = alloc(#0(readSet), newItem, newItem, I32Add(#3(readSet), 1))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,item,item], int, any] = alloc(casted, 2, rs)
+                let newRemSet : [![any,item,item], int, long, any] = alloc(casted, 2, 0:long, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
+                do #2(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
                 return()
         ;
@@ -349,11 +327,10 @@ struct
     		let vp : vproc = host_vproc
     		let nurseryBase : long = vpload(NURSERY_BASE, vp)
             let limitPtr : long = vpload(LIMIT_PTR, vp)
-            let lastAddr : any = (any) #1(readSet)
-            let casted : ![any,any,item] = (![any,any,item]) lastAddr
-            if I64Gte(lastAddr, nurseryBase)
+            let casted : ![any,any,item] = (![any,any,item]) #1(readSet)
+            if I64Gte(casted, nurseryBase)
             then
-                if I64Lt(lastAddr, limitPtr)
+                if I64Lt(casted, limitPtr)
                 then (*last item is still in nursery*)
                     do #2(casted) := newItem
                     do #1(readSet) := newItem
@@ -361,7 +338,7 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,[any],item], int, any] = alloc(casted, 2, rs)
+                    let newRemSet : [![any,[any],item], int, long, any] = alloc(casted, 2, 0:long, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #2(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
@@ -369,7 +346,7 @@ struct
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#0(readSet), newItem, #2(readSet), #3(readSet))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,[any],item], int, any] = alloc(casted, 2, rs)
+                let newRemSet : [![any,[any],item], int, long, any] = alloc(casted, 2, 0:long, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #2(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)

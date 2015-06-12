@@ -64,6 +64,7 @@ struct struct_vproc {
     Value_t	stdCont;	//!< holds value of standard return-cont. reg.
     Value_t	stdExnCont;	//!< holds value of standard exception-cont. reg.
     Addr_t	allocPtr;	//!< allocation pointer
+    Value_t rememberSet;  //pointers that are updated that could violate the heap invariants
 			      /* logging support */
 /* NOTE: these volatile annotations are not required for the SWP branch */
     volatile uint64_t
@@ -106,8 +107,8 @@ struct struct_vproc {
 
   /* additional optional fields used for stats etc. */
     Timer_t	timer;		//!< tracks the execution time of this vproc
-    Value_t rememberSet;  //pointers that are updated that could violate the heap invariants
 			      /* GC stats */
+    uint64_t counter [5];   //!< counter
 #ifndef NO_GC_STATS
     uint32_t	nPromotes;	//!< number of promotions
     uint32_t	nMinorGCs;	//!< number of minor GCs by this vproc
@@ -128,7 +129,7 @@ struct struct_vproc {
 #endif
 
     Timer_t	genTimer;		//!< general purpose timer  
-    uint64_t counter [5];   //!< counter
+    
 };
 
 /* the type of the initial function to run in a vproc */
