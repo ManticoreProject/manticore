@@ -8,6 +8,13 @@
 #include "gc-inline.h"
 #include "heap.h"
 
+/*
+ * this serves as a place to set a breakpoint
+ * once the breakoint is hit, execute the "up" command to 
+ * move up the stack one level.  This saves you from having 
+ * to set multiple breakpoints, instead just have all error/interesting
+ * cases call this function
+ */
 void somethingBadHappened(){
 
 }
