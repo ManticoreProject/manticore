@@ -113,8 +113,6 @@ void MinorGC (VProc_t *vp)
     rp = M_AddRSElts(vp, rp);
     *rp++ = 0;
 
-    checkReadSet(vp, "Prior to Minor GC");
-
 #ifndef NDEBUG
   /* nullify non-live registers */
     vp->stdArg = M_UNIT;
@@ -183,16 +181,11 @@ void MinorGC (VProc_t *vp)
 
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
       /* time to do a major collection. */
-    Addr_t oldOldTop = vp->oldTop;
-    vp->oldTop = (Addr_t)nextScan;
-    checkReadSet(vp, "After MinorGC");
-    vp->oldTop = oldOldTop;
 	MajorGC (vp, roots, (Addr_t)nextScan);
     }
     else {
       /* remember information about the final state of the heap */
 	vp->oldTop = (Addr_t)nextScan;
-	checkReadSet(vp, "After MinorGC");
     }
 
 

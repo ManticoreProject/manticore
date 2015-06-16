@@ -78,6 +78,19 @@ Value_t ** M_AddRSElts(VProc_t * vp, Value_t ** rootPtr){
 
     while (rememberSet != (RS_t *)M_NIL) {
         Value_t * source = rememberSet->source;
+
+        RS_t ** prev = &(rememberSet->next);
+        RS_t * ptr = rememberSet->next;
+        while((Value_t)ptr != M_NIL){
+            if(ptr->source == source && ptr->offset == rememberSet->offset){
+                *prev = ptr->next;
+                ptr = ptr->next;
+            }else{
+                prev = &(ptr->next);
+                ptr = ptr->next;
+            }
+        }
+
         Value_t dest = source[rememberSet->offset];
 
         int sourceGen = toGenNum(source, heapBase, oldSzB, nurseryBase, nurserySize);
@@ -94,6 +107,25 @@ Value_t ** M_AddRSElts(VProc_t * vp, Value_t ** rootPtr){
     }
     numRememberSetElements = id;
     return rootPtr;
+}
+
+void M_PruneRemSetAll(VProc_t * vp, long threadID){
+    RS_t * remSet = (RS_t *)vp->rememberSet;
+    RS_t ** trailer = &(vp->rememberSet);
+    while((Addr_t) remSet != M_NIL){
+        long currentTID = ((long)remSet->source[0]) & 0xFFFFFFFF00000000;
+        if(currentTID == threadID){
+            *trailer = remSet->next;
+            remSet = remSet->next;
+        }else{
+            trailer = &(remSet->next);
+            remSet = remSet->next;
+        }
+    }
+}
+
+void M_PrintAllocPtr(VProc_t * vp, const char * context){
+    printf("VProc[%d]: Allocation pointer is now at %p (%s)\n", vp->id, vp->allocPtr, context);
 }
 
 /*Functions to help debug*/

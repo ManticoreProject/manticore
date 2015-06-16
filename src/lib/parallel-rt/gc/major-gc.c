@@ -139,20 +139,6 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	//SayDebug("[%2d] Major GC starting\n", vp->id);
 #endif
 
-    RS_t* rs= (RS_t*)vp->rememberSet;
-    int count = 0;
-    RS_t remSet[100] = {NULL};
-    while(rs!= (RS_t*)M_NIL){
-        remSet[count].source = rs->source;
-        remSet[count].offset = rs->offset;
-        remSet[count].id = (long)rs->source[rs->offset];
-        count++;
-        if(AddrToChunk(ValueToAddr(rs->source))->sts == TO_SP_CHUNK && inAddrRange(vp->oldTop, top - vp->oldTop, rs->source[rs->offset])){
-            printf("Pointer from global to nursery (%p) -> (%p)\n", rs->source, rs->source[rs->offset]);
-        }
-        rs = rs->next;
-        
-    }
     /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	    Value_t p = *roots[i];
@@ -219,19 +205,13 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     Addr_t oldOldTop = vp->oldTop;
     vp->oldTop = vp->heapBase + youngSzB;
 
-
-    Addr_t skipped[count];
-    int skipCount = 0;
     //RememberSet: translate pointers for source that just got promoted to global heap and dest still in local heap
     int i = 0;
     RS_t* rememberSet = (RS_t*)vp->rememberSet;
     while(rememberSet != (RS_t*)M_NIL){
         Value_t dest = rememberSet->source[rememberSet->offset];
         if(inAddrRange(oldOldTop, youngSzB, (Addr_t)dest)){
-            //printf("Translating pointer from %p to %p (oldSzB = %p)\n", dest, (Word_t)((Addr_t)dest - oldSzB), oldSzB);
             rememberSet->source[rememberSet->offset] = (Word_t)((Addr_t)dest - oldSzB);
-            skipped[skipCount] = rememberSet->source;
-            skipCount++;
         }
         rememberSet = rememberSet->next;
     }
@@ -270,11 +250,9 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 
     LogMajorGCEnd (vp, nBytesCopied, 0); /* FIXME: nCopiedBytes, nAvailBytes */
 
-    checkReadSet(vp, "After MajorGC");
 
     if (vp->globalGCPending || (ToSpaceSz >= ToSpaceLimit)){
 	   StartGlobalGC (vp, roots);
-        checkReadSet(vp, "After GlobalGC");
     }   
 
 } /* end of MajorGC */
