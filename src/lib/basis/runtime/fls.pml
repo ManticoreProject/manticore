@@ -157,7 +157,7 @@ structure FLS :
         cont dummy(e:exn) = return(alloc(0, nil))
         let counter : AtomicCounter.counter = @get-counter(UNIT / dummy)
         let id : long = AtomicCounter.@bump(counter)
-        let id : long = I64LSh(1:long, id)
+        let id : long = I64LSh(id, 32:long)
         let k0 : [[int], any] = alloc(alloc(DICT_BUILTIN_TOPOLOGY), nil)
         let flg : ![bool] = alloc(false)
         let flg : ![bool] = promote(flg)  
