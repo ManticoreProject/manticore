@@ -256,6 +256,7 @@ struct
                                 let casted : mutWithK = (mutWithK) rs
                                 do #NEXT(casted) := NilItem
                                 let current : any = apply getLoop()
+                                BUMP_KCOUNT
                                 throw k(current)
                 end
             apply ffLoop(oldRS, #NUMK(readSet), oldRS)
@@ -319,7 +320,7 @@ struct
                             do FLS.@set-key(READ_SET, ffRes / exh)
                             do FLS.@set-key(WRITE_SET, ws / exh)
                             do FLS.@set-key(FF_KEY, enum(0) / exh)
-                            do ccall M_Print_Long("About to throw to k (Address %p)\n", k)
+                            BUMP_KCOUNT
                             throw k(x)
                     end
         ;

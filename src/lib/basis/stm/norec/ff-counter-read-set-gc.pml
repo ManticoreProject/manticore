@@ -38,7 +38,6 @@ struct
  *)
 
 #define NilItem enum(0):any
-#define BUMP_REM_COUNT(item) do #0(item) := I64Add(#0(item), 2:long)
 #define WithK(prevTag, tvar, contents, next, ws, k, nextK) alloc(I64OrB(prevTag, 1:long), tvar, contents, next, ws, k, nextK)
 #define WithoutK(prevTag, tvar, contents, next) (item)alloc(I64AndB(prevTag, 18446744073709551614:long), tvar, contents, next)
 #define TOWITHOUTK(tag) I64AndB(tag, 18446744073709551614:long)
@@ -386,7 +385,7 @@ struct
                     let newRemSet : [item, int, any] = alloc(last, NEXT, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I64Add(#NUMK(readSet), 1:long))
-                    BUMP_REM_COUNT(newItem)
+                    do #0(newItem) := I64Add(#0(newItem), 2:long)
                     do #NEXT(last) := (any) newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
                     return()
@@ -395,7 +394,7 @@ struct
                 let newRemSet : [item, int, any] = alloc(last, NEXT, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I64Add(#NUMK(readSet), 1:long))
-                BUMP_REM_COUNT(newItem)
+                do #0(newItem) := I64Add(#0(newItem), 2:long)
                 do #NEXT(last) := (any) newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
                 return()
@@ -426,7 +425,7 @@ struct
                     let rs : any = vpload(REMEMBER_SET, vp)
                     let newRemSet : [item, int, any] = alloc(last, NEXT, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
-                    BUMP_REM_COUNT(newItem)
+                    do #0(newItem) := I64Add(#0(newItem), 2:long)
                     do #NEXT(last) := (any) newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
                     return()
@@ -436,7 +435,7 @@ struct
                 let newRemSet : [item, int, any] = alloc(last, NEXT, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(last) := (any) newItem
-                BUMP_REM_COUNT(newItem)
+                do #0(newItem) := I64Add(#0(newItem), 2:long)
                 do FLS.@set-key(READ_SET, newRS / exh)
                 return()
         ;

@@ -69,7 +69,7 @@ struct
                 end
             cont retK(x:any) = return(x)
             do  if I64Gt(#1(tv), 0:long)
-                then RS.@fast-forward(readSet, writeSet, tv, retK, myStamp / exh)
+                then RS.@c-fast-forward(readSet, writeSet, tv, retK, myStamp / exh)
                 else return()
             let localRes : Option.option = apply chkLog(writeSet)
             case localRes
