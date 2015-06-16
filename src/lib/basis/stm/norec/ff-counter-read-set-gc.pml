@@ -44,7 +44,7 @@ struct
 
 #define GET_COUNT(tag) I64LSh(I64AndB(tag, 4294967295:long), 1:long)
 
-#define Kind(tv) I64AndB(#0(tv), 1:long)
+#define Kind(tv) I64AndB(SELECT(0, tv), 1:long)
 
     _primcode(
         define @allocPrintFun(x:unit / exh:exh) : any = 
