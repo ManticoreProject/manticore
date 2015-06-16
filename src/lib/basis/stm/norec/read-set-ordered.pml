@@ -258,7 +258,7 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
+                    let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
@@ -266,7 +266,7 @@ struct
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
+                let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
@@ -296,7 +296,7 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
+                    let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
@@ -304,7 +304,7 @@ struct
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
+                let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)

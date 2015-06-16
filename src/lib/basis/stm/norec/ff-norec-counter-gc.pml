@@ -1,9 +1,12 @@
-structure NoRecFFCounter = 
+structure NoRecFFCounterGC = 
 struct
 
 #define READ_SET_BOUND 20
 
-    structure RS = FFReadSetCounter
+    structure RS = FFReadSetCounterGC
+
+    datatype 'a item = Write of 'a * 'a * 'a | NilItem 
+
 
     _primcode(
         define @init-count(x:unit / exh:exh) : ml_long = 
@@ -58,14 +61,14 @@ struct
                     throw exh(e)
             let myStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
-            let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
-            fun chkLog(writeSet : RS.item) : Option.option = (*use local copy if available*)
+            let writeSet : item = FLS.@get-key(WRITE_SET / exh)
+            fun chkLog(writeSet : item) : Option.option = (*use local copy if available*)
                 case writeSet
-                   of RS.Write(tv':tvar, contents:any, tl:RS.item) =>
+                   of Write(tv':tvar, contents:any, tl:item) =>
                         if Equal(tv', tv)
                         then return(Option.SOME(contents))
                         else apply chkLog(tl)
-                    | RS.NilItem => return (Option.NONE)
+                    | NilItem => return (Option.NONE)
                 end
             cont retK(x:any) = return(x)
             do  if I64Gt(#1(tv), 0:long)
@@ -119,14 +122,14 @@ struct
             let tv : tvar = #0(arg)
             let v : any = #1(arg)
             let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
-            let newWriteSet : RS.item = RS.Write(tv, v, writeSet)
+            let newWriteSet : RS.item = Write(tv, v, writeSet)
             do FLS.@set-key(WRITE_SET, newWriteSet / exh)
             return(UNIT)
         ;
 
         define @commit(/exh:exh) : () =
         	let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
-        	let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
+        	let writeSet : item = FLS.@get-key(WRITE_SET / exh)
         	let stamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
         	let counter : ![long] = VClock.@get-boxed(/exh)
         	fun lockClock() : () = 
@@ -138,20 +141,20 @@ struct
         			do RS.@validate(readSet, stamp / exh)
         			apply lockClock()
         	do apply lockClock()
-        	fun writeBack(ws:RS.item) : () = 
+        	fun writeBack(ws:item) : () = 
         		case ws 
-        		   of RS.NilItem => return()
-        			| RS.Write(tv:tvar, x:any, next:RS.item) => 
+        		   of NilItem => return()
+        			| Write(tv:tvar, x:any, next:item) => 
         				let x : any = promote(x)
         				do #0(tv) := x
         				apply writeBack(next)
         		end
-            fun reverseWS(ws:RS.item, new:RS.item) : RS.item = 
+            fun reverseWS(ws:item, new:item) : item = 
                 case ws 
-                   of RS.NilItem => return(new)
-                    | RS.Write(tv:tvar, x:any, next:RS.item) => apply reverseWS(next, RS.Write(tv, x, new))
+                   of NilItem => return(new)
+                    | Write(tv:tvar, x:any, next:item) => apply reverseWS(next, Write(tv, x, new))
                 end
-            let writeSet : RS.item = apply reverseWS(writeSet, RS.NilItem)
+            let writeSet : item = apply reverseWS(writeSet, NilItem)
         	do apply writeBack(writeSet)
         	do #0(counter) := I64Add(#0(stamp), 2:long) (*unlock clock*)
             let ffInfo : RS.read_set =  FLS.@get-key(FF_KEY / exh)
@@ -164,12 +167,12 @@ struct
             if (#0(in_trans))
             then apply f(UNIT/exh)
             else 
-            	let stampPtr : ![stamp, int, int] = FLS.@get-key(STAMP_KEY / exh)
+            	let stampPtr : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
                 do FLS.@set-key(FF_KEY, enum(0) / exh)
                 cont enter() = 
-                    let rs : RS.read_set = RS.@new()
+                    let rs : RS.read_set = RS.@new(#3(stampPtr))
                     do FLS.@set-key(READ_SET, rs / exh)  (*initialize STM log*)
-                    do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
+                    do FLS.@set-key(WRITE_SET, NilItem / exh)
                     let stamp : stamp = @get-stamp(/exh)
                     do #0(stampPtr) := stamp
                     do #0(in_trans) := true
@@ -185,8 +188,8 @@ struct
                     let res : any = apply f(UNIT/transExh)
                     do @commit(/transExh)
                     do #0(in_trans) := false
-                    do FLS.@set-key(READ_SET, RS.NilItem / exh)
-                    do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
+                    do FLS.@set-key(READ_SET, NilItem / exh)
+                    do FLS.@set-key(WRITE_SET, NilItem / exh)
                     do FLS.@set-key(FF_KEY, enum(0) / exh)
                     return(res)
                 throw enter()
@@ -204,7 +207,7 @@ struct
             let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
             let oldFFInfo : RS.read_set = FLS.@get-key(FF_KEY / exh)
             do RS.@decCounts(oldFFInfo / exh)
-            do RS.@incCounts(readSet, RS.NilItem / exh)
+            do RS.@incCounts(readSet, enum(0):any / exh)
             do FLS.@set-key(FF_KEY, readSet / exh)
             (*</FF>*)
             let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
@@ -231,7 +234,7 @@ struct
     val same : 'a tvar * 'a tvar -> bool = _prim(@tvar-eq)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
 
-    val _ = Ref.set(STMs.stms, ("ffRefCount", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("ffRefCountGC", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
 end
 
 

@@ -254,7 +254,7 @@ struct
                                         let vp : vproc = host_vproc
                                         let rememberSet : any = vpload(REMEMBER_SET, vp)
                                         do ccall checkInvariant(ffFirstK, #LASTK(readSet), vp, "fast-forward")
-                                        let newRemSet : [mutWithK, int, long, [mutWithK, int, long, any]] = alloc(ffFirstK, NEXTK, 0:long, rememberSet)
+                                        let newRemSet : [mutWithK, int, [mutWithK, int, any]] = alloc(ffFirstK, NEXTK, rememberSet)
                                         do vpstore(REMEMBER_SET, vp, newRemSet)
                                         do #NEXTK(ffFirstK) := #LASTK(readSet) 
                                         let currentLast : item = #TAIL(readSet)
@@ -301,7 +301,7 @@ struct
                                  * that we are updating a bogus local pointer, however, given the
                                  * nature of the data structure, we do preserve the heap invariants*)
                                 let rs : any = vpload(REMEMBER_SET, vp)
-                                let newRemSet : [item, int, long, any] = alloc(l, NEXTK, 0:long, rs)
+                                let newRemSet : [item, int, any] = alloc(l, NEXTK, rs)
                                 do vpstore(REMEMBER_SET, vp, newRemSet)
                                 let l : mutWithK = (mutWithK) l
                                 let next : mutWithK = (mutWithK) next
@@ -377,7 +377,7 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
+                    let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
@@ -388,7 +388,7 @@ struct
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
+                let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT,  rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
@@ -421,7 +421,7 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
+                    let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
@@ -432,7 +432,7 @@ struct
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, 0:long, rs)
+                let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)

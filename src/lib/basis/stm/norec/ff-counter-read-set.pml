@@ -29,19 +29,6 @@ struct
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a * 'a
                      | WithoutK of 'a * 'a * 'a | Abort of unit 
 
-
-    _primcode(
-        define @allocPrintFun(x:unit / exh:exh) : any = 
-            fun f(x:any / exh:exh) : unit = return(UNIT)
-            let box : ![fun(any / exh -> unit)] = alloc(f)
-            let box : ![fun(any / exh -> unit)] = promote(box)
-            return(box);
-    )
-    
-    val allocPrintFun : unit -> 'a = _prim(@allocPrintFun)
-    val printFunPtr = allocPrintFun()
-    fun getPrintFunPtr() = printFunPtr
-
     _primcode(
 
         extern void M_Print_Long2(void *, void *, void *);
@@ -74,14 +61,6 @@ struct
             let stamp : stamp = apply stampLoop()
             return(stamp)
         ;
-
-        define @getPrintFunPtr = getPrintFunPtr;
-
-        define @registerPrintFun(f : fun(any / exh -> unit) / exh:exh) : unit = 
-            let funBox : ![fun(any / exh -> unit)] = @getPrintFunPtr(UNIT / exh)
-            let f : fun(any / exh -> unit) = promote(f)
-            do #0(funBox) := f
-            return(UNIT);
 
     	define @new() : read_set = 
             let dummyTRef : ![any,long,long] = alloc(enum(0), 0:long, 0:long)
@@ -133,23 +112,6 @@ struct
             if Equal(readSet, enum(0))
             then return()
             else apply decLoop(#LASTK(readSet))
-        ;
-
-        define @short-path-len(readSet : read_set / exh:exh) : () = 
-            fun lenLoop(i:item, count:long) : long = 
-                case i 
-                   of NilItem => return(count)
-                    | WithK(tv:tvar, _:any, _:item, ws:item, k:cont(any), next:item) => 
-                        apply lenLoop(next, I64Add(count, 1:long))
-                    | WithoutK(tv:tvar, _:any, next:item) => 
-                        do ccall M_Print("short-path-len: Impossible\n") return(0:long)
-                end
-            let l : long = apply lenLoop(#LASTK(readSet), 0:long)
-            if I64Eq(l, #NUMK(readSet))
-            then return()
-            else 
-                do ccall M_Print_Long2("Short path length is %d, should be %d\n", l, #NUMK(readSet))
-                return()
         ;
 
         define inline @incCounts(readSet : read_set, sentinel : item / exh : exh) : () =
@@ -248,19 +210,6 @@ struct
             apply validateLoopABCD(#HEAD(readSet), NilItem, 0:long)
         ;
 
-        define @rs-len(readSet : read_set / exh:exh) : () =
-            fun lenLoop(i:item, count:int) : int = 
-                case i 
-                   of NilItem => return(count)
-                    | WithK(tv:tvar, _:any, next:item, ws:item, k:cont(any), _:item) => 
-                        apply lenLoop(next, I32Add(count, 1))
-                    | WithoutK(tv:tvar, _:any, next:item) => 
-                        apply lenLoop(next, I32Add(count, 1))
-                end
-            let l : int = apply lenLoop(#HEAD(readSet), 0)
-            do ccall M_Print_Int("Read set length is %d\n", l)
-            return();
-
         define @ff-finish(readSet : read_set, checkpoint : item, i:long / exh:exh) : () =
             case checkpoint 
                of WithK(tv:tvar,x:any,_:item,ws:item,k:cont(any),next:item) => 
@@ -340,7 +289,7 @@ struct
                                         (*add to remember set*)
                                         let vp : vproc = host_vproc
                                         let rememberSet : any = vpload(REMEMBER_SET, vp)
-                                        let newRemSet : [mutWithK, int, [mutWithK, int, any]] = alloc(ffFirstK, NEXTK, alloc(currentLast, NEXT, rememberSet))
+                                        let newRemSet : [mutWithK, int, any] = alloc(ffFirstK, NEXTK, rememberSet)
                                         do vpstore(REMEMBER_SET, vp, newRemSet)
                                         @ff-validate(readSet, rs, myStamp / exh)
                                     else apply checkRS(next, I64Add(i, 1:long))
@@ -375,12 +324,10 @@ struct
                     end
         ;
 
-
         define inline @getNumK(rs : read_set) : long = return(#NUMK(rs));
 
-        
-
         define inline @filterRS(readSet : read_set / exh : exh) : () = 
+            let vp : vproc = host_vproc
             fun dropKs(l:item, n:long) : long =   (*drop every other continuation*)
                 case l
                    of NilItem => return(n)
@@ -391,6 +338,9 @@ struct
                                 (* NOTE: if compiled with -debug, this will generate warnings
                                  * that we are updating a bogus local pointer, however, given the
                                  * nature of the data structure, we do preserve the heap invariants*)
+                                let rs : any = vpload(REMEMBER_SET, vp)
+                                let newRemSet : [item, int, any] = alloc(l, NEXTK, rs)
+                                do vpstore(REMEMBER_SET, vp, newRemSet)
                                 let l : mutWithK = (mutWithK) l
                                 let next : mutWithK = (mutWithK) next
                                 do #KPOINTER(next) := enum(0):any
@@ -448,11 +398,6 @@ struct
                 return()
         ;
 
-        define @printHeader(tv:any) : () = 
-            let header : any = ArrLoad(tv, ~1)
-            do ccall M_Print_Long("Header is %lu\n", header)
-            return();
-
         (*add a non checkpointed read to the read set*)
     	define @insert-without-k(tv:any, v:any, readSet : read_set / exh:exh) : () =
     		let newItem : item = WithoutK(tv, v, NilItem)
@@ -485,43 +430,9 @@ struct
                 do FLS.@set-key(READ_SET, newRS / exh)
                 return()
         ;
-        
-        define @new-w(x:unit / exh:exh) : read_set = 
-            let firstElem : item = WithoutK(alloc(~1), enum(0), NilItem)
-            let rs : read_set = alloc(firstElem, firstElem, firstElem, 0:long)
-            return(rs);
-
-        define @insert-w(arg : [any, read_set] / exh:exh) : read_set = 
-            do @insert-without-k(#0(arg), enum(0), #1(arg) / exh)
-            let new : read_set = FLS.@get-key(READ_SET / exh)
-            return(new);
-
-        define @printRS(arg : [read_set, fun(any / exh -> unit)] / exh:exh) : unit =
-            let rs : read_set = #0(arg)
-            let f : fun(any / exh -> unit) = #1(arg)
-            fun printLoop(i:item) : unit = 
-                case i 
-                   of NilItem => return(UNIT)
-                    | WithoutK(hd:any, _:any, tl:item) => 
-                        let _ : unit = apply f(hd / exh)
-                        apply printLoop(tl)
-                end
-            apply printLoop(#0(rs));
-
-        define @check-count(tv : any / exh:exh) : unit = 
-            let tv : tvar = (tvar) tv
-            do ccall M_Print_Long("referece count is %lu\n", #1(tv))
-            return(UNIT)
-        ;
     )
-    val registerPrintFun : ('a -> unit) -> unit = _prim(@registerPrintFun)
-
     type 'a read_set = _prim(read_set)
-    val new : unit -> 'a read_set = _prim(@new-w)
-    val insert : 'a * 'a read_set -> 'a read_set = _prim(@insert-w)
-    val printRS : 'a read_set * ('a -> unit) -> unit = _prim(@printRS)
 
-    val checkCount : 'a -> unit = _prim(@check-count)
 end
 
 
