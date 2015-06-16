@@ -3,13 +3,11 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
 
     pabort/v-clock.pml
     pabort/partial-abort-stm.pml
-    pabort/hybridPartialSTM.pml
     pabort/boundedHybridPartialSTM.pml
     pabort/full-abort-stm.pml
 
     fast-forward/read-set2.pml
 
-    fast-forward/read-set.pml
     fast-forward/ordered-pabort.pml
     fast-forward/partial-stm.pml
 
@@ -25,6 +23,9 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
 
     norec/ff-counter-read-set.pml
     norec/ff-norec-counter.pml
+
+    norec/ff-counter-read-set-gc.pml
+    norec/ff-norec-counter-gc.pml
 
     norec/ff-mask-read-set.pml
     norec/ff-norec-mask.pml

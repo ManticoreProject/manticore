@@ -134,7 +134,6 @@ struct
                     do #HEAD(readSet) := next
                     do FLS.@set-key(FF_KEY, readSet / exh) (*try and use this portion of the read set on our second run through*)
                     let vp : vproc = host_vproc
-                    do ccall checkReadSet(vp, "abort")
                     (*</FF>*)
                     let captureFreq : int = FLS.@get-counter2()
                     do FLS.@set-counter(captureFreq)
@@ -183,8 +182,6 @@ struct
                     do FLS.@set-key(READ_SET, newRS / exh)
                     do FLS.@set-key(WRITE_SET, ws / exh)
                     let vp : vproc = host_vproc
-                    do ccall checkReadSet(vp, "ff-finish")
-                    (*do ccall printShortPath(checkpoint, vp)*)
                     BUMP_KCOUNT
                     throw k(x)
                 | _ => do ccall M_Print("Impossible: ff-finish\n") throw exh(Fail(@"Impossible: ff-finish\n"))
@@ -215,7 +212,6 @@ struct
                                 do FLS.@set-key(READ_SET, newRS / exh)
                                 do FLS.@set-key(WRITE_SET, ws / exh)
                                 let vp : vproc = host_vproc
-                                do ccall checkReadSet(vp, "ff-validate")
                                 fun getLoop() : any = 
                                     let v : any = #0(tv)
                                     let t : long = VClock.@get(/exh)
@@ -253,8 +249,7 @@ struct
                                         let ffFirstK : mutWithK = (mutWithK) rs
                                         let vp : vproc = host_vproc
                                         let rememberSet : any = vpload(REMEMBER_SET, vp)
-                                        do ccall checkInvariant(ffFirstK, #LASTK(readSet), vp, "fast-forward")
-                                        let newRemSet : [mutWithK, int, [mutWithK, int, any]] = alloc(ffFirstK, NEXTK, rememberSet)
+                                        let newRemSet : [mutWithK, int, any] = alloc(ffFirstK, NEXTK, rememberSet)
                                         do vpstore(REMEMBER_SET, vp, newRemSet)
                                         do #NEXTK(ffFirstK) := #LASTK(readSet) 
                                         let currentLast : item = #TAIL(readSet)
@@ -381,9 +376,7 @@ struct
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
-                    do ccall checkInvariant(casted, newItem, vp, "insert-with-k, above limitPtr")
                     let vp : vproc = host_vproc
-                    do ccall checkReadSet(vp, "insert-with-k, above limitPtr")
                     return()
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
@@ -392,9 +385,7 @@ struct
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
-                do ccall checkInvariant(casted, newItem, vp, "insert-with-k, below nursery base")
                 let vp : vproc = host_vproc
-                do ccall checkReadSet(vp, "insert-with-k, below nursery base")
                 return()
         ;
 
@@ -425,9 +416,7 @@ struct
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
-                    do ccall checkInvariant(casted, newItem, vp, "insert-without-k, above limit ptr")
                     let vp : vproc = host_vproc
-                    do ccall checkReadSet(vp, "insert-without-k, above limit ptr")
                     return()
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
@@ -436,9 +425,7 @@ struct
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
-                do ccall checkInvariant(casted, newItem, vp, "insert-without-k, below nursery base")
                 let vp : vproc = host_vproc
-                do ccall checkReadSet(vp, "insert-without-k, below nursery base")
                 return()
         ;
         

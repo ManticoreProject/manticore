@@ -63,7 +63,9 @@ struct
 
         extern void M_Print_Long2(void *, void *, void *);
         extern void M_IncCounter(void *, int , long);
-        extern void * fastForward(void*, void*, void*, void*, void*, void*, void*, void*) __attribute__((pure,alloc));
+        extern void * fastForward(void*, void*, void*, void*, void*, void*, void*, void*) __attribute__((alloc));
+        extern void M_PruneRemSetAll(void*, long);
+        extern void M_PrintAllocPtr(void*, void*) __attribute__((alloc));
 
     	typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, long]; (*contents, lock, version stamp*)
@@ -94,6 +96,11 @@ struct
             let stamp : stamp = apply stampLoop()
             return(stamp)
         ;
+
+        define inline @cleanRemSetAll(threadId : long) : () =
+            let vp : vproc = host_vproc
+            do ccall M_PruneRemSetAll(vp, threadId)
+            return();
 
         define @getPrintFunPtr = getPrintFunPtr;
 
@@ -182,8 +189,7 @@ struct
                 FLS.@set-key(FF_KEY, readSet / exh)
         ;
 
-
-        define @abortABCD(readSet : read_set, checkpoint : item, startStamp : ![stamp, int], count:long, revalidate : fun(item, item, long / -> ) / exh:exh) : () = 
+        define @abortABCD(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:long, revalidate : fun(item, item, long / -> ) / exh:exh) : () = 
             if Equal(checkpoint, NilItem)
             then
                 (*<FF>*)
@@ -221,7 +227,8 @@ struct
                 throw abortK(current)
         ;
 
-        define @validate(readSet : read_set, startStamp:![stamp, int] / exh:exh) : () = 
+        define @validate(readSet : read_set, startStamp:![stamp, int, int, long] / exh:exh) : () = 
+            let vp : vproc = host_vproc
             fun validateLoopABCD(rs : item, abortInfo : item, count:long) : () =
                 if Equal(rs, NilItem)
                 then 
@@ -245,7 +252,8 @@ struct
                     end
             let currentTime : stamp = @get-stamp(/exh)
             do #0(startStamp) := currentTime
-            apply validateLoopABCD(#HEAD(readSet), NilItem, 0:long)
+            do apply validateLoopABCD(#HEAD(readSet), NilItem, 0:long)
+            return()
         ;
 
         define @ff-finish(readSet : read_set, checkpoint : item, i:long / exh:exh) : () =
@@ -258,7 +266,7 @@ struct
             throw k(#CONTENTS(checkpoint))
         ;
 
-        define @ff-validate(readSet : read_set, oldRS : item, myStamp : ![long,int] / exh:exh) : () = 
+        define @ff-validate(readSet : read_set, oldRS : item, myStamp : ![long,int,int,long] / exh:exh) : () = 
             fun ffLoop(rs:item, i:long, checkpoint : item) : () = 
                 if Equal(rs, NilItem)
                 then @ff-finish(readSet, checkpoint, i / exh)
@@ -291,7 +299,7 @@ struct
             apply ffLoop(oldRS, #NUMK(readSet), oldRS)
         ;
 
-        define @fast-forward(readSet : read_set, writeSet : any, tv:tvar, retK:cont(any), myStamp : ![long, int] / exh:exh) : () = 
+        define @fast-forward(readSet : read_set, writeSet : any, tv:tvar, retK:cont(any), myStamp : ![long, int, int, long] / exh:exh) : () = 
             let ffInfo : read_set = FLS.@get-key(FF_KEY / exh)
             if Equal(ffInfo, enum(0))
             then return()

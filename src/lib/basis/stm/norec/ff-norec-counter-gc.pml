@@ -59,7 +59,7 @@ struct
                		do ccall M_Print("Trying to read outside a transaction!\n")
                   	let e : exn = Fail(@"Reading outside transaction\n")
                     throw exh(e)
-            let myStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
+            let myStamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             fun chkLog(writeSet : item) : Option.option = (*use local copy if available*)
@@ -130,7 +130,7 @@ struct
         define @commit(/exh:exh) : () =
         	let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
         	let writeSet : item = FLS.@get-key(WRITE_SET / exh)
-        	let stamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
+        	let stamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
         	let counter : ![long] = VClock.@get-boxed(/exh)
         	fun lockClock() : () = 
         		let current : stamp = #0(stamp)
@@ -159,6 +159,7 @@ struct
         	do #0(counter) := I64Add(#0(stamp), 2:long) (*unlock clock*)
             let ffInfo : RS.read_set =  FLS.@get-key(FF_KEY / exh)
             do RS.@decCounts(ffInfo / exh)
+            do RS.@cleanRemSetAll(#3(stamp))
         	return()
         ;
 
