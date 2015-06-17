@@ -65,6 +65,7 @@ struct
         extern void * fastForward(void*, void*, void*, void*, void*, void*, void*, void*) __attribute__((alloc));
         extern void M_PruneRemSetAll(void*, long);
         extern void M_PrintAllocPtr(void*, void*) __attribute__((alloc));
+        extern void examineWriteSets(void*, void*);
 
     	typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, long]; (*contents, lock, version stamp*)
@@ -302,12 +303,12 @@ struct
             let ffInfo : read_set = FLS.@get-key(FF_KEY / exh)
             if Equal(ffInfo, enum(0))
             then return()
-            else (*we should only allocate the checkRS closure if we are going to actually use it*)
+            else 
                 fun checkRS(rs:item, i:long) : () = 
                     if Equal(rs, NilItem)
                     then return()   
                     else 
-                        INC_FF(1:long)
+                        
                         if Equal(tv, #TVAR(rs))
                         then (*tvars are equal*)
                             let res : int = ccall M_PolyEq(#KPOINTER(rs), retK)
@@ -326,12 +327,13 @@ struct
                                     let rememberSet : any = vpload(REMEMBER_SET, vp)
                                     let newRemSet : [item, int, any] = alloc(rs, NEXTK, rememberSet)
                                     do vpstore(REMEMBER_SET, vp, newRemSet)
-                                    let currentCount : long = GET_COUNT(#TAG(currentLast))
-                                    let ffCount : long = GET_COUNT(#TAG(rs))
-                                    if I64Eq(currentCount, ffCount)
-                                    then @ff-validate(readSet, rs, myStamp / exh)
-                                    else @ff-validate(readSet, rs, myStamp / exh)
-                                else apply checkRS(#NEXTK(rs), I64Add(i, 1:long))
+                                    @ff-validate(readSet, rs, myStamp / exh)
+                                else 
+                                    INC_FF(1:long)
+                                    (*+DEBUG*)
+                                    do ccall examineWriteSets(writeSet, #WRITESET(rs))
+                                    (*-DEBUG*)
+                                    apply checkRS(#NEXTK(rs), I64Add(i, 1:long))
                             else apply checkRS(#NEXTK(rs), I64Add(i, 1:long))
                         else apply checkRS(#NEXTK(rs), I64Add(i, 1:long))
                 apply checkRS(#LASTK(ffInfo), 1:long)
