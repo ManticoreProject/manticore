@@ -308,7 +308,6 @@ struct
                     if Equal(rs, NilItem)
                     then return()   
                     else 
-                        
                         if Equal(tv, #TVAR(rs))
                         then (*tvars are equal*)
                             let res : int = ccall M_PolyEq(#KPOINTER(rs), retK)
@@ -329,11 +328,11 @@ struct
                                     do vpstore(REMEMBER_SET, vp, newRemSet)
                                     @ff-validate(readSet, rs, myStamp / exh)
                                 else 
-                                    INC_FF(1:long)
+                                    
                                     (*+DEBUG*)
                                     do ccall examineWriteSets(writeSet, #WRITESET(rs))
                                     (*-DEBUG*)
-                                    apply checkRS(#NEXTK(rs), I64Add(i, 1:long))
+                                    return() (*if this didn't work, nothing will*)
                             else apply checkRS(#NEXTK(rs), I64Add(i, 1:long))
                         else apply checkRS(#NEXTK(rs), I64Add(i, 1:long))
                 apply checkRS(#LASTK(ffInfo), 1:long)
