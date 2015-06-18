@@ -1,6 +1,5 @@
 structure STM = 
 struct
-
     type 'a tvar = 'a PartialSTM.tvar
 
     fun getArg f args = 
@@ -21,23 +20,6 @@ struct
 
     val (get,put,atomic,new,printStats,abort,unsafeGet, same) = getSTMFuns(Ref.get STMs.stms)
 
-(*
-    val (get,put,atomic,new,printStats,abort,unsafeGet, same) = 
-        if String.same(whichSTM, "bounded")
-        then (BoundedHybridPartialSTM.get,BoundedHybridPartialSTM.put,      
-              BoundedHybridPartialSTM.atomic,BoundedHybridPartialSTM.new,
-              BoundedHybridPartialSTM.printStats,BoundedHybridPartialSTM.abort,
-              BoundedHybridPartialSTM.unsafeGet, BoundedHybridPartialSTM.same)
-        else if String.same(whichSTM, "full")
-             then (FullAbortSTM.get,FullAbortSTM.put,FullAbortSTM.atomic,FullAbortSTM.new,FullAbortSTM.printStats,FullAbortSTM.abort,FullAbortSTM.unsafeGet, FullAbortSTM.same)
-             else if String.same(whichSTM, "ff")
-                  then (FFSTM.get, FFSTM.put, FFSTM.atomic, FFSTM.new, FFSTM.printStats, FFSTM.abort, FFSTM.unsafeGet, FFSTM.same)
-                  else if String.same(whichSTM, "ordered")
-                       then (OrderedSTM.get,OrderedSTM.put,OrderedSTM.atomic,OrderedSTM.new,OrderedSTM.printStats,OrderedSTM.abort,OrderedSTM.unsafeGet,OrderedSTM.same)
-                       else if String.same(whichSTM, "ordered")
-                            then (ConcatFFSTM.get, ConcatFFSTM.put, ConcatFFSTM.atomic, ConcatFFSTM.new, ConcatFFSTM.printStats, ConcatFFSTM.abort,ConcatFFSTM.unsafeGet, ConcatFFSTM.same)
-                            else (PartialSTM.get,PartialSTM.put,PartialSTM.atomic,PartialSTM.new,PartialSTM.printStats,PartialSTM.abort,PartialSTM.unsafeGet, PartialSTM.same)
-*)
     (*won't typecheck without these nonsense bindings*)
     val get : 'a tvar -> 'a = get
     val put : 'a tvar * 'a -> unit = put

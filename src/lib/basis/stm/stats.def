@@ -20,7 +20,7 @@
 					   do ccall M_Print_Int("Total-Aborts = %d\n", I32Add(counter1, counter2))     
 #define BUMP_KCOUNT let vp : vproc = host_vproc do ccall M_BumpCounter(vp, 2)
 #define PRINT_KCOUNT let counter1 : int = ccall M_SumCounter(2) \
-                     do ccall M_Print_Int("Fast Forward Continuation Hits = %d\n", counter1)     
+                     do ccall M_Print_Int("FF Matches = %d\n", counter1)     
 #define INC_FF(n) let vp : vproc = host_vproc do ccall M_IncCounter(vp, 3, n)
 #define PRINT_FF let counter1 : int = ccall M_SumCounter(3) \
                  do ccall M_Print_Int("Fast Forward Checks = %d\n", counter1)                                                                                                           

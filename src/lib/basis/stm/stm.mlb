@@ -2,33 +2,44 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
     stms.pml
 
     pabort/v-clock.pml
+
     pabort/partial-abort-stm.pml
+
     pabort/boundedHybridPartialSTM.pml
+
     pabort/full-abort-stm.pml
+
 
     fast-forward/read-set2.pml
 
     fast-forward/ordered-pabort.pml
+
     fast-forward/partial-stm.pml
 
     fast-forward/partial-stm-tail-rec.pml
 
+
     norec/norec.pml
+
     norec/partial-norec.pml
     
-    norec/read-set-ordered.pml
-    norec/ff-read-set.pml
-    norec/fast-forward-norec.pml
-    norec/ordered-norec.pml
+    norec/ff-merge-write-sets-rs.pml
+    norec/ff-merge-write-sets.pml
 
-    norec/ff-counter-read-set.pml
-    norec/ff-norec-counter.pml
-
-    norec/ff-counter-read-set-gc.pml
-    norec/ff-norec-counter-gc.pml
-
-    norec/ff-mask-read-set.pml
+    norec/ff-norec-mask-rs.pml
     norec/ff-norec-mask.pml
+
+    norec/ff-norec-rs.pml
+    norec/ff-norec.pml
+
+    norec/ff-ref-count-prune-rs.pml
+    norec/ff-ref-count-prune.pml
+
+    norec/ff-ref-count-rs.pml
+    norec/ff-ref-count.pml
+
+    norec/ordered-norec-rs.pml
+    norec/ordered-norec.pml
 
     stm.pml
 
