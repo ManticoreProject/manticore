@@ -23,6 +23,9 @@ structure BasicControl :  sig
   (* sequential mode *)
     val sequential : bool Controls.control
 
+  (* use the LLVM backend *)
+    val llvm : bool Controls.control
+
   (* select the top-level thread scheduler *)
     val scheduler : string Controls.control
 
@@ -156,6 +159,16 @@ structure BasicControl :  sig
 	    default = false
 	  }
 
+  (* llvm backend *)
+    val llvm : bool Controls.control = Controls.genControl {
+        name = "llvm",
+        pri = [0, 1, 1], (* TODO: What do these values mean? *)
+        obscurity = 0,
+        help = "use the (experimental) LLVM backend for code generation",
+        default = false
+      }
+   
+
   (* link with debug version of runtime mode *)
     val debug : bool Controls.control = Controls.genControl {
 	    name = "debug",
@@ -210,6 +223,10 @@ structure BasicControl :  sig
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool sequential,
 	      envName = NONE
 	    };
+      ControlRegistry.register topRegistry {
+          ctl = Controls.stringControl ControlUtil.Cvt.bool llvm,
+          envName = NONE
+        };
 	  ControlRegistry.register topRegistry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool debug,
 	      envName = NONE

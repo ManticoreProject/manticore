@@ -71,6 +71,9 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
     val allocVecChecks = transform {passName = "alloc-vec-checks", pass = AddAllocVecChecks.transform}
 
     fun optimize module = let
+    	(* just to ensure the flag works *)
+    	val () = if (Controls.get BasicControl.llvm) then (print "you tried to invoke the LLVM backend!\n") else ()
+
       val _ = CheckCFG.check ("closure", module)
 	  val _ = census module
 	  val _ = CheckCFG.check ("census", module)

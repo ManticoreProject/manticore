@@ -225,6 +225,7 @@ functor MainFn (
 	  \    -gcstats         build an executable with GC statistics enabled\n\
 	  \    -debug           build an executable with debugging enabled\n\
 	  \    -perf            build an executable with hw perf counters enabled\n\
+	  \    -llvm            compile using the (experimental) LLVM backend\n\
 	  \    -sequential      compile a sequential-mode program\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
@@ -308,6 +309,7 @@ functor MainFn (
 		| "-H" => help (SOME NONE)
 		| "-version" => version ()
 		| "-sequential" => set BasicControl.sequential
+		| "-llvm" => set BasicControl.llvm
 		| "-verbose" => (Controls.set(BasicControl.verbose, 1); processArgs args)
 		| "-log" => set BasicControl.logging
 		| "-gcstats" => set BasicControl.gcStats
