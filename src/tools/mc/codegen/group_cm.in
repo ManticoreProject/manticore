@@ -20,6 +20,7 @@ Group
   structure HeaderTableStruct
 
   functor AMD64GenFn
+  functor LLVMCodeGenFn
 
 is
 
@@ -92,3 +93,5 @@ is
   amd64/amd64-regs.sml
   amd64/amd64-types.sml
   amd64/amd64-@OS@-pseudo-ops-fn.sml
+
+  llvm/llvm-codegen-fn.sml

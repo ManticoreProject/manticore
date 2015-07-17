@@ -18,6 +18,7 @@ Library
   
 
   functor AMD64GenFn
+  functor LLVMCodeGenFn
 is
 
   $/basis.cm

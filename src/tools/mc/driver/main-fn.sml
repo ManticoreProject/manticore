@@ -7,7 +7,8 @@
 functor MainFn (
 
     structure Spec : TARGET_SPEC
-    structure CG : CODE_GEN
+    structure CG_MLRISC : CODE_GEN
+    structure CG_LLVM : CODE_GEN
 
   ) : sig
 
@@ -155,7 +156,10 @@ functor MainFn (
 
     fun codegen (verbose, outFile, cfg) = let
 	  val outStrm = TextIO.openOut outFile
-	  fun doit () = CG.codeGen {dst=outStrm, code=cfg}
+	  fun doit () = 
+	  	if (Controls.get BasicControl.llvm)
+	  	then CG_LLVM.codeGen {dst=outStrm, code=cfg}
+	  	else CG_MLRISC.codeGen {dst=outStrm, code=cfg}
 	  in	  
 	    AsmStream.withStream outStrm doit ();
 	    TextIO.closeOut outStrm;
