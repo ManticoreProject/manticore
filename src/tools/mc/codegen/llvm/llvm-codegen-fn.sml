@@ -10,6 +10,6 @@ functor LLVMCodeGenFn (structure Spec : TARGET_SPEC) :> CODE_GEN =
 struct
 
 	fun codeGen {code: CFG.module, dst: TextIO.outstream} =
-		raise Fail "LLVM Backend is not implemented yet!"
+		PrintCFG.output {counts=true, types=true} (dst, code)
 		
 end

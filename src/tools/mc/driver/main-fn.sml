@@ -163,7 +163,13 @@ functor MainFn (
 	  in	  
 	    AsmStream.withStream outStrm doit ();
 	    TextIO.closeOut outStrm;
-	    buildExe (verbose, outFile)
+
+	    (* KAVON_TEMP: This is temporary while construction is in progress *)
+	    if not (Controls.get BasicControl.llvm) 
+	    then buildExe (verbose, outFile)
+		else ()
+
+
 	  end (* compile *)
 
   (* compile an MLB or PML file *)
