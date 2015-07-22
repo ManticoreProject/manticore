@@ -417,7 +417,11 @@ structure MLB : sig
 	  val _	= chkExists file	  
 	  val e = chkExt file
         (* now load the basis etc. *)
-	  val basis = loadBasisLib emptyEnv
+
+       (* KAVON_TEMP: no basis for you *)
+      (* val basis = loadBasisLib emptyEnv *)
+	  val basis = []
+
 	  val pts = (case e
             of MLB => loadMLB (file, emptyEnv)
 	     | PML => [Option.valOf (loadPML (file, emptyEnv))]

@@ -132,12 +132,13 @@ functor MainFn (
 	  end
 
   (* the compiler's backend *)
+  (* KAVON_TEMP: turning it into an -O0 mode. likely won't produce a valid binary *)
     fun bomToCFG bom = let
-	  val bom = BOMOpt.optimize bom	
-    val cps = Convert.transform bom
-	  val cps = CPSOpt.optimize cps
+	  val bom = BOMOpt.optimize bom
+      val cps = Convert.transform bom
+	  (* val cps = CPSOpt.optimize cps *)
 	  val cfg = Closure.convert cps
-	  val cfg = CFGOpt.optimize cfg
+	  (* val cfg = CFGOpt.optimize cfg *)
 	  in
 	    cfg
 	  end
