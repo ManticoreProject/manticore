@@ -148,7 +148,7 @@ structure CFG =
     in
         val setPreds = setFn
         val getPreds = getFn
-        val haveSetPreds = peekFn
+        val maybeGetPreds = peekFn
     end
 
     fun varKindToString VK_None = "None"

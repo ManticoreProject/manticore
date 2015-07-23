@@ -34,4 +34,5 @@ is
   alloc-c-calls-fn.sml
   add-alloc-vec-checks-fn.sml
   unroll-loops.sml
+  predecessors.sml
   print-dot.sml
