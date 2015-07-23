@@ -6,7 +6,7 @@
 
 structure PrintCFG : sig
 
-    type flags = {counts : bool, types : bool}
+    type flags = {counts : bool, types : bool, preds : bool}
 
     val output : flags -> (TextIO.outstream * CFG.module) -> unit
 
@@ -16,7 +16,7 @@ structure PrintCFG : sig
 
   end = struct
 
-    type flags = {counts : bool, types : bool}
+    type flags = {counts : bool, types : bool, preds : bool}
 
     fun output (flags : flags) (outS, CFG.MODULE{name, externs, code}) = let
 	  fun pr s = TextIO.output(outS, s)
@@ -62,6 +62,30 @@ structure PrintCFG : sig
 		  pr "(\n    ";
 		  prl params
 		end
+
+	  fun prPreds lab = 
+	  	if (#preds flags) 
+	  	then
+	  		let
+	  			fun runIt nil = ()
+	  			  | runIt ((src, _)::nil) = pr (labelBindToString src)
+	  			  | runIt ((src, _)::xs) = (pr (concat [labelBindToString src, ", "]) ; (runIt xs))
+	  		in
+	  			pr "\n";
+	  			indent 2;
+	  			(case CFG.maybeGetPreds lab
+	  				of SOME preds =>
+	  					(pr (concat ["(* ", ((Int.toString o List.length) preds), " preds:  "]) ;
+			  			runIt preds ;
+			  			pr " *)")
+			  		 | NONE => pr "(* preds not set *) "
+	  			(* end case *));
+	  			pr "\n";
+	  			indent 1
+	  		end
+	  	else
+	  		()
+
 	  fun prFunc (CFG.FUNC{lab, entry, start as CFG.BLK{args, exit, body=startbody, ...}, body}) = let
 		val (kind, params) = (case (CFG.Label.kindOf lab, entry)
 		       of (CFG.LK_Func{export=SOME name, ...}, 
@@ -87,7 +111,7 @@ structure PrintCFG : sig
           and prBlock (b as CFG.BLK{lab,args,exit,body}) = (
               indent 1;
               pr "block ";
-              prl [labelBindToString lab, " "]; prParams args; pr "\n";
+              prl [labelBindToString lab, " "]; prPreds lab; prParams args; pr "\n";
               List.app (prExp 2) body;
               prXfer (2, exit))
 	  and prExp i e = (
@@ -216,7 +240,7 @@ structure PrintCFG : sig
 	    pr "}\n"
 	  end
 
-    fun print m = output {counts=true, types=false} (TextIO.stdOut, m)
+    fun print m = output {counts=true, types=false, preds=false} (TextIO.stdOut, m)
 
     fun printFunc f = let
           val m = CFG.MODULE {name = Atom.atom "ad-hoc",

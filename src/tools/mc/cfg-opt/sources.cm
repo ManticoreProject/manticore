@@ -10,6 +10,8 @@ Library
 
   functor CFGOptFn
 
+  structure Predecessors
+
 is
 
   $/basis.cm
