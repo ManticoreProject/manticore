@@ -31,17 +31,7 @@ structure CFG =
         lab : label,            (* label of block *)
 	args : var list,	(* argument list *)
 	body : exp list,	(* body of function is straight-line sequence of bindings *)
-	exit : transfer,		(* control transfer out of function *)
-
-  preds : jump list    (* TODO: is this a good type? 
-
-                          potential issues: how to handle phi from func params & some other block
-                            for say the entry block? does this even happen?
-                          
-                       every jump which lands at this block. the label here is of
-                       the _source_ of the action. 
-                       NOTE: currently only initialized and maintained by a pass used
-                       in preparation for the LLVM backend  *)
+	exit : transfer		(* control transfer out of function *)
       }
 
     and convention
@@ -150,6 +140,17 @@ structure CFG =
         val getParent = getFn
     end
 
+    local
+        val { getFn : label -> jump list, 
+              setFn : (label * jump list) -> unit,
+              peekFn : label -> jump list option, ... } =
+            Label.newProp (fn l => raise Fail(concat["predecessors of label (", Label.toString l, ") are unknown!"]))
+    in
+        val setPreds = setFn
+        val getPreds = getFn
+        val haveSetPreds = peekFn
+    end
+
     fun varKindToString VK_None = "None"
       | varKindToString (VK_Let _) = "Let"
       | varKindToString (VK_Param _) = "Param"
@@ -207,7 +208,7 @@ structure CFG =
     fun mkVPAddr arg = mkExp(E_VPAddr arg)
 
     fun mkBlock (l, args, body, exit) = let
-	  val blk = BLK{lab = l, args = args, body = body, exit = exit, preds = []}
+	  val blk = BLK{lab = l, args = args, body = body, exit = exit}
 	  in
 	    List.app (fn x => Var.setKind(x, VK_Param l)) args;
 	    blk
@@ -219,7 +220,7 @@ structure CFG =
       | paramsOfConv (KnownFunc{clos}, params) = clos::params
 
     fun mkBlock (lab, args, body, exit) = let
-        val block = BLK{lab=lab, args=args, body=body, exit=exit, preds = []}
+        val block = BLK{lab=lab, args=args, body=body, exit=exit}
     in
         Label.setKind (lab, LK_Block block);
         block

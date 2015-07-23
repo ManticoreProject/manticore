@@ -288,10 +288,10 @@ structure Contract : sig
 
   (* contract a function *)
     fun contractFunc (func as C.FUNC{lab, entry, start, body}) = let
-        fun contractBlock (block as C.BLK{lab, args, body, exit, preds}) = let
+        fun contractBlock (block as C.BLK{lab, args, body, exit}) = let
             val (body,exit) = contractExps (VMap.empty, body, exit)
         in
-            C.BLK{lab=lab, args=args, body=body, exit=exit, preds=preds}
+            C.BLK{lab=lab, args=args, body=body, exit=exit}
         end
     in
 	  if (isLocalLabel lab) andalso (CL.useCount lab = 0)

@@ -42,12 +42,12 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
 	    | e => splitBlockBody (es, e :: preds, liveVarsOfExp (e, fvs))
 	  (* end case *))
 	
-    fun revBody (CFG.BLK{lab, args, body, exit, preds=phiPreds}) = 
-	CFG.BLK{lab=lab, args=args, body=List.rev body, exit=exit, preds=phiPreds}
+    fun revBody (CFG.BLK{lab, args, body, exit}) = 
+	CFG.BLK{lab=lab, args=args, body=List.rev body, exit=exit}
 
     fun rewriteFunc (func as CFG.FUNC{lab, entry, start, body}) = let
 	(* keep splitting the block until we have no more calls to C functions that allocate *)
-	  fun split (block as CFG.BLK{lab, args, body, exit, preds=phiPreds}, blocks) = (
+	  fun split (block as CFG.BLK{lab, args, body, exit}, blocks) = (
 		case splitBlockBody (body, [], liveVarsOfXfer exit)
 		 of NONE => revBody block :: blocks
 		(* split the function func *)
@@ -62,14 +62,14 @@ functor AllocCCallsFn (Target : TARGET_SPEC) : sig
 				 CFGTy.T_Block{args = List.map CFG.Var.typeOf (lhs @ freshLiveVars)})
 		    (* block' is the new function up to and including the C call
                      * and block'' is the function after the C call *)
-                      val block' = CFG.BLK {lab=lab, args=args, body=body, preds=phiPreds,
+                      val block' = CFG.BLK {lab=lab, args=args, body=body,
                                             exit=CFG.AllocCCall{
 			      lhs = List.map CFG.Var.copy lhs,
 			      f = f,
 			      args = cArgs,
 			      ret = (lab', liveVars)
 			    }}
-                      val block'' = CFG.BLK {preds=phiPreds, lab=lab', args=lhs @ freshLiveVars, body=List.map (CFGUtil.substExp env) preds,
+                      val block'' = CFG.BLK {lab=lab', args=lhs @ freshLiveVars, body=List.map (CFGUtil.substExp env) preds,
                                              exit=CFGUtil.substTransfer env exit}
 		      in
 			  split (block', block'' :: blocks)

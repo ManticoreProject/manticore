@@ -60,9 +60,9 @@ functor AddAllocVecChecksFn (Target : TARGET_SPEC) : sig
 	         end
 	     | _ => splitBody (es, e :: vs, liveVarsOfExp (e, fvs))
 	   (* end case *))
-      fun splitBlockLp (CFG.BLK {lab, args, body, exit, preds}, blocks) =
+      fun splitBlockLp (CFG.BLK {lab, args, body, exit}, blocks) =
 	(case splitBody (List.rev body, [], liveVarsOfXfer exit)
-	  of LEFT vs => CFG.BLK {lab=lab, args=args, body=vs, exit=exit, preds=preds} :: blocks
+	  of LEFT vs => CFG.BLK {lab=lab, args=args, body=vs, exit=exit} :: blocks
 	   | RIGHT (plab, lhs, n, es, vs, fvs, szb) => let
 	       val liveVars = VSet.listItems fvs
 	       val freshLiveVars = List.map CFG.Var.copy liveVars
