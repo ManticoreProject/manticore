@@ -31,7 +31,17 @@ structure CFG =
         lab : label,            (* label of block *)
 	args : var list,	(* argument list *)
 	body : exp list,	(* body of function is straight-line sequence of bindings *)
-	exit : transfer		(* control transfer out of function *)
+	exit : transfer,		(* control transfer out of function *)
+
+  preds : jump list    (* TODO: is this a good type? 
+
+                          potential issues: how to handle phi from func params & some other block
+                            for say the entry block? does this even happen?
+                          
+                       every jump which lands at this block. the label here is of
+                       the _source_ of the action. 
+                       NOTE: currently only initialized and maintained by a pass used
+                       in preparation for the LLVM backend  *)
       }
 
     and convention
@@ -197,7 +207,7 @@ structure CFG =
     fun mkVPAddr arg = mkExp(E_VPAddr arg)
 
     fun mkBlock (l, args, body, exit) = let
-	  val blk = BLK{lab = l, args = args, body = body, exit = exit}
+	  val blk = BLK{lab = l, args = args, body = body, exit = exit, preds = []}
 	  in
 	    List.app (fn x => Var.setKind(x, VK_Param l)) args;
 	    blk
@@ -209,7 +219,7 @@ structure CFG =
       | paramsOfConv (KnownFunc{clos}, params) = clos::params
 
     fun mkBlock (lab, args, body, exit) = let
-        val block = BLK{lab=lab, args=args, body=body, exit=exit}
+        val block = BLK{lab=lab, args=args, body=body, exit=exit, preds = []}
     in
         Label.setKind (lab, LK_Block block);
         block

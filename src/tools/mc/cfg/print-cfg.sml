@@ -84,7 +84,7 @@ structure PrintCFG : sig
 		  prXfer (2, exit);
                   List.app prBlock body
 		end
-          and prBlock (b as CFG.BLK{lab,args,exit,body}) = (
+          and prBlock (b as CFG.BLK{lab,args,exit,body,preds}) = (
               indent 1;
               pr "block ";
               prl [labelBindToString lab, " "]; prParams args; pr "\n";

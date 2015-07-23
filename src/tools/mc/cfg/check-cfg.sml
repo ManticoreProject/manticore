@@ -502,7 +502,7 @@ structure CheckCFG : sig
 			  | ty => error[cxt, " is not a block\n"]
 			(* end case *)
 		      end
-          fun chkBlock (block as CFG.BLK{lab, args, body, exit}, env) = let
+          fun chkBlock (block as CFG.BLK{lab, args, body, exit, ...}, env) = let
                 val env = addVars(env, args)
 		val env = List.foldl (fn (exp,env) => chkExp (env, exp)) env body
                 val _ = chkExit (env, exit)

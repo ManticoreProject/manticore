@@ -144,7 +144,7 @@ functor AddAllocChecksFn (Target : TARGET_SPEC) : sig
 				    (clos' :: args', args', clos :: args, CFG.KnownFunc{clos=clos'})
 				  end
 			   (* end case *))
-		      fun convertBlock (block as CFG.BLK{body, args, exit, lab}, freeVars, renamedArgs, allArgs) = let
+		      fun convertBlock (block as CFG.BLK{body, args, exit, lab, ...}, freeVars, renamedArgs, allArgs) = let
 			    val lab' = CFG.Label.new(
 				       CFG.Label.nameOf lab ^ checkLabel,
 				       CFGTy.T_Block{args = List.map CFG.Var.typeOf freeVars})

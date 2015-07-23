@@ -417,7 +417,7 @@ functor ImplementCallsFn (Target : TARGET_SPEC) : sig
                    end
              | _ => ([], t)
 
-          fun transBlock (CFG.BLK{lab=lab, body, exit, args}, entryBinds, args') = let
+          fun transBlock (CFG.BLK{lab=lab, body, exit, args, ...}, entryBinds, args') = let
               val () = updLabelType lab
               val _ = List.app updVarType args
               val body = List.map transExp body
