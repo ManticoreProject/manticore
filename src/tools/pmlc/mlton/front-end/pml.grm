@@ -78,8 +78,8 @@ BOMExportDecNode
 		=> (BOMExport.Datatype (tyvarseq, tycon, BOMLongId, Option.getOpt (TyArgs, [])))
 	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
 		=> (BOMExport.TypBind (tyvars, tycon, BOMType))
-	| "_val" "op"? vid ":" ty "=" "_prim" "(" BOMLongId ")"
-		=> (BOMExport.Val (vid, ty, BOMLongId))
+	| "_val" "op"? vid ":" ty "=" "_prim" "(" BOMId ")"
+		=> (BOMExport.Val (vid, ty, BOMId))
 	;
 
 
