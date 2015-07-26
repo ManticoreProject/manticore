@@ -35,7 +35,7 @@ structure Predecessors : sig
       fun examineJump ((destLab, args) : C.jump) : unit = 
         (case (maybeBlock destLab, haveVisited destLab)
           of (SOME _, true) => 
-                (* we've already been here, just add src as predecessor *)
+                (* we've already been to this block, just add src as predecessor *)
                 addPred(destLab, (source, args))
            | (SOME (C.BLK{ exit, ...}), false) => 
                 (setPreds(destLab, [(source, args)]) ; fly(destLab, exit))
@@ -44,16 +44,24 @@ structure Predecessors : sig
 
       in
          (case xfer
-          of C.Goto jump => examineJump(jump)
-           | C.If (_, jumpA, jumpB) => (examineJump(jumpA) ; examineJump(jumpB))
-           
-           (* for now... *)
-           
-           | _ => ()
+          of C.Goto jump => examineJump jump
+           | C.If (_, jumpA, jumpB) => (examineJump jumpA ; examineJump jumpB)
+           | C.Switch (_, branches, maybeJ) => let
+               fun process (_, jump) = examineJump jump
+             in
 
+               (List.app process branches ; 
+                if Option.isSome maybeJ 
+                then examineJump(Option.valOf maybeJ)
+                else () )
+
+             end
+           | C.HeapCheck { nogc, ... } => examineJump nogc 
+           | C.HeapCheckN { nogc, ... } => examineJump nogc  
+           | C.AllocCCall { ret, ... } => examineJump ret           
+           | _ => ()
         (* end xfer case *))
     end
-    
 
     and haveVisited destLab = 
       (case maybeGetPreds destLab

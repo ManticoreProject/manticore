@@ -78,7 +78,7 @@ structure PrintCFG : sig
 	  					(pr (concat ["(* ", ((Int.toString o List.length) preds), " preds:  "]) ;
 			  			runIt preds ;
 			  			pr " *)")
-			  		 | NONE => pr "(* preds not set *) "
+			  		 | NONE => pr "(* preds not set, unreachable? *) "
 	  			(* end case *));
 	  			pr "\n";
 	  			indent 1
