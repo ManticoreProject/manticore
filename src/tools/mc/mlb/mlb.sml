@@ -419,8 +419,8 @@ structure MLB : sig
         (* now load the basis etc. *)
 
        (* KAVON_TEMP: no basis for you *)
-      (* val basis = loadBasisLib emptyEnv *)
-	  val basis = []
+      val basis = loadBasisLib emptyEnv
+	  (* val basis = [] *)
 
 	  val pts = (case e
             of MLB => loadMLB (file, emptyEnv)
