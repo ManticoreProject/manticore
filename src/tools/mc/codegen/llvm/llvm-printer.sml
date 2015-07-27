@@ -35,6 +35,8 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
       *)
 
   structure C = CFG
+  structure CV = CFG.Var
+  structure CL = CFG.Label
   structure CT = CFGTy
   structure CF = CFunctions
   structure S = String
@@ -44,32 +46,35 @@ fun output (outS, module as C.MODULE { name = module_name,
                                        externs = module_externs,
                                        code = module_code } ) = let
   
-  (* print utils *)
+  (* print/string utils *)
   fun pr s = TextIO.output(outS, s)
   fun prl s = pr(S.concat s)
   val i2s = Int.toString
 
-
-  (* links together the attribute number and attribute declaration *)
-
-    (* TODO: rethink this, not flexible enough. *)
-  datatype llvm_attributes = MantiFun | CFun
-
-  fun attrNum (MantiFun) = 0
-    | attrNum (CFun) = 1
-
-  fun attrStr x = "#" ^ (i2s (attrNum x))
-
-  val attrDecl = S.concat [
-    "attributes ", attrStr(MantiFun), " = { naked nounwind }\n",
-
-    (* it seems dangerous to allow inlining into naked funs *)
-    "attributes ", attrStr(CFun), " = { noinline }\n"
-    ]
+  fun mapSep(f, init, sep, lst) = List.foldr 
+                      (fn (x, nil) => f(x) :: nil 
+                        | (x, y) => let val fx = f(x) in
+                          if fx = "" (* skip empty strings *)
+                          then y
+                          else fx :: sep :: y
+                        end)
+                      init
+                      lst
 
 
+
+  (* links together the attribute number and the standard attribute list *)
+
+  datatype llvm_attributes = MantiFun | ExternCFun
+
+  fun stdAttrs (MantiFun) = "naked nounwind"
+
+    (* because I'm not sure of the effect inlining a C func into a naked func right now. *)
+    | stdAttrs (ExternCFun) = "noinline" 
 
   (**)
+
+
 
   (* type stuff *)
 
@@ -77,6 +82,26 @@ fun output (outS, module as C.MODULE { name = module_name,
      and perform casts as needed *)
   fun typeName (t : CT.ty) : string = "%i" ^ (Int.toString (Type.szOf t))
   (**)
+
+
+  (* translation utils *)
+  local
+    (* TODO: this might be pointless because one can access the exported
+       name through the label once its encountered. *)
+    val externInfo = ref CL.Map.empty
+  in
+
+    fun externInfoAdd (v : C.label, s : string) : unit = 
+      externInfo := CL.Map.insert(!externInfo, v, s)
+
+    fun externInfoGet (v : C.label) : string = 
+      (case CL.Map.find(!externInfo, v)
+        of SOME s => s
+         | NONE => 
+            raise Fail ("Unable to find extern name associated with var " ^ (CL.toString v))
+      (* end case *))
+
+  end
 
   
   (* Terminators, aka transfers in CFG *)
@@ -119,8 +144,45 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   (* Functions *)
 
+  (* resolves the LLVM name assigned to a specific label kind  *)
+  local
+    (* lifted part of this from Stamp *)
+    fun manti2LLVM(name, id) =  
+                     name ^
+                     "_" ^
+                     (StringCvt.padLeft #"0" 4 (Word.toString (Stamp.hash id)))
+  in
+    fun getLabelName (labelK) = (case labelK
+      of C.LK_Func { export = NONE,
+                     func = C.FUNC { lab = VarRep.V{ name, id, ... }, ... } } => "@" ^ manti2LLVM(name, id)
+                     
+       | C.LK_Func { export = SOME s, ... } => "@" ^ s
+       | C.LK_Extern s => "@" ^ s
+       | C.LK_Block (C.BLK { lab = VarRep.V{ name, id, ... }, ... }) => manti2LLVM(name, id)
+       (* end case *))
+  end
 
-  fun mkFunc (f : C.func) : string = ""
+  local
+    fun getLinkage (labelK) = (case labelK
+      of C.LK_Func { export = NONE, ... } => "internal"
+       | C.LK_Func { export = SOME _, ... } => "external"
+       | _ => raise Fail ("getLinkage is only valid for manticore functions.")
+       (* end case *))
+  in
+    fun mkFunc (f as C.FUNC { lab, ... }) : string = let
+      val labelK = CL.kindOf lab
+
+      val linkage = getLinkage (labelK)
+      val cc = "" (* TODO: determine this *)
+      val llName = getLabelName (labelK)
+
+
+
+      val decl = S.concat ["define ", linkage, " void ", llName, "() ", stdAttrs(MantiFun), " {}\n"]
+    in
+      decl
+    end
+  end
 
   (* end of Functions *)
 
@@ -128,11 +190,12 @@ fun output (outS, module as C.MODULE { name = module_name,
   (* Module *)
   
   (* in particular, this just generates essentially a "header" for the LLVM module
-     with things such as the datatype layouts, externals, attributes and so on. *)
+     with things such as the datatype layouts, externals, attributes and so on.
+     it also initializes the extern info map. *)
   fun mkModuleHeader () : string = let
 
     (* external C function *)
-    fun toLLVMDecl (CF.CFun { name, retTy, argTys, varArg, attrs, ... }) = let
+    fun toLLVMDecl (CF.CFun { var, name, retTy, argTys, varArg, attrs }) = let
       
       fun llTy (ct : CF.c_type) : string = (case ct
         of CF.PointerTy => "i8*"
@@ -142,59 +205,54 @@ fun output (outS, module as C.MODULE { name = module_name,
          | CF.VoidTy => "void"
         (* end case *))
 
-        val params = List.foldr 
-                      (fn (x, nil) => llTy(x) :: nil 
-                        | (x, y) => llTy(x) :: ", " :: y)
-                      nil
-                      argTys
-        val params = if not varArg
-                      then params
-                      else if List.length params > 0
-                        then params @ [", ..."]
+      fun llAttr (a : CF.attribute) = (case a
+        of CF.A_pure => "readonly"
+         | CF.A_noreturn => "noreturn"
+         (* alloc/malloc attribute in C doesn't seem to translate over to LLVM IR *)
+         | _ => ""
+        (* end case *))
+
+        val llvmParams = mapSep(llTy, nil, ", ", argTys)
+
+        val llvmParams = if not varArg
+                      then llvmParams
+                      else if List.length llvmParams > 0
+                        then llvmParams @ [", ..."]
                         else ["..."]
 
-          (* TODO: the attrs for each function should be added for readonly <-> pure & noreturn
-                   we need a better way to generate and keep track of attribute #'s *)
+        val llvmAttrs = mapSep(llAttr, [stdAttrs(ExternCFun)], " ", attrs)
+
+        (* record this for translation later *)
+        val _ = externInfoAdd(var, name)
+
       in
-        S.concat (["declare ", (llTy retTy), " @", name, "("] @ params @ [")\n"])
+        S.concat (["declare ", (llTy retTy), " @", name, "("] 
+                  @ llvmParams @ [") "]
+                  @ llvmAttrs @ ["\n"])
       end
 
+    val arch = (case Spec.archName
+      of "x86_64" => "x86_64-"
+       | _ => raise Fail ("Unsupported archicture type: " ^ Spec.archName)
+      (* end case *))
 
-
-
-
-    val arch = (if Spec.archName = "x86_64" 
-                then "x86_64-"
-                else raise Fail ("Unsupported archicture type: " ^ Spec.archName))
-
-    val (targetTriple, dataLayout) = 
-        if Spec.osName = "darwin" 
-          then (arch ^ "apple-macosx", "e-m:o-i64:64-f80:128-n8:16:32:64-S128")
-
-          (* QUESTION: should this be pc-darwin instead, or is the only darwin OS we're referring to OS X? *)
-          (* might want to specify OS X version, and ensure this data layout matches our needs *)
-
-        else if Spec.osName = "linux"
-          then (arch ^ "pc-linux", "unknown")
-
-        else raise Fail ("Unsupported OS type: " ^ Spec.archName)
+    val (targetTriple, dataLayout) = (case Spec.osName
+      (* QUESTION: should this be pc-darwin instead, or is the only darwin OS we're referring to OS X? *)
+      (* might want to specify OS X version, and ensure this data layout matches our needs *)
+      of "darwin" => (arch ^ "apple-macosx", "e-m:o-i64:64-f80:128-n8:16:32:64-S128")
+       | "linux" => (arch ^ "pc-linux", "unknown")
+       | _ => raise Fail ("Unsupported OS type: " ^ Spec.archName)
+      (* end case *))
 
     val moduleName = Atom.toString module_name
 
     val externDecls = S.concat (List.map toLLVMDecl module_externs)
-
-
-      (* TODO: at this point we need to generate a map from manticore vars to llvm vars for use during
-         the rest of translation. printf for example is accessed through a manticore var, and the extern
-         records we just processed are what make the connection between that and the C function. *)
-
 
     val header = S.concat [
       "; Generated by Manticore\n",
       "; ModuleID = '", moduleName, "'\n",
       "target datalayout = \"", dataLayout, "\"\n",
       "target triple = \"", targetTriple, "\"\n\n",
-      attrDecl, "\n\n",
       externDecls, "\n\n"
        ]
 
@@ -218,7 +276,7 @@ fun output (outS, module as C.MODULE { name = module_name,
 
 in
   ( (* output sequence *)
-    pr (mkModuleHeader ()) ;
+    pr (mkModuleHeader ()) ; (* handles the externs as well *)
     List.app (pr o mkFunc) module_code ;
     pr "\n\n\n\n; -------------------------------------- \n\n\n\n" ;
     PrintCFG.output {counts=true, types=true, preds=true} (outS, module) ;
