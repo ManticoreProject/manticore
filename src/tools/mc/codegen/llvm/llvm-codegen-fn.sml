@@ -9,10 +9,12 @@
 functor LLVMCodeGenFn (structure Spec : TARGET_SPEC) :> CODE_GEN = 
 struct
 
+	structure LLVMBackend = LLVMPrinter (structure Spec = Spec)
+
 	fun codeGen {code : CFG.module, dst : TextIO.outstream} = let
 		val _ = Predecessors.analyze code
 	in
-		PrintCFG.output {counts=true, types=true, preds=true} (dst, code)
+		LLVMBackend.output(dst, code)
 	end
 		
 end
