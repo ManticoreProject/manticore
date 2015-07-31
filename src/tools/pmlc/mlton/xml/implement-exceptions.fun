@@ -275,6 +275,7 @@ fun doit (Program.T {datatypes, body, ...}): Program.t =
                   ; List.push (exnValCons, {con = con, arg = arg})
                   ; vall {var = r, exp = reff (unit ())} @ decs
                end
+          | BOM decs => raise Fail "TODO(wings): implement exceptions for BOM!"
           | _ => Error.bug "ImplementExceptions: saw unexpected dec") arg
       and loopMonoVal {var, ty, exp} : Dec.t list =
          let

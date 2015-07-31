@@ -420,6 +420,7 @@ fun monomorphise (Xprogram.T {datatypes, body, ...}): Sprogram.t =
                                       lambda = lambda}
                                   end))})))
                 end
+           (* TODO(wings): this is likely where we should expand typecase, rather than performing it at runtime. *)
            | Xdec.BOM {bom} => (fn () => [Sdec.BOM{bom = bom}]) (* [PML] *)
            | Xdec.Exception {con, arg} =>
                 let
