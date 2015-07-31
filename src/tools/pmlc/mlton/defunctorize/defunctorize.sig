@@ -10,6 +10,7 @@ signature DEFUNCTORIZE_STRUCTS =
       structure CoreML: CORE_ML
       structure Xml: XML
       sharing CoreML.Atoms = Xml.Atoms
+      sharing CoreML.CoreBOM = Xml.CoreBOM
    end
 
 signature DEFUNCTORIZE = 

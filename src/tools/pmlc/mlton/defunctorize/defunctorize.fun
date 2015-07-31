@@ -9,6 +9,7 @@
 functor Defunctorize (S: DEFUNCTORIZE_STRUCTS): DEFUNCTORIZE =
 struct
 
+structure MLVector = Vector
 structure Option = MLtonOption
 structure List = MLtonList
 structure Vector = MLtonVector
@@ -637,9 +638,37 @@ fun defunctorize (CoreML.Program.T {decs}) =
              | Val {rvbs, vbs, ...} =>
                   (Vector.foreach (rvbs, loopLambda o #lambda)
                    ; Vector.foreach (vbs, loopExp o #exp))
-             (* [PML] process top-level BOM definitions *)
-             | BOMExport _ => raise Fail "BOMExport unimplemented"
-	           | BOMModule _ => raise Fail "BOMDecs unimplemented"
+             (* [PML] process top-level BOM definitions: datatype lifting (potentially incl.
+             changing free type variables to bound ones), possibly other transformations *)
+             | BOMExport export =>
+                (case export of
+                    CoreML.BOMExport.Datatype (mlTyc, bomTyc, primCons) =>
+                       raise Fail "TODO(wings): lift datatypes from BOMExport Datatype"
+                  | CoreML.BOMExport.TypBind (mlTyc, bomTyc) =>
+                       raise Fail "TODO(wings): lift datatypes from BOMExport TypBind"
+                  | CoreML.BOMExport.ValBind (mlVar, ty, bomVal) =>
+                       raise Fail "TODO(wings): lift datatypes from BOMExport ValBind")
+             (* APOLOGIA(wings): right now a BOM module only has function, hlop, or extern 
+             definitions; none of these introduce new datatypes or contain structures that
+             introduce new datatypes; therefore, we don't need to do anything for BOM
+             modules here
+             
+             however, it may be the case that CoreML.CoreBOM.Definition *should* keep
+             exception/type/datatype declarations, in which case we would need to handle
+             those here
+             
+             the deciding factor is whether or not those cases are fully handled by being
+             placed into the environment earlier on in compilation
+             
+             it also seems unlikely that imports should involve any datatype definitions
+             since they're merely around to provide names for existing datatypes *)
+             | BOMModule (CoreML.BOMModule.T {imports = imports (*: BOMImport.t list*), defs = defs (*: CoreBOM.Definition.t list*)}) =>
+                List.foreach (defs, (fn def =>
+                   case def of 
+                      CoreML.CoreBOM.Definition.Fun (fundefs) => ()
+                    | CoreML.CoreBOM.Definition.HLOp (attrs, valid, exp) => ()
+                    | CoreML.CoreBOM.Definition.Extern (retTy, val_, argTys, attrs) => ()
+                ))
          end
       and loopExp (e: Cexp.t): unit =
          let
@@ -922,8 +951,18 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                 body = e}
                end
              (* [PML] process top-level BOM definitions *)
-             | BOMExport _ => raise Fail "BOMExport unimplemented"
-             | BOMModule _ => raise Fail "BOMModule unimplemented"
+             | BOMExport export =>
+                (case export of
+                    CoreML.BOMExport.Datatype (mlTyc, bomTyc, primCons) =>
+                       raise Fail "TODO(wings): create XML for BOMExport Datatype"
+                  | CoreML.BOMExport.TypBind (mlTyc, bomTyc) =>
+                       raise Fail "TODO(wings): create XML for BOMExport TypBind"
+                  | CoreML.BOMExport.ValBind (mlVar, ty, bomVal) =>
+                       raise Fail "TODO(wings): create XML for BOMExport ValBind")
+             (* APOLOGIA(wings): I think we should be able to ignore imports here and just pass definitions through *)
+             | BOMModule (CoreML.BOMModule.T {imports = imports (*: BOMImport.t list*), defs = defs (*: CoreBOM.Definition.t list*)}) =>  (*Xexp.BOM defs*)
+                  Xexp.lett {body = e,
+                             decs = [Xdec.BOM {bom = MLVector.fromList defs}]}
          end
       and loopDecs (ds: Cdec.t vector, (e: Xexp.t, t: Xtype.t)): Xexp.t =
          loopDecsList (Vector.toList ds, (e, t))

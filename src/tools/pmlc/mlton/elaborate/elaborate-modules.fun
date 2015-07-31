@@ -10,11 +10,13 @@
 functor ElaborateModules (S: ELABORATE_MODULES_STRUCTS): ELABORATE_MODULES =
 struct
 
-structure Option = MLtonOption
-structure List = MLtonList
-(* Save this so we can use the normal vector operations later *)
+(* Save these so we can use the normal option/vector operations later *)
+structure MLOption = Option
 structure MLVector = Vector
+structure MLList = List
+structure Option = MLtonOption
 structure Vector = MLtonVector
+structure List = MLtonList
 
 open S
 
@@ -132,7 +134,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
              val d = Strdec.coalesce d
              val elabStrdec = fn d => elabStrdec (d, nest)
              val decs =
-                case Strdec.node d of
+                (case Strdec.node d of
                    Strdec.Core d => (* rule 56 *)
                       ElaborateCore.elaborateDec
                       (d, {env = E, nest = nest})
@@ -174,8 +176,15 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                          ElaborateBOMImports.elaborateBOMExport (export, {env =
                          E, bomEnv = bomEnv})
                      in
-                       Decs.empty
+                       (* TODO(wings): should we be doing more work here? probably, according 
+                       to the above comments which applied when this case simply returned
+                       Decs.empty *)
+                       (case newEnv
+                       of SOME bomdec => Decs.single (CoreML.Dec.BOMExport bomdec)
+                        | NONE => Decs.empty
+                       (* end case *))
                      end
+                (* end case *))
 (* TODO: add cases for _datatype, _type, and _val *)
              val () =
                 case resolveScope () of
