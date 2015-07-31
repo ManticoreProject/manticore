@@ -215,8 +215,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         type node' = node
         type obj = t
 
-        (* fun toString (myNode : t) = RawTypes.toString (node myNode) *)
-  fun toString myNode = ""
+        fun toString (myNode : t) = "RawTy:" ^ RawTypes.toString (node myNode)
 
         fun layout myNode  = (Layout.str o toString) myNode
 
