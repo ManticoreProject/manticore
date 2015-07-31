@@ -162,6 +162,11 @@ signature CORE_BOM =
       | Exn
       | Any
       | VProc
+      (* TODO(wings): decide whether Array and Vector should be first-class and 
+      present in this datatype, or should use the TyCon variant with special
+      tycon_t instances *)
+      | Array of type_t
+      | Vector of type_t
       | Cont of type_t list
       | Addr of type_t
       | Raw of RawTy.t

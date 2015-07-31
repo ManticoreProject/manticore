@@ -187,9 +187,10 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
 
   fun elaborateLiteral (literal, ctx): CoreBOM.Literal.t =
     case BOM.Literal.node literal of
-      BOM.Literal.PosInt int => BOMEnv.Context.newInt (ctx, int)
-    | BOM.Literal.Float float => BOMEnv.Context.newFloat (ctx, float)
-    | _ => raise Fail "not implemented"
+      BOM.Literal.PosInt i => BOMEnv.Context.newInt (ctx, i)
+    | BOM.Literal.Float f => BOMEnv.Context.newFloat (ctx, f)
+    | BOM.Literal.String s => CoreBOM.Literal.new (CoreBOM.Literal.String s, CoreBOM.BOMType.Vector (CoreBOM.BOMType.Raw CoreBOM.RawTy.UInt8))
+    | BOM.Literal.NullVP => CoreBOM.Literal.new (CoreBOM.Literal.NullVP, CoreBOM.BOMType.VProc)
 
   fun lookupValId (checkForErrorVal, bomEnv, valId) =
     checkForErrorVal CoreBOM.Exp.error (BOMEnv.ValEnv.lookup (bomEnv, valId),
@@ -912,26 +913,15 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     end
 
   (* FIXME: these should be returning bomdecs *)
-  fun elaborateBOMDec (dec: BOM.Definition.t, bomEnv) =
+  fun elaborateBOMDec (dec: BOM.Definition.t, bomEnv): CoreBOM.Definition.t option * BOMEnv.t =
     case BOM.Definition.node dec of
-       BOM.Definition.Extern (cReturnTy, bomId, cArgTys, maybeAttrs) =>
-         let
-           val cReturnTy' = CoreBOM.CReturnTy.fromAst cReturnTy
-           val cArgTys' = map CoreBOM.CArgTy.fromAst cArgTys
-           val attrs' = CoreBOM.Attr.flattenFromAst maybeAttrs
-           (* TODO: what type should this value have? does it go in VE? *)
-           val valId = CoreBOM.Val.error
-         in
-           (SOME (CoreBOM.Definition.Extern (cReturnTy', valId,
-             cArgTys', attrs')), bomEnv)
-         end
-    |  BOM.Definition.Datatype dtdefs =>
-         let
-           val envWithTys = foldl extendEnvForDataTypeDef bomEnv dtdefs
-           val envWithDefs = foldl elaborateDataTypeDef envWithTys dtdefs
-         in
-           (NONE, envWithDefs)
-         end
+      BOM.Definition.Datatype dtdefs =>
+        let
+          val envWithTys = foldl extendEnvForDataTypeDef bomEnv dtdefs
+          val envWithDefs = foldl elaborateDataTypeDef envWithTys dtdefs
+        in
+          (NONE, envWithDefs)
+        end
 
     | BOM.Definition.TypeDefn (bomId, maybeTyParams, bomTy) =>
         let
@@ -965,14 +955,24 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         in
           (NONE, newEnv)
         end
+    | BOM.Definition.Exception dataConsDef => raise Fail "TODO(wings): elaborate exception definition in BOM module"
+    | BOM.Definition.DefineHLOp (maybeAttrs, hlOpId, tyParams, inputs, exns, retTy, bomExp) => raise Fail "TODO(wings): elaborate HLOp definition in BOM module"
     | BOM.Definition.Fun funDefs =>
         let
           val (envWithFns, funDefs) = elaborateFunDefs (funDefs, bomEnv)
         in
           (SOME (CoreBOM.Definition.Fun funDefs), envWithFns)
         end
-    | _ => raise Fail "not implemented"
-    (* TODO: the other cases *)
-
+    | BOM.Definition.Extern (cReturnTy, bomId, cArgTys, maybeAttrs) =>
+        let
+          val cReturnTy' = CoreBOM.CReturnTy.fromAst cReturnTy
+          val cArgTys' = map CoreBOM.CArgTy.fromAst cArgTys
+          val attrs' = CoreBOM.Attr.flattenFromAst maybeAttrs
+          (* TODO: what type should this value have? does it go in VE? *)
+          val valId = CoreBOM.Val.error
+        in
+          (SOME (CoreBOM.Definition.Extern (cReturnTy', valId,
+            cArgTys', attrs')), bomEnv)
+        end
     (* (CoreML.Dec.BOMDec, bomEnv) *)
 end

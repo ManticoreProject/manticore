@@ -156,7 +156,8 @@ signature CORE_ML =
       structure BOMExport:
         sig
           datatype t
-            = TypBind of Tycon.t * CoreBOM.TyCon.t
+            = Datatype of Tycon.t * CoreBOM.TyCon.t * unit(*CoreBOM.PrimConDef.t list*)
+            | TypBind of Tycon.t * CoreBOM.TyCon.t
             | ValBind of Var.t * Type.t * CoreBOM.Val.t
           (* FIXME: fill in the rest *)
         end
@@ -198,7 +199,7 @@ signature CORE_ML =
                              nest: string list,
                              pat: Pat.t,
                              patRegion: Region.t} vector}
-             | BOMExport of BOMExport.t list
+             | BOMExport of BOMExport.t
              | BOMModule of BOMModule.t
 
             val layout: t -> Layout.t

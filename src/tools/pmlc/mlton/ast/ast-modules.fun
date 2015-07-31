@@ -271,7 +271,7 @@ structure BOMExport =
     open Wrap
 
     datatype node =
-      Datatype of Tyvar.t vector * Tycon.t * BOM.LongId.t * BOM.BOMType.t list
+      Datatype of Tyvar.t vector * Tycon.t * BOM.LongId.t * BOM.BOMType.t list * BOM.PrimConDef.t list
     | TypBind of Tyvar.t vector * Tycon.t * BOM.BOMType.t
     | Val of Vid.t * Type.t * BOM.BOMId.t
 

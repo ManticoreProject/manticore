@@ -308,6 +308,11 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Exn
     | Any
     | VProc
+    (* TODO(wings): decide whether Array and Vector should be first-class and 
+    present in this datatype, or should use the TyCon variant with special
+    tycon_t instances *)
+    | Array of type_t
+    | Vector of type_t
     | Cont of type_t list
     | Addr of type_t
     | Raw of RawTy.t
@@ -317,6 +322,24 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Mutable of IntInf.int * type_t
   and tyargs_t
     = ArgTypes of type_t list
+
+  (* TODO(wings): ensure that code creating Tycon.t values is careful to ensure
+  that it only makes new ones exactly once for each tycon in the whole program
+  
+  once that's done, delete the old comments and old implementation here,
+  leaving only the one-line uid comparison implementation
+
+  (* TODO: tyConEquals needs to check that the arity is the same *)
+  (* TODO: MAKE THIS ROBUST, ADD A UID *)
+  and tyConEquals (TyC tyC, TyC tyC') =
+    let
+      val toString = TyId.toString o #id
+    in
+      String.compare (toString tyC, toString tyC') = EQUAL
+    end
+*)
+  fun tyConEquals (TyC {uid=uid1, ...}, TyC {uid=uid2, ...}): bool =
+      uid1 = uid2
 
   (* Functions over mutually recursive types *)
   local
@@ -361,7 +384,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   and tyEqual (ty, ty'): bool =
     case (ty, ty') of
       (Param p, Param p') => TyParam.compare (p, p') = EQUAL
-     (* TODO: tyConEquals needs to check that the arity is the same *)
     | (TyCon {con, args}, TyCon {con=con', args=args'}) =>
         tyConEquals (con, con') andalso tysEqual (args, args')
     (* TODO: make sure fields are sorted so we can compare them pairwise *)
@@ -405,13 +427,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | (RawTy.Float32, RawTy.Float32) => true
     | (RawTy.Float64, RawTy.Float64) => true
     | (_, _) => false
-  (* TODO: MAKE THIS ROBUST, ADD A UID *)
-  and tyConEquals (TyC tyC, TyC tyC') =
-    let
-      val toString = TyId.toString o #id
-    in
-      String.compare (toString tyC, toString tyC') = EQUAL
-    end
   end
 
   structure DataConsDef = struct
@@ -590,8 +605,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       applyToArgs (tyCon, List.tabulate (Vector.length tys,
         fn (i) => Vector.sub (tys, i)))
 
-    fun equal (tyc, tyc'): bool =
-      raise Fail "Not implemented."
+    val equal = tyConEquals
   end
 
   structure Field = struct

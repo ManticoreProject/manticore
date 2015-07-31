@@ -147,7 +147,8 @@ structure NoMatch =
 
 structure BOMExport = struct
   datatype t
-    = TypBind of Tycon.t * CoreBOM.TyCon.t
+    = Datatype of Tycon.t * CoreBOM.TyCon.t * unit(*CoreBOM.PrimConDef.t list*)
+    | TypBind of Tycon.t * CoreBOM.TyCon.t
     | ValBind of Var.t * Type.t * CoreBOM.Val.t
 end
 
@@ -184,7 +185,7 @@ datatype dec =
                  nest: string list,
                  pat: Pat.t,
                  patRegion: Region.t} vector}
- | BOMExport of BOMExport.t list
+ | BOMExport of BOMExport.t
  | BOMModule of BOMModule.t
 and exp = Exp of {node: expNode,
                   ty: Type.t}
@@ -262,6 +263,10 @@ in
                                                str " ", Pat.layout pat,
                                                str " ="],
                                           layoutExp exp]]))]
+       (*TODO(wings): write layout code for BOMExport and BOMModule
+       | BOMExport (export: BOMExport.t) => 
+       | BOMModule (module: BOMModule.t) => 
+       *)
    and layoutExp (Exp {node, ...}) =
       case node of
          App (e1, e2) => paren (seq [layoutExp e1, str " ", layoutExp e2])
@@ -493,6 +498,10 @@ structure Exp =
                 | Val {rvbs, vbs, ...} =>
                      (Vector.foreach (rvbs, loopLambda o #lambda)
                       ; Vector.foreach (vbs, loop o #exp))
+                (*TODO(wings): implement foreachVar's loopDec for BOMExport and BOMModule
+                | BOMExport (export: BOMExport.t) => 
+                | BOMModule (module: BOMModule.t) => 
+                *)
             and loopLambda (Lam {body, ...}) = loop body
          in
             loop e
