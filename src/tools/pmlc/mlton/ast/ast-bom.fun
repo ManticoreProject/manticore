@@ -398,9 +398,9 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
         | Array myType => layoutTyApp ("array", myType)
         | Vector myType => layoutTyApp ("vector", myType)
         | Addr myType => layoutTyApp ("addr", myType)
-        | BigNum => Layout.str "any"
-        | Exn => Layout.str "bignum"
-        | Any => Layout.str "exn"
+        | BigNum => Layout.str "bignum"
+        | Exn => Layout.str "exn"
+        | Any => Layout.str "any"
         | VProc => Layout.str "vproc"
         | Raw (raw) => RawTy.layout raw
     end
