@@ -171,13 +171,13 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   (* end *)
 
-  structure BOMValueId = struct
-    open Wrap
+  structure ValueId = struct
     datatype node
       = LongId of LongId.t
       | HLOpQId of HLOpQId.t
-    type t = node Wrap.t
 
+    open Wrap
+    type t = node Wrap.t
     type node' = node
     type obj = t
 

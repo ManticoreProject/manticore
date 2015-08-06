@@ -29,7 +29,7 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
     ElaborateCore.Lookup.fromEnv env)
 
 
-  (* creating a new (possibly polymorphic) ML tycon from one exported by BOM *)
+  (* creating a new (possibly polymorphic) ML val/tycon from one exported by BOM *)
   fun elaborateBOMExport (export, tyEnvs as {env: Env.t, bomEnv: BOMEnv.t}) =
     let
       val elaborateMLType = elaborateMLType' env
@@ -90,25 +90,34 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
           in
             (SOME (BOMExport.TypBind (mlTycon, bomCon)), tyEnvs)
           end
-      | ABOMExport.Val (valId, mlTy, bomValId) =>
+      | ABOMExport.Val (mlValId, mlTy, bomValId) =>
           let
             (* FIXME: error handling *)
             val mlTy' = ElaborateCore.elaborateType (mlTy,
               ElaborateCore.Lookup.fromEnv env)
-            val (SOME bomVal') = BOMEnv.ValEnv.lookup (bomEnv,
-              CoreBOM.ValId.fromBOMId bomValId)
-            val mlVar = Ast.Vid.toVar valId
-            val mlVar' = ElaborateCore.Var.fromAst mlVar
-            (* FIXME: rebind? *)
-            val _ = Env.extendVar (env, mlVar, mlVar',
-              MLScheme.fromType mlTy', {isRebind = false})
-          in
-            (SOME (BOMExport.ValBind (mlVar', mlTy', bomVal')), tyEnvs)
+            in
+              case BOM.ValueId.node bomValId of
+                 BOM.ValueId.HLOpQId hlopqid => raise Fail "TODO(wings): elaborate HLOp exports"
+               | BOM.ValueId.LongId bomLongId =>
+                   let
+                     val valId = CoreBOM.ValId.fromLongId (bomLongId)
+                     val bomVal =
+                       case BOMEnv.ValEnv.lookup (bomEnv, valId) of
+                          SOME bv => bv
+                        | NONE => raise Fail ("failed to find referenced BOM name: " ^ CoreBOM.ValId.toString valId)
+                     val mlVar = Ast.Vid.toVar mlValId
+                     val mlVar' = ElaborateCore.Var.fromAst mlVar
+                     (* FIXME: rebind? *)
+                     val _ = Env.extendVar (env, mlVar, mlVar',
+                       MLScheme.fromType mlTy', {isRebind = false})
+                  in
+                    (SOME (BOMExport.ValBind (mlVar', mlTy', bomVal)), tyEnvs)
+                end
           end
     end
 
 
-  (* importing a monomorphization (or monomorphic) ML tycon into the BOM environment *)
+  (* importing a monomorphization (or monomorphic) ML val/tycon into the BOM environment *)
   fun elaborateBOMImport (import, {env: Env.t, bomEnv: BOMEnv.t}) =
     let
       (* fun elaborateLType ty = ElaborateCore.elaborateType (ty, *)

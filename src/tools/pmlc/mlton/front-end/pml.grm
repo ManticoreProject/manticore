@@ -78,8 +78,8 @@ BOMExportDecNode
 		=> (BOMExport.Datatype (tyvars, tycon, BOMLongId, Option.getOpt (TyArgs, []), PrimConDef))
 	| "_type" tyvars tycon "=" "_prim" "(" BOMType ")"
 		=> (BOMExport.TypBind (tyvars, tycon, BOMType))
-	| "_val" "op"? vid ":" ty "=" "_prim" "(" BOMId ")"
-		=> (BOMExport.Val (vid, ty, BOMId))
+	| "_val" "op"? vid ":" ty "=" "_prim" "(" BOMValueId ")"
+		=> (BOMExport.Val (vid, ty, BOMValueId))
 	;
 
 
@@ -94,13 +94,13 @@ MLValueId
         (* | "*" => (Vid.fromSymbol (Symbol.fromString "*", posToReg FULL_SPAN)) *)
         ;
 
-(* BOMValueId *)
-(*         : BOMLongId *)
-(*                 => (BOM.BOMValueId.makeRegion ( *)
-(*                       BOM.BOMValueId.LongId BOMLongId, *)
-(*                       posToReg FULL_SPAN)) *)
-(*         | HLOpQId *)
-(*                 => (BOM.BOMValueId.makeRegion ( *)
-(*                       BOM.BOMValueId.HLOpQId HLOpQId, *)
-(*                       posToReg FULL_SPAN)) *)
-(*         ; *)
+BOMValueId
+        : BOMLongId
+                => (BOM.ValueId.makeRegion (
+                      BOM.ValueId.LongId BOMLongId,
+                      posToReg FULL_SPAN))
+        | HLOpQId
+                => (BOM.ValueId.makeRegion (
+                      BOM.ValueId.HLOpQId HLOpQId,
+                      posToReg FULL_SPAN))
+        ;
