@@ -308,7 +308,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   structure CProto = struct
     datatype t
-      = T of (*CReturnTy.t * CArgTy.t list*) unit CFunction.t * Attr.t list
+      = T of unit CFunction.t * Attr.t list
   end
 
   (* Mutually recursive types *)
