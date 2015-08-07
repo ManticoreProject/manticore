@@ -357,13 +357,13 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
 
                     val (bomModule, bomEnv') =
                       (fn (defs, bomEnv') => (CoreML.BOMModule.T {
-                        imports = imports, defs = rev defs}, bomEnv))
+                        imports = imports, defs = rev defs}, bomEnv'))
                         (MLVector.foldl (foldOverEnv ElaborateBOMCore.elaborateBOMDec)
                         ([], bomEnv) bomDecs)
 
                     val () = Control.checkForErrors "elaborate"
                   in
-                    (Decs.single (CoreML.Dec.BOMModule bomModule), bomEnv')
+                    (*print "bomEnv="; BOMEnv.ValEnv.printKeys bomEnv';*) (Decs.single (CoreML.Dec.BOMModule bomModule), bomEnv')
                   end
             val () =
                case resolveScope () of

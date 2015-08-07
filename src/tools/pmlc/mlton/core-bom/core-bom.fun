@@ -488,6 +488,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   (*       end) maybeTyArgs *)
   (* end *)
 
+  fun layoutTycon (TyC {id,...}) = Layout.str (TyId.toString id)
+
   structure BOMType = struct
     datatype t = datatype type_t
 
@@ -605,6 +607,32 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 	(* 	  [] => NoReturn *)
 	(*   | [ty] => ty *)
 	(*   | tys => Tuple tys *)
+    fun layout ty =
+      case ty of
+        Param tyParam => Layout.str "typaram?"
+      | TyCon {con, args} => Layout.seq [layoutTycon con(* TODO(wings): layout tyargs *)]
+      | Con {dom, rng} => Layout.seq [layout dom, Layout.str " ~> ", layout dom]
+      | Record fields => Layout.str "{...}"
+      | Tuple elems => Layout.str "(...)"
+      | Fun {dom, cont, rng} => let
+          fun layouts tys = Layout.paren (Layout.seq (Layout.separate (List.map layout tys, " * ")))
+        in
+          Layout.seq [layouts dom, Layout.str " -> ", layouts rng, Layout.str " / ", layouts cont]
+        end
+      | BigNum => Layout.str "bignum"
+      | Exn => Layout.str "exn"
+      | Any => Layout.str "any"
+      | VProc => Layout.str "vproc"
+      (* TODO(wings): decide whether Array and Vector should be first-class and 
+      present in this datatype, or should use the TyCon variant with special
+      tycon_t instances *)
+      | Array elemty => Layout.seq [layout elemty, Layout.str " array"]
+      | Vector elemty => Layout.seq [layout elemty, Layout.str " vector"]
+      | Cont elemtys => Layout.seq (List.map layout elemtys) (* TODO(wings): spacing *)
+      | CFun cproto => Layout.str "cfun"
+      | Addr destty => Layout.seq [layout destty, Layout.str " addr"]
+      | Raw r => Layout.str (RawTypes.toString r)
+      | Error => Layout.str "error"
   end
 
   structure TyCon = struct
@@ -641,6 +669,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
         fn (i) => Vector.sub (tys, i)))
 
     val equal = tyConEquals
+
+    val layout = layoutTycon
   end
 
   structure Field = struct

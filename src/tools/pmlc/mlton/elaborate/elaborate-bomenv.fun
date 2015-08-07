@@ -362,6 +362,9 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
         val extend =
           extend (maybeQualify, extendThis, CoreBOM.ValId.toString,
             modifyValEnv)
+
+        val printKeys = printEnvKeys (CoreBOM.ValId.toString, listKeys, getEnv)
+
       end
     end
 

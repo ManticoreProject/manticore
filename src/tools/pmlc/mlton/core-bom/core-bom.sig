@@ -236,7 +236,7 @@ signature CORE_BOM =
 
       val unit: t
 	    (* val wrapTuple: t list -> t *)
-
+      val layout: t -> Layout.t
     end
 
     structure TyCon: sig

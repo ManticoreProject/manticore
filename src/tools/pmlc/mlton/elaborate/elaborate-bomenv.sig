@@ -86,6 +86,8 @@ signature ELABORATE_BOMENV =
 
       val extend: env * CoreBOM.ValId.t * CoreBOM.Val.t -> env
       val lookup: env * CoreBOM.ValId.t -> CoreBOM.Val.t option
+
+      val printKeys: env -> unit
     end
 
     structure MLTyEnv: sig

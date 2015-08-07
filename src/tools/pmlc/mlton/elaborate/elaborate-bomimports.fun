@@ -100,6 +100,11 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
                  BOM.ValueId.HLOpQId hlopqid => raise Fail "TODO(wings): elaborate HLOp exports"
                | BOM.ValueId.LongId bomLongId =>
                    let
+                     (*val _ = print "BOMEnv.TyEnv: "
+                     val _ = BOMEnv.TyEnv.printKeys bomEnv
+                     val _ = print "\n ValEnv: "
+                     val _ = BOMEnv.ValEnv.printKeys bomEnv
+                     val _ = print "\n"*)
                      val valId = CoreBOM.ValId.fromLongId (bomLongId)
                      val bomVal =
                        case BOMEnv.ValEnv.lookup (bomEnv, valId) of

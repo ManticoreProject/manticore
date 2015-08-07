@@ -230,6 +230,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       val (newEnv, domVals) = extendEnvForVarPats (domPats, dom, bomEnv)
       val (newEnv', contVals) = extendEnvForVarPats (contPats, cont, newEnv)
       val bodyExp = elaborateExp (exp, newEnv')
+      val _ = print ("body type is " ^ Layout.toString (CoreBOM.BOMType.layout (List.hd (CoreBOM.Exp.typeOf bodyExp))) ^ "\n")
       val returnTy = check (CoreBOM.BOMType.equals' (CoreBOM.Exp.typeOf bodyExp,
          rng), "function body doesn't agree with range type") (fn x => x)
     in
@@ -736,7 +737,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
                 else NONE,
               "left and right side of let binding are of different lengths")
               (fn bomEnv => bindVarPats (varPats, rhsTys, bomEnv))
-            val resultExp = elaborateExp (exp, bomEnv)
+            val resultExp = elaborateExp (exp, newBOMEnv)
           in
             CoreBOM.Exp.new (CoreBOM.Exp.Let (patVals,
               rhsExp, resultExp), CoreBOM.Exp.typeOf resultExp)
