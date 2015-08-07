@@ -41,6 +41,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure CF = CFunctions
   structure S = String
   structure Type = AMD64TypesFn (structure Spec = Spec)
+  structure U = LLVMPrintUtil (structure Spec = Spec)
 
 fun output (outS, module as C.MODULE { name = module_name,
                                        externs = module_externs,
@@ -69,20 +70,10 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   fun stdAttrs (MantiFun) = "naked nounwind"
 
-    (* because I'm not sure of the effect inlining a C func into a naked func right now. *)
+    (* TODO: because I'm not sure of the effect inlining a C func into a naked func right now. *)
     | stdAttrs (ExternCFun) = "noinline" 
 
   (**)
-
-
-
-  (* type stuff *)
-
-  (* we keep everything, including pointers, in the form of a known-width integer
-     and perform casts as needed *)
-  fun typeName (t : CT.ty) : string = "%i" ^ (Int.toString (Type.szOf t))
-  (**)
-
 
   (* translation utils *)
   local
@@ -144,44 +135,21 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   (* Functions *)
 
-  (* resolves the LLVM name assigned to a specific label kind  *)
-  local
-    (* lifted part of this from Stamp *)
-    fun manti2LLVM(name, id) =  
-                     name ^
-                     "_" ^
-                     (StringCvt.padLeft #"0" 4 (Word.toString (Stamp.hash id)))
+  fun mkFunc (f as C.FUNC { lab, start, body, ... }) : string = let
+    val linkage = (U.link2s o U.linkageOf) lab
+    val cc = "" (* TODO: determine this *)
+    val llName = (U.lab2FullName o U.cvtLabel) lab
+
+                      (* TODO: get the arg list from the starting block.
+                               also, the start block should be treated specially
+                               when we output it here.
+                               we also probably need a rename environment? *)
+    val decl = ["define ", linkage, " void ", llName, "() ", stdAttrs(MantiFun), " {\n"]
+    val body = List.map mkBasicBlock (start::body)
+
+    val total = S.concat (decl @ body @ ["\n}\n\n"])
   in
-    fun getLabelName (labelK) = (case labelK
-      of C.LK_Func { export = NONE,
-                     func = C.FUNC { lab = VarRep.V{ name, id, ... }, ... } } => "@" ^ manti2LLVM(name, id)
-                     
-       | C.LK_Func { export = SOME s, ... } => "@" ^ s
-       | C.LK_Extern s => "@" ^ s
-       | C.LK_Block (C.BLK { lab = VarRep.V{ name, id, ... }, ... }) => manti2LLVM(name, id)
-       (* end case *))
-  end
-
-  local
-    fun getLinkage (labelK) = (case labelK
-      of C.LK_Func { export = NONE, ... } => "internal"
-       | C.LK_Func { export = SOME _, ... } => "external"
-       | _ => raise Fail ("getLinkage is only valid for manticore functions.")
-       (* end case *))
-  in
-    fun mkFunc (f as C.FUNC { lab, ... }) : string = let
-      val labelK = CL.kindOf lab
-
-      val linkage = getLinkage (labelK)
-      val cc = "" (* TODO: determine this *)
-      val llName = getLabelName (labelK)
-
-
-
-      val decl = S.concat ["define ", linkage, " void ", llName, "() ", stdAttrs(MantiFun), " {}\n"]
-    in
-      decl
-    end
+    total
   end
 
   (* end of Functions *)
@@ -196,23 +164,8 @@ fun output (outS, module as C.MODULE { name = module_name,
 
     (* external C function *)
     fun toLLVMDecl (CF.CFun { var, name, retTy, argTys, varArg, attrs }) = let
-      
-      fun llTy (ct : CF.c_type) : string = (case ct
-        of CF.PointerTy => "i8*"
-         | CF.BaseTy(RawTypes.T_Float) => "float"
-         | CF.BaseTy(RawTypes.T_Double) => "double"
-         | CF.BaseTy(rawTy) => "i" ^ (i2s (RawTypes.sizeOf(rawTy) * 8))
-         | CF.VoidTy => "void"
-        (* end case *))
 
-      fun llAttr (a : CF.attribute) = (case a
-        of CF.A_pure => "readonly"
-         | CF.A_noreturn => "noreturn"
-         (* alloc/malloc attribute in C doesn't seem to translate over to LLVM IR *)
-         | _ => ""
-        (* end case *))
-
-        val llvmParams = mapSep(llTy, nil, ", ", argTys)
+        val llvmParams = mapSep(U.typeOfC, nil, ", ", argTys)
 
         val llvmParams = if not varArg
                       then llvmParams
@@ -220,13 +173,13 @@ fun output (outS, module as C.MODULE { name = module_name,
                         then llvmParams @ [", ..."]
                         else ["..."]
 
-        val llvmAttrs = mapSep(llAttr, [stdAttrs(ExternCFun)], " ", attrs)
+        val llvmAttrs = mapSep(U.attrOfC, [stdAttrs(ExternCFun)], " ", attrs)
 
         (* record this for translation later *)
         val _ = externInfoAdd(var, name)
 
       in
-        S.concat (["declare ", (llTy retTy), " @", name, "("] 
+        S.concat (["declare ", (U.typeOfC retTy), " @", name, "("] 
                   @ llvmParams @ [") "]
                   @ llvmAttrs @ ["\n"])
       end

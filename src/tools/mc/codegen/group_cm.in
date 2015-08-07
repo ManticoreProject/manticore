@@ -97,3 +97,5 @@ is
 
   llvm/llvm-codegen-fn.sml
   llvm/llvm-printer.sml
+  llvm/llvm-print-util.sml
+  llvm/llvm-print-instr.sml
