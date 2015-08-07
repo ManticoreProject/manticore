@@ -336,6 +336,7 @@ fun monomorphise (Xprogram.T {datatypes, body, ...}): Sprogram.t =
                SprimExp.Select {tuple = monoVarExp tuple, offset = offset}
           | XprimExp.Tuple xs => SprimExp.Tuple (monoVarExps xs)
           | XprimExp.Var x => SprimExp.Var (monoVarExp x)
+          | XprimExp.BOMVal x => SprimExp.BOMVal x (* TODO(wings): monomorphize HLOps? *) (* [PML] *)
       and monoLambda l: Slambda.t =
          let
             val {arg, argType, body, mayInline} = Xlambda.dest l

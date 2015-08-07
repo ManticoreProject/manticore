@@ -294,6 +294,7 @@ fun simplifyTypes (I.Program.T {body, datatypes, overflow}) =
                                  tuple = fixVarExp tuple}
           | I.PrimExp.Tuple xs => O.PrimExp.Tuple (Vector.map (xs, fixVarExp))
           | I.PrimExp.Var x => O.PrimExp.Var (fixVarExp x)
+          | I.PrimExp.BOMVal x => O.PrimExp.BOMVal x (* [PML] *)
       val body = fixExp body
    in
       O.Program.T {datatypes = datatypes,

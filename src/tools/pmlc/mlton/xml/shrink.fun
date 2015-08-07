@@ -578,6 +578,7 @@ fun shrinkOnce (Program.T {datatypes, body, overflow}) =
                            ; VarInfo.delete x
                            ; rest ()
                         end
+             | BOMVal bomVal => finish (exp, rest ()) (* TODO(wings: is it ok to pass though here? *) (* [PML] *)
          end
       and shrinkLambda l: Lambda.t =
          traceShrinkLambda

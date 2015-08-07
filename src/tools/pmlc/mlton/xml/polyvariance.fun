@@ -188,6 +188,7 @@ fun shouldDuplicate (program as Program.T {body, ...}, hofo, small, product)
                                          | Select {tuple, ...} => loopVar tuple
                                          | Tuple xs => loopVars xs
                                          | Var x => loopVar x
+                                         | BOMVal x => () (* [PML] *)
                                   in
                                      loopDecs decs
                                   end)
@@ -397,6 +398,7 @@ fun duplicate (program as Program.T {datatypes, body, overflow},
                                                 offset = offset}
                                    | Tuple xs => Tuple (loopVars xs)
                                    | Var x => Var (loopVar x)
+                                   | BOMVal x => BOMVal x (* [PML] *)
                                val var = bind var
                                val {decs, result} = loopDecs (ds, result)
                             in {decs = (MonoVal {var = var, ty = ty, exp = exp}

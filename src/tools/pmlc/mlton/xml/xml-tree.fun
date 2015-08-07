@@ -187,6 +187,8 @@ and primExp =
                offset: int}
   | Tuple of VarExp.t vector
   | Var of VarExp.t
+ (* [PML] BOM values exported into ML *)
+  | BOMVal of CoreBOM.Val.t
 and dec =
    Exception of {arg: Type.t option,
                  con: Con.t}
@@ -288,6 +290,7 @@ in
             seq [str "#", (*Int.layout*)Int_layout offset, str " ", VarExp.layout tuple]
        | Tuple xs => tuple (Vector.toListMap (xs, VarExp.layout))
        | Var x => VarExp.layout x
+       | BOMVal bomVal => seq [str "BOM.", str (CoreBOM.ValId.toString (CoreBOM.Val.idOf bomVal))] (* [PML] *)
    and layoutLambda (Lam {arg, argType, body, ...}) =
       align [seq [str "fn ", maybeConstrain (Var.layout arg, argType),
                   str " => "],
@@ -430,7 +433,8 @@ structure Exp =
                                             case arg of
                                                NONE => ()
                                              | SOME x => monoVar x)
-                          ; Option.app (default, loopExp o #1))))
+                          ; Option.app (default, loopExp o #1))
+                    | BOMVal bomVal => () (* TODO(wings: is it ok to do nothing here? *) (* [PML] *)))
             and loopDec d =
                case d of
                   MonoVal {var, ty, exp} =>

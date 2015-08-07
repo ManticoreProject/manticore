@@ -267,6 +267,7 @@ fun typeCheck (program as Program.T {datatypes, body, overflow}): unit =
                      then error "unary tuple"
                   else Type.tuple (checkVarExps xs)
              | Var x => checkVarExp x
+             | BOMVal bomVal => ty (*TODO(wings): typecheck BOM value references? *) (* [PML] *)
          end) arg
       and checkLambda arg: Type.t =
          traceCheckLambda

@@ -113,6 +113,8 @@ signature XML_TREE =
                           tuple: VarExp.t}
              | Tuple of VarExp.t vector
              | Var of VarExp.t
+            (* [PML] BOM values exported into ML *)
+             | BOMVal of CoreBOM.Val.t
 
             val layout: t -> Layout.t
          end

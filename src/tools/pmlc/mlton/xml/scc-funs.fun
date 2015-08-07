@@ -71,6 +71,7 @@ fun sccFuns (Program.T {datatypes, body, overflow}) =
           | Select {tuple, ...} => (loopVarExp tuple; e)
           | Tuple xs => (loopVarExps xs; e)
           | Var x => (loopVarExp x; e)
+          | BOMVal bomVal => e (* TODO(wings: is it ok to do nothing here? *) (* [PML] *)
       and loopExp (e: Exp.t): Exp.t =
          let
             val {decs, result} = Exp.dest e
