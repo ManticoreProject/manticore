@@ -20,6 +20,7 @@ signature ELABORATE_STRUCTS =
       sharing CoreML.CoreBOM = CoreBOM (* [PML] *)
       sharing CoreBOM.Ast = Ast (* [PML] *)
       (* sharing CoreBOM.BOM = Ast.BOM *)
+      sharing CoreBOM.CFunction = CoreML.CFunction (* [PML] *)
    end
 
 signature ELABORATE =

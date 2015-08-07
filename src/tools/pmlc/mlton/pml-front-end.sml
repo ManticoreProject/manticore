@@ -31,7 +31,7 @@ structure PMLFrontEnd : PML_FRONT_END =
     end
     structure Ast = Ast (open Atoms)
     structure TypeEnv = TypeEnv (open Atoms)
-    structure CoreBOM = CoreBOM (structure Ast = Ast)
+    structure CoreBOM = CoreBOM (structure Ast = Ast; structure CFunction = Atoms.CFunction)
     structure CoreML = CoreML (open Atoms
 			       structure Type =
 				  struct

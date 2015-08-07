@@ -4,6 +4,7 @@ AstBOM, like CoreML is a typed counterpart to Ast. *)
 signature CORE_BOM_STRUCTS =
   sig
     structure Ast: AST
+    structure CFunction: C_FUNCTION
   end
 
 signature CORE_BOM =
@@ -24,6 +25,7 @@ signature CORE_BOM =
 
       val fromAst: Ast.BOM.Attrs.t -> t list
       val flattenFromAst: Ast.BOM.Attrs.t option -> t list
+      val toString: t -> string
     end
 
     structure TyParam: sig
@@ -133,7 +135,20 @@ signature CORE_BOM =
     structure RawTy: sig
       datatype t = datatype RawTypes.raw_ty
 
-      val fromAst: Ast.BOM.RawTy.t -> t
+      val fromAst: Ast.BOM.RawTy.t -> CFunction.CType.t
+    end
+
+    structure CArgTy: sig
+      val fromAst: Ast.BOM.CArgTy.t -> CFunction.CType.t
+    end
+
+    structure CReturnTy: sig
+      val fromAst: Ast.BOM.CReturnTy.t -> CFunction.CType.t option
+    end
+
+    structure CProto: sig
+      datatype t
+        = T of unit CFunction.t * Attr.t list
     end
 
     datatype field_t
@@ -168,6 +183,7 @@ signature CORE_BOM =
       | Array of type_t
       | Vector of type_t
       | Cont of type_t list
+      | CFun of CProto.t
       | Addr of type_t
       | Raw of RawTy.t
       | Error
@@ -238,22 +254,6 @@ signature CORE_BOM =
 
     structure DataTypeDef: sig
       type t
-    end
-
-    structure CArgTy: sig
-      datatype t
-        = Raw of RawTy.t
-        | VoidPointer
-
-      val fromAst: Ast.BOM.CArgTy.t -> t
-    end
-
-    structure CReturnTy: sig
-      datatype t
-        = CArg of CArgTy.t
-        | Void
-
-      val fromAst: Ast.BOM.CReturnTy.t -> t
     end
 
     (* structure VarPat: sig *)
@@ -405,7 +405,7 @@ signature CORE_BOM =
         = Fun of FunDef.t list
         | HLOp of Attr.t list * ValId.t * Exp.t
         (* | Import of Longcon.t * Type.t option * BOMType.t *)
-        | Extern of CReturnTy.t * Val.t * CArgTy.t list * Attr.t list
+        | Extern of Val.t * CProto.t
               (* TODO: datatypes *)
     end
 

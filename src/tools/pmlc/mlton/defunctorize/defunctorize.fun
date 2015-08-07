@@ -667,7 +667,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                    case def of 
                       CoreML.CoreBOM.Definition.Fun (fundefs) => ()
                     | CoreML.CoreBOM.Definition.HLOp (attrs, valid, exp) => ()
-                    | CoreML.CoreBOM.Definition.Extern (retTy, val_, argTys, attrs) => ()
+                    | CoreML.CoreBOM.Definition.Extern (val_, cProto) => ()
                 ))
          end
       and loopExp (e: Cexp.t): unit =

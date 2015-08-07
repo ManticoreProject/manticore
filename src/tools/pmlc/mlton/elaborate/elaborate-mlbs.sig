@@ -21,6 +21,7 @@ signature ELABORATE_MLBS_STRUCTS =
       sharing CoreBOM.Ast = Ast (* [PML] *)
       sharing BOMEnv.CoreBOM = CoreML.CoreBOM = CoreBOM (* [PML] *)
       sharing BOMEnv.Env = Env (* [PML] *)
+      sharing CoreBOM.CFunction = CoreML.CFunction (* [PML] *)
    end
 
 signature ELABORATE_MLBS =

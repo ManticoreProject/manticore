@@ -88,6 +88,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       case attrs of
         SOME attrs => fromAst attrs
       | _ => []
+
+    fun toString attr = attr
   end
 
   structure HLOpId = struct
@@ -132,7 +134,20 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     open BOM.RawTy
     datatype t = datatype node
 
-    fun fromAst myRawTy = BOM.RawTy.node myRawTy
+    fun fromAst myRawTy = case BOM.RawTy.node myRawTy of
+        Int8 => CFunction.CType.Int8
+      | UInt8 => CFunction.CType.Word8
+      | Int16 => CFunction.CType.Int16
+      | UInt16 => CFunction.CType.Word16
+      | Int32 => CFunction.CType.Int32
+      | UInt32 => CFunction.CType.Word32
+      | Int64 => CFunction.CType.Int64
+      | UInt64 => CFunction.CType.Word64
+      | Float32 => CFunction.CType.Real32
+      | Float64 => CFunction.CType.Real64
+      | Vec128 => raise Fail "no representation for VecNNN types!"
+      | Vec256 => raise Fail "no representation for VecNNN types!"
+      | Vec512 => raise Fail "no representation for VecNNN types!"
   end
 
   structure PrimOp = struct
@@ -277,6 +292,25 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure Attrs = struct
   end
 
+  structure CArgTy = struct
+    fun fromAst astArgTy =
+      case BOM.CArgTy.node astArgTy of
+        BOM.CArgTy.Raw rawTy => RawTy.fromAst rawTy
+      | BOM.CArgTy.VoidPointer => CFunction.CType.CPointer
+  end
+
+  structure CReturnTy = struct
+    fun fromAst astReturnTy =
+      case BOM.CReturnTy.node astReturnTy of
+        BOM.CReturnTy.CArg cArgTy => SOME (CArgTy.fromAst cArgTy)
+      | BOM.CReturnTy.Void => NONE
+  end
+
+  structure CProto = struct
+    datatype t
+      = T of (*CReturnTy.t * CArgTy.t list*) unit CFunction.t * Attr.t list
+  end
+
   (* Mutually recursive types *)
    datatype tycon_t
     = TyC of {
@@ -314,6 +348,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Array of type_t
     | Vector of type_t
     | Cont of type_t list
+    | CFun of CProto.t
     | Addr of type_t
     | Raw of RawTy.t
     | Error
@@ -624,28 +659,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 
   structure DataTypeDef = struct
     open BOM.DataTypeDef
-  end
-
-  structure CArgTy = struct
-    datatype t
-      = Raw of RawTy.t
-      | VoidPointer
-
-    fun fromAst astArgTy =
-      case BOM.CArgTy.node astArgTy of
-        BOM.CArgTy.Raw rawTy => Raw (RawTy.fromAst rawTy)
-      | BOM.CArgTy.VoidPointer => VoidPointer
-  end
-
-  structure CReturnTy = struct
-    datatype t
-      = CArg of CArgTy.t
-      | Void
-
-    fun fromAst astReturnTy =
-      case BOM.CReturnTy.node astReturnTy of
-        BOM.CReturnTy.CArg cArgTy => CArg (CArgTy.fromAst cArgTy)
-      | BOM.CReturnTy.Void => Void
   end
 
   (* structure VarPat = struct *)
@@ -1073,7 +1086,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       = Fun of FunDef.t list
       | HLOp of Attr.t list * ValId.t * Exp.t
       (* | Import of BOMType.t *)
-      | Extern of CReturnTy.t * Val.t * CArgTy.t list * Attr.t list
+      | Extern of Val.t * CProto.t
   end
 
   (* structure Decs = struct *)

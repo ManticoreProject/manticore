@@ -22,6 +22,7 @@ signature ELABORATE_MODULES_STRUCTS =
       sharing CoreBOM.Ast = Ast (* [PML] *)
       sharing CoreML.CoreBOM = BOMEnv.CoreBOM = CoreBOM (* [PML] *)
       sharing BOMEnv.Env = Env (* [PML] *)
+      sharing CoreBOM.CFunction = CoreML.CFunction
    end
 
 signature ELABORATE_MODULES =

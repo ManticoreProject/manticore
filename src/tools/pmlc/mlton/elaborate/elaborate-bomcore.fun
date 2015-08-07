@@ -2,6 +2,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
   open S
 
   structure BOM = Ast.BOM
+  structure CFunction = CoreML.CFunction
 
   type funtype = {
     dom: CoreBOM.BOMType.t list,
@@ -965,14 +966,34 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         end
     | BOM.Definition.Extern (cReturnTy, bomId, cArgTys, maybeAttrs) =>
         let
-          val cReturnTy' = CoreBOM.CReturnTy.fromAst cReturnTy
-          val cArgTys' = map CoreBOM.CArgTy.fromAst cArgTys
-          val attrs' = CoreBOM.Attr.flattenFromAst maybeAttrs
-          (* TODO: what type should this value have? does it go in VE? *)
-          val valId = CoreBOM.Val.error
+          val valId = CoreBOM.ValId.fromBOMId bomId
+
+          (* convert AST types to CType.t *)
+          val cReturnTy' = CoreBOM.CReturnTy.fromAst' cReturnTy
+          val cArgTys' = Vector.fromList (map CoreBOM.CArgTy.fromAst' cArgTys)
+
+          (* check for purity attribute to choose kind *)
+          fun extractKind attrs =
+            let
+              val (pures, rest) = List.partition (fn(x) => CoreBOM.Attr.toString x = "pure") attrs
+            in
+              (if List.null pures then CFunction.Kind.Pure else CFunction.Kind.Impure, rest)
+            end
+          val (kind, attrs') = extractKind (CoreBOM.Attr.flattenFromAst maybeAttrs)
+
+          val cFunctionType = CFunction.T {args = Vector.fromList [],
+                                           convention = CFunction.Convention.PMLRT,
+                                           kind = kind,
+                                           prototype = (cArgTys', cReturnTy'),
+                                           return = (),
+                                           symbolScope = CFunction.SymbolScope.Private,
+                                           target = CFunction.Target.Direct (CoreBOM.ValId.toString valId) }
+          val cProto = CoreBOM.CProto.T (cFunctionType, attrs')
+
+          val newVal = CoreBOM.Val.new (valId, CoreBOM.BOMType.CFun cProto, [])
+          val bomEnv = BOMEnv.ValEnv.extend (bomEnv, valId, newVal)
         in
-          (SOME (CoreBOM.Definition.Extern (cReturnTy', valId,
-            cArgTys', attrs')), bomEnv)
+          (SOME (CoreBOM.Definition.Extern (newVal, cProto)), bomEnv)
         end
     (* (CoreML.Dec.BOMDec, bomEnv) *)
 end

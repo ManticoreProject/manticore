@@ -12,6 +12,7 @@ signature ELABORATE_BOMCORE_STRUCTS =
     sharing Decs = Env.Decs
     sharing BOMEnv.CoreBOM = CoreBOM
     sharing BOMEnv.Env = Env
+    sharing CoreML.CFunction = CoreBOM.CFunction = BOMEnv.CoreBOM.CFunction
   end
 
 signature ELABORATE_BOMCORE =
