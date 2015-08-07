@@ -195,7 +195,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
 
   fun lookupValId (checkForErrorVal, bomEnv, valId) =
     checkForErrorVal CoreBOM.Exp.error (BOMEnv.ValEnv.lookup (bomEnv, valId),
-    "unbound value identifier")
+    badValId)
 
   fun elaborateFunDefs (funDefs, bomEnv) =
     let
