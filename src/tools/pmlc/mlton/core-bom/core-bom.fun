@@ -358,21 +358,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   and tyargs_t
     = ArgTypes of type_t list
 
-  (* TODO(wings): ensure that code creating Tycon.t values is careful to ensure
-  that it only makes new ones exactly once for each tycon in the whole program
-  
-  once that's done, delete the old comments and old implementation here,
-  leaving only the one-line uid comparison implementation
-
-  (* TODO: tyConEquals needs to check that the arity is the same *)
-  (* TODO: MAKE THIS ROBUST, ADD A UID *)
-  and tyConEquals (TyC tyC, TyC tyC') =
-    let
-      val toString = TyId.toString o #id
-    in
-      String.compare (toString tyC, toString tyC') = EQUAL
-    end
-*)
   fun tyConEquals (TyC {uid=uid1, ...}, TyC {uid=uid2, ...}): bool =
       uid1 = uid2
 
