@@ -10,6 +10,7 @@ functor ImplementExceptions (S: IMPLEMENT_EXCEPTIONS_STRUCTS):
    IMPLEMENT_EXCEPTIONS = 
 struct
 
+structure MLVector = Vector
 structure Option = MLtonOption
 structure List = MLtonList
 structure Vector = MLtonVector
@@ -275,8 +276,14 @@ fun doit (Program.T {datatypes, body, ...}): Program.t =
                   ; List.push (exnValCons, {con = con, arg = arg})
                   ; vall {var = r, exp = reff (unit ())} @ decs
                end
-          | BOM decs => raise Fail "TODO(wings): implement exceptions for BOM!"
+          | BOM {bom=bomDecs} => [BOM {bom=MLVector.map leafBOMDec bomDecs}]
           | _ => Error.bug "ImplementExceptions: saw unexpected dec") arg
+      and leafBOMDec (bomDec) = case bomDec of
+            (* TODO(wings): CoreBOM.Definition seems to have dropped exceptions,
+            but it's not clear where they went; they should probably be propagated
+            to here and handled *)
+            (*CoreBOM.Definition.Exception dataConsDef => raise Fail "TODO(wings): factor BOM exception declarations into the exception datatype"*)
+            _ => bomDec
       and loopMonoVal {var, ty, exp} : Dec.t list =
          let
             fun primExp e = [MonoVal {var = var, ty = ty, exp = e}]

@@ -646,8 +646,8 @@ fun defunctorize (CoreML.Program.T {decs}) =
                        raise Fail "TODO(wings): lift datatypes from BOMExport Datatype"
                   | CoreML.BOMExport.TypBind (mlTyc, bomTyc) =>
                        raise Fail "TODO(wings): lift datatypes from BOMExport TypBind"
-                  | CoreML.BOMExport.ValBind (mlVar, ty, bomVal) =>
-                       raise Fail "TODO(wings): lift datatypes from BOMExport ValBind")
+                  (* XXX(wings): I don't know if the datatypes referenced in a ValBind are guaranteed to be imported properly/ *)
+                  | CoreML.BOMExport.ValBind (mlVar, ty, bomVal) => ())
              (* APOLOGIA(wings): right now a BOM module only has function, hlop, or extern 
              definitions; none of these introduce new datatypes or contain structures that
              introduce new datatypes; therefore, we don't need to do anything for BOM
@@ -958,7 +958,24 @@ fun defunctorize (CoreML.Program.T {decs}) =
                   | CoreML.BOMExport.TypBind (mlTyc, bomTyc) =>
                        raise Fail "TODO(wings): create XML for BOMExport TypBind"
                   | CoreML.BOMExport.ValBind (mlVar, ty, bomVal) =>
-                       raise Fail "TODO(wings): create XML for BOMExport ValBind")
+                     (* this is a binding of the form "_val mlName = _prim (bomName);",
+                     which is effectively a let-binding. however, we can't really
+                     represent a BOM value RHS (which might be a C function, a
+                     BOM function, or a BOM HLop) in XML. so we treat it as bogus
+                     but tag it so that Translate can turn it into something sane. *)
+(*                     Xexp.lett {decs = [Xdec.PolyVal {var = mlVar,
+                                                      ty = loopTy ty,
+                                                      tyvars = Vector.new0 (),
+                                                      exp = Xexp.toExp (Xexp.primApp {args = Vector.new0 (),
+                                                                          prim = Prim.bogus,
+                                                                          targs = Vector.new1 (loopTy ty),
+                                                                          ty = loopTy ty})}],
+                                body = e}*)
+                     Xexp.lett {decs = [Xdec.MonoVal {var = mlVar,
+                                                      ty = loopTy ty,
+                                                      exp = XprimExp.BOMVal bomVal}],
+                                body = e}
+(*                       raise Fail "TODO(wings): create XML for BOMExport ValBind"*))
              (* APOLOGIA(wings): I think we should be able to ignore imports here and just pass definitions through *)
              | BOMModule (CoreML.BOMModule.T {imports = imports (*: BOMImport.t list*), defs = defs (*: CoreBOM.Definition.t list*)}) =>  (*Xexp.BOM defs*)
                   Xexp.lett {body = e,

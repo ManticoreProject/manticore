@@ -14,6 +14,7 @@
 functor Polyvariance (S: POLYVARIANCE_STRUCTS): POLYVARIANCE = 
 struct
 
+structure MLVector = Vector
 structure Option = MLtonOption
 structure List = MLtonList
 structure Vector = MLtonVector
@@ -57,7 +58,32 @@ fun lambdaSize (Program.T {body, ...}): Lambda.t -> int =
            | Fun {decs, ...} => Vector.fold (decs, n, fn ({lambda, ...}, n) =>
                                              loopLambda (lambda, n))
            | Exception _ => n + 1
-	   | BOM _ => Error.bug "Polyvariance.lambdaSzie: BOM") (* [PML] *)
+           | BOM {bom=bomDecs} => MLVector.foldl (fn (bomDec, n) =>
+                                           leafBOM (bomDec, n)) n bomDecs) (* [PML] *)
+      and leafBOM (bomDec: CoreBOM.Definition.t, n: int): int =
+         case bomDec of
+            CoreBOM.Definition.Fun funs => loopBOMFuns (funs, n)
+          (* TODO(wings): exceptions are missing; instate them and push through | Exception => n+1 *)
+          (*| CoreBOM.Definition.Exception => n + 1*)
+          | CoreBOM.Definition.HLOp (attrs, vals, exp) => loopBOMExp (exp, n + 1)
+          | CoreBOM.Definition.Extern (name, cProto) => n
+      and loopBOMFuns (funs, n): int =
+          (* XXX(wings): should we store the cost of each BOM function declarations as is done for ML lambdas? *)
+         List.fold (funs, n, fn (CoreBOM.FunDef.Def (attrs, name, tyParams, inputTys, retTy, bomExp), n) =>
+                                   loopBOMExp (bomExp, n))
+      (* XXX(wings): the definition of loopBOMExp may be anywhere from "sane but subtly incorrect" to "completely insane" *)
+      and loopBOMExp (e: CoreBOM.Exp.t, n): int =
+         case CoreBOM.Exp.node e of
+            CoreBOM.Exp.Let (bomVals, rhs, exp) => loopBOMExp (exp, n + 1)
+          | CoreBOM.Exp.FunExp (funs, body) => loopBOMFuns (funs, n)
+          | CoreBOM.Exp.ContExp (cont, vals, handler, body) => (*XXX(wings): should this count the handler too?*) loopBOMExp (body, n + 1)
+          | CoreBOM.Exp.If (cond, thenn, elsee) => n
+          | CoreBOM.Exp.Do (simple, exp) => loopBOMExp (exp, n + 1)
+          | CoreBOM.Exp.Case cases => n(*[(simple, caserule)]*)
+          | CoreBOM.Exp.Typecase typecases => (*[(typaram, caserule)]*) raise Fail "TODO(wings): typecase should be monomorphized out before Polyvariance!"
+          | CoreBOM.Exp.Apply (f, simples1, simples2) => n + 1
+          | CoreBOM.Exp.Throw (bomVal, simples) => n + 1
+          | CoreBOM.Exp.Return (simples) => n + 1
       and loopLambda (l: Lambda.t, n): int =
          let val m = loopExp (Lambda.body l, 0)
          in set (l, m); m + n
@@ -211,6 +237,7 @@ fun shouldDuplicate (program as Program.T {body, ...}, hofo, small, product)
                                         loopExp (body, numDuplicates))
                                  end
                            end
+                      | BOM {bom=bomDecs} => () (* TODO(wings): what is this doing? do we care? *) (* [PML] *)
                       | _ => Error.bug "Polyvariance.loopExp.loopDecs: strange dec"
          in loopDecs decs
          end
@@ -419,6 +446,14 @@ fun duplicate (program as Program.T {datatypes, body, overflow},
                      in {decs = Fun {tyvars = Vector.new0 (),
                                      decs = decs} :: ds,
                          result = result}
+                     end
+                | BOM {bom=bomDecs} => (* [PML] *)
+                     let
+                        val {decs = ds, result} = loopDecs (ds, result)
+                     in {decs = BOM {bom = bomDecs} :: ds,
+                         result = result} (* TODO(wings): is it always ok to not
+                         duplicate anything in BOM modules? is this code muttering
+                         the right incantations? *)
                      end
                 | _ => Error.bug "Polyvariance.loopDecs: saw bogus dec"
       val body = loopExp body

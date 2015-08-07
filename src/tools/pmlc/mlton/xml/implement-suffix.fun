@@ -44,7 +44,8 @@ fun doit (Program.T {datatypes, body, overflow, ...}): Program.t =
                                         ty = ty,
                                         lambda = loopLambda lambda})}
           | Exception {...} => dec
-          | BOM decs => raise Fail "TODO(wings): implement suffixing for BOM"
+          (* [PML] BOM declarations never call MLton's setSuffix/getSuffix *)
+          | BOM decs => dec
           | _ => Error.bug "ImplementSuffix: saw unexpected dec"
       and loopMonoVal {var, ty, exp} : Dec.t =
          let
