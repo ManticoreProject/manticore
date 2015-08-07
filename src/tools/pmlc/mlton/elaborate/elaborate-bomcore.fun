@@ -113,7 +113,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
 	| BOM.BOMType.Any => CoreBOM.BOMType.Any
 	| BOM.BOMType.VProc => CoreBOM.BOMType.VProc
 	| BOM.BOMType.Raw ty => CoreBOM.BOMType.Raw (
-	    CoreBOM.RawTy.fromAst ty)
+	    BOM.RawTy.node ty)
       (* end case *)
     (* FIXME: need to add exn, others *)
     end
@@ -970,8 +970,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
           val valId = CoreBOM.ValId.fromBOMId bomId
 
           (* convert AST types to CType.t *)
-          val cReturnTy' = CoreBOM.CReturnTy.fromAst' cReturnTy
-          val cArgTys' = Vector.fromList (map CoreBOM.CArgTy.fromAst' cArgTys)
+          val cReturnTy' = CoreBOM.CReturnTy.fromAst cReturnTy
+          val cArgTys' = Vector.fromList (map CoreBOM.CArgTy.fromAst cArgTys)
 
           (* check for purity attribute to choose kind *)
           fun extractKind attrs =
