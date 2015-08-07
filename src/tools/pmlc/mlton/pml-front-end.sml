@@ -154,6 +154,7 @@ structure PMLFrontEnd : PML_FRONT_END =
       structure Type = TypeEnv.Type
       structure Tyvar = TypeEnv.Tyvar
 
+      (* define primitive datattypes bool, list, and ref *)
       val primitiveDatatypes = let
 	    val boolTyc = {
 		    tycon = Tycon.bool,
