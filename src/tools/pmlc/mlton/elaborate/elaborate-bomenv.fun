@@ -347,7 +347,6 @@ functor BOMEnv (S: ELABORATE_BOMENV_STRUCTS): ELABORATE_BOMENV = struct
       end
     end
 
-
     structure ValEnv = struct
       type env = t
 

@@ -68,7 +68,8 @@ structure ElaborateBOMCore = ElaborateBOMCore (
   structure Decs = Decs
   structure BOMEnv = BOMEnv
   structure Env = Env
-  structure CoreML = CoreML)
+  structure CoreML = CoreML
+)
 
 structure ElaborateBOMImports = ElaborateBOMImports (
   structure Ast = Ast
@@ -77,7 +78,8 @@ structure ElaborateBOMImports = ElaborateBOMImports (
   structure ElaborateBOMCore = ElaborateBOMCore
   structure BOMEnv = BOMEnv
   structure Env = Env
-  structure CoreML = CoreML)
+  structure CoreML = CoreML
+)
 
 structure AstBOM = Ast.BOM
 

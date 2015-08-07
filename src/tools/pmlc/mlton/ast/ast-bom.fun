@@ -185,7 +185,6 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
       case node myNode of
         LongId longId => LongId.layout longId
       | HLOpQId hlOpQId => HLOpQId.layout hlOpQId
-
   end
 
     (* structure LongId = struct *)
