@@ -21,10 +21,14 @@ structure Convention =
       datatype t =
          Cdecl
        | Stdcall
+      (* [PML] *)
+       | PMLRT
 
       val toString =
          fn Cdecl => "cdecl"
           | Stdcall => "stdcall"
+         (* [PML] *)
+          | PMLRT => "pmlrt"
 
       val layout = Layout.str o toString
    end

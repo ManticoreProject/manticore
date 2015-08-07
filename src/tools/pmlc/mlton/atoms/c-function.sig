@@ -17,7 +17,7 @@ signature C_FUNCTION =
 
       structure Convention:
          sig
-            datatype t = Cdecl | Stdcall
+            datatype t = Cdecl | Stdcall | PMLRT (* [PML] *)
 
             val layout: t -> Layout.t
             val toString: t -> string
