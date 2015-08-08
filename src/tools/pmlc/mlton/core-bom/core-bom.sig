@@ -403,6 +403,7 @@ signature CORE_BOM =
     structure Definition: sig
       datatype t
         = Fun of FunDef.t list
+        | Exception of DataConsDef.t
         | HLOp of Attr.t list * ValId.t * Exp.t
         (* | Import of Longcon.t * Type.t option * BOMType.t *)
         | Extern of Val.t * CProto.t

@@ -239,7 +239,7 @@ structure Translate : sig
           end
 
     and transDec (env, d, k : env -> BOM.exp) = ( case d
-           of S.Dec.Exception{arg, con} => raise Fail "exception declaration?"
+           of S.Dec.Exception{arg, con} => raise Fail "Exception declaration found in SXML"
             | S.Dec.Fun{decs, ...} => let
                 (*val _ = print "transDec Fun\n"*)
                 fun bind ({var, ty, lambda}, (fns, env)) = let

@@ -279,11 +279,8 @@ fun doit (Program.T {datatypes, body, ...}): Program.t =
           | BOM {bom=bomDecs} => [BOM {bom=MLVector.map leafBOMDec bomDecs}]
           | _ => Error.bug "ImplementExceptions: saw unexpected dec") arg
       and leafBOMDec (bomDec) = case bomDec of
-            (* TODO(wings): CoreBOM.Definition seems to have dropped exceptions,
-            but it's not clear where they went; they should probably be propagated
-            to here and handled *)
-            (*CoreBOM.Definition.Exception dataConsDef => raise Fail "TODO(wings): factor BOM exception declarations into the exception datatype"*)
-            _ => bomDec
+            CoreBOM.Definition.Exception dataConsDef => raise Fail "TODO(wings): factor BOM exception declarations into the exception datatype"
+          | _ => bomDec
       and loopMonoVal {var, ty, exp} : Dec.t list =
          let
             fun primExp e = [MonoVal {var = var, ty = ty, exp = e}]

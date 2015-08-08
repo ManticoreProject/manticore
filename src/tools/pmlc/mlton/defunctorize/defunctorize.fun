@@ -648,24 +648,16 @@ fun defunctorize (CoreML.Program.T {decs}) =
                        raise Fail "TODO(wings): lift datatypes from BOMExport TypBind"
                   (* XXX(wings): I don't know if the datatypes referenced in a ValBind are guaranteed to be imported properly/ *)
                   | CoreML.BOMExport.ValBind (mlVar, ty, bomVal) => ())
-             (* APOLOGIA(wings): right now a BOM module only has function, hlop, or extern 
-             definitions; none of these introduce new datatypes or contain structures that
-             introduce new datatypes; therefore, we don't need to do anything for BOM
-             modules here
-             
-             however, it may be the case that CoreML.CoreBOM.Definition *should* keep
-             exception/type/datatype declarations, in which case we would need to handle
-             those here
-             
-             the deciding factor is whether or not those cases are fully handled by being
-             placed into the environment earlier on in compilation
-             
-             it also seems unlikely that imports should involve any datatype definitions
-             since they're merely around to provide names for existing datatypes *)
+             (* APOLOGIA(wings): a BOM module only has function, hlop, exception, and extern
+             definitions by the time it reaches defunctorize; none of these (transitively)
+             introduce new datatypes, but only reference existing ones. the exception
+             datatype will be built in , so we don't need to worry about it here. therefore,
+             we can get away with not doing anything for BOM modules here. *)
              | BOMModule (CoreML.BOMModule.T {imports = imports (*: BOMImport.t list*), defs = defs (*: CoreBOM.Definition.t list*)}) =>
                 List.foreach (defs, (fn def =>
                    case def of 
                       CoreML.CoreBOM.Definition.Fun (fundefs) => ()
+                    | CoreML.CoreBOM.Definition.Exception (dataConsDef) => ()
                     | CoreML.CoreBOM.Definition.HLOp (attrs, valid, exp) => ()
                     | CoreML.CoreBOM.Definition.Extern (val_, cProto) => ()
                 ))

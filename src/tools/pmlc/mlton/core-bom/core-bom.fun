@@ -1099,6 +1099,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure Definition = struct
     datatype t
       = Fun of FunDef.t list
+      | Exception of DataConsDef.t
       | HLOp of Attr.t list * ValId.t * Exp.t
       (* | Import of BOMType.t *)
       | Extern of Val.t * CProto.t
