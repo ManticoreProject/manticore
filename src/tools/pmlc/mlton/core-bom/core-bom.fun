@@ -596,8 +596,9 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       case tys of
          ty::[] => layout ty
        | _ => Layout.paren (Layout.seq (Layout.separate (List.map layout tys, " * ")))
-    and layoutTyArgs tyArgs =
-      Layout.str "<" :: (List.map layout tyArgs) @ [Layout.str ">"]
+    and layoutTyArgs tyArgs = case tyArgs of
+         [] => []
+       | _ => Layout.str "<" :: (List.map layout tyArgs) @ [Layout.str ">"]
     and layout ty =
       case ty of
         Param tyParam => Layout.str "'???" (*TODO(wings): layout tyParam*)
