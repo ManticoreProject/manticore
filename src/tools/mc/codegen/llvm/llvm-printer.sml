@@ -38,10 +38,13 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure CV = CFG.Var
   structure CL = CFG.Label
   structure CT = CFGTy
+  structure CTU = CFGTyUtil
   structure CF = CFunctions
   structure S = String
   structure Type = AMD64TypesFn (structure Spec = Spec)
   structure U = LLVMPrintUtil (structure Spec = Spec)
+
+  structure LT = LLVMType (structure Spec = Spec)
 
 fun output (outS, module as C.MODULE { name = module_name,
                                        externs = module_externs,
@@ -135,16 +138,21 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   (* Functions *)
 
-  fun mkFunc (f as C.FUNC { lab, start, body, ... }) : string = let
+  fun mkFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args, ... }), body }) : string = let
     val linkage = (U.link2s o U.linkageOf) lab
-    val cc = "" (* TODO: determine this *)
+    val cc = "" (* TODO(kavon): determine this *)
     val llName = (U.lab2FullName o U.cvtLabel) lab
+
+    val cfgTy = LT.typeOfConv(entry, args)
+    val comment = S.concat ["; ", CTU.toString cfgTy, "\n"]
+
+    val llparams = mapSep(LT.toString, nil, ", ", LT.typesInConv cfgTy)
 
                       (* TODO: get the arg list from the starting block.
                                also, the start block should be treated specially
                                when we output it here.
                                we also probably need a rename environment? *)
-    val decl = ["define ", linkage, " void ", llName, "() ", stdAttrs(MantiFun), " {\n"]
+    val decl = [comment, "define ", linkage, " void ", llName, "("] @ llparams @ [") ", stdAttrs(MantiFun), " {\n"]
     val body = List.map mkBasicBlock (start::body)
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
@@ -165,7 +173,9 @@ fun output (outS, module as C.MODULE { name = module_name,
     (* external C function *)
     fun toLLVMDecl (CF.CFun { var, name, retTy, argTys, varArg, attrs }) = let
 
-        val llvmParams = mapSep(U.typeOfC, nil, ", ", argTys)
+        val c2ll = LT.toString o LT.typeOfC
+
+        val llvmParams = mapSep(c2ll, nil, ", ", argTys)
 
         val llvmParams = if not varArg
                       then llvmParams
@@ -179,7 +189,7 @@ fun output (outS, module as C.MODULE { name = module_name,
         val _ = externInfoAdd(var, name)
 
       in
-        S.concat (["declare ", (U.typeOfC retTy), " @", name, "("] 
+        S.concat (["declare ", (c2ll retTy), " @", name, "("] 
                   @ llvmParams @ [") "]
                   @ llvmAttrs @ ["\n"])
       end
