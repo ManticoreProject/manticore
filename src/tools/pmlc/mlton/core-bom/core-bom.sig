@@ -236,6 +236,7 @@ signature CORE_BOM =
 
       val unit: t
 	    (* val wrapTuple: t list -> t *)
+      val layouts: t list -> Layout.t
       val layout: t -> Layout.t
     end
 

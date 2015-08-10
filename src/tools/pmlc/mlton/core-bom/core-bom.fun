@@ -592,18 +592,20 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 	(* 	  [] => NoReturn *)
 	(*   | [ty] => ty *)
 	(*   | tys => Tuple tys *)
-    fun layout ty =
+    fun layouts tys =
+      case tys of
+         ty::[] => layout ty
+       | _ => Layout.paren (Layout.seq (Layout.separate (List.map layout tys, " * ")))
+    and layoutTyArgs tyArgs =
+      Layout.str "<" :: (List.map layout tyArgs) @ [Layout.str ">"]
+    and layout ty =
       case ty of
-        Param tyParam => Layout.str "typaram?"
-      | TyCon {con, args} => Layout.seq [layoutTycon con(* TODO(wings): layout tyargs *)]
+        Param tyParam => Layout.str "'???" (*TODO(wings): layout tyParam*)
+      | TyCon {con, args} => Layout.seq (layoutTycon con :: layoutTyArgs args)
       | Con {dom, rng} => Layout.seq [layout dom, Layout.str " ~> ", layout dom]
       | Record fields => Layout.str "{...}"
       | Tuple elems => Layout.str "(...)"
-      | Fun {dom, cont, rng} => let
-          fun layouts tys = Layout.paren (Layout.seq (Layout.separate (List.map layout tys, " * ")))
-        in
-          Layout.seq [layouts dom, Layout.str " -> ", layouts rng, Layout.str " / ", layouts cont]
-        end
+      | Fun {dom, cont, rng} => Layout.seq [layouts dom, Layout.str " -> ", layouts rng, Layout.str " / ", layouts cont]
       | BigNum => Layout.str "bignum"
       | Exn => Layout.str "exn"
       | Any => Layout.str "any"
@@ -613,7 +615,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       tycon_t instances *)
       | Array elemty => Layout.seq [layout elemty, Layout.str " array"]
       | Vector elemty => Layout.seq [layout elemty, Layout.str " vector"]
-      | Cont elemtys => Layout.seq (List.map layout elemtys) (* TODO(wings): spacing *)
+      | Cont elemtys => Layout.seq (Layout.str "cont" :: layoutTyArgs elemtys)
       | CFun cproto => Layout.str "cfun"
       | Addr destty => Layout.seq [layout destty, Layout.str " addr"]
       | Raw r => Layout.str (RawTypes.toString r)
