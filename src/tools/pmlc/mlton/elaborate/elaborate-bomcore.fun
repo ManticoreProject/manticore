@@ -190,8 +190,10 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     case BOM.Literal.node literal of
       BOM.Literal.PosInt i => BOMEnv.Context.newInt (ctx, i)
     | BOM.Literal.Float f => BOMEnv.Context.newFloat (ctx, f)
-    | BOM.Literal.String s => CoreBOM.Literal.new (CoreBOM.Literal.String s, CoreBOM.BOMType.Vector (CoreBOM.BOMType.Raw CoreBOM.RawTy.UInt8))
-    | BOM.Literal.NullVP => CoreBOM.Literal.new (CoreBOM.Literal.NullVP, CoreBOM.BOMType.VProc)
+    | BOM.Literal.String s => CoreBOM.Literal.new (CoreBOM.Literal.String s,
+        CoreBOM.BOMType.Vector (CoreBOM.BOMType.Raw CoreBOM.RawTy.UInt8))
+    | BOM.Literal.NullVP => CoreBOM.Literal.new (CoreBOM.Literal.NullVP,
+        CoreBOM.BOMType.VProc)
 
   fun lookupValId (checkForErrorVal, bomEnv, valId) =
     checkForErrorVal CoreBOM.Exp.error (BOMEnv.ValEnv.lookup (bomEnv, valId),
@@ -230,9 +232,11 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       val (newEnv, domVals) = extendEnvForVarPats (domPats, dom, bomEnv)
       val (newEnv', contVals) = extendEnvForVarPats (contPats, cont, newEnv)
       val bodyExp = elaborateExp (exp, newEnv')
-      val _ = print ("body type is " ^ Layout.toString (CoreBOM.BOMType.layout (List.hd (CoreBOM.Exp.typeOf bodyExp))) ^ "\n")
       val returnTy = check (CoreBOM.BOMType.equals' (CoreBOM.Exp.typeOf bodyExp,
-         rng), "function body doesn't agree with range type") (fn x => x)
+         rng), "function body doesn't agree with range type: function body is type "
+         ^ Layout.toString (CoreBOM.BOMType.layouts (CoreBOM.Exp.typeOf bodyExp))
+         ^ " but range is declared as type "
+         ^ Layout.toString (CoreBOM.BOMType.layouts rng)) (fn x => x)
     in
      (* TODO: handle noreturn *)
      CoreBOM.FunDef.Def (CoreBOM.Attr.flattenFromAst maybeAttrs, funVal,
@@ -758,14 +762,17 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               let
                 val arguments = map (fn sExp => elaborateSimpleExp (sExp, ctx,
                   bomEnv)) sExps
+                val argTys = map CoreBOM.SimpleExp.typeOf arguments
               in
                 (* make sure the value id is bound to a continuation
                 of the same type as the arguments *)
                 checkForErrorVal CoreBOM.Exp.error
-                  (CoreBOM.BOMType.equal' (CoreBOM.BOMType.Cont (
-                    map CoreBOM.SimpleExp.typeOf arguments),
+                  (CoreBOM.BOMType.equal' (CoreBOM.BOMType.Cont (argTys),
                     CoreBOM.Val.typeOf contVal),
-                  "throw arguments do not match continuation type")
+                  "throw arguments do not match continuation type: continuation is type "
+                  ^ Layout.toString (CoreBOM.BOMType.layout (CoreBOM.Val.typeOf contVal))
+                  ^ " but argument is type "
+                  ^ Layout.toString (CoreBOM.BOMType.layouts argTys))
                   (fn returnTy => CoreBOM.Exp.new (CoreBOM.Exp.Throw (
                     contVal, arguments), [returnTy]))
               end)
@@ -959,11 +966,13 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         end
     | BOM.Definition.Exception dataConsDef =>
         let
-          val (dataConsDef, envWithDef) = elaborateDataConsDef (dataConsDef, CoreBOM.BOMType.Exn, bomEnv)
+          val (dataConsDef, envWithDef) = elaborateDataConsDef (dataConsDef,
+            CoreBOM.BOMType.Exn, bomEnv)
         in
           (SOME (CoreBOM.Definition.Exception dataConsDef), envWithDef)
         end
-    | BOM.Definition.DefineHLOp (maybeAttrs, hlOpId, tyParams, inputs, exns, retTy, bomExp) => raise Fail "TODO(wings): elaborate HLOp definition in BOM module"
+    | BOM.Definition.DefineHLOp (maybeAttrs, hlOpId, tyParams, inputs, exns, retTy, bomExp) =>
+        raise Fail "TODO(wings): elaborate HLOp definition in BOM module"
     | BOM.Definition.Fun funDefs =>
         let
           val (envWithFns, funDefs) = elaborateFunDefs (funDefs, bomEnv)
@@ -993,7 +1002,8 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
                                            prototype = (cArgTys', cReturnTy'),
                                            return = (),
                                            symbolScope = CFunction.SymbolScope.Private,
-                                           target = CFunction.Target.Direct (CoreBOM.ValId.toString valId) }
+                                           target = CFunction.Target.Direct
+                                             (CoreBOM.ValId.toString valId) }
           val cProto = CoreBOM.CProto.T (cFunctionType, attrs')
 
           val newVal = CoreBOM.Val.new (valId, CoreBOM.BOMType.CFun cProto, [])
