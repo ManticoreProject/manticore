@@ -32,13 +32,14 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
     (*
       get the name of an LLVM type
     *)
-    val toString : ty -> string
+    val nameOf : ty -> string
 
     (* 
       generate the type declaration block for LLVM IR output for
-      all of the LLVM types generated. 
+      all of the LLVM types cached. The types become cached
+      as nameOf is used to determine the name of the type.
     *)
-    (* val typeDecl : unit -> string *)
+    val typeDecl : unit -> string
     
   end = struct
 
@@ -49,14 +50,19 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
   structure CF = CFunctions
 
   structure HC = HashCons
-
+  structure HCM = HashConsMap
   structure HCInt = HashConsGroundFn (
   struct
     type hash_key = int
     val sameKey = (op = : int * int -> bool)
-    val hashVal = Word.fromInt
+
+    (* QUESTION(kavon): is this hashVal okay or do we need to hash the integer with
+                 some sort of prime number multiplication? *)
+    val hashVal = Word.fromInt 
+
   end)
 
+  (* must use the ctor functions defined below *)
   type count = HCInt.obj
   datatype llvm_ty_node = 
       T_Void
@@ -71,32 +77,49 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
     | T_Vector of count * llvm_ty
     | T_Array of count * llvm_ty
     | T_Struct of llvm_ty list
-
     withtype llvm_ty = llvm_ty_node HC.obj
 
-
+  type ty = llvm_ty
 
   local
-    fun eq x = raise Fail "implement me"
+    (* ctors for llvm_ty *)
+    fun eq query = (case query
+      of (T_Void, T_Void) => true
+       | (T_VProc, T_VProc) => true
+       | (T_Deque, T_Deque) => true
+       | (T_Label, T_Label) => true
+       | (T_Func xs, T_Func ys) => ListPair.allEq HC.same (xs, ys)
+       | (T_Int x, T_Int y) => HC.same(x, y)
+       | (T_Float, T_Float) => true
+       | (T_Double, T_Double) => true
+       | (T_Ptr x, T_Ptr y) => HC.same(x, y)
+       | (T_Vector (xcount, x), T_Vector (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
+       | (T_Array (xcount, x), T_Array (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
+       | (T_Struct xs, T_Struct ys) => ListPair.allEq HC.same (xs, ys)
+       | _ => false
+      (* esac *))
+    
     val tbl = HC.new {eq = eq}
+
   in
-    val mkVoid = HC.cons0 tbl (0wx2, T_Void)
-    val mkVProc = HC.cons0 tbl (0wx3, T_VProc)
-    val mkLabel = HC.cons0 tbl (0wx5, T_Label)
-    val mkFunc = HC.consList tbl (0wx7, T_Func)
-    val mkInt = HC.cons1 tbl (0wx11, T_Int)
-    val mkFloat = HC.cons0 tbl (0wx13, T_Float)
-    val mkDouble = HC.cons0 tbl (0wx17, T_Double)
-    val mkPtr = HC.cons1 tbl (0wx19, T_Ptr)
-    val mkVector = HC.cons2 tbl (0wx23, T_Vector)
-    val mkArray = HC.cons2 tbl (0wx29, T_Array)
-    val mkStruct = HC.consList tbl (0wx31, T_Struct)
-    val mkDeque = HC.cons0 tbl (0wx41, T_Deque)
+    (* should be prime numbers.
+       I skip 2 because I think the hash function uses it to combine these? *)
+    val mkVoid = HC.cons0 tbl (0w3, T_Void)
+    val mkVProc = HC.cons0 tbl (0w5, T_VProc)
+    val mkLabel = HC.cons0 tbl (0w7, T_Label)
+    val mkFunc = HC.consList tbl (0w11, T_Func)
+    val mkInt = HC.cons1 tbl (0w13, T_Int)
+    val mkFloat = HC.cons0 tbl (0w17, T_Float)
+    val mkDouble = HC.cons0 tbl (0wx19, T_Double)
+    val mkPtr = HC.cons1 tbl (0w23, T_Ptr)
+    val mkVector = HC.cons2 tbl (0w29, T_Vector)
+    val mkArray = HC.cons2 tbl (0w31, T_Array)
+    val mkStruct = HC.consList tbl (0w37, T_Struct)
+    val mkDeque = HC.cons0 tbl (0w41, T_Deque)
 
     val mkCount = HCInt.mk
   end
-
-  type ty = llvm_ty
+  
   
 
   val i2s = Int.toString
@@ -125,7 +148,17 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
                       init
                       lst
 
+local
+  val cache = ref HCM.empty
+  val stamp = ref 0
 
+  val vprocTyName = "%_vproc.ty"
+  val vprocTyDef = "i8*"
+
+  val dequeTyName = "%_deque.ty"
+  val dequeTyDef = "i8*"
+
+in  
   fun toString (t : llvm_ty) = let
     fun nodeToStr (nt : llvm_ty_node) : string =
       let
@@ -137,27 +170,72 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
             | T_Float => "float"
             | T_Double => "double"
             | T_Label => "label"
-            | T_Deque => "%_deque.ty"
-            | T_VProc => "%_vproc.ty"
-            | T_Ptr t => (toString t) ^ "*"
-            
+            | T_Ptr t => (nameOf t) ^ "*"
+            | T_VProc => vprocTyName
+            | T_Deque => dequeTyName
             | T_Func (ret::params) => let
-                val llvmParams = mapSep(toString, nil, ", ", params)
+                val llvmParams = mapSep(nameOf, nil, ", ", params)
               in
-                S.concat ([toString ret, " ("] @ llvmParams @ [")"])
+                S.concat ([nameOf ret, " ("] @ llvmParams @ [")"])
               end      
             
-            | T_Vector (nelms, t) => S.concat ["<", i2s nelms, " x ", toString t, ">"]
+            | T_Vector (nelms, t) => S.concat ["<", i2s nelms, " x ", nameOf t, ">"]
 
-            | T_Array (nelms, t) => S.concat ["[", i2s nelms, " x ", toString t, "]"]
+            | T_Array (nelms, t) => S.concat ["[", i2s nelms, " x ", nameOf t, "]"]
 
-            | T_Struct ts => S.concat (["{ "] @ mapSep(toString, nil, ", ", ts) @ [" }"])
+            | T_Struct ts => S.concat (["{ "] @ mapSep(nameOf, nil, ", ", ts) @ [" }"])
+
+            (* T_VProc & T_Deque are inserted into the cache ahead of resorting to toString *)
+            | _ => raise Fail "base type name unknown"
 
           (* end case *))
        end
     in
       (nodeToStr o HC.node) t
     end
+                            (* `name` = type `rhs` *)
+  and mkAlias (t : llvm_ty) : (string * string option) = let
+      fun freshStamp () = (stamp := !stamp + 1 ; !stamp)
+    in
+      (case HC.node t
+        of T_Struct _ => ("%_tupTy." ^ i2s(freshStamp()) , SOME(toString t))
+         
+         (* NOTE(kavon): turns out you cannot forward reference non-struct types in LLVM.
+                         if we figure out a way to do it at some point, you can uncomment
+                         and change the following case. *)
+
+         (* | T_Func _ => ("%_funTy." ^ i2s(freshStamp()) , SOME(toString t)) *)
+
+         | _ => (toString t, NONE)
+      (* esac *))
+    end
+
+  (* looks up this type in the cache. if it is
+     not already present, it will generate a new entry and return its name. *)
+  and nameOf x = (case HCM.find(!cache, x)
+    of SOME (name, _) => name
+     | NONE => (case mkAlias x
+        of (name, NONE) => name
+         | (name, SOME rhs) => 
+            ( cache := HCM.insert(!cache, x, (name, rhs)) ; name )
+        (* esac *))
+     (* esac *))
+  
+
+  fun typeDecl () = let
+    fun assignToString (name, def) = name ^ " = type " ^ def ^ "\n"
+    
+    val decls = [(dequeTyName, dequeTyDef), (vprocTyName, vprocTyDef)] @ (HCM.listItems (!cache))
+  in
+    S.concat (List.map assignToString decls)
+  end
+
+end
+
+
+
+
+
 
 
   fun typeOf (cty : CT.ty) : llvm_ty = (case cty
@@ -265,47 +343,6 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
          | C.KnownFunc { clos } => 
             CT.T_KnownFunc {clos=(getTy clos), args=(List.map getTy args)} 
         (* end case *))
-    end
-
-
-(*********)
-
-  (* TODO(kavon): turns out that without caching these types, the output becomes
-                  quite unreadable. Especially since we need to add to
-                  every tuple a GC tag field. So, we should cache all boxed
-                  types (tuples, open tuples) and manticore function types  *)
-(*
-  local
-    val cache = Map.empty ref
-    fun mkTy (name, llt) = (name, llt) (* in case i want to extend it later *)
-  in
-  
-
-    fun typeOf (cty : CT.ty) : ty = let
-      (* TODO(kavon): some of these strings are rather long, so
-                      maybe this is very inefficient? real hash consing
-                      might be better.  *)
-      val key = CTU.toString cty
-    in
-      (case Map.find(!cache, key)
-        of SOME cachedTy => cachedTy
-         | NONE => let
-           val genned = typeOf cty
-           val shortName = mkShortName genned
-           val newTy = mkTy(genned, shortName)
-           val _ = cache := Map.insert(!cache, key, newTy)
-         in
-           newTy
-         end
-      (* esac *))
-    end
-
-  and mkShortName (t : llvm_ty) =
-      
-  
-
-  end
-*)
-     
+    end     
 
 end
