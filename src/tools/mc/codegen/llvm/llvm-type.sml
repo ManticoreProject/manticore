@@ -48,20 +48,53 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
   structure CTU = CFGTyUtil
   structure CF = CFunctions
 
-  (* structure Map : ORD_MAP where type Key.ord_key = string *)
+  structure HC = HashCons
 
-  datatype llvm_ty = 
+  structure HCInt = HashConsGroundFn (
+  struct
+    type hash_key = int
+    val sameKey = (op = : int * int -> bool)
+    val hashVal = Word.fromInt
+  end)
+
+  type count = HCInt.obj
+  datatype llvm_ty_node = 
       T_Void
-    | T_Alias of string * llvm_ty (* (name, actual type) *)
+    | T_VProc
+    | T_Deque
     | T_Label
-    | T_Func of llvm_ty * (llvm_ty list) * bool
-    | T_Int of int (* width *)
+    | T_Func of llvm_ty list  (* first element is the return type *)
+    | T_Int of count (* number of bits *)
     | T_Float
     | T_Double
     | T_Ptr of llvm_ty
-    | T_Vector of int * llvm_ty
-    | T_Array of int * llvm_ty
+    | T_Vector of count * llvm_ty
+    | T_Array of count * llvm_ty
     | T_Struct of llvm_ty list
+
+    withtype llvm_ty = llvm_ty_node HC.obj
+
+
+
+  local
+    fun eq x = raise Fail "implement me"
+    val tbl = HC.new {eq = eq}
+  in
+    val mkVoid = HC.cons0 tbl (0wx2, T_Void)
+    val mkVProc = HC.cons0 tbl (0wx3, T_VProc)
+    val mkLabel = HC.cons0 tbl (0wx5, T_Label)
+    val mkFunc = HC.consList tbl (0wx7, T_Func)
+    val mkInt = HC.cons1 tbl (0wx11, T_Int)
+    val mkFloat = HC.cons0 tbl (0wx13, T_Float)
+    val mkDouble = HC.cons0 tbl (0wx17, T_Double)
+    val mkPtr = HC.cons1 tbl (0wx19, T_Ptr)
+    val mkVector = HC.cons2 tbl (0wx23, T_Vector)
+    val mkArray = HC.cons2 tbl (0wx29, T_Array)
+    val mkStruct = HC.consList tbl (0wx31, T_Struct)
+    val mkDeque = HC.cons0 tbl (0wx41, T_Deque)
+
+    val mkCount = HCInt.mk
+  end
 
   type ty = llvm_ty
   
@@ -93,40 +126,43 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
                       lst
 
 
-  fun toString t = (case t
-     
-     of T_Void => "void"
-      | T_Int width => "i" ^ (i2s width)
-      | T_Float => "float"
-      | T_Double => "double"
-      | T_Label => "label"
-      | T_Alias (shortName, _) => shortName
-      | T_Ptr t => (toString t) ^ "*"
-      
-      | T_Func (ret, params, varArg) => let
-          val llvmParams = mapSep(toString, nil, ", ", params)
+  fun toString (t : llvm_ty) = let
+    fun nodeToStr (nt : llvm_ty_node) : string =
+      let
+        val i2s = i2s o HC.node
+      in
+       (case nt 
+           of T_Void => "void"
+            | T_Int width => "i" ^ (i2s width)
+            | T_Float => "float"
+            | T_Double => "double"
+            | T_Label => "label"
+            | T_Deque => "%_deque.ty"
+            | T_VProc => "%_vproc.ty"
+            | T_Ptr t => (toString t) ^ "*"
+            
+            | T_Func (ret::params) => let
+                val llvmParams = mapSep(toString, nil, ", ", params)
+              in
+                S.concat ([toString ret, " ("] @ llvmParams @ [")"])
+              end      
+            
+            | T_Vector (nelms, t) => S.concat ["<", i2s nelms, " x ", toString t, ">"]
 
-          val llvmParams = if not varArg
-                      then llvmParams
-                      else if List.length llvmParams > 0
-                        then llvmParams @ [", ..."]
-                        else ["..."]
-        in
-          S.concat ([toString ret, " ("] @ llvmParams @ [")"])
-        end      
-      
-      | T_Vector (nelms, t) => S.concat ["<", i2s nelms, " x ", toString t, ">"]
+            | T_Array (nelms, t) => S.concat ["[", i2s nelms, " x ", toString t, "]"]
 
-      | T_Array (nelms, t) => S.concat ["[", i2s nelms, " x ", toString t, "]"]
+            | T_Struct ts => S.concat (["{ "] @ mapSep(toString, nil, ", ", ts) @ [" }"])
 
-      | T_Struct ts => S.concat (["{ "] @ mapSep(toString, nil, ", ", ts) @ [" }"])
-
-    (* end case *))
+          (* end case *))
+       end
+    in
+      (nodeToStr o HC.node) t
+    end
 
 
   fun typeOf (cty : CT.ty) : llvm_ty = (case cty
 
-    of CT.T_Any => T_Ptr (T_Int 8) 
+    of CT.T_Any => mkPtr(mkInt(mkCount 8))
 
      (* in a mixed type representation, the GC expects wordsize width elements.
 
@@ -134,19 +170,19 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
           the enum and or when to truncate it (and how much we can chop off).
 
       *)
-     | CT.T_Enum _ => T_Int (8 * wordSzB) (* NOTE: these are tagged integers, be careful when you create these *)
+     | CT.T_Enum _ => mkInt(mkCount (8 * wordSzB)) (* NOTE: these are tagged integers, be careful when you create these *)
 
-     | CT.T_Block _ => T_Label
+     | CT.T_Block _ => mkLabel
 
-     | CT.T_Raw (CT.T_Double) => T_Double
+     | CT.T_Raw (CT.T_Double) => mkDouble
 
-     | CT.T_Raw (CT.T_Float) => T_Float
+     | CT.T_Raw (CT.T_Float) => mkFloat
 
      (* FIXME(kavon): it's expected that this gets casted as needed since we don't actually know what
         the underlying values in the vector are, so this might be broken/hacky *)
-     | CT.T_Raw (CT.T_Vec128) => T_Vector(16, T_Int 8)
+     | CT.T_Raw (CT.T_Vec128) => mkVector(mkCount 16, mkInt(mkCount 8))
 
-     | CT.T_Raw rt => T_Int (sizeOfRawTy rt)
+     | CT.T_Raw rt => mkInt(mkCount (sizeOfRawTy rt))
 
       (* TODO(kavon): 
                       - when it comes to GC header tags, be careful of the dead store elim pass
@@ -165,38 +201,38 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
       | CT.T_Tuple (_, ts) => (case ts
         of nil => raise Fail "empty tuple. should be an enum for unit?"
 
-         | t::nil => T_Ptr(typeOf t)
+         | t::nil => mkPtr(typeOf t)
 
-         | ts => T_Ptr(T_Struct (List.map typeOf ts))
+         | ts => mkPtr(mkStruct(List.map typeOf ts))
 
         (* esac *))
 
 
       (* TODO(kavon): we represent the vararg part as the any type. might want to change it to an arbitrary C pointer? *)
-      | CT.T_OpenTuple ts => T_Ptr(T_Struct ((List.map typeOf ts) @ [ typeOf(CT.T_Any) ]))
+      | CT.T_OpenTuple ts => mkPtr(mkStruct((List.map typeOf ts) @ [ typeOf(CT.T_Any) ]))
 
-      | CT.T_Addr t => T_Ptr (typeOf t)
+      | CT.T_Addr t => mkPtr(typeOf t)
 
       (* TODO(kavon): store these in the alias cache *)
-      | CT.T_VProc => T_Alias("%_vproc.ty", T_Ptr(T_Int 8))
+      | CT.T_VProc => mkVProc
 
-      | CT.T_Deque => T_Alias("%_deque.ty", T_Ptr(T_Int 8))
+      | CT.T_Deque => mkDeque
 
-      | CT.T_CFun(CF.CProto(retTy, argTys, _)) => T_Func(typeOfC retTy, List.map typeOfC argTys, false)
+      | CT.T_CFun(CF.CProto(retTy, argTys, _)) => mkFunc([typeOfC retTy] @ (List.map typeOfC argTys))
 
       (* TODO(kavon): we don't know what our calling convention is right now, so leaving this blank. *)
-      | CT.T_StdFun _ => T_Ptr(T_Func(T_Void, typesInConv(cty), false)) 
+      | CT.T_StdFun _ => mkPtr(mkFunc( [mkVoid] @ typesInConv(cty) ))
 
-      | CT.T_StdCont _ => T_Ptr(T_Func(T_Void, typesInConv(cty), false))
+      | CT.T_StdCont _ => mkPtr(mkFunc( [mkVoid] @ typesInConv(cty) ))
 
-      | CT.T_KnownFunc _ => T_Ptr(T_Func(T_Void, typesInConv(cty), false))
+      | CT.T_KnownFunc _ => mkPtr(mkFunc( [mkVoid] @ typesInConv(cty) ))
 
     (* end case *))
 
     and typeOfC (ct : CF.c_type) : llvm_ty = (case ct
-          of CF.PointerTy => T_Ptr(T_Int 8) (* LLVM's void* *)
+          of CF.PointerTy => mkPtr(mkInt(mkCount 8))  (* LLVM's void* *)
            | CF.BaseTy(rawTy) => typeOf(CT.T_Raw rawTy)
-           | CF.VoidTy => T_Void
+           | CF.VoidTy => mkVoid
           (* end case *))
 
 
