@@ -30,7 +30,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
 
 
     (*
-      get the LLVM name of this type
+      get the name of an LLVM type
     *)
     val toString : ty -> string
 
@@ -45,22 +45,25 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
   structure S = String
   structure C = CFG
   structure CT = CFGTy
+  structure CTU = CFGTyUtil
   structure CF = CFunctions
 
-  datatype ty = 
+  (* structure Map : ORD_MAP where type Key.ord_key = string *)
+
+  datatype llvm_ty = 
       T_Void
-    | T_VProc
-    | T_Deque
+    | T_Alias of string * llvm_ty (* (name, actual type) *)
     | T_Label
-    | T_Func of ty * (ty list) * bool
+    | T_Func of llvm_ty * (llvm_ty list) * bool
     | T_Int of int (* width *)
     | T_Float
     | T_Double
-    | T_Ptr of ty
-    | T_Vector of int * ty
-    | T_Array of int * ty
-    | T_Struct of ty list
+    | T_Ptr of llvm_ty
+    | T_Vector of int * llvm_ty
+    | T_Array of int * llvm_ty
+    | T_Struct of llvm_ty list
 
+  type ty = llvm_ty
   
 
   val i2s = Int.toString
@@ -89,15 +92,15 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
                       init
                       lst
 
-  fun toString (t : ty) = (case t
+
+  fun toString t = (case t
      
      of T_Void => "void"
       | T_Int width => "i" ^ (i2s width)
       | T_Float => "float"
       | T_Double => "double"
       | T_Label => "label"
-      | T_VProc => "%_vproc.ty" (* TODO(kavon): need to add typedefs for deque/vproc <-> i8* *)
-      | T_Deque => "%_deque.ty"
+      | T_Alias (shortName, _) => shortName
       | T_Ptr t => (toString t) ^ "*"
       
       | T_Func (ret, params, varArg) => let
@@ -121,12 +124,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
     (* end case *))
 
 
-  (* TODO(kavon): turns out that without caching these types, the output becomes
-                  quite unreadable. Especially since we need to add to
-                  every tuple a GC tag field. So, we should cache all boxed
-                  types (tuples, open tuples) and manticore function types  *)
-
-  fun typeOf (cty : CT.ty) : ty = (case cty
+  fun typeOf (cty : CT.ty) : llvm_ty = (case cty
 
     of CT.T_Any => T_Ptr (T_Int 8) 
 
@@ -162,19 +160,27 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
                               wrapping the type away and then get the size of that. note that we
                               can't flatten a tuple of a single element because it must be in the heap
                               and everything in the heap needs a tag, which at the time of allocation must be known *)
-      | CT.T_Tuple (_, ts) =>  T_Ptr(T_Struct (List.map typeOf ts))
+      
+      (* always a pointer type. *)
+      | CT.T_Tuple (_, ts) => (case ts
+        of nil => raise Fail "empty tuple. should be an enum for unit?"
+
+         | t::nil => T_Ptr(typeOf t)
+
+         | ts => T_Ptr(T_Struct (List.map typeOf ts))
+
+        (* esac *))
+
 
       (* TODO(kavon): we represent the vararg part as the any type. might want to change it to an arbitrary C pointer? *)
       | CT.T_OpenTuple ts => T_Ptr(T_Struct ((List.map typeOf ts) @ [ typeOf(CT.T_Any) ]))
 
       | CT.T_Addr t => T_Ptr (typeOf t)
 
-      (* TODO(kavon): vproc and deque should probably be externally defined types?
-                      can we even do that? if not, i8* works too since we use hardcoded offsets
-                       right now anyways. *)
-      | CT.T_VProc => T_VProc
+      (* TODO(kavon): store these in the alias cache *)
+      | CT.T_VProc => T_Alias("%_vproc.ty", T_Ptr(T_Int 8))
 
-      | CT.T_Deque => T_Deque
+      | CT.T_Deque => T_Alias("%_deque.ty", T_Ptr(T_Int 8))
 
       | CT.T_CFun(CF.CProto(retTy, argTys, _)) => T_Func(typeOfC retTy, List.map typeOfC argTys, false)
 
@@ -187,7 +193,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
 
     (* end case *))
 
-    and typeOfC (ct : CF.c_type) : ty = (case ct
+    and typeOfC (ct : CF.c_type) : llvm_ty = (case ct
           of CF.PointerTy => T_Ptr(T_Int 8) (* LLVM's void* *)
            | CF.BaseTy(rawTy) => typeOf(CT.T_Raw rawTy)
            | CF.VoidTy => T_Void
@@ -195,7 +201,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
 
 
     (* TODO(kavon): does not yet include types for pinned registers *)
-    and typesInConv (cty : CT.ty) : ty list = (case cty
+    and typesInConv (cty : CT.ty) : llvm_ty list = (case cty
       
       of CT.T_StdFun { clos, args, ret, exh } =>
             (typeOf clos) :: (List.map typeOf args) @ [typeOf ret, typeOf exh]
@@ -225,6 +231,45 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
         (* end case *))
     end
 
+
+(*********)
+
+  (* TODO(kavon): turns out that without caching these types, the output becomes
+                  quite unreadable. Especially since we need to add to
+                  every tuple a GC tag field. So, we should cache all boxed
+                  types (tuples, open tuples) and manticore function types  *)
+(*
+  local
+    val cache = Map.empty ref
+    fun mkTy (name, llt) = (name, llt) (* in case i want to extend it later *)
+  in
+  
+
+    fun typeOf (cty : CT.ty) : ty = let
+      (* TODO(kavon): some of these strings are rather long, so
+                      maybe this is very inefficient? real hash consing
+                      might be better.  *)
+      val key = CTU.toString cty
+    in
+      (case Map.find(!cache, key)
+        of SOME cachedTy => cachedTy
+         | NONE => let
+           val genned = typeOf cty
+           val shortName = mkShortName genned
+           val newTy = mkTy(genned, shortName)
+           val _ = cache := Map.insert(!cache, key, newTy)
+         in
+           newTy
+         end
+      (* esac *))
+    end
+
+  and mkShortName (t : llvm_ty) =
+      
+  
+
+  end
+*)
      
 
 end

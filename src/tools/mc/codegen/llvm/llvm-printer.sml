@@ -144,9 +144,13 @@ fun output (outS, module as C.MODULE { name = module_name,
     val llName = (U.lab2FullName o U.cvtLabel) lab
 
     val cfgTy = LT.typeOfConv(entry, args)
-    val comment = S.concat ["; ", CTU.toString cfgTy, "\n"]
+    val llParamTys = LT.typesInConv cfgTy
+    (* TODO(kavon): add a check to ensure # of GPR <= arity. Spec currently lists
+                    the max number of GPRs for args, not total with pinned regs *)
+    val comment = S.concat ["; ", CTU.toString cfgTy, "\n",
+                            "; arity = ", i2s(List.length llParamTys), "\n" ] 
 
-    val llparams = mapSep(LT.toString, nil, ", ", LT.typesInConv cfgTy)
+    val llparams = mapSep(LT.toString, nil, ", ", llParamTys)
 
                       (* TODO: get the arg list from the starting block.
                                also, the start block should be treated specially
