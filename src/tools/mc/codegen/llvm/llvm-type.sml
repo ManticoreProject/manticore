@@ -9,13 +9,11 @@
 functor LLVMType (structure Spec : TARGET_SPEC) : sig
 
     type ty
+    type ty_node
+    type count
 
     (*  
-      converts a CFG type to an LLVM type. Uses a simple
-      caching system so that structurally equivalent aggregate
-      types share the same LLVM type declaration. 
-
-      TODO(kavon): The only point of doing the caching is to save characters, is this important right now?
+      converts a CFG type to an LLVM type.
     *)
     val typeOf : CFGTy.ty -> ty
 
@@ -33,6 +31,69 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
       get the name of an LLVM type
     *)
     val nameOf : ty -> string
+
+    (*
+      O(1) operation to compare two types for equality.
+      
+      VProc and Deque are considered to be distinct types, even if
+      they alias the same type.
+    *)
+    val same : ty * ty -> bool
+
+    (* select i'th type component from a structure *)
+    val select : ty * int -> ty
+
+    (* deref this type *)
+    val deref : ty -> ty
+
+    (* QUESTION(kavon): need to think more about sizes with respect to the GC. for example,
+   an integer type with < wordSizeB bytes as part of a vector of non-pointers does not
+   nessecarily need to be sign extended to wordSizeB size. so the sizes of things
+   depends on what container the value appears in on the heap, since mixed type
+   should have everything wordSizeB to calculate offsets.   *)
+  (* QUESTION/TODO(kavon): 
+      - when it comes to GC header tags, be careful of the dead store elim pass
+        - additionally, we need to mark structs for their header tag for initialization later.
+          thus, we need to determine whether it needs a RAW, VECTOR, or MIXED header and what
+          bits need to be set based upon the positions of the elements.
+      - should we check to see if all types are the same, and if so turn
+        a struct into an array?
+      - NOTE: tuples are pointers to structs allocated in the heap, thus
+              for an alloc expression, we should strip the pointer
+              wrapping the type away and then get the size of that. note that we
+              can't flatten a tuple of a single element because it must be in the heap
+              and everything in the heap needs a tag, which at the time of allocation must be known *)
+
+    (* val sizeOf : ty * ty -> int *)
+
+    (* project the node out of a ty. 
+       useful for clean pattern matching *)
+    val node : ty -> ty_node
+
+    (* the types *)
+
+    val voidTy : ty
+    val vprocTy : ty
+    val dequeTy : ty
+    val labelTy : ty
+    val floatTy : ty
+    val doubleTy : ty
+
+    (* count is number of bits wide *)
+    val mkInt : count -> ty
+
+    (* first element is return type *)
+    val mkFunc : ty list -> ty
+
+    val mkPtr : ty -> ty
+
+    (* count is number of elements of type ty *)
+    val mkVector : count * ty -> ty
+    val mkArray : count * ty -> ty
+
+    val mkStruct : ty list -> ty
+    
+    val cnt : int -> count
 
     (* 
       generate the type declaration block for LLVM IR output for
@@ -80,6 +141,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
     withtype llvm_ty = llvm_ty_node HC.obj
 
   type ty = llvm_ty
+  type ty_node = llvm_ty_node
 
   local
     (* ctors for llvm_ty *)
@@ -104,20 +166,20 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
   in
     (* should be prime numbers.
        I skip 2 because I think the hash function uses it to combine these? *)
-    val mkVoid = HC.cons0 tbl (0w3, T_Void)
-    val mkVProc = HC.cons0 tbl (0w5, T_VProc)
-    val mkLabel = HC.cons0 tbl (0w7, T_Label)
+    val voidTy = HC.cons0 tbl (0w3, T_Void)
+    val vprocTy = HC.cons0 tbl (0w5, T_VProc)
+    val labelTy = HC.cons0 tbl (0w7, T_Label)
     val mkFunc = HC.consList tbl (0w11, T_Func)
     val mkInt = HC.cons1 tbl (0w13, T_Int)
-    val mkFloat = HC.cons0 tbl (0w17, T_Float)
-    val mkDouble = HC.cons0 tbl (0wx19, T_Double)
+    val floatTy = HC.cons0 tbl (0w17, T_Float)
+    val doubleTy = HC.cons0 tbl (0wx19, T_Double)
     val mkPtr = HC.cons1 tbl (0w23, T_Ptr)
     val mkVector = HC.cons2 tbl (0w29, T_Vector)
     val mkArray = HC.cons2 tbl (0w31, T_Array)
     val mkStruct = HC.consList tbl (0w37, T_Struct)
-    val mkDeque = HC.cons0 tbl (0w41, T_Deque)
+    val dequeTy = HC.cons0 tbl (0w41, T_Deque)
 
-    val mkCount = HCInt.mk
+    val cnt = HCInt.mk
   end
   
   
@@ -148,136 +210,119 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
                       init
                       lst
 
-local
-  val cache = ref HCM.empty
-  val stamp = ref 0
 
-  val vprocTyName = "%_vproc.ty"
-  val vprocTyDef = "i8*"
+  local
+    val cache = ref HCM.empty
+    val stamp = ref 0
 
-  val dequeTyName = "%_deque.ty"
-  val dequeTyDef = "i8*"
+    val vprocTyName = "%_vproc.ty"
+    val vprocTyDef = "i8*"
 
-in  
-  fun toString (t : llvm_ty) = let
-    fun nodeToStr (nt : llvm_ty_node) : string =
-      let
-        val i2s = i2s o HC.node
+    val dequeTyName = "%_deque.ty"
+    val dequeTyDef = "i8*"
+
+  in  
+
+    fun toString (t : llvm_ty) = let
+      fun nodeToStr (nt : llvm_ty_node) : string =
+        let
+          val i2s = i2s o HC.node
+        in
+         (case nt 
+             of T_Void => "void"
+              | T_Int width => "i" ^ (i2s width)
+              | T_Float => "float"
+              | T_Double => "double"
+              | T_Label => "label"
+              | T_Ptr t => (nameOf t) ^ "*"
+              | T_VProc => vprocTyName
+              | T_Deque => dequeTyName
+              | T_Func (ret::params) => let
+                  val llvmParams = mapSep(nameOf, nil, ", ", params)
+                in
+                  S.concat ([nameOf ret, " ("] @ llvmParams @ [")"])
+                end      
+              
+              | T_Vector (nelms, t) => S.concat ["<", i2s nelms, " x ", nameOf t, ">"]
+
+              | T_Array (nelms, t) => S.concat ["[", i2s nelms, " x ", nameOf t, "]"]
+
+              | T_Struct ts => S.concat (["{ "] @ mapSep(nameOf, nil, ", ", ts) @ [" }"])
+
+              | _ => raise Fail "base type name unknown"
+
+            (* end case *))
+         end
       in
-       (case nt 
-           of T_Void => "void"
-            | T_Int width => "i" ^ (i2s width)
-            | T_Float => "float"
-            | T_Double => "double"
-            | T_Label => "label"
-            | T_Ptr t => (nameOf t) ^ "*"
-            | T_VProc => vprocTyName
-            | T_Deque => dequeTyName
-            | T_Func (ret::params) => let
-                val llvmParams = mapSep(nameOf, nil, ", ", params)
-              in
-                S.concat ([nameOf ret, " ("] @ llvmParams @ [")"])
-              end      
-            
-            | T_Vector (nelms, t) => S.concat ["<", i2s nelms, " x ", nameOf t, ">"]
+        (nodeToStr o HC.node) t
+      end
+                              (* `name` = type `rhs` *)
+    and mkAlias (t : llvm_ty) : (string * string option) = let
+        fun freshStamp () = (stamp := !stamp + 1 ; !stamp)
+      in
+        (case HC.node t
+          of T_Struct _ => ("%_tupTy." ^ i2s(freshStamp()) , SOME(toString t))
+           
+           (* NOTE(kavon): turns out you cannot forward reference non-struct types in LLVM.
+                           if we figure out a way to do it at some point, you can uncomment
+                           and change the following case. *)
 
-            | T_Array (nelms, t) => S.concat ["[", i2s nelms, " x ", nameOf t, "]"]
+           (* | T_Func _ => ("%_funTy." ^ i2s(freshStamp()) , SOME(toString t)) *)
 
-            | T_Struct ts => S.concat (["{ "] @ mapSep(nameOf, nil, ", ", ts) @ [" }"])
-
-            (* T_VProc & T_Deque are inserted into the cache ahead of resorting to toString *)
-            | _ => raise Fail "base type name unknown"
-
-          (* end case *))
-       end
-    in
-      (nodeToStr o HC.node) t
-    end
-                            (* `name` = type `rhs` *)
-  and mkAlias (t : llvm_ty) : (string * string option) = let
-      fun freshStamp () = (stamp := !stamp + 1 ; !stamp)
-    in
-      (case HC.node t
-        of T_Struct _ => ("%_tupTy." ^ i2s(freshStamp()) , SOME(toString t))
-         
-         (* NOTE(kavon): turns out you cannot forward reference non-struct types in LLVM.
-                         if we figure out a way to do it at some point, you can uncomment
-                         and change the following case. *)
-
-         (* | T_Func _ => ("%_funTy." ^ i2s(freshStamp()) , SOME(toString t)) *)
-
-         | _ => (toString t, NONE)
-      (* esac *))
-    end
-
-  (* looks up this type in the cache. if it is
-     not already present, it will generate a new entry and return its name. *)
-  and nameOf x = (case HCM.find(!cache, x)
-    of SOME (name, _) => name
-     | NONE => (case mkAlias x
-        of (name, NONE) => name
-         | (name, SOME rhs) => 
-            ( cache := HCM.insert(!cache, x, (name, rhs)) ; name )
+           | _ => (toString t, NONE)
         (* esac *))
-     (* esac *))
-  
+      end
 
-  fun typeDecl () = let
-    fun assignToString (name, def) = name ^ " = type " ^ def ^ "\n"
+    (* looks up this type in the cache. if it is
+       not already present, it will generate a new entry and return its name. *)
+    and nameOf x = (case HCM.find(!cache, x)
+      of SOME (name, _) => name
+       | NONE => (case mkAlias x
+          of (name, NONE) => name
+           | (name, SOME rhs) => 
+              ( cache := HCM.insert(!cache, x, (name, rhs)) ; name )
+          (* esac *))
+       (* esac *))
     
-    val decls = [(dequeTyName, dequeTyDef), (vprocTyName, vprocTyDef)] @ (HCM.listItems (!cache))
-  in
-    S.concat (List.map assignToString decls)
+
+    fun typeDecl () = let
+      fun assignToString (name, def) = name ^ " = type " ^ def ^ "\n"
+      
+      val decls = [(dequeTyName, dequeTyDef), (vprocTyName, vprocTyDef)] @ (HCM.listItems (!cache))
+    in
+      S.concat (List.map assignToString decls)
+    end
+
   end
-
-end
-
-
-
-
-
 
 
   fun typeOf (cty : CT.ty) : llvm_ty = (case cty
 
-    of CT.T_Any => mkPtr(mkInt(mkCount 8))
+    of CT.T_Any => mkPtr(mkInt(cnt 8))
 
      (* in a mixed type representation, the GC expects wordsize width elements.
 
-        IDEA(kavon): do some analysis and determine when we should zero extend
+        QUESTION/IDEA(kavon): do some analysis and determine when we should zero extend
           the enum and or when to truncate it (and how much we can chop off).
 
       *)
-     | CT.T_Enum _ => mkInt(mkCount (8 * wordSzB)) (* NOTE: these are tagged integers, be careful when you create these *)
+     | CT.T_Enum _ => mkInt(cnt (8 * wordSzB)) (* NOTE(kavon): these are tagged integers, be careful when you create these *)
 
-     | CT.T_Block _ => mkLabel
+     | CT.T_Block _ => labelTy
 
-     | CT.T_Raw (CT.T_Double) => mkDouble
+     | CT.T_Raw (CT.T_Double) => doubleTy
 
-     | CT.T_Raw (CT.T_Float) => mkFloat
+     | CT.T_Raw (CT.T_Float) => floatTy
 
-     (* FIXME(kavon): it's expected that this gets casted as needed since we don't actually know what
+     (* QUESTION/FIXME(kavon): it's expected that this gets casted as needed since we don't actually know what
         the underlying values in the vector are, so this might be broken/hacky *)
-     | CT.T_Raw (CT.T_Vec128) => mkVector(mkCount 16, mkInt(mkCount 8))
+     | CT.T_Raw (CT.T_Vec128) => mkVector(cnt 16, mkInt(cnt 8))
 
-     | CT.T_Raw rt => mkInt(mkCount (sizeOfRawTy rt))
-
-      (* TODO(kavon): 
-                      - when it comes to GC header tags, be careful of the dead store elim pass
-                        - additionally, we need to mark structs for their header tag for initialization later.
-                          thus, we need to determine whether it needs a RAW, VECTOR, or MIXED header and what
-                          bits need to be set based upon the positions of the elements.
-                      - should we check to see if all types are the same, and if so turn
-                        this into an array? 
-                      - NOTE: tuples are pointers to structs allocated in the heap, thus
-                              for an alloc expression, we should strip the pointer
-                              wrapping the type away and then get the size of that. note that we
-                              can't flatten a tuple of a single element because it must be in the heap
-                              and everything in the heap needs a tag, which at the time of allocation must be known *)
+     | CT.T_Raw rt => mkInt(cnt (sizeOfRawTy rt))
       
       (* always a pointer type. *)
       | CT.T_Tuple (_, ts) => (case ts
-        of nil => raise Fail "empty tuple. should be an enum for unit?"
+        of nil => raise Fail "empty tuple. should be an enum for unit."
 
          | t::nil => mkPtr(typeOf t)
 
@@ -286,31 +331,33 @@ end
         (* esac *))
 
 
-      (* TODO(kavon): we represent the vararg part as the any type. might want to change it to an arbitrary C pointer? *)
-      | CT.T_OpenTuple ts => mkPtr(mkStruct((List.map typeOf ts) @ [ typeOf(CT.T_Any) ]))
+      (* QUESTION(kavon): we represent the vararg part as an arbitrary pointer. is this right? *)
+      | CT.T_OpenTuple ts => mkPtr(mkStruct((List.map typeOf ts) @ [ typeOfC(CF.PointerTy) ]))
 
       | CT.T_Addr t => mkPtr(typeOf t)
 
-      (* TODO(kavon): store these in the alias cache *)
-      | CT.T_VProc => mkVProc
+      | CT.T_VProc => vprocTy
 
-      | CT.T_Deque => mkDeque
+      | CT.T_Deque => dequeTy
 
       | CT.T_CFun(CF.CProto(retTy, argTys, _)) => mkFunc([typeOfC retTy] @ (List.map typeOfC argTys))
 
-      (* TODO(kavon): we don't know what our calling convention is right now, so leaving this blank. *)
-      | CT.T_StdFun _ => mkPtr(mkFunc( [mkVoid] @ typesInConv(cty) ))
 
-      | CT.T_StdCont _ => mkPtr(mkFunc( [mkVoid] @ typesInConv(cty) ))
+      (* TODO(kavon): we don't know what our calling convention is right now. so we need to change typesInConv.
+                      also in the future we need to append/prepend the pinned register types *)
 
-      | CT.T_KnownFunc _ => mkPtr(mkFunc( [mkVoid] @ typesInConv(cty) ))
+      | CT.T_StdFun _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
+
+      | CT.T_StdCont _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
+
+      | CT.T_KnownFunc _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
 
     (* end case *))
 
     and typeOfC (ct : CF.c_type) : llvm_ty = (case ct
-          of CF.PointerTy => mkPtr(mkInt(mkCount 8))  (* LLVM's void* *)
+          of CF.PointerTy => mkPtr(mkInt(cnt 8))  (* LLVM's void* *)
            | CF.BaseTy(rawTy) => typeOf(CT.T_Raw rawTy)
-           | CF.VoidTy => mkVoid
+           | CF.VoidTy => voidTy
           (* end case *))
 
 
@@ -343,6 +390,30 @@ end
          | C.KnownFunc { clos } => 
             CT.T_KnownFunc {clos=(getTy clos), args=(List.map getTy args)} 
         (* end case *))
-    end     
+    end   
+
+
+  val same = HC.same
+  val node = HC.node
+
+  fun select (t : ty, i : int) = let
+      fun err () = raise Fail(S.concat["llvm: cannot select ", Int.toString i, "'th type from non-struct ", nameOf t])
+      fun sel (_, []) = err()
+        | sel (0, t::r) = t
+        | sel (i, _::r) = sel(i-1, r)
+      in
+        case HC.node t
+         of T_Struct ts => sel(i, ts)
+          | _ => err()
+        (* end case *)
+      end  
+
+  fun deref (t : ty) = let
+    fun err () = raise Fail(S.concat["llvm: cannot dereference non-pointer type ", nameOf t])
+  in
+    case HC.node t
+      of T_Ptr innerT => innerT
+       | _ => err()
+  end
 
 end
