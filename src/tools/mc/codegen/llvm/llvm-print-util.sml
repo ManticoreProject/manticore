@@ -45,10 +45,11 @@ functor LLVMPrintUtil (structure Spec : TARGET_SPEC) : sig
   structure CF = CFunctions
   structure S = String
   structure Type = AMD64TypesFn (structure Spec = Spec)
+  structure LV = LLVMVar (structure Spec = Spec)
 
 
-  type label = C.label_kind * string
-  type var = CFGTy.ty * string
+  type label = LV.var
+  type var = LV.var
   type linkage = string
   type c_attr = string  
 
@@ -65,20 +66,9 @@ functor LLVMPrintUtil (structure Spec : TARGET_SPEC) : sig
   (* end of internal functions *)
 
 
-  fun cvtLabel (label) = let
-      val kind = CL.kindOf label
-    in
-      (case kind
-      of C.LK_Func { export = NONE,
-                     func = C.FUNC { lab = VarRep.V{ name, id, ... }, ... } } => (kind, mantiName2LLVM(name, id))
-                     
-       | C.LK_Func { export = SOME s, ... } => (kind, s)
-       | C.LK_Extern s => (kind, s)
-       | C.LK_Block (C.BLK { lab = VarRep.V{ name, id, ... }, ... }) => (kind, mantiName2LLVM(name, id))
-       (* end case *))
-    end
+    val cvtLabel = LV.convertLabel
 
-    fun cvtVar (cfgV as VarRep.V{ name, id, ... }) = (CFG.Var.typeOf cfgV, mantiName2LLVM(name, id))
+    val cvtVar = LV.convert
 
     fun linkageOf (label) = (case CL.kindOf label
         of C.LK_Func { export = NONE, ... } => "internal"
@@ -95,14 +85,11 @@ functor LLVMPrintUtil (structure Spec : TARGET_SPEC) : sig
           (* end case *)) 
 
 
-    fun lab2FullName (kind, llname) = (case kind
-      of C.LK_Block _ => "%" ^ llname
-       | _ => "@" ^ llname
-       (* end case *))
+    val lab2FullName  = LV.toString
 
-    fun lab2name (_, llname) = llname
+    val lab2name = LV.identOf
 
-    fun var2s (_, x) = x
+    fun var2s v = LV.toString v
 
     fun link2s x = x
     fun cAttr2s x = x

@@ -101,3 +101,4 @@ is
   llvm/llvm-print-util.sml
   llvm/llvm-print-instr.sml
   llvm/llvm-type.sml
+  llvm/llvm-var.sml
