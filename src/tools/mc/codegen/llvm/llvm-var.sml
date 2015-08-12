@@ -50,29 +50,33 @@ functor LLVMVar (structure Spec : TARGET_SPEC) =
     local 
 
       (* regex for LLVM identifiers: [%@][-a-zA-Z$._][-a-zA-Z$._0-9]*  *)
-      fun inspector c = (case c
-        (* best attempt at covering all of the disallowed chars that
-           might appear in CFG identifiers, based on SML'97 defn  *)
-        of #"!" => "-"
-         | #"%" => "-"
-         | #"&" => "-"
-         | #"#" => "-"
-         | #"+" => "-"
-         | #"/" => "-"
-         | #":" => "-"
-         | #"<" => "_"
-         | #"=" => "_"
-         | #">" => "_"
-         | #"?" => "_"
-         | #"@" => "_"
-         | #"\\" => "_" 
-         | #"~" => "_"
-         | #"'" => "_"
-         | #"^" => "_"
-         | #"|" => "_"
-         | #"*" => "_"
-         | c => Char.toString c
-        (* esac *)) 
+      fun inspector c = let
+          val repl = "-"
+        in
+          (case c
+          (* best attempt at covering all of the disallowed chars that
+             might appear in CFG identifiers, based on SML'97 defn  *)
+          of #"!" => repl
+           | #"%" => repl
+           | #"&" => repl
+           | #"#" => repl
+           | #"+" => repl
+           | #"/" => repl
+           | #":" => repl
+           | #"<" => repl
+           | #"=" => repl
+           | #">" => repl
+           | #"?" => repl
+           | #"@" => repl
+           | #"\\" => repl 
+           | #"~" => repl
+           | #"'" => repl
+           | #"^" => repl
+           | #"|" => repl
+           | #"*" => repl
+           | c => Char.toString c
+          (* esac *)) 
+        end
 
       val cvtIllegal = String.translate inspector
 
