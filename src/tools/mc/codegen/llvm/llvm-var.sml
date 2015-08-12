@@ -74,6 +74,7 @@ functor LLVMVar (structure Spec : TARGET_SPEC) =
            | #"^" => repl
            | #"|" => repl
            | #"*" => repl
+           | #"." => repl (* NOTE(kavon): while '.' is not illegal, we reserve use of it for ourselves *)
            | c => Char.toString c
           (* esac *)) 
         end
@@ -84,18 +85,18 @@ functor LLVMVar (structure Spec : TARGET_SPEC) =
 
     in
 
-        (* use this to get a valid, correct LLVM identifier with the @ or % qualifier  *)
+        (* use this to get a fully qualified LLVM identifier, which includes @ or % at the beginning *)
       fun toString x = (case kindOf x
-        of VK_Global true => "@" ^ identOf x
-         | VK_Global false => "@" ^ identOf x
+        of VK_Global _ => "@" ^ identOf x
          | VK_Local => "%" ^ identOf x
         (* esac *)) 
 
-      (* get just the identifer of this var, aka, toString without the @ or % *)
+      (* this provides toString without the @ or %. needed primarily for naming basic blocks *)
       and identOf (x as VarRep.V{name, id, ...}) = (case kindOf x
         of VK_Global true => name
          | _ => llvmIdent(name, id)
         (* esac *)) 
+
 
 
       fun convertWithKind ((cfgVar as VarRep.V{id,...} ): CFG.var, kynd) = let
@@ -106,11 +107,6 @@ functor LLVMVar (structure Spec : TARGET_SPEC) =
         end
 
       and convert (cfgVar : CFG.var) = convertWithKind(cfgVar, VK_Local)
-
-      and maybeDebugging (id, name) = 
-        if debuggingVariableNames 
-          then name ^ "_cfg" ^ (Word.toString (Stamp.hash id))
-          else name
 
       (* we need to check whether the label is exported, an external, or a basic block to determine the right kind *)
       and convertLabel (label : CFG.label) = let
@@ -130,6 +126,12 @@ functor LLVMVar (structure Spec : TARGET_SPEC) =
            | C.LK_Block (C.BLK { lab = VarRep.V{ name, id, ... }, ... }) => newWithKind(maybeDebugging(id, cvtIllegal name), VK_Local, LT.typeOf(CL.typeOf label))
            (* end case *))
         end
+
+
+      and maybeDebugging (id, name) = 
+        if debuggingVariableNames 
+          then name ^ "_cfg" ^ (Word.toString (Stamp.hash id))
+          else name
 
     end
 
