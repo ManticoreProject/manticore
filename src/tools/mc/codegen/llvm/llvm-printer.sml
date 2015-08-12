@@ -45,6 +45,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure U = LLVMPrintUtil (structure Spec = Spec)
 
   structure LT = LLVMType (structure Spec = Spec)
+  structure LB = LLVMBuilder (structure Spec = Spec)
 
 fun output (outS, module as C.MODULE { name = module_name,
                                        externs = module_externs,
@@ -157,6 +158,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                                when we output it here.
                                we also probably need a rename environment? *)
     val decl = [comment, "define ", linkage, " void ", llName, "("] @ llparams @ [") ", stdAttrs(MantiFun), " {\n"]
+    
     val body = ["ret void\n"] (* List.map mkBasicBlock (start::body) *)
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])

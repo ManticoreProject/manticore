@@ -8,7 +8,7 @@
 
 functor LLVMPrintUtil (structure Spec : TARGET_SPEC) : sig
 
-    (* CFG representation utilities *)
+    (* THIS FILE IS MOSTLY DEPRECIATED, USE THE NEWER FACILITIES *)
 
     type label
     type var
