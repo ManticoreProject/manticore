@@ -80,21 +80,30 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) : sig
     
   end = struct
 
-  structure LT = LLVMType (structure Spec = Spec)
   structure LV = LLVMVar (structure Spec = Spec)
+  structure LT = LV.LT
 
   type ty = LT.ty
   type var = LV.var
 
-  datatype constant 
-   = C_Int of ty * int
-   | C_Str of var (* string constants are global vars *)
+  (*
+    Binary operators are used to do most of the computation in a program.
+    They require two operands of the same type, execute an operation on them,
+    and produce a single value. The operands might represent multiple data,
+    as is the case with the vector data type. The result value has the same 
+    type as its operands.
+  *)
 
   datatype bin_op
-    = Add 
-    | NSWAdd 
-    | NUWAdd 
-    | FAdd 
+
+    (* NUW and NSW stand for “No Unsigned Wrap” and “No Signed Wrap”, and if
+       one of those occurs with those keywords, the result is a poison value *)
+
+    = Add         
+    | NSWAdd    
+    | NUWAdd      
+    | NSUWAdd    
+    | FAdd        
     | Sub 
     | NSWSub 
     | NUWSub 
@@ -117,8 +126,10 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) : sig
     | Or 
     | Xor
 
+  (* There aren't any unary ops in LLVM, but we include
+     these to make it easier. *)
   and unary_op
-    = Neg
+    = Neg       (* <result> = sub i32 0, %val          ; yields i32:result = -%var *)
     | NSWNeg
     | NUWNeg
     | FNeg
@@ -148,9 +159,12 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) : sig
     | R_Const of constant 
     | R_None  (* for instructions which have no result / ignored result *)
 
+  and constant 
+    = C_Int of ty * int
+    | C_Str of var (* string constants are global vars *)
+
   datatype opcode
-    = OP_Unary of unary_op
-    | OP_Binary of bin_op
+    = OP_Binary of bin_op
     | OP_Cast of cast_op
     | OP_GEP
     | OP_GEP_IB
@@ -162,6 +176,8 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) : sig
     | OP_Call
     | OP_Unreachable
     | OP_None  (* for wrapped constants and vars *)
+
+
 
   datatype instr = INSTR of {
     result : res,
@@ -196,7 +212,7 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) : sig
 
   (******************************************)
 
-
+  structure V = Vector
 
 
   (* new : var -> t *)
@@ -237,38 +253,165 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) : sig
 
   (* Instruction Builders *)
 
-  (* wrappers for vars and constants *)
-  (*val fromV : var -> instr*)
-  fun fromV _ = raise Fail "not implemented"
+  (* fromV : var -> instr *)
+  fun fromV v = INSTR { result = (R_Var v), kind = OP_None, args = #[] }
 
-  (*val fromC : constant -> instr*)
-  fun fromC _ = raise Fail "not implemented"
+  (* fromC : constant -> instr *)
+  fun fromC c = INSTR { result = (R_Const c), kind = OP_None, args = #[] }
 
 
-  (*val uop : t -> unary_op -> instr -> instr*)
-  fun uop _ = raise Fail "not implemented"
+  (* push an instruction onto the given basic block *)
+  fun push (T{body=blk,...}, inst) = (blk := inst :: (!blk) ; inst)
 
-  (*val bop : t -> bin_op -> (instr * instr) -> instr*)
+  fun typeCheck (f : string) (observed : LT.ty, expected : LT.ty) =
+    if LT.same(expected, observed) 
+      then expected
+      else raise Fail (f ^ ": incompatible types,\n " 
+        ^ "\texpected: " ^ LT.nameOf expected ^ "\n"
+        ^ "\tobserved: " ^ LT.nameOf observed ^ "\n")
+
+
+  (* uop : t -> unary_op -> instr -> instr *)
+  fun uop blk = fn opKind => fn (arg1 as INSTR{result,...}) => let
+    val tyy = (case result
+                 of R_Var v => LV.typeOf v
+                  | R_Const(C_Int(t, _)) => t
+                  | _ => raise Fail "uop: unknown type"
+              (* esac *))
+    val reg = LV.new("r", tyy)
+
+    val constZero = fromC(C_Int(tyy, 0))
+    val constNeg1 = fromC(C_Int(tyy, ~1))
+
+    fun negateWith mode const = (INSTR {
+          result= R_Var reg,
+          kind = OP_Binary( mode ),
+          args = #[const, arg1]
+        })
+  in
+    (* <result> = sub i32 0, %val          ; yields i32:result = -%var 
+       <result> = xor i32 %V, -1          ; yields i32:result = ~%V  *)
+    push(blk,
+      case opKind
+        of Neg => negateWith Sub constZero
+         | NSWNeg => negateWith NSWSub constZero
+         | NUWNeg => negateWith NUWSub constZero
+         | FNeg => negateWith FSub constZero
+         | Not => negateWith Xor constNeg1
+    )
+  end
+    
+
+    
+
+  (*  bop : t -> bin_op -> (instr * instr) -> instr *)
   fun bop _ = raise Fail "not implemented"
 
-  (* getelementptr *)
-  (*val gep : t -> (instr * constant vector) -> instr *)
-  fun gep _ = raise Fail "not implemented"
 
-  (* getelementptr inbounds *)
-  (*val gep_ib : t -> (instr * constant vector) -> instr *)
-  fun gep_ib _ = raise Fail "not implemented"
+  local
 
-  (*val cast : t -> cast_op -> (instr * ty) -> instr*)
+    val i32Ty = LT.mkInt(LT.cnt 32)
+
+    fun genGep mode = 
+      fn blk => 
+      fn (arg1 as INSTR{result,...}, offsetSeq) => let
+
+        val numOffsets = V.length offsetSeq
+        
+        val _ = if numOffsets > 0 then ()
+                else raise Fail "gep: cannot have empty offset sequence"
+
+        val argTy = (case result
+                 of R_Var v => LV.typeOf v
+                 (* GEP is only valid for pointer types,
+                    so it could only be from a var. *)
+                  | _ => raise Fail "gep: arg must be a var"
+              (* esac *))
+
+        fun stripI32 offset = (case offset
+          of C_Int(maybei32Ty, i) => 
+            if LT.same(i32Ty, maybei32Ty) then i
+            else raise Fail ("gep: constant int offsets must be i32 type, not "
+                               ^ (LT.nameOf maybei32Ty))
+
+          | _ => raise Fail "gep: offsets in GEP must be constant i32's"
+          (* esac *))
+
+        val seq : int vector = V.map stripI32 offsetSeq
+
+        (* TODO(kavon): we need to extend LLVMType with a function
+          that traverses a type like GEP would to pick out the resulting type.
+        *)
+        val tyy = raise Fail "GEP type must be calculated using seq and argTy"
+
+        (* first arg of a GEP is what to offset from, followed by 
+           the sequence of offsets. *)
+        val args = V.tabulate(numOffsets + 1,
+                      fn 0 => arg1
+                       | i => fromC(V.sub(offsetSeq, i-1)))
+
+        val reg = LV.new("r", tyy)
+      in
+        push(blk,
+          INSTR {
+            result = R_Var reg,
+            kind = mode,
+            args = args
+          }
+        )
+      end
+
+
+  in
+
+    (* gep : t -> (instr * constant vector) -> instr *)
+    val gep = genGep OP_GEP
+
+    (* gep_ib : t -> (instr * constant vector) -> instr *)
+    val gep_ib = genGep OP_GEP_IB
+
+  end
+
+
+  (* cast : t -> cast_op -> (instr * ty) -> instr *)
   fun cast _ = raise Fail "not implemented"
 
-  (* C calls which return *)
-  (*val call : t -> (instr * instr vector) -> instr*)
+
+  (* call : t -> (instr * instr vector) -> instr *)
   fun call _ = raise Fail "not implemented"
 
-  (* join instruction *)
-  (*val phi : t -> (instr * var) vector -> instr*)
-  fun phi _ = raise Fail "not implemented"
+
+  (* phi : t -> (instr * var) vector -> instr *)
+  fun phi blk predPairs = let
+
+    val check = typeCheck "phi"
+
+    (* this is probably reusable elsewhere *)
+    fun grabTy result = (case result
+        of R_Var v => LV.typeOf v
+         | R_Const(C_Int(theTy, _)) => theTy
+         | R_Const(C_Str v) => LV.typeOf v
+      (* esac *))
+
+    fun getRes (INSTR{result,...}, _) = result
+
+    fun typeCheck ((INSTR{result,...}, origin), otherTy) = (
+      check(LT.labelTy, LV.typeOf origin) ;
+      check(otherTy, grabTy result)
+    )
+
+    val tyy : LT.ty = V.foldl typeCheck ((grabTy o getRes) (V.sub(predPairs, 0))) predPairs
+
+    val reg = LV.new("r", tyy)
+  
+  in
+    push(blk,
+      PHI {
+        join = reg,
+        preds = predPairs
+      }
+    )
+  end
 
   
 
