@@ -43,8 +43,13 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
     (* select i'th type component from a structure *)
     val select : ty * int -> ty
 
-    (* deref this type *)
+    (* turn a Ptr(ty) -> ty *)
     val deref : ty -> ty
+
+    (* returns the resulting type of a getelementptr operation
+       performed on the provided type. *)
+    val gepType : (ty * int vector) -> ty
+
 
     (* QUESTION(kavon): need to think more about sizes with respect to the GC. for example,
    an integer type with < wordSizeB bytes as part of a vector of non-pointers does not
@@ -109,6 +114,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
   structure CT = CFGTy
   structure CTU = CFGTyUtil
   structure CF = CFunctions
+  structure V = Vector
 
   structure HC = HashCons
   structure HCM = HashConsMap
@@ -415,5 +421,57 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
       of T_Ptr innerT => innerT
        | _ => err()
   end
+
+  (* gepType : (ty, int vector) -> ty *)
+  fun gepType (t, vec) = let
+
+    fun err1 (wrongTy, idx) = 
+      raise Fail ("gepType: index position " 
+                  ^ i2s idx ^ " cannot select from type "
+                  ^ toString wrongTy)
+
+    fun err2 (wrongTy, idx, offset) =
+      raise Fail ("gepType: problem with index " 
+                  ^ i2s idx ^ " of GEP. element "
+                  ^ i2s offset ^ " cannot be selected from type "
+                  ^ toString wrongTy ^ ", which is part of overall type"
+                  ^ toString t)
+
+    fun lp(0, _, t') = t' 
+      
+      | lp(elms, 1, t) = (case HC.node t
+        (* t must be a pointer type. *)
+        of T_Ptr t' => lp(elms-1, 2, t')
+         | _ => raise Fail "gepType: GEP must be performed on a pointer type"
+        (* esac *))
+
+      | lp(elms, idx, t) = let
+        (* t cannot be a pointer type. *)
+          val t' = 
+            (case HC.node t
+              of T_Struct tys => let
+                  val offset = V.sub(vec, idx)
+                in
+                  if offset < List.length tys
+                  then List.nth(tys, offset)
+                  else err2(t, idx, offset)
+                end
+
+               | T_Array(_, t') => t'
+               | T_Vector(_, t') => t'
+               | _ => err1(t, idx)
+            (* esac *))
+        in
+          lp(elms-1, idx+1, t')
+        end
+
+    val len = V.length vec
+
+  in
+    if len > 0 
+    then lp(len, 0, t)
+    else raise Fail "gepType: empty index list"
+  end
+
 
 end
