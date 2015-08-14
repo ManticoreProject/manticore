@@ -20,7 +20,8 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
     eqtype unary_op
     eqtype cast_op
 
-    (* TODO: attributes? *)
+
+    (* TODO(kavon): attributes? *)
 
 
     (* start a fresh basic block *)
@@ -46,7 +47,9 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
 
     val condBr : t -> (instr * var * var) -> bb
 
-    val indirectBr : t -> var -> bb
+    (* NOTE(kavon): I don't see myself using indirectbr because we should
+                    not need to take block addresses, so I'm not implementing it. *)
+    (*val indirectBr : t -> (instr * var vector) -> bb*)
 
     
 
@@ -102,7 +105,7 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
   datatype res 
     = R_Var of var 
     | R_Const of constant 
-    | R_None  (* for instructions which have no result / ignored result *)
+    | R_None  (* for instructions which have no LHS, like terminators *)
 
   and constant 
     = C_Int of ty * int (* TODO(kavon) this should be an IntInf.int *)
@@ -116,28 +119,26 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
     | OP_GEP_IB
     | OP_Return
     | OP_Br
-    | OP_IndrBr
+    (*| OP_IndrBr NOTE(kavon): see comment in sig *)
     | OP_CondBr
     | OP_TailCall
     | OP_Call
     | OP_Unreachable
-    | OP_None  (* for wrapped constants and vars *)
+    | OP_None  (* for wrapped constants and vars, as no operation occurs *)
 
 
 
-  datatype instr = INSTR of {
-    result : res,
-    kind : opcode,
-    args : instr vector
-  }
+  datatype instr 
+    = INSTR of {
+        result : res,
+        kind : opcode,
+        args : instr vector
+      }
 
-  | PHI of {
-    (* not a res because const and none are never allowed *)
-    join : var,
-
-          (* val, basic block *)
-    preds : (instr * var) vector
-  }
+    | PHI of {
+        join : var,   (* not a res because const and none are never allowed *)      
+        preds : (instr * var) vector    (* val, basic block *)
+      }
 
   (* type t represents a partially built basic block.
      in particular, we push new instructions onto the block
@@ -170,42 +171,7 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
 
 
 (**************************************************
- **************************************************)  
-
-  (* Terminators *)
-
-  (* all tail calls are marked 'musttail' and followed by a 'ret void' automatically *)
-  (*val tailCall : t -> (instr * instr vector) -> bb*)
-  fun tailCall _ = raise Fail "not implemented"
-
-  (*val unreachable : t -> bb*)
-  fun unreachable _ = raise Fail "not implemented"
-
-  (*val retVoid : t -> bb*)
-  fun retVoid _ = raise Fail "not implemented"
-
-  (*val ret : t -> instr -> bb*)
-  fun ret _ = raise Fail "not implemented"
-
-  (*val br : t -> var -> bb*)
-  fun br _ = raise Fail "not implemented"
-
-  (*val condBr : t -> (instr * var * var) -> bb*)
-  fun condBr _ = raise Fail "not implemented"
-
-  (*val indirectBr : t -> var -> bb*)
-  fun indirectBr _ = raise Fail "not implemented"
-
-  
-
-  (* Instruction Builders *)
-
-  (* fromV : var -> instr *)
-  fun fromV v = INSTR { result = (R_Var v), kind = OP_None, args = #[] }
-
-  (* fromC : constant -> instr *)
-  fun fromC c = INSTR { result = (R_Const c), kind = OP_None, args = #[] }
-
+ **************************************************)
 
   (* push an instruction onto the given basic block *)
   fun push (T{body=blk,...}, inst) = (blk := inst :: (!blk) ; inst)
@@ -225,6 +191,92 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
        | R_Const(C_Str v) => LV.typeOf v
     (* esac *))
 
+
+  (* Simple Instruction Builders *)
+
+    (* fromV : var -> instr *)
+  fun fromV v = INSTR { result = (R_Var v), kind = OP_None, args = #[] }
+
+  (* fromC : constant -> instr *)
+  fun fromC c = INSTR { result = (R_Const c), kind = OP_None, args = #[] }
+
+
+
+  (* Terminators *)
+
+  fun terminate (blk as T {name, body}, inst) = 
+    (push(blk, inst) ; BB {name=name, body=(!body)}) 
+
+
+  (* unreachable : t -> bb *)
+  fun unreachable blk = 
+    terminate(blk, INSTR {
+        result = R_None,
+        kind = OP_Unreachable,
+        args = #[]
+      })
+
+  (* retVoid : t -> bb *)
+  fun retVoid blk = 
+    terminate(blk, INSTR {
+        result = R_None,
+        kind = OP_Return,
+        args = #[]
+      })
+
+  (* ret : t -> instr -> bb *)
+  fun ret blk inst = 
+    terminate(blk, INSTR {
+        result = R_None,
+        kind = OP_Return,
+        args = #[inst]
+      })
+
+  (* NOTE(kavon): All tail calls are marked `musttail` and followed by a `ret void` automatically
+     in order to have tail call optimization performed on it. One must be careful
+     to not allow `unreachable` to be placed after a musttail call because it will
+     not be correctly lowered to a `jmp` as of LLVM 3.6 (see notes for more info)  *)
+
+  (* tailCall : t -> (instr * instr vector) -> bb *)
+  fun tailCall blk = fn (func, args) => 
+    (* TODO(kavon): ensure the arg and func types match! *)
+    (push(blk, INSTR {
+        result = R_None,
+        kind = OP_TailCall,
+        args = (V.tabulate((V.length args) + 1,
+                fn 0 => func 
+                 | i => V.sub(args, i-1)
+               ))
+     });
+     retVoid blk
+    )
+
+  (*val br : t -> var -> bb*)
+  fun br blk targ =
+    ( typeCheck "br" (LT.labelTy, LV.typeOf targ) ;
+      terminate(blk, INSTR {
+        result = R_None,
+        kind = OP_Br,
+        args = #[fromV targ]
+      })
+    )
+
+  (*val condBr : t -> (instr * var * var) -> bb*)
+  fun condBr blk = fn (cond as INSTR{result,...}, trueTarg, falseTarg) =>
+    ( typeCheck "condBr" (LT.mkInt(LT.cnt 1), grabTy result) ;
+      typeCheck "condBr" (LT.labelTy, LV.typeOf trueTarg) ;
+      typeCheck "condBr" (LT.labelTy, LV.typeOf falseTarg) ;
+
+      terminate(blk, INSTR {
+          result = R_None,
+          kind = OP_CondBr,
+          args = #[cond, fromV trueTarg, fromV falseTarg]
+        })
+    )
+  
+
+
+  (* Instruction Builders *)
 
   (* uop : t -> unary_op -> instr -> instr *)
   fun uop blk = fn opKind => fn (arg1 as INSTR{result,...}) => let
@@ -341,7 +393,7 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
   end
 
 
-  (* cast : t -> cast_op -> (instr * ty) -> instr *)
+  (* t -> cast_op -> (instr * ty) -> instr *)
   fun cast _ = raise Fail "not implemented"
 
 
