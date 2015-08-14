@@ -6,7 +6,7 @@
  * LLVM Basic Block builder
  *)
 
-functor LLVMBuilder (structure Spec : TARGET_SPEC) : sig
+functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
 
     type t
 
@@ -17,8 +17,8 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) : sig
     type constant
 
     eqtype bin_op
-    eqtype cast_op
     eqtype unary_op
+    eqtype cast_op
 
     (* TODO: attributes? *)
 
@@ -85,82 +85,19 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) : sig
 
   structure LV = LLVMVar (structure Spec = Spec)
   structure LT = LV.LT
+  structure V = Vector
 
-  type ty = LT.ty
+  structure Ty = LLVMTy
+  structure Op = LLVMOp
+
+  type ty = Ty.t
   type var = LV.var
 
-  (*
-    Binary operators require two operands of the same type, execute an 
-    operation on them, and produce a single value. The operands might
-    represent multiple data, as is the case with the vector data type. 
-    The result value has the same type as its operands.
-  *)
 
-  datatype bin_op
+  type bin_op = Op.bin_op
+  type unary_op = Op.unary_op
+  type cast_op = Op.cast_op
 
-    (* NUW and NSW stand for “No Unsigned Wrap” and “No Signed Wrap”, and if
-       the wrap occurs with those keywords, the result is a poison value.
-       There also exists NUW & NSW versions of these operations but we
-       haven't included them here here. *)
-
-    = Add         
-    | NSWAdd    
-    | NUWAdd      
-    | FAdd        
-    | Sub 
-    | NSWSub 
-    | NUWSub 
-    | FSub 
-    | Mul 
-    | NSWMul 
-    | NUWMul 
-    | FMul 
-    | UDiv 
-    | SDiv 
-    | ExactSDiv 
-    | FDiv 
-    | URem 
-    | SRem 
-    | FRem 
-    | Shl 
-    | LShr 
-    | AShr 
-    | And 
-    | Or 
-    | Xor
-
-  (* There aren't any unary ops in LLVM, but we include
-     these to make it easier. *)
-  and unary_op
-    = Neg       
-    | NSWNeg
-    | NUWNeg
-    | FNeg
-    | Not
-
-  and cast_op
-    = Trunc 
-    | ZExt 
-    | SExt 
-    | FPToUI 
-    | FPToSI 
-    | UIToFP 
-    | SIToFP 
-    | FPTrunc 
-    | FPExt 
-    | PtrToInt 
-    | IntToPtr 
-    | BitCast 
-    | AddrSpaceCast 
-    | ZExtOrBitCast 
-    | SExtOrBitCast 
-    | TruncOrBitCast 
-    | PointerCast 
-
-(* TODO
-  and atomic_op
-    | XChg
-*)
 
   datatype res 
     = R_Var of var 
@@ -219,20 +156,21 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) : sig
   
   
 
-  (******************************************)
-
-  structure V = Vector
-
+(**************************************************
+ **************************************************)
 
   (* new : var -> t *)
-  fun new _ = raise Fail "not implemented"
+  fun new v = T { name = v, body = ref nil }
 
 
-  (* generate texual representation of the BB *)
-  (*val toString : bb -> string*)
-  fun toString _ = raise Fail "not implemented"
+  (* generate texual representation of the BB
+     this will eventually be the meaty part of this builder.  *)
+  (* toString : bb -> string *)
+  fun toString _ = raise Fail "todo"
 
-  
+
+(**************************************************
+ **************************************************)  
 
   (* Terminators *)
 
@@ -312,13 +250,13 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) : sig
        <result> = xor i32 %V, -1          ; yields i32:result = ~%V  *)
     push(blk,
       case (opKind, LT.node tyy)
-        of (Neg, LT.T_Int _) => negateWith Sub constIntZero
-         | (NSWNeg, LT.T_Int _) => negateWith NSWSub constIntZero
-         | (NUWNeg, LT.T_Int _) => negateWith NUWSub constIntZero
-         | (Not, LT.T_Int _) => negateWith Xor constNeg1
+        of (Op.Neg, Ty.T_Int _) => negateWith Op.Sub constIntZero
+         | (Op.NSWNeg, Ty.T_Int _) => negateWith Op.NSWSub constIntZero
+         | (Op.NUWNeg, Ty.T_Int _) => negateWith Op.NUWSub constIntZero
+         | (Op.Not, Ty.T_Int _) => negateWith Op.Xor constNeg1
          
-         | (FNeg, LT.T_Float) => negateWith FSub constIntFloat
-         | (FNeg, LT.T_Double) => negateWith FSub constIntDouble
+         | (Op.FNeg, Ty.T_Float) => negateWith Op.FSub constFloatZero
+         | (Op.FNeg, Ty.T_Double) => negateWith Op.FSub constDoubleZero
          | _ => raise Fail "uop: incompatible types"
     )
   end

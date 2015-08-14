@@ -118,52 +118,28 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
 
   structure HC = HashCons
   structure HCM = HashConsMap
-  structure HCInt = HashConsGroundFn (
-  struct
-    type hash_key = int
-    val sameKey = (op = : int * int -> bool)
 
-    (* QUESTION(kavon): is this hashVal okay or do we need to hash the integer with
-                 some sort of prime number multiplication? *)
-    val hashVal = Word.fromInt 
-
-  end)
-
-  (* must use the ctor functions defined below *)
-  type count = HCInt.obj
-  datatype llvm_ty_node = 
-      T_Void
-    | T_VProc
-    | T_Deque
-    | T_Label
-    | T_Func of llvm_ty list  (* first element is the return type *)
-    | T_Int of count (* number of bits *)
-    | T_Float
-    | T_Double
-    | T_Ptr of llvm_ty
-    | T_Vector of count * llvm_ty
-    | T_Array of count * llvm_ty
-    | T_Struct of llvm_ty list
-    withtype llvm_ty = llvm_ty_node HC.obj
-
-  type ty = llvm_ty
-  type ty_node = llvm_ty_node
+  structure Ty = LLVMTy
+  structure HCInt = Ty.HCInt
+  type ty = Ty.t
+  type ty_node = Ty.t_node
+  type count = Ty.count
 
   local
-    (* ctors for llvm_ty *)
+    (* ctors for ty *)
     fun eq query = (case query
-      of (T_Void, T_Void) => true
-       | (T_VProc, T_VProc) => true
-       | (T_Deque, T_Deque) => true
-       | (T_Label, T_Label) => true
-       | (T_Func xs, T_Func ys) => ListPair.allEq HC.same (xs, ys)
-       | (T_Int x, T_Int y) => HC.same(x, y)
-       | (T_Float, T_Float) => true
-       | (T_Double, T_Double) => true
-       | (T_Ptr x, T_Ptr y) => HC.same(x, y)
-       | (T_Vector (xcount, x), T_Vector (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
-       | (T_Array (xcount, x), T_Array (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
-       | (T_Struct xs, T_Struct ys) => ListPair.allEq HC.same (xs, ys)
+      of (Ty.T_Void, Ty.T_Void) => true
+       | (Ty.T_VProc, Ty.T_VProc) => true
+       | (Ty.T_Deque, Ty.T_Deque) => true
+       | (Ty.T_Label, Ty.T_Label) => true
+       | (Ty.T_Func xs, Ty.T_Func ys) => ListPair.allEq HC.same (xs, ys)
+       | (Ty.T_Int x, Ty.T_Int y) => HC.same(x, y)
+       | (Ty.T_Float, Ty.T_Float) => true
+       | (Ty.T_Double, Ty.T_Double) => true
+       | (Ty.T_Ptr x, Ty.T_Ptr y) => HC.same(x, y)
+       | (Ty.T_Vector (xcount, x), Ty.T_Vector (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
+       | (Ty.T_Array (xcount, x), Ty.T_Array (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
+       | (Ty.T_Struct xs, Ty.T_Struct ys) => ListPair.allEq HC.same (xs, ys)
        | _ => false
       (* esac *))
     
@@ -172,18 +148,18 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
   in
     (* should be prime numbers.
        I skip 2 because I think the hash function uses it to combine these? *)
-    val voidTy = HC.cons0 tbl (0w3, T_Void)
-    val vprocTy = HC.cons0 tbl (0w5, T_VProc)
-    val labelTy = HC.cons0 tbl (0w7, T_Label)
-    val mkFunc = HC.consList tbl (0w11, T_Func)
-    val mkInt = HC.cons1 tbl (0w13, T_Int)
-    val floatTy = HC.cons0 tbl (0w17, T_Float)
-    val doubleTy = HC.cons0 tbl (0wx19, T_Double)
-    val mkPtr = HC.cons1 tbl (0w23, T_Ptr)
-    val mkVector = HC.cons2 tbl (0w29, T_Vector)
-    val mkArray = HC.cons2 tbl (0w31, T_Array)
-    val mkStruct = HC.consList tbl (0w37, T_Struct)
-    val dequeTy = HC.cons0 tbl (0w41, T_Deque)
+    val voidTy = HC.cons0 tbl (0w3, Ty.T_Void)
+    val vprocTy = HC.cons0 tbl (0w5, Ty.T_VProc)
+    val labelTy = HC.cons0 tbl (0w7, Ty.T_Label)
+    val mkFunc = HC.consList tbl (0w11, Ty.T_Func)
+    val mkInt = HC.cons1 tbl (0w13, Ty.T_Int)
+    val floatTy = HC.cons0 tbl (0w17, Ty.T_Float)
+    val doubleTy = HC.cons0 tbl (0wx19, Ty.T_Double)
+    val mkPtr = HC.cons1 tbl (0w23, Ty.T_Ptr)
+    val mkVector = HC.cons2 tbl (0w29, Ty.T_Vector)
+    val mkArray = HC.cons2 tbl (0w31, Ty.T_Array)
+    val mkStruct = HC.consList tbl (0w37, Ty.T_Struct)
+    val dequeTy = HC.cons0 tbl (0w41, Ty.T_Deque)
 
     val cnt = HCInt.mk
   end
@@ -229,31 +205,31 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
 
   in  
 
-    fun toString (t : llvm_ty) = let
-      fun nodeToStr (nt : llvm_ty_node) : string =
+    fun toString (t : ty) = let
+      fun nodeToStr (nt : ty_node) : string =
         let
           val i2s = i2s o HC.node
         in
          (case nt 
-             of T_Void => "void"
-              | T_Int width => "i" ^ (i2s width)
-              | T_Float => "float"
-              | T_Double => "double"
-              | T_Label => "label"
-              | T_Ptr t => (nameOf t) ^ "*"
-              | T_VProc => vprocTyName
-              | T_Deque => dequeTyName
-              | T_Func (ret::params) => let
+             of Ty.T_Void => "void"
+              | Ty.T_Int width => "i" ^ (i2s width)
+              | Ty.T_Float => "float"
+              | Ty.T_Double => "double"
+              | Ty.T_Label => "label"
+              | Ty.T_Ptr t => (nameOf t) ^ "*"
+              | Ty.T_VProc => vprocTyName
+              | Ty.T_Deque => dequeTyName
+              | Ty.T_Func (ret::params) => let
                   val llvmParams = mapSep(nameOf, nil, ", ", params)
                 in
                   S.concat ([nameOf ret, " ("] @ llvmParams @ [")"])
                 end      
               
-              | T_Vector (nelms, t) => S.concat ["<", i2s nelms, " x ", nameOf t, ">"]
+              | Ty.T_Vector (nelms, t) => S.concat ["<", i2s nelms, " x ", nameOf t, ">"]
 
-              | T_Array (nelms, t) => S.concat ["[", i2s nelms, " x ", nameOf t, "]"]
+              | Ty.T_Array (nelms, t) => S.concat ["[", i2s nelms, " x ", nameOf t, "]"]
 
-              | T_Struct ts => S.concat (["{ "] @ mapSep(nameOf, nil, ", ", ts) @ [" }"])
+              | Ty.T_Struct ts => S.concat (["{ "] @ mapSep(nameOf, nil, ", ", ts) @ [" }"])
 
               | _ => raise Fail "base type name unknown"
 
@@ -263,17 +239,17 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
         (nodeToStr o HC.node) t
       end
                               (* `name` = type `rhs` *)
-    and mkAlias (t : llvm_ty) : (string * string option) = let
+    and mkAlias (t : ty) : (string * string option) = let
         fun freshStamp () = (stamp := !stamp + 1 ; !stamp)
       in
         (case HC.node t
-          of T_Struct _ => ("%_tupTy." ^ i2s(freshStamp()) , SOME(toString t))
+          of Ty.T_Struct _ => ("%_tupTy." ^ i2s(freshStamp()) , SOME(toString t))
            
            (* NOTE(kavon): turns out you cannot forward reference non-struct types in LLVM.
                            if we figure out a way to do it at some point, you can uncomment
                            and change the following case. *)
 
-           (* | T_Func _ => ("%_funTy." ^ i2s(freshStamp()) , SOME(toString t)) *)
+           (* | Ty.T_Func _ => ("%_funTy." ^ i2s(freshStamp()) , SOME(toString t)) *)
 
            | _ => (toString t, NONE)
         (* esac *))
@@ -302,7 +278,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
   end
 
 
-  fun typeOf (cty : CT.ty) : llvm_ty = (case cty
+  fun typeOf (cty : CT.ty) : ty = (case cty
 
     of CT.T_Any => mkPtr(mkInt(cnt 8))
 
@@ -360,7 +336,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
 
     (* end case *))
 
-    and typeOfC (ct : CF.c_type) : llvm_ty = (case ct
+    and typeOfC (ct : CF.c_type) : ty = (case ct
           of CF.PointerTy => mkPtr(mkInt(cnt 8))  (* LLVM's void* *)
            | CF.BaseTy(rawTy) => typeOf(CT.T_Raw rawTy)
            | CF.VoidTy => voidTy
@@ -368,7 +344,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
 
 
     (* TODO(kavon): does not yet include types for pinned registers *)
-    and typesInConv (cty : CT.ty) : llvm_ty list = (case cty
+    and typesInConv (cty : CT.ty) : ty list = (case cty
       
       of CT.T_StdFun { clos, args, ret, exh } =>
             (typeOf clos) :: (List.map typeOf args) @ [typeOf ret, typeOf exh]
@@ -409,7 +385,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
         | sel (i, _::r) = sel(i-1, r)
       in
         case HC.node t
-         of T_Struct ts => sel(i, ts)
+         of Ty.T_Struct ts => sel(i, ts)
           | _ => err()
         (* end case *)
       end  
@@ -418,7 +394,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
     fun err () = raise Fail(S.concat["llvm: cannot dereference non-pointer type ", nameOf t])
   in
     case HC.node t
-      of T_Ptr innerT => innerT
+      of Ty.T_Ptr innerT => innerT
        | _ => err()
   end
 
@@ -441,7 +417,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
       
       | lp(elms, 1, t) = (case HC.node t
         (* t must be a pointer type. *)
-        of T_Ptr t' => lp(elms-1, 2, t')
+        of Ty.T_Ptr t' => lp(elms-1, 2, t')
          | _ => raise Fail "gepType: GEP must be performed on a pointer type"
         (* esac *))
 
@@ -449,7 +425,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
         (* t cannot be a pointer type. *)
           val t' = 
             (case HC.node t
-              of T_Struct tys => let
+              of Ty.T_Struct tys => let
                   val offset = V.sub(vec, idx)
                 in
                   if offset < List.length tys
@@ -457,8 +433,8 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
                   else err2(t, idx, offset)
                 end
 
-               | T_Array(_, t') => t'
-               | T_Vector(_, t') => t'
+               | Ty.T_Array(_, t') => t'
+               | Ty.T_Vector(_, t') => t'
                | _ => err1(t, idx)
             (* esac *))
         in

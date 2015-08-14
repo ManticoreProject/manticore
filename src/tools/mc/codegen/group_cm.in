@@ -101,4 +101,6 @@ is
   llvm/llvm-print-util.sml
   llvm/llvm-builder.sml
   llvm/llvm-type.sml
+  llvm/llvm-ty.sml
+  llvm/llvm-op.sml
   llvm/llvm-var.sml
