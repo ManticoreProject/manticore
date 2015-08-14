@@ -160,7 +160,7 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
 (**************************************************
  **************************************************)
 
-  fun typeCheck (f : string) (observed : LT.ty, expected : LT.ty) =
+  fun typeCheck (f : string) (expected : LT.ty, observed : LT.ty) =
     if LT.same(expected, observed) 
       then expected
       else raise Fail ("(llvm-backend) " ^ f ^ ": incompatible types,\n " 
