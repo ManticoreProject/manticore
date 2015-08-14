@@ -160,8 +160,18 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
 (**************************************************
  **************************************************)
 
+  fun typeCheck (f : string) (observed : LT.ty, expected : LT.ty) =
+    if LT.same(expected, observed) 
+      then expected
+      else raise Fail ("(llvm-backend) " ^ f ^ ": incompatible types,\n " 
+        ^ "\texpected: " ^ LT.nameOf expected ^ "\n"
+        ^ "\tobserved: " ^ LT.nameOf observed ^ "\n")
+
   (* new : var -> t *)
-  fun new v = T { name = v, body = ref nil }
+  fun new v = (
+    typeCheck "new" (LT.labelTy, LV.typeOf v) ;
+    T { name = v, body = ref nil }
+   )
 
 
   (* generate texual representation of the BB
@@ -175,13 +185,6 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
 
   (* push an instruction onto the given basic block *)
   fun push (T{body=blk,...}, inst) = (blk := inst :: (!blk) ; inst)
-
-  fun typeCheck (f : string) (observed : LT.ty, expected : LT.ty) =
-    if LT.same(expected, observed) 
-      then expected
-      else raise Fail (f ^ ": incompatible types,\n " 
-        ^ "\texpected: " ^ LT.nameOf expected ^ "\n"
-        ^ "\tobserved: " ^ LT.nameOf observed ^ "\n")
 
   (* this is probably reusable elsewhere *)
   fun grabTy result = (case result
