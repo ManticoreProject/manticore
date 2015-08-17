@@ -50,6 +50,10 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
        performed on the provided type. *)
     val gepType : (ty * int vector) -> ty
 
+    (* if ty is a function type or a pointer to one, get the function's return type.
+       if it is not either of those, it returns NONE *)
+    val returnTy : ty -> ty option
+
 
     (* QUESTION(kavon): need to think more about sizes with respect to the GC. for example,
    an integer type with < wordSizeB bytes as part of a vector of non-pointers does not
@@ -229,7 +233,8 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
 
               | Ty.T_Array (nelms, t) => S.concat ["[", i2s nelms, " x ", nameOf t, "]"]
 
-              | Ty.T_Struct ts => S.concat (["{ "] @ mapSep(nameOf, nil, ", ", ts) @ [" }"])
+                (* these are packed structs *)
+              | Ty.T_Struct ts => S.concat (["<{ "] @ mapSep(nameOf, nil, ", ", ts) @ [" }>"])
 
               | _ => raise Fail "base type name unknown"
 
@@ -277,7 +282,7 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
 
   end
 
-
+  
   fun typeOf (cty : CT.ty) : ty = (case cty
 
     of CT.T_Any => mkPtr(mkInt(cnt 8))
@@ -296,25 +301,17 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
 
      | CT.T_Raw (CT.T_Float) => floatTy
 
-     (* QUESTION/FIXME(kavon): it's expected that this gets casted as needed since we don't actually know what
-        the underlying values in the vector are, so this might be broken/hacky *)
-     | CT.T_Raw (CT.T_Vec128) => mkVector(cnt 16, mkInt(cnt 8))
+     (* NOTE(kavon): We need to redesign Vec128 to be something like
+        a Vec(int, rawTy) or Vec128(rawTy) to indicate the type of its components.
+        Right now, nobody is using Vec128 so it's not implemented yet. *)
+     | CT.T_Raw (CT.T_Vec128) => raise Fail "Vec128 is not yet implemented in the LLVM backend."
 
      | CT.T_Raw rt => mkInt(cnt (sizeOfRawTy rt))
       
       (* always a pointer type. *)
-      | CT.T_Tuple (_, ts) => (case ts
-        of nil => raise Fail "empty tuple. should be an enum for unit."
+      | CT.T_Tuple (_, ts) => determineTuple ts
 
-         | t::nil => mkPtr(typeOf t)
-
-         | ts => mkPtr(mkStruct(List.map typeOf ts))
-
-        (* esac *))
-
-
-      (* QUESTION(kavon): we represent the vararg part as an arbitrary pointer. is this right? *)
-      | CT.T_OpenTuple ts => mkPtr(mkStruct((List.map typeOf ts) @ [ typeOfC(CF.PointerTy) ]))
+      | CT.T_OpenTuple ts => determineTuple ts
 
       | CT.T_Addr t => mkPtr(typeOf t)
 
@@ -335,6 +332,17 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
       | CT.T_KnownFunc _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
 
     (* end case *))
+
+    (* single element tuples are just a pointer to the object itself. *)
+    and determineTuple ts = (case ts
+        of nil => raise Fail "empty tuple. should be an enum for unit."
+        
+        (* QUESTION(kavon): not sure if this is the right thing to do yet. it depends
+                        on how we implement SELECT. *)
+         | t::nil => mkPtr(typeOf t)
+
+         | ts => mkPtr(mkStruct(List.map typeOf ts))
+        (* esac *))
 
     and typeOfC (ct : CF.c_type) : ty = (case ct
           of CF.PointerTy => mkPtr(mkInt(cnt 8))  (* LLVM's void* *)
@@ -448,6 +456,16 @@ functor LLVMType (structure Spec : TARGET_SPEC) : sig
     then lp(len, 0, t)
     else raise Fail "gepType: empty index list"
   end
+
+  (* returnTy : ty -> ty option *)
+  fun returnTy t = (case HC.node t
+    of Ty.T_Ptr maybeFunc => (case HC.node maybeFunc
+      of Ty.T_Func (ret::_) => SOME ret
+       | _ => NONE
+      (* esac *))
+     | Ty.T_Func (ret::_) => SOME ret
+     | _ => NONE 
+    (* esac *))
 
 
 end

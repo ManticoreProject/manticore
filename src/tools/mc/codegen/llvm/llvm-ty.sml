@@ -35,7 +35,7 @@ structure LLVMTy = struct
     | T_Ptr of t
     | T_Vector of count * t
     | T_Array of count * t
-    | T_Struct of t list
+    | T_Struct of t list  (* packed struct *)
     withtype t = t_node HC.obj  
   
 end

@@ -108,8 +108,8 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
     | R_None  (* for instructions which have no LHS, like terminators *)
 
   and constant 
-    = C_Int of ty * int (* TODO(kavon) this should be an IntInf.int *)
-    | C_Float of ty * real 
+    = C_Int of ty * IntInf.int
+    | C_Float of ty * real  (* QUESTION(kavon): is this precise enough? *)
     | C_Str of var (* string constants are global vars *)
 
   datatype opcode
@@ -119,7 +119,7 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
     | OP_GEP_IB
     | OP_Return
     | OP_Br
-    (*| OP_IndrBr NOTE(kavon): see comment in sig *)
+    (*| OP_IndrBr NOTE(kavon): we shouldn't need these *)
     | OP_CondBr
     | OP_TailCall
     | OP_Call
@@ -265,17 +265,21 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
     )
 
   (*val condBr : t -> (instr * var * var) -> bb*)
-  fun condBr blk = fn (cond as INSTR{result,...}, trueTarg, falseTarg) =>
-    ( typeCheck "condBr" (LT.mkInt(LT.cnt 1), grabTy result) ;
-      typeCheck "condBr" (LT.labelTy, LV.typeOf trueTarg) ;
-      typeCheck "condBr" (LT.labelTy, LV.typeOf falseTarg) ;
+  fun condBr blk = fn (cond as INSTR{result,...}, trueTarg, falseTarg) => let
+      val chk = typeCheck "condBr"
+    in
+      ( chk (LT.mkInt(LT.cnt 1), grabTy result) ;
+        chk (LT.labelTy, LV.typeOf trueTarg) ;
+        chk (LT.labelTy, LV.typeOf falseTarg) ;
 
-      terminate(blk, INSTR {
-          result = R_None,
-          kind = OP_CondBr,
-          args = #[cond, fromV trueTarg, fromV falseTarg]
-        })
-    )
+        terminate(blk, INSTR {
+            result = R_None,
+            kind = OP_CondBr,
+            args = #[cond, fromV trueTarg, fromV falseTarg]
+          })
+      )
+    end
+    
   
 
 
@@ -357,8 +361,9 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
 
         fun stripI32 offset = (case offset
           of C_Int(maybei32Ty, i) => 
-            (* constant int offsets must be i32 type *)
-            (typeCheck "gep" (i32Ty, maybei32Ty) ; i)
+            (* constant int offsets for struct positions must be i32 type and
+               this should not overflow *)
+            (typeCheck "gep" (i32Ty, maybei32Ty) ; LargeInt.toInt i)
 
           | _ => raise Fail "gep: offsets in GEP must be constant i32's"
           (* esac *))
@@ -397,11 +402,53 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
 
 
   (* t -> cast_op -> (instr * ty) -> instr *)
-  fun cast _ = raise Fail "not implemented"
+  fun cast blk = fn castKind => 
+    fn (arg1 as INSTR{result=arg1Res,...}, targetTy) => let
+      
+      (* TODO(kavon): ensure this cast is correct. *)
+      
+      val reg = LV.new("r", targetTy)
+    in
+      push(blk,
+        INSTR {
+          result = R_Var reg,
+          kind = OP_Cast castKind,
+          args = #[arg1]
+        }
+      )
+    end
+   
 
 
   (* call : t -> (instr * instr vector) -> instr *)
-  fun call _ = raise Fail "not implemented"
+  fun call blk = 
+    fn (func as INSTR{result=R_Var(funcVar),...}, args) => let
+
+      (* TODO(kavon): ensure the call's types match up and that
+          funTy is actually the right type: a function or a function ptr *)
+
+      val funTy = LV.typeOf funcVar
+
+      val result = (case LT.returnTy funTy
+                     of SOME t => (case LT.node t
+                        of Ty.T_Void => R_None
+                         | _ => R_Var (LV.new("r", t))
+                        (* esac *))
+                      | NONE => raise Fail "expected a function type."
+                   (* esac *))
+
+    in
+      push(blk,
+        INSTR {
+          result = result,
+          kind = OP_Call,
+          args = (V.tabulate((V.length args) + 1,
+                fn 0 => func 
+                 | i => V.sub(args, i-1)
+               ))
+        }
+      )
+    end
 
 
   (* phi : t -> (instr * var) vector -> instr *)
