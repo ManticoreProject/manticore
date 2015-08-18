@@ -8,7 +8,7 @@
  *    - Compatible with LLVM 3.7
  *)
 
-functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
+functor LLVMPrinter (Spec : TARGET_SPEC) : sig
 
     val output : (TextIO.outstream * CFG.module) -> unit
 
@@ -41,11 +41,15 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure CTU = CFGTyUtil
   structure CF = CFunctions
   structure S = String
-  structure Type = AMD64TypesFn (structure Spec = Spec)
-  structure U = LLVMPrintUtil (structure Spec = Spec)
+  structure U = LLVMPrintUtil (Spec)
 
-  structure LT = LLVMType (structure Spec = Spec)
-  structure LB = LLVMBuilder (structure Spec = Spec)
+  (*  *)
+  structure LV = LLVMVar (Spec)
+  structure LB = LLVMBuilder (Spec)
+
+  structure LT = LV.LT
+  structure Op = LLVMOp
+  
 
 fun output (outS, module as C.MODULE { name = module_name,
                                        externs = module_externs,
@@ -159,7 +163,24 @@ fun output (outS, module as C.MODULE { name = module_name,
                                we also probably need a rename environment? *)
     val decl = [comment, "define ", linkage, " void ", llName, "("] @ llparams @ [") ", stdAttrs(MantiFun), " {\n"]
     
-    val body = ["ret void\n"] (* List.map mkBasicBlock (start::body) *)
+    (* testing llvm bb generator *)
+    val t = LB.new(LV.new("entry", LT.labelTy))
+      (* helpers *)
+      val intTy = LT.mkInt(LT.cnt 32)
+      fun mkInt i = LB.fromC(LB.intC(intTy, i))
+      val bop = LB.bop t
+      val ret = LB.ret t
+
+    val bb = ret (bop Op.Add (mkInt 10, mkInt 200))
+    
+    val done = LB.toString bb
+
+    val body = [
+      done
+    ]
+
+
+     (* List.map mkBasicBlock (start::body) *)
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in

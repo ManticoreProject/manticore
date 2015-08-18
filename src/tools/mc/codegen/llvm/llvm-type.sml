@@ -6,7 +6,7 @@
  * Utility for translating to and managing types in LLVM
  *)
 
-functor LLVMType (structure Spec : TARGET_SPEC) : sig
+functor LLVMType (Spec : TARGET_SPEC) : sig
 
     type ty
     type ty_node

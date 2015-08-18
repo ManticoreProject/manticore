@@ -6,7 +6,7 @@
  * LLVM Basic Block builder
  *)
 
-functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
+functor LLVMBuilder (Spec : TARGET_SPEC) : sig
 
     type t
 
@@ -60,6 +60,10 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
 
     val fromC : constant -> instr
 
+    val intC : (ty * IntInf.int) -> constant
+    
+    val floatC : (ty * real) -> constant
+
 
     val uop : t -> unary_op -> instr -> instr
 
@@ -82,16 +86,19 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
     (* join instruction *)
     val phi : t -> (instr * var) vector -> instr
 
-    
+
     
   end = struct
 
-  structure LV = LLVMVar (structure Spec = Spec)
+  structure LV = LLVMVar (Spec)
   structure LT = LV.LT
   structure V = Vector
 
   structure Ty = LLVMTy
   structure Op = LLVMOp
+
+  structure S = String
+  structure V = Vector
 
   type ty = Ty.t
   type var = LV.var
@@ -177,11 +184,140 @@ functor LLVMBuilder (structure Spec : TARGET_SPEC) :> sig
   (* generate texual representation of the BB
      this will eventually be the meaty part of this builder.  *)
   (* toString : bb -> string *)
-  fun toString _ = raise Fail "todo"
+  fun toString (bb as BB {name, body}) : string = let
+      val header = LV.identOf(name) ^ ":\n\t"
+    in
+      S.concatWith "\n\t" (cvt body)
+    end
+
+  (* we don't use map because the body is actually a reversed
+     list of instructions, so in the processing we put the
+     list of strings back together in the right order. *)
+  and cvt body = let
+    fun process(nil, strs) = strs
+      | process(inst::body, strs) = process(body, (getStr inst)::strs)
+    in
+      process(body, nil)
+    end
+
+  and getStr (inst as INSTR{result, kind, args}) = let
+
+    fun break (INSTR{result,...}) = (case result
+                       of R_Var v => (LV.nameOf v, LV.typeOf v)
+                        
+                        | R_Const(C_Int(ty, i)) => (IntInf.toString i, ty)
+
+                        | R_Const(C_Float(ty, f)) => (Real.toString f, ty)
+
+                        | R_Const(C_Str v) => (LV.nameOf v, LV.typeOf v)
+
+                        | _ => raise Fail "invalid result type for an argument."
+                    (* esac *))
+
+    fun getArgStr withTy = fn instr => let
+        val (resName, resTy) = break instr
+      in
+        if withTy
+          then LT.nameOf(resTy) ^ " " ^ resName
+        else resName
+      end
+
+       
+
+    val (resName, resTy, hasRes) = (case result
+                       of R_Var v => (LV.nameOf v, LV.typeOf v, true)
+                        | R_None => ("", LT.voidTy, false)
+                        | _ => raise Fail "invalid result type for an instruction."
+                    (* esac *))
+    in
+      case kind 
+      
+      of OP_Binary bin_op => 
+        if not hasRes 
+          then raise Fail "binops should always have a result"
+        else S.concat 
+            [resName, " = ", bopName bin_op, " ", LT.nameOf resTy, " ",
+              getArgStr false (V.sub(args, 0)), ", ",
+              getArgStr false (V.sub(args, 1))
+            ]
+       
+       | OP_Cast cast_op => ""
+       
+       | OP_GEP => let
+            val _ = if not hasRes then raise Fail "gep should always have a result" else ()
+            val (ptrName, ptrTy) = break (V.sub(args, 0))
+            val offsets = List.tabulate ((V.length args) - 1,
+                            fn i => getArgStr true (V.sub(args, i+1)))
+            val offsets = S.concatWith ", " offsets
+          in
+            S.concat
+              [ resName, " = getelementptr ",
+                (LT.nameOf o LT.deref) ptrTy, ", ",
+                LT.nameOf ptrTy, " ", ptrName, ", ",
+                offsets
+              ]
+          end
+       
+       | OP_GEP_IB => ""
+       
+       | OP_Return => ""
+       
+       | OP_Br => ""
+       
+       | OP_CondBr => ""
+       
+       | OP_TailCall => ""
+       
+       | OP_Call => ""
+
+       | OP_Unreachable => "unreachable"
+
+       | OP_None => raise Fail "basic block should not have wrapped var/const as an instruction."
+    end
+    
+
+
+  (* gets the LLVM op name. note that there are no unary ops in LLVM
+     so it is incorrect to ask for one of their names! *)
+  and bopName (x : Op.bin_op) : string = (case x
+    (* binary ops *)
+     of Op.Add         => "add"        
+      | Op.NSWAdd      => "add nsw"
+      | Op.NUWAdd      => "add nuw"
+      | Op.FAdd        => "fadd"
+      | Op.Sub         => "sub"
+      | Op.NSWSub      => "sub nsw"
+      | Op.NUWSub      => "sub nuw"
+      | Op.FSub        => "fsub"
+      | Op.Mul         => "mul"
+      | Op.NSWMul      => "mul nsw"
+      | Op.NUWMul      => "mul nuw"
+      | Op.FMul        => "fmul"
+      | Op.UDiv        => "udiv"
+      | Op.SDiv        => "sdiv"
+      | Op.ExactSDiv   => "sdiv exact"
+      | Op.FDiv        => "fdiv"
+      | Op.URem        => "urem"
+      | Op.SRem        => "srem" 
+      | Op.FRem        => "frem" 
+      | Op.Shl         => "shl" 
+      | Op.LShr        => "lshr" 
+      | Op.AShr        => "ashr" 
+      | Op.And         => "and"
+      | Op.Or          => "or"
+      | Op.Xor         => "xor"
+      (* esac *))
 
 
 (**************************************************
  **************************************************)
+
+    (* TODO: these need typechecks too *)
+
+    fun intC (ty, i) = C_Int(ty, i)
+
+    fun floatC (ty, f) = C_Float(ty, f)
+    
 
   (* push an instruction onto the given basic block *)
   fun push (T{body=blk,...}, inst) = (blk := inst :: (!blk) ; inst)

@@ -6,7 +6,7 @@
  * Misc utility functions/types used by the LLVM Printer.
  *)
 
-functor LLVMPrintUtil (structure Spec : TARGET_SPEC) : sig
+functor LLVMPrintUtil (Spec : TARGET_SPEC) : sig
 
     (* THIS FILE IS MOSTLY DEPRECIATED, USE THE NEWER FACILITIES *)
 
@@ -44,8 +44,8 @@ functor LLVMPrintUtil (structure Spec : TARGET_SPEC) : sig
   structure CT = CFGTy
   structure CF = CFunctions
   structure S = String
-  structure Type = AMD64TypesFn (structure Spec = Spec)
-  structure LV = LLVMVar (structure Spec = Spec)
+  (* structure Type = AMD64TypesFn (Spec) *)
+  structure LV = LLVMVar (Spec)
 
 
   type label = LV.var
