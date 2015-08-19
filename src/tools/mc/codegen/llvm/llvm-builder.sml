@@ -99,6 +99,7 @@ structure LLVMBuilder : sig
 
   structure S = String
   structure V = Vector
+  structure L = List
 
   type ty = Ty.t
   type var = LV.var
@@ -211,7 +212,7 @@ structure LLVMBuilder : sig
 
                         | R_Const(C_Str v) => (LV.toString v, LV.typeOf v)
 
-                        | _ => raise Fail "invalid result type for an argument."
+                        | _ => raise Fail "invalid argument for an instruction"
                     (* esac *))
 
     fun getArgStr withTy = fn instr => let
@@ -225,12 +226,12 @@ structure LLVMBuilder : sig
     fun breakRes result = (case result
                        of R_Var v => SOME (LV.toString v, LV.typeOf v)
                         | R_None => NONE
-                        | _ => raise Fail "invalid result type for an instruction."
+                        | _ => raise Fail "invalid LHS for an instruction."
                     (* esac *))
 
     fun mkGEP(inbounds, (resName, resTy)) = (let
             val (ptrName, ptrTy) = break (V.sub(args, 0))
-            val offsets = List.tabulate ((V.length args) - 1,
+            val offsets = L.tabulate ((V.length args) - 1,
                             fn i => getArgStr true (V.sub(args, i+1)))
             val offsets = S.concatWith ", " offsets
           in
@@ -264,20 +265,45 @@ structure LLVMBuilder : sig
          (* unconditional branch *)
          | (OP_Br, NONE) => S.concat ["br ", getArgStr true (V.sub(args, 0))]
          
-         (*args = #[cond, fromV trueTarg, fromV falseTarg]*)
          | (OP_CondBr, NONE) => 
              S.concat [
-                          (* must be an i1 already *)
                 "br ", (getArgStr true (V.sub(args, 0))), ", ",
                 (getArgStr true (V.sub(args, 1))), ", ",
                 (getArgStr true (V.sub(args, 2)))
              ]
          
-         | (OP_TailCall, NONE) => ""
-         
-         | (OP_Call, NONE) => ""
+         | (OP_TailCall, NONE) => let
+             val (funcName, funcTy) = break (V.sub(args, 0))
+             val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
+                             fn i => getArgStr true (V.sub(args, i+1))))
+           in   
 
-         | (OP_Call, SOME(resName, resTy)) => ""
+            (* TODO(kavon): currently doesn't include CC or any attributes *)
+
+             S.concat ["musttail call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
+           end
+         
+         | (OP_Call, NONE) => let
+             val (funcName, funcTy) = break (V.sub(args, 0))
+             val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
+                             fn i => getArgStr true (V.sub(args, i+1))))
+           in   
+
+            (* TODO(kavon): currently doesn't include CC or any attributes *)
+            
+             S.concat ["call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
+           end
+
+         | (OP_Call, SOME(resName, resTy)) => let 
+             val (funcName, funcTy) = break (V.sub(args, 0))
+             val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
+                             fn i => getArgStr true (V.sub(args, i+1))))
+           in   
+
+            (* TODO(kavon): currently doesn't include CC or any attributes *)
+            
+             S.concat [resName, " = call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
+           end
 
          | (OP_Unreachable, NONE) => "unreachable"
 
@@ -292,7 +318,7 @@ structure LLVMBuilder : sig
      so it is incorrect to ask for one of their names! *)
   and bopName (x : Op.bin_op) : string = (case x
     (* binary ops *)
-     of Op.Add         => "add"        
+     of Op.Add         => "add" 
       | Op.NSWAdd      => "add nsw"
       | Op.NUWAdd      => "add nuw"
       | Op.FAdd        => "fadd"
@@ -317,6 +343,23 @@ structure LLVMBuilder : sig
       | Op.And         => "and"
       | Op.Or          => "or"
       | Op.Xor         => "xor"
+      (* esac *))
+
+  and castName (x : Op.cast_op) : string = (case x
+    (* binary ops *)
+     of Op.Trunc            => "trunc"
+      | Op.ZExt             => "zext"
+      | Op.SExt             => "sext"
+      | Op.FPToUI           => "fptoui"
+      | Op.FPToSI           => "fotpsi"
+      | Op.UIToFP           => "uitofp"
+      | Op.SIToFP           => "sitofp"
+      | Op.FPTrunc          => "fptrunc"
+      | Op.FPExt            => "fpext"
+      | Op.PtrToInt         => "ptrtoint"
+      | Op.IntToPtr         => "inttoptr"
+      | Op.BitCast          => "bitcast"
+      | Op.AddrSpaceCast    => "addrspacecast"
       (* esac *))
 
 
