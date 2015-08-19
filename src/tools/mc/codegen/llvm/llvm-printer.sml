@@ -46,6 +46,8 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   (*  *)
   structure LV = LLVMVar
   structure LB = LLVMBuilder 
+  structure A = LLVMAttribute
+  structure AS = LLVMAttribute.Set
 
   structure LT = LV.LT
   structure Op = LLVMOp
@@ -168,9 +170,9 @@ fun output (outS, module as C.MODULE { name = module_name,
       (* helpers *)
       val intTy = LT.mkInt(LT.cnt 32)
       fun mkInt i = LB.fromC(LB.intC(intTy, i))
-      val bop = LB.bop t
-      val ret = LB.ret t
-      val uop = LB.uop t
+      val bop = LB.bop t AS.empty
+      val ret = LB.ret t 
+      val uop = LB.uop t AS.empty
 
     val bb = ret (uop Op.Neg ((bop Op.Add (mkInt 10, mkInt 200))))
     

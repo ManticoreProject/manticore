@@ -15,6 +15,7 @@ structure LLVMBuilder : sig
     type ty
     type bb
     type constant
+    type attrs
 
     eqtype bin_op
     eqtype unary_op
@@ -65,9 +66,12 @@ structure LLVMBuilder : sig
     val floatC : (ty * real) -> constant
 
 
-    val uop : t -> unary_op -> instr -> instr
+    (*val mk : t -> attrs -> op_code -> instr vector -> instr*)
 
-    val bop : t -> bin_op -> (instr * instr) -> instr
+    val uop : t -> attrs -> unary_op -> instr -> instr
+
+    val bop : t -> attrs -> bin_op -> (instr * instr) -> instr
+
 
     (* getelementptr *)
     val gep : t -> (instr * constant vector) -> instr 
@@ -96,6 +100,8 @@ structure LLVMBuilder : sig
 
   structure Ty = LLVMTy
   structure Op = LLVMOp
+  structure Attr = LLVMAttribute
+  structure AttrSet = Attr.Set
 
   structure S = String
   structure V = Vector
@@ -103,6 +109,7 @@ structure LLVMBuilder : sig
 
   type ty = Ty.t
   type var = LV.var
+  type attrs = AttrSet.set
 
 
   type bin_op = Op.bin_op
@@ -140,6 +147,7 @@ structure LLVMBuilder : sig
     = INSTR of {
         result : res,
         kind : opcode,
+        atr : attrs,
         args : instr vector
       }
 
@@ -201,7 +209,7 @@ structure LLVMBuilder : sig
       process(body, nil)
     end
 
-  and getStr (inst as INSTR{result, kind, args}) = let
+  and getStr (inst as INSTR{result, kind, args, atr}) = let
 
     fun break (INSTR{result,...}) = (case result
                        of R_Var v => (LV.toString v, LV.typeOf v)
@@ -388,10 +396,10 @@ structure LLVMBuilder : sig
   (* Simple Instruction Builders *)
 
     (* fromV : var -> instr *)
-  fun fromV v = INSTR { result = (R_Var v), kind = OP_None, args = #[] }
+  fun fromV v = INSTR { result = (R_Var v), kind = OP_None, args = #[], atr = AttrSet.empty }
 
   (* fromC : constant -> instr *)
-  fun fromC c = INSTR { result = (R_Const c), kind = OP_None, args = #[] }
+  fun fromC c = INSTR { result = (R_Const c), kind = OP_None, args = #[], atr = AttrSet.empty }
 
 
 
@@ -406,7 +414,8 @@ structure LLVMBuilder : sig
     terminate(blk, INSTR {
         result = R_None,
         kind = OP_Unreachable,
-        args = #[]
+        args = #[],
+        atr = AttrSet.empty
       })
 
   (* retVoid : t -> bb *)
@@ -414,7 +423,8 @@ structure LLVMBuilder : sig
     terminate(blk, INSTR {
         result = R_None,
         kind = OP_Return,
-        args = #[]
+        args = #[],
+        atr = AttrSet.empty
       })
 
   (* ret : t -> instr -> bb *)
@@ -422,7 +432,8 @@ structure LLVMBuilder : sig
     terminate(blk, INSTR {
         result = R_None,
         kind = OP_Return,
-        args = #[inst]
+        args = #[inst],
+        atr = AttrSet.empty
       })
 
   (* NOTE(kavon): All tail calls are marked `musttail` and followed by a `ret void` automatically
@@ -439,7 +450,8 @@ structure LLVMBuilder : sig
         args = (V.tabulate((V.length args) + 1,
                 fn 0 => func 
                  | i => V.sub(args, i-1)
-               ))
+               )),
+        atr = AttrSet.empty
      });
      retVoid blk
     )
@@ -450,7 +462,8 @@ structure LLVMBuilder : sig
       terminate(blk, INSTR {
         result = R_None,
         kind = OP_Br,
-        args = #[fromV targ]
+        args = #[fromV targ],
+        atr = AttrSet.empty
       })
     )
 
@@ -465,7 +478,8 @@ structure LLVMBuilder : sig
         terminate(blk, INSTR {
             result = R_None,
             kind = OP_CondBr,
-            args = #[cond, fromV trueTarg, fromV falseTarg]
+            args = #[cond, fromV trueTarg, fromV falseTarg],
+            atr = AttrSet.empty
           })
       )
     end
@@ -475,8 +489,8 @@ structure LLVMBuilder : sig
 
   (* Instruction Builders *)
 
-  (* uop : t -> unary_op -> instr -> instr *)
-  fun uop blk = fn opKind => fn (arg1 as INSTR{result,...}) => let
+  (* uop : t -> attrs -> unary_op -> instr -> instr *)
+  fun uop blk = fn attrs => fn opKind => fn (arg1 as INSTR{result,...}) => let
 
     val tyy = grabTy result
 
@@ -485,7 +499,8 @@ structure LLVMBuilder : sig
     fun negateWith mode const = (INSTR {
           result= R_Var reg,
           kind = OP_Binary( mode ),
-          args = #[const, arg1]
+          args = #[const, arg1],
+          atr = attrs
         })
 
     val constDoubleZero = fromC(C_Float(LT.doubleTy, 0.0))
@@ -513,8 +528,8 @@ structure LLVMBuilder : sig
 
     
 
-  (*  bop : t -> bin_op -> (instr * instr) -> instr *)
-  fun bop blk = fn opKind => 
+  (*  bop : t -> attrs -> bin_op -> (instr * instr) -> instr *)
+  fun bop blk = fn attrs => fn opKind => 
     fn (arg1 as INSTR{result=arg1Res,...}, arg2 as INSTR{result=arg2Res,...}) => let
       val tyy = typeCheck "bop" (grabTy arg1Res, grabTy arg2Res)
       val reg = LV.new("r", tyy)
@@ -523,7 +538,8 @@ structure LLVMBuilder : sig
         INSTR {
           result = R_Var reg,
           kind = OP_Binary opKind,
-          args = #[arg1, arg2]
+          args = #[arg1, arg2],
+          atr = attrs
         }
       )
     end
@@ -574,7 +590,8 @@ structure LLVMBuilder : sig
           INSTR {
             result = R_Var reg,
             kind = mode,
-            args = args
+            args = args,
+            atr = AttrSet.empty
           }
         )
       end
@@ -603,7 +620,8 @@ structure LLVMBuilder : sig
         INSTR {
           result = R_Var reg,
           kind = OP_Cast castKind,
-          args = #[arg1]
+          args = #[arg1],
+          atr = AttrSet.empty
         }
       )
     end
@@ -635,7 +653,8 @@ structure LLVMBuilder : sig
           args = (V.tabulate((V.length args) + 1,
                 fn 0 => func 
                  | i => V.sub(args, i-1)
-               ))
+               )),
+          atr = AttrSet.empty
         }
       )
     end
