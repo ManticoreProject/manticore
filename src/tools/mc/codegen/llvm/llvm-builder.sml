@@ -6,7 +6,7 @@
  * LLVM Basic Block builder
  *)
 
-functor LLVMBuilder (Spec : TARGET_SPEC) : sig
+structure LLVMBuilder : sig
 
     type t
 
@@ -90,7 +90,7 @@ functor LLVMBuilder (Spec : TARGET_SPEC) : sig
     
   end = struct
 
-  structure LV = LLVMVar (Spec)
+  structure LV = LLVMVar
   structure LT = LV.LT
   structure V = Vector
 
@@ -187,7 +187,7 @@ functor LLVMBuilder (Spec : TARGET_SPEC) : sig
   fun toString (bb as BB {name, body}) : string = let
       val header = LV.identOf(name) ^ ":\n\t"
     in
-      S.concatWith "\n\t" (cvt body)
+      header ^ (S.concatWith "\n\t" (cvt body))
     end
 
   (* we don't use map because the body is actually a reversed
@@ -203,13 +203,13 @@ functor LLVMBuilder (Spec : TARGET_SPEC) : sig
   and getStr (inst as INSTR{result, kind, args}) = let
 
     fun break (INSTR{result,...}) = (case result
-                       of R_Var v => (LV.nameOf v, LV.typeOf v)
+                       of R_Var v => (LV.toString v, LV.typeOf v)
                         
                         | R_Const(C_Int(ty, i)) => (IntInf.toString i, ty)
 
                         | R_Const(C_Float(ty, f)) => (Real.toString f, ty)
 
-                        | R_Const(C_Str v) => (LV.nameOf v, LV.typeOf v)
+                        | R_Const(C_Str v) => (LV.toString v, LV.typeOf v)
 
                         | _ => raise Fail "invalid result type for an argument."
                     (* esac *))
@@ -225,7 +225,7 @@ functor LLVMBuilder (Spec : TARGET_SPEC) : sig
        
 
     val (resName, resTy, hasRes) = (case result
-                       of R_Var v => (LV.nameOf v, LV.typeOf v, true)
+                       of R_Var v => (LV.toString v, LV.typeOf v, true)
                         | R_None => ("", LT.voidTy, false)
                         | _ => raise Fail "invalid result type for an instruction."
                     (* esac *))
@@ -260,7 +260,7 @@ functor LLVMBuilder (Spec : TARGET_SPEC) : sig
        
        | OP_GEP_IB => ""
        
-       | OP_Return => ""
+       | OP_Return => "ret void"
        
        | OP_Br => ""
        

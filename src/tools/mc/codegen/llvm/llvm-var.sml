@@ -6,7 +6,7 @@
  * Utility for managing/generating LLVM vars
  *)
 
-functor LLVMVar (Spec : TARGET_SPEC) =
+structure LLVMVar =
  
  struct
 
@@ -16,7 +16,7 @@ functor LLVMVar (Spec : TARGET_SPEC) =
     val debuggingVariableNames = true
 
 
-    structure LT = LLVMType (Spec)
+    structure LT = LLVMType
     structure C = CFG
     structure CL = CFG.Label
     structure CV = CFG.Var

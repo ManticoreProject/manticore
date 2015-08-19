@@ -8,7 +8,7 @@
  *    - Compatible with LLVM 3.7
  *)
 
-functor LLVMPrinter (Spec : TARGET_SPEC) : sig
+functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
 
     val output : (TextIO.outstream * CFG.module) -> unit
 
@@ -41,11 +41,11 @@ functor LLVMPrinter (Spec : TARGET_SPEC) : sig
   structure CTU = CFGTyUtil
   structure CF = CFunctions
   structure S = String
-  structure U = LLVMPrintUtil (Spec)
+  structure U = LLVMPrintUtil
 
   (*  *)
-  structure LV = LLVMVar (Spec)
-  structure LB = LLVMBuilder (Spec)
+  structure LV = LLVMVar
+  structure LB = LLVMBuilder 
 
   structure LT = LV.LT
   structure Op = LLVMOp
@@ -170,8 +170,9 @@ fun output (outS, module as C.MODULE { name = module_name,
       fun mkInt i = LB.fromC(LB.intC(intTy, i))
       val bop = LB.bop t
       val ret = LB.ret t
+      val uop = LB.uop t
 
-    val bb = ret (bop Op.Add (mkInt 10, mkInt 200))
+    val bb = ret (uop Op.Neg ((bop Op.Add (mkInt 10, mkInt 200))))
     
     val done = LB.toString bb
 

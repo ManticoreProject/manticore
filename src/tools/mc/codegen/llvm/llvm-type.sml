@@ -6,7 +6,7 @@
  * Utility for translating to and managing types in LLVM
  *)
 
-functor LLVMType (Spec : TARGET_SPEC) : sig
+structure LLVMType : sig
 
     type ty
     type ty_node
@@ -172,7 +172,7 @@ functor LLVMType (Spec : TARGET_SPEC) : sig
 
   val i2s = Int.toString
 
-  val wordSzB = IntInf.toInt Spec.ABI.wordSzB
+  val wordSzB = 8
 
   (* FIXME(kavon): this isn't target independent! we need an archSizes functor instead
                    of this rather useless Spec thing. *)
