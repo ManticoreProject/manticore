@@ -222,57 +222,68 @@ structure LLVMBuilder : sig
         else resName
       end
 
-       
-
-    val (resName, resTy, hasRes) = (case result
-                       of R_Var v => (LV.toString v, LV.typeOf v, true)
-                        | R_None => ("", LT.voidTy, false)
+    fun breakRes result = (case result
+                       of R_Var v => SOME (LV.toString v, LV.typeOf v)
+                        | R_None => NONE
                         | _ => raise Fail "invalid result type for an instruction."
                     (* esac *))
-    in
-      case kind 
-      
-      of OP_Binary bin_op => 
-        if not hasRes 
-          then raise Fail "binops should always have a result"
-        else S.concat 
-            [resName, " = ", bopName bin_op, " ", LT.nameOf resTy, " ",
-              getArgStr false (V.sub(args, 0)), ", ",
-              getArgStr false (V.sub(args, 1))
-            ]
-       
-       | OP_Cast cast_op => ""
-       
-       | OP_GEP => let
-            val _ = if not hasRes then raise Fail "gep should always have a result" else ()
+
+    fun mkGEP(inbounds, (resName, resTy)) = (let
             val (ptrName, ptrTy) = break (V.sub(args, 0))
             val offsets = List.tabulate ((V.length args) - 1,
                             fn i => getArgStr true (V.sub(args, i+1)))
             val offsets = S.concatWith ", " offsets
           in
             S.concat
-              [ resName, " = getelementptr ",
+              [ resName, " = getelementptr " ^ (if inbounds then "inbounds " else ""),
                 (LT.nameOf o LT.deref) ptrTy, ", ",
                 LT.nameOf ptrTy, " ", ptrName, ", ",
                 offsets
               ]
-          end
-       
-       | OP_GEP_IB => ""
-       
-       | OP_Return => "ret void"
-       
-       | OP_Br => ""
-       
-       | OP_CondBr => ""
-       
-       | OP_TailCall => ""
-       
-       | OP_Call => ""
+          end)
+    in
+      case (kind, breakRes result)    
+        of (OP_Binary bin_op, SOME(resName, resTy)) => 
+            S.concat [
+                resName, " = ", bopName bin_op, " ", LT.nameOf resTy, " ",
+                getArgStr false (V.sub(args, 0)), ", ",
+                getArgStr false (V.sub(args, 1))
+              ]
+         
+         | (OP_Cast cast_op, SOME(resName, resTy)) => "; cast op missing"
+         
+         | (OP_GEP, SOME info) => mkGEP(false, info)
+         
+         | (OP_GEP_IB, SOME info) => mkGEP(true, info)
+         
+         | (OP_Return, NONE) => 
+            if V.length args = 0
+              then "ret void"
+            else S.concat ["ret ", getArgStr true (V.sub(args, 0))]
+         
+         (* unconditional branch *)
+         | (OP_Br, NONE) => S.concat ["br ", getArgStr true (V.sub(args, 0))]
+         
+         (*args = #[cond, fromV trueTarg, fromV falseTarg]*)
+         | (OP_CondBr, NONE) => 
+             S.concat [
+                          (* must be an i1 already *)
+                "br ", (getArgStr true (V.sub(args, 0))), ", ",
+                (getArgStr true (V.sub(args, 1))), ", ",
+                (getArgStr true (V.sub(args, 2)))
+             ]
+         
+         | (OP_TailCall, NONE) => ""
+         
+         | (OP_Call, NONE) => ""
 
-       | OP_Unreachable => "unreachable"
+         | (OP_Call, SOME(resName, resTy)) => ""
 
-       | OP_None => raise Fail "basic block should not have wrapped var/const as an instruction."
+         | (OP_Unreachable, NONE) => "unreachable"
+
+         | (OP_None, _) => raise Fail "basic block should not have wrapped var/const as an instruction."
+
+         | _ => raise Fail "bogus LLVM instruction"
     end
     
 
