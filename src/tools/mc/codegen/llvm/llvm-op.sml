@@ -93,6 +93,8 @@ structure LLVMOp = struct
   structure A = LLVMAttribute
   structure AS = LLVMAttribute.Set
   structure V = Vector
+  structure L = List
+  structure S = String
 
 
   (* the design of this was meant to allow for easy extension
@@ -182,10 +184,16 @@ structure LLVMOp = struct
 
 
 
-  fun checkAttrs (x : op_code, attrSet : AS.set) : AS.set = 
-    if AS.isEmpty(AS.difference(attrSet, validAttrs(x)))
-      then attrSet
-    else raise Fail "invalid attributes specified for an op code"
+  fun checkAttrs (x : op_code, attrSet : AS.set) : AS.set = let
+      val invalidAttrs = AS.difference(attrSet, validAttrs(x))
+    in
+      if AS.isEmpty(invalidAttrs)
+        then attrSet
+      else raise Fail 
+        (S.concat 
+          ["\nthe following attributes are invalid for opcode '", toString(x), "'\n\t",
+           S.concatWith " " (L.map A.toString (AS.listItems invalidAttrs))])
+    end
     
 
   and validAttrs (x : op_code) : AS.set = (case x
@@ -213,7 +221,7 @@ structure LLVMOp = struct
   
 
   (* gets the LLVM op name *)
-  fun toString (x : op_code) : string = (case x
+  and toString (x : op_code) : string = (case x
     (* binary ops *)
      of Add         => "add" 
       | FAdd        => "fadd"

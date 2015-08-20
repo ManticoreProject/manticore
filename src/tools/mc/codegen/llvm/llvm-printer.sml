@@ -171,9 +171,10 @@ fun output (outS, module as C.MODULE { name = module_name,
       val intTy = LT.mkInt(LT.cnt 32)
       fun mkInt i = LB.fromC(LB.intC(intTy, i))
       val mk = LB.mk t AS.empty
+      val mkNSW = LB.mk t (AS.addList(AS.empty, [A.FastMath]))
       val ret = LB.ret t 
 
-    val bb = ret (mk Op.Sub #[mkInt 0, mk Op.Add #[mkInt 10, mkInt 200]])
+    val bb = ret (mkNSW Op.Sub #[mkInt 0, mk Op.Add #[mkInt 10, mkInt 200]])
     
     val done = LB.toString bb
 

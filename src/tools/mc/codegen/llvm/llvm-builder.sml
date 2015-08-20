@@ -20,7 +20,13 @@ structure LLVMBuilder : sig
     eqtype op_code
 
 
-    (* TODO(kavon): attributes? *)
+    (* THE TODO LIST
+      - make opcodes for icmp and other essential instructions
+      - convert old-style instructions such as GEP into the new-style
+      - figure out how you will associate attributes with vars for
+        stuff like calls? maybe just add a "fromVWithAttr" or something??
+      - otherwise, start using the builder in the printer.
+      *)
 
 
     (* start a fresh basic block *)
