@@ -40,7 +40,6 @@ structure LLVMAttribute = struct
      | NUW => 5
     (* esac *))
 
-  (* strings... gross *)
   structure K = struct
     type ord_key = t
     val compare = (fn (x, y) => Int.compare(id x, id y))

@@ -17,9 +17,7 @@ structure LLVMBuilder : sig
     type constant
     type attrs
 
-    eqtype bin_op
-    eqtype unary_op
-    eqtype cast_op
+    eqtype op_code
 
 
     (* TODO(kavon): attributes? *)
@@ -66,11 +64,7 @@ structure LLVMBuilder : sig
     val floatC : (ty * real) -> constant
 
 
-    (*val mk : t -> attrs -> op_code -> instr vector -> instr*)
-
-    val uop : t -> attrs -> unary_op -> instr -> instr
-
-    val bop : t -> attrs -> bin_op -> (instr * instr) -> instr
+    val mk : t -> attrs -> op_code -> instr vector -> instr
 
 
     (* getelementptr *)
@@ -82,7 +76,7 @@ structure LLVMBuilder : sig
     (* NOTE(kavon): something not supported right now is GEPs that calculate a
        vector of addresses, extend the interface if desired. *)
 
-    val cast : t -> cast_op -> (instr * ty) -> instr
+    val cast : t -> op_code -> (instr * ty) -> instr
 
     (* C calls which return *)
     val call : t -> (instr * instr vector) -> instr
@@ -111,10 +105,7 @@ structure LLVMBuilder : sig
   type var = LV.var
   type attrs = AttrSet.set
 
-
-  type bin_op = Op.bin_op
-  type unary_op = Op.unary_op
-  type cast_op = Op.cast_op
+  type op_code = Op.op_code
 
 
   datatype res 
@@ -127,14 +118,12 @@ structure LLVMBuilder : sig
     | C_Float of ty * real  (* QUESTION(kavon): is this precise enough? *)
     | C_Str of var (* string constants are global vars *)
 
-  datatype opcode
-    = OP_Binary of bin_op
-    | OP_Cast of cast_op
+  datatype opkind
+    = OP of op_code
     | OP_GEP
     | OP_GEP_IB
     | OP_Return
     | OP_Br
-    (*| OP_IndrBr NOTE(kavon): we shouldn't need these *)
     | OP_CondBr
     | OP_TailCall
     | OP_Call
@@ -146,7 +135,7 @@ structure LLVMBuilder : sig
   datatype instr 
     = INSTR of {
         result : res,
-        kind : opcode,
+        kind : opkind,
         atr : attrs,
         args : instr vector
       }
@@ -252,14 +241,12 @@ structure LLVMBuilder : sig
           end)
     in
       case (kind, breakRes result)    
-        of (OP_Binary bin_op, SOME(resName, resTy)) => 
-            S.concat [
+        of (OP opc, SOME(resName, resTy)) => raise Fail "todo"
+            (* S.concat [
                 resName, " = ", bopName bin_op, " ", LT.nameOf resTy, " ",
                 getArgStr false (V.sub(args, 0)), ", ",
                 getArgStr false (V.sub(args, 1))
-              ]
-         
-         | (OP_Cast cast_op, SOME(resName, resTy)) => "; cast op missing"
+              ] *)
          
          | (OP_GEP, SOME info) => mkGEP(false, info)
          
@@ -319,56 +306,6 @@ structure LLVMBuilder : sig
 
          | _ => raise Fail "bogus LLVM instruction"
     end
-    
-
-
-  (* gets the LLVM op name. note that there are no unary ops in LLVM
-     so it is incorrect to ask for one of their names! *)
-  and bopName (x : Op.bin_op) : string = (case x
-    (* binary ops *)
-     of Op.Add         => "add" 
-      | Op.NSWAdd      => "add nsw"
-      | Op.NUWAdd      => "add nuw"
-      | Op.FAdd        => "fadd"
-      | Op.Sub         => "sub"
-      | Op.NSWSub      => "sub nsw"
-      | Op.NUWSub      => "sub nuw"
-      | Op.FSub        => "fsub"
-      | Op.Mul         => "mul"
-      | Op.NSWMul      => "mul nsw"
-      | Op.NUWMul      => "mul nuw"
-      | Op.FMul        => "fmul"
-      | Op.UDiv        => "udiv"
-      | Op.SDiv        => "sdiv"
-      | Op.ExactSDiv   => "sdiv exact"
-      | Op.FDiv        => "fdiv"
-      | Op.URem        => "urem"
-      | Op.SRem        => "srem" 
-      | Op.FRem        => "frem" 
-      | Op.Shl         => "shl" 
-      | Op.LShr        => "lshr" 
-      | Op.AShr        => "ashr" 
-      | Op.And         => "and"
-      | Op.Or          => "or"
-      | Op.Xor         => "xor"
-      (* esac *))
-
-  and castName (x : Op.cast_op) : string = (case x
-    (* binary ops *)
-     of Op.Trunc            => "trunc"
-      | Op.ZExt             => "zext"
-      | Op.SExt             => "sext"
-      | Op.FPToUI           => "fptoui"
-      | Op.FPToSI           => "fotpsi"
-      | Op.UIToFP           => "uitofp"
-      | Op.SIToFP           => "sitofp"
-      | Op.FPTrunc          => "fptrunc"
-      | Op.FPExt            => "fpext"
-      | Op.PtrToInt         => "ptrtoint"
-      | Op.IntToPtr         => "inttoptr"
-      | Op.BitCast          => "bitcast"
-      | Op.AddrSpaceCast    => "addrspacecast"
-      (* esac *))
 
 
 (**************************************************
@@ -391,6 +328,8 @@ structure LLVMBuilder : sig
        | R_Const(C_Float(theTy, _)) => theTy
        | R_Const(C_Str v) => LV.typeOf v
     (* esac *))
+
+  fun tyOfInstr (INSTR{result,...}) = grabTy result
 
 
   (* Simple Instruction Builders *)
@@ -488,61 +427,19 @@ structure LLVMBuilder : sig
 
 
   (* Instruction Builders *)
-
-  (* uop : t -> attrs -> unary_op -> instr -> instr *)
-  fun uop blk = fn attrs => fn opKind => fn (arg1 as INSTR{result,...}) => let
-
-    val tyy = grabTy result
-
-    val reg = LV.new("r", tyy)    
-
-    fun negateWith mode const = (INSTR {
-          result= R_Var reg,
-          kind = OP_Binary( mode ),
-          args = #[const, arg1],
-          atr = attrs
-        })
-
-    val constDoubleZero = fromC(C_Float(LT.doubleTy, 0.0))
-    val constFloatZero = fromC(C_Float(LT.floatTy, 0.0))
-    val constIntZero = fromC(C_Int(tyy, 0))
-    
-    val constNeg1 = fromC(C_Int(tyy, ~1))
-
-  in
-    (* <result> = sub i32 0, %val          ; yields i32:result = -%var 
-       <result> = xor i32 %V, -1          ; yields i32:result = ~%V  *)
-    push(blk,
-      case (opKind, LT.node tyy)
-        of (Op.Neg, Ty.T_Int _) => negateWith Op.Sub constIntZero
-         | (Op.NSWNeg, Ty.T_Int _) => negateWith Op.NSWSub constIntZero
-         | (Op.NUWNeg, Ty.T_Int _) => negateWith Op.NUWSub constIntZero
-         | (Op.Not, Ty.T_Int _) => negateWith Op.Xor constNeg1
-         
-         | (Op.FNeg, Ty.T_Float) => negateWith Op.FSub constFloatZero
-         | (Op.FNeg, Ty.T_Double) => negateWith Op.FSub constDoubleZero
-         | _ => raise Fail "uop: incompatible types"
+  
+  fun mk blk attrs opKind inputs = 
+    push(blk, 
+      INSTR {
+        result = 
+          (case Op.typeCheck(opKind, V.map tyOfInstr inputs)
+            of SOME tyy => R_Var (LV.new("r", tyy))
+             | NONE => R_None),
+        kind = OP opKind,
+        args = inputs,
+        atr = Op.checkAttrs(opKind, attrs)
+      }
     )
-  end
-    
-
-    
-
-  (*  bop : t -> attrs -> bin_op -> (instr * instr) -> instr *)
-  fun bop blk = fn attrs => fn opKind => 
-    fn (arg1 as INSTR{result=arg1Res,...}, arg2 as INSTR{result=arg2Res,...}) => let
-      val tyy = typeCheck "bop" (grabTy arg1Res, grabTy arg2Res)
-      val reg = LV.new("r", tyy)
-    in
-      push(blk, 
-        INSTR {
-          result = R_Var reg,
-          kind = OP_Binary opKind,
-          args = #[arg1, arg2],
-          atr = attrs
-        }
-      )
-    end
 
 
   local
@@ -609,23 +506,14 @@ structure LLVMBuilder : sig
 
 
   (* t -> cast_op -> (instr * ty) -> instr *)
-  fun cast blk = fn castKind => 
-    fn (arg1 as INSTR{result=arg1Res,...}, targetTy) => let
-      
-      (* TODO(kavon): ensure this cast is correct. *)
-      
-      val reg = LV.new("r", targetTy)
-    in
+  fun cast blk castKind = fn (arg : instr, targTy) =>
       push(blk,
         INSTR {
-          result = R_Var reg,
-          kind = OP_Cast castKind,
-          args = #[arg1],
+          result = R_Var (LV.new("r", Op.checkCast(castKind, (tyOfInstr arg, targTy)))),
+          kind = OP castKind,
+          args = #[arg],
           atr = AttrSet.empty
-        }
-      )
-    end
-   
+        })
 
 
   (* call : t -> (instr * instr vector) -> instr *)
