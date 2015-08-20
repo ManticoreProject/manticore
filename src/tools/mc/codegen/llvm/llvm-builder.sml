@@ -94,8 +94,8 @@ structure LLVMBuilder : sig
 
   structure Ty = LLVMTy
   structure Op = LLVMOp
-  structure Attr = LLVMAttribute
-  structure AttrSet = Attr.Set
+  structure A = LLVMAttribute
+  structure AS = LLVMAttribute.Set
 
   structure S = String
   structure V = Vector
@@ -103,7 +103,7 @@ structure LLVMBuilder : sig
 
   type ty = Ty.t
   type var = LV.var
-  type attrs = AttrSet.set
+  type attrs = AS.set
 
   type op_code = Op.op_code
 
@@ -241,12 +241,45 @@ structure LLVMBuilder : sig
           end)
     in
       case (kind, breakRes result)    
-        of (OP opc, SOME(resName, resTy)) => raise Fail "todo"
-            (* S.concat [
-                resName, " = ", bopName bin_op, " ", LT.nameOf resTy, " ",
-                getArgStr false (V.sub(args, 0)), ", ",
-                getArgStr false (V.sub(args, 1))
-              ] *)
+        of (OP opc, SOME(resName, resTy)) => (case opc
+          of (  Op.Add
+              | Op.Sub
+              | Op.Mul
+              | Op.Shl ) => let
+                  val nsw = if AS.member(atr, A.NSW)
+                            then (A.toString A.NSW ^ " ")
+                            else ""
+                  val nuw = if AS.member(atr, A.NUW)
+                            then (A.toString A.NUW ^ " ")
+                            else ""
+                  val opcStr = Op.toString opc
+                  val (arg1, ty) = break(V.sub(args, 0)) 
+                  val (arg2, _) = break(V.sub(args, 1)) 
+                in
+                  S.concat[resName, " = ", opcStr, " ", nuw, nsw, LT.nameOf ty, " ", arg1, ", ", arg2]
+                end
+
+           | (  Op.FAdd
+              | Op.FSub
+              | Op.FMul
+              | Op.FDiv
+              | Op.FRem ) => let
+                  val fmathFlags = 
+                        if AS.member(atr, A.FastMath)
+                          then (A.toString A.FastMath)
+                        else S.concatWith " " (L.map A.toString (AS.listItems atr))
+                  val opcStr = Op.toString opc
+                  val (arg1, ty) = break(V.sub(args, 0)) 
+                  val (arg2, _) = break(V.sub(args, 1)) 
+                in
+                  S.concat[resName, " = ", opcStr, " ",
+                   fmathFlags, if not(AS.isEmpty(atr)) then " " else "",
+                   LT.nameOf ty, " ", arg1, ", ", arg2]
+                end
+
+           | _ => "; opcode " ^ (Op.toString opc) ^ " not implemented."
+
+          (* esac *))
          
          | (OP_GEP, SOME info) => mkGEP(false, info)
          
@@ -335,10 +368,10 @@ structure LLVMBuilder : sig
   (* Simple Instruction Builders *)
 
     (* fromV : var -> instr *)
-  fun fromV v = INSTR { result = (R_Var v), kind = OP_None, args = #[], atr = AttrSet.empty }
+  fun fromV v = INSTR { result = (R_Var v), kind = OP_None, args = #[], atr = AS.empty }
 
   (* fromC : constant -> instr *)
-  fun fromC c = INSTR { result = (R_Const c), kind = OP_None, args = #[], atr = AttrSet.empty }
+  fun fromC c = INSTR { result = (R_Const c), kind = OP_None, args = #[], atr = AS.empty }
 
 
 
@@ -354,7 +387,7 @@ structure LLVMBuilder : sig
         result = R_None,
         kind = OP_Unreachable,
         args = #[],
-        atr = AttrSet.empty
+        atr = AS.empty
       })
 
   (* retVoid : t -> bb *)
@@ -363,7 +396,7 @@ structure LLVMBuilder : sig
         result = R_None,
         kind = OP_Return,
         args = #[],
-        atr = AttrSet.empty
+        atr = AS.empty
       })
 
   (* ret : t -> instr -> bb *)
@@ -372,7 +405,7 @@ structure LLVMBuilder : sig
         result = R_None,
         kind = OP_Return,
         args = #[inst],
-        atr = AttrSet.empty
+        atr = AS.empty
       })
 
   (* NOTE(kavon): All tail calls are marked `musttail` and followed by a `ret void` automatically
@@ -390,7 +423,7 @@ structure LLVMBuilder : sig
                 fn 0 => func 
                  | i => V.sub(args, i-1)
                )),
-        atr = AttrSet.empty
+        atr = AS.empty
      });
      retVoid blk
     )
@@ -402,7 +435,7 @@ structure LLVMBuilder : sig
         result = R_None,
         kind = OP_Br,
         args = #[fromV targ],
-        atr = AttrSet.empty
+        atr = AS.empty
       })
     )
 
@@ -418,7 +451,7 @@ structure LLVMBuilder : sig
             result = R_None,
             kind = OP_CondBr,
             args = #[cond, fromV trueTarg, fromV falseTarg],
-            atr = AttrSet.empty
+            atr = AS.empty
           })
       )
     end
@@ -488,7 +521,7 @@ structure LLVMBuilder : sig
             result = R_Var reg,
             kind = mode,
             args = args,
-            atr = AttrSet.empty
+            atr = AS.empty
           }
         )
       end
@@ -512,7 +545,7 @@ structure LLVMBuilder : sig
           result = R_Var (LV.new("r", Op.checkCast(castKind, (tyOfInstr arg, targTy)))),
           kind = OP castKind,
           args = #[arg],
-          atr = AttrSet.empty
+          atr = AS.empty
         })
 
 
@@ -542,7 +575,7 @@ structure LLVMBuilder : sig
                 fn 0 => func 
                  | i => V.sub(args, i-1)
                )),
-          atr = AttrSet.empty
+          atr = AS.empty
         }
       )
     end

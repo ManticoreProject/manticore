@@ -22,6 +22,16 @@ structure LLVMAttribute = struct
     | Aligned of int
     | NSW (* no signed wrap *)
     | NUW (* no unsigned wrap *)
+    | ExactDiv (* for sdiv *)
+
+    (* fast math flags for fadd, fsub, fmul, fdiv, frem, fcmp *)
+    | NoNaN
+    | NoInf
+    | NoSZero
+    | AllowRecip
+    | FastMath  (* allows algebraically equiv transforms, also
+                   implies all of the above flags *)
+
 
 
   fun toString (x : t) : string = (case x
@@ -30,14 +40,35 @@ structure LLVMAttribute = struct
      | Aligned i => "aligned " ^ (Int.toString i)
      | NSW => "nsw"
      | NUW => "nuw"
+     | ExactDiv => "exact"
+     | NoNaN        => "nnan"
+     | NoInf        => "ninf"
+     | NoSZero      => "nsz"
+     | AllowRecip   => "arcp"
+     | FastMath     => "fast"
     (* esac *))
 
   fun id (x : t) : int = (case x
-    of Atomic => 1
-     | Volatile => 2
-     | Aligned _ => 3
-     | NSW => 4
-     | NUW => 5
+    (* We fold all alignments into one element. If the alignment's value
+        is desired, turn the set in which the alignment exists into a list
+        and then match on the Aligned(i) which must exist there. Because
+        the ID is 0, the list should have Aligned as the first element
+        so this shouldn't be too expensive to do.
+    *)
+    of Aligned _    => 0
+     | Atomic       => 1
+     | Volatile     => 2 
+     | NSW          => 3
+     | NUW          => 4
+     | ExactDiv     => 5
+     | NoNaN        => 6
+     | NoInf        => 7
+     | NoSZero      => 8
+     | AllowRecip   => 9
+     | FastMath     => 10
+
+     
+
     (* esac *))
 
   structure K = struct

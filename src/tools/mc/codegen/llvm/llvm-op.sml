@@ -23,7 +23,6 @@ structure LLVMOp = struct
     | FMul 
     | UDiv 
     | SDiv 
-    | ExactSDiv 
     | FDiv 
     | URem 
     | SRem 
@@ -54,45 +53,44 @@ structure LLVMOp = struct
 
   (* (# inputs, hasOutput) *)
   fun arity (x : op_code) : (int * bool) = (case x
-    (* binary ops *)
-    of Add      => (2, true)
-    | FAdd      => (2, true)
-    | Sub       => (2, true)
-    | FSub      => (2, true)
-    | Mul       => (2, true)
-    | FMul      => (2, true)
-    | UDiv      => (2, true)
-    | SDiv      => (2, true)
-    | ExactSDiv => (2, true)
-    | FDiv      => (2, true)
-    | URem      => (2, true)
-    | SRem      => (2, true)
-    | FRem      => (2, true)
-    | Shl       => (2, true)
-    | LShr      => (2, true)
-    | AShr      => (2, true)
-    | And       => (2, true)
-    | Or        => (2, true)
-    | Xor       => (2, true)
+    of ( Add      
+       | FAdd      
+       | Sub       
+       | FSub      
+       | Mul       
+       | FMul      
+       | UDiv      
+       | SDiv      
+       | FDiv      
+       | URem      
+       | SRem      
+       | FRem      
+       | Shl       
+       | LShr      
+       | AShr      
+       | And       
+       | Or        
+       | Xor ) => (2, true)
 
     (* casts *)
-    | Trunc     => (1, true)
-    | ZExt      => (1, true)
-    | SExt      => (1, true)
-    | FPToUI    => (1, true)
-    | FPToSI    => (1, true)
-    | UIToFP    => (1, true)
-    | SIToFP    => (1, true)
-    | FPTrunc   => (1, true)
-    | FPExt     => (1, true)
-    | PtrToInt  => (1, true)
-    | IntToPtr  => (1, true)
-    | BitCast   => (1, true)
+    | ( Trunc   
+      | ZExt    
+      | SExt    
+      | FPToUI  
+      | FPToSI  
+      | UIToFP  
+      | SIToFP  
+      | FPTrunc 
+      | FPExt   
+      | PtrToInt
+      | IntToPtr
+      | BitCast )   => (1, true)
     (* end arity *))
 
 
   structure Ty = LLVMTy
   structure LT = LLVMType
+  structure A = LLVMAttribute
   structure AS = LLVMAttribute.Set
   structure V = Vector
 
@@ -133,27 +131,26 @@ structure LLVMOp = struct
 
     in 
       case x
-        (* binary ops *)
-        of Add      => SOME(sameKinds intOrVecOfInt inputs)
-        | Sub       => SOME(sameKinds intOrVecOfInt inputs)
-        | Mul       => SOME(sameKinds intOrVecOfInt inputs)
-        | UDiv      => SOME(sameKinds intOrVecOfInt inputs)
-        | SDiv      => SOME(sameKinds intOrVecOfInt inputs)
-        | ExactSDiv => SOME(sameKinds intOrVecOfInt inputs)
-        | URem      => SOME(sameKinds intOrVecOfInt inputs)
-        | SRem      => SOME(sameKinds intOrVecOfInt inputs)
-        | Shl       => SOME(sameKinds intOrVecOfInt inputs)
-        | LShr      => SOME(sameKinds intOrVecOfInt inputs)
-        | AShr      => SOME(sameKinds intOrVecOfInt inputs)
-        | And       => SOME(sameKinds intOrVecOfInt inputs)
-        | Or        => SOME(sameKinds intOrVecOfInt inputs)
-        | Xor       => SOME(sameKinds intOrVecOfInt inputs)
+      (* binary ops *)
+      of ( Add      
+          | Sub       
+          | Mul       
+          | UDiv      
+          | SDiv      
+          | URem      
+          | SRem      
+          | Shl       
+          | LShr      
+          | AShr      
+          | And       
+          | Or        
+          | Xor ) => SOME(sameKinds intOrVecOfInt inputs)
 
-        | FAdd      => SOME(sameKinds realOrVecOfReal inputs)
-        | FSub      => SOME(sameKinds realOrVecOfReal inputs)
-        | FMul      => SOME(sameKinds realOrVecOfReal inputs)
-        | FDiv      => SOME(sameKinds realOrVecOfReal inputs)
-        | FRem      => SOME(sameKinds realOrVecOfReal inputs)
+      |  ( FAdd
+         | FSub
+         | FMul
+         | FDiv
+         | FRem ) => SOME(sameKinds realOrVecOfReal inputs)
     end
 
   and intOrVecOfInt (t : Ty.t) = (case LT.node t
@@ -185,14 +182,38 @@ structure LLVMOp = struct
 
 
 
-  fun checkAttrs (x : op_code, attrSet : AS.set) : AS.set =
-    (* perform an intersection operation or something? *)
-    attrSet
+  fun checkAttrs (x : op_code, attrSet : AS.set) : AS.set = 
+    if AS.isEmpty(AS.difference(attrSet, validAttrs(x)))
+      then attrSet
+    else raise Fail "invalid attributes specified for an op code"
+    
+
+  and validAttrs (x : op_code) : AS.set = (case x
+    of SDiv => AS.addList(AS.empty, [A.ExactDiv])
+     | ( FAdd
+        | FSub
+        | FMul
+        | FDiv
+        | FRem
+         ) => AS.addList(AS.empty, 
+            [A.NoNaN, A.NoInf, A.NoSZero, A.AllowRecip, A.FastMath])
+
+     (* fast math also applies to Fcmp *)
+
+     | ( Add
+        | Sub
+        | Mul
+        | Shl ) => AS.addList(AS.empty, [A.NSW, A.NUW])
+
+     | _ => AS.empty
+
+    )
+
 
   
 
   (* gets the LLVM op name *)
-  fun nameOf (x : op_code) : string = (case x
+  fun toString (x : op_code) : string = (case x
     (* binary ops *)
      of Add         => "add" 
       | FAdd        => "fadd"
@@ -202,7 +223,6 @@ structure LLVMOp = struct
       | FMul        => "fmul"
       | UDiv        => "udiv"
       | SDiv        => "sdiv"
-      | ExactSDiv   => "sdiv exact" (* TODO: consider making Exact an attribute. *)
       | FDiv        => "fdiv"
       | URem        => "urem"
       | SRem        => "srem" 
