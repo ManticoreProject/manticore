@@ -557,6 +557,11 @@ struct
         end
         )        
     
+    fun dumpTable() = 
+        let val table = HeaderTableStruct.HeaderTable.print (HeaderTableStruct.header)
+            val _ = List.app (fn (a, b) => print (Int.toString b ^ " --> " ^ a ^ "\n")) table
+        in () end
+
     fun print (path) = let
             val Myout = TextIO.openOut path handle e => (print "OPEN FAILED\n\n\n"; raise e)
         in

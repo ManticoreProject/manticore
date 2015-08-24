@@ -21,7 +21,7 @@ struct
 
 #define READ_SET_BOUND 20
 
-    structure RS = ReadSet2
+    structure RS = ReadSet
 
     
 
@@ -58,7 +58,7 @@ struct
                else do ccall M_Print("Trying to read outside a transaction!\n")
                     let e : exn = Fail(@"Reading outside transaction\n")
                     throw exh(e)
-            let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
+            let myStamp : ![stamp, int,int,long] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
             let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
             fun chkLog(writeSet : RS.item) : Option.option = (*use local copy if available*)
@@ -94,13 +94,13 @@ struct
                         let captureCount : int = FLS.@get-counter()
                         if I32Eq(captureCount, 0)  (*capture a continuation*)
                         then 
-                            do RS.@insert-with-k(tv, retK, writeSet, readSet / exh)
+                            do RS.@insert-with-k(tv, retK, writeSet, readSet, myStamp / exh)
                             let freq : int = FLS.@get-counter2()
                             do FLS.@set-counter(freq)
                             return(current)
                         else
                             do FLS.@set-counter(I32Sub(captureCount, 1))
-                            do RS.@insert-without-k(tv, readSet / exh)
+                            do RS.@insert-without-k(tv, readSet, myStamp / exh)
                             return(current)
                      else 
                         do RS.@filterRS(readSet)
@@ -108,7 +108,7 @@ struct
                         let newFreq : int = I32Mul(captureFreq, 2)
                         do FLS.@set-counter(I32Sub(newFreq, 1))
                         do FLS.@set-counter2(newFreq)
-                        do RS.@insert-without-k(tv, readSet / exh)  (*this updates FLS if necessary*)
+                        do RS.@insert-without-k(tv, readSet, myStamp / exh)  (*this updates FLS if necessary*)
                         return(current)
                             
             end
@@ -230,6 +230,14 @@ struct
          then return(true)
          else return(false);
 
+        define @unsafe-put(arg : [tvar, any] / exh:exh) : unit = 
+            let tv : tvar = #0(arg)
+            let x : any = #1(arg)
+            let x : any = promote(x)
+            do #0(tv) := x
+            return(UNIT)   
+        ;
+
     )
 
     type 'a tvar = 'a PartialSTM.tvar
@@ -241,10 +249,10 @@ struct
     val abort : unit -> 'a = _prim(@abort)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
-    
+    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
     val commit : unit -> unit = _prim(@commit-wrapper)    
 
-    val _ = Ref.set(STMs.stms, ("ordered", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("ordered", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
 
 end
 

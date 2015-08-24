@@ -18,7 +18,7 @@ struct
            of (str, funs)::tl => if String.same(str, whichSTM) then funs else getSTMFuns tl
             | nil => (print "STM implementation not recognized\n"; raise Fail(""))
 
-    val (get,put,atomic,new,printStats,abort,unsafeGet, same) = getSTMFuns(Ref.get STMs.stms)
+    val (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut) = getSTMFuns(Ref.get STMs.stms)
 
     (*won't typecheck without these nonsense bindings*)
     val get : 'a tvar -> 'a = get
@@ -29,4 +29,5 @@ struct
     val abort : unit -> 'a = abort
     val unsafeGet : 'a tvar -> 'a = unsafeGet
     val same : 'a tvar * 'a tvar -> bool = same
+    val unsafePut : 'a tvar * 'a -> unit = unsafePut 
 end

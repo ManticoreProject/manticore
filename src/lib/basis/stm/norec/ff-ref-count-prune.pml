@@ -93,13 +93,13 @@ struct
                         let kCount : long = RS.@getNumK(readSet)
                         if I64Lt(kCount, READ_SET_BOUND:long)
                         then
-                            do RS.@insert-with-k(tv, current, retK, writeSet, readSet / exh)
+                            do RS.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
                             let captureFreq : int = FLS.@get-counter2()
                             do FLS.@set-counter(captureFreq)
                             return(current)
                         else
-                            do RS.@filterRS(readSet / exh)
-                            do RS.@insert-with-k(tv, current, retK, writeSet, readSet / exh)
+                            do RS.@filterRS(readSet, myStamp / exh)
+                            do RS.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
                             let captureFreq : int = FLS.@get-counter2()
                             let newFreq : int = I32Mul(captureFreq, 2)
                             do FLS.@set-counter(newFreq)
@@ -107,7 +107,7 @@ struct
                             return(current)
                     else
                         do FLS.@set-counter(I32Sub(captureCount, 1))
-                        do RS.@insert-without-k(tv, current, readSet / exh)
+                        do RS.@insert-without-k(tv, current, readSet, myStamp / exh)
                         return(current)
             end
 		;
@@ -223,6 +223,14 @@ struct
 	    define @unsafe-get(x:tvar / exh:exh) : any = 
 	    	return(#0(x));
 
+        define @unsafe-put(arg : [tvar, any] / exh:exh) : unit = 
+            let tv : tvar = #0(arg)
+            let x : any = #1(arg)
+            let x : any = promote(x)
+            do #0(tv) := x
+            return(UNIT)   
+        ;
+
 	)
 
 	type 'a tvar = 'a PartialSTM.tvar
@@ -234,8 +242,9 @@ struct
     val abort : unit -> 'a = _prim(@abort)
     val same : 'a tvar * 'a tvar -> bool = _prim(@tvar-eq)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
+    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
 
-    val _ = Ref.set(STMs.stms, ("ffRefCountGC", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("ffRefCountGC", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
 end
 
 

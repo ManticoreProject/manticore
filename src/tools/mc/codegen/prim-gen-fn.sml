@@ -228,6 +228,7 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.I64Div a => genArith2 (i64Ty, divs, a)
 		    | P.I64Mod a => genArith2 (i64Ty, rems, a)
 		    | P.I64LSh a => genArith2 (i64Ty, T.SLL, a)
+		    | P.I64RSh a => genArith2 (i64Ty, T.SRL, a)
 		    | P.I64Neg a => genArith1 (i64Ty, T.NEG, a)
 		    | P.I64OrB a => genArith2 (i64Ty, T.ORB, a)
 		    | P.I64AndB a => genArith2 (i64Ty, T.ANDB, a)

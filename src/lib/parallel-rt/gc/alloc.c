@@ -618,12 +618,12 @@ void decCounts(struct read_log * ff, unsigned long numK){
         ff = ff->nextK;
         count++;
     }
-    printf("Decremented %d tvars, should be %lu elements on short path\n", count, numK);
+   // printf("Decremented %d tvars, should be %lu elements on short path\n", count, numK);
 }
 
 Value_t ffFinish(struct read_set * readSet, struct read_log * checkpoint, unsigned long kCount, VProc_t * vp){
     checkpoint->next = M_NIL;
-    printf("Fast forwarding through %lu checkpoints\n", kCount - readSet->numK);
+    //printf("Fast forwarding through %lu checkpoints\n", kCount - readSet->numK);
     Value_t newRS = AllocNonUniform(vp, 4, PTR(readSet->head), PTR(checkpoint), PTR(checkpoint), INT(kCount));
     return newRS;
 }
@@ -691,7 +691,8 @@ Value_t ffValidate(struct read_set * readSet, struct read_log * oldRS, unsigned 
             }
         }
     }
-    return AllocNonUniform(vp, 4, PTR(readSet->head), PTR(checkpoint), PTR(checkpoint), INT(kCount)); 
+    return ffFinish(readSet, checkpoint, kCount, vp);
+    //return AllocNonUniform(vp, 4, PTR(readSet->head), PTR(checkpoint), PTR(checkpoint), INT(kCount)); 
 }
 
 void checkShortPath(struct read_log * rs){
@@ -709,27 +710,23 @@ void checkShortPath(struct read_log * rs){
 Value_t fastForward(struct read_set * readSet, struct read_set * ffInfo, Word_t * writeSet, Word_t* tv, Word_t* retK, Word_t*myStamp, volatile unsigned long * clock, VProc_t * vp){
     struct read_log * shortPath = ffInfo->lastK;
     while((Value_t)shortPath != M_NIL){
+        vp->counter[3]++; //INC_FF(1:long)
         if(shortPath->tvar == tv){
             if (M_PolyEq(retK, shortPath->k)){
                 if(shortPath->writeSet == writeSet){
                     decCounts(ffInfo->lastK, ffInfo->numK);
 
-                    checkShortPath(ffInfo->lastK);
-                    checkShortPath(readSet->lastK);
-
                     shortPath->nextK = readSet->lastK;
                     readSet->tail->next = shortPath;
 
-                    checkShortPath(ffInfo->lastK);
-
                     RS_t * remSet = vp->rememberSet;
                     Value_t remSet2 = AllocNonUniform (vp, 3, PTR(shortPath), INT(6), PTR(remSet));
-                    Value_t remSet3 = AllocNonUniform(vp, 3, PTR(readSet->tail), INT(3), PTR(remSet));
-                    vp->rememberSet = remSet3;
+                    vp->rememberSet = remSet2;
 
                     Value_t result = ffValidate(readSet, shortPath, myStamp, clock, vp);
-                    struct read_set * rs = result;
                     return result;
+                }else{
+                    
                 }
             }
         }

@@ -286,6 +286,14 @@ struct
 	    define @unsafe-get(x:tvar / exh:exh) : any = 
 	    	return(#0(x));
 
+        define @unsafe-put(arg : [tvar, any] / exh:exh) : unit = 
+            let tv : tvar = #0(arg)
+            let x : any = #1(arg)
+            let x : any = promote(x)
+            do #0(tv) := x
+            return(UNIT)   
+        ;
+
 	)
 
 	type 'a tvar = 'a PartialSTM.tvar
@@ -297,8 +305,9 @@ struct
     val abort : unit -> 'a = _prim(@abort)
     val same : 'a tvar * 'a tvar -> bool = _prim(@tvar-eq)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
+    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
 
-    val _ = Ref.set(STMs.stms, ("pnorec", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("pnorec", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
 end
 
 

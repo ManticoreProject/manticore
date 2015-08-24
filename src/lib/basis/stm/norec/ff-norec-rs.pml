@@ -103,7 +103,7 @@ struct
 #endif          
         ;
 
-        define inline @abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int], count:int, revalidate : fun(item, item, int / -> ) / exh:exh) : () = 
+        define inline @abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, revalidate : fun(item, item, int / -> ) / exh:exh) : () = 
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             case checkpoint 
                of NilItem => (*no checkpoint available*)
@@ -142,7 +142,7 @@ struct
             end
         ;
 
-        define @validate(readSet : read_set, startStamp:![stamp, int] / exh:exh) : () = 
+        define @validate(readSet : read_set, startStamp:![stamp, int, int, long] / exh:exh) : () = 
             fun validateLoopABCD(rs : item, abortInfo : item, count:int) : () =
                 case rs 
                    of NilItem => (*finished validating*)
@@ -188,7 +188,7 @@ struct
             end
         ;
 
-        define @ff-validate(readSet : read_set, oldRS : item, myStamp : ![long,int] / exh:exh) : () = 
+        define @ff-validate(readSet : read_set, oldRS : item, myStamp : ![long,int,int,long] / exh:exh) : () = 
             fun ffLoop(rs:item, i:int, checkpoint : item) : () = 
                 case rs
                    of NilItem => @ff-finish(readSet, checkpoint, i / exh)
@@ -227,7 +227,7 @@ struct
             apply ffLoop(oldRS, #NUMK(readSet), oldRS)
         ;
 
-        define @fast-forward(readSet : read_set, writeSet : item, tv:tvar, retK:cont(any), myStamp : ![long, int] / exh:exh) : () = 
+        define @fast-forward(readSet : read_set, writeSet : item, tv:tvar, retK:cont(any), myStamp : ![long, int, int, long] / exh:exh) : () = 
             let ffInfo : read_set = FLS.@get-key(FF_KEY / exh)
             if Equal(ffInfo, enum(0))
             then return()
@@ -249,7 +249,7 @@ struct
                                         let ffFirstK : mutWithK = (mutWithK) rs
                                         let vp : vproc = host_vproc
                                         let rememberSet : any = vpload(REMEMBER_SET, vp)
-                                        let newRemSet : [mutWithK, int, any] = alloc(ffFirstK, NEXTK, rememberSet)
+                                        let newRemSet : [mutWithK, int, long, any] = alloc(ffFirstK, NEXTK, #3(myStamp), rememberSet)
                                         do vpstore(REMEMBER_SET, vp, newRemSet)
                                         do #NEXTK(ffFirstK) := #LASTK(readSet) 
                                         let currentLast : item = #TAIL(readSet)
@@ -283,7 +283,7 @@ struct
             do ccall M_Print_Int("Short path length is %d\n", l)
             return();
 
-        define inline @filterRS(readSet : read_set / exh : exh) : () = 
+        define inline @filterRS(readSet : read_set, stamp : ![long, int, int, long] / exh : exh) : () = 
             let vp : vproc = host_vproc
             fun dropKs(l:item, n:int) : int =   (*drop every other continuation*)
                 case l
@@ -296,7 +296,7 @@ struct
                                  * that we are updating a bogus local pointer, however, given the
                                  * nature of the data structure, we do preserve the heap invariants*)
                                 let rs : any = vpload(REMEMBER_SET, vp)
-                                let newRemSet : [item, int, any] = alloc(l, NEXTK, rs)
+                                let newRemSet : [item, int, long, any] = alloc(l, NEXTK, #3(stamp), rs)
                                 do vpstore(REMEMBER_SET, vp, newRemSet)
                                 let l : mutWithK = (mutWithK) l
                                 let next : mutWithK = (mutWithK) next
@@ -353,7 +353,7 @@ struct
         (*Note that these next two defines, rely on the fact that a heap limit check will not get
          *inserted within the body*)
         (*Add a checkpointed read to the read set*)
-        define @insert-with-k(tv:any, v:any, k:cont(any), ws:item, readSet : read_set / exh:exh) : () = 
+        define @insert-with-k(tv:any, v:any, k:cont(any), ws:item, readSet : read_set, stamp : ![long, int, int, long] / exh:exh) : () = 
             let newItem : item = WithK(tv, v, NilItem, ws, k, #LASTK(readSet))
             let vp : vproc = host_vproc
             let nurseryBase : long = vpload(NURSERY_BASE, vp)
@@ -372,7 +372,7 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
+                    let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
@@ -381,7 +381,7 @@ struct
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT,  rs)
+                let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
@@ -395,7 +395,7 @@ struct
             return();
 
         (*add a non checkpointed read to the read set*)
-    	define @insert-without-k(tv:any, v:any, readSet : read_set / exh:exh) : () =
+    	define @insert-without-k(tv:any, v:any, readSet : read_set, stamp : ![long, int, int, long] / exh:exh) : () =
     		let newItem : item = WithoutK(tv, v, NilItem)
     		let vp : vproc = host_vproc
     		let nurseryBase : long = vpload(NURSERY_BASE, vp)
@@ -412,7 +412,7 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
+                    let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
@@ -421,43 +421,15 @@ struct
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,any,item,item], int, any] = alloc(casted, NEXT, rs)
+                let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
                 let vp : vproc = host_vproc
                 return()
         ;
-        
-        define @new-w(x:unit / exh:exh) : read_set = 
-            let firstElem : item = WithoutK(alloc(~1), enum(0), NilItem)
-            let rs : read_set = alloc(firstElem, firstElem, firstElem, 0)
-            return(rs);
-
-        define @insert-w(arg : [any, read_set] / exh:exh) : read_set = 
-            do @insert-without-k(#0(arg), enum(0), #1(arg) / exh)
-            let new : read_set = FLS.@get-key(READ_SET / exh)
-            return(new);
-
-        define @printRS(arg : [read_set, fun(any / exh -> unit)] / exh:exh) : unit =
-            let rs : read_set = #0(arg)
-            let f : fun(any / exh -> unit) = #1(arg)
-            fun printLoop(i:item) : unit = 
-                case i 
-                   of NilItem => return(UNIT)
-                    | WithoutK(hd:any, _:any, tl:item) => 
-                        let _ : unit = apply f(hd / exh)
-                        apply printLoop(tl)
-                end
-            apply printLoop(#0(rs));
     )
     val registerPrintFun : ('a -> unit) -> unit = _prim(@registerPrintFun)
-
-    type 'a read_set = _prim(read_set)
-    val new : unit -> 'a read_set = _prim(@new-w)
-    val insert : 'a * 'a read_set -> 'a read_set = _prim(@insert-w)
-    val printRS : 'a read_set * ('a -> unit) -> unit = _prim(@printRS)
-    val length : 'a read_set -> unit = _prim(@rs-len)
 end
 
 

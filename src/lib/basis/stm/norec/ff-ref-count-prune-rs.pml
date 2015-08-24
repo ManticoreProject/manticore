@@ -324,7 +324,7 @@ struct
                                     (*add to remember set*)
                                     let vp : vproc = host_vproc
                                     let rememberSet : any = vpload(REMEMBER_SET, vp)
-                                    let newRemSet : [item, int, any] = alloc(rs, NEXTK, rememberSet)
+                                    let newRemSet : [item, int, long, any] = alloc(rs, NEXTK, #3(myStamp), rememberSet)
                                     do vpstore(REMEMBER_SET, vp, newRemSet)
                                     @ff-validate(readSet, rs, myStamp / exh)
                                 else 
@@ -340,7 +340,7 @@ struct
 
         define inline @getNumK(rs : read_set) : long = return(#NUMK(rs));
 
-        define inline @filterRS(readSet : read_set / exh : exh) : () = 
+        define inline @filterRS(readSet : read_set, stamp : ![long,int,int,long] / exh : exh) : () = 
             let vp : vproc = host_vproc
             fun dropKs(l:item, n:long) : long =   (*drop every other continuation*)
                 if Equal(l, NilItem)
@@ -351,7 +351,7 @@ struct
                     then return(n)
                     else
                         let rs : any = vpload(REMEMBER_SET, vp)
-                        let newRemSet : [item, int, any] = alloc(l, NEXTK, rs)
+                        let newRemSet : [item, int, long, any] = alloc(l, NEXTK, #3(stamp), rs)
                         do vpstore(REMEMBER_SET, vp, newRemSet)
                         do #KPOINTER(next) := enum(0):any
                         do #TAG(next) := TOWITHOUTK(#TAG(next))
@@ -365,7 +365,7 @@ struct
         (*Note that these next two defines, rely on the fact that a heap limit check will not get
          *inserted within the body*)
         (*Add a checkpointed read to the read set*)
-        define @insert-with-k(tv:tvar, v:any, k:cont(any), ws:any, readSet : read_set / exh:exh) : () = 
+        define @insert-with-k(tv:tvar, v:any, k:cont(any), ws:any, readSet : read_set, stamp : ![long,int,int,long] / exh:exh) : () = 
             let newItem : item = WithK(#TAG(#TAIL(readSet)), tv, v, NilItem, ws, k, #LASTK(readSet))
             let vp : vproc = host_vproc
             let nurseryBase : long = vpload(NURSERY_BASE, vp)
@@ -383,7 +383,7 @@ struct
                     return()
                 else (*not in nursery, add last item to remember set*)
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [item, int, any] = alloc(last, NEXT, rs)
+                    let newRemSet : [item, int, long, any] = alloc(last, NEXT, #3(stamp), rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I64Add(#NUMK(readSet), 1:long))
                     do #0(newItem) := I64Add(#0(newItem), 2:long)
@@ -392,7 +392,7 @@ struct
                     return()
             else (*not in nursery, add last item to remember set*)
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [item, int, any] = alloc(last, NEXT, rs)
+                let newRemSet : [item, int, long, any] = alloc(last, NEXT, #3(stamp), rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I64Add(#NUMK(readSet), 1:long))
                 do #0(newItem) := I64Add(#0(newItem), 2:long)
@@ -407,7 +407,7 @@ struct
             return();
 
         (*add a non checkpointed read to the read set*)
-    	define @insert-without-k(tv:any, v:any, readSet : read_set / exh:exh) : () =
+    	define @insert-without-k(tv:any, v:any, readSet : read_set, stamp:![long,int,int,long] / exh:exh) : () =
     		let newItem : item = WithoutK(#TAG(#TAIL(readSet)), tv, v, NilItem)
     		let vp : vproc = host_vproc
     		let nurseryBase : long = vpload(NURSERY_BASE, vp)
@@ -424,7 +424,7 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [item, int, any] = alloc(last, NEXT, rs)
+                    let newRemSet : [item, int, long, any] = alloc(last, NEXT, #3(stamp), rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #0(newItem) := I64Add(#0(newItem), 2:long)
                     do #NEXT(last) := (any) newItem
@@ -433,7 +433,7 @@ struct
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [item, int, any] = alloc(last, NEXT, rs)
+                let newRemSet : [item, int, long, any] = alloc(last, NEXT, #3(stamp), rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(last) := (any) newItem
                 do #0(newItem) := I64Add(#0(newItem), 2:long)

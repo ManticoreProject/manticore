@@ -34,6 +34,7 @@ structure PrimUtil : sig
       | nameOf (P.I64Div _) = "I64Div"
       | nameOf (P.I64Mod _) = "I64Mod"
       | nameOf (P.I64LSh _) = "I64LSh"
+      | nameOf (P.I64RSh _) = "I64RSh"
       | nameOf (P.I64Neg _) = "I64Neg"
       | nameOf (P.I64OrB _) = "I64OrB"
       | nameOf (P.I64AndB _) = "I64AndB"
@@ -122,6 +123,7 @@ structure PrimUtil : sig
       | varsOf (P.I64Div(a, b)) = [a, b]
       | varsOf (P.I64Mod(a, b)) = [a, b]
       | varsOf (P.I64LSh(a, b)) = [a, b]
+      | varsOf (P.I64RSh(a, b)) = [a, b]
       | varsOf (P.I64Neg a) = [a]
       | varsOf (P.I64OrB(a, b)) = [a, b]
       | varsOf (P.I64AndB(a, b)) = [a, b]
@@ -226,6 +228,7 @@ structure PrimUtil : sig
       | explode (P.I64Div(a, b)) = (p2 P.I64Div, [a, b])
       | explode (P.I64Mod(a, b)) = (p2 P.I64Mod, [a, b])
       | explode (P.I64LSh(a, b)) = (p2 P.I64LSh, [a, b])
+      | explode (P.I64RSh(a, b)) = (p2 P.I64RSh, [a, b])
       | explode (P.I64Neg a) = (p1 P.I64Neg, [a])
       | explode (P.I64OrB(a, b)) = (p2 P.I64OrB, [a, b])
       | explode (P.I64AndB(a, b)) = (p2 P.I64AndB, [a, b])

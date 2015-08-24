@@ -24,6 +24,8 @@ struct
 		typedef tvar = ![any, long, long];
 		typedef stamp = VClock.stamp;
 
+        extern void M_PruneRemSetAll(void*, void*);
+
         define @get-count = getCount;
 
 		define @new(x:any / exh:exh) : tvar =
@@ -92,17 +94,17 @@ struct
                         let captureCount : int = FLS.@get-counter()
                         if I32Eq(captureCount, 0)  (*capture a continuation*)
                         then 
-                            do RS.@insert-with-k(tv, current, retK, writeSet, readSet / exh)
+                            do RS.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
                             let captureFreq : int = FLS.@get-counter2()
                             do FLS.@set-counter(captureFreq)
                             return(current)
                         else (*don't capture a continuation*)
                             do FLS.@set-counter(I32Sub(captureCount, 1))
-                            do RS.@insert-without-k(tv, current, readSet / exh)
+                            do RS.@insert-without-k(tv, current, readSet, myStamp / exh)
                             return(current)
                     else 
                         do RS.@filterRS(readSet / exh)
-                        do RS.@insert-without-k(tv, current, readSet / exh)
+                        do RS.@insert-without-k(tv, current, readSet, myStamp / exh)
                         let captureFreq : int = FLS.@get-counter2()
                         let newFreq : int = I32Mul(captureFreq, 2)
                         do FLS.@set-counter(I32Sub(newFreq, 1))
@@ -126,10 +128,9 @@ struct
             return(UNIT)
         ;
 
-        define @commit(/exh:exh) : () =
+        define @commit(stamp : ![stamp,int,int,long] /exh:exh) : () =
         	let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
         	let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
-        	let stamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
         	let counter : ![long] = VClock.@get-boxed(/exh)
         	fun lockClock() : () = 
         		let current : stamp = #0(stamp)
@@ -166,7 +167,7 @@ struct
             if (#0(in_trans))
             then apply f(UNIT/exh)
             else 
-            	let stampPtr : ![stamp, int, int] = FLS.@get-key(STAMP_KEY / exh)
+            	let stampPtr : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
                 do FLS.@set-key(FF_KEY, enum(0) / exh)
                 cont enter() = 
                     let rs : RS.read_set = RS.@new()
@@ -185,7 +186,9 @@ struct
                     	do ccall M_Print("Warning: exception raised in transaction\n")
                         throw exh(e)
                     let res : any = apply f(UNIT/transExh)
-                    do @commit(/transExh)
+                    do @commit(stampPtr/transExh)
+                    let vp : vproc = host_vproc
+                    do ccall M_PruneRemSetAll(vp, #3(stampPtr))
                     do #0(in_trans) := false
                     do FLS.@set-key(READ_SET, RS.NilItem / exh)
                     do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
@@ -214,6 +217,14 @@ struct
 	    define @unsafe-get(x:tvar / exh:exh) : any = 
 	    	return(#0(x));
 
+        define @unsafe-put(arg : [tvar, any] / exh:exh) : unit = 
+            let tv : tvar = #0(arg)
+            let x : any = #1(arg)
+            let x : any = promote(x)
+            do #0(tv) := x
+            return(UNIT)   
+        ;
+
 	)
 
 	type 'a tvar = 'a PartialSTM.tvar
@@ -225,8 +236,9 @@ struct
     val abort : unit -> 'a = _prim(@abort)
     val same : 'a tvar * 'a tvar -> bool = _prim(@tvar-eq)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
+    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
 
-    val _ = Ref.set(STMs.stms, ("ffMask", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("ffMask", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
 end
 
 

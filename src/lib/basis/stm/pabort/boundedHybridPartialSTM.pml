@@ -585,6 +585,13 @@ struct
             do @commit(/exh)
             return(UNIT);
 
+        define @unsafe-put(arg : [tvar, any] / exh:exh) : unit = 
+            let tv : tvar = #0(arg)
+            let x : any = #1(arg)
+            let x : any = promote(x)
+            do #0(tv) := x
+            return(UNIT)   
+        ;
 
     )
 
@@ -597,6 +604,8 @@ struct
     val abort : unit -> 'a = _prim(@abort)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
+    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
+
     val rsLength : unit -> unit = _prim(@rs-length)
 
     val getStats : unit -> 'a list = _prim(@get-stats)
@@ -613,7 +622,7 @@ struct
 
     val printTimer : unit -> unit = _prim(@print-timer)
     
-    val _ = Ref.set(STMs.stms, ("bounded", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("bounded", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
 
 end
 

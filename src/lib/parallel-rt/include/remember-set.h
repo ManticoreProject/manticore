@@ -18,6 +18,7 @@
 struct RS_s {
 	Value_t * source;		//source pointer 
 	int offset;			//offset of source pointer to remember
+	long threadId;		//indicates who remembered this
 	struct RS_s * next;		//next element of the remember set
 };
 typedef struct RS_s RS_t;

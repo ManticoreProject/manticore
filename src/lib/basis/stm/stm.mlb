@@ -10,7 +10,7 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
     pabort/full-abort-stm.pml
 
 
-    fast-forward/read-set2.pml
+    fast-forward/read-set.pml
 
     fast-forward/ordered-pabort.pml
 

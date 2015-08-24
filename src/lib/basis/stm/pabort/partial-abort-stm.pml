@@ -250,11 +250,19 @@ struct
       define @tvar-eq(arg : [tvar, tvar] / exh : exh) : bool = 
          if Equal(#0(arg), #1(arg))
          then return(true)
-         else return(false);       
+         else return(false);    
+
+        define @unsafe-put(arg : [tvar, any] / exh:exh) : unit = 
+            let tv : tvar = #0(arg)
+            let x : any = #1(arg)
+            let x : any = promote(x)
+            do #0(tv) := x
+            return(UNIT)   
+        ;
     )
 
-    	type 'a tvar = _prim(tvar)
-    	val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
+	type 'a tvar = _prim(tvar)
+	val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val get : 'a tvar -> 'a = _prim(@get)
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
@@ -262,10 +270,11 @@ struct
     val abort : unit -> 'a = _prim(@abort)
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
+    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
     val zeroCounters : unit -> unit = _prim(@zero-counters)
     val _ = zeroCounters()
 
-    val _ = Ref.set(STMs.stms, ("partial", (get,put,atomic,new,printStats,abort,unsafeGet,same))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("partial", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
 
 end
 

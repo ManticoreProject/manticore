@@ -109,12 +109,22 @@ Value_t ** M_AddRSElts(VProc_t * vp, Value_t ** rootPtr){
     return rootPtr;
 }
 
+//datatype 'a item = Write of 'a * 'a * 'a | NilItem 
+typedef struct write_set{
+    struct tvar * tvar;
+    Word_t * newVal;
+    struct write_set * next;
+}WS_t;
+
+void examineWriteSets(WS_t * currentWS, WS_t * oldWS){
+
+}
+
 void M_PruneRemSetAll(VProc_t * vp, long threadID){
     RS_t * remSet = (RS_t *)vp->rememberSet;
     RS_t ** trailer = &(vp->rememberSet);
     while((Addr_t) remSet != M_NIL){
-        long currentTID = ((long)remSet->source[0]) & 0xFFFFFFFF00000000;
-        if(currentTID == threadID){
+        if(remSet->threadId == threadID){
             *trailer = remSet->next;
             remSet = remSet->next;
         }else{
@@ -332,4 +342,28 @@ void checkReadSet(VProc_t * vp, char * context){
     }
     checkRS(vp, rs);
 }
+
+struct ws{
+    struct tvar * tvar;
+    Value_t expected;
+    struct ws * next;
+};
+
+volatile unsigned long checkWSlock = 0;
+  
+
+void checkWS(VProc_t * vp, struct ws * merged, struct ws * currentWS){
+    while(CompareAndSwapValue(&checkWSlock, 0, 1) != 0);
+    struct ws * ptr = merged;
+    while((Value_t)ptr != M_NIL){
+        int g = toGenNum(ptr, vp->heapBase, vp->oldTop - vp->heapBase, vp->nurseryBase, vp->allocPtr - vp->nurseryBase);
+        printf("VProc[%d]: genNum = %d\n", vp->id, g);
+        ptr = ptr->next;
+    }
+    printf("\n\n");
+    checkWSlock = 0;
+}
+
+
+
 /*expr -- struct read_log * $prev = getSPElement(rs->lastK, i-1)*/
