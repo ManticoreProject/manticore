@@ -313,7 +313,7 @@ signature AST_BOM =
     structure PrimConDef : sig
 	type t
 	datatype node
-	  = T of Con.t * Type.t option * BOMId.t
+	  = T of Con.t * Type.t option * LongId.t
 
 	include WRAPPED
 	  sharing type node' = node

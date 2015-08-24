@@ -944,7 +944,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   structure PrimConDef = struct
       datatype node
-	= T of Con.t * Type.t option * BOMId.t
+	= T of Con.t * Type.t option * LongId.t
 
       open Wrap
       type t = node Wrap.t

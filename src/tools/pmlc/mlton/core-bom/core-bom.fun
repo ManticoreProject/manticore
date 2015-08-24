@@ -206,18 +206,17 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       = BOMTy of BOMId.t
       | QBOMTy of ModuleId.t * BOMId.t
 
-    val fromBOMId = BOMTy o BOMId.fromAst
     val fromBOMId' = BOMTy
+    val fromBOMId = fromBOMId' o BOMId.fromAst
 
-    fun fromLongId (longId: BOM.LongId.t): t =
-      let
-        val longId' = LongId.fromAst longId
-      in
-        if LongId.hasQualifier longId' then
-          QBOMTy (ModuleId.fromLongId' longId')
-        else
-          BOMTy (LongId.truncate longId')
-      end
+
+    fun fromLongId' longId =
+      if LongId.hasQualifier longId then
+        QBOMTy (ModuleId.fromLongId' longId)
+      else
+        BOMTy (LongId.truncate longId)
+    fun fromLongId longId =
+      fromLongId' (LongId.fromAst longId)
 
     fun toString id =
       case id of
@@ -242,24 +241,21 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       = BOMVal of BOMId.t
       | QBOMVal of ModuleId.t * BOMId.t
 
-    val fromBOMId = BOMVal o BOMId.fromAst
     val fromBOMId' = BOMVal
+    val fromBOMId = fromBOMId' o BOMId.fromAst
 
     fun truncateToBOMId valId =
       case valId of
         BOMVal bomId => bomId
       | QBOMVal (_, bomId) => bomId
 
+    fun fromLongId' longId =
+      if LongId.hasQualifier longId then
+        QBOMVal (ModuleId.fromLongId' longId)
+      else
+        BOMVal (LongId.truncate longId)
     fun fromLongId longId =
-      let
-        val longId' = LongId.fromAst longId
-      in
-        if LongId.hasQualifier longId' then
-          QBOMVal (ModuleId.fromLongId' longId')
-        else
-          BOMVal (LongId.truncate longId')
-      end
-
+      fromLongId' (LongId.fromAst longId)
 
 
     fun maybeQualify (valId, defaultId) =

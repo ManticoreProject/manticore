@@ -57,6 +57,14 @@ signature CORE_BOM =
       val bogus: t
     end
 
+    structure LongId: sig
+      type t
+
+      val fromAst: Ast.BOM.LongId.t -> t
+      val hasQualifier: t -> bool
+      val truncate: t -> BOMId.t
+    end
+
     (* structure LongTyId: sig *)
     (*   type t *)
 
@@ -101,8 +109,9 @@ signature CORE_BOM =
         = BOMTy of BOMId.t
         | QBOMTy of ModuleId.t * BOMId.t
 
-      val fromBOMId: Ast.BOM.BOMId.t -> t
       val fromBOMId': BOMId.t -> t
+      val fromBOMId: Ast.BOM.BOMId.t -> t
+      val fromLongId': LongId.t -> t
       val fromLongId: Ast.BOM.LongId.t -> t
       (* val fromLongTyId: Ast.BOM.LongTyId.t -> t *)
 
@@ -117,8 +126,9 @@ signature CORE_BOM =
         = BOMVal of BOMId.t
         | QBOMVal of ModuleId.t * BOMId.t
 
-      val fromBOMId: Ast.BOM.BOMId.t -> t
       val fromBOMId': BOMId.t -> t
+      val fromBOMId: Ast.BOM.BOMId.t -> t
+      val fromLongId': LongId.t -> t
       val fromLongId: Ast.BOM.LongId.t -> t
       (* val fromLongConId: Ast.BOM.LongConId.t -> t *)
       val truncateToBOMId: t -> BOMId.t

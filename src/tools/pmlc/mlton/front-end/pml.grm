@@ -84,8 +84,8 @@ BOMExportDecNode
 
 
 PrimConDef
-        : "_con" vid ("of" ty)? "=" "_prim" "(" BOMId ")"
-                => (BOM.PrimConDef.makeRegion (BOM.PrimConDef.T (Vid.toCon vid, SR, BOMId), posToReg FULL_SPAN))
+        : "_con" vid ("of" ty)? "=" "_prim" "(" BOMLongId ")"
+                => (BOM.PrimConDef.makeRegion (BOM.PrimConDef.T (Vid.toCon vid, SR, BOMLongId), posToReg FULL_SPAN))
         ;
 
 MLValueId
