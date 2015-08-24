@@ -22,7 +22,6 @@ structure LLVMBuilder : sig
 
     (* THE TODO LIST
       - make opcodes for icmp and other essential instructions
-      - convert old-style instructions such as GEP into the new-style
       - figure out how you will associate attributes with vars for
         stuff like calls? maybe just add a "fromVWithAttr" or something??
       - otherwise, start using the builder in the printer.
@@ -280,6 +279,28 @@ structure LLVMBuilder : sig
                 in
                   S.concat[resName, " = ", opcStr, " ",
                    fmathFlags, if not(AS.isEmpty(atr)) then " " else "",
+                   LT.nameOf ty, " ", arg1, ", ", arg2]
+                end
+
+           | Op.Icmp kind => let
+              val icmpStr = Op.toString(opc) ^ " " ^ Op.icmpKindToStr kind
+              val (arg1, ty) = break(V.sub(args, 0)) 
+              val (arg2, _) = break(V.sub(args, 1)) 
+            in
+              S.concat [resName, " = ", icmpStr, " ", LT.nameOf ty, " ", arg1, ", ", arg2]
+            end
+
+           | Op.Fcmp kind => let
+                  val fmathFlags = 
+                        if AS.member(atr, A.FastMath)
+                          then (A.toString A.FastMath)
+                        else S.concatWith " " (L.map A.toString (AS.listItems atr))
+                  val (arg1, ty) = break(V.sub(args, 0)) 
+                  val (arg2, _) = break(V.sub(args, 1)) 
+                in
+                  S.concat[resName, " = ", Op.toString opc, " ",
+                   fmathFlags, if not(AS.isEmpty(atr)) then " " else "",
+                   Op.fcmpKindToStr kind, " ",
                    LT.nameOf ty, " ", arg1, ", ", arg2]
                 end
 

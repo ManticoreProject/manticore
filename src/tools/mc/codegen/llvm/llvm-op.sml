@@ -46,8 +46,31 @@ structure LLVMOp = struct
     | FPExt 
     | PtrToInt 
     | IntToPtr 
-    | BitCast    
+    | BitCast  
 
+    | Icmp of icmp_kind
+    | Fcmp of fcmp_kind
+
+    and icmp_kind
+      = S of cmp (* signed *)
+      | US of cmp (* unsigned *)
+
+    and fcmp_kind
+      = O of cmp (* ordered *)
+      | UO of cmp (* unordered *)
+      | TRUE
+      | FALSE
+      | ORD
+      | UNO
+
+    and cmp
+      = EQ
+      | NE
+      | GT
+      | GE
+      | LT
+      | LE 
+      
 
   (* utilities follow *)
 
@@ -70,7 +93,9 @@ structure LLVMOp = struct
        | AShr      
        | And       
        | Or        
-       | Xor ) => (2, true)
+       | Xor
+       | Icmp _
+       | Fcmp _ ) => (2, true)
 
     (* casts *)
     | ( Trunc   
@@ -148,12 +173,46 @@ structure LLVMOp = struct
           | Or        
           | Xor ) => SOME(sameKinds intOrVecOfInt inputs)
 
+      | Icmp _ => let
+          (* gives us the type of the two operands *)
+          val ty = sameKinds (fn x => (intOrVecOfInt x) orelse (ptrOrVecOfPtr x)) inputs
+          val i1Ty = LT.mkInt(LT.cnt 1)
+        in
+          SOME( case vecSize ty
+                  of NONE => i1Ty
+                   | SOME i => LT.mkVector(i, i1Ty) )
+        end
+
+      | Fcmp _ => let
+          (* gives us the type of the two operands *)
+          val ty = sameKinds realOrVecOfReal inputs
+          val i1Ty = LT.mkInt(LT.cnt 1)
+        in
+          SOME( case vecSize ty
+                  of NONE => i1Ty
+                   | SOME i => LT.mkVector(i, i1Ty) )
+        end
+
       |  ( FAdd
          | FSub
          | FMul
          | FDiv
          | FRem ) => SOME(sameKinds realOrVecOfReal inputs)
     end
+
+  and vecSize (t : Ty.t) = (case LT.node t
+    of Ty.T_Vector (i, _) => SOME i
+     | _ => NONE
+    (* esac *))
+
+  and ptrOrVecOfPtr (t : Ty.t) = (case LT.node t
+    of Ty.T_Ptr _ => true
+     | Ty.T_Vector (_, t) => (case LT.node t
+        of Ty.T_Ptr _ => true
+         | _ => false
+        (* esac *))
+     | _ => false 
+    (* esac *))
 
   and intOrVecOfInt (t : Ty.t) = (case LT.node t
     of Ty.T_Int _ => true
@@ -203,6 +262,7 @@ structure LLVMOp = struct
         | FMul
         | FDiv
         | FRem
+        | Fcmp _
          ) => AS.addList(AS.empty, 
             [A.NoNaN, A.NoInf, A.NoSZero, A.AllowRecip, A.FastMath])
 
@@ -254,6 +314,37 @@ structure LLVMOp = struct
       | PtrToInt    => "ptrtoint"
       | IntToPtr    => "inttoptr"
       | BitCast     => "bitcast"
-     (* esac *))
+
+      | Icmp _ => "icmp"
+      | Fcmp _ => "fcmp"
+    (* esac *))
+
+
+  and icmpKindToStr (kind : icmp_kind) = (case kind
+        of ( S(EQ)
+            | US(EQ) ) => "eq"
+         | ( S(NE)
+            | US(NE) ) => "ne"
+         | S c => "s" ^ cmpToStr(c)
+         | US c => "u" ^ cmpToStr(c)
+        (* esac *))
+
+  and fcmpKindToStr (kind : fcmp_kind) = (case kind
+        of O c => "o" ^ cmpToStr(c)
+         | UO c => "u" ^ cmpToStr(c)
+         | ORD => "ord"
+         | UNO => "uno"
+         | TRUE => "true"
+         | FALSE => "false"
+        (* esac *))
+
+  and cmpToStr (c : cmp) = (case c
+     of EQ => "eq"
+      | NE => "ne"
+      | GT => "gt"
+      | GE => "ge"
+      | LT => "lt"
+      | LE => "le"
+    (* esac *))
 
 end

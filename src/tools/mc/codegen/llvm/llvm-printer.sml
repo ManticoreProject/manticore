@@ -170,11 +170,16 @@ fun output (outS, module as C.MODULE { name = module_name,
       (* helpers *)
       val intTy = LT.mkInt(LT.cnt 32)
       fun mkInt i = LB.fromC(LB.intC(intTy, i))
+      fun mkFloat f = LB.fromC(LB.floatC(LT.floatTy, 0.0))
       val mk = LB.mk t AS.empty
       val mkNSW = LB.mk t (AS.addList(AS.empty, [A.FastMath]))
       val ret = LB.ret t 
+      fun fcmp cmp = Op.Fcmp(Op.O(cmp))
+      fun icmp cmp = Op.Icmp(Op.S(cmp))
 
-    val bb = ret (mkNSW Op.Sub #[mkInt 0, mk Op.Add #[mkInt 10, mkInt 200]])
+    val bb = ret (mk (icmp(Op.LE)) #[
+    (mk Op.Sub #[mkInt 0, mk Op.Add #[mkInt 10, mkInt 200]]),
+    (mkInt 0)])
     
     val done = LB.toString bb
 
