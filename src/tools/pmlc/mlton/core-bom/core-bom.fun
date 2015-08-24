@@ -669,12 +669,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     val bogus = Immutable (~1, Error)
   end
 
-
-
-  structure DataTypeDef = struct
-    open BOM.DataTypeDef
-  end
-
   (* structure VarPat = struct *)
   (* end *)
 

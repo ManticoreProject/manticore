@@ -263,10 +263,6 @@ signature CORE_BOM =
       val equal: t * t -> bool
     end
 
-    structure DataTypeDef: sig
-      type t
-    end
-
     (* structure VarPat: sig *)
     (* end *)
 
