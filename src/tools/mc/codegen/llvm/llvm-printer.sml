@@ -41,7 +41,6 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure CTU = CFGTyUtil
   structure CF = CFunctions
   structure S = String
-  structure U = LLVMPrintUtil
 
   (*  *)
   structure LV = LLVMVar
@@ -146,9 +145,9 @@ fun output (outS, module as C.MODULE { name = module_name,
   (* Functions *)
 
   fun mkFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args, ... }), body }) : string = let
-    val linkage = (U.link2s o U.linkageOf) lab
+    val linkage = linkageOf lab
     val cc = "" (* TODO(kavon): determine this *)
-    val llName = (U.lab2FullName o U.cvtLabel) lab
+    val llName = (LV.toString o LV.convertLabel) lab
 
     val cfgTy = LT.typeOfConv(entry, args)
     val llParamTys = LT.typesInConv cfgTy
@@ -195,6 +194,12 @@ fun output (outS, module as C.MODULE { name = module_name,
     total
   end
 
+  and linkageOf (label) = (case CL.kindOf label
+    of C.LK_Func { export = NONE, ... } => "internal"
+     | C.LK_Func { export = SOME _, ... } => "external"
+     | _ => raise Fail ("linkageOf is only valid for manticore functions.")
+     (* end case *))
+
   (* end of Functions *)
 
 
@@ -204,6 +209,13 @@ fun output (outS, module as C.MODULE { name = module_name,
      with things such as the datatype layouts, externals, attributes and so on.
      it also initializes the extern info map. *)
   fun mkFunDecls () : string = let
+
+    fun attrOfC (a : CF.attribute) = (case a
+          of CF.A_pure => "readonly"
+           | CF.A_noreturn => "noreturn"
+           (* alloc/malloc attribute in C doesn't seem to translate over to LLVM IR *)
+           | _ => ""
+          (* end case *)) 
 
     (* external C function *)
     fun toLLVMDecl (CF.CFun { var, name, retTy, argTys, varArg, attrs }) = let
@@ -218,7 +230,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                         then llvmParams @ [", ..."]
                         else ["..."]
 
-        val llvmAttrs = mapSep(U.attrOfC, [stdAttrs(ExternCFun)], " ", attrs)
+        val llvmAttrs = mapSep(attrOfC, [stdAttrs(ExternCFun)], " ", attrs)
 
         (* record this for translation later *)
         val _ = externInfoAdd(var, name)
