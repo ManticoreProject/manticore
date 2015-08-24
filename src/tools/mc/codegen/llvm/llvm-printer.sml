@@ -41,6 +41,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure CTU = CFGTyUtil
   structure CF = CFunctions
   structure S = String
+  structure L = List
 
   (*  *)
   structure LV = LLVMVar
@@ -156,13 +157,13 @@ fun output (outS, module as C.MODULE { name = module_name,
     val comment = S.concat ["; ", CTU.toString cfgTy, "\n",
                             "; arity = ", i2s(List.length llParamTys), "\n" ] 
 
-    val llparams = mapSep(LT.nameOf, nil, ", ", llParamTys)
+    val llparams = S.concatWith ", " (L.map LT.nameOf llParamTys)
 
                       (* TODO: get the arg list from the starting block.
                                also, the start block should be treated specially
                                when we output it here.
                                we also probably need a rename environment? *)
-    val decl = [comment, "define ", linkage, " void ", llName, "("] @ llparams @ [") ", stdAttrs(MantiFun), " {\n"]
+    val decl = [comment, "define ", linkage, " void ", llName, "(", llparams, ") ", stdAttrs(MantiFun), " {\n"]
     
     (* testing llvm bb generator *)
     val t = LB.new(LV.new("entry", LT.labelTy))
@@ -222,13 +223,13 @@ fun output (outS, module as C.MODULE { name = module_name,
 
         val c2ll = LT.nameOf o LT.typeOfC
 
-        val llvmParams = mapSep(c2ll, nil, ", ", argTys)
+        val llvmParams = S.concatWith ", " (L.map c2ll argTys)
 
         val llvmParams = if not varArg
                       then llvmParams
-                      else if List.length llvmParams > 0
-                        then llvmParams @ [", ..."]
-                        else ["..."]
+                      else if S.size llvmParams > 0
+                        then S.concat [llvmParams, ", ..."]
+                        else "..."
 
         val llvmAttrs = mapSep(attrOfC, [stdAttrs(ExternCFun)], " ", attrs)
 
@@ -236,8 +237,8 @@ fun output (outS, module as C.MODULE { name = module_name,
         val _ = externInfoAdd(var, name)
 
       in
-        S.concat (["declare ", (c2ll retTy), " @", name, "("] 
-                  @ llvmParams @ [") "]
+        S.concat (["declare ", (c2ll retTy), " @", name, "("
+                  , llvmParams, ") "]
                   @ llvmAttrs @ ["\n"])
       end
 
