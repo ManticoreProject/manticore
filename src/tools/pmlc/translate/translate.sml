@@ -259,9 +259,13 @@ structure Translate : sig
             | S.Dec.BOM{bom=bomdecs} => let
                 (*val _ = print "transDec BOM\n"*)
                 val (env, k) = Vector.foldl (fn (bomdec, (env, k: env -> BOM.exp)) => (case bomdec
-                   of S.CoreBOM.Definition.Fun fundefs => raise Fail "TODO(wings): translate CoreBOM.Definition.Fun"(*let
-                       fun bind ({var, ty, lambda}, (fns, env)) = let
-                         val (var', env) = newVar(env, var, ty)
+                   of S.CoreBOM.Definition.Datatype dataTypeDef => (* XXX(wings): do we need to put dcons in the env here? *) (env, k)
+                    | S.CoreBOM.Definition.Exception dataconsDef => raise Fail "TODO(wings): translate CoreBOM.Definition.Exception"
+                    | S.CoreBOM.Definition.HLOp (attrs, valid, exp) => raise Fail "Polymorphic HLOps found in SXML"
+                    | S.CoreBOM.Definition.Fun fundefs => raise Fail "TODO(wings): translate CoreBOM.Definition.Fun"(*let
+                       fun bind (S.CoreBOM.FunDef.Def (attrs, func, domVals, contVals, retTy, body), (fns, env)) = let
+                         val funcTy = BOMTy.T_Fun (argTys, contTys, retTy)
+                         val (var', env) = newVar(env, func, funcTy)
                          in
                            ((var', lambda)::fns, env)
                          end
@@ -269,7 +273,6 @@ structure Translate : sig
                        in
                          BOM.mkFun(List.map (transLambda env) fns, env, k)
                        end*)
-                    | S.CoreBOM.Definition.HLOp (attrs, valid, exp) => raise Fail "Polymorphic HLOps found in SXML"
                     | S.CoreBOM.Definition.Extern (bomVal, S.CoreBOM.CProto.T (cfun, attrs)) => let
                        (* translate the C function; place in env and global externs *)
                        val (cfun, env') = transCFun (cfun, attrs, env)
@@ -366,8 +369,9 @@ structure Translate : sig
         val dest: S.Type.dest = case maybeSxmlty
           of NONE => S.Type.Con (PMLFrontEnd.conTycon con, targs)
            | SOME sxmlty => S.Type.dest sxmlty
-        val tyName = "..."
-        (*val tyName = Layout.toString (S.Type.layout sxmlty)*)
+        val tyName = case maybeSxmlty
+          of NONE => "<unknown type>"
+           | SOME sxmlty => Layout.toString (S.Type.layout sxmlty)
         val _ = print ("transDcon for ty " ^ tyName ^ "\n")
         val tycon = case maybeSxmlty
           of NONE => PMLFrontEnd.conTycon con
