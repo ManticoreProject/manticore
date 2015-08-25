@@ -28,6 +28,7 @@
 #include "time.h"
 #include "perf.h"
 #include "work-stealing-deque.h"
+#include "eventlog.h"
 
 typedef struct {	    /* data passed to NewVProc */
     int		id;		/* VProc ID */
@@ -98,6 +99,11 @@ void VProcInit (bool isSequential, Options_t *opts)
              MAX_NUM_VPROCS, NumVProcs);
     }
 
+    //TODO: create a flag that will only do this if specified by the user
+    initEventLogging();
+
+    postEventStartup(NumVProcs);
+    
 #ifdef TARGET_DARWIN
     denseLayout = true;  // no affinity support on Mac OS X
 #else
@@ -373,9 +379,14 @@ void VProcExit (VProc_t *vp)
 	    vp->id, TIMER_GetTime(&(vp->timer)));
 #endif
 
+    postSchedEvent(vp, EVENT_STOP_THREAD, 0);
+    
     BarrierWait(&ShutdownBarrier);
 
     if (vp == VProcs[0]) {
+
+	endEventLogging();
+	
       /* assign vproc 0 to finalize the runtime state */
 	LogVProcExitMain (vp);
 
@@ -390,7 +401,7 @@ void VProcExit (VProc_t *vp)
 #ifndef NO_GC_STATS
 	ReportGCStats ();
 #endif
-		
+	
 	exit (0);
     }
     else {

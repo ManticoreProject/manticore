@@ -1,3 +1,6 @@
+structure STM = NoRecFF
+
+
 fun getArg f args = 
     case args 
         of arg::arg'::args => 

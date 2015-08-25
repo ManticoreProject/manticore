@@ -45,6 +45,7 @@ int toGenNum(Value_t * x, Addr_t heapBase, Addr_t oldSzB, Addr_t nurseryBase, Ad
         if(isPtr(x)){
             somethingBadHappened();
             printf("Pointer is in unrecognized region\n");
+	    return -1;
         }
         return 3;
     }
@@ -61,7 +62,15 @@ void checkInvariant(Word_t * source, Word_t * dest, VProc_t * vp, char * context
     int sourceGen = toGenNum(source, heapBase, oldSzB, nurseryBase, nurserySize);
     int destGen = toGenNum(dest, heapBase, oldSzB, nurseryBase, nurserySize);
     if(sourceGen > destGen){
-        //printf("Updating source (%p) in generation %d to point to %p in geneartion %d from %s\n", source, sourceGen, dest, destGen, context);
+
+	RS_t * rs = (RS_t*)vp->rememberSet;
+	while(rs != (RS_t *)M_NIL){
+	    if(rs->source == source){
+		return;
+	    }
+	    rs = rs->next;
+	}
+	printf("Updating source (%p) in generation %d to point to %p in geneartion %d from %s\n", source, sourceGen, dest, destGen, context);
     }
 
     //printf("source generation = %d, destination generation = %d\n", sourceGen, destGen);
@@ -241,8 +250,8 @@ void checkDuplicates(VProc_t * vp){
         RS_t * ptr = remSet->next;
         while((Value_t)ptr != M_NIL){
             if(remSet->source == ptr->source && remSet->offset == ptr->offset){
-                printf("Found duplicate!\n");
-                somethingBadHappened();
+                printf("%lu: Found duplicate!\n", vp->id);
+		//somethingBadHappened();
             }
             ptr = ptr->next;
         }
@@ -250,7 +259,7 @@ void checkDuplicates(VProc_t * vp){
     }
 }
 
-void checkRS(VProc_t * vp, struct read_set * rs){
+void checkRS(VProc_t * vp, struct read_set * rs, const char * context){
     RS_t * remSet = (RS_t*)vp->rememberSet;
 
     //checkDuplicates(vp);
@@ -264,10 +273,18 @@ void checkRS(VProc_t * vp, struct read_set * rs){
     struct read_log * trailer = NULL;
     struct read_log * ptr = rs->head;
     while((Value_t) ptr != M_NIL){
+	int g1 = toGenNum(ptr, vp->heapBase, vp->oldTop - vp->heapBase, vp->nurseryBase, vp->allocPtr - vp->nurseryBase);
+	int g2 = toGenNum(ptr->next, vp->heapBase, vp->oldTop - vp->heapBase, vp->nurseryBase, vp->allocPtr - vp->nurseryBase);
+
+	if(g1 == -1 || g2 == -1){
+	    printf("%lu: heap object in unknown region\n");
+	    somethingBadHappened();
+	}
+	
         Word_t header = ((Word_t*)ptr)[-1];
         if(header != 262147 && header != 458755){
             somethingBadHappened();
-            printf("Found incorrect header in read set!\n");
+            printf("Found incorrect header in read set! (%s)\n", context);
         }
         trailer = ptr;
         ptr = ptr->next;
@@ -281,16 +298,20 @@ void checkRS(VProc_t * vp, struct read_set * rs){
         Word_t header = ((Word_t*)ptr)[-1];
         if(isForwardPtr(header)){
             somethingBadHappened();
-            printf("Found forwarding pointer in read set!\n");
+            printf("Found forwarding pointer in read set! (%s)\n", context);
         }
         if(ptr->tag != 3){
             somethingBadHappened();
-            printf("Expected WithK tag, instead found %lu\n", ptr->tag);
+            printf("Expected WithK tag, instead found %lu (%s)\n", ptr->tag, context);
         }
         if(isPtr(ptr->nextK)){
             //(Value_t * x, Addr_t heapBase, Addr_t oldSzB, Addr_t nurseryBase, Addr_t nurserySize);
             int g1 = toGenNum(ptr, vp->heapBase, vp->oldTop - vp->heapBase, vp->nurseryBase, vp->allocPtr - vp->nurseryBase);
             int g2 = toGenNum(ptr->nextK, vp->heapBase, vp->oldTop - vp->heapBase, vp->nurseryBase, vp->allocPtr - vp->nurseryBase);
+	    if(g1 == -1 || g2 == -1){
+		somethingBadHappened();
+		printf("%lu: heap object in unknown region\n");
+	    }
             if(g1 > g2){ //source is in older generation than destination
                 //verify g1 is in the remember set
                 RS_t * remSetPtr = remSet;
@@ -302,7 +323,7 @@ void checkRS(VProc_t * vp, struct read_set * rs){
                 }
                 if(remSetPtr == M_NIL){
                     somethingBadHappened();
-                    printf("nextK is in older generation than current node\n");
+                    printf("nextK is in older generation than current node (%s)\n", context);
                 }
             }
         }
@@ -335,12 +356,7 @@ void checkReadSet(VProc_t * vp, char * context){
     if(!isPtr(rs)){
         return;
     }
-    checkRS(vp, rs);
-    rs = getRS(FF_INFO_KEY, fls);
-    if(!isPtr(rs)){
-        return;
-    }
-    checkRS(vp, rs);
+    checkRS(vp, rs, context);
 }
 
 struct ws{

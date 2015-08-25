@@ -13,7 +13,7 @@ struct
 		typedef tvar = ![any, long, long];
 		typedef stamp = VClock.stamp;
 
-        extern void M_PruneRemSetAll(void*, void*);
+        extern void M_PruneRemSetAll(void*, void*);		
 
 		define @new(x:any / exh:exh) : tvar =
 			let tv : [any] = alloc(x)
@@ -22,7 +22,7 @@ struct
 			return(tv)
 		;
 
-		define inline @get-stamp(/exh:exh) : stamp = 
+		  define inline @get-stamp(/exh:exh) : stamp =
 			fun stampLoop() : long = 
 				let current : long = VClock.@get(/exh)
 				let lastBit : long = I64AndB(current, 1:long)
@@ -33,7 +33,7 @@ struct
 			return(stamp)
 		;
 
-		define @get(tv : tvar / exh:exh) : any = 
+		define @ffNoRecGet(tv : tvar / exh:exh) : any = 
 			let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do 	
             	if(#0(in_trans))
@@ -146,6 +146,7 @@ struct
             if (#0(in_trans))
             then apply f(UNIT/exh)
             else 
+		do Logging.@log-start-tx()
             	let stampPtr : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
                 do #1(stampPtr) := 0
                 do FLS.@set-key(FF_KEY, enum(0) / exh)
@@ -204,7 +205,7 @@ struct
 	)
 
 	type 'a tvar = 'a PartialSTM.tvar
-    val get : 'a tvar -> 'a = _prim(@get)
+    val get : 'a tvar -> 'a = _prim(@ffNoRecGet)
     val new : 'a -> 'a tvar = _prim(@new)
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val put : 'a tvar * 'a -> unit = _prim(@put)

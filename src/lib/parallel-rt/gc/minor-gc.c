@@ -61,6 +61,9 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots);
  */
 void MinorGC (VProc_t *vp)
 {
+
+    checkReadSet(vp, "Start of Minor GC");
+	
     Addr_t	nurseryBase = vp->nurseryBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to-space */
@@ -114,21 +117,21 @@ void MinorGC (VProc_t *vp)
     *rp++ = 0;
 
 #ifndef NDEBUG
-  /* nullify non-live registers */
+    /* nullify non-live registers */
     vp->stdArg = M_UNIT;
     vp->stdExnCont = M_UNIT;
 #endif
-
-  /* process the roots */
+    
+    /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
-		Value_t p = *roots[i];
-		if (isPtr(p)) {
-		    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
-				*roots[i] = ForwardObjMinor(p, &nextW);
-		    }
-		}
+	Value_t p = *roots[i];
+	if (isPtr(p)) {
+	    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
+		*roots[i] = ForwardObjMinor(p, &nextW);
+	    }
+	}
     }
-
+    
   /* scan to space */
     while (nextScan < nextW-1) {
 		assert ((Addr_t)(nextW-1) <= vp->nurseryBase);
@@ -179,13 +182,17 @@ void MinorGC (VProc_t *vp)
 
     LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
 
+    char * context;
+    
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
       /* time to do a major collection. */
 	MajorGC (vp, roots, (Addr_t)nextScan);
+	context = "After Minor and Major GC";
     }
     else {
       /* remember information about the final state of the heap */
 	vp->oldTop = (Addr_t)nextScan;
+	context = "After minor GC";
     }
 
 
@@ -210,23 +217,15 @@ void MinorGC (VProc_t *vp)
     		trailer = &(rememberSet->next);
     		rememberSet = (RS_t*) rememberSet->next;
     	}else{
-    		
-    		*trailer = rememberSet->next;
-    		rememberSet = (RS_t*)rememberSet->next;
+	    printf("%lu: Dropping source (%p) from remember set\n", vp->id, rememberSet->source);
+	    *trailer = rememberSet->next;
+	    rememberSet = (RS_t*)rememberSet->next;
     	}
-    	/*
-    	if(inAddrRange(heapBase, oldSize, ValueToAddr(dest)) && 
-    	   !inAddrRange(heapBase, oldSize, ValueToAddr(rememberSet->source))){ //destination is in local heap, but source is not
-    		trailer = &(rememberSet->next);
-    		rememberSet = (RS_t*) rememberSet->next;
-    	}else{//source and dest are in same region, drop it from the remember set
-    		*trailer = rememberSet->next;
-    		rememberSet = (RS_t*)rememberSet->next;
-    	}*/
     }
 
   /* reset the allocation pointer */
     SetAllocPtr (vp);
+    checkReadSet(vp, context);
 }
 
 #ifndef NDEBUG

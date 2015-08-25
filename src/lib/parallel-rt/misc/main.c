@@ -114,6 +114,7 @@ int main (int argc, const char **argv)
     DiscoverTopology ();
     HeapInit (opts);
     VProcInit ((bool)SequentialFlag, opts);
+    
 #if defined(ENABLE_PERF_COUNTERS) && defined(TARGET_LINUX)
     ParsePerfOptions (opts);
 #endif

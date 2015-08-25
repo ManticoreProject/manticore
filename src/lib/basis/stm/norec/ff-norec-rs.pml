@@ -114,7 +114,7 @@ struct
                     throw abortK()
                 | WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
                     let casted : ![any, any, any, item] = (![any, any, any, item]) checkpoint
-                    do #NEXT(casted) := NilItem
+                    do #NEXT(casted) := NilItem  (*split valid and invalid portions*)
                     fun getLoop() : any = 
                         let v : any = #0(tv)
                         let t : long = VClock.@get(/exh)
@@ -131,7 +131,7 @@ struct
                     do FLS.@set-key(WRITE_SET, ws / exh)
                     (*<FF>*)
                     do #NUMK(readSet) := I32Sub(#NUMK(readSet), count)
-                    do #HEAD(readSet) := next
+                    do #HEAD(readSet) := NilItem (*we don't need this field anymore*)
                     do FLS.@set-key(FF_KEY, readSet / exh) (*try and use this portion of the read set on our second run through*)
                     let vp : vproc = host_vproc
                     (*</FF>*)
@@ -255,7 +255,9 @@ struct
                                         let currentLast : item = #TAIL(readSet)
                                         let currentLast : mutWithK = (mutWithK) currentLast
                                         do #NEXT(currentLast) := rs
-                                        (*add to remember set*)
+				        (*REMOVE THIS *)
+					do ccall checkInvariant(currentLast, rs, vp, "fast-forward")
+					(*REMOVE THIS*)
                                         @ff-validate(readSet, rs, myStamp / exh)
                                     else apply checkRS(next, I32Add(i, 1))
                                 else apply checkRS(next, I32Add(i, 1))

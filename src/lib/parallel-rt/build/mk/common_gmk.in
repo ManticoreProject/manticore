@@ -60,7 +60,8 @@ GC_SRCS = 	minor-gc.c \
 		work-stealing-deque.c \
     remember-set.c
 
-VPROC_SRCS =	vproc.c
+VPROC_SRCS =	vproc.c 
+	        
 
 MISC_SRCS =	main.c \
 		apply.c \
@@ -68,7 +69,8 @@ MISC_SRCS =	main.c \
 		config.c \
 		options.c \
 		image.c \
-                image-sock.c
+                image-sock.c \
+		eventlog.c
 
 CPU_SRCS =	cpuid.c \
 		topology.c

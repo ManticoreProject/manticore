@@ -12,6 +12,7 @@
 #include "scheduler.h"
 #include "heap.h"
 #include "inline-log.h"
+#include "eventlog.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
@@ -68,9 +69,11 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    vp->sigPending = M_FALSE;
 	    vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
 	}
-
-	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
-
+	
+	postSchedEvent(vp, EVENT_RUN_THREAD, 0);
+        RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
+	postSchedEvent(vp, EVENT_STOP_THREAD, 0);
+	
 	Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
 
 	switch (req) {
@@ -80,7 +83,9 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	   */
 	    if ((LimitPtr(vp) < vp->allocPtr) || vp->globalGCPending) {
 	      /* request a minor GC */
+		postEvent(vp, EVENT_GC_START);
 		MinorGC (vp);
+		postEvent(vp, EVENT_GC_END);
 	    }
 	  /* check for asynchronous signals */
 	    if (oldLimitPtr == 0) {
