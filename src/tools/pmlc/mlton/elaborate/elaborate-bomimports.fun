@@ -164,7 +164,8 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
               ElaborateCore.Lookup.fromEnv env)
             in
               case BOM.ValueId.node bomValId of
-                 BOM.ValueId.HLOpQId hlopqid => raise Fail "TODO(wings): elaborate HLOp exports"
+                 BOM.ValueId.HLOpQId hlopqid =>
+                   raise Fail "TODO(wings): elaborate HLOp exports"
                | BOM.ValueId.LongId bomLongId =>
                    let
                      (*val _ = print "BOMEnv.TyEnv: "
@@ -176,7 +177,9 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
                      val bomVal =
                        case BOMEnv.ValEnv.lookup (bomEnv, valId) of
                           SOME bv => bv
-                        | NONE => raise Fail ("failed to find referenced BOM name: " ^ CoreBOM.ValId.toString valId)
+                        | NONE => raise Fail
+                            ("failed to find referenced BOM name: "
+                            ^ CoreBOM.ValId.toString valId)
                      val mlVar = Ast.Vid.toVar mlValId
                      val mlVar' = ElaborateCore.Var.fromAst mlVar
                      (* FIXME: rebind? *)
@@ -189,7 +192,8 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
     end
 
 
-  (* importing a monomorphization (or monomorphic) ML val/tycon into the BOM environment *)
+  (* importing a monomorphization (or monomorphic) ML val/tycon into the BOM
+  environment *)
   fun elaborateBOMImport (import, {env: Env.t, bomEnv: BOMEnv.t}) =
     let
       (* fun elaborateLType ty = ElaborateCore.elaborateType (ty, *)

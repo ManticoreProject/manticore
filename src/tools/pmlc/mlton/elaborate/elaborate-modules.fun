@@ -185,7 +185,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                          ElaborateBOMImports.elaborateBOMExport (export, {env =
                          E, bomEnv = bomEnv})
                      in
-                       (* TODO(wings): should we be doing more work here? probably, according 
+                       (* TODO(wings): should we be doing more work here? probably, according
                        to the above comments which applied when this case simply returned
                        Decs.empty *)
                        (case newEnv
