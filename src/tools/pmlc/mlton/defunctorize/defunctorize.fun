@@ -697,7 +697,6 @@ fun defunctorize (CoreML.Program.T {decs}) =
                             in
                                ()
                             end); ())
-                    | CoreBOM.Definition.Exception (dataConsDef) => ()
                     | CoreBOM.Definition.HLOp (attrs, valid, exp) => ()
                     | CoreBOM.Definition.Fun (fundefs) => ()
                     | CoreBOM.Definition.Extern (val_, cProto) => ()

@@ -63,7 +63,6 @@ fun lambdaSize (Program.T {body, ...}): Lambda.t -> int =
       and leafBOM (bomDec (*: 'a CoreBOM.Definition.t*), n: int): int =
          case bomDec of
             CoreBOM.Definition.Datatype dataTypeDef => n
-          | CoreBOM.Definition.Exception dataConsDef => n + 1
           | CoreBOM.Definition.HLOp (attrs, vals, exp) => loopBOMExp (exp, n + 1)
           | CoreBOM.Definition.Fun funs => loopBOMFuns (funs, n)
           | CoreBOM.Definition.Extern (name, cProto) => n

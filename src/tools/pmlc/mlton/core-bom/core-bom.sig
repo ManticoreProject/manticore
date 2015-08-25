@@ -408,7 +408,6 @@ signature CORE_BOM =
     structure Definition: sig
       datatype 'a t
         = Datatype of (TyCon.t * 'a) list
-        | Exception of DataConsDef.t
         | HLOp of Attr.t list * ValId.t * Exp.t
         | Fun of FunDef.t list
         | Extern of Val.t * CProto.t

@@ -306,7 +306,7 @@ fun typeCheck (program as Program.T {datatypes, body, overflow}): unit =
                    ; check (ty, checkExp exp)
                    ; unbindTyvars tyvars
                    ; setVar (var, {tyvars = tyvars, ty = ty}))
-	     | BOM _ => () (* [PML] *)
+             | BOM {bom=bomdefs} => ()(* [PML] *)
          end) arg
       val _ =
          Vector.foreach

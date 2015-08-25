@@ -880,7 +880,6 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
   datatype node
     = Datatype of DataTypeDef.t list
     | TypeDefn of BOMId.t * TyParam.t list * BOMType.t
-    | Exception of DataConsDef.t
     | DefineHLOp of Attrs.t option * HLOpId.t * TyParam.t list *
         VarPat.t list * VarPat.t list * BOMType.t list * Exp.t
     | Fun of FunDef.t list
@@ -907,13 +906,6 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
             Layout.str "="
           ],
           BOMType.layout myType
-        ]
-    | Exception condef =>
-        Layout.align [
-          Layout.mayAlign [
-            Layout.str "exception",
-            DataConsDef.layout condef
-          ]
         ]
     | DefineHLOp (maybeAttrs, hlOpId, maybeTyParams, inputPats, exnPats, bomTypes, exp)  =>
         let

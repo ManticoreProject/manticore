@@ -137,10 +137,6 @@ Definition
                 => (BOM.Definition.makeRegion (
                       BOM.Definition.TypeDefn (BOMId, optToList TyParams, BOMType),
                       posToReg FULL_SPAN))
-        | "exception" DataConsDef
-                => (BOM.Definition.makeRegion (
-                      BOM.Definition.Exception DataConsDef,
-                      posToReg FULL_SPAN))
         | "define" Attrs? HLOpId TyParams? FunParams ReturnTy "=" BOMExp ";"
                 => (let
                     val (inputTys, exnTys) = FunParams

@@ -1091,7 +1091,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure Definition = struct
     datatype 'a t
       = Datatype of (TyCon.t * 'a) list
-      | Exception of DataConsDef.t
       | HLOp of Attr.t list * ValId.t * Exp.t
       | Fun of FunDef.t list
       | Extern of Val.t * CProto.t
@@ -1101,7 +1100,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       case def of
         Datatype dtdefs => Datatype (List.map
           (fn (tycon, a) => (tycon, f a)) dtdefs)
-      | Exception x => Exception x
       | HLOp x => HLOp x
       | Fun x => Fun x
       | Extern x => Extern x

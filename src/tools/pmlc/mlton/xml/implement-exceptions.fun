@@ -276,11 +276,8 @@ fun doit (Program.T {datatypes, body, ...}): Program.t =
                   ; List.push (exnValCons, {con = con, arg = arg})
                   ; vall {var = r, exp = reff (unit ())} @ decs
                end
-          | BOM {bom=bomDecs} => [BOM {bom=MLVector.map leafBOMDec bomDecs}]
+          | BOM {bom=bomDecs} => [BOM {bom=bomDecs}] (* [PML] *)
           | _ => Error.bug "ImplementExceptions: saw unexpected dec") arg
-      and leafBOMDec (bomDec) = case bomDec of
-            CoreBOM.Definition.Exception dataConsDef => raise Fail "TODO(wings): factor BOM exception declarations into the exception datatype"
-          | _ => bomDec
       and loopMonoVal {var, ty, exp} : Dec.t list =
          let
             fun primExp e = [MonoVal {var = var, ty = ty, exp = e}]

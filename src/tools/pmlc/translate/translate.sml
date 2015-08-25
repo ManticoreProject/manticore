@@ -260,7 +260,6 @@ structure Translate : sig
                 (*val _ = print "transDec BOM\n"*)
                 val (env, k) = Vector.foldl (fn (bomdec, (env, k: env -> BOM.exp)) => (case bomdec
                    of S.CoreBOM.Definition.Datatype dataTypeDef => (* XXX(wings): do we need to put dcons in the env here? *) (env, k)
-                    | S.CoreBOM.Definition.Exception dataconsDef => raise Fail "TODO(wings): translate CoreBOM.Definition.Exception"
                     | S.CoreBOM.Definition.HLOp (attrs, valid, exp) => raise Fail "Polymorphic HLOps found in SXML"
                     | S.CoreBOM.Definition.Fun fundefs => raise Fail "TODO(wings): translate CoreBOM.Definition.Fun"(*let
                        fun bind (S.CoreBOM.FunDef.Def (attrs, func, domVals, contVals, retTy, body), (fns, env)) = let

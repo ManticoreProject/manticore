@@ -296,7 +296,6 @@ signature AST_BOM =
 	  datatype node
 	    = Datatype of DataTypeDef.t list
 	    | TypeDefn of BOMId.t * TyParam.t list * BOMType.t
-	    | Exception of DataConsDef.t
 	    | DefineHLOp of Attrs.t option * HLOpId.t *
 		TyParam.t list * VarPat.t list * VarPat.t list *
 		BOMType.t list * Exp.t

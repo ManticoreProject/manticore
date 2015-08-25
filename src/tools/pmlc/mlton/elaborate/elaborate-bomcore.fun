@@ -968,13 +968,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
         in
           (NONE, newEnv)
         end
-    | BOM.Definition.Exception dataConsDef =>
-        let
-          val (dataConsDef, envWithDef) = elaborateDataConsDef (dataConsDef,
-            CoreBOM.BOMType.Exn, bomEnv)
-        in
-          (SOME (CoreBOM.Definition.Exception dataConsDef), envWithDef)
-        end
     | BOM.Definition.DefineHLOp (maybeAttrs, hlOpId, tyParams, inputs, exns, retTy, bomExp) =>
         raise Fail "TODO(wings): elaborate HLOp definition in BOM module"
     | BOM.Definition.Fun funDefs =>
