@@ -83,7 +83,6 @@ structure Translate : sig
     fun exhTy (tyCache) = BOMTy.T_Cont[lookupTy(tyCache, S.Type.exn)]
 
 
-    val tupleTyc = BOMTyc.new("tuple", 0) (* TODO(wings): is this right? *)
     val boolTyc = BOMTyc.new("bool", 0)
       val falseCon = BOMDataCon.new boolTyc ("false", []);
       val trueCon = BOMDataCon.new boolTyc ("true", []);
@@ -166,11 +165,11 @@ structure Translate : sig
                               BOMTy.T_Fun([domTy], [exhTy (tyCache)], [rngTy])
                             end
                         else if S.Tycon.equals(tyc, S.Tycon.array)
-                          then BOMTy.T_Con (BOMTyc.arrayTyc, [singleArg ()])
+                          then BOMTy.arrayTy (singleArg ())
                         else if S.Tycon.equals(tyc, S.Tycon.bool)
-                          then BOMTy.T_Con (boolTyc, [])
+                          then (noArgs (); BOMTy.T_Con (boolTyc, []))
                         else if S.Tycon.equals(tyc, S.Tycon.cpointer)
-                          then BOMTy.T_Con(BOMTyc.addrTyc, [singleArg ()])
+                          then BOMTy.addrTy (singleArg ())
                         else if S.Tycon.equals(tyc, S.Tycon.exn)
                           then (noArgs (); exhTy (tyCache))
                         else if S.Tycon.equals(tyc, S.Tycon.intInf)
@@ -185,13 +184,13 @@ structure Translate : sig
                               BOMTy.T_Con (dataTyc, []) (* XXX(wings): should this tyc have an arg? *)
                             end
                         else if S.Tycon.equals(tyc, S.Tycon.reff)
-                          then BOMTy.T_Con(BOMTyc.arrayTyc, [singleArg()]) (* XXX(wings): should we really treat refs as one-item arrays? *)
+                          then BOMTy.arrayTy (singleArg()) (* XXX(wings): should we really treat refs as one-item arrays? *)
                         else if S.Tycon.equals(tyc, S.Tycon.thread)
-                          then (noArgs (); BOMTy.T_Con(BOMTyc.vprocTyc, []))
+                          then (noArgs (); BOMTy.vprocTy)
                         else if S.Tycon.equals(tyc, S.Tycon.tuple)
-                          then BOMTy.T_Con(tupleTyc, args')
+                          then BOMTy.tupleTy args'
                         else if S.Tycon.equals(tyc, S.Tycon.vector)
-                          then BOMTy.T_Con (BOMTyc.vectorTyc, [singleArg ()])
+                          then BOMTy.vectorTy (singleArg ())
                         else if S.Tycon.equals(tyc, S.Tycon.weak)
                           then raise Fail "Weak pointer type found in SXML"
                         else BOMTy.T_Con(TycMap.lookup(tycMap, tyc), args')
@@ -472,7 +471,7 @@ structure Translate : sig
                   end
                 val args = V.foldl (fn (argi, rest) => transVarExp(env,argi)::rest) [] args
                 fun argn(n) = List.nth(args, n)
-                val unitTy = BOMTy.T_Con(tupleTyc, [])
+                val unitTy = BOMTy.unitTy
                 val boolTy = BOMTy.T_Con(boolTyc, [])
                 fun r2e (rhs, ty): BOM.exp = mkLet(expFromRhs (rhs, ty))
                 val exp =
