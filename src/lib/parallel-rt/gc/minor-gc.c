@@ -63,7 +63,7 @@ void MinorGC (VProc_t *vp)
 {
 
     checkReadSet(vp, "Start of Minor GC");
-	
+    
     Addr_t	nurseryBase = vp->nurseryBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to-space */
@@ -217,7 +217,6 @@ void MinorGC (VProc_t *vp)
     		trailer = &(rememberSet->next);
     		rememberSet = (RS_t*) rememberSet->next;
     	}else{
-	    printf("%lu: Dropping source (%p) from remember set\n", vp->id, rememberSet->source);
 	    *trailer = rememberSet->next;
 	    rememberSet = (RS_t*)rememberSet->next;
     	}

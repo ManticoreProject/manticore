@@ -22,6 +22,7 @@
 #include "work-stealing-deque.h"
 #include "gc-scan.h"
 #include "remember-set.h"
+#include "eventlog.h"
 
 static Mutex_t		GCLock;		// Lock that protects the following variables:
 static Cond_t		LeaderWait;	// The leader waits on this for the followers
@@ -163,6 +164,7 @@ void ConvertToSpaceChunks (VProc_t *self, MemChunk_t *p) {
  */
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
+    postEvent(self, EVENT_GLOBAL_GC);
     bool	leaderVProc;
 
 #ifndef NO_GC_STATS

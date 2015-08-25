@@ -103,16 +103,18 @@ struct
 #endif          
         ;
 
-        define inline @abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, revalidate : fun(item, item, int / -> ) / exh:exh) : () = 
+	define inline @eager-abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, revalidate : fun(item, item, int / -> ) / exh:exh) : () = 
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             case checkpoint 
                of NilItem => (*no checkpoint available*)
+		    do Logging.@log-eager-full-abort()
                     (*<FF>*)
                     do FLS.@set-key(FF_KEY, readSet / exh)
                     (*</FF>*)
                     let abortK : cont() = FLS.@get-key(ABORT_KEY / exh) 
                     throw abortK()
                 | WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
+		    do Logging.@log-eager-partial-abort()
                     let casted : ![any, any, any, item] = (![any, any, any, item]) checkpoint
                     do #NEXT(casted) := NilItem  (*split valid and invalid portions*)
                     fun getLoop() : any = 
@@ -142,7 +144,7 @@ struct
             end
         ;
 
-        define @validate(readSet : read_set, startStamp:![stamp, int, int, long] / exh:exh) : () = 
+        define @eager-validate(readSet : read_set, startStamp:![stamp, int, int, long] / exh:exh) : () = 
             fun validateLoopABCD(rs : item, abortInfo : item, count:int) : () =
                 case rs 
                    of NilItem => (*finished validating*)
@@ -156,7 +158,7 @@ struct
                     | WithoutK(tv:tvar, x:any, next:item) =>
                         if Equal(#0(tv), x)
                         then apply validateLoopABCD(next, abortInfo, count)
-                        else @abort(readSet, abortInfo, startStamp, count, validateLoopABCD / exh)
+                        else @eager-abort(readSet, abortInfo, startStamp, count, validateLoopABCD / exh)
                     | WithK(tv:tvar,x:any,next:item,ws:item,abortK:any,_:item) =>
                         if Equal(#0(tv), x)
                         then 
@@ -165,8 +167,80 @@ struct
                             else apply validateLoopABCD(next, rs, I32Add(count, 1))
                         else
                             if Equal(abortK, enum(0))
-                            then @abort(readSet, abortInfo, startStamp, count, validateLoopABCD / exh)
-                            else @abort(readSet, rs, startStamp, count, validateLoopABCD / exh)
+                            then @eager-abort(readSet, abortInfo, startStamp, count, validateLoopABCD / exh)
+                            else @eager-abort(readSet, rs, startStamp, count, validateLoopABCD / exh)
+                end
+            let currentTime : stamp = @get-stamp(/exh)
+            do #0(startStamp) := currentTime
+            apply validateLoopABCD(#HEAD(readSet), NilItem, 0)
+        ;
+
+        define inline @commit-abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, revalidate : fun(item, item, int / -> ) / exh:exh) : () = 
+            do #1(startStamp) := I32Add(#1(startStamp), 1)
+            case checkpoint 
+               of NilItem => (*no checkpoint available*)
+		    do Logging.@log-commit-full-abort()
+                    (*<FF>*)
+                    do FLS.@set-key(FF_KEY, readSet / exh)
+                    (*</FF>*)
+                    let abortK : cont() = FLS.@get-key(ABORT_KEY / exh) 
+                    throw abortK()
+                | WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
+		    do Logging.@log-commit-partial-abort()
+                    let casted : ![any, any, any, item] = (![any, any, any, item]) checkpoint
+                    do #NEXT(casted) := NilItem  (*split valid and invalid portions*)
+                    fun getLoop() : any = 
+                        let v : any = #0(tv)
+                        let t : long = VClock.@get(/exh)
+                        if I64Eq(t, #0(startStamp))
+                        then return(v)
+                        else
+                            let currentTime : stamp = @get-stamp(/exh)
+                            do #0(startStamp) := currentTime
+                            do apply revalidate(#HEAD(readSet), NilItem, 0)
+                            apply getLoop()
+                    let current : any = apply getLoop()
+                    let newRS : read_set = alloc(#HEAD(readSet), checkpoint, checkpoint, count)
+                    do FLS.@set-key(READ_SET, newRS / exh)
+                    do FLS.@set-key(WRITE_SET, ws / exh)
+                    (*<FF>*)
+                    do #NUMK(readSet) := I32Sub(#NUMK(readSet), count)
+                    do #HEAD(readSet) := NilItem (*we don't need this field anymore*)
+                    do FLS.@set-key(FF_KEY, readSet / exh) (*try and use this portion of the read set on our second run through*)
+                    let vp : vproc = host_vproc
+                    (*</FF>*)
+                    let captureFreq : int = FLS.@get-counter2()
+                    do FLS.@set-counter(captureFreq)
+                    BUMP_PABORT
+                    throw abortK(current)
+            end
+        ;
+
+        define @commit-validate(readSet : read_set, startStamp:![stamp, int, int, long] / exh:exh) : () = 
+            fun validateLoopABCD(rs : item, abortInfo : item, count:int) : () =
+                case rs 
+                   of NilItem => (*finished validating*)
+                        let currentTime : stamp = VClock.@get(/exh)
+                        if I64Eq(currentTime, #0(startStamp))
+                        then return() (*no one committed while validating*)
+                        else  (*someone else committed, so revalidate*)
+                            let currentTime : stamp = @get-stamp(/exh)
+                            do #0(startStamp) := currentTime
+                            apply validateLoopABCD(#HEAD(readSet), NilItem, 0)
+                    | WithoutK(tv:tvar, x:any, next:item) =>
+                        if Equal(#0(tv), x)
+                        then apply validateLoopABCD(next, abortInfo, count)
+                        else @commit-abort(readSet, abortInfo, startStamp, count, validateLoopABCD / exh)
+                    | WithK(tv:tvar,x:any,next:item,ws:item,abortK:any,_:item) =>
+                        if Equal(#0(tv), x)
+                        then 
+                            if Equal(abortK, enum(0))
+                            then apply validateLoopABCD(next, abortInfo, count)            (*update checkpoint*)
+                            else apply validateLoopABCD(next, rs, I32Add(count, 1))
+                        else
+                            if Equal(abortK, enum(0))
+                            then @commit-abort(readSet, abortInfo, startStamp, count, validateLoopABCD / exh)
+                            else @commit-abort(readSet, rs, startStamp, count, validateLoopABCD / exh)
                 end
             let currentTime : stamp = @get-stamp(/exh)
             do #0(startStamp) := currentTime
@@ -183,6 +257,7 @@ struct
                     do FLS.@set-key(WRITE_SET, ws / exh)
                     let vp : vproc = host_vproc
                     BUMP_KCOUNT
+		    do Logging.@log-fast-forward()
                     throw k(x)
                 | _ => do ccall M_Print("Impossible: ff-finish\n") throw exh(Fail(@"Impossible: ff-finish\n"))
             end
@@ -218,7 +293,7 @@ struct
                                     if I64Eq(t, #0(myStamp))
                                     then return(v)
                                     else
-                                        do @validate(newRS, myStamp / exh)
+                                        do @eager-validate(newRS, myStamp / exh)
                                         apply getLoop()
                                 
                                 let current : any = apply getLoop()
@@ -272,19 +347,6 @@ struct
 
         define inline @getNumK(rs : read_set) : int = return(#NUMK(rs));
 
-        define @short-path-len(readSet : read_set / exh:exh) : () = 
-            fun lenLoop(i:item, count:int) : int = 
-                case i 
-                   of NilItem => return(count)
-                    | WithK(tv:tvar, _:any, _:item, ws:item, k:cont(any), next:item) => 
-                        apply lenLoop(next, I32Add(count, 1))
-                    | WithoutK(tv:tvar, _:any, next:item) => 
-                        do ccall M_Print("short-path-len: Impossible\n") return(~1)
-                end
-            let l : int = apply lenLoop(#LASTK(readSet), 0)
-            do ccall M_Print_Int("Short path length is %d\n", l)
-            return();
-
         define inline @filterRS(readSet : read_set, stamp : ![long, int, int, long] / exh : exh) : () = 
             let vp : vproc = host_vproc
             fun dropKs(l:item, n:int) : int =   (*drop every other continuation*)
@@ -318,39 +380,6 @@ struct
             let x :int = apply dropKs(#LASTK(readSet), #NUMK(readSet))
             do #NUMK(readSet) := x
             return();
-
-        define @checkHeader(tv:any) : () = 
-            if I64Lt(tv, 50:long)
-            then return()
-            else
-                let header : any = ArrLoad(tv, ~1)
-                if I64Gt(header, 1048576)
-                then
-                    do ccall M_Print_Long("pointing to a forwarding pointer: %lu\n", header)
-                    return()
-                else return()
-        ;            
-
-        define @rs-len(readSet : read_set / exh:exh) : unit =
-            fun lenLoop(i:item, count:int) : int = 
-                case i 
-                   of NilItem => return(count)
-                    | WithK(tv:tvar, _:any, next:item, ws:item, k:cont(any), _:item) => 
-                        apply lenLoop(next, I32Add(count, 1))
-                    | WithoutK(tv:tvar, _:any, next:item) => 
-                        do if I64Gt(next, 1000:long)
-                            then
-                                let nextHeader : any = ArrLoad(next, ~1)
-                                if I64Eq(nextHeader, 196611)
-                                then return()
-                                else do ccall M_Print_Long("Current value is %d, next header is not right\n", #0(tv)) return()
-                            else return()
-                        
-                        apply lenLoop(next, I32Add(count, 1))
-                end
-            let l : int = apply lenLoop(#HEAD(readSet), 0)
-            do ccall M_Print_Int("Read set length is %d\n", l)
-            return(UNIT);
 
         (*Note that these next two defines, rely on the fact that a heap limit check will not get
          *inserted within the body*)
@@ -390,12 +419,7 @@ struct
                 let vp : vproc = host_vproc
                 return()
         ;
-
-        define @printHeader(tv:any) : () = 
-            let header : any = ArrLoad(tv, ~1)
-            do ccall M_Print_Long("Header is %lu\n", header)
-            return();
-
+	
         (*add a non checkpointed read to the read set*)
     	define @insert-without-k(tv:any, v:any, readSet : read_set, stamp : ![long, int, int, long] / exh:exh) : () =
     		let newItem : item = WithoutK(tv, v, NilItem)

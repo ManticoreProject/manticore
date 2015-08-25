@@ -65,7 +65,7 @@ struct
                 		if I64Eq(t, #0(myStamp))
                 		then return(v)
                 		else
-                			do RS.@validate(readSet, myStamp / exh)
+                			do RS.@eager-validate(readSet, myStamp / exh)
                 			apply getLoop()
                 	let current : any = apply getLoop()
                     let kCount : int = RS.@getNumK(readSet)
@@ -119,7 +119,7 @@ struct
         		if I64Eq(old, current)
         		then return()
         		else
-        			do RS.@validate(readSet, stamp / exh)
+        			do RS.@commit-validate(readSet, stamp / exh)
         			apply lockClock()
         	do apply lockClock()
         	fun writeBack(ws:RS.item) : () = 
@@ -170,6 +170,7 @@ struct
                     do FLS.@set-key(READ_SET, RS.NilItem / exh)
                     do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
                     do FLS.@set-key(FF_KEY, enum(0) / exh)
+		    do Logging.@log-commit-tx()
                     return(res)
                 throw enter()
       	;

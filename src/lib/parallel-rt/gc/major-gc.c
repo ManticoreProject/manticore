@@ -26,6 +26,7 @@
 #include "gc-scan.h"
 #include <stdio.h>
 #include <inttypes.h>
+#include "eventlog.h"
 
 //ForwardObject of MajorGC
 /*! \brief Forward an object into the global-heap chunk reserved for the given vp.
@@ -115,6 +116,8 @@ MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
+    postEvent(vp, EVENT_MAJOR_GC);
+    
     Addr_t	heapBase = vp->heapBase;	
     Addr_t	oldSzB = vp->oldTop - heapBase;
   /* NOTE: we must subtract WORD_SZB here because globNextW points to the first
