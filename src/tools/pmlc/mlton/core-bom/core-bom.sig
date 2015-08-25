@@ -187,9 +187,6 @@ signature CORE_BOM =
       | Exn
       | Any
       | VProc
-      (* TODO(wings): decide whether Array and Vector should be first-class and 
-      present in this datatype, or should use the TyCon variant with special
-      tycon_t instances *)
       | Array of type_t
       | Vector of type_t
       | Cont of type_t list
@@ -260,6 +257,7 @@ signature CORE_BOM =
       val applyToArgs: t * BOMType.t list -> BOMType.t option
       val applyToArgs': t * BOMType.t vector -> BOMType.t option
 
+      val compare: t * t -> order
       val equal: t * t -> bool
     end
 
@@ -408,13 +406,14 @@ signature CORE_BOM =
     end
 
     structure Definition: sig
-      datatype t
-        = Fun of FunDef.t list
+      datatype 'a t
+        = Datatype of (TyCon.t * 'a) list
         | Exception of DataConsDef.t
         | HLOp of Attr.t list * ValId.t * Exp.t
-        (* | Import of Longcon.t * Type.t option * BOMType.t *)
+        | Fun of FunDef.t list
         | Extern of Val.t * CProto.t
-              (* TODO: datatypes *)
+        (* | Import of Longcon.t * Type.t option * BOMType.t *)
+      val mapDatatype: ('a -> 'b) -> 'a t -> 'b t
     end
 
     (* structure Decs : sig *)

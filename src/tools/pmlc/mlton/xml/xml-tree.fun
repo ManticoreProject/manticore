@@ -157,6 +157,11 @@ structure VarExp =
          else Var.layout var
    end
 
+structure PrimConDef = (* [PML] used in BOM declarations *)
+   struct
+      datatype t = T of Con.t * Type.t option * Type.t * Var.t(*CoreBOM.Val.t*)
+   end
+
 (*---------------------------------------------------*)
 (*           Expressions and Declarations            *)
 (*---------------------------------------------------*)
@@ -204,7 +209,7 @@ and dec =
                 tyvars: Tyvar.t vector,
                 var: Var.t}
  (* [PML] BOM declarations *)
-  | BOM of {bom: CoreBOM.Definition.t vector}
+  | BOM of {bom: (Tycon.t * PrimConDef.t vector) CoreBOM.Definition.t vector}
 and lambda = Lam of {arg: Var.t,
                      argType: Type.t,
                      body: exp,

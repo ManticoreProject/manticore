@@ -28,64 +28,131 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
   fun elaborateMLType' env ty = ElaborateCore.elaborateType (ty,
     ElaborateCore.Lookup.fromEnv env)
 
-
-  (* creating a new (possibly polymorphic) ML val/tycon from one exported by BOM *)
+  (* creating a new (maybe polymorphic) ML val/tycon from one exported by BOM *)
   fun elaborateBOMExport (export, tyEnvs as {env: Env.t, bomEnv: BOMEnv.t}) =
     let
       val elaborateMLType = elaborateMLType' env
       val mkBOMExport = CoreML.Dec.BOMExport
     in
       case ABOMExport.node export of
-        ABOMExport.Datatype (tyvars, tycon, bomLongId, bomTys, primConDefs) =>
-          (* TODO(wings): this case is mostly a blind adaptation of the TypBind case and is fairly wrong; finish it *)
+        ABOMExport.Datatype (tyvars, asttycon, bomLongId, bomTys, primConDefs) =>
+          (* make let bindings for all the names and types linking them to the
+          ML type for this BOM type which was originally created by
+          makeMLDatatype *)
           let
             (* elaborate tyvars with a simple conversion *)
             val tyvars' = Vector.map MLType.var tyvars
-            (* the name (to be used in ML) of the BOM definitions being exported *)
+            (* the name (for use in ML) of the BOM definitions being exported *)
             val tyId = CoreBOM.TyId.fromLongId bomLongId
 
-            (* then we try to find the pre-elaborated tycon in the environment before elaborating its
-            type parameters (in bomTys) and applying the tycon to them *)
+           (* find the corresponding ML tycon, created by makeMLDatatype *)
+           val (strids, id) = BOM.LongId.split bomLongId
+           val bomTyconSymbols = BOM.LongId.Id.toSymbol id :: List.map
+             BOM.LongId.Strid.toSymbol strids
+           val bomTycon = Ast.Longtycon.fromSymbols (bomTyconSymbols,
+             BOM.LongId.region bomLongId)
+           val mlTyconTypestr: Env.TypeStr.t =
+             case Env.lookupLongtycon(env, bomTycon) of
+                SOME typestr => typestr
+              | NONE => raise Fail ("failed to find referenced BOM datatype: "
+                ^ BOM.LongId.toString bomLongId)
 
-            (*val bomCon = CoreBOM.TyCon.new(tyId, [(*params*)])*)
-            (*BOM.Type.T_Con (tycon, map (fn (bomTy) => (ElaborateBOMCore.elaborateBOMType (bomTy, bomEnv))) bomTys)*)
+           val SOME mlTycon = Env.TypeStr.toTyconOpt mlTyconTypestr
+
+           val resultMLTy: CoreML.Type.t =
+              MLType.con (mlTycon, Vector.map MLType.var tyvars)
+
+            (* TODO(wings): insert a type alias into the env? *)
+
+            (* put all dcons into the environment and translate them to CoreML *)
+            val (primConDefs, cons) =
+              ListPair.unzip (List.map ((fn astPrimConDef =>
+                let
+                  val BOM.PrimConDef.T (mlConName, maybeTy, bomValLongId) =
+                    BOM.PrimConDef.node astPrimConDef
+                  val bomVal =
+                    case BOMEnv.ValEnv.lookup (bomEnv, CoreBOM.ValId.fromLongId
+                      bomValLongId) of
+                       SOME bv => bv
+                     | NONE => raise Fail ("failed to find referenced BOM data\
+                       \ constructor: " ^ BOM.LongId.toString bomValLongId)
+
+                  (* make an ML variable with the ML name we want to bind *)
+                  val mlVarSymbol = Ast.Symbol.fromString (Ast.Con.toString
+                    mlConName)
+                  val mlVar = Ast.Vid.toVar (Ast.Vid.fromSymbol (mlVarSymbol,
+                    Ast.Con.region mlConName))
+                  val mlVar' = ElaborateCore.Var.fromAst mlVar
+
+                  (* find the corresponding ML con, created by makeMLDatatype *)
+                  val (strids, id) = BOM.LongId.split bomValLongId
+                  val bomConSymbols = BOM.LongId.Id.toSymbol id :: List.map
+                    BOM.LongId.Strid.toSymbol strids
+                  val bomCon = Ast.Longcon.fromSymbols (bomConSymbols,
+                    BOM.LongId.region bomValLongId)
+                  val (mlCon, maybeArgScheme) = Env.lookupLongcon(env, bomCon)
+
+                  (* TODO(wings): ensure the con's actual type (i.e. conMLTy)
+                  unifies with the possibly ascribed type (i.e. maybeTy) *)
+
+                  (* TODO(wings): handle type arguments (???) *)
+
+                  val maybeArgMLTy = Option.map MLScheme.ty maybeArgScheme
+
+                  val conMLTy =
+                    case maybeArgMLTy of
+                       SOME argMLTy => MLType.arrow (argMLTy, resultMLTy)
+                     | NONE => resultMLTy
+
+                  (* mutate the environment to bind constructor variable *)
+                  val _ = Env.extendVar (env, mlVar, mlVar',
+                    MLScheme.fromType resultMLTy, {isRebind = false})
+                in
+                  (CoreML.PrimConDef.T (mlCon, maybeArgMLTy,
+                    resultMLTy, mlVar'), {con=mlCon,
+                                          name=mlConName,
+                                          arg=maybeArgMLTy,
+                                          ty=conMLTy})
+                end)
+              ) primConDefs)
+
+            (* find the pre-elaborated tycon in the environment then elaborate
+            its type parameters and apply the tycon to them *)
             val bomTyCon = case BOMEnv.TyEnv.lookup (bomEnv, tyId)
               of SOME x => x
-               | NONE => raise Fail "internal error: did not find tyId in environment!"
-            val bomTy = case BOMEnv.TypeDefn.applyToArgs (bomTyCon, [] (*Vector.foldl (op::) [] tyvars'*))
+               | NONE => raise Fail ("internal error: "
+                 ^ "did not find tyId for _datatype export in BOM environment")
+            (* TODO(wings): apply type variables? *)
+            val bomTy = case BOMEnv.TypeDefn.applyToArgs (bomTyCon, []
+              (*Vector.foldl (op::) [] tyvars'*))
               of SOME x => x
-               | NONE => raise Fail "internal error: arity mismatch applying empty arguments to tycon!"
-            val bomCon = (case bomTy(*ElaborateBOMCore.elaborateBOMType (bomTy, bomEnv)*)
-              of CoreBOM.BOMType.TyCon {con=bomCon,...} => bomCon
-               | _ => raise Fail "internal error: did not find TyCon BOMType when looking up _datatype in BOM environment"
-              (* end case *))
-            val kind = MLKind.Arity (Vector.length tyvars)
-            (* TODO: check kind matches *)
-            val mlTycon = Env.newTycon (Ast.Tycon.toString tycon,
-              kind, MLTycon.AdmitsEquality.Never, Ast.Tycon.region tycon)
-            (* Extend ML Type environment in place *)
-            val _ = Env.extendTycon (env, tycon, Env.TypeStr.tycon (mlTycon,
-             kind), {forceUsed = false, isRebind = false})
+               | NONE => raise Fail ("internal error: "
+                 ^ "arity mismatch applying empty arguments to tycon!")
+            val bomTycon = case bomTy
+              of CoreBOM.BOMType.TyCon {con=bomTycon,...} => bomTycon
+               | _ => raise Fail ("internal error: "
+                 ^ "did not find TyCon for _datatype export in BOM environment")
           in
-            (SOME (BOMExport.Datatype (mlTycon, bomCon, ())), tyEnvs)
+            (SOME (BOMExport.Datatype (mlTycon, bomTycon, primConDefs)), tyEnvs)
           end
-          (*raise Fail "Not implemented"*)
-      | ABOMExport.TypBind (tyvars, tycon, bomTy) =>
+      | ABOMExport.TypBind (tyvars, asttycon, bomTy) =>
           let
             (* This is all of the "elaboration" they do on tyvars *)
             val tyvars' = Vector.map MLType.var tyvars
             (* FIXME: error handling *)
             val bomCon = (case ElaborateBOMCore.elaborateBOMType (bomTy, bomEnv)
               of CoreBOM.BOMType.TyCon {con=bomCon,...} => bomCon
-(*               | CoreBOM.BOMType.Raw rawTy => BOM.BOMType.Raw BOM.BOMType.Int8*)
-               | ty => raise Fail ("FIXME: expected tycon but found primitive type: " ^ Layout.toString (BOM.BOMType.layout bomTy) ^ "...")
+               (* | CoreBOM.BOMType.Raw rawTy => BOM.BOMType.Raw BOM.BOMType.Int8 *)
+               | ty => raise Fail
+                   ("TODO(wings): expected tycon but found primitive type: "
+                   ^ Layout.toString (BOM.BOMType.layout bomTy) ^ "...")
               (* end case *))
             val kind = MLKind.Arity (Vector.length tyvars)
             (* TODO: check kind matches *)
-            val mlTycon = Env.newTycon (Ast.Tycon.toString tycon,
-              kind, MLTycon.AdmitsEquality.Never, Ast.Tycon.region tycon)
+            val mlTycon = Env.newTycon (Ast.Tycon.toString asttycon,
+              kind, MLTycon.AdmitsEquality.Never, Ast.Tycon.region asttycon)
             (* Extend ML Type environment in place *)
-            val _ = Env.extendTycon (env, tycon, Env.TypeStr.tycon (mlTycon,
+            val _ = Env.extendTycon (env, asttycon, Env.TypeStr.tycon (mlTycon,
              kind), {forceUsed = false, isRebind = false})
           in
             (SOME (BOMExport.TypBind (mlTycon, bomCon)), tyEnvs)

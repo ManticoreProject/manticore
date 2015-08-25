@@ -338,9 +338,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | Exn
     | Any
     | VProc
-    (* TODO(wings): decide whether Array and Vector should be first-class and 
-    present in this datatype, or should use the TyCon variant with special
-    tycon_t instances *)
     | Array of type_t
     | Vector of type_t
     | Cont of type_t list
@@ -354,8 +351,9 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   and tyargs_t
     = ArgTypes of type_t list
 
-  fun tyConEquals (TyC {uid=uid1, ...}, TyC {uid=uid2, ...}): bool =
-      uid1 = uid2
+  fun tyConCompare (TyC {uid=uid1, ...}, TyC {uid=uid2, ...}): order =
+      Int.compare (uid1, uid2)
+  fun tyConEquals tycs: bool = tyConCompare tycs = EQUAL
 
   (* Functions over mutually recursive types *)
   local
@@ -652,6 +650,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       applyToArgs (tyCon, List.tabulate (Vector.length tys,
         fn (i) => Vector.sub (tys, i)))
 
+    val compare = tyConCompare
     val equal = tyConEquals
 
     val layout = layoutTycon
@@ -1090,12 +1089,22 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   end
 
   structure Definition = struct
-    datatype t
-      = Fun of FunDef.t list
+    datatype 'a t
+      = Datatype of (TyCon.t * 'a) list
       | Exception of DataConsDef.t
       | HLOp of Attr.t list * ValId.t * Exp.t
-      (* | Import of BOMType.t *)
+      | Fun of FunDef.t list
       | Extern of Val.t * CProto.t
+      (* | Import of BOMType.t *)
+
+    fun mapDatatype (f: 'a -> 'b) (def: 'a t): 'b t =
+      case def of
+        Datatype dtdefs => Datatype (List.map
+          (fn (tycon, a) => (tycon, f a)) dtdefs)
+      | Exception x => Exception x
+      | HLOp x => HLOp x
+      | Fun x => Fun x
+      | Extern x => Extern x
   end
 
   (* structure Decs = struct *)

@@ -104,6 +104,9 @@ structure Xexp =
       end
    end
 
+structure CoreBOM = CoreML.CoreBOM (* [PML] *)
+structure BOMType = CoreBOM.BOMType (* [PML] *)
+
 fun enterLeave (e: Xexp.t, t, si): Xexp.t =
    Xexp.fromExp (Xml.Exp.enterLeave (Xexp.toExp e, t, si), t)
 
@@ -638,28 +641,66 @@ fun defunctorize (CoreML.Program.T {decs}) =
              | Val {rvbs, vbs, ...} =>
                   (Vector.foreach (rvbs, loopLambda o #lambda)
                    ; Vector.foreach (vbs, loopExp o #exp))
-             (* [PML] process top-level BOM definitions: datatype lifting (potentially incl.
-             changing free type variables to bound ones), possibly other transformations *)
+               (* [PML] process top-level BOM exports and definitions, doing
+               datatype lifting (potentially including changing free type
+               variables to bound ones) and possibly other transformations *)
              | BOMExport export =>
                 (case export of
-                    CoreML.BOMExport.Datatype (mlTyc, bomTyc, primCons) =>
-                       raise Fail "TODO(wings): lift datatypes from BOMExport Datatype"
-                  | CoreML.BOMExport.TypBind (mlTyc, bomTyc) =>
-                       raise Fail "TODO(wings): lift datatypes from BOMExport TypBind"
-                  (* XXX(wings): I don't know if the datatypes referenced in a ValBind are guaranteed to be imported properly/ *)
+                    (* datatype exports are essentially just shorthand for type
+                    and value exports *)
+                    CoreML.BOMExport.Datatype (mlTyc, bomTyc, primCons) => ()
+                    (* TODO(wings): determine whether BOMExport TypBind should
+                    create an ML-side type alias *)
+                  | CoreML.BOMExport.TypBind (mlTyc, bomTyc) => ()
+                    (* TODO(wings): determine whether types referenced in a
+                    ValBind need implicit ML-side type aliases created (e.g. for
+                    error messages later on, if it is necessary) *)
                   | CoreML.BOMExport.ValBind (mlVar, ty, bomVal) => ())
-             (* APOLOGIA(wings): a BOM module only has function, hlop, exception, and extern
-             definitions by the time it reaches defunctorize; none of these (transitively)
-             introduce new datatypes, but only reference existing ones. the exception
-             datatype will be built in , so we don't need to worry about it here. therefore,
-             we can get away with not doing anything for BOM modules here. *)
-             | BOMModule (CoreML.BOMModule.T {imports = imports (*: BOMImport.t list*), defs = defs (*: CoreBOM.Definition.t list*)}) =>
+               (* BOM definitions are not nested so the only BOM definitions we
+               have to traverse to lift datatypes are Datatype definitions *)
+             | BOMModule (CoreML.BOMModule.T {imports = imports, defs = defs}) =>
                 List.foreach (defs, (fn def =>
-                   case def of 
-                      CoreML.CoreBOM.Definition.Fun (fundefs) => ()
-                    | CoreML.CoreBOM.Definition.Exception (dataConsDef) => ()
-                    | CoreML.CoreBOM.Definition.HLOp (attrs, valid, exp) => ()
-                    | CoreML.CoreBOM.Definition.Extern (val_, cProto) => ()
+                   case def of
+                      CoreBOM.Definition.Datatype datatypedefs =>
+                         (* add the ML datatype for each BOM datatype to the
+                         list of program datatypes, and mutually associate it
+                         with each of its data constructors *)
+                         (List.map (datatypedefs, fn
+                            (bomTyc, (mlTycon, primConDefs)) =>
+                            let
+                               val cons =
+                                  Vector.fromList
+                                  (List.map
+                                   (primConDefs, fn
+                                      CoreML.PrimConDef.T (con, maybeArgTy, resultTy, _) =>
+                                         {con=con, arg=maybeArgTy}))
+                               val _ =
+                                  setTyconCons (mlTycon,
+                                                Vector.map (cons, fn {arg, con} =>
+                                                            {con = con,
+                                                             hasArg = isSome arg}))
+                               val cons =
+                                  Vector.map
+                                  (cons, fn {arg, con} =>
+                                   (setConTycon (con, mlTycon)
+                                    ; {arg = Option.map (arg, loopTy),
+                                       con = con}))
+
+                               val _ =
+                                  if Tycon.equals (mlTycon, Tycon.reff)
+                                     then ()
+                                  else
+                                     (* TODO(wings): verify that empty tyvars are ok here *)
+                                     List.push (datatypes, {cons = cons,
+                                                            tycon = mlTycon,
+                                                            tyvars = Vector.new0 ()})
+                            in
+                               ()
+                            end); ())
+                    | CoreBOM.Definition.Exception (dataConsDef) => ()
+                    | CoreBOM.Definition.HLOp (attrs, valid, exp) => ()
+                    | CoreBOM.Definition.Fun (fundefs) => ()
+                    | CoreBOM.Definition.Extern (val_, cProto) => ()
                 ))
          end
       and loopExp (e: Cexp.t): unit =
@@ -946,15 +987,48 @@ fun defunctorize (CoreML.Program.T {decs}) =
              | BOMExport export =>
                 (case export of
                     CoreML.BOMExport.Datatype (mlTyc, bomTyc, primCons) =>
-                       raise Fail "TODO(wings): create XML for BOMExport Datatype"
+                       (* the definition itself has no semantics; the imports
+                       modify local env to point at the appropriate types/dcons *)
+                       let
+                          (* bind each con *)
+                          fun decCon (CoreML.PrimConDef.T (mlCon, maybeArgMLTy, resultMLTy, mlVar)) =
+                             let
+                                val dconMLTy =
+                                   (case maybeArgMLTy of
+                                       SOME argMLTy => CoreML.Type.arrow
+                                          (argMLTy, resultMLTy)
+                                     | NONE => resultMLTy)
+                                val dconTy: Xtype.t = loopTy dconMLTy
+                                val resultTy: Xtype.t = loopTy resultMLTy
+                                val var: Var.t = Var.newNoname ()
+                             (*   val dconTy = case maybeArgMLTy of
+                                   SOME argMLTy => CoreML.Type.arrow (argMLTy, resultMLTy)
+                                 | NONE => resultMLTy*)
+                             in
+                                Xdec.PolyVal {tyvars = Vector.new0 (),
+                                              var = mlVar (*mlVar (* mlCon*)*),
+                                              ty = resultTy,
+                                              exp = Xexp.toExp ((*XprimExp.BOMVal bomConVal*)
+                                                    Xexp.conApp {arg = NONE(*SOME arg*),
+                                                                 con = mlCon,
+                                                                 targs = Vector.new0 ()(*targs*),
+                                                                 ty = resultTy})
+                                              }
+                             end
+                          val decs = List.map (primCons, decCon)
+                       in
+                          Xexp.lett {decs = decs,
+                                     body = e}
+                       end
+                       (*raise Fail "TODO(wings): create XML for BOMExport Datatype"*)
                   | CoreML.BOMExport.TypBind (mlTyc, bomTyc) =>
-                       raise Fail "TODO(wings): create XML for BOMExport TypBind"
+                       e(*raise Fail "TODO(wings): create XML for BOMExport TypBind"*)
                   | CoreML.BOMExport.ValBind (mlVar, ty, bomVal) =>
-                     (* this is a binding of the form "_val mlName = _prim (bomName);",
-                     which is effectively a let-binding. however, we can't really
-                     represent a BOM value RHS (which might be a C function, a
-                     BOM function, or a BOM HLop) in XML. so we treat it as bogus
-                     but tag it so that Translate can turn it into something sane. *)
+                       (* this is a binding of the form "_val mlName = _prim (bomName);",
+                       which is effectively a let-binding. however, we can't really
+                       represent a BOM value RHS (which might be a C function, a
+                       BOM function, or a BOM HLop) in XML. so we treat it as bogus
+                       but tag it so that Translate can turn it into something sane. *)
 (*                     Xexp.lett {decs = [Xdec.PolyVal {var = mlVar,
                                                       ty = loopTy ty,
                                                       tyvars = Vector.new0 (),
@@ -963,15 +1037,25 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                                                           targs = Vector.new1 (loopTy ty),
                                                                           ty = loopTy ty})}],
                                 body = e}*)
-                     Xexp.lett {decs = [Xdec.MonoVal {var = mlVar,
-                                                      ty = loopTy ty,
-                                                      exp = XprimExp.BOMVal bomVal}],
-                                body = e}
+                       Xexp.lett {decs = [Xdec.MonoVal {var = mlVar,
+                                                        ty = loopTy ty,
+                                                        exp = XprimExp.BOMVal bomVal}],
+                                  body = e}
 (*                       raise Fail "TODO(wings): create XML for BOMExport ValBind"*))
-             (* APOLOGIA(wings): I think we should be able to ignore imports here and just pass definitions through *)
-             | BOMModule (CoreML.BOMModule.T {imports = imports (*: BOMImport.t list*), defs = defs (*: CoreBOM.Definition.t list*)}) =>  (*Xexp.BOM defs*)
-                  Xexp.lett {body = e,
-                             decs = [Xdec.BOM {bom = MLVector.fromList defs}]}
+             (* APOLOGIA(wings): I think we should be able to ignore imports here
+             and just pass definitions through *)
+             | BOMModule (CoreML.BOMModule.T {imports = imports, defs = defs}) =>
+                  let
+                     fun convert(CoreML.PrimConDef.T (con, maybeArgTy, returnTy, mlVar)) =
+                        Xml.PrimConDef.T(con, Option.map(maybeArgTy, loopTy), loopTy returnTy, mlVar)
+                     val defs' = MLVector.fromList (List.map (defs,
+                        CoreBOM.Definition.mapDatatype
+                        (fn (mlTycon, primConDefs) =>
+                           (mlTycon, Vector.fromList (List.map (primConDefs, convert))))))
+                  in
+                     Xexp.lett {body = e,
+                                decs = [Xdec.BOM {bom = defs'}]}
+                  end
          end
       and loopDecs (ds: Cdec.t vector, (e: Xexp.t, t: Xtype.t)): Xexp.t =
          loopDecsList (Vector.toList ds, (e, t))

@@ -153,10 +153,17 @@ signature CORE_ML =
 
       (* This needs to live here, rather than in CoreBOM, because
       CoreBOM doesn't know anything about ML types, which we need here *)
+      structure PrimConDef: sig
+        datatype t = T of Con.t * Type.t option * Type.t * Var.t(*CoreBOM.Val.t(*BOMId.t*)*)
+
+        (*val arity = arityOfDataCons
+        val error = ConsDef (BOMId.bogus, NONE)*)
+      end
+
       structure BOMExport:
         sig
           datatype t
-            = Datatype of Tycon.t * CoreBOM.TyCon.t * unit(*CoreBOM.PrimConDef.t list*)
+            = Datatype of Tycon.t * CoreBOM.TyCon.t * PrimConDef.t list
             | TypBind of Tycon.t * CoreBOM.TyCon.t
             | ValBind of Var.t * Type.t * CoreBOM.Val.t
           (* FIXME: fill in the rest *)
@@ -173,7 +180,7 @@ signature CORE_ML =
         sig
           datatype t
             = T of {imports: BOMImport.t list,
-              defs: CoreBOM.Definition.t list}
+              defs: (Tycon.t * PrimConDef.t list) CoreBOM.Definition.t list}
         end
 
 

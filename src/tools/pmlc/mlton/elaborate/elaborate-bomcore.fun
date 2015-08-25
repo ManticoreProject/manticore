@@ -851,12 +851,13 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     end
 
 
-  fun extendEnvForDataTypeDef (dtDef: BOM.DataTypeDef.t, bomEnv) =
+  fun extendEnvForDataTypeDef (dtDef: BOM.DataTypeDef.t, (tyCons, bomEnv)) =
     let
       val (tyId, tyParams) = dataTypeDefToTyIdAndParams dtDef
+      val tyCon = CoreBOM.TyCon.new (tyId, map CoreBOM.TyParam.fromAst tyParams)
     in
-      BOMEnv.TyEnv.extend (bomEnv, tyId, BOMEnv.TypeDefn.newCon (
-        CoreBOM.TyCon.new (tyId, map CoreBOM.TyParam.fromAst tyParams)))
+      (tyCon::tyCons, BOMEnv.TyEnv.extend (bomEnv, tyId, BOMEnv.TypeDefn.newCon (
+        tyCon)))
     end
 
   fun elaborateDataConsDef (dtCon: BOM.DataConsDef.t,
@@ -922,14 +923,17 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
     end
 
   (* FIXME: these should be returning bomdecs *)
-  fun elaborateBOMDec (dec: BOM.Definition.t, bomEnv): CoreBOM.Definition.t option * BOMEnv.t =
+  fun elaborateBOMDec (makeMLDatatype: BOMEnv.t -> CoreBOM.TyCon.t -> 'a) (dec: BOM.Definition.t, bomEnv): 'a CoreBOM.Definition.t option * BOMEnv.t =
     case BOM.Definition.node dec of
       BOM.Definition.Datatype dtdefs =>
         let
-          val envWithTys = foldl extendEnvForDataTypeDef bomEnv dtdefs
+          (* put types for the mutually recursive datatypes into the env *)
+          val (tyCons, envWithTys) = foldl extendEnvForDataTypeDef ([], bomEnv) dtdefs
+          (* put data constructors for each into the env *)
           val envWithDefs = foldl elaborateDataTypeDef envWithTys dtdefs
+          val tyCons_mlTycons = List.map (fn tyCon => (tyCon, makeMLDatatype envWithDefs tyCon)) tyCons
         in
-          (NONE, envWithDefs)
+          (SOME (CoreBOM.Definition.Datatype tyCons_mlTycons), envWithDefs)
         end
 
     | BOM.Definition.TypeDefn (bomId, maybeTyParams, bomTy) =>

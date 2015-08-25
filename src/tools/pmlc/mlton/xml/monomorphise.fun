@@ -422,7 +422,11 @@ fun monomorphise (Xprogram.T {datatypes, body, ...}): Sprogram.t =
                                   end))})))
                 end
            (* TODO(wings): this is likely where we should expand typecase, rather than performing it at runtime. *)
-           | Xdec.BOM {bom} => (fn () => [Sdec.BOM{bom = bom}]) (* [PML] *)
+           | Xdec.BOM {bom} => (* [PML] *)
+                  (* we do *not* call setCon/setTycon on the ML datatypes
+                  underlying BOM datatypes here, because they are in the
+                  datatypes list and will be processed there *)
+                  (fn () => [Sdec.BOM{bom = bom}])
            | Xdec.Exception {con, arg} =>
                 let
                    val con' =

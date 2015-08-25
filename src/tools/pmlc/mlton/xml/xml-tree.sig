@@ -119,6 +119,11 @@ signature XML_TREE =
             val layout: t -> Layout.t
          end
 
+      structure PrimConDef: (* [PML] used in BOM declarations *)
+         sig
+            datatype t = T of Con.t * Type.t option * Type.t * Var.t
+         end
+
       structure Dec:
          sig
             type exp = Lambda.exp
@@ -138,7 +143,7 @@ signature XML_TREE =
                            tyvars: Tyvar.t vector,
                            var: Var.t}
             (* [PML] BOM declarations *)
-             | BOM of {bom: CoreBOM.Definition.t vector}
+             | BOM of {bom: (Tycon.t * PrimConDef.t vector) CoreBOM.Definition.t vector}
 
             val layout: t -> Layout.t
          end

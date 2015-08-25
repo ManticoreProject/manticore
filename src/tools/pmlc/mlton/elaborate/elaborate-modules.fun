@@ -82,6 +82,13 @@ structure ElaborateBOMImports = ElaborateBOMImports (
 )
 
 structure AstBOM = Ast.BOM
+structure BOMType = CoreBOM.BOMType
+
+structure BOMTyConKV = struct
+  type ord_key = CoreBOM.TyCon.t
+  val compare = CoreBOM.TyCon.compare
+end
+structure TyConMap = RedBlackMapFn (BOMTyConKV)
 
 val elabStrdecInfo = Trace.info "ElaborateModules.elabStrdec"
 val elabStrexpInfo = Trace.info "ElaborateModules.elabStrexp"
@@ -289,6 +296,189 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                                     (Env.extendStrid (E, arg, formal)
                                      ; elabStrexp (body, nest)))))
          end
+
+      (* creates an ML Tycon.t from a BOM TyCon.t.
+
+      this is needed because defunctorization and XML analyze usage of data
+      constructors, and the best way for BOM to benefit from that analysis is to
+      make its types into the MLton representation beforehand (and pick them out
+      afterward)
+
+      therefore, we traverse all BOM datatype definitions (as well as any BOM
+      primitive types present in the program), and lazily create corresponding
+      MLton tycons for the BOM types referenced from the datatype definitions
+
+      this allows BOM types being exported into MLton code via simply giving
+      names to the underlying MLton type
+
+      most of this code just manages the cache of type and tycon mappings,
+      looking up BOM datatype definitions out of the given BOMEnv and storing
+      the MLton datatypes it creates into the ML Env
+
+      makeMLTycon is the heart of datatype translation, and it may be a little
+      confusing, but mostly it cribs from elaborate-core's elabDatBind, since it
+      does a similar (if larger) job *)
+      fun makeMLDatatype (env): (BOMEnv.t) -> ((*tyvars, *)CoreBOM.TyCon.t) ->
+         (CoreML.Tycon.t * CoreML.PrimConDef.t list) =
+         fn (bomEnv) =>
+         let
+            val mapping = ref TyConMap.empty
+
+            (* define builtin tycons corresponding to CoreBOM.Type.t variants *)
+            val recordTycon = Env.newTycon ("record", Env.TypeStr.Kind.Nary,
+               Env.TypeEnv.Tycon.AdmitsEquality.Sometimes, Region.bogus)
+            (* tuples are handled specially in MLton so no tycon is needed *)
+            val bomfunTycon = Env.newTycon ("fun", Env.TypeStr.Kind.Arity 3,
+               Env.TypeEnv.Tycon.AdmitsEquality.Always, Region.bogus)
+            val bignumTycon = Env.newTycon ("bignum", Env.TypeStr.Kind.Arity 0,
+               Env.TypeEnv.Tycon.AdmitsEquality.Always, Region.bogus)
+            val anyTycon = Env.newTycon ("any", Env.TypeStr.Kind.Arity 0,
+               Env.TypeEnv.Tycon.AdmitsEquality.Always (* XXX(wings): does Any admit equality? *), Region.bogus)
+            val vprocTycon = Env.newTycon ("vproc", Env.TypeStr.Kind.Arity 0,
+               Env.TypeEnv.Tycon.AdmitsEquality.Always, Region.bogus)
+            val arrayTycon = Env.newTycon ("array", Env.TypeStr.Kind.Arity 1,
+               Env.TypeEnv.Tycon.AdmitsEquality.Always (* instance identity *), Region.bogus)
+            val vectorTycon = Env.newTycon ("vector", Env.TypeStr.Kind.Arity 1,
+               Env.TypeEnv.Tycon.AdmitsEquality.Sometimes, Region.bogus)
+            val contTycon = Env.newTycon ("cont", Env.TypeStr.Kind.Nary,
+               Env.TypeEnv.Tycon.AdmitsEquality.Never (* XXX(wings): do conts admit equality? *), Region.bogus)
+            val addrTycon = Env.newTycon ("addr", Env.TypeStr.Kind.Arity 1,
+               Env.TypeEnv.Tycon.AdmitsEquality.Always, Region.bogus)
+
+            fun convertMLTy(bomTy: BOMType.t): CoreML.Type.t =
+               case bomTy of
+                  (* TODO(wings): handle bool!  => CoreML.Type.bool *)
+                  BOMType.Tuple elems => CoreML.Type.tuple (Vector.fromList (List.map (elems, fn (mutable, ty) => convertMLTy ty)))
+                | _ =>
+                     let
+                        val (tycon, args) = extractTyconAndArgs(bomTy)
+                        val args' = Vector.fromList (List.map (args, convertMLTy))
+                     in
+                        Env.TypeStr.apply (Env.TypeStr.tycon (tycon, raise Fail "kind"), args')
+                     end
+
+            and convertMLTycon(bomTyc: CoreBOM.TyCon.t): (CoreML.Tycon.t * CoreML.PrimConDef.t list) =
+               case TyConMap.find(!mapping, bomTyc) of
+                        SOME mlTyconDef => mlTyconDef
+                      | NONE =>
+                           let
+                              val mlTyconDef = makeMLTycon bomTyc
+                           in
+                              mapping := TyConMap.insert(!mapping, bomTyc, mlTyconDef);
+                              mlTyconDef
+                           end
+            (* XXX(wings): the "TODO" failures here are unimplemented but the
+            other raises here must fail *)
+            and extractTyconAndArgs(bomTy: BOMType.t): (CoreML.Tycon.t * BOMType.t list) =
+               case bomTy of
+                  BOMType.Param tyParam => raise Fail "trying to find tycon for TyParam"
+                | BOMType.TyCon {con, args} => (#1 (convertMLTycon(con)), args)
+                | BOMType.Con {dom, rng} => (raise Fail "TODO(wings): find tycon for Con", [dom, rng])
+                | BOMType.Record fields => (recordTycon, raise Fail "TODO(wings): fields")
+                | BOMType.Tuple elems => raise Fail "trying to find tycon for tuple"
+                | BOMType.Fun {dom, cont, rng} => (bomfunTycon, dom @ cont @ rng)
+                  (* TODO(wings): concatenating here cannot be right; maybe
+                  we should have a separate BOMType for BOM function types,
+                  since their continuation types are known "early" *)
+                | BOMType.BigNum => (bignumTycon, [])
+                | BOMType.Exn => raise Fail "trying to find tycon for exception"
+                | BOMType.Any => (anyTycon, [])
+                | BOMType.VProc => (vprocTycon, [])
+                | BOMType.Array elemty => (arrayTycon, [elemty])
+                | BOMType.Vector elemty => (vectorTycon, [elemty])
+                | BOMType.Cont elemtys => (contTycon, elemtys)
+                | BOMType.CFun cproto => raise Fail "trying to find tycon for cfun"
+                | BOMType.Addr destty => (addrTycon, [destty])
+                | BOMType.Raw r => (raise Fail "TODO(wings): find tycon for raw type", [])
+                | BOMType.Error => raise Fail "trying to find tycon for <type error>"
+
+            and makeMLTycon (bomtyc as CoreBOM.TyC {id, definition, params, ...}):
+               (CoreML.Tycon.t * CoreML.PrimConDef.t list) =
+               let
+                  val primConDefs = !definition
+
+                  fun makeMLTyVar tyvar = Env.TypeEnv.Tyvar.newString (CoreBOM.TyParam.name tyvar, {left=SourcePos.bogus, right=SourcePos.bogus})
+                  (* elaborate tyvars with a simple conversion *)
+                  val tyvars = MLVector.fromList (MLList.map makeMLTyVar params)
+                  val tyvars' = MLVector.map Env.TypeEnv.Type.var tyvars
+                  (* the name (to be used in ML) of the BOM definitions being exported *)
+                  val tyId = id
+
+                  val astTycon = Ast.Tycon.fromSymbol (Ast.Symbol.fromString (CoreBOM.TyId.toString id), Region.bogus)
+
+                  val kind = Env.TypeStr.Kind.Arity (Vector.length tyvars)
+                  (* TODO(wings): check kind matches *)
+                  val mlTycon = Env.newTycon (CoreBOM.TyId.toString id,
+                    kind, Env.TypeEnv.Tycon.AdmitsEquality.Never, Ast.Tycon.region astTycon)
+                  val resultMLTy: CoreML.Type.t =
+                     Env.TypeEnv.Type.con (mlTycon, tyvars')
+
+                  (* mutate the ML type env to store the tycon *)
+                  val _ = Env.extendTycon (env, astTycon, Env.TypeStr.tycon (mlTycon,
+                     kind), {forceUsed = false, isRebind = false})
+
+                  val _ = (print "pre-primcondef search, bomEnv="; BOMEnv.ValEnv.printKeys bomEnv)
+
+                  (* place all data cons into the environment and translate them to CoreML *)
+                  val (primConDefs, cons) = ListPair.unzip (List.map (primConDefs, (fn CoreBOM.DataConsDef.ConsDef (bomId, maybeArgTy) =>
+                     let
+                        val bomVal =
+                          case BOMEnv.ValEnv.lookup (bomEnv, CoreBOM.ValId.fromBOMId' bomId) of
+                             SOME bv => bv
+                           | NONE => raise Fail ("failed to find referenced BOM name: "
+                             ^ CoreBOM.BOMId.toString bomId)
+
+                        val conName = CoreBOM.BOMId.toString bomId
+                        val mlCon = CoreML.Con.fromString (conName)
+                        val mlConName = Ast.Con.fromSymbol (Ast.Symbol.fromString (conName), Region.bogus)
+
+                        (*dummy var*)
+                        val mlVar = Ast.Vid.toVar (Ast.Vid.fromSymbol (Ast.Symbol.fromString ("dummy"), Region.bogus))
+                        val mlVar' = ElaborateCore.Var.fromAst mlVar
+
+                        val maybeArgMLTy = Option.map (maybeArgTy, convertMLTy)
+                        val conMLTy =
+                          case maybeArgMLTy of
+                             SOME argMLTy => CoreML.Type.arrow (argMLTy, resultMLTy)
+                           | NONE => resultMLTy
+                      in
+                         (CoreML.PrimConDef.T (mlCon, maybeArgMLTy, resultMLTy, mlVar'),
+                            {con=mlCon,
+                            name=mlConName,
+                            arg=maybeArgMLTy,
+                            ty=conMLTy})
+                      end)
+                    ))
+
+                  (* make various records the same way elaborate-core does *)
+                  val (schemes, datatypeCons) =
+                     ListPair.unzip
+                     (List.map
+                     (cons, fn {con, name, arg, ty} =>
+                         let
+                            val scheme =
+                               Env.TypeEnv.Scheme.make {canGeneralize = true,
+                                                        ty = ty,
+                                                        tyvars = tyvars}
+                         in
+                            (scheme, {arg = arg, con = con})
+                         end))
+                  val (schemes, datatypeCons) = (Vector.fromList schemes, Vector.fromList datatypeCons)
+                  val makeCons =
+                     Env.newCons (env, Vector.fromList (List.map (cons, fn {con, name, ...} => {con=con, name=name})))
+                  val typeStr = Env.TypeStr.data (mlTycon, kind, makeCons schemes)
+
+                  (* mutate the ML type env to associate the cons with the tycon (???) *)
+                  val _ = Env.extendTycon (env, astTycon, typeStr,
+                     {forceUsed = false,
+                     isRebind = true})
+               in
+                  (mlTycon, primConDefs)
+               end
+         in
+            convertMLTycon
+         end
+
       fun elabTopdec arg: (Decs.t * BOMEnv.t) =
          (* TODO: I had to disable this to add in the BOMEnv, fix it later *)
          (* Trace.traceInfo' (elabTopdecInfo, *)
@@ -360,7 +550,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                     val (bomModule, bomEnv') =
                       (fn (defs, bomEnv') => (CoreML.BOMModule.T {
                         imports = imports, defs = rev defs}, bomEnv'))
-                        (MLVector.foldl (foldOverEnv ElaborateBOMCore.elaborateBOMDec)
+                        (MLVector.foldl (foldOverEnv (ElaborateBOMCore.elaborateBOMDec (makeMLDatatype env)))
                         ([], bomEnv) bomDecs)
 
                     val () = Control.checkForErrors "elaborate"

@@ -19,10 +19,12 @@ signature ELABORATE_BOMCORE =
   sig
     include ELABORATE_BOMCORE_STRUCTS
 
-
     (* need to return a Decs.t for elaborate-modules.fun  *)
     val elaborateBOMDec:
-      Ast.BOM.Definition.t * BOMEnv.t -> CoreBOM.Definition.t option * BOMEnv.t
+      (BOMEnv.t -> CoreBOM.TyCon.t -> (CoreML.Tycon.t * CoreML.PrimConDef.t list))
+          -> Ast.BOM.Definition.t * BOMEnv.t ->
+          (CoreML.Tycon.t * CoreML.PrimConDef.t list)
+          CoreBOM.Definition.t option * BOMEnv.t
 
     (* Elaborate a BOM type. Needs to be exposed so that
     exports can be elaborated *)

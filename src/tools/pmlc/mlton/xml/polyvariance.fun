@@ -60,11 +60,12 @@ fun lambdaSize (Program.T {body, ...}): Lambda.t -> int =
            | Exception _ => n + 1
            | BOM {bom=bomDecs} => MLVector.foldl (fn (bomDec, n) =>
                                            leafBOM (bomDec, n)) n bomDecs) (* [PML] *)
-      and leafBOM (bomDec: CoreBOM.Definition.t, n: int): int =
+      and leafBOM (bomDec (*: 'a CoreBOM.Definition.t*), n: int): int =
          case bomDec of
-            CoreBOM.Definition.Fun funs => loopBOMFuns (funs, n)
+            CoreBOM.Definition.Datatype dataTypeDef => n
           | CoreBOM.Definition.Exception dataConsDef => n + 1
           | CoreBOM.Definition.HLOp (attrs, vals, exp) => loopBOMExp (exp, n + 1)
+          | CoreBOM.Definition.Fun funs => loopBOMFuns (funs, n)
           | CoreBOM.Definition.Extern (name, cProto) => n
       and loopBOMFuns (funs, n): int =
           (* XXX(wings): should we store the cost of each BOM function declarations as is done for ML lambdas? *)
