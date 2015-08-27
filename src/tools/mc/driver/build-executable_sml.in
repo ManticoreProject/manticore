@@ -68,13 +68,16 @@ structure BuildExecutable : sig
 	  val logging = Controls.get BasicControl.logging
 	  val debug = Controls.get BasicControl.debug
 	  val perf = Controls.get BasicControl.perf
-	  val (cFlags, libName) = (case (gcStats, logging, debug, perf)
-		 of (true, false, false, false) => (cFlags, "mcrt-stats")
-		  | (_, false, false, false) => (cFlags, "mcrt")
-		  | (_, true, false, false) => (cFlags, "mcrt-log")
-		  | (_, false, true, false) => ("-g "^cFlags^" -O0", "mcrt-debug")
-		  | (_, true, true, false) => ("-g "^cFlags^" -O0", "mcrt-log-debug")
-		  | (_, _, _, true) => (cFlags, "mcrt-perf")
+	  val eventLog = Controls.get BasicControl.eventLog
+	  val (cFlags, libName) = (case (gcStats, logging, debug, perf, eventLog)
+		 of (true, false, false, false, false) => (cFlags, "mcrt-stats")
+		  | (_, false, false, false, false) => (cFlags, "mcrt")
+		  | (_, true, false, false, false) => (cFlags, "mcrt-log")
+		  | (_, false, true, false, false) => ("-g "^cFlags^" -O0", "mcrt-debug")
+		  | (_, true, true, false, false) => ("-g "^cFlags^" -O0", "mcrt-log-debug")
+		  | (_, _, _, true, false) => (cFlags, "mcrt-perf")
+		  | (_, _, true, _, true) => (cFlags, "mcrt-eventlog-debug")
+		  | (_, _, _, _, true) => (cFlags, "mcrt-eventlog")
 		(* end case *))
 	  val filename = OS.FileSys.tmpName()
           val filenamec = concat[filename,".c"]

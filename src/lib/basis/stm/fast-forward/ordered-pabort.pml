@@ -252,7 +252,7 @@ struct
     val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
     val commit : unit -> unit = _prim(@commit-wrapper)    
 
-    val _ = Ref.set(STMs.stms, ("ordered", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
+    (*val _ = Ref.set(STMs.stms, ("ordered", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)*)
 
 end
 

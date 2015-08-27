@@ -69,10 +69,13 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    vp->sigPending = M_FALSE;
 	    vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
 	}
-	
+#ifdef EVENT_LOGGING
 	postSchedEvent(vp, EVENT_RUN_THREAD, 0);
+#endif
         RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
+#ifdef EVENT_LOGGING
 	postSchedEvent(vp, EVENT_STOP_THREAD, 0);
+#endif
 	
 	Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
 
@@ -83,9 +86,13 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	   */
 	    if ((LimitPtr(vp) < vp->allocPtr) || vp->globalGCPending) {
 	      /* request a minor GC */
+#ifdef EVENT_LOGGING
 		postEvent(vp, EVENT_GC_START);
+#endif
 		MinorGC (vp);
+#ifdef EVENT_LOGGING
 		postEvent(vp, EVENT_GC_END);
+#endif
 	    }
 	  /* check for asynchronous signals */
 	    if (oldLimitPtr == 0) {

@@ -14,7 +14,7 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
 
     fast-forward/read-set.pml
 
-    fast-forward/ordered-pabort.pml
+(*    fast-forward/ordered-pabort.pml*)
 
     fast-forward/partial-stm.pml
 

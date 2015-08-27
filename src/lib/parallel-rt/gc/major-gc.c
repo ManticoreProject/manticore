@@ -87,6 +87,7 @@ MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal
             MemChunk_t *tmp = scanChunk;
             scanChunk = scanChunk->next;
 
+	    
 #ifndef NDEBUG
             if (GCDebug >= GC_DEBUG_MAJOR ||
                 ((GCDebug >= GC_DEBUG_GLOBAL) && inGlobal))
@@ -116,7 +117,9 @@ MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
+#ifdef EVENT_LOGGING`
     postEvent(vp, EVENT_MAJOR_GC);
+#endif
     
     Addr_t	heapBase = vp->heapBase;	
     Addr_t	oldSzB = vp->oldTop - heapBase;

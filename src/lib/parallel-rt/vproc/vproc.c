@@ -99,10 +99,11 @@ void VProcInit (bool isSequential, Options_t *opts)
              MAX_NUM_VPROCS, NumVProcs);
     }
 
-    //TODO: create a flag that will only do this if specified by the user
-    initEventLogging();
-
+#ifdef EVENT_LOGGING
+    const char *logFile = GetStringOpt(opts, "-log", "eventlog.log");
+    initEventLogging(logFile);
     postEventStartup(NumVProcs);
+#endif
     
 #ifdef TARGET_DARWIN
     denseLayout = true;  // no affinity support on Mac OS X
@@ -379,13 +380,16 @@ void VProcExit (VProc_t *vp)
 	    vp->id, TIMER_GetTime(&(vp->timer)));
 #endif
 
+#ifdef EVENT_LOGGING
     postSchedEvent(vp, EVENT_STOP_THREAD, 0);
+#endif
     
     BarrierWait(&ShutdownBarrier);
 
     if (vp == VProcs[0]) {
-
+#ifdef EVENT_LOGGING
 	endEventLogging();
+#endif
 	
       /* assign vproc 0 to finalize the runtime state */
 	LogVProcExitMain (vp);

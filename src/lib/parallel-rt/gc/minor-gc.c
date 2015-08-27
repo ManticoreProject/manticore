@@ -61,9 +61,6 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots);
  */
 void MinorGC (VProc_t *vp)
 {
-
-    checkReadSet(vp, "Start of Minor GC");
-    
     Addr_t	nurseryBase = vp->nurseryBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to-space */
@@ -181,18 +178,14 @@ void MinorGC (VProc_t *vp)
 #endif /* !NDEBUG */
 
     LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
-
-    char * context;
     
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
       /* time to do a major collection. */
 	MajorGC (vp, roots, (Addr_t)nextScan);
-	context = "After Minor and Major GC";
     }
     else {
       /* remember information about the final state of the heap */
 	vp->oldTop = (Addr_t)nextScan;
-	context = "After minor GC";
     }
 
 
@@ -202,9 +195,7 @@ void MinorGC (VProc_t *vp)
 	CheckMinorGC (vp, roots);
     }
 #endif
-
     
-
     //prune remember set
     oldSize = vp->oldTop - heapBase;  //recompute oldSize using the new oldTop ptr
     Value_t * trailer = &(vp->rememberSet);
@@ -219,12 +210,11 @@ void MinorGC (VProc_t *vp)
     	}else{
 	    *trailer = rememberSet->next;
 	    rememberSet = (RS_t*)rememberSet->next;
-    	}
+	}
     }
 
   /* reset the allocation pointer */
     SetAllocPtr (vp);
-    checkReadSet(vp, context);
 }
 
 #ifndef NDEBUG

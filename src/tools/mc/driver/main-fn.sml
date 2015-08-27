@@ -222,6 +222,7 @@ functor MainFn (
           \    -h<level>        help listing with obscurity limit\n\
           \    -version         show version\n\
 	  \    -log             build an executable with logging enabled\n\
+          \    -eventlog        build an executable with ghc-style event logging enabled\n\
 	  \    -gcstats         build an executable with GC statistics enabled\n\
 	  \    -debug           build an executable with debugging enabled\n\
 	  \    -perf            build an executable with hw perf counters enabled\n\
@@ -312,6 +313,7 @@ functor MainFn (
 		| "-sequential" => set BasicControl.sequential
 		| "-verbose" => (Controls.set(BasicControl.verbose, 1); processArgs args)
 		| "-log" => set BasicControl.logging
+		| "-eventlog" => set BasicControl.eventLog
 		| "-gcstats" => set BasicControl.gcStats
 		| "-debug" => set BasicControl.debug
 		| "-perf" => set BasicControl.perf

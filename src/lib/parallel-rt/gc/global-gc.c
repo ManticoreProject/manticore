@@ -34,14 +34,10 @@ static Barrier_t        GCBarrier0;	// for synchronizing on completion of setup 
 static Barrier_t        GCBarrier1;	// for synchronizing on completion of copying phase
 static Barrier_t	GCBarrier2;	// for synchronizing on completion of GC
 
-#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
+#if (! defined(NDEBUG)) 
 /* summary statistics for global GC */
 static uint64_t		FromSpaceSzb __attribute__((aligned(64)));
 static uint64_t		NBytesCopied __attribute__((aligned(64)));
-#endif
-
-#ifdef ENABLE_LOGGING
-uint64_t		GlobalGCUId;	// Unique ID of current global GC
 #endif
 
 static void GlobalGC (VProc_t *vp, Value_t **roots);
@@ -61,7 +57,7 @@ Value_t ForwardObjGlobal (VProc_t *vp, Value_t v)
 		Value_t v = PtrToValue(GetForwardPtr(oldHdr));
 		assert (isPtr(v));
 #ifndef NDEBUG
-        MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+	MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
         if (cq->sts != TO_SP_CHUNK) {
             fprintf(stderr, "[%2d] Value %llx is not in to-space\n", vp->id, v);}
 #endif
@@ -145,7 +141,7 @@ void ConvertToSpaceChunks (VProc_t *self, MemChunk_t *p) {
             ? (self->globNextW - WORD_SZB) - p->baseAddr
             : p->usedTop - p->baseAddr;
         self->globalStats.nBytesCollected += used;
-#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
+#if (! defined(NDEBUG))
         FetchAndAddU64 (&FromSpaceSzb, (uint64_t)used);
 #endif
 #endif /* !NO_GC_STATS */
@@ -164,7 +160,9 @@ void ConvertToSpaceChunks (VProc_t *self, MemChunk_t *p) {
  */
 void StartGlobalGC (VProc_t *self, Value_t **roots)
 {
+#ifdef EVENT_LOGGING
     postEvent(self, EVENT_GLOBAL_GC);
+#endif
     bool	leaderVProc;
 
 #ifndef NO_GC_STATS
@@ -187,15 +185,12 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
 	    AllReadyForGC = false;
 	    NReadyForGC = 1;
 	    NumGlobalGCs++;
-#ifdef ENABLE_LOGGING
-	    GlobalGCUId = LogGlobalGCInit (self, NumGlobalGCs);
-#endif
 #ifndef NDEBUG
 	  //  if (GCDebug >= GC_DEBUG_GLOBAL)
 	        SayDebug("[%2d] Initiating global GC %d (%d processors)\n",
 		    self->id, NumGlobalGCs, NumVProcs);
 #endif
-#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
+#if (! defined(NDEBUG)) 
 	    FromSpaceSzb = 0;
 	    NBytesCopied = 0;
 #endif
@@ -285,7 +280,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
     uint32_t used = (self->globNextW - WORD_SZB) -
         self->globAllocChunk->baseAddr;
     self->globalStats.nBytesCopied += used;
-#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
+#if (! defined(NDEBUG)) 
     // include in total for this GC
     FetchAndAddU64 (&NBytesCopied, (uint64_t)used);
 #endif
@@ -297,7 +292,7 @@ void StartGlobalGC (VProc_t *self, Value_t **roots)
             for (p = NodeHeaps[i].scannedTo;  p != (MemChunk_t *)0;  p = p->next) {
                 uint32_t used = p->usedTop - p->baseAddr;
                 self->globalStats.nBytesCopied += used;
-#if (! defined(NDEBUG)) || defined(ENABLE_LOGGING)
+#if (! defined(NDEBUG)) 
                 // include in total for this GC
                 FetchAndAddU64 (&NBytesCopied, (uint64_t)used);
 #endif

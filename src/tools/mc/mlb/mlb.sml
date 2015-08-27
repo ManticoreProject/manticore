@@ -133,15 +133,16 @@ structure MLB : sig
 
   (* compute the list of #defines for the CPP based on controls *)
     fun defines () = let
-	  fun add (true, d, l) = (d, NONE)::l
+	fun add (true, d, l) = (d, NONE)::l
 	    | add (false, d, l) = l
 	  in
 	    add (Controls.get BasicControl.sequential, "SEQUENTIAL",
-	    add (Controls.get BasicControl.logging, "ENABLE_LOGGING",
-	    add (not(Controls.get BasicControl.debug), "NDEBUG",
-	    add (Controls.get BasicControl.eagerConflict, "EAGER_CONFLICT",
-	    add (Controls.get BasicControl.timer, "GEN_TIMER",
-	      [])))))
+		 add (Controls.get BasicControl.logging, "ENABLE_LOGGING",
+		      add (not(Controls.get BasicControl.debug), "NDEBUG",
+			   add (Controls.get BasicControl.eagerConflict, "EAGER_CONFLICT",
+				add (Controls.get BasicControl.timer, "GEN_TIMER",
+				     add (Controls.get BasicControl.eventLog, "EVENT_LOGGING", 
+				     []))))))
 	  end
 
   (* pass the file through a sequence of preprocessors *)

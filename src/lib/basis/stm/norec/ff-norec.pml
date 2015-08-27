@@ -13,7 +13,7 @@ struct
 		typedef tvar = ![any, long, long];
 		typedef stamp = VClock.stamp;
 
-        extern void M_PruneRemSetAll(void*, void*);		
+        extern void M_PruneRemSetAll(void*, long, void*);		
 
 		define @new(x:any / exh:exh) : tvar =
 			let tv : [any] = alloc(x)
@@ -165,11 +165,11 @@ struct
                     let res : any = apply f(UNIT/transExh)
                     do @commit(stampPtr / transExh)
                     let vp : vproc = host_vproc
-                    do ccall M_PruneRemSetAll(vp, #3(stampPtr))
                     do #0(in_trans) := false
                     do FLS.@set-key(READ_SET, RS.NilItem / exh)
                     do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
                     do FLS.@set-key(FF_KEY, enum(0) / exh)
+		    do ccall M_PruneRemSetAll(vp, #3(stampPtr), "@atomic")
 		    do Logging.@log-commit-tx()
                     return(res)
                 throw enter()

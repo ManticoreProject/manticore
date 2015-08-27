@@ -38,6 +38,8 @@ structure BasicControl :  sig
   (* enable logging mode *)
     val logging : bool Controls.control
 
+    val eventLog : bool Controls.control
+		       
   (* enable hw perf counters mode *)
     val perf : bool Controls.control
 
@@ -215,6 +217,15 @@ structure BasicControl :  sig
 	    default = false
 	  }
 
+    (* enable logging mode *)
+    val eventLog : bool Controls.control = Controls.genControl {
+	    name = "eventLog",
+	    pri = [0, 1, 4],
+	    obscurity = 0,
+	    help = "enable ghc style event logging of event history",
+	    default = false
+	  }
+							      
  (* enable hw perf counter mode *)
     val perf : bool Controls.control = Controls.genControl {
 	    name = "perf",
@@ -243,6 +254,10 @@ structure BasicControl :  sig
 	    };
 	  ControlRegistry.register topRegistry {
 	      ctl = Controls.stringControl ControlUtil.Cvt.bool logging,
+	      envName = NONE
+	  };
+	  ControlRegistry.register topRegistry {
+	      ctl = Controls.stringControl ControlUtil.Cvt.bool eventLog,
 	      envName = NONE
 	    };
 	  ControlRegistry.register topRegistry {

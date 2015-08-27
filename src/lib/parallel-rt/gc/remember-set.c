@@ -7,6 +7,7 @@
 #include "bibop.h"
 #include "gc-inline.h"
 #include "heap.h"
+#include "eventlog.h"
 
 /*
  * this serves as a place to set a breakpoint
@@ -33,6 +34,8 @@ int inGlobal(Value_t v){
     return AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK;
 }
 
+volatile unsigned long dumpLock = 0;
+
 int toGenNum(Value_t * x, Addr_t heapBase, Addr_t oldSzB, Addr_t nurseryBase, Addr_t nurserySize){
     if(inGlobal((Value_t)x)){
         return 2;
@@ -44,6 +47,10 @@ int toGenNum(Value_t * x, Addr_t heapBase, Addr_t oldSzB, Addr_t nurseryBase, Ad
     }else{
         if(isPtr(x)){
             somethingBadHappened();
+	    while(CompareAndSwapValue(&dumpLock, 0, 1) != 0);
+
+	    endEventLogging();
+	    
             printf("Pointer is in unrecognized region\n");
 	    return -1;
         }
@@ -85,6 +92,8 @@ Value_t ** M_AddRSElts(VProc_t * vp, Value_t ** rootPtr){
     RS_t ** trailer = &(vp->rememberSet);
     int id = 0;
 
+    // printf("%d: processing remember set\n", vp->id);
+    
     while (rememberSet != (RS_t *)M_NIL) {
         Value_t * source = rememberSet->source;
 
@@ -92,6 +101,7 @@ Value_t ** M_AddRSElts(VProc_t * vp, Value_t ** rootPtr){
         RS_t * ptr = rememberSet->next;
         while((Value_t)ptr != M_NIL){
             if(ptr->source == source && ptr->offset == rememberSet->offset){
+		//	printf("%d: dropping %p from remember set (duplicate)\n", vp->id, ptr->source);
                 *prev = ptr->next;
                 ptr = ptr->next;
             }else{
@@ -110,10 +120,12 @@ Value_t ** M_AddRSElts(VProc_t * vp, Value_t ** rootPtr){
             trailer = &(rememberSet->next);
             rememberSet = rememberSet->next;
         }else{
+	    //printf("%d: Dropping %p from remember set (benign)\n", vp->id, rememberSet->source);
             *trailer = rememberSet->next;
             rememberSet = rememberSet->next;
         }
     }
+
     numRememberSetElements = id;
     return rootPtr;
 }
@@ -129,11 +141,13 @@ void examineWriteSets(WS_t * currentWS, WS_t * oldWS){
 
 }
 
-void M_PruneRemSetAll(VProc_t * vp, long threadID){
+void M_PruneRemSetAll(VProc_t * vp, long threadID, const char * context){
     RS_t * remSet = (RS_t *)vp->rememberSet;
     RS_t ** trailer = &(vp->rememberSet);
+    //printf("%d starting to prune remember set at time %f (%s)\n", vp->id, (double)time_ns() / (double)1e9, context);
     while((Addr_t) remSet != M_NIL){
         if(remSet->threadId == threadID){
+	    // printf("%d: dropping %p from remember set (M_PruneRemSetAll)\n", vp->id, remSet->source);
             *trailer = remSet->next;
             remSet = remSet->next;
         }else{

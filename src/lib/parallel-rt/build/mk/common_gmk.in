@@ -11,6 +11,11 @@
 #
 # determine the buid options
 #
+ifeq (,$(findstring eventLogging,$(BUILD_OPTIONS)))
+  ENABLE_EVENT_LOGGING=false
+else
+  ENABLE_EVENT_LOGGING=true
+endif
 ifeq (,$(findstring stats,$(BUILD_OPTIONS)))
   ENABLE_GC_STATS=false
 else
@@ -78,6 +83,11 @@ CPU_SRCS =	cpuid.c \
 ifeq ($(ENABLE_LOGGING),true)
   CPPFLAGS += -DENABLE_LOGGING
   MISC_SRCS += log.c
+endif
+
+ifeq ($(ENABLE_EVENT_LOGGING),true)
+  CPPFLAGS += -DEVENT_LOGGING
+  MISC_SRCS += eventlog.c
 endif
 
 ifeq ($(ENABLE_DEBUG),true)
