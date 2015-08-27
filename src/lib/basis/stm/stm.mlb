@@ -34,9 +34,6 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
     norec/ff-norec-rs.pml
     norec/ff-norec.pml
 
-    norec/ff-ref-count-prune-rs.pml
-    norec/ff-ref-count-prune.pml
-
     norec/ff-ref-count-rs.pml
     norec/ff-ref-count.pml
 
