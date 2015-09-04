@@ -704,7 +704,10 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
                 (* if we have a valid test expression, check the branch types agree *)
                 (fn primCond => checkForErrorVal CoreBOM.Exp.error (
                   CoreBOM.BOMType.equals' (leftTy, rightTy),
-                  "types of if branches do not agree")
+                  "types of if branches do not agree: then branch is type "
+                  ^ Layout.toString (CoreBOM.BOMType.layouts leftTy)
+                  ^ " but right branch is type "
+                  ^ Layout.toString (CoreBOM.BOMType.layouts rightTy))
                   (* if they do, return the appropriate expression *)
                   (fn resultTy => CoreBOM.Exp.new (CoreBOM.Exp.If (primCond,
                     left', right'), resultTy))))
