@@ -1019,9 +1019,8 @@ fun defunctorize (CoreML.Program.T {decs}) =
                           Xexp.lett {decs = decs,
                                      body = e}
                        end
-                       (*raise Fail "TODO(wings): create XML for BOMExport Datatype"*)
                   | CoreML.BOMExport.TypBind (mlTyc, bomTyc) =>
-                       e(*raise Fail "TODO(wings): create XML for BOMExport TypBind"*)
+                       e
                   | CoreML.BOMExport.ValBind (mlVar, ty, bomVal) =>
                        (* this is a binding of the form "_val mlName = _prim (bomName);",
                        which is effectively a let-binding. however, we can't really
@@ -1039,8 +1038,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                        Xexp.lett {decs = [Xdec.MonoVal {var = mlVar,
                                                         ty = loopTy ty,
                                                         exp = XprimExp.BOMVal bomVal}],
-                                  body = e}
-(*                       raise Fail "TODO(wings): create XML for BOMExport ValBind"*))
+                                  body = e})
              (* APOLOGIA(wings): I think we should be able to ignore imports here
              and just pass definitions through *)
              | BOMModule (CoreML.BOMModule.T {imports = imports, defs = defs}) =>
