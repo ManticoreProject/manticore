@@ -37,6 +37,9 @@ signature ELABORATE_CORE =
         include VAR
       end sharing type Var.t = CoreML.Var.t
 
+      val unify: Env.Type.t * Env.Type.t * (unit -> unit) *
+        (Layout.t * Layout.t -> Region.t * Layout.t * Layout.t) -> unit
+
       val elaborateType: Ast.Type.t * Lookup.t -> Env.Type.t
 
       (* Elaborate dec in env, returning Core ML decs. *)

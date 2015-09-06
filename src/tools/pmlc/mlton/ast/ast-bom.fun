@@ -956,7 +956,7 @@ functor AstBOM (S: AST_BOM_STRUCTS) : AST_BOM =
 
   structure Import = struct
       datatype node
-	= Datatype of Type.t vector * Longtycon.t * BOMId.t option * ImportCon.t list
+	= Datatype of Type.t * BOMId.t option * ImportCon.t list
 	| Exn of Longcon.t * Type.t option * BOMId.t option
 	| Val of Longvid.t * Type.t * BOMId.t option
 
