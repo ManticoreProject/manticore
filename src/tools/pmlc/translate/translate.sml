@@ -40,7 +40,7 @@ structure Translate : sig
 
     structure TycMapKV = struct
         type ord_key = S.Tycon.t
-        fun compare(tyc1: S.Tycon.t, tyc2: S.Tycon.t) = String.compare (Layout.toString (S.Tycon.layout tyc1), Layout.toString (S.Tycon.layout tyc1))
+        fun compare(tyc1: S.Tycon.t, tyc2: S.Tycon.t) = String.compare (Layout.toString (S.Tycon.layout tyc1), Layout.toString (S.Tycon.layout tyc2))
     end
     structure TycMap = RedBlackMapFn (TycMapKV)
     type tycmap_t = BOMTyc.t TycMap.map (* map from AST tycs to BOM datatype constructors *)
