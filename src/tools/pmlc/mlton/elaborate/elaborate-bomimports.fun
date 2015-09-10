@@ -462,12 +462,22 @@ val _ = print ("binding datatype with name " ^ CoreBOM.TyId.toString tyId ^ "\n"
             (* find the ML exception being imported *)
             val mlTy = unwrapMLCon (longcon, Vector.fromList [])
             (* get its argument type *)
-            val maybeArgMlTy =
+            val (maybeArgMlTy, resultMlTy) =
               case MLType.deArrowOpt mlTy of
                 (* MLton doesn't distinguish between arrow and constructors
                   here, so we have to handle this as a special case *)
-                SOME (dom, rng) => SOME dom
-              | NONE => NONE
+                SOME (dom, rng) => (SOME dom, rng)
+              | NONE => (NONE, mlTy)
+
+            (* ensure the result is an exception type *)
+            val _ = ElaborateCore.unify
+              (resultMlTy, MLType.con (MLTycon.exn, Vector.fromList []), fn x => x, fn (l, l') =>
+               (BOM.Import.region import,
+                Layout.str "non-exception value imported as exception",
+                Layout.align [Layout.seq [Layout.str "expected exception constructor"],
+                       Layout.seq [Layout.str "but got value of type: ", l],
+                       Layout.seq [Layout.str "in import of ",
+                         Layout.str (Ast.Longcon.toString longcon)]]))
 
             (* create the BOM type to use for the exn con, checking whether the
             provided arg type matches the exn con's arg's actual type *)
