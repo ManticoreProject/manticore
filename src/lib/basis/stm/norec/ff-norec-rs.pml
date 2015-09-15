@@ -29,27 +29,10 @@ struct
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a * 'a
                      | WithoutK of 'a * 'a * 'a | Abort of unit 
 
-
-    _primcode(
-        define @allocPrintFun(x:unit / exh:exh) : any = 
-            fun f(x:any / exh:exh) : unit = return(UNIT)
-            let box : ![fun(any / exh -> unit)] = alloc(f)
-            let box : ![fun(any / exh -> unit)] = promote(box)
-            return(box);
-    )
-    
-    val allocPrintFun : unit -> 'a = _prim(@allocPrintFun)
-    val printFunPtr = allocPrintFun()
-    fun getPrintFunPtr() = printFunPtr
-
     _primcode(
 
-        extern int inLocalHeap(void *, void *);
         extern void M_Print_Long2(void *, void *, void *);
         extern void M_IncCounter(void *, int , long);
-        extern void checkInvariant(void *, void *, void*, void*) __attribute__((alloc));
-        extern void checkReadSet(void *, void *) __attribute__((alloc));
-        extern void printShortPath(void *, void*) __attribute__((alloc));
 
     	typedef read_set = ![item,      (*0: first element of the read set*) 
     						 item, 	    (*1: last element of the read set*)
@@ -78,14 +61,6 @@ struct
             return(stamp)
         ;
 
-        define @getPrintFunPtr = getPrintFunPtr;
-
-        define @registerPrintFun(f : fun(any / exh -> unit) / exh:exh) : unit = 
-            let funBox : ![fun(any / exh -> unit)] = @getPrintFunPtr(UNIT / exh)
-            let f : fun(any / exh -> unit) = promote(f)
-            do #0(funBox) := f
-            return(UNIT);
-
     	define @new() : read_set = 
             let dummyTRef : ![any,long,long] = alloc(enum(0), 0:long, 0:long)
             let dummy : item = WithoutK(dummyTRef, enum(0), NilItem)
@@ -93,17 +68,7 @@ struct
     		return(rs)
     	;
 
-        define inline @logStat(x:any / exh:exh) : () = 
-#ifdef COLLECT_STATS                            
-            let stats : list = FLS.@get-key(STATS_KEY / exh)
-            let stats : list = CONS(x, stats)
-            FLS.@set-key(STATS_KEY, stats / exh)
-#else
-            return()
-#endif          
-        ;
-
-	define inline @eager-abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], 
+	   define inline @eager-abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], 
 				   count:int, revalidate : fun(item, item, int, int / -> ), pos : int / exh:exh) : () = 
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             case checkpoint 
@@ -453,7 +418,6 @@ struct
                 return()
         ;
     )
-    val registerPrintFun : ('a -> unit) -> unit = _prim(@registerPrintFun)
 end
 
 

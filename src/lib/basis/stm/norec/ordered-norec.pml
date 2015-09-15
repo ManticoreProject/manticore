@@ -70,7 +70,7 @@ struct
                 		if I64Eq(t, #0(myStamp))
                 		then return(#0(tv))
                 		else
-                			do RS.@validate(readSet, myStamp / exh)
+                			do RS.@validate(readSet, myStamp, true / exh)
                 			apply getLoop()
                 	let current : any = apply getLoop()
                     let kCount : int = RS.@getNumK(readSet)
@@ -124,7 +124,7 @@ struct
         		if I64Eq(old, current)
         		then return()
         		else
-        			do RS.@validate(readSet, stamp / exh)
+        			do RS.@validate(readSet, stamp, false / exh)
         			apply lockClock()
         	do apply lockClock()
         	fun writeBack(ws:RS.item) : () = 

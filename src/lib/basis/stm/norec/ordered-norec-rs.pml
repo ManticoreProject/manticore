@@ -22,8 +22,6 @@ struct
 #define START_TIMER let vp : vproc = host_vproc do ccall GenTimerStart(vp)
 #define STOP_TIMER let vp : vproc = host_vproc do ccall GenTimerStop(vp)
    
-
-
 	(*Careful, if this changes, we could possibly be indexing a "WithoutK" item 
      *incorrectly when filtering the read set*)
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a * 'a
@@ -31,20 +29,7 @@ struct
 
 
     _primcode(
-        define @allocPrintFun(x:unit / exh:exh) : any = 
-            fun f(x:any / exh:exh) : unit = return(UNIT)
-            let box : ![fun(any / exh -> unit)] = alloc(f)
-            let box : ![fun(any / exh -> unit)] = promote(box)
-            return(box);
-    )
-    
-    val allocPrintFun : unit -> 'a = _prim(@allocPrintFun)
-    val printFunPtr = allocPrintFun()
-    fun getPrintFunPtr() = printFunPtr
 
-    _primcode(
-
-        extern int inLocalHeap(void *, void *);
         extern void M_Print_Long2(void *, void *, void *);
 
     	typedef read_set = ![item,      (*0: first element of the read set*) 
@@ -74,14 +59,6 @@ struct
             return(stamp)
         ;
 
-        define @getPrintFunPtr = getPrintFunPtr;
-
-        define @registerPrintFun(f : fun(any / exh -> unit) / exh:exh) : unit = 
-            let funBox : ![fun(any / exh -> unit)] = @getPrintFunPtr(UNIT / exh)
-            let f : fun(any / exh -> unit) = promote(f)
-            do #0(funBox) := f
-            return(UNIT);
-
     	define @new() : read_set = 
             let dummyTRef : ![any,long,long] = alloc(enum(0), 0:long, 0:long)
             let dummy : item = WithoutK(dummyTRef, enum(0), NilItem)
@@ -89,17 +66,8 @@ struct
     		return(rs)
     	;
 
-        define inline @logStat(x:any / exh:exh) : () = 
-#ifdef COLLECT_STATS                            
-            let stats : list = FLS.@get-key(STATS_KEY / exh)
-            let stats : list = CONS(x, stats)
-            FLS.@set-key(STATS_KEY, stats / exh)
-#else
-            return()
-#endif          
-        ;
-
-        define inline @abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, revalidate : fun(item, item, int / -> ) / exh:exh) : () = 
+        define inline @abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], 
+                             count:int, revalidate : fun(item, item, int / -> ) / exh:exh) : () = 
             case checkpoint 
                of NilItem => (*no checkpoint available*)
                     let abortK : cont() = FLS.@get-key(ABORT_KEY / exh) 
@@ -127,7 +95,7 @@ struct
             end
         ;
 
-        define @validate(readSet : read_set, startStamp:![stamp, int, int, long] / exh:exh) : () = 
+        define @validate(readSet : read_set, startStamp:![stamp, int, int, long], eager : bool / exh:exh) : () = 
             fun validateLoopABCD(rs : item, abortInfo : item, count:int) : () =
                 case rs 
                    of NilItem => (*finished validating*)
@@ -160,19 +128,6 @@ struct
 
         define inline @getNumK(rs : read_set) : int = return(#NUMK(rs));
 
-        define @short-path-len(readSet : read_set / exh:exh) : () = 
-            fun lenLoop(i:item, count:int) : int = 
-                case i 
-                   of NilItem => return(count)
-                    | WithK(tv:tvar, _:any, _:item, ws:item, k:cont(any), next:item) => 
-                        apply lenLoop(next, I32Add(count, 1))
-                    | WithoutK(tv:tvar, _:any, next:item) => 
-                        do ccall M_Print("short-path-len: Impossible\n") return(~1)
-                end
-            let l : int = apply lenLoop(#LASTK(readSet), 0)
-            do ccall M_Print_Int("Short path length is %d\n", l)
-            return();
-
         define inline @filterRS(readSet : read_set / exh : exh) : () = 
             fun dropKs(l:item, n:int) : int =   (*drop every other continuation*)
                 case l
@@ -201,40 +156,7 @@ struct
                 end
             let x :int = apply dropKs(#LASTK(readSet), #NUMK(readSet))
             do #NUMK(readSet) := x
-            return();
-
-        define @checkHeader(tv:any) : () = 
-            if I64Lt(tv, 50:long)
-            then return()
-            else
-                let header : any = ArrLoad(tv, ~1)
-                if I64Gt(header, 1048576)
-                then
-                    do ccall M_Print_Long("pointing to a forwarding pointer: %lu\n", header)
-                    return()
-                else return()
-        ;            
-
-        define @rs-len(readSet : read_set / exh:exh) : unit =
-            fun lenLoop(i:item, count:int) : int = 
-                case i 
-                   of NilItem => return(count)
-                    | WithK(tv:tvar, _:any, next:item, ws:item, k:cont(any), _:item) => 
-                        apply lenLoop(next, I32Add(count, 1))
-                    | WithoutK(tv:tvar, _:any, next:item) => 
-                        do if I64Gt(next, 1000:long)
-                            then
-                                let nextHeader : any = ArrLoad(next, ~1)
-                                if I64Eq(nextHeader, 196611)
-                                then return()
-                                else do ccall M_Print_Long("Current value is %d, next header is not right\n", #0(tv)) return()
-                            else return()
-                        
-                        apply lenLoop(next, I32Add(count, 1))
-                end
-            let l : int = apply lenLoop(#HEAD(readSet), 0)
-            do ccall M_Print_Int("Read set length is %d\n", l)
-            return(UNIT);
+            return();      
 
         (*Note that these next two defines, rely on the fact that a heap limit check will not get
          *inserted within the body*)
@@ -273,11 +195,6 @@ struct
                 return()
         ;
 
-        define @printHeader(tv:any) : () = 
-            let header : any = ArrLoad(tv, ~1)
-            do ccall M_Print_Long("Header is %lu\n", header)
-            return();
-
         (*add a non checkpointed read to the read set*)
     	define @insert-without-k(tv:any, v:any, readSet : read_set, stamp : ![long,int,int,long] / exh:exh) : () =
     		let newItem : item = WithoutK(tv, v, NilItem)
@@ -312,7 +229,6 @@ struct
         ;
         
     )
-    val registerPrintFun : ('a -> unit) -> unit = _prim(@registerPrintFun)
 end
 
 

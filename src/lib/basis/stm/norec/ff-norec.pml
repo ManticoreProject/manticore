@@ -147,7 +147,6 @@ struct
             then apply f(UNIT/exh)
             else 
             	let stampPtr : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
-                do #1(stampPtr) := 0
                 do FLS.@set-key(FF_KEY, enum(0) / exh)
                 cont enter() = 
                     let rs : RS.read_set = RS.@new()
@@ -168,7 +167,7 @@ struct
                     do FLS.@set-key(READ_SET, RS.NilItem / exh)
                     do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
                     do FLS.@set-key(FF_KEY, enum(0) / exh)
-		    do ccall M_PruneRemSetAll(vp, #3(stampPtr), "@atomic")
+		            do ccall M_PruneRemSetAll(vp, #3(stampPtr), "@atomic")
                     return(res)
                 throw enter()
       	;
