@@ -38,6 +38,18 @@
  *
  */
 
+/*
+ * Note: It IS possible for a forwarding pointer to exist outside of a 
+ * GC.  When we enqueue a continuation on someone else's VProc, we 
+ * promote the closure we are enqueueing.  If this closure has a pointer
+ * to something that we have in scope, the promotion will replace that 
+ * object's header with a forwarding pointer.  We will then be operating
+ * on the "old" version of the heap object until the next GC.  This turned
+ * out to be a problem for us when implementing polymorphic equality in 
+ * the Partial Abort STM branch, and may serve as a useful future warning
+ * to others - Matt
+ */
+
 #ifndef _HEADER_BITS_H_
 #define _HEADER_BITS_H_
 

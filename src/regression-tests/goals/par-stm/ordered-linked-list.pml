@@ -72,15 +72,16 @@ val ITERS = 1000
 val THREADS = 4
 val MAXVAL = 1000
 
-fun insertLoop (l:ListHandle) (i:int) = 
+fun insertLoop(l, i, removed, remaining) = 
     if i = 0
-    then (nil, nil)
+    then (removed, remaining)
     else let val coin = Rand.inRangeInt(0, 2)
              val v = Rand.inRangeInt(0, MAXVAL)
              val _ = add l v
-             val (removed, remaining) = insertLoop l (i-1)
-         in if coin = 1 then (v::removed, remaining) else (removed, v::remaining)
-         end
+	 in if coin = 1
+	    then insertLoop(l, i-1, v::removed, remaining)
+	    else insertLoop(l, i-1, removed, v::remaining)
+	 end
 
 fun deleteLoop (l:ListHandle) (vs:int list) = 
     case vs 
@@ -88,7 +89,7 @@ fun deleteLoop (l:ListHandle) (vs:int list) =
          | nil => ()
             
 fun thread ch n l = 
-    let val (remove, remaining) = insertLoop l n
+    let val (remove, remaining) = insertLoop(l, n, nil, nil)
         val _ = deleteLoop l remove
         val _ = PrimChan.send(ch, remaining)
     in () end
@@ -112,12 +113,12 @@ val l = newList()
 fun remove l v = 
     case l 
         of hd::tl => if hd = v then tl else hd::remove tl v
-         | nil => (print "List is incorrect!\n"; raise Fail "test failed\n")
+         | nil => (print "Incorrect: could not find element to remove!\n"; raise Fail "test failed\n")
 
 fun check (l:ListHandle) (remaining:int list) = 
-    case STM.get l
+    case STM.unsafeGet l
         of Null => (case remaining
-                      of _::_ => (print "List is incorrect!\n"; raise Fail "test failed\n")
+                      of _::_ => (print "Incorrect: nonempty list after test!\n"; raise Fail "test failed\n")
                        | nil => print "List is correct\n")
          | Node(v, next) => check next (remove remaining v)
          | Head n => check n remaining
@@ -146,7 +147,7 @@ val remaining = join(start l THREADS)
 
 val _ = print "Done with linked list operations\n"
 
-val _ = STM.atomic(fn () => check l remaining handle Fail s => print s)
+val _ = check l remaining handle Fail s => print s
 
 val _ = STM.printStats()
 

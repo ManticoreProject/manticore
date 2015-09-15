@@ -202,6 +202,7 @@ struct
     *)
     
     fun polyEqPre (MyoutStrm) = (
+	
         TextIO.output (MyoutStrm, "bool polyEqRAWpointer (Word_t * ptr1, Word_t * ptr2) {\n");
         TextIO.output (MyoutStrm, "\tif(!isPtr((Value_t)ptr2)){\n\t\treturn false;\n\t}\n");
         TextIO.output (MyoutStrm, "\tif(ptr1[-1] != ptr2[-1]){\n\t\treturn false;\n\t}\n");
@@ -218,7 +219,7 @@ struct
         TextIO.output (MyoutStrm, "\tif(ptr1[-1] != ptr2[-1]){\n\t\treturn false;\n\t}\n");
         TextIO.output (MyoutStrm, "\tint len = GetLength(ptr1[-1]);\n");
         TextIO.output (MyoutStrm, "\tfor(int i = 0; i < len; i++){\n");
-        TextIO.output (MyoutStrm, "\t\tif(ptr1[i] != ptr2[i] && (!isPtr((Value_t)ptr1[i]) || !table[getID(((Word_t* )ptr1[i])[-1])].polyEq((Word_t* )ptr1[i], (Word_t* )ptr2[i]))){\n");
+        TextIO.output (MyoutStrm, "\t\tif(ptr1[i] != ptr2[i] && (!isPtr((Value_t)ptr1[i]) || isForwardPtr(((Word_t* )ptr1[i])[-1]) || !table[getID(((Word_t* )ptr1[i])[-1])].polyEq((Word_t* )ptr1[i], (Word_t* )ptr2[i]))){\n");
         TextIO.output (MyoutStrm, "\t\t\treturn false;\n");
         TextIO.output (MyoutStrm, "\t\t}\n");
         TextIO.output (MyoutStrm, "\t}\n");
@@ -242,7 +243,9 @@ struct
                                of "1" => 
                                   let val p = Int.toString pos
                                   in
-                                      TextIO.output(MyoutStrm, concat["\tif(ptr1[", p, "] != ptr2[", p, "] && (!isPtr((Value_t)ptr1[", p ,"])  || !table[getID(((Word_t* )ptr1[", p, "])[-1])].polyEq((Word_t* )ptr1[", p, "], (Word_t* )ptr2[", p, "]))){\n"]);
+                                      TextIO.output(MyoutStrm, concat["\tif(ptr1[", p, "] != ptr2[", p, "] && (!isPtr((Value_t)ptr1[", p ,
+								      "])  || isForwardPtr((((Word_t* )ptr1[", p, 
+								      "])[-1])) || !table[getID(((Word_t* )ptr1[", p, "])[-1])].polyEq((Word_t* )ptr1[", p, "], (Word_t* )ptr2[", p, "]))){\n"]);
                                       TextIO.output(MyoutStrm, "\t\treturn false;\n");
                                       TextIO.output (MyoutStrm, "\t}\n");
                                       lp(strlen-1,bites,pos+1)

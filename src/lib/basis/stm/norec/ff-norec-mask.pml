@@ -238,7 +238,8 @@ struct
     val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
     val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
 
-    val _ = Ref.set(STMs.stms, ("ffMask", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
+    (*Uncomment the following line to make this available*)
+    (*val _ = Ref.set(STMs.stms, ("ffMask", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)*)
 end
 
 

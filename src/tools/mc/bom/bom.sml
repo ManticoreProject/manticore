@@ -83,7 +83,7 @@ structure BOM =
     and rewrite = Rewrite of { label  : Atom.atom,         (* hlop rewrite rule *)
 			       lhs    : rw_pattern,
 			       rhs    : rw_pattern,
-			       weight : IntInf.int }		         
+			       weight : IntInf.int }
 
     withtype var = (var_kind, ty) VarRep.var_rep
          and cond = var Prim.cond

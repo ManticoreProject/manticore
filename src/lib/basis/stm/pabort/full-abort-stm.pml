@@ -161,7 +161,7 @@ struct
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
                 let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
                 if (#0(in_trans))
-                then apply f(UNIT/exh)
+                then do ccall M_Print("Nested transaction!\n") apply f(UNIT/exh)
                 else let stampPtr : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
                      do #1(stampPtr) := 0
                      cont enter() = 
@@ -170,7 +170,7 @@ struct
                          let stamp : stamp = VClock.@bump(/exh)
                          do #0(stampPtr) := stamp
                          do #0(in_trans) := true
-                         cont abortK() = do #1(stampPtr) := I32Add(#1(stampPtr), 1) BUMP_FABORT do #0(in_trans) := false do #1(stampPtr) := I32Add(#1(stampPtr), 1) throw enter()      
+                         cont abortK() = do #1(stampPtr) := I32Add(#1(stampPtr), 1) BUMP_FABORT throw enter()      
                          do FLS.@set-key(ABORT_KEY, (any) abortK / exh)
                          cont transExh(e:exn) = 
                             do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
@@ -220,7 +220,7 @@ struct
     val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
     val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
 
-    val _ = Ref.set(STMs.stms, ("full", (get,put,atomic,new,printStats,abort,unsafeGet,same,put))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("full", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
 end
 
 

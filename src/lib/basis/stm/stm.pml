@@ -30,4 +30,31 @@ struct
     val unsafeGet : 'a tvar -> 'a = unsafeGet
     val same : 'a tvar * 'a tvar -> bool = same
     val unsafePut : 'a tvar * 'a -> unit = unsafePut 
+
+
+    _primcode(
+        define @post-start-tx-w-msg(msg : [long] / exh : exh) : unit = 
+            do Logging.@log-start-tx-w-msg(#0(msg))
+            return(UNIT);
+ 
+        define @mk-tx-msg(arg : [ml_int, ml_int, ml_int] / exh : exh) : ml_long = 
+            let v1 : long = I64LSh(I32ToI64(#0(#0(arg))), 34:long)
+            let v2 : long = I64LSh(I32ToI64(#0(#1(arg))), 4:long)
+            let v3 : long = I64OrB(v1, v2)
+            let v4 : long = I64OrB(v3, I32ToI64(#0(#2(arg))))
+            let v5 : ml_long = alloc(v4)
+            return(v5)
+        ;
+            
+    ) 
+    
+    val mkTXMsg : int * int * int -> long = _prim(@mk-tx-msg)
+    val postStartTXWMsg : long -> unit = _prim(@post-start-tx-w-msg)
+
+    fun atomic' (f, msg) = 
+	let val _ = postStartTXWMsg msg
+	    val res = atomic f
+	    val _ = Logging.postCommitTX()
+	in res end
+
 end

@@ -465,7 +465,7 @@ struct
                      let stamp : stamp = VClock.@bump(/exh)
                      do #0(stampPtr) := stamp
                      do #0(in_trans) := true
-                     cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()
+                     cont abortK() = BUMP_FABORT throw enter()
                      do FLS.@set-key(ABORT_KEY, abortK / exh)
                      cont transExh(e:exn) = 
                         do ccall M_Print("Warning: exception raised in transaction\n")

@@ -61,6 +61,7 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots);
  */
 void MinorGC (VProc_t *vp)
 {
+    vp->counter[4] = 192;
     Addr_t	nurseryBase = vp->nurseryBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to-space */
@@ -70,13 +71,7 @@ void MinorGC (VProc_t *vp)
     Addr_t oldSize = vp->oldTop - heapBase;
 
     LogMinorGCStart (vp, (uint32_t)allocSzB);
-/*
-    RS_t* rs = (RS_t*)vp->rememberSet;
-    while(rs != (RS_t*)M_NIL){
-    	printf("source: %p, offset: %d\n", rs->source, rs->offset);
-    	rs = rs->next;
-    }
-*/
+
 #ifndef NO_GC_STATS
     TIMER_Start(&(vp->minorStats.timer));
 #endif
@@ -118,7 +113,7 @@ void MinorGC (VProc_t *vp)
     vp->stdArg = M_UNIT;
     vp->stdExnCont = M_UNIT;
 #endif
-    
+
     /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
 	Value_t p = *roots[i];

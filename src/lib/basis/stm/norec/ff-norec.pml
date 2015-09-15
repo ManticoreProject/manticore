@@ -146,7 +146,6 @@ struct
             if (#0(in_trans))
             then apply f(UNIT/exh)
             else 
-		do Logging.@log-start-tx()
             	let stampPtr : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
                 do #1(stampPtr) := 0
                 do FLS.@set-key(FF_KEY, enum(0) / exh)
@@ -170,18 +169,17 @@ struct
                     do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
                     do FLS.@set-key(FF_KEY, enum(0) / exh)
 		    do ccall M_PruneRemSetAll(vp, #3(stampPtr), "@atomic")
-		    do Logging.@log-commit-tx()
                     return(res)
                 throw enter()
       	;
 
       	define @print-stats(x:unit / exh:exh) : unit = 
             PRINT_PABORT_COUNT
-	        PRINT_FABORT_COUNT
+	    PRINT_FABORT_COUNT
             PRINT_COMBINED
             PRINT_KCOUNT
             PRINT_FF
-	        return(UNIT);
+	    return(UNIT);
 
 	    define @abort(x : unit / exh : exh) : any = 
 	        let e : cont() = FLS.@get-key(ABORT_KEY / exh)

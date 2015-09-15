@@ -565,26 +565,17 @@ int M_PolyEq(Word_t *s1, Word_t *s2){
 
 /*continuation equality*/
 int M_PolyEq(Word_t *s1, Word_t *s2){
-    //while(CompareAndSwapValue(&lock, 0, 1) != 0);
-    //printf("\n\nChecking equality of %d element tuple\n", GetLength(s1[-1]));
     if(s1 == s2){
-      //  lock = 0;
         return 1;
     }
     if(!isPtr((Value_t)s1) || !isPtr((Value_t)s2)){
-        //printf("M_PolyEq failed because one arg is a pointer and the other is not\n");
-        //lock = 0;
         return 0;
     }   
     if(s1[-1] != s2[-1]){
-        //printf("M_PolyEq failed because headers are not equal (%lu, %lu)\n", s1[-1], s2[-1]);
-        //lock = 0;
         return 0;
-    }   
-
+    }
     
     bool res = table[getID(s1[-1])].polyEq(s1, s2);
-    //lock = 0;
     return res ? 1 : 0;
 }
 

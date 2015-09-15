@@ -35,20 +35,10 @@ fun join chs =
             in join chs' end
          | nil => nil
 
-
-
 val _ = join (start (VProc.numVProcs()))
 
 val _ = if (STM.unsafeGet tv = VProc.numVProcs() * ITERS * 2) 
         then print "Correct\n"
-        else (print("Incorrect, should be " ^ Int.toString (VProc.numVProcs() * ITERS * 2) ^ ", but got " ^ Int.toString (STM.unsafeGet tv) ^ "\n"); raise Fail "Incorrect!\n")
+        else (print("Incorrect: should be " ^ Int.toString (VProc.numVProcs() * ITERS * 2) ^ ", but got " ^ Int.toString (STM.unsafeGet tv) ^ "\n"); raise Fail "Incorrect!\n")
 
 val _ = STM.printStats()
-
-
-
-
-
-
-
-        
