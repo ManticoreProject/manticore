@@ -26,14 +26,14 @@ struct
 
         extern void M_Print_Long2(void *, void *, void *);
         extern void M_IncCounter(void *, int , long);
-       
+
         typedef item = NoRecOrderedReadSet.item;
 
     	typedef read_set = ![item,      (*0: first element of the read set*) 
     						 item, 	    (*1: last element of the read set*)
     						 item, 	    (*2: last checkpoint (element on short path)*)
     						 int];	    (*3: number of checkpoints in read set*)
-
+        
         typedef mutWithK = ![any,    (*0: tag*)
                              any,    (*1: tvar*)
                              any,    (*2: contents read*)
@@ -72,7 +72,7 @@ struct
                         apply decLoop(next)
                     | _ => 
                         let casted : [any] = ([any]) i
-                        do ccall M_Print_Long("decCounts: impossible! tag is %lu\n", #0(casted)) 
+                        do ccall M_Print_Long("decCounts: impossible! tag is %lu\n", #0(casted))
                         throw exh(Fail(@"decCounts: impossible\n"))
                 end
             if Equal(readSet, enum(0))
@@ -94,7 +94,7 @@ struct
                         else apply incLoop(next, I32Add(i, 1))
                     | _ => 
                         let casted : [any] = ([any]) shortPath
-                        do ccall M_Print_Long("incCounts: Impossible! tag is %lu\n", #0(casted)) 
+                        do ccall M_Print_Long("incCounts: Impossible! tag is %lu\n", #0(casted))
                         return()
                 end
             let lastK : item = #LASTK(readSet)
@@ -104,7 +104,6 @@ struct
                 do apply incLoop(lastK, 1)   (*increment reference counts for checkpoints after violation*)
                 FLS.@set-key(FF_KEY, readSet / exh)
         ;
-
 
         define @abortABCD(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, 
                           revalidate : fun(item, item, int / -> ) / exh:exh) : () = 

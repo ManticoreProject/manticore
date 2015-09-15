@@ -25,20 +25,17 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
 
     norec/partial-norec.pml
     
+    norec/ordered-norec-rs.pml
+    norec/ordered-norec.pml
+
     norec/ff-merge-write-sets-rs.pml
     norec/ff-merge-write-sets.pml
-
-    norec/ff-norec-mask-rs.pml
-    norec/ff-norec-mask.pml
 
     norec/ff-norec-rs.pml
     norec/ff-norec.pml
 
     norec/ff-ref-count-rs.pml
     norec/ff-ref-count.pml
-
-    norec/ordered-norec-rs.pml
-    norec/ordered-norec.pml
 
     stm.pml
 

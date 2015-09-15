@@ -11,10 +11,16 @@ struct
 
         extern void M_PruneRemSetAll(void*, void*);
 
+        define @new(x:any / exh:exh) : tvar =
+            let tv : [any, long] = alloc(x, 0:long)
+            let tv : [any, long] = promote(tv)
+            let tv : tvar = (tvar) tv
+            return(tv)
+        ;
+
 		define @getFFNoRecCounter(tv : tvar / exh:exh) : any = 
 			let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
-            do 	
-            	if(#0(in_trans))
+            do 	if(#0(in_trans))
                	then return()
                	else 
                		do ccall M_Print("Trying to read outside a transaction!\n")
@@ -93,7 +99,7 @@ struct
 
 	type 'a tvar = 'a PartialSTM.tvar
     val get : 'a tvar -> 'a = _prim(@getFFNoRecCounter)
-    val new : 'a -> 'a tvar = NoRecFF.new
+    val new : 'a -> 'a tvar = _prim(@new)
     val atomic : (unit -> 'a) -> 'a = NoRecFF.atomic
     val put : 'a tvar * 'a -> unit = NoRecFF.put
     val printStats : unit -> unit = NoRecFF.printStats
