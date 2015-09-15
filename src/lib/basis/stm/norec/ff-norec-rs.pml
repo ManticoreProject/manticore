@@ -22,14 +22,9 @@ struct
 #define START_TIMER let vp : vproc = host_vproc do ccall GenTimerStart(vp)
 #define STOP_TIMER let vp : vproc = host_vproc do ccall GenTimerStop(vp)
    
-
-
-	(*Careful, if this changes, we could possibly be indexing a "WithoutK" item 
-     *incorrectly when filtering the read set*)
-    datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a * 'a
-                     | WithoutK of 'a * 'a * 'a | Abort of unit 
-
     _primcode(
+
+        typedef item = NoRecOrderedReadSet.item;
 
         extern void M_Print_Long2(void *, void *, void *);
         extern void M_IncCounter(void *, int , long);
@@ -63,8 +58,8 @@ struct
 
     	define @new() : read_set = 
             let dummyTRef : ![any,long,long] = alloc(enum(0), 0:long, 0:long)
-            let dummy : item = WithoutK(dummyTRef, enum(0), NilItem)
-    		let rs : read_set = alloc(dummy, dummy, NilItem, 0)
+            let dummy : item =  NoRecOrderedReadSet.WithoutK(dummyTRef, enum(0), NoRecOrderedReadSet.NilItem)
+    		let rs : read_set = alloc(dummy, dummy, NoRecOrderedReadSet.NilItem, 0)
     		return(rs)
     	;
 
@@ -72,17 +67,17 @@ struct
 				   count:int, revalidate : fun(item, item, int, int / -> ), pos : int / exh:exh) : () = 
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             case checkpoint 
-               of NilItem => (*no checkpoint available*)
+               of NoRecOrderedReadSet.NilItem => (*no checkpoint available*)
 		    do Logging.@log-eager-full-abort(pos)
                     (*<FF>*)
                     do FLS.@set-key(FF_KEY, readSet / exh)
                     (*</FF>*)
                     let abortK : cont() = FLS.@get-key(ABORT_KEY / exh) 
                     throw abortK()
-                | WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
+                | NoRecOrderedReadSet.WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
 		    do Logging.@log-eager-partial-abort(pos)
                     let casted : ![any, any, any, item] = (![any, any, any, item]) checkpoint
-                    do #NEXT(casted) := NilItem  (*split valid and invalid portions*)
+                    do #NEXT(casted) := NoRecOrderedReadSet.NilItem  (*split valid and invalid portions*)
                     fun getLoop() : any = 
                         let v : any = #0(tv)
                         let t : long = VClock.@get(/exh)
@@ -91,14 +86,14 @@ struct
                         else
                             let currentTime : stamp = @get-stamp(/exh)
                             do #0(startStamp) := currentTime
-                            do apply revalidate(#HEAD(readSet), NilItem, 0, 0)
+                            do apply revalidate(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0, 0)
                             apply getLoop()
                     let current : any = apply getLoop()
                     let newRS : read_set = alloc(#HEAD(readSet), checkpoint, checkpoint, count)
                     do FLS.@set-key(READ_SET, newRS / exh)
                     do FLS.@set-key(WRITE_SET, ws / exh)
                     (*<FF>*)
-                    do #HEAD(readSet) := NilItem (*we don't need this field anymore*)
+                    do #HEAD(readSet) := NoRecOrderedReadSet.NilItem (*we don't need this field anymore*)
                     do FLS.@set-key(FF_KEY, readSet / exh) (*try and use this portion of the read set on our second run through*)
                     let vp : vproc = host_vproc
                     (*</FF>*)
@@ -113,19 +108,19 @@ struct
             do Logging.@log-start-validate()
             fun eagerValidateLoopABCD(rs : item, abortInfo : item, count:int, pos:int) : () =
                 case rs 
-                   of NilItem => (*finished validating*)
+                   of NoRecOrderedReadSet.NilItem => (*finished validating*)
                         let currentTime : stamp = VClock.@get(/exh)
                         if I64Eq(currentTime, #0(startStamp))
                         then do Logging.@log-ts-extension() return() (*no one committed while validating*)
                         else  (*someone else committed, so revalidate*)
                             let currentTime : stamp = @get-stamp(/exh)
                             do #0(startStamp) := currentTime
-                            apply eagerValidateLoopABCD(#HEAD(readSet), NilItem, 0, 0)
-                    | WithoutK(tv:tvar, x:any, next:item) =>
+                            apply eagerValidateLoopABCD(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0, 0)
+                    |  NoRecOrderedReadSet.WithoutK(tv:tvar, x:any, next:item) =>
                         if Equal(#0(tv), x)
                     then apply eagerValidateLoopABCD(next, abortInfo, count, I32Add(pos, 1))
                         else @eager-abort(readSet, abortInfo, startStamp, count, eagerValidateLoopABCD, pos / exh)
-                    | WithK(tv:tvar,x:any,next:item,ws:item,abortK:any,_:item) =>
+                    | NoRecOrderedReadSet.WithK(tv:tvar,x:any,next:item,ws:item,abortK:any,_:item) =>
                         if Equal(#0(tv), x)
                         then 
                             if Equal(abortK, enum(0))
@@ -138,23 +133,23 @@ struct
                 end
             let currentTime : stamp = @get-stamp(/exh)
             do #0(startStamp) := currentTime
-            apply eagerValidateLoopABCD(#HEAD(readSet), NilItem, 0, 0)
+            apply eagerValidateLoopABCD(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0, 0)
         ;
 
         define inline @commit-abort(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, revalidate : fun(item, item, int, int / -> ), pos:int / exh:exh) : () = 
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             case checkpoint 
-               of NilItem => (*no checkpoint available*)
+               of NoRecOrderedReadSet.NilItem => (*no checkpoint available*)
 		    do Logging.@log-commit-full-abort(pos)
                     (*<FF>*)
                     do FLS.@set-key(FF_KEY, readSet / exh)
                     (*</FF>*)
                     let abortK : cont() = FLS.@get-key(ABORT_KEY / exh) 
                     throw abortK()
-                | WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
+                | NoRecOrderedReadSet.WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
 		    do Logging.@log-commit-partial-abort(0)
                     let casted : ![any, any, any, item] = (![any, any, any, item]) checkpoint
-                    do #NEXT(casted) := NilItem  (*split valid and invalid portions*)
+                    do #NEXT(casted) := NoRecOrderedReadSet.NilItem  (*split valid and invalid portions*)
                     fun getLoop() : any = 
                         let v : any = #0(tv)
                         let t : long = VClock.@get(/exh)
@@ -163,7 +158,7 @@ struct
                         else
                             let currentTime : stamp = @get-stamp(/exh)
                             do #0(startStamp) := currentTime
-                            do apply revalidate(#HEAD(readSet), NilItem, 0, 0)
+                            do apply revalidate(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0, 0)
                             apply getLoop()
                     let current : any = apply getLoop()
                     let newRS : read_set = alloc(#HEAD(readSet), checkpoint, checkpoint, count)
@@ -171,7 +166,7 @@ struct
                     do FLS.@set-key(WRITE_SET, ws / exh)
                     (*<FF>*)
                     do #NUMK(readSet) := I32Sub(#NUMK(readSet), count)
-                    do #HEAD(readSet) := NilItem (*we don't need this field anymore*)
+                    do #HEAD(readSet) := NoRecOrderedReadSet.NilItem (*we don't need this field anymore*)
                     do FLS.@set-key(FF_KEY, readSet / exh) (*try and use this portion of the read set on our second run through*)
                     let vp : vproc = host_vproc
                     (*</FF>*)
@@ -186,19 +181,19 @@ struct
             do Logging.@log-start-validate()
             fun validateLoopABCD(rs : item, abortInfo : item, count:int, i:int) : () =
                 case rs 
-                   of NilItem => (*finished validating*)
+                   of NoRecOrderedReadSet.NilItem => (*finished validating*)
                         let currentTime : stamp = VClock.@get(/exh)
                         if I64Eq(currentTime, #0(startStamp))
                         then return() (*no one committed while validating*)
                         else  (*someone else committed, so revalidate*)
                             let currentTime : stamp = @get-stamp(/exh)
                             do #0(startStamp) := currentTime
-                            apply validateLoopABCD(#HEAD(readSet), NilItem, 0, I32Add(i, 1))
-                    | WithoutK(tv:tvar, x:any, next:item) =>
+                            apply validateLoopABCD(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0, I32Add(i, 1))
+                    |  NoRecOrderedReadSet.WithoutK(tv:tvar, x:any, next:item) =>
                         if Equal(#0(tv), x)
                         then apply validateLoopABCD(next, abortInfo, count, I32Add(i, 1))
                         else @commit-abort(readSet, abortInfo, startStamp, count, validateLoopABCD, i / exh)
-                    | WithK(tv:tvar,x:any,next:item,ws:item,abortK:any,_:item) =>
+                    | NoRecOrderedReadSet.WithK(tv:tvar,x:any,next:item,ws:item,abortK:any,_:item) =>
                         if Equal(#0(tv), x)
                         then 
                             if Equal(abortK, enum(0))
@@ -211,14 +206,14 @@ struct
                 end
             let currentTime : stamp = @get-stamp(/exh)
             do #0(startStamp) := currentTime
-            apply validateLoopABCD(#HEAD(readSet), NilItem, 0, 0)
+            apply validateLoopABCD(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0, 0)
         ;
 
         define @ff-finish(readSet : read_set, checkpoint : item, i:int / exh:exh) : () =
             case checkpoint 
-               of WithK(tv:tvar,x:any,_:item,ws:item,k:cont(any),next:item) => 
+               of NoRecOrderedReadSet.WithK(tv:tvar,x:any,_:item,ws:item,k:cont(any),next:item) => 
                     let casted : mutWithK = (mutWithK) checkpoint
-                    do #NEXT(casted) := NilItem
+                    do #NEXT(casted) := NoRecOrderedReadSet.NilItem
                     let newRS : read_set = alloc(#0(readSet), checkpoint, checkpoint, i)
                     do FLS.@set-key(READ_SET, newRS / exh)
                     do FLS.@set-key(WRITE_SET, ws / exh)
@@ -233,12 +228,12 @@ struct
         define @ff-validate(readSet : read_set, oldRS : item, myStamp : ![long,int,int,long] / exh:exh) : () = 
             fun ffLoop(rs:item, i:int, checkpoint : item) : () = 
                 case rs
-                   of NilItem => @ff-finish(readSet, checkpoint, i / exh)
-                    | WithoutK(tv:tvar, x:any, next:item) => 
+                   of NoRecOrderedReadSet.NilItem => @ff-finish(readSet, checkpoint, i / exh)
+                    |  NoRecOrderedReadSet.WithoutK(tv:tvar, x:any, next:item) => 
                         if Equal(#0(tv), x)
                         then apply ffLoop(next, i, checkpoint)
                         else @ff-finish(readSet, checkpoint, i / exh)
-                    | WithK(tv:tvar,x:any,next:item,ws:item,k:cont(any),_:item) => 
+                    | NoRecOrderedReadSet.WithK(tv:tvar,x:any,next:item,ws:item,k:cont(any),_:item) => 
                         if Equal(#0(tv), x)
                         then
                             if Equal(k, enum(0))
@@ -249,7 +244,7 @@ struct
                             then @ff-finish(readSet, checkpoint, i / exh)
                             else
                                 let casted : mutWithK = (mutWithK) rs
-                                do #NEXT(casted) := NilItem
+                                do #NEXT(casted) := NoRecOrderedReadSet.NilItem
                                 let newRS : read_set = alloc(#0(readSet), rs, rs, I32Add(i, 1))
                                 do FLS.@set-key(READ_SET, newRS / exh)
                                 do FLS.@set-key(WRITE_SET, ws / exh)
@@ -275,8 +270,8 @@ struct
             else (*we should only allocate the checkRS closure if we are going to actually use it*)
                 fun checkRS(rs:item, i:int) : () = 
                     case rs 
-                       of NilItem =>  return()
-                        | WithK(tv':tvar,_:any,_:item,ws:item,k:cont(any),next:item) => 
+                       of NoRecOrderedReadSet.NilItem =>  return()
+                        | NoRecOrderedReadSet.WithK(tv':tvar,_:any,_:item,ws:item,k:cont(any),next:item) => 
                             INC_FF(1:long)
                             if Equal(tv, tv')
                             then (*tvars are equal*)
@@ -308,17 +303,15 @@ struct
                 apply checkRS(#LASTK(ffInfo), 1)
         ;
 
-        define inline @getNumK(rs : read_set) : int = return(#NUMK(rs));
-
         define inline @filterRS(readSet : read_set, stamp : ![long, int, int, long] / exh : exh) : () = 
             let vp : vproc = host_vproc
             fun dropKs(l:item, n:int) : int =   (*drop every other continuation*)
                 case l
-                   of NilItem => return(n)
-                    | WithK(_:any,_:any,_:item,_:item,_:cont(any),next:item) =>
+                   of NoRecOrderedReadSet.NilItem => return(n)
+                    | NoRecOrderedReadSet.WithK(_:any,_:any,_:item,_:item,_:cont(any),next:item) =>
                         case next
-                           of NilItem => return(n)
-                            | WithK(_:any,_:any,_:item,_:item,_:cont(any),nextNext:item) =>
+                           of NoRecOrderedReadSet.NilItem => return(n)
+                            | NoRecOrderedReadSet.WithK(_:any,_:any,_:item,_:item,_:cont(any),nextNext:item) =>
                                 (* NOTE: if compiled with -debug, this will generate warnings
                                  * that we are updating a bogus local pointer, however, given the
                                  * nature of the data structure, we do preserve the heap invariants*)
@@ -343,80 +336,6 @@ struct
             let x :int = apply dropKs(#LASTK(readSet), #NUMK(readSet))
             do #NUMK(readSet) := x
             return();
-
-        (*Note that these next two defines, rely on the fact that a heap limit check will not get
-         *inserted within the body*)
-        (*Add a checkpointed read to the read set*)
-        define @insert-with-k(tv:any, v:any, k:cont(any), ws:item, readSet : read_set, stamp : ![long, int, int, long] / exh:exh) : () = 
-            let newItem : item = WithK(tv, v, NilItem, ws, k, #LASTK(readSet))
-            let vp : vproc = host_vproc
-            let nurseryBase : long = vpload(NURSERY_BASE, vp)
-            let limitPtr : long = vpload(LIMIT_PTR, vp)
-            let lastAddr : any = (any) #TAIL(readSet)
-            let casted : ![any,any,item,item] = (![any,any,item,item])lastAddr
-            if I64Gte(lastAddr, nurseryBase)
-            then
-                if I64Lt(lastAddr, limitPtr)
-                then (*last item is still in nursery*)
-                    do #NEXT(casted) := newItem
-                    do #TAIL(readSet) := newItem
-                    do #LASTK(readSet) := newItem
-                    do #NUMK(readSet) := I32Add(#NUMK(readSet), 1)
-                    return()
-                else (*not in nursery, add last item to remember set*)
-                    let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
-                    let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
-                    do vpstore(REMEMBER_SET, vp, newRemSet)
-                    do #NEXT(casted) := newItem
-                    do FLS.@set-key(READ_SET, newRS / exh)
-                    let vp : vproc = host_vproc
-                    return()
-            else (*not in nursery, add last item to remember set*)
-                let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
-                let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
-                do vpstore(REMEMBER_SET, vp, newRemSet)
-                do #NEXT(casted) := newItem
-                do FLS.@set-key(READ_SET, newRS / exh)
-                let vp : vproc = host_vproc
-                return()
-        ;
-	
-        (*add a non checkpointed read to the read set*)
-    	define @insert-without-k(tv:any, v:any, readSet : read_set, stamp : ![long, int, int, long] / exh:exh) : () =
-    		let newItem : item = WithoutK(tv, v, NilItem)
-    		let vp : vproc = host_vproc
-    		let nurseryBase : long = vpload(NURSERY_BASE, vp)
-            let limitPtr : long = vpload(LIMIT_PTR, vp)
-            let lastAddr : any = (any) #TAIL(readSet)
-            let casted : ![any,any,any,item] = (![any,any,any,item]) lastAddr
-            if I64Gte(lastAddr, nurseryBase)
-            then
-                if I64Lt(lastAddr, limitPtr)
-                then (*last item is still in nursery*)
-                    do #NEXT(casted) := newItem
-                    do #TAIL(readSet) := newItem
-                    return()
-                else (*not in nursery, add last item to remember set*)
-                    let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
-                    let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
-                    do vpstore(REMEMBER_SET, vp, newRemSet)
-                    do #NEXT(casted) := newItem
-                    do FLS.@set-key(READ_SET, newRS / exh)
-                    let vp : vproc = host_vproc
-                    return()
-            else (*not in nursery, add last item to remember set*)
-                let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
-                let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
-                do vpstore(REMEMBER_SET, vp, newRemSet)
-                do #NEXT(casted) := newItem
-                do FLS.@set-key(READ_SET, newRS / exh)
-                let vp : vproc = host_vproc
-                return()
-        ;
     )
 end
 

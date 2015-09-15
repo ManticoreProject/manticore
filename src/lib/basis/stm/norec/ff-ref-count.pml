@@ -25,11 +25,11 @@ struct
             let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
             fun chkLog(writeSet : RS.item) : Option.option = (*use local copy if available*)
                 case writeSet
-                   of FFReadSet.Write(tv':tvar, contents:any, tl:RS.item) =>
+                   of NoRecOrderedReadSet.Write(tv':tvar, contents:any, tl:RS.item) =>
                         if Equal(tv', tv)
                         then return(Option.SOME(contents))
                         else apply chkLog(tl)
-                    | FFReadSet.NilItem => return (Option.NONE)
+                    | NoRecOrderedReadSet.NilItem => return (Option.NONE)
                 end
             cont retK(x:any) = return(x)
             do  if I64Gt(#1(tv), 0:long)
@@ -51,16 +51,16 @@ struct
                     let captureCount : int = FLS.@get-counter()
                     if I32Eq(captureCount, 0)
                     then
-                        let kCount : int = FFReadSet.@getNumK(readSet)
+                        let kCount : int = NoRecOrderedReadSet.@getNumK(readSet)
                         if I32Lt(kCount, READ_SET_BOUND)
                         then
-                            do FFReadSet.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
+                            do NoRecOrderedReadSet.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
                             let captureFreq : int = FLS.@get-counter2()
                             do FLS.@set-counter(captureFreq)
                             return(current)
                         else
                             do FFReadSet.@filterRS(readSet, myStamp / exh)
-                            do FFReadSet.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
+                            do NoRecOrderedReadSet.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
                             let captureFreq : int = FLS.@get-counter2()
                             let newFreq : int = I32Mul(captureFreq, 2)
                             do FLS.@set-counter(newFreq)
@@ -68,7 +68,7 @@ struct
                             return(current)
                     else
                         do FLS.@set-counter(I32Sub(captureCount, 1))
-                        do FFReadSet.@insert-without-k(tv, current, readSet, myStamp / exh)
+                        do NoRecOrderedReadSet.@insert-without-k(tv, current, readSet, myStamp / exh)
                         return(current)
             end
 		;
@@ -84,7 +84,7 @@ struct
             let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
             let oldFFInfo : RS.read_set = FLS.@get-key(FF_KEY / exh)
             do RS.@decCounts(oldFFInfo / exh)
-            do RS.@incCounts(readSet, FFReadSet.NilItem / exh)
+            do RS.@incCounts(readSet, NoRecOrderedReadSet.NilItem / exh)
             do FLS.@set-key(FF_KEY, readSet / exh)
             let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
             throw abortK()

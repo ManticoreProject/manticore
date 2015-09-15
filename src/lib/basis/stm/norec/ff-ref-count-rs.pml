@@ -27,7 +27,7 @@ struct
         extern void M_Print_Long2(void *, void *, void *);
         extern void M_IncCounter(void *, int , long);
        
-        typedef item = FFReadSet.item;
+        typedef item = NoRecOrderedReadSet.item;
 
     	typedef read_set = ![item,      (*0: first element of the read set*) 
     						 item, 	    (*1: last element of the read set*)
@@ -58,16 +58,16 @@ struct
 
     	define @new() : read_set = 
             let dummyTRef : ![any,long,long] = alloc(enum(0), 0:long, 0:long)
-            let dummy : item = FFReadSet.WithoutK(dummyTRef, enum(0), FFReadSet.NilItem)
-    		let rs : read_set = alloc(dummy, dummy, FFReadSet.NilItem, 0)
+            let dummy : item = NoRecOrderedReadSet.WithoutK(dummyTRef, enum(0), NoRecOrderedReadSet.NilItem)
+    		let rs : read_set = alloc(dummy, dummy, NoRecOrderedReadSet.NilItem, 0)
     		return(rs)
     	;
 
         define inline @decCounts(readSet : read_set / exh : exh) : () = 
             fun decLoop(i:item) : () = 
                 case i 
-                   of FFReadSet.NilItem => return()
-                    | FFReadSet.WithK(tv:tvar, _:any, _:item, _:item, _:cont(any),next:item) => 
+                   of NoRecOrderedReadSet.NilItem => return()
+                    | NoRecOrderedReadSet.WithK(tv:tvar, _:any, _:item, _:item, _:cont(any),next:item) => 
                         let _ : long = I64FetchAndAdd(&1(tv), ~1:long)
                         apply decLoop(next)
                     | _ => 
@@ -83,13 +83,13 @@ struct
         define inline @incCounts(readSet : read_set, sentinel : item / exh : exh) : () =
             fun incLoop(shortPath : item, i:int) : () = 
                 case shortPath 
-                   of FFReadSet.NilItem => do ccall M_Print_Long("incCounts: This should be impossible, sentinel is %p\n", sentinel) return()
-                    | FFReadSet.WithK(tv:tvar, _:any, _:item, _:item, _:cont(any),next:item) => 
+                   of NoRecOrderedReadSet.NilItem => do ccall M_Print_Long("incCounts: This should be impossible, sentinel is %p\n", sentinel) return()
+                    | NoRecOrderedReadSet.WithK(tv:tvar, _:any, _:item, _:item, _:cont(any),next:item) => 
                         let _ : long = I64FetchAndAdd(&1(tv), 1:long)
                         if Equal(next, sentinel)
                         then 
                             let casted : mutWithK = (mutWithK) shortPath
-                            do #NEXTK(casted) := FFReadSet.NilItem
+                            do #NEXTK(casted) := NoRecOrderedReadSet.NilItem
                             return()
                         else apply incLoop(next, I32Add(i, 1))
                     | _ => 
@@ -109,17 +109,17 @@ struct
         define @abortABCD(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, 
                           revalidate : fun(item, item, int / -> ) / exh:exh) : () = 
             case checkpoint 
-               of FFReadSet.NilItem => (*no checkpoint available*)
+               of NoRecOrderedReadSet.NilItem => (*no checkpoint available*)
                     (*<FF>*)
                     let oldFFInfo : read_set = FLS.@get-key(FF_KEY / exh)
                     do @decCounts(oldFFInfo / exh)
-                    do @incCounts(readSet, FFReadSet.NilItem / exh)
+                    do @incCounts(readSet, NoRecOrderedReadSet.NilItem / exh)
                     (*</FF>*)
                     let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
                     throw abortK()
-                | FFReadSet.WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
+                | NoRecOrderedReadSet.WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
                     let casted : ![any, any, any, item] = (![any, any, any, item]) checkpoint
-                    do #NEXT(casted) := FFReadSet.NilItem
+                    do #NEXT(casted) := NoRecOrderedReadSet.NilItem
                     fun getLoop() : any = 
                         let v : any = #0(tv)
                         let t : long = VClock.@get(/exh)
@@ -128,7 +128,7 @@ struct
                         else
                             let currentTime : stamp = @get-stamp(/exh)
                             do #0(startStamp) := currentTime
-                            do apply revalidate(#HEAD(readSet), FFReadSet.NilItem, 0)
+                            do apply revalidate(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0)
                             apply getLoop()
                     let current : any = apply getLoop()
                     let newRS : read_set = alloc(#HEAD(readSet), checkpoint, checkpoint, count)
@@ -149,19 +149,19 @@ struct
         define @validate(readSet : read_set, startStamp:![stamp, int, int, long] / exh:exh) : () = 
             fun validateLoopABCD(rs : item, abortInfo : item, count:int) : () =
                 case rs 
-                   of FFReadSet.NilItem => (*finished validating*)
+                   of NoRecOrderedReadSet.NilItem => (*finished validating*)
                         let currentTime : stamp = VClock.@get(/exh)
                         if I64Eq(currentTime, #0(startStamp))
                         then return() (*no one committed while validating*)
                         else  (*someone else committed, so revalidate*)
                             let currentTime : stamp = @get-stamp(/exh)
                             do #0(startStamp) := currentTime
-                            apply validateLoopABCD(#HEAD(readSet), FFReadSet.NilItem, 0)
-                    | FFReadSet.WithoutK(tv:tvar, x:any, next:item) =>
+                            apply validateLoopABCD(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0)
+                    | NoRecOrderedReadSet.WithoutK(tv:tvar, x:any, next:item) =>
                         if Equal(#0(tv), x)
                         then apply validateLoopABCD(next, abortInfo, count)
                         else @abortABCD(readSet, abortInfo, startStamp, count, validateLoopABCD / exh)
-                    | FFReadSet.WithK(tv:tvar,x:any,next:item,ws:item,abortK:any,_:item) =>
+                    | NoRecOrderedReadSet.WithK(tv:tvar,x:any,next:item,ws:item,abortK:any,_:item) =>
                         if Equal(#0(tv), x)
                         then 
                             if Equal(abortK, enum(0))
@@ -174,14 +174,14 @@ struct
                 end
             let currentTime : stamp = @get-stamp(/exh)
             do #0(startStamp) := currentTime
-            apply validateLoopABCD(#HEAD(readSet), FFReadSet.NilItem, 0)
+            apply validateLoopABCD(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0)
         ;
 
         define @ff-finish(readSet : read_set, checkpoint : item, i:int / exh:exh) : () =
             case checkpoint 
-               of FFReadSet.WithK(tv:tvar,x:any,_:item,ws:item,k:cont(any),next:item) => 
+               of NoRecOrderedReadSet.WithK(tv:tvar,x:any,_:item,ws:item,k:cont(any),next:item) => 
                     let casted : mutWithK = (mutWithK) checkpoint
-                    do #NEXT(casted) := FFReadSet.NilItem
+                    do #NEXT(casted) := NoRecOrderedReadSet.NilItem
                     let newRS : read_set = alloc(#0(readSet), checkpoint, checkpoint, i)
                     do FLS.@set-key(READ_SET, newRS / exh)
                     do FLS.@set-key(WRITE_SET, ws / exh)
@@ -194,12 +194,12 @@ struct
         define @ff-validate(readSet : read_set, oldRS : item, myStamp : ![long,int,int,long] / exh:exh) : () = 
             fun ffLoop(rs:item, i:int, checkpoint : item) : () = 
                 case rs
-                   of FFReadSet.NilItem => @ff-finish(readSet, checkpoint, i / exh)
-                    | FFReadSet.WithoutK(tv:tvar, x:any, next:item) => 
+                   of NoRecOrderedReadSet.NilItem => @ff-finish(readSet, checkpoint, i / exh)
+                    | NoRecOrderedReadSet.WithoutK(tv:tvar, x:any, next:item) => 
                         if Equal(#0(tv), x)
                         then apply ffLoop(next, i, checkpoint)
                         else @ff-finish(readSet, checkpoint, i / exh)
-                    | FFReadSet.WithK(tv:tvar,x:any,next:item,ws:item,k:cont(any),_:item) => 
+                    | NoRecOrderedReadSet.WithK(tv:tvar,x:any,next:item,ws:item,k:cont(any),_:item) => 
                         if Equal(#0(tv), x)
                         then
                             if Equal(k, enum(0))
@@ -221,7 +221,7 @@ struct
                                 do FLS.@set-key(READ_SET, newRS / exh)
                                 do FLS.@set-key(WRITE_SET, ws / exh)
                                 let casted : mutWithK = (mutWithK) rs
-                                do #NEXT(casted) := FFReadSet.NilItem
+                                do #NEXT(casted) := NoRecOrderedReadSet.NilItem
                                 let current : any = apply getLoop()
                                 BUMP_KCOUNT
                                 throw k(current)
@@ -236,8 +236,8 @@ struct
             else (*we should only allocate the checkRS closure if we are going to actually use it*)
                 fun checkRS(rs:item, i:long) : () = 
                     case rs 
-                       of FFReadSet.NilItem =>  return()
-                        | FFReadSet.WithK(tv':tvar,_:any,_:item,ws:item,k:cont(any),next:item) => 
+                       of NoRecOrderedReadSet.NilItem =>  return()
+                        | NoRecOrderedReadSet.WithK(tv':tvar,_:any,_:item,ws:item,k:cont(any),next:item) => 
                             INC_FF(1:long)
                             if Equal(tv, tv')
                             then (*tvars are equal*)
