@@ -272,7 +272,6 @@ struct
                     case rs 
                        of NoRecOrderedReadSet.NilItem =>  return()
                         | NoRecOrderedReadSet.WithK(tv':tvar,_:any,_:item,ws:item,k:cont(any),next:item) => 
-                            INC_FF(1:long)
                             if Equal(tv, tv')
                             then (*tvars are equal*)
                                 let res : int = ccall M_PolyEq(k, retK)
@@ -300,6 +299,7 @@ struct
                             do ccall M_Print_Long("checkRS: impossible, tag is %lu\n\n", #0(casted)) 
                             throw exh(Fail("checkRS: impossible\n"))
                     end
+                INC_FF(1:long)
                 apply checkRS(#LASTK(ffInfo), 1)
         ;
 

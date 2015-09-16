@@ -17,6 +17,14 @@
 #include "heap.h"
 #include "options.h"
 
+void M_Debug(Word_t * tref){
+    printf("tref is %p, ref count is %lu\n", tref, tref[1]);
+}
+
+void M_Print_Int_Long2(const char * s, int i, long l1, long l2){
+    printf(s, i, l1, l2);
+}
+
 void M_BumpCounter(VProc_t * vp, int index){
     vp->counter[index]++;
     

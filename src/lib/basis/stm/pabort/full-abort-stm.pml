@@ -39,6 +39,50 @@ struct
         define @unsafe-get(tv : tvar / exh:exh) : any = 
             return(#0(tv));
 
+(*
+        StgClosure * val; 
+    unsigned long stamp1, stamp2;
+    
+    stamp1 = tvar->stamp;
+    if(tvar->lock || stamp1 > trec->read_version){
+#ifdef STATS
+    cap->pastmStats.eagerFullAborts++;
+#endif
+    return abort_transaction(trec);
+    }
+    
+    val = tvar->current_value;
+    
+    stamp2 = tvar->stamp;
+    if(tvar->lock || stamp1 != stamp2){
+#ifdef STATS
+    cap->pastmStats.eagerFullAborts++;
+#endif
+    return abort_transaction(trec);
+    }
+    *)
+
+        define @full-abort(/exh:exh) : any = 
+            let k : cont() = FLS.@get-key(ABORT_KEY / exh)
+            throw k();
+
+        define @read-tvar(tv : tvar, stamp : ![stamp, int] / exh : exh) : any = 
+            let stamp1 : stamp = #2(tv)
+            let v : any = #0(tv)
+            do FenceRead()
+            let stamp2 : stamp = #2(tv)
+            do FenceRead()
+            if I64Eq(#1(tv), 0:long)
+            then 
+                if I64Eq(stamp1, stamp2)
+                then 
+                    if I64Lt(stamp1, #0(stamp))
+                    then return(v)
+                    else @full-abort(/exh)
+                else @full-abort(/exh)
+            else @full-abort(/exh)
+        ;
+
         define @get(tv : tvar / exh:exh) : any = 
             let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do if(#0(in_trans))
@@ -61,21 +105,7 @@ struct
             case localRes
                 of Option.SOME(v:any) => return(v)
                  | Option.NONE =>
-                    let current : any = #0(tv)
-                    let stamp : stamp = #1(tv)
-                    do if I64Eq(#1(tv), 0:long)
-                       then return()
-                       else fun lp() : () = 
-                                if I64Eq(#1(tv), 0:long)
-                                then return()
-                                else do Pause() apply lp()
-                            do apply lp()
-                            let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                            throw abortK()
-                    do if I64Lt(#0(myStamp), stamp)
-                       then let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                            throw abortK()
-                       else return()
+                    let current : any = @read-tvar(tv, myStamp / exh)
                     let newReadSet : item = Read(tv, readSet)
                     do FLS.@set-key(READ_SET, newReadSet / exh)
                     return(current)
@@ -98,15 +128,13 @@ struct
         ;
 
         define @commit(/exh:exh) : () =     
-            let vp : vproc = SchedulerAction.@atomic-begin()
             let startStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : item) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:item) =>
                         do #1(tv) := 0:long         (*unlock*)
                         apply release(tl)
-                     | NilItem => do SchedulerAction.@atomic-end(vp)
-                                  return()
+                     | NilItem => return()
                 end
             let readSet : item = FLS.@get-key(READ_SET / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
@@ -154,7 +182,6 @@ struct
             let plusOne : stamp = I64Add(rawStamp, 1:long)
             do apply validate(readSet, locks, newStamp)
             do apply update(locks, newStamp)
-            do SchedulerAction.@atomic-end(vp)
             return()
         ;
 
@@ -177,7 +204,6 @@ struct
                             throw exh(e)
                          let res : any = apply f(UNIT/transExh)
                          do @commit(/transExh)
-                       (*  do ccall M_Print_Int("Aborted this transaction %d times\n", #1(stampPtr)) *)
                          do #0(in_trans) := false
                          do FLS.@set-key(READ_SET, NilItem / exh)
                          do FLS.@set-key(WRITE_SET, NilItem / exh)
