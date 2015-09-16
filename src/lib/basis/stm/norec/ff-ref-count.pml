@@ -51,7 +51,11 @@ struct
                 		if I64Eq(t, #0(myStamp))
                 		then return(v)
                 		else
+#ifdef EVENT_LOGGING
+                            do RS.@validate(readSet, myStamp, true / exh)
+#else                            
                 			do RS.@validate(readSet, myStamp / exh)
+#endif                            
                 			apply getLoop()
                 	let current : any = apply getLoop()
                     let captureCount : int = FLS.@get-counter()
@@ -89,7 +93,11 @@ struct
                 if I64Eq(old, current)
                 then return()
                 else
-                    do FFReadSetCounter.@validate(readSet, stamp / exh)
+#ifdef EVENT_LOGGING
+                    do RS.@validate(readSet, stamp, false / exh)
+#else
+                    do RS.@validate(readSet, stamp / exh)
+#endif
                     apply lockClock()
             do apply lockClock()
             fun writeBack(ws:NoRecOrderedReadSet.item) : () = 

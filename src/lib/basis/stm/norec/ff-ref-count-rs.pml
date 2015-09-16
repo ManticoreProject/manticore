@@ -106,9 +106,9 @@ struct
                 do apply incLoop(lastK, 1)   (*increment reference counts for checkpoints after violation*)
                 FLS.@set-key(FF_KEY, readSet / exh)
         ;
-#ifdef LOGGING
+#ifdef EVENT_LOGGING
         define @abortABCD(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, 
-                          revalidate : fun(item, item, int / -> ), eager : bool / exh:exh) : () = 
+                          revalidate : fun(item, item, int, int / -> ), eager : bool, j:int / exh:exh) : () = 
             let vp : vproc = host_vproc
             let id : int = VProc.@vproc-id(vp)
             case checkpoint 
@@ -116,6 +116,10 @@ struct
                     let oldFFInfo : read_set = FLS.@get-key(FF_KEY / exh)
                     do @decCounts(oldFFInfo / exh)
                     do @incCounts(readSet, NoRecOrderedReadSet.NilItem / exh)
+                    do 
+                        if(eager)
+                        then Logging.@log-eager-full-abort(j) 
+                        else Logging.@log-commit-full-abort(j) 
                     let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
                     throw abortK()
                 | NoRecOrderedReadSet.WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
@@ -129,9 +133,12 @@ struct
                         else
                             let currentTime : stamp = @get-stamp(/exh)
                             do #0(startStamp) := currentTime
-                            do apply revalidate(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0)
+                            do apply revalidate(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0, 0)
                             apply getLoop()
                     let current : any = apply getLoop()
+                    do if(eager)
+                        then Logging.@log-eager-partial-abort(j) 
+                        else Logging.@log-commit-partial-abort(j) 
                     let newRS : read_set = alloc(#HEAD(readSet), checkpoint, checkpoint, count)
                     do FLS.@set-key(READ_SET, newRS / exh)
                     do FLS.@set-key(WRITE_SET, ws / exh)
@@ -146,7 +153,7 @@ struct
         ;
 
         define @validate(readSet : read_set, startStamp:![stamp, int, int, long], eager : bool / exh:exh) : () = 
-            fun validateLoopABCD(rs : item, abortInfo : item, count:int) : () =
+            fun validateLoopABCD(rs : item, abortInfo : item, count:int, j:int) : () =
                 case rs 
                    of NoRecOrderedReadSet.NilItem => (*finished validating*)
                         let currentTime : stamp = VClock.@get(/exh)
@@ -155,25 +162,25 @@ struct
                         else  (*someone else committed, so revalidate*)
                             let currentTime : stamp = @get-stamp(/exh)
                             do #0(startStamp) := currentTime
-                            apply validateLoopABCD(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0)
+                            apply validateLoopABCD(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0, I32Add(j, 1))
                     | NoRecOrderedReadSet.WithoutK(tv:tvar, x:any, next:item) =>
                         if Equal(#0(tv), x)
-                        then apply validateLoopABCD(next, abortInfo, count)
-                        else @abortABCD(readSet, abortInfo, startStamp, count, validateLoopABCD, eager / exh)
+                        then apply validateLoopABCD(next, abortInfo, count, I32Add(j, 1))
+                        else @abortABCD(readSet, abortInfo, startStamp, count, validateLoopABCD, eager, j / exh)
                     | NoRecOrderedReadSet.WithK(tv:tvar,x:any,next:item,ws:item,abortK:any,_:item) =>
                         if Equal(#0(tv), x)
                         then 
                             if Equal(abortK, enum(0))
-                            then apply validateLoopABCD(next, abortInfo, count)            (*update checkpoint*)
-                            else apply validateLoopABCD(next, rs, I32Add(count, 1))
+                            then apply validateLoopABCD(next, abortInfo, count, I32Add(j, 1))            (*update checkpoint*)
+                            else apply validateLoopABCD(next, rs, I32Add(count, 1), I32Add(j, 1))
                         else
                             if Equal(abortK, enum(0))
-                            then @abortABCD(readSet, abortInfo, startStamp, count, validateLoopABCD, eager / exh)
-                            else @abortABCD(readSet, rs, startStamp, I32Add(count, 1), validateLoopABCD, eager / exh)
+                            then @abortABCD(readSet, abortInfo, startStamp, count, validateLoopABCD, eager, j / exh)
+                            else @abortABCD(readSet, rs, startStamp, I32Add(count, 1), validateLoopABCD, eager, j / exh)
                 end
             let currentTime : stamp = @get-stamp(/exh)
             do #0(startStamp) := currentTime
-            apply validateLoopABCD(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0)
+            apply validateLoopABCD(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0, 0)
         ;
 #else
         define @abortABCD(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, 
@@ -285,7 +292,7 @@ struct
                                     if I64Eq(t, #0(myStamp))
                                     then return(v)
                                     else
-                                        do @validate(newRS, myStamp / exh)
+                                        do @validate(newRS, myStamp, true / exh)
                                         apply getLoop()
                                 do FLS.@set-key(READ_SET, newRS / exh)
                                 do FLS.@set-key(WRITE_SET, ws / exh)
