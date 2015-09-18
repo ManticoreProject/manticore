@@ -76,6 +76,6 @@ structure LLVMAttribute = struct
     val compare = (fn (x, y) => Int.compare(id x, id y))
   end
 
-    structure Set = RedBlackSetFn (K)
+  structure Set = RedBlackSetFn (K)
 
 end

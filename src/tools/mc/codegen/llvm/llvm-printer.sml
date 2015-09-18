@@ -5,7 +5,7 @@
  *
  * Outputs a CFG program as textual LLVM IR. 
  *    - Depends on the predecessor CFG pass.
- *    - Compatible with LLVM 3.7
+ *    - Compatible with LLVM 3.8
  *)
 
 functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
@@ -139,7 +139,33 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   fun mkBody (exps : C.exp list) : string = ""
 
-  fun mkBasicBlock (b : C.block) : string = ""
+  (* testing llvm bb generator *)
+    (*
+    val t = LB.new(LV.new("entry", LT.labelTy))   
+      val intTy = LT.mkInt(LT.cnt 32)
+      fun mkInt i = LB.fromC(LB.intC(intTy, i))
+      fun mkFloat f = LB.fromC(LB.floatC(LT.floatTy, 0.0))
+      val mk = LB.mk t AS.empty
+      val mkNSW = LB.mk t (AS.addList(AS.empty, [A.FastMath]))
+      val ret = LB.ret t 
+      fun fcmp cmp = Op.Fcmp(Op.O(cmp))
+      fun icmp cmp = Op.Icmp(Op.S(cmp))
+
+    val bb = ret (mk (icmp(Op.LE)) #[
+    (mk Op.Sub #[mkInt 0, mk Op.Add #[mkInt 10, mkInt 200]]),
+    (mkInt 0)])
+    
+    val done = LB.toString bb
+
+    val body = [
+      done
+    ]
+    *)
+
+  fun mkBasicBlocks (start, body) = []
+
+
+  and mkBlock (b : C.block) : string = ""
 
   (* end of Basic Blocks *)
 
@@ -164,31 +190,8 @@ fun output (outS, module as C.MODULE { name = module_name,
                                when we output it here.
                                we also probably need a rename environment? *)
     val decl = [comment, "define ", linkage, " void ", llName, "(", llparams, ") ", stdAttrs(MantiFun), " {\n"]
-    
-    (* testing llvm bb generator *)
-    val t = LB.new(LV.new("entry", LT.labelTy))
-      (* helpers *)
-      val intTy = LT.mkInt(LT.cnt 32)
-      fun mkInt i = LB.fromC(LB.intC(intTy, i))
-      fun mkFloat f = LB.fromC(LB.floatC(LT.floatTy, 0.0))
-      val mk = LB.mk t AS.empty
-      val mkNSW = LB.mk t (AS.addList(AS.empty, [A.FastMath]))
-      val ret = LB.ret t 
-      fun fcmp cmp = Op.Fcmp(Op.O(cmp))
-      fun icmp cmp = Op.Icmp(Op.S(cmp))
-
-    val bb = ret (mk (icmp(Op.LE)) #[
-    (mk Op.Sub #[mkInt 0, mk Op.Add #[mkInt 10, mkInt 200]]),
-    (mkInt 0)])
-    
-    val done = LB.toString bb
-
-    val body = [
-      done
-    ]
-
-
-     (* List.map mkBasicBlock (start::body) *)
+  
+    val body = mkBasicBlocks (start, body)  
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in
