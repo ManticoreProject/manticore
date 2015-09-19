@@ -104,6 +104,33 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   end
 
+  (* translation environment utilities *)
+
+  datatype gamma = ENV of {
+    labs : LV.var CL.Map.map,    (* CFG Labels -> LLVMVars *)
+    vars : LV.var CV.Map.map     (* CFG Vars -> LLVMVars *)
+  }
+
+  fun lookupV (ENV{vars,...}, v) = 
+    (case CV.Map.find(vars, v)
+      of SOME lv => lv
+       | NONE => raise Fail ("lookupV -- unknown CFG Var: " ^ CV.toString v)
+    (* esac *))
+
+  fun lookupL (ENV{labs,...}, l) = 
+    (case CL.Map.find(labs, l)
+      of SOME ll => ll
+       | NONE => raise Fail ("lookupL -- unknown CFG Label: " ^ CL.toString l)
+    (* esac *))
+
+  fun insertV (ENV{vars, labs}, v, lv) = 
+        ENV{vars=(CV.Map.insert(vars, v, lv)), labs=labs}
+
+  fun insertL (ENV{vars, labs}, l, ll) = 
+        ENV{vars=vars, labs=(CL.Map.insert(labs, l, ll))}
+
+  (* end translation environment utilities *)
+
   
   (* Terminators, aka transfers in CFG *)
 
@@ -137,7 +164,79 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   (* Basic Blocks *)
 
-  fun mkBody (exps : C.exp list) : string = ""
+  fun mkBasicBlocks (initEnv : gamma, start : C.block, body : C.block list) : string list = let
+      (* start needs to be treated specially because it's inputs
+         are the parameters to the function and potentially other BBs.
+         For now we'll treat it like a normal BB. *)
+    (* no branches should be expected to target the start block, 
+      because they should be calls (the start block has the type of the function
+    and for all intents and purposes it represents the function) *)
+
+      fun convertLabs (C.BLK{lab,...}) = (lab, LV.convertLabel lab)
+
+      val env = L.foldr (fn ((old, new), acc) => insertL(acc, old, new))
+                  initEnv 
+                  (L.map convertLabs body)
+
+      (* TODO(kavon): not sure if it's correct to skip adding start block to environment.
+          current assumption is that nobody will branch to start block, but instead make
+          a call to it, and the function's LLVM name should already be in environment
+          at this point. *)
+
+      fun init f (b as C.BLK{lab, body, exit, args}) = let
+          val llArgs  = L.map LV.convert args
+          val env = L.foldr (fn ((old, new), acc) => insertV(acc, old, new))
+                      env
+                      (ListPair.zip(args, llArgs))
+          
+          val b = LB.new (f lab, llArgs)
+        in
+          fillBlock b (env, body, exit)
+        end
+
+      val startBlock = init (fn _ => LV.new("entry", LT.labelTy)) start
+      val bodyBlocks = L.map (init (fn lab => lookupL(env, lab))) body
+
+    in
+      L.map LB.toString (startBlock::bodyBlocks)
+    end
+      
+
+
+  and fillBlock (b : LB.t) (initialEnv : gamma, body : C.exp list, exit : C.transfer) : LB.bb = let
+    
+    (* a jump list is a (label * var list) which indicates
+       where a jump comes from, and the names of the vars from that BB.
+       We'll need to stick a sequence of phis at the beginning of each
+       BB once we know all of the control flow in the program. in particular,
+       during the generation of transfers we'll be creating new blocks.
+
+       In the meantime, we should save the args and preds into the block, and later
+        once we terminate the block we'll generate the following at the beginning
+        of the block:
+
+        arg[i] <- phi [ jump[k].arg[i], jump[k].label ], [ jump[k+1].arg[i], jump[k+1].label ], ...
+        arg[i+1] <- phi [ jump[k].arg[i+1], jump[k].label ], [ jump[k+1].arg[i+1], jump[k+1].label ], ...
+        ...
+    *)
+      
+
+      fun process(env, []) = env
+        | process(env, x::xs) = let
+          val env =
+            (case x
+              of C.E_Const(lhs, lit, ty) => raise Fail "todo"
+               | _ => process(env, xs) (* TODO(kavon): raise Fail instead! *)
+              (* esac *))
+          in
+            process(env, xs)
+          end
+
+
+    in
+      LB.retVoid b
+    end
+
 
   (* testing llvm bb generator *)
     (*
@@ -161,11 +260,7 @@ fun output (outS, module as C.MODULE { name = module_name,
       done
     ]
     *)
-
-  fun mkBasicBlocks (start, body) = []
-
-
-  and mkBlock (b : C.block) : string = ""
+    
 
   (* end of Basic Blocks *)
 
@@ -173,7 +268,7 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   fun mkFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args, ... }), body }) : string = let
     val linkage = linkageOf lab
-    val cc = "" (* TODO(kavon): determine this *)
+    val cc = " cc 17 " (* Only available in Kavon's modified version of LLVM. *)
     val llName = (LV.toString o LV.convertLabel) lab
 
     val cfgTy = LT.typeOfConv(entry, args)
@@ -189,9 +284,10 @@ fun output (outS, module as C.MODULE { name = module_name,
                                also, the start block should be treated specially
                                when we output it here.
                                we also probably need a rename environment? *)
-    val decl = [comment, "define ", linkage, " void ", llName, "(", llparams, ") ", stdAttrs(MantiFun), " {\n"]
-  
-    val body = mkBasicBlocks (start, body)  
+    val decl = [comment, "define ", linkage, cc, "void ", llName, "(", llparams, ") ", stdAttrs(MantiFun), " {\n"]
+    
+    (* TODO(kavon): environment shouldn't be empty at this point but we can fix it later *) 
+    val body = mkBasicBlocks (ENV{labs=CL.Map.empty, vars=CV.Map.empty}, start, body)  
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in

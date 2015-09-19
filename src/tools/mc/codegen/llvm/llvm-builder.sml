@@ -28,8 +28,10 @@ structure LLVMBuilder : sig
       *)
 
 
-    (* start a fresh basic block *)
-    val new : var -> t
+    (* start a fresh basic block. first one is the name
+       of the block and the list is the list of arguments
+       to the block *)
+    val new : (var * var list) -> t
 
     (* generate textual representation of the BB *)
     val toString : bb -> string
@@ -86,9 +88,19 @@ structure LLVMBuilder : sig
     (* C calls which return *)
     val call : t -> (instr * instr vector) -> instr
 
-    (* join instruction *)
-    val phi : t -> (instr * var) vector -> instr
 
+
+    (*
+      PHI's should be mutable in this interface, so we do not
+      expose the ability to construct PHI{...}'s directly.
+      Instead, one can update an in-progress block with predecessors, and
+      upon finishing a basic block, phi's will be added to the block.
+
+      Use the interface below for joins in order to produce phis.
+    *) 
+
+
+  val addIncoming : t -> (var * var list) -> t
 
     
   end = struct
@@ -136,6 +148,7 @@ structure LLVMBuilder : sig
     | OP_None  (* for wrapped constants and vars, as no operation occurs *)
 
 
+  type edge = (var * var list)
 
   datatype instr 
     = INSTR of {
@@ -157,7 +170,9 @@ structure LLVMBuilder : sig
      reverse the instructions to complete it. *)
   and t = T of { 
     name : var,
-    body : instr list ref
+    args : var list,
+    body : instr list ref,
+    incoming : edge list ref
   }
 
   and bb = BB of { 
@@ -177,10 +192,10 @@ structure LLVMBuilder : sig
         ^ "\texpected: " ^ LT.nameOf expected ^ "\n"
         ^ "\tobserved: " ^ LT.nameOf observed ^ "\n")
 
-  (* new : var -> t *)
-  fun new v = (
+  (* new : (var, var list) -> t *)
+  fun new (v, args) = (
     typeCheck "new" (LT.labelTy, LV.typeOf v) ;
-    T { name = v, body = ref nil }
+    T { name = v, body = ref nil, args = args, incoming = ref nil }
    )
 
 
@@ -190,7 +205,7 @@ structure LLVMBuilder : sig
   fun toString (bb as BB {name, body}) : string = let
       val header = LV.identOf(name) ^ ":\n\t"
     in
-      header ^ (S.concatWith "\n\t" (cvt body))
+      header ^ (S.concatWith "\n\t" (cvt body)) ^ "\n\n"
     end
 
   (* we don't use map because the body is actually a reversed
@@ -203,169 +218,185 @@ structure LLVMBuilder : sig
       process(body, nil)
     end
 
-  and getStr (inst as INSTR{result, kind, args, atr}) = let
+  and getStr (phi as PHI{join : var, preds : (instr * var) vector }) = let
+      
+      fun cvt (INSTR{result=(R_Var v),...}, l) = 
+          "[ " ^ LV.toString v ^ ", " ^ LV.toString l ^ " ]"
 
-    fun break (INSTR{result,...}) = (case result
-                       of R_Var v => (LV.toString v, LV.typeOf v)
-                        
-                        | R_Const(C_Int(ty, i)) => (IntInf.toString i, ty)
+      val tings : string vector = V.map cvt preds
+      val tings = V.foldr (fn (v, a) => v::a) [] tings
+      val rhs = S.concatWith ", " tings
 
-                        | R_Const(C_Float(ty, f)) => (Real.toString f, ty)
+      val (lhs, lhsTy) = (LV.toString join, (LT.nameOf o LV.typeOf) join)
 
-                        | R_Const(C_Str v) => (LV.toString v, LV.typeOf v)
-
-                        | _ => raise Fail "invalid argument for an instruction"
-                    (* esac *))
-
-    fun getArgStr withTy = fn instr => let
-        val (resName, resTy) = break instr
-      in
-        if withTy
-          then LT.nameOf(resTy) ^ " " ^ resName
-        else resName
-      end
-
-    fun breakRes result = (case result
-                       of R_Var v => SOME (LV.toString v, LV.typeOf v)
-                        | R_None => NONE
-                        | _ => raise Fail "invalid LHS for an instruction."
-                    (* esac *))
-
-    fun mkGEP(inbounds, (resName, resTy)) = (let
-            val (ptrName, ptrTy) = break (V.sub(args, 0))
-            val offsets = L.tabulate ((V.length args) - 1,
-                            fn i => getArgStr true (V.sub(args, i+1)))
-            val offsets = S.concatWith ", " offsets
-          in
-            S.concat
-              [ resName, " = getelementptr " ^ (if inbounds then "inbounds " else ""),
-                (LT.nameOf o LT.deref) ptrTy, ", ",
-                LT.nameOf ptrTy, " ", ptrName, ", ",
-                offsets
-              ]
-          end)
     in
-      case (kind, breakRes result)    
-        of (OP opc, SOME(resName, resTy)) => (case opc
-          of (  Op.Add
-              | Op.Sub
-              | Op.Mul
-              | Op.Shl ) => let
-                  val nsw = if AS.member(atr, A.NSW)
-                            then (A.toString A.NSW ^ " ")
-                            else ""
-                  val nuw = if AS.member(atr, A.NUW)
-                            then (A.toString A.NUW ^ " ")
-                            else ""
-                  val opcStr = Op.toString opc
-                  val (arg1, ty) = break(V.sub(args, 0)) 
-                  val (arg2, _) = break(V.sub(args, 1)) 
-                in
-                  S.concat[resName, " = ", opcStr, " ", nuw, nsw, LT.nameOf ty, " ", arg1, ", ", arg2]
-                end
-
-           | (  Op.FAdd
-              | Op.FSub
-              | Op.FMul
-              | Op.FDiv
-              | Op.FRem ) => let
-                  val fmathFlags = 
-                        if AS.member(atr, A.FastMath)
-                          then (A.toString A.FastMath)
-                        else S.concatWith " " (L.map A.toString (AS.listItems atr))
-                  val opcStr = Op.toString opc
-                  val (arg1, ty) = break(V.sub(args, 0)) 
-                  val (arg2, _) = break(V.sub(args, 1)) 
-                in
-                  S.concat[resName, " = ", opcStr, " ",
-                   fmathFlags, if not(AS.isEmpty(atr)) then " " else "",
-                   LT.nameOf ty, " ", arg1, ", ", arg2]
-                end
-
-           | Op.Icmp kind => let
-              val icmpStr = Op.toString(opc) ^ " " ^ Op.icmpKindToStr kind
-              val (arg1, ty) = break(V.sub(args, 0)) 
-              val (arg2, _) = break(V.sub(args, 1)) 
-            in
-              S.concat [resName, " = ", icmpStr, " ", LT.nameOf ty, " ", arg1, ", ", arg2]
-            end
-
-           | Op.Fcmp kind => let
-                  val fmathFlags = 
-                        if AS.member(atr, A.FastMath)
-                          then (A.toString A.FastMath)
-                        else S.concatWith " " (L.map A.toString (AS.listItems atr))
-                  val (arg1, ty) = break(V.sub(args, 0)) 
-                  val (arg2, _) = break(V.sub(args, 1)) 
-                in
-                  S.concat[resName, " = ", Op.toString opc, " ",
-                   fmathFlags, if not(AS.isEmpty(atr)) then " " else "",
-                   Op.fcmpKindToStr kind, " ",
-                   LT.nameOf ty, " ", arg1, ", ", arg2]
-                end
-
-           | _ => "; opcode " ^ (Op.toString opc) ^ " not implemented."
-
-          (* esac *))
-         
-         | (OP_GEP, SOME info) => mkGEP(false, info)
-         
-         | (OP_GEP_IB, SOME info) => mkGEP(true, info)
-         
-         | (OP_Return, NONE) => 
-            if V.length args = 0
-              then "ret void"
-            else S.concat ["ret ", getArgStr true (V.sub(args, 0))]
-         
-         (* unconditional branch *)
-         | (OP_Br, NONE) => S.concat ["br ", getArgStr true (V.sub(args, 0))]
-         
-         | (OP_CondBr, NONE) => 
-             S.concat [
-                "br ", (getArgStr true (V.sub(args, 0))), ", ",
-                (getArgStr true (V.sub(args, 1))), ", ",
-                (getArgStr true (V.sub(args, 2)))
-             ]
-         
-         | (OP_TailCall, NONE) => let
-             val (funcName, funcTy) = break (V.sub(args, 0))
-             val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
-                             fn i => getArgStr true (V.sub(args, i+1))))
-           in   
-
-            (* TODO(kavon): currently doesn't include CC or any attributes *)
-
-             S.concat ["musttail call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
-           end
-         
-         | (OP_Call, NONE) => let
-             val (funcName, funcTy) = break (V.sub(args, 0))
-             val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
-                             fn i => getArgStr true (V.sub(args, i+1))))
-           in   
-
-            (* TODO(kavon): currently doesn't include CC or any attributes *)
-            
-             S.concat ["call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
-           end
-
-         | (OP_Call, SOME(resName, resTy)) => let 
-             val (funcName, funcTy) = break (V.sub(args, 0))
-             val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
-                             fn i => getArgStr true (V.sub(args, i+1))))
-           in   
-
-            (* TODO(kavon): currently doesn't include CC or any attributes *)
-            
-             S.concat [resName, " = call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
-           end
-
-         | (OP_Unreachable, NONE) => "unreachable"
-
-         | (OP_None, _) => raise Fail "basic block should not have wrapped var/const as an instruction."
-
-         | _ => raise Fail "bogus LLVM instruction"
+      S.concat [lhs, " = phi ", lhsTy, " ", rhs ]
     end
+
+    | getStr (inst as INSTR{result, kind, args, atr}) = let
+
+      fun break (INSTR{result,...}) = (case result
+                         of R_Var v => (LV.toString v, LV.typeOf v)
+                          
+                          | R_Const(C_Int(ty, i)) => (IntInf.toString i, ty)
+
+                          | R_Const(C_Float(ty, f)) => (Real.toString f, ty)
+
+                          | R_Const(C_Str v) => (LV.toString v, LV.typeOf v)
+
+                          | _ => raise Fail "invalid argument for an instruction"
+                      (* esac *))
+
+      fun getArgStr withTy = fn instr => let
+          val (resName, resTy) = break instr
+        in
+          if withTy
+            then LT.nameOf(resTy) ^ " " ^ resName
+          else resName
+        end
+
+      fun breakRes result = (case result
+                         of R_Var v => SOME (LV.toString v, LV.typeOf v)
+                          | R_None => NONE
+                          | _ => raise Fail "invalid LHS for an instruction."
+                      (* esac *))
+
+      fun mkGEP(inbounds, (resName, resTy)) = (let
+              val (ptrName, ptrTy) = break (V.sub(args, 0))
+              val offsets = L.tabulate ((V.length args) - 1,
+                              fn i => getArgStr true (V.sub(args, i+1)))
+              val offsets = S.concatWith ", " offsets
+            in
+              S.concat
+                [ resName, " = getelementptr " ^ (if inbounds then "inbounds " else ""),
+                  (LT.nameOf o LT.deref) ptrTy, ", ",
+                  LT.nameOf ptrTy, " ", ptrName, ", ",
+                  offsets
+                ]
+            end)
+    in
+          case (kind, breakRes result)    
+            of (OP opc, SOME(resName, resTy)) => (case opc
+              of (  Op.Add
+                  | Op.Sub
+                  | Op.Mul
+                  | Op.Shl ) => let
+                      val nsw = if AS.member(atr, A.NSW)
+                                then (A.toString A.NSW ^ " ")
+                                else ""
+                      val nuw = if AS.member(atr, A.NUW)
+                                then (A.toString A.NUW ^ " ")
+                                else ""
+                      val opcStr = Op.toString opc
+                      val (arg1, ty) = break(V.sub(args, 0)) 
+                      val (arg2, _) = break(V.sub(args, 1)) 
+                    in
+                      S.concat[resName, " = ", opcStr, " ", nuw, nsw, LT.nameOf ty, " ", arg1, ", ", arg2]
+                    end
+
+               | (  Op.FAdd
+                  | Op.FSub
+                  | Op.FMul
+                  | Op.FDiv
+                  | Op.FRem ) => let
+                      val fmathFlags = 
+                            if AS.member(atr, A.FastMath)
+                              then (A.toString A.FastMath)
+                            else S.concatWith " " (L.map A.toString (AS.listItems atr))
+                      val opcStr = Op.toString opc
+                      val (arg1, ty) = break(V.sub(args, 0)) 
+                      val (arg2, _) = break(V.sub(args, 1)) 
+                    in
+                      S.concat[resName, " = ", opcStr, " ",
+                       fmathFlags, if not(AS.isEmpty(atr)) then " " else "",
+                       LT.nameOf ty, " ", arg1, ", ", arg2]
+                    end
+
+               | Op.Icmp kind => let
+                  val icmpStr = Op.toString(opc) ^ " " ^ Op.icmpKindToStr kind
+                  val (arg1, ty) = break(V.sub(args, 0)) 
+                  val (arg2, _) = break(V.sub(args, 1)) 
+                in
+                  S.concat [resName, " = ", icmpStr, " ", LT.nameOf ty, " ", arg1, ", ", arg2]
+                end
+
+               | Op.Fcmp kind => let
+                      val fmathFlags = 
+                            if AS.member(atr, A.FastMath)
+                              then (A.toString A.FastMath)
+                            else S.concatWith " " (L.map A.toString (AS.listItems atr))
+                      val (arg1, ty) = break(V.sub(args, 0)) 
+                      val (arg2, _) = break(V.sub(args, 1)) 
+                    in
+                      S.concat[resName, " = ", Op.toString opc, " ",
+                       fmathFlags, if not(AS.isEmpty(atr)) then " " else "",
+                       Op.fcmpKindToStr kind, " ",
+                       LT.nameOf ty, " ", arg1, ", ", arg2]
+                    end
+
+               | _ => "; opcode " ^ (Op.toString opc) ^ " not implemented."
+
+              (* esac *))
+             
+             | (OP_GEP, SOME info) => mkGEP(false, info)
+             
+             | (OP_GEP_IB, SOME info) => mkGEP(true, info)
+             
+             | (OP_Return, NONE) => 
+                if V.length args = 0
+                  then "ret void"
+                else S.concat ["ret ", getArgStr true (V.sub(args, 0))]
+             
+             (* unconditional branch *)
+             | (OP_Br, NONE) => S.concat ["br ", getArgStr true (V.sub(args, 0))]
+             
+             | (OP_CondBr, NONE) => 
+                 S.concat [
+                    "br ", (getArgStr true (V.sub(args, 0))), ", ",
+                    (getArgStr true (V.sub(args, 1))), ", ",
+                    (getArgStr true (V.sub(args, 2)))
+                 ]
+             
+             | (OP_TailCall, NONE) => let
+                 val (funcName, funcTy) = break (V.sub(args, 0))
+                 val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
+                                 fn i => getArgStr true (V.sub(args, i+1))))
+               in   
+
+                (* TODO(kavon): currently doesn't include CC or any attributes *)
+
+                 S.concat ["musttail call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
+               end
+             
+             | (OP_Call, NONE) => let
+                 val (funcName, funcTy) = break (V.sub(args, 0))
+                 val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
+                                 fn i => getArgStr true (V.sub(args, i+1))))
+               in   
+
+                (* TODO(kavon): currently doesn't include CC or any attributes *)
+                
+                 S.concat ["call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
+               end
+
+             | (OP_Call, SOME(resName, resTy)) => let 
+                 val (funcName, funcTy) = break (V.sub(args, 0))
+                 val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
+                                 fn i => getArgStr true (V.sub(args, i+1))))
+               in   
+
+                (* TODO(kavon): currently doesn't include CC or any attributes *)
+                
+                 S.concat [resName, " = call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
+               end
+
+             | (OP_Unreachable, NONE) => "unreachable"
+
+             | (OP_None, _) => raise Fail "basic block should not have wrapped var/const as an instruction."
+
+             | _ => raise Fail "bogus LLVM instruction"
+    
+    end (* end of getStr *)
 
 
 (**************************************************
@@ -380,6 +411,8 @@ structure LLVMBuilder : sig
 
   (* push an instruction onto the given basic block *)
   fun push (T{body=blk,...}, inst) = (blk := inst :: (!blk) ; inst)
+
+  fun incoming(t as T{incoming,...}, edge) = (incoming := edge :: (!incoming); t)
 
   (* this is probably reusable elsewhere *)
   fun grabTy result = (case result
@@ -404,7 +437,8 @@ structure LLVMBuilder : sig
 
   (* Terminators *)
 
-  fun terminate (blk as T {name, body}, inst) = 
+  (* TODO(kavon): in this function, process PHIs and add them to the beginning! *)
+  fun terminate (blk as T {name, body, args, incoming}, inst) = 
     (push(blk, inst) ; BB {name=name, body=(!body)}) 
 
 
@@ -607,8 +641,13 @@ structure LLVMBuilder : sig
       )
     end
 
+  
+  (* addIncoming : t -> (var * var list) -> t *)
+  fun addIncoming blk edge = incoming(blk, edge)
 
-  (* phi : t -> (instr * var) vector -> instr *)
+
+(*
+
   fun phi blk predPairs = let
 
     val check = typeCheck "phi"
@@ -632,7 +671,7 @@ structure LLVMBuilder : sig
       }
     )
   end 
-
+*)
      
 
 end

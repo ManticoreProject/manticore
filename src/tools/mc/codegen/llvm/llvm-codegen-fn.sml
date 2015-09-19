@@ -12,7 +12,12 @@ struct
 	structure LLVMBackend = LLVMPrinter (structure Spec = Spec)
 
 	fun codeGen {code : CFG.module, dst : TextIO.outstream} = let
-		val _ = Predecessors.analyze code
+		(* turns out this pass is not useful because we determine this 
+		   information as we generate the IR and generate additional
+		   basic blocks too. *)
+
+		(* val _ = Predecessors.analyze code *)
+
 	in
 		LLVMBackend.output(dst, code)
 	end
