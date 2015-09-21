@@ -10,6 +10,8 @@ struct
 	extern void postEvent(void *, int);
 	extern void postAbortTX(void*, int, int);
 	extern void postRememberObj(void*, void*);
+    extern void postWSMatch(void *, int);
+
 #ifdef EVENT_LOGGING
 
 	define inline @log-start-tx() : () = 
@@ -35,9 +37,9 @@ struct
 	    return()
         ; 
 
-        define inline @log-eager-full-abort(abortInfo : int) : () = 
+        define inline @log-eager-full-abort() : () = 
             let vp : vproc = host_vproc
-            do ccall postAbortTX(vp, abortInfo, 5)
+            do ccall postEvent(vp, 5)
 	    return()
         ; 
 
@@ -47,9 +49,9 @@ struct
 	    return()
         ; 
 
-        define inline @log-commit-full-abort(abortInfo : int) : () = 
+        define inline @log-commit-full-abort() : () = 
             let vp : vproc = host_vproc
-            do ccall postAbortTX(vp, abortInfo, 7)
+            do ccall postEvent(vp, 7)
 	    return()
         ; 
 
@@ -81,7 +83,12 @@ struct
             do ccall postEvent(vp, 19)
             return()
         ;
- 
+        
+        define inline @log-ws-match(matchType : int) : () = 
+            let vp : vproc = host_vproc
+            do ccall postWSMatch(vp, matchType)
+            return()
+        ;
 #else
 	define inline @log-start-tx() : () = 
             return()
@@ -127,6 +134,8 @@ struct
         
         define inline @log-ff(ffInfo : int) : () =  
             return();
+
+        define inline @log-ws-match(matchType : int) : () = return();
 #endif
 
         define @log-commit-tx-wrapper(x : unit / exh : exh) : unit =

@@ -5,49 +5,15 @@ struct
 
     structure RS = FFReadSetMergeWriteSets
 
-    _primcode(
-        define @init-count(x:unit / exh:exh) : ml_long = 
-            let x : [long] = alloc(1:long)
-            let x : [long] = promote(x)
-            return(x);
-    )
-
-    val initCount : unit -> long = _prim(@init-count)
-    val count = initCount()
-    fun getCount() = count
-
 	_primcode(
 		(*I'm using ![any, long, long] as the type
 		 * for tvars so that the typechecker will treat them
 		 * as the same type as the other STM implementations.
 		 * However, only the first element is ever used*)
-		typedef tvar = ![any, long, long];
+		typedef tvar = ![any, long];
 		typedef stamp = VClock.stamp;
 
         extern void M_PruneRemSetAll(void*, long, void*);
-
-        define @get-count = getCount;
-
-		define @new(x:any / exh:exh) : tvar =
-            let c : [long] = @get-count(UNIT / exh)
-            let c : ![long] = (![long]) c
-            let id : long = I64FetchAndAdd(&0(c), 1:long)
-			let tv : [any, long, long] = alloc(x, 0:long, id)
-			let tv : [any, long, long] = promote(tv)
-			let tv : tvar = (tvar) tv
-			return(tv)
-		;
-
-		define inline @get-stamp(/exh:exh) : stamp = 
-			fun stampLoop() : long = 
-				let current : long = VClock.@get(/exh)
-				let lastBit : long = I64AndB(current, 1:long)
-				if I64Eq(lastBit, 0:long)
-				then return(current)
-				else do Pause() apply stampLoop()
-			let stamp : stamp = apply stampLoop()
-			return(stamp)
-		;
 
 		define @getFFNoRecCounter(tv : tvar / exh:exh) : any = 
 			let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
@@ -113,21 +79,6 @@ struct
             end
 		;
 
-		define @put(arg:[tvar, any] / exh:exh) : unit =
-            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
-            do if(#0(in_trans))
-               then return()
-               else do ccall M_Print("Trying to write outside a transaction!\n")
-                    let e : exn = Fail(@"Writing outside transaction\n")
-                    throw exh(e)
-            let tv : tvar = #0(arg)
-            let v : any = #1(arg)
-            let writeSet : RS.witem = FLS.@get-key(WRITE_SET / exh)
-            let newWS : RS.witem = RS.Write(tv, v, writeSet)
-            do FLS.@set-key(WRITE_SET, newWS / exh)
-            return(UNIT)
-        ;
-
         define @commit(/exh:exh) : () =
         	let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
         	let writeSet : RS.witem = FLS.@get-key(WRITE_SET / exh)
@@ -174,7 +125,7 @@ struct
                     let rs : RS.read_set = RS.@new()
                     do FLS.@set-key(READ_SET, rs / exh)  (*initialize STM log*)
                     do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
-                    let stamp : stamp = @get-stamp(/exh)
+                    let stamp : stamp = NoRecFF.@get-stamp(/exh)
                     do #0(stampPtr) := stamp
                     do #0(in_trans) := true
                     cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()
@@ -198,53 +149,18 @@ struct
                 throw enter()
       	;
 
-      	define @print-stats(x:unit / exh:exh) : unit = 
-            PRINT_PABORT_COUNT
-	        PRINT_FABORT_COUNT
-            PRINT_COMBINED
-            PRINT_KCOUNT
-            PRINT_FF
-	        return(UNIT);
-
-	    define @abort(x : unit / exh : exh) : any = 
-            let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
-            let oldFFInfo : RS.read_set = FLS.@get-key(FF_KEY / exh)
-            do RS.@decCounts(oldFFInfo / exh)
-            do RS.@incCounts(readSet, enum(0):any / exh)
-            do FLS.@set-key(FF_KEY, readSet / exh)
-            (*</FF>*)
-            let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-            throw abortK()
-        ;
-         
-      	define @tvar-eq(arg : [tvar, tvar] / exh : exh) : bool = 
-	        if Equal(#0(arg), #1(arg))
-	        then return(true)
-	        else return(false);  
-
-	    define @unsafe-get(x:tvar / exh:exh) : any = 
-	    	return(#0(x));
-
-        define @unsafe-put(arg : [tvar, any] / exh:exh) : unit = 
-            let tv : tvar = #0(arg)
-            let x : any = #1(arg)
-            let x : any = promote(x)
-            do #0(tv) := x
-            return(UNIT)   
-        ;
-
 	)
 
 	type 'a tvar = 'a PartialSTM.tvar
     val get : 'a tvar -> 'a = _prim(@getFFNoRecCounter)
-    val new : 'a -> 'a tvar = _prim(@new)
+    val new : 'a -> 'a tvar = NoRecFFCounter.new
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
-    val put : 'a tvar * 'a -> unit = _prim(@put)
-    val printStats : unit -> unit = _prim(@print-stats)
-    val abort : unit -> 'a = _prim(@abort)
-    val same : 'a tvar * 'a tvar -> bool = _prim(@tvar-eq)
-    val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
-    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
+    val put : 'a tvar * 'a -> unit = NoRecFF.put
+    val printStats : unit -> unit = NoRecFF.printStats
+    val abort : unit -> 'a = NoRecFFCounter.abort
+    val same : 'a tvar * 'a tvar -> bool = NoRecFF.same
+    val unsafeGet : 'a tvar -> 'a = NoRecFF.unsafeGet
+    val unsafePut : 'a tvar * 'a -> unit = NoRecFF.unsafePut
 
     val _ = Ref.set(STMs.stms, ("mergeWS", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
 end

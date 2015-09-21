@@ -1,7 +1,7 @@
 structure NoRecFFCounter = 
 struct
 
-#define READ_SET_BOUND 20
+#define READ_SET_BOUND 21
 
     structure RS = FFReadSetCounter
 
@@ -40,7 +40,7 @@ struct
             cont retK(x:any) = return(x)
             do  if I64Gt(#1(tv), 0:long)
                 then RS.@fast-forward(readSet, writeSet, tv, retK, myStamp / exh)
-                else return() 
+                else return()
             let localRes : Option.option = apply chkLog(writeSet)
             case localRes
                of Option.SOME(v:any) => return(v)
@@ -51,15 +51,11 @@ struct
                 		if I64Eq(t, #0(myStamp))
                 		then return(v)
                 		else
-#ifdef EVENT_LOGGING
-                            do RS.@validate(readSet, myStamp, true / exh)
-#else                            
-                			do RS.@validate(readSet, myStamp / exh)
-#endif                            
+                            do RS.@validate(readSet, myStamp, true / exh)                           
                 			apply getLoop()
                 	let current : any = apply getLoop()
                     let captureCount : int = FLS.@get-counter()
-                    if I32Eq(captureCount, 0)
+                    if I32Eq(captureCount, 1)
                     then
                         let kCount : int = NoRecOrderedReadSet.@getNumK(readSet)
                         if I32Lt(kCount, READ_SET_BOUND)
@@ -69,12 +65,13 @@ struct
                             do FLS.@set-counter(captureFreq)
                             return(current)
                         else
-                            do FFReadSet.@filterRS(readSet, myStamp / exh)
                             do NoRecOrderedReadSet.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
+                            do FFReadSet.@filterRS(readSet, myStamp / exh)
                             let captureFreq : int = FLS.@get-counter2()
                             let newFreq : int = I32Mul(captureFreq, 2)
                             do FLS.@set-counter(newFreq)
                             do FLS.@set-counter2(newFreq)
+                            
                             return(current)
                     else
                         do FLS.@set-counter(I32Sub(captureCount, 1))
@@ -93,11 +90,7 @@ struct
                 if I64Eq(old, current)
                 then return()
                 else
-#ifdef EVENT_LOGGING
                     do RS.@validate(readSet, stamp, false / exh)
-#else
-                    do RS.@validate(readSet, stamp / exh)
-#endif
                     apply lockClock()
             do apply lockClock()
             fun writeBack(ws:NoRecOrderedReadSet.item) : () = 
@@ -129,6 +122,8 @@ struct
                 let stampPtr : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
                 do FLS.@set-key(FF_KEY, enum(0) / exh)
                 cont enter() = 
+                    let freq : int = FLS.@get-counter2()
+                    do FLS.@set-counter(freq) (*set counter to frequency*)
                     let rs : RS.read_set = RS.@new()
                     do FLS.@set-key(READ_SET, rs / exh)  (*initialize STM log*)
                     do FLS.@set-key(WRITE_SET, NoRecOrderedReadSet.NilItem / exh)

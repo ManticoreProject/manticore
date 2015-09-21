@@ -68,7 +68,7 @@ struct
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             case checkpoint 
                of NoRecOrderedReadSet.NilItem => (*no checkpoint available*)
-		    do Logging.@log-eager-full-abort(pos)
+		    do Logging.@log-eager-full-abort()
                     (*<FF>*)
                     do FLS.@set-key(FF_KEY, readSet / exh)
                     (*</FF>*)
@@ -140,7 +140,7 @@ struct
             do #1(startStamp) := I32Add(#1(startStamp), 1)
             case checkpoint 
                of NoRecOrderedReadSet.NilItem => (*no checkpoint available*)
-		    do Logging.@log-commit-full-abort(pos)
+		    do Logging.@log-commit-full-abort()
                     (*<FF>*)
                     do FLS.@set-key(FF_KEY, readSet / exh)
                     (*</FF>*)
