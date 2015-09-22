@@ -10,12 +10,15 @@ struct
 		 * for tvars so that the typechecker will treat them
 		 * as the same type as the other STM implementations.
 		 * However, only the first element is ever used*)
-		typedef tvar = ![any, long];
+		typedef tvar = ![any, long, long];
 		typedef stamp = VClock.stamp;
 
         extern void M_PruneRemSetAll(void*, long, void*);
 
 		define @getFFNoRecCounter(tv : tvar / exh:exh) : any = 
+            do if Equal(tv, enum(0))
+                then do ccall M_Print("NULL TVAR!\n") return() 
+                else return()
 			let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do 	
             	if(#0(in_trans))
@@ -26,10 +29,10 @@ struct
                     throw exh(e)
             let myStamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
-            let writeSet : RS.witem = FLS.@get-key(WRITE_SET / exh)
-            fun chkLog(writeSet : RS.witem) : Option.option = (*use local copy if available*)
+            let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
+            fun chkLog(writeSet : RS.item) : Option.option = (*use local copy if available*)
                 case writeSet
-                   of RS.Write(tv':tvar, contents:any, tl:RS.witem) =>
+                   of RS.Write(tv':tvar, contents:any, tl:RS.item) =>
                         if Equal(tv', tv)
                         then return(Option.SOME(contents))
                         else apply chkLog(tl)
@@ -51,21 +54,21 @@ struct
                 		if I64Eq(t, #0(myStamp))
                 		then return(v)
                 		else
-                			do RS.@validate(readSet, myStamp / exh)
+                			do RS.@validate(readSet, myStamp, true / exh)
                 			apply getLoop()
                 	let current : any = apply getLoop()
                     let captureCount : int = FLS.@get-counter()
                     if I32Eq(captureCount, 0)
                     then
-                        let kCount : long = RS.@getNumK(readSet)
-                        if I64Lt(kCount, READ_SET_BOUND:long)
+                        let kCount : int = RS.@getNumK(readSet)
+                        if I32Lt(kCount, READ_SET_BOUND)
                         then
                             do RS.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
                             let captureFreq : int = FLS.@get-counter2()
                             do FLS.@set-counter(captureFreq)
                             return(current)
                         else
-                            do RS.@filterRS(readSet, myStamp / exh)
+                            do RS.@filterRS(readSet/ exh)
                             do RS.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
                             let captureFreq : int = FLS.@get-counter2()
                             let newFreq : int = I32Mul(captureFreq, 2)
@@ -81,7 +84,7 @@ struct
 
         define @commit(/exh:exh) : () =
         	let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
-        	let writeSet : RS.witem = FLS.@get-key(WRITE_SET / exh)
+        	let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
         	let stamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
         	let counter : ![long] = VClock.@get-boxed(/exh)
         	fun lockClock() : () = 
@@ -90,23 +93,23 @@ struct
         		if I64Eq(old, current)
         		then return()
         		else
-        			do RS.@validate(readSet, stamp / exh)
+        			do RS.@validate(readSet, stamp, false / exh)
         			apply lockClock()
         	do apply lockClock()
-        	fun writeBack(ws:RS.witem) : () = 
+        	fun writeBack(ws:RS.item) : () = 
         		case ws 
         		   of RS.NilItem => return()
-        			| RS.Write(tv:tvar, x:any, next:RS.witem) => 
+        			| RS.Write(tv:tvar, x:any, next:RS.item) => 
         				let x : any = promote(x)
         				do #0(tv) := x
         				apply writeBack(next)
         		end
-            fun reverseWS(ws:RS.witem, new:RS.witem) : RS.witem = 
+            fun reverseWS(ws:RS.item, new:RS.item) : RS.item = 
                 case ws 
                    of RS.NilItem => return(new)
-                    | RS.Write(tv:tvar, x:any, next:RS.witem) => apply reverseWS(next, RS.Write(tv, x, new))
+                    | RS.Write(tv:tvar, x:any, next:RS.item) => apply reverseWS(next, RS.Write(tv, x, new))
                 end
-            let writeSet : RS.witem = apply reverseWS(writeSet, RS.NilItem)
+            let writeSet : RS.item = apply reverseWS(writeSet, RS.NilItem)
         	do apply writeBack(writeSet)
         	do #0(counter) := I64Add(#0(stamp), 2:long) (*unlock clock*)
             let ffInfo : RS.read_set =  FLS.@get-key(FF_KEY / exh)
@@ -149,13 +152,28 @@ struct
                 throw enter()
       	;
 
+        define @putMergeWS(arg:[tvar, any] / exh:exh) : unit =
+            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
+            do if(#0(in_trans))
+               then return()
+               else do ccall M_Print("Trying to write outside a transaction!\n")
+                    let e : exn = Fail(@"Writing outside transaction\n")
+                    throw exh(e)
+            let tv : tvar = #0(arg)
+            let v : any = #1(arg)
+            let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
+            let newWriteSet : RS.item = NoRecOrderedReadSet.Write(tv, v, writeSet)
+            do FLS.@set-key(WRITE_SET, newWriteSet / exh)
+            return(UNIT)
+        ;
+
 	)
 
 	type 'a tvar = 'a PartialSTM.tvar
     val get : 'a tvar -> 'a = _prim(@getFFNoRecCounter)
     val new : 'a -> 'a tvar = NoRecFFCounter.new
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
-    val put : 'a tvar * 'a -> unit = NoRecFF.put
+    val put : 'a tvar * 'a -> unit = _prim(@putMergeWS)
     val printStats : unit -> unit = NoRecFF.printStats
     val abort : unit -> 'a = NoRecFFCounter.abort
     val same : 'a tvar * 'a tvar -> bool = NoRecFF.same
