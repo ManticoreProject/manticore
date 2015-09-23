@@ -104,7 +104,7 @@ struct
             return()
         ; 
 
-        define inline @log-eager-full-abort(abortInfo : int) : () = 
+        define inline @log-eager-full-abort() : () = 
             return()
         ; 
 
@@ -112,7 +112,7 @@ struct
             return()
         ; 
 
-        define inline @log-commit-full-abort(abortInfo : int) : () = 
+        define inline @log-commit-full-abort() : () = 
             return()
         ; 
 

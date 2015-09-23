@@ -56,6 +56,7 @@ char *EventDesc[]              = {
   [EVENT_FAST_FORWARD]	       = "Fast Forward",
   [EVENT_REMEMBER_OBJ]	       = "Remember heap object",
   [EVENT_TS_EXTENSION]	       = "Timestamp Extension",
+  [EVENT_WS_MATCH]             = "Write set match",
 };
 
 // Event type.
@@ -188,8 +189,6 @@ void initEventLogging(const char * filename){
 
 	case EVENT_COMMIT_PARTIAL_ABORT:
 	case EVENT_EAGER_PARTIAL_ABORT:
-	case EVENT_EAGER_FULL_ABORT:
-        case EVENT_COMMIT_FULL_ABORT:
         case EVENT_FAST_FORWARD:
 	    eventTypes[t].size = sizeof(StgWord32);
 	    break;
@@ -199,6 +198,8 @@ void initEventLogging(const char * filename){
         case EVENT_COMMIT_TX:
         case EVENT_BEGIN_COMMIT:
 	
+  case EVENT_EAGER_FULL_ABORT:
+  case EVENT_COMMIT_FULL_ABORT:
 	case EVENT_MAJOR_GC:
 	case EVENT_GLOBAL_GC:
             eventTypes[t].size = 0;
@@ -232,6 +233,10 @@ void initEventLogging(const char * filename){
 	    eventTypes[t].size = sizeof(StgWord64);
 	    break;
 	    
+      case EVENT_WS_MATCH:
+        eventTypes[t].size = sizeof(StgWord8);
+        break;
+
         default:
             continue; /* ignore deprecated events */
         }
@@ -379,7 +384,16 @@ abortEventLogging(void)
     }
 }
 
+void postWSMatch(VProc_t * vp, StgWord32 matchType){
+  EventsBuf * eb = &capEventBuf[vp->id];
 
+  if (!hasRoomForEvent(eb, EVENT_WS_MATCH)){
+    printAndClearEventBuf(eb);
+  }
+
+  postEventHeader(eb, EVENT_WS_MATCH);
+  postWord8(eb, (StgWord8)matchType);
+}
 
 void postStartTX(VProc_t * vp, unsigned long event){
     EventsBuf * eb = &capEventBuf[vp->id];

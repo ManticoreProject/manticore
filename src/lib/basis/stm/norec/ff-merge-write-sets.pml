@@ -68,7 +68,7 @@ struct
                             do FLS.@set-counter(captureFreq)
                             return(current)
                         else
-                            do RS.@filterRS(readSet/ exh)
+                            do RS.@filterRS(readSet, myStamp/ exh)
                             do RS.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
                             let captureFreq : int = FLS.@get-counter2()
                             let newFreq : int = I32Mul(captureFreq, 2)
@@ -134,11 +134,7 @@ struct
                     cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()
                     do FLS.@set-key(ABORT_KEY, abortK / exh)
                     cont transExh(e:exn) = 
-                        do case e 
-                           of Fail(s:ml_string) => do ccall M_Print(#0(s)) return()
-                            | _ => return()   
-                        end
-                    	do ccall M_Print("Warning: exception raised in transaction\n")
+                        do ccall M_Print("Warning: exception raised in transaction\n")
                         throw exh(e)
                     let res : any = apply f(UNIT/transExh)
                     do @commit(/transExh)

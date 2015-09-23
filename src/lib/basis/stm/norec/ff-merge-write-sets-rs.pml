@@ -30,11 +30,21 @@ struct
             let dummyTRef : [any, long] = alloc(enum(123), 0:long)
             let dummyTRef : [any, long] = promote(dummyTRef)
             return(dummyTRef);
+
+        define @print-tags(x:unit / exh:exh) : unit = 
+            let withK : item = WithK(enum(0), enum(0), enum(0), enum(0), enum(0), enum(0))
+            let withoutK : item = WithoutK(enum(0), enum(0), enum(0))
+            let loc : item = Local(enum(0), enum(0), enum(0), enum(0))
+            do ccall M_Print_Long2("WithK tag is %lu\nWithoutK tag is %lu\n", #0(([any])withK), #0(([any])withoutK))
+            do ccall M_Print_Long("Local tag is %lu\n", #0(([any])loc))
+            return(UNIT);
     )
     
     val allocDummy : unit -> 'a = _prim(@allocDummy)
     val dummy = allocDummy()
     fun getDummy() = dummy
+    val printTags : unit -> unit = _prim(@print-tags)
+    val _ = printTags()
 
     _primcode(
 
@@ -42,6 +52,8 @@ struct
         extern void M_IncCounter(void *, int , long);
         extern void M_Debug(void*);
         extern void M_Print_Int_Long2(void*, int, long, long);
+        extern void * fastForward(void*, void*, void*, void*, void*, void*, void*, void*) __attribute__((alloc));
+
 
     	typedef read_set = ![item,      (*0: first element of the read set*) 
     						 item, 	    (*1: last element of the read set*)
@@ -62,8 +74,8 @@ struct
         define @getDummy = getDummy;
 
         define @new() : read_set = 
-            let dummyTRef : ![any,long,long] = alloc(enum(13), 0:long, 0:long)
-            let dummy : item = WithoutK(dummyTRef, enum(13), NilItem)
+            let dummyTRef : ![any,long,long] = alloc(enum(0), 0:long, 0:long)
+            let dummy : item = WithoutK(dummyTRef, enum(0), NilItem)
             let rs : read_set = alloc(dummy, dummy, NilItem, 0)
             return(rs)
         ;
@@ -312,10 +324,10 @@ struct
             let ffFirstK : mutWithK = (mutWithK) rs
             let vp : vproc = host_vproc
             let rememberSet : any = vpload(REMEMBER_SET, vp)
-            let newRemSet : [mutWithK, int, long, any] = alloc(ffFirstK, NEXTK, #3(myStamp), rememberSet)
+            let currentLast : item = #TAIL(readSet)
+            let newRemSet : [mutWithK, int, long, any] = alloc(currentLast, NEXT, #3(myStamp), alloc(ffFirstK, NEXTK, #3(myStamp), rememberSet))
             do vpstore(REMEMBER_SET, vp, newRemSet)
             do #NEXTK(ffFirstK) := #LASTK(readSet)
-            let currentLast : item = #TAIL(readSet)
             let currentLast : mutWithK = (mutWithK) currentLast
             do #NEXT(currentLast) := rs
             return()
@@ -333,12 +345,96 @@ struct
             return()
         ;
 
+        define @fast-forward2(readSet : read_set, writeSet : item, tv:tvar, retK:cont(any), myStamp : ![long, int, int, long] / exh:exh) : () = 
+            let ffInfo : read_set = FLS.@get-key(FF_KEY / exh)
+            if Equal(ffInfo, enum(0))
+            then return()
+            else 
+                let vp : vproc = host_vproc
+                let clock : ![long] = VClock.@get-boxed(/exh)
+                INC_FF(1:long) 
+                let res : any = ccall fastForward(readSet, ffInfo, writeSet, tv, retK, myStamp, clock, vp)
+                if Equal(res, UNIT)
+                then return()
+                else 
+                    BUMP_KCOUNT
+                    let rs : read_set = (read_set) res
+                    do FLS.@set-key(FF_KEY, enum(0) / exh)
+                    do FLS.@set-key(READ_SET, rs / exh)
+                    let chkpnt : item = #LASTK(rs)
+                    case chkpnt 
+                       of WithK(tv:tvar,x:any,_:item,ws:item,k:cont(any),next:item) => 
+                            do FLS.@set-key(WRITE_SET, ws / exh)
+                            throw k(x)
+                        | _ => return()
+                    end
+        ;
+
+        define @match-writesets(ws : item, writeSet : item, ffInfo : read_set, rs : item, readSet : read_set, myStamp : ![long,int,int,long]/ exh:exh) : () = 
+            fun keySubset(oldWS : item, newWS : item) : () =
+                case oldWS 
+                    of Write(tv:tvar, x:any, next:item) => 
+                        case newWS 
+                           of NilItem => 
+                                do @hook-readsets(ffInfo, rs, readSet, myStamp / exh)
+                                do @merge-writesets(writeSet, ws, myStamp / exh)
+                                @ff-validate2(readSet, rs, myStamp / exh)
+                            | Write(tv':tvar,x':any,next':item) => 
+                                if Equal(tv,tv')
+                                then apply keySubset(next, next')
+                                else apply keySubset(next, newWS)
+                        end
+                     | NilItem => 
+                        case newWS 
+                           of NilItem => 
+                                do @hook-readsets(ffInfo, rs, readSet, myStamp / exh)
+                                do @merge-writesets(writeSet, ws, myStamp / exh)
+                                @ff-validate2(readSet, rs, myStamp / exh)
+                            | _ => return()
+                        end
+                end
+            fun eqModuloSpine(oldWS : item, newWS : item, eq:bool) : () = 
+                case oldWS
+                   of Write(tv:tvar,x:any,next:item) => 
+                        case newWS 
+                           of NilItem => 
+                                do @hook-readsets(ffInfo, rs, readSet, myStamp / exh)
+                                do @merge-writesets(writeSet, ws, myStamp / exh)
+                                @ff-validate2(readSet, rs, myStamp / exh)  (*key subset*) 
+                            | Write(tv':tvar,x':any,next':item) => 
+                                if Equal(tv, tv')
+                                then 
+                                    if Equal(x, x')
+                                    then apply eqModuloSpine(next, next', eq)
+                                    else apply eqModuloSpine(next, next', false)
+                                else apply keySubset(next, newWS)  (*try and match subsequence*)
+                        end
+                    | NilItem => 
+                        case newWS 
+                           of NilItem => 
+                                if(eq)
+                                then 
+                                    do @hook-readsets(ffInfo, rs, readSet, myStamp / exh)
+                                    @ff-validate(readSet, rs, myStamp / exh)  (*equal*)
+                                else 
+                                    do @merge-writesets(writeSet, ws, myStamp / exh)
+                                    do @hook-readsets(ffInfo, rs, readSet, myStamp / exh)
+                                    @ff-validate2(readSet, rs, myStamp / exh) (*key equal*)
+                            | _ => return()
+                        end
+                end
+            do apply eqModuloSpine(ws, writeSet, true) 
+            do @decCounts(ffInfo / exh)
+            do FLS.@set-key(FF_KEY, enum(0) / exh)
+            return()
+        ;
+
         define @fast-forward(readSet : read_set, writeSet : item, tv:tvar, retK:cont(any), myStamp : ![long, int, int, long] / exh:exh) : () = 
             let ffInfo : read_set = FLS.@get-key(FF_KEY / exh)
             if Equal(ffInfo, enum(0))
             then return()
             else (*we should only allocate the checkRS closure if we are going to actually use it*)
-                fun checkRS(rs:item, i:long) : () = 
+                fun checkRSMergeWS(rs:item, i:long) : () = 
                     case rs 
                        of NilItem =>  return()
                         | WithK(tv':tvar,_:any,_:item,ws:item,k:cont(any),next:item) => 
@@ -347,75 +443,23 @@ struct
                                 let res : int = ccall M_PolyEq(k, retK)
                                 if I32Eq(res, 1)
                                 then (*continuations are equal*)
-                                    if Equal(ws, writeSet) 
+                                    if Equal(ws, writeSet)
                                     then (*continuations, write sets, and tvars are equal, fast forward...*)
                                         do @hook-readsets(ffInfo, rs, readSet, myStamp / exh)
                                         @ff-validate(readSet, rs, myStamp / exh)
                                     else   (*write sets are not pointer equal, try a relaxed version*)
-                                        fun keySubset(oldWS : item, newWS : item) : () =
-                                            case oldWS 
-                                                of Write(tv:tvar, x:any, next:item) => 
-                                                    case newWS 
-                                                       of NilItem => 
-                                                            do @hook-readsets(ffInfo, rs, readSet, myStamp / exh)
-                                                            do @merge-writesets(writeSet, ws, myStamp / exh)
-                                                            @ff-validate2(readSet, rs, myStamp / exh)
-                                                        | Write(tv':tvar,x':any,next':item) => 
-                                                            if Equal(tv,tv')
-                                                            then apply keySubset(next, next')
-                                                            else apply keySubset(next, newWS)
-                                                    end
-                                                 | NilItem => 
-                                                    case newWS 
-                                                       of NilItem => 
-                                                            do @hook-readsets(ffInfo, rs, readSet, myStamp / exh)
-                                                            do @merge-writesets(writeSet, ws, myStamp / exh)
-                                                            @ff-validate2(readSet, rs, myStamp / exh)
-                                                        | _ => return()
-                                                    end
-                                            end
-                                        fun eqModuloSpine(oldWS : item, newWS : item, eq:bool) : () = 
-                                            case oldWS 
-                                               of Write(tv:tvar,x:any,next:item) => 
-                                                    case newWS 
-                                                       of NilItem => 
-                                                            do @hook-readsets(ffInfo, rs, readSet, myStamp / exh)
-                                                            do @merge-writesets(writeSet, ws, myStamp / exh)
-                                                            @ff-validate2(readSet, rs, myStamp / exh)  (*key subset*) 
-                                                        | Write(tv':tvar,x':any,next':item) => 
-                                                            if Equal(tv, tv')
-                                                            then 
-                                                                if Equal(x, x')
-                                                                then apply eqModuloSpine(next, next', eq)
-                                                                else apply eqModuloSpine(next, next', false)
-                                                            else apply keySubset(next, newWS)  (*try and match subsequence*)
-                                                    end
-                                                | NilItem => 
-                                                    case newWS 
-                                                       of NilItem => 
-                                                            if(eq)
-                                                            then 
-                                                                do @hook-readsets(ffInfo, rs, readSet, myStamp / exh)
-                                                                @ff-validate(readSet, rs, myStamp / exh)  (*equal*)
-                                                            else 
-                                                                do @merge-writesets(writeSet, ws, myStamp / exh)
-                                                                do @hook-readsets(ffInfo, rs, readSet, myStamp / exh)
-                                                                @ff-validate2(readSet, rs, myStamp / exh) (*key equal*)
-                                                        | _ => return()
-                                                    end
-                                            end
-                                        apply eqModuloSpine(ws, writeSet, true)
-                                else apply checkRS(next, I64Add(i, 1:long))
-                            else apply checkRS(next, I64Add(i, 1:long))
-                        | _ => throw exh(Fail("checkRS: impossible\n"))
+                                        @match-writesets(ws, writeSet, ffInfo, rs, readSet, myStamp / exh)
+                                else apply checkRSMergeWS(next, I64Add(i, 1:long))
+                            else apply checkRSMergeWS(next, I64Add(i, 1:long))
                     end 
                 INC_FF(1:long)
-                apply checkRS(#LASTK(ffInfo), 1:long)
+                apply checkRSMergeWS(#LASTK(ffInfo), 1:long)
         ;
 
         define inline @getNumK(rs : read_set) : int = return(#NUMK(rs));
 
-        define inline @filterRS(readSet : read_set / exh : exh) : () = 
+        define inline @filterRS(readSet : read_set, stamp : ![long,int,int,long] / exh : exh) : () = 
+            let vp : vproc = host_vproc
             fun dropKs(l:item, n:int) : int =   (*drop every other continuation*)
                 case l
                    of NilItem => return(n)
@@ -426,6 +470,9 @@ struct
                                 (* NOTE: if compiled with -debug, this will generate warnings
                                  * that we are updating a bogus local pointer, however, given the
                                  * nature of the data structure, we do preserve the heap invariants*)
+                                let rs : any = vpload(REMEMBER_SET, vp)
+                                let newRemSet : [item, int, long, any] = alloc(l, NEXTK, #3(stamp), rs)
+                                do vpstore(REMEMBER_SET, vp, newRemSet)
                                 let l : mutWithK = (mutWithK) l
                                 let next : mutWithK = (mutWithK) next
                                 do #KPOINTER(next) := enum(0):any

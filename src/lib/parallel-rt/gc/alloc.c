@@ -102,6 +102,8 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
         obj[-1] = MIXED_HDR(predefined+5, nElems);
     } else if (nElems == 4 && bits == 0x7){
         obj[-1] = MIXED_HDR(predefined + 6, nElems);
+    }else if (nElems == 4 && bits == 0x9){
+        obj[-1] = MIXED_HDR(predefined + 7, nElems);
     } else {
         fprintf(stderr, "Error AllocNonUniform. Len: %d, Bits: %x\n", nElems, bits);
         exit(5);
@@ -601,15 +603,11 @@ struct read_set{
     unsigned long numK;
 };
 
-void decCounts(struct read_log * ff, unsigned long numK){
-    struct read_log * orig = ff;
-    int count = 0;
+void decCounts(struct read_log * ff){
     while((Value_t) ff != M_NIL){
-        ff->tvar->refCount--;
+        FetchAndDec(&(ff->tvar->refCount));
         ff = ff->nextK;
-        count++;
     }
-   // printf("Decremented %d tvars, should be %lu elements on short path\n", count, numK);
 }
 
 Value_t ffFinish(struct read_set * readSet, struct read_log * checkpoint, unsigned long kCount, VProc_t * vp){
@@ -630,8 +628,14 @@ Value_t validate(unsigned long * myStamp, volatile unsigned long * clock, struct
 
         struct read_log * rs = readSet->head;
         while(rs != (struct read_log * )M_NIL){
-            if(rs->tvar->contents != rs->readContents){
-                return AllocNonUniform(vp, 4, PTR(readSet->head), PTR(checkpoint), PTR(checkpoint), INT(kCount));
+            if(rs->tag != (Value_t) 9){  //not a local read
+                if(rs->tvar->contents != rs->readContents){
+                    return AllocNonUniform(vp, 4, PTR(readSet->head), PTR(checkpoint), PTR(checkpoint), INT(kCount));
+                }
+                if(rs->tag == (Value_t) 3 && rs->k != M_UNIT){ //checkpointed entry
+                    checkpoint = rs;
+                    kCount++;
+                }
             }
             rs = rs->next;
         }
@@ -652,7 +656,7 @@ Value_t ffValidate(struct read_set * readSet, struct read_log * oldRS, unsigned 
             }else{
                 return ffFinish(readSet, checkpoint, kCount, vp);
             }
-        }else{  //WithK
+        }else if (oldRS->tag == (Value_t) 3){  //WithK
             if(oldRS->tvar->contents == oldRS->readContents){
                 if(oldRS->k != M_UNIT){
                     checkpoint = oldRS;
@@ -680,6 +684,8 @@ Value_t ffValidate(struct read_set * readSet, struct read_log * oldRS, unsigned 
                     return ffFinish(readSet, checkpoint, kCount, vp);
                 }
             }
+        }else{ //local read
+            oldRS = oldRS->next;
         }
     }
     return ffFinish(readSet, checkpoint, kCount, vp);
@@ -698,38 +704,34 @@ void checkShortPath(struct read_log * rs){
     }
 }
 
-Value_t fastForward(struct read_set * readSet, struct read_set * ffInfo, Word_t * writeSet, Word_t* tv, Word_t* retK, Word_t*myStamp, volatile unsigned long * clock, VProc_t * vp){
+Value_t fastForward(struct read_set * readSet, struct read_set * ffInfo, Word_t * writeSet, Word_t* tv, Word_t* retK, Word_t* myStamp, volatile unsigned long * clock, VProc_t * vp){
     struct read_log * shortPath = ffInfo->lastK;
     while((Value_t)shortPath != M_NIL){
-        vp->counter[3]++; //INC_FF(1:long)
         if(shortPath->tvar == tv){
             if (M_PolyEq(retK, shortPath->k)){
                 if(shortPath->writeSet == writeSet){
-                    decCounts(ffInfo->lastK, ffInfo->numK);
+                    decCounts(ffInfo->lastK);
 
                     shortPath->nextK = readSet->lastK;
                     readSet->tail->next = shortPath;
 
                     RS_t * remSet = vp->rememberSet;
-                    Value_t remSet2 = AllocNonUniform (vp, 3, PTR(shortPath), INT(6), PTR(remSet));
+                    Value_t remSet2 = AllocNonUniform (vp, 4, PTR(shortPath), INT(6), INT(myStamp[3]), PTR(remSet));
                     vp->rememberSet = remSet2;
 
                     Value_t result = ffValidate(readSet, shortPath, myStamp, clock, vp);
                     return result;
                 }else{
-                    
+                    printf("write sets are not equal\n");
                 }
+            }else{
+                printf("continuations are not equal\n");
             }
         }
         shortPath = shortPath->nextK;
     }
     return M_UNIT;
 }
-
-int M_InLocal(VProc_t *vp, Word_t * w){
-    
-}
-
 
 
 
