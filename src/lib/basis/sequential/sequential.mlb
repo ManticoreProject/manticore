@@ -12,6 +12,7 @@ long.pml
 word64.pml
 float.pml
 double.pml
+pure-rand.pml
 list.pml
 string.pml
 ann "cpp" "../include/prim.def,../include/assert.def"
