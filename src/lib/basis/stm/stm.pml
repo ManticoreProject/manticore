@@ -37,6 +37,7 @@ struct
             do Logging.@log-start-tx-w-msg(#0(msg))
             return(UNIT);
  
+        (*high, mid, low bits*)
         define @mk-tx-msg(arg : [ml_int, ml_int, ml_int] / exh : exh) : ml_long = 
             let v1 : long = I64LSh(I32ToI64(#0(#0(arg))), 34:long)
             let v2 : long = I64LSh(I32ToI64(#0(#1(arg))), 4:long)
@@ -46,10 +47,22 @@ struct
             return(v5)
         ;
             
+        extern long M_ToggleAbort();
+
+        define @toggle-abort(x:unit / exh:exh) : bool = 
+            let x : bool = ccall M_ToggleAbort()
+            return(x);
+
     ) 
     
     val mkTXMsg : int * int * int -> long = _prim(@mk-tx-msg)
     val postStartTXWMsg : long -> unit = _prim(@post-start-tx-w-msg)
+
+    val flipBit : unit -> bool = _prim(@toggle-abort)
+    fun toggleAbort() = 
+        if flipBit()
+        then abort()
+        else ()
 
     fun atomic' (f, msg) = 
 	let val _ = postStartTXWMsg msg

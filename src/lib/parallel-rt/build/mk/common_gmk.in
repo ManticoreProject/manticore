@@ -54,7 +54,7 @@ RANLIB =	ranlib
 #
 # View path
 #
-VPATH =		../../include:../../gc:../../vproc:../../misc:../../cpu:../../machine:../../config
+VPATH =		../../include:../../gc:../../vproc:../../misc:../../cpu:../../machine:../../config:../../stm
 
 GC_SRCS = 	minor-gc.c \
 		major-gc.c \
@@ -75,6 +75,7 @@ MISC_SRCS =	main.c \
 		options.c \
 		image.c \
                 image-sock.c \
+    stm.c \
 		eventlog.c
 
 CPU_SRCS =	cpuid.c \

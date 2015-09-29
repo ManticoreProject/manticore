@@ -356,6 +356,21 @@ structure FLS :
             return()
         ;
 
+      (*set a key to NULL (enum(0)), this doesn't require rebuilding the list*)
+      define @null-key(key : int) : () = 
+        fun nullKeyLoop(dict : List.list) : () =
+          case dict 
+             of nil => return()
+            | CONS(hd : ![[int], any], tail : List.list) => 
+                if I32Eq(key, #0(#0(hd)))
+                then do #1(hd) := enum(0):any return()
+                else apply nullKeyLoop(tail)
+          end
+        let fls : fls = @get()
+        let dict : List.list = SELECT(DICT_OFF, fls)
+        apply nullKeyLoop(dict)
+      ;
+
       (*increment lower 32 bits of thread local counter by n*)
       define inline @inc-counter(n:int) : () = 
         let fls : fls = @get()

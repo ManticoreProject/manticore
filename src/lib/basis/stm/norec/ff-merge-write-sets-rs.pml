@@ -14,6 +14,8 @@ struct
 #define NEXT 3
 #define NEXTK 6
 #define KPOINTER 5
+#define READ_VAL 2
+
 #define HEAD 0
 #define TAIL 1
 #define LASTK 2
@@ -52,8 +54,8 @@ struct
         extern void M_IncCounter(void *, int , long);
         extern void M_Debug(void*);
         extern void M_Print_Int_Long2(void*, int, long, long);
-        extern void * fastForward(void*, void*, void*, void*, void*, void*, void*, void*) __attribute__((alloc));
-
+        extern void * fastForward(void*, void*, void*, void*, void*, void*, void*, void*, void*) __attribute__((alloc));
+        extern void * STM_Validate(void*, void *, void *, void *) __attribute__((alloc));
 
     	typedef read_set = ![item,      (*0: first element of the read set*) 
     						 item, 	    (*1: last element of the read set*)
@@ -73,9 +75,15 @@ struct
 
         define @getDummy = getDummy;
 
-        define @new() : read_set = 
+        (* Put a checkpoint as the first item, that isn't on the short path.  
+         * This way when we validate, we will always have a checkpoint to abort to
+         * which generalizes the abort process since there is no longer a distinction
+         * between full and partial aborts.  Also, we need to have a dummy node at
+         * the beginning for ordered read sets anyway
+         *)
+        define @new(abortK : cont(any)) : read_set = 
             let dummyTRef : ![any,long,long] = alloc(enum(0), 0:long, 0:long)
-            let dummy : item = WithoutK(dummyTRef, enum(0), NilItem)
+            let dummy : item = WithK(dummyTRef, enum(0), NilItem, NilItem, abortK, NilItem)
             let rs : read_set = alloc(dummy, dummy, NilItem, 0)
             return(rs)
         ;
@@ -138,8 +146,8 @@ struct
                         then Logging.@log-eager-full-abort() 
                         else Logging.@log-commit-full-abort() 
 #endif
-                    let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                    throw abortK()
+                    let abortK : cont(any) = FLS.@get-key(ABORT_KEY / exh)
+                    throw abortK(UNIT)
                 | WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
                     let casted : ![any, any, any, item] = (![any, any, any, item]) checkpoint
                     do #NEXT(casted) := NilItem
@@ -172,6 +180,26 @@ struct
                     BUMP_PABORT
                     throw abortK(current)
             end
+        ;
+
+        define @c-validate(readSet : read_set, startStamp:![stamp, int, int, long], eager : bool / exh:exh) : () = 
+            let vp : vproc = host_vproc
+            let clock : ![long] = VClock.@get-boxed(/exh)
+            let res : read_set = ccall STM_Validate(startStamp, clock, #HEAD(readSet), vp)
+            if Equal(res, UNIT)
+            then return() 
+            else 
+                let chkpnt : item = #LASTK(res)
+                let casted : mutWithK = (mutWithK) chkpnt
+                do FLS.@set-key(READ_SET, res / exh)
+                do FLS.@set-key(WRITE_SET, #WRITE_SET(casted) / exh)
+                let oldFFInfo : read_set = FLS.@get-key(FF_KEY / exh)
+                do @decCounts(oldFFInfo / exh)
+                do @incCounts(readSet, chkpnt / exh)
+                let captureFreq : int = FLS.@get-counter2()
+                do FLS.@set-counter(captureFreq)
+                let abortK : cont(any) = (cont(any)) #KPOINTER(casted)
+                throw abortK(#READ_VAL(casted))
         ;
 
         define @validate(readSet : read_set, startStamp:![stamp, int, int, long], eager : bool / exh:exh) : () = 
@@ -320,7 +348,7 @@ struct
 
         define inline @hook-readsets(ffInfo : read_set, rs : item, readSet : read_set, myStamp : ![long,int,int,long] / exh:exh) : () = 
             do @decCounts(ffInfo / exh)
-            do FLS.@set-key(FF_KEY, enum(0) / exh)
+            do FLS.@null-key(FF_KEY)
             let ffFirstK : mutWithK = (mutWithK) rs
             let vp : vproc = host_vproc
             let rememberSet : any = vpload(REMEMBER_SET, vp)
@@ -353,13 +381,13 @@ struct
                 let vp : vproc = host_vproc
                 let clock : ![long] = VClock.@get-boxed(/exh)
                 INC_FF(1:long) 
-                let res : any = ccall fastForward(readSet, ffInfo, writeSet, tv, retK, myStamp, clock, vp)
+                let dummy : any = @getDummy(UNIT / exh)
+                let res : any = ccall fastForward(readSet, ffInfo, writeSet, tv, retK, myStamp, clock, vp, dummy)
                 if Equal(res, UNIT)
                 then return()
                 else 
-                    BUMP_KCOUNT
                     let rs : read_set = (read_set) res
-                    do FLS.@set-key(FF_KEY, enum(0) / exh)
+                    do FLS.@null-key(FF_KEY)
                     do FLS.@set-key(READ_SET, rs / exh)
                     let chkpnt : item = #LASTK(rs)
                     case chkpnt 
@@ -425,7 +453,7 @@ struct
                 end
             do apply eqModuloSpine(ws, writeSet, true) 
             do @decCounts(ffInfo / exh)
-            do FLS.@set-key(FF_KEY, enum(0) / exh)
+            do FLS.@null-key(FF_KEY)
             return()
         ;
 
@@ -594,7 +622,6 @@ struct
                 do FLS.@set-key(READ_SET, newRS / exh)
                 return()
         ;
-
     )
     type 'a read_set = _prim(read_set)
 

@@ -55,10 +55,10 @@ struct
 	    return()
         ; 
 
-	define inline @log-fast-forward() : () = 
-	    let vp : vproc = host_vproc
+	   define inline @log-fast-forward() : () = 
+	        let vp : vproc = host_vproc
             do ccall postEvent(vp, 17)
-	    return()
+	        return()
         ;
 
         define inline @log-ff(ffInfo : int) : () =  
@@ -69,13 +69,13 @@ struct
         define inline @log-remember-obj(objAddr : any) : () = 
             let vp : vproc = host_vproc
             do ccall postRememberObj(vp, objAddr)
-	    return()
+	        return()
         ;
 
-	define inline @log-start-validate() : () = 
+	    define inline @log-start-validate() : () = 
             let vp : vproc = host_vproc
             do ccall postEvent(vp, 10)
-	    return()
+	        return()
         ;
 
         define inline @log-ts-extension() : () = 

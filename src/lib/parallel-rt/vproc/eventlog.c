@@ -51,8 +51,8 @@ char *EventDesc[]              = {
   [EVENT_BLOCK_MARKER]         = "Event block marker",
   [EVENT_RUN_THREAD]           = "Thread began running",
   [EVENT_STOP_THREAD]          = "Thread stopped running",
-  [EVENT_MAJOR_GC]	       = "Major GC",
-  [EVENT_GLOBAL_GC]	       = "Global GC",
+  [EVENT_MAJOR_GC]	           = "Major GC",
+  [EVENT_GLOBAL_GC]	           = "Global GC",
   [EVENT_FAST_FORWARD]	       = "Fast Forward",
   [EVENT_REMEMBER_OBJ]	       = "Remember heap object",
   [EVENT_TS_EXTENSION]	       = "Timestamp Extension",
@@ -419,7 +419,19 @@ void postRememberObj(VProc_t * vp, unsigned long addr){
     postWord64(eb, addr);
 }
 
-void postAbortTX(VProc_t * vp, unsigned long abortInfo, EventTypeNum tag){
+void post32BitTXEvent(VProc_t * vp, StgWord32 info, EventTypeNum tag){
+    EventsBuf * eb = &capEventBuf[vp->id];
+    
+    if (!hasRoomForEvent(eb, tag)) {
+        // Flush event buffer to make room for new event.
+        printAndClearEventBuf(eb);
+    }
+
+    postEventHeader(eb, tag);
+    postWord32(eb, info);
+}
+
+void postAbortTX(VProc_t * vp, StgWord32 abortInfo, EventTypeNum tag){
     EventsBuf * eb = &capEventBuf[vp->id];
     
     if (!hasRoomForEvent(eb, tag)) {

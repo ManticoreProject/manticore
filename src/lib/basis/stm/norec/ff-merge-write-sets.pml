@@ -1,7 +1,7 @@
 structure NoRecMergeRSWriteSets = 
 struct
 
-#define READ_SET_BOUND 20
+#define READ_SET_BOUND 21
 
     structure RS = FFReadSetMergeWriteSets
 
@@ -13,12 +13,9 @@ struct
 		typedef tvar = ![any, long, long];
 		typedef stamp = VClock.stamp;
 
-        extern void M_PruneRemSetAll(void*, long, void*);
+        extern void M_PruneRemSetAll(void*, long);
 
-		define @getFFNoRecCounter(tv : tvar / exh:exh) : any = 
-            do if Equal(tv, enum(0))
-                then do ccall M_Print("NULL TVAR!\n") return() 
-                else return()
+		define @getMergeWS(tv : tvar / exh:exh) : any = 
 			let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do 	
             	if(#0(in_trans))
@@ -40,7 +37,7 @@ struct
                 end
             cont retK(x:any) = return(x)
             do  if I64Gt(#1(tv), 0:long)
-                then RS.@fast-forward(readSet, writeSet, tv, retK, myStamp / exh)
+                then RS.@fast-forward2(readSet, writeSet, tv, retK, myStamp / exh)
                 else return()
             let localRes : Option.option = apply chkLog(writeSet)
             case localRes
@@ -54,11 +51,11 @@ struct
                 		if I64Eq(t, #0(myStamp))
                 		then return(v)
                 		else
-                			do RS.@validate(readSet, myStamp, true / exh)
+                			do RS.@c-validate(readSet, myStamp, true / exh)
                 			apply getLoop()
                 	let current : any = apply getLoop()
                     let captureCount : int = FLS.@get-counter()
-                    if I32Eq(captureCount, 0)
+                    if I32Eq(captureCount, 1)
                     then
                         let kCount : int = RS.@getNumK(readSet)
                         if I32Lt(kCount, READ_SET_BOUND)
@@ -68,8 +65,8 @@ struct
                             do FLS.@set-counter(captureFreq)
                             return(current)
                         else
-                            do RS.@filterRS(readSet, myStamp/ exh)
                             do RS.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
+                            do RS.@filterRS(readSet, myStamp/ exh)
                             let captureFreq : int = FLS.@get-counter2()
                             let newFreq : int = I32Mul(captureFreq, 2)
                             do FLS.@set-counter(newFreq)
@@ -82,10 +79,9 @@ struct
             end
 		;
 
-        define @commit(/exh:exh) : () =
+        define @commit(stamp : ![stamp,int,int,long]/exh:exh) : () =
         	let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
         	let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
-        	let stamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
         	let counter : ![long] = VClock.@get-boxed(/exh)
         	fun lockClock() : () = 
         		let current : stamp = #0(stamp)
@@ -93,7 +89,7 @@ struct
         		if I64Eq(old, current)
         		then return()
         		else
-        			do RS.@validate(readSet, stamp, false / exh)
+        			do RS.@c-validate(readSet, stamp, false / exh)
         			apply lockClock()
         	do apply lockClock()
         	fun writeBack(ws:RS.item) : () = 
@@ -125,19 +121,21 @@ struct
             	let stampPtr : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
                 do FLS.@set-key(FF_KEY, enum(0) / exh)
                 cont enter() = 
-                    let rs : RS.read_set = RS.@new()
+                    let freq : int = FLS.@get-counter2()
+                    do FLS.@set-counter(freq)
+                    cont abortK(x:any) = BUMP_FABORT do #0(in_trans) := false throw enter()
+                    let rs : RS.read_set = RS.@new(abortK)
                     do FLS.@set-key(READ_SET, rs / exh)  (*initialize STM log*)
                     do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
                     let stamp : stamp = NoRecFF.@get-stamp(/exh)
                     do #0(stampPtr) := stamp
                     do #0(in_trans) := true
-                    cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()
                     do FLS.@set-key(ABORT_KEY, abortK / exh)
                     cont transExh(e:exn) = 
                         do ccall M_Print("Warning: exception raised in transaction\n")
                         throw exh(e)
                     let res : any = apply f(UNIT/transExh)
-                    do @commit(/transExh)
+                    do @commit(stampPtr / transExh)
                     let vp : vproc = host_vproc
                     do ccall M_PruneRemSetAll(vp, #3(stampPtr))
                     do #0(in_trans) := false
@@ -163,10 +161,81 @@ struct
             return(UNIT)
         ;
 
+        define @get-ref-count(arg : tvar / exh:exh) : ml_long = 
+            let count : long = #1(arg)
+            let count : [long] = alloc(count)
+            return(count)
+        ;
+(*)
+        define @get-with-context(arg : [tvar, ml_string] / exh:exh) : any = 
+            let tv : tvar = #0(arg)
+            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
+            do  
+                if(#0(in_trans))
+                then return()
+                else 
+                    do ccall M_Print("Trying to read outside a transaction!\n")
+                    let e : exn = Fail(@"Reading outside transaction\n")
+                    throw exh(e)
+            let myStamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
+            let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
+            let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
+            fun chkLog(writeSet : RS.item) : Option.option = 
+                case writeSet
+                   of RS.Write(tv':tvar, contents:any, tl:RS.item) =>
+                        if Equal(tv', tv)
+                        then return(Option.SOME(contents))
+                        else apply chkLog(tl)
+                    | RS.NilItem => return (Option.NONE)
+                end
+            cont retK(x:any) = return(x)
+            do  if I64Gt(#1(tv), 0:long)
+                then RS.@fast-forward2(readSet, writeSet, tv, retK, myStamp, #1(arg) / exh)
+                else return()
+            let localRes : Option.option = apply chkLog(writeSet)
+            case localRes
+               of Option.SOME(v:any) => 
+                    do RS.@insert-local-read(tv, v, readSet, myStamp, writeSet / exh)
+                    return(v)
+                | Option.NONE =>
+                    fun getLoop() : any = 
+                        let v : any = #0(tv)
+                        let t : long = VClock.@get(/exh)
+                        if I64Eq(t, #0(myStamp))
+                        then return(v)
+                        else
+                            do RS.@validate(readSet, myStamp, true / exh)
+                            apply getLoop()
+                    let current : any = apply getLoop()
+                    let captureCount : int = FLS.@get-counter()
+                    if I32Eq(captureCount, 1)
+                    then
+                        let kCount : int = RS.@getNumK(readSet)
+                        if I32Lt(kCount, READ_SET_BOUND)
+                        then
+                            do RS.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
+                            let captureFreq : int = FLS.@get-counter2()
+                            do FLS.@set-counter(captureFreq)
+                            return(current)
+                        else
+                            do RS.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
+                            do RS.@filterRS(readSet, myStamp/ exh)
+                            let captureFreq : int = FLS.@get-counter2()
+                            let newFreq : int = I32Mul(captureFreq, 2)
+                            do FLS.@set-counter(newFreq)
+                            do FLS.@set-counter2(newFreq)
+                            return(current)
+                    else
+                        do FLS.@set-counter(I32Sub(captureCount, 1))
+                        do RS.@insert-without-k(tv, current, readSet, myStamp / exh)
+                        return(current)
+            end
+        ;
+*)
 	)
 
 	type 'a tvar = 'a PartialSTM.tvar
-    val get : 'a tvar -> 'a = _prim(@getFFNoRecCounter)
+    val get : 'a tvar -> 'a = _prim(@getMergeWS)
     val new : 'a -> 'a tvar = NoRecFFCounter.new
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val put : 'a tvar * 'a -> unit = _prim(@putMergeWS)
@@ -175,7 +244,10 @@ struct
     val same : 'a tvar * 'a tvar -> bool = NoRecFF.same
     val unsafeGet : 'a tvar -> 'a = NoRecFF.unsafeGet
     val unsafePut : 'a tvar * 'a -> unit = NoRecFF.unsafePut
-
+    val getRefCount : 'a tvar -> long = _prim(@get-ref-count)
+(*)
+    val getCtxt : 'a tvar * string -> 'a = _prim(@get-with-context)
+*)
     val _ = Ref.set(STMs.stms, ("mergeWS", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
 end
 

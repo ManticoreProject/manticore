@@ -117,7 +117,7 @@ MemChunk_t *PushToSpaceChunks (VProc_t *vp, MemChunk_t *scanChunk, bool inGlobal
  */
 void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 {
-#ifdef EVENT_LOGGING`
+#ifdef EVENT_LOGGING
     postEvent(vp, EVENT_MAJOR_GC);
 #endif
     
@@ -154,11 +154,8 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
 	        }
 	        else if (inVPHeap(heapBase, ValueToAddr(p))) {
 	            //RememberSet: pointer from old to young, adjust pointer after scanning
-                if(inAddrRange(heapBase, oldSzB, roots[i])){
+                if(inAddrRange(heapBase, oldSzB, (Addr_t)roots[i])){
                     continue;
-                }
-                if(!inAddrRange(vp->oldTop, top - vp->oldTop, (Addr_t)p)){
-                    somethingBadHappened();
                 }
                 // p points to another object in the "young" region,
                 // so adjust it.
@@ -217,7 +214,7 @@ void MajorGC (VProc_t *vp, Value_t **roots, Addr_t top)
     while(rememberSet != (RS_t*)M_NIL){
         Value_t dest = rememberSet->source[rememberSet->offset];
         if(inAddrRange(oldOldTop, youngSzB, (Addr_t)dest)){
-            rememberSet->source[rememberSet->offset] = (Word_t)((Addr_t)dest - oldSzB);
+            rememberSet->source[rememberSet->offset] = (Value_t)((Addr_t)dest - oldSzB);
         }
         rememberSet = rememberSet->next;
     }
@@ -372,7 +369,7 @@ static void ScanGlobalToSpace (
                     for (int i = 0;  i < len;  i++, scanPtr++) {
                         Value_t *scanP = (Value_t *)scanPtr;
                         Value_t v = *scanP;
-                        if (inAddrRange(heapBase, oldSzB, v) /*inVPHeap(heapBase, ValueToAddr(v))*/) {
+                        if (inAddrRange(heapBase, oldSzB, (Addr_t)v) /*inVPHeap(heapBase, ValueToAddr(v))*/) {
                             *scanP = ForwardObjMajor(vp, v);
                         }else if(promotion && inVPHeap(heapBase, ValueToAddr(v))){
                             *scanP = ForwardObjMajor(vp, v);

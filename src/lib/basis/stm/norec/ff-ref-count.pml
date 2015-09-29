@@ -71,7 +71,6 @@ struct
                             let newFreq : int = I32Mul(captureFreq, 2)
                             do FLS.@set-counter(newFreq)
                             do FLS.@set-counter2(newFreq)
-                            
                             return(current)
                     else
                         do FLS.@set-counter(I32Sub(captureCount, 1))
@@ -133,10 +132,6 @@ struct
                     cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()
                     do FLS.@set-key(ABORT_KEY, abortK / exh)
                     cont transExh(e:exn) = 
-                        do case e 
-                           of Fail(s:ml_string) => do ccall M_Print(#0(s)) return()
-                            | _ => return()   
-                        end
                         do ccall M_Print("Warning: exception raised in transaction\n")
                         throw exh(e)
                     let res : any = apply f(UNIT/transExh)

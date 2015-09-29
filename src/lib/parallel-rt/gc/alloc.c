@@ -16,7 +16,7 @@
 #include "gc.h"
 #include "gc-scan.h"
 #include "remember-set.h"
-
+#include "eventlog.h"
 #include <stdio.h>
 
 //predefined table entries, important for AllocUniform and GlobalAllocUniform
@@ -407,7 +407,7 @@ Value_t AllocBigPolyArray (VProc_t *vp, int nElems, Value_t init)
   if ((nElems+1) * WORD_SZB < HEAP_CHUNK_SZB)
     return GlobalAllocPolyArray (vp, nElems, init);
   else {
-      fprintf(stderr, "AllocBigPolyArray: array too large. %d is bigger than %d.\n", (nElems+1)*WORD_SZB, HEAP_CHUNK_SZB);
+      fprintf(stderr, "AllocBigPolyArray: array too large. %d is bigger than %lu.\n", (nElems+1)*WORD_SZB, HEAP_CHUNK_SZB);
     // TODO
     assert(0);
     return 0;
@@ -576,187 +576,6 @@ int M_PolyEq(Word_t *s1, Word_t *s2){
     if(s1[-1] != s2[-1]){
         return 0;
     }
-    
     bool res = table[getID(s1[-1])].polyEq(s1, s2);
     return res ? 1 : 0;
 }
-
-struct tvar{
-    Value_t contents;
-    unsigned long refCount;
-};
-
-struct read_log{
-    Value_t tag;
-    struct tvar * tvar;
-    Word_t * readContents;
-    struct read_log * next;
-    Word_t * writeSet;
-    Word_t * k;
-    struct read_log * nextK;
-};
-
-struct read_set{
-    struct read_log * head;
-    struct read_log * tail;
-    struct read_log * lastK;
-    unsigned long numK;
-};
-
-void decCounts(struct read_log * ff){
-    while((Value_t) ff != M_NIL){
-        FetchAndDec(&(ff->tvar->refCount));
-        ff = ff->nextK;
-    }
-}
-
-Value_t ffFinish(struct read_set * readSet, struct read_log * checkpoint, unsigned long kCount, VProc_t * vp){
-    checkpoint->next = M_NIL;
-    //printf("Fast forwarding through %lu checkpoints\n", kCount - readSet->numK);
-    Value_t newRS = AllocNonUniform(vp, 4, PTR(readSet->head), PTR(checkpoint), PTR(checkpoint), INT(kCount));
-    return newRS;
-}
-
-Value_t validate(unsigned long * myStamp, volatile unsigned long * clock, struct read_set * readSet, VProc_t * vp){
-    struct read_log * checkpoint = M_NIL;
-    int kCount = 0;
-    while(true){
-        unsigned long time = * clock;
-        if((time & 1) != 0){
-            continue;
-        }
-
-        struct read_log * rs = readSet->head;
-        while(rs != (struct read_log * )M_NIL){
-            if(rs->tag != (Value_t) 9){  //not a local read
-                if(rs->tvar->contents != rs->readContents){
-                    return AllocNonUniform(vp, 4, PTR(readSet->head), PTR(checkpoint), PTR(checkpoint), INT(kCount));
-                }
-                if(rs->tag == (Value_t) 3 && rs->k != M_UNIT){ //checkpointed entry
-                    checkpoint = rs;
-                    kCount++;
-                }
-            }
-            rs = rs->next;
-        }
-        if(time == *clock){
-            *myStamp = time;
-            return NULL;
-        }
-    }
-}
-
-Value_t ffValidate(struct read_set * readSet, struct read_log * oldRS, unsigned long * myStamp, volatile unsigned long * clock, VProc_t * vp){
-    unsigned long kCount = readSet->numK;
-    struct read_log * checkpoint = oldRS;
-    while((Value_t)oldRS != M_NIL){
-        if(oldRS->tag == (Value_t)5){  //WithoutK
-            if(oldRS->tvar->contents == oldRS->readContents){
-                oldRS = oldRS->next;
-            }else{
-                return ffFinish(readSet, checkpoint, kCount, vp);
-            }
-        }else if (oldRS->tag == (Value_t) 3){  //WithK
-            if(oldRS->tvar->contents == oldRS->readContents){
-                if(oldRS->k != M_UNIT){
-                    checkpoint = oldRS;
-                    kCount++;
-                }
-                oldRS = oldRS->next;
-            }else{      //oldRS->tag == (Value_t) 3
-                if(oldRS->k != M_UNIT){
-                    //we have a checkpoint here, but its out of date
-                    Value_t v = oldRS->tvar->contents;
-                    if(*clock != *myStamp){
-                        do{
-                            Value_t abortInfo = validate(myStamp, clock, readSet->head, vp);
-                            if(abortInfo != NULL){
-                                return abortInfo;
-                            }
-                            v = oldRS->tvar->contents;
-                        }while(*clock != *myStamp);
-                    }
-                    oldRS->readContents = v;
-                    oldRS->next = M_NIL;
-                    return AllocNonUniform(vp, 4, PTR(readSet->head), PTR(oldRS), PTR(oldRS), INT(kCount));
-
-                }else{
-                    return ffFinish(readSet, checkpoint, kCount, vp);
-                }
-            }
-        }else{ //local read
-            oldRS = oldRS->next;
-        }
-    }
-    return ffFinish(readSet, checkpoint, kCount, vp);
-    //return AllocNonUniform(vp, 4, PTR(readSet->head), PTR(checkpoint), PTR(checkpoint), INT(kCount)); 
-}
-
-void checkShortPath(struct read_log * rs){
-    struct read_log * orig = rs;
-    int count = 0;
-    while((Value_t)rs != M_NIL){
-        if(rs->tag != 3){
-            printf("Incorrect tag at element %d\n", count);
-        }
-        count++;
-        rs = rs->nextK;
-    }
-}
-
-Value_t fastForward(struct read_set * readSet, struct read_set * ffInfo, Word_t * writeSet, Word_t* tv, Word_t* retK, Word_t* myStamp, volatile unsigned long * clock, VProc_t * vp){
-    struct read_log * shortPath = ffInfo->lastK;
-    while((Value_t)shortPath != M_NIL){
-        if(shortPath->tvar == tv){
-            if (M_PolyEq(retK, shortPath->k)){
-                if(shortPath->writeSet == writeSet){
-                    decCounts(ffInfo->lastK);
-
-                    shortPath->nextK = readSet->lastK;
-                    readSet->tail->next = shortPath;
-
-                    RS_t * remSet = vp->rememberSet;
-                    Value_t remSet2 = AllocNonUniform (vp, 4, PTR(shortPath), INT(6), INT(myStamp[3]), PTR(remSet));
-                    vp->rememberSet = remSet2;
-
-                    Value_t result = ffValidate(readSet, shortPath, myStamp, clock, vp);
-                    return result;
-                }else{
-                    printf("write sets are not equal\n");
-                }
-            }else{
-                printf("continuations are not equal\n");
-            }
-        }
-        shortPath = shortPath->nextK;
-    }
-    return M_UNIT;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

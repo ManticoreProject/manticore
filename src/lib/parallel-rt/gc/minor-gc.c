@@ -193,12 +193,12 @@ void MinorGC (VProc_t *vp)
     
     //prune remember set
     oldSize = vp->oldTop - heapBase;  //recompute oldSize using the new oldTop ptr
-    Value_t * trailer = &(vp->rememberSet);
+    RS_t ** trailer = (RS_t**)&(vp->rememberSet);
     RS_t * rememberSet = (RS_t*)vp->rememberSet;
     while (rememberSet != (RS_t *)M_NIL) {
     	Value_t dest = rememberSet->source[rememberSet->offset];
     	int g1 = toGenNum(rememberSet->source, heapBase, oldSize, vp->nurseryBase, vp->allocPtr - vp->nurseryBase);
-    	int g2 = toGenNum(dest, heapBase, oldSize, vp->nurseryBase, vp->allocPtr - vp->nurseryBase);
+    	int g2 = toGenNum((Value_t*)dest, heapBase, oldSize, vp->nurseryBase, vp->allocPtr - vp->nurseryBase);
     	if(g1 > g2){
     		trailer = &(rememberSet->next);
     		rememberSet = (RS_t*) rememberSet->next;

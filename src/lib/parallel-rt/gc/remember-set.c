@@ -141,13 +141,11 @@ void examineWriteSets(WS_t * currentWS, WS_t * oldWS){
 
 }
 
-void M_PruneRemSetAll(VProc_t * vp, long threadID, const char * context){
+void M_PruneRemSetAll(VProc_t * vp, long threadID){
     RS_t * remSet = (RS_t *)vp->rememberSet;
     RS_t ** trailer = &(vp->rememberSet);
-    //printf("%d starting to prune remember set at time %f (%s)\n", vp->id, (double)time_ns() / (double)1e9, context);
     while((Addr_t) remSet != M_NIL){
         if(remSet->threadId == threadID){
-	    // printf("%d: dropping %p from remember set (M_PruneRemSetAll)\n", vp->id, remSet->source);
             *trailer = remSet->next;
             remSet = remSet->next;
         }else{

@@ -203,24 +203,35 @@ struct
     
     fun polyEqPre (MyoutStrm) = (
 	
+        TextIO.output (MyoutStrm, "void polyEqFailed(){}\n\n");
+        
+        TextIO.output (MyoutStrm, "#define POLYEQ_DEBUG\n");
+
+        TextIO.output (MyoutStrm, "#ifdef POLYEQ_DEBUG\n");
+        TextIO.output (MyoutStrm, "#define POLY_EQ_FAIL polyEqFailed()\n");
+        TextIO.output (MyoutStrm, "#else\n");
+        TextIO.output (MyoutStrm, "#define POLY_EQ_FAIL\n");
+        TextIO.output (MyoutStrm, "#endif\n");
+
+
         TextIO.output (MyoutStrm, "bool polyEqRAWpointer (Word_t * ptr1, Word_t * ptr2) {\n");
-        TextIO.output (MyoutStrm, "\tif(!isPtr((Value_t)ptr2)){\n\t\treturn false;\n\t}\n");
-        TextIO.output (MyoutStrm, "\tif(ptr1[-1] != ptr2[-1]){\n\t\treturn false;\n\t}\n");
+        TextIO.output (MyoutStrm, "\tif(!isPtr((Value_t)ptr2)){\n\t\tPOLY_EQ_FAIL; return false;\n\t}\n");
+        TextIO.output (MyoutStrm, "\tif(ptr1[-1] != ptr2[-1]){\n\t\tPOLY_EQ_FAIL; return false;\n\t}\n");
         TextIO.output (MyoutStrm, "\tint len = GetLength(ptr1[-1]);\n");
         TextIO.output (MyoutStrm, "\tfor(int i = 0; i < len; i++){\n");
-        TextIO.output (MyoutStrm, "\t\tif((uint8_t)ptr1[i] != (uint8_t)ptr2[i]){\n\t\t\treturn false;\n\t\t}\n");
+        TextIO.output (MyoutStrm, "\t\tif((uint8_t)ptr1[i] != (uint8_t)ptr2[i]){\n\t\t\tPOLY_EQ_FAIL; return false;\n\t\t}\n");
         TextIO.output (MyoutStrm, "\t}\n");
         TextIO.output (MyoutStrm, "\treturn true;\n");
         TextIO.output (MyoutStrm, "\n");
         TextIO.output (MyoutStrm, "}\n");
         
         TextIO.output (MyoutStrm, "bool polyEqVECTORpointer (Word_t* ptr1, Word_t * ptr2) {\n");
-        TextIO.output (MyoutStrm, "\tif(!isPtr((Value_t)ptr2)){\n\t\treturn false;\n\t}\n");
-        TextIO.output (MyoutStrm, "\tif(ptr1[-1] != ptr2[-1]){\n\t\treturn false;\n\t}\n");
+        TextIO.output (MyoutStrm, "\tif(!isPtr((Value_t)ptr2)){\n\t\tPOLY_EQ_FAIL; return false;\n\t}\n");
+        TextIO.output (MyoutStrm, "\tif(ptr1[-1] != ptr2[-1]){\n\t\tPOLY_EQ_FAIL; return false;\n\t}\n");
         TextIO.output (MyoutStrm, "\tint len = GetLength(ptr1[-1]);\n");
         TextIO.output (MyoutStrm, "\tfor(int i = 0; i < len; i++){\n");
         TextIO.output (MyoutStrm, "\t\tif(ptr1[i] != ptr2[i] && (!isPtr((Value_t)ptr1[i]) || isForwardPtr(((Word_t* )ptr1[i])[-1]) || !table[getID(((Word_t* )ptr1[i])[-1])].polyEq((Word_t* )ptr1[i], (Word_t* )ptr2[i]))){\n");
-        TextIO.output (MyoutStrm, "\t\t\treturn false;\n");
+        TextIO.output (MyoutStrm, "\t\t\tPOLY_EQ_FAIL; return false;\n");
         TextIO.output (MyoutStrm, "\t\t}\n");
         TextIO.output (MyoutStrm, "\t}\n");
         TextIO.output (MyoutStrm, "\treturn true;\n");
@@ -228,7 +239,7 @@ struct
         
         TextIO.output (MyoutStrm, "bool polyEqPROXYpointer (Word_t* ptr1, Word_t * ptr2) {\n");
         TextIO.output (MyoutStrm, "\tprintf(\"Warning: inside polyEqPROXYpointer\\n\");\n");
-        TextIO.output (MyoutStrm, "\treturn false;\n");
+        TextIO.output (MyoutStrm, "\tPOLY_EQ_FAIL; return false;\n");
         TextIO.output (MyoutStrm, "}\n")
     )
 
@@ -246,39 +257,39 @@ struct
                                       TextIO.output(MyoutStrm, concat["\tif(ptr1[", p, "] != ptr2[", p, "] && (!isPtr((Value_t)ptr1[", p ,
 								      "])  || isForwardPtr((((Word_t* )ptr1[", p, 
 								      "])[-1])) || !table[getID(((Word_t* )ptr1[", p, "])[-1])].polyEq((Word_t* )ptr1[", p, "], (Word_t* )ptr2[", p, "]))){\n"]);
-                                      TextIO.output(MyoutStrm, "\t\treturn false;\n");
+                                      TextIO.output(MyoutStrm, "\t\tPOLY_EQ_FAIL; return false;\n");
                                       TextIO.output (MyoutStrm, "\t}\n");
                                       lp(strlen-1,bites,pos+1)
                                   end
                                 | "0" => 
                                     let val p = Int.toString pos
                                     in TextIO.output(MyoutStrm, concat["\tif((uint8_t)ptr1[", p, "] != (uint8_t)ptr2[",p,"]){\n"]);
-                                       TextIO.output(MyoutStrm, concat["\t\treturn false;\n\t}\n"]);
+                                       TextIO.output(MyoutStrm, concat["\t\tPOLY_EQ_FAIL; return false;\n\t}\n"]);
                                        lp(strlen-1,bites,pos+1)
                                     end
                                 | "2" => 
                                     let val p = Int.toString pos
                                     in TextIO.output(MyoutStrm, concat["\tif((uint16_t)ptr1[", p, "] != (uint16_t)ptr2[",p,"]){\n"]);
-                                       TextIO.output(MyoutStrm, concat["\t\treturn false;\n\t}\n"]);
+                                       TextIO.output(MyoutStrm, concat["\t\tPOLY_EQ_FAIL; return false;\n\t}\n"]);
                                        lp(strlen-1,bites,pos+1)
                                     end
                                 | "3" =>
                                     let val p = Int.toString pos
                                     in TextIO.output(MyoutStrm, concat["\tif((uint32_t)ptr1[", p, "] != (uint32_t)ptr2[",p,"]){\n"]);
-                                       TextIO.output(MyoutStrm, concat["\t\treturn false;\n\t}\n"]);
+                                       TextIO.output(MyoutStrm, concat["\t\tPOLY_EQ_FAIL; return false;\n\t}\n"]);
                                        lp(strlen-1,bites,pos+1)
                                     end
                                 | "4" =>
                                     let val p = Int.toString pos
                                     in TextIO.output(MyoutStrm, concat["\tif((uint64_t)ptr1[", p, "] != (uint64_t)ptr2[",p,"]){\n"]);
-                                       TextIO.output(MyoutStrm, concat["\t\treturn false;\n\t}\n"]);
+                                       TextIO.output(MyoutStrm, concat["\t\tPOLY_EQ_FAIL; return false;\n\t}\n"]);
                                        lp(strlen-1,bites,pos+1)
                                     end
                                 | x => raise Fail("polyeEq Error: " ^ x ^ "\n")
                     in
                         TextIO.output (MyoutStrm, concat["bool polyEq",Int.toString b,"pointer (Word_t* ptr1, Word_t* ptr2) {\n"]);
-                        TextIO.output (MyoutStrm, "\tif(!isPtr((Value_t)ptr2)){\n\t\treturn false;\n\t}\n");
-                        TextIO.output (MyoutStrm, concat["\tif(ptr1[-1] != ptr2[-1]){\n\t\treturn false;\n\t}\n"]);
+                        TextIO.output (MyoutStrm, "\tif(!isPtr((Value_t)ptr2)){\n\t\tPOLY_EQ_FAIL; return false;\n\t}\n");
+                        TextIO.output (MyoutStrm, concat["\tif(ptr1[-1] != ptr2[-1]){\n\t\tPOLY_EQ_FAIL; return false;\n\t}\n"]);
                         lp(size, a, 0);
                         TextIO.output (MyoutStrm, "\treturn true;\n");
                         TextIO.output (MyoutStrm, "}\n");

@@ -22,7 +22,7 @@ struct
 #define START_TIMER let vp : vproc = host_vproc do ccall GenTimerStart(vp)
 #define STOP_TIMER let vp : vproc = host_vproc do ccall GenTimerStop(vp)
    
-	(*Careful, if this changes, we could possibly be indexing a "WithoutK" item 
+	(*Careful, if this changes, we could possibly be indexing a "WithK" item 
      *incorrectly when filtering the read set*)
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a * 'a
                      | WithoutK of 'a * 'a * 'a | Abort of unit 
@@ -70,6 +70,9 @@ struct
                              count:int, revalidate : fun(item, item, int / -> ) / exh:exh) : () = 
             case checkpoint 
                of NilItem => (*no checkpoint available*)
+#ifdef EVENT_LOGGING
+                    do Logging.@log-eager-full-abort()
+#endif
                     let abortK : cont() = FLS.@get-key(ABORT_KEY / exh) 
                     throw abortK()
                 | WithK(tv:tvar, _:any, _:item, ws:item, abortK:cont(any),_:item) => 
@@ -90,6 +93,10 @@ struct
                     do FLS.@set-key(WRITE_SET, ws / exh)
                     let captureFreq : int = FLS.@get-counter2()
                     do FLS.@set-counter(captureFreq)
+#ifdef EVENT_LOGGING
+                    let skipped : int = I32Mul(captureFreq, count)
+                    do Logging.@log-eager-partial-abort(skipped)
+#endif
                     BUMP_PABORT
                     throw abortK(current)
             end

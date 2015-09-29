@@ -38,6 +38,12 @@ struct
 			let gen : [long, long] = alloc(I64Add(s1, 1:long), I64Add(s2, 1:long))
 			return(gen);
 
+
+		(*float M_FRand (float lo, float hi)
+{
+    return (((float)rand() / ((float)(RAND_MAX)+(float)(1)) ) * (hi-lo)) + lo;
+}*)
+
 	)
 
 	type gen = _prim(gen)
@@ -46,5 +52,12 @@ struct
 
 	val next : gen -> long * gen = _prim(@next)
 
+	val randMAX : long = 2147483562
+
+	fun nextFloat (gen, low, high) = 
+		let val (n, gen') = next gen
+			val nFloat = Float.fromLong n
+			val maxFloat = Float.fromLong randMAX
+		in (((nFloat / (maxFloat + 1.0)) * (high - low)) + low, gen') end
 
 end
