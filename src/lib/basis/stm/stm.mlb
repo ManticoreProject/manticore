@@ -5,11 +5,13 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
 
     pabort/v-clock.pml
 
+    pabort/full-abort-stm.pml
+(*)
     pabort/partial-abort-stm.pml
 
     pabort/boundedHybridPartialSTM.pml
 
-    pabort/full-abort-stm.pml
+    
 
 
     fast-forward/read-set.pml
@@ -36,7 +38,7 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
 
     norec/ff-merge-write-sets-rs.pml
     norec/ff-merge-write-sets.pml
-
+*)
     stm.pml
 
 end 

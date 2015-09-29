@@ -39,6 +39,13 @@ struct
             return(old)
         ;
 
+        define inline @inc(amount:long / exh:exh) : stamp =
+            let counter : [long] = @getCount(UNIT / exh)
+            let counter : ![long] = (![long]) counter
+            let old : long = I64FetchAndAdd(&0(counter), amount)
+            return(old)
+        ;
+
         define inline @get(/exh:exh) : long = 
             let counter : [long] = @getCount(UNIT/exh)
             return(#0(counter))

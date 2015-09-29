@@ -1,6 +1,6 @@
 structure STM = 
 struct
-    type 'a tvar = 'a PartialSTM.tvar
+    type 'a tvar = 'a FullAbortSTM.tvar
 
     fun getArg f args = 
         case args 
@@ -18,7 +18,7 @@ struct
            of (str, funs)::tl => if String.same(str, whichSTM) then funs else getSTMFuns tl
             | nil => (print "STM implementation not recognized\n"; raise Fail(""))
 
-    val (getFunction,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut) = getSTMFuns(Ref.get STMs.stms)
+    val (getFunction,put,atomic,new,printStats,abort) = getSTMFuns(Ref.get STMs.stms)
 
     (*won't typecheck without these nonsense bindings*)
     val get : 'a tvar -> 'a = getFunction
@@ -27,10 +27,6 @@ struct
     val new : 'a -> 'a tvar = new
     val printStats : unit -> unit = printStats
     val abort : unit -> 'a = abort
-    val unsafeGet : 'a tvar -> 'a = unsafeGet
-    val same : 'a tvar * 'a tvar -> bool = same
-    val unsafePut : 'a tvar * 'a -> unit = unsafePut 
-
 
     _primcode(
         define @post-start-tx-w-msg(msg : [long] / exh : exh) : unit = 
@@ -53,8 +49,30 @@ struct
             let x : bool = ccall M_ToggleAbort()
             return(x);
 
+        define @same-tvar(arg : [FullAbortSTM.tvar, FullAbortSTM.tvar] / exh:exh) : bool = 
+            if Equal(#0(arg), #1(arg))
+            then return(true)
+            else return(false)
+        ;
+
+        define @unsafe-put(arg : [FullAbortSTM.tvar, any] / exh:exh) : unit = 
+            let v : any = #1(arg)
+            let v : any = promote(v)
+            let tv : FullAbortSTM.tvar = #0(arg)
+            do #0(tv) := v
+            return(UNIT)
+        ;
+
+        define @unsafe-get(tvar : FullAbortSTM.tvar / exh:exh) : any = 
+            return(#0(tvar))
+        ;
+
     ) 
-    
+
+    val same : 'a tvar * 'a tvar -> bool = _prim(@same-tvar)
+    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
+    val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
+
     val mkTXMsg : int * int * int -> long = _prim(@mk-tx-msg)
     val postStartTXWMsg : long -> unit = _prim(@post-start-tx-w-msg)
 

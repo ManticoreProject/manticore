@@ -6,10 +6,13 @@
  * Software Transactional Memory with partial aborts.
  *)
 
-structure FullAbortSTM = (* :
-    sig
-	
-*)
+(*0xFFFFFFFFFFFFFFFE*)
+#define STAMP_BITS (18446744073709551614:long)
+#define PREV_LOCK 2
+#define CURRENT_LOCK 1
+#define TVAR_CONTENTS 0
+
+structure FullAbortSTM =
 struct
 
     (*flat representation for read and write sets*)
@@ -20,15 +23,11 @@ struct
         extern void * M_Print_Int(void *, int);
         extern void * M_Print_Int2(void *, int, int);
         extern void M_Print_Long (void *, long);
-        
-        typedef itemType = int; (*correponds to the above #define's*)
+        extern void M_BumpCounter(void * , int);
+        extern int M_SumCounter(int);
+
         typedef stamp = VClock.stamp;
-        typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
-
-        typedef readItem = [tvar]; 
-
-        typedef writeItem = [tvar,    (*0: tvar operated on*)
-                             any];    (*1: contents of local copy*)
+        typedef tvar = ![any, long, long]; (*contents, current version stamp / lock, previous version stamp / lock*)
 
         define @new(x:any / exh:exh) : tvar = 
             let tv : tvar = alloc(x, 0:long, 0:long)
@@ -36,48 +35,21 @@ struct
             return(tv)
         ;
 
-        define @unsafe-get(tv : tvar / exh:exh) : any = 
-            return(#0(tv));
-
-(*
-        StgClosure * val; 
-    unsigned long stamp1, stamp2;
-    
-    stamp1 = tvar->stamp;
-    if(tvar->lock || stamp1 > trec->read_version){
-#ifdef STATS
-    cap->pastmStats.eagerFullAborts++;
-#endif
-    return abort_transaction(trec);
-    }
-    
-    val = tvar->current_value;
-    
-    stamp2 = tvar->stamp;
-    if(tvar->lock || stamp1 != stamp2){
-#ifdef STATS
-    cap->pastmStats.eagerFullAborts++;
-#endif
-    return abort_transaction(trec);
-    }
-    *)
-
-        define @full-abort(/exh:exh) : any = 
+        define @full-abort(/exh:exh) noreturn = 
             let k : cont() = FLS.@get-key(ABORT_KEY / exh)
             throw k();
 
         define @read-tvar(tv : tvar, stamp : ![stamp, int] / exh : exh) : any = 
-            let stamp1 : stamp = #2(tv)
-            let v : any = #0(tv)
-            do FenceRead()
-            let stamp2 : stamp = #2(tv)
-            do FenceRead()
-            if I64Eq(#1(tv), 0:long)
-            then 
-                if I64Eq(stamp1, stamp2)
+            let v1 : stamp = #1(tv)
+            let res : any = #0(tv)
+            let v2 : stamp = #1(tv)
+            let v1Lock : long = I64AndB(v1, 1:long)
+            if I64Eq(v1Lock, 0:long)  (*unlocked*)
+            then
+                if I64Eq(v1, v2)
                 then 
-                    if I64Lt(stamp1, #0(stamp))
-                    then return(v)
+                    if I64Lt(v1, #0(stamp))
+                    then return(res)
                     else @full-abort(/exh)
                 else @full-abort(/exh)
             else @full-abort(/exh)
@@ -132,55 +104,60 @@ struct
             fun release(locks : item) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:item) =>
-                        do #1(tv) := 0:long         (*unlock*)
+                        do #1(tv) := #2(tv)   (*revert to previous lock*)
                         apply release(tl)
                      | NilItem => return()
                 end
             let readSet : item = FLS.@get-key(READ_SET / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
-            let rawStamp: long = #0(startStamp)
-            fun validate(readSet : item, locks : item, newStamp : stamp) : () = 
+            let rawStamp: long = #0(startStamp) (*this should be even*)
+            let lockVal : long = I64Add(rawStamp, 1:long)
+            fun validate(readSet : item, locks : item) : () = 
                 case readSet 
                     of Read(tv:tvar, tl:item) =>
-                        if I64Lt(#2(tv), rawStamp)  (*still valid*)
-                        then apply validate(tl, locks, newStamp)
-                        else do apply release(locks)
-                             let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                             throw abortK()     
+                        if I64Lt(#1(tv), rawStamp)  (*still valid*)
+                        then apply validate(tl, locks)
+                        else 
+                            if I64Eq(#1(tv), lockVal) (*we locked it*)
+                            then apply validate(tl, locks)
+                            else 
+                                do apply release(locks)
+                                @full-abort(/exh)   
                      |NilItem => return()
                 end
-            fun acquire(writeSet:item, acquired : item) : item = 
-                case writeSet
-                    of Write(tv:tvar, contents:any, tl:item) =>
-                        let casRes : long = CAS(&1(tv), 0:long, rawStamp) (*lock it*)
-                        if I64Eq(casRes, 0:long)  (*locked for first time*)
-                        then apply acquire(tl, Write(tv, contents, acquired))
-                        else if I64Eq(casRes, rawStamp)    (*already locked it*)
-                             then apply acquire(tl, acquired)
-                             else do apply release(acquired)    
-                                  fun lp() : () = 
-                                    if I64Eq(#1(tv), 0:long)
-                                    then return()
-                                    else do Pause() apply lp()
-                                  do apply lp()
-                                  let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                                  throw abortK()
-                     |NilItem => return(acquired)
+            fun acquire(writeSet:item, acquired:item) : item = 
+                case writeSet 
+                   of Write(tv:tvar, contents:any, tl:item) => 
+                        let owner : long = #1(tv)
+                        if I64Eq(owner, lockVal)
+                        then apply acquire(tl, acquired)  (*we already locked this*)
+                        else
+                            if I64Eq(I64AndB(owner, 1:long), 0:long)
+                            then
+                                if I64Lt(owner, lockVal)
+                                then
+                                    let casRes : long = CAS(&1(tv), owner, lockVal)
+                                    if I64Eq(casRes, owner)
+                                    then 
+                                        do #PREV_LOCK(tv) := owner 
+                                        apply acquire(tl, Write(tv, contents, acquired))
+                                    else do apply release(acquired) @full-abort(/exh) (*CAS failed*)
+                                else do apply release(acquired) @full-abort(/exh) (*newer than our timestamp*)
+                            else do apply release(acquired) @full-abort(/exh)  (*someone else locked it*)
+                    | NilItem => return(acquired)
                 end
             fun update(writes:item, newStamp : stamp) : () = 
                 case writes
                     of Write(tv:tvar, newContents:any, tl:item) =>
                         let newContents : any = promote(newContents)
-                        do #2(tv) := newStamp            (*update version stamp*)
-                        do #0(tv) := newContents         (*update contents*)
-                        do #1(tv) := 0:long              (*unlock*)
-                        apply update(tl, newStamp)       (*update remaining*)
+                        do #0(tv) := newContents        (*update contents*)
+                        do #1(tv) := newStamp           (*unlock and update stamp (newStamp is even)*)
+                        apply update(tl, newStamp)          
                      | NilItem => return()
                 end
             let locks : item = apply acquire(writeSet, NilItem)   
-            let newStamp : stamp = VClock.@bump(/exh)
-            let plusOne : stamp = I64Add(rawStamp, 1:long)
-            do apply validate(readSet, locks, newStamp)
+            let newStamp : stamp = VClock.@inc(2:long/exh)
+            do apply validate(readSet, locks)
             do apply update(locks, newStamp)
             return()
         ;
@@ -188,16 +165,15 @@ struct
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
                 let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
                 if (#0(in_trans))
-                then do ccall M_Print("Nested transaction!\n") apply f(UNIT/exh)
+                then do ccall M_Print("Warning: Nested transaction!\n") apply f(UNIT/exh)
                 else let stampPtr : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
-                     do #1(stampPtr) := 0
                      cont enter() = 
                          do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
                          do FLS.@set-key(WRITE_SET, NilItem / exh)
-                         let stamp : stamp = VClock.@bump(/exh)
+                         let stamp : stamp = VClock.@inc(2:long / exh)
                          do #0(stampPtr) := stamp
                          do #0(in_trans) := true
-                         cont abortK() = do #1(stampPtr) := I32Add(#1(stampPtr), 1) BUMP_FABORT throw enter()      
+                         cont abortK() = BUMP_FABORT throw enter()      
                          do FLS.@set-key(ABORT_KEY, (any) abortK / exh)
                          cont transExh(e:exn) = 
                             do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
@@ -221,32 +197,17 @@ struct
          let e : cont() = FLS.@get-key(ABORT_KEY / exh)
          throw e();
          
-      define @tvar-eq(arg : [tvar, tvar] / exh : exh) : bool = 
-         if Equal(#0(arg), #1(arg))
-         then return(true)
-         else return(false);        
-
-        define @unsafe-put(arg : [tvar, any] / exh:exh) : unit = 
-            let tv : tvar = #0(arg)
-            let x : any = #1(arg)
-            let x : any = promote(x)
-            do #0(tv) := x
-            return(UNIT)   
-        ;
     )
 
-	type 'a tvar = 'a PartialSTM.tvar 
+	type 'a tvar = _prim(tvar)
 	val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val get : 'a tvar -> 'a = _prim(@get)
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
-    val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
-    val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
-    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
 
-    val _ = Ref.set(STMs.stms, ("full", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("full", (get,put,atomic,new,printStats,abort))::Ref.get STMs.stms)
 end
 
 

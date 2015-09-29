@@ -16,12 +16,6 @@ struct
     datatype 'a item = Read of 'a * 'a * 'a * 'a | Write of 'a * 'a * 'a | NilItem
 
     _primcode(
-
-        extern void * M_Print_Int(void *, int);
-        extern void * M_Print_Int2(void *, int, int);
-        extern void M_Print_Long (void *, long);
-        extern void M_BumpCounter(void * , int);
-        extern int M_SumCounter(int);
         extern void M_ZeroCounters();
 
         define @zero-counters(x:unit / e : exh) : unit = 
@@ -29,16 +23,13 @@ struct
             return(UNIT);
         
         typedef stamp = VClock.stamp;
-        typedef tvar = ![any, long, stamp]; (*contents, lock, version stamp*)
+        typedef tvar = ![any, long]; (*contents, lock, version stamp*)
 
         define @new(x:any / exh:exh) : tvar = 
             let tv : tvar = alloc(x, 0:long, 0:long)
             let tv : tvar = promote(tv)
             return(tv)
         ;
-
-        define @unsafe-get(tv : tvar / exh:exh) : any = 
-            return(#0(tv));
 
         define @force-abort(rs : item, startStamp : ![stamp] / exh:exh) : () = 
             let rawStamp : stamp = #0(startStamp)
@@ -80,7 +71,21 @@ struct
             do #0(startStamp) := newStamp
             return();
 
-                             
+        define @read-tvar(tv : tvar, stamp : ![stamp] / exh : exh) : any = 
+            let v1 : stamp = #1(tv)
+            let res : any = #0(tv)
+            let v2 : stamp = #1(tv)
+            let v1Lock : long = I64AndB(v1, 1:long)
+            if I64Eq(v1Lock, 0:long)  (*unlocked*)
+            then
+                if I64Eq(v1, v2)
+                then 
+                    if I64Lt(v1, #0(stamp))
+                    then return(res)
+                    else @full-abort(/exh)
+                else @full-abort(/exh)
+            else @full-abort(/exh)
+        ;                        
 
         define @get(tv:tvar / exh:exh) : any = 
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
@@ -99,17 +104,7 @@ struct
             case localRes
                 of Option.SOME(v:any) => return(v)
                  | Option.NONE =>
-                    let current : any = 
-                        fun getCurrentLoop() : any = 
-                            let c : any = #0(tv)
-                            let stamp : stamp = #2(tv)
-                            if I64Eq(#1(tv), 0:long)
-                            then if I64Lt(stamp, #0(myStamp))
-                                 then return(c)
-                                 else do @force-abort(readSet, myStamp / exh) (*if this returns, it updates myStamp*)
-                                      apply getCurrentLoop()
-                            else do Pause() apply getCurrentLoop()
-                        apply getCurrentLoop()
+                    let current : any = @read-tvar(tv, myStamp / exh:exh)
                     let newRS : item = Read(tv, retK, writeSet, readSet)
                     do FLS.@set-key(READ_SET, newRS / exh)
                     return(current)
@@ -217,11 +212,11 @@ struct
             else cont enter() = 
 	                 do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
-                     let newStamp : stamp = VClock.@bump(/exh)
+                     let newStamp : stamp = VClock.@inc(2:long / exh)
                      let stamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
                      do #0(stamp) := newStamp
                      do #0(in_trans) := true
-                     cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()
+                     cont abortK() = BUMP_FABORT throw enter()
                      do FLS.@set-key(ABORT_KEY, abortK / exh)
                      cont transExh(e:exn) = 
                         do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
@@ -235,8 +230,6 @@ struct
                  throw enter()         
         ;
 
-      define @timeToString = Time.toString;
-      
       define @print-stats(x:unit / exh:exh) : unit = 
         PRINT_PABORT_COUNT
         PRINT_FABORT_COUNT
@@ -247,18 +240,6 @@ struct
          let e : cont() = FLS.@get-key(ABORT_KEY / exh)
          throw e();
          
-      define @tvar-eq(arg : [tvar, tvar] / exh : exh) : bool = 
-         if Equal(#0(arg), #1(arg))
-         then return(true)
-         else return(false);    
-
-        define @unsafe-put(arg : [tvar, any] / exh:exh) : unit = 
-            let tv : tvar = #0(arg)
-            let x : any = #1(arg)
-            let x : any = promote(x)
-            do #0(tv) := x
-            return(UNIT)   
-        ;
     )
 
 	type 'a tvar = _prim(tvar)
@@ -268,13 +249,11 @@ struct
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
-    val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
-    val same : 'a tvar * 'b tvar -> bool = _prim(@tvar-eq)
-    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
+
     val zeroCounters : unit -> unit = _prim(@zero-counters)
     val _ = zeroCounters()
 
-    val _ = Ref.set(STMs.stms, ("partial", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("partial", (get,put,atomic,new,printStats,abort))::Ref.get STMs.stms)
 
 end
 
