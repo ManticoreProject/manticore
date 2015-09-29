@@ -23,7 +23,7 @@ struct
             return(UNIT);
         
         typedef stamp = VClock.stamp;
-        typedef tvar = ![any, long]; (*contents, lock, version stamp*)
+        typedef tvar = FullAbortSTM.tvar;
 
         define @new(x:any / exh:exh) : tvar = 
             let tv : tvar = alloc(x, 0:long, 0:long)
@@ -31,50 +31,81 @@ struct
             return(tv)
         ;
 
-        define @force-abort(rs : item, startStamp : ![stamp] / exh:exh) : () = 
-            let rawStamp : stamp = #0(startStamp)
-            cont done(newStamp:stamp) = do #0(startStamp) := newStamp return()
-            fun validate(readSet:item, newStamp : stamp, abortItem : item) : () =
-                case readSet
-                    of Read(tv:tvar, k:cont(any), ws:item, tl:item) =>
-                        if I64Eq(#1(tv), 0:long)
-                        then if I64Lt(#2(tv), rawStamp)
-                             then apply validate(tl, newStamp, abortItem)
-                             else apply validate(tl, newStamp, readSet)
-                        else if I64Eq(#1(tv), rawStamp)
-                             then if I64Lt(#2(tv), rawStamp)
-                                  then apply validate(tl, newStamp, abortItem)
-                                  else apply validate(tl, newStamp, readSet)
-                             else apply validate(tl, newStamp, readSet) 
-                    | NilItem => case abortItem
-                                of Read(tv:tvar, abortK:cont(any), ws:item, tl:item) => 
-				                    let current : any = #0(tv)
-				                    let stamp : stamp = #2(tv)
-                                    do if I64Eq(#1(tv), 0:long) 
-                                       then return()
-                                       else let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                                            throw abortK()
-                                    do if I64Lt(newStamp, stamp)
-                                       then let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                                            throw abortK()
-                                       else return()
-                                    do FLS.@set-key(READ_SET, abortItem / exh)
-                                    do FLS.@set-key(WRITE_SET, ws / exh)
-                                    do #0(startStamp) := newStamp
-                                    BUMP_PABORT 
-                                    throw abortK(current)
-                                | NilItem => throw done(newStamp)
-                             end
-                end             
-            let newStamp : stamp = VClock.@bump(/exh)
-            do apply validate(rs, newStamp, NilItem)
-            do #0(startStamp) := newStamp
-            return();
+        (*
+         * If this returns, then the entire read set is valid, and the time stamp
+         * will have been updated to what the clock was at prior to validation
+         *)
+        define @eager-validate(readSet : item, stamp : ![long] / exh:exh) : () = 
+            fun validate(rs : item, chkpnt : item, newStamp : long) : () = 
+                case rs
+                   of Read(tv:tvar, k:cont(any), ws:item, tl:item) =>
+                        let owner : long = #1(tv)
+                        if I64Lt(owner, #0(stamp))  (*still valid*)
+                        then 
+                            if I64Eq(I64AndB(owner, 1:long), 1:long)
+                            then apply validate(tl, rs, newStamp)
+                            else apply validate(tl, chkpnt, newStamp)
+                        else apply validate(tl, rs, newStamp) 
+                    | NilItem => 
+                        case chkpnt 
+                           of NilItem => do #0(stamp) := newStamp return()
+                            | Read(tv:tvar,abortK:cont(any),ws:item,tl:item) => 
+                                let v1 : long = #CURRENT_LOCK(tv)
+                                let res : any = #TVAR_CONTENTS(tv)
+                                let v2 : long = #CURRENT_LOCK(tv)
+                                let v1Lock : long = I64AndB(v1, 1:long)
+                                if I64Eq(v1Lock, 0:long)  (*unlocked*)
+                                then
+                                    if I64Eq(v1, v2)
+                                    then 
+                                        if I64Lt(v1, newStamp)
+                                        then 
+                                            do #0(stamp) := newStamp
+                                            do FLS.@set-key(READ_SET, chkpnt / exh)
+                                            do FLS.@set-key(WRITE_SET, ws / exh)
+                                            BUMP_PABORT
+                                            throw abortK(res)
+                                        else 
+                                            do #0(stamp) := newStamp
+                                            let newStamp : long = VClock.@inc(2:long / exh)
+                                            apply validate(chkpnt, chkpnt, newStamp)
+                                    else 
+                                        do #0(stamp) := newStamp
+                                        let newStamp : long = VClock.@inc(2:long / exh)
+                                        apply validate(chkpnt, chkpnt, newStamp)
+                                else 
+                                    do #0(stamp) := newStamp
+                                    let newStamp : long = VClock.@inc(2:long / exh)
+                                    apply validate(chkpnt, chkpnt, newStamp)
+                        end
+                end
+            let newStamp : long = VClock.@inc(2:long / exh)
+            apply validate(readSet, NilItem, newStamp)
+        ;
 
-        define @read-tvar(tv : tvar, stamp : ![stamp] / exh : exh) : any = 
-            let v1 : stamp = #1(tv)
-            let res : any = #0(tv)
-            let v2 : stamp = #1(tv)
+        (*only allocates the retry loop closure if the first attempt fails*)
+        define inline @read-tvar2(tv : tvar, stamp : ![stamp], readSet : item / exh : exh) : any = 
+            fun lp(i:int) : any = 
+                let v1 : stamp = #CURRENT_LOCK(tv)
+                let res : any = #TVAR_CONTENTS(tv)
+                let v2 : stamp = #CURRENT_LOCK(tv)
+                let v1Lock : long = I64AndB(v1, 1:long)
+                if I64Eq(v1Lock, 0:long)  (*unlocked*)
+                then
+                    if I64Eq(v1, v2)
+                    then 
+                        if I64Lt(v1, #0(stamp))
+                        then return(res)
+                        else do @eager-validate(readSet, stamp / exh) apply lp(I32Add(i, 1))
+                    else do @eager-validate(readSet, stamp / exh) apply lp(I32Add(i, 1))
+                else do @eager-validate(readSet, stamp / exh) apply lp(I32Add(i, 1))
+            apply lp(0)
+        ;
+
+        define inline @read-tvar(tv : tvar, stamp : ![stamp], readSet : item / exh : exh) : any = 
+            let v1 : stamp = #CURRENT_LOCK(tv)
+            let res : any = #TVAR_CONTENTS(tv)
+            let v2 : stamp = #CURRENT_LOCK(tv)
             let v1Lock : long = I64AndB(v1, 1:long)
             if I64Eq(v1Lock, 0:long)  (*unlocked*)
             then
@@ -82,12 +113,18 @@ struct
                 then 
                     if I64Lt(v1, #0(stamp))
                     then return(res)
-                    else @full-abort(/exh)
-                else @full-abort(/exh)
-            else @full-abort(/exh)
-        ;                        
+                    else 
+                        do @eager-validate(readSet, stamp / exh)
+                        @read-tvar2(tv, stamp, readSet / exh)
+                else 
+                    do @eager-validate(readSet, stamp / exh)
+                    @read-tvar2(tv, stamp, readSet / exh)
+            else 
+                do @eager-validate(readSet, stamp / exh)
+                @read-tvar2(tv, stamp, readSet / exh)
+        ;
 
-        define @get(tv:tvar / exh:exh) : any = 
+        define @getPartialAbort(tv:tvar / exh:exh) : any = 
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : item = FLS.@get-key(READ_SET / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
@@ -104,7 +141,7 @@ struct
             case localRes
                 of Option.SOME(v:any) => return(v)
                  | Option.NONE =>
-                    let current : any = @read-tvar(tv, myStamp / exh:exh)
+                    let current : any = @read-tvar(tv, myStamp, readSet / exh)
                     let newRS : item = Read(tv, retK, writeSet, readSet)
                     do FLS.@set-key(READ_SET, newRS / exh)
                     return(current)
@@ -121,87 +158,84 @@ struct
         ;
 
         define @commit(/exh:exh) : () = 
-            let vp : vproc = SchedulerAction.@atomic-begin()
             let startStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : item) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:item) =>
-                        do #1(tv) := 0:long         (*unlock*)
+                        do #1(tv) := #2(tv)   (*revert to previous lock*)
                         apply release(tl)
-                     | NilItem => do SchedulerAction.@atomic-end(vp) return()
+                     | NilItem => return()
                 end
             let readSet : item = FLS.@get-key(READ_SET / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             let rawStamp: long = #0(startStamp)
-            fun validate(readSet:item, locks:item, newStamp : stamp, abortItem : item) : () =
+            let lockVal : long = I64Add(rawStamp, 1:long)
+            fun validate(readSet:item, locks:item, chkpnt : item, newStamp : long) : () =
                 case readSet
-                    of Read(tv:tvar, k:cont(any), ws:item, tl:item) =>
-                        if I64Eq(#1(tv), 0:long)
-                        then if I64Lt(#2(tv), rawStamp)
-                             then apply validate(tl, locks, newStamp, abortItem)
-                             else apply validate(tl, locks, newStamp, readSet)
-                        else if I64Eq(#1(tv), rawStamp)
-                             then if I64Lt(#2(tv), rawStamp)
-                                  then apply validate(tl, locks, newStamp, abortItem)
-                                  else apply validate(tl, locks, newStamp, readSet)
-                             else apply validate(tl, locks, newStamp, readSet) 
-                    | NilItem => case abortItem
-                                of Read(tv:tvar, abortK:cont(any), ws:item, tl:item) => 
-                                    do apply release(locks)
-                                    let current : any = 
-                                        fun getCurrentLoop() : any = 
-                                            let c : any = #0(tv)
-                                            let stamp : stamp = #2(tv)
-                                            if I64Eq(#1(tv), 0:long)
-                                            then if I64Lt(stamp, #0(startStamp))
-                                                 then return(c)
-                                                 else do @force-abort(readSet, startStamp / exh) (*if this returns, it updates myStamp*)
-                                                      apply getCurrentLoop()
-                                            else do Pause() apply getCurrentLoop()
-                                        apply getCurrentLoop()
-                                    do FLS.@set-key(READ_SET, abortItem / exh)
-                                    do FLS.@set-key(WRITE_SET, ws / exh)
-                                    do #0(startStamp) := newStamp
-                                    BUMP_PABORT 
-                                    throw abortK(current)
-                                | NilItem => return()
-                             end
-               end
-            fun acquire(ws:item, acquired : item) : item = 
+                   of Read(tv:tvar, k:cont(any), ws:item, tl:item) =>
+                        let owner : long = #CURRENT_LOCK(tv)
+                        if I64Lt(owner, rawStamp)
+                        then apply validate(tl, locks, chkpnt, newStamp)
+                        else
+                            if I64Eq(owner, lockVal)
+                            then apply validate(tl, locks, chkpnt, newStamp)
+                            else apply validate(tl, locks, readSet, newStamp)
+                    | NilItem => 
+                        case chkpnt 
+                            of Read(tv:tvar,abortK:cont(any),ws:item,tl:item) => 
+                                do apply release(locks)
+                                let current : any = @read-tvar(tv, startStamp, readSet / exh)
+                                do FLS.@set-key(READ_SET, chkpnt / exh)
+                                do FLS.@set-key(WRITE_SET, ws / exh)
+                                do #0(startStamp) := newStamp
+                                BUMP_PABORT
+                                throw abortK(current)
+                             | NilItem => return()   
+                        end
+                end
+            fun acquire(ws:item, acquired:item) : item = 
                 case ws
-                    of Write(tv:tvar, contents:any, tl:item) =>
-                        let casRes : long = CAS(&1(tv), 0:long, rawStamp) (*lock it*)
-                        if I64Eq(casRes, 0:long)  (*locked for first time*)
-                        then apply acquire(tl, Write(tv, contents, acquired))
-                        else if I64Eq(casRes, rawStamp)    (*already locked it*)
-                             then apply acquire(tl, acquired)
-                             else (*release, but don't end atomic*)
-                                  fun release(locks : item) : () = 
-                                    case locks 
-                                        of Write(tv:tvar, contents:any, tl:item) =>
-                                            do #1(tv) := 0:long         (*unlock*)
-                                            apply release(tl)
-                                         | NilItem => return()
-                                    end
-                                  do apply release(acquired) 
-                                  apply acquire(writeSet, NilItem)
-                     |NilItem => return(acquired)
+                   of Write(tv:tvar, contents:any, tl:item) => 
+                        let owner : long = #CURRENT_LOCK(tv)
+                        if I64Eq(owner, lockVal)
+                        then apply acquire(tl, acquired)  (*we already locked this*)
+                        else
+                            if I64Eq(I64AndB(owner, 1:long), 0:long)
+                            then
+                                if I64Lt(owner, lockVal)
+                                then
+                                    let casRes : long = CAS(&CURRENT_LOCK(tv), owner, lockVal)
+                                    if I64Eq(casRes, owner)
+                                    then 
+                                        do #PREV_LOCK(tv) := owner 
+                                        apply acquire(tl, Write(tv, contents, acquired))
+                                    else 
+                                        do apply release(acquired) 
+                                        do @eager-validate(readSet, startStamp / exh)
+                                        apply acquire(writeSet, NilItem)
+                                else 
+                                    do apply release(acquired) 
+                                    do @eager-validate(readSet, startStamp / exh)
+                                    apply acquire(writeSet, NilItem)
+                            else 
+                                do apply release(acquired) 
+                                do @eager-validate(readSet, startStamp / exh)
+                                apply acquire(writeSet, NilItem)
+                    | NilItem => return(acquired)
                 end
             fun update(writes:item, newStamp : stamp) : () = 
                 case writes
                     of Write(tv:tvar, newContents:any, tl:item) =>
                         let newContents : any = promote(newContents)
-                        do #2(tv) := newStamp            (*update version stamp*)
-                        do #0(tv) := newContents         (*update contents*)
-                        do #1(tv) := 0:long              (*unlock*)
-                        apply update(tl, newStamp)       (*update remaining*)
+                        do #TVAR_CONTENTS(tv) := newContents        (*update contents*)
+                        do #CURRENT_LOCK(tv) := newStamp           (*unlock and update stamp (newStamp is even)*)
+                        apply update(tl, newStamp)          
                      | NilItem => return()
                 end
             let locks : item = apply acquire(writeSet, NilItem)
-            let newStamp : stamp = VClock.@bump(/exh)
-            do apply validate(readSet, locks, newStamp, NilItem)
+            let newStamp : stamp = VClock.@inc(2:long / exh)
+            do apply validate(readSet, locks, NilItem, newStamp)
             do apply update(locks, newStamp)
-            do SchedulerAction.@atomic-end(vp)
             return()
         ;
 
@@ -242,9 +276,9 @@ struct
          
     )
 
-	type 'a tvar = _prim(tvar)
+	type 'a tvar = 'a FullAbortSTM.tvar
 	val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
-    val get : 'a tvar -> 'a = _prim(@get)
+    val get : 'a tvar -> 'a = _prim(@getPartialAbort)
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val printStats : unit -> unit = _prim(@print-stats)

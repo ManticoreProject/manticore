@@ -6,12 +6,6 @@
  * Software Transactional Memory with partial aborts.
  *)
 
-(*0xFFFFFFFFFFFFFFFE*)
-#define STAMP_BITS (18446744073709551614:long)
-#define PREV_LOCK 2
-#define CURRENT_LOCK 1
-#define TVAR_CONTENTS 0
-
 structure FullAbortSTM =
 struct
 
