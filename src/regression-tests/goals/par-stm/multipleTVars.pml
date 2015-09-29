@@ -13,7 +13,7 @@ fun getIntFlg f dflt =
          | NONE => dflt
 
 val TVARS = getIntFlg "-tvars" 100
-val tvars = Vector.tabulate(TVARS, fn _ => STM.new 0)
+val tvars = Vector.tabulate(TVARS, fn i => STM.new (i, 0))
 val ITERS = getIntFlg "-iters" 10000
 val SAMPLE = getIntFlg "-sample" 12
 val WRITE = getIntFlg "-write" 10
@@ -28,13 +28,14 @@ fun write i =
     then nil
     else let val randNum = Rand.inRangeInt(0, TVARS)
              val tv = Vector.sub(tvars, randNum)
-             val _ = STM.put(tv, STM.get tv + 1)
+             val (x, y) = STM.get tv
+             val _ = STM.put(tv, (x, y+1))
          in randNum::write (i-1) end
 
 fun lp i = 
     if i = 0
     then nil
-    else let val writes = STM.atomic(fn () => (sample SAMPLE 0; write WRITE))
+    else let val writes = STM.atomic(fn () => (sample SAMPLE (0, 0); write WRITE))
          in writes @ lp (i-1) end
 
 fun start i =
@@ -55,9 +56,11 @@ val actual = Vector.tabulate(TVARS, fn _ => STM.new 0)
 
 fun chk i = 
     if i = 0
-    then STM.unsafeGet (Vector.sub(actual, i)) = STM.unsafeGet (Vector.sub(tvars, i))
+    then 
+        let val (_, x) = STM.unsafeGet (Vector.sub(tvars, i)) 
+        in STM.unsafeGet (Vector.sub(actual, i)) = x end
     else let val x = STM.unsafeGet (Vector.sub(actual, i))
-             val y = STM.unsafeGet (Vector.sub(tvars, i))
+             val (_, y) = STM.unsafeGet (Vector.sub(tvars, i))
              val _ = if x = y then () else print("Incorrect: " ^ Int.toString i ^ ": should be " ^ Int.toString x ^ ", but found " ^ Int.toString y ^ "\n")
          in x = y andalso chk (i-1) end
 
