@@ -36,7 +36,7 @@ struct
             fun validate(rs : item, chkpnt : item, newStamp : long) : () = 
                 case rs
                    of Read(tv:tvar, k:cont(any), ws:item, tl:item) =>
-                        let owner : long = #1(tv)
+                        let owner : long = #CURRENT_LOCK(tv)
                         if I64Lt(owner, #0(stamp))  (*still valid*)
                         then 
                             if I64Eq(I64AndB(owner, 1:long), 1:long)

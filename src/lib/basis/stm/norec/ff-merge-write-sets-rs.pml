@@ -386,6 +386,7 @@ struct
                 if Equal(res, UNIT)
                 then return()
                 else 
+                    BUMP_KCOUNT
                     let rs : read_set = (read_set) res
                     do FLS.@null-key(FF_KEY)
                     do FLS.@set-key(READ_SET, rs / exh)

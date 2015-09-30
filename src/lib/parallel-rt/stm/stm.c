@@ -135,7 +135,7 @@ Value_t ffFinish(struct read_set * readSet, struct read_log * checkpoint, unsign
 #ifdef EVENT_LOGGING
     postAbortTX(vp, skipped, 17);
 #endif
-    vp->counter[2] ++;
+   // vp->counter[2] ++;
     checkpoint->next = (struct read_log *)M_NIL;
     //printf("Fast forwarding through %lu checkpoints\n", kCount - readSet->numK);
     Value_t newRS = AllocNonUniform(vp, 4, PTR(readSet->head), PTR(checkpoint), PTR(checkpoint), INT(kCount));

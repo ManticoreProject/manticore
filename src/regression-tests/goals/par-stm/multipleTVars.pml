@@ -73,7 +73,7 @@ fun populate hist =
         | nil => chk(TVARS - 1)
 
 val hist = join (start (VProc.numVProcs()))
-val _ = if populate hist then print "Correct!\n" else (print "Incorrect: counts are wrong!\n"; raise Fail "Incorrect!\n")
+val _ = if populate hist then print "Correct!\n" else (print "Incorrect: counts are wrong!\n"; raise Fail "Incorrect!\n") 
 
 val _ = STM.printStats()
 

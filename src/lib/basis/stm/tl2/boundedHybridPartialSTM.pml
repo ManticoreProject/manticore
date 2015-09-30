@@ -52,7 +52,7 @@ struct
          * If this returns, then the entire read set is valid, and the time stamp
          * will have been updated to what the clock was at, prior to validation
          *)
-        define @eager-validate(readSet : [int, item, item], stamp : ![long, int] / exh:exh) : () = 
+        define @eager-validate(readSet : item, stamp : ![long, int] / exh:exh) : () = 
             fun eagerValidate(rs : item, chkpnt : item, newStamp : long, kCount : int) : () = 
                 case rs
                    of WithK(tv:tvar, next : item, k:cont(any), ws:item, sp:item) =>
@@ -72,9 +72,9 @@ struct
                         if I64Lt(owner, #0(stamp))
                         then
                             if I64Eq(I64AndB(owner, 1:long), 1:long)
-                            then apply eagerValidate(next, Abort(UNIT), newStamp, kCount)
+                            then apply eagerValidate(next, Abort(UNIT), newStamp, 0)
                             else apply eagerValidate(next, chkpnt, newStamp, kCount)
-                        else apply eagerValidate(next, Abort(UNIT), newStamp, kCount)
+                        else apply eagerValidate(next, Abort(UNIT), newStamp, 0)
                     | NilItem => 
                         case chkpnt 
                            of NilItem => do #0(stamp) := newStamp return()
@@ -113,11 +113,11 @@ struct
                         end
                 end
             let newStamp : long = VClock.@inc(2:long / exh)
-            apply eagerValidate(#LONG_PATH(readSet), NilItem, newStamp, 0)
+            apply eagerValidate(readSet, NilItem, newStamp, 0)
         ;
 
         (*only allocates the retry loop closure if the first attempt fails*)
-        define inline @read-tvar2(tv : tvar, stamp : ![stamp, int], readSet : read_set / exh : exh) : any = 
+        define inline @read-tvar2(tv : tvar, stamp : ![stamp, int], readSet : item / exh : exh) : any = 
             fun lp(i:int) : any = 
                 let v1 : stamp = #CURRENT_LOCK(tv)
                 let res : any = #TVAR_CONTENTS(tv)
@@ -135,7 +135,7 @@ struct
             apply lp(0)
         ;
 
-        define inline @read-tvar(tv : tvar, stamp : ![stamp, int], readSet : read_set / exh : exh) : any = 
+        define inline @read-tvar(tv : tvar, stamp : ![stamp, int], readSet : item / exh : exh) : any = 
             let v1 : stamp = #CURRENT_LOCK(tv)
             let res : any = #TVAR_CONTENTS(tv)
             let v2 : stamp = #CURRENT_LOCK(tv)
@@ -180,12 +180,12 @@ struct
             case localRes
                of Option.SOME(v:any) => return(v)
                 | Option.NONE => 
-                    let current : any = @read-tvar(tv, myStamp, readSet / exh)
+                    let current : any = @read-tvar(tv, myStamp, #SHORT_PATH(readSet) / exh)
                     let captureCount : int = FLS.@get-counter()
                     if I32Eq(captureCount, 1)
                     then (*capture continuation*)
                         let newSL : item = WithK(tv, #LONG_PATH(readSet), retK, writeSet, #SHORT_PATH(readSet))
-                        let n : int = I32Add(#0(readSet), 1)
+                        let n : int = I32Add(#KCOUNT(readSet), 1)
                         let newRS : ![int, item, item] = alloc(n, newSL, newSL)
                         do FLS.@set-key(READ_SET, newRS / exh)
                         if I32Lte(n, READ_SET_BOUND)
@@ -214,15 +214,15 @@ struct
                                         end
                                 end
                             let kCount : int = apply dropKs(newSL, n)
-                            do #0(newRS) := kCount
+                            do #KCOUNT(newRS) := kCount
                             let freq : int = FLS.@get-counter2()
                             let newFreq : int = I32Mul(freq, 2)
                             do FLS.@set-counter(newFreq)
                             do FLS.@set-counter2(newFreq)
                             return(current)
                     else
-                        let newSL : item = WithoutK(tv, #SHORT_PATH(readSet))
-                        let newRS : [int, item, item] = alloc(#0(readSet), newSL, #LONG_PATH(readSet))
+                        let newSL : item = WithoutK(tv, #LONG_PATH(readSet))
+                        let newRS : [int, item, item] = alloc(#KCOUNT(readSet), newSL, #SHORT_PATH(readSet))
                         do FLS.@set-counter(I32Sub(captureCount, 1))
                         do FLS.@set-key(READ_SET, newRS / exh)
                         return(current)
@@ -264,11 +264,11 @@ struct
                            of NilItem => return() (*no violations detected*)
                             | WithK(tv:tvar,_:item,abortK:cont(any),ws:item,_:item) =>
                                 do apply release(locks)
-                                let current : any = @read-tvar(tv, startStamp, readSet / exh)
+                                do #0(startStamp) := newStamp
+                                let current : any = @read-tvar(tv, startStamp, chkpnt / exh)
                                 let newRS : [int,item,item] = alloc(i, chkpnt, chkpnt)
                                 do FLS.@set-key(READ_SET, newRS / exh)
                                 do FLS.@set-key(WRITE_SET, ws / exh)
-                                do #0(startStamp) := newStamp
                                 let captureFreq : int = FLS.@get-counter2() 
                                 do FLS.@set-counter(captureFreq)
                                 BUMP_PABORT
@@ -321,15 +321,15 @@ struct
                                         apply acquire(tl, Write(tv, contents, acquired))
                                     else 
                                         do apply release(acquired) 
-                                        do @eager-validate(readSet, startStamp / exh)
+                                        do @eager-validate(#SHORT_PATH(readSet), startStamp / exh)
                                         apply acquire(writeSet, NilItem)
                                 else 
                                     do apply release(acquired) 
-                                    do @eager-validate(readSet, startStamp / exh)
+                                    do @eager-validate(#SHORT_PATH(readSet), startStamp / exh)
                                     apply acquire(writeSet, NilItem)
                             else 
                                 do apply release(acquired) 
-                                do @eager-validate(readSet, startStamp / exh)
+                                do @eager-validate(#SHORT_PATH(readSet), startStamp / exh)
                                 apply acquire(writeSet, NilItem)
                     | NilItem => return(acquired)
                 end
@@ -344,7 +344,7 @@ struct
                 end
             let locks : item = apply acquire(writeSet, NilItem)
             let newStamp : stamp = VClock.@inc(2:long / exh)        
-            do apply validate(#SHORT_PATH(readSet),locks,newStamp,NilItem,0)  
+            do apply validate(#LONG_PATH(readSet),locks,newStamp,NilItem,0)  
             do apply update(locks, newStamp)
             return()
         ;
@@ -369,7 +369,7 @@ struct
                      let res : any = apply f(UNIT/transExh)
                      do @commit(/transExh)
                      do #0(in_trans) := false
-                     do FLS.@set-key(READ_SET, nil / exh)
+                     do FLS.@set-key(READ_SET, NilItem / exh)
                      do FLS.@set-key(WRITE_SET, NilItem / exh)
                      return(res)
                      
