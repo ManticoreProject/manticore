@@ -267,12 +267,6 @@ struct
                  throw enter()         
         ;
 
-      define @print-stats(x:unit / exh:exh) : unit = 
-        PRINT_PABORT_COUNT
-        PRINT_FABORT_COUNT
-        PRINT_COMBINED
-        return(UNIT);
-
       define @abort(x : unit / exh : exh) : any = 
          let e : cont() = FLS.@get-key(ABORT_KEY / exh)
          throw e();
@@ -284,13 +278,12 @@ struct
     val get : 'a tvar -> 'a = _prim(@getPartialAbort)
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
-    val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
 
     val zeroCounters : unit -> unit = _prim(@zero-counters)
     val _ = zeroCounters()
 
-    val _ = Ref.set(STMs.stms, ("partial", (get,put,atomic,new,printStats,abort))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("partial", (get,put,atomic,new,abort))::Ref.get STMs.stms)
 
 end
 

@@ -259,10 +259,10 @@ struct
             let lockVal : long = I64Add(rawStamp, 1:long)
             fun validate(rs:item, locks:item, newStamp : stamp, chkpnt : item, i:int) : () = 
                 case rs
-                    of NilItem => 
+                   of NilItem => 
                         case chkpnt
-                            of NilItem => return() (*no violations detected*)
-                             | WithK(tv:tvar,_:item,abortK:cont(any),ws:item,_:item) =>
+                           of NilItem => return() (*no violations detected*)
+                            | WithK(tv:tvar,_:item,abortK:cont(any),ws:item,_:item) =>
                                 do apply release(locks)
                                 let current : any = @read-tvar(tv, startStamp, readSet / exh)
                                 let newRS : [int,item,item] = alloc(i, chkpnt, chkpnt)
@@ -273,7 +273,7 @@ struct
                                 do FLS.@set-counter(captureFreq)
                                 BUMP_PABORT
                                 throw abortK(current) 
-                             | Abort(x:unit) =>
+                            | Abort(x:unit) =>
                                 do apply release(locks)
                                 let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
                                 throw abortK()  (*no checkpoint found*)
@@ -364,7 +364,7 @@ struct
                      do FLS.@set-key(ABORT_KEY, abortK / exh)
                      cont transExh(e:exn) = 
                         do ccall M_Print("Warning: exception raised in transaction\n")
-                        do @commit(/exh)  (*exception may have been raised because of inconsistent state*)
+                        do @commit(/exh) 
                         throw exh(e)
                      let res : any = apply f(UNIT/transExh)
                      do @commit(/transExh)
@@ -376,12 +376,6 @@ struct
                  throw enter()
       ;
 
-      define @print-stats(x:unit / exh:exh) : unit = 
-        PRINT_PABORT_COUNT
-        PRINT_FABORT_COUNT
-        PRINT_COMBINED
-        return(UNIT);
-        
       define @abort(x : unit / exh : exh) : any = 
          let e : cont() = FLS.@get-key(ABORT_KEY / exh)
          throw e();        
@@ -393,10 +387,9 @@ struct
     val get : 'a tvar -> 'a = _prim(@get)
     val new : 'a -> 'a tvar = _prim(@new)
     val put : 'a tvar * 'a -> unit = _prim(@put)
-    val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
    
-    val _ = Ref.set(STMs.stms, ("bounded", (get,put,atomic,new,printStats,abort))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("bounded", (get,put,atomic,new,abort))::Ref.get STMs.stms)
 
 end
 

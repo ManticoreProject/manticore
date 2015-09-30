@@ -29,6 +29,7 @@ struct
         extern void M_Debug(void*);
         extern void M_Print_Int_Long2(void*, int, long, long);
         typedef item = NoRecOrderedReadSet.item;
+        extern int M_PolyEq(void*, void*);
 
     	typedef read_set = ![item,      (*0: first element of the read set*) 
     						 item, 	    (*1: last element of the read set*)

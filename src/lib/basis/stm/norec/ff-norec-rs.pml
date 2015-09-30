@@ -28,6 +28,7 @@ struct
 
         extern void M_Print_Long2(void *, void *, void *);
         extern void M_IncCounter(void *, int , long);
+        extern int M_PolyEq(void*, void*);
 
     	typedef read_set = ![item,      (*0: first element of the read set*) 
     						 item, 	    (*1: last element of the read set*)

@@ -5,25 +5,14 @@ struct
 
     structure RS = NoRecOrderedReadSet
 
-    val counter = AtomicCounter.new()
-    fun getCounter() = counter
-
 	_primcode(
-		(*I'm using ![any, long, long] as the type
-		 * for tvars so that the typechecker will treat them
-		 * as the same type as the other STM implementations.
-		 * However, only the first element is ever used*)
 		typedef tvar = ![any, long, long];
 		typedef stamp = VClock.stamp;
 
         extern void M_PruneRemSetAll(void*, void*);
 
-        define @get-counter = getCounter;
-
 		define @new(x:any / exh:exh) : tvar =
-            let counter : AtomicCounter.counter = @get-counter(UNIT / exh)
-            let id : long = AtomicCounter.@bump(counter)
-			let tv : [any, long] = alloc(x, id)
+			let tv : [any, long] = alloc(x, 0:long)
 			let tv : [any, long] = promote(tv)
 			let tv : tvar = (tvar) tv
 			return(tv)
@@ -175,32 +164,9 @@ struct
                 throw enter()
       	;
 
-      	define @print-stats(x:unit / exh:exh) : unit = 
-            PRINT_PABORT_COUNT
-	        PRINT_FABORT_COUNT
-            PRINT_COMBINED
-	        return(UNIT);
-
 	    define @abort(x : unit / exh : exh) : any = 
 	        let e : cont() = FLS.@get-key(ABORT_KEY / exh)
 	        throw e();
-         
-      	define @tvar-eq(arg : [tvar, tvar] / exh : exh) : bool = 
-	        if Equal(#0(arg), #1(arg))
-	        then return(true)
-	        else return(false);  
-
-	    define @unsafe-get(x:tvar / exh:exh) : any = 
-	    	return(#0(x));
-
-        define @unsafe-put(arg : [tvar, any] / exh:exh) : unit = 
-            let tv : tvar = #0(arg)
-            let x : any = #1(arg)
-            let x : any = promote(x)
-            do #0(tv) := x
-            return(UNIT)   
-        ;
-
 	)
 
 	type 'a tvar = 'a PartialSTM.tvar
@@ -208,13 +174,9 @@ struct
     val new : 'a -> 'a tvar = _prim(@new)
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val put : 'a tvar * 'a -> unit = _prim(@put)
-    val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
-    val same : 'a tvar * 'a tvar -> bool = _prim(@tvar-eq)
-    val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
-    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
-
-    val _ = Ref.set(STMs.stms, ("orderedNoRec", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
+   
+    val _ = Ref.set(STMs.stms, ("orderedNoRec", (get,put,atomic,new,abort))::Ref.get STMs.stms)
 end
 
 

@@ -162,13 +162,9 @@ struct
     val new : 'a -> 'a tvar = _prim(@new)
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val put : 'a tvar * 'a -> unit = NoRecFF.put
-    val printStats : unit -> unit = NoRecFF.printStats
     val abort : unit -> 'a = _prim(@abort)
-    val same : 'a tvar * 'a tvar -> bool = NoRecFF.same
-    val unsafeGet : 'a tvar -> 'a = NoRecFF.unsafeGet
-    val unsafePut : 'a tvar * 'a -> unit = NoRecFF.unsafePut
-
-    val _ = Ref.set(STMs.stms, ("ffRefCount", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
+ 
+    val _ = Ref.set(STMs.stms, ("ffRefCount", (get,put,atomic,new,abort))::Ref.get STMs.stms)
 end
 
 

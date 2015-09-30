@@ -18,14 +18,13 @@ struct
            of (str, funs)::tl => if String.same(str, whichSTM) then funs else getSTMFuns tl
             | nil => (print "STM implementation not recognized\n"; raise Fail(""))
 
-    val (getFunction,put,atomic,new,printStats,abort) = getSTMFuns(Ref.get STMs.stms)
+    val (getFunction,put,atomic,new,abort) = getSTMFuns(Ref.get STMs.stms)
 
     (*won't typecheck without these nonsense bindings*)
     val get : 'a tvar -> 'a = getFunction
     val put : 'a tvar * 'a -> unit = put
     val atomic : (unit -> 'a) -> 'a = atomic
     val new : 'a -> 'a tvar = new
-    val printStats : unit -> unit = printStats
     val abort : unit -> 'a = abort
 
     _primcode(
@@ -67,7 +66,18 @@ struct
             return(#0(tvar))
         ;
 
+        define @print-stats(x:unit / exh:exh) : unit = 
+            PRINT_PABORT_COUNT
+            PRINT_FABORT_COUNT
+            PRINT_COMBINED
+            PRINT_KCOUNT
+            PRINT_FF
+            return(UNIT)
+        ;
+
     ) 
+
+    val printStats : unit -> unit = _prim(@print-stats)
 
     val same : 'a tvar * 'a tvar -> bool = _prim(@same-tvar)
     val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)

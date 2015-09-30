@@ -239,16 +239,12 @@ struct
     val new : 'a -> 'a tvar = NoRecFFCounter.new
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val put : 'a tvar * 'a -> unit = _prim(@putMergeWS)
-    val printStats : unit -> unit = NoRecFF.printStats
     val abort : unit -> 'a = NoRecFFCounter.abort
-    val same : 'a tvar * 'a tvar -> bool = NoRecFF.same
-    val unsafeGet : 'a tvar -> 'a = NoRecFF.unsafeGet
-    val unsafePut : 'a tvar * 'a -> unit = NoRecFF.unsafePut
     val getRefCount : 'a tvar -> long = _prim(@get-ref-count)
 (*)
     val getCtxt : 'a tvar * string -> 'a = _prim(@get-with-context)
 *)
-    val _ = Ref.set(STMs.stms, ("mergeWS", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("mergeWS", (get,put,atomic,new,abort))::Ref.get STMs.stms)
 end
 
 

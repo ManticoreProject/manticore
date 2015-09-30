@@ -165,29 +165,9 @@ struct
                 throw enter()
       	;
 
-      	define @print-stats(x:unit / exh:exh) : unit = 
-	        PRINT_COMBINED
-	        return(UNIT);
-
 	    define @abort(x : unit / exh : exh) : any = 
 	        let e : cont() = FLS.@get-key(ABORT_KEY / exh)
 	        throw e();
-         
-      	define @tvar-eq(arg : [tvar, tvar] / exh : exh) : bool = 
-	        if Equal(#0(arg), #1(arg))
-	        then return(true)
-	        else return(false);  
-
-	    define @unsafe-get(x:tvar / exh:exh) : any = 
-	    	return(#0(x));
-
-        define @unsafe-put(arg : [tvar, any] / exh:exh) : unit = 
-            let tv : tvar = #0(arg)
-            let x : any = #1(arg)
-            let x : any = promote(x)
-            do #0(tv) := x
-            return(UNIT)   
-        ;
 
 	)
 
@@ -196,10 +176,9 @@ struct
     val new : 'a -> 'a tvar = _prim(@new)
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val put : 'a tvar * 'a -> unit = _prim(@put)
-    val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
 
-    val _ = Ref.set(STMs.stms, ("norec", (get,put,atomic,new,printStats,abort))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("norec", (get,put,atomic,new,abort))::Ref.get STMs.stms)
 end
 
 

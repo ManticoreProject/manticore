@@ -25,7 +25,7 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
 
     fast-forward/partial-stm-tail-rec.pml
 
-
+*)
     norec/norec.pml
 
     norec/partial-norec.pml
@@ -36,12 +36,13 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
     norec/ff-norec-rs.pml
     norec/ff-norec.pml
 
+
     norec/ff-ref-count-rs.pml
     norec/ff-ref-count.pml
 
     norec/ff-merge-write-sets-rs.pml
     norec/ff-merge-write-sets.pml
-*)
+
     stm.pml
 
 end 
