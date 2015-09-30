@@ -3,14 +3,17 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
  
     logging.pml
 
-    pabort/v-clock.pml
+    ann "cpp" "tl2/tl2.def" in
+        tl2/v-clock.pml
 
-    pabort/full-abort-stm.pml
-(*)
-    pabort/partial-abort-stm.pml
+        tl2/full-abort-stm.pml
 
-    pabort/boundedHybridPartialSTM.pml
+        tl2/partial-abort-stm.pml
 
+        tl2/boundedHybridPartialSTM.pml
+    end
+
+(*
     
 
 

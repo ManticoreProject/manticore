@@ -191,18 +191,15 @@ struct
 
 	)
 
-	type 'a tvar = 'a PartialSTM.tvar
+	type 'a tvar = 'a FullAbortSTM.tvar
     val get : 'a tvar -> 'a = _prim(@getFullAbortNoRec)
     val new : 'a -> 'a tvar = _prim(@new)
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val printStats : unit -> unit = _prim(@print-stats)
     val abort : unit -> 'a = _prim(@abort)
-    val same : 'a tvar * 'a tvar -> bool = _prim(@tvar-eq)
-    val unsafeGet : 'a tvar -> 'a = _prim(@unsafe-get)
-    val unsafePut : 'a tvar * 'a -> unit = _prim(@unsafe-put)
 
-    val _ = Ref.set(STMs.stms, ("norec", (get,put,atomic,new,printStats,abort,unsafeGet,same,unsafePut))::Ref.get STMs.stms)
+    val _ = Ref.set(STMs.stms, ("norec", (get,put,atomic,new,printStats,abort))::Ref.get STMs.stms)
 end
 
 

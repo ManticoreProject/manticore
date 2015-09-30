@@ -3,13 +3,10 @@
  * COPYRIGHT (c) 2014 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * Software Transactional Memory with partial aborts.
+ * Software Transactional Memory (TL2) with partial aborts.
  *)
  
-structure PartialSTM = (* :
-    sig
-	
-*)
+structure PartialSTM = 
 struct
 
     (*flat representation for read and write sets*)
@@ -125,6 +122,12 @@ struct
         ;
 
         define @getPartialAbort(tv:tvar / exh:exh) : any = 
+            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
+            do if(#0(in_trans))
+               then return()
+               else do ccall M_Print("Trying to read outside a transaction!\n")
+                    let e : exn = Fail(@"Reading outside transaction\n")
+                    throw exh(e)
             let myStamp : ![stamp] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : item = FLS.@get-key(READ_SET / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
@@ -162,7 +165,7 @@ struct
             fun release(locks : item) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:item) =>
-                        do #1(tv) := #2(tv)   (*revert to previous lock*)
+                        do #CURRENT_LOCK(tv) := #PREV_LOCK(tv)   (*revert to previous lock*)
                         apply release(tl)
                      | NilItem => return()
                 end
@@ -170,8 +173,8 @@ struct
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             let rawStamp: long = #0(startStamp)
             let lockVal : long = I64Add(rawStamp, 1:long)
-            fun validate(readSet:item, locks:item, chkpnt : item, newStamp : long) : () =
-                case readSet
+            fun validate(rs:item, locks:item, chkpnt : item, newStamp : long) : () =
+                case rs
                    of Read(tv:tvar, k:cont(any), ws:item, tl:item) =>
                         let owner : long = #CURRENT_LOCK(tv)
                         if I64Lt(owner, rawStamp)
@@ -179,7 +182,7 @@ struct
                         else
                             if I64Eq(owner, lockVal)
                             then apply validate(tl, locks, chkpnt, newStamp)
-                            else apply validate(tl, locks, readSet, newStamp)
+                            else apply validate(tl, locks, rs, newStamp)
                     | NilItem => 
                         case chkpnt 
                             of Read(tv:tvar,abortK:cont(any),ws:item,tl:item) => 
