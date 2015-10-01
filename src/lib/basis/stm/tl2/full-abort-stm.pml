@@ -109,14 +109,16 @@ struct
             fun validate(readSet : item, locks : item) : () = 
                 case readSet 
                     of Read(tv:tvar, tl:item) =>
-                        if I64Lt(#1(tv), rawStamp)  (*still valid*)
-                        then apply validate(tl, locks)
+                        let owner : long = #CURRENT_LOCK(tv)
+                        if I64Lt(owner, rawStamp)  (*still valid*)
+                        then 
+                            if I64Eq(I64AndB(owner, 1:long), 1:long)
+                            then do apply release(locks) @full-abort(/exh)
+                            else apply validate(tl, locks)
                         else 
-                            if I64Eq(#1(tv), lockVal) (*we locked it*)
+                            if I64Eq(owner, lockVal) (*we locked it*)
                             then apply validate(tl, locks)
-                            else 
-                                do apply release(locks)
-                                @full-abort(/exh)   
+                            else do apply release(locks) @full-abort(/exh)   
                      |NilItem => return()
                 end
             fun acquire(writeSet:item, acquired:item) : item = 

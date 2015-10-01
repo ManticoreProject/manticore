@@ -178,7 +178,10 @@ struct
                    of Read(tv:tvar, k:cont(any), ws:item, tl:item) =>
                         let owner : long = #CURRENT_LOCK(tv)
                         if I64Lt(owner, rawStamp)
-                        then apply validate(tl, locks, chkpnt, newStamp)
+                        then 
+                            if I64Eq(I64AndB(owner, 1:long), 1:long)
+                            then apply validate(tl, locks, rs, newStamp)
+                            else apply validate(tl, locks, chkpnt, newStamp)
                         else
                             if I64Eq(owner, lockVal)
                             then apply validate(tl, locks, chkpnt, newStamp)
