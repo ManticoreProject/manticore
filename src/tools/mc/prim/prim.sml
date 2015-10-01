@@ -114,8 +114,8 @@ structure Prim =
     datatype 'var cond
       = isBoxed of 'var
       | isUnboxed of 'var
-      | Equal of 'var * 'var	(* equality on T_any *)
-      | NotEqual of 'var * 'var	(* equality on T_any *)
+      | Equal of 'var * 'var	    (* equality on T_any *)
+      | NotEqual of 'var * 'var	  (* not equality on T_any *)
       | EnumEq of 'var * 'var
       | EnumNEq of 'var * 'var
       | I32Eq of 'var * 'var
