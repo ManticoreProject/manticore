@@ -37,10 +37,9 @@ structure Translate : sig
     structure TyCache = RedBlackMapFn (TyCacheKV)
     type tycache_t = BOMTy.t TyCache.map (* map from AST types to BOM types *)
 
-
     structure TycMapKV = struct
         type ord_key = S.Tycon.t
-        fun compare(tyc1: S.Tycon.t, tyc2: S.Tycon.t) = String.compare (Layout.toString (S.Tycon.layout tyc1), Layout.toString (S.Tycon.layout tyc2))
+        fun compare(tyc1: S.Tycon.t, tyc2: S.Tycon.t) = Word.compare (S.Tycon.hash tyc1, S.Tycon.hash tyc2)
     end
     structure TycMap = RedBlackMapFn (TycMapKV)
     type tycmap_t = BOMTyc.t TycMap.map (* map from AST tycs to BOM datatype constructors *)
