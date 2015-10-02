@@ -271,7 +271,7 @@ structure Translate : sig
       end
 
     fun transCoreBOMTy env coreBomTy: (env * BOMTy.t) = let
-      val _ = print ("transCoreBOMTy " ^ Layout.toString (S.CoreBOM.BOMType.layout coreBomTy) ^ "\n")
+      (*val _ = print ("transCoreBOMTy " ^ Layout.toString (S.CoreBOM.BOMType.layout coreBomTy) ^ "\n")*)
       fun transCoreBOMTy' ty = #2 (transCoreBOMTy env ty)
       val bomTy =
         (case coreBomTy
@@ -333,7 +333,8 @@ structure Translate : sig
         end) ([], e) bomVals
 
     fun transBOMExp (e, env) : BOM.exp = let
-      val (e, tys) = (S.CoreBOM.Exp.node e, List.map (fn ty => #2 ((transCoreBOMTy env) ty)) (S.CoreBOM.Exp.typeOf e))
+      val (e, tys) = (S.CoreBOM.Exp.node e,
+        List.map (fn ty => #2 ((transCoreBOMTy env) ty)) (S.CoreBOM.Exp.typeOf e))
       in
         case e
         of BExp.Let (vals, rhs, e') => let
@@ -833,7 +834,7 @@ structure Translate : sig
         val (env, contTys) = List.foldl convertTy (env, []) contVals
         val retTys = List.map (fn ty => #2 ((transCoreBOMTy env) ty)) retTys
         val funcTy = BOMTy.T_Fun (domTys, contTys, retTys)
-        val (var', env) = newVarBOMValWithTy(env, func, funcTy)
+        val (var', env) = newVarBOMValWithTy (env, func, funcTy)
         in
           (env, (fundef, var')::fns)
         end) (env, []) fundefs
@@ -842,6 +843,7 @@ structure Translate : sig
           fundef
         (* TODO(wings): attrs? *)
         val (params, env) = newVarBOMVals (env, domVals)
+        (* TODO(wings): is this right for exh or should it be `handlerOf env`? *)
         val (exh, env) = newVarBOMVals (env, contVals)
         in
           BOM.mkLambda {f=var, params=params, exh=exh, body=transBOMExp (body, env)}
@@ -931,7 +933,7 @@ structure Translate : sig
                               BOMTy.T_Con (dataTyc, []) (* XXX(wings): should this tyc have an arg? *)
                             end
                         else if S.Tycon.equals(tyc, S.Tycon.reff)
-                          then BOMTy.arrayTy (singleArg()) (* XXX(wings): should we really treat refs as one-item arrays? *)
+                          then BOMTy.arrayTy (singleArg())
                         else if S.Tycon.equals(tyc, S.Tycon.thread)
                           then (noArgs (); BOMTy.vprocTy)
                         else if S.Tycon.equals(tyc, S.Tycon.tuple)
@@ -999,7 +1001,7 @@ structure Translate : sig
             transDecs(env, decs, result)
           end
 
-    and transDec (env, d, k : env -> BOM.exp) = ( case d
+    and transDec (env, d, k : env -> BOM.exp) = (case d
            of S.Dec.Exception{arg, con} => raise Fail "Exception declaration found in SXML"
             | S.Dec.Fun{decs, ...} => let
                 (*val _ = print "transDec Fun\n"*)
@@ -1129,7 +1131,7 @@ structure Translate : sig
                   val test' = transVarExp(env, test)
                   val default' = Option.map (fn (e, region) => transSExp(e, env)) default
                   val cases' = (case cases
-                        (* for cases on inductive datatypes, ... *)
+                        (* for cases on inductive datatypes *)
                          of S.Cases.Con (rules) => V.map (fn (pat as S.Pat.T{arg, con, targs}, exp) => let
                                  (*Pat.t = T of {
                                         arg: (Var.t * Type.t) option,
@@ -1145,7 +1147,7 @@ structure Translate : sig
                                   (* P_DCon of data_con * var list *)
                                   (BOM.P_DCon (dcon, vars), transSExp(exp, env))
                                 end) rules
-                        (* for cases on int, word, char, ... *)
+                        (* for cases on int, word, char, etc. *)
                           | S.Cases.Word (sz, rules) => V.map (fn (word, exp) => (BOM.P_Const(transConst(sz, word)), transSExp(exp, env))) rules
                         (* end case *))
                   in
@@ -1175,6 +1177,7 @@ structure Translate : sig
                   val (x', handlerEnv) = newVar(env, x, ty)
                   val (exh, tryEnv) = newHandler env
                   in
+                    (* TODO(wings): verify that this has the right semantics? *)
                     mkLet(BOM.mkCont(
                       BOM.mkLambda{f = exh, params = [x'], exh = [], body = transSExp(handler, handlerEnv)},
                       transSExp(try, tryEnv)))
@@ -1205,10 +1208,11 @@ structure Translate : sig
                                                                         expFromRhs (BOM.E_Const (Literal.trueLit, boolTy), boolTy),
                                                                         expFromRhs (BOM.E_Const (Literal.falseLit, boolTy), boolTy)) else
 
-                  if S.Prim.equals (prim, S.Prim.touch) then r2e (BOM.E_Promote (argn 0), unitTy) (* TODO: the backend needs a notion of 'touch' *) else
-                  (*raise Fail "ref" else *)
+                  (* TODO(wings): the backend needs a notion of 'touch' *)
+                  if S.Prim.equals (prim, S.Prim.touch) then r2e (BOM.E_Promote (argn 0), unitTy) else
                   if S.Prim.equals (prim, S.Prim.cpointerSub) then raise Fail "cpointerSub" else
-                raise Fail ("failed to translate PrimApp " ^ S.Prim.toString prim)
+                  (* TODO(wings): handle other MLton prims? *)
+                  raise Fail ("failed to translate PrimApp " ^ S.Prim.toString prim)
                 in
                   exp
                 end
@@ -1299,7 +1303,7 @@ Datatype.t = {cons: {arg: Type.t option,
                   exh = [(* exh *)],
                   body = body
                 }
-          val program = BOM.PROGRAM{exnTyc = exnTyc, dataTycs = TycMap.listItems tycMap, hlops = [], externs = !progExterns, body = mainFun}
+          val program = BOM.PROGRAM{exnTyc = exnTyc, dataTycs = TycMap.listItems tycMap, hlops = [(* TODO(wings): hlops *)], externs = !progExterns, body = mainFun}
           in(* raise Fail "hi";*)
             PrintBOM.print (program); program (*raise Fail "done"*)
           end
