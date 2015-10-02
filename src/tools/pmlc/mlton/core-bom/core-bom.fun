@@ -605,9 +605,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | Exn => Layout.str "exn"
       | Any => Layout.str "any"
       | VProc => Layout.str "vproc"
-      (* TODO(wings): decide whether Array and Vector should be first-class and 
-      present in this datatype, or should use the TyCon variant with special
-      tycon_t instances *)
       | Array elemty => Layout.seq [layout elemty, Layout.str " array"]
       | Vector elemty => Layout.seq [layout elemty, Layout.str " vector"]
       | Cont elemtys => Layout.seq (Layout.str "cont" :: layoutTyArgs elemtys)
