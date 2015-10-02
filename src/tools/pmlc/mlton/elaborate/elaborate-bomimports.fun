@@ -198,10 +198,10 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
                     | CoreBOM.RawTy.Vec512 => raise Fail "VecNNN types!"
                  end
                | CoreBOM.BOMType.Error => raise Fail
-                   ("attempting to import unknown BOM type: "
+                   ("attempting to export unknown BOM type: "
                    ^ Layout.toString (BOM.BOMType.layout bomTy) ^ "...")
                | ty => raise Fail
-                   ("TODO(wings): unhandled type binding: "
+                   ("TODO(wings): exporting unhandled type: "
                    ^ Layout.toString (BOM.BOMType.layout bomTy) ^ "...")
               (* end case *))
 
