@@ -259,6 +259,8 @@ signature CORE_BOM =
 
       val compare: t * t -> order
       val equal: t * t -> bool
+
+      val layout: t -> Layout.t
     end
 
     (* structure VarPat: sig *)
