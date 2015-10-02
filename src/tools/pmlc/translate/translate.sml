@@ -25,7 +25,7 @@ structure Translate : sig
     structure TyCacheKV = struct
         type ord_key = S.Type.dest
         fun compare(t1: S.Type.dest, t2: S.Type.dest) = (case (t1, t2)
-           of (S.Type.Con (ltc1, tys1), S.Type.Con (ltc2, tys2)) => (case String.compare (S.Tycon.toString ltc1, S.Tycon.toString ltc2)
+           of (S.Type.Con (ltc1, tys1), S.Type.Con (ltc2, tys2)) => (case Word.compare (S.Tycon.hash ltc1, S.Tycon.hash ltc2)
                of EQUAL => V.collate compare (V.map S.Type.dest tys1, V.map S.Type.dest tys2)
                 | relation => relation
                (* end case *))
