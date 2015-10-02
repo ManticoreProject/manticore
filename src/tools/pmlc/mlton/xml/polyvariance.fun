@@ -66,6 +66,7 @@ fun lambdaSize (Program.T {body, ...}): Lambda.t -> int =
           | CoreBOM.Definition.HLOp (attrs, vals, exp) => loopBOMExp (exp, n + 1)
           | CoreBOM.Definition.Fun funs => loopBOMFuns (funs, n)
           | CoreBOM.Definition.Extern (name, cProto) => n
+          | CoreBOM.Definition.Import importDef => n
       and loopBOMFuns (funs, n): int =
           (* XXX(wings): should we store the cost of each BOM function declarations as is done for ML lambdas? *)
          List.fold (funs, n, fn (CoreBOM.FunDef.Def (attrs, name, tyParams, inputTys, retTy, bomExp), n) =>
@@ -237,7 +238,7 @@ fun shouldDuplicate (program as Program.T {body, ...}, hofo, small, product)
                                         loopExp (body, numDuplicates))
                                  end
                            end
-                      | BOM {bom=bomDecs} => () (* TODO(wings): what is this doing? do we care? *) (* [PML] *)
+                      | BOM {bom=bomDecs} => () (* [PML] *)
                       | _ => Error.bug "Polyvariance.loopExp.loopDecs: strange dec"
          in loopDecs decs
          end

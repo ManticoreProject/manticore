@@ -121,7 +121,7 @@ signature XML_TREE =
 
       structure PrimConDef: (* [PML] used in BOM declarations *)
          sig
-            datatype t = T of Con.t * Type.t option * Type.t * Var.t
+            datatype t = T of Con.t * Type.t option * Type.t * Var.t * CoreBOM.Val.t
          end
 
       structure Dec:

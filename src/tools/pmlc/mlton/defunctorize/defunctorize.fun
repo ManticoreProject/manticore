@@ -658,7 +658,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                   | CoreML.BOMExport.ValBind (mlVar, ty, bomVal) => ())
                (* BOM definitions are not nested so the only BOM definitions we
                have to traverse to lift datatypes are Datatype definitions *)
-             | BOMModule (CoreML.BOMModule.T {imports = imports, defs = defs}) =>
+             | BOMModule (CoreML.BOMModule.T {defs = defs}) =>
                 List.foreach (defs, (fn def =>
                    case def of
                       CoreBOM.Definition.Datatype datatypedefs =>
@@ -672,7 +672,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                   Vector.fromList
                                   (List.map
                                    (primConDefs, fn
-                                      CoreML.PrimConDef.T (con, maybeArgTy, resultTy, _) =>
+                                      CoreML.PrimConDef.T (con, maybeArgTy, resultTy, _, bomVal) =>
                                          {con=con, arg=maybeArgTy}))
                                val _ =
                                   setTyconCons (mlTycon,
@@ -700,6 +700,37 @@ fun defunctorize (CoreML.Program.T {decs}) =
                     | CoreBOM.Definition.HLOp (attrs, valid, exp) => ()
                     | CoreBOM.Definition.Fun (fundefs) => ()
                     | CoreBOM.Definition.Extern (val_, cProto) => ()
+                    | CoreBOM.Definition.Import (bomTyc, (mlTycon, primConDefs)) =>
+                         let
+                            val cons =
+                               Vector.fromList
+                               (List.map
+                                (primConDefs, fn
+                                   CoreML.PrimConDef.T (con, maybeArgTy, resultTy, _, bomVal) =>
+                                      {con=con, arg=maybeArgTy}))
+                            val _ =
+                               setTyconCons (mlTycon,
+                                          Vector.map (cons, fn {arg, con} =>
+                                                         {con = con,
+                                                          hasArg = isSome arg}))
+                            val cons =
+                               Vector.map
+                               (cons, fn {arg, con} =>
+                                (setConTycon (con, mlTycon)
+                                 ; {arg = Option.map (arg, loopTy),
+                                    con = con}))
+
+                            val _ =
+                               if Tycon.equals (mlTycon, Tycon.reff)
+                                  then ()
+                               else
+                                  (* TODO(wings): verify that empty tyvars are ok here *)
+                                  List.push (datatypes, {cons = cons,
+                                                         tycon = mlTycon,
+                                                         tyvars = Vector.new0 ()})
+                         in
+                            ()
+                         end
                 ))
          end
       and loopExp (e: Cexp.t): unit =
@@ -990,7 +1021,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                        modify local env to point at the appropriate types/dcons *)
                        let
                           (* bind each con *)
-                          fun decCon (CoreML.PrimConDef.T (mlCon, maybeArgMLTy, resultMLTy, mlVar)) =
+                          fun decCon (CoreML.PrimConDef.T (mlCon, maybeArgMLTy, resultMLTy, mlVar, bomVal)) =
                              let
                                 val dconMLTy =
                                    (case maybeArgMLTy of
@@ -1039,12 +1070,10 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                                         ty = loopTy ty,
                                                         exp = XprimExp.BOMVal bomVal}],
                                   body = e})
-             (* APOLOGIA(wings): I think we should be able to ignore imports here
-             and just pass definitions through *)
-             | BOMModule (CoreML.BOMModule.T {imports = imports, defs = defs}) =>
+             | BOMModule (CoreML.BOMModule.T {defs = defs}) =>
                   let
-                     fun convert(CoreML.PrimConDef.T (con, maybeArgTy, returnTy, mlVar)) =
-                        Xml.PrimConDef.T(con, Option.map(maybeArgTy, loopTy), loopTy returnTy, mlVar)
+                     fun convert(CoreML.PrimConDef.T (con, maybeArgTy, returnTy, mlVar, bomVal)) =
+                        Xml.PrimConDef.T(con, Option.map(maybeArgTy, loopTy), loopTy returnTy, mlVar, bomVal)
                      val defs' = MLVector.fromList (List.map (defs,
                         CoreBOM.Definition.mapDatatype
                         (fn (mlTycon, primConDefs) =>

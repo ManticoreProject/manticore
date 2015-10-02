@@ -429,8 +429,8 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                              ^ CoreBOM.BOMId.toString bomId)
 
                         val conName = CoreBOM.BOMId.toString bomId
+                        val astCon = Ast.Con.fromSymbol (Ast.Symbol.fromString (conName), Region.bogus)
                         val mlCon = CoreML.Con.fromString (conName)
-                        val mlConName = Ast.Con.fromSymbol (Ast.Symbol.fromString (conName), Region.bogus)
 
                         (*dummy var*)
                         val mlVar = Ast.Vid.toVar (Ast.Vid.fromSymbol (Ast.Symbol.fromString ("dummy"), Region.bogus))
@@ -442,9 +442,9 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                              SOME argMLTy => CoreML.Type.arrow (argMLTy, resultMLTy)
                            | NONE => resultMLTy
                       in
-                         (CoreML.PrimConDef.T (mlCon, maybeArgMLTy, resultMLTy, mlVar'),
+                         (CoreML.PrimConDef.T (mlCon, maybeArgMLTy, resultMLTy, mlVar', bomVal),
                             {con=mlCon,
-                            name=mlConName,
+                            name=astCon,
                             arg=maybeArgMLTy,
                             ty=conMLTy})
                       end)
@@ -468,7 +468,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                      Env.newCons (env, Vector.fromList (List.map (cons, fn {con, name, ...} => {con=con, name=name})))
                   val typeStr = Env.TypeStr.data (mlTycon, kind, makeCons schemes)
 
-                  (* mutate the ML type env to associate the cons with the tycon (???) *)
+                  (* mutate the ML type env to associate the cons with the tycon *)
                   val _ = Env.extendTycon (env, astTycon, typeStr,
                      {forceUsed = false,
                      isRebind = true})
@@ -536,22 +536,33 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                         SOME x => x::xs
                       | NONE => xs
 
+                    fun importToDef import = case import of
+                        CoreML.BOMImport.Val (var, bomVal, bomTy) =>
+                          NONE(*CoreBOM.Definition.Import (raise Fail "bomVal", (raise Fail "bomTy", []))*)
+                      | CoreML.BOMImport.Datatype (bomTyc, mlTycon, pcds) =>
+                          SOME (CoreBOM.Definition.Import (mlTycon, (bomTyc, pcds)))
+                      | CoreML.BOMImport.Exception (mlCon, newval, maybeArgTy) =>
+                          NONE (*CoreBOM.Definition.Import (CoreML.Type, (raise Fail "maybeArgTy", []))*)
+
                     fun foldOverEnv (elabStmt: 'a * 'b -> 'g option * 'b)
                         (stmt: 'a, (oldStmts: 'g list, oldEnv: 'b)) =
                       (fn (maybeNewStmt, newEnv) =>
                         (appendMaybe (oldStmts, maybeNewStmt), newEnv)) (
                         elabStmt (stmt, oldEnv))
 
+                    (* TODO(wings): ensure that imports are not reversed *)
                     val (imports, {env, bomEnv}) =
                      MLVector.foldl (foldOverEnv
                        ElaborateBOMImports.elaborateBOMImport) ([], {env = E,
                        bomEnv = namedEnv}) imports
 
-                    val (bomModule, bomEnv') =
-                      (fn (defs, bomEnv') => (CoreML.BOMModule.T {
-                        imports = imports, defs = rev defs}, bomEnv'))
-                        (MLVector.foldl (foldOverEnv (ElaborateBOMCore.elaborateBOMDec (makeMLDatatype env)))
-                        ([], bomEnv) bomDecs)
+                    val imports' = MLList.mapPartial importToDef imports
+
+                    val (defs, bomEnv') = MLVector.foldl (foldOverEnv (ElaborateBOMCore.elaborateBOMDec (makeMLDatatype env)))
+                        ([], bomEnv) bomDecs
+
+                    val bomModule = CoreML.BOMModule.T {
+                        defs = imports' @ (rev defs)}
 
                     val () = Control.checkForErrors "elaborate"
                   in

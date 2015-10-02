@@ -1022,9 +1022,33 @@ structure Translate : sig
                 end
             | S.Dec.BOM{bom=bomdecs} => let
                 (*val _ = print "transDec BOM\n"*)
+                fun findCon (bomTyc: BOMTyc.t, name) = List.find (fn con => BOMDataCon.nameOf con = name) (BOMTyc.consOf bomTyc)
+                fun addDef ((bomTyc, S.PrimConDef.T(con, maybeArgMLTy, mlTy, _, bomVal)), env) = let
+                  val _ = print ("\taddDef looking up " ^ S.Con.toString con ^ " in " ^ BOMTyc.nameOf bomTyc ^ "\n")
+                  val dcon = case findCon (bomTyc, S.Con.toString con)
+                    of SOME dcon => dcon
+                     | NONE => raise Fail "internal error: unable to find dcon while translating BOM declaration"
+                  in
+                    writeBOMVal (env, bomVal, DCon dcon)
+                  end
+                fun addDefs (env, bomTyc, mlcondefs) = let
+                  in
+                    Vector.foldl addDef env (Vector.map (fn x => (bomTyc, x)) (mlcondefs))
+                  end
                 val (env, k) = Vector.foldl (fn (bomdec, (env, k: env -> BOM.exp)) => (case bomdec
-                   of S.CoreBOM.Definition.Datatype dataTypeDef => (env, k)
-                    | S.CoreBOM.Definition.HLOp (attrs, valid, exp) => raise Fail "Polymorphic HLOps found in SXML"
+                   (* TODO(wings): document this! *)
+                   of S.CoreBOM.Definition.Datatype dtdefs => (List.foldl (fn ((coreBomTyc, (mlTyc, mlcondefs)), env) => let
+                         val _ = print ("datatype adding bom/" ^ Layout.toString (S.CoreBOM.TyCon.layout coreBomTyc) ^ " = ml/" ^ S.Tycon.toString mlTyc ^ "\n")
+                         (* add tycon to env *)
+                         val env = writeMLTyc (env, coreBomTyc, (mlTyc, mlcondefs))
+                         (* lookup bom tyc created in transDatatypes *)
+                         val bomTyc = lookupTyc(env, mlTyc)
+                         (* add dcons to BOMVal env *)
+                         val env = addDefs (env, bomTyc, mlcondefs)
+                         in
+                           env
+                         end) env dtdefs, k)
+                    | S.CoreBOM.Definition.HLOp (attrs, valid, exp) => raise Fail "TODO(wings): HLOps"
                     | S.CoreBOM.Definition.Fun fundefs => let
                        val (lambdas, env) = transBOMFuns (fundefs, env)
                        in
@@ -1039,6 +1063,17 @@ structure Translate : sig
                        in
                          progExterns := cfun :: !progExterns; (env', k)
                      end
+                    | S.CoreBOM.Definition.Import (coreBomTyc, (mlTyc, mlcondefs)) => let
+                       val _ = print ("import adding bom/" ^ Layout.toString (S.CoreBOM.TyCon.layout coreBomTyc) ^ " = ml/" ^ S.Tycon.toString mlTyc ^ "\n")
+                       (* add tycon to env *)
+                       val env = writeMLTyc (env, coreBomTyc, (mlTyc, mlcondefs))
+                       (* lookup bom tyc created in transDatatypes *)
+                       val bomTyc = lookupTyc(env, mlTyc)
+                       (* add dcons to BOMVal env *)
+                       val env = addDefs (env, bomTyc, mlcondefs)
+                       in
+                         (env, k)
+                       end
                   (* end case *))) (env, k) bomdecs
                 in
                   k env

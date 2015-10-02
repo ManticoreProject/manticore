@@ -413,7 +413,7 @@ signature CORE_BOM =
         | HLOp of Attr.t list * ValId.t * Exp.t
         | Fun of FunDef.t list
         | Extern of Val.t * CProto.t
-        (* | Import of Longcon.t * Type.t option * BOMType.t *)
+        | Import of TyCon.t * 'a
       val mapDatatype: ('a -> 'b) -> 'a t -> 'b t
     end
 

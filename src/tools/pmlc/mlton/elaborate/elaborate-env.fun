@@ -2134,6 +2134,11 @@ end
 fun extendExn (E, c, c', s) =
    extendVals (E, Ast.Vid.fromCon c, (Vid.Exn c', s), ExtendUses.New)
 
+(* [PML] *)
+fun extendCon (E, c, c', s, ir) =
+   extendVals (E, Ast.Vid.fromCon c, (Vid.Con c', SOME s),
+               ExtendUses.fromIsRebind ir)
+
 fun extendVar (E, x, x', s, ir) =
    extendVals (E, Ast.Vid.fromVar x, (Vid.Var x', SOME s),
                ExtendUses.fromIsRebind ir)

@@ -1091,7 +1091,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | HLOp of Attr.t list * ValId.t * Exp.t
       | Fun of FunDef.t list
       | Extern of Val.t * CProto.t
-      (* | Import of BOMType.t *)
+      | Import of TyCon.t * 'a
 
     fun mapDatatype (f: 'a -> 'b) (def: 'a t): 'b t =
       case def of
@@ -1100,6 +1100,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | HLOp x => HLOp x
       | Fun x => Fun x
       | Extern x => Extern x
+      | Import (tycon, a) => Import (tycon, f a)
   end
 
   (* structure Decs = struct *)

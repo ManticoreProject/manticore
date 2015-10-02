@@ -146,7 +146,7 @@ structure NoMatch =
 
 
 structure PrimConDef = struct
-  datatype t = T of Con.t * Type.t option * Type.t * Var.t(*CoreBOM.Val.t(*BOMId.t*)*)
+  datatype t = T of Con.t * Type.t option * Type.t * Var.t * CoreBOM.Val.t(*BOMId.t*)
 
   (*val arity = arityOfDataCons
   val error = ConsDef (BOMId.bogus, NONE)*)
@@ -161,13 +161,14 @@ end
 
 structure BOMImport = struct
   datatype t
-    = Datatype of CoreBOM.TyCon.t
+    = Datatype of Tycon.t * CoreBOM.TyCon.t * PrimConDef.t list
+    | Exception of Con.t * CoreBOM.Val.t * CoreBOM.BOMType.t option
+    | Val of Var.t * CoreBOM.Val.t * CoreBOM.BOMType.t
   end
 
 structure BOMModule = struct
   datatype t
-    = T of {imports: BOMImport.t list,
-      defs: (Tycon.t * PrimConDef.t list) CoreBOM.Definition.t list}
+    = T of {defs: (Tycon.t * PrimConDef.t list) CoreBOM.Definition.t list}
 end
 
 datatype noMatch = datatype NoMatch.t
