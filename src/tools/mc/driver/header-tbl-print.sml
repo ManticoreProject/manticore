@@ -205,7 +205,7 @@ struct
 	
         TextIO.output (MyoutStrm, "void polyEqFailed(){}\n\n");
         
-        TextIO.output (MyoutStrm, "#define POLYEQ_DEBUG\n");
+(*        TextIO.output (MyoutStrm, "#define POLYEQ_DEBUG\n");*)
 
         TextIO.output (MyoutStrm, "#ifdef POLYEQ_DEBUG\n");
         TextIO.output (MyoutStrm, "#define POLY_EQ_FAIL polyEqFailed()\n");

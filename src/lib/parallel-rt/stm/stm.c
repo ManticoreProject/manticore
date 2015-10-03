@@ -17,8 +17,8 @@
 #include "atomic-ops.h"
 
 struct tvar{
-    Word_t * contents;
-    unsigned long refCount;
+    volatile Word_t * contents;
+    volatile unsigned long refCount;
 };
 
 struct write_set{
@@ -63,6 +63,45 @@ Value_t STM_Validate(unsigned long * myStamp, volatile unsigned long * clock, st
         struct read_log * checkpoint = head;  
         struct read_log * rs = head->next; //first real entry
         while(rs != (struct read_log * )M_NIL){
+            if(rs->tag == (Value_t) 9){
+                rs = rs->next;
+                continue;
+            }
+            if(rs->tag == (Value_t) 5){
+                if(rs->tvar->contents == rs->readContents){
+                    rs = rs->next;
+                    continue;
+                }else{
+                    *myStamp = time;
+                    return AllocNonUniform(vp, 4, PTR(head), PTR(checkpoint), PTR(checkpoint), INT(kCount));
+                }
+            }
+            else{
+                if(rs->tvar->contents == rs->readContents){
+                    if(rs->k != M_UNIT){
+                        full =false;
+                        checkpoint = rs;
+                        kCount++;
+                    }
+                    rs = rs->next;
+                    continue;
+                }else if(rs->k != M_UNIT){
+                    Word_t * contents = rs->tvar->contents;
+                    if(time != *clock)
+                        goto RETRY;
+                    rs->readContents = contents;  //contents is necessarily in the global heap
+                    *myStamp = time;
+
+                    vp->counter[0]++; //necessarily a partial abort
+                    return AllocNonUniform(vp, 4, PTR(head), PTR(rs), PTR(rs), INT(kCount));
+                }else{
+                    *myStamp = time;
+                    return AllocNonUniform(vp, 4, PTR(head), PTR(checkpoint), PTR(checkpoint), INT(kCount));
+                }
+            }
+
+
+            /*
             if(rs->tag != (Value_t) 9){  //not a local read
                 if(rs->tvar->contents != rs->readContents){
                     if(rs->tag == (Value_t) 3 && rs->k != M_UNIT){ //reread
@@ -76,7 +115,7 @@ Value_t STM_Validate(unsigned long * myStamp, volatile unsigned long * clock, st
                         return AllocNonUniform(vp, 4, PTR(head), PTR(rs), PTR(rs), INT(kCount));
                     }
                     if(!full)
-                        vp->counter[0]++;
+                        vp->counter[0]++;  //full aborts get logged in the full abort continuation
                     *myStamp = time;
                     return AllocNonUniform(vp, 4, PTR(head), PTR(checkpoint), PTR(checkpoint), INT(kCount));
                 }
@@ -86,7 +125,7 @@ Value_t STM_Validate(unsigned long * myStamp, volatile unsigned long * clock, st
                     kCount++;
                 }
             }
-            rs = rs->next;
+            rs = rs->next;*/
         }
         if(time == *clock){
             *myStamp = time;

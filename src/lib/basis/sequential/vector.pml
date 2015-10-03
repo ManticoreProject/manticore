@@ -91,12 +91,4 @@ structure Vector =
 
     fun map f s = tabulate (length s, fn i => f (sub (s, i)))
 
-    fun app f s = 
-        let fun lp i = 
-                if i = 0
-                then ()
-                else (f (sub(s, i)); lp(i-1))
-        in lp (length s)
-        end   
-
   end

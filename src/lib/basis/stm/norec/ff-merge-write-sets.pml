@@ -51,7 +51,7 @@ struct
                 		if I64Eq(t, #0(myStamp))
                 		then return(v)
                 		else
-                			do RS.@c-validate(readSet, myStamp, true / exh)
+                			do RS.@validate(readSet, myStamp, true / exh)
                 			apply getLoop()
                 	let current : any = apply getLoop()
                     let captureCount : int = FLS.@get-counter()
@@ -89,7 +89,7 @@ struct
         		if I64Eq(old, current)
         		then return()
         		else
-        			do RS.@c-validate(readSet, stamp, false / exh)
+        			do RS.@validate(readSet, stamp, false / exh)
         			apply lockClock()
         	do apply lockClock()
         	fun writeBack(ws:RS.item) : () = 
@@ -232,6 +232,70 @@ struct
             end
         ;
 *)
+        typedef syncVar = ![bool];
+
+        define @mk-sync-var(x:bool / exh:exh) : ![bool] = 
+            let x : ![bool] = alloc(x)
+            return(x);
+        
+        (* atomic-sync : (unit -> 'a) -> ![bool] -> bool
+         * the first argument is the function to be run atomically
+         * the second is a bool ref that is used for synchronizing threads
+         * if the ref is equal to the third bool argument, proceed, otherwise spin 
+         * until it is equal
+         *)
+        define @atomic-sync(arg:[fun(unit / exh -> any), ![bool], bool] / exh:exh) : any = 
+            let f : fun(unit / exh -> any) = #0(arg)
+            let syncVal : ![bool] = #1(arg)
+            let waitVal : bool = #2(arg)
+            let aborted : ![bool] = alloc(false)
+            fun lp() : () = 
+                if Equal(#0(syncVal), waitVal)
+                then return()
+                else do Pause() apply lp()
+            do apply lp()
+            let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
+            if (#0(in_trans))
+            then apply f(UNIT/exh)
+            else 
+                let stampPtr : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
+                do FLS.@set-key(FF_KEY, enum(0) / exh)
+                cont enter() = 
+                    let freq : int = FLS.@get-counter2()
+                    do FLS.@set-counter(freq)
+                    cont abortK(x:any) = BUMP_FABORT do #0(in_trans) := false throw enter()
+                    let rs : RS.read_set = RS.@new(abortK)
+                    do FLS.@set-key(READ_SET, rs / exh)  
+                    do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
+                    let stamp : stamp = NoRecFF.@get-stamp(/exh)
+                    do #0(stampPtr) := stamp
+                    do #0(in_trans) := true
+                    do FLS.@set-key(ABORT_KEY, abortK / exh)
+                    cont transExh(e:exn) = 
+                        do ccall M_Print("Warning: exception raised in transaction\n")
+                        throw exh(e)
+                    let res : any = apply f(UNIT/transExh)
+                    do 
+                        if(waitVal)
+                        then 
+                            if (#0(aborted))
+                            then return()
+                            else do #0(aborted) := true do #0(syncVal) := false apply lp()
+                        else return()
+                    do @commit(stampPtr / transExh)
+                    do 
+                        if(waitVal)
+                        then return()
+                        else do #0(syncVal) := true return()
+                    let vp : vproc = host_vproc
+                    do ccall M_PruneRemSetAll(vp, #3(stampPtr))
+                    do #0(in_trans) := false
+                    do FLS.@set-key(READ_SET, RS.NilItem / exh)
+                    do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
+                    do FLS.@set-key(FF_KEY, enum(0) / exh)
+                    return(res)
+                throw enter()
+        ;
 	)
 
 	type 'a tvar = 'a PartialSTM.tvar
@@ -241,6 +305,12 @@ struct
     val put : 'a tvar * 'a -> unit = _prim(@putMergeWS)
     val abort : unit -> 'a = NoRecFFCounter.abort
     val getRefCount : 'a tvar -> long = _prim(@get-ref-count)
+
+
+    type sync_var = _prim(syncVar)
+    val mkSyncVar : bool -> sync_var = _prim(@mk-sync-var)
+    val atomicSync : (unit -> 'a) * sync_var * bool -> 'a = _prim(@atomic-sync)
+
 (*)
     val getCtxt : 'a tvar * string -> 'a = _prim(@get-with-context)
 *)

@@ -21,7 +21,7 @@ structure CaseSimplify : sig
     structure BTU = BOMTyUtil
     structure Lit = Literal
     structure BU = BOMUtil
-
+		       
   (* convert datatypes to their representation types.  We assume that hasTyc is true
    * for ty.
    *)
@@ -57,50 +57,50 @@ structure CaseSimplify : sig
       | ExnCase of (BTy.data_con * B.var list * B.exp) sub_case
 
     fun classifyCaseRules (argTy, rules : (B.pat * B.exp) list, dflt) = let
-	  val hasDflt = Option.isSome dflt
-	  val (isExn, nCons, nEnums) = (case argTy
-		 of BTy.T_TyCon(BTy.DataTyc{nNullary, cons, ...}) => (false, List.length(!cons), nNullary)
-		  | BTy.T_Enum n => (false, Word.toInt n + 1, 0)
-		  | ty => (BOMTyUtil.equal(BTy.exnTy, ty), 0, 0)
-		(* end case *))
+	val hasDflt = Option.isSome dflt
+	val (isExn, nCons, nEnums) = (case argTy
+				       of BTy.T_TyCon(BTy.DataTyc{nNullary, cons, ...}) => (false, List.length(!cons), nNullary)
+					| BTy.T_Enum n => (false, Word.toInt n + 1, 0)
+					| ty => (BOMTyUtil.equal(BTy.exnTy, ty), 0, 0)
+				     (* end case *))
 	(* classify the rules into a list of those with enum patterns, a list
 	 * of literal patterns, and a list of data constructor patterns.
 	 *)
-	  fun classify ([], enums, lits, cons) = (enums, lits, cons)
-	    | classify ((B.P_Const c, e)::rules, enums, lits, cons) =
-		classify (rules, enums, (c, e)::lits, cons)
-	    | classify ((B.P_DCon(dc, []), e)::rules, enums, lits, cons) =
-		classify (rules, (dc, e)::enums, lits, cons)
-	    | classify ((B.P_DCon(dc, ys), e)::rules, enums, lits, cons) =
-		classify (rules, enums, lits, (dc, ys, e)::cons)
+	fun classify ([], enums, lits, cons) = (enums, lits, cons)
+	  | classify ((B.P_Const c, e)::rules, enums, lits, cons) =
+	    classify (rules, enums, (c, e)::lits, cons)
+	  | classify ((B.P_DCon(dc, []), e)::rules, enums, lits, cons) =
+	    classify (rules, (dc, e)::enums, lits, cons)
+	  | classify ((B.P_DCon(dc, ys), e)::rules, enums, lits, cons) =
+	    classify (rules, enums, lits, (dc, ys, e)::cons)
+    in
+	case (classify (rules, [], [], []))
+	 of (enums, [], []) =>
+	    if (nCons = nEnums)
+	    then EnumCase{rules=enums, hasDflt=hasDflt}
+	    else if (nEnums = List.length enums)
+	    then MixedCase{enums={rules=enums, hasDflt=false}, cons={rules=[], hasDflt=hasDflt}}
+	    else MixedCase{enums={rules=enums, hasDflt=hasDflt}, cons={rules=[], hasDflt=hasDflt}}
+	  | ([], lits, []) => LitCase{rules=lits, hasDflt=hasDflt}
+	  | ([], [], cons) =>
+	    if isExn
+	    then ExnCase{rules=cons, hasDflt=hasDflt}
+	    else if (nEnums = 0)
+	    then ConsCase{rules=cons, hasDflt=hasDflt}
+	    else if (nCons = List.length cons)
+	    then MixedCase{enums={rules=[], hasDflt=hasDflt}, cons={rules=cons, hasDflt=false}}
+	    else MixedCase{enums={rules=[], hasDflt=hasDflt}, cons={rules=cons, hasDflt=hasDflt}}
+	  | (enums, [], cons) => let
+	      val enumsCase = {rules=enums, hasDflt = (nEnums <> List.length enums)}
+	      val consCase = {rules=cons, hasDflt = (nCons <> List.length cons)}
 	  in
-	    case (classify (rules, [], [], []))
-	     of (enums, [], []) =>
-		  if (nCons = nEnums)
-		    then EnumCase{rules=enums, hasDflt=hasDflt}
-		  else if (nEnums = List.length enums)
-		    then MixedCase{enums={rules=enums, hasDflt=false}, cons={rules=[], hasDflt=hasDflt}}
-		    else MixedCase{enums={rules=enums, hasDflt=hasDflt}, cons={rules=[], hasDflt=hasDflt}}
-	      | ([], lits, []) => LitCase{rules=lits, hasDflt=hasDflt}
-	      | ([], [], cons) =>
-		  if isExn
-		    then ExnCase{rules=cons, hasDflt=hasDflt}
-		  else if (nEnums = 0)
-		    then ConsCase{rules=cons, hasDflt=hasDflt}
-		  else if (nCons = List.length cons)
-		    then MixedCase{enums={rules=[], hasDflt=hasDflt}, cons={rules=cons, hasDflt=false}}
-		    else MixedCase{enums={rules=[], hasDflt=hasDflt}, cons={rules=cons, hasDflt=hasDflt}}
-	      | (enums, [], cons) => let
-		  val enumsCase = {rules=enums, hasDflt = (nEnums <> List.length enums)}
-		  val consCase = {rules=cons, hasDflt = (nCons <> List.length cons)}
-		  in
-		    MixedCase{enums=enumsCase, cons=consCase}
-		  end
-	      | _ => raise Fail "strange case"
-	    (* end case *)
+	      MixedCase{enums=enumsCase, cons=consCase}
 	  end
-
-  (* case conversion structures *)
+	  | _ => raise Fail "strange case"
+		       (* end case *)
+    end
+									    
+    (* case conversion structures *)
 
     local
     (* generate numeric comparisons *)
@@ -405,179 +405,179 @@ DEBUG*)
     and xformCase (s : BU.subst, tys : B.ty list, x, rules : (B.pat * B.exp) list, dflt) = let
 	  val argument = subst s x
 	  val dflt = Option.map (fn e => xformE(s, tys, e)) dflt
-	(* generate a case for a list of one or more rules involving
-	 * data constructors (plus an optional default case).
-	 *)
+	  (* generate a case for a list of one or more rules involving
+	   * data constructors (plus an optional default case).
+	   *)
 	  fun consCase ([(dc, ys, e)], dflt) = let (* only one rule in the list *)
-		val (s, ys) = xformVars(s, ys)
-		val (s, argument') = retype(s, argument, dconToRepTy dc)
-		fun sel ([], _) = xformE(s, tys, e)
-		  | sel (y::ys, i) = let
-		      val ty = typeOf y
-		      val ty' = BTU.select(typeOf argument', i)
-		      in
-			if BTU.match(ty', ty)
-			  then B.mkStmt([y], B.E_Select(i, argument'), sel(ys, i+1))
-			  else let
-			    val y' = BV.new("_t", ty')
-			    in
-			      B.mkStmt([y'], B.E_Select(i, argument'),
-			      B.mkStmt([y], B.E_Cast(ty, y'),
-				sel(ys, i+1)))
-			    end
-		      end
+	      val (s, ys) = xformVars(s, ys)
+	      val (s, argument') = retype(s, argument, dconToRepTy dc)
+	      fun sel ([], _) = xformE(s, tys, e)
+		| sel (y::ys, i) = let
+		    val ty = typeOf y
+		    val ty' = BTU.select(typeOf argument', i)
 		in
-		  case repOf dc
-		   of B.Transparent => (case ys
-			 of [y] => B.mkStmt([y], B.E_Cast(typeOf y, argument), xformE(s, tys, e))
-			  | _ => B.mkStmt(
-			      [argument'], B.E_Cast(BV.typeOf argument', argument),
-			      sel (ys, 0))
-			(* end case *))
-		    | B.Tuple => B.mkStmt(
-			[argument'], B.E_Cast(BV.typeOf argument', argument),
-			sel (ys, 0))
-		    | B.TaggedTuple tag => (case dflt
-			 of SOME dflt => let
-			      val ty = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)))
-			      val tag' = BV.new("tag", ty)
-			      val tmp = BV.new("tmp", ty)
-			      in
-				B.mkStmts([
-				    ([argument'], B.E_Cast(BV.typeOf argument', argument)),
-				    ([tag'], B.E_Select(0, argument')),
-				    ([tmp], B.E_Const(Lit.Enum tag, ty))
-				  ],
-				  B.mkIf(Prim.Equal(tag', tmp), sel(ys, 1), dflt))
-			      end
-			  | NONE => B.mkStmt(
-			      [argument'], B.E_Cast(BV.typeOf argument', argument),
-                              sel(ys, 1))
-			(* end case *))
-		    | B.ExnRep => raise Fail "exception constructor"
-		  (* end case *)
+		    if BTU.match(ty', ty)
+		    then B.mkStmt([y], B.E_Select(i, argument'), sel(ys, i+1))
+		    else let
+			val y' = BV.new("_t", ty')
+		    in
+			B.mkStmt([y'], B.E_Select(i, argument'),
+				 B.mkStmt([y], B.E_Cast(ty, y'),
+					  sel(ys, i+1)))
+		    end
 		end
+	  in
+	      case repOf dc
+	       of B.Transparent => (case ys
+				     of [y] => B.mkStmt([y], B.E_Cast(typeOf y, argument), xformE(s, tys, e))
+				      | _ => B.mkStmt(
+						[argument'], B.E_Cast(BV.typeOf argument', argument),
+						sel (ys, 0))
+				   (* end case *))
+		| B.Tuple => B.mkStmt(
+				[argument'], B.E_Cast(BV.typeOf argument', argument),
+				sel (ys, 0))
+		| B.TaggedTuple tag => (case dflt
+					 of SOME dflt => let
+					     val ty = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)))
+					     val tag' = BV.new("tag", ty)
+					     val tmp = BV.new("tmp", ty)
+					 in
+					     B.mkStmts([
+							  ([argument'], B.E_Cast(BV.typeOf argument', argument)),
+							  ([tag'], B.E_Select(0, argument')),
+							  ([tmp], B.E_Const(Lit.Enum tag, ty))
+						      ],
+						       B.mkIf(Prim.Equal(tag', tmp), sel(ys, 1), dflt))
+					 end
+					  | NONE => B.mkStmt(
+						       [argument'], B.E_Cast(BV.typeOf argument', argument),
+						       sel(ys, 1))
+				       (* end case *))
+		| B.ExnRep => raise Fail "exception constructor"
+				    (* end case *)
+	  end
 	    | consCase (cons as ((dc, _, _)::_), dflt) = let
 		val tagTy = BTy.T_Enum(Word.fromInt(BTyc.nCons(BTyc.dconTyc dc)-1))
 		val hdrTy = BTy.T_Tuple(false, [tagTy]) (* the first word of the object is the tag *)
 		val hdr = BV.new("hdr", hdrTy)
 		val tag = BV.new("tag", tagTy)
-	      (* here we have two, or more, constructors and they must all have the
-	       * TaggedBox representation.
-	       *)
+		(* here we have two, or more, constructors and they must all have the
+		 * TaggedBox representation.
+		 *)
 		fun mkAlt (dc, ys, e) = (case repOf dc
-		       of B.TaggedTuple tag => let
-			    val (s, argument') = retype(s, argument, dconToRepTy dc)
-			    val (s, ys) = xformVars(s, ys)
-			    fun sel ([], _) = xformE(s, tys, e)
-			      | sel (y::ys, i) = B.mkStmt([y], B.E_Select(i, argument'), sel(ys, i+1))
-			    val action = B.mkStmt(
-				  [argument'], B.E_Cast(BV.typeOf argument', argument),
-				  sel (ys, 1))
-			    in
-			      (B.P_Const(Lit.Enum tag, tagTy), action)
-			    end
-			| B.ExnRep => raise Fail "exception constructor"
-			| _ => raise Fail("expected TaggedBox representation for "^nameOfDCon dc)
-		      (* end case *))
-		in
-		  B.mkStmts([
-		      ([hdr], B.E_Cast(hdrTy, argument)),
-		      ([tag], B.E_Select(0, hdr))
-		    ],
-		    B.mkCase(tag, List.map mkAlt cons, dflt))
-		end
+					  of B.TaggedTuple tag => let
+					      val (s, argument') = retype(s, argument, dconToRepTy dc)
+					      val (s, ys) = xformVars(s, ys)
+					      fun sel ([], _) = xformE(s, tys, e)
+						| sel (y::ys, i) = B.mkStmt([y], B.E_Select(i, argument'), sel(ys, i+1))
+					      val action = B.mkStmt(
+						      [argument'], B.E_Cast(BV.typeOf argument', argument),
+						      sel (ys, 1))
+					  in
+					      (B.P_Const(Lit.Enum tag, tagTy), action)
+					  end
+					   | B.ExnRep => raise Fail "exception constructor"
+					   | _ => raise Fail("expected TaggedBox representation for "^nameOfDCon dc)
+					(* end case *))
+	    in
+		B.mkStmts([
+			     ([hdr], B.E_Cast(hdrTy, argument)),
+			     ([tag], B.E_Select(0, hdr))
+			 ],
+			  B.mkCase(tag, List.map mkAlt cons, dflt))
+	    end
 	  fun enumCase (dc as BTy.DCon{rep=BTy.Enum w, ...}, e) = let
-		val ty = tyToRepTy(BOMTyCon.dconResTy dc)
-		in
-		  (B.P_Const(Lit.Enum w, ty), xformE(s, tys, e))
-		end
+	      val ty = tyToRepTy(BOMTyCon.dconResTy dc)
+	  in
+	      (B.P_Const(Lit.Enum w, ty), xformE(s, tys, e))
+	  end
             | enumCase (dc as BTy.DCon{rep=BTy.ExnRep, argTy = [], ...}, e) = raise Fail "exn case\n"
 	    | enumCase _ = raise Fail "expected nullary constructor"
-         in
-	    case classifyCaseRules (BV.typeOf x, rules, dflt)
-	     of EnumCase{rules, ...} => B.mkCase(argument, List.map enumCase rules, dflt)
-	      | ConsCase{rules, ...} => consCase (rules, dflt)
-	      | MixedCase{enums, cons} => let
-		  val (stmts, boxedTest) = if numEnumsOfTyc x = 1
-			then let
-			(* when there is only one possible enum value, we just do
-			 * an equality test.
-			 *)
-			  val tmp = BV.new("t", BTy.T_Enum(0w0))
-			  in (
-			    [([tmp], B.E_Const(Lit.Enum 0w0, BTy.T_Enum(0w0)))],
-			    Prim.NotEqual(argument, tmp)
-			  ) end
-			else ([], Prim.isBoxed argument)
-		  val (optFB, dflt) = if (#hasDflt enums) andalso (#hasDflt cons)
-			then let
-			(* the default case is shared by both the boxed and unboxed
-			 * sub cases, so we have to wrap it in a function abstraction.
-			 *)
-			  val join = BV.new("join", BTy.T_Cont [])
-			  val joinFB = B.FB{f=join, params=[], exh=[], body=valOf dflt}
-			  in
-			    (SOME joinFB, SOME(B.mkThrow(join, [])))
-			  end			  
-			else (NONE, dflt)
-                  fun maxEnumVal ((dc as BTy.DCon{rep=BTy.Enum w, ...},_)::rules) = Word.max (w, maxEnumVal rules)
-                    | maxEnumVal (_) = 0w0
-		  val enumTy = BTy.T_Enum(maxEnumVal (#rules(enums)))
-		  val enm = BV.new("enm", enumTy)
-		  val enumsCase = (case enums
-			 of {rules=[], hasDflt=true} => valOf dflt
-			  | {rules=[], hasDflt=false} =>
-			      raise Fail("badly-formed sub-case of " ^ BV.toString x)
-			  | {rules, hasDflt=true} =>
-		            B.mkStmt([enm], B.E_Cast(enumTy, argument),
-                                  B.mkCase(enm, List.map enumCase rules, dflt))
-			  | {rules=[(_, e)], hasDflt=false} => xformE(s, tys, e)
-			  | {rules, hasDflt=false} =>
-                            B.mkStmt([enm], B.E_Cast(enumTy, argument),
-                                  B.mkCase(enm, List.map enumCase rules, NONE))
-			(* end case *))
-		  val consCase = (case cons
-			 of {rules=[], hasDflt=true} => valOf dflt 
-			  | {rules=[], hasDflt=false} =>
-			      raise Fail("badly-formed sub-case of " ^ BV.toString x)
-			  | {rules, hasDflt=true} => consCase (rules, dflt)
-			  | {rules, hasDflt=false} => consCase (rules, NONE)
-			(* end case *))
-		  val e = B.mkStmts(stmts, B.mkIf(boxedTest, consCase, enumsCase))
-		  in
-		  (* add the join-continuation binding if needed *)
-		    case optFB
-		     of SOME fb => B.mkCont(fb, e)
-		      | NONE => e
-		    (* end case *)
-		  end
-	      | LitCase{rules, ...} => literalCase (s, tys, argument, rules, dflt)
-	      | ExnCase{rules, hasDflt=true} => let
-	                val tag = BV.new("_tag", BTy.T_Any)
-                        val hdr = BV.new("_hdr", BTy.T_Tuple(false, [BTy.T_Any, BTy.T_Any]))
-                        fun exnCase l = case l
-                                of [] => Option.valOf dflt
-                                 | (dc:BTy.data_con, ys:B.var list, e : B.exp)::r =>  let
-			                val (s, argument') = retype(s, argument, dconToRepTy dc)   
-			                val (s, ys) = xformVars(s, ys)
-			                fun sel ([], _) = xformE(s, tys, e)
-			                  | sel (x::xs, i) = B.mkStmt([x], B.E_Select(i, argument'), sel(xs, i+1))                          
-			                val action = B.mkStmts([
-				         ([argument'], B.E_Cast(BV.typeOf argument', hdr))],
-				          sel (ys, 1))
-				        val thisTag = BV.new("_thisTag", BTy.T_Any)
-                                        val cond = Prim.Equal(tag, thisTag)
-		                        in B.mkStmt([thisTag], B.E_Const (Literal.Tag(BOMTyCon.dconName dc), BTy.T_Any), 
-		                                B.mkIf(cond, action, exnCase r)) end        
-                        val s = B.mkStmts([([hdr], B.E_Cast(BTy.T_Tuple(false,[BTy.T_Any, BTy.T_Any]), argument)),
-                                           ([tag], B.E_Select(0, hdr))], 
-                                exnCase rules)           
-		in s end
-	      | ExnCase _ => raise Fail "exception case w/o default"
-	    (* end case *)
+    in
+	case classifyCaseRules (BV.typeOf x, rules, dflt)
+	 of EnumCase{rules, ...} => B.mkCase(argument, List.map enumCase rules, dflt)
+	  | ConsCase{rules, ...} => consCase (rules, dflt)
+	  | MixedCase{enums, cons} => let
+	      val (stmts, boxedTest) = if numEnumsOfTyc x = 1
+				       then let
+					   (* when there is only one possible enum value, we just do
+					    * an equality test.
+					    *)
+					   val tmp = BV.new("t", BTy.T_Enum(0w0))
+				       in (
+					   [([tmp], B.E_Const(Lit.Enum 0w0, BTy.T_Enum(0w0)))],
+					   Prim.NotEqual(argument, tmp)
+				       ) end
+				       else ([], Prim.isBoxed argument)
+	      val (optFB, dflt) = if (#hasDflt enums) andalso (#hasDflt cons)
+				  then let
+				      (* the default case is shared by both the boxed and unboxed
+				       * sub cases, so we have to wrap it in a function abstraction.
+				       *)
+				      val join = BV.new("join", BTy.T_Cont [])
+				      val joinFB = B.FB{f=join, params=[], exh=[], body=valOf dflt} handle Option => (print "No dflt!\n"; raise Option)
+				  in
+				      (SOME joinFB, SOME(B.mkThrow(join, [])))
+				  end			  
+				  else (NONE, dflt)
+              fun maxEnumVal ((dc as BTy.DCon{rep=BTy.Enum w, ...},_)::rules) = Word.max (w, maxEnumVal rules)
+                | maxEnumVal (_) = 0w0
+	      val enumTy = BTy.T_Enum(maxEnumVal (#rules(enums)))
+	      val enm = BV.new("enm", enumTy)
+	      val enumsCase = (case enums
+				of {rules=[], hasDflt=true} => valOf dflt 
+				 | {rules=[], hasDflt=false} =>
+				   raise Fail("badly-formed sub-case of " ^ BV.toString x)
+				 | {rules, hasDflt=true} =>
+				   B.mkStmt([enm], B.E_Cast(enumTy, argument),
+					    B.mkCase(enm, List.map enumCase rules, dflt))
+				 | {rules=[(_, e)], hasDflt=false} => xformE(s, tys, e)
+				 | {rules, hasDflt=false} =>
+				   B.mkStmt([enm], B.E_Cast(enumTy, argument),
+					    B.mkCase(enm, List.map enumCase rules, NONE))
+			      (* end case *))
+	      val consCase = (case cons
+			       of {rules=[], hasDflt=true} => valOf dflt 
+				| {rules=[], hasDflt=false} =>
+				  raise Fail("badly-formed sub-case of " ^ BV.toString x)
+				| {rules, hasDflt=true} => consCase (rules, dflt)
+				| {rules, hasDflt=false} => consCase (rules, NONE)
+			     (* end case *))
+	      val e = B.mkStmts(stmts, B.mkIf(boxedTest, consCase, enumsCase))
+	  in
+	      (* add the join-continuation binding if needed *)
+	      case optFB
+	       of SOME fb => B.mkCont(fb, e)
+		| NONE => e
+			      (* end case *)
 	  end
-
+	  | LitCase{rules, ...} => literalCase (s, tys, argument, rules, dflt)
+	  | ExnCase{rules, hasDflt=true} => let
+	      val tag = BV.new("_tag", BTy.T_Any)
+              val hdr = BV.new("_hdr", BTy.T_Tuple(false, [BTy.T_Any, BTy.T_Any]))
+              fun exnCase l = case l
+                               of [] => Option.valOf dflt
+                                | (dc:BTy.data_con, ys:B.var list, e : B.exp)::r =>  let
+			            val (s, argument') = retype(s, argument, dconToRepTy dc)   
+			            val (s, ys) = xformVars(s, ys)
+			            fun sel ([], _) = xformE(s, tys, e)
+			              | sel (x::xs, i) = B.mkStmt([x], B.E_Select(i, argument'), sel(xs, i+1))                          
+			            val action = B.mkStmts([
+							      ([argument'], B.E_Cast(BV.typeOf argument', hdr))],
+							   sel (ys, 1))
+				    val thisTag = BV.new("_thisTag", BTy.T_Any)
+                                    val cond = Prim.Equal(tag, thisTag)
+		                in B.mkStmt([thisTag], B.E_Const (Literal.Tag(BOMTyCon.dconName dc), BTy.T_Any), 
+		                            B.mkIf(cond, action, exnCase r)) end        
+              val s = B.mkStmts([([hdr], B.E_Cast(BTy.T_Tuple(false,[BTy.T_Any, BTy.T_Any]), argument)),
+                                 ([tag], B.E_Select(0, hdr))], 
+                                exnCase rules)           
+	  in s end
+	  | ExnCase _ => raise Fail "exception case w/o default"
+			       (* end case *)
+    end
+											       
   (* convert a case on literals to a if-then-else tree; note that the default case
    * is required and has already been transformed.
    *)

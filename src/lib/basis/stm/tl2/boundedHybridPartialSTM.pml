@@ -12,12 +12,14 @@ struct
 
 #define READ_SET_BOUND 21
 
-    datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a
+    datatype 'a ritem = NilRead | WithK of 'a * 'a * 'a * 'a * 'a
                      | WithoutK of 'a * 'a | Abort of unit
+
+    datatype 'a witem = Write of 'a * 'a * 'a | NilWrite
 
     _primcode(
         define @mk-tag(x:unit / exh:exh) : any = 
-            let x : item = WithoutK(enum(0):any, enum(0):any)
+            let x : ritem = WithoutK(enum(0):any, enum(0):any)
             let x : [any] = ([any]) x
             return(#0(x));
     )
@@ -33,12 +35,12 @@ struct
 	
         typedef with_k =  ![enum(5),               (*0: tag*)
                             tvar,                  (*1: tvar operated on*)
-                            item ,                 (*2: next on long path*)
+                            ritem ,                 (*2: next on long path*)
                             any (*cont(any)*),     (*3: continuation*)
-                            item,                  (*4: write set*)
-                            item];                 (*5: next read item with a continuation*)
+                            witem,                  (*4: write set*)
+                            ritem];                 (*5: next read item with a continuation*)
 
-        typedef read_set = [int, item, item];
+        typedef read_set = [int, ritem, ritem];
 
         define @new(x:any / exh:exh) : tvar = 
             let tv : tvar = alloc(x, 0:long, 0:long)
@@ -52,10 +54,10 @@ struct
          * If this returns, then the entire read set is valid, and the time stamp
          * will have been updated to what the clock was at, prior to validation
          *)
-        define @eager-validate(readSet : item, stamp : ![long, int] / exh:exh) : () = 
-            fun eagerValidate(rs : item, chkpnt : item, newStamp : long, kCount : int) : () = 
+        define @eager-validate(readSet : ritem, stamp : ![long, int] / exh:exh) : () = 
+            fun eagerValidate(rs : ritem, chkpnt : ritem, newStamp : long, kCount : int) : () = 
                 case rs
-                   of WithK(tv:tvar, next : item, k:cont(any), ws:item, sp:item) =>
+                   of WithK(tv:tvar, next : ritem, k:cont(any), ws:witem, sp:ritem) =>
                         let owner : long = #CURRENT_LOCK(tv)
                         if I64Lt(owner, #0(stamp))  (*still valid*)
                         then 
@@ -67,7 +69,7 @@ struct
                                     | _ => apply eagerValidate(next, chkpnt, newStamp, I32Add(kCount, 1))
                                 end
                         else apply eagerValidate(next, rs, newStamp, 1) 
-                    | WithoutK(tv:tvar, next:item) =>
+                    | WithoutK(tv:tvar, next:ritem) =>
                         let owner : long = #CURRENT_LOCK(tv)
                         if I64Lt(owner, #0(stamp))
                         then
@@ -75,13 +77,13 @@ struct
                             then apply eagerValidate(next, Abort(UNIT), newStamp, 0)
                             else apply eagerValidate(next, chkpnt, newStamp, kCount)
                         else apply eagerValidate(next, Abort(UNIT), newStamp, 0)
-                    | NilItem => 
+                    | NilRead => 
                         case chkpnt 
-                           of NilItem => do #0(stamp) := newStamp return()  (*everything is still up to date*)
+                           of NilRead => do #0(stamp) := newStamp return()  (*everything is still up to date*)
                             | Abort(x:unit) => (*no checkpoint found*)
                                 let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
                                 throw abortK()
-                            | WithK(tv:tvar, next:item, abortK:cont(any), ws:item, sp:item) => 
+                            | WithK(tv:tvar, next:ritem, abortK:cont(any), ws:witem, sp:ritem) => 
                                 let v1 : long = #CURRENT_LOCK(tv)
                                 let res : any = #TVAR_CONTENTS(tv)
                                 let v2 : long = #CURRENT_LOCK(tv)
@@ -113,11 +115,11 @@ struct
                         end
                 end
             let newStamp : long = VClock.@inc(2:long / exh)
-            apply eagerValidate(readSet, NilItem, newStamp, 0)
+            apply eagerValidate(readSet, NilRead, newStamp, 0)
         ;
 
         (*only allocates the retry loop closure if the first attempt fails*)
-        define inline @read-tvar2(tv : tvar, stamp : ![stamp, int], readSet : item / exh : exh) : any = 
+        define inline @read-tvar2(tv : tvar, stamp : ![stamp, int], readSet : ritem / exh : exh) : any = 
             fun lp() : any = 
                 let v1 : stamp = #CURRENT_LOCK(tv)
                 let res : any = #TVAR_CONTENTS(tv)
@@ -135,7 +137,7 @@ struct
             apply lp()
         ;
 
-        define inline @read-tvar(tv : tvar, stamp : ![stamp, int], readSet : item / exh : exh) : any = 
+        define inline @read-tvar(tv : tvar, stamp : ![stamp, int], readSet : ritem / exh : exh) : any = 
             let v1 : stamp = #CURRENT_LOCK(tv)
             let res : any = #TVAR_CONTENTS(tv)
             let v2 : stamp = #CURRENT_LOCK(tv)
@@ -166,14 +168,14 @@ struct
                     throw exh(e)
             let myStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : read_set = FLS.@get-key(READ_SET / exh)
-            let writeSet : item = FLS.@get-key(WRITE_SET / exh)
-            fun chkLog(writeSet : item) : Option.option = (*use local copy if available*)
+            let writeSet : witem = FLS.@get-key(WRITE_SET / exh)
+            fun chkLog(writeSet : witem) : Option.option = (*use local copy if available*)
                  case writeSet
-                     of Write(tv':tvar, contents:any, tl:item) =>
+                     of Write(tv':tvar, contents:any, tl:witem) =>
                          if Equal(tv', tv)
                          then return(Option.SOME(contents))
                          else apply chkLog(tl)
-                     | NilItem => return (Option.NONE)
+                     | NilWrite => return (Option.NONE)
                  end
             cont retK(x:any) = return(x)
             let localRes : Option.option = apply chkLog(writeSet)
@@ -184,9 +186,9 @@ struct
                     let captureCount : int = FLS.@get-counter()
                     if I32Eq(captureCount, 1)
                     then (*capture continuation*)
-                        let newSL : item = WithK(tv, #LONG_PATH(readSet), retK, writeSet, #SHORT_PATH(readSet))
+                        let newSL : ritem = WithK(tv, #LONG_PATH(readSet), retK, writeSet, #SHORT_PATH(readSet))
                         let n : int = I32Add(#KCOUNT(readSet), 1)
-                        let newRS : ![int, item, item] = alloc(n, newSL, newSL)
+                        let newRS : ![int, ritem, ritem] = alloc(n, newSL, newSL)
                         do FLS.@set-key(READ_SET, newRS / exh)
                         if I32Lte(n, READ_SET_BOUND)
                         then (*still room for the one we just added*)
@@ -194,22 +196,22 @@ struct
                             do FLS.@set-counter(freq)
                             return(current)
                         else (*we just went over the limit, filter...*)
-                            fun dropKs(l:item, n:int) : int =   (*drop every other continuation*)
+                            fun dropKs(l:ritem, n:int) : int =   (*drop every other continuation*)
                                 case l
-                                   of NilItem => return(n)
-                                    | WithK(_:tvar,_:item,_:cont(any),_:item,next:item) =>
+                                   of NilRead => return(n)
+                                    | WithK(_:tvar,_:ritem,_:cont(any),_:witem,next:ritem) =>
                                         case next
-                                           of NilItem => return(n)
-                                            | WithK(_:tvar,_:item,_:cont(any),_:item,nextNext:item) =>
+                                           of NilRead => return(n)
+                                            | WithK(_:tvar,_:ritem,_:cont(any),_:witem,nextNext:ritem) =>
                                             (* NOTE: if compiled with -debug, this will generate warnings
                                              * that we are updating a bogus local pointer, however, given the
                                              * nature of the data structure, we do preserve the heap invariants*)
                                             let withoutKTag : enum(5) = @get-tag(UNIT/exh)
                                             let l : with_k = (with_k) l
                                             let next : with_k = (with_k) next
-                                            do #WITHK_K(next) := enum(0):any
-                                            do #WITHK_TAG(next) := withoutKTag
-                                            do #WITHK_NEXTK(l) := nextNext
+                                            do #R_ENTRY_K(next) := enum(0):any
+                                            do #R_ENTRY_TAG(next) := withoutKTag
+                                            do #R_ENTRY_NEXTK(l) := nextNext
                                             apply dropKs(nextNext, I32Sub(n, 1))
                                         end
                                 end
@@ -221,8 +223,8 @@ struct
                             do FLS.@set-counter2(newFreq)
                             return(current)
                     else
-                        let newSL : item = WithoutK(tv, #LONG_PATH(readSet))
-                        let newRS : [int, item, item] = alloc(#KCOUNT(readSet), newSL, #SHORT_PATH(readSet))
+                        let newSL : ritem = WithoutK(tv, #LONG_PATH(readSet))
+                        let newRS : [int, ritem, ritem] = alloc(#KCOUNT(readSet), newSL, #SHORT_PATH(readSet))
                         do FLS.@set-counter(I32Sub(captureCount, 1))
                         do FLS.@set-key(READ_SET, newRS / exh)
                         return(current)
@@ -240,35 +242,35 @@ struct
                     throw exh(e)
             let tv : tvar = #0(arg)
             let v : any = #1(arg)
-            let writeSet : item = FLS.@get-key(WRITE_SET / exh)
-            let newWriteSet : item = Write(tv, v, writeSet)
+            let writeSet : witem = FLS.@get-key(WRITE_SET / exh)
+            let newWriteSet : witem = Write(tv, v, writeSet)
             do FLS.@set-key(WRITE_SET, newWriteSet / exh)
             return(UNIT)
         ;
 
         define @commit(/exh:exh) : () = 
             let startStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
-            fun release(locks : item) : () = 
+            fun release(locks : witem) : () = 
                 case locks 
-                    of Write(tv:tvar, contents:any, tl:item) => 
+                    of Write(tv:tvar, contents:any, tl:witem) => 
                         do #CURRENT_LOCK(tv) := #PREV_LOCK(tv)         (*unlock*)
                         apply release(tl)
-                     | NilItem => return()
+                     | NilWrite => return()
                 end
-            let readSet : [int, item, item] = FLS.@get-key(READ_SET / exh)
-            let writeSet : item = FLS.@get-key(WRITE_SET / exh)
+            let readSet : read_set = FLS.@get-key(READ_SET / exh)
+            let writeSet : witem = FLS.@get-key(WRITE_SET / exh)
             let rawStamp: long = #0(startStamp)
             let lockVal : long = I64Add(rawStamp, 1:long)
-            fun validate(rs:item, locks:item, newStamp : stamp, chkpnt : item, i:int) : () = 
+            fun validate(rs:ritem, locks:witem, newStamp : stamp, chkpnt : ritem, i:int) : () = 
                 case rs
-                   of NilItem => 
+                   of NilRead => 
                         case chkpnt
-                           of NilItem => return() (*no violations detected*)
-                            | WithK(tv:tvar,_:item,abortK:cont(any),ws:item,_:item) =>
+                           of NilRead => return() (*no violations detected*)
+                            | WithK(tv:tvar,_:ritem,abortK:cont(any),ws:witem,_:ritem) =>
                                 do apply release(locks)
                                 do #0(startStamp) := newStamp
                                 let current : any = @read-tvar(tv, startStamp, chkpnt / exh)
-                                let newRS : [int,item,item] = alloc(i, chkpnt, chkpnt)
+                                let newRS : [int,ritem,ritem] = alloc(i, chkpnt, chkpnt)
                                 do FLS.@set-key(READ_SET, newRS / exh)
                                 do FLS.@set-key(WRITE_SET, ws / exh)
                                 let captureFreq : int = FLS.@get-counter2() 
@@ -280,7 +282,7 @@ struct
                                 let abortK :cont() = FLS.@get-key(ABORT_KEY / exh)
                                 throw abortK()  (*no checkpoint found*)
                         end                          
-                    | WithK(tv:tvar,next:item,k:any,ws:item,nextK:item) => 
+                    | WithK(tv:tvar,next:ritem,k:any,ws:witem,nextK:ritem) => 
                         let owner : long = #CURRENT_LOCK(tv)
                         if I64Lt(owner, rawStamp)
                         then (*older than my timestamp*)
@@ -299,7 +301,7 @@ struct
                                     | _ => apply validate(next, locks, newStamp, chkpnt, I32Add(i, 1))
                                 end
                             else apply validate(next, locks, newStamp, rs, 1)
-                    | WithoutK(tv:tvar, next:item) =>
+                    | WithoutK(tv:tvar, next:ritem) =>
                         let owner : long = #CURRENT_LOCK(tv)
                         if I64Lt(owner, rawStamp)
                         then 
@@ -311,9 +313,9 @@ struct
                             then apply validate(next, locks, newStamp, chkpnt, i)
                             else apply validate(next, locks, newStamp, Abort(UNIT), 0)
                 end
-            fun acquire(ws:item, acquired:item) : item = 
+            fun acquire(ws:witem, acquired:witem) : witem = 
                 case ws
-                   of Write(tv:tvar, contents:any, tl:item) => 
+                   of Write(tv:tvar, contents:any, tl:witem) => 
                         let owner : long = #CURRENT_LOCK(tv)
                         if I64Eq(owner, lockVal)
                         then apply acquire(tl, acquired)  (*we already locked this*)
@@ -330,29 +332,29 @@ struct
                                     else 
                                         do apply release(acquired) 
                                         do @eager-validate(#LONG_PATH(readSet), startStamp / exh)
-                                        apply acquire(writeSet, NilItem)
+                                        apply acquire(writeSet, NilWrite)
                                 else 
                                     do apply release(acquired) 
                                     do @eager-validate(#LONG_PATH(readSet), startStamp / exh)
-                                    apply acquire(writeSet, NilItem)
+                                    apply acquire(writeSet, NilWrite)
                             else 
                                 do apply release(acquired) 
                                 do @eager-validate(#LONG_PATH(readSet), startStamp / exh)
-                                apply acquire(writeSet, NilItem)
-                    | NilItem => return(acquired)
+                                apply acquire(writeSet, NilWrite)
+                    | NilWrite=> return(acquired)
                 end
-            fun update(writes:item, newStamp : stamp) : () = 
+            fun update(writes:witem, newStamp : stamp) : () = 
                 case writes
-                    of Write(tv:tvar, newContents:any, tl:item) =>
+                    of Write(tv:tvar, newContents:any, tl:witem) =>
                         let newContents : any = promote(newContents)
                         do #TVAR_CONTENTS(tv) := newContents        (*update contents*)
                         do #CURRENT_LOCK(tv) := newStamp            (*unlock and update stamp (newStamp is even)*)
                         apply update(tl, newStamp)          
-                     | NilItem => return()
+                     | NilWrite => return()
                 end
-            let locks : item = apply acquire(writeSet, NilItem)
+            let locks : witem = apply acquire(writeSet, NilWrite)
             let newStamp : stamp = VClock.@inc(2:long / exh)        
-            do apply validate(#LONG_PATH(readSet),locks,newStamp,NilItem,0)  
+            do apply validate(#LONG_PATH(readSet),locks,newStamp,NilRead,0)  
             do apply update(locks, newStamp)
             return()
         ;
@@ -362,8 +364,8 @@ struct
             if (#0(in_trans))
             then apply f(UNIT/exh)
             else cont enter() = 
-                     do FLS.@set-key(READ_SET, alloc(0, NilItem, NilItem) / exh)  (*initialize STM log*)
-                     do FLS.@set-key(WRITE_SET, NilItem / exh)
+                     do FLS.@set-key(READ_SET, alloc(0, NilRead, NilRead) / exh)  (*initialize STM log*)
+                     do FLS.@set-key(WRITE_SET, NilWrite / exh)
                      let newStamp : stamp = VClock.@inc(2:long / exh)
                      let stamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
                      do #1(stamp) := 0
@@ -378,8 +380,8 @@ struct
                      let res : any = apply f(UNIT/transExh)
                      do @commit(/transExh)
                      do #0(in_trans) := false
-                     do FLS.@set-key(READ_SET, NilItem / exh)
-                     do FLS.@set-key(WRITE_SET, NilItem / exh)
+                     do FLS.@set-key(READ_SET, NilRead / exh)
+                     do FLS.@set-key(WRITE_SET, NilWrite / exh)
                      return(res)
                      
                  throw enter()

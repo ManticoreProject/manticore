@@ -2,20 +2,21 @@
 #define STAMP_BITS (18446744073709551614:long)
 
 (*TVAR fields*)
-#define PREV_LOCK 2
-#define CURRENT_LOCK 1
+#define PREV_LOCK     2
+#define CURRENT_LOCK  1
 #define TVAR_CONTENTS 0
 
 (*read set fields*)
-#define KCOUNT 0
-#define LONG_PATH 1
+#define KCOUNT     0
+#define LONG_PATH  1
 #define SHORT_PATH 2
+#define TAIL       3
 
 (*WithK fields (WithK of 'a * 'a * 'a * 'a * 'a)*)
-#define WITHK_TAG   0
-#define WITHK_TVAR  1
-#define WITHK_NEXT  2
-#define WITHK_K     3
-#define WITHK_WS    4
-#define WITHK_NEXTK 5
+#define R_ENTRY_TAG   0
+#define R_ENTRY_TVAR  1
+#define R_ENTRY_NEXT  2
+#define R_ENTRY_K     3
+#define R_ENTRY_WS    4
+#define R_ENTRY_NEXTK 5
 

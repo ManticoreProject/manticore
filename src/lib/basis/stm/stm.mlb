@@ -11,6 +11,12 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
         tl2/partial-abort-stm.pml
 
         tl2/boundedHybridPartialSTM.pml
+
+        tl2/ordered-rs.pml
+
+        tl2/ordered-tl2.pml
+
+
     end
 
 (*

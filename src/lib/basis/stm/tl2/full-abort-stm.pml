@@ -10,7 +10,9 @@ structure FullAbortSTM =
 struct
 
     (*flat representation for read and write sets*)
-    datatype 'a item = Read of 'a * 'a | Write of 'a * 'a * 'a | NilItem
+    datatype 'a ritem = Read of 'a * 'a | NilRead
+
+    datatype 'a witem = Write of 'a * 'a * 'a | NilWrite
 
     _primcode(
 
@@ -57,22 +59,22 @@ struct
                     let e : exn = Fail(@"Reading outside transaction\n")
                     throw exh(e)
             let myStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
-            let readSet : item = FLS.@get-key(READ_SET / exh)
-            let writeSet : item = FLS.@get-key(WRITE_SET / exh)
-            fun chkLog(writeSet : item) : Option.option = (*use local copy if available*)
+            let readSet : ritem = FLS.@get-key(READ_SET / exh)
+            let writeSet : witem = FLS.@get-key(WRITE_SET / exh)
+            fun chkLog(writeSet : witem) : Option.option = (*use local copy if available*)
                 case writeSet
-                    of Write(tv':tvar, contents:any, tl:item) =>
+                    of Write(tv':tvar, contents:any, tl:witem) =>
                         if Equal(tv', tv)
                         then return(Option.SOME(contents))
                         else apply chkLog(tl)                      
-                    | NilItem => return (Option.NONE)
+                    | NilWrite => return (Option.NONE)
                 end
             let localRes : Option.option = apply chkLog(writeSet)
             case localRes
                 of Option.SOME(v:any) => return(v)
                  | Option.NONE =>
                     let current : any = @read-tvar(tv, myStamp / exh)
-                    let newReadSet : item = Read(tv, readSet)
+                    let newReadSet : ritem = Read(tv, readSet)
                     do FLS.@set-key(READ_SET, newReadSet / exh)
                     return(current)
             end
@@ -87,28 +89,28 @@ struct
                     throw exh(e)
             let tv : tvar = #0(arg)
             let v : any = #1(arg)
-            let writeSet : item = FLS.@get-key(WRITE_SET / exh)
-            let newWriteSet : item = Write(tv, v, writeSet)
+            let writeSet : witem = FLS.@get-key(WRITE_SET / exh)
+            let newWriteSet : witem = Write(tv, v, writeSet)
             do FLS.@set-key(WRITE_SET, newWriteSet / exh)
             return(UNIT)
         ;
 
         define @commit(/exh:exh) : () =     
             let startStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
-            fun release(locks : item) : () = 
+            fun release(locks : witem) : () = 
                 case locks 
-                    of Write(tv:tvar, contents:any, tl:item) =>
+                    of Write(tv:tvar, contents:any, tl:witem) =>
                         do #1(tv) := #2(tv)   (*revert to previous lock*)
                         apply release(tl)
-                     | NilItem => return()
+                     | NilWrite => return()
                 end
-            let readSet : item = FLS.@get-key(READ_SET / exh)
-            let writeSet : item = FLS.@get-key(WRITE_SET / exh)
+            let readSet : ritem = FLS.@get-key(READ_SET / exh)
+            let writeSet : witem = FLS.@get-key(WRITE_SET / exh)
             let rawStamp: long = #0(startStamp) (*this should be even*)
             let lockVal : long = I64Add(rawStamp, 1:long)
-            fun validate(readSet : item, locks : item) : () = 
+            fun validate(readSet : ritem, locks : witem) : () = 
                 case readSet 
-                    of Read(tv:tvar, tl:item) =>
+                    of Read(tv:tvar, tl:ritem) =>
                         let owner : long = #CURRENT_LOCK(tv)
                         if I64Lt(owner, rawStamp)  (*still valid*)
                         then 
@@ -119,11 +121,11 @@ struct
                             if I64Eq(owner, lockVal) (*we locked it*)
                             then apply validate(tl, locks)
                             else do apply release(locks) @full-abort(/exh)   
-                     |NilItem => return()
+                     |NilRead => return()
                 end
-            fun acquire(writeSet:item, acquired:item) : item = 
+            fun acquire(writeSet:witem, acquired:witem) : witem = 
                 case writeSet 
-                   of Write(tv:tvar, contents:any, tl:item) => 
+                   of Write(tv:tvar, contents:any, tl:witem) => 
                         let owner : long = #1(tv)
                         if I64Eq(owner, lockVal)
                         then apply acquire(tl, acquired)  (*we already locked this*)
@@ -140,18 +142,18 @@ struct
                                     else do apply release(acquired) @full-abort(/exh) (*CAS failed*)
                                 else do apply release(acquired) @full-abort(/exh) (*newer than our timestamp*)
                             else do apply release(acquired) @full-abort(/exh)  (*someone else locked it*)
-                    | NilItem => return(acquired)
+                    | NilWrite => return(acquired)
                 end
-            fun update(writes:item, newStamp : stamp) : () = 
+            fun update(writes:witem, newStamp : stamp) : () = 
                 case writes
-                    of Write(tv:tvar, newContents:any, tl:item) =>
+                    of Write(tv:tvar, newContents:any, tl:witem) =>
                         let newContents : any = promote(newContents)
                         do #0(tv) := newContents        (*update contents*)
                         do #1(tv) := newStamp           (*unlock and update stamp (newStamp is even)*)
                         apply update(tl, newStamp)          
-                     | NilItem => return()
+                     | NilWrite => return()
                 end
-            let locks : item = apply acquire(writeSet, NilItem)   
+            let locks : witem = apply acquire(writeSet, NilWrite)   
             let newStamp : stamp = VClock.@inc(2:long/exh)
             do apply validate(readSet, locks)
             do apply update(locks, newStamp)
@@ -164,8 +166,8 @@ struct
                 then do ccall M_Print("Warning: Nested transaction!\n") apply f(UNIT/exh)
                 else let stampPtr : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
                      cont enter() = 
-                         do FLS.@set-key(READ_SET, NilItem / exh)  (*initialize STM log*)
-                         do FLS.@set-key(WRITE_SET, NilItem / exh)
+                         do FLS.@set-key(READ_SET, NilRead/ exh)  (*initialize STM log*)
+                         do FLS.@set-key(WRITE_SET, NilWrite / exh)
                          let stamp : stamp = VClock.@inc(2:long / exh)
                          do #0(stampPtr) := stamp
                          do #0(in_trans) := true
@@ -177,8 +179,8 @@ struct
                          let res : any = apply f(UNIT/transExh)
                          do @commit(/transExh)
                          do #0(in_trans) := false
-                         do FLS.@set-key(READ_SET, NilItem / exh)
-                         do FLS.@set-key(WRITE_SET, NilItem / exh)
+                         do FLS.@set-key(READ_SET, NilRead / exh)
+                         do FLS.@set-key(WRITE_SET, NilWrite / exh)
                          return(res)
                      throw enter()
         ;
