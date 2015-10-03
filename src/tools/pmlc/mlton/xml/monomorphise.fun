@@ -181,6 +181,27 @@ fun monomorphise (Xprogram.T {datatypes, body, ...}): Sprogram.t =
          Trace.trace 
          ("Monomorphise.monoDec", 
           Xdec.layout, fn (_: unit -> Sdec.t list) => Layout.empty)
+      (* [PML] find BOM imports *)
+      val {get = getIsImported: Tycon.t -> bool,
+           set = setIsImported, ...} =
+         Property.getSet (Tycon.plist, Property.initConst false)
+      (* BOM modules can only be introduced at top level, so there's no need to
+      traverse the whole depth of the program *)
+      fun findBOMImports (e: Xexp.t): unit =
+         let
+            val {decs, result} = Xexp.dest e
+            val _ =
+               List.foreach (decs, fn dec => (case dec of
+                    Xdec.BOM {bom} => (Vector.map (bom, fn x =>
+                       Sxml.CoreBOM.Definition.mapDatatype
+                          (fn (tycon, etc) => setIsImported (tycon, true)) x);
+                             ())
+                  | _ => ()
+               ))
+         in
+            ()
+         end
+
       (*------------------------------------*)
       (*             datatypes              *)
       (*------------------------------------*)
@@ -201,10 +222,17 @@ fun monomorphise (Xprogram.T {datatypes, body, ...}): Sprogram.t =
                 (cache, ts, fn () =>
                  let
                     val (tycon, cons) =
-                       if Tycon.equals (tycon, Tycon.bool)
-                          then (tycon,
-                                Vector.map (cons, fn {con, ...} =>
-                                            ref {con = con, typ = NONE,
+                       (* [PML] don't optimize out bool, BOM datatypes' shadow
+                       datatypes, or ML datatypes imported into BOM *)
+                       if Tycon.equals (tycon, Tycon.bool) orelse
+                          String.isPrefix "__bom" (Tycon.toString (Tycon.new
+                             tycon)) orelse (getIsImported tycon)
+                          (* TODO(wings): verify that we really don't need to do
+                          any processing on these types, such as applying the
+                          hom to parameter types for dcons *)
+                          then ((print "passthrough\n"; tycon),
+                                Vector.map (cons, fn {con, arg} =>
+                                            ref {con = con, typ = arg,
                                                  used = true}))
                        else 
                           (Tycon.new tycon,
@@ -422,11 +450,23 @@ fun monomorphise (Xprogram.T {datatypes, body, ...}): Sprogram.t =
                                   end))})))
                 end
            (* TODO(wings): this is likely where we should expand typecase, rather than performing it at runtime. *)
-           | Xdec.BOM {bom} => (* [PML] *)
+           | Xdec.BOM {bom} => let (* [PML] *)
                   (* we do *not* call setCon/setTycon on the ML datatypes
                   underlying BOM datatypes here, because they are in the
                   datatypes list and will be processed there *)
-                  (fn () => [Sdec.BOM{bom = bom}])
+                  (* loopTyc returns the optimized/monomorphized version of a tycon *)
+                  fun loopTyc x =
+                     let
+                        val _ = print ("loopTyc " ^ Xml.Tycon.toString x ^ "\n")
+                        val Stype.Con (monod, targs_) = Stype.dest (monoType(Xtype.con(x, Vector.new0 ())))
+                        val _ = print ("loopTyc " ^ Xml.Tycon.toString x ^ " produced " ^ Xml.Tycon.toString (monod) ^ " (these should be identical)\n")
+                     in
+                        monod
+                     end
+                  in
+                     (* ... *)
+                     fn () => [Sdec.BOM{bom = Vector.map (bom, fn x => Sxml.CoreBOM.Definition.mapDatatype (fn (tycon, etc) => (loopTyc tycon, etc)) x)}]
+                  end
            | Xdec.Exception {con, arg} =>
                 let
                    val con' =
@@ -448,6 +488,8 @@ fun monomorphise (Xprogram.T {datatypes, body, ...}): Sprogram.t =
       (*------------------------------------*)
       (*     main code for monomorphise     *)
       (*------------------------------------*)
+      (* [PML] *)
+      val _ = findBOMImports body
       val body = monoExp body
       val datatypes = finishDbs []
       val program =

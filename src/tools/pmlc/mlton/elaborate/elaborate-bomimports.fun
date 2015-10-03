@@ -34,9 +34,12 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
     let
       val elaborateMLType = elaborateMLType' env
       val mkBOMExport = CoreML.Dec.BOMExport
+      (* get the ML tycon created by makeMLDatatype for the given BOM tycon *)
       fun findMLTycon env bomLongId = let
         val (strids, id) = BOM.LongId.split bomLongId
-        val bomTyconSymbols = BOM.LongId.Id.toSymbol id :: List.map
+        val idSymbol = Ast.Symbol.fromString ("__bomtycon_" ^ BOM.LongId.Id.toString
+          id)
+        val bomTyconSymbols = idSymbol :: List.map
           BOM.LongId.Strid.toSymbol strids
         val bomTycon = Ast.Longtycon.fromSymbols (bomTyconSymbols,
           BOM.LongId.region bomLongId)
@@ -95,7 +98,8 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
 
                   (* find the corresponding ML con, created by makeMLDatatype *)
                   val (strids, id) = BOM.LongId.split bomValLongId
-                  val bomConSymbols = BOM.LongId.Id.toSymbol id :: List.map
+                  val bomConSymbols = Ast.Symbol.fromString ("__bomcon_" ^
+                    BOM.LongId.Id.toString id) :: List.map
                     BOM.LongId.Strid.toSymbol strids
                   val bomCon = Ast.Longcon.fromSymbols (bomConSymbols,
                     BOM.LongId.region bomValLongId)
