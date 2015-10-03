@@ -397,19 +397,22 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                let
                   val primConDefs = !definition
 
-                  fun makeMLTyVar tyvar = Env.TypeEnv.Tyvar.newString (CoreBOM.TyParam.name tyvar, {left=SourcePos.bogus, right=SourcePos.bogus})
+                  fun makeMLTyVar tyvar = Env.TypeEnv.Tyvar.newString ("__bomtyvar_" ^ CoreBOM.TyParam.name tyvar, {left=SourcePos.bogus, right=SourcePos.bogus})
                   (* elaborate tyvars with a simple conversion *)
                   val tyvars = MLVector.fromList (MLList.map makeMLTyVar params)
                   val tyvars' = MLVector.map Env.TypeEnv.Type.var tyvars
                   (* the name (to be used in ML) of the BOM definitions being exported *)
                   val tyId = id
 
-                  val astTycon = Ast.Tycon.fromSymbol (Ast.Symbol.fromString (CoreBOM.TyId.toString id), Region.bogus)
+                  (* make an ML AST Tycon based on the BOM name *)
+                  val tyconName = "__bomtycon_" ^ CoreBOM.TyId.toString id
+                  val tyconSymbol = Ast.Symbol.fromString (tyconName)
+                  val astTycon = Ast.Tycon.fromSymbol (tyconSymbol, Region.bogus)
 
                   val kind = Env.TypeStr.Kind.Arity (Vector.length tyvars)
                   (* TODO(wings): check kind matches *)
-                  val mlTycon = Env.newTycon (CoreBOM.TyId.toString id,
-                    kind, Env.TypeEnv.Tycon.AdmitsEquality.Never, Ast.Tycon.region astTycon)
+                  val mlTycon = Env.newTycon (tyconName, kind,
+                     Env.TypeEnv.Tycon.AdmitsEquality.Never, Ast.Tycon.region astTycon)
                   val resultMLTy: CoreML.Type.t =
                      Env.TypeEnv.Type.con (mlTycon, tyvars')
 
@@ -428,7 +431,7 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                            | NONE => raise Fail ("failed to find referenced BOM name: "
                              ^ CoreBOM.BOMId.toString bomId)
 
-                        val conName = CoreBOM.BOMId.toString bomId
+                        val conName = "__bomcon_" ^ CoreBOM.BOMId.toString bomId
                         val astCon = Ast.Con.fromSymbol (Ast.Symbol.fromString (conName), Region.bogus)
                         val mlCon = CoreML.Con.fromString (conName)
 
