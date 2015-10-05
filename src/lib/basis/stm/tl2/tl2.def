@@ -2,6 +2,7 @@
 #define STAMP_BITS (18446744073709551614:long)
 
 (*TVAR fields*)
+#define REF_COUNT     3
 #define PREV_LOCK     2
 #define CURRENT_LOCK  1
 #define TVAR_CONTENTS 0
@@ -19,5 +20,10 @@
 #define R_ENTRY_K     3
 #define R_ENTRY_WS    4
 #define R_ENTRY_NEXTK 5
+
+(*fast forward read set*)
+#define FF_RS_STAMP 0
+#define FF_RS_START 1
+#define FF_RS_END   2
 
 #define UNBOX 0

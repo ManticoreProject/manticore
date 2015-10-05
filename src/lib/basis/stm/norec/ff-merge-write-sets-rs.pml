@@ -46,7 +46,7 @@ struct
     val dummy = allocDummy()
     fun getDummy() = dummy
     val printTags : unit -> unit = _prim(@print-tags)
-    val _ = printTags()
+    (*val _ = printTags()*)
 
     _primcode(
 
@@ -71,7 +71,7 @@ struct
                              item];  (*6: next checkpoint pointer*)
 
         typedef stamp = VClock.stamp;
-        typedef tvar = ![any, long, long]; (*contents, lock, version stamp*)
+        typedef tvar = FullAbortSTM.tvar; (*contents, lock, version stamp*)
 
         define @getDummy = getDummy;
 

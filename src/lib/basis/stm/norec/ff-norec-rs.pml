@@ -44,7 +44,7 @@ struct
                              item];  (*6: next checkpoint pointer*)
 
         typedef stamp = VClock.stamp;
-        typedef tvar = ![any, long, long]; (*contents, lock, version stamp*)
+        typedef tvar = FullAbortSTM.tvar; (*contents, lock, version stamp*)
 
         define inline @get-stamp(/exh:exh) : stamp = 
             fun stampLoop() : long = 

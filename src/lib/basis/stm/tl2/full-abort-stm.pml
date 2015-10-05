@@ -23,10 +23,10 @@ struct
         extern int M_SumCounter(int);
 
         typedef stamp = VClock.stamp;
-        typedef tvar = ![any, long, long]; (*contents, current version stamp / lock, previous version stamp / lock*)
+        typedef tvar = ![any, long, long, long]; (*contents, current version stamp / lock, previous version stamp / lock, ref count (not used here)*)
 
         define @new(x:any / exh:exh) : tvar = 
-            let tv : tvar = alloc(x, 0:long, 0:long)
+            let tv : tvar = alloc(x, 0:long, 0:long, 0:long)
             let tv : tvar = promote(tv)
             return(tv)
         ;

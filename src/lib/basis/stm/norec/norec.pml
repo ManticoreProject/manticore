@@ -5,11 +5,7 @@ struct
     datatype 'a item = Read of 'a * 'a * 'a | Write of 'a * 'a * 'a | NilItem
 
 	_primcode(
-		(*I'm using ![any, long, long] as the type
-		 * for tvars so that the typechecker will treat them
-		 * as the same type as the other STM implementations.
-		 * However, only the first element is ever used*)
-		typedef tvar = ![any, long, long];
+		typedef tvar = FullAbortSTM.tvar;
 		typedef stamp = VClock.stamp;
 
 		define @new(x:any / exh:exh) : tvar =

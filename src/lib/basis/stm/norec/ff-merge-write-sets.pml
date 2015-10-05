@@ -10,7 +10,7 @@ struct
 		 * for tvars so that the typechecker will treat them
 		 * as the same type as the other STM implementations.
 		 * However, only the first element is ever used*)
-		typedef tvar = ![any, long, long];
+		typedef tvar = FullAbortSTM.tvar;
 		typedef stamp = VClock.stamp;
 
         extern void M_PruneRemSetAll(void*, long);
@@ -298,7 +298,7 @@ struct
         ;
 	)
 
-	type 'a tvar = 'a PartialSTM.tvar
+	type 'a tvar = 'a FullAbortSTM.tvar
     val get : 'a tvar -> 'a = _prim(@getMergeWS)
     val new : 'a -> 'a tvar = NoRecFFCounter.new
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)

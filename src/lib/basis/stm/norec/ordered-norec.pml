@@ -6,7 +6,7 @@ struct
     structure RS = NoRecOrderedReadSet
 
 	_primcode(
-		typedef tvar = ![any, long, long];
+		typedef tvar = FullAbortSTM.tvar;
 		typedef stamp = VClock.stamp;
 
         extern void M_PruneRemSetAll(void*, void*);
@@ -169,7 +169,7 @@ struct
 	        throw e();
 	)
 
-	type 'a tvar = 'a PartialSTM.tvar
+	type 'a tvar = 'a FullAbortSTM.tvar
     val get : 'a tvar -> 'a = _prim(@get)
     val new : 'a -> 'a tvar = _prim(@new)
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
