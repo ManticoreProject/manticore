@@ -16,33 +16,28 @@ structure RS = TL2OrderedRS
 
     _primcode(
     
+        extern void M_Print_Long2(void*, long, long);
+
         typedef stamp = VClock.stamp;
         typedef tvar = FullAbortSTM.tvar;
 	
         typedef with_k =  ![enum(5),               (*0: tag*)
                             tvar,                  (*1: tvar operated on*)
-                            RS.ritem ,                 (*2: next on long path*)
+                            RS.ritem ,             (*2: next on long path*)
                             any (*cont(any)*),     (*3: continuation*)
-                            RS.witem,                  (*4: write set*)
-                            RS.ritem];                 (*5: next read item with a continuation*)
+                            RS.witem,              (*4: write set*)
+                            RS.ritem];             (*5: next read item with a continuation*)
 
         typedef read_set = ![int, RS.ritem, RS.ritem, RS.ritem];
-
-        define @new(x:any / exh:exh) : tvar = 
-            let tv : tvar = alloc(x, 0:long, 0:long)
-            let tv : tvar = promote(tv)
-            return(tv)
-        ;
 
         define @get-tag = BoundedHybridPartialSTM.getTag;
 
         define inline @abort(head : RS.ritem, chkpnt : RS.ritem, kCount : int, revalidate : fun(RS.ritem, RS.ritem, long, int / -> ), 
                              newStamp : long, stamp : ![long,int,int,long] / exh:exh) : () =
-            do ccall M_Print("Aborting\n")
             case chkpnt 
                of RS.NilRead => 
                     let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
-                    do ccall M_Print_Int("Fully aborting, kCount = %d\n", kCount)
+                    do ccall M_Print_Int("WARNING: Fully aborting, kCount = %d, this should be impossible...\n", kCount)
                     throw abortK()
                 | RS.WithK(tv:tvar, next:RS.ritem, k : cont(any), ws:RS.witem, sp:RS.ritem) => 
                     let v1 : long = #CURRENT_LOCK(tv)
@@ -56,21 +51,21 @@ structure RS = TL2OrderedRS
                             if I64Lt(v1, newStamp)
                             then 
                                 let newRS : read_set = alloc(kCount, head, chkpnt, chkpnt)
-                                do #0(stamp) := newStamp
+                                do #UNBOX(stamp) := newStamp
                                 do FLS.@set-key(READ_SET, newRS / exh)
                                 do FLS.@set-key(WRITE_SET, ws / exh)
                                 BUMP_PABORT
                                 throw k(res)
                             else 
-                                do #0(stamp) := newStamp
+                                do #UNBOX(stamp) := newStamp
                                 let newStamp : long = VClock.@inc(2:long / exh)
                                 apply revalidate(head, RS.NilRead, newStamp, 0)
                         else 
-                            do #0(stamp) := newStamp
+                            do #UNBOX(stamp) := newStamp
                             let newStamp : long = VClock.@inc(2:long / exh)
                             apply revalidate(head, RS.NilRead, newStamp, 0)
                     else 
-                        do #0(stamp) := newStamp
+                        do #UNBOX(stamp) := newStamp
                         let newStamp : long = VClock.@inc(2:long / exh)
                         apply revalidate(head, RS.NilRead, newStamp, 0)
             end
@@ -81,37 +76,33 @@ structure RS = TL2OrderedRS
          * will have been updated to what the clock was at, prior to validation
          * readSet should be the HEAD of the read set
          *)
-        define @eager-validate(readSet : RS.ritem, stamp : ![long, int, int, long] / exh:exh) : () =
+        define @eager-validate(head : RS.ritem, stamp : ![long, int, int, long] / exh:exh) : () =
             fun eagerValidate(rs : RS.ritem, chkpnt : RS.ritem, newStamp : long, kCount : int) : () =
                 case rs 
                    of RS.WithK(tv:tvar, next:RS.ritem, k:cont(any), ws:RS.witem, sp:RS.ritem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Lt(owner, #0(stamp))  (*still valid*)
+                        if I64Lt(owner, #UNBOX(stamp))  (*still valid*)
                         then 
                             if I64Eq(I64AndB(owner, 1:long), 1:long)
                             then 
-                                do ccall M_Print("eager withK, locked\n") 
-                                @abort(readSet, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp / exh)
+                                @abort(head, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp / exh)
                             else apply eagerValidate(next, rs, newStamp, I32Add(kCount, 1))
                         else 
-                            do ccall M_Print("eager withK, out of date\n") 
-                            @abort(readSet, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp / exh)
+                            @abort(head, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp / exh)
                     | RS.WithoutK(tv:tvar, next:RS.ritem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Lt(owner, #0(stamp))
+                        if I64Lt(owner, #UNBOX(stamp))
                         then
                             if I64Eq(I64AndB(owner, 1:long), 1:long)
                             then 
-                                do ccall M_Print("eager withoutK, locked\n") 
-                                @abort(readSet, chkpnt, kCount, eagerValidate, newStamp, stamp / exh)
+                                @abort(head, chkpnt, kCount, eagerValidate, newStamp, stamp / exh)
                             else apply eagerValidate(next, chkpnt, newStamp, kCount)
                         else 
-                            do ccall M_Print("eager withoutK, out of date\n") 
-                            @abort(readSet, chkpnt, kCount, eagerValidate, newStamp, stamp / exh)
-                    | RS.NilRead => return()
+                            @abort(head, chkpnt, kCount, eagerValidate, newStamp, stamp / exh)
+                    | RS.NilRead => do #UNBOX(stamp) := newStamp return()
                 end
             let newStamp : long = VClock.@inc(2:long / exh)
-            apply eagerValidate(readSet, RS.NilRead, newStamp, 0)
+            apply eagerValidate(head, RS.NilRead, newStamp, 0)
         ;
 
         (*only allocates the retry loop closure if the first attempt fails*)
@@ -125,7 +116,7 @@ structure RS = TL2OrderedRS
                 then
                     if I64Eq(v1, v2)
                     then 
-                        if I64Lt(v1, #0(stamp))
+                        if I64Lt(v1, #UNBOX(stamp))
                         then return(res)
                         else do @eager-validate(readSet, stamp / exh) apply lp()
                     else do @eager-validate(readSet, stamp / exh) apply lp()
@@ -142,7 +133,7 @@ structure RS = TL2OrderedRS
             then
                 if I64Eq(v1, v2)
                 then 
-                    if I64Lt(v1, #0(stamp))
+                    if I64Lt(v1, #UNBOX(stamp))
                     then return(res)
                     else 
                         do @eager-validate(readSet, stamp / exh)
@@ -157,7 +148,7 @@ structure RS = TL2OrderedRS
 
         define @get(tv:tvar / exh:exh) : any = 
             let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
-            do if(#0(in_trans))
+            do if(#UNBOX(in_trans))
                then return()
                else do ccall M_Print("Trying to read outside a transaction!\n")
                     let e : exn = Fail(@"Reading outside transaction\n")
@@ -225,7 +216,7 @@ structure RS = TL2OrderedRS
         define @put(arg:[tvar, any] / exh:exh) : unit =
             let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do 
-                if(#0(in_trans))
+                if(#UNBOX(in_trans))
                 then return()
                 else 
                     do ccall M_Print("Trying to write outside a transaction!\n")
@@ -250,7 +241,7 @@ structure RS = TL2OrderedRS
                 end
             let readSet : read_set = FLS.@get-key(READ_SET / exh)
             let writeSet : RS.witem = FLS.@get-key(WRITE_SET / exh)
-            let rawStamp: long = #0(startStamp)
+            let rawStamp: long = #UNBOX(startStamp)
             let lockVal : long = I64Add(rawStamp, 1:long)
             fun acquire(ws:RS.witem, acquired:RS.witem) : RS.witem = 
                 case ws
@@ -287,32 +278,34 @@ structure RS = TL2OrderedRS
                 case rs 
                    of RS.WithK(tv:tvar, next:RS.ritem, k:cont(any), ws:RS.witem, sp:RS.ritem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Lt(owner, #0(startStamp))  (*still valid*)
+                        if I64Lt(owner, #UNBOX(startStamp))  (*still valid*)
                         then 
                             if I64Eq(I64AndB(owner, 1:long), 1:long)
                             then
                                 do apply release(locks) 
-                                do ccall M_Print("Commit time withK, locked\n")
                                 @abort(#LONG_PATH(readSet), rs, I32Add(kCount, 1), validate, newStamp, startStamp / exh)
                             else apply validate(next, rs, newStamp, I32Add(kCount, 1))
                         else 
-                            do apply release(locks) 
-                            do ccall M_Print("Commit time withK, out of date\n")
-                            @abort(#LONG_PATH(readSet), rs, I32Add(kCount, 1), validate, newStamp, startStamp / exh)
+                            if I64Eq(owner, lockVal)
+                            then apply validate(next, rs, newStamp, I32Add(kCount, 1))
+                            else
+                                do apply release(locks) 
+                                @abort(#LONG_PATH(readSet), rs, I32Add(kCount, 1), validate, newStamp, startStamp / exh)
                     | RS.WithoutK(tv:tvar, next:RS.ritem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Lt(owner, #0(startStamp))
+                        if I64Lt(owner, #UNBOX(startStamp))
                         then
                             if I64Eq(I64AndB(owner, 1:long), 1:long)
                             then 
                                 do apply release(locks)
-                                do ccall M_Print("Commit time withoutK, locked\n")
                                 @abort(#LONG_PATH(readSet), chkpnt, kCount, validate, newStamp, startStamp / exh)
                             else apply validate(next, chkpnt, newStamp, kCount)
                         else 
-                            do apply release(locks)
-                            do ccall M_Print_Long("Commit time withoutK, out of date\n")
-                            @abort(#LONG_PATH(readSet), chkpnt, kCount, validate, newStamp, startStamp / exh)
+                            if I64Eq(owner, lockVal)
+                            then apply validate(next, chkpnt, newStamp, kCount)
+                            else
+                                do apply release(locks)
+                                @abort(#LONG_PATH(readSet), chkpnt, kCount, validate, newStamp, startStamp / exh)
                     | RS.NilRead => return()
                 end
             fun update(writes:RS.witem, newStamp : stamp) : () = 
@@ -332,7 +325,7 @@ structure RS = TL2OrderedRS
         
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
             let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
-            if (#0(in_trans))
+            if (#UNBOX(in_trans))
             then apply f(UNIT/exh)
             else 
                 cont enter() = 
@@ -342,17 +335,15 @@ structure RS = TL2OrderedRS
                     do FLS.@set-key(WRITE_SET, RS.NilWrite / exh)
                     let newStamp : stamp = VClock.@inc(2:long / exh)
                     let stamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
-                    do #1(stamp) := 0
-                    do #0(stamp) := newStamp
-                    do #0(in_trans) := true
+                    do #UNBOX(stamp) := newStamp
+                    do #UNBOX(in_trans) := true
                     cont transExh(e:exn) = 
                         do ccall M_Print("Warning: exception raised in transaction\n")
-                        do @commit(/exh) 
+                        do @commit(/exh)
                         throw exh(e)
                     let res : any = apply f(UNIT/transExh)
                     do @commit(/transExh)
-                    do ccall M_Print("Committing\n")
-                    do #0(in_trans) := false
+                    do #UNBOX(in_trans) := false
                     do FLS.@set-key(READ_SET, RS.NilRead / exh)
                     do FLS.@set-key(WRITE_SET, RS.NilWrite / exh)
                     return(res)
@@ -369,7 +360,7 @@ structure RS = TL2OrderedRS
     type 'a tvar = 'a PartialSTM.tvar
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val get : 'a tvar -> 'a = _prim(@get)
-    val new : 'a -> 'a tvar = _prim(@new)
+    val new : 'a -> 'a tvar = FullAbortSTM.new
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val abort : unit -> 'a = _prim(@force-abort)
    

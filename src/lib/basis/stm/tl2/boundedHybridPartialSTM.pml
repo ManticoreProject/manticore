@@ -42,12 +42,6 @@ struct
 
         typedef read_set = [int, ritem, ritem];
 
-        define @new(x:any / exh:exh) : tvar = 
-            let tv : tvar = alloc(x, 0:long, 0:long)
-            let tv : tvar = promote(tv)
-            return(tv)
-        ;
-
         define @get-tag = getTag;
 
         (*
@@ -396,7 +390,7 @@ struct
     type 'a tvar = 'a PartialSTM.tvar
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val get : 'a tvar -> 'a = _prim(@get)
-    val new : 'a -> 'a tvar = _prim(@new)
+    val new : 'a -> 'a tvar = FullAbortSTM.new
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val abort : unit -> 'a = _prim(@abort)
    

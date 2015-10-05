@@ -17,15 +17,8 @@ struct
 
     type 'a witem = 'a FullAbortSTM.witem
 
-    _primcode(
-        define @alloc-tref(x:unit / exh:exh) : any = 
-            let x : [any, long, long] = alloc(enum(0), 0:long, 0:long)
-            let x : [any, long, long] = promote(x)
-            return(x);
-    )
 
-    val allocTRef : unit -> 'a = _prim(@alloc-tref)
-    val tref = allocTRef()
+    val tref = FullAbortSTM.new 0
     fun getTRef() = tref
 
     _primcode(
@@ -46,7 +39,7 @@ struct
          *inserted within the body*)
         (*Add a checkpointed read to the read set*)
         define @insert-with-k(tv:any, k:cont(any), ws:witem, readSet : read_set, stamp : ![long,int, int, long] / exh:exh) : read_set = 
-            let newItem : ritem = WithK(tv, NilRead, k, ws, #LONG_PATH(readSet))
+            let newItem : ritem = WithK(tv, NilRead, k, ws, #SHORT_PATH(readSet))
             let vp : vproc = host_vproc
             let nurseryBase : long = vpload(NURSERY_BASE, vp)
             let limitPtr : long = vpload(LIMIT_PTR, vp)

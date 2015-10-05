@@ -24,12 +24,6 @@ struct
         typedef stamp = VClock.stamp;
         typedef tvar = FullAbortSTM.tvar;
 
-        define @new(x:any / exh:exh) : tvar = 
-            let tv : tvar = alloc(x, 0:long, 0:long)
-            let tv : tvar = promote(tv)
-            return(tv)
-        ;
-
         (*
          * If this returns, then the entire read set is valid, and the time stamp
          * will have been updated to what the clock was at prior to validation
@@ -281,7 +275,7 @@ struct
 	type 'a tvar = 'a FullAbortSTM.tvar
 	val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val get : 'a tvar -> 'a = _prim(@getPartialAbort)
-    val new : 'a -> 'a tvar = _prim(@new)
+    val new : 'a -> 'a tvar = FullAbortSTM.new
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val abort : unit -> 'a = _prim(@abort)
 
