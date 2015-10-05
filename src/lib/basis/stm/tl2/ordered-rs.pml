@@ -32,7 +32,7 @@ struct
         define @new(abortK : cont(any) / exh:exh) : read_set = 
             let tref : any = @get-tref(UNIT / exh)
             let withK : ritem = WithK(tref, NilRead, abortK, NilWrite, NilRead)
-            let rs : read_set = alloc(0, withK, NilRead, withK)
+            let rs : read_set = alloc(0, withK, NilRead, withK)   (*don't put checkpoint on the short path*)
             return(rs);
 
     	(*Note that these next two defines, rely on the fact that a heap limit check will not get
