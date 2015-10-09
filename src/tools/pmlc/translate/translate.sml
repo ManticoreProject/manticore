@@ -691,7 +691,7 @@ structure Translate : sig
         of S.CoreBOM.Literal.Int n => Literal.Int n
          | S.CoreBOM.Literal.Float x => Literal.Float (mkFloat (Real.toString x))
          | S.CoreBOM.Literal.String s => Literal.String s
-         | S.CoreBOM.Literal.NullVP => raise Fail "TODO(wings): translate NullVP literal",
+         | S.CoreBOM.Literal.NullVP => Literal.StateVal (Word.fromLargeInt 0),
        #2 (transCoreBOMTy env (S.CoreBOM.Literal.typeOf lit)))
 
     (* TODO(wings): verify that patterns get placed into environment properly *)
