@@ -863,8 +863,13 @@ structure Translate : sig
                   in
                     Vector.foldl addDef env (Vector.map (fn x => (bomTyc, x)) (mlcondefs))
                   end
+                (* for both datatype declarations and imported ML types, create
+                the BOM IR representation (of tycons and data constructors) from
+                the ML representation. CoreBOM types have a "shadow" ML datatype
+                created early during AST processing which can be used for this,
+                and imports carry along the pairing of ML datatype and BOM type.
+                *)
                 val (env, k) = Vector.foldl (fn (bomdec, (env, k: env -> BOM.exp)) => (case bomdec
-                   (* TODO(wings): document this! *)
                    of S.CoreBOM.Definition.Datatype dtdefs => (List.foldl (fn ((coreBomTyc, (mlTyc, mlcondefs)), env) => let
                          val _ = print ("datatype adding bom/" ^ Layout.toString (S.CoreBOM.TyCon.layout coreBomTyc) ^ " = ml/" ^ S.Tycon.toString mlTyc ^ "\n")
                          (* add tycon to env *)
