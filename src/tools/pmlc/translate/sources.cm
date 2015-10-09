@@ -20,6 +20,6 @@ $/basis.cm
 ../mlton/sources.cm
 ../mlton/lib/basic/sources.cm
 
-(*translate-env.sml*)
+translate-env.sml
 (*translate-ty.sml*)
 translate.sml

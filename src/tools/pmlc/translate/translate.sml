@@ -20,84 +20,6 @@ structure Translate : sig
 
   (***** Define environment map types/structures *****)
 
-    structure VMap = BV.Map
-
-    structure TyCacheKV = struct
-        type ord_key = S.Type.dest
-        fun compare(t1: S.Type.dest, t2: S.Type.dest) = (case (t1, t2)
-           of (S.Type.Con (ltc1, tys1), S.Type.Con (ltc2, tys2)) => (case Word.compare (S.Tycon.hash ltc1, S.Tycon.hash ltc2)
-               of EQUAL => V.collate compare (V.map S.Type.dest tys1, V.map S.Type.dest tys2)
-                | relation => relation
-               (* end case *))
-            | (S.Type.Con _, S.Type.Var _) => LESS
-            | (S.Type.Var v1, S.Type.Var v2) => String.compare (S.Tyvar.toString v1, S.Tyvar.toString v2)
-            | (S.Type.Var _, S.Type.Con _) => GREATER
-        (* end case *))
-    end
-    structure TyCache = RedBlackMapFn (TyCacheKV)
-    type tycache_t = BOMTy.t TyCache.map (* map from AST types to BOM types *)
-
-    structure TycMapKV = struct
-        type ord_key = S.Tycon.t
-        fun compare(tyc1: S.Tycon.t, tyc2: S.Tycon.t) = Word.compare (S.Tycon.hash tyc1, S.Tycon.hash tyc2)
-    end
-    structure TycMap = RedBlackMapFn (TycMapKV)
-    type tycmap_t = BOMTyc.t TycMap.map (* map from AST tycs to BOM datatype constructors *)
-
-    structure MLTycMapKV = struct
-        type ord_key = S.CoreBOM.TyCon.t
-        fun compare(tyc1: S.CoreBOM.TyCon.t, tyc2: S.CoreBOM.TyCon.t) = S.CoreBOM.TyCon.compare (tyc1, tyc2)
-    end
-    structure MLTycMap = RedBlackMapFn (MLTycMapKV)
-    type mltycmap_t = (S.Tycon.t * S.PrimConDef.t vector) MLTycMap.map (* map from CoreBOM tycs to the ML datatype definitions created for them *)
-
-    structure DConMapKV = struct
-        type ord_key = S.Con.t
-        fun compare(con1: S.Con.t, con2: S.Con.t) = Word.compare (S.Con.hash con1, S.Con.hash con2)
-    end
-    structure DConMap = RedBlackMapFn (DConMapKV)
-    type dconmap_t = BOM.data_con DConMap.map (* map from ML data cons to BOM data cons *)
-
-    structure VarCacheKV = struct
-        type ord_key = (S.Var.t)
-        fun compare(v1, v2) = Word.compare (S.Var.hash v1, S.Var.hash v2)
-    end
-    structure VarCache = RedBlackMapFn (VarCacheKV)
-    type varcache_t = BOM.var VarCache.map (* map from AST variables to BOM variables *)
-
-    datatype var_bind
-      = Lambda of (BOMTy.t -> BOM.lambda) (* used for primops and high-level ops *)
-      | Var of BOM.var
-      | DCon of BOM.data_con
-      (*| EqOp                        (* either "=" or "<>" *)*)
-
-    structure BOMValKV = struct
-        type ord_key = (S.CoreBOM.Val.t)
-        fun compare(v1, v2) = Stamp.compare (S.CoreBOM.Val.stampOf v1, S.CoreBOM.Val.stampOf v2)
-    end
-    structure BOMValMap = RedBlackMapFn (BOMValKV)
-    type bomvalmap_t = var_bind BOMValMap.map (* map from CoreBOM (frontend) values to (middle-end) BOM variables *)
-
-  (***** Translation environment *****)
-
-    fun cacheTyDest (cache, sxmltyd, bomty) = TyCache.insert(cache, sxmltyd, bomty)
-    fun cacheTy (cache, sxmlty, bomty) = cacheTyDest(cache, S.Type.dest sxmlty, bomty)
-
-    fun peekTyDest (cache, sxmltyd) = TyCache.find(cache, sxmltyd)
-    fun peekTy (cache, sxmlty) = peekTyDest (cache, S.Type.dest sxmlty)
-
-    fun lookupTyDest (cache, sxmltyd) = (case peekTyDest(cache, sxmltyd)
-           of SOME bomty => bomty
-            | NONE => raise Fail(concat["lookupTyDest(cache, <S.Type.dest>) = NONE"])
-          (* end case *))
-    fun lookupTy (cache, sxmlty) = (case peekTyDest(cache, S.Type.dest sxmlty)
-           of SOME bomty => bomty
-            | NONE => raise Fail(concat["lookupTy(cache, ", Layout.toString (S.Type.layout sxmlty), ") = NONE"])
-          (* end case *))
-
-    fun exhTy (tyCache) = BOMTy.T_Cont[lookupTy(tyCache, S.Type.exn)]
-
-
     val boolTyc = BOMTyc.new("bool", 0)
       val falseCon = BOMDataCon.new boolTyc ("false", []);
       val trueCon = BOMDataCon.new boolTyc ("true", []);
@@ -106,91 +28,6 @@ structure Translate : sig
     val exhTy0 = BOMTy.T_Cont [exnTy0] (* TODO(wings): construct from SXML's S.Type.exn *)
 
     val progExterns : BOM.var CFunctions.c_fun list ref = ref []
-
-    datatype env = E of {
-        tyCache : tycache_t, (* map from AST types to BOM types *)
-        tycMap : tycmap_t, (* map from AST tycs to BOM datatype constructors *)
-        varCache : varcache_t, (* map from AST variables to BOM variables *)
-        varEnv : BOMTy.t VMap.map, (* map from BOM variables to their BOM types *)
-        bomValMap : bomvalmap_t, (* map from CoreBOM values to BOM variables *)
-        dconMap : dconmap_t, (* map from ML data cons to BOM data cons *)
-        mlTycMap : mltycmap_t, (* map from CoreBOM tycons to the ML datatypes created for them variables *)
-        binds : (*var_bind*)BOM.exp VMap.map, (* map from BOM variables to their bound expressions *)
-        exh : BOM.var (* current exception handler continuation *)
-      }
-
-    fun newHandler (E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh=oldExh}) = let
-          val exh = BV.new("_exh", exhTy (tyCache))
-          val env = E{tyCache = tyCache, tycMap=tycMap, varCache=varCache, varEnv=varEnv, bomValMap=bomValMap, dconMap=dconMap, mlTycMap=mlTycMap, binds=binds, exh=exh}
-          in
-            (exh, env)
-          end
-
-    fun handlerOf (E{exh, ...}) = exh
-
-    fun writeBind (E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh}, x, x') = E{tyCache=tyCache, tycMap=tycMap, varCache=varCache, varEnv=varEnv, bomValMap=bomValMap, dconMap=dconMap, mlTycMap=mlTycMap, binds=VMap.insert(binds, x, x'), exh=exh}
-
-    fun lookupBind (E{binds, ...}, x) : BOM.exp = (case VMap.find(binds, x)
-           of SOME x' => x'
-            | NONE => raise Fail(concat["lookupBind(env, ", BV.toString x, ") = NONE"])
-          (* end case *))
-
-    fun writeVarTy (E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh}, var, ty) = E{tyCache=tyCache, tycMap=tycMap, varCache=varCache, varEnv=VMap.insert(varEnv, var, ty), bomValMap=bomValMap, dconMap=dconMap, mlTycMap=mlTycMap, binds=binds, exh=exh}
-
-    fun lookupVarTy (E{varEnv, ...}, bomvar) = (case VMap.find(varEnv, bomvar)
-           of SOME bomty => bomty
-            | NONE => raise Fail(concat["lookupVarTy(env, ", BV.toString bomvar, ") = NONE"])
-          (* end case *))
-
-    fun lookupVar (E{varCache, ...}, sxmlvar : S.Var.t) : BOM.var = (case VarCache.find(varCache, sxmlvar)
-           of SOME bomvar => bomvar
-            | NONE => raise Fail(concat["lookupVar(env, ", Layout.toString (S.Var.layout sxmlvar), ") = NONE"])
-          (* end case *))
-
-    fun writeVar (E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh}, sxmlvar, bomvar) = E{tyCache=tyCache, tycMap=tycMap, varCache=VarCache.insert(varCache, sxmlvar, bomvar), varEnv=varEnv, bomValMap=bomValMap, dconMap=dconMap, mlTycMap=mlTycMap, binds=binds, exh=exh}
-
-    fun lookupTyc(E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh}, tyc) = (case TycMap.find(tycMap, tyc)
-          of SOME bomTyc => bomTyc
-           | NONE => raise Fail (concat["lookupTyc(", S.Tycon.toString tyc, ") = NONE"])
-         (* end case *))
-
-    fun printTycs (E{tycMap, ...}) = print ("tycs: " ^ String.concatWith " " (List.map (fn (tyc) => Layout.toString (S.Tycon.layout tyc) ^ ":hash=0x" ^ Word.toString (S.Tycon.hash tyc)) (TycMap.listKeys tycMap)) ^ "\n")
-    (*print ("tycs: " ^ String.concatWith " " (List.map (fn (tyc) => BOMTyc.toString tyc ^ ":hash=0x" ^ Word.toString (BOMTyc.hash tyc)) (TycMap.listItems tycMap)) ^ "\n")*)
-
-    fun lookupBOMVal (E{bomValMap, ...}, bomVal : S.CoreBOM.Val.t) : var_bind = (case BOMValMap.find(bomValMap, bomVal)
-           of SOME bomvarbind => bomvarbind
-            | NONE => raise Fail(concat["lookupBOMVal(env, ", S.CoreBOM.ValId.toString (S.CoreBOM.Val.idOf bomVal), ") = NONE"])
-          (* end case *))
-
-    fun writeBOMVal (E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh}, bomVal, bomvarbind) = E{tyCache=tyCache, tycMap=tycMap, varCache=varCache, varEnv=varEnv, bomValMap=BOMValMap.insert(bomValMap, bomVal, bomvarbind), dconMap =dconMap, mlTycMap=mlTycMap, binds=binds, exh=exh}
-
-    fun writeDCon (E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh}, mlDCon, bomDCon) = E{tyCache=tyCache, tycMap=tycMap, varCache=varCache, varEnv=varEnv, bomValMap=bomValMap, dconMap=DConMap.insert(dconMap, mlDCon, bomDCon), mlTycMap=mlTycMap, binds=binds, exh=exh}
-
-    fun lookupDCon (E{dconMap, ...}, mlDCon) = (case DConMap.find(dconMap, mlDCon)
-           of SOME bomDCon => bomDCon
-            | NONE => raise Fail(concat["lookupDCon(env, ", S.Con.toString mlDCon, ") = NONE"])
-          (* end case *))
-
-    fun lookupMLTyc (E{mlTycMap, ...}, bomTyc : S.CoreBOM.TyCon.t) : (S.Tycon.t * S.PrimConDef.t vector) = (case MLTycMap.find(mlTycMap, bomTyc)
-           of SOME def => def
-            | NONE => raise Fail(concat["lookupMLTyc(env, ", Layout.toString (S.CoreBOM.TyCon.layout (bomTyc)), ") = NONE"])
-          (* end case *))
-
-    fun writeMLTyc (E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh}, bomTyc, def) = E{tyCache=tyCache, tycMap=tycMap, varCache=varCache, varEnv=varEnv, bomValMap=bomValMap, dconMap=dconMap, mlTycMap=MLTycMap.insert(mlTycMap, bomTyc, def), binds=binds, exh=exh}
-
-    fun printMLTycs (E{mlTycMap, ...}) = print ("ml tycs: " ^ String.concatWith " " (List.map (fn (mlTyc, _) => S.Tycon.toString mlTyc ^ ":id=0x" ^ Word.toString (S.Tycon.hash mlTyc)) (MLTycMap.listItems mlTycMap)) ^ "\n")
-
-
-
-
-    fun newVarBOMValWithTy (env, bomVal, ty) = let
-      val var = BV.new (S.CoreBOM.ValId.toString
-        (S.CoreBOM.Val.idOf bomVal) ^ ".", ty)
-      val env' = writeVarTy (env, var, ty)
-      in
-        (var, writeBOMVal (env', bomVal, Var var))
-      end
-
 
     (* from manticore.lex *)
     fun mkFloat s = let
@@ -896,14 +733,14 @@ structure Translate : sig
              tycon: Tycon.t,
              tyvars: Tyvar.t vector} vector,
 *)
-    fun transTy (env as E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh}, ty (*as {tycon, tyvars, cons}*)) =
+    fun transTy (env, ty (*as {tycon, tyvars, cons}*)) =
     let
           (*val _ = print (concat["SXML.Type->BOMTy: ", Layout.toString (S.Type.layout ty), "\n"])*)
           (* convert an uncached type from the MLton represenation to a BOM type *)
-          fun tr(tyCache: tycache_t, dest: S.Type.dest) = (case dest
+          fun tr(env, dest: S.Type.dest) = (case dest
             of S.Type.Var _ => raise Fail "Type variable found in SXML"
                 | (S.Type.Con(tyc, args)) => let
-                    val (tyCache': tycache_t, args': BOMTy.t list) = V.foldr (fn (ty, (tyCache, tys)) => let val (tyCache', ty') = tr (tyCache, S.Type.dest ty) in (tyCache', ty' :: tys) end) (tyCache, []) args
+                    val (env', args': BOMTy.t list) = V.foldr (fn (ty, (env, tys)) => let val (env', ty') = tr (env, S.Type.dest ty) in (env', ty' :: tys) end) (env, []) args
                     val nArgs = length args';
                     fun singleArg () = if nArgs = 1 then List.hd args' else raise Fail (concat["Expected exactly one argument to tycon ", S.Type.Tycon.toString tyc, ", got ", Int.toString nArgs])
                     fun noArgs () = if nArgs = 0 then () else raise Fail (concat["Expected zero arguments to tycon ", S.Type.Tycon.toString tyc, ", got ", Int.toString nArgs])
@@ -911,7 +748,7 @@ structure Translate : sig
                         then let (* function type *)
                             val [domTy, rngTy] = args'
                             in
-                              BOMTy.T_Fun([domTy], [exhTy (tyCache)], [rngTy])
+                              BOMTy.T_Fun([domTy], [exhTy (env)], [rngTy])
                             end
                         else if S.Tycon.equals(tyc, S.Tycon.array)
                           then BOMTy.arrayTy (singleArg ())
@@ -920,7 +757,7 @@ structure Translate : sig
                         else if S.Tycon.equals(tyc, S.Tycon.cpointer)
                           then BOMTy.addrTy (singleArg ())
                         else if S.Tycon.equals(tyc, S.Tycon.exn)
-                          then (noArgs (); exhTy (tyCache))
+                          then (noArgs (); exhTy (env))
                         else if S.Tycon.equals(tyc, S.Tycon.intInf)
                           then (noArgs (); raise Fail "TODO(wings): BOMTy.T_Bignum")
                         else if S.Tycon.equals(tyc, S.Tycon.list)
@@ -960,16 +797,12 @@ structure Translate : sig
                             else (print ("looking up tyc " ^ S.Tycon.toString tyc ^ "\n"); BOMTy.T_Con(lookupTyc(env, tyc), args'))
                           end
                     in
-                      (cacheTy (tyCache', ty, ty'), ty')
+                      (writeTy (env', ty, ty'), ty')
                     end
               (* end case *))
-          in (case peekTy (tyCache, ty)
+          in (case peekTy (env, ty)
                  of SOME ty' => (env, ty')
-                  | NONE => let
-                      val (tyCache', ty') = tr (tyCache, S.Type.dest ty)
-                    in
-                      (E{tyCache=tyCache', tycMap=tycMap, varCache=varCache, varEnv=varEnv, bomValMap=bomValMap, dconMap=dconMap, mlTycMap=mlTycMap, binds=binds, exh=exh}, ty')
-                    end
+                  | NONE => tr (env, S.Type.dest ty)
               (* end case *))
           end
 
@@ -1125,7 +958,7 @@ structure Translate : sig
         end
 
     (* TODO(wings): I have no idea how to make this work when maybeSxmlty is NONE, because conTycon seems to fail consistently on bool... *)
-    and transDCon (env as E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh}, con, maybeSxmlty, targs) : BOMDataCon.t = lookupDCon(env, con) (*let
+    and transDCon (env, con, maybeSxmlty, targs) : BOMDataCon.t = lookupDCon(env, con) (*let
         (*val boolCons = PMLFrontEnd.tyconCons (S.Tycon.bool)*)
         val dest: S.Type.dest = case maybeSxmlty
           of NONE => S.Type.Con (PMLFrontEnd.conTycon con, targs)
@@ -1137,7 +970,7 @@ structure Translate : sig
         val tycon = case maybeSxmlty
           of NONE => PMLFrontEnd.conTycon con
            | SOME sxmlty => S.Type.tycon sxmlty
-        val bomTy = if S.Tycon.equals (tycon, S.Tycon.bool) then BOMTy.T_Con(boolTyc, []) else lookupTyDest (tyCache, dest)
+        val bomTy = if S.Tycon.equals (tycon, S.Tycon.bool) then BOMTy.T_Con(boolTyc, []) else lookupTyDest (env, dest)
         val (name, dcons) = case bomTy
           of BOMTy.T_Con (tyc, params) => (BOMTyc.nameOf tyc, BOMTyc.consOf tyc)
            | _ => raise Fail (concat ["Failed to translate data constructor for ", tyName, ".", S.Con.toString con])
@@ -1283,8 +1116,7 @@ Datatype.t = {cons: {arg: Type.t option,
         val (dts_datatycs, env) = V.foldl (fn(dt as {cons, tycon, tyvars}, (dts_datatycs, env)) => let
             val () = print ("transDatatypes decl " ^ S.Tycon.toString tycon ^ " '" ^ Int.toString (V.length tyvars) ^ "\n")
             val dataTyc = BOMTyc.new(S.Tycon.toString tycon, V.length tyvars)
-            val E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh} = env;
-            val env = E{tyCache=tyCache, tycMap=TycMap.insert(tycMap, tycon, dataTyc), varCache=varCache, varEnv=varEnv, bomValMap=bomValMap, dconMap=dconMap, mlTycMap=mlTycMap, binds=binds, exh=exh}
+            val env = writeTyc(env, tycon, dataTyc)
             val _ = printTycs env
             in
                 ((dt, dataTyc)::dts_datatycs, env)
@@ -1294,10 +1126,8 @@ Datatype.t = {cons: {arg: Type.t option,
         (* fill in definition for each datatype *)
         val env = List.foldl (fn(({cons, tycon, tyvars}, dataTyc), env) => let
             val () = print ("transDatatypes defn " ^ S.Tycon.toString tycon ^ " '" ^ Int.toString (V.length tyvars) ^ "\n")
-            val E{tyCache, tycMap, varCache, varEnv, bomValMap, dconMap, mlTycMap, binds, exh} = env;
             (* TODO(wings): convert tyvars *)
-            val tyCache' = cacheTyDest(tyCache, S.Type.Con(tycon, V.fromList []), BOMTy.T_Con(dataTyc, [](*tyvars'*)))
-            val env = E{tyCache=tyCache', tycMap=tycMap, varCache=varCache, varEnv=varEnv, bomValMap=bomValMap, dconMap=dconMap, mlTycMap=mlTycMap, binds=binds, exh=exh}
+            val env = writeTyDest(env, S.Type.Con(tycon, V.fromList []), BOMTy.T_Con(dataTyc, [](*tyvars'*)))
             (* translate dcons for this datatype *)
             val env = V.foldl (fn({con: S.Con.t, arg: S.Type.t option}, env) => let
                val () = print ("transDatatypes dcon " ^ S.Tycon.toString tycon ^ "." ^ S.Con.toString con ^ "\n")
@@ -1326,7 +1156,7 @@ Datatype.t = {cons: {arg: Type.t option,
  * shaken out.
  *)
     fun translate (S.Program.T{datatypes, overflow, body}) = let
-          val env = E{tyCache = TyCache.empty, tycMap=TycMap.empty, varCache = VarCache.empty, varEnv = VMap.empty, bomValMap=BOMValMap.empty, dconMap=DConMap.empty, mlTycMap=MLTycMap.empty, binds = VMap.empty, exh = BV.new("_exh", exhTy0) }
+          val env = newEnv (BV.new("_exh", exhTy0))
           (* initially translate all the datatypes listed by MLton *)
           val env as E{tycMap=tycMap, ...} = transDatatypes (datatypes, env)
           val body = transSExp (body, env)
