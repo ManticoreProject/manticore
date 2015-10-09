@@ -6,7 +6,6 @@
 
 structure Translate : sig
 
-(*    structure Sxml : SXML*)
     val translate : PMLFrontEnd.Sxml.Program.t -> BOM.program
 
   end = struct
@@ -18,7 +17,7 @@ structure Translate : sig
     structure BExp = S.CoreBOM.Exp
     structure BSExp = S.CoreBOM.SimpleExp
 
-  (***** Define environment map types/structures *****)
+  (***** define basic types and values for program translation *****)
 
     val boolTyc = BOMTyc.new("bool", 0)
       val falseCon = BOMDataCon.new boolTyc ("false", []);
@@ -28,6 +27,9 @@ structure Translate : sig
     val exhTy0 = BOMTy.T_Cont [exnTy0] (* TODO(wings): construct from SXML's S.Type.exn *)
 
     val progExterns : BOM.var CFunctions.c_fun list ref = ref []
+
+
+  (***** functions for translating CoreBOM to BOM IR *****)
 
     (* from manticore.lex *)
     fun mkFloat s = let
@@ -96,13 +98,8 @@ structure Translate : sig
     end
 
     fun transCoreBOMTyc (env) (coreBomTyc: S.CoreBOM.TyCon.t): BOMTy.tyc = let
-      (*val _ = print ("transCoreBOMTyc " ^ Layout.toString (S.CoreBOM.TyCon.layout coreBomTyc) ^ "\n")*)
       val (mlTyc, condefs) = lookupMLTyc (env, coreBomTyc)
-      (*val _ = print ("lookupMLTyc :)\n")
-      val _ = printTycs env
-      val _ = print ("lookupTyc " ^ S.Tycon.toString mlTyc ^ " id=" ^ Word.toString (S.Tycon.hash mlTyc) ^ "\n")*)
       val bomTyc = lookupTyc(env, mlTyc)
-      (*val _ = print ("lookupTyc :)\n")*)
       in
         bomTyc
       end
@@ -727,16 +724,12 @@ structure Translate : sig
 
   (***** Translation functions *****)
 
-(*
-    datatypes: {cons: {arg: Type.t option,
-                    con: Con.t} vector,
-             tycon: Tycon.t,
-             tyvars: Tyvar.t vector} vector,
-*)
+    (* convert type from the MLton representation to a BOM type. this may
+    update internal contents of the environment, so it returns a modified env *)
     fun transTy (env, ty (*as {tycon, tyvars, cons}*)) =
     let
           (*val _ = print (concat["SXML.Type->BOMTy: ", Layout.toString (S.Type.layout ty), "\n"])*)
-          (* convert an uncached type from the MLton represenation to a BOM type *)
+          (* convert a newly-encountered type from the MLton representation to a BOM type *)
           fun tr(env, dest: S.Type.dest) = (case dest
             of S.Type.Var _ => raise Fail "Type variable found in SXML"
                 | (S.Type.Con(tyc, args)) => let
@@ -834,6 +827,8 @@ structure Translate : sig
             transDecs(env, decs, result)
           end
 
+    (* translate a declaration and use a modified environment to call the
+    continuation k *)
     and transDec (env, d, k : env -> BOM.exp) = (case d
            of S.Dec.Exception{arg, con} => raise Fail "Exception declaration found in SXML"
             | S.Dec.Fun{decs, ...} => let
@@ -940,7 +935,7 @@ structure Translate : sig
             BOM.mkLambda{f = f, params = [param], exh = [exh], body = transSExp(body, env)}
           end
 
-  (* translate a constant word value of a given size into a (Literal.literal * BOMTy.t) pair *)
+  (* translate a constant word value of a given size into a typed literal *)
   (* XXX(wings): make sure this handles [un]signedness properly *)
     and transConst (sz, word) : (Literal.literal * BOMTy.t) = let
           val lit = Literal.Int (S.Atoms.WordX.toIntInf word)
@@ -957,32 +952,11 @@ structure Translate : sig
           (lit, ty)
         end
 
-    (* TODO(wings): I have no idea how to make this work when maybeSxmlty is NONE, because conTycon seems to fail consistently on bool... *)
-    and transDCon (env, con, maybeSxmlty, targs) : BOMDataCon.t = lookupDCon(env, con) (*let
-        (*val boolCons = PMLFrontEnd.tyconCons (S.Tycon.bool)*)
-        val dest: S.Type.dest = case maybeSxmlty
-          of NONE => S.Type.Con (PMLFrontEnd.conTycon con, targs)
-           | SOME sxmlty => S.Type.dest sxmlty
-        val tyName = case maybeSxmlty
-          of NONE => "<unknown type>"
-           | SOME sxmlty => Layout.toString (S.Type.layout sxmlty)
-        val _ = print ("transDcon for ty " ^ tyName ^ "\n")
-        val tycon = case maybeSxmlty
-          of NONE => PMLFrontEnd.conTycon con
-           | SOME sxmlty => S.Type.tycon sxmlty
-        val bomTy = if S.Tycon.equals (tycon, S.Tycon.bool) then BOMTy.T_Con(boolTyc, []) else lookupTyDest (env, dest)
-        val (name, dcons) = case bomTy
-          of BOMTy.T_Con (tyc, params) => (BOMTyc.nameOf tyc, BOMTyc.consOf tyc)
-           | _ => raise Fail (concat ["Failed to translate data constructor for ", tyName, ".", S.Con.toString con])
-      in
-        case List.find (fn (dcon) => BOMDataCon.nameOf dcon = S.Con.toString con) dcons
-          of SOME x => x
-           | NONE => raise Fail (concat ["Failed to translate data constructor for ", tyName, ".", S.Con.toString con])
-      end*)
+    (* XXX(wings): do targs need to be handled? *)
+    and transDCon (env, con, targs): BOMDataCon.t = lookupDCon(env, con)
 
-  (* translate a PrimExp.t term.  These occur as the rhs of the a MonoVal binding; the
-   * translated lhs variable is passed as an argument.
-   *)
+  (* translate a PrimExp.t term.  These occur as the rhs of the a MonoVal
+  binding; the translated lhs variable is passed as an argument. *)
     and transPrimExp (env, lhs, sxmlty, e, k : env -> BOM.exp) : BOM.exp = let
           fun mkLet e' = BOM.mkLet([lhs], e', k env)
           fun mkStmt rhs = BOM.mkStmt([lhs], rhs, k env)
@@ -1006,7 +980,7 @@ structure Translate : sig
                                         con: Con.t,
                                         targs: Type.t vector
                                 }*)
-                                  val dcon=transDCon (env, con, NONE, targs)
+                                  val dcon=transDCon (env, con, targs)
                                   val vars=(case arg
                                     of NONE => []
                                      | SOME (var, sxmlty) => [lookupVar(env, var)] (* XXX(wings): unpack tuple into multiple vars? *)
@@ -1023,7 +997,7 @@ structure Translate : sig
                   end
                 (* QUESTION: are there primitive dcons that have targs?  No! *)
               | S.PrimExp.ConApp{con, arg, targs} => let
-                  val con' = transDCon (env, con, SOME sxmlty, targs)
+                  val con' = transDCon (env, con, targs)
                   in
                     (* translate dcon and tupled args *)
                     mkStmt(BOM.E_DCon(con', case arg
