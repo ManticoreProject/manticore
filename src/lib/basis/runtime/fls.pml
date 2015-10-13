@@ -356,6 +356,92 @@ structure FLS :
             return()
         ;
 
+        (*
+         * Set two keys in one pass.  IMPORTANT: key1 has to come before key2
+         * in the dictionary.  If this is not the case, an exception will be raised!
+         *)
+        define @set-key2(key1 : int, v1 : any, key2 : int, v2 : any / exh:exh) : () = 
+            fun setKeyLoop1(dict : List.list) : List.list = 
+                case dict
+                   of CONS(hd : [[int], any], tail : List.list) => 
+                    if I32Eq(#0(#0(hd)), key2)
+                    then return(CONS(alloc(#0(hd), v2), tail))
+                    else let rest : List.list = apply setKeyLoop1(tail)
+                         return (CONS(hd, rest))
+                    | nil => let e : exn = Fail(@"FLS key not found in set-key")
+                         do ccall M_Print("FLS key not found in set-key\n")
+                         throw exh(e)
+                end
+            fun setKeyLoop2(dict : List.list) : List.list = 
+                case dict 
+                   of nil => 
+                        do ccall M_Print("FLS key not found in setKeyLoop2\n")
+                        throw exh(Fail(@"FLS key not found in setKeyLoop2\n"))
+                    | CONS(hd : [[int], any], tail : List.list) => 
+                        if I32Eq(#0(#0(hd)), key1)
+                        then 
+                            let rest : List.list = apply setKeyLoop1(tail)
+                            return(CONS(alloc(#0(hd), v1), rest))
+                        else
+                            let rest : List.list = apply setKeyLoop2(tail)
+                            return(CONS(hd, rest))
+                end
+            let dict : List.list = @get-dict(UNIT / exh)
+            let newDict : List.list = apply setKeyLoop2(dict)
+            let _ : unit = @set-dict(newDict / exh)
+            return()
+        ;
+
+        (*
+         * Set three keys in one pass.  IMPORTANT: key1 < key2 < key3 (in terms of dictionary order)
+         * If this is not the case, an exception will be raised!
+         *)
+        define @set-key3(key1 : int, v1 : any, key2 : int, v2 : any, key3 : int, v3 : any / exh:exh) : () = 
+            fun setKeyLoop3(dict : List.list) : List.list = 
+                case dict
+                   of CONS(hd : [[int], any], tail : List.list) => 
+                    if I32Eq(#0(#0(hd)), key3)
+                    then return(CONS(alloc(#0(hd), v3), tail))
+                    else let rest : List.list = apply setKeyLoop3(tail)
+                         return (CONS(hd, rest))
+                    | nil => let e : exn = Fail(@"FLS key not found in set-key3 : setKeyLoop1\n")
+                         do ccall M_Print("FLS key not found in set-key3 : setKeyLoop1\n")
+                         throw exh(e)
+                end
+            fun setKeyLoop2(dict : List.list) : List.list = 
+                case dict 
+                   of nil => 
+                        do ccall M_Print_Int("FLS key not found in setKeyLoop2 (key = %d)\n", key2)
+                        throw exh(Fail(@"FLS key not found in setKeyLoop2\n"))
+                    | CONS(hd : [[int], any], tail : List.list) => 
+                        if I32Eq(#0(#0(hd)), key2)
+                        then 
+                            let rest : List.list = apply setKeyLoop3(tail)
+                            return(CONS(alloc(#0(hd), v2), rest))
+                        else
+                            let rest : List.list = apply setKeyLoop2(tail)
+                            return(CONS(hd, rest))
+                end
+            fun setKeyLoop1(dict : List.list) : List.list = 
+                case dict 
+                   of nil => 
+                        do ccall M_Print("FLS key not found in setKeyLoop3\n")
+                        throw exh(Fail(@"FLS key not found in setKeyLoop3\n"))
+                    | CONS(hd : [[int], any], tail : List.list) => 
+                        if I32Eq(#0(#0(hd)), key1)
+                        then 
+                            let rest : List.list = apply setKeyLoop2(tail)
+                            return(CONS(alloc(#0(hd), v1), rest))
+                        else
+                            let rest : List.list = apply setKeyLoop1(tail)
+                            return(CONS(hd, rest))
+                end
+            let dict : List.list = @get-dict(UNIT / exh)
+            let newDict : List.list = apply setKeyLoop1(dict)
+            let _ : unit = @set-dict(newDict / exh)
+            return()
+        ;
+
       (*set a key to NULL (enum(0)), this doesn't require rebuilding the list*)
       define @null-key(key : int) : () = 
         fun nullKeyLoop(dict : List.list) : () =
