@@ -51,7 +51,7 @@ struct
                 		if I64Eq(t, #0(myStamp))
                 		then return(v)
                 		else
-                			do RS.@validate(readSet, myStamp, true / exh)
+                			do RS.@c-validate(readSet, myStamp, true / exh)
                 			apply getLoop()
                 	let current : any = apply getLoop()
                     let captureCount : int = FLS.@get-counter()

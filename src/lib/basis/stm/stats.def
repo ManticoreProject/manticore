@@ -6,9 +6,13 @@
  * Macros for keeping track of basic STM statistics
  *)
 
+#ifndef STM_STATS
+#define STM_STATS 0
+
 #define COUNT 
 
 #ifdef COUNT
+
 #define BUMP_PABORT let vp : vproc = host_vproc do ccall M_BumpCounter(vp, 0)
 #define PRINT_PABORT_COUNT let counter1 : int = ccall M_SumCounter(0) \
                            do ccall M_Print_Int("Partial-Aborts = %d\n", counter1)
@@ -34,4 +38,6 @@
 #define PRINT_KCOUNT 
 #define INC_FF(n)
 #define PRINT_FF
+#endif
+
 #endif

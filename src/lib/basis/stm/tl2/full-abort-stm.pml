@@ -35,6 +35,10 @@ struct
             let k : cont() = FLS.@get-key(ABORT_KEY / exh)
             throw k();
 
+        define @full-abort-any(/exh:exh) : any = 
+            let k : cont() = FLS.@get-key(ABORT_KEY / exh)
+            throw k();
+
         define @read-tvar(tv : tvar, stamp : ![stamp, int] / exh : exh) : any = 
             let v1 : stamp = #1(tv)
             let res : any = #0(tv)
@@ -46,9 +50,9 @@ struct
                 then 
                     if I64Lt(v1, #0(stamp))
                     then return(res)
-                    else @full-abort(/exh)
-                else @full-abort(/exh)
-            else @full-abort(/exh)
+                    else @full-abort-any(/exh)
+                else @full-abort-any(/exh)
+            else @full-abort-any(/exh)
         ;
 
         define @get(tv : tvar / exh:exh) : any = 
@@ -139,9 +143,9 @@ struct
                                     then 
                                         do #PREV_LOCK(tv) := owner 
                                         apply acquire(tl, Write(tv, contents, acquired))
-                                    else do apply release(acquired) @full-abort(/exh) (*CAS failed*)
-                                else do apply release(acquired) @full-abort(/exh) (*newer than our timestamp*)
-                            else do apply release(acquired) @full-abort(/exh)  (*someone else locked it*)
+                                    else do apply release(acquired) @full-abort-any(/exh) (*CAS failed*)
+                                else do apply release(acquired) @full-abort-any(/exh) (*newer than our timestamp*)
+                            else do apply release(acquired) @full-abort-any(/exh)  (*someone else locked it*)
                     | NilWrite => return(acquired)
                 end
             fun update(writes:witem, newStamp : stamp) : () = 

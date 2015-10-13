@@ -185,7 +185,7 @@ struct
         define @c-validate(readSet : read_set, startStamp:![stamp, int, int, long], eager : bool / exh:exh) : () = 
             let vp : vproc = host_vproc
             let clock : ![long] = VClock.@get-boxed(/exh)
-            let res : read_set = ccall STM_Validate(startStamp, clock, #HEAD(readSet), vp)
+            let res : read_set = ccall STM_Validate(startStamp, clock, readSet, vp)
             if Equal(res, UNIT)
             then return() 
             else 
