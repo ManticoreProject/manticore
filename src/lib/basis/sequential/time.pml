@@ -41,7 +41,9 @@ structure Time =
     val cpuTime : unit -> double = _prim(@cpu-time)
 
     fun fromSecs t = t * 1000000
-    fun toSecs t = t div 1000000
+    fun toSecs (t : long) = t div 1000000
+
+    fun toSecsFloat (t : long) = Float.fromLong t / 1000000.0
 
     fun toString (t : time) = let
 	   val (sign, t) = if (t < 0) then ("-", ~t) else ("", t)

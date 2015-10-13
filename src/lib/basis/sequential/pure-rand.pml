@@ -60,4 +60,9 @@ struct
 			val maxFloat = Float.fromLong randMAX
 		in (((nFloat / (maxFloat + 1.0)) * (high - low)) + low, gen') end
 
+	fun nextInt(gen, low, high) = 
+		let val (n, gen') = next gen
+			val x = ((Long.toInt n) mod (high - low)) + low
+		in (x, gen') end
+
 end
