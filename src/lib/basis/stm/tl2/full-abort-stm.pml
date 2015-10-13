@@ -163,7 +163,7 @@ struct
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
                 let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
                 if (#0(in_trans))
-                then do ccall M_Print("Warning: Nested transaction!\n") apply f(UNIT/exh)
+                then apply f(UNIT/exh)
                 else let stampPtr : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
                      cont enter() = 
                          do FLS.@set-key(READ_SET, NilRead/ exh)  (*initialize STM log*)

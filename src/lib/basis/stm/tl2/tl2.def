@@ -22,8 +22,8 @@
 #define R_ENTRY_NEXTK 5
 
 (*fast forward read set*)
-#define FF_RS_STAMP 0
-#define FF_RS_START 1
-#define FF_RS_END   2
+#define FF_RS_STAMP  0
+#define FF_RS_KCOUNT 1
+#define FF_RS_END    2
 
 #define UNBOX 0

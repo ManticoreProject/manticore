@@ -11,7 +11,7 @@
 structure TL2OrderedRS = 
 struct
     datatype 'a ritem = NilRead | WithK of 'a * 'a * 'a * 'a * 'a
-                      | WithoutK of 'a * 'a | Abort of unit  
+                      | WithoutK of 'a * 'a | Abort of unit | Stamp of long * 'a
 
     datatype 'a witem = Write of 'a * 'a * 'a | NilWrite
 
@@ -29,6 +29,16 @@ struct
 
         define @get-tref = getTRef;
 
+        (*
+         * Allocate a new read set.  This will put a dummy checkpointed 
+         * entry in the read set, this way we never have to check to see
+         * if the tail is NULL.  Since we have to put a dummy node in the 
+         * read set every time, we might as well make it a checkpoint and
+         * put the full abort continuation in it.  
+         * IMPORTANT: the upper bound on continuations in the read set must
+         * be ODD, this way we can guarantee that this will never get filtered
+         * away!
+         *)
         define @new(abortK : cont(any) / exh:exh) : read_set = 
             let tref : any = @get-tref(UNIT / exh)
             let withK : ritem = WithK(tref, NilRead, abortK, NilWrite, NilRead)
