@@ -7,12 +7,25 @@ struct
     datatype 'a item = Write of 'a * 'a * 'a | NilItem | WithK of 'a * 'a * 'a * 'a * 'a * 'a
                      | WithoutK of 'a * 'a * 'a | Abort of unit
 
+    _primcode(
+        define @mk-tag(x:unit / exh:exh) : any = 
+            let x : item = WithoutK(enum(0):any, enum(0):any, enum(0):any)
+            let x : [any] = ([any]) x
+            return(#0(x));
+    )
+
+    val mkTag : unit -> 'a = _prim(@mk-tag)
+    val tag = mkTag()
+    fun getTag() = tag
+
 	_primcode(
 		typedef tvar = FullAbortSTM.tvar;
 		typedef stamp = VClock.stamp;
 
+        define @get-tag = getTag;
+
         typedef mutWithK = 
-            ![any,                  (*0: tag*)
+            ![enum(5),                  (*0: tag*)
               any,                  (*1: tvar read from*)
               any,                  (*2: contents read*)
               (*cont(any)*) any,    (*3: continuation (could be enum(0))*)
@@ -28,18 +41,18 @@ struct
 		;
 
 		define inline @get-stamp(/exh:exh) : stamp = 
-			fun stampLoop() : long = 
+			fun stampLoopPNoRec() : long = 
 				let current : long = VClock.@get(/exh)
 				let lastBit : long = I64AndB(current, 1:long)
 				if I64Eq(lastBit, 0:long)
 				then return(current)
-				else do Pause() apply stampLoop()
-			let stamp : stamp = apply stampLoop()
+				else do Pause() apply stampLoopPNoRec()
+			let stamp : stamp = apply stampLoopPNoRec()
 			return(stamp)
 		;
 
         define @validate(readSet : [int,item,item], startStamp:![stamp, int] / exh:exh) : () = 
-            fun validateLoop(rs : item, abortInfo : item) : () =
+            fun validateLoopPNoRec(rs : item, abortInfo : item, kCount : int) : () =
                 case rs 
                    of NilItem => (*finished validating*)
                         case abortInfo 
@@ -50,11 +63,11 @@ struct
                                 else  (*someone else committed, so revalidate*)
                                     let currentTime : stamp = @get-stamp(/exh)
                                     do #0(startStamp) := currentTime
-                                    apply validateLoop(#1(readSet), NilItem)
+                                    apply validateLoopPNoRec(#1(readSet), NilItem, 0)
                             | Abort(x : unit) => (*no checkpoint found*)
                                 let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
                                 throw abortK()
-                            | WithK(tv:tvar,x:any,abortK:cont(any),ws:item,_:item,_:item) => (*checkpoint found*)
+                            | WithK(tv:tvar,x:any,abortK:cont(any),ws:item,next:item,nextK:item) => (*checkpoint found*)
                                 fun getLoop() : any = 
                                     let t : long = VClock.@get(/exh)
                                     if I64Eq(t, #0(startStamp))
@@ -62,18 +75,12 @@ struct
                                     else
                                         let currentTime : long = @get-stamp(/exh)
                                         do #0(startStamp) := currentTime
-                                        do apply validateLoop(abortInfo, NilItem)
+                                        do apply validateLoopPNoRec(abortInfo, NilItem, 0)
                                         return(#0(tv))
                                 let current : any = apply getLoop()
-                                fun countKs(i:item, count:int) : int = 
-                                    case i 
-                                       of NilItem => return(count)
-                                        | WithK(_:tvar,_:any,_:cont(any),_:item,_:item,nextC:item) => apply countKs(nextC, I32Add(count, 1))
-                                    end
-                                let i : int = apply countKs(abortInfo, 0)
-                                let newRS : [int,item,item] = alloc(i, abortInfo, abortInfo)
-                                do FLS.@set-key(READ_SET, newRS / exh)
-                                do FLS.@set-key(WRITE_SET, ws / exh)
+                                let newChkpnt : item = WithK(tv, current, abortK, ws, next,nextK)
+                                let newRS : [int,item,item] = alloc(kCount, newChkpnt, newChkpnt)
+                                do FLS.@set-key2(WRITE_SET, ws, READ_SET, newRS / exh)
                                 let captureFreq : int = FLS.@get-counter2()
                                 do FLS.@set-counter(captureFreq)
                                 BUMP_PABORT
@@ -81,27 +88,20 @@ struct
                         end
                     | WithoutK(tv:tvar, x:any, next:item) =>
                         if Equal(#0(tv), x)
-                        then apply validateLoop(next, abortInfo)
-                        else apply validateLoop(next, Abort(UNIT))
+                        then apply validateLoopPNoRec(next, abortInfo, kCount)
+                        else apply validateLoopPNoRec(next, Abort(UNIT), kCount)
                     | WithK(tv:tvar,x:any,abortK:cont(any),ws:item,next:item,_:item) =>
                         if Equal(#0(tv), x)
                         then (*still valid*)
                             case abortInfo 
-                               of NilItem => apply validateLoop(next, abortInfo) (*everything still valid so far*)
-                                | Abort(x:unit) =>                               (*we need a checkpoint*)
-                                    if Equal(abortK, enum(0))
-                                    then apply validateLoop(next, abortInfo)     (*don't have one here*)
-                                    else apply validateLoop(next, rs)            (*use this checkpoint*)
-                                | _ => apply validateLoop(next, abortInfo)       (*already have a checkpoint*)
+                               of Abort(x:unit) => apply validateLoopPNoRec(next, rs, 1)                (*use this checkpoint*)
+                                | _ => apply validateLoopPNoRec(next, abortInfo, I32Add(kCount, 1))     (*already have a checkpoint*)
                             end
-                        else
-                            if Equal(abortK, enum(0))
-                            then apply validateLoop(next, Abort(UNIT))
-                            else apply validateLoop(next, rs)
+                        else apply validateLoopPNoRec(next, rs, 1)
                 end
             let currentTime : stamp = @get-stamp(/exh)
             do #0(startStamp) := currentTime
-            apply validateLoop(#1(readSet), NilItem)
+            apply validateLoopPNoRec(#1(readSet), NilItem, 0)
         ;
 
 		define @get(tv : tvar / exh:exh) : any = 
@@ -130,9 +130,10 @@ struct
                of Option.SOME(v:any) => return(v)
                 | Option.NONE =>
                 	fun getLoop() : any = 
+                        let x : any = #0(tv)
                 		let t : long = VClock.@get(/exh)
                 		if I64Eq(t, #0(myStamp))
-                		then return(#0(tv))
+                		then return(x)
                 		else
                 			do @validate(readSet, myStamp / exh)
                 			apply getLoop()
@@ -170,8 +171,10 @@ struct
                                             (* NOTE: if compiled with -debug, this will generate warnings
                                              * that we are updating a bogus local pointer, however, given the
                                              * nature of the data structure, we do preserve the heap invariants*)
+                                            let withoutKTag : enum(5) = @get-tag(UNIT/exh)
                                             let l : mutWithK = (mutWithK) l
                                             let next : mutWithK = (mutWithK) next
+                                            do #0(next) := withoutKTag
                                             do #3(next) := enum(0):any
                                             do #6(l) := nextNext
                                             apply dropKs(nextNext, I32Sub(n, 1))
@@ -250,7 +253,7 @@ struct
                     let stamp : stamp = @get-stamp(/exh)
                     do #0(stampPtr) := stamp
                     do #0(in_trans) := true
-                    cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()
+                    cont abortK() = BUMP_FABORT throw enter()
                     do FLS.@set-key(ABORT_KEY, abortK / exh)
                     cont transExh(e:exn) = 
                     	do ccall M_Print("Warning: exception raised in transaction\n")

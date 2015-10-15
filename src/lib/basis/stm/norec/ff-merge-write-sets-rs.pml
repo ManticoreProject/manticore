@@ -12,6 +12,7 @@ structure FFReadSetMergeWriteSets =
 struct
 
 #define NEXT 3
+#define READ_VAL 2
 #define NEXTK 6
 #define KPOINTER 5
 #define READ_VAL 2
@@ -162,6 +163,7 @@ struct
                             do apply revalidate(#HEAD(readSet), NilItem, 0)
                             apply getLoop()
                     let current : any = apply getLoop()
+                    do #READ_VAL(casted) := current
 #ifdef EVENT_LOGGING
                     let freq : int = FLS.@get-counter2()
                     let skipped : int = I32Mul(count, freq)

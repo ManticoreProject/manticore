@@ -27,26 +27,31 @@ struct
 		;
 
 		define @validate(readSet : item, stamp : ![stamp, int] / exh:exh) : () = 
-			fun validateLoop(rs : item) : () = 
+			fun validateLoopNoRec(rs : item, i : int) : () = 
 				case rs 
 				   of NilItem => 
 				   		let currentTime : stamp = VClock.@get(/exh)
 				   		if I64Eq(currentTime, #0(stamp))
 				   		then return()
 				   		else 
-				   			let currentTime : stamp = @get-stamp(/exh)
+				   			let currentTime : stamp = @get-stamp(/exh) 
 				   			do #0(stamp) := currentTime
-				   			apply validateLoop(readSet)
+				   			apply validateLoopNoRec(readSet, I32Add(i, 1))
 					| Read(tv:tvar, x:any, next:item) => 
 						if Equal(#0(tv), x)
-						then apply validateLoop(next)
+						then apply validateLoopNoRec(next, I32Add(i, 1))
 						else
+#ifdef EVENT_LOGGING
+							do if(eager)
+								then Logging.@log-eager-full-abort() 
+								else Logging.@log-commit-full-abort()
+#endif
 							let abortK : cont() = FLS.@get-key(ABORT_KEY / exh)
 							throw abortK()
 				end
 			let currentTime : stamp = @get-stamp(/exh)
 			do #0(stamp) := currentTime
-			apply validateLoop(readSet)
+			apply validateLoopNoRec(readSet, 0)
 		;
 
 		define @getFullAbortNoRec(tv : tvar / exh:exh) : any = 
@@ -74,9 +79,10 @@ struct
                of Option.SOME(v:any) => return(v)
                 | Option.NONE =>
                 	fun getLoop() : any = 
+                		let x : any = #0(tv)
                 		let t : long = VClock.@get(/exh)
                 		if I64Eq(t, #0(myStamp))
-                		then return(#0(tv))
+                		then return(x)
                 		else
                 			do @validate(readSet, myStamp / exh)
                 			apply getLoop()

@@ -13,6 +13,7 @@ struct
 
 #define NEXT 3
 #define NEXTK 6
+#define READ_VAL 2
 #define KPOINTER 5
 #define HEAD 0
 #define TAIL 1
@@ -137,6 +138,7 @@ struct
                             do apply revalidate(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0)
                             apply getLoop()
                     let current : any = apply getLoop()
+                    do #READ_VAL(casted) := current (*this came out of a tref, so it must have been promoted*)
 #ifdef EVENT_LOGGING
                     let freq : int = FLS.@get-counter2()
                     let skipped : int = I32Mul(count, freq)

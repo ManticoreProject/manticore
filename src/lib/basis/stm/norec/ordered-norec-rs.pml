@@ -15,6 +15,7 @@ struct
 #define NEXTK 6
 #define KPOINTER 5
 #define HEAD 0
+#define READ_VAL 2
 #define TAIL 1
 #define LASTK 2
 #define NUMK 3
@@ -89,9 +90,10 @@ struct
                             do apply revalidate(#HEAD(readSet), NilItem, 0)
                             apply getLoop()
                     let current : any = apply getLoop()
+                    do #READ_VAL(casted) := current
                     let newRS : read_set = alloc(#HEAD(readSet), checkpoint, checkpoint, count)
-                    do FLS.@set-key(READ_SET, newRS / exh)
-                    do FLS.@set-key(WRITE_SET, ws / exh)
+
+                    do FLS.@set-key2(WRITE_SET, ws, READ_SET, newRS / exh)
                     let captureFreq : int = FLS.@get-counter2()
                     do FLS.@set-counter(captureFreq)
 #ifdef EVENT_LOGGING
