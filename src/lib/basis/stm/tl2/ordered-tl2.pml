@@ -344,9 +344,11 @@ structure RS = TL2OrderedRS
                      | RS.NilWrite => return()
                 end
             let newStamp : stamp = VClock.@inc(2:long / exh)        
-            do apply validate(#LONG_PATH(readSet),RS.NilRead,newStamp,0)  
-            do apply update(locks, newStamp)
-            return()
+            if I64Eq(newStamp, I64Add(#0(startStamp), 2:long))
+            then apply update(locks, newStamp)
+            else 
+                do apply validate(#LONG_PATH(readSet),RS.NilRead,newStamp,0)  
+                apply update(locks, newStamp)
         ;
         
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 

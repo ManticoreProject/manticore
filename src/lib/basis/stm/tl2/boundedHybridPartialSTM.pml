@@ -33,10 +33,10 @@ struct
         typedef stamp = VClock.stamp;
         typedef tvar = FullAbortSTM.tvar;
 	
-        typedef with_k =  ![enum(5),               (*0: tag*)
-                            tvar,                  (*1: tvar operated on*)
+        typedef with_k =  ![enum(5),                (*0: tag*)
+                            tvar,                   (*1: tvar operated on*)
                             ritem ,                 (*2: next on long path*)
-                            any (*cont(any)*),     (*3: continuation*)
+                            any (*cont(any)*),      (*3: continuation*)
                             witem,                  (*4: write set*)
                             ritem];                 (*5: next read item with a continuation*)
 
@@ -347,10 +347,12 @@ struct
                      | NilWrite => return()
                 end
             let locks : witem = apply acquire(writeSet, NilWrite)
-            let newStamp : stamp = VClock.@inc(2:long / exh)        
-            do apply validate(#LONG_PATH(readSet),locks,newStamp,NilRead,0)  
-            do apply update(locks, newStamp)
-            return()
+            let newStamp : stamp = VClock.@inc(2:long / exh)      
+            if I64Eq(newStamp, I64Add(#0(startStamp), 2:long))
+            then apply update(locks, newStamp)
+            else  
+                do apply validate(#LONG_PATH(readSet),locks,newStamp,NilRead,0)  
+                apply update(locks, newStamp)
         ;
         
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
