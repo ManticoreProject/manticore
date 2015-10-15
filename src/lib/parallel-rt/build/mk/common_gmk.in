@@ -75,7 +75,8 @@ MISC_SRCS =	main.c \
 		options.c \
 		image.c \
                 image-sock.c \
-    stm.c \
+    norec.c \
+    tl2.c \
 		eventlog.c
 
 CPU_SRCS =	cpuid.c \

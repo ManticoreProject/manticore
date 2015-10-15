@@ -42,10 +42,11 @@ struct read_set{
     struct read_log * head;
     struct read_log * tail;
     struct read_log * lastK;
-    unsigned long numK;
+    int numK;
 };
 
-Value_t STM_Validate(unsigned long * myStamp, volatile unsigned long * clock, struct read_log * head, VProc_t * vp){
+Value_t STM_Validate(unsigned long * myStamp, volatile unsigned long * clock, struct read_set * readSet, VProc_t * vp){
+    struct read_log * head = readSet->head;
     RETRY:
     while(true){
         unsigned long time = * clock;
@@ -62,13 +63,16 @@ Value_t STM_Validate(unsigned long * myStamp, volatile unsigned long * clock, st
          */
         struct read_log * checkpoint = head;  
         struct read_log * rs = head->next; //first real entry
+        int i = 0;
         while(rs != (struct read_log * )M_NIL){
             if(rs->tag == (Value_t) 9){
+                i++;
                 rs = rs->next;
                 continue;
             }
             if(rs->tag == (Value_t) 5){
                 if(rs->tvar->contents == rs->readContents){
+                    i++;
                     rs = rs->next;
                     continue;
                 }else{
@@ -83,6 +87,7 @@ Value_t STM_Validate(unsigned long * myStamp, volatile unsigned long * clock, st
                         checkpoint = rs;
                         kCount++;
                     }
+                    i++;
                     rs = rs->next;
                     continue;
                 }else if(rs->k != M_UNIT){
@@ -225,7 +230,6 @@ Value_t ffValidate(struct read_set * readSet, struct read_log * oldRS, unsigned 
         oldRS = oldRS->next;
     }
     return ffFinish(readSet, checkpoint, kCount, vp, i);
-    //return AllocNonUniform(vp, 4, PTR(readSet->head), PTR(checkpoint), PTR(checkpoint), INT(kCount)); 
 }
 
 bool local_valid(struct write_set * ws, struct tvar * tv, Value_t val){
@@ -317,7 +321,8 @@ ws_res classify_writesets(struct write_set * oldWS, struct write_set * currentWS
     }
 }
 
-Value_t fastForward(struct read_set * readSet, struct read_set * ffInfo, struct write_set * writeSet, Word_t* tv, Word_t* retK, Word_t* myStamp, volatile unsigned long * clock, VProc_t * vp, struct tvar * dummy){
+Value_t fastForward(struct read_set * readSet, struct read_set * ffInfo, struct write_set * writeSet, Word_t* tv,
+		    Word_t* retK, Word_t* myStamp, volatile unsigned long * clock, VProc_t * vp, struct tvar * dummy){
     struct read_log * shortPath = ffInfo->lastK;
     bool polyUnEq = false;
     while((Value_t)shortPath != M_NIL){
@@ -345,8 +350,6 @@ Value_t fastForward(struct read_set * readSet, struct read_set * ffInfo, struct 
                     if(res == NEQ){
                         return M_UNIT;
                     }
-
-                    //vp->counter[2]++;
 
                     //hook read sets together
                     decCounts(ffInfo->lastK);

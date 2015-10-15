@@ -90,10 +90,7 @@ Value_t ** M_AddRSElts(VProc_t * vp, Value_t ** rootPtr){
     Addr_t nurseryBase = vp->nurseryBase;
     Addr_t nurserySize= vp->allocPtr - nurseryBase;
     RS_t ** trailer = &(vp->rememberSet);
-    int id = 0;
 
-    // printf("%d: processing remember set\n", vp->id);
-    
     while (rememberSet != (RS_t *)M_NIL) {
         Value_t * source = rememberSet->source;
 
@@ -101,7 +98,6 @@ Value_t ** M_AddRSElts(VProc_t * vp, Value_t ** rootPtr){
         RS_t * ptr = rememberSet->next;
         while((Value_t)ptr != M_NIL){
             if(ptr->source == source && ptr->offset == rememberSet->offset){
-		//	printf("%d: dropping %p from remember set (duplicate)\n", vp->id, ptr->source);
                 *prev = ptr->next;
                 ptr = ptr->next;
             }else{
@@ -115,18 +111,15 @@ Value_t ** M_AddRSElts(VProc_t * vp, Value_t ** rootPtr){
         int sourceGen = toGenNum(source, heapBase, oldSzB, nurseryBase, nurserySize);
         int destGen = toGenNum(dest, heapBase, oldSzB, nurseryBase, nurserySize);
         if(sourceGen > destGen){  //pointer from old gen to new gen
-            id++;
             *rootPtr++ = rememberSet->source + rememberSet->offset;
             trailer = &(rememberSet->next);
             rememberSet = rememberSet->next;
         }else{
-	    //printf("%d: Dropping %p from remember set (benign)\n", vp->id, rememberSet->source);
             *trailer = rememberSet->next;
             rememberSet = rememberSet->next;
         }
     }
 
-    numRememberSetElements = id;
     return rootPtr;
 }
 
