@@ -19,6 +19,8 @@ structure RS = TL2OrderedRS
     _primcode(
     
         extern void M_Print_Long2(void*, long, long);
+        extern void* fastForwardTL2(void*,void*,void*,void*,void*,void*,void*,void*);
+
 
         typedef stamp = VClock.stamp;
         typedef tvar = FullAbortSTM.tvar;
@@ -62,11 +64,16 @@ structure RS = TL2OrderedRS
          * tref on the short path UP TO (but not includeing) the sentinel value.  This 
          * will also then split the read set at this point, and store the portion coming 
          * AFTER the sentinel in the FF_KEY position of FLS.
+         * Note that it is possible that the sentinel does not exist on the short path.
+         * This case arises when we perform a full abort with the dummy checkpoint we
+         * put at the head of every read set
          *)
         define inline @incCounts(readSet : read_set, sentinel : RS.ritem, ts : stamp, newReadSet : read_set, writeSet : RS.witem / exh : exh) : () =
             fun incLoop(shortPath : RS.ritem, i:int) : ff_read_set = 
                 case shortPath 
-                   of RS.NilRead => @mk-exn(@"incCounts: shortPath was a NilRead\n" / exh)
+                   of RS.NilRead => 
+                        let ffRS : ff_read_set = alloc(ts, i, #SHORT_PATH(readSet))
+                        return(ffRS)
                     | RS.WithK(tv:tvar, next:RS.ritem, k:cont(any), ws:RS.witem, nextK:RS.ritem) => 
                         let old : long = I64FetchAndAdd(&REF_COUNT(tv), 1:long)
                         if Equal(nextK, sentinel)
@@ -214,46 +221,24 @@ structure RS = TL2OrderedRS
             let ffInfo : ff_read_set = FLS.@get-key(FF_KEY / exh)
             if Equal(ffInfo, enum(0))
             then return()
-            else (*we should only allocate the checkRS closure if we are going to actually use it*)
-                fun checkRS(rs:RS.ritem, i:int) : () = 
-                    case rs 
-                       of RS.NilRead =>  return()
-                        | RS.WithK(tv':tvar,next:RS.ritem,k:cont(any),ws:RS.witem,nextK:RS.ritem) => 
-                            if Equal(tv, tv')
-                            then (*tvars are equal*)
-                                let res : int = ccall M_PolyEq(k, retK)
-                                if I32Eq(res, 1)
-                                then (*continuations are equal*)
-                                    if Equal(ws, writeSet) 
-                                    then (*continuations, write sets, and tvars are equal, fast forward...*)
-                                        do @decCounts(ffInfo / exh)  (*decrement counts for everything on short path of ffInfo*)
-                                        do FLS.@null-key(FF_KEY)  (*null out fast forward info*)
-                                        (*hook the two read sets together*)
-                                        let ffFirstK : with_k = (with_k) rs
-                                        do #R_ENTRY_NEXTK(ffFirstK) := #SHORT_PATH(readSet) 
-                                        let currentLast : with_k = (with_k) #TAIL(readSet)
-                                        do #R_ENTRY_NEXT(currentLast) := RS.Stamp(#FF_RS_STAMP(ffInfo), rs)
-                                        (*add to remember set*)
-                                        let vp : vproc = host_vproc
-                                        let rememberSet : any = vpload(REMEMBER_SET, vp)
-                                        let newRemSet : [with_k, int, long, [with_k, int, long, any]] = 
-                                            alloc(currentLast, R_ENTRY_NEXT, #0(myStamp), alloc(ffFirstK, R_ENTRY_NEXTK, #3(myStamp), rememberSet))
-                                        do vpstore(REMEMBER_SET, vp, newRemSet)
-                                        let lastK : RS.ritem = #FF_RS_END(ffInfo)
-                                        let newRS : read_set = alloc(I32Add(#KCOUNT(readSet), #FF_RS_KCOUNT(ffInfo)), #LONG_PATH(readSet), lastK, lastK)
-                                        let lastK : with_k = (with_k) lastK
-                                        let tv : tvar = #R_ENTRY_TVAR(lastK)
-                                        let current : any = @read-tvar(tv, myStamp, newRS / exh)
-                                        let captureFreq : int = FLS.@get-counter2()
-                                        do FLS.@set-counter(captureFreq)
-                                        let abortK : cont(any) = #R_ENTRY_K(lastK)
-                                        throw abortK(current)
-                                    else apply checkRS(nextK, I32Add(i, 1))
-                                else apply checkRS(nextK, I32Add(i, 1))
-                            else apply checkRS(nextK, I32Add(i, 1))
-                    end
-                INC_FF(1:long)
-                apply checkRS(#FF_RS_END(ffInfo), 1)
+            else 
+                let vp : vproc = host_vproc
+                let clock : ![long] = VClock.@get-boxed(/exh)
+                INC_FF(1:long) 
+                         (*[num continuations, head, tail, value to be applied]*)
+                let res : ![int, RS.ritem, RS.ritem, any] = ccall fastForwardTL2(readSet, ffInfo, writeSet, tv, retK, myStamp, clock, vp)
+                if Equal(res, UNIT)
+                then return()
+                else 
+                    BUMP_KCOUNT
+                    let current : any = #TAIL(res)
+                    do #TAIL(res) := (any)#SHORT_PATH(res)
+                    do FLS.@null-key(FF_KEY)
+                    let chkpnt : with_k = (with_k)#TAIL(res)
+                    let ws : RS.witem = #R_ENTRY_WS(chkpnt)
+                    let k : cont(any) = #R_ENTRY_K(chkpnt)
+                    do FLS.@set-key2(WRITE_SET, ws, READ_SET, res / exh)
+                    throw k(current)
         ;
 
         define @get(tv:tvar / exh:exh) : any = 
@@ -275,6 +260,9 @@ structure RS = TL2OrderedRS
                      | RS.NilWrite => return (Option.NONE)
                  end
             cont retK(x:any) = return(x)
+            do  if I64Gt(#REF_COUNT(tv), 0:long)
+                then @fast-forward(readSet, writeSet, tv, retK, myStamp / exh)
+                else return()
             let localRes : Option.option = apply chkLog(writeSet)
             case localRes
                of Option.SOME(v:any) => return(v)
@@ -290,26 +278,27 @@ structure RS = TL2OrderedRS
                             do FLS.@set-counter(freq)
                             return(current)
                         else (*we just went over the limit, filter...*)
-                            fun dropKs(l:RS.ritem, n:int) : int =   (*drop every other continuation*)
+                            fun dropKsFFTL2(l:RS.ritem, n:int) : int =   (*drop every other continuation*)
                                 case l
                                    of RS.NilRead => return(n)
                                     | RS.WithK(_:tvar,_:RS.ritem,_:cont(any),_:RS.witem,next:RS.ritem) =>
                                         case next
                                            of RS.NilRead => return(n)
                                             | RS.WithK(_:tvar,_:RS.ritem,_:cont(any),_:RS.witem,nextNext:RS.ritem) =>
-                                            (* NOTE: if compiled with -debug, this will generate warnings
-                                             * that we are updating a bogus local pointer, however, given the
-                                             * nature of the data structure, we do preserve the heap invariants*)
+                                            let vp : vproc = host_vproc
+                                            let rs : any = vpload(REMEMBER_SET, vp)
+                                            let newRemSet : [RS.ritem, int, long, any] = alloc(l, R_ENTRY_NEXTK, #3(myStamp), rs)
+                                            do vpstore(REMEMBER_SET, vp, newRemSet)
                                             let withoutKTag : enum(5) = @get-tag(UNIT/exh)
                                             let l : with_k = (with_k) l
                                             let next : with_k = (with_k) next
                                             do #R_ENTRY_K(next) := enum(0):any
                                             do #R_ENTRY_TAG(next) := withoutKTag
                                             do #R_ENTRY_NEXTK(l) := nextNext
-                                            apply dropKs(nextNext, I32Sub(n, 1))
+                                            apply dropKsFFTL2(nextNext, I32Sub(n, 1))
                                         end
                                 end
-                            let kCount : int = apply dropKs(#SHORT_PATH(newRS), #KCOUNT(newRS))
+                            let kCount : int = apply dropKsFFTL2(#SHORT_PATH(newRS), #KCOUNT(newRS))
                             do #KCOUNT(newRS) := kCount
                             let freq : int = FLS.@get-counter2()
                             let newFreq : int = I32Mul(freq, 2)
@@ -418,7 +407,6 @@ structure RS = TL2OrderedRS
                             if I64Eq(owner, I64Add(myStamp, 1:long))
                             then apply validate(next, rs, newStamp, I32Add(kCount, 1))
                             else
-                                
                                 do apply release(locks)
                                 @finish-validate(readSet, rs, startStamp, I32Add(kCount, 1), newStamp / exh)
                     | RS.WithoutK(tv:tvar, next:RS.ritem) => 
@@ -450,7 +438,7 @@ structure RS = TL2OrderedRS
                      | RS.NilWrite => return()
                 end
             let newStamp : stamp = VClock.@inc(2:long / exh)        
-            do apply validate(#LONG_PATH(readSet),RS.NilRead,newStamp,0)  
+            do apply validate(#LONG_PATH(readSet),RS.NilRead,newStamp,0)
             do apply update(locks, newStamp)
             let ffRS : ff_read_set = FLS.@get-key(FF_KEY / exh)
             @decCounts(ffRS / exh)

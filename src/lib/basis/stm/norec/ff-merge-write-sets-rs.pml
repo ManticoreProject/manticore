@@ -134,8 +134,7 @@ struct
 
         define @abortABCD(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, 
                           revalidate : fun(item, item, int / -> ), eager : bool/ exh:exh) : () = 
-            let vp : vproc = host_vproc
-            let id : int = VProc.@vproc-id(vp)
+            do ccall M_Print("Aborting\n")
             case checkpoint 
                of NilItem => (*no checkpoint available*)
                     let oldFFInfo : read_set = FLS.@get-key(FF_KEY / exh)

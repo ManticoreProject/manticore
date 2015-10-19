@@ -148,7 +148,7 @@ struct
                     let abortK : cont() = FLS.@get-key(ABORT_KEY / exh) 
                     throw abortK()
                 | NoRecOrderedReadSet.WithK(tv:tvar, _:any, next:item, ws:item, abortK:cont(any),_:item) => 
-		    do Logging.@log-commit-partial-abort(0)
+		            do Logging.@log-commit-partial-abort(0)
                     let casted : ![any, any, any, item] = (![any, any, any, item]) checkpoint
                     do #NEXT(casted) := NoRecOrderedReadSet.NilItem  (*split valid and invalid portions*)
                     fun getLoop() : any = 

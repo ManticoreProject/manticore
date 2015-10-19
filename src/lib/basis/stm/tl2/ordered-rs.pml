@@ -115,7 +115,20 @@ struct
                 return(newRS)
 	    ;
 
+        define @print-headers(x:unit / exh:exh) : unit = 
+            let x : ritem = WithK(enum(0):any,enum(0):any,enum(0):any,enum(0):any,enum(0):any)
+            let y : ritem = WithoutK(enum(0):any,enum(0):any)
+            let x : [any] = ([any]) x
+            let y : [any] = ([any]) y
+            do ccall M_Print_Long("WithK tag is %lu\n", #0(x))
+            do ccall M_Print_Long("WithoutK tag is %lu\n", #0(y))
+            return(UNIT)
+        ;
+
     )
+
+    val printHeaders : unit -> unit = _prim(@print-headers)
+    val _ = printHeaders()
 
 
 
