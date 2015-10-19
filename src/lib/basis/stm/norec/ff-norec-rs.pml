@@ -12,6 +12,7 @@ structure FFReadSet =
 struct
 
 #define NEXT 3
+#define READ_VAL 2
 #define NEXTK 6
 #define KPOINTER 5
 #define HEAD 0
@@ -90,6 +91,7 @@ struct
                             do apply revalidate(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0, 0)
                             apply getLoop()
                     let current : any = apply getLoop()
+                    do #READ_VAL(casted) := current
                     let newRS : read_set = alloc(#HEAD(readSet), checkpoint, checkpoint, count)
                     do FLS.@set-key(READ_SET, newRS / exh)
                     do FLS.@set-key(WRITE_SET, ws / exh)
@@ -162,6 +164,7 @@ struct
                             do apply revalidate(#HEAD(readSet), NoRecOrderedReadSet.NilItem, 0, 0)
                             apply getLoop()
                     let current : any = apply getLoop()
+                    do #READ_VAL(casted) := current
                     let newRS : read_set = alloc(#HEAD(readSet), checkpoint, checkpoint, count)
                     do FLS.@set-key(READ_SET, newRS / exh)
                     do FLS.@set-key(WRITE_SET, ws / exh)

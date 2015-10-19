@@ -134,7 +134,6 @@ struct
 
         define @abortABCD(readSet : read_set, checkpoint : item, startStamp : ![stamp, int, int, long], count:int, 
                           revalidate : fun(item, item, int / -> ), eager : bool/ exh:exh) : () = 
-            do ccall M_Print("Aborting\n")
             case checkpoint 
                of NilItem => (*no checkpoint available*)
                     let oldFFInfo : read_set = FLS.@get-key(FF_KEY / exh)
@@ -200,6 +199,7 @@ struct
                 let captureFreq : int = FLS.@get-counter2()
                 do FLS.@set-counter(captureFreq)
                 let abortK : cont(any) = (cont(any)) #KPOINTER(casted)
+                BUMP_PABORT
                 throw abortK(#READ_VAL(casted))
         ;
 
