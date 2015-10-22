@@ -85,7 +85,7 @@ struct
                 end
             let lastK : item = #LASTK(readSet)
             if Equal(lastK, sentinel)
-            then FLS.@set-key(FF_KEY, enum(0) / exh)  (*no checkpoints after violation*)
+            then FLS.@null-key(FF_KEY)  (*no checkpoints after violation*)
             else 
                 do apply maskLoop(lastK)   (*increment reference counts for checkpoints after violation*)
                 FLS.@set-key(FF_KEY, readSet / exh)
@@ -331,7 +331,9 @@ struct
                     | NoRecOrderedReadSet.NilItem => return (Option.NONE)
                 end
             cont retK(x:any) = return(x)
-            do  if I64Gt(#1(tv), 0:long)
+            let rawId : long = #3(myStamp)
+            let masked : long = I64AndB(#1(tv), rawId)
+            do  if I64Eq(masked, rawId)
                 then @fast-forward(readSet, writeSet, tv, retK, myStamp / exh)
                 else return()
             let localRes : Option.option = apply chkLog(writeSet)

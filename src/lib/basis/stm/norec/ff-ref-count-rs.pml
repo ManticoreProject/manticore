@@ -101,7 +101,7 @@ struct
                 end
             let lastK : item = #LASTK(readSet)
             if Equal(lastK, sentinel)
-            then do FLS.@set-key(FF_KEY, enum(0) / exh) return()  (*no checkpoints after violation*)
+            then FLS.@null-key(FF_KEY) (*no checkpoints after violation*)
             else 
                 do apply incLoop(lastK, 1)   (*increment reference counts for checkpoints after violation*)
                 FLS.@set-key(FF_KEY, readSet / exh)
