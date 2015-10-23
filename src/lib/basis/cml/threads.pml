@@ -127,6 +127,9 @@ structure Threads (*: sig
                             | _ => do ccall M_Print("Thread exiting because of uncaught exception\n")
                                    return(UNIT)
                        end                 
+                    let tid : ![long, int, int, long] = FLS.@get-key(STAMP_KEY / threadExh)
+                    let id : long = I64LSh(1:long, I32ToI64(#0(vp)))
+                    do #3(tid) := id
                     let _ : unit = apply f(UNIT / threadExh)
                     SchedulerAction.@stop()
                 let fls : FLS.fls = FLS.@new-pinned(#0(vp))
