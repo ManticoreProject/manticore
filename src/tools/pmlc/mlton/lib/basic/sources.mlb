@@ -241,7 +241,6 @@ in
       structure LargeWord
       structure Layout
       structure List
-      structure List
       structure MLton
       (* structure MergeSortList *)
       (* structure MergeSortVector *)
@@ -264,7 +263,7 @@ in
       (* structure RealVector *)
       structure Real32
       structure Real64
-      structure Ref
+      structure MLtonRef
       structure Regexp
       structure Relation
       structure Result

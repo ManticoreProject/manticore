@@ -16,14 +16,15 @@ structure MLtonVector
 structure MLtonOption
 structure MLtonIntInf
 structure MLtonPlatform
+structure MLtonRef
 structure MLtonTime
 structure Memoize
 
 signature MLTON_ARRAY
+signature MLTON_INTEGER
 signature MLTON_LIST
 signature MLTON_OPTION
 signature MLTON_VECTOR
-signature MLTON_INTEGER
 
 signature ENV
 signature ERROR
@@ -83,7 +84,6 @@ structure Queue (* conflicts with SMLNJ library *)
 structure QuickSort
 structure Random (* conflicts with the SMLNJ library *)
 structure Reader
-structure Ref
 structure Regexp
 structure Relation
 structure ResizableArray

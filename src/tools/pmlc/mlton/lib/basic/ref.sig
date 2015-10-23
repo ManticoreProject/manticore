@@ -5,7 +5,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-signature REF =
+signature MLTON_REF =
    sig
       type 'a t
 

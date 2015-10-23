@@ -5,7 +5,7 @@
  * See the file MLton-LICENSE for details.
  *)
 
-structure Ref: REF =
+structure MLtonRef: MLTON_REF =
 struct
 
 type 'a t = 'a ref
@@ -34,7 +34,7 @@ fun getSet layout =
    let val r = ref NONE
       fun get () =
          case !r of
-            NONE => Error.bug "Ref.getSet.get: not available"
+            NONE => Error.bug "MLtonRef.getSet.get: not available"
           | SOME v => v
       fun set v = r := SOME v
       fun clear () = r := NONE

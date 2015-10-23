@@ -15,7 +15,7 @@ signature UNARY_TYCON =
    sig
       include UNARY_TYCON_STRUCTS
 
-      datatype t = Ref | Array | Vector
+      datatype t = MLtonRef | Array | Vector
 
       val toTycon: t -> Tycon.t
       val toString: t -> string

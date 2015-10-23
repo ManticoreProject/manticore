@@ -308,7 +308,7 @@ val lexAndParseString =
                    else errUnknownExt ()
           end)
       and wrapLexAndParse (state, lexAndParse, arg) =
-         Ref.fluidLet
+         MLtonRef.fluidLet
          (lexAndParseProgOrMLBRef, lexAndParseProgOrMLB state, fn () =>
           lexAndParse arg)
       val dec = wrapLexAndParse (state, lexAndParseString, s)

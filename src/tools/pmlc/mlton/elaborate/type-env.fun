@@ -400,7 +400,7 @@ val {get = tyvarTime: Tyvar.t -> Time.t ref, ...} =
    Property.get (Tyvar.plist, Property.initFun (fn _ => ref (Time.now ())))
 
 val tyvarTime =
-   Trace.trace ("TypeEnv.tyvarTime", Tyvar.layout, Ref.layout Time.layout) tyvarTime
+   Trace.trace ("TypeEnv.tyvarTime", Tyvar.layout, MLtonRef.layout Time.layout) tyvarTime
 
 local
    type z = Layout.t * ({isChar: bool} * Tycon.BindingStrength.t)

@@ -1115,7 +1115,7 @@ structure Values =
 
       fun new (): ('a, 'b) t = T (ref [])
 
-      fun ! (T r) = Ref.! r
+      fun ! (T r) = MLtonRef.! r
 
       fun pop (T r) = List.pop r
    end

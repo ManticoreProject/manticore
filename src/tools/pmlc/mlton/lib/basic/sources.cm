@@ -15,14 +15,15 @@ structure MLtonList
 structure MLtonVector
 structure MLtonOption
 structure MLtonIntInf
+structure MLtonRef
 structure MLtonTime
 structure Memoize
 
 signature MLTON_ARRAY
+signature MLTON_INTEGER
 signature MLTON_LIST
 signature MLTON_OPTION
 signature MLTON_VECTOR
-signature MLTON_INTEGER
 
 signature BOUNDED_ORDER
 signature ENV
@@ -74,7 +75,6 @@ structure Queue
 structure QuickSort
 structure Random
 structure Reader
-structure Ref
 structure Regexp
 structure Relation
 structure ResizableArray

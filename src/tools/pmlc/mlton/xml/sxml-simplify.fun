@@ -25,7 +25,7 @@ structure Polyvariance = Polyvariance (open S)
 structure CPSTransform = CPSTransform (open S)
 
 fun polyvariance (hofo, rounds, small, product) p =
-   Ref.fluidLet
+   MLtonRef.fluidLet
    (Control.polyvariance,
     SOME {hofo = hofo, rounds = rounds, small = small, product = product},
     fn () => Polyvariance.duplicate p)

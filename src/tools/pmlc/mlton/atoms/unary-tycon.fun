@@ -11,15 +11,15 @@ struct
 
 open S
 
-datatype t = Ref | Array | Vector
+datatype t = MLtonRef | Array | Vector
 
 val toTycon =
-   fn Ref => Tycon.reff
+   fn MLtonRef => Tycon.reff
     | Array => Tycon.array
     | Vector => Tycon.vector
 
 val toString =
-   fn Ref => "Ref"
+   fn MLtonRef => "MLtonRef"
     | Array => "Array"
     | Vector => "Vector"
 

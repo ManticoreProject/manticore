@@ -29,13 +29,13 @@ fun parent (T{info = ref (Parent p), ...}) = p
   | parent _ = Error.bug "DisjointMax.parent"
 fun setParent(T{info, ...}, p) = info := Parent p
 fun labelRef (T{label, ...}) = label
-val (label, setLabel) = Ref.getAndSet labelRef
+val (label, setLabel) = MLtonRef.getAndSet labelRef
 fun sizeRef (T{info = ref(Root{size, ...}), ...}) = size
   | sizeRef _ = Error.bug "DisjointMax.sizeRef"
-val (size, setSize) = Ref.getAndSet sizeRef
+val (size, setSize) = MLtonRef.getAndSet sizeRef
 fun childRef (T{info = ref(Root{child, ...}), ...}) = child
   | childRef _ = Error.bug "DisjointMax.childRef"
-val (childOption, setChildOption) = Ref.getAndSet childRef
+val (childOption, setChildOption) = MLtonRef.getAndSet childRef
 val child = Option.projector childOption
 fun setChild(r, c) = setChildOption(r, SOME c)
 

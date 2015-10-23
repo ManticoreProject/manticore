@@ -14,7 +14,7 @@ fun new (): t = T (ref [])
 
 fun length (T r) = List.length (!r)
 
-val equals = fn (T r, T r') => Ref.equals (r, r')
+val equals = fn (T r, T r') => MLtonRef.equals (r, r')
 
 fun clear (T hs) = hs := []
 

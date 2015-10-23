@@ -288,7 +288,7 @@ fun saveToFile ({suffix: string},
    let
       fun doit f =
          trace (Pass, "display")
-         Ref.fluidLet
+         MLtonRef.fluidLet
          (inputFile, concat [!inputFile, ".", suffix], fn () =>
           File.withOut (!inputFile, fn out =>
                         f (fn l => (Layout.outputl (l, out)))))

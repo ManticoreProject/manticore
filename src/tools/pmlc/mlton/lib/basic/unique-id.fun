@@ -11,7 +11,7 @@ functor UniqueId():> UNIQUE_ID =
 
       fun new(): t = ref()
 
-      val equals = Ref.equals
+      val equals = MLtonRef.equals
 
       fun layout _ = Layout.empty
 

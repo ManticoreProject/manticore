@@ -11,19 +11,19 @@ struct
 datatype 'a t = T of 'a option ref
 
 fun !(T r) =
-   case Ref.! r of
+   case MLtonRef.! r of
       NONE => Error.bug "Pointer.!"
     | SOME v => v
 
-fun (T r) := v = Ref.:=(r, SOME v)
+fun (T r) := v = MLtonRef.:=(r, SOME v)
 
-fun clear(T r) = Ref.:=(r, NONE)
+fun clear(T r) = MLtonRef.:=(r, NONE)
 
-fun copy(T r, T r') = Ref.:=(r, Ref.! r')
+fun copy(T r, T r') = MLtonRef.:=(r, MLtonRef.! r')
 
-fun eq(T r, T r') = Ref.equals(r, r')
+fun eq(T r, T r') = MLtonRef.equals(r, r')
 
-fun follow(T r) = Ref.! r
+fun follow(T r) = MLtonRef.! r
 
 fun equals(p, p', equals) =
    case (follow p, follow p') of
@@ -39,6 +39,6 @@ fun new v = make(SOME v)
 
 fun null() = make NONE
 
-fun swap(T p, T p') = Ref.swap(p, p')
+fun swap(T p, T p') = MLtonRef.swap(p, p')
 
 end

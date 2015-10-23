@@ -158,7 +158,7 @@ fun reverse (ll as T {first, last}) =
                          | SOME n'' => loop (n', n'')
                      end
                   val _ = loop (n, n')
-                  val _ = Ref.swap (first, last)
+                  val _ = MLtonRef.swap (first, last)
                in
                   ()
                end
