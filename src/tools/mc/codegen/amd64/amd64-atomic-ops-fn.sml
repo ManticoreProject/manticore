@@ -17,7 +17,8 @@ functor AMD64AtomicOpsFn (
     structure T = MTy.T
     structure IX = AMD64InstrExt
     structure Cells = AMD64Cells
-
+    structure MIX = AMD64Extension (*manticore extension*)
+			  
     fun copyDef (ty, dst, T.REG(_, src)) = T.COPY(ty, [dst], [src])
       | copyDef (ty, dst, rexp) = T.MV(ty, dst, rexp)
 
@@ -29,7 +30,7 @@ functor AMD64AtomicOpsFn (
 		 of 32 => IX.LOCK_XCHGL(T.REG(32, newVal), addr)
 		  | 64 => IX.LOCK_XCHGQ(T.REG(64, newVal), addr)
 		(* end case *))
-	  val stms = [T.EXT xchg, T.COPY(ty, [oldVal], [newVal]) ]
+	  val stms = [T.EXT (MIX.EXT xchg), T.COPY(ty, [oldVal], [newVal]) ]
 	  in
 	    (oldVal', stms)
 	  end
@@ -45,7 +46,7 @@ functor AMD64AtomicOpsFn (
 		(* end case *))
 	  val stms = [
 		  copyDef (ty, Cells.rax, cmpVal),
-		  T.EXT cmpxchg,
+		  T.EXT (MIX.EXT cmpxchg),
 		  T.COPY(ty, [oldVal], [Cells.rax])
 		]
 	  in
@@ -61,7 +62,7 @@ functor AMD64AtomicOpsFn (
 		 of 32 => IX.LOCK_XCHGL(r, addr)
 		  | 64 => IX.LOCK_XCHGQ(r, addr)
 		(* end case *))
-	  val stms = [T.MV (ty, r', T.LI 1), T.EXT xchg]
+	  val stms = [T.MV (ty, r', T.LI 1), T.EXT (MIX.EXT xchg)]
 	  val cc = T.CMP(ty, T.EQ, r, T.LI 1)
 	  in
 	    (cc, stms)
@@ -75,27 +76,27 @@ functor AMD64AtomicOpsFn (
 		 of 32 => IX.LOCK_XADDL(r', addr)
 		  | 64 => IX.LOCK_XADDQ(r', addr)
 		(* end case *))
-         val stms = [copyDef (ty, r, x), T.EXT xadd]
+         val stms = [copyDef (ty, r, x), T.EXT (MIX.EXT xadd)]
          in
              (r', stms)
          end
 
   (* pause instruction to support efficient spin locks *)
-    fun genPause () = [T.EXT IX.PAUSE]
+    fun genPause () = [T.EXT (MIX.EXT IX.PAUSE)]
 
   (* sequentializing operation for all write-to-memory instructions
    * prior to this instruction
    *)
-    fun genFenceWrite () = [T.EXT IX.SFENCE]
+    fun genFenceWrite () = [T.EXT (MIX.EXT IX.SFENCE)]
 
   (* sequentializing operation for all load-from-memory instructions
    * prior to this instruction
    *)
-    fun genFenceRead () = [T.EXT IX.LFENCE]
+    fun genFenceRead () = [T.EXT (MIX.EXT IX.LFENCE)]
 
   (* sequentializing operation for all load-from-memory and write-to-memory
    * instructions prior to this instruction
    *)
-    fun genFenceRW () = [T.EXT IX.MFENCE]
+    fun genFenceRW () = [T.EXT (MIX.EXT IX.MFENCE)]
 
   end

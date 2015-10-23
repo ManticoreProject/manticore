@@ -55,7 +55,8 @@ functor AMD64MLTreeFn (structure AMD64Constant : CONSTANT) =
     structure AMD64MLTreeUtils : MLTREE_UTILS =
       struct 
 	structure T = AMD64MLTree
-	structure IX = AMD64InstrExt		 
+	structure MIX = AMD64Extension (*manticore extension*)
+	structure IX = AMD64InstrExt
 	structure U = MLTreeUtils (
 	    structure T = T
 	    fun hashSext _ _ = 0w0
@@ -66,38 +67,43 @@ functor AMD64MLTreeFn (structure AMD64Constant : CONSTANT) =
 	    fun eqRext _ _ = raise Fail "eqRext"
 	    fun eqFext _ _ = raise Fail "eqFext"
 	    fun eqCCext _ _ = raise Fail "eqCCext"
-	    fun showSext (prt : T.printer) ext = (case ext
-		   of (IX.PUSHQ rexp) => concat["PUSHL(", #rexp prt rexp, ")"]
-		    | (IX.POP rexp) => concat["POP(", #rexp prt rexp, ")"]
-		    | IX.LEAVE => "LEAVE"
-		    | (IX.RET rexp) => concat["RET(", #rexp prt rexp, ")"]
-		    | IX.LOCK_XADDL(addr, x) => concat[
-			  "LOCK_XADDL(", #rexp prt addr, ",", #rexp prt x, ")"
-			]
-		    | IX.LOCK_XADDQ(addr, x) => concat[
-			  "LOCK_XADDQ(", #rexp prt addr, ",", #rexp prt x, ")"
-			]
-		    | (IX.LOCK_CMPXCHGL(re1, re2)) => concat[
-			  "LOCK_CMPXCHGL(", #rexp prt re1, ",", #rexp prt re2, ")"
-			]
-		    | (IX.LOCK_CMPXCHGQ(re1, re2)) => concat[
-			  "LOCK_CMPXCHGQ(", #rexp prt re1, ",", #rexp prt re2, ")"
-			]
-		    | (IX.LOCK_XCHGL(re1, re2)) => concat[
-			  "LOCK_XCHGL(", #rexp prt re1, ",", #rexp prt re2, ")"
-			]
-		    | (IX.LOCK_XCHGQ(re1, re2)) => concat[
-			  "LOCK_XCHGQ(", #rexp prt re1, ",", #rexp prt re2, ")"
-			]
-		    | IX.PAUSE => "PAUSE"
-		    | IX.MFENCE => "MFENCE"
-		    | IX.LFENCE => "LFENCE"
-		    | IX.SFENCE => "SFENCE"
-		  (* end case *))
+	    fun showSext (prt : T.printer) ext =
+		case ext
+		 of MIX.EXT (IX.PUSHQ rexp) => concat["PUSHL(", #rexp prt rexp, ")"]
+		  | MIX.EXT (IX.POP rexp) => concat["POP(", #rexp prt rexp, ")"]
+		  | MIX.EXT IX.LEAVE => "LEAVE"
+		  | MIX.EXT (IX.RET rexp) => concat["RET(", #rexp prt rexp, ")"]
+		  | MIX.EXT(IX.LOCK_XADDL(addr, x)) =>
+		    concat["LOCK_XADDL(", #rexp prt addr, ",", #rexp prt x, ")"]
+		  | MIX.EXT(IX.LOCK_XADDQ(addr, x)) =>
+		    concat["LOCK_XADDQ(", #rexp prt addr, ",", #rexp prt x, ")"]
+		  | MIX.EXT (IX.LOCK_CMPXCHGL(re1, re2)) =>
+		    concat["LOCK_CMPXCHGL(", #rexp prt re1, ",", #rexp prt re2, ")"]
+		  | MIX.EXT (IX.LOCK_CMPXCHGQ(re1, re2)) =>
+		    concat["LOCK_CMPXCHGQ(", #rexp prt re1, ",", #rexp prt re2, ")"]
+		  | MIX.EXT (IX.LOCK_XCHGL(re1, re2)) =>
+		    concat["LOCK_XCHGL(", #rexp prt re1, ",", #rexp prt re2, ")"]
+		  | MIX.EXT (IX.LOCK_XCHGQ(re1, re2)) =>
+		    concat["LOCK_XCHGQ(", #rexp prt re1, ",", #rexp prt re2, ")"]
+		  | MIX.EXT IX.PAUSE => "PAUSE"
+		  | MIX.EXT IX.MFENCE => "MFENCE"
+		  | MIX.EXT IX.LFENCE => "LFENCE"
+		  | MIX.EXT IX.SFENCE => "SFENCE"
+		  | MIX.EXT IX.RDTSC => "RDTSC"
+		  | MIX.EXT IX.RDTSCP => "RDTSCP"
+		  | MIX.LOCK_ANDQ (addr, x) =>
+		    concat["LOCK_ANDQ(", #rexp prt addr, ",", #rexp prt x, ")"]
+		  | MIX.LOCK_ANDL(addr, x) =>
+		    concat["LOCK_ANDL(", #rexp prt addr, ",", #rexp prt x, ")"]
+		  | MIX.LOCK_ORQ (addr, x) =>
+		    concat["LOCK_ORQ(",  #rexp prt addr, ",", #rexp prt x, ")"]
+		  | MIX.LOCK_ORL(addr, x) =>
+		    concat["LOCK_ORL(",  #rexp prt addr, ",", #rexp prt x, ")"]
 	    fun showRext _ _ = raise Fail "showRext"
 	    fun showFext _ _ = raise Fail "showFext"
 	    fun showCCext _ _ = raise Fail "showCCext")    
 	open U  
       end (* AMD64MLTreeUtils *)
-    
-    end (* AMD64MLTree *)
+	  
+  end (* AMD64MLTree *)
+      
