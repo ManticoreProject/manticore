@@ -51,7 +51,7 @@ structure RS = TL2OrderedRS
             then
                 if I64Eq(v1, v2)
                 then 
-                    if I64Lt(v1, newStamp)
+                    if I64Lte(v1, newStamp)
                     then 
                         let newRS : read_set = alloc(kCount, head, chkpnt, chkpnt)
                         do #UNBOX(stamp) := newStamp
@@ -62,15 +62,15 @@ structure RS = TL2OrderedRS
                         throw k(res)
                     else 
                         do #UNBOX(stamp) := newStamp
-                        let newStamp : long = VClock.@inc(2:long / exh)
+                        let newStamp : long = VClock.@get(/ exh)
                         apply revalidate(head, RS.NilRead, newStamp, 0, true)
                 else 
                     do #UNBOX(stamp) := newStamp
-                    let newStamp : long = VClock.@inc(2:long / exh)
+                    let newStamp : long = VClock.@get(/ exh)
                     apply revalidate(head, RS.NilRead, newStamp, 0, true)
             else 
                 do #UNBOX(stamp) := newStamp
-                let newStamp : long = VClock.@inc(2:long / exh)
+                let newStamp : long = VClock.@get(/ exh)
                 apply revalidate(head, RS.NilRead, newStamp, 0, true)
         ;
 
@@ -84,7 +84,7 @@ structure RS = TL2OrderedRS
                 case rs 
                    of RS.WithK(tv:tvar, next:RS.ritem, k:cont(any), ws:RS.witem, sp:RS.ritem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Lt(owner, #UNBOX(stamp))  (*still valid*)
+                        if I64Lte(owner, #UNBOX(stamp))  (*still valid*)
                         then 
                             if I64Eq(I64AndB(owner, 1:long), 1:long)
                             then 
@@ -94,7 +94,7 @@ structure RS = TL2OrderedRS
                             @abort(head, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp / exh)
                     | RS.WithoutK(tv:tvar, next:RS.ritem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Lt(owner, #UNBOX(stamp))
+                        if I64Lte(owner, #UNBOX(stamp))
                         then
                             if I64Eq(I64AndB(owner, 1:long), 1:long)
                             then 
@@ -107,7 +107,7 @@ structure RS = TL2OrderedRS
                         then @abort(head, chkpnt, kCount, eagerValidate, newStamp, stamp / exh)
                         else do #UNBOX(stamp) := newStamp return()
                 end
-            let newStamp : long = VClock.@inc(2:long / exh)
+            let newStamp : long = VClock.@get(/ exh)
             apply eagerValidate(head, RS.NilRead, newStamp, 0, false)
         ;
 
@@ -122,7 +122,7 @@ structure RS = TL2OrderedRS
                 then
                     if I64Eq(v1, v2)
                     then 
-                        if I64Lt(v1, #UNBOX(stamp))
+                        if I64Lte(v1, #UNBOX(stamp))
                         then return(res)
                         else do @eager-validate(readSet, stamp / exh) apply lp()
                     else do @eager-validate(readSet, stamp / exh) apply lp()
@@ -139,7 +139,7 @@ structure RS = TL2OrderedRS
             then
                 if I64Eq(v1, v2)
                 then 
-                    if I64Lt(v1, #UNBOX(stamp))
+                    if I64Lte(v1, #UNBOX(stamp))
                     then return(res)
                     else 
                         do @eager-validate(readSet, stamp / exh)
@@ -261,74 +261,71 @@ structure RS = TL2OrderedRS
                 end
             let readSet : read_set = FLS.@get-key(READ_SET / exh)
             let writeSet : RS.witem = FLS.@get-key(WRITE_SET / exh)
-            fun acquire(ws:RS.witem, acquired:RS.witem, lockVal : long) : RS.witem = 
+            let lockVal : long = I64Add(I64LSh(#THREAD_ID(startStamp), 1:long), 1:long)
+            fun acquire(ws:RS.witem, acquired:RS.witem) : RS.witem = 
                 case ws
                    of RS.Write(tv:tvar, contents:any, tl:RS.witem) => 
                         let owner : long = #CURRENT_LOCK(tv)
                         if I64Eq(owner, lockVal)
-                        then apply acquire(tl, acquired, lockVal)  (*we already locked this*)
+                        then apply acquire(tl, acquired)  (*we already locked this*)
                         else
                             if I64Eq(I64AndB(owner, 1:long), 0:long)
                             then
-                                if I64Lt(owner, lockVal)
+                                if I64Lte(owner, #0(startStamp))
                                 then
                                     let casRes : long = CAS(&CURRENT_LOCK(tv), owner, lockVal)
                                     if I64Eq(casRes, owner)
                                     then 
                                         do #PREV_LOCK(tv) := owner 
-                                        apply acquire(tl, RS.Write(tv, contents, acquired), lockVal)
+                                        apply acquire(tl, RS.Write(tv, contents, acquired))
                                     else 
                                         do apply release(acquired) 
                                         do @eager-validate(#LONG_PATH(readSet), startStamp / exh)
-                                        apply acquire(writeSet, RS.NilWrite, I64Add(#UNBOX(startStamp), 1:long))
+                                        apply acquire(writeSet, RS.NilWrite)
                                 else 
                                     do apply release(acquired) 
                                     do @eager-validate(#LONG_PATH(readSet), startStamp / exh)
-                                    apply acquire(writeSet, RS.NilWrite, I64Add(#UNBOX(startStamp), 1:long))
+                                    apply acquire(writeSet, RS.NilWrite)
                             else 
                                 do apply release(acquired) 
                                 do @eager-validate(#LONG_PATH(readSet), startStamp / exh)
-                                apply acquire(writeSet, RS.NilWrite, I64Add(#UNBOX(startStamp), 1:long))
+                                apply acquire(writeSet, RS.NilWrite)
                     | RS.NilWrite=> return(acquired)
                 end
-            let locks : RS.witem = apply acquire(writeSet, RS.NilWrite, I64Add(#UNBOX(startStamp), 1:long))
+            let locks : RS.witem = apply acquire(writeSet, RS.NilWrite)
             fun validate(rs : RS.ritem, chkpnt : RS.ritem, newStamp : long, kCount : int) : () =
                 case rs 
                    of RS.WithK(tv:tvar, next:RS.ritem, k:cont(any), ws:RS.witem, sp:RS.ritem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        let myStamp : long = #UNBOX(startStamp)
-                        if I64Lt(owner, myStamp)  (*still valid*)
-                        then 
-                            if I64Eq(I64AndB(owner, 1:long), 1:long)
-                            then
-                                do apply release(locks)
-                                do #UNBOX(startStamp) := newStamp
-                                @finish-validate(#LONG_PATH(readSet), rs, startStamp, I32Add(kCount, 1) / exh)
-                            else apply validate(next, rs, newStamp, I32Add(kCount, 1))
+                        if I64Eq(owner, lockVal)
+                        then apply validate(next, rs, newStamp, I32Add(kCount, 1))
                         else 
-                            if I64Eq(owner, I64Add(myStamp, 1:long))
-                            then apply validate(next, rs, newStamp, I32Add(kCount, 1))
-                            else
-                                
+                            if I64Lte(owner, #UNBOX(startStamp))  (*still valid*)
+                            then 
+                                if I64Eq(I64AndB(owner, 1:long), 1:long)
+                                then
+                                    do apply release(locks)
+                                    do #UNBOX(startStamp) := newStamp
+                                    @finish-validate(#LONG_PATH(readSet), rs, startStamp, I32Add(kCount, 1) / exh)
+                                else apply validate(next, rs, newStamp, I32Add(kCount, 1))
+                            else 
                                 do apply release(locks)
                                 do #UNBOX(startStamp) := newStamp
                                 @finish-validate(#LONG_PATH(readSet), rs, startStamp, I32Add(kCount, 1) / exh)
                     | RS.WithoutK(tv:tvar, next:RS.ritem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        let myStamp : long = #UNBOX(startStamp)
-                        if I64Lt(owner, myStamp)
-                        then
-                            if I64Eq(I64AndB(owner, 1:long), 1:long)
+                        if I64Eq(owner, lockVal)
+                        then apply validate(next, chkpnt, newStamp, kCount)
+                        else 
+                            if I64Lte(owner, #UNBOX(startStamp))
                             then
-                                do apply release(locks)
-                                do #UNBOX(startStamp) := newStamp
-                                @finish-validate(#LONG_PATH(readSet), chkpnt, startStamp, kCount / exh)
-                            else apply validate(next, chkpnt, newStamp, kCount)
-                        else
-                            if I64Eq(owner, I64Add(myStamp, 1:long))
-                            then apply validate(next, chkpnt, newStamp, kCount)
+                                if I64Eq(I64AndB(owner, 1:long), 1:long)
+                                then
+                                    do apply release(locks)
+                                    do #UNBOX(startStamp) := newStamp
+                                    @finish-validate(#LONG_PATH(readSet), chkpnt, startStamp, kCount / exh)
+                                else apply validate(next, chkpnt, newStamp, kCount)
                             else
-                                
                                 do apply release(locks)
                                 do #UNBOX(startStamp) := newStamp
                                 @finish-validate(#LONG_PATH(readSet), chkpnt, startStamp, kCount / exh)
@@ -344,9 +341,10 @@ structure RS = TL2OrderedRS
                      | RS.NilWrite => return()
                 end
             let newStamp : stamp = VClock.@inc(2:long / exh)        
-            if I64Eq(newStamp, I64Add(#0(startStamp), 2:long))
-            then apply update(locks, newStamp)
+            if I64Eq(newStamp, #0(startStamp))
+            then apply update(locks, I64Add(newStamp, 2:long))
             else 
+                let newStamp : stamp = I64Add(newStamp, 2:long)
                 do apply validate(#LONG_PATH(readSet),RS.NilRead,newStamp,0)  
                 apply update(locks, newStamp)
         ;
@@ -361,7 +359,7 @@ structure RS = TL2OrderedRS
                     let newRS : RS.read_set = RS.@new(abortK / exh)
                     do FLS.@set-key(READ_SET, newRS / exh)  (*initialize STM log*)
                     do FLS.@set-key(WRITE_SET, RS.NilWrite / exh)
-                    let newStamp : stamp = VClock.@inc(2:long / exh)
+                    let newStamp : stamp = VClock.@get(/ exh)
                     let stamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
                     do #UNBOX(stamp) := newStamp
                     do #UNBOX(in_trans) := true

@@ -16,8 +16,9 @@ struct
 
     _primcode(
 
-        extern void * M_Print_Int(void *, int);
-        extern void * M_Print_Int2(void *, int, int);
+        extern void M_Print_Int(void *, int);
+        extern void M_Print_Int2(void *, int, int);
+        extern void M_Print_Long2(void*, long, long);
         extern void M_Print_Long (void *, long);
         extern void M_BumpCounter(void * , int);
         extern int M_SumCounter(int);
@@ -31,6 +32,7 @@ struct
             return(tv)
         ;
 
+        (*if these don't get inlined, we could get a type error in bom chk*)
         define @full-abort(/exh:exh) noreturn = 
             let k : cont() = FLS.@get-key(ABORT_KEY / exh)
             throw k();
@@ -43,12 +45,11 @@ struct
             let v1 : stamp = #1(tv)
             let res : any = #0(tv)
             let v2 : stamp = #1(tv)
-            let v1Lock : long = I64AndB(v1, 1:long)
-            if I64Eq(v1Lock, 0:long)  (*unlocked*)
+            if I64Eq(I64AndB(v1, 1:long), 0:long)  (*unlocked*)
             then
                 if I64Eq(v1, v2)
                 then 
-                    if I64Lt(v1, #0(stamp))
+                    if I64Lte(v1, #0(stamp))
                     then return(res)
                     else @full-abort-any(/exh)
                 else @full-abort-any(/exh)
@@ -100,30 +101,30 @@ struct
         ;
 
         define @commit(/exh:exh) : () =     
-            let startStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
+            let startStamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : witem) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:witem) =>
-                        do #1(tv) := #2(tv)   (*revert to previous lock*)
+                        do #CURRENT_LOCK(tv) := #PREV_LOCK(tv)   (*revert to previous lock*)
                         apply release(tl)
                      | NilWrite => return()
                 end
             let readSet : ritem = FLS.@get-key(READ_SET / exh)
             let writeSet : witem = FLS.@get-key(WRITE_SET / exh)
             let rawStamp: long = #0(startStamp) (*this should be even*)
-            let lockVal : long = I64Add(rawStamp, 1:long)
+            let lockVal : long = I64Add(I64LSh(#THREAD_ID(startStamp), 1:long), 1:long)
             fun validate(readSet : ritem, locks : witem) : () = 
                 case readSet 
                     of Read(tv:tvar, tl:ritem) =>
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Lt(owner, rawStamp)  (*still valid*)
-                        then 
-                            if I64Eq(I64AndB(owner, 1:long), 1:long)
-                            then do apply release(locks) @full-abort(/exh)
-                            else apply validate(tl, locks)
+                        if I64Eq(owner, lockVal)
+                        then apply validate(tl, locks)
                         else 
-                            if I64Eq(owner, lockVal) (*we locked it*)
-                            then apply validate(tl, locks)
+                            if I64Lte(owner, rawStamp)  (*still valid*)
+                            then 
+                                if I64Eq(I64AndB(owner, 1:long), 1:long)
+                                then do apply release(locks) @full-abort(/exh)
+                                else apply validate(tl, locks)
                             else do apply release(locks) @full-abort(/exh)   
                      |NilRead => return()
                 end
@@ -136,7 +137,7 @@ struct
                         else
                             if I64Eq(I64AndB(owner, 1:long), 0:long)
                             then
-                                if I64Lt(owner, lockVal)
+                                if I64Lte(owner, rawStamp)
                                 then
                                     let casRes : long = CAS(&1(tv), owner, lockVal)
                                     if I64Eq(casRes, owner)
@@ -159,11 +160,11 @@ struct
                 end
             let locks : witem = apply acquire(writeSet, NilWrite)   
             let newStamp : stamp = VClock.@inc(2:long/exh)
-            if I64Eq(newStamp, I64Add(#0(startStamp), 2:long))
-            then apply update(locks, newStamp)
+            if I64Eq(newStamp, rawStamp)
+            then apply update(locks, I64Add(newStamp, 2:long))
             else 
                 do apply validate(readSet, locks)
-                apply update(locks, newStamp)
+                apply update(locks, I64Add(newStamp, 2:long))
         ;
 
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
@@ -174,7 +175,7 @@ struct
                      cont enter() = 
                          do FLS.@set-key(READ_SET, NilRead/ exh)  (*initialize STM log*)
                          do FLS.@set-key(WRITE_SET, NilWrite / exh)
-                         let stamp : stamp = VClock.@inc(2:long / exh)
+                         let stamp : stamp = VClock.@get(/ exh)
                          do #0(stampPtr) := stamp
                          do #0(in_trans) := true
                          cont abortK() = BUMP_FABORT throw enter()      
