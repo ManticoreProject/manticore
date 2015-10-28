@@ -23,20 +23,22 @@ fun sample i x =
     then x
     else sample (i-1) (STM.get (Vector.sub(tvars, Rand.inRangeInt(0, TVARS))))
 
-fun write i =
-    if i = 0
-    then nil
-    else let val randNum = Rand.inRangeInt(0, TVARS)
-             val tv = Vector.sub(tvars, randNum)
-             val (x, y) = STM.get tv
-             val _ = STM.put(tv, (x, y+1))
-         in randNum::write (i-1) end
+fun write rands =
+    case rands 
+       of nil => ()
+        | r::rs => 
+            let val tv = Vector.sub(tvars, r)
+                val (x, y) = STM.get tv
+                val _ = STM.put(tv, (x, y+1))
+            in write rs end
 
 fun lp i = 
     if i = 0
     then nil
-    else let val writes = STM.atomic(fn () => (sample SAMPLE (0, 0); write WRITE))
-         in writes @ lp (i-1) end
+    else 
+        let val rands = List.tabulate(WRITE, fn _ => Rand.inRangeInt(0, TVARS))
+            val _ = STM.atomic(fn () => (sample SAMPLE (0, 0); write rands))
+         in rands @ lp (i-1) end
 
 fun start i =
     if i = 0
@@ -73,7 +75,7 @@ fun populate hist =
         | nil => chk(TVARS - 1)
 
 val hist = join (start (VProc.numVProcs()))
-val _ = if populate hist then print "Correct!\n" else (print "Incorrect: counts are wrong!\n"; raise Fail "Incorrect!\n") 
+val _ = if populate hist then print "Correct!\n" else (print "Incorrect: counts are wrong!\n"; STM.printStats(); raise Fail "Incorrect!\n") 
 
 val _ = STM.printStats()
 
