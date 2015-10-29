@@ -104,7 +104,9 @@ Value_t AllocNonUniform (VProc_t *vp, int nElems, ...)
         obj[-1] = MIXED_HDR(predefined + 6, nElems);
     }else if (nElems == 4 && bits == 0x9){
         obj[-1] = MIXED_HDR(predefined + 7, nElems);
-    } else {
+    }else if (nElems == 4 && bits == 0xE){
+        obj[-1] = MIXED_HDR(predefined + 8, nElems);
+    }else {
         fprintf(stderr, "Error AllocNonUniform. Len: %d, Bits: %x\n", nElems, bits);
         exit(5);
     }

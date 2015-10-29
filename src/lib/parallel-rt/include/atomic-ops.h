@@ -126,6 +126,16 @@ STATIC_INLINE int64_t FetchAndAddU64 (volatile uint64_t *ptr, uint64_t n)
     return __sync_fetch_and_add(ptr, n);
 }
 
+STATIC_INLINE void FetchAndAndU64 (volatile uint64_t * ptr, uint64_t n)
+{
+    __sync_fetch_and_and(ptr, n);
+}
+
+STATIC_INLINE void FetchAndOrU64 (volatile uint64_t * ptr, uint64_t n)
+{
+    __sync_fetch_and_or(ptr, n);
+}
+
 #else /* !HAVE_BUILTIN_ATOMIC_OPS */
 
 STATIC_INLINE Value_t CompareAndSwapValue (volatile Value_t *ptr, Value_t old, Value_t new)
@@ -244,6 +254,20 @@ STATIC_INLINE uint64_t FetchAndAddU64 (volatile uint64_t *ptr, uint64_t n)
 	    : "=r" (incr), "=m" (*ptr)
 	    : "0" (incr) : "memory");
     return incr;
+}
+
+STATIC_INLINE uint64_t FetchAndAndU64 (volatile uint64_t * ptr, uint64_t n)
+{
+    __asm__ __volatile__ (
+	"lock; andq %0 %1\n"
+	     : "=r" (n), "=m" (*ptr) : : "memory");
+}
+
+STATIC_INLINE uint64_t FetchAndOrU64 (volatile uint64_t * ptr, uint64_t n)
+{
+    __asm__ __volatile__ (
+	"lock; orq %0 %1\n"
+	     : "=r" (n), "=m" (*ptr) : : "memory");
 }
 
 #endif /* HAVE_BUILTIN_ATOMIC_OPS */

@@ -104,7 +104,7 @@ structure RS = TL2OrderedRS
             let ffInfo : ff_read_set = FLS.@get-key(FF_KEY / exh)
             do @clear-bits(ffInfo, myStamp)
             let rs : read_set = FLS.@get-key(READ_SET / exh)
-            do @set-bits(rs, RS.NilRead, myStamp, rs, RS.NilWrite, #0(myStamp) / exh)
+            do @set-bits(rs, RS.NilRead, myStamp, rs, RS.NilWrite, #0(myStamp)/ exh)
             let chkpnt : with_k = (with_k)#LONG_PATH(rs) (*first entry is the full abort continuation*)
             let k : cont(any) = #R_ENTRY_K(chkpnt)
             throw k(enum(0))
@@ -117,15 +117,16 @@ structure RS = TL2OrderedRS
          * dummy entry has the full abort continuation stored in it and a tvar that no one 
          * has access to and therefore cannot update.  
          *)
-        define inline @abort(readSet : read_set, chkpnt : RS.ritem, kCount : int, revalidate : fun(RS.ritem, RS.ritem, long, int, RS.ritem / -> ), 
-                             newStamp : long, stamp : ![long,int,int,long] / exh:exh) : () =
+        define inline @abort(readSet : read_set, chkpnt : RS.ritem, kCount : int, revalidate : fun(RS.ritem, RS.ritem, long, int, RS.ritem, long / -> ), 
+                             newStamp : long, stamp : ![long,int,int,long], origStamp : long / exh:exh) : () =
             let chkpnt : with_k = (with_k) chkpnt
             let tv : tvar = #R_ENTRY_TVAR(chkpnt)
             let v1 : long = #CURRENT_LOCK(tv)
+            do FenceRead()
             let res : any = #TVAR_CONTENTS(tv)
+            do FenceRead()
             let v2 : long = #CURRENT_LOCK(tv)
-            let v1Lock : long = I64AndB(v1, 1:long)
-            if I64Eq(v1Lock, 0:long)  (*unlocked*)
+            if I64Eq(I64AndB(v1, 1:long), 0:long)  (*unlocked*)
             then
                 if I64Eq(v1, v2)
                 then 
@@ -136,7 +137,8 @@ structure RS = TL2OrderedRS
                         let ffRS : ff_read_set = FLS.@get-key(FF_KEY / exh)
                         do @clear-bits(ffRS, stamp)
                         (*incCounts will split the read set, and set the FLS appropriately*)
-                        do @set-bits(readSet, chkpnt, stamp, newRS, #R_ENTRY_WS(chkpnt), #0(stamp) / exh)
+                        do @set-bits(readSet, chkpnt, stamp, newRS, #R_ENTRY_WS(chkpnt), origStamp / exh)
+                        (*do FLS.@set-key3(FF_KEY, enum(0):any, WRITE_SET, #R_ENTRY_WS(chkpnt), READ_SET, newRS / exh)*)
                         do #UNBOX(stamp) := newStamp
                         BUMP_PABORT
                         let k : cont(any) = #R_ENTRY_K(chkpnt)
@@ -144,15 +146,15 @@ structure RS = TL2OrderedRS
                     else 
                         do #UNBOX(stamp) := newStamp
                         let newStamp : long = VClock.@get(/ exh)
-                        apply revalidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, chkpnt)
+                        apply revalidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, chkpnt, origStamp)
                 else 
                     do #UNBOX(stamp) := newStamp
                     let newStamp : long = VClock.@get(/ exh)
-                    apply revalidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, chkpnt)
+                    apply revalidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, chkpnt, origStamp)
             else 
                 do #UNBOX(stamp) := newStamp
                 let newStamp : long = VClock.@get(/ exh)
-                apply revalidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, chkpnt)
+                apply revalidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, chkpnt, origStamp)
         ;
 
         (*
@@ -161,12 +163,17 @@ structure RS = TL2OrderedRS
          * readSet should be the HEAD of the read set.  
          *)
         define @eager-validate(readSet : read_set, stamp : ![long, int, int, long] / exh:exh) : () =
-            fun eagerValidate(rs : RS.ritem, chkpnt : RS.ritem, newStamp : long, kCount : int, sentinel : RS.ritem) : () =
+            fun eagerValidate(rs : RS.ritem, chkpnt : RS.ritem, newStamp : long, kCount : int, sentinel : RS.ritem, origStamp : long) : () =
                 if Equal(rs, sentinel)
                 then 
                     if Equal(sentinel, RS.NilRead)
-                    then do #UNBOX(stamp) := newStamp return()  (*this must have been our first pass through*)
-                    else @abort(readSet, rs, kCount, eagerValidate, newStamp, stamp / exh) (*we tried reading from "rs" before, but it failed, try again*)
+                    then 
+                        do #UNBOX(stamp) := newStamp 
+                        let ff_rs : ff_read_set = FLS.@get-key(FF_KEY / exh)
+                        do @clear-bits(ff_rs, stamp)
+                        do FLS.@null-key(FF_KEY)
+                        return()  (*this must have been our first pass through*)
+                    else @abort(readSet, rs, kCount, eagerValidate, newStamp, stamp, origStamp / exh) (*we tried reading from "rs" before, but it failed, try again*)
                 else
                     case rs 
                        of RS.WithK(tv:tvar, next:RS.ritem, k:cont(any), ws:RS.witem, sp:RS.ritem) => 
@@ -175,31 +182,33 @@ structure RS = TL2OrderedRS
                             then 
                                 if I64Eq(I64AndB(owner, 1:long), 1:long)
                                 then 
-                                    @abort(readSet, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp / exh)
-                                else apply eagerValidate(next, rs, newStamp, I32Add(kCount, 1), sentinel)
+                                    @abort(readSet, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp, origStamp / exh)
+                                else apply eagerValidate(next, rs, newStamp, I32Add(kCount, 1), sentinel, origStamp)
                             else 
-                                @abort(readSet, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp / exh)
+                                @abort(readSet, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp, origStamp / exh)
                         | RS.WithoutK(tv:tvar, next:RS.ritem) => 
                             let owner : long = #CURRENT_LOCK(tv)
                             if I64Lte(owner, #UNBOX(stamp))
                             then
                                 if I64Eq(I64AndB(owner, 1:long), 1:long)
                                 then 
-                                    @abort(readSet, chkpnt, kCount, eagerValidate, newStamp, stamp / exh)
-                                else apply eagerValidate(next, chkpnt, newStamp, kCount, sentinel)
+                                    @abort(readSet, chkpnt, kCount, eagerValidate, newStamp, stamp, origStamp / exh)
+                                else apply eagerValidate(next, chkpnt, newStamp, kCount, sentinel, origStamp)
                             else 
-                                @abort(readSet, chkpnt, kCount, eagerValidate, newStamp, stamp / exh)
+                                @abort(readSet, chkpnt, kCount, eagerValidate, newStamp, stamp, origStamp / exh)
                         | _ => throw exh(Fail(@"fail"))
                     end
             let newStamp : long = VClock.@get(/ exh)
-            apply eagerValidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, RS.NilRead)
+            apply eagerValidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, RS.NilRead, #0(stamp))
         ;
 
         (*only allocates the retry loop closure if the first attempt fails*)
         define inline @read-tvar2(tv : tvar, stamp : ![stamp, int, int, long], readSet : read_set / exh : exh) : any = 
             fun lp() : any = 
                 let v1 : stamp = #CURRENT_LOCK(tv)
+                do FenceRead()
                 let res : any = #TVAR_CONTENTS(tv)
+                do FenceRead()
                 let v2 : stamp = #CURRENT_LOCK(tv)
                 let v1Lock : long = I64AndB(v1, 1:long)
                 if I64Eq(v1Lock, 0:long)  (*unlocked*)
@@ -216,7 +225,9 @@ structure RS = TL2OrderedRS
 
         define inline @read-tvar(tv : tvar, stamp : ![stamp, int, int, long], readSet : read_set/ exh : exh) : any = 
             let v1 : stamp = #CURRENT_LOCK(tv)
+            do FenceRead()
             let res : any = #TVAR_CONTENTS(tv)
+            do FenceRead()
             let v2 : stamp = #CURRENT_LOCK(tv)
             let v1Lock : long = I64AndB(v1, 1:long)
             if I64Eq(v1Lock, 0:long)  (*unlocked*)
@@ -279,12 +290,12 @@ structure RS = TL2OrderedRS
                      | RS.NilWrite => return (Option.NONE)
                  end
             cont retK(x:any) = return(x)
-      (*      let rawId : long = #3(myStamp)
-            let masked : long = I64AndB(#REF_COUNT(tv), rawId)
-            do  if I64Eq(masked, rawId)
+            let myBit : long = I64LSh(1:long, #THREAD_ID(myStamp))
+            let masked : long = I64AndB(#REF_COUNT(tv), myBit)
+            do  if I64Eq(masked, myBit)
                 then @fast-forward(readSet, writeSet, tv, retK, myStamp / exh)
                 else return()  
-        *)    let localRes : Option.option = apply chkLog(writeSet)
+            let localRes : Option.option = apply chkLog(writeSet)
             case localRes
                of Option.SOME(v:any) => return(v)
                 | Option.NONE => 

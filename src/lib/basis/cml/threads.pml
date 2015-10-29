@@ -128,8 +128,7 @@ structure Threads (*: sig
                                    return(UNIT)
                        end                 
                     let tid : ![long, int, int, long] = FLS.@get-key(STAMP_KEY / threadExh)
-                    let id : long = I64LSh(1:long, I32ToI64(#0(vp)))
-                    do #3(tid) := id
+                    do #3(tid) := I32ToI64(#0(vp))
                     let _ : unit = apply f(UNIT / threadExh)
                     SchedulerAction.@stop()
                 let fls : FLS.fls = FLS.@new-pinned(#0(vp))

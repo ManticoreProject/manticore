@@ -79,7 +79,9 @@ struct
                                 throw abortK()
                             | WithK(tv:tvar, next:ritem, abortK:cont(any), ws:witem, sp:ritem) => 
                                 let v1 : long = #CURRENT_LOCK(tv)
+                                do FenceRead()
                                 let res : any = #TVAR_CONTENTS(tv)
+                                do FenceRead()
                                 let v2 : long = #CURRENT_LOCK(tv)
                                 let v1Lock : long = I64AndB(v1, 1:long)
                                 if I64Eq(v1Lock, 0:long)  (*unlocked*)
@@ -116,7 +118,9 @@ struct
         define inline @read-tvar2(tv : tvar, stamp : ![stamp, int,int,long], readSet : ritem / exh : exh) : any = 
             fun lp() : any = 
                 let v1 : stamp = #CURRENT_LOCK(tv)
+                do FenceRead()
                 let res : any = #TVAR_CONTENTS(tv)
+                do FenceRead()
                 let v2 : stamp = #CURRENT_LOCK(tv)
                 let v1Lock : long = I64AndB(v1, 1:long)
                 if I64Eq(v1Lock, 0:long)  (*unlocked*)
@@ -133,7 +137,9 @@ struct
 
         define inline @read-tvar(tv : tvar, stamp : ![stamp, int,int,long], readSet : ritem / exh : exh) : any = 
             let v1 : stamp = #CURRENT_LOCK(tv)
+            do FenceRead()
             let res : any = #TVAR_CONTENTS(tv)
+            do FenceRead()
             let v2 : stamp = #CURRENT_LOCK(tv)
             let v1Lock : long = I64AndB(v1, 1:long)
             if I64Eq(v1Lock, 0:long)  (*unlocked*)

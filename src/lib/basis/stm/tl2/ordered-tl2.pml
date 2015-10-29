@@ -44,7 +44,9 @@ structure RS = TL2OrderedRS
             do #R_ENTRY_NEXT(chkpnt) := RS.NilRead
             let tv : tvar = #R_ENTRY_TVAR(chkpnt)
             let v1 : long = #CURRENT_LOCK(tv)
+            do FenceRead()
             let res : any = #TVAR_CONTENTS(tv)
+            do FenceRead()
             let v2 : long = #CURRENT_LOCK(tv)
             let v1Lock : long = I64AndB(v1, 1:long)
             if I64Eq(v1Lock, 0:long)  (*unlocked*)
@@ -115,7 +117,9 @@ structure RS = TL2OrderedRS
         define inline @read-tvar2(tv : tvar, stamp : ![stamp, int, int, long], readSet : RS.ritem / exh : exh) : any = 
             fun lp() : any = 
                 let v1 : stamp = #CURRENT_LOCK(tv)
+                do FenceRead()
                 let res : any = #TVAR_CONTENTS(tv)
+                do FenceRead()
                 let v2 : stamp = #CURRENT_LOCK(tv)
                 let v1Lock : long = I64AndB(v1, 1:long)
                 if I64Eq(v1Lock, 0:long)  (*unlocked*)
@@ -132,7 +136,9 @@ structure RS = TL2OrderedRS
 
         define inline @read-tvar(tv : tvar, stamp : ![stamp, int, int, long], readSet : RS.ritem / exh : exh) : any = 
             let v1 : stamp = #CURRENT_LOCK(tv)
+            do FenceRead()
             let res : any = #TVAR_CONTENTS(tv)
+            do FenceRead()
             let v2 : stamp = #CURRENT_LOCK(tv)
             let v1Lock : long = I64AndB(v1, 1:long)
             if I64Eq(v1Lock, 0:long)  (*unlocked*)

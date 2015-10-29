@@ -43,7 +43,9 @@ struct
 
         define @read-tvar(tv : tvar, stamp : ![stamp, int] / exh : exh) : any = 
             let v1 : stamp = #1(tv)
+            do FenceRead()
             let res : any = #0(tv)
+            do FenceRead()
             let v2 : stamp = #1(tv)
             if I64Eq(I64AndB(v1, 1:long), 0:long)  (*unlocked*)
             then

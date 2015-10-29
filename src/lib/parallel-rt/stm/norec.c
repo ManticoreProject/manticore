@@ -139,7 +139,7 @@ Value_t STM_Validate(unsigned long * myStamp, volatile unsigned long * clock, st
     }
 }
 
-Value_t validate(unsigned long * myStamp, volatile unsigned long * clock, struct read_log * readSet, VProc_t * vp){
+static Value_t validate(unsigned long * myStamp, volatile unsigned long * clock, struct read_log * readSet, VProc_t * vp){
     struct read_log * checkpoint = (struct read_log *)M_NIL;
     int kCount = 0;
     while(true){
@@ -168,14 +168,14 @@ Value_t validate(unsigned long * myStamp, volatile unsigned long * clock, struct
     }
 }
 
-void decCounts(struct read_log * ff){
+static static void decCounts(struct read_log * ff){
     while((Value_t) ff != M_NIL){
         FetchAndAdd64((volatile int64_t *)&(ff->tvar->refCount), -1);
         ff = ff->nextK;
     }
 }
 
-Value_t ffFinish(struct read_set * readSet, struct read_log * checkpoint, unsigned long kCount, VProc_t * vp, int skipped){
+static Value_t ffFinish(struct read_set * readSet, struct read_log * checkpoint, unsigned long kCount, VProc_t * vp, int skipped){
 #ifdef EVENT_LOGGING
     postAbortTX(vp, skipped, 17);
 #endif
@@ -186,7 +186,7 @@ Value_t ffFinish(struct read_set * readSet, struct read_log * checkpoint, unsign
     return newRS;
 }
 
-Value_t ffValidate(struct read_set * readSet, struct read_log * oldRS, unsigned long * myStamp, volatile unsigned long * clock, VProc_t * vp){
+static Value_t ffValidate(struct read_set * readSet, struct read_log * oldRS, unsigned long * myStamp, volatile unsigned long * clock, VProc_t * vp){
     unsigned long kCount = readSet->numK;
     struct read_log * checkpoint = oldRS;
 
@@ -232,7 +232,7 @@ Value_t ffValidate(struct read_set * readSet, struct read_log * oldRS, unsigned 
     return ffFinish(readSet, checkpoint, kCount, vp, i);
 }
 
-bool local_valid(struct write_set * ws, struct tvar * tv, Value_t val){
+static bool local_valid(struct write_set * ws, struct tvar * tv, Value_t val){
     while(ws != M_NIL){
         if(ws->tvar == tv){
             return ws->val == val;
@@ -243,7 +243,7 @@ bool local_valid(struct write_set * ws, struct tvar * tv, Value_t val){
 }
 
 //verify local reads
-Value_t ffValidate2(struct read_set * readSet, struct read_log * oldRS, unsigned long * myStamp, volatile unsigned long * clock, VProc_t * vp){
+static Value_t ffValidate2(struct read_set * readSet, struct read_log * oldRS, unsigned long * myStamp, volatile unsigned long * clock, VProc_t * vp){
     unsigned long kCount = readSet->numK;
     struct read_log * checkpoint = oldRS;
 
@@ -296,7 +296,7 @@ Value_t ffValidate2(struct read_set * readSet, struct read_log * oldRS, unsigned
 
 typedef enum {EQ, SUBSEQ, NEQ} ws_res;
 
-ws_res classify_writesets(struct write_set * oldWS, struct write_set * currentWS){
+static ws_res classify_writesets(struct write_set * oldWS, struct write_set * currentWS){
     ws_res res = EQ;
     while(currentWS != M_NIL){
         if(oldWS == M_NIL)

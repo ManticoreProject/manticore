@@ -14,6 +14,7 @@ structure Vector =
 
       extern void* AllocVector (void*, void*) __attribute__((alloc,pure));
       extern void* AllocVectorRev (void*, int, void*) __attribute__((alloc,pure));
+      extern void M_Print_Int2(void*,int,int);
 
       define inline @from-list (values : List.list / exh : exh) : vector =
 	  let n : int = PrimList.@length (values / exh)
@@ -70,10 +71,19 @@ structure Vector =
 		else ()
 	in
 	    lp 0
-	end
+	end 
 
+
+    fun tabulate(n, f) = 
+        let fun lp(i, l) = 
+            if i = n
+            then l
+            else lp(i+1, f i :: l)
+        in fromListRev(lp(0, nil), n) end
+    
+    (*
     fun tabulate (n, f) = fromList (List.tabulate (n, f))
-
+    *)
     fun foldl f init vec = let
 	val len = length vec
 	fun fold (i, a) =
