@@ -41,4 +41,4 @@
 #endif /* !NDEBUG */
 #endif /* !_DEBUG_DEF_ */
 
-#define DO_NOT_COLLECT_STATS
+#define COLLECT_STATS

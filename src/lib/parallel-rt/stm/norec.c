@@ -24,7 +24,7 @@ struct tvar{
 struct write_set{
     Value_t tag;
     struct tvar * tvar;
-    Value_t * val;
+    Word_t * val;
     struct write_set * next;
 };
 
@@ -82,7 +82,7 @@ Value_t STM_Validate(unsigned long * myStamp, volatile unsigned long * clock, st
             }
             else{
                 if(rs->tvar->contents == rs->readContents){
-                    if(rs->k != M_UNIT){
+                    if((Value_t)rs->k != M_UNIT){
                         full =false;
                         checkpoint = rs;
                         kCount++;
@@ -90,7 +90,7 @@ Value_t STM_Validate(unsigned long * myStamp, volatile unsigned long * clock, st
                     i++;
                     rs = rs->next;
                     continue;
-                }else if(rs->k != M_UNIT){
+                }else if((Value_t)rs->k != M_UNIT){
                     Word_t * contents = rs->tvar->contents;
                     if(time != *clock)
                         goto RETRY;
@@ -154,7 +154,7 @@ static Value_t validate(unsigned long * myStamp, volatile unsigned long * clock,
                 if(rs->tvar->contents != rs->readContents){
                     return AllocNonUniform(vp, 4, PTR(readSet), PTR(checkpoint), PTR(checkpoint), INT(kCount));
                 }
-                if(rs->tag == (Value_t) 3 && rs->k != M_UNIT){ //checkpointed entry
+                if(rs->tag == (Value_t) 3 && (Value_t)rs->k != M_UNIT){ //checkpointed entry
                     checkpoint = rs;
                     kCount++;
                 }
@@ -168,7 +168,7 @@ static Value_t validate(unsigned long * myStamp, volatile unsigned long * clock,
     }
 }
 
-static static void decCounts(struct read_log * ff){
+static void decCounts(struct read_log * ff){
     while((Value_t) ff != M_NIL){
         FetchAndAdd64((volatile int64_t *)&(ff->tvar->refCount), -1);
         ff = ff->nextK;
@@ -199,16 +199,16 @@ static Value_t ffValidate(struct read_set * readSet, struct read_log * oldRS, un
             }
         }else if (oldRS->tag == (Value_t) 3){  //WithK
             if(oldRS->tvar->contents == oldRS->readContents){
-                if(oldRS->k != M_UNIT){
+                if((Value_t)oldRS->k != M_UNIT){
                     i += j;
                     j = 0;
                     checkpoint = oldRS;
                     kCount++;
                 }
             }else{      //oldRS->tag == (Value_t) 3
-                if(oldRS->k != M_UNIT){
+                if((Value_t)oldRS->k != M_UNIT){
                     //we have a checkpoint here, but its out of date
-                    Value_t v = oldRS->tvar->contents;
+                    Word_t * v = oldRS->tvar->contents;
                     if(*clock != *myStamp){
                         do{
                             Value_t abortInfo = validate(myStamp, clock, readSet->head, vp);
@@ -219,7 +219,7 @@ static Value_t ffValidate(struct read_set * readSet, struct read_log * oldRS, un
                         }while(*clock != *myStamp);
                     }
                     oldRS->readContents = v;
-                    oldRS->next = M_NIL;
+                    oldRS->next = (struct read_log *)M_NIL;
                     return AllocNonUniform(vp, 4, PTR(readSet->head), PTR(oldRS), PTR(oldRS), INT(kCount));
                 }else{
                     return ffFinish(readSet, checkpoint, kCount, vp, i);
@@ -233,7 +233,7 @@ static Value_t ffValidate(struct read_set * readSet, struct read_log * oldRS, un
 }
 
 static bool local_valid(struct write_set * ws, struct tvar * tv, Value_t val){
-    while(ws != M_NIL){
+    while((Value_t)ws != M_NIL){
         if(ws->tvar == tv){
             return ws->val == val;
         }
@@ -255,14 +255,14 @@ static Value_t ffValidate2(struct read_set * readSet, struct read_log * oldRS, u
             }
         }else if (oldRS->tag == (Value_t) 3){  //WithK
             if(oldRS->tvar->contents == oldRS->readContents){
-                if(oldRS->k != M_UNIT){
+                if((Value_t)oldRS->k != M_UNIT){
                     checkpoint = oldRS;
                     i += j;
                     j = 0;
                     kCount++;
                 }
             }else{      //oldRS->tag == (Value_t) 3
-                if(oldRS->k != M_UNIT){
+                if((Value_t)oldRS->k != M_UNIT){
                     //we have a checkpoint here, but its out of date
                     Value_t v = oldRS->tvar->contents;
                     if(*clock != *myStamp){
@@ -298,8 +298,8 @@ typedef enum {EQ, SUBSEQ, NEQ} ws_res;
 
 static ws_res classify_writesets(struct write_set * oldWS, struct write_set * currentWS){
     ws_res res = EQ;
-    while(currentWS != M_NIL){
-        if(oldWS == M_NIL)
+    while((Value_t)currentWS != M_NIL){
+        if((Value_t)oldWS == M_NIL)
             return NEQ; //current is not a subsequence of the old 
 
         if(oldWS->tvar != currentWS->tvar){  //we can still try and match a subsequence
@@ -314,7 +314,7 @@ static ws_res classify_writesets(struct write_set * oldWS, struct write_set * cu
         currentWS = currentWS->next;
         oldWS = oldWS->next;
     }
-    if(oldWS == M_NIL){
+    if((Value_t)oldWS == M_NIL){
         return res;
     }else{
         return SUBSEQ;
