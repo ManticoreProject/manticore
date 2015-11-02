@@ -25,6 +25,9 @@
 #define FF_RS_STAMP  0
 #define FF_RS_END    1
 
-#define THREAD_ID 3
+(*STAMP RECORD*)
+#define THREAD_ID     3
+#define CURRENT_STAMP 0
+#define OLD_STAMP     2
 
 #define UNBOX 0

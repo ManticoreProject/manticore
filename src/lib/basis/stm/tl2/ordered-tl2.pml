@@ -30,6 +30,8 @@ structure RS = TL2OrderedRS
 
         typedef read_set = ![int, RS.ritem, RS.ritem, RS.ritem];
 
+        typedef stamp_rec = RS.stamp_rec;
+
         define @get-tag = BoundedHybridPartialSTM.getTag;
 
         (* 
@@ -39,7 +41,7 @@ structure RS = TL2OrderedRS
          * has access to and therefore cannot update.  
          *)
         define inline @abort(head : RS.ritem, chkpnt : RS.ritem, kCount : int, revalidate : fun(RS.ritem, RS.ritem, long, int, bool / -> ), 
-                             newStamp : long, stamp : ![long,int,int,long] / exh:exh) : () =
+                             newStamp : long, stamp : stamp_rec / exh:exh) : () =
             let chkpnt : with_k = (with_k) chkpnt
             do #R_ENTRY_NEXT(chkpnt) := RS.NilRead
             let tv : tvar = #R_ENTRY_TVAR(chkpnt)
@@ -81,7 +83,7 @@ structure RS = TL2OrderedRS
          * will have been updated to what the clock was at, prior to validation
          * readSet should be the HEAD of the read set
          *)
-        define @eager-validate(head : RS.ritem, stamp : ![long, int, int, long] / exh:exh) : () =
+        define @eager-validate(head : RS.ritem, stamp : stamp_rec / exh:exh) : () =
             fun eagerValidate(rs : RS.ritem, chkpnt : RS.ritem, newStamp : long, kCount : int, revalidating:bool) : () =
                 case rs 
                    of RS.WithK(tv:tvar, next:RS.ritem, k:cont(any), ws:RS.witem, sp:RS.ritem) => 
@@ -114,7 +116,7 @@ structure RS = TL2OrderedRS
         ;
 
         (*only allocates the retry loop closure if the first attempt fails*)
-        define inline @read-tvar2(tv : tvar, stamp : ![stamp, int, int, long], readSet : RS.ritem / exh : exh) : any = 
+        define inline @read-tvar2(tv : tvar, stamp : stamp_rec, readSet : RS.ritem / exh : exh) : any = 
             fun lp() : any = 
                 let v1 : stamp = #CURRENT_LOCK(tv)
                 do FenceRead()
@@ -134,7 +136,7 @@ structure RS = TL2OrderedRS
             apply lp()
         ;
 
-        define inline @read-tvar(tv : tvar, stamp : ![stamp, int, int, long], readSet : RS.ritem / exh : exh) : any = 
+        define inline @read-tvar(tv : tvar, stamp : stamp_rec, readSet : RS.ritem / exh : exh) : any = 
             let v1 : stamp = #CURRENT_LOCK(tv)
             do FenceRead()
             let res : any = #TVAR_CONTENTS(tv)
@@ -165,7 +167,7 @@ structure RS = TL2OrderedRS
                else do ccall M_Print("Trying to read outside a transaction!\n")
                     let e : exn = Fail(@"Reading outside transaction\n")
                     throw exh(e)
-            let myStamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
+            let myStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
             let readSet : read_set = FLS.@get-key(READ_SET / exh)
             let writeSet : RS.witem = FLS.@get-key(WRITE_SET / exh)
             fun chkLog(writeSet : RS.witem) : Option.option = (*use local copy if available*)
@@ -242,7 +244,7 @@ structure RS = TL2OrderedRS
             return(UNIT)
         ;
 
-        define inline @finish-validate(head : RS.ritem, chkpnt : RS.ritem, stamp : ![stamp,int,int,long], kCount : int / exh:exh) : () = 
+        define inline @finish-validate(head : RS.ritem, chkpnt : RS.ritem, stamp : stamp_rec, kCount : int / exh:exh) : () = 
             let chkpnt : with_k = (with_k) chkpnt
             let tv : tvar = #R_ENTRY_TVAR(chkpnt)
             let current : any = @read-tvar(tv, stamp, head / exh)
@@ -257,7 +259,7 @@ structure RS = TL2OrderedRS
         ;
 
         define @commit(/exh:exh) : () = 
-            let startStamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
+            let startStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : RS.witem) : () = 
                 case locks 
                     of RS.Write(tv:tvar, contents:any, tl:RS.witem) => 
@@ -366,7 +368,7 @@ structure RS = TL2OrderedRS
                     do FLS.@set-key(READ_SET, newRS / exh)  (*initialize STM log*)
                     do FLS.@set-key(WRITE_SET, RS.NilWrite / exh)
                     let newStamp : stamp = VClock.@get(/ exh)
-                    let stamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
+                    let stamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
                     do #UNBOX(stamp) := newStamp
                     do #UNBOX(in_trans) := true
                     cont transExh(e:exn) = 

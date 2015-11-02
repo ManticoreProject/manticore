@@ -27,6 +27,8 @@ struct
 
     	typedef read_set = ![int, ritem, ritem, ritem]; (*num conts, head, lastK, tail*)
 
+        typedef stamp_rec = ![long,int,long,long]; (*current timestamp, -, old time stamp, thread ID*)
+
         define @get-tref = getTRef;
 
         (*
@@ -48,7 +50,7 @@ struct
     	(*Note that these next two defines, rely on the fact that a heap limit check will not get
          *inserted within the body*)
         (*Add a checkpointed read to the read set*)
-        define @insert-with-k(tv:any, k:cont(any), ws:witem, readSet : read_set, stamp : ![long,int, int, long] / exh:exh) : read_set = 
+        define @insert-with-k(tv:any, k:cont(any), ws:witem, readSet : read_set, stamp : stamp_rec / exh:exh) : read_set = 
             let newItem : ritem = WithK(tv, NilRead, k, ws, #SHORT_PATH(readSet))
             let vp : vproc = host_vproc
             let nurseryBase : long = vpload(NURSERY_BASE, vp)
@@ -83,7 +85,7 @@ struct
         ;
 
         (*add a non checkpointed read to the read set*)
-    	define @insert-without-k(tv:any, readSet : read_set, stamp : ![long,int,int,long] / exh:exh) : read_set =
+    	define @insert-without-k(tv:any, readSet : read_set, stamp : stamp_rec / exh:exh) : read_set =
     		let newItem : ritem = WithoutK(tv, NilRead)
     		let vp : vproc = host_vproc
     		let nurseryBase : long = vpload(NURSERY_BASE, vp)
