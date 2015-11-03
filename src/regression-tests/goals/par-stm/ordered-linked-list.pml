@@ -69,7 +69,7 @@ fun delete (l:ListHandle) (i:int) =
     in STM.atomic(fn () => lp l) end            
 
 val ITERS = 1000
-val THREADS = 4
+val THREADS = VProc.numVProcs()
 val MAXVAL = 1000
 
 fun insertLoop(l, i, removed, remaining) = 
