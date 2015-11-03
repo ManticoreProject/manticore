@@ -23,6 +23,7 @@ struct
 				then return(current)
 				else do Pause() apply stampLoop()
 			let stamp : stamp = apply stampLoop()
+            do FenceRead()
 			return(stamp)
 		;
 
@@ -30,6 +31,7 @@ struct
 			fun validateLoopNoRec(rs : item, i : int) : () = 
 				case rs 
 				   of NilItem => 
+                        do FenceRead()
 				   		let currentTime : stamp = VClock.@get(/exh)
 				   		if I64Eq(currentTime, #0(stamp))
 				   		then return()
@@ -80,6 +82,7 @@ struct
                 | Option.NONE =>
                 	fun getLoop() : any = 
                 		let x : any = #0(tv)
+                        do FenceRead()
                 		let t : long = VClock.@get(/exh)
                 		if I64Eq(t, #0(myStamp))
                 		then return(x)
@@ -137,6 +140,7 @@ struct
                 end
             let writeSet : item = apply reverseWS(writeSet, NilItem)
         	do apply writeBack(writeSet)
+            do FenceRead()
         	do #0(counter) := I64Add(#0(stamp), 2:long) (*unlock clock*)
         	return()
         ;

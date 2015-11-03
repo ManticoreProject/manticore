@@ -152,11 +152,12 @@ struct
                     do #NEXT(casted) := NilItem
                     fun getLoop() : any = 
                         let v : any = #0(tv)
+                        do FenceRead()
                         let t : long = VClock.@get(/exh)
                         if I64Eq(t, #0(startStamp))
                         then return(v)
                         else
-                            let currentTime : stamp = NoRecOrderedReadSet.@get-stamp(/exh)
+                            let currentTime : stamp = NoRecFull.@get-stamp(/exh)
                             do #0(startStamp) := currentTime
                             do apply revalidate(#HEAD(readSet), NilItem, 0)
                             apply getLoop()
@@ -207,11 +208,12 @@ struct
             fun validateLoopABCD(rs : item, abortInfo : item, count:int) : () =
                 case rs 
                    of NilItem => (*finished validating*)
+                        do FenceRead()
                         let currentTime : stamp = VClock.@get(/exh)
                         if I64Eq(currentTime, #0(startStamp))
                         then return() (*no one committed while validating*)
                         else  (*someone else committed, so revalidate*)
-                            let currentTime : stamp = NoRecOrderedReadSet.@get-stamp(/exh)
+                            let currentTime : stamp = NoRecFull.@get-stamp(/exh)
                             do #0(startStamp) := currentTime
                             apply validateLoopABCD(#HEAD(readSet), NilItem, 0)
                     | Local(tv:tvar, x:any, next : item, ws:item) => apply validateLoopABCD(next, abortInfo, count)
@@ -230,7 +232,7 @@ struct
                             then @abortABCD(readSet, abortInfo, startStamp, count, validateLoopABCD, eager / exh)
                             else @abortABCD(readSet, rs, startStamp, I32Add(count, 1), validateLoopABCD, eager / exh)
                 end
-            let currentTime : stamp = NoRecOrderedReadSet.@get-stamp(/exh)
+            let currentTime : stamp = NoRecFull.@get-stamp(/exh)
             do #0(startStamp) := currentTime
             apply validateLoopABCD(#HEAD(readSet), NilItem, 0)
         ;
@@ -274,6 +276,7 @@ struct
                                 let newRS : read_set = alloc(#0(readSet), rs, rs, I32Add(i, 1))
                                 fun getLoop() : any = 
                                     let v : any = #0(tv)
+                                    do FenceRead()
                                     let t : long = VClock.@get(/exh)
                                     if I64Eq(t, #0(myStamp))
                                     then return(v)

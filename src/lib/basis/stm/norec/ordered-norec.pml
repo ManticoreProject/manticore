@@ -18,17 +18,6 @@ struct
 			return(tv)
 		;
 
-		define inline @get-stamp(/exh:exh) : stamp = 
-			fun stampLoop() : long = 
-				let current : long = VClock.@get(/exh)
-				let lastBit : long = I64AndB(current, 1:long)
-				if I64Eq(lastBit, 0:long)
-				then return(current)
-				else do Pause() apply stampLoop()
-			let stamp : stamp = apply stampLoop()
-			return(stamp)
-		;
-
 		define @get(tv : tvar / exh:exh) : any = 
 			let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
             do 	
@@ -55,6 +44,7 @@ struct
                of Option.SOME(v:any) => return(v)
                 | Option.NONE =>
                 	fun getLoop() : any = 
+                        do FenceRead()
                 		let t : long = VClock.@get(/exh)
                 		if I64Eq(t, #0(myStamp))
                 		then return(#0(tv))
@@ -131,6 +121,7 @@ struct
                 end
             let writeSet : RS.item = apply reverseWS(writeSet, RS.NilItem)
         	do apply writeBack(writeSet)
+            do FenceRead()
         	do #0(counter) := I64Add(#0(stamp), 2:long) (*unlock clock*)
         	return()
         ;
@@ -145,7 +136,7 @@ struct
                     let rs : RS.read_set = RS.@new()
                     do FLS.@set-key(READ_SET, rs / exh)  (*initialize STM log*)
                     do FLS.@set-key(WRITE_SET, RS.NilItem / exh)
-                    let stamp : stamp = @get-stamp(/exh)
+                    let stamp : stamp = NoRecFull.@get-stamp(/exh)
                     do #0(stampPtr) := stamp
                     do #0(in_trans) := true
                     cont abortK() = BUMP_FABORT do #0(in_trans) := false throw enter()

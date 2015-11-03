@@ -40,28 +40,18 @@ struct
 			return(tv)
 		;
 
-		define inline @get-stamp(/exh:exh) : stamp = 
-			fun stampLoopPNoRec() : long = 
-				let current : long = VClock.@get(/exh)
-				let lastBit : long = I64AndB(current, 1:long)
-				if I64Eq(lastBit, 0:long)
-				then return(current)
-				else do Pause() apply stampLoopPNoRec()
-			let stamp : stamp = apply stampLoopPNoRec()
-			return(stamp)
-		;
-
         define @validate(readSet : [int,item,item], startStamp:![stamp, int] / exh:exh) : () = 
             fun validateLoopPNoRec(rs : item, abortInfo : item, kCount : int) : () =
                 case rs 
                    of NilItem => (*finished validating*)
                         case abortInfo 
                            of NilItem => (*no violations*)
+                                do FenceRead()
                                 let currentTime : stamp = VClock.@get(/exh)
                                 if I64Eq(currentTime, #0(startStamp))
                                 then return() (*no one committed while validating*)
                                 else  (*someone else committed, so revalidate*)
-                                    let currentTime : stamp = @get-stamp(/exh)
+                                    let currentTime : stamp = NoRecFull.@get-stamp(/exh)
                                     do #0(startStamp) := currentTime
                                     apply validateLoopPNoRec(#1(readSet), NilItem, 0)
                             | Abort(x : unit) => (*no checkpoint found*)
@@ -73,7 +63,7 @@ struct
                                     if I64Eq(t, #0(startStamp))
                                     then return(#0(tv))
                                     else
-                                        let currentTime : long = @get-stamp(/exh)
+                                        let currentTime : long = NoRecFull.@get-stamp(/exh)
                                         do #0(startStamp) := currentTime
                                         do apply validateLoopPNoRec(abortInfo, NilItem, 0)
                                         return(#0(tv))
@@ -99,7 +89,7 @@ struct
                             end
                         else apply validateLoopPNoRec(next, rs, 1)
                 end
-            let currentTime : stamp = @get-stamp(/exh)
+            let currentTime : stamp = NoRecFull.@get-stamp(/exh)
             do #0(startStamp) := currentTime
             apply validateLoopPNoRec(#1(readSet), NilItem, 0)
         ;
@@ -131,6 +121,7 @@ struct
                 | Option.NONE =>
                 	fun getLoop() : any = 
                         let x : any = #0(tv)
+                        do FenceRead()
                 		let t : long = VClock.@get(/exh)
                 		if I64Eq(t, #0(myStamp))
                 		then return(x)
@@ -237,6 +228,7 @@ struct
                 end
             let writeSet : item = apply reverseWS(writeSet, NilItem)
         	do apply writeBack(writeSet)
+            do FenceRead()
         	do #0(counter) := I64Add(#0(stamp), 2:long) (*unlock clock*)
         	return()
         ;
@@ -250,7 +242,7 @@ struct
                 cont enter() = 
                     do FLS.@set-key(READ_SET, alloc(0, NilItem, NilItem) / exh)  (*initialize STM log*)
                     do FLS.@set-key(WRITE_SET, NilItem / exh)
-                    let stamp : stamp = @get-stamp(/exh)
+                    let stamp : stamp = NoRecFull.@get-stamp(/exh)
                     do #0(stampPtr) := stamp
                     do #0(in_trans) := true
                     cont abortK() = BUMP_FABORT throw enter()

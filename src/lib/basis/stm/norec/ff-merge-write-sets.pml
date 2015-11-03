@@ -47,6 +47,7 @@ struct
                 | Option.NONE =>
                 	fun getLoop() : any = 
                         let v : any = #0(tv)
+                        do FenceRead()
                 		let t : long = VClock.@get(/exh)
                 		if I64Eq(t, #0(myStamp))
                 		then return(v)
@@ -107,6 +108,7 @@ struct
                 end
             let writeSet : RS.item = apply reverseWS(writeSet, RS.NilItem)
         	do apply writeBack(writeSet)
+            do FenceRead()
         	do #0(counter) := I64Add(#0(stamp), 2:long) (*unlock clock*)
             let ffInfo : RS.read_set =  FLS.@get-key(FF_KEY / exh)
             do RS.@decCounts(ffInfo / exh)
