@@ -16,7 +16,7 @@
 #include "value.h"
 #include "internal-heap.h"
 #include "gc-inline.h"
-#include "inline-log.h"
+#include "inline-event-log.h"
 #include "work-stealing-deque.h"
 #include "bibop.h"
 #include "gc-scan.h"
@@ -61,7 +61,8 @@ void MinorGC (VProc_t *vp)
     Word_t  *nextScan = (Word_t *)(vp->oldTop); /* current top of to-space */
     Word_t  *nextW = nextScan + 1;      /* next object address in to-space */
 
-    LogMinorGCStart (vp, (uint32_t)allocSzB);
+    //LogMinorGCStart (vp, (uint32_t)allocSzB);
+    LogStartGC(vp);
 
 #ifndef NO_GC_STATS
     TIMER_Start(&(vp->minorStats.timer));
@@ -172,7 +173,7 @@ void MinorGC (VProc_t *vp)
     }
 #endif /* !NDEBUG */
 
-    LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
+    //LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
 
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
         /* time to do a major collection. */
@@ -190,6 +191,7 @@ void MinorGC (VProc_t *vp)
 
     /* reset the allocation pointer */
     SetAllocPtr (vp);
+    LogEndGC(vp);
 
 }
 

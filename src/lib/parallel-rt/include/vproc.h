@@ -11,6 +11,7 @@
 #include "manticore-rt.h"
 #include "os-threads.h"
 #include "timer.h"
+#include "event-log-file.h"
 
 #ifndef NO_GC_STATS
 typedef struct {	    //!< counters for a GC
@@ -72,6 +73,7 @@ struct struct_vproc {
     volatile LogBuffer_t
 		*log;		//!< current buffer for logging events
     LogBuffer_t	*prevLog;       //!< previous buffer for logging events
+    EventsBuf * event_log;
 #ifdef HAVE_AIO_RETURN
     struct aiocb *logCB;	//!< AIO control buffer for log file
 #endif

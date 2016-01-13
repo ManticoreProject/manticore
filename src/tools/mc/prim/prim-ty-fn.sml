@@ -81,6 +81,10 @@ functor PrimTyFn (Ty : sig
 	    | P.F64Neg _ => f64Ty
 	    | P.F64Sqrt _ => f64Ty
 	    | P.F64Abs _ => f64Ty
+	    | P.I8RSh _ => i8Ty
+	    | P.I16RSh _ => i16Ty
+	    | P.I32RSh _ => i32Ty
+	    | P.I64RSh _ => i64Ty
 	    | P.I32ToI64X _ => i64Ty
 	    | P.I32ToI64 _ => i64Ty
 	    | P.I64ToI32 _ => i32Ty
@@ -89,6 +93,8 @@ functor PrimTyFn (Ty : sig
 	    | P.I64ToF32 _ => f32Ty
 	    | P.I64ToF64 _ => f64Ty
 	    | P.F64ToI32 _ => i32Ty
+	    | P.I32ToI16 _ => i16Ty
+	    | P.I16ToI8 _ => i8Ty
 	    | P.AdrAddI32 _ => addrTy
 	    | P.AdrAddI64 _ => addrTy
 	    | P.AdrSubI32 _ => addrTy
@@ -170,6 +176,10 @@ functor PrimTyFn (Ty : sig
 	    | P.F64Neg _ => ([f64Ty], f64Ty)
 	    | P.F64Sqrt _ => ([f64Ty], f64Ty)
 	    | P.F64Abs _ => ([f64Ty], f64Ty)
+	    | P.I8RSh _ => ([i8Ty, i8Ty], i8Ty)
+	    | P.I16RSh _ => ([i16Ty, i16Ty], i16Ty)
+	    | P.I32RSh _ => ([i32Ty, i32Ty], i32Ty)
+	    | P.I64RSh _ => ([i64Ty, i64Ty], i64Ty)
 	    | P.I32ToI64X _ => ([i32Ty], i64Ty)
 	    | P.I32ToI64 _ => ([i32Ty], i64Ty)
 	    | P.I64ToI32 _ => ([i64Ty], i32Ty)
@@ -178,6 +188,8 @@ functor PrimTyFn (Ty : sig
 	    | P.I64ToF32 _ => ([i64Ty], f32Ty)
 	    | P.I64ToF64 _ => ([i64Ty], f64Ty)
 	    | P.F64ToI32 _ => ([f64Ty], i32Ty)
+	    | P.I32ToI16 _ => ([i32Ty], i16Ty)
+	    | P.I16ToI8 _ => ([i16Ty], i8Ty)
 	    | P.AdrAddI32 _ => ([addrTy, i32Ty], addrTy)
 	    | P.AdrAddI64 _ => ([addrTy, i64Ty], addrTy)
 	    | P.AdrSubI32 _ => ([addrTy, i32Ty], addrTy)

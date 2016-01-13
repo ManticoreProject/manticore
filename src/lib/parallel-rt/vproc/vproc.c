@@ -24,7 +24,7 @@
 #include "options.h"
 #include "value.h"
 #include "scheduler.h"
-#include "inline-log.h"
+#include "inline-event-log.h"
 #include "time.h"
 #include "perf.h"
 #include "work-stealing-deque.h"
@@ -116,7 +116,7 @@ void VProcInit (bool isSequential, Options_t *opts)
 #ifdef ENABLE_LOGGING
   /* initialize the log file */
     const char *logFile = GetStringOpt(opts, "-log", DFLT_LOG_FILE);
-    InitLogFile (logFile, NumVProcs, NumHWThreads);
+    InitEventLogFile (logFile, NumVProcs, NumHWThreads);
 #endif
 
     if (pthread_key_create (&VProcInfoKey, 0) != 0) {
@@ -296,7 +296,7 @@ void *NewVProc (void *arg)
     CondInit (&(vproc->wait));
 
 #ifdef ENABLE_LOGGING
-    InitLog (vproc);
+    InitEventLog (vproc);
 #endif
 
     TIMER_Init (&(vproc->timer));
@@ -374,7 +374,7 @@ void VProcExit (VProc_t *vp)
 	LogVProcExitMain (vp);
 
 #ifdef ENABLE_LOGGING
-	FinishLog ();
+	FinishEventLog ();
 #endif
 
 #if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)
@@ -401,7 +401,7 @@ static void MainVProc (VProc_t *vp, void *arg)
 {
     extern int mantEntry;		/* the entry-point of the Manticore code */
 
-    LogVProcStartMain (vp);
+    LogStartup (vp, NumVProcs);
 
 #ifndef NDEBUG
     if (DebugFlg)

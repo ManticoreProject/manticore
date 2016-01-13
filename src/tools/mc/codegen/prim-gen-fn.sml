@@ -246,6 +246,13 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.F64Neg a => genFArith1 (f64Ty, T.FNEG, a)
 		    | P.F64Sqrt a => genFArith1 (f64Ty, T.FSQRT, a)
 		    | P.F64Abs a => genFArith1 (f64Ty, T.FABS, a)
+
+		    | P.I8RSh a => genArith2 (i8Ty, T.SRL, a)
+		    | P.I16RSh a => genArith2 (i16Ty, T.SRL, a)
+		    | P.I32RSh a => genArith2 (i32Ty, T.SRL, a)
+		    | P.I64RSh a => genArith2 (i64Ty, T.SRL, a)
+					     
+					       
 		  (* conversions *)
 		    | P.I32ToI64X x => gprBind (i64Ty, v, T.SX(i64Ty, i32Ty, defOf x))
 		    | P.I32ToI64 x => gprBind (i64Ty, v, T.ZX(i64Ty, i32Ty, defOf x))
@@ -260,6 +267,18 @@ functor PrimGenFn (structure BE : BACK_END) : PRIM_GEN =
 		    | P.I64ToF32 x => fbind (f32Ty, v, T.CVTI2F(f32Ty, i64Ty, defOf x))
 		    | P.I64ToF64 x => fbind (f64Ty, v, T.CVTI2F(f64Ty, i64Ty, defOf x))
 		    | P.F64ToI32 x => gprBind (i32Ty, v, T.CVTF2I(i32Ty, T.Basis.TO_NEAREST, f64Ty, fdefOf x))
+
+		    | P.I32ToI16 x => 
+		      let val t = Cells.newReg()
+		      in T.MV(i32Ty, t, defOf x) ::
+			 gprBind (i16Ty, v, T.REG (i16Ty, t))
+		      end  
+		    | P.I16ToI8 x =>
+		      let val t = Cells.newReg()
+		      in T.MV(i16Ty, t, defOf x) ::
+			 gprBind (i8Ty, v, T.REG (i8Ty, t))
+		      end
+					      
 		  (* address arithmetic *)
 		    | P.AdrAddI32(a, b) =>
 			gprBind (adrTy, v, T.ADD(adrTy, defOf a, T.SX(i64Ty, i32Ty, defOf b)))

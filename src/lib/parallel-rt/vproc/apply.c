@@ -11,7 +11,7 @@
 #include "request-codes.h"
 #include "scheduler.h"
 #include "heap.h"
-#include "inline-log.h"
+#include "inline-event-log.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
@@ -69,7 +69,9 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
 	}
 
+	LogRunThread(vp, 0);
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
+	LogStopThread(vp, 0, 0); //thread id and stop status, TODO: these are currently unused
 
 	Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
 

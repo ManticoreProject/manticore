@@ -61,15 +61,35 @@
   "events" : [
       { "name" : "VProcStartIdle",
 	"args" : [],
-	"desc" : "start idle vproc"
+	"desc" : "start idle vproc",
+	"format" : "\"Start idle VProc\""
       },
-      { "name" : "VProcStartMain",
-	"args" : [],
-	"desc" : "start main vproc"
+      { "name" : "Startup",
+	"args" : [
+	    {"name" : "n_caps", "ty" : "word16", "desc" : "Number of VProcs in the system"}
+	],
+	"attrs" : ["ghc", "rt"],
+	"desc" : "start main vproc",
+	"format" : "\"Startup: %d capabilities\" n_caps"
+      },
+      { "name" : "VProcStart",
+	"args" : [
+	    {"name" : "vpId", "ty" : "int", "desc" : "VProc ID"}
+	],
+	"desc" : "start a VProc",
+	"format" : "\"VProc %d starting\" vpId"
+      },
+      { "name" : "VProcExit",
+	"args" : [
+	    {"name" : "vpId", "ty" : "int", "desc" : "VProc ID"}
+	],
+	"desc" : "kill a VProc",
+	"format" : "\"VProc %d exiting\" vpId"
       },
       { "name" : "VProcExitMain",
 	"args" : [],
-	"desc" : "exit main vproc"
+	"desc" : "exit main vproc",
+	"format" : "\"Main vproc exiting\""
       },
       { "name" : "VProcIdle",
 	"args" : [],
@@ -88,7 +108,8 @@
 	    {"name" : "vpid", "ty" : "int", "desc" : "ID of the vproc being preempted"}
 	  ],
 	"attrs" : [],
-	"desc" : "time-slice preemption of a vproc"
+	"desc" : "time-slice preemption of a vproc",
+	"format" : "\"VProc %d was preempted\" vpid"
       },
       { "name" : "PreemptSignal",
 	"args" : [],
@@ -97,7 +118,7 @@
       },
       { "name" : "GCSignal",
 	"args" : [
-	    {"name" : "id", "ty" : "id", "desc" : "Unique ID of global GC"}
+	    {"name" : "sigid", "ty" : "id", "desc" : "Unique ID of global GC"}
 	  ],
 	"desc" : "global-GC signal received"
       },
@@ -116,6 +137,16 @@
 	"attrs" : ["rt"],
 	"desc" : "minor GC ends"
       },
+      { "name" : "StartGC",
+	"args" : [],
+	"attrs" : ["rt", "ghc"],
+	"desc" : "Start GC (includes all three types of GCs)"
+      },
+      { "name" : "EndGC",
+	"args" : [],
+	"attrs" : ["rt", "ghc"],
+	"desc" : "End GC (includes all three types of GCs)"
+      },
       { "name" : "MajorGCStart",
 	"args" : [
 	    {"name" : "nYoungBytes", "ty" : "word", "desc" : "number of young bytes in local heap"},
@@ -132,9 +163,24 @@
 	"attrs" : ["rt"],
 	"desc" : "major GC ends"
       },
+      { "name" : "RunThread",
+	"args" : [
+	    {"name" : "thread", "ty" : "int", "desc" : "thread ID"}
+	],
+	"attrs" : ["rt", "ghc"],
+	"desc" : "begin running thread"
+      },
+      { "name" : "StopThread",
+	"args" : [
+	    {"name" : "thread", "ty" : "int", "desc" : "thread ID"},
+	    {"name" : "status", "ty" : "word16", "desc" : "stop status for thread (not currently used)"}
+	],
+	"attrs" : ["rt", "ghc"],
+	"desc" : "Stop running a thread"
+      },
       { "name" : "GlobalGCInit",
 	"args" : [
-	    {"name" : "id", "ty" : "word", "desc" : "index of collection"},
+	    {"name" : "index", "ty" : "word", "desc" : "index of collection"},
 	    {"name" : "uid", "ty" : "new-id", "desc" : "unique ID of global GC"}
 	  ],
 	"attrs" : ["src", "rt"],
@@ -142,7 +188,7 @@
       },
       { "name" : "GlobalGCEnd",
 	"args" : [
-	    {"name" : "id", "ty" : "word", "desc" : "index of collection"}
+	    {"name" : "index", "ty" : "word", "desc" : "index of collection"}
 	  ],
 	"attrs" : ["rt"],
 	"desc" : "global GC finished"
@@ -176,21 +222,21 @@
     /* CML thread events */
       { "name" : "ThdSpawn",
 	"args" : [
-	    {"name" : "id", "ty" : "new-id", "desc" : ""}
+	    {"name" : "threadID", "ty" : "new-id", "desc" : ""}
 	  ],
 	"attrs" : ["src", "pml"],
 	"desc" : "local thread spawned"
       },
       { "name" : "ThdSpawnOn",
 	"args" : [
-	    {"name" : "id", "ty" : "new-id", "desc" : ""}
+	    {"name" : "threadID", "ty" : "new-id", "desc" : ""}
 	  ],
 	"attrs" : ["src", "pml"],
 	"desc" : "remote thread spawned"
       },
       { "name" : "ThdStart",
 	"args" : [
-	    {"name" : "id", "ty" : "id", "desc" : ""}
+	    {"name" : "threadID", "ty" : "id", "desc" : ""}
 	  ],
 	"attrs" : ["pml"],
 	"desc" : "thread body starts execution"
@@ -240,7 +286,7 @@
       { "name" : "MsgSend",
 	"args" : [
 	    {"name" : "msgid", "ty" : "new-id", "desc" : "unique ID of message"},
-	    {"name" : "id", "ty" : "id", "desc" : "unique ID of recv operation"}
+	    {"name" : "recvID", "ty" : "id", "desc" : "unique ID of recv operation"}
 	  ],
 	"attrs" : ["src", "pml"],
 	"desc" : "matching message send operation"
@@ -284,7 +330,7 @@
       },
      { "name" : "WSThiefSend",
        "args" : [
-	    {"name" : "tid", "ty" : "new-id", "desc" : "unique ID of the thief"},
+	    {"name" : "threadID", "ty" : "new-id", "desc" : "unique ID of the thief"},
 	    {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
 	],
        "attrs" : ["src", "pml"],
@@ -292,7 +338,7 @@
       },
       { "name" : "WSThiefBegin",
 	"args" : [
-	     {"name" : "tid", "ty" : "id", "desc" : "unique ID of the thief"},
+	     {"name" : "threadID", "ty" : "id", "desc" : "unique ID of the thief"},
 	     {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
 	 ],
 	"attrs" : ["pml"],
@@ -300,7 +346,7 @@
        },
       { "name" : "WSThiefEnd",
 	"args" : [
-	     {"name" : "tid", "ty" : "id", "desc" : "unique ID of the thief"},
+	     {"name" : "threadID", "ty" : "id", "desc" : "unique ID of the thief"},
 	     {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
 	 ],
 	"attrs" : ["pml"],
@@ -308,7 +354,7 @@
        },
        { "name" : "WSThiefSuccessful",
 	 "args" : [
-	      {"name" : "tid", "ty" : "id", "desc" : "unique ID of the thief"},
+	      {"name" : "threadID", "ty" : "id", "desc" : "unique ID of the thief"},
 	      {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
 	  ],
 	 "attrs" : ["pml"],
@@ -316,7 +362,7 @@
 	},
        { "name" : "WSThiefUnsuccessful",
 	 "args" : [
-	      {"name" : "tid", "ty" : "id", "desc" : "unique ID of the thief"},
+	      {"name" : "threadID", "ty" : "id", "desc" : "unique ID of the thief"},
 	      {"name" : "wid", "ty" : "id", "desc" : "unique ID of the worker"}
 	  ],
 	 "attrs" : ["pml"],
@@ -332,18 +378,27 @@
     /* rope events */
        { "name" : "RopeRebalanceBegin",
 	 "args" : [
-	      {"name" : "length", "ty" : "int", "desc" : "size of the rope"}
+	      {"name" : "ropeLen", "ty" : "int", "desc" : "size of the rope"}
 	  ],
 	 "attrs" : ["pml"],
 	 "desc" : "A rope is being rebalanced."
        },
        { "name" : "RopeRebalanceEnd",
 	 "args" : [
-	      {"name" : "length", "ty" : "int", "desc" : "size of the rope"}
+	      {"name" : "ropeLen", "ty" : "int", "desc" : "size of the rope"}
 	  ],
 	 "attrs" : ["pml"],
 	 "desc" : "A rope is finished being rebalanced."
-       }
-    ]
+       },
+      { "name" : "EventBlock",
+	"args" : [
+	    {"name" : "end_time", "ty" : "id", "desc" : "end time of block"},
+	    {"name" : "cap", "ty" : "int", "desc" : "Id of VProc the block belongs to"},
+	    {"name" : "block_events", "ty" : "word", "desc" : "events cooresponding to the block"}
+	],
+	"attrs" : ["ghc", "rt"],
+	"desc" : "A block of events associated with a single VProc"
+      }
+  ]
 }
 

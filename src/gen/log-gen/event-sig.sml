@@ -20,6 +20,8 @@ structure EventSig : sig
       | NEW_ID
       | EVENT_ID
       | STR of int
+      | WORD8
+      | WORD16
 
     type arg_desc = {
 	name : string,
@@ -42,6 +44,8 @@ structure EventSig : sig
   (* is an argument a new-id? *)
     val isNewIdArg : arg_desc -> bool
 
+    val strSizeofTy : ty -> string
+				     
     structure Set : ORD_SET where type Key.ord_key = string
     structure Map : ORD_MAP where type Key.ord_key = string
 
@@ -62,7 +66,23 @@ structure EventSig : sig
       | NEW_ID
       | EVENT_ID
       | STR of int
+      | WORD8
+      | WORD16
 
+    fun strSizeofTy (t : ty) : string =
+	case t
+	 of ADDR => "sizeof(Addr_t)"
+	  | INT => "sizeof(int)"
+	  | WORD => "sizeof(Word_t)"
+	  | FLOAT => "sizeof(float)"
+	  | DOUBLE => "sizeof(double)"
+	  | NEW_ID => "sizeof(Word_t)"   (*64 bits*)
+	  | EVENT_ID => "sizeof(Word_t)" (*64 bits*)
+	  | STR chars => "(sizeof(char) * " ^ Int.toString chars ^ ")"
+	  | WORD16 => "sizeof(uint16_t)"
+	  | WORD8 => "sizeof(uint8_t)"
+
+		   
     fun tyFromString s = (case String.map Char.toLower s
 	   of "addr" => SOME ADDR
 	    | "int" => SOME INT
@@ -71,6 +91,8 @@ structure EventSig : sig
 	    | "double" => SOME DOUBLE
 	    | "new-id" => SOME NEW_ID
 	    | "id" => SOME EVENT_ID
+	    | "word16" => SOME WORD16
+	    | "word8" => SOME WORD8
 	    | s => let
 		val ss = SS.full s
 		in
@@ -92,6 +114,8 @@ structure EventSig : sig
       | tyToString DOUBLE = "double"
       | tyToString NEW_ID = "new-id"
       | tyToString EVENT_ID = "id"
+      | tyToString WORD16 = "word16"
+      | tyToString WORD8 = "word8"
       | tyToString (STR n) = "str" ^ Int.toString n
 
   (* field tag, alignment, and size in bytes *)
@@ -102,6 +126,8 @@ structure EventSig : sig
       | alignAndSize DOUBLE = {tag = "D", align = 0w8, sz = 0w8}
       | alignAndSize NEW_ID = {tag = "N", align = 0w8, sz = 0w8}
       | alignAndSize EVENT_ID = {tag = "I", align = 0w8, sz = 0w8}
+      | alignAndSize WORD16 = {tag = "W16", align = 0w2, sz = 0w2}
+      | alignAndSize WORD8 = {tag = "W8", align = 0w1, sz = 0w1}
       | alignAndSize (STR n) =
 	  {tag = "s"^Int.toString n, align = 0w1, sz = Word.fromInt n}
 
@@ -154,7 +180,7 @@ structure EventSig : sig
 
   (* is an argument a new-id? *)
     fun isNewIdArg (ad : arg_desc) = (case #ty ad of NEW_ID => true | _ => false)
-
+					 
   (* sets and maps keyed by signature *)
     local
       structure Key =

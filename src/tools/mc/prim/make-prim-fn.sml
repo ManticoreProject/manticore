@@ -155,6 +155,12 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
 		("F64Neg",	mk Prim1 (P.F64Neg,		f64,			f64)),
 		("F64Sqrt",	mk Prim1 (P.F64Sqrt,		f64,			f64)),
 		("F64Abs",	mk Prim1 (P.F64Abs,		f64,			f64)),
+
+		("I8RSh",       mk Prim2 (P.I8RSh,              (i8, i8),               i8)),
+		("I16RSh",      mk Prim2 (P.I16RSh,             (i16, i16),             i16)),
+		("I32RSh",      mk Prim2 (P.I32RSh,             (i32, i32),             i32)),
+		("I64RSh",      mk Prim2 (P.I64RSh,             (i64, i64),             i64)),
+		
                 ("I32ToI64X",   mk Prim1 (P.I32ToI64X,  	i32,            	i64)),
                 ("I32ToI64",    mk Prim1 (P.I32ToI64,   	i32,            	i64)),
                 ("I64ToI32",    mk Prim1 (P.I64ToI32,   	i64,            	i32)),
@@ -163,6 +169,10 @@ functor MakePrimFn (Ty : PRIM_TYPES) : sig
                 ("I64ToF32",    mk Prim1 (P.I64ToF32,   	i64,            	f32)),
                 ("I64ToF64",    mk Prim1 (P.I64ToF64,   	i64,            	f64)),
                 ("F64ToI32",    mk Prim1 (P.F64ToI32,   	f64,            	i32)),
+
+		("I32ToI16",    mk Prim1 (P.I32ToI16,           i32,                    i16)),
+		("I16ToI8",     mk Prim1 (P.I16ToI8,            i16,                    i8)),
+		
 		("AdrAddI32",   mk Prim2 (P.AdrAddI32,  	(adrTy, i32),		adrTy)),
 		("AdrAddI64",   mk Prim2 (P.AdrAddI64,  	(adrTy, i64),		adrTy)),
 		("AdrSubI32",   mk Prim2 (P.AdrSubI32,  	(adrTy, i32),		adrTy)),

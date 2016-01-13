@@ -29,13 +29,20 @@ functor AMD64CopyFn (
 
     fun copy {src, dst} = let
 	(* parallel copy for gprs *)
-	  fun rcopy ( (32, dst, src),
-		      (T.COPY (32, dsts, srcs), c64s) ) =
-	      (T.COPY (32, dst :: dsts, src :: srcs), c64s)
-	    | rcopy ( (64, dst, src),
-		      (c32s, T.COPY (64, dsts, srcs)) ) =
-	      (c32s, T.COPY (64, dst :: dsts, src :: srcs))
-	(* parallel copy for fprs *)
+	fun rcopy ( (8, dst, src),
+		    (T.COPY(8, dsts, srcs), c16s, c32s, c64s)) =
+	    (T.COPY(8, dst::dsts, src::srcs), c16s, c32s, c64s)
+	  | rcopy ( (16, dst, src),
+		    (c8s, T.COPY(16, dsts, srcs), c32s, c64s)) =
+	    (c8s, T.COPY(16, dst::dsts, src::srcs), c32s, c64s)
+	  | rcopy ( (32, dst, src),
+		    (c8s, c16s, T.COPY(32,dsts,srcs), c64s)) =
+	    (c8s, c16s, T.COPY(32, dst::dsts, src::srcs), c64s)
+	  | rcopy ( (64, dst, src),
+		    (c8s, c16s, c32s, T.COPY(64, dsts, srcs))) =
+	    (c8s, c16s, c32s, T.COPY(64, dst::dsts, src::srcs))
+
+	  (* parallel copy for fprs *)
 	  fun fcopy ( (32, dst, src), 
 		      (T.FCOPY (32, dsts, srcs), fc64s, fc80s) ) =
 	      (T.FCOPY (32, dst :: dsts, src :: srcs), fc64s, fc80s)
@@ -68,8 +75,8 @@ functor AMD64CopyFn (
 	  val (regs, exprs, fregs, fexprs) = 
 	      ListPair.foldl mkCopies ([], [], [], []) (dst, src)
 
-	  val (pc32, pc64) = 
-	      foldl rcopy (T.COPY (32, [], []), T.COPY (64, [], [])) regs
+	  val (pc8, pc16, pc32, pc64) = 
+	      foldl rcopy (T.COPY (8, [], []), T.COPY (16, [], []), T.COPY (32, [], []), T.COPY (64, [], [])) regs
 	  val (fpc32, fpc64, fpc80) =
 	      foldl fcopy (T.FCOPY (32, [], []), T.FCOPY (64, [], []), 
 			   T.FCOPY (80, [], [])) fregs

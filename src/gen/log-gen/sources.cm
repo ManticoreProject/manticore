@@ -20,8 +20,14 @@ is
   main.sml
 
 (* specific generators *)
+  gen-inline-event-log-h.sml
   gen-inline-log-h.sml
   gen-log-events-def.sml
   gen-log-events-h.sml
   gen-logging-pml.sml
+  gen-event-log-format-h.sml 
+  gen-event-types-hs.sml
+  gen-events-hs.sml
+  gen-event-logging-pml.sml
+
 

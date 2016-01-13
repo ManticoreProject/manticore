@@ -18,7 +18,7 @@
 #include "vproc.h"
 #include "gc-inline.h"
 #include "internal-heap.h"
-#include "inline-log.h"
+#include "inline-event-log.h"
 #ifndef NDEBUG
 #include "bibop.h"
 #endif

@@ -27,7 +27,10 @@ structure GenLogEventsH : GENERATOR =
 		  "    ", name, " = ", Int.toString id, ", /* ", desc, " */\n"
 		]
 	  fun genDef (LoadFile.EVT{id = 0, name, desc, ...}) = prDef (name, 0, desc)
-	    | genDef (LoadFile.EVT{id, name, desc, ...}) = prDef (name^"Evt", id, desc)
+	    | genDef (LoadFile.EVT{id, name, desc, attrs, ...}) =
+	      if List.exists (fn attr => attr = LoadFile.ATTR_GHC) attrs
+	      then prDef (name, id, desc)
+	      else prDef (name^"Evt", id, desc)					  
 	  in [
 	    ("DATE", fn () => prl ["#define LOG_VERSION_DATE ", date, "\n"]),
 	    ("VERSION", genVersion),

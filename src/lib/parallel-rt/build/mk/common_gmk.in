@@ -74,7 +74,9 @@ CPU_SRCS =	cpuid.c \
 
 ifeq ($(ENABLE_LOGGING),true)
   CPPFLAGS += -DENABLE_LOGGING
-  MISC_SRCS += log.c
+  MISC_SRCS += log.c \
+  	       event-log.c
+  
 endif
 
 ifeq ($(ENABLE_DEBUG),true)

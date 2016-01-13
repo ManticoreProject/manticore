@@ -199,6 +199,9 @@ Value_t M_DoubleFromString (Value_t str)
     }
 }
 
+void M_Dummy(){
+
+}
 /* M_Print:
  */
 void M_Print (const char *s)
