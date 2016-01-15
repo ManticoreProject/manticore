@@ -28,6 +28,15 @@ functor AMD64CopyFn (
     fun fmove (fty, v, e) = note' (T.FMV (fty, v, e))
 
     fun copy {src, dst} = let
+	(* For some reason, MLRISC generates a movzbq and movzwq instructions for 
+	 * 8 and 16 bit loads respectively.  When we want to do a load of an 8 bit
+	 * value into an 8 bit register, this generates an invalid instruction.
+	 * to get around this, I'm doing a 64-bit load, and then a 16-16 bit 
+	 * register move (8-8 bit respectively).  These must be done prior to 
+	 * the other moves and are thus not "parallel" so we stuff them into
+	 * this prelims ref cell and tack it onto the beginning - ml9951
+	 *)
+	val prelims = ref []
 	(* parallel copy for gprs *)
 	fun rcopy ( (8, dst, src),
 		    (T.COPY(8, dsts, srcs), c16s, c32s, c64s)) =
@@ -41,7 +50,8 @@ functor AMD64CopyFn (
 	  | rcopy ( (64, dst, src),
 		    (c8s, c16s, c32s, T.COPY(64, dsts, srcs))) =
 	    (c8s, c16s, c32s, T.COPY(64, dst::dsts, src::srcs))
-
+	  | rcopy ( (s, dst, src), (c8s, c16s, c32s, c64s)) =
+	    raise Fail ("rcopy does not currently support size " ^ Int.toString s ^ "\n")
 	  (* parallel copy for fprs *)
 	  fun fcopy ( (32, dst, src), 
 		      (T.FCOPY (32, dsts, srcs), fc64s, fc80s) ) =
@@ -52,12 +62,20 @@ functor AMD64CopyFn (
 	    | fcopy ( (80, dst, src),
 		      (fc32s, fc64s, T.FCOPY (80, dsts, srcs)) ) =
 	      (fc32s, fc64s, T.FCOPY (80, dst :: dsts, src :: srcs))
+	    | fcopy ( (s, dst, src), (fc32s, fc64s, fc80s)) =
+	    raise Fail ("rcopy does not currently support size " ^ Int.toString s ^ "\n")
 	(* copy mltrees to registers *)
 	  fun mkCopies (MTy.GPReg (_, v1), MTy.GPR (ty, v2), 
 			(regs, exprs, fregs, fexprs)) =
 	      ( (ty, v1,v2) :: regs, exprs, fregs, fexprs)
 	    | mkCopies (MTy.GPReg (_, v1), MTy.EXP (ety, e), 
 			(regs, exprs, fregs, fexprs)) = 
+	      if ety < 32
+	      then
+		  let val temp = Cells.newReg()
+		      val _ = prelims := move(64, temp, e) :: !prelims
+		  in ((ety,v1,temp)::regs,exprs, fregs, fexprs) end
+	      else 
 	      (regs, (ety,v1,e) :: exprs, fregs, fexprs) 
 	    | mkCopies (MTy.FPReg (_, v1), MTy.FPR (fty, v2), 
 			(regs, exprs, fregs, fexprs)) = 
@@ -88,7 +106,7 @@ functor AMD64CopyFn (
 	    | isNonEmptyCpy _ = true
 
 	  in
-	    (List.filter isNonEmptyCpy [pc32, pc64, fpc32, fpc64, fpc80]) @ cexps
+	    (!prelims @ List.filter isNonEmptyCpy [pc8, pc16, pc32, pc64, fpc32, fpc64, fpc80]) @ cexps
 	  end (* copy *)
 
     fun fresh regs = let
