@@ -22,7 +22,6 @@ structure EventLogging =
 	extern void ASM_GetTimeStamp (void *);
     extern void printAndClearEventBuf(void*);
 	extern long get_elapsed_time();
-	extern void M_Dummy();
 	
 	(*pos, marker, size, vpNum, begin*)
 	typedef event_log = ![addr(byte), addr(byte), long, int, addr(byte)];
@@ -39,7 +38,6 @@ structure EventLogging =
 	 * output on one of the test cases in /regression-tests/goals/seq-logging
 	 *)
 	define @post-word16(log : event_log, s : short) : () =
-		do ccall M_Dummy()
 		let b1 : byte = I16ToI8(I16RSh(s, 8:short))
 		let b2 : byte = I16ToI8(s)
 		do @post-word8(log, b1)
@@ -83,13 +81,11 @@ structure EventLogging =
 	    return (I64FetchAndAdd(eidPtr, 1:long))
 	  ;
 	  
-    (* TODO: I'm missing something in the code generator.  We seem to be
+    (* TODO: I'm (or MLRISC is) missing something in the code generator.  We seem to be
      * improperly defining short and byte sized variables, such that the
-     * register allocator is missing those definitions.  If we pass in the
-     * event as a "short", when we try to post it, we will improperly look
-     * it up in the environment.  As a workaround, I am passing in the event
-     * number as an int, and then after checking that we have enough space
-     * in the buffer, we trim it down to 16 bytes and post it.
+     * register allocator is missing those definitions.  If the event gets
+     * spilled and something else gets spilled after it, then we overwrite the
+     * event.
      *)
 @GENERIC-LOG-HLOPS@
 
