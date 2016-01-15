@@ -187,7 +187,7 @@ structure VProc (* :
 		  return ()
           do apply preempt()
           let dstId : int = @vproc-id (dst)
-          do Logging.@log-PreemptVProc (self, dstId)
+          do EventLogging.@log-PreemptVProc (self, dstId)
 	  return()
       ;
 

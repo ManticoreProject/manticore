@@ -208,24 +208,24 @@ structure WorkStealing (* :
 		  logWID : long / exh : exh) 
 	    : (* task *) List.list =
 	do assert(NotEqual (self, victim))
-        let logTID : long = Logging.@log-WSThiefSend (self, logWID)
+        let logTID : long = EventLogging.@log-WSThiefSend (self, logWID)
 	let ch : ![(* task List.list *) Option.option] = alloc (Option.NONE)
 	let ch : ![(* task List.list *) Option.option] = promote (ch)
 	cont thief (_ : unit) =
 	  let self : vproc = SchedulerAction.@atomic-begin ()
-	  do Logging.@log-WSThiefBegin (self, logTID, logWID)
+	  do EventLogging.@log-WSThiefBegin (self, logTID, logWID)
 	  do assert(Equal (self, victim))
           let ts : (* task *) List.list = @try-pop-remote-in-atomic (self, workGroupID)
           case ts
 	   of List.nil =>
 	      let x : Option.option = promote (Option.SOME(List.nil))
 	      do #0(ch) := x
-	      do Logging.@log-WSThiefEnd (self, logTID, logWID)
+	      do EventLogging.@log-WSThiefEnd (self, logTID, logWID)
 	      SchedulerAction.@stop ()
 	    | CONS (_ : task, _ : List.list) =>
 	      let x : Option.option = promote (Option.SOME(ts))
 	      do #0(ch) := x
-	      do Logging.@log-WSThiefEnd (self, logTID, logWID)
+	      do EventLogging.@log-WSThiefEnd (self, logTID, logWID)
 	      SchedulerAction.@stop ()
 	  end
 	let fls : FLS.fls = FLS.@get()
@@ -240,10 +240,10 @@ structure WorkStealing (* :
 		do case tasks
 		    of List.nil => 
 		       let _ : unit = @inc-num-failed-steals (UNIT / exh)
-		       Logging.@log-WSThiefUnsuccessful (self, logTID, logWID)
+		       EventLogging.@log-WSThiefUnsuccessful (self, logTID, logWID)
 		     | _ => 
 		       let _ : unit = @inc-num-steals (UNIT / exh)
-		       Logging.@log-WSThiefSuccessful (self, logTID, logWID)
+		       EventLogging.@log-WSThiefSuccessful (self, logTID, logWID)
 		   end
 		return (tasks)
 	    end
@@ -310,7 +310,7 @@ structure WorkStealing (* :
 	      let reset : bool = apply waitFn ()
 	      do case reset
 		  of true =>
-		     do Logging.@log-WSSleep (self, logWID)
+		     do EventLogging.@log-WSSleep (self, logWID)
 		     do SchedulerAction.@sleep (1000000:long)
 		     return ()
 		   | false =>
@@ -319,7 +319,7 @@ structure WorkStealing (* :
               let terminated : bool = apply isTerminated ()
 	      do case terminated
 		  of true => 
-		     do Logging.@log-WSTerminate (self, workGroupID)
+		     do EventLogging.@log-WSTerminate (self, workGroupID)
 		     let _ : unit = SchedulerAction.@stop() 
 		     return ()
 		   | false => 
@@ -362,7 +362,7 @@ structure WorkStealing (* :
           let deque2 : deque = 
                 D.@new-secondary-deque-in-atomic (self, workGroupID, DEFAULT_DEQUE_SZ)
 	  do @set-my-deque-in-atomic (self, deques, deq / exh)
-	  let logWID : long = Logging.@log-WSWorkerInit (self, logWGID)
+	  let logWID : long = EventLogging.@log-WSWorkerInit (self, logWGID)
 	  cont schedLp (sign : PT.signal) =
 	    let workerFLS : FLS.fls = FLS.@get ()
 	    cont executeNextTask () = 
@@ -380,7 +380,7 @@ structure WorkStealing (* :
                    end
                    throw executeNextTask ()
 		| Option.SOME (t : task) =>
-		  do Logging.@log-WSExecute (self, logWID)
+		  do EventLogging.@log-WSExecute (self, logWID)
 		  do @set-my-deque-in-atomic (self, deques, deq / exh)
 		  do ImplicitThread.@run-from-atomic (self, schedLp, t / exh)
 		  throw impossible ()
@@ -389,13 +389,13 @@ structure WorkStealing (* :
 	     of PT.STOP =>
 		throw executeNextTask ()
 	      | PT.PREEMPT (k : PT.fiber) =>
-		do Logging.@log-WSPreempted (self, logWID)
+		do EventLogging.@log-WSPreempted (self, logWID)
 		let t : task = ImplicitThread.@capture (k / exh)
 		do D.@push-new-end-in-atomic (self, deq, t)
 		let _ : vproc = SchedulerAction.@yield-in-atomic (self)
 		throw executeNextTask ()
 	      | PT.BLOCK (k : PT.fiber) =>
-		do Logging.@log-WSPreempted (self, logWID)
+		do EventLogging.@log-WSPreempted (self, logWID)
 		let t : task = ImplicitThread.@capture (k / exh)
 		do D.@push-new-end-in-atomic (self, deq, t)
 		let _ : vproc = SchedulerAction.@yield-in-atomic (self)
@@ -478,7 +478,7 @@ structure WorkStealing (* :
 	let deques : Arr.array = Arr.@create (nVProcs, enum(0):any / exh)
 	let idleFlags : Arr.array = Arr.@create (nVProcs, false / exh)
 	let self : vproc = SchedulerAction.@atomic-begin ()
-	let logWGID : long = Logging.@log-WSInit (self)
+	let logWGID : long = EventLogging.@log-WSInit (self)
 	do SchedulerAction.@atomic-end (self)
 	let initWorker : cont (vproc, ImplicitThread.worker) = 
 	   @create-worker (workGroupID, logWGID, isTerminated, setActive, deques, idleFlags / exh)
