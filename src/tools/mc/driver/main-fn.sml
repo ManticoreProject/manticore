@@ -153,15 +153,35 @@ functor MainFn (
 	      else err "error compiling generated assembly code\n"
 	  end
 
+    (* MLRISC is incorrectly naming some of the 8-bit registers, so as a simple
+     * workaround, we are just going to find/replace them in the output text file
+     *)
+    fun replace8BitRegisters asmFile =
+	let
+	    val stat = OS.Process.system(
+		    "sed -i '' \"s/%ah/%spl/g; s/%ch/%bpl/g; s/%dh/%sil/g; s/%bh/%dil/g\" " ^ asmFile)
+	in () end
+			
+					  
     fun codegen (verbose, outFile, cfg) = let
 	  val outStrm = TextIO.openOut outFile
 	  fun doit () = CG.codeGen {dst=outStrm, code=cfg}
 	  in	  
 	    AsmStream.withStream outStrm doit ();
 	    TextIO.closeOut outStrm;
+	    replace8BitRegisters outFile;
 	    buildExe (verbose, outFile)
 	  end (* compile *)
 
+    fun runPreproc (dir', cmd, args) = let
+	  val dir = OS.FileSys.getDir()
+	  val _ = OS.FileSys.chDir dir'
+	  val x = Unix.execute(cmd, args)
+	  in
+	      OS.FileSys.chDir dir;
+	      x
+    end
+					   
   (* compile an MLB or PML file *)
     fun mlbC (verbose, errStrm, srcFile, asmFile) = let
 	  val _ = if verbose then print "initializing environment\n" else ()
@@ -178,14 +198,14 @@ functor MainFn (
           val bom = Translate.translate (IB.primTranslationEnv, ast)
           val cfg = bomToCFG bom
 	  in
-	    codegen (verbose, asmFile, cfg);
-            if verbose
-            then TextIO.print(concat ["Full compilation finished in: ",
-                                      (Time.toString (Time.- (Time.now(), inclusiveStart))),
-                                      "\n"])
-            else ();
-	    Stats.report ()
-	  end
+	      codegen (verbose, asmFile, cfg);
+              if verbose
+              then TextIO.print(concat ["Full compilation finished in: ",
+					(Time.toString (Time.- (Time.now(), inclusiveStart))),
+					"\n"])
+              else ();
+	      Stats.report ()
+    end
 
     fun doFile file = BackTrace.monitor (fn () => let
 	  val verbose = (Controls.get BasicControl.verbose > 0)
