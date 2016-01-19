@@ -52,9 +52,9 @@ structure GenInlineEventLogH : GENERATOR =
 		  | Sig.WORD16 => prl ["    postWord16(vp->event_log, ", arg, ");\n"]
 		  | Sig.WORD8 => prl ["    postWord8(vp->event_log, ", arg, ");\n"]
 		  | Sig.WORD => prl ["    postWord32(vp->event_log, ", arg, ");\n"]
-		  | Sig.NEW_ID => TextIO.output(outS, "    uint64_t newId = NewEventId(vp);\n")
+		  | Sig.NEW_ID => TextIO.output(outS, "    uint64_t newId = NewEventId(vp);\n    postWord64(vp->event_log, newId);\n")
 		  | _ => prl["    postWord64(vp->event_log, (uint64_t)", arg, ");\n"]
-	      ; genPosts(r, i)
+	      ; genPosts(r, i+1)
 	    end					    
 	  in
 	    prl [
@@ -111,7 +111,7 @@ structure GenInlineEventLogH : GENERATOR =
 	    prParams args;
 	    pr ") 0\n"
 	  end
-
+		      
   (* compute a mapping from signatures to their argument info from the list of event
    * descriptors.
    *)
@@ -158,14 +158,14 @@ structure GenInlineEventLogH : GENERATOR =
 
 	  fun computeSize(args : EventSig.arg_desc list) =
 	      case args
-	       of [] => "0"
+	       of [] => "0"  
 		| {ty, ...}::args => EventSig.strSizeofTy ty ^ " + " ^ computeSize args
 		  				
 	  fun genSizes(LoadFile.EVT{name, args, attrs, ...}) =
 	      if ghc attrs
 	      then prSizes(name, computeSize args)
 	      else prSizes(name ^ "Evt", computeSize args)
-		
+
 	  in [
 	    ("GENERIC-LOG-FUNCTIONS", genericLogFuns),
 	    ("LOG-FUNCTIONS", logFunctions),

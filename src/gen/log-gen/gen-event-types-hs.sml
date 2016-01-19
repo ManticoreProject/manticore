@@ -63,12 +63,27 @@ structure GenEventTypesHS : GENERATOR =
 	  fun genArgs(args : Sig.arg_desc list) =
 	      case args
 	       of [] => []
+		| {ty=Sig.ADDR, name=n, ...} :: tys =>
+		  String.concat[n, " :: {-# UNPACK #-}!Word64"] :: genArgs tys
 		| {ty=Sig.INT, name=n, ...} :: tys =>
 		  String.concat[n, " :: {-# UNPACK #-}!Word32"] :: genArgs tys
-		| {name=n, ...} :: tys =>
+		| {ty=Sig.WORD, name=n, ...} :: tys =>
+		  String.concat[n, " :: {-# UNPACK #-}!Word32"] :: genArgs tys
+		| {ty=Sig.FLOAT, name=n, ...} :: tys =>
+		  String.concat[n, " :: {-# UNPACK #-}!Word32"] :: genArgs tys
+		| {ty=Sig.DOUBLE, name=n, ...} :: tys =>
 		  String.concat[n, " :: {-# UNPACK #-}!Word64"] :: genArgs tys
-
-
+		| {ty=Sig.NEW_ID, name=n, ...} :: tys =>
+		  String.concat[n, " :: {-# UNPACK #-}!Word64"] :: genArgs tys
+		| {ty=Sig.EVENT_ID, name=n, ...} :: tys =>
+		  String.concat[n, " :: {-# UNPACK #-}!Word64"] :: genArgs tys
+		| {ty=Sig.WORD8 , name=n, ...} :: tys =>
+		  String.concat[n, " :: {-# UNPACK #-}!Word8"] :: genArgs tys
+		| {ty=Sig.WORD16, name=n, ...} :: tys =>
+		  String.concat[n, " :: {-# UNPACK #-}!Word16"] :: genArgs tys
+		| {ty=Sig.STR _, name=n, ...} :: tys =>
+		  raise Fail "string not implemented yet"
+					     
 	  fun ghc attrs = List.exists(fn attr => attr = LoadFile.ATTR_GHC) attrs
 													     
 									   

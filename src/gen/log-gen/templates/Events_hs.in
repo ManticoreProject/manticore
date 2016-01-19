@@ -125,6 +125,7 @@ getEvent (EventParsers parsers) = do
      else do !ts   <- getE
              -- trace ("event: " ++ show etRef) $ do
              spec <- parsers ! fromIntegral etRef
+	     traceM("ts = " ++ show ts ++ ": " ++ show spec)
              return (Just (Event ts spec))
 
 --

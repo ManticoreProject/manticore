@@ -71,16 +71,16 @@ structure EventSig : sig
 
     fun strSizeofTy (t : ty) : string =
 	case t
-	 of ADDR => "sizeof(Addr_t)"
-	  | INT => "sizeof(int)"
-	  | WORD => "sizeof(Word_t)"
-	  | FLOAT => "sizeof(float)"
-	  | DOUBLE => "sizeof(double)"
-	  | NEW_ID => "sizeof(Word_t)"   (*64 bits*)
-	  | EVENT_ID => "sizeof(Word_t)" (*64 bits*)
+	 of ADDR => "8"
+	  | INT => "4"
+	  | WORD => "4"
+	  | FLOAT => "4"
+	  | DOUBLE => "8"
+	  | NEW_ID => "8"   (*64 bits*)
+	  | EVENT_ID => "8" (*64 bits*)
 	  | STR chars => "(sizeof(char) * " ^ Int.toString chars ^ ")"
-	  | WORD16 => "sizeof(uint16_t)"
-	  | WORD8 => "sizeof(uint8_t)"
+	  | WORD16 => "2"
+	  | WORD8 => "1"
 
 		   
     fun tyFromString s = (case String.map Char.toLower s

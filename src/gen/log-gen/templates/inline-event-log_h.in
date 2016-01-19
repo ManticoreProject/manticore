@@ -29,7 +29,6 @@ static char * EventDescArr [] = {
 
 static uint16_t EventSizesArr [] = {
     @EVENT-SIZES@
-    [EventBlock] = sizeof(uint32_t) + sizeof(uint64_t) + sizeof(uint16_t),
 };
 
 STATIC_INLINE void postWord8(EventsBuf *eb, uint8_t i)
@@ -54,6 +53,34 @@ STATIC_INLINE void postWord64(EventsBuf *eb, uint64_t i)
     postWord32(eb, (uint32_t)(i >> 32));
     postWord32(eb, (uint32_t)i);
 }	      
+
+STATIC_INLINE void sanity(EventsBuf * eb){
+    int i = 0;
+    int bytes = 0;
+    uint8_t * ptr = eb->begin;
+    uint16_t tag = ((uint16_t)ptr[0] << 8) | ptr[1];
+    if(tag != EventBlock){
+        if(tag == 26724 || tag == 65535){
+            return; //tag is beginning of header, or end of data tag
+        }
+        printf("Warning: no event block at beginning\n");
+    }else{
+        ptr += 10 + EventSizesArr[EventBlock];
+        i++;
+        bytes += 10 + EventSizesArr[EventBlock];
+    }
+
+    while(ptr < eb->pos){
+        uint16_t tag = ((uint16_t)ptr[0] << 8) | ptr[1];
+        if(tag == 0 || tag > EventBlock){
+            printf("event out of range! (%hu)\n", tag);
+            return;
+        }
+        ptr += 10 + EventSizesArr[tag];  //go past tag and timestamp
+        i++;
+        bytes += 10 + EventSizesArr[tag];
+    }
+}
 
 STATIC_INLINE void postEventType(EventsBuf *eb, uint16_t event_num){
      uint8_t d;
@@ -90,8 +117,8 @@ STATIC_INLINE void postEventTypes(EventsBuf * eb){
 STATIC_INLINE void ensureRoomForEvent(VProc_t * vp, uint32_t tag)
 {
     EventsBuf *eb = vp->event_log;
-    uint16_t size = EventSizesArr[tag];
-    if(eb->pos + size > eb->begin + eb->size){ //not enough space
+    uint16_t size = EventSizesArr[tag] + 10;  //8 bytes for timestamp and 2 bytes for tag
+    if(eb->pos + size > eb->end){ //not enough space
 	printAndClearEventBuf(vp);
     }
 }

@@ -23,8 +23,8 @@ structure EventLogging =
     extern void printAndClearEventBuf(void*);
 	extern long get_elapsed_time();
 	
-	(*pos, marker, size, vpNum, begin*)
-	typedef event_log = ![addr(byte), addr(byte), long, int, addr(byte)];
+	(*pos, marker, size, begin*)
+	typedef event_log = ![addr(byte), addr(byte), addr(byte), addr(byte)];
 
 	define @post-word8(log : event_log, b : byte) : () = 
 		let pos : addr(byte) = #0(log)
@@ -64,8 +64,8 @@ structure EventLogging =
 
 	define @ensure-space(log : event_log, size : int) : () = 
 		let pos : addr(byte) = #0(log)
-		let begin : addr(byte) = #4(log)
-		let buf_end : addr(any) = AdrAddI64((addr(any))begin, #2(log))
+		let begin : addr(byte) = #3(log)
+		let buf_end : addr(byte) = #2(log)
 		let new_pos : addr(any) = AdrAddI32((addr(any))pos, size)
 		if I64Gt(new_pos, buf_end)
 		then 

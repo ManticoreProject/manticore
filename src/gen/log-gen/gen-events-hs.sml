@@ -79,14 +79,13 @@ structure GenEventsHS : GENERATOR =
 		  fun mkExp(args : Sig.arg_desc list, exp, bindings, size) =
 		      case args
 		       of [] => (String.concat["(", exp, "return $ ", name, "{", String.concatWith ", " bindings, "})"], size)
-			| {ty=Sig.INT, name=n, ...} :: tys =>
-			  mkExp(tys, String.concat [exp, "getE >>= \\ ", n, " -> "],
-				String.concat[n, " = ", n] :: bindings, 4 + size)
-			| {name=n, ...} :: tys =>
-			  mkExp(tys, String.concat [exp, "getE >>= \\ ", n, " -> "],
-				String.concat[n, " = ", n] :: bindings, 8 + size)
-		  val (monadicExp, size) = mkExp(args, "traceM \"inside " ^ name ^ "\" >> " , [], 0)
-	      in TextIO.output(outS, String.concatWith " " ["  (FixedSizeParser", Int.toString id, Int.toString size, monadicExp, ")"])
+			| {name=n, ty, ...} :: tys =>
+			  let val {sz, ...} = Sig.alignAndSize ty
+			  in mkExp(tys, String.concat[exp, "getE >>= \\ ", n, " -> "],
+				   String.concat[n, " = ", n] :: bindings, sz + size)
+			  end
+		  val (monadicExp, size) = mkExp(args, "traceM \"inside " ^ name ^ "\" >> " , [], Word.fromInt 0)
+	      in TextIO.output(outS, String.concatWith " " ["  (FixedSizeParser", Int.toString id, Int.toString (Word.toInt size), monadicExp, ")"])
 	      end
 		  
 	  fun printParser(id, name, args) =

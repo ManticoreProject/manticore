@@ -112,14 +112,15 @@ void InitEventLog (VProc_t *vp)
 {
     vp->event_log = NEW(EventsBuf);
     vp->event_log->pos = vp->event_log->begin;
-    vp->event_log->size = LOGBLOCK_SZB;
+    vp->event_log->end = vp->event_log->begin + LOGBLOCK_SZB;
     vp->event_log->marker = NULL;
-    vp->event_log->vpNum = vp->id;
 
     if(vp->id == 0){
 	initElapsedTS();
 	postEventTypes(vp->event_log);
 	printAndClearEventBuf(vp);
+    }else{
+        postBlockMarker(vp);
     }
     
 }

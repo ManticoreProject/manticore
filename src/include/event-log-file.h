@@ -28,8 +28,7 @@ extern "C" {
 typedef struct _EventsBuf{
     uint8_t * pos;
     uint8_t *marker;
-    uint64_t size;
-    uint32_t vpNum;
+    uint8_t * end;
     uint8_t begin[LOGBLOCK_SZB];
 } EventsBuf;
 
