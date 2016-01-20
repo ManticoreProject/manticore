@@ -20,7 +20,7 @@ is
   main.sml
 
 (* specific generators *)
-  gen-inline-event-log-h.sml
+  gen-event-log-h.sml
   gen-inline-log-h.sml
   gen-log-events-def.sml
   gen-log-events-h.sml
