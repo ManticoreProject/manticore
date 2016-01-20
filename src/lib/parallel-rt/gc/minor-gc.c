@@ -16,7 +16,7 @@
 #include "value.h"
 #include "internal-heap.h"
 #include "gc-inline.h"
-#include "inline-event-log.h"
+#include "event-log.h"
 #include "work-stealing-deque.h"
 #include "bibop.h"
 #include "gc-scan.h"

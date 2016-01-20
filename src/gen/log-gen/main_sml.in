@@ -18,11 +18,12 @@ structure Main : sig
     structure GenLogEventsDef = GeneratorFn (GenLogEventsDef)
     structure GenLogEventsH = GeneratorFn (GenLogEventsH)
     structure GenLoggingPML = GeneratorFn (GenLoggingPML)
-    structure GenInlineEventLogH = GeneratorFn (GenInlineEventLogH)
+    structure GenEventLogH = GeneratorFn (GenEventLogH) 
     structure GenEventLoggingPML = GeneratorFn (GenEventLoggingPML)
     structure GenEventsHS = GeneratorFn(GenEventsHS)
     structure GenEventLogFormatH = GeneratorFn(GenEventLogFormatH)
     structure GenEventTypesHS = GeneratorFn(GenEventTypesHS)
+    structure GenEventLogC = GeneratorFn(GenEventLogC)
 
     val rootDir = "@MANTICORE_ROOT@"
     val templateDir = "@MANTICORE_ROOT@/src/gen/log-gen/templates"
@@ -36,11 +37,12 @@ structure Main : sig
 	    (GenLogEventsDef.template,	GenLogEventsDef.path,	GenLogEventsDef.gen),
 	    (GenLogEventsH.template,	GenLogEventsH.path,	GenLogEventsH.gen),
 	    (GenLoggingPML.template,	GenLoggingPML.path,	GenLoggingPML.gen),
-	    (GenInlineEventLogH.template, GenInlineEventLogH.path, GenInlineEventLogH.gen),
+	    (GenEventLogH.template, GenEventLogH.path, GenEventLogH.gen),  
 	    (GenEventLoggingPML.template, GenEventLoggingPML.path, GenEventLoggingPML.gen),
 	    (GenEventsHS.template, GenEventsHS.path, GenEventsHS.gen),
 	    (GenEventLogFormatH.template, GenEventLogFormatH.path, GenEventLogFormatH.gen),
-	    (GenEventTypesHS.template, GenEventTypesHS.path, GenEventTypesHS.gen)
+	    (GenEventTypesHS.template, GenEventTypesHS.path, GenEventTypesHS.gen),
+	    (GenEventLogC.template, GenEventLogC.path, GenEventLogC.gen)
 	  ]
 
     fun usage () = TextIO.output (TextIO.stdErr, "usage: log-gen [-help] [-clean] [-depend]\n")

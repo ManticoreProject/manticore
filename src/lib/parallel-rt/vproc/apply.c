@@ -11,7 +11,7 @@
 #include "request-codes.h"
 #include "scheduler.h"
 #include "heap.h"
-#include "inline-event-log.h"
+#include "event-log.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;

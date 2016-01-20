@@ -25,7 +25,30 @@ structure GenEventLoggingPML : GENERATOR =
 	  | {ty=Sig.WORD16,...}::args => true
 	  | x :: args => smallType args
 	  | [] => false
-				      
+
+    fun genExtern outS (sign, {isSource, args}) =
+	let fun pr s = TextIO.output(outS, s)
+	    fun prl l = TextIO.output(outS, concat l)
+	    fun prf (fmt, l) = TextIO.output(outS, F.format fmt l)
+	    fun genParams ([], _) = ""
+	      | genParams ((_, ty)::r, i) =
+		case ty
+		 of Sig.ADDR => ", void *" ^ genParams(r, i)
+		  | Sig.INT => ", int" ^ genParams(r, i)
+		  | Sig.WORD => ", int" ^ genParams(r, i)
+		  | Sig.FLOAT => ", float" ^ genParams(r, i)
+		  | Sig.DOUBLE => ", double" ^ genParams(r, i)
+		  | Sig.EVENT_ID => ", long" ^ genParams(r, i)
+		  | Sig.NEW_ID => genParams(r, i)
+		  | Sig.WORD16 => ", short" ^ genParams(r, i)
+		  | Sig.WORD8 => ", byte" ^ genParams(r, i)
+		  | Sig.STR _ => ", void*" ^ genParams(r, i)
+	    val params = genParams(args, 0)
+	    val retType = if isSource then "long" else "void"
+	in
+	    prl ["    extern ", retType, " LogEvent", sign, "(void*, int", params, ");\n"]
+	end
+		(*			    
   (* generate the inline logging function for a given signature *)
     fun genForSig outS (sign, {isSource, args}) = let
 	  fun pr s = TextIO.output(outS, s)
@@ -95,8 +118,49 @@ structure GenEventLoggingPML : GENERATOR =
 	      then pr "\t    return (newId)\n"
 	      else pr "\t    return ()\n";
 	    pr "\t  ;\n"
-	  end
-
+    end
+		     *)
+	    
+(* generate the inline logging function for a given signature *)
+    fun genForSig outS (sign, {isSource, args}) = let
+	  fun pr s = TextIO.output(outS, s)
+	  fun prl l = TextIO.output(outS, concat l)
+	  fun prf (fmt, l) = TextIO.output(outS, F.format fmt l)
+	(* generate params for the event arguments *)
+	  fun genParams([], i, params, args) = (params, args)
+	    | genParams((_, ty)::r, i, params, args) =
+	      let val param = ", a" ^ Int.toString i
+	      in case ty
+		  of Sig.ADDR => genParams(r, i+1, params ^ param ^ " : any", args ^ param)
+		   | Sig.INT => genParams(r, i+1, params ^ param ^ " : int", args ^ param)
+		   | Sig.WORD => genParams(r, i+1, params ^ param ^ " : int", args ^ param)
+		   | Sig.FLOAT => genParams(r, i+1, params ^ param ^ " : float", args ^ param)
+		   | Sig.DOUBLE => genParams(r, i+1, params ^ param ^ " : double", args ^ param)
+		   | Sig.EVENT_ID => genParams(r, i+1, params ^ param ^ " : any", args ^ param)
+		   | Sig.NEW_ID => genParams(r, i+1, params, args)
+		   | Sig.WORD16 => genParams(r, i+1, params ^ param ^ " : short", args ^ param)
+		   | Sig.WORD8 => genParams(r, i+1, params ^ param ^ " : byte", args ^ param)
+		   | Sig.STR _ => genParams(r, i+1, params ^ param ^ " : any", args ^ param)
+	      end
+	  val (params, args) = genParams(args, 0, "", "")
+    in
+	if isSource
+	then
+	    (
+	      prl ["\tdefine inline @log-event", sign, "(vp : vproc, evt : int", params, ") : long = \n"];
+	      pr "\t\tlet vp : vproc = host_vproc\n";
+	      prl ["\t\tlet new_id : long = ccall LogEvent", sign, "(vp, evt", args, ")\n"];
+	      pr "\t\treturn(new_id);\n\n"
+	    )
+	else
+	    (
+	      prl ["\tdefine inline @log-event", sign, "(vp : vproc, evt : int", params, ") : () = \n"];
+	      pr "\t\tlet vp : vproc = host_vproc\n";
+	      prl ["\t\tdo ccall LogEvent", sign, "(vp, evt", args, ")\n"];
+	      pr "\t\treturn();\n\n"
+	    )
+    end
+						      
   (* generate an event-specific logging HLOp *)
     fun genLogHLOp outS (evt as LoadFile.EVT ed) = let
 	  fun pr s = TextIO.output(outS, s)
@@ -312,12 +376,14 @@ structure GenEventLoggingPML : GENERATOR =
 	  fun wrappedHLOps () = LoadFile.applyToEvents (genWrappedLogHLOp outS) logDesc
 	  fun dummyLogHLOps () = LoadFile.applyToEvents (genDummyLogHLOp outS) logDesc
 	  fun logFunctions () = LoadFile.applyToEvents (genLogFun outS) logDesc
+	  fun externs () = Map.appi (genExtern outS) sigMap
 	  in [
 	    ("GENERIC-LOG-HLOPS", genericLogHLOps),
 	    ("LOG-HLOPS", logHLOps),
 	    ("WRAPPED-LOG-HLOPS", wrappedHLOps),
 	    ("DUMMY-LOG-HLOPS", dummyLogHLOps),
-	    ("LOG-FUNCTIONS", logFunctions)
+	    ("LOG-FUNCTIONS", logFunctions),
+	    ("EXTERNS", externs)
 	  ] end
 
   end

@@ -1,5 +1,6 @@
 
 
+
 val _ = EventLogging.logVProcStartIdle () 
 val _ = EventLogging.logVProcStart 1234 
 val _ = EventLogging.logVProcExit 1234 
@@ -35,7 +36,9 @@ val _ = EventLogging.logWSExecute 123456
 val _ = EventLogging.logWSPreempted 123456 
 val _ = EventLogging.logWSThiefSend 123456 
 val _ = EventLogging.logWSThiefBegin (123456, 123456) 
+
 val _ = EventLogging.logWSThiefEnd (123456, 123456) 
+
 val _ = EventLogging.logWSThiefSuccessful (123456, 123456) 
 val _ = EventLogging.logWSThiefUnsuccessful (123456, 123456) 
 val _ = EventLogging.logWSSleep 123456 

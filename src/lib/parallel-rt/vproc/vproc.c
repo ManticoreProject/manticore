@@ -24,7 +24,8 @@
 #include "options.h"
 #include "value.h"
 #include "scheduler.h"
-#include "inline-event-log.h"
+#include "event-log.h"
+#include "log-file.h"
 #include "time.h"
 #include "perf.h"
 #include "work-stealing-deque.h"
@@ -374,7 +375,7 @@ void VProcExit (VProc_t *vp)
 	LogVProcExitMain (vp);
 
 #ifdef ENABLE_LOGGING
-	FinishEventLog ();
+	FinishEventLog (vp);
 #endif
 
 #if defined (TARGET_LINUX) && defined (ENABLE_PERF_COUNTERS)

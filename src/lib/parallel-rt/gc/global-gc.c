@@ -18,7 +18,7 @@
 #include "gc-inline.h"
 #include "atomic-ops.h"
 #include "bibop.h"
-#include "inline-event-log.h"
+#include "event-log.h"
 #include "work-stealing-deque.h"
 #include "gc-scan.h"
 

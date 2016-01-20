@@ -29,5 +29,5 @@ is
   gen-event-types-hs.sml
   gen-events-hs.sml
   gen-event-logging-pml.sml
-
+  gen-event-log-c.sml
 

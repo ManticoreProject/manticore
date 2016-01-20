@@ -19,74 +19,11 @@ structure EventLogging =
 
 #ifdef ENABLE_LOGGING
 
-	extern void ASM_GetTimeStamp (void *);
-    extern void printAndClearEventBuf(void*);
-	extern long get_elapsed_time();
-	
+        @EXTERNS@
+
 	(*pos, marker, size, begin*)
 	typedef event_log = ![addr(byte), addr(byte), addr(byte), addr(byte)];
 
-	define @post-word8(log : event_log, b : byte) : () = 
-		let pos : addr(byte) = #0(log)
-		do AdrStoreI8(pos, b)
-		do #0(log) := (addr(byte))AdrAddI32((addr(any))pos, 1)
-		return ()
-	;
-
-	(* something strange is going on with post-word16.  If I take
-	 * out the ccall to M_Dummy (which does nothing), we get incorrect
-	 * output on one of the test cases in /regression-tests/goals/seq-logging
-	 *)
-	define @post-word16(log : event_log, s : short) : () =
-		let b1 : byte = I16ToI8(I16RSh(s, 8:short))
-		let b2 : byte = I16ToI8(s)
-		do @post-word8(log, b1)
-		do @post-word8(log, b2)
-		return()
-	;
-
-	define @post-word32(log : event_log, i : int) : () = 
-		let s1 : short = I32ToI16(I32RSh(i, 16))
-		let s2 : short = I32ToI16(i)
-		do @post-word16(log, s1)
-		do @post-word16(log, s2)
-		return()
-	;
-
-
-	define @post-word64(log : event_log, l : long) : () = 
-		let i1 : int = I64ToI32(I64RSh(l, 32:long))
-		let i2 : int = I64ToI32(l)
-		do @post-word32(log, i1)
-		do @post-word32(log, i2)
-		return()
-	;
-
-	define @ensure-space(log : event_log, size : int) : () = 
-		let pos : addr(byte) = #0(log)
-		let begin : addr(byte) = #3(log)
-		let buf_end : addr(byte) = #2(log)
-		let new_pos : addr(any) = AdrAddI32((addr(any))pos, size)
-		if I64Gt(new_pos, buf_end)
-		then 
-			let vp : vproc = host_vproc
-			do ccall printAndClearEventBuf(vp)
-			return()
-		else return()
-	;
-
-      (* generate a unique event ID. Return the new ID. *)
-	define @NewEventId (vp : vproc) : long =
-	    let eidPtr : addr(long) = vpaddr(EVENT_ID, vp)
-	    return (I64FetchAndAdd(eidPtr, 1:long))
-	  ;
-	  
-    (* TODO: I'm (or MLRISC is) missing something in the code generator.  We seem to be
-     * improperly defining short and byte sized variables, such that the
-     * register allocator is missing those definitions.  If the event gets
-     * spilled and something else gets spilled after it, then we overwrite the
-     * event.
-     *)
 @GENERIC-LOG-HLOPS@
 
 

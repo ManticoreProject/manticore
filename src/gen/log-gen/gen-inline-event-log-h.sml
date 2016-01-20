@@ -6,14 +6,14 @@
  * Generate the "inline-log.h" file.
  *)
 
-structure GenInlineEventLogH : GENERATOR =
+structure GenEventLogH : GENERATOR =
   struct
 
     structure Sig = EventSig
     structure Map = Sig.Map
 
-    val template = "inline-event-log_h.in"
-    val path = "src/lib/parallel-rt/include/inline-event-log.h"
+    val template = "event-log_h.in"
+    val path = "src/lib/parallel-rt/include/event-log.h"
 
     fun ghc attrs = List.exists(fn attr => attr = LoadFile.ATTR_GHC) attrs
 				  
