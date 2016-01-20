@@ -30,4 +30,7 @@ is
   gen-events-hs.sml
   gen-event-logging-pml.sml
   gen-event-log-c.sml
+  gen-view-colours-hs.sml
+  gen-hec-hs.sml
+  gen-key-view-hs.sml
 

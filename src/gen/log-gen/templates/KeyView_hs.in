@@ -1,0 +1,129 @@
+module GUI.KeyView (
+    KeyView,
+    keyViewNew,
+  ) where
+
+import GUI.ViewerColours
+import GUI.Timeline.Render.Constants
+
+import Graphics.UI.Gtk
+import qualified Graphics.Rendering.Cairo as C
+
+
+---------------------------------------------------------------------------
+
+-- | Abstract key view object.
+--
+data KeyView = KeyView
+
+---------------------------------------------------------------------------
+
+keyViewNew :: Builder -> IO KeyView
+keyViewNew builder = do
+
+    keyTreeView <- builderGetObject builder castToTreeView "key_list"
+
+    dw <- widgetGetDrawWindow keyTreeView
+    keyEntries  <- createKeyEntries dw keyData
+
+    keyStore    <- listStoreNew keyEntries
+    keyColumn   <- treeViewColumnNew
+    imageCell   <- cellRendererPixbufNew
+    labelCell   <- cellRendererTextNew
+
+    treeViewColumnPackStart keyColumn imageCell False
+    treeViewColumnPackStart keyColumn labelCell True
+    treeViewAppendColumn keyTreeView keyColumn
+
+    selection <- treeViewGetSelection keyTreeView
+    treeSelectionSetMode selection SelectionNone
+
+    let tooltipColumn = makeColumnIdString 0
+    customStoreSetColumn keyStore tooltipColumn (\(_,tooltip,_) -> tooltip)
+    treeViewSetModel keyTreeView keyStore
+
+    set keyTreeView [ treeViewTooltipColumn := tooltipColumn ]
+
+    cellLayoutSetAttributes keyColumn imageCell keyStore $ \(_,_,img) ->
+      [ cellPixbuf := img ]
+    cellLayoutSetAttributes keyColumn labelCell keyStore $ \(label,_,_) ->
+      [ cellText := label ]
+
+    ---------------------------------------------------------------------------
+
+    return KeyView
+
+-------------------------------------------------------------------------------
+
+data KeyStyle = KDuration | KEvent | KEventAndGraph
+
+keyData :: [(String, KeyStyle, Color, String)]
+keyData =
+  [ ("running",         KDuration, runningColour,
+     "Indicates a period of time spent running Haskell code (not GC, not blocked/idle)")
+  , ("GC",              KDuration, gcColour,
+     "Indicates a period of time spent by the RTS performing garbage collection (GC)")
+@MANTICORE-KEYS@
+  ]
+
+createKeyEntries :: DrawableClass dw
+                 => dw
+                 -> [(String, KeyStyle, Color,String)]
+                 -> IO [(String, String, Pixbuf)]
+createKeyEntries similar entries =
+  sequence
+    [ do pixbuf <- renderToPixbuf similar (50, hecBarHeight) $ do
+                     C.setSourceRGB 1 1 1
+                     C.paint
+                     renderKeyIcon style colour
+         return (label, tooltip, pixbuf)
+
+    | (label, style, colour, tooltip) <- entries ]
+
+renderKeyIcon :: KeyStyle -> Color -> C.Render ()
+renderKeyIcon KDuration keyColour = do
+  setSourceRGBAhex keyColour 1.0
+  let x = fromIntegral ox
+  C.rectangle (x - 2) 5 38 (fromIntegral (hecBarHeight `div` 2))
+  C.fill
+renderKeyIcon KEvent keyColour = renderKEvent keyColour
+renderKeyIcon KEventAndGraph keyColour = do
+  renderKEvent keyColour
+  -- An icon roughly repreenting a jagedy graph.
+  let x = fromIntegral ox
+      y = fromIntegral hecBarHeight
+  C.moveTo    (2*x)    (y - 2)
+  C.relLineTo 3        (-6)
+  C.relLineTo 3        0
+  C.relLineTo 3        3
+  C.relLineTo 5        1
+  C.relLineTo 1        (-(y - 4))
+  C.relLineTo 2        (y - 4)
+  C.relLineTo 1        (-(y - 4))
+  C.relLineTo 2        (y - 4)
+  C.lineTo    (2*x+20) (y - 2)
+  C.fill
+  setSourceRGBAhex black 1.0
+  C.setLineWidth 1.0
+  C.moveTo    (2*x-4)  (y - 2.5)
+  C.lineTo    (2*x+24) (y - 2.5)
+  C.stroke
+
+renderKEvent :: Color -> C.Render ()
+renderKEvent keyColour = do
+  setSourceRGBAhex keyColour 1.0
+  C.setLineWidth 3.0
+  let x = fromIntegral ox
+  C.moveTo x 0
+  C.relLineTo 0 25
+  C.stroke
+
+renderToPixbuf :: DrawableClass dw => dw -> (Int, Int) -> C.Render ()
+               -> IO Pixbuf
+renderToPixbuf similar (w, h) draw = do
+  pixmap <- pixmapNew (Just similar) w h Nothing
+  renderWithDrawable pixmap draw
+  Just pixbuf <- pixbufGetFromDrawable pixmap (Rectangle 0 0 w h)
+  return pixbuf
+
+-------------------------------------------------------------------------------
