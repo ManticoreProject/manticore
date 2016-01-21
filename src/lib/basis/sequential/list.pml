@@ -41,13 +41,13 @@ structure List =
 	    end
 
     fun foldr f id xs = let
-	    fun lp (xs, acc) = (
+	    fun foldrLp (xs, acc) = (
 		  case xs
 		   of nil => acc
-		    | CONS(x, xs) => f(x, lp(xs, acc))
+		    | CONS(x, xs) => f(x, foldrLp(xs, acc))
                   (* end case *))
             in
-	       lp(xs, id)
+	       foldrLp(xs, id)
 	    end
 
     fun foldrCurried(f, id, xs) = foldr f id xs
@@ -61,15 +61,15 @@ structure List =
           (* end case *))
 
     fun app f ls = let
-	  fun lp xs = (
+	  fun appLp xs = (
 	        case xs 
 		 of nil => ()
 		  | CONS(x, xs) => (
 		      f x;
-		      lp xs)
+		      appLp xs)
                 (* end case *))
           in
-	     lp ls
+	     appLp ls
 	  end
 
     fun length xs = let
@@ -101,13 +101,13 @@ structure List =
 	end
 
     fun map f ls = let
-	  fun lp (ls, acc) = (
+	  fun mapLp (ls, acc) = (
 	      case ls
 	       of nil => rev acc
-		| CONS(x, ls) => lp(ls, CONS(f x, acc))
+		| CONS(x, ls) => mapLp(ls, CONS(f x, acc))
               (* end case *))
           in
-	    lp(ls, nil)
+	    mapLp(ls, nil)
           end
 
     fun append (ls1, ls2) = let

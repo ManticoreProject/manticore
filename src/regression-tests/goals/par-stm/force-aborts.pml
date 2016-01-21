@@ -14,6 +14,7 @@ fun getIntFlg f dflt =
          | NONE => dflt
 
 val N = getIntFlg "-n" 100
+val iters = getIntFlg "-iters" 1000
 val trefs = Vector.tabulate(N, fn i => STM.new 0)
 val refs = Vector.tabulate(N, fn i => Ref.new 0)
 
@@ -24,11 +25,11 @@ datatype msg = AbortMe | Die | Continue
 
 fun msg i = ()(*print ("Working on iteration " ^ Int.toString i ^ "\n")*)
 
-fun bump i = 
+fun bump i = ()(*
     let val r = Vector.sub(refs, i)
 	val _ = Ref.set(r, Ref.get r + 1)
 	val _ = msg i
-    in () end
+    in () end*)
 
 fun tx(i, sum, txNum) = 
     if i = Vector.length trefs
@@ -72,11 +73,18 @@ fun txLoop2() =
 
 val _ = Threads.spawnOn(1, txLoop2)
 
-val _ = txLoop 100
 
+
+
+val startTime = Time.now()
+val _ = txLoop iters
+val endTime = Time.now()
+val _ = print ("Execution-Time = " ^ Time.toString (endTime - startTime) ^ "\n")
+
+(*
 val _ = Vector.app (fn i => print(Int.toString(Ref.get i) ^ ", ")) refs
 
 val _ = print "\n"
-
+*)
 
 

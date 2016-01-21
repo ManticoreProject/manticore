@@ -76,6 +76,7 @@ MISC_SRCS =	main.c \
 		image.c \
                 image-sock.c \
     norec.c \
+    fls.c \
     tl2.c \
 		eventlog.c
 
