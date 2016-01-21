@@ -124,7 +124,7 @@ gen-basis-offsets:	gen-basis-offsets.c manticore-rt.h vproc.h vproc-offsets-ins.
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-basis-offsets $< ../../config/crc.c
 
 gen-runtime-constants:	gen-runtime-constants.c manticore-rt.h vproc.h vproc-offsets-ins.c
-	$(CC) $(CPPFLAGS) $(CFLAGS) -o gen-runtime-constants $< ../../config/crc.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -lm -o gen-runtime-constants $< ../../config/crc.c
 
 gen-log-events:		  gen-log-events.c
 			  $(CC) $(CPPFLAGS) $(CFLAGS) -o gen-log-events $< 
