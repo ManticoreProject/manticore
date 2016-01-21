@@ -198,7 +198,12 @@ uint64_t getProcessElapsedTime(){
     struct timespec ts;
     int res;
 
-    res = clock_gettime(CLOCK_ID, &ts);
+#ifdef _POSIX_MONOTONIC_CLOCK
+    res = clock_gettime(CLOCK_MONOTONIC, &ts);
+#else
+    res = clock_gettime(CLOCK_REALTIME, &ts);
+#endif
+
     if (res != 0) {
         Die("clock_gettime\n");
     }
