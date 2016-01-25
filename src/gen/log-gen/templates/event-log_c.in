@@ -242,9 +242,7 @@ void printAndClearEventBuf (VProc_t * vp)
 {
     EventsBuf * ebuf = vp->event_log;
     uint64_t numBytes = 0, written = 0;
-
-    sanity(ebuf, vp);
-
+    
     closeBlockMarker(vp->event_log);
     
     if (ebuf->begin != NULL && ebuf->pos != ebuf->begin)
@@ -257,9 +255,6 @@ void printAndClearEventBuf (VProc_t * vp)
 	}
 	ebuf->pos = ebuf->begin;
 	ebuf->marker = NULL;
-
-
-        printf("[%d]: cleared %lu bytes\n", vp->id, numBytes);
 
 	postBlockMarker(vp);
 	
