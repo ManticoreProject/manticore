@@ -12,5 +12,6 @@
 val workStealingForThread0 = WorkStealing.workGroup ()
 val () = ImplicitThread.defaultWorkGroupBegin workStealingForThread0
 fun getDefaultImplicitThreadSched () = workStealingForThread0
+val _ = ImplicitThread.workGroupStarted workStealingForThread0
 
 val () = DEBUG("schedulers: initialized default implicit-thread scheduler")
