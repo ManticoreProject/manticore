@@ -302,8 +302,15 @@ structure WorkStealing (* :
       (* a short time. *)
       (* we know to sleep when waitFn returns true; this occurs every 20th *)
       (* application of waitFn. *)
+        cont foundWork(w : List.list) = return(w)
 	cont lp (nTries : int) =
 	  if I32Gt (nTries, nVProcs) then
+	      do 
+	      	let t : Option.option = D.@pop-new-end-in-atomic(self, deq)
+	        case t 
+	           of Option.NONE => return()
+	        	| Option.SOME(t:task) => throw foundWork(CONS(t, nil))
+	        end 
 	      do SchedulerAction.@atomic-end (self)
 	      do apply setActive (false)
 	      do Arr.@update (idleFlags, vpId, true / exh)
