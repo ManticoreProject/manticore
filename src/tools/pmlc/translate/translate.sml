@@ -746,7 +746,7 @@ structure Translate : sig
                         else if S.Tycon.equals(tyc, S.Tycon.cpointer)
                           then BOMTy.addrTy (singleArg ())
                         else if S.Tycon.equals(tyc, S.Tycon.exn)
-                          then (noArgs (); exhTy (env))
+                          then (noArgs (); exnTy (env))
                         else if S.Tycon.equals(tyc, S.Tycon.intInf)
                           then (noArgs (); raise Fail "TODO(wings): BOMTy.T_Bignum")
                         else if S.Tycon.equals(tyc, S.Tycon.list)
