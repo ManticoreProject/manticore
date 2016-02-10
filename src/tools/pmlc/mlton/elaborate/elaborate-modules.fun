@@ -435,17 +435,13 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                         val astCon = Ast.Con.fromSymbol (Ast.Symbol.fromString (conName), Region.bogus)
                         val mlCon = CoreML.Con.fromString (conName)
 
-                        (*dummy var*)
-                        val mlVar = Ast.Vid.toVar (Ast.Vid.fromSymbol (Ast.Symbol.fromString ("dummy"), Region.bogus))
-                        val mlVar' = ElaborateCore.Var.fromAst mlVar
-
                         val maybeArgMLTy = Option.map (maybeArgTy, convertMLTy)
                         val conMLTy =
                           case maybeArgMLTy of
                              SOME argMLTy => CoreML.Type.arrow (argMLTy, resultMLTy)
                            | NONE => resultMLTy
                       in
-                         (CoreML.PrimConDef.T (mlCon, maybeArgMLTy, resultMLTy, mlVar', bomVal),
+                         (CoreML.PrimConDef.T (mlCon, maybeArgMLTy, resultMLTy, bomVal),
                             {con=mlCon,
                             name=astCon,
                             arg=maybeArgMLTy,
@@ -540,12 +536,14 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
                       | NONE => xs
 
                     fun importToDef import = case import of
-                        CoreML.BOMImport.Val (var, bomVal, bomTy) =>
-                          NONE(*CoreBOM.Definition.Import (raise Fail "bomVal", (raise Fail "bomTy", []))*)
-                      | CoreML.BOMImport.Datatype (bomTyc, mlTycon, pcds) =>
-                          SOME (CoreBOM.Definition.Import (mlTycon, (bomTyc, pcds)))
-                      | CoreML.BOMImport.Exception (mlCon, newval, maybeArgTy) =>
-                          NONE (*CoreBOM.Definition.Import (CoreML.Type, (raise Fail "maybeArgTy", []))*)
+                        CoreML.BOMImport.Val (pcd, var, bomVal, bomTy) =>
+                          NONE (*SOME (CoreBOM.Definition.Import (mlTycon, (bomTyc, [pcd])))*)
+                      | CoreML.BOMImport.Datatype (mlTycon, bomTyc, pcds) =>
+                          SOME (CoreBOM.Definition.Import (bomTyc, (mlTycon, pcds)))
+                      | CoreML.BOMImport.Exception (mlCon, newVal, maybeArgMlTy, resultMlTy, mlTycon) =>
+                          SOME (CoreBOM.Definition.ImportExn (mlTycon,
+                            [CoreML.PrimConDef.T (mlCon, maybeArgMlTy, CoreML.Type.bool, newVal)]
+                          ))
 
                     fun foldOverEnv (elabStmt: 'a * 'b -> 'g option * 'b)
                         (stmt: 'a, (oldStmts: 'g list, oldEnv: 'b)) =

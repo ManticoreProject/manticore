@@ -22,9 +22,6 @@ structure Translate : sig
     val boolTyc = BOMTyc.new("bool", 0)
       val falseCon = BOMDataCon.new boolTyc ("false", []);
       val trueCon = BOMDataCon.new boolTyc ("true", []);
-    val exnTyc = BOMTyc.new("exn", 0)
-    val exnTy0 = BOMTy.T_Con (exnTyc, [])
-    val exhTy0 = BOMTy.T_Cont [exnTy0] (* TODO(wings): construct from SXML's S.Type.exn *)
 
     val progExterns : BOM.var CFunctions.c_fun list ref = ref []
 
@@ -120,12 +117,12 @@ structure Translate : sig
            | S.CoreBOM.BOMType.Record fields => BOMTy.T_Record
              (List.map (transCoreBOMField env) fields)
            | S.CoreBOM.BOMType.Tuple bool_type_ts => BOMTy.T_Record (raise Fail "TODO(wings): translate bool_type_ts")
-           | S.CoreBOM.BOMType.Fun { dom=dom, cont=cont, rng=rng} => BOMTy.T_Fun
+           | S.CoreBOM.BOMType.Fun { dom=dom, cont=cont, rng=rng } => BOMTy.T_Fun
              (List.map transCoreBOMTy' dom,
              List.map transCoreBOMTy' cont,
              List.map transCoreBOMTy' rng)
            | S.CoreBOM.BOMType.BigNum => raise Fail "TODO(wings): BOMTy.T_Bignum"
-           | S.CoreBOM.BOMType.Exn => exnTy0
+           | S.CoreBOM.BOMType.Exn => exnTy(env)
            | S.CoreBOM.BOMType.Any => BOMTy.T_Any
            | S.CoreBOM.BOMType.VProc => BOMTy.vprocTy
            | S.CoreBOM.BOMType.Array t => BOMTy.arrayTy (transCoreBOMTy' t)
@@ -645,6 +642,7 @@ structure Translate : sig
                  case lookupBOMVal (env, bomVal)
                    of Lambda x => raise Fail "lambda"
                     | Var v => k [v]
+                    (* TODO(wings): for non-nullary dcons, emit an FB here *)
                     | DCon con => let
                         val newVar = [BV.new ("dcon", ty)]
                         in
@@ -848,12 +846,10 @@ structure Translate : sig
                 end
             | S.Dec.BOM{bom=bomdecs} => let
                 (*val _ = print "transDec BOM\n"*)
-                fun findCon (bomTyc: BOMTyc.t, name) = List.find (fn con => BOMDataCon.nameOf con = name) (BOMTyc.consOf bomTyc)
-                fun addDef ((bomTyc, S.PrimConDef.T(con, maybeArgMLTy, mlTy, _, bomVal)), env) = let
+                fun addDef ((bomTyc, S.PrimConDef.T(con, maybeArgMLTy, mlTy, bomVal)), env) = let
                   val _ = print ("\taddDef looking up " ^ S.Con.toString con ^ " in " ^ BOMTyc.nameOf bomTyc ^ "\n")
-                  val dcon = case findCon (bomTyc, S.Con.toString con)
-                    of SOME dcon => dcon
-                     | NONE => raise Fail "internal error: unable to find dcon while translating BOM declaration"
+                  (* fails if unable to find dcon *)
+                  val dcon = lookupDCon(env, con)
                   in
                     writeBOMVal (env, bomVal, DCon dcon)
                   end
@@ -900,6 +896,15 @@ structure Translate : sig
                        val env = writeMLTyc (env, coreBomTyc, (mlTyc, mlcondefs))
                        (* lookup bom tyc created in transDatatypes *)
                        val bomTyc = lookupTyc(env, mlTyc)
+                       (* add dcons to BOMVal env *)
+                       val env = addDefs (env, bomTyc, mlcondefs)
+                       in
+                         (env, k)
+                       end
+                    | S.CoreBOM.Definition.ImportExn (_, mlcondefs) => let
+                       val _ = print ("import adding exn\n")
+                       (* lookup bom tyc created in transDatatypes *)
+                       val bomTyc = exnTyc(env)
                        (* add dcons to BOMVal env *)
                        val env = addDefs (env, bomTyc, mlcondefs)
                        in
@@ -1056,7 +1061,7 @@ structure Translate : sig
                   (* TODO(wings): the backend needs a notion of 'touch' *)
                   if S.Prim.equals (prim, S.Prim.touch) then r2e (BOM.E_Promote (argn 0), unitTy) else
                   if S.Prim.equals (prim, S.Prim.cpointerSub) then raise Fail "cpointerSub" else
-                  (* TODO(wings): handle other MLton prims? *)
+                  (* TODO(wings): handle other MLton prims? or remove MLton prim handling entirely *)
                   raise Fail ("failed to translate PrimApp " ^ S.Prim.toString prim)
                 in
                   exp
@@ -1088,6 +1093,7 @@ Datatype.t = {cons: {arg: Type.t option,
                 tyvars: Tyvar.t vector}
 *)
 
+    (* translates datatypes, creating corresponding BOM datatype definitions *)
     fun transDatatypes (dts, env) = let
         (* create new BOM tycon for each datatype *)
         val (dts_datatycs, env) = V.foldl (fn(dt as {cons, tycon, tyvars}, (dts_datatycs, env)) => let
@@ -1133,9 +1139,17 @@ Datatype.t = {cons: {arg: Type.t option,
  * shaken out.
  *)
     fun translate (S.Program.T{datatypes, overflow, body}) = let
+          (* nullary type constructor for the exception type *)
+          val exnTyc0 = BOMTyc.new("exn", 0)
+          (* the exception type itself *)
+          val exnTy0 = BOMTy.T_Con (exnTyc0, [])
+          (* the type of the top-level exception handler *)
+          val exhTy0 = BOMTy.T_Cont [exnTy0]
           val env = newEnv (BV.new("_exh", exhTy0))
           (* initially translate all the datatypes listed by MLton *)
           val env as E{tycMap=tycMap, ...} = transDatatypes (datatypes, env)
+          val dataTycs = TycMap.listItems tycMap
+          (* extract the exception type constructor, of which there's hopefully exactly one *)
           val body = transSExp (body, env)
           (* val argTy = BOMTy.T_Raw RawTypes.Int32 *)
           (* val arg = BV.new("_arg", argTy) *)
@@ -1145,7 +1159,7 @@ Datatype.t = {cons: {arg: Type.t option,
                   exh = [(* exh *)],
                   body = body
                 }
-          val program = BOM.PROGRAM{exnTyc = exnTyc, dataTycs = TycMap.listItems tycMap, hlops = [(* TODO(wings): hlops *)], externs = !progExterns, body = mainFun}
+          val program = BOM.PROGRAM{exnTyc = exnTyc (env), dataTycs = dataTycs, hlops = [(* TODO(wings): hlops *)], externs = !progExterns, body = mainFun}
           in(* raise Fail "hi";*)
             PrintBOM.print (program); program (*raise Fail "done"*)
           end

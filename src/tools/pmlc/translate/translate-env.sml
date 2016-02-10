@@ -113,7 +113,14 @@
 
     fun handlerOf (E{exh, ...}) = exh
 
-    fun exhTy (env) = BOMTy.T_Cont[lookupTy(env, S.Type.exn)]
+    (* extract the exception type constructor, of which there's hopefully exactly one *)
+    fun exnTyc (env as E{tycMap=tycMap, ...}) = let
+        val [exnTyc] = TycMap.listItems (TycMap.mapPartiali (fn (tyc, bomTyc) => if S.Tycon.equals(tyc, S.Tycon.exn) then SOME bomTyc else NONE) tycMap)
+      in
+        exnTyc
+      end
+    fun exnTy (env) = BOMTy.T_Con (exnTyc(env), [])
+    fun exhTy (env) = BOMTy.T_Cont [exnTy(env)]
 
     fun newHandler (env as E{
       tyCache,

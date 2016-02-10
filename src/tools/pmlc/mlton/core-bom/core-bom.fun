@@ -1131,6 +1131,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | Fun of FunDef.t list
       | Extern of Val.t * CProto.t
       | Import of TyCon.t * 'a
+      (* there is no tycon for Exn, so Import can't be reused *)
+      | ImportExn of 'a
 
     fun mapDatatype (f: 'a -> 'b) (def: 'a t): 'b t =
       case def of
@@ -1140,6 +1142,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | Fun x => Fun x
       | Extern x => Extern x
       | Import (tycon, a) => Import (tycon, f a)
+      | ImportExn a => ImportExn (f a)
   end
 
   (* structure Decs = struct *)

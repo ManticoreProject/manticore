@@ -416,6 +416,8 @@ signature CORE_BOM =
         | Fun of FunDef.t list
         | Extern of Val.t * CProto.t
         | Import of TyCon.t * 'a
+        (* there is no tycon for Exn, so Import can't be reused *)
+        | ImportExn of 'a
       val mapDatatype: ('a -> 'b) -> 'a t -> 'b t
     end
 

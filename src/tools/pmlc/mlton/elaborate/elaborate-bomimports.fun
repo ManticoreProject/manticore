@@ -92,9 +92,6 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
                     mlConName)
                   val mlConBind = Ast.Vid.toCon (Ast.Vid.fromSymbol (mlVarSymbol,
                     Ast.Con.region mlConName))
-                  val mlVar = Ast.Vid.toVar (Ast.Vid.fromSymbol (mlVarSymbol,
-                    Ast.Con.region mlConName))
-                  val mlVar' = ElaborateCore.Var.fromAst mlVar
 
                   (* find the corresponding ML con, created by makeMLDatatype *)
                   val (strids, id) = BOM.LongId.split bomValLongId
@@ -118,13 +115,11 @@ functor ElaborateBOMImports (S: ELABORATE_BOMIMPORTS_STRUCTS): ELABORATE_BOMIMPO
                      | NONE => resultMLTy
 
                   (* mutate the environment to bind constructor variable *)
-                  (*val _ = Env.extendVal (env, mlVar, mlVar',
-                    MLScheme.fromType resultMLTy, {isRebind = false})*)
                   val _ = Env.extendCon (env, mlConBind, mlCon,
                     MLScheme.fromType resultMLTy, {isRebind = false})
                 in
                   (CoreML.PrimConDef.T (mlCon, maybeArgMLTy,
-                    resultMLTy, mlVar', bomVal),
+                    resultMLTy, bomVal),
                     {con=mlCon,
                      name=mlConName,
                      arg=maybeArgMLTy,
@@ -410,6 +405,7 @@ val _ = print ("binding datatype with name " ^ CoreBOM.TyId.toString tyId ^ "\n"
           let
             val ty' = elaborateMLType ty
             val (valId', maybeScheme) = Env.lookupLongvid (env, valId)
+            (*val (mlCon, mlTy) = unwrapMLCon (longcon, tyargs)*)
             val success =
               case maybeScheme of
                 SOME scheme =>
@@ -438,10 +434,11 @@ val _ = print ("binding datatype with name " ^ CoreBOM.TyId.toString tyId ^ "\n"
               | NONE => false
 (*
 		_import val can be applied to:
-			dcons, for which it should work like _datatype
+			dcons, for which it should work like _import datatype
 			extern funs, for which it might already work
 			bom funs, for which it should get handled in translate
 *)
+            val mlCon = raise Fail "no mlCon"
 
             val bomTy = translateType bomEnv ty'
             (* remove qualifying module, make a BOMId *)
@@ -452,8 +449,12 @@ val _ = print ("binding datatype with name " ^ CoreBOM.TyId.toString tyId ^ "\n"
 
             (* put the new ty into our env and bind our new valId to it *)
             val _ = BOMEnv.ValEnv.extend (bomEnv, bomValId, bomVal)
+
+            val mlVar = Ast.Vid.toVar (Ast.Vid.fromSymbol (Ast.Symbol.fromString ("__TODO_remove_dummy"), Region.bogus))
+            val mlVar' = ElaborateCore.Var.fromAst mlVar
+            val pcd = CoreML.PrimConDef.T (mlCon(*valId'*), NONE, ty', bomVal)
           in
-            (SOME (BOMImport.Val (raise Fail "TODO(wings): do something meaningful in _import val", bomVal, bomTy)), {bomEnv=bomEnv, env=env})
+            (SOME (BOMImport.Val (pcd, raise Fail "TODO(wings): do something meaningful in _import val", bomVal, bomTy)), {bomEnv=bomEnv, env=env})
           end
 
       | BOM.Import.Datatype (astMlTy(*args, tyc*), maybeId, cons) =>
@@ -490,7 +491,7 @@ val _ = print ("binding datatype with name " ^ CoreBOM.TyId.toString tyId ^ "\n"
               val mlVar = Ast.Vid.toVar (Ast.Vid.fromSymbol (Ast.Symbol.fromString ("__TODO_remove_dummy"), Region.bogus))
               val mlVar' = ElaborateCore.Var.fromAst mlVar
               in
-                CoreML.PrimConDef.T (mlCon, maybeArgMlTy, resultMlTy, mlVar', bomVal)
+                CoreML.PrimConDef.T (mlCon, maybeArgMlTy, resultMlTy, bomVal)
               end) cons'
           in
             (SOME (BOMImport.Datatype (mlTyc, bomTyc, pcds)), {bomEnv=bomEnv, env=env})
@@ -553,8 +554,7 @@ val _ = print ("binding datatype with name " ^ CoreBOM.TyId.toString tyId ^ "\n"
                 maybeId)*)
             val bomEnv = BOMEnv.ValEnv.extend (bomEnv, newValId, newVal)
           in
-            (* TODO(wings): pass optional type of con's arg rather than type of con *)
-            (SOME (BOMImport.Exception (mlCon, newVal, SOME bomConTy)), {bomEnv=bomEnv, env=env})
+            (SOME (BOMImport.Exception (mlCon, newVal, maybeArgMlTy, resultMlTy, MLTycon.exn)), {bomEnv=bomEnv, env=env})
           end
 
     end

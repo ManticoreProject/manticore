@@ -67,6 +67,7 @@ fun lambdaSize (Program.T {body, ...}): Lambda.t -> int =
           | CoreBOM.Definition.Fun funs => loopBOMFuns (funs, n)
           | CoreBOM.Definition.Extern (name, cProto) => n
           | CoreBOM.Definition.Import importDef => n
+          | CoreBOM.Definition.ImportExn importExnDef => n
       and loopBOMFuns (funs, n): int =
           (* XXX(wings): should we store the cost of each BOM function declarations as is done for ML lambdas? *)
          List.fold (funs, n, fn (CoreBOM.FunDef.Def (attrs, name, tyParams, inputTys, retTy, bomExp), n) =>

@@ -672,7 +672,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                   Vector.fromList
                                   (List.map
                                    (primConDefs, fn
-                                      CoreML.PrimConDef.T (con, maybeArgTy, resultTy, _, bomVal) =>
+                                      CoreML.PrimConDef.T (con, maybeArgTy, resultTy, bomVal) =>
                                          {con=con, arg=maybeArgTy}))
                                val _ =
                                   setTyconCons (mlTycon,
@@ -701,6 +701,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                     | CoreBOM.Definition.Fun (fundefs) => ()
                     | CoreBOM.Definition.Extern (val_, cProto) => ()
                     | CoreBOM.Definition.Import (bomTyc, (mlTycon, primConDefs)) => ()
+                    | CoreBOM.Definition.ImportExn (mlTycon, primConDefs) => ()
                 ))
          end
       and loopExp (e: Cexp.t): unit =
@@ -991,7 +992,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                        modify local env to point at the appropriate types/dcons *)
                        let
                           (* bind each con *)
-                          fun decCon (CoreML.PrimConDef.T (mlCon, maybeArgMLTy, resultMLTy, mlVar, bomVal)) =
+                          fun decCon (CoreML.PrimConDef.T (mlCon, maybeArgMLTy, resultMLTy, bomVal)) =
                              let
                                 val dconMLTy =
                                    (case maybeArgMLTy of
@@ -1006,7 +1007,7 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                  | NONE => resultMLTy*)
                              in
                                 Xdec.PolyVal {tyvars = Vector.new0 (),
-                                              var = mlVar (*mlVar (* mlCon*)*),
+                                              var = var,
                                               ty = resultTy,
                                               exp = Xexp.toExp ((*XprimExp.BOMVal bomConVal*)
                                                     Xexp.conApp {arg = NONE(*SOME arg*),
@@ -1042,8 +1043,8 @@ fun defunctorize (CoreML.Program.T {decs}) =
                                   body = e})
              | BOMModule (CoreML.BOMModule.T {defs = defs}) =>
                   let
-                     fun convert(CoreML.PrimConDef.T (con, maybeArgTy, returnTy, mlVar, bomVal)) =
-                        Xml.PrimConDef.T(con, Option.map(maybeArgTy, loopTy), loopTy returnTy, mlVar, bomVal)
+                     fun convert(CoreML.PrimConDef.T (con, maybeArgTy, returnTy, bomVal)) =
+                        Xml.PrimConDef.T(con, Option.map(maybeArgTy, loopTy), loopTy returnTy, bomVal)
                      val defs' = MLVector.fromList (List.map (defs,
                         CoreBOM.Definition.mapDatatype
                         (fn (mlTycon, primConDefs) =>

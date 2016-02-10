@@ -154,7 +154,7 @@ signature CORE_ML =
       (* This needs to live here, rather than in CoreBOM, because
       CoreBOM doesn't know anything about ML types, which we need here *)
       structure PrimConDef: sig
-        datatype t = T of Con.t * Type.t option * Type.t * Var.t * CoreBOM.Val.t(*BOMId.t*)
+        datatype t = T of Con.t * Type.t option * Type.t * CoreBOM.Val.t
 
         (*val arity = arityOfDataCons
         val error = ConsDef (BOMId.bogus, NONE)*)
@@ -173,8 +173,8 @@ signature CORE_ML =
         sig
           datatype t
             = Datatype of Tycon.t * CoreBOM.TyCon.t * PrimConDef.t list
-            | Exception of Con.t * CoreBOM.Val.t * CoreBOM.BOMType.t option
-            | Val of Var.t * CoreBOM.Val.t * CoreBOM.BOMType.t
+            | Exception of Con.t * CoreBOM.Val.t * Type.t option * Type.t * Tycon.t
+            | Val of PrimConDef.t * Var.t * CoreBOM.Val.t * CoreBOM.BOMType.t
         end
 
       structure BOMModule:

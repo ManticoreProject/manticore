@@ -224,13 +224,13 @@ fun monomorphise (Xprogram.T {datatypes, body, ...}): Sprogram.t =
                     val (tycon, cons) =
                        (* [PML] don't optimize out bool, BOM datatypes' shadow
                        datatypes, or ML datatypes imported into BOM *)
-                       if Tycon.equals (tycon, Tycon.bool) orelse
-                          String.isPrefix "__bom" (Tycon.toString (Tycon.new
-                             tycon)) orelse (getIsImported tycon)
+                       if Tycon.equals (tycon, Tycon.bool)
+                          orelse String.isPrefix "__bom" (Tycon.toString (Tycon.new tycon))
+                          orelse getIsImported tycon
                           (* TODO(wings): verify that we really don't need to do
                           any processing on these types, such as applying the
                           hom to parameter types for dcons *)
-                          then ((print "passthrough\n"; tycon),
+                          then ((print ("marking all dcons of " ^ Tycon.toString tycon ^ " as used\n"); tycon),
                                 Vector.map (cons, fn {con, arg} =>
                                             ref {con = con, typ = arg,
                                                  used = true}))

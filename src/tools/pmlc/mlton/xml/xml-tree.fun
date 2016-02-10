@@ -159,7 +159,7 @@ structure VarExp =
 
 structure PrimConDef = (* [PML] used in BOM declarations *)
    struct
-      datatype t = T of Con.t * Type.t option * Type.t * Var.t * CoreBOM.Val.t
+      datatype t = T of Con.t * Type.t option * Type.t * CoreBOM.Val.t
    end
 
 (*---------------------------------------------------*)
