@@ -355,6 +355,23 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       Int.compare (uid1, uid2)
   fun tyConEquals tycs: bool = tyConCompare tycs = EQUAL
 
+  fun layoutTycon (TyC {id,...}) = Layout.str (TyId.toString id)
+
+  fun typeOfField (field: field_t): type_t =
+    case field of
+      Immutable (_, ty) => ty
+    | Mutable (_, ty) => ty
+
+  fun mutableOfField (field: field_t): bool =
+    case field of
+      Immutable _ => false
+    | Mutable _ => true
+
+  fun indexOfField field =
+    case field of
+      Immutable (index, _) => index
+    | Mutable (index, _) => index
+
   (* Functions over mutually recursive types *)
   local
     fun app3 (f, (x, y, z)) = (f x, f y, f z)
@@ -379,16 +396,63 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
       | Addr addrTy => arityOfType addrTy
       | _ => 0
     end
-  and typeOfField (myField: field_t): type_t =
-    case myField of
-      Immutable (offset, ty) => ty
-    | Mutable (offset, ty) => ty
   and typesOfTyArgs (ArgTypes tys): type_t list =
     tys
   and arityOfDataCons (ConsDef (id, maybeTy)): int =
     case maybeTy of
       SOME ty => arityOfType ty
     | NONE => 0
+
+  fun layoutRecordField field =
+    let
+      val ((offset, ty), sep) = case field of
+        Immutable a => (a, ": ")
+      | Mutable a => (a, "! ")
+    in
+      Layout.seq [Layout.str (IntInf.toString offset), Layout.str sep, layoutTy ty]
+    end
+  and layoutTupleField (mut, ty) =
+    case mut of
+        true => Layout.seq [Layout.str "!", layoutTy ty]
+      | false => layoutTy ty
+
+  and layoutTys tys =
+    case tys of
+       ty::[] => layoutTy ty
+     | _ => Layout.paren (Layout.seq (Layout.separate (List.map layoutTy tys, " * ")))
+  and layoutTyArgs tyArgs = case tyArgs of
+       [] => []
+     | _ => Layout.str "<" :: (List.map layoutTy tyArgs) @ [Layout.str ">"]
+  and layoutTy ty =
+    case ty of
+      Param tyParam => Layout.str "'???" (*TODO(wings): layout tyParam*)
+    | TyCon {con, args} => Layout.seq (layoutTycon con :: layoutTyArgs args)
+    | Con {dom, rng} => Layout.seq [layoutTy dom, Layout.str " ~> ", layoutTy rng]
+    | Record fields => Layout.seq (Layout.str "{" ::
+        Layout.separate (List.map layoutRecordField fields, ", ")
+        @ [Layout.str "}"])
+    | Tuple elems => Layout.seq (Layout.str "[" :: 
+        Layout.separate (List.map layoutTupleField elems, ", ")
+        @ [Layout.str "]"])
+    | Fun {dom, cont, rng} => Layout.seq [layoutTys dom,
+        Layout.str " -> ", layoutTys rng,
+        Layout.str " / ", layoutTys cont]
+    | BigNum => Layout.str "bignum"
+    | Exn => Layout.str "exn"
+    | Any => Layout.str "any"
+    | VProc => Layout.str "vproc"
+    | Array elemty => Layout.seq [layoutTy elemty, Layout.str " array"]
+    | Vector elemty => Layout.seq [layoutTy elemty, Layout.str " vector"]
+    | Cont elemtys => Layout.seq (Layout.str "cont" :: layoutTyArgs elemtys)
+    | CFun cproto => Layout.str "cfun"
+    | Addr destty => Layout.seq [layoutTy destty, Layout.str " addr"]
+    | Raw r => Layout.str (RawTypes.toString r)
+    | Error => Layout.str "<error>"
+
+  fun fieldEqual (f1: field_t, f2: field_t) =
+    mutableOfField f1 = mutableOfField f2
+      andalso (indexOfField f1) = (indexOfField f2)
+      andalso tyEqual (typeOfField f1, typeOfField f2)
   and strictTyEqual (ty, ty'): bool =
   	case (ty, ty') of
   	  (Any, Any) => true
@@ -401,7 +465,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | (TyCon {con, args}, TyCon {con=con', args=args'}) =>
         tyConEquals (con, con') andalso tysEqual (args, args')
     (* TODO: make sure fields are sorted so we can compare them pairwise *)
-    | (Record fields, Record fields') => false
+    | (Record fields, Record fields') =>
+        ListPair.all fieldEqual (fields, fields')
     | (Tuple fields, Tuple fields') =>
         let
           val (mutables, tys) = ListPair.unzip fields
@@ -425,7 +490,7 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | (_, Any) => true
     | (Exn, Exn) => true
     (* DEBUG *)
-    | _ => (print "WARNING: Type comparison fallthrough. Not implemented?\n"; false)
+    | _ => (print ("WARNING: Type comparison fallthrough: " ^ Layout.toString (layoutTy ty) ^ " ?= " ^ Layout.toString (layoutTy ty') ^ ". Not implemented?\n"); false)
   and tysEqual (tys, tys') =
     (length tys = length tys') andalso (ListPair.allEq tyEqual (tys, tys'))
   and rawEquals (raw: RawTy.t, raw': RawTy.t): bool =
@@ -466,8 +531,6 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   (*         tyArgs *)
   (*       end) maybeTyArgs *)
   (* end *)
-
-  fun layoutTycon (TyC {id,...}) = Layout.str (TyId.toString id)
 
   structure BOMType = struct
     datatype t = datatype type_t
@@ -586,32 +649,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
 	(* 	  [] => NoReturn *)
 	(*   | [ty] => ty *)
 	(*   | tys => Tuple tys *)
-    fun layouts tys =
-      case tys of
-         ty::[] => layout ty
-       | _ => Layout.paren (Layout.seq (Layout.separate (List.map layout tys, " * ")))
-    and layoutTyArgs tyArgs = case tyArgs of
-         [] => []
-       | _ => Layout.str "<" :: (List.map layout tyArgs) @ [Layout.str ">"]
-    and layout ty =
-      case ty of
-        Param tyParam => Layout.str "'???" (*TODO(wings): layout tyParam*)
-      | TyCon {con, args} => Layout.seq (layoutTycon con :: layoutTyArgs args)
-      | Con {dom, rng} => Layout.seq [layout dom, Layout.str " ~> ", layout dom]
-      | Record fields => Layout.str "{...}"
-      | Tuple elems => Layout.str "(...)"
-      | Fun {dom, cont, rng} => Layout.seq [layouts dom, Layout.str " -> ", layouts rng, Layout.str " / ", layouts cont]
-      | BigNum => Layout.str "bignum"
-      | Exn => Layout.str "exn"
-      | Any => Layout.str "any"
-      | VProc => Layout.str "vproc"
-      | Array elemty => Layout.seq [layout elemty, Layout.str " array"]
-      | Vector elemty => Layout.seq [layout elemty, Layout.str " vector"]
-      | Cont elemtys => Layout.seq (Layout.str "cont" :: layoutTyArgs elemtys)
-      | CFun cproto => Layout.str "cfun"
-      | Addr destty => Layout.seq [layout destty, Layout.str " addr"]
-      | Raw r => Layout.str (RawTypes.toString r)
-      | Error => Layout.str "error"
+    val layouts = layoutTys
+    val layout = layoutTy
   end
 
   structure TyCon = struct
@@ -656,11 +695,10 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
   structure Field = struct
     datatype t = datatype field_t
 
+    val equal = fieldEqual
+    val getMutable = mutableOfField
     val getType = typeOfField
-    fun index field =
-      case field of
-        Immutable (index, _) => index
-      | Mutable (index, _) => index
+    val index = indexOfField
 
     val bogus = Immutable (~1, Error)
   end
@@ -747,7 +785,8 @@ functor CoreBOM (S: CORE_BOM_STRUCTS) : CORE_BOM = struct
     | VpLoad of IntInf.int * simpleexp_t
     | VpAddr of IntInf.int * simpleexp_t
     | VpStore of IntInf.int * simpleexp_t * simpleexp_t
-    | AllocId of Val.t * simpleexp_t
+    | AllocId of Val.t * simpleexp_t list
+    | AllocType of simpleexp_t list
     | RecAccess of IntInf.int * simpleexp_t * simpleexp_t option
     | Promote of simpleexp_t
     | TypeCast of BOMType.t * simpleexp_t

@@ -107,15 +107,18 @@ structure Translate : sig
     fun transCoreBOMTy env coreBomTy: (env * BOMTy.t) = let
       (*val _ = print ("transCoreBOMTy " ^ Layout.toString (S.CoreBOM.BOMType.layout coreBomTy) ^ "\n")*)
       fun transCoreBOMTy' ty = #2 (transCoreBOMTy env ty)
+      fun transCoreBOMField env field = 
+        (S.CoreBOM.Field.getMutable field,
+        transCoreBOMTy' (S.CoreBOM.Field.getType field))
       val bomTy =
         (case coreBomTy
           of S.CoreBOM.BOMType.Param p => BOMTy.T_Param (raise Fail "TODO(wings): translate type param for HLOPs")
            | S.CoreBOM.BOMType.TyCon { con=con, args=args } => BOMTy.T_Con (transCoreBOMTyc env con, List.map transCoreBOMTy' args)
-           | S.CoreBOM.BOMType.Con { dom=dom, rng=rng } => (* TODO(wings): is this the right way to translate cons? *)BOMTy.T_Fun
-             ([transCoreBOMTy' dom],
-             [],
-             [transCoreBOMTy' rng])
-           | S.CoreBOM.BOMType.Record fields => BOMTy.T_Record (raise Fail "TODO(wings): translate fields")
+           | S.CoreBOM.BOMType.Con { dom=dom, rng=rng } =>
+             (* TODO(wings): is this the right way to translate cons? *)
+             transCoreBOMTy' rng
+           | S.CoreBOM.BOMType.Record fields => BOMTy.T_Record
+             (List.map (transCoreBOMField env) fields)
            | S.CoreBOM.BOMType.Tuple bool_type_ts => BOMTy.T_Record (raise Fail "TODO(wings): translate bool_type_ts")
            | S.CoreBOM.BOMType.Fun { dom=dom, cont=cont, rng=rng} => BOMTy.T_Fun
              (List.map transCoreBOMTy' dom,
@@ -215,37 +218,16 @@ structure Translate : sig
              val Var func = lookupBOMVal (env, func)
              in transBOMSimpleExps (conts, env, fn conts_vars =>
                  transBOMSimpleExps (args, env, fn args_vars =>
-                     BOM.mkApply (func, conts_vars, args_vars), []), [])
+                     BOM.mkApply (func, conts_vars, args_vars)))
              end
-           (* TODO(wings): ensure that throw/return folds are correct *)
          | BExp.Throw (exncon, ses) => let
            val Var exncon = (print "lookup exncon\n"; lookupBOMVal (env, exncon))
-           fun k args [arg] = BOM.mkThrow (exncon, arg::args)
-
-           val k' = List.foldl (fn (se, k) =>
-             let
-               fun k'' args [arg] = transBOMSimpleExp (se, env, k (arg::args))
-             in
-               k''
-             end) k ses
+           fun k args = BOM.mkThrow (exncon, args)
            in
-             case ses
-               of [] => BOM.mkThrow (exncon, [])
-                | se::rest => transBOMSimpleExp(se, env, k' [])
+             transBOMSimpleExps(ses, env, k)
            end
-         | BExp.Return ses => let
-           fun k args [arg] = BOM.mkRet (arg::args)
-           val k' = List.foldl (fn (se, k) =>
-             let
-               fun k'' args [arg] = transBOMSimpleExp (se, env, k (arg::args))
-             in
-               k''
-             end) k ses
-           in
-             case ses
-               of [] => BOM.mkRet []
-                | se::rest => transBOMSimpleExp(se, env, k' [])
-           end
+         | BExp.Return ses =>
+           transBOMSimpleExps (ses, env, BOM.mkRet)
       end
 
     and transBOMRhs (rhs, env): BOM.exp = case rhs
@@ -445,7 +427,7 @@ structure Translate : sig
           | (_, _) => raise Fail "internal error: prim applied to wrong number of arguments"
 
         val ses = extractSExps prim
-        val prim = transBOMSimpleExps (ses, env, fn vars => k (applyVars prim vars), [])
+        val prim = transBOMSimpleExps (ses, env, fn vars => k (applyVars prim vars))
       in
         prim
       end
@@ -535,16 +517,22 @@ structure Translate : sig
           | (_, _) => raise Fail "internal error: cond applied to wrong number of arguments"
 
         val ses = extractSExps cond
-        val cond = transBOMSimpleExps (ses, env, fn vars => k (applyVars cond vars), [])
+        val cond = transBOMSimpleExps (ses, env, fn vars => k (applyVars cond vars))
       in
         cond
       end
 
     (* TODO(wings): factor out varAccum argument *)
     (* TODO(wings): does env need to be threaded through here? *)
-    and transBOMSimpleExps (ses, env, k: BOM.var list -> BOM.exp, varAccum): BOM.exp = case ses
-        of [] => k varAccum
-         | se::rest => transBOMSimpleExp (se, env, fn [var] => transBOMSimpleExps (rest, env, k, var::varAccum))
+    and transBOMSimpleExps (ses, env, k: BOM.var list -> BOM.exp): BOM.exp =
+      let
+        fun transBOMSimpleExps' (ses, env, k: BOM.var list -> BOM.exp, varAccum): BOM.exp =
+          case ses
+            of [] => k varAccum
+             | se::rest => transBOMSimpleExp (se, env, fn [var] => transBOMSimpleExps' (rest, env, k, var::varAccum))
+      in
+        transBOMSimpleExps' (ses, env, fn args => k (List.rev args), [])
+      end
 
     and transBOMSimpleExp (se, env, k: BOM.var list -> BOM.exp): BOM.exp = let
       val (se, (env, ty)) = (BSExp.node se, transCoreBOMTy env (BSExp.typeOf se))
@@ -593,13 +581,23 @@ structure Translate : sig
                in
                  transBOMSimpleExp (se', env, k')
                end
-           | BSExp.AllocId (bomVal, se') => let
-               (* TODO(wings): this is almost surely completely wrong *)
+           | BSExp.AllocId (bomVal, ses') => let
+               val dcon = case lookupBOMVal (env, bomVal)
+                   of Lambda x => raise Fail "lambda found in dcon context"
+                    | Var v => raise Fail "variable found in dcon context"
+                    | DCon con => con
                val (newVar, env) = newVarBOMVal (env, bomVal)
-               val k' = fn [var_tuple] =>
-                 BOM.mkStmt ([newVar], BOM.E_Alloc (ty, [var_tuple]), k [newVar])
+               val k' = fn vars_args =>
+                 BOM.mkStmt ([newVar], BOM.E_DCon (dcon, vars_args), k [newVar])
                in
-                 transBOMSimpleExp (se', env, k')
+                 transBOMSimpleExps (ses', env, k')
+               end
+           | BSExp.AllocType (ses') => let
+               val newVar = [BV.new ("allocated", ty)] (*BSExp.typeOf*)
+               val k' = fn vars_args =>
+                 BOM.mkStmt (newVar, BOM.E_Alloc (ty, vars_args), k newVar)
+               in
+                 transBOMSimpleExps (ses', env, k')
                end
            | BSExp.RecAccess (offset, se', maybeSe'') => let
              val newVar = [BV.new ("rec_field", ty)]

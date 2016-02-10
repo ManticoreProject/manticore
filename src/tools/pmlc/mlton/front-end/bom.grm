@@ -331,12 +331,12 @@ PrimOp
 SimpleExp
         : PrimOp "(" Args ")"
                 => (mkSimpleExp (BOM.SimpleExp.PrimOp (PrimOp, Args), FULL_SPAN))
-        | "alloc" BOMLongId "(" SimpleExp ")"
-                => (mkSimpleExp (BOM.SimpleExp.AllocId (BOMLongId, SimpleExp),
+        | "alloc" BOMLongId "(" Args ")"
+                => (mkSimpleExp (BOM.SimpleExp.AllocId (BOMLongId, Args),
                   FULL_SPAN))
-        | "alloc" BOMTupleOrRecordType "(" SimpleExp ")"
+        | "alloc" BOMTupleOrRecordType "(" Args ")"
                 => (mkSimpleExp (BOM.SimpleExp.AllocType (BOMTupleOrRecordType,
-                  SimpleExp), FULL_SPAN))
+                  Args), FULL_SPAN))
         | "#" PosInt "(" SimpleExp ")" (":=" SimpleExp)?
                 => (case SR
                      of NONE => mkSimpleExp (BOM.SimpleExp.Select (PosInt, SimpleExp), FULL_SPAN)

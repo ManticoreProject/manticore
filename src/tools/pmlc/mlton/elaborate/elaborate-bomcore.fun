@@ -49,7 +49,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               BOM.Field.Immutable (index, _) => index
             | BOM.Field.Mutable (index, _) => index
 
-          (* TODO: make into a fold *)
+          (* NIT: make into a fold *)
           fun loop (labels, lastLabel) =
             case labels of
               l::ls =>
@@ -254,17 +254,33 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
 
       (* check that the argument simple exps match the domain ty and
       return an Alloc exp node with type rng if they do *)
-      fun elaborateTupleExp (dom, rng, argument, conVal) =
+      fun elaborateAllocIdExp (dom, rng, arguments, conVal) =
         let
           (* TODO: handle noreturn correctly *)
-          val argumentExp = elaborateSimpleExp (argument, ctx, bomEnv)
-          val argumentTy = CoreBOM.SimpleExp.typeOf argumentExp
+          val argumentsExp = map (fn sExp => elaborateSimpleExp (sExp, ctx,
+            bomEnv)) arguments
+          val argumentTy = CoreBOM.BOMType.Tuple (map (fn x => (false,
+            CoreBOM.SimpleExp.typeOf x)) argumentsExp)
         in
           checkSExp (CoreBOM.BOMType.equal' (dom, argumentTy),
             "invalid constructor argument")
-         (* todo: typarams? *)
-          (fn _  => CoreBOM.SimpleExp.new (CoreBOM.SimpleExp.AllocId (conVal,
-            argumentExp), rng))
+         (* TODO: typarams? *)
+          (fn _  => CoreBOM.SimpleExp.new
+              (CoreBOM.SimpleExp.AllocId (conVal, argumentsExp), rng))
+        end
+      fun elaborateAllocTypeExp (dom, rng, arguments) =
+        let
+          (* TODO: handle noreturn correctly *)
+          val argumentsExp = map (fn sExp => elaborateSimpleExp (sExp, ctx,
+            bomEnv)) arguments
+          val argumentTy = CoreBOM.BOMType.Tuple (map (fn x => (false,
+            CoreBOM.SimpleExp.typeOf x)) argumentsExp)
+        in
+          checkSExp (CoreBOM.BOMType.equal' (dom, argumentTy),
+            "invalid constructor argument")
+         (* TODO: typarams? *)
+          (fn _  => CoreBOM.SimpleExp.new
+              (CoreBOM.SimpleExp.AllocType (argumentsExp), rng))
         end
       fun elaborateVpExp (index, procExp) =
         (* TODO: do something useful with the index *)
@@ -287,8 +303,7 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             ((case CoreBOM.SimpleExp.typeOf recordSExp' of
               CoreBOM.BOMType.Record fields => SOME fields
             | _ => NONE),
-           (* TODO: phrase this better *)
-            "argument to index access expression is not a record") (fn x => x)
+            "attempt to index into non-record value") (fn x => x)
 
           (* make sure the record is defined at the specified index *)
           val fieldTy = checkForErrorVal CoreBOM.Field.bogus
@@ -377,24 +392,27 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
             val (conVal, CoreBOM.BOMType.Con {dom, rng}) = lookupCon (
               CoreBOM.ValId.fromLongId longValId, bomEnv, checkForErrorVal,
                 checkForErrorVal)
+            val dom =
+              CoreBOM.BOMType.Tuple (List.map (fn x => (false, x))
+                (case dom of
+                  CoreBOM.BOMType.Tuple fields => List.map (#2) fields
+                | CoreBOM.BOMType.Record fields => List.map CoreBOM.Field.getType fields
+                | x => [x]))
           in
-            elaborateTupleExp (dom, rng, sExps, conVal)
+            elaborateAllocIdExp (dom, rng, sExps, conVal)
           end
-      (* | BOM.SimpleExp.AllocType (tyArgs, sExps) => *)
-      (*     let *)
-      (*       val tyArgs' = map (fn tyArg => elaborateBOMType (tyArg, bomEnv)) *)
-      (*         tyArgs *)
-      (*       (* the range is always a tuple *) *)
-      (*       val rng = CoreBOM.BOMType.Tuple tyArgs' *)
-      (*       (* if we only have one tyarg, then the domain is that *)
-      (*          type, otherwise, we wrap it in a tuple *) *)
-      (*       val dom = *)
-      (*         case tyArgs' of *)
-      (*           [tyArg] => tyArg *)
-      (*         | tyArgs => rng *)
-      (*     in *)
-      (*       elaborateTupleExp (dom, rng, sExps) *)
-      (*     end *)
+      | BOM.SimpleExp.AllocType (ty, sExps) =>
+          let
+            val rng = elaborateBOMType (ty, bomEnv)
+            val dom =
+              CoreBOM.BOMType.Tuple (List.map (fn x => (false, x))
+                (case rng of
+                  CoreBOM.BOMType.Tuple fields => List.map (#2) fields
+                | CoreBOM.BOMType.Record fields => List.map CoreBOM.Field.getType fields
+                | _ => raise Fail "TODO(wings): error reporting for invalid AllocType range"))
+          in
+            elaborateAllocTypeExp (dom, rng, sExps)
+          end
       | BOM.SimpleExp.VpLoad (index, procExp) =>
           (* for now, we return Any *)
           CoreBOM.SimpleExp.new (CoreBOM.SimpleExp.VpLoad (index,
@@ -519,9 +537,17 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
       fun checkTyBinding (maybeTy, rhsTy) =
         case maybeTy of
           SOME ty =>
-            check (
-              CoreBOM.BOMType.equal' (elaborateBOMType (ty, bomEnv), rhsTy),
-              "type constraint does not match rhs") (fn x => x)
+            let
+              val constraintTy = elaborateBOMType (ty, bomEnv)
+            in
+              check (
+                CoreBOM.BOMType.equal' (constraintTy, rhsTy),
+                "type constraint does not match rhs: constraint is type "
+                ^ Layout.toString (CoreBOM.BOMType.layout constraintTy)
+                ^ " but rhs is type "
+                ^ Layout.toString (CoreBOM.BOMType.layout rhsTy))
+              (fn x => x)
+            end
         | NONE => rhsTy
       val (bind, maybeTy) =
         case BOM.VarPat.node varPat of

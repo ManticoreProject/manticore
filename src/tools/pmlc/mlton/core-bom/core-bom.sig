@@ -204,13 +204,6 @@ signature CORE_BOM =
           uid: int
       }
 
-    structure Field: sig
-      datatype t = datatype field_t
-
-      val index: t -> IntInf.int
-      val bogus: t
-    end
-
     structure DataConsDef: sig
       datatype t = datatype dataconsdef_t
 
@@ -245,6 +238,15 @@ signature CORE_BOM =
 	    (* val wrapTuple: t list -> t *)
       val layouts: t list -> Layout.t
       val layout: t -> Layout.t
+    end
+
+    structure Field: sig
+      datatype t = datatype field_t
+
+      val getMutable: t -> bool
+      val getType: t -> BOMType.t
+      val index: t -> IntInf.int
+      val bogus: t
     end
 
     structure TyCon: sig
@@ -316,8 +318,8 @@ signature CORE_BOM =
         | VpLoad of IntInf.int * t
         | VpAddr of IntInf.int * t
         | VpStore of IntInf.int * t * t
-        | AllocId of Val.t * t
-        (* FIXME: alloc <type> form *)
+        | AllocId of Val.t * t list
+        | AllocType of t list
         | RecAccess of IntInf.int * t * t option
         | Promote of t
         | TypeCast of BOMType.t * t

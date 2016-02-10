@@ -320,7 +320,7 @@
 				    ; commentLevel := 1
 				    ; commentStart := Source.getPos (source, Position.toInt yypos)
 				    ; continue ());
-<INITIAL>.      		=> (error (source, yypos, yypos + 1, "illegal token")
+<INITIAL,BOM>.      		=> (error (source, yypos, yypos + 1, "illegal token")
 				    ; continue ());
 
 <L>[0-9]+       => (YYBEGIN LL
