@@ -323,27 +323,27 @@ fun elaborateTopdec (topdec, {env = E: Env.t, bomEnv: BOMEnv.t}) =
          fn (bomEnv) =>
          let
             val mapping = ref TyConMap.empty
-
-            (* define builtin tycons corresponding to CoreBOM.Type.t variants *)
+            (* define builtin tycons corresponding to CoreBOM.Type.t variants;
+            see atoms/prim-tycons.fun for origin of AdmitsEquality values *)
             val recordTycon = Env.newTycon ("record", Env.TypeStr.Kind.Nary,
                Env.TypeEnv.Tycon.AdmitsEquality.Sometimes, Region.bogus)
             (* tuples are handled specially in MLton so no tycon is needed *)
             val bomfunTycon = Env.newTycon ("fun", Env.TypeStr.Kind.Arity 3,
-               Env.TypeEnv.Tycon.AdmitsEquality.Always, Region.bogus)
+               Env.TypeEnv.Tycon.AdmitsEquality.Never, Region.bogus)
             val bignumTycon = Env.newTycon ("bignum", Env.TypeStr.Kind.Arity 0,
-               Env.TypeEnv.Tycon.AdmitsEquality.Always, Region.bogus)
+               Env.TypeEnv.Tycon.AdmitsEquality.Sometimes (* like MLton's intInf *), Region.bogus)
             val anyTycon = Env.newTycon ("any", Env.TypeStr.Kind.Arity 0,
                Env.TypeEnv.Tycon.AdmitsEquality.Always (* XXX(wings): does Any admit equality? *), Region.bogus)
             val vprocTycon = Env.newTycon ("vproc", Env.TypeStr.Kind.Arity 0,
-               Env.TypeEnv.Tycon.AdmitsEquality.Always, Region.bogus)
+               Env.TypeEnv.Tycon.AdmitsEquality.Always (* XXX(wings): MLton 'thread' tycon Never admits equality--should we copy that? *), Region.bogus)
             val arrayTycon = Env.newTycon ("array", Env.TypeStr.Kind.Arity 1,
                Env.TypeEnv.Tycon.AdmitsEquality.Always (* instance identity *), Region.bogus)
             val vectorTycon = Env.newTycon ("vector", Env.TypeStr.Kind.Arity 1,
                Env.TypeEnv.Tycon.AdmitsEquality.Sometimes, Region.bogus)
             val contTycon = Env.newTycon ("cont", Env.TypeStr.Kind.Nary,
-               Env.TypeEnv.Tycon.AdmitsEquality.Never (* XXX(wings): do conts admit equality? *), Region.bogus)
+               Env.TypeEnv.Tycon.AdmitsEquality.Never, Region.bogus)
             val addrTycon = Env.newTycon ("addr", Env.TypeStr.Kind.Arity 1,
-               Env.TypeEnv.Tycon.AdmitsEquality.Always, Region.bogus)
+               Env.TypeEnv.Tycon.AdmitsEquality.Always (* like MLton's cpointer *), Region.bogus)
 
             fun convertMLTy(bomTy: BOMType.t): CoreML.Type.t =
                case bomTy of
