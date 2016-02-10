@@ -1,3 +1,3 @@
-_module myId (
-  type id = long.ty.id <'a, 'b, 'g>;
+_module myId _prim(
+  type id<'a, 'b, 'g> = longty.id <'a, 'b, 'g>;
 )
