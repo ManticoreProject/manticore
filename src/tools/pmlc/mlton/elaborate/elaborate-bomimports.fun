@@ -379,14 +379,14 @@ val _ = print ("binding datatype with name " ^ CoreBOM.TyId.toString tyId ^ "\n"
                     rng
                   end
               | (CoreBOM.BOMType.Con _, NONE) => raise Fail
-                "argument type not provided when importing constructor"
+                ("argument type not provided when importing constructor " ^ Ast.Longcon.toString longcon)
               | (_, SOME argTy) => raise Fail
-                "argument type specified when importing nullary constructor"
+                ("argument type specified when importing nullary constructor " ^ Ast.Longcon.toString longcon)
               | (CoreBOM.BOMType.TyCon tycon, NONE) => bomConTy
               (* Special case for exns because it's not worth
               factoring them out *)
               | (CoreBOM.BOMType.Exn, NONE) => CoreBOM.BOMType.Exn
-              | (CoreBOM.BOMType.Error, NONE) => raise Fail "Con wasn't found in env."
+              | (CoreBOM.BOMType.Error, NONE) => raise Fail ("constructor " ^ Ast.Longcon.toString longcon ^ " not found in environment")
               | _ => raise Fail "Type is not a con.")
             then ()
             else raise Fail "Bad con application."

@@ -783,7 +783,6 @@ functor ElaborateBOMCore(S: ELABORATE_BOMCORE_STRUCTS) = struct
               bomEnv), returnExp), CoreBOM.Exp.typeOf returnExp)
           end
       | BOM.Exp.Throw (bomId, sExps) =>
-          (* TODO: this will give an unhelpful message if bomId isn't a cont *)
           (* make sure the value identifier is bound *)
           checkForErrorVal CoreBOM.Exp.error (BOMEnv.ValEnv.lookup (bomEnv,
             CoreBOM.ValId.fromBOMId bomId), badValId)
