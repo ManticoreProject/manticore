@@ -302,8 +302,15 @@ structure WorkStealing (* :
       (* a short time. *)
       (* we know to sleep when waitFn returns true; this occurs every 20th *)
       (* application of waitFn. *)
+        cont foundWork(w : List.list) = return(w)
 	cont lp (nTries : int) =
 	  if I32Gt (nTries, nVProcs) then
+	      do 
+	      	let t : Option.option = D.@pop-new-end-in-atomic(self, deq)
+	        case t 
+	           of Option.NONE => return()
+	        	| Option.SOME(t:task) => throw foundWork(CONS(t, nil))
+	        end 
 	      do SchedulerAction.@atomic-end (self)
 	      do apply setActive (false)
 	      do Arr.@update (idleFlags, vpId, true / exh)
@@ -454,7 +461,7 @@ structure WorkStealing (* :
 	let workGroupID : UID.uid = UID.@new (/ exh)
 	let nVProcs : int = VProc.@num-vprocs ()
       (* when #0(nIdle) = nVProcs the work, the work group is finished *)
-	let nIdle : ![int] = alloc (0)
+	let nIdle : ![int] = alloc (~1)
 	let nIdle : ![int] = promote (nIdle)
       (* true, if the work group is finished *)
 	let terminated : ![bool] = alloc (false)
@@ -496,7 +503,8 @@ structure WorkStealing (* :
 						    resumeFn,
 						    removeFn,
 						    deques,
-						    terminated
+						    terminated,
+						    nIdle
 						  / exh)
 	fun spawnWorker (dst : vproc / exh : exh) : () =
 	    let worker : Word64.word = 
