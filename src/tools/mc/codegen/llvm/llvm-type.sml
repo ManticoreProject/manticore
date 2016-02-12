@@ -26,6 +26,31 @@ structure LLVMType : sig
 
     val typeOfConv : (CFG.convention * CFG.var list) -> CFGTy.ty
 
+    (* takes a list of "register types" and produces
+       a list of indices for these types to assign them according
+       to the JWA calling convention in LLVM. the only types
+       allowed are those kinds output by toRegType, and
+       the indices correspond to the types in jwaCC *)
+    val allocateToRegs : ty list -> int list
+
+    (* convert an LLVM type to its standard type that fits within a register.
+       this is used in the process of generating a call using the standard
+       calling convention, thus it is only implemented for types that can be
+       passed in a function call.
+
+       Right now, vector types are not supported (2/11/15), but floats/doubles
+       are (they're passed in XMM registers anyways though).
+       *)
+    val toRegType : ty -> ty
+
+    (* get the "Jump With Arguments" calling convention types.
+       this is just a list of the types all functions should use
+       in order to use the JWA calling convention with proper tail
+       call support. jwaCC returns a list of types such that only types
+       returned by toRegType are contained in it and nothing else,
+       and it always returns the same list. *)
+    val jwaCC : ty vector
+
 
     (*
       get the name of an LLVM type
@@ -185,6 +210,7 @@ structure LLVMType : sig
      | CT.T_Double => 64
      | CT.T_Vec128 => 128
   (* escac *))
+  
 
   fun mapSep(f, init, sep, lst) = List.foldr 
                       (fn (x, nil) => f(x) :: nil 
@@ -468,4 +494,57 @@ structure LLVMType : sig
     (* esac *))
 
 
-end
+local
+  (* for now, we assume that there are no vector types, and
+  labels already can't be passed as an arg anyways *)
+  val gprTy = mkInt(cnt 64)
+  val f32Ty = floatTy
+  val f64Ty = doubleTy
+
+  (* [x, y) kinda gross but whatever. *)
+  val gprRange = (0, 14)
+  val f32Range = (14, 22)
+  val f64Range = (22, 30)
+in
+  fun toRegType t = (case HC.node t
+    of Ty.T_Ptr _ => gprTy
+     | Ty.T_Int _ => gprTy
+     | Ty.T_VProc => gprTy
+     | Ty.T_Deque => gprTy
+     | Ty.T_Float => f32Ty
+     | Ty.T_Double => f64Ty
+     | _ => raise Fail ("Type \n"
+              ^ (nameOf t)
+              ^ "\n does not fit in a machine register, or is not allowed in the calling convention!")
+    (* esac *))
+
+    (* RAX, RBX, RCX, RDX, RSI, RDI, R8, R9, R10, R11, R12, R13, R14, R15
+       XMM0 - XMM15 for floats, whether 32 or 64 bit *)
+   val jwaCC =
+     Vector.tabulate(#2(f64Range), fn x =>
+          if x < #2(gprRange) then gprTy
+          else if x < #2(f32Range) then f32Ty
+          else f64Ty)
+
+  fun allocateToRegs ts = let
+  (* might be better to use a vector instead of 3 integers for code cleanliness *)
+      fun alloc (nil, is, _, _, _) = List.rev is
+        | alloc (t::ts, is, gpr, f32, f64) =
+          if (gpr < #2(gprRange)
+              andalso f32 < #2(f32Range)
+              andalso f64 < #2(f64Range))
+          then (case HC.node t (* NOTE: assuming Int x where x <= 64 *)
+                of Ty.T_Int _ => alloc(ts, gpr::is, gpr+1, f32, f64)
+                 | Ty.T_Float   => alloc(ts, f32::is, gpr, f32+1, f64)
+                 | Ty.T_Double  => alloc(ts, f64::is, gpr, f32, f64+1)
+                 | _ => raise Fail "bad register type"
+                (* esac *))
+          else raise Fail "allocateToRegs: overflow of JWA calling convention detected!"
+  in
+      alloc(ts, [], #1(gprRange), #1(f32Range), #1(f64Range))
+  end
+
+end (* end local *)
+
+
+end (* end struct *)

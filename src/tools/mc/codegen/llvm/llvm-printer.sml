@@ -164,17 +164,14 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   (* Basic Blocks *)
 
-  fun mkBasicBlocks (initEnv : gamma, start : C.block, body : C.block list) : string list = let
-      (* start needs to be treated specially because it's inputs
-         are the parameters to the function and potentially other BBs.
-         For now we'll treat it like a normal BB. *)
+  fun mkBasicBlocks (initEnv : gamma, start : C.block, body : C.block list, llvmCC) : string list = let
     (* no branches should be expected to target the start block, 
       because they should be calls (the start block has the type of the function
     and for all intents and purposes it represents the function) *)
 
       fun convertLabs (C.BLK{lab,...}) = (lab, LV.convertLabel lab)
 
-      val env = L.foldr (fn ((old, new), acc) => insertL(acc, old, new))
+      val initialEnv = L.foldr (fn ((old, new), acc) => insertL(acc, old, new))
                   initEnv 
                   (L.map convertLabs body)
 
@@ -186,7 +183,7 @@ fun output (outS, module as C.MODULE { name = module_name,
       fun init f (b as C.BLK{lab, body, exit, args}) = let
           val llArgs  = L.map LV.convert args
           val env = L.foldr (fn ((old, new), acc) => insertV(acc, old, new))
-                      env
+                      initialEnv
                       (ListPair.zip(args, llArgs))
           
           val b = LB.new (f lab, llArgs)
@@ -194,8 +191,31 @@ fun output (outS, module as C.MODULE { name = module_name,
           fillBlock b (env, body, exit)
         end
 
-      val startBlock = init (fn _ => LV.new("entry", LT.labelTy)) start
-      val bodyBlocks = L.map (init (fn lab => lookupL(env, lab))) body
+      fun mkStartBlock (C.BLK{body, exit, ...}, (cfgArgs, llParamTys, regs)) = let
+      (* start needs to be treated specially because its inputs
+         are the parameters to the function that need a special calling convention.
+         also nobody can branch to the start block so we don't need to add it to the env *)
+         
+         val blk = LB.new(LV.new("entry", LT.labelTy), regs)
+         
+         fun addBitcast (((cfgArg, llty), reg), acc) = let
+                val newVar = LB.toV(LB.cast blk Op.BitCast (LB.fromV reg, llty))
+            in
+                insertV(acc, cfgArg, newVar) (*  *)
+            end
+         
+         (* FIXME problem here if we use zipEq it raises an exception *)
+         val env = L.foldl addBitcast initialEnv (ListPair.zipEq(ListPair.zipEq(cfgArgs, llParamTys), regs))
+         
+         
+      
+        in
+            fillBlock blk (env, body, exit)
+        end
+
+
+      val startBlock = mkStartBlock(start, llvmCC)
+      val bodyBlocks = L.map (init (fn lab => lookupL(initialEnv, lab))) body
 
     in
       L.map LB.toString (startBlock::bodyBlocks)
@@ -219,23 +239,60 @@ fun output (outS, module as C.MODULE { name = module_name,
         arg[i+1] <- phi [ jump[k].arg[i+1], jump[k].label ], [ jump[k+1].arg[i+1], jump[k+1].label ], ...
         ...
     *)
+    
+      (* handle control transfers. i think you need to actually have
+      fill block return a LB.t and a thunk LB.t -> LB.bb to finish the block,
+      because we need to go over all other blocks before finishing the block so
+      that the terminator function adds the proper phi's to the block when it finializes it.
+      *)
       
-
-      fun process(env, []) = env
+      fun finish(env, exit) = LB.retVoid b
+      
+      (* handle the list of exp's in a CFG block *)
+      and process(env, []) = env
         | process(env, x::xs) = let
           val env =
             (case x
-              of C.E_Const(lhs, lit, ty) => raise Fail "todo"
-               | _ => process(env, xs) (* TODO(kavon): raise Fail instead! *)
+              of C.E_Var rhs => mkAssignments(env, rhs)
+               | C.E_Const rhs => mkConst(env, rhs)
+               
+               | _ => env (* TODO(kavon): raise Fail instead! *)
               (* esac *))
           in
             process(env, xs)
           end
+          
+      and mkAssignments(env, (lefts, rights)) = env
+      (* does LLVM even support  %lhs = %rhs forms? if not, just
+         lookup the CFG vars in the rights in the env, and add to the env
+         mappings from each left to the new right. *)
+      
+      and mkConst(env, (cfgVar, lit, ty)) = env
+        (* there's a lot of little details here that you need to get right *)
 
 
     in
-      LB.retVoid b
+        finish(process(initialEnv, body), exit)
     end
+    
+    
+    and determineCC (tys : LT.ty list) : (int * LT.ty) list = let
+    (* this is a concequence of the fact that LLVM can't perform tail call optimization
+       if the parameters of the callee differ from the caller. Thus, we are essentially
+       making all Manticore function types identical. Note that this function will *not*
+       add the pinned values to the CC, you should prepend them to the type list before
+       calling this function.
+       
+       Input: CFG types of this function converted to a list of LLVM types
+       Output: a list of pairs where the int is the argument number for the caller
+               and the 2nd argument is the type to bitcast the original value to
+               before making the call.
+     *)
+          val regTys = L.map LT.toRegType tys
+          val slotPairs = ListPair.zipEq(LT.allocateToRegs regTys, regTys)
+      in
+          slotPairs
+      end (* end determineCC *)
 
 
   (* testing llvm bb generator *)
@@ -264,30 +321,56 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   (* end of Basic Blocks *)
 
-  (* Functions *)
+(****** Functions ******)
+  
+  (* NOTE: this probably should be moved into a new module or something *)
 
-  fun mkFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args, ... }), body }) : string = let
-    val linkage = linkageOf lab
-    val cc = " cc 17 " (* Only available in Kavon's modified version of LLVM. *)
-    val llName = (LV.toString o LV.convertLabel) lab
+  fun mkFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }) : string = let
+    
+    (*val cfgTy = LT.typeOfConv(entry, cfgArgs)
+    val llParamTys = LT.typesInConv cfgTy*) 
+    
+    (* TODO typesInConv needs to be fixedup. you need to refresh yourself on the calling
+       conventions used in each kind of transfer, cause you're missing the closures!! *)
+    val llParamTys = L.map (LT.typeOf o CV.typeOf) cfgArgs
+    val regs = L.map (fn ty => LV.new("reg", (LT.toRegType ty))) llParamTys
+    
+    (* cfg arg -> llvm arg *)
+    (* this is not needed actually! *)
+    (*val initialValEnv = L.foldl CV.Map.insert' CV.Map.empty (ListPair.zipEq (args, llvmArgs))*)
 
-    val cfgTy = LT.typeOfConv(entry, args)
-    val llParamTys = LT.typesInConv cfgTy
+    (*
+    *)
     (* TODO(kavon): add a check to ensure # of GPR <= arity. Spec currently lists
                     the max number of GPRs for args, not total with pinned regs *)
-    val comment = S.concat ["; ", CTU.toString cfgTy, "\n",
-                            "; arity = ", i2s(List.length llParamTys), "\n" ] 
-
-    val llparams = S.concatWith ", " (L.map LT.nameOf llParamTys)
+    
+    fun mkDecl var = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
+    fun stringify vars = S.concatWith ", " (L.map mkDecl vars)
+    
+    val comment = "; comment use to be here \n"
+    
+    (*val comment = S.concat ["; CFG type: ", CTU.toString cfgTy, "\n",
+                            "; LLVM type: ", (stringify  llParamTys), "\n",
+                            "; LLVM arity = ", i2s(List.length llParamTys), "\n" ]*)
+                            
+    (*val regTypes = L.map LT.toRegType llParamTys*)
 
                       (* TODO: get the arg list from the starting block.
                                also, the start block should be treated specially
                                when we output it here.
                                we also probably need a rename environment? *)
-    val decl = [comment, "define ", linkage, cc, "void ", llName, "(", llparams, ") ", stdAttrs(MantiFun), " {\n"]
+   
+    (* string building code *)
+    val linkage = linkageOf lab
+    val cc = " cc 17 " (* Only available in Kavon's modified version of LLVM. *)
+    val llName = (LV.toString o LV.convertLabel) lab
+    val decl = [comment, "define ", linkage, cc, "void ", llName, "(", (stringify regs), ") ", stdAttrs(MantiFun), " {\n"]
     
-    (* TODO(kavon): environment shouldn't be empty at this point but we can fix it later *) 
-    val body = mkBasicBlocks (ENV{labs=CL.Map.empty, vars=CV.Map.empty}, start, body)  
+    (* now we setup the environment, we need to make fresh vars for the reg types,
+       and map the original parameters to the reg types when we call mk bbelow *)
+    
+    (* TODO(kavon): the label environment should contain every function in the program *) 
+    val body = mkBasicBlocks (ENV{labs=CL.Map.empty, vars=CV.Map.empty}, start, body, (cfgArgs, llParamTys, regs))  
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in
@@ -300,7 +383,7 @@ fun output (outS, module as C.MODULE { name = module_name,
      | _ => raise Fail ("linkageOf is only valid for manticore functions.")
      (* end case *))
 
-  (* end of Functions *)
+(****** end of Functions ******)
 
 
   (* Module *)

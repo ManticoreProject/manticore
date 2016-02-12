@@ -65,6 +65,8 @@ structure LLVMBuilder : sig
     val fromV : var -> instr
 
     val fromC : constant -> instr
+    
+    val toV : instr -> var
 
     val intC : (ty * IntInf.int) -> constant
     
@@ -333,6 +335,14 @@ structure LLVMBuilder : sig
                        Op.fcmpKindToStr kind, " ",
                        LT.nameOf ty, " ", arg1, ", ", arg2]
                     end
+                    
+               | Op.BitCast => let
+                    val (arg1, ty) = break(V.sub(args, 0))
+                    in
+                    S.concat[
+                        resName, " = bitcast ", LT.nameOf ty, " ", arg1, " to ", LT.nameOf resTy
+                    ]
+                    end
 
                | _ => "; opcode " ^ (Op.toString opc) ^ " not implemented."
 
@@ -433,7 +443,7 @@ structure LLVMBuilder : sig
   (* fromC : constant -> instr *)
   fun fromC c = INSTR { result = (R_Const c), kind = OP_None, args = #[], atr = AS.empty }
 
-
+  fun toV (INSTR { result = (R_Var v), ... }) = v
 
   (* Terminators *)
 
