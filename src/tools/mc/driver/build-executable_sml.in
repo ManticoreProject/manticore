@@ -37,9 +37,9 @@ structure BuildExecutable : sig
 
     fun ldFlags libName = let
 	  val libDirs = List.filter (fn path => OS.FileSys.access (path, [])) [
-		  "@prefix@/lib",
-		  "@MANTICORE_LIBDIR@",
-		  "@MANTICORE_SRCDIR@/lib/parallel-rt/build/" ^ libName
+          "@MANTICORE_SRCDIR@/lib/parallel-rt/build/" ^ libName,
+          "@MANTICORE_LIBDIR@",
+          "@prefix@/lib"
 		]
 	  val libDirs = List.map (fn path => "-L" ^ path) libDirs
 	  val rtLib = "-l" ^ libName
