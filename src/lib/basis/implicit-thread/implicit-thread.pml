@@ -370,10 +370,6 @@ structure ImplicitThread (* :
 	  cont k (x : unit) = return ()
 	  let thd : thread = @new-thread (k / exh)
 	  do @spawn-thread (thd / exh)
-
-          let nIdle : ![int] = #WORK_GROUP_N_IDLE_OFF(group)
-          let _ : int = I32FetchAndAdd(&0(nIdle), 1)
-           			
 	  let _ : unit = SchedulerAction.@stop ()
 	  return ()
 	;
