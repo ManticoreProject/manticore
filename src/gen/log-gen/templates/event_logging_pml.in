@@ -1,0 +1,44 @@
+(* event-logging.pml
+ *
+ * COPYRIGHT (c) 2016 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * HLOps for logging events
+ *
+ * WARNING: this file is generated; do not edit!!!  Any changes should be
+ * applied to src/gen/log-gen/templates/event-logging_pml.in.
+ *)
+
+#include "runtime-offsets.def"
+#include "log-events.def"
+
+structure EventLogging =
+  struct
+
+    _primcode (
+
+#ifdef ENABLE_LOGGING
+
+        @EXTERNS@
+
+	(*pos, marker, size, begin*)
+	typedef event_log = ![addr(byte), addr(byte), addr(byte), addr(byte)];
+
+@GENERIC-LOG-HLOPS@
+
+
+@LOG-HLOPS@
+
+#else /* !ENABLE_LOGGING */
+
+@DUMMY-LOG-HLOPS@
+
+#endif
+
+@WRAPPED-LOG-HLOPS@
+
+      )
+
+@LOG-FUNCTIONS@
+
+  end

@@ -1,0 +1,944 @@
+Event Types:
+   0: Create thread (size 4)
+   1: Run thread (size 4)
+   2: Stop thread (size 6)
+   3: Thread runnable (size 4)
+   4: Migrate thread (size 6)
+   5: Run spark (size 4)
+   6: Steal spark (size 6)
+   7: Shutdown (size 0)
+   8: Wakeup thread (size 6)
+   9: Starting GC (size 0)
+  10: Finished GC (size 0)
+  11: Request sequential GC (size 0)
+  12: Request parallel GC (size 0)
+  15: Create spark thread (size 4)
+  16: Log message (size variable)
+  17: Startup (size 2)
+  18: Block marker (size 14)
+  19: User message (size variable)
+  20: GC idle (size 0)
+  21: GC working (size 0)
+  22: GC done (size 0)
+
+Events:
+   115000: startup: 4 capabilities
+   430000: cap 3: creating thread 1
+   430000: cap 3: thread 1 is runnable
+   433000: cap 3: running thread 1
+   512000: cap 3: stopping thread 1 (making a foreign call)
+   513000: cap 3: running thread 1
+   516000: cap 3: stopping thread 1 (making a foreign call)
+   517000: cap 3: running thread 1
+   554000: cap 3: creating thread 2
+   554000: cap 3: thread 2 is runnable
+   572000: cap 3: stopping thread 1 (thread finished)
+   580000: cap 3: creating thread 3
+   580000: cap 3: thread 3 is runnable
+   619000: cap 3: running thread 2
+   635000: cap 3: stopping thread 2 (thread yielding)
+   635000: cap 3: thread 2 is runnable
+   637000: cap 0: thread 2 is runnable
+   637000: cap 3: migrating thread 2 to cap 0
+   648000: cap 0: running thread 2
+   655000: cap 3: running thread 3
+   672000: cap 0: stopping thread 2 (making a foreign call)
+   893000: cap 3: stopping thread 3 (stack overflow)
+   897000: cap 3: running thread 3
+  1466000: cap 3: stopping thread 3 (heap overflow)
+  1467000: cap 3: requesting parallel GC
+  1476000: cap 0: starting GC
+  1480000: cap 1: starting GC
+  1481000: cap 2: starting GC
+  1483000: cap 3: starting GC
+  1503000: cap 1: GC working
+  1503000: cap 2: GC working
+  1506000: cap 2: GC idle
+  1507000: cap 1: GC idle
+  1509000: cap 0: GC working
+  1514000: cap 3: GC working
+  1566000: cap 0: GC idle
+  1628000: cap 0: GC done
+  1628000: cap 1: GC done
+  1628000: cap 3: GC idle
+  1628000: cap 3: GC done
+  1629000: cap 2: GC done
+  1629000: cap 3: GC working
+  1630000: cap 3: GC idle
+  1630000: cap 3: GC done
+  1630000: cap 3: GC working
+  1631000: cap 3: GC idle
+  1631000: cap 3: GC done
+  1631000: cap 3: GC working
+  1631000: cap 3: GC idle
+  1632000: cap 3: GC done
+  1653000: cap 0: finished GC
+  1653000: cap 3: finished GC
+  1654000: cap 1: finished GC
+  1654000: cap 2: finished GC
+  1654000: cap 3: running thread 3
+  1658000: cap 3: stopping thread 3 (thread yielding)
+  1659000: cap 2: creating thread 4
+  1659000: cap 2: creating spark thread 4
+  1659000: cap 3: thread 3 is runnable
+  1659000: cap 3: running thread 3
+  1660000: cap 0: creating thread 5
+  1660000: cap 0: creating spark thread 5
+  1660000: cap 0: thread 5 is runnable
+  1660000: cap 2: thread 4 is runnable
+  1660000: cap 2: running thread 4
+  1661000: cap 0: running thread 5
+  1663000: cap 1: creating thread 6
+  1663000: cap 1: creating spark thread 6
+  1663000: cap 1: thread 6 is runnable
+  1664000: cap 1: running thread 6
+  1665000: cap 2: stealing a spark from cap 3
+  1667000: cap 0: stealing a spark from cap 3
+  1669000: cap 1: stealing a spark from cap 3
+  1675000: cap 2: stopping thread 4 (thread yielding)
+  1675000: cap 2: thread 4 is runnable
+  1676000: cap 2: running thread 4
+  1681000: cap 0: stopping thread 5 (thread yielding)
+  1681000: cap 0: thread 5 is runnable
+  1681000: cap 0: running thread 5
+  1681000: cap 1: stopping thread 6 (thread yielding)
+  1681000: cap 1: thread 6 is runnable
+  1681000: cap 1: running thread 6
+  1692000: cap 2: stopping thread 4 (stack overflow)
+  1694000: cap 2: running thread 4
+  1699000: cap 0: stopping thread 5 (stack overflow)
+  1700000: cap 1: stopping thread 6 (stack overflow)
+  1705000: cap 0: running thread 5
+  1705000: cap 1: running thread 6
+  1949000: cap 3: stopping thread 3 (heap overflow)
+  1950000: cap 3: requesting parallel GC
+  1951000: cap 0: stopping thread 5 (thread yielding)
+  1951000: cap 0: thread 5 is runnable
+  1951000: cap 0: starting GC
+  1951000: cap 1: stopping thread 6 (thread yielding)
+  1951000: cap 1: thread 6 is runnable
+  1951000: cap 1: starting GC
+  1951000: cap 2: stopping thread 4 (thread yielding)
+  1951000: cap 2: thread 4 is runnable
+  1952000: cap 2: starting GC
+  1953000: cap 3: starting GC
+  1962000: cap 1: GC working
+  1963000: cap 2: GC working
+  1964000: cap 0: GC working
+  1969000: cap 3: GC working
+  1990000: cap 2: GC idle
+  1991000: cap 0: GC idle
+  1992000: cap 1: GC idle
+  1999000: cap 0: GC done
+  1999000: cap 1: GC done
+  1999000: cap 2: GC done
+  1999000: cap 3: GC idle
+  1999000: cap 3: GC done
+  2000000: cap 3: GC working
+  2000000: cap 3: GC idle
+  2000000: cap 3: GC done
+  2000000: cap 3: GC working
+  2001000: cap 3: GC idle
+  2001000: cap 3: GC done
+  2002000: cap 3: GC working
+  2002000: cap 3: GC idle
+  2002000: cap 3: GC done
+  2013000: cap 3: finished GC
+  2014000: cap 0: finished GC
+  2014000: cap 0: running thread 5
+  2014000: cap 1: finished GC
+  2014000: cap 2: finished GC
+  2014000: cap 3: running thread 3
+  2015000: cap 1: running thread 6
+  2015000: cap 2: running thread 4
+  2017000: cap 0: stopping thread 5 (thread yielding)
+  2018000: cap 0: thread 5 is runnable
+  2018000: cap 0: running thread 5
+  2018000: cap 2: stopping thread 4 (thread yielding)
+  2018000: cap 2: thread 4 is runnable
+  2019000: cap 1: stopping thread 6 (thread yielding)
+  2019000: cap 1: thread 6 is runnable
+  2019000: cap 2: running thread 4
+  2019000: cap 3: stopping thread 3 (thread yielding)
+  2019000: cap 3: thread 3 is runnable
+  2019000: cap 3: running thread 3
+  2020000: cap 1: running thread 6
+  2307000: cap 3: stopping thread 3 (heap overflow)
+  2307000: cap 3: requesting parallel GC
+  2308000: cap 1: stopping thread 6 (thread yielding)
+  2309000: cap 1: thread 6 is runnable
+  2309000: cap 1: starting GC
+  2310000: cap 0: stopping thread 5 (thread yielding)
+  2310000: cap 2: stopping thread 4 (thread yielding)
+  2310000: cap 2: thread 4 is runnable
+  2310000: cap 2: starting GC
+  2311000: cap 0: thread 5 is runnable
+  2311000: cap 0: starting GC
+  2311000: cap 3: starting GC
+  2319000: cap 1: GC working
+  2320000: cap 2: GC working
+  2323000: cap 0: GC working
+  2327000: cap 3: GC working
+  2333000: cap 2: GC idle
+  2334000: cap 0: GC idle
+  2335000: cap 3: GC idle
+  2336000: cap 0: GC done
+  2336000: cap 1: GC idle
+  2336000: cap 1: GC done
+  2336000: cap 2: GC done
+  2336000: cap 3: GC done
+  2337000: cap 3: GC working
+  2337000: cap 3: GC idle
+  2337000: cap 3: GC done
+  2337000: cap 3: GC working
+  2337000: cap 3: GC idle
+  2337000: cap 3: GC done
+  2338000: cap 3: GC working
+  2338000: cap 3: GC idle
+  2338000: cap 3: GC done
+  2351000: cap 3: finished GC
+  2352000: cap 0: finished GC
+  2352000: cap 0: running thread 5
+  2352000: cap 1: finished GC
+  2352000: cap 2: finished GC
+  2353000: cap 1: running thread 6
+  2353000: cap 2: running thread 4
+  2353000: cap 3: running thread 3
+  2356000: cap 0: stopping thread 5 (thread yielding)
+  2356000: cap 0: thread 5 is runnable
+  2356000: cap 1: stopping thread 6 (thread yielding)
+  2356000: cap 1: thread 6 is runnable
+  2356000: cap 2: stopping thread 4 (thread yielding)
+  2356000: cap 2: thread 4 is runnable
+  2357000: cap 0: running thread 5
+  2357000: cap 1: running thread 6
+  2357000: cap 2: running thread 4
+  2357000: cap 3: stopping thread 3 (thread yielding)
+  2357000: cap 3: thread 3 is runnable
+  2357000: cap 3: running thread 3
+  2451000: cap 2: stopping thread 4 (thread yielding)
+  2451000: cap 2: thread 4 is runnable
+  2452000: cap 3: stopping thread 3 (thread blocked)
+  2452000: cap 3: creating thread 7
+  2453000: cap 2: running thread 4
+  2453000: cap 3: creating spark thread 7
+  2453000: cap 3: thread 7 is runnable
+  2463000: cap 3: running thread 7
+  2465000: cap 3: running a local spark
+  2480000: cap 3: stopping thread 7 (stack overflow)
+  2481000: cap 3: running thread 7
+  2749000: cap 2: stopping thread 4 (heap overflow)
+  2750000: cap 2: requesting parallel GC
+  2751000: cap 1: stopping thread 6 (thread yielding)
+  2751000: cap 3: stopping thread 7 (thread yielding)
+  2752000: cap 1: thread 6 is runnable
+  2752000: cap 1: starting GC
+  2752000: cap 3: thread 7 is runnable
+  2752000: cap 3: starting GC
+  6061000: cap 0: stopping thread 5 (thread yielding)
+  6062000: cap 0: thread 5 is runnable
+  6062000: cap 0: starting GC
+  6063000: cap 2: starting GC
+  6074000: cap 1: GC working
+  6075000: cap 0: GC working
+  6075000: cap 2: GC working
+  6076000: cap 3: GC working
+  6079000: cap 2: GC idle
+  6082000: cap 1: GC idle
+  6084000: cap 0: GC idle
+  6090000: cap 0: GC done
+  6090000: cap 1: GC done
+  6090000: cap 2: GC done
+  6090000: cap 3: GC idle
+  6090000: cap 3: GC done
+  6091000: cap 2: GC working
+  6091000: cap 2: GC idle
+  6091000: cap 2: GC done
+  6091000: cap 2: GC working
+  6091000: cap 2: GC idle
+  6091000: cap 2: GC done
+  6092000: cap 2: GC working
+  6092000: cap 2: GC idle
+  6092000: cap 2: GC done
+  6107000: cap 0: finished GC
+  6107000: cap 2: finished GC
+  6108000: cap 0: running thread 5
+  6108000: cap 1: finished GC
+  6108000: cap 1: running thread 6
+  6108000: cap 2: running thread 4
+  6108000: cap 3: finished GC
+  6109000: cap 3: running thread 7
+  6113000: cap 1: stopping thread 6 (thread yielding)
+  6113000: cap 1: thread 6 is runnable
+  6114000: cap 1: running thread 6
+  6114000: cap 2: stopping thread 4 (thread yielding)
+  6115000: cap 0: stopping thread 5 (thread yielding)
+  6115000: cap 2: thread 4 is runnable
+  6115000: cap 2: running thread 4
+  6115000: cap 3: stopping thread 7 (thread yielding)
+  6115000: cap 3: thread 7 is runnable
+  6116000: cap 0: thread 5 is runnable
+  6116000: cap 0: running thread 5
+  6116000: cap 3: running thread 7
+  6403000: cap 2: stopping thread 4 (heap overflow)
+  6403000: cap 2: requesting parallel GC
+  6404000: cap 0: stopping thread 5 (thread yielding)
+  6404000: cap 0: thread 5 is runnable
+  6404000: cap 1: stopping thread 6 (heap overflow)
+  6404000: cap 1: thread 6 is runnable
+  6404000: cap 3: stopping thread 7 (thread yielding)
+  6405000: cap 0: starting GC
+  6405000: cap 1: starting GC
+  6405000: cap 3: thread 7 is runnable
+  6405000: cap 3: starting GC
+  6406000: cap 2: starting GC
+  6414000: cap 3: GC working
+  6415000: cap 0: GC working
+  6415000: cap 1: GC working
+  6417000: cap 2: GC working
+  6420000: cap 1: GC idle
+  6421000: cap 0: GC idle
+  6422000: cap 2: GC idle
+  6425000: cap 0: GC done
+  6425000: cap 1: GC done
+  6425000: cap 2: GC done
+  6425000: cap 3: GC idle
+  6425000: cap 3: GC done
+  6426000: cap 2: GC working
+  6426000: cap 2: GC idle
+  6426000: cap 2: GC done
+  6426000: cap 2: GC working
+  6426000: cap 2: GC idle
+  6427000: cap 2: GC done
+  6427000: cap 2: GC working
+  6427000: cap 2: GC idle
+  6427000: cap 2: GC done
+  6440000: cap 0: finished GC
+  6440000: cap 2: finished GC
+  6441000: cap 0: running thread 5
+  6441000: cap 1: finished GC
+  6441000: cap 1: running thread 6
+  6441000: cap 2: running thread 4
+  6441000: cap 3: finished GC
+  6442000: cap 3: running thread 7
+  6445000: cap 0: stopping thread 5 (thread yielding)
+  6445000: cap 0: thread 5 is runnable
+  6445000: cap 1: stopping thread 6 (thread yielding)
+  6445000: cap 3: stopping thread 7 (thread yielding)
+  6445000: cap 3: thread 7 is runnable
+  6445000: cap 3: running thread 7
+  6446000: cap 0: running thread 5
+  6446000: cap 1: thread 6 is runnable
+  6446000: cap 1: running thread 6
+  6446000: cap 2: stopping thread 4 (thread yielding)
+  6446000: cap 2: thread 4 is runnable
+  6446000: cap 2: running thread 4
+  6648000: cap 1: stealing a spark from cap 0
+  6653000: cap 0: stopping thread 5 (thread blocked)
+  6653000: cap 0: creating thread 8
+  6653000: cap 1: stopping thread 6 (thread yielding)
+  6653000: cap 1: thread 6 is runnable
+  6654000: cap 0: creating spark thread 8
+  6654000: cap 0: thread 8 is runnable
+  6654000: cap 0: running thread 8
+  6655000: cap 0: running a local spark
+  6655000: cap 1: running thread 6
+  6656000: cap 2: waking up thread 3 on cap 3
+  6658000: cap 2: stealing a spark from cap 1
+  6658000: cap 3: stopping thread 7 (thread yielding)
+  6658000: cap 3: thread 7 is runnable
+  6659000: cap 3: waking up thread 3 on cap 3
+  6659000: cap 3: thread 3 is runnable
+  6660000: cap 3: running thread 7
+  6727000: cap 2: stopping thread 4 (heap overflow)
+  6728000: cap 1: stopping thread 6 (thread yielding)
+  6728000: cap 2: requesting parallel GC
+  6729000: cap 0: stopping thread 8 (thread yielding)
+  6729000: cap 0: thread 8 is runnable
+  6729000: cap 0: starting GC
+  6729000: cap 1: thread 6 is runnable
+  6729000: cap 1: starting GC
+  6729000: cap 3: stopping thread 7 (thread yielding)
+  6729000: cap 3: thread 7 is runnable
+  6730000: cap 2: starting GC
+  6730000: cap 3: starting GC
+  6737000: cap 0: GC working
+  6737000: cap 2: GC working
+  6738000: cap 1: GC working
+  6739000: cap 3: GC working
+  6741000: cap 2: GC idle
+  6744000: cap 1: GC idle
+  6747000: cap 3: GC idle
+  6748000: cap 0: GC idle
+  6748000: cap 1: GC done
+  6748000: cap 2: GC done
+  6749000: cap 0: GC done
+  6749000: cap 2: GC working
+  6749000: cap 2: GC idle
+  6749000: cap 2: GC done
+  6749000: cap 3: GC done
+  6750000: cap 2: GC working
+  6750000: cap 2: GC idle
+  6750000: cap 2: GC done
+  6750000: cap 2: GC working
+  6750000: cap 2: GC idle
+  6750000: cap 2: GC done
+  6764000: cap 0: finished GC
+  6764000: cap 0: running thread 8
+  6764000: cap 1: finished GC
+  6764000: cap 2: finished GC
+  6765000: cap 1: running thread 6
+  6765000: cap 2: running thread 4
+  6765000: cap 3: finished GC
+  6768000: cap 1: stopping thread 6 (thread yielding)
+  6769000: cap 0: stopping thread 8 (thread yielding)
+  6769000: cap 0: thread 8 is runnable
+  6769000: cap 1: thread 6 is runnable
+  6769000: cap 1: running thread 6
+  6769000: cap 2: stopping thread 4 (thread yielding)
+  6769000: cap 2: thread 4 is runnable
+  6770000: cap 2: running thread 4
+  6777000: cap 3: running thread 3
+  6780000: cap 3: stopping thread 3 (thread blocked)
+  6782000: cap 1: stopping thread 6 (thread blocked)
+  6782000: cap 2: stopping thread 4 (thread yielding)
+  6782000: cap 2: thread 4 is runnable
+  6784000: cap 1: creating thread 9
+  6784000: cap 1: creating spark thread 9
+  6784000: cap 2: running thread 4
+  6785000: cap 1: thread 9 is runnable
+  6785000: cap 1: running thread 9
+  6786000: cap 1: stealing a spark from cap 0
+  6790000: cap 3: running thread 7
+  6791000: cap 0: running thread 8
+  6794000: cap 3: stopping thread 7 (thread yielding)
+  6794000: cap 3: thread 7 is runnable
+  6795000: cap 0: stopping thread 8 (thread yielding)
+  6795000: cap 0: thread 8 is runnable
+  6795000: cap 3: running thread 7
+  6796000: cap 0: running thread 8
+  6802000: cap 2: waking up thread 6 on cap 1
+  6803000: cap 2: stealing a spark from cap 0
+  6804000: cap 1: stopping thread 9 (thread yielding)
+  6804000: cap 1: thread 9 is runnable
+  6805000: cap 1: waking up thread 6 on cap 1
+  6805000: cap 1: thread 6 is runnable
+  6805000: cap 1: running thread 9
+  6818000: cap 1: stopping thread 9 (thread finished)
+  6819000: cap 1: running thread 6
+  6819000: cap 1: waking up thread 5 on cap 0
+  6820000: cap 0: stopping thread 8 (thread yielding)
+  6820000: cap 1: stealing a spark from cap 3
+  6821000: cap 0: thread 8 is runnable
+  6821000: cap 0: waking up thread 5 on cap 0
+  6821000: cap 0: thread 5 is runnable
+  6821000: cap 0: running thread 8
+  6828000: cap 0: stopping thread 8 (thread blocked)
+  6828000: cap 0: running thread 5
+  6828000: cap 2: stopping thread 4 (thread yielding)
+  6829000: cap 2: thread 4 is runnable
+  6829000: cap 2: running thread 4
+  6830000: cap 0: stopping thread 5 (thread blocked)
+  6831000: cap 0: creating thread 10
+  6831000: cap 0: creating spark thread 10
+  6831000: cap 0: thread 10 is runnable
+  6831000: cap 0: running thread 10
+  6832000: cap 0: stealing a spark from cap 1
+  6857000: cap 2: waking up thread 8 on cap 0
+  6857000: cap 2: stealing a spark from cap 0
+  6858000: cap 0: stopping thread 10 (thread yielding)
+  6858000: cap 0: thread 10 is runnable
+  6858000: cap 0: waking up thread 8 on cap 0
+  6859000: cap 0: thread 8 is runnable
+  6859000: cap 0: running thread 10
+  6940000: cap 0: stopping thread 10 (thread blocked)
+  6940000: cap 0: running thread 8
+  6940000: cap 2: stopping thread 4 (thread yielding)
+  6941000: cap 0: waking up thread 5 on cap 0
+  6941000: cap 0: thread 5 is runnable
+  6941000: cap 0: stopping thread 8 (thread finished)
+  6941000: cap 0: running thread 5
+  6941000: cap 2: thread 4 is runnable
+  6941000: cap 2: running thread 4
+  6942000: cap 0: waking up thread 3 on cap 3
+  6942000: cap 0: stealing a spark from cap 1
+  6943000: cap 3: stopping thread 7 (thread yielding)
+  6943000: cap 3: thread 7 is runnable
+  6944000: cap 2: waking up thread 10 on cap 0
+  6944000: cap 3: waking up thread 3 on cap 3
+  6944000: cap 3: thread 3 is runnable
+  6944000: cap 3: running thread 7
+  6945000: cap 0: stopping thread 5 (thread yielding)
+  6945000: cap 0: thread 5 is runnable
+  6945000: cap 2: stealing a spark from cap 0
+  6946000: cap 0: waking up thread 10 on cap 0
+  6946000: cap 0: thread 10 is runnable
+  6946000: cap 0: running thread 5
+  6949000: cap 0: stopping thread 5 (thread blocked)
+  6949000: cap 0: running thread 10
+  6950000: cap 0: running a local spark
+  6950000: cap 2: stopping thread 4 (thread yielding)
+  6950000: cap 2: thread 4 is runnable
+  6950000: cap 2: running thread 4
+  6974000: cap 0: stopping thread 10 (thread yielding)
+  6974000: cap 1: stopping thread 6 (thread blocked)
+  6975000: cap 0: thread 10 is runnable
+  6975000: cap 0: running thread 10
+  6975000: cap 1: creating thread 11
+  6975000: cap 1: creating spark thread 11
+  6976000: cap 1: thread 11 is runnable
+  6976000: cap 1: running thread 11
+  6977000: cap 1: running a local spark
+  7019000: cap 0: running a local spark
+  7046000: cap 2: waking up thread 5 on cap 0
+  7047000: cap 0: stopping thread 10 (thread yielding)
+  7047000: cap 0: thread 10 is runnable
+  7047000: cap 0: waking up thread 5 on cap 0
+  7047000: cap 0: thread 5 is runnable
+  7047000: cap 2: stealing a spark from cap 1
+  7048000: cap 0: running thread 10
+  7066000: cap 2: stopping thread 4 (heap overflow)
+  7066000: cap 2: requesting parallel GC
+  7067000: cap 1: stopping thread 11 (thread yielding)
+  7068000: cap 1: thread 11 is runnable
+  7068000: cap 1: starting GC
+  7068000: cap 3: stopping thread 7 (thread yielding)
+  7068000: cap 3: thread 7 is runnable
+  7068000: cap 3: starting GC
+  7069000: cap 0: stopping thread 10 (thread yielding)
+  7069000: cap 0: thread 10 is runnable
+  7070000: cap 0: starting GC
+  7070000: cap 2: starting GC
+  7078000: cap 0: GC working
+  7078000: cap 2: GC working
+  7083000: cap 2: GC idle
+  7090000: cap 0: GC idle
+  7111000: cap 1: GC working
+  7121000: cap 1: GC idle
+  7141000: cap 3: GC working
+  7150000: cap 0: GC done
+  7150000: cap 1: GC done
+  7150000: cap 2: GC done
+  7150000: cap 3: GC idle
+  7150000: cap 3: GC done
+  7151000: cap 2: GC working
+  7151000: cap 2: GC idle
+  7151000: cap 2: GC done
+  7151000: cap 2: GC working
+  7152000: cap 2: GC idle
+  7152000: cap 2: GC done
+  7152000: cap 2: GC working
+  7152000: cap 2: GC idle
+  7152000: cap 2: GC done
+  7166000: cap 2: finished GC
+  7167000: cap 0: finished GC
+  7167000: cap 0: running thread 5
+  7167000: cap 1: finished GC
+  7168000: cap 1: running thread 11
+  7168000: cap 2: running thread 4
+  7168000: cap 3: finished GC
+  7169000: cap 0: stopping thread 5 (thread blocked)
+  7170000: cap 0: running thread 10
+  7172000: cap 1: stopping thread 11 (thread yielding)
+  7172000: cap 1: thread 11 is runnable
+  7172000: cap 2: stopping thread 4 (thread yielding)
+  7172000: cap 2: thread 4 is runnable
+  7174000: cap 0: stopping thread 10 (thread yielding)
+  7174000: cap 0: thread 10 is runnable
+  7174000: cap 0: running thread 10
+  7174000: cap 2: running thread 4
+  7175000: cap 1: running thread 11
+  7228000: cap 0: waking up thread 5 on cap 0
+  7228000: cap 0: thread 5 is runnable
+  7228000: cap 0: stopping thread 10 (thread finished)
+  7228000: cap 0: running thread 5
+  7229000: cap 0: waking up thread 6 on cap 1
+  7230000: cap 0: stealing a spark from cap 1
+  7231000: cap 1: stopping thread 11 (thread yielding)
+  7231000: cap 1: thread 11 is runnable
+  7231000: cap 1: waking up thread 6 on cap 1
+  7232000: cap 1: thread 6 is runnable
+  7232000: cap 1: running thread 11
+  7249000: cap 1: stopping thread 11 (thread blocked)
+  7249000: cap 1: running thread 6
+  7250000: cap 0: stopping thread 5 (thread yielding)
+  7250000: cap 0: thread 5 is runnable
+  7251000: cap 0: running thread 5
+  7253000: cap 1: stopping thread 6 (thread blocked)
+  7254000: cap 1: creating thread 12
+  7254000: cap 1: creating spark thread 12
+  7254000: cap 1: thread 12 is runnable
+  7254000: cap 1: running thread 12
+  7255000: cap 1: stealing a spark from cap 2
+  7294000: cap 1: stopping thread 12 (thread yielding)
+  7294000: cap 2: stopping thread 4 (thread blocked)
+  7295000: cap 1: thread 12 is runnable
+  7295000: cap 1: running thread 12
+  7295000: cap 2: creating thread 13
+  7295000: cap 2: creating spark thread 13
+  7295000: cap 2: thread 13 is runnable
+  7296000: cap 2: running thread 13
+  7297000: cap 2: running a local spark
+  7300000: cap 0: waking up thread 11 on cap 1
+  7301000: cap 0: stealing a spark from cap 3
+  7301000: cap 1: stopping thread 12 (thread yielding)
+  7301000: cap 1: thread 12 is runnable
+  7302000: cap 1: waking up thread 11 on cap 1
+  7302000: cap 1: thread 11 is runnable
+  7303000: cap 1: running thread 12
+  7341000: cap 1: waking up thread 4 on cap 2
+  7342000: cap 1: stopping thread 12 (thread finished)
+  7342000: cap 1: running thread 11
+  7342000: cap 2: stopping thread 13 (thread yielding)
+  7342000: cap 2: thread 13 is runnable
+  7343000: cap 1: waking up thread 6 on cap 1
+  7343000: cap 2: waking up thread 4 on cap 2
+  7343000: cap 2: thread 4 is runnable
+  7344000: cap 1: thread 6 is runnable
+  7344000: cap 1: stopping thread 11 (thread finished)
+  7344000: cap 1: running thread 6
+  7344000: cap 2: running thread 13
+  7346000: cap 1: stopping thread 6 (thread blocked)
+  7346000: cap 1: creating thread 14
+  7346000: cap 2: stopping thread 13 (thread yielding)
+  7346000: cap 2: thread 13 is runnable
+  7347000: cap 1: creating spark thread 14
+  7347000: cap 1: thread 14 is runnable
+  7347000: cap 1: running thread 14
+  7347000: cap 2: running thread 4
+  7347000: cap 2: stopping thread 4 (thread blocked)
+  7348000: cap 1: stealing a spark from cap 0
+  7348000: cap 2: running thread 13
+  7349000: cap 2: waking up thread 4 on cap 2
+  7349000: cap 2: thread 4 is runnable
+  7349000: cap 2: stopping thread 13 (thread finished)
+  7350000: cap 2: running thread 4
+  7350000: cap 2: waking up thread 6 on cap 1
+  7350000: cap 2: stealing a spark from cap 0
+  7351000: cap 1: stopping thread 14 (thread yielding)
+  7351000: cap 1: thread 14 is runnable
+  7351000: cap 1: waking up thread 6 on cap 1
+  7352000: cap 1: thread 6 is runnable
+  7353000: cap 1: running thread 14
+  7468000: cap 2: stopping thread 4 (heap overflow)
+  7468000: cap 2: requesting parallel GC
+  7469000: cap 1: stopping thread 14 (thread yielding)
+  7469000: cap 1: thread 14 is runnable
+  7471000: cap 1: starting GC
+  7472000: cap 0: stopping thread 5 (thread yielding)
+  7472000: cap 0: thread 5 is runnable
+  7473000: cap 0: starting GC
+  7502000: cap 3: starting GC
+  7503000: cap 2: starting GC
+  7510000: cap 1: GC working
+  7514000: cap 2: GC working
+  7518000: cap 2: GC idle
+  7518000: cap 3: GC working
+  7523000: cap 3: GC idle
+  7524000: cap 1: GC idle
+  8359000: cap 0: GC working
+  8368000: cap 0: GC idle
+  8368000: cap 0: GC done
+  8368000: cap 1: GC done
+  8368000: cap 2: GC done
+  8368000: cap 3: GC done
+  8369000: cap 2: GC working
+  8369000: cap 2: GC idle
+  8369000: cap 2: GC done
+  8369000: cap 2: GC working
+  8369000: cap 2: GC idle
+  8369000: cap 2: GC done
+  8370000: cap 2: GC working
+  8370000: cap 2: GC idle
+  8370000: cap 2: GC done
+  8383000: cap 0: finished GC
+  8383000: cap 2: finished GC
+  8384000: cap 0: running thread 5
+  8384000: cap 1: finished GC
+  8384000: cap 1: running thread 6
+  8384000: cap 2: running thread 4
+  8384000: cap 3: finished GC
+  8384000: cap 3: running thread 3
+  8385000: cap 1: stopping thread 6 (thread finished)
+  8386000: cap 1: running thread 14
+  8389000: cap 2: stopping thread 4 (thread yielding)
+  8389000: cap 2: thread 4 is runnable
+  8389000: cap 2: running thread 4
+  8389000: cap 3: stopping thread 3 (thread blocked)
+  8390000: cap 1: stopping thread 14 (thread yielding)
+  8390000: cap 1: thread 14 is runnable
+  8393000: cap 0: stopping thread 5 (thread yielding)
+  8393000: cap 0: thread 5 is runnable
+  8400000: cap 3: running thread 7
+  8403000: cap 3: stopping thread 7 (thread yielding)
+  8403000: cap 3: thread 7 is runnable
+  8403000: cap 3: running thread 7
+  8404000: cap 1: running thread 14
+  8465000: cap 2: stealing a spark from cap 0
+  8504000: cap 1: stealing a spark from cap 0
+  8623000: cap 3: waking up thread 3 on cap 3
+  8623000: cap 3: thread 3 is runnable
+  8623000: cap 3: stopping thread 7 (thread finished)
+  8634000: cap 0: running thread 5
+  8635000: cap 3: running thread 3
+  8640000: cap 0: stopping thread 5 (thread yielding)
+  8640000: cap 0: thread 5 is runnable
+  8640000: cap 3: stopping thread 3 (thread blocked)
+  8641000: cap 3: creating thread 15
+  8641000: cap 3: creating spark thread 15
+  8641000: cap 3: thread 15 is runnable
+  8649000: cap 3: running thread 15
+  8650000: cap 3: running a local spark
+  8661000: cap 3: stopping thread 15 (stack overflow)
+  8663000: cap 3: running thread 15
+  8670000: cap 2: stopping thread 4 (heap overflow)
+  8670000: cap 2: requesting parallel GC
+  8671000: cap 1: stopping thread 14 (thread yielding)
+  8671000: cap 1: thread 14 is runnable
+  8671000: cap 3: stopping thread 15 (thread yielding)
+  8671000: cap 3: thread 15 is runnable
+  8671000: cap 3: starting GC
+  8672000: cap 1: starting GC
+ 13162000: cap 0: starting GC
+ 13162000: cap 2: starting GC
+ 13170000: cap 1: GC working
+ 13171000: cap 0: GC working
+ 13172000: cap 2: GC working
+ 13177000: cap 1: GC idle
+ 13178000: cap 0: GC idle
+ 13178000: cap 2: GC idle
+ 13186000: cap 3: GC working
+ 13204000: cap 1: GC done
+ 13204000: cap 2: GC done
+ 13204000: cap 3: GC idle
+ 13204000: cap 3: GC done
+ 13205000: cap 2: GC working
+ 13205000: cap 2: GC idle
+ 13205000: cap 2: GC done
+ 13205000: cap 2: GC working
+ 13205000: cap 2: GC idle
+ 13205000: cap 2: GC done
+ 13206000: cap 2: GC working
+ 13206000: cap 2: GC idle
+ 13206000: cap 2: GC done
+ 13229000: cap 0: GC done
+ 13244000: cap 0: finished GC
+ 13244000: cap 2: finished GC
+ 13245000: cap 0: running thread 5
+ 13245000: cap 1: finished GC
+ 13245000: cap 1: running thread 14
+ 13245000: cap 2: running thread 4
+ 13249000: cap 1: stopping thread 14 (thread yielding)
+ 13249000: cap 1: thread 14 is runnable
+ 13249000: cap 2: stopping thread 4 (thread yielding)
+ 13249000: cap 2: thread 4 is runnable
+ 13249000: cap 2: running thread 4
+ 13250000: cap 0: stopping thread 5 (thread yielding)
+ 13250000: cap 0: thread 5 is runnable
+ 13250000: cap 1: running thread 14
+ 13251000: cap 0: running thread 5
+ 13292000: cap 2: stealing a spark from cap 0
+ 13294000: cap 1: stealing a spark from cap 3
+ 13312000: cap 0: stopping thread 5 (thread blocked)
+ 13312000: cap 2: stopping thread 4 (thread yielding)
+ 13312000: cap 2: thread 4 is runnable
+ 13313000: cap 0: creating thread 16
+ 13313000: cap 0: creating spark thread 16
+ 13313000: cap 0: thread 16 is runnable
+ 13314000: cap 0: running thread 16
+ 13314000: cap 0: stealing a spark from cap 1
+ 13314000: cap 2: running thread 4
+ 13340000: cap 2: waking up thread 5 on cap 0
+ 13341000: cap 0: stopping thread 16 (thread yielding)
+ 13341000: cap 0: thread 16 is runnable
+ 13341000: cap 2: stealing a spark from cap 1
+ 13342000: cap 0: waking up thread 5 on cap 0
+ 13342000: cap 0: thread 5 is runnable
+ 13342000: cap 0: running thread 16
+ 13364000: cap 0: stopping thread 16 (thread yielding)
+ 13364000: cap 0: thread 16 is runnable
+ 13364000: cap 0: running thread 16
+ 13364000: cap 1: stopping thread 14 (thread blocked)
+ 13365000: cap 1: creating thread 17
+ 13365000: cap 1: creating spark thread 17
+ 13365000: cap 1: thread 17 is runnable
+ 13365000: cap 1: running thread 17
+ 13365000: cap 1: stealing a spark from cap 3
+ 13375000: cap 2: stealing a spark from cap 1
+ 13423000: cap 2: stealing a spark from cap 1
+ 13428000: cap 0: waking up thread 14 on cap 1
+ 13429000: cap 0: stopping thread 16 (thread finished)
+ 13429000: cap 0: running thread 5
+ 13430000: cap 1: stopping thread 17 (thread yielding)
+ 13430000: cap 1: thread 17 is runnable
+ 13431000: cap 1: waking up thread 14 on cap 1
+ 13431000: cap 1: thread 14 is runnable
+ 13431000: cap 1: running thread 17
+ 13432000: cap 0: waking up thread 3 on cap 3
+ 13433000: cap 0: stealing a spark from cap 3
+ 13442000: cap 1: stopping thread 17 (thread blocked)
+ 13442000: cap 1: running thread 14
+ 13442000: cap 2: stopping thread 4 (thread yielding)
+ 13442000: cap 2: thread 4 is runnable
+ 13443000: cap 1: stealing a spark from cap 0
+ 13443000: cap 2: running thread 4
+ 13453000: cap 2: waking up thread 17 on cap 1
+ 13454000: cap 2: stealing a spark from cap 0
+ 13455000: cap 1: stopping thread 14 (thread yielding)
+ 13455000: cap 1: thread 14 is runnable
+ 13456000: cap 1: waking up thread 17 on cap 1
+ 13456000: cap 1: thread 17 is runnable
+ 13456000: cap 1: running thread 14
+ 13476000: cap 1: stopping thread 14 (thread finished)
+ 13476000: cap 1: running thread 17
+ 13476000: cap 1: stealing a spark from cap 3
+ 13505000: cap 2: stealing a spark from cap 1
+ 13539000: cap 2: stopping thread 4 (heap overflow)
+ 13539000: cap 2: requesting parallel GC
+ 13541000: cap 0: stopping thread 5 (thread yielding)
+ 13541000: cap 0: thread 5 is runnable
+ 13541000: cap 0: starting GC
+ 13541000: cap 1: stopping thread 17 (thread yielding)
+ 13541000: cap 1: thread 17 is runnable
+ 13541000: cap 1: starting GC
+ 13578000: cap 3: finished GC
+ 13578000: cap 3: starting GC
+ 13579000: cap 2: starting GC
+ 13585000: cap 1: GC working
+ 13591000: cap 2: GC working
+ 13593000: cap 3: GC working
+ 13595000: cap 2: GC idle
+ 13596000: cap 1: GC idle
+ 13603000: cap 3: GC idle
+ 13880000: cap 0: GC working
+ 13885000: cap 0: GC idle
+ 13885000: cap 0: GC done
+ 13885000: cap 2: GC done
+ 13886000: cap 1: GC done
+ 13886000: cap 2: GC working
+ 13886000: cap 2: GC idle
+ 13886000: cap 2: GC done
+ 13886000: cap 2: GC working
+ 13886000: cap 2: GC idle
+ 13886000: cap 2: GC done
+ 13887000: cap 2: GC working
+ 13887000: cap 2: GC idle
+ 13887000: cap 2: GC done
+ 13911000: cap 3: GC done
+ 13924000: cap 2: finished GC
+ 13925000: cap 1: finished GC
+ 13925000: cap 1: running thread 17
+ 13925000: cap 2: running thread 4
+ 13925000: cap 3: finished GC
+ 13926000: cap 3: running thread 15
+ 13928000: cap 1: stopping thread 17 (thread yielding)
+ 13928000: cap 2: stopping thread 4 (thread yielding)
+ 13929000: cap 1: thread 17 is runnable
+ 13929000: cap 1: running thread 17
+ 13929000: cap 2: thread 4 is runnable
+ 13929000: cap 2: running thread 4
+ 13931000: cap 3: stopping thread 15 (thread yielding)
+ 13931000: cap 3: thread 15 is runnable
+ 13931000: cap 3: waking up thread 3 on cap 3
+ 13931000: cap 3: thread 3 is runnable
+ 13932000: cap 3: running thread 15
+ 13941000: cap 2: stealing a spark from cap 1
+ 13944000: cap 1: stopping thread 17 (thread blocked)
+ 13944000: cap 2: stopping thread 4 (thread yielding)
+ 13945000: cap 1: creating thread 18
+ 13945000: cap 1: creating spark thread 18
+ 13945000: cap 1: thread 18 is runnable
+ 13945000: cap 1: running thread 18
+ 13945000: cap 2: thread 4 is runnable
+ 13946000: cap 1: stealing a spark from cap 3
+ 13946000: cap 2: running thread 4
+ 13990000: cap 2: waking up thread 17 on cap 1
+ 13991000: cap 2: stealing a spark from cap 1
+ 13992000: cap 1: stopping thread 18 (thread yielding)
+ 13992000: cap 1: thread 18 is runnable
+ 13992000: cap 1: waking up thread 17 on cap 1
+ 13992000: cap 1: thread 17 is runnable
+ 13993000: cap 1: running thread 18
+ 14018000: cap 1: stopping thread 18 (thread blocked)
+ 14018000: cap 1: running thread 17
+ 14018000: cap 1: running a local spark
+ 14019000: cap 2: stopping thread 4 (thread yielding)
+ 14019000: cap 2: thread 4 is runnable
+ 14020000: cap 2: running thread 4
+ 14029000: cap 2: waking up thread 18 on cap 1
+ 14030000: cap 1: stopping thread 17 (thread yielding)
+ 14030000: cap 1: thread 17 is runnable
+ 14030000: cap 1: waking up thread 18 on cap 1
+ 14030000: cap 2: stealing a spark from cap 3
+ 14031000: cap 1: thread 18 is runnable
+ 14031000: cap 1: running thread 17
+ 14035000: cap 3: stopping thread 15 (thread blocked)
+ 14036000: cap 2: stopping thread 4 (thread yielding)
+ 14036000: cap 2: thread 4 is runnable
+ 14036000: cap 2: running thread 4
+ 14042000: cap 0: finished GC
+ 14042000: cap 0: running thread 5
+ 14042000: cap 3: running thread 3
+ 14045000: cap 3: stopping thread 3 (thread blocked)
+ 14047000: cap 0: stopping thread 5 (thread yielding)
+ 14047000: cap 0: thread 5 is runnable
+ 14048000: cap 0: running thread 5
+ 14052000: cap 0: stopping thread 5 (thread finished)
+ 14057000: cap 2: waking up thread 15 on cap 3
+ 14061000: cap 2: stopping thread 4 (thread finished)
+ 14064000: cap 3: waking up thread 15 on cap 3
+ 14065000: cap 3: thread 15 is runnable
+ 14065000: cap 3: running thread 15
+ 14068000: cap 1: stopping thread 17 (thread yielding)
+ 14068000: cap 1: thread 17 is runnable
+ 14068000: cap 3: stopping thread 15 (thread blocked)
+ 14070000: cap 0: thread 17 is runnable
+ 14070000: cap 1: migrating thread 17 to cap 0
+ 14075000: cap 0: running thread 17
+ 14078000: cap 1: running thread 18
+ 14079000: cap 1: stopping thread 18 (thread blocked)
+ 14080000: cap 0: stopping thread 17 (thread yielding)
+ 14080000: cap 0: thread 17 is runnable
+ 14081000: cap 0: running thread 17
+ 14094000: cap 0: waking up thread 18 on cap 1
+ 14096000: cap 0: stopping thread 17 (thread finished)
+ 14098000: cap 1: waking up thread 18 on cap 1
+ 14098000: cap 1: thread 18 is runnable
+ 14099000: cap 1: running thread 18
+ 14099000: cap 1: waking up thread 15 on cap 3
+ 14102000: cap 1: stopping thread 18 (thread finished)
+ 14103000: cap 3: waking up thread 15 on cap 3
+ 14103000: cap 3: thread 15 is runnable
+ 14103000: cap 3: running thread 15
+ 14103000: cap 3: waking up thread 3 on cap 3
+ 14104000: cap 3: thread 3 is runnable
+ 14104000: cap 3: stopping thread 15 (thread finished)
+ 14110000: cap 3: running thread 3
+ 14146000: cap 3: stopping thread 3 (making a foreign call)
+ 14147000: cap 3: running thread 3
+ 14147000: cap 3: stopping thread 3 (making a foreign call)
+ 14157000: cap 3: running thread 3
+ 14191000: cap 3: stopping thread 3 (thread finished)
+ 14204000: cap 3: requesting sequential GC
+ 14206000: cap 3: starting GC
+ 14229000: cap 0: GC working
+ 14242000: cap 0: GC idle
+ 14242000: cap 0: GC done
+ 14243000: cap 0: GC working
+ 14243000: cap 0: GC idle
+ 14244000: cap 0: GC done
+ 14244000: cap 0: GC working
+ 14244000: cap 0: GC idle
+ 14244000: cap 0: GC done
+ 14244000: cap 0: GC working
+ 14244000: cap 0: GC idle
+ 14245000: cap 0: GC done
+ 14254000: cap 3: finished GC
+ 14261000: cap 0: running thread 2
+ 14306000: cap 0: stopping thread 2 (thread finished)
+ 14344000: cap 0: shutting down
+ 14345000: cap 1: shutting down
+ 14346000: cap 2: shutting down
+ 14346000: cap 3: shutting down
+
+

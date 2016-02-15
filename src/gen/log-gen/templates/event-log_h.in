@@ -1,0 +1,27 @@
+/* event-log.h
+ *
+ * COPYRIGHT (c) 2016 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * WARNING: this file is generated; do not edit!!!
+ */
+
+#ifndef _EVENT_LOG_H_ 
+#define _EVENT_LOG_H_
+
+
+extern void InitEventLogFile (const char *name, int nvps, int ncpus);
+extern void InitEventLog (VProc_t *vp);
+extern void SwapEventLogBuffers (VProc_t *vp, LogBuffer_t *curBuf);
+extern void FinishEventLog ();
+extern void printAndClearEventBuf (VProc_t * vp);
+extern uint64_t get_elapsed_time();
+
+
+#ifdef ENABLE_LOGGING
+@LOG-FUNCTIONS@
+#else
+@DUMMY-LOG-FUNCTIONS@
+#endif /* !ENABLE_LOGGING */
+
+#endif /* !_EVENT_LOG_H_ */

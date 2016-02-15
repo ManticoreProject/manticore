@@ -52,6 +52,10 @@ structure PrimUtil : sig
       | nameOf (P.F64Neg _) = "F64Neg"
       | nameOf (P.F64Sqrt _) = "F64Sqrt"
       | nameOf (P.F64Abs _) = "F64Abs"
+      | nameOf (P.I8RSh _) = "I8RSh"
+      | nameOf (P.I16RSh _) = "I16RSh"
+      | nameOf (P.I32RSh _) = "I32RSh"
+      | nameOf (P.I64RSh _) = "I64RSh"
       | nameOf (P.I32ToI64X _) = "I32ToI64X"
       | nameOf (P.I32ToI64 _) = "I32ToI64"
       | nameOf (P.I64ToI32 _) = "I64ToI32"
@@ -60,6 +64,8 @@ structure PrimUtil : sig
       | nameOf (P.I64ToF32 _) = "I64ToF32"
       | nameOf (P.I64ToF64 _) = "I64ToF64"
       | nameOf (P.F64ToI32 _) = "F64ToI32"
+      | nameOf (P.I32ToI16 _) = "I32ToI16"
+      | nameOf (P.I16ToI8 _) = "I16ToI8"
       | nameOf (P.AdrAddI32 _) = "AdrAddI32"
       | nameOf (P.AdrAddI64 _) = "AdrAddI64"
       | nameOf (P.AdrSubI32 _) = "AdrSubI32"
@@ -138,6 +144,10 @@ structure PrimUtil : sig
       | varsOf (P.F64Neg a) = [a]
       | varsOf (P.F64Sqrt a) = [a]
       | varsOf (P.F64Abs a) = [a]
+      | varsOf (P.I8RSh(a, b)) = [a, b]
+      | varsOf (P.I16RSh(a, b)) = [a, b]
+      | varsOf (P.I32RSh(a, b)) = [a, b]
+      | varsOf (P.I64RSh(a, b)) = [a, b]
       | varsOf (P.I32ToI64X a) = [a]
       | varsOf (P.I32ToI64 a) = [a]
       | varsOf (P.I64ToI32 a) = [a]
@@ -146,6 +156,8 @@ structure PrimUtil : sig
       | varsOf (P.I64ToF32 a) = [a]
       | varsOf (P.I64ToF64 a) = [a]
       | varsOf (P.F64ToI32 a) = [a]
+      | varsOf (P.I32ToI16 a) = [a]
+      | varsOf (P.I16ToI8 a) = [a]
       | varsOf (P.AdrAddI32(a, b)) = [a, b]
       | varsOf (P.AdrAddI64(a, b)) = [a, b]
       | varsOf (P.AdrSubI32(a, b)) = [a, b]
@@ -240,6 +252,10 @@ structure PrimUtil : sig
       | explode (P.F64Neg a) = (p1 P.F64Neg, [a])
       | explode (P.F64Sqrt a) = (p1 P.F64Sqrt, [a])
       | explode (P.F64Abs a) = (p1 P.F64Abs, [a])
+      | explode (P.I8RSh(a, b)) = (p2 P.I8RSh, [a, b])
+      | explode (P.I16RSh(a, b)) = (p2 P.I16RSh, [a, b])
+      | explode (P.I32RSh(a, b)) = (p2 P.I32RSh, [a, b])
+      | explode (P.I64RSh(a, b)) = (p2 P.I64RSh, [a, b])
       | explode (P.I32ToI64X a) = (p1 P.I32ToI64X, [a])
       | explode (P.I32ToI64 a) = (p1 P.I32ToI64, [a])
       | explode (P.I64ToI32 a) = (p1 P.I64ToI32, [a])
@@ -248,6 +264,8 @@ structure PrimUtil : sig
       | explode (P.I64ToF32 a) = (p1 P.I64ToF32, [a])
       | explode (P.I64ToF64 a) = (p1 P.I64ToF64, [a])
       | explode (P.F64ToI32 a) = (p1 P.F64ToI32, [a])
+      | explode (P.I32ToI16 a) = (p1 P.I32ToI16, [a])
+      | explode (P.I16ToI8 a) = (p1 P.I16ToI8, [a])
       | explode (P.AdrAddI32(a, b)) = (p2 P.AdrAddI32, [a, b])
       | explode (P.AdrAddI64(a, b)) = (p2 P.AdrAddI64, [a, b])
       | explode (P.AdrSubI32(a, b)) = (p2 P.AdrSubI32, [a, b])

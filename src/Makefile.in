@@ -31,7 +31,7 @@ SHELL =		@SHELL@
 
 #### End of system configuration section. ####
 
-TOOL_DIRS =	tools/mc tools/log-dump
+TOOL_DIRS =	tools/mc #tools/log-dump
 LIB_DIRS =	lib/parallel-rt/build
 SUBDIRS =	$(TOOL_DIRS) $(LIB_DIRS)
 

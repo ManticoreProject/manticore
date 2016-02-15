@@ -39,6 +39,7 @@
     VP_OFFSET(vp, ALLOC_PTR, allocPtr, true);
     VP_OFFSET(vp, EVENT_ID, eventId, true);
     VP_OFFSET(vp, LOG, log, true);
+    VP_OFFSET(vp, EVENT_LOG, event_log, true);
     VP_OFFSET(vp, NURSERY_BASE, nurseryBase, true);
     VP_OFFSET(vp, OLD_TOP, oldTop, true);
     VP_OFFSET(vp, GLOB_NEXT_W, globNextW, true);

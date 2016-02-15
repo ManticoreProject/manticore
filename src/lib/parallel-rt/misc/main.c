@@ -16,7 +16,6 @@
 #include "heap.h"
 #include "os-threads.h"
 #include "asm-offsets.h" /* for RUNTIME_MAGIC */
-#include "inline-log.h"
 
 static void PingLoop ();
 static void Ping (int n);

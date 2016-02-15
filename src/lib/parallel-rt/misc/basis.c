@@ -199,6 +199,36 @@ Value_t M_DoubleFromString (Value_t str)
     }
 }
 
+void M_Print_Long(const char * s, uint64_t addr){
+    char str [100];
+    sprintf(str, "[%d]: %s", VProcSelf()->id, s);
+    printf(str, addr);
+}
+
+void M_Print_Long_Long(const char *s, uint64_t addr, uint64_t v){
+    char str [100];
+    sprintf(str, "[%d]: %s", VProcSelf()->id, s);
+    printf(str, addr, v);
+}
+
+void M_Print_Long_Int(const char *s, uint64_t addr, uint32_t v){
+    char str [100];
+    sprintf(str, "[%d]: %s", VProcSelf()->id, s);
+    printf(str, addr, v);
+}
+
+void M_Print_Long_Byte(const char *s, uint64_t addr, uint8_t v){
+    char str [100];
+    sprintf(str, "[%d]: %s", VProcSelf()->id, s);
+    printf(str, addr, v);
+}
+
+void M_Print_Long_Short(const char *s, uint64_t addr, uint16_t v){
+    char str [100];
+    sprintf(str, "[%d]: %s", VProcSelf()->id, s);
+    printf(str, addr, v);
+}
+
 /* M_Print:
  */
 void M_Print (const char *s)
