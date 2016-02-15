@@ -19,13 +19,6 @@ structure LLVMType : sig
 
     val typeOfC : CFunctions.c_type -> ty
 
-    (* only valid for function/continuation types, excluding basic blocks as well.
-       breaks apart the types involved in this convention into its list of parameters
-       suitable for printing.  *)
-    val typesInConv : CFGTy.ty -> ty list
-
-    val typeOfConv : (CFG.convention * CFG.var list) -> CFGTy.ty
-
     (* takes a list of "register types" and produces
        a list of indices for these types to assign them according
        to the JWA calling convention in LLVM. the only types
@@ -296,6 +289,67 @@ structure LLVMType : sig
               ( cache := HCM.insert(!cache, x, (name, rhs)) ; name )
           (* esac *))
        (* esac *))
+       
+       
+       
+       
+       
+    local
+     (* for now, we assume that there are no vector types, and
+     labels already can't be passed as an arg anyways *)
+     val gprTy = mkInt(cnt 64)
+     val f32Ty = floatTy
+     val f64Ty = doubleTy
+
+     (* [x, y) kinda gross but whatever.
+        NOTE that GPRS _must_ start at 0, and be allocated in order,
+        because in llvm-printer, the machine indices for the vector
+       also starts at 0 and we just reuse that numbering.  *)
+     val gprRange = (0, 14)
+     val f32Range = (14, 22)
+     val f64Range = (22, 30)
+    in
+     fun toRegType t = (case HC.node t
+       of Ty.T_Ptr _ => gprTy
+        | Ty.T_Int _ => gprTy
+        | Ty.T_VProc => gprTy
+        | Ty.T_Deque => gprTy
+        | Ty.T_Float => f32Ty
+        | Ty.T_Double => f64Ty
+        | _ => raise Fail ("Type \n"
+                 ^ (nameOf t)
+                 ^ "\n does not fit in a machine register, or is not allowed in the calling convention!")
+       (* esac *))
+
+       (* RAX, RBX, RCX, RDX, RSI, RDI, R8, R9, R10, R11, R12, R13, R14, R15
+          XMM0 - XMM15 for floats, whether 32 or 64 bit *)
+      val jwaCC =
+        Vector.tabulate(#2(f64Range), fn x =>
+             if x < #2(gprRange) then gprTy
+             else if x < #2(f32Range) then f32Ty
+             else f64Ty)
+
+     fun allocateToRegs ts = let
+     (* might be better to use a vector instead of 3 integers for code cleanliness *)
+         fun alloc (nil, is, _, _, _) = List.rev is
+           | alloc (t::ts, is, gpr, f32, f64) =
+             if (gpr < #2(gprRange)
+                 andalso f32 < #2(f32Range)
+                 andalso f64 < #2(f64Range))
+             then (case HC.node t (* NOTE: assuming Int x where x <= 64 *)
+                   of Ty.T_Int _ => alloc(ts, gpr::is, gpr+1, f32, f64)
+                    | Ty.T_Float   => alloc(ts, f32::is, gpr, f32+1, f64)
+                    | Ty.T_Double  => alloc(ts, f64::is, gpr, f32, f64+1)
+                    | _ => raise Fail "bad register type"
+                   (* esac *))
+             else raise Fail "allocateToRegs: overflow of JWA calling convention detected!"
+     in
+         alloc(ts, [], #1(gprRange), #1(f32Range), #1(f64Range))
+     end
+       
+       
+       
+       
     
 
     fun typeDecl () = let
@@ -377,37 +431,15 @@ structure LLVMType : sig
           (* end case *))
 
 
-    (* TODO(kavon): does not yet include types for pinned registers *)
+    (* everybody has same types according to LLVM *)
     and typesInConv (cty : CT.ty) : ty list = (case cty
-      
-      of CT.T_StdFun { clos, args, ret, exh } =>
-            (typeOf clos) :: (List.map typeOf args) @ [typeOf ret, typeOf exh]
-       
-       | CT.T_StdCont {clos, args} =>
-            (typeOf clos) :: (List.map typeOf args)
-       
-       | CT.T_KnownFunc {clos, args} => 
-            (typeOf clos) :: (List.map typeOf args)
-
-       | _ => raise Fail "only functions/continuations have calling convention types")
-
-
-    local 
-      val getTy = C.Var.typeOf
-    in
-      fun typeOfConv (conv : C.convention, args : C.var list) : CT.ty = (case conv
-        of C.StdFunc { clos, ret, exh } => 
-            CT.T_StdFun {clos=(getTy clos), args=(List.map getTy args),
-                         ret=(getTy ret), exh=(getTy exh)} 
-
-         | C.StdCont { clos } =>
-            CT.T_StdCont {clos=(getTy clos), args=(List.map getTy args)} 
-
-         | C.KnownFunc { clos } => 
-            CT.T_KnownFunc {clos=(getTy clos), args=(List.map getTy args)} 
-        (* end case *))
-    end   
-
+        of (CT.T_StdFun _ 
+            | CT.T_StdCont _ 
+            | CT.T_KnownFunc _ ) =>
+                List.tabulate(Vector.length jwaCC, 
+                    fn i => Vector.sub(jwaCC, i))
+         | _ => raise Fail ("only functions/continuations have calling convention types")
+        (* esac *))
 
   val same = HC.same
   val node = HC.node
@@ -494,55 +526,54 @@ structure LLVMType : sig
     (* esac *))
 
 
-local
-  (* for now, we assume that there are no vector types, and
-  labels already can't be passed as an arg anyways *)
-  val gprTy = mkInt(cnt 64)
-  val f32Ty = floatTy
-  val f64Ty = doubleTy
 
-  (* [x, y) kinda gross but whatever. *)
-  val gprRange = (0, 14)
-  val f32Range = (14, 22)
-  val f64Range = (22, 30)
-in
-  fun toRegType t = (case HC.node t
-    of Ty.T_Ptr _ => gprTy
-     | Ty.T_Int _ => gprTy
-     | Ty.T_VProc => gprTy
-     | Ty.T_Deque => gprTy
-     | Ty.T_Float => f32Ty
-     | Ty.T_Double => f64Ty
-     | _ => raise Fail ("Type \n"
-              ^ (nameOf t)
-              ^ "\n does not fit in a machine register, or is not allowed in the calling convention!")
-    (* esac *))
+  
+  (*(case cty      
+    of CT.T_StdFun { clos, args, ret, exh } =>
+          (typeOf clos) :: (List.map typeOf args) @ [typeOf ret, typeOf exh]
+     
+     | CT.T_StdCont {clos, args} =>
+          (typeOf clos) :: (List.map typeOf args)
+     
+     | CT.T_KnownFunc {clos, args} => 
+          (typeOf clos) :: (List.map typeOf args)
 
-    (* RAX, RBX, RCX, RDX, RSI, RDI, R8, R9, R10, R11, R12, R13, R14, R15
-       XMM0 - XMM15 for floats, whether 32 or 64 bit *)
-   val jwaCC =
-     Vector.tabulate(#2(f64Range), fn x =>
-          if x < #2(gprRange) then gprTy
-          else if x < #2(f32Range) then f32Ty
-          else f64Ty)
+     | _ => raise Fail "only functions/continuations have calling convention types")
 
-  fun allocateToRegs ts = let
-  (* might be better to use a vector instead of 3 integers for code cleanliness *)
-      fun alloc (nil, is, _, _, _) = List.rev is
-        | alloc (t::ts, is, gpr, f32, f64) =
-          if (gpr < #2(gprRange)
-              andalso f32 < #2(f32Range)
-              andalso f64 < #2(f64Range))
-          then (case HC.node t (* NOTE: assuming Int x where x <= 64 *)
-                of Ty.T_Int _ => alloc(ts, gpr::is, gpr+1, f32, f64)
-                 | Ty.T_Float   => alloc(ts, f32::is, gpr, f32+1, f64)
-                 | Ty.T_Double  => alloc(ts, f64::is, gpr, f32, f64+1)
-                 | _ => raise Fail "bad register type"
-                (* esac *))
-          else raise Fail "allocateToRegs: overflow of JWA calling convention detected!"
+
+  local 
+    val getTy = C.Var.typeOf
   in
-      alloc(ts, [], #1(gprRange), #1(f32Range), #1(f64Range))
-  end
+    fun typeOfConv (conv : C.convention, args : C.var list) : CT.ty = (case conv
+      of C.StdFunc { clos, ret, exh } => 
+          CT.T_StdFun {clos=(getTy clos), args=(List.map getTy args),
+                       ret=(getTy ret), exh=(getTy exh)} 
+
+       | C.StdCont { clos } =>
+          CT.T_StdCont {clos=(getTy clos), args=(List.map getTy args)} 
+
+       | C.KnownFunc { clos } => 
+          CT.T_KnownFunc {clos=(getTy clos), args=(List.map getTy args)} 
+      (* end case *))
+  end   *)
+  
+  (*and determineCC (tys : LT.ty list) : (int * LT.ty) list = let
+  (* this is a concequence of the fact that LLVM can't perform tail call optimization
+     if the parameters of the callee differ from the caller. Thus, we are essentially
+     making all Manticore function types identical. Note that this function will *not*
+     add the pinned values to the CC, you should prepend them to the type list before
+     calling this function.
+     
+     Input: CFG types of this function converted to a list of LLVM types
+     Output: a list of pairs where the int is the argument number for the caller
+             and the 2nd argument is the type to bitcast the original value to
+             before making the call.
+   *)
+        val regTys = L.map LT.toRegType tys
+        val slotPairs = ListPair.zipEq(LT.allocateToRegs regTys, regTys)
+    in
+        slotPairs
+    end (* end determineCC *)*)
 
 end (* end local *)
 

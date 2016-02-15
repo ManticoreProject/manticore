@@ -105,10 +105,23 @@ fun output (outS, module as C.MODULE { name = module_name,
   end
 
   (* translation environment utilities *)
+  
+  (* implicit machine values according to CFG *)
+  datatype machineVal 
+    = MV_Alloc
+    | MV_Vproc
+    
+  fun machineValIdx mv = (case mv
+      of MV_Alloc => 0
+      | MV_Vproc => 1
+      (* end case *))
+  
+  val numMachineVals = 2
 
   datatype gamma = ENV of {
     labs : LV.var CL.Map.map,    (* CFG Labels -> LLVMVars *)
-    vars : LV.var CV.Map.map     (* CFG Vars -> LLVMVars *)
+    vars : LV.var CV.Map.map,     (* CFG Vars -> LLVMVars *)
+    mvs : LV.var vector          (* current LLVM vars representing machine vals *)
   }
 
   fun lookupV (ENV{vars,...}, v) = 
@@ -122,12 +135,18 @@ fun output (outS, module as C.MODULE { name = module_name,
       of SOME ll => ll
        | NONE => raise Fail ("lookupL -- unknown CFG Label: " ^ CL.toString l)
     (* esac *))
+    
+  fun lookupMV (ENV{mvs,...}, kind) = Vector.sub(mvs, machineValIdx kind)
 
-  fun insertV (ENV{vars, labs}, v, lv) = 
-        ENV{vars=(CV.Map.insert(vars, v, lv)), labs=labs}
+  fun insertV (ENV{vars, labs, mvs}, v, lv) = 
+        ENV{vars=(CV.Map.insert(vars, v, lv)), labs=labs, mvs=mvs}
 
-  fun insertL (ENV{vars, labs}, l, ll) = 
-        ENV{vars=vars, labs=(CL.Map.insert(labs, l, ll))}
+  fun insertL (ENV{vars, labs, mvs}, l, ll) = 
+        ENV{vars=vars, labs=(CL.Map.insert(labs, l, ll)), mvs=mvs}
+        
+  fun updateMV(ENV{vars, labs, mvs}, kind, lv) =
+        ENV{vars=vars, labs=labs,
+            mvs= Vector.update(mvs, machineValIdx kind, lv)}
 
   (* end translation environment utilities *)
 
@@ -274,25 +293,6 @@ fun output (outS, module as C.MODULE { name = module_name,
     in
         finish(process(initialEnv, body), exit)
     end
-    
-    
-    and determineCC (tys : LT.ty list) : (int * LT.ty) list = let
-    (* this is a concequence of the fact that LLVM can't perform tail call optimization
-       if the parameters of the callee differ from the caller. Thus, we are essentially
-       making all Manticore function types identical. Note that this function will *not*
-       add the pinned values to the CC, you should prepend them to the type list before
-       calling this function.
-       
-       Input: CFG types of this function converted to a list of LLVM types
-       Output: a list of pairs where the int is the argument number for the caller
-               and the 2nd argument is the type to bitcast the original value to
-               before making the call.
-     *)
-          val regTys = L.map LT.toRegType tys
-          val slotPairs = ListPair.zipEq(LT.allocateToRegs regTys, regTys)
-      in
-          slotPairs
-      end (* end determineCC *)
 
 
   (* testing llvm bb generator *)
@@ -335,6 +335,11 @@ fun output (outS, module as C.MODULE { name = module_name,
     val llParamTys = L.map (LT.typeOf o CV.typeOf) cfgArgs
     val regs = L.map (fn ty => LV.new("reg", (LT.toRegType ty))) llParamTys
     
+    (*val mvs = Vector.fromList(L.take(regs, numMachineVals))*)
+    
+    (* TEMP *)
+    val mvs = #[LV.new("alloc", LT.toRegType LT.vprocTy), LV.new("alloc", LT.toRegType LT.vprocTy)]
+    
     (* cfg arg -> llvm arg *)
     (* this is not needed actually! *)
     (*val initialValEnv = L.foldl CV.Map.insert' CV.Map.empty (ListPair.zipEq (args, llvmArgs))*)
@@ -370,18 +375,59 @@ fun output (outS, module as C.MODULE { name = module_name,
        and map the original parameters to the reg types when we call mk bbelow *)
     
     (* TODO(kavon): the label environment should contain every function in the program *) 
-    val body = mkBasicBlocks (ENV{labs=CL.Map.empty, vars=CV.Map.empty}, start, body, (cfgArgs, llParamTys, regs))  
+    val body = mkBasicBlocks (ENV{labs=CL.Map.empty, vars=CV.Map.empty, mvs=mvs}, start, body, (cfgArgs, llParamTys, regs))  
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in
     total
-  end
+  end  
 
   and linkageOf (label) = (case CL.kindOf label
     of C.LK_Func { export = NONE, ... } => "internal"
      | C.LK_Func { export = SOME _, ... } => "external"
      | _ => raise Fail ("linkageOf is only valid for manticore functions.")
      (* end case *))
+
+
+    (* determines calling conventions. we keep it all localized here
+       so we don't mess it up *)
+    fun determineCC (* returns a list of slots and CFG vars assigned to those slots *)
+        (conv : CFG.convention, args : C.var list) : (int * C.var) list = let
+            
+            val getTy = LT.toRegType o LT.typeOf o C.Var.typeOf
+            
+            val machineValPadding = 
+                List.tabulate(numMachineVals, fn _ => LT.toRegType LT.vprocTy)
+            
+            fun withPadding convVars = 
+                machineValPadding 
+                @ (List.map getTy convVars)
+            
+            fun determineIndices convVars = 
+                L.drop((LT.allocateToRegs o withPadding) convVars, numMachineVals)
+        in
+            (case conv
+                of C.StdFunc { clos, ret, exh } => let
+                    val convVars = [clos, ret, exh] @ args
+                    in
+                        ListPair.zipEq(determineIndices convVars, convVars)
+                    end
+                    
+                    
+
+                | (C.StdCont { clos } | C.KnownFunc { clos }) => let
+                    val convVars = clos :: args
+                    in
+                        ListPair.zipEq(determineIndices convVars, convVars)
+                    end
+          
+                (*| C.KnownFunc { clos } => let
+                    val convVars = clos :: args
+                    in
+                        ListPair.zipEq(determineIndices convVars, convVars)
+                    end*)
+            (* end case *))
+      end
 
 (****** end of Functions ******)
 
