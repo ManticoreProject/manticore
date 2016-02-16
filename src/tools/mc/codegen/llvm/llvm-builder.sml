@@ -527,7 +527,12 @@ structure LLVMBuilder : sig
       )
     end
     
-  
+ (* try to get a useful name from the argument to use as the prefix of a new symbol *)
+  fun genPfx (arg as INSTR{result,...}) = (case result
+      of R_Var oldVar => LV.nameOf oldVar
+       | R_Const _ => "lit"
+       | _ => "r"
+      (* esac *))
 
 
   (* Instruction Builders *)
@@ -613,7 +618,7 @@ structure LLVMBuilder : sig
   fun cast blk castKind = fn (arg : instr, targTy) =>
       push(blk,
         INSTR {
-          result = R_Var (LV.new("r", Op.checkCast(castKind, (tyOfInstr arg, targTy)))),
+          result = R_Var (LV.new(genPfx arg, Op.checkCast(castKind, (tyOfInstr arg, targTy)))),
           kind = OP castKind,
           args = #[arg],
           atr = AS.empty
@@ -632,7 +637,7 @@ structure LLVMBuilder : sig
       val result = (case LT.returnTy funTy
                      of SOME t => (case LT.node t
                         of Ty.T_Void => R_None
-                         | _ => R_Var (LV.new("r", t))
+                         | _ => R_Var (LV.new("ret", t))
                         (* esac *))
                       | NONE => raise Fail "expected a function type."
                    (* esac *))
