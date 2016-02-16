@@ -101,6 +101,7 @@ structure LLVMType : sig
 
     val voidTy : ty
     val vprocTy : ty
+    val allocPtrTy : ty
     val dequeTy : ty
     val labelTy : ty
     val floatTy : ty
@@ -291,7 +292,9 @@ structure LLVMType : sig
        (* esac *))
        
        
-       
+    
+    val allocPtrTy = mkPtr(mkInt(cnt 8))
+    
        
        
     local

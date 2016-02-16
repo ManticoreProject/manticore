@@ -42,6 +42,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure CF = CFunctions
   structure S = String
   structure L = List
+  structure V = Vector
 
   (*  *)
   structure LV = LLVMVar
@@ -111,9 +112,19 @@ fun output (outS, module as C.MODULE { name = module_name,
     = MV_Alloc
     | MV_Vproc
     
-  fun machineValIdx mv = (case mv
-      of MV_Alloc => 0
-      | MV_Vproc => 1
+  fun machineInfo mv = (case mv
+    of MV_Alloc => (0, "allocPtr", LT.allocPtrTy)
+     | MV_Vproc => (1, "vprocPtr", LT.vprocTy)
+    (* end case *))
+    
+  fun machineValIdx mv = #1(machineInfo mv)
+  fun machineValStr mv = #2(machineInfo mv)
+  fun machineValTy  mv = #3(machineInfo mv)
+      
+  fun IdxMachineVal n = (case n
+      of 0 => SOME MV_Alloc
+       | 1 => SOME MV_Vproc
+       | _ => NONE
       (* end case *))
   
   val numMachineVals = 2
@@ -210,23 +221,35 @@ fun output (outS, module as C.MODULE { name = module_name,
           fillBlock b (env, body, exit)
         end
 
-      fun mkStartBlock (C.BLK{body, exit, ...}, (cfgArgs, llParamTys, regs)) = let
+      fun mkStartBlock (C.BLK{body, exit, ...}, (cc, ccRegs, mvRegs)) = let
       (* start needs to be treated specially because its inputs
          are the parameters to the function that need a special calling convention.
          also nobody can branch to the start block so we don't need to add it to the env *)
          
-         val blk = LB.new(LV.new("entry", LT.labelTy), regs)
+         val inputs = L.map (fn (_, var, _) => var) (mvRegs @ ccRegs)
          
-         fun addBitcast (((cfgArg, llty), reg), acc) = let
-                val newVar = LB.toV(LB.cast blk Op.BitCast (LB.fromV reg, llty))
+         val blk = LB.new(LV.new("entry", LT.labelTy), inputs)
+         
+         fun addBitcastCC (((_, cfgVar), (_, llReg, realTy)), acc) = let
+                val newVar = LB.toV(LB.cast blk Op.BitCast (LB.fromV llReg, realTy))
             in
-                insertV(acc, cfgArg, newVar) (*  *)
+                insertV(acc, cfgVar, newVar) (*  *)
             end
+            
+        fun addBitcastMV ((i, llReg, realTy), acc) = let
+               val newVar = LB.toV(LB.cast blk Op.BitCast (LB.fromV llReg, realTy))
+               val SOME mv = IdxMachineVal i
+           in
+               updateMV(acc, mv, newVar)
+           end
          
-         (* FIXME problem here if we use zipEq it raises an exception *)
-         val env = L.foldl addBitcast initialEnv (ListPair.zipEq(ListPair.zipEq(cfgArgs, llParamTys), regs))
          
-         
+         val env = L.foldl 
+            addBitcastCC
+            initialEnv
+            (ListPair.zipEq(cc, ccRegs))
+            
+        val env = L.foldl addBitcastMV env mvRegs
       
         in
             fillBlock blk (env, body, exit)
@@ -324,21 +347,62 @@ fun output (outS, module as C.MODULE { name = module_name,
 (****** Functions ******)
   
   (* NOTE: this probably should be moved into a new module or something *)
-
   fun mkFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }) : string = let
     
-    (*val cfgTy = LT.typeOfConv(entry, cfgArgs)
-    val llParamTys = LT.typesInConv cfgTy*) 
+    val (mvTys : LT.ty list, cc : (int * C.var) list) = determineCC(entry, cfgArgs)
+    
+    val pairedMvTys = ListPair.zipEq(L.tabulate(numMachineVals, fn i => i), mvTys)
+    
+    (* reg vars and the real types *)
+    val mvRegs = L.map (fn (i, ty) => let
+            val (SOME mv) = IdxMachineVal i
+            val (_, name, realTy) = machineInfo mv
+        in
+            (i, LV.new(name, ty), realTy)
+        end) pairedMvTys
+        
+    val ccRegs = L.map (fn (i, cvar) => let
+            val name = CV.nameOf cvar
+            val realTy = (LT.typeOf o CV.typeOf) cvar
+            val ty = LT.toRegType realTy
+        in
+            (i, LV.new(name, ty), realTy)
+        end) cc
+    
+    
+    (* NEXT now we assign mvRegs :: ccRegs to the jwaCC slots,
+       filling in junk slots with "unused" LV's.
+       then we pass these two lists to mkBasicBlocks so that 
+       a block of bitcasts is produced in the header to fixup 
+       the environment. *)
+       
+    datatype slotTy
+     = Used of LV.var
+     | NotUsed of LT.ty
+       
+    (* NOTE the regs must be ordered by slot num *)
+    fun assign(nil, nil, res) = L.rev res 
+      | assign(slot::rest, nil, res) = assign(rest, nil, (NotUsed (V.sub(LT.jwaCC, slot)))::res)
+      | assign(slot::rest, (regs as ((r as (idx, var, _))::rs)), res) =
+        if idx = slot 
+            then assign(rest, rs, (Used var)::res)
+            else assign(rest, regs, (NotUsed (V.sub(LT.jwaCC, slot)))::res)
+       
+    val slotNums = L.tabulate(V.length LT.jwaCC, fn i => i)
+    
+    val allAssign = assign(slotNums, mvRegs @ ccRegs, nil)  
+    
+    val mvs = V.fromList(L.map (fn (_, var, _) => var) mvRegs)
     
     (* TODO typesInConv needs to be fixedup. you need to refresh yourself on the calling
        conventions used in each kind of transfer, cause you're missing the closures!! *)
-    val llParamTys = L.map (LT.typeOf o CV.typeOf) cfgArgs
-    val regs = L.map (fn ty => LV.new("reg", (LT.toRegType ty))) llParamTys
+    (*val llParamTys = L.map (LT.typeOf o CV.typeOf) cfgArgs
+    val regs = L.map (fn ty => LV.new("reg", (LT.toRegType ty))) llParamTys*)
     
     (*val mvs = Vector.fromList(L.take(regs, numMachineVals))*)
     
     (* TEMP *)
-    val mvs = #[LV.new("alloc", LT.toRegType LT.vprocTy), LV.new("alloc", LT.toRegType LT.vprocTy)]
+    (*val mvs = #[LV.new("alloc", LT.toRegType LT.vprocTy), LV.new("alloc", LT.toRegType LT.vprocTy)]*)
     
     (* cfg arg -> llvm arg *)
     (* this is not needed actually! *)
@@ -349,7 +413,9 @@ fun output (outS, module as C.MODULE { name = module_name,
     (* TODO(kavon): add a check to ensure # of GPR <= arity. Spec currently lists
                     the max number of GPRs for args, not total with pinned regs *)
     
-    fun mkDecl var = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
+    fun mkDecl (Used var) = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
+      | mkDecl (NotUsed ty) = LT.nameOf ty
+    
     fun stringify vars = S.concatWith ", " (L.map mkDecl vars)
     
     val comment = "; comment use to be here \n"
@@ -357,25 +423,21 @@ fun output (outS, module as C.MODULE { name = module_name,
     (*val comment = S.concat ["; CFG type: ", CTU.toString cfgTy, "\n",
                             "; LLVM type: ", (stringify  llParamTys), "\n",
                             "; LLVM arity = ", i2s(List.length llParamTys), "\n" ]*)
-                            
-    (*val regTypes = L.map LT.toRegType llParamTys*)
-
-                      (* TODO: get the arg list from the starting block.
-                               also, the start block should be treated specially
-                               when we output it here.
-                               we also probably need a rename environment? *)
    
     (* string building code *)
     val linkage = linkageOf lab
-    val cc = " cc 17 " (* Only available in Kavon's modified version of LLVM. *)
+    val ccStr = " cc 17 " (* Only available in Kavon's modified version of LLVM. *)
     val llName = (LV.toString o LV.convertLabel) lab
-    val decl = [comment, "define ", linkage, cc, "void ", llName, "(", (stringify regs), ") ", stdAttrs(MantiFun), " {\n"]
+    val decl = [comment, "define ", linkage, ccStr,
+                "void ", llName, "(", (stringify  allAssign), ") ",
+                stdAttrs(MantiFun), " {\n"]
     
     (* now we setup the environment, we need to make fresh vars for the reg types,
        and map the original parameters to the reg types when we call mk bbelow *)
     
     (* TODO(kavon): the label environment should contain every function in the program *) 
-    val body = mkBasicBlocks (ENV{labs=CL.Map.empty, vars=CV.Map.empty, mvs=mvs}, start, body, (cfgArgs, llParamTys, regs))  
+    val body = mkBasicBlocks (ENV{labs=CL.Map.empty, vars=CV.Map.empty, mvs=mvs},
+                                start, body, (cc, ccRegs, mvRegs))  
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
   in
@@ -391,8 +453,10 @@ fun output (outS, module as C.MODULE { name = module_name,
 
     (* determines calling conventions. we keep it all localized here
        so we don't mess it up *)
-    fun determineCC (* returns a list of slots and CFG vars assigned to those slots *)
-        (conv : CFG.convention, args : C.var list) : (int * C.var) list = let
+    and determineCC (* returns a ListPair of slots and CFG vars assigned to those slots,
+                       and the list of types for machine vals. the indices are defined by 
+                       the machine val's index function *)
+        (conv : CFG.convention, args : C.var list) : (LT.ty list * (int * C.var) list) = let
             
             val getTy = LT.toRegType o LT.typeOf o C.Var.typeOf
             
@@ -410,7 +474,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                 of C.StdFunc { clos, ret, exh } => let
                     val convVars = [clos, ret, exh] @ args
                     in
-                        ListPair.zipEq(determineIndices convVars, convVars)
+                        (machineValPadding, ListPair.zipEq(determineIndices convVars, convVars))
                     end
                     
                     
@@ -418,14 +482,8 @@ fun output (outS, module as C.MODULE { name = module_name,
                 | (C.StdCont { clos } | C.KnownFunc { clos }) => let
                     val convVars = clos :: args
                     in
-                        ListPair.zipEq(determineIndices convVars, convVars)
+                        (machineValPadding, ListPair.zipEq(determineIndices convVars, convVars))
                     end
-          
-                (*| C.KnownFunc { clos } => let
-                    val convVars = clos :: args
-                    in
-                        ListPair.zipEq(determineIndices convVars, convVars)
-                    end*)
             (* end case *))
       end
 
