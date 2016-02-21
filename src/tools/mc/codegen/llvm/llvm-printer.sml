@@ -257,6 +257,8 @@ fun output (outS, module as C.MODULE { name = module_name,
 
 
       val startBlock = mkStartBlock(start, llvmCC)
+      
+      (* TODO shouldn't lookup or use initialEnv imo, might have to rethink this *)
       val bodyBlocks = L.map (init (fn lab => lookupL(initialEnv, lab))) body
 
     in
@@ -295,22 +297,53 @@ fun output (outS, module as C.MODULE { name = module_name,
         | process(env, x::xs) = let
           val env =
             (case x
-              of C.E_Var rhs => mkAssignments(env, rhs)
-               | C.E_Const rhs => mkConst(env, rhs)
-               
-               | _ => env (* TODO(kavon): raise Fail instead! *)
+              of C.E_Var rhs => genAssignments(env, rhs)
+               | C.E_Const rhs => genConst(env, rhs)
+               | C.E_Cast rhs => genCast(env, rhs)
+               | C.E_Label rhs => genLabel(env, rhs)
+               | C.E_Select rhs => genSelect(env, rhs)
+               | C.E_Update rhs => genUpdate(env, rhs)
+               | C.E_AddrOf rhs => genAddrOf(env, rhs)
+               | C.E_Alloc rhs => genAlloc(env, rhs)
+               | C.E_GAlloc rhs => genGAlloc(env, rhs)
+               | C.E_Promote rhs => genPromote(env, rhs)
+               | C.E_Prim0 rhs => genPrim0(env, rhs)
+               | C.E_Prim rhs => genPrim(env, rhs)
+               | C.E_CCall rhs => genCCall(env, rhs)
+               | C.E_HostVProc rhs => genHostVProc(env, rhs)
+               | C.E_VPLoad rhs => genVPLoad(env, rhs)
+               | C.E_VPStore rhs => genVPStore(env, rhs)
+               | C.E_VPAddr rhs => genVPAddr(env, rhs)
+               (* | _ => raise Fail "(llvm-backend) error: unexpected exp type encountered in CFG representation" *)
               (* esac *))
           in
             process(env, xs)
           end
           
-      and mkAssignments(env, (lefts, rights)) = env
+      and genAssignments(env, (lefts, rights)) = env
       (* does LLVM even support  %lhs = %rhs forms? if not, just
          lookup the CFG vars in the rights in the env, and add to the env
          mappings from each left to the new right. *)
       
-      and mkConst(env, (cfgVar, lit, ty)) = env
+      and genConst(env, (cfgVar, lit, ty)) = env
         (* there's a lot of little details here that you need to get right *)
+        
+      and genCast(env, (newVar, cfgTy, oldVar)) = env
+      
+      and genLabel(env, rhs) = env (* TODO *)
+      and genSelect(env, rhs) = env (* TODO *)
+      and genUpdate(env, rhs) = env (* TODO *)
+      and genAddrOf(env, rhs) = env (* TODO *)
+      and genAlloc(env, rhs) = env (* TODO *)
+      and genGAlloc(env, rhs) = env (* TODO *)
+      and genPromote(env, rhs) = env (* TODO *)
+      and genPrim0(env, rhs) = env (* TODO *)
+      and genPrim(env, rhs) = env (* TODO *)
+      and genCCall(env, rhs) = env (* TODO *)
+      and genHostVProc(env, rhs) = env (* TODO *)
+      and genVPLoad(env, rhs) = env (* TODO *)
+      and genVPStore(env, rhs) = env (* TODO *)
+      and genVPAddr(env, rhs) = env (* TODO *)
 
 
     in
@@ -390,28 +423,23 @@ fun output (outS, module as C.MODULE { name = module_name,
        
     val slotNums = L.tabulate(V.length LT.jwaCC, fn i => i)
     
-    val allAssign = assign(slotNums, mvRegs @ ccRegs, nil)  
+    val allRegs = mvRegs @ ccRegs
+    
+    val _ = if (L.length allRegs) > (L.length slotNums)
+            then print ("(llvm-backend) warning: number of live vars across a function call\n"
+                        ^ "exceeds the number of registers in jwaCC, thus some values may\n"
+                        ^ "be passed via the stack!") else ()
+                        
+                        (* NOTE this warning is mostly of concern for loops, as
+                           each iteration will cause a register spill/reload.
+                           If a GC triggers, we'll also have to load these values
+                           from the stack just to move them to the heap, and back again
+                           upon resuming.
+                        *)
+    
+    val allAssign = assign(slotNums, allRegs, nil)  
     
     val mvs = V.fromList(L.map (fn (_, var, _) => var) mvRegs)
-    
-    (* TODO typesInConv needs to be fixedup. you need to refresh yourself on the calling
-       conventions used in each kind of transfer, cause you're missing the closures!! *)
-    (*val llParamTys = L.map (LT.typeOf o CV.typeOf) cfgArgs
-    val regs = L.map (fn ty => LV.new("reg", (LT.toRegType ty))) llParamTys*)
-    
-    (*val mvs = Vector.fromList(L.take(regs, numMachineVals))*)
-    
-    (* TEMP *)
-    (*val mvs = #[LV.new("alloc", LT.toRegType LT.vprocTy), LV.new("alloc", LT.toRegType LT.vprocTy)]*)
-    
-    (* cfg arg -> llvm arg *)
-    (* this is not needed actually! *)
-    (*val initialValEnv = L.foldl CV.Map.insert' CV.Map.empty (ListPair.zipEq (args, llvmArgs))*)
-
-    (*
-    *)
-    (* TODO(kavon): add a check to ensure # of GPR <= arity. Spec currently lists
-                    the max number of GPRs for args, not total with pinned regs *)
     
     fun mkDecl (Used var) = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
       | mkDecl (NotUsed ty) = LT.nameOf ty
