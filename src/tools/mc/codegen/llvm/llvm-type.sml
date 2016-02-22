@@ -122,6 +122,7 @@ structure LLVMType : sig
     val mkStruct : ty list -> ty
     
     val cnt : int -> count
+    val tnc : count -> int
 
     (* 
       generate the type declaration block for LLVM IR output for
@@ -185,6 +186,7 @@ structure LLVMType : sig
     val dequeTy = HC.cons0 tbl (0w41, Ty.T_Deque)
 
     val cnt = HCInt.mk
+    val tnc = HC.node
   end
   
   
@@ -216,6 +218,17 @@ structure LLVMType : sig
                       init
                       lst
 
+
+(* TODO 2/21/16 -- should we really have a seperate type in LLVM type for vproc and deque,
+   or should we have them be built out of the other types like allocPtrTy? I believe the main
+   reason we went with a seperate type is because these are types
+   defined externally in C, so we'll fill in the type name later as a string,
+   but this means we have to special case vprocTy everywhere (the example is
+   in autoCast where its currently). Instead, our codegen can ignore whatever
+   the vproc type changes to, and we only have to change one place (the built up type).
+   if we use this string thing right now, our cases will break if we change the string.
+   in either case, we have to hardcode the vproc type right now, but if we don't
+   use a string it will be much more robust. *)
 
   local
     val cache = ref HCM.empty
@@ -298,7 +311,7 @@ structure LLVMType : sig
        
        
     local
-     (* for now, we assume that there are no vector types, and
+     (* FIXME for now, we assume that there are no vector types, and
      labels already can't be passed as an arg anyways *)
      val gprTy = mkInt(cnt 64)
      val f32Ty = floatTy

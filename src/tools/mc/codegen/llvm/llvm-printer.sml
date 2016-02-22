@@ -231,13 +231,17 @@ fun output (outS, module as C.MODULE { name = module_name,
          val blk = LB.new(LV.new("entry", LT.labelTy), inputs)
          
          fun addBitcastCC (((_, cfgVar), (_, llReg, realTy)), acc) = let
-                val newVar = LB.toV(LB.cast blk Op.BitCast (LB.fromV llReg, realTy))
+                val castPair = (LV.typeOf llReg, realTy)
+                val argPair = (LB.fromV llReg, realTy)
+                val newVar = LB.toV(LB.cast blk (Op.autoCast castPair) argPair)
             in
                 insertV(acc, cfgVar, newVar) (*  *)
             end
             
-        fun addBitcastMV ((i, llReg, realTy), acc) = let
-               val newVar = LB.toV(LB.cast blk Op.BitCast (LB.fromV llReg, realTy))
+        fun addCastsMV ((i, llReg, realTy), acc) = let
+               val castPair = (LV.typeOf llReg, realTy)
+               val argPair = (LB.fromV llReg, realTy)
+               val newVar = LB.toV(LB.cast blk (Op.autoCast castPair) argPair)
                val SOME mv = IdxMachineVal i
            in
                updateMV(acc, mv, newVar)
@@ -249,7 +253,7 @@ fun output (outS, module as C.MODULE { name = module_name,
             initialEnv
             (ListPair.zipEq(cc, ccRegs))
             
-        val env = L.foldl addBitcastMV env mvRegs
+        val env = L.foldl addCastsMV env mvRegs
       
         in
             fillBlock blk (env, body, exit)
@@ -320,13 +324,21 @@ fun output (outS, module as C.MODULE { name = module_name,
             process(env, xs)
           end
           
-      and genAssignments(env, (lefts, rights)) = env
-      (* does LLVM even support  %lhs = %rhs forms? if not, just
-         lookup the CFG vars in the rights in the env, and add to the env
-         mappings from each left to the new right. *)
+      and genAssignments(env, (lefts, rights)) = 
+      (* NOTE LLVM doesn't directly support renaming operations, the
+         closest you could get is to bitcast the value to the same type,
+         since bitcasts are considered noops in llvm. Doing this might be handy
+         for debugging, but for now we'll just update env mappings.
+       *)
+           L.foldr
+           (fn ((lhs, rhs), acc) => insertV(acc, lhs, lookupV(acc, rhs)))
+           env
+           (ListPair.zipEq (lefts, rights))
+    
       
       and genConst(env, (cfgVar, lit, ty)) = env
-        (* there's a lot of little details here that you need to get right *)
+        (* there's a lot of little details here that you need to get right.
+           see genLit function in codegen-fn.sml *)
         
       and genCast(env, (newVar, cfgTy, oldVar)) = env
       

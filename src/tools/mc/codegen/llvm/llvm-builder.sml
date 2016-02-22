@@ -336,11 +336,24 @@ structure LLVMBuilder : sig
                        LT.nameOf ty, " ", arg1, ", ", arg2]
                     end
                     
-               | Op.BitCast => let
+                (* casts *)
+               | ( Op.Trunc   
+                 | Op.ZExt    
+                 | Op.SExt    
+                 | Op.FPToUI  
+                 | Op.FPToSI  
+                 | Op.UIToFP  
+                 | Op.SIToFP  
+                 | Op.FPTrunc 
+                 | Op.FPExt   
+                 | Op.PtrToInt
+                 | Op.IntToPtr
+                 | Op.BitCast ) => let
                     val (arg1, ty) = break(V.sub(args, 0))
                     in
                     S.concat[
-                        resName, " = bitcast ", LT.nameOf ty, " ", arg1, " to ", LT.nameOf resTy
+                        resName, " = ", (Op.toString opc), " ",
+                        LT.nameOf ty, " ", arg1, " to ", LT.nameOf resTy
                     ]
                     end
 

@@ -234,12 +234,69 @@ structure LLVMOp = struct
         (* esac *))
      | _ => false 
     (* esac *))
+    
+    
+    (* NOTE autoCast will _not_ produce the following opcodes because it assumes all integers
+        are signed, since "rawTyToCTy" in heap-transfer-fn.sml assumes that too.
+      | ZExt    
+      | FPToUI  
+      | UIToFP  
+      *)
 
+    (* automatically determine which cast would be appropriate given the two types.
+       this is mostly a bandaid for the fact that llvm doesn't allow bitcasts to/from
+       pointers.  FIXME this doesn't handle vectors *)
+  fun autoCast (from : Ty.t, to : Ty.t) : op_code = (case (LT.node from, LT.node to)
+    of (Ty.T_Ptr _, Ty.T_Int _) => PtrToInt
+     | (Ty.T_Int _, Ty.T_Ptr _) => IntToPtr
+     | (Ty.T_Int fromW, Ty.T_Int toW) => (case Int.compare(LT.tnc toW, LT.tnc fromW)
+        (* I want to make the int's width... *)
+        of GREATER => SExt        
+         | LESS => Trunc
+         | EQUAL => BitCast (* a silly cast *)
+         (* esac *))
+         
+     | (Ty.T_Float, Ty.T_Double) => FPExt
+     | (Ty.T_Double, Ty.T_Float) => FPTrunc
+     
+     | ( (Ty.T_Float, Ty.T_Int _)
+       | (Ty.T_Double, Ty.T_Int _)) => FPToSI
+       
+     | ( (Ty.T_Int _, Ty.T_Float)
+       | (Ty.T_Int _, Ty.T_Double)) => SIToFP
+     
+     | _ => BitCast
+    (* esac *))
+    
+  
 
-
-  fun checkCast (x : op_code, (from : Ty.t, to : Ty.t)) : Ty.t =
-    (* FIXME(kavon): we need to actually check something. *)
-    to
+    (* FIXME doesn't check many things right now. should add FPtoUI/SI etc *)
+  and checkCast (x : op_code, (from : Ty.t, to : Ty.t)) : Ty.t = (case x
+      of PtrToInt => if (isPtr from) andalso (isInt to) then to else err "ptrtoint"
+       | IntToPtr => if (isInt from) andalso (isPtr to) then to else err "inttoptr"
+       
+       | BitCast => if ((isPtr from) andalso (isInt to)) 
+                        orelse
+                        ((isInt from) andalso (isPtr to)) 
+                    then
+                        err "can't bitcast between pointer & int. use inttoptr or ptrtoint"
+                    else to
+            
+       | _ => to (* FIXME(kavon): it would be wise to add size checks for bitcasts
+                   and other checking goodies maybe? *)
+      (* esac *))
+      
+  and isPtr (t : Ty.t) = (case LT.node t
+      of Ty.T_Ptr _ => true
+       | _ => false
+      (* esac *))
+      
+  and isInt (t : Ty.t) = (case LT.node t
+      of Ty.T_Int _ => true
+       | _ => false
+      (* esac *))
+      
+  and err s = raise Fail ("(llvm-backend) casting type error: " ^ s)
 
 
 
