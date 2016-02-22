@@ -17,28 +17,28 @@ structure RoundRobin =
         extern void * M_Print_Int(void *, int);
 
     (* top-level thread scheduler that uses a round robin policy *)
-      define @round-robin (x : unit / exh : exh) : unit = 
-
-	fun mkSwitch (self : vproc / exh : exh) : PT.sched_act = 
+  define @round-robin (x : unit / exh : exh) : unit = 
+    fun mkSwitch (self : vproc / exh : exh) : PT.sched_act = 
 
           (* variable to record the wall-clock time of the scheduling quantum *)
-	    let currTime : ![long] = alloc (0:long)
-            let currTime : ![long] = promote (currTime)
+      let currTime : ![long] = alloc (0:long)
+      let currTime : ![long] = promote (currTime)
 
-          (* list of sleeping threads local to the vproc; the third element of the thread object
-	   * records the time at which the thread becomes ready to execute. *)
-	    let sleeping : ![(* [FLS.fls, PT.fiber, ml_long] *) List.list] = alloc (List.nil)
-	    let sleeping : ![(* [FLS.fls, PT.fiber, ml_long] *) List.list] = promote (sleeping)
+      (* list of sleeping threads local to the vproc; the third element of the thread object
+     * records the time at which the thread becomes ready to execute. *)
+      let sleeping : ![(* [FLS.fls, PT.fiber, ml_long] *) List.list] = alloc (List.nil)
+      let sleeping : ![(* [FLS.fls, PT.fiber, ml_long] *) List.list] = promote (sleeping)
 
-	    fun addToSleepingList (fls : FLS.fls, fiber : PT.fiber, sleepDurationNs : long) : () =
-		let timeToWake : ml_long = alloc(I64Add (#0(currTime), sleepDurationNs))
-                let newSleeping : List.list = promote (CONS (alloc (fls, fiber, timeToWake), #0(sleeping)))
-		do #0(sleeping) := newSleeping
-		return ()
+      fun addToSleepingList (fls : FLS.fls, fiber : PT.fiber, sleepDurationNs : long) : () =
+        let timeToWake : ml_long = alloc(I64Add (#0(currTime), sleepDurationNs))
+        let newSleeping : List.list = promote (CONS (alloc (fls, fiber, timeToWake), #0(sleeping)))
+        do #0(sleeping) := newSleeping
+        return ()
+      (* end addToSleepingList *)
 
-	    (* check the sleeping list for threads that are ready to wake up. we move any such threads
-	     * to the ready queue. we return true when we have moved any thread to the ready queue. *)
-	    fun wakeupSleepingThreads () : bool =
+      (* check the sleeping list for threads that are ready to wake up. we move any such threads
+       * to the ready queue. we return true when we have moved any thread to the ready queue. *)
+      fun wakeupSleepingThreads () : bool =
               (* update the current time *)
 		let t : long = Time.@now ()
 		do #0(currTime) := t
@@ -149,12 +149,12 @@ structure RoundRobin =
 	      end
 
            return (switch)
-
        (* run the scheduler on all vprocs *)
-	do VProcInit.@bootstrap (mkSwitch / exh)
-	return (UNIT)
-      ;
-    )
+  do VProcInit.@bootstrap (mkSwitch / exh)
+
+  return (UNIT)
+  ; (* end round-robin *)
+ ) (* end primcode *)
 
     val roundRobin : unit -> unit = _prim (@round-robin)
     val _ = roundRobin()

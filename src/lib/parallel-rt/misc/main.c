@@ -16,7 +16,6 @@
 #include "heap.h"
 #include "os-threads.h"
 #include "asm-offsets.h" /* for RUNTIME_MAGIC */
-#include "inline-log.h"
 
 static void PingLoop ();
 static void Ping (int n);
@@ -51,7 +50,7 @@ options:\n\
   -log [f]       Write log events, optionally to file f\n\
   -nursery size  Set GC nursery size (debug build only)\n\
   -gcdebug       Enable GC debugging output (debug build only)\n\
-  -heapcheck     Turn on additional heap property checking\n\
+  -heapcheck typ Turn on additional heap property checking\n\
   -h             Print this information\n\
   -?             Print this information\n\
 \n\
@@ -91,12 +90,12 @@ int main (int argc, const char **argv)
 {
     Options_t *opts = InitOptions (argc, argv);
     InitConfiguration(opts);
+    MutexInit (&PrintLock);
     if (GetFlagOpt (opts, "-h") || GetFlagOpt (opts, "-?")) {
         Say (usage, argv[0]);
         return 0;
     }
 
-    MutexInit (&PrintLock);
 
 #ifndef NDEBUG
   /* initialize debug output */

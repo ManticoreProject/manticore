@@ -1,0 +1,46 @@
+(* breakpoint.def
+ *
+ * COPYRIGHT (c) 2015 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Create a named breakpoint in BOM code for later analysis in GDB. 
+ * 
+ * In order to use this, one must set a watchpoint for the LOG field of the VP
+ * being analyzed. Then, each time the execution reaches one of these breakpoints,
+ * the address of the string literal will be written to the address &(vp->log),
+ * which will cause GDB to stop. You can then figure out where you've stopped relative
+ * to the BOM using that address, or the name of the label in the assembly at that position.
+ *
+ * Obviously, logging should not be turned on if you're doing this :)
+ *
+ * Usage (argument must be a string literal):
+ *
+ *	BREAKPOINT("stop here!")
+ *
+ *
+ * Example Using GDB:
+ *
+ *  (gdb) break RunManticore
+ *  (gdb) run -p 1
+ *  ... stopped at RunManticore ...
+ *  (gdb) print &(vp->log)
+ *  $1 = (volatile LogBuffer_t ** ) 0x100104da0
+ *  (gdb) awatch *(uint64_t* )0x100104da0
+ *	Hardware access (read/write) watchpoint 2: *(uint64_t* )0x100104da0
+ *
+ *  Note the use of awatch, which breaks for _any_ access to that field, whereas simply watch
+ *  only breaks if the value changes. This is important because if you put a breakpoint
+ *  inside of a loop, you expect a break on each iteration and not just the initial one.
+ *
+ *)
+
+
+#ifndef _BREAKPOINT_DEF_
+#define _BREAKPOINT_DEF_
+
+#define BREAKPOINT(name)										\
+	let marker_annotate : any = name							\
+	let myVP_annotate : vproc = host_vproc						\
+	do vpstore(LOG, myVP_annotate, marker_annotate)
+
+#endif /* !_BREAKPOINT_DEF_ */

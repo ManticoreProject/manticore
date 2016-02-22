@@ -32,12 +32,12 @@ STATIC_INLINE bool isForwardPtr (Word_t hdr)
 /*! \brief extract a forward pointer from a header */
 STATIC_INLINE Word_t *GetForwardPtr (Word_t hdr)
 {
-    return (Word_t *)(Addr_t)hdr;
+    return (Word_t *)(hdr >> FWDPTR_TAG_BITS);
 }
 
 STATIC_INLINE Word_t MakeForwardPtr (Word_t hdr, Word_t *fp)
 {
-    return (Word_t)((Addr_t)fp | FWDPTR_TAG);
+    return ((Word_t)fp) << FWDPTR_TAG_BITS;
 }
 
 /*! \brief return true if the value might be a pointer */

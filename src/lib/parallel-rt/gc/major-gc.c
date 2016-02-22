@@ -20,6 +20,7 @@
 #include "internal-heap.h"
 #include "inline-log.h"
 #include "remember-set.h"
+#include "event-log.h"
 #ifndef NDEBUG
 #include "bibop.h"
 #endif

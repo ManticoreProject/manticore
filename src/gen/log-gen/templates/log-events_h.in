@@ -12,6 +12,26 @@
 @DATE@
 @VERSION@
 
+/*
+ * Markers for begin/end of the Header.
+ */
+#define EVENT_HEADER_BEGIN    0x68647262 /* 'h' 'd' 'r' 'b' */
+#define EVENT_HEADER_END      0x68647265 /* 'h' 'd' 'r' 'e' */
+
+#define EVENT_DATA_BEGIN      0x64617462 /* 'd' 'a' 't' 'b' */
+#define EVENT_DATA_END        0xffff
+
+/*
+ * Markers for begin/end of the list of Event Types in the Header.
+ * Header, Event Type, Begin = hetb
+ * Header, Event Type, End = hete
+ */
+#define EVENT_HET_BEGIN       0x68657462 /* 'h' 'e' 't' 'b' */
+#define EVENT_HET_END         0x68657465 /* 'h' 'e' 't' 'e' */
+
+#define EVENT_ET_BEGIN        0x65746200 /* 'e' 't' 'b' 0 */
+#define EVENT_ET_END          0x65746500 /* 'e' 't' 'e' 0 */
+
 enum enum_log_events {
     @LOG-EVENTS@
     NumLogEvents

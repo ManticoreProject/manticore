@@ -78,6 +78,7 @@ structure GlobalBFSScheduler (* :
             do SchedulerAction.@atomic-end (vp)
 	    return (UNIT)
         fun removeFn (thd : ImplicitThread.thread / exh : exh) : Option.option = return (Option.NONE)
+        let dummy : ![int] = alloc(0) 
 	let group : ImplicitThread.work_group = 
 		ImplicitThread.@new-work-group (uid,
 						spawnFn,
@@ -85,7 +86,8 @@ structure GlobalBFSScheduler (* :
 						spawnFn,
 						removeFn,
 						enum(0):any,
-						terminated
+						terminated,
+						dummy
 					      / exh)
 	fun spawnWorker (dst : vproc / exh : exh) : () =
 	    let worker : Word64.word = ImplicitThread.@spawn-worker (dst, fls, initWorker / exh)

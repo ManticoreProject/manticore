@@ -194,7 +194,7 @@ structure PrimChan (*: sig
 		  if Equal(item, Q_NIL)
 		    then return (item)
 		    else
-		      let next : sendq_item = SELECT(CH_SENDQ_HD, item)
+		      let next : sendq_item = SELECT(SENDQ_LINK, item)
 		      if NotEqual(id, #0(item))
 			then (* item has a different event_state, so we can match it *)
 			(* first take care of the queue head *)

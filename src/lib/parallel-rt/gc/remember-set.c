@@ -7,7 +7,6 @@
 #include "bibop.h"
 #include "gc-inline.h"
 #include "heap.h"
-#include "eventlog.h"
 
 /*
  * this serves as a place to set a breakpoint
@@ -47,10 +46,7 @@ int toGenNum(Value_t * x, Addr_t heapBase, Addr_t oldSzB, Addr_t nurseryBase, Ad
     }else{
         if(isPtr(x)){
             somethingBadHappened();
-	    while(CompareAndSwapValue(&dumpLock, 0, 1) != 0);
-
-	    endEventLogging();
-	    
+	    while(CompareAndSwapValue(&dumpLock, 0, 1) != 0);	    
             printf("Pointer is in unrecognized region\n");
 	    return -1;
         }

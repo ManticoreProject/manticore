@@ -64,6 +64,7 @@ pervasives.pml
 ann "cpp" "../include/prim.def"
 in
     ../misc/logging.pml
+    ../misc/event-logging.pml
 end
 
 ann "cpp" "../include/prim.def"

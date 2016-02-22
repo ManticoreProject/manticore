@@ -82,7 +82,7 @@ static ParseStatus_t ParseLine (FILE *inStrm, ConfigParam_t *param)
     if (*cp != '\0') {
       // find the end of the line
 	char *cq = strchr(cp, '\0');
-	if (cq[-1] = '\n') cq--;
+	if (cq[-1] == '\n') cq--;
       // copy the value
 	n = cq - cp;
 	value = strncpy ((char *)malloc(n+1), cp, n);

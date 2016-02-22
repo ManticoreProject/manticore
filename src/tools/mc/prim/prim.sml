@@ -47,6 +47,10 @@ structure Prim =
       | F64Neg of 'var
       | F64Sqrt of 'var
       | F64Abs of 'var
+      (*right shift*)
+      | I8RSh of 'var * 'var
+      | I16RSh of 'var * 'var
+      | I32RSh of 'var * 'var
     (* conversions *)
       | I32ToI64X of 'var		(* int -> long conversion with sign extension *)
       | I32ToI64 of 'var		(* unsigned int -> long conversion *)
@@ -56,6 +60,8 @@ structure Prim =
       | I64ToF32 of 'var		(* long -> float conversion *)
       | I64ToF64 of 'var		(* long -> double conversion *)
       | F64ToI32 of 'var                (* double -> int conversion *)
+      | I32ToI16 of 'var                (* int -> short conversion*)
+      | I16ToI8 of 'var                 (* short -> byte conversion*)
     (* address arithmetic *)
       | AdrAddI32 of 'var * 'var
       | AdrAddI64 of 'var * 'var
@@ -109,6 +115,8 @@ structure Prim =
       | AllocLongArray of 'var          (* allocates an array of longs in the local heap *)
       | AllocFloatArray of 'var         (* allocates an array of floats in the local heap *)
       | AllocDoubleArray of 'var        (* allocates an array of doubles in the local heap *)
+    (* time-stamp counter *)
+      | TimeStampCounter                (* returns the number of processor ticks counted by the TSC register *)
 
   (* primitive conditional tests *)
     datatype 'var cond

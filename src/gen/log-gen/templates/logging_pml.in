@@ -75,7 +75,7 @@ structure Logging =
 
 @GENERIC-LOG-HLOPS@
 
-@LOG-HLOPS@
+@DUMMY-LOG-HLOPS@
 
 #else /* !ENABLE_LOGGING */
 

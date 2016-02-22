@@ -107,6 +107,7 @@ structure ImplicitThread (* :
 #define WORK_GROUP_SCHEDULER_STATE_OFF          4
 #define WORK_GROUP_SUSPEND_OFF                  5
 #define WORK_GROUP_TERMINATED_OFF               6
+#define WORK_GROUP_N_IDLE_OFF                   7
 
 #define ITE_STACK_OFF         0
 #define ITE_CANCELABLE_OFF    1
@@ -135,7 +136,10 @@ structure ImplicitThread (* :
 		   scheduler_state,               (* scheduler-specific state provided by the scheduler *)
 		   Arr.array,                     (* the ith entry is true, if the work group is suspended
 						   * on the ith vproc *)
-		   ![bool]                        (* true, when the work group has terminated *)
+		   ![bool],                       (* true, when the work group has terminated *)
+		   ![int]                         (* number of idle workers (set to ~1 on startup and 
+						   * atomically increment when first task is ready
+						   *)
 		 ];
 
       )
@@ -244,7 +248,8 @@ structure ImplicitThread (* :
 				resumeFn : fun(thread / exh -> unit),
 				removeFn : fun(thread / exh -> Option.option),
 				schedulerState : scheduler_state,
-				terminated : ![bool]
+				terminated : ![bool],
+				nIdle : ![int]
 			      / exh : exh) : work_group =
 	    do @migrate-to-top-level-sched (/ exh)	    
             let nVProcs : int = VProc.@num-vprocs ()
@@ -255,7 +260,8 @@ structure ImplicitThread (* :
 						     removeFn, 
 						     schedulerState,
 						     suspendResumeArr,
-						     terminated))
+						     terminated,
+						     nIdle))
 	    return (group)
 	  ;
 
@@ -353,6 +359,12 @@ structure ImplicitThread (* :
 	  return ()
 	;
 
+	define @work-group-started(group : work_group / exh:exh) : unit =
+		let nIdle : ![int] = #WORK_GROUP_N_IDLE_OFF(group)
+		let _ : int = I32FetchAndAdd(&0(nIdle), 1)
+		return(UNIT)
+	;
+
     (* enter the dynamic scope of a work group *)
       define inline @work-group-begin (group : work_group / exh : exh) : () =
 	  do @migrate-to-top-level-sched (/ exh)
@@ -401,6 +413,7 @@ structure ImplicitThread (* :
     val runOnWorkGroup : work_group * (unit -> 'a) -> 'a = _prim (@run-on-work-group-w)
     val defaultWorkGroupBegin : work_group -> unit = _prim (@default-work-group-begin)
     val dispatch : unit -> 'a = _prim (@dispatch)
+    val workGroupStarted : work_group -> unit = _prim(@work-group-started)
 
     end (* local *)
 

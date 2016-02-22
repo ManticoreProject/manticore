@@ -16,15 +16,15 @@
 #include "value.h"
 #include "internal-heap.h"
 #include "gc-inline.h"
-#include "inline-log.h"
+#include "event-log.h"
 #include "work-stealing-deque.h"
 #include "bibop.h"
 #include "gc-scan.h"
 #include "remember-set.h"
 
 
-extern Addr_t	MajorGCThreshold;	/* when the size of the nursery goes below */
-					/* this limit it is time to do a GC. */
+extern Addr_t   MajorGCThreshold;   /* when the size of the nursery goes below */
+                    /* this limit it is time to do a GC. */
 
 int isInGlobalHeap(Value_t v){
     return AddrToChunk(ValueToAddr(v))->sts == TO_SP_CHUNK;
@@ -50,7 +50,6 @@ Value_t ForwardObjMinor (Value_t v, Word_t **nextW)
 		p[-1] = MakeForwardPtr(hdr, newObj);
 		return PtrToValue(newObj);
 	}
-	
 }
 
 #ifndef NDEBUG
@@ -61,7 +60,6 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots);
  */
 void MinorGC (VProc_t *vp)
 {
-    vp->counter[4] = 192;
     Addr_t	nurseryBase = vp->nurseryBase;
     Addr_t	allocSzB = vp->allocPtr - nurseryBase - WORD_SZB;
     Word_t	*nextScan = (Word_t *)(vp->oldTop); /* current top of to-space */
@@ -69,8 +67,7 @@ void MinorGC (VProc_t *vp)
 
     Addr_t heapBase = vp->heapBase;
     Addr_t oldSize = vp->oldTop - heapBase;
-
-    LogMinorGCStart (vp, (uint32_t)allocSzB);
+    LogStartGC(vp);
 
 #ifndef NO_GC_STATS
     TIMER_Start(&(vp->minorStats.timer));
@@ -80,8 +77,11 @@ void MinorGC (VProc_t *vp)
     assert ((Addr_t)nextScan < vp->nurseryBase);
     assert (vp->nurseryBase < vp->allocPtr);
 #ifndef NDEBUG
-    //if (GCDebug >= GC_DEBUG_MINOR)
-	//SayDebug("[%2d] Minor GC starting\n", vp->id);
+
+    if (GCDebug >= GC_DEBUG_MINOR) {
+        SayDebug("[%2d] Minor GC starting\n", vp->id);
+    }
+
 #endif
   /* gather the roots.  The protocol is that the stdCont register holds
    * the return address (which is not in the heap) and that the stdEnvPtr
@@ -116,43 +116,50 @@ void MinorGC (VProc_t *vp)
 
     /* process the roots */
     for (int i = 0;  roots[i] != 0;  i++) {
-	Value_t p = *roots[i];
-	if (isPtr(p)) {
-	    if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
-		*roots[i] = ForwardObjMinor(p, &nextW);
-	    }
-	}
+        Value_t p = *roots[i];
+
+        if (isPtr(p) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(p))) {
+            *roots[i] = ForwardObjMinor(p, &nextW);
+        }
+
     }
     
   /* scan to space */
     while (nextScan < nextW-1) {
-		assert ((Addr_t)(nextW-1) <= vp->nurseryBase);
-		Word_t hdr = *nextScan++;	// get object header
-		
-		if (isVectorHdr(hdr)) {
-			//Word_t *nextScan = ptr;
-			int len = GetLength(hdr);
-			for (int i = 0;  i < len;  i++, nextScan++) {
-				Value_t *scanP = (Value_t *)nextScan;
-				Value_t v = *scanP;
-				if (isPtr(v)) {
-					if (inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
-						*scanP = ForwardObjMinor(v, &nextW);
-					}
-				}
-			}
-		}else if (isRawHdr(hdr)) {
-			assert (isRawHdr(hdr));
-			nextScan += GetLength(hdr);
-		}else {
-			//printf("MinorGC id = %d, length = %d, scan = %p\n",getID(hdr),GetLength(hdr),(void *)nextScan);
-			nextScan = table[getID(hdr)].minorGCscanfunction(nextScan,&nextW, allocSzB,nurseryBase);
-			//printf("scan after = %p\n",(void *)nextScan);
-		}
+        assert ((Addr_t)(nextW-1) <= vp->nurseryBase);
+
+        Word_t hdr = *nextScan++;   // get object header
+        
+        if (isVectorHdr(hdr)) {
+            //Word_t *nextScan = ptr;
+            int len = GetLength(hdr);
+            for (int i = 0;  i < len;  i++, nextScan++) {
+
+                Value_t *scanP = (Value_t *)nextScan;
+                Value_t v = *scanP;
+
+                if (isPtr(v) && inAddrRange(nurseryBase, allocSzB, ValueToAddr(v))) {
+                    *scanP = ForwardObjMinor(v, &nextW);
+                }
+
+            }
+            
+            
+        } else if (isRawHdr(hdr)) {
+            nextScan += GetLength(hdr);
+        } else {
+            //printf("MinorGC id = %d, length = %d, scan = %p\n",getID(hdr),GetLength(hdr),(void *)nextScan);
+            
+            // TODO assert its a mixed header
+            nextScan = table[getID(hdr)].minorGCscanfunction(nextScan,&nextW, allocSzB,nurseryBase);
+            
+            //printf("scan after = %p\n",(void *)nextScan);
+        }
     }
 
     assert ((Addr_t)nextScan >= vp->heapBase);
     Addr_t avail = VP_HEAP_SZB - ((Addr_t)nextScan - vp->heapBase);
+
 #ifndef NO_GC_STATS
     vp->nMinorGCs++;
     vp->minorStats.nBytesAlloc += vp->allocPtr - vp->nurseryBase - WORD_SZB;
@@ -164,30 +171,25 @@ void MinorGC (VProc_t *vp)
 
 #ifndef NDEBUG
     if (GCDebug >= GC_DEBUG_MINOR) {
-	bzero(nextScan, avail); /* clear unused part of local heap */
-	SayDebug("[%2d] Minor GC finished: %ld/%ld bytes live; %d available\n",
-	    vp->id, (Addr_t)nextScan - vp->oldTop,
-	    vp->allocPtr - vp->nurseryBase - WORD_SZB,
-	    (int)avail);
+        bzero(nextScan, avail); /* clear unused part of local heap */
+        SayDebug("[%2d] Minor GC finished: %ld/%ld bytes live; %d available\n",
+                vp->id, (Addr_t)nextScan - vp->oldTop,
+                vp->allocPtr - vp->nurseryBase - WORD_SZB,
+                (int)avail);
     }
 #endif /* !NDEBUG */
-
-    LogMinorGCEnd (vp, (uint32_t)((Addr_t)nextScan - vp->oldTop), (uint32_t)avail);
-    
     if ((avail < MajorGCThreshold) || vp->globalGCPending) {
-      /* time to do a major collection. */
-	MajorGC (vp, roots, (Addr_t)nextScan);
-    }
-    else {
-      /* remember information about the final state of the heap */
-	vp->oldTop = (Addr_t)nextScan;
+        /* time to do a major collection. */
+        MajorGC (vp, roots, (Addr_t)nextScan);
+    } else {
+        /* remember information about the final state of the heap */
+        vp->oldTop = (Addr_t)nextScan;
     }
 
 
 #ifndef NDEBUG
     if (HeapCheck >= GC_DEBUG_MINOR) {
-    	//printf("Checking heap\n");
-	CheckMinorGC (vp, roots);
+        CheckMinorGC (vp, roots);
     }
 #endif
     
@@ -208,32 +210,35 @@ void MinorGC (VProc_t *vp)
 	}
     }
 
-  /* reset the allocation pointer */
+    /* reset the allocation pointer */
     SetAllocPtr (vp);
+    LogEndGC(vp);
 }
 
 #ifndef NDEBUG
 void CheckLocalPtrMinor (VProc_t *self, void *addr, const char *where){
     Value_t v = *(Value_t *)addr;
     if (isPtr(v)) {
+        MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
+        if (cq->sts == TO_SP_CHUNK) {
+            return;
+        } else if (cq->sts == FROM_SP_CHUNK) {
+            SayDebug("CheckLocalPtrMinor: unexpected from-space pointer %p at %p in %s\n",
+                        ValueToPtr(v), addr, where);
+        } else if (IS_VPROC_CHUNK(cq->sts)) {
 
-		MemChunk_t *cq = AddrToChunk(ValueToAddr(v));
-		if (cq->sts == TO_SP_CHUNK)
-		    return;
-		else if (cq->sts == FROM_SP_CHUNK)
-		    	SayDebug("CheckLocalPtrMinor: unexpected from-space pointer %p at %p in %s\n", ValueToPtr(v), addr, where);
-		else if (IS_VPROC_CHUNK(cq->sts)) {
-			    if (cq->sts != VPROC_CHUNK(self->id)) {
-					SayDebug("CheckLocalPtrMinor: unexpected remote pointer %p at %p in %s\n", ValueToPtr(v), addr, where);
-			    }
-			    else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {
-					SayDebug("CheckLocalPtrMinor: local pointer %p at %p in %s is out of bounds\n", ValueToPtr(v), addr, where);
-			    }
-			}
-		else if (cq->sts == FREE_CHUNK) {
-		    SayDebug("CheckLocalPtrMinor: unexpected free-space pointer %p at %p in %s\n",
-			ValueToPtr(v), addr, where);
-		}
+            if (cq->sts != VPROC_CHUNK(self->id)) {
+                SayDebug("CheckLocalPtrMinor: unexpected remote pointer %p at %p in %s\n",
+                    ValueToPtr(v), addr, where);
+            } else if (! inAddrRange(self->heapBase, self->oldTop - self->heapBase, ValueToAddr(v))) {
+                SayDebug("CheckLocalPtrMinor: local pointer %p at %p in %s is out of bounds\n",
+                    ValueToPtr(v), addr, where);
+            }
+
+        } else if (cq->sts == FREE_CHUNK) {
+            SayDebug("CheckLocalPtrMinor: unexpected free-space pointer %p at %p in %s\n",
+            ValueToPtr(v), addr, where);
+        }
     }
 }
 
@@ -259,15 +264,14 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 {
 
     char buf[32];
-
-  // check the roots
+    // check the roots
     for (int i = 0;  roots[i] != 0;  i++) {
-	sprintf(buf, "root[%d]", i);
-	Value_t v = *roots[i];
-	CheckLocalPtrMinor (self, roots[i], buf);
+        sprintf(buf, "root[%d]", i);
+        Value_t v = *roots[i];
+        CheckLocalPtrMinor (self, roots[i], buf);
     }
 
-  // check the local heap
+    // check the local heap
     {
 	Word_t *top = (Word_t *)(self->oldTop);
 	Word_t *p = (Word_t *)self->heapBase;
@@ -297,18 +301,18 @@ static void CheckMinorGC (VProc_t *self, Value_t **roots)
 	}
     }
 
-  // check the global heap allocation space
-    MemChunk_t	*cp = self->globAllocChunk;
-	assert (cp->sts = TO_SP_CHUNK);
-	Word_t *p = (Word_t *)(cp->baseAddr);
-	Word_t *top = UsedTopOfChunk(self, cp);
-	while (p < top) {
-	    Word_t hdr = *p++;
-	    Word_t *scanptr = p;
-		
-		tableDebug[getID(hdr)].minorGCdebugGlobal(self,scanptr);
-		p += GetLength(hdr);
-	}
+    // check the global heap allocation space
+    MemChunk_t  *cp = self->globAllocChunk;
+    assert (cp->sts = TO_SP_CHUNK);
+    Word_t *p = (Word_t *)(cp->baseAddr);
+    Word_t *top = UsedTopOfChunk(self, cp);
+    while (p < top) {
+        Word_t hdr = *p++;
+        Word_t *scanptr = p;
+        
+        tableDebug[getID(hdr)].minorGCdebugGlobal(self,scanptr);
+        p += GetLength(hdr);
+    }
 }
 
 

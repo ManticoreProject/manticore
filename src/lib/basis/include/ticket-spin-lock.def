@@ -1,0 +1,61 @@
+(* ticket-spin-lock.def
+ *
+ * COPYRIGHT (c) 2015 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Spin lock operations using tickets to ensure fairness along with backoff
+ * porportional to the ticket value.
+ *
+ * The lock's state can be part of an arbitrary type, e.g., suppose
+ * we have a type ty that contains two longs.
+ *
+ *   type ty = ![ty1, long, long, ...];
+ * 
+ * We can then obtain a lock as follows:
+ *
+ *   let x : ty = ...
+ *   TICKET_SPIN_LOCK(x, 1, 2)
+ *   ...
+ *   TICKET_SPIN_UNLOCK(x, 1, 2)
+ *
+ *  It is important to keep the first and second offsets _consistent_ for all 
+ *  lock operations in this type. The actual offsets into the type do not matter.
+ *)
+
+#ifndef _TICKET_SPIN_LOCK_DEF_
+#define _TICKET_SPIN_LOCK_DEF_
+
+#define TICKET_SPIN_LOCK(name, OFFSET_TURN, OFFSET_TICKET)							\
+	fun tsl_waitForTurn(ticket : long) : () = 										\
+		fun lp(delay : long) : () = 												\
+			if I64Gt(delay, 0:long) then											\
+				do Pause()															\
+				apply lp(I64Sub(delay, 1:long))										\
+			else																	\
+				return ()															\
+																					\
+		let currentTurn : long = SELECT(OFFSET_TURN, name)							\
+		let diff : long = I64Sub(ticket, currentTurn)								\
+		if I64Eq(diff, 0:long) then													\
+			return ()																\
+		else																		\
+			do apply lp (diff)														\
+			apply tsl_waitForTurn (ticket)											\
+																					\
+																					\
+	let tsl_ticket : long = I64FetchAndAdd(ADDR_OF(OFFSET_TICKET, name), 1:long)	\
+	do apply tsl_waitForTurn (tsl_ticket)
+
+
+(* 
+the ticket offset is not actually used to unlock, but we keep the 2 parameters so users
+are not confused about which offset to provide to unlock... as long as its kept
+consistent it does not matter.
+ *)
+
+#define TICKET_SPIN_UNLOCK(name, OFFSET_TURN, OFFSET_TICKET)						\
+	let _ : long = I64FetchAndAdd(ADDR_OF(OFFSET_TURN, name), 1:long)
+
+
+#endif /*! _TICKET_SPIN_LOCK_DEF_ */
+

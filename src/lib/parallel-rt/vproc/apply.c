@@ -11,8 +11,7 @@
 #include "request-codes.h"
 #include "scheduler.h"
 #include "heap.h"
-#include "inline-log.h"
-#include "eventlog.h"
+#include "event-log.h"
 
 extern RequestCode_t ASM_Apply (VProc_t *vp, Addr_t cp, Value_t arg, Value_t ep, Value_t rk, Value_t ek);
 extern int ASM_Return;
@@ -37,6 +36,7 @@ Value_t ApplyFun (VProc_t *vp, Value_t f, Value_t arg)
 
 } /* end of ApplyFun */
 
+volatile uint64_t numGCs = 0;
 
 /* \brief Run Manticore code.
  * \param vp the host vproc
@@ -69,14 +69,11 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	    vp->sigPending = M_FALSE;
 	    vp->shutdownPending = M_TRUE;  // schedule the shutdown continuation just once
 	}
-#ifdef EVENT_LOGGING
-	postSchedEvent(vp, EVENT_RUN_THREAD, 0);
-#endif
-        RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
-#ifdef EVENT_LOGGING
-	postSchedEvent(vp, EVENT_STOP_THREAD, 0);
-#endif
-	
+
+	LogRunThread(vp, 0);
+	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
+	LogStopThread(vp, 0, req); //thread id and stop status, TODO: thread id is not currently used
+
 	Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
 
 	switch (req) {
@@ -86,13 +83,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 	   */
 	    if ((LimitPtr(vp) < vp->allocPtr) || vp->globalGCPending) {
 	      /* request a minor GC */
-#ifdef EVENT_LOGGING
-		postEvent(vp, EVENT_GC_START);
-#endif
 		MinorGC (vp);
-#ifdef EVENT_LOGGING
-		postEvent(vp, EVENT_GC_END);
-#endif
 	    }
 	  /* check for asynchronous signals */
 	    if (oldLimitPtr == 0) {

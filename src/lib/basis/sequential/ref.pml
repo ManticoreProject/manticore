@@ -18,8 +18,8 @@ structure Ref =
     (* allocate and initialize a ref cell *)
       define inline @new (x: any / exh: exh) : ref =
         let cell : ref = alloc(x)
-        let cell': ref = promote(cell)
-        return(cell')
+        let cell2: ref = promote(cell)
+        return(cell2)
         ;
 
     (* destructive update of the cell *)
