@@ -128,7 +128,7 @@ structure GenEventsHS : GENERATOR =
 		   of NONE => 
 		      prl ["        ", name, " ", String.concatWith " " (List.map #name args), " -> printf \"", desc, "\"\n"]
 		    | SOME fmt => 
-		      prl ["        ", name, " ", String.concatWith " " (List.map #name args), " -> printf ", fmt, "\n"]
+		      prl ["        ", name, " ", String.concatWith " " (List.map #name args), " -> ", fmt, "\n"]
 			  
 		      
 	  val events = List.filter(fn (LoadFile.EVT{attrs, ...}) => not(ghc attrs)) events

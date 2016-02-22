@@ -125,8 +125,9 @@ getEvent (EventParsers parsers) = do
      else do !ts   <- getE
              -- trace ("event: " ++ show etRef) $ do
              spec <- parsers ! fromIntegral etRef
-	     traceM("ts = " ++ show ts ++ ": " ++ show spec)
-             return (Just (Event ts spec))
+             case spec of 
+               BrokenEvent{} -> traceM "WARNING: unclosed event block!" >> return Nothing
+               _ -> return (Just (Event ts spec))
 
 --
 -- standardEventParsers.
@@ -142,15 +143,17 @@ standardParsers = [
       block_size <- getE :: GetEvents BlockSize
       end_time <- getE :: GetEvents Timestamp
       c <- getE :: GetEvents CapNo
-      lbs <- lift . lift $ getLazyByteString ((fromIntegral block_size) -
-                                              (fromIntegral sz_block_event))
-      eparsers <- ask
-      let e_events = runGet (runExceptT $ runReaderT (getEventBlock eparsers) eparsers) lbs
-      return EventBlock{ end_time=end_time,
-                         cap= fromIntegral c,
-                         block_events=case e_events of
-                                        Left s -> error s
-                                        Right es -> es }
+      if block_size == 0
+          then return BrokenEvent{}
+          else do lbs <- lift . lift $ getLazyByteString ((fromIntegral block_size) -
+                                                (fromIntegral sz_block_event))
+                  eparsers <- ask
+                  let e_events = runGet (runExceptT $ runReaderT (getEventBlock eparsers) eparsers) lbs
+                  return EventBlock{ end_time=end_time,
+                                     cap= fromIntegral c,
+                                     block_events=case e_events of
+                                                    Left s -> [] --error s
+                                                    Right es -> es }
    )),
  (simpleEvent STARTGC StartGC),
  (simpleEvent ENDGC EndGC), 
@@ -595,6 +598,10 @@ showThreadStopStatus BlockedOnMsgGlobalise = "waiting for data to be globalised"
 showThreadStopStatus (BlockedOnBlackHoleOwnedBy target) =
           "blocked on black hole owned by thread " ++ show target
 showThreadStopStatus NoStatus = "No stop thread status"
+showThreadStopStatus RequestGC = "GC Requested"
+showThreadStopStatus RequestReturn = "Thread returning"
+showThreadStopStatus RequestUncaughtExn = "Uncaught Exception"
+showThreadStopStatus RequestSleep = "VProc sleep requested"
 
 ppEventLog :: EventLog -> String
 ppEventLog (EventLog (Header ets) (Data es)) = unlines $ concat (
@@ -709,10 +716,10 @@ putEventSpec (StopThread t s) = do
     putE t
     putE $ case s of
             NoStatus -> 0 :: Word16
-            HeapOverflow -> 1
-            StackOverflow -> 2
-            ThreadYielding -> 3
-            ThreadBlocked -> 4
+	    RequestGC -> 1	
+ 	    RequestReturn -> 2		
+ 	    RequestUncaughtExn -> 3	
+ 	    RequestSleep -> 4
             ThreadFinished -> 5
             ForeignCall -> 6
             BlockedOnMVar -> 7
@@ -729,6 +736,7 @@ putEventSpec (StopThread t s) = do
             BlockedOnMsgThrowTo -> 16
             ThreadMigrating -> 17
             BlockedOnMsgGlobalise -> 18
+	    _ -> error "putEventSpec!!!!!"
     putE $ case s of
             BlockedOnBlackHoleOwnedBy i -> i
             _                           -> 0

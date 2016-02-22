@@ -36,6 +36,7 @@ Value_t ApplyFun (VProc_t *vp, Value_t f, Value_t arg)
 
 } /* end of ApplyFun */
 
+volatile uint64_t numGCs = 0;
 
 /* \brief Run Manticore code.
  * \param vp the host vproc
@@ -71,7 +72,7 @@ void RunManticore (VProc_t *vp, Addr_t codeP, Value_t arg, Value_t envP)
 
 	LogRunThread(vp, 0);
 	RequestCode_t req = ASM_Apply (vp, codeP, arg, envP, retCont, exnCont);
-	LogStopThread(vp, 0, 0); //thread id and stop status, TODO: these are currently unused
+	LogStopThread(vp, 0, req); //thread id and stop status, TODO: thread id is not currently used
 
 	Addr_t oldLimitPtr = SetLimitPtr(vp, LimitPtr(vp));
 

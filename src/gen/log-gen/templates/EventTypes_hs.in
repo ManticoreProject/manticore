@@ -327,6 +327,7 @@ data EventInfo
 --END STM
 
 --MANTICORE EVENTS
+  | BrokenEvent{}
 @MANTICORE-EVENTS@
 --END MANTICORE EVENTS
 
@@ -432,16 +433,20 @@ data ThreadStopStatus
  | ThreadMigrating
  | BlockedOnMsgGlobalise
  | BlockedOnBlackHoleOwnedBy {-# UNPACK #-}!ThreadId
+ | RequestGC
+ | RequestReturn
+ | RequestUncaughtExn
+ | RequestSleep
  deriving (Show)
 
 -- normal GHC encoding, see [Stop status in GHC-7.8.2]
 mkStopStatus :: RawThreadStopStatus -> ThreadStopStatus
 mkStopStatus n = case n of
  0  ->  NoStatus
- 1  ->  HeapOverflow
- 2  ->  StackOverflow
- 3  ->  ThreadYielding
- 4  ->  ThreadBlocked
+ 1  ->  RequestGC
+ 2  ->  RequestReturn
+ 3  ->  RequestUncaughtExn
+ 4  ->  RequestSleep
  5  ->  ThreadFinished
  6  ->  ForeignCall
  7  ->  BlockedOnMVar
@@ -464,10 +469,10 @@ mkStopStatus n = case n of
 mkStopStatus782 :: RawThreadStopStatus -> ThreadStopStatus
 mkStopStatus782 n = case n of
  0  ->  NoStatus
- 1  ->  HeapOverflow
- 2  ->  StackOverflow
- 3  ->  ThreadYielding
- 4  ->  ThreadBlocked
+ 1  ->  RequestGC
+ 2  ->  RequestReturn
+ 3  ->  RequestUncaughtExn
+ 4  ->  RequestSleep
  5  ->  ThreadFinished
  6  ->  ForeignCall
  7  ->  BlockedOnMVar
