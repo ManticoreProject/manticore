@@ -1,0 +1,7 @@
+.cm
+*.dSYM
+*.cache
+config.log
+config.status
+.depend
+bin/
