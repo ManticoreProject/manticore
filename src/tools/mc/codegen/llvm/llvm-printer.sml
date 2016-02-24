@@ -131,8 +131,8 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   datatype gamma = ENV of {
     labs : LV.var CL.Map.map,    (* CFG Labels -> LLVMVars *)
-    vars : LV.var CV.Map.map,     (* CFG Vars -> LLVMVars *)
-    mvs : LV.var vector          (* current LLVM vars representing machine vals *)
+    vars : LB.instr CV.Map.map,     (* CFG Vars -> LLVM Instructions *)
+    mvs : LB.instr vector          (* current LLVM Instructions representing machine vals *)
   }
 
   fun lookupV (ENV{vars,...}, v) = 
@@ -212,7 +212,7 @@ fun output (outS, module as C.MODULE { name = module_name,
 
       fun init f (b as C.BLK{lab, body, exit, args}) = let
           val llArgs  = L.map LV.convert args
-          val env = L.foldr (fn ((old, new), acc) => insertV(acc, old, new))
+          val env = L.foldr (fn ((old, new), acc) => insertV(acc, old, LB.fromV new))
                       initialEnv
                       (ListPair.zip(args, llArgs))
           
@@ -233,7 +233,7 @@ fun output (outS, module as C.MODULE { name = module_name,
          fun addBitcastCC (((_, cfgVar), (_, llReg, realTy)), acc) = let
                 val castPair = (LV.typeOf llReg, realTy)
                 val argPair = (LB.fromV llReg, realTy)
-                val newVar = LB.toV(LB.cast blk (Op.autoCast castPair) argPair)
+                val newVar = LB.cast blk (Op.autoCast castPair) argPair
             in
                 insertV(acc, cfgVar, newVar) (*  *)
             end
@@ -241,7 +241,7 @@ fun output (outS, module as C.MODULE { name = module_name,
         fun addCastsMV ((i, llReg, realTy), acc) = let
                val castPair = (LV.typeOf llReg, realTy)
                val argPair = (LB.fromV llReg, realTy)
-               val newVar = LB.toV(LB.cast blk (Op.autoCast castPair) argPair)
+               val newVar = LB.cast blk (Op.autoCast castPair) argPair
                val SOME mv = IdxMachineVal i
            in
                updateMV(acc, mv, newVar)
@@ -306,7 +306,7 @@ fun output (outS, module as C.MODULE { name = module_name,
       *)
           val ty = CV.typeOf cfgVar
           val targetTy = LT.typeOf ty
-          val newLLVar = LB.toV(mk Op.Nop #[LB.fromC(LB.undef targetTy)]) 
+          val newLLVar = LB.fromC(LB.undef targetTy)
       in
           insertV(env, cfgVar, newLLVar)
       end
@@ -365,10 +365,9 @@ fun output (outS, module as C.MODULE { name = module_name,
         val llv = lookupV(env, oldVar)
         val targetTy = LT.typeOf cfgTy
         
-        val castPair = (LV.typeOf llv, targetTy)
-        val argPair = (LB.fromV llv, targetTy)
-        val newLLVar = LB.toV(LB.cast b
-                        (Op.autoCast castPair) argPair)
+        val castPair = (LB.toTy llv, targetTy)
+        val argPair = (llv, targetTy)
+        val newLLVar = LB.cast b (Op.autoCast castPair) argPair
       in
         insertV(env, lhsVar, newLLVar)
       end
@@ -499,7 +498,7 @@ fun output (outS, module as C.MODULE { name = module_name,
     
     val allAssign = assign(slotNums, allRegs, nil)  
     
-    val mvs = V.fromList(L.map (fn (_, var, _) => var) mvRegs)
+    val mvs = V.fromList(L.map (fn (_, var, _) => LB.fromV var) mvRegs)
     
     fun mkDecl (Used var) = ((LT.nameOf o LV.typeOf) var) ^ " " ^ (LV.toString var)
       | mkDecl (NotUsed ty) = LT.nameOf ty

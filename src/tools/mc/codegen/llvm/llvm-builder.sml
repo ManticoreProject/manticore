@@ -70,6 +70,8 @@ structure LLVMBuilder : sig
     val fromC : constant -> instr
     
     val toV : instr -> var
+    
+    val toTy : instr -> ty
 
     val intC : (ty * IntInf.int) -> constant
     
@@ -364,16 +366,7 @@ structure LLVMBuilder : sig
                         LT.nameOf ty, " ", arg1, " to ", LT.nameOf resTy
                     ]
                     end
-                    
-                (* NOTE not a real op, just allows us to bind literals *)
-                | Op.Nop => let
-                   val (arg1, ty) = break(V.sub(args, 0))
-                   in
-                   S.concat[
-                       resName, " = ", LT.nameOf ty, " ", arg1
-                   ]
-                   end
-
+                                
                | _ => "; opcode " ^ (Op.toString opc) ^ " not implemented."
 
               (* esac *))
@@ -466,6 +459,8 @@ structure LLVMBuilder : sig
     (* esac *))
 
   fun tyOfInstr (INSTR{result,...}) = grabTy result
+  
+  val toTy = tyOfInstr
 
 
   (* Simple Instruction Builders *)

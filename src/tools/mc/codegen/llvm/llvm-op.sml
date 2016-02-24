@@ -47,10 +47,6 @@ structure LLVMOp = struct
     | PtrToInt 
     | IntToPtr 
     | BitCast  
-    
-    (* not a real LLVM instruction, but used for
-       assigning rhs forms to lhs when its allowed (primarily: constants) *)
-    | Nop
 
     | Icmp of icmp_kind
     | Fcmp of fcmp_kind
@@ -113,8 +109,7 @@ structure LLVMOp = struct
       | FPExt   
       | PtrToInt
       | IntToPtr
-      | BitCast
-      | Nop )   => (1, true)
+      | BitCast )   => (1, true)
     (* end arity *))
 
 
@@ -204,7 +199,6 @@ structure LLVMOp = struct
          | FDiv
          | FRem ) => SOME(sameKinds realOrVecOfReal inputs)
       
-      | Nop => SOME(sameKinds (fn _ => true) inputs)
     end
 
   and vecSize (t : Ty.t) = (case LT.node t
@@ -378,9 +372,6 @@ structure LLVMOp = struct
       | PtrToInt    => "ptrtoint"
       | IntToPtr    => "inttoptr"
       | BitCast     => "bitcast"
-      
-      (* NOTE not a real op though *)
-      | Nop         => "nop"
 
       | Icmp _ => "icmp"
       | Fcmp _ => "fcmp"
