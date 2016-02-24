@@ -52,6 +52,9 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
 
   structure LT = LV.LT
   structure Op = LLVMOp
+  structure OU = LLVMOpUtil
+  structure P = Prim
+  structure PU = PrimUtil
   
 
 fun output (outS, module as C.MODULE { name = module_name,
@@ -358,6 +361,9 @@ fun output (outS, module as C.MODULE { name = module_name,
       and genConst(env, (lhsVar, lit, ty)) = stubIt env lhsVar
         (* there's a lot of little details here that you need to get right.
            see genLit function in codegen-fn.sml
+           you might want to use a LiteralTblFn to handle strings, since
+           they must be declared at the top. probably want FloatLit.float
+           and IntLit.integer instead of real and IntInf.int, respectively.
            FIXME TODO for now this generates an undef for the rhs. fix thiss *)
         
         
@@ -388,7 +394,15 @@ fun output (outS, module as C.MODULE { name = module_name,
       
       and genPrim0(env, prim) = env (* TODO *)
       
-      and genPrim(env, (lhsVar, prim)) = stubIt env lhsVar (* TODO *)
+      and genPrim(env, (lhsVar, prim)) = (let
+        val llArgs = L.map (fn x => lookupV(env, x)) (PU.varsOf prim)
+        val cvtr = OU.fromPrim b prim
+      in
+        insertV(env, lhsVar, cvtr llArgs)
+      end) handle Fail _ => stubIt env lhsVar (* TODO get rid of this handler
+                                                      once all of the primops
+                                                      are implemented in fromPrim *)
+         
       
       and genCCall(env, (results, func, args)) = (* TODO *)
             L.foldr (fn (r, acc) => stubIt acc r) env results

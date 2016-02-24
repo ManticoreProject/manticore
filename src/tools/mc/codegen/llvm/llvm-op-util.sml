@@ -1,12 +1,13 @@
 structure LLVMOpUtil = struct
 
-(* because cyclic dependency between LLVMOp & LLVMBuilder *)
+(* because cyclic Op.dependency between LLVMOp & LLVMBuilder *)
 
   structure LB = LLVMBuilder
   structure P = Prim
   structure AS = LLVMAttribute.Set
   structure LT = LLVMType
   structure A = LLVMAttribute
+  structure Op = LLVMOp
   
   structure V = Vector
   structure L = List
@@ -19,7 +20,7 @@ local
     
     (* generate a integer constant with the same type
     as the given integer instruction type *)
-    fun const f instr c = f(LB.toTy instr, c)
+    fun const f instr c = LB.fromC(f (LB.toTy instr, c))
     val Iconst = const LB.intC
     val Fconst = const LB.floatC
     
@@ -36,7 +37,7 @@ local
 
 in
 
-(* b is the basic block, p is the 'var prim, returns
+(* b is the basic Op.block, p is the 'var prim, returns
   (LB.instr list -> LV.instr) that, when applied
   to a list of arguments for this llvmPrim, adds the right
   instructions to the given block and returns the final result
@@ -45,52 +46,52 @@ fun fromPrim b p = let
   val f = LB.mk b
   val c = LB.cast b
 in (case p
-  of (I32Add _ | I64Add _)
-      => (fn [a, b] => f e Add #[a, b])
+  of (P.I32Add _ | P.I64Add _)
+      => (fn [a, b] => f e Op.Add #[a, b])
       
-  | (I32Sub _ | I64Sub _)
-      => (fn [a, b] => f e Sub #[a, b])
+  | (P.I32Sub _ | P.I64Sub _)
+      => (fn [a, b] => f e Op.Sub #[a, b])
           
   (* NOTE Mul in LLVM works on both signed or
     unsigned integers, but in CFG types its
     not clear whether we manage signedness properly.
     same goes for constants. we might need to
     do a conversion or something *)
-  | (I32Mul _ | I64Mul _ | U64Mul _) 
-      => (fn [a, b] => f e Mul #[a, b])
+  | (P.I32Mul _ | P.I64Mul _ | P.U64Mul _) 
+      => (fn [a, b] => f e Op.Mul #[a, b])
       
-  | (I32Div _ | I64Div _)
-      => (fn [a, b] => f e SDiv #[a, b])
+  | (P.I32Div _ | P.I64Div _)
+      => (fn [a, b] => f e Op.SDiv #[a, b])
       
-  | (I32Mod _ | I64Mod _)
-      => (fn [a, b] => f e SRem #[a, b])
+  | (P.I32Mod _ | P.I64Mod _)
+      => (fn [a, b] => f e Op.SRem #[a, b])
   
-  | (I32LSh _ | I64LSh _)
-      => (fn [a, b] => f e Shl #[a, b])
+  | (P.I32LSh _ | P.I64LSh _)
+      => (fn [a, b] => f e Op.Shl #[a, b])
   
-  | (I32Neg _ | I64Neg _)
-      => (fn [a] => f e Sub #[Iconst a 0, a])
+  | (P.I32Neg _ | P.I64Neg _)
+      => (fn [a] => f e Op.Sub #[Iconst a 0, a])
       
       
-  | U64Div _ => (fn [a, b] => f e UDiv #[a, b])
+  | P.U64Div _ => (fn [a, b] => f e Op.UDiv #[a, b])
   
-  | U64Rem _ => (fn [a, b] => f e URem #[a, b])
+  | P.U64Rem _ => (fn [a, b] => f e Op.URem #[a, b])
   
   
-  | (F32Add _ | F64Add _)
-      => (fn [a, b] => f e FAdd #[a, b])
+  | (P.F32Add _ | P.F64Add _)
+      => (fn [a, b] => f e Op.FAdd #[a, b])
       
-  | (F32Sub _ | F64Sub _)
-      => (fn [a, b] => f e FSub #[a, b])
+  | (P.F32Sub _ | P.F64Sub _)
+      => (fn [a, b] => f e Op.FSub #[a, b])
       
-  | (F32Mul _ | F64Mul _)
-      => (fn [a, b] => f e FMul #[a, b])
+  | (P.F32Mul _ | P.F64Mul _)
+      => (fn [a, b] => f e Op.FMul #[a, b])
       
-  | (F32Div _ | F64Div _)
-      => (fn [a, b] => f e FDiv #[a, b])
+  | (P.F32Div _ | P.F64Div _)
+      => (fn [a, b] => f e Op.FDiv #[a, b])
       
-  | (F32Neg _ | F64Neg _)
-      => (fn [a] => f e FSub #[Fconst a 0.0, a])
+  | (P.F32Neg _ | P.F64Neg _)
+      => (fn [a] => f e Op.FSub #[Fconst a 0.0, a])
   
       (* TODO add support for LLVM instrinsics to
        perform the primops we need. 
@@ -107,90 +108,90 @@ in (case p
        
        
         *)
-  | (F32Sqrt _ | F64Sqrt _ | F32Abs _ | F64Abs _ )
+  | (P.F32Sqrt _ | P.F64Sqrt _ | P.F32Abs _ | P.F64Abs _ )
       => raise Fail "See the todo here."
 
 
-  | (I8RSh _ | I16RSh _ | I32RSh _ | I64RSh _ )
-      => (fn [a, b] => f e AShr #[a, b])
+  | (P.I8RSh _ | P.I16RSh _ | P.I32RSh _ | P.I64RSh _ )
+      => (fn [a, b] => f e Op.AShr #[a, b])
       
   (* conversions *)
   
-  | I32ToI64X _ => (fn [a] => c SExt (a, i64))
-  | I32ToI64 _ => (fn [a] => c ZExt (a, i64))
-  | I64ToI32 _ => (fn [a] => c Trunc (a, i32))
+  | P.I32ToI64X _ => (fn [a] => c Op.SExt (a, i64))
+  | P.I32ToI64 _ => (fn [a] => c Op.ZExt (a, i64))
+  | P.I64ToI32 _ => (fn [a] => c Op.Trunc (a, i32))
   
-  | (I32ToF32 _ | I64ToF32 _) 
-      => (fn [a] => c SIToFP (a, float))
+  | (P.I32ToF32 _ | P.I64ToF32 _) 
+      => (fn [a] => c Op.SIToFP (a, float))
   
-  | (I32ToF64 _ | I64ToF64 _) 
-      => (fn [a] => c SIToFP (a, double))
+  | (P.I32ToF64 _ | P.I64ToF64 _) 
+      => (fn [a] => c Op.SIToFP (a, double))
       
-  | F64ToI32 => (fn [a] => c FPToSI (a, i32))
+  | P.F64ToI32 _ => (fn [a] => c Op.FPToSI (a, i32))
   
-  | I32ToI16 => (fn [a] => c Trunc (a, i16))
+  | P.I32ToI16 _ => (fn [a] => c Op.Trunc (a, i16))
   
-  | I16ToI8 => (fn [a] => c Trunc (a, i8))
+  | P.I16ToI8 _ => (fn [a] => c Op.Trunc (a, i8))
   
     (*
   (* address arithmetic *)
   
-    | AdrAddI32 _ =>
-    | AdrAddI64 _ =>
-    | AdrSubI32 _ =>
-    | AdrSubI64 _ =>
+    | P.AdrAddI32 _ =>
+    | P.AdrAddI64 _ =>
+    | P.AdrSubI32 _ =>
+    | P.AdrSubI64 _ =>
   (* loads from addresses *)
   
-    | AdrLoadI8 _ =>
-    | AdrLoadU8 _ =>
-    | AdrLoadI16 _ =>
-    | AdrLoadU16 _ =>
-    | AdrLoadI32 _ =>
-    | AdrLoadI64 _ =>
-    | AdrLoadF32 _ =>
-    | AdrLoadF64 _ =>
-    | AdrLoadAdr _ =>
-    | AdrLoad _ =>                   (* load a uniform value from the given address *)
+    | P.AdrLoadI8 _ =>
+    | P.AdrLoadU8 _ =>
+    | P.AdrLoadI16 _ =>
+    | P.AdrLoadU16 _ =>
+    | P.AdrLoadI32 _ =>
+    | P.AdrLoadI64 _ =>
+    | P.AdrLoadF32 _ =>
+    | P.AdrLoadF64 _ =>
+    | P.AdrLoadAdr _ =>
+    | P.AdrLoad _ =>                   (* load a uniform value from the given address *)
   (* stores to addresses *)
-    | AdrStoreI8 _ =>
-    | AdrStoreI16 _ =>
-    | AdrStoreI32 _ =>
-    | AdrStoreI64 _ =>
-    | AdrStoreF32 _ =>
-    | AdrStoreF64 _ =>
-    | AdrStoreAdr _ =>
-    | AdrStore _ =>           (* store a uniform value at the given address *)
+    | P.AdrStoreI8 _ =>
+    | P.AdrStoreI16 _ =>
+    | P.AdrStoreI32 _ =>
+    | P.AdrStoreI64 _ =>
+    | P.AdrStoreF32 _ =>
+    | P.AdrStoreF64 _ =>
+    | P.AdrStoreAdr _ =>
+    | P.AdrStore _ =>           (* store a uniform value at the given address *)
   (* array load operations *)
-    | ArrLoadI32 _ =>
-    | ArrLoadI64 _ =>
-    | ArrLoadF32 _ =>
-    | ArrLoadF64 _ =>
-    | ArrLoad _ =>	(* load a uniform value *)
+    | P.ArrLoadI32 _ =>
+    | P.ArrLoadI64 _ =>
+    | P.ArrLoadF32 _ =>
+    | P.ArrLoadF64 _ =>
+    | P.ArrLoad _ =>	(* load a uniform value *)
   (* array store operations *)
-    | ArrStoreI32 _ => * 'var
-    | ArrStoreI64 _ => * 'var
-    | ArrStoreF32 _ => * 'var
-    | ArrStoreF64 _ => * 'var
-    | ArrStore _ => * 'var (* store a uniform value *)*)
+    | P.ArrStoreI32 _ => * 'var
+    | P.ArrStoreI64 _ => * 'var
+    | P.ArrStoreF32 _ => * 'var
+    | P.ArrStoreF64 _ => * 'var
+    | P.ArrStore _ => * 'var (* store a uniform value *)*)
     
-  (* atomic operations *)
-    (*| I32FetchAndAdd _ =>
-    | I64FetchAndAdd _ =>
-    | CAS _ => * 'var	(* compare and swap; returns old value *)
+  (* atomic Op.operations *)
+    (*| P.I32FetchAndAdd _ =>
+    | P.I64FetchAndAdd _ =>
+    | P.CAS _ => * 'var	(* compare and swap; returns old value *)
   (* memory-system operations *)
     | Pause				(* yield processor to allow memory operations to be seen *)
     | FenceRead			(* memory fence for reads *)
     | FenceWrite			(* memory fence for writes *)
     | FenceRW				(* memory fence for both reads and writes *)
   (* allocation primitives *)
-    | AllocPolyVec _ =>     (* AllocPolyVec (n, xs): allocate in the local heap a vector 
+    | P.AllocPolyVec _ =>     (* AllocPolyVec (n, xs): allocate in the local heap a vector 
                    * v of length n s.t. v[i] := l[i] for 0 <= i < n *)
-    | AllocIntArray _ =>           (* allocates an array of ints in the local heap *)
-    | AllocLongArray _ =>          (* allocates an array of longs in the local heap *)
-    | AllocFloatArray _ =>         (* allocates an array of floats in the local heap *)
-    | AllocDoubleArray _ =>        (* allocates an array of doubles in the local heap *)
+    | P.AllocIntArray _ =>           (* allocates an array of ints in the local heap *)
+    | P.AllocLongArray _ =>          (* allocates an array of longs in the local heap *)
+    | P.AllocFloatArray _ =>         (* allocates an array of floats in the local heap *)
+    | P.AllocDoubleArray _ =>        (* allocates an array of doubles in the local heap *)
   (* time-stamp counter *)
-    | TimeStampCounter =>               (* returns the number of processor ticks counted by the TSC register *)
+    | TimeStampCounter =>               (* returns the number of processor ticks counted by the TSc Op.register *)
     *)
     
     | _ => raise Fail ("primop" ^ (PrimUtil.nameOf p) ^ " not implemented")
