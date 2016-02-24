@@ -25,6 +25,9 @@ structure LLVMBuilder : sig
       - figure out how you will associate attributes with vars for
         stuff like calls? maybe just add a "fromVWithAttr" or something??
       - otherwise, start using the builder in the printer.
+      - also, it would be nice to have this fn:
+            val comment : str -> instr -> instr
+      
       *)
 
 
@@ -71,6 +74,8 @@ structure LLVMBuilder : sig
     val intC : (ty * IntInf.int) -> constant
     
     val floatC : (ty * real) -> constant
+    
+    val undef : ty -> constant
 
 
     val mk : t -> attrs -> op_code -> instr vector -> instr
@@ -136,6 +141,7 @@ structure LLVMBuilder : sig
     = C_Int of ty * IntInf.int
     | C_Float of ty * real  (* QUESTION(kavon): is this precise enough? *)
     | C_Str of var (* string constants are global vars *)
+    | C_Undef of ty  (* for undefined literals of any type except label or void *)
 
   datatype opkind
     = OP of op_code
@@ -241,6 +247,8 @@ structure LLVMBuilder : sig
                          of R_Var v => (LV.toString v, LV.typeOf v)
                           
                           | R_Const(C_Int(ty, i)) => (IntInf.toString i, ty)
+                          
+                          | R_Const(C_Undef ty) => ("undef", ty)
 
                           | R_Const(C_Float(ty, f)) => (Real.toString f, ty)
 
@@ -356,6 +364,15 @@ structure LLVMBuilder : sig
                         LT.nameOf ty, " ", arg1, " to ", LT.nameOf resTy
                     ]
                     end
+                    
+                (* NOTE not a real op, just allows us to bind literals *)
+                | Op.Nop => let
+                   val (arg1, ty) = break(V.sub(args, 0))
+                   in
+                   S.concat[
+                       resName, " = ", LT.nameOf ty, " ", arg1
+                   ]
+                   end
 
                | _ => "; opcode " ^ (Op.toString opc) ^ " not implemented."
 
@@ -431,6 +448,8 @@ structure LLVMBuilder : sig
 
     fun floatC (ty, f) = C_Float(ty, f)
     
+    fun undef ty = C_Undef(ty)
+    
 
   (* push an instruction onto the given basic block *)
   fun push (T{body=blk,...}, inst) = (blk := inst :: (!blk) ; inst)
@@ -441,6 +460,7 @@ structure LLVMBuilder : sig
   fun grabTy result = (case result
       of R_Var v => LV.typeOf v
        | R_Const(C_Int(theTy, _)) => theTy
+       | R_Const(C_Undef theTy) => theTy
        | R_Const(C_Float(theTy, _)) => theTy
        | R_Const(C_Str v) => LV.typeOf v
     (* esac *))

@@ -294,6 +294,25 @@ fun output (outS, module as C.MODULE { name = module_name,
       that the terminator function adds the proper phi's to the block when it finializes it.
       *)
       
+      (* handy stuff used in several places *)
+      
+      (* the noattr instruction maker *)
+      val mk = LB.mk b AS.empty
+      
+      fun stubIt env cfgVar = let
+      (* NOTE stubIt is for temporary usage only. will assign
+         a new LHS llvm var to an undef value of the
+         converted CFG type, and place a mapping in the env.
+      *)
+          val ty = CV.typeOf cfgVar
+          val targetTy = LT.typeOf ty
+          val newLLVar = LB.toV(mk Op.Nop #[LB.fromC(LB.undef targetTy)]) 
+      in
+          insertV(env, cfgVar, newLLVar)
+      end
+      
+      (* end handy stuff *)
+      
       fun finish(env, exit) = LB.retVoid b
       
       (* handle the list of exp's in a CFG block *)
@@ -336,26 +355,55 @@ fun output (outS, module as C.MODULE { name = module_name,
            (ListPair.zipEq (lefts, rights))
     
       
-      and genConst(env, (cfgVar, lit, ty)) = env
+      and genConst(env, (lhsVar, lit, ty)) = stubIt env lhsVar
         (* there's a lot of little details here that you need to get right.
-           see genLit function in codegen-fn.sml *)
+           see genLit function in codegen-fn.sml
+           FIXME TODO for now this generates an undef for the rhs. fix thiss *)
         
-      and genCast(env, (newVar, cfgTy, oldVar)) = env
+        
+      and genCast(env, (lhsVar, cfgTy, oldVar)) = let
+        val llv = lookupV(env, oldVar)
+        val targetTy = LT.typeOf cfgTy
+        
+        val castPair = (LV.typeOf llv, targetTy)
+        val argPair = (LB.fromV llv, targetTy)
+        val newLLVar = LB.toV(LB.cast b
+                        (Op.autoCast castPair) argPair)
+      in
+        insertV(env, lhsVar, newLLVar)
+      end
       
-      and genLabel(env, rhs) = env (* TODO *)
-      and genSelect(env, rhs) = env (* TODO *)
-      and genUpdate(env, rhs) = env (* TODO *)
-      and genAddrOf(env, rhs) = env (* TODO *)
-      and genAlloc(env, rhs) = env (* TODO *)
-      and genGAlloc(env, rhs) = env (* TODO *)
-      and genPromote(env, rhs) = env (* TODO *)
-      and genPrim0(env, rhs) = env (* TODO *)
-      and genPrim(env, rhs) = env (* TODO *)
-      and genCCall(env, rhs) = env (* TODO *)
-      and genHostVProc(env, rhs) = env (* TODO *)
-      and genVPLoad(env, rhs) = env (* TODO *)
-      and genVPStore(env, rhs) = env (* TODO *)
-      and genVPAddr(env, rhs) = env (* TODO *)
+      and genLabel(env, (lhsVar, rhsLabel)) = env (* TODO *)
+      
+      and genSelect(env, (lhsVar, i, rhsVar)) = stubIt env lhsVar (* TODO *)
+      
+      and genUpdate(env, (int, ptr, var)) = env (* TODO *)
+      
+      and genAddrOf(env, (lhsVar, int, var)) = stubIt env lhsVar (* TODO *)
+      
+      and genAlloc(env, (lhsVar, ty, vars)) = stubIt env lhsVar (* TODO *)
+      
+      and genGAlloc(env, (lhsVar, ty, vars)) = stubIt env lhsVar (* TODO *)
+      
+      and genPromote(env, (lhsVar, var)) = stubIt env lhsVar (* TODO *)
+      
+      and genPrim0(env, prim) = env (* TODO *)
+      
+      and genPrim(env, (lhsVar, prim)) = stubIt env lhsVar (* TODO *)
+      
+      and genCCall(env, (results, func, args)) = (* TODO *)
+            L.foldr (fn (r, acc) => stubIt acc r) env results
+      
+      and genHostVProc(env, lhsVar) = stubIt env lhsVar (* TODO *)
+      
+      and genVPLoad(env, (lhsVar, offset, vpVar)) = stubIt env lhsVar (* TODO *)
+      
+      and genVPStore(env, (offset, ptr, vpVar)) = env (* TODO *)
+      
+      and genVPAddr(env, (lhsVar, offset, vpVar)) = stubIt env lhsVar (* TODO *)
+      
+      
+      
 
 
     in
