@@ -33,6 +33,24 @@ local
     val double = LT.doubleTy
     
     
+    
+    fun id x = x
+    
+    fun addrArith bb sext opc = let
+        val cast = LB.cast bb
+        val mk = LB.mk bb e
+        
+        fun sextI64 i = cast Op.SExt (i, i64)
+        fun toI64 a = cast Op.PtrToInt (a, i64)
+        fun toPtr i ty = cast Op.IntToPtr (i, ty)    
+        
+        (* LLVM rejects sext i64 to i64, rhs must be a smaller width *)
+        val doSext = if sext then sextI64 else id    
+    in
+        (fn [adr, off] =>
+            toPtr (mk opc #[toI64 adr, doSext off]) (LB.toTy adr))
+    end
+    
     (* TODO llvm frontend guide suggests using fastmath and NSW etc *)
 
 in
@@ -42,9 +60,9 @@ in
   to a list of arguments for this llvmPrim, adds the right
   instructions to the given block and returns the final result
   of the operation *)
-fun fromPrim b p = let
-  val f = LB.mk b
-  val c = LB.cast b
+fun fromPrim bb p = let
+  val f = LB.mk bb
+  val c = LB.cast bb
 in (case p
   of (P.I32Add _ | P.I64Add _)
       => (fn [a, b] => f e Op.Add #[a, b])
@@ -133,13 +151,21 @@ in (case p
   
   | P.I16ToI8 _ => (fn [a] => c Op.Trunc (a, i8))
   
-    (*
-  (* address arithmetic *)
+  (* we can't use GEP for these prims mostly because GEP
+     requires the offsets to be constants, whereas
+     AdrAdd does not nessecarily do that. *)
+     
+  | P.AdrAddI32 _ => addrArith bb true Op.Add
+  | P.AdrSubI32 _ => addrArith bb true Op.Sub
   
-    | P.AdrAddI32 _ =>
-    | P.AdrAddI64 _ =>
-    | P.AdrSubI32 _ =>
-    | P.AdrSubI64 _ =>
+  | P.AdrAddI64 _ => addrArith bb false Op.Add
+  | P.AdrSubI64 _ => addrArith bb false Op.Sub
+  
+  
+  
+  
+    (*
+    
   (* loads from addresses *)
   
     | P.AdrLoadI8 _ =>

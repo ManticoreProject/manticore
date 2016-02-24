@@ -15,6 +15,7 @@ structure LLVMOp = struct
        There also exists NUW & NSW versions of these operations but we
        haven't included them here here. *)
 
+    (* general arithmetic *)
     = Add              
     | FAdd        
     | Sub 
@@ -33,6 +34,10 @@ structure LLVMOp = struct
     | And 
     | Or 
     | Xor
+    
+    (* memory operations *)
+    | Load
+    | Store
 
     (* casts *)
     | Trunc 
@@ -74,7 +79,7 @@ structure LLVMOp = struct
 
   (* utilities follow *)
 
-  (* (# inputs, hasOutput) *)
+  (* (# inputs *)
   fun arity (x : op_code) : (int * bool) = (case x
     of ( Add      
        | FAdd      
@@ -95,7 +100,8 @@ structure LLVMOp = struct
        | Or        
        | Xor
        | Icmp _
-       | Fcmp _ ) => (2, true)
+       | Fcmp _
+       | Store ) => 2
 
     (* casts *)
     | ( Trunc   
@@ -109,9 +115,9 @@ structure LLVMOp = struct
       | FPExt   
       | PtrToInt
       | IntToPtr
-      | BitCast )   => (1, true)
+      | BitCast
+      | Load )   => 1
     (* end arity *))
-
 
   structure Ty = LLVMTy
   structure LT = LLVMType
@@ -125,14 +131,18 @@ structure LLVMOp = struct
 
   (* the design of this was meant to allow for easy extension
      for new opcodes... it should be as simple as adding new, simple cases here
-     and there and that's it. *)
+     and there and that's it. 
+     
+     NOTE NOTE NOTE typeCheck _needs_ to be filled in because
+     it tells the builder, specifically LB.mk, what the result type of an instruction is!! 
+     *)
   fun typeCheck (x : op_code, inputs : Ty.t vector) : Ty.t option = let
 
       (* TODO(kavon): the bool from arity is ignored because
                       it's implicity known when writing the case here. 
                       maybe remove it? *)
 
-      val (numInput, _) = arity(x)
+      val numInput = arity x
       val _ = if numInput = V.length inputs 
                 then ()
               else raise Fail "bogus number of args"
@@ -199,6 +209,11 @@ structure LLVMOp = struct
          | FMul
          | FDiv
          | FRem ) => SOME(sameKinds realOrVecOfReal inputs)
+         
+      
+      
+      | Store => NONE (* lets check the inputs real quick *)
+      | Load => (* LAST: fill this in, SOME _ where _ is the result ty *)
       
     end
 
@@ -272,7 +287,10 @@ structure LLVMOp = struct
     
   
 
-    (* FIXME doesn't check many things right now. should add FPtoUI/SI etc *)
+    (* FIXME doesn't check many things right now. should add FPtoUI/SI etc 
+       TODO should check that sext, zext trunc etc have a rhs whose
+       width is smaller than the lhs. you can't zext i64 to i64, it's 
+       rejected as a type error. *)
   and checkCast (x : op_code, (from : Ty.t, to : Ty.t)) : Ty.t = (case x
       of PtrToInt => if (isPtr from) andalso (isInt to) then to else err "ptrtoint"
        | IntToPtr => if (isInt from) andalso (isPtr to) then to else err "inttoptr"
@@ -331,6 +349,9 @@ structure LLVMOp = struct
         | Sub
         | Mul
         | Shl ) => AS.addList(AS.empty, [A.NSW, A.NUW])
+        
+     | (Load | Store) => AS.addList(AS.empty, 
+         [A.Atomic, A.Volatile, A.Aligned])
 
      | _ => AS.empty
 
@@ -360,6 +381,9 @@ structure LLVMOp = struct
       | And         => "and"
       | Or          => "or"
       | Xor         => "xor"
+      
+      | Load        => "load"
+      | Store       => "store"
       
       | Trunc       => "trunc"
       | ZExt        => "zext"
