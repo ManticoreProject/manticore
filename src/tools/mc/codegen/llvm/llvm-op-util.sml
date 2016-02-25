@@ -129,7 +129,7 @@ in (case p
        
         *)
   | (P.F32Sqrt _ | P.F64Sqrt _ | P.F32Abs _ | P.F64Abs _ )
-      => raise Fail "See the todo here."
+      => raise TODO "See the todo here."
 
 
   | (P.I8RSh _ | P.I16RSh _ | P.I32RSh _ | P.I64RSh _ )
