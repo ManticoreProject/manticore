@@ -226,9 +226,9 @@ structure LLVMOp = struct
                 then err "store" "left arg to be a pointer" (LT.nameOf left)
                 else ()
                 
-        (*val _ = if not (LT.same(LT.deref left, right))
+        val _ = if not (LT.same(LT.deref left, right))
                 then err "store" (LT.nameOf(LT.mkPtr right)) (LT.nameOf left)
-                else ()*)
+                else ()
         in
             NONE
         end
