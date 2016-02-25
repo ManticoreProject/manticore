@@ -2,6 +2,8 @@ structure LLVMOpUtil = struct
 
 (* because cyclic Op.dependency between LLVMOp & LLVMBuilder *)
 
+  exception TODO of string
+
   structure LB = LLVMBuilder
   structure P = Prim
   structure AS = LLVMAttribute.Set
@@ -151,9 +153,10 @@ in (case p
   
   | P.I16ToI8 _ => (fn [a] => c Op.Trunc (a, i8))
   
-  (* we can't use GEP for these prims mostly because GEP
+  (* NOTE we can't use GEP for these address prims mostly because GEP
      requires the offsets to be constants, whereas
-     AdrAdd does not nessecarily do that. *)
+     AdrAdd does not nessecarily do that. we lose out on some
+     alias analysis friendliness, but we can worry about that later *)
      
   | P.AdrAddI32 _ => addrArith bb true Op.Add
   | P.AdrSubI32 _ => addrArith bb true Op.Sub
@@ -161,32 +164,43 @@ in (case p
   | P.AdrAddI64 _ => addrArith bb false Op.Add
   | P.AdrSubI64 _ => addrArith bb false Op.Sub
   
+  | ( P.AdrLoadI8 _
+    | P.AdrLoadU8 _
+    | P.AdrLoadI16 _
+    | P.AdrLoadU16 _
+    | P.AdrLoadI32 _
+    | P.AdrLoadI64 _
+    | P.AdrLoadF32 _
+    | P.AdrLoadF64 _
+    | P.AdrLoadAdr _
+    | P.AdrLoad _) => (fn [a] => f e Op.Load #[a])
   
-  
+  | ( P.AdrStoreI8 _
+    | P.AdrStoreI16 _
+    | P.AdrStoreI32 _
+    | P.AdrStoreI64 _
+    | P.AdrStoreF32 _
+    | P.AdrStoreF64 _
+    | P.AdrStoreAdr _  
+    | P.AdrStore _) => (fn [targ, value] => let
+            (* we bitcast because CFG types dont differentiate between
+               different address types, but in LLVM you cannot
+               store to a different pointer type. sometimes we're bitcasting
+               a type to itself, but bitcasts are noops anyways. *)
+            val derefTy = (LT.deref o LB.toTy) targ
+        in
+            f e Op.Store #[targ, c Op.BitCast (value, derefTy)]
+        end)
+        
   
     (*
     
   (* loads from addresses *)
   
-    | P.AdrLoadI8 _ =>
-    | P.AdrLoadU8 _ =>
-    | P.AdrLoadI16 _ =>
-    | P.AdrLoadU16 _ =>
-    | P.AdrLoadI32 _ =>
-    | P.AdrLoadI64 _ =>
-    | P.AdrLoadF32 _ =>
-    | P.AdrLoadF64 _ =>
-    | P.AdrLoadAdr _ =>
-    | P.AdrLoad _ =>                   (* load a uniform value from the given address *)
+     =>                   (* load a uniform value from the given address *)
   (* stores to addresses *)
-    | P.AdrStoreI8 _ =>
-    | P.AdrStoreI16 _ =>
-    | P.AdrStoreI32 _ =>
-    | P.AdrStoreI64 _ =>
-    | P.AdrStoreF32 _ =>
-    | P.AdrStoreF64 _ =>
-    | P.AdrStoreAdr _ =>
-    | P.AdrStore _ =>           (* store a uniform value at the given address *)
+     =>           (* store a uniform value at the given address *)
+    
   (* array load operations *)
     | P.ArrLoadI32 _ =>
     | P.ArrLoadI64 _ =>
@@ -220,7 +234,7 @@ in (case p
     | TimeStampCounter =>               (* returns the number of processor ticks counted by the TSc Op.register *)
     *)
     
-    | _ => raise Fail ("primop" ^ (PrimUtil.nameOf p) ^ " not implemented")
+    | _ => raise TODO ("primop " ^ (PrimUtil.nameOf p) ^ " not implemented")
     
     (* esac *))
   end (* end let *)

@@ -80,7 +80,7 @@ structure LLVMOp = struct
   (* utilities follow *)
 
   (* (# inputs *)
-  fun arity (x : op_code) : (int * bool) = (case x
+  fun arity (x : op_code) = (case x
     of ( Add      
        | FAdd      
        | Sub       
@@ -127,6 +127,11 @@ structure LLVMOp = struct
   structure V = Vector
   structure L = List
   structure S = String
+
+  fun err f expected observed = 
+    raise Fail ("(llvm-backend) " ^ f ^ ": incompatible types,\n " 
+        ^ "\texpected: " ^ expected ^ "\n"
+        ^ "\tobserved: " ^ observed ^ "\n")
 
 
   (* the design of this was meant to allow for easy extension
@@ -212,9 +217,34 @@ structure LLVMOp = struct
          
       
       
-      | Store => NONE (* lets check the inputs real quick *)
-      | Load => (* LAST: fill this in, SOME _ where _ is the result ty *)
-      
+      | Store => let 
+        (* store has no result but we check the types *)
+        val left = V.sub(inputs, 0) (* addr *)
+        val right = V.sub(inputs, 1) (* val to store *)
+        
+        val _ = if not (isPtr left)
+                then err "store" "left arg to be a pointer" (LT.nameOf left)
+                else ()
+                
+        (*val _ = if not (LT.same(LT.deref left, right))
+                then err "store" (LT.nameOf(LT.mkPtr right)) (LT.nameOf left)
+                else ()*)
+        in
+            NONE
+        end
+        
+      | Load => let
+        val arg = V.sub(inputs, 0)
+        val _ = if not (isPtr arg)
+                then err "load" "pointer" (LT.nameOf arg)
+                else ()
+        in
+            SOME (LT.deref arg)
+        end
+        
+    (* do not be tempted to put a wildcard here, make sure
+       the type returned, if any, is the one this operation outputs. *)
+        
     end
 
   and vecSize (t : Ty.t) = (case LT.node t
@@ -252,6 +282,16 @@ structure LLVMOp = struct
      | _ => false 
     (* esac *))
     
+    and isPtr (t : Ty.t) = (case LT.node t
+        of Ty.T_Ptr _ => true
+         | _ => false
+        (* esac *))
+        
+    and isInt (t : Ty.t) = (case LT.node t
+        of Ty.T_Int _ => true
+         | _ => false
+        (* esac *))
+    
     
     (* NOTE autoCast will _not_ produce the following opcodes because it assumes all integers
         are signed, since "rawTyToCTy" in heap-transfer-fn.sml assumes that too.
@@ -263,7 +303,7 @@ structure LLVMOp = struct
     (* automatically determine which cast would be appropriate given the two types.
        this is mostly a bandaid for the fact that llvm doesn't allow bitcasts to/from
        pointers.  FIXME this doesn't handle vectors *)
-  fun autoCast (from : Ty.t, to : Ty.t) : op_code = (case (LT.node from, LT.node to)
+  and autoCast (from : Ty.t, to : Ty.t) : op_code = (case (LT.node from, LT.node to)
     of (Ty.T_Ptr _, Ty.T_Int _) => PtrToInt
      | (Ty.T_Int _, Ty.T_Ptr _) => IntToPtr
      | (Ty.T_Int fromW, Ty.T_Int toW) => (case Int.compare(LT.tnc toW, LT.tnc fromW)
@@ -292,31 +332,21 @@ structure LLVMOp = struct
        width is smaller than the lhs. you can't zext i64 to i64, it's 
        rejected as a type error. *)
   and checkCast (x : op_code, (from : Ty.t, to : Ty.t)) : Ty.t = (case x
-      of PtrToInt => if (isPtr from) andalso (isInt to) then to else err "ptrtoint"
-       | IntToPtr => if (isInt from) andalso (isPtr to) then to else err "inttoptr"
+      of PtrToInt => if (isPtr from) andalso (isInt to) then to else castErr "ptrtoint"
+       | IntToPtr => if (isInt from) andalso (isPtr to) then to else castErr "inttoptr"
        
        | BitCast => if ((isPtr from) andalso (isInt to)) 
                         orelse
                         ((isInt from) andalso (isPtr to)) 
                     then
-                        err "can't bitcast between pointer & int. use inttoptr or ptrtoint"
+                        castErr "can't bitcast between pointer & int. use inttoptr or ptrtoint"
                     else to
             
        | _ => to (* FIXME(kavon): it would be wise to add size checks for bitcasts
                    and other checking goodies maybe? *)
       (* esac *))
       
-  and isPtr (t : Ty.t) = (case LT.node t
-      of Ty.T_Ptr _ => true
-       | _ => false
-      (* esac *))
-      
-  and isInt (t : Ty.t) = (case LT.node t
-      of Ty.T_Int _ => true
-       | _ => false
-      (* esac *))
-      
-  and err s = raise Fail ("(llvm-backend) casting type error: " ^ s)
+  and castErr s = raise Fail ("(llvm-backend) casting type error: " ^ s)
 
 
 
@@ -351,7 +381,7 @@ structure LLVMOp = struct
         | Shl ) => AS.addList(AS.empty, [A.NSW, A.NUW])
         
      | (Load | Store) => AS.addList(AS.empty, 
-         [A.Atomic, A.Volatile, A.Aligned])
+         [A.Atomic, A.Volatile, A.Aligned 0])
 
      | _ => AS.empty
 

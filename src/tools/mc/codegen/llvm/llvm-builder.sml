@@ -272,6 +272,19 @@ structure LLVMBuilder : sig
                           | R_None => NONE
                           | _ => raise Fail "invalid LHS for an instruction."
                       (* esac *))
+                      
+      fun getAlignment (attrs) = let
+        fun f x = (case x
+                    of A.Aligned _ => true
+                     | _ => false)
+      in
+        L.find f (AS.listItems attrs)
+      end
+      
+      fun optAttr(atr, a) = if AS.member(atr, a)
+                            then (A.toString a) ^ " "
+                            else ""
+      
 
       fun mkGEP(inbounds, (resName, resTy)) = (let
               val (ptrName, ptrTy) = break (V.sub(args, 0))
@@ -287,18 +300,20 @@ structure LLVMBuilder : sig
                 ]
             end)
     in
-          case (kind, breakRes result)    
+          (case (kind, breakRes result)    
             of (OP opc, SOME(resName, resTy)) => (case opc
+                (*
+                
+                    Opcodes with results
+                
+                *)
               of (  Op.Add
                   | Op.Sub
                   | Op.Mul
                   | Op.Shl ) => let
-                      val nsw = if AS.member(atr, A.NSW)
-                                then (A.toString A.NSW ^ " ")
-                                else ""
-                      val nuw = if AS.member(atr, A.NUW)
-                                then (A.toString A.NUW ^ " ")
-                                else ""
+                      val nsw = optAttr(atr, A.NSW)            
+                      val nuw = optAttr(atr, A.NUW)
+                      
                       val opcStr = Op.toString opc
                       val (arg1, ty) = break(V.sub(args, 0)) 
                       val (arg2, _) = break(V.sub(args, 1)) 
@@ -366,10 +381,50 @@ structure LLVMBuilder : sig
                         LT.nameOf ty, " ", arg1, " to ", LT.nameOf resTy
                     ]
                     end
+                                    
+                | Op.Load => let
+                     val (ptr, ptrTy) = break(V.sub(args, 0))
+                     
+                     val alignment = (case getAlignment atr
+                                         of SOME a => (", " ^ (A.toString a) ^ " ")
+                                          | NONE => "")
+                                          
+                     val atomic = optAttr(atr, A.Atomic)
+                     val volatile = optAttr(atr, A.Volatile)
+                 in
+                     S.concat[
+                         resName, " = ", Op.toString opc, " ", atomic, volatile,
+                         LT.nameOf(LT.deref ptrTy), ", ",
+                         LT.nameOf ptrTy, " ", ptr, alignment
+                     ]
+                 end
                                 
-               | _ => "; opcode " ^ (Op.toString opc) ^ " not implemented."
+               | _ => "; opcode " ^ (Op.toString opc) ^ " (with result) not implemented."
 
               (* esac *))
+              
+             | (OP opc, NONE) => (case opc
+                 of Op.Store => let
+                      val (ptr, ptrTy) = break(V.sub(args, 0))
+                      val (var, varTy) = break(V.sub(args, 1))
+                      
+                      val alignment = (case getAlignment atr
+                                          of SOME a => (", " ^ (A.toString a) ^ " ")
+                                           | NONE => "")
+                                           
+                      val atomic = optAttr(atr, A.Atomic)
+                      val volatile = optAttr(atr, A.Volatile)
+                  in
+                      S.concat[
+                          Op.toString opc, " ", atomic, volatile,
+                          LT.nameOf varTy, " ", var, ", ",
+                          LT.nameOf ptrTy, " ", ptr, alignment
+                      ]
+                  end
+                
+                | _ => "; opcode " ^ (Op.toString opc) ^ " (with no result) not implemented."
+                 
+                 (* esac *))
              
              | (OP_GEP, SOME info) => mkGEP(false, info)
              
@@ -427,7 +482,9 @@ structure LLVMBuilder : sig
 
              | (OP_None, _) => raise Fail "basic block should not have wrapped var/const as an instruction."
 
-             | _ => raise Fail "bogus LLVM instruction"
+             (*| _ => raise Fail "bogus LLVM instruction" *)
+             
+            (* end outer case *))
     
     end (* end of getStr *)
 

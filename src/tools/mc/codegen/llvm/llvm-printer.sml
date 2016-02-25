@@ -392,14 +392,21 @@ fun output (outS, module as C.MODULE { name = module_name,
       
       and genPromote(env, (lhsVar, var)) = stubIt env lhsVar (* TODO *)
       
-      and genPrim0(env, prim) = env (* TODO *)
+      and genPrim0(env, prim) = (let
+        val llArgs = L.map (fn x => lookupV(env, x)) (PU.varsOf prim)
+        val cvtr = OU.fromPrim b prim
+      in
+        (* lhs for Prim0 so dont update the env. NOTE we're assuming
+            no regular prims with a lhs ended up in a Prim0 *)
+        (cvtr llArgs ; env) 
+      end) handle OU.TODO _ => env (* TODO temp handler*)
       
       and genPrim(env, (lhsVar, prim)) = (let
         val llArgs = L.map (fn x => lookupV(env, x)) (PU.varsOf prim)
         val cvtr = OU.fromPrim b prim
       in
         insertV(env, lhsVar, cvtr llArgs)
-      end) handle Fail _ => stubIt env lhsVar (* TODO get rid of this handler
+      end) handle OU.TODO _ => stubIt env lhsVar (* TODO get rid of this handler
                                                       once all of the primops
                                                       are implemented in fromPrim *)
          
