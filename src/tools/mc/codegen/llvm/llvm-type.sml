@@ -120,6 +120,7 @@ structure LLVMType : sig
     val mkArray : count * ty -> ty
 
     val mkStruct : ty list -> ty
+    val mkUStruct : ty list -> ty
     
     val cnt : int -> count
     val tnc : count -> int
@@ -164,6 +165,7 @@ structure LLVMType : sig
        | (Ty.T_Vector (xcount, x), Ty.T_Vector (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
        | (Ty.T_Array (xcount, x), Ty.T_Array (ycount, y)) => HC.same(xcount, ycount) andalso HC.same(x, y)
        | (Ty.T_Struct xs, Ty.T_Struct ys) => ListPair.allEq HC.same (xs, ys)
+       | (Ty.T_UStruct xs, Ty.T_UStruct ys) => ListPair.allEq HC.same (xs, ys)
        | _ => false
       (* esac *))
     
@@ -184,6 +186,9 @@ structure LLVMType : sig
     val mkArray = HC.cons2 tbl (0w31, Ty.T_Array)
     val mkStruct = HC.consList tbl (0w37, Ty.T_Struct)
     val dequeTy = HC.cons0 tbl (0w41, Ty.T_Deque)
+    val mkUStruct = HC.consList tbl (0w43, Ty.T_UStruct)
+    
+    (* more primes  47     53     59     61     67     71 *)
 
     val cnt = HCInt.mk
     val tnc = HC.node
@@ -268,6 +273,8 @@ structure LLVMType : sig
 
                 (* these are packed structs *)
               | Ty.T_Struct ts => S.concat (["<{ "] @ mapSep(nameOf, nil, ", ", ts) @ [" }>"])
+              
+              | Ty.T_UStruct ts => S.concat (["{ "] @ mapSep(nameOf, nil, ", ", ts) @ [" }"])
 
               | _ => raise Fail "base type name unknown"
 
@@ -282,6 +289,7 @@ structure LLVMType : sig
       in
         (case HC.node t
           of Ty.T_Struct _ => ("%_tupTy." ^ i2s(freshStamp()) , SOME(toString t))
+           | Ty.T_UStruct _ => ("%_utupTy." ^ i2s(freshStamp()) , SOME(toString t))
            
            (* NOTE(kavon): turns out you cannot forward reference non-struct types in LLVM.
                            if we figure out a way to do it at some point, you can uncomment
@@ -467,7 +475,7 @@ structure LLVMType : sig
         | sel (i, _::r) = sel(i-1, r)
       in
         case HC.node t
-         of Ty.T_Struct ts => sel(i, ts)
+         of (Ty.T_UStruct ts | Ty.T_Struct ts) => sel(i, ts)
           | _ => err()
         (* end case *)
       end  
@@ -507,7 +515,7 @@ structure LLVMType : sig
         (* t cannot be a pointer type. *)
           val t' = 
             (case HC.node t
-              of Ty.T_Struct tys => let
+              of (Ty.T_UStruct tys | Ty.T_Struct tys) => let
                   val offset = V.sub(vec, idx)
                 in
                   if offset < List.length tys
