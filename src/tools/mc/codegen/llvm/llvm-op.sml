@@ -37,7 +37,17 @@ structure LLVMOp = struct
     
     (* memory operations *)
     | Load
-    | Store
+    | Store (* NOTE LLVM does <val> <ptr>, but in this interface we do <ptr> <val> *)
+    
+    (* these operations use the SequentiallyConsistent memory ordering semantics
+      defined by the LLVM IR here: 
+      http://llvm.org/docs/Atomics.html#sequentiallyconsistent
+      
+      If this turns out to be the wrong approach then we'll add another consistency
+      arg to these dcons.
+     *)
+    | Armw of phi (* atomic read-modify-write, implements fetch-and-phi primitive *)
+    | CmpXchg
 
     (* casts *)
     | Trunc 
@@ -55,6 +65,12 @@ structure LLVMOp = struct
 
     | Icmp of icmp_kind
     | Fcmp of fcmp_kind
+    
+    and phi
+    = P_Add
+    (* while there are a lot of other atomic update options,
+       CFG currently only needs support for Add. *)
+    
 
     and icmp_kind
       = S of cmp (* signed *)
@@ -101,7 +117,8 @@ structure LLVMOp = struct
        | Xor
        | Icmp _
        | Fcmp _
-       | Store ) => 2
+       | Store
+       | Armw _ ) => 2
 
     (* casts *)
     | ( Trunc   
@@ -117,6 +134,8 @@ structure LLVMOp = struct
       | IntToPtr
       | BitCast
       | Load )   => 1
+      
+    | CmpXchg => 3
     (* end arity *))
 
   structure Ty = LLVMTy
@@ -241,6 +260,79 @@ structure LLVMOp = struct
         in
             SOME (LT.deref arg)
         end
+        
+      | Armw _ => let
+          val left = V.sub(inputs, 0) (* addr *)
+          val right = V.sub(inputs, 1) (* val to store *)
+          
+          val _ = if isPtr left andalso isInt(LT.deref left)
+                  then ()
+                  else err "atomicrmw" "left arg to be an int pointer" (LT.nameOf left)
+                  
+          val _ = if not (isInt right)
+                  then err "atomicrmw" "right arg to be an int" (LT.nameOf left)
+                  else ()
+                  
+          val _ = if not (LT.same(LT.deref left, right))
+                  then err "atomicrmw" (LT.nameOf(LT.mkPtr right)) (LT.nameOf left)
+                  else ()
+          in
+              SOME(LT.deref left)
+          end
+      
+      | CmpXchg => let
+            val ptr = V.sub(inputs, 0) (* addr *)
+            val cmp = V.sub(inputs, 1) (* val to compare *)
+            val new = V.sub(inputs, 2) (* val to replace with *)
+            
+            val derefPtr = LT.deref ptr
+            
+            fun intOrPtr t = 
+                if isPtr t orelse isInt t
+                    then ()
+                    else err "cmpxchg" "int or ptr to compare & exchange" (LT.nameOf t)
+            
+            val _ = (intOrPtr cmp ; intOrPtr new)
+                    
+            val _ = if LT.same(cmp, new)
+                    then ()
+                    else err "cmpxchg" 
+                        "comparison and replacement to be the same" 
+                        ((LT.nameOf new) ^ " vs " ^ (LT.nameOf cmp))
+                        
+            val _ = if isPtr ptr then () else err "cmpxchg" "first arg to be ptr" (LT.nameOf ptr)
+            
+            val _ = if LT.same(cmp, LT.deref ptr)
+                    then ()
+                    else err "cmpxchg" 
+                    "ptr to ty to be the same as replaced ty" 
+                    ((LT.nameOf ptr) ^ " and " ^ (LT.nameOf cmp))
+                    
+            (*val tyOfXchg = *)
+            
+            (* TODO NEXT our LLVM type system has no unpacked structs, and
+               cmpxchg actually returns a { cmp, i1 } type, not just cmp, so you need
+               to add T_UStruct 
+               
+               here's an example
+               
+               %val_success = cmpxchg i32* %ptr, i32 %cmp, i32 %squared acq_rel monotonic ; yields  { i32, i1 }
+              %value_loaded = extractvalue { i32, i1 } %val_success, 0
+              %success = extractvalue { i32, i1 } %val_success, 1
+              br i1 %success, label %done, label %loop
+               
+               so CAS and BCAS need to add the extractvalue instruction afterwards (which you also need to implement,
+               though insertvalue isn't really nessecary for us.)
+               
+               in the future you'll want insertelement and extractelement for vector types. LLVM's frontend
+               guide reccomends not doing loads/stores of large aggregate types, so extract/load of struct/array
+               types won't be very useful over manual pointer load/stores.
+               
+               *)
+            
+          in
+            SOME cmp (* FIXME wrong *)
+          end
         
     (* do not be tempted to put a wildcard here, make sure
        the type returned, if any, is the one this operation outputs. *)
@@ -382,6 +474,8 @@ structure LLVMOp = struct
         
      | (Load | Store) => AS.addList(AS.empty, 
          [A.Atomic, A.Volatile, A.Aligned 0])
+         
+     | (Armw _ | CmpXchg) => AS.addList(AS.empty, [A.Volatile])
 
      | _ => AS.empty
 
@@ -415,6 +509,9 @@ structure LLVMOp = struct
       | Load        => "load"
       | Store       => "store"
       
+      | Armw _      => "atomicrmw"
+      | CmpXchg     => "cmpxchg"
+      
       | Trunc       => "trunc"
       | ZExt        => "zext"
       | SExt        => "sext"
@@ -431,6 +528,11 @@ structure LLVMOp = struct
       | Icmp _ => "icmp"
       | Fcmp _ => "fcmp"
     (* esac *))
+
+
+  and phiKindToStr (p : phi) = (case p
+      of P_Add => "add"
+      (* esac *))
 
 
   and icmpKindToStr (kind : icmp_kind) = (case kind
