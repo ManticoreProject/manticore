@@ -713,6 +713,7 @@ structure LLVMBuilder : sig
 
         val argTy = (case result
                  of R_Var v => LV.typeOf v
+                  | R_Const(C_Undef ty) => ty
                  (* GEP is only valid for pointer types,
                     so it could only be from a var. *)
                   | _ => raise Fail "gep: arg must be a var"

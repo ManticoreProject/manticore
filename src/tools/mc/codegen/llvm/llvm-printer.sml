@@ -51,6 +51,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure AS = LLVMAttribute.Set
 
   structure LT = LV.LT
+  structure LLTY = LLVMTy
   structure Op = LLVMOp
   structure OU = LLVMOpUtil
   structure P = Prim
@@ -380,11 +381,33 @@ fun output (outS, module as C.MODULE { name = module_name,
       
       and genLabel(env, (lhsVar, rhsLabel)) = env (* TODO *)
       
+      
       and genSelect(env, (lhsVar, i, rhsVar)) = stubIt env lhsVar (* TODO *)
       
       and genUpdate(env, (int, ptr, var)) = env (* TODO *)
       
-      and genAddrOf(env, (lhsVar, int, var)) = stubIt env lhsVar (* TODO *)
+      and genAddrOf(env, (lhsVar, int, var)) = (case LT.node(LB.toTy (lookupV(env, var)))
+        (* TODO NEXT this is gross right now because deque and vproc are not
+           true pointer types like they should be, because they're their
+           own type. this problem hits the surface now in gepType because
+           we cannot properly step through that pointer to determine
+           the type of the field. We'd have to hardcode in gepType that
+           it steps through to get an i8 in the case of vprocTy right now.
+           IMO treat vprocTy just like allocPtrTy. *)
+          of LLTY.T_Ptr _ => let
+            val llv = lookupV(env, var)
+            val zero = LB.intC(LT.i32, 0)
+            
+            
+            val newLLVar = LB.gep b (llv, #[LB.intC(LT.i32, Int.toLarge int)])
+          in
+            insertV(env, lhsVar, newLLVar)
+          end
+          | _ => stubIt env lhsVar
+          (* esac *))
+      
+      
+      
       
       and genAlloc(env, (lhsVar, ty, vars)) = stubIt env lhsVar (* TODO *)
       
@@ -414,7 +437,7 @@ fun output (outS, module as C.MODULE { name = module_name,
       and genCCall(env, (results, func, args)) = (* TODO *)
             L.foldr (fn (r, acc) => stubIt acc r) env results
       
-      and genHostVProc(env, lhsVar) = stubIt env lhsVar (* TODO *)
+      and genHostVProc(env, lhsVar) = insertV(env, lhsVar, lookupMV(env, MV_Vproc))
       
       and genVPLoad(env, (lhsVar, offset, vpVar)) = stubIt env lhsVar (* TODO *)
       

@@ -27,10 +27,10 @@ local
     val Fconst = const LB.floatC
     
     fun intTy sz = LT.mkInt(LT.cnt sz)
-    val i64 = intTy 64
-    val i32 = intTy 32
-    val i16 = intTy 16
-    val i8  = intTy 8
+    val i64 = LT.i64
+    val i32 = LT.i32
+    val i16 = LT.i16
+    val i8  = LT.i8
     val float = LT.floatTy
     val double = LT.doubleTy
     

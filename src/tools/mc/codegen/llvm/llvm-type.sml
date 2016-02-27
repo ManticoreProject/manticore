@@ -111,8 +111,14 @@ structure LLVMType : sig
     val floatTy : ty
     val doubleTy : ty
     val boolTy : ty
+    
+    (* common integer types *)
+    val i64 : ty
+    val i32 : ty
+    val i16 : ty
+    val i8 : ty
 
-    (* count is number of bits wide *)
+    (* count is number of bits wide for a custom int *)
     val mkInt : count -> ty
 
     (* first element is return type *)
@@ -321,7 +327,10 @@ structure LLVMType : sig
     
     val allocPtrTy = mkPtr(mkInt(cnt 8))
     val boolTy = mkInt(cnt 1)
-    
+    val i64 = mkInt(cnt 64)
+    val i32 = mkInt(cnt 32)
+    val i16 = mkInt(cnt 16)
+    val i8  = mkInt(cnt 8)
        
        
     local
@@ -505,18 +514,20 @@ structure LLVMType : sig
 
     fun err2 (wrongTy, idx, offset) =
       raise Fail ("gepType: problem with index " 
-                  ^ i2s idx ^ " of GEP. element "
-                  ^ i2s offset ^ " cannot be selected from type "
-                  ^ toString wrongTy ^ ", which is part of overall type"
+                  ^ i2s idx ^ " of GEP.\n element "
+                  ^ i2s offset ^ " \ncannot be selected from type "
+                  ^ toString wrongTy ^ ",\n which is part of overall type"
                   ^ toString t)
 
     fun lp(0, _, t') = t' 
       
-      (* TODO i'm suspicious of this being 1 and not 0 for this pattern *)
-      | lp(elms, idx as 1, t) = (case HC.node t
-        (* t must be a pointer type. *)
+      | lp(elms, idx as 0, t) = (case HC.node t
+        (* t must be a pointer type, step through it. *)
         of Ty.T_Ptr t' => lp(elms-1, idx+1, t')
-         | _ => raise Fail "gepType: GEP must be performed on a pointer type"
+         | _ => err2(t, idx, V.sub(vec, idx))
+         
+         (*raise Fail 
+            ("gepType: GEP must be performed on a pointer type, not " ^ *)
         (* esac *))
 
       | lp(elms, idx, t) = let
@@ -543,7 +554,7 @@ structure LLVMType : sig
 
   in
     if len > 0 
-    then lp(len, 0, t)
+    then mkPtr(lp(len, 0, t))
     else raise Fail "gepType: empty index list"
   end
   
