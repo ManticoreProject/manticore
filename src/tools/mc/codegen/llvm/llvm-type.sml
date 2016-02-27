@@ -165,8 +165,6 @@ structure LLVMType : sig
     (* ctors for ty *)
     fun eq query = (case query
       of (Ty.T_Void, Ty.T_Void) => true
-       | (Ty.T_VProc, Ty.T_VProc) => true
-       | (Ty.T_Deque, Ty.T_Deque) => true
        | (Ty.T_Label, Ty.T_Label) => true
        | (Ty.T_Func xs, Ty.T_Func ys) => ListPair.allEq HC.same (xs, ys)
        | (Ty.T_Int x, Ty.T_Int y) => HC.same(x, y)
@@ -186,7 +184,6 @@ structure LLVMType : sig
     (* should be prime numbers.
        I skip 2 because I think the hash function uses it to combine these? *)
     val voidTy = HC.cons0 tbl (0w3, Ty.T_Void)
-    val vprocTy = HC.cons0 tbl (0w5, Ty.T_VProc)
     val labelTy = HC.cons0 tbl (0w7, Ty.T_Label)
     val mkFunc = HC.consList tbl (0w11, Ty.T_Func)
     val mkInt = HC.cons1 tbl (0w13, Ty.T_Int)
@@ -196,7 +193,6 @@ structure LLVMType : sig
     val mkVector = HC.cons2 tbl (0w29, Ty.T_Vector)
     val mkArray = HC.cons2 tbl (0w31, Ty.T_Array)
     val mkStruct = HC.consList tbl (0w37, Ty.T_Struct)
-    val dequeTy = HC.cons0 tbl (0w41, Ty.T_Deque)
     val mkUStruct = HC.consList tbl (0w43, Ty.T_UStruct)
     
     (* more primes  47     53     59     61     67     71 *)
@@ -249,13 +245,7 @@ structure LLVMType : sig
   local
     val cache = ref HCM.empty
     val stamp = ref 0
-
-    val vprocTyName = "%_vproc.ty"
-    val vprocTyDef = "i8*"
-
-    val dequeTyName = "%_deque.ty"
-    val dequeTyDef = "i8*"
-
+    
   in  
 
     fun toString (t : ty) = let
@@ -270,8 +260,6 @@ structure LLVMType : sig
               | Ty.T_Double => "double"
               | Ty.T_Label => "label"
               | Ty.T_Ptr t => (nameOf t) ^ "*"
-              | Ty.T_VProc => vprocTyName
-              | Ty.T_Deque => dequeTyName
               | Ty.T_Func (ret::params) => let
                   val llvmParams = mapSep(nameOf, nil, ", ", params)
                 in
@@ -326,6 +314,8 @@ structure LLVMType : sig
        
     
     val allocPtrTy = mkPtr(mkInt(cnt 8))
+    val vprocTy = mkPtr(mkInt(cnt 8))
+    val dequeTy = mkPtr(mkInt(cnt 8))
     val boolTy = mkInt(cnt 1)
     val i64 = mkInt(cnt 64)
     val i32 = mkInt(cnt 32)
@@ -351,8 +341,6 @@ structure LLVMType : sig
      fun toRegType t = (case HC.node t
        of Ty.T_Ptr _ => gprTy
         | Ty.T_Int _ => gprTy
-        | Ty.T_VProc => gprTy
-        | Ty.T_Deque => gprTy
         | Ty.T_Float => f32Ty
         | Ty.T_Double => f64Ty
         | _ => raise Fail ("Type \n"
@@ -394,7 +382,7 @@ structure LLVMType : sig
     fun typeDecl () = let
       fun assignToString (name, def) = name ^ " = type " ^ def ^ "\n"
       
-      val decls = [(dequeTyName, dequeTyDef), (vprocTyName, vprocTyDef)] @ (HCM.listItems (!cache))
+      val decls = (HCM.listItems (!cache))
     in
       S.concat (List.map assignToString decls)
     end

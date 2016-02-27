@@ -406,10 +406,6 @@ structure LLVMOp = struct
        
      | ( (Ty.T_Int _, Ty.T_Float)
        | (Ty.T_Int _, Ty.T_Double)) => SIToFP
-       
-     (* NOTE assumes vprocty is a pointer *)
-     | (Ty.T_VProc, Ty.T_Int _) => PtrToInt
-     | (Ty.T_Int _, Ty.T_VProc) => IntToPtr
      
      | _ => BitCast
     (* esac *))

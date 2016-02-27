@@ -25,8 +25,6 @@ structure LLVMTy = struct
   type count = HCInt.obj
   datatype t_node = 
       T_Void
-    | T_VProc
-    | T_Deque
     | T_Label
     | T_Func of t list  (* first element is the return type *)
     | T_Int of count (* number of bits *)
