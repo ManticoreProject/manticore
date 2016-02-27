@@ -47,7 +47,7 @@ structure LLVMOp = struct
       arg to these dcons.
      *)
     | Armw of phi (* atomic read-modify-write, implements fetch-and-phi primitive *)
-    | CmpXchg
+    | CmpXchg  (* takes (addr, cmp, new) and returns a { cmp, i1 } *)
 
     (* casts *)
     | Trunc 
@@ -287,8 +287,8 @@ structure LLVMOp = struct
             
             val derefPtr = LT.deref ptr
             
-            fun intOrPtr t = 
-                if isPtr t orelse isInt t
+            fun intOrPtr t =                    (* NOTE this assumes vprocTy is a pointer *)
+                if isPtr t orelse isInt t orelse (LT.same(LT.vprocTy, t))
                     then ()
                     else err "cmpxchg" "int or ptr to compare & exchange" (LT.nameOf t)
             
@@ -308,11 +308,9 @@ structure LLVMOp = struct
                     "ptr to ty to be the same as replaced ty" 
                     ((LT.nameOf ptr) ^ " and " ^ (LT.nameOf cmp))
                     
-            (*val tyOfXchg = *)
+            val tyOfXchg = LT.mkUStruct [cmp, LT.boolTy]
             
-            (* TODO NEXT our LLVM type system has no unpacked structs, and
-               cmpxchg actually returns a { cmp, i1 } type, not just cmp, so you need
-               to add T_UStruct 
+            (* NOTE cmpxchg actually returns a { cmp, i1 } type, not just cmp
                
                here's an example
                
@@ -321,17 +319,12 @@ structure LLVMOp = struct
               %success = extractvalue { i32, i1 } %val_success, 1
               br i1 %success, label %done, label %loop
                
-               so CAS and BCAS need to add the extractvalue instruction afterwards (which you also need to implement,
-               though insertvalue isn't really nessecary for us.)
-               
-               in the future you'll want insertelement and extractelement for vector types. LLVM's frontend
-               guide reccomends not doing loads/stores of large aggregate types, so extract/load of struct/array
-               types won't be very useful over manual pointer load/stores.
+               so CAS and BCAS need to add the extractvalue instruction afterwards 
                
                *)
             
           in
-            SOME cmp (* FIXME wrong *)
+            SOME tyOfXchg
           end
         
     (* do not be tempted to put a wildcard here, make sure
@@ -413,6 +406,10 @@ structure LLVMOp = struct
        
      | ( (Ty.T_Int _, Ty.T_Float)
        | (Ty.T_Int _, Ty.T_Double)) => SIToFP
+       
+     (* NOTE assumes vprocty is a pointer *)
+     | (Ty.T_VProc, Ty.T_Int _) => PtrToInt
+     | (Ty.T_Int _, Ty.T_VProc) => IntToPtr
      
      | _ => BitCast
     (* esac *))
@@ -424,7 +421,8 @@ structure LLVMOp = struct
        width is smaller than the lhs. you can't zext i64 to i64, it's 
        rejected as a type error. *)
   and checkCast (x : op_code, (from : Ty.t, to : Ty.t)) : Ty.t = (case x
-      of PtrToInt => if (isPtr from) andalso (isInt to) then to else castErr "ptrtoint"
+      of 
+      (*PtrToInt => if (isPtr from) andalso (isInt to) then to else castErr "ptrtoint"
        | IntToPtr => if (isInt from) andalso (isPtr to) then to else castErr "inttoptr"
        
        | BitCast => if ((isPtr from) andalso (isInt to)) 
@@ -432,10 +430,10 @@ structure LLVMOp = struct
                         ((isInt from) andalso (isPtr to)) 
                     then
                         castErr "can't bitcast between pointer & int. use inttoptr or ptrtoint"
-                    else to
+                    else to*)
             
-       | _ => to (* FIXME(kavon): it would be wise to add size checks for bitcasts
-                   and other checking goodies maybe? *)
+        _ => to (* FIXME(kavon): it would be wise to add size checks for bitcasts
+                   and other checking goodies maybe? also we need to add that vproc is a pointer *)
       (* esac *))
       
   and castErr s = raise Fail ("(llvm-backend) casting type error: " ^ s)
@@ -455,7 +453,7 @@ structure LLVMOp = struct
     
 
   and validAttrs (x : op_code) : AS.set = (case x
-    of SDiv => AS.addList(AS.empty, [A.ExactDiv])
+    of (SDiv | UDiv) => AS.addList(AS.empty, [A.ExactDiv])
      | ( FAdd
         | FSub
         | FMul

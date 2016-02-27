@@ -215,10 +215,21 @@ in (case p
     | P.ArrStore _ => * 'var (* store a uniform value *)*)
     
   (* atomic Op.operations *)
-    (*| P.I32FetchAndAdd _ =>
-    | P.I64FetchAndAdd _ =>
+    | (P.I32FetchAndAdd _ | P.I64FetchAndAdd _) => 
+        (fn [targ, value] => f e (Op.Armw Op.P_Add) #[targ, value])
+        
+    | (P.CAS _) =>
+        (fn [targ, cmp, new] => 
+            (LB.extractV bb (
+                f e Op.CmpXchg #[targ, cmp, new],
+                #[LB.intC(i32, 0)])
+            )
+        )
+    
+    (*
     | P.CAS _ => * 'var	(* compare and swap; returns old value *)
   (* memory-system operations *)
+  
     | Pause				(* yield processor to allow memory operations to be seen *)
     | FenceRead			(* memory fence for reads *)
     | FenceWrite			(* memory fence for writes *)

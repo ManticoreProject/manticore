@@ -88,6 +88,8 @@ structure LLVMBuilder : sig
 
     (* getelementptr inbounds *)
     val gep_ib : t -> (instr * constant vector) -> instr 
+    
+    val extractV : t -> (instr * constant vector) -> instr 
 
     (* NOTE(kavon): something not supported right now is GEPs that calculate a
        vector of addresses, extend the interface if desired. *)
@@ -149,6 +151,7 @@ structure LLVMBuilder : sig
     = OP of op_code
     | OP_GEP
     | OP_GEP_IB
+    | OP_ExtractVal
     | OP_Return
     | OP_Br
     | OP_CondBr
@@ -310,15 +313,21 @@ structure LLVMBuilder : sig
               of (  Op.Add
                   | Op.Sub
                   | Op.Mul
-                  | Op.Shl ) => let
+                  | Op.Shl
+                  | Op.SDiv
+                  | Op.UDiv ) => let
+                      (* we already ran checkAttr even though some of
+                         these attrs are mutually exclusive relative to op *)
+                         
                       val nsw = optAttr(atr, A.NSW)            
                       val nuw = optAttr(atr, A.NUW)
+                      val exact = optAttr(atr, A.ExactDiv)
                       
                       val opcStr = Op.toString opc
                       val (arg1, ty) = break(V.sub(args, 0)) 
                       val (arg2, _) = break(V.sub(args, 1)) 
                     in
-                      S.concat[resName, " = ", opcStr, " ", nuw, nsw, LT.nameOf ty, " ", arg1, ", ", arg2]
+                      S.concat[resName, " = ", opcStr, " ", nuw, nsw, exact, LT.nameOf ty, " ", arg1, ", ", arg2]
                     end
 
                | (  Op.FAdd
@@ -398,11 +407,51 @@ structure LLVMBuilder : sig
                          LT.nameOf ptrTy, " ", ptr, alignment
                      ]
                  end
+                 
+               | Op.CmpXchg => let
+                    val (addr, addrTy) = break(V.sub(args, 0))
+                    val (cmp, cmpTy) = break(V.sub(args, 1))
+                    val (new, newTy) = break(V.sub(args, 2))
+                    
+                    val volatile = optAttr(atr, A.Volatile)
+                    
+                   in
+                   
+                    S.concat[
+                        resName, " = ", Op.toString opc, " ", volatile,
+                        LT.nameOf addrTy, " ", addr, ", ",
+                        LT.nameOf cmpTy, " ", cmp, ", ",
+                        LT.nameOf newTy, " ", new, " seq_cst seq_cst"
+                    ]
+                   
+                   end
+                   
+                | Op.Armw phi => let
+                     val (addr, addrTy) = break(V.sub(args, 0))
+                     val (var, varTy) = break(V.sub(args, 1))
+                     
+                     val volatile = optAttr(atr, A.Volatile)
+                     
+                    in
+                    
+                     S.concat [
+                         resName, " = ", Op.toString opc, " ", volatile,
+                         Op.phiKindToStr phi, " ",
+                         LT.nameOf addrTy, " ", addr, ", ",
+                         LT.nameOf varTy, " ", var, " seq_cst"
+                     ]
+                    
+                    end
                                 
                | _ => "; opcode " ^ (Op.toString opc) ^ " (with result) not implemented."
 
               (* esac *))
               
+              (**** 
+              
+                    op codes which have no result
+                    
+               *****)
              | (OP opc, NONE) => (case opc
                  of Op.Store => let
                       val (ptr, ptrTy) = break(V.sub(args, 0))
@@ -429,6 +478,19 @@ structure LLVMBuilder : sig
              | (OP_GEP, SOME info) => mkGEP(false, info)
              
              | (OP_GEP_IB, SOME info) => mkGEP(true, info)
+             
+             | (OP_ExtractVal, SOME (resName, resTy)) => (let
+                     val (aggName, aggTy) = break (V.sub(args, 0))
+                     val offsets = L.tabulate ((V.length args) - 1,
+                                     fn i => getArgStr true (V.sub(args, i+1)))
+                     val offsets = S.concatWith ", " offsets
+                   in
+                     S.concat
+                       [ resName, " = extractvalue ",
+                         LT.nameOf aggTy, " ", aggName, ", ",
+                         offsets
+                       ]
+                   end)
              
              | (OP_Return, NONE) => 
                 if V.length args = 0
@@ -667,7 +729,11 @@ structure LLVMBuilder : sig
 
         val seq : int vector = V.map stripI32 offsetSeq
 
-        val tyy = LT.gepType(argTy, seq)
+        val tyy = (case mode
+                    of (OP_GEP | OP_GEP_IB) => LT.gepType(argTy, seq)
+                     | OP_ExtractVal => LT.gevType(argTy, seq)
+                     | _ => raise Fail "invalid"
+                  (* esac *))
 
         (* first arg of a GEP is what var to offset from, followed by 
            the sequence of offsets. *)
@@ -695,6 +761,8 @@ structure LLVMBuilder : sig
 
     (* gep_ib : t -> (instr * constant vector) -> instr *)
     val gep_ib = genGep OP_GEP_IB
+    
+    val extractV = genGep OP_ExtractVal
 
   end
 

@@ -67,6 +67,10 @@ structure LLVMType : sig
     (* returns the resulting type of a getelementptr operation
        performed on the provided type. *)
     val gepType : (ty * int vector) -> ty
+    
+    (* returns the resulting type of a value extraction/insertion operation
+       performed on the provided type. for example, extractvalue in LLVM *)
+    val gevType : (ty * int vector) -> ty
 
     (* if ty is a function type or a pointer to one, get the function's return type.
        if it is not either of those, it returns NONE *)
@@ -106,6 +110,7 @@ structure LLVMType : sig
     val labelTy : ty
     val floatTy : ty
     val doubleTy : ty
+    val boolTy : ty
 
     (* count is number of bits wide *)
     val mkInt : count -> ty
@@ -315,6 +320,7 @@ structure LLVMType : sig
        
     
     val allocPtrTy = mkPtr(mkInt(cnt 8))
+    val boolTy = mkInt(cnt 1)
     
        
        
@@ -488,7 +494,8 @@ structure LLVMType : sig
        | _ => err()
   end
 
-  (* gepType : (ty, int vector) -> ty *)
+  
+(* gepType : (ty, int vector) -> ty *)
   fun gepType (t, vec) = let
 
     fun err1 (wrongTy, idx) = 
@@ -505,9 +512,10 @@ structure LLVMType : sig
 
     fun lp(0, _, t') = t' 
       
-      | lp(elms, 1, t) = (case HC.node t
+      (* TODO i'm suspicious of this being 1 and not 0 for this pattern *)
+      | lp(elms, idx as 1, t) = (case HC.node t
         (* t must be a pointer type. *)
-        of Ty.T_Ptr t' => lp(elms-1, 2, t')
+        of Ty.T_Ptr t' => lp(elms-1, idx+1, t')
          | _ => raise Fail "gepType: GEP must be performed on a pointer type"
         (* esac *))
 
@@ -515,7 +523,7 @@ structure LLVMType : sig
         (* t cannot be a pointer type. *)
           val t' = 
             (case HC.node t
-              of (Ty.T_UStruct tys | Ty.T_Struct tys) => let
+              of (Ty.T_Struct tys | Ty.T_UStruct tys) => let
                   val offset = V.sub(vec, idx)
                 in
                   if offset < List.length tys
@@ -537,6 +545,54 @@ structure LLVMType : sig
     if len > 0 
     then lp(len, 0, t)
     else raise Fail "gepType: empty index list"
+  end
+  
+  (* get element Value type, aka, for extractvalue/insertvalue operations,
+    which works the same as GEP except there's an implicit i32 0 as the first index,
+    and it only works on structs or arrays (tho theres no arrays right now) NOTE *)
+  (* gepType : (ty, int vector) -> ty *)
+  fun gevType (t, vec) = let
+
+    fun err1 (wrongTy, idx) = 
+      raise Fail ("gevType: index position " 
+                  ^ i2s idx ^ " cannot select from type "
+                  ^ toString wrongTy)
+
+    fun err2 (wrongTy, idx, offset) =
+      raise Fail ("gevType: problem with index " 
+                  ^ i2s idx ^ " of GEV. element "
+                  ^ i2s offset ^ " cannot be selected from type "
+                  ^ toString wrongTy ^ ", which is part of overall type"
+                  ^ toString t)
+
+    fun lp(0, _, t') = t' 
+
+      | lp(elms, idx, t) = let
+        (* t must be a struct or array *)
+          val t' = 
+            (case HC.node t
+              of (Ty.T_Struct tys | Ty.T_UStruct tys) => let
+                  val offset = V.sub(vec, idx)
+                in
+                  if offset < List.length tys
+                  then List.nth(tys, offset)
+                  else err2(t, idx, offset)
+                end
+
+               | Ty.T_Array(_, t') => t'
+               | Ty.T_Vector(_, t') => t'
+               | _ => err1(t, idx)
+            (* esac *))
+        in
+          lp(elms-1, idx+1, t')
+        end
+
+    val len = V.length vec
+
+  in
+    if len > 0 
+    then lp(len, 0, t)
+    else raise Fail "gevType: empty index list"
   end
 
   (* returnTy : ty -> ty option *)
