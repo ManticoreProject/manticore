@@ -49,6 +49,9 @@ structure LLVMType : sig
       get the name of an LLVM type
     *)
     val nameOf : ty -> string
+    
+    (* name of type without using the type cache, for debugging purposes *)
+    val fullNameOf : ty -> string
 
     (*
       O(1) operation to compare two types for equality.
@@ -64,8 +67,11 @@ structure LLVMType : sig
     (* turn a Ptr(ty) -> ty *)
     val deref : ty -> ty
 
-    (* returns the resulting type of a getelementptr operation
-       performed on the provided type. *)
+    (* Returns the result type of a GEP instruction performed on a value
+       of the given type, using the offsets provided. this is the most confusing
+       aspect of LLVM, and it's good to read about it here:
+       http://llvm.org/docs/GetElementPtr.html
+     *)
     val gepType : (ty * int vector) -> ty
     
     (* returns the resulting type of a value extraction/insertion operation
@@ -247,8 +253,10 @@ structure LLVMType : sig
     val stamp = ref 0
     
   in  
+  
+    fun toString t = mkString nameOf t
 
-    fun toString (t : ty) = let
+    and mkString (recur : ty -> string) (t : ty) = let
       fun nodeToStr (nt : ty_node) : string =
         let
           val i2s = i2s o HC.node
@@ -259,21 +267,21 @@ structure LLVMType : sig
               | Ty.T_Float => "float"
               | Ty.T_Double => "double"
               | Ty.T_Label => "label"
-              | Ty.T_Ptr t => (nameOf t) ^ "*"
+              | Ty.T_Ptr t => (recur t) ^ "*"
               | Ty.T_Func (ret::params) => let
-                  val llvmParams = mapSep(nameOf, nil, ", ", params)
+                  val llvmParams = mapSep(recur, nil, ", ", params)
                 in
-                  S.concat ([nameOf ret, " ("] @ llvmParams @ [")"])
+                  S.concat ([recur ret, " ("] @ llvmParams @ [")"])
                 end      
               
-              | Ty.T_Vector (nelms, t) => S.concat ["<", i2s nelms, " x ", nameOf t, ">"]
+              | Ty.T_Vector (nelms, t) => S.concat ["<", i2s nelms, " x ", recur t, ">"]
 
-              | Ty.T_Array (nelms, t) => S.concat ["[", i2s nelms, " x ", nameOf t, "]"]
+              | Ty.T_Array (nelms, t) => S.concat ["[", i2s nelms, " x ", recur t, "]"]
 
                 (* these are packed structs *)
-              | Ty.T_Struct ts => S.concat (["<{ "] @ mapSep(nameOf, nil, ", ", ts) @ [" }>"])
+              | Ty.T_Struct ts => S.concat (["<{ "] @ mapSep(recur, nil, ", ", ts) @ [" }>"])
               
-              | Ty.T_UStruct ts => S.concat (["{ "] @ mapSep(nameOf, nil, ", ", ts) @ [" }"])
+              | Ty.T_UStruct ts => S.concat (["{ "] @ mapSep(recur, nil, ", ", ts) @ [" }"])
 
               | _ => raise Fail "base type name unknown"
 
@@ -283,12 +291,12 @@ structure LLVMType : sig
         (nodeToStr o HC.node) t
       end
                               (* `name` = type `rhs` *)
-    and mkAlias (t : ty) : (string * string option) = let
+    and mkAlias recur (t : ty) : (string * string option) = let
         fun freshStamp () = (stamp := !stamp + 1 ; !stamp)
       in
         (case HC.node t
-          of Ty.T_Struct _ => ("%_tupTy." ^ i2s(freshStamp()) , SOME(toString t))
-           | Ty.T_UStruct _ => ("%_utupTy." ^ i2s(freshStamp()) , SOME(toString t))
+          of Ty.T_Struct _ => ("%_tupTy." ^ i2s(freshStamp()) , SOME(mkString recur t))
+           | Ty.T_UStruct _ => ("%_utupTy." ^ i2s(freshStamp()) , SOME(mkString recur t))
            
            (* NOTE(kavon): turns out you cannot forward reference non-struct types in LLVM.
                            if we figure out a way to do it at some point, you can uncomment
@@ -296,7 +304,7 @@ structure LLVMType : sig
 
            (* | Ty.T_Func _ => ("%_funTy." ^ i2s(freshStamp()) , SOME(toString t)) *)
 
-           | _ => (toString t, NONE)
+           | _ => (mkString recur t, NONE)
         (* esac *))
       end
 
@@ -304,12 +312,14 @@ structure LLVMType : sig
        not already present, it will generate a new entry and return its name. *)
     and nameOf x = (case HCM.find(!cache, x)
       of SOME (name, _) => name
-       | NONE => (case mkAlias x
+       | NONE => (case mkAlias nameOf x
           of (name, NONE) => name
            | (name, SOME rhs) => 
               ( cache := HCM.insert(!cache, x, (name, rhs)) ; name )
           (* esac *))
        (* esac *))
+       
+    fun fullNameOf x = mkString fullNameOf x
        
        
     
@@ -495,7 +505,7 @@ structure LLVMType : sig
 (* gepType : (ty, int vector) -> ty *)
   fun gepType (t, vec) = let
 
-    fun err1 (wrongTy, idx) = 
+    (*fun err1 (wrongTy, idx) = 
       raise Fail ("gepType: index position " 
                   ^ i2s idx ^ " cannot select from type "
                   ^ toString wrongTy)
@@ -505,35 +515,38 @@ structure LLVMType : sig
                   ^ i2s idx ^ " of GEP.\n element "
                   ^ i2s offset ^ " \ncannot be selected from type "
                   ^ toString wrongTy ^ ",\n which is part of overall type"
-                  ^ toString t)
+                  ^ toString t)*)
+                  
+    fun ohno (wrongTy, idx) = raise Fail ("gepType: problem with index: " ^ i2s idx ^ " of GEP.\n"
+                ^ "element offset: " ^ i2s (V.sub(vec, idx))
+                ^ " \ncannot be selected from type: " ^ (toString  wrongTy)
+                ^ ",\n which is part of overall type: " ^ (toString t)
+                ^ "\n being operated on using GEP args "
+                ^ (V.foldl (fn (x, acc) => acc ^ ", " ^ (Int.toString x)) "" vec))
 
     fun lp(0, _, t') = t' 
       
-      | lp(elms, idx as 0, t) = (case HC.node t
-        (* t must be a pointer type, step through it. *)
+      | lp(elms, (idx as 0), ogT) = (case HC.node ogT
+        (* t must be a pointer type, we step through the pointer *)
         of Ty.T_Ptr t' => lp(elms-1, idx+1, t')
-         | _ => err2(t, idx, V.sub(vec, idx))
-         
-         (*raise Fail 
-            ("gepType: GEP must be performed on a pointer type, not " ^ *)
+         | _ => ohno(ogT, idx)
         (* esac *))
 
       | lp(elms, idx, t) = let
-        (* t cannot be a pointer type. *)
-          val t' = 
-            (case HC.node t
-              of (Ty.T_Struct tys | Ty.T_UStruct tys) => let
-                  val offset = V.sub(vec, idx)
-                in
-                  if offset < List.length tys
-                  then List.nth(tys, offset)
-                  else err2(t, idx, offset)
-                end
+        val t' = (case HC.node t
+                 of (Ty.T_Void | Ty.T_Label) => ohno(t, idx)
+                  | (Ty.T_Struct tys | Ty.T_UStruct tys) => let
+                      val offset = V.sub(vec, idx)
+                    in
+                      if offset < List.length tys
+                      then List.nth(tys, offset)
+                      else ohno(t, idx)
+                    end
 
-               | Ty.T_Array(_, t') => t'
-               | Ty.T_Vector(_, t') => t'
-               | _ => err1(t, idx)
-            (* esac *))
+                   | Ty.T_Array(_, t') => t'
+                   | Ty.T_Vector(_, t') => t'
+                   | _  => t (* we do not step through any further pointers *)
+                (* esac *))            
         in
           lp(elms-1, idx+1, t')
         end

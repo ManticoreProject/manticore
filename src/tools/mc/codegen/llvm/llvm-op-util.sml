@@ -172,7 +172,7 @@ in (case p
     | P.AdrLoadI64 _
     | P.AdrLoadF32 _
     | P.AdrLoadF64 _
-    | P.AdrLoadAdr _
+    | P.AdrLoadAdr _ 
     | P.AdrLoad _) => (fn [a] => f e Op.Load #[a])
   
   | ( P.AdrStoreI8 _
@@ -180,26 +180,39 @@ in (case p
     | P.AdrStoreI32 _
     | P.AdrStoreI64 _
     | P.AdrStoreF32 _
-    | P.AdrStoreF64 _
-    | P.AdrStoreAdr _  
-    | P.AdrStore _) => (fn [targ, value] => let
-            (* we bitcast because CFG types dont differentiate between
-               different address types, but in LLVM you cannot
-               store to a different pointer type. sometimes we're bitcasting
-               a type to itself, but bitcasts are noops anyways. *)
-            val derefTy = (LT.deref o LB.toTy) targ
-        in
-            f e Op.Store #[targ, c Op.BitCast (value, derefTy)]
-        end)
+    | P.AdrStoreF64 _ ) => (fn [targ, value] => f e Op.Store #[targ, value])
+
+  | (P.AdrStoreAdr _
+     | P.AdrStore _ ) => (fn [targ, value] => 
+      f e Op.Store #[c Op.BitCast (targ, LT.mkPtr(LB.toTy value)), value])
+      
+      (*  NOTE
+          Original CFG
+          (1) let _t<113C3>#1:addr(any) = &0 deq<113C4>
+          ...
+          (2) let _t<113CA>#1:addr(any) = AdrAddI64(_t<113C3>,_t<113C9>)
+          (3) do AdrStore(_t<113CA>,_t<113BA>)
+          
+          
+          The way we translate the CFG above is (note, deq's type is i8* in this example)
+          (1) %r_127A6 = getelementptr inbounds i8, i8* %DEQ, i32 0
+          ...
+          (2) %r_127AA = ptrtoint i8* %r_127A6 to i64
+          (2) %r_127AB = add i64 %r_127AA, %r_127A9
+          (2) %r_127AC = inttoptr i64 %r_127AB to i8*
+          
+          (3) %r_127AD = bitcast i8* %r_127AC to %_tupTy.57**
+          (3) store %_tupTy.57* %_t_cfg113BA_1279D, %_tupTy.57** %r_127AD
+          
+          Thus, we need to cast the target, which is _some_ address, to be
+          the right pointer type in LLVM to perform the store. There may be some
+          confusion in the future about the fact that anyTy and addr are the same thing,
+          so be careful basically.
+      *)
+      
         
   
     (*
-    
-  (* loads from addresses *)
-  
-     =>                   (* load a uniform value from the given address *)
-  (* stores to addresses *)
-     =>           (* store a uniform value at the given address *)
     
   (* array load operations *)
     | P.ArrLoadI32 _ =>

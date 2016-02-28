@@ -51,7 +51,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure AS = LLVMAttribute.Set
 
   structure LT = LV.LT
-  structure LLTY = LLVMTy
+  structure Ty = LLVMTy
   structure Op = LLVMOp
   structure OU = LLVMOpUtil
   structure P = Prim
@@ -315,6 +315,25 @@ fun output (outS, module as C.MODULE { name = module_name,
           insertV(env, cfgVar, newLLVar)
       end
       
+      fun calcAddr idx llInstr = let
+        val llvTy = LB.toTy llInstr
+        val zero = LB.intC(LT.i32, 0)
+        val idxNum = Int.toLarge idx
+      in
+          (case LT.node llvTy
+            of Ty.T_Ptr t => (case LT.node t
+                of (Ty.T_Vector _
+                   | Ty.T_Array _
+                   | Ty.T_Struct _
+                   | Ty.T_UStruct _) => SOME (LB.gep_ib b (llInstr, #[zero, LB.intC(LT.i32, idxNum)]))
+                 
+                 | _ => SOME (LB.gep_ib b (llInstr, #[LB.intC(LT.i32, idxNum)]))
+                 
+                (* esac *))
+             | _ => NONE
+          (* esac *))
+      end
+      
       (* end handy stuff *)
       
       fun finish(env, exit) = LB.retVoid b
@@ -382,32 +401,94 @@ fun output (outS, module as C.MODULE { name = module_name,
       and genLabel(env, (lhsVar, rhsLabel)) = env (* TODO *)
       
       
-      and genSelect(env, (lhsVar, i, rhsVar)) = stubIt env lhsVar (* TODO *)
+      and genSelect(env, (lhsVar, i, rhsVar)) = let
+        val llv = lookupV(env, rhsVar)        
+      in
+        (case calcAddr i llv
+            of SOME addr => insertV(env, lhsVar, mk Op.Load #[addr])
+             | NONE => ((print (
+                 "problem translating SELECT involving CFG var "
+                 ^ (CV.toString rhsVar) ^ "\nwhich became LLVM var of type "
+                 ^ (LT.fullNameOf(LB.toTy llv)) ^ "\n"
+                 )) ; env)
+            (* esac *))
+        
+      end
       
-      and genUpdate(env, (int, ptr, var)) = env (* TODO *)
+      and genUpdate(env, (i, ptr, var)) = let
+        val llVal = lookupV(env, var)
+        val llPtr = lookupV(env, ptr)
+        val SOME addr = calcAddr i llPtr
+        val newLLVar = mk Op.Store #[addr, llVal]
+      in
+        env  (* store has an empty result *)
+      end
       
-      and genAddrOf(env, (lhsVar, int, var)) = (case LT.node(LB.toTy (lookupV(env, var)))
-        (* TODO NEXT this is gross right now because deque and vproc are not
-           true pointer types like they should be, because they're their
-           own type. this problem hits the surface now in gepType because
-           we cannot properly step through that pointer to determine
-           the type of the field. We'd have to hardcode in gepType that
-           it steps through to get an i8 in the case of vprocTy right now.
-           IMO treat vprocTy just like allocPtrTy. *)
-          of LLTY.T_Ptr _ => let
-            val llv = lookupV(env, var)
-            val zero = LB.intC(LT.i32, 0)
+      and genAddrOf(env, (lhsVar, i, var)) = let
+        val llv = lookupV(env, var)
+      in
+        (case calcAddr i llv
+            of SOME newLLVar => insertV(env, lhsVar, newLLVar)
+             | NONE => (print "problem with genAddrOf\n" ; stubIt env lhsVar )
+        (* esac *))
+      end
+    
+      (* below is some gepType testing code
+      
+      val myVarTy = LT.mkPtr(LT.mkUStruct([LT.mkArray(LT.cnt 10, LT.i32)]))
+      val _ = print (LT.fullNameOf myVarTy)
+      
+      val _ = print ("\n\n0, 0, 1 -> " ^ (LT.fullNameOf((LT.gepType(myVarTy, #[0, 0, 1])))))
+      
+      val _ = print ("\n\n1 -> " ^ (LT.fullNameOf((LT.gepType(myVarTy, #[1])))))
+      
+      val _ = print ("\n\n1, 0, 0 -> " ^ (LT.fullNameOf((LT.gepType(myVarTy, #[1, 0, 0])))))
+      
+      val _ = print "\n---------\n"
+      
+      
+
+      
+      val myVarTy = LT.mkPtr(
+                      LT.mkUStruct([
+                        LT.mkPtr(
+                            LT.mkArray(LT.cnt 40, LT.i32)
+                        )
+                      ]))
+                      
+      val _ = print (LT.fullNameOf myVarTy)
+      
+      (* should fail but doesnt *)
+      val _ = print ("\n\n0, 0, 0, 17 -> " ^ (LT.fullNameOf(LT.gepType(myVarTy, #[0, 0, 0, 17]))))
+      
+      val _ = print ("\n\n0, 0 -> " ^ (LT.fullNameOf((LT.gepType(myVarTy, #[0, 0])))))
+      
+      
+      val _ = print "\n---------\n"
+      
+      val myVarTy = LT.mkPtr(LT.i32)
+                      
+      val _ = print (LT.fullNameOf myVarTy)
+      
+      val _ = print ("\n\n17 -> " ^ (LT.fullNameOf(LT.gepType(myVarTy, #[17]))))
+      
+      
+      val _ = print "\n\n"
+      val _ = raise Fail "success"*)
+      
             
-            
-            val newLLVar = LB.gep b (llv, #[LB.intC(LT.i32, Int.toLarge int)])
-          in
-            insertV(env, lhsVar, newLLVar)
-          end
-          | _ => stubIt env lhsVar
-          (* esac *))
-      
-      
-      
+      (*
+        (* initial example *)
+        %MyVar = global { [10 x i32] }
+        %idx1 = getelementptr { [10 x i32] }, { [10 x i32] }* %MyVar, i64 0, i32 0, i64 1
+        %idx2 = getelementptr { [10 x i32] }, { [10 x i32] }* %MyVar, i64 1
+        
+        (* another example *)
+        %MyVar = uninitialized global { [40 x i32 ]* }
+        %idx = getelementptr { [40 x i32]* }, { [40 x i32]* }* %, i64 0, i32 0
+        %arr = load [40 x i32]** %idx
+        %idx = getelementptr [40 x i32], [40 x i32]* %arr, i64 0, i64 17
+      *)  
       
       and genAlloc(env, (lhsVar, ty, vars)) = stubIt env lhsVar (* TODO *)
       
