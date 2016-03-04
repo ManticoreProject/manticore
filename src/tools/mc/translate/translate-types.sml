@@ -75,7 +75,11 @@ structure TranslateTypes : sig
 			    of Ty.Tyc{def=Ty.AbsTyc, ...} => 
 			       (* look for the concrete type of the constructor *)
 			       (case ModuleEnv.getRealizationOfTyc tyc
-				  of SOME (ModuleEnv.TyCon tyc) => trTyc(env, tyc)
+				  of SOME (ModuleEnv.TyCon tyc) =>
+                                     (case TranslateEnv.findTyc (env, tyc)
+                                        of SOME ty => ty
+                                         | NONE => trTyc(env, tyc)
+                                      (* end case *))
 				   | SOME (ModuleEnv.TyDef tys) => trScheme(env, tys)
 				   | SOME (ModuleEnv.BOMTyDef ty) => cvtPrimTy env ty
 				   | NONE => trTyc (env, tyc)
