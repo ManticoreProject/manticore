@@ -102,6 +102,9 @@ structure CaseSimplify : sig
 									    
     (* case conversion structures *)
 
+
+    val strcmpRef : BV.var CFunctions.c_fun option ref = ref NONE
+									    
     local
     (* generate numeric comparisons *)
       fun genNumTest (ty, ltPrim, eqPrim, const) {arg, key, ltAct, eqAct, gtAct} = let
@@ -176,6 +179,31 @@ structure CaseSimplify : sig
 	fun genCmpTest _ = raise Fail "F64Tst.genTest"
 	val genEqTest = genNumOrdTest (doubleTy, Prim.F64Eq, f64Const)
       end)
+
+    structure StringTst = LiteralCaseFn (
+	struct
+	type label = string
+	fun equal(a, b) = case String.compare(a, b) of EQUAL => true | _ => false
+	fun greater(a, b) = case String.compare(a, b) of GREATER => true | _ => false
+	fun succ _ = NONE
+	fun pred _ = NONE
+	fun genCmpTest _ = raise Fail "genCmpTest not implemented for StringTst"
+	fun genEqTest{arg,key : string,eqAct,neqAct} =
+	    let val v = BV.new("_caseLbl", intTy)
+		val SOME strcmp = !strcmpRef
+		val raw_str = BV.new("_raw_string", BTy.T_Any)
+		val zero = BV.new("zero", intTy)
+		val key_var = BV.new("_key", BTy.T_Any)
+		val cfun = CFunctions.varOf strcmp
+	    in
+		B.mkStmts([([key_var],  B.E_Const(Literal.String key, BTy.T_Any)), 
+			  ([raw_str], B.E_Select(0, arg)),
+			  ([zero], i32Const 0), 
+			  ([v], B.E_CCall(cfun, [raw_str, key_var]))],
+			  B.mkIf(Prim.I32Eq(v, zero), eqAct, neqAct))
+	    end
+	end)
+				     
    end (* local *)
 
 (*    fun numEnumsOfTyc (BTy.DataTyc{nNullary, ...}) = nNullary*)
@@ -599,13 +627,28 @@ DEBUG*)
 	      | BTy.T_Raw BTy.T_Long => convert(fn (Literal.Int i) => i, I64Tst.convert)
 	      | BTy.T_Raw BTy.T_Float => convert(fn (Literal.Float f) => f, F32Tst.convert)
 	      | BTy.T_Raw BTy.T_Double => convert(fn (Literal.Float f) => f, F64Tst.convert)
+	      (*string literal*)
+	      | BTy.T_Tuple(false, [BTy.T_Any, BTy.T_Raw BTy.T_Int]) => convert(fn (Literal.String s) => s, StringTst.convert)
 	      | _ => raise Fail("literal case on unsupported type "^ BTU.toString ty)
 	    (* end case *)
 	  end
       | literalCase (_, _, argument, _, _) =
 	  raise Fail("ill-formed literal case of " ^ BV.toString argument)
 
+    (*
+     * This is a pretty ugly hack to get the strcmp function out of the externs
+     * maybe there is a better way to do this?
+     *)
+    fun get_strcmp funs =
+	case funs
+	 of [] => ()
+	  | f::funs =>
+	    if CFunctions.nameOf f = "strcmp"
+	    then strcmpRef := SOME f
+	    else get_strcmp funs
+		
     fun transform (B.MODULE{name, externs, hlops, rewrites, body}) = let
+	val _ = get_strcmp externs
 	  val module = B.mkModule(name, externs, hlops, rewrites, #2 (xformLambda (BV.Map.empty, body)))
 	  in
 (* FIXME: eventually, this pass should preserve census info! *)
