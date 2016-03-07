@@ -187,7 +187,21 @@ structure CaseSimplify : sig
 	fun greater(a, b) = case String.compare(a, b) of GREATER => true | _ => false
 	fun succ _ = NONE
 	fun pred _ = NONE
-	fun genCmpTest _ = raise Fail "genCmpTest not implemented for StringTst"
+	fun genCmpTest {arg, key, ltAct, eqAct, gtAct} =
+	    let val v = BV.new("_caseLbl", intTy)
+		val SOME strcmp = !strcmpRef
+		val raw_str = BV.new("_raw_string", BTy.T_Any)
+		val zero = BV.new("zero", intTy)
+		val key_var = BV.new("_key", BTy.T_Any)
+		val cfun = CFunctions.varOf strcmp
+	    in
+		B.mkStmts([([key_var],  B.E_Const(Literal.String key, BTy.T_Any)), 
+			  ([raw_str], B.E_Select(0, arg)),
+			  ([zero], i32Const 0), 
+			  ([v], B.E_CCall(cfun, [raw_str, key_var]))],
+			  B.mkIf(Prim.I32Lt(v, zero), ltAct,
+				 B.mkIf(Prim.I32Eq(v, zero), eqAct, gtAct)))
+	    end
 	fun genEqTest{arg,key : string,eqAct,neqAct} =
 	    let val v = BV.new("_caseLbl", intTy)
 		val SOME strcmp = !strcmpRef
@@ -202,8 +216,7 @@ structure CaseSimplify : sig
 			  ([v], B.E_CCall(cfun, [raw_str, key_var]))],
 			  B.mkIf(Prim.I32Eq(v, zero), eqAct, neqAct))
 	    end
-	end)
-				     
+	end)					
    end (* local *)
 
 (*    fun numEnumsOfTyc (BTy.DataTyc{nNullary, ...}) = nNullary*)
