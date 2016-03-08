@@ -316,7 +316,6 @@ struct
 (*)
     val getCtxt : 'a tvar * string -> 'a = _prim(@get-with-context)
 *)
-    val _ = Ref.set(STMs.stms, ("mergeWS", (get,put,atomic,new,abort))::Ref.get STMs.stms)
 end
 
 

@@ -1,6 +1,4 @@
 ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime-offsets.def,../include/dictionary-offsets.def" in
-    stms.pml
- 
     logging.pml
 
     ann "cpp" "tl2/tl2.def" in
@@ -17,22 +15,11 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
         tl2/ordered-tl2.pml
 
         tl2/ff-tl2.pml
+
+	tiny-stm/tiny-stm.pml
         
     end
 
-(*
-    
-
-
-    fast-forward/read-set.pml
-
-(*    fast-forward/ordered-pabort.pml*)
-
-    fast-forward/partial-stm.pml
-
-    fast-forward/partial-stm-tail-rec.pml
-
-*)
     norec/norec.pml
 
     norec/partial-norec.pml

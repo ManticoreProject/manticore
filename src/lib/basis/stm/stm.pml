@@ -13,12 +13,39 @@ struct
 
     val whichSTM = case getArg "-stm" args of SOME s => s | NONE => "bounded" (*use bounded partial abort by default*)
 
-    fun getSTMFuns l =
-        case l 
-           of (str, funs)::tl => if String.same(str, whichSTM) then funs else getSTMFuns tl
-            | nil => (print "STM implementation not recognized\n"; raise Fail(""))
-
-    val (getFunction,put,atomic,new,abort) = getSTMFuns(Ref.get STMs.stms)
+    val (getFunction,put,atomic,new,abort) =
+	case whichSTM
+	 of "bounded" => (BoundedHybridPartialSTM.get,     (*bounded continuations, but reverse-chron read set*)
+			  BoundedHybridPartialSTM.put,
+			  BoundedHybridPartialSTM.atomic,
+			  BoundedHybridPartialSTM.new,
+			  BoundedHybridPartialSTM.abort)
+	  | "full" => (FullAbortSTM.get,                   (*baseline TL2*)
+		       FullAbortSTM.put,
+		       FullAbortSTM.atomic,
+		       FullAbortSTM.new,
+		       FullAbortSTM.abort)
+	  | "orderedTL2" => (OrderedTL2.get,               (*Ordered read set TL2 (bounded continuations)*)
+			     OrderedTL2.put,
+			     OrderedTL2.atomic,
+			     OrderedTL2.new,
+			     OrderedTL2.abort)
+	  | "norec" => (NoRecFull.get,
+			NoRecFull.put,
+			NoRecFull.atomic,
+			NoRecFull.new,
+			NoRecFull.abort)
+	  | "orderedNoRec" => (NoRecOrdered.get,
+			       NoRecOrdered.put,
+			       NoRecOrdered.atomic,
+			       NoRecOrdered.new,
+			       NoRecOrdered.abort)
+	  | "tiny" => (TinySTM.get,
+		       TinySTM.put,
+		       TinySTM.atomic,
+		       TinySTM.new,
+		       TinySTM.abort)
+	  |_ => raise Fail "STM not recognized\n"
 
     (*won't typecheck without these nonsense bindings*)
     val get : 'a tvar -> 'a = getFunction

@@ -15,6 +15,9 @@ structure VClock = (* :
 struct
 
     _primcode(
+        extern void M_IncCounter(void*, int, int);
+        extern int M_PolyEq(void*, void*);
+
         (*makes sure the version counter is in the global heap*)
         define @init-count(_:unit / exh:exh) : ml_long = 
             let c : ![long] = alloc(2:long)

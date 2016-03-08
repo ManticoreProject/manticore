@@ -289,8 +289,6 @@ struct
     val zeroCounters : unit -> unit = _prim(@zero-counters)
     val _ = zeroCounters()
 
-    val _ = Ref.set(STMs.stms, ("partial", (get,put,atomic,new,abort))::Ref.get STMs.stms)
-
 end
 
 

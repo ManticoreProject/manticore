@@ -31,3 +31,5 @@
 #define OLD_STAMP     2
 
 #define UNBOX 0
+
+#define LOCKED(x) I64Eq(I64AndB(x, 1:long), 1:long)

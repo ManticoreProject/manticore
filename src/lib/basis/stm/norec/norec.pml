@@ -183,8 +183,6 @@ struct
     val atomic : (unit -> 'a) -> 'a = _prim(@atomic)
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val abort : unit -> 'a = _prim(@abort)
-
-    val _ = Ref.set(STMs.stms, ("norec", (get,put,atomic,new,abort))::Ref.get STMs.stms)
 end
 
 

@@ -398,8 +398,6 @@ structure RS = TL2OrderedRS
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val abort : unit -> 'a = _prim(@force-abort)
    
-    val _ = Ref.set(STMs.stms, ("orderedTL2", (get,put,atomic,new,abort))::Ref.get STMs.stms)
-
 end
 
 

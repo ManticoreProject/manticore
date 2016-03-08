@@ -548,7 +548,6 @@ structure RS = TL2OrderedRS
    
     val getRefCount : 'a tvar -> int = _prim(@get-ref-count)
 
-    val _ = Ref.set(STMs.stms, ("ffTL2", (get,put,atomic,new,abort))::Ref.get STMs.stms)
 
 end
 

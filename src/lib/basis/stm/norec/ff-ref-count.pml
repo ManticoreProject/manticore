@@ -166,7 +166,6 @@ struct
     val put : 'a tvar * 'a -> unit = NoRecFF.put
     val abort : unit -> 'a = _prim(@abort)
  
-    val _ = Ref.set(STMs.stms, ("ffRefCount", (get,put,atomic,new,abort))::Ref.get STMs.stms)
 end
 
 
