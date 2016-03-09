@@ -224,4 +224,14 @@ structure List =
        | x::nil => x
        | x::xs => last xs)
 
+    fun collate cmp = let
+          fun loop (xs,ys) = (
+                case (xs,ys)
+                 of (nil, nil) => EQUAL
+                  | (nil, _) => LESS
+                  | (_, nil) => GREATER
+                  | (x::xs, y::ys) => (case cmp (x,y)
+                                        of EQUAL => loop (xs, ys)
+                                         | ans => ans))
+          in loop end
   end
