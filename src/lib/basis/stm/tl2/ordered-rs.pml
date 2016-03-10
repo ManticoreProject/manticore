@@ -27,7 +27,7 @@ struct
 
     	typedef read_set = ![int, ritem, ritem, ritem]; (*num conts, head, lastK, tail*)
 
-        typedef stamp_rec = ![long,int,long,long]; (*current timestamp, -, old time stamp, thread ID*)
+        typedef stamp_rec = FullAbortSTM.stamp_rec; (*current timestamp, -, old time stamp, thread ID*)
 
         define @get-tref = getTRef;
 
@@ -69,7 +69,7 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(I32Add(#KCOUNT(readSet), 1), #LONG_PATH(readSet), newItem, newItem)
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [read, int, long, any] = alloc(casted, R_ENTRY_NEXT, #3(stamp), rs)
+                    let newRemSet : [read, int, long, any] = alloc(casted, R_ENTRY_NEXT, #THREAD_ID(stamp), rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #R_ENTRY_NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
@@ -77,7 +77,7 @@ struct
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(I32Add(#KCOUNT(readSet), 1), #LONG_PATH(readSet), newItem, newItem)
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [read, int, long, any] = alloc(casted, R_ENTRY_NEXT, #3(stamp), rs)
+                let newRemSet : [read, int, long, any] = alloc(casted, R_ENTRY_NEXT, #THREAD_ID(stamp), rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #R_ENTRY_NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
@@ -102,7 +102,7 @@ struct
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#KCOUNT(readSet), #LONG_PATH(readSet), #SHORT_PATH(readSet), newItem)
                     let rs : any = vpload(REMEMBER_SET, vp)
-                    let newRemSet : [read, int, long, any] = alloc(casted, R_ENTRY_NEXT, #3(stamp), rs)
+                    let newRemSet : [read, int, long, any] = alloc(casted, R_ENTRY_NEXT, #THREAD_ID(stamp), rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #R_ENTRY_NEXT(casted) := newItem
                     do FLS.@set-key(READ_SET, newRS / exh)
@@ -110,7 +110,7 @@ struct
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#KCOUNT(readSet), #LONG_PATH(readSet), #SHORT_PATH(readSet), newItem)
                 let rs : any = vpload(REMEMBER_SET, vp)
-                let newRemSet : [read, int, long, any] = alloc(casted, R_ENTRY_NEXT, #3(stamp), rs)
+                let newRemSet : [read, int, long, any] = alloc(casted, R_ENTRY_NEXT, #THREAD_ID(stamp), rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #R_ENTRY_NEXT(casted) := newItem
                 do FLS.@set-key(READ_SET, newRS / exh)
@@ -130,7 +130,7 @@ struct
     )
 
     val printHeaders : unit -> unit = _prim(@print-headers)
-    val _ = printHeaders()
+(*)    val _ = printHeaders()*)
 
 
 

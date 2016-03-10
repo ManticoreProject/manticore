@@ -30,7 +30,7 @@ structure RS = TL2OrderedRS
 
         typedef read_set = ![int, RS.ritem, RS.ritem, RS.ritem];
 
-        typedef stamp_rec = RS.stamp_rec;
+        typedef stamp_rec = RS.stamp_rec;  
 
         define @get-tag = BoundedHybridPartialSTM.getTag;
 
@@ -46,34 +46,26 @@ structure RS = TL2OrderedRS
             do #R_ENTRY_NEXT(chkpnt) := RS.NilRead
             let tv : tvar = #R_ENTRY_TVAR(chkpnt)
             let v1 : long = #CURRENT_LOCK(tv)
-            do FenceRead()
             let res : any = #TVAR_CONTENTS(tv)
-            do FenceRead()
             let v2 : long = #CURRENT_LOCK(tv)
             let v1Lock : long = I64AndB(v1, 1:long)
-            if I64Eq(v1Lock, 0:long)  (*unlocked*)
-            then
+            if U64Lte(v1, newStamp)
+            then 
                 if I64Eq(v1, v2)
                 then 
-                    if I64Lte(v1, newStamp)
-                    then 
-                        let newRS : read_set = alloc(kCount, head, chkpnt, chkpnt)
-                        do #UNBOX(stamp) := newStamp
-                        do FLS.@set-key(READ_SET, newRS / exh)
-                        do FLS.@set-key(WRITE_SET, #R_ENTRY_WS(chkpnt) / exh)
-                        BUMP_PABORT
-                        let k : cont(any) = #R_ENTRY_K(chkpnt)
-                        throw k(res)
-                    else 
-                        do #UNBOX(stamp) := newStamp
-                        let newStamp : long = VClock.@get(/ exh)
-                        apply revalidate(head, RS.NilRead, newStamp, 0, true)
-                else 
-                    do #UNBOX(stamp) := newStamp
+                    let newRS : read_set = alloc(kCount, head, chkpnt, chkpnt)
+                    do #START_STAMP(stamp) := newStamp
+                    do FLS.@set-key(READ_SET, newRS / exh)
+                    do FLS.@set-key(WRITE_SET, #R_ENTRY_WS(chkpnt) / exh)
+                    BUMP_PABORT
+                    let k : cont(any) = #R_ENTRY_K(chkpnt)
+                    throw k(res)
+                 else 
+                    do #START_STAMP(stamp) := newStamp
                     let newStamp : long = VClock.@get(/ exh)
                     apply revalidate(head, RS.NilRead, newStamp, 0, true)
             else 
-                do #UNBOX(stamp) := newStamp
+                do #START_STAMP(stamp) := newStamp
                 let newStamp : long = VClock.@get(/ exh)
                 apply revalidate(head, RS.NilRead, newStamp, 0, true)
         ;
@@ -87,29 +79,17 @@ structure RS = TL2OrderedRS
             fun eagerValidate(rs : RS.ritem, chkpnt : RS.ritem, newStamp : long, kCount : int, revalidating:bool) : () =
                 case rs 
                    of RS.WithK(tv:tvar, next:RS.ritem, k:cont(any), ws:RS.witem, sp:RS.ritem) => 
-                        let owner : long = #CURRENT_LOCK(tv)
-                        if I64Lte(owner, #UNBOX(stamp))  (*still valid*)
-                        then 
-                            if I64Eq(I64AndB(owner, 1:long), 1:long)
-                            then 
-                                @abort(head, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp / exh)
-                            else apply eagerValidate(next, rs, newStamp, I32Add(kCount, 1), revalidating)
-                        else 
-                            @abort(head, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp / exh)
+                        if U64Lte(#CURRENT_LOCK(tv), #START_STAMP(stamp))  (*still valid*)
+                        then apply eagerValidate(next, rs, newStamp, I32Add(kCount, 1), revalidating)
+                        else @abort(head, rs, I32Add(kCount, 1), eagerValidate, newStamp, stamp / exh)
                     | RS.WithoutK(tv:tvar, next:RS.ritem) => 
-                        let owner : long = #CURRENT_LOCK(tv)
-                        if I64Lte(owner, #UNBOX(stamp))
-                        then
-                            if I64Eq(I64AndB(owner, 1:long), 1:long)
-                            then 
-                                @abort(head, chkpnt, kCount, eagerValidate, newStamp, stamp / exh)
-                            else apply eagerValidate(next, chkpnt, newStamp, kCount, revalidating)
-                        else 
-                            @abort(head, chkpnt, kCount, eagerValidate, newStamp, stamp / exh)
+                        if U64Lte(#CURRENT_LOCK(tv), #START_STAMP(stamp))
+                        then apply eagerValidate(next, chkpnt, newStamp, kCount, revalidating)
+                        else @abort(head, chkpnt, kCount, eagerValidate, newStamp, stamp / exh)
                     | RS.NilRead => 
                         if(revalidating)
                         then @abort(head, chkpnt, kCount, eagerValidate, newStamp, stamp / exh)
-                        else do #UNBOX(stamp) := newStamp return()
+                        else do #START_STAMP(stamp) := newStamp return()
                 end
             let newStamp : long = VClock.@get(/ exh)
             apply eagerValidate(head, RS.NilRead, newStamp, 0, false)
@@ -119,18 +99,12 @@ structure RS = TL2OrderedRS
         define inline @read-tvar2(tv : tvar, stamp : stamp_rec, readSet : RS.ritem / exh : exh) : any = 
             fun lp() : any = 
                 let v1 : stamp = #CURRENT_LOCK(tv)
-                do FenceRead()
                 let res : any = #TVAR_CONTENTS(tv)
-                do FenceRead()
                 let v2 : stamp = #CURRENT_LOCK(tv)
-                let v1Lock : long = I64AndB(v1, 1:long)
-                if I64Eq(v1Lock, 0:long)  (*unlocked*)
+                if U64Lte(v1, #START_STAMP(stamp))
                 then
                     if I64Eq(v1, v2)
-                    then 
-                        if I64Lte(v1, #UNBOX(stamp))
-                        then return(res)
-                        else do @eager-validate(readSet, stamp / exh) apply lp()
+                    then return(res)
                     else do @eager-validate(readSet, stamp / exh) apply lp()
                 else do @eager-validate(readSet, stamp / exh) apply lp()
             apply lp()
@@ -138,20 +112,12 @@ structure RS = TL2OrderedRS
 
         define inline @read-tvar(tv : tvar, stamp : stamp_rec, readSet : RS.ritem / exh : exh) : any = 
             let v1 : stamp = #CURRENT_LOCK(tv)
-            do FenceRead()
             let res : any = #TVAR_CONTENTS(tv)
-            do FenceRead()
             let v2 : stamp = #CURRENT_LOCK(tv)
-            let v1Lock : long = I64AndB(v1, 1:long)
-            if I64Eq(v1Lock, 0:long)  (*unlocked*)
+            if U64Lte(v1, #START_STAMP(stamp))
             then
                 if I64Eq(v1, v2)
-                then 
-                    if I64Lte(v1, #UNBOX(stamp))
-                    then return(res)
-                    else 
-                        do @eager-validate(readSet, stamp / exh)
-                        @read-tvar2(tv, stamp, readSet / exh)
+                then return(res)
                 else 
                     do @eager-validate(readSet, stamp / exh)
                     @read-tvar2(tv, stamp, readSet / exh)
@@ -269,27 +235,19 @@ structure RS = TL2OrderedRS
                 end
             let readSet : read_set = FLS.@get-key(READ_SET / exh)
             let writeSet : RS.witem = FLS.@get-key(WRITE_SET / exh)
-            let lockVal : long = I64Add(I64LSh(#THREAD_ID(startStamp), 1:long), 1:long)
             fun acquire(ws:RS.witem, acquired:RS.witem) : RS.witem = 
                 case ws
                    of RS.Write(tv:tvar, contents:any, tl:RS.witem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Eq(owner, lockVal)
+                        if I64Eq(owner, #LOCK_VAL(startStamp))
                         then apply acquire(tl, acquired)  (*we already locked this*)
                         else
-                            if I64Eq(I64AndB(owner, 1:long), 0:long)
+                            if U64Lte(owner, #0(startStamp))
                             then
-                                if I64Lte(owner, #0(startStamp))
-                                then
-                                    let casRes : long = CAS(&CURRENT_LOCK(tv), owner, lockVal)
-                                    if I64Eq(casRes, owner)
-                                    then 
-                                        do #PREV_LOCK(tv) := owner 
-                                        apply acquire(tl, RS.Write(tv, contents, acquired))
-                                    else 
-                                        do apply release(acquired) 
-                                        do @eager-validate(#LONG_PATH(readSet), startStamp / exh)
-                                        apply acquire(writeSet, RS.NilWrite)
+                                if BCAS(&CURRENT_LOCK(tv), owner, #LOCK_VAL(startStamp))
+                                then 
+                                    do #PREV_LOCK(tv) := owner 
+                                    apply acquire(tl, RS.Write(tv, contents, acquired))
                                 else 
                                     do apply release(acquired) 
                                     do @eager-validate(#LONG_PATH(readSet), startStamp / exh)
@@ -305,37 +263,25 @@ structure RS = TL2OrderedRS
                 case rs 
                    of RS.WithK(tv:tvar, next:RS.ritem, k:cont(any), ws:RS.witem, sp:RS.ritem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Eq(owner, lockVal)
+                        if I64Eq(owner, #LOCK_VAL(startStamp))
                         then apply validate(next, rs, newStamp, I32Add(kCount, 1))
                         else 
-                            if I64Lte(owner, #UNBOX(startStamp))  (*still valid*)
-                            then 
-                                if I64Eq(I64AndB(owner, 1:long), 1:long)
-                                then
-                                    do apply release(locks)
-                                    do #UNBOX(startStamp) := newStamp
-                                    @finish-validate(#LONG_PATH(readSet), rs, startStamp, I32Add(kCount, 1) / exh)
-                                else apply validate(next, rs, newStamp, I32Add(kCount, 1))
+                            if U64Lte(owner, #START_STAMP(startStamp))  (*still valid*)
+                            then apply validate(next, rs, newStamp, I32Add(kCount, 1))
                             else 
                                 do apply release(locks)
-                                do #UNBOX(startStamp) := newStamp
+                                do #START_STAMP(startStamp) := newStamp
                                 @finish-validate(#LONG_PATH(readSet), rs, startStamp, I32Add(kCount, 1) / exh)
                     | RS.WithoutK(tv:tvar, next:RS.ritem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Eq(owner, lockVal)
+                        if I64Eq(owner, #LOCK_VAL(startStamp))
                         then apply validate(next, chkpnt, newStamp, kCount)
                         else 
-                            if I64Lte(owner, #UNBOX(startStamp))
-                            then
-                                if I64Eq(I64AndB(owner, 1:long), 1:long)
-                                then
-                                    do apply release(locks)
-                                    do #UNBOX(startStamp) := newStamp
-                                    @finish-validate(#LONG_PATH(readSet), chkpnt, startStamp, kCount / exh)
-                                else apply validate(next, chkpnt, newStamp, kCount)
+                            if U64Lte(owner, #START_STAMP(startStamp))
+                            then apply validate(next, chkpnt, newStamp, kCount)
                             else
                                 do apply release(locks)
-                                do #UNBOX(startStamp) := newStamp
+                                do #START_STAMP(startStamp) := newStamp
                                 @finish-validate(#LONG_PATH(readSet), chkpnt, startStamp, kCount / exh)
                     | RS.NilRead => return()
                 end
@@ -369,7 +315,8 @@ structure RS = TL2OrderedRS
                     do FLS.@set-key(WRITE_SET, RS.NilWrite / exh)
                     let newStamp : stamp = VClock.@get(/ exh)
                     let stamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
-                    do #UNBOX(stamp) := newStamp
+                    do #START_STAMP(stamp) := newStamp
+                    do #LOCK_VAL(stamp) := SET_MSB(#THREAD_ID(stamp))
                     do #UNBOX(in_trans) := true
                     cont transExh(e:exn) = 
                         do ccall M_Print("Warning: exception raised in transaction\n")

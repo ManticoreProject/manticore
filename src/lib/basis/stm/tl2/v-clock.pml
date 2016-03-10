@@ -39,7 +39,11 @@ struct
             let counter : [long] = @getCount(UNIT / exh)
             let counter : ![long] = (![long]) counter
             let old : long = I64FetchAndAdd(&0(counter), 1:long)
-            return(old)
+            if I64Eq(I64Add(old, 1:long), MAX_STAMP)
+            then 
+                do ccall M_Print("Version Clock overflow!\n")
+                throw exh(Fail(@"Version Clock overflow!\n"))
+            else return(old)
         ;
 
         define inline @inc(amount:long / exh:exh) : stamp =

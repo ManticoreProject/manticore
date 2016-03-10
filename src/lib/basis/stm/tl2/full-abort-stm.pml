@@ -4,6 +4,10 @@
  * All rights reserved.
  *
  * Software Transactional Memory with partial aborts.
+ * We use the most significant bit for the lock.
+ * This allows us to check if a timestamp is either locked
+ * *or* too new with one instruction.  It is important that ALL
+ * tests use unsigned comparison operators
  *)
 
 structure FullAbortSTM =
@@ -23,6 +27,7 @@ struct
         extern void M_BumpCounter(void * , int);
         extern int M_SumCounter(int);
 
+        typedef stamp_rec = ![long,long,long,long]; (*current timestamp, lock_val, old time stamp, thread ID*)
         typedef stamp = VClock.stamp;
         typedef tvar = ![any, long, long, long]; (*contents, current version stamp / lock, previous version stamp / lock, ref count (not used here)*)
 
@@ -32,30 +37,20 @@ struct
             return(tv)
         ;
 
-        (*if these don't get inlined, we could get a type error in bom chk*)
-        define @full-abort(/exh:exh) noreturn = 
+        define inline @full-abort(/exh:exh) noreturn = 
             let k : cont() = FLS.@get-key(ABORT_KEY / exh)
             throw k();
 
-        define @full-abort-any(/exh:exh) : any = 
-            let k : cont() = FLS.@get-key(ABORT_KEY / exh)
-            throw k();
-
-        define @read-tvar(tv : tvar, stamp : ![stamp, int] / exh : exh) : any = 
-            let v1 : stamp = #1(tv)
-            do FenceRead()
-            let res : any = #0(tv)
-            do FenceRead()
-            let v2 : stamp = #1(tv)
-            if I64Eq(I64AndB(v1, 1:long), 0:long)  (*unlocked*)
+        define @read-tvar(tv : tvar, stamp : stamp_rec / exh : exh) : any = 
+            let v1 : stamp = #CURRENT_LOCK(tv)
+            let res : any = #TVAR_CONTENTS(tv)
+            let v2 : stamp = #CURRENT_LOCK(tv)
+            if U64Lte(v1, #START_STAMP(stamp))  (*unlocked and still valid*)
             then
-                if I64Eq(v1, v2)
-                then 
-                    if I64Lte(v1, #0(stamp))
-                    then return(res)
-                    else @full-abort-any(/exh)
-                else @full-abort-any(/exh)
-            else @full-abort-any(/exh)
+                if U64Eq(v1, v2)
+                then return(res)
+                else @full-abort(/exh)
+            else @full-abort(/exh)
         ;
 
         define @get(tv : tvar / exh:exh) : any = 
@@ -65,7 +60,7 @@ struct
                else do ccall M_Print("Trying to read outside a transaction!\n")
                     let e : exn = Fail(@"Reading outside transaction\n")
                     throw exh(e)
-            let myStamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
+            let myStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
             let readSet : ritem = FLS.@get-key(READ_SET / exh)
             let writeSet : witem = FLS.@get-key(WRITE_SET / exh)
             fun chkLog(writeSet : witem) : Option.option = (*use local copy if available*)
@@ -103,7 +98,7 @@ struct
         ;
 
         define @commit(/exh:exh) : () =     
-            let startStamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
+            let startStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : witem) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:witem) =>
@@ -113,91 +108,82 @@ struct
                 end
             let readSet : ritem = FLS.@get-key(READ_SET / exh)
             let writeSet : witem = FLS.@get-key(WRITE_SET / exh)
-            let rawStamp: long = #0(startStamp) (*this should be even*)
-            let lockVal : long = I64Add(I64LSh(#THREAD_ID(startStamp), 1:long), 1:long)
+            let rawStamp: long = #START_STAMP(startStamp) 
+            let lockVal : long = #LOCK_VAL(startStamp)
             fun validate(readSet : ritem, locks : witem) : () = 
                 case readSet 
-                    of Read(tv:tvar, tl:ritem) =>
+                   of Read(tv:tvar, tl:ritem) =>
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Eq(owner, lockVal)
+                        if U64Eq(owner, lockVal)
                         then apply validate(tl, locks)
                         else 
-                            if I64Lte(owner, rawStamp)  (*still valid*)
-                            then 
-                                if I64Eq(I64AndB(owner, 1:long), 1:long)
-                                then do apply release(locks) @full-abort(/exh)
-                                else apply validate(tl, locks)
+                            if U64Lte(owner, rawStamp)  (*still valid and unlocked*)
+                            then apply validate(tl, locks)
                             else do apply release(locks) @full-abort(/exh)   
-                     |NilRead => return()
+                    | NilRead => return()
                 end
             fun acquire(writeSet:witem, acquired:witem) : witem = 
                 case writeSet 
                    of Write(tv:tvar, contents:any, tl:witem) => 
-                        let owner : long = #1(tv)
-                        if I64Eq(owner, lockVal)
+                        let owner : long = #CURRENT_LOCK(tv)
+                        if U64Eq(owner, lockVal)
                         then apply acquire(tl, acquired)  (*we already locked this*)
                         else
-                            if I64Eq(I64AndB(owner, 1:long), 0:long)
+                            if U64Lte(owner, rawStamp)
                             then
-                                if I64Lte(owner, rawStamp)
-                                then
-                                    let casRes : long = CAS(&1(tv), owner, lockVal)
-                                    if I64Eq(casRes, owner)
-                                    then 
-                                        do #PREV_LOCK(tv) := owner 
-                                        apply acquire(tl, Write(tv, contents, acquired))
-                                    else do apply release(acquired) @full-abort-any(/exh) (*CAS failed*)
-                                else do apply release(acquired) @full-abort-any(/exh) (*newer than our timestamp*)
-                            else do apply release(acquired) @full-abort-any(/exh)  (*someone else locked it*)
+                                if BCAS(&CURRENT_LOCK(tv), owner, lockVal)
+                                then 
+                                    do #PREV_LOCK(tv) := owner 
+                                    apply acquire(tl, Write(tv, contents, acquired))
+                                else do apply release(acquired) @full-abort(/exh) (*CAS failed*)
+                            else do apply release(acquired) @full-abort(/exh) (*newer than our timestamp*)
                     | NilWrite => return(acquired)
                 end
             fun update(writes:witem, newStamp : stamp) : () = 
                 case writes
                     of Write(tv:tvar, newContents:any, tl:witem) =>
                         let newContents : any = promote(newContents)
-                        do #0(tv) := newContents        (*update contents*)
-                        do #1(tv) := newStamp           (*unlock and update stamp (newStamp is even)*)
-                        apply update(tl, newStamp)          
+                        do #TVAR_CONTENTS(tv) := newContents        (*update contents*)
+                        do #CURRENT_LOCK(tv) := newStamp           (*unlock and update stamp (newStamp is even)*)
+                        apply update(tl, newStamp)
                      | NilWrite => return()
                 end
             let locks : witem = apply acquire(writeSet, NilWrite)   
-            let newStamp : stamp = VClock.@inc(2:long/exh)
-            if I64Eq(newStamp, rawStamp)
-            then apply update(locks, I64Add(newStamp, 2:long))
+            let newStamp : stamp = VClock.@inc(1:long/exh)
+            if U64Eq(newStamp, rawStamp)
+            then apply update(locks, I64Add(newStamp, 1:long))
             else 
                 do apply validate(readSet, locks)
-                apply update(locks, I64Add(newStamp, 2:long))
+                apply update(locks, I64Add(newStamp, 1:long))
         ;
 
         define @atomic(f:fun(unit / exh -> any) / exh:exh) : any = 
-                let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
-                if (#0(in_trans))
-                then apply f(UNIT/exh)
-                else let stampPtr : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
-                     cont enter() = 
-                         do FLS.@set-key(READ_SET, NilRead/ exh)  (*initialize STM log*)
-                         do FLS.@set-key(WRITE_SET, NilWrite / exh)
-                         let stamp : stamp = VClock.@get(/ exh)
-                         do #0(stampPtr) := stamp
-                         do #0(in_trans) := true
-                         cont abortK() = BUMP_FABORT throw enter()      
-                         do FLS.@set-key(ABORT_KEY, (any) abortK / exh)
-                         cont transExh(e:exn) = 
-                            do @commit(/transExh)  (*exception may have been raised because of inconsistent state*)
-                            throw exh(e)
-                         let res : any = apply f(UNIT/transExh)
-                         do @commit(/transExh)
-                         do #0(in_trans) := false
-                         do FLS.@set-key(READ_SET, NilRead / exh)
-                         do FLS.@set-key(WRITE_SET, NilWrite / exh)
-                         return(res)
-                     throw enter()
+            let in_trans : ![bool] = FLS.@get-key(IN_TRANS / exh)
+            if (#0(in_trans))
+            then apply f(UNIT/exh)
+            else 
+                let stampPtr : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
+                cont enter() = 
+                    do FLS.@set-key(READ_SET, NilRead/ exh)  (*initialize STM log*)
+                    do FLS.@set-key(WRITE_SET, NilWrite / exh)
+                    let stamp : stamp = VClock.@get(/ exh)
+                    do #START_STAMP(stampPtr) := stamp
+                    do #LOCK_VAL(stampPtr) := SET_MSB(#THREAD_ID(stampPtr))
+                    do #0(in_trans) := true
+                    cont abortK() = BUMP_FABORT throw enter()      
+                    do FLS.@set-key(ABORT_KEY, (any) abortK / exh)
+                    let res : any = apply f(UNIT/exh)
+                    do @commit(/exh)
+                    do #0(in_trans) := false
+                    do FLS.@set-key(READ_SET, NilRead / exh)
+                    do FLS.@set-key(WRITE_SET, NilWrite / exh)
+                    return(res)
+                throw enter()
         ;
 
-
-      define @abort(x : unit / exh : exh) : any = 
-         let e : cont() = FLS.@get-key(ABORT_KEY / exh)
-         throw e();
+        define @abort(x : unit / exh : exh) : any = 
+            let e : cont() = FLS.@get-key(ABORT_KEY / exh)
+            throw e();
          
     )
 
@@ -208,17 +194,3 @@ struct
     val put : 'a tvar * 'a -> unit = _prim(@put)
     val abort : unit -> 'a = _prim(@abort)
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
- 

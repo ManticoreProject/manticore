@@ -102,7 +102,7 @@ structure RS = TL2OrderedRS
             let ffInfo : ff_read_set = FLS.@get-key(FF_KEY / exh)
             do @clear-bits(ffInfo, myStamp)
             let rs : read_set = FLS.@get-key(READ_SET / exh)
-            do #OLD_STAMP(myStamp) := #CURRENT_STAMP(myStamp)
+            do #OLD_STAMP(myStamp) := #START_STAMP(myStamp)
             do @set-bits(rs, RS.NilRead, myStamp, rs, RS.NilWrite / exh)
             let chkpnt : with_k = (with_k)#LONG_PATH(rs) (*first entry is the full abort continuation*)
             let k : cont(any) = #R_ENTRY_K(chkpnt)
@@ -143,15 +143,15 @@ structure RS = TL2OrderedRS
                         let k : cont(any) = #R_ENTRY_K(chkpnt)
                         throw k(res)
                     else 
-                        do #CURRENT_STAMP(stamp) := newStamp
+                        do #START_STAMP(stamp) := newStamp
                         let newStamp : long = VClock.@get(/ exh)
                         apply revalidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, chkpnt)
                 else 
-                    do #CURRENT_STAMP(stamp) := newStamp
+                    do #START_STAMP(stamp) := newStamp
                     let newStamp : long = VClock.@get(/ exh)
                     apply revalidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, chkpnt)
             else 
-                do #CURRENT_STAMP(stamp) := newStamp
+                do #START_STAMP(stamp) := newStamp
                 let newStamp : long = VClock.@get(/ exh)
                 apply revalidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, chkpnt)
         ;
@@ -166,7 +166,7 @@ structure RS = TL2OrderedRS
                 then 
                     if Equal(sentinel, RS.NilRead)
                     then 
-                        do #CURRENT_STAMP(stamp) := newStamp 
+                        do #START_STAMP(stamp) := newStamp 
                         return()  (*this must have been our first pass through*)
                     else @abort(readSet, rs, kCount, eagerValidate, newStamp, stamp/ exh) (*we tried reading from "rs" before, but it failed, try again*)
                 else
@@ -195,7 +195,7 @@ structure RS = TL2OrderedRS
                     end
             let newStamp : long = VClock.@get(/ exh)
             let oldOldStamp : stamp = #OLD_STAMP(stamp)
-            do #OLD_STAMP(stamp) := #CURRENT_STAMP(stamp)
+            do #OLD_STAMP(stamp) := #START_STAMP(stamp)
             do apply eagerValidate(#LONG_PATH(readSet), RS.NilRead, newStamp, 0, RS.NilRead)
             do #OLD_STAMP(stamp) := oldOldStamp
             return()
@@ -387,8 +387,8 @@ structure RS = TL2OrderedRS
         define inline @finish-validate(readSet : read_set, chkpnt : RS.ritem, stamp : stamp_rec, kCount : int, newStamp : stamp / exh:exh) : () = 
             let chkpnt : with_k = (with_k) chkpnt
             let tv : tvar = #R_ENTRY_TVAR(chkpnt)
-            do #OLD_STAMP(stamp) := #CURRENT_STAMP(stamp)
-            do #CURRENT_STAMP(stamp) := newStamp
+            do #OLD_STAMP(stamp) := #START_STAMP(stamp)
+            do #START_STAMP(stamp) := newStamp
             do #R_ENTRY_NEXT(chkpnt) := RS.NilRead
             let current : any = @read-tvar(tv, stamp, readSet / exh)
             let newRS : read_set = alloc(kCount, #LONG_PATH(readSet), chkpnt, chkpnt)
@@ -469,7 +469,7 @@ structure RS = TL2OrderedRS
                         if I64Eq(owner, lockVal)
                         then apply validate(next, chkpnt, newStamp, kCount)
                         else 
-                            if I64Lte(owner, #CURRENT_STAMP(startStamp))
+                            if I64Lte(owner, #START_STAMP(startStamp))
                             then
                                 if I64Eq(I64AndB(owner, 1:long), 1:long)
                                 then

@@ -1,5 +1,9 @@
-(*0xFFFFFFFFFFFFFFFE*)
-#define STAMP_BITS (18446744073709551614:long)
+(* Use most significant bit for lock
+ * This way we can tell if something is locked *or*
+ * newer than our current stamp with one instruction
+ *)
+(*0x7FFFFFFFFFFFFFFF*)
+#define STAMP_BITS (9223372036854775807:long)
 
 (*TVAR fields*)
 #define REF_COUNT     3
@@ -27,9 +31,14 @@
 
 (*STAMP RECORD*)
 #define THREAD_ID     3
-#define CURRENT_STAMP 0
+#define START_STAMP 0
+#define LOCK_VAL      1
 #define OLD_STAMP     2
 
 #define UNBOX 0
 
-#define LOCKED(x) I64Eq(I64AndB(x, 1:long), 1:long)
+(*x >= 0x8000000000000000*)
+#define LOCKED(x) I64Gte(x, 9223372036854775808:long)
+
+#define SET_MSB(x) I64OrB(x, 9223372036854775808:long)
+#define MAX_STAMP 9223372036854775807:long

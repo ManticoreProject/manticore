@@ -7,11 +7,22 @@ struct
             of arg::arg'::args => 
                 if String.same(f, arg) then SOME arg'
                 else getArg f (arg'::args)
+	     | arg::nil => 
+	       if String.same(f, arg) then SOME "" else NONE
              |_ => NONE
 
     val args = CommandLine.arguments ()
 
     val whichSTM = case getArg "-stm" args of SOME s => s | NONE => "bounded" (*use bounded partial abort by default*)
+
+    fun usage() = 
+	print "Valid STM implementations include:\n\
+               bounded - bounded partial abort TL2\n\
+               full - full abort TL2\n\
+               orderedTL2 - bounded partial abort TL2 with an ordered read set\n\
+               norec - full abort NOrec\n\
+               orderedNoRec - bounded partial abort NOrec with an ordered read set\n\
+               tiny - TinySTM (full abort)\n"
 
     val (getFunction,put,atomic,new,abort) =
 	case whichSTM
@@ -45,7 +56,7 @@ struct
 		       TinySTM.atomic,
 		       TinySTM.new,
 		       TinySTM.abort)
-	  |_ => raise Fail "STM not recognized\n"
+	  |_ => (usage(); raise Fail "STM not recognized\n")
 
     (*won't typecheck without these nonsense bindings*)
     val get : 'a tvar -> 'a = getFunction

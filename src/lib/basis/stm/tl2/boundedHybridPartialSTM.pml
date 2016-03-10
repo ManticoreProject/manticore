@@ -32,7 +32,7 @@ struct
     
         typedef stamp = VClock.stamp;
         typedef tvar = FullAbortSTM.tvar;
-	
+        typedef stamp_rec = FullAbortSTM.stamp_rec;	
         typedef with_k =  ![enum(5),                (*0: tag*)
                             tvar,                   (*1: tvar operated on*)
                             ritem ,                 (*2: next on long path*)
@@ -48,28 +48,22 @@ struct
          * If this returns, then the entire read set is valid, and the time stamp
          * will have been updated to what the clock was at, prior to validation
          *)
-        define @eager-validate(readSet : ritem, stamp : ![long, int,int,long] / exh:exh) : () = 
+        define @eager-validate(readSet : ritem, stamp : stamp_rec / exh:exh) : () = 
             fun eagerValidate(rs : ritem, chkpnt : ritem, newStamp : long, kCount : int) : () = 
                 case rs
                    of WithK(tv:tvar, next : ritem, k:cont(any), ws:witem, sp:ritem) =>
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Lte(owner, #0(stamp))  (*still valid*)
+                        if U64Lte(owner, #0(stamp))  (*still valid*)
                         then 
-                            if I64Eq(I64AndB(owner, 1:long), 1:long)
-                            then apply eagerValidate(next, rs, newStamp, 1)
-                            else 
-                                case chkpnt 
-                                   of Abort(x:unit) => apply eagerValidate(next, rs, newStamp, 1) (*we need a checkpoint*)
-                                    | _ => apply eagerValidate(next, chkpnt, newStamp, I32Add(kCount, 1))
-                                end
+                            case chkpnt 
+                               of Abort(x:unit) => apply eagerValidate(next, rs, newStamp, 1) (*we need a checkpoint*)
+                                | _ => apply eagerValidate(next, chkpnt, newStamp, I32Add(kCount, 1))
+                            end
                         else apply eagerValidate(next, rs, newStamp, 1) 
                     | WithoutK(tv:tvar, next:ritem) =>
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Lte(owner, #0(stamp))
-                        then
-                            if I64Eq(I64AndB(owner, 1:long), 1:long)
-                            then apply eagerValidate(next, Abort(UNIT), newStamp, 0)
-                            else apply eagerValidate(next, chkpnt, newStamp, kCount)
+                        if U64Lte(owner, #START_STAMP(stamp))
+                        then apply eagerValidate(next, chkpnt, newStamp, kCount)
                         else apply eagerValidate(next, Abort(UNIT), newStamp, 0)
                     | NilRead => 
                         case chkpnt 
@@ -79,27 +73,18 @@ struct
                                 throw abortK()
                             | WithK(tv:tvar, next:ritem, abortK:cont(any), ws:witem, sp:ritem) => 
                                 let v1 : long = #CURRENT_LOCK(tv)
-                                do FenceRead()
                                 let res : any = #TVAR_CONTENTS(tv)
-                                do FenceRead()
                                 let v2 : long = #CURRENT_LOCK(tv)
-                                let v1Lock : long = I64AndB(v1, 1:long)
-                                if I64Eq(v1Lock, 0:long)  (*unlocked*)
-                                then
+                                if U64Lte(v1, newStamp)
+                                then 
                                     if I64Eq(v1, v2)
                                     then 
-                                        if I64Lte(v1, newStamp)
-                                        then 
-                                            let newRS : read_set = alloc(kCount, chkpnt, chkpnt)
-                                            do #0(stamp) := newStamp
-                                            do FLS.@set-key(READ_SET, newRS / exh)
-                                            do FLS.@set-key(WRITE_SET, ws / exh)
-                                            BUMP_PABORT
-                                            throw abortK(res)
-                                        else 
-                                            do #0(stamp) := newStamp
-                                            let newStamp : long = VClock.@get(/ exh)
-                                            apply eagerValidate(chkpnt, chkpnt, newStamp, 0)
+                                        let newRS : read_set = alloc(kCount, chkpnt, chkpnt)
+                                        do #0(stamp) := newStamp
+                                        do FLS.@set-key(READ_SET, newRS / exh)
+                                        do FLS.@set-key(WRITE_SET, ws / exh)
+                                        BUMP_PABORT
+                                        throw abortK(res)
                                     else 
                                         do #0(stamp) := newStamp
                                         let newStamp : long = VClock.@get(/ exh)
@@ -115,42 +100,28 @@ struct
         ;
 
         (*only allocates the retry loop closure if the first attempt fails*)
-        define inline @read-tvar2(tv : tvar, stamp : ![stamp, int,int,long], readSet : ritem / exh : exh) : any = 
+        define inline @read-tvar2(tv : tvar, stamp : stamp_rec, readSet : ritem / exh : exh) : any = 
             fun lp() : any = 
                 let v1 : stamp = #CURRENT_LOCK(tv)
-                do FenceRead()
                 let res : any = #TVAR_CONTENTS(tv)
-                do FenceRead()
                 let v2 : stamp = #CURRENT_LOCK(tv)
-                let v1Lock : long = I64AndB(v1, 1:long)
-                if I64Eq(v1Lock, 0:long)  (*unlocked*)
-                then
+                if U64Lte(v1, #START_STAMP(stamp))
+                then 
                     if I64Eq(v1, v2)
-                    then 
-                        if I64Lte(v1, #0(stamp))
-                        then return(res)
-                        else do @eager-validate(readSet, stamp / exh) apply lp()
+                    then return(res)
                     else do @eager-validate(readSet, stamp / exh) apply lp()
                 else do @eager-validate(readSet, stamp / exh) apply lp()
             apply lp()
         ;
 
-        define inline @read-tvar(tv : tvar, stamp : ![stamp, int,int,long], readSet : ritem / exh : exh) : any = 
+        define inline @read-tvar(tv : tvar, stamp : stamp_rec, readSet : ritem / exh : exh) : any = 
             let v1 : stamp = #CURRENT_LOCK(tv)
-            do FenceRead()
             let res : any = #TVAR_CONTENTS(tv)
-            do FenceRead()
             let v2 : stamp = #CURRENT_LOCK(tv)
-            let v1Lock : long = I64AndB(v1, 1:long)
-            if I64Eq(v1Lock, 0:long)  (*unlocked*)
+            if U64Lte(v1, #START_STAMP(stamp))  (*unlocked*)
             then
                 if I64Eq(v1, v2)
-                then 
-                    if I64Lte(v1, #0(stamp))
-                    then return(res)
-                    else 
-                        do @eager-validate(readSet, stamp / exh)
-                        @read-tvar2(tv, stamp, readSet / exh)
+                then return(res)
                 else 
                     do @eager-validate(readSet, stamp / exh)
                     @read-tvar2(tv, stamp, readSet / exh)
@@ -166,7 +137,7 @@ struct
                else do ccall M_Print("Trying to read outside a transaction!\n")
                     let e : exn = Fail(@"Reading outside transaction\n")
                     throw exh(e)
-            let myStamp : ![stamp, int,int,long] = FLS.@get-key(STAMP_KEY / exh)
+            let myStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
             let readSet : read_set = FLS.@get-key(READ_SET / exh)
             let writeSet : witem = FLS.@get-key(WRITE_SET / exh)
             fun chkLog(writeSet : witem) : Option.option = (*use local copy if available*)
@@ -249,7 +220,7 @@ struct
         ;
 
         define @commit(/exh:exh) : () = 
-            let startStamp : ![stamp, int,int,long] = FLS.@get-key(STAMP_KEY / exh)
+            let startStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
             fun release(locks : witem) : () = 
                 case locks 
                     of Write(tv:tvar, contents:any, tl:witem) => 
@@ -259,8 +230,8 @@ struct
                 end
             let readSet : read_set = FLS.@get-key(READ_SET / exh)
             let writeSet : witem = FLS.@get-key(WRITE_SET / exh)
-            let rawStamp: long = #0(startStamp)
-            let lockVal : long = I64Add(I64LSh(#THREAD_ID(startStamp), 1:long), 1:long)
+            let rawStamp: long = #START_STAMP(startStamp)
+            let lockVal : long = #LOCK_VAL(startStamp)
             fun validate(rs:ritem, locks:witem, newStamp : stamp, chkpnt : ritem, i:int) : () = 
                 case rs
                    of NilRead => 
@@ -291,26 +262,20 @@ struct
                                 | _ => apply validate(next, locks, newStamp, chkpnt, I32Add(i, 1))
                             end
                         else 
-                            if I64Lte(owner, rawStamp)
-                            then (*older than my timestamp*)
-                                if I64Eq(I64AndB(owner, 1:long), 1:long)
-                                then apply validate(next, locks, newStamp, rs, 1)
-                                else (*not locked, and older than my timestamp*)
-                                    case chkpnt 
-                                       of Abort(x:unit) => apply validate(next, locks, newStamp, rs, 1)
-                                        | _ => apply validate(next, locks, newStamp, chkpnt, I32Add(i, 1))
-                                    end
+                            if U64Lte(owner, rawStamp)
+                            then (*stamp valid*)
+                                case chkpnt 
+                                   of Abort(x:unit) => apply validate(next, locks, newStamp, rs, 1)
+                                    | _ => apply validate(next, locks, newStamp, chkpnt, I32Add(i, 1))
+                                end
                             else apply validate(next, locks, newStamp, rs, 1)
                     | WithoutK(tv:tvar, next:ritem) =>
                         let owner : long = #CURRENT_LOCK(tv)
                         if I64Eq(owner, lockVal)
                         then apply validate(next, locks, newStamp, chkpnt, i)
                         else 
-                            if I64Lte(owner, rawStamp)
-                            then 
-                                if I64Eq(I64AndB(owner, 1:long), 1:long)
-                                then apply validate(next, locks, newStamp, Abort(UNIT), 0)
-                                else apply validate(next, locks, newStamp, chkpnt, i)
+                            if U64Lte(owner, rawStamp)
+                            then apply validate(next, locks, newStamp, chkpnt, i)
                             else apply validate(next, locks, newStamp, Abort(UNIT), 0)
                 end
             fun acquire(ws:witem, acquired:witem) : witem = 
@@ -320,19 +285,13 @@ struct
                         if I64Eq(owner, lockVal)
                         then apply acquire(tl, acquired)  (*we already locked this*)
                         else
-                            if I64Eq(I64AndB(owner, 1:long), 0:long)
+                            if U64Lte(owner, rawStamp)
                             then
-                                if I64Lte(owner, rawStamp)
-                                then
-                                    let casRes : long = CAS(&CURRENT_LOCK(tv), owner, lockVal)
-                                    if I64Eq(casRes, owner)
-                                    then 
-                                        do #PREV_LOCK(tv) := owner 
-                                        apply acquire(tl, Write(tv, contents, acquired))
-                                    else 
-                                        do apply release(acquired) 
-                                        do @eager-validate(#LONG_PATH(readSet), startStamp / exh)
-                                        apply acquire(writeSet, NilWrite)
+                                let casRes : long = CAS(&CURRENT_LOCK(tv), owner, lockVal)
+                                if I64Eq(casRes, owner)
+                                then 
+                                    do #PREV_LOCK(tv) := owner 
+                                    apply acquire(tl, Write(tv, contents, acquired))
                                 else 
                                     do apply release(acquired) 
                                     do @eager-validate(#LONG_PATH(readSet), startStamp / exh)
@@ -341,6 +300,7 @@ struct
                                 do apply release(acquired) 
                                 do @eager-validate(#LONG_PATH(readSet), startStamp / exh)
                                 apply acquire(writeSet, NilWrite)
+                       
                     | NilWrite=> return(acquired)
                 end
             fun update(writes:witem, newStamp : stamp) : () = 
@@ -370,9 +330,9 @@ struct
                      do FLS.@set-key(READ_SET, alloc(0, NilRead, NilRead) / exh)  (*initialize STM log*)
                      do FLS.@set-key(WRITE_SET, NilWrite / exh)
                      let newStamp : stamp = VClock.@get(/ exh)
-                     let stamp : ![stamp, int] = FLS.@get-key(STAMP_KEY / exh)
-                     do #1(stamp) := 0
-                     do #0(stamp) := newStamp
+                     let stamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
+                     do #START_STAMP(stamp) := newStamp
+                     do #LOCK_VAL(stamp) := SET_MSB(#THREAD_ID(stamp))
                      do #0(in_trans) := true
                      cont abortK() = BUMP_FABORT throw enter()
                      do FLS.@set-key(ABORT_KEY, abortK / exh)
