@@ -140,6 +140,11 @@ structure Prim =
       | I64Gt of 'var * 'var
       | I64Gte of 'var * 'var
       | U64Lt of 'var * 'var
+      | U64Lte of 'var * 'var
+      | U64Gt of 'var * 'var
+      | U64Gte of 'var * 'var
+      | U64Eq of 'var * 'var
+      | U64NEq of 'var * 'var
       | F32Eq of 'var * 'var
       | F32NEq of 'var * 'var
       | F32Lt of 'var * 'var

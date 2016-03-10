@@ -40,6 +40,11 @@ structure CondUtil : sig
       | nameOf (P.I64Gt _) = "I64Gt"
       | nameOf (P.I64Gte _) = "I64Gte"
       | nameOf (P.U64Lt _) = "U64Lt"
+      | nameOf (P.U64Lte _) = "U64Lte"
+      | nameOf (P.U64Gt _) = "U64Gt"
+      | nameOf (P.U64Gte _) = "U64Gte"
+      | nameOf (P.U64Eq _) = "U64Eq"
+      | nameOf (P.U64NEq _) = "U64NEq"
       | nameOf (P.F32Eq _) = "F32Eq"
       | nameOf (P.F32NEq _) = "F32NEq"
       | nameOf (P.F32Lt _) = "F32Lt"
@@ -79,6 +84,11 @@ structure CondUtil : sig
       | varsOf (P.I64Gt(a, b)) = [a, b]
       | varsOf (P.I64Gte(a, b)) = [a, b]
       | varsOf (P.U64Lt(a, b)) = [a, b]
+      | varsOf (P.U64Lte(a, b)) = [a, b]
+      | varsOf (P.U64Gt(a, b)) = [a, b]
+      | varsOf (P.U64Gte(a, b)) = [a, b]
+      | varsOf (P.U64Eq(a, b)) = [a, b]
+      | varsOf (P.U64NEq(a, b)) = [a, b]
       | varsOf (P.F32Eq(a, b)) = [a, b]
       | varsOf (P.F32NEq(a, b)) = [a, b]
       | varsOf (P.F32Lt(a, b)) = [a, b]
@@ -131,6 +141,11 @@ structure CondUtil : sig
       | explode (P.I64Gt(a, b)) = (p2 P.I64Gt, [a, b])
       | explode (P.I64Gte(a, b)) = (p2 P.I64Gte, [a, b])
       | explode (P.U64Lt(a, b)) = (p2 P.U64Lt, [a, b])
+      | explode (P.U64Lte(a, b)) = (p2 P.U64Lte, [a, b])
+      | explode (P.U64Gt(a, b)) = (p2 P.U64Gt, [a, b])
+      | explode (P.U64Gte(a, b)) = (p2 P.U64Gte, [a, b])
+      | explode (P.U64Eq(a, b)) = (p2 P.U64Eq, [a, b])
+      | explode (P.U64NEq(a, b)) = (p2 P.U64NEq, [a, b])
       | explode (P.F32Eq(a, b)) = (p2 P.F32Eq, [a, b])
       | explode (P.F32NEq(a, b)) = (p2 P.F32NEq, [a, b])
       | explode (P.F32Lt(a, b)) = (p2 P.F32Lt, [a, b])
