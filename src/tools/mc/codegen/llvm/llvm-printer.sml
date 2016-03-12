@@ -302,6 +302,7 @@ fun output (outS, module as C.MODULE { name = module_name,
       
       (* the noattr instruction maker *)
       val mk = LB.mk b AS.empty
+      val cast = LB.cast b
       
       fun stubIt env cfgVar = let
       (* NOTE stubIt is for temporary usage only. will assign
@@ -402,15 +403,42 @@ fun output (outS, module as C.MODULE { name = module_name,
       
       
       and genSelect(env, (lhsVar, i, rhsVar)) = let
+      (* In CFG, there appears to be an implicit type casting going on with SELECT:
+      
+t<10CC9>#1 : any
+let t<10CCB>#1:[any] = ([any])t<10CC9>
+let t<10CCC>#2:[[cont([cont(any/enum(0)),...]/enum(0)),...],[any,any]] = #0 t<10CCB>
+
+another example:
+
+deques<11107>#1:any
+let deques<1110A>#1:[any,any] = ([any,any])deques<11107>
+let d<1110B>#1:[deque] = #0 deques<1110A>
+
+And this is causing later problems because the results of these two selects have the wrong
+type, and later selects from these variables in CFG will hit an error.
+
+Thus, we need to account for this and add a cast. For now I'm keeping it conservative by using BitCast instead of using an autoCast.      
+
+      *)
+      
+        val implicitCaster = let
+                val lhsTy = CFG.Var.typeOf lhsVar
+                val rhsTy = CFGTyUtil.select(CFG.Var.typeOf rhsVar, i)
+            in
+                case (CFGTyUtil.equal(lhsTy, rhsTy), CFGTyUtil.equal(CFGTy.T_Any, rhsTy))
+                of (true, _) => (fn x => x) (* do nothing *)
+                 | (false, _) => (fn instr => cast Op.BitCast (instr, LT.typeOf lhsTy))
+                 (*| _ => raise Fail "did not expect an implicit cast of RHS non-Any ty to some other ty in a select"*)
+            end
+        
+      
+      
         val llv = lookupV(env, rhsVar)        
       in
         (case calcAddr i llv
-            of SOME addr => insertV(env, lhsVar, mk Op.Load #[addr])
-             | NONE => ((print (
-                 "problem translating SELECT involving CFG var "
-                 ^ (CV.toString rhsVar) ^ "\nwhich became LLVM var of type "
-                 ^ (LT.fullNameOf(LB.toTy llv)) ^ "\n"
-                 )) ; env)
+            of SOME addr => insertV(env, lhsVar, implicitCaster (mk Op.Load #[addr]))
+             | NONE => ( debug "SELECT" rhsVar llv ; env)
             (* esac *))
         
       end
@@ -429,9 +457,15 @@ fun output (outS, module as C.MODULE { name = module_name,
       in
         (case calcAddr i llv
             of SOME newLLVar => insertV(env, lhsVar, newLLVar)
-             | NONE => (print "problem with genAddrOf\n" ; stubIt env lhsVar )
+             | NONE => ( debug "AddrOf" var llv ; stubIt env lhsVar )
         (* esac *))
       end
+      
+      and debug thing rhsVar llv = (print (
+          "problem translating " ^ thing ^ " whose argument is CFG var "
+          ^ (CV.toString rhsVar) ^ " : " ^ (CFGTyUtil.toString(CFG.Var.typeOf rhsVar)) ^ "\nwhich became LLVM var of type "
+          ^ (LT.fullNameOf(LB.toTy llv)) ^ "\n"
+          ))
     
       (* below is some gepType testing code
       

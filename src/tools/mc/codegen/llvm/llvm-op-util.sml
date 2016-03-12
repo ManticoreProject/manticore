@@ -34,8 +34,6 @@ local
     val float = LT.floatTy
     val double = LT.doubleTy
     
-    
-    
     fun id x = x
     
     fun addrArith bb sext opc = let
@@ -53,8 +51,6 @@ local
             toPtr (mk opc #[toI64 adr, doSext off]) (LB.toTy adr))
     end
     
-    (* TODO llvm frontend guide suggests using fastmath and NSW etc *)
-
 in
 
 (* b is the basic Op.block, p is the 'var prim, returns
@@ -171,9 +167,23 @@ in (case p
     | P.AdrLoadI32 _
     | P.AdrLoadI64 _
     | P.AdrLoadF32 _
-    | P.AdrLoadF64 _
-    | P.AdrLoadAdr _ 
-    | P.AdrLoad _) => (fn [a] => f e Op.Load #[a])
+    | P.AdrLoadF64 _) => (fn [a] => f e Op.Load #[a])
+
+  | (P.AdrLoadAdr _) => (fn [a] => let
+          val _ = ()
+          (*val _ = print ("AdrLoadAdr arg is " ^ ((LT.nameOf o LB.toTy) a) ^ "\n")*)
+      in
+          c Op.BitCast (f e Op.Load #[a], LT.mkPtr(LT.uniformTy))
+      end
+      )
+      
+  | (P.AdrLoad _) => (fn [a] => let
+            val _ = ()
+            (*val _ = print ("AdrLoad arg is " ^ ((LT.nameOf o LB.toTy) a) ^ "\n")*)
+        in
+            f e Op.Load #[a]
+        end
+        )
   
   | ( P.AdrStoreI8 _
     | P.AdrStoreI16 _

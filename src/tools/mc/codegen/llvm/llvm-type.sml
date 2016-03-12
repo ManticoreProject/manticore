@@ -117,6 +117,7 @@ structure LLVMType : sig
     val floatTy : ty
     val doubleTy : ty
     val boolTy : ty
+    val uniformTy : ty
     
     (* common integer types *)
     val i64 : ty
@@ -322,10 +323,13 @@ structure LLVMType : sig
     fun fullNameOf x = mkString fullNameOf x
        
        
-    
-    val allocPtrTy = mkPtr(mkInt(cnt 8))
-    val vprocTy = mkPtr(mkInt(cnt 8))
-    val dequeTy = mkPtr(mkInt(cnt 8))
+    val uniformTy = mkPtr(mkInt(cnt 64)) 
+        (* the "any" type. we want an i64* instead of an i8 because SELECT(2, any) will
+           generate a GEP, and we want it to calculate offsets of 8 bytes at a time. *)
+           
+    val allocPtrTy = mkPtr(uniformTy)
+    val vprocTy = mkPtr(uniformTy)
+    val dequeTy = mkPtr(uniformTy)
     val boolTy = mkInt(cnt 1)
     val i64 = mkInt(cnt 64)
     val i32 = mkInt(cnt 32)
@@ -402,7 +406,7 @@ structure LLVMType : sig
   
   fun typeOf (cty : CT.ty) : ty = (case cty
 
-    of CT.T_Any => mkPtr(mkInt(cnt 8))
+    of CT.T_Any => uniformTy
 
      (* in a mixed type representation, the GC expects wordsize width elements.
 
