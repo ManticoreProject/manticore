@@ -51,6 +51,18 @@ local
             toPtr (mk opc #[toI64 adr, doSext off]) (LB.toTy adr))
     end
     
+    (* arrays in CFG are represented with "ptr to any", thus we need to do a cast.  *)
+    fun getArrOffset bb elmTy arrInstr idxInstr = let
+            val castedArr = LB.cast bb Op.BitCast (arrInstr, LT.mkPtr elmTy)
+            val offset = LB.calcAddr_ib bb (castedArr, #[idxInstr])
+        in
+            offset
+        end
+    
+    and arrayLoad bb elmTy = (fn [arr, idx] => LB.mk bb e Op.Load #[getArrOffset bb elmTy arr idx])
+        
+    and arrayStore bb elmTy = (fn [arr, idx, elm] => LB.mk bb e Op.Store #[getArrOffset bb elmTy arr idx, elm])
+    
 in
 
 (* b is the basic Op.block, p is the 'var prim, returns
@@ -72,7 +84,11 @@ in (case p
     unsigned integers, but in CFG types its
     not clear whether we manage signedness properly.
     same goes for constants. we might need to
-    do a conversion or something *)
+    do a conversion or something. 
+    
+    One thing to keep in mind is that all of
+    our integers in CFG _do_ wrapping, so NSW/NUW are _not_ to be added *)
+    
   | (P.I32Mul _ | P.I64Mul _ | P.U64Mul _) 
       => (fn [a, b] => f e Op.Mul #[a, b])
       
@@ -152,7 +168,7 @@ in (case p
   (* NOTE we can't use GEP for these address prims mostly because GEP
      requires the offsets to be constants, whereas
      AdrAdd does not nessecarily do that. we lose out on some
-     alias analysis friendliness, but we can worry about that later *)
+     alias analysis friendliness, but we can worry about that later. *)
      
   | P.AdrAddI32 _ => addrArith bb true Op.Add
   | P.AdrSubI32 _ => addrArith bb true Op.Sub
@@ -167,23 +183,14 @@ in (case p
     | P.AdrLoadI32 _
     | P.AdrLoadI64 _
     | P.AdrLoadF32 _
-    | P.AdrLoadF64 _) => (fn [a] => f e Op.Load #[a])
+    | P.AdrLoadF64 _
+    | P.AdrLoad _  ) => (fn [a] => f e Op.Load #[a])
 
-  | (P.AdrLoadAdr _) => (fn [a] => let
-          val _ = ()
-          (*val _ = print ("AdrLoadAdr arg is " ^ ((LT.nameOf o LB.toTy) a) ^ "\n")*)
-      in
-          c Op.BitCast (f e Op.Load #[a], LT.mkPtr(LT.uniformTy))
-      end
-      )
-      
-  | (P.AdrLoad _) => (fn [a] => let
-            val _ = ()
-            (*val _ = print ("AdrLoad arg is " ^ ((LT.nameOf o LB.toTy) a) ^ "\n")*)
-        in
-            f e Op.Load #[a]
-        end
-        )
+  | (P.AdrLoadAdr _) => 
+        (* we have to bitcast after this kind of load because of the type signature of AdrLoadAdr in prim-ty,
+          the expected result is to be a ptr to any, and sometimes you do this load on an any type I believe,
+          which would be one star short *)
+        (fn [a] => c Op.BitCast (f e Op.Load #[a], LT.mkPtr(LT.uniformTy)))
   
   | ( P.AdrStoreI8 _
     | P.AdrStoreI16 _
@@ -192,7 +199,7 @@ in (case p
     | P.AdrStoreF32 _
     | P.AdrStoreF64 _ ) => (fn [targ, value] => f e Op.Store #[targ, value])
 
-  | (P.AdrStoreAdr _
+  | (P.AdrStoreAdr _ 
      | P.AdrStore _ ) => (fn [targ, value] => 
       f e Op.Store #[c Op.BitCast (targ, LT.mkPtr(LB.toTy value)), value])
       
@@ -222,20 +229,26 @@ in (case p
       
         
   
-    (*
+
     
   (* array load operations *)
-    | P.ArrLoadI32 _ =>
-    | P.ArrLoadI64 _ =>
-    | P.ArrLoadF32 _ =>
-    | P.ArrLoadF64 _ =>
-    | P.ArrLoad _ =>	(* load a uniform value *)
+    | P.ArrLoadI32 _ => arrayLoad bb i32
+    | P.ArrLoadI64 _ => arrayLoad bb i64
+    | P.ArrLoadF32 _ => arrayLoad bb float
+    | P.ArrLoadF64 _ => arrayLoad bb double
+    
+    (* load a uniform value *)
+    | P.ArrLoad _ =>  arrayLoad bb LT.uniformTy	
+
+
   (* array store operations *)
-    | P.ArrStoreI32 _ => * 'var
-    | P.ArrStoreI64 _ => * 'var
-    | P.ArrStoreF32 _ => * 'var
-    | P.ArrStoreF64 _ => * 'var
-    | P.ArrStore _ => * 'var (* store a uniform value *)*)
+    | P.ArrStoreI32 _ => arrayStore bb i32
+    | P.ArrStoreI64 _ => arrayStore bb i64
+    | P.ArrStoreF32 _ => arrayStore bb float
+    | P.ArrStoreF64 _ => arrayStore bb double
+    
+    (* store a uniform value *)
+    | P.ArrStore _ => arrayStore bb LT.uniformTy
     
   (* atomic Op.operations *)
     | (P.I32FetchAndAdd _ | P.I64FetchAndAdd _) => 
@@ -250,8 +263,8 @@ in (case p
         )
     
     (*
-    | P.CAS _ => * 'var	(* compare and swap; returns old value *)
-  (* memory-system operations *)
+  (* memory-system operations 
+        NOTE in LLVM 3.8/3.9 they have intrinsics for Pause and TSC, so use those to remain platform independent *)
   
     | Pause				(* yield processor to allow memory operations to be seen *)
     | FenceRead			(* memory fence for reads *)

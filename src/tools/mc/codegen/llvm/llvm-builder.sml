@@ -79,20 +79,49 @@ structure LLVMBuilder : sig
     
     val undef : ty -> constant
 
-
+    (* The do-it-all LLVM basic block builder that you will become friends with.
+    
+       The way it works conceptually is similar to appending to the basic block, but
+       this appending is done using references under the hood so that you can partially apply mk to
+       a basic block in progress, and then reuse that same partially applied function over and over
+       to keep appending to that one block. It is remnicent of an object-oriented style.
+    *)
     val mk : t -> attrs -> op_code -> instr vector -> instr
 
 
-    (* getelementptr *)
+    (* a note about the different flavors of GEP supported by this interface below:
+        "The type of each index argument depends on the type it is indexing into. 
+        
+        (1) When indexing into a (optionally packed) structure, only i32 integer constants are allowed (when using a vector of indices they must all be the same i32 integer constant). 
+        
+        (2) When indexing into an array, pointer or vector, integers of any width are allowed, and they are not required to be constant. These integers are treated as signed values where relevant."
+        
+        So, gep and gep_ib correspond to case (1). calcAddr and calcAddr_ib correspond to case (2).
+        
+        The reason for this distinction in LLVM is presumably because it is not obvious what the type
+        of a GEP is if it involves indexing into a structure without constants, whereas the other types
+        can only have one possible type. NOTE We might be missing the following case:
+        
+        gep [ 32 x structTy ]*  using offsets i32 %dynamicVal, i32 <const val>
+        
+        GEP is honestly so overloaded and has many different caveats that I don't think it's even
+        worth trying to enforce any further correctness within this builder interface. unfortunately we
+        need to determine result type info so :/ 
+     *)
+
     val gep : t -> (instr * constant vector) -> instr 
 
-    (* getelementptr inbounds *)
     val gep_ib : t -> (instr * constant vector) -> instr 
     
-    val extractV : t -> (instr * constant vector) -> instr 
+    val calcAddr : t -> (instr * instr vector) -> instr
+    
+    val calcAddr_ib : t -> (instr * instr vector) -> instr
 
-    (* NOTE(kavon): something not supported right now is GEPs that calculate a
+    (* NOTE(kavon): something probably not supported right now is GEPs that calculate a
        vector of addresses, extend the interface if desired. *)
+       
+       
+    val extractV : t -> (instr * constant vector) -> instr 
 
     val cast : t -> op_code -> (instr * ty) -> instr
 
@@ -701,8 +730,22 @@ structure LLVMBuilder : sig
   local
 
     val i32Ty = LT.mkInt(LT.cnt 32)
+    
+    (* for gep and gep_ib *)
+    fun stripI32 offset = (case offset
+      of C_Int(maybei32Ty, i) => 
+        (* constant int offsets for struct positions must be i32 type and
+           this should not overflow *)
+        (typeCheck "gep" (i32Ty, maybei32Ty) ; LargeInt.toInt i)
 
-    fun genGep mode = 
+      | _ => raise Fail "gep: offsets in GEP must be constant i32's"
+      (* esac *))
+      
+    fun stripDummy instr = if (Op.isInt o toTy) instr 
+        then 0 
+        else raise Fail "offsets for address calc must be integers!"
+
+    fun genGep mode stripper cvtr = 
       fn blk => 
       fn (arg1 as INSTR{result,...}, offsetSeq) => let
 
@@ -719,16 +762,9 @@ structure LLVMBuilder : sig
                   | _ => raise Fail "gep: arg must be a var"
               (* esac *))
 
-        fun stripI32 offset = (case offset
-          of C_Int(maybei32Ty, i) => 
-            (* constant int offsets for struct positions must be i32 type and
-               this should not overflow *)
-            (typeCheck "gep" (i32Ty, maybei32Ty) ; LargeInt.toInt i)
+        
 
-          | _ => raise Fail "gep: offsets in GEP must be constant i32's"
-          (* esac *))
-
-        val seq : int vector = V.map stripI32 offsetSeq
+        val seq : int vector = V.map stripper offsetSeq
 
         val tyy = (case mode
                     of (OP_GEP | OP_GEP_IB) => LT.gepType(argTy, seq)
@@ -740,7 +776,7 @@ structure LLVMBuilder : sig
            the sequence of offsets. *)
         val args = V.tabulate(numOffsets + 1,
                       fn 0 => arg1
-                       | i => fromC(V.sub(offsetSeq, i-1)))
+                       | i => cvtr(V.sub(offsetSeq, i-1)))
 
         val reg = LV.new("r", tyy)
       in
@@ -753,17 +789,41 @@ structure LLVMBuilder : sig
           }
         )
       end
+      
+      
+      (*fun dummyOffsets nonConstOffs = V.map (fn x => fromC(intC(i32Ty, 0))) nonConstOffs
+      
+      fun calcAddrMkr mode = 
+        fn blk => 
+        fn (arg1 as INSTR{result,...}, offsetSeq) => let
+        
+            val argTy = (case result
+                     of R_Var v => LV.typeOf v
+                      | R_Const(C_Undef ty) => ty
+                     (* GEP is only valid for pointer types,
+                        so it could only be from a var. *)
+                      | _ => raise Fail "calcAddrMkr: arg must be a var"
+                  (* esac *))
+        
+            val resultTy = LV.gepType()*)
 
 
   in
 
     (* gep : t -> (instr * constant vector) -> instr *)
-    val gep = genGep OP_GEP
+    val gep = genGep OP_GEP stripI32 fromC
 
     (* gep_ib : t -> (instr * constant vector) -> instr *)
-    val gep_ib = genGep OP_GEP_IB
+    val gep_ib = genGep OP_GEP_IB stripI32 fromC
     
-    val extractV = genGep OP_ExtractVal
+    (* calcAddr : t -> (instr * instr vector) -> instr *)
+    val calcAddr = genGep OP_GEP stripDummy (fn x => x)
+    
+    val calcAddr_ib = genGep OP_GEP_IB stripDummy (fn x => x)
+    
+    
+    
+    val extractV = genGep OP_ExtractVal stripI32 fromC
 
   end
 
