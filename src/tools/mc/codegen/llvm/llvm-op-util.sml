@@ -40,6 +40,17 @@ local
         val cast = LB.cast bb
         val mk = LB.mk bb e
         
+        (* TODO NOTE this was written before LB.calcAddr was added,
+           and we can eliminate inttoptr/ptrtoint and sext business and just do this:
+           
+           %r1 = bitcast adr to i8*
+           %r2 = GEP %r1, off (whatever int type it is, whether const or not, will work, make sure to negate if the opc is a subtract since GEP is additive)
+           %r3 = bitcast %r2 to adrTy
+           
+           its unclear whether this will have a benefit as of now (3/13), and since this
+           currently works lets leave it alone
+            *)
+        
         fun sextI64 i = cast Op.SExt (i, i64)
         fun toI64 a = cast Op.PtrToInt (a, i64)
         fun toPtr i ty = cast Op.IntToPtr (i, ty)    

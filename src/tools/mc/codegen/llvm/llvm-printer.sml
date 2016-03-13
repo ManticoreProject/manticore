@@ -335,6 +335,18 @@ fun output (outS, module as C.MODULE { name = module_name,
           (* esac *))
       end
       
+      (* just to keep the vp instructions consistent *)
+      fun vpOffset vpLL offset resTy = let
+        val offsetLL = LB.fromC(LB.intC(LT.i64, offset))
+        
+        (* We take the VProc ptr, offset it, and bitcast it to the kind of pointer we want *)
+        val r1 = cast Op.BitCast (vpLL, LT.mkPtr(LT.i8))
+        val r2 = LB.calcAddr_ib b (r1, #[offsetLL])
+        val final = cast Op.BitCast (r2, resTy)
+      in
+        final
+      end
+      
       (* end handy stuff *)
       
       fun finish(env, exit) = LB.retVoid b
@@ -554,11 +566,44 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
       
       and genHostVProc(env, lhsVar) = insertV(env, lhsVar, lookupMV(env, MV_Vproc))
       
-      and genVPLoad(env, (lhsVar, offset, vpVar)) = stubIt env lhsVar (* TODO *)
+      (*
+      NOTE TODO FIXME (3/13/16)  some fields of a vproc are accessable by other threads.
+      a great example of this is the heap limit pointer. LLVM's alias analysis will likely
+      assume that the vprocs are not shared or something, and might remove some loads of
+      the heap limit pointer (say, in a loop) when it really should not because the value
+      is volatile. THUS you should really add the volatile attribute to at _least_ loads,
+      if not also for stores, to be correct.
+      *)
       
-      and genVPStore(env, (offset, ptr, vpVar)) = env (* TODO *)
+      and genVPLoad(env, (lhsVar, offset, vpVar)) = let
+        val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
+        val vpLL = lookupV(env, vpVar)
+        
+        (* now we do the offset & loading sequence *)
+        val addr = vpOffset vpLL offset (LT.mkPtr(lhsTy))
+        val final = mk Op.Load #[addr] 
+      in
+        insertV(env, lhsVar, final)
+      end
       
-      and genVPAddr(env, (lhsVar, offset, vpVar)) = stubIt env lhsVar (* TODO *)
+      and genVPStore(env, (offset, arg, vpVar)) = let
+        val argLL = lookupV(env, arg)
+        val argTy = LB.toTy argLL
+        val vpLL = lookupV(env, vpVar)    
+        
+        (* offset and store seq *)
+        val addr = vpOffset vpLL offset (LT.mkPtr(argTy))
+        val _ = mk Op.Store #[addr, argLL] (* no resulting instr after store *)
+      in
+        env
+      end
+      
+      and genVPAddr(env, (lhsVar, offset, vpVar)) = let
+        val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
+        val vpLL = lookupV(env, vpVar)
+      in
+        insertV(env, lhsVar, vpOffset vpLL offset lhsTy)
+      end
       
       
       
