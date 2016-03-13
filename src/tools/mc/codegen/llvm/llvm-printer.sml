@@ -411,7 +411,15 @@ fun output (outS, module as C.MODULE { name = module_name,
         insertV(env, lhsVar, newLLVar)
       end
       
-      and genLabel(env, (lhsVar, rhsLabel)) = env (* TODO *)
+      and genLabel(env, (lhsVar, rhsLabel)) = env 
+      (* TODO I believe all that's going on here is that rhsLabel is some function pointer, whether
+      it's a c function or manticore function, and then we need to be able to refer
+      to this pointer as a value, so we can perform a call on it or store it to memory.
+      not 100% sure why the attempt below does not work. either the binding is simply not in the env
+      because of something before this fillBlock function, or something else.
+       *)
+      
+        (*insertV(env, lhsVar, LB.fromV(lookupL(env, rhsLabel)))*)
       
       
       and genSelect(env, (lhsVar, i, rhsVar)) = let
