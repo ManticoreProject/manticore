@@ -438,7 +438,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
       in
         (case calcAddr i llv
             of SOME addr => insertV(env, lhsVar, implicitCaster (mk Op.Load #[addr]))
-             | NONE => ( debug "SELECT" rhsVar llv ; env)
+             | NONE => ( debug "SELECT" rhsVar llv ; env) (* TODO raise fail instead *)
             (* esac *))
         
       end
@@ -457,7 +457,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
       in
         (case calcAddr i llv
             of SOME newLLVar => insertV(env, lhsVar, newLLVar)
-             | NONE => ( debug "AddrOf" var llv ; stubIt env lhsVar )
+             | NONE => ( debug "AddrOf" var llv ; stubIt env lhsVar ) (* TODO raise fail instead *)
         (* esac *))
       end
       
