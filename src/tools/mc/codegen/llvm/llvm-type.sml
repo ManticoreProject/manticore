@@ -442,10 +442,6 @@ structure LLVMType : sig
 
       | CT.T_CFun(CF.CProto(retTy, argTys, _)) => mkPtr(mkFunc([typeOfC retTy] @ (List.map typeOfC argTys)))
 
-
-      (* TODO(kavon): we don't know what our calling convention is right now. so we need to change typesInConv.
-                      also in the future we need to append/prepend the pinned register types *)
-
       | CT.T_StdFun _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
 
       | CT.T_StdCont _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
