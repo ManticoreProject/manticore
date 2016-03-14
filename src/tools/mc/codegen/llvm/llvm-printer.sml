@@ -411,15 +411,22 @@ fun output (outS, module as C.MODULE { name = module_name,
         insertV(env, lhsVar, newLLVar)
       end
       
-      and genLabel(env, (lhsVar, rhsLabel)) = env 
-      (* TODO I believe all that's going on here is that rhsLabel is some function pointer, whether
-      it's a c function or manticore function, and then we need to be able to refer
-      to this pointer as a value, so we can perform a call on it or store it to memory.
-      not 100% sure why the attempt below does not work. either the binding is simply not in the env
-      because of something before this fillBlock function, or something else.
-       *)
+      and genLabel(env, (lhsVar, rhsLabel)) = let
+        val llv = lookupL(env, rhsLabel)
+        val ty = LV.typeOf llv
+        
+        (* this bitcast is a just a trick in LLVM to avoid using an alloca.
+           you can only bind to a value the result of an instruction, and clang
+           uses an alloca-store-load sequence to do the same thing. we've gotten this
+           far without alloca, so we don't do that (even though mem2reg will eliminate the
+           stack allocation). *)
+        val funcPtr = cast Op.BitCast (LB.fromV(llv), ty)
+      in
+        insertV(env, lhsVar, funcPtr)
+      end
       
-        (*insertV(env, lhsVar, LB.fromV(lookupL(env, rhsLabel)))*)
+      
+        (*insertV(env, lhsVar, LB.fromV()*)
       
       
       and genSelect(env, (lhsVar, i, rhsVar)) = let

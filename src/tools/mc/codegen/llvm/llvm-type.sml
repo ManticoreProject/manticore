@@ -440,7 +440,7 @@ structure LLVMType : sig
 
       | CT.T_Deque => dequeTy
 
-      | CT.T_CFun(CF.CProto(retTy, argTys, _)) => mkFunc([typeOfC retTy] @ (List.map typeOfC argTys))
+      | CT.T_CFun(CF.CProto(retTy, argTys, _)) => mkPtr(mkFunc([typeOfC retTy] @ (List.map typeOfC argTys)))
 
 
       (* TODO(kavon): we don't know what our calling convention is right now. so we need to change typesInConv.
