@@ -22,7 +22,8 @@ struct
                orderedTL2 - bounded partial abort TL2 with an ordered read set\n\
                norec - full abort NOrec\n\
                orderedNoRec - bounded partial abort NOrec with an ordered read set\n\
-               tiny - TinySTM (full abort)\n"
+               tiny - TinySTM (full abort)\n\
+               ptiny - Partial Abort Tiny STM\n"
 
     val (getFunction,put,atomic,new,abort) =
 	case whichSTM
@@ -31,7 +32,7 @@ struct
 			  BoundedHybridPartialSTM.atomic,
 			  BoundedHybridPartialSTM.new,
 			  BoundedHybridPartialSTM.abort)
-	  | "full" => (FullAbortSTM.get,                   (*baseline TL2*)
+(*	  | "full" => (FullAbortSTM.get,                   (*baseline TL2*)
 		       FullAbortSTM.put,
 		       FullAbortSTM.atomic,
 		       FullAbortSTM.new,
@@ -50,12 +51,18 @@ struct
 			       NoRecOrdered.put,
 			       NoRecOrdered.atomic,
 			       NoRecOrdered.new,
-			       NoRecOrdered.abort)
+			       NoRecOrdered.abort)  *)
 	  | "tiny" => (TinySTM.get,
 		       TinySTM.put,
 		       TinySTM.atomic,
 		       TinySTM.new,
 		       TinySTM.abort)
+
+	  | "ptiny" => (TinySTMPartial.get,
+			TinySTMPartial.put,
+			TinySTMPartial.atomic,
+			TinySTMPartial.new,
+			TinySTMPartial.abort)
 	  |_ => (usage(); raise Fail "STM not recognized\n")
 
     (*won't typecheck without these nonsense bindings*)

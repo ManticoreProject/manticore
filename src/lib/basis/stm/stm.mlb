@@ -1,4 +1,4 @@
-ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime-offsets.def,../include/dictionary-offsets.def" in
+ann "cpp" "stats.def,../include/breakpoint.def,../include/debug.def,../include/prim.def,../include/runtime-offsets.def,../include/dictionary-offsets.def" in
     logging.pml
 
     ann "cpp" "tl2/tl2.def" in
@@ -17,6 +17,8 @@ ann "cpp" "stats.def,../include/debug.def,../include/prim.def,../include/runtime
         tl2/ff-tl2.pml
 
 	tiny-stm/tiny-stm.pml
+
+	tiny-stm/pabort-tiny-stm.pml
         
     end
 
