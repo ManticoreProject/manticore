@@ -57,7 +57,7 @@ struct
     )
 
     val printHeaders : unit -> unit = _prim(@print-headers)
-    val _ = printHeaders()
+    (*val _ = printHeaders()*)
 
     _primcode(
     
@@ -196,6 +196,7 @@ struct
                 let newItem : item = WithK(tv, NilItem, k, #RS_SHORT_PATH(rs), #RS_TAIL(rs))
                 let newRS : read_set = @append(rs, newItem, stamp / exh)
                 do #RS_SHORT_PATH(newRS) := newItem
+                do #RS_NUMK(newRS) := I64Add(#RS_NUMK(newRS), 1:long)
                 if I32Lte(#RS_NUMK(newRS), READ_SET_BOUND)
                 then (*we have enough room for this one*)
                     let freq : int = FLS.@get-counter2()
@@ -230,7 +231,7 @@ struct
             else (*don't record continuation*)
                 let newItem : item = WithoutK(tv, NilItem)
                 let newRS : read_set = @append(rs, newItem, stamp / exh)
-                return()
+                FLS.@set-counter(I32Sub(captureCount, 1))
         ;
 
         (*just abort for now*)
@@ -310,11 +311,13 @@ struct
         ;   
 
         define @force-abort(x : unit / exh : exh) : any = 
-            let e : cont() = FLS.@get-key(ABORT_KEY / exh)
-            throw e();        
+            let readSet : read_set = FLS.@get-key(READ_SET / exh)
+            let head : item = #RS_LONG_PATH(readSet)
+            @abort(readSet, head, 0:long / exh)
+        ;
 
         define @commit(/exh:exh) : () = 
-            let readSet : item = FLS.@get-key(READ_SET / exh)
+            let readSet : read_set = FLS.@get-key(READ_SET / exh)
             let myStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             if Equal(writeSet, NilItem)
@@ -325,19 +328,30 @@ struct
                     if I64Eq(end_time, #START_STAMP(myStamp))
                     then return()
                     else 
-                        fun lp(i:item) : () = 
+                        fun lp(i:item, chkpnt : item, count : long) : () = 
                             case i 
                                of NilItem => return()
-                (*                | Read(tv:tvar, next:item) => 
-                                    let time : long = #CURRENT_LOCK(tv)
+                                | WithoutK(tv:tvar, next:item) => 
+                                    let time : stamp = #CURRENT_LOCK(tv)
                                     if U64Gt(time, #START_STAMP(myStamp))
-                                    then 
+                                    then
                                         if I64Eq(time, #LOCK_VAL(myStamp))
-                                        then apply lp(next)
-                                        else @abort(/exh)
-                                    else apply lp(next)  *)
+                                        then apply lp(next, chkpnt, count)
+                                        else @abort(readSet, chkpnt, count / exh)
+                                    else apply lp(next, chkpnt, count)  
+                                | WithK(tv:tvar, next:item, k:cont(), nextK:item, prev:item) =>
+                                    let time : stamp = #CURRENT_LOCK(tv)
+                                    if U64Gt(time, #START_STAMP(myStamp))
+                                    then
+                                        if I64Eq(time, #LOCK_VAL(myStamp))
+                                        then apply lp(next, i, I64Add(count, 1:long))
+                                        else @abort(readSet, chkpnt, count / exh)
+                                    else apply lp(next, i, I64Add(count, 1:long))  
                             end
-                        apply lp(readSet)
+                        let long_path : item = #RS_LONG_PATH(readSet)
+                        let casted : with_k = (with_k) long_path
+                        (*first entry is a dummy node with the full abort continuation*)
+                        apply lp(#LOG_NEXT(casted), long_path, 0:long) 
                 let end_time : stamp = I64Add(end_time, 1:long)
                 fun unlock(i:item) : () = 
                     case i 
