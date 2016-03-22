@@ -320,7 +320,7 @@ structure BOMUtil : sig
 	  (* end case *))
       | typeOfRHS (B.E_DCon(dc, _)) = [BOMTyUtil.typeOfDCon dc]
       | typeOfRHS (B.E_CCall(cf, _)) = let
-	  val BTy.T_CFun(CFunctions.CProto(cty, _, _)) = BV.typeOf cf
+	  val BTy.T_CFun(CFunctions.CProto(cty, _, _, _)) = BV.typeOf cf
 	  in
 	    BOMTyUtil.ctypeToBOM cty
 	  end

@@ -486,7 +486,7 @@ structure CheckCFG : sig
                        chkVar (env, f, "AllocCCall");
                        chkVars (env, args, "AllocCCall");
                        case V.typeOf f
-                        of Ty.T_CFun (CFunctions.CProto (retTy, argTys, _)) => ()
+                        of Ty.T_CFun (CFunctions.CProto (retTy, argTys, _, _)) => ()
                          | ty => error[v2s f, ":", TyU.toString ty, " is not a cfun\n"]
                        (* end case *);
                        chkJump (addVars (env, lhs), (l,lhs@rargs), "AllocCCall"))

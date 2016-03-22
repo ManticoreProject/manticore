@@ -27,6 +27,8 @@ structure LLVMTy = struct
       T_Void
     | T_Label
     | T_Func of t list  (* first element is the return type *)
+    | T_VFunc of t list (* same as T_Func, but this function has varargs. 
+                           mostly needed for c functinos *)
     | T_Int of count (* number of bits *)
     | T_Float
     | T_Double

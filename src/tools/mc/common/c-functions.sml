@@ -27,7 +27,7 @@ signature C_FUNCTIONS =
 	attrs : attribute list
       }
 
-    datatype c_proto = CProto of c_type * c_type list * attribute list
+    datatype c_proto = CProto of c_type * c_type list * attribute list * bool
 
     val varOf : 'var c_fun -> 'var
     val nameOf : 'var c_fun -> string
@@ -69,14 +69,14 @@ structure CFunctions : C_FUNCTIONS =
 	attrs : attribute list
       }
 
-    datatype c_proto = CProto of c_type * c_type list * attribute list
+    datatype c_proto = CProto of c_type * c_type list * attribute list * bool
 
-    fun protoHasAttr attr (CProto(_, _, attrs)) = List.exists (fn a => (a = attr)) attrs
+    fun protoHasAttr attr (CProto(_, _, attrs, _)) = List.exists (fn a => (a = attr)) attrs
     fun cfunHasAttr attr (CFun{attrs, ...}) = List.exists (fn a => (a = attr)) attrs
 
     fun varOf (CFun{var, ...}) = var
     fun nameOf (CFun{name, ...}) = name
-    fun typeOf (CFun{retTy, argTys, attrs, ...}) = CProto(retTy, argTys, attrs)
+    fun typeOf (CFun{retTy, argTys, attrs, varArg, ...}) = CProto(retTy, argTys, attrs, varArg)
     fun isVarArg (CFun{varArg, ...}) = varArg
 
     fun isPure cf = cfunHasAttr A_pure cf
@@ -97,10 +97,11 @@ structure CFunctions : C_FUNCTIONS =
 	    l :: l2sl lst
 	  end
 
-    fun protoToString (CProto(retTy, argTys, attrs)) = let
+    fun protoToString (CProto(retTy, argTys, attrs, varArg)) = let
+      val maybeDots = if varArg then " ..." else ""
 	  val attrs = if null attrs
-		then [")"]
-		else list2slist (") __attribute__ ((", attrToString, ["))"]) attrs
+		then [maybeDots ^ ")"]
+		else list2slist (maybeDots ^ ") __attribute__ ((", attrToString, ["))"]) attrs
 	  fun tys2l [] = attrs
 	    | tys2l [ty] = tyToString ty :: attrs
 	    | tys2l (ty::tys) = tyToString ty :: "," :: tys2l tys
@@ -108,10 +109,11 @@ structure CFunctions : C_FUNCTIONS =
 	    String.concat(tyToString retTy :: "(" :: tys2l argTys)
 	  end
 
-    fun cfunToString (CFun{name, retTy, argTys, attrs, ...}) = let
+    fun cfunToString (CFun{name, retTy, argTys, attrs, varArg, ...}) = let
+    val maybeDots = if varArg then " ..." else ""
 	  val attrs = if null attrs
-		then [")"]
-		else list2slist (") __attribute__ ((", attrToString, ["))"]) attrs
+		then [maybeDots ^ ")"]
+		else list2slist (maybeDots ^ ") __attribute__ ((", attrToString, ["))"]) attrs
 	  in
 	    concat("extern " :: tyToString retTy :: " " :: name ::
 		list2slist (" (", tyToString, attrs) argTys)

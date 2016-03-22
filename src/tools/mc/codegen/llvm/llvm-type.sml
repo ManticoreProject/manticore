@@ -130,6 +130,9 @@ structure LLVMType : sig
 
     (* first element is return type *)
     val mkFunc : ty list -> ty
+    
+    (* first element is return type. VFunc is a vararg function *)
+    val mkVFunc : ty list -> ty
 
     val mkPtr : ty -> ty
 
@@ -174,6 +177,7 @@ structure LLVMType : sig
       of (Ty.T_Void, Ty.T_Void) => true
        | (Ty.T_Label, Ty.T_Label) => true
        | (Ty.T_Func xs, Ty.T_Func ys) => ListPair.allEq HC.same (xs, ys)
+       | (Ty.T_VFunc xs, Ty.T_VFunc ys) => ListPair.allEq HC.same (xs, ys)
        | (Ty.T_Int x, Ty.T_Int y) => HC.same(x, y)
        | (Ty.T_Float, Ty.T_Float) => true
        | (Ty.T_Double, Ty.T_Double) => true
@@ -201,8 +205,9 @@ structure LLVMType : sig
     val mkArray = HC.cons2 tbl (0w31, Ty.T_Array)
     val mkStruct = HC.consList tbl (0w37, Ty.T_Struct)
     val mkUStruct = HC.consList tbl (0w43, Ty.T_UStruct)
+    val mkVFunc = HC.consList tbl (0w47, Ty.T_VFunc)
     
-    (* more primes  47     53     59     61     67     71 *)
+    (* more primes   53     59     61     67     71 *)
 
     val cnt = HCInt.mk
     val tnc = HC.node
@@ -261,6 +266,14 @@ structure LLVMType : sig
       fun nodeToStr (nt : ty_node) : string =
         let
           val i2s = i2s o HC.node
+          
+          fun funTyStr varArg = fn (ret::params) =>
+            let
+                val llvmParams = mapSep(recur, nil, ", ", params)
+              in
+                S.concat ([recur ret, " ("] @ llvmParams @ [ if varArg then "..." else "", ")"])
+              end
+            
         in
          (case nt 
              of Ty.T_Void => "void"
@@ -269,11 +282,8 @@ structure LLVMType : sig
               | Ty.T_Double => "double"
               | Ty.T_Label => "label"
               | Ty.T_Ptr t => (recur t) ^ "*"
-              | Ty.T_Func (ret::params) => let
-                  val llvmParams = mapSep(recur, nil, ", ", params)
-                in
-                  S.concat ([recur ret, " ("] @ llvmParams @ [")"])
-                end      
+              | Ty.T_Func ts => funTyStr false ts
+              | Ty.T_VFunc ts => funTyStr true ts
               
               | Ty.T_Vector (nelms, t) => S.concat ["<", i2s nelms, " x ", recur t, ">"]
 
@@ -284,7 +294,7 @@ structure LLVMType : sig
               
               | Ty.T_UStruct ts => S.concat (["{ "] @ mapSep(recur, nil, ", ", ts) @ [" }"])
 
-              | _ => raise Fail "base type name unknown"
+              (* | _ => raise Fail "base type name unknown" *)
 
             (* end case *))
          end
@@ -440,7 +450,12 @@ structure LLVMType : sig
 
       | CT.T_Deque => dequeTy
 
-      | CT.T_CFun(CF.CProto(retTy, argTys, _)) => mkPtr(mkFunc([typeOfC retTy] @ (List.map typeOfC argTys)))
+      | CT.T_CFun(CF.CProto(retTy, argTys, _, varArg)) => let
+            val funCtor = if varArg then mkVFunc else mkFunc
+        in
+            mkPtr(funCtor([typeOfC retTy] @ (List.map typeOfC argTys)))
+        end
+      
 
       | CT.T_StdFun _ => mkPtr(mkFunc( [voidTy] @ typesInConv(cty) ))
 
@@ -610,10 +625,10 @@ structure LLVMType : sig
   (* returnTy : ty -> ty option *)
   fun returnTy t = (case HC.node t
     of Ty.T_Ptr maybeFunc => (case HC.node maybeFunc
-      of Ty.T_Func (ret::_) => SOME ret
+      of (Ty.T_Func (ret::_) | Ty.T_VFunc (ret::_)) => SOME ret
        | _ => NONE
       (* esac *))
-     | Ty.T_Func (ret::_) => SOME ret
+     | (Ty.T_Func (ret::_) | Ty.T_VFunc (ret::_)) => SOME ret
      | _ => NONE 
     (* esac *))
 

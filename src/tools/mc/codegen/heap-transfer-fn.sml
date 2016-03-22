@@ -402,7 +402,7 @@ functor HeapTransferFn (
   
   fun genCCall varDefTbl {lhs, f, args} = let
      (* get the C function's prototype *)
-      val cProtoTy as CFunctions.CProto(retTy, paramTys, _) = getCPrototype f
+      val cProtoTy as CFunctions.CProto(retTy, paramTys, _, _) = getCPrototype f
      (* check if the C function might allocate *)
       val allocates = CFunctions.protoHasAttr CFunctions.A_alloc cProtoTy
       in
@@ -498,7 +498,7 @@ functor HeapTransferFn (
          {initRoots=initRoots, restoredRoots=restoredRoots, rootPtr=rootPtr, rootTemps=rootTemps, rootArgs=rootArgs}
       end (* processGCRoots *)
 (*
-  fun genAllocCCall' varDefTbl (lhs, fLabel, CFunctions.CProto(retTy, paramTys, _), fArgs, retFun, roots) = let
+  fun genAllocCCall' varDefTbl (lhs, fLabel, CFunctions.CProto(retTy, paramTys, _, _), fArgs, retFun, roots) = let
       val retLabel = LabelCode.getName retFun
       val retParams = LabelCode.getParamRegs retFun
      (* pre-C-Call vproc pointer *)

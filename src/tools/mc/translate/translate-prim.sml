@@ -710,7 +710,7 @@ structure TranslatePrim : sig
 	 (* FIXME: we probably should check that the existing prototype matches this one! *)
 	 of SOME cfun => () (* already defined, so do nothing *)
 	  | NONE => let
-		val ty = BTy.T_CFun(CFunctions.CProto(retTy, argTys, attrs))
+		val ty = BTy.T_CFun(CFunctions.CProto(retTy, argTys, attrs, varArg))
 		val cf = BOM.mkCFun{
 			 var = BOM.Var.new(PTVar.nameOf var, ty),
 			 name = name, retTy = retTy, argTys = argTys, attrs = attrs, varArg = varArg
@@ -831,4 +831,3 @@ structure TranslatePrim : sig
             end)
 
   end
-

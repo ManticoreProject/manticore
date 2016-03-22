@@ -90,25 +90,6 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   (**)
 
-  (* translation utils *)
-  local
-    (* TODO: this might be pointless because one can access the exported
-       name through the label once its encountered. *)
-    val externInfo = ref CL.Map.empty
-  in
-
-    fun externInfoAdd (v : C.label, s : string) : unit = 
-      externInfo := CL.Map.insert(!externInfo, v, s)
-
-    fun externInfoGet (v : C.label) : string = 
-      (case CL.Map.find(!externInfo, v)
-        of SOME s => s
-         | NONE => 
-            raise Fail ("Unable to find extern name associated with var " ^ (CL.toString v))
-      (* end case *))
-
-  end
-
   (* translation environment utilities *)
   
   (* implicit machine values according to CFG *)
@@ -138,6 +119,8 @@ fun output (outS, module as C.MODULE { name = module_name,
     vars : LB.instr CV.Map.map,     (* CFG Vars -> LLVM Instructions *)
     mvs : LB.instr vector          (* current LLVM Instructions representing machine vals *)
   }
+  
+  val emptyEnv = ENV {labs=CL.Map.empty, vars=CV.Map.empty, mvs=(#[])}
 
   fun lookupV (ENV{vars,...}, v) = 
     (case CV.Map.find(vars, v)
@@ -658,7 +641,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
 (****** Functions ******)
   
   (* NOTE: this probably should be moved into a new module or something *)
-  fun mkFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }) : string = let
+  fun mkFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, initEnv as ENV{labs=inherited_labs, vars=inherited_vars, ...}) : string = let
     
     val (mvTys : LT.ty list, cc : (int * C.var) list) = determineCC(entry, cfgArgs)
     
@@ -733,7 +716,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
     (* string building code *)
     val linkage = linkageOf lab
     val ccStr = " cc 17 " (* Only available in Kavon's modified version of LLVM. *)
-    val llName = (LV.toString o LV.convertLabel) lab
+    val llName = LV.toString(lookupL(initEnv, lab))
     val decl = [comment, "define ", linkage, ccStr,
                 "void ", llName, "(", (stringify  allAssign), ") ",
                 stdAttrs(MantiFun), " {\n"]
@@ -741,8 +724,10 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
     (* now we setup the environment, we need to make fresh vars for the reg types,
        and map the original parameters to the reg types when we call mk bbelow *)
     
-    (* TODO(kavon): the label environment should contain every function in the program *) 
-    val body = mkBasicBlocks (ENV{labs=CL.Map.empty, vars=CV.Map.empty, mvs=mvs},
+    (* TODO(kavon): the label environment should contain every function in the program
+    ENV{labs=CL.Map.empty, vars=CV.Map.empty, mvs=mvs}
+     *) 
+    val body = mkBasicBlocks (ENV{labs=inherited_labs, vars=inherited_vars, mvs=mvs},
                                 start, body, (cc, ccRegs, mvRegs))  
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
@@ -801,7 +786,9 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
   (* in particular, this just generates essentially a "header" for the LLVM module
      with things such as the datatype layouts, externals, attributes and so on.
      it also initializes the extern info map. *)
-  fun mkFunDecls () : string = let
+  fun mkFunDecls () = let
+  
+  (* NOTE FIXME TODO this stuff is really ugly and adhoc *)
 
     fun attrOfC (a : CF.attribute) = (case a
           of CF.A_pure => "readonly"
@@ -810,8 +797,26 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
            | _ => ""
           (* end case *)) 
 
-    (* external C function *)
+    (* external C function. note that var has type CFG.label *)
     fun toLLVMDecl (CF.CFun { var, name, retTy, argTys, varArg, attrs }) = let
+
+        val asLLV = LV.convertLabel var
+        
+        (* NOTE as of now, i'm just going to assume that
+          convertLabel gives back an LLVM Var with type ptr(this C Fun)
+          that is equal to what we're about to generate a string for
+          manually here. Future infrastructure could have a function such
+          as LLVMType.toDeclStr : ty -> string -> string  where the string
+          arg is the name of the function to produce a decl string for.
+          
+          An alternative is to write an extension to LLVMBuilder
+          to add a mkDecl that takes stuff like calling convention and whatnot
+          to make a proper interface. Might want to do this if other people
+          are using LLVMBuilder. *)
+        
+        (*val llty = LV.typeOf asLLV*)
+        
+        
 
         val c2ll = LT.nameOf o LT.typeOfC
 
@@ -825,13 +830,12 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
 
         val llvmAttrs = mapSep(attrOfC, [stdAttrs(ExternCFun)], " ", attrs)
 
-        (* record this for translation later *)
-        val _ = externInfoAdd(var, name)
-
       in
-        S.concat (["declare ", (c2ll retTy), " @", name, "("
+        (S.concat (["declare ", (c2ll retTy), " @", name, "("
                   , llvmParams, ") "]
-                  @ llvmAttrs @ ["\n"])
+                  @ llvmAttrs @ ["\n"]),
+         var,
+         asLLV)
       end
 
     val arch = (case Spec.archName
@@ -847,7 +851,9 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
        | _ => raise Fail ("Unsupported OS type: " ^ Spec.archName)
       (* end case *))
 
-    val externDecls = S.concat (List.map toLLVMDecl module_externs)
+
+    val convertedExterns = List.map toLLVMDecl module_externs
+    val externDecls = S.concat (List.map (fn (s, _, _) => s) convertedExterns)
 
     val header = S.concat [
       "target datalayout = \"", dataLayout, "\"\n",
@@ -856,12 +862,24 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
        ]
 
     in
-      header
+      (header, convertedExterns)
     end
 
   (* end of Module *)
 
-
+  (* initialize the initial environment, which has all of the functions in it. *)
+  
+  val (header, convertedExterns) = mkFunDecls()
+  
+  (* manticore functions *)
+  val initEnv = L.foldl 
+    (fn (C.FUNC { lab, ...}, acc) =>
+        insertL(acc, lab, LV.convertLabel lab)) emptyEnv module_code
+        
+  (* C external functions *)
+  val initEnv = L.foldl 
+    (fn ((_, old, new), acc) =>
+        insertL(acc, old, new)) initEnv convertedExterns
 
 
 (* Notes:
@@ -875,7 +893,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
 
   (* process the whole module, generating a string for each function and populating the type
      and string literal caches *)
-  val funStrings = List.map mkFunc module_code  
+  val funStrings = List.map (fn func => mkFunc(func, initEnv)) module_code  
 
 in
   ( (* output sequence *)
@@ -890,7 +908,7 @@ in
     pr (LT.typeDecl()) ;  
 
     pr "\n\n; externs & target info\n\n" ;
-    pr (mkFunDecls ()) ; (* declare extern funs, target triple, and datalayout *)
+    pr (header) ; (* declare extern funs, target triple, and datalayout *)
 
     pr "\n\n; manticore function defs\n\n" ;
     List.app pr funStrings ;
