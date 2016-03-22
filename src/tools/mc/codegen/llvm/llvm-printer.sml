@@ -374,13 +374,18 @@ fun output (outS, module as C.MODULE { name = module_name,
            (ListPair.zipEq (lefts, rights))
     
       
-      and genConst(env, (lhsVar, lit, ty)) = stubIt env lhsVar
-        (* there's a lot of little details here that you need to get right.
-           see genLit function in codegen-fn.sml
-           you might want to use a LiteralTblFn to handle strings, since
-           they must be declared at the top. probably want FloatLit.float
-           and IntLit.integer instead of real and IntInf.int, respectively.
-           FIXME TODO for now this generates an undef for the rhs. fix thiss *)
+      (* there's a lot of little details here that you need to get right.
+         see genLit function in codegen-fn.sml
+         you might want to use a LiteralTblFn to handle strings, since
+         they must be declared at the top. probably want FloatLit.float
+         and IntLit.integer instead of real and IntInf.int, respectively.
+         FIXME TODO for now this generates an undef for the rhs. fix thiss *)
+      and genConst(env, (lhsVar, lit, ty)) = let
+            val _ = ()
+        in
+            stubIt env lhsVar
+        end
+        
         
         
       and genCast(env, (lhsVar, cfgTy, oldVar)) = let
@@ -395,21 +400,26 @@ fun output (outS, module as C.MODULE { name = module_name,
       end
       
       and genLabel(env, (lhsVar, rhsLabel)) = let
+        
         val llv = lookupL(env, rhsLabel)
-        val ty = LV.typeOf llv
+        
+        (*val ty = LV.typeOf llv
+        val funcPtr = cast Op.BitCast (LB.fromV(llv), ty)*)
         
         (* this bitcast is a just a trick in LLVM to avoid using an alloca.
            you can only bind to a value the result of an instruction, and clang
            uses an alloca-store-load sequence to do the same thing. we've gotten this
            far without alloca, so we don't do that (even though mem2reg will eliminate the
            stack allocation). *)
-        val funcPtr = cast Op.BitCast (LB.fromV(llv), ty)
+           
+           (* TODO I'm not convinced this is nessecary. we properly generate
+             the right strings whether it's a global or local var (%ident vs @ident). *)
+        
       in
-        insertV(env, lhsVar, funcPtr)
+        (*insertV(env, lhsVar, funcPtr)*)
+        insertV(env, lhsVar, LB.fromV(llv))
       end
       
-      
-        (*insertV(env, lhsVar, LB.fromV()*)
       
       
       and genSelect(env, (lhsVar, i, rhsVar)) = let
@@ -559,6 +569,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
                                                       are implemented in fromPrim *)
          
       
+      (* A standard C call that returns. *)
       and genCCall(env, (results, func, args)) = (* TODO *)
             L.foldr (fn (r, acc) => stubIt acc r) env results
       
@@ -568,8 +579,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
       NOTE TODO FIXME (3/13/16)  some fields of a vproc are accessable by other threads.
       a great example of this is the heap limit pointer. LLVM's alias analysis will likely
       assume that the vprocs are not shared or something, and might remove some loads of
-      the heap limit pointer (say, in a loop) when it really should not because the value
-      is volatile. THUS you should really add the volatile attribute to at _least_ loads,
+      the heap limit pointer (say, hoisting out of a loop) when it really should not because the value is volatile. THUS you should really add the volatile attribute to at _least_ loads,
       if not also for stores, to be correct.
       *)
       
