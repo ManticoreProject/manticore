@@ -30,6 +30,8 @@ struct
     (*NOTE: do not change the order of these.  The C runtime depends on it.*)
     datatype 'a item = WithoutK of 'a * 'a item 
                      | WithK of 'a * 'a item * 'a * 'a item * 'a item
+                     (*last checkpoint of the read set.  when polling locks, validation can stop here*)
+                     | LastChkpnt of 'a * 'a item * 'a * 'a item * 'a item
                      | Write of 'a * 'a item * 'a
                      | NilItem
 
@@ -38,11 +40,18 @@ struct
             let x : item = WithoutK(enum(0):any, NilItem)
             let x : [any] = ([any]) x
             return(#0(x));
+        define @mk-last-chkpnt(x : unit / exh:exh) : any = 
+            let x : item = LastChkpnt(enum(0):any, NilItem, enum(0):any, NilItem, NilItem)
+            let x : [any] = ([any]) x
+            return(#0(x));
     )
 
     val mkTag : unit -> 'a = _prim(@mk-tag)
     val tag = mkTag()
     fun getTag() = tag
+    val mkLastChkpntTag : unit -> 'a = _prim(@mk-last-chkpnt)
+    val lastChkpntTag = mkLastChkpntTag()
+    fun getLastChkpntTag() = lastChkpntTag
 
     _primcode(
         define @print-headers(x:unit/exh:exh) : unit = 
@@ -106,11 +115,10 @@ struct
                     let _ : stamp = VClock.@bump(/exh)
                     return()
                 else return()
-            (*null the write set without rebuilding the FLS*)
             let casted : with_k = (with_k) chkpnt
             let k : cont() = #WITHK_CONT(casted)
             if Equal(chkpnt, #RS_LONG_PATH(readSet))
-            then throw k() (*full abort*)
+            then throw k() (*full abort, read set gets setup in the full abort continuation*)
             else
                 let newRS : read_set = alloc(#WITHK_PREV(casted), #RS_LONG_PATH(readSet), #WITHK_NEXT(casted), n)
                 do FLS.@set-key(READ_SET, newRS / exh)
@@ -127,16 +135,21 @@ struct
          * there is no previous entry, so the "checkpoint" becomes the new head and tail.
          *)
         define @ts-extend(readSet : read_set, myStamp : stamp_rec / exh:exh) : () = 
+            let ts : stamp = VClock.@get(/exh)
             fun lp(i : item, chkpnt : item, count : long) : () = 
                 case i 
-                   of NilItem => return()
+                   of NilItem => 
+                        do #START_STAMP(myStamp) := ts
+                        return()
                     | WithoutK(tv:tvar, next:item) => 
                         let time : stamp = #CURRENT_LOCK(tv)
                         if U64Gt(time, #START_STAMP(myStamp))
                         then
                             if I64Eq(time, #LOCK_VAL(myStamp))
                             then apply lp(next, chkpnt, count)
-                            else @abort(readSet, chkpnt, count / exh)
+                            else 
+                                do #START_STAMP(myStamp) := ts
+                                @abort(readSet, chkpnt, count / exh)
                         else apply lp(next, chkpnt, count)  
                     | WithK(tv:tvar, next:item, k:cont(), nextK:item, prev:item) =>
                         let time : stamp = #CURRENT_LOCK(tv)
@@ -144,15 +157,15 @@ struct
                         then
                             if I64Eq(time, #LOCK_VAL(myStamp))
                             then apply lp(next, i, I64Add(count, 1:long))
-                            else @abort(readSet, chkpnt, count / exh)
+                            else 
+                                do #START_STAMP(myStamp) := ts
+                                @abort(readSet, i, I64Add(count, 1:long) / exh)
                         else apply lp(next, i, I64Add(count, 1:long))  
                 end
-            let ts : stamp = VClock.@get(/exh)
             let long_path : item = #RS_LONG_PATH(readSet)
             let casted : with_k = (with_k) long_path
             (*first entry is a dummy node with the full abort continuation*)
             do apply lp(#LOG_NEXT(casted), long_path, 0:long) 
-            do #START_STAMP(myStamp) := ts
             return()
         ;
 
@@ -195,6 +208,7 @@ struct
             then
                 let newItem : item = WithK(tv, NilItem, k, #RS_SHORT_PATH(rs), #RS_TAIL(rs))
                 let newRS : read_set = @append(rs, newItem, stamp / exh)
+                (*since newItem was allocated first, this is OK*)
                 do #RS_SHORT_PATH(newRS) := newItem
                 do #RS_NUMK(newRS) := I64Add(#RS_NUMK(newRS), 1:long)
                 if I32Lte(#RS_NUMK(newRS), READ_SET_BOUND)
@@ -234,10 +248,62 @@ struct
                 FLS.@set-counter(I32Sub(captureCount, 1))
         ;
 
-        (*just abort for now*)
-        define inline @poll(readSet : read_set/exh:exh) noreturn = 
+        (*
+         * Poll the lock for a bounded amount of time in the hopes that it gets released
+         * and we don't have to abort this transaction.  As we poll the lock, we also 
+         * validate the read set.  
+         *  - If we detect the lock gets released, we stop validating and continue with
+              the transaction.  
+         *  - If we find a violation, then release all locks and abort to the latest valid
+              checkpoint
+         *  - If we successfully validate the entire read set, we check again if the lock
+              has been released.  If so, we update our timestamp and continue with the transaction.
+              Otherwise, abort to the latest safe checkpoint
+         * Things to consider: 
+              - Only validate up to the last checkpoint?  We could cap the read set when we 
+                perform our first write.
+         *)
+        define inline @poll(readSet : read_set, pollingTVar:tvar, myStamp : stamp_rec/exh:exh) : () = 
+            fun lp(i : item, chkpnt : item, count : long, new_ts : long) : () = 
+                case i 
+                   of NilItem => 
+                        (*entire read set is still valid*)
+                        do #START_STAMP(myStamp) := new_ts
+                        if LOCKED(pollingTVar)
+                        then @abort(readSet, chkpnt, count / exh)
+                        else return() 
+                    | WithoutK(tv:tvar, next:item) => 
+                        if LOCKED(pollingTVar)
+                        then 
+                            let time : stamp = #CURRENT_LOCK(tv)
+                            if U64Gt(time, #START_STAMP(myStamp))
+                            then
+                                if I64Eq(time, #LOCK_VAL(myStamp))
+                                then apply lp(next, chkpnt, count,new_ts)
+                                else 
+                                    do #START_STAMP(myStamp) := new_ts
+                                    @abort(readSet, chkpnt, count / exh)
+                            else apply lp(next, chkpnt, count, new_ts)  
+                        else return() (*unlocked, try reading again...*)
+                    | WithK(tv:tvar, next:item, k:cont(), nextK:item, prev:item) =>
+                        if LOCKED(pollingTVar)
+                        then
+                            let time : stamp = #CURRENT_LOCK(tv)
+                            if U64Gt(time, #START_STAMP(myStamp))
+                            then
+                                if I64Eq(time, #LOCK_VAL(myStamp))
+                                then apply lp(next, i, I64Add(count, 1:long), new_ts)
+                                else 
+                                    do #START_STAMP(myStamp) := new_ts
+                                    @abort(readSet, i, I64Add(count, 1:long) / exh)
+                            else apply lp(next, i, I64Add(count, 1:long), new_ts)  
+                        else return()  (*unlocked, try reading again...*)
+                end
             let head : item = #RS_LONG_PATH(readSet)
-            @abort(readSet, head, 0:long / exh)
+            let long_path : item = #RS_LONG_PATH(readSet)
+            let casted : with_k = (with_k) long_path
+            let new_ts : long = VClock.@get(/exh)
+            apply lp(#LOG_NEXT(casted), long_path, 0:long, new_ts) 
         ;
 
         define @get(tv:tvar / exh:exh) : any = 
@@ -258,13 +324,17 @@ struct
                             return(temp)
                         else (*v1 > myStamp*)
                             if LOCKED(v1)
-                            then @poll(readSet/exh)
+                            then 
+                                do @poll(readSet, tv, myStamp/exh)
+                                throw retry()
                             else (*!LOCKED(v1)*)
                                 do @ts-extend(readSet, myStamp / exh)
                                 throw retry()
                     else (*v1 != v2*)
                         if LOCKED(v1)
-                        then @poll(readSet/exh)
+                        then 
+                            do @poll(readSet, tv, myStamp/exh)
+                            throw retry()
                         else (*!LOCKED(v1)*)
                             do @ts-extend(readSet, myStamp / exh)
                             throw retry()
@@ -291,7 +361,8 @@ struct
                         return(UNIT)
                     else 
                         let readSet : read_set = FLS.@get-key(READ_SET / exh)
-                        @poll(readSet/exh)
+                        do @poll(readSet, tv, myStamp/exh)
+                        throw retry()
                 else    
                     if I64Eq(v1, #LOCK_VAL(myStamp))
                     then 
@@ -302,7 +373,8 @@ struct
                         if LOCKED(#CURRENT_LOCK(tv))
                         then 
                             let readSet : read_set = FLS.@get-key(READ_SET / exh)
-                            @poll(readSet/exh)
+                            do @poll(readSet, tv, myStamp/exh)
+                            throw retry() 
                         else 
                             let readSet : read_set = FLS.@get-key(READ_SET / exh)
                             do @ts-extend(readSet, myStamp / exh)
@@ -321,13 +393,13 @@ struct
             let myStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             if Equal(writeSet, NilItem)
-            then return()
+            then return()  (*read only transaction*)
             else 
                 let end_time : stamp = VClock.@inc(1:long/exh)
                 do 
-                    if I64Eq(end_time, #START_STAMP(myStamp))
-                    then return()
-                    else 
+                    if U64Eq(end_time, #START_STAMP(myStamp))
+                    then return()  (*no one else could have committed*)
+                    else
                         fun lp(i:item, chkpnt : item, count : long) : () = 
                             case i 
                                of NilItem => return()
@@ -335,17 +407,17 @@ struct
                                     let time : stamp = #CURRENT_LOCK(tv)
                                     if U64Gt(time, #START_STAMP(myStamp))
                                     then
-                                        if I64Eq(time, #LOCK_VAL(myStamp))
+                                        if U64Eq(time, #LOCK_VAL(myStamp))
                                         then apply lp(next, chkpnt, count)
                                         else @abort(readSet, chkpnt, count / exh)
-                                    else apply lp(next, chkpnt, count)  
+                                    else apply lp(next, chkpnt, count)
                                 | WithK(tv:tvar, next:item, k:cont(), nextK:item, prev:item) =>
                                     let time : stamp = #CURRENT_LOCK(tv)
                                     if U64Gt(time, #START_STAMP(myStamp))
                                     then
                                         if I64Eq(time, #LOCK_VAL(myStamp))
                                         then apply lp(next, i, I64Add(count, 1:long))
-                                        else @abort(readSet, chkpnt, count / exh)
+                                        else @abort(readSet, i, I64Add(count, 1:long) / exh)
                                     else apply lp(next, i, I64Add(count, 1:long))  
                             end
                         let long_path : item = #RS_LONG_PATH(readSet)
@@ -379,7 +451,6 @@ struct
                     let stamp : stamp = VClock.@get(/ exh)
                     do #START_STAMP(stampPtr) := stamp
                     do #0(in_trans) := true
-                    do FLS.@set-key(ABORT_KEY, (any) enter/ exh)
                     let res : any = apply f(UNIT/exh)
                     do @commit(/exh)
                     do #0(in_trans) := false

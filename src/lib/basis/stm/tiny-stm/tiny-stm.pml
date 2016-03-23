@@ -141,7 +141,7 @@ struct
             else 
                 let end_time : stamp = VClock.@inc(1:long/exh)
                 do 
-                    if I64Eq(end_time, #START_STAMP(myStamp))
+                    if U64Eq(end_time, #START_STAMP(myStamp))
                     then return()
                     else 
                         fun lp(i:item) : () = 
@@ -151,7 +151,7 @@ struct
                                     let time : long = #CURRENT_LOCK(tv)
                                     if U64Gt(time, #START_STAMP(myStamp))
                                     then 
-                                        if I64Eq(time, #LOCK_VAL(myStamp))
+                                        if U64Eq(time, #LOCK_VAL(myStamp))
                                         then apply lp(next)
                                         else @abort(/exh)
                                     else apply lp(next) 

@@ -32,7 +32,7 @@ struct
 			  BoundedHybridPartialSTM.atomic,
 			  BoundedHybridPartialSTM.new,
 			  BoundedHybridPartialSTM.abort)
-(*	  | "full" => (FullAbortSTM.get,                   (*baseline TL2*)
+	  | "full" => (FullAbortSTM.get,                   (*baseline TL2*)
 		       FullAbortSTM.put,
 		       FullAbortSTM.atomic,
 		       FullAbortSTM.new,
@@ -51,7 +51,7 @@ struct
 			       NoRecOrdered.put,
 			       NoRecOrdered.atomic,
 			       NoRecOrdered.new,
-			       NoRecOrdered.abort)  *)
+			       NoRecOrdered.abort) 
 	  | "tiny" => (TinySTM.get,
 		       TinySTM.put,
 		       TinySTM.atomic,
