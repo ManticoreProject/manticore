@@ -75,7 +75,26 @@ structure LLVMBuilder : sig
 
     val intC : (ty * IntInf.int) -> constant
     
-    val floatC : (ty * real) -> constant
+    (* NOTE FIXME TODO XXX in LLVM, float constants are invalid if the representation
+       is not an exact value when represented in binary for that type. 
+       Example: "1.25" and "1.0" are accepted as written but "1.3"
+       is rejected because it is a repeating decimal when written in binary if the
+       type is float.
+       
+       Clang Case Study: the value 1.3
+       
+       Single Precision -- generates: float 0x3FF4CCCCC0000000  (float 1.3 is rejected)
+       Double Precision -- generates: double 1.300000e+00   (double 1.3 is accepted)
+       
+       I'm pretty sure that 1.3 is a repeating value in IEEE 754, no matter
+       the precision, so the fact that it sometimes reject and sometimes accepts
+       it kind of a mystery.
+       
+       Thus, you must provide a FloatLit.float representation of the float,
+       because that module knows how to generate a correct hexidecimal representation
+       of a floating point number in the IEEE 754 encoding *)
+       
+    val floatC : (ty * FloatLit.float) -> constant
     
     val undef : ty -> constant
 
@@ -170,10 +189,14 @@ structure LLVMBuilder : sig
     | R_Const of constant 
     | R_None  (* for instructions which have no LHS, like terminators *)
 
+    (* Simple Constants in LLVM *)
   and constant 
     = C_Int of ty * IntInf.int
-    | C_Float of ty * real  (* QUESTION(kavon): is this precise enough? *)
-    | C_Str of var (* string constants are global vars *)
+    
+    | C_Float of ty * FloatLit.float  
+    
+    | C_Str of var (* TODO string constants are global vars, why do we need this? *)
+    
     | C_Undef of ty  (* for undefined literals of any type except label or void *)
 
   datatype opkind
@@ -284,7 +307,7 @@ structure LLVMBuilder : sig
                           
                           | R_Const(C_Undef ty) => ("undef", ty)
 
-                          | R_Const(C_Float(ty, f)) => (Real.toString f, ty)
+                          | R_Const(C_Float(ty, f)) => (FloatLit.toString f, ty)
 
                           | R_Const(C_Str v) => (LV.toString v, LV.typeOf v)
 

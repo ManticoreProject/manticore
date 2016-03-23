@@ -14,7 +14,7 @@ structure FloatLit :> sig
     val isZero : float -> bool
 
   (* return the representation of +/-0.0 *)
-    val zero : bool ->float
+    val zero : bool -> float
 
   (* plus and minus one *)
     val one : float
@@ -176,4 +176,3 @@ structure FloatLit :> sig
 	  end
 
   end
-

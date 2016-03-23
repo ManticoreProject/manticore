@@ -134,7 +134,7 @@ in (case p
       => (fn [a, b] => f e Op.FDiv #[a, b])
       
   | (P.F32Neg _ | P.F64Neg _)
-      => (fn [a] => f e Op.FSub #[Fconst a 0.0, a])
+      => (fn [a] => f e Op.FSub #[Fconst a (FloatLit.zero false), a])
   
       (* TODO add support for LLVM instrinsics to
        perform the primops we need. 
