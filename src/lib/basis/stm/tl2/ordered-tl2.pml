@@ -127,12 +127,6 @@ structure RS = TL2OrderedRS
         ;
 
         define @get(tv:tvar / exh:exh) : any = 
-            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
-            do if(#UNBOX(in_trans))
-               then return()
-               else do ccall M_Print("Trying to read outside a transaction!\n")
-                    let e : exn = Fail(@"Reading outside transaction\n")
-                    throw exh(e)
             let myStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
             let readSet : read_set = FLS.@get-key(READ_SET / exh)
             let writeSet : RS.witem = FLS.@get-key(WRITE_SET / exh)
@@ -194,14 +188,6 @@ structure RS = TL2OrderedRS
         ;
 
         define @put(arg:[tvar, any] / exh:exh) : unit =
-            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
-            do 
-                if(#UNBOX(in_trans))
-                then return()
-                else 
-                    do ccall M_Print("Trying to write outside a transaction!\n")
-                    let e : exn = Fail(@"Writing outside transaction\n")
-                    throw exh(e)
             let tv : tvar = #0(arg)
             let v : any = #1(arg)
             let writeSet : RS.witem = FLS.@get-key(WRITE_SET / exh)
