@@ -93,8 +93,12 @@ struct
             let rs : read_set = alloc(withK, withK, NilItem, 0:long)   (*don't put checkpoint on the short path*)
             return(rs);
 
+(*#define MSG(msg, ty) , msg ty*)
+#define MSG(msg, ty)
+
         (*this won't typecheck without the `inline` annotation*)
-        define inline @abort(readSet : read_set, chkpnt : item, n:long / exh:exh) noreturn = 
+        define inline @abort(readSet : read_set, chkpnt : item, n:long MSG(msg, : any) / exh:exh) noreturn = 
+            MSG(do ccall M_Print(msg),)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             fun release(i : item, max : long) : long = 
                 case i 
@@ -105,7 +109,7 @@ struct
                         do #CURRENT_LOCK(tv) := new_stamp        (*release lock*)
                         if U64Gt(new_stamp, max)
                         then apply release(next, new_stamp)
-                        else apply release(next, max)     
+                        else apply release(next, max)
                 end
             let max : long = apply release(writeSet, 0:long)
             do 
@@ -118,8 +122,11 @@ struct
             let casted : with_k = (with_k) chkpnt
             let k : cont() = #WITHK_CONT(casted)
             if Equal(chkpnt, #RS_LONG_PATH(readSet))
-            then throw k() (*full abort, read set gets setup in the full abort continuation*)
+            then 
+                BUMP_FABORT
+                throw k() (*full abort, read set gets setup in the full abort continuation*)
             else
+                BUMP_PABORT
                 let newRS : read_set = alloc(#WITHK_PREV(casted), #RS_LONG_PATH(readSet), #WITHK_NEXT(casted), n)
                 do FLS.@set-key(READ_SET, newRS / exh)
                 do FLS.@set-key(WRITE_SET, NilItem / exh)
@@ -145,21 +152,21 @@ struct
                         let time : stamp = #CURRENT_LOCK(tv)
                         if U64Gt(time, #START_STAMP(myStamp))
                         then
-                            if I64Eq(time, #LOCK_VAL(myStamp))
+                            if U64Eq(time, #LOCK_VAL(myStamp))
                             then apply lp(next, chkpnt, count)
                             else 
                                 do #START_STAMP(myStamp) := ts
-                                @abort(readSet, chkpnt, count / exh)
+                                @abort(readSet, chkpnt, count MSG("WithoutK out of date in TS extension\n",)/ exh)
                         else apply lp(next, chkpnt, count)  
                     | WithK(tv:tvar, next:item, k:cont(), nextK:item, prev:item) =>
                         let time : stamp = #CURRENT_LOCK(tv)
                         if U64Gt(time, #START_STAMP(myStamp))
                         then
-                            if I64Eq(time, #LOCK_VAL(myStamp))
+                            if U64Eq(time, #LOCK_VAL(myStamp))
                             then apply lp(next, i, I64Add(count, 1:long))
                             else 
                                 do #START_STAMP(myStamp) := ts
-                                @abort(readSet, i, I64Add(count, 1:long) / exh)
+                                @abort(readSet, chkpnt, count MSG("WithK out of date in TS extension\n",)/ exh)
                         else apply lp(next, i, I64Add(count, 1:long))  
                 end
             let long_path : item = #RS_LONG_PATH(readSet)
@@ -269,33 +276,33 @@ struct
                    of NilItem => 
                         (*entire read set is still valid*)
                         do #START_STAMP(myStamp) := new_ts
-                        if LOCKED(pollingTVar)
-                        then @abort(readSet, chkpnt, count / exh)
+                        if LOCKED(#CURRENT_LOCK(pollingTVar))
+                        then @abort(readSet, chkpnt, count MSG("Aborting in poll because tvar is still locked\n",) / exh)
                         else return() 
                     | WithoutK(tv:tvar, next:item) => 
-                        if LOCKED(pollingTVar)
+                        if LOCKED(#CURRENT_LOCK(pollingTVar))
                         then 
                             let time : stamp = #CURRENT_LOCK(tv)
-                            if U64Gt(time, #START_STAMP(myStamp))
+                            if U64Gt(time, #START_STAMP(myStamp))  (*locked or too new*)
                             then
-                                if I64Eq(time, #LOCK_VAL(myStamp))
+                                if U64Eq(time, #LOCK_VAL(myStamp))  (*I locked it*)
                                 then apply lp(next, chkpnt, count,new_ts)
                                 else 
                                     do #START_STAMP(myStamp) := new_ts
-                                    @abort(readSet, chkpnt, count / exh)
-                            else apply lp(next, chkpnt, count, new_ts)  
+                                    @abort(readSet, chkpnt, count MSG("WithoutK out of date in poll\n",) / exh)
+                            else apply lp(next, chkpnt, count, new_ts)  (*valid timestamp*)
                         else return() (*unlocked, try reading again...*)
                     | WithK(tv:tvar, next:item, k:cont(), nextK:item, prev:item) =>
-                        if LOCKED(pollingTVar)
+                        if LOCKED(#CURRENT_LOCK(pollingTVar))
                         then
                             let time : stamp = #CURRENT_LOCK(tv)
                             if U64Gt(time, #START_STAMP(myStamp))
                             then
-                                if I64Eq(time, #LOCK_VAL(myStamp))
+                                if U64Eq(time, #LOCK_VAL(myStamp))
                                 then apply lp(next, i, I64Add(count, 1:long), new_ts)
                                 else 
                                     do #START_STAMP(myStamp) := new_ts
-                                    @abort(readSet, i, I64Add(count, 1:long) / exh)
+                                    @abort(readSet, i, I64Add(count, 1:long) MSG("WithK out of date in poll\n",) / exh)
                             else apply lp(next, i, I64Add(count, 1:long), new_ts)  
                         else return()  (*unlocked, try reading again...*)
                 end
@@ -306,17 +313,22 @@ struct
             apply lp(#LOG_NEXT(casted), long_path, 0:long, new_ts) 
         ;
 
+        (*
+         * IMPORTANT: we must lookup the read set **INSIDE** the retry continuation
+         * this way, if we partially abort here, we will get the most recent read set.
+         * It's possible that we could reallocate the read set inside of @log-read
+         *)
         define @get(tv:tvar / exh:exh) : any = 
             let myStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
-            let readSet : read_set = FLS.@get-key(READ_SET / exh)
             cont retry() = 
+                let readSet : read_set = FLS.@get-key(READ_SET / exh) 
                 let v1 : long = #CURRENT_LOCK(tv)
                 let temp : any = #TVAR_CONTENTS(tv)
-                if I64Eq(v1, #LOCK_VAL(myStamp))
+                if U64Eq(v1, #LOCK_VAL(myStamp))
                 then return(temp) (*we own the lock*)
                 else
                     let v2 : long = #CURRENT_LOCK(tv)
-                    if I64Eq(v1, v2)
+                    if U64Eq(v1, v2)
                     then 
                         if U64Lte(v1, #START_STAMP(myStamp))
                         then
@@ -364,7 +376,7 @@ struct
                         do @poll(readSet, tv, myStamp/exh)
                         throw retry()
                 else    
-                    if I64Eq(v1, #LOCK_VAL(myStamp))
+                    if U64Eq(v1, #LOCK_VAL(myStamp))
                     then 
                         let x : any = promote(x)
                         do #TVAR_CONTENTS(tv) := x
@@ -385,7 +397,7 @@ struct
         define @force-abort(x : unit / exh : exh) : any = 
             let readSet : read_set = FLS.@get-key(READ_SET / exh)
             let head : item = #RS_LONG_PATH(readSet)
-            @abort(readSet, head, 0:long / exh)
+            @abort(readSet, head, 0:long MSG("forcing abort\n",) / exh)
         ;
 
         define @commit(/exh:exh) : () = 
@@ -409,15 +421,15 @@ struct
                                     then
                                         if U64Eq(time, #LOCK_VAL(myStamp))
                                         then apply lp(next, chkpnt, count)
-                                        else @abort(readSet, chkpnt, count / exh)
+                                        else @abort(readSet, chkpnt, count MSG("WithoutK out of date in commit\n",)/ exh)
                                     else apply lp(next, chkpnt, count)
                                 | WithK(tv:tvar, next:item, k:cont(), nextK:item, prev:item) =>
                                     let time : stamp = #CURRENT_LOCK(tv)
                                     if U64Gt(time, #START_STAMP(myStamp))
                                     then
-                                        if I64Eq(time, #LOCK_VAL(myStamp))
+                                        if U64Eq(time, #LOCK_VAL(myStamp))
                                         then apply lp(next, i, I64Add(count, 1:long))
-                                        else @abort(readSet, i, I64Add(count, 1:long) / exh)
+                                        else @abort(readSet, i, I64Add(count, 1:long) MSG("WithK out of date in commit\n",)/ exh)
                                     else apply lp(next, i, I64Add(count, 1:long))  
                             end
                         let long_path : item = #RS_LONG_PATH(readSet)
