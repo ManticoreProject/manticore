@@ -19,14 +19,6 @@ struct
 		;
 
 		define @get(tv : tvar / exh:exh) : any = 
-			let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
-            do 	
-            	if(#0(in_trans))
-               	then return()
-               	else 
-               		do ccall M_Print("Trying to read outside a transaction!\n")
-                  	let e : exn = Fail(@"Reading outside transaction\n")
-                    throw exh(e)
             let myStamp : ![stamp, int, int, long] = FLS.@get-key(STAMP_KEY / exh)
             let readSet : RS.read_set = FLS.@get-key(READ_SET / exh)
             let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
@@ -79,12 +71,6 @@ struct
 		;
 
 		define @put(arg:[tvar, any] / exh:exh) : unit =
-            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
-            do if(#0(in_trans))
-               then return()
-               else do ccall M_Print("Trying to write outside a transaction!\n")
-                    let e : exn = Fail(@"Writing outside transaction\n")
-                    throw exh(e)
             let tv : tvar = #0(arg)
             let v : any = #1(arg)
             let writeSet : RS.item = FLS.@get-key(WRITE_SET / exh)
