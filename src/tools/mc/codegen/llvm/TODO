@@ -1,0 +1,26 @@
+LLVM backend todo list
+
+***** Larger Items *****
+
+    - Heap limit checks
+    
+    - Other transfers
+
+
+***** Medium Items *****
+
+    - Floating point literals: unfortunately, we have to generate hex values that are the IEEE 754 encodings of the FloatLits (see the rant in LLVMBuilder). Current proposal is to write "asIEEESingle" and "asIEEEDouble" functions in FloatLit with type FloatLit.float -> string that gives us the hex string.
+    
+    - Allocation: mostly just need to make sure the header bits are right
+    
+    - C Calls/Promotion: should just need to make sure we respect the ABI, with the added complexity of using the naked attribute. we might want to setup the stack pointer upon entering manticore function land to be 8 bytes shy of a 16 byte alignment so callq aligns the stack for us. this is of course not considering other things like what if the reg alloc
+    decided to use push for spills, and we make a c call in the middle of a basic block. I believe we need to browse the LLVM source code to find out how the naked attribute is treated, because that preliminary testing earlier yielded some hoops that needed to be jumped through (mostly, I remember needing to call a special stack realigner function before making the actual c call to match the 16 byte ABI spec. we could always introduce a pass that inserts that realignment in a target non-specific way into LLVM's code generator, because I think this is an oversight.... we're probably the only people seriously making use of that attribute)
+    
+    - String literals: need to put these into basically a cache/table (there's infrastructure for this already but we'll have to see if it works for us) because string literals must be global variables in LLVM.
+
+***** Small Items *****
+
+    - The other literals (enums etc)
+    
+    - The remaining unimplemented primops and other stubbed out simple stuff, like
+      sqrt and abs for floats are LLVM intrinsic calls.

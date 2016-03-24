@@ -381,11 +381,21 @@ fun output (outS, module as C.MODULE { name = module_name,
          and IntLit.integer instead of real and IntInf.int, respectively.
          FIXME TODO for now this generates an undef for the rhs. fix thiss *)
       and genConst(env, (lhsVar, lit, ty)) = let
-            val _ = ()
-        in
-            stubIt env lhsVar
+        val llTy = LT.typeOf ty
+      in
+          (case lit
+              of Literal.Int il => 
+                    insertV(env, lhsVar, LB.fromC(LB.intC(llTy, il)))
+               
+               | Literal.Bool b => 
+                    insertV(env, lhsVar, LB.fromC(LB.intC(LT.boolTy, if b then 1 else 0)))
+                    
+               | Literal.Float f =>
+                    insertV(env, lhsVar, LB.fromC(LB.floatC(llTy, f)))
+               
+               | _ => stubIt env lhsVar
+              (* esac *))
         end
-        
         
         
       and genCast(env, (lhsVar, cfgTy, oldVar)) = let
