@@ -330,6 +330,47 @@ fun output (outS, module as C.MODULE { name = module_name,
         final
       end
       
+      
+      (* returns ptr to new allocation and the properly offset alloc ptr *)
+      fun doAlloc allocPtr llVars = let
+        val tagTy = LT.i64
+        val llTys = L.map (fn x => LB.toTy x) llVars
+        val oldAllocPtrTy = LB.toTy allocPtr
+        
+        (* build the types we'll need *)
+        val tupleTy = LT.mkStruct(llTys)
+        val heapFrameTy = LT.mkPtr(LT.mkStruct( tagTy :: tupleTy :: nil ))
+        
+        (*  now lets calculate addresses. the invariant about the alloc pointer is that it
+            points to unallocated memory (the next allocation's header ty), so that's
+            what we need to return *)
+        val allocPtr = cast Op.BitCast (allocPtr, heapFrameTy)
+        
+        val gep = LB.gep_ib b
+        fun c idxNum = LB.intC(LT.i32, Int.toLarge idxNum)
+        
+        val headerAddr = gep (allocPtr, #[c 0, c 0])
+        val tupleAddr = gep (allocPtr, #[c 0, c 1])
+        
+        val newAllocPtr = cast Op.BitCast (gep (allocPtr, #[c 1]), oldAllocPtrTy)
+        
+        
+        fun tupleCalc idx = gep (allocPtr, #[c 0, c 1, c idx])
+        
+        (* now we do the writes *)
+        
+        fun headerTag _ = LB.fromC(LB.intC(tagTy, 1234)) (* TODO *)
+        
+        val _ = mk Op.Store #[headerAddr, headerTag tupleTy]
+        
+        val _ = L.foldl (fn (var, idx) =>
+                    ((mk Op.Store #[tupleCalc idx, var]) ; (idx + 1))) 0 llVars
+        
+        in
+            (newAllocPtr, tupleAddr)
+        end
+        
+      
       (* end handy stuff *)
       
       fun finish(env, exit) = LB.retVoid b
@@ -393,7 +434,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                | Literal.Float f =>
                     insertV(env, lhsVar, LB.fromC(LB.floatC(llTy, f)))
                
-               | _ => stubIt env lhsVar
+               | _ => stubIt env lhsVar (* remove this, although chars are not implemented even in the current backend ;o *)
               (* esac *))
         end
         
@@ -422,8 +463,9 @@ fun output (outS, module as C.MODULE { name = module_name,
            far without alloca, so we don't do that (even though mem2reg will eliminate the
            stack allocation). *)
            
-           (* TODO I'm not convinced this is nessecary. we properly generate
-             the right strings whether it's a global or local var (%ident vs @ident). *)
+           (* TODO I'm not convinced the commented out code is nessecary. we properly generate
+             the right strings whether it's a global or local var (%ident vs @ident).
+             for now lets try the simpler one *)
         
       in
         (*insertV(env, lhsVar, funcPtr)*)
@@ -554,7 +596,15 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
         %idx = getelementptr [40 x i32], [40 x i32]* %arr, i64 0, i64 17
       *)  
       
-      and genAlloc(env, (lhsVar, ty, vars)) = stubIt env lhsVar (* TODO *)
+      and genAlloc(env, (lhsVar, ty, vars)) = let
+        val llVars = L.map (fn x => lookupV(env, x)) vars
+        val (newAllocPtr, allocatedTuple) = doAlloc (lookupMV(env, MV_Alloc)) llVars
+        
+        val env = insertV(env, lhsVar, allocatedTuple)
+        val env = updateMV(env, MV_Alloc, newAllocPtr)
+      in
+        env
+      end
       
       and genGAlloc(env, (lhsVar, ty, vars)) = stubIt env lhsVar (* TODO *)
       
