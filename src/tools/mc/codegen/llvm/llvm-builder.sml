@@ -153,13 +153,16 @@ structure LLVMBuilder : sig
       PHI's should be mutable in this interface, so we do not
       expose the ability to construct PHI{...}'s directly.
       Instead, one can update an in-progress block with predecessors, and
-      upon finishing a basic block, phi's will be added to the block.
+      upon finishing a basic block, phi's will be added to the correct position
+      in a block (in particular, they must occur at the start of a basic block).
 
       Use the interface below for joins in order to produce phis.
+      
+      If all phis are not able to be determined before terminating a basic block,
+      its reccomended to produce unterminated blocks plus a thunk that will terminate
+      it at a later point.
     *) 
-
-
-  val addIncoming : t -> (var * var list) -> t
+  val addIncoming : t -> (var * instr list) -> t
 
     
   end = struct
@@ -213,8 +216,6 @@ structure LLVMBuilder : sig
     | OP_None  (* for wrapped constants and vars, as no operation occurs *)
 
 
-  type edge = (var * var list)
-
   datatype instr 
     = INSTR of {
         result : res,
@@ -237,13 +238,17 @@ structure LLVMBuilder : sig
     name : var,
     args : var list,
     body : instr list ref,
-    incoming : edge list ref
+    
+    (* a label and a list of arguments to this basic block consitutes an incoming
+       edge, and this mantains the list of such edges *)
+    incoming : (var * instr list) list ref
   }
 
   and bb = BB of { 
     name : var,
     body : instr list
   }
+  
   
   
 
@@ -614,24 +619,44 @@ structure LLVMBuilder : sig
     
     fun undef ty = C_Undef(ty)
     
+    (* this is probably reusable elsewhere *)
+    fun grabTy result = (case result
+        of R_Var v => LV.typeOf v
+         | R_Const(C_Int(theTy, _)) => theTy
+         | R_Const(C_Undef theTy) => theTy
+         | R_Const(C_Float(theTy, _)) => theTy
+         | R_Const(C_Str v) => LV.typeOf v
+      (* esac *))
 
-  (* push an instruction onto the given basic block *)
+    fun tyOfInstr (INSTR{result,...}) = grabTy result
+    
+    val toTy = tyOfInstr
+    
+
+  (* BASIC BLOCK MANIPULATION FUNCTIONS *)
+
+  (* push an instruction onto the bottom of a given basic block. *)
   fun push (T{body=blk,...}, inst) = (blk := inst :: (!blk) ; inst)
-
-  fun incoming(t as T{incoming,...}, edge) = (incoming := edge :: (!incoming); t)
-
-  (* this is probably reusable elsewhere *)
-  fun grabTy result = (case result
-      of R_Var v => LV.typeOf v
-       | R_Const(C_Int(theTy, _)) => theTy
-       | R_Const(C_Undef theTy) => theTy
-       | R_Const(C_Float(theTy, _)) => theTy
-       | R_Const(C_Str v) => LV.typeOf v
-    (* esac *))
-
-  fun tyOfInstr (INSTR{result,...}) = grabTy result
   
-  val toTy = tyOfInstr
+  (* place a list of instructions onto the top of a given basic block. *)
+  fun prepend (T{body=blk,...}, insts) = (blk := (!blk) @ insts ; insts)
+
+  
+  fun incoming(t as T{incoming, args, ...}, edge as (_, vals)) = let
+    (* light type checking is done for phis here *)
+    val zippd = ListPair.zipEq(args, vals) 
+        handle Fail _ => (* better error message *)
+            raise Fail "addIncoming: incorrect number of arguments given to a basic block!"
+            
+    val _ = L.app (fn (lv, inst) => 
+                    if LT.same(LV.typeOf lv, toTy inst) then ()
+                    else raise Fail "addIncoming: type mismatch between args and params of a basic block!") zippd
+  in
+    (incoming := edge :: (!incoming); t)
+  end
+  
+
+  
 
 
   (* Simple Instruction Builders *)
@@ -646,9 +671,73 @@ structure LLVMBuilder : sig
 
   (* Terminators *)
 
-  (* TODO(kavon): in this function, process PHIs and add them to the beginning! *)
-  fun terminate (blk as T {name, body, args, incoming}, inst) = 
-    (push(blk, inst) ; BB {name=name, body=(!body)}) 
+  fun terminate (blk as T {name, body, ...}, terminator) =
+    ( push(blk, terminator) ; addPhis(blk) ; BB {name=name, body=(!body)} ) 
+
+  (* we process incoming edges to produce phi instructions, and then place them
+     at the beginning of the block. *)
+     (*
+     PHI of {
+         join : var,   (* not a res because const and none are never allowed *)      
+         preds : (instr * var) vector    (* val, basic block *)
+       }
+       
+       t = T of { 
+         name : var,
+         args : var list,
+         body : instr list ref,
+         
+         (* a label and a list of arguments to this basic block consitutes an incoming
+            edge, and this mantains the list of such edges *)
+         incoming : (var * instr list) list ref
+       }
+       *)
+  and addPhis (blk as T {incoming, args, ...}) = let
+        (* a phi with a single pred is allowed. if the block has no predecessors
+           it should get deleted by an optimization pass later, and in that case 
+           we will emit a warning TODO and bind the args to undef values
+           using a dummy bitcast. *)
+           
+        val edges = !incoming
+        val numEdges = L.length edges
+        
+        fun nonEmpty () = let
+            val args = ListPair.zip(L.tabulate(L.length args, fn i => i), args)
+            
+            
+            fun mkPhi (pos, argVar) = let
+                val argPreds = L.map 
+                                (fn (labV, vals) => (L.nth(vals, pos), labV))
+                                edges
+            in
+                PHI { join = argVar, preds = (V.fromList argPreds) }
+            end
+        in
+            prepend(blk, L.map mkPhi args)
+        end
+        
+        fun empty () = let
+            fun mkUndef argVar = let
+                val tyy = LV.typeOf argVar
+            in
+                INSTR {
+                  result = R_Var argVar,
+                  kind = OP(Op.BitCast),
+                  args = #[fromC(undef tyy)],
+                  atr = AS.empty
+                }
+            end
+        in
+            prepend(blk, L.map mkUndef args)
+        end
+        
+           
+        
+    in
+        if numEdges > 0 then nonEmpty() else empty()
+    end
+    
+    
 
 
   (* unreachable : t -> bb *)
@@ -894,36 +983,8 @@ structure LLVMBuilder : sig
     end
 
   
-  (* addIncoming : t -> (var * var list) -> t *)
+  (* addIncoming : t -> (var * instr list) -> t *)
   fun addIncoming blk edge = incoming(blk, edge)
 
-
-(*
-
-  fun phi blk predPairs = let
-
-    val check = typeCheck "phi"
-
-    fun getRes (INSTR{result,...}, _) = result
-
-    fun typeCheck ((INSTR{result,...}, origin), otherTy) = (
-      check(LT.labelTy, LV.typeOf origin) ;
-      check(otherTy, grabTy result)
-    )
-
-    val tyy : LT.ty = V.foldl typeCheck ((grabTy o getRes) (V.sub(predPairs, 0))) predPairs
-
-    val reg = LV.new("r", tyy)
-  
-  in
-    push(blk,
-      PHI {
-        join = reg,
-        preds = predPairs
-      }
-    )
-  end 
-*)
-     
 
 end
