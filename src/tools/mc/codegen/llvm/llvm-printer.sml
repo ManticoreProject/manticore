@@ -560,63 +560,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
           ^ (CV.toString rhsVar) ^ " : " ^ (CFGTyUtil.toString(CFG.Var.typeOf rhsVar)) ^ "\nwhich became LLVM var of type "
           ^ (LT.fullNameOf(LB.toTy llv)) ^ "\n"
           ))
-    
-      (* below is some gepType testing code
-      
-      val myVarTy = LT.mkPtr(LT.mkUStruct([LT.mkArray(LT.cnt 10, LT.i32)]))
-      val _ = print (LT.fullNameOf myVarTy)
-      
-      val _ = print ("\n\n0, 0, 1 -> " ^ (LT.fullNameOf((LT.gepType(myVarTy, #[0, 0, 1])))))
-      
-      val _ = print ("\n\n1 -> " ^ (LT.fullNameOf((LT.gepType(myVarTy, #[1])))))
-      
-      val _ = print ("\n\n1, 0, 0 -> " ^ (LT.fullNameOf((LT.gepType(myVarTy, #[1, 0, 0])))))
-      
-      val _ = print "\n---------\n"
-      
-      
-
-      
-      val myVarTy = LT.mkPtr(
-                      LT.mkUStruct([
-                        LT.mkPtr(
-                            LT.mkArray(LT.cnt 40, LT.i32)
-                        )
-                      ]))
-                      
-      val _ = print (LT.fullNameOf myVarTy)
-      
-      (* should fail but doesnt *)
-      val _ = print ("\n\n0, 0, 0, 17 -> " ^ (LT.fullNameOf(LT.gepType(myVarTy, #[0, 0, 0, 17]))))
-      
-      val _ = print ("\n\n0, 0 -> " ^ (LT.fullNameOf((LT.gepType(myVarTy, #[0, 0])))))
-      
-      
-      val _ = print "\n---------\n"
-      
-      val myVarTy = LT.mkPtr(LT.i32)
-                      
-      val _ = print (LT.fullNameOf myVarTy)
-      
-      val _ = print ("\n\n17 -> " ^ (LT.fullNameOf(LT.gepType(myVarTy, #[17]))))
-      
-      
-      val _ = print "\n\n"
-      val _ = raise Fail "success"*)
-      
-            
-      (*
-        (* initial example *)
-        %MyVar = global { [10 x i32] }
-        %idx1 = getelementptr { [10 x i32] }, { [10 x i32] }* %MyVar, i64 0, i32 0, i64 1
-        %idx2 = getelementptr { [10 x i32] }, { [10 x i32] }* %MyVar, i64 1
-        
-        (* another example *)
-        %MyVar = uninitialized global { [40 x i32 ]* }
-        %idx = getelementptr { [40 x i32]* }, { [40 x i32]* }* %, i64 0, i32 0
-        %arr = load [40 x i32]** %idx
-        %idx = getelementptr [40 x i32], [40 x i32]* %arr, i64 0, i64 17
-      *)  
+          
       
       and genAlloc(env, (lhsVar, ty, vars)) = let
         val llVars = L.map (fn x => lookupV(env, x)) vars
@@ -694,14 +638,11 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
       in
         insertV(env, lhsVar, vpOffset vpLL offset lhsTy)
       end
-      
-      
-      
 
 
     in
         finish(process(initialEnv, body), exit)
-    end
+    end (* end of fillBlock *)
 
 
   (* testing llvm bb generator *)
