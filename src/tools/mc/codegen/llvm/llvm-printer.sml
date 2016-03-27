@@ -448,7 +448,7 @@ fun output (outS, module as C.MODULE { name = module_name,
             in the CFG rep, the types of values might be implicitly cast
             during a transfer ( TODO and apparently after allocation too). for example:
             
-            BLOCK 1
+            BLOCK 1 (block $then<100E9>#4)
             let _t<100EC>#1:[any] = alloc (acc<100E7>)
             goto $letJoinK<10029>(ep<100E6>,_t<100EC>)
             
@@ -662,7 +662,12 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
         val llVars = L.map (fn x => lookupV(env, x)) vars
         val (newAllocPtr, allocatedTuple) = doAlloc (lookupMV(env, MV_Alloc)) llVars
         
-        val env = insertV(env, lhsVar, allocatedTuple)
+        val lhsTy = LT.typeOf ty
+        val maybeCasted = if LT.same(lhsTy, LB.toTy allocatedTuple) then allocatedTuple
+                          else (* there was an implicit cast involving the any ty upon binding *)
+                            cast Op.BitCast (allocatedTuple, lhsTy)
+        
+        val env = insertV(env, lhsVar, maybeCasted)
         val env = updateMV(env, MV_Alloc, newAllocPtr)
       in
         env
