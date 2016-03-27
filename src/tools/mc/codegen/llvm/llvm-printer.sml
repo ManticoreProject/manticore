@@ -446,7 +446,7 @@ fun output (outS, module as C.MODULE { name = module_name,
       
         (* 
             in the CFG rep, the types of values might be implicitly cast
-            during a transfer ( TODO and apparently after allocation too). for example:
+            during a transfer. for example:
             
             BLOCK 1 (block $then<100E9>#4)
             let _t<100EC>#1:[any] = alloc (acc<100E7>)
