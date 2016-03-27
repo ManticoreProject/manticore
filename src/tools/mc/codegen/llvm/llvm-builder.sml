@@ -35,6 +35,8 @@ structure LLVMBuilder : sig
        of the block and the list is the list of arguments
        to the block *)
     val new : (var * var list) -> t
+    
+    val labelOf : t -> var
 
     (* generate textual representation of the BB *)
     val toString : bb -> string
@@ -267,6 +269,9 @@ structure LLVMBuilder : sig
     typeCheck "new" (LT.labelTy, LV.typeOf v) ;
     T { name = v, body = ref nil, args = args, incoming = ref nil }
    )
+   
+   (* labelOf : t -> var *)
+   fun labelOf (T { name,... }) = name
 
 
   (* generate texual representation of the BB
@@ -645,7 +650,7 @@ structure LLVMBuilder : sig
   fun incoming(t as T{incoming, args, ...}, edge as (_, vals)) = let
     (* light type checking is done for phis here *)
     val zippd = ListPair.zipEq(args, vals) 
-        handle Fail _ => (* better error message *)
+        handle UnequalLengths => (* better error message *)
             raise Fail "addIncoming: incorrect number of arguments given to a basic block!"
             
     val _ = L.app (fn (lv, inst) => 

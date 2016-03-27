@@ -129,11 +129,12 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   datatype gamma = ENV of {
     labs : LV.var CL.Map.map,    (* CFG Labels -> LLVMVars *)
+    blks : LB.t LV.Map.map,     (* LLVMVars -> basic blocks *)
     vars : LB.instr CV.Map.map,     (* CFG Vars -> LLVM Instructions *)
     mvs : LB.instr vector          (* current LLVM Instructions representing machine vals *)
   }
   
-  val emptyEnv = ENV {labs=CL.Map.empty, vars=CV.Map.empty, mvs=(#[])}
+  val emptyEnv = ENV {labs=CL.Map.empty, blks=LV.Map.empty, vars=CV.Map.empty, mvs=(#[])}
 
   fun lookupV (ENV{vars,...}, v) = 
     (case CV.Map.find(vars, v)
@@ -148,15 +149,24 @@ fun output (outS, module as C.MODULE { name = module_name,
     (* esac *))
     
   fun lookupMV (ENV{mvs,...}, kind) = Vector.sub(mvs, machineValIdx kind)
+  
+  fun lookupBB (ENV{blks,...}, llv) =
+    (case LV.Map.find(blks, llv)
+      of SOME bb => bb
+       | NONE => raise Fail ("lookupBB -- unknown LLVM Basic Block: " ^ LV.toString llv)
+    (* esac *))
 
-  fun insertV (ENV{vars, labs, mvs}, v, lv) = 
-        ENV{vars=(CV.Map.insert(vars, v, lv)), labs=labs, mvs=mvs}
+  fun insertV (ENV{vars, blks, labs, mvs}, v, lv) = 
+        ENV{vars=(CV.Map.insert(vars, v, lv)), blks=blks, labs=labs, mvs=mvs}
 
-  fun insertL (ENV{vars, labs, mvs}, l, ll) = 
-        ENV{vars=vars, labs=(CL.Map.insert(labs, l, ll)), mvs=mvs}
+  fun insertL (ENV{vars, blks, labs, mvs}, l, ll) = 
+        ENV{vars=vars, blks=blks, labs=(CL.Map.insert(labs, l, ll)), mvs=mvs}
         
-  fun updateMV(ENV{vars, labs, mvs}, kind, lv) =
-        ENV{vars=vars, labs=labs,
+  fun insertBB (ENV{vars, blks, labs, mvs}, llv, bb) = 
+        ENV{vars=vars, blks=(LV.Map.insert(blks, llv, bb)), labs=labs, mvs=mvs}
+        
+  fun updateMV(ENV{vars, blks, labs, mvs}, kind, lv) =
+        ENV{vars=vars, labs=labs, blks=blks,
             mvs= Vector.update(mvs, machineValIdx kind, lv)}
 
   (* end translation environment utilities *)
@@ -207,7 +217,7 @@ fun output (outS, module as C.MODULE { name = module_name,
 
       (* NOTE note adding start block to env because nobody can branch to it anyways *)
 
-      fun init f (b as C.BLK{lab, body, exit, args}) = let
+      fun mkRegBlock (C.BLK{lab, body, exit, args}) = let
           val llArgs  = L.map LV.convert args
           
           (* we need to add implicit values from CFG to the "branching convention" of all other
@@ -225,9 +235,10 @@ fun output (outS, module as C.MODULE { name = module_name,
                     env
                     (ListPair.zip newMVs)
           
-          val b = LB.new (f lab, mvVars @ llArgs)
+          val b = LB.new (lookupL(env, lab), mvVars @ llArgs)
         in
-          fillBlock b (env, body, exit)
+          (b, env, fn (b, env) => fillBlock b (env, body, exit)) 
+          (* fillBlock b (env, body, exit) *)
         end
 
       fun mkStartBlock (C.BLK{body, exit, ...}, (cc, ccRegs, mvRegs)) = let
@@ -265,22 +276,40 @@ fun output (outS, module as C.MODULE { name = module_name,
                 val env = L.foldl addCastsMV env mvRegs
               
             in
-                fillBlock blk (env, body, exit)
+                (blk, env, fn (blk, env) => fillBlock blk (env, body, exit))
+                (* fillBlock blk (env, body, exit) *)
             end
 
-
-      val startBlock = mkStartBlock(start, llvmCC)
+      (* make new blocks and setup their individual environments wrt their calling conventions *)
+      val allBlocks = mkStartBlock(start, llvmCC) :: (L.map mkRegBlock body)
       
-      (* TODO shouldn't lookup or use initialEnv imo, might have to rethink this *)
-      val bodyBlocks = L.map (init (fn lab => lookupL(initialEnv, lab))) body
+      (* now collect all of these blocks into a map in order to add predecessor edges for transfers
+         when we fill the blocks later *)
+      val bbMap = 
+            L.foldl 
+            (fn ((blk, _, _), map) => LV.Map.insert(map, LB.labelOf blk, blk))
+            LV.Map.empty 
+            allBlocks
+            
+     (* update all of the block environments with the new map 
+        NOTE we wipe out the old blks map because it should be empty before this point anyways. *)
+     val allBlocks = L.map (fn (b, ENV{vars, blks, labs, mvs}, f) => 
+                                (b, ENV{vars=vars, blks=bbMap, labs=labs, mvs=mvs}, f)) allBlocks
+    
+    (* results in a list of thunks that will cap off the blocks *)                            
+    val allBlocks = L.map (fn (blk, env, f) => f (blk, env)) allBlocks
+      
+    (* force the thunks now that all blocks have added their predecessor edges to
+       all of the blocks *)
+    val allBlocks = L.map (fn f => f()) allBlocks
 
     in
-      L.map LB.toString (startBlock::bodyBlocks)
+        L.map LB.toString allBlocks
     end
       
 
 
-  and fillBlock (b : LB.t) (initialEnv : gamma, body : C.exp list, exit : C.transfer) : LB.bb = let
+  and fillBlock (b : LB.t) (initialEnv : gamma, body : C.exp list, exit : C.transfer) : (unit -> LB.bb) = let
     
     (* a jump list is a (label * var list) which indicates
        where a jump comes from, and the names of the vars from that BB.
@@ -395,7 +424,7 @@ fun output (outS, module as C.MODULE { name = module_name,
       
       (* end handy stuff *)
       
-      fun finish(env, exit) = LB.retVoid b
+      fun finish(env, exit) = (fn () => LB.retVoid b)
       
       (* handle the list of exp's in a CFG block *)
       and process(env, []) = env
@@ -639,8 +668,9 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
         insertV(env, lhsVar, vpOffset vpLL offset lhsTy)
       end
 
-
     in
+        (* we return a thunk that will actually terminate the block once all of its
+           predecessors have been processed *)
         finish(process(initialEnv, body), exit)
     end (* end of fillBlock *)
 
@@ -674,7 +704,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
 (****** Functions ******)
   
   (* NOTE: this probably should be moved into a new module or something *)
-  fun mkFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, initEnv as ENV{labs=inherited_labs, vars=inherited_vars, ...}) : string = let
+  fun mkFunc (f as C.FUNC { lab, entry, start=(start as C.BLK{ args=cfgArgs, ... }), body }, initEnv as ENV{labs=inherited_labs, vars=inherited_vars, blks=inherited_blks, ...}) : string = let
     
     val (mvTys : LT.ty list, cc : (int * C.var) list) = determineCC(entry, cfgArgs)
     
@@ -757,10 +787,10 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
     (* now we setup the environment, we need to make fresh vars for the reg types,
        and map the original parameters to the reg types when we call mk bbelow *)
     
-    (* TODO(kavon): the label environment should contain every function in the program
-    ENV{labs=CL.Map.empty, vars=CV.Map.empty, mvs=mvs}
-     *) 
-    val body = mkBasicBlocks (ENV{labs=inherited_labs, vars=inherited_vars, mvs=mvs},
+    val body = mkBasicBlocks (ENV{labs=inherited_labs,
+                                  vars=inherited_vars,
+                                  blks=inherited_blks,
+                                  mvs=mvs},
                                 start, body, (cc, ccRegs, mvRegs))  
 
     val total = S.concat (decl @ body @ ["\n}\n\n"])
