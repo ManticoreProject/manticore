@@ -465,17 +465,30 @@ fun output (outS, module as C.MODULE { name = module_name,
               ) = ...
             
         *)
-        fun matchCC () = ()
+        fun matchCC (llArgs, params) = let
+                (* jumps sometimes implicitly cast the values, so we add bitcasts as needed
+                   so that the llArgs are matched up with the block's parameters *)
+                fun maybeCast (llArg, param) = 
+                    let val neededTy = LV.typeOf param in
+                    if LT.same(neededTy, LB.toTy llArg) 
+                        then llArg
+                        else cast Op.BitCast (llArg, neededTy)
+                    end
+            in
+                L.map maybeCast (ListPair.zipEq(llArgs, params))
+            end
         
-        fun markPred (to, args) = let
+        and markPred (to, args) = let
+                val llLab = lookupL(env, to)
+                val llBB = lookupBB(env, llLab)
+                val bbParams = LB.paramsOf llBB
+        
                 val llArgs = L.map (fn a => lookupV(env, a)) args
                 val mvArgs = L.map (fn mv => lookupMV(env, mv)) mvCC
                 
                 val from = LB.labelOf b
-                val allArgs = mvArgs @ llArgs
+                val allArgs = matchCC(mvArgs @ llArgs, bbParams)
                 
-                val llLab = lookupL(env, to)
-                val llBB = lookupBB(env, llLab)
             in
                 (LB.addIncoming llBB (from, allArgs) ; (llLab, allArgs))
             end
@@ -488,7 +501,12 @@ fun output (outS, module as C.MODULE { name = module_name,
                     (fn () => LB.br b targ)
                   end
               
-               (* | If (cond, trueJ, falseJ) *)
+               | C.If (cond, trueJ, falseJ) => let
+                     val (targ, _) = markPred jmp
+                   in
+                     (fn () => LB.br b targ)
+                   end
+                   
                | _ => (fn () => LB.retVoid b)
               (* esac *))  
       end

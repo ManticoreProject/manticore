@@ -38,7 +38,7 @@ structure LLVMBuilder : sig
     
     val labelOf : t -> var
     
-    val argsOf : t -> var list
+    val paramsOf : t -> var list
 
     (* generate textual representation of the BB *)
     val toString : bb -> string
@@ -275,8 +275,8 @@ structure LLVMBuilder : sig
    (* labelOf : t -> var *)
    fun labelOf (T { name,... }) = name
    
-   (* argsOf : t -> var list *)
-   fun argsOf (T { args,... }) = args
+   (* paramsOf : t -> var list *)
+   fun paramsOf (T { args,... }) = args
 
 
   (* generate texual representation of the BB
@@ -662,9 +662,9 @@ structure LLVMBuilder : sig
         handle UnequalLengths => (* better error message *)
             raise Fail "addIncoming: incorrect number of arguments given to a basic block!"
             
-    (*val _ = L.app (fn (lv, inst) => 
+    val _ = L.app (fn (lv, inst) => 
                     if LT.same(LV.typeOf lv, toTy inst) then ()
-                    else raise Fail "addIncoming: type mismatch between args and params of a basic block!") zippd*)
+                    else raise Fail "addIncoming: type mismatch between args and params of a basic block!") zippd
   in
     (incoming := edge :: (!incoming); t)
   end
