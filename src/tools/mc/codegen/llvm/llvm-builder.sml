@@ -37,6 +37,8 @@ structure LLVMBuilder : sig
     val new : (var * var list) -> t
     
     val labelOf : t -> var
+    
+    val argsOf : t -> var list
 
     (* generate textual representation of the BB *)
     val toString : bb -> string
@@ -272,6 +274,9 @@ structure LLVMBuilder : sig
    
    (* labelOf : t -> var *)
    fun labelOf (T { name,... }) = name
+   
+   (* argsOf : t -> var list *)
+   fun argsOf (T { args,... }) = args
 
 
   (* generate texual representation of the BB
@@ -282,6 +287,20 @@ structure LLVMBuilder : sig
     in
       header ^ (S.concatWith "\n\t" (cvt body)) ^ "\n\n"
     end
+    
+  and break (INSTR{result,...}) = (case result
+     of R_Var v => (LV.toString v, LV.typeOf v)
+      
+      | R_Const(C_Int(ty, i)) => (IntInf.toString i, ty)
+      
+      | R_Const(C_Undef ty) => ("undef", ty)
+
+      | R_Const(C_Float(ty, f)) => (FloatLit.toString f, ty)
+
+      | R_Const(C_Str v) => (LV.toString v, LV.typeOf v)
+
+      | _ => raise Fail "invalid argument for an instruction"
+  (* esac *))
 
   (* we don't use map because the body is actually a reversed
      list of instructions, so in the processing we put the
@@ -295,8 +314,12 @@ structure LLVMBuilder : sig
 
   and getStr (phi as PHI{join : var, preds : (instr * var) vector }) = let
       
-      fun cvt (INSTR{result=(R_Var v),...}, l) = 
-          "[ " ^ LV.toString v ^ ", " ^ LV.toString l ^ " ]"
+      fun cvt (ins, l) = let
+        val (resName, resTy) = break ins
+      in
+        "[ " ^ resName ^ ", " ^ LV.toString l ^ " ]"
+      end 
+          
 
       val tings : string vector = V.map cvt preds
       val tings = V.foldr (fn (v, a) => v::a) [] tings
@@ -309,20 +332,6 @@ structure LLVMBuilder : sig
     end
 
     | getStr (inst as INSTR{result, kind, args, atr}) = let
-
-      fun break (INSTR{result,...}) = (case result
-                         of R_Var v => (LV.toString v, LV.typeOf v)
-                          
-                          | R_Const(C_Int(ty, i)) => (IntInf.toString i, ty)
-                          
-                          | R_Const(C_Undef ty) => ("undef", ty)
-
-                          | R_Const(C_Float(ty, f)) => (FloatLit.toString f, ty)
-
-                          | R_Const(C_Str v) => (LV.toString v, LV.typeOf v)
-
-                          | _ => raise Fail "invalid argument for an instruction"
-                      (* esac *))
 
       fun getArgStr withTy = fn instr => let
           val (resName, resTy) = break instr
@@ -653,9 +662,9 @@ structure LLVMBuilder : sig
         handle UnequalLengths => (* better error message *)
             raise Fail "addIncoming: incorrect number of arguments given to a basic block!"
             
-    val _ = L.app (fn (lv, inst) => 
+    (*val _ = L.app (fn (lv, inst) => 
                     if LT.same(LV.typeOf lv, toTy inst) then ()
-                    else raise Fail "addIncoming: type mismatch between args and params of a basic block!") zippd
+                    else raise Fail "addIncoming: type mismatch between args and params of a basic block!") zippd*)
   in
     (incoming := edge :: (!incoming); t)
   end

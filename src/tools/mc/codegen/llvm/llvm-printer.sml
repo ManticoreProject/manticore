@@ -424,7 +424,74 @@ fun output (outS, module as C.MODULE { name = module_name,
       
       (* end handy stuff *)
       
-      fun finish(env, exit) = (fn () => LB.retVoid b)
+      (* NOTE NOTE what needs to happen in `finish` is that all transfers making this basic block
+        a predecessor of some other basic block within this function _must_ use LB.addIncoming
+        to tell that block about its new predecessor _before_ constructing the thunk that delays the
+        actual addition of the block terminator to the LB.t that turns it into a LB.bb. It is
+        incorrect to create the LB.bb value and then save that in the thunk, you have to
+        thunk the actual application of the function that produces that value. ex: (fn () => LB.retVoid b)
+        
+        This kind of hacky design is due to the fact that I decided agianst having a 
+        seperate pass that annotates basic blocks in the CFG with their predecessors 
+        (though some remnants of that pass I wrote are around). The other factor is 
+        that I didn't want to write this printer in such a control-flowy way that 
+        integrates that pass into the construction of things. 
+        
+        type jump = (label * var list)
+        
+        *)
+        
+        
+      fun finish(env, exit) = let
+      
+        (* 
+            in the CFG rep, the types of values might be implicitly cast
+            during a transfer ( TODO and apparently after allocation too). for example:
+            
+            BLOCK 1
+            let _t<100EC>#1:[any] = alloc (acc<100E7>)
+            goto $letJoinK<10029>(ep<100E6>,_t<100EC>)
+            
+            BLOCK 2
+            acc<100D4>#1:[[int,any,int,any,![enum(1)]],[cont([cont(any/enum(0)),...]/enum(0)),...],any]
+            ...
+            let _t<100D9>#1:[any] = alloc (acc<100D4>)
+            goto $letJoinK<10029>(ep<100D3>,_t<100D9>)
+            
+            block $letJoinK<10029>#8 
+              (
+                ep<10027>#2: <type sig>,
+                item<10028>#2:any
+              ) = ...
+            
+        *)
+        fun matchCC () = ()
+        
+        fun markPred (to, args) = let
+                val llArgs = L.map (fn a => lookupV(env, a)) args
+                val mvArgs = L.map (fn mv => lookupMV(env, mv)) mvCC
+                
+                val from = LB.labelOf b
+                val allArgs = mvArgs @ llArgs
+                
+                val llLab = lookupL(env, to)
+                val llBB = lookupBB(env, llLab)
+            in
+                (LB.addIncoming llBB (from, allArgs) ; (llLab, allArgs))
+            end
+            
+      in
+          (case exit
+              of C.Goto jmp => let
+                    val (targ, _) = markPred jmp
+                  in
+                    (fn () => LB.br b targ)
+                  end
+              
+               (* | If (cond, trueJ, falseJ) *)
+               | _ => (fn () => LB.retVoid b)
+              (* esac *))  
+      end
       
       (* handle the list of exp's in a CFG block *)
       and process(env, []) = env
