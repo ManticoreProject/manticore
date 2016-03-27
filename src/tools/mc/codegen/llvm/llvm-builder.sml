@@ -716,7 +716,15 @@ structure LLVMBuilder : sig
             prepend(blk, L.map mkPhi args)
         end
         
-        fun empty () = let
+        fun empty () = [] 
+        
+        (* NOTE we do nothing if the block has no predecessors because we can't differentiate
+        between a start block (which has no preds and cannot have phi nodes) and a dangling
+        block somewhere else in the code. If this becomes a problem we could do some adhoc
+        fix such as marking blocks as being a starter or not so we emit the dummy casts
+        below for dangling blocks. *)
+        
+        (*fun empty () = let
             fun mkUndef argVar = let
                 val tyy = LV.typeOf argVar
             in
@@ -729,7 +737,7 @@ structure LLVMBuilder : sig
             end
         in
             prepend(blk, L.map mkUndef args)
-        end
+        end*)
         
            
         

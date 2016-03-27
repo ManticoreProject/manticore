@@ -92,7 +92,9 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   (* translation environment utilities *)
   
-  (* implicit machine values according to CFG *)
+  (* lightweight management tools for 
+     the implicit machine values found in the CFG representation *)
+  
   datatype machineVal 
     = MV_Alloc
     | MV_Vproc
@@ -111,8 +113,19 @@ fun output (outS, module as C.MODULE { name = module_name,
        | 1 => SOME MV_Vproc
        | _ => NONE
       (* end case *))
+      
+  val mvCC = [ MV_Alloc, MV_Vproc ] (* parameters added to all basic blocks *)
+    
+  fun freshMVs () = let
+        val fresh = (fn x => LV.new(machineValStr x, machineValTy x))
+    in
+        (mvCC, L.map fresh mvCC)
+    end
   
   val numMachineVals = 2
+  
+  (* end of machine value tools *)
+  
 
   datatype gamma = ENV of {
     labs : LV.var CL.Map.map,    (* CFG Labels -> LLVMVars *)
@@ -192,59 +205,68 @@ fun output (outS, module as C.MODULE { name = module_name,
                   initEnv 
                   (L.map convertLabs body)
 
-      (* TODO(kavon): not sure if it's correct to skip adding start block to environment.
-          current assumption is that nobody will branch to start block, but instead make
-          a call to it, and the function's LLVM name should already be in environment
-          at this point. *)
+      (* NOTE note adding start block to env because nobody can branch to it anyways *)
 
       fun init f (b as C.BLK{lab, body, exit, args}) = let
           val llArgs  = L.map LV.convert args
+          
+          (* we need to add implicit values from CFG to the "branching convention" of all other
+          blocks (start block is already taken care of with the JWA CC) *)
+          
+          val (newMVs as (_, mvVars)) = freshMVs()
+          
           val env = L.foldr (fn ((old, new), acc) => insertV(acc, old, LB.fromV new))
                       initialEnv
                       (ListPair.zip(args, llArgs))
+            
           
-          val b = LB.new (f lab, llArgs)
+          
+          val env = L.foldr (fn ((mvKind, mvVar), acc) => updateMV(acc, mvKind, LB.fromV mvVar)) 
+                    env
+                    (ListPair.zip newMVs)
+          
+          val b = LB.new (f lab, mvVars @ llArgs)
         in
           fillBlock b (env, body, exit)
         end
 
       fun mkStartBlock (C.BLK{body, exit, ...}, (cc, ccRegs, mvRegs)) = let
-      (* start needs to be treated specially because its inputs
-         are the parameters to the function that need a special calling convention.
-         also nobody can branch to the start block so we don't need to add it to the env *)
-         
-         val inputs = L.map (fn (_, var, _) => var) (mvRegs @ ccRegs)
-         
-         val blk = LB.new(LV.new("entry", LT.labelTy), inputs)
-         
-         fun addBitcastCC (((_, cfgVar), (_, llReg, realTy)), acc) = let
-                val castPair = (LV.typeOf llReg, realTy)
-                val argPair = (LB.fromV llReg, realTy)
-                val newVar = LB.cast blk (Op.autoCast castPair) argPair
+              (* start needs to be treated specially because its inputs
+                 are the parameters to the function that need a special calling convention, and
+                 we need to add bitcasts of the parameters instead of phi nodes for  *)
+                 
+                 val inputs = L.map (fn (_, var, _) => var) (mvRegs @ ccRegs)
+                 
+                 val blk = LB.new(LV.new("entry", LT.labelTy), inputs)
+                 
+                 fun addBitcastCC (((_, cfgVar), (_, llReg, realTy)), acc) = let
+                        val castPair = (LV.typeOf llReg, realTy)
+                        val argPair = (LB.fromV llReg, realTy)
+                        val newVar = LB.cast blk (Op.autoCast castPair) argPair
+                    in
+                        insertV(acc, cfgVar, newVar) (*  *)
+                    end
+                    
+                fun addCastsMV ((i, llReg, realTy), acc) = let
+                       val castPair = (LV.typeOf llReg, realTy)
+                       val argPair = (LB.fromV llReg, realTy)
+                       val newVar = LB.cast blk (Op.autoCast castPair) argPair
+                       val SOME mv = IdxMachineVal i
+                   in
+                       updateMV(acc, mv, newVar)
+                   end
+                 
+                 
+                 val env = L.foldl 
+                    addBitcastCC
+                    initialEnv
+                    (ListPair.zipEq(cc, ccRegs))
+                    
+                val env = L.foldl addCastsMV env mvRegs
+              
             in
-                insertV(acc, cfgVar, newVar) (*  *)
+                fillBlock blk (env, body, exit)
             end
-            
-        fun addCastsMV ((i, llReg, realTy), acc) = let
-               val castPair = (LV.typeOf llReg, realTy)
-               val argPair = (LB.fromV llReg, realTy)
-               val newVar = LB.cast blk (Op.autoCast castPair) argPair
-               val SOME mv = IdxMachineVal i
-           in
-               updateMV(acc, mv, newVar)
-           end
-         
-         
-         val env = L.foldl 
-            addBitcastCC
-            initialEnv
-            (ListPair.zipEq(cc, ccRegs))
-            
-        val env = L.foldl addCastsMV env mvRegs
-      
-        in
-            fillBlock blk (env, body, exit)
-        end
 
 
       val startBlock = mkStartBlock(start, llvmCC)
