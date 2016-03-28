@@ -295,7 +295,94 @@ in (case p
     | _ => raise TODO ("primop " ^ (PrimUtil.nameOf p) ^ " not implemented")
     
     (* esac *))
-  end (* end let *)
+  end (* end let of fromPrim*)
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  (* returns a function that when applied to LLVM equivalents of the vars, it will
+    return the result of performing the test as an LLVM instruction result, thus the
+    type of the LLVM instr is an i1 for use in branch instructions *)
+  fun fromCond bb cond = let
+    val f = LB.mk bb
+    val c = LB.cast bb
+    
+    (* two argument cmp with a direct equivalent *)
+    fun simpleCmp kind opc = (fn [a, b] => f e (kind opc) #[a, b])
+    
+    fun addrCmpCast a = c (Op.simpleCast (LB.toTy a, i64)) (a, i64)
+    
+    (* compare two pointers. NOTE it seems integers are being compared with pointers
+       sometimes, presumably because Equal(int, any) is allowed, so we use simpleCast. 
+       Should not expect any floats though. *)
+    fun addrCmp cmp = 
+        (fn [a, b] =>
+            f e (Op.Icmp cmp) #[addrCmpCast a, addrCmpCast b])
+    
+  in (case cond
+      (*
+      | (P.I32LSh _ | P.I64LSh _)
+          => (fn [a, b] => f e Op.Shl #[a, b])
+     *) 
+     
+     
+     
+      of (P.I32Eq _ | P.I64Eq _)    => simpleCmp Op.Icmp (Op.S Op.EQ)
+       | (P.I32NEq _ | P.I64NEq _)  => simpleCmp Op.Icmp (Op.S Op.NE)
+       | (P.I32Lt _ | P.I64Lt _)    => simpleCmp Op.Icmp (Op.S Op.LT)
+       | (P.I32Lte _ | P.I64Lte _)  => simpleCmp Op.Icmp (Op.S Op.LE)
+       | (P.I32Gt _ | P.I64Gt _)    => simpleCmp Op.Icmp (Op.S Op.GT)
+       | (P.I32Gte _ | P.I64Gte _)  => simpleCmp Op.Icmp (Op.S Op.GE)
+       
+       | (P.U32Lt _ | P.U64Lt _)    => simpleCmp Op.Icmp (Op.US Op.LT) 
+       
+       
+       (* TODO could put fast-math flags on these fcmps, also, are the arguments
+          guarenteed to be ordered? there don't seem to be conds which check
+          whether its a NaN or not so maybe it could be? for now we play it safe *)
+          
+       | (P.F32Eq _ | P.F64Eq _)    => simpleCmp Op.Fcmp (Op.UO Op.EQ)
+       | (P.F32NEq _ | P.F64NEq _)  => simpleCmp Op.Fcmp (Op.UO Op.NE)
+       | (P.F32Lt _ | P.F64Lt _)    => simpleCmp Op.Fcmp (Op.UO Op.LT)
+       | (P.F32Lte _ | P.F64Lte _)  => simpleCmp Op.Fcmp (Op.UO Op.LE)
+       | (P.F32Gt _ | P.F64Gt _)    => simpleCmp Op.Fcmp (Op.UO Op.GT)
+       | (P.F32Gte _ | P.F64Gte _)  => simpleCmp Op.Fcmp (Op.UO Op.GE)
+       
+       (* shouldn't matter for equality questinos, but we chose unsigned since im
+          pretty sure these are never considered negative values anyways. *)
+       | (P.Equal _ | P.AdrEq _)    => addrCmp (Op.US Op.EQ)
+       | (P.NotEqual _ | P.AdrNEq _)    => addrCmp (Op.US Op.NE)
+       | (P.EnumEq _)     => simpleCmp Op.Icmp (Op.US Op.EQ)
+       | (P.EnumNEq _)    => simpleCmp Op.Icmp (Op.US Op.NE)
+       
+       | (P.BCAS _) =>
+           (fn [targ, cmp, new] => 
+               (LB.extractV bb (
+                   f e Op.CmpXchg #[targ, cmp, new],
+                   #[LB.intC(i32, 1)])
+               )
+           )
+           
+       | _ => raise TODO ("primop " ^ (CondUtil.nameOf cond) ^ " not implemented")
+      
+       
+      (* These need a few extra things. see prim-gen-fn.sml, fun genCond to see how
+         we test the boxity of a value
+      isBoxed of 'var
+      | isUnboxed of 'var
+    (* conditional atomic operations *)
+      | I32isSet of 'var		(* 32-bit test (for short-circuiting I32TAS) *)
+      | I32TAS of 'var			(* 32-bit test and set *)
+      *)
+      
+      (* esac *))
+  end (* end let of fromCond *)
     
 end (* end local *)
 

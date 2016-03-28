@@ -56,6 +56,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure OU = LLVMOpUtil
   structure P = Prim
   structure PU = PrimUtil
+  structure CU = CondUtil
   
 
 fun output (outS, module as C.MODULE { name = module_name,
@@ -170,37 +171,9 @@ fun output (outS, module as C.MODULE { name = module_name,
             mvs= Vector.update(mvs, machineValIdx kind, lv)}
 
   (* end translation environment utilities *)
-
   
-  (* Terminators, aka transfers in CFG *)
-
-  fun mkTransfer (t : C.transfer) = (case t
-
-    of (C.Switch _) => raise Fail "implement me"
-
-    (* this will require inspecting the Prim.cond and generating the test as well *)
-     | (C.If _) => raise Fail "implement me"
-
-     (* br *)
-     | (C.Goto _) => raise Fail "implement me"
-
-
-     (* see above. also, need to figure out the difference between these two. *)
-     | (C.HeapCheck _) => raise Fail "implement me"
-     | (C.HeapCheckN _) => raise Fail "implement me"
-
-
-     (* generate musttail calls *)
-     | (C.StdApply _) => raise Fail "implement me"
-     | (C.StdThrow _) => raise Fail "implement me"
-     | (C.Apply _) => raise Fail "implement me"
-
-     | _ => raise Fail "not sure how to handle AllocCCall right now "
-
-    (* end case *))
-
-  (* end of Terminators *)
-
+  
+  
 
   (* Basic Blocks *)
 
@@ -439,6 +412,8 @@ fun output (outS, module as C.MODULE { name = module_name,
         
         type jump = (label * var list)
         
+        and cond = var Prim.cond
+        
         *)
         
         
@@ -501,11 +476,21 @@ fun output (outS, module as C.MODULE { name = module_name,
                     (fn () => LB.br b targ)
                   end
               
-               | C.If (cond, trueJ, falseJ) => let
-                     val (targ, _) = markPred jmp
+               | C.If (cond, trueJ, falseJ) => ((let
+                    val (trueTarg, _) = markPred trueJ
+                    val (falseTarg, _) = markPred falseJ
+                    
+                    val llArgs = L.map (fn x => lookupV(env, x)) (CU.varsOf cond)
+                    val cvtr = OU.fromCond b cond
+                    
+                    (* the i1 result of evaluating the condition *)
+                    val result = cvtr llArgs
+                     
                    in
-                     (fn () => LB.br b targ)
-                   end
+                     
+                     (fn () => LB.condBr b (result, trueTarg, falseTarg))
+                     
+                   end) handle OU.TODO _ => (fn () => LB.retVoid b)) (* TODO remove this handler *)
                    
                | _ => (fn () => LB.retVoid b)
               (* esac *))  

@@ -378,22 +378,15 @@ structure LLVMOp = struct
         (* esac *))
     
     
-    (* NOTE autoCast will _not_ produce the following opcodes because it assumes all integers
-        are signed, since "rawTyToCTy" in heap-transfer-fn.sml assumes that too.
-      | ZExt    
-      | FPToUI  
-      | UIToFP  
-      *)
-
     (* automatically determine which cast would be appropriate given the two types.
        this is mostly a bandaid for the fact that llvm doesn't allow bitcasts to/from
        pointers.  FIXME this doesn't handle vectors *)
-  and autoCast (from : Ty.t, to : Ty.t) : op_code = (case (LT.node from, LT.node to)
+  and autoCaster signed = fn (from : Ty.t, to : Ty.t) => (case (LT.node from, LT.node to)
     of (Ty.T_Ptr _, Ty.T_Int _) => PtrToInt
      | (Ty.T_Int _, Ty.T_Ptr _) => IntToPtr
      | (Ty.T_Int fromW, Ty.T_Int toW) => (case Int.compare(LT.tnc toW, LT.tnc fromW)
         (* I want to make the int's width... *)
-        of GREATER => SExt        
+        of GREATER => if signed then SExt else ZExt
          | LESS => Trunc
          | EQUAL => BitCast (* a silly cast *)
          (* esac *))
@@ -402,14 +395,30 @@ structure LLVMOp = struct
      | (Ty.T_Double, Ty.T_Float) => FPTrunc
      
      | ( (Ty.T_Float, Ty.T_Int _)
-       | (Ty.T_Double, Ty.T_Int _)) => FPToSI
+       | (Ty.T_Double, Ty.T_Int _)) => if signed then FPToSI else FPToUI
        
      | ( (Ty.T_Int _, Ty.T_Float)
-       | (Ty.T_Int _, Ty.T_Double)) => SIToFP
+       | (Ty.T_Int _, Ty.T_Double)) => if signed then SIToFP else UIToFP
      
      | _ => BitCast
     (* esac *))
     
+    
+  and autoCast x = autoCaster true x
+  
+  (* a cast for objects which are logically unsigned integers, such as addresses. *)
+  and simpleCast (from : Ty.t, to : Ty.t) : op_code = 
+      (case (LT.node from, LT.node to)
+        of (Ty.T_Ptr _, Ty.T_Int _) => PtrToInt
+         | (Ty.T_Int _, Ty.T_Ptr _) => IntToPtr
+         | (Ty.T_Int fromW, Ty.T_Int toW) => (case Int.compare(LT.tnc toW, LT.tnc fromW)
+            (* I want to make the int's width... *)
+            of GREATER => ZExt
+             | LESS => Trunc
+             | EQUAL => BitCast (* a silly cast *)
+             (* esac *))
+         | _ => BitCast
+        (* esac *))
   
 
     (* FIXME doesn't check many things right now. should add FPtoUI/SI etc 
