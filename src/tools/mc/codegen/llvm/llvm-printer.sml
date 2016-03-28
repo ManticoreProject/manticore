@@ -491,7 +491,16 @@ fun output (outS, module as C.MODULE { name = module_name,
                      (fn () => LB.condBr b (result, trueTarg, falseTarg))
                      
                    end) handle OU.TODO _ => (fn () => LB.retVoid b)) (* TODO remove this handler *)
-                   
+               
+               | (C.HeapCheck {nogc, ...} | C.HeapCheckN {nogc, ...}) => let
+                    (* TODO for now lets assume we never GC ;D
+                        this is a larger item to work on (introduce new BBs and stuff) *)
+                        val (targ, _) = markPred nogc
+                   in
+                        (fn () => LB.br b targ)
+                   end
+                
+               
                | _ => (fn () => LB.retVoid b)
               (* esac *))  
       end
