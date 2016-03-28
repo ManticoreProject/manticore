@@ -118,6 +118,7 @@ structure LLVMType : sig
     val doubleTy : ty
     val boolTy : ty
     val uniformTy : ty
+    val enumTy : ty
     
     (* common integer types *)
     val i64 : ty
@@ -345,6 +346,7 @@ structure LLVMType : sig
     val i32 = mkInt(cnt 32)
     val i16 = mkInt(cnt 16)
     val i8  = mkInt(cnt 8)
+    val enumTy = i64
        
        
     local
@@ -418,13 +420,8 @@ structure LLVMType : sig
 
     of CT.T_Any => uniformTy
 
-     (* in a mixed type representation, the GC expects wordsize width elements.
-
-        QUESTION/IDEA(kavon): do some analysis and determine when we should zero extend
-          the enum and or when to truncate it (and how much we can chop off).
-
-      *)
-     | CT.T_Enum _ => mkInt(cnt (8 * wordSzB)) (* NOTE(kavon): these are tagged integers, be careful when you create these *)
+     | CT.T_Enum _ => enumTy (* mkInt(cnt (8 * wordSzB)) *)
+            (* NOTE(kavon): these are tagged integers, be careful when you create these *)
 
      | CT.T_Block _ => labelTy
 

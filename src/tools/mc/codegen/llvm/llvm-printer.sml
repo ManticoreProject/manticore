@@ -491,6 +491,39 @@ fun output (outS, module as C.MODULE { name = module_name,
                      (fn () => LB.condBr b (result, trueTarg, falseTarg))
                      
                    end) handle OU.TODO _ => (fn () => LB.retVoid b)) (* TODO remove this handler *)
+                   
+               
+               | C.Switch(cond, arms, maybeDefault) => let
+                    
+                    (* NOTE if there's no default because its exhaustive, we need
+                     to take one of the arms and make it the default. we pick
+                     the last one in case somebody ordered them by likelihood *)
+                    
+                    val (arms, default) = 
+                        (case maybeDefault 
+                            of SOME default => (arms, default)
+                             | NONE => let 
+                                val len = L.length arms 
+                                val (_, newDefault) = L.last arms
+                                in
+                                    (L.take(arms, len-1), newDefault)
+                                end
+                            (* esac *))
+                            
+                    fun xlateArm (word, jump) = let 
+                            val (llTarg, _) = markPred jump
+                            val llConst = LB.intC(LT.enumTy, Word.toLargeInt word)
+                        in 
+                            (llConst, llTarg)
+                        end
+                    
+                    val llArms = L.map xlateArm arms
+                    val (llDefault, _) = markPred default
+                    val llCond = lookupV(env, cond)
+                    
+               in
+                    (fn () => LB.switch b llCond (llDefault, llArms))
+               end
                
                | (C.HeapCheck {nogc, ...} | C.HeapCheckN {nogc, ...}) => let
                     (* TODO for now lets assume we never GC ;D

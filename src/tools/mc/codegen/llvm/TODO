@@ -4,8 +4,13 @@ LLVM backend todo list
 
     - Heap limit checks
     
-    - Other transfers
-
+    - linking in the runtime system and generating the final binary
+        one area we should be careful of here is the RTS glue code that needs
+        to be changed if the llvm backend is used. Perhaps even on each side of the glue
+        in the RTS code in that big switch loop of RunManticore, some things might have to
+        be tweaked.
+    
+    
 
 ***** Medium Items *****
 
@@ -15,6 +20,8 @@ LLVM backend todo list
     decided to use push for spills, and we make a c call in the middle of a basic block. I believe we need to browse the LLVM source code to find out how the naked attribute is treated, because that preliminary testing earlier yielded some hoops that needed to be jumped through (mostly, I remember needing to call a special stack realigner function before making the actual c call to match the 16 byte ABI spec. we could always introduce a pass that inserts that realignment in a target non-specific way into LLVM's code generator, because I think this is an oversight.... we're probably the only people seriously making use of that attribute)
     
     - String literals: need to put these into basically a cache/table (there's infrastructure for this already but we'll have to see if it works for us) because string literals must be global variables in LLVM.
+    
+    - Manticore function calls: just assign vars to the right slots, and undefs to the other slots.
 
 ***** Small Items *****
 
@@ -24,8 +31,16 @@ LLVM backend todo list
       sqrt and abs for floats are LLVM intrinsic calls.
       
     - Allocation: mostly just need to make sure the header bits are right
+    
+    - "store i32 ~1, i32* %r_12E17" should not emit SML style negative ints :)
       
       
       
 Next up:
-    - look into basic block transfers, in particular now that we have allocation it's obvious that the environments are not setup right. What you want to do is make a fresh starter block that just casts the args into the function to the right types and then direct branches to the real starting block, and treat it like any other block (knowing that no phis, or at least no multi arg phis will be generated for the start block in the end.). environment corrections for bbs are important going forward from this point.
+    - finish up manticore function calls
+    - mark start blocks as having a ghost predecessor somehow so that real dangling blocks
+      can be omitted or at least commented out when we perform toString, LLVM will complain
+      about these dangling blocks if they refer to ghost vars.
+    - enums and other literals
+    - start running the whole thing through opt's verifier and fix bugs
+    

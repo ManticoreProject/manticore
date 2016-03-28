@@ -59,6 +59,9 @@ structure LLVMBuilder : sig
     val br : t -> var -> bb
 
     val condBr : t -> (instr * var * var) -> bb
+    
+            (* compared val -> (defaultLabel * (intTag * label) list)  *)
+    val switch : t -> instr -> (var * (constant * var) list) -> bb
 
     (* NOTE(kavon): I don't see myself using indirectbr because we should
                     not need to take block addresses, so I'm not implementing it. *)
@@ -205,6 +208,9 @@ structure LLVMBuilder : sig
     | C_Str of var (* TODO string constants are global vars, why do we need this? *)
     
     | C_Undef of ty  (* for undefined literals of any type except label or void *)
+    
+                  (* defaultTarg * (tag * targ) *)
+  type switch_arms = (var * (constant * var) list)
 
   datatype opkind
     = OP of op_code
@@ -217,6 +223,7 @@ structure LLVMBuilder : sig
     | OP_TailCall
     | OP_Call
     | OP_Unreachable
+    | OP_Switch of switch_arms
     | OP_None  (* for wrapped constants and vars, as no operation occurs *)
 
 
@@ -577,6 +584,25 @@ structure LLVMBuilder : sig
                     (getArgStr true (V.sub(args, 1))), ", ",
                     (getArgStr true (V.sub(args, 2)))
                  ]
+                 
+                 
+             | (OP_Switch (default, arms), NONE) => let
+                    (* type switch_arms = (var * (constant * var) list) *)
+                    fun var2s default = 
+                        ((LT.nameOf o LV.typeOf) default) ^ " " ^ (LV.toString default)
+                    
+                    fun mkArm (C_Int(ty, i), var) = 
+                        S.concat [ "\t\t\t" , LT.nameOf ty, " ", IntInf.toString i, ", ", var2s var, "\n"]
+                     
+                    val armString = S.concat (L.map mkArm arms)
+                 in
+                    S.concat [
+                       "switch ", (getArgStr true (V.sub(args, 0))), ", ",
+                       var2s default, 
+                       " [\n", armString, "\t\t]"
+                    ]
+                 end
+                 
              
              | (OP_TailCall, NONE) => let
                  val (funcName, funcTy) = break (V.sub(args, 0))
@@ -836,6 +862,20 @@ structure LLVMBuilder : sig
           })
       )
     end
+    
+   fun switch blk = fn (cond as INSTR{result,...}) => fn switchArms => let
+            (* TODO add a type check like in condBr *)
+            val _ = ()
+        in
+            terminate(blk, INSTR {
+                result = R_None,
+                kind = (OP_Switch switchArms),
+                args = #[cond],
+                atr = AS.empty   
+            })
+        end
+        
+   
     
  (* try to get a useful name from the argument to use as the prefix of a new symbol *)
   fun genPfx (arg as INSTR{result,...}) = (case result
