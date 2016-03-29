@@ -115,7 +115,8 @@ fun output (outS, module as C.MODULE { name = module_name,
        | _ => NONE
       (* end case *))
       
-  val mvCC = [ MV_Alloc, MV_Vproc ] (* parameters added to all basic blocks *)
+  val mvCC = [ MV_Alloc, MV_Vproc ] (* parameters added to all basic blocks 
+                                       dont change order *)
     
   fun freshMVs () = let
         val fresh = (fn x => LV.new(machineValStr x, machineValTy x))
@@ -280,7 +281,41 @@ fun output (outS, module as C.MODULE { name = module_name,
         L.map LB.toString allBlocks
     end
       
+(* determines calling conventions. we keep it all localized here
+   so we don't mess it up *)
+and determineCC (* returns a ListPair of slots and CFG vars assigned to those slots,
+                   and the list of types for machine vals. the indices are defined by 
+                   the machine val's index function *)
+    (conv : CFG.convention, args : C.var list) : (LT.ty list * (int * C.var) list) = let
+        
+        val getTy = LT.toRegType o LT.typeOf o C.Var.typeOf
+        
+        val machineValPadding = 
+            List.tabulate(numMachineVals, fn _ => LT.toRegType LT.vprocTy)
+        
+        fun withPadding convVars = 
+            machineValPadding 
+            @ (List.map getTy convVars)
+        
+        fun determineIndices convVars = 
+            L.drop((LT.allocateToRegs o withPadding) convVars, numMachineVals)
+    in
+        (case conv
+            of C.StdFunc { clos, ret, exh } => let
+                val convVars = [clos, ret, exh] @ args
+                in
+                    (machineValPadding, ListPair.zipEq(determineIndices convVars, convVars))
+                end
+                
+                
 
+            | (C.StdCont { clos } | C.KnownFunc { clos }) => let
+                val convVars = clos :: args
+                in
+                    (machineValPadding, ListPair.zipEq(determineIndices convVars, convVars))
+                end
+        (* end case *))
+  end
 
   and fillBlock (b : LB.t) (initialEnv : gamma, body : C.exp list, exit : C.transfer) : (unit -> LB.bb) = let
     
@@ -468,6 +503,47 @@ fun output (outS, module as C.MODULE { name = module_name,
                 (LB.addIncoming llBB (from, allArgs) ; (llLab, allArgs))
             end
             
+            
+        and mantiFnCall (func, (_, cc : (int * C.var) list)) = let
+                
+                val mvs = ListPair.zipEq(
+                            L.tabulate(numMachineVals, fn i => i), 
+                            L.map (fn mv => lookupMV(env, mv)) mvCC)
+                            
+                val cc = L.map (fn (i, cv) => (i, lookupV(env, cv))) cc
+                
+                val allRegs = mvs @ cc
+                val slotNums = L.tabulate(V.length LT.jwaCC, fn i => i)
+                
+                (* mostly copied from elsewhere in here :shrug: *)
+                datatype slotTy
+                   = Used of (LB.instr * LT.ty)
+                   | NotUsed of LT.ty
+                     
+                (* NOTE the regs must be ordered by slot num *)
+                fun assign(nil, nil, res) = L.rev res 
+                  | assign(slot::rest, nil, res) = assign(rest, nil, (NotUsed (V.sub(LT.jwaCC, slot)))::res)
+                  | assign(slot::rest, (regs as (r::rs)), res) = let
+                    val (idx, var) = r
+                    val slotTy = V.sub(LT.jwaCC, slot)
+                    in
+                    if idx = slot 
+                        then assign(rest, rs, (Used (var, slotTy))::res)
+                        else assign(rest, regs, (NotUsed slotTy)::res)
+                    end
+                
+                val allAssign = assign(slotNums, allRegs, nil)
+                
+                val allCvtdArgs = L.map 
+                    (fn NotUsed t => LB.fromC(LB.undef t)
+                      | Used (var, t) => cast (Op.safeCast (LB.toTy var, t)) (var, t)
+                    ) allAssign
+                
+                val llFun = lookupV(env, func)
+            in
+                (fn () => LB.tailCall b (llFun, V.fromList allCvtdArgs))
+            end
+            
       in
           (case exit
               of C.Goto jmp => let
@@ -524,6 +600,17 @@ fun output (outS, module as C.MODULE { name = module_name,
                in
                     (fn () => LB.switch b llCond (llDefault, llArms))
                end
+               
+               (* all types are CFG vars *)
+               | C.StdApply {f, clos, args, ret, exh} 
+                    => mantiFnCall(f, 
+                         determineCC(C.StdFunc{clos=clos, ret=ret, exh=exh}, args))
+                    
+               | C.StdThrow {k, clos, args}
+                    => mantiFnCall(k, determineCC(C.StdCont{clos=clos}, args))
+                        
+               | C.Apply {f, clos, args}
+                    => mantiFnCall(f, determineCC(C.KnownFunc{clos=clos}, args))
                
                | (C.HeapCheck {nogc, ...} | C.HeapCheckN {nogc, ...}) => let
                     (* TODO for now lets assume we never GC ;D
@@ -920,43 +1007,6 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
      | C.LK_Func { export = SOME _, ... } => "external"
      | _ => raise Fail ("linkageOf is only valid for manticore functions.")
      (* end case *))
-
-
-    (* determines calling conventions. we keep it all localized here
-       so we don't mess it up *)
-    and determineCC (* returns a ListPair of slots and CFG vars assigned to those slots,
-                       and the list of types for machine vals. the indices are defined by 
-                       the machine val's index function *)
-        (conv : CFG.convention, args : C.var list) : (LT.ty list * (int * C.var) list) = let
-            
-            val getTy = LT.toRegType o LT.typeOf o C.Var.typeOf
-            
-            val machineValPadding = 
-                List.tabulate(numMachineVals, fn _ => LT.toRegType LT.vprocTy)
-            
-            fun withPadding convVars = 
-                machineValPadding 
-                @ (List.map getTy convVars)
-            
-            fun determineIndices convVars = 
-                L.drop((LT.allocateToRegs o withPadding) convVars, numMachineVals)
-        in
-            (case conv
-                of C.StdFunc { clos, ret, exh } => let
-                    val convVars = [clos, ret, exh] @ args
-                    in
-                        (machineValPadding, ListPair.zipEq(determineIndices convVars, convVars))
-                    end
-                    
-                    
-
-                | (C.StdCont { clos } | C.KnownFunc { clos }) => let
-                    val convVars = clos :: args
-                    in
-                        (machineValPadding, ListPair.zipEq(determineIndices convVars, convVars))
-                    end
-            (* end case *))
-      end
 
 (****** end of Functions ******)
 

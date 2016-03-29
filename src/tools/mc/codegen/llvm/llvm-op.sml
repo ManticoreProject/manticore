@@ -419,6 +419,22 @@ structure LLVMOp = struct
              (* esac *))
          | _ => BitCast
         (* esac *))
+        
+  (* a cast that is non destructive or changes information. logically it's like ORing
+     the information contained in the value upon the "empty value" of the destination
+     type. *)
+  and safeCast (from : Ty.t, to : Ty.t) : op_code = 
+      (case (LT.node from, LT.node to)
+        of (Ty.T_Ptr _, Ty.T_Int _) => PtrToInt
+         | (Ty.T_Int _, Ty.T_Ptr _) => IntToPtr
+         | (Ty.T_Int fromW, Ty.T_Int toW) => (case Int.compare(LT.tnc toW, LT.tnc fromW)
+            (* I want to make the int's width... *)
+            of GREATER => ZExt
+             | LESS => raise Fail "not a safe cast"
+             | EQUAL => BitCast (* a silly cast *)
+             (* esac *))
+         | _ => BitCast (* better hope the width is the same *)
+        (* esac *))
   
 
     (* FIXME doesn't check many things right now. should add FPtoUI/SI etc 

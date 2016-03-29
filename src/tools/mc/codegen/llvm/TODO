@@ -32,7 +32,23 @@ LLVM backend todo list
       
     - Allocation: mostly just need to make sure the header bits are right
     
+    ** Currently causing IR to not pass verification **
+    
     - "store i32 ~1, i32* %r_12E17" should not emit SML style negative ints :)
+    
+    - %lit_125DC = bitcast i64 undef to i8*"  should be an inttoptr cast
+      ALSO: %lit_1309F = bitcast i64 undef to i64*
+      We need to actually generate enums at least!
+      
+    - opt: manti.ll:8721:66: error: cmpxchg operand must be an integer
+        %r_13AA3 = cmpxchg %_tupTy.99** %r_13AA2, %_tupTy.99* %r_13A95, %_tupTy.99* undef seq_cst seq_cst
+        
+      opt: manti.ll:8956:52: error: cmpxchg operand must be an integer
+        %r_13B5B = cmpxchg i64** %r_13B5A, i64* %r_13B54, i64* undef seq_cst seq_cst
+
+        need to add ptrtoint and bitcasts to make this a cmpxchg on i64* and i64's
+        
+    - non-starter BBs with no predecessors need to be omitted!
       
       
       

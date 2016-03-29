@@ -610,9 +610,11 @@ structure LLVMBuilder : sig
                                  fn i => getArgStr true (V.sub(args, i+1))))
                in   
 
-                (* TODO(kavon): currently doesn't include CC or any attributes *)
+                (* TODO(kavon): currently doesn't include CC or any attributes, also its only safe
+                   to omit the function ty if it is not var arg and doesn't return a pointer or something. *)
 
-                 S.concat ["musttail call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
+                 (* S.concat ["musttail call cc 17 ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"] *)
+                 S.concat ["musttail call cc 17 void ", funcName, "(", paramStr, ")"]
                end
              
              | (OP_Call, NONE) => let
