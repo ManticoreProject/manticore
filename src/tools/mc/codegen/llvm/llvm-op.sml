@@ -435,6 +435,20 @@ structure LLVMOp = struct
              (* esac *))
          | _ => BitCast (* better hope the width is the same *)
         (* esac *))
+        
+        
+  (* for those with paranoia about casts changing _anything_. width of the type _must_ be equal  *)        
+  and equivCast (from : Ty.t, to : Ty.t) : op_code = 
+      (case (LT.node from, LT.node to)
+        of (Ty.T_Ptr _, Ty.T_Int _) => PtrToInt
+         | (Ty.T_Int _, Ty.T_Ptr _) => IntToPtr
+         | (Ty.T_Int fromW, Ty.T_Int toW) => (case Int.compare(LT.tnc toW, LT.tnc fromW)
+            (* I want to make the int's width... *)
+            of EQUAL => BitCast
+             | _ => raise Fail "not a safe cast"
+             (* esac *))
+         | _ => BitCast (* better hope the width is the same *)
+        (* esac *))
   
 
     (* FIXME doesn't check many things right now. should add FPtoUI/SI etc 

@@ -271,8 +271,8 @@ in (case p
                 (* cmpxchg operand must be on integers, thus we need casts *)
                 val resTy = LB.toTy cmp
                 val llTarg = c Op.BitCast (targ, i64Star)
-                val llCmp = c (Op.autoCast(LB.toTy cmp, i64)) (cmp, i64)
-                val llNew = c (Op.autoCast(LB.toTy new, i64)) (new, i64)
+                val llCmp = c (Op.equivCast(LB.toTy cmp, i64)) (cmp, i64)
+                val llNew = c (Op.equivCast(LB.toTy new, i64)) (new, i64)
                 
                 (* do operation and get the value *)
                 val xchg = f e Op.CmpXchg #[llTarg, llCmp, llNew]
@@ -379,8 +379,8 @@ in (case p
            (fn [targ, cmp, new] => let
                    (* cmpxchg operand must be on integers, thus we need casts *)
                    val llTarg = c Op.BitCast (targ, i64Star)
-                   val llCmp = c (Op.autoCast(LB.toTy cmp, i64)) (cmp, i64)
-                   val llNew = c (Op.autoCast(LB.toTy new, i64)) (new, i64)
+                   val llCmp = c (Op.equivCast(LB.toTy cmp, i64)) (cmp, i64)
+                   val llNew = c (Op.equivCast(LB.toTy new, i64)) (new, i64)
                    
                    (* do operation and get the value *)
                    val xchg = f e Op.CmpXchg #[llTarg, llCmp, llNew]
