@@ -295,10 +295,13 @@ structure LLVMBuilder : sig
       header ^ (S.concatWith "\n\t" (cvt body)) ^ "\n\n"
     end
     
+  (* ~1 is not accepted by LLVM *)
+  and intStr i = if i < 0 then "-" ^ (intStr (~1 * i)) else IntInf.toString i
+    
   and break (INSTR{result,...}) = (case result
      of R_Var v => (LV.toString v, LV.typeOf v)
       
-      | R_Const(C_Int(ty, i)) => (IntInf.toString i, ty)
+      | R_Const(C_Int(ty, i)) => (intStr i, ty)
       
       | R_Const(C_Undef ty) => ("undef", ty)
 
@@ -592,7 +595,7 @@ structure LLVMBuilder : sig
                         ((LT.nameOf o LV.typeOf) default) ^ " " ^ (LV.toString default)
                     
                     fun mkArm (C_Int(ty, i), var) = 
-                        S.concat [ "\t\t\t" , LT.nameOf ty, " ", IntInf.toString i, ", ", var2s var, "\n"]
+                        S.concat [ "\t\t\t" , LT.nameOf ty, " ", intStr i, ", ", var2s var, "\n"]
                      
                     val armString = S.concat (L.map mkArm arms)
                  in

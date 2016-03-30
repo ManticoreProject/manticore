@@ -853,7 +853,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
         insertV(env, lhsVar, final)
       end
       
-      and genVPStore(env, (offset, arg, vpVar)) = let
+      and genVPStore(env, (offset, vpVar, arg)) = let
         val argLL = lookupV(env, arg)
         val argTy = LB.toTy argLL
         val vpLL = lookupV(env, vpVar)    

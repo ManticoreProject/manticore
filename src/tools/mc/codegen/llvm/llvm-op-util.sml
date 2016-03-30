@@ -33,6 +33,7 @@ local
     val i8  = LT.i8
     val float = LT.floatTy
     val double = LT.doubleTy
+    val i64Star = LT.mkPtr i64
     
     fun id x = x
     
@@ -266,11 +267,24 @@ in (case p
         (fn [targ, value] => f e (Op.Armw Op.P_Add) #[targ, value])
         
     | (P.CAS _) =>
-        (fn [targ, cmp, new] => 
-            (LB.extractV bb (
-                f e Op.CmpXchg #[targ, cmp, new],
-                #[LB.intC(i32, 0)])
-            )
+        (fn [targ, cmp, new] => let
+                (* cmpxchg operand must be on integers, thus we need casts *)
+                val resTy = LB.toTy cmp
+                val llTarg = c Op.BitCast (targ, i64Star)
+                val llCmp = c (Op.autoCast(LB.toTy cmp, i64)) (cmp, i64)
+                val llNew = c (Op.autoCast(LB.toTy new, i64)) (new, i64)
+                
+                (* do operation and get the value *)
+                val xchg = f e Op.CmpXchg #[llTarg, llCmp, llNew]
+                val extr = LB.extractV bb (xchg, #[LB.intC(i32, 0)])
+                
+                (* restore the type *)
+                val res = c (Op.autoCast(LB.toTy extr, resTy)) (extr, resTy)
+                
+            in
+                res
+            end
+            
         )
     
     (*
@@ -362,11 +376,20 @@ in (case p
        | (P.EnumNEq _)    => simpleCmp Op.Icmp (Op.US Op.NE)
        
        | (P.BCAS _) =>
-           (fn [targ, cmp, new] => 
-               (LB.extractV bb (
-                   f e Op.CmpXchg #[targ, cmp, new],
-                   #[LB.intC(i32, 1)])
-               )
+           (fn [targ, cmp, new] => let
+                   (* cmpxchg operand must be on integers, thus we need casts *)
+                   val llTarg = c Op.BitCast (targ, i64Star)
+                   val llCmp = c (Op.autoCast(LB.toTy cmp, i64)) (cmp, i64)
+                   val llNew = c (Op.autoCast(LB.toTy new, i64)) (new, i64)
+                   
+                   (* do operation and get the value *)
+                   val xchg = f e Op.CmpXchg #[llTarg, llCmp, llNew]
+                   val extr = LB.extractV bb (xchg, #[LB.intC(i32, 1)])
+                   
+               in
+                   extr
+               end
+               
            )
            
        | _ => raise TODO ("primop " ^ (CondUtil.nameOf cond) ^ " not implemented")
