@@ -261,44 +261,54 @@ structure Contract : sig
 	  end
 
   (* delete a function, which includes decrementing the use counts of any labels *)
-    fun deleteFunc (C.FUNC{start, body, ...}) = let
-	  fun deleteExp (C.E_Label(_, lab)) = Census.decLab lab
-	    | deleteExp _ = ()
-          and deleteBlock (C.BLK{body, exit, ...}) = (
-              ST.tick cntUnusedBlock;
-              List.app deleteExp body;
-              deleteExit exit)
-          and deleteExit (exit) = (case exit
-	     of C.StdApply _ => ()
-	      | C.StdThrow _ => ()
-	      | C.Apply _ => ()
-	      | C.Goto jmp => deleteJump jmp
-	      | C.If(_, jmp1, jmp2) => (deleteJump jmp1; deleteJump jmp2)
-	      | C.Switch(x, cases, dflt) => (
-		  List.app (fn (_, jmp) => deleteJump jmp) cases;
-		  Option.app deleteJump dflt)
-	      | C.HeapCheck{hck, szb, nogc} => deleteJump nogc
-	      | C.AllocCCall{lhs, f, args, ret} => deleteJump ret
-	    (* end case *))
-	  and deleteJump (lab, _) = Census.decLab lab
-	  in
-            deleteBlock start;
-            List.app deleteBlock body
-	  end
-
+    fun deleteFunc (C.FUNC{start, body, ...}) = 
+        ( deleteBlock start;
+          List.app deleteBlock body )
+    
+    and deleteExp (C.E_Label(_, lab)) = Census.decLab lab
+	  | deleteExp _ = ()
+      
+    and deleteBlock (C.BLK{body, exit, ...}) = (
+        ST.tick cntUnusedBlock;
+        List.app deleteExp body;
+        deleteExit exit)
+        
+    and deleteExit (exit) = (case exit
+         of C.StdApply _ => ()
+          | C.StdThrow _ => ()
+          | C.Apply _ => ()
+          | C.Goto jmp => deleteJump jmp
+          | C.If(_, jmp1, jmp2) => (deleteJump jmp1; deleteJump jmp2)
+          | C.Switch(x, cases, dflt) => (
+          List.app (fn (_, jmp) => deleteJump jmp) cases;
+          Option.app deleteJump dflt)
+          | C.HeapCheck{hck, szb, nogc} => deleteJump nogc
+          | C.AllocCCall{lhs, f, args, ret} => deleteJump ret
+        (* end case *))
+	
+    and deleteJump (lab, _) = Census.decLab lab
+	
   (* contract a function *)
     fun contractFunc (func as C.FUNC{lab, entry, start, body}) = let
+        
         fun contractBlock (block as C.BLK{lab, args, body, exit}) = let
             val (body,exit) = contractExps (VMap.empty, body, exit)
         in
             C.BLK{lab=lab, args=args, body=body, exit=exit}
         end
+        
+        (* specific for body block because we want to avoid accidentially deleting
+           the start block *)
+        fun contractBodyBlock (block as C.BLK{lab, ...}) =
+            if (CL.useCount lab) = 0
+                then (deleteBlock block ; NONE)
+                else SOME(contractBlock block)
     in
 	  if (isLocalLabel lab) andalso (CL.useCount lab = 0)
 	    then (deleteFunc func; NONE)
 	    else let
               val start = contractBlock start
-              val body = List.map contractBlock body
+              val body = List.mapPartial contractBodyBlock body
 	      in
 		SOME(C.FUNC{lab=lab, entry=entry, start=start, body=body})
 	      end
