@@ -22,6 +22,11 @@ LLVM backend todo list
     - String literals: need to put these into basically a cache/table (there's infrastructure for this already but we'll have to see if it works for us) because string literals must be global variables in LLVM.
     
     - Manticore function calls: just assign vars to the right slots, and undefs to the other slots.
+    
+    - Allocation: mostly just need to make sure the header bits are right. Also, types for
+      heap allocated objects need to have the correct uniform width. You'll need to add casts on all stores/loads,
+      which cast to and from heap versions of the type. Then you need to add the same kind of type widening
+      code when determining the equivalent heap representation of the type.
 
 ***** Small Items *****
 
@@ -30,12 +35,7 @@ LLVM backend todo list
     - The remaining unimplemented primops and other stubbed out simple stuff, like
       sqrt and abs for floats are LLVM intrinsic calls.
       
-    - Allocation: mostly just need to make sure the header bits are right      
-      
-
-** Currently causing IR to not pass verification **
     
-- non-starter BBs with no predecessors need to be omitted!
 
 Next up:
     - mark start blocks as having a ghost predecessor somehow so that real dangling blocks

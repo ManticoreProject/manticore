@@ -563,12 +563,12 @@ structure LLVMBuilder : sig
              | (OP_ExtractVal, SOME (resName, resTy)) => (let
                      val (aggName, aggTy) = break (V.sub(args, 0))
                      val offsets = L.tabulate ((V.length args) - 1,
-                                     fn i => getArgStr true (V.sub(args, i+1)))
+                                     fn i => getArgStr false (V.sub(args, i+1)))
                      val offsets = S.concatWith ", " offsets
                    in
                      S.concat
                        [ resName, " = extractvalue ",
-                         LT.nameOf aggTy, " ", aggName, ", ",
+                         LT.fullNameOf aggTy, " ", aggName, ", ",
                          offsets
                        ]
                    end)

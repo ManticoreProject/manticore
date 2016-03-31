@@ -50,7 +50,7 @@ structure LLVMType : sig
     *)
     val nameOf : ty -> string
     
-    (* name of type without using the type cache, for debugging purposes *)
+    (* name of type without using the type cache *)
     val fullNameOf : ty -> string
 
     (*

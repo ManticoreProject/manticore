@@ -482,7 +482,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     let val neededTy = LV.typeOf param in
                     if LT.same(neededTy, LB.toTy llArg) 
                         then llArg
-                        else cast Op.BitCast (llArg, neededTy)
+                        else cast (Op.equivCast(LB.toTy llArg, neededTy)) (llArg, neededTy)
                     end
             in
                 L.map maybeCast (ListPair.zipEq(llArgs, params))
