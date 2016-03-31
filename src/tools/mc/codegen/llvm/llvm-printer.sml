@@ -673,6 +673,15 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
          FIXME TODO for now this generates an undef for the rhs. fix thiss *)
       and genConst(env, (lhsVar, lit, ty)) = let
         val llTy = LT.typeOf ty
+        
+        (* tag enums to distinguish them from pointers: enum(e) => 2*e+1 
+           lifted directly from codegen-fn.sml in the MLRISC backend *)
+    	  fun encodeEnum e = Word.<<(e, 0w1) + 0w1
+          
+        (* we want the two low bits of the state-value representation to be zero *)
+          fun encodeStateVal n = Word.<<(n, 0w2) 
+          
+          
       in
           (case lit
               of Literal.Int il => 
@@ -683,8 +692,17 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     
                | Literal.Float f =>
                     insertV(env, lhsVar, LB.fromC(LB.floatC(llTy, f)))
+                    
+               | Literal.Enum c =>
+                    insertV(env, lhsVar, LB.fromC(LB.intC(LT.enumTy, (Word.toLargeInt o encodeEnum) c)))
+                    
+               | Literal.StateVal n =>          (* NOTE that we're using enumTy here too. not sure if that's right *)
+                    insertV(env, lhsVar, LB.fromC(LB.intC(  LT.enumTy  , (Word.toLargeInt o encodeStateVal) n )))
+                    
+               | Literal.Char _ => raise Fail "not implemented" (* not implemented in MLRISC backend either *)
                
-               | _ => stubIt env lhsVar (* remove this, although chars are not implemented even in the current backend ;o *)
+               (* TODO Strings and Tags, which are both strings it seems according to codegen-fn.sml *)
+               | _ => stubIt env lhsVar 
               (* esac *))
         end
         
