@@ -18,6 +18,10 @@ structure LLVMType : sig
     val typeOf : CFGTy.ty -> ty
 
     val typeOfC : CFunctions.c_type -> ty
+    
+    (* projects the types of the arguments out of a function type. currently
+       does not work on a ptr to a function. *)
+    val argsOf : ty -> ty list
 
     (* takes a list of "register types" and produces
        a list of indices for these types to assign them according
@@ -119,6 +123,7 @@ structure LLVMType : sig
     val boolTy : ty
     val uniformTy : ty
     val enumTy : ty
+    val voidStar : ty
     
     (* common integer types *)
     val i64 : ty
@@ -347,6 +352,7 @@ structure LLVMType : sig
     val i16 = mkInt(cnt 16)
     val i8  = mkInt(cnt 8)
     val enumTy = i64
+    val voidStar = mkPtr(i8)
        
        
     local
@@ -450,7 +456,7 @@ structure LLVMType : sig
       | CT.T_CFun(CF.CProto(retTy, argTys, _, varArg)) => let
             val funCtor = if varArg then mkVFunc else mkFunc
         in
-            mkPtr(funCtor([typeOfC retTy] @ (List.map typeOfC argTys)))
+            funCtor([typeOfC retTy] @ (List.map typeOfC argTys))
         end
       
 
@@ -474,10 +480,15 @@ structure LLVMType : sig
         (* esac *))
 
     and typeOfC (ct : CF.c_type) : ty = (case ct
-          of CF.PointerTy => mkPtr(mkInt(cnt 8))  (* LLVM's void* *)
+          of CF.PointerTy => voidStar  (* LLVM's void* *)
            | CF.BaseTy(rawTy) => typeOf(CT.T_Raw rawTy)
            | CF.VoidTy => voidTy
           (* end case *))
+          
+    and argsOf (fnTy : ty) : ty list = (case HC.node fnTy
+        of (Ty.T_Func (_::args) | Ty.T_VFunc (_::args)) => args
+         | _ => raise Fail "not a function type"
+        (* esac *))
 
 
     (* everybody has same types according to LLVM *)

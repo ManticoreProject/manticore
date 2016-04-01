@@ -847,8 +847,32 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
          
       
       (* A standard C call that returns. *)
-      and genCCall(env, (results, func, args)) = (* TODO *)
-            L.foldr (fn (r, acc) => stubIt acc r) env results
+      and genCCall(env, (results, func, args)) = let
+            val llFunc = lookupV(env, func)            
+            val argTys = (LT.argsOf o LB.toTy) llFunc
+            
+            val llArgs = L.map (fn (a, realTy) => let
+                                val ll = lookupV(env, a)
+                                val llty = LB.toTy ll
+                            in
+                                cast (Op.equivCast (llty, realTy)) (ll, realTy)
+                            end)
+                                (ListPair.zipEq(args, argTys))
+            
+            val llCall = LB.call b (llFunc, V.fromList llArgs)
+          in
+            (case results
+              of nil => env
+               | [res] => let
+                        val lhsTy = (LT.typeOf o CV.typeOf) res
+                        val llRes = cast (Op.equivCast (LB.toTy llCall, lhsTy)) (llCall, lhsTy)
+                    in
+                        insertV(env, res, llRes)
+                    end
+               | _ => raise Fail "dont know how to handle this"
+            (* esac *))
+          end
+          
       
       and genHostVProc(env, lhsVar) = insertV(env, lhsVar, lookupMV(env, MV_Vproc))
       
