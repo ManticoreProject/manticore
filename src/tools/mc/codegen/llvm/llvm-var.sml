@@ -51,7 +51,9 @@ structure LLVMVar =
 
       (* regex for LLVM identifiers: [%@][-a-zA-Z$._][-a-zA-Z$._0-9]*  *)
       fun inspector c = let
-          val repl = "-"
+          (* there are unique stamps attached local identifiers anyways so it
+             shouldn't matter what this repl is. *)
+          val repl = "_" 
         in
           (case c
           (* best attempt at covering all of the disallowed chars that
@@ -75,6 +77,7 @@ structure LLVMVar =
            | #"|" => repl
            | #"*" => repl
            | #"." => repl (* NOTE(kavon): while '.' is not illegal, we reserve use of it for ourselves *)
+           | #"-" => repl
            | c => Char.toString c
           (* esac *)) 
         end

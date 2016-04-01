@@ -47,6 +47,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   (*  *)
   structure LV = LLVMVar
   structure LB = LLVMBuilder 
+  structure LR = LLVMRuntime
   structure A = LLVMAttribute
   structure AS = LLVMAttribute.Set
 
@@ -825,7 +826,30 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
       
       and genGAlloc(env, (lhsVar, ty, vars)) = stubIt env lhsVar (* TODO *)
       
-      and genPromote(env, (lhsVar, var)) = stubIt env lhsVar (* TODO *)
+      and genPromote(env, (lhsVar, var)) = let
+        val llFunc = LB.fromV LR.promote
+        val paramTys = (LT.argsOf o LB.toTy) llFunc
+        
+        val args = [lookupMV(env, MV_Vproc), lookupV(env, var)]
+        
+        val llArgs = L.map (fn (ll, realTy) => let
+                            val llty = LB.toTy ll
+                        in
+                            cast (Op.equivCast (llty, realTy)) (ll, realTy)
+                        end)
+                            (ListPair.zipEq(args, paramTys))
+                            
+        (* do call *)
+        val llCall = LB.call b (llFunc, V.fromList llArgs)
+        
+        (* cast result back *)
+        val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
+        val llRes = cast (Op.equivCast (LB.toTy llCall, lhsTy)) (llCall, lhsTy)
+        
+        in
+            insertV(env, lhsVar, llRes)
+        end
+        
       
       and genPrim0(env, prim) = (let
         val llArgs = L.map (fn x => lookupV(env, x)) (PU.varsOf prim)
@@ -1059,8 +1083,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
      with things such as the datatype layouts, externals, attributes and so on.
      it also initializes the extern info map. *)
   fun mkFunDecls () = let
-  
-  (* NOTE FIXME TODO this stuff is really ugly and adhoc *)
+
 
     fun attrOfC (a : CF.attribute) = (case a
           of CF.A_pure => "readonly"
@@ -1068,44 +1091,14 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
            (* alloc/malloc attribute in C doesn't seem to translate over to LLVM IR *)
            | _ => ""
           (* end case *)) 
+          
 
     (* external C function. note that var has type CFG.label *)
-    fun toLLVMDecl (CF.CFun { var, name, retTy, argTys, varArg, attrs }) = let
-
+    fun toLLVMDecl (CF.CFun { var, attrs, ... }) = let
         val asLLV = LV.convertLabel var
-        
-        (* NOTE as of now, i'm just going to assume that
-          convertLabel gives back an LLVM Var with type ptr(this C Fun)
-          that is equal to what we're about to generate a string for
-          manually here. Future infrastructure could have a function such
-          as LLVMType.toDeclStr : ty -> string -> string  where the string
-          arg is the name of the function to produce a decl string for.
-          
-          An alternative is to write an extension to LLVMBuilder
-          to add a mkDecl that takes stuff like calling convention and whatnot
-          to make a proper interface. Might want to do this if other people
-          are using LLVMBuilder. *)
-        
-        (*val llty = LV.typeOf asLLV*)
-        
-        
-
-        val c2ll = LT.nameOf o LT.typeOfC
-
-        val llvmParams = S.concatWith ", " (L.map c2ll argTys)
-
-        val llvmParams = if not varArg
-                      then llvmParams
-                      else if S.size llvmParams > 0
-                        then S.concat [llvmParams, ", ..."]
-                        else "..."
-
-        val llvmAttrs = mapSep(attrOfC, [stdAttrs(ExternCFun)], " ", attrs)
-
+        val llvmAttrs = S.concat(mapSep(attrOfC, [stdAttrs(ExternCFun)], " ", attrs))
       in
-        (S.concat (["declare ", (c2ll retTy), " @", name, "("
-                  , llvmParams, ") "]
-                  @ llvmAttrs @ ["\n"]),
+        ( (LT.declOf (LV.typeOf asLLV) (LV.toString asLLV)) ^ " " ^ llvmAttrs ^ "\n",
          var,
          asLLV)
       end
@@ -1126,11 +1119,17 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
 
     val convertedExterns = List.map toLLVMDecl module_externs
     val externDecls = S.concat (List.map (fn (s, _, _) => s) convertedExterns)
+    
+    (* now we add the magic llvm runtime stuff that are not actually part of the CFG module. *)
+    val magicDecls = S.concat (L.map (fn llv => (LT.declOf (LV.typeOf llv) (LV.toString llv)) 
+                                                    ^ " " ^ stdAttrs(ExternCFun) ^ "\n") LR.all)
+    
 
     val header = S.concat [
       "target datalayout = \"", dataLayout, "\"\n",
       "target triple = \"", targetTriple, "\"\n\n",
-      externDecls
+      externDecls,
+      magicDecls
        ]
 
     in
@@ -1154,7 +1153,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
         insertL(acc, old, new)) initEnv convertedExterns
 
 
-(* Notes:
+(* NOTE
     
       ordering of declarations only matters in LLVM for types.
         
@@ -1186,7 +1185,7 @@ in
     List.app pr funStrings ;
 
     pr "\n\n\n\n; ---------------- end of LLVM generation ---------------------- \n\n\n\n" ;
-    PrintCFG.output {counts=true, types=true, preds=true} (outS, module) ;
+    PrintCFG.output {counts=true, types=true, preds=false} (outS, module) ;
     ()
   )
 

@@ -19,9 +19,16 @@ structure LLVMType : sig
 
     val typeOfC : CFunctions.c_type -> ty
     
-    (* projects the types of the arguments out of a function type. currently
+    (* projects the types of the arguments or return type out of a function type. currently
        does not work on a ptr to a function. *)
     val argsOf : ty -> ty list
+    val retOf : ty -> ty
+    
+    (* produces a thunk that produces a valid LLVM function declaration. 
+       thunk's arguments are as follows:
+       1. function's name (with the @)
+     *)
+    val declOf : ty -> string -> string
 
     (* takes a list of "register types" and produces
        a list of indices for these types to assign them according
@@ -489,7 +496,36 @@ structure LLVMType : sig
         of (Ty.T_Func (_::args) | Ty.T_VFunc (_::args)) => args
          | _ => raise Fail "not a function type"
         (* esac *))
+        
+    and retOf (fnTy : ty) : ty = (case HC.node fnTy
+        of (Ty.T_Func (ret::_) | Ty.T_VFunc (ret::_)) => ret
+         | _ => raise Fail "not a function type"
+        (* esac *))
+        
+    and declOf (fnTy : ty) = let
+        fun mkDecl ret params varArg = let
+            val llvmParams = S.concatWith ", " (List.map toString params)
+            val llvmRet = toString ret
 
+            val llvmParams = if not varArg
+                          then llvmParams
+                          else if S.size llvmParams > 0
+                            then S.concat [llvmParams, ", ..."]
+                            else "..."
+        in
+            (fn name => S.concat ["declare ", llvmRet, " ", name, "(", llvmParams, ")"])
+        end
+        
+    in
+    (case HC.node fnTy
+        of Ty.T_Func (ret::params) => mkDecl ret params false
+         | Ty.T_VFunc (ret::params) => mkDecl ret params true
+         | _ => raise Fail "not a function type"
+        (* esac *))
+    end
+    
+    
+    
 
     (* everybody has same types according to LLVM *)
     and typesInConv (cty : CT.ty) : ty list = (case cty
