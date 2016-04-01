@@ -161,11 +161,6 @@ structure LLVMOp = struct
      it tells the builder, specifically LB.mk, what the result type of an instruction is!! 
      *)
   fun typeCheck (x : op_code, inputs : Ty.t vector) : Ty.t option = let
-
-      (* TODO(kavon): the bool from arity is ignored because
-                      it's implicity known when writing the case here. 
-                      maybe remove it? *)
-
       val numInput = arity x
       val _ = if numInput = V.length inputs 
                 then ()
@@ -467,8 +462,9 @@ structure LLVMOp = struct
                         castErr "can't bitcast between pointer & int. use inttoptr or ptrtoint"
                     else to*)
             
-        _ => to (* FIXME(kavon): it would be wise to add size checks for bitcasts
-                   and other checking goodies maybe? also we need to add that vproc is a pointer *)
+        _ => to (* TODO FIXME(kavon): it would be wise to add size checks for bitcasts
+                   and other checking goodies maybe? at the moment we just rely on LLVM to check
+                   our casts for us! (which isn't such a bad idea) *)
       (* esac *))
       
   and castErr s = raise Fail ("(llvm-backend) casting type error: " ^ s)

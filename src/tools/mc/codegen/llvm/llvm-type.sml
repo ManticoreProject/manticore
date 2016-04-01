@@ -93,25 +93,7 @@ structure LLVMType : sig
        if it is not either of those, it returns NONE *)
     val returnTy : ty -> ty option
 
-
-    (* QUESTION(kavon): need to think more about sizes with respect to the GC. for example,
-   an integer type with < wordSizeB bytes as part of a vector of non-pointers does not
-   nessecarily need to be sign extended to wordSizeB size. so the sizes of things
-   depends on what container the value appears in on the heap, since mixed type
-   should have everything wordSizeB to calculate offsets.   *)
-  (* QUESTION/TODO(kavon): 
-      - when it comes to GC header tags, be careful of the dead store elim pass
-        - additionally, we need to mark structs for their header tag for initialization later.
-          thus, we need to determine whether it needs a RAW, VECTOR, or MIXED header and what
-          bits need to be set based upon the positions of the elements.
-      - should we check to see if all types are the same, and if so turn
-        a struct into an array?
-      - NOTE: tuples are pointers to structs allocated in the heap, thus
-              for an alloc expression, we should strip the pointer
-              wrapping the type away and then get the size of that. note that we
-              can't flatten a tuple of a single element because it must be in the heap
-              and everything in the heap needs a tag, which at the time of allocation must be known *)
-
+    (* TODO might be a useful function *)
     (* val sizeOf : ty * ty -> int *)
 
     (* project the node out of a ty. 
@@ -254,18 +236,6 @@ structure LLVMType : sig
                         end)
                       init
                       lst
-
-
-(* TODO 2/21/16 -- should we really have a seperate type in LLVM type for vproc and deque,
-   or should we have them be built out of the other types like allocPtrTy? I believe the main
-   reason we went with a seperate type is because these are types
-   defined externally in C, so we'll fill in the type name later as a string,
-   but this means we have to special case vprocTy everywhere (the example is
-   in autoCast where its currently). Instead, our codegen can ignore whatever
-   the vproc type changes to, and we only have to change one place (the built up type).
-   if we use this string thing right now, our cases will break if we change the string.
-   in either case, we have to hardcode the vproc type right now, but if we don't
-   use a string it will be much more robust. *)
 
   local
     val cache = ref HCM.empty

@@ -20,14 +20,10 @@ structure LLVMBuilder : sig
     eqtype op_code
 
 
-    (* THE TODO LIST
-      - make opcodes for icmp and other essential instructions
-      - figure out how you will associate attributes with vars for
-        stuff like calls? maybe just add a "fromVWithAttr" or something??
-      - otherwise, start using the builder in the printer.
-      - also, it would be nice to have this fn:
-            val comment : str -> instr -> instr
-      
+    (*  TODO
+        it would be nice to have this fn to add a comment to an instruction
+        so that when printing it is placed just before the instruction.
+        val comment : str -> instr -> instr
       *)
 
 
@@ -611,7 +607,7 @@ structure LLVMBuilder : sig
                                  fn i => getArgStr true (V.sub(args, i+1))))
                in   
 
-                (* TODO(kavon): currently doesn't include CC or any attributes, also its only safe
+                (* FIXME TODO(kavon): currently doesn't include CC or any attributes, also its only safe
                    to omit the function ty if it is not var arg and doesn't return a pointer or something. *)
 
                  (* S.concat ["musttail call cc 17 ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"] *)
@@ -736,10 +732,7 @@ structure LLVMBuilder : sig
        }
        *)
   and addPhis (blk as T {incoming, args, ...}) = let
-        (* a phi with a single pred is allowed. if the block has no predecessors
-           it should get deleted by an optimization pass later, and in that case 
-           we will emit a warning TODO and bind the args to undef values
-           using a dummy bitcast. *)
+        (* a phi with a single pred is allowed. *)
            
         val edges = !incoming
         val numEdges = L.length edges
@@ -765,7 +758,8 @@ structure LLVMBuilder : sig
         between a start block (which has no preds and cannot have phi nodes) and a dangling
         block somewhere else in the code. If this becomes a problem we could do some adhoc
         fix such as marking blocks as being a starter or not so we emit the dummy casts
-        below for dangling blocks. *)
+        below for dangling blocks. in the current LLVM backend for manticore we rely on
+        a contract pass that eliminates unused basic blocks *)
         
         (*fun empty () = let
             fun mkUndef argVar = let

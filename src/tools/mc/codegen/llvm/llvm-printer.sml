@@ -87,7 +87,7 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   fun stdAttrs (MantiFun) = "naked nounwind"
 
-    (* TODO: because I'm not sure of the effect inlining a C func into a naked func right now. *)
+    (* NOTE: because I'm not sure of the effect inlining a C func into a naked func right now. *)
     | stdAttrs (ExternCFun) = "noinline" 
 
   (**)
@@ -419,7 +419,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         
         (* now we do the writes *)
         
-        fun headerTag _ = LB.fromC(LB.intC(tagTy, 1234)) (* TODO *)
+        fun headerTag _ = LB.fromC(LB.intC(tagTy, 1234)) (* TODO generate real header tags *)
         
         val _ = mk Op.Store #[headerAddr, headerTag tupleTy]
         
@@ -567,7 +567,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                      
                      (fn () => LB.condBr b (result, trueTarg, falseTarg))
                      
-                   end) handle OU.TODO _ => (fn () => LB.retVoid b)) (* TODO remove this handler *)
+                   end) handle OU.TODO _ => (fn () => LB.retVoid b)) (* TODO remove this handler once all prim ops are implemented *)
                    
                
                | C.Switch(cond, arms, maybeDefault) => let
@@ -666,12 +666,6 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
            (ListPair.zipEq (lefts, rights))
     
       
-      (* there's a lot of little details here that you need to get right.
-         see genLit function in codegen-fn.sml
-         you might want to use a LiteralTblFn to handle strings, since
-         they must be declared at the top. probably want FloatLit.float
-         and IntLit.integer instead of real and IntInf.int, respectively.
-         FIXME TODO for now this generates an undef for the rhs. fix thiss *)
       and genConst(env, (lhsVar, lit, ty)) = let
         val llTy = LT.typeOf ty
         
@@ -720,48 +714,15 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       end
       
       and genLabel(env, (lhsVar, rhsLabel)) = let
-        
         val llv = lookupL(env, rhsLabel)
-        
-        (*val ty = LV.typeOf llv
-        val funcPtr = cast Op.BitCast (LB.fromV(llv), ty)*)
-        
-        (* this bitcast is a just a trick in LLVM to avoid using an alloca.
-           you can only bind to a value the result of an instruction, and clang
-           uses an alloca-store-load sequence to do the same thing. we've gotten this
-           far without alloca, so we don't do that (even though mem2reg will eliminate the
-           stack allocation). *)
-           
-           (* TODO I'm not convinced the commented out code is nessecary. we properly generate
-             the right strings whether it's a global or local var (%ident vs @ident).
-             for now lets try the simpler one *)
-        
       in
-        (*insertV(env, lhsVar, funcPtr)*)
         insertV(env, lhsVar, LB.fromV(llv))
       end
       
       
       
       and genSelect(env, (lhsVar, i, rhsVar)) = let
-      (* In CFG, there appears to be an implicit type casting going on with SELECT:
-      
-t<10CC9>#1 : any
-let t<10CCB>#1:[any] = ([any])t<10CC9>
-let t<10CCC>#2:[[cont([cont(any/enum(0)),...]/enum(0)),...],[any,any]] = #0 t<10CCB>
-
-another example:
-
-deques<11107>#1:any
-let deques<1110A>#1:[any,any] = ([any,any])deques<11107>
-let d<1110B>#1:[deque] = #0 deques<1110A>
-
-And this is causing later problems because the results of these two selects have the wrong
-type, and later selects from these variables in CFG will hit an error.
-
-Thus, we need to account for this and add a cast. For now I'm keeping it conservative by using BitCast instead of using an autoCast.      
-
-      *)
+      (* In CFG, there appears to be an implicit type casting going on with SELECT, so we need to add casts *)
       
         val implicitCaster = let
                 val lhsTy = CFG.Var.typeOf lhsVar
@@ -779,7 +740,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
       in
         (case calcAddr i llv
             of SOME addr => insertV(env, lhsVar, implicitCaster (mk Op.Load #[addr]))
-             | NONE => ( debug "SELECT" rhsVar llv ; env) (* TODO raise fail instead *)
+             | NONE => ( debug "SELECT" rhsVar llv ; raise Fail "unrecoverable error")
             (* esac *))
         
       end
@@ -798,7 +759,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
       in
         (case calcAddr i llv
             of SOME newLLVar => insertV(env, lhsVar, newLLVar)
-             | NONE => ( debug "AddrOf" var llv ; stubIt env lhsVar ) (* TODO raise fail instead *)
+             | NONE => ( debug "AddrOf" var llv ; raise Fail "unrecoverable error" )
         (* esac *))
       end
       
@@ -858,7 +819,7 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
         (* lhs for Prim0 so dont update the env. NOTE we're assuming
             no regular prims with a lhs ended up in a Prim0 *)
         (cvtr llArgs ; env) 
-      end) handle OU.TODO _ => env (* TODO temp handler*)
+      end) handle OU.TODO _ => env (* TODO temp handler until all primops are implemented *)
       
       and genPrim(env, (lhsVar, prim)) = (let
         val llArgs = L.map (fn x => lookupV(env, x)) (PU.varsOf prim)
@@ -902,10 +863,11 @@ Thus, we need to account for this and add a cast. For now I'm keeping it conserv
       
       (*
       NOTE TODO FIXME (3/13/16)  some fields of a vproc are accessable by other threads.
-      a great example of this is the heap limit pointer. LLVM's alias analysis will likely
+      a great example of this is the heap limit pointer. LLVM's alias analysis might
       assume that the vprocs are not shared or something, and might remove some loads of
-      the heap limit pointer (say, hoisting out of a loop) when it really should not because the value is volatile. THUS you should really add the volatile attribute to at _least_ loads,
-      if not also for stores, to be correct.
+      the heap limit pointer (say, hoisting out of a loop) when it really should not because the value is volatile. 
+      THUS you should really add the volatile attribute to at _least_ loads, if not also for stores?
+      This needs testing and evaluation
       *)
       
       and genVPLoad(env, (lhsVar, offset, vpVar)) = let
