@@ -105,3 +105,4 @@ is
   llvm/llvm-var.sml
   llvm/llvm-attribute.sml
   llvm/llvm-op-util.sml
+  llvm/llvm-runtime.sml
