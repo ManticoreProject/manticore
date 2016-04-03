@@ -8,6 +8,7 @@ structure LLVMOpUtil = struct
   structure P = Prim
   structure AS = LLVMAttribute.Set
   structure LT = LLVMType
+  structure LR = LLVMRuntime
   structure A = LLVMAttribute
   structure Op = LLVMOp
   
@@ -34,6 +35,7 @@ local
     val float = LT.floatTy
     val double = LT.doubleTy
     val i64Star = LT.mkPtr i64
+    val i32Star = LT.mkPtr i32
     
     fun id x = x
     
@@ -85,6 +87,7 @@ in
 fun fromPrim bb p = let
   val f = LB.mk bb
   val c = LB.cast bb
+  val fv = LB.fromV
 in (case p
   of (P.I32Add _ | P.I64Add _)
       => (fn [a, b] => f e Op.Add #[a, b])
@@ -152,8 +155,11 @@ in (case p
        
        
         *)
-  | (P.F32Sqrt _ | P.F64Sqrt _ | P.F32Abs _ | P.F64Abs _ )
-      => raise TODO "See the todo here."
+  | P.F32Sqrt _ => (fn [a] => LB.call bb (fv LR.sqrt_f32, #[a]))
+  | P.F64Sqrt _ => (fn [a] => LB.call bb (fv LR.sqrt_f64, #[a]))
+  
+  | P.F32Abs _ => (fn [a] => LB.call bb (fv LR.abs_f32, #[a]))
+  | P.F64Abs _ => (fn [a] => LB.call bb (fv LR.abs_f64, #[a]))
 
 
   | (P.I8RSh _ | P.I16RSh _ | P.I32RSh _ | P.I64RSh _ )
@@ -180,7 +186,11 @@ in (case p
   (* NOTE we can't use GEP for these address prims mostly because GEP
      requires the offsets to be constants, whereas
      AdrAdd does not nessecarily do that. we lose out on some
-     alias analysis friendliness, but we can worry about that later. *)
+     alias analysis friendliness, but we can worry about that later.
+     
+     TODO evaluate whether this is true or not. we ought to be able to
+     case to i8* , GEP , then cast back? GEP accepts non-const
+     offsets if its an array. *)
      
   | P.AdrAddI32 _ => addrArith bb true Op.Add
   | P.AdrSubI32 _ => addrArith bb true Op.Sub
@@ -286,24 +296,45 @@ in (case p
             end
             
         )
+        
+        
+        (* TODO NOTE  4/2/16  this vector allocation cases below are a bit confusing
+        
+            Check out genAllocPolyVec in alloc64-fn.sml, which does a lot of stuff, whereas
+            in genAllocPolyVec in heap-transfer-fn.sml, it looks as simple as a function call,
+            but the signature of the AllocVector runtime function does not accept enough
+            arguments for allocPolyVec. it only accepts the vproc ptr and an integer. here's
+            what the AllocPolyVec has as its arguments:
+            
+            AllocPolyVec (n, xs): allocate in the local heap a vector 
+      					 * v of length n s.t. v[i] := l[i] for 0 <= i < n 
+                         
+            Which method are we suppose to use? I have no idea. So for now we'll error out
+            and come back to this later.
+            
+            ~kavon
+         *)
+         
+    (* |   ( P.AllocPolyVec _     TODO unfortunately we cannot ignore these because they're
+                                       in the basis.
+        | P.AllocIntArray _ 
+        | P.AllocLongArray _ 
+        | P.AllocFloatArray _  
+        | P.AllocDoubleArray _ ) => 
+            raise Fail ("llvm backend does not currently support\n" ^
+                        "NESL/Nepal-style parallel array comprehensions.\n" ^
+                        "use the MLRISC backend")
+        *)
+        
+    | P.TimeStampCounter => (fn _ => LB.call bb (fv LR.readtsc, #[]))
     
-    (*
-  (* memory-system operations 
-        NOTE in LLVM 3.8/3.9 they have intrinsics for Pause and TSC, so use those to remain platform independent *)
+    (*     
   
     | Pause				(* yield processor to allow memory operations to be seen *)
     | FenceRead			(* memory fence for reads *)
     | FenceWrite			(* memory fence for writes *)
     | FenceRW				(* memory fence for both reads and writes *)
-  (* allocation primitives *)
-    | P.AllocPolyVec _ =>     (* AllocPolyVec (n, xs): allocate in the local heap a vector 
-                   * v of length n s.t. v[i] := l[i] for 0 <= i < n *)
-    | P.AllocIntArray _ =>           (* allocates an array of ints in the local heap *)
-    | P.AllocLongArray _ =>          (* allocates an array of longs in the local heap *)
-    | P.AllocFloatArray _ =>         (* allocates an array of floats in the local heap *)
-    | P.AllocDoubleArray _ =>        (* allocates an array of doubles in the local heap *)
-  (* time-stamp counter *)
-    | TimeStampCounter =>               (* returns the number of processor ticks counted by the TSc Op.register *)
+  
     *)
     
     | _ => raise TODO ("primop " ^ (PrimUtil.nameOf p) ^ " not implemented")
@@ -338,14 +369,21 @@ in (case p
     fun addrCmp cmp = 
         (fn [a, b] =>
             f e (Op.Icmp cmp) #[addrCmpCast a, addrCmpCast b])
+            
+    fun boxCmp cmp =
+        (* EQ means isBoxed, NE means isUnboxed *)
+        (fn [a] => let
+                val a = addrCmpCast a
+                val zero = LB.fromC(LB.intC(LT.i64, 0))
+                val one = LB.fromC(LB.intC(LT.i64, 1))
+                
+                val masked = f e Op.And #[a, one]
+                val res = f e (Op.Icmp(Op.US cmp)) #[masked, zero]
+            in
+                res
+            end)
     
   in (case cond
-      (*
-      | (P.I32LSh _ | P.I64LSh _)
-          => (fn [a, b] => f e Op.Shl #[a, b])
-     *) 
-     
-     
      
       of (P.I32Eq _ | P.I64Eq _)    => simpleCmp Op.Icmp (Op.S Op.EQ)
        | (P.I32NEq _ | P.I64NEq _)  => simpleCmp Op.Icmp (Op.S Op.NE)
@@ -368,9 +406,9 @@ in (case p
        | (P.F32Gt _ | P.F64Gt _)    => simpleCmp Op.Fcmp (Op.UO Op.GT)
        | (P.F32Gte _ | P.F64Gte _)  => simpleCmp Op.Fcmp (Op.UO Op.GE)
        
-       (* shouldn't matter for equality questinos, but we chose unsigned since im
+       (* shouldn't matter for equality questions, but we chose unsigned since im
           pretty sure these are never considered negative values anyways. *)
-       | (P.Equal _ | P.AdrEq _)    => addrCmp (Op.US Op.EQ)
+       | (P.Equal _ | P.AdrEq _)        => addrCmp (Op.US Op.EQ)
        | (P.NotEqual _ | P.AdrNEq _)    => addrCmp (Op.US Op.NE)
        | (P.EnumEq _)     => simpleCmp Op.Icmp (Op.US Op.EQ)
        | (P.EnumNEq _)    => simpleCmp Op.Icmp (Op.US Op.NE)
@@ -392,19 +430,43 @@ in (case p
                
            )
            
-       | _ => raise TODO ("primop " ^ (CondUtil.nameOf cond) ^ " not implemented")
-      
-       
-      (* These need a few extra things. see prim-gen-fn.sml, fun genCond to see how
-         we test the boxity of a value
-      isBoxed of 'var
-      | isUnboxed of 'var
-    (* conditional atomic operations *)
-      | I32isSet of 'var		(* 32-bit test (for short-circuiting I32TAS) *)
-      | I32TAS of 'var			(* 32-bit test and set *)
-      *)
+           
+       | P.I32TAS _ =>
+            (fn [targ] => let
+                    val targ = c Op.BitCast (targ, i32Star)
+                    val lit = LB.fromC (LB.intC(LT.i32, 1))
+                    val xchg = f e (Op.Armw Op.P_Xchg) #[targ, lit]
+                    
+                    (* NOTE if we have a guarentee that the i32 values are only
+                       ever 0 or 1, we could optimize this to become just
+                       a bitcast instead. This will probably be fast anyways
+                       since we're comparing with 1. *)
+                       
+                    val cmp = f e (Op.Icmp (Op.S Op.EQ)) #[xchg, lit]
+                in
+                    cmp
+                end)
+                
+                
+       | P.I32isSet _ =>
+            (fn [targ] => let
+                    val targ = c Op.BitCast (targ, i32Star)
+                    val lit = LB.fromC (LB.intC(LT.i32, 1))
+                    
+                    (* NOTE this load is marked volatile because its a TAS
+                           candidate location that's shared among threads *)
+                    val volatile = AS.singleton A.Volatile
+                    val load = f volatile Op.Load #[targ]
+                    val cmp = f e (Op.Icmp (Op.S Op.EQ)) #[load, lit]
+                in
+                    cmp
+                end)
+                
+       | P.isBoxed _ => boxCmp Op.EQ
+       | P.isUnboxed _ => boxCmp Op.NE
       
       (* esac *))
+      
   end (* end let of fromCond *)
     
 end (* end local *)

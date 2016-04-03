@@ -785,7 +785,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         env
       end
       
-      and genGAlloc(env, (lhsVar, ty, vars)) = stubIt env lhsVar (* TODO *)
+      and genGAlloc(env, (lhsVar, ty, vars)) = (* TODO not implemented yet. should go very similarly to local alloc *)
+        raise Fail "not implemented yet"
       
       and genPromote(env, (lhsVar, var)) = let
         val llFunc = LB.fromV LR.promote
@@ -1082,16 +1083,27 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     val convertedExterns = List.map toLLVMDecl module_externs
     val externDecls = S.concat (List.map (fn (s, _, _) => s) convertedExterns)
     
+    
+    fun magicDecls lst attrs = S.concat (L.map 
+                        (fn llv => (LT.declOf (LV.typeOf llv) (LV.toString llv)) 
+                            ^ " " ^ attrs ^ "\n") lst)
+    
     (* now we add the magic llvm runtime stuff that are not actually part of the CFG module. *)
-    val magicDecls = S.concat (L.map (fn llv => (LT.declOf (LV.typeOf llv) (LV.toString llv)) 
-                                                    ^ " " ^ stdAttrs(ExternCFun) ^ "\n") LR.all)
+    val runtimeDecls = magicDecls LR.runtime (stdAttrs ExternCFun)
+    
+                                                    
+    val intrinsicDecls = magicDecls LR.intrinsics ""
     
 
     val header = S.concat [
       "target datalayout = \"", dataLayout, "\"\n",
       "target triple = \"", targetTriple, "\"\n\n",
+      "\n; externed decls in the module\n",
       externDecls,
-      magicDecls
+      "\n; decls to access runtime system\n",
+      runtimeDecls,
+      "\n; llvm intrinsics\n",
+      intrinsicDecls
        ]
 
     in

@@ -68,8 +68,9 @@ structure LLVMOp = struct
     
     and phi
     = P_Add
+    | P_Xchg
     (* while there are a lot of other atomic update options,
-       CFG currently only needs support for Add. *)
+       CFG currently only needs support for these *)
     
 
     and icmp_kind
@@ -561,6 +562,7 @@ structure LLVMOp = struct
 
   and phiKindToStr (p : phi) = (case p
       of P_Add => "add"
+       | P_Xchg => "xchg"
       (* esac *))
 
 
