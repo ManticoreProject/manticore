@@ -707,8 +707,17 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     insertV(env, lhsVar, gep)
                end
                
-               (* TODO Strings and Tags, which are both strings it seems according to codegen-fn.sml *)
-               | _ => stubIt env lhsVar 
+               | Literal.Tag t => let
+                    val llv = LS.lookup t
+                    val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
+                    
+                    (* calculate the address of the first byte in this ptr to an 
+                       array of bytes to turn it into an i8* *)
+                    val SOME gep = calcAddr 0 (LB.fromV llv)
+                    val casted = cast (Op.safeCast(LB.toTy gep, lhsTy)) (gep, lhsTy)
+               in
+                    insertV(env, lhsVar, casted)
+               end
               (* esac *))
         end
         
