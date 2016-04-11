@@ -2,45 +2,88 @@ LLVM backend todo list
 
 ***** Larger Items *****
 
-    - Heap limit checks (discuss with John about doing this later than CFG)
+    - Heap Limit Checks
+        As discussed with John, some LLVM optimizations may break heap limit
+        checks since we add them at CFG time (in particular, consider unrolling
+        a loop which performs allocation, the constant we compare against
+        to check the headroom in the heap would be wrong).
+        
+        We also intend to perform these types of optimizations in our 
+        compiler and not LLVM. Thus, we will only run passes which do not
+        violate the heap limit checks (ones which do not change loops),
+        and just perform cleanup and simplification.
+        
+        If we wanted to allow all optimizations in LLVM, we would need to
+        implement an intrinsic that delays evaluation of the constant,
+        and also add a pass that lowers that intrinsic to a constant value,
+        and place that pass at the very end of the pass ordering. Here's an
+        example of such an intrinsic:
+        
+        %minHeapSpace = call i64 @llvm.experimental.maxOffset(i64* %allocPtr)
+        
+        Then, we need to do a data flow from that point until all branches
+        reach a maxOffset call, and then compute the largest address offset
+        among all paths. We would probably also need to allow for maxOffset coalescing
+        (consider several of them ending up in a big basic block after inlining),
+        so we would need to figure out a way to make other optimization passes
+        aware of how to treat the intrinsic. We could also try to make use of
+        llvm's safepoints, but they're likely not compatible with call/cc.
+        
+        
+    - Linking in the Runtime System
     
-    - linking in the runtime system and generating the final binary
-        one area we should be careful of here is the RTS glue code that needs
-        to be changed if the llvm backend is used. Perhaps even on each side of the glue
-        in the RTS code in that big switch loop of RunManticore, some things might have to
-        be tweaked.
+        linking in the runtime system and generating the final binary
+        one area we should be careful of here is the RTS glue code that 
+        needs to be changed if the llvm backend is used. Perhaps even on 
+        each side of the glue in the RTS code in that big switch loop of 
+        RunManticore, some things might have to be tweaked.
+        
+        should just need to make sure we respect the ABI, with the added 
+        complexity of using the naked attribute. we might want to setup the 
+        stack pointer upon entering manticore function land to be 8 bytes 
+        shy of a 16 byte alignment so callq aligns the stack for us. this 
+        is of course not considering other things like what if the reg alloc
+        decided to use push for spills, and we make a c call in the middle 
+        of a basic block. I believe we need to browse the LLVM source code 
+        to find out how the naked attribute is treated, because that 
+        preliminary testing earlier yielded some hoops that needed to be 
+        jumped through (mostly, I remember needing to call a special stack 
+        realigner function before making the actual c call to match the 16 
+        byte ABI spec. we could always introduce a pass that inserts that r
+        ealignment in a target non-specific way into LLVM's code generator, 
+        because I think this is an oversight.... we're probably the only 
+        people seriously making use of that attribute)
+        
+        alignstack(<n>)
+        This attribute indicates that, when emitting the prologue and 
+        epilogue, the backend should forcibly align the stack pointer. 
+        Specify the desired alignment, which must be a power of two, in 
+        parentheses.
+        
+        ALSO: what the heck is this "thunk" attribute. also it seems 
+        musttail is "optimization hostile" http://reviews.llvm.org/D11476
+        and I was able to confirm that slightly more optimizations 
+        occurred (inlines, loop transforms, folds etc) after changing
+        "musttail" to "tail". so there must be a few types of 
+        constructs we generate that are not as friendly, but we're 
+        mostly fine.
+        
     
     
 
 ***** Medium Items *****
 
-    - Floating point literals: John is taking care of this.
-        
-    
-    - C Calls/Promotion: should just need to make sure we respect the ABI, with the added complexity of using the naked attribute. we might want to setup the stack pointer upon entering manticore function land to be 8 bytes shy of a 16 byte alignment so callq aligns the stack for us. this is of course not considering other things like what if the reg alloc
-    decided to use push for spills, and we make a c call in the middle of a basic block. I believe we need to browse the LLVM source code to find out how the naked attribute is treated, because that preliminary testing earlier yielded some hoops that needed to be jumped through (mostly, I remember needing to call a special stack realigner function before making the actual c call to match the 16 byte ABI spec. we could always introduce a pass that inserts that realignment in a target non-specific way into LLVM's code generator, because I think this is an oversight.... we're probably the only people seriously making use of that attribute)
-    
-    alignstack(<n>)
-    This attribute indicates that, when emitting the prologue and epilogue, the backend should forcibly align the stack pointer. Specify the desired alignment, which must be a power of two, in parentheses.
-    
-    ALSO: what the heck is this "thunk" attribute. also it seems musttail is "optimization hostile" http://reviews.llvm.org/D11476
-          and I was able to confirm that slightly more optimizations occurred (inlines, loop transforms, folds etc) after changing "musttail" to "tail". so there must be a few types of constructs we generate that are not as friendly, but we're mostly fine.
-    
-    - Allocation Fixes: mostly just need to make sure the header bits are right. Also, types for
-      heap allocated objects need to have the correct uniform width. You'll need to add casts on all stores/loads,
-      which cast to and from heap versions of the type. Then you need to add the same kind of type widening
-      code when determining the equivalent heap representation of the type.
-      
-    - AllocVectorX: what the heck is going on here. there's like 3 implementations of
-       AllocPolyVector...
+    - Floating point literals: John is taking care of this.      
+
+    - Allocation Fixes
+          mostly just need to make sure the header bits are right. Also, types for
+          heap allocated objects need to have the correct uniform width. You'll need to add casts on all stores/loads,
+          which cast to and from heap versions of the type. Then you need to add the same kind of type widening
+          code when determining the equivalent heap representation of the type.
+
+
 
 ***** Small Items *****
-
-    - runtime-labels.sml  in order to implement things such as promote, we need to add all of these runtime labels to an llvm runtime labels
-                          structure that binds each LLVMVar created with the proper name and types (lifted from the old backend) and make sure they're output as part of the decl structure, and in places where they're needed we can access these LLVMVars directly (for example, in promote all we have is a RHS and a LHS, so the promote label is implicit).
-
-    - string/tag literals: need to put these into basically a cache/table (there's infrastructure for this already but we'll have to see if it works for us) because string literals must be global variables in LLVM.
     
-    - The remaining unimplemented primops and other stubbed out simple stuff, like
-      sqrt and abs for floats are LLVM intrinsic calls.
+    - The remaining unimplemented primops, which is the AllocVectorX and and memory fence/pause instructions.
     
