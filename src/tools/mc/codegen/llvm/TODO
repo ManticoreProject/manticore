@@ -14,11 +14,7 @@ LLVM backend todo list
 
 ***** Medium Items *****
 
-    - Floating point literals: unfortunately, we have to generate hex values that are the IEEE 754 encodings of the FloatLits (see the rant in  LLVMBuilder). Current proposal is to write "asIEEESingle" and "asIEEEDouble" functions in FloatLit with type FloatLit.float -> string that gives us the hex string.
-    
-    HEY: can we just use LLVM's canonicalize intrinsic??
-    
-        http://llvm.org/docs/LangRef.html#llvm-canonicalize-intrinsic
+    - Floating point literals: John is taking care of this.
         
     
     - C Calls/Promotion: should just need to make sure we respect the ABI, with the added complexity of using the naked attribute. we might want to setup the stack pointer upon entering manticore function land to be 8 bytes shy of a 16 byte alignment so callq aligns the stack for us. this is of course not considering other things like what if the reg alloc

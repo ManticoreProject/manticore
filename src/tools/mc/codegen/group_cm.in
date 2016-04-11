@@ -106,3 +106,4 @@ is
   llvm/llvm-attribute.sml
   llvm/llvm-op-util.sml
   llvm/llvm-runtime.sml
+  llvm/llvm-strings.sml
