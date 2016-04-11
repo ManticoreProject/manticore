@@ -48,6 +48,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure LV = LLVMVar
   structure LB = LLVMBuilder 
   structure LR = LLVMRuntime
+  structure LS = LLVMStrings
   structure A = LLVMAttribute
   structure AS = LLVMAttribute.Set
 
@@ -696,6 +697,16 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     
                | Literal.Char _ => raise Fail "not implemented" (* not implemented in MLRISC backend either *)
                
+               | Literal.String s => let
+                    val llv = LS.lookup s
+                    
+                    (* calculate the address of the first byte in this ptr to an 
+                       array of bytes to turn it into an i8* *)
+                    val SOME gep = calcAddr 0 (LB.fromV llv)
+               in
+                    insertV(env, lhsVar, gep)
+               end
+               
                (* TODO Strings and Tags, which are both strings it seems according to codegen-fn.sml *)
                | _ => stubIt env lhsVar 
               (* esac *))
@@ -1157,6 +1168,9 @@ in
 
     pr "\n\n; manticore function defs\n\n" ;
     List.app pr funStrings ;
+
+    pr "\n\n; string literals\n\n" ;
+    prl (LS.export()) ;  
 
     pr "\n\n\n\n; ---------------- end of LLVM generation ---------------------- \n\n\n\n" ;
     PrintCFG.output {counts=true, types=true, preds=false} (outS, module) ;
