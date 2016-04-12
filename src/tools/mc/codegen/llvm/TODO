@@ -87,3 +87,19 @@ LLVM backend todo list
     
     - The remaining unimplemented primops, which is the AllocVectorX and and memory fence/pause instructions.
     
+    - Add some aliasing information for the allocation pointer.
+    
+        We can use the 'noalias' attribute on the parameter of every function which is the allocation pointer.
+        This will require changing the jwaCC type list (so the first one is an LT.allocPtrTy instead of an i64)
+        and also adding a block of function prototype declarations, because only in the prototypes can you write
+        noalias. This attribute corresponds to the 'restrict' keyword in C99. https://en.wikipedia.org/wiki/Restrict
+        
+        
+    - Pick passes that do not modify the CFG and perform quick cleanup/optimization of the code we generate before handing it off to LLC.
+      Here's an example pass ordering:
+      
+        -verify -tailcallelim -simplifycfg -domtree -constprop -early-cse -basicaa -gvn -globalopt -reassociate -early-cse -domtree -basicaa -memdep -instcombine -adce -globaldce -instcombine -barrier -domtree -branch-prob -constmerge -verify -stats -time-passes
+        
+        It's important to note that I'm not personally convinced opt can do anything useful for us with the restrictions about modifying the CFG after looking at what llc generates with -O3. maybe all we need is constprop, reassociate, early-cse, instcombine, adce, instcombine. llc will handle the rest. we also might need to be careful about llc messing up alloc checks. that really is what's next up.
+        
+    
