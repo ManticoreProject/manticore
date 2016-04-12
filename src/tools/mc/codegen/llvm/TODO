@@ -103,3 +103,22 @@ LLVM backend todo list
         It's important to note that I'm not personally convinced opt can do anything useful for us with the restrictions about modifying the CFG after looking at what llc generates with -O3. maybe all we need is constprop, reassociate, early-cse, instcombine, adce, instcombine. llc will handle the rest. we also might need to be careful about llc messing up alloc checks. that really is what's next up.
         
     
+    - Maybe a bug? (or just change it so we dont annoy the linter): 
+      because we are not binding constants at the same point
+      in LLVM as we do in CFG, we're kind of doing our own constant propagation
+      during translation (because LLVM does not allow %lhs = i64 1, you need
+      to use a dummy bitcast trick), and this is what I believe is causing the
+      LLVM linter to warn about casting the constant 1 to a pointer. here's
+      an example in wakeupSleepingThreads, which deals with lists (thus 1 is nil
+      and a 2 aligned pointer is a cons cell)
+
+else_cfg1072E_18B31:
+    %con_nil_cfg1072C_18B58 = phi i64 [ 1, %wakeupSleepingThreadsCheck_cfg12BE1_18B33 ]
+	%r_18BDB = icmp ne i64 %con_nil_cfg1072C_18BD9, 1
+	br i1 %r_18BDB, label %then_cfg10779_18B2E, label %else_cfg10786_18B2D
+
+then_cfg10779_18B2E:
+    %con_nil_cfg10777_18B3F = phi i64 [ %con_nil_cfg1072C_18B58, %else_cfg1072E_18B31 ]
+    %con_nil_cfg10777_18B6E = inttoptr i64 %con_nil_cfg10777_18B3F to %_tupTy.1*
+	%r_18B6F = getelementptr inbounds %_tupTy.1, %_tupTy.1* %con_nil_cfg10777_18B6E, i32 0, i32 0
+	%r_18B70 = load i64*, i64** %r_18B6F
