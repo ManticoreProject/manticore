@@ -427,19 +427,32 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 L.map maybeCast (ListPair.zipEq(llArgs, params))
             end
         
-        and markPred env (to, args) = let
-                val llLab = lookupL(env, to)
+        and markPred env jmp = markPredFrom b env jmp
+            
+        and markPredFrom b env jmp = let
+                val (llLab, allArgs) = getCC env jmp
                 val llBB = lookupBB(env, llLab)
                 val bbParams = LB.paramsOf llBB
+                
+                val from = LB.labelOf b
+                val castedArgs = matchCC(allArgs, bbParams)
+                
+            in
+                (LB.addIncoming llBB (from, castedArgs) ; (llLab, castedArgs))
+            end
+            
+        (* similar to markPred but does not perform casts, does not assume the from
+           block is the current basic block, and does not add an incoming edge. 
+           this just looks stuff up and puts the args together with the machine values. *)
+        and getCC env (to, args) = let
+                val llLab = lookupL(env, to)
         
                 val llArgs = L.map (fn a => lookupV(env, a)) args
                 val mvArgs = L.map (fn mv => lookupMV(env, mv)) mvCC
-                
-                val from = LB.labelOf b
-                val allArgs = matchCC(mvArgs @ llArgs, bbParams)
+                val allArgs = mvArgs @ llArgs
                 
             in
-                (LB.addIncoming llBB (from, allArgs) ; (llLab, allArgs))
+                (llLab, allArgs)
             end
             
             
@@ -554,11 +567,45 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                | (C.HeapCheck {hck = C.HCK_Global, ...} | C.HeapCheckN {hck = C.HCK_Global, ...})
                     => raise Fail "global heap checks not implemented in MLRISC backend either."
                
-               | C.HeapCheck {hck = C.HCK_Local, szb, nogc} => let
-                        val _ = ()
+               | C.HeapCheck {hck = C.HCK_Local, szb, nogc} => 
+                   let
+                        (* FIXME: this value should come from the runtime constants
+                           CURRENT SOURCE: alloc64-fn.sml. slop space is 4kb, and we leave 512b
+                           for spilling values. might not be enough tbh? *)
+                        val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
+                   
+                   
+                        val enoughSpace = (let 
+                                val vproc = lookupMV(env, MV_Vproc)
+                                
+                                (* TODO figure out what the right offset is for stuff in vproc! *)
+                                val limitPtrAddr = LPU.vpOffset b vproc 4321 (LT.mkPtr LT.i64)
+                                val limitPtrVal = LB.mk b (AS.singleton A.Volatile) Op.Load #[limitPtrAddr]
+                                
+                                val allocPtr = lookupMV(env, MV_Alloc)
+                                val allocPtrVal = cast Op.PtrToInt (allocPtr, LT.i64)
+                                
+                                val diff = mk Op.Sub #[limitPtrVal, allocPtrVal]
+                                
+                                val zero = LB.fromC(LB.intC(LT.i64, 0))
+                                val szbC = LB.fromC(LB.intC(LT.i64, Word.toLargeInt szb))
+                            in
+                                if szb <= heapSlopSzB
+                                then (* just check if the diff is negative,
+                                       which should be more efficient *)
+                                    mk (Op.Icmp(Op.S Op.LE)) #[diff, zero]
+                                    
+                                else (* check for the headroom *)
+                                    mk (Op.Icmp(Op.S Op.LE)) #[diff, szbC]
+                                
+                            end) (* end of enoughSpace *)
+                        
+                        val (nogcTarg, _) = markPred env nogc
                    in
-                        raise Fail "in progress"
+                        (fn () => [LB.condBr b (enoughSpace, nogcTarg, nogcTarg)])
                    end
+                   
+                    (*let val (targ, _) = markPred env nogc in (fn () => [LB.br b targ]) end *)
                
                | (C.HeapCheckN {hck = C.HCK_Local, nogc, ...}) => let 
                     (* TODO not sure how to handle this case yet but it should be similar to
