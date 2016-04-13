@@ -273,15 +273,23 @@ fun output (outS, module as C.MODULE { name = module_name,
      val allBlocks = L.map (fn (b, ENV{vars, blks, labs, mvs}, f) => 
                                 (b, ENV{vars=vars, blks=bbMap, labs=labs, mvs=mvs}, f)) allBlocks
     
-    (* results in a list of thunks that will cap off the blocks *)                            
+    (* results in a list of thunks that will cap off the blocks, and those thunks return a 
+       list of blocks that is the result of generating this block. Heap allocations in 
+       particular generate extra blocks, but all others should just be a singleton list *)
     val allBlocks = L.map (fn (blk, env, f) => f (blk, env)) allBlocks
       
     (* force the thunks now that all blocks have added their predecessor edges to
-       all of the blocks *)
-    val allBlocks = L.map (fn f => f()) allBlocks
+       all of the blocks. then flatten the LB.bb list list and map them to strings *)
+    val stringyBlocks = L.foldr
+                (fn (thunk, ys) => case thunk()
+                  of nil => raise Fail "uh oh, how did a block go missing?"
+                   | [x] => (LB.toString x)::ys
+                   | xs => (L.map LB.toString xs) @ ys)
+                []
+                allBlocks
 
     in
-        L.map LB.toString allBlocks
+        stringyBlocks
     end
       
 (* determines calling conventions. we keep it all localized here
@@ -320,7 +328,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         (* end case *))
   end
 
-  and fillBlock (b : LB.t) (initialEnv : gamma, body : C.exp list, exit : C.transfer) : (unit -> LB.bb) = let
+  and fillBlock (b : LB.t) (initialEnv : gamma, body : C.exp list, exit : C.transfer) : (unit -> LB.bb list) = let
     
     (* a jump list is a (label * var list) which indicates
        where a jump comes from, and the names of the vars from that BB.
@@ -472,7 +480,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 
                 val llFun = lookupV(env, func)
             in
-                (fn () => LB.tailCall b (llFun, V.fromList allCvtdArgs))
+                (fn () => [LB.tailCall b (llFun, V.fromList allCvtdArgs)])
             end
             
       in
@@ -480,10 +488,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
               of C.Goto jmp => let
                     val (targ, _) = markPred env jmp
                   in
-                    (fn () => LB.br b targ)
+                    (fn () => [LB.br b targ])
                   end
               
-               | C.If (cond, trueJ, falseJ) => ((let
+               | C.If (cond, trueJ, falseJ) => let
                     val (trueTarg, _) = markPred env trueJ
                     val (falseTarg, _) = markPred env falseJ
                     
@@ -495,9 +503,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                      
                    in
                      
-                     (fn () => LB.condBr b (result, trueTarg, falseTarg))
+                     (fn () => [LB.condBr b (result, trueTarg, falseTarg)])
                      
-                   end) handle OU.TODO _ => (fn () => LB.retVoid b)) (* TODO remove this handler once all prim ops are implemented *)
+                   end
                    
                
                | C.Switch(cond, arms, maybeDefault) => let
@@ -529,7 +537,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     val llCond = lookupV(env, cond)
                     
                in
-                    (fn () => LB.switch b llCond (llDefault, llArms))
+                    (fn () => [LB.switch b llCond (llDefault, llArms)])
                end
                
                (* all types are CFG vars *)
@@ -557,11 +565,11 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                        regular heapcheck.  *)
                         val (targ, _) = markPred env nogc
                    in
-                        (fn () => LB.br b targ)
+                        (fn () => [LB.br b targ])
                    end
                 
                
-               | _ => (fn () => LB.retVoid b) (* stubIt  this is stubbed out, remove it later! *)
+               | _ => (fn () => [LB.retVoid b]) (* stubIt  this is stubbed out, remove it later! *)
               (* esac *))  
       end
       
