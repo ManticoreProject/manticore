@@ -45,6 +45,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
   structure V = Vector
 
   (*  *)
+  structure LPU = LLVMPrinterUtil
   structure LV = LLVMVar
   structure LB = LLVMBuilder 
   structure LR = LLVMRuntime
@@ -359,79 +360,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       in
           insertV(env, cfgVar, newLLVar)
       end
-      
-      fun calcAddr idx llInstr = let
-        val llvTy = LB.toTy llInstr
-        val zero = LB.intC(LT.i32, 0)
-        val idxNum = Int.toLarge idx
-      in
-          (case LT.node llvTy
-            of Ty.T_Ptr t => (case LT.node t
-                of (Ty.T_Vector _
-                   | Ty.T_Array _
-                   | Ty.T_Struct _
-                   | Ty.T_UStruct _) => SOME (LB.gep_ib b (llInstr, #[zero, LB.intC(LT.i32, idxNum)]))
-                 
-                 | _ => SOME (LB.gep_ib b (llInstr, #[LB.intC(LT.i32, idxNum)]))
-                 
-                (* esac *))
-             | _ => NONE
-          (* esac *))
-      end
-      
-      (* just to keep the vp instructions consistent *)
-      fun vpOffset vpLL offset resTy = let
-        val offsetLL = LB.fromC(LB.intC(LT.i64, offset))
-        
-        (* We take the VProc ptr, offset it, and bitcast it to the kind of pointer we want *)
-        val r1 = cast Op.BitCast (vpLL, LT.mkPtr(LT.i8))
-        val r2 = LB.calcAddr_ib b (r1, #[offsetLL])
-        val final = cast Op.BitCast (r2, resTy)
-      in
-        final
-      end
-      
-      
-      (* returns ptr to new allocation and the properly offset alloc ptr *)
-      fun doAlloc allocPtr llVars = let
-        val tagTy = LT.i64
-        val llTys = L.map (fn x => LB.toTy x) llVars
-        val oldAllocPtrTy = LB.toTy allocPtr
-        
-        (* build the types we'll need *)
-        val tupleTy = LT.mkStruct(llTys)
-        val heapFrameTy = LT.mkPtr(LT.mkStruct( tagTy :: tupleTy :: nil ))
-        
-        (*  now lets calculate addresses. the invariant about the alloc pointer is that it
-            points to unallocated memory (the next allocation's header ty), so that's
-            what we need to return *)
-        val allocPtr = cast Op.BitCast (allocPtr, heapFrameTy)
-        
-        val gep = LB.gep_ib b
-        fun c idxNum = LB.intC(LT.i32, Int.toLarge idxNum)
-        
-        val headerAddr = gep (allocPtr, #[c 0, c 0])
-        val tupleAddr = gep (allocPtr, #[c 0, c 1])
-        
-        val newAllocPtr = cast Op.BitCast (gep (allocPtr, #[c 1]), oldAllocPtrTy)
-        
-        
-        fun tupleCalc idx = gep (allocPtr, #[c 0, c 1, c idx])
-        
-        (* now we do the writes *)
-        
-        fun headerTag _ = LB.fromC(LB.intC(tagTy, 1234)) (* TODO generate real header tags *)
-        
-        val _ = mk Op.Store #[headerAddr, headerTag tupleTy]
-        
-        val _ = L.foldl (fn (var, idx) =>
-                    ((mk Op.Store #[tupleCalc idx, var]) ; (idx + 1))) 0 llVars
-        
-        in
-            (newAllocPtr, tupleAddr)
-        end
-        
-      
+
       (* end handy stuff *)
       
       (* NOTE NOTE what needs to happen in `finish` is that all transfers making this basic block
@@ -711,7 +640,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     
                     (* calculate the address of the first byte in this ptr to an 
                        array of bytes to turn it into an i8* *)
-                    val SOME gep = calcAddr 0 (LB.fromV llv)
+                    val SOME gep = LPU.calcAddr b 0 (LB.fromV llv)
                in
                     insertV(env, lhsVar, gep)
                end
@@ -722,7 +651,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     
                     (* calculate the address of the first byte in this ptr to an 
                        array of bytes to turn it into an i8* *)
-                    val SOME gep = calcAddr 0 (LB.fromV llv)
+                    val SOME gep = LPU.calcAddr b 0 (LB.fromV llv)
                     val casted = cast (Op.safeCast(LB.toTy gep, lhsTy)) (gep, lhsTy)
                in
                     insertV(env, lhsVar, casted)
@@ -767,7 +696,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
         val llv = lookupV(env, rhsVar)        
       in
-        (case calcAddr i llv
+        (case LPU.calcAddr b i llv
             of SOME addr => insertV(env, lhsVar, implicitCaster (mk Op.Load #[addr]))
              | NONE => ( debug "SELECT" rhsVar llv ; raise Fail "unrecoverable error")
             (* esac *))
@@ -777,7 +706,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       and genUpdate(env, (i, ptr, var)) = let
         val llVal = lookupV(env, var)
         val llPtr = lookupV(env, ptr)
-        val SOME addr = calcAddr i llPtr
+        val SOME addr = LPU.calcAddr b i llPtr
         val newLLVar = mk Op.Store #[addr, llVal]
       in
         env  (* store has an empty result *)
@@ -786,7 +715,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       and genAddrOf(env, (lhsVar, i, var)) = let
         val llv = lookupV(env, var)
       in
-        (case calcAddr i llv
+        (case LPU.calcAddr b i llv
             of SOME newLLVar => insertV(env, lhsVar, newLLVar)
              | NONE => ( debug "AddrOf" var llv ; raise Fail "unrecoverable error" )
         (* esac *))
@@ -801,7 +730,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
       and genAlloc(env, (lhsVar, ty, vars)) = let
         val llVars = L.map (fn x => lookupV(env, x)) vars
-        val (newAllocPtr, allocatedTuple) = doAlloc (lookupMV(env, MV_Alloc)) llVars
+        val (newAllocPtr, allocatedTuple) = LPU.doAlloc b (lookupMV(env, MV_Alloc)) llVars
         
         val lhsTy = LT.typeOf ty
         val maybeCasted = if LT.same(lhsTy, LB.toTy allocatedTuple) then allocatedTuple
@@ -905,7 +834,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val vpLL = lookupV(env, vpVar)
         
         (* now we do the offset & loading sequence *)
-        val addr = vpOffset vpLL offset (LT.mkPtr(lhsTy))
+        val addr = LPU.vpOffset b vpLL offset (LT.mkPtr(lhsTy))
         val final = mk Op.Load #[addr] 
       in
         insertV(env, lhsVar, final)
@@ -917,7 +846,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val vpLL = lookupV(env, vpVar)    
         
         (* offset and store seq *)
-        val addr = vpOffset vpLL offset (LT.mkPtr(argTy))
+        val addr = LPU.vpOffset b vpLL offset (LT.mkPtr(argTy))
         val _ = mk Op.Store #[addr, argLL] (* no resulting instr after store *)
       in
         env
@@ -927,7 +856,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
         val vpLL = lookupV(env, vpVar)
       in
-        insertV(env, lhsVar, vpOffset vpLL offset lhsTy)
+        insertV(env, lhsVar, LPU.vpOffset b vpLL offset lhsTy)
       end
 
     in

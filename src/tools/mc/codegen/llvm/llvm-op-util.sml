@@ -1,3 +1,12 @@
+(* llvm-op-util.sml
+ *
+ * COPYRIGHT (c) 2016 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *
+ * Utility functions used during the translation from CFG to LLVM, particularly to handle
+ * primops.
+ *)
+
 structure LLVMOpUtil = struct
 
 (* because cyclic Op.dependency between LLVMOp & LLVMBuilder *)
