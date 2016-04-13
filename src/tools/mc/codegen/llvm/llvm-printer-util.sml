@@ -9,8 +9,9 @@
 structure LLVMPrinterUtil = struct
 local
     
-    structure LT = LV.LT
+    
     structure LV = LLVMVar
+    structure LT = LV.LT
     structure LB = LLVMBuilder 
     structure Ty = LLVMTy
     structure Op = LLVMOp
