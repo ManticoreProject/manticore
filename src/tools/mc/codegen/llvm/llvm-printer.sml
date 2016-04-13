@@ -490,7 +490,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 L.map maybeCast (ListPair.zipEq(llArgs, params))
             end
         
-        and markPred (to, args) = let
+        and markPred env (to, args) = let
                 val llLab = lookupL(env, to)
                 val llBB = lookupBB(env, llLab)
                 val bbParams = LB.paramsOf llBB
@@ -549,14 +549,14 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       in
           (case exit
               of C.Goto jmp => let
-                    val (targ, _) = markPred jmp
+                    val (targ, _) = markPred env jmp
                   in
                     (fn () => LB.br b targ)
                   end
               
                | C.If (cond, trueJ, falseJ) => ((let
-                    val (trueTarg, _) = markPred trueJ
-                    val (falseTarg, _) = markPred falseJ
+                    val (trueTarg, _) = markPred env trueJ
+                    val (falseTarg, _) = markPred env falseJ
                     
                     val llArgs = L.map (fn x => lookupV(env, x)) (CU.varsOf cond)
                     val cvtr = OU.fromCond b cond
@@ -589,14 +589,14 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                             (* esac *))
                             
                     fun xlateArm (word, jump) = let 
-                            val (llTarg, _) = markPred jump
+                            val (llTarg, _) = markPred env jump
                             val llConst = LB.intC(LT.enumTy, Word.toLargeInt word)
                         in 
                             (llConst, llTarg)
                         end
                     
                     val llArms = L.map xlateArm arms
-                    val (llDefault, _) = markPred default
+                    val (llDefault, _) = markPred env default
                     val llCond = lookupV(env, cond)
                     
                in
@@ -614,16 +614,25 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                | C.Apply {f, clos, args}
                     => mantiFnCall(f, determineCC(C.KnownFunc{clos=clos}, args))
                
-               | (C.HeapCheck {nogc, ...} | C.HeapCheckN {nogc, ...}) => let
-                    (* TODO for now lets assume we never GC ;D
-                        this is a larger item to work on (introduce new BBs and stuff) *)
-                        val (targ, _) = markPred nogc
+               | (C.HeapCheck {hck = C.HCK_Global, ...} | C.HeapCheckN {hck = C.HCK_Global, ...})
+                    => raise Fail "global heap checks not implemented in MLRISC backend either."
+               
+               | C.HeapCheck {hck = C.HCK_Local, szb, nogc} => let
+                        val _ = ()
+                   in
+                        raise Fail "in progress"
+                   end
+               
+               | (C.HeapCheckN {hck = C.HCK_Local, nogc, ...}) => let 
+                    (* TODO not sure how to handle this case yet but it should be similar to
+                       regular heapcheck.  *)
+                        val (targ, _) = markPred env nogc
                    in
                         (fn () => LB.br b targ)
                    end
                 
                
-               | _ => (fn () => LB.retVoid b)
+               | _ => (fn () => LB.retVoid b) (* stubIt  this is stubbed out, remove it later! *)
               (* esac *))  
       end
       
