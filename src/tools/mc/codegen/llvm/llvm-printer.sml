@@ -574,6 +574,86 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                            for spilling values. might not be enough tbh? *)
                         val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
                    
+                        (* TODO at the moment this just creates the ep, we need to allocate
+                           a pair to represent the closure, where the code pointer is a late
+                           value added in doGC *)
+                        fun prepareGC env ((targ, live)) = let
+                            (* basically just save roots to the heap. returns
+                               a function to finish off this block once its br targ is
+                               created, and the live values it will carry to that block. *)
+                            
+                            val live = L.map (fn x => lookupV(env, x)) live
+                            
+                            val bbLab = LV.new("packageGC", LT.labelTy)
+                            
+                            (* no parameters since this block has exactly one predecessor,
+                               and it's environment is an extension of its predecessor,
+                               so there is no point in rebinding everything to fresh
+                               variables as we already do for a typical single pred block. *)
+                            val myBB = LB.new(bbLab, [])
+                            
+                            val vprocPtr = lookupMV(env, MV_Vproc)
+                            
+                            val (allocPtr, rootPtr) = 
+                                    LPU.doAlloc myBB (lookupMV(env, MV_Alloc)) live
+                                    
+                            val outgoingLive = [rootPtr, allocPtr, vprocPtr]
+                                    
+                            fun brTo gotoBB = (
+                                     (* TODO temp disabled because im testing with
+                                        extract gc as next block, which doesn't need
+                                        a phi node anyways. doGC will need this though!
+                                     LB.addIncoming gotoBB (bbLab, outgoingLive) ; *)
+                                     (fn () => LB.br myBB (LB.labelOf gotoBB))
+                                    )
+
+                        in
+                            (myBB, brTo, outgoingLive, live)
+                        end
+                        
+                        (* 
+                        val llv = lookupV(env, rhsVar)        
+                      in
+                        (case LPU.calcAddr b i llv
+                            of SOME addr => insertV(env, lhsVar, implicitCaster (mk Op.Load #[addr]))
+                             | NONE => ( debug "SELECT" rhsVar llv ; raise Fail "unrecoverable error")
+                            (* esac *))
+                        *)
+                        
+                        fun extractGC ([rootPtr, allocPtr, vprocPtr]) origLive = let
+                            
+                            val bbLab = LV.new("extractGC", LT.labelTy)
+                            val myBB = LB.new(bbLab, [])
+                            val mk = LB.mk myBB AS.empty
+                            
+                            val origTys = ListPair.zipEq(
+                                        L.tabulate(L.length origLive, fn x => x),
+                                        L.map (fn x => LB.toTy x) origLive
+                                        )
+                                        
+                            
+                            (* TODO FIXME add casts to these loads once you fix the
+                               heap size issues. *)
+                            val loadedInstrs = L.map 
+                                (fn (i, origTy) => case LPU.calcAddr myBB i rootPtr
+                                  of SOME addr => mk Op.Load #[addr]
+                                   | NONE => raise Fail "extractGC error"
+                                ) origTys
+                            
+                            
+                            (* following mvCC and markPred for the block calling convention *)
+                            fun brTo gotoBB = (
+                                    LB.addIncoming gotoBB 
+                                        (bbLab, [allocPtr, vprocPtr] @ loadedInstrs)  ;
+                                    (fn () => LB.br myBB (LB.labelOf gotoBB))
+                                )
+                            
+                        in
+                            (myBB, brTo)
+                        end
+                        
+                        
+                   
                    
                         val enoughSpace = (let 
                                 val vproc = lookupMV(env, MV_Vproc)
@@ -601,8 +681,24 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                             end) (* end of enoughSpace *)
                         
                         val (nogcTarg, _) = markPred env nogc
+                        val nogcBB = lookupBB(env, nogcTarg)
+                        
+                        (* build the extra BBs we need to enter GC *)
+                        val (prepBB, prepGoto, prepOut, origOut) = prepareGC env nogc
+                        
+                        (* TODO later the input from this will be from our doGC block *)
+                        val (extractBB, extractGoto) = extractGC prepOut origOut
+                        
+                        
+                        (* setup the predecessor edges *)
+                        val prepTerminator = prepGoto extractBB
+                        val xtractTerminator = extractGoto nogcBB
+                        
+                        
+                        
                    in
-                        (fn () => [LB.condBr b (enoughSpace, nogcTarg, nogcTarg)])
+                        (fn () => [LB.condBr b (enoughSpace, nogcTarg, LB.labelOf prepBB),
+                                   prepTerminator(), xtractTerminator()])
                    end
                    
                     (*let val (targ, _) = markPred env nogc in (fn () => [LB.br b targ]) end *)
