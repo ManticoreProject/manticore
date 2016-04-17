@@ -611,14 +611,6 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                             (myBB, brTo, outgoingLive, live)
                         end
                         
-                        (* 
-                        val llv = lookupV(env, rhsVar)        
-                      in
-                        (case LPU.calcAddr b i llv
-                            of SOME addr => insertV(env, lhsVar, implicitCaster (mk Op.Load #[addr]))
-                             | NONE => ( debug "SELECT" rhsVar llv ; raise Fail "unrecoverable error")
-                            (* esac *))
-                        *)
                         
                         fun extractGC ([rootPtr, allocPtr, vprocPtr]) origLive = let
                             
