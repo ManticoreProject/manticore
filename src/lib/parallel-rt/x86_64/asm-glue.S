@@ -94,6 +94,12 @@ invalidate_spill_area:
 	.globl	_GSYM(ASM_InvokeGC)
 _GSYM(ASM_InvokeGC):
 	movq	$REQ_GC, TMP_REG1
+#ifdef LLVM
+    /* we need to grab the return address from the stack, */
+    /* we pop to also fix the stack. this function must be called via callq */
+    popq    STD_CONT_REG
+#endif
+
 
 switch_to_c:
 #ifndef NDEBUG

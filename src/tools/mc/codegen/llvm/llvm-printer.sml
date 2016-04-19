@@ -591,13 +591,32 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                so there is no point in rebinding everything to fresh
                                variables as we already do for a typical single pred block. *)
                             val myBB = LB.new(bbLab, [])
+                            val gep = LB.gep_ib myBB
+                            val cast = LB.cast myBB
+                            val mk = LB.mk myBB AS.empty
                             
                             val vprocPtr = lookupMV(env, MV_Vproc)
                             
-                            val (allocPtr, rootPtr) = 
-                                    LPU.doAlloc myBB (lookupMV(env, MV_Alloc)) live
+                            (* NOTE the goal of packageGC is to construct a new closure 
+                            with a delayed code pointer field, which will be initialized
+                            by a later function. This is due to labels not being exposed
+                            outside of a function in LLVM. *)
+                            
+                            val liveTys = L.map (fn x => LB.toTy x) live
+                            
+                            (* put code pointer field in front. using int ty so header does not
+                               mark this field as a pointer to be followed by GC *)
+                            val closureTy = LT.i64 :: liveTys 
+                            
+                            val (closCalc, closPtr, allocPtr) = 
+                                    LPU.bumpAllocPtr myBB (lookupMV(env, MV_Alloc)) closureTy
                                     
-                            val outgoingLive = [rootPtr, allocPtr, vprocPtr]
+                            (* initialize the environment fields. notice that the start idx is 1
+                            and not 0, because field 0 is for the code pointer. *)        
+                            val _ = L.foldl (fn (var, idx) =>
+                                        ((mk Op.Store #[closCalc idx, var]) ; (idx + 1))) 1 live
+
+                            val outgoingLive = [closPtr, allocPtr, vprocPtr]
                                     
                             fun brTo gotoBB = (
                                      (* TODO temp disabled because im testing with
@@ -612,22 +631,29 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                         end
                         
                         
-                        fun extractGC ([rootPtr, allocPtr, vprocPtr]) origLive = let
+                        fun extractGC ([closPtr, allocPtr, vprocPtr]) origLive = let
                             
                             val bbLab = LV.new("extractGC", LT.labelTy)
                             val myBB = LB.new(bbLab, [])
                             val mk = LB.mk myBB AS.empty
                             
-                            val origTys = ListPair.zipEq(
-                                        L.tabulate(L.length origLive, fn x => x),
+                            (* NOTE the goal of extractGC is to reinitialize
+                               the state we had before we entered the runtime system.
+                               
+                               As of now it takes 3 values. but it actually will only take
+                               the allocation pointer.
+                                *)
+                            
+                            (* notice the +1 because field 0 is code ptr *)
+                            val origTys = ListPair.zipEq( 
+                                        L.tabulate(L.length origLive, fn x => x + 1),
                                         L.map (fn x => LB.toTy x) origLive
                                         )
                                         
-                            
                             (* TODO FIXME add casts to these loads once you fix the
                                heap size issues. *)
                             val loadedInstrs = L.map 
-                                (fn (i, origTy) => case LPU.calcAddr myBB i rootPtr
+                                (fn (i, origTy) => case LPU.calcAddr myBB i closPtr
                                   of SOME addr => mk Op.Load #[addr]
                                    | NONE => raise Fail "extractGC error"
                                 ) origTys
