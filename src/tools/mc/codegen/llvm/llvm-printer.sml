@@ -299,6 +299,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                    the machine val's index function *)
     (conv : CFG.convention, args : C.var list) : (LT.ty list * (int * C.var) list) = let
         
+        (*val _ = if L.length args <= 0 then raise Fail "no arg?" else ()*)
+        
         val getTy = LT.toRegType o LT.typeOf o C.Var.typeOf
         
         val machineValPadding = 
@@ -1138,7 +1140,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
    
     (* string building code *)
     val linkage = linkageOf lab
-    val ccStr = " cc 17 " (* Only available in Kavon's modified version of LLVM. *)
+    val ccStr = " cc 18 " (* Only available in Kavon's modified version of LLVM. *)
     val llName = LV.toString(lookupL(initEnv, lab))
     val decl = [comment, "define ", linkage, ccStr,
                 "void ", llName, "(", (stringify  allAssign), ") ",
