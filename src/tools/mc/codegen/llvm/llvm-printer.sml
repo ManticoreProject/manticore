@@ -1140,7 +1140,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
    
     (* string building code *)
     val linkage = linkageOf lab
-    val ccStr = " cc 18 " (* Only available in Kavon's modified version of LLVM. *)
+    val ccStr = " cc18 " (* Only available in Kavon's modified version of LLVM. *)
     val llName = LV.toString(lookupL(initEnv, lab))
     val decl = [comment, "define ", linkage, ccStr,
                 "void ", llName, "(", (stringify  allAssign), ") ",
