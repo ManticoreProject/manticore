@@ -87,7 +87,7 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   datatype llvm_attributes = MantiFun | ExternCFun
 
-  fun stdAttrs (MantiFun) = "naked nounwind"
+  fun stdAttrs (MantiFun) = "nounwind"
 
     (* NOTE: because I'm not sure of the effect inlining a C func into a naked func right now. *)
     | stdAttrs (ExternCFun) = "noinline" 
@@ -1195,18 +1195,49 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
          asLLV)
       end
 
-    val arch = (case Spec.archName
-      of "x86_64" => "x86_64-"
-       | _ => raise Fail ("Unsupported archicture type: " ^ Spec.archName)
-      (* end case *))
+    val (targetTriple, dataLayout) = let
+        (* 
+        In non-packed structs, padding between field types is inserted as defined by the 
+        DataLayout string in the module, which is required to match what the underlying 
+        code generator expects.
+        
+        The alignment of fields in the unpacked structs is important for our current GC 
+        implementation, because our GC assumes that all fields are 8 bytes wide (doesn't 
+        have to, but that's what it is currently doing) when interpreting the tag bits. 
+        Address arithmetic in our current BOM code probably relies on this too but I
+        haven't confirmed this. Thus, when we set the alignments of things below, it's
+        relative to the struct it is in.
+        
+        I will walk through the different components of the data layout we're using below,
+        as every part of it is very important!
+        *)
+        fun dataLayout endianness mangling = S.concatWith "-" 
+            [ endianness        (* E is big endian, e is small endian *)
+            , mangling          (* m:o = Mach-O name mangling, m:e = ELF *)
+            , "S64"             (* stack is naturally 8 byte aligned (see the tech report
+                                   for details about why we need to specify this). NOTE
+                                   that this specification is currently ignored by llc,
+                                   it's more or less just to tell opt what the alignment
+                                   will be. we will need to tell llc about this alignment
+                                   manually. *)
+            , "p:64:64:64"      (* pointers are 64 bits wide, and both the abi and preferred
+                                   alignment is 64 bits *)
+            , "i64:64"          (* 64 bit integers are 64 bit aligned *)
+            , "i32:64"          (* 32 bit integers are 64 bit aligned *)
+            , "i16:64"          (* 16 bit integers are 64 bit aligned *)
+            , "i8:64"           (* 8 bit integers are 64 bit aligned *)
+            , "i1:64"           (* 1 bit integers are 64 bit aligned *)
+            , "f16:64"          (* 16 bit floats are 64 bit aligned *)
+            , "f32:64"          (* 32 bit floats are 64 bit aligned *)
+            , "f64:64"          (* 64 bit floats are 64 bit aligned *)
+            ]
 
-    val (targetTriple, dataLayout) = (case Spec.osName
-      (* QUESTION: should this be pc-darwin instead, or is the only darwin OS we're referring to OS X? *)
-      (* might want to specify OS X version, and ensure this data layout matches our needs *)
-      of "darwin" => (arch ^ "apple-macosx", "e-m:o-i64:64-f80:128-n8:16:32:64-S128")
-       | "linux" => (arch ^ "pc-linux", "unknown")
-       | _ => raise Fail ("Unsupported OS type: " ^ Spec.archName)
-      (* end case *))
+          in (case (Spec.archName, Spec.osName)
+          of ("x86_64", "darwin") => ("x86_64-apple-macosx", dataLayout "e" "m:o")
+           | ("x86_64", "linux") => ("x86_64-pc-linux", dataLayout "e" "m:e")
+           | _ => raise Fail ("Unsupported OS/arch type: " ^ Spec.archName ^ " " ^ Spec.archName)
+          (* end case *))
+          end
 
 
     val convertedExterns = List.map toLLVMDecl module_externs

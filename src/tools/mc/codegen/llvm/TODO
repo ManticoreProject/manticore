@@ -76,10 +76,7 @@ LLVM backend todo list
     - Floating point literals: John is taking care of this.      
 
     - Allocation Fixes
-          mostly just need to make sure the header bits are right. Also, types for
-          heap allocated objects need to have the correct uniform width. You'll need to add casts on all stores/loads,
-          which cast to and from heap versions of the type. Then you need to add the same kind of type widening
-          code when determining the equivalent heap representation of the type.
+          determine the header tag bits for allocations.
 
 
 

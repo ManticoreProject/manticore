@@ -69,7 +69,9 @@ in
       val oldAllocPtrTy = LB.toTy allocPtr
       
       (* build the types we'll need *)
-      val tupleTy = LT.mkStruct(llTys)
+      (* it's important that the tupleTy is an unpacked struct, because
+         the datalayout correct pads the values so the GC is happy with it *)
+      val tupleTy = LT.mkUStruct(llTys) 
       val heapFrameTy = LT.mkPtr(LT.mkStruct( tagTy :: tupleTy :: nil ))
       
       (*  now lets calculate addresses. the invariant about the alloc pointer is that it

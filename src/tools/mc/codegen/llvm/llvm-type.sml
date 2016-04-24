@@ -449,11 +449,9 @@ structure LLVMType : sig
     and determineTuple ts = (case ts
         of nil => raise Fail "empty tuple. should be an enum for unit."
         
-        (* QUESTION(kavon): not sure if this is the right thing to do yet. it depends
-                        on how we implement SELECT. *)
          | t::nil => mkPtr(typeOf t)
 
-         | ts => mkPtr(mkStruct(List.map typeOf ts))
+         | ts => mkPtr(mkUStruct(List.map typeOf ts))
         (* esac *))
 
     and typeOfC (ct : CF.c_type) : ty = (case ct
