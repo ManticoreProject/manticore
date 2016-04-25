@@ -921,7 +921,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         raise Fail "not implemented yet"
       
       and genPromote(env, (lhsVar, var)) = let
-        val llFunc = LB.fromV LR.promote
+        val llFunc = LB.fromV (#1(LR.promote))
         val paramTys = (LT.argsOf o LB.toTy) llFunc
         
         val args = [lookupMV(env, MV_Vproc), lookupV(env, var)]
@@ -1135,7 +1135,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     
     fun stringify vars = S.concatWith ", " (L.map mkDecl vars)
     
-    val comment = "; comment use to be here \n"
+    val comment = (* "; comment use to be here \n" *) ""
     
     (*val comment = S.concat ["; CFG type: ", CTU.toString cfgTy, "\n",
                             "; LLVM type: ", (stringify  llParamTys), "\n",
@@ -1143,7 +1143,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
    
     (* string building code *)
     val linkage = linkageOf lab
-    val ccStr = " cc18 " (* Only available in Kavon's modified version of LLVM. *)
+    val ccStr = " " ^ (LB.cctoStr LB.jwaCC) ^ " " (* Only available in Kavon's modified version of LLVM. *)
     val llName = LV.toString(lookupL(initEnv, lab))
     val decl = [comment, "define ", linkage, ccStr,
                 "void ", llName, "(", (stringify  allAssign), ") ",
@@ -1193,7 +1193,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val asLLV = LV.convertLabel var
         val llvmAttrs = S.concat(mapSep(attrOfC, [stdAttrs(ExternCFun)], " ", attrs))
       in
-        ( (LT.declOf (LV.typeOf asLLV) (LV.toString asLLV)) ^ " " ^ llvmAttrs ^ "\n",
+        ( (LT.declOf (LV.typeOf asLLV) "" (LV.toString asLLV)) ^ " " ^ llvmAttrs ^ "\n",
          var,
          asLLV)
       end
@@ -1248,8 +1248,11 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     
     
     fun magicDecls lst attrs = S.concat (L.map 
-                        (fn llv => (LT.declOf (LV.typeOf llv) (LV.toString llv)) 
-                            ^ " " ^ attrs ^ "\n") lst)
+                        (fn (llv, cc) => let
+                            val cc = case cc of SOME lbCC => LB.cctoStr lbCC | NONE => ""
+                        in
+                            (LT.declOf (LV.typeOf llv) cc (LV.toString llv)) ^ " " ^ attrs ^ "\n"
+                        end) lst)
     
     (* now we add the magic llvm runtime stuff that are not actually part of the CFG module. *)
     val runtimeDecls = magicDecls LR.runtime (stdAttrs ExternCFun)

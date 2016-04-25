@@ -26,9 +26,10 @@ structure LLVMType : sig
     
     (* produces a thunk that produces a valid LLVM function declaration. 
        thunk's arguments are as follows:
-       1. function's name (with the @)
+       1. function's calling convention (empty string represents no cc)
+       2. function's name (with the @)
      *)
-    val declOf : ty -> string -> string
+    val declOf : ty -> string -> string -> string
 
     (* takes a list of "register types" and produces
        a list of indices for these types to assign them according
@@ -481,7 +482,8 @@ structure LLVMType : sig
                             then S.concat [llvmParams, ", ..."]
                             else "..."
         in
-            (fn name => S.concat ["declare ", llvmRet, " ", name, "(", llvmParams, ")"])
+            (fn cc => fn name => S.concat ["declare ", (if cc = "" then "" else cc ^ " "),
+                                            llvmRet, " ", name, "(", llvmParams, ")"])
         end
         
     in

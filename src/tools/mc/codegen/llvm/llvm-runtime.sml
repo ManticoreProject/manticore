@@ -13,6 +13,7 @@ structure LLVMRuntime =
   local
     structure LV = LLVMVar
     structure LT = LLVMType
+    structure LB = LLVMBuilder
     
     (* first type is return type *)
     fun mkLabel name tys = LV.newWithKind(name, LV.VK_Global true, LT.mkFunc tys)
@@ -49,26 +50,27 @@ structure LLVMRuntime =
   
     (* NOTE types come from heap-transfer-fn.sml and names from runtime-labels.sml.
        if you add anything here, you should also add it to the list of declared
-       functions in the llvm printer. *)
+       functions in the llvm printer. the 2nd item in the tuple is the calling convention.
+       none means to not specify a calling convention. *)
                                 
     (*   (vprocPtr * var) -> var   *)
-    val promote = mkLabel "PromoteObj" (LT.voidStar :: [LT.voidStar, LT.voidStar])
+    val promote : LV.var * (LB.convention option) = (mkLabel "PromoteObj" (LT.voidStar :: [LT.voidStar, LT.voidStar]), NONE)
     
     (* aka AllocPolyVec. (vprocPtr * any) -> any *)
-    val allocVector = mkLabel "AllocVector" (LT.voidStar :: [LT.voidStar, LT.voidStar])
+    val allocVector : LV.var * (LB.convention option) = (mkLabel "AllocVector" (LT.voidStar :: [LT.voidStar, LT.voidStar]), NONE)
     
     (*  the following alloc functions have signature (vprocPtr * int) -> any *)
-    val allocIntArray = mkLabel "AllocIntArray" (LT.voidStar :: [LT.voidStar, LT.i32])
-    val allocLongArray = mkLabel "AllocLongArray" (LT.voidStar :: [LT.voidStar, LT.i32])
-    val allocFloatArray = mkLabel "AllocFloatArray" (LT.voidStar :: [LT.voidStar, LT.i32])
-    val allocDoubleArray = mkLabel "AllocDoubleArray" (LT.voidStar :: [LT.voidStar, LT.i32])
+    val allocIntArray : LV.var * (LB.convention option) = (mkLabel "AllocIntArray" (LT.voidStar :: [LT.voidStar, LT.i32]), NONE)
+    val allocLongArray : LV.var * (LB.convention option) = (mkLabel "AllocLongArray" (LT.voidStar :: [LT.voidStar, LT.i32]), NONE)
+    val allocFloatArray : LV.var * (LB.convention option) = (mkLabel "AllocFloatArray" (LT.voidStar :: [LT.voidStar, LT.i32]), NONE)
+    val allocDoubleArray : LV.var * (LB.convention option) = (mkLabel "AllocDoubleArray" (LT.voidStar :: [LT.voidStar, LT.i32]), NONE)
     
         local
         in
             val stdRegSet = List.tabulate(6, fn _ => LT.i64)
             val retStructTy = LT.mkUStruct(stdRegSet)
             
-    val invokeGC = mkLabel "ASM_InvokeGC" (retStructTy :: stdRegSet)
+    val invokeGC : LV.var * (LB.convention option) = (mkLabel "ASM_InvokeGC" (retStructTy :: stdRegSet), SOME LB.jwaCC)
         end
         
     
@@ -87,13 +89,13 @@ structure LLVMRuntime =
            the externed C functions with our instrinsic functions instead, because
            they have the exact same type signatures anyways. *)
     
-    val sqrt_f32 = mkLabel "llvm.sqrt.f32" (LT.floatTy :: [ LT.floatTy ])
-    val sqrt_f64 = mkLabel "llvm.sqrt.f64" (LT.doubleTy :: [ LT.doubleTy ])
+    val sqrt_f32 : LV.var * (LB.convention option) = (mkLabel "llvm.sqrt.f32" (LT.floatTy :: [ LT.floatTy ]), NONE)
+    val sqrt_f64 : LV.var * (LB.convention option) = (mkLabel "llvm.sqrt.f64" (LT.doubleTy :: [ LT.doubleTy ]), NONE)
     
-    val abs_f32 = mkLabel "llvm.fabs.f32" (LT.floatTy :: [ LT.floatTy ])
-    val abs_f64 = mkLabel "llvm.fabs.f64" (LT.doubleTy :: [ LT.doubleTy ])
+    val abs_f32 : LV.var * (LB.convention option) = (mkLabel "llvm.fabs.f32" (LT.floatTy :: [ LT.floatTy ]), NONE)
+    val abs_f64 : LV.var * (LB.convention option) = (mkLabel "llvm.fabs.f64" (LT.doubleTy :: [ LT.doubleTy ]), NONE)
     
-    val readtsc = mkLabel "llvm.readcyclecounter" (LT.i64 :: nil)
+    val readtsc : LV.var * (LB.convention option) = (mkLabel "llvm.readcyclecounter" (LT.i64 :: nil), NONE)
     
     
     (* list of everything in this module for building the declarations. the LLVM printer
@@ -116,7 +118,8 @@ structure LLVMRuntime =
                     allocDoubleArray *)
                     ]
     
-    val intrinsics = [  sqrt_f32,
+    val intrinsics = [  
+                        sqrt_f32,
                         sqrt_f64,
                         abs_f32,
                         abs_f64,

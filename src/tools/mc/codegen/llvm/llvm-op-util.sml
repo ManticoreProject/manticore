@@ -164,11 +164,11 @@ in (case p
        
        
         *)
-  | P.F32Sqrt _ => (fn [a] => LB.call bb (fv LR.sqrt_f32, #[a]))
-  | P.F64Sqrt _ => (fn [a] => LB.call bb (fv LR.sqrt_f64, #[a]))
+  | P.F32Sqrt _ => (fn [a] => LB.call bb (fv (#1(LR.sqrt_f32)), #[a]))
+  | P.F64Sqrt _ => (fn [a] => LB.call bb (fv (#1(LR.sqrt_f64)), #[a]))
   
-  | P.F32Abs _ => (fn [a] => LB.call bb (fv LR.abs_f32, #[a]))
-  | P.F64Abs _ => (fn [a] => LB.call bb (fv LR.abs_f64, #[a]))
+  | P.F32Abs _ => (fn [a] => LB.call bb (fv (#1(LR.abs_f32)), #[a]))
+  | P.F64Abs _ => (fn [a] => LB.call bb (fv (#1(LR.abs_f64)), #[a]))
 
 
   | (P.I8RSh _ | P.I16RSh _ | P.I32RSh _ | P.I64RSh _ )
@@ -335,7 +335,7 @@ in (case p
                         "use the MLRISC backend")
         *)
         
-    | P.TimeStampCounter => (fn _ => LB.call bb (fv LR.readtsc, #[]))
+    | P.TimeStampCounter => (fn _ => LB.call bb (fv (#1(LR.readtsc)), #[]))
     
     (*     
   

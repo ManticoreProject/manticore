@@ -16,6 +16,7 @@ structure LLVMBuilder : sig
     type bb
     type constant
     type attrs
+    type convention
 
     eqtype op_code
 
@@ -43,7 +44,9 @@ structure LLVMBuilder : sig
 
     (* Terminators *)
 
-    (* all tail calls are marked 'musttail' and followed by a 'ret void' automatically *)
+    (* all tail calls are marked 'musttail' and followed by a 'ret void' automatically,
+       so this is not a general tail call, it's for CPS style tail calls, and the jwaCC
+       is implicit *)
     val tailCall : t -> (instr * instr vector) -> bb
 
     val unreachable : t -> bb
@@ -147,10 +150,18 @@ structure LLVMBuilder : sig
 
     val cast : t -> op_code -> (instr * ty) -> instr
 
-    (* C calls which return *)
+    (* calls which return, without a specific calling convention *)
     val call : t -> (instr * instr vector) -> instr
+    
+    (* call with a specific convention *)
+    val callAs : t -> convention -> (instr * instr vector) -> instr
 
-
+    (* calling convention goodies *)
+    val jwaCC : convention  (* the Manticore calling convention *)
+    val stdCC : convention  (* standard C calling convention *)
+    val fastCC : convention  (* "fast" C calling convention *)
+    
+    val cctoStr : convention -> string
 
     (*
       PHI's should be mutable in this interface, so we do not
@@ -186,9 +197,17 @@ structure LLVMBuilder : sig
   type ty = Ty.t
   type var = LV.var
   type attrs = AS.set
+  type convention = string
 
   type op_code = Op.op_code
 
+
+  val noCC  = ""
+  val jwaCC  = "cc18"
+  val stdCC  = "ccc"
+  val fastCC  = "fastcc"
+  fun cctoStr x = x
+  
 
   datatype res 
     = R_Var of var 
@@ -217,7 +236,7 @@ structure LLVMBuilder : sig
     | OP_Br
     | OP_CondBr
     | OP_TailCall
-    | OP_Call
+    | OP_Call of convention option
     | OP_Unreachable
     | OP_Switch of switch_arms
     | OP_None  (* for wrapped constants and vars, as no operation occurs *)
@@ -607,33 +626,32 @@ structure LLVMBuilder : sig
                                  fn i => getArgStr true (V.sub(args, i+1))))
                in   
 
-                (* FIXME TODO(kavon): currently doesn't include CC or any attributes, also its only safe
+                (* FIXME TODO(kavon): currently doesn't include any attributes, also its only safe
                    to omit the function ty if it is not var arg and doesn't return a pointer or something. *)
 
-                 (* S.concat ["musttail call cc18 ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"] *)
-                 S.concat ["musttail call cc18 void ", funcName, "(", paramStr, ")"]
+                 S.concat ["musttail call ", jwaCC , " void ", funcName, "(", paramStr, ")"]
                end
              
-             | (OP_Call, NONE) => let
+             | (OP_Call cc, NONE) => let
                  val (funcName, funcTy) = break (V.sub(args, 0))
                  val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
                                  fn i => getArgStr true (V.sub(args, i+1))))
+                                 
+                 val cc = case cc of SOME ccStr => ccStr ^ " " | NONE => ""
                in   
-
-                (* TODO(kavon): currently doesn't include CC or any attributes *)
                 
-                 S.concat ["call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
+                 S.concat ["call ", cc, LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
                end
 
-             | (OP_Call, SOME(resName, resTy)) => let 
+             | (OP_Call cc, SOME(resName, resTy)) => let 
                  val (funcName, funcTy) = break (V.sub(args, 0))
                  val paramStr = S.concatWith ", " (L.tabulate((V.length args) - 1, 
                                  fn i => getArgStr true (V.sub(args, i+1))))
+                 
+                 val cc = case cc of SOME ccStr => ccStr ^ " " | NONE => ""
                in   
-
-                (* TODO(kavon): currently doesn't include CC or any attributes *)
                 
-                 S.concat [resName, " = call ", LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
+                 S.concat [resName, " = call ", cc, LT.nameOf funcTy, " ", funcName, "(", paramStr, ")"]
                end
 
              | (OP_Unreachable, NONE) => "unreachable"
@@ -1010,8 +1028,8 @@ structure LLVMBuilder : sig
         })
 
 
-  (* call : t -> (instr * instr vector) -> instr *)
-  fun call blk = 
+  (* call : t -> convention -> (instr * instr vector) -> instr *)
+  fun buildCall blk cc = 
     fn (func as INSTR{result=R_Var(funcVar),...}, args) => let
 
       (* TODO(kavon): ensure the call's types match up and that
@@ -1031,7 +1049,7 @@ structure LLVMBuilder : sig
       push(blk,
         INSTR {
           result = result,
-          kind = OP_Call,
+          kind = OP_Call cc,
           args = (V.tabulate((V.length args) + 1,
                 fn 0 => func 
                  | i => V.sub(args, i-1)
@@ -1040,6 +1058,10 @@ structure LLVMBuilder : sig
         }
       )
     end
+    
+  and callAs blk cc = buildCall blk (SOME cc)
+  
+  and call blk = buildCall blk NONE
 
   
   (* addIncoming : t -> (var * instr list) -> t *)
