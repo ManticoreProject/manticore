@@ -63,6 +63,15 @@ structure LLVMRuntime =
     val allocFloatArray = mkLabel "AllocFloatArray" (LT.voidStar :: [LT.voidStar, LT.i32])
     val allocDoubleArray = mkLabel "AllocDoubleArray" (LT.voidStar :: [LT.voidStar, LT.i32])
     
+        local
+        in
+            val stdRegSet = List.tabulate(6, fn _ => LT.i64)
+            val retStructTy = LT.mkUStruct(stdRegSet)
+            
+    val invokeGC = mkLabel "ASM_InvokeGC" (retStructTy :: stdRegSet)
+        end
+        
+    
     
     (***************************************
         LLVM INTRINSICS
@@ -89,7 +98,8 @@ structure LLVMRuntime =
     
     (* list of everything in this module for building the declarations. the LLVM printer
        will automatically output anything in these lists for you. *)
-    val runtime = [ promote
+    val runtime = [ promote,
+                    invokeGC
                 (*    , 
                 
                  TODO holy crap this alloc vector stuff is so messed up!

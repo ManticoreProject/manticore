@@ -13,6 +13,9 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
     val output : (TextIO.outstream * CFG.module) -> unit
 
   end = struct
+  
+  (* if set to true, will append CFG output to the LLVM output for debugging purposes *)
+  val DEBUGGING = false
 
     (*
 
@@ -1322,7 +1325,9 @@ in
     prl (LS.export()) ;  
 
     pr "\n\n\n\n; ---------------- end of LLVM generation ---------------------- \n\n\n\n" ;
-    PrintCFG.output {counts=true, types=true, preds=false} (outS, module) ;
+    (if DEBUGGING then
+        PrintCFG.output {counts=true, types=true, preds=false} (outS, module)
+    else ()) ;
     ()
   )
 

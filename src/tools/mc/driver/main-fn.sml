@@ -132,7 +132,6 @@ functor MainFn (
 	  end
 
   (* the compiler's backend *)
-  (* KAVON_TEMP: turning it into an -O0 mode. likely won't produce a valid binary *)
     fun bomToCFG bom = let
 	  val bom = BOMOpt.optimize bom
       val cps = Convert.transform bom
@@ -144,11 +143,17 @@ functor MainFn (
 	  end
 
     fun buildExe (verbose, asmFile) = let
-	  val sts = BuildExecutable.build{
+      val buildArg = {
 		  verbose = verbose,
 		  asmFile = asmFile,
 		  outFile = !exeFile
 		}
+        
+	  val sts = if (Controls.get BasicControl.llvm) then
+                    BuildExecutableLLVM.build buildArg
+                else
+                    BuildExecutableMLRISC.build buildArg
+      
 	  in
 	    if OS.Process.isSuccess sts
 	      then ()
@@ -175,11 +180,11 @@ functor MainFn (
 	    AsmStream.withStream outStrm doit ();
 	    TextIO.closeOut outStrm;
 
-	    (* KAVON_TEMP: This is temporary while construction is in progress *)
-	    if not (Controls.get BasicControl.llvm) 
-	    then (replace8BitRegisters outFile ;
-	           buildExe (verbose, outFile))
-		else ()
+	    (if not (Controls.get BasicControl.llvm) 
+	    then (replace8BitRegisters outFile)
+		else ()) ;
+        
+        buildExe (verbose, outFile)
 
 	  end (* compile *)
 
@@ -220,12 +225,13 @@ functor MainFn (
     fun doFile file = BackTrace.monitor (fn () => let
 	  val verbose = (Controls.get BasicControl.verbose > 0)
 	  val {base, ext} = OS.Path.splitBaseExt file
+      val asmExt = if (Controls.get BasicControl.llvm) then SOME "ll" else SOME "s"
 	  in
             case Controls.get BasicControl.keepPassBaseName
 	     of NONE => Controls.set (BasicControl.keepPassBaseName, SOME base)
 	      | SOME _ => ()
 	    (* end case *);
-	    mlbC (verbose, Error.mkErrStream file, file, OS.Path.joinBaseExt{base = base, ext = SOME "s"})
+	    mlbC (verbose, Error.mkErrStream file, file, OS.Path.joinBaseExt{base = base, ext = asmExt})
 	  end)
 
     fun quit b = OS.Process.exit (if b then OS.Process.success else OS.Process.failure)

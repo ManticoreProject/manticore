@@ -9,7 +9,7 @@
  * of the Manticore compiler.
  *)
 
-structure BuildExecutable : sig
+signature BUILD_EXECUTABLE = sig
 
     val build : {
 	    verbose : bool,	(* if true, print shell commands to stdout *)
@@ -17,7 +17,9 @@ structure BuildExecutable : sig
 	    outFile : string	(* the name of the executable image. *)
 	  } -> OS.Process.status
 
-  end = struct
+end
+
+structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
   
     structure PrintTbl = PrintTable
 	structure PrintTblDbg = PrintTableDebug
@@ -123,3 +125,7 @@ structure BuildExecutable : sig
 	      end
 
   end
+  
+structure BuildExecutableLLVM :> BUILD_EXECUTABLE = struct
+    fun build _ = raise Fail "not able to build LLVM executables yet!"
+end
