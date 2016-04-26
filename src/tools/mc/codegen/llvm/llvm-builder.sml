@@ -81,6 +81,9 @@ structure LLVMBuilder : sig
 
     val intC : (ty * IntegerLit.integer) -> constant
     
+    (* equivalent to  fromC(intC(ty, Int.toLarge i))  because this happens frequently. *)
+    val iconst : ty -> int -> instr
+    
     (* NOTE FIXME TODO XXX in LLVM, float constants are invalid if the representation
        is not an exact value when represented in binary for that type. 
        Example: "1.25" and "1.0" are accepted as written but "1.3"
@@ -1050,5 +1053,7 @@ structure LLVMBuilder : sig
   (* addIncoming : t -> (var * instr list) -> t *)
   fun addIncoming blk edge = incoming(blk, edge)
 
+  (* ty -> int -> instr *)
+  fun iconst ty i = fromC(intC(ty, Int.toLarge i))
 
 end

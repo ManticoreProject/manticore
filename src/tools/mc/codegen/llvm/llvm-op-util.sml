@@ -76,10 +76,28 @@ local
     
     (* arrays in CFG are represented with "ptr to any", thus we need to do a cast.  *)
     fun getArrOffset bb elmTy arrInstr idxInstr = let
-            val castedArr = LB.cast bb Op.BitCast (arrInstr, LT.mkPtr elmTy)
-            val offset = LB.calcAddr_ib bb (castedArr, #[idxInstr])
+            val castedArr = LB.cast bb Op.PtrToInt (arrInstr, LT.i64)
+            
+            (* determine the width of the array element's type in bytes *)
+            val widthBitz = LT.widthOf elmTy (* gives bits *)
+            val width = if (widthBitz mod 8) = 0 then Int.quot(widthBitz, 8) 
+                         else raise Fail 
+                            ("an array containing " ^ (LT.fullNameOf elmTy) 
+                            ^ " is not byte addressable without alignment information!")
+            
+            (* might need to sign extend the index. we're assuming it's an integer of width
+               at most 64 bits *)
+            val sexted = if ((LT.widthOf o LB.toTy) idxInstr) = 64 
+                         then idxInstr (* cannot sext an i64 to i64, so we leave it alone *)
+                         else LB.cast bb Op.SExt (idxInstr, LT.i64)
+                         
+            (* offset is  index * width *)
+            val neededOffset = LB.mk bb e Op.Mul #[sexted, LB.iconst LT.i64 width]
+                            
+            val offsetAddr = LB.mk bb e Op.Add #[castedArr, neededOffset]
+            val offsetPtr = LB.cast bb Op.IntToPtr (offsetAddr, LT.mkPtr elmTy)
         in
-            offset
+            offsetPtr
         end
     
     and arrayLoad bb elmTy = (fn [arr, idx] => LB.mk bb e Op.Load #[getArrOffset bb elmTy arr idx])

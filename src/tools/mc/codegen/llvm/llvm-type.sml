@@ -47,6 +47,14 @@ structure LLVMType : sig
        are (they're passed in XMM registers anyways though).
        *)
     val toRegType : ty -> ty
+    
+    (* computes the width of a given type in BITS.
+       note that this function will not reason about unpacked structs
+       because their padding is defined by the data layout string, 
+       and there is currently no infrastructure to reason about it
+       in a general way (we could always hardcode our Manticore assumptions,
+       but we don't even need that right now) *)
+    val widthOf : ty -> int
 
     (* get the "Jump With Arguments" calling convention types.
        this is just a list of the types all functions should use
@@ -226,7 +234,6 @@ structure LLVMType : sig
      | CT.T_Double => 64
      | CT.T_Vec128 => 128
   (* escac *))
-  
 
   fun mapSep(f, init, sep, lst) = List.foldr 
                       (fn (x, nil) => f(x) :: nil 
@@ -645,6 +652,17 @@ structure LLVMType : sig
      | (Ty.T_Func (ret::_) | Ty.T_VFunc (ret::_)) => SOME ret
      | _ => NONE 
     (* esac *))
+    
+   (* in bits *)
+   fun widthOf someTy = (case HC.node someTy
+     of Ty.T_Int width => tnc width
+      | Ty.T_Float => 32
+      | Ty.T_Double => 64
+      | Ty.T_Ptr t => 64 (* this is a fundamental assumption made throughout our backend *)
+      | (Ty.T_Array (nelms, t) | Ty.T_Vector (nelms, t)) => (tnc nelms) * (widthOf t)
+      | Ty.T_Struct ts => List.foldl (fn (x, acc) => (widthOf x) + acc) 0 ts
+      | _ => raise Fail ("type " ^ (fullNameOf someTy) ^ " has unknown width.")
+      (* esac *))
 
 
 
