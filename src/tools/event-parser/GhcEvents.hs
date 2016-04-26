@@ -25,6 +25,10 @@ main = getArgs >>= command
 command ["--help"] = do
     putStr usage
 
+command ["repair", file] = do
+        log <- repairFile file
+        putStrLn $ ppEventLog log
+
 command ["show", file] = do
     log <- readLogOrDie file
     putStrLn $ ppEventLog log
@@ -182,6 +186,8 @@ usage = unlines $ map pad strings
     pad (x, y) = zipWith const (x ++ repeat ' ') (replicate align ()) ++ y
     strings = [ ("ghc-events --help:",                     "Display this help.")
 
+              , ("ghc-events repair <file>:",              "Truncate the file, retaining only the valid event blocks")
+
               , ("ghc-events show <file>:",                "Pretty print an event log.")
               , ("ghc-events show threads <file>:",        "Pretty print an event log, ordered by threads.")
               , ("ghc-events show caps <file>:",           "Pretty print an event log, ordered by capabilities.")
@@ -205,6 +211,14 @@ usage = unlines $ map pad strings
               , ("ghc-events profile threads <file>:",     "Profile thread states.")
               , ("ghc-events profile sparks <file>:",      "Profile spark thread states.")
               ]
+
+repairFile file = do
+           e <- readEventLogFromFile file
+           case e of
+                Left s -> die("Unable to repair " ++ file ++ ": " ++ s)
+                Right log -> do
+                  writeEventLogToFile (file ++ ".repaired") log
+                  return log
 
 readLogOrDie file = do
     e <- readEventLogFromFile file

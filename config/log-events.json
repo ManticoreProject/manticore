@@ -62,7 +62,7 @@
       { "name" : "VProcStartIdle",
 	"args" : [],
 	"desc" : "start idle vproc",
-	"format" : "\"Start idle VProc\"", /*Used for formatting the output of an event (can mention any args by name)*/
+	"format" : "printf \"Start idle VProc\"", /*Used for formatting the output of an event (can mention any args by name)*/
 	"color" : "red"                    /*If this is present, then a mark will show up on the Threadscope timeline with the given color*/
       },
       { "name" : "Startup",
@@ -71,26 +71,36 @@
 	],
 	"attrs" : ["ghc", "rt"],
 	"desc" : "start main vproc",
-	"format" : "\"Startup: %d capabilities\" n_caps"
+	"format" : "printf \"Startup: %d capabilities\" n_caps"
       },
       { "name" : "VProcStart",
 	"args" : [
 	    {"name" : "vpId", "ty" : "int", "desc" : "VProc ID"}
 	],
 	"desc" : "start a VProc",
-	"format" : "\"VProc %d starting\" vpId"
+	"format" : "printf \"VProc %d starting\" vpId"
       },
       { "name" : "VProcExit",
 	"args" : [
 	    {"name" : "vpId", "ty" : "int", "desc" : "VProc ID"}
 	],
 	"desc" : "kill a VProc",
-	"format" : "\"VProc %d exiting\" vpId"
+	"format" : "printf \"VProc %d exiting\" vpId"
       },
       { "name" : "VProcExitMain",
 	"args" : [],
 	"desc" : "exit main vproc",
-	"format" : "\"Main vproc exiting\""
+	"format" : "printf \"Main vproc exiting\""
+      },
+      {
+	  "name" : "PopAction",
+	  "args" : [],
+	  "desc" : "Popped action off of scheduler stack"
+      },
+      {
+	  "name" : "PushAction",
+	  "args" : [],
+	  "desc" : "Pushed action off of scheduler stack"
       },
       { "name" : "VProcIdle",
 	"args" : [],
@@ -110,7 +120,7 @@
 	  ],
 	"attrs" : [],
 	"desc" : "time-slice preemption of a vproc",
-	"format" : "\"VProc %d was preempted\" vpid"
+	"format" : "printf \"VProc %d was preempted\" vpid"
       },
       { "name" : "PreemptSignal",
 	"args" : [],

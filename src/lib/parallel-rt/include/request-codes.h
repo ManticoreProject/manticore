@@ -8,10 +8,10 @@
 #define _REQUEST_CODES_H_
 
 typedef enum {
-    REQ_GC,		/* request a minor GC */
-    REQ_Return,		/* returning from a function call */
-    REQ_UncaughtExn,	/* raising an exception */
-    REQ_Sleep,		/* make the VProc idle */
+    REQ_GC=1,		/* request a minor GC */
+    REQ_Return=2,		/* returning from a function call */
+    REQ_UncaughtExn=3,	/* raising an exception */
+    REQ_Sleep=4,		/* make the VProc idle */
 } RequestCode_t;
 
 #endif /* !_REQUEST_CODES_H_ */
