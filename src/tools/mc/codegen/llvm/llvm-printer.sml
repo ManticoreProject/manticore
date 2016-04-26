@@ -578,114 +578,16 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                            CURRENT SOURCE: alloc64-fn.sml. slop space is 4kb, and we leave 512b
                            for spilling values. might not be enough tbh? *)
                         val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
-                   
-                        (* TODO at the moment this just creates the ep, we need to allocate
-                           a pair to represent the closure, where the code pointer is a late
-                           value added in doGC *)
-                        fun prepareGC env ((targ, live)) = let
-                            (* basically just save roots to the heap. returns
-                               a function to finish off this block once its br targ is
-                               created, and the live values it will carry to that block. *)
-                            
-                            val live = L.map (fn x => lookupV(env, x)) live
-                            
-                            val bbLab = LV.new("packageGC", LT.labelTy)
-                            
-                            (* no parameters since this block has exactly one predecessor,
-                               and it's environment is an extension of its predecessor,
-                               so there is no point in rebinding everything to fresh
-                               variables as we already do for a typical single pred block. *)
-                            val myBB = LB.new(bbLab, [])
-                            val gep = LB.gep_ib myBB
-                            val cast = LB.cast myBB
-                            val mk = LB.mk myBB AS.empty
-                            
-                            val vprocPtr = lookupMV(env, MV_Vproc)
-                            
-                            (* NOTE the goal of packageGC is to construct a new closure 
-                            with a delayed code pointer field, which will be initialized
-                            by a later function. This is due to labels not being exposed
-                            outside of a function in LLVM. *)
-                            
-                            val liveTys = L.map (fn x => LB.toTy x) live
-                            
-                            (* put code pointer field in front. using int ty so header does not
-                               mark this field as a pointer to be followed by GC *)
-                            val closureTy = LT.i64 :: liveTys 
-                            
-                            val (closCalc, closPtr, allocPtr) = 
-                                    LPU.bumpAllocPtr myBB (lookupMV(env, MV_Alloc)) closureTy
-                                    
-                            (* initialize the environment fields. notice that the start idx is 1
-                            and not 0, because field 0 is for the code pointer. *)        
-                            val _ = L.foldl (fn (var, idx) =>
-                                        ((mk Op.Store #[closCalc idx, var]) ; (idx + 1))) 1 live
-
-                            val outgoingLive = [closPtr, allocPtr, vprocPtr]
-                                    
-                            fun brTo gotoBB = (
-                                     (* TODO temp disabled because im testing with
-                                        extract gc as next block, which doesn't need
-                                        a phi node anyways. doGC will need this though!
-                                     LB.addIncoming gotoBB (bbLab, outgoingLive) ; *)
-                                     (fn () => LB.br myBB (LB.labelOf gotoBB))
-                                    )
-
-                        in
-                            (myBB, brTo, outgoingLive, live)
-                        end
                         
-                        
-                        fun extractGC ([closPtr, allocPtr, vprocPtr]) origLive = let
-                            
-                            val bbLab = LV.new("extractGC", LT.labelTy)
-                            val myBB = LB.new(bbLab, [])
-                            val mk = LB.mk myBB AS.empty
-                            
-                            (* NOTE the goal of extractGC is to reinitialize
-                               the state we had before we entered the runtime system.
-                               
-                               As of now it takes 3 values. but it actually will only take
-                               the allocation pointer.
-                                *)
-                            
-                            (* notice the +1 because field 0 is code ptr *)
-                            val origTys = ListPair.zipEq( 
-                                        L.tabulate(L.length origLive, fn x => x + 1),
-                                        L.map (fn x => LB.toTy x) origLive
-                                        )
-                                        
-                            (* TODO FIXME add casts to these loads once you fix the
-                               heap size issues. *)
-                            val loadedInstrs = L.map 
-                                (fn (i, origTy) => case LPU.calcAddr myBB i closPtr
-                                  of SOME addr => mk Op.Load #[addr]
-                                   | NONE => raise Fail "extractGC error"
-                                ) origTys
-                            
-                            
-                            (* following mvCC and markPred for the block calling convention *)
-                            fun brTo gotoBB = (
-                                    LB.addIncoming gotoBB 
-                                        (bbLab, [allocPtr, vprocPtr] @ loadedInstrs)  ;
-                                    (fn () => LB.br myBB (LB.labelOf gotoBB))
-                                )
-                            
-                        in
-                            (myBB, brTo)
-                        end
-                        
-                        
-                   
-                   
-                        val enoughSpace = (let 
-                                val vproc = lookupMV(env, MV_Vproc)
+                        fun enoughSpace b vproc allocPtr = (let 
+                                val mk = LB.mk b AS.empty
+                                val cast = LB.cast b
                                 
                                 (* TODO figure out what the right offset is for stuff in vproc! *)
                                 val limitPtrAddr = LPU.vpOffset b vproc 4321 (LT.mkPtr LT.i64)
                                 val limitPtrVal = LB.mk b (AS.singleton A.Volatile) Op.Load #[limitPtrAddr]
                                 
-                                val allocPtr = lookupMV(env, MV_Alloc)
+                                (* val allocPtr = lookupMV(env, MV_Alloc) *)
                                 val allocPtrVal = cast Op.PtrToInt (allocPtr, LT.i64)
                                 
                                 val diff = mk Op.Sub #[limitPtrVal, allocPtrVal]
@@ -703,32 +605,173 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                 
                             end) (* end of enoughSpace *)
                         
+                        fun doGC (incoming as [incFrame, incAlloc, incVp]) = let
+                            val bbLab = LV.new("doGC", LT.labelTy)
+                            
+                            val params = [
+                                LV.new("rootPtr", LB.toTy incFrame),
+                                LV.new("allocPtr", LB.toTy incAlloc),
+                                LV.new("vprocPtr", LB.toTy incVp)
+                            ]
+                            
+                            val [framePtr, allocPtr, vprocPtr] = L.map (fn v => LB.fromV v) params
+                            
+                            val myBB = LB.new(bbLab, params)
+                            
+                            val castedFP = LB.cast myBB Op.BitCast (framePtr, LT.uniformTy)
+                            
+                            (* exn and arg are saved in the frame if they're live, and the
+                               InvokeGC doesn't actually need them to be populated *)
+                            
+                            (* call the GC and get the resulting struct *)
+                            val (gcFun, SOME cc) = LR.invokeGC
+                            
+                            (* NOTE always ensure that this matches up with the InvokeGC function in
+                               llvm-runtime.sml and the actual ASM *)
+                            val gcArgs = #[ allocPtr, vprocPtr, castedFP ] 
+                            
+                            val res = LB.callAs myBB cc (LB.fromV gcFun, gcArgs)
+                            
+                            fun extract strct i = LB.extractV myBB (strct, #[LB.intC(LT.i32, Int.toLarge i)])
+                            
+                            (* pull the new vals out of the struct, and cast the frame ptr back.
+                               the order of the elements in this list needs to match
+                               the parameters of this block *)
+                            val (outgoing as [_, newAlloc, newVProc]) = [
+                                LB.cast myBB Op.BitCast (extract res 2, LB.toTy framePtr), (* frame *)
+                                extract res 0, (* alloc ptr *)
+                                extract res 1 (* vproc *)
+                            ]
+                            
+                            val enoughSpaceCond = enoughSpace myBB newVProc newAlloc
+                            
+                            
+                            val jump = (bbLab, outgoing)
+                            (* we will loop back if there isn't enough space *)
+                            val _ = LB.addIncoming myBB jump
+                            
+                            (* we will branch back to doGC if there is not enough space
+                               after entering from the runtime system. Because we may have been
+                               preempted, we're not guarenteed to have enough heap space
+                               when the scheduler decides to resume us *)
+                            fun brTo enoughBB = (
+                                     (* LB.addIncoming enoughBB jump ; *)
+                                     (fn () => LB.condBr myBB 
+                                        (enoughSpaceCond, (LB.labelOf enoughBB), bbLab)) 
+                                    )
+                            
+                        in
+                            (myBB, brTo, outgoing)
+                        end (* end doGC *)
+                   
+                        fun prepareGC env ((targ, live)) = let
+                            (* NOTE basically, we just save roots to the heap to create a spill frame.
+                               returns a function to finish off this block once its br targ is
+                               created, and the live values it will carry to that block. *)
+                            
+                            val live = L.map (fn x => lookupV(env, x)) live
+                            
+                            val bbLab = LV.new("packageGC", LT.labelTy)
+                            
+                            (* no parameters since this block has exactly one predecessor,
+                               and it's environment is an extension of its predecessor,
+                               so there is no point in rebinding everything to fresh
+                               variables as we already do for a typical single pred block. *)
+                            val myBB = LB.new(bbLab, [])
+                            val gep = LB.gep_ib myBB
+                            val cast = LB.cast myBB
+                            val mk = LB.mk myBB AS.empty
+                            
+                            val vprocPtr = lookupMV(env, MV_Vproc)
+                                                        
+                            val (allocPtr, framePtr) = 
+                                LPU.doAlloc myBB (lookupMV(env, MV_Alloc)) live
+                            
+
+                            val outgoingLive = [framePtr, allocPtr, vprocPtr]
+                                    
+                            fun brTo gotoBB = (
+                                     LB.addIncoming gotoBB (bbLab, outgoingLive) ;
+                                     (fn () => LB.br myBB (LB.labelOf gotoBB))
+                                    )
+
+                        in
+                            (myBB, brTo, outgoingLive, live)
+                        end
+                        
+                        
+                        fun extractGC ([framePtr, allocPtr, vprocPtr]) origLive = let
+                            
+                            val bbLab = LV.new("extractGC", LT.labelTy)
+                            (* there's no point in having parameters to this block, it
+                               has exactly one predecessor, and we created it here, and
+                               have the arguments too *)
+                            val myBB = LB.new(bbLab, []) 
+                            val mk = LB.mk myBB AS.empty
+                            
+                            (* NOTE the goal of extractGC is to reinitialize
+                               the state we had before we entered the runtime system.
+                               
+                               As of now it takes 3 values. but it actually will only take
+                               the allocation pointer.
+                                *)
+                            
+                            val origTys = ListPair.zipEq( 
+                                        L.tabulate(L.length origLive, fn x => x),
+                                        L.map (fn x => LB.toTy x) origLive
+                                        )
+                                        
+
+                            val loadedInstrs = L.map 
+                                (fn (i, origTy) => case LPU.calcAddr myBB i framePtr
+                                  of SOME addr => mk Op.Load #[addr]
+                                   | NONE => raise Fail "extractGC error"
+                                ) origTys
+                            
+                            
+                            (* following mvCC and markPred for the block calling convention *)
+                            fun brTo gotoBB = (
+                                    LB.addIncoming gotoBB 
+                                        (bbLab, [allocPtr, vprocPtr] @ loadedInstrs)  ;
+                                    (fn () => LB.br myBB (LB.labelOf gotoBB))
+                                )
+                            
+                        in
+                            (myBB, brTo)
+                        end
+                        
+                        (* TODO mark cold branches for basic block placement! *)
+                        
+                        val enoughSpaceCond = enoughSpace b (lookupMV(env, MV_Vproc)) (lookupMV(env, MV_Alloc))
+                        
                         val (nogcTarg, _) = markPred env nogc
                         val nogcBB = lookupBB(env, nogcTarg)
                         
                         (* build the extra BBs we need to enter GC *)
                         val (prepBB, prepGoto, prepOut, origOut) = prepareGC env nogc
                         
-                        (* TODO later the input from this will be from our doGC block *)
-                        val (extractBB, extractGoto) = extractGC prepOut origOut
+                        val (dogcBB, dogcGoto, dogcOut) = doGC prepOut
+                        
+                        val (extractBB, extractGoto) = extractGC dogcOut origOut
                         
                         
                         (* setup the predecessor edges *)
-                        val prepTerminator = prepGoto extractBB
+                        val prepTerminator = prepGoto dogcBB
+                        val gcTerminator = dogcGoto extractBB
                         val xtractTerminator = extractGoto nogcBB
                         
                         
                         
                    in
-                        (fn () => [LB.condBr b (enoughSpace, nogcTarg, LB.labelOf prepBB),
-                                   prepTerminator(), xtractTerminator()])
+                        (fn () => [LB.condBr b (enoughSpaceCond, nogcTarg, LB.labelOf prepBB),
+                                   prepTerminator(), gcTerminator(), xtractTerminator()])
                    end
                    
-                    (*let val (targ, _) = markPred env nogc in (fn () => [LB.br b targ]) end *)
                
                | (C.HeapCheckN {hck = C.HCK_Local, nogc, ...}) => let 
                     (* TODO not sure how to handle this case yet but it should be similar to
                        regular heapcheck.  *)
+                        val _ = print "warning: encountered a weird heap checkn\n"
                         val (targ, _) = markPred env nogc
                    in
                         (fn () => [LB.br b targ])

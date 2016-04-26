@@ -81,6 +81,19 @@ LLVM backend todo list
 
 
 ***** Small Items *****
+
+    - BUG: the data layout string says i8's are 64 byte aligned, thus LLVM
+           decides to make the following transformation because it's now legal:
+           
+           %r_13056 = bitcast i64** %r_13055 to i8*
+           %r_13057 = getelementptr inbounds i8, i8* %r_13056, i64 1024
+           TO
+           %r_130571 = getelementptr inbounds i64*, i64** %r_13055, i64 1024
+           
+           the bug is that vproc offset calculations currently use that type of
+           bitcast followed by a GEP. You need to make it so that only SELECT,
+           UPDATE, and allocations use GEP with this type of datalayout string.
+           Vproc pointers should use standard pointer arithmetic.
     
     - The remaining unimplemented primops, which is the AllocVectorX and and memory fence/pause instructions.
     
