@@ -48,9 +48,9 @@ in
     val offsetLL = LB.fromC(LB.intC(LT.i64, offset))
     
     (* We take the VProc ptr, offset it, and bitcast it to the kind of pointer we want *)
-    val r1 = LB.cast b Op.BitCast (vpLL, LT.mkPtr(LT.i8))
-    val r2 = LB.calcAddr_ib b (r1, #[offsetLL])
-    val final = LB.cast b Op.BitCast (r2, resTy)
+    val r1 = LB.cast b Op.PtrToInt (vpLL, LT.i64)
+    val r2 = LB.mk b AS.empty Op.Add #[r1, offsetLL]
+    val final = LB.cast b Op.IntToPtr (r2, resTy)
   in
     final
   end

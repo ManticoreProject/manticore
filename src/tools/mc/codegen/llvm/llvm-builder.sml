@@ -978,23 +978,6 @@ structure LLVMBuilder : sig
           }
         )
       end
-      
-      
-      (*fun dummyOffsets nonConstOffs = V.map (fn x => fromC(intC(i32Ty, 0))) nonConstOffs
-      
-      fun calcAddrMkr mode = 
-        fn blk => 
-        fn (arg1 as INSTR{result,...}, offsetSeq) => let
-        
-            val argTy = (case result
-                     of R_Var v => LV.typeOf v
-                      | R_Const(C_Undef ty) => ty
-                     (* GEP is only valid for pointer types,
-                        so it could only be from a var. *)
-                      | _ => raise Fail "calcAddrMkr: arg must be a var"
-                  (* esac *))
-        
-            val resultTy = LV.gepType()*)
 
 
   in

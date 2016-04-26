@@ -856,7 +856,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     val llv = LS.lookup s
                     
                     (* calculate the address of the first byte in this ptr to an 
-                       array of bytes to turn it into an i8* *)
+                       array of bytes to turn it into an i8*. NOTE it's not
+                       safe to use any other offset except 0 here because of the data
+                       layout. *)
                     val SOME gep = LPU.calcAddr b 0 (LB.fromV llv)
                in
                     insertV(env, lhsVar, gep)
@@ -867,7 +869,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
                     
                     (* calculate the address of the first byte in this ptr to an 
-                       array of bytes to turn it into an i8* *)
+                       array of bytes to turn it into an i8*. see NOTE above
+                       regarding data layout *)
                     val SOME gep = LPU.calcAddr b 0 (LB.fromV llv)
                     val casted = cast (Op.safeCast(LB.toTy gep, lhsTy)) (gep, lhsTy)
                in
