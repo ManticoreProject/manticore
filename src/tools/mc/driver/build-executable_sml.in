@@ -23,6 +23,8 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
   
     structure PrintTbl = PrintTable
 	structure PrintTblDbg = PrintTableDebug
+    
+    val usedLLVM = Controls.get BasicControl.llvm
 
     val cat = String.concatWith " "
 
@@ -35,7 +37,10 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
 
     val ccCmd =  "@CC@"
 
-    val cFlags = cat ("@CFLAGS@" ++ "@CFLAG_M64@" ++ [])
+    val cFlags = cat ("@CFLAGS@" 
+                    ++ "@CFLAG_M64@" 
+                    ++ (if usedLLVM then "-DLLVM" else "") 
+                    ++ [])
 
     fun ldFlags libName = let
 	  val libDirs = List.filter (fn path => OS.FileSys.access (path, [])) [
@@ -235,14 +240,17 @@ Pass Arguments:  -domtree
         (* take off the .ll *)
         val asmPrefix = String.extract(asmFile, 0, SOME((String.size asmFile) - 3))
         
-        (* run opt *)
-        val optOutput = asmPrefix ^ "_opt.bc"
-        val optRun = doOpt verbose asmFile optOutput
-        val result = (case Controls.get BasicControl.llopt
-            of 0 => optRun []
-             | 1 => optRun o_level1
-             | 2 => optRun o_level2
-             | _ => optRun o_level3
+        (* run opt. we do not run opt if the llopt level is set to 0, because
+           llc will already run a verification pass on the input. We _do_ miss
+           out in the linter, but once this backend becomes more stable we should
+           only enable the linter when running in debug mode. *)
+        val commonName = asmPrefix ^ "_opt.bc" 
+        val optRun = doOpt verbose asmFile commonName
+        val optOutput = (case Controls.get BasicControl.llopt
+                of 0 => asmFile (* don't bother running opt *)
+                 | 1 => (optRun o_level1 ; commonName)
+                 | 2 => (optRun o_level2 ; commonName)
+                 | _ => (optRun o_level3 ; commonName)
             (* esac *))
             
             
