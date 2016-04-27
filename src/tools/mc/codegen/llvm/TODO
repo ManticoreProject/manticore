@@ -119,3 +119,40 @@ then_cfg10779_18B2E:
     %con_nil_cfg10777_18B6E = inttoptr i64 %con_nil_cfg10777_18B3F to %_tupTy.1*
 	%r_18B6F = getelementptr inbounds %_tupTy.1, %_tupTy.1* %con_nil_cfg10777_18B6E, i32 0, i32 0
 	%r_18B70 = load i64*, i64** %r_18B6F
+
+
+**** Optimizations ****
+
+    We want to take advantage of LTO in LLVM,
+   and to do this, we need to compile the entire runtime system to .ll
+   files and then run the LLVM linker. More details about LTO:
+    
+    ------------------------------   
+    12:42 (kavon) does anything other than DCE occur during LTO?
+
+    12:42 (kavon) i could see maybe calling convention optimizations
+
+    12:42 <joker-eph> kavon: we run all the optimizer potentially
+
+    12:42 <@nlewycky> uh, yes. tons. loads.
+
+    12:43 <@nlewycky> we do interprocedural constant propagation. we do inlining.
+    we try to replace larger global variables that only have two possible values with booleans.
+    we try to tighten linkage on every function or global. we merge identical constants.
+
+    12:43 <joker-eph> kavon: if you're asking what is benefiting from LTO: since global 
+    variables can also be turned into "internal" we can see all their uses and see that 
+    their address is not taken and alias analysis is suddenly a lot better :)
+    ------------------------------
+
+    How to use LTO:
+
+    You run clang as usual but you add -flto. The .o generated will be a bitcode file.
+    it has a .o extension but it is exactly the same file that clang would generate with 
+    `clang -c foo.c -o foo.o -S -emit-llvm`. All .ll and these special .o files need to
+    be merged together in a single file, using llvm-link for example. Then you build
+    the executable.
+    
+    Note that while manticore functions should be marked noinline due to
+    GC checks being inserted early, runtime system calls that do not
+    perform allocation are fair game. We'll want to annotate functions in the runtime system.
