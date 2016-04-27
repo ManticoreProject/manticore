@@ -25,6 +25,9 @@ structure BasicControl :  sig
 
   (* use the LLVM backend *)
     val llvm : bool Controls.control
+    
+  (* optimization level used by LLVM backend *)
+    val llopt : int Controls.control
 
   (* select the top-level thread scheduler *)
     val scheduler : string Controls.control
@@ -167,6 +170,14 @@ structure BasicControl :  sig
         help = "use the (experimental) LLVM backend for code generation",
         default = false
       }
+      
+    val llopt : int Controls.control = Controls.genControl {
+            name = "llopt",
+            pri = [0, 1, 1], (* TODO: What do these values mean? *)
+            obscurity = 0,
+            help = "choose optimization level (0 to 3) used by LLVM backend",
+            default = 0
+          }
    
 
   (* link with debug version of runtime mode *)
@@ -254,6 +265,10 @@ structure BasicControl :  sig
           ControlRegistry.register topRegistry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool treeShakeDebug,
               envName = NONE
+            };
+        ControlRegistry.register topRegistry {
+            ctl = Controls.stringControl ControlUtil.Cvt.int llopt,
+            envName = NONE
             };
           ControlRegistry.register topRegistry {
               ctl = Controls.stringControl ControlUtil.Cvt.int maxLeafSize,

@@ -127,5 +127,142 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
   end
   
 structure BuildExecutableLLVM :> BUILD_EXECUTABLE = struct
-    fun build _ = raise Fail "not able to build LLVM executables yet!"
+    
+    (* THE FULL SET OF 03 done by opt. you can get this info using:  -O3 -debug-pass=Arguments
+    Pass Arguments:  -tti -targetlibinfo -tbaa -scoped-noalias -assumption-cache-tracker -verify -simplifycfg -domtree -sroa -early-cse -lower-expect
+Pass Arguments:  -targetlibinfo -tti -tbaa -scoped-noalias -assumption-cache-tracker -forceattrs -inferattrs -ipsccp -globalopt -domtree -mem2reg -deadargelim -basicaa -aa -domtree -instcombine -simplifycfg -basiccg -globals-aa -prune-eh -inline -functionattrs -argpromotion -domtree -sroa -early-cse -lazy-value-info -jump-threading -correlated-propagation -simplifycfg -basicaa -aa -domtree -instcombine -tailcallelim -simplifycfg -reassociate -domtree -loops -loop-simplify -lcssa -loop-rotate -basicaa -aa -licm -loop-unswitch -simplifycfg -basicaa -aa -domtree -instcombine -loops -scalar-evolution -loop-simplify -lcssa -indvars -aa -loop-idiom -loop-deletion -loop-unroll -basicaa -aa -mldst-motion -aa -memdep -gvn -basicaa -aa -memdep -memcpyopt -sccp -domtree -demanded-bits -bdce -basicaa -aa -instcombine -lazy-value-info -jump-threading -correlated-propagation -domtree -basicaa -aa -memdep -dse -loops -loop-simplify -lcssa -aa -licm -adce -simplifycfg -basicaa -aa -domtree -instcombine -barrier -basiccg -rpo-functionattrs -elim-avail-extern -basiccg -globals-aa -float2int -domtree -loops -loop-simplify -lcssa -loop-rotate -branch-prob -block-freq -scalar-evolution -basicaa -aa -loop-accesses -demanded-bits -loop-vectorize -instcombine -scalar-evolution -aa -slp-vectorizer -simplifycfg -basicaa -aa -domtree -instcombine -loops -loop-simplify -lcssa -scalar-evolution -loop-unroll -basicaa -aa -instcombine -loop-simplify -lcssa -aa -licm -scalar-evolution -alignment-from-assumptions -strip-dead-prototypes -globaldce -constmerge -verify
+Pass Arguments:  -domtree
+
+    *)
+    
+    (* TOOLS *)
+    val cat = String.concatWith " "
+    
+    
+    
+    (**********************
+     *  flags and options for opt
+     **********************)
+    val opt = "opt"
+    
+    (* not really performance optimizations, just cleanup from initial generation. *)
+    val o_cleanupPasses = [
+        "-strip-dead-prototypes",
+        "-constmerge"
+    ]
+    
+    
+    val o_level1 = [
+        "-reassociate",
+        "-constprop",
+        "-instcombine"
+    ] @ o_cleanupPasses
+    
+    
+    val o_level2 = [
+        "-simplifycfg",
+        "-jump-threading" 
+        ] @ o_level1 @ [
+        "-gvn",
+        "-instcombine",
+        "-simplifycfg"
+    ] @ o_cleanupPasses
+    
+    
+    val o_level3 = 
+        o_level2 @ [
+        "-branch-prob",
+        "-block-freq"
+    ] @ o_cleanupPasses
+    
+    
+    (* opt passes that need to be performed before/after any passes *)
+    fun o_wrapPasses verbose passes = let
+        val firstPasses = ["-targetlibinfo", "-tti", "-verify", "-lint"]
+        val statsPasses = ["-stats", "-time-passes"]
+        
+        val passes = (case passes 
+                      of [] => firstPasses
+                       |  _ => firstPasses @ passes @ ["-verify"]
+                       (* esac *))
+    in
+        if verbose then statsPasses @ passes else passes
+    end
+    
+    fun doOpt verbose inputFile outputFile optPasses = let
+        val cmd = cat ([opt] @ (o_wrapPasses verbose optPasses) @ [inputFile, "-o", outputFile])
+        val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
+    in
+        OS.Process.system cmd
+    end
+    
+    
+    
+    (**********************
+     *  flags and options for llc
+     **********************)
+    val llc = "llc"
+    
+    val l_level1 = ["-O1"]
+    val l_level2 = ["-O2"]
+    val l_level3 = ["-O3"]
+    
+    (* llc passes that need to be performed before/after any passes *)
+    fun l_wrapPasses verbose passes = let
+        val firstPasses = [] (* TODO later this might be -stack-alignment=8 ? *)
+        val statsPasses = ["-stats", "-time-passes"]
+        
+        val passes = (case passes 
+                      of [] => firstPasses
+                       |  _ => firstPasses @ passes
+                       (* esac *))
+    in
+        if verbose then statsPasses @ passes else passes
+    end
+    
+    fun doLLC verbose inputFile outputFile optPasses = let
+        val cmd = cat ([llc] @ (l_wrapPasses verbose optPasses) @ [inputFile, "-o", outputFile])
+        val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
+    in
+        OS.Process.system cmd
+    end
+    
+    
+
+    fun build {verbose, asmFile, outFile} = let
+        val verbose = verbose orelse (Controls.get BasicControl.verbose > 0)
+        
+        (* take off the .ll *)
+        val asmPrefix = String.extract(asmFile, 0, SOME((String.size asmFile) - 3))
+        
+        (* run opt *)
+        val optOutput = asmPrefix ^ "_opt.bc"
+        val optRun = doOpt verbose asmFile optOutput
+        val result = (case Controls.get BasicControl.llopt
+            of 0 => optRun []
+             | 1 => optRun o_level1
+             | 2 => optRun o_level2
+             | _ => optRun o_level3
+            (* esac *))
+            
+            
+        (* run llc *)
+        val llcOutput = asmPrefix ^ ".s"
+        val llcRun = doLLC verbose optOutput llcOutput
+        val result = (case Controls.get BasicControl.llopt
+            of 0 => llcRun []
+             | 1 => llcRun l_level1
+             | 2 => llcRun l_level2
+             | _ => llcRun l_level3
+            (* esac *))
+            
+        (* reuse the MLRISC linking etc *)
+        val result = BuildExecutableMLRISC.build {verbose=verbose, asmFile=llcOutput, outFile=outFile}
+    in
+        result
+    end
+
+    (*fun build _ = raise Fail 
+        ("not able to build LLVM executables yet!"
+         ^ "\nyou chose opt level " ^ ((Int.toString o Controls.get) BasicControl.llopt))*)
 end

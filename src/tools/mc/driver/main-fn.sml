@@ -261,7 +261,8 @@ functor MainFn (
 	  \    -gcstats         build an executable with GC statistics enabled\n\
 	  \    -debug           build an executable with debugging enabled\n\
 	  \    -perf            build an executable with hw perf counters enabled\n\
-	  \    -llvm            compile using the (experimental) LLVM backend\n\
+	  \    -llvm            use LLVM backend with its default optimizations\n\
+      \    -llopt<level>    use LLVM backend and set its optimization level (0 to 3)\n\
 	  \    -sequential      compile a sequential-mode program\n\
 	  \    -verbose         compile in verbose mode\n\
 	  \"
@@ -326,17 +327,27 @@ functor MainFn (
 	  fun set ctl = (Controls.set(ctl, true); processArgs args)
 	  in
             if String.isPrefix "-C" arg
-	      then (processControl arg; processArgs args)
+                then (processControl arg; processArgs args)
             else if String.isPrefix "-h" arg
-	      then let
-		val level = String.extract (arg, 2, NONE)
-		in
-		  if level = "" 
-		    then help NONE
-		  else if CharVector.all Char.isDigit level
-		    then help (SOME (Int.fromString level))
-		    else badopt ()
-		end
+                then let
+                    val level = String.extract (arg, 2, NONE)
+                    in
+                        if level = "" 
+                            then help NONE
+                        else if CharVector.all Char.isDigit level
+                            then help (SOME (Int.fromString level))
+                        else badopt ()
+                    end
+                    
+            else if String.isPrefix "-llopt" arg
+                then (case (Int.fromString o String.extract) (arg, 6, NONE)
+                        of NONE => badopt ()
+                         | SOME level => 
+                            ( Controls.set(BasicControl.llvm, true) ;
+                              Controls.set(BasicControl.llopt, level) ;
+                              processArgs args )
+                     (* esac *)) 
+                    
             else (case arg
 	       of "-o" => (case args
 		     of exe::r => (exeFile := exe; processArgs r)
