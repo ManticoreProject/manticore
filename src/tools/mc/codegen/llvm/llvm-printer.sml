@@ -778,7 +778,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                    end
                 
                
-               | _ => (fn () => [LB.retVoid b]) (* stubIt  this is stubbed out, remove it later! *)
+               | C.AllocCCall _ => raise Fail "not implemented because it's used nowhere at all."
               (* esac *))  
       end
       
