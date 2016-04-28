@@ -101,22 +101,21 @@ structure LLVMRuntime =
     (* list of everything in this module for building the declarations. the LLVM printer
        will automatically output anything in these lists for you. *)
     val runtime = [ promote,
-                    invokeGC
-                (*    , 
-                
-                 TODO holy crap this alloc vector stuff is so messed up!
-                        what is the difference between AllocBigIntArray that is declared
-                        in the CFG module and AllocIntArray which is declared in
-                        runtime-labels.sml and in the runtime system C code?!?!?!
-                        there's even an MLRISC based version of polyvec, so there's
-                        seriously 3 implementations hanging around!
-                        
-                    allocVector,
+                    invokeGC,
+                    
+                    (* Some of the below array/vector allocation externs are commented
+                       out because they're already included in the BOM module, and this
+                       would be a redefinition. Rest assured that the functions in this
+                       list, commented out or not, are the ones being used by these
+                       primops, however. I just did not want to sift through
+                       the BOM module and MLRISC backend to make it consistent. *)
+                       
+                    (* allocVector, *)
                     allocIntArray,
                     allocLongArray,
                     allocFloatArray,
-                    allocDoubleArray *)
-                    ]
+                    allocDoubleArray
+                  ]
     
     val intrinsics = [  
                         sqrt_f32,

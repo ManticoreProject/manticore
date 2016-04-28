@@ -24,6 +24,13 @@ structure LLVMOpUtil = struct
   structure V = Vector
   structure L = List
   structure S = String
+  
+  (* Turns out that a handful of primops do not take the vproc
+    as an argument in the representation, but are implemented in
+    such a way that the current vproc is required, so we raise a
+    thunk to the LLVM printer that asks for the current VProc
+    and then gives you the result of the primop. *)
+  exception NeedVProc of LB.instr -> LB.instr
 
 
 local
@@ -35,6 +42,13 @@ local
     fun const f instr c = LB.fromC(f (LB.toTy instr, c))
     val Iconst = const LB.intC
     val Fconst = const LB.floatC
+    
+    fun asAnyTy bb instr = LB.cast bb Op.BitCast (instr, LT.uniformTy)
+    
+    fun allocXArray bb (label, NONE) = 
+        (fn [ n ] => raise NeedVProc (fn vproc =>
+            asAnyTy bb (LB.call bb 
+                (LB.fromV label, #[LB.cast bb Op.BitCast (vproc, LT.voidStar), n ]))))
     
     fun intTy sz = LT.mkInt(LT.cnt sz)
     val i64 = LT.i64
@@ -325,33 +339,25 @@ in (case p
         )
         
         
-        (* TODO NOTE  4/2/16  this vector allocation cases below are a bit confusing
-        
-            Check out genAllocPolyVec in alloc64-fn.sml, which does a lot of stuff, whereas
-            in genAllocPolyVec in heap-transfer-fn.sml, it looks as simple as a function call,
-            but the signature of the AllocVector runtime function does not accept enough
-            arguments for allocPolyVec. it only accepts the vproc ptr and an integer. here's
-            what the AllocPolyVec has as its arguments:
+        (* The AllocXArray primops are simply C function calls. Refer to prim-gen-fn.sml
+           and heap-transfer-fn.sml in the MLRISC backend. *)
+    | P.AllocPolyVec _ => let
+            val (label, NONE) = LR.allocVector
             
-            AllocPolyVec (n, xs): allocate in the local heap a vector 
-      					 * v of length n s.t. v[i] := l[i] for 0 <= i < n 
-                         
-            Which method are we suppose to use? I have no idea. So for now we'll error out
-            and come back to this later.
+            (* in prim-gen-fn.sml the args are (n, xs), but n is unused. *)  
+            fun cvtr ([ _, xs ]) = raise NeedVProc (haveVProc xs)
             
-            ~kavon
-         *)
-         
-    (* |   ( P.AllocPolyVec _     TODO unfortunately we cannot ignore these because they're
-                                       in the basis.
-        | P.AllocIntArray _ 
-        | P.AllocLongArray _ 
-        | P.AllocFloatArray _  
-        | P.AllocDoubleArray _ ) => 
-            raise Fail ("llvm backend does not currently support\n" ^
-                        "NESL/Nepal-style parallel array comprehensions.\n" ^
-                        "use the MLRISC backend")
-        *)
+            and haveVProc xs vproc = asAnyTy bb (
+                LB.call bb (fv label, #[c Op.BitCast (vproc, LT.voidStar),
+                                     c Op.BitCast (xs, LT.voidStar)]))
+        in
+            cvtr
+        end
+
+    | P.AllocIntArray _ => allocXArray bb LR.allocIntArray
+    | P.AllocLongArray _ => allocXArray bb LR.allocLongArray
+    | P.AllocFloatArray _ => allocXArray bb LR.allocFloatArray
+    | P.AllocDoubleArray _ => allocXArray bb LR.allocDoubleArray
         
     | P.TimeStampCounter => (fn _ => LB.call bb (fv (#1(LR.readtsc)), #[]))
     
