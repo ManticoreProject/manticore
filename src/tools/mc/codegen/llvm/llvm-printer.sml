@@ -583,8 +583,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                 val mk = LB.mk b AS.empty
                                 val cast = LB.cast b
                                 
-                                (* TODO figure out what the right offset is for stuff in vproc! *)
-                                val limitPtrAddr = LPU.vpOffset b vproc 4321 (LT.mkPtr LT.i64)
+                                val limitPtrOffset = Spec.ABI.limitPtr
+                                val limitPtrAddr = LPU.vpOffset b vproc limitPtrOffset (LT.mkPtr LT.i64)
                                 val limitPtrVal = LB.mk b (AS.singleton A.Volatile) Op.Load #[limitPtrAddr]
                                 
                                 (* val allocPtr = lookupMV(env, MV_Alloc) *)
