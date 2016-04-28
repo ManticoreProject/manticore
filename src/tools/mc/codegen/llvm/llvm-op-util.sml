@@ -20,17 +20,26 @@ structure LLVMOpUtil = struct
   structure LR = LLVMRuntime
   structure A = LLVMAttribute
   structure Op = LLVMOp
+  structure LPU = LLVMPrinterUtil
   
   structure V = Vector
   structure L = List
   structure S = String
   
-  (* Turns out that a handful of primops do not take the vproc
-    as an argument in the representation, but are implemented in
-    such a way that the current vproc is required, so we raise a
-    thunk to the LLVM printer that asks for the current VProc
-    and then gives you the result of the primop. *)
-  exception NeedVProc of LB.instr -> LB.instr
+  (* Turns out that a handful of primops realated to parrays are
+     implemented in such a way that the current vproc and allocation pointer
+     are needed, and the allocation pointer is modified by C code in the runtime system.
+     While it would be nice to translate this C code to LLVM to avoid the cost of the call,
+     ideally in the future we would upgrade the implementation to take advantage of SSE hardware.
+     
+     The "allocOffset" is the constant offset in the vproc data structure that hold the current
+     alloc pointer.
+   *)
+    
+  exception ParrayPrim of 
+    { vproc : LB.instr, 
+      alloc : LB.instr,
+      allocOffset : IntegerLit.integer } -> { alloc : LB.instr, result : LB.instr }
 
 
 local
@@ -45,10 +54,26 @@ local
     
     fun asAnyTy bb instr = LB.cast bb Op.BitCast (instr, LT.uniformTy)
     
+    (* the implementation of this follows directly from the output of the old MLRISC backend. *)
     fun allocXArray bb (label, NONE) = 
-        (fn [ n ] => raise NeedVProc (fn vproc =>
-            asAnyTy bb (LB.call bb 
-                (LB.fromV label, #[LB.cast bb Op.BitCast (vproc, LT.voidStar), n ]))))
+        (fn [ n ] => raise ParrayPrim (fn {vproc, alloc, allocOffset} => let
+                val volatile = AS.singleton A.Volatile
+                
+                (* first step is to pass allocation pointer via the vproc *)
+                val slot = LPU.vpOffset bb vproc allocOffset ((LT.mkPtr o LB.toTy) alloc)
+                val _ = LB.mk bb volatile Op.Store #[slot, alloc]
+                
+                (* call C routine to do the allocation, with bitcasts as needed *)
+                val res = asAnyTy bb (LB.call bb 
+                    (LB.fromV label, #[LB.cast bb Op.BitCast (vproc, LT.voidStar), n ]))
+                    
+                (* retrieve the modified allocation pointer *)
+                val newAlloc = LB.mk bb volatile Op.Load #[slot]
+                
+            in
+                { alloc=newAlloc, result=res }
+            end))
+            
     
     fun intTy sz = LT.mkInt(LT.cnt sz)
     val i64 = LT.i64
@@ -339,20 +364,37 @@ in (case p
         )
         
         
-        (* The AllocXArray primops are simply C function calls. Refer to prim-gen-fn.sml
-           and heap-transfer-fn.sml in the MLRISC backend. *)
+        (* Refer to prim-gen-fn.sml and heap-transfer-fn.sml, and alloc.c in the MLRISC
+           backend and runtime system. The AllocPolyVec is nearly the same as the others,
+           it's just recopied and modified down here because the types of the runtime function
+           and primop don't line up with the others. *)
     | P.AllocPolyVec _ => let
             val (label, NONE) = LR.allocVector
             
             (* in prim-gen-fn.sml the args are (n, xs), but n is unused. *)  
-            fun cvtr ([ _, xs ]) = raise NeedVProc (haveVProc xs)
+            fun cvtr ([ _, xs ]) = raise ParrayPrim (haveStuff xs)
             
-            and haveVProc xs vproc = asAnyTy bb (
-                LB.call bb (fv label, #[c Op.BitCast (vproc, LT.voidStar),
-                                     c Op.BitCast (xs, LT.voidStar)]))
-        in
-            cvtr
-        end
+            and haveStuff xs {vproc, alloc, allocOffset} = let
+                    val volatile = AS.singleton A.Volatile
+                    
+                    (* first step is to pass allocation pointer via the vproc *)
+                    val slot = LPU.vpOffset bb vproc allocOffset ((LT.mkPtr o LB.toTy) alloc)
+                    val _ = LB.mk bb volatile Op.Store #[slot, alloc]
+                    
+                    (* call C routine to do the allocation, with bitcasts as needed *)
+                    val res = asAnyTy bb (
+                        LB.call bb (fv label, #[c Op.BitCast (vproc, LT.voidStar),
+                                             c Op.BitCast (xs, LT.voidStar)]))
+                        
+                    (* retrieve the modified allocation pointer *)
+                    val newAlloc = LB.mk bb volatile Op.Load #[slot]
+                    
+                in
+                    { alloc=newAlloc, result=res }
+                end
+            in
+                cvtr
+            end
 
     | P.AllocIntArray _ => allocXArray bb LR.allocIntArray
     | P.AllocLongArray _ => allocXArray bb LR.allocLongArray

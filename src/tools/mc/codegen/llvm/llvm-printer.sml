@@ -1003,7 +1003,15 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       and genPrim(env, (lhsVar, prim)) = let
         val llArgs = L.map (fn x => lookupV(env, x)) (PU.varsOf prim)
         val cvtr = OU.fromPrim b prim
-        val result = (cvtr llArgs) handle OU.NeedVProc f => f (lookupMV(env, MV_Vproc))
+        val (result, env) = (cvtr llArgs, env) 
+                            handle OU.ParrayPrim f => let
+                                val arg = { vproc = lookupMV(env, MV_Vproc),
+                                            alloc = lookupMV(env, MV_Alloc),
+                                            allocOffset = Spec.ABI.allocPtr }
+                                val { result, alloc } = f arg
+                            in
+                                (result, updateMV(env, MV_Alloc, alloc))
+                            end
       in
         insertV(env, lhsVar, result)
       end
