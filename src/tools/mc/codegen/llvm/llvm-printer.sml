@@ -1000,15 +1000,13 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         (cvtr llArgs ; env) 
       end) handle OU.TODO _ => env (* TODO temp handler until all primops are implemented *)
       
-      and genPrim(env, (lhsVar, prim)) = (let
+      and genPrim(env, (lhsVar, prim)) = let
         val llArgs = L.map (fn x => lookupV(env, x)) (PU.varsOf prim)
         val cvtr = OU.fromPrim b prim
         val result = (cvtr llArgs) handle OU.NeedVProc f => f (lookupMV(env, MV_Vproc))
       in
         insertV(env, lhsVar, result)
-      end) handle OU.TODO _ => stubIt env lhsVar (* TODO get rid of this handler
-                                                      once all of the primops
-                                                      are implemented in fromPrim *)
+      end
          
       
       (* A standard C call that returns. *)
