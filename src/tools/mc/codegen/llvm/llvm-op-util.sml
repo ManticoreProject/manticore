@@ -363,6 +363,11 @@ in (case p
     
     (*     
   
+    NOTE It looks like we need to mark all loads/stores as seq_cst to play it
+    safe for now, in order to have a working fence in LLVM.
+    
+    http://llvm.org/releases/3.8.0/docs/Atomics.html#atomics-and-ir-optimization
+  
     | Pause				(* yield processor to allow memory operations to be seen *)
     | FenceRead			(* memory fence for reads *)
     | FenceWrite			(* memory fence for writes *)

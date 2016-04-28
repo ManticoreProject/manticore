@@ -81,8 +81,9 @@ LLVM backend todo list
 
 
 ***** Small Items *****
-    
-    - The remaining unimplemented primops, which is the AllocVectorX and and memory fence/pause instructions.
+
+    - It looks like we need to mark all loads/stores as seq_cst to play it
+    safe for now, in order to have a working fence in LLVM.
     
     - Add some aliasing information for the allocation pointer.
     
