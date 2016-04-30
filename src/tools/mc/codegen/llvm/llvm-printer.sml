@@ -528,12 +528,27 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              (* first we need to determine whether the number of bytes needed at this GC check
                 is a constant or not. if it's not, it's a live value and we need to save it in the root set.
                 it's assigned to slot 0. *)
-             fun prepareGC env (SN_Const _) ((targ, live)) = prepGCHelper env (targ, prepCvt env live)
-               | prepareGC env (SN_Var szbI) ((targ, live)) = prepGCHelper env ((targ, szbI :: (prepCvt env live)))
+             fun prepareGC env (SN_Const _) ((targ, live)) = let
+                        val tys = L.map CV.typeOf live
+                     in
+                        prepGCHelper env (LPU.headerTag tys) (targ, prepCvt env live)
+                     end
+               
+               | prepareGC env (SN_Var szbI) ((targ, live)) = let
+                        (* just a 64 bit integer *)
+                        val szBCFGTy = CFGTy.T_Raw RawTypes.T_Long
+                        
+                        val tys = szBCFGTy :: (L.map CV.typeOf live)
+                        val liveLL = szbI :: (prepCvt env live)
+                     in
+                         prepGCHelper env (LPU.headerTag tys) (targ, liveLL)
+                     end
+               
+              
                
              and prepCvt env live = L.map (fn x => lookupV(env, x)) live
         
-             and prepGCHelper env ((targ, live)) = let
+             and prepGCHelper env tag ((targ, live)) = let
                  (* NOTE basically, we just save roots to the heap to create a spill frame.
                     returns a function to finish off this block once its br targ is
                     created, and the live values it will carry to that block. *)
@@ -551,8 +566,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                  
                  val vprocPtr = lookupMV(env, MV_Vproc)
                                              
-                 val (allocPtr, framePtr) = 
-                     LPU.doAlloc myBB (lookupMV(env, MV_Alloc)) live
+                 val {newAllocPtr=allocPtr, tupleAddr=framePtr} = 
+                     LPU.doAlloc myBB (lookupMV(env, MV_Alloc)) live tag
                  
 
                  val outgoingLive = [framePtr, allocPtr, vprocPtr]
@@ -1011,7 +1026,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
       and genAlloc(env, (lhsVar, ty, vars)) = let
         val llVars = L.map (fn x => lookupV(env, x)) vars
-        val (newAllocPtr, allocatedTuple) = LPU.doAlloc b (lookupMV(env, MV_Alloc)) llVars
+        val headerTag = LPU.headerTag (L.map CV.typeOf vars)
+        val {newAllocPtr, tupleAddr=allocatedTuple} = 
+            LPU.doAlloc b (lookupMV(env, MV_Alloc)) llVars headerTag
         
         val lhsTy = LT.typeOf ty
         val maybeCasted = if LT.same(lhsTy, LB.toTy allocatedTuple) then allocatedTuple

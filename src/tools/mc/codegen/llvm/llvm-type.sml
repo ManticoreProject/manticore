@@ -122,6 +122,7 @@ structure LLVMType : sig
     val uniformTy : ty
     val enumTy : ty
     val voidStar : ty
+    val gcHeaderTy : ty
     
     (* common integer types *)
     val i64 : ty
@@ -337,6 +338,7 @@ structure LLVMType : sig
     val i16 = mkInt(cnt 16)
     val i8  = mkInt(cnt 8)
     val enumTy = i64
+    val gcHeaderTy = i64
     val voidStar = mkPtr(i8)
        
        

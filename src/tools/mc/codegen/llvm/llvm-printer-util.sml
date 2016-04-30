@@ -20,6 +20,7 @@ local
     structure V = Vector
     structure A = LLVMAttribute
     structure AS = LLVMAttribute.Set
+    structure W = Word64
 
 in
 
@@ -55,17 +56,95 @@ in
     final
   end
   
-  (* allocates space on the heap and initializes only
-     the heap header/tag. This will return a function
+  (* Given a list of CFG tys, returns a header tag corresponding to an allocation
+     of corresponding values in the heap. The order must match the layout in the actual heap,
+     from decreasing to increasing. Here's the picture just before an allocation is going to
+     occur, where the alloc pointer is currently pointing at first free word in the heap.
+     
+         [ HEADER ][ cfgVar1, cfgVar2, ...., cfgVarN ]
+             ^
+             |
+         alloc ptr
+    
+     <- Low address                                High address ->
+     
+     We cannot operate solely on LLVM types because enum types are represented with
+     integers, and we need to determine the kind of enum from the CFG representation
+     so we know whether it has a uniform rep or a mixed rep. Also some other things which
+     are pointers in LLVM are not pointers into the heap (function pointers, vproc, deque etc.)
+     This implementation is based on alloc64-fn.sml
+     
+      *)
+  fun headerTag (ctys : CFGTy.ty list) : LB.instr = let
+    
+    (* TODO I wonder why CFG.T_Addr is not considered a heap pointer in the old backend?
+       my guess is that Addrs are for pointers derived from pointer arithmetic. *)
+       
+    fun isHeapPointer CFG.T_Any = true
+      | isHeapPointer (CFG.T_Tuple _) = true
+      | isHeapPointer (CFG.T_OpenTuple _) = true
+      | isHeapPointer _ = false
+      
+    (* all non-pointer (raw) values. assuming proper word alignment *)
+    and rawHeader ctys = let
+        val id = 0
+        val nWords = List.length ctys (* NOTE how this isn't the number of bytes! *)
+        val hdrWord = W.toLargeInt (
+      		W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+      		                W.<< (W.fromInt id, 0w1)
+                           ),
+                    0w1))
+    in
+        hdrWord
+    end
+    
+    (* all pointer values. *)
+    and vectorHeader ctys = let
+        val id = 1
+        val nWords = List.length ctys (* NOTE how this isn't the number of bytes! *)
+  	    val hdrWord = W.toLargeInt (
+  		    W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
+  		                  W.<< (W.fromInt id, 0w1)
+                         ),
+                  0w1))
+    in
+        hdrWord
+    end
+    
+    (* a mix of pointers and raw values *)
+    and mixedHeader ctys = 1234
+  
+    and classify (hasPtr, hasRaw, c::cs) = 
+            if isHeapPointer c 
+                then classify (true, hasRaw, cs) 
+            else if CFGTyUtil.hasUniformRep c 
+                then classify (hasPtr, hasRaw, cs)
+            else classify (hasPtr, true, cs)
+            
+      | classify (true, false, []) = vectorHeader ctys
+      | classify (true, true, []) = mixedHeader ctys
+      | classify (false, _, []) = rawHeader ctys
+      
+      
+  in
+    LB.fromC(LB.intC(LT.gcHeaderTy, classify (false, false, ctys)))
+  end
+  
+  
+  (* allocates space on the heap and returns all of the interesting
+     addresses for the new allocation. In particular, it will return a function
      that computes the addresses of the slots into which
-     elements can be stored to initialize it. It takes
-     integers to index these slots and generates the instructions *)
+     elements can be stored to initialize them. It takes
+     integers to index these slots and generates the instructions.
+     
+     NOTE this function will NOT initialize the new space, it's up to the caller to do it.
+   *)
   fun bumpAllocPtr b allocPtr llTys = let
       val gep = LB.gep_ib b
       val cast = LB.cast b
       val mk = LB.mk b AS.empty
       
-      val tagTy = LT.i64
+      val tagTy = LT.gcHeaderTy
       val oldAllocPtrTy = LB.toTy allocPtr
       
       (* build the types we'll need *)
@@ -90,32 +169,28 @@ in
       
       
       fun tupleCalc idx = gep (allocPtr, #[c 0, c 1, c idx])
-      
-      (* now we do the writes *)
-      
-      fun headerTag _ = LB.fromC(LB.intC(tagTy, 1234)) (* TODO generate real header tags *)
-      
-      val _ = mk Op.Store #[headerAddr, headerTag tupleTy]
   
   in
-    (tupleCalc, tupleAddr, newAllocPtr)
+    {tupleCalc=tupleCalc, tupleAddr=tupleAddr, newAllocPtr=newAllocPtr, headerAddr=headerAddr}
   end
   
   
   (* returns ptr to new allocation and the properly offset alloc ptr *)
-  fun doAlloc b allocPtr llVars = let
+  fun doAlloc b allocPtr llVars headerTag = let
     val gep = LB.gep_ib b
     val cast = LB.cast b
     val mk = LB.mk b AS.empty
     
     val llTys = L.map (fn x => LB.toTy x) llVars
-    val (tupleCalc, tupleAddr, newAllocPtr) = bumpAllocPtr b allocPtr llTys
+    val {tupleCalc, tupleAddr, newAllocPtr, headerAddr} = bumpAllocPtr b allocPtr llTys
+    
+    val _ = mk Op.Store #[headerAddr, headerTag]
     
     val _ = L.foldl (fn (var, idx) =>
                 ((mk Op.Store #[tupleCalc idx, var]) ; (idx + 1))) 0 llVars
     
     in
-        (newAllocPtr, tupleAddr)
+        {newAllocPtr=newAllocPtr, tupleAddr=tupleAddr}
     end
         
       
