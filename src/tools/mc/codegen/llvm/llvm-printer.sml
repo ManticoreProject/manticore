@@ -408,7 +408,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
              val limitPtrOffset = Spec.ABI.limitPtr
              
-             fun enoughSpace b vproc allocPtr (SN_Const szb) = let 
+             fun notEnoughSpace b vproc allocPtr (SN_Const szb) = let 
                      val mk = LB.mk b AS.empty
                      val cast = LB.cast b
                      
@@ -432,7 +432,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                          mk (Op.Icmp(Op.S Op.LE)) #[diff, szbC]
                      
                  end
-               | enoughSpace b vproc allocPtr (SN_Var szb) = let 
+               | notEnoughSpace b vproc allocPtr (SN_Var szb) = let 
                        val mk = LB.mk b AS.empty
                        val cast = LB.cast b
                        
@@ -446,9 +446,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                    in
                         mk (Op.Icmp(Op.S Op.LE)) #[diff, szb]
                    end
-               (* end of enoughSpace *)
+               (* end of notEnoughSpace *)
              
-             fun doGC (incoming as [incFrame, incAlloc, incVp]) = let
+             fun doGC constBytesNeeded (incoming as [incFrame, incAlloc, incVp]) = let
                  val bbLab = LV.new("doGC", LT.labelTy)
                  
                  val params = [
@@ -480,13 +480,31 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                  (* pull the new vals out of the struct, and cast the frame ptr back.
                     the order of the elements in this list needs to match
                     the parameters of this block *)
-                 val (outgoing as [_, newAlloc, newVProc]) = [
+                 val (outgoing as [newFrame, newAlloc, newVProc]) = [
                      LB.cast myBB Op.BitCast (extract res 2, LB.toTy framePtr), (* frame *)
                      extract res 0, (* alloc ptr *)
                      extract res 1 (* vproc *)
                  ]
                  
-                 val enoughSpaceCond = enoughSpace myBB newVProc newAlloc szb
+                 val szb = if constBytesNeeded then szb
+                            else let
+                                (* the szb currently in scope refers to a value computed
+                                   _before_ the GC call. we must retrieve that value
+                                   from the spill frame returned by the GC instead, in
+                                   order to prevent any values from being live across a
+                                   GC call. we know this will work because LLVM
+                                   can't make any assumptions about the value in that
+                                   frame once the pointer is returned by the GC, so it
+                                   must use the new one even if its the same value (which
+                                   it will be of course). *)
+                                   
+                                val SOME addr = LPU.calcAddr myBB 0 newFrame
+                                val newSzbI = LB.mk myBB AS.empty Op.Load #[addr]
+                            in
+                                SN_Var newSzbI
+                            end
+                            
+                 val notEnoughSpaceCond = notEnoughSpace myBB newVProc newAlloc szb
                  
                  
                  val jump = (bbLab, outgoing)
@@ -500,20 +518,26 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                  fun brTo enoughBB = (
                           (* LB.addIncoming enoughBB jump ; *)
                           (fn () => LB.condBr myBB 
-                             (enoughSpaceCond, (LB.labelOf enoughBB), bbLab)) 
+                             (notEnoughSpaceCond, bbLab, (LB.labelOf enoughBB))) 
                          )
                  
              in
                  (myBB, brTo, outgoing)
              end (* end doGC *)
         
-             fun prepareGC env ((targ, live)) = let
+             (* first we need to determine whether the number of bytes needed at this GC check
+                is a constant or not. if it's not, it's a live value and we need to save it in the root set.
+                it's assigned to slot 0. *)
+             fun prepareGC env (SN_Const _) ((targ, live)) = prepGCHelper env (targ, prepCvt env live)
+               | prepareGC env (SN_Var szbI) ((targ, live)) = prepGCHelper env ((targ, szbI :: (prepCvt env live)))
+               
+             and prepCvt env live = L.map (fn x => lookupV(env, x)) live
+        
+             and prepGCHelper env ((targ, live)) = let
                  (* NOTE basically, we just save roots to the heap to create a spill frame.
                     returns a function to finish off this block once its br targ is
                     created, and the live values it will carry to that block. *)
-                 
-                 val live = L.map (fn x => lookupV(env, x)) live
-                 
+
                  val bbLab = LV.new("packageGC", LT.labelTy)
                  
                  (* no parameters since this block has exactly one predecessor,
@@ -543,7 +567,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              end
              
              
-             fun extractGC ([framePtr, allocPtr, vprocPtr]) origLive = let
+             fun extractGC constBytesNeeded ([framePtr, allocPtr, vprocPtr]) origLive = let
                  
                  val bbLab = LV.new("extractGC", LT.labelTy)
                  (* there's no point in having parameters to this block, it
@@ -558,9 +582,20 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     As of now it takes 3 values. but it actually will only take
                     the allocation pointer.
                      *)
+                     
+                 (* prepareGC assigned the non-constant byte var to slot 0 in the
+                    spill frame, so we need to offset the indices in that case *)
+                 val tabulateFn = if constBytesNeeded then (fn x => x)
+                                  else (fn x => x + 1)
+                 
+                 (* the non-const bytes val was added to the origLive
+                    list, and that's dead as of now so we drop it *)
+                 val origLive = if constBytesNeeded then origLive
+                                    else L.drop(origLive, 1)
+                                        
                  
                  val origTys = ListPair.zipEq( 
-                             L.tabulate(L.length origLive, fn x => x),
+                             L.tabulate(L.length origLive, tabulateFn),
                              L.map (fn x => LB.toTy x) origLive
                              )
                              
@@ -585,17 +620,20 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              
              (* TODO mark cold branches for basic block placement! *)
              
-             val enoughSpaceCond = enoughSpace b (lookupMV(env, MV_Vproc)) (lookupMV(env, MV_Alloc)) szb
+             (* this enoughSpaceCond is for the initial heap check. *)
+             val notEnoughSpaceCond = notEnoughSpace b (lookupMV(env, MV_Vproc)) (lookupMV(env, MV_Alloc)) szb
              
              val (nogcTarg, _) = markPred env nogc
              val nogcBB = lookupBB(env, nogcTarg)
              
+             val constBytesNeeded = (case szb of SN_Var _ => false | _ => true)
+             
              (* build the extra BBs we need to enter GC *)
-             val (prepBB, prepGoto, prepOut, origOut) = prepareGC env nogc
+             val (prepBB, prepGoto, prepOut, origOut) = prepareGC env szb nogc
              
-             val (dogcBB, dogcGoto, dogcOut) = doGC prepOut
+             val (dogcBB, dogcGoto, dogcOut) = doGC constBytesNeeded prepOut
              
-             val (extractBB, extractGoto) = extractGC dogcOut origOut
+             val (extractBB, extractGoto) = extractGC constBytesNeeded dogcOut origOut
              
              
              (* setup the predecessor edges *)
@@ -606,7 +644,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              
              
         in
-             (fn () => [LB.condBr b (enoughSpaceCond, nogcTarg, LB.labelOf prepBB),
+             (fn () => [LB.condBr b (notEnoughSpaceCond, LB.labelOf prepBB, nogcTarg),
                         prepTerminator(), gcTerminator(), xtractTerminator()])
         end 
     (************* end heapCheckHelper ****************)
