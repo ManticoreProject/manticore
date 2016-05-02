@@ -85,15 +85,25 @@ in
       | isHeapPointer (CFG.T_OpenTuple _) = true
       | isHeapPointer _ = false
       
+      
+    (* initializes a non-forwarding pointer header, following header-bits.h
+        
+        ---------------------------------------------- 
+        | -- 48 bits -- | -- 15 bits -- | -- 1 bit -- |
+        |	  length    |      ID       |      1      |
+        ----------------------------------------------
+     *)
+    and packHeader length id = W.toLargeInt (
+        W.orb (W.orb (W.<< (W.fromInt length, 0w16), 
+                        W.<< (W.fromInt id, 0w1)
+                       ),
+              0w1))
+      
     (* all non-pointer (raw) values. assuming proper word alignment *)
     and rawHeader ctys = let
         val id = 0
-        val nWords = List.length ctys (* NOTE how this isn't the number of bytes! *)
-        val hdrWord = W.toLargeInt (
-      		W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
-      		                W.<< (W.fromInt id, 0w1)
-                           ),
-                    0w1))
+        val nWords = L.length ctys (* NOTE how this isn't the number of bytes! *)
+        val hdrWord = packHeader nWords id
     in
         hdrWord
     end
@@ -101,18 +111,26 @@ in
     (* all pointer values. *)
     and vectorHeader ctys = let
         val id = 1
-        val nWords = List.length ctys (* NOTE how this isn't the number of bytes! *)
-  	    val hdrWord = W.toLargeInt (
-  		    W.orb (W.orb (W.<< (W.fromInt nWords, 0w16), 
-  		                  W.<< (W.fromInt id, 0w1)
-                         ),
-                  0w1))
+        val nWords = L.length ctys (* NOTE how this isn't the number of bytes! *)
+  	    val hdrWord = packHeader nWords id
     in
         hdrWord
     end
     
     (* a mix of pointers and raw values *)
-    and mixedHeader ctys = 1234
+    and mixedHeader ctys = let
+        
+        fun setPtrBits (x, acc) = 
+            (if isHeapPointer x then "1" else "0") ^ acc
+    
+        val ptrMask = L.foldl setPtrBits "" ctys
+        
+        val id = HeaderTableStruct.HeaderTable.addHdr (HeaderTableStruct.header, ptrMask)
+        val nWords = L.length ctys (* NOTE how this isn't the number of bytes! *)
+        val hdrWord = packHeader nWords id
+    in
+        hdrWord
+    end
   
     and classify (hasPtr, hasRaw, c::cs) = 
             if isHeapPointer c 
