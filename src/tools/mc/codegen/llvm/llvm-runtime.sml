@@ -16,7 +16,9 @@ structure LLVMRuntime =
     structure LB = LLVMBuilder
     
     (* first type is return type *)
-    fun mkLabel name tys = LV.newWithKind(name, LV.VK_Global true, LT.mkFunc tys)
+    fun mkLabel name tys = mkConst name (LT.mkFunc tys)
+    
+    and mkConst name ty = LV.newWithKind(name, LV.VK_Global true, ty)
     
   in
   
@@ -24,30 +26,12 @@ structure LLVMRuntime =
         MANTICORE RUNTIME LABELS
     ***************************************)
     
-    (*
-    (* entry point for main program *)
-      val entry = global "mantEntry"
-    (* label of word that holds "magic number".  This value used to check the
-     * consistency between the runtime and compiler offsets.
-     *)
-      val magic = global "mantMagic"
-    (* label of flag that tells the runtime if the generated code is sequential *)
-      val sequential = global "SequentialFlag"
-    (* runtime code to invoke the GC *)
-      val initGC = global "ASM_InvokeGC"
-    (* runtime code to promote objects *)
-      val promote = global "PromoteObj"
+    (* these need external visibility *)
+    val magic = mkConst "mantMagic" LT.i32
+    val sequential = mkConst "SequentialFlag" LT.i32
+    fun main ty = mkConst "mantEntry" ty
     
-    (* runtime code to get a new global-heap chunk *)
-      val getGlobalChunk = global "GetChunkForVProc"
       
-      val allocVector = global "AllocVector"
-      val allocIntArray = global "AllocIntArray"
-      val allocLongArray = global "AllocLongArray"
-      val allocFloatArray = global "AllocFloatArray"
-      val allocDoubleArray = global "AllocDoubleArray"
-    *)
-  
     (* NOTE types come from heap-transfer-fn.sml and names from runtime-labels.sml.
        if you add anything here, you should also add it to the list of declared
        functions in the llvm printer. the 2nd item in the tuple is the calling convention.

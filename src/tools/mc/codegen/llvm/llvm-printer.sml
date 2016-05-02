@@ -1424,6 +1424,11 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         insertL(acc, old, new)) initEnv convertedExterns
 
 
+  (* we need the name of the main function in the module in order to generate an alias
+     for it called maintEntry so the C runtime knows what the main fn is. *)
+  val (C.FUNC { lab = mainLab, ...})::_ = module_code
+  val mainFn = lookupL(initEnv, mainLab)
+
 (* NOTE
     
       ordering of declarations only matters in LLVM for types.
@@ -1436,6 +1441,22 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
   (* process the whole module, generating a string for each function and populating the type
      and string literal caches *)
   val funStrings = List.map (fn func => mkFunc(func, initEnv)) module_code  
+  
+  fun externalConstants () = let
+    fun globalFormatter lv init = S.concat[LV.toString lv, " = global ",
+                                        (LT.nameOf o LV.typeOf) lv, " ", init, "\n"]
+                                        
+    fun aliasFormatter lv init = S.concat[LV.toString lv, " = alias ",
+                                        (LT.nameOf o LT.deref o LV.typeOf) lv, ", ",
+                                        (LT.nameOf o LV.typeOf) lv, " ", init, "\n"]
+                                        
+    val sequentialFlag = if Controls.get BasicControl.sequential then 1 else 0
+  in
+    [ globalFormatter LR.magic (IntInf.toString Spec.ABI.magic),
+      globalFormatter LR.sequential (IntInf.toString sequentialFlag),
+      aliasFormatter (LR.main (LV.typeOf mainFn)) (LV.toString mainFn)
+    ]
+  end
 
 in
   ( (* output sequence *)
@@ -1457,6 +1478,9 @@ in
 
     pr "\n\n; string literals\n\n" ;
     prl (LS.export()) ;  
+    
+    pr "\n\n; external constants\n" ;
+    prl (externalConstants()) ;
 
     pr "\n\n\n\n; ---------------- end of LLVM generation ---------------------- \n\n\n\n" ;
     (if DEBUGGING then
