@@ -13,11 +13,15 @@
 #define TMP_REG2            %r15          /* must be caller save */	
 
 /* Stack frame layout */
-#define RBX_OFF		(-2*8)	/* offset off %rbp for saving %rbx */
-#define R12_OFF		(-3*8)	/* offset off %rbp for saving %r12 */
-#define R13_OFF		(-4*8)	/* offset off %rbp for saving %r13 */
-#define R14_OFF		(-5*8)	/* offset off %rbp for saving %r14 */
-#define R15_OFF		(-6*8)	/* offset off %rbp for saving %r15 */
+#define RBP_OFF		(1*8)	/* offset off %rsp for saving %rbx */
+#define RBX_OFF		(2*8)	/* offset off %rsp for saving %rbx */
+#define R12_OFF		(3*8)	/* offset off %rsp for saving %r12 */
+#define R13_OFF		(4*8)	/* offset off %rsp for saving %r13 */
+#define R14_OFF		(5*8)	/* offset off %rsp for saving %r14 */
+#define R15_OFF		(6*8)	/* offset off %rsp for saving %r15 */
+
+/* size is chosen so that RSP is exclusively 8-byte aligned */
+#define LLFRAME_SZ  $72  
 
 
 /* ASM_Apply:
@@ -34,15 +38,15 @@
 	.p2align 3
 	.globl	_GSYM(ASM_Apply)
 _GSYM(ASM_Apply):
-	pushq	%rbp			/* save frame pointer */
-	movq	%rsp,%rbp		/* set new frame pointer */
-	leaq	-FRAME_SZB(%rsp),%rsp	/* allocate the stack frame */
-      /* save C callee-save registers */
-	movq	%rbx,RBX_OFF(%rbp)
-	movq	%r12,R12_OFF(%rbp)
-	movq	%r13,R13_OFF(%rbp)
-	movq	%r14,R14_OFF(%rbp)
-	movq	%r15,R15_OFF(%rbp)
+    /* incoming RSP is 16-byte aligned according to SysV ABI */
+    subq    LLFRAME_SZ, %rsp    /* allocate the frame */
+      /* save C callee-save registers to frame */
+    movq    %rbp,RBP_OFF(%rsp)
+	movq	%rbx,RBX_OFF(%rsp)
+	movq	%r12,R12_OFF(%rsp)
+	movq	%r13,R13_OFF(%rsp)
+	movq	%r14,R14_OFF(%rsp)
+	movq	%r15,R15_OFF(%rsp)
       /* setup standard arguments to the Manticore function */
 	movq	%rdi,VPROC_PTR_REG	/* save vproc pointer */
 	movq	%rsi,%r12		/* save code pointer in %r12 */
@@ -94,9 +98,7 @@ invalidate_spill_area:
 	.globl	_GSYM(ASM_InvokeGC)
 _GSYM(ASM_InvokeGC):
 	movq	$REQ_GC, TMP_REG1
-    movq    -8(%rbp), STD_CONT_REG      /* save the caller's return address */
-    movq    %rbp, %rsp                  /* pop our frame */
-    popq    %rbp
+    popq    STD_CONT_REG        /* pop our stack frame and save the ret addr */
 
 
 switch_to_c:
@@ -119,14 +121,15 @@ continue_to_c:
 	movq	STD_EXH_REG,STD_EXH(VPROC_PTR_REG)
 	movq	ALLOC_PTR_REG,ALLOC_PTR(VPROC_PTR_REG)
       /* restore C callee-save registers */
-	movq	RBX_OFF(%rbp),%rbx
-	movq	R12_OFF(%rbp),%r12
-	movq	R13_OFF(%rbp),%r13
-	movq	R14_OFF(%rbp),%r14
-	movq	R15_OFF(%rbp),%r15
+    movq	RBP_OFF(%rsp),%rbp
+	movq	RBX_OFF(%rsp),%rbx
+	movq	R12_OFF(%rsp),%r12
+	movq	R13_OFF(%rsp),%r13
+	movq	R14_OFF(%rsp),%r14
+	movq	R15_OFF(%rsp),%r15
       /* return request code */
 	movq	TMP_REG1,%rax
-	leave
+	addq   LLFRAME_SZ, %rsp       /* pop our stack frame */
 	ret
 
 #ifdef ENABLE_LOGGING

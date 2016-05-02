@@ -214,8 +214,8 @@ Pass Arguments:  -domtree
     
     (* llc passes that need to be performed before/after any passes *)
     fun l_wrapPasses verbose passes = let
-        (* NOTE we need a frame pointer because our glue code uses it. *)
-        val firstPasses = ["-disable-fp-elim"] (* TODO later this might be -stack-alignment=8 ? *)
+        (* NOTE we need a frame pointer because our glue code uses it. "-disable-fp-elim",  *)
+        val firstPasses = ["-stack-alignment=8"] (* TODO later this might be -stack-alignment=8 ? *)
         val statsPasses = ["-stats", "-time-passes"]
         
         val passes = (case passes 
