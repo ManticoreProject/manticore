@@ -306,8 +306,12 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         
         val getTy = LT.toRegType o LT.typeOf o C.Var.typeOf
         
-        val machineValPadding = 
-            List.tabulate(numMachineVals, fn _ => LT.toRegType LT.vprocTy)
+        (* dummy machine val padding *)
+        val genericPadding = LT.toRegType LT.allocPtrTy
+        
+        (* this is padding at the front of the convention, where we always put the machine values. *)
+        val machineValPadding =
+            List.tabulate(numMachineVals, fn _ => genericPadding)
         
         fun withPadding convVars = 
             machineValPadding 
@@ -326,9 +330,21 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 
 
             | (C.StdCont { clos } | C.KnownFunc { clos }) => let
-                val convVars = clos :: args
+            
+            (* NOTE there is no exn handler or retk, so we need to add artifical padding
+               in order to get the args into the right registers, we also need CFG vars
+               in this list so we just duplicate the clos. Kinda gross but it's fine. *)
+                val actualConvVars = clos :: args
+                
+                val paddedConv = clos :: [clos, clos] @ args
+                
+                (* now that everything's been assigned to slots, drop the two generic paddings in
+                   we added between the first clos and the args. *)
+                val (closI :: _ :: _ :: restI) = determineIndices paddedConv
+                val actualIndices = closI :: restI
+                
                 in
-                    (machineValPadding, ListPair.zipEq(determineIndices convVars, convVars))
+                    (machineValPadding, ListPair.zipEq(actualIndices, actualConvVars))
                 end
         (* end case *))
   end
