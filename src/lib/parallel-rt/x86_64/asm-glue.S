@@ -13,15 +13,21 @@
 #define TMP_REG2            %r15          /* must be caller save */	
 
 /* Stack frame layout */
-#define RBP_OFF		(1*8)	/* offset off %rsp for saving %rbx */
-#define RBX_OFF		(2*8)	/* offset off %rsp for saving %rbx */
-#define R12_OFF		(3*8)	/* offset off %rsp for saving %r12 */
-#define R13_OFF		(4*8)	/* offset off %rsp for saving %r13 */
-#define R14_OFF		(5*8)	/* offset off %rsp for saving %r14 */
-#define R15_OFF		(6*8)	/* offset off %rsp for saving %r15 */
+#define RBP_OFF		(-1*8)	/* offset off %rsp for saving %rbx */
+#define RBX_OFF		(-2*8)	/* offset off %rsp for saving %rbx */
+#define R12_OFF		(-3*8)	/* offset off %rsp for saving %r12 */
+#define R13_OFF		(-4*8)	/* offset off %rsp for saving %r13 */
+#define R14_OFF		(-5*8)	/* offset off %rsp for saving %r14 */
+#define R15_OFF		(-6*8)	/* offset off %rsp for saving %r15 */
 
-/* size is chosen so that RSP is exclusively 8-byte aligned */
-#define LLFRAME_SZ  $72  
+/* size is chosen so that RSP is exclusively 8-byte aligned: 72 */
+/* we also make space for 128 spills, aka 1024  */
+/* We adjust stack pointer after allocating callee-save spills to simplify */
+/* address calculation, and to setup the stack frame such that these */
+/* spills are at the TOP of the stack frame, because the spiller starts */
+/* allocating spills at the bottom of the frame, and it is unaware of */
+/* these manually created callee-save spills! */
+#define LLFRAME_SZ  $1096  
 
 
 /* ASM_Apply:
@@ -39,7 +45,6 @@
 	.globl	_GSYM(ASM_Apply)
 _GSYM(ASM_Apply):
     /* incoming RSP is 16-byte aligned according to SysV ABI */
-    subq    LLFRAME_SZ, %rsp    /* allocate the frame */
       /* save C callee-save registers to frame */
     movq    %rbp,RBP_OFF(%rsp)
 	movq	%rbx,RBX_OFF(%rsp)
@@ -47,6 +52,9 @@ _GSYM(ASM_Apply):
 	movq	%r13,R13_OFF(%rsp)
 	movq	%r14,R14_OFF(%rsp)
 	movq	%r15,R15_OFF(%rsp)
+    
+    subq    LLFRAME_SZ, %rsp    /* now bump stack ptr, making space for later spills too */
+    
       /* setup standard arguments to the Manticore function */
 	movq	%rdi,VPROC_PTR_REG	/* save vproc pointer */
 	movq	%rsi,%r12		/* save code pointer in %r12 */
@@ -120,6 +128,9 @@ continue_to_c:
 	movq	STD_CONT_REG,STD_CONT(VPROC_PTR_REG)
 	movq	STD_EXH_REG,STD_EXH(VPROC_PTR_REG)
 	movq	ALLOC_PTR_REG,ALLOC_PTR(VPROC_PTR_REG)
+    
+    addq   LLFRAME_SZ, %rsp       /* unbump stack pointer */
+    
       /* restore C callee-save registers */
     movq	RBP_OFF(%rsp),%rbp
 	movq	RBX_OFF(%rsp),%rbx
@@ -129,7 +140,7 @@ continue_to_c:
 	movq	R15_OFF(%rsp),%r15
       /* return request code */
 	movq	TMP_REG1,%rax
-	addq   LLFRAME_SZ, %rsp       /* pop our stack frame */
+	
 	ret
 
 #ifdef ENABLE_LOGGING
