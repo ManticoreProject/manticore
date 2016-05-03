@@ -14,7 +14,7 @@ functor LLVMPrinter (structure Spec : TARGET_SPEC) : sig
 
   end = struct
   
-  (* if set to true, will append CFG output to the LLVM output for debugging purposes *)
+  (* if set to true, will send CFG output to stderr for debugging purposes *)
   val DEBUGGING = false
 
     (*
@@ -1344,7 +1344,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
 
 
     fun attrOfC (a : CF.attribute) = (case a
-          of CF.A_pure => "readonly"
+          of CF.A_pure => "" (* "readonly" *)
            | CF.A_noreturn => "noreturn"
            (* alloc/malloc attribute in C doesn't seem to translate over to LLVM IR *)
            | _ => ""
@@ -1517,7 +1517,7 @@ in
 
     pr "\n\n\n\n; ---------------- end of LLVM generation ---------------------- \n\n\n\n" ;
     (if DEBUGGING then
-        PrintCFG.output {counts=true, types=true, preds=false} (outS, module)
+        PrintCFG.output {counts=true, types=true, preds=false} (TextIO.stdErr, module)
     else ()) ;
     ()
   )

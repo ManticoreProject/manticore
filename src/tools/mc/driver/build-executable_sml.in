@@ -150,35 +150,65 @@ Pass Arguments:  -domtree
      **********************)
     val opt = "opt"
     
+    (* TODO figure out why instcombine totally breaks our code ;) *)
+    
     (* not really performance optimizations, just cleanup from initial generation. *)
-    val o_cleanupPasses = [
+    val o_cleanupPasses = []
+    (*
+    [
         "-strip-dead-prototypes",
-        "-constmerge"
+        "-constmerge",
+        "-codegenprepare"
+    ] *)
+    
+    val o_aliasAnalysis = [
+        "-basicaa",
+        "-aa",
+        "-memdep"
     ]
     
+    (* just for testing instcombine for now *)
+    val o_level1 = ["-instcombine"]
     
-    val o_level1 = [
+    (*
+    
+    [
+        "-simplifycfg",
         "-reassociate",
         "-constprop",
-        "-instcombine"
-    ] @ o_cleanupPasses
+        "-early-cse",
+        "-dce",
+        "-simplifycfg"
+    ] *)
     
     
     val o_level2 = [
         "-simplifycfg",
-        "-jump-threading" 
-        ] @ o_level1 @ [
-        "-gvn",
-        "-instcombine",
+        "-reassociate",
+        "-constprop",
+        "-early-cse",
+        "-jump-threading",
+        "-correlated-propagation",
         "-simplifycfg"
-    ] @ o_cleanupPasses
+        ] @ o_aliasAnalysis @ [
+        "-gvn",
+        "-reassociate",
+        "-constprop",
+        "-early-cse",
+        "-dce",
+        "-simplifycfg"
+    ]
     
     
     val o_level3 = 
-        o_level2 @ [
+        o_level2 @ 
+        o_aliasAnalysis @ [
+        "-sccp",
+        "-adce",
+        "-simplifycfg",
         "-branch-prob",
         "-block-freq"
-    ] @ o_cleanupPasses
+    ]
     
     
     (* opt passes that need to be performed before/after any passes *)
@@ -188,7 +218,7 @@ Pass Arguments:  -domtree
         
         val passes = (case passes 
                       of [] => firstPasses
-                       |  _ => firstPasses @ passes @ ["-verify"]
+                       |  _ => firstPasses @ passes @ o_cleanupPasses @ ["-verify"]
                        (* esac *))
     in
         if verbose then statsPasses @ passes else passes
@@ -208,7 +238,7 @@ Pass Arguments:  -domtree
      **********************)
     val llc = "llc"
     
-    val l_level1 = ["-O1"]
+    val l_level1 = [] (* ["-O1"] *)
     val l_level2 = ["-O2"]
     val l_level3 = ["-O3"]
     
