@@ -374,6 +374,13 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
       (* handy stuff used in several places *)
       
+      (* tag enums to distinguish them from pointers: enum(e) => 2*e+1 
+         lifted directly from codegen-fn.sml in the MLRISC backend *)
+        fun encodeEnum e = Word.<<(e, 0w1) + 0w1
+        
+      (* we want the two low bits of the state-value representation to be zero *)
+        fun encodeStateVal n = Word.<<(n, 0w2) 
+      
       (* the noattr instruction maker *)
       val mk = LB.mk b AS.empty
       val cast = LB.cast b
@@ -827,6 +834,12 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                             (* esac *))
                             
                     fun xlateArm (word, jump) = let 
+                            (* switches on enums require a special encoding *)
+                            val word = (case CV.typeOf cond
+                                        of CFGTy.T_Enum _ => encodeEnum word
+                                        | _ => word
+                                       (* esac *))
+                            
                             val (llTarg, _) = markPred env jump
                             val llConst = LB.intC(LT.enumTy, Word.toLargeInt word)
                         in 
@@ -916,22 +929,14 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
       and genConst(env, (lhsVar, lit, ty)) = let
         val llTy = LT.typeOf ty
-        
-        (* tag enums to distinguish them from pointers: enum(e) => 2*e+1 
-           lifted directly from codegen-fn.sml in the MLRISC backend *)
-    	  fun encodeEnum e = Word.<<(e, 0w1) + 0w1
-          
-        (* we want the two low bits of the state-value representation to be zero *)
-          fun encodeStateVal n = Word.<<(n, 0w2) 
-          
-          
       in
           (case lit
               of Literal.Int il => 
                     insertV(env, lhsVar, LB.fromC(LB.intC(llTy, il)))
                
-               | Literal.Bool b => 
-                    insertV(env, lhsVar, LB.fromC(LB.intC(LT.boolTy, if b then 1 else 0)))
+               (* this isn't implemented in old backend either *)
+               | Literal.Bool b => raise Fail "unexpected Literal.Bool" 
+                    (* insertV(env, lhsVar, LB.fromC(LB.intC(LT.boolTy, if b then 1 else 0))) *)
                     
                | Literal.Float f =>
                     insertV(env, lhsVar, LB.fromC(LB.floatC(llTy, f)))
