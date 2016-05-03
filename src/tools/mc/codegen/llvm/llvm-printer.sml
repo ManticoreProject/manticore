@@ -1067,7 +1067,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         raise Fail "not implemented yet"
       
       and genPromote(env, (lhsVar, var)) = let
-        val llFunc = LB.fromV (#1(LR.promote))
+        val (promLab, NONE) = LR.promote
+        val llFunc = LB.fromV promLab
         val paramTys = (LT.argsOf o LB.toTy) llFunc
         
         val args = [lookupMV(env, MV_Vproc), lookupV(env, var)]
@@ -1078,9 +1079,20 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                             cast (Op.equivCast (llty, realTy)) (ll, realTy)
                         end)
                             (ListPair.zipEq(args, paramTys))
-                            
+
+        (* we must save and restore the allocation pointer using the vproc
+           before & after the call to promote just like a c call that allocates. *)
+        val loc = { vproc = lookupMV(env, MV_Vproc),
+                    off   = Spec.ABI.allocPtr }
+        val alloc = lookupMV(env, MV_Alloc)
+        
+        val _ = LPU.saveAllocPtr b loc alloc
+        
         (* do call *)
         val llCall = LB.call b (llFunc, V.fromList llArgs)
+            
+        val env = updateMV(env, MV_Alloc, LPU.restoreAllocPtr b loc)
+        
         
         (* cast result back *)
         val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
@@ -1129,8 +1141,29 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                 cast (Op.equivCast (llty, realTy)) (ll, realTy)
                             end)
                                 (ListPair.zipEq(args, argTys))
+                                
+            (* thunk the call for a hot minute *)
+            val doCall = (fn () => LB.call b (llFunc, V.fromList llArgs))
             
-            val llCall = LB.call b (llFunc, V.fromList llArgs)
+            (* check if the C function might allocate before performing the call *)
+            val allocates = LPU.cfunDoesAlloc func
+            
+            val (llCall, env) = if not allocates then (doCall(), env)
+                   else let (* we need to pass the allocation pointer to the runtime system,
+                                    and we do so by writing it to the vproc. *)
+                            val loc = { vproc = lookupMV(env, MV_Vproc),
+                                        off   = Spec.ABI.allocPtr }
+                            val alloc = lookupMV(env, MV_Alloc)
+                            
+                            val _ = LPU.saveAllocPtr b loc alloc
+                            
+                            val llCall = doCall()
+                            
+                            val newAlloc = LPU.restoreAllocPtr b loc
+                        in
+                            (llCall, updateMV(env, MV_Alloc, newAlloc))
+                        end
+            
           in
             (case results
               of nil => env
@@ -1192,29 +1225,6 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         finish(process(initialEnv, body), exit)
     end (* end of fillBlock *)
 
-
-  (* testing llvm bb generator *)
-    (*
-    val t = LB.new(LV.new("entry", LT.labelTy))   
-      val intTy = LT.mkInt(LT.cnt 32)
-      fun mkInt i = LB.fromC(LB.intC(intTy, i))
-      fun mkFloat f = LB.fromC(LB.floatC(LT.floatTy, 0.0))
-      val mk = LB.mk t AS.empty
-      val mkNSW = LB.mk t (AS.addList(AS.empty, [A.FastMath]))
-      val ret = LB.ret t 
-      fun fcmp cmp = Op.Fcmp(Op.O(cmp))
-      fun icmp cmp = Op.Icmp(Op.S(cmp))
-
-    val bb = ret (mk (icmp(Op.LE)) #[
-    (mk Op.Sub #[mkInt 0, mk Op.Add #[mkInt 10, mkInt 200]]),
-    (mkInt 0)])
-    
-    val done = LB.toString bb
-
-    val body = [
-      done
-    ]
-    *)
     
 
   (* end of Basic Blocks *)

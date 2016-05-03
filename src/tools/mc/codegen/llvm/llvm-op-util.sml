@@ -57,18 +57,16 @@ local
     (* the implementation of this follows directly from the output of the old MLRISC backend. *)
     fun allocXArray bb (label, NONE) = 
         (fn [ n ] => raise ParrayPrim (fn {vproc, alloc, allocOffset} => let
-                val volatile = AS.singleton A.Volatile
+                val loc = {vproc=vproc, off=allocOffset}
                 
-                (* first step is to pass allocation pointer via the vproc *)
-                val slot = LPU.vpOffset bb vproc allocOffset ((LT.mkPtr o LB.toTy) alloc)
-                val _ = LB.mk bb volatile Op.Store #[slot, alloc]
-                
+                val _ = LPU.saveAllocPtr bb loc alloc
+
                 (* call C routine to do the allocation, with bitcasts as needed *)
                 val res = asAnyTy bb (LB.call bb 
                     (LB.fromV label, #[LB.cast bb Op.BitCast (vproc, LT.voidStar), n ]))
                     
                 (* retrieve the modified allocation pointer *)
-                val newAlloc = LB.mk bb volatile Op.Load #[slot]
+                val newAlloc = LPU.restoreAllocPtr bb loc
                 
             in
                 { alloc=newAlloc, result=res }
@@ -375,11 +373,9 @@ in (case p
             fun cvtr ([ _, xs ]) = raise ParrayPrim (haveStuff xs)
             
             and haveStuff xs {vproc, alloc, allocOffset} = let
-                    val volatile = AS.singleton A.Volatile
+                    val loc = {vproc=vproc, off=allocOffset}
                     
-                    (* first step is to pass allocation pointer via the vproc *)
-                    val slot = LPU.vpOffset bb vproc allocOffset ((LT.mkPtr o LB.toTy) alloc)
-                    val _ = LB.mk bb volatile Op.Store #[slot, alloc]
+                    val _ = LPU.saveAllocPtr bb loc alloc
                     
                     (* call C routine to do the allocation, with bitcasts as needed *)
                     val res = asAnyTy bb (
@@ -387,7 +383,7 @@ in (case p
                                              c Op.BitCast (xs, LT.voidStar)]))
                         
                     (* retrieve the modified allocation pointer *)
-                    val newAlloc = LB.mk bb volatile Op.Load #[slot]
+                    val newAlloc = LPU.restoreAllocPtr bb loc
                     
                 in
                     { alloc=newAlloc, result=res }

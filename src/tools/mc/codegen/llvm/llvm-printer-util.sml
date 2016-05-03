@@ -21,6 +21,12 @@ local
     structure A = LLVMAttribute
     structure AS = LLVMAttribute.Set
     structure W = Word64
+    structure C = CFG
+    structure CV = CFG.Var
+    structure CL = CFG.Label
+    structure CT = CFGTy
+    structure CTU = CFGTyUtil
+    structure CF = CFunctions
 
 in
 
@@ -225,6 +231,39 @@ in
         {newAllocPtr=newAllocPtr, tupleAddr=tupleAddr}
     end
         
+  
+  fun saveAllocPtr bb {vproc, off} allocPtr = let
+        val volatile = AS.singleton A.Volatile
+        val slot = vpOffset bb vproc off (LT.mkPtr LT.allocPtrTy)
+        val _ = LB.mk bb volatile Op.Store #[slot, allocPtr]
+      in
+        ()
+      end
+      
+  and restoreAllocPtr bb {vproc, off} = let
+        val volatile = AS.singleton A.Volatile
+        val slot = vpOffset bb vproc off (LT.mkPtr LT.allocPtrTy)
+        val newAlloc = LB.mk bb volatile Op.Load #[slot]
+      in
+        newAlloc
+      end
+     
+local 
+  fun getCPrototype f = (case CV.typeOf f
+      of CT.T_CFun proto => proto
+	   | _ => raise Fail ((CV.toString f) ^ " is not a C function!")
+      (* end case *))
+in
+    (* returns true iff this cfun perform allocation *)
+    fun cfunDoesAlloc f = let
+        (* get the C function's prototype *)
+         val cProtoTy = getCPrototype f
+        (* check if the C function might allocate *)
+         val allocates = CFunctions.protoHasAttr CFunctions.A_alloc cProtoTy
+    in
+        allocates
+    end
+end      
       
 end (* end local scope *)
 end (* end LLVMPrinterUtil *)
