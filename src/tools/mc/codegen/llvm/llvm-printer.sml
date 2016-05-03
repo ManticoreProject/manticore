@@ -1002,10 +1002,11 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val implicitCaster = let
                 val lhsTy = CFG.Var.typeOf lhsVar
                 val rhsTy = CFGTyUtil.select(CFG.Var.typeOf rhsVar, i)
+                val lhsTyLL = LT.typeOf lhsTy
             in
                 case (CFGTyUtil.equal(lhsTy, rhsTy), CFGTyUtil.equal(CFGTy.T_Any, rhsTy))
                 of (true, _) => (fn x => x) (* do nothing *)
-                 | (false, _) => (fn instr => cast Op.BitCast (instr, LT.typeOf lhsTy))
+                 | (false, _) => (fn instr => cast (Op.equivCast(LB.toTy instr, lhsTyLL)) (instr, lhsTyLL))
                  (*| _ => raise Fail "did not expect an implicit cast of RHS non-Any ty to some other ty in a select"*)
             end
         
@@ -1385,6 +1386,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
             , "f16:64"          (* 16 bit floats are 64 bit aligned *)
             , "f32:64"          (* 32 bit floats are 64 bit aligned *)
             , "f64:64"          (* 64 bit floats are 64 bit aligned *)
+            , "a0:64"           (* 64 bit alignment of aggregate type *)
             ]
 
           in (case (Spec.archName, Spec.osName)

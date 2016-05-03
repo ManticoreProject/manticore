@@ -169,7 +169,7 @@ in
       (* it's important that the tupleTy is an unpacked struct, because
          the datalayout correct pads the values so the GC is happy with it *)
       val tupleTy = LT.mkUStruct(llTys) 
-      val heapFrameTy = LT.mkPtr(LT.mkStruct( tagTy :: tupleTy :: nil ))
+      val heapFrameTy = LT.mkPtr(LT.mkUStruct( tagTy :: tupleTy :: nil ))
       
       (*  now lets calculate addresses. the invariant about the alloc pointer is that it
           points to unallocated memory (the next allocation's header ty), so that's
