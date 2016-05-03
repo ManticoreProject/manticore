@@ -156,6 +156,19 @@ in
      integers to index these slots and generates the instructions.
      
      NOTE this function will NOT initialize the new space, it's up to the caller to do it.
+     
+     
+     The convention we follow in order to match up with the runtime system is the following:
+     
+     
+     [ end of last allocation ][8 bytes][8 bytes][8 bytes ....]
+                                                
+                                           ^
+                                           |
+                                       alloc ptr        
+                                       
+    Runtime system functions which do allocation expect the allocation pointer to be in this
+    state, because they offset by [-1] to write the header.
    *)
   fun bumpAllocPtr b allocPtr llTys = let
       val gep = LB.gep_ib b
@@ -169,7 +182,7 @@ in
       (* it's important that the tupleTy is an unpacked struct, because
          the datalayout correct pads the values so the GC is happy with it *)
       val tupleTy = LT.mkUStruct(llTys) 
-      val heapFrameTy = LT.mkPtr(LT.mkUStruct( tagTy :: tupleTy :: nil ))
+      val heapFrameTy = LT.mkPtr(LT.mkUStruct( tupleTy :: tagTy :: nil ))
       
       (*  now lets calculate addresses. the invariant about the alloc pointer is that it
           points to unallocated memory (the next allocation's header ty), so that's
@@ -180,13 +193,14 @@ in
       
       fun c idxNum = LB.intC(LT.i32, Int.toLarge idxNum)
       
-      val headerAddr = gep (allocPtr, #[c 0, c 0])
-      val tupleAddr = gep (allocPtr, #[c 0, c 1])
+      (* header addr offsets behind the allocation pointer *)
+      val headerAddr = gep (allocPtr, #[c ~1, c 1])
+      val tupleAddr = gep (allocPtr, #[c 0, c 0])
       
-      val newAllocPtr = cast Op.BitCast (gep (allocPtr, #[c 1]), oldAllocPtrTy)
+      val newAllocPtr = cast Op.BitCast (gep (allocPtr, #[c 1, c 0]), oldAllocPtrTy)
       
       
-      fun tupleCalc idx = gep (allocPtr, #[c 0, c 1, c idx])
+      fun tupleCalc idx = gep (allocPtr, #[c 0, c 0, c idx])
   
   in
     {tupleCalc=tupleCalc, tupleAddr=tupleAddr, newAllocPtr=newAllocPtr, headerAddr=headerAddr}
