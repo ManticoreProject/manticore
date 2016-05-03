@@ -90,7 +90,7 @@ fun output (outS, module as C.MODULE { name = module_name,
 
   datatype llvm_attributes = MantiFun | ExternCFun
 
-  fun stdAttrs (MantiFun) = "nounwind"
+  fun stdAttrs (MantiFun) = "nounwind naked noinline"
 
     (* NOTE: because I'm not sure of the effect inlining a C func into a naked func right now. *)
     | stdAttrs (ExternCFun) = "noinline" 
