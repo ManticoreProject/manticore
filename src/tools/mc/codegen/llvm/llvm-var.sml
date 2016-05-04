@@ -72,7 +72,7 @@ structure LLVMVar =
            | #"@" => repl
            | #"\\" => repl 
            | #"~" => repl
-           | #"'" => repl
+           | #"'" => "prime"    (* just for kicks :D *)
            | #"^" => repl
            | #"|" => repl
            | #"*" => repl
@@ -84,7 +84,7 @@ structure LLVMVar =
 
       val cvtIllegal = String.translate inspector
 
-      fun llvmIdent (name, id) = name ^ "_" ^ (StringCvt.padLeft #"0" 4 (Word.toString (Stamp.hash id))) 
+      fun llvmIdent (name, id) = (cvtIllegal name) ^ "_" ^ (StringCvt.padLeft #"0" 4 (Word.toString (Stamp.hash id))) 
 
     in
 
