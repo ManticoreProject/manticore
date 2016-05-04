@@ -36,6 +36,10 @@ structure LLVMBuilder : sig
     val labelOf : t -> var
     
     val paramsOf : t -> var list
+    
+    (* produces a copy of the given BB with a fresh name
+       and fresh parameter names (but keeps parameter types the same). *)
+    val copy : t -> t
 
     (* generate textual representation of the BB *)
     val toString : bb -> string
@@ -1055,5 +1059,14 @@ structure LLVMBuilder : sig
 
   (* ty -> int -> instr *)
   fun iconst ty i = fromC(intC(ty, Int.toLarge i))
+  
+  (* produces a copy of the given BB with a fresh name
+     and fresh parameter names (but keeps parameter types the same). *)
+  fun copy oldBlk = let
+        val newLab = LV.copy(labelOf oldBlk)
+        val newParams = L.map LV.copy (paramsOf oldBlk)
+      in
+        new(newLab, newParams)
+      end
 
 end

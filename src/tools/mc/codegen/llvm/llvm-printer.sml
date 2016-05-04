@@ -722,10 +722,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 L.map maybeCast (ListPair.zipEq(llArgs, params))
             end
         
-        and markPred env jmp = markPredFrom b env jmp
+        and markPred env jmp = markPredFrom b env (getCC env jmp)
             
-        and markPredFrom b env jmp = let
-                val (llLab, allArgs) = getCC env jmp
+        and markPredFrom b env (llLab, allArgs) = let
                 val llBB = lookupBB(env, llLab)
                 val bbParams = LB.paramsOf llBB
                 
@@ -800,8 +799,54 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                   end
               
                | C.If (cond, trueJ, falseJ) => let
+                    val (trueLab, _) = markPred env trueJ
+                    
+                    val (maybeFalseTarg as (falseLab, falseArgs)) = getCC env falseJ
+                    
+                    val ((falseLab, _), maybeNewBlock) = if not (LV.same(falseLab, trueLab))
+                                    
+                                    then (markPredFrom b env maybeFalseTarg, NONE) (* no need to fret *)
+                                    
+                                    else let (* we need to make a dummy basic block
+                                                to serve as the precessor block for the target
+                                                block in the event of the cond being false.
+                                                in LLVM SSA we cannot have phi's from the same
+                                                predecessor but different values. *)
+                                          
+                                          (* almost do what markPredFrom does, just a bit diff *)
+                                          val realSuccB = lookupBB(env, falseLab)
+                                          val dummyB = LB.copy realSuccB
+                                          val dummyLab = LB.labelOf dummyB
+                                          val dummyParams = LB.paramsOf dummyB
+                                          
+                                          (* no real need to update the env *)
+                                          (*val env = insertBB(env, dummyLab, dummyB)*)
+                                          
+                                          val dummyArgs = matchCC(falseArgs, dummyParams)
+                                          
+                                          
+                                          (* edge from current block to our new dummy block.
+                                             this represents the new false arm of the current block.
+                                             
+                                             NOTE how we are not using markPredFrom. We do not want
+                                             to actually mark dummyB as having a predecessor,
+                                             because we do not want any phi's emitted for the dummy
+                                             block. we literally want it to just be a branch instruction. *)
+                                          val dummyJump = (dummyLab, dummyArgs)
+                                          
+                                          (* also need to mark the successor block *)
+                                          val _ = LB.addIncoming realSuccB dummyJump
+                                          
+                                          (* the dummy block just dispatches to the actual
+                                             location this blocks is going to *)
+                                          val dummyFin = LB.br dummyB falseLab
+                                          
+                                         in
+                                            (dummyJump, SOME dummyFin)
+                                         end
+                    (*
                     val (trueTarg, _) = markPred env trueJ
-                    val (falseTarg, _) = markPred env falseJ
+                    val (falseTarg, _) = markPred env falseJ*)
                     
                     val llArgs = L.map (fn x => lookupV(env, x)) (CU.varsOf cond)
                     val cvtr = OU.fromCond b cond
@@ -811,7 +856,10 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                      
                    in
                      
-                     (fn () => [LB.condBr b (result, trueTarg, falseTarg)])
+                     (fn () => L.mapPartial (fn x => x) [
+                            SOME (LB.condBr b (result, trueLab, falseLab)),
+                            maybeNewBlock
+                        ])
                      
                    end
                    

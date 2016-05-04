@@ -19,21 +19,6 @@ LLVM backend todo list
     
 ***** BUGS *****  
 
-- The parray regression tests fail with the following error
-
-PHI node has multiple entries for the same basic block with different incoming values!
-  %minlen_cfg17654_2030B = phi i32* [ %r_203C3, %letJoinKCheck_cfg1970C_202EF ], [ %r_203BA, %letJoinKCheck_cfg1970C_202EF ]
-label %letJoinKCheck_cfg1970C_202EF
-  %r_203C3 = bitcast %_utupTy.39* %r_203BF to i32*
-  %r_203BA = bitcast %_utupTy.39* %r_203B6 to i32*
-  
-  This is because in CFG, the same basic block can be the target of both branches
-  of an if expression, but carry different values as args. We need to generate a dummy
-  BB for the duplicate arm. This new BB will just unconditionally branch
-  the original target to satisfy the requirements of SSA form (wrt what the
-  definition of a basic block is).
-
-
 
 ***** FUTURE OPTIMIZATIONS *****
 
