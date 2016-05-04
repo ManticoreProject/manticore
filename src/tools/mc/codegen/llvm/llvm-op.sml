@@ -162,6 +162,9 @@ structure LLVMOp = struct
      it tells the builder, specifically LB.mk, what the result type of an instruction is!! 
      *)
   fun typeCheck (x : op_code, inputs : Ty.t vector) : Ty.t option = let
+      
+      exception WrongTy of Ty.t 
+      
       val numInput = arity x
       val _ = if numInput = V.length inputs 
                 then ()
@@ -169,7 +172,7 @@ structure LLVMOp = struct
 
       (* allows one to specify a chk which changes based upon the argument number. *)
       fun checkTys chk inputs = 
-        V.foldli (fn (i, t, b) => b andalso chk(i, t)) true inputs
+        V.foldli (fn (i, t, b) => chk(i, t) orelse raise WrongTy t) true inputs
 
       (* all arguments must be of the same type, and the arguments can only
          be a certian kind. We ensure one argument matches the kind requirement,
@@ -179,12 +182,11 @@ structure LLVMOp = struct
         in
           if chk first
             then 
-              if checkTys (fn (_, t) => LT.same(first, t)) inputs
-                then first
-                else 
-                  raise Fail "not all types are the same"
+              (checkTys (fn (_, t) => LT.same(first, t)) inputs ; first)
+                handle WrongTy wrong =>
+                  (err (toString x) (LT.fullNameOf first) (LT.fullNameOf wrong))
           else 
-            raise Fail "invalid type kind"
+            (err (toString x) "not the following type" (LT.fullNameOf first))
         end
 
     in 
@@ -206,12 +208,16 @@ structure LLVMOp = struct
 
       | Icmp _ => let
           (* gives us the type of the two operands *)
-          val ty = sameKinds (fn x => (intOrVecOfInt x) orelse (ptrOrVecOfPtr x)) inputs
+          (* val ty = sameKinds (fn x => (intOrVecOfInt x) orelse (ptrOrVecOfPtr x)) inputs *)
+          
+          (* NOTE a bunc of stuff commented out for now to see if LLVM complains about it ;) gives better err msg *)
+          
           val i1Ty = LT.mkInt(LT.cnt 1)
         in
-          SOME( case vecSize ty
+          SOME( i1Ty
+              (* case vecSize ty
                   of NONE => i1Ty
-                   | SOME i => LT.mkVector(i, i1Ty) )
+                   | SOME i => LT.mkVector(i, i1Ty) *) )
         end
 
       | Fcmp _ => let
@@ -472,7 +478,7 @@ structure LLVMOp = struct
 
 
 
-  fun checkAttrs (x : op_code, attrSet : AS.set) : AS.set = let
+  and checkAttrs (x : op_code, attrSet : AS.set) : AS.set = let
       val invalidAttrs = AS.difference(attrSet, validAttrs(x))
     in
       if AS.isEmpty(invalidAttrs)

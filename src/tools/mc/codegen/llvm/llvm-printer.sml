@@ -1005,14 +1005,15 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                 val lhsTyLL = LT.typeOf lhsTy
             in
                 case (CFGTyUtil.equal(lhsTy, rhsTy), CFGTyUtil.equal(CFGTy.T_Any, rhsTy))
-                of (true, _) => (fn x => x) (* do nothing *)
-                 | (false, _) => (fn instr => cast (Op.equivCast(LB.toTy instr, lhsTyLL)) (instr, lhsTyLL))
+                    (* NOTE was previously (false, _) for this first one, wanted to make it less casty *)
+                of (false, true) => (fn instr => cast (Op.equivCast(LB.toTy instr, lhsTyLL)) (instr, lhsTyLL))
+                 | _ => (fn x => x) (* do nothing *)
                  (*| _ => raise Fail "did not expect an implicit cast of RHS non-Any ty to some other ty in a select"*)
             end
         
       
       
-        val llv = lookupV(env, rhsVar)        
+        val llv = lookupV(env, rhsVar)
       in
         (case LPU.calcAddr b i llv
             of SOME addr => insertV(env, lhsVar, implicitCaster (mk Op.Load #[addr]))
@@ -1117,7 +1118,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         val cvtr = OU.fromPrim b prim
         val (result, env) = (cvtr llArgs, env) 
                             handle OU.ParrayPrim f => let
-                                val arg = { vproc = lookupMV(env, MV_Vproc),
+                                val arg = { resTy = (LT.typeOf o CV.typeOf) lhsVar,
+                                            vproc = lookupMV(env, MV_Vproc),
                                             alloc = lookupMV(env, MV_Alloc),
                                             allocOffset = Spec.ABI.allocPtr }
                                 val { result, alloc } = f arg

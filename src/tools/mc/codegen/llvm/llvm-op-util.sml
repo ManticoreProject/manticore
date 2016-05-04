@@ -37,7 +37,8 @@ structure LLVMOpUtil = struct
    *)
     
   exception ParrayPrim of 
-    { vproc : LB.instr, 
+    { resTy : LT.ty,
+      vproc : LB.instr, 
       alloc : LB.instr,
       allocOffset : IntegerLit.integer } -> { alloc : LB.instr, result : LB.instr }
 
@@ -52,17 +53,17 @@ local
     val Iconst = const LB.intC
     val Fconst = const LB.floatC
     
-    fun asAnyTy bb instr = LB.cast bb Op.BitCast (instr, LT.uniformTy)
+    fun asTy bb ty instr = LB.cast bb (Op.equivCast(LB.toTy instr, ty)) (instr, ty)
     
     (* the implementation of this follows directly from the output of the old MLRISC backend. *)
     fun allocXArray bb (label, NONE) = 
-        (fn [ n ] => raise ParrayPrim (fn {vproc, alloc, allocOffset} => let
+        (fn [ n ] => raise ParrayPrim (fn {resTy, vproc, alloc, allocOffset} => let
                 val loc = {vproc=vproc, off=allocOffset}
                 
                 val _ = LPU.saveAllocPtr bb loc alloc
 
                 (* call C routine to do the allocation, with bitcasts as needed *)
-                val res = asAnyTy bb (LB.call bb 
+                val res = asTy bb resTy (LB.call bb 
                     (LB.fromV label, #[LB.cast bb Op.BitCast (vproc, LT.voidStar), n ]))
                     
                 (* retrieve the modified allocation pointer *)
@@ -372,15 +373,15 @@ in (case p
             (* in prim-gen-fn.sml the args are (n, xs), but n is unused. *)  
             fun cvtr ([ _, xs ]) = raise ParrayPrim (haveStuff xs)
             
-            and haveStuff xs {vproc, alloc, allocOffset} = let
+            and haveStuff xs {resTy, vproc, alloc, allocOffset} = let
                     val loc = {vproc=vproc, off=allocOffset}
                     
                     val _ = LPU.saveAllocPtr bb loc alloc
                     
                     (* call C routine to do the allocation, with bitcasts as needed *)
-                    val res = asAnyTy bb (
+                    val res = asTy bb resTy (
                         LB.call bb (fv label, #[c Op.BitCast (vproc, LT.voidStar),
-                                             c Op.BitCast (xs, LT.voidStar)]))
+                                             c (Op.equivCast(LB.toTy xs, LT.voidStar)) (xs, LT.voidStar)]))
                         
                     (* retrieve the modified allocation pointer *)
                     val newAlloc = LPU.restoreAllocPtr bb loc
