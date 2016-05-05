@@ -66,6 +66,10 @@ structure LLVMOp = struct
     | Icmp of icmp_kind
     | Fcmp of fcmp_kind
     
+    (* NOTE 'pause' is not a real primop in LLVM, so we have to implement it with
+       inline assembly, and the llvm-builder's toString as of 5/4/16 assumes x86 *)
+    | Pause  
+    
     and phi
     = P_Add
     | P_Xchg
@@ -137,6 +141,7 @@ structure LLVMOp = struct
       | Load )   => 1
       
     | CmpXchg => 3
+    | Pause => 0
     (* end arity *))
 
   structure Ty = LLVMTy
@@ -168,7 +173,7 @@ structure LLVMOp = struct
       val numInput = arity x
       val _ = if numInput = V.length inputs 
                 then ()
-              else raise Fail "bogus number of args"
+              else raise Fail ("bogus number of args for op " ^ (toString x))
 
       (* allows one to specify a chk which changes based upon the argument number. *)
       fun checkTys chk inputs = 
@@ -236,7 +241,7 @@ structure LLVMOp = struct
          | FDiv
          | FRem ) => SOME(sameKinds realOrVecOfReal inputs)
          
-      
+      | Pause => NONE
       
       | Store => let 
         (* store has no result but we check the types *)
@@ -563,6 +568,7 @@ structure LLVMOp = struct
 
       | Icmp _ => "icmp"
       | Fcmp _ => "fcmp"
+      | Pause => "pause"
     (* esac *))
 
 

@@ -571,6 +571,13 @@ structure LLVMBuilder : sig
                           LT.nameOf ptrTy, " ", ptr, alignment
                       ]
                   end
+                  
+                  | Op.Pause => 
+                        (* NOTE this op can only be implemented with inline assembly in LLVM,
+                                and currently we assume x86 as the backend target.
+                                not sure if the 2nd part should say "~{dirflag},~{fpsr},~{flags}"
+                                instead of the empty string. *)
+                        "call void asm sideeffect \"pause\", \"\"()"
                 
                 | _ => "; opcode " ^ (Op.toString opc) ^ " (with no result) not implemented."
                  
