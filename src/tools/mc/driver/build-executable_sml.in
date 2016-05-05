@@ -184,8 +184,10 @@ Pass Arguments:  -domtree
     
     val o_level2 = [
         "-simplifycfg",
+        "-dce",
         "-reassociate",
         "-constprop",
+        "-sink",
         "-early-cse",
         "-jump-threading",
         "-correlated-propagation",
