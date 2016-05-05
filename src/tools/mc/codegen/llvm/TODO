@@ -5,8 +5,6 @@ LLVM backend todo list
     - MEMORY FENCES: It looks like we need to mark all loads/stores as 
     seq_cst to play it safe for now, in order to have a working memory fence in LLVM.
     
-    - PAUSE: Need to implement the PAUSE primop with inline asm.
-    
     - Floating point literals: integrate John's code and try it out.        
         
     - find out why instcombine breaks our programs (if it still does after we pass tests)
