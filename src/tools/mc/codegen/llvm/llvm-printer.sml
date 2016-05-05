@@ -1152,14 +1152,14 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
         end
         
       
-      and genPrim0(env, prim) = (let
+      and genPrim0(env, prim) = let
         val llArgs = L.map (fn x => lookupV(env, x)) (PU.varsOf prim)
         val cvtr = OU.fromPrim b prim
       in
         (* lhs for Prim0 so dont update the env. NOTE we're assuming
             no regular prims with a lhs ended up in a Prim0 *)
         (cvtr llArgs ; env) 
-      end) handle OU.TODO _ => env (* TODO temp handler until all primops are implemented *)
+      end
       
       and genPrim(env, (lhsVar, prim)) = let
         val llArgs = L.map (fn x => lookupV(env, x)) (PU.varsOf prim)

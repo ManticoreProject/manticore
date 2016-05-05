@@ -31,7 +31,11 @@ structure LLVMAttribute = struct
     | AllowRecip
     | FastMath  (* allows algebraically equiv transforms, also
                    implies all of the above flags *)
+    (* atomic orderings *)
+    | SeqCst
 
+  
+  val atomicOrderings = [ SeqCst ]
 
 
   fun toString (x : t) : string = (case x
@@ -46,6 +50,7 @@ structure LLVMAttribute = struct
      | NoSZero      => "nsz"
      | AllowRecip   => "arcp"
      | FastMath     => "fast"
+     | SeqCst       => "seq_cst"
     (* esac *))
 
   fun id (x : t) : int = (case x
@@ -66,6 +71,7 @@ structure LLVMAttribute = struct
      | NoSZero      => 8
      | AllowRecip   => 9
      | FastMath     => 10
+     | SeqCst       => 11
 
      
 

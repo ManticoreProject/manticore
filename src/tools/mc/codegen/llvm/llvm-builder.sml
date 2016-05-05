@@ -389,6 +389,18 @@ structure LLVMBuilder : sig
                             then (A.toString a) ^ " "
                             else ""
       
+      (* pluck the single atomic ordering that must be in this set out,
+         as a string. If there is no ordering specified, and there is a default,
+         the default is returned. *)
+      fun atomicOrdering(atr, dflt) = let
+        val possibleOrderings = AS.addList(AS.empty, A.atomicOrderings)
+        val chosenOrdering = AS.intersection(atr, possibleOrderings)
+      in
+        case (AS.listItems chosenOrdering, dflt)
+        of ([ordering], _)          => A.toString ordering
+         | (_, SOME dfltOrdering)   => A.toString dfltOrdering
+         | _ => raise Fail ("either too many atomic orderings specified, or none, with no default for an op")
+      end
 
       fun mkGEP(inbounds, (resName, resTy)) = (let
               val (ptrName, ptrTy) = break (V.sub(args, 0))
@@ -515,6 +527,7 @@ structure LLVMBuilder : sig
                     val (new, newTy) = break(V.sub(args, 2))
                     
                     val volatile = optAttr(atr, A.Volatile)
+                    val ordering = atomicOrdering(atr, SOME A.SeqCst)
                     
                    in
                    
@@ -522,7 +535,7 @@ structure LLVMBuilder : sig
                         resName, " = ", Op.toString opc, " ", volatile,
                         LT.nameOf addrTy, " ", addr, ", ",
                         LT.nameOf cmpTy, " ", cmp, ", ",
-                        LT.nameOf newTy, " ", new, " seq_cst seq_cst"
+                        LT.nameOf newTy, " ", new, " ", ordering, " ", ordering
                     ]
                    
                    end
@@ -532,6 +545,7 @@ structure LLVMBuilder : sig
                      val (var, varTy) = break(V.sub(args, 1))
                      
                      val volatile = optAttr(atr, A.Volatile)
+                     val ordering = atomicOrdering(atr, SOME A.SeqCst)
                      
                     in
                     
@@ -539,7 +553,7 @@ structure LLVMBuilder : sig
                          resName, " = ", Op.toString opc, " ", volatile,
                          Op.phiKindToStr phi, " ",
                          LT.nameOf addrTy, " ", addr, ", ",
-                         LT.nameOf varTy, " ", var, " seq_cst"
+                         LT.nameOf varTy, " ", var, " ", ordering
                      ]
                     
                     end
@@ -578,6 +592,12 @@ structure LLVMBuilder : sig
                                 not sure if the 2nd part should say "~{dirflag},~{fpsr},~{flags}"
                                 instead of the empty string. *)
                         "call void asm sideeffect \"pause\", \"\"()"
+                        
+                  | Op.Fence => let
+                    val ordering = atomicOrdering(atr, SOME A.SeqCst)
+                  in
+                    S.concat ["fence ", ordering]
+                  end
                 
                 | _ => "; opcode " ^ (Op.toString opc) ^ " (with no result) not implemented."
                  

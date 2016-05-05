@@ -35,7 +35,7 @@ structure LLVMOp = struct
     | Or 
     | Xor
     
-    (* memory operations *)
+    (* memory operations. These accept atomic orderings as well. *)
     | Load
     | Store (* NOTE LLVM does <val> <ptr>, but in this interface we do <ptr> <val> *)
     
@@ -46,8 +46,13 @@ structure LLVMOp = struct
       If this turns out to be the wrong approach then we'll add another consistency
       arg to these dcons.
      *)
+    
+    (* See http://llvm.org/docs/Atomics.html *)
+    (* NOTE The following 3 default to seq_cst ordering, if none is specified. *)
     | Armw of phi (* atomic read-modify-write, implements fetch-and-phi primitive *)
-    | CmpXchg  (* takes (addr, cmp, new) and returns a { cmp, i1 } *)
+    | CmpXchg  (* takes (addr, cmp, new) and returns a { cmp, i1 }. the success and failure
+                  atomic orderings will be set to be the same as of the current version. *)
+    | Fence
 
     (* casts *)
     | Trunc 
@@ -141,7 +146,7 @@ structure LLVMOp = struct
       | Load )   => 1
       
     | CmpXchg => 3
-    | Pause => 0
+    | (Pause | Fence) => 0
     (* end arity *))
 
   structure Ty = LLVMTy
@@ -241,7 +246,7 @@ structure LLVMOp = struct
          | FDiv
          | FRem ) => SOME(sameKinds realOrVecOfReal inputs)
          
-      | Pause => NONE
+      | (Fence | Pause) => NONE
       
       | Store => let 
         (* store has no result but we check the types *)
@@ -514,13 +519,15 @@ structure LLVMOp = struct
         | Shl ) => AS.addList(AS.empty, [A.NSW, A.NUW])
         
      | (Load | Store) => AS.addList(AS.empty, 
-         [A.Atomic, A.Volatile, A.Aligned 0])
+         [A.Atomic, A.Volatile, A.Aligned 0] @ A.atomicOrderings)
          
-     | (Armw _ | CmpXchg) => AS.addList(AS.empty, [A.Volatile])
+     | (Armw _ | CmpXchg) => AS.addList(AS.empty, [A.Volatile] @ A.atomicOrderings)
+     
+     | Fence => AS.addList(AS.empty, A.atomicOrderings)
 
      | _ => AS.empty
 
-    )
+    (* esac *))
 
 
   
@@ -552,6 +559,7 @@ structure LLVMOp = struct
       
       | Armw _      => "atomicrmw"
       | CmpXchg     => "cmpxchg"
+      | Fence       => "fence"
       
       | Trunc       => "trunc"
       | ZExt        => "zext"

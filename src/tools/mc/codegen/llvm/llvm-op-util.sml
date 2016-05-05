@@ -11,8 +11,6 @@ structure LLVMOpUtil = struct
 
 (* because cyclic Op.dependency between LLVMOp & LLVMBuilder *)
 
-  exception TODO of string
-
   structure LB = LLVMBuilder
   structure P = Prim
   structure AS = LLVMAttribute.Set
@@ -402,6 +400,9 @@ in (case p
     
     | P.Pause => (fn _ => f e Op.Pause #[])
     
+    | (P.FenceRead | P.FenceWrite | P.FenceRW ) =>
+        (fn _ => f e Op.Fence #[])
+    
     (*     
   
     NOTE It looks like we need to mark all loads/stores as seq_cst to play it
@@ -409,13 +410,9 @@ in (case p
     
     http://llvm.org/releases/3.8.0/docs/Atomics.html#atomics-and-ir-optimization
   
-    | FenceRead			(* memory fence for reads *)
-    | FenceWrite			(* memory fence for writes *)
-    | FenceRW				(* memory fence for both reads and writes *)
-  
     *)
     
-    | _ => raise TODO ("primop " ^ (PrimUtil.nameOf p) ^ " not implemented")
+    (* | _ => raise TODO ("primop " ^ (PrimUtil.nameOf p) ^ " not implemented") *)
     
     (* esac *))
   end (* end let of fromPrim*)
