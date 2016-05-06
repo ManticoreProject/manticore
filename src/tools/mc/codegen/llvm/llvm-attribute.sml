@@ -22,7 +22,8 @@ structure LLVMAttribute = struct
     | Aligned of int
     | NSW (* no signed wrap *)
     | NUW (* no unsigned wrap *)
-    | ExactDiv (* for sdiv *)
+    | ExactDiv (* for sdiv NOTE this needs to be changed to just be "Exact" b/c other ops use it like lshr
+                    don't rely on this for now! *)
 
     (* fast math flags for fadd, fsub, fmul, fdiv, frem, fcmp *)
     | NoNaN

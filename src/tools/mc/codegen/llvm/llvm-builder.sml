@@ -428,7 +428,14 @@ structure LLVMBuilder : sig
                   | Op.Mul
                   | Op.Shl
                   | Op.SDiv
-                  | Op.UDiv ) => let
+                  | Op.UDiv
+                  | Op.SRem
+                  | Op.URem
+                  | Op.LShr 
+                  | Op.AShr 
+                  | Op.And 
+                  | Op.Or 
+                  | Op.Xor ) => let
                       (* we already ran checkAttr even though some of
                          these attrs are mutually exclusive relative to op *)
                          
@@ -558,7 +565,7 @@ structure LLVMBuilder : sig
                     
                     end
                                 
-               | _ => "; opcode " ^ (Op.toString opc) ^ " (with result) not implemented."
+               | _ => raise Fail ("opcode " ^ (Op.toString opc) ^ " (with result) not implemented.")
 
               (* esac *))
               
@@ -599,7 +606,7 @@ structure LLVMBuilder : sig
                     S.concat ["fence ", ordering]
                   end
                 
-                | _ => "; opcode " ^ (Op.toString opc) ^ " (with no result) not implemented."
+                | _ => raise Fail ("opcode " ^ (Op.toString opc) ^ " (with no result) not implemented.")
                  
                  (* esac *))
              
