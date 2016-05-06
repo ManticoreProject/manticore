@@ -2,9 +2,6 @@ LLVM backend todo list
 
 ***** TODOs *****      
     
-    - MEMORY FENCES: It looks like we need to mark all loads/stores as 
-    seq_cst to play it safe for now, in order to have a working memory fence in LLVM.
-    
     - Floating point literals: integrate John's code and try it out.        
         
     - find out why instcombine breaks our programs (if it still does after we pass tests)
@@ -60,3 +57,16 @@ LLVM backend todo list
     Note that while manticore functions should be marked noinline due to
     GC checks being inserted early, runtime system calls that do not
     perform allocation are fair game. We'll want to annotate functions in the runtime system.
+
+
+***** NOTES *****
+
+- MEMORY FENCES: It looks like we need to mark all loads/stores as 
+seq_cst to play it safe for now, in order to have a working memory fence in LLVM.
+
+19:48 (kavon) if i'm using the fence operation, do _all_ of my load/store instructions need to be marked with the same atomic ordering in order for it to have an effect?
+19:52 <TNorthover> kavon: no, fences are capable of enforcing ordering even with non-atomic loads.
+19:53 <TNorthover> kavon: you do have to be a bit careful though.
+19:58 <TNorthover> kavon: for example if one thread did "data = whatever(); produced_data = true; fence" the two assignments could still be reordered (and even seen in a different order by different threads).
+19:58 <TNorthover> Just the usual stuff really.
+19:59 (kavon) ahh okay, i'll keep that in mind
