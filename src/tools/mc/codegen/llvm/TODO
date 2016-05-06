@@ -2,14 +2,11 @@ LLVM backend todo list
 
 ***** TODOs *****      
     
-    - Floating point literals: integrate John's code and try it out.        
-        
-    - find out why instcombine breaks our programs (if it still does after we pass tests)
+    - Pass all regression tests and benchmarks that should pass.
+        - find out why the linter complains about those few things.
+        - find out why instcombine breaks our programs
     
-    - find out why the linter complains about those few things.
-    
-    - Pass all regression tests and benchmarks.
-    
+    - Floating point literals: integrate John's code and try it out.
     
     
 ***** BUGS *****  
