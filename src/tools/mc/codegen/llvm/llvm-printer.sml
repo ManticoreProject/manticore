@@ -1527,7 +1527,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
   
   fun externalConstants () = let
     fun globalFormatter lv init = S.concat[LV.toString lv, " = global ",
-                                        (LT.nameOf o LV.typeOf) lv, " ", init, "\n"]
+                                        (LT.nameOf o LV.typeOf) lv, " ", init, ", align 8\n"]
                                         
     fun aliasFormatter lv init = S.concat[LV.toString lv, " = alias ",
                                         (LT.nameOf o LT.deref o LV.typeOf) lv, ", ",
