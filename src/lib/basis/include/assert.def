@@ -15,7 +15,7 @@
 #  define pml_assert(check) ()
 
 #else
-#define _QUOTE(x) #x
+#define _QUOTE(x) "x"
 #define QUOTE(x) _QUOTE(x)
 #  define assert(check)							        \
 	if check							        \

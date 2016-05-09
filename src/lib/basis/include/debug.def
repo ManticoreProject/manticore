@@ -27,7 +27,7 @@
 
 
 
-# define _QUOTE(x) #x
+# define _QUOTE(x) "x"
 # define QUOTE(x) _QUOTE(x)
 
 #define PRINT_DEBUG(msg)	do ccall M_PrintDebugMsg(false, msg, QUOTE(PML_FILE), __LINE__)
