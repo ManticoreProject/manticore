@@ -13,6 +13,7 @@ Library
   signature RUNTIME_CONSTANTS
   signature VAR_PARAMS
   signature VAR
+  signature IEEE_FLOAT_PARAMS
 
   structure BasicControl
   structure ExpansionOpts
@@ -31,9 +32,15 @@ Library
   structure Stats
   structure VarRep
   structure BasisNames
+  structure IEEEFloat16Params
+  structure IEEEFloat32Params
+  structure IEEEFloat64Params
+  structure IEEEFloat128Params
+  structure IEEEFloat256Params
 
   functor CheckVarCountsFn
   functor VarFn
+  functor FloatToBitsFn
 
   structure Memo
 
@@ -54,6 +61,7 @@ is
   error.sml
   exn-name.sml
   float-lit.sml
+  float-to-bits-fn.sml
   integer-lit.sml
   literal.sml
   prog-point.sml
