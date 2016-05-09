@@ -20,7 +20,7 @@ signature MANTICORE_PSEUDO_OPS = sig
     val alignData : pseudo_op
     val alignCode : pseudo_op
     val alignEntry : pseudo_op
-    val float : (P.T.fty * FloatLit.float list) -> pseudo_op
+    val float : (P.T.fty * FloatLit.t list) -> pseudo_op
     val asciz : string -> pseudo_op
     val int : (int_size * IntInf.int list) -> pseudo_op
 

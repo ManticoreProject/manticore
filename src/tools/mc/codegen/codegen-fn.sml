@@ -25,7 +25,7 @@ functor CodeGenFn (BE : BACK_END) :> CODE_GEN =
 	val intTy = MTy.wordTy)
 
     structure FloatLit = LiteralTblFn (
-        type lit = (T.ty * FloatLit.float)
+        type lit = (T.ty * FloatLit.t)
 	val labelPrefix = "flt"
 	fun hash (_, f) = FloatLit.hash f
 	fun same ( (sz1 : T.ty, f1), (sz2, f2) ) =

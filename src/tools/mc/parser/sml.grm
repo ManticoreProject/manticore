@@ -83,7 +83,7 @@
     | QID of (Atom.atom list) * Atom.atom
     | POSINT of IntInf.int		(* positive integer *)
     | NEGINT of IntInf.int		(* negative integer *)
-    | FLOAT of FloatLit.float
+    | FLOAT of FloatLit.t
     | STRING of string
     ;
 

@@ -157,7 +157,7 @@ structure CaseSimplify : sig
 
     structure F32Tst = LiteralCaseFn (
       struct
-	type label = FloatLit.float
+	type label = FloatLit.t
 	fun equal (a, b) = (case FloatLit.compare(a, b) of EQUAL => true | _ => false)
 	fun greater (a, b) = (case FloatLit.compare(a, b) of GREATER => true | _ => false)
 	fun succ _ = NONE
@@ -168,7 +168,7 @@ structure CaseSimplify : sig
 
     structure F64Tst = LiteralCaseFn (
       struct
-	type label = FloatLit.float
+	type label = FloatLit.t
 	fun equal (a, b) = (case FloatLit.compare(a, b) of EQUAL => true | _ => false)
 	fun greater (a, b) = (case FloatLit.compare(a, b) of GREATER => true | _ => false)
 	fun succ _ = NONE

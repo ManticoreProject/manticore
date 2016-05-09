@@ -16,7 +16,7 @@ structure Literal : sig
       | Tag of string                   (* special constant used to distinguish elements *)
                                         (* in association lists. *)
       | Int of IntegerLit.integer	(* Int, Long, and Integer types *)
-      | Float of FloatLit.float		(* Float and Double types *)
+      | Float of FloatLit.t		(* Float and Double types *)
       | Char of UTF8.wchar
       | String of string		(* uses UTF8 encoding *)
       | Bool of bool			(* Raw boolean value (not PML's bool type!) *)
@@ -44,7 +44,7 @@ structure Literal : sig
       | Tag of string                   (* special constant used to distinguish elements *)
                                         (* in association lists. *)
       | Int of IntegerLit.integer	(* Int, Long, and Integer types *)
-      | Float of FloatLit.float		(* Float and Double types *)
+      | Float of FloatLit.t		(* Float and Double types *)
       | Char of UTF8.wchar
       | String of string		(* uses UTF8 encoding *)
       | Bool of bool			(* Raw boolean value (not PML's bool type!) *)

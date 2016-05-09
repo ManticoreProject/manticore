@@ -183,7 +183,7 @@ functor PMLParseTreeFn (
   (* literal values *)
     and const
       = IntLit of IntInf.int
-      | FltLit of FloatLit.float
+      | FltLit of FloatLit.t
       | StrLit of string
 
     type program = decl list mark
