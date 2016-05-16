@@ -14,12 +14,15 @@ LLVM backend todo list
 
 ***** FUTURE OPTIMIZATIONS *****
 
-    - Add some aliasing information for the allocation pointer.
+    - Add some aliasing information for the allocation pointer and codegen.
     
-        We can use the 'noalias' attribute on the parameter of every function which is the allocation pointer.
+        We can use the 'noalias' and 'nocapture' attribute on the parameter of every function which is the allocation pointer.
+        
         This will require changing the jwaCC type list (so the first one is an LT.allocPtrTy instead of an i64)
-        and also adding a block of function prototype declarations, because only in the prototypes can you write
-        noalias. This attribute corresponds to the 'restrict' keyword in C99. https://en.wikipedia.org/wiki/Restrict
+        
+        and also adding a block of function prototype declarations, because only in the prototypes can you write noalias. NOTE debatable, GHC uses "i64* noalias nocapture %Hp_Arg" in function definitions.
+        
+         This attribute corresponds to the 'restrict' keyword in C99. https://en.wikipedia.org/wiki/Restrict
 
    - Take advantage of LTO in LLVM,
    and to do this, we need to compile the entire runtime system to .ll
