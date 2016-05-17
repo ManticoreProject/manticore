@@ -20,9 +20,9 @@
 //  from the base pointer, whereas the LLVM backend soley uses the stack ptr.
 //  
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// |   return address for RTS  |
+// |   return address for RTS  | <- 16-byte align (RSP starts here)
 // | - - - - - - - - - - - - - |
-// |                           |  <- 16-byte boundary
+// |                           |
 // |      Callee Save Area     |
 // |                           |
 // | - - - - - - - - - - - - - |
@@ -30,9 +30,9 @@
 // |                           |
 // |      Spill Area           |
 // |                           |
-// |                           |  <- Stack Pointer (8-byte boundary)
+// |                           |  <- 8-byte align (RSP is here after ASM_Apply)
 // | - - - - - - - - - - - - - |  
-// |   future callq PC slot    |  <- 16-byte boundary once C calls are made
+// |   future callq PC slot    |  <- 16-byte align once C calls are made
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 /* Stack frame layout */

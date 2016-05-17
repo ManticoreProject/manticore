@@ -26,10 +26,10 @@
 /* 48 bytes for callee saves %rbx, %r12-%r15, %rbp */
 #define SAVE_AREA	(6*8)	
 
-/* pad so that the stack pointer ends up on an 8-byte boundary
-   so a callq aligns the stack to 16-byte boundary, per ABI */
+/* padding added to save area for the PC upon entry from RTS  */
 #define PAD_SZB		8	
 
+/* this total value must be on an 8-byte boundary, so a future callq during execution aligns to 16-bytes per ABI. see asm-glue for more info */
 #define FRAME_SZB	(SPILL_SZB+SAVE_AREA+PAD_SZB)
 
 #endif /* !_SIZES_H_ */
