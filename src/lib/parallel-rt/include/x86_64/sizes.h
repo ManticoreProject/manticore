@@ -17,11 +17,19 @@
 #  define VP_HEAP_SZB		ONE_MEG
 #endif
 
-/* sizes for the stack frame used to run Manticore code */
-#define SPILL_SZB	2048	/* for register spilling */
-#define SAVE_AREA	(5*8)	/* for callee saves %rbx, %r12-%r15 */
-#define PAD_SZB		8	/* pad so that frame size (plus saved PC and FP */
-				/* is a multiple of 16 bytes */
+/* sizes for the stack frame used to run Manticore code. See the asm-glue
+   file for information about how the stack frame should be setup. */
+
+/* 256 pointer-sized slots for register spills */
+#define SPILL_SZB	2048	
+
+/* 48 bytes for callee saves %rbx, %r12-%r15, %rbp */
+#define SAVE_AREA	(6*8)	
+
+/* pad so that the stack pointer ends up on an 8-byte boundary
+   so a callq aligns the stack to 16-byte boundary, per ABI */
+#define PAD_SZB		8	
+
 #define FRAME_SZB	(SPILL_SZB+SAVE_AREA+PAD_SZB)
 
 #endif /* !_SIZES_H_ */
