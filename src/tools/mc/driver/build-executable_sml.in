@@ -183,6 +183,7 @@ Pass Arguments:  -domtree
     
     
     val o_level2 = [
+        "-tailcallelim",
         "-simplifycfg",
         "-dce",
         "-reassociate",
