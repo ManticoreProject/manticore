@@ -15,6 +15,7 @@ signature HEADER_TABLE = sig
     val addHdr : (hdr_tbl * hdr) -> int
     val appi : ((hdr * int) -> unit) -> hdr_tbl -> unit    
     val print : (hdr_tbl) -> (hdr * int) list
+    val asString : (hdr_tbl) -> string (* for debugging *)
 
 end (* HEADER_TABLE *)
 
@@ -66,6 +67,14 @@ functor HeaderTblFn (
       (* end case *))
       
   fun print (tbl) = Tbl.listItemsi tbl
+  
+  fun asString (tbl) = String.concat (
+      List.map 
+      (fn (k, v) => (word2String (A.hash k)) ^ "\t\t->\t" ^ (Int.toString v) ^ "\n") 
+      (Tbl.listItemsi tbl)
+      )
+  
+  and word2String (w : word) : string = (LargeInt.toString (Word.toLargeInt w))
 
   val appi = Tbl.appi
 
