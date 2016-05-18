@@ -58,15 +58,18 @@ any Unix machine setup for C++ development should already have. To configure LLV
     cd ./llvm/build
     cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ../src
     
-Next, to build and install LLVM locally. Replace `n` below with the number of parallel
-jobs you would like to use during the build. If you have a spinning disk
-hard drive, we recommend `n` such that `2.5GB * n < RAM`, as the linking stage eats up a huge amount of memory, causing heavy swapping.
+Next, to build and install LLVM locally, which step typically takes at least 10 minutes.
+Replace `n` below with the number of parallel jobs you would like to use during the build.
+If you have a spinning disk hard drive, we recommend `n` to be at most `(RAM / 2.5GB)`,
+as the linking stage eats up a huge amount of virtual memory, and once you start swapping
+it may not finish.
 
     make install -j n 
 
 Finally, we will configure with our local installation of LLVM by adding
 the `--with-llvm` option to configure.
 
+    cd ../..
     ./configure --with-llvm=./llvm/install
     
 
