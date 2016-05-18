@@ -273,7 +273,11 @@ dnl
 LLVM_DIR=""
 AC_ARG_WITH(llvm,
   AC_HELP_STRING([--with-llvm=PATH], [specify location of LLVM installation]),
-  LLVM_DIR=$with_llvm)
+  dnl define an m4 variable for $with_llvm so we can pass it to m4_esyscmd
+  m4_define([with_llvm_m4], [$with_llvm])
+  dnl because OS X has no working realpath or readlink, use a shell script to canonicalize llvm path:
+  LLVM_DIR=[m4_esyscmd([./config/realpath.sh with_llvm_m4])])
+
 if test x$with_llvm = xyes -o x$with_llvm = xno ; then
   AC_MSG_ERROR([--with-llvm option must specify directory argument])
 elif test x$with_llvm != x -a ! -r $LLVM_DIR/bin/llc  ; then
@@ -281,6 +285,7 @@ elif test x$with_llvm != x -a ! -r $LLVM_DIR/bin/llc  ; then
 elif test x$with_llvm != x -a ! -r $LLVM_DIR/bin/opt  ; then
   AC_MSG_ERROR([llvm optimizer (opt) not found at $LLVM_DIR])
 fi
+
 AC_SUBST(LLVM_DIR)
 
 
