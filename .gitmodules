@@ -1,0 +1,3 @@
+[submodule "llvm/src"]
+	path = llvm/src
+	url = https://smlnj-gitlab.cs.uchicago.edu/manticore/llvm.git

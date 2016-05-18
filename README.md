@@ -44,9 +44,12 @@ If you would like to configure with external MLRISC libraries, run the following
 
 You must have a custom version of LLVM installed in order to have the LLVM
 backend available in your installation. The following commands will obtain
-and build LLVM
+LLVM and place it in `./llvm/src`
 
+    git submodule init
+    git submodule update
     
+Next, we're going to build LLVM. TODO put steps here.
 
 Then proceed with the installation instructions below
 
