@@ -32,32 +32,47 @@ LLVM backend, you can simply run
 
 	./configure
 
-and skip to the build/installation step.
+and then skip to the build/installation step. Otherwise, you can add some
+of the following options to `configure` before moving on to building.
 
 #### Configuring with external MLRISC
 
-If you would like to configure with external MLRISC libraries, run the following instead.
+If you would like to configure with external MLRISC libraries, 
+add the `--with-mlrisc` option.
 
 	./configure --with-mlrisc=<path to mlrisc>
 
 #### Configuring with LLVM
 
-You must have a custom version of LLVM installed in order to have the LLVM
-backend available in your installation. The following commands will obtain
-LLVM and place it in `./llvm/src`
+You must have a *custom* version of LLVM installed and configured prior to
+building Manticore in order to have the LLVM backend available. The following commands will obtain the right LLVM sources and place it in `./llvm/src`
 
     git submodule init
     git submodule update
     
-Next, we're going to build LLVM. TODO put steps here.
+Next, we're going to build LLVM, which has its own set of [prerequisites](http://llvm.org/docs/GettingStarted.html#software) that
+any Unix machine setup for C++ development should already have. To configure LLVM, run the following commands
 
-Then proceed with the installation instructions below
+    mkdir ./llvm/build
+    mkdir ./llvm/install
+    cd ./llvm/build
+    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ../src
+    
+Next, to build and install LLVM locally. Replace `n` below with the number of parallel
+jobs you would like to use during the build. If you have a spinning disk
+hard drive, we recommend `n` such that `2.5GB * n < RAM`, as the linking stage eats up a huge amount of memory, causing heavy swapping.
 
+    make install -j n 
+
+Finally, we will configure with our local installation of LLVM by adding
+the `--with-llvm` option to configure.
+
+    ./configure --with-llvm=./llvm/install
+    
 
 ### Building and Installing the Distribution
 
-
-To build the compiler, we use the following command.
+Next, to build the compiler, we use the following command.
 
     make build
 
