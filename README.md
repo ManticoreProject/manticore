@@ -92,8 +92,11 @@ or globally.
 Details about running the regression suite goes here.
 
 
-Known large issues
--
+### Known Issues
+
+Some of the items below are out of date.
+
+#### Larger Issues
 - The frontend does not support signatures, functors, record types, and a slew of
 corner cases in the language.
 
@@ -112,8 +115,7 @@ typically dramatically different from the SML basis library due to the subset of
 the language implemented, which both makes existing code from another system
 hard to reuse and sometimes the interface cannot even be written.
 
-Known smaller issues
--
+#### Smaller Issues
 
 - The effect analysis defined in bom-opt/remove-atomics.sml should be changed from
 being name-based to instead either have a trackable annotation or other better
@@ -131,8 +133,7 @@ crashes quietly when that is exceeded.
 - Memoization and mutable state exist only as hand-performed translations to call
 basis library functions.
 
-Incomplete projects
--
+#### Incomplete projects
 
 - The safe-for-space closure conversion was not completed. While its code may be
 used for inspiration, we were not able to get a full write-up on its status
