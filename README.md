@@ -2,8 +2,8 @@
 
 [Manticore](http://manticore.cs.uchicago.edu) is a high-level parallel programming language aimed at general-purpose applications running on multi-core processors. Manticore supports parallelism at multiple levels: explicit concurrency and coarse-grain parallelism via CML-style constructs and fine-grain parallelism via various light-weight notations, such as parallel tuple expressions and NESL/Nepal-style parallel array comprehensions.
 
-REQUIREMENTS
--
+## REQUIREMENTS
+
 
 Manticore currently only supports the x86-64 (a.k.a. AMD64)
 architecture running on either Linux or Mac OS X. It is possible to
@@ -12,32 +12,47 @@ ported the runtime or code generator to them yet.
 
 Manticore is implemented in a mix of C and SML code.  You will need a
 recent version of SML/NJ (version 110.68+) installed.  Furthermore,
-your installation should include the MLRISC library.
+your installation of SML/NJ should include the MLRISC library. 
 
-BUILDING FROM SOURCE
--
+## BUILDING FROM SOURCE
 
-If building and installing the system from the Git sources you first must initialize the configuration
-script.  To do so, run the following two commands:
+If building and installing the system from source, you first must 
+generate the configuration script.  To do so, run the following two commands:
 
 	autoheader -Iconfig
 	autoconf -Iconfig
+    
+Then proceed with configuration.
+
+### Configuring
+
+Our next step is to run the configure script. If you are using the MLRISC
+library *included* with your SML/NJ installation and do *not* plan to use the
+LLVM backend, you can simply run
+
+	./configure
+
+and skip to the build/installation step.
+
+#### Configuring with external MLRISC
+
+If you would like to configure with external MLRISC libraries, run the following instead.
+
+	./configure --with-mlrisc=<path to mlrisc>
+
+#### Configuring with LLVM
+
+You must have a custom version of LLVM installed in order to have the LLVM
+backend available in your installation. The following commands will obtain
+and build LLVM
+
+    
 
 Then proceed with the installation instructions below
 
 
-BUILDING AND INSTALLING THE DISTRIBUTION
--
+### Building and Installing the Distribution
 
-Our first step is to run the configure script.
-
-	./configure
-
-This command links the compiler against the MLRISC libraries provided
-with the SML/NJ installation. Alternatively, we can build against 
-external MLRISC libraries.
-
-	./configure --with-mlrisc=<path to mlrisc>
 
 To build the compiler, we use the following command.
 
@@ -50,6 +65,11 @@ We can install locally
 or globally.
 
     make install
+
+### Testing
+
+Details about running the regression suite goes here.
+
 
 Known large issues
 -

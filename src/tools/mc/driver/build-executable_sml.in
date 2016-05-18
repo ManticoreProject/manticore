@@ -24,8 +24,6 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
     structure PrintTbl = PrintTable
 	structure PrintTblDbg = PrintTableDebug
     
-    val usedLLVM = Controls.get BasicControl.llvm
-
     val cat = String.concatWith " "
 
     fun ++ ("", l) = l
@@ -39,7 +37,6 @@ structure BuildExecutableMLRISC :> BUILD_EXECUTABLE = struct
 
     val cFlags = cat ("@CFLAGS@" 
                     ++ "@CFLAG_M64@" 
-                    ++ (if usedLLVM then "-DLLVM" else "") 
                     ++ [])
 
     fun ldFlags libName = let
@@ -143,12 +140,20 @@ Pass Arguments:  -domtree
     (* TOOLS *)
     val cat = String.concatWith " "
     
-    
+    fun pathOrDirect binaryName = let
+        val dir = "@LLVM_DIR@"
+    in
+        if String.size dir = 0 
+        then raise Fail ("This version of Manticore was not configured with LLVM!\n"
+                         "See the README.md file for details about how to rebuild Manticore.\n")
+                         
+        else dir ^ "/" ^ binaryName
+    end 
     
     (**********************
      *  flags and options for opt
      **********************)
-    val opt = "opt"
+    val opt = pathOrDirect "opt"
     
     (* TODO figure out why instcombine totally breaks our code ;) *)
     
@@ -239,7 +244,7 @@ Pass Arguments:  -domtree
     (**********************
      *  flags and options for llc
      **********************)
-    val llc = "llc"
+    val llc = pathOrDirect "llc"
     
     val l_level1 = [] (* ["-O1"] *)
     val l_level2 = ["-O2"]

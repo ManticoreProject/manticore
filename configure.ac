@@ -268,6 +268,23 @@ fi
 AC_SUBST(ML_BUILD)
 
 dnl
+dnl allow the user to override the location of the LLVM installation
+dnl
+LLVM_DIR=""
+AC_ARG_WITH(llvm,
+  AC_HELP_STRING([--with-llvm=PATH], [specify location of LLVM installation]),
+  LLVM_DIR=$with_llvm)
+if test x$with_llvm = xyes -o x$with_llvm = xno ; then
+  AC_MSG_ERROR([--with-llvm option must specify directory argument])
+elif test x$with_llvm != x -a ! -r $LLVM_DIR/bin/llc  ; then
+  AC_MSG_ERROR([llvm code generator (llc) not found at $LLVM_DIR])
+elif test x$with_llvm != x -a ! -r $LLVM_DIR/bin/opt  ; then
+  AC_MSG_ERROR([llvm optimizer (opt) not found at $LLVM_DIR])
+fi
+AC_SUBST(LLVM_DIR)
+
+
+dnl
 dnl allow the user to override the location of the MLRisc library
 dnl
 MLRISC_DIR=""
@@ -534,4 +551,3 @@ fi
 fi
 
 AC_OUTPUT
-
