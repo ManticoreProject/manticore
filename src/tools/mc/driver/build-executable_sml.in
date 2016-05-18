@@ -144,7 +144,7 @@ Pass Arguments:  -domtree
         val dir = "@LLVM_DIR@"
     in
         if String.size dir = 0 
-        then raise Fail ("This version of Manticore was not configured with LLVM!\n"
+        then raise Fail ("This version of Manticore was not configured with LLVM!\n" ^
                          "See the README.md file for details about how to rebuild Manticore.\n")
                          
         else dir ^ "/" ^ binaryName

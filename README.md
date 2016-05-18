@@ -12,7 +12,42 @@ ported the runtime or code generator to them yet.
 
 Manticore is implemented in a mix of C and SML code.  You will need a
 recent version of SML/NJ (version 110.68+) installed.  Furthermore,
-your installation of SML/NJ should include the MLRISC library. 
+your installation of SML/NJ should include the MLRISC library. If you would
+like to use the LLVM backend, you will need to build a custom version from
+source.
+
+### LLVM Backend
+
+You must have a *custom* version of LLVM installed prior to configuring and
+building Manticore in order to have the LLVM backend available. 
+The following commands will obtain the right LLVM sources and place it in `./llvm/src`
+
+    git submodule init
+    git submodule update
+    
+Next, we're going to build LLVM, which has its own set of [prerequisites](http://llvm.org/docs/GettingStarted.html#software) that
+any Unix machine setup for C++ development should already have. To configure LLVM, run the following commands
+
+    cd llvm
+    mkdir build install
+    cd build
+    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ../src
+    
+Next we will compile and install LLVM locally, which typically takes 5-10 minutes.
+Replace `n` below with the number of parallel jobs you would like to use during the build.
+If you have a spinning disk hard drive, we recommend `n` to be *at most* `(RAM / 2.5GB)`,
+as the linking stage eats up a huge amount of virtual memory, and once you start swapping,
+it may not finish. To get the installation going, run
+
+    make install -j n 
+
+Then, move back to the root directory with
+
+    cd ../..
+
+and continue with configuring and building Manticore below. Note that LLVM will now be
+installed under `./llvm/install` and you should not need to rebuild it again.
+
 
 ## BUILDING FROM SOURCE
 
@@ -44,32 +79,10 @@ add the `--with-mlrisc` option.
 
 #### Configuring with LLVM
 
-You must have a *custom* version of LLVM installed and configured prior to
-building Manticore in order to have the LLVM backend available. The following commands will obtain the right LLVM sources and place it in `./llvm/src`
+If you want to have the LLVM backend available, configure with the local 
+installation of LLVM after building it (using the instructions above) by 
+adding the `--with-llvm` option to configure.
 
-    git submodule init
-    git submodule update
-    
-Next, we're going to build LLVM, which has its own set of [prerequisites](http://llvm.org/docs/GettingStarted.html#software) that
-any Unix machine setup for C++ development should already have. To configure LLVM, run the following commands
-
-    mkdir ./llvm/build
-    mkdir ./llvm/install
-    cd ./llvm/build
-    cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ../src
-    
-Next we will build and install LLVM locally, which typically takes at least 10 minutes.
-Replace `n` below with the number of parallel jobs you would like to use during the build.
-If you have a spinning disk hard drive, we recommend `n` to be at most `(RAM / 2.5GB)`,
-as the linking stage eats up a huge amount of virtual memory, and once you start swapping,
-it may not finish.
-
-    make install -j n 
-
-Finally, we will configure with our local installation of LLVM by adding
-the `--with-llvm` option to configure.
-
-    cd ../..
     ./configure --with-llvm=./llvm/install
     
 
