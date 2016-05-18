@@ -11,7 +11,7 @@ struct
 
 	structure LLVMBackend = LLVMPrinter (structure Spec = Spec)
 
-	fun codeGen {code : CFG.module, dst : TextIO.outstream} = let
+	fun doCodeGen {code : CFG.module, dst : TextIO.outstream} = let
 		(* As of 3/30/16, this codegen function assumes that contract has been run on the 
            CFG representation to ensure that there are no basic blocks without predecessors
            in the representation. 
@@ -26,5 +26,11 @@ struct
 	in
 		LLVMBackend.output(dst, code)
 	end
+    
+    val codeGen : {code: CFG.module, dst: TextIO.outstream} -> unit =
+	  BasicControl.mkTracePassSimple {
+	      passName = "codeGen (llvm)",
+	      pass = doCodeGen
+	    }
 		
 end

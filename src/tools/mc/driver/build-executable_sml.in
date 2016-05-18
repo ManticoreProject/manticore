@@ -254,7 +254,7 @@ Pass Arguments:  -domtree
     fun l_wrapPasses verbose passes = let
         (* NOTE we need a frame pointer because our glue code uses it. "-disable-fp-elim",  *)
         val firstPasses = ["-stack-alignment=8"] (* TODO later this might be -stack-alignment=8 ? *)
-        val statsPasses = ["-stats", "-time-passes"]
+        val statsPasses = ["-time-passes"] (* NOTE llc supports "-stats" but in Release mode it throws an error *)
         
         val passes = (case passes 
                       of [] => firstPasses

@@ -471,7 +471,7 @@ if MChkTy.check stm
 
     val codeGen : {code: CFG.module, dst: TextIO.outstream} -> unit =
 	  BasicControl.mkTracePassSimple {
-	      passName = "codeGen",
+	      passName = "codeGen (mlrisc)",
 	      pass = codeGen
 	    }
 
