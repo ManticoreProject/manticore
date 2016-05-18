@@ -13,8 +13,7 @@ ported the runtime or code generator to them yet.
 Manticore is implemented in a mix of C and SML code.  You will need a
 recent version of SML/NJ (version 110.68+) installed.  Furthermore,
 your installation of SML/NJ should include the MLRISC library. If you would
-like to use the LLVM backend, you will need to build a custom version from
-source.
+like to use the LLVM backend, follow the instructions below.
 
 ### LLVM Backend
 
@@ -32,16 +31,16 @@ any Unix machine setup for C++ development should already have. To configure LLV
     mkdir build install
     cd build
     cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ../src
-    
-Next we will compile and install LLVM locally, which typically takes 5-10 minutes.
+
+Next, we will compile and install LLVM locally, which typically takes 5-10 minutes.
 Replace `n` below with the number of parallel jobs you would like to use during the build.
 If you have a spinning disk hard drive, we recommend `n` to be *at most* `(RAM / 2.5GB)`,
 as the linking stage eats up a huge amount of virtual memory, and once you start swapping,
-it may not finish. To get the installation going, run
+it may not finish. To get the installation going, run the following
 
     make install -j n 
 
-Then, move back to the root directory with
+then, move back to the root directory with
 
     cd ../..
 
