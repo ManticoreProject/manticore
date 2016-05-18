@@ -11,6 +11,36 @@ LLVM backend todo list
     
 ***** BUGS *****  
 
+    - Linter complains of things like the following:
+    
+    Unusual: Address one pointer dereference
+    %r_C65F = load i64*, i64** %r_C65E
+    
+    And it's caused by the following type of CFG
+    
+    let con_nil<B6C3>#2 = enum(0):enum(0)
+    ...
+    let t<BBC6>#1 = enum(0):enum(0)
+    if NotEqual(con_nil<B6C3>,t<BBC6>)
+      then $then<BBCB>(ep<B6BE>,con_nil<B6C3>,_lit<B6C4>,letJoinK<B6EB>)
+      else $else<BBDA>(_wlit<B6C5>,letJoinK<B6EB>)
+
+  block $then<BBCB>#3 (
+    ep<BBC7>#2,
+    con_nil<BBCA>#1,
+    _lit<BBC9>#1,
+    letJoinK<BBC8>#1
+  ) =
+    let xs<BBCC>#1 = ([any,any])con_nil<BBCA>
+    let _t<BBCD>#1 = #1 xs<BBCC>
+
+  where in the LLVM codegen, we're doing an unsafe constant propagation (because
+  binding constants to vars in LLVM is not allowed/tricky) of con_nil
+  to the 'then' block when it will never get there because the branch protects
+  agianst it.
+  
+  Soln: we need to do those (gross) constant binding forms to prevent this!
+
 
 ***** FUTURE OPTIMIZATIONS *****
 

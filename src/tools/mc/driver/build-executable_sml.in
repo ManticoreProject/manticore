@@ -172,6 +172,8 @@ Pass Arguments:  -domtree
         "-memdep"
     ]
     
+    val o_level0 = []
+    
     (* just for testing instcombine for now *)
     val o_level1 = ["-instcombine"]
     
@@ -286,7 +288,7 @@ Pass Arguments:  -domtree
         val commonName = asmPrefix ^ "_opt.bc" 
         val optRun = doOpt verbose asmFile commonName
         val optOutput = (case Controls.get BasicControl.llopt
-                of 0 => asmFile (* don't bother running opt *)
+                of 0 => (optRun o_level0 ; commonName) (* we want to run the linter no matter what *)
                  | 1 => (optRun o_level1 ; commonName)
                  | 2 => (optRun o_level2 ; commonName)
                  | _ => (optRun o_level3 ; commonName)
