@@ -331,7 +331,6 @@ structure LLVMType : sig
            
     val allocPtrTy = mkPtr(uniformTy)
     val vprocTy = mkPtr(uniformTy)
-    val dequeTy = mkPtr(uniformTy)
     val boolTy = mkInt(cnt 1)
     val i64 = mkInt(cnt 64)
     val i32 = mkInt(cnt 32)
@@ -340,6 +339,7 @@ structure LLVMType : sig
     val enumTy = i64
     val gcHeaderTy = i64
     val voidStar = mkPtr(i8)
+    val dequeTy = mkPtr(i64)
        
        
     local

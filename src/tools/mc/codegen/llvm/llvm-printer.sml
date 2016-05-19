@@ -384,18 +384,6 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       (* the noattr instruction maker *)
       val mk = LB.mk b AS.empty
       val cast = LB.cast b
-      
-      fun stubIt env cfgVar = let
-      (* NOTE stubIt is for temporary usage only. will assign
-         a new LHS llvm var to an undef value of the
-         converted CFG type, and place a mapping in the env.
-      *)
-          val ty = CV.typeOf cfgVar
-          val targetTy = LT.typeOf ty
-          val newLLVar = LB.fromC(LB.undef targetTy)
-      in
-          insertV(env, cfgVar, newLLVar)
-      end
 
       (* end handy stuff *)
       
@@ -1095,6 +1083,9 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
       and genAlloc(env, (lhsVar, ty, vars)) = let
         val llVars = L.map (fn x => lookupV(env, x)) vars
+        
+        val _ = if L.length llVars = 0 then raise Fail "empty alloc!" else ()
+        
         val headerTag = LPU.headerTag (L.map CV.typeOf vars)
         val {newAllocPtr, tupleAddr=allocatedTuple} = 
             LPU.doAlloc b (lookupMV(env, MV_Alloc)) llVars headerTag
