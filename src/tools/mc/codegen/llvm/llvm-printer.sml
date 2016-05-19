@@ -1052,21 +1052,15 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
       and genSelect(env, (lhsVar, i, rhsVar)) = let
       (* In CFG, there appears to be an implicit type casting going on with SELECT, so we need to add casts *)
-      
         val implicitCaster = let
                 val lhsTy = CFG.Var.typeOf lhsVar
                 val rhsTy = CFGTyUtil.select(CFG.Var.typeOf rhsVar, i)
                 val lhsTyLL = LT.typeOf lhsTy
             in
-                case (CFGTyUtil.equal(lhsTy, rhsTy), CFGTyUtil.equal(CFGTy.T_Any, rhsTy))
-                    (* NOTE was previously (false, _) for this first one, wanted to make it less casty *)
-                of (false, true) => (fn instr => cast (Op.equivCast(LB.toTy instr, lhsTyLL)) (instr, lhsTyLL))
-                 | _ => (fn x => x) (* do nothing *)
-                 (*| _ => raise Fail "did not expect an implicit cast of RHS non-Any ty to some other ty in a select"*)
-            end
-        
-      
-      
+                if CFGTyUtil.equal(lhsTy, rhsTy)
+                then (fn x => x) (* do nothing *)
+                else (fn instr => cast (Op.equivCast(LB.toTy instr, lhsTyLL)) (instr, lhsTyLL))         
+            end      
         val llv = lookupV(env, rhsVar)
       in
         (case LPU.calcAddr b i llv
