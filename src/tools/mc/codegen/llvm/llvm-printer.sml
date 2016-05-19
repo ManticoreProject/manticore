@@ -233,7 +233,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                  fun addBitcastCC (((_, cfgVar), (_, llReg, realTy)), acc) = let
                         val castPair = (LV.typeOf llReg, realTy)
                         val argPair = (LB.fromV llReg, realTy)
-                        val newVar = LB.cast blk (Op.autoCast castPair) argPair
+                        val newVar = LB.cast blk (Op.simpleCast castPair) argPair
                     in
                         insertV(acc, cfgVar, newVar) (*  *)
                     end
@@ -241,7 +241,7 @@ fun output (outS, module as C.MODULE { name = module_name,
                 fun addCastsMV ((i, llReg, realTy), acc) = let
                        val castPair = (LV.typeOf llReg, realTy)
                        val argPair = (LB.fromV llReg, realTy)
-                       val newVar = LB.cast blk (Op.autoCast castPair) argPair
+                       val newVar = LB.cast blk (Op.equivCast castPair) argPair
                        val SOME mv = IdxMachineVal i
                    in
                        updateMV(acc, mv, newVar)

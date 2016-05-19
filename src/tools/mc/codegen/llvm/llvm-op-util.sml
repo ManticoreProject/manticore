@@ -352,7 +352,7 @@ in (case p
                 val extr = LB.extractV bb (xchg, #[LB.intC(i32, 0)])
                 
                 (* restore the type *)
-                val res = c (Op.autoCast(LB.toTy extr, resTy)) (extr, resTy)
+                val res = c (Op.equivCast(LB.toTy extr, resTy)) (extr, resTy)
                 
             in
                 res

@@ -442,7 +442,7 @@ structure LLVMOp = struct
          | (Ty.T_Int fromW, Ty.T_Int toW) => (case Int.compare(LT.tnc toW, LT.tnc fromW)
             (* I want to make the int's width... *)
             of GREATER => ZExt
-             | LESS => raise Fail "not a safe cast"
+             | LESS => castErr "safeCast" from to
              | EQUAL => BitCast (* a silly cast *)
              (* esac *))
          | _ => BitCast (* better hope the width is the same *)
@@ -457,7 +457,7 @@ structure LLVMOp = struct
          | (Ty.T_Int fromW, Ty.T_Int toW) => (case Int.compare(LT.tnc toW, LT.tnc fromW)
             (* I want to make the int's width... *)
             of EQUAL => BitCast
-             | _ => raise Fail "not a safe cast"
+             | _ => castErr "equivCast" from to
              (* esac *))
          | _ => BitCast (* better hope the width is the same *)
         (* esac *))
@@ -484,7 +484,9 @@ structure LLVMOp = struct
                    our casts for us! (which isn't such a bad idea) *)
       (* esac *))
       
-  and castErr s = raise Fail ("(llvm-backend) casting type error: " ^ s)
+  and castErr s from to = raise Fail ("\n(llvm-backend) casting type error: " ^ s
+                                      ^ "\n\tfrom: " ^ (LT.nameOf from)
+                                      ^ "\n\tto: " ^ (LT.nameOf to))
 
 
 
