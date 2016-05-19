@@ -976,53 +976,59 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
     
       
       and genConst(env, (lhsVar, lit, ty)) = let
-        val llTy = LT.typeOf ty
+        val constInstr = (case lit
+            of Literal.Int il => 
+                  LB.fromC(LB.intC(LT.typeOf ty, il))
+             
+             (* this isn't implemented in old backend either *)
+             | Literal.Bool b => raise Fail "unexpected Literal.Bool" 
+                  (* insertV(env, lhsVar, LB.fromC(LB.intC(LT.boolTy, if b then 1 else 0))) *)
+                  
+             | Literal.Float f =>
+                  LB.fromC(LB.floatC(LT.typeOf ty, f))
+                  
+             | Literal.Enum c =>
+                  LB.fromC(LB.intC(LT.enumTy, (Word.toLargeInt o encodeEnum) c))
+                  
+             | Literal.StateVal n =>          (* NOTE that we're using enumTy here too. not sure if that's right *)
+                  LB.fromC(LB.intC(  LT.enumTy  , (Word.toLargeInt o encodeStateVal) n ))
+                  
+             | Literal.Char _ => raise Fail "not implemented" (* not implemented in MLRISC backend either *)
+             
+             | Literal.String s => let
+                  val llv = LS.lookup s
+                  
+                  (* calculate the address of the first byte in this ptr to an 
+                     array of bytes to turn it into an i8*. NOTE it's not
+                     safe to use any other offset except 0 here because of the data
+                     layout. *)
+                  val SOME gep = LPU.calcAddr b 0 (LB.fromV llv)
+             in
+                  gep
+             end
+             
+             | Literal.Tag t => let
+                  val llv = LS.lookup t
+                  val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
+                  
+                  (* calculate the address of the first byte in this ptr to an 
+                     array of bytes to turn it into an i8*. see NOTE above
+                     regarding data layout *)
+                  val SOME gep = LPU.calcAddr b 0 (LB.fromV llv)
+                  val casted = cast (Op.safeCast(LB.toTy gep, lhsTy)) (gep, lhsTy)
+             in
+                 casted
+             end
+            (* esac *)) (* end constInstr *)
+            
+            (* NOTE we must introduce this dummy binding here so we do not accidentially perform
+              an unsafe constant propigation if we were to add the raw constant to the env otherwise. *)
+              
+            val constTy = LB.toTy constInstr
+            val boundConst = LB.cast b Op.BitCast (constInstr, constTy)
       in
-          (case lit
-              of Literal.Int il => 
-                    insertV(env, lhsVar, LB.fromC(LB.intC(llTy, il)))
-               
-               (* this isn't implemented in old backend either *)
-               | Literal.Bool b => raise Fail "unexpected Literal.Bool" 
-                    (* insertV(env, lhsVar, LB.fromC(LB.intC(LT.boolTy, if b then 1 else 0))) *)
-                    
-               | Literal.Float f =>
-                    insertV(env, lhsVar, LB.fromC(LB.floatC(llTy, f)))
-                    
-               | Literal.Enum c =>
-                    insertV(env, lhsVar, LB.fromC(LB.intC(LT.enumTy, (Word.toLargeInt o encodeEnum) c)))
-                    
-               | Literal.StateVal n =>          (* NOTE that we're using enumTy here too. not sure if that's right *)
-                    insertV(env, lhsVar, LB.fromC(LB.intC(  LT.enumTy  , (Word.toLargeInt o encodeStateVal) n )))
-                    
-               | Literal.Char _ => raise Fail "not implemented" (* not implemented in MLRISC backend either *)
-               
-               | Literal.String s => let
-                    val llv = LS.lookup s
-                    
-                    (* calculate the address of the first byte in this ptr to an 
-                       array of bytes to turn it into an i8*. NOTE it's not
-                       safe to use any other offset except 0 here because of the data
-                       layout. *)
-                    val SOME gep = LPU.calcAddr b 0 (LB.fromV llv)
-               in
-                    insertV(env, lhsVar, gep)
-               end
-               
-               | Literal.Tag t => let
-                    val llv = LS.lookup t
-                    val lhsTy = (LT.typeOf o CV.typeOf) lhsVar
-                    
-                    (* calculate the address of the first byte in this ptr to an 
-                       array of bytes to turn it into an i8*. see NOTE above
-                       regarding data layout *)
-                    val SOME gep = LPU.calcAddr b 0 (LB.fromV llv)
-                    val casted = cast (Op.safeCast(LB.toTy gep, lhsTy)) (gep, lhsTy)
-               in
-                    insertV(env, lhsVar, casted)
-               end
-              (* esac *))
-        end
+            insertV(env, lhsVar, boundConst)
+      end
         
         
       and genCast(env, (lhsVar, cfgTy, oldVar)) = let
