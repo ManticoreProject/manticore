@@ -974,26 +974,22 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
            env
            (ListPair.zipEq (lefts, rights))
     
-      
-      and genConst(env, (lhsVar, lit, ty)) = let
+      (* apparently the type in the tuple is not used by the MLRISC backend, you grab from lhsVar *)
+      and genConst(env, (lhsVar, lit, _)) = let
+        val ty = CV.typeOf lhsVar
+        val lhsIntTy = (LT.mkInt o LT.cnt o LT.widthOf o LT.typeOf o CV.typeOf) lhsVar
         val constInstr = (case lit
             of Literal.Int il => 
-                  LB.fromC(LB.intC(LT.typeOf ty, il))
-             
-             (* this isn't implemented in old backend either *)
-             | Literal.Bool b => raise Fail "unexpected Literal.Bool" 
-                  (* insertV(env, lhsVar, LB.fromC(LB.intC(LT.boolTy, if b then 1 else 0))) *)
+                  LB.fromC(LB.intC(lhsIntTy, il))
                   
              | Literal.Float f =>
                   LB.fromC(LB.floatC(LT.typeOf ty, f))
                   
              | Literal.Enum c =>
-                  LB.fromC(LB.intC(LT.enumTy, (Word.toLargeInt o encodeEnum) c))
+                  LB.fromC(LB.intC(lhsIntTy, (Word.toLargeInt o encodeEnum) c))
                   
              | Literal.StateVal n =>          (* NOTE that we're using enumTy here too. not sure if that's right *)
-                  LB.fromC(LB.intC(  LT.enumTy  , (Word.toLargeInt o encodeStateVal) n ))
-                  
-             | Literal.Char _ => raise Fail "not implemented" (* not implemented in MLRISC backend either *)
+                  LB.fromC(LB.intC(lhsIntTy, (Word.toLargeInt o encodeStateVal) n ))
              
              | Literal.String s => let
                   val llv = LS.lookup s
@@ -1016,6 +1012,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                      regarding data layout *)
                   val SOME gep = LPU.calcAddr b 0 (LB.fromV llv)
                   val casted = cast (Op.safeCast(LB.toTy gep, lhsTy)) (gep, lhsTy)
+                  
+             (* any lits not implemented are not currently implemented in MLRISC backend either *)
              in
                  casted
              end
