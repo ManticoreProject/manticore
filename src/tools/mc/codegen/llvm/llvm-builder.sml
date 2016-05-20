@@ -342,6 +342,8 @@ structure LLVMBuilder : sig
                 the rounded version of a SP literal doesn't nessecarily have the same mantissa bits as 
                 a DP literal with its end chopped off. Also the precision varies depending on the value,
                 so for larger values, if we treat them as DP and not SP, they won't be the right number!
+                
+                1023.234 is a nice example of this current version not working.
              *)             
                             fun andByte num idx vec = let
                                     val byte = Word8Vector.sub(vec, idx)
