@@ -183,6 +183,9 @@ structure LLVMBuilder : sig
   structure L = List
     
   structure F64ToBits = FloatToBitsFn (IEEEFloat64Params);
+  structure F32ToBits = FloatToBitsFn (IEEEFloat32Params);
+  structure W8 = Word8
+  structure W8V = Word8Vector
 
   type ty = Ty.t
   type var = LV.var
@@ -330,51 +333,87 @@ structure LLVMBuilder : sig
         
            val floatStr = if LT.same(ty, LT.floatTy)
                             then let
-            (* 32-bit IEEE representation
+            (********** 32-bit IEEE representation *********
                 NOTE LLVM uses a really terrible representation for
-                float32 literals. You must produce an IEEE 754 *double*
-                precision float for that literal, then
-                zero the 29 lower order bits. The documentation is murky
-                on this, so here's my source: 
-                https://groups.google.com/forum/#!msg/llvm-dev/IlqV3TbSk6M/-ipz_kNwUckJ
+                float32 literals. Here it is:
                 
-                What they're suggesting is not 100% IEEE 754 SP equivalent, I believe, because
-                the rounded version of a SP literal doesn't nessecarily have the same mantissa bits as 
-                a DP literal with its end chopped off. Also the precision varies depending on the value,
-                so for larger values, if we treat them as DP and not SP, they won't be the right number!
+                "The exact bit representation of the float is laid out with the
+                corresponding bitwise representation of a double:  the sign
+                bit is copied over, the exponent is encoded in the larger width,
+                and the 23 bits of significand fills in the top 23 bits of significand
+                in the double.  A double has 52 bits of significand, so this means
+                that the last 29 bits of significand will always be ignored.  As an
+                error-detection measure, the IR parser requires them to be zero." 
+                            - John McCall's message on the LLVM developer mailing list in 2011
                 
-                1023.234 is a nice example of this current version not working.
+                https://groups.google.com/d/msg/llvm-dev/IlqV3TbSk6M/27dAggZOMb0J
+                
              *)             
-                            fun andByte num idx vec = let
-                                    val byte = Word8Vector.sub(vec, idx)
-                                    val new = Word8.andb(byte, num)
+                            
+                            
+                            val (f32Vec, _) = F32ToBits.toBits f
+                            val bits = L.foldr (* list of list of bits to list of bits *)
+                                    (fn (xs, ys) => xs @ ys)
+                                    nil
+                                    (L.map (fn w => String.explode(StringCvt.padLeft #"0" 8 (Word8.fmt StringCvt.BIN w)))  (* vec to list of bits *)
+                                        (L.tabulate(4, fn i => W8V.sub(f32Vec, i))) (* vec to list *)
+                                    )
+                                    
+                            val indexedBits = ListPair.zipEq(L.tabulate(32, fn i => 31-i), bits)
+                            fun filter f = L.filter f indexedBits
+                            fun strip xs = L.map (fn (_, x) => x) xs
+                                    
+                            val signBit = filter (fn (i,_) => i = 31)
+                            
+                            val exponent = filter (fn (i,_) => 23 <= i andalso i <= 30)
+                            
+                            val mantissa = filter (fn (i,_) => 0 <= i andalso i <= 22)
+                            
+                            (* get the SP exponent _with_ bias *)
+                            val exponentInt = let
+                                    val binScan = StringCvt.scanString (Int.scan StringCvt.BIN)
                                 in
-                                    Word8Vector.update(vec, idx, new)
-                                end 
-             
-                            (* Word8Vector considers index 0 to be MSB and 7 to be LSB,
-                               but I think the other way *)
-                            fun i x = 7 - x
-             
-                            val (byteVec, _) = F64ToBits.toBits f
+                                    case binScan(String.implode (strip exponent))
+                                      of SOME i => i
+                                       | NONE => raise Fail "couldn't scan right."
+                                end
                             
-                            (* applied to the lower 3 bytes, [23, 0] *)
-                            val zeroIt = andByte (Word8.fromInt 0)
-                            val byteVec = zeroIt (i 2) (zeroIt (i 1) (zeroIt (i 0) byteVec))
+                            (* now we convert SP exponent to DP exponent *)
+                            val newExponent = let
+                                    val newInt = (case exponentInt
+                                          of 0 => 0
+                                           | 255 => 2047
+                                           (* not a special exponent, convert the bias, so (sp-127)+1023 = sp+896 *)
+                                           | i => i + 896)
+                                           
+                                    val asBits = Int.fmt StringCvt.BIN newInt
+                                    (* the exponent must be 11 bitsin DP *)
+                                    val padded = StringCvt.padLeft #"0" 11 asBits
+                                in 
+                                    String.explode padded
+                                end
+                                
+                            (* the exponent grew by 3 bits, and we were originally 32 bits short, so we need 29 bits *)
+                            val padding = L.tabulate(29, fn _ => #"0")
                             
+                            (* put together all of the bits into a single string *)
+                            val DPbits = String.implode((strip signBit) @ newExponent @ (strip mantissa) @ padding)
                             
-                            (* This is 224 = 0xE0, which in binary is 1110 0000 and it is
-                               applied to the 4th lowest byte, bits [31, 24], to zero out bits [28, 24] *)
-                            val E0 = Word8.fromInt 224
-                            val byteVec = andByte E0 (i 3) byteVec
+                            (* now we do a change of base to hex and pad *)
+                            val hexString = let
+                                    val toIntInf = StringCvt.scanString (IntInf.scan StringCvt.BIN)
+                                    val SOME i = toIntInf DPbits
+                                in
+                                    "0x" ^ (StringCvt.padLeft #"0" 16 (IntInf.fmt StringCvt.HEX i))
+                                end
                             
                             in
-                                build byteVec
+                                hexString
                             end
                                 
-                                
+            (********** 64-bit IEEE representation **********)
                           else if LT.same(ty, LT.doubleTy)
-                            then let (* 64-bit IEEE representation *)
+                            then let 
                                     val (byteVec, _) = F64ToBits.toBits f
                                  in
                                     build byteVec

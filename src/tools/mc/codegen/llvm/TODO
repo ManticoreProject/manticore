@@ -6,7 +6,10 @@ LLVM backend todo list
         - find out why the linter complains about those few things.
         - find out why instcombine breaks our programs
     
-    - Floating point literals: integrate John's code and try it out.
+    - Floating point literals: add regression tests to ensure that your
+      custom conversion to LLVM floats outputs the right float literals. 
+      You'll want to check for denormals, inf, negative zero, etc. Can just
+      create a list of floats and print all of those corner cases out.
     
     
 ***** BUGS *****  
