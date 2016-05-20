@@ -129,6 +129,7 @@ structure LLVMType : sig
     val i32 : ty
     val i16 : ty
     val i8 : ty
+    val i1 : ty
 
     (* count is number of bits wide for a custom int *)
     val mkInt : count -> ty
@@ -336,6 +337,7 @@ structure LLVMType : sig
     val i32 = mkInt(cnt 32)
     val i16 = mkInt(cnt 16)
     val i8  = mkInt(cnt 8)
+    val i1  = mkInt(cnt 1)
     val enumTy = i64
     val gcHeaderTy = i64
     val voidStar = mkPtr(i8)

@@ -419,6 +419,16 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              val heapSlopSzB = Word.- (Word.<< (0w1, 0w12), 0w512)
              val limitPtrOffset = Spec.ABI.limitPtr
              
+             (* wraps an i1 value with an annotation that tells the optimizer that its expected
+               to be i1 0 *)
+             fun expectFalse b condInstr = let
+                val falseC = LB.iconst LT.i1 0
+                val (expectLab, _) = LR.expect_i1
+                val annotated = LB.call b (LB.fromV expectLab, #[condInstr, falseC])
+             in
+                annotated
+             end
+             
              fun notEnoughSpace b vproc allocPtr (SN_Const szb) = let 
                      val mk = LB.mk b AS.empty
                      val cast = LB.cast b
@@ -515,7 +525,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                 SN_Var newSzbI
                             end
                             
-                 val notEnoughSpaceCond = notEnoughSpace myBB newVProc newAlloc szb
+                 val notEnoughSpaceCond = expectFalse myBB (notEnoughSpace myBB newVProc newAlloc szb)
                  
                  
                  val jump = (bbLab, outgoing)
@@ -647,7 +657,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
              (* TODO mark cold branches for basic block placement! *)
              
              (* this enoughSpaceCond is for the initial heap check. *)
-             val notEnoughSpaceCond = notEnoughSpace b (lookupMV(env, MV_Vproc)) (lookupMV(env, MV_Alloc)) szb
+             val notEnoughSpaceCond = expectFalse b (notEnoughSpace b (lookupMV(env, MV_Vproc)) (lookupMV(env, MV_Alloc)) szb)
              
              val (nogcTarg, _) = markPred env nogc
              val nogcBB = lookupBB(env, nogcTarg)

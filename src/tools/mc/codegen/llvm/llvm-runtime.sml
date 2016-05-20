@@ -82,6 +82,10 @@ structure LLVMRuntime =
     
     val readtsc : LV.var * (LB.convention option) = (mkLabel "llvm.readcyclecounter" (LT.i64 :: nil), NONE)
     
+    (* used to tell the optimizer which branches are expected to be taken to guide block placement.
+       args are (i1 <val>, i1 <expected_val>) *)
+    val expect_i1 : LV.var * (LB.convention option) = (mkLabel "llvm.expect.i1" (LT.i1 :: [ LT.i1, LT.i1 ]), NONE)
+    
     
     (* list of everything in this module for building the declarations. the LLVM printer
        will automatically output anything in these lists for you. *)
@@ -107,7 +111,8 @@ structure LLVMRuntime =
                         sqrt_f64,
                         abs_f32,
                         abs_f64,
-                        readtsc ]
+                        readtsc,
+                        expect_i1 ]
     
   end
   

@@ -172,7 +172,7 @@ Pass Arguments:  -domtree
         "-memdep"
     ]
     
-    val o_level0 = []
+    val o_level0 = ["-lower-expect"]
     
     (* just for testing instcombine for now *)
     val o_level1 = ["-instcombine"]
@@ -190,6 +190,7 @@ Pass Arguments:  -domtree
     
     
     val o_level2 = [
+        "-lower-expect",
         "-tailcallelim",
         "-simplifycfg",
         "-dce",
