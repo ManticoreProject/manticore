@@ -337,6 +337,11 @@ structure LLVMBuilder : sig
                 zero the 29 lower order bits. The documentation is murky
                 on this, so here's my source: 
                 https://groups.google.com/forum/#!msg/llvm-dev/IlqV3TbSk6M/-ipz_kNwUckJ
+                
+                What they're suggesting is not 100% IEEE 754 SP equivalent, I believe, because
+                the rounded version of a SP literal doesn't nessecarily have the same mantissa bits as 
+                a DP literal with its end chopped off. Also the precision varies depending on the value,
+                so for larger values, if we treat them as DP and not SP, they won't be the right number!
              *)             
                             fun andByte num idx vec = let
                                     val byte = Word8Vector.sub(vec, idx)
