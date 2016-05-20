@@ -182,7 +182,6 @@ structure LLVMBuilder : sig
   structure V = Vector
   structure L = List
     
-  structure F32ToBits = FloatToBitsFn (IEEEFloat32Params);
   structure F64ToBits = FloatToBitsFn (IEEEFloat64Params);
 
   type ty = Ty.t
@@ -324,18 +323,55 @@ structure LLVMBuilder : sig
         
         We decided to always print them in hexidecimal format. *)
         
-           fun build (vec, _) = S.concat ("0x" :: (L.map cvt (Word8Vector.toList vec)))
+           fun build vec = S.concat ("0x" :: (L.map cvt (Word8Vector.toList vec)))
            
            (* word8 is 8 bit value, as hex it's 1-2 digits, so we pad it *)
            and cvt w = StringCvt.padLeft #"0" 2 (Word8.fmt StringCvt.HEX w)
         
            val floatStr = if LT.same(ty, LT.floatTy)
-                            then (* 32-bit IEEE representation *)
-                                build (F32ToBits.toBits f)
+                            then let
+            (* 32-bit IEEE representation
+                NOTE LLVM uses a really terrible representation for
+                float32 literals. You must produce an IEEE 754 *double*
+                precision float for that literal, then
+                zero the 29 lower order bits. The documentation is murky
+                on this, so here's my source: 
+                https://groups.google.com/forum/#!msg/llvm-dev/IlqV3TbSk6M/-ipz_kNwUckJ
+             *)             
+                            fun andByte num idx vec = let
+                                    val byte = Word8Vector.sub(vec, idx)
+                                    val new = Word8.andb(byte, num)
+                                in
+                                    Word8Vector.update(vec, idx, new)
+                                end 
+             
+                            (* Word8Vector considers index 0 to be MSB and 7 to be LSB,
+                               but I think the other way *)
+                            fun i x = 7 - x
+             
+                            val (byteVec, _) = F64ToBits.toBits f
+                            
+                            (* applied to the lower 3 bytes, [23, 0] *)
+                            val zeroIt = andByte (Word8.fromInt 0)
+                            val byteVec = zeroIt (i 2) (zeroIt (i 1) (zeroIt (i 0) byteVec))
+                            
+                            
+                            (* This is 224 = 0xE0, which in binary is 1110 0000 and it is
+                               applied to the 4th lowest byte, bits [31, 24], to zero out bits [28, 24] *)
+                            val E0 = Word8.fromInt 224
+                            val byteVec = andByte E0 (i 3) byteVec
+                            
+                            in
+                                build byteVec
+                            end
+                                
                                 
                           else if LT.same(ty, LT.doubleTy)
-                            then (* 64-bit IEEE representation *)
-                                build (F64ToBits.toBits f)
+                            then let (* 64-bit IEEE representation *)
+                                    val (byteVec, _) = F64ToBits.toBits f
+                                 in
+                                    build byteVec
+                                 end
                                 
                           else raise Fail "unknown float lit type"
       in
