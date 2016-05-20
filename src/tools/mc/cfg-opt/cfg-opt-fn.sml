@@ -93,7 +93,7 @@ functor CFGOptFn (Target : TARGET_SPEC) : sig
 	  end
 
     val optimize = BasicControl.mkKeepPassSimple {
-	    output = PrintCFG.output {counts=true, types=false, preds = false},
+	    output = PrintCFG.output {counts=true, types=true, preds = false},
 	    ext = "cfg",
 	    passName = "cfg-optimize",
 	    pass = optimize,
