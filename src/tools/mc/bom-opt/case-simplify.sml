@@ -121,9 +121,9 @@ structure CaseSimplify : sig
 	    end
     (* label types *)
       val intTy = BTy.T_Raw BTy.T_Int
-      val longTy = BTy.T_Raw BTy.T_Int
-      val floatTy = BTy.T_Raw BTy.T_Int
-      val doubleTy = BTy.T_Raw BTy.T_Int
+      val longTy = BTy.T_Raw BTy.T_Long
+      val floatTy = BTy.T_Raw BTy.T_Float
+      val doubleTy = BTy.T_Raw BTy.T_Double
     (* make an integer constant *)
       fun iConst ty i = B.E_Const(Literal.Int i, ty)
       val i32Const = iConst intTy
