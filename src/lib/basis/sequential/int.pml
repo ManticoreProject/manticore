@@ -72,6 +72,10 @@ structure Int =
       else 1
 
     fun sameSign (m, n) = (sign(m) = sign(n))
+    
+    (* Manticore's div/mod use hardware semantics for divide, so they're equiv to quot/rem *)
+    fun quot (a, b) = a div b
+    fun rem (a, b) = a mod b
 
 (* FIXME: why is this function here? It is not part of the INT API *)
   (* fib : int -> int *)
