@@ -1,0 +1,12 @@
+# keeping it simple because this YML file is poorly documented/defined
+
+build:
+    stage: build
+    script:
+        - uname -a
+        - autoheader -Iconfig
+        - autoconf -Iconfig
+        - ./configure
+        - make local-install
+        - ./src/regression-tests/bash-scripts/run-seq.bsh
+        - ./src/regression-tests/bash-scripts/run-par.bsh
