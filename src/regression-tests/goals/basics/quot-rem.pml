@@ -19,7 +19,6 @@ fun check f g =
 	fn (a, b, expected) => let
 		val (f_func, f_name) = f
 		val (g_func, g_name) = g
-		val _ = Print.print "marker\n"
 		val fres = f_func a b
 		val gres = g_func a b
 	in
