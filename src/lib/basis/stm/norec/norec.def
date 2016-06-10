@@ -1,0 +1,4 @@
+#define RS_LONG_PATH  0
+#define RS_TAIL       1
+#define RS_SHORT_PATH 2
+#define RS_NUMK       3
