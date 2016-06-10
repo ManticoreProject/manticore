@@ -70,7 +70,6 @@ struct
                     let casted : ![any, any, any, item] = (![any, any, any, item]) checkpoint
                     do #NEXT(casted) := NilItem
                     fun getLoop() : any = 
-                        do FenceRead()
                         let t : long = VClock.@get(/exh)
                         if I64Eq(t, #0(startStamp))
                         then return(#0(tv))
@@ -99,7 +98,6 @@ struct
             fun validateLoopABCD(rs : item, abortInfo : item, count:int) : () =
                 case rs 
                    of NilItem => (*finished validating*)
-                        do FenceRead()
                         let currentTime : stamp = VClock.@get(/exh)
                         if I64Eq(currentTime, #0(startStamp))
                         then return() (*no one committed while validating*)
@@ -162,7 +160,7 @@ struct
         (*Note that these next two defines, rely on the fact that a heap limit check will not get
          *inserted within the body*)
         (*Add a checkpointed read to the read set*)
-        define @insert-with-k(tv:any, v:any, k:cont(any), ws:item, readSet : read_set, stamp : ![long,int,int,long] / exh:exh) : () = 
+        define @insert-with-k(tv:any, v:any, k:cont(any), ws:item, readSet : read_set, stamp : ![long,int,int,long] / exh:exh) : read_set = 
             let newItem : item = WithK(tv, v, NilItem, ws, k, #LASTK(readSet))
             let vp : vproc = host_vproc
             let nurseryBase : long = vpload(NURSERY_BASE, vp)
@@ -177,27 +175,27 @@ struct
                     do #TAIL(readSet) := newItem
                     do #LASTK(readSet) := newItem
                     do #NUMK(readSet) := I32Add(#NUMK(readSet), 1)
-                    return()
+                    return(readSet)
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
                     let rs : any = vpload(REMEMBER_SET, vp)
                     let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
-                    do FLS.@set-key(READ_SET, newRS / exh)
-                    return()
+                    (*do FLS.@set-key(READ_SET, newRS / exh)*)
+                    return(newRS)
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, newItem, I32Add(#NUMK(readSet), 1))
                 let rs : any = vpload(REMEMBER_SET, vp)
                 let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
-                do FLS.@set-key(READ_SET, newRS / exh)
-                return()
+                (*do FLS.@set-key(READ_SET, newRS / exh)*)
+                return(newRS)
         ;
 
         (*add a non checkpointed read to the read set*)
-    	define @insert-without-k(tv:any, v:any, readSet : read_set, stamp : ![long,int,int,long] / exh:exh) : () =
+    	define @insert-without-k(tv:any, v:any, readSet : read_set, stamp : ![long,int,int,long] / exh:exh) : read_set =
     		let newItem : item = WithoutK(tv, v, NilItem)
     		let vp : vproc = host_vproc
     		let nurseryBase : long = vpload(NURSERY_BASE, vp)
@@ -210,23 +208,23 @@ struct
                 then (*last item is still in nursery*)
                     do #NEXT(casted) := newItem
                     do #TAIL(readSet) := newItem
-                    return()
+                    return(readSet)
                 else (*not in nursery, add last item to remember set*)
                     let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                     let rs : any = vpload(REMEMBER_SET, vp)
                     let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
                     do vpstore(REMEMBER_SET, vp, newRemSet)
                     do #NEXT(casted) := newItem
-                    do FLS.@set-key(READ_SET, newRS / exh)
-                    return()
+                    (*do FLS.@set-key(READ_SET, newRS / exh)*)
+                    return(newRS)
             else (*not in nursery, add last item to remember set*)
                 let newRS : read_set = alloc(#HEAD(readSet), newItem, #LASTK(readSet), #NUMK(readSet))
                 let rs : any = vpload(REMEMBER_SET, vp)
                 let newRemSet : [![any,any,item,item], int, long, any] = alloc(casted, NEXT, #3(stamp), rs)
                 do vpstore(REMEMBER_SET, vp, newRemSet)
                 do #NEXT(casted) := newItem
-                do FLS.@set-key(READ_SET, newRS / exh)
-                return()
+                (*do FLS.@set-key(READ_SET, newRS / exh)*)
+                return(newRS)
         ;
         
     )

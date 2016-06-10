@@ -36,8 +36,7 @@ struct
                of Option.SOME(v:any) => return(v)
                 | Option.NONE =>
                 	fun getLoop() : any = 
-                        do FenceRead()
-                		let t : long = VClock.@get(/exh)
+                        let t : long = VClock.@get(/exh)
                 		if I64Eq(t, #0(myStamp))
                 		then return(#0(tv))
                 		else
@@ -51,17 +50,20 @@ struct
                         let captureCount : int = FLS.@get-counter()
                         if I32Eq(captureCount, 0)  (*capture a continuation*)
                         then 
-                            do RS.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
+                            let newRS : RS.read_set = RS.@insert-with-k(tv, current, retK, writeSet, readSet, myStamp / exh)
+                            do FLS.@set-key(READ_SET, newRS / exh)
                             let captureFreq : int = FLS.@get-counter2()
                             do FLS.@set-counter(captureFreq)
                             return(current)
                         else (*don't capture a continuation*)
                             do FLS.@set-counter(I32Sub(captureCount, 1))
-                            do RS.@insert-without-k(tv, current, readSet, myStamp / exh)
+                            let newRS : RS.read_set = RS.@insert-without-k(tv, current, readSet, myStamp / exh)
+                            do FLS.@set-key(READ_SET, newRS / exh)
                             return(current)
                     else 
                         do RS.@filterRS(readSet / exh)
-                        do RS.@insert-without-k(tv, current, readSet, myStamp / exh)
+                        let newRS : RS.read_set = RS.@insert-without-k(tv, current, readSet, myStamp / exh)
+                        do FLS.@set-key(READ_SET, newRS / exh)
                         let captureFreq : int = FLS.@get-counter2()
                         let newFreq : int = I32Mul(captureFreq, 2)
                         do FLS.@set-counter(I32Sub(newFreq, 1))
@@ -107,8 +109,7 @@ struct
                 end
             let writeSet : RS.item = apply reverseWS(writeSet, RS.NilItem)
         	do apply writeBack(writeSet)
-            do FenceRead()
-        	do #0(counter) := I64Add(#0(stamp), 2:long) (*unlock clock*)
+            do #0(counter) := I64Add(#0(stamp), 2:long) (*unlock clock*)
         	return()
         ;
 

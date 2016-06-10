@@ -225,7 +225,7 @@ structure RS = TL2OrderedRS
                 case ws
                    of RS.Write(tv:tvar, contents:any, tl:RS.witem) => 
                         let owner : long = #CURRENT_LOCK(tv)
-                        if I64Eq(owner, #LOCK_VAL(startStamp))
+                        if U64Eq(owner, #LOCK_VAL(startStamp))
                         then apply acquire(tl, acquired)  (*we already locked this*)
                         else
                             if U64Lte(owner, #0(startStamp))
@@ -304,12 +304,8 @@ structure RS = TL2OrderedRS
                     do #START_STAMP(stamp) := newStamp
                     do #LOCK_VAL(stamp) := SET_MSB(#THREAD_ID(stamp))
                     do #UNBOX(in_trans) := true
-                    cont transExh(e:exn) = 
-                        do ccall M_Print("Warning: exception raised in transaction\n")
-                        do @commit(/exh)
-                        throw exh(e)
-                    let res : any = apply f(UNIT/transExh)
-                    do @commit(/transExh)
+                    let res : any = apply f(UNIT/exh)
+                    do @commit(/exh)
                     do #UNBOX(in_trans) := false
                     do FLS.@set-key(READ_SET, RS.NilRead / exh)
                     do FLS.@set-key(WRITE_SET, RS.NilWrite / exh)
