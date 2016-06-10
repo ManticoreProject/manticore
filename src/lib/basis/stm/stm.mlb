@@ -12,35 +12,40 @@ ann "cpp" "stats.def,../include/breakpoint.def,../include/debug.def,../include/p
 
         tl2/ordered-rs.pml
 
+        tl2/ordered-full.pml
+
         tl2/ordered-tl2.pml
 
         tl2/ff-tl2.pml
+    	tiny-stm/tiny-stm.pml
 
-	tiny-stm/tiny-stm.pml
-
-	tiny-stm/pabort-tiny-stm.pml
-        
+    	tiny-stm/pabort-tiny-stm.pml
+        tiny-stm/tiny-ordered.pml
     end
 
-    norec/norec.pml
+    ann "cpp" "norec/norec.def" in
 
-    norec/partial-norec.pml
+        norec/norec.pml
+
+        norec/partial-norec.pml
+        
+        norec/ordered-norec-rs.pml
+        norec/ordered-norec.pml
+(*
+        norec/ff-norec-rs.pml
+        norec/ff-norec.pml
+
+        norec/ff-ref-count-rs.pml
+        norec/ff-ref-count.pml
+
+        norec/ff-mask.pml
+
+        norec/ff-merge-write-sets-rs.pml
+        norec/ff-merge-write-sets.pml
+*)
+        norec/ordered-full-norec.pml
+    end
     
-    norec/ordered-norec-rs.pml
-    norec/ordered-norec.pml
-
-    norec/ff-norec-rs.pml
-    norec/ff-norec.pml
-
-
-    norec/ff-ref-count-rs.pml
-    norec/ff-ref-count.pml
-
-    norec/ff-mask.pml
-
-    norec/ff-merge-write-sets-rs.pml
-    norec/ff-merge-write-sets.pml
-
     stm.pml
 
 end 

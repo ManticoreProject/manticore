@@ -13,6 +13,9 @@
 
 #ifdef COUNT
 
+#define GET_PABORT_COUNT ccall M_SumCounter(0)
+#define GET_FABORT_COUNT ccall M_SumCounter(1)                   
+
 #define BUMP_PABORT let vp : vproc = host_vproc do ccall M_BumpCounter(vp, 0)
 #define PRINT_PABORT_COUNT let counter1 : int = ccall M_SumCounter(0) \
                            do ccall M_Print_Int("Partial-Aborts = %d\n", counter1)

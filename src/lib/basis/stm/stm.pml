@@ -47,6 +47,16 @@ struct
 			NoRecFull.atomic,
 			NoRecFull.new,
 			NoRecFull.abort)
+	  | "pnorec" => (NoRecPartial.get,
+			 NoRecPartial.put,
+			 NoRecPartial.atomic,
+			 NoRecPartial.new,
+			 NoRecPartial.abort)
+	  | "fullOrderedNOrec" => (NoRecFullOrdered.get,
+				   NoRecFullOrdered.put,
+				   NoRecFullOrdered.atomic,
+				   NoRecFullOrdered.new,
+				   NoRecFullOrdered.abort)
 	  | "orderedNoRec" => (NoRecOrdered.get,
 			       NoRecOrdered.put,
 			       NoRecOrdered.atomic,
@@ -57,7 +67,11 @@ struct
 		       TinySTM.atomic,
 		       TinySTM.new,
 		       TinySTM.abort)
-
+	  | "orderedFull" => (OrderedFullAbortTL2.get,
+			      OrderedFullAbortTL2.put,
+			      OrderedFullAbortTL2.atomic,
+			      OrderedFullAbortTL2.new,
+			      OrderedFullAbortTL2.abort)
 	  | "ptiny" => (TinySTMPartial.get,
 			TinySTMPartial.put,
 			TinySTMPartial.atomic,
@@ -120,7 +134,20 @@ struct
             return(UNIT)
         ;
 
+	define @get-paborts(x:unit / exh:exh) : [int] = 
+	    let aborts : int = GET_PABORT_COUNT
+	    let aborts : [int] = alloc(aborts)
+            return(aborts);
+
+	define @get-faborts(x:unit / exh:exh) : [int] = 
+	    let aborts : int = GET_FABORT_COUNT
+	    let aborts : [int] = alloc(aborts)
+            return(aborts);
+
     ) 
+
+    val getPartialAborts : unit -> int = _prim(@get-paborts)
+    val getFullAborts : unit -> int = _prim(@get-faborts)
 
     val printStats : unit -> unit = _prim(@print-stats)
 
