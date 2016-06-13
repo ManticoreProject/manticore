@@ -77,6 +77,11 @@ struct
 			TinySTMPartial.atomic,
 			TinySTMPartial.new,
 			TinySTMPartial.abort)
+	  | "tinyOrdered" => (TinySTMOrdered.get,
+			      TinySTMOrdered.put,
+			      TinySTMOrdered.atomic,
+			      TinySTMOrdered.new,
+			      TinySTMOrdered.abort)
 	  |_ => (usage(); raise Fail "STM not recognized\n")
 
     (*won't typecheck without these nonsense bindings*)

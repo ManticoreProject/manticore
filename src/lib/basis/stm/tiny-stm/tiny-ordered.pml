@@ -3,8 +3,7 @@
  * COPYRIGHT (c) 2016 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *
- * TinySTM with Partial Aborts
- * This uses bounded continuations and an ordered log
+ * Full Abort TinySTM with ordered read set
  *)
 
 #define RS_TAIL        0
@@ -20,8 +19,6 @@
 
 #define WRITE_VAL 3
 #define WRITE_NEXT 4
-
-#define READ_SET_BOUND 21
 
 structure TinySTMOrdered = 
 struct 
