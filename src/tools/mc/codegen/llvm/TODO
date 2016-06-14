@@ -88,6 +88,117 @@ define i32 @bar(%_utupTy.7* %x) {
 }
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+Here's another example from merge.pml without -sequential flag (explanation after the code):
+
+%_utupTy.352 = type { void (BLAH BLAH)*, i32*, i64*, %_utupTy.28*, i32*, %_utupTy.342*, i32, i32, i32 }
+%_utupTy.400 = type { void (BLAH BLAH)*, i32*, i64*, %_utupTy.28*, i32*, void (BLAH BLAH)**, i32, i32, i32 }
+%_utupTy.401 = type { %_utupTy.400, i64 }
+
+letJoinK_cfg11188_168C6:
+    ; ....
+    %r_16953 = getelementptr inbounds %_utupTy.352, %_utupTy.352* %ep_cfg11187_168DD, i32 0, i32 1
+	%r_16954 = load i32*, i32** %r_16953
+	%r_16955 = getelementptr inbounds %_utupTy.352, %_utupTy.352* %ep_cfg11187_168DD, i32 0, i32 2
+	%r_16956 = load i64*, i64** %r_16955
+	%r_16957 = getelementptr inbounds %_utupTy.352, %_utupTy.352* %ep_cfg11187_168DD, i32 0, i32 3
+	%r_16958 = load %_utupTy.28*, %_utupTy.28** %r_16957
+	%r_16959 = getelementptr inbounds %_utupTy.352, %_utupTy.352* %ep_cfg11187_168DD, i32 0, i32 4
+	%r_1695A = load i32*, i32** %r_16959
+	%r_1695B = getelementptr inbounds %_utupTy.352, %_utupTy.352* %ep_cfg11187_168DD, i32 0, i32 5
+	%r_1695C = load %_utupTy.342*, %_utupTy.342** %r_1695B
+	%r_1695D = bitcast %_utupTy.342* %r_1695C to void (i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, float, float, float, float, float, float, float, float, double, double, double, double, double, double, double, double)**
+	%r_1695E = getelementptr inbounds %_utupTy.352, %_utupTy.352* %ep_cfg11187_168DD, i32 0, i32 6
+	%r_1695F = load i32, i32* %r_1695E
+	%r_16960 = getelementptr inbounds %_utupTy.352, %_utupTy.352* %ep_cfg11187_168DD, i32 0, i32 7
+	%r_16961 = load i32, i32* %r_16960
+	%r_16962 = getelementptr inbounds %_utupTy.352, %_utupTy.352* %ep_cfg11187_168DD, i32 0, i32 8
+	%r_16963 = load i32, i32* %r_16962
+	%r_16964 = bitcast i64** %r_1694F to %_utupTy.401*
+	%r_16965 = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 -1, i32 1
+	%r_16966 = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 0, i32 0
+	%r_16967 = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 1, i32 0
+	%r_16968 = bitcast %_utupTy.400* %r_16967 to i64**
+	store i64 589887, i64* %r_16965
+	%r_16969 = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 0, i32 0, i32 0
+	store void (i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, float, float, float, float, float, float, float, float, double, double, double, double, double, double, double, double)* @letJoinK_cfgFC36_12649, void (i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, float, float, float, float, float, float, float, float, double, double, double, double, double, double, double, double)** %r_16969
+	%r_1696A = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 0, i32 0, i32 1
+	store i32* %r_16954, i32** %r_1696A
+	%r_1696B = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 0, i32 0, i32 2
+	store i64* %r_16956, i64** %r_1696B
+	%r_1696C = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 0, i32 0, i32 3
+	store %_utupTy.28* %r_16958, %_utupTy.28** %r_1696C
+	%r_1696D = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 0, i32 0, i32 4
+	store i32* %r_1695A, i32** %r_1696D
+	%r_1696E = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 0, i32 0, i32 5
+	store void (i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, float, float, float, float, float, float, float, float, double, double, double, double, double, double, double, double)** %r_1695D, void (i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, i64, float, float, float, float, float, float, float, float, double, double, double, double, double, double, double, double)*** %r_1696E
+	%r_1696F = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 0, i32 0, i32 6
+	store i32 %r_1695F, i32* %r_1696F
+	%r_16970 = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 0, i32 0, i32 7
+	store i32 %r_16961, i32* %r_16970
+	%r_16971 = getelementptr inbounds %_utupTy.401, %_utupTy.401* %r_16964, i32 0, i32 0, i32 8
+	store i32 %r_16963, i32* %r_16971
+
+generates:
+
+LBB102_7:                               ## %letJoinK_cfg11188_168C6
+	movq	%rsi, 144(%r14)
+	movl	$3, %esi
+	movq	%r14, %rdi
+	callq	_PromoteObj
+	movq	144(%r14), %rdi
+	movq	24(%rbp), %rcx
+	movq	(%rcx), %rcx
+	movslq	56(%rbp), %rdx
+	movq	%rax, (%rcx,%rdx,8)
+	movq	32(%rbp), %rax
+	movb	(%rax), %cl
+	movl	$1, %eax
+	shll	%cl, %eax
+	movq	$65537, -8(%rdi)        ## imm = 0x10001
+	movl	%eax, (%rdi)
+	leaq	40(%rdi), %rdx
+	movq	$131081, 8(%rdi)        ## imm = 0x20009
+	movq	%rdi, 16(%rdi)
+	leaq	_spin_cfgFC35_1264C(%rip), %rcx
+	movq	%rcx, 24(%rdi)
+	movq	8(%rbp), %r15
+	movq	16(%rbp), %rbx
+	movq	24(%rbp), %r8
+	movq	32(%rbp), %r9
+	movq	40(%rbp), %r10
+	movq	48(%rbp), %r11
+	movl	56(%rbp), %ebp
+	leaq	112(%rdi), %rsi
+	movq	$589887, 32(%rdi)       ## imm = 0x9003F
+	leaq	_letJoinK_cfgFC36_12649(%rip), %rcx
+	movq	%rcx, 40(%rdi)
+	movq	%r15, 48(%rdi)
+	movq	%rbx, 56(%rdi)
+	movq	%r8, 64(%rdi)
+	movq	%r9, 72(%rdi)
+	movq	%r10, 80(%rdi)
+	movq	%r11, 88(%rdi)
+	movl	%ebp, 96(%rdi)
+	testl	%eax, %eax
+	jle	LBB102_8
+
+
+notice, however, that the tuple we loaded values from (and copying into a new allocation) 
+end with 3 32-bit integers as its type. Notice, however, that these 3 ints were loaded like this:
+
+	movq	48(%rbp), %r11
+	movl	56(%rbp), %ebp
+    
+and placed into the new allocation like this:
+
+	movq	%r11, 88(%rdi)
+	movl	%ebp, 96(%rdi)
+    
+Clearly, these i32s are NOT 8 byte aligned, contrary to what our datalayout "asked" for!
+
+---------------------------------
+
+
 
 ***** FUTURE OPTIMIZATIONS *****
 
