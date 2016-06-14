@@ -336,8 +336,24 @@ in (case p
     | P.ArrStore _ => arrayStore bb LT.uniformTy
     
   (* atomic Op.operations *)
-    | (P.I32FetchAndAdd _ | P.I64FetchAndAdd _) => 
-        (fn [targ, value] => f e (Op.Armw Op.P_Add) #[targ, value])
+    | P.I32FetchAndAdd _ => let
+            val desiredTy = i32Star
+            fun caster targ = if LT.same(LB.toTy targ, desiredTy)
+                              then targ
+                              else c Op.BitCast (targ, desiredTy)
+        in
+            (fn [targ, value] => f e (Op.Armw Op.P_Add) #[caster targ, value])
+        end
+        
+    | P.I64FetchAndAdd _ => let
+            val desiredTy = i64Star
+            fun caster targ = if LT.same(LB.toTy targ, desiredTy)
+                              then targ
+                              else c Op.BitCast (targ, desiredTy)
+        in
+            (fn [targ, value] => f e (Op.Armw Op.P_Add) #[caster targ, value])
+        end
+        
         
     | (P.CAS _) =>
         (fn [targ, cmp, new] => let
