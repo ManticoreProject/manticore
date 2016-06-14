@@ -13,8 +13,8 @@ LLVM backend todo list
     
     
 ***** BUGS *****  
-
-    - Linter complains of things like the following:
+    
+    - Linter complains of things like the following: [ NOTE this didn't actually fix anything like i thought it would! ]
     
     Unusual: Address one pointer dereference
     %r_C65F = load i64*, i64** %r_C65E
@@ -42,7 +42,51 @@ LLVM backend todo list
   to the 'then' block when it will never get there because the branch protects
   agianst it.
   
-  Soln: we need to do those (gross) constant binding forms to prevent this!
+  Soln: we need to do those (gross) constant binding forms to prevent this! 
+  
+  
+  
+  - why inst combine breaks our code: datalayouts are not to be relied on! the documentation about them is
+    extremely misleading. First sentence says "A module may specify a target specific data
+     layout string that specifies how data is to be laid out in memory." but well after explaining
+     what they're for, near the end of the entry, they warn "The function of the data layout string
+     may not be what you expect. Notably, this is not a specification from the frontend of what
+     alignment the code generator should use."
+     
+     and thus, basing alignments on the datalayout string was a bad idea. we need to change all
+     loads/stores into ones of an i64 width. All address calculations should be done based 
+     on integer arithmetic, or via GEPs on i64*
+     
+     Here's example code that shows the mismatch between what LLC generates and OPT understands.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+target datalayout = "e-m:o-p:64:64:64-i64:64:64-i32:32:64-i8:8:64"
+;target datalayout = "e-m:o-p:64:64:64-i64:64:64-i32:64:64-i8:64:64"  
+target triple = "x86_64-apple-macosx"
+
+%_utupTy.6 = type { i64*, i64* }
+%_utupTy.7 = type { i32, i32, i32 }
+
+declare i8* @M_Arguments()
+
+;; with i8:64:64, instcombine breaks @foo because it turns it into a GEP i8*, i32 1, thinking
+;; that LLC will generate 8(%reg) to access 2nd component of this struct. LLC does whatever it wants.
+define i64* @foo() {
+    %ret_C179 = call i8* @M_Arguments()
+    %x1 = bitcast i8* %ret_C179 to %_utupTy.6*
+    %r_C131 = getelementptr inbounds %_utupTy.6, %_utupTy.6* %x1, i32 0, i32 1
+    %r_C132 = load volatile i64*, i64** %r_C131
+    ret i64* %r_C132
+}
+
+;; this code is broken as-is if you need 8 byte alignment of i32s.
+;; whether you say i32:64:64 or not. LLC will generate 4(%reg)
+define i32 @bar(%_utupTy.7* %x) {
+    %addr = getelementptr inbounds %_utupTy.7, %_utupTy.7* %x, i32 0, i32 1
+    %ret = load volatile i32, i32* %addr
+    ret i32 %ret
+}
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 ***** FUTURE OPTIMIZATIONS *****
