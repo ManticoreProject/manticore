@@ -68,6 +68,7 @@ struct
                     let _ : stamp = VClock.@bump(/exh)
                     return()
                 else return()
+            BUMP_FABORT
             let e : cont() = FLS.@get-key(ABORT_KEY / exh)
             throw e();   
 
