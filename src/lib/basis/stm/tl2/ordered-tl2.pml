@@ -43,6 +43,8 @@ structure RS = TL2OrderedRS
         define inline @abort(head : RS.ritem, chkpnt : RS.ritem, kCount : int, revalidate : fun(RS.ritem, RS.ritem, long, int, bool / -> ), 
                              newStamp : long, stamp : stamp_rec / exh:exh) : () =
             let chkpnt : with_k = (with_k) chkpnt
+            let freq : int = FLS.@get-counter2()
+            do FLS.@set-counter(freq)
             do #R_ENTRY_NEXT(chkpnt) := RS.NilRead
             let tv : tvar = #R_ENTRY_TVAR(chkpnt)
             let v1 : long = #CURRENT_LOCK(tv)

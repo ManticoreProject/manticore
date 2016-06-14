@@ -99,6 +99,8 @@ struct
         (*this won't typecheck without the `inline` annotation*)
         define inline @abort(readSet : read_set, chkpnt : item, n:long MSG(msg, : any) / exh:exh) noreturn = 
             MSG(do ccall M_Print(msg),)
+            let freq : int = FLS.@get-key2()
+            do FLS.@set-key(freq)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             fun release(i : item, max : long) : long = 
                 case i 
