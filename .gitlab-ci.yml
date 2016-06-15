@@ -39,6 +39,8 @@ pmlc:
             - llvm/build/bin
             - bin
             - lib
+            - src/include
+            - src/lib
 
 ####################
 seq_llvm:
@@ -51,6 +53,8 @@ seq_llvm:
             - llvm/build/bin
             - bin
             - lib
+            - src/include
+            - src/lib
 
 par_llvm:
     stage: test
@@ -62,6 +66,8 @@ par_llvm:
             - llvm/build/bin
             - bin
             - lib
+            - src/include
+            - src/lib
 ####################
 
 ####################
@@ -75,6 +81,8 @@ seq_llvm_lvl1:
             - llvm/build/bin
             - bin
             - lib
+            - src/include
+            - src/lib
 
 par_llvm_lvl1:
     stage: test
@@ -86,6 +94,8 @@ par_llvm_lvl1:
             - llvm/build/bin
             - bin
             - lib
+            - src/include
+            - src/lib
 ####################
 
 ####################
@@ -147,6 +157,8 @@ seq_mlrisc:
             - llvm/build/bin
             - bin
             - lib
+            - src/include
+            - src/lib
 
 par_mlrisc:
     stage: test
@@ -158,4 +170,6 @@ par_mlrisc:
             - llvm/build/bin
             - bin
             - lib
+            - src/include
+            - src/lib
 ####################
