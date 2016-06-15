@@ -16,7 +16,7 @@ llvm:
         - mkdir build install
         - cd build
         - cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_BUILD_TYPE=Release ../src
-        - make llc opt -j8
+        - make llc opt -j7
         # skip install and use just build/bin
     cache:
         key: "$CI_BUILD_REF"
@@ -42,9 +42,9 @@ pmlc:
 seq_llvm:
     stage: test
     script:
+        - git clean -df ./src/regression-tests
         - BACKEND="-llvm" ./src/regression-tests/bash-scripts/run-seq.bsh
-        - cd src/regression-tests
-        - git clean -df .
+        - git clean -df ./src/regression-tests
     cache:
         key: "$CI_BUILD_REF"
         untracked: true
@@ -54,9 +54,9 @@ seq_llvm:
 par_llvm:
     stage: test
     script:
+        - git clean -df ./src/regression-tests
         - BACKEND="-llvm" ./src/regression-tests/bash-scripts/run-par.bsh
-        - cd src/regression-tests
-        - git clean -df .
+        - git clean -df ./src/regression-tests
     cache:
         key: "$CI_BUILD_REF"
         untracked: true
@@ -68,9 +68,9 @@ par_llvm:
 seq_llvm_lvl1:
     stage: test
     script:
+        - git clean -df ./src/regression-tests
         - BACKEND="-llopt1" ./src/regression-tests/bash-scripts/run-seq.bsh
-        - cd src/regression-tests
-        - git clean -df .
+        - git clean -df ./src/regression-tests
     cache:
         key: "$CI_BUILD_REF"
         untracked: true
@@ -80,9 +80,9 @@ seq_llvm_lvl1:
 par_llvm_lvl1:
     stage: test
     script:
+        - git clean -df ./src/regression-tests
         - BACKEND="-llopt1" ./src/regression-tests/bash-scripts/run-par.bsh
-        - cd src/regression-tests
-        - git clean -df .
+        - git clean -df ./src/regression-tests
     cache:
         key: "$CI_BUILD_REF"
         untracked: true
@@ -94,9 +94,9 @@ par_llvm_lvl1:
 seq_mlrisc:
     stage: test
     script:
+        - git clean -df ./src/regression-tests
         - BACKEND="" ./src/regression-tests/bash-scripts/run-seq.bsh
-        - cd src/regression-tests
-        - git clean -df .
+        - git clean -df ./src/regression-tests
     cache:
         key: "$CI_BUILD_REF"
         untracked: true
@@ -106,9 +106,9 @@ seq_mlrisc:
 par_mlrisc:
     stage: test
     script:
+        - git clean -df ./src/regression-tests
         - BACKEND="" ./src/regression-tests/bash-scripts/run-par.bsh
-        - cd src/regression-tests
-        - git clean -df .
+        - git clean -df ./src/regression-tests
     cache:
         key: "$CI_BUILD_REF"
         untracked: true
