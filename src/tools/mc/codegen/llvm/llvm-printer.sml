@@ -1445,7 +1445,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       end
 
     val (targetTriple, dataLayout) = let
-        (* 
+        (* NOTE it turns out that the code generator does not respect datalayout strings! NOTE
+        
         In non-packed structs, padding between field types is inserted as defined by the 
         DataLayout string in the module, which is required to match what the underlying 
         code generator expects.
@@ -1471,15 +1472,20 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                    manually. *)
             , "p:64:64:64"      (* pointers are 64 bits wide, and both the abi and preferred
                                    alignment is 64 bits *)
-            , "i64:64"          (* 64 bit integers are 64 bit aligned *)
-            , "i32:64"          (* 32 bit integers are 64 bit aligned *)
-            , "i16:64"          (* 16 bit integers are 64 bit aligned *)
-            , "i8:64"           (* 8 bit integers are 64 bit aligned *)
-            , "i1:64"           (* 1 bit integers are 64 bit aligned *)
-            , "f16:64"          (* 16 bit floats are 64 bit aligned *)
-            , "f32:64"          (* 32 bit floats are 64 bit aligned *)
-            , "f64:64"          (* 64 bit floats are 64 bit aligned *)
-            , "a0:64"           (* 64 bit alignment of aggregate type *)
+            , "i64:64:64"          (* 64 bit integers are 64 bit aligned *)
+            
+            (* the following requests will not actually be respected by the code generator,
+               instead, this datalayout string must match what the code generator decides to do. 
+            
+            , "i32:64:64"          (* 32 bit integers are 64 bit aligned *)
+            , "i16:64:64"          (* 16 bit integers are 64 bit aligned *)
+            , "i8:64:64"           (* 8 bit integers are 64 bit aligned *)
+            , "i1:64:64"           (* 1 bit integers are 64 bit aligned *)
+            , "f16:64:64"          (* 16 bit floats are 64 bit aligned *)
+            , "f32:64:64"          (* 32 bit floats are 64 bit aligned *)
+            , "f64:64:64"          (* 64 bit floats are 64 bit aligned *)
+            , "a:0:64"           (* 64 bit alignment of aggregate type *)
+            *)
             ]
 
           in (case (Spec.archName, Spec.osName)
@@ -1583,7 +1589,7 @@ in
          "; ModuleID = '", Atom.toString module_name, "'"]) ;
 
     (* types need to go first, because they must be declared before used in functions etc*)
-    pr "\n\n; type decls\n\n" ;
+    pr "\n\n; type decls (if any)\n\n" ;
     pr (LT.typeDecl()) ;  
 
     pr "\n\n; externs & target info\n\n" ;
