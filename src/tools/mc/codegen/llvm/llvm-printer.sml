@@ -628,17 +628,26 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                     list, and that's dead as of now so we drop it *)
                  val origLive = if constBytesNeeded then origLive
                                     else L.drop(origLive, 1)
-                                        
+                
+                
+                fun asPtrTo ty addr = let
+                        val addrTy = LB.toTy addr
+                        val desiredTy = LT.mkPtr ty
+                    in
+                        if LT.same(addrTy, desiredTy)
+                        then addr
+                        else LB.cast myBB Op.BitCast (addr, desiredTy)
+                    end
                  
                  val origTys = ListPair.zipEq( 
                              L.tabulate(L.length origLive, tabulateFn),
                              L.map (fn x => LB.toTy x) origLive
                              )
                              
-
+                (* these loads need to occur just like in a SELECT, which casts pointers as needed *)
                  val loadedInstrs = L.map 
                      (fn (i, origTy) => case LPU.calcAddr myBB i framePtr
-                       of SOME addr => mk Op.Load #[addr]
+                       of SOME addr => mk Op.Load #[asPtrTo origTy addr]
                         | NONE => raise Fail "extractGC error"
                      ) origTys
                  
@@ -1049,30 +1058,53 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       
       
       and genSelect(env, (lhsVar, i, rhsVar)) = let
-      (* In CFG, there appears to be an implicit type casting going on with SELECT, so we need to add casts *)
-        val implicitCaster = let
-                val lhsTy = CFG.Var.typeOf lhsVar
-                val rhsTy = CFGTyUtil.select(CFG.Var.typeOf rhsVar, i)
-                val lhsTyLL = LT.typeOf lhsTy
-            in
-                if CFGTyUtil.equal(lhsTy, rhsTy)
-                then (fn x => x) (* do nothing *)
-                else (fn instr => cast (Op.equivCast(LB.toTy instr, lhsTyLL)) (instr, lhsTyLL))         
-            end      
         val llv = lookupV(env, rhsVar)
-      in
-        (case LPU.calcAddr b i llv
-            of SOME addr => insertV(env, lhsVar, implicitCaster (mk Op.Load #[addr]))
-             | NONE => ( debug "SELECT" rhsVar llv ; raise Fail "unrecoverable error")
-            (* esac *))
+        val addr = (case LPU.calcAddr b i llv
+                    of SOME addr => addr
+                     | NONE => ( debug ("SELECT " ^ Int.toString i) rhsVar llv ; raise Fail "unrecoverable error")
+                    (* esac *))
+                    
+        (* now that we have the right pointer, we need to cast the pointer to the right type. *)
+        val cfgSlotTy = CFGTyUtil.select(CFG.Var.typeOf rhsVar, i)
+        val llSlotPtrTy = LT.mkPtr(LT.typeOf cfgSlotTy)
         
-      end
+        val addr = cast Op.BitCast (addr, llSlotPtrTy)
+        val loadedVal = mk Op.Load #[addr]
       
-      and genUpdate(env, (i, ptr, var)) = let
+      (* In CFG, there appears to be an implicit type casting going on with SELECT, so lets see
+         if a cast is needed on the loaded value. *)        
+        
+        val loadedVal = let
+                val lhsTy = (LT.typeOf o CFG.Var.typeOf) lhsVar
+                val loadedTy = LB.toTy loadedVal
+            in
+                if LT.same(lhsTy, loadedTy)
+                then loadedVal (* do nothing *)
+                else cast (Op.equivCast(loadedTy, lhsTy)) (loadedVal, lhsTy)
+            end  
+            
+        in
+            insertV(env, lhsVar, loadedVal)
+        end
+
+      
+      and genUpdate(env, (i, ptr, var)) = let      
         val llVal = lookupV(env, var)
         val llPtr = lookupV(env, ptr)
         val SOME addr = LPU.calcAddr b i llPtr
-        val newLLVar = mk Op.Store #[addr, llVal]
+        
+        (* we need to cast the pointer to the correct type before the store *)
+          val caster = let
+                  val slotTy = CFGTyUtil.select(CFG.Var.typeOf ptr, i)
+                  val slotLLTy = LT.mkPtr(LT.typeOf slotTy)
+                  val addrTy = LB.toTy addr
+              in
+                  if LT.same(slotLLTy, addrTy)
+                  then (fn x => x) (* do nothing *)
+                  else (fn instr => cast Op.BitCast (addr, slotLLTy))         
+              end  
+        
+        val newLLVar = mk Op.Store #[caster addr, llVal]
       in
         env  (* store has an empty result *)
       end
@@ -1082,7 +1114,7 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       in
         (case LPU.calcAddr b i llv
             of SOME newLLVar => insertV(env, lhsVar, newLLVar)
-             | NONE => ( debug "AddrOf" var llv ; raise Fail "unrecoverable error" )
+             | NONE => ( debug ("AddrOf " ^ Int.toString i) var llv ; raise Fail "unrecoverable error" )
         (* esac *))
       end
       
@@ -1413,7 +1445,8 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
       end
 
     val (targetTriple, dataLayout) = let
-        (* 
+        (* NOTE it turns out that the code generator does not respect datalayout strings! NOTE
+        
         In non-packed structs, padding between field types is inserted as defined by the 
         DataLayout string in the module, which is required to match what the underlying 
         code generator expects.
@@ -1439,15 +1472,20 @@ and determineCC (* returns a ListPair of slots and CFG vars assigned to those sl
                                    manually. *)
             , "p:64:64:64"      (* pointers are 64 bits wide, and both the abi and preferred
                                    alignment is 64 bits *)
-            , "i64:64"          (* 64 bit integers are 64 bit aligned *)
-            , "i32:64"          (* 32 bit integers are 64 bit aligned *)
-            , "i16:64"          (* 16 bit integers are 64 bit aligned *)
-            , "i8:64"           (* 8 bit integers are 64 bit aligned *)
-            , "i1:64"           (* 1 bit integers are 64 bit aligned *)
-            , "f16:64"          (* 16 bit floats are 64 bit aligned *)
-            , "f32:64"          (* 32 bit floats are 64 bit aligned *)
-            , "f64:64"          (* 64 bit floats are 64 bit aligned *)
-            , "a0:64"           (* 64 bit alignment of aggregate type *)
+            , "i64:64:64"          (* 64 bit integers are 64 bit aligned *)
+            
+            (* the following requests will not actually be respected by the code generator,
+               instead, this datalayout string must match what the code generator decides to do. 
+            
+            , "i32:64:64"          (* 32 bit integers are 64 bit aligned *)
+            , "i16:64:64"          (* 16 bit integers are 64 bit aligned *)
+            , "i8:64:64"           (* 8 bit integers are 64 bit aligned *)
+            , "i1:64:64"           (* 1 bit integers are 64 bit aligned *)
+            , "f16:64:64"          (* 16 bit floats are 64 bit aligned *)
+            , "f32:64:64"          (* 32 bit floats are 64 bit aligned *)
+            , "f64:64:64"          (* 64 bit floats are 64 bit aligned *)
+            , "a:0:64"           (* 64 bit alignment of aggregate type *)
+            *)
             ]
 
           in (case (Spec.archName, Spec.osName)
@@ -1551,7 +1589,7 @@ in
          "; ModuleID = '", Atom.toString module_name, "'"]) ;
 
     (* types need to go first, because they must be declared before used in functions etc*)
-    pr "\n\n; type decls\n\n" ;
+    pr "\n\n; type decls (if any)\n\n" ;
     pr (LT.typeDecl()) ;  
 
     pr "\n\n; externs & target info\n\n" ;

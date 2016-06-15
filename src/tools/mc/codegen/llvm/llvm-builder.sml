@@ -837,15 +837,22 @@ structure LLVMBuilder : sig
   fun prepend (T{body=blk,...}, insts) = (blk := (!blk) @ insts ; insts)
 
   
-  fun incoming(t as T{incoming, args, ...}, edge as (_, vals)) = let
+  fun incoming(t as T{incoming, args, name, ...}, edge as (_, vals)) = let
     (* light type checking is done for phis here *)
+    
+    val nameStr = LV.nameOf name
+    
     val zippd = ListPair.zipEq(args, vals) 
         handle UnequalLengths => (* better error message *)
-            raise Fail "addIncoming: incorrect number of arguments given to a basic block!"
+            raise Fail ("addIncoming: incorrect number of arguments given to block " ^ nameStr)
             
-    val _ = L.app (fn (lv, inst) => 
-                    if LT.same(LV.typeOf lv, toTy inst) then ()
-                    else raise Fail "addIncoming: type mismatch between args and params of a basic block!") zippd
+    val _ = L.app (fn (lv, inst) => let
+                    val paramTy = LV.typeOf lv
+                    val varTy = toTy inst
+                    in
+                        (typeCheck ("addIncoming to " ^ nameStr ^ "\n") (paramTy, varTy) ; ())
+                    end) 
+                  zippd
   in
     (incoming := edge :: (!incoming); t)
   end

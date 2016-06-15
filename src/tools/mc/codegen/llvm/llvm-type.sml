@@ -432,9 +432,9 @@ structure LLVMType : sig
      | CT.T_Raw rt => mkInt(cnt (sizeOfRawTy rt))
       
       (* always a pointer type. *)
-      | CT.T_Tuple (_, ts) => determineTuple ts
+      | CT.T_Tuple (_, ts) => uniformTy (* determineTuple ts *)
 
-      | CT.T_OpenTuple ts => determineTuple ts
+      | CT.T_OpenTuple ts => uniformTy (* determineTuple ts *)
 
       | CT.T_Addr t => mkPtr(typeOf t)
 
@@ -457,7 +457,14 @@ structure LLVMType : sig
 
     (* end case *))
 
-    (* single element tuples are just a pointer to the object itself. *)
+    (* single element tuples are just a pointer to the object itself.
+    
+        NOTE 6/14/16
+        
+        We can't rely on unpacked structs + data layout strings to generate code
+        that respects the alignment constraints of our runtime system.
+        
+     *)
     and determineTuple ts = (case ts
         of nil => raise Fail "empty tuple. should be an enum for unit."
         

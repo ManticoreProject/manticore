@@ -181,52 +181,54 @@ in
       val cast = LB.cast b
       val mk = LB.mk b AS.empty
       
-      val tagTy = LT.gcHeaderTy
-      val oldAllocPtrTy = LB.toTy allocPtr
-      
-      (* build the types we'll need *)
-      (* it's important that the tupleTy is an unpacked struct, because
-         the datalayout correct pads the values so the GC is happy with it *)
-      val tupleTy = LT.mkUStruct(llTys) 
-      val heapFrameTy = LT.mkPtr(LT.mkUStruct( tupleTy :: tagTy :: nil ))
-      
-      (*  now lets calculate addresses. the invariant about the alloc pointer is that it
-          points to unallocated memory (the next allocation's header ty), so that's
-          what we need to return *)
-      val allocPtr = cast Op.BitCast (allocPtr, heapFrameTy)
+      (* uniformTy corresponds to the type of a tuple. *)
+      val tupleAddr = cast Op.BitCast (allocPtr, LT.uniformTy) 
       
       
       
       fun c idxNum = LB.intC(LT.i32, Int.toLarge idxNum)
       
       (* header addr offsets behind the allocation pointer *)
-      val headerAddr = gep (allocPtr, #[c ~1, c 1])
-      val tupleAddr = gep (allocPtr, #[c 0, c 0])
+      val headerAddr = gep (allocPtr, #[c ~1])
       
-      val newAllocPtr = cast Op.BitCast (gep (allocPtr, #[c 1, c 0]), oldAllocPtrTy)
+      val bumpOffset = (L.length llTys) + 1
+      val newAllocPtr = gep (allocPtr, #[c bumpOffset])
       
       
-      fun tupleCalc idx = gep (allocPtr, #[c 0, c 0, c idx])
+      fun tupleCalc idx = gep (tupleAddr, #[c idx])
   
   in
     {tupleCalc=tupleCalc, tupleAddr=tupleAddr, newAllocPtr=newAllocPtr, headerAddr=headerAddr}
   end
   
   
-  (* returns ptr to new allocation and the properly offset alloc ptr *)
+  (* returns ptr to new allocation and the properly offset alloc ptr.
+      callers should expect to cast the returned pointer to the correct type! *)
   fun doAlloc b allocPtr llVars headerTag = let
     val gep = LB.gep_ib b
     val cast = LB.cast b
     val mk = LB.mk b AS.empty
     
+    fun asPtrTo ty addr = let
+            val addrTy = LB.toTy addr
+            val desiredTy = LT.mkPtr ty
+        in
+            if LT.same(addrTy, desiredTy)
+            then addr
+            else cast Op.BitCast (addr, desiredTy)
+        end
+    
     val llTys = L.map (fn x => LB.toTy x) llVars
     val {tupleCalc, tupleAddr, newAllocPtr, headerAddr} = bumpAllocPtr b allocPtr llTys
     
-    val _ = mk Op.Store #[headerAddr, headerTag]
+    val _ = mk Op.Store #[asPtrTo LT.gcHeaderTy headerAddr, headerTag]
     
-    val _ = L.foldl (fn (var, idx) =>
-                ((mk Op.Store #[tupleCalc idx, var]) ; (idx + 1))) 0 llVars
-    
+    val _ = L.foldl (fn (var, idx) => let
+                            val varTy = LB.toTy var
+                            val slotAddr = tupleCalc idx
+                            val _ = mk Op.Store #[asPtrTo varTy slotAddr, var]
+                        in idx + 1 end)
+                    0 llVars
     in
         {newAllocPtr=newAllocPtr, tupleAddr=tupleAddr}
     end
