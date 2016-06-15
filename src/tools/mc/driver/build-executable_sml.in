@@ -153,7 +153,7 @@ Pass Arguments:  -domtree
     (**********************
      *  flags and options for opt
      **********************)
-    val opt = pathToBin "opt"
+    (*val opt = pathToBin "opt"*)
     
     (* TODO figure out why instcombine totally breaks our code ;) *)
     
@@ -236,7 +236,7 @@ Pass Arguments:  -domtree
     end
     
     fun doOpt verbose inputFile outputFile optPasses = let
-        val cmd = cat ([opt] @ (o_wrapPasses verbose optPasses) @ [inputFile, "-o", outputFile])
+        val cmd = cat ([pathToBin "opt"] @ (o_wrapPasses verbose optPasses) @ [inputFile, "-o", outputFile])
         val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
     in
         OS.Process.system cmd
@@ -247,7 +247,7 @@ Pass Arguments:  -domtree
     (**********************
      *  flags and options for llc
      **********************)
-    val llc = pathToBin "llc"
+    (*val llc = pathToBin "llc"*)
     
     val l_level1 = [] (* ["-O1"] *)
     val l_level2 = ["-O2"]
@@ -268,7 +268,7 @@ Pass Arguments:  -domtree
     end
     
     fun doLLC verbose inputFile outputFile optPasses = let
-        val cmd = cat ([llc] @ (l_wrapPasses verbose optPasses) @ [inputFile, "-o", outputFile])
+        val cmd = cat ([pathToBin "llc"] @ (l_wrapPasses verbose optPasses) @ [inputFile, "-o", outputFile])
         val _ = if verbose then TextIO.print(cmd ^ "\n") else ()
     in
         OS.Process.system cmd
