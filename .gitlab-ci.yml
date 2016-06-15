@@ -8,5 +8,13 @@ build:
         - autoconf -Iconfig
         - ./configure
         - make local-install
-        - ./src/regression-tests/bash-scripts/run-seq.bsh
-        - ./src/regression-tests/bash-scripts/run-par.bsh
+    cache:
+        untracked: true
+
+test-mlrisc-seq:
+    stage: test-mlrisc-seq
+        - BACKEND="" ./src/regression-tests/bash-scripts/run-seq.bsh
+
+test-mlrisc-par:
+    stage: test-mlrisc-par
+        - BACKEND="" ./src/regression-tests/bash-scripts/run-par.bsh
