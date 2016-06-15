@@ -34,40 +34,34 @@ pmlc:
         - make local-install
     cache:
         key: "$CI_BUILD_REF"
-        # untracked: true
+        untracked: true
         paths:
             - llvm/build/bin
-            - bin
-            - lib
-            - src/include
-            - src/lib
 
 ####################
 seq_llvm:
     stage: test
     script:
         - BACKEND="-llvm" ./src/regression-tests/bash-scripts/run-seq.bsh
+        - cd src/regression-tests
+        - git clean -df .
     cache:
         key: "$CI_BUILD_REF"
+        untracked: true
         paths:
             - llvm/build/bin
-            - bin
-            - lib
-            - src/include
-            - src/lib
 
 par_llvm:
     stage: test
     script:
         - BACKEND="-llvm" ./src/regression-tests/bash-scripts/run-par.bsh
+        - cd src/regression-tests
+        - git clean -df .
     cache:
         key: "$CI_BUILD_REF"
+        untracked: true
         paths:
             - llvm/build/bin
-            - bin
-            - lib
-            - src/include
-            - src/lib
 ####################
 
 ####################
@@ -75,75 +69,25 @@ seq_llvm_lvl1:
     stage: test
     script:
         - BACKEND="-llopt1" ./src/regression-tests/bash-scripts/run-seq.bsh
+        - cd src/regression-tests
+        - git clean -df .
     cache:
         key: "$CI_BUILD_REF"
+        untracked: true
         paths:
             - llvm/build/bin
-            - bin
-            - lib
-            - src/include
-            - src/lib
 
 par_llvm_lvl1:
     stage: test
     script:
         - BACKEND="-llopt1" ./src/regression-tests/bash-scripts/run-par.bsh
+        - cd src/regression-tests
+        - git clean -df .
     cache:
         key: "$CI_BUILD_REF"
+        untracked: true
         paths:
             - llvm/build/bin
-            - bin
-            - lib
-            - src/include
-            - src/lib
-####################
-
-####################
-# seq_llvm_lvl2:
-#     stage: test
-#     script:
-#         - BACKEND="-llopt2" ./src/regression-tests/bash-scripts/run-seq.bsh
-#     cache:
-#         key: "$CI_BUILD_REF"
-#         paths:
-#             - llvm/build/bin
-#             - bin
-#             - lib
-# 
-# par_llvm_lvl2:
-#     stage: test
-#     script:
-#         - BACKEND="-llopt2" ./src/regression-tests/bash-scripts/run-par.bsh
-#     cache:
-#         key: "$CI_BUILD_REF"
-#         paths:
-#             - llvm/build/bin
-#             - bin
-#             - lib
-####################
-
-####################
-# seq_llvm_lvl3:
-#     stage: test
-#     script:
-#         - BACKEND="-llopt3" ./src/regression-tests/bash-scripts/run-seq.bsh
-#     cache:
-#         key: "$CI_BUILD_REF"
-#         paths:
-#             - llvm/build/bin
-#             - bin
-#             - lib
-# 
-# par_llvm_lvl3:
-#     stage: test
-#     script:
-#         - BACKEND="-llopt3" ./src/regression-tests/bash-scripts/run-par.bsh
-#     cache:
-#         key: "$CI_BUILD_REF"
-#         paths:
-#             - llvm/build/bin
-#             - bin
-#             - lib
 ####################
 
 ####################
@@ -151,25 +95,23 @@ seq_mlrisc:
     stage: test
     script:
         - BACKEND="" ./src/regression-tests/bash-scripts/run-seq.bsh
+        - cd src/regression-tests
+        - git clean -df .
     cache:
         key: "$CI_BUILD_REF"
+        untracked: true
         paths:
             - llvm/build/bin
-            - bin
-            - lib
-            - src/include
-            - src/lib
 
 par_mlrisc:
     stage: test
     script:
         - BACKEND="" ./src/regression-tests/bash-scripts/run-par.bsh
+        - cd src/regression-tests
+        - git clean -df .
     cache:
         key: "$CI_BUILD_REF"
+        untracked: true
         paths:
             - llvm/build/bin
-            - bin
-            - lib
-            - src/include
-            - src/lib
 ####################
