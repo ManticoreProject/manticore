@@ -11,10 +11,12 @@ build:
     cache:
         untracked: true
 
-test-mlrisc-seq:
-    stage: test-mlrisc-seq
+test_mlrisc_seq:
+    stage: test
+    script:
         - BACKEND="" ./src/regression-tests/bash-scripts/run-seq.bsh
 
-test-mlrisc-par:
-    stage: test-mlrisc-par
+test_mlrisc_par:
+    stage: test
+    script:
         - BACKEND="" ./src/regression-tests/bash-scripts/run-par.bsh
