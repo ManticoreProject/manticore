@@ -153,18 +153,21 @@ Pass Arguments:  -domtree
     (**********************
      *  flags and options for opt
      **********************)
-    (*val opt = pathToBin "opt"*)
-    
-    (* TODO figure out why instcombine totally breaks our code ;) *)
-    
-    (* not really performance optimizations, just cleanup from initial generation. *)
-    val o_cleanupPasses = []
-    (*
-    [
-        "-strip-dead-prototypes",
-        "-constmerge",
-        "-codegenprepare"
-    ] *)
+
+    (* all of the basic cleanup passes LLVM has. things like adce were left off
+       not sure if this is reasonable ordering, just guessed *)
+    val o_cleanupPasses = [
+        "-simplifycfg",
+        "-instcombine",
+        "-reassociate",
+        "-constprop",
+        "-early-cse",
+        "-gvn",
+        "-dce",
+        "-simplifycfg",
+        "-instcombine",
+        "-simplifycfg"
+    ]
     
     val o_aliasAnalysis = [
         "-basicaa",
@@ -172,54 +175,29 @@ Pass Arguments:  -domtree
         "-memdep"
     ]
     
+    (* only add branch probability metadata *)
     val o_level0 = ["-lower-expect"]
     
-    (* just for testing instcombine for now *)
-    val o_level1 = ["-instcombine"]
-    
-    (*
-    
-    [
-        "-simplifycfg",
-        "-reassociate",
-        "-constprop",
-        "-early-cse",
-        "-dce",
-        "-simplifycfg"
-    ] *)
+    (* cleanup *)
+    val o_level1 = [
+        "-lower-expect",
+        "-tailcallelim"
+        ] @ o_cleanupPasses
     
     
+    (* cleanup + inlining *)
     val o_level2 = [
         "-lower-expect",
-        "-tailcallelim",
-        "-simplifycfg",
-        "-dce",
-        "-reassociate",
-        "-constprop",
+        "-tailcallelim"
+        ] @ o_cleanupPasses @ [
+        "-inline",
         "-sink",
-        "-early-cse",
         "-jump-threading",
-        "-correlated-propagation",
-        "-simplifycfg"
-        ] @ o_aliasAnalysis @ [
-        "-gvn",
-        "-reassociate",
-        "-constprop",
-        "-early-cse",
-        "-dce",
-        "-simplifycfg"
-    ]
+        "-correlated-propagation"
+        ] @ o_cleanupPasses
     
-    
-    val o_level3 = 
-        o_level2 @ 
-        o_aliasAnalysis @ [
-        "-sccp",
-        "-adce",
-        "-simplifycfg",
-        "-branch-prob",
-        "-block-freq"
-    ]
+    (* go all out *)
+    val o_level3 = [ "-O3" ] 
     
     
     (* opt passes that need to be performed before/after any passes *)
@@ -229,7 +207,7 @@ Pass Arguments:  -domtree
         
         val passes = (case passes 
                       of [] => firstPasses
-                       |  _ => firstPasses @ passes @ o_cleanupPasses @ ["-verify"]
+                       |  _ => firstPasses @ passes @ ["-verify"]
                        (* esac *))
     in
         if verbose then statsPasses @ passes else passes
@@ -247,16 +225,15 @@ Pass Arguments:  -domtree
     (**********************
      *  flags and options for llc
      **********************)
-    (*val llc = pathToBin "llc"*)
     
-    val l_level1 = [] (* ["-O1"] *)
-    val l_level2 = ["-O2"]
+    (* no reason to not use O3 with llc *)
+    val l_level1 = ["-O3"]
+    val l_level2 = ["-O3"]
     val l_level3 = ["-O3"]
     
     (* llc passes that need to be performed before/after any passes *)
     fun l_wrapPasses verbose passes = let
-        (* NOTE we need a frame pointer because our glue code uses it. "-disable-fp-elim",  *)
-        val firstPasses = ["-stack-alignment=8"] (* TODO later this might be -stack-alignment=8 ? *)
+        val firstPasses = ["-stack-alignment=8"]
         val statsPasses = ["-time-passes"] (* NOTE llc supports "-stats" but in Release mode it throws an error *)
         
         val passes = (case passes 
@@ -282,10 +259,9 @@ Pass Arguments:  -domtree
         (* take off the .ll *)
         val asmPrefix = String.extract(asmFile, 0, SOME((String.size asmFile) - 3))
         
-        (* run opt. we do not run opt if the llopt level is set to 0, because
-           llc will already run a verification pass on the input. We _do_ miss
-           out in the linter, but once this backend becomes more stable we should
-           only enable the linter when running in debug mode. *)
+        (* run opt. we do not need to run opt if the llopt level is set to 0, because
+           llc will already run a verification pass on the input. we do it anyways though
+           so we can run the linter. *)
         val commonName = asmPrefix ^ "_opt.bc" 
         val optRun = doOpt verbose asmFile commonName
         val optOutput = (case Controls.get BasicControl.llopt
@@ -312,7 +288,4 @@ Pass Arguments:  -domtree
         result
     end
 
-    (*fun build _ = raise Fail 
-        ("not able to build LLVM executables yet!"
-         ^ "\nyou chose opt level " ^ ((Int.toString o Controls.get) BasicControl.llopt))*)
 end
