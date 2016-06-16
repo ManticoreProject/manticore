@@ -8,8 +8,8 @@
 llvm:
     stage: build
     script:
-        - git submodule init
-        - git submodule update
+        - git submodule init llvm/src
+        - git submodule update llvm/src
         - cd llvm/src
         - git log -n 1 HEAD
         - cd ..
