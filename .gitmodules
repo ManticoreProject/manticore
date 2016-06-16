@@ -2,3 +2,7 @@
 	path = llvm/src
 	url = https://smlnj-gitlab.cs.uchicago.edu/manticore/llvm.git
     branch = master
+[submodule "src/benchmarks"]
+	path = src/benchmarks
+	url = git@smlnj-gitlab.cs.uchicago.edu:manticore/benchmarks.git
+    branch = master
