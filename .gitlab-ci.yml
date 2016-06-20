@@ -10,3 +10,9 @@ build:
         - make local-install
         - ./src/regression-tests/bash-scripts/run-seq.bsh
         - ./src/regression-tests/bash-scripts/run-par.bsh
+
+# push to the github mirror.
+mirror:
+    stage: deploy
+    script:
+        - git push --mirror git@github.com:ManticoreProject/pmlc.git
