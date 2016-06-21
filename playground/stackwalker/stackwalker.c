@@ -1,5 +1,5 @@
 #include<stdio.h>
 
-extern void stackWalker(){
-	printf("printing from stackwalker\n");
+extern void stackWalker(int counter){
+	printf("printing from stackwalker. counter is %d\n", counter);
 }
