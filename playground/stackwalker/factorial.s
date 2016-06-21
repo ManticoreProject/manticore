@@ -9,17 +9,15 @@ main:                                   # @main
 	pushq	%rax
 .Ltmp0:
 	.cfi_def_cfa_offset 16
+	movl	$10, %edi
 	xorl	%esi, %esi
-	movl	$10, %eax
-	movl	%eax, %edi
 	callq	fact
-	movabsq	$.L.str, %rdi
-	movq	%rax, %rsi
-	movb	$0, %al
+	movq	%rax, %rcx
+	movl	$.L.str, %edi
+	xorl	%eax, %eax
+	movq	%rcx, %rsi
 	callq	printf
-	xorl	%ecx, %ecx
-	movl	%eax, 4(%rsp)           # 4-byte Spill
-	movl	%ecx, %eax
+	xorl	%eax, %eax
 	popq	%rcx
 	retq
 .Lfunc_end0:
@@ -32,39 +30,46 @@ main:                                   # @main
 fact:                                   # @fact
 	.cfi_startproc
 # BB#0:                                 # %entry
-	subq	$24, %rsp
+	pushq	%rbp
 .Ltmp1:
+	.cfi_def_cfa_offset 16
+	pushq	%r14
+.Ltmp2:
+	.cfi_def_cfa_offset 24
+	pushq	%rbx
+.Ltmp3:
 	.cfi_def_cfa_offset 32
-	cmpq	$1, %rdi
-	movq	%rdi, 16(%rsp)          # 8-byte Spill
-	movl	%esi, 12(%rsp)          # 4-byte Spill
-	jg	.LBB1_2
+.Ltmp4:
+	.cfi_offset %rbx, -32
+.Ltmp5:
+	.cfi_offset %r14, -24
+.Ltmp6:
+	.cfi_offset %rbp, -16
+	movl	%esi, %ebp
+	movq	%rdi, %rbx
+	cmpq	$1, %rbx
+	jg	.LBB1_3
 # BB#1:                                 # %c1
-	movq	16(%rsp), %rax          # 8-byte Reload
-	addq	$24, %rsp
-	retq
-.LBB1_2:                                # %c2
-	movq	16(%rsp), %rax          # 8-byte Reload
-	subq	$1, %rax
-	movl	12(%rsp), %ecx          # 4-byte Reload
-	cmpl	$5, %ecx
-	movq	%rax, (%rsp)            # 8-byte Spill
-	jg	.LBB1_4
-.LBB1_3:                                # %c3
-	movl	12(%rsp), %eax          # 4-byte Reload
-	addl	$1, %eax
-	movq	(%rsp), %rdi            # 8-byte Reload
-	movl	%eax, %esi
-	callq	fact
-	movq	16(%rsp), %rdi          # 8-byte Reload
-	imulq	%rax, %rdi
-	movq	%rdi, %rax
-	addq	$24, %rsp
-	retq
-.LBB1_4:                                # %c4
-	movl	12(%rsp), %edi          # 4-byte Reload
+	movq	%rbx, %rax
+	jmp	.LBB1_2
+.LBB1_3:                                # %c2
+	leaq	-1(%rbx), %r14
+	cmpl	$5, %ebp
+	jle	.LBB1_4
+# BB#5:                                 # %c4
+	movl	%ebp, %edi
 	callq	stackWalker
-	jmp	.LBB1_3
+.LBB1_4:                                # %c3
+	incl	%ebp
+	movq	%r14, %rdi
+	movl	%ebp, %esi
+	callq	fact
+	imulq	%rbx, %rax
+.LBB1_2:                                # %c1
+	popq	%rbx
+	popq	%r14
+	popq	%rbp
+	retq
 .Lfunc_end1:
 	.size	fact, .Lfunc_end1-fact
 	.cfi_endproc
