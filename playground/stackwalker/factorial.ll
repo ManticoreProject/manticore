@@ -1,5 +1,6 @@
 declare void @stackWalker(i32)
 declare i32 @printf(i8*, ...)
+declare token @llvm.experimental.gc.statepoint.p0f_isVoidi32f(i64, i32, void (i32)*, i32, i32, ...)
 
 @.str = private unnamed_addr constant [5 x i8] c"%ld\0A\00", align 1
 
@@ -12,7 +13,7 @@ define i32 @main() {
 	ret i32 0
 }
 
-define i64 @fact(i64 %n, i32 %counter) {
+define i64 @fact(i64 %n, i32 %counter) gc "statepoint-example" {
 entry:
 	%check = icmp sle i64 %n, 1
 	br i1 %check, label %c1, label %c2
@@ -32,6 +33,7 @@ c3:
 	ret i64 %ret
 
 c4:
-	call void @stackWalker(i32 %counter)
+	;can i pass something in else other than 1023 as the id? how can i make it different?
+	call token(i64, i32, void (i32)*, i32, i32, ...) @llvm.experimental.gc.statepoint.p0f_isVoidi32f (i64 1023, i32 0, void(i32)* @stackWalker, i32 1, i32 0, i32 %counter, i64 0, i64 0)
 	br label %c3
 }

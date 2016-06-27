@@ -59,6 +59,7 @@ fact:                                   # @fact
 # BB#5:                                 # %c4
 	movl	%ebp, %edi
 	callq	stackWalker
+.Ltmp7:
 .LBB1_4:                                # %c3
 	incl	%ebp
 	movq	%r14, %rdi
@@ -82,3 +83,33 @@ fact:                                   # @fact
 
 
 	.section	".note.GNU-stack","",@progbits
+	.section	.llvm_stackmaps,"a",@progbits
+__LLVM_StackMaps:
+	.byte	1
+	.byte	0
+	.short	0
+	.long	1
+	.long	0
+	.long	1
+	.quad	fact
+	.quad	24
+	.quad	1023
+	.long	.Ltmp7-fact
+	.short	0
+	.short	3
+	.byte	4
+	.byte	8
+	.short	0
+	.long	0
+	.byte	4
+	.byte	8
+	.short	0
+	.long	0
+	.byte	4
+	.byte	8
+	.short	0
+	.long	0
+	.short	0
+	.short	0
+	.align	8
+
