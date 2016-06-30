@@ -1,8 +1,7 @@
 program: 
 	llc factorial.ll
 	clang -c factorial.s -o factorial.o
-	gcc -c stackwalker.c -o stackwalker.o
-	gcc -static factorial.o stackwalker.o
-
+	clang -c stackwalker.c -o stackwalker.o
+	clang -c stackhelper.s -o stackhelper.o
 clean:
-	rm factorial.o factorial.s stackwalker.o a.out
+	rm factorial.o stackwalker.o stackhelper.o a.out testing

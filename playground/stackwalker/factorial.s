@@ -9,7 +9,7 @@ main:                                   # @main
 	pushq	%rax
 .Ltmp0:
 	.cfi_def_cfa_offset 16
-	movl	$10, %edi
+	movl	$7, %edi
 	xorl	%esi, %esi
 	callq	fact
 	movq	%rax, %rcx
@@ -54,11 +54,10 @@ fact:                                   # @fact
 	jmp	.LBB1_2
 .LBB1_3:                                # %c2
 	leaq	-1(%rbx), %r14
-	cmpl	$5, %ebp
+	cmpl	$3, %ebp
 	jle	.LBB1_4
 # BB#5:                                 # %c4
-	movl	%ebp, %edi
-	callq	stackWalker
+	callq	stackHelper
 .Ltmp7:
 .LBB1_4:                                # %c3
 	incl	%ebp
@@ -93,7 +92,7 @@ __LLVM_StackMaps:
 	.long	1
 	.quad	fact
 	.quad	24
-	.quad	1023
+	.quad	12345
 	.long	.Ltmp7-fact
 	.short	0
 	.short	3

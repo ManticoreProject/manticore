@@ -1,11 +1,11 @@
-declare void @stackWalker(i32)
+declare void @stackHelper()
 declare i32 @printf(i8*, ...)
-declare token @llvm.experimental.gc.statepoint.p0f_isVoidi32f(i64, i32, void (i32)*, i32, i32, ...)
+declare token @llvm.experimental.gc.statepoint.p0f_isVoidf(i64, i32, void ()*, i32, i32, ...)
 
 @.str = private unnamed_addr constant [5 x i8] c"%ld\0A\00", align 1
 
 define i32 @main() {
-	%val = bitcast i64 10 to i64
+	%val = bitcast i64 7 to i64
 	%counter = bitcast i32 0 to i32
 	%ret = call i64 @fact(i64 %val, i32 %counter)
 	%formatString = getelementptr inbounds [5 x i8], [5 x i8]* @.str, i32 0, i32 0
@@ -23,7 +23,7 @@ c1:
 
 c2: 
 	%n1 = sub i64 %n, 1
-	%countercheck = icmp sle i32 %counter, 5 
+	%countercheck = icmp sle i32 %counter, 3 
 	br i1 %countercheck, label %c3, label %c4	
 
 c3:
@@ -33,7 +33,6 @@ c3:
 	ret i64 %ret
 
 c4:
-	;can i pass something in else other than 1023 as the id? how can i make it different?
-	call token(i64, i32, void (i32)*, i32, i32, ...) @llvm.experimental.gc.statepoint.p0f_isVoidi32f (i64 1023, i32 0, void(i32)* @stackWalker, i32 1, i32 0, i32 %counter, i64 0, i64 0)
+	call token(i64, i32, void ()*, i32, i32, ...) @llvm.experimental.gc.statepoint.p0f_isVoidf (i64 12345, i32 0, void()* @stackHelper, i32 0, i32 0, i64 0, i64 0)
 	br label %c3
 }
