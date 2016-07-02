@@ -929,6 +929,14 @@ structure FlatClosureWithCFA : sig
 			val kTgt = if CPS.Var.Set.numItems gs = 1 
 				      then CPS.Var.Set.find (fn _ => true) gs
 				   else NONE
+                   
+            val name = (CPS.Var.toString k)
+            val _ = (case ClassifyConts.kindOfCont g
+                        of ClassifyConts.ReturnCont => print ("throw to " ^ name ^ " is a return.\n")
+                         | ClassifyConts.OtherCont => print ("throw to " ^ name ^ " an other cont.\n")
+                         | _ => print ("some other case showed up for " ^ name ^ "\n")
+                    (* esac *))
+                    
 			in
 			  if CFA.isEscaping g
 			    then cvtStdThrow (env, k, kTgt, args)

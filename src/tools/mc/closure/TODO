@@ -1,0 +1,54 @@
+      
+    This is the TODO file for the direct-style transformation, which will revolve around the
+    CPS -> CFG transformation.
+    
+
+(*******)
+    Currently, throws to exception handlers are marked as OtherCont, (contrary to what the comment says
+    about return continuations, i think).
+       
+       It should not be hard to add a new classification to both Cont and Throws to mark
+       whether they're capturing/throwing an exception handler.
+      
+      
+(*******)
+Classification of return continuations is not exactly what we want. It's correct in saying
+that letJoinK below is used as a return continuation, since the letJoinK escapes the function
+as a return continuation. However, the throws are not individually marked by their type of
+usage, so it's incorrect to transform the true case's throw into a return.
+      
+throw to letJoinK<EF60>#2.1 is a return.
+
+
+    cont letJoinK<EF60>#2.1 (lg<EF61>#4:[long]) =
+        BODY OF THE CONTINUATION
+      (**** End letJoinK<EF60>#2.1 ****)
+      
+      if I64Eq(_t<E391>#3,_lit<EF75>#1) then
+        throw letJoinK<EF60>#2.1 _wlit<EF5F>#1
+      else
+        let _lit<EF76>#1:long = 2:long
+        let _t<EF77>#1:long = U64Div(_t<E391>#3,_lit<EF76>#1)
+        let _lit<EF78>#1:long = 1:long
+        let _t<EF7A>#1:long = I64Add(_lit<EF5E>#2,_lit<EF78>#1)
+        let _t<EF7B>#1:[long] = alloc (_t<EF7A>#1)
+        apply lp<E2D6>#3.3 (_t<EF77>#1,_t<EF7B>#1 / letJoinK<EF60>#2.1)
+        
+        
+We want to transform something like the above, where it's only used as either a goto OR
+a return in the function, into this in CFG:
+
+block letJoinK<EF60>#2.1 (lg<EF61>#4:[long]) =
+    BODY OF THE CONTINUATION
+  (**** End letJoinK<EF60>#2.1 ****)
+  
+  if I64Eq(_t<E391>#3,_lit<EF75>#1) then
+    goto letJoinK<EF60>#2.1 _wlit<EF5F>#1       <- previously used as a goto continuation
+  else
+    let _lit<EF76>#1:long = 2:long
+    let _t<EF77>#1:long = U64Div(_t<E391>#3,_lit<EF76>#1)
+    let _lit<EF78>#1:long = 1:long
+    let _t<EF7A>#1:long = I64Add(_lit<EF5E>#2,_lit<EF78>#1)
+    let _t<EF7B>#1:[long] = alloc (_t<EF7A>#1)
+    let returnVal = non-tail-call lp<E2D6>#3.3 (_t<EF77>#1,_t<EF7B>#1)  <- previously used here as a return continuation
+    goto letJoinK<EF60>#2.1 returnVal
