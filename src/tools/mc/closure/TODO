@@ -13,10 +13,18 @@
     This way, when you transform the throws of a function's return continuation into a return,
     everything goes to the right places.
     
+    
+(*******)
+        There's a "bug" with the continuation classification in that the main function's return and
+        exception handler continuations are misclassified as OtherConts. I think it's due to the fact
+        that main's use count is zero. Not sure whether this is okay to allow or not, but it's good
+        to keep in mind. Previously I thought exception handlers were misclassified, but my test program
+        never installed any handlers, so they were all invoking the same one according to CFA, the
+        "unexpected exception" handler.
 
 (*******)
-    Currently, throws to exception handlers are marked as OtherCont, (contrary to what the comment says
-    about return continuations, i think).
+    Currently, throws to exception handlers are marked as returns, but they should be distinguished
+    as throwing an exception so we know if we should perform a longjmp instead of a return.
        
        It should not be hard to add a new classification to both Cont and Throws to mark
        whether they're capturing/throwing an exception handler.
