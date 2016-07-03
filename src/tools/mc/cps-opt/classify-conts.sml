@@ -128,7 +128,9 @@ structure ClassifyConts : sig
             | _ => (setFn(k, OtherCont); clrUses k)
           (* end case *))
     end
-
+    
+    (* used when determining whether a continuation escapes as an
+       argument to a throw/apply, or used in a RHS of a let. *)
     fun doArg x = (case CV.kindOf x
            of C.VK_Cont _ => markAsOther x
             | _ => ()
@@ -152,14 +154,19 @@ structure ClassifyConts : sig
 
     fun analExp (outer, C.Exp(_, t)) = (case t
            of C.Let (_, rhs, e) => (
-                CPSUtil.appRHS doArg rhs;
+               
+               (* FIXME right now this would mark a cont that is simply renamed as Other. *)
+                CPSUtil.appRHS doArg rhs; 
+                
                 analExp (outer, e))
+                
             | C.Fun(fbs, e) => let
                 fun doFB (C.FB{f, body, ...}) = analExp (f, body)
                 in
                   List.app doFB fbs;
                   analExp (outer, e)
                 end
+                
             | C.Cont(C.FB{f, body, ...}, e) => (
               (* initialize properties for this continuation *)
                 setOuter (f, outer);

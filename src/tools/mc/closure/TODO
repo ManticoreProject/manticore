@@ -2,6 +2,14 @@
     This is the TODO file for the direct-style transformation, which will revolve around the
     CPS -> CFG transformation.
     
+Overall Goals of the improved continuation classification, in order to make closure conversion
+modifications as simple as possible: 
+
+- Every Throw must be marked with the type of throw it is: goto, ret, exn, other.
+- Every Apply is marked as either tail or non-tail.
+- All declared continuations must be marked with all types of their usage. While Conts are
+  currently marked with their usage, it's imprecise.
+    
 (*******)    
     A rule to follow when going to direct-style is to check whether the current
     return continuation of a function is passed as such to an Apply. If the return continuation is the same,
@@ -21,6 +29,18 @@
         to keep in mind. Previously I thought exception handlers were misclassified, but my test program
         never installed any handlers, so they were all invoking the same one according to CFA, the
         "unexpected exception" handler.
+
+(*******)
+
+Currently, the let binding analysis only checks to see if a continuation declared escapes or not
+by checking if it's used in the rhs, what we need to also consider is that unknown conts may be
+thrown to, as in the example below, which is currently not classified at all:
+
+    let tos<EBB7>#2:[cont(any),any] = vpload(vp<EBB5>#3+32)
+    let rest<EBB8>#1:any = #1(tos<EBB7>#2)
+    do vpstore(vp<EBB5>#3+32,rest<EBB8>#1)
+    let act<EBB9>#1.1:cont(any) = #0(tos<EBB7>#2)
+    throw act<EBB9>#1.1 con_STOP<EBB4>#1
 
 (*******)
     Currently, throws to exception handlers are marked as returns, but they should be distinguished
