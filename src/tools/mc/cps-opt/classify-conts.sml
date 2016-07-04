@@ -161,12 +161,7 @@ structure ClassifyConts : sig
                 analExp (outer, e))
                 
             | C.Fun(fbs, e) => let
-                fun doFB (C.FB{f, body, rets as [retk], ...}) = 
-                        analExp ({lambdaV = f, retk = retk, exn = #exn(outer)}, body)
-                  
-                  | doFB (C.FB{f, body, rets as [retk, exn], ...}) =
-                        analExp ({lambdaV = f, retk = retk, exn = exn}, body)
-                        
+                fun doFB (C.FB{f, body, ...}) = analExp (f, body)
                 in
                   List.app doFB fbs;
                   analExp (outer, e)
@@ -174,16 +169,14 @@ structure ClassifyConts : sig
                 
             | C.Cont(C.FB{f, body, ...}, e) => (
               (* initialize properties for this continuation *)
-                setOuter (f, #lambdaV(outer));
+                setOuter (f, outer);
         
                 if (CV.useCount f = CV.appCntOf f)
                   then markAsJoin f
                   else markAsReturn f;
           
-              (* analyse its body, preserving the retk & exn, however *)
-                analExp ({lambdaV = f, 
-                          retk = #retk(outer),
-                          exn = #exn(outer)}, body);
+              (* analyse its body *)
+                analExp (f, body);
         
                 if List.null (usesOf f)
                   then ()
@@ -194,7 +187,7 @@ structure ClassifyConts : sig
           
                 (case kindOf f
                  of JoinCont => (
-                        if List.all (checkUse (#lambdaV(outer))) (usesOf f)
+                        if List.all (checkUse outer) (usesOf f)
                                 then () (* it remains a join continuation *)
                                 else (markAsOther f; clrUses f)
                         )
@@ -221,32 +214,13 @@ structure ClassifyConts : sig
             | C.Switch(_, cases, dflt) => (
                 List.app (fn (_, e) => analExp(outer, e)) cases;
                 Option.app (fn e => analExp(outer, e)) dflt)
-            
-            | C.Apply(_, args, rets as (retk :: _)) => let
-                val currentRetk = #retk(outer)
-                
-                (* TODO: mark the ret and exn continuations as such if they're passed
-                         in this Apply *)
-                
-                        (* a better debug message might be nice :) *)
-                val _ = if CV.same(retk, currentRetk)
-                        then print "tail call\n"
-                        else print ("found a non-tail call. " 
-                                ^ (CV.toString currentRetk) ^ " ~> " 
-                                ^ (CV.toString retk) ^ "\n")
-            in
-                List.app doArg args
-            end
-            
+            | C.Apply(_, args, _) => List.app doArg args
             | C.Throw(k, args) => (
-                (* TODO now that we have the current retk & exn in the outer context,
-                        we can classify this as throwing an exception, a return, or something else. *)
-                addUse (#lambdaV(outer), k);
+                addUse (outer, k);
                 List.app doArg args)
           (* end case *))
 
-    fun analyze (C.MODULE{body=C.FB{f, body, rets as [retk, exn], ...}, ...}) = 
-        analExp ({lambdaV = f, retk = retk, exn = exn} , body)
+    fun analyze (C.MODULE{body=C.FB{f, body, ...}, ...}) = analExp (f, body)
 
   (* return the kind of a continuation *)
     fun kindOfCont k = (case CV.kindOf k
