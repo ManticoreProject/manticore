@@ -43,6 +43,63 @@ thrown to, as in the example below, which is currently not classified at all:
     throw act<EBB9>#1.1 con_STOP<EBB4>#1
 
 (*******)
+
+Here's another interesting case, where a letJoin was casted (presumably due to arity raising?)
+and became an Other continuation instead of still a goto:
+
+cont letJoinK<EA92>#1 (_t<EA91>#1:[int]) =
+    ... BODY ....
+let coerced<EFB7>#2.2:cont(any) = (cont(any))letJoinK<EA92>#1
+... some nesting later ...
+    throw coerced<EFB7> etc
+    
+In this case, the coerced continuation should be tracked as a goto and not Other, and it's
+usages after casting should be tracked on the original continuation.
+
+(*******)
+
+Here's a weird case, where the use and app counts of a letJoinK are the same,
+but it ends up being marked as Other because it's used within another function.
+The continuation is not used in a first-class way. I think in this case, it should
+be marked with the new classification of Goto continuation, as opposed to Join continuations
+(which I have been calling gotos). The distinction is that Join continuations are Goto 
+continuations that can be mapped to a basic block instead of a full function. Throws to a 
+Goto cont generate a tail call in DS, whereas Joins generate a branch to block.
+
+cont letJoinK<E98E>#3.3 () =
+    ETC
+(**** End letJoinK<E98E>#3.3 ****)
+
+if ... then ... throw letJoinK<E98E>#3.3 ()
+else
+....
+cont letJoinK<E9A8>#3.2 () =
+    fun preempt<E9A9>#2.2 (-; retK<E9AA>#1:cont()) =
+        let limitPtrOrig<E9AB>#2:any = vpload(dst<E975>#14+448)
+        let _t<E9AC>#1:addr(any) = vpaddr(dst<E975>#14+448)
+        let _t<E9AD>#1:addr(any) = (addr(any))_t<E9AC>#1
+        let _t<E9AE>#1:any = $0:any
+        let x<E9AF>#1:any = CAS(_t<E9AD>#1,limitPtrOrig<E9AB>#2,_t<E9AE>#1)
+        if NotEqual(x<E9AF>#1,limitPtrOrig<E9AB>#2) then
+          do Pause()
+          apply preempt<E9A9>#2.2 ( / retK<E9AA>#1)
+        else
+          throw letJoinK<E98E>#3.3 ()
+    (**** End preempt<E9A9>#2.2 ****)
+    let letJoinKElim<FA5B>#1:any = enum(0):any
+    let letJoinK<E9B0>#1:cont() = (cont())letJoinKElim<FA5B>#1
+    let limitPtrOrig<F2AD>#2:any = vpload(dst<E975>#14+448)
+    let _t<F2AE>#1:addr(any) = vpaddr(dst<E975>#14+448)
+    let _t<F2AF>#1:addr(any) = (addr(any))_t<F2AE>#1
+    let _t<F2B0>#1:any = $0:any
+    let x<F2B1>#1:any = CAS(_t<F2AF>#1,limitPtrOrig<F2AD>#2,_t<F2B0>#1)
+    if NotEqual(x<F2B1>#1,limitPtrOrig<F2AD>#2) then
+      do Pause()
+      apply preempt<E9A9>#2.2 ( / letJoinK<E9B0>#1)
+    else
+      throw letJoinK<E98E>#3.3 ()
+
+(*******)
     Currently, throws to exception handlers are marked as returns, but they should be distinguished
     as throwing an exception so we know if we should perform a longjmp instead of a return.
        
@@ -91,3 +148,37 @@ block letJoinK<EF60>#2.1 (lg<EF61>#4:[long]) =
     let _t<EF7B>#1:[long] = alloc (_t<EF7A>#1)
     let returnVal = non-tail-call lp<E2D6>#3.3 (_t<EF77>#1,_t<EF7B>#1)  <- previously used here as a return continuation
     goto letJoinK<EF60>#2.1 returnVal
+    
+    
+(*******)
+
+Here's an example of a simple non-tail Apply:
+
+cont letJoinK<EFC1>#1 (_t<EFC2>#1:[long]) =
+  let data<EFC3>#1:any = #0(a<EFBA>#4)
+  let ix<EFC4>#1:int = #0(param<EFBC>#4)
+  let x<EFC5>#1:long = #0(_t<EFC2>#1)
+  do ArrStoreI64(data<EFC3>#1,ix<EFC4>#1,x<EFC5>#1)
+  let _lit<EFC6>#1:int = 1:int
+  let _t<EFC7>#1:int = #0(param<EFBC>#4)
+  let _t<EFC8>#1:int = I32Add(_t<EFC7>#1,_lit<EFC6>#1)
+  let res<EFC9>#1:[int] = alloc (_t<EFC8>#1)
+  apply lp<EFBB>#2.2 (res<EFC9>#1 / retK<EFBD>#2.1,_exh<EFBE>#2)
+(**** End letJoinK<EFC1>#1 ****)
+apply anon<E3EC>#2.2 (param<EFBC>#4 / letJoinK<EFC1>#1,_exh<EFBE>#2)
+
+
+Which can be very simply flipped around into:
+
+  let _t<EFC2>#1:[long] = call anon<E3EC>#2.2 (param<EFBC>#4)
+  let data<EFC3>#1:any = #0(a<EFBA>#4)
+  let ix<EFC4>#1:int = #0(param<EFBC>#4)
+  let x<EFC5>#1:long = #0(_t<EFC2>#1)
+  do ArrStoreI64(data<EFC3>#1,ix<EFC4>#1,x<EFC5>#1)
+  let _lit<EFC6>#1:int = 1:int
+  let _t<EFC7>#1:int = #0(param<EFBC>#4)
+  let _t<EFC8>#1:int = I32Add(_t<EFC7>#1,_lit<EFC6>#1)
+  let res<EFC9>#1:[int] = alloc (_t<EFC8>#1)
+  apply lp<EFBB>#2.2 (res<EFC9>#1 / retK<EFBD>#2.1,_exh<EFBE>#2)
+
+In accordance to all function's return continuation throws being converted into returns.
