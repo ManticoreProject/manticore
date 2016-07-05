@@ -50,6 +50,5 @@ extern void* __LLVM_StackMaps;
 
 extern void stackWalker(long sp, long llvmstackmap){
 	printf("vals are %ld %ld\n", sp, llvmstackmap);
-	//int i = (int) __LLVM_StackMaps;
-	//printf("%d", i);
+	struct StackMap *s = (struct StackMap*) llvmstackmap;
 }

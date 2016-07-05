@@ -5,7 +5,7 @@ declare token @llvm.experimental.gc.statepoint.p0f_isVoidf(i64, i32, void ()*, i
 @.str = private unnamed_addr constant [5 x i8] c"%ld\0A\00", align 1
 
 define i32 @main() {
-	%val = bitcast i64 7 to i64
+	%val = bitcast i64 6 to i64
 	%counter = bitcast i32 0 to i32
 	%ret = call i64 @fact(i64 %val, i32 %counter)
 	%formatString = getelementptr inbounds [5 x i8], [5 x i8]* @.str, i32 0, i32 0

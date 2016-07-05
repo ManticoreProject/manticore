@@ -1,6 +1,6 @@
 	.text
 	.file	"factorial.ll"
-	.globl	main
+	.globl	main, __LLVM_StackMaps
 	.align	16, 0x90
 	.type	main,@function
 main:                                   # @main
@@ -9,7 +9,7 @@ main:                                   # @main
 	pushq	%rax
 .Ltmp0:
 	.cfi_def_cfa_offset 16
-	movl	$7, %edi
+	movl	$6, %edi
 	xorl	%esi, %esi
 	callq	fact
 	movq	%rax, %rcx
