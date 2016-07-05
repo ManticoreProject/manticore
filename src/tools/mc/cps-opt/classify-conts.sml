@@ -49,6 +49,7 @@ structure ClassifyConts : sig
     structure C = CPS
     structure CV = CPS.Var
     structure ST = Stats
+    structure CFA = CFACPS
 
     (* controls *)
     val enableFlg = ref true
@@ -193,7 +194,19 @@ structure ClassifyConts : sig
           in
             chk
           end
-          
+    
+    (* consult CFA to determine the actual continuation, if its known *)
+    fun actualCont k = (case CFA.valueOf k
+        of CFA.LAMBDAS gs => let
+                val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
+            in 
+                if CPS.Var.Set.numItems gs = 1 
+                    then Option.valOf (CPS.Var.Set.find (fn _ => true) gs)
+                    else k 
+            end
+         | _ => k
+         (* esac *))
+    
     (* climbs the context, if necessary, to find the immediately enclosing function. *)
     fun enclosingFun outer = (case CV.kindOf outer
         of C.VK_Fun fb => SOME fb
@@ -212,21 +225,7 @@ structure ClassifyConts : sig
       
 
     fun analExp (outer, C.Exp(ppt, t)) = (case t
-           of C.Let (_, rhs, e) => (
-               
-               (* FIXME right now this would mark a cont that is simply renamed or
-                  casted as Other. 
-                  
-                  Commenting out the below nearly fixes it since we're now
-                  using CFA escaping information earlier, but now arity raising
-                  will break things since it introduces a type coercion of a
-                  continuation, which is still not escaping, but now closure conversion
-                  barfs, probably due to environment stuff changing.
-                   *)
-                   
-                (*CPSUtil.appRHS doArg rhs; *)
-                
-                analExp (outer, e))
+            of C.Let (_, _, e) => analExp (outer, e)
                 
             | C.Fun(fbs, e) => let
                 fun doFB (C.FB{f, body, ...}) = analExp (f, body)
@@ -236,7 +235,7 @@ structure ClassifyConts : sig
                 end
                 
             | C.Cont(C.FB{f, body, ...}, e) => let
-                val notEscaping = (not o CFACPS.isEscaping) f
+                val notEscaping = (not o CFA.isEscaping) f
                 
                 (* JoinCont iff
                    not escaping (currently we use the app = use metric)
@@ -273,10 +272,10 @@ structure ClassifyConts : sig
           
                 (case kindOf f
                  of JoinCont => (
+                        (* do all uses of f occur in the current environment? *)
                         if List.all (checkUse outer) (usesOf f)
                                 then () (* it remains a join continuation *)
-                                (*else (markAsOther f; clrUses f)*)
-                                else markAsGoto f
+                                else markAsGoto f (* should be its own function *)
                         )
                   | _ => ());
           
@@ -306,36 +305,39 @@ structure ClassifyConts : sig
                 Option.app (fn e => analExp(outer, e)) dflt)
             
             | C.Apply(_, args, rets) => let
-            
-                val _ = (case rets
-                         of [_, exnk] => markAsExn exnk
-                          | _ => ()
-                        (* esac *))
-            
-                val retk = List.hd rets
-                val _ = markAsReturn retk
                 
-                (* an Apply is a tail call iff the enclosing ret cont is the same
-                   as the one passed to the function *)
+                (* we mark the actual cont *)
+                val rets = List.map actualCont rets
+                
+                val retk = (case rets
+                            of [retk, exnk] => (markAsExn exnk ; markAsReturn retk ; retk)
+                             | [retk] => (markAsReturn retk ; retk)
+                             | _ => raise Fail "an apply with unexpected rets"
+                        (* esac *))
+                
                 val SOME encl = enclosingFun outer
                 val SOME enclRet = getRetK encl
             in
-                (markTail(ppt, CV.same(enclRet, retk));
-                 List.app doArg args)
+                (* an Apply is a tail call iff the enclosing ret cont is the same
+                   as the one passed to the function *)
+                markTail(ppt, CV.same(enclRet, retk))
             end
                 
-                (* TODO evaluate whether we even need doArg in Throw/Apply now that we use
-                   CFA information to determine whether the continuation escapes. *)
+            | C.Throw(k, args) =>
+                (* check CFA information to determine if k is an alias for some Cont,
+                   and add the use to the actual Cont and not the alias.
+                   
+                   this may happen if a Cont is casted/rebound, which can be introduced
+                   after arity raising. *)
+                addUse (outer, actualCont k)
                 
-            | C.Throw(k, args) => 
-                (addUse (outer, k);
-                 List.app doArg args)
+                
           (* end case *))
 
     fun analyze (C.MODULE{body=C.FB{f, body, ...}, ...}) = analExp (f, body)
 
   (* return the kind of a continuation *)
-    fun kindOfCont k = (case CV.kindOf k
+    fun kindOfCont k = (case (CV.kindOf o actualCont) k
            of C.VK_Cont _ => kindOf k
             | C.VK_Param (C.FB{ rets ,...}) => checkRets (k, rets)
             | _ => OtherCont
@@ -348,7 +350,7 @@ structure ClassifyConts : sig
 
   (* is k a join continuation? if the optimization is disabled, we always say no *)
     fun isJoinCont k = !enableFlg
-          andalso (case kindOfCont k
+          andalso (case (kindOfCont o actualCont) k
              of JoinCont => true
               | _ => false
             (* end case *))

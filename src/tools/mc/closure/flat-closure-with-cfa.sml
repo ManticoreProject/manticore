@@ -921,6 +921,9 @@ structure FlatClosureWithCFA : sig
           and cvtThrow (env, k, args) = if ClassifyConts.isJoinCont k
 		then cvtJoinThrow (env, k, args)
 		else let 
+            val _ = ()
+            (*
+            (* for debugging purposes *)
             val name = (CPS.Var.toString k)
             val _ = (case ClassifyConts.kindOfCont k
                         of ClassifyConts.ReturnCont => print ("throw to return " ^ name ^ "\n")
@@ -928,7 +931,7 @@ structure FlatClosureWithCFA : sig
                          | ClassifyConts.ExnCont => print ("throw to exn " ^ name ^ "\n")
                          | ClassifyConts.GotoCont => print ("throw to goto " ^ name ^ "\n")
                          | _ => print ("some other case showed up for " ^ name ^ "\n")
-                    (* esac *))
+                    (* esac *)) *)
         in
         (case CFA.valueOf k 
 		   of CFA.TOP => cvtStdThrow (env, k, NONE, args)
