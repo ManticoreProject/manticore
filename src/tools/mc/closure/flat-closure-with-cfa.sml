@@ -920,7 +920,17 @@ structure FlatClosureWithCFA : sig
         (* convert a throw *)
           and cvtThrow (env, k, args) = if ClassifyConts.isJoinCont k
 		then cvtJoinThrow (env, k, args)
-		else (case CFA.valueOf k 
+		else let 
+            val name = (CPS.Var.toString k)
+            val _ = (case ClassifyConts.kindOfCont k
+                        of ClassifyConts.ReturnCont => print ("throw to return " ^ name ^ "\n")
+                         | ClassifyConts.OtherCont => print ("throw to other " ^ name ^ "\n")
+                         | ClassifyConts.ExnCont => print ("throw to exn " ^ name ^ "\n")
+                         | ClassifyConts.GotoCont => print ("throw to goto " ^ name ^ "\n")
+                         | _ => print ("some other case showed up for " ^ name ^ "\n")
+                    (* esac *))
+        in
+        (case CFA.valueOf k 
 		   of CFA.TOP => cvtStdThrow (env, k, NONE, args)
 		    | CFA.BOT => cvtStdThrow (env, k, NONE, args)
 		    | CFA.LAMBDAS gs => let
@@ -929,13 +939,6 @@ structure FlatClosureWithCFA : sig
 			val kTgt = if CPS.Var.Set.numItems gs = 1 
 				      then CPS.Var.Set.find (fn _ => true) gs
 				   else NONE
-                   
-            val name = (CPS.Var.toString k)
-            val _ = (case ClassifyConts.kindOfCont g
-                        of ClassifyConts.ReturnCont => print ("throw to " ^ name ^ " is a return.\n")
-                         | ClassifyConts.OtherCont => print ("throw to " ^ name ^ " an other cont.\n")
-                         | _ => print ("some other case showed up for " ^ name ^ "\n")
-                    (* esac *))
                     
 			in
 			  if CFA.isEscaping g
@@ -943,6 +946,7 @@ structure FlatClosureWithCFA : sig
 			    else cvtKnownThrow (env, k, kTgt, args)
 			end
 		  (* end case *))
+         end
           and cvtStdThrow (env, k, kTgt, args) = let
                 val (kBinds, k') = lookupVar(env, k)
                 val (argBinds, args') = lookupVars(env, args)
