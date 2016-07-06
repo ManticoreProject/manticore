@@ -19,6 +19,10 @@ structure DirectFlatClosureWithCFA : sig
     structure CFA = CFACPS
     structure FV = FreeVars
     structure VMap = CPS.Var.Map
+    structure ST = Stats
+    
+    (********** Counters for statistics **********)
+    val cntJoinContOpt    = ST.newCounter "clos:optimize-joink"
 
   (* return the variable of a lambda *)
     fun funVar (CPS.FB{f, ...}) = f
@@ -175,7 +179,7 @@ structure DirectFlatClosureWithCFA : sig
                 end
           and assignKB (CPS.FB{f, body, ...}) = if ClassifyConts.isJoinCont f
 		then (* this continuation will map to a block, so no label now *)
-		  assignExp body
+		  (assignExp body ; ST.tick cntJoinContOpt)
 		else let
 		  val fTy = CPS.Var.typeOf f
 		  val fVal = CFA.valueOf f
