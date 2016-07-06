@@ -5,8 +5,12 @@
  *)
 
 structure PrintCFG : sig
-
-    type flags = {counts : bool, types : bool, preds : bool}
+    
+    (* Max of int means the maximum number of characters to write out the type. 
+       if the type's string length is longer, it is omitted. *)
+    datatype verbosity = Full | Max of int | Silent
+    
+    type flags = {counts : bool, types : verbosity, preds : bool}
 
     val output : flags -> (TextIO.outstream * CFG.module) -> unit
 
@@ -15,8 +19,10 @@ structure PrintCFG : sig
     val printFunc : CFG.func -> unit
 
   end = struct
-
-    type flags = {counts : bool, types : bool, preds : bool}
+    
+    datatype verbosity = Full | Max of int | Silent
+    
+    type flags = {counts : bool, types : verbosity, preds : bool}
 
     fun output (flags : flags) (outS, CFG.MODULE{name, externs, code}) = let
 	  fun pr s = TextIO.output(outS, s)
@@ -34,9 +40,17 @@ structure PrintCFG : sig
 		  pr "("; prL l; pr ")"
 		end
 	  fun varBindToString x = let
-		val l = if (#types flags)
-		      then [":", CFGTyUtil.toString(CFG.Var.typeOf x)]
-		      else []
+		val l = (case #types flags
+                 of Silent => []
+                  | Full => [":", CFGTyUtil.toString(CFG.Var.typeOf x)]
+                  | Max max => let
+                    val typeStr = CFGTyUtil.toString(CFG.Var.typeOf x)
+                  in
+                    if String.size typeStr > max 
+                    then [] 
+                    else [":", typeStr]
+                  end
+                (* end case *))
 		val l = if (#counts flags)
 		      then "#" :: Int.toString(CFG.Var.useCount x) :: l
 		      else l
@@ -240,7 +254,7 @@ structure PrintCFG : sig
 	    pr "}\n"
 	  end
 
-    fun print m = output {counts=true, types=false, preds=false} (TextIO.stdOut, m)
+    fun print m = output {counts=true, types=Silent, preds=false} (TextIO.stdOut, m)
 
     fun printFunc f = let
           val m = CFG.MODULE {name = Atom.atom "ad-hoc",
