@@ -26,3 +26,4 @@ is
   closure-controls.sml
   flat-closure-with-cfa.sml
   eff-sfs-closure-fn.sml
+  direct-flat-closure.sml

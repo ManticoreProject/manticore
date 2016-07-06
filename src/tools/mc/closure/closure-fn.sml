@@ -79,8 +79,12 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
             
 
     fun doConvert module = (
-      case Controls.get convertStyle  (* TODO add the direct-style check here *)
-       of ConvertStyle.Flat => FlatClosureWithCFA.convert module
+      case Controls.get convertStyle
+       of ConvertStyle.Flat => 
+            if (Controls.get useDirectStyle)
+                then DirectFlatClosureWithCFA.convert module
+                else FlatClosureWithCFA.convert module
+                
         | ConvertStyle.SafeForSpace => SafeForSpaceClosures.newConvert module
 (* raise Fail "Safe-for-space closure conversion is not yet implemented" *)
       (* end case *))
