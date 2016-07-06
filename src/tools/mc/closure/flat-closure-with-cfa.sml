@@ -19,10 +19,6 @@ structure FlatClosureWithCFA : sig
     structure CFA = CFACPS
     structure FV = FreeVars
     structure VMap = CPS.Var.Map
-    structure ST = Stats
-    
-    (********** Counters for statistics **********)
-    val cntJoinContOpt    = ST.newCounter "clos:optimize-joink"
 
   (* return the variable of a lambda *)
     fun funVar (CPS.FB{f, ...}) = f
@@ -179,7 +175,7 @@ structure FlatClosureWithCFA : sig
                 end
           and assignKB (CPS.FB{f, body, ...}) = if ClassifyConts.isJoinCont f
 		then (* this continuation will map to a block, so no label now *)
-		  (assignExp body ; ST.tick cntJoinContOpt)
+		  assignExp body
 		else let
 		  val fTy = CPS.Var.typeOf f
 		  val fVal = CFA.valueOf f
@@ -920,20 +916,7 @@ structure FlatClosureWithCFA : sig
         (* convert a throw *)
           and cvtThrow (env, k, args) = if ClassifyConts.isJoinCont k
 		then cvtJoinThrow (env, k, args)
-		else let 
-            val _ = ()
-            (*
-            (* for debugging purposes *)
-            val name = (CPS.Var.toString k)
-            val _ = (case ClassifyConts.kindOfCont k
-                        of ClassifyConts.ReturnCont => print ("throw to return " ^ name ^ "\n")
-                         | ClassifyConts.OtherCont => print ("throw to other " ^ name ^ "\n")
-                         | ClassifyConts.ExnCont => print ("throw to exn " ^ name ^ "\n")
-                         | ClassifyConts.GotoCont => print ("throw to goto " ^ name ^ "\n")
-                         | _ => print ("some other case showed up for " ^ name ^ "\n")
-                    (* esac *)) *)
-        in
-        (case CFA.valueOf k 
+		else (case CFA.valueOf k 
 		   of CFA.TOP => cvtStdThrow (env, k, NONE, args)
 		    | CFA.BOT => cvtStdThrow (env, k, NONE, args)
 		    | CFA.LAMBDAS gs => let
@@ -942,14 +925,12 @@ structure FlatClosureWithCFA : sig
 			val kTgt = if CPS.Var.Set.numItems gs = 1 
 				      then CPS.Var.Set.find (fn _ => true) gs
 				   else NONE
-                    
 			in
 			  if CFA.isEscaping g
 			    then cvtStdThrow (env, k, kTgt, args)
 			    else cvtKnownThrow (env, k, kTgt, args)
 			end
 		  (* end case *))
-         end
           and cvtStdThrow (env, k, kTgt, args) = let
                 val (kBinds, k') = lookupVar(env, k)
                 val (argBinds, args') = lookupVars(env, args)
