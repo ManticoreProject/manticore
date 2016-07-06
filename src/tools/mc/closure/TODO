@@ -9,6 +9,62 @@ modifications as simple as possible:
 - Every Apply is marked as either tail or non-tail.
 - All declared continuations must be marked with all types of their usage. While Conts are
   currently marked with their usage, it's imprecise.
+  
+(*** NOTE ***)
+
+One area where the classification of continuations will differ is whether we consider join
+continuations nested within a return continuation to still be a join continuation. Note
+that the definition of join continuation used here is basically a Goto that can be mapped
+to a basic block instead of a function.
+
+In our current way of doing things, the return continuation is considered to be in a different
+environment, and will be mapped to a function in CFG (the return continuation must be its own function since
+it's call site occurs in an unknown place in some other function) so the use is not within the
+same function in CFG.
+
+Consider the following example
+
+cont letJoinK<E420>#2.2 (cntArr<E41F>#2:[![any],int]) =
+    ... some HUGE body ...
+(**** End letJoinK<E420>#2.2 ****)
+  if I32Lt(n<E411>#7,_lit<EFD2>#1) then
+  ....
+  else
+    ....
+    cont letJoinK<EFDD>#2.2 (a<EFDE>#4:[![any],int]) =
+        fun lp<EFDF>#2.2 (param<EFE0>#4:[int] / retK<EFE1>#2.1:cont(enum(0)),_exh<EFE2>#2:cont(any)) =
+            ....
+        (**** End lp<EFDF>#2.2 ****)
+        ....
+        cont letJoinK<EFF1>#1 (unused<EFF2>#0:any) =
+            throw letJoinK<E420>#2.2 a<EFDE>#4
+        (**** End letJoinK<EFF1>#1 ****)
+        if I32Lt(_lit<EFEF>#4,n<E411>#7) then
+          cont letJoinK<EFF9>#1 (_t<EFFA>#1:[long]) =
+              ....
+              apply lp<EFDF>#2.2 (res<F001>#1 / letJoinK<EFF1>#1,_exh<E34D>#43.15)
+          (**** End letJoinK<EFF9>#1 ****)
+          apply anon<E413>#2.2 (_wlit<EFF0>#1 / letJoinK<EFF9>#1,_exh<E34D>#43.15)
+        else
+          throw letJoinK<E420>#2.2 a<EFDE>#4
+    (**** End letJoinK<EFDD>#2.2 ****)
+  
+  
+With the old classification of join continuations, we have
+
+ClassifyConts: kindOf(letJoinK<E420>#2.2) = GotoCont
+ClassifyConts: kindOf(letJoinK<EFDD>#2.2) = JoinCont
+ClassifyConts: kindOf(letJoinK<EFF1>#1) = ReturnCont
+ClassifyConts: kindOf(letJoinK<EFF9>#1) = ReturnCont
+
+With the new classification (specifically chkDS in checkUse of ClassifyConts) 
+letJoinK<E420> turns into a join continuation. Why? It's only uses are within
+a nested return continuation or join continuation, not another function.
+
+QUESTION does this raise questions about space safety when we're doing closure conversion?
+
+(*************)
+
     
 (*******)    
     A rule to follow when going to direct-style is to check whether the current

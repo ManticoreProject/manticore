@@ -59,14 +59,27 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
             help = "closure convert style (flat or safeForSpace)",
             default = ConvertStyle.Flat
           }
-
-    val () = ControlRegistry.register ClosureControls.registry {
-            ctl = Controls.stringControl ConvertStyle.cvt convertStyle,
-            envName = NONE
+          
+    val useDirectStyle = Controls.genControl {
+            name = "direct",
+            pri = [5, 0],
+            obscurity = 1,
+            help = "generate direct-style CFG during closure conversion",
+            default = false
           }
 
+    val () = (ControlRegistry.register ClosureControls.registry {
+                ctl = Controls.stringControl ConvertStyle.cvt convertStyle,
+                envName = NONE
+              };
+              ControlRegistry.register ClosureControls.registry {
+                ctl = Controls.stringControl ControlUtil.Cvt.bool useDirectStyle,
+                envName = NONE
+              })
+            
+
     fun doConvert module = (
-      case Controls.get convertStyle
+      case Controls.get convertStyle  (* TODO add the direct-style check here *)
        of ConvertStyle.Flat => FlatClosureWithCFA.convert module
         | ConvertStyle.SafeForSpace => SafeForSpaceClosures.newConvert module
 (* raise Fail "Safe-for-space closure conversion is not yet implemented" *)
@@ -83,7 +96,7 @@ functor ClosureFn (Target : TARGET_SPEC) : sig
 	  }
 
     fun convert module = let
-        val _ = ClassifyConts.analyze module
+        val _ = ClassifyConts.analyze (Controls.get useDirectStyle) module
         val _ = cfa module
         val _ = freeVars module 
     in

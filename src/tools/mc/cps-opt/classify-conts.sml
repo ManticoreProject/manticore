@@ -1,12 +1,13 @@
 (* classify-conts.sml
  *
- * COPYRIGHT (c) 2009 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * COPYRIGHT (c) 2016 The Manticore Project (http://manticore.cs.uchicago.edu)
  * All rights reserved.
  *)
 
 structure ClassifyConts : sig
 
-    val analyze : CPS.module -> unit
+    (* bool indicates whether the analysis should assume a direct-style translation. *)
+    val analyze : bool -> CPS.module -> unit
 
   (* the different kinds of continuations *)
     datatype cont_kind
@@ -53,6 +54,7 @@ structure ClassifyConts : sig
 
     (* controls *)
     val enableFlg = ref true
+    val usingDS = ref false
 
     val () = List.app (fn ctl => ControlRegistry.register CPSOptControls.registry {
               ctl = Controls.stringControl ControlUtil.Cvt.bool ctl,
@@ -126,6 +128,10 @@ structure ClassifyConts : sig
             CV.newProp (fn _ => ref[])
     in
     fun initUse k = setFn(k, ref[])
+    fun trackUses k = (case peekFn k
+        of NONE => initUse k
+         | _ => ()
+         (* end case *))
     fun addUse (outer, k) = (case peekFn k
            of NONE => ()
             | SOME r => r := outer :: !r
@@ -148,7 +154,7 @@ structure ClassifyConts : sig
             | SOME kind => kind
           (* end case *))
     fun markAsJoin k = (setFn(k, JoinCont); initUse k)
-    fun markAsReturn k = setFn(k, ReturnCont)
+    fun markAsReturn k = (setFn(k, ReturnCont); trackUses k)
     fun markAsExn k = setFn(k, ExnCont)
     fun markAsGoto k = (setFn(k, GotoCont); clrUses k)
     fun markAsOther k = (case peekFn k
@@ -165,35 +171,32 @@ structure ClassifyConts : sig
         val checkTail = getFn
         val markTail = setFn
     end
-    
-    (* check/mark the kind of Throw *)
-    local
-        
-    in
-    end
-    
-    (* used when determining whether a continuation escapes as an
-       argument to a throw/apply, or used in a RHS of a let. *)
-    fun doArg x = (case CV.kindOf x
-           of C.VK_Cont _ => markAsOther x
-            | _ => ()
-          (* end case *))
 
   (* given a binding context for a continuation, check uses to see
-   * if they are in the same function environment.
+   * if they are in the same function environment. 
    *)
     fun checkUse outer = let
-          fun chk k = CV.same(outer, k)
+          fun chkCPS k = CV.same(outer, k)
                 orelse (case kindOf k
                    of JoinCont => (case getOuter k
                          of NONE => false
-                          | SOME k' => chk k'
+                          | SOME k' => chkCPS k'
+                        (* end case *))
+                    | _ => false
+                  (* end case *))
+                  
+          fun chkDS k = CV.same(outer, k)
+                orelse (case kindOf k
+                   of (JoinCont | ReturnCont) => (case getOuter k
+                         of NONE => false
+                          | SOME k' => chkDS k'
                         (* end case *))
                     | _ => false
                   (* end case *))
           in
-            chk
+            if !usingDS then chkDS else chkCPS
           end
+
     
     (* consult CFA to determine the actual continuation, if its known *)
     fun actualCont k = (case CFA.valueOf k
@@ -270,22 +273,23 @@ structure ClassifyConts : sig
                 
                 analExp (outer, e);
           
-                (case kindOf f
-                 of JoinCont => (
+                (case (kindOf f, !usingDS)
+                 of ((JoinCont, _) | (ReturnCont, true))  => (
                         (* do all uses of f occur in the current environment? *)
                         if List.all (checkUse outer) (usesOf f)
-                                then () (* it remains a join continuation *)
+                                then () (* it remains as is *)
                                 else markAsGoto f (* should be its own function *)
                         )
                   | _ => ());
           
-                if Controls.get CPSOptControls.debug
-                  then print(concat[
+                (*if Controls.get CPSOptControls.debug then*)
+                print(concat[
                       "ClassifyConts: kindOf(", CV.toString f, ") = ",
                       kindToString(kindOf f), "\n"
                     ])
-                  else ();
-          
+                  (*else ()*)
+                  ;
+                  
               (* collect statistics in one place *)
               ST.tick cntTotalCont;
               
@@ -334,7 +338,8 @@ structure ClassifyConts : sig
                 
           (* end case *))
 
-    fun analyze (C.MODULE{body=C.FB{f, body, ...}, ...}) = analExp (f, body)
+    fun analyze usingDirectStyle (C.MODULE{body=C.FB{f, body, ...}, ...}) = 
+        (usingDS := usingDirectStyle ; analExp (f, body))
 
   (* return the kind of a continuation *)
     fun kindOfCont k = (case (CV.kindOf o actualCont) k
