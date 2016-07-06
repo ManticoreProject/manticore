@@ -28,7 +28,7 @@ is
   ../bom-opt/sources.cm
   ../bom/sources.cm
   ../cfg-opt/sources.cm
-  ../cfg/sources.cm
+  ../cfg-new/sources.cm  (* NOTE cfg-new is a temporary change *)
   ../closure/sources.cm
   ../codegen/sources.cm
   ../common/sources.cm
@@ -52,4 +52,3 @@ is
   header-tbl-print.sml
   header-tbl-print-debug.sml
   
-
