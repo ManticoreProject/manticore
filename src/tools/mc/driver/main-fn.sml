@@ -137,7 +137,7 @@ functor MainFn (
       val cps = Convert.transform bom
 	  val cps = CPSOpt.optimize cps
 	  val cfg = Closure.convert cps
-	  val cfg = CFGOpt.optimize cfg
+	  (*val cfg = CFGOpt.optimize cfg*)
 	  in
 	    cfg
 	  end
@@ -213,12 +213,12 @@ functor MainFn (
           val bom = Translate.translate (IB.primTranslationEnv, ast)
           val cfg = bomToCFG bom
 	  in
-	      codegen (verbose, asmFile, cfg);
+	      (*codegen (verbose, asmFile, cfg);
               if verbose
               then TextIO.print(concat ["Full compilation finished in: ",
 					(Time.toString (Time.- (Time.now(), inclusiveStart))),
 					"\n"])
-              else ();
+              else ();*)
 	      Stats.report ()
     end
 
