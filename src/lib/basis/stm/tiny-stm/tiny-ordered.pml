@@ -140,6 +140,10 @@ struct
          * It's possible that we could reallocate the read set inside of @log-read
          *)
         define @get(tv:tvar / exh:exh) : any = 
+            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
+            do if (#0(in_trans))  
+               then return ()
+               else throw exh(Fail(@"Reading outside transaction"))
             let myStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
             cont retry() = 
                 let readSet : read_set = FLS.@get-key(READ_SET / exh) 

@@ -23,15 +23,13 @@
 #define WRITE_VAL 3
 #define WRITE_NEXT 4
 
-#define READ_SET_BOUND 21
+#define READ_SET_BOUND 20
 
 structure TinySTMPartial = 
 struct 
     (*NOTE: do not change the order of these.  The C runtime depends on it.*)
     datatype 'a item = WithoutK of 'a * 'a item 
                      | WithK of 'a * 'a item * 'a * 'a item * 'a item
-                     (*last checkpoint of the read set.  when polling locks, validation can stop here*)
-                     | LastChkpnt of 'a * 'a item * 'a * 'a item * 'a item
                      | Write of 'a * 'a item * 'a
                      | NilItem
 
@@ -40,33 +38,11 @@ struct
             let x : item = WithoutK(enum(0):any, NilItem)
             let x : [any] = ([any]) x
             return(#0(x));
-        define @mk-last-chkpnt(x : unit / exh:exh) : any = 
-            let x : item = LastChkpnt(enum(0):any, NilItem, enum(0):any, NilItem, NilItem)
-            let x : [any] = ([any]) x
-            return(#0(x));
     )
 
     val mkTag : unit -> 'a = _prim(@mk-tag)
     val tag = mkTag()
     fun getTag() = tag
-    val mkLastChkpntTag : unit -> 'a = _prim(@mk-last-chkpnt)
-    val lastChkpntTag = mkLastChkpntTag()
-    fun getLastChkpntTag() = lastChkpntTag
-
-    _primcode(
-        define @print-headers(x:unit/exh:exh) : unit = 
-            let withK : item = WithK(enum(0):any, NilItem, enum(0):any, NilItem, NilItem)
-            let withoutK : item = WithoutK(enum(0):any, NilItem)
-            let withK : [any] = ([any])withK
-            let withoutK : [any] = ([any]) withoutK
-            do ccall M_Print_Long("WithK tag = %lu\n", #0(withK))
-            do ccall M_Print_Long("WithoutK tag = %lu\n", #0(withoutK))
-            return (UNIT)
-        ;
-    )
-
-    val printHeaders : unit -> unit = _prim(@print-headers)
-    (*val _ = printHeaders()*)
 
     _primcode(
     
@@ -99,8 +75,8 @@ struct
         (*this won't typecheck without the `inline` annotation*)
         define inline @abort(readSet : read_set, chkpnt : item, n:long MSG(msg, : any) / exh:exh) noreturn = 
             MSG(do ccall M_Print(msg),)
-            let freq : int = FLS.@get-key2()
-            do FLS.@set-key(freq)
+            let freq : int = FLS.@get-counter2()
+            do FLS.@set-counter(freq)
             let writeSet : item = FLS.@get-key(WRITE_SET / exh)
             fun release(i : item, max : long) : long = 
                 case i 
@@ -169,7 +145,7 @@ struct
                             else 
                                 do #START_STAMP(myStamp) := ts
                                 @abort(readSet, chkpnt, count MSG("WithK out of date in TS extension\n",)/ exh)
-                        else apply lp(next, i, I64Add(count, 1:long))  
+                        else apply lp(next, i, I64Add(count, 1:long))
                 end
             let long_path : item = #RS_LONG_PATH(readSet)
             let casted : with_k = (with_k) long_path
@@ -321,6 +297,10 @@ struct
          * It's possible that we could reallocate the read set inside of @log-read
          *)
         define @get(tv:tvar / exh:exh) : any = 
+            let in_trans : [bool] = FLS.@get-key(IN_TRANS / exh)
+            do if (#0(in_trans))  
+               then return ()
+               else throw exh(Fail(@"Reading outside transaction"))
             let myStamp : stamp_rec = FLS.@get-key(STAMP_KEY / exh)
             cont retry() = 
                 let readSet : read_set = FLS.@get-key(READ_SET / exh) 
