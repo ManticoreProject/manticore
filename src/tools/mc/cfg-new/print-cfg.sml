@@ -225,7 +225,7 @@ structure PrintCFG : sig
                 prReturn("returning", lhs)
             )
           
-          | CFG.Return { args } => prReturn("return", args)
+          | CFG.Return args => prReturn("return", args)
            
 		  | CFG.If(cond, j1, j2) => (
 		      prl ["if ", CondUtil.fmt varUseToString cond, "\n"];

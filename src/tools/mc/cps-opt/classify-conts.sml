@@ -43,6 +43,8 @@ structure ClassifyConts : sig
    *)
     val isJoinCont : CPS.var -> bool
     
+    val isReturnCont : CPS.var -> bool
+    
     val isTailApply : CPS.exp -> bool
 
   end = struct
@@ -359,6 +361,14 @@ structure ClassifyConts : sig
              of JoinCont => true
               | _ => false
             (* end case *))
+
+  (* is k a return continuation? *)
+    fun isReturnCont k = 
+        (case (kindOfCont o actualCont) k
+            of ReturnCont => true
+             | _ => false
+        (* end case *))
+    
 
     fun isTailApply (C.Exp(ppt, C.Apply _)) = checkTail ppt
 

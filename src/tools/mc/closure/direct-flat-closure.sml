@@ -561,7 +561,7 @@ structure DirectFlatClosureWithCFA : sig
                                  rr)
                               end
                           | CPS.Apply(f, args', rets) => let
-                                val (binds, xfer) = cvtApply (env, f, args', rets)
+                                val (binds, xfer) = cvtApply (env, f, args', rets, ClassifyConts.isTailApply e)
                             in
                                 (CFG.mkBlock(lab, params, rev (binds@stms), xfer), [])
                             end
@@ -808,6 +808,72 @@ structure DirectFlatClosureWithCFA : sig
                     (binds, env', [])
                   end
         (* convert an apply *)
+        
+        (* true/false based on whether it's a tail call or not. for now not leveraging CFA *)
+        and cvtApply (env, f, args, rets, isTail) = let
+                val (argBinds, args) = lookupVars(env, args)
+                fun bindEP () = let
+                      val (fBinds, f') = lookupVar(env, f)
+                      val ep = CFG.Var.new (CPS.Var.nameOf f ^ "_ep", CFGTy.T_Any)
+                      in
+                        (CFG.mkSelect(ep, 0, f') :: fBinds, f', ep)
+                      end
+                val (binds, xfer) = let
+                      val (cp, ep, binds') = let
+                                  val (epBinds, f', ep) = bindEP ()
+                                  val cp = CFG.Var.new(
+                                        CFG.Var.nameOf f',
+                                        CFGTyUtil.select(CFG.Var.typeOf f', 1))
+                                  val cpBind = CFG.mkSelect(cp, 1, f')
+                                  in
+                                    (cp, ep, cpBind :: epBinds)
+                                  end
+                                  
+                                  (*
+                                  
+                                  and cvtJoinThrow (env, k, args) = let
+                                        val (argBinds, args) = lookupVars(env, args)
+                                        val needsEP = ref false
+                                        fun f (x, args) = (case findVar(env, x)
+                                               of Local x' => x' :: args
+                                                | Extern _ => raise Fail "unexpected extern in free-var list"
+                                                | _ => (needsEP := true; args)
+                                              (* end case *))
+                                        val args = CPS.Var.Set.foldr f args (FreeVars.envOfFun k)
+                                     (* if there are any free globals in e, then we include
+                                      * the environment pointer as an argument.
+                                      *)
+                                        val args = if !needsEP then envPtrOf env :: args else args
+                                        in
+                                          (argBinds, CFG.Goto(labelOf k, args))
+                                        end
+                                  
+                                  *)
+                                  
+                                  
+                      val (lhs, next) = if isTail
+                                 then (dummyBinds, NONE)
+                                 else let
+                                    val liveAfter = FreeVars.envOfFun k 
+                                    (* TODO FreeVars does some analysis based on whether something
+                                       is a join cont or not. so look at that. Stopped here. *)
+                                 in
+                                 end
+                                 
+                      val xfer = CFG.Call{
+                              f = cp,
+                              clos = ep,
+                              args = args,
+                              lhs = lhs,
+                              next = next
+                            }
+                      in
+                        (binds', xfer)
+                      end
+            in
+            end
+        
+        (*
           and cvtApply (env, f, args, rets) = (case CFA.valueOf f
                  of CFA.TOP => cvtStdApply (env, f, NONE, args, rets)
                   | CFA.BOT => cvtStdApply (env, f, NONE, args, rets)
@@ -823,6 +889,7 @@ structure DirectFlatClosureWithCFA : sig
                           else cvtKwnApply (env, f, fTgt, args, rets)
                       end
                 (* end case *))
+          *)
           and cvtStdApply (env, f, fTgt, args, rets as [_, _]) = let
                 val (argBinds, args) = lookupVars(env, args)
                 val (retBinds, [ret, exh]) = lookupVars(env, rets)
@@ -918,8 +985,11 @@ structure DirectFlatClosureWithCFA : sig
                   (binds @ retBinds @ argBinds, xfer)
                 end
         (* convert a throw *)
-          and cvtThrow (env, k, args) = if ClassifyConts.isJoinCont k
-                then cvtJoinThrow (env, k, args)
+          and cvtThrow (env, k, args) = 
+                if ClassifyConts.isJoinCont k
+                    then cvtJoinThrow (env, k, args)
+                else if ClassifyConts.isReturnCont k
+                    then cvtReturnThrow (env, k, args)
                 else (case CFA.valueOf k 
                    of CFA.TOP => cvtStdThrow (env, k, NONE, args)
                     | CFA.BOT => cvtStdThrow (env, k, NONE, args)
@@ -990,6 +1060,13 @@ structure DirectFlatClosureWithCFA : sig
                 val args = if !needsEP then envPtrOf env :: args else args
                 in
                   (argBinds, CFG.Goto(labelOf k, args))
+                end
+          and cvtReturnThrow (env, k, args) = let
+                (* the environment is kept in the original Call, just need to hand it
+                   the args. *)
+                val (argBinds, args) = lookupVars(env, args)
+                in
+                  (argBinds, CFG.Return(args))
                 end
         (* create the calling convention for the module *)
           fun cvtModLambda (CPS.FB{f, params, rets, body}) = let

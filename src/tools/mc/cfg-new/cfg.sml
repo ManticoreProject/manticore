@@ -96,7 +96,7 @@ structure CFG =
       }
                     
       (* a direct-style Throw of a return continuation corresponding to a Call *)
-      | Return of { args : var list }
+      | Return of var list  (* the args *)
       
       | Goto of jump
       | If of (cond * jump * jump)
