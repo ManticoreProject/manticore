@@ -208,12 +208,25 @@ structure PrintCFG : sig
 		        indent (i+1); prJump("else", nogc))
                       end
 		  | CFG.AllocCCall {lhs, f, args, ret=(l,rArgs)} => (
-		      prl ["ccall-alloc "];
-                      prList varUseToString lhs;
-                      prl [" = ", varUseToString f, " "];
-		      prList varUseToString args;
-		      pr "\n";
-		      indent (i+1); prJump("", (l,lhs@rArgs)))
+              prCall("ccall-alloc", lhs, f, args);
+              indent (i+1); 
+                  prJump("", (l,lhs@rArgs))  (* the post call jump *)
+            )
+		      
+          | CFG.Call {lhs, f, clos, args, next=SOME(afterL, liveAfter)} => (
+              prCall("call", lhs, f, clos::args);
+              indent (i+1); 
+                prJump("next", (afterL, lhs@liveAfter))
+            )
+          
+          | CFG.Call {lhs, f, clos, args, next=NONE} => (
+              prCall("tailcall", lhs, f, clos::args);
+              indent (i+1); 
+                prReturn("returning", lhs)
+            )
+          
+          | CFG.Return { args } => prReturn("return", args)
+           
 		  | CFG.If(cond, j1, j2) => (
 		      prl ["if ", CondUtil.fmt varUseToString cond, "\n"];
 		      indent (i+1); prJump("then", j1);
@@ -240,6 +253,21 @@ structure PrintCFG : sig
 		prl [prefix, " ", labelUseToString lab];
 		prList varUseToString args;
 		pr "\n")
+      and prCall (prefix, lhs, f, args) = (
+            prl [prefix, " "];
+            prList varUseToString lhs;
+            prl [" = ", varUseToString f, " "];
+            prList varUseToString args;
+            pr "\n"
+        )
+        
+      and prReturn (prefix, args) = (
+          prl [prefix, " "];
+          prList varUseToString args;
+          pr "\n"
+      )
+      
+        
 	  fun prExtern cf = prl["  ", CFunctions.cfunToString cf, "\n"]
 (*
 	  fun prExtern (CFunctions.CFun{var, ...}) = prl[
