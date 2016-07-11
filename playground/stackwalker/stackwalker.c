@@ -1,54 +1,29 @@
 #include<stdio.h>
 #include<stdint.h>
 #include<stdlib.h>
+#include <inttypes.h>
 
-struct StkSizeRecords {
-	uint64_t functionAddress;
-	uint64_t stackSize;
-};
-struct Constants {
-	uint64_t largeConstant;
-};
-struct Location {
-	uint8_t registerDirectIndirectConstantConstantIndex;
-	uint8_t reserved;
-	uint16_t dwarfRegNum;
-	int offset;
-};
-struct LiveOuts {
-	uint16_t dwarfRegNum;
-	uint8_t reserved;
-	uint8_t size;
-};
-struct StkMapRecord {
-	uint64_t patchPointid;
-	uint32_t instructionOffset;
-	uint16_t reserved;
-	uint16_t numLocations;
-	struct Location* locations;
-	uint16_t padding;
-	uint16_t numLiveOuts;
-	struct LiveOuts* liveouts;
-	uint32_t otherPadding;	
-};
-struct Header {
-	uint8_t stackMapVersion;
-	uint8_t reservedVal1;
-	uint8_t reservedVal2;
-};
-struct StackMap{
-	struct Header header;
-	uint32_t numFunctions;
-	uint32_t numConstants;
-	uint32_t numRecords;
-	struct StkSizeRecords* stackSizeRecords;
-	struct Constants* constants;
-	struct StkMapRecord* stackMapRecord;
-};
+typedef struct {
+	uint8_t version;
+	uint8_t reserved1;
+	uint16_t reserved2;
+} __llvm_stackmap_header;
+
+typedef struct {
+	__llvm_stackmap_header header;
+	uint32_t num_functions;
+	uint32_t num_constants;
+	uint32_t num_records;
+} __llvm_stackmap_basic;
 
 extern void* __LLVM_StackMaps;
 
-extern void stackWalker(long sp, long llvmstackmap){
-	printf("vals are %ld %ld\n", sp, llvmstackmap);
-	struct StackMap *s = (struct StackMap*) llvmstackmap;
+extern void stackWalker(long sp){
+	printf("recieved vals are %ld %ld\n", sp, (long) __LLVM_StackMaps);
+	__llvm_stackmap_basic *basic = (__llvm_stackmap_basic*) &__LLVM_StackMaps;
+	printf("version: %" PRIu8 "\n", basic->header.version);
+	printf("reserved1: %" PRIu8 " reserved2: %" PRIu16 "\n", basic->header.reserved1, basic->header.reserved2);
+	printf("num functions: %" PRIu32 "\n", basic->num_functions);
+	printf("num constants: %" PRIu32 "\n", basic->num_constants);
+	printf("num records: %" PRIu32 "\n", basic->num_records);
 }
