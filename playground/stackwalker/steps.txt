@@ -1,3 +1,0 @@
-1. create fact.ll and external c function 
-2. compile to .o 
-3. create executable using gcc -static .o files
