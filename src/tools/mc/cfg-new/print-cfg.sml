@@ -213,17 +213,14 @@ structure PrintCFG : sig
                   prJump("", (l,lhs@rArgs))  (* the post call jump *)
             )
 		      
-          | CFG.Call {lhs, f, clos, args, next=SOME(afterL, liveAfter)} => (
+          | CFG.Call {f, clos, args, next=SOME(lhs, (afterL, liveAfter))} => (
               prCall("call", lhs, f, clos::args);
               indent (i+1); 
                 prJump("next", (afterL, lhs@liveAfter))
             )
           
-          | CFG.Call {lhs, f, clos, args, next=NONE} => (
-              prCall("tailcall", lhs, f, clos::args);
-              indent (i+1); 
-                prReturn("returning", lhs)
-            )
+          | CFG.Call {f, clos, args, next=NONE} =>
+              prCall("tailcall", nil, f, clos::args)
           
           | CFG.Return args => prReturn("return", args)
            
@@ -253,7 +250,14 @@ structure PrintCFG : sig
 		prl [prefix, " ", labelUseToString lab];
 		prList varUseToString args;
 		pr "\n")
-      and prCall (prefix, lhs, f, args) = (
+      
+      and prCall (prefix, nil, f, args) = (
+            prl [prefix, " "];
+            prl [varUseToString f, " "];
+            prList varUseToString args;
+            pr "\n"
+        )
+        | prCall (prefix, lhs, f, args) = (
             prl [prefix, " "];
             prList varUseToString lhs;
             prl [" = ", varUseToString f, " "];

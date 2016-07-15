@@ -474,7 +474,7 @@ structure DirectFlatClosureWithCFA : sig
                  * list of blocks corresponding to what the true and false branches of the conditional
                  * were converted into.
                  *)
-                fun cvt (env, args, CPS.Exp(_, e), stms, encl) : CFG.block * CFG.block list = let
+                fun cvt (env, args, exp as CPS.Exp(_, e), stms, encl) : CFG.block * CFG.block list = let
                      fun cvtBranch (lab, e, encl) = let
                             val needsEP = ref false
                             val argEP = envPtrOf env
@@ -561,7 +561,7 @@ structure DirectFlatClosureWithCFA : sig
                                  rr)
                               end
                           | CPS.Apply(f, args', rets) => let
-                                val (binds, xfer) = cvtApply (env, f, args', rets, ClassifyConts.isTailApply e)
+                                val (binds, xfer) = cvtApply (env, f, args', rets, ClassifyConts.isTailApply exp)
                             in
                                 (CFG.mkBlock(lab, params, rev (binds@stms), xfer), [])
                             end
@@ -807,76 +807,11 @@ structure DirectFlatClosureWithCFA : sig
                     finishFunc (lab, conv, start, body);
                     (binds, env', [])
                   end
+                  
         (* convert an apply *)
-        
-        (* true/false based on whether it's a tail call or not. for now not leveraging CFA *)
-        and cvtApply (env, f, args, rets, isTail) = let
-                val (argBinds, args) = lookupVars(env, args)
-                fun bindEP () = let
-                      val (fBinds, f') = lookupVar(env, f)
-                      val ep = CFG.Var.new (CPS.Var.nameOf f ^ "_ep", CFGTy.T_Any)
-                      in
-                        (CFG.mkSelect(ep, 0, f') :: fBinds, f', ep)
-                      end
-                val (binds, xfer) = let
-                      val (cp, ep, binds') = let
-                                  val (epBinds, f', ep) = bindEP ()
-                                  val cp = CFG.Var.new(
-                                        CFG.Var.nameOf f',
-                                        CFGTyUtil.select(CFG.Var.typeOf f', 1))
-                                  val cpBind = CFG.mkSelect(cp, 1, f')
-                                  in
-                                    (cp, ep, cpBind :: epBinds)
-                                  end
-                                  
-                                  (*
-                                  
-                                  and cvtJoinThrow (env, k, args) = let
-                                        val (argBinds, args) = lookupVars(env, args)
-                                        val needsEP = ref false
-                                        fun f (x, args) = (case findVar(env, x)
-                                               of Local x' => x' :: args
-                                                | Extern _ => raise Fail "unexpected extern in free-var list"
-                                                | _ => (needsEP := true; args)
-                                              (* end case *))
-                                        val args = CPS.Var.Set.foldr f args (FreeVars.envOfFun k)
-                                     (* if there are any free globals in e, then we include
-                                      * the environment pointer as an argument.
-                                      *)
-                                        val args = if !needsEP then envPtrOf env :: args else args
-                                        in
-                                          (argBinds, CFG.Goto(labelOf k, args))
-                                        end
-                                  
-                                  *)
-                                  
-                                  
-                      val (lhs, next) = if isTail
-                                 then (dummyBinds, NONE)
-                                 else let
-                                    val liveAfter = FreeVars.envOfFun k 
-                                    (* TODO FreeVars does some analysis based on whether something
-                                       is a join cont or not. so look at that. Stopped here. *)
-                                 in
-                                 end
-                                 
-                      val xfer = CFG.Call{
-                              f = cp,
-                              clos = ep,
-                              args = args,
-                              lhs = lhs,
-                              next = next
-                            }
-                      in
-                        (binds', xfer)
-                      end
-            in
-            end
-        
-        (*
-          and cvtApply (env, f, args, rets) = (case CFA.valueOf f
-                 of CFA.TOP => cvtStdApply (env, f, NONE, args, rets)
-                  | CFA.BOT => cvtStdApply (env, f, NONE, args, rets)
+          and cvtApply (env, f, args, rets, isTail) = (case CFA.valueOf f
+                 of CFA.TOP => cvtStdApply (env, f, NONE, args, rets, isTail)
+                  | CFA.BOT => cvtStdApply (env, f, NONE, args, rets, isTail)
                   | CFA.LAMBDAS gs => let
                       val SOME g = CPS.Var.Set.find (fn _ => true) gs
                       val gs = CPS.Var.Set.filter (not o CFA.isProxy) gs
@@ -885,14 +820,14 @@ structure DirectFlatClosureWithCFA : sig
                                  else NONE
                       in
                         if CFA.isEscaping g
-                          then cvtStdApply (env, f, fTgt, args, rets)
-                          else cvtKwnApply (env, f, fTgt, args, rets)
+                          then cvtStdApply (env, f, fTgt, args, rets, isTail)
+                          else cvtKwnApply (env, f, fTgt, args, rets, isTail)
                       end
                 (* end case *))
-          *)
-          and cvtStdApply (env, f, fTgt, args, rets as [_, _]) = let
+                
+          and cvtStdApply (env, f, fTgt, args, rets as [retk, _], isTail) = let
                 val (argBinds, args) = lookupVars(env, args)
-                val (retBinds, [ret, exh]) = lookupVars(env, rets)
+                (*val (retBinds, [ret, exh]) = lookupVars(env, rets)*)
                 fun bindEP () = let
                       val (fBinds, f') = lookupVar(env, f)
                       val ep = CFG.Var.new (CPS.Var.nameOf f ^ "_ep", CFGTy.T_Any)
@@ -923,24 +858,48 @@ structure DirectFlatClosureWithCFA : sig
                                     (cp, ep, cpBind :: epBinds)
                                   end
                             (* end case *))
-                      val xfer = CFG.StdApply{
-                              f = cp,
-                              clos = ep,
-                              args = args,
-                              ret = ret,
-                              exh = exh
-                            }
+                            
+                      val (retkBinds, xfer) = if isTail then 
+                            ([],
+                            CFG.Call {
+                                f = cp,
+                                clos = ep,
+                                args = args,
+                                next = NONE
+                            })
+                            else let
+                                val (fvBinds, fvs) = 
+                                    lookupVars(env, (CPS.Var.Set.listItems o FV.envOfFun) retk)
+                                    (* NOTE convention is to keep the same order of vars when
+                                       the retk block's FVs are added as parameters. Also,
+                                       the args get prepended to this list. *)
+                                
+                                (* setup the return vars *)
+                                val CPS.VK_Cont (CPS.FB {params, rets = [], ...}) = CPS.Var.kindOf retk
+                                val retkArgs = List.map newVar params
+                                
+                          in 
+                                (fvBinds,
+                                CFG.Call {
+                                  f = cp,
+                                  clos = ep,
+                                  args = args,
+                                  next = SOME(retkArgs, (labelOf retk, fvs))
+                                })
+                          end
+                      
                       in
-                        (binds', xfer)
+                        (binds' @ retkBinds, xfer)
                       end
                 in
-                  (binds @ retBinds @ argBinds, xfer)
+                  (binds @ argBinds, xfer)
                 end
-            | cvtStdApply (env, f, fTgt, args, rets as [_]) = 
-                cvtKwnApply (env, f, fTgt, args, rets)
-            | cvtStdApply (env, f, fTgt, args, rets) = 
+            | cvtStdApply (env, f, fTgt, args, rets as [_], isTail) = 
+                cvtKwnApply (env, f, fTgt, args, rets, isTail)
+            | cvtStdApply (env, f, fTgt, args, rets, isTail) = 
                 raise Fail "non-standard apply convention"
-          and cvtKwnApply (env, f, fTgt, args, rets) = let
+                
+          and cvtKwnApply (env, f, fTgt, args, rets, isTail) = let
                 val (argBinds, args) = lookupVars(env, args)
                 val (retBinds, rets) = lookupVars(env, rets)
                 fun bindEP () = let
