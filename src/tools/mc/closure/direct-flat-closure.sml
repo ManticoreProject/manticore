@@ -819,15 +819,18 @@ structure DirectFlatClosureWithCFA : sig
                                     then CPS.Var.Set.find (fn _ => true) gs
                                  else NONE
                       in
+                        cvtStdApply (env, f, fTgt, args, rets, isTail)
+                        (*
                         if CFA.isEscaping g
                           then cvtStdApply (env, f, fTgt, args, rets, isTail)
                           else cvtKwnApply (env, f, fTgt, args, rets, isTail)
+                        *)
                       end
                 (* end case *))
                 
-          and cvtStdApply (env, f, fTgt, args, rets as [retk, _], isTail) = let
+          and cvtStdApply (env, f, fTgt, args, rets as retk::_, isTail) = let
                 val (argBinds, args) = lookupVars(env, args)
-                (*val (retBinds, [ret, exh]) = lookupVars(env, rets)*)
+                (* TODO we're totally ignoring the exception handler *)
                 fun bindEP () = let
                       val (fBinds, f') = lookupVar(env, f)
                       val ep = CFG.Var.new (CPS.Var.nameOf f ^ "_ep", CFGTy.T_Any)
@@ -859,46 +862,58 @@ structure DirectFlatClosureWithCFA : sig
                                   end
                             (* end case *))
                             
-                      val (retkBinds, xfer) = if isTail then 
-                            ([],
-                            CFG.Call {
-                                f = cp,
-                                clos = ep,
-                                args = args,
-                                next = NONE
-                            })
-                            else let
-                                val (fvBinds, fvs) = 
-                                    lookupVars(env, (CPS.Var.Set.listItems o FV.envOfFun) retk)
-                                    (* NOTE convention is to keep the same order of vars when
-                                       the retk block's FVs are added as parameters. Also,
-                                       the args get prepended to this list. *)
-                                
-                                (* setup the return vars *)
-                                val CPS.VK_Cont (CPS.FB {params, rets = [], ...}) = CPS.Var.kindOf retk
-                                val retkArgs = List.map newVar params
-                                
-                          in 
-                                (fvBinds,
-                                CFG.Call {
-                                  f = cp,
-                                  clos = ep,
-                                  args = args,
-                                  next = SOME(retkArgs, (labelOf retk, fvs))
-                                })
-                          end
-                      
+                      val (retkBinds, xfer) = (case (isTail, ClassifyConts.isReturnCont retk)
+                          of (true, _) => ([], CFG.Call {
+                                              f = cp,
+                                              clos = ep,
+                                              args = args,
+                                              next = NONE
+                                           })
+                           
+                           | (false, true) => let
+                              val (fvBinds, fvs) = 
+                                  lookupVars(env, (CPS.Var.Set.listItems o FV.envOfFun) retk) 
+                                        handle Fail s => 
+                                            (print ("Problem with looking up FVs of " ^ CPS.Var.toString retk ^ "\n") ; raise Fail s)
+                                  (* NOTE convention is to keep the same order of vars when
+                                     the retk block's FVs are added as parameters. Also,
+                                     the args get prepended to this list. *)
+                              
+                              (* setup the return vars *)
+                              val retkArgs = (case CPS.Var.kindOf retk
+                                  of CPS.VK_Cont (CPS.FB {params, rets = [], ...}) => List.map newVar params
+                                   | _ => raise Fail ("Error converting this as a retk: " ^ CPS.Var.toString retk)
+                                  (* end case *))
+                            in 
+                              (fvBinds, CFG.Call {
+                                    f = cp,
+                                    clos = ep,
+                                    args = args,
+                                    next = SOME(retkArgs, (labelOf retk, fvs))
+                                  })
+                            end
+                            
+                           | _ => (* stub it out temporarily TODO *)
+                                ([], CFG.Apply{
+                                    f = cp,
+                                    clos = ep,
+                                    args = args
+                                  })
+                           
+                          (* end case *))
                       in
                         (binds' @ retkBinds, xfer)
                       end
                 in
                   (binds @ argBinds, xfer)
                 end
+(*                
             | cvtStdApply (env, f, fTgt, args, rets as [_], isTail) = 
                 cvtKwnApply (env, f, fTgt, args, rets, isTail)
+*)                
             | cvtStdApply (env, f, fTgt, args, rets, isTail) = 
                 raise Fail "non-standard apply convention"
-                
+(*                
           and cvtKwnApply (env, f, fTgt, args, rets, isTail) = let
                 val (argBinds, args) = lookupVars(env, args)
                 val (retBinds, rets) = lookupVars(env, rets)
@@ -943,6 +958,7 @@ structure DirectFlatClosureWithCFA : sig
                 in
                   (binds @ retBinds @ argBinds, xfer)
                 end
+*)
         (* convert a throw *)
           and cvtThrow (env, k, args) = 
                 if ClassifyConts.isJoinCont k

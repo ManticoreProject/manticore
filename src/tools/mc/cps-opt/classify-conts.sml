@@ -313,14 +313,16 @@ structure ClassifyConts : sig
             | C.Apply(_, args, rets) => let
                 
                 (* we mark the actual cont *)
-                val rets = List.map actualCont rets
-                
-                val retk = (case rets
-                            of [retk, exnk] => (markAsExn exnk ; markAsReturn retk ; retk)
-                             | [retk] => (markAsReturn retk ; retk)
+                val cfaRets = List.map actualCont rets
+                val _ = (case cfaRets
+                            of [retk, exnk] => (markAsExn exnk ; markAsReturn retk)
+                             | [retk] => (markAsReturn retk)
                              | _ => raise Fail "an apply with unexpected rets"
                         (* esac *))
-                
+                        
+                (* now we check whether it's a tail call by comparing the retk param
+                   with what is passed in this apply. *)
+                val retk :: _ = rets
                 val SOME encl = enclosingFun outer
                 val SOME enclRet = getRetK encl
             in
