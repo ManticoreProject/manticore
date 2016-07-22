@@ -111,6 +111,7 @@ structure PMLFrontEnd : PML_FRONT_END =
     val allConstants: (string * ConstType.t) list ref = ref []
     val amBuildingConstants: bool ref = ref false
 
+(* [PML]: lookupConstant is used to resolve "_const" refs, which we don't use
     val lookupConstant =
        let
 	  val zero = Const.word (WordX.fromIntInf (0, WordSize.word32))
@@ -142,6 +143,7 @@ structure PMLFrontEnd : PML_FRONT_END =
        in
 	  fn z => f () z
        end
+*)
 
 
 (* ------------------------------------------------- *)
@@ -267,6 +269,7 @@ structure PMLFrontEnd : PML_FRONT_END =
 		]
 	    end
     in
+  (* add primitive types, data cons, and exception cons to the environment *)
     fun addPrim E = (Env.addPrim E; primitiveDecs)
     end (* local *)
 
@@ -325,9 +328,12 @@ structure PMLFrontEnd : PML_FRONT_END =
 	      stats = fn _ => Layout.empty,
 	      style = Ctl.ML,
 	      suffix = "core-ml",
+(* [PML]: Const.lookup is used to resolve "_const" refs, which we don't use
 	      thunk = (fn () =>
 		       (Const.lookup := lookupConstant
 			; elaborateMLB (lexAndParseMLB input, {addPrim = addPrim})))
+*)
+	      thunk = (fn () => elaborateMLB (lexAndParseMLB input, {addPrim = addPrim}))
 	    }
 
 
@@ -335,6 +341,7 @@ structure PMLFrontEnd : PML_FRONT_END =
   (*                   Basis Library                   *)
   (* ------------------------------------------------- *)
 
+(* [PML] we don't need this
     fun outputBasisConstants (out: Out.t): unit = let
 	  val _ = amBuildingConstants := true
 	  val (_, decs) = parseAndElaborateMLB (
@@ -346,15 +353,17 @@ structure PMLFrontEnd : PML_FRONT_END =
 	  in
 	    ()
 	  end
-
+*)
 
   (* ------------------------------------------------- *)
   (*          tycon/con getters for translate          *)
   (* ------------------------------------------------- *)
  
+  (* map datatype value constructor to type constructor *)
     val {get = conTycon : Sxml.Con.t -> Sxml.Tycon.t, set = setConTycon, ...} =
        Property.getSetOnce (Sxml.Con.plist,
                             Property.initRaise ("conTycon", Sxml.Con.layout))
+  (* map datatype type constructor to vector of value constructors *)
     val {get = tyconCons: Sxml.Tycon.t -> {con: Sxml.Con.t,
                                         hasArg: bool} vector,
          set = setTyconCons, ...} =
@@ -507,6 +516,9 @@ structure PMLFrontEnd : PML_FRONT_END =
 	  val _ = List.app handlePath [smlLibPath]
 	  fun cvtSz sz = Bytes.toBits(Bytes.fromInt sz)
 	  in
+(* [PML] we may be able to get rid of these, but they may be needed to do
+ * C pointer arithmetic
+ *)
 	  (* the sizes for the x86-64 target *)
 	    Control.Target.setSizes {
 		cint = cvtSz 4,

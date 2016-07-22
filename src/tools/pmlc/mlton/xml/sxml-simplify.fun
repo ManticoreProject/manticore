@@ -19,7 +19,9 @@ fun String_dropLast s = String.substring(s, 0, size s - 1)
 open S
 
 structure ImplementExceptions = ImplementExceptions (open S)
+(* [PML] this pass is not needed for PML
 structure ImplementSuffix = ImplementSuffix (open S)
+*)
 structure Polyvariance = Polyvariance (open S)
 (* structure Uncurry = Uncurry (open S) *)
 structure CPSTransform = CPSTransform (open S)
@@ -35,7 +37,9 @@ type pass = {name: string,
 
 val sxmlPassesDefault =
    {name = "sxmlShrink1", doit = S.shrink} ::
+(* [PML] this pass is not needed
    {name = "implementSuffix", doit = ImplementSuffix.doit} ::
+*)
    {name = "sxmlShrink2", doit = S.shrink} ::
    {name = "implementExceptions", doit = ImplementExceptions.doit} ::
    {name = "sxmlShrink3", doit = S.shrink} ::
@@ -54,7 +58,9 @@ val sxmlPassesCpsTransform =
    nil
 
 val sxmlPassesMinimal =
+(* [PML] this pass is not needed
    {name = "implementSuffix", doit = ImplementSuffix.doit} ::
+*)
    {name = "implementExceptions", doit = ImplementExceptions.doit} ::
    nil
 
@@ -118,8 +124,10 @@ local
    val passGens =
       polyvariancePassGen ::
       (List.map([("sxmlShrink", S.shrink),
-                 ("implementExceptions", ImplementExceptions.doit), 
+                 ("implementExceptions", ImplementExceptions.doit)],
+(* [PML] this pass is not needed
                  ("implementSuffix", ImplementSuffix.doit)],
+*)
                 mkSimplePassGen))
 in
    fun sxmlPassesSetCustom s =

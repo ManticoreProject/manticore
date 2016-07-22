@@ -6,6 +6,9 @@
  * See the file MLton-LICENSE for details.
  *)
 
+(* [PML] this pass converts the getSuffix/setSuffix primitives to reference operations
+ * on a global suffix reference.  We do not need this pass in PML.
+ *)
 functor ImplementSuffix (S: IMPLEMENT_SUFFIX_STRUCTS):
    IMPLEMENT_SUFFIX = 
 struct

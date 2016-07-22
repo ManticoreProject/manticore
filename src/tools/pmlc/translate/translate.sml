@@ -20,8 +20,8 @@ structure Translate : sig
   (***** define basic types and values for program translation *****)
 
     val boolTyc = BOMTyc.new("bool", 0)
-      val falseCon = BOMDataCon.new boolTyc ("false", []);
-      val trueCon = BOMDataCon.new boolTyc ("true", []);
+    val falseCon = BOMDataCon.new boolTyc ("false", []);
+    val trueCon = BOMDataCon.new boolTyc ("true", []);
 
     val progExterns : BOM.var CFunctions.c_fun list ref = ref []
 
@@ -30,7 +30,7 @@ structure Translate : sig
 
     (* from manticore.lex *)
     fun mkFloat s = let
-      val ss = Substring.full s
+	  val ss = Substring.full s
 	  val (isNeg, rest) = (case Substring.getc ss
 		 of SOME(#"-", r) => (true, r)
 		  | SOME(#"~", r) => (true, r)
@@ -55,51 +55,48 @@ structure Translate : sig
 	      }
 	  end
 
-
-    fun transCFunTy env (S.CoreBOM.CProto.T (S.CoreBOM.CFunction.T {convention, kind, target, prototype, ...}, attrs)) = let
-      fun transCTy cty = (case cty
-         of S.CType.CPointer => CFunctions.PointerTy
-          | S.CType.Int8 => CFunctions.BaseTy RawTypes.Int8
-          | S.CType.Int16 => CFunctions.BaseTy RawTypes.Int16
-          | S.CType.Int32 => CFunctions.BaseTy RawTypes.Int32
-          | S.CType.Int64 => CFunctions.BaseTy RawTypes.Int64
-          | S.CType.Objptr => raise Fail "objptr?"
-          | S.CType.Real32 => CFunctions.BaseTy RawTypes.Float32
-          | S.CType.Real64 => CFunctions.BaseTy RawTypes.Float64
-          | S.CType.Word8 => CFunctions.BaseTy RawTypes.UInt8
-          | S.CType.Word16 => CFunctions.BaseTy RawTypes.UInt16
-          | S.CType.Word32 => CFunctions.BaseTy RawTypes.UInt32
-          | S.CType.Word64 => CFunctions.BaseTy RawTypes.UInt64
-        (* end case *))
-      (* convert argument and return types from MLton's C-function repr to BOM's *)
-      val (argTys, retTy) = prototype
-      val retTy' = (case retTy
-         of SOME t => transCTy t
-          | NONE => CFunctions.VoidTy
-        (* end case *))
-      val argTys' = Vector.foldl (fn (x, rest) => transCTy x :: rest) [] argTys
-
-      (* destringify attributes *)
-      val attrs' = List.mapPartial (fn(attr) => case attr
-         of "pure" => SOME CFunctions.A_pure (* technically, we shouldn't ever see this case since MLton puts purity into the kind *)
-          | "alloc" => SOME CFunctions.A_alloc
-          | "noreturn" => SOME CFunctions.A_noreturn
-          | _ => (print ("unknown extern function attribute: " ^ attr ^ "\n"); NONE)) attrs
-      (* MLton reifies purity in kind whereas PML stores it in an attribute *)
-      val attrs' = if kind = S.CFunction.Kind.Pure then CFunctions.A_pure::attrs' else attrs'
-
-      (* build the appropriate BOM type and make a variable with it to place in the env *)
-      val ty = BOMTy.T_CFun (CFunctions.CProto (retTy', argTys', attrs'))
-    in
-      (ty, retTy', argTys', attrs')
-    end
+    fun transCFunTy env (S.CoreBOM.CProto.T(S.CoreBOM.CFunction.T{convention, kind, target, prototype, ...}, attrs)) = let
+	  fun transCTy cty = (case cty
+		 of S.CType.CPointer => CFunctions.PointerTy
+		  | S.CType.Int8 => CFunctions.BaseTy RawTypes.Int8
+		  | S.CType.Int16 => CFunctions.BaseTy RawTypes.Int16
+		  | S.CType.Int32 => CFunctions.BaseTy RawTypes.Int32
+		  | S.CType.Int64 => CFunctions.BaseTy RawTypes.Int64
+		  | S.CType.Objptr => raise Fail "objptr?"
+		  | S.CType.Real32 => CFunctions.BaseTy RawTypes.Float32
+		  | S.CType.Real64 => CFunctions.BaseTy RawTypes.Float64
+		  | S.CType.Word8 => CFunctions.BaseTy RawTypes.UInt8
+		  | S.CType.Word16 => CFunctions.BaseTy RawTypes.UInt16
+		  | S.CType.Word32 => CFunctions.BaseTy RawTypes.UInt32
+		  | S.CType.Word64 => CFunctions.BaseTy RawTypes.UInt64
+		(* end case *))
+	(* convert argument and return types from MLton's C-function repr to BOM's *)
+	  val (argTys, retTy) = prototype
+	  val retTy' = (case retTy
+	     of SOME t => transCTy t
+	      | NONE => CFunctions.VoidTy
+	    (* end case *))
+	  val argTys' = Vector.foldl (fn (x, rest) => transCTy x :: rest) [] argTys
+	(* destringify attributes *)
+	  val attrs' = List.mapPartial (fn(attr) => case attr
+	     of "pure" => SOME CFunctions.A_pure (* technically, we shouldn't ever see this case since MLton puts purity into the kind *)
+	      | "alloc" => SOME CFunctions.A_alloc
+	      | "noreturn" => SOME CFunctions.A_noreturn
+	      | _ => (print ("unknown extern function attribute: " ^ attr ^ "\n"); NONE)) attrs
+	(* MLton reifies purity in kind whereas PML stores it in an attribute *)
+	  val attrs' = if kind = S.CFunction.Kind.Pure then CFunctions.A_pure::attrs' else attrs'
+	(* build the appropriate BOM type and make a variable with it to place in the env *)
+	  val ty = BOMTy.T_CFun (CFunctions.CProto (retTy', argTys', attrs'))
+	  in
+	    (ty, retTy', argTys', attrs')
+	  end
 
     fun transCoreBOMTyc (env) (coreBomTyc: S.CoreBOM.TyCon.t): BOMTy.tyc = let
-      val (mlTyc, condefs) = lookupMLTyc (env, coreBomTyc)
-      val bomTyc = lookupTyc(env, mlTyc)
-      in
-        bomTyc
-      end
+	  val (mlTyc, condefs) = lookupMLTyc (env, coreBomTyc)
+	  val bomTyc = lookupTyc(env, mlTyc)
+	  in
+	    bomTyc
+	  end
 
     fun transCoreBOMTy env coreBomTy: (env * BOMTy.t) = let
       (*val _ = print ("transCoreBOMTy " ^ Layout.toString (S.CoreBOM.BOMType.layout coreBomTy) ^ "\n")*)
@@ -722,11 +719,10 @@ structure Translate : sig
 
     (* convert type from the MLton representation to a BOM type. this may
     update internal contents of the environment, so it returns a modified env *)
-    fun transTy (env, ty (*as {tycon, tyvars, cons}*)) =
-    let
+    fun transTy (env, ty (*as {tycon, tyvars, cons}*)) = let
           (*val _ = print (concat["SXML.Type->BOMTy: ", Layout.toString (S.Type.layout ty), "\n"])*)
           (* convert a newly-encountered type from the MLton representation to a BOM type *)
-          fun tr(env, dest: S.Type.dest) = (case dest
+          fun tr (env, dest: S.Type.dest) = (case dest
             of S.Type.Var _ => raise Fail "Type variable found in SXML"
                 | (S.Type.Con(tyc, args)) => let
                     val (env', args': BOMTy.t list) = V.foldr (fn (ty, (env, tys)) => let val (env', ty') = tr (env, S.Type.dest ty) in (env', ty' :: tys) end) (env, []) args
