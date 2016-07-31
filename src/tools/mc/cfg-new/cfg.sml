@@ -80,19 +80,18 @@ structure CFG =
       | Apply of {f : var, clos : var, args : var list}
       
       (* Call is a direct-style Apply 
-         - the 'next' jump represents the closure of the return continuation that
-           will be allocated and passed to the callee by some other means, as
-           opposed to explicitly being included in the callee's closure, or 
-           passed as a named argument, in this representation.
-         - the 'lhs' list are the args that will be passed to the implicit
-           return continuation via the known callee's direct-style Return transfer. 
-       *)
+         - the 'next' field represents the closure of the return
+           continution (the jump) and its arguments (the var list).
+           The closure will be applied to the arguments once the called function
+           returns the said arguments. The closure of the return cont will be
+           managed by some other means, and not allocated explicitly like in
+           the normal CFG.
+       *) (* TODO how are we installing/invoking exception handlers in LLVM? *)
       | Call of {
           f : var,
           clos : var,
           args : var list,
-          lhs : var list,
-          next : jump option
+          next : (var list * jump) option
       }
                     
       (* a direct-style Throw of a return continuation corresponding to a Call *)
