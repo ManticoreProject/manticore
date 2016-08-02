@@ -21,6 +21,10 @@ structure CPSUtil : sig
 
   (* create a copy of a list of mutually recursive functions *)
     val copyLambdas : CPS.lambda list -> CPS.lambda list
+    
+  (* project the return/exception continuation vars *)
+    val getRetK : CPS.lambda -> CPS.var option
+    val getExnK : CPS.lambda -> CPS.var option
 
   (* substitutions from variables to variables *)
     type subst = CPS.var CPS.Var.Map.map
@@ -327,5 +331,10 @@ structure CPSUtil : sig
 	    List.app (fn (CFunctions.CFun{var, ...}) => func var) externs;
 	    applyToFBs [body]
 	  end
+      
+      fun getRetK (C.FB{ rets as retk :: _, ...}) = SOME retk
+        | getRetK _ = NONE
+      and getExnK (C.FB{ rets as [_, exnk], ...}) = SOME exnk
+        | getExnK _ = NONE
 
   end

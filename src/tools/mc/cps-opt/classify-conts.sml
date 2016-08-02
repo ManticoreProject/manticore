@@ -37,6 +37,13 @@ structure ClassifyConts : sig
 
   (* return the kind of  a continuation *)
     val kindOfCont : CPS.var -> cont_kind
+    
+  (* Given a throw of some var k, returns the immediately enclosing function at that site. *)
+    val contextOfThrow : CPS.var -> CPS.lambda
+    
+    (* helper for contextOfThrow. will check the rets of the lambda to see if
+       the given var matches one of those. *)
+    val checkRets : (CPS.var * CPS.lambda) -> cont_kind option
 
   (* is k a join continuation?  This returns false when classification is
    * disabled.
@@ -94,7 +101,7 @@ structure ClassifyConts : sig
       | ExnCont         (* passed as an exception handler to another function
                          *)
                          
-      | ParamCont       (* bound as parameter to to a lambda (excluding returns or exceptions) *)
+      | ParamCont       (* bound as parameter to a lambda. *)
       
       | OtherCont       (* continuation that escapes in some-other way (i.e.,
                          * a first-class continuation)
@@ -103,7 +110,8 @@ structure ClassifyConts : sig
     fun kindToString JoinCont = "JoinCont"
       | kindToString ReturnCont = "ReturnCont"
       | kindToString ExnCont = "ExnCont"
-      | kindToString ParamCont = "ParamCont"
+      | kindToString (ParamCont (SOME p)) = "ParamCont(" ^ (kindToString p) ^ ")"
+      | kindToString (ParamCont NONE) = "ParamCont"
       | kindToString GotoCont = "GotoCont"
       | kindToString OtherCont = "OtherCont"
 
@@ -173,6 +181,30 @@ structure ClassifyConts : sig
         val checkTail = getFn
         val markTail = setFn
     end
+    
+    (* Mark throws with their immediately enclosing function. This will allow closure
+       conversion to determine whether a throw to a Return continuation is a function
+       return or just a jump. Example:
+       
+        fun x () =
+            cont foo () =
+                ...
+            (* end foo *)
+            if ...
+                then apply bar {retk = foo, ...}
+                else throw foo ()
+            
+       Here, foo is marked as a return continuation, so foo will be a basic block within x,
+       but foo also has a throw to it that within x, but this is _not_ a return throw, but merely
+       a jump to a continuation that happens to marked as a return continuation.
+    *)
+    local
+        val {getFn, setFn : C.var * C.lambda -> unit, ...} =
+              CV.newProp (fn _ => raise Fail "throw kind")
+    in
+        val contextOfThrow = getFn
+        val markThrowContext = setFn
+    end
 
   (* given a binding context for a continuation, check uses to see
    * if they are in the same function environment. 
@@ -221,13 +253,6 @@ structure ClassifyConts : sig
              (* esac *))
         | _ => NONE
     (* esac *))
-    
-    fun getRetK (C.FB{ rets as retk :: _, ...}) = SOME retk
-      | getRetK _ = NONE
-    
-    and getExnK (C.FB{ rets as [_, exnk], ...}) = SOME exnk
-      | getExnK _ = NONE
-      
 
     fun analExp (outer, C.Exp(ppt, t)) = (case t
             of C.Let (_, _, e) => analExp (outer, e)
@@ -243,15 +268,18 @@ structure ClassifyConts : sig
                 val notEscaping = (not o CFA.isEscaping) f
                 
                 (* JoinCont iff
-                   not escaping (currently we use the app = use metric)
-                   AND not thrown to recursively (in its own body)
-                   AND all uses occur within the same enclosing function
+                     not escaping
+                     AND not thrown to recursively (in its own body)
+                     AND all uses occur within the same enclosing function
+                   
+                   Return/Exception Cont iff 
+                     not escaping
+                     AND passed as such a continuation in at least one Apply
+                     AND all uses occur within the same enclosing function
                    
                    GotoCont iff
-                   not escaping (currently we use the app = use metric)
-                   AND not a return or exception cont
-                   
-                   Return/Exception Cont iff passed as such to an Apply
+                     not escaping
+                     AND not a return or exception cont
                    
                    OtherCont anything else
                  *)
@@ -324,20 +352,24 @@ structure ClassifyConts : sig
                    with what is passed in this apply. *)
                 val retk :: _ = rets
                 val SOME encl = enclosingFun outer
-                val SOME enclRet = getRetK encl
+                val SOME enclRet = CPSUtil.getRetK encl
             in
                 (* an Apply is a tail call iff the enclosing ret cont is the same
                    as the one passed to the function *)
                 markTail(ppt, CV.same(enclRet, retk))
             end
                 
-            | C.Throw(k, args) =>
-                (* check CFA information to determine if k is an alias for some Cont,
+            | C.Throw(k, args) => let
+                (* we check CFA information to determine if k is an alias for some Cont,
                    and add the use to the actual Cont and not the alias.
                    
                    this may happen if a Cont is casted/rebound, which can be introduced
                    after arity raising. *)
-                addUse (outer, actualCont k)
+                     val SOME encl = enclosingFun outer
+                   in
+                    addUse (outer, actualCont k) ; markThrowContext (k, encl)
+                   end
+                
                 
                 
           (* end case *))
@@ -346,16 +378,19 @@ structure ClassifyConts : sig
         (usingDS := usingDirectStyle ; analExp (f, body))
 
   (* return the kind of a continuation *)
-    fun kindOfCont k = (case (CV.kindOf o actualCont) k
+    fun kindOfCont k = (case CV.kindOf k
            of C.VK_Cont _ => kindOf k
-            | C.VK_Param (C.FB{ rets ,...}) => checkRets (k, rets)
+            | C.VK_Param _ => ParamCont
             | _ => OtherCont
           (* end case *))
     
-    and checkRets (k, [retk]) = if CV.same(k, retk) then ReturnCont else ParamCont
-      | checkRets (k, [retk, exnk]) = if CV.same(k, retk) then ReturnCont else
-                                      if CV.same(k, exnk) then ExnCont else ParamCont
-      | checkRets _ = ParamCont
+    and checkRets (k, C.FB{ rets = [retk] , ...}) = 
+            if CV.same(k, retk) then SOME ReturnCont else NONE
+      | checkRets (k, C.FB{ rets = [retk, exnk] , ...}) = 
+            if CV.same(k, retk) then SOME ReturnCont
+            else if CV.same(k, exnk) then SOME ExnCont 
+            else NONE
+      | checkRets _ = NONE
 
   (* is k a join continuation? if the optimization is disabled, we always say no *)
     fun isJoinCont k = !enableFlg
@@ -369,7 +404,7 @@ structure ClassifyConts : sig
         (case (kindOfCont o actualCont) k
             of ReturnCont => true
              | _ => false
-        (* end case *))
+            (* esac *))
     
 
     fun isTailApply (C.Exp(ppt, C.Apply _)) = checkTail ppt

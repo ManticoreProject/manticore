@@ -791,7 +791,7 @@ structure DirectFlatClosureWithCFA : sig
                 (* return case *)
                 else if ClassifyConts.isReturnCont k
                    then ((let
-                   (* f is a return continuation, so we will translate it to a
+                   (* k is a return continuation, so we will translate it to a
                     * block.  
                     * We have to extend its parameters with _all_ of the free
                     * variables in the block, because the management of the live
@@ -817,8 +817,7 @@ structure DirectFlatClosureWithCFA : sig
                      val (bodyEnv, params) =
                            CPS.Var.Set.foldr f (bodyEnv, params) (FreeVars.envOfFun k)
                      
-                     (* TODO return conts should never be recursive though, remove this later. *)
-                     (*val bodyEnv = insertVar (bodyEnv, k, ReturnCont)  *)
+                     (* NOTE return conts should never be recursive. so we do not add k to the bodyEnv *)
                      
                      val lab = CFG.Label.new(
                            CPS.Var.nameOf k,
@@ -928,11 +927,36 @@ structure DirectFlatClosureWithCFA : sig
                                            })
                            
                            | (false, true) => let
+                           
+                           (*
+                           fun f (x, (bEnv, params)) = (case findVar(env, x)
+                                  (* globals and locals are parameters to the return continuation,
+                                     since their allocation is handled by somebody else. *)
+                                  of (Local _ | Global _) => let
+                                       val (bEnv', x') = newLocal(bEnv, x)
+                                       in
+                                         (bEnv', x' :: params)
+                                       end
+                                   (* TODO: does the EP for the EnclFun need to be included as a parameter?? *)
+                                   | EnclFun => (insertVar(bEnv, x, EnclFun), params)
+                                   | EnclCont => (insertVar(bEnv, x, EnclCont), params)
+                                   | ReturnCont => (insertVar(bEnv, x, ReturnCont), params)
+                                   | JoinCont => (bEnv, params)
+                                   | Extern _ => raise Fail "unexpected extern in free-var list"
+                                 (* end case *))
+                           *)
+                           
+                           (* BREAKPOINT: was about to redo the code below to make sure we're doing
+                              things right, then try to figure out why the handler below keeps getting triggered.
+                              Next step after that is redoing throw so it considers the kind of throw annotation
+                              that classification now will do. *)
+                           
                               val fvs = CPS.Var.Set.filter (not o ClassifyConts.isReturnCont) (FreeVars.envOfFun retk)
                               val (fvBinds, fvs) = 
                                   lookupVars(env, CPS.Var.Set.listItems fvs) 
                                         handle Fail s => 
-                                            (print ("Problem with looking up FVs of " ^ CPS.Var.toString retk ^ "\n") ; raise Fail s)
+                                            (print ("nontail apply: Problem with looking up FVs of retk: " ^ CPS.Var.toString retk ^ "\n")
+                                             ; raise Fail s)
                                   (* NOTE convention is to keep the same order of vars when
                                      the retk block's FVs are added as parameters. Also,
                                      the args get prepended to this list. *)
