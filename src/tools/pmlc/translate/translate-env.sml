@@ -1,3 +1,12 @@
+(* translate-env.sml
+ *
+ * COPYRIGHT (c) 2016 The Manticore Project (http://manticore.cs.uchicago.edu)
+ * All rights reserved.
+ *)
+
+structure Env =
+  struct
+
     structure S = PMLFrontEnd.Sxml
     structure V = Vector
     structure BV = BOMVar
@@ -320,3 +329,5 @@
       in
         (var, writeBOMVal (env', bomVal, Var var))
       end
+
+  end
