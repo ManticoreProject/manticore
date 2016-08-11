@@ -4,7 +4,7 @@ target triple = "x86_64-apple-macosx10.11.0"
 declare i32 @printf(i8*, ...)
 @.str = private unnamed_addr constant [5 x i8] c"%ld\0A\00", align 1
 
-declare i64 addrspace(1)* @get_ref_space1() "gc-leaf-function"="true"
+declare i64 addrspace(1)* @get_ref_space1()
 
 declare i64 @llvm.experimental.gc.result.i64(token)
 declare i64 addrspace(1)*
@@ -13,6 +13,9 @@ declare i64 addrspace(1)*
                                  i32 %pointer_offset)
                                  
 declare token @llvm.experimental.gc.statepoint.p0f_i64p1i64p1i64f(i64, i32, i64 (i64 addrspace(1)*, i64 addrspace(1)*)*, i32, i32, ...)
+
+;;;;
+; USAGE: llc factorial.ll; and clang -c factorial.s; and llvm-readobj -stackmap factorial.o
 
 define i64 @main() gc "statepoint-example" {
 	%val = bitcast i64 4 to i64
@@ -36,6 +39,8 @@ define i64 @main() gc "statepoint-example" {
          )
          
     %ret = call i64 @llvm.experimental.gc.result.i64(token %fact_ret_token)
+    
+    ; %ret = call i64 @fact(i64 addrspace(1)* %dummyAllocPtr, i64 addrspace(1)* %dummyN)
 	
     ret i64 %ret
 }
@@ -66,6 +71,9 @@ recurse:
     
     %newAllocPtr = getelementptr i64, i64 addrspace(1)* %allocPtr, i32 1
 	
+    %dummyPtr1 = call i64 addrspace(1)* @get_ref_space1()
+    %dummyPtr2 = call i64 addrspace(1)* @get_ref_space1()
+    %dummyPtr3 = call i64 addrspace(1)* @get_ref_space1()
     
     %fact_ret_token = call token 
     (i64, i32, i64 (i64 addrspace(1)*, i64 addrspace(1)*)*, i32, i32, ...) 
@@ -80,18 +88,28 @@ recurse:
          ; num transition args, num deopt args
          ; from here, we list all live heap pointers that are live after the call
          ; that may change during the call
-         i64 addrspace(1)* %boxedN
+         i64 addrspace(1)* %boxedN,
+         i64 addrspace(1)* %dummyPtr1,
+         i64 addrspace(1)* %dummyPtr2
          )
          ; the index is the argument number as a whole, so 9 instead of 0
-    %currentBoxedN = call i64 addrspace(1)* @llvm.experimental.gc.relocate.p1i64(
+    %relo_BoxedN = call i64 addrspace(1)* @llvm.experimental.gc.relocate.p1i64(
         token %fact_ret_token, i32 9, i32 9) 
+        
+    %relo_dummyPtr1 = call i64 addrspace(1)* @llvm.experimental.gc.relocate.p1i64(
+        token %fact_ret_token, i32 10, i32 10) 
+    %relo_dummyPtr2 = call i64 addrspace(1)* @llvm.experimental.gc.relocate.p1i64(
+        token %fact_ret_token, i32 11, i32 11) 
+        
+    %someting = load i64, i64 addrspace(1)* %relo_dummyPtr1
+    store i64 %someting, i64 addrspace(1)* %relo_dummyPtr2
     
     ;%fibval = call i64 @fact(i64 addrspace(1)* %newAllocPtr, i64 addrspace(1)* %newSlot)
     
     %fibval = call i64 @llvm.experimental.gc.result.i64(token %fact_ret_token)
     
     
-    %loadN2 = load i64, i64 addrspace(1)* %currentBoxedN
+    %loadN2 = load i64, i64 addrspace(1)* %relo_BoxedN
 	%ret = mul i64 %loadN2, %fibval
 
 	ret i64 %ret
