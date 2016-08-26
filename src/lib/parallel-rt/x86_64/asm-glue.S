@@ -132,17 +132,17 @@ _GSYM(ASM_InvokeGC):
 .p2align 3
 .globl	_GSYM(ASM_InvokeGC_LLVM)
 _GSYM(ASM_InvokeGC_LLVM):
-/* this version is for LLVM. we need to save the
-/* ret addr and pop the frame when we invoke GC */
+// this version is for LLVM. we need to save the
+// ret addr and pop the frame when we invoke GC
 	movq	$REQ_GC, TMP_REG1
     popq    STD_CONT_REG
 
 switch_to_c:
 #ifndef NDEBUG
-/* FIXME: disable this check once we've fixed the issues with missing roots */
-/* consistency check for the garbage collector: overwrite all the entries in the spill area,
- * all none of these entries should be live at this point.
- */
+// FIXME: disable this check once we've fixed the issues with missing roots
+// consistency check for the garbage collector: overwrite all the entries in the spill area,
+// all none of these entries should be live at this point.
+//
 	movq	%rbp,%r14
 	subq	$56,%r14
 	movq	%rbp,%r15
