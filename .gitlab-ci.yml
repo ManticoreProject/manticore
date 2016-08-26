@@ -91,6 +91,58 @@ par_llvm_lvl1:
 ####################
 
 ####################
+seq_llvm_lvl2:
+    stage: test
+    script:
+        - git clean -df ./src/regression-tests
+        - BACKEND="-llopt2" timeout 10m ./src/regression-tests/bash-scripts/run-seq.bsh
+        - git clean -df ./src/regression-tests
+    cache:
+        key: "$CI_BUILD_REF"
+        untracked: true
+        paths:
+            - llvm/build/bin
+
+# par_llvm_lvl2:
+#     stage: test
+#     script:
+#         - git clean -df ./src/regression-tests
+#         - BACKEND="-llopt2" timeout 10m ./src/regression-tests/bash-scripts/run-par.bsh
+#         - git clean -df ./src/regression-tests
+#     cache:
+#         key: "$CI_BUILD_REF"
+#         untracked: true
+#         paths:
+#             - llvm/build/bin
+####################
+
+####################
+seq_llvm_lvl3:
+    stage: test
+    script:
+        - git clean -df ./src/regression-tests
+        - BACKEND="-llopt3" timeout 10m ./src/regression-tests/bash-scripts/run-seq.bsh
+        - git clean -df ./src/regression-tests
+    cache:
+        key: "$CI_BUILD_REF"
+        untracked: true
+        paths:
+            - llvm/build/bin
+
+# par_llvm_lvl3:
+#     stage: test
+#     script:
+#         - git clean -df ./src/regression-tests
+#         - BACKEND="-llopt3" timeout 10m ./src/regression-tests/bash-scripts/run-par.bsh
+#         - git clean -df ./src/regression-tests
+#     cache:
+#         key: "$CI_BUILD_REF"
+#         untracked: true
+#         paths:
+#             - llvm/build/bin
+####################
+
+####################
 seq_mlrisc:
     stage: test
     script:
