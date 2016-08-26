@@ -221,7 +221,7 @@ void AllocToSpaceChunk (VProc_t *vp)
 	SayDebug("[%2d] AllocToSpaceChunk: %ld Kb at %p..%p parent %p (node %d)\n",
 	    vp->id, chunk->szB/1024, (void *)(chunk->baseAddr),
                  (void *)(chunk->baseAddr+chunk->szB),
-                 vp->globAllocChunk==NULL?NULL:vp->globAllocChunk->baseAddr, chunk->where);
+                 vp->globAllocChunk == NULL ? NULL : (void*) vp->globAllocChunk->baseAddr, chunk->where);
     bzero((void*)chunk->baseAddr, chunk->szB);
 #endif
 
