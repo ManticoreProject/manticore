@@ -1,5 +1,5 @@
 
-(* Sequential quicksort lifted from internet *)
+(* Sequential quicksort lifted from internet: https://www.cs.cmu.edu/~fp/courses/15312-f02/code/21-futures/qsort.sml *)
 
 structure QSort = struct
 fun sort l = quicksort(l, [])
@@ -21,7 +21,7 @@ and partition (x, nil) = (nil, nil)
 	then (y::smaller, greater)
       else (smaller, y::greater)
     end
-end  (* structure S *)
+end  (* structure QSort *)
 
 
 structure Main =
