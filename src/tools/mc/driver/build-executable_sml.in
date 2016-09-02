@@ -175,11 +175,15 @@ Pass Arguments:  -domtree
         "-memdep"
     ]
     
-    (* only add branch probability metadata *)
+    (* only add branch probability metadata (this is an important optimization) *)
     val o_level0 = ["-lower-expect"]
     
+    val o_level1 = o_level0 @ o_cleanupPasses 
+    val o_level2 = o_level0
+    val o_level3 = o_level0
+    
     (* cleanup *)
-    val o_level1 = [
+    (*val o_level1 = [
         "-lower-expect",
         "-tailcallelim"
         ] @ o_cleanupPasses
@@ -197,7 +201,7 @@ Pass Arguments:  -domtree
         ] @ o_cleanupPasses
     
     (* go all out *)
-    val o_level3 = [ "-O3" ] 
+    val o_level3 = [ "-O3" ] *)
     
     
     (* opt passes that need to be performed before/after any passes *)
@@ -227,9 +231,13 @@ Pass Arguments:  -domtree
      **********************)
     
     (* no reason to not use O3 with llc *)
-    val l_level1 = ["-O3"]
-    val l_level2 = ["-O3"]
+    val l_level1 = []
+    val l_level2 = ["-O1"]
     val l_level3 = ["-O3"]
+    (*)
+    val l_level1 = ["-O1"]
+    val l_level2 = ["-O2"]
+    val l_level3 = ["-O3"] *)
     
     (* llc passes that need to be performed before/after any passes *)
     fun l_wrapPasses verbose passes = let
