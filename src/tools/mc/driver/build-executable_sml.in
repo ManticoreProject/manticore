@@ -154,9 +154,20 @@ Pass Arguments:  -domtree
      *  flags and options for opt
      **********************)
 
+    
+    (* i dunno *)
+    val o_analysis = [
+        "-basicaa",
+        "-aa",
+        "-memdep",
+        "-domtree"
+    ]
+    
+    val o_essential = ["-lower-expect"]
+    
     (* all of the basic cleanup passes LLVM has. things like adce were left off
        not sure if this is reasonable ordering, just guessed *)
-    val o_cleanupPasses = [
+    val o_cleanup = [
         "-simplifycfg",
         "-instcombine",
         "-reassociate",
@@ -169,38 +180,30 @@ Pass Arguments:  -domtree
         "-simplifycfg"
     ]
     
-    val o_aliasAnalysis = [
-        "-basicaa",
-        "-aa",
-        "-memdep"
+    val o_normal = o_analysis @ o_cleanup @ o_essential
+    
+    (* run some fancier passes that might help further optimize allocation code *)
+    val o_aggressive = 
+          o_analysis
+        @ o_cleanup 
+        @ o_analysis @ [
+            "-sink",
+            "-mldst-motion",
+            "-slp-vectorizer",
+            "-instcombine",
+            "-simplifycfg"
+        ]
+        @ o_essential 
+    
+    val optLevels = [
+        (0, o_essential),
+        (1, o_normal),
+        (2, o_aggressive),
+        (3, ["-O1"]),
+        (4, ["-O2"]),
+        (5, ["-O3"])
     ]
     
-    (* only add branch probability metadata (this is an important optimization) *)
-    val o_level0 = ["-lower-expect"]
-    val o_level1 = o_level0 @ o_cleanupPasses
-    val o_level2 = o_level0
-    val o_level3 = o_level0 @ o_cleanupPasses
-    
-    (* cleanup *)
-    (*val o_level1 = [
-        "-lower-expect",
-        "-tailcallelim"
-        ] @ o_cleanupPasses
-    
-    
-    (* cleanup + inlining *)
-    val o_level2 = [
-        "-lower-expect",
-        "-tailcallelim"
-        ] @ o_cleanupPasses @ [
-        "-inline",
-        "-sink",
-        "-jump-threading",
-        "-correlated-propagation"
-        ] @ o_cleanupPasses
-    
-    (* go all out *)
-    val o_level3 = [ "-O3" ] *)
     
     
     (* opt passes that need to be performed before/after any passes *)
@@ -228,18 +231,18 @@ Pass Arguments:  -domtree
     (**********************
      *  flags and options for llc
      **********************)
-    
-    (* no reason to not use O3 with llc. The same passes are run for O1 through O3 and
-       the same code is output.  use -mcpu=native to get code optimized for the specific CPU
-       instead of generic x86-64 instruction set. *)
-    val l_level0 = ["-O3"]
-    val l_level1 = ["-O3"]
-    val l_level2 = ["-O3 -mcpu=native"]
-    val l_level3 = ["-O3 -mcpu=native"]
-    (*)
-    val l_level1 = ["-O1"]
-    val l_level2 = ["-O2"]
-    val l_level3 = ["-O3"] *)
+     
+     (* no reason to not use O3 with llc. The same passes are run for O1 through O3 and
+        the same code is output.  
+        
+        Use -mcpu=native to get code optimized for the specific CPU
+        instead of generic x86-64 instruction set. Seems to only hurt/make performance less stable.
+        would need to experiment more 
+        
+        *)
+     val llcLevels = [
+         (0, ["-O3"])
+     ]
     
     (* llc passes that need to be performed before/after any passes *)
     fun l_wrapPasses verbose passes = let
@@ -274,23 +277,32 @@ Pass Arguments:  -domtree
            so we can run the linter. *)
         val commonName = asmPrefix ^ "_opt.bc" 
         val optRun = doOpt verbose asmFile commonName
-        val optOutput = (case Controls.get BasicControl.llopt
-                of 0 => (optRun o_level0 ; commonName) (* we want to run the linter no matter what *)
-                 | 1 => (optRun o_level1 ; commonName)
-                 | 2 => (optRun o_level2 ; commonName)
-                 | _ => (optRun o_level3 ; commonName)
-            (* esac *))
+        val optOutput = let
+            val allPasses = optLevels
+            fun runIt passes = (optRun passes ; commonName)
             
+            val passes = List.find (fn (lvl, _) => (Controls.get BasicControl.llopt) = lvl) allPasses
+        in
+            (case passes
+                of SOME (_, passList) => runIt passList
+                 | NONE => runIt (#2(List.last allPasses))
+            (* esac *))
+        end
             
         (* run llc *)
         val llcOutput = asmPrefix ^ ".s"
         val llcRun = doLLC verbose optOutput llcOutput
-        val result = (case Controls.get BasicControl.llopt
-            of 0 => llcRun l_level0
-             | 1 => llcRun l_level1
-             | 2 => llcRun l_level2
-             | _ => llcRun l_level3
+        val result = let
+            val allPasses = llcLevels
+            fun runIt passes = llcRun passes
+            
+            val passes = List.find (fn (lvl, _) => (Controls.get BasicControl.llopt) = lvl) allPasses
+        in
+            (case passes
+                of SOME (_, passList) => runIt passList
+                 | NONE => runIt (#2(List.last allPasses))
             (* esac *))
+        end
             
         (* reuse the MLRISC linking etc *)
         val result = BuildExecutableMLRISC.build {verbose=verbose, asmFile=llcOutput, outFile=outFile}
