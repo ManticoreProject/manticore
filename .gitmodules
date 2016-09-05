@@ -4,5 +4,5 @@
     branch = master
 [submodule "src/benchmarks"]
 	path = src/benchmarks
-	url = git@smlnj-gitlab.cs.uchicago.edu:manticore/benchmarks.git
+	url = https://smlnj-gitlab.cs.uchicago.edu/manticore/benchmarks.git
     branch = master
