@@ -177,10 +177,9 @@ Pass Arguments:  -domtree
     
     (* only add branch probability metadata (this is an important optimization) *)
     val o_level0 = ["-lower-expect"]
-    
-    val o_level1 = o_level0 @ o_cleanupPasses 
+    val o_level1 = o_level0 @ o_cleanupPasses
     val o_level2 = o_level0
-    val o_level3 = o_level0
+    val o_level3 = o_level0 @ o_cleanupPasses
     
     (* cleanup *)
     (*val o_level1 = [
@@ -230,10 +229,13 @@ Pass Arguments:  -domtree
      *  flags and options for llc
      **********************)
     
-    (* no reason to not use O3 with llc *)
-    val l_level1 = []
-    val l_level2 = ["-O1"]
-    val l_level3 = ["-O3"]
+    (* no reason to not use O3 with llc. The same passes are run for O1 through O3 and
+       the same code is output.  use -mcpu=native to get code optimized for the specific CPU
+       instead of generic x86-64 instruction set. *)
+    val l_level0 = ["-O3"]
+    val l_level1 = ["-O3"]
+    val l_level2 = ["-O3 -mcpu=native"]
+    val l_level3 = ["-O3 -mcpu=native"]
     (*)
     val l_level1 = ["-O1"]
     val l_level2 = ["-O2"]
@@ -284,7 +286,7 @@ Pass Arguments:  -domtree
         val llcOutput = asmPrefix ^ ".s"
         val llcRun = doLLC verbose optOutput llcOutput
         val result = (case Controls.get BasicControl.llopt
-            of 0 => llcRun []
+            of 0 => llcRun l_level0
              | 1 => llcRun l_level1
              | 2 => llcRun l_level2
              | _ => llcRun l_level3
