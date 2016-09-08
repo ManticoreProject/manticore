@@ -189,7 +189,7 @@ Pass Arguments:  -domtree
         @ o_analysis @ [
             "-sink",
             "-mldst-motion",
-            (* "-slp-vectorizer", can hurt perf, like in tak *)
+            "-slp-vectorizer",
             "-instcombine",
             "-simplifycfg"
         ]
